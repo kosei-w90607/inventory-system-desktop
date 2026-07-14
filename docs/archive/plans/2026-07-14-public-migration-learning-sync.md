@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: codex-only
 - Plan Commit: 3863c65
@@ -140,3 +140,4 @@ Public-safe goal-drift WER、D-045、dashboard closeoutを実装した。GitHub�
 - Plan Gate（2026-07-14）: plan-first commit `3863c65` を独立 Codex context が reviewし、P1=0 / P2=0 / P3=0で承認。既存 evidence に基づき `plan-gate -> plan-approved -> implementing` を本state-only記録でmaterializeした。
 - Final Review（2026-07-14）: reviewed content HEADを独立 Codex context がreviewし、P1=0 / P2=0 / P3=1で承認。P3はPR本文のWorkflow State表記だけが一段古いというmetadata findingで、content candidate変更なしにPR本文を同期した。これにより `local-verified -> independent-review -> human-confirm` を本state-only記録でmaterializeした。
 - Owner Authorization（2026-07-14）: ownerが内容を確認し、Ready化、最終gate確認、問題がなければmergeまで進めることを承認。`human-confirm -> ready-hosted-final` を本state-only記録でmaterializeした。
+- Merge / Closeout（2026-07-14）: Public PR #1 を squash merge（`dcb6520`）。Ready exact-HEAD local fullはCLEAN PASS、docs/Markdown `paths-ignore` によりhosted runは0件で、`Hosted CI Requirement: not-required` とowner dispositionに従ってmergeした。Packetをarchiveへ移し、`Plans.md`と`PROJECT_HANDOFF.md`を同期した。
