@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: e5776ab
@@ -20,6 +20,7 @@ Plan Gate record（append-only、plan-draft → plan-gate → plan-approved を�
 
 - plan-draft → plan-gate: independent Sonnet plan review rally。round 1（P1×2 / P2×1 / P3×2、全件 accept・反映: polish pass の Phase 整合、L3 差異注入の fault-injection 疑義は `create_product` の初期在庫 movement 記録を実証して確定、remount/restart テスト追加、Impact Review Lenses 文言）/ round 2（P2×1 / P3×1、反映: Budget 超過理由の記録、D-043 の Design Sources 追記）/ round 3（新規指摘なし、Plan Gate 可）
 - plan-gate → plan-approved: owner 承認（2026-07-15、介入 1 回目 / 予算 4 回、「承認、実装発注へ」）
+- ready-hosted-final → merge → archive（2026-07-15、Post-Merge Closeout）: PR #5 squash merge（`d5a2d42`）。hosted final は Ready 後 head 更新の `synchronize` run success + 三点 SHA 一致（run URL / headSha / cancellation 証跡は PR body）。D-043 dogfood（synchronize trigger + cancel-in-progress 実測）を消化。本 commit で packet / matrix を `docs/archive/plans/` へ移動、WER は同ディレクトリの `2026-07-15-ui13-integrity-check-workflow-effectiveness-review.md`
 - STATECAP 是正（2026-07-15、Coordinator、ready-hosted-final 遷移前の L1 full で検出）: Amendment 5 再走行の materialize を state-only 単独 commit（旧 60062e7、4 件目の forward state-only遷移）にしていたため、workflow-git gate が forward STATECAP 超過（4 > 3 / post-implementation 3 > 2）で FAIL。DEV_WORKFLOW compression 規則どおり当該遷移を本承認記録 commit（content 隣接）へ相乗りに再構成。対象は Reviewed Content HEAD `ac2b6b9` より後の docs 遷移 commit 2 件のみで、audited content・評価済み証跡の SHA は全て不変。下記「Amendment 5 是正後の再走行」entry の「単一 state-only commit で materialize」は本 commit への相乗りに読み替える（entry 本文は append-only のため改変しない）
 - human-confirm → ready-hosted-final（2026-07-15、owner 承認 = 介入 4 回目 / 予算 4 回、「承認で良いかな」）: Human Gate の Ready/merge 承認を消化。承認時に owner が「システム在庫/入出庫の合計」→「DB在庫/在庫」への簡略化を検討したが、実 operator 検証（「DB在庫」が意味を運ばなかった L3-3 実証）+ StocktakePage 既存列名「システム在庫」との画面間一貫性 + 2 数値比較画面での「在庫」単体の曖昧さを理由に現行語彙維持を実判断。この遷移は本承認記録 commit（content 隣接）に相乗りし forward STATECAP を消費しない
 - implementing → local-verified → independent-review → human-confirm（2026-07-15、Amendment 5 是正後の再走行、単一 state-only commit で materialize）: ① local-verified 証跡 = content candidate `ac2b6b9` での L1 full PASS / CLEAN / MERGE_EVIDENCE_VALID=true、② independent-review 証跡 = targeted re-reviewer（新規独立 context）が語彙変更の範囲・ロジック不変・旧語彙残置 0 件・73-ui UI-10-D10 との論理整合・テスト強度維持を確認、新規指摘なし、③ 裁定 = Fable、P1/P2/P3 = 0
