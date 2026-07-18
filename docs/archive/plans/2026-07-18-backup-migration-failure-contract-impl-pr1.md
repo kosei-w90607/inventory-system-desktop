@@ -14,11 +14,12 @@
 - Reviewed Content HEAD: 29f5c20
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: R4 explicit approval **済み**（2026-07-18、介入 1 回目 / 予算 4 回、Data Safety 節を承認対象に含む）+ Draft PR の owner 確認 + Ready 承認 + Windows native L3（Matrix L3-1/L3-2）+ merge
+- Human Gate: 全項目解消（R4 explicit approval 済み・Draft PR owner 確認済み・Windows native L3-1/L3-2 pass（2026-07-18、PR body checklist に観測記録）・Ready = owner 自身が実施・merge = owner 委任で Coordinator が squash `c651c6c` 実行）
 - State Narrative（append-only）: 2026-07-18 の state-only commit で隣接 forward 3 遷移 `plan-draft -> plan-gate -> plan-approved -> implementing` を実体化。evidence: plan-gate = packet + Test Design Matrix の plan-first commit `d9f7b53`（packet complete and committed）/ plan-approved = Plan Gate round 3 の独立 Plan Reviewer 報告 P1/P2 = 0（Review Response 参照）+ `Plan Commit` 記入 / implementing = owner の R4 explicit approval（介入 1 回目）。実装 commit は本遷移時点でゼロであり plan-first commit が全実装 commit に先行する。
 - State Narrative 追記（append-only、2026-07-18）: 2 つ目の state-only commit で隣接 forward 3 遷移 `implementing -> local-verified -> independent-review -> human-confirm` を実体化。evidence: local-verified = content HEAD `5d5a230` での `local-ci full` PASS + MERGE_EVIDENCE_VALID=true（Writer 報告の evidence log）/ independent-review = Double Audit 両 pass（1 pass = Fable inline `5155f65` 記録、2 pass = Codex 独立 round 1 `ce639c6` 記録 → 是正 7 commit → Coordinator が差分再確証、Review Response 参照）/ human-confirm = findings 全裁定済み P1/P2 = 0、`Reviewed Content HEAD` 記入。
 - State Narrative 追記（append-only、2026-07-18）: state-backtrack `human-confirm -> implementing`。理由 = owner の L3-1 実施準備（Windows native release build）で `generate_bindings` bin の E0425 を発見。原因は public snapshot 初期化 `902647b` 由来の既存欠陥（`export_specta_bindings` の `#[cfg(debug_assertions)]` gate と bin の無条件呼び出しの不整合。release build は本 branch まで未実行のため潜伏）で、PR1 の diff は非起因（`git diff a7c40ce..5d5a230` に該当箇所なし、Coordinator 実証済み）。L3 完了は本 packet の Human Gate 要件のため、scope 例外の軽微修正（bin main の cfg gate 化）を implementing で実施し、gate 再実行 + 差分レビュー後に再 walk する。
 - State Narrative 追記（append-only、2026-07-18）: 3 つ目の state-only commit で隣接 forward 3 遷移 `implementing -> local-verified -> independent-review -> human-confirm` を再実体化。evidence: local-verified = content HEAD `29f5c20` での `local-ci full` PASS / END_TREE_STATE=CLEAN / MERGE_EVIDENCE_VALID=true（`.local/ci-evidence/` の evidence log）/ independent-review = 先行 content `5d5a230` への Double Audit 収束（既記録）+ backtrack 後の差分（`29f5c20` の 9 行、generate_bindings bin の cfg gate 化のみ）を Coordinator が実文レビュー P1/P2 = 0（PR1 契約への影響なし・debug 挙動不変・diagnostics 想定内）/ human-confirm = 全 findings 裁定済み、`Reviewed Content HEAD` 更新。
+- State Narrative 追記（append-only、closeout、2026-07-18）: Windows native L3-1/L3-2 は owner 実機で pass（観測記録は PR #16 body checklist。L3-1 で blank window shell の背後生成を観測 — Matrix oracle 充足、window 生成抑止は cosmetic backlog）。`human-confirm -> ready-hosted-final -> merge` の遷移は本 closeout 記録で実体化する: **記録上の逸脱 2 点を明示** — (1) owner が ready-hosted-final の state-only 遷移 commit 作成前に自ら Ready 化（hosted CI は exact HEAD `9c7df9c` で全 check green、evidence は PR checks）。(2) STATECAP forward 上限 3 は backtrack 後の再 walk で消費済みのため、branch 上に 4 つ目の state-only 遷移 commit を作らず closeout narrative で遷移を記録（遷移の再構成可能性は本 narrative + PR body + CI run が担保）。merge = squash `c651c6c`（2026-07-18、owner 委任）。cap と backtrack の相互作用は WER の Adjustment 参照。
 
 ## Owner Effort Budget
 
@@ -34,7 +35,7 @@
 Risk: R4
 
 Reason:
-[adjudication](../research/audit-2026-07/adjudication.md) が是正順 1+2 へ R4 を付与しており、本 PR はその destructive data lifecycle（restore の main/WAL/SHM 置換、legacy 移行のファイル生成、起動時 reconcile の遺物削除）の実装挙動を実際に変更する。R4 必須物 = R3 必須物 + explicit human approval（発注前）+ rollback / recovery notes（本 packet Data Safety 節）+ Double Audit。
+[adjudication](../../research/audit-2026-07/adjudication.md) が是正順 1+2 へ R4 を付与しており、本 PR はその destructive data lifecycle（restore の main/WAL/SHM 置換、legacy 移行のファイル生成、起動時 reconcile の遺物削除）の実装挙動を実際に変更する。R4 必須物 = R3 必須物 + explicit human approval（発注前）+ rollback / recovery notes（本 packet Data Safety 節）+ Double Audit。
 
 ## Goal
 
@@ -42,7 +43,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- MNT-01-D1 / MNT-01-D4 / MNT-01-D5、MNT-03-D2 / MNT-03-D3 / MNT-03-D4 の 6 契約（[71-mnt-backup.md](../function-design/71-mnt-backup.md) / [22-mnt-migration.md](../function-design/22-mnt-migration.md) 正本）が実装され、**意味的完了条件「restore / 移行のどの失敗・中断時点でも、元 snapshot または新 snapshot のどちらか一方が完全な形で残る（部分状態・空 DB 偽装が構造的に発生しない）」**を、実 WAL fixture + 失敗注入 + 実 mutation 注入テスト（[Test Design Matrix](test-matrices/2026-07-18-backup-migration-failure-contract-impl-pr1.md)）で検証済みの状態にする。
+- MNT-01-D1 / MNT-01-D4 / MNT-01-D5、MNT-03-D2 / MNT-03-D3 / MNT-03-D4 の 6 契約（[71-mnt-backup.md](../../function-design/71-mnt-backup.md) / [22-mnt-migration.md](../../function-design/22-mnt-migration.md) 正本）が実装され、**意味的完了条件「restore / 移行のどの失敗・中断時点でも、元 snapshot または新 snapshot のどちらか一方が完全な形で残る（部分状態・空 DB 偽装が構造的に発生しない）」**を、実 WAL fixture + 失敗注入 + 実 mutation 注入テスト（[Test Design Matrix](test-matrices/2026-07-18-backup-migration-failure-contract-impl-pr1.md)）で検証済みの状態にする。
 
 ### 失敗定義
 
@@ -102,7 +103,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Function / command / DTO: `docs/function-design/71-mnt-backup.md`（MNT-01-D1/D4/D5、§71.7 索引表、§71.10）、`docs/function-design/22-mnt-migration.md`（MNT-03-D2〜D4、§12）、`docs/function-design/43-cmd-settings-log.md` §43.9
 - DB: `docs/DB_DESIGN.md`（WAL mode 運用）
 - Screen / UI: `docs/function-design/68-ui-backup-restore.md` §68.7 / §68.11（識別子分岐 + durability 不明文言）
-- Decision log / ADR: D-048、[archived design packet](../archive/plans/2026-07-17-backup-migration-failure-contract-design.md)（Contract Coverage Ledger 原型 + Design Intent Trace）
+- Decision log / ADR: D-048、[archived design packet](2026-07-17-backup-migration-failure-contract-design.md)（Contract Coverage Ledger 原型 + Design Intent Trace）
 
 ## Required Design Artifacts
 
