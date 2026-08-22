@@ -1,0 +1,288 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>入力画面 統合案 D（販売・廃棄・棚卸し）</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#e7e5e4;--accent:#f5f5f4;
+--primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
+--warn-soft:#fffbeb;--warn-border:#fde68a;--warn-strong:#78350f;--warn:#d97706;
+--bad-soft:#fef2f2;--bad-border:#fecaca;--bad-strong:#991b1b;--bad:#dc2626;
+--ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
+--ring:#b45309;
+--d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#f5f5f4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+.chrome{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;background:#292524;color:#fafaf9;font-size:14px}
+.chrome b{font-size:14px;letter-spacing:.04em}
+.chrome .tabs{display:inline-flex;border:1px solid #57534e;border-radius:6px;overflow:hidden}
+.chrome .tabs button{min-height:36px;padding:0 14px;border:0;border-left:1px solid #57534e;background:transparent;color:#fafaf9;font:inherit;font-size:14px;cursor:pointer}
+.chrome .tabs button:first-child{border-left:0}
+.chrome .tabs button.on{background:#fafaf9;color:#1c1917;font-weight:600}
+.chrome .sw{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
+.chrome .sw label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.chrome .sw input{width:18px;height:18px;accent-color:#f59e0b}
+.chrome .legend{font-size:13px;color:#d6d3d1}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
+.sb{background:var(--card);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:16px}
+.brand{font-size:16px;font-weight:700;padding:4px 8px}
+.area h4{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:8px 8px 4px}
+.nav a{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;color:var(--fg);text-decoration:none;font-size:14px;line-height:1.4}
+.nav a.cur{background:var(--primary-soft);font-weight:600}
+.nav svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;color:var(--muted)}
+.nav a.cur svg{color:var(--primary)}
+.page{padding:24px;display:flex;flex-direction:column;gap:20px;max-width:1120px}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.ph h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
+.ph p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
+.btn.primary{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.sm{min-height:36px;font-size:14px;padding:0 12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.nav a:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.alert{display:grid;grid-template-columns:20px 1fr;gap:12px;align-items:start;padding:12px 16px;border:1px solid;border-radius:6px}
+.alert svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;margin-top:2px}
+.alert b{display:block;font-size:16px}
+.alert span,.alert div{font-size:14px}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.alert.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.alert.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.filters label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.filters label.chk{font-size:16px;color:var(--fg)}
+.filters input[type=checkbox]{width:20px;height:20px;accent-color:var(--primary)}
+select.ctl{min-height:40px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font:inherit;font-size:16px;background:#fff;width:11rem}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.seg button{min-height:40px;padding:0 14px;border:0;background:#fff;font:inherit;font-size:16px;color:var(--fg);border-left:1px solid var(--border);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--primary-soft);font-weight:600}
+.sep{flex-basis:100%;height:0}
+.sub{font-size:14px;color:var(--muted)}
+/* form section box（04-backbone 原則 6・9、catalog ④） */
+.fsec{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.fsec h2{font-size:20px;font-weight:600;margin:0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid.g2{grid-template-columns:repeat(2,1fr)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;color:var(--muted)}
+.field input,.field select,.field textarea{min-height:40px;border:1px solid var(--border);border-radius:6px;padding:0 12px;font:inherit;font-size:16px;background:#fff}
+.field textarea{min-height:72px;padding:10px 12px;resize:vertical}
+.field.err input,.field.err select,.field.err textarea{border-color:var(--bad)}
+.fielderr{font-size:14px;color:var(--bad-strong);display:flex;align-items:center;gap:6px}
+.fielderr svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.suggest{position:relative}
+.suggest .drop{position:absolute;top:42px;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(28,25,23,.12);z-index:10;overflow:hidden}
+.suggest .drop .opt{padding:8px 12px;font-size:16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px}
+.suggest .drop .opt:last-child{border-bottom:0}
+.suggest .drop .opt.hl,.suggest .drop .opt:hover{background:var(--accent)}
+.suggest .drop .opt .sub{font-size:13px}
+.suggest .drop .more{padding:6px 12px;font-size:13px;color:var(--muted);background:#fafaf9}
+/* table（明細・一覧、C と同一） */
+.tbl{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.scroll{overflow:auto;max-height:56vh}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:16px}
+th{font-size:14px;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);background:#fafaf9;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;height:40px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.row{cursor:default}
+td.chev{width:40px;text-align:center;color:var(--muted)}
+td .code{font-weight:600;font-variant-numeric:tabular-nums}
+td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border-radius:6px;padding:0 10px;font:inherit;font-size:16px;text-align:right;font-variant-numeric:tabular-nums}
+td input.cell.txt{width:100%;min-width:9rem;text-align:left;font-variant-numeric:normal}
+td select.cell{min-height:40px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font:inherit;font-size:15px;background:#fff}
+td .del{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+td .del:hover{background:var(--accent);color:var(--bad-strong)}
+td .del svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.75}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:9999px;white-space:nowrap;vertical-align:middle}
+.badge svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.b-state{border:1px solid var(--border);background:#fff;color:var(--fg)}
+.b-state.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.b-state.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.b-state.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.b-class{background:var(--accent);color:var(--muted)}
+.b-emph{background:var(--primary);color:#fff}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
+.pager .pg{display:flex;gap:8px;align-items:center}
+.pager.top{display:none}
+/* 結果パネル */
+.result{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px;display:flex;flex-direction:column;gap:16px}
+.result .kpi{font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.result .kpi small{display:block;font-size:14px;font-weight:400;color:var(--muted)}
+.result .kv{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.result dt{font-size:14px;color:var(--muted)}.result dd{margin:0;font-size:16px;font-weight:600}
+.result .acts{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
+.card .lbl{font-size:14px;color:var(--muted)}
+.card .val{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px}
+/* progress（棚卸し進捗） */
+.progress{height:10px;border-radius:9999px;background:var(--accent);overflow:hidden;border:1px solid var(--border)}
+.progress i{display:block;height:100%;background:var(--primary)}
+/* dialog sample（AlertDialog の静的サンプル。実際にモーダル動作はしない） */
+.dlg{border:1px solid var(--border);border-radius:8px;background:#fff;padding:20px;max-width:520px;box-shadow:0 8px 24px rgba(28,25,23,.12)}
+.dlg h3{margin:0 0 12px;font-size:18px;font-weight:600}
+.dlg .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.dlgwrap{display:flex;gap:20px;flex-wrap:wrap}
+.note{font-size:14px;color:var(--muted);border-top:1px dashed var(--border);padding:16px 24px;max-width:1120px;line-height:1.6}
+.note b{color:var(--fg)}
+.note ol{margin:8px 0 0;padding-left:22px}
+.note li{margin:2px 0}
+.screen{display:none}.screen.on{display:block}
+.stpanel{display:none}.stpanel.on{display:flex;flex-direction:column;gap:20px}
+/* ===== D: L3 所見の適用（body.d のときだけ効く） ===== */
+.d .tbl{border-color:var(--d-line)}
+.d th{position:sticky;top:0;z-index:3;background:var(--d-head);border-bottom:2px solid var(--d-line);box-shadow:0 1px 0 var(--d-line)}
+.d td{border-bottom-color:var(--d-line)}
+.d .filters,.d .btn,.d select.ctl,.d .seg,.d td input.cell,.d td select.cell,.d .field input,.d .field select,.d .field textarea,.d .fsec{border-color:var(--d-ctl)}
+.d .seg button{border-left-color:var(--d-ctl)}
+.d .b-state{border-color:var(--d-ctl)}
+.d .pager.top{display:flex}
+.d .pager .cnt{color:var(--fg);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.d .pager .cnt small{font-size:14px;color:var(--muted);font-weight:400;margin-left:8px}
+.d th.id,.d td.id{position:sticky;left:0;z-index:2;background:var(--card)}
+.d th.id{z-index:4;background:var(--d-head)}
+.d th.id2,.d td.id2{position:sticky;left:var(--id-w,11rem);z-index:2;background:var(--card)}
+.d .scroll.sx td.id2{box-shadow:6px 0 6px -4px var(--d-shadow)}
+.d .scroll.sx th.id2{box-shadow:6px 0 6px -4px var(--d-shadow),0 1px 0 var(--d-line)}
+.d th.id2{z-index:4;background:var(--d-head)}
+.d tr.row:hover td,.d tr.row:hover td.id,.d tr.row:hover td.id2{background:var(--accent)}
+.d tr.cur td{background:var(--d-row-cur)}
+.d tr.cur td.id,.d tr.cur td.id2{background:var(--d-row-cur)}
+.d tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
+@media (prefers-reduced-motion:no-preference){.d th{transition:box-shadow .12s}}
+</style></head><body class="d">
+<div class="chrome"><b>入力画面 統合案 D（販売・廃棄・棚卸し）</b><div class="tabs" role="tablist"><button role="tab" class="on" data-s="sale">手動販売出庫</button><button role="tab" data-s="disposal">廃棄・破損</button><button role="tab" data-s="stocktake">棚卸し</button></div><div class="sw"><label><input type="checkbox" id="dsw" checked> D（改善案）を適用</label><span class="legend">外すと統合案 C（現行お手本）の見え方</span></div></div>
+<div class="app"><aside class="sb"><div class="brand">在庫管理システム</div><div class="area"><h4>毎日の業務</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>売上データ取込み</a><a href="#"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>日次売上</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>在庫照会</a><a href="#"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>月次売上</a></nav></div><div class="area"><h4>商品管理</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/></svg>商品検索・一覧</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>商品登録</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>一括インポート</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 4h8l8 8-8 8-8-8zM8 8h.01"/></svg>PLU書出し</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7M17 14v6m0 0 3-3m-3 3-3-3"/></svg>一括価格改定</a></nav></div><div class="area"><h4>入出庫</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M20 12H4m0 0 6-6m-6 6 6 6"/></svg>入庫記録</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4m4 4-4 4M20 16H6l4 4m-4-4 4-4"/></svg>返品・交換</a><a href="#" id="nav-sale"><svg viewBox="0 0 24 24"><path d="M4 12h16m0 0-6-6m6 6-6 6"/></svg>手動販売出庫</a><a href="#" id="nav-disposal"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg>廃棄・破損</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>入出庫履歴</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>在庫少一覧</a><a href="#" id="nav-stocktake"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM6 6h12v14H6zM9 12h6M9 16h4"/></svg>棚卸し</a></nav></div><div class="area"><h4>システム管理</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>バックアップ・復元</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 9h6M9 13h6"/></svg>操作ログ</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M12 14l4-4"/></svg>在庫少の基準</a></nav></div></aside>
+<main>
+<!-- ========== UI-04 手動販売出庫 ========== -->
+<section class="screen on" id="s-sale"><div class="page">
+<div class="ph"><div><h1>手動販売出庫</h1><p>レジのCSVに入らない販売を手入力し、在庫と売上へ反映します</p></div></div>
+<div class="fsec"><h2>伝票情報</h2><div class="grid">
+<div class="field"><label for="sd">販売日</label><input id="sd" type="date" value="2026-08-23"></div>
+<div class="field"><label for="sr">理由</label><select id="sr"><option>PLU未登録商品の販売</option><option>その他</option></select></div>
+<div class="field" style="grid-column:span 1"><label for="sn">備考（任意）</label><input id="sn" type="text" placeholder="任意のメモ"></div>
+</div></div>
+<div class="fsec"><h2>商品を追加</h2>
+<div class="suggest"><input type="text" placeholder="商品コード・JAN・商品名で追加" value="毛糸" aria-label="商品を追加"></div>
+<div class="drop"><div class="opt"><span><b>並太毛糸（生成）</b> <span class="sub">HZ-0047</span></span><span class="sub">毛糸 · 在庫 18 玉</span></div><div class="opt hl"><span><b>毛糸 中細（紺）</b> <span class="sub">HZ-0051</span></span><span class="sub">毛糸 · 在庫 3 個</span></div><div class="opt"><span><b>ミシン糸 60番（白）</b> <span class="sub">M-0060</span></span><span class="sub">文具 · 在庫 16 個</span></div><div class="more">↓/↑ または click で選択、Enter で確定します</div></div>
+<div class="sub">商品コード・JAN・商品名を入力して Enter、またはバーコードスキャナで読み取ってください</div>
+</div>
+<div class="tbl"><div class="scroll"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>現在庫</th><th class="num">数量</th><th class="num">販売金額</th><th></th></tr></thead><tbody id="tb-sale"></tbody></table></div></div>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>PLU登録済みの商品が含まれています</b><div style="margin-top:4px">・並太毛糸（生成）（HZ-0047）はPLU登録済みです。レジで販売済みでないか確認してください。</div></div></div>
+<div style="display:flex;gap:8px"><button class="btn primary">確認して保存</button><button class="btn">明細を見直す</button></div>
+<div class="result"><div><div class="kpi">3 点<small>登録明細数</small></div></div><div class="kv"><div><dt style="font-size:14px;color:var(--muted)">伝票番号</dt><dd style="margin:0;font-size:16px;font-weight:600">S-000512</dd></div><div><dt style="font-size:14px;color:var(--muted)">PLU警告</dt><dd style="margin:0;font-size:16px;font-weight:600">1 件</dd></div><div><dt style="font-size:14px;color:var(--muted)">在庫の警告</dt><dd style="margin:0;font-size:16px;font-weight:600">なし</dd></div></div><div class="acts"><button class="btn primary">続けて手動販売</button><a class="btn" href="#">詳細を見る</a><a class="btn" href="#">日次売上へ</a><a class="btn" href="#">在庫照会へ戻る</a></div></div>
+<div class="fsec"><h2>直近の手動販売出庫</h2><a class="btn sm" href="#" style="align-self:flex-end;margin-top:-44px">すべての履歴を見る</a>
+<div class="tbl"><table><thead><tr><th>業務日付</th><th>記録ID</th><th>代表商品</th><th class="num">明細数</th><th>状態</th><th>記録日時</th><th></th></tr></thead><tbody>
+<tr><td>2026-08-23</td><td>S-000512</td><td>並太毛糸（生成）ほか2点</td><td class="num">3</td><td><span class="badge b-state ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>記録済み</span></td><td>2026-08-23 10:12</td><td><a class="btn sm" href="#">詳細を見る</a></td></tr>
+<tr><td>2026-08-22</td><td>S-000498</td><td>刺しゅう糸 25番（赤系アソート）</td><td class="num">1</td><td><span class="badge b-state">同じ内容の再送</span></td><td>2026-08-22 17:40</td><td><a class="btn sm" href="#">詳細を見る</a></td></tr>
+<tr><td>2026-08-22</td><td>S-000497</td><td>木製ボタン（大）ほか1点</td><td class="num">2</td><td><span class="badge b-state ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>記録済み</span></td><td>2026-08-22 16:05</td><td><a class="btn sm" href="#">詳細を見る</a></td></tr>
+</tbody></table></div></div>
+</div><div class="note"><b>D の要点（手動販売出庫）</b> — 明細は数行程度の伝票入力のため、D の sticky header / 識別列固定 / 上下 pager は適用しない（対象は 100+ 行級の一覧）。適用したのは <b>操作枠のコントラスト</b>（入力欄・select・ボタンの枠を濃く）と、PLU警告・在庫警告のような<b>状態を色 + アイコン + 日本語文言の 3 点で示す</b>こと（DSR-08 の踏襲）。<br><b>未決（doc に文言なし、本 mockup で仮に置いた文言）</b>: subtitle 1 行説明 / PLU警告パネルの本文（`plu_warnings` は backend 文字列で内容不定、体裁のみ提案）/ 「同じ内容の再送」バッジ文言と分類（`b-state` 無色系で表現。idempotent replay は本来 result panel 内の文言で、recent list には出ない可能性がある）。<br><b>現仕様維持</b>: 明細行の削除・数量/金額編集の操作感、商品追加欄の候補プレビュー配色は既存 `ProductAddSuggest` の見た目を想定（本 mockup は簡略描画）。</div></section>
+<!-- ========== UI-05 廃棄・破損 ========== -->
+<section class="screen" id="s-disposal"><div class="page">
+<div class="ph"><div><h1>廃棄・破損</h1><p>販売や返品ではない理由で在庫を減らし、ロス理由と原価を記録します</p></div></div>
+<div class="fsec"><h2>伝票情報</h2><div class="grid g2"><div class="field"><label for="dd">廃棄日</label><input id="dd" type="date" value="2026-08-23"></div></div></div>
+<div class="fsec"><h2>商品を追加</h2><div class="suggest"><input type="text" placeholder="商品コード・JAN・商品名で追加" aria-label="商品を追加"></div>
+<div class="sub">商品コード・JAN・商品名を入力して Enter、またはバーコードスキャナで読み取ってください</div></div>
+<div class="tbl"><div class="scroll"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>部門</th><th>現在庫</th><th>種別</th><th class="num">数量</th><th class="num">原価</th><th>理由</th><th></th></tr></thead><tbody id="tb-disposal"></tbody></table></div></div>
+<div style="display:flex;gap:8px"><button class="btn primary">廃棄・破損を保存</button></div>
+<div class="result"><div><div class="kpi">¥1,470<small>ロス原価合計</small></div></div><div class="kv"><div><dt style="font-size:14px;color:var(--muted)">記録番号</dt><dd style="margin:0;font-size:16px;font-weight:600">D-000231</dd></div><div><dt style="font-size:14px;color:var(--muted)">登録明細数</dt><dd style="margin:0;font-size:16px;font-weight:600">2 点</dd></div><div><dt style="font-size:14px;color:var(--muted)">在庫の警告</dt><dd style="margin:0;font-size:16px;font-weight:600">なし</dd></div></div><div class="acts"><button class="btn primary">続けて廃棄・破損</button><a class="btn" href="#">在庫照会へ戻る</a></div></div>
+<div class="fsec"><h2>最近の廃棄・破損記録</h2><div class="tbl"><table><thead><tr><th>日付</th><th>記録ID</th><th>記録日時</th></tr></thead><tbody>
+<tr><td>2026-08-23</td><td>D-000231</td><td>2026-08-23 11:02</td></tr>
+<tr><td>2026-08-21</td><td>D-000228</td><td>2026-08-21 09:40</td></tr>
+<tr><td>2026-08-18</td><td>D-000219</td><td>2026-08-18 15:20</td></tr>
+</tbody></table></div></div>
+</div><div class="note"><b>D の要点（廃棄・破損）</b> — 手動販売出庫と同型。明細は少数行のため sticky/識別列固定は適用せず、操作枠のコントラストのみ強化。理由欄の空欄 validation を行内 field error で示す例を明細内に 1 件配置。<br><b>未決</b>: subtitle 1 行説明 / 数量・原価・理由の validation 文言（doc は「日本語 field error」とのみ規定し文言は未指定、本 mockup は仮文言）。<br><b>現仕様維持</b>: 種別セレクトの見た目、削除アイコンの位置は既存パターンに揃える想定。</div></section>
+<!-- ========== UI-10 棚卸し ========== -->
+<section class="screen" id="s-stocktake"><div class="page">
+<div class="ph"><div><h1>棚卸し</h1><p>商品ごとの実数を入力し、帳簿在庫との差異を確定します</p></div></div>
+<div class="seg" role="tablist" aria-label="棚卸しの状態（サンプル切替、実際は業務状態で自動遷移）"><button class="on" data-st="idle">未開始</button><button data-st="counting">棚卸し中</button><button data-st="dialog">確定ダイアログ</button><button data-st="result">結果</button></div>
+
+<!-- 未開始 -->
+<div class="stpanel on" id="st-idle">
+<div class="card" style="max-width:420px"><div class="lbl">前回の棚卸し（2026-08-02 09:15:00）</div><div class="val">仕入原価総額 ¥482,300</div></div>
+<div><button class="btn primary">棚卸しを開始する</button></div>
+</div>
+
+<!-- 棚卸し中（D showcase） -->
+<div class="stpanel" id="st-counting">
+<div class="fsec" style="gap:8px"><h2 style="font-size:16px">棚卸し中（開始日: 2026-08-23 09:02:11）</h2>
+<div style="display:flex;align-items:center;gap:12px"><span class="sub" style="min-width:9rem">入力済み 128/238</span><div class="progress" style="flex:1"><i style="width:54%"></i></div></div></div>
+<div class="filters"><select class="ctl"><option>すべての部門</option></select><label class="chk"><input type="checkbox"> 未入力のみ表示</label><div class="sep"></div><div class="suggest" style="flex:1;min-width:22rem"><input type="text" placeholder="商品コード・JAN・商品名を入力" aria-label="商品を検索・スキャン"></div><label style="margin-left:auto">表示件数 <select class="ctl" style="width:7rem"><option>50 件</option></select></label></div>
+<div class="sub" style="margin-top:-8px">この商品は棚卸しの対象にありません。商品コードまたはJANを確認してください。新しく登録した商品は自動で追加されます</div>
+<div class="pager top"><span class="cnt">238 件<small>1〜50 件目を表示 · 1 / 5 ページ</small></span><div class="pg"><button class="btn sm" disabled>← 前へ</button><span>1 / 5</span><button class="btn sm">次へ →</button></div></div>
+<div class="tbl"><div class="scroll" style="--id-w:10.5rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>部門</th><th class="num">現在在庫</th><th class="num">実際の数</th><th class="num">差異</th><th>最終カウント</th></tr></thead><tbody id="tb-stocktake"></tbody></table></div></div>
+<div class="pager"><span>238 件中 1〜50 件目 · 1 / 5 ページ</span><div class="pg"><button class="btn sm" disabled>← 前へ</button><button class="btn sm">次へ →</button></div></div>
+<div><button class="btn primary">棚卸しを確定する</button></div>
+</div>
+
+<!-- 確定ダイアログ（2 variant を静的に並べる） -->
+<div class="stpanel" id="st-dialog">
+<div class="sub">2 つの title 分岐を並べて表示（実際は 1 つだけ表示される）</div>
+<div class="dlgwrap">
+<div class="dlg"><h3>未入力の商品があります</h3><div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>確定すると取り消せません</b><div style="margin-top:4px">110件が未入力のまま残っています。確定すると、この110件は現在の在庫数で棚卸しされます。</div></div></div><div class="acts"><button class="btn">キャンセル</button><button class="btn primary">確定する</button></div></div>
+<div class="dlg"><h3>棚卸しの確定</h3><div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>確定すると取り消せません</b><div style="margin-top:4px">入力した内容で棚卸しを確定します。</div></div></div><div class="acts"><button class="btn">キャンセル</button><button class="btn primary">確定する</button></div></div>
+</div>
+</div>
+
+<!-- 結果 -->
+<div class="stpanel" id="st-result">
+<h2 style="font-size:20px;font-weight:600;margin:0">棚卸し結果</h2>
+<div class="result"><div class="kpi">¥518,900<small>仕入原価総額</small></div></div>
+<div class="card"><div class="lbl">前回の棚卸し（2026-08-02 09:15:00）</div><div class="val">¥482,300</div></div>
+<div class="fsec"><h2>差異のあった商品</h2><div class="tbl"><table><thead><tr><th>商品コード</th><th>商品名</th><th class="num">帳簿数</th><th class="num">実数</th><th class="num">差異</th></tr></thead><tbody>
+<tr><td>HZ-0047</td><td>並太毛糸（生成）</td><td class="num">18</td><td class="num">16</td><td class="num">-2</td></tr>
+<tr><td>F-0132</td><td>コットンブロード（無地・生成）</td><td class="num">1240</td><td class="num">1245</td><td class="num">+5</td></tr>
+<tr><td>H-0009</td><td>木製ボタン（大）</td><td class="num">0</td><td class="num">3</td><td class="num">+3</td></tr>
+</tbody></table></div></div>
+<div class="alert ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg><div><b>整合性チェック</b><div style="margin-top:4px">不一致は見つかりませんでした</div></div></div>
+</div>
+
+</div><div class="note"><b>D の要点（棚卸し）</b> — 一覧画面と同じ器を使う最有力候補。<ol><li><b>差異列は色分けしない</b>（77-ui とは異なり 73-ui 契約: 「色分けなし、符号付き数値のプレーンテキストのみ」）。D でも badge 化せず、`+2` / `-1` のプレーン数値のまま。</li><li><b>上部に進捗</b>: 「入力済み 128/238」+ Progress を toolbar の上、絞り込みより先に置く（棚卸しは残数の把握が主目的）。</li><li><b>識別列固定 + sticky header + 上下 pager</b>: 一括価格改定・商品一覧と同じ器。238 件級で最も効く。</li><li><b>現在の行</b>: 検索/スキャンで解決した直後の行に左バー + 淡背景（入力中 badge は付けず、数量入力欄への自動フォーカスで示す — HID 連続スキャン運用のため行クリックで開く一覧画面の badge とは性質が異なる）。</li><li><b>確定ダイアログ</b>は D の一覧改善と無関係（既存 73-ui-D4/D10 契約のまま）。ここでは title 分岐 2 種を並べて見比べられるようにしただけ。</li></ol><b>未決</b>: 進捗 Progress の色（primary 琥珀を使用、doc は色を規定しない）。<b>doc に無く追加しなかったもの</b>: PLU 対象外・除外品の列や filter — 73-ui-stocktake.md に PLU 状態列の記載はなく、棚卸しは PLU 状態を問わず全商品が対象のため追加していない。</div></section>
+</main></div>
+<div class="note"><b>位置付け</b>: 正本は <code>04-backbone.md</code> + 各 function-design（62/64/73-ui）。本 mockup は 2026-08-23 の L3 所見 5 点を forms 系画面へどこまで適用するかの<b>方向確認用の提案</b>で、実装の正本ではない。棚卸しのように大量行の一覧を持つ画面は list 系（`mockup-d-lists.html`）と同じ器を適用し、手動販売・廃棄のように数行の伝票入力が中心の画面は操作枠のコントラスト強化のみに留めている。文言・数値はダミー、doc に無い文言は各 note の「未決」に列挙した。</div>
+<script>
+(function(){
+  var names=['並太毛糸（生成）','コットンブロード（無地・生成）','木製ボタン（大）','刺しゅう糸 25番（赤系アソート）','ワッペン（星・3枚入）','レース（コットン 20mm）','ファスナー 20cm（黒）','マスキングテープ（花柄）','ビーズ（丸小・金）','フェルト（赤・18cm角）','接着芯（薄手）','手芸はさみ（小）','リボン サテン 9mm（赤）','刺しゅう枠 12cm','編み針 8号（2本）','毛糸 中細（紺）','ボタン 貝調 15mm','チャコペン（白）','ゴムひも 8コール','ミシン糸 60番（白）'];
+  var depts=['毛糸','生地','手芸小物','刺しゅう','飾り','生地','手芸小物','文具','ビーズ','生地'];
+  var codes=['HZ-0047','F-0132','H-0009','4901234567894','W-0213','L-0044','Z-0120','MT-0310','B-0506','FE-0018','S-0203','T-0011','R-0099','E-0031','N-0008','HZ-0051','H-0027','C-0003','G-0012','M-0060'];
+  var stockN=[18,1240,0,64,12,380,25,30,8,40,6,4,22,7,9,3,3,11,35,16];
+  var cost=[364,546,84,115,231,168,126,182,105,77,315,616,66,434,378,301,98,154,91,147];
+  function yen(n){return '¥'+n.toLocaleString('ja-JP')}
+  var iBad='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9l6 6m0-6-6 6"/></svg>';
+
+  /* 手動販売出庫 明細（3 行） */
+  var h='<tr><td class="id"><span class="code">HZ-0047</span></td><td class="id2">並太毛糸（生成）</td><td>18 玉</td><td class="num"><input class="cell" value="2"></td><td class="num"><input class="cell" value="1040"></td><td><button class="del" aria-label="行を削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td></tr>';
+  h+='<tr><td class="id"><span class="code">R-0099</span></td><td class="id2">リボン サテン 9mm（赤）</td><td>22 m</td><td class="num"><input class="cell" value="3"></td><td class="num"><input class="cell" value="285"></td><td><button class="del" aria-label="行を削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td></tr>';
+  h+='<tr><td class="id"><span class="code">C-0003</span></td><td class="id2">チャコペン（白）</td><td>11 本</td><td class="num"><input class="cell" value="1"></td><td class="num"><input class="cell" value="220"></td><td><button class="del" aria-label="行を削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td></tr>';
+  document.getElementById('tb-sale').innerHTML=h;
+
+  /* 廃棄・破損 明細（2 行、2 行目は理由未入力の validation 例） */
+  h='<tr><td class="id"><span class="code">H-0009</span></td><td class="id2">木製ボタン（大）</td><td>手芸小物</td><td>0 個</td><td><select class="cell"><option>廃棄</option><option selected>破損</option><option>その他</option></select></td><td class="num"><input class="cell" value="2"></td><td class="num"><input class="cell" value="84"></td><td><input class="cell txt" value="陳列棚から落下し破損"></td><td><button class="del" aria-label="行を削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td></tr>';
+  h+='<tr><td class="id"><span class="code">Z-0120</span></td><td class="id2">ファスナー 20cm（黒）</td><td>手芸小物</td><td>25 本</td><td><select class="cell"><option>廃棄</option><option selected>破損</option><option>その他</option></select></td><td class="num"><input class="cell" value="1"></td><td class="num"><input class="cell" value="126"></td><td><div class="field err" style="gap:2px"><input class="cell txt" value=""><div class="fielderr">'+iBad+'理由を入力してください</div></div></td><td><button class="del" aria-label="行を削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td></tr>';
+  document.getElementById('tb-disposal').innerHTML=h;
+
+  /* 棚卸し 一覧（40 行、うち一部を counted / 現在行 / 差異ありに） */
+  h='';for(var i=0;i<40;i++){var k=i%20;var counted=i%3!==0;var cur=i===4;var diff=counted?[0,0,-2,0,0,1,0,0,-1,0][i%10]:null;var actual=counted?stockN[k]+diff:null;
+    var diffTxt=counted?(diff>0?'+'+diff:String(diff)):'—';
+    var lastTxt=counted?'2026-08-23 09:'+(10+i%40).toString().padStart(2,'0')+':00':'—';
+    h+='<tr class="row'+(cur?' cur':'')+'"><td class="id"><span class="code">'+codes[k]+(i>=20?'-'+(i-19):'')+'</span></td><td class="id2">'+names[k]+'</td><td>'+depts[k%10]+'</td><td class="num">'+stockN[k]+'</td><td class="num"><input class="cell" aria-label="実際の数" placeholder="—" value="'+(counted?actual:'')+'"></td><td class="num">'+diffTxt+'</td><td>'+lastTxt+'</td></tr>'}
+  document.getElementById('tb-stocktake').innerHTML=h;
+
+  /* tabs（画面） */
+  var tabs=document.querySelectorAll('.chrome .tabs button');
+  function show(s){tabs.forEach(function(b){b.classList.toggle('on',b.dataset.s===s)});document.querySelectorAll('.screen').forEach(function(e){e.classList.toggle('on',e.id==='s-'+s)});['sale','disposal','stocktake'].forEach(function(n){document.getElementById('nav-'+n).classList.toggle('cur',n===s)});window.scrollTo(0,0)}
+  tabs.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.s)})});
+  ['sale','disposal','stocktake'].forEach(function(n){document.getElementById('nav-'+n).addEventListener('click',function(e){e.preventDefault();show(n)})});
+  show('sale');
+
+  /* 棚卸し内部の状態 sub-tab */
+  var sts=document.querySelectorAll('#s-stocktake .seg button');
+  function showSt(s){sts.forEach(function(b){b.classList.toggle('on',b.dataset.st===s)});document.querySelectorAll('.stpanel').forEach(function(e){e.classList.toggle('on',e.id==='st-'+s)});syncIdWidth()}
+  sts.forEach(function(b){b.addEventListener('click',function(){showSt(b.dataset.st)})});
+
+  /* 識別列固定位置の実幅計測（mockup-d-lists.html と同じ方式） */
+  function syncIdWidth(){document.querySelectorAll('.scroll').forEach(function(sc){var th=sc.querySelector('th.id');if(th){sc.style.setProperty('--id-w',th.getBoundingClientRect().width+'px')}})}
+  document.getElementById('dsw').addEventListener('change',function(){document.body.classList.toggle('d',this.checked);syncIdWidth()});
+  syncIdWidth();
+  window.addEventListener('resize',syncIdWidth);
+  if(window.ResizeObserver){document.querySelectorAll('th.id').forEach(function(th){new ResizeObserver(syncIdWidth).observe(th)})}
+  tabs.forEach(function(b){b.addEventListener('click',syncIdWidth)});
+})();
+</script><script>document.querySelectorAll(".scroll").forEach(function(sc){function f(){sc.classList.toggle("sx",sc.scrollLeft>0)}sc.addEventListener("scroll",f);f()})</script></body></html>

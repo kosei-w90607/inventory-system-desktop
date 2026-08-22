@@ -1,0 +1,216 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>取込み・書出し画面 統合案 D</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#e7e5e4;--accent:#f5f5f4;
+--primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
+--warn-soft:#fffbeb;--warn-border:#fde68a;--warn-strong:#78350f;--warn:#d97706;
+--bad-soft:#fef2f2;--bad-border:#fecaca;--bad-strong:#991b1b;--bad:#dc2626;
+--ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
+--ring:#b45309;
+--d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#f5f5f4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+.chrome{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;background:#292524;color:#fafaf9;font-size:14px}
+.chrome b{font-size:14px;letter-spacing:.04em}
+.chrome .tabs{display:inline-flex;border:1px solid #57534e;border-radius:6px;overflow:hidden}
+.chrome .tabs button{min-height:36px;padding:0 14px;border:0;border-left:1px solid #57534e;background:transparent;color:#fafaf9;font:inherit;font-size:14px;cursor:pointer}
+.chrome .tabs button:first-child{border-left:0}
+.chrome .tabs button.on{background:#fafaf9;color:#1c1917;font-weight:600}
+.chrome .sw{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
+.chrome .sw label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.chrome .sw input{width:18px;height:18px;accent-color:#f59e0b}
+.chrome .legend{font-size:13px;color:#d6d3d1}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
+.sb{background:var(--card);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:16px}
+.brand{font-size:16px;font-weight:700;padding:4px 8px}
+.area h4{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:8px 8px 4px}
+.nav a{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;color:var(--fg);text-decoration:none;font-size:14px;line-height:1.4}
+.nav a.cur{background:var(--primary-soft);font-weight:600}
+.nav svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;color:var(--muted)}
+.nav a.cur svg{color:var(--primary)}
+.page{padding:24px;display:flex;flex-direction:column;gap:24px;max-width:1240px}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.ph h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
+.ph p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
+.btn.primary{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.sm{min-height:36px;font-size:14px;padding:0 12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.nav a:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.alert{display:grid;grid-template-columns:20px 1fr;gap:12px;align-items:start;padding:12px 16px;border:1px solid;border-radius:6px}
+.alert svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;margin-top:2px}
+.alert b{display:block;font-size:16px}
+.alert span{font-size:14px}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.alert.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.alert.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.filters label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.filters label.chk{font-size:16px;color:var(--fg)}
+.filters input[type=checkbox]{width:20px;height:20px;accent-color:var(--primary)}
+select.ctl{min-height:40px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font:inherit;font-size:16px;background:#fff;width:11rem}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.seg button{min-height:40px;padding:0 14px;border:0;background:#fff;font:inherit;font-size:16px;color:var(--fg);border-left:1px solid var(--border);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--primary-soft);font-weight:600}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.scroll{overflow:auto;max-height:52vh}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:16px}
+th{font-size:14px;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);background:#fafaf9;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;height:40px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.row{cursor:pointer}
+tr.row:hover td{background:var(--accent)}
+td .code{font-weight:600;font-variant-numeric:tabular-nums}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:9999px;white-space:nowrap;vertical-align:middle}
+.badge svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.b-state{border:1px solid var(--border);background:#fff;color:var(--fg)}
+.b-state.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.b-state.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.b-state.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.b-class{background:var(--accent);color:var(--muted)}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
+.pager .pg{display:flex;gap:8px;align-items:center}
+.pager.top{display:none}
+.note{font-size:14px;color:var(--muted);border-top:1px dashed var(--border);padding:16px 24px;max-width:1240px;line-height:1.6}
+.note b{color:var(--fg)}
+.note ol{margin:8px 0 0;padding-left:22px}
+.note li{margin:2px 0}
+.screen{display:none}.screen.on{display:block}
+.trk{display:none}.trk.on{display:flex;flex-direction:column;gap:24px}
+.trkbar{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;align-self:flex-start}
+.trkbar button{min-height:40px;padding:0 16px;border:0;border-left:1px solid var(--border);background:#fff;font:inherit;font-size:16px;color:var(--fg);cursor:pointer}
+.trkbar button:first-child{border-left:0}
+.trkbar button.on{background:var(--primary-soft);font-weight:600}
+.step{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);font-weight:600}
+.picker{display:flex;flex-direction:column;gap:8px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.picker .path{font-size:14px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+.picker .path b{color:var(--fg);font-family:inherit;font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
+.card .lbl{font-size:14px;color:var(--muted)}
+.card .val{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3;margin-top:4px}
+.card .sub{font-size:14px;color:var(--muted);margin-top:2px}
+.fs{padding:16px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;gap:12px}
+.fs h2{font-size:20px;font-weight:600;margin:0}
+.rowerr{font-size:14px;color:var(--bad-strong);display:flex;align-items:center;gap:8px}
+.rowerr svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.wtitle{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--warn-strong)}
+.wtitle svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
+.d .tbl{border-color:var(--d-line)}
+.d th{position:sticky;top:0;z-index:3;background:var(--d-head);border-bottom:2px solid var(--d-line);box-shadow:0 1px 0 var(--d-line)}
+.d td{border-bottom-color:var(--d-line)}
+.d .filters,.d .btn,.d select.ctl,.d .seg,.d .picker,.d .trkbar{border-color:var(--d-ctl)}
+.d .seg button,.d .trkbar button{border-left-color:var(--d-ctl)}
+.d .b-state{border-color:var(--d-ctl)}
+.d .pager.top{display:flex}
+.d .pager .cnt{color:var(--fg);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.d .pager .cnt small{font-size:14px;color:var(--muted);font-weight:400;margin-left:8px}
+.d th.id,.d td.id{position:sticky;left:0;z-index:2;background:var(--card)}
+.d th.id{z-index:4;background:var(--d-head)}
+.d th.id2,.d td.id2{position:sticky;left:var(--id-w,8rem);z-index:2;background:var(--card)}
+.d .scroll.sx td.id2{box-shadow:6px 0 6px -4px var(--d-shadow)}
+.d .scroll.sx th.id2{box-shadow:6px 0 6px -4px var(--d-shadow),0 1px 0 var(--d-line)}
+.d th.id2{z-index:4;background:var(--d-head)}
+.d tr.row:hover td,.d tr.row:hover td.id,.d tr.row:hover td.id2{background:var(--accent)}
+.d tr.cur td{background:var(--d-row-cur)}
+.d tr.cur td.id,.d tr.cur td.id2{background:var(--d-row-cur)}
+.d tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
+.d tr.err td{background:var(--bad-soft)}
+</style></head><body class="d">
+<div class="chrome"><b>取込み・書出し画面 統合案 D</b><div class="tabs" role="tablist"><button role="tab" class="on" data-s="sales">売上データ取込み</button><button role="tab" data-s="pimport">商品 CSV 一括インポート</button><button role="tab" data-s="plu">PLU書出し</button></div><div class="sw"><label><input type="checkbox" id="dsw" checked> D（改善案）を適用</label><span class="legend">外すと統合案 C の見え方</span></div></div>
+<div class="app"><aside class="sb"><div class="brand">在庫管理システム</div><div class="area"><h4>毎日の業務</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</a><a href="#" id="nav-sales"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>売上データ取込み</a><a href="#"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>日次売上</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>在庫照会</a><a href="#"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>月次売上</a></nav></div><div class="area"><h4>商品管理</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/></svg>商品検索・一覧</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>商品登録</a><a href="#" id="nav-pimport"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>一括インポート</a><a href="#" id="nav-plu"><svg viewBox="0 0 24 24"><path d="M4 4h8l8 8-8 8-8-8zM8 8h.01"/></svg>PLU書出し</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7M17 14v6m0 0 3-3m-3 3-3-3"/></svg>一括価格改定</a></nav></div><div class="area"><h4>入出庫</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M20 12H4m0 0 6-6m-6 6 6 6"/></svg>入庫記録</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4m4 4-4 4M20 16H6l4 4m-4-4 4-4"/></svg>返品・交換</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 12h16m0 0-6-6m6 6-6 6"/></svg>手動販売出庫</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg>廃棄・破損</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>入出庫履歴</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>在庫少一覧</a><a href="#"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM6 6h12v14H6zM9 12h6M9 16h4"/></svg>棚卸し</a></nav></div><div class="area"><h4>システム管理</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>バックアップ・復元</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 9h6M9 13h6"/></svg>操作ログ</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M12 14l4-4"/></svg>在庫少の基準</a></nav></div></aside>
+<main>
+<!-- ========== 売上データ取込み（UI-07: 日報取込み / Z004商品別CSV取込み） ========== -->
+<section class="screen on" id="s-sales"><div class="page">
+<div class="ph"><div><h1>売上データ取込み</h1><p>レジのデータを取り込み、公式日報として日次・部門別売上を記録します</p></div></div>
+<div class="trkbar" role="tablist"><button class="on" data-t="nippo">日報取込み</button><button data-t="z004">商品別CSV取込み（Z004）</button></div>
+<!-- track: 日報取込み（既定） -->
+<div class="trk on" id="t-nippo">
+<div class="step"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>2/3 プレビュー</div>
+<div class="picker"><div class="path"><b>選択済み:</b> Z001_20260823.txt / Z002_20260823.txt / Z005_20260823.txt（CV17取込み後の PC 側 EcrDatas フォルダ）</div><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>ファイルを選び直す</button></div>
+<div class="cards"><div class="card"><div class="lbl">対象日</div><div class="val" style="font-size:20px">2026-08-23</div><div class="sub">file_hash a1e4f9c2…</div></div><div class="card"><div class="lbl">総売上</div><div class="val">¥182,400</div></div><div class="card"><div class="lbl">純売上</div><div class="val">¥179,600</div></div><div class="card"><div class="lbl">支払集計</div><div class="val" style="font-size:18px">現金 ¥120,300 / カード ¥59,300</div></div></div>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>同じ日の取込みが既にあります。</b><span>追加で取り込むと、既存分は残したまま新しい取込みが加わります。「取り込む」を押すと確認が出ます。</span></div></div>
+<div class="fs"><h2>部門別集計</h2>
+<div class="pager top"><span class="cnt">18 部門<small>部門未対応 2 件を含む</small></span></div>
+<div class="tbl"><div class="scroll" style="--id-w:9rem"><table><thead><tr><th class="id">部門コード</th><th class="id2">部門名</th><th class="num">点数</th><th class="num">売上</th><th>状態</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
+</div>
+<div style="display:flex;gap:8px"><button class="btn primary">取り込む</button><span class="sub" style="align-self:center">取込み後は「日次売上を見る」から確認できます</span></div>
+</div>
+<!-- track: Z004 -->
+<div class="trk" id="t-z004">
+<div class="picker"><div class="path">未選択</div><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>ファイルを選ぶ（.csv / .txt）</button></div>
+<p class="sub">PLU 登録後に、商品別売上・在庫連動として取得できるトラックです（PLU 運用前は日報取込みを主にお使いください）。</p>
+</div>
+<div class="fs"><h2>結果（前回の取込み）</h2>
+<div class="cards"><div class="card"><div class="lbl">取込み ID</div><div class="val" style="font-size:18px">CSV-2026-0822-1</div></div><div class="card"><div class="lbl">件数</div><div class="val">312</div></div><div class="card"><div class="lbl">合計金額</div><div class="val">¥94,200</div></div><div class="card"><div class="lbl">状態</div><div class="val" style="font-size:16px"><span class="badge b-state ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>成功</span></div></div></div>
+<div style="display:flex;gap:8px"><button class="btn sm">日次売上を見る</button><button class="btn sm">取り消す</button><a class="btn sm" href="#">ホームに戻る</a></div>
+</div>
+</div><div class="note"><b>D の要点（売上データ取込み）</b> — 55-ui の契約（画面タイトルは「売上データ取込み」、既定タブ「日報取込み」、日報とZ004商品別CSVは同一画面内の 2 トラック）はそのまま。<ol><li><b>部門別集計 table に D を適用</b>: sticky header、識別列（部門コード + 部門名）を左に固定、部門未対応は状態 badge（warning + アイコン + 日本語）で行内表示。</li><li><b>件数の先出し</b>: 「18 部門・部門未対応 2 件」を table 直上に。</li><li><b>操作枠のコントラスト</b>: FilePicker の枠、取込みボタンの枠を濃く。</li></ol><b>現仕様維持（D の対象外）</b>: ステップ表示（1/3〜3/3）、上部 Alert の同日追加確認、summary card の内容と並びは 55-ui のまま。<br><b>未決</b>: 「取込み ID」表示や日報の対象日・file_hash の並び順、部門別集計のカード内訳の文言は本 doc に厳密な指定がなく mockup 用に補った。</div></section>
+<!-- ========== 商品 CSV 一括インポート（UI-01c） ========== -->
+<section class="screen" id="s-pimport"><div class="page">
+<div class="ph"><div><h1>商品一括インポート</h1><p>CSV から商品をまとめて登録・更新します。エラー行があっても正常な行は取り込めます</p></div></div>
+<div class="picker"><div class="path"><b>選択済み:</b> products_2026-08.csv（1,204 行）</div><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>ファイルを選び直す</button></div>
+<div class="cards"><div class="card"><div class="lbl">新規登録候補</div><div class="val">1,142</div></div><div class="card"><div class="lbl">エラー行</div><div class="val" style="color:var(--bad-strong)">18</div></div><div class="card"><div class="lbl">重複行</div><div class="val" style="color:var(--warn-strong)">44</div></div><div class="card"><div class="lbl">上書き選択数</div><div class="val">0</div><div class="sub">未選択</div></div></div>
+<p class="sub">任意列「PLU対象」の値は 対象 / 対象外 / 既定（13桁JANなら対象）で表示します。JAN が13桁でない行は warning とともに対象外として取り込みます。</p>
+<div class="fs"><h2>プレビュー（先頭 50 行）</h2>
+<div class="pager top"><span class="cnt">1,204 行<small>先頭 50 行を表示</small></span></div>
+<div class="tbl"><div class="scroll" style="--id-w:8rem"><table style="min-width:900px"><thead><tr><th class="id">行番号</th><th class="id2">商品コード</th><th>商品名</th><th>JAN</th><th>PLU対象</th><th>状態</th></tr></thead><tbody id="tb-pimport"></tbody></table></div></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px"><button class="btn primary">取り込む</button><span class="sub">取り込む対象は新規登録候補 + 上書き選択済みの重複行のみです。エラー行は取り込まれません</span></div>
+</div><div class="note"><b>D の要点（商品一括インポート）</b> — 60-ui-01c-D5/D8/D16 の契約（3 系統プレビュー、エラー行があっても commit 可、PLU対象の 3 値表示）はそのまま。<ol><li><b>行番号 + 商品コードを左に固定</b>: 1,204 行のプレビューでエラー行がどの商品か見失わない。</li><li><b>エラー行を淡い赤背景 + 行内バッジで強調</b>（色だけに頼らず「フォーマット異常」等の日本語ラベルと組み合わせる）。</li><li><b>件数サマリを table 直上にも repeat</b>: 「1,204 行・先頭 50 行を表示」。</li></ol><b>現仕様維持</b>: カードの並び（新規 / エラー / 重複 / 上書き選択数）、エラー種別のラベル文言（フォーマット異常 / JAN 不正 / 数値不正 / 未登録 JAN）は 60-ui / 55-ui の error_type マトリクスどおり。<br><b>未決</b>: 行番号列を識別列として左固定する案は本 mockup の提案（doc は「行番号 + エラーメッセージ」としか規定していない）。</div></section>
+<!-- ========== PLU書出し（UI-08） ========== -->
+<section class="screen" id="s-plu"><div class="page">
+<div class="ph"><div><h1>PLU書出し</h1><p>対象商品から PLU ファイルを作成し、保存済みとして記録します</p></div></div>
+<div class="alert ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg><div><b>保存済みで未確認のPLU書出しがあります</b><span>保存先: SD:¥EXPORT¥plu_20260822.txt / 42 件 / CP932。「この書出しを未反映から外す」で確認するか、「破棄して再書出し」を選べます。</span></div></div>
+<div class="fs"><h2>レジ登録状況</h2><div class="cards"><div class="card"><div class="lbl">空き</div><div class="val">3,102</div></div><div class="card"><div class="lbl">外部登録</div><div class="val">88</div></div><div class="card"><div class="lbl">アプリ管理</div><div class="val">1,594</div><div class="sub">うち解除待ち 12</div></div><div class="card"><div class="lbl">競合</div><div class="val" style="color:var(--bad-strong)">0</div></div></div><p class="sub">最終読込み: 2026-08-20 09:14（Z004 スナップショット）</p><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>レジ登録状況を読み込む</button></div>
+<div class="fs"><div class="wtitle"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>要修正一覧（書出しから除外、6 件）</div>
+<div class="tbl"><div class="scroll" style="--id-w:8rem;max-height:30vh"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>JAN</th><th>状態</th></tr></thead><tbody id="tb-plu-excl"></tbody></table></div></div>
+<p class="sub">JANコードが未登録または不正な商品は、スキャニングPLU書出しに含められません。商品マスタで13桁JANを確認してください。</p>
+</div>
+<div class="fs"><h2>書出し対象</h2>
+<div class="pager top"><span class="cnt">42 件<small>差分（未反映 + 解除待ち）</small></span></div>
+<div class="tbl"><div class="scroll" style="--id-w:8rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>JAN</th><th>memory No.</th><th>状態</th></tr></thead><tbody id="tb-plu"></tbody></table></div></div>
+</div>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>Full書出しの前に、既存 PLU バックアップを確認してください。</b></div></div>
+<div style="display:flex;gap:8px"><button class="btn primary">この書出しを未反映から外す</button><button class="btn sm">再書出し</button></div>
+<p class="sub">アプリで確認できるのはPLUファイル保存までです。PCツールへの取込み、SDカード書出し、レジ読込みは手動で確認してください。</p>
+</div><div class="note"><b>D の要点（PLU書出し）</b> — 67-ui の契約（above the fold の占有要約、要修正一覧を状態表示の直後に warning アイコン付きで配置、色だけで示さない）はそのまま。<ol><li><b>書出し対象・要修正一覧の両方に識別列固定 + sticky header</b>: 42 件級でも商品コードを見失わない。</li><li><b>占有要約カードを最上部</b>（doc の above the fold 指定に一致）。</li><li><b>復帰バナー</b>（保存済み未確認）を ok トーンの Alert で最上部に固定表示。</li></ol><b>現仕様維持</b>: 「アプリで確認できるのはPLUファイル保存までです…」等の文言は 67-ui §67.9 のまま一字一句。<br><b>未決</b>: 要修正一覧の列構成（商品コード / 商品名 / JAN / 状態）は doc に列定義が無いため mockup 用に補った。</div></section>
+</main></div>
+<div class="note"><b>位置付け</b>: 正本は各 function-design（55-ui / 60-ui / 67-ui）と <code>04-backbone.md</code>。本 mockup は 2026-08-23 の Windows native L3 所見 5 点を、取込み・書出し系の table / 一覧に同型で当てた<b>提案</b>。列定義や細部文言のうち doc に明記が無い箇所は各画面 note の「未決」に列挙した。採否は Lane 1 packet で判断する。</div>
+<script>
+(function(){
+  var iWarn='<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>',iOk='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>',iBad='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9l6 6m0-6-6 6"/></svg>';
+  function yen(n){return '¥'+n.toLocaleString('ja-JP')}
+  var depts=[['10','毛糸',312,145200,0],['20','生地',188,98400,0],['30','手芸小物',420,52300,0],['40','刺しゅう',96,18900,0],['50','ビーズ',150,21400,0],['99','未設定',6,3200,1],['91','未設定(旧)',2,900,1]];
+  var h='';for(var i=0;i<depts.length;i++){var r=depts[i];h+='<tr class="row'+(r[4]?' err':'')+'"><td class="id"><span class="code">'+r[0]+'</span></td><td class="id2">'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+yen(r[3])+'</td><td>'+(r[4]?'<span class="badge b-state warn">'+iWarn+'部門未対応</span>':'<span class="badge b-state ok">'+iOk+'対応済み</span>')+'</td></tr>'}
+  document.getElementById('tb-dept').innerHTML=h;
+
+  var names=['並太毛糸（生成）','コットンブロード','木製ボタン（大）','刺しゅう糸 25番','ワッペン（星）','レース 20mm','ファスナー 20cm','マスキングテープ','ビーズ（丸小）','フェルト 18cm角'];
+  var codes=['HZ-0047','F-0132','H-0009','E-0031','W-0213','L-0044','Z-0120','MT-0310','B-0506','FE-0018'];
+  h='';for(i=0;i<24;i++){var k=i%10;var st=i%9===0?'invalid_format':i%7===0?'invalid_jan':i%11===0?'invalid_number':'valid';var plu=i%3===0?'対象外（JAN不正）':i%3===1?'対象':'既定';
+    var badge=st==='valid'?'<span class="badge b-state ok">'+iOk+'登録可'+'</span>':st==='invalid_format'?'<span class="badge b-state bad">'+iBad+'フォーマット異常</span>':st==='invalid_jan'?'<span class="badge b-state warn">'+iWarn+'JAN 不正</span>':'<span class="badge b-state warn">'+iWarn+'数値不正</span>';
+    h+='<tr class="row'+(st!=='valid'?' err':'')+'"><td class="id"><span class="code">'+(i+2)+'</span></td><td class="id2"><span class="code">'+codes[k]+'</span></td><td>'+names[k]+'</td><td>490000000'+(1000+i)+'</td><td>'+plu+'</td><td>'+badge+'</td></tr>'}
+  document.getElementById('tb-pimport').innerHTML=h;
+
+  var exNames=['刺しゅう糸 25番（青系）','ビーズ（丸小・銀）','レース 15mm','リボン サテン 6mm','ゴムひも 10コール','チャコペン（赤）'];
+  var exCodes=['E-0044','B-0512','L-0051','R-0102','G-0018','C-0009'];
+  h='';for(i=0;i<exCodes.length;i++){h+='<tr class="row"><td class="id"><span class="code">'+exCodes[i]+'</span></td><td class="id2">'+exNames[i]+'</td><td>'+(i%2===0?'（未登録）':'12桁不足')+'</td><td><span class="badge b-state bad">'+iBad+'JAN 不正</span></td></tr>'}
+  document.getElementById('tb-plu-excl').innerHTML=h;
+
+  var pluNames=['並太毛糸（生成）','コットンブロード','木製ボタン（大）','刺しゅう糸 25番','ワッペン（星）','レース 20mm','ファスナー 20cm','マスキングテープ'];
+  var pluCodes=['HZ-0047','F-0132','H-0009','E-0031','W-0213','L-0044','Z-0120','MT-0310'];
+  h='';for(i=0;i<8;i++){var cur=i===1;h+='<tr class="row'+(cur?' cur':'')+'"><td class="id"><span class="code">'+pluCodes[i]+'</span></td><td class="id2">'+pluNames[i]+'</td><td>490000000'+(2000+i)+'</td><td>'+(217+i)+'</td><td><span class="badge b-state warn">'+iWarn+'未反映</span></td></tr>'}
+  document.getElementById('tb-plu').innerHTML=h;
+
+  var tabs=document.querySelectorAll('.chrome .tabs button');
+  function show(s){tabs.forEach(function(b){b.classList.toggle('on',b.dataset.s===s)});document.querySelectorAll('.screen').forEach(function(e){e.classList.toggle('on',e.id==='s-'+s)});['sales','pimport','plu'].forEach(function(n){var el=document.getElementById('nav-'+n);if(el)el.classList.toggle('cur',n===s)});window.scrollTo(0,0)}
+  tabs.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.s)})});
+  ['sales','pimport','plu'].forEach(function(n){var el=document.getElementById('nav-'+n);if(el)el.addEventListener('click',function(e){e.preventDefault();show(n)})});
+  show('sales');
+  var trkbtns=document.querySelectorAll('.trkbar button');
+  trkbtns.forEach(function(b){b.addEventListener('click',function(){trkbtns.forEach(function(x){x.classList.toggle('on',x===b)});document.querySelectorAll('.trk').forEach(function(el){el.classList.toggle('on',el.id==='t-'+b.dataset.t)})})});
+  document.getElementById('dsw').addEventListener('change',function(){document.body.classList.toggle('d',this.checked)});
+})();
+</script><script>document.querySelectorAll(".scroll").forEach(function(sc){function f(){sc.classList.toggle("sx",sc.scrollLeft>0)}sc.addEventListener("scroll",f);f()})</script></body></html>
