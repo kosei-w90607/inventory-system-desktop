@@ -10,7 +10,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: eca3d26
-- Amendments: none
+- Amendments: 1a77870
 - Coordinator: Fable
 - Writer: Fable（docs-only、relay 0。mockup D 6 file は Fable + fork 作成済み）
 - Plan Reviewer: Sonnet
