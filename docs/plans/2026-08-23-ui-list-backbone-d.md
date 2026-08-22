@@ -6,10 +6,10 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: eca3d26
 - Amendments: none
 - Coordinator: Fable
 - Writer: Fable（docs-only、relay 0。mockup D 6 file は Fable + fork 作成済み）
@@ -19,7 +19,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Design Board Exception: AGENT_OPERATING_MANUAL §3.1 適用（design-only change。owner 明示指示 2026-08-23「今すぐ着手できることやっちゃいたいな 爆速でFableの頑張りどころで燃やしたいんだよね、前君にモック作ってもらっていいねって思ったから君の実力見たい」「他のページも今モックだけでもFable並列発火で試しに書き上げてみてほしい」。Plan Gate / Final Reviewer は Sonnet 独立 fresh context、実装 code（Lane 2〜5）の Writer には割り当てない）
-- Human Gate: owner plan approval（Plan Gate で「構造線の濃さ / 現在行の琥珀バー / 件数文言の統一形」の 3 点を項目ごとに採否）→ Ready → merge（docs-only のため visual confirmation なし。mockup D は owner が 2026-08-23 に方向性承認済み）
+- Human Gate: owner plan approval 済み（2026-08-23、介入 1/2。採否 3 点 = 構造線 #cdc8c4 案 / 現在行の琥珀バー 3 点表示 / 件数文言の統一形、いずれも採用。owner 所感「基本的には適用後の方が間違いなく良かった」）→ Ready（介入 2/2）→ merge（docs-only のため visual confirmation なし。mockup D は owner が 2026-08-23 に方向性承認済み）
 
 ## Owner Effort Budget
 
@@ -317,3 +317,10 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - Plan Review round 3（Sonnet、fresh context、delta 検証、2026-08-23、packet `0087214`）: delta 7 hunk / anchor 10/10 実在 / AC ↔ Scope ↔ Ledger ↔ Design Intent Trace の 4 点整合 ok / AC 全 rg 式の現行 baseline を実測（未改訂のため期待どおり未達、式は壊れていない）/ `doc-consistency-check.sh --target plan` exit 0・無引数 ERROR 0 WARN 2（既存）。P1 0 / P2 0 / P3 0、verdict pass。Plan rally 収束（round 3/3、天井内）。Plan Commit 候補 = plan-first commit `eca3d26`（本 branch の全 commit の祖先）。
 - 引き継ぎ（2026-08-23、Fable 全力稼働の終了、owner 指示「これからは今までのやり方に戻る、無茶するとしても Opus 5 に投げる」）: 以後の Writer は Design Board Exception の範囲で Opus 5（design docs の Writer、§3.1）または Codex 発注に切替可。切替時は Workflow State の `Writer` 行を改め、Plan Gate 後なら gated amendment として SHA を `Amendments` に記録する。owner 所見（2026-08-23、mockup 全件確認）: 「全体的に良さそう、細部は相談して詰める」+「商品一覧の固定 2 列目 header が浮いて見える」→ mockup 5 file の固定列影を横スクロール中のみ + header 下線合成に修正済み（`mockup-d-lists.html` v4 note 参照、未 commit）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### 遷移記録（2026-08-23、state-only 遷移 plan-draft -> plan-gate -> plan-approved -> implementing）
+
+- plan-draft -> plan-gate の evidence: packet を plan-first commit `eca3d26` で commit 済み（R2 docs-only、Test Matrix 省略）、`doc-consistency-check.sh --target plan` 全チェック通過。
+- plan-gate -> plan-approved の evidence: 独立 Sonnet Plan Reviewer 3 round（round 1 P1 3 / P2 3 → 是正 `400a19e`、round 2 P1 3 / P2 2 / P3 2 → 是正 `0087214`、round 3 fresh delta 検証 P1 0 / P2 0 / P3 0 = pass、Review Response 参照）、owner plan approval（2026-08-23、介入 1 回目 / 予算 2 回。採否 3 点 = 構造線 #cdc8c4 案 / 現在行の琥珀バー / 件数文言の統一形、すべて採用。mockup 6 file 全件確認済み、固定列影の所見は修正反映済み）、Plan Commit = plan-first commit `eca3d26`（本 branch の全 commit の祖先）。
+- plan-approved -> implementing の evidence: docs 本文の執筆は Design Board Exception の範囲で行う。Fable 全力稼働は 2026-08-23 で終了したため、以後の Writer は Opus 5（design docs Writer、§3.1）または Codex 発注に切替可 — 切替時は Workflow State `Writer` 行の改訂を gated amendment として `Amendments` に SHA 記録する。隣接 3 遷移を 1 state-only commit で圧縮記録（PR #87 / #94 / #95 と同型、forward state-only 1 本目 / cap 3）。
+- owner 所感（2026-08-23）の後続: mockup 6 file で見えた画面間のバラつき・doc との食い違い・識別列を持たない画面の扱い・「現仕様の方が良い箇所」（サイドバー / PageHeader / ボタン）は、背骨 C（PR #87）そのものを問い直す「全体デザイン見直し」の材料として Plans.md 次の行動に新設した entry へ引き継ぐ（本 packet の scope には含めない）。
