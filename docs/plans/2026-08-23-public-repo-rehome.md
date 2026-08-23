@@ -50,7 +50,7 @@ Goal Invariant: 新 repository `kosei-w90607/inventory-system-desktop`（旧 pub
 
 ### 最小完了条件
 
-- `README.md` が紹介文として全面書き換えられ、Scope で定める必須節（タイトル+1 行説明 / 概要 / 主な機能 / 技術構成 / 設計書の入口 / 開発の進め方 / ビルドと起動 / 公開とライセンス）を持つ。
+- `README.md` が紹介文として全面書き換えられ、Scope で定める必須 `## ` 7 節（概要 / 主な機能 / 技術構成 / 設計書 / 開発の進め方 / ビルドと起動 / 公開とライセンス）を exact 見出しで持ち、H1 タイトル + 1 行説明を先頭に置く。
 - `docs/decision-log.md` に D-077 が新設され、移植の方式・検証・LICENSE 非採用の判断が記録されている。
 - `docs/PUBLIC_REPO_MIGRATION.md` に 2026-08-23 の追記節があり、public→public rehome の方式が既存の private→public Phase B 手順と区別して記録されている。
 - `docs/DEV_SETUP_CHECKLIST.md` の Windows clone remote 確認手順（current-state で旧 repo 名を GitHub リモートとして指している箇所）が新 repo 名に更新されている。
@@ -80,7 +80,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `## 概要`: 個人経営手芸店の POS 連携在庫管理、Windows デスクトップ、ローカル SQLite（外部送信なし）、非 IT の店舗運営者が日常運用する前提を明記。
   - `## 主な機能`: `docs/FUNCTION_DESIGN.md` 対象モジュールと `docs/SCREEN_DESIGN.md` §1 画面一覧に実在する機能から 6〜10 項目（商品検索・一覧・登録・修正 / 入出庫管理〈入庫・返品交換・手動販売出庫・廃棄〉/ 在庫照会・入出庫履歴・在庫変動追跡 / 棚卸し / POS レジ連携〈売上データ取込み・PLU 書出し〉/ 売上レポート〈日次・月次〉/ 一括価格改定 / 商品一括インポート / バックアップ・復元・在庫少基準設定・操作ログ・在庫整合性検証などの運用管理機能）。根拠 doc の節（`SCREEN_DESIGN.md` §1、`FUNCTION_DESIGN.md` 対象モジュール一覧）へのリンクを 1 行添える。
   - `## 技術構成`: Tauri 2 / React 19 / TypeScript / SQLite（rusqlite）/ Vite / Rust、テスト基盤（`cargo test`、Vitest + React Testing Library）。
-  - `## 設計書`（設計書の入口）: `docs/ARCHITECTURE.md` / `docs/DB_DESIGN.md` / `docs/FUNCTION_DESIGN.md` / `docs/SCREEN_DESIGN.md` / `docs/design-system/README.md` へのリンク。
+  - `## 設計書`（各設計書への入口）: `docs/ARCHITECTURE.md` / `docs/DB_DESIGN.md` / `docs/FUNCTION_DESIGN.md` / `docs/SCREEN_DESIGN.md` / `docs/design-system/README.md` へのリンク。
   - 必須 `## ` 節は上記 7 つ（概要 / 主な機能 / 技術構成 / 設計書 / 開発の進め方 / ビルドと起動 / 公開とライセンス）を exact 見出しで置く。H1 はタイトル 1 つ。必要なら追加節（例: スクリーンショット）を置いてよいが必須ではない。
   - `## 開発の進め方`: 2 行以内、AI 協働 workflow の詳細は書かず `AGENTS.md` と `docs/DEV_WORKFLOW.md` へ誘導するリンクのみ。
   - `## ビルドと起動`: `docs/DEV_SETUP_CHECKLIST.md` の実コマンドのみ（`npm ci --ignore-scripts` を含む、install script 実行なしの注記）+ `npm run tauri dev`。前提バージョン（Rust 1.83+、Node 24 系）を 1 行。
@@ -273,3 +273,4 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
 - Plan Review round 1（Sonnet、独立 context、2026-08-23、packet `a98563e`）: P1 0 / P2 2 / P3 2、verdict fail。oracle 19 本実行（anchor 実在 / template 25 見出し / DEV_SETUP_CHECKLIST 2 箇所 / D-077 未使用 / Closeout 末尾 / AC baseline / doc-consistency ERROR 0 / env-safety / vendor 分離）。全件 Coordinator が rg で裏取りのうえ accept して是正: P2-1 README 見出し数 AC `≥ 8` が Scope の 7 節と不一致 → AC / Ledger を必須 7 見出しの exact 一致 oracle に置換し、Scope で `## 設計書` を命名・必須 7 節を明示 / P2-2 Probe 2 の「既存ヒットなし」は誤り（PUBLIC_REPO_MIGRATION / decision-log D-062 / Plans.md entry にヒット）→ baseline を実態に訂正 / P3-1 Trace Matrix に Plans.md 行を追加 / P3-2 `rg -c = 0` の規約（無出力・exit 1）を AC に明記。併せて Owner Effort Budget 介入 2 の理由を記載、Plan Commit を `a98563e` で記入。
+- Plan Review round 2（Sonnet、fresh context、delta 検証、2026-08-23、packet `17d7e02`）: round 1 の 4 指摘の反映を確認、新 AC oracle 6 本は現行 baseline で有効（未実装のため期待どおり未達）、Plan Commit 祖先 ok、origin/main..HEAD = 2 commit、doc-consistency ERROR 0 / env-safety exit 0。P1 0 / P2 1 / P3 0、verdict fail。P2-1 Goal 最小完了条件 L53 の必須節列挙が旧称「設計書の入口」のまま → accept、`rg -n '設計書の入口'` で packet 全節を sweep し、L53 を必須 7 見出し名（設計書）に統一、Scope L83 の括弧書きも「各設計書への入口」に言い換えて同語形の残存 0（本記録行の引用を除く）。
