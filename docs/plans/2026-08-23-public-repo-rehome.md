@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: a98563e
@@ -15,7 +15,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Codex（発注）
 - Plan Reviewer: Sonnet（独立 context）
 - Final Reviewer: Sonnet（D-062 の vendor 分離 — Writer = Codex、Plan Reviewer / Final Reviewer = Sonnet、別 vendor）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 63eb6a1
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner plan approval 済み（2026-08-23、介入 1/2。採否 5 点 = README 7 節構成 / 主な機能 9 項目 / 公開とライセンス節の All rights reserved 1 行 + LICENSE file 無し / D-077 + PUBLIC_REPO_MIGRATION Rehome addendum / DEV_SETUP_CHECKLIST §4.6 の 2 箇所のみ、すべて採用）→ Ready（介入 2/2）→ merge（docs-only のため visual confirmation なし）
@@ -25,6 +25,12 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - plan-draft -> plan-gate の evidence: packet を plan-first commit `a98563e` で commit 済み（R2 docs-only、Test Matrix 省略）、`doc-consistency-check.sh` ERROR 0（WARN 2 既存）/ `check-env-safety.sh` exit 0 / repo 内 session URL 0、Draft PR #1（inventory-system-desktop）open。
 - plan-gate -> plan-approved の evidence: 独立 Sonnet Plan Reviewer 3 round（round 1 P2 2 / P3 2 → 是正 `17d7e02`、round 2 P2 1 → 是正 `3771e34`、round 3 fresh delta 検証 P1 0 / P2 0 / P3 0 = pass、収束記録 `0858657`、Review Response 参照）、owner plan approval（2026-08-23、介入 1 回目 / 予算 2 回。採否 5 点すべて採用、Human Gate 行参照）、Plan Commit = plan-first commit `a98563e`（本 branch の全 commit の祖先）。
 - plan-approved -> implementing の evidence: Writer = Codex 発注（Execution Mode `fable-window`、Coordinator が Plan Commit 記入と本遷移を完了してから発注書を提示）。Plan Gate 時に検出した `SCREEN_DESIGN.md` §1 等の stale 実装状況表記は本 packet の Non-scope とし、`docs/Plans.md` に「docs の実装状況表記の一括棚卸し」entry を起票して受け皿にした（owner 指示 2026-08-23）。
+
+### 遷移記録（2026-08-24、state-only 遷移 implementing -> local-verified -> independent-review -> human-confirm）
+
+- implementing -> local-verified の evidence: Writer（Codex）が実装 commit `843844b`（README / D-077 / Rehome addendum / DEV_SETUP_CHECKLIST §4.6）+ `63eb6a1`（Implementation Results）を push、`bash scripts/local-ci.sh full` RESULT=PASS / END_TREE_STATE=CLEAN、AC 12 本 + Contract Probe 1〜3 達成を報告。Coordinator が HEAD / AC 8 本 / src 無変更 / attribution 無しを独立再現。
+- local-verified -> independent-review の evidence: Sonnet Final Review（独立 context、2026-08-24、対象 `63eb6a1`）: AC oracle 14 本を自力再実行して全一致、README 9 機能の実在性を SCREEN_DESIGN / FUNCTION_DESIGN の行で確認、D-077 の数値・固有名は packet 固定事実と一致、PUBLIC_REPO_MIGRATION は追加のみ、DEV_SETUP_CHECKLIST は 2 行のみ、Implementation Results に SHA / test 件数なし。P1 0 / P2 0 / P3 2、verdict pass（Review Response 参照）。
+- independent-review -> human-confirm の evidence: Reviewed Content HEAD = `63eb6a1`（P1/P2 = 0 確定後に設定）。owner Ready 承認（介入 2/2）待ち。承認後に human-confirm -> ready-hosted-final を記録し Draft を Ready 化する。
 
 ## Owner Effort Budget
 
@@ -279,7 +285,8 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 ## Review Response
 
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen at Final Review round 1（2026-08-24、Reviewed Content HEAD `63eb6a1`）; post-freeze exceptions: none.
+- Final Review round 1（Sonnet、独立 context、2026-08-24、対象 `843844b` + `63eb6a1`）: P1 0 / P2 0 / P3 2、verdict pass。AC oracle 14 本を自力再実行して全一致、README 9 機能の実在性（棚卸し「前回結果との比較」/ 一括価格改定「取引先や部門で絞り込める」等）を SCREEN_DESIGN / FUNCTION_DESIGN の行で確認、技術構成とビルド手順は package.json / Cargo.toml / DEV_SETUP_CHECKLIST と一致、README 内アンカー実在。P3-1 README 概要の「CASIO レジ」は Scope の根拠 doc（SCREEN / FUNCTION）に語が無い → Coordinator 裁定 = 変更なし（`docs/project-memory.md` の CASIO SR-S4000 / ECR+ に根拠がある製品事実で、店舗・個人識別子ではなく Data Safety 非該当）。P3-2 Plans.md の状態行が implementing のまま → human-confirm 遷移 commit で同期（受理）。
 - Plan Review round 1（Sonnet、独立 context、2026-08-23、packet `a98563e`）: P1 0 / P2 2 / P3 2、verdict fail。oracle 19 本実行（anchor 実在 / template 25 見出し / DEV_SETUP_CHECKLIST 2 箇所 / D-077 未使用 / Closeout 末尾 / AC baseline / doc-consistency ERROR 0 / env-safety / vendor 分離）。全件 Coordinator が rg で裏取りのうえ accept して是正: P2-1 README 見出し数 AC `≥ 8` が Scope の 7 節と不一致 → AC / Ledger を必須 7 見出しの exact 一致 oracle に置換し、Scope で `## 設計書` を命名・必須 7 節を明示 / P2-2 Probe 2 の「既存ヒットなし」は誤り（PUBLIC_REPO_MIGRATION / decision-log D-062 / Plans.md entry にヒット）→ baseline を実態に訂正 / P3-1 Trace Matrix に Plans.md 行を追加 / P3-2 `rg -c = 0` の規約（無出力・exit 1）を AC に明記。併せて Owner Effort Budget 介入 2 の理由を記載、Plan Commit を `a98563e` で記入。
 - Plan Review round 2（Sonnet、fresh context、delta 検証、2026-08-23、packet `17d7e02`）: round 1 の 4 指摘の反映を確認、新 AC oracle 6 本は現行 baseline で有効（未実装のため期待どおり未達）、Plan Commit 祖先 ok、origin/main..HEAD = 2 commit、doc-consistency ERROR 0 / env-safety exit 0。P1 0 / P2 1 / P3 0、verdict fail。P2-1 Goal 最小完了条件 L53 の必須節列挙が旧称「設計書の入口」のまま → accept、`rg -n '設計書の入口'` で packet 全節を sweep し、L53 を必須 7 見出し名（設計書）に統一、Scope L83 の括弧書きも「各設計書への入口」に言い換えて同語形の残存 0（本記録行の引用を除く）。
 - Plan Review round 3（Sonnet、fresh context、delta 検証、2026-08-23、packet `3771e34`）: round 2 是正の反映を確認、必須 7 見出し名は Goal / Scope / AC で同一集合・同一順、AC oracle 6 本は現行 baseline で有効（未実装のため期待どおり未達）、Plan Commit `a98563e` 祖先 ok、origin/main..HEAD = 3 commit、doc-consistency ERROR 0 / env-safety exit 0、Data Safety ok。P1 0 / P2 0 / P3 0、verdict pass。Plan rally 収束（round 3/3、天井内）。
