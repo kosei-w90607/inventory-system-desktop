@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: a98563e
@@ -18,7 +18,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Reviewed Content HEAD: 63eb6a1
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner plan approval 済み（2026-08-23、介入 1/2。採否 5 点 = README 7 節構成 / 主な機能 9 項目 / 公開とライセンス節の All rights reserved 1 行 + LICENSE file 無し / D-077 + PUBLIC_REPO_MIGRATION Rehome addendum / DEV_SETUP_CHECKLIST §4.6 の 2 箇所のみ、すべて採用）→ Ready（介入 2/2）→ merge（docs-only のため visual confirmation なし）
+- Human Gate: owner plan approval 済み（2026-08-23、介入 1/2。採否 5 点 = README 7 節構成 / 主な機能 9 項目 / 公開とライセンス節の All rights reserved 1 行 + LICENSE file 無し / D-077 + PUBLIC_REPO_MIGRATION Rehome addendum / DEV_SETUP_CHECKLIST §4.6 の 2 箇所のみ、すべて採用）→ owner Ready 承認済み（2026-08-24、介入 2/2、README 文言の修正要望なし）→ hosted final（workflow_dispatch 1 run）→ merge（docs-only のため visual confirmation なし）
 
 ### 遷移記録（2026-08-23、state-only 遷移 plan-draft -> plan-gate -> plan-approved -> implementing）
 
@@ -31,6 +31,10 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - implementing -> local-verified の evidence: Writer（Codex）が実装 commit `843844b`（README / D-077 / Rehome addendum / DEV_SETUP_CHECKLIST §4.6）+ `63eb6a1`（Implementation Results）を push、`bash scripts/local-ci.sh full` RESULT=PASS / END_TREE_STATE=CLEAN、AC 12 本 + Contract Probe 1〜3 達成を報告。Coordinator が HEAD / AC 8 本 / src 無変更 / attribution 無しを独立再現。
 - local-verified -> independent-review の evidence: Sonnet Final Review（独立 context、2026-08-24、対象 `63eb6a1`）: AC oracle 14 本を自力再実行して全一致、README 9 機能の実在性を SCREEN_DESIGN / FUNCTION_DESIGN の行で確認、D-077 の数値・固有名は packet 固定事実と一致、PUBLIC_REPO_MIGRATION は追加のみ、DEV_SETUP_CHECKLIST は 2 行のみ、Implementation Results に SHA / test 件数なし。P1 0 / P2 0 / P3 2、verdict pass（Review Response 参照）。
 - independent-review -> human-confirm の evidence: Reviewed Content HEAD = `63eb6a1`（P1/P2 = 0 確定後に設定）。owner Ready 承認（介入 2/2）待ち。承認後に human-confirm -> ready-hosted-final を記録し Draft を Ready 化する。
+
+### 遷移記録（2026-08-24、state-only 遷移 human-confirm -> ready-hosted-final）
+
+- human-confirm -> ready-hosted-final の evidence: owner Ready 承認（2026-08-24、介入 2 回目 / 予算 2 回、「承認するよ、これでいいとおもう」。README 文言の修正要望なし）。完成 HEAD（本 commit）で `bash scripts/local-ci.sh full` を実行し、その HEAD SHA と RESULT を PR body の Validation に記入（tracked docs には転記しない、D-038）。hosted final: 本 change は classifier で docs=true のみ（workflow=false）で `paths-ignore` 対象のため Ready event では自動 run が作られない。先例（design-backbone-reference、docs-only R2）に倣い `Hosted CI Requirement: required` を維持し、Ready 化後に同一 HEAD の run が 0 件であることを確認してから owner-directed `workflow_dispatch` を 1 run（docs/ci.md CI-TRIGGER-D1 表の 2 行目）。merge gate = 生 PR HEAD = PR body の local full evidence SHA = hosted run headSha の三点一致。
 
 ## Owner Effort Budget
 
