@@ -9,7 +9,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Phase: plan-draft
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: a98563e
 - Amendments: none
 - Coordinator: Fable
 - Writer: Codex（発注）
@@ -22,7 +22,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 
 ## Owner Effort Budget
 
-- 介入回数上限: 2（Plan approval / Ready 承認）
+- 介入回数上限: 2（Plan approval / Ready 承認。既定 3 より狭める理由: docs-only R2 で L3 / visual confirmation が無く、owner の decision point がこの 2 点しか存在しないため。PR #87 / #93 と同型）
 - 実働時間上限: 30分
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3）
@@ -80,7 +80,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `## 概要`: 個人経営手芸店の POS 連携在庫管理、Windows デスクトップ、ローカル SQLite（外部送信なし）、非 IT の店舗運営者が日常運用する前提を明記。
   - `## 主な機能`: `docs/FUNCTION_DESIGN.md` 対象モジュールと `docs/SCREEN_DESIGN.md` §1 画面一覧に実在する機能から 6〜10 項目（商品検索・一覧・登録・修正 / 入出庫管理〈入庫・返品交換・手動販売出庫・廃棄〉/ 在庫照会・入出庫履歴・在庫変動追跡 / 棚卸し / POS レジ連携〈売上データ取込み・PLU 書出し〉/ 売上レポート〈日次・月次〉/ 一括価格改定 / 商品一括インポート / バックアップ・復元・在庫少基準設定・操作ログ・在庫整合性検証などの運用管理機能）。根拠 doc の節（`SCREEN_DESIGN.md` §1、`FUNCTION_DESIGN.md` 対象モジュール一覧）へのリンクを 1 行添える。
   - `## 技術構成`: Tauri 2 / React 19 / TypeScript / SQLite（rusqlite）/ Vite / Rust、テスト基盤（`cargo test`、Vitest + React Testing Library）。
-  - 設計書の入口の節: `docs/ARCHITECTURE.md` / `docs/DB_DESIGN.md` / `docs/FUNCTION_DESIGN.md` / `docs/SCREEN_DESIGN.md` / `docs/design-system/README.md` へのリンク。
+  - `## 設計書`（設計書の入口）: `docs/ARCHITECTURE.md` / `docs/DB_DESIGN.md` / `docs/FUNCTION_DESIGN.md` / `docs/SCREEN_DESIGN.md` / `docs/design-system/README.md` へのリンク。
+  - 必須 `## ` 節は上記 7 つ（概要 / 主な機能 / 技術構成 / 設計書 / 開発の進め方 / ビルドと起動 / 公開とライセンス）を exact 見出しで置く。H1 はタイトル 1 つ。必要なら追加節（例: スクリーンショット）を置いてよいが必須ではない。
   - `## 開発の進め方`: 2 行以内、AI 協働 workflow の詳細は書かず `AGENTS.md` と `docs/DEV_WORKFLOW.md` へ誘導するリンクのみ。
   - `## ビルドと起動`: `docs/DEV_SETUP_CHECKLIST.md` の実コマンドのみ（`npm ci --ignore-scripts` を含む、install script 実行なしの注記）+ `npm run tauri dev`。前提バージョン（Rust 1.83+、Node 24 系）を 1 行。
   - `## 公開とライセンス`: 「閲覧用に公開しています。All rights reserved — コードの再利用・再配布は許諾していません。」相当の 1〜2 行。LICENSE file は置かない。
@@ -111,7 +112,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Acceptance Criteria
 
-- README: `rg -c '^## ' README.md` ≥ 8、`rg -c 'All rights reserved' README.md` = 1、`rg -c 'claude[.]ai/code/session' -g '!.git' .` = 0、`rg -c 'inventory-system-public' README.md` = 0（現在の repo として旧名を書かない）。
+- README: `rg -c '^## (概要|主な機能|技術構成|設計書|開発の進め方|ビルドと起動|公開とライセンス)$' README.md` = 7（Scope の必須 7 節が exact 見出しで存在。追加節は可）、`rg -c 'All rights reserved' README.md` = 1、`rg -c 'claude[.]ai/code/session' -g '!.git' .` = 0、`rg -c 'inventory-system-public' README.md` = 0（現在の repo として旧名を書かない）。
+- rg oracle の規約: 本 packet の「`rg -c ... = 0`」は「出力なし・exit 1」を 0 とみなす（`rg -c` は 0 件のとき何も出力しない）。
 - decision-log: `rg -c '^## D-077' docs/decision-log.md` = 1。
 - PUBLIC_REPO_MIGRATION: `rg -c '^## Rehome addendum' docs/PUBLIC_REPO_MIGRATION.md` = 1。
 - DEV_SETUP_CHECKLIST: `rg -c 'inventory-system-desktop' docs/DEV_SETUP_CHECKLIST.md` ≥ 1（更新箇所に新 repo 名が入っている）、§4.6 の 2 箇所以外に既存の `inventory-system-public` 言及（ローカルパス由来）が変化していないことを `git diff` で目視確認。
@@ -196,14 +198,14 @@ Minimum design checks for business-app work:
 ## Contract Probe
 
 - Probe 1: `doc-consistency-check.sh` が `decision-log.md` の新規 `## D-NNN` 見出しや `PUBLIC_REPO_MIGRATION.md` の新規節を検査対象にして ERROR を出さないか（D-075/D-076 追加時の先例で通過実績あり）: Writer が追記後に `bash scripts/doc-consistency-check.sh` を実行して確認する。
-- Probe 2: README の `All rights reserved` が既存 doc（LICENSE 相当の記述がどこにも存在しない現状）と重複・矛盾しないか: `rg -n -i 'license|all rights reserved' README.md docs/*.md`（本 packet起草時点で既存ヒットなし、Writer が追記後に再実行して重複行がないことを確認）。
+- Probe 2: README の `All rights reserved` が既存 doc（LICENSE 相当の記述がどこにも存在しない現状）と重複・矛盾しないか: `rg -n -i 'license|all rights reserved' README.md docs/*.md`（本 packet 起草時点の既存ヒット = `docs/PUBLIC_REPO_MIGRATION.md` の LICENSE/SECURITY/CONTRIBUTING 方針行、`docs/decision-log.md` D-062 の同方針 gate 行、`docs/Plans.md` の本 packet entry。いずれも「方針決定の要求」であり README の All rights reserved 文言と矛盾しない。Writer は追記後に再実行し、README 1 行 + D-077 の LICENSE 非採用記述が増えるだけで他に重複行が無いことを確認）。
 - Probe 3: `docs/DEV_SETUP_CHECKLIST.md` §4.6 の更新対象 2 箇所が、他の `inventory-system-public` 言及（ローカルパス由来、Non-scope）と隣接していないか: Writer は `sd` ではなく該当行のみを明示指定した `Edit` 相当の置換を用い、置換直後に `rg -n 'inventory-system-public|inventory-system-desktop' docs/DEV_SETUP_CHECKLIST.md` の全行を目視確認する（feedback: sd silent no-op / literal mode の教訓）。
 
 ## Contract Coverage Ledger
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
-| SPEC-REHOME-D1 README 紹介文化（必須節・機能一覧・禁止事項） | README.md | AC rg: `^## ` ≥ 8、`inventory-system-public` = 0、`claude[.]ai/code/session` = 0 | — |
+| SPEC-REHOME-D1 README 紹介文化（必須節・機能一覧・禁止事項） | README.md | AC rg: 必須 7 見出しの exact 一致 = 7、`inventory-system-public` = 0、`claude[.]ai/code/session` = 0 | — |
 | SPEC-REHOME-D2 LICENSE 非採用 + All rights reserved 明記 | README.md / D-077 | AC rg: `All rights reserved` = 1 | — |
 | SPEC-REHOME-D3 D-077 新設 | decision-log.md | AC rg: `^## D-077` = 1 | — |
 | SPEC-REHOME-D4 PUBLIC_REPO_MIGRATION 追記節 + Phase B との区別 | PUBLIC_REPO_MIGRATION.md | AC rg: `^## Rehome addendum` = 1 | — |
@@ -251,6 +253,7 @@ Contract ID: SPEC-REHOME
 | SPEC-REHOME-D3 | decision-log D-077 | AC rg | 移植事実との数値一致 | rg 出力 |
 | SPEC-REHOME-D4 | PUBLIC_REPO_MIGRATION 追記節 | AC rg | Phase B との区別 | rg 出力 |
 | SPEC-REHOME-D5 | DEV_SETUP_CHECKLIST §4.6 | AC rg / git diff | 更新範囲の限定 | rg / diff 出力 |
+| Plans.md entry | Plans.md entry + L130 リンク表記是正 | 目視 + AC rg（壊れたリンク形 0） | Plans.md diff の限定 | diff 出力 |
 | 全体 | doc-consistency-check / check-env-safety | exit 0 | — | log |
 
 ## Data Safety
@@ -267,6 +270,6 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Plan Review round 1（Sonnet、独立 context、2026-08-23、packet `a98563e`）: P1 0 / P2 2 / P3 2、verdict fail。oracle 19 本実行（anchor 実在 / template 25 見出し / DEV_SETUP_CHECKLIST 2 箇所 / D-077 未使用 / Closeout 末尾 / AC baseline / doc-consistency ERROR 0 / env-safety / vendor 分離）。全件 Coordinator が rg で裏取りのうえ accept して是正: P2-1 README 見出し数 AC `≥ 8` が Scope の 7 節と不一致 → AC / Ledger を必須 7 見出しの exact 一致 oracle に置換し、Scope で `## 設計書` を命名・必須 7 節を明示 / P2-2 Probe 2 の「既存ヒットなし」は誤り（PUBLIC_REPO_MIGRATION / decision-log D-062 / Plans.md entry にヒット）→ baseline を実態に訂正 / P3-1 Trace Matrix に Plans.md 行を追加 / P3-2 `rg -c = 0` の規約（無出力・exit 1）を AC に明記。併せて Owner Effort Budget 介入 2 の理由を記載、Plan Commit を `a98563e` で記入。
