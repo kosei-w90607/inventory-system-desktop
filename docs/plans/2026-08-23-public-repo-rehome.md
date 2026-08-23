@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: a98563e
@@ -18,7 +18,13 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending（Plan Gate 承認 → Ready 承認）
+- Human Gate: owner plan approval 済み（2026-08-23、介入 1/2。採否 5 点 = README 7 節構成 / 主な機能 9 項目 / 公開とライセンス節の All rights reserved 1 行 + LICENSE file 無し / D-077 + PUBLIC_REPO_MIGRATION Rehome addendum / DEV_SETUP_CHECKLIST §4.6 の 2 箇所のみ、すべて採用）→ Ready（介入 2/2）→ merge（docs-only のため visual confirmation なし）
+
+### 遷移記録（2026-08-23、state-only 遷移 plan-draft -> plan-gate -> plan-approved -> implementing）
+
+- plan-draft -> plan-gate の evidence: packet を plan-first commit `a98563e` で commit 済み（R2 docs-only、Test Matrix 省略）、`doc-consistency-check.sh` ERROR 0（WARN 2 既存）/ `check-env-safety.sh` exit 0 / repo 内 session URL 0、Draft PR #1（inventory-system-desktop）open。
+- plan-gate -> plan-approved の evidence: 独立 Sonnet Plan Reviewer 3 round（round 1 P2 2 / P3 2 → 是正 `17d7e02`、round 2 P2 1 → 是正 `3771e34`、round 3 fresh delta 検証 P1 0 / P2 0 / P3 0 = pass、収束記録 `0858657`、Review Response 参照）、owner plan approval（2026-08-23、介入 1 回目 / 予算 2 回。採否 5 点すべて採用、Human Gate 行参照）、Plan Commit = plan-first commit `a98563e`（本 branch の全 commit の祖先）。
+- plan-approved -> implementing の evidence: Writer = Codex 発注（Execution Mode `fable-window`、Coordinator が Plan Commit 記入と本遷移を完了してから発注書を提示）。Plan Gate 時に検出した `SCREEN_DESIGN.md` §1 等の stale 実装状況表記は本 packet の Non-scope とし、`docs/Plans.md` に「docs の実装状況表記の一括棚卸し」entry を起票して受け皿にした（owner 指示 2026-08-23）。
 
 ## Owner Effort Budget
 
