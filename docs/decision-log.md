@@ -616,3 +616,12 @@ Use concise ADR-style entries.
 - Impact: 35-biz-stocktake-service.md / 73-ui-stocktake.md に棚卸し評価額の母集団定義を 1 行追記する（UI-10 意味論突合 follow-up と同一 packet）。新規テーブル・新規画面は発生しない。owner 同意により issue #91 は close 候補。
 - Alternatives considered: 除外品を専用テーブル・専用フラグで管理する案（年 1〜5 点規模に対して過剰投資であり、原価根拠が無いという除外理由そのものと矛盾するため却下）; 除外品にも単品コードを付与し棚卸しカウント対象にする案（原価根拠がなく評価額を計上できないため却下）。
 - Revisit: 除外品が年数十点規模になったとき、または復活商品の履歴追跡（旧単品コードとの紐付け等）が必要になったとき。
+
+## D-077: public repository の再移植 — inventory-system-public から inventory-system-desktop（2026-08-23）
+
+- Decision: 旧 public repo `kosei-w90607/inventory-system-public` は、main 216 commit 中 135 commit に Claude Code が付与する `Claude-Session:` trailer が混入していた。owner 判断により、GitHub 上の PR / issue / comment 本文から該当文字列を除去したうえで、履歴を in-place force push せず、新 repo `kosei-w90607/inventory-system-desktop` へ full-history replay した。replay では trailer を除去し、再生成で変わった commit SHA への docs / commit message 内の言及を追随した。author / committer identity と日付を保持し、tree は SHA 言及箇所以外 byte 同一とした。移植は 2026-08-23 に完了し、新 main `a16d57f…` は 216 commit、branch `agent/ui-list-backbone-d` は `20c4600…`、root snapshot `902647b` は byte 同一で SHA 不変、検証 14 項目 PASS、独立 2 run 一致を確認した。本 change の merge 後に owner が新 repo を public 化し、旧 repo を private 化する。LICENSE file は置かず、README に All rights reserved を明記する。
+- Status: accepted（owner 判断 2026-08-23）
+- Why: 2026-07 の private→public 初回移行で用いた parentless snapshot 手順は、すでに public だった履歴の再移植には適用できない。parentless 単一 commit 化では PR 由来 commit と、issue 対応・review 是正の積み重ねである編集履歴を失う。full-history replay なら個々の commit の trailer のみを除去し、それ以外の履歴、author / committer identity、日付を保持できる。
+- Impact: `docs/PUBLIC_REPO_MIGRATION.md` に public→public rehome の追記節を設ける。`docs/Plans.md` の「UI 一覧の背骨 D」entry が言及する Draft PR #96 は新 repo で再 open が必要だが、番号更新は別 amendment とする。旧 repo の PR / issue 番号は、旧 repo の歴史記述として残す。
+- Alternatives considered: 旧 repo を in-place force push して履歴を書き換える案（public repo の object identity を破壊的に書き換えるリスクがあり、PR 由来 commit と review 往復の編集履歴もそのまま対象になるため却下）; LICENSE file を今回追加する案（All rights reserved から後で MIT 等へ変更することはできる一方、いったん付与した利用許諾は取り消せないため却下）。
+- Revisit: 新 repo の public 化後に予期しない public surface（Actions / Security & Analysis 等）が観測されたとき、または LICENSE 方針を変更するとき。
