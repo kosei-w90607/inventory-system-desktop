@@ -74,7 +74,7 @@ Risk: R3
 | D-052 登録 | 件数 / oracle 不一致 | unit + CLI | `invalidation-contract.meta.test.ts`（`toHaveLength(22)`）PASS + `invalidation-contract.static.test.ts` PASS + `rg -c "C21|C22" docs/decision-log.md docs/UI_TECH_STACK.md` 各 ≥ 1 | entry 20 のまま、oracle 未転記、success handler が `invalidateByContract` 以外、docs 未追記 |
 | C21/C22 正本同期（P1-1） | 非対称の旧記述残存 | CLI | packet AC-11 — `rg -F 'UI-15 新設 key の 3 系統'` / `rg -F '上記 3 系統 + products 系 root'` が 78 doc で各 0 hit + `rg -F -c '同一の 8 key 集合に確定' docs/function-design/78-ui-supplier-management.md docs/decision-log.md` 各 ≥ 1 | 78 §78.9 / D-078 が予約時の非対称列挙のまま残り、実装 SSOT（8 key 対称）と正本が食い違う |
 | REQ-107 / 登録生成 | 昇格漏れ / drift | CLI (R-10) | `rg -n 'REQ-107' docs/spec/requirements.md` の全 hit に deferred 残存なし + `cd src-tauri && cargo run --bin generate_traceability -- --check` exit 0 + `npm run generate:routes && npm run typecheck` PASS + `git ls-files src/routeTree.gen.ts` 空 | deferred 残存、traceability drift、route 未生成、生成物 commit |
-| SPEC-SUPI-D1 kind 是正 | doc↔実装乖離 | CLI | `rg -c "MigrationKind::Custom\(schema_v6::apply_v6_supplier_updated_at\)" src-tauri/src/db/migration.rs docs/function-design/22-mnt-migration.md` 各 = 1 + `rg -c "get_v6_supplier_updated_at_schema" docs/ src-tauri/` = 0 | 旧 Sql 表記の残存、doc と実装の kind 不一致 |
+| SPEC-SUPI-D1 kind 是正 | doc↔実装乖離 | CLI | `rg -c "MigrationKind::Custom\(schema_v6::apply_v6_supplier_updated_at\)" src-tauri/src/db/migration.rs docs/function-design/22-mnt-migration.md` 各 = 1 + `rg -c "get_v6_supplier_updated_at_schema" docs/ src-tauri/ --glob '!docs/plans/**' --glob '!docs/archive/**'` = 0（自己参照除外 glob、gated amendment 4） | 旧 Sql 表記の残存、doc と実装の kind 不一致 |
 
 ## State Lifecycle Matrix
 

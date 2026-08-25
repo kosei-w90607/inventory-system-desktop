@@ -111,7 +111,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC-4: `npm run generate:routes && npm run typecheck && npm run lint && npm run format:check && npm test` PASS。`rg -c '"ui-15"' src/config/navigation.ts` = 1、`rg -c "test_navigation_req107_ui15_active_at_settings_suppliers" src/config/navigation.test.ts` = 1、`rg -c 'status: "pending"' src/config/navigation.ts` = 0。
 - AC-5: `rg -c "supplierRename" src/lib/invalidation-contract.ts src/test/invalidation-oracle.ts src/features/suppliers/hooks/useRenameSupplier.ts` 各 ≥ 1、`supplierMerge` も同様（hook は `useMergeSuppliers.ts`）、`rg -c "toHaveLength\(22\)" src/lib/invalidation-contract.meta.test.ts` = 1、`rg -c "C21|C22" docs/decision-log.md docs/UI_TECH_STACK.md` 各 ≥ 1。
 - AC-6: `rg -c 'coverage=required' docs/spec/requirements.md` の REQ-107 行反映 + `rg -n 'REQ-107' docs/spec/requirements.md` の全 hit に `deferred` 残存なし。`cd src-tauri && cargo run --bin generate_traceability -- --check` exit 0（REQ-107 は昇格後 T3 対象になり、本 PR の test 付与で WARN も出ない）。
-- AC-7: `rg -c "Building2" src/config/navigation.ts docs/function-design/52-ui-shared-layout.md` 各 ≥ 1、`rg -c "MigrationKind::Custom\(schema_v6::apply_v6_supplier_updated_at\)" src-tauri/src/db/migration.rs docs/function-design/22-mnt-migration.md` 各 = 1（`rg -c "get_v6_supplier_updated_at_schema" docs/ src-tauri/` = 0）。
+- AC-7: `rg -c "Building2" src/config/navigation.ts docs/function-design/52-ui-shared-layout.md` 各 ≥ 1、`rg -c "MigrationKind::Custom\(schema_v6::apply_v6_supplier_updated_at\)" src-tauri/src/db/migration.rs docs/function-design/22-mnt-migration.md` 各 = 1（`rg -c "get_v6_supplier_updated_at_schema" docs/ src-tauri/ --glob '!docs/plans/**' --glob '!docs/archive/**'` = 0。glob は本 packet / Matrix / archive が oracle 記述として同 token を逐語引用することによる自己参照 hit の除外 — gated amendment 4、design PR round 1 P1-2 と同 class）。
 - AC-8: `bash scripts/doc-consistency-check.sh` exit 0 + `bash scripts/doc-consistency-check.sh --target plan` 全チェック通過。
 - AC-9: `bash scripts/local-ci.sh full` RESULT=PASS / END_TREE_STATE=CLEAN（content candidate と Ready exact-HEAD の 2 回、evidence は PR body。evidence log は先頭 `HEAD_SHA` と末尾 `END_HEAD_SHA` / `RESULT` / `MERGE_EVIDENCE_VALID` で読む）。
 - AC-10: human visual confirmation（Windows native L3）の結果が PR body の `Human Gate` 欄に `L3: PASS` または `L3: FAIL` で記録されている。
@@ -390,4 +390,12 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - 裁定: 例外 (iv) を「migration 系 test の version / 件数期待 literal 追従」へ一般化し、sweep で確定した全数を列挙（file 限定の逐次拡張を止め、class ごと閉じる）。Codex の最小案と同内容 + 全数保証。
 - 反省記録（WER 候補）: amendment 2 で Codex 報告の file だけに例外を絞り、同型の repo 全体 sweep を怠ったことが本 amendment の fail-closed 再往復を生んだ（往復実績は本節の gated amendment 記録が evidence）。既存 test 凍結の例外設計は「報告箇所」でなく「class の全数 sweep」で確定する（drift-fix sweep の Plan 段階適用）。
 - relay 会計の訂正: fail-closed への amendment 回答は同一発注 lane 内であり新規 relay に計上しない（PR #95 実績「1 発注 + amendment 回答 = relay 1/2」の先例に整合）。本 change の relay 実績は 1/2 のまま。
+- amendment commit SHA は `Amendments` に後続 commit で記録。
+
+### gated amendment 4（2026-08-25、Codex Writer fail-closed 起源、true positive）
+
+- 事象: Codex が AC-7 の negative oracle `rg -c "get_v6_supplier_updated_at_schema" docs/ src-tauri/` = 0 を実行し、packet 2 hit + Matrix 1 hit（いずれも oracle 記述の逐語引用）で PASS 不能と申告。source docs / 実装側の残存は 0。
+- 検分: Coordinator が同コマンドを再実行し hit が docs/plans/ の 2 file のみであること、`--glob '!docs/plans/**' --glob '!docs/archive/**'` 付与で 0 hit（exit 1）になることを実証。あわせて packet / Matrix の他の negative oracle を sweep — docs/ を無 glob で対象にするのは本コマンドと Matrix の鏡写し行のみで、他（AC-6 / AC-11 / delete_supplier 不在）は file・src 限定で自己参照汚染なし。
+- 裁定: Codex 提案を採用し、closeout での archive 移動後も成立するよう `!docs/archive/**` も併せて付与（design packet AC-1 / AC-8 と同型）。Scope・実装契約・期待値は不変。design PR rally round 1 P1-2 と同 class の再発であり、負値 oracle 起草時の自己参照 self-check（design PR WER 候補 (1)）を本 packet の AC-7 に適用し損ねた Coordinator の見落とし。
+- 却下: packet / Matrix 側の記述を非一致表記（token 分割）に書き換える（oracle の可読性を損ない、glob 除外という確立済みの標準手段がある）。
 - amendment commit SHA は `Amendments` に後続 commit で記録。
