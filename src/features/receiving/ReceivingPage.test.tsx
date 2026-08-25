@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -54,6 +54,8 @@ vi.mock("@/lib/bindings", () => ({
     listReceivings: vi.fn(),
     searchProducts: vi.fn(),
     createReceiving: vi.fn(),
+    getProduct: vi.fn(),
+    reviseProductPrice: vi.fn(),
   },
 }));
 
@@ -61,6 +63,8 @@ const mockListSuppliers = vi.mocked(commands.listSuppliers);
 const mockListReceivings = vi.mocked(commands.listReceivings);
 const mockSearchProducts = vi.mocked(commands.searchProducts);
 const mockCreateReceiving = vi.mocked(commands.createReceiving);
+const mockGetProduct = vi.mocked(commands.getProduct);
+const mockReviseProductPrice = vi.mocked(commands.reviseProductPrice);
 const mockScrollTo = vi.fn();
 
 function renderWithClient(ui: ReactNode) {
@@ -116,6 +120,8 @@ beforeEach(() => {
   mockListReceivings.mockReset();
   mockSearchProducts.mockReset();
   mockCreateReceiving.mockReset();
+  mockGetProduct.mockReset();
+  mockReviseProductPrice.mockReset();
   mockDefaultQueries();
 });
 
@@ -204,7 +210,13 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     });
     mockCreateReceiving.mockResolvedValue({
       status: "ok",
-      data: { record_id: 10, created: true, idempotent_replay: false, stock_warnings: [] },
+      data: {
+        record_id: 10,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [],
+      },
     });
 
     renderWithClient(<ReceivingPage />);
@@ -228,6 +240,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
         created: true,
         idempotent_replay: false,
         stock_warnings: ["P-001: 在庫がマイナスになりました（-1）"],
+        cost_diffs: [],
       },
     });
 
@@ -360,6 +373,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
         created: boolean;
         idempotent_replay: boolean;
         stock_warnings: string[];
+        cost_diffs: [];
       };
     }>();
     mockCreateReceiving.mockReturnValue(deferred.promise);
@@ -395,7 +409,13 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
 
     deferred.resolve({
       status: "ok",
-      data: { record_id: 12, created: true, idempotent_replay: false, stock_warnings: [] },
+      data: {
+        record_id: 12,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [],
+      },
     });
   });
 
@@ -408,7 +428,13 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
       })
       .mockResolvedValueOnce({
         status: "ok",
-        data: { record_id: 20, created: true, idempotent_replay: false, stock_warnings: [] },
+        data: {
+          record_id: 20,
+          created: true,
+          idempotent_replay: false,
+          stock_warnings: [],
+          cost_diffs: [],
+        },
       });
 
     renderWithClient(<ReceivingPage />);
@@ -439,7 +465,13 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
       })
       .mockResolvedValueOnce({
         status: "ok",
-        data: { record_id: 21, created: true, idempotent_replay: false, stock_warnings: [] },
+        data: {
+          record_id: 21,
+          created: true,
+          idempotent_replay: false,
+          stock_warnings: [],
+          cost_diffs: [],
+        },
       });
 
     renderWithClient(<ReceivingPage />);
@@ -481,5 +513,217 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
 
     renderWithClient(<ReceivingPage />);
     expect(await screen.findByText("午前便")).toBeInTheDocument();
+  });
+
+  it("REQ-209 T5: 保存成功時の原価差分を日本語ラベル付きダイアログで表示する", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 901,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+        ],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
+    expect(within(dialog).getByText("商品名")).toBeInTheDocument();
+    expect(within(dialog).getByText("テスト毛糸")).toBeInTheDocument();
+    expect(within(dialog).getByText("商品コード")).toBeInTheDocument();
+    expect(within(dialog).getByText("P-901")).toBeInTheDocument();
+    expect(within(dialog).getByText("マスタ原価")).toBeInTheDocument();
+    expect(within(dialog).getByText("500 円")).toBeInTheDocument();
+    expect(within(dialog).getByText("今回の実原価")).toBeInTheDocument();
+    expect(within(dialog).getByText("501 円")).toBeInTheDocument();
+  });
+
+  it("REQ-209 T6: 原価差分が空または冪等再送ならダイアログを表示しない", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        record_id: 902,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [],
+      },
+    });
+    const first = renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    expect(await screen.findByText("入庫を保存しました")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "入庫原価を確認してください" }),
+    ).not.toBeInTheDocument();
+    first.unmount();
+
+    mockCreateReceiving.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        record_id: 902,
+        created: false,
+        idempotent_replay: true,
+        stock_warnings: [],
+        cost_diffs: [],
+      },
+    });
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    expect(await screen.findByText("同じ内容の再送として処理済み")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "入庫原価を確認してください" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("REQ-209 T7: 現売価を据え置いて入庫実原価へ商品単位で更新する", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 903,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+        ],
+      },
+    });
+    mockGetProduct.mockResolvedValue({
+      status: "ok",
+      data: makeMockProductWithRelations({ product_code: "P-901", selling_price: 1200 }),
+    });
+    mockReviseProductPrice.mockResolvedValue({
+      status: "ok",
+      data: {
+        product_code: "P-901",
+        changed: true,
+        plu_dirty_set: false,
+        supplier_assigned: false,
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    await user.click(
+      await screen.findByRole("button", { name: "マスタ原価をこの実原価に更新する" }),
+    );
+
+    await waitFor(() => {
+      expect(mockReviseProductPrice).toHaveBeenCalledWith({
+        product_code: "P-901",
+        new_selling_price: 1200,
+        new_cost_price: 501,
+        assign_supplier_id: null,
+      });
+    });
+    expect(mockReviseProductPrice).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("マスタ原価を更新しました")).toBeInTheDocument();
+  });
+
+  it("REQ-209 T8: 原価更新失敗を行内表示して再試行でき、入庫成功表示を維持する", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 904,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+        ],
+      },
+    });
+    mockGetProduct.mockResolvedValue({
+      status: "ok",
+      data: makeMockProductWithRelations({ product_code: "P-901", selling_price: 1200 }),
+    });
+    mockReviseProductPrice
+      .mockResolvedValueOnce({
+        status: "error",
+        error: { kind: "internal", message: "更新失敗", field: null, error_id: null },
+      })
+      .mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          product_code: "P-901",
+          changed: true,
+          plu_dirty_set: false,
+          supplier_assigned: false,
+        },
+      });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    await user.click(
+      await screen.findByRole("button", { name: "マスタ原価をこの実原価に更新する" }),
+    );
+
+    expect(await screen.findByText("マスタ原価の更新に失敗しました")).toBeInTheDocument();
+    expect(screen.getByText("入庫を保存しました")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "再試行する" }));
+    expect(await screen.findByText("マスタ原価を更新しました")).toBeInTheDocument();
+    expect(mockReviseProductPrice).toHaveBeenCalledTimes(2);
+  });
+
+  it("REQ-209 T9: 見送りで閉じても更新や記録を行わず入庫成功表示を維持する", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 905,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+        ],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    await user.click(await screen.findByRole("button", { name: "見送って閉じる" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "入庫原価を確認してください" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("入庫を保存しました")).toBeInTheDocument();
+    expect(mockGetProduct).not.toHaveBeenCalled();
+    expect(mockReviseProductPrice).not.toHaveBeenCalled();
   });
 });

@@ -100,7 +100,13 @@ beforeEach(() => {
   });
   mockCreateReceiving.mockResolvedValue({
     status: "ok",
-    data: { record_id: 1, created: true, idempotent_replay: false, stock_warnings: [] },
+    data: {
+      record_id: 1,
+      created: true,
+      idempotent_replay: false,
+      stock_warnings: [],
+      cost_diffs: [],
+    },
   });
 });
 
