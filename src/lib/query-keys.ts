@@ -86,6 +86,11 @@ export const queryKeys = {
     departments: () => ["price-revision", "departments"] as const,
     history: (productCode: string) => ["price-revision", "history", { productCode }] as const,
   },
+  // UI-15 取引先管理
+  suppliers: {
+    root: () => ["suppliers"] as const,
+    withUsage: () => ["suppliers", "with-usage"] as const,
+  },
   // UI-02 入庫記録
   // 設計: docs/function-design/61-ui-receiving.md §61.7
   receivings: {

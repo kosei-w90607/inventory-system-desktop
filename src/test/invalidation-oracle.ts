@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/query-keys";
 export type InvalidationKey = readonly unknown[];
 
 /**
- * D-052-C1〜C20 を test 側へ独立転記した oracle。
+ * D-052-C1〜C22 を test 側へ独立転記した oracle。
  * production の invalidation-contract.ts を参照してはならない。
  */
 export const d052InvalidationOracle = {
@@ -155,6 +155,26 @@ export const d052InvalidationOracle = {
     ["product-form", "product", { productCode }],
     ["plu-dirty"],
     ["price-revision"],
+  ],
+  supplierRename: () => [
+    ["product-form"],
+    ["price-revision"],
+    ["suppliers"],
+    ["product-list"],
+    ["products", "low-stock", { includeDiscontinued: false }],
+    ["stock-inquiry"],
+    ["receivings"],
+    ["inventory-records"],
+  ],
+  supplierMerge: () => [
+    ["product-form"],
+    ["price-revision"],
+    ["suppliers"],
+    ["product-list"],
+    ["products", "low-stock", { includeDiscontinued: false }],
+    ["stock-inquiry"],
+    ["receivings"],
+    ["inventory-records"],
   ],
 } satisfies Record<string, (...args: never[]) => InvalidationKey[]>;
 

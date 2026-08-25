@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   BarChartBig,
+  Building2,
   ClipboardList,
   CircleDollarSign,
   DatabaseBackup,
@@ -50,7 +51,7 @@ export interface NavArea {
   items: readonly NavItem[];
 }
 
-/// 4 エリア × 21 項目。Phase 2 daily 5 画面は route 実装済みで active。
+/// 4 エリア × 22 項目。全画面は route 実装済みで active。
 /// Phase 3/4 以降で各画面着手時に to を実 path に + status を "active" に切り替える。
 export const navigation: readonly NavArea[] = [
   {
@@ -248,6 +249,14 @@ export const navigation: readonly NavArea[] = [
         title: "整合性検証",
         to: "/settings/integrity",
         icon: ShieldCheck,
+        status: "active",
+      },
+      {
+        id: "ui-15",
+        label: "取引先管理",
+        title: "取引先管理",
+        to: "/settings/suppliers",
+        icon: Building2,
         status: "active",
       },
     ],

@@ -28,6 +28,20 @@ describe("navigation config REQ-105 / UI-14", () => {
   });
 });
 
+describe("navigation config REQ-107 / UI-15", () => {
+  it("test_navigation_req107_ui15_active_at_settings_suppliers", () => {
+    const systemArea = navigation.find((area) => area.id === "system");
+    const item = systemArea?.items.find((entry) => entry.id === "ui-15");
+    expect(item).toMatchObject({
+      label: "取引先管理",
+      title: "取引先管理",
+      status: "active",
+      to: "/settings/suppliers",
+    });
+    expect(systemArea?.items[systemArea.items.length - 1]?.id).toBe("ui-15");
+  });
+});
+
 describe("navigation config sidebar pending links", () => {
   it("test_navigation_req101_ui01b_active_at_products_new", () => {
     // REQ-101: 商品登録画面への operator 到達導線

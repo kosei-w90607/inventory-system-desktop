@@ -151,6 +151,7 @@ export const navigation: readonly NavArea[] = [...] as const;
 | 一括インポート | `FileSpreadsheet` | 操作ログ | `ScrollText` |
 | PLU書出し | `FileDown` | 閾値設定 | `SlidersHorizontal` |
 | 一括価格改定 | `CircleDollarSign` | 整合性検証 | `ShieldCheck` |
+| 取引先管理 | `Building2` | | |
 
 **アイコンスタイル**: `className="size-4 stroke-[1.5]"`（16px、線細め）。active 時は stone-700、inactive 時は stone-500（[../design-system/00-foundations.md](../design-system/00-foundations.md)「4色エリアモデルの扱い」準拠）。
 
@@ -159,7 +160,7 @@ export const navigation: readonly NavArea[] = [...] as const;
 - `to: "/"` + `status: "active"` = ホームのみ 1 項目
 - `to: null` + `status: "pending"` = 残り 18 項目（route 未実装、Phase 2 以降で順次 active 化）
 
-**2026-08-25 時点**: 現行実装のサイドバーは 21 項目で pending は 0 件。UI-15 を加えた設計上のナビ表示は 22 項目となり、後続実装 PR が `navigation.ts` のシステム管理へ active entry を追加する。UI-06b は独立画面ではなく UI-06a への deep-link（D-047、詳細は §52.6）。
+**2026-08-25 時点**: 現行実装のサイドバーは 22 項目で pending は 0 件。UI-15 は `navigation.ts` のシステム管理末尾へ active entry として登録済み。UI-06b は独立画面ではなく UI-06a への deep-link（D-047、詳細は §52.6）。
 
 ---
 

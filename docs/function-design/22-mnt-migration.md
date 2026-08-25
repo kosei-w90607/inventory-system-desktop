@@ -287,4 +287,4 @@ fixture / 注入の必須条件は 71 §71.10「fixture / 注入の必須条件�
 
 SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 default を直接追加しない。table rebuild による NOT NULL 化も行わず、列は NULLABLE のまま維持する。新規作成行は改名前なら NULL を許容し、BIZ-01 `rename_supplier` が実際の改名時だけ現在日時へ更新する。
 
-**MIGRATIONS 登録順**: `migration.rs` の migrations() は v1 → v2 → v3 → v4 → v5 → v6 の順に登録する。v6 の description は `suppliers.updated_at 追加` とし、kind は `MigrationKind::Sql(schema_v6::get_v6_supplier_updated_at_schema())` とする。後続実装 PR は既存行の backfill、新規行の NULL 許容、再実行時に v6 を重複適用しないことを検証する。
+**MIGRATIONS 登録順**: `migration.rs` の migrations() は v1 → v2 → v3 → v4 → v5 → v6 の順に登録する。v6 の description は `suppliers.updated_at 追加` とし、kind は `MigrationKind::Custom(schema_v6::apply_v6_supplier_updated_at)` とする。実装は既存行の backfill、新規行の NULL 許容、再実行時に v6 を重複適用しないことを検証する。

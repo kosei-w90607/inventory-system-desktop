@@ -133,6 +133,49 @@ pub fn create_supplier(state: State<AppState>, name: String) -> Result<Supplier,
     product_service::create_supplier(&conn, name).map_err(CmdError::from)
 }
 
+/// 取引先名を変更する。
+#[tauri::command]
+#[specta::specta]
+pub fn rename_supplier(
+    state: State<AppState>,
+    supplier_id: i64,
+    name: String,
+) -> Result<Supplier, CmdError> {
+    let mut conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    product_service::rename_supplier(&mut conn, supplier_id, name).map_err(CmdError::from)
+}
+
+/// 重複した取引先を残す側へ統合する。
+#[tauri::command]
+#[specta::specta]
+pub fn merge_suppliers(
+    state: State<AppState>,
+    source_id: i64,
+    target_id: i64,
+) -> Result<product_service::SupplierMergeResult, CmdError> {
+    let mut conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    product_service::merge_suppliers(&mut conn, source_id, target_id).map_err(CmdError::from)
+}
+
+/// 取引先全件を関連商品数・入庫記録数付きで返す。
+#[tauri::command]
+#[specta::specta]
+pub fn list_suppliers_with_usage(
+    state: State<AppState>,
+) -> Result<Vec<product_service::SupplierWithUsage>, CmdError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    product_service::list_suppliers_with_usage(&conn).map_err(CmdError::from)
+}
+
 /// 商品の価格履歴を取得する。
 #[tauri::command]
 #[specta::specta]

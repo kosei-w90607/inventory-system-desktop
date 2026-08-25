@@ -14,6 +14,7 @@ use super::schema_v2;
 use super::schema_v3;
 use super::schema_v4;
 use super::schema_v5;
+use super::schema_v6;
 use super::DbError;
 use rusqlite::Connection;
 
@@ -59,6 +60,11 @@ fn migrations() -> Vec<Migration> {
             version: 5,
             description: "PLU slot永続割当（plu_slots + 事前投入）",
             kind: MigrationKind::Custom(schema_v5::apply_v5_plu_slots),
+        },
+        Migration {
+            version: 6,
+            description: "suppliers.updated_at 追加",
+            kind: MigrationKind::Custom(schema_v6::apply_v6_supplier_updated_at),
         },
     ]
 }
@@ -153,7 +159,7 @@ mod tests {
     use crate::db::{
         init_database,
         migration_tx::{self, FailurePoint},
-        schema_v1, schema_v2, schema_v3, schema_v4, DbError,
+        schema_v1, schema_v2, schema_v3, schema_v4, schema_v5, DbError,
     };
     use rusqlite::Connection;
 
@@ -373,6 +379,71 @@ mod tests {
         (dir, conn)
     }
 
+    #[test]
+    fn test_migration_v6_adds_updated_at_with_backfill() {
+        // REQ-107 / SPEC-SUPI-D1: v5 DB の既存行を created_at で backfill し、nullable を維持する。
+        let (dir, conn) = setup_v4_only_db();
+        schema_v5::apply_v5_plu_slots(&conn, 5).unwrap();
+        conn.execute_batch(
+            "INSERT INTO suppliers(name,created_at) VALUES
+             ('テスト取引先A','2026-08-01T10:00:00'),
+             ('テスト取引先B','2026-08-02T11:00:00');",
+        )
+        .unwrap();
+
+        super::migrate(&conn).unwrap();
+        let rows: Vec<(String, String, Option<String>)> = {
+            let mut stmt = conn
+                .prepare("SELECT name,created_at,updated_at FROM suppliers ORDER BY name")
+                .unwrap();
+            stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap()
+        };
+        assert_eq!(
+            rows,
+            vec![
+                (
+                    "テスト取引先A".to_string(),
+                    "2026-08-01T10:00:00".to_string(),
+                    Some("2026-08-01T10:00:00".to_string()),
+                ),
+                (
+                    "テスト取引先B".to_string(),
+                    "2026-08-02T11:00:00".to_string(),
+                    Some("2026-08-02T11:00:00".to_string()),
+                ),
+            ]
+        );
+
+        conn.execute(
+            "INSERT INTO suppliers(name,created_at) VALUES('テスト取引先C','2026-08-03T12:00:00')",
+            [],
+        )
+        .unwrap();
+        let new_updated_at: Option<String> = conn
+            .query_row(
+                "SELECT updated_at FROM suppliers WHERE name='テスト取引先C'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(new_updated_at, None);
+
+        super::migrate(&conn).unwrap();
+        let version_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM schema_versions WHERE version=6",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(version_count, 1);
+        drop(conn);
+        drop(dir);
+    }
+
     /// schema_v1 の20テーブル + schema_versions + v5 plu_slots が存在すること
     #[test]
     fn test_migration_req903_creates_all_tables() {
@@ -430,7 +501,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, 5);
+        assert_eq!(v1, 6);
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -440,13 +511,16 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v2, 5, "バージョンが変わってはいけない");
+        assert_eq!(v2, 6, "バージョンが変わってはいけない");
 
-        // schema_versionsにレコードが5件であること（v1 + v2 + v3 + v4 + v5）
+        // schema_versionsにレコードが6件であること（v1 + v2 + v3 + v4 + v5 + v6）
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 5, "マイグレーションレコードは5件（v1+v2+v3+v4+v5）");
+        assert_eq!(
+            count, 6,
+            "マイグレーションレコードは6件（v1+v2+v3+v4+v5+v6）"
+        );
     }
 
     #[test]
@@ -479,7 +553,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 5);
+        assert_eq!(version, 6);
 
         let rows: Vec<(String, bool)> = {
             let mut stmt = conn
@@ -515,7 +589,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 5);
+        assert_eq!(version, 6);
 
         for table_name in &[
             "daily_report_imports",
@@ -579,7 +653,7 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
-        assert_eq!((max_version, version_count), (5, 5));
+        assert_eq!((max_version, version_count), (6, 6));
     }
 
     #[test]
@@ -595,7 +669,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 5);
+        assert_eq!(max_version, 6);
         assert_eq!(slot_count, 4_784);
     }
 
