@@ -2,16 +2,16 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 6de67dfa7f3264b6e8413d6b479abfa094f6a62e
-- Amendments: none
+- Amendments: 5c67a5e6ccc732fcbeb75f323c8609e323dae0b8
 - Coordinator: Claude Fable 5（main session）
 - Writer: Codex（GPT-5.6、発注書駆動）
 - Plan Reviewer: Claude Sonnet 5（独立 fresh context）
 - Final Reviewer: Claude Sonnet 5（独立 fresh context）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 5c67a5e6ccc732fcbeb75f323c8609e323dae0b8
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: pending — Ready 承認（Plan Gate 承認は 2026-08-25 完了、narrative 参照）
@@ -29,6 +29,10 @@ delta 検証（Sonnet 独立 fresh context、2026-08-25、対象 = 追加導線�
 owner Plan Gate 承認（2026-08-25、介入 1/3）: 採否 7 点すべて承認 + 追加導線の scope 化を裁定。関連裁定 = UI-01a 商品検索への取引先 filter 露出は本 change に含めず backlog へ（「あとで。まず UI-15 を済ませる」、Plans.md backlog 起票済み）。Plan Reviewer evidence = rally 3 round 収束（P1+P2: 4 → 3 → 0）+ owner-directed delta 検証 pass。
 
 state-only 遷移（2026-08-25）: plan-draft -> plan-gate -> plan-approved -> implementing を単一 state-only commit で実体化（recording compression）。evidence = plan-draft -> plan-gate: packet + Matrix が plan-first commit 6de67df で committed 済み / plan-gate -> plan-approved: 独立 Plan Reviewer（Sonnet）rally round 3 で P1/P2 = 0 + owner-directed delta 検証 pass、Plan Commit 記入 = 本 commit、plan-first commit は本 branch の全 content commit の祖先 / plan-approved -> implementing: Codex Writer への発注直前遷移（Coordinator が発注前に遷移を完了する運用）。
+
+実装・検証記録（2026-08-25）: Codex Writer が発注 1 本で Scope 1〜14 を実装（content candidate = 実装 2 commit 目、AC-1〜10 / M-D1〜11 / 完了 gate 全 PASS を報告、Coordinator が scope・凍結境界・主要 oracle を独立再実測して一致確認）。L1 full は content candidate と gated amendment 後 HEAD の双方で PASS / CLEAN / MERGE_EVIDENCE_VALID=true（evidence = `.local/ci-evidence/`、exact SHA は PR body 正本）。Final Review（Sonnet 独立 fresh context、Contract Audit）: Ledger 13/13 適合・M-D/AC 全 oracle 独立再現・機械 gate 全 PASS・既存節無改変を hunk 単位確認・docs 契約内容の不整合なし。P2 2 件（M-D11 の section-scope 欠如 / M-D5 の不可逆・件数文言 oracle 欠如 — いずれも Matrix 頑健性）→ Coordinator 両採用、gated amendment 1（Amendments 行の SHA、Matrix 2 行のみ）で是正、独立 delta 再検証 P1/P2/P3 = 0 / verdict pass。Findings Freeze: frozen after Broad Audit; post-freeze exceptions: none。
+
+state-only 遷移（2026-08-25、本 commit）: implementing -> local-verified -> independent-review -> human-confirm を単一 state-only commit で実体化（recording compression）。evidence = implementing -> local-verified: content candidate の L1 full CLEAN（上記記録、PR body に SHA 記載）/ local-verified -> independent-review: 独立 Final Reviewer（Sonnet）の Contract Audit 実施 / independent-review -> human-confirm: findings 裁定完了・P1/P2 = 0（P2 2 件は gated amendment 1 で是正済み + delta 再検証 pass）、Reviewed Content HEAD = gated amendment commit を設定。
 
 ## Owner Effort Budget
 
