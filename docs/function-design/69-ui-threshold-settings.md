@@ -46,13 +46,13 @@
 
 ### UI-11a-D5: route は `/settings/thresholds`、URL search state なし
 
-- **決定**: `/settings/backup`（UI-11b）と並ぶ `/settings/thresholds`。この画面は共有・復元したい表示状態を持たないフォーム単体のため、search param は定義しない。`src/config/navigation.ts` の `ui-11a` エントリ（現状 `to: null` / `status: "pending"`）の active 化は実装 PR で route 追加と同時に行う（UI-11b と同じ運用）。
+- **決定**: `/settings/backup`（UI-11b）と並ぶ `/settings/thresholds`。この画面は共有・復元したい表示状態を持たないフォーム単体のため、search param は定義しない。route は実装済みで、`src/config/navigation.ts` の `ui-11a` エントリも active 化済み（UI-11b と同じ運用）。
 - **Why**: 状態の URL 化は「復元・共有する価値のある状態」に適用する原則であり、2 入力のフォームに該当する状態がない。
 - **Rejected**: `/settings` 1 画面への閾値・バックアップ・ログの同居（ARCHITECTURE.md の UI-11a/11b/11c 分割と UI-11b-D6 の画面別所有に反する）。
 
 ### UI-11a-D6: operator 向け名称は「在庫少の基準」、「閾値」は画面に出さない
 
-- **決定**: ナビゲーションラベル・ウィンドウタイトル・ページ h1 を「在庫少の基準」に統一する（`navigation.ts` の `ui-11a` の label / title「閾値設定」を実装 PR で変更）。「閾値」という語は operator 向け画面文言に使わない。開発ドキュメント上のタスク名「閾値設定画面」は従来どおり。
+- **決定**: ナビゲーションラベル・ウィンドウタイトル・ページ h1 は「在庫少の基準」に統一済み（`navigation.ts` の `ui-11a` の label / title も「在庫少の基準」へ変更済み）。「閾値」という語は operator 向け画面文言に使わない。開発ドキュメント上のタスク名「閾値設定画面」は従来どおり。
 - **Why**: 「閾値」は非 IT の利用者に読めない専門語。ドメイン語「在庫少」を主語にした表示名が実態と一致する（表示名と実態の一致原則）。sidebar・タイトル・h1 の不一致は迷いを生むため 3 点を同時に揃える。
 - **Rejected**: 「閾値設定」のまま実装（専門語）。「設定」だけの汎称（バックアップ・ログと区別できない）。
 

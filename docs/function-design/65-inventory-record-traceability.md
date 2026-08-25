@@ -225,7 +225,7 @@ UI-03 の既存 `return_records.receipt_image_path` は互換維持し、共通�
 - detail_json の要約表示
 - 関連 record_type / record_id がある場合だけ詳細リンク
 
-詳細な route/URL state、期間・種別 filter、pagination、detail_json 安全設計、関連記録リンクの許可リスト・ルートマッピング、Windows native L3 は [function-design/74-ui-operation-logs.md](74-ui-operation-logs.md)（UI-11c Design Phase、2026-07-11）を正とする。関連記録リンクは `record_type`（`receiving_record` / `return_record` / `manual_sale` / `disposal_record` のいずれか）と正の整数 `record_id` が detail_json に両方揃う場合だけ表示する明示 contract とする。現時点で `record_id` は `receiving.rs` / `disposal.rs` / `returns.rs` の3 producer が既に書き込み済みだが、`record_type` を書き込む producer は0件のため2 field が揃うログは実データ上0件（既存 BIZ producer への `record_type` 追加は別 follow-up）。`csv_import` / `stocktake` は対応する詳細 route が未実装のため許可リストから一時的に除外する。
+詳細な route/URL state、期間・種別 filter、pagination、detail_json 安全設計、関連記録リンクの許可リスト・ルートマッピング、Windows native L3 は [function-design/74-ui-operation-logs.md](74-ui-operation-logs.md)（UI-11c Design Phase、2026-07-11）を正とする。関連記録リンクは `record_type`（`receiving_record` / `return_record` / `manual_sale` / `disposal_record` のいずれか）と正の整数 `record_id` が detail_json に両方揃う場合だけ表示する明示 contract とする。現時点で `record_id` は `receiving.rs` / `disposal.rs` / `returns.rs` の3 producer が既に書き込み済みだが、`record_type` を書き込む producer は0件のため2 field が揃うログは実データ上0件（既存 BIZ producer への `record_type` 追加は別 follow-up）。`csv_import` の詳細 route は実装済みだが、csv_import 系 `record_type` を書き込む producer が0件のため許可リストからの除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて追加する。`stocktake` は対応する詳細 route が未実装のため許可リストから一時的に除外する。
 
 ## 65.9 出力
 

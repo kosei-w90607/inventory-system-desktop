@@ -21,7 +21,7 @@ UI-11b は、ローカル SQLite DB の手動バックアップ、バックア�
 | UI-11b-F2 | `backup_enabled` / `backup_time` / `backup_retention_days` を UI-11b で更新できる。 |
 | UI-11b-F3 | `backup_path` は native directory picker で選んだパスだけを `commands.updateSetting()` に渡す。自由入力欄は作らない。 |
 | UI-11b-F4 | 手動バックアップは `commands.createBackup()` を呼び、成功後に一覧を再取得する。 |
-| UI-11b-F5 | 自動バックアップ確認は frontend の 60 秒 interval から `commands.checkAutoBackup()` を呼ぶ。現 `src/` には未実装のため、UI-11b implementation PR の scope に含める。 |
+| UI-11b-F5 | 自動バックアップ確認は実装済み。frontend の 60 秒 interval から `commands.checkAutoBackup()` を呼び、`true` の時は backup list を invalidate/refetch して完了 toast を表示する。 |
 | UI-11b-F6 | 復元は、事前バックアップ作成、詳細提示、最終確認、`commands.restoreBackup({ backup_path })`、cache clear、ホーム遷移、結果 Alert の順で扱う。 |
 | UI-11b-F7 | 復元失敗時は CMD 層の再接続契約に合わせ、recoverable failure と double failure を UI 状態として分ける。 |
 
@@ -91,7 +91,7 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 | UI-11b-D6 | `backup_enabled` / `backup_time` / `backup_path` / `backup_retention_days` は UI-11b が所有する。 | operator のメンタルモデルは「バックアップのことはバックアップ画面」。UI-11a は業務パラメータのみ。 |
 | UI-11b-D7 | バックアップ一覧は和式日時を主情報、MB サイズを副情報、行ごとの復元導線、先頭行 `最新` Badge とする。ファイル名・絶対パスは主表示にしない。 | ファイル名やパスより「いつの控えか」が operator の判断軸。 |
 | UI-11b-D8 | `backup_path` 変更は native directory picker のみ。自由入力は不可。現在の保存先は表示のみ。 | PR #125 の file dialog 移行前例に合わせ、WebView path 入力の誤操作を避ける。 |
-| UI-11b-D9 | `checkAutoBackup` の 60 秒 interval は frontend 未実装。UI-11b implementation PR の scope に含める。 | `src/` grep で `checkAutoBackup` 呼び出しと `setInterval` 実装が未検出。backend / binding は実装済み。 |
+| UI-11b-D9 | `checkAutoBackup` の 60 秒 interval は frontend に実装済み。`true` の時は backup list を invalidate/refetch し、完了 toast を表示する。 | 自動バックアップの実行結果を一覧と利用者通知へ反映する契約。backend / binding も実装済み。 |
 | UI-11b-D10 | Windows native L3 で、手動バックアップファイル、復元によるデータ切替、復元前自動バックアップ、backup_path 変更後出力を目視確認する。double failure は自動テスト + 文言目視のみ。 | ファイル実体と DB 入れ替わりは native runtime でしか最終確認できない。 |
 | UI-11b-D11 | 復元成功の success Alert はホーム遷移後に表示する one-shot 通知とし、受け渡しは frontend の in-memory flag で行う。router / history state・URL search param は使わない。ホーム component は **mount 時に一度だけ** flag を component-local 表示 state へ取り込み（取り込みと同時に flag を消去）、**その mount 中は Alert を表示し続ける**（他 query の更新や再 render で消さない）。非表示になるのは unmount 後の再訪・reload・アプリ再起動・通常到達（flag なし）のみ。React StrictMode の二重 mount でも表示される Alert は 1 個。navigate が reject された場合は flag を消去し、次回ホーム到達で誤表示しない。復元失敗時は flag を set しない。 | history.state 経由は reload / 履歴再訪で残存し one-shot 性の証明が実装依存になる。in-memory は消滅が構造的に保証される。render 中の module read で consume する実装は StrictMode の discard render が flag を消費し Alert 不可視になり得るため、mount 時取り込み + mount 中表示維持を契約とする（表示寿命を規定しないと PR #144 L3「toast 見落とし」問題を再生産する）。D4 / F6 の「遷移先で success Alert」契約の実装機構を固定する。 |
 
@@ -99,7 +99,7 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 
 | 要素 | 設計 |
 |---|---|
-| Route | `/settings/backup` を予定。`src/config/navigation.ts` の `ui-11b` は現状 `to: null` / `pending` なので、implementation PR で route file と navigation を同時に active 化する。 |
+| Route | `/settings/backup` は実装済み。`src/config/navigation.ts` の `ui-11b` も active 化済み。 |
 | Page | `BackupRestorePage` |
 | Components | `BackupSettingsPanel`, `ManualBackupPanel`, `BackupListTable`, `RestoreDetailPanel`, `RestoreConfirmDialog`, `BackupPathPicker`, `RestoreFatalAlert` |
 | Query hooks | `useBackupSettings`, `useBackupList`, `useEffectiveBackupDir`, `useCreateBackup`, `useUpdateBackupSetting`, `useRestoreBackup`, `useAutoBackupCheck` |
@@ -198,7 +198,6 @@ L3 証跡に実店舗 DB、実 JAN、実商品名、価格、backup file、log f
 
 ## 68.13 Non-scope
 
-- UI 実装、route file 作成、navigation active 化。
 - UI-11a 閾値設定画面。
 - UI-11c 操作ログ一覧画面。
 - backend `check_auto_backup` の仕様変更。
