@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 47d01a2
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: d55f8f2
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending = ① human visual confirmation + Windows native L3（差分ダイアログ、fixture 手順は Test Plan 参照）② Ready 承認（Plan Gate 承認は 2026-08-26 完了・介入 1/3）
+- Human Gate: none（Plan Gate 承認 = 介入 1/3、L3 全 PASS = 介入 2/3、Ready 承認 = 介入 3/3、いずれも 2026-08-26 完了。残る owner 操作は merge のみ）
 
 ## Owner Effort Budget
 
@@ -296,3 +296,4 @@ Contract ID: SPEC-PRVC
 - 2026-08-26 Plan Review round 2（独立 Sonnet fresh context、closure 確認）: 是正 3 件すべて適用確認 OK（AC-7 の防御先 = `invalidation-contract.static.test.ts` の直接 invalidate 拒否 static test の実在まで確認済み）、新規 findings なし。P1 0 / P2 0 / P3 0 で rally 収束（round 実績 2 / 天井 3）。owner Plan Gate 承認待ち。
 - 2026-08-26 owner Plan Gate 承認（介入 1/3）。本 state-only commit で plan-gate → plan-approved → implementing の隣接 2 遷移を materialize（evidence: 独立 Plan Reviewer P1/P2 = 0 = round 2 記録、plan-first commit `47d01a2` は全実装 commit に先行、owner 承認 2026-08-26）。`Plan Commit` field を `47d01a2` で確定。以後の実装は Codex 発注（cwd = 本 repo、branch `agent/receiving-cost-diffs`）。
 - 2026-08-26 Codex Writer 実装完了（content candidate = `d55f8f2`、Draft PR #5）。本 state-only commit で implementing → local-verified → independent-review → human-confirm の隣接 3 遷移を materialize。evidence: ① local-verified = L1 `local-ci.sh full` CLEAN（candidate `d55f8f2`、evidence log 末尾 `RESULT=PASS` / `MERGE_EVIDENCE_VALID=true` を Coordinator 実読、PR body に記録）② independent-review = 独立 Sonnet Final Reviewer が worktree 隔離で Contract Audit 実施（Review Response 節）③ human-confirm = findings 裁定完了 P1/P2 = 0（P2-1 は記録是正で解消・code 変更なし、P3-1 は修正不要確定）、`Reviewed Content HEAD` = `d55f8f2` 設定。
+- 2026-08-26 owner Windows native L3 実施: L3-0〜L3-5 全件 PASS（差分ダイアログ表示・日本語ラベル・原価更新と売価据え置き・再提示・見送り時の保存表示維持・backup restore による原状復元まで確認）。UX 所見 3 件は非阻害 P3 として PR body に記録（介入 2/3）。owner Ready 承認 2026-08-26（介入 3/3、明示承認。Ready 遷移実行は Coordinator へ委任）。本 state-only commit で human-confirm → ready-hosted-final を materialize。以後: 本 commit を含む exact HEAD で L1 full → PR body 鮮度更新 → Ready 化 → hosted CI 三点一致確認 → owner merge。
