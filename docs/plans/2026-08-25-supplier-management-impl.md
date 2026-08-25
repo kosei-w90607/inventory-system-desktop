@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 0a2f278
@@ -18,7 +18,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Reviewed Content HEAD: f8dbd67
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Plan Gate 承認済み（2026-08-25、介入 1/3）→ human visual confirmation（Windows native L3 4 項目、operator 画面新設のため必須 = 78 doc §78.10、synthetic fixture 手順書提示済み・実施待ち）→ Ready 承認 → hosted final（Rust / TS / bindings を含む non-doc change のため CI-TRIGGER-D1 の Ready / `synchronize` 経路で自動 run）→ 三点一致 → merge
+- Human Gate: Plan Gate 承認済み（2026-08-25、介入 1/3）→ Windows native L3 4 項目 PASS（2026-08-26、介入 2/3。synthetic fixture 投入 → 確認 → baseline 復元まで完了、実測記録は PR #4 body 正本。UX 所感 2 件は post-freeze P3 として backlog 起票）→ Ready 承認済み（2026-08-26、介入 3/3）→ hosted final（Rust / TS / bindings を含む non-doc change のため CI-TRIGGER-D1 の Ready / `synchronize` 経路で自動 run）→ 三点一致 → merge
 
 ## Owner Effort Budget
 
@@ -368,6 +368,11 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - implementing -> local-verified の evidence: content candidate `f8dbd67`（Codex Writer 第 1 発注、gated amendment 1〜4 反映済み、relay 1/2）で L1 `local-ci.sh full` RESULT=PASS / END_TREE_STATE=CLEAN / MERGE_EVIDENCE_VALID=true（evidence = `.local/ci-evidence/`、実 run は先頭 `HEAD_SHA` と末尾 `END_HEAD_SHA` / `RESULT` / `MERGE_EVIDENCE_VALID` で判読。exact SHA は PR #4 body 正本）。Coordinator は scope file 一覧・plan-first ancestry・L1 境界行・C21/C22 集合・正本同期 oracle・navigation entry を独立再実測して一致確認。
 - local-verified -> independent-review の evidence: 独立 Sonnet Final Reviewer（fresh context、worktree 隔離）が Contract Audit を実施（Review Response の Final Review 行が正）。
 - independent-review -> human-confirm の evidence: findings 裁定完了・P1/P2 = 0（P3 1 件は backlog 起票で処理）。`Reviewed Content HEAD` = `f8dbd67` と `Amendments` 行（gated amendment 1〜4 の SHA）を本 state-only commit で設定。隣接 3 遷移を 1 commit で圧縮記録（forward state-only 2 本目 / cap 3、post-implementation 1 本目 / cap 2）。
+
+### 遷移記録（2026-08-26、state-only 遷移 human-confirm -> ready-hosted-final）
+
+- Windows native L3（介入 2/3）: checklist L3-1〜L3-4 を owner が全件 PASS（到達と一覧・`N件`/`0件` 表示・削除 action 不在 / 追加 + IME Enter + 空白 reject / インライン改名 + Escape + 同名衝突文言と入力保持 / 統合 2 段階 + 件数文言一致 + 不可逆文言 + 完了通知 + UI-01b・UI-14 への invalidation 波及）。synthetic fixture は baseline backup へ復元し消失確認済み。実測記録・復元証跡は PR #4 body 正本。UX 所感 2 件（改名ボタンの double-click 貫通リスク / 改名時のみ完了通知がない非対称性）は Findings Freeze 後 P3 = follow-up として closeout で Plans.md backlog へ起票する（78 doc は改名時通知を規定せず設計適合、L3 非阻害）。
+- owner Ready 承認（2026-08-26、介入 3 回目 / 予算 3 回）: 本 state-only commit で `human-confirm -> ready-hosted-final` を materialize（forward state-only 3 本目 / cap 3、post-implementation 2 本目 / cap 2）。resulting exact HEAD で L1 full を再実行し、PR body を更新してから owner が Draft を解除する。Ready event の同一 HEAD hosted final を待ち、三点一致前は merge しない。
 
 ### 遷移記録（2026-08-25、state-only 遷移 plan-draft -> plan-gate -> plan-approved -> implementing）
 
