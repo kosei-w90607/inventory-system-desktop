@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 6de67dfa7f3264b6e8413d6b479abfa094f6a62e
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: 5c67a5e6ccc732fcbeb75f323c8609e323dae0b8
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending — owner の Ready 化操作と merge（Plan Gate 承認・Ready 承認は 2026-08-25 完了、narrative 参照）
+- Human Gate: none（Plan Gate 承認・Ready 承認・merge すべて 2026-08-25 完了、narrative 参照）
 
 append-only narrative: kickoff → spec-check → design → plan-draft は本 packet の plan-first content commit に同乗する（recording compression）。evidence = task scope と Risk 分類は本 packet Risk 節、in-scope source docs の特定は Design Sources 節、設計上の未解決問題なし（owner 裁定 2026-08-25 = 改名 + 統合を採用・削除は非採用・配置は `/settings/suppliers` システム管理エリア・schema 追加は updated_at のみ。D-078 として正本化予定）。
 
@@ -34,7 +34,9 @@ state-only 遷移（2026-08-25）: plan-draft -> plan-gate -> plan-approved -> i
 
 state-only 遷移（2026-08-25）: implementing -> local-verified -> independent-review -> human-confirm を単一 state-only commit で実体化（recording compression）。evidence = implementing -> local-verified: content candidate の L1 full CLEAN（上記記録、PR body に SHA 記載）/ local-verified -> independent-review: 独立 Final Reviewer（Sonnet）の Contract Audit 実施 / independent-review -> human-confirm: findings 裁定完了・P1/P2 = 0（P2 2 件は gated amendment 1 で是正済み + delta 再検証 pass）、Reviewed Content HEAD = gated amendment commit を設定。
 
-owner Ready 承認（2026-08-25、介入 2/3）: Draft PR #3 の Human Gate 提示に対し承認。human-confirm -> ready-hosted-final の state-only 遷移（本 commit）を Draft のまま作成し、この exact HEAD で L1 full を再実行して PR body を更新、owner が Ready 化を実施する（hosted CI は Ready event で発火、本 PR は Rust test file を含むため event-filtered ではない）。
+owner Ready 承認（2026-08-25、介入 2/3）: Draft PR #3 の Human Gate 提示に対し承認。human-confirm -> ready-hosted-final の state-only 遷移を Draft のまま作成し、この exact HEAD で L1 full を再実行して PR body を更新、owner が Ready 化を実施した（hosted CI は Ready event で発火、本 PR は Rust test file を含むため event-filtered ではない）。
+
+merge / closeout（2026-08-25）: hosted run success で PR HEAD = L1 evidence SHA = hosted headSha の三点一致成立（run URL / headSha は PR #3 body 正本）。owner merge（merge commit `ff08a6b`、PR #3 @ inventory-system-desktop）。Post-Merge Closeout で packet / Matrix を docs/archive/plans/ へ移動、Phase を archive とし Plans.md を同期。実績 = 介入 2/3・relay 1/2・forward state-only 3/3（すべて予算内）。remote branch `agent/supplier-management-design` の削除と local branch 掃除は owner 端末操作として残置。
 
 ## Owner Effort Budget
 
