@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 47d01a2
@@ -11,7 +11,7 @@
 - Writer: Codex（GPT-5.6 系、発注書駆動）
 - Plan Reviewer: Claude Sonnet 5（独立 fresh context、D-062）
 - Final Reviewer: Claude Sonnet 5（独立 fresh context、worktree 隔離）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: d55f8f2
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: pending = ① human visual confirmation + Windows native L3（差分ダイアログ、fixture 手順は Test Plan 参照）② Ready 承認（Plan Gate 承認は 2026-08-26 完了・介入 1/3）
@@ -276,11 +276,18 @@ Contract ID: SPEC-PRVC
 
 ## Implementation Results
 
-（実装後に記入。exact-HEAD SHA / test 件数は PR body 側に置く — D-035/D-038）
+（exact-HEAD SHA / test 件数は PR body 側に置く — D-035/D-038）
+
+- Codex Writer が発注 1 本・実装 1 commit で完走（fail-closed 停止なし）。BIZ step 10 + CostDiff + ダイアログ component 新設 + ReceivingPage 接続 + 予約 test 全数 + bindings / 90-traceability 再生成。凍結例外 class の実需要は 2 file（`ReceivingPage.suggest.test.tsx` は `createReceiving` result literal 非保持のため追従不要 — Final Review が実読確認）。
+- 記録是正（Final Review P2-1）: idempotent replay の result panel 文言「同じ内容の再送として処理済み」は 61-ui §61.6 の設計契約（2026-07-13 起源）が旧実装では Badge「再送結果」のみで未実装だったものを、本 commit で初実装した。Ledger / Matrix T6 の「既存の replay 表示が維持される」は「設計契約どおりの replay 表示が提示される（本 PR で契約充足）」と読み替える。設計契約自体は 61-ui 正本どおりで逸脱なし。
+- Draft PR: https://github.com/kosei-w90607/inventory-system-desktop/pull/5
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Broad Audit（Final Review Contract Audit 1 pass、2026-08-26）; post-freeze exceptions: none.
+- Final Review（独立 Sonnet、worktree 隔離）: P1 0 / P2 1 / P3 1。AC-1〜AC-8 全再実測 PASS、mutation M1〜M7 独立注入で全件 red → revert 後全緑、oracle 独立性・既存 test 凍結・実装品質 rule 適合を確認。
+- P2-1（replay 文言の監査証跡不正確）: 採用。Coordinator が旧 tree（e96c7b0 時点で exact 文言 0 hit / Badge のみ）と 61-ui §61.6 を独立再確認し、Implementation Results の記録是正で解消（実装は設計契約適合のため code 変更なし）。
+- P3-1（ダイアログ行更新の単一 hook 共有による直列化）: 修正不要で確定。ダイアログ本文「更新する商品を1件ずつ確認してください」（`rg -F "1件ずつ" src/features/receiving/CostDiffDialog.tsx` → L79 hit、2026-08-26 実測）の設計意図どおりの直列処理であり contract violation ではない。記載のみ。
 
 ## 遷移・レビュー記録（append-only）
 
@@ -288,3 +295,4 @@ Contract ID: SPEC-PRVC
 - 2026-08-26 Plan Review round 1（独立 Sonnet fresh context）: P1 0 / P2 2 / P3 1。P2-1 = Matrix T7 の Would-fail-if に oracle 範囲外の直接 invalidate mutant が混在（AC-7 防御へ一本化）、P2-2 = Fact check lens の not applicable 表記が Contract Probe 実施と矛盾（applicable へ是正）、P3-1 = T2 の Would-fail-if に diff=0 入力で検出不能な tolerance 記述（T1/M3 担当へ是正）。3 件とも修正案を採用し plan-gate に留まったまま是正、round 2 は closure 確認。
 - 2026-08-26 Plan Review round 2（独立 Sonnet fresh context、closure 確認）: 是正 3 件すべて適用確認 OK（AC-7 の防御先 = `invalidation-contract.static.test.ts` の直接 invalidate 拒否 static test の実在まで確認済み）、新規 findings なし。P1 0 / P2 0 / P3 0 で rally 収束（round 実績 2 / 天井 3）。owner Plan Gate 承認待ち。
 - 2026-08-26 owner Plan Gate 承認（介入 1/3）。本 state-only commit で plan-gate → plan-approved → implementing の隣接 2 遷移を materialize（evidence: 独立 Plan Reviewer P1/P2 = 0 = round 2 記録、plan-first commit `47d01a2` は全実装 commit に先行、owner 承認 2026-08-26）。`Plan Commit` field を `47d01a2` で確定。以後の実装は Codex 発注（cwd = 本 repo、branch `agent/receiving-cost-diffs`）。
+- 2026-08-26 Codex Writer 実装完了（content candidate = `d55f8f2`、Draft PR #5）。本 state-only commit で implementing → local-verified → independent-review → human-confirm の隣接 3 遷移を materialize。evidence: ① local-verified = L1 `local-ci.sh full` CLEAN（candidate `d55f8f2`、evidence log 末尾 `RESULT=PASS` / `MERGE_EVIDENCE_VALID=true` を Coordinator 実読、PR body に記録）② independent-review = 独立 Sonnet Final Reviewer が worktree 隔離で Contract Audit 実施（Review Response 節）③ human-confirm = findings 裁定完了 P1/P2 = 0（P2-1 は記録是正で解消・code 変更なし、P3-1 は修正不要確定）、`Reviewed Content HEAD` = `d55f8f2` 設定。
