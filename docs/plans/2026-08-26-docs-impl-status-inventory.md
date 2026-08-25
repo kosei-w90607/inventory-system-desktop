@@ -66,8 +66,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 1. `docs/SCREEN_DESIGN.md`: §1 画面表の状態列 8 箇所（「Design Phase 追加」「Phase 4 実装予定」→「実装済み」表記へ統一）+「18 操作ログ」行の「Draft / Phase implementing」残骸 + Phase 4 節（L424 付近）の「v1.0.0 タグ目標」未達列挙を「Phase 4（完了）」実績記録へ改題 + 最終更新ヘッダ。
 2. `docs/FUNCTION_DESIGN.md`: UI-11b/11a/10/11c/13 の「Design Phase 追加済み」10 箇所へ「（実装済み）」を追記（履歴文言は削除しない — 当時の改訂記録として正、実装完了の明示欠落だけを埋める）。
-3. `docs/function-design/52-ui-shared-layout.md`: L161「残り 18 項目（route 未実装、Phase 2 以降で順次 active 化）」と付随する pending 前提の a11y 説明を、実態（navigation 全 24 項目 active・pending 0 件。pending 機構は将来 route 追加時の予備実装）へ修正。L229 の activeMatch 契約行の「残り 18 項目」は実測 21 項目（24 − activeMatch 3）と不一致のため、数値非依存の表現（例:「`activeMatch` を持たない残りの項目」）へ是正する — 挙動契約（既存 `<Link>` 経路の無変更維持）は不変、数値表記のみ。
-4. `docs/function-design/65-inventory-record-traceability.md` L228（1 箇所。L252 は決定 ID 名の参照であり無変更）/ `74-ui-operation-logs.md` L57・L243（2 箇所）: `csv_import` の許可リスト除外理由を「詳細 route が未実装のため」から「詳細 route は実装済み。ただし csv_import 系 `record_type` を書き込む producer が 0 件のため、allow-list への追加は producer 側 record_type 採用（既存 follow-up）と併せて行う」へ差し替え（PR 番号は転記しない）。`stocktake` は「詳細 route 未実装のため除外」のまま維持（実態どおり）。除外契約そのものは不変で、trigger 記述の是正のみ（この点は Review Focus で確認）。`66-ui-stock-movements.md` は csv_import 固有記述が存在しない（rg 0 hit 実測）ため編集対象外 — L67 の UI-06c-D7「元記録 route がまだ未実装でも…」は csv_import / stocktake 双方に適用される汎用契約であり無編集維持。
+3. `docs/function-design/52-ui-shared-layout.md`: L161「残り 18 項目（route 未実装、Phase 2 以降で順次 active 化）」と付随する pending 前提の a11y 説明を、実態（navigation 全 22 項目 active・pending 0 件。pending 機構は将来 route 追加時の予備実装）へ修正。L229 の activeMatch 契約行の「残り 18 項目」は実測 20 項目（22 − activeMatch 2）と不一致のため、数値非依存の表現（例:「`activeMatch` を持たない残りの項目」）へ是正する — 挙動契約（既存 `<Link>` 経路の無変更維持）は不変、数値表記のみ。
+4. `docs/function-design/65-inventory-record-traceability.md` L228（1 箇所。L252 は決定 ID 名の参照であり無変更）/ `74-ui-operation-logs.md` L57・L243・L564（3 箇所。L564 は §74.16 非目的表の row で、csv_import / stocktake の両 route を「未実装」と束ねているため csv_import 側だけ実態へ分離する）: `csv_import` の許可リスト除外理由を「詳細 route が未実装のため」から「詳細 route は実装済み。ただし csv_import 系 `record_type` を書き込む producer が 0 件のため、allow-list への追加は producer 側 record_type 採用（既存 follow-up）と併せて行う」へ差し替え（PR 番号は転記しない）。`stocktake` は「詳細 route 未実装のため除外」のまま維持（実態どおり）。除外契約そのものは不変で、trigger 記述の是正のみ（この点は Review Focus で確認）。`66-ui-stock-movements.md` は csv_import 固有記述が存在しない（rg 0 hit 実測）ため編集対象外 — L67 の UI-06c-D7「元記録 route がまだ未実装でも…」は csv_import / stocktake 双方に適用される汎用契約であり無編集維持。
 5. `docs/function-design/68-ui-backup-restore.md`: `checkAutoBackup` 60 秒 interval の「frontend 未実装」2 箇所 → 実装済み（`BackupRestorePage.tsx` の interval + invalidate + toast）の契約説明へ更新。
 6. `docs/spec/requirements.md`: REQ-206 / REQ-207 の coverage を `deferred` → `required` へ昇格。REQ-208 は `deferred` 維持（理由 = 取消・訂正は未実装・test 0 件、実査で確定）。あわせて L51 の脚注「REQ-206〜208 は実装着手まで `coverage=deferred` とする。」を「REQ-208 は実装着手まで `coverage=deferred` とする。」へ書き換える（表本体との新規矛盾を作らないため）。
 7. `docs/function-design/90-traceability.md`: `cargo run --bin generate_traceability` で再生成（coverage 変更の追随、同 commit）。
@@ -86,7 +86,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - AC-1: `rg -c -F "Phase 4 実装予定" docs/SCREEN_DESIGN.md` と `rg -c -F "Design Phase 追加" docs/SCREEN_DESIGN.md` がともに file 全体で 0（実査で全 hit が §1 表・L5 ヘッダ・Phase 4 節の編集対象内にあることを確認済み。免除枠なしの完全一致 oracle）。
 - AC-2: `rg -c -F "route 未実装、Phase 2 以降で順次 active 化" docs/function-design/52-ui-shared-layout.md` が 0（編集前 1）かつ `rg -c -F "残り 18 項目" docs/function-design/52-ui-shared-layout.md` が 0（編集前 2 — L161 は実態修正、L229 は数値非依存化で解消。文言は半角スペース入り「残り 18 項目」が正 — スペース抜き「残り18項目」は 0 hit の別文字列）。
 - AC-3: `rg -c -F "未実装" docs/function-design/68-ui-backup-restore.md` が 0。
-- AC-4: 65 / 74 の 2 doc（65 L228 / 74 L57・L243）で、csv_import を「詳細 route が未実装」とする旧理由文言が 0 hit、新理由（producer record_type 0 件由来）文言が各該当箇所に存在（対 oracle: 新 ≥1 / 旧 0）。stocktake の「詳細 route 未実装のため除外」記述は維持。`66-ui-stock-movements.md` は `git diff` 無変更。
+- AC-4: 65 / 74 の 2 doc（65 L228 / 74 L57・L243・L564）で、csv_import を「詳細 route が未実装」とする旧理由文言が 0 hit（L564 の非目的表 row を含む — `rg -n "csv-import/records" docs/function-design/74-ui-operation-logs.md` の各 hit 行で csv_import が未実装主張されていないこと）、新理由（producer record_type 0 件由来）文言が各該当箇所に存在（対 oracle: 新 ≥1 / 旧 0）。stocktake の「詳細 route 未実装のため除外」記述は維持。`66-ui-stock-movements.md` は `git diff` 無変更。
 - AC-5: `docs/spec/requirements.md` の REQ-206 / REQ-207 行が `required`、REQ-208 行が `deferred`（rg で 3 行を提示）、かつ L51 脚注が「REQ-208 は実装着手まで `coverage=deferred` とする。」であること（旧文言「REQ-206〜208 は…」は 0 hit）。
 - AC-6: `cd src-tauri && cargo run --bin generate_traceability -- --check` PASS（T1 drift 0、REQ-206 / REQ-207 の T3 WARN 非出現、REQ-208 は deferred のため T3 対象外のまま）。
 - AC-7: `bash scripts/doc-consistency-check.sh` ERROR 0 かつ新規 WARN 0（起草時 baseline は WARN 5 件 — 2026-08-26 実測、いずれも本 change 非関連の既存）。
@@ -150,7 +150,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 ## Design Readiness
 
-- Existing design docs are sufficient because: 本 change は設計の新設・改訂ではなく、実装状況の表記を実態（navigation active 全 20 項目 / routes 実在 / traceability covered）に同期させる整理。挙動契約の文言は無改変。
+- Existing design docs are sufficient because: 本 change は設計の新設・改訂ではなく、実装状況の表記を実態（navigation active 全 22 項目 / routes 実在 / traceability covered）に同期させる整理。挙動契約の文言は無改変。
 - Source docs updated in this PR: Scope 1〜6 の表記のみ。
 - Design gaps intentionally deferred: 在庫照会 disabled CTA（SPEC-DSI-D4、backlog）/ stocktake 詳細 route（実態どおり未実装のまま記載維持）/ REQ-208。
 - Durable decisions discovered in this plan and promoted to source docs: なし。
@@ -159,7 +159,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 （R2 のため必須ではないが、実査の観測事実を記録する。いずれも 2026-08-26 実測）
 
-- navigation 全項目 active: `src/config/navigation.ts` の `status:` 24 項目すべて `"active"`、pending 0 件、`activeMatch` 保持 3 項目（`rg -c` 2026-08-26 実測。実査 agent 報告の「20 項目」は誤カウントで Coordinator 再実測により是正）。
+- navigation 全項目 active: nav item は 22 項目すべて `"active"`・pending 0 件・`activeMatch` 保持 2 項目（`rg -c 'status: "active"' src/config/navigation.ts` = 22、activeMatch の item 使用 = L91/L203 の 2 箇所、file 自身の comment L54「4 エリア × 22 項目」とも一致。2026-08-26 構造カウントで実測 — 実査 agent の「20」と round 1 是正の「24」は、型定義行と `search.status` field を含む naive `rg -c 'status:'` の誤カウントだった）。
 - csv_import 詳細 route 実在: `src/routes/csv-import.records.$importId.tsx`（PR #58）。stocktake 詳細 route 不在。
 - `checkAutoBackup` interval 実装済み: `BackupRestorePage.tsx` L169-183。
 - REQ-206/207/208 の test 参照: 12 file / 4 file / 0 file（SPEC-DSI-D1/D2 の実測コマンド参照）。
@@ -229,3 +229,4 @@ Contract ID: SPEC-DSI
 
 - 2026-08-26: kickoff → spec-check（task scoped: Plans.md「次の行動」docs 棚卸し entry、owner 選定 2026-08-26。Risk R2 判定・記録）→ plan-draft（唯一許可の skip: Design Readiness — 設計新設なしの表記整理で既存正本が十分）→ plan-gate（packet を plan-first commit として本 commit で commit。Test Matrix は R2 optional 判定で省略）。本 commit がこの隣接 3 遷移を materialize する（recording compression、evidence は本 packet の該当節）。
 - 2026-08-26 Plan Review round 1（独立 Sonnet fresh context）: P1 4 / P2 2 / P3 2。P1-1 = AC-2 のリテラル半角スペース抜けで vacuous pass（実文言は「残り 18 項目」）、P1-2 = requirements.md L51 脚注の書換え漏れで新規矛盾を作る構図、P1-3 = 66-ui に csv_import 記述が存在しない（Scope 対象誤り）、P1-4 = PR 番号転記の自己矛盾（Scope 4 の「PR #58」vs 表記規約）。P2 = AC-1 の実在しない免除節 / 58-ui 行番号誤り。P3 = Hosted CI 判定根拠の明示 / 65 L252 の無変更明記。全件採用のうえ Coordinator が再実測し、追加是正 2 件を実施: L229「残り 18 項目」は activeMatch 契約の数値も実測 21 で stale（数値非依存化を Scope 3 へ）/ Contract Probe の navigation「20 項目」は誤カウント（実測 24、activeMatch 3）。plan-gate に留まったまま是正、round 2 は closure 確認。
+- 2026-08-26 Plan Review round 2（独立 Sonnet fresh context）: round 1 是正 7 点は全適用 OK。新規 P1 2 / P2 1 — いずれも round 1 是正が同一欠陥 class を再生産した指摘: P1-1 = navigation 項目数「24」も naive `rg -c 'status:'` の誤カウント（型定義行 + `search.status` 混入）で真値 22・activeMatch 2（file comment L54 と構造カウントで Coordinator 三たび実測し確定）、P1-2 = 74-ui L564 非目的表の csv_import「未実装」主張が Scope 4 の列挙漏れ、P2-1 = Design Readiness の「20 項目」残存（packet 内 20/24 併存）。全件採用し packet 内の数値を 22 / activeMatch 2 へ全数統一 + Scope 4 / AC-4 へ L564 追加。round 3 は closure 確認（天井 3 到達）。
