@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: c4e23ce
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: 5aad8f5
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending = Ready 承認のみ（Plan Gate 承認は 2026-08-26 完了・介入 1/2。操作画面の挙動変更なしのため human visual confirmation は非該当）
+- Human Gate: none（Plan Gate 承認 = 介入 1/2、Ready 承認 = 介入 2/2、いずれも 2026-08-26 完了。残る owner 操作は merge のみ）
 
 Hosted CI 判定根拠: ci.md の R2 行「source contract 影響がある場合だけ必須」— 「source contract」に設計書 prose を含むかの明文定義は repo になく、本 change が設計正本（SCREEN_DESIGN / function-design 4 doc / spec/requirements.md）+ traceability gate 入力（coverage 列）を編集することから **required は安全側の Coordinator 判断**である。docs-only は `paths-ignore` で Ready event の自動 run が発生しないため、owner Ready 後の `workflow_dispatch` で 1 run を取得する（rehome PR #1 @ inventory-system-desktop と同型の経路）。
 
@@ -253,3 +253,4 @@ Contract ID: SPEC-DSI
 - 2026-08-26 Codex Writer 実装完了（content candidate = `e991fc0`、Draft PR #6）→ 独立 Sonnet Final Review Contract Audit: AC 再実測 8 PASS / AC-8 FAIL、hunk 全数突合（挙動契約無改変・履歴保全・PR 番号非転記・dated block 無編集・REQ-208 等の誤実装済み化なしを確認）、P1 1 / P2 1。裁定: **P1-1 採用** = SCREEN_DESIGN L42/L426 の「Q40 障害時対応を含む」は完了主張への overclaim（旧文言は「合わせて具体化」の計画形。75-ui L199「Q40 の全アプリ共通 Error Boundary は本 scope 外」と ARCHITECTURE L275 に矛盾）→ Coordinator が画面固有 CmdError/retry のみの表現へ是正（軽微 2 行、Z004 Amendment 4 先例の Coordinator/Writer 兼務 + 独立再検証で自己承認回避）。**P2-1 採用** = AC-8 の Plans.md 要求は継続発注書の指示（Writer diff = docs 10 点のみ）と不整合 — Coordinator の packet 追随漏れが原因、gated amendment 3 で AC-8 を是正。amendment 3 SHA は次 commit で `Amendments` 行へ追記。是正 delta は fresh context で独立再検証する。
 - 2026-08-26 是正 delta 独立再検証（fresh Sonnet、narrow）: **approved**（P1 0 / P2 0 / P3 1）。Q40 是正 2 行は 75-ui L199 / ARCHITECTURE L275 と整合・新規 overclaim なし、AC-1 / AC-9(a) 維持、amendment 3 は AC-8 行のみの宣言範囲内、content diff は Scope の docs 10 点に一致、Q40 類似 overclaim の残存なし。P3 = PROJECT_HANDOFF L310 の Q40 latent stale（main 由来の既存・本 change の diff 外）→ Post-Merge Closeout の PROJECT_HANDOFF 同期で扱う。
 - 2026-08-26 本 state-only commit で implementing → local-verified → independent-review → human-confirm の隣接 3 遷移を materialize。evidence: ① local-verified = L1 `local-ci.sh full` CLEAN（candidate `b392118`、evidence log 末尾 `RESULT=PASS` / `MERGE_EVIDENCE_VALID=true` を Coordinator 実読、PR body に記録）② independent-review = 独立 Sonnet Final Review Contract Audit + 是正 delta 再検証 ③ human-confirm = findings 裁定完了 P1/P2 = 0（P1-1 是正済み・P2-1 amendment 3 で解消）、`Reviewed Content HEAD` = `5aad8f5`（最終 content 是正 commit）。
+- 2026-08-26 owner Ready 承認（介入 2/2、明示承認。Ready 遷移実行は Coordinator へ委任）。本 state-only commit で human-confirm → ready-hosted-final を materialize。以後: 本 commit を含む exact HEAD で L1 full → PR body 鮮度更新 → Ready 化 → docs-only paths-ignore につき同一 HEAD の自動 run 0 件を確認して `workflow_dispatch` → 三点一致確認 → owner merge。
