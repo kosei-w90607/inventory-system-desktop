@@ -87,6 +87,22 @@ pub struct PriceRevisionResult {
     pub supplier_assigned: bool,
 }
 
+/// 取引先統合で付け替えた参照件数。
+#[derive(Debug, serde::Serialize, specta::Type)]
+pub struct SupplierMergeResult {
+    pub products_updated: i64,
+    pub receiving_records_updated: i64,
+}
+
+/// UI-15 一覧用の取引先と利用件数。
+#[derive(Debug, serde::Serialize, specta::Type)]
+pub struct SupplierWithUsage {
+    pub id: i64,
+    pub name: String,
+    pub product_count: i64,
+    pub receiving_record_count: i64,
+}
+
 fn deserialize_nullable_update_field<'de, D, T>(
     deserializer: D,
 ) -> Result<Option<Option<T>>, D::Error>
@@ -667,6 +683,122 @@ pub fn create_supplier(
         ));
     }
     product_repo::find_or_create_supplier(conn, trimmed).map_err(BizError::from)
+}
+
+/// 取引先名を改名し、同一 transaction で監査ログを記録する。
+pub fn rename_supplier(
+    conn: &mut DbConnection,
+    supplier_id: i64,
+    name: String,
+) -> Result<product_repo::Supplier, BizError> {
+    let existing = product_repo::find_supplier_by_id(conn, supplier_id)?
+        .ok_or_else(|| BizError::NotFound("取引先が見つかりません".to_string()))?;
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(BizError::ValidationFailed(
+            "取引先名を入力してください".to_string(),
+        ));
+    }
+    if trimmed == existing.name {
+        return Ok(existing);
+    }
+    if product_repo::list_suppliers(conn)?
+        .iter()
+        .any(|supplier| supplier.id != supplier_id && supplier.name == trimmed)
+    {
+        return Err(BizError::ValidationFailed(
+            "同じ名前の取引先があります。重複している場合は「統合」を使ってください。".to_string(),
+        ));
+    }
+
+    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+    let tx = conn
+        .transaction()
+        .map_err(|error| BizError::DatabaseError(DbError::from(error)))?;
+    let renamed = match product_repo::rename_supplier(&tx, supplier_id, trimmed, &now) {
+        Ok(supplier) => supplier,
+        Err(DbError::DuplicateKey(_)) => {
+            return Err(BizError::ValidationFailed(
+                "同じ名前の取引先があります。重複している場合は「統合」を使ってください。"
+                    .to_string(),
+            ))
+        }
+        Err(error) => return Err(BizError::from(error)),
+    };
+    let detail = serde_json::json!({
+        "supplier_id": supplier_id,
+        "old_name": existing.name,
+        "new_name": renamed.name,
+    });
+    system_repo::insert_operation_log(
+        &tx,
+        &NewOperationLog {
+            operation_type: "supplier_rename".to_string(),
+            summary: format!("取引先名を変更しました: {}", supplier_id),
+            detail_json: Some(detail.to_string()),
+        },
+    )?;
+    tx.commit()
+        .map_err(|error| BizError::DatabaseError(DbError::from(error)))?;
+    Ok(renamed)
+}
+
+/// 重複した取引先を残す側へ統合し、同一 transaction で監査ログを記録する。
+pub fn merge_suppliers(
+    conn: &mut DbConnection,
+    source_id: i64,
+    target_id: i64,
+) -> Result<SupplierMergeResult, BizError> {
+    if source_id == target_id {
+        return Err(BizError::ValidationFailed(
+            "同じ取引先同士は統合できません".to_string(),
+        ));
+    }
+    let source = product_repo::find_supplier_by_id(conn, source_id)?
+        .ok_or_else(|| BizError::NotFound("統合元の取引先が見つかりません".to_string()))?;
+    let target = product_repo::find_supplier_by_id(conn, target_id)?
+        .ok_or_else(|| BizError::NotFound("統合先の取引先が見つかりません".to_string()))?;
+
+    let tx = conn
+        .transaction()
+        .map_err(|error| BizError::DatabaseError(DbError::from(error)))?;
+    let (products_updated, receiving_records_updated) =
+        product_repo::merge_suppliers(&tx, source_id, target_id)?;
+    let detail = serde_json::json!({
+        "source_id": source.id,
+        "source_name": source.name,
+        "target_id": target.id,
+        "target_name": target.name,
+        "products_updated": products_updated,
+        "receiving_records_updated": receiving_records_updated,
+    });
+    system_repo::insert_operation_log(
+        &tx,
+        &NewOperationLog {
+            operation_type: "supplier_merge".to_string(),
+            summary: format!("取引先を統合しました: {} -> {}", source_id, target_id),
+            detail_json: Some(detail.to_string()),
+        },
+    )?;
+    tx.commit()
+        .map_err(|error| BizError::DatabaseError(DbError::from(error)))?;
+    Ok(SupplierMergeResult {
+        products_updated,
+        receiving_records_updated,
+    })
+}
+
+/// 取引先全件を利用件数付きで name 昇順に返す。
+pub fn list_suppliers_with_usage(conn: &DbConnection) -> Result<Vec<SupplierWithUsage>, BizError> {
+    Ok(product_repo::list_suppliers_with_usage(conn)?
+        .into_iter()
+        .map(|row| SupplierWithUsage {
+            id: row.supplier.id,
+            name: row.supplier.name,
+            product_count: row.product_count,
+            receiving_record_count: row.receiving_record_count,
+        })
+        .collect())
 }
 
 /// 商品の価格履歴を新しい順で取得する。
@@ -1271,6 +1403,47 @@ mod tests {
         let db_path = dir.path().join("test.db");
         let conn = init_database(db_path.to_str().unwrap()).unwrap();
         (dir, conn)
+    }
+
+    fn seed_named_supplier(conn: &DbConnection, name: &str) -> i64 {
+        product_repo::find_or_create_supplier(conn, name)
+            .unwrap()
+            .id
+    }
+
+    fn seed_supplier_product(conn: &DbConnection, code: &str, supplier_id: i64) {
+        product_repo::insert_product(
+            conn,
+            &NewProduct {
+                product_code: code.to_string(),
+                jan_code: None,
+                name: format!("テスト商品{code}"),
+                department_id: 1,
+                supplier_id: Some(supplier_id),
+                selling_price: 500,
+                cost_price: 300,
+                tax_rate: "10".to_string(),
+                maker_code: None,
+                stock_quantity: 0,
+                stock_unit: "pcs".to_string(),
+                is_discontinued: false,
+                plu_dirty: true,
+                plu_exported_at: None,
+                plu_target: true,
+                pos_stock_sync: true,
+            },
+        )
+        .unwrap();
+    }
+
+    fn seed_supplier_receiving(conn: &DbConnection, key: &str, supplier_id: i64) {
+        conn.execute(
+            "INSERT INTO receiving_records
+             (supplier_id,receiving_date,note,idempotency_key,request_fingerprint,created_at)
+             VALUES(?1,'2026-08-25',NULL,?2,?2,'2026-08-25T10:00:00')",
+            rusqlite::params![supplier_id, key],
+        )
+        .unwrap();
     }
 
     fn synthetic_ean13_req907(data: u64) -> String {
@@ -3521,5 +3694,317 @@ mod tests {
         let second = create_supplier(&conn, " 合成取引先 ".to_string()).unwrap();
         assert_eq!(first.id, second.id);
         assert_eq!(product_repo::list_suppliers(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_rename_supplier_trims_and_rejects_empty() {
+        let (_dir, mut conn) = setup_test_db();
+        let supplier_id = seed_named_supplier(&conn, "旧取引先");
+        let renamed = rename_supplier(&mut conn, supplier_id, "  新  ".to_string()).unwrap();
+        assert_eq!(renamed.name, "新");
+        assert!(matches!(
+            rename_supplier(&mut conn, supplier_id, "   ".to_string()),
+            Err(BizError::ValidationFailed(_))
+        ));
+    }
+
+    #[test]
+    fn test_rename_supplier_conflict_returns_validation() {
+        let (_dir, mut conn) = setup_test_db();
+        let source_id = seed_named_supplier(&conn, "変更元");
+        seed_named_supplier(&conn, "既存取引先");
+        assert!(matches!(
+            rename_supplier(&mut conn, source_id, "既存取引先".to_string()),
+            Err(BizError::ValidationFailed(_))
+        ));
+    }
+
+    #[test]
+    fn test_rename_supplier_same_name_noop() {
+        let (_dir, mut conn) = setup_test_db();
+        let supplier_id = seed_named_supplier(&conn, "同値取引先");
+        conn.execute(
+            "UPDATE suppliers SET updated_at='2026-08-01T00:00:00' WHERE id=?1",
+            [supplier_id],
+        )
+        .unwrap();
+        let before_logs: i64 = conn
+            .query_row("SELECT COUNT(*) FROM operation_logs", [], |row| row.get(0))
+            .unwrap();
+        let result = rename_supplier(&mut conn, supplier_id, " 同値取引先 ".to_string()).unwrap();
+        let updated_at: Option<String> = conn
+            .query_row(
+                "SELECT updated_at FROM suppliers WHERE id=?1",
+                [supplier_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let after_logs: i64 = conn
+            .query_row("SELECT COUNT(*) FROM operation_logs", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(result.name, "同値取引先");
+        assert_eq!(updated_at.as_deref(), Some("2026-08-01T00:00:00"));
+        assert_eq!(after_logs, before_logs);
+    }
+
+    #[test]
+    fn test_rename_supplier_updates_updated_at_and_logs() {
+        let (_dir, mut conn) = setup_test_db();
+        let supplier_id = seed_named_supplier(&conn, "改名前");
+        conn.execute(
+            "UPDATE suppliers SET updated_at='2000-01-01T00:00:00' WHERE id=?1",
+            [supplier_id],
+        )
+        .unwrap();
+        let renamed = rename_supplier(&mut conn, supplier_id, "改名後".to_string()).unwrap();
+        let (updated_at, operation_type, detail): (Option<String>, String, String) = conn
+            .query_row(
+                "SELECT s.updated_at,l.operation_type,l.detail_json
+                 FROM suppliers s CROSS JOIN operation_logs l
+                 WHERE s.id=?1 ORDER BY l.id DESC LIMIT 1",
+                [supplier_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(renamed.name, "改名後");
+        assert_ne!(updated_at.as_deref(), Some("2000-01-01T00:00:00"));
+        assert_eq!(operation_type, "supplier_rename");
+        assert!(detail.contains(&supplier_id.to_string()));
+        assert!(detail.contains("改名前"));
+        assert!(detail.contains("改名後"));
+        assert!(matches!(
+            rename_supplier(&mut conn, 999_999, "不存在".to_string()),
+            Err(BizError::NotFound(_))
+        ));
+
+        let (_rollback_dir, mut rollback_conn) = setup_test_db();
+        let rollback_supplier_id = seed_named_supplier(&rollback_conn, "ログ失敗改名前");
+        rollback_conn
+            .execute(
+                "UPDATE suppliers SET updated_at='2001-01-01T00:00:00' WHERE id=?1",
+                [rollback_supplier_id],
+            )
+            .unwrap();
+        rollback_conn
+            .execute_batch(
+                "CREATE TRIGGER fail_supplier_rename_log
+                 BEFORE INSERT ON operation_logs
+                 BEGIN SELECT RAISE(ABORT, 'synthetic operation log failure'); END;",
+            )
+            .unwrap();
+        assert!(rename_supplier(
+            &mut rollback_conn,
+            rollback_supplier_id,
+            "ログ失敗改名後".to_string()
+        )
+        .is_err());
+        let (name, updated_at): (String, Option<String>) = rollback_conn
+            .query_row(
+                "SELECT name,updated_at FROM suppliers WHERE id=?1",
+                [rollback_supplier_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        let log_count: i64 = rollback_conn
+            .query_row(
+                "SELECT COUNT(*) FROM operation_logs WHERE operation_type='supplier_rename'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(name, "ログ失敗改名前");
+        assert_eq!(updated_at.as_deref(), Some("2001-01-01T00:00:00"));
+        assert_eq!(log_count, 0);
+    }
+
+    #[test]
+    fn test_merge_suppliers_repoints_products_and_receiving_records_then_deletes() {
+        let (_dir, mut conn) = setup_test_db();
+        let source_id = seed_named_supplier(&conn, "統合元");
+        let target_id = seed_named_supplier(&conn, "統合先");
+        seed_supplier_product(&conn, "MERGE-S1", source_id);
+        seed_supplier_product(&conn, "MERGE-S2", source_id);
+        seed_supplier_product(&conn, "MERGE-T1", target_id);
+        seed_supplier_receiving(&conn, "merge-receiving", source_id);
+
+        let result = merge_suppliers(&mut conn, source_id, target_id).unwrap();
+        let source_products: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM products WHERE supplier_id=?1",
+                [source_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let target_products: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM products WHERE supplier_id=?1",
+                [target_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let source_receivings: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM receiving_records WHERE supplier_id=?1",
+                [source_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let target_receivings: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM receiving_records WHERE supplier_id=?1",
+                [target_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            (result.products_updated, result.receiving_records_updated),
+            (2, 1)
+        );
+        assert_eq!((source_products, target_products), (0, 3));
+        assert_eq!((source_receivings, target_receivings), (0, 1));
+        assert!(product_repo::find_supplier_by_id(&conn, source_id)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn test_merge_suppliers_rejects_same_id() {
+        let (_dir, mut conn) = setup_test_db();
+        let supplier_id = seed_named_supplier(&conn, "自己統合不可");
+        assert!(matches!(
+            merge_suppliers(&mut conn, supplier_id, supplier_id),
+            Err(BizError::ValidationFailed(_))
+        ));
+        assert!(product_repo::find_supplier_by_id(&conn, supplier_id)
+            .unwrap()
+            .is_some());
+    }
+
+    #[test]
+    fn test_merge_suppliers_not_found() {
+        let (_dir, mut conn) = setup_test_db();
+        let source_id = seed_named_supplier(&conn, "再実行元");
+        let target_id = seed_named_supplier(&conn, "再実行先");
+        assert!(matches!(
+            merge_suppliers(&mut conn, 999_999, target_id),
+            Err(BizError::NotFound(_))
+        ));
+        assert!(matches!(
+            merge_suppliers(&mut conn, source_id, 999_999),
+            Err(BizError::NotFound(_))
+        ));
+        merge_suppliers(&mut conn, source_id, target_id).unwrap();
+        assert!(matches!(
+            merge_suppliers(&mut conn, source_id, target_id),
+            Err(BizError::NotFound(_))
+        ));
+    }
+
+    #[test]
+    fn test_merge_suppliers_single_tx_rollback_on_failure() {
+        let (_dir, mut conn) = setup_test_db();
+        let source_id = seed_named_supplier(&conn, "失敗統合元");
+        let target_id = seed_named_supplier(&conn, "失敗統合先");
+        seed_supplier_product(&conn, "ROLLBACK-S1", source_id);
+        seed_supplier_receiving(&conn, "rollback-receiving", source_id);
+        conn.execute_batch(
+            "CREATE TRIGGER fail_supplier_merge_receiving
+             BEFORE UPDATE OF supplier_id ON receiving_records
+             BEGIN SELECT RAISE(ABORT, 'synthetic merge failure'); END;",
+        )
+        .unwrap();
+
+        assert!(merge_suppliers(&mut conn, source_id, target_id).is_err());
+        let source_products: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM products WHERE supplier_id=?1",
+                [source_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let source_receivings: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM receiving_records WHERE supplier_id=?1",
+                [source_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let logs: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM operation_logs WHERE operation_type='supplier_merge'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!((source_products, source_receivings, logs), (1, 1, 0));
+        assert!(product_repo::find_supplier_by_id(&conn, source_id)
+            .unwrap()
+            .is_some());
+
+        let (_log_dir, mut log_conn) = setup_test_db();
+        let log_source_id = seed_named_supplier(&log_conn, "ログ失敗統合元");
+        let log_target_id = seed_named_supplier(&log_conn, "ログ失敗統合先");
+        seed_supplier_product(&log_conn, "LOG-ROLLBACK-S1", log_source_id);
+        seed_supplier_receiving(&log_conn, "log-rollback-receiving", log_source_id);
+        log_conn
+            .execute_batch(
+                "CREATE TRIGGER fail_supplier_merge_log
+                 BEFORE INSERT ON operation_logs
+                 BEGIN SELECT RAISE(ABORT, 'synthetic operation log failure'); END;",
+            )
+            .unwrap();
+        assert!(merge_suppliers(&mut log_conn, log_source_id, log_target_id).is_err());
+        let source_products: i64 = log_conn
+            .query_row(
+                "SELECT COUNT(*) FROM products WHERE supplier_id=?1",
+                [log_source_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let source_receivings: i64 = log_conn
+            .query_row(
+                "SELECT COUNT(*) FROM receiving_records WHERE supplier_id=?1",
+                [log_source_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let log_count: i64 = log_conn
+            .query_row(
+                "SELECT COUNT(*) FROM operation_logs WHERE operation_type='supplier_merge'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!((source_products, source_receivings, log_count), (1, 1, 0));
+        assert!(product_repo::find_supplier_by_id(&log_conn, log_source_id)
+            .unwrap()
+            .is_some());
+    }
+
+    #[test]
+    fn test_merge_suppliers_writes_operation_log() {
+        let (_dir, mut conn) = setup_test_db();
+        let source_id = seed_named_supplier(&conn, "監査統合元");
+        let target_id = seed_named_supplier(&conn, "監査統合先");
+        seed_supplier_product(&conn, "AUDIT-S1", source_id);
+        seed_supplier_product(&conn, "AUDIT-S2", source_id);
+        seed_supplier_receiving(&conn, "audit-receiving", source_id);
+        merge_suppliers(&mut conn, source_id, target_id).unwrap();
+
+        let (operation_type, detail): (String, String) = conn
+            .query_row(
+                "SELECT operation_type,detail_json FROM operation_logs ORDER BY id DESC LIMIT 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(operation_type, "supplier_merge");
+        let detail: serde_json::Value = serde_json::from_str(&detail).unwrap();
+        assert_eq!(detail["source_id"], source_id);
+        assert_eq!(detail["source_name"], "監査統合元");
+        assert_eq!(detail["target_id"], target_id);
+        assert_eq!(detail["target_name"], "監査統合先");
+        assert_eq!(detail["products_updated"], 2);
+        assert_eq!(detail["receiving_records_updated"], 1);
     }
 }

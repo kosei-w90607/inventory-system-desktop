@@ -195,6 +195,14 @@ pub struct Supplier {
     pub created_at: String,
 }
 
+/// UI-15 一覧用の IO 内部行。wire DTO への変換は BIZ-01 が所有する。
+#[derive(Debug)]
+pub(crate) struct SupplierUsageRow {
+    pub supplier: Supplier,
+    pub product_count: i64,
+    pub receiving_record_count: i64,
+}
+
 /// 価格履歴INSERT用
 ///
 /// 20-io-product-repo.md §2.6
@@ -496,6 +504,69 @@ pub fn find_supplier_by_id(conn: &DbConnection, id: i64) -> Result<Option<Suppli
         })),
         None => Ok(None),
     }
+}
+
+/// BIZ で検証済みの取引先名へ改名する。
+pub fn rename_supplier(
+    conn: &DbConnection,
+    supplier_id: i64,
+    name: &str,
+    updated_at: &str,
+) -> Result<Supplier, DbError> {
+    let updated = conn.execute(
+        "UPDATE suppliers SET name=?1,updated_at=?2 WHERE id=?3",
+        rusqlite::params![name, updated_at, supplier_id],
+    )?;
+    if updated == 0 {
+        return Err(DbError::NotFound);
+    }
+    find_supplier_by_id(conn, supplier_id)?.ok_or(DbError::NotFound)
+}
+
+/// source の全参照を target へ付け替え、source を削除する。
+pub fn merge_suppliers(
+    conn: &DbConnection,
+    source_id: i64,
+    target_id: i64,
+) -> Result<(i64, i64), DbError> {
+    let products_updated = conn.execute(
+        "UPDATE products SET supplier_id=?1 WHERE supplier_id=?2",
+        rusqlite::params![target_id, source_id],
+    )? as i64;
+    let receiving_records_updated = conn.execute(
+        "UPDATE receiving_records SET supplier_id=?1 WHERE supplier_id=?2",
+        rusqlite::params![target_id, source_id],
+    )? as i64;
+    let deleted = conn.execute("DELETE FROM suppliers WHERE id=?1", [source_id])?;
+    if deleted == 0 {
+        return Err(DbError::NotFound);
+    }
+    Ok((products_updated, receiving_records_updated))
+}
+
+/// 取引先全件を商品・入庫記録の独立件数付きで name 昇順に返す。
+pub(crate) fn list_suppliers_with_usage(
+    conn: &DbConnection,
+) -> Result<Vec<SupplierUsageRow>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT s.id,s.name,s.created_at,
+                (SELECT COUNT(*) FROM products p WHERE p.supplier_id=s.id),
+                (SELECT COUNT(*) FROM receiving_records r WHERE r.supplier_id=s.id)
+         FROM suppliers s
+         ORDER BY s.name ASC",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok(SupplierUsageRow {
+            supplier: Supplier {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                created_at: row.get(2)?,
+            },
+            product_count: row.get(3)?,
+            receiving_record_count: row.get(4)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
 // ---------------------------------------------------------------------------
@@ -1318,6 +1389,54 @@ mod tests {
 
         let suppliers = list_suppliers(&conn).unwrap();
         assert_eq!(suppliers.len(), 1, "重複作成されていないこと");
+    }
+
+    #[test]
+    fn test_list_suppliers_with_usage_counts() {
+        // REQ-107 / SPEC-SUP-D8: 2 参照表を独立集約し、0 件を含め name 昇順で返す。
+        let (_dir, conn) = setup_test_db();
+        let supplier_a = find_or_create_supplier(&conn, "あ取引先").unwrap().id;
+        let supplier_b = find_or_create_supplier(&conn, "か取引先").unwrap().id;
+        find_or_create_supplier(&conn, "さ取引先").unwrap();
+
+        for (code, supplier_id) in [
+            ("SUP-A-1", supplier_a),
+            ("SUP-A-2", supplier_a),
+            ("SUP-B-1", supplier_b),
+        ] {
+            let mut product = create_test_product(code, "テスト商品", 1);
+            product.supplier_id = Some(supplier_id);
+            insert_product(&conn, &product).unwrap();
+        }
+        for (key, supplier_id) in [("usage-a-1", supplier_a), ("usage-a-2", supplier_a)] {
+            conn.execute(
+                "INSERT INTO receiving_records
+                 (supplier_id,receiving_date,note,idempotency_key,request_fingerprint,created_at)
+                 VALUES(?1,'2026-08-25',NULL,?2,?2,'2026-08-25T10:00:00')",
+                rusqlite::params![supplier_id, key],
+            )
+            .unwrap();
+        }
+
+        let rows = list_suppliers_with_usage(&conn).unwrap();
+        let actual: Vec<_> = rows
+            .into_iter()
+            .map(|row| {
+                (
+                    row.supplier.name,
+                    row.product_count,
+                    row.receiving_record_count,
+                )
+            })
+            .collect();
+        assert_eq!(
+            actual,
+            vec![
+                ("あ取引先".to_string(), 2, 2),
+                ("か取引先".to_string(), 1, 0),
+                ("さ取引先".to_string(), 0, 0),
+            ]
+        );
     }
 
     // ===== FUNC-2.3: Product CRUDテスト =====

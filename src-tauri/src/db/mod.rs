@@ -24,6 +24,7 @@ mod schema_v2;
 mod schema_v3;
 mod schema_v4;
 mod schema_v5;
+mod schema_v6;
 
 #[cfg(test)]
 pub(crate) mod test_support;

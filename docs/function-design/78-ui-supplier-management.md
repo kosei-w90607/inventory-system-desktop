@@ -119,12 +119,11 @@ usage 件数は `N件` と単位を付けて表示する。0 件も `0件` と�
 - 統合失敗: 段階 2 と選択値を保持し、再試行または前段階へ戻れるようにする
 - command が not-found を返した場合は一覧が古い可能性を日本語で示し、一覧再取得 action を出す。失敗を成功扱いにしない
 
-## 78.9 Query invalidation 予約（SPEC-SUP-D7）
+## 78.9 Query invalidation（SPEC-SUP-D7）
 
-後続実装 PR は D-052 に次を登録し、`src/lib/invalidation-contract.ts` と独立 oracle を同じ変更で更新する。
+実装 PR は D-052 に C21 rename / C22 merge を登録し、consumer 全数導出（SPEC-SUPI-D2）により C21 / C22 は同一の 8 key 集合に確定した。集合の正本は decision-log D-052 Contract 行と `src/lib/invalidation-contract.ts` とし、test 側は独立 oracle を持つ。
 
-- C21 rename: `productForm.suppliers()` / `priceRevision.suppliers()` / UI-15 新設 key の 3 系統
-- C22 merge: 上記 3 系統 + products 系 root
+共通離脱ガード（UI_TECH_STACK §6.11 `useUnsavedChangesWarning`）は UI-USW-D3 (c)〈行単位の即時 DB 保存 + dialog 完結〉により適用しない。
 
 UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 create flow と同様に D-052 entry を追加しない。
 

@@ -5,7 +5,7 @@ import { d052InvalidationOracle } from "@/test/invalidation-oracle";
 import { invalidationContract } from "./invalidation-contract";
 
 describe("UI-07 D-052 invalidation SSOT shape", () => {
-  it("REQ-907 B-I1: defines all 20 mutation entries exactly once against the independent oracle", () => {
+  it("REQ-907 B-I1: defines all 22 mutation entries exactly once against the independent oracle", () => {
     expect(Object.keys(invalidationContract).sort()).toEqual(
       [
         "productCreate",
@@ -28,6 +28,8 @@ describe("UI-07 D-052 invalidation SSOT shape", () => {
         "pluExportPrepare",
         "pluBulkTarget",
         "productPriceRevise",
+        "supplierRename",
+        "supplierMerge",
       ].sort(),
     );
     const actualEntries = [
@@ -51,6 +53,8 @@ describe("UI-07 D-052 invalidation SSOT shape", () => {
       invalidationContract.pluExportPrepare(),
       invalidationContract.pluBulkTarget(),
       invalidationContract.productPriceRevise("P-001"),
+      invalidationContract.supplierRename(),
+      invalidationContract.supplierMerge(),
     ];
     const expectedEntries = [
       d052InvalidationOracle.productCreate(),
@@ -73,9 +77,11 @@ describe("UI-07 D-052 invalidation SSOT shape", () => {
       d052InvalidationOracle.pluExportPrepare(),
       d052InvalidationOracle.pluBulkTarget(),
       d052InvalidationOracle.productPriceRevise("P-001"),
+      d052InvalidationOracle.supplierRename(),
+      d052InvalidationOracle.supplierMerge(),
     ];
 
-    expect(actualEntries).toHaveLength(20);
+    expect(actualEntries).toHaveLength(22);
     expect(actualEntries.map((entry) => entry.map((key) => JSON.stringify(key)).sort())).toEqual(
       expectedEntries.map((entry) => entry.map((key) => JSON.stringify(key)).sort()),
     );

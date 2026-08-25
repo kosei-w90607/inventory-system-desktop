@@ -26,6 +26,12 @@ export const commands = {
 	listSuppliers: () => typedError<Supplier[], CmdError>(__TAURI_INVOKE("list_suppliers")),
 	// 取引先を作成する（同名は既存行を返す）。
 	createSupplier: (name: string) => typedError<Supplier, CmdError>(__TAURI_INVOKE("create_supplier", { name })),
+	// 取引先名を変更する。
+	renameSupplier: (supplierId: number, name: string) => typedError<Supplier, CmdError>(__TAURI_INVOKE("rename_supplier", { supplierId, name })),
+	// 重複した取引先を残す側へ統合する。
+	mergeSuppliers: (sourceId: number, targetId: number) => typedError<SupplierMergeResult, CmdError>(__TAURI_INVOKE("merge_suppliers", { sourceId, targetId })),
+	// 取引先全件を関連商品数・入庫記録数付きで返す。
+	listSuppliersWithUsage: () => typedError<SupplierWithUsage[], CmdError>(__TAURI_INVOKE("list_suppliers_with_usage")),
 	// 商品の価格履歴を取得する。
 	listPriceHistory: (productCode: string, limit: number) => typedError<PriceHistoryEntry[], CmdError>(__TAURI_INVOKE("list_price_history", { productCode, limit })),
 	/**
@@ -1593,6 +1599,20 @@ export type Supplier = {
 	id: number,
 	name: string,
 	created_at: string,
+};
+
+// 取引先統合で付け替えた参照件数。
+export type SupplierMergeResult = {
+	products_updated: number,
+	receiving_records_updated: number,
+};
+
+// UI-15 一覧用の取引先と利用件数。
+export type SupplierWithUsage = {
+	id: number,
+	name: string,
+	product_count: number,
+	receiving_record_count: number,
 };
 
 // カウント更新結果

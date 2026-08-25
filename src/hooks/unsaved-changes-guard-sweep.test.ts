@@ -69,6 +69,8 @@ const EXCLUDED_PAGES = [
     path: "src/features/stock-movements/StockMovementsPage.tsx",
   },
   { component: "StocktakePage", path: "src/features/stocktake/StocktakePage.tsx" },
+  // prettier-ignore
+  { component: "SupplierManagementPage", path: "src/features/suppliers/SupplierManagementPage.tsx" },
 ] as const;
 
 function collectSourceFiles(directory: string): string[] {
