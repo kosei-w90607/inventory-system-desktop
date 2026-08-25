@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: c4e23ce
 - Amendments: none
 - Coordinator: Claude Fable 5
 - Writer: Codex（GPT-5.6 系、発注書駆動）
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending = ① Plan Gate 承認 ② Ready 承認（操作画面の挙動変更なしのため human visual confirmation は非該当）
+- Human Gate: pending = Ready 承認のみ（Plan Gate 承認は 2026-08-26 完了・介入 1/2。操作画面の挙動変更なしのため human visual confirmation は非該当）
 
 Hosted CI 判定根拠: ci.md の R2 行「source contract 影響がある場合だけ必須」— 「source contract」に設計書 prose を含むかの明文定義は repo になく、本 change が設計正本（SCREEN_DESIGN / function-design 4 doc / spec/requirements.md）+ traceability gate 入力（coverage 列）を編集することから **required は安全側の Coordinator 判断**である。docs-only は `paths-ignore` で Ready event の自動 run が発生しないため、owner Ready 後の `workflow_dispatch` で 1 run を取得する（rehome PR #1 @ inventory-system-desktop と同型の経路）。
 
@@ -231,3 +231,4 @@ Contract ID: SPEC-DSI
 - 2026-08-26 Plan Review round 1（独立 Sonnet fresh context）: P1 4 / P2 2 / P3 2。P1-1 = AC-2 のリテラル半角スペース抜けで vacuous pass（実文言は「残り 18 項目」）、P1-2 = requirements.md L51 脚注の書換え漏れで新規矛盾を作る構図、P1-3 = 66-ui に csv_import 記述が存在しない（Scope 対象誤り）、P1-4 = PR 番号転記の自己矛盾（Scope 4 の「PR #58」vs 表記規約）。P2 = AC-1 の実在しない免除節 / 58-ui 行番号誤り。P3 = Hosted CI 判定根拠の明示 / 65 L252 の無変更明記。全件採用のうえ Coordinator が再実測し、追加是正 2 件を実施: L229「残り 18 項目」は activeMatch 契約の数値も実測 21 で stale（数値非依存化を Scope 3 へ）/ Contract Probe の navigation「20 項目」は誤カウント（実測 24、activeMatch 3）。plan-gate に留まったまま是正、round 2 は closure 確認。
 - 2026-08-26 Plan Review round 2（独立 Sonnet fresh context）: round 1 是正 7 点は全適用 OK。新規 P1 2 / P2 1 — いずれも round 1 是正が同一欠陥 class を再生産した指摘: P1-1 = navigation 項目数「24」も naive `rg -c 'status:'` の誤カウント（型定義行 + `search.status` 混入）で真値 22・activeMatch 2（file comment L54 と構造カウントで Coordinator 三たび実測し確定）、P1-2 = 74-ui L564 非目的表の csv_import「未実装」主張が Scope 4 の列挙漏れ、P2-1 = Design Readiness の「20 項目」残存（packet 内 20/24 併存）。全件採用し packet 内の数値を 22 / activeMatch 2 へ全数統一 + Scope 4 / AC-4 へ L564 追加。round 3 は closure 確認（天井 3 到達）。
 - 2026-08-26 Plan Review round 3（独立 Sonnet fresh context、最終 closure）: round 2 是正 3 点すべて適用確認 OK（navigation 22 / activeMatch 2 の構造カウント・74-ui L564・packet 内数値統一を独立再実測で確認）、新規 findings なし。P1 0 / P2 0 / P3 0、**converged**（round 実績 3 / 天井 3）。owner Plan Gate 承認待ち。
+- 2026-08-26 owner Plan Gate 承認（介入 1/2）。本 state-only commit で plan-gate → plan-approved → implementing の隣接 2 遷移を materialize（evidence: 独立 Plan Reviewer round 3 P1/P2 = 0、plan-first commit `c4e23ce` は全実装 commit に先行、owner 承認 2026-08-26）。`Plan Commit` field を `c4e23ce` で確定。以後の実装は Codex 発注（cwd = 本 repo、branch `agent/docs-impl-status-inventory`）。
