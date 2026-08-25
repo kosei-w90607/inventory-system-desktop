@@ -152,7 +152,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | Lens | Applicability / finding | Follow-up artifact |
 |---|---|---|
 | Adapter / core boundary | not applicable（外部 adapter に非接触） | — |
-| Fact check / design decision split | not applicable（field 調査起点でない） | — |
+| Fact check / design decision split | applicable — Contract Probe（本 packet 8 項目）で観測事実（binding / component / hook 実在、意味論、凍結例外 class 全数、採番状況）を確認済み。裁定（SPEC-PRVC-D1〜D4）は事実と分離して記録 | Contract Probe 節 / packet-local 決定節 |
 | Lifecycle / retry | applicable: 更新失敗の行単位再試行 / 見送り後の次回入庫再提示（検出は毎回の保存で実行、記録なし） | Matrix T8 / T1 |
 | Operator workflow | applicable: 入庫保存 → 差分確認 → 更新 or 見送り → result panel 継続の実 flow | Matrix T5〜T9 + L3 |
 | Replacement path | not applicable | — |
@@ -285,3 +285,4 @@ Contract ID: SPEC-PRVC
 ## 遷移・レビュー記録（append-only）
 
 - 2026-08-26: kickoff → spec-check（task scoped: Plans.md「次の行動」実装 PR C entry、Risk R3 判定・記録）→ plan-draft（唯一許可の skip: Design Readiness が既存正本 3 doc の十分性を引用）→ plan-gate（packet + Test Design Matrix を plan-first commit として本 commit で同時 commit）。本 commit がこの隣接 3 遷移を materialize する（recording compression、各遷移の evidence は本 packet の該当節）。
+- 2026-08-26 Plan Review round 1（独立 Sonnet fresh context）: P1 0 / P2 2 / P3 1。P2-1 = Matrix T7 の Would-fail-if に oracle 範囲外の直接 invalidate mutant が混在（AC-7 防御へ一本化）、P2-2 = Fact check lens の not applicable 表記が Contract Probe 実施と矛盾（applicable へ是正）、P3-1 = T2 の Would-fail-if に diff=0 入力で検出不能な tolerance 記述（T1/M3 担当へ是正）。3 件とも修正案を採用し plan-gate に留まったまま是正、round 2 は closure 確認。
