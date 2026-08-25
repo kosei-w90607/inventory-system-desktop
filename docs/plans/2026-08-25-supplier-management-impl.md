@@ -6,10 +6,10 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 0a2f278
 - Amendments: none
 - Coordinator: Fable
 - Writer: Codex
@@ -18,7 +18,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Plan Gate 承認 → human visual confirmation（Windows native L3 4 項目、operator 画面新設のため必須 = 78 doc §78.10）→ Ready 承認 → hosted final（Rust / TS / bindings を含む non-doc change のため CI-TRIGGER-D1 の Ready / `synchronize` 経路で自動 run）→ 三点一致 → merge
+- Human Gate: Plan Gate 承認済み（2026-08-25、介入 1/3）→ human visual confirmation（Windows native L3 4 項目、operator 画面新設のため必須 = 78 doc §78.10）→ Ready 承認 → hosted final（Rust / TS / bindings を含む non-doc change のため CI-TRIGGER-D1 の Ready / `synchronize` 経路で自動 run）→ 三点一致 → merge
 
 ## Owner Effort Budget
 
@@ -358,4 +358,11 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Plan Review round 1（Sonnet、独立 fresh context、2026-08-25、packet `0a2f278`）: P1 1 / P2 1 / P3 1、verdict fail。全件 Coordinator が rg で実証再現のうえ accept して是正: P1-1 C21/C22 の 8 key 対称集合（SPEC-SUPI-D2）が durable 正本 D-078（decision-log 635 行）と 78 doc §78.9 の非対称記述（C21 = 3 系統 / C22 = +products root）と矛盾したまま Scope 外だった → Scope に docs 正本同期 bullet（78 §78.9 確定記述への改訂 + D-078 追記）+ AC-11（新旧文言 presence oracle）+ Required Design Artifacts / Design Readiness / Trace Matrix / SPEC-SUPI-D2 転記先を同期 / P2-1 AC-1 の Rust 予約 test 数「10 fn」は Ledger 実カウント 11 fn と不一致（D-062）→ 11 へ是正（Test Plan 側も同期）/ P3-1 Contract Probe P-2 の `list_recent_receiving_records` は不存在 fn 名（正 = `list_receiving_records`、receiving_repo.rs:118）→ SPEC-SUPI-D2 導出文と P-2 の 2 箇所を是正。
+- Plan Review round 2（Sonnet、独立 fresh context、2026-08-25、packet `d4a54c3`）: round 1 是正 3 件は全 CLOSED（AC-11 oracle の自己参照なし・11 fn 実カウント一致・fn 名実在を独立再現）。fresh 全文レビューで新規 P1 / P2 / P3 = 0、verdict pass。SPEC-SUPI-D2 の 8 key を実コード側から独立再検算（`searchProducts` の非 cache 命令的呼出しと query cache 消費を区別し、欠落・過剰の両方向で問題なし）、SPEC-SUPI-D1 の v5 pattern 一致・R-1〜R-10 全数継承・D-062 編成適合・採番衝突なしを確認。rally 収束（2 round / 天井 3、P1+P2: 2 → 0）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### 遷移記録（2026-08-25、state-only 遷移 plan-draft -> plan-gate -> plan-approved -> implementing）
+
+- plan-draft -> plan-gate の evidence: packet と Test Design Matrix を plan-first commit `0a2f278` で commit 済み、`doc-consistency-check.sh --target plan` exit 0（WARN 3 は file 名をカラム名と誤認する既知 class の偽陽性）。
+- plan-gate -> plan-approved の evidence: 独立 Sonnet Plan Reviewer rally 2 round（round 1 P1 1 / P2 1 / P3 1 → 全件実証再現のうえ是正 `d4a54c3`、round 2 fresh context で round 1 全 CLOSED + 新規 0 / verdict pass）、owner Plan Gate 承認（2026-08-25、介入 1 回目 / 予算 3 回）、Plan Commit = plan-first commit `0a2f278`（本 branch の全実装 commit に先行する）。
+- plan-approved -> implementing の evidence: Codex Writer への発注直前遷移（Coordinator が発注前に遷移を完了する運用）。隣接 3 遷移を 1 state-only commit で圧縮記録（DEV_WORKFLOW 圧縮規則の canonical 例と同型、forward state-only 1 本目 / cap 3）。
