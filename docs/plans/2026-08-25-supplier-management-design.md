@@ -22,6 +22,8 @@ Plan Review round 1（Sonnet 独立 fresh context、2026-08-25）: P1 2 / P2 2 /
 
 Plan Review round 2（Sonnet 独立 fresh context、2026-08-25、HEAD acbc70e）: round 1 是正 6 件は全 CLOSED（oracle 実行・算術再現・実在確認で実証）。新規 P1 1 / P2 1 / P3 1 — ①M-D6 が SPEC-SUP-D8 の 3 command 目（`list_suppliers_with_usage`）を未検査（PR #159 miss class）→ M-D6 拡張 + AC-10 新設 + 名称 3 層統一 ②SPEC-PRVA-D5 の逆引用（正 = DTO は BIZ 所有・CMD は qualified path 参照。Coordinator が archive 実読で裏取り）→ Boundary / Wire Contract を是正 ③M-D3 の section 境界が非機械的 → awk section slice oracle へ変更。全 3 件採用・是正済み。
 
+owner 裁定 2026-08-25（Plan Gate、rally 収束後）: 追加導線も UI-15 に置く（既存 `create_supplier` command 流用・wire 無改変・REQ-106 の対応 UI へ UI-15 追加）。rally 3 round 収束後の owner-directed contract 追加のため、既収束 findings の再 round ではなく独立 fresh context による delta 検証を別途実施して plan-gate evidence を更新する。
+
 ## Owner Effort Budget
 
 - 介入回数上限: 3
@@ -50,7 +52,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 取引先（メーカー/ブランド）の改名と重複統合を UI-15 取引先管理画面（`/settings/suppliers`）で提供するための設計契約が source docs に正本化され、後続の実装 PR が本 packet と source docs のみから着手できる。
+- 取引先（メーカー/ブランド）の追加・改名・重複統合を UI-15 取引先管理画面（`/settings/suppliers`）で提供するための設計契約が source docs に正本化され、後続の実装 PR が本 packet と source docs のみから着手できる。
 
 ### 失敗定義
 
@@ -70,7 +72,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 docs-only design-first PR。以下を Codex Writer が発注書に従って正本化する:
 
-1. `docs/function-design/78-ui-supplier-management.md` 新設 — UI-15 取引先管理画面の function design（SPEC-SUP-D1〜D10 の正本、画面契約・一覧・インライン改名・統合 dialog・エラー/空/確認 UI・日本語文言）。
+1. `docs/function-design/78-ui-supplier-management.md` 新設 — UI-15 取引先管理画面の function design（SPEC-SUP-D1〜D10 の正本、画面契約・一覧・新規追加導線・インライン改名・統合 dialog・エラー/空/確認 UI・日本語文言。追加導線は既存 `create_supplier` command 流用で wire 無改変、owner 裁定 2026-08-25 Plan Gate）。
 2. `docs/function-design/20-io-product-repo.md` — `rename_supplier` / `merge_suppliers`（products + receiving_records の 2 UPDATE + DELETE、付替え件数返却）/ `list_suppliers_with_usage`（products / receiving_records の COUNT を伴う一覧取得。名称は 3 層で統一し `count_supplier_usage` 等の別名は使わない、round 2 P1-1）の IO 契約追記。
 3. `docs/function-design/30-biz-product-service.md` — §4.7.4 `rename_supplier` / §4.7.5 `merge_suppliers`（validation・1 TX・`insert_operation_log(operation_type = "supplier_rename" / "supplier_merge")`）/ §4.7.6 `list_suppliers_with_usage`（BIZ wrapper）。§4.7.3 は list_price_history が使用済み、2026-08-25 実測。
 4. `docs/function-design/40-cmd-product.md` — `rename_supplier` / `merge_suppliers` / `list_suppliers_with_usage` の command wire contract（既存 `list_suppliers` / `create_supplier` は無改変）。
@@ -80,9 +82,9 @@ docs-only design-first PR。以下を Codex Writer が発注書に従って正�
 8. `docs/function-design/51-ui-product-form.md` — UI-01b-D21 の 3 箇所（36 行決定表 / 149-154 行実装節 / 209 行 Test Focus）の「改名・統合 UI は扱わない」を「改名・統合は UI-15（78 doc）で扱う」参照へ改訂。
 9. `docs/function-design/52-ui-shared-layout.md` — §52.3 ルーティング表へ UI-15 行（`/settings/suppliers` / `src/routes/settings/suppliers.tsx` / システム管理 / ○）、§52.4 の項目数表記を 4 エリア × 22 項目へ更新（システム管理 4 → 5。現行実装は既に 21 項目〈`rg -c '\bid: "ui-' src/config/navigation.ts` = 21、2026-08-25 実測〉のため、30 行 / 130 行の「20 項目」stale 表記と商品管理の項目数 stale も同一 diff で実態へ同期する）。
 10. `docs/SCREEN_DESIGN.md` — §1 画面一覧表へ # 21 行（取引先管理）、個別画面詳細節の追加、301 行付近の取引先候補記述への UI-15 参照追記、§2 遷移の該当箇所。
-11. `docs/spec/requirements.md` — REQ-107 新設（取引先の名称変更・重複統合、対応 UI-15 / BIZ-01、`coverage=deferred`。実装 PR で `required` へ昇格する予約を注記）。
+11. `docs/spec/requirements.md` — REQ-107 新設（取引先の名称変更・重複統合、対応 UI-15 / BIZ-01、`coverage=deferred`。実装 PR で `required` へ昇格する予約を注記）。あわせて REQ-106（取引先の追加登録）の対応 UI 列へ UI-15 を追加（追加導線の要求正本は REQ-106 を継続使用し新 REQ は起こさない）。
 12. `docs/function-design/90-traceability.md` — `cd src-tauri && cargo run --bin generate_traceability` で再生成（手動編集禁止のまま）。
-13. `docs/decision-log.md` — D-078 新設（owner 裁定事実 2026-08-25: Deferred 解除の範囲 = 改名 + 統合、削除は非採用〈統合で代替〉、配置 = `/settings/suppliers` システム管理エリア、schema 追加は updated_at のみ〈speculative column は追加しない〉。D-052 C21〈rename〉/ C22〈merge〉の番号予約もここに明記し、invalidate 対象を `productForm.suppliers()` / `priceRevision.suppliers()` / UI-15 新設 key の 3 系統として明示列挙する〈一部のみ対象化して他画面 cache が stale 化する実装を防ぐ、round 1 P2-2〉。merge はさらに products 系 root を含む。D-052 本文の C 一覧更新と `invalidation-contract.ts` は実装 PR）。
+13. `docs/decision-log.md` — D-078 新設（owner 裁定事実 2026-08-25: Deferred 解除の範囲 = 改名 + 統合、削除は非採用〈統合で代替〉、配置 = `/settings/suppliers` システム管理エリア、schema 追加は updated_at のみ〈speculative column は追加しない〉。追加導線も UI-15 に置く〈既存 create_supplier 流用〉を裁定事実に含める。D-052 C21〈rename〉/ C22〈merge〉の番号予約もここに明記し、invalidate 対象を `productForm.suppliers()` / `priceRevision.suppliers()` / UI-15 新設 key の 3 系統として明示列挙する〈一部のみ対象化して他画面 cache が stale 化する実装を防ぐ、round 1 P2-2〉。merge はさらに products 系 root を含む。D-052 本文の C 一覧更新と `invalidation-contract.ts` は実装 PR）。
 14. `src-tauri/tests/design_compliance_test.rs` — SKIP_DOCS へ `78-ui-supplier-management.md` 1 行追加（UI 専用 doc、PR #93 同型）。
 
 ## Non-scope
@@ -139,7 +141,7 @@ docs-only design-first PR。以下を Codex Writer が発注書に従って正�
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | REQ-107 | 77 §77.9 / 78 doc | SPEC-SUP-D1 | 漸進補完運用では typo・重複が蓄積し是正手段皆無が運用矛盾。削除単体は参照処理の設計コストと危険に対し場面の大半が統合で代替可能なため非採用（商品側 `toggle_discontinue` の非削除方針とも整合） | 77 Deferred 行改訂 + D-078 | Matrix M-D1 |
-| REQ-107 | 78 doc / SCREEN_DESIGN / 52-ui | SPEC-SUP-D2 | 改名・統合は保守作業でありシステム管理エリア（`/settings/*`）が既存 4 画面と整合。商品管理エリア配置は日常業務との混在で不採用 | 78 doc 画面契約 | Matrix M-D7 |
+| REQ-107 / REQ-106 | 78 doc / SCREEN_DESIGN / 52-ui | SPEC-SUP-D2 | 改名・統合は保守作業でありシステム管理エリア（`/settings/*`）が既存 4 画面と整合。商品管理エリア配置は日常業務との混在で不採用。追加導線も同画面に置く（owner 裁定 2026-08-25、既存 command 流用で wire 無改変） | 78 doc 画面契約 | Matrix M-D5 / M-D7 |
 | REQ-107 | 30-biz / 40-cmd | SPEC-SUP-D3 | 改名 = trim・空文字拒否・同名衝突は validation error（統合へ誘導する文言）。UNIQUE 制約と create_supplier の trim 規律を継承 | 30-biz §4.7.4 | Matrix M-D6 |
 | REQ-107 | 20-io / 30-biz / master-tables | SPEC-SUP-D4 | 統合 = 1 TX で products / receiving_records の supplier_id を残す側へ付替え → 参照 0 の消す側を DELETE。参照残存の削除は設計しない（FK 安全） | 30-biz §4.7.5 + master-tables | Matrix M-D6 / M-D11 |
 | REQ-107 | master-tables / 22-mnt | SPEC-SUP-D5 | `updated_at` を nullable TEXT で追加し backfill = created_at。改名時のみ更新。他の speculative column は追加しない（owner 裁定 2026-08-25、防災バッグは構造判断に限る） | 22-mnt §14 | Matrix M-D3 / M-D4 |
@@ -252,7 +254,7 @@ Test Design Matrix: [test-matrices/2026-08-25-supplier-management-design.md](tes
 Contract ID: SPEC-SUP
 
 - SPEC-SUP-D1: 取引先の改名・統合・専用管理画面は Deferred から解除し UI-15 で提供する。削除は Deferred 維持（統合で代替）。
-- SPEC-SUP-D2: UI-15 取引先管理は `/settings/suppliers`、サイドバー「システム管理」エリア。一覧（name 昇順）+ 各行に関連商品数・入庫記録数を表示する。
+- SPEC-SUP-D2: UI-15 取引先管理は `/settings/suppliers`、サイドバー「システム管理」エリア。一覧（name 昇順）+ 各行に関連商品数・入庫記録数を表示し、一覧上部に「新しい取引先を追加」導線を置く（既存 `create_supplier` command 流用・wire 無改変、trim / 空文字拒否 / 同名は既存行返却の挙動は UI-01b-D21 と同一。成功時は自画面一覧の再取得のみで D-052 対象外 = 既存 inline 追加と同型。owner 裁定 2026-08-25）。
 - SPEC-SUP-D3: 改名は trim・空文字拒否・同値 no-op 成功・他行と同名衝突は validation error（統合へ誘導する日本語文言）。成功時 `updated_at` 更新 + operation_log `supplier_rename`。
 - SPEC-SUP-D4: 統合は source ≠ target・両者実在を検証し、1 TX で products / receiving_records の `supplier_id` を target へ付替え → source 行を DELETE → operation_log `supplier_merge`（source/target 名 + 付替え件数）。参照が残った状態の DELETE 経路は設計しない。
 - SPEC-SUP-D5: `suppliers.updated_at`（TEXT、nullable）を migration v6 で追加し既存行は created_at で backfill。改名時のみ更新。他カラムの投機的追加はしない。

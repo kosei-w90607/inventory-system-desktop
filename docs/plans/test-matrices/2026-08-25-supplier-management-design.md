@@ -12,7 +12,7 @@ docs-only design-first PR のため、oracle は「新文言 exact 存在 + 旧�
 | M-D2 | UI-01b-D21 の 3 箇所改訂 sweep | `rg -F '改名・統合 UI や約 80 社の事前一括投入は扱わない' docs/ --glob '!docs/archive/**' --glob '!docs/plans/**'` = 0 hit、かつ `rg -c 'UI-15' docs/function-design/51-ui-product-form.md` ≥ 1 | 3 箇所のうちいずれかが旧文言のまま残る（36 行決定表 / 149-154 実装節 / 209 Test Focus） |
 | M-D3 | SPEC-SUP-D5（updated_at 列定義） | `awk '/^## 3\./,/^## 4\./' docs/db-design/master-tables.md \| rg -c 'updated_at'` ≥ 1、かつ同 slice に nullable と backfill（created_at）の記述（§3 suppliers 節に機械的に scope を絞る。products.updated_at〈NOT NULL〉の既存 hit と混同しない、round 2 P3-1） | updated_at が suppliers 表定義に載らない / NOT NULL と誤記される（SQLite ALTER TABLE 制約違反の設計） |
 | M-D4 | SPEC-SUP-D5（migration v6 節） | `rg -n 'migration v6|v6' docs/function-design/22-mnt-migration.md` で §14 節見出しと MIGRATIONS 登録順（v1→…→v6）の記述が存在 | 22-mnt に v6 節がない / 登録順記述が v5 止まりのまま |
-| M-D5 | SPEC-SUP-D2 / D6（78 doc の画面契約） | `docs/function-design/78-ui-supplier-management.md` が存在し、`rg -o 'SPEC-SUP-D[0-9]+' <同 file> \| sort -u` が D1〜D10 の 10 ID、統合確認 dialog の影響件数文言（「付け替わります」）と不可逆明記を含む | doc 欠落 / SPEC ID の一部欠落 / 確認 dialog 契約の欠落 |
+| M-D5 | SPEC-SUP-D2 / D6（78 doc の画面契約） | `docs/function-design/78-ui-supplier-management.md` が存在し、`rg -o 'SPEC-SUP-D[0-9]+' <同 file> \| sort -u` が D1〜D10 の 10 ID、統合確認 dialog の影響件数文言（「付け替わります」）と不可逆明記、および追加導線文言（`rg -F -c '新しい取引先を追加' <同 file>` ≥ 1、owner 裁定 2026-08-25）を含む | doc 欠落 / SPEC ID の一部欠落 / 確認 dialog 契約の欠落 / 追加導線の欠落 |
 | M-D6 | SPEC-SUP-D3 / D4 / D8（backend 3 層の契約） | `rg -c 'rename_supplier' docs/function-design/20-io-product-repo.md docs/function-design/30-biz-product-service.md docs/function-design/40-cmd-product.md` 各 ≥ 1、`merge_suppliers` / `list_suppliers_with_usage` も同様（SPEC-SUP-D8 の 3 command 全数、round 2 P1-1） | いずれかの層 doc に関数契約が欠落し、実装 PR が層責務を推測で書くことになる / usage 系契約だけ丸ごと省略されても機械 gate が素通しする |
 | M-D7 | SPEC-SUP-D2 / D9（到達導線の正本登録） | `rg -c 'UI-15' docs/SCREEN_DESIGN.md docs/function-design/52-ui-shared-layout.md` 各 ≥ 1、52 §52.3 表に `/settings/suppliers` 行、§52.4 が 22 項目表記（システム管理 5。現行実装 21 項目 + UI-15、round 1 P2-1） | 画面表・ルーティング表・navigation 契約のいずれかに UI-15 が未登録（UI-13 Amendment 4 の到達導線 failure class）/ 項目数が実態と drift したまま正本化される |
 | M-D8 | REQ-107（要求正本 + traceability） | `rg -n 'REQ-107' docs/spec/requirements.md` ≥ 1（coverage=deferred 明記）、`cd src-tauri && cargo run --bin generate_traceability -- --check` PASS | REQ 未採番のまま SPEC だけ進む / 90-traceability drift（T1 ERROR） |
@@ -39,7 +39,7 @@ negative rg の判定は「肯定文 0 hit」を基準とし、否認文脈（�
 | R-4 | operation_log | `test_merge_suppliers_writes_operation_log`（source/target 名 + 件数）/ rename 側は R-2 に含む |
 | R-5 | usage 件数 | `test_list_suppliers_with_usage_counts`（products / receiving_records の COUNT が実データと一致、0 件取引先も列挙）。**空集合 oracle 単独禁止: 非空期待 case を必ず含める（順22 X2 教訓）** |
 | R-6 | 到達導線 | `navigation.test.ts` に REQ-107 入り到達テスト（ui-11c パターン） |
-| R-7 | UI 挙動 | RTL: 一覧表示 / インライン改名の確定・キャンセル / 統合 dialog の 2 段階と影響件数表示 / エラー文言表示。invalidation C21/C22 の発火 assert |
+| R-7 | UI 挙動 | RTL: 一覧表示 / 新規追加導線（trim・空文字・同名の UI-01b-D21 同型挙動 + 成功時一覧再取得）/ インライン改名の確定・キャンセル / 統合 dialog の 2 段階と影響件数表示 / エラー文言表示。invalidation C21/C22 の発火 assert |
 | R-8 | 既存凍結 | 既存 supplier 3 関数（list / create / find_or_create）の既存 test 無改変 + bindings diff で既存 export 不変 |
 | R-9 | wire | bindings 再生成 diff が新規 3 command + 2 DTO の追加のみであること |
 | R-10 | requirements | REQ-107 を coverage=required へ昇格 + 90-traceability 再生成 |
