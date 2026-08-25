@@ -46,6 +46,7 @@ import {
   getLocalDateString,
 } from "./lib/receiving-request";
 import type { ProductCandidate, ReceivingFormErrors, ReceivingFormValues } from "./types";
+import { CostDiffDialog } from "./CostDiffDialog";
 
 const PRODUCT_SEARCH_QUERY = {
   department_id: null,
@@ -120,6 +121,7 @@ export function ReceivingPage() {
   const [idempotencyKey, setIdempotencyKey] = useState(createReceivingIdempotencyKey);
   const [failedSignature, setFailedSignature] = useState<string | null>(null);
   const [result, setResult] = useState<ReceivingCreateResult | null>(null);
+  const [isCostDiffDialogOpen, setIsCostDiffDialogOpen] = useState(false);
 
   const supplierQuery = useQuery({
     queryKey: queryKeys.productForm.suppliers(),
@@ -164,6 +166,9 @@ export function ReceivingPage() {
     onSuccess: async (data) => {
       scrollPageToTop();
       setResult(data);
+      setIsCostDiffDialogOpen(
+        data.created && !data.idempotent_replay && data.cost_diffs.length > 0,
+      );
       setSaveError(null);
       setFailedSignature(null);
       setIdempotencyKey(createReceivingIdempotencyKey());
@@ -211,6 +216,7 @@ export function ReceivingPage() {
       return next;
     });
     setResult(null);
+    setIsCostDiffDialogOpen(false);
   }
 
   function addProduct(product: ProductWithRelations) {
@@ -268,6 +274,14 @@ export function ReceivingPage() {
   return (
     <div className="space-y-5 p-6">
       <UnsavedChangesDialog warning={unsavedChanges} />
+      {result !== null ? (
+        <CostDiffDialog
+          key={result.record_id}
+          costDiffs={result.cost_diffs}
+          open={isCostDiffDialogOpen}
+          onOpenChange={setIsCostDiffDialogOpen}
+        />
+      ) : null}
       <PageHeader
         title="入庫記録"
         subtitle="届いた商品をまとめて入庫し、在庫へ反映します"
@@ -317,6 +331,9 @@ export function ReceivingPage() {
               <div className="font-medium">{result.stock_warnings.length} 件</div>
             </div>
           </div>
+          {result.idempotent_replay ? (
+            <p className="text-sm">同じ内容の再送として処理済み</p>
+          ) : null}
           {result.stock_warnings.length > 0 ? (
             <ul className="list-disc space-y-1 pl-5 text-sm">
               {result.stock_warnings.map((warning) => (

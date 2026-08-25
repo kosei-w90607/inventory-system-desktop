@@ -28,6 +28,8 @@ pub(crate) use common::apply_stock_change;
 pub(crate) use list::resolve_movement_source;
 
 // 入庫
+#[allow(unused_imports)] // generated wire 型として公開する
+pub use receiving::CostDiff;
 pub use receiving::{create_receiving, ReceivingCreateRequest, ReceivingCreateResult};
 
 // 返品

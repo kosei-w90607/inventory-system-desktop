@@ -404,6 +404,14 @@ export type CmdError = {
  */
 export type CmdErrorKind = "validation" | "duplicate" | "not_found" | "internal" | "import_error" | "export_error" | "idempotency_conflict" | "stocktake_in_progress" | "stocktake_not_in_progress" | "restore_failed_recovered" | "restore_failed_unrecoverable" | "restore_durability_unknown";
 
+// 入庫実原価と商品マスタ原価の差分（SPEC-PRV-D8 / REQ-209）
+export type CostDiff = {
+	product_code: string,
+	product_name: string,
+	master_cost_price: number,
+	received_cost_price: number,
+};
+
 /**
  *  csv_imports テーブルの行マッピング
  *
@@ -1302,6 +1310,7 @@ export type ReceivingCreateResult = {
 	created: boolean,
 	idempotent_replay: boolean,
 	stock_warnings: string[],
+	cost_diffs: CostDiff[],
 };
 
 export type ReceivingItemInput = {

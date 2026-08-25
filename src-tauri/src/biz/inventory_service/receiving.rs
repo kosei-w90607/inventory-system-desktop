@@ -35,6 +35,16 @@ pub struct ReceivingCreateResult {
     pub created: bool,
     pub idempotent_replay: bool,
     pub stock_warnings: Vec<String>,
+    pub cost_diffs: Vec<CostDiff>,
+}
+
+/// 入庫実原価と商品マスタ原価の差分（SPEC-PRV-D8 / REQ-209）
+#[derive(Debug, serde::Serialize, specta::Type)]
+pub struct CostDiff {
+    pub product_code: String,
+    pub product_name: String,
+    pub master_cost_price: i64,
+    pub received_cost_price: i64,
 }
 
 /// 入庫記録ヘッダと明細を登録し、各明細について在庫を増加させる
@@ -88,6 +98,7 @@ pub fn create_receiving(
                 created: false,
                 idempotent_replay: true,
                 stock_warnings: vec![],
+                cost_diffs: vec![],
             });
         } else {
             return Err(BizError::IdempotencyConflict(
@@ -159,6 +170,7 @@ pub fn create_receiving(
                     created: false,
                     idempotent_replay: true,
                     stock_warnings: vec![],
+                    cost_diffs: vec![],
                 });
             } else {
                 return Err(BizError::IdempotencyConflict(
@@ -223,11 +235,55 @@ pub fn create_receiving(
     tx.commit()
         .map_err(|e| BizError::DatabaseError(DbError::from(e)))?;
 
+    // SPEC-PRV-D8 / REQ-209: 保存済み入庫に影響させない COMMIT 後の差分検出。
+    // 1 件でも読取りに失敗した場合は部分結果を返さず、警告を記録して空配列にする。
+    let mut detected_cost_diffs = Vec::new();
+    let mut detection_failed = false;
+    for item in &req.items {
+        match product_repo::find_by_product_code(conn, &item.product_code) {
+            Ok(Some(product)) => {
+                if item.cost_price != product.product.cost_price {
+                    detected_cost_diffs.push(CostDiff {
+                        product_code: item.product_code.clone(),
+                        product_name: product.product.name,
+                        master_cost_price: product.product.cost_price,
+                        received_cost_price: item.cost_price,
+                    });
+                }
+            }
+            Ok(None) => {
+                tracing::warn!(
+                    product_code = %item.product_code,
+                    record_id,
+                    "入庫保存後の原価差分検出で商品が見つかりませんでした"
+                );
+                detection_failed = true;
+                break;
+            }
+            Err(error) => {
+                tracing::warn!(
+                    ?error,
+                    product_code = %item.product_code,
+                    record_id,
+                    "入庫保存後の原価差分検出に失敗しました"
+                );
+                detection_failed = true;
+                break;
+            }
+        }
+    }
+    let cost_diffs = if detection_failed {
+        vec![]
+    } else {
+        detected_cost_diffs
+    };
+
     Ok(ReceivingCreateResult {
         record_id,
         created: true,
         idempotent_replay: false,
         stock_warnings,
+        cost_diffs,
     })
 }
 
@@ -487,5 +543,160 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(pb.product.stock_quantity, 10);
+    }
+
+    #[test]
+    fn test_create_receiving_req209_detects_cost_diff() {
+        // REQ-209 / SPEC-PRV-D8: マスタ原価との差を完全一致比較で検出する
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "PRVC-A", 10);
+        create_test_product(&conn, "PRVC-B", 20);
+        conn.execute(
+            "UPDATE products SET cost_price = 500 WHERE product_code IN ('PRVC-A', 'PRVC-B')",
+            [],
+        )
+        .unwrap();
+
+        let req = make_receiving_req(
+            "req209-detect",
+            vec![
+                receiving_item("PRVC-A", 2, 501),
+                receiving_item("PRVC-B", 3, 499),
+            ],
+        );
+        let result = create_receiving(&mut conn, req).unwrap();
+
+        assert!(result.created);
+        assert!(!result.idempotent_replay);
+        assert_eq!(result.cost_diffs.len(), 2);
+        assert_eq!(result.cost_diffs[0].product_code, "PRVC-A");
+        assert_eq!(result.cost_diffs[0].product_name, "テスト商品 PRVC-A");
+        assert_eq!(result.cost_diffs[0].master_cost_price, 500);
+        assert_eq!(result.cost_diffs[0].received_cost_price, 501);
+        assert_eq!(result.cost_diffs[1].product_code, "PRVC-B");
+        assert_eq!(result.cost_diffs[1].product_name, "テスト商品 PRVC-B");
+        assert_eq!(result.cost_diffs[1].master_cost_price, 500);
+        assert_eq!(result.cost_diffs[1].received_cost_price, 499);
+
+        let record_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM receiving_records WHERE id = ?1",
+                [result.record_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(record_count, 1);
+        assert_eq!(
+            product_repo::find_by_product_code(&conn, "PRVC-A")
+                .unwrap()
+                .unwrap()
+                .product
+                .stock_quantity,
+            12
+        );
+        assert_eq!(
+            product_repo::find_by_product_code(&conn, "PRVC-B")
+                .unwrap()
+                .unwrap()
+                .product
+                .stock_quantity,
+            23
+        );
+    }
+
+    #[test]
+    fn test_create_receiving_req209_no_diff_when_cost_matches() {
+        // REQ-209 / SPEC-PRV-D8: 原価が完全一致する商品は差分に含めない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "PRVC-MATCH", 10);
+        conn.execute(
+            "UPDATE products SET cost_price = 500 WHERE product_code = 'PRVC-MATCH'",
+            [],
+        )
+        .unwrap();
+
+        let result = create_receiving(
+            &mut conn,
+            make_receiving_req("req209-match", vec![receiving_item("PRVC-MATCH", 1, 500)]),
+        )
+        .unwrap();
+
+        assert!(result.created);
+        assert!(result.cost_diffs.is_empty());
+    }
+
+    #[test]
+    fn test_create_receiving_req209_empty_on_idempotent_replay() {
+        // REQ-209 / SPEC-PRV-D8: 冪等 replay では原価差分を再提示しない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "PRVC-REPLAY", 10);
+        conn.execute(
+            "UPDATE products SET cost_price = 500 WHERE product_code = 'PRVC-REPLAY'",
+            [],
+        )
+        .unwrap();
+        let req = make_receiving_req("req209-replay", vec![receiving_item("PRVC-REPLAY", 1, 501)]);
+
+        let created = create_receiving(&mut conn, req.clone()).unwrap();
+        assert!(created.created);
+        assert_eq!(created.cost_diffs.len(), 1);
+
+        let replay = create_receiving(&mut conn, req).unwrap();
+        assert!(!replay.created);
+        assert!(replay.idempotent_replay);
+        assert!(replay.cost_diffs.is_empty());
+    }
+
+    #[test]
+    fn test_create_receiving_req209_cost_diff_detection_does_not_affect_save_tx() {
+        // REQ-209 / SPEC-PRV-D8: 差分があっても入庫保存の成果物はすべて確定する
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "PRVC-TX", 10);
+        conn.execute(
+            "UPDATE products SET cost_price = 500 WHERE product_code = 'PRVC-TX'",
+            [],
+        )
+        .unwrap();
+
+        let result = create_receiving(
+            &mut conn,
+            make_receiving_req("req209-tx", vec![receiving_item("PRVC-TX", 4, 501)]),
+        )
+        .unwrap();
+
+        assert!(result.created);
+        assert_eq!(result.cost_diffs.len(), 1);
+        let record_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM receiving_records WHERE id = ?1",
+                [result.record_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(record_count, 1);
+        let item_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM receiving_items WHERE receiving_record_id = ?1 AND product_code = 'PRVC-TX' AND quantity = 4 AND cost_price = 501",
+                [result.record_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(item_count, 1);
+        assert_eq!(
+            product_repo::find_by_product_code(&conn, "PRVC-TX")
+                .unwrap()
+                .unwrap()
+                .product
+                .stock_quantity,
+            14
+        );
+        let log_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM operation_logs WHERE operation_type = 'receiving_create'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(log_count, 1);
     }
 }
