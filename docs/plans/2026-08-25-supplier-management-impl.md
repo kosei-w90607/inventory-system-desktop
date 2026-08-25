@@ -86,6 +86,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - UI `src/features/suppliers/`（78 doc §78.3 の tree どおり新設）: `SupplierManagementPage.tsx`、`components/CreateSupplierDialog.tsx`（SPEC-SUPI-D4、features/products 版は無改変）/ `SupplierUsageTable.tsx` / `RenameSupplierRow.tsx` / `MergeSupplierDialog.tsx`、`hooks/useSuppliersWithUsage.ts` / `useRenameSupplier.ts` / `useMergeSuppliers.ts`。画面契約・日本語文言・失敗境界は 78 doc §78.3〜§78.8 を正本とする（一覧列 `取引先名` / `関連商品数` / `入庫記録数` / `操作`、`N件` 表示、追加 dialog、インライン改名の Enter / Escape / pending 行単位無効化、統合 dialog 段階 1「残す側を選んでください」/ 段階 2「◯件の商品 / ◯件の入庫記録が付け替わります」+「この操作は元に戻せません。…」+ `統合する` / `残す取引先を選び直す` / `キャンセル`、Loading = `ListSkeleton`、Empty = `取引先はまだ登録されていません`、一覧失敗 = `取引先を読み込めませんでした` + `再試行`、not-found 時は一覧再取得導線）。共有 `PageHeader` / `EmptyState` / `ListSkeleton` と `ui/`（dialog / select / table / input / label / alert / button / badge）を流用する。
 - query key `src/lib/query-keys.ts`: `suppliers` namespace 新設（`root: () => ["suppliers"]` / `withUsage: () => ["suppliers", "with-usage"]`、SPEC-SUPI-D3。literal key 直書き禁止）。
 - D-052 C21 / C22 実体化（SPEC-SUP-D7 / SPEC-SUPI-D2）: `src/lib/invalidation-contract.ts` に `supplierRename()` = C21 / `supplierMerge()` = C22（key 集合は SPEC-SUPI-D2 の 8 key）、`src/test/invalidation-oracle.ts` に独立転記、`invalidation-contract.meta.test.ts` の entry 件数 20 → 22、両 file のヘッダコメント「C1〜C20」→「C1〜C22」、`invalidation-contract.static.test.ts` の ALLOWED 2 list は無改変（直接 `invalidateQueries` を使わない）。`docs/decision-log.md` D-052 Contract 行に C21 / C22 と件数（entry 20 → 22 / handler 数は実装後の `rg -c "invalidateByContract\(" src/features --glob '!**/*.test.*'` 実測値で更新）、`docs/UI_TECH_STACK.md` §2.5 の同件数を同期。成功 handler は `useRenameSupplier` / `useMergeSuppliers` が `invalidateByContract` 経由で呼ぶ。追加（create）は 78 doc §78.9 どおり自画面一覧の再取得のみで D-052 entry を増やさない。
+- docs 正本同期（rally round 1 P1-1）: `docs/function-design/78-ui-supplier-management.md` §78.9 を実装済みの確定記述へ改訂 — C21 / C22 は D-052 登録済みであること、consumer 全数導出により C21 / C22 は同一の 8 key 集合に確定したこと（SPEC-SUPI-D2）、集合の正本は decision-log D-052 Contract 行と `src/lib/invalidation-contract.ts` であることを記し、旧列挙行（「…UI-15 新設 key の 3 系統」「上記 3 系統 + products 系 root」の非対称記述）は残さない。「追加成功は自画面一覧の再取得のみで D-052 entry を追加しない」文は維持。あわせて `docs/decision-log.md` D-078 の Invalidation reservation 段落直後に「実装 PR の consumer 全数導出（SPEC-SUPI-D2）により、C21 も C22 と同一の 8 key 集合に確定した（集合の正本は D-052 Contract 行と `src/lib/invalidation-contract.ts`）。」を追記する（予約記述自体は履歴として書き換えない）。
 - navigation `src/config/navigation.ts`: システム管理エリア末尾（整合性検証の次、52-ui §52.4 の順序固定どおり）に `id: "ui-15"` / label・title `取引先管理` / `to: "/settings/suppliers"` / `status: "active"` / icon `Building2`（SPEC-SUPI-D5）を追加。`src/config/navigation.test.ts` に `test_navigation_req107_ui15_active_at_settings_suppliers`（ui-11c パターン）。
 - docs `docs/function-design/52-ui-shared-layout.md`: 各項目アイコン表へ `取引先管理` / `Building2` の 1 行追加（SPEC-SUPI-D5、設計 gap の同 PR 是正）。§52.4 の「2026-08-25 時点」段落の「後続実装 PR が追加する」旨を実装済みの記述へ同期（22 項目 / pending 0 の実態は不変）。
 - docs `docs/function-design/78-ui-supplier-management.md`: §78.6 相当へ「共通離脱ガード（UI_TECH_STACK §6.11 `useUnsavedChangesWarning`）は UI-USW-D3 (c)〈行単位の即時 DB 保存 + dialog 完結〉により適用しない」1 文追記（SPEC-SUPI-D6、PR #95 gated amendment 1 と同型の事前消化）。
@@ -104,7 +105,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Acceptance Criteria
 
-- AC-1: `cd src-tauri && cargo test` PASS、予約 test 名 R-1〜R-5 の 10 fn（Ledger 参照）が `rg -c "fn <name>"` で各 1 hit。
+- AC-1: `cd src-tauri && cargo test` PASS、予約 test 名 R-1〜R-5 の 11 fn（Ledger 参照。R-1 ×1 / R-2 ×4 / R-3 ×4 / R-4 ×1 / R-5 ×1、rally round 1 P2-1 で実カウント是正）が `rg -c "fn <name>"` で各 1 hit。
 - AC-2: `cd src-tauri && cargo run --bin generate_bindings` 実行後に `git diff --stat src/lib/bindings.ts` が空（commit 済みと一致）、diff 内容は新規 3 command（`renameSupplier` / `mergeSuppliers` / `listSuppliersWithUsage`）+ `SupplierMergeResult` / `SupplierWithUsage` の追加のみ。`rg -c "renameSupplier|mergeSuppliers|listSuppliersWithUsage" src/lib/bindings.ts` ≥ 3、既存 `Supplier` 型の行は無変更。
 - AC-3: `cd src-tauri && cargo test --test design_compliance_test` PASS（20-io / 30-biz の新設 fn シグネチャと実装の一致を含む）。
 - AC-4: `npm run generate:routes && npm run typecheck && npm run lint && npm run format:check && npm test` PASS。`rg -c '"ui-15"' src/config/navigation.ts` = 1、`rg -c "test_navigation_req107_ui15_active_at_settings_suppliers" src/config/navigation.test.ts` = 1、`rg -c 'status: "pending"' src/config/navigation.ts` = 0。
@@ -114,6 +115,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC-8: `bash scripts/doc-consistency-check.sh` exit 0 + `bash scripts/doc-consistency-check.sh --target plan` 全チェック通過。
 - AC-9: `bash scripts/local-ci.sh full` RESULT=PASS / END_TREE_STATE=CLEAN（content candidate と Ready exact-HEAD の 2 回、evidence は PR body。evidence log は先頭 `HEAD_SHA` と末尾 `END_HEAD_SHA` / `RESULT` / `MERGE_EVIDENCE_VALID` で読む）。
 - AC-10: human visual confirmation（Windows native L3）の結果が PR body の `Human Gate` 欄に `L3: PASS` または `L3: FAIL` で記録されている。
+- AC-11: C21/C22 の正本同期（rally round 1 P1-1）— `rg -F 'UI-15 新設 key の 3 系統' docs/function-design/78-ui-supplier-management.md` = 0 hit かつ `rg -F '上記 3 系統 + products 系 root' docs/function-design/78-ui-supplier-management.md` = 0 hit、`rg -F -c '同一の 8 key 集合に確定' docs/function-design/78-ui-supplier-management.md docs/decision-log.md` 各 ≥ 1。
 
 ## Design Sources
 
@@ -131,9 +133,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | Backend function / command / repository / validation / error | 20-io / 30-biz / 40-cmd の supplier 3 関数節（PR #3 正本化済み） | existing sufficient |
 | Command / DTO / generated binding / wire shape | 40-cmd + 本 packet Boundary / Wire Contract、`bindings.ts` 再生成 | existing sufficient + 生成物 updated in this PR |
 | DB / transaction / audit / rollback / migration | master-tables §3 / 22-mnt §14（kind 表記 1 箇所是正 = SPEC-SUPI-D1） | updated in this PR（22-mnt kind 是正のみ） |
-| Screen / UI / route state / Japanese wording | 78 doc（離脱ガード非適用 1 文追記 = SPEC-SUPI-D6）、52-ui（アイコン表 1 行 + §52.4 時点表記同期 = SPEC-SUPI-D5） | updated in this PR |
+| Screen / UI / route state / Japanese wording | 78 doc（離脱ガード非適用 1 文追記 = SPEC-SUPI-D6、§78.9 確定記述への改訂 = SPEC-SUPI-D2 / P1-1）、52-ui（アイコン表 1 行 + §52.4 時点表記同期 = SPEC-SUPI-D5） | updated in this PR |
 | CSV / TSV / report / import / export format | 該当なし | existing sufficient |
-| Durable decision / ADR | decision-log D-052 Contract 行（C21/C22 + 件数）、UI_TECH_STACK §2.5 件数 | updated in this PR |
+| Durable decision / ADR | decision-log D-052 Contract 行（C21/C22 + 件数）、D-078 追記（8 key 確定）、UI_TECH_STACK §2.5 件数 | updated in this PR |
 
 ## Registration / Generation Obligations
 
@@ -160,10 +162,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - C21（rename、書込み列 = `suppliers.name` / `suppliers.updated_at`）= C22（merge、書込み列 = `products.supplier_id` / `receiving_records.supplier_id` + suppliers 行 DELETE）= 次の 8 key（順序非依存・重複なし）:
   `queryKeys.productForm.root()` / `queryKeys.priceRevision.root()` / `queryKeys.suppliers.root()` / `queryKeys.productList.root()` / `queryKeys.lowStock(false)` / `queryKeys.stockInquiryRoot()` / `queryKeys.receivings.root()` / `queryKeys.inventoryRecords.root()`。
-- 導出（UI_TECH_STACK §2.5 の table.column 規則、Contract Probe P-2 の rg 実測）: `suppliers.name` は `LEFT JOIN suppliers` で `find_by_product_code`（productForm.product）/ `search_products`（productList.search / priceRevision.search）/ `get_stock_detail`（stockInquiry.detail）/ `list_low_stock_products`（lowStock）/ `list_recent_receiving_records`（receivings.recent）/ `get_receiving_record_detail`（inventoryRecords.receivingDetail）の各 query result に `supplier_name` として載る。取引先候補は `productForm.suppliers()` / `priceRevision.suppliers()`（root の prefix 包含で invalidate）、UI-15 一覧は `suppliers.withUsage`。E3（name / 部門 / 単位 / 価格の閉集合）は `supplier_name` を含まないため除外根拠にならない。product / supplier の code 単位は改名・統合時に列挙不能のため root prefix とし、collateral は E2 で許容（`productForm.root()` が supplier query を巻き込む個別事例の precedent どおり）。`stockMovements` / `stocktake` / 売上系は supplier 列を読む query が 0 hit のため含めない（含めると過剰 invalidation 違反）。
+- 導出（UI_TECH_STACK §2.5 の table.column 規則、Contract Probe P-2 の rg 実測）: `suppliers.name` は `LEFT JOIN suppliers` で `find_by_product_code`（productForm.product）/ `search_products`（productList.search / priceRevision.search）/ `get_stock_detail`（stockInquiry.detail）/ `list_low_stock_products`（lowStock）/ `list_receiving_records`（receivings.recent）/ `get_receiving_record_detail`（inventoryRecords.receivingDetail）の各 query result に `supplier_name` として載る。取引先候補は `productForm.suppliers()` / `priceRevision.suppliers()`（root の prefix 包含で invalidate）、UI-15 一覧は `suppliers.withUsage`。E3（name / 部門 / 単位 / 価格の閉集合）は `supplier_name` を含まないため除外根拠にならない。product / supplier の code 単位は改名・統合時に列挙不能のため root prefix とし、collateral は E2 で許容（`productForm.root()` が supplier query を巻き込む個別事例の precedent どおり）。`stockMovements` / `stocktake` / 売上系は supplier 列を読む query が 0 hit のため含めない（含めると過剰 invalidation 違反）。
 - D-078 との整合: D-078 の「3 系統を全て含む」（productForm.suppliers / priceRevision.suppliers / UI-15 新設 key）は下限であり、上記 root 集合が prefix でこれを包含する。C22 の「products 系 root」= `productList.root()` を含む。C21 と C22 が同一集合に収束するのは、rename も表示中の `supplier_name` を全 consumer で変えるため（entry は operation が異なるため C21 / C22 の 2 entry として登録する）。
 - 却下: D-078 の 3 系統 + products root だけに限定（receivings / inventoryRecords / stockInquiry / lowStock の `supplier_name` が stale のまま残り導出規則違反）/ E3 に取引先名を追加する定義変更（E3 の閉集合は PR #95 rally で再確認済みの durable 契約で、改名は低頻度・refetch 代償僅少のため正しく invalidate する側が適切）。
-- 転記先: decision-log D-052 Contract 行 + UI_TECH_STACK §2.5 件数（本 PR）。
+- 転記先: decision-log D-052 Contract 行 + UI_TECH_STACK §2.5 件数 + 78 doc §78.9 改訂 + D-078 追記（いずれも本 PR、Scope の docs 正本同期 bullet と AC-11。rally round 1 P1-1 = 予約時の非対称列挙を正本に残すと実装 SSOT と食い違うため、確定集合へ同期する）。
 
 ### SPEC-SUPI-D3: UI-15 の query key namespace
 
@@ -207,7 +209,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Design Intent Audit
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: yes（SPEC-SUP-D1〜D10 は 78 doc + 各層 doc + D-078 に正本化済み。本 packet の SPEC-SUPI-D1〜D7 は実装配置・是正・集合確定で、durable なもの〈D1 の kind 是正 / D2 の C21/C22 集合 / D5 のアイコン〉は同 PR で source docs へ転記する）。
-- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: SPEC-SUPI-D1（22-mnt）/ D2（decision-log D-052 + UI_TECH_STACK）/ D5（52-ui）/ D6（78 doc 1 文）。D3 / D4 / D7 は既存正本の範囲内の実装配置で転記不要（Ledger の test で契約化）。
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: SPEC-SUPI-D1（22-mnt）/ D2（decision-log D-052 + D-078 追記 + UI_TECH_STACK + 78 §78.9 改訂）/ D5（52-ui）/ D6（78 doc 1 文）。D3 / D4 / D7 は既存正本の範囲内の実装配置で転記不要（Ledger の test で契約化）。
 - Assumptions and constraints: suppliers への FK 参照は products / receiving_records の 2 テーブルで全数（design packet Contract Probe P-1 の rg 実測を Probe P-1 で再確認）/ SQLite `ALTER TABLE ADD COLUMN` は NOT NULL + 非定数 DEFAULT 不可（nullable + backfill）/ 単一 operator・単一 window で merge TX 外の並行書込みなし / suppliers.name は UNIQUE（既存 schema）。
 - Deferred design gaps, risk, and follow-up target: 削除・問屋・80 社一括投入・検索・並び替え・undo（78 doc §78.12）/ UI-01a 取引先 filter（backlog）/ CreateSupplierDialog の共通昇格（要望発生時）。
 - Test Design Matrix can cite design decision IDs or source doc sections: yes（SPEC-SUP-D1〜D10 / SPEC-SUPI-D1〜D7 / D-052 / UI-USW-D3）。
@@ -230,7 +232,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Design Readiness
 
 - Existing design docs are sufficient because: PR #3 が UI-15 の画面契約（78 doc）、IO / BIZ / CMD 契約（20-io / 30-biz / 40-cmd）、DB / migration 契約（master-tables / 22-mnt §14）、到達導線（52-ui / SCREEN_DESIGN）、要求正本（REQ-106 / REQ-107）、invalidation 予約（D-078 C21/C22）を正本化済み。residual gap は 3 件で本 PR が解消する: (a) 22-mnt §14 の kind 表記と処理ステップ 3 の不整合（SPEC-SUPI-D1）、(b) 52-ui アイコン表の取引先管理欠落（SPEC-SUPI-D5）、(c) C21/C22 の consumer 全数（D-078 は suppliers 系 3 系統の下限のみ列挙、SPEC-SUPI-D2 で確定）。
-- Source docs updated in this PR: 22-mnt §14 kind 1 箇所 / 52-ui アイコン表 1 行 + §52.4 時点表記 / 78 doc 離脱ガード 1 文 / decision-log D-052 Contract 行 / UI_TECH_STACK §2.5 件数 / requirements.md REQ-107 昇格 + 補足 sweep / 90-traceability（再生成）。
+- Source docs updated in this PR: 22-mnt §14 kind 1 箇所 / 52-ui アイコン表 1 行 + §52.4 時点表記 / 78 doc 離脱ガード 1 文 + §78.9 確定記述への改訂 / decision-log D-052 Contract 行 + D-078 追記 / UI_TECH_STACK §2.5 件数 / requirements.md REQ-107 昇格 + 補足 sweep / 90-traceability（再生成）。
 - Design gaps intentionally deferred: Design Intent Audit 参照。
 - Durable decisions discovered in this plan and promoted to source docs: SPEC-SUPI-D1 / D2 / D5 / D6。
 
@@ -247,7 +249,7 @@ Minimum design checks for business-app work:
 ## Contract Probe
 
 - P-1（FK 参照全数の再確認）: `rg -n 'REFERENCES suppliers' src-tauri/src/db/schema_v*.rs` = 3 hit（schema_v1 products / schema_v1 receiving_records 初版 / schema_v2 receiving_records_new 再構築）で、suppliers を参照するのは products / receiving_records の 2 テーブル（2026-08-25 再実測、design packet P-1 と一致）。
-- P-2（suppliers.name / supplier_id の consumer 全数）: `rg -n 'JOIN suppliers' src-tauri/src/db/ src-tauri/src/biz/` = receiving_repo 2 箇所（`list_recent_receiving_records` / `get_receiving_record_detail`）+ product_repo 4 箇所（`find_by_product_code` / `search_products` / `get_stock_detail` / `list_low_stock_products`）で全数（2026-08-25 実測）。frontend の `supplier_name` 表示は `ReceivingPage` / `ReceivingRecordDetailPage` / `ProductForm`（supplierName）。stockMovements / stocktake / 売上系 repo に suppliers 参照は 0 hit。→ SPEC-SUPI-D2 の 8 key 集合の導出根拠。
+- P-2（suppliers.name / supplier_id の consumer 全数）: `rg -n 'JOIN suppliers' src-tauri/src/db/ src-tauri/src/biz/` = receiving_repo 2 箇所（`list_receiving_records` / `get_receiving_record_detail`）+ product_repo 4 箇所（`find_by_product_code` / `search_products` / `get_stock_detail` / `list_low_stock_products`）で全数（2026-08-25 実測）。frontend の `supplier_name` 表示は `ReceivingPage` / `ReceivingRecordDetailPage` / `ProductForm`（supplierName）。stockMovements / stocktake / 売上系 repo に suppliers 参照は 0 hit。→ SPEC-SUPI-D2 の 8 key 集合の導出根拠。
 - P-3（MigrationKind の実装制約）: `migration.rs` の `apply_sql_migration` は SQL batch 実行 + schema_versions 記録のみで任意検証を挟めない。v2 / v3 / v5 の Custom は fn 内で BEGIN → 変更 → 検証 SELECT → schema_versions → COMMIT を自己完結する（`schema_v5::apply_v5_plu_slots` 実読、2026-08-25）。→ SPEC-SUPI-D1 の根拠。
 - P-4（参照 component の実在、PR #95 WER (3) 規律）: `PageHeader` / `EmptyState` / `ListSkeleton` は `src/components/patterns/` に、dialog / select / table / input / label / alert / button / badge は `src/components/ui/` に実在（2026-08-25 eza 実測）。未実装の参照 component なし。
 - P-5（採番・登録面の現況）: `invalidation-contract.ts` ヘッダ = C1〜C20 / meta test `toHaveLength(20)` / D-052 Contract 行 = 20 entry・23 handler（decision-log 392 行）→ C21/C22 で 22 entry。`design_compliance_test.rs` SKIP_DOCS に `78-ui-supplier-management.md` 登録済み（PR #3）→ 本 PR での SKIP_DOCS 追加なし。`FE_UNREFERENCED_BASELINE = 22`（generate_traceability.rs:43）。navigation は 21 項目 / pending 0。`SPEC-SUPI` prefix は docs/（archive 含む）で 0 hit（2026-08-25 rg 実測）。
@@ -287,7 +289,7 @@ Minimum design checks for business-app work:
 Test Design Matrix: [test-matrices/2026-08-25-supplier-management-impl.md](test-matrices/2026-08-25-supplier-management-impl.md)。archived design Matrix「実装 PR への予約」R-1〜R-10 を本 Matrix が確定・継承する。
 Human Gate が L3 を含むため、Writer 完了条件に `cd src-tauri && cargo check --release` を含める（CI gate ではない）。
 
-- targeted tests: Rust R-1〜R-5 の 10 fn、RTL（`SupplierManagementPage.test.tsx` / hooks test / `navigation.test.ts`）、`invalidation-contract.meta.test.ts`（22）/ `.static.test.ts`、`design_compliance_test`、`generate_traceability -- --check`、`generate_bindings` diff。
+- targeted tests: Rust R-1〜R-5 の 11 fn、RTL（`SupplierManagementPage.test.tsx` / hooks test / `navigation.test.ts`）、`invalidation-contract.meta.test.ts`（22）/ `.static.test.ts`、`design_compliance_test`、`generate_traceability -- --check`、`generate_bindings` diff。
 - negative tests: 空文字 / 空白のみ / 同名衝突 / source==target / 不存在 ID / merge 再実行 / 途中失敗 rollback / 一覧・追加・改名・統合の各 reject で入力保持。
 - compatibility checks: 既存 supplier 3 関数の既存 test 無改変 PASS、`bindings.ts` の既存 export 不変、`test_navigation_all_items_no_pending_status` PASS、migration v1〜v5 済み DB と新規 DB の両方で v6 適用（R-1）。
 - data safety checks: fixture は synthetic のみ。L3 は owner local DB の backup 控え → synthetic 投入 → 確認 → backup 復元。DB / screenshot / fixture は commit しない。
@@ -336,7 +338,7 @@ Contract ID: SPEC-SUPI
 | SPEC-SUP-D4 | BIZ merge 1 TX + IO 2 UPDATE → DELETE | R-3（4 fn）+ R-4 | 参照全数 / rollback / mutation 予約 | cargo test + mutant 実注入 |
 | SPEC-SUP-D8 | IO usage 集約 + BIZ DTO + CMD 3 件 + bindings | R-5 + AC-2 | 件数水増し / wire 凍結 | cargo test + bindings diff |
 | SPEC-SUP-D2 / D6 | features/suppliers UI 一式 | RTL（Ledger） | 2 段階 / 文言 / 失敗保持 | npm test + L3 |
-| SPEC-SUP-D7 / SPEC-SUPI-D2 / D3 | C21/C22 + query keys + hooks | RTL oracle + meta 22 | 集合の両方向 | npm test |
+| SPEC-SUP-D7 / SPEC-SUPI-D2 / D3 | C21/C22 + query keys + hooks + 78 §78.9 改訂 + D-078 追記 | RTL oracle + meta 22 + AC-11 rg | 集合の両方向 / 正本同期 | npm test + AC-11 |
 | SPEC-SUP-D9 / SPEC-SUPI-D5 | navigation + route + 52-ui icon | R-6 | 表順 / pending 0 / icon | npm test + AC-7 |
 | SPEC-SUPI-D6 | sweep manifest + 78 doc 1 文 | T17 PASS + rg | 分類根拠 | npm test |
 | REQ-107 | requirements 昇格 + 90-traceability | AC-6 | deferred 残存 0 | --check exit 0 |
@@ -354,6 +356,6 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-確定前の空欄（レビュー後に記入）。
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
+- Plan Review round 1（Sonnet、独立 fresh context、2026-08-25、packet `0a2f278`）: P1 1 / P2 1 / P3 1、verdict fail。全件 Coordinator が rg で実証再現のうえ accept して是正: P1-1 C21/C22 の 8 key 対称集合（SPEC-SUPI-D2）が durable 正本 D-078（decision-log 635 行）と 78 doc §78.9 の非対称記述（C21 = 3 系統 / C22 = +products root）と矛盾したまま Scope 外だった → Scope に docs 正本同期 bullet（78 §78.9 確定記述への改訂 + D-078 追記）+ AC-11（新旧文言 presence oracle）+ Required Design Artifacts / Design Readiness / Trace Matrix / SPEC-SUPI-D2 転記先を同期 / P2-1 AC-1 の Rust 予約 test 数「10 fn」は Ledger 実カウント 11 fn と不一致（D-062）→ 11 へ是正（Test Plan 側も同期）/ P3-1 Contract Probe P-2 の `list_recent_receiving_records` は不存在 fn 名（正 = `list_receiving_records`、receiving_repo.rs:118）→ SPEC-SUPI-D2 導出文と P-2 の 2 箇所を是正。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
