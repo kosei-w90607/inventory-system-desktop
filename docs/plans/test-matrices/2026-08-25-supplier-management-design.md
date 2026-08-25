@@ -1,4 +1,4 @@
-# Test Design Matrix — 取引先管理（改名・統合）design-first
+# Test Design Matrix — 取引先管理（追加・改名・統合）design-first
 
 対象 packet: [2026-08-25-supplier-management-design.md](../2026-08-25-supplier-management-design.md)
 

@@ -1,4 +1,4 @@
-# Plan Packet — 取引先管理（改名・統合）design-first
+# Plan Packet — 取引先管理（追加・改名・統合）design-first
 
 ## Workflow State
 
@@ -23,6 +23,10 @@ Plan Review round 1（Sonnet 独立 fresh context、2026-08-25）: P1 2 / P2 2 /
 Plan Review round 2（Sonnet 独立 fresh context、2026-08-25、HEAD acbc70e）: round 1 是正 6 件は全 CLOSED（oracle 実行・算術再現・実在確認で実証）。新規 P1 1 / P2 1 / P3 1 — ①M-D6 が SPEC-SUP-D8 の 3 command 目（`list_suppliers_with_usage`）を未検査（PR #159 miss class）→ M-D6 拡張 + AC-10 新設 + 名称 3 層統一 ②SPEC-PRVA-D5 の逆引用（正 = DTO は BIZ 所有・CMD は qualified path 参照。Coordinator が archive 実読で裏取り）→ Boundary / Wire Contract を是正 ③M-D3 の section 境界が非機械的 → awk section slice oracle へ変更。全 3 件採用・是正済み。
 
 owner 裁定 2026-08-25（Plan Gate、rally 収束後）: 追加導線も UI-15 に置く（既存 `create_supplier` command 流用・wire 無改変・REQ-106 の対応 UI へ UI-15 追加）。rally 3 round 収束後の owner-directed contract 追加のため、既収束 findings の再 round ではなく独立 fresh context による delta 検証を別途実施して plan-gate evidence を更新する。
+
+delta 検証（Sonnet 独立 fresh context、2026-08-25、対象 = 追加導線反映 commit）: P1 0 / P2 0 / P3 2 / verdict pass。反映の一貫性・wire 凍結との無矛盾・UI-01b-D21 引用の正確性・M-D5 新 oracle の機械実行可能性を確認。P3 2 件（packet / Matrix の H1 表題「改名・統合」→「追加・改名・統合」追随、Manual verification lens 行への追加導線反映）は採用・是正済み。
+
+owner Plan Gate 承認（2026-08-25、介入 1/3）: 採否 7 点すべて承認 + 追加導線の scope 化を裁定。関連裁定 = UI-01a 商品検索への取引先 filter 露出は本 change に含めず backlog へ（「あとで。まず UI-15 を済ませる」、Plans.md backlog 起票済み）。Plan Reviewer evidence = rally 3 round 収束（P1+P2: 4 → 3 → 0）+ owner-directed delta 検証 pass。
 
 ## Owner Effort Budget
 
@@ -171,7 +175,7 @@ docs-only design-first PR。以下を Codex Writer が発注書に従って正�
 | Replacement path | not applicable — 外部システム非依存 | — |
 | Data safety / evidence | docs-only PR。実店舗 DB・実取引先名は不使用（設計例示は synthetic 名のみ） | Data Safety 節 |
 | Reporting / accounting semantics | merge 後、過去の入庫記録の取引先表示は残す側の名称になる。統合 = 同一実体の重複解消であり履歴の意味は保存される（別実体を誤統合した場合の復元手段はないことを 78 doc の確認 dialog 文言根拠に明記） | 78 doc |
-| Manual verification | 本 PR は docs-only で L3 なし。実装 PR で human visual confirmation（UI-15 到達・改名・統合 happy path + 確認 dialog 文言）を予約 | 78 doc の実装 PR 予約節 |
+| Manual verification | 本 PR は docs-only で L3 なし。実装 PR で human visual confirmation（UI-15 到達・追加・改名・統合 happy path + 確認 dialog 文言）を予約 | 78 doc の実装 PR 予約節 |
 | 環境・再現性 | not applicable — toolchain / CI 環境の変更なし | — |
 
 ## Design Readiness
