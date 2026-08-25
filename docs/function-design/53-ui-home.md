@@ -191,6 +191,8 @@ ui-task-specs.md §UI-00 の業務的概要は **重複させない**（`memory/
 - active route ボタン: 本 PR スコープ内では該当なし（UI-00 ホームのみ active = navigation.ts SSOT、大ボタン群 = CSV取込み / 日次売上 / 在庫照会 / 月次売上 / 商品管理 / 入出庫 4 / 棚卸し / バックアップ / 閾値設定は全部 pending、Phase 2 後続 PR で順次 active 化予定）
 - pending route ボタン: 大ボタン全部 — Tooltip + `aria-disabled` + `onClick preventDefault` + `cursor-not-allowed`（D-2、HTML disabled は不採用、Tooltip 文言 generic「後続フェーズで着手予定」= Phase 2/3/4 の各画面着手 phase に依存しない汎用表現）
 
+**2026-08-26 時点**: 大ボタン群の全 route は active 化済みで pending 該当なしとなった。pending route ボタンの表示挙動（Tooltip + `aria-disabled`）は将来 route 追加時の予備機構として維持する。
+
 ---
 
 ### 53.5 エラー表示

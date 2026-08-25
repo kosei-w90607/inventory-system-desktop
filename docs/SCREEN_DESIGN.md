@@ -2,7 +2,7 @@
 
 > **このファイルの目的**: 画面設計の意図・判断・気付きを保存し、セッション間で引き継ぐ。モックアップHTMLファイル（screen_mockups.html）と対で使用する。
 >
-> **最終更新**: 2026-07-07 / UI-10 棚卸し Design Phase 追加
+> **最終更新**: 2026-08-26 / 実装状況表記を現行実装へ同期
 
 ---
 
@@ -12,7 +12,7 @@
 | # | 画面名 | 対応REQ | モックアップ | 状態 |
 |---|--------|---------|-------------|------|
 | 1 | ホーム画面 | REQ-301/302, SP-102-07 | 完了 | Phase 2 実装済み（PR #56 `e6da3d8`） |
-| 2 | 売上データ取込み（日報 / 商品別CSV） | REQ-401 | 完了 | Phase 2 実装済みZ004画面をREQ-401再設計で日報主動線へ更新予定 |
+| 2 | 売上データ取込み（日報 / 商品別CSV） | REQ-401 | 完了 | 実装済み（日報取込み主動線の `DailyReportImportPage` を含む） |
 | 3 | 日次売上レポート | REQ-501 | 完了 | Phase 2 実装済み（PR #65 `8c2be51`） |
 | 4 | 在庫照会 | REQ-301/302/303 | 完了 | Phase 2 実装済み（PR #67 `cf89082`、高視認性 follow-up PR #74 `ae0c68f`） |
 | 5 | 月次売上レポート | REQ-502 | 完了 | Phase 2 実装済み（PR #66 `caf7d57`、seed / card overflow follow-up PR #70 `aeeee2a`） |
@@ -31,20 +31,20 @@
 | 10 | 商品登録 | REQ-101 | — | 実装済み（PR #95） |
 | 11 | 商品修正 | REQ-102 | — | 実装済み（PR #95） |
 | 12 | 廃棄・破損 | REQ-204 | — | 実装済み（PR #110 `0794342`） |
-| 12a | 入出庫履歴 | REQ-206/207/208 | — | Design Phase 追加（入出庫記録・在庫変動追跡完成形） |
+| 12a | 入出庫履歴 | REQ-206/207/208 | — | 実装済み（入出庫記録・在庫変動追跡。取消・訂正は後続） |
 
 ### 年に数回 / 初回のみ
 | # | 画面名 | 対応REQ | モックアップ | 状態 |
 |---|--------|---------|-------------|------|
-| 13 | 棚卸し | REQ-205 | — | Design Phase 追加。Phase 4 実装予定（10-4、検索/スキャン主動線 + 上書き再入力 + 常時確認確定。10-4a channel 判定は不採用で確定） |
+| 13 | 棚卸し | REQ-205 | — | 実装済み（10-4、検索/スキャン主動線 + 上書き再入力 + 常時確認確定。10-4a channel 判定は不採用で確定） |
 | 14 | 一括インポート | REQ-104 | — | 実装済み（PR #100） |
-| 15 | PLU書出し | REQ-402 | — | Design Phase 追加。Phase 4 実装予定（10-3、CV17 1.1.1 / SD カード経由実機確認 10-3a） |
-| 16 | 在庫整合性検証 | REQ-904 | — | Phase 4 実装予定（10-6、UI-13、Q40 障害時対応と合わせて具体化）。REQ-403 の POS 部門別売上照合は別 task として deferred |
-| 17 | バックアップ・復元 | QR-05 | — | Design Phase 追加。Phase 4 実装予定（10-5b、復元前強制バックアップ + 二段確認 + cache clear） |
-| 18 | 操作ログ | QR-06 / REQ-902 | — | PR #164で実装済み（Draft / Phase `implementing`）。閲覧MVP: 期間/種別filter + pagination + detail_json安全表示。CSV出力・保持設定変更・削除は別task |
-| 19 | 設定（在庫少の基準） | QR系 | — | Design Phase 追加。Phase 4 実装予定（10-5a、在庫少基準 2 key + 部分失敗表示） |
-| 20 | 一括価格改定 | REQ-105/106 | — | Design Phase 追加（UI-14、取引先・部門・keyword 絞り込み + 行単位確定） |
-| 21 | 取引先管理 | REQ-106/107 | — | Design Phase 追加（UI-15、取引先の追加・インライン改名・重複統合） |
+| 15 | PLU書出し | REQ-402 | — | 実装済み（10-3、CV17 1.1.1 / SD カード経由実機確認 10-3a） |
+| 16 | 在庫整合性検証 | REQ-904 | — | 実装済み（10-6、UI-13。画面固有の CmdError / retry を実装、アプリ共通の Q40 障害時対応は本画面の対象外 — 75-ui §参照）。REQ-403 の POS 部門別売上照合は別 task として deferred |
+| 17 | バックアップ・復元 | QR-05 | — | 実装済み（10-5b、復元前強制バックアップ + 二段確認 + cache clear） |
+| 18 | 操作ログ | QR-06 / REQ-902 | — | PR #164で実装済み。閲覧MVP: 期間/種別filter + pagination + detail_json安全表示。CSV出力・保持設定変更・削除は別task |
+| 19 | 設定（在庫少の基準） | QR系 | — | 実装済み（10-5a、在庫少基準 2 key + 部分失敗表示） |
+| 20 | 一括価格改定 | REQ-105/106 | — | 実装済み（UI-14、取引先・部門・keyword 絞り込み + 行単位確定） |
+| 21 | 取引先管理 | REQ-106/107 | — | 実装済み（UI-15、取引先の追加・インライン改名・重複統合） |
 
 ---
 
@@ -135,7 +135,7 @@
 ### バックアップ・復元画面
 - **対応仕様**: QR-05 / REQ-905（バックアップ・復元、設定・ログ・バックアップ系 CMD）
 - **レイアウト判断**:
-  - UI-11b はシステム管理エリアの独立画面として扱う。`src/config/navigation.ts` の `ui-11b` は現状 pending のため、実装 PR で route と navigation active 化を同時に行う。
+  - UI-11b はシステム管理エリアの独立画面として扱う。route（`/settings/backup`）は実装済みで、`src/config/navigation.ts` の `ui-11b` も active 化済み。
   - `backup_enabled` / `backup_time` / `backup_path` / `backup_retention_days` はこの画面が所有する。UI-11a 閾値設定には混ぜない。
   - バックアップ一覧は和式日時を主情報、MB サイズを副情報にし、最新行へ「最新」Badge、各行に復元導線を置く。ファイル名・絶対パスは詳細/補助表示へ下げる。
   - backup_path 変更は native directory picker のみ。自由入力は置かない。
@@ -150,7 +150,7 @@
 ### 閾値設定画面（在庫少の基準）
 - **対応仕様**: QR系 / D-4（在庫少閾値の初期値・最小値 1、[DB_DESIGN.md](DB_DESIGN.md) 設計方針メモ）
 - **レイアウト判断**:
-  - UI-11a はシステム管理エリアの独立画面として扱う。`src/config/navigation.ts` の `ui-11a` は現状 pending のため、実装 PR で route（`/settings/thresholds`）と navigation active 化を同時に行う。
+  - UI-11a はシステム管理エリアの独立画面として扱う。route（`/settings/thresholds`）は実装済みで、`src/config/navigation.ts` の `ui-11a` も active 化済み。
   - この画面が所有する app_settings key は `stock_low_threshold` / `stock_low_threshold_fabric` の 2 件のみ（UI-11a-D1）。backup 系 4 key は UI-11b 所有（UI-11b-D6 の相互不可侵）。
   - フォームは 1 セクション（DSR-09）、主動線は「保存する」1 個（DSR-01）、確認ダイアログなし（DSR-07: 可逆操作）。
 - **利用者配慮**:
@@ -418,12 +418,12 @@ UI-04 は `/inventory/manual-sale` で、レジCSVに入らない販売を手入
 
 UI-05 は `/inventory/disposal` で、廃棄・破損による在庫減算とロス記録を残す。保存結果や保存系エラーはページ先頭側に出るため、保存成功または command 失敗時はページ先頭へスクロールする。詳細な route / command / validation / L3 確認項目は `docs/function-design/64-ui-disposal.md` を正とする。
 
-**Phase 4: 在庫特殊 + システム管理7画面（`v1.0.0` タグ目標）**
-- UI-06c 在庫変動履歴（REQ-303）。在庫少一覧（REQ-302）は D-047 により UI-06a `status=low_stock` フィルタへの deep-link で完了済み、独立画面なし
-- UI-08 PLU書出し（REQ-402、SD カード経由実機確認は Phase 4 着手時）
-- UI-10 棚卸し（REQ-205、Design Phase 追加済み。中断再開は status 自動判別、IPC channel は 10-4a 判定で不採用確定）
-- UI-11a/b/c 設定 / バックアップ / 操作ログ
-- UI-13 在庫整合性検証（REQ-904、Q40 障害時対応と合わせて具体化）
+**Phase 4: 在庫特殊 + システム管理7画面（完了）**
+- UI-06c 在庫変動履歴（REQ-303）を実装済み。在庫少一覧（REQ-302）は D-047 により UI-06a `status=low_stock` フィルタへの deep-link で完了済み、独立画面なし
+- UI-08 PLU書出し（REQ-402）を実装済み
+- UI-10 棚卸し（REQ-205）を実装済み。中断再開は status 自動判別、IPC channel は 10-4a 判定で不採用確定
+- UI-11a/b/c 設定 / バックアップ / 操作ログを実装済み
+- UI-13 在庫整合性検証（REQ-904。画面固有の CmdError / retry を実装、アプリ共通の Q40 障害時対応は対象外）を実装済み
 - REQ-403 / SP-403 POS 部門別売上照合（画面 task 未割当、deferred。数量・金額差と原因調査材料を示し、自動修正しない）
 
 ### 利用者への確認に使う画面（Phase 2 8-0 必須 gate）
