@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 6de67dfa7f3264b6e8413d6b479abfa094f6a62e
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: 5c67a5e6ccc732fcbeb75f323c8609e323dae0b8
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending — Ready 承認（Plan Gate 承認は 2026-08-25 完了、narrative 参照）
+- Human Gate: pending — owner の Ready 化操作と merge（Plan Gate 承認・Ready 承認は 2026-08-25 完了、narrative 参照）
 
 append-only narrative: kickoff → spec-check → design → plan-draft は本 packet の plan-first content commit に同乗する（recording compression）。evidence = task scope と Risk 分類は本 packet Risk 節、in-scope source docs の特定は Design Sources 節、設計上の未解決問題なし（owner 裁定 2026-08-25 = 改名 + 統合を採用・削除は非採用・配置は `/settings/suppliers` システム管理エリア・schema 追加は updated_at のみ。D-078 として正本化予定）。
 
@@ -32,7 +32,9 @@ state-only 遷移（2026-08-25）: plan-draft -> plan-gate -> plan-approved -> i
 
 実装・検証記録（2026-08-25）: Codex Writer が発注 1 本で Scope 1〜14 を実装（content candidate = 実装 2 commit 目、AC-1〜10 / M-D1〜11 / 完了 gate 全 PASS を報告、Coordinator が scope・凍結境界・主要 oracle を独立再実測して一致確認）。L1 full は content candidate と gated amendment 後 HEAD の双方で PASS / CLEAN / MERGE_EVIDENCE_VALID=true（evidence = `.local/ci-evidence/`、exact SHA は PR body 正本）。Final Review（Sonnet 独立 fresh context、Contract Audit）: Ledger 13/13 適合・M-D/AC 全 oracle 独立再現・機械 gate 全 PASS・既存節無改変を hunk 単位確認・docs 契約内容の不整合なし。P2 2 件（M-D11 の section-scope 欠如 / M-D5 の不可逆・件数文言 oracle 欠如 — いずれも Matrix 頑健性）→ Coordinator 両採用、gated amendment 1（Amendments 行の SHA、Matrix 2 行のみ）で是正、独立 delta 再検証 P1/P2/P3 = 0 / verdict pass。Findings Freeze: frozen after Broad Audit; post-freeze exceptions: none。
 
-state-only 遷移（2026-08-25、本 commit）: implementing -> local-verified -> independent-review -> human-confirm を単一 state-only commit で実体化（recording compression）。evidence = implementing -> local-verified: content candidate の L1 full CLEAN（上記記録、PR body に SHA 記載）/ local-verified -> independent-review: 独立 Final Reviewer（Sonnet）の Contract Audit 実施 / independent-review -> human-confirm: findings 裁定完了・P1/P2 = 0（P2 2 件は gated amendment 1 で是正済み + delta 再検証 pass）、Reviewed Content HEAD = gated amendment commit を設定。
+state-only 遷移（2026-08-25）: implementing -> local-verified -> independent-review -> human-confirm を単一 state-only commit で実体化（recording compression）。evidence = implementing -> local-verified: content candidate の L1 full CLEAN（上記記録、PR body に SHA 記載）/ local-verified -> independent-review: 独立 Final Reviewer（Sonnet）の Contract Audit 実施 / independent-review -> human-confirm: findings 裁定完了・P1/P2 = 0（P2 2 件は gated amendment 1 で是正済み + delta 再検証 pass）、Reviewed Content HEAD = gated amendment commit を設定。
+
+owner Ready 承認（2026-08-25、介入 2/3）: Draft PR #3 の Human Gate 提示に対し承認。human-confirm -> ready-hosted-final の state-only 遷移（本 commit）を Draft のまま作成し、この exact HEAD で L1 full を再実行して PR body を更新、owner が Ready 化を実施する（hosted CI は Ready event で発火、本 PR は Rust test file を含むため event-filtered ではない）。
 
 ## Owner Effort Budget
 
