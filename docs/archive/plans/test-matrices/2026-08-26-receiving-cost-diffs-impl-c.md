@@ -2,7 +2,7 @@
 
 対応 packet: [../2026-08-26-receiving-cost-diffs-impl-c.md](../2026-08-26-receiving-cost-diffs-impl-c.md)
 
-test 名 4 本（T1〜T4）は archived Matrix [2026-08-22-price-revision-design.md](../../archive/plans/test-matrices/2026-08-22-price-revision-design.md)「実装 PR への予約 → 実装 C」の予約を継承する。oracle の期待値はすべて本 Matrix に独立転記し、production 定数から導出しない（D-052 の oracle 独立性と同じ規律）。mock / fixture 値は設計既定値と区別できる distinguishable 値を使う。
+test 名 4 本（T1〜T4）は archived Matrix [2026-08-22-price-revision-design.md](2026-08-22-price-revision-design.md)「実装 PR への予約 → 実装 C」の予約を継承する。oracle の期待値はすべて本 Matrix に独立転記し、production 定数から導出しない（D-052 の oracle 独立性と同じ規律）。mock / fixture 値は設計既定値と区別できる distinguishable 値を使う。
 
 ## Rust（`src-tauri/src/biz/inventory_service/receiving.rs`、REQ-209 / SPEC-PRV-D8）
 
