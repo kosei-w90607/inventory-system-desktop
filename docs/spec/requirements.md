@@ -46,6 +46,9 @@
 ## 補足
 
 - 開発拡張 ID（REQ-700, REQ-901〜907）は owner 保管原典の ID 集合には含まれない。REQ-907 は D-072 の design-first 契約として追加し、後続実装で traceability test を付与する。
-- Design Phase 補足 ID（REQ-106 / REQ-107 / REQ-206〜209）は既存要求の実装・聞き取りで露出した横断要件である。REQ-107 は取引先管理の実装により `coverage=required`、REQ-206〜208 は実装着手まで `coverage=deferred` とする。REQ-106 / REQ-209 は価格改定支援の設計契約（SPEC-PRV-D11）として `coverage=required` とする。
+- Design Phase 補足 ID（REQ-106 / REQ-107 / REQ-206〜209）は既存要求の実装・聞き取りで露出した横断要件である。
+- REQ-107 は取引先管理の実装により `coverage=required` とする。
+- REQ-206〜208 は実装着手まで `coverage=deferred` とする。
+- REQ-106 / REQ-209 は価格改定支援の設計契約（SPEC-PRV-D11）として `coverage=required` とする。
 - REQ-403 は POS 部門別売上照合として `coverage=deferred` とし、`--check` の `[T3]` WARN 対象外にする。UI-13 / REQ-904 の在庫整合性とは別契約であり、専用 task の Design Phase と実装着手時に `required` へ戻す。
 - SP-NNN / QR-NN / `UI-NNx-Dn`（設計決定 ID）は本表の対象外（traceability v1 の Non-scope）。
