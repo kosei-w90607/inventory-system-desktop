@@ -6,19 +6,19 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 0a2f278
-- Amendments: none
+- Amendments: 102bce7 c26052a d888e9c a41fc93
 - Coordinator: Fable
 - Writer: Codex
 - Plan Reviewer: Sonnet
 - Final Reviewer: Sonnet
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: f8dbd67
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Plan Gate 承認済み（2026-08-25、介入 1/3）→ human visual confirmation（Windows native L3 4 項目、operator 画面新設のため必須 = 78 doc §78.10）→ Ready 承認 → hosted final（Rust / TS / bindings を含む non-doc change のため CI-TRIGGER-D1 の Ready / `synchronize` 経路で自動 run）→ 三点一致 → merge
+- Human Gate: Plan Gate 承認済み（2026-08-25、介入 1/3）→ human visual confirmation（Windows native L3 4 項目、operator 画面新設のため必須 = 78 doc §78.10、synthetic fixture 手順書提示済み・実施待ち）→ Ready 承認 → hosted final（Rust / TS / bindings を含む non-doc change のため CI-TRIGGER-D1 の Ready / `synchronize` 経路で自動 run）→ 三点一致 → merge
 
 ## Owner Effort Budget
 
@@ -360,7 +360,14 @@ Contract ID: SPEC-SUPI
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Plan Review round 1（Sonnet、独立 fresh context、2026-08-25、packet `0a2f278`）: P1 1 / P2 1 / P3 1、verdict fail。全件 Coordinator が rg で実証再現のうえ accept して是正: P1-1 C21/C22 の 8 key 対称集合（SPEC-SUPI-D2）が durable 正本 D-078（decision-log 635 行）と 78 doc §78.9 の非対称記述（C21 = 3 系統 / C22 = +products root）と矛盾したまま Scope 外だった → Scope に docs 正本同期 bullet（78 §78.9 確定記述への改訂 + D-078 追記）+ AC-11（新旧文言 presence oracle）+ Required Design Artifacts / Design Readiness / Trace Matrix / SPEC-SUPI-D2 転記先を同期 / P2-1 AC-1 の Rust 予約 test 数「10 fn」は Ledger 実カウント 11 fn と不一致（D-062）→ 11 へ是正（Test Plan 側も同期）/ P3-1 Contract Probe P-2 の `list_recent_receiving_records` は不存在 fn 名（正 = `list_receiving_records`、receiving_repo.rs:118）→ SPEC-SUPI-D2 導出文と P-2 の 2 箇所を是正。
 - Plan Review round 2（Sonnet、独立 fresh context、2026-08-25、packet `d4a54c3`）: round 1 是正 3 件は全 CLOSED（AC-11 oracle の自己参照なし・11 fn 実カウント一致・fn 名実在を独立再現）。fresh 全文レビューで新規 P1 / P2 / P3 = 0、verdict pass。SPEC-SUPI-D2 の 8 key を実コード側から独立再検算（`searchProducts` の非 cache 命令的呼出しと query cache 消費を区別し、欠落・過剰の両方向で問題なし）、SPEC-SUPI-D1 の v5 pattern 一致・R-1〜R-10 全数継承・D-062 編成適合・採番衝突なしを確認。rally 収束（2 round / 天井 3、P1+P2: 2 → 0）。
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Final Review（Sonnet、独立 fresh context、worktree 隔離、content candidate `f8dbd67`、2026-08-25〜26）: P1 0 / P2 0 / P3 1 = PASS。Scope 突合 = 変更 file 全数が packet Scope / gated amendments に対応（packet 外 0 / 未実装 0、packet への実装 hunk は Implementation Results 節のみ）。Contract Coverage Ledger 全行の内容一致監査、AC-1〜AC-8 + AC-11 の全再実測 PASS、凍結境界（bindings diff = 新規 3 command + 2 DTO のみ・既存 test 変更は申告どおり migration 系 literal 12 箇所と許容例外のみ・static test / SKIP_DOCS diff 0）、Matrix 予約の 7 mutant 全件を clean worktree で実注入し全 red → revert 後全緑・終了時 worktree clean、D-052 は production 8 key が SPEC-SUPI-D2 と一致・oracle literal 独立転記・entry / handler 数の docs 記載と実測一致、review-only P2 是正 3 件の実在確認、negative-space audit で未実装契約なし。P3-1 = 78 doc §78.4 の `SupplierWithUsage` field 名表記（camelCase）が実 wire（snake_case、40-cmd 記載と一致）と不一致 — design PR #3 由来の pre-existing・本 packet Scope 外・機能影響なしのため同 PR 是正せず backlog 起票（closeout で Plans.md へ）。
+- Findings Freeze: frozen after Final Review（2026-08-26）; post-freeze exceptions: none.
+
+### 遷移記録（2026-08-26、state-only 遷移 implementing -> local-verified -> independent-review -> human-confirm）
+
+- implementing -> local-verified の evidence: content candidate `f8dbd67`（Codex Writer 第 1 発注、gated amendment 1〜4 反映済み、relay 1/2）で L1 `local-ci.sh full` RESULT=PASS / END_TREE_STATE=CLEAN / MERGE_EVIDENCE_VALID=true（evidence = `.local/ci-evidence/`、実 run は先頭 `HEAD_SHA` と末尾 `END_HEAD_SHA` / `RESULT` / `MERGE_EVIDENCE_VALID` で判読。exact SHA は PR #4 body 正本）。Coordinator は scope file 一覧・plan-first ancestry・L1 境界行・C21/C22 集合・正本同期 oracle・navigation entry を独立再実測して一致確認。
+- local-verified -> independent-review の evidence: 独立 Sonnet Final Reviewer（fresh context、worktree 隔離）が Contract Audit を実施（Review Response の Final Review 行が正）。
+- independent-review -> human-confirm の evidence: findings 裁定完了・P1/P2 = 0（P3 1 件は backlog 起票で処理）。`Reviewed Content HEAD` = `f8dbd67` と `Amendments` 行（gated amendment 1〜4 の SHA）を本 state-only commit で設定。隣接 3 遷移を 1 commit で圧縮記録（forward state-only 2 本目 / cap 3、post-implementation 1 本目 / cap 2）。
 
 ### 遷移記録（2026-08-25、state-only 遷移 plan-draft -> plan-gate -> plan-approved -> implementing）
 
