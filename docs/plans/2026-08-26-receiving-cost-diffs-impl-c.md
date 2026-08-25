@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 47d01a2
 - Amendments: none
 - Coordinator: Claude Fable 5
 - Writer: Codex（GPT-5.6 系、発注書駆動）
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending = ① Plan Gate 承認 ② human visual confirmation + Windows native L3（差分ダイアログ、fixture 手順は Test Plan 参照）③ Ready 承認
+- Human Gate: pending = ① human visual confirmation + Windows native L3（差分ダイアログ、fixture 手順は Test Plan 参照）② Ready 承認（Plan Gate 承認は 2026-08-26 完了・介入 1/3）
 
 ## Owner Effort Budget
 
@@ -287,3 +287,4 @@ Contract ID: SPEC-PRVC
 - 2026-08-26: kickoff → spec-check（task scoped: Plans.md「次の行動」実装 PR C entry、Risk R3 判定・記録）→ plan-draft（唯一許可の skip: Design Readiness が既存正本 3 doc の十分性を引用）→ plan-gate（packet + Test Design Matrix を plan-first commit として本 commit で同時 commit）。本 commit がこの隣接 3 遷移を materialize する（recording compression、各遷移の evidence は本 packet の該当節）。
 - 2026-08-26 Plan Review round 1（独立 Sonnet fresh context）: P1 0 / P2 2 / P3 1。P2-1 = Matrix T7 の Would-fail-if に oracle 範囲外の直接 invalidate mutant が混在（AC-7 防御へ一本化）、P2-2 = Fact check lens の not applicable 表記が Contract Probe 実施と矛盾（applicable へ是正）、P3-1 = T2 の Would-fail-if に diff=0 入力で検出不能な tolerance 記述（T1/M3 担当へ是正）。3 件とも修正案を採用し plan-gate に留まったまま是正、round 2 は closure 確認。
 - 2026-08-26 Plan Review round 2（独立 Sonnet fresh context、closure 確認）: 是正 3 件すべて適用確認 OK（AC-7 の防御先 = `invalidation-contract.static.test.ts` の直接 invalidate 拒否 static test の実在まで確認済み）、新規 findings なし。P1 0 / P2 0 / P3 0 で rally 収束（round 実績 2 / 天井 3）。owner Plan Gate 承認待ち。
+- 2026-08-26 owner Plan Gate 承認（介入 1/3）。本 state-only commit で plan-gate → plan-approved → implementing の隣接 2 遷移を materialize（evidence: 独立 Plan Reviewer P1/P2 = 0 = round 2 記録、plan-first commit `47d01a2` は全実装 commit に先行、owner 承認 2026-08-26）。`Plan Commit` field を `47d01a2` で確定。以後の実装は Codex 発注（cwd = 本 repo、branch `agent/receiving-cost-diffs`）。
