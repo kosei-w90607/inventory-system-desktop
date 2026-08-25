@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 6de67dfa7f3264b6e8413d6b479abfa094f6a62e
 - Amendments: none
 - Coordinator: Claude Fable 5（main session）
 - Writer: Codex（GPT-5.6、発注書駆動）
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending — Plan Gate 承認（設計裁定の採否確認）/ Ready 承認
+- Human Gate: pending — Ready 承認（Plan Gate 承認は 2026-08-25 完了、narrative 参照）
 
 append-only narrative: kickoff → spec-check → design → plan-draft は本 packet の plan-first content commit に同乗する（recording compression）。evidence = task scope と Risk 分類は本 packet Risk 節、in-scope source docs の特定は Design Sources 節、設計上の未解決問題なし（owner 裁定 2026-08-25 = 改名 + 統合を採用・削除は非採用・配置は `/settings/suppliers` システム管理エリア・schema 追加は updated_at のみ。D-078 として正本化予定）。
 
@@ -27,6 +27,8 @@ owner 裁定 2026-08-25（Plan Gate、rally 収束後）: 追加導線も UI-15 
 delta 検証（Sonnet 独立 fresh context、2026-08-25、対象 = 追加導線反映 commit）: P1 0 / P2 0 / P3 2 / verdict pass。反映の一貫性・wire 凍結との無矛盾・UI-01b-D21 引用の正確性・M-D5 新 oracle の機械実行可能性を確認。P3 2 件（packet / Matrix の H1 表題「改名・統合」→「追加・改名・統合」追随、Manual verification lens 行への追加導線反映）は採用・是正済み。
 
 owner Plan Gate 承認（2026-08-25、介入 1/3）: 採否 7 点すべて承認 + 追加導線の scope 化を裁定。関連裁定 = UI-01a 商品検索への取引先 filter 露出は本 change に含めず backlog へ（「あとで。まず UI-15 を済ませる」、Plans.md backlog 起票済み）。Plan Reviewer evidence = rally 3 round 収束（P1+P2: 4 → 3 → 0）+ owner-directed delta 検証 pass。
+
+state-only 遷移（2026-08-25）: plan-draft -> plan-gate -> plan-approved -> implementing を単一 state-only commit で実体化（recording compression）。evidence = plan-draft -> plan-gate: packet + Matrix が plan-first commit 6de67df で committed 済み / plan-gate -> plan-approved: 独立 Plan Reviewer（Sonnet）rally round 3 で P1/P2 = 0 + owner-directed delta 検証 pass、Plan Commit 記入 = 本 commit、plan-first commit は本 branch の全 content commit の祖先 / plan-approved -> implementing: Codex Writer への発注直前遷移（Coordinator が発注前に遷移を完了する運用）。
 
 ## Owner Effort Budget
 
