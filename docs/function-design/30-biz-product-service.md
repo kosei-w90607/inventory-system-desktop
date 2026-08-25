@@ -294,6 +294,67 @@ fn list_price_history(
 - limit は既定 10・上限 100 とし、超過は 100 に丸める
 - `product_code` 不存在時は読取り専用契約として空配列を返す
 
+### 4.7.4 rename_supplier（SPEC-SUP-D3 / REQ-107）
+
+```rust
+fn rename_supplier(
+    conn: &mut DbConnection,
+    supplier_id: i64,
+    name: String,
+) -> Result<product_repo::Supplier, BizError>
+```
+
+1. `supplier_id` の取引先を取得し、不存在は `BizError::NotFound` とする
+2. `name` を trim し、空文字は `BizError::ValidationFailed` とする
+3. trim 後の name が現在名と同じなら既存 `Supplier` を返し、DB 更新と操作ログ記録は行わない
+4. 他の取引先が同じ name を使っている場合は `BizError::ValidationFailed` とし、UI が「統合」を案内できる validation message を返す
+5. 1 transaction を開始し、`product_repo::rename_supplier` で name と `updated_at` を現在日時へ更新する
+6. 同じ transaction 内で `insert_operation_log(operation_type = "supplier_rename")` を呼び、取引先 ID と変更前後の名称を記録する
+7. 全処理成功で commit し、更新後の `Supplier` を返す。途中失敗は rollback する
+
+### 4.7.5 merge_suppliers（SPEC-SUP-D4 / REQ-107）
+
+```rust
+struct SupplierMergeResult {
+    products_updated: i64,
+    receiving_records_updated: i64,
+}
+
+fn merge_suppliers(
+    conn: &mut DbConnection,
+    source_id: i64,
+    target_id: i64,
+) -> Result<SupplierMergeResult, BizError>
+```
+
+1. `source_id == target_id` は `BizError::ValidationFailed` とする
+2. source（消す側）と target（残す側）をそれぞれ取得し、どちらかが不存在なら `BizError::NotFound` とする
+3. 1 transaction を開始する
+4. `product_repo::merge_suppliers` を呼び、products と receiving_records の `supplier_id` を target へ付け替えてから source 行を DELETE する
+5. 同じ transaction 内で `insert_operation_log(operation_type = "supplier_merge")` を呼び、source / target の ID・名称と `products_updated` / `receiving_records_updated` を記録する
+6. 全処理成功で commit し、`SupplierMergeResult` を返す。途中失敗は 2 UPDATE・DELETE・操作ログをまとめて rollback する
+
+統合は同一実体の重複解消であり、単独削除の代替ではない。成功後の再実行は source 不在として not-found を返し、黙って成功扱いにはしない。
+
+### 4.7.6 list_suppliers_with_usage（SPEC-SUP-D8 / REQ-107）
+
+```rust
+struct SupplierWithUsage {
+    id: i64,
+    name: String,
+    product_count: i64,
+    receiving_record_count: i64,
+}
+
+fn list_suppliers_with_usage(
+    conn: &DbConnection,
+) -> Result<Vec<SupplierWithUsage>, BizError>
+```
+
+1. `product_repo::list_suppliers_with_usage` を呼ぶ
+2. IO 内部行を BIZ 所有の `SupplierWithUsage` に変換する
+3. name 昇順と 0 件取引先の包含を維持して返す
+
 ---
 
 ### 4.8 一括インポート: preview_import

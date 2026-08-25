@@ -33,7 +33,7 @@
 | REQ-402 | UI-01b-D18 | `suggestPluTarget` は trim と UI-01b-D16 写像を適用した candidate、すなわち正規化適用後の値で評価し、ASCII 数字 13 桁のみ true とする（JAN-8 は false 維持 = PLU 書出し 13 桁前提との整合）。BIZ `should_default_plu_target`（BIZ-01-D2）と同一意味論の意図的二重実装とし、実装統合はせず、両側に同一ケース表の独立転記 oracle drift-guard test を置く。composition 中の評価は transient で onCompositionEnd の正規化で収束し、追加の抑制はしない。 | 全角 13 桁入力で PLU 提案が false になる既知問題を入力正規化で根治する。wire 越えの SSOT 化は bindings 定数 export の重さに見合わず不採用（判定は 1 行規模）。 |
 | REQ-907 / SPEC-PLS-D7 | UI-01b-D19 | edit mode は `plu_memory_no` を「レジメモリNo.」として読取り専用表示する。未割当は `未割当`。廃番解除は `plu_target` を自動復帰させず、必要なら利用者が明示して再対象化する。 | slot identity と商品状態を operator が確認でき、廃番解除だけで意図せずレジ再登録されることを防ぐ。 |
 | REQ-102 / SPEC-PRV-D9 | UI-01b-D20 | edit mode に第 5 セクション「価格履歴」を置き、直近 10 件を表示する。「すべて表示」は limit 100 で再取得し、create mode ではセクション自体を出さない。空は「価格履歴はまだありません」、取得中は「読み込み中…」、取得失敗は inline error と「再試行」を表示する。 | 過去の価格を商品修正の文脈で確認し、紙の前年リスト参照を置き換える。price_history に契機カラムがないため変更契機の列は表示しない。 |
-| REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションに「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合 UI や約 80 社の事前一括投入は扱わない。 |
+| REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションに「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない。 |
 
 ## 7.2 Component / Route 構成
 
@@ -152,6 +152,7 @@ UI-01b は以下の generated binding を使用する。
 - 入力 name は trim し、空文字は field error として CMD を呼ばない
 - `commands.createSupplier(name)` 成功後は `listSuppliers` を再取得し、返された supplier を選択状態にできる
 - 追加失敗時は入力を保持して再試行できる。既存の商品 form 保存値を失わない
+- 改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない
 
 ## 7.6 Validation / Error / Recovery
 
@@ -206,7 +207,7 @@ Error recovery:
 - 「廃番にする」は確認ダイアログを出し、キャンセルで状態が変わらない。「表示に戻す」は確認なしで直接実行する（UI-01b-D13）。
 - 保存成功時に `toast.success`（`id: "product-save-success"`）が navigate より前に発火する（UI-01b-D14）。
 - UI-01b-D20: edit mode のみ第 5 セクション「価格履歴」が表示され、直近 10 件と「すべて表示」100 件を新しい順に取得する。create mode では表示しない。
-- UI-01b-D21: 「新しい取引先を追加」で trim・空文字拒否・同名既存行返却・候補再取得・失敗時入力保持が成立する。
+- UI-01b-D21: 「新しい取引先を追加」で trim・空文字拒否・同名既存行返却・候補再取得・失敗時入力保持が成立する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱い、約 80 社の事前一括投入は扱わない。
 - Windows native L3: 日本語入力、Tab 移動、保存後遷移、廃番 / 復帰の視認性。
 
 ## 7.9 変更履歴

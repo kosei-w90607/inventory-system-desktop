@@ -44,6 +44,7 @@
 | 18 | 操作ログ | QR-06 / REQ-902 | — | PR #164で実装済み（Draft / Phase `implementing`）。閲覧MVP: 期間/種別filter + pagination + detail_json安全表示。CSV出力・保持設定変更・削除は別task |
 | 19 | 設定（在庫少の基準） | QR系 | — | Design Phase 追加。Phase 4 実装予定（10-5a、在庫少基準 2 key + 部分失敗表示） |
 | 20 | 一括価格改定 | REQ-105/106 | — | Design Phase 追加（UI-14、取引先・部門・keyword 絞り込み + 行単位確定） |
+| 21 | 取引先管理 | REQ-106/107 | — | Design Phase 追加（UI-15、取引先の追加・インライン改名・重複統合） |
 
 ---
 
@@ -58,7 +59,7 @@
 - **緑（毎日の業務）**: 売上データ取込み → 日次売上レポート → 在庫照会 → 月次売上レポート
 - **青（商品管理）**: 商品検索・一覧 → 商品登録 / 商品修正 / 一括インポート、PLU書出し
 - **オレンジ（入出庫）**: 入庫記録 / 返品・交換 / 手動販売出庫 / 廃棄・破損 / 棚卸し / 在庫変動履歴
-- **黄（システム管理）**: バックアップ / 操作ログ / 設定
+- **黄（システム管理）**: バックアップ / 操作ログ / 設定 / 整合性検証 / 取引先管理
 
 ### 利用者の1日の動線
 ```
@@ -75,6 +76,7 @@
 - 在庫変動履歴 → 元業務記録詳細 → 関連する在庫変動履歴へ戻る
 - 入出庫履歴 → 入庫 / 返品・交換 / 手動販売 / 廃棄・破損 / CSV取込み / 棚卸しの詳細確認 → 検索条件を保持した入出庫履歴へ戻る
 - 商品検索・一覧 → 商品修正（一覧から選択して遷移）
+- システム管理 → 取引先管理（`/settings/suppliers`）→ 追加 / インライン改名 / 重複統合
 - 日次売上レポート ↔ 月次売上レポート（**別 route**: `/reports/daily` / `/reports/monthly`、タブ UI は `<Link>` で 2 route を切り替える視覚表現として実装。詳細は [docs/archive/plans/2026-04-21-ui-12-design-agreement.md §7.3](archive/plans/2026-04-21-ui-12-design-agreement.md)）
 
 ---
@@ -171,6 +173,19 @@
   - 絞り込み条件に該当がなく0件のときは「絞り込みを解除」ボタンで既定条件へ一括復帰できる（filter-empty reset、[design-system/02-component-catalog.md](design-system/02-component-catalog.md) ⑥ 参照）。既存の範囲外 page 回復導線とは対象ケースが異なり共存する。
   - 取得失敗時は現在の絞り込み条件を保持したまま再試行できる。
   - 詳細な command contract、期間 predicate、operation_type registry、detail_json 安全設計、関連記録リンク contract、Windows native L3 は [function-design/74-ui-operation-logs.md](function-design/74-ui-operation-logs.md) を正とする。
+
+### 取引先管理画面
+- **対応仕様**: REQ-106 / REQ-107（取引先の追加・名称変更・重複統合）
+- **レイアウト判断**:
+  - UI-15 はシステム管理エリアの独立画面とし、route は `/settings/suppliers`。name 昇順の全件一覧を表示する
+  - 一覧上部に「新しい取引先を追加」を置き、既存 `create_supplier` command を無変更で流用する
+  - 各行は取引先名、関連商品数、入庫記録数、`名前を変更`、`統合` を表示する。件数は `N件` の日本語単位を伴い、色だけで意味を表さない
+  - 改名は行内編集とし、同名衝突では統合を案内する。失敗時は入力を保持する
+  - 統合は「残す側を選ぶ」→「◯件の商品 / ◯件の入庫記録が付け替わります」と不可逆性を確認する 2 段階 dialog とする
+- **利用者配慮**:
+  - 単独削除は置かず、重複は統合で解消する。source / target の名称と件数を確認するまで確定できない
+  - 一覧 0 件でも追加導線を残す。一覧、追加、改名、統合の失敗境界を分け、正常な他行を隠さない
+  - 詳細な command contract、入力保持、invalidation、実装 PR の到達テストと human visual confirmation は [function-design/78-ui-supplier-management.md](function-design/78-ui-supplier-management.md) を正とする
 
 ### 棚卸し画面
 - **対応仕様**: REQ-205（開始 / 中断再開 / カウント入力 / 差異表示 / 確定）
@@ -298,7 +313,7 @@
   - UI は tauri-specta で生成済みの `commands.createProduct` / `commands.updateProduct` / `commands.toggleDiscontinue` / `commands.listSuppliers` を使う
   - create mode の商品コードは「JANコードあり」と「JANなし独自コード自動発番」に分ける。JAN blank + 選択部門に `code_prefix` がない場合は保存前に止める
   - edit mode では `product_code` / `jan_code` / `stock_quantity` / `stock_unit` を読取専用にする。`stock_unit` 変更は在庫履歴・閾値・POS 連動への影響が大きいため別 Design Phase
-  - 取引先候補は取引先マスタ全件を取得し、「新しい取引先を追加」からメーカー/ブランドを漸進追加できる（UI-01b-D7 / D21）
+  - 取引先候補は取引先マスタ全件を取得し、「新しい取引先を追加」からメーカー/ブランドを漸進追加できる（UI-01b-D7 / D21）。改名・統合は UI-15 取引先管理（[function-design/78-ui-supplier-management.md](function-design/78-ui-supplier-management.md)）で扱う
   - 保存成功後は商品一覧へ戻る。`returnTo` は `/products` 一覧 route とその search params だけを許可し、`/products/new`、`/products/$code/edit`、`/products/import`、外部 URL、他画面 route は `/products` に戻す
   - form は「商品の識別」「分類と取引先」「価格」「在庫」の 4 セクションに分割し、edit mode は末尾に第 5 セクション「価格履歴」を追加する（UI-01b-D10 / D20）。各セクションに h2 見出しと 1 行説明を付ける
 - **利用者配慮**:

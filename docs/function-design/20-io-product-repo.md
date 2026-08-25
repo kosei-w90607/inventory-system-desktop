@@ -343,6 +343,69 @@ fn find_or_create_supplier(conn: &DbConnection, name: &str) -> Result<Supplier, 
 3. ヒット → そのSupplierを返す
 4. ヒットなし → INSERT INTO suppliers (name, created_at) VALUES (?, ?) → 作成したSupplierを返す
 
+#### rename_supplier（SPEC-SUP-D3）
+
+**関数要求**: BIZ-01 で検証済みの取引先名へ更新し、更新後の取引先を返す。業務 validation と transaction は BIZ が所有し、IO は SQL 実行だけを担う。
+
+**シグネチャ**:
+```rust
+fn rename_supplier(
+    conn: &DbConnection,
+    supplier_id: i64,
+    name: &str,
+    updated_at: &str,
+) -> Result<Supplier, DbError>
+```
+
+**処理ステップ**:
+1. `UPDATE suppliers SET name = ?, updated_at = ? WHERE id = ?` を実行する
+2. 更新件数が 0 件なら not-found 相当として BIZ が判定できる結果を返す
+3. 更新後の `Supplier` を返す
+
+#### merge_suppliers（SPEC-SUP-D4）
+
+**関数要求**: 重複した取引先の参照を残す側へ付け替え、消す側の行を削除する。BIZ-01 が開始した 1 transaction の中で呼び、IO 自身は commit しない。
+
+**シグネチャ**:
+```rust
+fn merge_suppliers(
+    conn: &DbConnection,
+    source_id: i64,
+    target_id: i64,
+) -> Result<(i64, i64), DbError>
+```
+
+**処理ステップ**:
+1. `UPDATE products SET supplier_id = ? WHERE supplier_id = ?` を実行し、付け替えた商品件数を保持する
+2. `UPDATE receiving_records SET supplier_id = ? WHERE supplier_id = ?` を実行し、付け替えた入庫記録件数を保持する
+3. `DELETE FROM suppliers WHERE id = ?` で source 行を削除する
+4. `(products_updated, receiving_records_updated)` を返す
+
+products と receiving_records の 2 UPDATE を両方完了してから DELETE する。片方だけを更新する経路、参照が残ったまま削除する経路、単独削除関数は設けない。
+
+#### list_suppliers_with_usage（SPEC-SUP-D8）
+
+**関数要求**: UI-15 の一覧用に、取引先全件と関連商品数・入庫記録数を name 昇順で返す。0 件の取引先も一覧から落とさない。
+
+**シグネチャ**:
+```rust
+fn list_suppliers_with_usage(
+    conn: &DbConnection,
+) -> Result<Vec<SupplierUsageRow>, DbError>
+```
+
+**SupplierUsageRow（IO 内部型）**:
+- supplier: Supplier
+- product_count: i64
+- receiving_record_count: i64
+
+**処理ステップ**:
+1. suppliers を基点に、products と receiving_records をそれぞれ supplier_id で COUNT する
+2. 2 つの参照表を同時 JOIN して件数を水増ししないよう、独立した集約結果または相関 subquery で数える
+3. `ORDER BY suppliers.name ASC` で全件を返す
+
+IO / BIZ / CMD の公開関数名は `list_suppliers_with_usage` に統一し、用途別の別名は作らない。wire DTO `SupplierWithUsage` への変換は BIZ-01 が所有する。
+
 ---
 
 ### 2.6 product_repo — 価格履歴リポジトリ（同ファイル内）

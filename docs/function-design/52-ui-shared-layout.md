@@ -27,7 +27,7 @@ UI 層の関数設計書は業務ロジック有無で 2 段階のテンプレ�
 
 | ファイル | 責務 |
 |---|---|
-| `src/config/navigation.ts` | NavStatus / NavItem / NavArea 型定義 + navigation 定数（4 エリア × 20 項目）。アイコンは lucide-react を import |
+| `src/config/navigation.ts` | NavStatus / NavItem / NavArea 型定義 + navigation 定数（4 エリア × 22 項目）。アイコンは lucide-react を import |
 | `src/components/layout/RootLayout.tsx` | 2 カラム grid + Outlet + Toaster + Devtools + ウィンドウタイトル更新 useEffect（§52.5） |
 | `src/components/layout/Sidebar.tsx` | aside + SidebarHeader + min-h-0 ScrollArea + 4 エリアの map（SidebarArea を呼ぶ） + DisplayScaleControl |
 | `src/components/layout/SidebarArea.tsx` | 1 エリア描画。h2 + アイコン + SidebarLink × N + Separator |
@@ -58,7 +58,7 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 
 ### 52.3 ルーティング定義
 
-全画面対応表（21 ナビ表示 + 2 ナビ非表示。UI-06b は UI-06a と `/stock` を共用するため route は 22）。設計合意書 §2.1 を転記（D-047 反映済み）。
+全画面対応表（22 ナビ表示 + 2 ナビ非表示。UI-06b は UI-06a と `/stock` を共用するため route は 23）。設計合意書 §2.1 を転記（D-047 反映済み）。
 
 | UI-ID | 画面名 | URL パス | route ファイル | サイドバー4エリア | ナビ表示 | 備考 |
 |---|---|---|---|---|---|---|
@@ -85,6 +85,7 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 | UI-11c | 操作ログ | `/settings/logs` | `src/routes/settings/logs.tsx` | システム管理 | ○ | |
 | UI-11a | 閾値設定 | `/settings/thresholds` | `src/routes/settings/thresholds.tsx` | システム管理 | ○ | |
 | UI-13 | 整合性検証 | `/settings/integrity` | `src/routes/settings/integrity.tsx` | システム管理 | ○ | BIZ-07 連携、システム管理側に配置（合意書 §7.5） |
+| UI-15 | 取引先管理 | `/settings/suppliers` | `src/routes/settings/suppliers.tsx` | システム管理 | ○ | REQ-106/107。追加・改名・重複統合を扱う |
 
 **ナビに出さない route（動線は親画面から）**:
 
@@ -127,14 +128,14 @@ export type NavArea = {
 export const navigation: readonly NavArea[] = [...] as const;
 ```
 
-#### 4 エリア × 20 項目
+#### 4 エリア × 22 項目
 
 | エリア | エリアアイコン | 項目数 | 項目（順序固定） |
 |---|---|---|---|
 | 毎日の業務 | `Sun` | 5 | ホーム / CSV取込み / 日次売上 / 在庫照会 / 月次売上 |
-| 商品管理 | `Package` | 4 | 商品検索・一覧 / 商品登録 / 一括インポート / PLU書出し |
+| 商品管理 | `Package` | 5 | 商品検索・一覧 / 商品登録 / 一括インポート / PLU書出し / 一括価格改定 |
 | 入出庫 | `ArrowLeftRight` | 7 | 入庫記録 / 返品・交換 / 手動販売出庫 / 廃棄・破損 / 入出庫履歴 / 在庫少一覧 / **棚卸し**（末尾、年次作業） |
-| システム管理 | `Wrench` | 4 | バックアップ・復元 / 操作ログ / 閾値設定 / 整合性検証 |
+| システム管理 | `Wrench` | 5 | バックアップ・復元 / 操作ログ / 閾値設定 / 整合性検証 / 取引先管理 |
 
 #### 各項目アイコン（lucide-react ^1.8.0）
 
@@ -149,7 +150,7 @@ export const navigation: readonly NavArea[] = [...] as const;
 | 商品登録 | `PackagePlus` | バックアップ・復元 | `DatabaseBackup` |
 | 一括インポート | `FileSpreadsheet` | 操作ログ | `ScrollText` |
 | PLU書出し | `FileDown` | 閾値設定 | `SlidersHorizontal` |
-| | | 整合性検証 | `ShieldCheck` |
+| 一括価格改定 | `CircleDollarSign` | 整合性検証 | `ShieldCheck` |
 
 **アイコンスタイル**: `className="size-4 stroke-[1.5]"`（16px、線細め）。active 時は stone-700、inactive 時は stone-500（[../design-system/00-foundations.md](../design-system/00-foundations.md)「4色エリアモデルの扱い」準拠）。
 
@@ -158,7 +159,7 @@ export const navigation: readonly NavArea[] = [...] as const;
 - `to: "/"` + `status: "active"` = ホームのみ 1 項目
 - `to: null` + `status: "pending"` = 残り 18 項目（route 未実装、Phase 2 以降で順次 active 化）
 
-**2026-08-22 時点**: 現行実装のサイドバー pending 項目は 0 件。UI-14 を加えた設計上のナビ表示は 21 項目で、実装 PR B が `navigation.ts` の商品管理へ active entry を追加する。UI-06b は独立画面ではなく UI-06a への deep-link（D-047、詳細は §52.6）。
+**2026-08-25 時点**: 現行実装のサイドバーは 21 項目で pending は 0 件。UI-15 を加えた設計上のナビ表示は 22 項目となり、後続実装 PR が `navigation.ts` のシステム管理へ active entry を追加する。UI-06b は独立画面ではなく UI-06a への deep-link（D-047、詳細は §52.6）。
 
 ---
 
