@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 0a2f278
@@ -373,6 +373,12 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 - Windows native L3（介入 2/3）: checklist L3-1〜L3-4 を owner が全件 PASS（到達と一覧・`N件`/`0件` 表示・削除 action 不在 / 追加 + IME Enter + 空白 reject / インライン改名 + Escape + 同名衝突文言と入力保持 / 統合 2 段階 + 件数文言一致 + 不可逆文言 + 完了通知 + UI-01b・UI-14 への invalidation 波及）。synthetic fixture は baseline backup へ復元し消失確認済み。実測記録・復元証跡は PR #4 body 正本。UX 所感 2 件（改名ボタンの double-click 貫通リスク / 改名時のみ完了通知がない非対称性）は Findings Freeze 後 P3 = follow-up として closeout で Plans.md backlog へ起票する（78 doc は改名時通知を規定せず設計適合、L3 非阻害）。
 - owner Ready 承認（2026-08-26、介入 3 回目 / 予算 3 回）: 本 state-only commit で `human-confirm -> ready-hosted-final` を materialize（forward state-only 3 本目 / cap 3、post-implementation 2 本目 / cap 2）。resulting exact HEAD で L1 full を再実行し、PR body を更新してから owner が Draft を解除する。Ready event の同一 HEAD hosted final を待ち、三点一致前は merge しない。
+
+### merge / closeout（2026-08-26）
+
+- hosted run success で PR HEAD = L1 evidence SHA = hosted headSha の三点一致成立（run URL / headSha は PR #4 body 正本）。owner merge（merge commit `c2cdda8`、PR #4 @ inventory-system-desktop。squash ではなく merge commit で branch の 12 commit を保存）。
+- Post-Merge Closeout: packet / Matrix を `docs/archive/plans/` へ移動、Phase を archive とし `Plans.md` を同期。Final Review P3-1（78 §78.4 field 名表記）と L3 owner 所感 2 件（改名ボタンの double-click 貫通リスク / 改名成功時の完了通知なし非対称）を Plans.md backlog へ起票。
+- 実績 = 介入 3/3（Plan Gate / L3 / Ready）・relay 1/2（発注 1 本 + fail-closed amendment 回答 4 件は同一 lane）・forward state-only 3/3・gated amendment 4 本（全 true positive、Codex fail-closed 起源）。remote branch `agent/supplier-management-impl` の削除と local branch 掃除は owner 端末操作として残置。
 
 ### 遷移記録（2026-08-25、state-only 遷移 plan-draft -> plan-gate -> plan-approved -> implementing）
 

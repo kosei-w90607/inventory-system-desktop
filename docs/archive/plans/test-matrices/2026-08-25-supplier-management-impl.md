@@ -1,6 +1,6 @@
 # Test Design Matrix: 取引先管理 実装 PR（UI-15 + migration v6 + supplier 3 command + D-052 C21/C22）
 
-Plan Packet: `docs/plans/2026-08-25-supplier-management-impl.md`。予約元: `docs/archive/plans/test-matrices/2026-08-25-supplier-management-design.md`「実装 PR への予約」R-1〜R-10（Rust 予約名 R-1〜R-5 を確定し、R-6 到達 / R-7 RTL / R-8 既存凍結 / R-9 wire / R-10 requirements を本 Matrix と packet AC で消化する）。
+Plan Packet: [2026-08-25-supplier-management-impl.md](../2026-08-25-supplier-management-impl.md)（archive 移動済み）。予約元: `docs/archive/plans/test-matrices/2026-08-25-supplier-management-design.md`「実装 PR への予約」R-1〜R-10（Rust 予約名 R-1〜R-5 を確定し、R-6 到達 / R-7 RTL / R-8 既存凍結 / R-9 wire / R-10 requirements を本 Matrix と packet AC で消化する）。
 
 ## Risk
 
