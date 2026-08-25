@@ -172,11 +172,15 @@
 | id | INTEGER | PK AUTOINCREMENT | 取引先ID |
 | name | TEXT | NOT NULL, UNIQUE | 取引先名（例: ハマナカ、取引先B） |
 | created_at | TEXT | NOT NULL | 作成日時 |
+| updated_at | TEXT | NULLABLE | 最終改名日時（migration v6 で追加。既存行は created_at で backfill） |
 
 ### 設計意図
 - **シンプルにname一つだけ**: 住所・電話番号等は発注システムの領域（スコープ外）。在庫管理システムでは値上げ連絡の主体となるメーカー/ブランドの識別だけが必要
 - **漸進補完（SPEC-PRV-D1 / SPEC-PRV-D6）**: 約 80 社を事前一括投入せず、UI-01b / UI-14 から必要なメーカー/ブランドを追加する。`products.supplier_id` は NULL 可のまま、UI-14 で取引先を指定して行確定したときに未設定の商品だけへ漸進的に設定し、既存値は上書きしない
 - **問屋チャネルを保持しない**: 本システムは発注を扱わず、値上げ連絡の絞り込み主体はメーカー/ブランドであるため、問屋テーブルや種別カラムは追加しない
+- **名称変更（SPEC-SUP-D3 / D5）**: UI-15 の改名は `name` を更新し、実際に名称が変わったときだけ `updated_at` を現在日時へ更新する。同値 no-op では更新しない。migration v6 適用時の既存行は `updated_at = created_at` で backfill し、追加後の列は SQLite 制約に合わせて NULLABLE のままにする。新規作成時は NULL を許容し、改名前の値として扱う
+- **重複統合（SPEC-SUP-D4）**: suppliers を参照するテーブルは `products.supplier_id` と `receiving_records.supplier_id` の 2 つ。統合は 1 transaction で両方を残す側へ付け替え、参照が 0 になった消す側の suppliers 行を DELETE する。参照が残った状態の削除経路や単独削除機能は設けない
 
 ### 困りそうなケース
 - **一回きりの仕入れ先**: 「その他」レコードを1件入れておき、入庫記録の備考に詳細を書く
+- **別実体を誤って統合した場合**: 統合は過去の products / receiving_records 参照を一括で付け替える不可逆操作であり、自動復元しない。UI-15 は対象名と影響件数を示す 2 段階確認を必須にする

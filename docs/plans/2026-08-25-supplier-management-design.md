@@ -292,7 +292,7 @@ Contract ID: SPEC-SUP
 
 ## Implementation Results
 
-確定前の空欄（実装後に記入）。
+Scope 1〜14 を source docs へ正本化した。UI-15 の operator workflow、IO / BIZ / CMD 境界、migration v6、REQ-107、navigation、D-078 の C21 / C22 予約を同期し、90-traceability を再生成して design compliance の SKIP_DOCS を 1 行追加した。実装コード、generated bindings、route、navigation 実装、invalidation contract は変更していない。AC-1〜AC-10、M-D1〜M-D11 と本 packet が指定する local gate は PASS。PR は本発注の指示に従い作成していない。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 

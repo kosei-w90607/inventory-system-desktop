@@ -11,6 +11,7 @@ src-tauri/src/
     schema_v3.rs  -- PLU対象フラグ追加
     schema_v4.rs  -- 日報取込みテーブル追加
     schema_v5.rs  -- PLU slot 永続割当テーブル追加
+    schema_v6.rs  -- suppliers.updated_at 追加
 ```
 
 ### 3.2 migrate
@@ -272,3 +273,18 @@ fixture / 注入の必須条件は 71 §71.10「fixture / 注入の必須条件�
 3. memory No. 217〜5000 の **4,784 行**を `free` として事前投入する。範囲は既存の開始番号・範囲サイズ定数から導出し、重複した magic number を実装へ増やさない。
 4. row count、範囲端、既定 status を同一 transaction 内で検証し、失敗時は §3.2 / MNT-03-D1 に従って rollback する。
 5. schema_versions に v5 を記録して commit する。v3 の `plu_target` backfill と v4 の日報 table は変更しない。
+
+## 14. MNT-03 追加: migration v6（suppliers.updated_at）
+
+**MNT-03-D10 / SPEC-SUP-D5**: migration v6 を schema_versions に追加し、`suppliers.updated_at` を改名日時として導入する。実装と migration map 登録は後続実装 PR の義務であり、本 design-first PR では schema を変更しない。
+
+**手順**:
+
+1. `ALTER TABLE suppliers ADD COLUMN updated_at TEXT` で NULLABLE 列を追加する
+2. `UPDATE suppliers SET updated_at = created_at` で既存行を backfill する
+3. 既存行の `updated_at` が `created_at` と一致することを同一 transaction 内で検証する
+4. schema_versions に v6 を記録して commit する
+
+SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 default を直接追加しない。table rebuild による NOT NULL 化も行わず、列は NULLABLE のまま維持する。新規作成行は改名前なら NULL を許容し、BIZ-01 `rename_supplier` が実際の改名時だけ現在日時へ更新する。
+
+**MIGRATIONS 登録順**: `migration.rs` の migrations() は v1 → v2 → v3 → v4 → v5 → v6 の順に登録する。v6 の description は `suppliers.updated_at 追加` とし、kind は `MigrationKind::Sql(schema_v6::get_v6_supplier_updated_at_schema())` とする。後続実装 PR は既存行の backfill、新規行の NULL 許容、再実行時に v6 を重複適用しないことを検証する。

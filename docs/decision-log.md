@@ -625,3 +625,13 @@ Use concise ADR-style entries.
 - Impact: `docs/PUBLIC_REPO_MIGRATION.md` に public→public rehome の追記節を設ける。`docs/Plans.md` の「UI 一覧の背骨 D」entry が言及する Draft PR #96 は新 repo で再 open が必要だが、番号更新は別 amendment とする。旧 repo の PR / issue 番号は、旧 repo の歴史記述として残す。
 - Alternatives considered: 旧 repo を in-place force push して履歴を書き換える案（public repo の object identity を破壊的に書き換えるリスクがあり、PR 由来 commit と review 往復の編集履歴もそのまま対象になるため却下）; LICENSE file を今回追加する案（All rights reserved から後で MIT 等へ変更することはできる一方、いったん付与した利用許諾は取り消せないため却下）。
 - Revisit: 新 repo の public 化後に予期しない public surface（Actions / Security & Analysis 等）が観測されたとき、または LICENSE 方針を変更するとき。
+
+## D-078: 取引先管理（追加・改名・統合）の owner 裁定事実（2026-08-25）
+
+- Decision: 取引先（メーカー/ブランド）の漸進補完後に生じる表記揺れ・重複を解消するため、改名と統合を採用し、UI-15 取引先管理を `/settings/suppliers` のシステム管理エリアに置く。追加導線も UI-15 に置き、既存 `create_supplier` command を wire 無変更で流用する。取引先の単独削除は採用せず、重複は統合で代替する。schema 追加は `suppliers.updated_at` だけとし、他の speculative column は追加しない。
+- Status: accepted（owner 裁定 2026-08-25）
+- Why: 約 80 社を事前投入せず商品登録・価格改定の文脈で追加する方針では、typo と同一メーカー/ブランドの重複が長期的に蓄積する。一方、参照を持つ取引先の単独削除は回復手段と意味付けが不明確で、主要な実務は同一実体の統合で解決できる。保守作業を商品管理の主動線から分け、影響件数と不可逆性を確認できる専用画面に集約する。
+- Impact: UI-15 は name 昇順一覧に関連商品数・入庫記録数を表示し、追加、インライン改名、2 段階の統合確認を提供する。統合は 1 transaction で `products.supplier_id` と `receiving_records.supplier_id` を残す側へ付け替えてから消す側を削除する。migration v6 は nullable TEXT の `updated_at` を追加し、既存行を `created_at` で backfill する。REQ-107 / SPEC-SUP-D1〜D10 と各層の詳細は `docs/function-design/78-ui-supplier-management.md` を正とする。
+- Invalidation reservation: D-052 C21 を取引先改名、C22 を取引先統合として予約する。C21 / C22 の suppliers 系対象は `productForm.suppliers()` / `priceRevision.suppliers()` / UI-15 新設 key の 3 系統を全て含む。C22 はさらに products 系 root を含む。D-052 本文の C1〜C20 registry と `src/lib/invalidation-contract.ts` の更新は後続実装 PR で行う。
+- Alternatives considered: 単独削除を同時提供する案（参照の扱いと誤操作時の回復が不明確で統合により主要場面を代替できるため不採用）; 商品管理エリアに置く案（日常の商品操作と低頻度の保守操作が混在するため不採用）; 約 80 社の事前一括投入（廃業・統廃合を含む維持コストが見合わないため D-075 の漸進補完を維持）; 住所・連絡先・問屋種別などを同時追加する案（現在の業務要求がなく speculative schema になるため不採用）。
+- Revisit: 同一実体ではない取引先間で履歴を分割・移管する要求が出たとき、問屋チャネルを発注業務として管理するとき、または誤統合の専用復元機能が必要になったとき。

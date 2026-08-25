@@ -187,6 +187,54 @@ fn create_supplier(
 
 BIZ-01 が name を trim し、空文字を validation error とする。同名が既にあれば既存 `Supplier { id, name }` を返す。UI-01b と UI-14 は成功後に `list_suppliers` を再取得する。
 
+#### rename_supplier コマンド（SPEC-SUP-D3 / REQ-107）
+
+wire contract: `rename_supplier(supplier_id: i64, name: String) -> Result<Supplier, CmdError>`。
+
+```rust
+#[tauri::command]
+#[specta::specta]
+fn rename_supplier(
+    state: State<AppState>,
+    supplier_id: i64,
+    name: String,
+) -> Result<Supplier, CmdError>
+```
+
+CMD は DB 接続を取得して `biz::product_service::rename_supplier` を呼び、結果をそのまま返す。空文字・同名衝突は `validation`、不存在 ID は `not_found` の既存 `CmdErrorKind` へ正規化する。trim、同値 no-op、`updated_at`、transaction、operation_log の判断を CMD に持たない。
+
+#### merge_suppliers コマンド（SPEC-SUP-D4 / D8 / REQ-107）
+
+wire contract: `merge_suppliers(source_id: i64, target_id: i64) -> Result<SupplierMergeResult, CmdError>`。
+
+```rust
+#[tauri::command]
+#[specta::specta]
+fn merge_suppliers(
+    state: State<AppState>,
+    source_id: i64,
+    target_id: i64,
+) -> Result<biz::product_service::SupplierMergeResult, CmdError>
+```
+
+`SupplierMergeResult { products_updated: i64, receiving_records_updated: i64 }` は BIZ-01 が所有し、CMD は qualified path で参照する（SPEC-PRVA-D5 準拠）。`source_id == target_id` は `validation`、どちらかの不存在は `not_found` に正規化する。2 UPDATE + DELETE、1 transaction、operation_log の判断を CMD に持たない。
+
+#### list_suppliers_with_usage コマンド（SPEC-SUP-D8 / REQ-107）
+
+wire contract: `list_suppliers_with_usage() -> Result<Vec<SupplierWithUsage>, CmdError>`。
+
+```rust
+#[tauri::command]
+#[specta::specta]
+fn list_suppliers_with_usage(
+    state: State<AppState>,
+) -> Result<Vec<biz::product_service::SupplierWithUsage>, CmdError>
+```
+
+`SupplierWithUsage { id: i64, name: String, product_count: i64, receiving_record_count: i64 }` は BIZ-01 が所有し、CMD は qualified path で参照する。CMD は DB 接続を取得して同名の BIZ wrapper を呼び、name 昇順の結果をそのまま返す。
+
+3 command は実装 PR で `collect_commands!` / `generate_handler!` に登録し、`#[tauri::command]` / `#[specta::specta]` を対で付けて bindings を再生成する。既存 `list_suppliers` / `create_supplier` の wire contract は変更しない。
+
 #### list_price_history コマンド（SPEC-PRV-D9 / REQ-102）
 
 ```rust
