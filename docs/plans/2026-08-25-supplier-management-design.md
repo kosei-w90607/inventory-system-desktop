@@ -20,6 +20,8 @@ append-only narrative: kickoff → spec-check → design → plan-draft は本 p
 
 Plan Review round 1（Sonnet 独立 fresh context、2026-08-25）: P1 2 / P2 2 / P3 2 — ①30-biz §4.7.3/4 の枝番衝突（§4.7.3 = list_price_history 使用済み → §4.7.4/§4.7.5 へ全 sweep 是正）②AC-1/2/8 と M-D1/2/9 の negative oracle が packet/Matrix の逐語引用に自己参照 hit する構造欠陥（`--glob '!docs/plans/**'` 追加で是正）③§52.4 項目数の off-by-one（21 → 22、stale 表記同期を Scope 化）④SPEC-SUP-D7 の invalidate 対象 3 系統の明示列挙⑤AC-4 と M-D11 の対象 file 数整合⑥transaction-tables.md への cross-reference 追加。全 6 件採用・是正済み（Coordinator が P1×2 / P2-1 を rg で実証再現のうえ採用）。
 
+Plan Review round 2（Sonnet 独立 fresh context、2026-08-25、HEAD acbc70e）: round 1 是正 6 件は全 CLOSED（oracle 実行・算術再現・実在確認で実証）。新規 P1 1 / P2 1 / P3 1 — ①M-D6 が SPEC-SUP-D8 の 3 command 目（`list_suppliers_with_usage`）を未検査（PR #159 miss class）→ M-D6 拡張 + AC-10 新設 + 名称 3 層統一 ②SPEC-PRVA-D5 の逆引用（正 = DTO は BIZ 所有・CMD は qualified path 参照。Coordinator が archive 実読で裏取り）→ Boundary / Wire Contract を是正 ③M-D3 の section 境界が非機械的 → awk section slice oracle へ変更。全 3 件採用・是正済み。
+
 ## Owner Effort Budget
 
 - 介入回数上限: 3
@@ -69,8 +71,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 docs-only design-first PR。以下を Codex Writer が発注書に従って正本化する:
 
 1. `docs/function-design/78-ui-supplier-management.md` 新設 — UI-15 取引先管理画面の function design（SPEC-SUP-D1〜D10 の正本、画面契約・一覧・インライン改名・統合 dialog・エラー/空/確認 UI・日本語文言）。
-2. `docs/function-design/20-io-product-repo.md` — `rename_supplier` / `merge_suppliers`（products + receiving_records の 2 UPDATE + DELETE、付替え件数返却）/ `count_supplier_usage`（または一覧兼用の usage 付き取得）の IO 契約追記。
-3. `docs/function-design/30-biz-product-service.md` — §4.7.4 `rename_supplier` / §4.7.5 `merge_suppliers`（validation・1 TX・`insert_operation_log(operation_type = "supplier_rename" / "supplier_merge")`。§4.7.3 は list_price_history が使用済み、2026-08-25 実測）。
+2. `docs/function-design/20-io-product-repo.md` — `rename_supplier` / `merge_suppliers`（products + receiving_records の 2 UPDATE + DELETE、付替え件数返却）/ `list_suppliers_with_usage`（products / receiving_records の COUNT を伴う一覧取得。名称は 3 層で統一し `count_supplier_usage` 等の別名は使わない、round 2 P1-1）の IO 契約追記。
+3. `docs/function-design/30-biz-product-service.md` — §4.7.4 `rename_supplier` / §4.7.5 `merge_suppliers`（validation・1 TX・`insert_operation_log(operation_type = "supplier_rename" / "supplier_merge")`）/ §4.7.6 `list_suppliers_with_usage`（BIZ wrapper）。§4.7.3 は list_price_history が使用済み、2026-08-25 実測。
 4. `docs/function-design/40-cmd-product.md` — `rename_supplier` / `merge_suppliers` / `list_suppliers_with_usage` の command wire contract（既存 `list_suppliers` / `create_supplier` は無改変）。
 5. `docs/db-design/master-tables.md` — suppliers 節へ `updated_at` 列追加・rename/merge 契約・参照テーブル 2 件（products / receiving_records）の明記・migration v6 参照。加えて `docs/db-design/transaction-tables.md` の receiving_records 節へ「`supplier_id` は取引先統合（SPEC-SUP-D4）で付け替わり得る」cross-reference を 1 行追記（値の所有 doc 側からの参照、round 1 P3-2）。
 6. `docs/function-design/22-mnt-migration.md` — §14 として migration v6（`suppliers.updated_at` 追加 + 既存行 backfill）を追記。
@@ -100,6 +102,7 @@ docs-only design-first PR。以下を Codex Writer が発注書に従って正�
 - AC-7: `bash scripts/doc-consistency-check.sh` PASS（ERROR 0）。
 - AC-8: 削除機能を規定する文言が新規 docs に存在しない — `rg -i 'delete_supplier' docs/ --glob '!docs/archive/**' --glob '!docs/plans/**'` 0 hit（`!docs/plans/**` は自己参照除外、round 1 P1-2）。
 - AC-9: SCREEN_DESIGN §1 に # 21 取引先管理行、52-ui §52.3 に UI-15 行が存在（`rg -c 'UI-15' docs/SCREEN_DESIGN.md docs/function-design/52-ui-shared-layout.md` 各 ≥ 1）。
+- AC-10: usage 付き一覧契約の 3 層記載 — `rg -c 'list_suppliers_with_usage' docs/function-design/20-io-product-repo.md docs/function-design/30-biz-product-service.md docs/function-design/40-cmd-product.md` 各 ≥ 1（SPEC-SUP-D8 の 3 command 目の欠落防止、round 2 P1-1）。
 
 ## Design Sources
 
@@ -179,7 +182,7 @@ docs-only design-first PR。以下を Codex Writer が発注書に従って正�
 Minimum design checks for business-app work:
 
 - Layer ownership (`UI -> CMD -> BIZ -> IO/MNT`): UI-15 → CMD 3 件 → BIZ-01（product_service 継続所有）→ IO（product_repo）。CMD は薄く、validation / TX / operation_log は BIZ。
-- Backend function design: 30-biz §4.7.4 / §4.7.5 + 20-io 追記で全数。
+- Backend function design: 30-biz §4.7.4 / §4.7.5 / §4.7.6 + 20-io 追記で全数。
 - Command / DTO / data contract: 40-cmd + Boundary / Wire Contract 節。
 - Persistence / transaction / audit impact: 1 TX（2 UPDATE + 1 DELETE + operation_log）、migration v6、audit = operation_log 2 種。
 - Operator workflow / Japanese UI wording: 78 doc に正本化（画面名「取引先管理」、統合確認文言）。
@@ -230,7 +233,7 @@ Test Design Matrix: [test-matrices/2026-08-25-supplier-management-design.md](tes
 - producer: UI-15 page（`/settings/suppliers`）→ `commands.renameSupplier` / `commands.mergeSuppliers` / `commands.listSuppliersWithUsage`
 - consumer: CMD → BIZ-01 → IO（product_repo）
 - wire type: specta 生成 bindings（snake_case JSON）。`rename_supplier(supplier_id: i64, name: String) -> Result<Supplier, CmdError>` / `merge_suppliers(source_id: i64, target_id: i64) -> Result<SupplierMergeResult, CmdError>`（`SupplierMergeResult { products_updated: i64, receiving_records_updated: i64 }`）/ `list_suppliers_with_usage() -> Result<Vec<SupplierWithUsage>, CmdError>`（`SupplierWithUsage { id, name, product_count, receiving_record_count }`）
-- internal type: BIZ は既存 `Supplier` model を継続使用、新 DTO 2 種は CMD 層所有（実装 A の DTO 配置裁定 SPEC-PRVA-D5 と同型）
+- internal type: BIZ は既存 `Supplier` model を継続使用。新 DTO 2 種（`SupplierMergeResult` / `SupplierWithUsage`）は BIZ 所有（`src-tauri/src/biz/product_service.rs` に置き、CMD は qualified path 参照 — SPEC-PRVA-D5 準拠。round 2 P2-1 で逆引用を是正）
 - precision/range: 件数は i64（SQLite COUNT の自然型）。name は create_supplier と同一の trim / 空文字拒否
 - round-trip path: UI 入力 → trim（BIZ）→ DB → 一覧再取得で表示
 - invalid input: 空文字 name → validation / 同名衝突 → duplicate / 不存在 ID・source==target → not_found / validation（40-cmd で kind を確定）
