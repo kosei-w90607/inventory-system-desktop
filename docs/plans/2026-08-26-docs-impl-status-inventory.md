@@ -16,7 +16,7 @@
 - Hosted CI Requirement: required
 - Human Gate: pending = ① Plan Gate 承認 ② Ready 承認（操作画面の挙動変更なしのため human visual confirmation は非該当）
 
-Hosted CI 判定根拠: ci.md の R2 行「source contract 影響がある場合だけ必須」— 本 change は設計正本（SCREEN_DESIGN / FUNCTION_DESIGN / function-design 5 doc / spec/requirements.md）を編集するため required。docs-only は `paths-ignore` で Ready event の自動 run が発生しないため、owner Ready 後の `workflow_dispatch` で 1 run を取得する（rehome PR #1 @ inventory-system-desktop と同型の経路）。
+Hosted CI 判定根拠: ci.md の R2 行「source contract 影響がある場合だけ必須」— 「source contract」に設計書 prose を含むかの明文定義は repo になく、本 change が設計正本（SCREEN_DESIGN / function-design 4 doc / spec/requirements.md）+ traceability gate 入力（coverage 列）を編集することから **required は安全側の Coordinator 判断**である。docs-only は `paths-ignore` で Ready event の自動 run が発生しないため、owner Ready 後の `workflow_dispatch` で 1 run を取得する（rehome PR #1 @ inventory-system-desktop と同型の経路）。
 
 ## Owner Effort Budget
 
@@ -66,28 +66,28 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 1. `docs/SCREEN_DESIGN.md`: §1 画面表の状態列 8 箇所（「Design Phase 追加」「Phase 4 実装予定」→「実装済み」表記へ統一）+「18 操作ログ」行の「Draft / Phase implementing」残骸 + Phase 4 節（L424 付近）の「v1.0.0 タグ目標」未達列挙を「Phase 4（完了）」実績記録へ改題 + 最終更新ヘッダ。
 2. `docs/FUNCTION_DESIGN.md`: UI-11b/11a/10/11c/13 の「Design Phase 追加済み」10 箇所へ「（実装済み）」を追記（履歴文言は削除しない — 当時の改訂記録として正、実装完了の明示欠落だけを埋める）。
-3. `docs/function-design/52-ui-shared-layout.md`: 「残り18項目（route 未実装…）」2 箇所 → navigation 全項目 active（pending 0 件）の実態へ修正し、pending 機構は将来 route 追加時の予備実装である旨に改める。
-4. `docs/function-design/65-inventory-record-traceability.md`（2 箇所）/ `74-ui-operation-logs.md`（2 箇所）/ `66-ui-stock-movements.md`（1 箇所）: `csv_import` 除外理由を「詳細 route 未実装」から「route は実装済み（PR #58）・除外の真因は record_type を書き込む producer が 0 件」へ差し替え。`stocktake` は「詳細 route 未実装」のまま維持（実態どおり）。
+3. `docs/function-design/52-ui-shared-layout.md`: L161「残り 18 項目（route 未実装、Phase 2 以降で順次 active 化）」と付随する pending 前提の a11y 説明を、実態（navigation 全 24 項目 active・pending 0 件。pending 機構は将来 route 追加時の予備実装）へ修正。L229 の activeMatch 契約行の「残り 18 項目」は実測 21 項目（24 − activeMatch 3）と不一致のため、数値非依存の表現（例:「`activeMatch` を持たない残りの項目」）へ是正する — 挙動契約（既存 `<Link>` 経路の無変更維持）は不変、数値表記のみ。
+4. `docs/function-design/65-inventory-record-traceability.md` L228（1 箇所。L252 は決定 ID 名の参照であり無変更）/ `74-ui-operation-logs.md` L57・L243（2 箇所）: `csv_import` の許可リスト除外理由を「詳細 route が未実装のため」から「詳細 route は実装済み。ただし csv_import 系 `record_type` を書き込む producer が 0 件のため、allow-list への追加は producer 側 record_type 採用（既存 follow-up）と併せて行う」へ差し替え（PR 番号は転記しない）。`stocktake` は「詳細 route 未実装のため除外」のまま維持（実態どおり）。除外契約そのものは不変で、trigger 記述の是正のみ（この点は Review Focus で確認）。`66-ui-stock-movements.md` は csv_import 固有記述が存在しない（rg 0 hit 実測）ため編集対象外 — L67 の UI-06c-D7「元記録 route がまだ未実装でも…」は csv_import / stocktake 双方に適用される汎用契約であり無編集維持。
 5. `docs/function-design/68-ui-backup-restore.md`: `checkAutoBackup` 60 秒 interval の「frontend 未実装」2 箇所 → 実装済み（`BackupRestorePage.tsx` の interval + invalidate + toast）の契約説明へ更新。
-6. `docs/spec/requirements.md`: REQ-206 / REQ-207 の coverage を `deferred` → `required` へ昇格。REQ-208 は `deferred` 維持（理由 = 取消・訂正は未実装・test 0 件、実査で確定）。
+6. `docs/spec/requirements.md`: REQ-206 / REQ-207 の coverage を `deferred` → `required` へ昇格。REQ-208 は `deferred` 維持（理由 = 取消・訂正は未実装・test 0 件、実査で確定）。あわせて L51 の脚注「REQ-206〜208 は実装着手まで `coverage=deferred` とする。」を「REQ-208 は実装着手まで `coverage=deferred` とする。」へ書き換える（表本体との新規矛盾を作らないため）。
 7. `docs/function-design/90-traceability.md`: `cargo run --bin generate_traceability` で再生成（coverage 変更の追随、同 commit）。
 
-表記規約（Writer 向け）: 状態列は「実装済み」とし、PR 番号の逐一転記はしない（証跡は Plans.md / archive が正本。repo rehome により旧 repo と新 repo で PR 番号空間が重複しており、裸の PR 番号引用は曖昧になるため）。
+表記規約（Writer 向け、SPEC-DSI-D3）: **新規に書く**状態表記は「実装済み」とし、PR 番号の転記はしない（証跡は Plans.md / archive が正本。repo rehome により旧 repo と新 repo で PR 番号空間が重複しており、裸の PR 番号引用は曖昧になるため）。**既存の PR 番号記載**（SCREEN_DESIGN「18 操作ログ」行の「PR #164で実装済み」等）は履歴として据え置き、削除しない — Scope 1 の「統一」は「実装済みであることが状態列から読める」ことの統一であり、文字列の完全同一化ではない。
 
 ## Non-scope
 
-- 在庫照会 `StockDetailContent.tsx` の disabled CTA tooltip「Phase 3 で実装予定」（実コードの UX stale — 利用者に誤情報表示中）: 実装 change として backlog 起票し、対応する 58-ui L504-506 の記述も現行 code の記述として本 change では無改変（code と doc を同時に直す別 change の scope）。
+- 在庫照会 `StockDetailContent.tsx` の disabled CTA tooltip「Phase 3 で実装予定」（実コードの UX stale — 利用者に誤情報表示中）: 実装 change として backlog 起票し、対応する 58-ui L505-506 の記述も現行 code の記述として本 change では無改変（code と doc を同時に直す別 change の scope）。
 - DEV_SETUP_CHECKLIST.md のバージョンタグ時点履歴 / Plans.md の完了ログ / 監査 findings（p6/p7）/ spec 汎用定義: 実査で非該当と判定済み、無改変。
 - PROJECT_HANDOFF.md（直近更新済み、実査でも stale 検出なし）。
 - 実装 code / test / bindings / routes / navigation の変更。
 
 ## Acceptance Criteria
 
-- AC-1: `rg -c -F "Phase 4 実装予定" docs/SCREEN_DESIGN.md` と `rg -c -F "Design Phase 追加" docs/SCREEN_DESIGN.md` の状態列由来 hit が 0（変更履歴節の履歴記録行のみ許容 — Writer は残存 hit の行番号と節を PR body に列挙して判別を示す）。
-- AC-2: `rg -c -F "残り18項目" docs/function-design/52-ui-shared-layout.md` が 0。
+- AC-1: `rg -c -F "Phase 4 実装予定" docs/SCREEN_DESIGN.md` と `rg -c -F "Design Phase 追加" docs/SCREEN_DESIGN.md` がともに file 全体で 0（実査で全 hit が §1 表・L5 ヘッダ・Phase 4 節の編集対象内にあることを確認済み。免除枠なしの完全一致 oracle）。
+- AC-2: `rg -c -F "route 未実装、Phase 2 以降で順次 active 化" docs/function-design/52-ui-shared-layout.md` が 0（編集前 1）かつ `rg -c -F "残り 18 項目" docs/function-design/52-ui-shared-layout.md` が 0（編集前 2 — L161 は実態修正、L229 は数値非依存化で解消。文言は半角スペース入り「残り 18 項目」が正 — スペース抜き「残り18項目」は 0 hit の別文字列）。
 - AC-3: `rg -c -F "未実装" docs/function-design/68-ui-backup-restore.md` が 0。
-- AC-4: 65 / 74 / 66 の 3 doc で、旧理由文言「詳細 route が未実装のため」の csv_import 文脈 hit が 0、新理由（producer record_type 0 件）文言が各該当箇所に存在（対 oracle: 新 ≥1 / 旧 0。stocktake の「未実装」記述は維持されていること）。
-- AC-5: `docs/spec/requirements.md` の REQ-206 / REQ-207 行が `required`、REQ-208 行が `deferred`（rg で 3 行を提示）。
+- AC-4: 65 / 74 の 2 doc（65 L228 / 74 L57・L243）で、csv_import を「詳細 route が未実装」とする旧理由文言が 0 hit、新理由（producer record_type 0 件由来）文言が各該当箇所に存在（対 oracle: 新 ≥1 / 旧 0）。stocktake の「詳細 route 未実装のため除外」記述は維持。`66-ui-stock-movements.md` は `git diff` 無変更。
+- AC-5: `docs/spec/requirements.md` の REQ-206 / REQ-207 行が `required`、REQ-208 行が `deferred`（rg で 3 行を提示）、かつ L51 脚注が「REQ-208 は実装着手まで `coverage=deferred` とする。」であること（旧文言「REQ-206〜208 は…」は 0 hit）。
 - AC-6: `cd src-tauri && cargo run --bin generate_traceability -- --check` PASS（T1 drift 0、REQ-206 / REQ-207 の T3 WARN 非出現、REQ-208 は deferred のため T3 対象外のまま）。
 - AC-7: `bash scripts/doc-consistency-check.sh` ERROR 0 かつ新規 WARN 0（起草時 baseline は WARN 5 件 — 2026-08-26 実測、いずれも本 change 非関連の既存）。
 - AC-8: `git diff --stat` の変更 file が Scope 列挙の docs 7 点 + `docs/Plans.md`（entry 同期）のみ（src / src-tauri / 設定 file の変更 0）。
@@ -131,7 +131,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 - **SPEC-DSI-D1**: REQ-206 / REQ-207 を `required` へ昇格する。根拠 = 対応 UI（入出庫記録一覧・5 種詳細 route / 在庫変動履歴の相互参照）実在 + test 参照実測（REQ-206 = 12 test file / 31 hit、REQ-207 = 4 test file / 8 hit、`rg -n "REQ-20n" src src-tauri --glob '*test*'` 2026-08-26 実測）。昇格後も T3 WARN なし見込み。
 - **SPEC-DSI-D2**: REQ-208（取消・訂正）は `deferred` 維持。根拠 = 実装参照・test 参照とも 0 件（rg 実測）、`is_voided` カラムは未使用プレースホルダ。昇格には機能実装（別 R3 change）が先行条件。
-- **SPEC-DSI-D3**: 状態表記の規約 = 「実装済み」統一・裸 PR 番号の逐一転記はしない（rehome で旧 repo / 新 repo の PR 番号空間が重複、かつ D-050 の volatile 転記回避）。既存の「Design Phase 追加済み」等の改訂履歴文言は削除せず、実装完了の明示だけを追記する（非遡及・履歴保全）。
+- **SPEC-DSI-D3**: 状態表記の規約 = 新規に書く表記は「実装済み」とし裸 PR 番号を転記しない（rehome で旧 repo / 新 repo の PR 番号空間が重複、かつ D-050 の volatile 転記回避）。既存の PR 番号記載と「Design Phase 追加済み」等の改訂履歴文言は削除せず据え置き、実装完了の明示だけを追記する（非遡及・履歴保全。「統一」は実装済みと読めることの統一であり文字列の完全同一化ではない）。
 - **SPEC-DSI-D4**: 在庫照会 disabled CTA（実コード stale）は本 change の Non-scope とし、backlog 起票で code + 58-ui doc を同時に直す別 change へ委ねる。docs-only の本 change で 58-ui だけ先に直すと doc と実 code が乖離するため。
 
 ## Impact Review Lenses
@@ -159,7 +159,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 （R2 のため必須ではないが、実査の観測事実を記録する。いずれも 2026-08-26 実測）
 
-- navigation 全項目 active: `src/config/navigation.ts` の `status:` 全 20 項目 `"active"`、pending 0 件。
+- navigation 全項目 active: `src/config/navigation.ts` の `status:` 24 項目すべて `"active"`、pending 0 件、`activeMatch` 保持 3 項目（`rg -c` 2026-08-26 実測。実査 agent 報告の「20 項目」は誤カウントで Coordinator 再実測により是正）。
 - csv_import 詳細 route 実在: `src/routes/csv-import.records.$importId.tsx`（PR #58）。stocktake 詳細 route 不在。
 - `checkAutoBackup` interval 実装済み: `BackupRestorePage.tsx` L169-183。
 - REQ-206/207/208 の test 参照: 12 file / 4 file / 0 file（SPEC-DSI-D1/D2 の実測コマンド参照）。
@@ -228,3 +228,4 @@ Contract ID: SPEC-DSI
 ## 遷移・レビュー記録（append-only）
 
 - 2026-08-26: kickoff → spec-check（task scoped: Plans.md「次の行動」docs 棚卸し entry、owner 選定 2026-08-26。Risk R2 判定・記録）→ plan-draft（唯一許可の skip: Design Readiness — 設計新設なしの表記整理で既存正本が十分）→ plan-gate（packet を plan-first commit として本 commit で commit。Test Matrix は R2 optional 判定で省略）。本 commit がこの隣接 3 遷移を materialize する（recording compression、evidence は本 packet の該当節）。
+- 2026-08-26 Plan Review round 1（独立 Sonnet fresh context）: P1 4 / P2 2 / P3 2。P1-1 = AC-2 のリテラル半角スペース抜けで vacuous pass（実文言は「残り 18 項目」）、P1-2 = requirements.md L51 脚注の書換え漏れで新規矛盾を作る構図、P1-3 = 66-ui に csv_import 記述が存在しない（Scope 対象誤り）、P1-4 = PR 番号転記の自己矛盾（Scope 4 の「PR #58」vs 表記規約）。P2 = AC-1 の実在しない免除節 / 58-ui 行番号誤り。P3 = Hosted CI 判定根拠の明示 / 65 L252 の無変更明記。全件採用のうえ Coordinator が再実測し、追加是正 2 件を実施: L229「残り 18 項目」は activeMatch 契約の数値も実測 21 で stale（数値非依存化を Scope 3 へ）/ Contract Probe の navigation「20 項目」は誤カウント（実測 24、activeMatch 3）。plan-gate に留まったまま是正、round 2 は closure 確認。
