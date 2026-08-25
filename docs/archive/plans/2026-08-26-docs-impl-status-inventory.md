@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: c4e23ce
@@ -254,3 +254,4 @@ Contract ID: SPEC-DSI
 - 2026-08-26 是正 delta 独立再検証（fresh Sonnet、narrow）: **approved**（P1 0 / P2 0 / P3 1）。Q40 是正 2 行は 75-ui L199 / ARCHITECTURE L275 と整合・新規 overclaim なし、AC-1 / AC-9(a) 維持、amendment 3 は AC-8 行のみの宣言範囲内、content diff は Scope の docs 10 点に一致、Q40 類似 overclaim の残存なし。P3 = PROJECT_HANDOFF L310 の Q40 latent stale（main 由来の既存・本 change の diff 外）→ Post-Merge Closeout の PROJECT_HANDOFF 同期で扱う。
 - 2026-08-26 本 state-only commit で implementing → local-verified → independent-review → human-confirm の隣接 3 遷移を materialize。evidence: ① local-verified = L1 `local-ci.sh full` CLEAN（candidate `b392118`、evidence log 末尾 `RESULT=PASS` / `MERGE_EVIDENCE_VALID=true` を Coordinator 実読、PR body に記録）② independent-review = 独立 Sonnet Final Review Contract Audit + 是正 delta 再検証 ③ human-confirm = findings 裁定完了 P1/P2 = 0（P1-1 是正済み・P2-1 amendment 3 で解消）、`Reviewed Content HEAD` = `5aad8f5`（最終 content 是正 commit）。
 - 2026-08-26 owner Ready 承認（介入 2/2、明示承認。Ready 遷移実行は Coordinator へ委任）。本 state-only commit で human-confirm → ready-hosted-final を materialize。以後: 本 commit を含む exact HEAD で L1 full → PR body 鮮度更新 → Ready 化 → docs-only paths-ignore につき同一 HEAD の自動 run 0 件を確認して `workflow_dispatch` → 三点一致確認 → owner merge。
+- 2026-08-26 merge → archive: L1 full PASS（Ready exact HEAD）+ hosted run success（初回 1 fail = main 既存の failpoint 並列 race による flake、真因実読 + rerun success + PR body disposition 記録、恒久是正は backlog 起票）で三点一致成立 → owner merge（PR #6、SHA / URL は PR body が正本）→ Post-Merge Closeout で packet を archive へ移動、Plans.md / PROJECT_HANDOFF 同期、backlog 起票（failpoint race 直列化 / 実コード側 stale 表記 batch）。
