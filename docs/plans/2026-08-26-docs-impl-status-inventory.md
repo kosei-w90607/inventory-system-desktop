@@ -2,16 +2,16 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: c4e23ce
-- Amendments: 98c0f9e ba09662
+- Amendments: 98c0f9e ba09662 b392118
 - Coordinator: Claude Fable 5
 - Writer: Codex（GPT-5.6 系、発注書駆動）
 - Plan Reviewer: Claude Sonnet 5（独立 fresh context、D-062）
 - Final Reviewer: Claude Sonnet 5（独立 fresh context）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 5aad8f5
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: pending = Ready 承認のみ（Plan Gate 承認は 2026-08-26 完了・介入 1/2。操作画面の挙動変更なしのため human visual confirmation は非該当）
@@ -251,3 +251,5 @@ Contract ID: SPEC-DSI
 - 2026-08-26 Codex Writer fail-closed 停止（true positive）: packet 未列挙の同型 stale 6 箇所（SCREEN_DESIGN L15/L138/L153、68-ui L102、69-ui L49/L55）を検出し無編集で停止・報告。Coordinator が 6 件全数を実読裏取り（全件真陽性）+ 同 class の repo 全数 sweep（drift-fix sweep の Plan 段階適用）を実施し、追加 2 箇所（68-ui L201 Non-scope bullet / 53-ui L189-192 の現況行欠落）と、**逆方向の誤り 1 件 = Scope 3 の L161 は「2026-04-21 時点」dated 履歴 block 内で直下 L163 に現況行が既在（rally 3 round が見落とし、編集対象から除外へ縮小是正）**を確定。本 gated amendment 1 で Scope 8 / AC-9 追加・Scope 3 縮小・AC-2 oracle 改訂・Non-scope 3 件明記。UI_TECH_STACK の「導入予定（未統合）」は実態一致で非対象と裁定。amendment SHA は次 commit で `Amendments` 行へ追記。
 - 2026-08-26 amendment delta 独立検証（fresh Sonnet、narrow）: **approved**。Scope 8 の 8 箇所の行番号・現文言・実装根拠、Scope 3 縮小是正（L158-163 の dated 履歴 block + L163 現況行）、AC-2/AC-9 oracle の編集前カウント全一致、既存 gated 契約の無改変、68-ui L201 削除の安全性、53-ui 追記文言の非矛盾を確認。P2 1 = AC-8 の file 数算術誤り（7/9 点 → 正 10 doc + Plans.md、gated amendment 2 で是正）。P3 1 = home 部品（InventoryActionGrid / MiscActionRow）の source comment「全 pending」が実コード側 stale — docs-only の本 change 非対象で正当、在庫照会 disabled CTA と同じ実コード stale 表記 batch として backlog 起票へ合流。amendment 2 SHA は次 commit で `Amendments` 行へ追記。
 - 2026-08-26 Codex Writer 実装完了（content candidate = `e991fc0`、Draft PR #6）→ 独立 Sonnet Final Review Contract Audit: AC 再実測 8 PASS / AC-8 FAIL、hunk 全数突合（挙動契約無改変・履歴保全・PR 番号非転記・dated block 無編集・REQ-208 等の誤実装済み化なしを確認）、P1 1 / P2 1。裁定: **P1-1 採用** = SCREEN_DESIGN L42/L426 の「Q40 障害時対応を含む」は完了主張への overclaim（旧文言は「合わせて具体化」の計画形。75-ui L199「Q40 の全アプリ共通 Error Boundary は本 scope 外」と ARCHITECTURE L275 に矛盾）→ Coordinator が画面固有 CmdError/retry のみの表現へ是正（軽微 2 行、Z004 Amendment 4 先例の Coordinator/Writer 兼務 + 独立再検証で自己承認回避）。**P2-1 採用** = AC-8 の Plans.md 要求は継続発注書の指示（Writer diff = docs 10 点のみ）と不整合 — Coordinator の packet 追随漏れが原因、gated amendment 3 で AC-8 を是正。amendment 3 SHA は次 commit で `Amendments` 行へ追記。是正 delta は fresh context で独立再検証する。
+- 2026-08-26 是正 delta 独立再検証（fresh Sonnet、narrow）: **approved**（P1 0 / P2 0 / P3 1）。Q40 是正 2 行は 75-ui L199 / ARCHITECTURE L275 と整合・新規 overclaim なし、AC-1 / AC-9(a) 維持、amendment 3 は AC-8 行のみの宣言範囲内、content diff は Scope の docs 10 点に一致、Q40 類似 overclaim の残存なし。P3 = PROJECT_HANDOFF L310 の Q40 latent stale（main 由来の既存・本 change の diff 外）→ Post-Merge Closeout の PROJECT_HANDOFF 同期で扱う。
+- 2026-08-26 本 state-only commit で implementing → local-verified → independent-review → human-confirm の隣接 3 遷移を materialize。evidence: ① local-verified = L1 `local-ci.sh full` CLEAN（candidate `b392118`、evidence log 末尾 `RESULT=PASS` / `MERGE_EVIDENCE_VALID=true` を Coordinator 実読、PR body に記録）② independent-review = 独立 Sonnet Final Review Contract Audit + 是正 delta 再検証 ③ human-confirm = findings 裁定完了 P1/P2 = 0（P1-1 是正済み・P2-1 amendment 3 で解消）、`Reviewed Content HEAD` = `5aad8f5`（最終 content 是正 commit）。
