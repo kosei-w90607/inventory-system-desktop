@@ -12,7 +12,6 @@ import type { StockDetail } from "@/lib/bindings";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatStockDisplay } from "../lib/format-stock-display";
 import { formatLastDate } from "../lib/format-last-date";
 
@@ -24,35 +23,6 @@ const priceFormatter = new Intl.NumberFormat("ja-JP", {
   style: "currency",
   currency: "JPY",
 });
-
-/** 将来実装予定の遷移ボタン（HTML disabled は Tooltip 不発のため aria-disabled パターン）。 */
-function DisabledCta({ label, hint }: { label: string; hint: string }) {
-  return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            role="button"
-            aria-disabled="true"
-            tabIndex={0}
-            className="inline-flex cursor-not-allowed items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium opacity-60"
-            onClick={(e) => {
-              e.preventDefault();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-              }
-            }}
-          >
-            {label}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>{hint}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -122,9 +92,15 @@ export function StockDetailContent({ query }: StockDetailContentProps) {
             <DetailRow label="最終販売日" value={formatLastDate(query.data.last_sale_date)} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <DisabledCta label="商品修正" hint="Phase 3 で実装予定" />
+            <Button type="button" asChild variant="outline" size="sm">
+              <Link to="/products/$code/edit" params={{ code: query.data.product.product_code }}>
+                商品修正
+              </Link>
+            </Button>
             <ActiveCta label="在庫変動履歴" productCode={query.data.product.product_code} />
-            <DisabledCta label="入庫記録" hint="Phase 3 で実装予定" />
+            <Button type="button" asChild variant="outline" size="sm">
+              <Link to="/inventory/receiving">入庫記録</Link>
+            </Button>
           </div>
         </CardContent>
       </>

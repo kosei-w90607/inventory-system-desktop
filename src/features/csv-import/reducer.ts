@@ -1,7 +1,6 @@
 // src/features/csv-import/reducer.ts
 //
-// 6 variant × 9 action の純関数 reducer。副作用ゼロ。Phase 1 7-7 Vitest 着手後に
-// 54 組合せ (13 valid + 41 invalid) の網羅 unit test を retroactive 追加する想定。
+// 6 variant × 9 action の純関数 reducer。副作用ゼロ。unit test 実装済み。
 // 設計: docs/function-design/55-ui-csv-import.md §55.2 reducer 遷移表 + §55.8 状態遷移図
 
 import type { CsvImportAction, CsvImportState } from "./types";

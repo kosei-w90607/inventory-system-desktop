@@ -29,7 +29,7 @@ mod schema_v6;
 #[cfg(test)]
 pub(crate) mod test_support;
 
-// BIZ/CMD層で使用する型の re-export（UI層未実装のため一部はまだ未使用）
+// BIZ/CMD層で使用する型の集約点として re-export を維持し、未参照シンボルを許可する
 #[allow(unused_imports)]
 pub use disposal_repo::{
     DisposalRecordDetail, DisposalRecordSummary, InventoryRecordQuery, InventoryRecordSummary,

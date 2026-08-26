@@ -52,7 +52,6 @@ export interface NavArea {
 }
 
 /// 4 エリア × 22 項目。全画面は route 実装済みで active。
-/// Phase 3/4 以降で各画面着手時に to を実 path に + status を "active" に切り替える。
 export const navigation: readonly NavArea[] = [
   {
     id: "daily",

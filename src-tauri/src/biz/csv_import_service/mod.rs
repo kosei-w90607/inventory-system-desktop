@@ -14,7 +14,7 @@ mod test_support;
 #[cfg(test)]
 mod tests;
 
-// CMD層が未実装のため一部シンボルは未使用だが、API互換のために再エクスポートを維持
+// CMD層が使用する API を一元化するため、各処理の再エクスポートを維持
 #[allow(unused_imports)]
 pub use commit::commit_csv_import;
 #[allow(unused_imports)]

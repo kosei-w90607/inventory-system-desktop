@@ -2,7 +2,7 @@
 //
 // 「その他」3 ボタン横並び（棚卸し / バックアップ / 閾値設定）。
 // 設計: docs/function-design/53-ui-home.md §53.1
-// 全 pending（Phase 4 UI-10/UI-11a/UI-11b まで未着手）。
+// 全項目 active（各 route 実装済み）。
 
 import { ActionButton } from "./ActionButton";
 

@@ -1,7 +1,7 @@
 //! CMD-11 部分: 整合性チェックコマンド群
 //!
 //! docs/function-design/42-cmd-sales-stocktake.md §22.7 に基づく実装。
-//! BIZ-07 に対応する2コマンドのみ。設定・ログ・バックアップは Phase 6。
+//! 本モジュールは BIZ-07 に対応する2コマンドのみを扱う。
 
 use crate::biz::integrity_service;
 use crate::cmd::{AppState, CmdError};
