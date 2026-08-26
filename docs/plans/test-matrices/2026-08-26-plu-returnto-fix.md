@@ -1,6 +1,6 @@
 # Test Design Matrix: 商品一覧 plu filter の returnTo 脱落 fix
 
-対象: `src/features/products/lib/return-to.ts` / `return-to.test.ts`。
+対象: `src/features/products/lib/return-to.ts` / `return-to.test.ts` / `src/features/products/ProductListPage.test.tsx`（T4、gated amendment 1 で追加）。
 Packet: [2026-08-26-plu-returnto-fix.md](../2026-08-26-plu-returnto-fix.md)（SPEC-PLURT-2026-08-26）。
 
 方針:
@@ -18,6 +18,7 @@ Packet: [2026-08-26-plu-returnto-fix.md](../2026-08-26-plu-returnto-fix.md)（SP
 | T3 | SPEC-PLURT C2（負系・互換） | plu 欠落の旧 returnTo 互換 | `parseProductListSearchFromReturnTo("/products?q=%E5%B8%83&page=2")` | 結果の `plu` が `undefined`（`toEqual` で `q: "布", page: 2` + 他 field undefined の全列挙） | parse が欠落時に `"all"` 等を捏造する mutant → red |
 | 既存 | SPEC-PLURT C3 | sanitize 契約維持 | 既存 sanitize 2 test（無改変） | 既存 oracle のまま | — （退行検知） |
 | 既存 | SPEC-PLURT C4 | 7 param 往復維持 + plu 未設定時に emit しない | 既存 `round-trips product list search params for navigation`（無改変。入力に plu なし、期待文字列に `plu` 出現なし） | 既存 exact 文字列 oracle のまま | build が plu undefined 時にも `plu=undefined` 等を emit する mutant → red（既存 exact match が検知） |
+| T4 | SPEC-PLURT C1 / §50.4 既定値 `all`（gated amendment 1） | 既定 search の returnTo に `plu=all` が明示 serialize される（integration、正規化済み object 経由） | `ProductListPage.test.tsx` の既存 returnTo 期待 literal 2 箇所へ `plu%3Dall` を追記（test 構造・他 assertion 無改変） | 既存 integration test の期待 href literal 完全一致（oracle は流用、literal のみ同期） | build の `params.set("plu", ...)` 行削除 → red（literal 不一致で検知） |
 
 ## 検出境界
 
@@ -27,4 +28,5 @@ Packet: [2026-08-26-plu-returnto-fix.md](../2026-08-26-plu-returnto-fix.md)（SP
 ## 実行
 
 - `npx vitest run src/features/products/lib/return-to.test.ts` exit 0（T1〜T3 + 既存 3 test）。
+- `npx vitest run src/features/products/ProductListPage.test.tsx` exit 0（T4、gated amendment 1）。
 - mutation 実証（AC8）は Final Review が commit 後の clean tree 上で T1 / T2 の kill 対象 mutant を実注入して red を独立再現する。

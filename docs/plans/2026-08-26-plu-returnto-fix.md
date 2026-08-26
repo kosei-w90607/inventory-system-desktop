@@ -86,7 +86,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - AC6（frontend gate）: `npm run typecheck` / `npm run lint` / `npm test` がすべて exit 0。
 - AC7（traceability）: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0。
 - AC8（mutation 感度）: build の `plu` serialize を削除した mutant で T1 / T2 が red になることを Final Review が clean tree 上で実注入・独立再現する（構造推論のみは不可）。
-- AC9（gated amendment 1）: `rg -F -c 'plu' src/features/products/ProductListPage.test.tsx` が 1 以上、かつ `git diff main -- src/features/products/ProductListPage.test.tsx` の hunk が returnTo 期待 literal への `plu` 追記のみ（他 assertion・test 構造の改変なし、review 検分）。
+- AC9（gated amendment 1）: `rg -F -c 'plu%3Dall' src/features/products/ProductListPage.test.tsx` が 2（returnTo 期待 literal 2 箇所。fix 未適用時 0 / 適用後 2 の弁別を delta review が実測済み — 裸の `plu` は同 file の一括対象機能 test 由来で fix 前から 7 hit あり非弁別）、かつ `git diff main -- src/features/products/ProductListPage.test.tsx` の hunk が returnTo 期待 literal への `plu` 追記のみ（他 assertion・test 構造の改変なし、review 検分）。
 
 ## Design Sources
 
@@ -244,5 +244,8 @@ Contract ID: SPEC-PLURT-2026-08-26
   - P3-1（sweep archive の hop 行番号が要素開始行 `:91` を指し packet は属性行 `:94` を指す表記ずれ）: 裁定 = 記録のみ。archived doc は非遡及（D-038）、packet 側の `:94` 引用が実体と一致することは Coordinator 実読で確認済み。次回 sweep 系 doc 作成時の表記慣習メモとして本行に残す。
   - P3-2（Design Intent Trace の出典見出し表記 `51-ui Design Intent Trace` が実見出し `§7.1 設計判断` と不一致）: 裁定 = accept、同 commit で是正済み。Coordinator が `rg` で 51-ui の実見出しを裏取りした。
 - Plan Review rally は round 1 で P1/P2 = 0 収束（天井 3 に対し 1 round）。
+- gated amendment 1 delta review（2026-08-26、独立 Sonnet、差分限定）: P1: 0 / P2: 1 / P3: 1。総合判定 = amendment 妥当。機序主張（正規化済み object の既定値明示 serialize）と既存 3 enum との同型性を reviewer が実測で確認、「build 側で既定値を emit しない」代替案は既存 pattern からの逸脱として棄却。
+  - P2-1（AC9 の grep `plu` が fix 未適用でも 7 hit で非弁別）: 裁定 = accept。Coordinator 実測で再現（`plu` 7 hit / `plu%3Dall` 0 hit）。AC9 を弁別 literal `plu%3Dall`（fix 後 2 hit）へ差し替え済み。
+  - P3-1（Matrix が amendment 1 の scope 拡張に未追随）: 裁定 = accept。Matrix の対象行・T4 行・実行節を追補済み。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
