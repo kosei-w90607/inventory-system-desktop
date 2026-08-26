@@ -43,4 +43,25 @@ describe("queryKeys UI-06c / UI-01b / UI-09a D-052-S2 prefix contract", () => {
     expect(pageSource).not.toContain('["inventory-records"');
     expect(pageSource).toContain("queryKeys.inventoryRecords.csvImportDetail(importId)");
   });
+
+  it("REQ-206: keeps stocktakeDetail under its dedicated root", () => {
+    expectPrefix(
+      queryKeys.inventoryRecords.stocktakeDetailRoot(),
+      queryKeys.inventoryRecords.stocktakeDetail(51),
+    );
+    expect(queryKeys.inventoryRecords.stocktakeDetail(51)).toEqual([
+      "inventory-records",
+      "stocktake-detail",
+      { stocktakeId: 51 },
+    ]);
+  });
+
+  it("REQ-206: stocktake detail page does not reintroduce a literal query key", () => {
+    const pageSource = readFileSync(
+      resolve(process.cwd(), "src/features/inventory-records/StocktakeRecordDetailPage.tsx"),
+      "utf8",
+    );
+    expect(pageSource).not.toContain('["inventory-records"');
+    expect(pageSource).toContain("queryKeys.inventoryRecords.stocktakeDetail(stocktakeId)");
+  });
 });

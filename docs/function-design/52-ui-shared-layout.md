@@ -79,7 +79,7 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 | UI-05 | 廃棄・破損 | `/inventory/disposal` | `src/routes/inventory/disposal.tsx` | 入出庫 | ○ | |
 | UI-02b〜05b | 入出庫履歴 | `/inventory/records` | `src/routes/inventory/records.tsx` | 入出庫 | ○ | 入庫/返品・交換/手動販売/廃棄・破損/CSV取込み/棚卸しの追跡入口 |
 | UI-06b | 在庫少一覧 | `/stock`（deep-link、専用 route なし） | `src/routes/stock/index.tsx`（UI-06a と共用） | 入出庫 | ○ | 独立画面は廃止し、UI-06a `status=low_stock` フィルタへの deep-link に統合（D-047、UI-12-D1） |
-| UI-10 | 棚卸し | `/stocktake` | `src/routes/stocktake.tsx` | 入出庫 | ○ | 入出庫エリア末尾配置（年次作業、合意書 §7.4） |
+| UI-10 | 棚卸し | `/stocktake` | `src/routes/stocktake/index.tsx`（layout: `src/routes/stocktake.tsx`、詳細: `src/routes/stocktake.records.$stocktakeId.tsx`） | 入出庫 | ○ | 入出庫エリア末尾配置（年次作業、合意書 §7.4）。`/stocktake/records/$stocktakeId` はナビ非表示の記録詳細 |
 | UI-06c | 在庫変動履歴 | `/stock/$code/movements` | `src/routes/stock/$code.movements.tsx` | （ナビ非表示） | — | $code 必須、商品詳細カードから遷移 |
 | UI-11b | バックアップ・復元 | `/settings/backup` | `src/routes/settings/backup.tsx` | システム管理 | ○ | |
 | UI-11c | 操作ログ | `/settings/logs` | `src/routes/settings/logs.tsx` | システム管理 | ○ | |

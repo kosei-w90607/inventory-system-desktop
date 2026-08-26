@@ -64,6 +64,9 @@ export const queryKeys = {
       ["inventory-records", "disposal-detail", { recordId }] as const,
     csvImportDetail: (importId: number) =>
       ["inventory-records", "csv-import-detail", { importId }] as const,
+    stocktakeDetailRoot: () => ["inventory-records", "stocktake-detail"] as const,
+    stocktakeDetail: (stocktakeId: number) =>
+      ["inventory-records", "stocktake-detail", { stocktakeId }] as const,
   },
   // UI-01a 商品検索・一覧
   // 設計: docs/function-design/50-ui-product-list.md §50.5

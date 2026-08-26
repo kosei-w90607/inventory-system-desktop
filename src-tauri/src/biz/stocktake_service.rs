@@ -75,6 +75,28 @@ pub struct StocktakeProgressBiz {
     pub uncounted_items: usize,
 }
 
+/// 棚卸し記録詳細の状態（有限 wire 値）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum StocktakeStatus {
+    InProgress,
+    Completed,
+}
+
+/// 棚卸し記録詳細の wire DTO。
+#[derive(Debug, serde::Serialize, specta::Type)]
+pub struct StocktakeRecordDetail {
+    pub id: i64,
+    pub started_at: String,
+    pub completed_at: Option<String>,
+    pub status: StocktakeStatus,
+    pub total_cost: Option<i64>,
+    pub item_count: i64,
+    pub corrected_count: i64,
+    pub items: Vec<stocktake_repo::StocktakeRecordDetailItem>,
+    pub movements: Vec<inventory_repo::MovementRecord>,
+}
+
 // ---------------------------------------------------------------------------
 // 関数
 // ---------------------------------------------------------------------------
@@ -153,6 +175,58 @@ pub fn get_last_completed_stocktake(
     conn: &DbConnection,
 ) -> Result<Option<stocktake_repo::LastStocktakeSummary>, BizError> {
     Ok(stocktake_repo::find_last_completed_stocktake(conn)?)
+}
+
+/// 棚卸し記録詳細を wire DTO として返す。
+///
+/// 35-biz-stocktake-service.md §20.6a / REQ-206 / REQ-207
+pub fn get_stocktake_record(
+    conn: &DbConnection,
+    stocktake_id: i64,
+) -> Result<StocktakeRecordDetail, BizError> {
+    let core = match stocktake_repo::get_stocktake_record_detail(conn, stocktake_id) {
+        Ok(core) => core,
+        Err(crate::db::DbError::NotFound) => {
+            return Err(BizError::NotFound(format!(
+                "棚卸し記録が見つかりません: {stocktake_id}"
+            )))
+        }
+        Err(error) => return Err(BizError::DatabaseError(error)),
+    };
+
+    let status = match core.header.status.as_str() {
+        "in_progress" => StocktakeStatus::InProgress,
+        "completed" => StocktakeStatus::Completed,
+        unexpected => {
+            return Err(BizError::DatabaseError(crate::db::DbError::QueryFailed(
+                format!("unexpected stocktake status: {unexpected}"),
+            )))
+        }
+    };
+    let corrected_count = i64::try_from(core.items.len()).map_err(|_| {
+        BizError::DatabaseError(crate::db::DbError::QueryFailed(
+            "stocktake corrected count overflow".to_string(),
+        ))
+    })?;
+    let mut movements = core.movements;
+    for movement in &mut movements {
+        movement.source = crate::biz::inventory_service::resolve_movement_source(
+            &movement.reference_type,
+            &movement.reference_id,
+        );
+    }
+
+    Ok(StocktakeRecordDetail {
+        id: core.header.id,
+        started_at: core.header.started_at,
+        completed_at: core.header.completed_at,
+        status,
+        total_cost: core.header.total_cost,
+        item_count: core.item_count,
+        corrected_count,
+        items: core.items,
+        movements,
+    })
 }
 
 /// 棚卸し進捗を取得する（読み取り専用、TX不要）
@@ -1298,5 +1372,55 @@ mod tests {
         );
         let ir = result.integrity_result.unwrap();
         assert!(ir.checked_count > 0, "checked_count > 0");
+    }
+
+    #[test]
+    fn test_get_stocktake_record_req206_not_found_message() {
+        let (_dir, conn) = setup_test_db();
+
+        let result = get_stocktake_record(&conn, 99_999);
+
+        assert!(matches!(
+            result,
+            Err(BizError::NotFound(message)) if message.contains("棚卸し記録が見つかりません")
+        ));
+    }
+
+    #[test]
+    fn test_get_stocktake_record_req206_status_enum_and_fail_fast() {
+        let (_dir, conn) = setup_test_db();
+        let in_progress_id = create_stocktake(&conn, "in_progress");
+        let completed_id = create_stocktake(&conn, "completed");
+
+        let in_progress = get_stocktake_record(&conn, in_progress_id).unwrap();
+        let completed = get_stocktake_record(&conn, completed_id).unwrap();
+        assert_eq!(in_progress.status, StocktakeStatus::InProgress);
+        assert_eq!(completed.status, StocktakeStatus::Completed);
+
+        conn.execute_batch("PRAGMA ignore_check_constraints = ON;")
+            .unwrap();
+        let invalid_id = create_stocktake(&conn, "unexpected");
+        let result = get_stocktake_record(&conn, invalid_id);
+        assert!(matches!(result, Err(BizError::DatabaseError(_))));
+    }
+
+    #[test]
+    fn test_get_stocktake_record_req207_movement_source() {
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "SRD-BIZ", 0);
+        let stocktake_id = create_stocktake(&conn, "completed");
+        seed_stocktake_item(&conn, stocktake_id, "SRD-BIZ", 0, Some(1));
+        conn.execute(
+            "INSERT INTO inventory_movements
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
+             VALUES ('SRD-BIZ', 'stocktake', 1, 1, 'stocktake', ?1, 0, '2026-08-05T18:00:00')",
+            [stocktake_id],
+        )
+        .unwrap();
+
+        let detail = get_stocktake_record(&conn, stocktake_id).unwrap();
+        let source = detail.movements[0].source.as_ref().unwrap();
+        assert_eq!(source.label, format!("棚卸し #{}", stocktake_id));
+        assert_eq!(source.route, format!("/stocktake/records/{}", stocktake_id));
     }
 }

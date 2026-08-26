@@ -2,6 +2,7 @@
 //!
 //! docs/function-design/42-cmd-sales-stocktake.md §22.5 に基づく実装。
 
+use crate::biz::stocktake_service::StocktakeRecordDetail;
 use crate::biz::stocktake_service::{self, CompleteStocktakeRequest, UpdateCountRequest};
 use crate::biz::{LastStocktakeSummary, Stocktake, StocktakeItemDetail, StocktakeProgress};
 use crate::cmd::{AppState, CmdError};
@@ -122,6 +123,22 @@ pub fn get_last_completed_stocktake(
         .lock()
         .map_err(|error| CmdError::internal("DB接続エラー", error))?;
     stocktake_service::get_last_completed_stocktake(&conn).map_err(CmdError::from)
+}
+
+/// 棚卸し記録詳細を取得する。
+///
+/// docs/function-design/42-cmd-sales-stocktake.md §22.5 / REQ-206 / REQ-207
+#[tauri::command]
+#[specta::specta]
+pub fn get_stocktake_record(
+    state: State<AppState>,
+    stocktake_id: i64,
+) -> Result<StocktakeRecordDetail, CmdError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|error| CmdError::internal("DB接続エラー", error))?;
+    stocktake_service::get_stocktake_record(&conn, stocktake_id).map_err(CmdError::from)
 }
 
 /// 棚卸しアイテムのカウントを更新する
@@ -390,5 +407,20 @@ mod tests {
         let stocktake = result.expect("進行中棚卸しが返るべき");
         assert_eq!(stocktake.id, stocktake_id);
         assert_eq!(stocktake.status, "in_progress");
+    }
+
+    #[test]
+    fn test_get_stocktake_record_cmd_req206_not_found_kind() {
+        let (_dir, conn) = setup_test_db();
+        let app = tauri::test::mock_builder()
+            .manage(app_state_for_test(conn))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+
+        let error = get_stocktake_record(app.state::<AppState>(), 99_999).unwrap_err();
+
+        assert_eq!(error.kind, CmdErrorKind::NotFound);
+        assert_eq!(error.message, "棚卸し記録が見つかりません: 99999");
+        assert_eq!(error.field, None);
     }
 }

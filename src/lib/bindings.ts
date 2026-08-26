@@ -268,6 +268,12 @@ export const commands = {
 	total_cost: number,
 } | null, CmdError>(__TAURI_INVOKE("get_last_completed_stocktake")),
 	/**
+	 *  棚卸し記録詳細を取得する。
+	 *
+	 *  docs/function-design/42-cmd-sales-stocktake.md §22.5 / REQ-206 / REQ-207
+	 */
+	getStocktakeRecord: (stocktakeId: number) => typedError<StocktakeRecordDetail, CmdError>(__TAURI_INVOKE("get_stocktake_record", { stocktakeId })),
+	/**
 	 *  棚卸しアイテムのカウントを更新する
 	 *
 	 *  actual_count < 0 は防御的チェックでブロック（BIZ層にも同じチェックあり）。
@@ -1590,6 +1596,33 @@ export type StocktakeProgress = {
 	uncounted_items: number,
 };
 
+// 棚卸し記録詳細の wire DTO。
+export type StocktakeRecordDetail = {
+	id: number,
+	started_at: string,
+	completed_at: string | null,
+	status: StocktakeStatus,
+	total_cost: number | null,
+	item_count: number,
+	corrected_count: number,
+	items: StocktakeRecordDetailItem[],
+	movements: MovementRecord[],
+};
+
+// 棚卸し記録詳細の補正明細（補正 movement 起点）。
+export type StocktakeRecordDetailItem = {
+	product_code: string,
+	product_name: string,
+	department_name: string,
+	stock_unit: string,
+	system_stock: number,
+	actual_count: number | null,
+	counted_at: string | null,
+	valuation_cost_price: number | null,
+	adjustment_quantity: number,
+	stock_after: number,
+};
+
 // 棚卸し確定結果
 export type StocktakeResult = {
 	total_cost: number,
@@ -1598,6 +1631,9 @@ export type StocktakeResult = {
 	// D-2統合: 確定後の整合性チェック結果。失敗時はNone
 	integrity_result: IntegrityResult | null,
 };
+
+// 棚卸し記録詳細の状態（有限 wire 値）。
+export type StocktakeStatus = "in_progress" | "completed";
 
 /**
  *  取引先マスタの行マッピング
