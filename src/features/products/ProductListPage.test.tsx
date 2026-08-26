@@ -210,11 +210,11 @@ describe("ProductListPage (UI-01a)", () => {
     ).toEqual(["表示中", "すべて", "廃番のみ"]);
     expect(screen.getByRole("link", { name: "商品登録" })).toHaveAttribute(
       "href",
-      "/products/new?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D50",
+      "/products/new?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26plu%3Dall%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D50",
     );
     expect(screen.getByRole("link", { name: "修正" })).toHaveAttribute(
       "href",
-      "/products/P-001/edit?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D50",
+      "/products/P-001/edit?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26plu%3Dall%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D50",
     );
     await waitFor(() => {
       expect(mockListDepartments).toHaveBeenCalledTimes(1);

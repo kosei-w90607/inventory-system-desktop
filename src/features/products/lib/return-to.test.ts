@@ -48,4 +48,51 @@ describe("sanitizeProductListReturnTo (UI-01b-D2)", () => {
       perPage: 100,
     });
   });
+
+  it("serializes the PLU filter into returnTo (SPEC-PLURT C1 / UI-01a-D10)", () => {
+    expect(
+      buildProductListReturnTo({
+        q: "毛糸",
+        plu: "pending",
+        page: 2,
+      }),
+    ).toBe("/products?q=%E6%AF%9B%E7%B3%B8&plu=pending&page=2");
+  });
+
+  it("round-trips all eight product list search params (SPEC-PLURT C1+C2 / UI-01a-D10)", () => {
+    const returnTo = buildProductListReturnTo({
+      q: "リボン",
+      dept: 3,
+      discontinued: "all",
+      plu: "synced",
+      sort: "name",
+      dir: "desc",
+      page: 4,
+      perPage: 200,
+    });
+
+    expect(parseProductListSearchFromReturnTo(returnTo)).toEqual({
+      q: "リボン",
+      dept: 3,
+      discontinued: "all",
+      plu: "synced",
+      sort: "name",
+      dir: "desc",
+      page: 4,
+      perPage: 200,
+    });
+  });
+
+  it("keeps PLU undefined for legacy returnTo values (SPEC-PLURT C2)", () => {
+    expect(parseProductListSearchFromReturnTo("/products?q=%E5%B8%83&page=2")).toEqual({
+      q: "布",
+      dept: undefined,
+      discontinued: undefined,
+      plu: undefined,
+      sort: undefined,
+      dir: undefined,
+      page: 2,
+      perPage: undefined,
+    });
+  });
 });
