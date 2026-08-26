@@ -75,7 +75,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 5. route: **`stocktake.tsx` の layout route 化**（`<Outlet />` のみを render、`csv-import.tsx` と同型）+ **`src/routes/stocktake/index.tsx` 新設**（`StocktakePage` を index route へ移設。**現行 `stocktake.tsx` の `validateSearch: searchSchema`（dept / counted_only / page）と `RouteComponent` の `Route.useSearch()` / `Route.useNavigate()` 消費も一体で index route へ移設する** — 既存 layout+index 5 site はいずれも validateSearch を持たず precedent 不在のため明示指定。rally round 1 P1-2）+ `src/routes/stocktake.records.$stocktakeId.tsx` 新設 + `npm run generate:routes`。既存 `/stocktake` 作業画面は index route で従来どおり描画され、`?dept=` / `?counted_only=` / `?page=` 付き直接進入で search 駆動の絞り込み・ページングが従来どおり機能することを runtime route test で固定する（T16。4b gated Amendment 1 の教訓を最初から Scope 化）。詳細 route 側の `validateSearch` は `returnTo` pattern（`z.string().max(500).optional().catch(undefined)`）を既存 5 詳細 route と同形で踏襲
 6. UI: `src/features/inventory-records/StocktakeRecordDetailPage.tsx` 新設。`CsvImportRecordDetailPage.tsx` を canonical 参照とし、同構造（useQuery + queryKeys + describeError + returnTo 戻り導線）。status label は in_progress →「進行中」/ completed →「完了」の正規化表示（65 §65.6.1）。in_progress（手動 URL 進入）は補正明細 0 件・movements 0 件・原価は算定前として「—」等で表示する正常表示
 7. query key: `queryKeys.inventoryRecords.stocktakeDetail(stocktakeId)` + prefix 用 `stocktakeDetailRoot()` 追加
-8. D-052 契約変更（C23 として採番予約。実装時に live `invalidation-contract.ts` の最終 C 番号を再実測して確定 — PR #86 WER の番号衝突教訓）: `stocktakeComplete` / `productCreate` / `productImport` へ `queryKeys.inventoryRecords.stocktakeDetailRoot()` を追加。導出（UI_TECH_STACK §2.5 table.column、rally round 1 P1-1 / P2-3 で全数やり直し）: (a) `complete_stocktake` は stocktakes / stocktake_items / inventory_movements を書き、本 query の全読取り列に影響する (b) `create_product` ステップ6 と `commit_import` は進行中棚卸しへ stocktake_items 行を自動追加し（`src-tauri/src/biz/product_service.rs` L257-264 / L1345-1353 実読）、in_progress 詳細の `item_count` を変化させる (c) `stocktakeCountUpdate` は**追加しない** — 書き込む actual_count / counted_at を本 query が返すのは補正明細（movement 起点 JOIN）経由のみで、補正 movement が存在しない in_progress 中は空、completed 後は `update_count` 自体が status guard で到達不能（`src-tauri/src/biz/stocktake_service.rs` L207-211）。列レベルで読取り集合と交差しない (d) `stocktakeStart` は新規 header/items の作成のみで既存詳細の読取り対象を変更しないため追加しない (e) 商品改名による product_name / department_name の stale は既存 5 詳細と同じ pre-existing class（4b と同裁定で非対象）。**広域 prefix `inventoryRecords.root()`（4b の csvImportRollback 方式）は不採用** — 専用 `stocktakeDetailRoot()` prefix が過剰禁止原則に適う最小集合。独立転記 oracle test（`src/test/invalidation-oracle.ts`）の追随 + production-only mutation 感度の再実測込み
+8. D-052 契約変更（**新規 mutation entry なし・新規 C 採番なし** — 既存 **C1〈商品 create〉/ C3〈商品一括 import〉/ C11〈棚卸し確定〉の consumer 集合拡張**。当初の「C23 採番予約」は D-052 の C 番号 = mutation entry 番号という registry 意味論〈decision-log D-052 Contract 行〉の誤読で、gated Amendment 1 で訂正 — Codex Writer fail-closed 起源の true positive）: `stocktakeComplete`（C11）/ `productCreate`（C1）/ `productImport`（C3）へ `queryKeys.inventoryRecords.stocktakeDetailRoot()` を追加。D-052 Revisit 条項に従い、同一 PR で decision-log D-052 Contract 行へ 1 文追記する（「棚卸し詳細 prefix（`inventoryRecords.stocktakeDetailRoot()`）は C1 / C3 / C11 で stale 化する。C15 棚卸し開始 / C16 棚卸し明細個数更新は列レベル導出で非追加（2026-08-27、65 slice 4c）」相当）。UI_TECH_STACK §2.5 は導出原則・E1〜E6 に変更がないため更新対象外（4b C9 拡張の先例と同判断）、function-design への key 全量複製は D-052 Contract 行の禁止どおり行わない。導出（UI_TECH_STACK §2.5 table.column、rally round 1 P1-1 / P2-3 で全数やり直し）: (a) `complete_stocktake` は stocktakes / stocktake_items / inventory_movements を書き、本 query の全読取り列に影響する (b) `create_product` ステップ6 と `commit_import` は進行中棚卸しへ stocktake_items 行を自動追加し（`src-tauri/src/biz/product_service.rs` L257-264 / L1345-1353 実読）、in_progress 詳細の `item_count` を変化させる (c) `stocktakeCountUpdate` は**追加しない** — 書き込む actual_count / counted_at を本 query が返すのは補正明細（movement 起点 JOIN）経由のみで、補正 movement が存在しない in_progress 中は空、completed 後は `update_count` 自体が status guard で到達不能（`src-tauri/src/biz/stocktake_service.rs` L207-211）。列レベルで読取り集合と交差しない (d) `stocktakeStart` は新規 header/items の作成のみで既存詳細の読取り対象を変更しないため追加しない (e) 商品改名による product_name / department_name の stale は既存 5 詳細と同じ pre-existing class（4b と同裁定で非対象）。**広域 prefix `inventoryRecords.root()`（4b の csvImportRollback 方式）は不採用** — 専用 `stocktakeDetailRoot()` prefix が過剰禁止原則に適う最小集合。独立転記 oracle test（`src/test/invalidation-oracle.ts`）の追随 + production-only mutation 感度の再実測込み
 9. tests: 実装と同時に作成、`REQ-206` / `REQ-207` token 付与、`cargo run --bin generate_traceability` で 90 再生成
 10. design docs（本 plan-first commit に同乗済み）: 20-io §2.11a / 35 §20.6a + 更新履歴 / 42 §22.5 `get_stocktake_record` + §22.8 追記 / 65 §65.10 slice 4c + §65.8.3 差替え + 変更履歴
 11. 52-ui §52.3 routing 表 UI-10 行の layout + index 表記同期（`src/routes/stocktake.tsx`（layout）+ `src/routes/stocktake/index.tsx`（index）。UI-07 行と同形。実装と同 PR で Writer が実施）
@@ -145,7 +145,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | REQ-205 系（差異意味論） | 35 §20.5 / §20.6a 設計ノート / 20-io §2.11a ステップ 3 | 65 slice 4c | 差異 = 補正 movement quantity（確定時 live 在庫基準）。snapshot 差（`system_stock - actual_count`）案は棚卸し中の在庫変動（SP-205-09）で補正実績と乖離するため不採用 | IO JOIN + Page 表示 | T3（乖離 fixture で弁別） |
 | REQ-207 | 66 UI-06c-D7 | — | link URL 表示契約は不変。遷移先実装のみ追加 | — | AC6 |
 | D-061 | 35 §20.6a | D-061 | `status` は BIZ 所有の新設 2 値 enum `StocktakeStatus`（IO は raw TEXT を返し BIZ で変換 — 層方向維持）。既存 `Stocktake` wire の `status: String` は既存 command 互換のため不変 | DTO | AC4 / T6 |
-| D-052 C23（予約） | UI_TECH_STACK §2.5 | D-052 | `stocktakeComplete` / `productCreate` / `productImport` へ `stocktakeDetailRoot()` prefix（棚卸し中の商品自動明細追加が `item_count` を変える — Scope 8 導出 (b)）。`stocktakeCountUpdate` は列レベルで読取り集合と交差せず非追加（導出 (c)）、`stocktakeStart` も非追加（導出 (d)）。広域 `inventoryRecords.root()` は不採用（最小集合） | `invalidation-contract.ts` + oracle test | AC10 / T14 |
+| D-052 C1/C3/C11 拡張 | UI_TECH_STACK §2.5 / decision-log D-052 Contract 行 | D-052 | `stocktakeComplete`（C11）/ `productCreate`（C1）/ `productImport`（C3）へ `stocktakeDetailRoot()` prefix（棚卸し中の商品自動明細追加が `item_count` を変える — Scope 8 導出 (b)）。`stocktakeCountUpdate`（C16）は列レベルで読取り集合と交差せず非追加（導出 (c)）、`stocktakeStart`（C15）も非追加（導出 (d)）。広域 `inventoryRecords.root()` は不採用（最小集合） | `invalidation-contract.ts` + oracle test + decision-log 1 文追記 | AC10 / T14 |
 | REQ-206 | 65 §65.5（returnTo 戻り） | TRACE-D11 同型 | movements から来た場合の検索条件保持は既存 5 詳細の `returnTo` pattern を踏襲 | route `validateSearch` | T13 |
 
 ## Design Intent Audit
@@ -163,7 +163,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|
 | Adapter / core boundary | 本 change は app-core の棚卸し記録表示のみ。POS/Z004/CV17 等 adapter 事実に触れない | — |
 | Fact check / design decision split | 404 は 2026-08-26 遷移契約 sweep の実読裏取り済み起票（producer `list.rs:226` + route 不在）。差異意味論は `complete_stocktake` 実装（live 在庫基準）の実読で確定 | sweep 記録 + 35 §20.6a |
-| Lifecycle / retry | in_progress → completed の状態遷移表示、棚卸し中の商品自動明細追加・確定による詳細 cache 鮮度（D-052 C23）を State Lifecycle Matrix でカバー | Test Matrix |
+| Lifecycle / retry | in_progress → completed の状態遷移表示、棚卸し中の商品自動明細追加・確定による詳細 cache 鮮度（D-052 C1/C3/C11 拡張）を State Lifecycle Matrix でカバー | Test Matrix |
 | Operator workflow | 「押せるのに 404」解消。movements → 詳細 → returnTo 戻りの実順序 | Matrix T10/T13 + L3 |
 | Replacement path | not applicable（POS 外部システム非接触） | — |
 | Data safety / evidence | synthetic fixture のみ。実棚卸しデータ非 commit | Data Safety 節 |
@@ -218,8 +218,9 @@ Minimum design checks:
 | 65 slice 4c: in_progress の正常表示（空明細・空 movements・原価は算定前表示） | 同上 | T12 / AC9 | — |
 | 65 §65.5 / TRACE-D11 同型: returnTo 検索条件保持 + 不正戻り先 fallback | route `validateSearch` + Page | T13 | — |
 | 66 UI-06c-D7: movements link click → SPA 遷移で詳細 render（到達導線契約） | movements link（既存 `MovementTable.tsx`）+ 新 route | T10（userEvent.click、href assert 単独不可） | L3 視認 |
-| D-052 C23（予約）: stocktakeComplete / productCreate / productImport へ stocktakeDetailRoot() 追加 + 独立転記 oracle 完全一致 | `invalidation-contract.ts` + oracle test | T14 / AC10 | — |
-| D-052: stocktakeStart / stocktakeCountUpdate 非追加の導出記録 | PR body | — | 導出根拠（Scope 8 (c)(d)）を PR body 記録 |
+| D-052 C1/C3/C11 拡張: stocktakeComplete / productCreate / productImport へ stocktakeDetailRoot() 追加 + 独立転記 oracle 完全一致 | `invalidation-contract.ts` + oracle test | T14 / AC10 | — |
+| D-052 Revisit: decision-log D-052 Contract 行への 1 文追記（C1/C3/C11 拡張 + C15/C16 非追加） | docs/decision-log.md | 実装 review で diff 確認（doc 行） | — |
+| D-052: stocktakeStart（C15）/ stocktakeCountUpdate（C16）非追加の導出記録 | PR body | — | 導出根拠（Scope 8 (c)(d)）を PR body 記録 |
 | query key 直書き禁止（D-4 / 順17 無例外化） | `queryKeys.inventoryRecords.stocktakeDetail` | T15（literal sweep 既存 pattern） | — |
 | 52 §52.3 UI-10 行の layout + index 表記同期 | 52-ui-shared-layout.md | 実装 review で diff 確認（doc 行） | — |
 | 65 §65.8.3: stocktake 除外理由差替え（route 未実装 → producer 0 件）の doc 同期 | 65-inventory-record-traceability.md（plan-first 同乗済み） | 実装 review で diff 確認（doc 行） | — |
@@ -252,7 +253,7 @@ Test Design Matrix: [test-matrices/2026-08-27-stocktake-record-detail.md](test-m
 ## Review Focus
 
 - 差異定義の実装一貫性（補正 movement quantity を正とし、snapshot 差の再導入がないか。T3 fixture の弁別性）
-- D-052 C23 導出の正確さ（欠落と過剰の両方向。productCreate / productImport の棚卸し中自動明細追加を含む全数導出、stocktakeStart / stocktakeCountUpdate 非追加と root() 不採用の根拠）
+- D-052 C1/C3/C11 拡張の正確さ（欠落と過剰の両方向。productCreate / productImport の棚卸し中自動明細追加を含む全数導出、stocktakeStart / stocktakeCountUpdate 非追加と root() 不採用の根拠、decision-log Contract 行追記の registry 整合）
 - Scope 5 の validateSearch / useSearch / useNavigate 一体移設の完全性（T16 の search param 駆動 assert が形骸化していないか）
 - click SPA 遷移証明が href assert に退化していないか（batch A X3 survivor の再発防止）
 - in_progress の空集合 oracle 衝突（0 件期待 case だけにならないこと — 順22 X2 の教訓。completed 非空 case との対）
@@ -277,7 +278,7 @@ Contract ID: SPEC-UI06C-STOCKTAKE-DETAIL-2026-08-27
 | REQ-206 | Scope 6（表示項目） | T9 / AC3 | §65.5 棚卸し列適合 | PR body |
 | REQ-206（NotFound） | Scope 2/3 | T5 / T8 / AC7 | 変換経路 | PR body |
 | 差異意味論（35 §20.6a） | Scope 1 | T3 | snapshot 乖離 fixture 弁別 | Matrix |
-| D-052 C23 | Scope 8 | T14 / AC10 | 導出正確さ | PR body（stocktakeStart / stocktakeCountUpdate 非追加の導出含む） |
+| D-052 C1/C3/C11 拡張 | Scope 8 | T14 / AC10 | 導出正確さ | PR body（stocktakeStart / stocktakeCountUpdate 非追加の導出含む）+ decision-log 追記 diff |
 | D-061 | Scope 2/4 | T6 / AC4 | enum 変換 | bindings diff |
 | TRACE-D11 同型 | Scope 5 | T13 | returnTo fallback | Matrix |
 
@@ -305,3 +306,9 @@ Fill after review.
 - round 2 closure（別 Sonnet fresh context）: 6/6 CLOSED（C23 新集合の独立再導出 = stocktake_items への書込みは `product_service.rs` / `stocktake_service.rs` の 2 file のみと rg 全走査で確認、collect_commands / invoke_handler 両ブロックの 7 本一致、是正差分の全引用一致）、delta 起因の新規 findings 0。**P1/P2 残 0**
 - owner Plan Gate 承認（2026-08-27、介入 1/3）。併せて owner 裁定: ハブ横断検索（`/inventory/records`）への棚卸し合流は既存 backlog「入出庫履歴の完成形 runway 復帰」entry へ closeout で追記して追跡、専用一覧 `/stocktake/records` は完成形契約のまま runway 残置（本 packet の Scope 不変）
 - plan-gate → plan-approved → implementing の materialize evidence: 上記 P1/P2=0、plan-first commit `172e938`（+ rally 是正 `65aaf2b` = Plan Commit）が全実装 commit に先行（実装 commit 未作成）、Writer は Codex（発注書駆動）
+
+### Writer fail-closed 停止（初回）と gated Amendment 1（2026-08-27、append-only）
+
+- Codex Writer が実装中に、packet の「C23 採番予約」と D-052 registry 意味論（C 番号 = mutation entry 番号。decision-log D-052 Contract 行が C1〜C22 を mutation 単位で列挙）の矛盾、および D-052 Revisit 条項（契約変更時の同一 PR 同期義務）と発注書の設計 doc 変更禁止の衝突を検出し fail-closed 停止（true positive。push / Draft PR 未実施、local 実装 commit `1b0ef89` 保持、mutation X1・X2 kill 確認済み）。
+- Coordinator 裁定（decision-log D-052 実読で独立裏取り）: ①採番訂正 accept — 本 change は新規 mutation entry を作らず、既存 C1（商品 create）/ C3（商品一括 import）/ C11（棚卸し確定）の consumer 集合拡張。②decision-log D-052 Contract 行への 1 文追記を Scope 8 へ追加（Revisit 条項の同一 PR 同期）。③UI_TECH_STACK §2.5 の更新は**不採用** — 導出原則・E1〜E6 に変更がなく、同型の 4b C9 拡張（PR #58）も §2.5 非改変で PR body 導出記録のみだった先例に従う。④Codex 提案の test 補強 3 点（正値差異の +N 表示 / corrected_count 独立検証 / 商品コード順検証）は Matrix 下限（T2 / T3 / T9 の既定）を超える assert 追加として許容し、Matrix 改訂は不要。
+- gated Amendment 1 = Scope 8 の採番訂正 + decision-log 追記の Scope 化 + Ledger 1 行追加 + packet / Matrix 内の C23 表記全 sweep。原 `Plan Commit`（65aaf2b）は不変、本 amendment SHA は `Amendments` 行へ後続記録。amendment delta の独立検証は Final Review Contract Audit に含める。

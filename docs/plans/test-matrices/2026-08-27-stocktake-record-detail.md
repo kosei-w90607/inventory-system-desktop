@@ -14,7 +14,7 @@ Risk: R3
 - 65 §65.3 / §65.5 / §65.6.1 / §65.10 slice 4c: route・表示項目・状態正規化・in_progress 正常表示・CTA 非表示
 - 66 UI-06c-D7 後続: movements link click → SPA 遷移（到達導線）
 - 65 §65.5 / TRACE-D11 同型: returnTo 検索条件保持 + 不正値 fallback
-- D-052 C23（予約）: stocktakeComplete / productCreate / productImport の invalidation 集合変更（stocktakeCountUpdate / stocktakeStart は非追加）+ 独立転記 oracle
+- D-052 C1/C3/C11 拡張: stocktakeComplete（C11）/ productCreate（C1）/ productImport（C3）の invalidation 集合変更（stocktakeCountUpdate〈C16〉/ stocktakeStart〈C15〉は非追加。新規 C 採番なし — gated Amendment 1）+ 独立転記 oracle
 - D-4 / 順17: query key literal 直書き 0
 - Scope 5: layout + index 再構成での既存 `/stocktake` 作業画面維持
 
@@ -52,7 +52,7 @@ Risk: R3
 | NotFound UI | error が空白画面になる | RTL | T11 不存在 id での利用者向け日本語 error 表示（describeError 経由） | describeError 非経由・error 握りつぶし |
 | 65 slice 4c in_progress 表示 | 進行中詳細が error 化・原価 0 円誤表示 | RTL | T12 in_progress fixture で「進行中」label + 補正明細 0 件 + movements 0 件 + 原価の算定前表示（「—」等）の正常表示 | in_progress を error 扱いにする・total_cost None を 0 表示する mutant |
 | returnTo | 外部 URL 通過・条件喪失 | RTL | T13 returnTo 保持戻り + 不正値 fallback（既存 5 詳細の test pattern 踏襲） | validateSearch 除去・fallback 除去 |
-| D-052 C23 oracle | invalidation 欠落・過剰 | unit (TS、独立転記 oracle、production SSOT 非 import — 既存静的 gate 継承) | T14 stocktakeComplete / productCreate / productImport 新集合の順序非依存・重複検出付き完全一致（stocktakeCountUpdate 非追加も集合一致で担保） | SSOT から新規 key を削る / stocktakeCountUpdate へ key を足す・inventoryRecords.root() 等の余分な key を足す mutant |
+| D-052 C1/C3/C11 oracle | invalidation 欠落・過剰 | unit (TS、独立転記 oracle、production SSOT 非 import — 既存静的 gate 継承) | T14 stocktakeComplete / productCreate / productImport 新集合の順序非依存・重複検出付き完全一致（stocktakeCountUpdate 非追加も集合一致で担保） | SSOT から新規 key を削る / stocktakeCountUpdate へ key を足す・inventoryRecords.root() 等の余分な key を足す mutant |
 | query key 直書き 0 | literal 復活 | unit (TS、既存 sweep pattern) | T15 stocktakeDetail key の literal sweep | page/hook に生 key 配列を書く実装 |
 | Scope 5: 既存 `/stocktake` 作業画面の index route 描画 + validateSearch 移設 | layout 化で既存作業画面が描画されなくなる・validateSearch 移設漏れで dept/counted_only/page 絞り込みが死ぬ | RTL (runtime route test) | T16 `/stocktake` 直接進入の従来描画 + `?dept=` / `?counted_only=` / `?page=` 付き進入で search 駆動の絞り込み・ページングが機能する回帰 test | index 移設漏れ・layout の Outlet 欠落・validateSearch の layout 残置 |
 
