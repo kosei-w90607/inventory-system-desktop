@@ -115,7 +115,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | REQ-907 / SPEC-PLS-D7 | 50-ui §50.4 L55 / §50.2 | UI-01a-D10 | `plu` は URL state 契約 8 param の一員。returnTo だけ 7 param 対応なのは契約乖離であり、schema 側変更（非目的）でなく return-to 側追加で履行する | return-to.ts build / parse | T1 / T2 |
-| REQ-101 / REQ-102 | 51-ui Design Intent Trace | UI-01b-D2 | 保存後の戻りは `/products` + search params のみ許可。search params の完全往復が契約の前提 | return-to.ts（sanitize 無改変） | 既存 sanitize test + T2 / T3 |
+| REQ-101 / REQ-102 | 51-ui §7.1 設計判断 | UI-01b-D2 | 保存後の戻りは `/products` + search params のみ許可。search params の完全往復が契約の前提 | return-to.ts（sanitize 無改変） | 既存 sanitize test + T2 / T3 |
 
 ## Design Intent Audit
 
@@ -236,6 +236,9 @@ Contract ID: SPEC-PLURT-2026-08-26
 
 ## Review Response
 
-レビュー後に記入。
+- Plan Review round 1（2026-08-26、独立 Sonnet Plan Reviewer、fresh context）: P1: 0 / P2: 0 / P3: 2。総合判定 = 承認可。全引用の実在・8 param 全数突合・consumer 5 site の漏れなし・Ledger 隣接契約 sweep の完全性を reviewer が独立実読で確認。
+  - P3-1（sweep archive の hop 行番号が要素開始行 `:91` を指し packet は属性行 `:94` を指す表記ずれ）: 裁定 = 記録のみ。archived doc は非遡及（D-038）、packet 側の `:94` 引用が実体と一致することは Coordinator 実読で確認済み。次回 sweep 系 doc 作成時の表記慣習メモとして本行に残す。
+  - P3-2（Design Intent Trace の出典見出し表記 `51-ui Design Intent Trace` が実見出し `§7.1 設計判断` と不一致）: 裁定 = accept、同 commit で是正済み。Coordinator が `rg` で 51-ui の実見出しを裏取りした。
+- Plan Review rally は round 1 で P1/P2 = 0 収束（天井 3 に対し 1 round）。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
