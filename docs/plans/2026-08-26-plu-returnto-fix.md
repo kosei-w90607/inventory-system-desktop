@@ -2,11 +2,11 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: local-verified
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 8dd5164a242014b48261c6238b3f1c2e1c1a96c8
-- Amendments: none
+- Amendments: 900c774 4e440cd
 - Coordinator: Claude Fable 5（main session）
 - Writer: Codex（GPT-5.6、発注書駆動）
 - Plan Reviewer: Claude Sonnet 5（独立 fresh context）
@@ -22,6 +22,7 @@
 - forward state-only 予算 3 本の設計: ① plan-approved entry（`plan-gate -> plan-approved -> implementing`）② `independent-review -> human-confirm` ③ `human-confirm -> ready-hosted-final`。`local-verified` への遷移は実装 content commit に相乗り。
 - 2026-08-26 gated amendment 1: Writer（Codex）の fail-closed 停止起源。`plu` serialize 追加により、既定 search でも returnTo に `plu=all` が含まれるようになり（正規化済み object の既定値明示 serialize という既存 pattern への合流 = 設計適合）、`ProductListPage.test.tsx` の returnTo 期待 literal 2 箇所（integration test）が要同期と判明。Scope へ同 file の literal 追記を追加し AC9 を新設。原 `Plan Commit` は不変。amendment commit SHA の `Amendments` 行への追記は後続 commit で行う（tracked file は自 SHA を持てない、D-035）。独立 delta review は本節の Review Response に記録。
 - 2026-08-26 state-only 遷移 commit（予算 ①）: `plan-gate -> plan-approved -> implementing` を具現化。証跡: 独立 Plan Reviewer round 1 が P1/P2 = 0 を報告（本 packet Review Response 参照、記録 commit `dcaf6b9`）、owner が Plan Gate を承認（介入 1 回目 / 予算 3 回）、`Plan Commit` = plan-first commit `8dd5164a242014b48261c6238b3f1c2e1c1a96c8` は実装 commit 未着手のため全実装 commit に先行する。
+- 2026-08-26 implementation / local verification: `implementing -> local-verified` を Implementation Results 記録の content commit に相乗りで具現化。証跡: gated amendment 1 を含む Scope の実装、AC1〜AC9 の自己検証、build / parse 両 mutant の red と復元後 green、L1 full の start / end CLEAN。gated amendment 1 と補強 commit を `Amendments` に確定追記した。
 
 ## Owner Effort Budget
 
@@ -236,7 +237,10 @@ Contract ID: SPEC-PLURT-2026-08-26
 
 ## Implementation Results
 
-実装後に記入。exact-HEAD SHA / test 件数は記載しない（D-035 / D-038）。
+- `buildProductListReturnTo` が `plu` を URL param 表の順序で serialize し、`undefined` は emit しないようにした。`parseProductListSearchFromReturnTo` は既存 enum param と同型の cast で `plu` を復元する。
+- Matrix T1〜T3 の独立 literal oracle を追加し、既存 sanitize / 7 param round-trip test は無改変で維持した。gated amendment 1 の T4 として、既定 search の returnTo 期待 literal だけを `plu=all` へ同期した。
+- test-first の red を確認後に最小実装で green 化した。Writer 事前 mutation では build の serialize 削除と parse の復元削除を個別に実注入し、対象 regression test の red と復元後 green を確認した。
+- frontend gate、traceability check、AC1〜AC9、L1 full はすべて通過した。traceability 生成物、bindings、source design docs に drift はなかった。
 
 ## Review Response
 
