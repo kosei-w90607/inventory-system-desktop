@@ -16,6 +16,7 @@ export const d052InvalidationOracle = {
     queryKeys.pluDirty(),
     queryKeys.stockMovements.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.inventoryRecords.stocktakeDetailRoot(),
   ],
   productUpdate: (productCode: string) => [
     queryKeys.productList.root(),
@@ -34,6 +35,7 @@ export const d052InvalidationOracle = {
     queryKeys.stockMovements.root(),
     queryKeys.stocktake.itemsRoot(),
     queryKeys.productForm.root(),
+    queryKeys.inventoryRecords.stocktakeDetailRoot(),
   ],
   receiving: () => [
     queryKeys.receivings.root(),
@@ -119,6 +121,7 @@ export const d052InvalidationOracle = {
     queryKeys.stockInquiryRoot(),
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
+    queryKeys.inventoryRecords.stocktakeDetailRoot(),
   ],
   integrityFix: () => [
     queryKeys.productList.root(),

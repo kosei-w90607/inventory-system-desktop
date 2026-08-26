@@ -106,6 +106,30 @@ pub struct LastStocktakeSummary {
     pub total_cost: i64,
 }
 
+/// 棚卸し記録詳細の補正明細（補正 movement 起点）。
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+pub struct StocktakeRecordDetailItem {
+    pub product_code: String,
+    pub product_name: String,
+    pub department_name: String,
+    pub stock_unit: String,
+    pub system_stock: i64,
+    pub actual_count: Option<i64>,
+    pub counted_at: Option<String>,
+    pub valuation_cost_price: Option<i64>,
+    pub adjustment_quantity: i64,
+    pub stock_after: i64,
+}
+
+/// 棚卸し記録詳細の IO 内部型。
+#[derive(Debug)]
+pub struct StocktakeRecordDetailCore {
+    pub header: Stocktake,
+    pub item_count: i64,
+    pub items: Vec<StocktakeRecordDetailItem>,
+    pub movements: Vec<super::inventory_repo::MovementRecord>,
+}
+
 // ---------------------------------------------------------------------------
 // 関数
 // ---------------------------------------------------------------------------
@@ -543,6 +567,86 @@ pub fn list_stocktake_items(
         total_count,
         page,
         per_page,
+    })
+}
+
+/// 棚卸し記録のヘッダ、補正明細、関連在庫変動を取得する。
+///
+/// 20-io-product-repo.md §2.11a / REQ-206 / REQ-207
+pub fn get_stocktake_record_detail(
+    conn: &DbConnection,
+    stocktake_id: i64,
+) -> Result<StocktakeRecordDetailCore, DbError> {
+    let header = find_stocktake_by_id(conn, stocktake_id)?.ok_or(DbError::NotFound)?;
+    let item_count = conn.query_row(
+        "SELECT COUNT(*) FROM stocktake_items WHERE stocktake_id = ?1",
+        [stocktake_id],
+        |row| row.get(0),
+    )?;
+
+    let mut item_stmt = conn.prepare(
+        "SELECT si.product_code, p.name, d.name, p.stock_unit,
+                si.system_stock, si.actual_count, si.counted_at, si.valuation_cost_price,
+                im.quantity, im.stock_after
+         FROM inventory_movements im
+         JOIN stocktake_items si
+           ON si.stocktake_id = im.reference_id
+          AND si.product_code = im.product_code
+         JOIN products p ON p.product_code = si.product_code
+         JOIN departments d ON d.id = p.department_id
+         WHERE im.reference_type = 'stocktake'
+           AND im.reference_id = ?1
+           AND im.is_voided = 0
+         ORDER BY si.product_code ASC",
+    )?;
+    let items = item_stmt
+        .query_map([stocktake_id], |row| {
+            Ok(StocktakeRecordDetailItem {
+                product_code: row.get(0)?,
+                product_name: row.get(1)?,
+                department_name: row.get(2)?,
+                stock_unit: row.get(3)?,
+                system_stock: row.get(4)?,
+                actual_count: row.get(5)?,
+                counted_at: row.get(6)?,
+                valuation_cost_price: row.get(7)?,
+                adjustment_quantity: row.get(8)?,
+                stock_after: row.get(9)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut movement_stmt = conn.prepare(
+        "SELECT id, product_code, movement_type, quantity, stock_after,
+                reference_type, reference_id, note, created_at
+         FROM inventory_movements
+         WHERE reference_type = 'stocktake'
+           AND reference_id = ?1
+           AND is_voided = 0
+         ORDER BY created_at ASC, id ASC",
+    )?;
+    let movements = movement_stmt
+        .query_map([stocktake_id], |row| {
+            Ok(super::inventory_repo::MovementRecord {
+                id: row.get(0)?,
+                product_code: row.get(1)?,
+                movement_type: super::inventory_repo::parse_movement_type(row.get(2)?)?,
+                quantity: row.get(3)?,
+                stock_after: row.get(4)?,
+                reference_type: super::inventory_repo::parse_reference_type(row.get(5)?),
+                reference_id: row.get(6)?,
+                source: None,
+                note: row.get(7)?,
+                created_at: row.get(8)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(StocktakeRecordDetailCore {
+        header,
+        item_count,
+        items,
+        movements,
     })
 }
 
@@ -1327,5 +1431,137 @@ mod tests {
 
         assert_eq!(actual_codes, vec!["DU-002"]);
         assert_eq!(result.total_count, 1);
+    }
+
+    #[test]
+    fn test_get_stocktake_record_detail_req206_not_found() {
+        let (_dir, conn) = setup_test_db();
+
+        let result = get_stocktake_record_detail(&conn, 99_999);
+
+        assert!(matches!(result, Err(DbError::NotFound)));
+    }
+
+    #[test]
+    fn test_get_stocktake_record_detail_req206_header_and_item_count() {
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "SRD-001");
+        seed_product(&conn, "SRD-002");
+        let stocktake_id =
+            create_completed_stocktake(&conn, "2026-08-01T09:00:00", "2026-08-01T18:00:00", 600);
+        seed_stocktake_item(&conn, stocktake_id, "SRD-001", 10, Some(10));
+        seed_stocktake_item(&conn, stocktake_id, "SRD-002", 4, Some(3));
+        conn.execute(
+            "UPDATE stocktake_items SET valuation_cost_price = 300 WHERE stocktake_id = ?1",
+            [stocktake_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO inventory_movements
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
+             VALUES ('SRD-002', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic correction', 0, '2026-08-01T18:00:00')",
+            [stocktake_id],
+        )
+        .unwrap();
+
+        let detail = get_stocktake_record_detail(&conn, stocktake_id).unwrap();
+
+        assert_eq!(detail.header.id, stocktake_id);
+        assert_eq!(detail.header.total_cost, Some(600));
+        assert_eq!(detail.item_count, 2);
+        assert_eq!(detail.items.len(), 1);
+    }
+
+    #[test]
+    fn test_get_stocktake_record_detail_req207_correction_items_live_basis() {
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "SRD-LIVE");
+        seed_product(&conn, "SRD-ALPHA");
+        conn.execute(
+            "UPDATE products SET name = 'ライブ基準商品', stock_quantity = 10 WHERE product_code = 'SRD-LIVE'",
+            [],
+        )
+        .unwrap();
+        let stocktake_id =
+            create_completed_stocktake(&conn, "2026-08-02T09:00:00", "2026-08-02T18:00:00", 3000);
+        seed_stocktake_item(&conn, stocktake_id, "SRD-LIVE", 10, Some(10));
+        seed_stocktake_item(&conn, stocktake_id, "SRD-ALPHA", 4, Some(3));
+        conn.execute(
+            "UPDATE stocktake_items SET valuation_cost_price = 300, counted_at = '2026-08-02T17:00:00'
+             WHERE stocktake_id = ?1",
+            [stocktake_id],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE products SET stock_quantity = 8 WHERE product_code = 'SRD-LIVE'",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO inventory_movements
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
+             VALUES ('SRD-LIVE', 'stocktake', 2, 10, 'stocktake', ?1, 'synthetic live correction', 0, '2026-08-02T18:00:00')",
+            [stocktake_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO inventory_movements
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
+             VALUES ('SRD-ALPHA', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic ordering correction', 0, '2026-08-02T18:00:01')",
+            [stocktake_id],
+        )
+        .unwrap();
+
+        let detail = get_stocktake_record_detail(&conn, stocktake_id).unwrap();
+
+        assert_eq!(
+            detail.items.len(),
+            2,
+            "snapshot 差 0 でも補正 movement 行を返す"
+        );
+        let product_codes: Vec<&str> = detail
+            .items
+            .iter()
+            .map(|item| item.product_code.as_str())
+            .collect();
+        assert_eq!(product_codes, vec!["SRD-ALPHA", "SRD-LIVE"]);
+        let live_item = &detail.items[1];
+        assert_eq!(live_item.system_stock, 10);
+        assert_eq!(live_item.actual_count, Some(10));
+        assert_eq!(live_item.adjustment_quantity, 2);
+        assert_eq!(live_item.stock_after, 10);
+    }
+
+    #[test]
+    fn test_get_stocktake_record_detail_req207_movements_filter() {
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "SRD-FILTER");
+        let stocktake_id =
+            create_completed_stocktake(&conn, "2026-08-03T09:00:00", "2026-08-03T18:00:00", 0);
+        seed_stocktake_item(&conn, stocktake_id, "SRD-FILTER", 0, Some(1));
+        for (reference_type, reference_id, is_voided) in [
+            ("stocktake", stocktake_id, 0),
+            ("stocktake", stocktake_id, 1),
+            ("stocktake", stocktake_id + 1_000, 0),
+            ("receiving_record", stocktake_id, 0),
+        ] {
+            conn.execute(
+                "INSERT INTO inventory_movements
+                 (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
+                 VALUES ('SRD-FILTER', 'stocktake', 1, 1, ?1, ?2, ?3, '2026-08-03T18:00:00')",
+                rusqlite::params![reference_type, reference_id, is_voided],
+            )
+            .unwrap();
+        }
+
+        let detail = get_stocktake_record_detail(&conn, stocktake_id).unwrap();
+        assert_eq!(detail.movements.len(), 1);
+        assert_eq!(detail.items.len(), 1);
+
+        let in_progress_id = create_stocktake(&conn, "in_progress", "2026-08-04T09:00:00");
+        seed_stocktake_item(&conn, in_progress_id, "SRD-FILTER", 1, None);
+        let in_progress = get_stocktake_record_detail(&conn, in_progress_id).unwrap();
+        assert!(in_progress.items.is_empty());
+        assert!(in_progress.movements.is_empty());
     }
 }

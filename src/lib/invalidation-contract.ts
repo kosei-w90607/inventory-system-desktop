@@ -13,6 +13,7 @@ export const invalidationContract = {
     queryKeys.pluDirty(),
     queryKeys.stockMovements.root(),
     queryKeys.stocktake.itemsRoot(),
+    queryKeys.inventoryRecords.stocktakeDetailRoot(),
   ],
   productUpdate: (productCode: string) => [
     queryKeys.productList.root(),
@@ -31,6 +32,7 @@ export const invalidationContract = {
     queryKeys.stockMovements.root(),
     queryKeys.stocktake.itemsRoot(),
     queryKeys.productForm.root(),
+    queryKeys.inventoryRecords.stocktakeDetailRoot(),
   ],
   receiving: () => [
     queryKeys.receivings.root(),
@@ -116,6 +118,7 @@ export const invalidationContract = {
     queryKeys.stockInquiryRoot(),
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
+    queryKeys.inventoryRecords.stocktakeDetailRoot(),
   ],
   integrityFix: () => [
     queryKeys.productList.root(),

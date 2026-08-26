@@ -229,6 +229,32 @@ fn complete_stocktake(
 5. Err(BizError::StocktakeNotInProgress(msg)) → CmdError { kind: "stocktake_not_in_progress" }
 6. Err(other) → CmdError に通常変換（ValidationFailed → "validation" で未入力警告を含む）
 
+#### get_stocktake_record
+
+（2026-08-27 追加、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.10 slice 4c）
+
+**関数要求**: 棚卸し記録詳細を取得する（棚卸し詳細画面 `/stocktake/records/$stocktakeId` 用の read-only コマンド）
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+fn get_stocktake_record(
+    state: State<AppState>,
+    stocktake_id: i64,
+) -> Result<StocktakeRecordDetail, CmdError>
+```
+
+**出力型**: [35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.6a の StocktakeRecordDetail（BIZ 所有 wire DTO）
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::stocktake_service::get_stocktake_record(&conn, stocktake_id) を呼ぶ
+3. Ok → StocktakeRecordDetail を返す
+4. Err(BizError::NotFound(msg)) → CmdError { kind: "not_found", message: msg }
+5. Err(other) → CmdError に通常変換（§22.3）
+
+read-only であり、preview_cache / 冪等キー / 操作ログ記録には関与しない（[41-cmd-pos.md](41-cmd-pos.md) §17.5 get_csv_import_record と同型）。
+
 ---
 
 ### 22.6 CMD-01 追加: 一括インポートコマンド
@@ -342,6 +368,8 @@ run_integrity_check, fix_integrity,
 ```
 
 合計 16 コマンド（CMD-01: 7, CMD-09: 3, CMD-10: 4, CMD-11部分: 2）。
+
+2026-08-27 追記（65 slice 4c）: CMD-10 に `get_stocktake_record` を追加登録する。lib.rs の登録は `export_specta_bindings()` 内 `collect_commands![...]`（bindings 生成用）と `.invoke_handler(tauri::generate_handler![...])`（実行時 dispatch 用）の 2 箇所が必要（[41-cmd-pos.md](41-cmd-pos.md) §17.9 と同契約。collect_commands のみでは bindings は生成されるが IPC 実呼出しが「command not found」になる）。
 
 ---
 

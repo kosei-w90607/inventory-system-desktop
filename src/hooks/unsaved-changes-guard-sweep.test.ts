@@ -57,6 +57,10 @@ const EXCLUDED_PAGES = [
     component: "ReturnRecordDetailPage",
     path: "src/features/inventory-records/ReturnRecordDetailPage.tsx",
   },
+  {
+    component: "StocktakeRecordDetailPage",
+    path: "src/features/inventory-records/StocktakeRecordDetailPage.tsx",
+  },
   { component: "MonthlySalesPage", path: "src/features/monthly-sales/MonthlySalesPage.tsx" },
   { component: "OperationLogsPage", path: "src/features/operation-logs/OperationLogsPage.tsx" },
   { component: "PluExportPage", path: "src/features/plu-export/PluExportPage.tsx" },
