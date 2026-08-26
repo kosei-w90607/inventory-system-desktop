@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 65aaf2b
@@ -16,7 +16,7 @@
 - Reviewed Content HEAD: 3cdd3cd
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending = owner Windows native L3（synthetic 棚卸し確定 → 在庫変動履歴 →「棚卸し #n」click → 詳細表示 → returnTo 戻り）+ Ready 承認
+- Human Gate: none（owner Windows native L3 全項目 PASS + Ready 承認済み 2026-08-27。残る owner 操作は Ready 化と merge のみ）
 
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate）: task scope と R3 判定は本 packet に記録済み。spec-check で 65 §65.3 / §65.5 / §65.7.1 は完成形契約を保持するが backend 層別設計（IO/BIZ/CMD）と slice 定義が不足と判定し design へ。design 出力（20-io §2.11a / 35 §20.6a / 42 §22.5 / 65 §65.10 slice 4c + §65.8.3）は本 plan-first change に同乗。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。
 
@@ -321,3 +321,8 @@ Fill after review.
 - P3-1（74-ui-operation-logs.md の 3 箇所で stocktake 除外理由が「詳細 route 未実装のため」のまま stale — 本 PR で route 実装済みとなり事実と不整合。65 §65.8.3 は producer 0 件理由へ更新済みだが、許可リスト正典の 74 側が旧文言）: 裁定 = **backlog 起票**（doc-only の文言同期 follow-up。許可リスト除外という結論自体は不変で機能影響なし。closeout で Plans.md backlog へ、65 §65.8.3 と同型文言への差替え）。
 - Coordinator mutation 独立再実測: **X1〜X7 の 7/7 全 red**（clean tree HEAD 3cdd3cd、注入形は Writer 記録非参照で独立導出、各注入→対応 test red→復元→green を確認）。X6 は snapshot 化注入（`im.quantity` → `si.actual_count - si.system_stock`）で T3 弁別 fixture が期待値 2 に対し実測 0 の red — 差異意味論の退行検出を実証。X3 は route 改変で T7 + 既存 resolver test の 2 本 red。survivor 0。
 - implementing → local-verified の evidence: Writer L1 `local-ci.sh full` PASS（content candidate、evidence は PR #9 body 所管）。local-verified → independent-review → human-confirm の evidence: 上記 Final Review P1/P2=0 + Coordinator mutation 独立再実測。
+
+### owner L3 PASS と ready-hosted-final 遷移（2026-08-27、append-only）
+
+- owner Windows native L3（対象 branch HEAD 6957d99、content = Reviewed Content HEAD 3cdd3cd）: **全項目 PASS** — 「棚卸し #5」link → 詳細表示 / 補正明細（synthetic 商品、-2、評価原価・ロス原価表示）/ 関連 movement（-2、変動後在庫 8）/ 取消・訂正操作なし / 戻る操作と履歴状態保持 / `/stocktake` 作業画面回帰 / baseline 復元 + 復元後 synthetic 0 件（介入 2/3）。
+- human-confirm → ready-hosted-final の evidence: Human Gate 全項目解決（上記 L3 PASS）+ owner Ready 承認（2026-08-27、介入 3/3）。遷移は Draft のまま本 state-only commit で作成し、その exact HEAD で L1 full → PR body refresh → owner Ready 化 / hosted 三点一致の順（DEV_WORKFLOW 遷移規則どおり）。L1 で既知の failpoint 並列 race flake が再発した場合は単独実行 PASS 確認 + PR body disposition 記録（PR #8 先例、Plans.md backlog 起票済み）。
