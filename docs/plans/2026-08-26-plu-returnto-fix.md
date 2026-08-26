@@ -20,6 +20,7 @@
 
 - 2026-08-26 plan-first commit: `kickoff -> spec-check -> plan-draft -> plan-gate` を本 content commit に相乗りで具現化。証跡: task scope と Risk 判定は本 packet `Risk` 節（kickoff -> spec-check）、Design Readiness が既存設計書の十分性を引用し design phase を skip（spec-check -> plan-draft の許可された唯一の skip）、packet + Test Design Matrix 完備・commit（plan-draft -> plan-gate）。
 - forward state-only 予算 3 本の設計: ① plan-approved entry（`plan-gate -> plan-approved -> implementing`）② `independent-review -> human-confirm` ③ `human-confirm -> ready-hosted-final`。`local-verified` への遷移は実装 content commit に相乗り。
+- 2026-08-26 gated amendment 1: Writer（Codex）の fail-closed 停止起源。`plu` serialize 追加により、既定 search でも returnTo に `plu=all` が含まれるようになり（正規化済み object の既定値明示 serialize という既存 pattern への合流 = 設計適合）、`ProductListPage.test.tsx` の returnTo 期待 literal 2 箇所（integration test）が要同期と判明。Scope へ同 file の literal 追記を追加し AC9 を新設。原 `Plan Commit` は不変。amendment commit SHA の `Amendments` 行への追記は後続 commit で行う（tracked file は自 SHA を持てない、D-035）。独立 delta review は本節の Review Response に記録。
 - 2026-08-26 state-only 遷移 commit（予算 ①）: `plan-gate -> plan-approved -> implementing` を具現化。証跡: 独立 Plan Reviewer round 1 が P1/P2 = 0 を報告（本 packet Review Response 参照、記録 commit `dcaf6b9`）、owner が Plan Gate を承認（介入 1 回目 / 予算 3 回）、`Plan Commit` = plan-first commit `8dd5164a242014b48261c6238b3f1c2e1c1a96c8` は実装 commit 未着手のため全実装 commit に先行する。
 
 ## Owner Effort Budget
@@ -66,6 +67,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 - `src/features/products/lib/return-to.ts`: `buildProductListReturnTo` へ `plu` の serialize を追加（`undefined` 時は emit しない、既存 7 param と同型）。`parseProductListSearchFromReturnTo` へ `plu` の復元を追加（既存 `discontinued` / `sort` / `dir` と同型の cast。enum 妥当性は `/products` route の `productListSearchSchema` `.catch` 正規化が所有 — `src/routes/products/index.tsx:12` で結線済みを実読確認）。
 - `src/features/products/lib/return-to.test.ts`: plu 用 regression test の追加（Test Design Matrix T1〜T3）。既存 3 test は無改変で維持する（seed 追加は新規 test 内へ隔離）。
+- `src/features/products/ProductListPage.test.tsx`（gated amendment 1 で追加）: returnTo 期待 literal 2 箇所への `plu=all` 追記のみ。機序 = ProductListPage は `normalizeProductListSearch` 済み object（既定値がすべて明示 serialize される既存 pattern）を build へ渡すため、`plu` 追加後は既定状態でも `plu=all` が returnTo に含まれる。これは §50.4 既定値 `all` の明示 serialize であり `discontinued=active` 等の既存挙動と同型（設計適合）。test 構造・他 assertion は無改変。
 - REQ / UI ID token を含む test 変更のため、`cd src-tauri && cargo run --bin generate_traceability -- --check` を実行し、drift があれば再生成を同 PR に含める。
 
 ## Non-scope
@@ -84,6 +86,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - AC6（frontend gate）: `npm run typecheck` / `npm run lint` / `npm test` がすべて exit 0。
 - AC7（traceability）: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0。
 - AC8（mutation 感度）: build の `plu` serialize を削除した mutant で T1 / T2 が red になることを Final Review が clean tree 上で実注入・独立再現する（構造推論のみは不可）。
+- AC9（gated amendment 1）: `rg -F -c 'plu' src/features/products/ProductListPage.test.tsx` が 1 以上、かつ `git diff main -- src/features/products/ProductListPage.test.tsx` の hunk が returnTo 期待 literal への `plu` 追記のみ（他 assertion・test 構造の改変なし、review 検分）。
 
 ## Design Sources
 
