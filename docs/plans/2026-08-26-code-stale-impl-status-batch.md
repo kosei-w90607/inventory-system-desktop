@@ -68,16 +68,16 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **A. 在庫照会 CTA active link 化（挙動変更 + doc 同期）**
 
-1. `src/features/stock-inquiry/components/StockDetailContent.tsx`: 「商品修正」を `/products/$code/edit`（params: code = 対象商品コード）への Link に、「入庫記録」を `/inventory/receiving` への Link に置き換える。既存 `ActiveCta`（在庫変動履歴、outline small Button + Link 型）と同型の実装を踏襲する（汎用化かコピーかは Writer 裁量。icon の有無・種別も Writer 裁量で既存 ActiveCta の作法に合わせる — 見た目の磨きは非目的）。置換後に利用者不在となる `DisabledCta` component と L28 の「将来実装予定」コメントは撤去する（未使用関数残置は lint fail）。撤去に伴い未使用化する `Tooltip` / `TooltipContent` / `TooltipProvider` / `TooltipTrigger` の import も除去する（他使用箇所なしを実査確認済み）。
+1. `src/features/stock-inquiry/components/StockDetailContent.tsx`: 「商品修正」を `/products/$code/edit`（params: code = 対象商品コード）への Link に、「入庫記録」を `/inventory/receiving` への Link に置き換える。既存 `ActiveCta`（在庫変動履歴、outline small Button + Link 型）と同型の実装を踏襲する（汎用化かコピーかは Writer 裁量。icon の有無・種別も Writer 裁量で既存 ActiveCta の作法に合わせる — 見た目の磨きは非目的）。商品修正 link は `returnTo` search param を**渡さない**単純遷移とする（保存/キャンセル後は既定どおり `/products` へ着地。Non-scope 参照）。置換後に利用者不在となる `DisabledCta` component と L28 の「将来実装予定」コメントは撤去する（未使用関数残置は lint fail）。撤去に伴い未使用化する `Tooltip` / `TooltipContent` / `TooltipProvider` / `TooltipTrigger` の import も除去する（他使用箇所なしを実査確認済み）。
 2. `src/features/stock-inquiry/components/StockDetailContent.test.tsx`: 既存 REQ-301 link test（`renderWithRouter` + `findByRole("link")` + href assert）と同型で、商品修正 link（href `/products/<code>/edit`）・入庫記録 link（href `/inventory/receiving`）の 2 test を**追加**する。既存 test は無改変。
-3. `docs/function-design/58-ui-stock-inquiry.md`: (a) §58.7 の disabled CTA 契約 3 行（L504-506）を撤去し、直後の「在庫変動履歴」active link 記述と同型で「商品修正」「入庫記録」の active link 契約（遷移先 route を明記）を追記する。(b) §58.6 新規追加ファイル一覧表の `StockDetailContent.tsx` 行（L117）の責務記述「商品修正/入庫記録 disabled CTA + 在庫変動履歴 active link」を「商品修正/入庫記録/在庫変動履歴 active link」へ是正する（同表の `TruncatedResultsAlert` 行が持つ更新注記の慣例に従う）。(c) 更新履歴表へ日付 + 要旨の行を追加（PR 番号非転記、PR #6 表記規約と同じ）。
+3. `docs/function-design/58-ui-stock-inquiry.md`: (a) §58.7 の disabled CTA 契約 3 行（L504-506）を撤去し、直後の「在庫変動履歴」active link 記述と同型で「商品修正」「入庫記録」の active link 契約（遷移先 route を明記。商品修正は `returnTo` を渡さない単純遷移である旨を 1 行含める）を追記する。(b) §58.6 新規追加ファイル一覧表の `StockDetailContent.tsx` 行（L117）の責務記述「商品修正/入庫記録 disabled CTA + 在庫変動履歴 active link」を「商品修正/入庫記録/在庫変動履歴 active link」へ是正する（同表の `TruncatedResultsAlert` 行が持つ更新注記の慣例に従う）。(c) 更新履歴表へ日付 + 要旨の行を追加（PR 番号非転記、PR #6 表記規約と同じ）。
 
 **B. コメント・文言の現況化（runtime 無変更）**
 
 4. `src/config/navigation.ts` L55: 「Phase 3/4 以降で各画面着手時に to を実 path に + status を "active" に切り替える。」— 直前 L54「全画面は route 実装済みで active。」と矛盾する切替完了後の消し忘れ。削除する。
 5. `src/features/home/components/InventoryActionGrid.tsx` L5: 「全 pending（Phase 3 UI-02〜05 まで未着手）。」→ 全項目 active の現況へ。
 6. `src/features/home/components/MiscActionRow.tsx` L5: 「全 pending（Phase 4 UI-10/UI-11a/UI-11b まで未着手）。」→ 同上。
-7. `src-tauri/tests/design_compliance_test.rs` の該当 6 行（L156 / L194 / L215 / L221 / L273-274 / L282-283。Phase 6 ブロックの 2 箇所は同一クラスタ）: 「設計書作成済み、実装は後続PR」「Phase 5/6 …実装はPR-2以降」「PR-2/PR-3で実装予定」— 対応モジュールは全て実在（同ファイル自身の map が登録済み）。実装済みの現況コメントへ是正。
+7. `src-tauri/tests/design_compliance_test.rs` の該当 6 行（L156 / L194 / L215 / L221 / L273 / L282-283。Phase 6 ブロックの 2 箇所は同一クラスタ）: 「設計書作成済み、実装は後続PR」「Phase 5/6 …実装はPR-2以降」「PR-2/PR-3で実装予定」— 対応モジュールは全て実在（同ファイル自身の map が登録済み）。実装済みの現況コメントへ是正。
 8. `src-tauri/src/lib.rs` L1: 「UI層未実装のため、IO/BIZ層の一部関数・型が未使用。UI実装時に解消される」— UI 層は広範に実装済みで前提が事実誤り。`#[allow(dead_code)]` 属性は維持し、理由文言のみ現況の正確な記述へ（例: 未使用 symbol の個別精査は将来判断、の趣旨）。
 9. `src-tauri/src/biz/csv_import_service/mod.rs` L17: 「CMD層が未実装のため一部シンボルは未使用」— `cmd/csv_import_cmd.rs` が全 symbol を消費済み。現況へ。
 10. `src-tauri/src/biz/mod.rs` L17: 「UI層未実装のため一部はまだ未使用」— cmd 層が re-export を直接使用済み。現況へ。
@@ -101,6 +101,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `src/features/home/components/ActionButton.tsx` L63「後続フェーズで着手予定」: pending 項目向けの汎用 fallback 文言で、将来 pending item 追加時のための正当な一般化。据え置き。
 - `#[allow(dead_code)]` / `#[allow(unused_imports)]` 属性の削除と dead code 精査（失敗定義参照）。
 - 入庫記録への productCode 事前入力（非目的参照）。
+- 商品修正 CTA からの `returnTo` 継続性（保存/キャンセル後に在庫照会へ戻る挙動）: 非対応の意図的除外。`sanitizeProductListReturnTo`（UI-01b-D2、`src/features/products/lib/return-to.ts`）は `/products` 系 path のみ受理し他 path は `/products` へ fallback するため、`/stock` への戻りは現契約で表現不能。対応するなら returnTo 契約拡張（search state 契約変更）の別 R3。既存唯一の遷移元 `ProductTable.tsx` の returnTo 連携は無改変。
 - L3 起源の表示磨き 8 件 batch（別 packet で消化）。
 
 ## Acceptance Criteria
