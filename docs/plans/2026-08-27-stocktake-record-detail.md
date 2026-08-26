@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 65aaf2b
@@ -13,7 +13,7 @@
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 3cdd3cd
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: pending = owner Windows native L3（synthetic 棚卸し確定 → 在庫変動履歴 →「棚卸し #n」click → 詳細表示 → returnTo 戻り）+ Ready 承認
@@ -314,3 +314,10 @@ Fill after review.
 - Codex Writer が実装中に、packet の「C23 採番予約」と D-052 registry 意味論（C 番号 = mutation entry 番号。decision-log D-052 Contract 行が C1〜C22 を mutation 単位で列挙）の矛盾、および D-052 Revisit 条項（契約変更時の同一 PR 同期義務）と発注書の設計 doc 変更禁止の衝突を検出し fail-closed 停止（true positive。push / Draft PR 未実施、local 実装 commit `1b0ef89` 保持、mutation X1・X2 kill 確認済み）。
 - Coordinator 裁定（decision-log D-052 実読で独立裏取り）: ①採番訂正 accept — 本 change は新規 mutation entry を作らず、既存 C1（商品 create）/ C3（商品一括 import）/ C11（棚卸し確定）の consumer 集合拡張。②decision-log D-052 Contract 行への 1 文追記を Scope 8 へ追加（Revisit 条項の同一 PR 同期）。③UI_TECH_STACK §2.5 の更新は**不採用** — 導出原則・E1〜E6 に変更がなく、同型の 4b C9 拡張（PR #58）も §2.5 非改変で PR body 導出記録のみだった先例に従う。④Codex 提案の test 補強 3 点（正値差異の +N 表示 / corrected_count 独立検証 / 商品コード順検証）は Matrix 下限（T2 / T3 / T9 の既定）を超える assert 追加として許容し、Matrix 改訂は不要。
 - gated Amendment 1 = Scope 8 の採番訂正 + decision-log 追記の Scope 化 + Ledger 1 行追加 + packet / Matrix 内の C23 表記全 sweep。原 `Plan Commit`（65aaf2b）は不変、本 amendment SHA は `Amendments` 行へ後続記録。amendment delta の独立検証は Final Review Contract Audit に含める。
+
+### Final Review 記録（2026-08-27、append-only）
+
+- Sonnet 独立 fresh context（worktree 隔離）の Contract Audit: Contract Coverage Ledger **26/26 行適合**（不適合 0）。Scope 突合 = packet 外 hunk 0（`unsaved-changes-guard-sweep.test.ts` への追加 1 件は既存 5 詳細 page 全登載の precedent 追随として適合判定）。AC 独立再実測 = AC2（cargo test 全 green、新規 8 test 含む）/ AC3（npm test 全 green）/ AC4（bindings 再生成 clean diff・既存 7 command 行不変・追加のみ）/ AC5（routeTree に layout+index+detail の親子構造生成）/ AC10（oracle 3 block 一致）全 PASS、AC1 / AC11 は PR #9 body の evidence 整合確認。gated Amendment 1 delta = decision-log D-052 実体（L391-398）と完全一致・新規矛盾 0。anti-tautology（T5/T7/T14 の production 非 import）/ Non-scope 遵守 / 既存 test 凍結 = 問題なし。**P1/P2 = 0、P3×1**。
+- P3-1（74-ui-operation-logs.md の 3 箇所で stocktake 除外理由が「詳細 route 未実装のため」のまま stale — 本 PR で route 実装済みとなり事実と不整合。65 §65.8.3 は producer 0 件理由へ更新済みだが、許可リスト正典の 74 側が旧文言）: 裁定 = **backlog 起票**（doc-only の文言同期 follow-up。許可リスト除外という結論自体は不変で機能影響なし。closeout で Plans.md backlog へ、65 §65.8.3 と同型文言への差替え）。
+- Coordinator mutation 独立再実測: **X1〜X7 の 7/7 全 red**（clean tree HEAD 3cdd3cd、注入形は Writer 記録非参照で独立導出、各注入→対応 test red→復元→green を確認）。X6 は snapshot 化注入（`im.quantity` → `si.actual_count - si.system_stock`）で T3 弁別 fixture が期待値 2 に対し実測 0 の red — 差異意味論の退行検出を実証。X3 は route 改変で T7 + 既存 resolver test の 2 本 red。survivor 0。
+- implementing → local-verified の evidence: Writer L1 `local-ci.sh full` PASS（content candidate、evidence は PR #9 body 所管）。local-verified → independent-review → human-confirm の evidence: 上記 Final Review P1/P2=0 + Coordinator mutation 独立再実測。
