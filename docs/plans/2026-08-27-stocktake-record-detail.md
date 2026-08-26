@@ -8,7 +8,7 @@
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 65aaf2b
-- Amendments: none
+- Amendments: 2fbc3d4
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
