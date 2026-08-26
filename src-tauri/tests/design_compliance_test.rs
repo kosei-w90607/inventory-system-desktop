@@ -153,7 +153,7 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
         vec!["db::csv_import_repo", "db::sales_repo"],
     );
 
-    // SALES daily report design: 設計書作成済み、実装は後続PR
+    // SALES 日報パーサー: 実装済み
     map.insert(
         "29-io-daily-report-parser.md",
         vec!["io::daily_report_parser"],
@@ -191,7 +191,7 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
         vec!["biz::plu_export_service"],
     );
 
-    // SALES daily report design: 設計書作成済み、実装は後続PR
+    // SALES 日報取込みサービス: 実装済み
     map.insert(
         "37-biz-daily-report-import-service.md",
         vec![
@@ -212,13 +212,13 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
         vec!["cmd::csv_import_cmd", "cmd::plu_export_cmd"],
     );
 
-    // SALES daily report design: 設計書作成済み、実装は後続PR
+    // SALES 日報取込みコマンド: 実装済み
     map.insert(
         "45-cmd-daily-report-import.md",
         vec!["cmd::daily_report_import_cmd"],
     );
 
-    // Phase 5: 設計書作成済み、実装は後続PR
+    // 商品 CSV 取込みパーサー: 実装済み
     map.insert(
         "26-io-product-csv-importer.md",
         vec!["io::product_csv_importer"],
@@ -270,7 +270,7 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
         vec!["cmd::integrity_cmd", "biz::integrity_service"],
     );
 
-    // Phase 6: 保守＋仕上げ（設計書作成済み、実装はPR-2以降）
+    // 保守・仕上げモジュール: 実装済み
     map.insert(
         "27-io-report-csv-exporter.md",
         vec!["io::report_csv_exporter"],
@@ -279,8 +279,8 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
     map.insert("71-mnt-backup.md", vec!["mnt::backup"]);
     map.insert("72-mnt-log-manager.md", vec!["mnt::log_manager"]);
     map.insert("43-cmd-settings-log.md", vec!["cmd::settings_cmd"]);
-    // CMD-02〜06: 入出庫・在庫照会コマンド群（PR-2/PR-3で実装予定）
-    // §23.9 IO層新規関数, §23.10 BIZ層listラッパーも含む
+    // CMD-02〜06: 入出庫・在庫照会コマンド群（実装済み）
+    // §23.9 IO層関数、§23.10 BIZ層 list ラッパーも含む
     map.insert(
         "44-cmd-inventory.md",
         vec![

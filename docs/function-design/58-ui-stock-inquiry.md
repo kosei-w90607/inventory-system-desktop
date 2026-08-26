@@ -114,7 +114,7 @@ export type PaginatedResult<T> = {
 | 新規 | `src/features/stock-inquiry/components/StockStatusBadge.tsx` | `StockStatus` を `Badge + lucide icon + 日本語ラベル` に変換（在庫切れ / 在庫少 / 通常）。閾値判定は持たない | 25-40 |
 | 新規 | `src/features/stock-inquiry/components/EmptySearchPlaceholder.tsx` | status=all + q 空文字時の centered muted text（契約 I） | 20-30 |
 | ~~新規~~ 撤去 | ~~`src/features/stock-inquiry/components/TruncatedResultsAlert.tsx`~~ | `truncated` 時に shadcn Alert で絞り込み案内（契約 I）。**2026-08-03 batch B（UI-06a-D1）で撤去**: pagination 導入により全件へ到達可能になったため、打ち切り告知は不要（§58.10 契約 I 参照） | 25-35 |
-| 新規 | `src/features/stock-inquiry/components/StockDetailContent.tsx` | 詳細の内側描画（在庫数/売価/原価/最終入庫日/最終販売日 + 商品修正/入庫記録 disabled CTA + 在庫変動履歴 active link、isLoading/isError/data 全状態内包）。行インライン展開とフォールバックカードで共用 | 90-130 |
+| 新規 | `src/features/stock-inquiry/components/StockDetailContent.tsx` | 詳細の内側描画（在庫数/売価/原価/最終入庫日/最終販売日 + 商品修正/入庫記録/在庫変動履歴 active link、isLoading/isError/data 全状態内包）。行インライン展開とフォールバックカードで共用。2026-08-26 に商品修正/入庫記録を active link 化 | 90-130 |
 | 新規 | `src/features/stock-inquiry/components/StockDetailCard.tsx` | list 失敗時フォールバックカード（`StockDetailContent` を Card で包み独立描画 = 部分障害許容）、collapsible 不使用（条件描画） | 20-30 |
 
 **2026-08-03 batch B 追加（UI-06a-D1）**: pagination は新規 file を作らず、既存 canonical `src/features/products/components/ProductPagination.tsx`（[02-component-catalog.md](../design-system/02-component-catalog.md) ⑩）を結線する。`StockInquiryPage` が `total_count` から最終ページを計算して渡す。
@@ -501,9 +501,8 @@ function StockInquiryPage() {
 - `StockDetailContent`: 詳細の内側描画（在庫数 / 売価 / 原価 / 最終入庫日（`format-last-date`）/ 最終販売日（`format-last-date`））+ isLoading/isError/data 全状態を内包。行インライン展開（list 成功時、`ProductListTable` の colSpan 展開行内、Card なし）と フォールバックカード（list 失敗時、`StockDetailCard` が Card で包む）で**共用**
 - `StockDetailCard`: `StockDetailContent` を Card で包む薄いラッパ（list 失敗 + selected != null のフォールバック専用、collapsible 不使用）
 - `detailQuery.isError` → `StockDetailContent` 内 inline エラー表示（部分障害許容、一覧は維持。両描画経路で共通）
-- disabled CTA は未実装導線（商品修正 / 入庫記録）に限定する（aria-disabled + onClick `preventDefault` + Tooltip + `cursor-not-allowed opacity-60`、memory `feedback-radix-tooltip-aria-disabled.md` 3 層パターン）:
-  - 「商品修正」→ Tooltip「Phase 3 で実装予定」
-  - 「入庫記録」→ Tooltip「Phase 3 で実装予定」
+- 「商品修正」は `/products/$code/edit` への active link とし、`params.code` に対象商品コードを渡す。`returnTo` は渡さない単純遷移とする。
+- 「入庫記録」は `/inventory/receiving` への active link とする。商品コードの事前入力は行わない。
 - 「在庫変動履歴」は UI-06c で active link 化し、`/stock/$productCode/movements` へ遷移する。UI-06c の画面本体、filter、pagination、`MovementRecord.source` 元記録リンクは [66-ui-stock-movements.md](66-ui-stock-movements.md) を正とする。
 
 ### 58.8 エラー処理（失敗 4 状態の網羅）
@@ -619,6 +618,7 @@ function StockInquiryPage() {
 
 | 日付 | PR | 内容 |
 |------|-----|------|
+| 2026-08-26 | stale 実装状況表記一括是正 | `StockDetailContent` の「商品修正」「入庫記録」を既存画面への active link に変更し、遷移先と `returnTo` 非付与の契約を現況化 |
 | 2026-05-20 | #67 | 新規作成（UI-06a 在庫照会、REQ-301/302 統合 1 画面、2 useQuery 部分障害許容 + URL state 4 key + 派生 4 純関数 + StockInquiryListResult 正規化型 + 色分け契約 H + 検索駆動表示契約 I + collapsible/toggle/toggle-group 新規 add + CSV 取込み invalidation / Plan rally 6 round converged） |
 | 2026-05-20 | #67 | Codex Round 1 反映: P2-1/P2-2 = StockDetailCard を一覧テーブル下部固定表示に変更（list query 分岐の外に独立描画、list 失敗時も詳細を表示 = 部分障害許容と整合）。P3-1 = q/dept 変更時も `selected` を clear（§58.4、新 list の非同期含有判定を避け race 回避）。RTL に list 失敗 + detail 成功ケース追加（§58.9） |
 | 2026-05-21 | #67 | 初 Windows native L3 デモ起因 F1/F2 修正: F1 詳細を最下部固定カード → 選択行直下 colSpan インライン展開（`StockDetailContent` 抽出、collapsible 不使用化）+ list 失敗時フォールバックカード + selected 不在時 clear（§58.4/§58.7/§58.8、Codex CLI Round 3-4）。F2 状態チップ選択を solid stone-700 + 太字でコントラスト強化（§58.7）。`ProductListTable.test` 新規（C-P2-3）。collapsible.tsx は未使用化（primitive 残置） |
