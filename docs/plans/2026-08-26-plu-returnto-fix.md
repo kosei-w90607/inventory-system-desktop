@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 8dd5164a242014b48261c6238b3f1c2e1c1a96c8
 - Amendments: none
 - Coordinator: Claude Fable 5（main session）
 - Writer: Codex（GPT-5.6、発注書駆動）
@@ -14,12 +14,13 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending Plan Gate 承認 / 視覚確認（plu filter 保持 1 項目）+ Ready 承認 / merge
+- Human Gate: pending 視覚確認（plu filter 保持 1 項目）+ Ready 承認 / merge
 
 ### 遷移記録（append-only）
 
 - 2026-08-26 plan-first commit: `kickoff -> spec-check -> plan-draft -> plan-gate` を本 content commit に相乗りで具現化。証跡: task scope と Risk 判定は本 packet `Risk` 節（kickoff -> spec-check）、Design Readiness が既存設計書の十分性を引用し design phase を skip（spec-check -> plan-draft の許可された唯一の skip）、packet + Test Design Matrix 完備・commit（plan-draft -> plan-gate）。
 - forward state-only 予算 3 本の設計: ① plan-approved entry（`plan-gate -> plan-approved -> implementing`）② `independent-review -> human-confirm` ③ `human-confirm -> ready-hosted-final`。`local-verified` への遷移は実装 content commit に相乗り。
+- 2026-08-26 state-only 遷移 commit（予算 ①）: `plan-gate -> plan-approved -> implementing` を具現化。証跡: 独立 Plan Reviewer round 1 が P1/P2 = 0 を報告（本 packet Review Response 参照、記録 commit `dcaf6b9`）、owner が Plan Gate を承認（介入 1 回目 / 予算 3 回）、`Plan Commit` = plan-first commit `8dd5164a242014b48261c6238b3f1c2e1c1a96c8` は実装 commit 未着手のため全実装 commit に先行する。
 
 ## Owner Effort Budget
 
