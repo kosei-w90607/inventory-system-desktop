@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 8dd5164a242014b48261c6238b3f1c2e1c1a96c8
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: f0eacdcdccaa4428e6d163f4bafe521e6772be8c
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending merge
+- Human Gate: none（Plan Gate 承認・視覚確認 PASS・Ready 承認・merge すべて 2026-08-26 完了、遷移記録参照）
 
 ### 遷移記録（append-only）
 
@@ -24,7 +24,9 @@
 - 2026-08-26 state-only 遷移 commit（予算 ①）: `plan-gate -> plan-approved -> implementing` を具現化。証跡: 独立 Plan Reviewer round 1 が P1/P2 = 0 を報告（本 packet Review Response 参照、記録 commit `dcaf6b9`）、owner が Plan Gate を承認（介入 1 回目 / 予算 3 回）、`Plan Commit` = plan-first commit `8dd5164a242014b48261c6238b3f1c2e1c1a96c8` は実装 commit 未着手のため全実装 commit に先行する。
 - 2026-08-26 implementation / local verification: `implementing -> local-verified` を Implementation Results 記録の content commit に相乗りで具現化。証跡: gated amendment 1 を含む Scope の実装、AC1〜AC9 の自己検証、build / parse 両 mutant の red と復元後 green、L1 full の start / end CLEAN。gated amendment 1 と補強 commit を `Amendments` に確定追記した。
 - 2026-08-26 state-only 遷移 commit（予算 ②）: `local-verified -> independent-review -> human-confirm` を具現化。証跡: 独立 Sonnet Final Reviewer が Contract Audit を source docs 起点で実行（Ledger 8 param 全数突合 / negative-space 欠落なし / adjacent pattern で第二の脱落 site なし / mutation 2 種の実注入で red・復元 green / AC1〜AC9 独立再検証全 PASS / PR body 整合）、P1/P2 = 0・P3 = 1 を報告し findings は裁定済み（Review Response 参照）。`Reviewed Content HEAD` を監査対象 content commit `f0eacdc` に設定した。
-- 2026-08-26 state-only 遷移 commit（予算 ③）: `human-confirm -> ready-hosted-final` を具現化。証跡: owner が視覚確認（dev 画面で plu filter「未反映」設定 → 商品修正 → 保存 → 一覧復帰で filter 維持）を PASS と報告し Ready を承認（介入 2 回目 / 予算 3 回）。本 commit は Draft のまま作成し、この結果 HEAD で L1 full を実行して PR body を全面 refresh 後、Ready 化（hosted CI 発火）は owner 操作で行う。
+- 2026-08-26 state-only 遷移 commit（予算 ③）: `human-confirm -> ready-hosted-final` を具現化。証跡: owner が視覚確認（dev 画面で plu filter「未反映」設定 → 商品修正 → 保存 → 一覧復帰で filter 維持）を PASS と報告し Ready を承認（介入 2 回目 / 予算 3 回）。本 commit は Draft のまま作成し、この結果 HEAD で L1 full を実行して PR body を全面 refresh 後、Ready 化（hosted CI 発火）は owner 操作で行った。
+- 2026-08-26 ready-hosted-final の L1 初回 FAIL disposition: 同 HEAD の初回 L1 full は本 change 無関係の既存 test race（`product_service.rs` failpoint global `AtomicBool` × 並列 test 実行）で Rust test 1 件 FAIL。単独実行 PASS で race を実証し、再実行 L1 full は全 gate PASS。両 evidence file 名と機序は PR #8 body に記録。failpoint 是正は backend 変更で Non-scope につき Plans.md backlog へ起票（closeout 時）。
+- 2026-08-26 merge -> archive: owner が Ready 化・hosted final success（三点一致）を経て merge。Post-Merge Closeout（2026-08-27）で packet / Matrix を archive へ移動し `Plans.md` を同期。実績 = 介入 3/3・relay 2/2・forward state-only 3/3・Plan Review rally 1 round（天井 3）。merge evidence は PR #8 body を正とする。
 
 ## Owner Effort Budget
 
@@ -45,7 +47,7 @@
 Risk: R3
 
 Reason:
-`returnTo` は商品一覧の URL search state を build / parse する route/search state 挙動そのもの。DEV_WORKFLOW Risk Tiers は R3 の対象に `route/search state` を明記し、R2/R3 境界規則も「UI route/search behavior に触れる場合は R3 を選ぶ」と定める。diff は小さいが、影響が operator の filter 状態保持という runtime contract に及ぶため R3。実査正本（[2026-08-26 遷移契約 sweep](../archive/plans/2026-08-26-transition-contract-sweep.md) Lane A）の「小 R2」下馬評は、packet 起草時判定でこの表により R3 へ上方修正した。
+`returnTo` は商品一覧の URL search state を build / parse する route/search state 挙動そのもの。DEV_WORKFLOW Risk Tiers は R3 の対象に `route/search state` を明記し、R2/R3 境界規則も「UI route/search behavior に触れる場合は R3 を選ぶ」と定める。diff は小さいが、影響が operator の filter 状態保持という runtime contract に及ぶため R3。実査正本（[2026-08-26 遷移契約 sweep](2026-08-26-transition-contract-sweep.md) Lane A）の「小 R2」下馬評は、packet 起草時判定でこの表により R3 へ上方修正した。
 
 ## Goal
 
@@ -95,11 +97,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 - Requirements / spec: REQ-907 / SPEC-PLS-D7（plu filter・URL param）、REQ-101 / REQ-102（保存後の一覧復帰）
 - Architecture: 触れない（frontend URL state のみ、layer 越境なし）
-- Function / command / DTO: [50-ui-product-list.md](../function-design/50-ui-product-list.md) §50.4（URL param 表の `plu` 行 L55、UI-01a-D9 追補）/ §50.8（UI-01a-D10「`plu` URL 復元」）、[51-ui-product-form.md](../function-design/51-ui-product-form.md) UI-01b-D2（returnTo 許可契約）
+- Function / command / DTO: [50-ui-product-list.md](../../function-design/50-ui-product-list.md) §50.4（URL param 表の `plu` 行 L55、UI-01a-D9 追補）/ §50.8（UI-01a-D10「`plu` URL 復元」）、[51-ui-product-form.md](../../function-design/51-ui-product-form.md) UI-01b-D2（returnTo 許可契約）
 - DB: 触れない
 - Screen / UI: 同上（50-ui / 51-ui）
 - Decision log / ADR: なし（確定契約の履行、新規 durable 判断なし）
-- 実査正本: [2026-08-26 遷移契約 sweep](../archive/plans/2026-08-26-transition-contract-sweep.md) Lane A「契約乖離 4 hop」
+- 実査正本: [2026-08-26 遷移契約 sweep](2026-08-26-transition-contract-sweep.md) Lane A「契約乖離 4 hop」
 
 ## Required Design Artifacts
 
