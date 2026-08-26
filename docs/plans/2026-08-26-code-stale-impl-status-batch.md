@@ -36,7 +36,9 @@
 Risk: R2
 
 Reason:
-変更の大半はコメント・文言の現況化（runtime 無変更）。唯一の挙動変更は在庫照会詳細の disabled CTA 2 個を**既存 route への Link** に置き換える点で、route 定義・search state・command wire・DB のいずれも変更しない（route 新設なし、search param 追加なし）。operator 画面の変更を含むため human visual confirmation slot を立てる。stable contract / route/search state の変更に該当しないため R3 に昇格しない。
+変更の大半はコメント・文言の現況化（runtime 無変更）。唯一の挙動変更は在庫照会詳細の disabled CTA 2 個を**既存 route への Link** に置き換える点で、route 定義・search state・command wire・DB のいずれも変更しない（route 新設なし、search param 追加なし）。operator 画面の変更を含むため human visual confirmation slot を立てる。
+
+R3 トリガー「operator workflow」への該当性判定: 操作導線が 2 本増える点で同トリガーに接するが、同型先例 `docs/archive/plans/2026-07-16-sidebar-pending-links.md`（R3）が型契約変更（`NavItem.search` 追加相当）+ 20 項目横断のロジック変更を伴ったのに対し、本 change は 1 component 内の 2 CTA に閉じ、遷移先はいずれも navigation で既に常時到達可能な既存画面（新規到達性の開放ではなく到達導線の重複追加）。型契約・横断ロジック・stable contract のいずれにも触れないため R2 に留める。
 
 ## Goal
 
@@ -66,20 +68,20 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **A. 在庫照会 CTA active link 化（挙動変更 + doc 同期）**
 
-1. `src/features/stock-inquiry/components/StockDetailContent.tsx`: 「商品修正」を `/products/$code/edit`（params: code = 対象商品コード）への Link に、「入庫記録」を `/inventory/receiving` への Link に置き換える。既存 `ActiveCta`（在庫変動履歴、outline small Button + Link 型）と同型の実装を踏襲する。置換後に利用者不在となる `DisabledCta` component と L28 の「将来実装予定」コメントは撤去する（未使用関数残置は lint fail）。
+1. `src/features/stock-inquiry/components/StockDetailContent.tsx`: 「商品修正」を `/products/$code/edit`（params: code = 対象商品コード）への Link に、「入庫記録」を `/inventory/receiving` への Link に置き換える。既存 `ActiveCta`（在庫変動履歴、outline small Button + Link 型）と同型の実装を踏襲する（汎用化かコピーかは Writer 裁量。icon の有無・種別も Writer 裁量で既存 ActiveCta の作法に合わせる — 見た目の磨きは非目的）。置換後に利用者不在となる `DisabledCta` component と L28 の「将来実装予定」コメントは撤去する（未使用関数残置は lint fail）。撤去に伴い未使用化する `Tooltip` / `TooltipContent` / `TooltipProvider` / `TooltipTrigger` の import も除去する（他使用箇所なしを実査確認済み）。
 2. `src/features/stock-inquiry/components/StockDetailContent.test.tsx`: 既存 REQ-301 link test（`renderWithRouter` + `findByRole("link")` + href assert）と同型で、商品修正 link（href `/products/<code>/edit`）・入庫記録 link（href `/inventory/receiving`）の 2 test を**追加**する。既存 test は無改変。
-3. `docs/function-design/58-ui-stock-inquiry.md` §58.7: disabled CTA 契約 3 行（L504-506）を撤去し、直後の「在庫変動履歴」active link 記述と同型で「商品修正」「入庫記録」の active link 契約（遷移先 route を明記）を追記する。更新履歴表へ日付 + 要旨の行を追加（PR 番号非転記、PR #6 表記規約と同じ）。
+3. `docs/function-design/58-ui-stock-inquiry.md`: (a) §58.7 の disabled CTA 契約 3 行（L504-506）を撤去し、直後の「在庫変動履歴」active link 記述と同型で「商品修正」「入庫記録」の active link 契約（遷移先 route を明記）を追記する。(b) §58.6 新規追加ファイル一覧表の `StockDetailContent.tsx` 行（L117）の責務記述「商品修正/入庫記録 disabled CTA + 在庫変動履歴 active link」を「商品修正/入庫記録/在庫変動履歴 active link」へ是正する（同表の `TruncatedResultsAlert` 行が持つ更新注記の慣例に従う）。(c) 更新履歴表へ日付 + 要旨の行を追加（PR 番号非転記、PR #6 表記規約と同じ）。
 
 **B. コメント・文言の現況化（runtime 無変更）**
 
 4. `src/config/navigation.ts` L55: 「Phase 3/4 以降で各画面着手時に to を実 path に + status を "active" に切り替える。」— 直前 L54「全画面は route 実装済みで active。」と矛盾する切替完了後の消し忘れ。削除する。
 5. `src/features/home/components/InventoryActionGrid.tsx` L5: 「全 pending（Phase 3 UI-02〜05 まで未着手）。」→ 全項目 active の現況へ。
 6. `src/features/home/components/MiscActionRow.tsx` L5: 「全 pending（Phase 4 UI-10/UI-11a/UI-11b まで未着手）。」→ 同上。
-7. `src-tauri/tests/design_compliance_test.rs` L156 / L194 / L215 / L221 / L273-274・282-283: 「設計書作成済み、実装は後続PR」「Phase 5/6 …実装はPR-2以降」「PR-2/PR-3で実装予定」の 5 クラスタ — 対応モジュールは全て実在（同ファイル自身の map が登録済み）。実装済みの現況コメントへ是正。
+7. `src-tauri/tests/design_compliance_test.rs` の該当 6 行（L156 / L194 / L215 / L221 / L273-274 / L282-283。Phase 6 ブロックの 2 箇所は同一クラスタ）: 「設計書作成済み、実装は後続PR」「Phase 5/6 …実装はPR-2以降」「PR-2/PR-3で実装予定」— 対応モジュールは全て実在（同ファイル自身の map が登録済み）。実装済みの現況コメントへ是正。
 8. `src-tauri/src/lib.rs` L1: 「UI層未実装のため、IO/BIZ層の一部関数・型が未使用。UI実装時に解消される」— UI 層は広範に実装済みで前提が事実誤り。`#[allow(dead_code)]` 属性は維持し、理由文言のみ現況の正確な記述へ（例: 未使用 symbol の個別精査は将来判断、の趣旨）。
 9. `src-tauri/src/biz/csv_import_service/mod.rs` L17: 「CMD層が未実装のため一部シンボルは未使用」— `cmd/csv_import_cmd.rs` が全 symbol を消費済み。現況へ。
 10. `src-tauri/src/biz/mod.rs` L17: 「UI層未実装のため一部はまだ未使用」— cmd 層が re-export を直接使用済み。現況へ。
-11. `src-tauri/src/db/mod.rs` L32: 同型の理由消し忘れ。現況へ。
+11. `src-tauri/src/db/mod.rs` L32: 「UI層未実装のため一部はまだ未使用」の前提部分が失効。ただし #9/#10 と異なり、この re-export block の symbol が `crate::db::X` 経路で消費されている実証はない（実消費は `biz/mod.rs` の submodule 直接 re-export 経由）。新文言は消費実態を断定せず、「BIZ/CMD 層で使用する型の集約点として維持し、未参照 symbol の残存が `#[allow(unused_imports)]` の理由」という中立の現況記述にする。消費実態を主張する場合は rg 実測を根拠に添える。
 12. `src-tauri/src/cmd/integrity_cmd.rs` L4: 「設定・ログ・バックアップは Phase 6。」— いずれも実装済み（`lib.rs` の CMD-11 コマンド一覧と同一 crate 内で矛盾）。本 module が BIZ-07 の 2 コマンドのみを扱う旨の現況記述へ。
 13. `src/features/csv-import/reducer.ts` L3-4: 「Vitest 着手後に…網羅 unit test を retroactive 追加する想定」— `reducer.test.ts` 実在。現況へ（網羅数の数値主張は書かない）。
 14. `src/features/home/lib/count-stock-status.ts` L5: 「Vitest 着手後に unit test 追加」— `count-stock-status.test.ts` 実在。現況へ。
@@ -114,9 +116,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC-7: `rg -c "実装は後続PR|で実装予定|実装はPR-2以降" src-tauri/tests/design_compliance_test.rs` が hit 0。
 - AC-8: `rg -c "CMD層が未実装|UI層未実装|UI実装時に解消" src-tauri/src` が hit 0。
 - AC-9: `rg -c "Vitest 着手後に" src` が hit 0。
-- AC-10: 対 oracle（新文言 presence）: `rg -F -c '/products/$code/edit' docs/function-design/58-ui-stock-inquiry.md` ≥ 1、かつ AC-1 が同 file の旧文言 0 を保証。
+- AC-10: 対 oracle（新文言 presence、両導線）: `rg -F -c '/products/$code/edit' docs/function-design/58-ui-stock-inquiry.md` ≥ 1、かつ `rg -F -c '/inventory/receiving' docs/function-design/58-ui-stock-inquiry.md` ≥ 1、かつ AC-1 が同 file の旧文言 0 を保証。
 - AC-11: `StockDetailContent.test.tsx` の追加 link test 2 本が green、既存 test は追加のみで無改変（`git diff` で削除・変更行 0 を確認）。
 - AC-12: L1 gates PASS: frontend suite（typecheck / lint / format / test / build）+ `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`（design_compliance_test 含む）+ `bash scripts/doc-consistency-check.sh` + `cargo run --bin generate_traceability -- --check` drift 0。
+- AC-13: `rg -c "設定・ログ・バックアップは Phase 6" src-tauri/src` が hit 0（Scope #12 の専用 oracle）。
+- AC-14: `rg -c "disabled CTA" docs/function-design/58-ui-stock-inquiry.md` が hit 0（§58.6 L117 表 + §58.7 の両所是正の確認。現状 hit はこの 2 箇所のみで dated 履歴 block に hit なしを実査確認済み）。
 
 ## Design Sources
 
@@ -158,7 +162,7 @@ route 新設・command 新設・doc 新設・operator 画面新設: 該当なし
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: なし
 - Assumptions and constraints: 遷移先 route `/products/$code/edit` / `/inventory/receiving` の実在は routeTree + navigation.ts（全項目 active）で実査確認済み
 - Deferred design gaps, risk, and follow-up target: 入庫記録 prefill（非目的、要望発生時に別 R3）
-- Test Design Matrix can cite design decision IDs or source doc sections: Matrix は R2 optional 判定で省略（機械 oracle は AC-1〜AC-12）
+- Test Design Matrix can cite design decision IDs or source doc sections: Matrix は R2 optional 判定で省略（機械 oracle は AC-1〜AC-14）
 - Absolute guarantee / escape hatch self-check completed: 該当なし（保証文言の新設なし）
 
 ## Impact Review Lenses
@@ -198,7 +202,7 @@ R2 簡易版（改訂する §58.7 の契約行のみ）:
 
 ## Test Plan
 
-Test Design Matrix は R2 optional 判定で省略（理由: oracle は AC-1〜AC-12 で機械化済み、挙動変更は link 2 本のみで RTL の href assert が mutation〈遷移先誤り・link 欠落〉を直接検出する）。
+Test Design Matrix は R2 optional 判定で省略（理由: oracle は AC-1〜AC-14 で機械化済み、挙動変更は link 2 本のみで RTL の href assert が mutation〈遷移先誤り・link 欠落〉を直接検出する）。
 
 - targeted tests: 追加 link test 2 本（既存 REQ-301 test と同型、`renderWithRouter` + `findByRole("link")` + href assert）
 - negative tests: 不要（disabled 状態の撤去であり、失敗経路の新設なし）
