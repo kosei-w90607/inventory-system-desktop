@@ -14,7 +14,7 @@ Risk: R3
 - 65 §65.3 / §65.5 / §65.6.1 / §65.10 slice 4c: route・表示項目・状態正規化・in_progress 正常表示・CTA 非表示
 - 66 UI-06c-D7 後続: movements link click → SPA 遷移（到達導線）
 - 65 §65.5 / TRACE-D11 同型: returnTo 検索条件保持 + 不正値 fallback
-- D-052 C23（予約）: stocktakeComplete / stocktakeCountUpdate の invalidation 集合変更 + 独立転記 oracle
+- D-052 C23（予約）: stocktakeComplete / productCreate / productImport の invalidation 集合変更（stocktakeCountUpdate / stocktakeStart は非追加）+ 独立転記 oracle
 - D-4 / 順17: query key literal 直書き 0
 - Scope 5: layout + index 再構成での既存 `/stocktake` 作業画面維持
 
@@ -28,7 +28,7 @@ Risk: R3
 - source 補完の label/route 複製 drift（inventory_service と別実装になる）
 - link click が 404 のまま / href だけ正しく実遷移が壊れている
 - layout + index 再構成で既存 `/stocktake` 棚卸し作業画面が描画されなくなる
-- count 更新・確定後に詳細 cache が stale のまま表示され続ける（invalidation 欠落）/ 高頻度 mutation に広域 prefix が付いて無関係 query が refetch され続ける（過剰）
+- 確定・棚卸し中の商品自動明細追加（productCreate / productImport）後に詳細 cache が stale のまま表示され続ける（invalidation 欠落）/ 読取り集合と交差しない mutation（stocktakeCountUpdate）への追加や広域 prefix で無関係 query が refetch され続ける（過剰）
 - returnTo に外部 URL / `//` 始まりが通る
 - 既存棚卸し flow・既存 5 詳細の回帰
 
@@ -52,9 +52,9 @@ Risk: R3
 | NotFound UI | error が空白画面になる | RTL | T11 不存在 id での利用者向け日本語 error 表示（describeError 経由） | describeError 非経由・error 握りつぶし |
 | 65 slice 4c in_progress 表示 | 進行中詳細が error 化・原価 0 円誤表示 | RTL | T12 in_progress fixture で「進行中」label + 補正明細 0 件 + movements 0 件 + 原価の算定前表示（「—」等）の正常表示 | in_progress を error 扱いにする・total_cost None を 0 表示する mutant |
 | returnTo | 外部 URL 通過・条件喪失 | RTL | T13 returnTo 保持戻り + 不正値 fallback（既存 5 詳細の test pattern 踏襲） | validateSearch 除去・fallback 除去 |
-| D-052 C23 oracle | invalidation 欠落・過剰 | unit (TS、独立転記 oracle、production SSOT 非 import — 既存静的 gate 継承) | T14 stocktakeComplete / stocktakeCountUpdate 新集合の順序非依存・重複検出付き完全一致 | SSOT から新規 key を削る / inventoryRecords.root() 等の余分な key を足す mutant |
+| D-052 C23 oracle | invalidation 欠落・過剰 | unit (TS、独立転記 oracle、production SSOT 非 import — 既存静的 gate 継承) | T14 stocktakeComplete / productCreate / productImport 新集合の順序非依存・重複検出付き完全一致（stocktakeCountUpdate 非追加も集合一致で担保） | SSOT から新規 key を削る / stocktakeCountUpdate へ key を足す・inventoryRecords.root() 等の余分な key を足す mutant |
 | query key 直書き 0 | literal 復活 | unit (TS、既存 sweep pattern) | T15 stocktakeDetail key の literal sweep | page/hook に生 key 配列を書く実装 |
-| Scope 5: 既存 `/stocktake` 作業画面の index route 描画 | layout 化で既存作業画面が描画されなくなる | RTL (runtime route test) | T16 `/stocktake` 直接進入で `StocktakePage` が従来どおり描画される回帰 test | index 移設漏れ・layout の Outlet 欠落 |
+| Scope 5: 既存 `/stocktake` 作業画面の index route 描画 + validateSearch 移設 | layout 化で既存作業画面が描画されなくなる・validateSearch 移設漏れで dept/counted_only/page 絞り込みが死ぬ | RTL (runtime route test) | T16 `/stocktake` 直接進入の従来描画 + `?dept=` / `?counted_only=` / `?page=` 付き進入で search 駆動の絞り込み・ページングが機能する回帰 test | index 移設漏れ・layout の Outlet 欠落・validateSearch の layout 残置 |
 
 ## State Lifecycle Matrix
 
@@ -62,7 +62,7 @@ Risk: R3
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 詳細 query / 画面 | 未 fetch（直接 URL 進入含む） | loading 表示（既存 5 詳細と同形） | §65.5 項目表示（T9）。in_progress は T12 の空表示 | count 更新 / 確定成功で D-052 SSOT 経由 stale 化（T14） | 再表示で in_progress → completed の状態変化を反映（T6/T12 が両端状態を固定） | returnTo 戻り→再訪で検索条件保持（T13） | アプリ再起動後も直接 URL で表示可（route 生成 AC5） | NotFound / DB error → describeError 表示（T11） | TanStack Query 既定 retry 後 error 確定（既存 5 詳細と同設定） | Matrix + PR body |
+| 詳細 query / 画面 | 未 fetch（直接 URL 進入含む） | loading 表示（既存 5 詳細と同形） | §65.5 項目表示（T9）。in_progress は T12 の空表示 | 確定 / 棚卸し中の商品自動明細追加（productCreate / productImport）成功で D-052 SSOT 経由 stale 化（T14） | 再表示で in_progress → completed の状態変化を反映（T6/T12 が両端状態を固定） | returnTo 戻り→再訪で検索条件保持（T13） | アプリ再起動後も直接 URL で表示可（route 生成 AC5） | NotFound / DB error → describeError 表示（T11） | TanStack Query 既定 retry 後 error 確定（既存 5 詳細と同設定） | Matrix + PR body |
 
 - workflow-state 行（本 packet の遷移運用）:
   - content candidate → L1 / independent review → state-only human-confirm commit（STATECAP 3/PR、correction ループ時は content commit 同乗を優先）
@@ -80,7 +80,7 @@ Risk: R3
 | 状態 label 正規化（65 §65.6.1） | CsvImportRecordDetailPage の STATUS_LABELS map | 詳細 header（進行中/完了の 2 値） | 棚卸し作業画面は status badge を持たない現況（実読確認済み）のため画面間 label drift の突合対象は本 Page のみ | T9 / T12 |
 | 差異の符号付き表示（UI-10-D10 / 73 §73.6、PR #75 教訓） | 棚卸し確定結果画面の `formatListDifference` | 補正量の符号付き表示 | — | T9 |
 | production command 実呼び test（順5 規範） | 既存 5 詳細の CMD test | T8 | — | T8 |
-| layout + index route 構造 | `receiving` / `return` / `manual-sale` / `disposal` / `csv-import`（5 site 全列挙） | `stocktake.tsx`（layout 化）+ `stocktake/index.tsx`（新設） | — | T16 / T10 |
+| layout + index route 構造 | `receiving` / `return` / `manual-sale` / `disposal` / `csv-import`（5 site 全列挙） | `stocktake.tsx`（layout 化）+ `stocktake/index.tsx`（新設） | 既存 5 site はいずれも validateSearch を持たない — stocktake のみ searchSchema + useSearch/useNavigate を index へ一体移設（precedent 不在の本 change 固有点、packet Scope 5 / rally round 1 P1-2） | T16 / T10 |
 
 ## Negative Paths
 
@@ -112,7 +112,7 @@ Risk: R3
 - new schema/input: なし
 - output order: 補正明細 product_code ASC（T3）
 - optional field behavior: Option field の None 表示は canonical 踏襲（「—」等、T12）
-- 既存 wire: `Stocktake` 型・既存 stocktake command 5 本の bindings 行が不変（AC4 で diff 追加のみを確認）
+- 既存 wire: `Stocktake` 型・既存 stocktake command 7 本（packet Scope 4 列挙）の bindings 行が不変（AC4 で diff 追加のみを確認）
 
 ## Data Safety Checks
 
