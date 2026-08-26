@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 79d6d60
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: 5824862
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending（① 在庫照会 CTA active link 化の視覚確認〈dev 画面で可、Windows native L3 不要判定 — L3 Eligibility 条件 (1) native 限定観測を満たさない〉 ② Ready 承認）
+- Human Gate: none
 
 ## Owner Effort Budget
 
@@ -247,6 +247,8 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - Findings Freeze: frozen after Final Review; post-freeze exceptions: none.
 - Final Review（独立 Sonnet、read-only）2026-08-26: Scope 突合 15/15 file・packet 外 hunk 0 / AC 14/14 独立再実測 PASS / 新文言監査 11 箇所 適合・事実誤り 0（#9/#10 の消費主張は rg 実測裏取り、#11 は中立記述の指示遵守を確認）/ 58-ui 改訂整合（aria-disabled 3 層パターン残骸 0）/ traceability drift 0 / 追加 link test の mutation 感度（link 欠落・遷移先取り違えの 2 mutant 検出可）を机上確認。P1 0 / P2 0 / P3 0。
 - state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate の L1 full CLEAN evidence（implementing->local-verified）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。
+- Human Gate 消化 2026-08-26: 視覚確認 PASS（owner、Windows 実機 dev、CTA 2 導線の遷移 + 文言 + returnTo なし着地の仕様確認。介入 2/3）/ Ready 承認（介入 3/3、CI 通過後の merge と closeout 実施まで owner 委任）。
+- state-only 遷移 `human-confirm->ready-hosted-final` の根拠: Human Gate 全消化 + owner Ready 承認。exact HEAD の L1 full evidence と hosted run は PR body を正とする。
 
 ### Plan Gate 記録（append-only）
 
