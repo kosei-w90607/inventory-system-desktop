@@ -4,10 +4,10 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 65aaf2b
 - Amendments: none
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
@@ -298,3 +298,10 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review rally 記録（2026-08-27、append-only）
+
+- round 1（Claude Sonnet 5 独立 fresh context）: P1×2（D-052 C23 導出の欠落 — `create_product` ステップ6 / `commit_import` の進行中棚卸しへの明細自動追加を見落とし / `stocktake.tsx` validateSearch の layout 化移設先未指定）/ P2×3（stocktakeCountUpdate の死んだ invalidation / 既存 command 本数 4/5/7 不整合 / 65 §65.8.3 の Ledger 行欠落）/ P3×1（§65.5 取消/訂正情報列の pre-existing ambiguity）。Coordinator が全 6 件の引用 file:line を実読で独立裏取り（`product_service.rs` L257-264・L1345-1353 / `stocktake_service.rs` L207-211 / `lib.rs` L316-322 / `stocktake.tsx`）し全件 accept。是正 commit `65aaf2b`
+- round 2 closure（別 Sonnet fresh context）: 6/6 CLOSED（C23 新集合の独立再導出 = stocktake_items への書込みは `product_service.rs` / `stocktake_service.rs` の 2 file のみと rg 全走査で確認、collect_commands / invoke_handler 両ブロックの 7 本一致、是正差分の全引用一致）、delta 起因の新規 findings 0。**P1/P2 残 0**
+- owner Plan Gate 承認（2026-08-27、介入 1/3）。併せて owner 裁定: ハブ横断検索（`/inventory/records`）への棚卸し合流は既存 backlog「入出庫履歴の完成形 runway 復帰」entry へ closeout で追記して追跡、専用一覧 `/stocktake/records` は完成形契約のまま runway 残置（本 packet の Scope 不変）
+- plan-gate → plan-approved → implementing の materialize evidence: 上記 P1/P2=0、plan-first commit `172e938`（+ rally 是正 `65aaf2b` = Plan Commit）が全実装 commit に先行（実装 commit 未作成）、Writer は Codex（発注書駆動）
