@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 8dd5164a242014b48261c6238b3f1c2e1c1a96c8
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: f0eacdcdccaa4428e6d163f4bafe521e6772be8c
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending 視覚確認（plu filter 保持 1 項目）+ Ready 承認 / merge
+- Human Gate: pending merge
 
 ### 遷移記録（append-only）
 
@@ -24,6 +24,7 @@
 - 2026-08-26 state-only 遷移 commit（予算 ①）: `plan-gate -> plan-approved -> implementing` を具現化。証跡: 独立 Plan Reviewer round 1 が P1/P2 = 0 を報告（本 packet Review Response 参照、記録 commit `dcaf6b9`）、owner が Plan Gate を承認（介入 1 回目 / 予算 3 回）、`Plan Commit` = plan-first commit `8dd5164a242014b48261c6238b3f1c2e1c1a96c8` は実装 commit 未着手のため全実装 commit に先行する。
 - 2026-08-26 implementation / local verification: `implementing -> local-verified` を Implementation Results 記録の content commit に相乗りで具現化。証跡: gated amendment 1 を含む Scope の実装、AC1〜AC9 の自己検証、build / parse 両 mutant の red と復元後 green、L1 full の start / end CLEAN。gated amendment 1 と補強 commit を `Amendments` に確定追記した。
 - 2026-08-26 state-only 遷移 commit（予算 ②）: `local-verified -> independent-review -> human-confirm` を具現化。証跡: 独立 Sonnet Final Reviewer が Contract Audit を source docs 起点で実行（Ledger 8 param 全数突合 / negative-space 欠落なし / adjacent pattern で第二の脱落 site なし / mutation 2 種の実注入で red・復元 green / AC1〜AC9 独立再検証全 PASS / PR body 整合）、P1/P2 = 0・P3 = 1 を報告し findings は裁定済み（Review Response 参照）。`Reviewed Content HEAD` を監査対象 content commit `f0eacdc` に設定した。
+- 2026-08-26 state-only 遷移 commit（予算 ③）: `human-confirm -> ready-hosted-final` を具現化。証跡: owner が視覚確認（dev 画面で plu filter「未反映」設定 → 商品修正 → 保存 → 一覧復帰で filter 維持）を PASS と報告し Ready を承認（介入 2 回目 / 予算 3 回）。本 commit は Draft のまま作成し、この結果 HEAD で L1 full を実行して PR body を全面 refresh 後、Ready 化（hosted CI 発火）は owner 操作で行う。
 
 ## Owner Effort Budget
 
