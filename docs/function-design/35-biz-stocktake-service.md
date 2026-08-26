@@ -386,6 +386,42 @@ fn get_stocktake_progress(
 
 ---
 
+### 20.6a get_stocktake_record
+
+**関数要求**: 棚卸し記録詳細を wire DTO として返す。[31-biz-inventory-service.md](31-biz-inventory-service.md) §12.6a 業務記録詳細 read 関数と同じ read-only パターンで、movements への source link 補完と NotFound 変換を BIZ が担う。棚卸し詳細画面（`/stocktake/records/$stocktakeId`、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 / §65.5 / §65.10 slice 4c）用
+
+**シグネチャ**:
+```
+fn get_stocktake_record(
+    conn: &DbConnection,
+    stocktake_id: i64,
+) -> Result<StocktakeRecordDetail, BizError>
+```
+
+**StocktakeStatus enum**（新設、BIZ-06 所有。D-061 有限 IPC 値の generated union）:
+- InProgress（`in_progress`）/ Completed（`completed`）の 2 値。DB CHECK（[tracking-system-tables.md](../db-design/tracking-system-tables.md) 16-17）により 2 値保証
+- 既存 `Stocktake` wire 型の `status: String` は既存 command の wire 互換のため変更しない（本 DTO のみ enum を用いる）
+
+**StocktakeRecordDetail構造体**（wire DTO。BIZ-06 が所有する）:
+- id: i64, started_at: String, completed_at: Option\<String\>, status: StocktakeStatus, total_cost: Option\<i64\>（棚卸し時原価総額。in_progress は None）
+- item_count: i64（対象商品数）, corrected_count: i64（補正明細数）
+- items: Vec\<StocktakeRecordDetailItem\>（IO 型を再利用、[20-io-product-repo.md](20-io-product-repo.md) §2.11a）
+- movements: Vec\<MovementRecord\>（source 補完済み）
+
+**処理ステップ**:
+1. stocktake_repo::get_stocktake_record_detail(conn, stocktake_id) を呼ぶ。IO 層の NotFound は「棚卸し記録が見つかりません」を含む BizError::NotFound、その他の IO エラーは BizError::DatabaseError に変換する
+2. header.status の raw TEXT を StocktakeStatus へ変換する（DB CHECK により 2 値保証のため、想定外値は BizError::DatabaseError で fail-fast）
+3. movements の各行に `biz::inventory_service` の共有関数 `resolve_movement_source`（[32-biz-csv-import-service.md](32-biz-csv-import-service.md) §15.6a で導入済みの `pub(crate)` re-export 経由）で source(label, route) を補完する（label/route 規則の独自複製を作らない）
+4. corrected_count = items の件数を設定し、StocktakeRecordDetail を構成して返す
+
+**エラーハンドリング**:
+- 棚卸し不存在 → BizError::NotFound（「棚卸し記録が見つかりません」）
+- DB 読み取り失敗 / 想定外 status 値 → BizError::DatabaseError
+
+**設計ノート（差異の定義）**: 詳細画面の「差異」は補正 movement の quantity（§20.5 の adjustment_quantity = actual_count - 確定時 stock_quantity）を正とする。`system_stock - actual_count` の snapshot 差は、棚卸し中の CSV取込み等（SP-205-09、§20.4 の動的差異と同じ理由）で補正実績と乖離し得るため、表示上の差異として採用しない。
+
+---
+
 ### 20.7 非目的
 
 このモジュールが**やらないこと**を明示する。責務境界の誤解を防ぐため。
@@ -475,3 +511,4 @@ CMD層では `kind="validation"` と BIZ の message / field をそのまま保�
 |------|-----|------|
 | 2026-04-12 | PR #21 | 初版作成（BIZ-06 stocktake_service 4関数 + stocktake_repo 12関数） |
 | 2026-04-12 | PR #21 | StocktakeItemForComplete を 5フィールド（IO設計書版）→ 3フィールド（id/product_code/actual_count）に統一。BIZ設計書を採用した理由: complete_stocktake の処理ステップ5で必要なのは更新対象IDと商品コードと実カウントのみで、system_stock や counted_at は product_repo::find_by_product_code から取得する方が責務分離として正しい |
+| 2026-08-27 | （本 PR） | §20.6a get_stocktake_record（棚卸し記録詳細 read、65 slice 4c）+ StocktakeStatus enum 新設 + 差異定義（補正 movement 正）の設計ノートを追加 |

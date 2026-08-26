@@ -853,3 +853,37 @@ fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<(String, String,
 
 **処理ステップ**:
 1. SELECT product_code, name, stock_quantity FROM products ORDER BY product_code ASC
+
+---
+
+### 2.11a stocktake_repo — 棚卸し記録詳細取得（65 slice 4c 用）
+
+#### get_stocktake_record_detail
+
+**関数要求**: 棚卸し記録詳細（ヘッダ、補正明細、関連 `inventory_movements`）を取得する。棚卸し詳細画面（`/stocktake/records/$stocktakeId`、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 / §65.5 / §65.10 slice 4c）用
+
+**シグネチャ**:
+```
+fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result<StocktakeRecordDetailCore, DbError>
+```
+
+**StocktakeRecordDetailCore構造体**（IO 内部型。wire DTO は BIZ-06 側 [35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.6a が所有）:
+- header: Stocktake（§2.11 既存型を再利用）
+- item_count: i64（stocktake_items 全件数 = 対象商品数）
+- items: Vec\<StocktakeRecordDetailItem\>（補正明細のみ）
+- movements: Vec\<MovementRecord\>（source=None のまま）
+
+**StocktakeRecordDetailItem構造体**（補正 movement 起点の JOIN 行）:
+- product_code: String, product_name: String, department_name: String, stock_unit: String
+- system_stock: i64（棚卸し開始時システム在庫の snapshot）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
+- adjustment_quantity: i64（補正 movement の quantity。確定時 live 在庫基準）, stock_after: i64（補正後在庫）
+
+**処理ステップ**:
+1. stocktakes のヘッダを stocktake_id で取得する。存在しない場合は DbError::NotFound
+2. stocktake_items の件数を COUNT で取得する（対象商品数）
+3. 補正明細: inventory_movements（`reference_type='stocktake'` かつ `reference_id=stocktake_id` かつ `is_voided=0`）を起点に、stocktake_items（stocktake_id + product_code 一致）、products、departments を JOIN し、ORDER BY product_code ASC で返す。「差異」の値は補正 movement の quantity（確定時 live 在庫基準、[35-biz-stocktake-service.md](35-biz-stocktake-service.md) §20.5 の adjustment_quantity）であり、`system_stock - actual_count` の snapshot 差では定義しない — 棚卸し中の CSV取込み等（SP-205-09）で両者は乖離し得る。stocktake_items 行を欠く異常 row は補正明細から落ち movements にのみ現れる（表示は壊れない）
+4. movements: 同 filter の全行を [24-io-csv-import-repo.md](24-io-csv-import-repo.md) §14.13a / [21-io-inventory-repo.md](21-io-inventory-repo.md) §10.2 と同パターンで取得し、source=None のまま返す（in_progress 棚卸しは補正 movement 未作成のため 0 件で正常）
+
+**エラーハンドリング**:
+- ヘッダ不存在 → DbError::NotFound
+- SQL実行失敗 → DbError::QueryFailed(詳細)
