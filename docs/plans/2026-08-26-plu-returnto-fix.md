@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 8dd5164a242014b48261c6238b3f1c2e1c1a96c8
@@ -11,7 +11,7 @@
 - Writer: Codex（GPT-5.6、発注書駆動）
 - Plan Reviewer: Claude Sonnet 5（独立 fresh context）
 - Final Reviewer: Claude Sonnet 5（独立 fresh context）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: f0eacdcdccaa4428e6d163f4bafe521e6772be8c
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: pending 視覚確認（plu filter 保持 1 項目）+ Ready 承認 / merge
@@ -23,6 +23,7 @@
 - 2026-08-26 gated amendment 1: Writer（Codex）の fail-closed 停止起源。`plu` serialize 追加により、既定 search でも returnTo に `plu=all` が含まれるようになり（正規化済み object の既定値明示 serialize という既存 pattern への合流 = 設計適合）、`ProductListPage.test.tsx` の returnTo 期待 literal 2 箇所（integration test）が要同期と判明。Scope へ同 file の literal 追記を追加し AC9 を新設。原 `Plan Commit` は不変。amendment commit SHA の `Amendments` 行への追記は後続 commit で行う（tracked file は自 SHA を持てない、D-035）。独立 delta review は本節の Review Response に記録。
 - 2026-08-26 state-only 遷移 commit（予算 ①）: `plan-gate -> plan-approved -> implementing` を具現化。証跡: 独立 Plan Reviewer round 1 が P1/P2 = 0 を報告（本 packet Review Response 参照、記録 commit `dcaf6b9`）、owner が Plan Gate を承認（介入 1 回目 / 予算 3 回）、`Plan Commit` = plan-first commit `8dd5164a242014b48261c6238b3f1c2e1c1a96c8` は実装 commit 未着手のため全実装 commit に先行する。
 - 2026-08-26 implementation / local verification: `implementing -> local-verified` を Implementation Results 記録の content commit に相乗りで具現化。証跡: gated amendment 1 を含む Scope の実装、AC1〜AC9 の自己検証、build / parse 両 mutant の red と復元後 green、L1 full の start / end CLEAN。gated amendment 1 と補強 commit を `Amendments` に確定追記した。
+- 2026-08-26 state-only 遷移 commit（予算 ②）: `local-verified -> independent-review -> human-confirm` を具現化。証跡: 独立 Sonnet Final Reviewer が Contract Audit を source docs 起点で実行（Ledger 8 param 全数突合 / negative-space 欠落なし / adjacent pattern で第二の脱落 site なし / mutation 2 種の実注入で red・復元 green / AC1〜AC9 独立再検証全 PASS / PR body 整合）、P1/P2 = 0・P3 = 1 を報告し findings は裁定済み（Review Response 参照）。`Reviewed Content HEAD` を監査対象 content commit `f0eacdc` に設定した。
 
 ## Owner Effort Budget
 
@@ -251,5 +252,7 @@ Contract ID: SPEC-PLURT-2026-08-26
 - gated amendment 1 delta review（2026-08-26、独立 Sonnet、差分限定）: P1: 0 / P2: 1 / P3: 1。総合判定 = amendment 妥当。機序主張（正規化済み object の既定値明示 serialize）と既存 3 enum との同型性を reviewer が実測で確認、「build 側で既定値を emit しない」代替案は既存 pattern からの逸脱として棄却。
   - P2-1（AC9 の grep `plu` が fix 未適用でも 7 hit で非弁別）: 裁定 = accept。Coordinator 実測で再現（`plu` 7 hit / `plu%3Dall` 0 hit）。AC9 を弁別 literal `plu%3Dall`（fix 後 2 hit）へ差し替え済み。
   - P3-1（Matrix が amendment 1 の scope 拡張に未追随）: 裁定 = accept。Matrix の対象行・T4 行・実行節を追補済み。
-
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Final Review（2026-08-26、独立 Sonnet、worktree 隔離、Contract Audit）: P1: 0 / P2: 0 / P3: 1。総合判定 = 承認可。Ledger 全行の実装照合・negative-space 欠落なし・adjacent pattern 第二脱落なし・mutation 2 種実注入（AC8 充足、red test 名と復元 green の証跡付き）・AC 全数独立再検証 PASS・PR body 整合。
+  - Final Review P3-1（evidence quality: `.npmrc` `ignore-scripts=true` が `pretypecheck` / `prelint` / `pretest` の `tsr generate` を抑止し、fresh checkout では AC6 コマンド実行前に `npm run generate:routes` が必要）: 裁定 = accept・backlog 候補。Coordinator が package.json / .npmrc の前提を実測確認。repo 全体の既存条件で本 PR の欠陥ではない。Post-Merge Closeout で Plans.md backlog へ起票する。
+- 第 2 回 Contract Audit（operator-visible state lifecycle 接触時の推奨）は不実施と判断: 実装 diff は `git diff main..HEAD --stat -- src/features/products/lib/return-to.ts` 実測で `2 insertions(+)` に限定され、独立 fresh context のレビュー（本節に記録済みの Plan Review round 1 / gated amendment delta review / Final Review）と Coordinator 実測検分が既に通過しており、negative-space・adjacent pattern とも欠落の指摘がないため比例原則で見送る。
+- Findings Freeze: frozen after Broad Audit（Final Review 1 pass 完了時点、2026-08-26）; post-freeze exceptions: none.
