@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 79d6d60
 - Amendments: none
 - Coordinator: Fable (Claude Code)
 - Writer: Codex
@@ -244,3 +244,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Gate 記録（append-only）
+
+- Plan Gate rally: 独立 Sonnet Plan Reviewer、3 round 収束（P1+P2: 5 → 1 → 0。round 1 = AC-13/14 欠落・58-ui §58.6 L117 表 stale 残置・R2 判定の operator workflow トリガー未反証・db/mod.rs 消費主張未実証・AC-10 片側検証、round 2 = returnTo 継続性の意図的除外化、round 3 = delta 検証で新規指摘 0）。是正 commit は plan-first `79d6d60` に続く `53d765b` / `bc3597e`（いずれも Plan Gate 前の in-place 是正、gated amendment ではない）。
+- owner Plan Gate 承認 2026-08-26（介入 1/3。採否 3 点 = Scope 14 箇所 / returnTo 非対応の単純遷移 / R2 維持、すべて承認）。
+- state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み（plan-draft->plan-gate）/ 独立 Plan Reviewer P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ 実装開始許可（plan-approved->implementing）。
