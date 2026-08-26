@@ -113,6 +113,24 @@ describe("StocktakeRecordDetailPage (REQ-206 / REQ-207)", () => {
     expect(screen.getByRole("link", { name: "棚卸し #51" })).toBeInTheDocument();
   });
 
+  it("REQ-206: 正の補正差異を符号付きで表示する", async () => {
+    const positiveItem = {
+      ...makeDetail().items[0],
+      actual_count: 12,
+      adjustment_quantity: 2,
+      stock_after: 12,
+    };
+    mockGetStocktakeRecord.mockResolvedValue({
+      status: "ok",
+      data: makeDetail({ items: [positiveItem] }),
+    });
+
+    renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
+
+    const row = await screen.findByRole("row", { name: /SRD-001 合成棚卸し商品/ });
+    expect(within(row).getByText("+2 pcs")).toBeInTheDocument();
+  });
+
   it("REQ-207: movement の元記録をクリックすると棚卸し詳細 route を描画する", async () => {
     mockGetStocktakeRecord.mockResolvedValue({ status: "ok", data: makeDetail() });
     const user = userEvent.setup();

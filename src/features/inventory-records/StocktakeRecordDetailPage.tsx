@@ -40,6 +40,11 @@ function formatQuantity(value: number, unit: string): string {
   return `${value.toLocaleString("ja-JP")} ${unit}`;
 }
 
+function formatSignedQuantity(value: number, unit: string): string {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toLocaleString("ja-JP")} ${unit}`;
+}
+
 function formatOptionalQuantity(value: number | null, unit: string): string {
   return value === null ? "—" : formatQuantity(value, unit);
 }
@@ -195,7 +200,7 @@ export function StocktakeRecordDetailPage({
                       {formatOptionalQuantity(item.actual_count, item.stock_unit)}
                     </TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
-                      {formatQuantity(item.adjustment_quantity, item.stock_unit)}
+                      {formatSignedQuantity(item.adjustment_quantity, item.stock_unit)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {item.valuation_cost_price === null

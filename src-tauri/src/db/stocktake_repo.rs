@@ -1476,6 +1476,7 @@ mod tests {
     fn test_get_stocktake_record_detail_req207_correction_items_live_basis() {
         let (_dir, conn) = setup_test_db();
         seed_product(&conn, "SRD-LIVE");
+        seed_product(&conn, "SRD-ALPHA");
         conn.execute(
             "UPDATE products SET name = 'ライブ基準商品', stock_quantity = 10 WHERE product_code = 'SRD-LIVE'",
             [],
@@ -1484,6 +1485,7 @@ mod tests {
         let stocktake_id =
             create_completed_stocktake(&conn, "2026-08-02T09:00:00", "2026-08-02T18:00:00", 3000);
         seed_stocktake_item(&conn, stocktake_id, "SRD-LIVE", 10, Some(10));
+        seed_stocktake_item(&conn, stocktake_id, "SRD-ALPHA", 4, Some(3));
         conn.execute(
             "UPDATE stocktake_items SET valuation_cost_price = 300, counted_at = '2026-08-02T17:00:00'
              WHERE stocktake_id = ?1",
@@ -1502,18 +1504,32 @@ mod tests {
             [stocktake_id],
         )
         .unwrap();
+        conn.execute(
+            "INSERT INTO inventory_movements
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
+             VALUES ('SRD-ALPHA', 'stocktake', -1, 3, 'stocktake', ?1, 'synthetic ordering correction', 0, '2026-08-02T18:00:01')",
+            [stocktake_id],
+        )
+        .unwrap();
 
         let detail = get_stocktake_record_detail(&conn, stocktake_id).unwrap();
 
         assert_eq!(
             detail.items.len(),
-            1,
+            2,
             "snapshot 差 0 でも補正 movement 行を返す"
         );
-        assert_eq!(detail.items[0].system_stock, 10);
-        assert_eq!(detail.items[0].actual_count, Some(10));
-        assert_eq!(detail.items[0].adjustment_quantity, 2);
-        assert_eq!(detail.items[0].stock_after, 10);
+        let product_codes: Vec<&str> = detail
+            .items
+            .iter()
+            .map(|item| item.product_code.as_str())
+            .collect();
+        assert_eq!(product_codes, vec!["SRD-ALPHA", "SRD-LIVE"]);
+        let live_item = &detail.items[1];
+        assert_eq!(live_item.system_stock, 10);
+        assert_eq!(live_item.actual_count, Some(10));
+        assert_eq!(live_item.adjustment_quantity, 2);
+        assert_eq!(live_item.stock_after, 10);
     }
 
     #[test]

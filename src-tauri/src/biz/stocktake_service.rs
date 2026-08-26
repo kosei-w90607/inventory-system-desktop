@@ -1408,8 +1408,10 @@ mod tests {
     fn test_get_stocktake_record_req207_movement_source() {
         let (_dir, conn) = setup_test_db();
         seed_product(&conn, "SRD-BIZ", 0);
+        seed_product(&conn, "SRD-BIZ-UNCORRECTED", 0);
         let stocktake_id = create_stocktake(&conn, "completed");
         seed_stocktake_item(&conn, stocktake_id, "SRD-BIZ", 0, Some(1));
+        seed_stocktake_item(&conn, stocktake_id, "SRD-BIZ-UNCORRECTED", 0, Some(0));
         conn.execute(
             "INSERT INTO inventory_movements
              (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
@@ -1419,6 +1421,8 @@ mod tests {
         .unwrap();
 
         let detail = get_stocktake_record(&conn, stocktake_id).unwrap();
+        assert_eq!(detail.item_count, 2);
+        assert_eq!(detail.corrected_count, 1);
         let source = detail.movements[0].source.as_ref().unwrap();
         assert_eq!(source.label, format!("棚卸し #{}", stocktake_id));
         assert_eq!(source.route, format!("/stocktake/records/{}", stocktake_id));
