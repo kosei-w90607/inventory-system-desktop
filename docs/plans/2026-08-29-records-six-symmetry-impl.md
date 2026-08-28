@@ -149,6 +149,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | REQ-206（6 種横断検索） | 65 §65.10 slice 4d / 21-io §10.5 | 設計判断 D-f（PR #13） | `RecordSpec` 拡張で単一 UNION ALL 維持。種別別 SQL 分岐は抽象の放棄でコスト過大。追加 field 5 つ・既存 field 流用（filter_item_table 新設は死重で不採用） | disposal_repo.rs Scope 1 | T1 / T14 |
 | REQ-206（status 正規化 + filter 実効） | 65 §65.4.1 / §65.6.1 / 21-io §10.5 | D-a | IO 層 SQL CASE 式 + 外側 derived table WHERE 1 回適用。従来 no-op の query.status を実反映。gate 4 値拡張が対 | Scope 1-3 | T2 / T3 / T4 / T5 / T6 |
 | REQ-206（stocktake item_count = 差異件数） | 65 §65.10 slice 4d / §65.8.1 | D-b | movements 母集団統一（stocktake_items は全対象商品を持ち母集団問題）。多態 FK 衝突対策で item_count_expr は自己完結 SQL | Scope 1 | T7 / T8 |
+| REQ-206（csv item_count = is_voided 行を含む明細行数） | 65 §65.10 slice 4d / 21-io §10.5 | D-d | TRACE-D6: is_voided は取込み無効化用途で履歴事実は見せる（取消済みは status badge が伝える）。voided 除外案は履歴保持方針に反し不採用 | Scope 1（csv は既定 template のまま filter 句を追加しない） | T25 |
 | REQ-206（business_date） | 65 §65.4.1 / 21-io §10.5 | D-c | csv=settlement_date（精算日 = 業務確定日）、stocktake=DATE(COALESCE(completed_at, started_at))。datetime と date-only の BINARY 比較は境界日を取りこぼす（sqlite3 実測済み — PR #13 rally r3 P1） | Scope 1 | T9 / T10 / T11 |
 | REQ-206（in_progress の filter 意味論） | 65 §65.4.1（構造的非 hit の既知の制約） | D-i | 差異 movement 0 件のため EXISTS 常 false は filter 意味論の正しい帰結。例外ロジック不採用 | Scope 1 | T13 |
 | REQ-206（拒否 test の意味追随） | — | D-e | csv_import が正当種別化するため oracle を unknown_type へ差し替え。test 削除・無効化禁止に抵触しない | Scope 6 | T15 / AC5 |
@@ -213,6 +214,7 @@ N/A — 新規の未検証外部前提なし。依存する前提はすべて検
 | 21-io §10.5: status 早期リターン gate 4 値拡張 | gate L255-262 | T6（canceled / in_progress 指定で空ページ短絡しない — T4 / T5 と独立に gate 通過を検証） | — |
 | 65 slice 4d / D-b: stocktake item_count = 差異件数（reference_type='stocktake' AND is_voided=0） | item_count_expr 自己完結 SQL | T7（is_voided 行 seed 込みの数値検証） | — |
 | D-f 多態 FK: cross-type id 衝突の非誤ヒット（dept / keyword / representative_item / item_count の 4 箇所） | filter_item_extra_where 3 テンプレート + item_count_expr | T8（collision fixture: 同一数値 id の disposal_record と stocktake を意図的 seed、非空期待 + item_count 数値検証） | — |
+| 65 slice 4d / D-d: csv の item_count / representative_item は is_voided 行を含む（filter 句なし = 既定 template 継続、gated Amendment 1） | csv SPECS エントリ（item_count_expr = None / filter_item_extra_where = ""） | T25（is_voided=1 明細を含む rolled_back csv の item_count 数値 + representative_item 実商品名 assert） | — |
 | D-c: csv business_date = settlement_date | csv date_expr | T9（settlement_date で検索 hit / imported_at 日では非 hit の対 oracle） | — |
 | D-c: stocktake business_date = COALESCE fallback（in_progress は started_at） | stocktake date_expr | T10 | — |
 | D-c: DATE() ラップの単日検索境界 | 同上 | T11（date_from = date_to = 完了日で該当行が出る。ラップ欠落だと date_to 境界で消える） | — |
@@ -327,4 +329,4 @@ Phase 遷移記録（本 final content commit に同乗）: `implementing -> loc
 ### review-only 一次記録（2026-08-29、append-only）
 
 - round 1（Claude Sonnet 5 独立 fresh context、対象 = `d771c88..95a8022`）: **P1 = 0** / P2×1（Scope 1 の D-d 契約〈csv の item_count / representative_item は is_voided 行を含む〉が Design Intent Trace・Contract Coverage Ledger・Test Design Matrix のいずれにも対応行を持たず、rolled_back csv の item_count / representative_item を assert する test も不在 — is_voided filter を csv 側へ誤追加する mutant が無検出で survive する negative-space gap）/ P3×1（decision-log D-052 Contract 行で C11 の root() 置換が訂正文①と追記文③の 2 箇所で重複記述 — 機能上の誤りなし）。観点 1（SQL 生成・injection 面・既存 4 種 regression）/ 2（設計契約突合）/ 4（D-052 実変更・oracle 独立転記・prefix 包含の技術的裏付け）/ 5（scope 突合 — packet 外 hunk は search.test.ts +4 行のみで options 第二 oracle への必然的随伴と適合判定）/ 6（層境界・bindings 差分ゼロ）/ 7（state-only 95a8022 の allowlist 適合）/ 8（test 品質・REQ token・90 再生成)は指摘なし
-- Coordinator 裁定: P2-1 は rg + 実読（item_count assert は disposal 既存 test L1160 と stocktake T7/T8 のみ、csv 側 0 件）で独立実証のうえ **accept** — gated Amendment 1（Ledger D-d 行 + Design Intent Trace D-d 行 + Matrix T25 / X12 追補）+ Codex relay round 2 で test 追加。P3-1 **accept** — 同 relay で重複 1 文の dedup。code fix を要するため implementing へ backtrack（本 commit）
+- Coordinator 裁定: P2-1 は rg + 実読（実測: `rg -n "item_count" src-tauri/src/db/disposal_repo.rs` → assert 行の実測出力は L1160〈disposal 既存 test〉/ L1516・L1564〈stocktake T7 / T8〉のみで csv 種別の assert は 0 件）で独立実証のうえ **accept** — gated Amendment 1（Ledger D-d 行 + Design Intent Trace D-d 行 + Matrix T25 / X12 追補）+ Codex relay round 2 で test 追加。P3-1 **accept** — 同 relay で重複 1 文の dedup。code fix を要するため implementing へ backtrack（本 commit）

@@ -13,6 +13,7 @@ Risk: R3
 - 65 §65.4.1: status filter 4 値の外側 derived table 1 回適用 + in_progress の商品 / 部門 filter 構造的非 hit（既知の制約）
 - 21-io §10.5: RecordSpec 拡張契約（status_expr / item_count_expr / date_expr / created_at_col / filter_item_extra_where）、status 早期リターン gate 4 値、空ページ挙動
 - 21-io §10.5 / 65 slice 4d: created_at_col 写像（csv=`imported_at` / stocktake=`started_at`、両 table に created_at 列なし — disposal_repo.rs L433 ハードコードの置換）
+- 65 slice 4d / D-d: csv の item_count / representative_item は is_voided 行を含む明細行数（TRACE-D6 履歴保持、filter 句なし = 既定 template 継続。gated Amendment 1）
 - 44-cmd §23.7 / §23.10: record_type 6 種・status 4 値、BIZ 公開シグネチャ不変（内部 allowlist のみ拡張）
 - 65 §65.8.1: hub UI — options 6 種 + 4 値、母集団差注記の確定文言、in_progress 両列「-」+「進行中」badge、completed × 差異 0 件の「差異なし」、明細数の種別別意味
 - D-052 拡張: csvImportCommit / stocktakeStart へ `inventoryRecords.root()` 追加、stocktakeComplete は `stocktakeDetailRoot()` → `root()` 置換、productCreate / productImport 非変更 + 独立転記 oracle
@@ -29,6 +30,7 @@ Risk: R3
 - date_expr の DATE() ラップ欠落で単日検索（date_to 境界）から stocktake が消える / completed_at NULL で SQL エラー・誤日付
 - created_at_col 欠落（csv_imports / stocktakes に created_at 列なし）で `no such column` 即クラッシュ
 - created_at_col の値取り違え（date_expr との混同・誤列名の流用）で記録日時列がサイレントに誤表示される
+- csv の item_count / representative_item へ is_voided filter が誤って追加され（stocktake 用パターンの copy-paste 等）、rolled_back csv の明細数・代表商品が履歴事実から欠落する
 - in_progress 行が「明細なし」「商品なし」等で誤読される / 「差異なし」が汎用 fallback「明細なし」と取り違えられる
 - 注記文言が §65.8.1 確定文言から drift する
 - csvImportCommit / stocktakeStart / stocktakeComplete 後に hub 一覧が stale のまま（invalidation 欠落）/ productCreate 等へ過剰追加で無関係 query が refetch され続ける
@@ -64,6 +66,7 @@ Risk: R3
 | §65.8.1 差異 0 表示 | 「明細なし」との取り違え | RTL | T20 completed × item_count 0 fixture で代表商品「差異なし」+ 明細数 `0` の独立 test | 汎用 fallback へ倒す実装 |
 | formatRecordStatus | in_progress raw 表示 | unit (TS) | T21 `formatRecordStatus("in_progress")` = 「進行中」+ 既存値 regression | STATUS_OPTIONS 拡張漏れ（formatRecordStatus は options 先行検索で解決、if 分岐は追加しない） |
 | created_at_col 写像 | 記録日時の値取り違え | unit (Rust) | T24 `test_list_inventory_records_req206_created_at_col_mapping`（csv / stocktake seed の imported_at / started_at を business_date と別日時に置き、記録日時値が imported_at / started_at と一致し business_date と異なることを assert） | created_at_col を date_expr と混同・誤列名流用する mutant |
+| D-d csv is_voided 行含む | rolled_back csv の明細数・代表商品欠落 | unit (Rust) | T25 `test_list_inventory_records_req206_csv_item_count_includes_voided`（is_voided=1 明細 1 件 + is_voided=0 明細 1 件を持つ rolled_back csv seed で item_count=2 + representative_item が実商品名〈「明細なし」でない〉の非空期待 assert） | csv の item_count / representative_item サブクエリへ `is_voided=0` filter を追加する mutant |
 | REQ-207 遷移 | href だけ正しく実遷移が壊れる | RTL + userEvent.click | T22 csv / stocktake 行の詳細ボタン click → SPA 遷移後の詳細 render assert（href assert 単独は不可 — batch A X3 survivor 教訓） | route path 誤り・link 非活性 |
 | D-052 拡張 | invalidation 欠落・過剰 | unit (TS、独立転記 oracle、production SSOT 非 import) | T23 csvImportCommit / stocktakeStart / stocktakeComplete 新集合の順序非依存・重複検出付き完全一致（stocktakeComplete の root() 置換で stocktakeDetailRoot() が集合から消えること、productCreate / productImport の非変更も集合一致で担保） | SSOT から root() を削る / productCreate へ root() を足す / stocktakeComplete に stocktakeDetailRoot() が残る mutant |
 
@@ -166,6 +169,7 @@ Risk: R3
 | X9 | InventoryRecordsPage の「差異なし」を汎用「明細なし」へ改変 | T20 |
 | X10 | 注記文言の一部改変（例: 「差異のあった商品」→「対象商品」） | T18 |
 | X11 | stocktake の created_at_col を `date_expr` 側の値（`DATE(COALESCE(completed_at, started_at))`）へ混同差し替え | T24 |
+| X12 | csv の item_count / representative_item サブクエリへ `AND {item_alias}.is_voided = 0` を追加（stocktake 用絞り込みの誤 copy-paste 型） | T25 |
 
 - 注入は commit 済み clean tree 上でのみ実施（未 commit 是正の消失防止 — PR #19 教訓）
 - Writer の kill 主張は Final Review / Coordinator が Matrix どおりの実注入で独立再現する（順6 X3 / PR #27 X7 / 順22 X2 の教訓）
