@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: e6d4d76
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: d8c427d
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Ready 承認（視覚確認なし — operator 画面変更を含まない docs-only）
+- Human Gate: none（Ready 承認 2026-08-28 済み — 視覚確認は docs-only のため非該当）
 
 ## Owner Effort Budget
 
@@ -224,3 +224,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 - Final Review（独立 Sonnet、fresh context、read-only）2026-08-28: content commit の diff 全 hunk を Scope 1〜5 と突合し packet 外 hunk 0 / AC-1〜AC-5 独立再実測（`rg` / `bash scripts/doc-consistency-check.sh`、コマンドは Acceptance Criteria 記載どおり）で全 PASS / 新文言 3 箇所は packet literal・正本 65 §65.8.3 と同型（結論・トリガー不変）/ csv_import 節 byte 無改変 / stocktake 詳細 route 実在を route file + routeTree 登録で裏取り / 更新履歴 dated 行は既存行無改変 / DEV_SETUP 注記の機序は package.json / .npmrc 実読と整合 / Writer 逸脱 1 件（更新履歴要旨の paraphrase 化 = AC-1 自己衝突回避）は裁量範囲と裁定。P1: 0 / P2: 0 / P3: 0。
 - state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate の L1 `local-ci.sh full` CLEAN PASS evidence（implementing->local-verified。exact SHA と evidence 位置は PR body を正とする）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。
+- state-only 遷移 `human-confirm->ready-hosted-final` の根拠: owner Ready 承認 2026-08-28（wave 6 batch、本 lane 介入 2/3。train の Ready 遷移実行・merge・closeout を Coordinator へ委任）。exact HEAD の L1 full evidence と hosted run は PR body を正とする。
