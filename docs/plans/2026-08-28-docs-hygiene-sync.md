@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: e6d4d76
 - Amendments: none
 - Coordinator: Fable (Claude Code)
 - Writer: Sonnet subagent (worker, fresh context)（§3.1「投入しない場合: … docs 同期」に該当するため希少 slot を Writer に充てない。Plan Reviewer / Final Reviewer とはそれぞれ別の fresh context で独立性を維持）
@@ -211,3 +211,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Gate 記録（append-only）
+
+- Plan Gate rally: 独立 Sonnet Plan Reviewer、2 round 収束（round 1 = P1: 1 / P2: 1 / P3: 0。P1 = Writer への希少 slot 割当が §3.1「投入しない場合: … docs 同期」に literal 該当 → Writer を Sonnet subagent へ差替え。P2 = 新文言 literal の「0 件」空白入りが正本 65 §65.8.3 / 74-ui csv_import 文の「0件」と字句不一致で AC-2 が drift を素通しする構図 → packet 内 literal 5 箇所 + 説明文 2 箇所 + Plans.md 項 0 を no-space へ統一。いずれも Coordinator 独立再確認の上で全採用・是正 `882b68a`。round 2 = delta 検証で両是正の反映・byte 一致・新規不整合なしを確認、新規指摘 0、P1/P2/P3 = 0）。
+- owner 起票承認 2026-08-28（wave 6 batch 起票の会話にて。本 lane 介入 1/3）。
+- state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `e6d4d76` + Plan Gate 前 in-place 是正 `882b68a`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Sonnet subagent への実装開始許可（plan-approved->implementing）。
