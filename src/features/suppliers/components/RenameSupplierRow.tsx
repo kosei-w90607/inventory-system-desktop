@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ export function RenameSupplierRow({
     try {
       await mutation.mutateAsync({ supplierId: supplier.id, name: trimmed });
       setEditing(false);
+      toast.success("取引先名を変更しました");
     } catch (caught) {
       setNotFound(isInvokeError(caught) && caught.cmdError.kind === "not_found");
       setError(describeError(caught, "取引先名を変更できませんでした"));

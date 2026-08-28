@@ -89,11 +89,30 @@ export function ResultStep({
             <AlertDialogHeader>
               <AlertDialogTitle>取込みを取り消しますか？</AlertDialogTitle>
               <AlertDialogDescription>
-                この取込みだけを取り消します。同じ日の他の取込みは残ります。ID{" "}
-                {result.csv_import_id} / {settlementDate} / {filename} /{" "}
-                {result.total_items.toLocaleString()} 件 / ¥{result.total_amount.toLocaleString()}
-                。この取込みによる在庫数も元に戻ります。
+                この取込みだけを取り消します。同じ日の他の取込みは残ります。この取込みによる在庫数も元に戻ります。
               </AlertDialogDescription>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border p-3 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">取込み ID</dt>
+                  <dd className="font-medium">{result.csv_import_id}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">精算日</dt>
+                  <dd className="font-medium">{settlementDate}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">ファイル名</dt>
+                  <dd className="font-medium break-all">{filename}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">取込み件数</dt>
+                  <dd className="font-medium">{result.total_items.toLocaleString()} 件</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">合計金額</dt>
+                  <dd className="font-medium">¥{result.total_amount.toLocaleString()}</dd>
+                </div>
+              </dl>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>キャンセル</AlertDialogCancel>

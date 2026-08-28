@@ -1,5 +1,7 @@
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +19,7 @@ import { unwrapResult } from "@/lib/invoke";
 type UpdateState =
   | { status: "idle" }
   | { status: "updating" }
-  | { status: "success" }
+  | { status: "success"; newCostPrice: number }
   | { status: "error"; detail: string };
 
 function formatYen(value: number): string {
@@ -35,6 +37,11 @@ export function CostDiffDialog({
 }) {
   const [rowStates, setRowStates] = useState<Record<string, UpdateState>>({});
   const revisePrice = useReviseProductPrice();
+  const allProcessed =
+    costDiffs.length > 0 &&
+    costDiffs.every(
+      (diff) => (rowStates[diff.product_code] ?? { status: "idle" as const }).status === "success",
+    );
 
   async function updateMasterCost(diff: CostDiff) {
     setRowStates((current) => ({
@@ -54,7 +61,7 @@ export function CostDiffDialog({
       });
       setRowStates((current) => ({
         ...current,
-        [diff.product_code]: { status: "success" },
+        [diff.product_code]: { status: "success", newCostPrice: diff.received_cost_price },
       }));
     } catch (error) {
       setRowStates((current) => ({
@@ -102,7 +109,11 @@ export function CostDiffDialog({
                 <dl className="grid gap-3 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-muted-foreground">マスタ原価</dt>
-                    <dd className="font-medium">{formatYen(diff.master_cost_price)}</dd>
+                    <dd className="font-medium">
+                      {formatYen(
+                        state.status === "success" ? state.newCostPrice : diff.master_cost_price,
+                      )}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">今回の実原価</dt>
@@ -111,24 +122,26 @@ export function CostDiffDialog({
                 </dl>
 
                 {state.status === "success" ? (
-                  <p className="text-sm font-medium" role="status">
-                    マスタ原価を更新しました
-                  </p>
+                  <Alert role="status" className="border-success bg-success-soft text-success">
+                    <CheckCircle2 aria-hidden="true" className="text-success" />
+                    <AlertTitle>マスタ原価を更新しました</AlertTitle>
+                  </Alert>
                 ) : state.status === "error" ? (
-                  <div className="space-y-2" role="alert">
-                    <p className="text-sm font-medium text-destructive">
-                      マスタ原価の更新に失敗しました
-                    </p>
-                    <p className="text-sm text-muted-foreground">{state.detail}</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={revisePrice.isPending}
-                      onClick={() => void updateMasterCost(diff)}
-                    >
-                      再試行する
-                    </Button>
-                  </div>
+                  <Alert variant="destructive" role="alert">
+                    <AlertTriangle aria-hidden="true" />
+                    <AlertTitle>マスタ原価の更新に失敗しました</AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p>{state.detail}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={revisePrice.isPending}
+                        onClick={() => void updateMasterCost(diff)}
+                      >
+                        再試行する
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
                 ) : (
                   <Button
                     type="button"
@@ -154,7 +167,7 @@ export function CostDiffDialog({
               onOpenChange(false);
             }}
           >
-            見送って閉じる
+            {allProcessed ? "閉じる" : "見送って閉じる"}
           </Button>
         </DialogFooter>
       </DialogContent>

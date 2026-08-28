@@ -57,15 +57,44 @@ export function AdditionalImportConfirmDialog({
             <ul className="space-y-2">
               {existingImports.map((item) => (
                 <li key={item.id} className="rounded-md border p-3">
-                  <span className="font-medium">ID {item.id}</span> / {item.filenames} /{" "}
-                  {item.amount} / {item.importedAt}
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
+                    <div>
+                      <dt className="text-muted-foreground">ID</dt>
+                      <dd className="font-medium">{item.id}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">ファイル名</dt>
+                      <dd className="font-medium break-all">{item.filenames}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">金額</dt>
+                      <dd className="font-medium">{item.amount}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">取込み日時</dt>
+                      <dd className="font-medium">{item.importedAt}</dd>
+                    </div>
+                  </dl>
                 </li>
               ))}
             </ul>
             <p className="font-medium">今回分</p>
-            <p className="rounded-md border p-3">
-              {incomingImport.filenames} / {incomingImport.amount} / {incomingImport.importedAt}
-            </p>
+            <div className="rounded-md border p-3">
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">ファイル名</dt>
+                  <dd className="font-medium break-all">{incomingImport.filenames}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">金額</dt>
+                  <dd className="font-medium">{incomingImport.amount}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">取込み日時</dt>
+                  <dd className="font-medium">{incomingImport.importedAt}</dd>
+                </div>
+              </dl>
+            </div>
           </div>
         </AlertDialogHeader>
         <AlertDialogFooter>

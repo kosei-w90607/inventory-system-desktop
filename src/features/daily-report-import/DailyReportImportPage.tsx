@@ -314,34 +314,57 @@ function DailyReportResultStep({
           <AlertTitle>在庫数は変わりません</AlertTitle>
           <AlertDescription>取消しても在庫数は変わりません。</AlertDescription>
         </Alert>
-        <Button asChild>
-          <Link to="/reports/daily" search={{ date: reportDate }}>
-            日次売上を見る
-          </Link>
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" disabled={isRollingBack}>
-              {isRollingBack && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />}
-              {isRollingBack ? "取り消し中…" : "取り消す"}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>日報取込みを取り消しますか？</AlertDialogTitle>
-              <AlertDialogDescription>
-                この取込みだけを取り消します。同じ日の他の取込みは残ります。ID{" "}
-                {result.daily_report_import_id} / {reportDate} / {filenames.join(" / ")} / 総売上{" "}
-                {formatMoney(result.gross_amount)} / 純売上 {formatMoney(result.net_amount)}
-                。取消しても在庫数は変わりません。
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>キャンセル</AlertDialogCancel>
-              <AlertDialogAction onClick={onRollback}>取り消す</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link to="/reports/daily" search={{ date: reportDate }}>
+              日次売上を見る
+            </Link>
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={isRollingBack}>
+                {isRollingBack && (
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                )}
+                {isRollingBack ? "取り消し中…" : "取り消す"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>日報取込みを取り消しますか？</AlertDialogTitle>
+                <AlertDialogDescription>
+                  この取込みだけを取り消します。同じ日の他の取込みは残ります。取消しても在庫数は変わりません。
+                </AlertDialogDescription>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border p-3 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">取込み ID</dt>
+                    <dd className="font-medium">{result.daily_report_import_id}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">対象日</dt>
+                    <dd className="font-medium">{reportDate}</dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-muted-foreground">ファイル</dt>
+                    <dd className="font-medium break-all">{filenames.join(" / ")}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">総売上</dt>
+                    <dd className="font-medium">{formatMoney(result.gross_amount)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">純売上</dt>
+                    <dd className="font-medium">{formatMoney(result.net_amount)}</dd>
+                  </div>
+                </dl>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                <AlertDialogAction onClick={onRollback}>取り消す</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </CardContent>
     </Card>
   );

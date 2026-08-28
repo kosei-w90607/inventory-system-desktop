@@ -125,7 +125,10 @@ export function useCsvImportFlow(): UseCsvImportFlowResult {
     retry: 0,
     onSuccess: async () => {
       dispatch({ type: "rollback_succeeded" });
-      toast.success("取込みを取り消しました");
+      // Scope 7(a) UI 表示磨き batch: 取消は破壊的操作の完了通知であり、既定 3 秒
+      // (RootLayout.tsx の Toaster duration) では非IT高齢operatorが読み切れない
+      // おそれがあるため、この通知だけ個別に長く表示する（Toaster 全体設定は不変）。
+      toast.success("取込みを取り消しました", { duration: 8000 });
       await invalidateByContract(queryClient, invalidationContract.csvImportRollback());
     },
     onError: () => {

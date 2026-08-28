@@ -5,6 +5,7 @@
 import { Eye, PackageSearch } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ import { SearchBar } from "@/components/patterns/SearchBar";
 import { ProductPagination } from "@/features/products/components/ProductPagination";
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import {
   INVENTORY_RECORD_STATUS_OPTIONS,
@@ -71,6 +73,15 @@ function buildDetailLinkProps(
 export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecordsPageProps) {
   const normalized = normalizeInventoryRecordsSearch(search);
   const returnTo = buildInventoryRecordsReturnTo(normalized);
+
+  // Scope 7(b) UI 表示磨き batch: layout の `<main>` は route 遷移をまたいで
+  // 保持されるため、CSV取込み・日報取込みの取消（rollback）を他画面で終えてから
+  // 本ハブへ戻ると、以前のスクロール位置が残ったまま更新後の一覧が表示され得る。
+  // 既存4画面（SCREEN_DESIGN L263/283/417/419）の「結果表示時はページ先頭へ
+  // スクロールする」パターンをこのハブの表示時にも適用する。
+  useEffect(() => {
+    scrollPageToTop();
+  }, []);
 
   const departmentsQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.departments(),
