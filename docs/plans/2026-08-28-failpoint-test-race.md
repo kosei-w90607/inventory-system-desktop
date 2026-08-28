@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: e6d4d76
@@ -11,7 +11,7 @@
 - Writer: Codex
 - Plan Reviewer: Sonnet subagent (independent)
 - Final Reviewer: Sonnet subagent (independent)
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 028a872
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: Ready 承認（視覚確認なし — operator 画面変更を含まない test infra change）
@@ -210,10 +210,16 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Final Review; post-freeze exceptions: none.
 
 ### Plan Gate 記録（append-only）
 
 - Plan Gate rally: 独立 Sonnet Plan Reviewer、2 round 収束（round 1 = P1: 0 / P2: 3 / P3: 2。P2 は packet 内数値主張の実測不一致 3 件〈check site 数 / AC-1 起草時カウント / Non-scope の db/mod.rs AtomicBool hit 数〉— Coordinator が独立再実測で一致確認の上、全採用・是正 `38d1504`。P3 の全数値 sweep 助言も採用し、Ledger 内の追随漏れ 1 件を同 commit で是正。round 2 = delta 検証で 3 件の反映・新規事実誤りなしを確認、新規指摘 0、P1/P2/P3 = 0）。
 - owner 起票承認 2026-08-28（wave 6 batch 起票の会話にて。本 lane 介入 1/3）。
 - state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `e6d4d76` + Plan Gate 前 in-place 是正 `38d1504`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Codex への実装開始許可（plan-approved->implementing）。
+
+### Final Review / 遷移記録（append-only）
+
+- Final Review（独立 Sonnet、fresh context、検証は detached worktree 内で実施・終了時復元確認済み）2026-08-28: content commit の diff 全 hunk を Scope 1〜4 と突合し packet 外 hunk 0 / 静的 AC 独立再実測（`rg -c "AtomicBool"` hit 0、`thread_local!` / `LocalKey` presence）PASS / production path 無変更を hunk 単位で実読確認（check site は全て `#[cfg(test)]` 直下、エラー文言・判定位置無改変）/ 既存 test assert 無改変 / 動的検証 = 新 regression test green + REQ-101 rollback 系 2 本 green（`cargo test` 名指し実行）/ **mutation 独立再実測** = AtomicBool + static へ逆置換した mutant で新 regression test の red（`failpoint: create_product_after_insert` 発火）を独立再現、tautology 否定 / escape hatch comment 実在確認 / 同期・同 thread 前提の成立を `rg -n "thread::spawn"`（hit = 新 test 内 1 件のみ）で確認。P1: 0 / P2: 0 / P3: 0。
+- Writer（Codex）実測の AC-1〜AC-8 全 PASS + mutation red 実証は PR body に記録済み。Coordinator spot 検分（remote ref 一致 / 単一 content commit / Phase 無変更 / AC-1 再実測）と Final Reviewer 独立再実測で三者一致。
+- state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate の L1 `local-ci.sh full` CLEAN PASS evidence（implementing->local-verified。exact SHA と evidence 位置は PR body を正とする）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。
