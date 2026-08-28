@@ -269,6 +269,7 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
    - `record_type` に `csv_import` / `stocktake` を加え、`all` は入庫 / 返品・交換 / 手動販売 / 廃棄・破損 / CSV取込み / 棚卸しの 6 種を横断する。
    - status は §65.6.1 の写像で `active` / `canceled` / `in_progress` に正規化する。filter は「すべて / 有効 / 取消済み / 進行中」の 4 値とし、条件を `UNION ALL` 後の外側 derived table へ 1 回だけ適用して WHERE に実反映する。
    - CSV取込みの明細母集団は `sale_records` とし、TRACE-D6 の履歴保持方針により rollback 後の `is_voided=1` 行も `item_count` / 代表商品へ含める。棚卸しの `item_count` は差異件数であり、`inventory_movements.reference_type='stocktake' AND is_voided=0` に必ず絞る。進行中の棚卸しは UI 上の代表商品・明細数をともに「-」とする。
+     進行中の棚卸しは差異 movement が未発生のため、商品 / 部門 filter には構造的に hit しない（§65.4.1 の既知の制約と同旨）。
    - `business_date` は CSV取込みが `settlement_date`、棚卸しが `DATE(COALESCE(completed_at, started_at))`、記録日時は CSV取込みが `imported_at`、棚卸しが `started_at` を使う。
    - `/csv-import/records` / `/stocktake/records` の専用一覧 route と `listCsvImportRecords` / `listStocktakeRecords` は完成形契約のまま runway 残置とし、横断検索の充足を理由に削除しない。
 5. 取消 / 訂正 command と UI。
