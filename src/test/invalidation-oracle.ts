@@ -84,6 +84,7 @@ export const d052InvalidationOracle = {
   ],
   csvImportCommit: () => [
     queryKeys.csvImportLists(),
+    queryKeys.inventoryRecords.root(),
     queryKeys.dailySalesRoot(),
     queryKeys.lowStock(false),
     queryKeys.stockInquiryRoot(),
@@ -110,7 +111,11 @@ export const d052InvalidationOracle = {
     queryKeys.dailySalesRoot(),
     queryKeys.monthlySalesRoot(),
   ],
-  stocktakeStart: () => [queryKeys.stocktake.status(), queryKeys.stocktake.itemsRoot()],
+  stocktakeStart: () => [
+    queryKeys.stocktake.status(),
+    queryKeys.stocktake.itemsRoot(),
+    queryKeys.inventoryRecords.root(),
+  ],
   stocktakeCountUpdate: () => [queryKeys.stocktake.itemsRoot()],
   stocktakeComplete: () => [
     queryKeys.stocktake.status(),
@@ -121,7 +126,7 @@ export const d052InvalidationOracle = {
     queryKeys.stockInquiryRoot(),
     queryKeys.stockMovements.root(),
     queryKeys.productForm.root(),
-    queryKeys.inventoryRecords.stocktakeDetailRoot(),
+    queryKeys.inventoryRecords.root(),
   ],
   integrityFix: () => [
     queryKeys.productList.root(),

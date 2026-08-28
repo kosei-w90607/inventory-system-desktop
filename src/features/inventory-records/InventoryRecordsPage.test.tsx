@@ -1,5 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import {
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +16,7 @@ import { commands } from "@/lib/bindings";
 import type { InventoryRecordSummary } from "@/lib/bindings";
 import { renderWithRouter } from "@/test/render-with-router";
 import { InventoryRecordsPage } from "./InventoryRecordsPage";
-import type { InventoryRecordsSearch } from "./types";
+import { formatRecordStatus, type InventoryRecordsSearch } from "./types";
 
 vi.mock("@/lib/bindings", () => ({
   commands: {
@@ -25,6 +33,40 @@ function renderWithClient(ui: ReactNode) {
     defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
   });
   return renderWithRouter(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
+function renderWithDetailRoutes() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+  });
+  const rootRoute = createRootRoute({ component: Outlet });
+  const recordsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />,
+  });
+  const csvDetailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/csv-import/records/$importId",
+    component: () => <div>CSV取込み詳細画面</div>,
+  });
+  const stocktakeDetailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/stocktake/records/$stocktakeId",
+    component: () => <div>棚卸し詳細画面</div>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([recordsRoute, csvDetailRoute, stocktakeDetailRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  return {
+    router,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 function makeRecord(overrides: Partial<InventoryRecordSummary> = {}): InventoryRecordSummary {
@@ -64,7 +106,7 @@ afterEach(() => {
 });
 
 describe("InventoryRecordsPage (REQ-206)", () => {
-  it("REQ-206: 記録種別フィルターで4種の業務記録を選べる", async () => {
+  it("REQ-206: 記録種別フィルターで6種の業務記録を選べる", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
       data: { items: [], total_count: 0, page: 1, per_page: 20 },
@@ -84,6 +126,8 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       { value: "return_record", label: "返品・交換" },
       { value: "manual_sale", label: "手動販売出庫" },
       { value: "disposal_record", label: "廃棄・破損" },
+      { value: "csv_import", label: "CSV取込み" },
+      { value: "stocktake", label: "棚卸し" },
     ]);
     const status = screen.getByLabelText("状態");
     expect(
@@ -94,8 +138,135 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     ).toEqual([
       { value: "all", label: "すべて" },
       { value: "active", label: "有効" },
+      { value: "canceled", label: "取消済み" },
+      { value: "in_progress", label: "進行中" },
     ]);
   });
+
+  it("REQ-206 / 65 §65.8.1: 商品・部門filterの母集団差注記を常時表示する", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+    });
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
+
+    expect(
+      await screen.findByText(
+        "商品・部門での絞り込みは、CSV取込みでは取込み明細、棚卸しでは差異のあった商品が対象です。",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("REQ-206 / 65 §65.8.1: 進行中棚卸しは代表商品と明細数を両方-で表示する", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeRecord({
+            record_type: "stocktake",
+            record_id: 51,
+            representative_item: "算定前商品",
+            item_count: 9,
+            status: "in_progress",
+            detail_route: "/stocktake/records/51",
+          }),
+        ],
+        total_count: 1,
+        page: 1,
+        per_page: 20,
+      },
+    });
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
+
+    const row = (await screen.findByText("#51")).closest("tr");
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getAllByText("-")).toHaveLength(2);
+    expect(within(row as HTMLElement).getByText("進行中")).toBeInTheDocument();
+    expect(within(row as HTMLElement).queryByText("算定前商品")).not.toBeInTheDocument();
+    expect(within(row as HTMLElement).queryByText("9")).not.toBeInTheDocument();
+  });
+
+  it("REQ-206 / 65 §65.8.1: 完了棚卸しの差異0件は差異なしと0を表示する", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeRecord({
+            record_type: "stocktake",
+            record_id: 52,
+            representative_item: "明細なし",
+            item_count: 0,
+            status: "active",
+            detail_route: "/stocktake/records/52",
+          }),
+        ],
+        total_count: 1,
+        page: 1,
+        per_page: 20,
+      },
+    });
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
+
+    const row = (await screen.findByText("#52")).closest("tr");
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText("差異なし")).toBeInTheDocument();
+    expect(within(row as HTMLElement).getByText("0")).toBeInTheDocument();
+    expect(within(row as HTMLElement).queryByText("明細なし")).not.toBeInTheDocument();
+  });
+
+  it("REQ-206: formatRecordStatusは4値options経由で進行中を表示する", () => {
+    expect(formatRecordStatus("in_progress")).toBe("進行中");
+    expect(formatRecordStatus("active")).toBe("有効");
+    expect(formatRecordStatus("canceled")).toBe("取消済み");
+  });
+
+  it.each([
+    {
+      recordType: "csv_import",
+      recordId: 41,
+      detailRoute: "/csv-import/records/41",
+      expectedPath: "/csv-import/records/41",
+      renderedHeading: "CSV取込み詳細画面",
+    },
+    {
+      recordType: "stocktake",
+      recordId: 51,
+      detailRoute: "/stocktake/records/51",
+      expectedPath: "/stocktake/records/51",
+      renderedHeading: "棚卸し詳細画面",
+    },
+  ])(
+    "REQ-207: $recordType 行の詳細ボタンでSPA詳細画面へ遷移する",
+    async ({ recordType, recordId, detailRoute, expectedPath, renderedHeading }) => {
+      mockListInventoryRecords.mockResolvedValue({
+        status: "ok",
+        data: {
+          items: [
+            makeRecord({
+              record_type: recordType,
+              record_id: recordId,
+              detail_route: detailRoute,
+            }),
+          ],
+          total_count: 1,
+          page: 1,
+          per_page: 20,
+        },
+      });
+      const user = userEvent.setup();
+      const { router } = renderWithDetailRoutes();
+
+      await user.click(await screen.findByRole("link", { name: "詳細を見る" }));
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(expectedPath);
+      });
+      expect(await screen.findByText(renderedHeading)).toBeInTheDocument();
+    },
+  );
 
   it("REQ-206: search stateからlistInventoryRecords queryを作り廃棄詳細へリンクする", async () => {
     mockListInventoryRecords.mockResolvedValue({
