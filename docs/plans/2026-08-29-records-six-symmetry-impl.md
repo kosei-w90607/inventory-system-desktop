@@ -4,7 +4,7 @@ Design Phase は PR #13（squash `6c688fe`、2026-08-29 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 2941807
@@ -16,7 +16,7 @@ Design Phase は PR #13（squash `6c688fe`、2026-08-29 merge）で完了済み�
 - Reviewed Content HEAD: 6b9fb32
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner 目視（操作系 UI 変更: hub 一覧の種別 6 種化・状態 filter 4 値化・注記常設・「-」/「差異なし」表示の Windows native 確認）+ Ready 承認 + merge
+- Human Gate: none（owner Windows native L3 全項目 PASS + Ready 承認済み 2026-08-29。残る owner 操作は Ready 化と merge のみ）
 
 Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R3 判定は本 packet に記録。spec-check では in-scope source docs（65 / 21-io / 44-cmd）が PR #13 で改訂済み・実装十分と判定し、spec-check → plan-draft の許可された skip（Design Readiness が既存 docs 充足を引用）を適用。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。
 
@@ -337,3 +337,9 @@ Phase 遷移記録（本 final content commit に同乗）: `implementing -> loc
 - Sonnet 独立 fresh context の Contract Audit（対象 = Reviewed Content HEAD `6b9fb32`）: Contract Coverage Ledger **27/27 行適合**（不適合 0、65 §65.4.1 / 21-io §10.5 の通読による negative-space 検出 0）。AC 独立再実測 = AC2 / AC3 / AC4 / AC5 / AC11 を reviewer 自身が実行し全 PASS（bindings・traceability は再生成後 diff なし + tree clean）、AC1 / AC12 は PR #14 body との整合確認。round 2 delta 適合（T25 fixture は Matrix どおり / decision-log C11 dedup は意味不変 / gated Amendment 1 と Amendments 行整合）。anti-tautology（独立転記 oracle の production 定数非 import）/ Non-scope 遵守（packet 外は search.test.ts +4 の必然的随伴のみ）/ state-only 3 commit の hunk audit / PK5 ancestry（`git merge-base --is-ancestor` で Plan Commit `2941807` が初回実装 commit `64f4013` に先行）すべて適合。**P1/P2/P3 = 0**
 - Coordinator mutation 独立再実測: **X1〜X12 の 12/12 全 kill、survivor 0**（clean tree HEAD `6b9fb32`、注入形は Matrix から独立導出・Writer 記録非参照。各注入 → 対応 test red → git restore → `git status --porcelain` 0 検分、最終 green は targeted Rust 21/21・FE 19/19）。X4 は T7 に加え T12〈母集団整合 regression〉も red の二重防御、X11 / X12 は T24 / T25 が単独 red となり Plan Review / review-only で追補した 2 契約の弁別性を実証
 - local-verified → independent-review → human-confirm の materialize evidence: 上記 Contract Audit P1/P2 = 0 + mutation 全 kill。残 Human Gate = owner Windows native L3 目視 + Ready 承認 + merge
+
+### owner L3 PASS と ready-hosted-final 遷移（2026-08-29、append-only）
+
+- owner Windows native L3（content = Reviewed Content HEAD `6b9fb32`）: **全項目 PASS** — 6 種・4 状態の履歴表示 / 進行中棚卸しの両列「-」/ 差異 0 棚卸しの「差異なし」+ 明細数 0 / CSV取込み・棚卸し詳細への遷移 / 基準バックアップへの復元 / L3 用 synthetic データの消失確認（介入 2/3）。PR #14 を阻害する不具合なし
+- owner 所感の UI 改善候補 5 件（成功通知の視認性 / 復元後の先頭スクロール / 取消確認の整形 / 戻り先の検索維持 / 状態表現の統一）は**別スコープ候補**と owner 判定 — Post-Merge Closeout で Plans.md backlog（表示磨き batch 候補）へ起票する
+- human-confirm → ready-hosted-final の evidence: Human Gate 全項目解決（上記 L3 PASS）+ owner Ready 承認（2026-08-29、介入 3/3。L3 報告と同一 message で同時付与）。遷移は Draft のまま本 state-only commit で作成し、その exact HEAD で L1 full → PR body 全面 refresh → owner Ready 化 / hosted 三点一致の順（DEV_WORKFLOW 遷移規則どおり）
