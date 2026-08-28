@@ -9,10 +9,10 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: b3ca503
 - Amendments: none
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Claude Sonnet 5 (subagent、worktree isolation、§5.6 従来型発注書駆動)
@@ -269,3 +269,9 @@ Fill after review.
 ### Plan Review rally 記録（2026-08-29、append-only）
 
 - round 1（Claude Sonnet 5 独立 fresh context、対象 = plan-first commit `e865aec`）: P1×2（AC5 の rg 対象が生成物 bindings.ts L290〈integrity_cmd.rs L10 の Rust doc comment 由来 JSDoc〉を含み AC3 / Non-scope と自己矛盾 / T7 の「gated Amendment 不要の範囲」に規約根拠なし — Plan Gate 後の packet / Matrix 変更に materiality 閾値の第三経路は存在しない）/ P2×1（Opus round が D-056・manual §3 L36 の投入基準〈難所限定・通常レビューは既存分業維持〉に未適合 — packet の編成検証が vendor 制約のみで投入基準を未検証）/ P3×3（Risk tie-break 反証の明示不足 / SCREEN_DESIGN L34→L42 誤引用 / Scope 1 の「間隔調整」表現が実態〈flex 行の新規構造化〉を過小表現）。Coordinator が P1-1 / P3-2 を rg 実測で独立裏取り（bindings.ts:290 と integrity_cmd.rs:10 の実在、L34 = 入出庫履歴行・L42 = 在庫整合性検証行）し**全 6 件 accept**。是正 = AC5 glob 除外 + 許容差分の根拠明記、T7 の無条件 gated Amendment 化（packet / Matrix 両方 sweep）、Opus 投入の例外記録 1 行（owner 座組決定 2026-08-29 起点、並走実験の簡単水準較正目的、Plan Gate 承認で最終確定）、Risk 反証 2 文、L34→L42 訂正 2 箇所、Scope 1 表現補正
+
+### Plan Gate 承認と implementing 遷移（2026-08-29、append-only）
+
+- round 2 closure（別 Sonnet fresh context、対象 = 是正 commit `b3ca503`）: 6/6 CLOSED（AC5 glob 除外の実測動作確認、例外記録と manual §3 L36 / D-056 実文の literal 突合、SCREEN_DESIGN L42 実文確認を含む）、旧前提 sweep 実質 0（rally 記録内の意図的引用のみ）、delta 起因の新規 findings 0。**P1/P2 残 0**
+- owner Plan Gate 承認（2026-08-29、介入 1/3）。承認に含まれる確定 2 点: ①Opus 5 投入の例外適用（manual §3 L36 に対する例外、Workflow State 記載の根拠どおり）②名称統一先 = PageHeader「在庫整合性検証」（サイドバー不変）
+- plan-gate → plan-approved → implementing の materialize evidence: 上記 P1/P2=0、plan-first commit `e865aec` + rally 是正 `b3ca503` = Plan Commit が全実装 commit に先行（実装 commit 未作成）、Writer は Claude Sonnet 5 subagent（worktree isolation、発注書駆動）
