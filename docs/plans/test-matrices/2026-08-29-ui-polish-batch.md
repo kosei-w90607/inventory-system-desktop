@@ -40,7 +40,7 @@ Risk: R2
 | UI-02-D15 + Alert 化 | 色のみ判別化 | RTL | T4 更新成功行に success 表示 + 「マスタ原価を更新しました」テキスト + role の存在、失敗行に失敗テキスト（成功/失敗の同時 fixture） | テキスト・role を落として色だけにする実装 |
 | 61 §61.5 追記 | 旧値表示継続 | RTL | T5 updateMasterCost 成功後にカードのマスタ原価が新値で render + footer 文言が状態対応（全行処理済みで「閉じる」系）に変わる assert | 反映欠落・固定文言 |
 | 78 §78.6 追記 | 無通知のまま | RTL | T6 改名 submit 成功で toast.success が呼ばれる assert（mock、文言は追記 doc と一致の独立転記） | toast 追加漏れ・文言 drift |
-| 取消成功通知の視認性 | 改善が実装されない | RTL | T7 改善形確定後に具体化（Writer 提案 + Opus round → Coordinator が本 Matrix へ追記。契約変更を伴わない範囲に限る） | — |
+| 取消成功通知の視認性 | 改善が実装されない | RTL | T7 改善形確定後に具体化（Writer 提案 + Opus round → Coordinator が gated Amendment として本 Matrix へ追記し Amendments 行へ SHA 記録。契約変更を伴わない範囲に限る） | — |
 | SCREEN_DESIGN 追記 | スクロールしない | RTL | T8 rollback 完了 handler でページ先頭スクロール（scrollTo 等）が呼ばれる assert（jsdom mock） | scroll 呼出し欠落 |
 | 既存挙動の凍結 | 回帰 | regression | T9 = 既存 suite green（InventoryRecordsPage / csv-import / receiving / suppliers の全既存 test） | 磨きが挙動を変えた場合 |
 | 名称 doc-code 一致 | 旧見出し残存 | RTL + rg | T10 PageHeader が「在庫整合性検証」で render + AC5 の rg 全滅検査 | title 未変更・部分変更 |
@@ -114,4 +114,4 @@ not applicable の行が多いため対象 state のみ:
 
 - 視認性（間隔・折返し・Alert の見た目・toast の目立ち方）の最終判定は自動 test で代替不能 → owner 目視（L3-lite）
 - T7 の oracle は改善形確定後に具体化（確定前は本 Matrix の未確定行として明示）
-- Opus 修正案 round の指摘反映後に assert を追補する場合は意味不変の範囲で Matrix 追記
+- Opus 修正案 round の指摘反映後に assert を追補する場合も、Plan Gate 後の Matrix 変更はすべて gated Amendment（Amendments 行への SHA 記録）で行う

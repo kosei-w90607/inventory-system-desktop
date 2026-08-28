@@ -18,6 +18,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 - Writer: Claude Sonnet 5 (subagent、worktree isolation、§5.6 従来型発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Opus 5 修正案 claims-producer round（§5.4 低制約、read-only）+ Codex cross review + Coordinator 裁定
+  - Opus 投入の例外記録（manual §3 L36「通常レビューは既存分業を維持」に対する例外、Plan Review round 1 P2-1）: owner 明示の座組決定（2026-08-29「その座組でやってみたいね」）による pilot 投入。目的 = ①保留中の Opus×Sonnet 並走レビュー実験（Plans.md 記録）の「簡単 backlog 水準」較正 ②operator-facing UI 磨きにおける修正案 claims-producer 型の実務検証。read-only・§5.4 低制約・Writer 非割当の D-056 機構は不変。本例外の最終確定は Plan Gate 承認に含める
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
@@ -45,7 +46,7 @@ Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 p
 Risk: R2
 
 Reason:
-契約非変更の表示磨きが中心（文言・レイアウト・通知・スクロールの表示挙動）。route/search state・Tauri command DTO・bindings・DB schema・CSV format・merge gate に触れない。backend 変更なし（frontend のみ + 設計 doc の軽微追記 4 箇所）。operator-facing 画面の変更のため owner 目視を Human Gate に置く（Plans.md 注意リストの慣行）。R3 該当行（route/search state / operator workflow の実挙動変更）には至らない — filter・遷移・データ意味論は不変で、見た目と通知の磨きに限定。
+契約非変更の表示磨きが中心（文言・レイアウト・通知・スクロールの表示挙動）。route/search state・Tauri command DTO・bindings・DB schema・CSV format・merge gate に触れない。backend 変更なし（frontend のみ + 設計 doc の軽微追記 4 箇所）。operator-facing 画面の変更のため owner 目視を Human Gate に置く（Plans.md 注意リストの慣行）。R3 該当行（route/search state / operator workflow の実挙動変更）には至らない — filter・遷移・データ意味論は不変で、見た目と通知の磨きに限定。tie-break の反証（Plan Review round 1 P3-1）: Scope 7(b) の先頭スクロールは SCREEN_DESIGN L263/283/417/419 で既に文書化済みの 4 画面パターンの 5 画面目への水平展開であり新規 workflow 意味論を持ち込まない。Scope 5(a) のマスタ原価反映は既存 mutation（`revisePrice`）へ渡した値の表示反映のみで新規 command / route を要しない。いずれも「不確実なら R3」の不確実性に該当しない。
 
 ## Goal
 
@@ -73,7 +74,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Scope
 
-1. **日報完了画面の action ボタン間隔**: `src/features/daily-report-import/DailyReportImportPage.tsx` L305-345 の `DailyReportResultStep` — ボタン行を `flex flex-wrap gap-2` wrapper へ（Z004 側 `src/features/csv-import/components/ResultStep.tsx` L67-112 の既存パターンに統一）
+1. **日報完了画面の action ボタン行の構造化**: `src/features/daily-report-import/DailyReportImportPage.tsx` L305-345 の `DailyReportResultStep` — 現況は `CardContent className="space-y-4"` 配下に「日次売上を見る」Button と rollback AlertDialog が別々の block 要素として縦積み（flex 行が存在しない）。これを Z004 側 `src/features/csv-import/components/ResultStep.tsx` L67-112 の `flex flex-wrap gap-2` パターンへ**初めて構造化して統一**する（Plan Review round 1 P3-3: 「間隔調整」ではなく構造化）
 2. **rollback summary のラベル付き構造化（両 tab）**: `ResultStep.tsx` L91-96 と `DailyReportImportPage.tsx` L332-337 の文字列連結 summary を、ラベル付きの構造化表示（definition list 等）+ 適切な改行へ。**UI-07-D14 の規定項目集合（Z004: ID / 精算日 / filename / 件数 / 金額、日報: ID / 対象日 / source filenames / 総売上 / 純売上）を欠落なく維持**
 3. **追加確認 summary の構造化・折返し回避**: `src/features/csv-import/components/AdditionalImportConfirmDialog.tsx` L57-68（両 tab 共有）— **UI-07-D13 の規定項目（import ID / filename(s) / 金額 / 取込み日時）+ scroll 可能一覧 + 省略禁止を維持**したままラベル付き構造化 + 任意位置折返しの回避
 4. **CostDiffDialog の成功・エラー表示の Alert 化**: `src/features/receiving/CostDiffDialog.tsx` L113-131 — 手組み `<p>` を既存 success token パターン（`IntegrityCheckPage` の成功 Alert と同型）へ統一。**UI-02-D15（色だけに依存しない・成功/失敗を同じ行で判別）を維持**（role="status" / テキスト判別を保持）
@@ -81,7 +82,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 6. **UI-15 改名成功 toast**: `src/features/suppliers/components/RenameSupplierRow.tsx` L33-48 の成功時に `toast.success`（統合 `MergeSupplierDialog.tsx` L63-64 と対称の完了通知）
 7. **hub 系 2 件**: (a) 取込み取消の成功通知の視認性改善 — `useCsvImportFlow.ts` L128 / `useDailyReportImportFlow.ts` L136 の `toast.success` について、視認性の改善形（duration 延長・文言強化・ページ内 Alert 併用等）は Writer 提案 + Opus 修正案 round で確定（Toaster 全体設定は変更しない） (b) `InventoryRecordsPage.tsx` へ復元・rollback 完了後の先頭スクロール追加（SCREEN_DESIGN 既存 4 画面パターン〈例 L419「保存成功または command 失敗時はページ先頭へスクロールする」〉の踏襲）
 8. **設計 doc の軽微追記 4 箇所（Writer が同 PR で実施、referent 実査済み）**: (a) `61-ui-receiving.md` §61.5 へ「更新成功後はカードのマスタ原価表示を更新後の値へ反映する」1 文 (b) `78-ui-supplier-management.md` §78.6 へ改名成功時の完了通知規定 1 文（§78.7 統合の完了通知規定と対称化） (c) `SCREEN_DESIGN.md` 入出庫履歴節（L236-250）へ既存 4 画面（L263/283/417/419）と同型の先頭スクロール 1 文 (d) `75-ui-integrity-check.md` へ PageHeader title の正式文言を明記
-9. **整合性検証の名称統一**: `IntegrityCheckPage.tsx` L185-186 の PageHeader title「在庫整合性チェック」→「**在庫整合性検証**」へ（doc 正本〈75 doc 見出し「在庫整合性検証画面」/ SCREEN_DESIGN L34・62・426「在庫整合性検証」〉に一致させる。サイドバー「整合性検証」〈52 §52.3 メニュー正本表と一致〉は幅制約もあり不変。**統一先の最終確定は Plan Gate 承認に含める**）
+9. **整合性検証の名称統一**: `IntegrityCheckPage.tsx` L185-186 の PageHeader title「在庫整合性チェック」→「**在庫整合性検証**」へ（doc 正本〈75 doc 見出し「在庫整合性検証画面」/ SCREEN_DESIGN L42・62・426「在庫整合性検証」〉に一致させる。サイドバー「整合性検証」〈52 §52.3 メニュー正本表と一致〉は幅制約もあり不変。**統一先の最終確定は Plan Gate 承認に含める**）
 10. FE test: 各磨き項目の RTL oracle（Test Design Matrix 参照）。既存 test の削除・無効化・skip 禁止。summary 構造化に伴う既存 assert の文言追随は意味不変の範囲で可
 11. commit 分割: 磨き実装（画面群ごとに 1-2 commit）→ doc 追記 → test の順は Writer 裁量、ただし doc 追記と対応実装は同 PR 必須
 
@@ -100,7 +101,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC2: `npm run typecheck` / `lint` / `format:check` / `build` green
 - AC3: `cd src-tauri && cargo test` green（backend 無変更の regression 確認）+ `git diff --exit-code src/lib/bindings.ts`（差分ゼロ）
 - AC4: UI-07-D13/D14 の項目集合維持 — 構造化後の summary に規定項目の全 token が render される RTL assert（T2 / T3）
-- AC5: `rg -c "在庫整合性チェック" src/` = 0（exit 1、旧見出しの全滅）+ `rg -c "在庫整合性検証" src/features/integrity-check/IntegrityCheckPage.tsx` ≥ 1
+- AC5: `rg -c "在庫整合性チェック" src/ --glob '!src/lib/bindings.ts'` = 0（exit 1、旧見出しの全滅。`src/lib/bindings.ts` L290 の 1 件は `integrity_cmd.rs` L10 の Rust doc comment 由来の生成 JSDoc で operator 非可視・backend 非接触の Non-scope により許容 — Plan Review round 1 P1-1）+ `rg -c "在庫整合性検証" src/features/integrity-check/IntegrityCheckPage.tsx` ≥ 1
 - AC6: doc 追記 4 箇所（Scope 8）の diff が存在し `bash scripts/doc-consistency-check.sh` ERROR 0
 - AC7: `bash scripts/local-ci.sh full` CLEAN（L1、exact-HEAD evidence は PR body 所管）
 - AC8: Human Gate に owner 目視を含むため Writer 完了条件に `cargo check --release`（CI gate ではない）
@@ -109,7 +110,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - Requirements / spec: REQ-105（原価改定系）/ REQ-107（取引先）/ REQ-206（記録追跡）— 表示磨きのため要求追加なし
 - Function / command / DTO: [55-ui-csv-import.md](../function-design/55-ui-csv-import.md) §55.2 UI-07-D13（L176-189）/ UI-07-D14（L191-195）、[61-ui-receiving.md](../function-design/61-ui-receiving.md) §61.5 UI-02-D15（L118）、[78-ui-supplier-management.md](../function-design/78-ui-supplier-management.md) §78.6 / §78.7（L110 完了通知）、[65-inventory-record-traceability.md](../function-design/65-inventory-record-traceability.md) §65.6.1（L134 意図的乖離 — 非接触の根拠）、[75-ui-integrity-check.md](../function-design/75-ui-integrity-check.md)、[52-ui-shared-layout.md](../function-design/52-ui-shared-layout.md) §52.3
-- Screen / UI: `docs/SCREEN_DESIGN.md` L263 / L283 / L417 / L419（先頭スクロール既存パターン）・L34 / L62 / L426（在庫整合性検証）、`docs/design-system/README.md`
+- Screen / UI: `docs/SCREEN_DESIGN.md` L263 / L283 / L417 / L419（先頭スクロール既存パターン）・L42 / L62 / L426（在庫整合性検証）、`docs/design-system/README.md`
 - Decision log / ADR: D-056（Opus role — 本編成の遵守対象）、D-062（Plan Reviewer vendor 規則の適用判定）、manual §2 / §3 / §5.4 / §5.6
 
 ## Required Design Artifacts
@@ -140,7 +141,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | マスタ原価表示の正確性 | 61 §61.5 + Scope 8(a) 追記 | — | doc は更新後反映を未規定 → 追記で契約化し drift 防止 | Scope 5(a) | T5 |
 | 統合との通知対称性 | 78 §78.7 L110（統合の完了通知規定）+ Scope 8(b) 追記 | — | 改名非通知は現行 doc 適合だが、owner 所感の非対称解消には §78.6 追記が正道（無断実装は doc-code drift） | Scope 6 | T6 |
 | 先頭スクロール既存パターン | SCREEN_DESIGN L263/283/417/419 + Scope 8(c) 追記 | — | 4 画面既存契約の hub への水平展開。hub 節のみ規定欠落だった | Scope 7(b) | T8 |
-| 名称の doc-code 一致 | 75 doc 見出し / SCREEN_DESIGN L34・62・426 / 52 §52.3 | — | doc 正本は「(在庫)整合性検証」で一貫、PageHeader「在庫整合性チェック」のみ逸脱 → 実装側を doc へ寄せる（doc 側を変える案は 3 doc + D1-D10 表現の広域改訂になり不採用） | Scope 9 | T10 |
+| 名称の doc-code 一致 | 75 doc 見出し / SCREEN_DESIGN L42・62・426 / 52 §52.3 | — | doc 正本は「(在庫)整合性検証」で一貫、PageHeader「在庫整合性チェック」のみ逸脱 → 実装側を doc へ寄せる（doc 側を変える案は 3 doc + D1-D10 表現の広域改訂になり不採用） | Scope 9 | T10 |
 | §65.6.1 意図的乖離の非接触 | 65 §65.6.1 L134 | PR #13 設計 | 状態表現統一は本 batch 非対象（Non-scope 明記） | — | 既存 test 凍結 |
 
 ## Design Intent Audit
@@ -199,7 +200,7 @@ R2 のため必須ではないが、契約接触点を明示する（磨きが�
 | 61 §61.5 追記: 更新成功後のマスタ原価反映 | Scope 5(a) | T5（更新成功 → 新値 render） | L3 視認 |
 | footer 状態対応文言 | Scope 5(b) | T5（全行処理済みで「閉じる」系） | L3 視認 |
 | 78 §78.6 追記: 改名完了通知（§78.7 と対称） | Scope 6 | T6（toast.success 呼出し assert） | L3 視認 |
-| 取消成功通知の視認性 | Scope 7(a) | T7（改善形確定後に oracle 具体化 — Writer 提案 + Opus round で確定し gated Amendment 不要の範囲なら Matrix 追記のみ） | L3 視認 |
+| 取消成功通知の視認性 | Scope 7(a) | T7（改善形確定後に oracle 具体化 — 確定時は**無条件で gated Amendment として Amendments 行へ SHA 記録**する。Plan Gate 後の Matrix 変更に「軽微なら記録不要」の経路は存在しない — Plan Review round 1 P1-2） | L3 視認 |
 | SCREEN_DESIGN 追記: hub 先頭スクロール | Scope 7(b) | T8（rollback 完了後 scroll 呼出し assert） | L3 視認 |
 | ボタン行 flex パターン統一 | Scope 1 | T1（wrapper 存在 or snapshot 級 assert、形骸化しない範囲で） | L3 視認 |
 | 名称 doc-code 一致（在庫整合性検証） | Scope 9 | T10 + AC5（rg 全滅検査） | L3 視認 |
@@ -264,3 +265,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review rally 記録（2026-08-29、append-only）
+
+- round 1（Claude Sonnet 5 独立 fresh context、対象 = plan-first commit `e865aec`）: P1×2（AC5 の rg 対象が生成物 bindings.ts L290〈integrity_cmd.rs L10 の Rust doc comment 由来 JSDoc〉を含み AC3 / Non-scope と自己矛盾 / T7 の「gated Amendment 不要の範囲」に規約根拠なし — Plan Gate 後の packet / Matrix 変更に materiality 閾値の第三経路は存在しない）/ P2×1（Opus round が D-056・manual §3 L36 の投入基準〈難所限定・通常レビューは既存分業維持〉に未適合 — packet の編成検証が vendor 制約のみで投入基準を未検証）/ P3×3（Risk tie-break 反証の明示不足 / SCREEN_DESIGN L34→L42 誤引用 / Scope 1 の「間隔調整」表現が実態〈flex 行の新規構造化〉を過小表現）。Coordinator が P1-1 / P3-2 を rg 実測で独立裏取り（bindings.ts:290 と integrity_cmd.rs:10 の実在、L34 = 入出庫履歴行・L42 = 在庫整合性検証行）し**全 6 件 accept**。是正 = AC5 glob 除外 + 許容差分の根拠明記、T7 の無条件 gated Amendment 化（packet / Matrix 両方 sweep）、Opus 投入の例外記録 1 行（owner 座組決定 2026-08-29 起点、並走実験の簡単水準較正目的、Plan Gate 承認で最終確定）、Risk 反証 2 文、L34→L42 訂正 2 箇所、Scope 1 表現補正
