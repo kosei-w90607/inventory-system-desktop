@@ -4,7 +4,7 @@ Design Phase は PR #13（squash `6c688fe`、2026-08-29 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 2941807
@@ -323,3 +323,8 @@ Phase 遷移記録（本 final content commit に同乗）: `implementing -> loc
 - round 2 closure（別 Sonnet fresh context、対象 = 是正 commit `2941807`）: 3/3 CLOSED（T24 fixture の弁別性〈created_at_col と date_expr の取り違え検出〉、Scope 7 訂正指示と decision-log D-052 実文言の verbatim 突合、types.ts L83-91 実装との整合をそれぞれ実読確認）、旧前提 sweep hit 0、delta 起因の新規 findings 0。**P1/P2 残 0**
 - owner Plan Gate 承認（2026-08-29、介入 1/3）
 - plan-gate → plan-approved → implementing の materialize evidence: 上記 P1/P2=0、plan-first commit `1f4ba47` + rally 是正 `2941807` = Plan Commit が全実装 commit に先行（実装 commit 未作成）、Writer は Codex（発注書駆動）
+
+### review-only 一次記録（2026-08-29、append-only）
+
+- round 1（Claude Sonnet 5 独立 fresh context、対象 = `d771c88..95a8022`）: **P1 = 0** / P2×1（Scope 1 の D-d 契約〈csv の item_count / representative_item は is_voided 行を含む〉が Design Intent Trace・Contract Coverage Ledger・Test Design Matrix のいずれにも対応行を持たず、rolled_back csv の item_count / representative_item を assert する test も不在 — is_voided filter を csv 側へ誤追加する mutant が無検出で survive する negative-space gap）/ P3×1（decision-log D-052 Contract 行で C11 の root() 置換が訂正文①と追記文③の 2 箇所で重複記述 — 機能上の誤りなし）。観点 1（SQL 生成・injection 面・既存 4 種 regression）/ 2（設計契約突合）/ 4（D-052 実変更・oracle 独立転記・prefix 包含の技術的裏付け）/ 5（scope 突合 — packet 外 hunk は search.test.ts +4 行のみで options 第二 oracle への必然的随伴と適合判定）/ 6（層境界・bindings 差分ゼロ）/ 7（state-only 95a8022 の allowlist 適合）/ 8（test 品質・REQ token・90 再生成)は指摘なし
+- Coordinator 裁定: P2-1 は rg + 実読（item_count assert は disposal 既存 test L1160 と stocktake T7/T8 のみ、csv 側 0 件）で独立実証のうえ **accept** — gated Amendment 1（Ledger D-d 行 + Design Intent Trace D-d 行 + Matrix T25 / X12 追補）+ Codex relay round 2 で test 追加。P3-1 **accept** — 同 relay で重複 1 文の dedup。code fix を要するため implementing へ backtrack（本 commit）
