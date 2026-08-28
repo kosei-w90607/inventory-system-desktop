@@ -461,7 +461,7 @@ struct DisposalRecordSummary {
 
 #### list_inventory_records
 
-**関数要求**: 入出庫履歴ハブ `/inventory/records` 用に、業務記録をヘッダ単位でページング取得する。入庫・返品/交換・手動販売・廃棄/破損を実データとして返し、完成形ではCSV取込み・棚卸しへ横展開する。
+**関数要求**: 入出庫履歴ハブ `/inventory/records` 用に、業務記録をヘッダ単位でページング取得する。入庫・返品/交換・手動販売・廃棄/破損・CSV取込み・棚卸しの 6 種を実データとして返す。
 
 **シグネチャ（Tauriコマンド）**:
 ```
@@ -475,13 +475,13 @@ fn list_inventory_records(
 **入力型**: BIZ層の `InventoryRecordQuery` をそのまま使用
 ```
 struct InventoryRecordQuery {
-    record_type: Option<String>,      // None | "all" | "receiving_record" | "return_record" | "manual_sale" | "disposal_record"
+    record_type: Option<String>,      // None | "all" | "receiving_record" | "return_record" | "manual_sale" | "disposal_record" | "csv_import" | "stocktake"
     date_from: Option<String>,        // YYYY-MM-DD
     date_to: Option<String>,          // YYYY-MM-DD
     record_id: Option<i64>,
     product_keyword: Option<String>,  // 商品コード / JAN / 商品名
     department_id: Option<i64>,
-    status: Option<String>,           // 現行schemaでは None | "active"
+    status: Option<String>,           // None は "all" 相当 | "all" | "active" | "canceled" | "in_progress"
     page: u32,
     per_page: u32,
 }
@@ -493,7 +493,7 @@ struct InventoryRecordSummary {
     record_type: String,
     record_id: i64,
     business_date: String,
-    representative_item: String,       // 明細がない場合は "明細なし"
+    representative_item: String,       // 汎用 fallback は "明細なし"。棚卸しの差異 0 件は "差異なし"
     item_count: i64,
     status: String,
     created_at: String,
@@ -507,7 +507,7 @@ struct InventoryRecordSummary {
 3. Ok → PaginatedResult をそのまま返す
 4. Err(BizError) → CmdError に変換して返す
 
-**制約**: `record_type` が未指定または `all` の場合は対応済み4種を返す。未対応の record_type / status は BIZ 層で validation error にする。
+**制約**: `record_type` が未指定または `all` の場合は 6 種を返す。status は None を `all` とみなし、`all` / `active` / `canceled` / `in_progress` の 4 値を許容する。未対応の record_type / status は BIZ 層で validation error にする。
 
 ---
 
@@ -1021,6 +1021,8 @@ fn list_inventory_records(
     conn: &DbConnection,
     query: &InventoryRecordQuery,
 ) -> Result<PaginatedResult<InventoryRecordSummary>, BizError>
+
+// 公開シグネチャは不変。内部の record_type / status allowlist だけを 6 種・4 値へ拡張する
 
 // 業務記録詳細
 fn get_receiving_record(

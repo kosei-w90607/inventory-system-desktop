@@ -253,7 +253,7 @@ fn list_disposal_records(conn: &DbConnection, query: &ListQuery) -> Result<Pagin
 
 #### list_inventory_records
 
-**関数要求**: `/inventory/records` 用に、入庫・返品/交換・手動販売・廃棄/破損記録を業務記録ヘッダ単位で検索・ページング取得する。明細 JOIN 条件に一致する場合でも返却行は各ヘッダ 1 件に集約する。
+**関数要求**: `/inventory/records` 用に、入庫・返品/交換・手動販売・廃棄/破損・CSV取込み・棚卸し記録を業務記録ヘッダ単位で検索・ページング取得する。明細 JOIN 条件に一致する場合でも返却行は各ヘッダ 1 件に集約する。
 
 **シグネチャ**:
 ```
@@ -264,13 +264,13 @@ fn list_inventory_records(
 ```
 
 **InventoryRecordQuery構造体**:
-- record_type: Option<String>（None / "all" / "receiving_record" / "return_record" / "manual_sale" / "disposal_record"）
+- record_type: Option<String>（None / "all" / "receiving_record" / "return_record" / "manual_sale" / "disposal_record" / "csv_import" / "stocktake"）
 - date_from: Option<String>（YYYY-MM-DD）
 - date_to: Option<String>（YYYY-MM-DD）
 - record_id: Option<i64>
 - product_keyword: Option<String>（商品コード / JAN / 商品名）
 - department_id: Option<i64>
-- status: Option<String>（初期スライスは active 相当）
+- status: Option<String>（None は "all" 相当。正規化後の許容値は "all" / "active" / "canceled" / "in_progress"）
 - page: u32
 - per_page: u32
 
@@ -278,24 +278,30 @@ fn list_inventory_records(
 - record_type: String
 - record_id: i64
 - business_date: String
-- representative_item: String（明細がない場合は "明細なし"）
+- representative_item: String（汎用 fallback は "明細なし"。完了棚卸しの差異 0 件は "差異なし"、進行中棚卸しは UI で "-" 表示）
 - item_count: i64
 - status: String
 - created_at: String
 - detail_route: String
 
 **処理ステップ**:
-1. record_type / status が IO 層で未対応の場合は空ページを返す（BIZ 層の validation が通常の入口）
+1. record_type / status が IO 層で未対応の場合は空ページを返す（BIZ 層の validation が通常の入口）。status は None を `all` とみなし、`all` / `active` / `canceled` / `in_progress` の 4 値だけを許容する
 2. 対象 record_type ごとに同じ列構造の SELECT を作る
    - 入庫: `receiving_records` + `receiving_items`
    - 返品・交換: `return_records` + `return_items`
    - 手動販売: `manual_sales` + `manual_sale_items`
    - 廃棄・破損: `disposal_records` + `disposal_items`
-3. WHERE句構築: 業務日付、record_id、department_id、product_keyword を条件化する
-4. 商品条件は各明細テーブルの `EXISTS` + products JOIN で判定し、ヘッダ重複を避ける
-5. `UNION ALL` 後に COUNT(*) で total_count 取得
-6. ORDER BY business_date DESC, record_id DESC, record_type ASC
-7. LIMIT per_page OFFSET (page - 1) * per_page
+   - CSV取込み: `csv_imports` + `sale_records`。TRACE-D6 の履歴保持方針により `sale_records.is_voided=1` も `item_count` / `representative_item` に含める
+   - 棚卸し: `stocktakes` + 差異 `inventory_movements`。差異母集団は `reference_type='stocktake' AND is_voided=0` に必ず絞る
+   - `status_expr`: CSV取込みは `CASE status WHEN 'rolled_back' THEN 'canceled' ELSE 'active' END`、棚卸しは `CASE status WHEN 'completed' THEN 'active' ELSE 'in_progress' END`、既存 4 種は `'active'` 固定を継続する
+   - `date_expr`: CSV取込みは `settlement_date`、棚卸しは `DATE(COALESCE(completed_at, started_at))`。棚卸しの `DATE()` ラップは SELECT と日付範囲 WHERE の 2 箇所へ同じ式で入れ、外側 ORDER BY は `business_date` alias を継承するため変更しない
+   - `created_at_col`: CSV取込みは `imported_at`、棚卸しは `started_at`。`csv_imports` / `stocktakes` のいずれにも `created_at` 列は存在しない
+3. WHERE句構築: 業務日付、record_id、department_id、product_keyword を条件化する。日付条件は `date_expr` を式として直接 WHERE に使い、`header_alias.` を機械的に前置しない
+4. 商品条件は各明細テーブルの `EXISTS` + products JOIN で判定し、ヘッダ重複を避ける。CSV取込みは `sale_records`、棚卸しは前項の差異 movement を母集団とするため、進行中棚卸しは product_keyword / department_id に構造的に hit しない
+5. 6 種の `UNION ALL` を derived table で包み、status が `all` 以外のときは正規化済み `status` alias への WHERE を外側で 1 回だけ適用する。COUNT(*) と一覧 SELECT の双方が同じ外側 status 条件を使う
+6. `UNION ALL` 後に COUNT(*) で total_count 取得
+7. ORDER BY business_date DESC, record_id DESC, record_type ASC
+8. LIMIT per_page OFFSET (page - 1) * per_page
 
 #### get_disposal_record_detail
 
