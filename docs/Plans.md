@@ -45,7 +45,7 @@
 
 - command drift detection（`collect_commands!` / `generate_handler!` の drift detection 未導入）。合わせて repository root に残る未参照の退役 `Dockerfile` / `docker-compose.yml` は `DEV_SETUP_CHECKLIST.md` §A.1 の履歴コピーとの不一致（Rust / Node pin 含む）を確認のうえ削除または再同期を別 change で判断する。
 - TanStack Router generation settings の統一。
-- UI-09a・09b 将来設計（UI-09b の日報 coverage 表示「一部日だけ日報がある月」の取込み済み日数、SALES2-D3 で自覚的 defer、34-biz §19.4 参照。`get_monthly_sales` DTO 拡張を伴う R3）。
+- UI-09a・09b 将来設計（UI-09b の日報 coverage 表示「一部日だけ日報がある月」の取込み済み日数、SALES2-D3 で自覚的 defer〈batch A から移管〉、34-biz §19.4 参照。`get_monthly_sales` DTO 拡張を伴う R3）。
 - bindings whitespace（bindings trailing-whitespace generation の扱い）。
 - PLUスロット永続割当の恒久設計（CV17 import が メモリNo. merge のため現行再採番と衝突。[2026-07-03 packet](archive/plans/2026-07-03-post-ui08-janless-plu-target-design.md) D-6 参照）。
 - MSI 配布手順 docs 化（v1.0 gate。「次の行動」⑤と対応）。
