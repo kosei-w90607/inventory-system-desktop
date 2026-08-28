@@ -4,7 +4,7 @@
 
 ## 現在のフェーズ
 
-- 製品フェーズ: Phase 3 UI 群は PR #117 までに完了。Phase 4 は UI-11b（PR #144）/ UI-11a（PR #151/#152）/ UI-10 棚卸し（PR #159）/ UI-11c 操作ログ（PR #164）/ UI-13 整合性検証（Public PR #5）で完了。`v0.8.0-ui-daily` tag は `f44f99a`。**リリースへの道筋**: 新画面を伴う当初仕様は UI-15（PR #4、2026-08-26）で全て実装完了。①実装 PR C（入庫 cost_diffs、PR #5）②docs 実装状況棚卸し（PR #6）に続き、実コード側 stale 表記 batch（PR #7）・商品一覧 plu filter の returnTo 脱落 fix（PR #8）・棚卸し詳細 route（PR #9）・wave 6 docs 衛生 batch + failpoint 並列 race 是正（PR #10・#11、2026-08-28 完了）・6 種対称化 Design Phase（PR #13、2026-08-29）まで消化済み。残り = ③ UI backlog の表示磨き batch ④ UI 一覧の背骨 D（Lane 1〜5、完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化 → v1.0。着手順は「次の行動」で owner と選定。
+- 製品フェーズ: Phase 3 UI 群は PR #117 までに完了。Phase 4 は UI-11b（PR #144）/ UI-11a（PR #151/#152）/ UI-10 棚卸し（PR #159）/ UI-11c 操作ログ（PR #164）/ UI-13 整合性検証（Public PR #5）で完了。`v0.8.0-ui-daily` tag は `f44f99a`。**リリースへの道筋**: 新画面を伴う当初仕様は UI-15（PR #4、2026-08-26）で全て実装完了。①実装 PR C（入庫 cost_diffs、PR #5）②docs 実装状況棚卸し（PR #6）に続き、実コード側 stale 表記 batch（PR #7）・商品一覧 plu filter の returnTo 脱落 fix（PR #8）・棚卸し詳細 route（PR #9）・wave 6 docs 衛生 batch + failpoint 並列 race 是正（PR #10・#11、2026-08-28 完了）・6 種対称化（Design PR #13 + 実装 PR #14、2026-08-29）まで消化済み。残り = ③ UI backlog の表示磨き batch ④ UI 一覧の背骨 D（Lane 1〜5、完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化 → v1.0。着手順は「次の行動」で owner と選定。
 - 現在の基準: 正本 repo は `kosei-w90607/inventory-system-desktop`（2026-08-23〜24 rehome、旧 public repo `inventory-system-public` は private 化）。詳細は decision-log D-077 / [docs/PUBLIC_REPO_MIGRATION.md](PUBLIC_REPO_MIGRATION.md) を参照。
 - 2026-06-30 UI-08 前フィールド確認: 現店舗の日報主入力は `Z001` / `Z002` / `Z005`、`Z004` は PLU(商品) / 商品別トラックとして扱う。詳細は [plu-export-and-real-csv-verification.md](plu-export-and-real-csv-verification.md)。
 
@@ -24,10 +24,10 @@
 - [x] **PR #11 wave 6 lane 2: product_service failpoint の並列 test race 是正**（R2、PR #11 @ inventory-system-desktop squash merge `cec68ba`、2026-08-28）: failpoint 4 本を thread-local 化し武装 test の他 test への漏れを機構レベルで排除。証跡: [archived Packet](archive/plans/2026-08-28-failpoint-test-race.md)
 - [x] **PR #12 Plans.md dashboard 減量（第 3 回 cleanup）**（R2 docs-only、PR #12 @ inventory-system-desktop squash merge `8f8b44e`、2026-08-28）: 本 dashboard を 320 行 / 24.7 万字から 115 行へ再編。旧全文は [snapshot](archive/plans/2026-08-28-plans-dashboard-cleanup.md) へ verbatim 退避（未了 50 項目の全数残存を Final Review が 1 対 1 照合）。証跡: [archived Packet](archive/plans/2026-08-28-plans-dashboard-cleanup-packet.md)
 - [x] **PR #13 入出庫履歴 6 種対称化 Design Phase（slice 4d）**（R2 docs-only、PR #13 @ inventory-system-desktop squash merge `6c688fe`、2026-08-29）: 65/21-io/44-cmd/73-ui/55-ui の 5 doc 11 節へ 6 種横断契約（status 正規化・差異件数・検索母集団・operator 表示・専用一覧 runway 残置）を確定。証跡: [archived Packet](archive/plans/2026-08-29-inventory-records-six-symmetry-design.md)
+- [x] **PR #14 入出庫履歴 6 種対称化 実装（slice 4d）**（R3、PR #14 @ inventory-system-desktop squash merge `8ca7e78`、2026-08-29）: `listInventoryRecords` を 6 種横断へ拡張（status 正規化 3 値 + filter 4 値の WHERE 実効化 + 棚卸し差異件数 + hub UI 注記・「-」・「差異なし」+ D-052 invalidation 拡張）。owner Windows native L3 全項目 PASS。証跡: [archived Packet](archive/plans/2026-08-29-records-six-symmetry-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-29-records-six-symmetry-impl.md)
 
 ## 次の行動
 
-- [ ] **入出庫履歴 6 種対称化 実装 PR B（R3、next）**: design-first は PR #13 で完了。Plan Packet / Test Matrix は起票済み — [active Packet](plans/2026-08-29-records-six-symmetry-impl.md) / [Matrix](plans/test-matrices/2026-08-29-records-six-symmetry-impl.md)。次段は独立 Plan Review → Codex 発注。[遷移契約 sweep 記録](archive/plans/2026-08-26-transition-contract-sweep.md) と「Backlog（未了）」の入出庫履歴 runway 項目を継続参照し、「前の画面へ戻る」導線契約は別 design-first 候補のまま維持する。
 - [ ] ③ UI backlog の表示磨き batch: 着手時に owner と選定
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
@@ -70,7 +70,8 @@
 - 入庫原価差分ダイアログの UI polish 3 件（更新成功表示が本文テキストのみで視認性弱〈緑色成功 Alert との統一検討〉/ 更新成功後もカードのマスタ原価が旧値表示のままで更新済み状態との対応が曖昧 / 更新成功後も footer が「見送って閉じる」のままで完了後の操作名として紛らわしい。PR #5 L3 owner 所感 2026-08-26 起源の非阻害 P3、表示磨き batch 候補）。
 - 「前の画面へ戻る」導線契約の規範化 design-first 候補（設計未定義 gap 8 件同型: recent list 発 4 + 保存結果発 3 + 操作ログ関連記録発 1 が returnTo 未送信で無絞り込み `/inventory/records` へ fallback、ラベルと実挙動の乖離。戻り先を遷移元にするか hub 正でラベル変更かの owner 裁定要）。
 - 操作ログ関連記録の producer 0 件（74 §74.9 の link UI はあるが record_type 書込み producer が 0 件で実データ発火 0。上記戻り gap と二重 gap）。
-- 入出庫履歴の完成形 runway 復帰（65 §65.10 slice 4b の CSV 取込み一覧・横断 hub 検索 + slice 6 の CSV 出力・印刷/控えが archive-only。検索母集団差〈商品マスタ vs 4 記録明細〉の利用者説明も含め裁定。棚卸しのハブ横断検索合流を含める — owner 裁定 2026-08-27: `/inventory/records` の種別を 6 種対称化する。棚卸し詳細 route は slice 4c で実装済みのため合流は backend `listInventoryRecords` の種別拡張 + hub UI が主対象、専用一覧 `/stocktake/records` は完成形契約のまま実需発生まで runway 残置）。
+- 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
+- 入出庫履歴 hub の UI polish 5 件（PR #14 L3 owner 所感 2026-08-29 起源の非阻害 P3: 成功通知の視認性 / 復元後の先頭スクロール / 取消確認の整形 / 戻り先の検索維持〈既存「前の画面へ戻る」導線契約 design-first 候補と関連〉/ 状態表現の統一。表示磨き batch 候補として同種 polish 群と束ねる）。
 - receipt 添付の follow-up（63 §63.8: 画像表示・削除・orphan cleanup・共通添付化）。
 - 在庫詳細→取引画面の prefill（61/63/64: productCode/direction 事前入力、現行は商品再検索が必要）。
 - 一括価格改定の運用支援 3 点（77 §77.9: 新売価算出補助・複数行一括確定・改定前入力の長期保持）。
@@ -109,9 +110,9 @@
 
 ## 最近の archive
 
+- [2026-08-29 入出庫履歴 6 種対称化 実装](archive/plans/2026-08-29-records-six-symmetry-impl.md)
+- [2026-08-29 入出庫履歴 6 種対称化 Design Phase](archive/plans/2026-08-29-inventory-records-six-symmetry-design.md)
 - [2026-08-28 product_service failpoint 並列 test race 是正](archive/plans/2026-08-28-failpoint-test-race.md)
 - [2026-08-28 docs 衛生 batch](archive/plans/2026-08-28-docs-hygiene-sync.md)
 - [2026-08-27 棚卸し詳細 route 実装](archive/plans/2026-08-27-stocktake-record-detail.md)
-- [2026-08-26 商品一覧 plu filter returnTo 脱落 fix](archive/plans/2026-08-26-plu-returnto-fix.md)
-- [2026-08-26 実コード側 stale 表記 batch](archive/plans/2026-08-26-code-stale-impl-status-batch.md)
 - それ以前は `docs/archive/plans/` と GitHub PR 履歴を参照。旧 verbose dashboard の snapshot chain: [2026-08-28](archive/plans/2026-08-28-plans-dashboard-cleanup.md) / [2026-07-04](archive/plans/2026-07-04-plans-dashboard-cleanup.md) / [2026-06-06](archive/plans/2026-06-06-plans-dashboard-cleanup.md)。
