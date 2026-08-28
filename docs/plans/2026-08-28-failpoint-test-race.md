@@ -68,7 +68,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 1. **failpoint module の thread-local 化**（L120-140 相当）: `pub static X: AtomicBool` 4 本（`CREATE_PRODUCT_AFTER_INSERT` / `CREATE_PRODUCT_AFTER_MOVEMENT` / `UPDATE_PRODUCT_AFTER_PRICE_HISTORY` / `BULK_SET_PLU_TARGET_AFTER_SECOND_UPDATE`）を `thread_local!` の `Cell<bool>` へ置換する。flag 名は維持。`arm()` は `&'static LocalKey<Cell<bool>>` を受けて現 thread の flag を立て、`FailpointGuard` の `Drop` で現 thread の flag を降ろす（RAII 契約維持）。`#[cfg(test)]` gate は維持。
    - 設計根拠: 各 `#[test]` は libtest が専用 thread で実行し、BIZ 関数は同期関数（起草時実査: `pub fn create_product`、`thread::spawn` の使用は同 file に 0 hit）のため、武装 test と発火点は常に同一 thread。thread-local 化で「同一 test 内の発火」は等価のまま「他 test への漏れ」だけが構造的に消える。
    - 代替案（不採用）: `arm()` への global Mutex 導入は、武装 test 同士しか直列化できず、非武装 test が `create_product` を呼ぶ経路の race を塞げないため不採用（Plans.md backlog entry の第 2 候補「failpoint 使用 test と create_product 系 test の排他」も、対象 test の全数列挙が壊れやすい运用契約になるため不採用）。
-2. **check site の追随**（起草時実査で 6 箇所: L229 / L250 / L325 / L438〈`&&` 複合〉/ L612 相当ほか）: `failpoint::X.load(Ordering::SeqCst)` → `failpoint::X.with(|f| f.get())` 形へ置換。判定位置・エラー文言（`"failpoint: ..."`）は無改変。
+2. **check site の追随**（起草時実査で 5 箇所: L229 / L250 / L325 / L438〈`&&` 複合〉/ L612-613〈行跨ぎ〉。`rg -n "\.load\(std::sync" src-tauri/src/biz/product_service.rs` で全数確認済み）: `failpoint::X.load(Ordering::SeqCst)` → `failpoint::X.with(|f| f.get())` 形へ置換。判定位置・エラー文言（`"failpoint: ..."`）は無改変。
 3. **arm call site**（起草時実査で 5 箇所: L1900 / L1924 / L2272 / L3267 / L3660 相当）: `thread_local!` 生成の `LocalKey` static は `&failpoint::X` の参照形をそのまま受けられるため、原則 literal 無改変を維持する（変更が必要になった場合は機構置換に必然の最小差分に限る）。
 4. **race regression test の追加 1 本**: 現 thread で `arm()` を保持したまま、`std::thread::spawn` した別 thread から同 flag の非可視（未武装）を直接 assert する決定的 test。flaky の確率的再現に依存しない機序 test とする。新規 REQ token は付与しない（test infra であり要件契約ではない。既存 REQ token の削除・改変もしない）。
 
@@ -76,13 +76,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 実査で確認し、意図的に除外した同型 class（reviewed-and-excluded）:
 
-- `src-tauri/src/mnt/restore.rs` / `src-tauri/src/db/mod.rs` の failpoint 系: enum（例: `LegacyFailpoint`）を対象 instance へ引数注入する per-instance 機構で、process-global 可変状態を持たないため並列 race 非該当（起草時実査: `rg -n "AtomicBool" 両 file` hit 0）。
+- `src-tauri/src/mnt/restore.rs` / `src-tauri/src/db/mod.rs` の failpoint 系: enum（例: `LegacyFailpoint`）を対象 instance へ引数注入する per-instance 機構で、process-global 可変状態を持たないため並列 race 非該当（起草時実測: `rg -n "AtomicBool"` は restore.rs hit 0、db/mod.rs は L449/L457 の 2 hit だが test 内でその場生成される per-instance struct の field であり `static` ではない — global 武装状態に該当せず結論不変）。
 - 既存 rollback test の期待値・assert の変更（機構置換に必然の行以外は無改変）。
 - CI / local-ci script・test 並列度の変更。
 
 ## Acceptance Criteria
 
-- AC-1: `rg -c "AtomicBool" src-tauri/src/biz/product_service.rs` が hit 0（機構置換の完了確認。起草時 6 hit）。
+- AC-1: `rg -c "AtomicBool" src-tauri/src/biz/product_service.rs` が hit 0（機構置換の完了確認。起草時実測 7 hit = use 文 1 + static 宣言 4 + struct field 1 + fn 引数 1）。
 - AC-2: `rg -F -c 'thread_local!' src-tauri/src/biz/product_service.rs` ≥ 1、かつ `rg -F -c 'LocalKey' src-tauri/src/biz/product_service.rs` ≥ 1。
 - AC-3: 追加した race regression test（別 thread からの非可視 assert）が green。test 名を PR body に記録する。
 - AC-4: 既存 failpoint 使用 test（arm 5 call site を含む test）の assert・期待値が無改変で green（`git diff` 上、既存 test の変更が機構置換に必然の行に限られることを確認）。
@@ -162,7 +162,7 @@ R2 簡易版:
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
 | 武装の他 thread 非可視（race 構造排除） | failpoint module thread-local 化 | AC-3 race regression test | non-scope |
-| 同一 thread 発火の等価性（rollback 検証力維持） | check site 6 箇所の置換 | 既存 rollback test 無改変 green（AC-4） | non-scope |
+| 同一 thread 発火の等価性（rollback 検証力維持） | check site 5 箇所の置換 | 既存 rollback test 無改変 green（AC-4） | non-scope |
 | RAII 自動 reset（guard Drop） | `FailpointGuard` | 既存 test の連続実行（AC-5） | non-scope |
 
 ## Test Plan
