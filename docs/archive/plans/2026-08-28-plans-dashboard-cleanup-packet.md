@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 34041e0

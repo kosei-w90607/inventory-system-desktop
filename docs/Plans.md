@@ -22,13 +22,13 @@
 - [x] **PR #9 棚卸し詳細 route + `get_stocktake_record`**（R3、PR #9 @ inventory-system-desktop merge `c5efc24`、2026-08-27）: `/stocktake/records/$stocktakeId` 詳細 Page を実装し、在庫変動履歴「棚卸し #n」link の 404 を解消。証跡: [archived Packet](archive/plans/2026-08-27-stocktake-record-detail.md) / [Matrix](archive/plans/test-matrices/2026-08-27-stocktake-record-detail.md)
 - [x] **PR #10 wave 6 lane 1: docs 衛生 batch**（R2、PR #10 @ inventory-system-desktop squash merge `42b6679`、2026-08-28）: 74-ui の stocktake 除外理由同期 + fresh checkout gate 前提明記。証跡: [archived Packet](archive/plans/2026-08-28-docs-hygiene-sync.md)
 - [x] **PR #11 wave 6 lane 2: product_service failpoint の並列 test race 是正**（R2、PR #11 @ inventory-system-desktop squash merge `cec68ba`、2026-08-28）: failpoint 4 本を thread-local 化し武装 test の他 test への漏れを機構レベルで排除。証跡: [archived Packet](archive/plans/2026-08-28-failpoint-test-race.md)
+- [x] **PR #12 Plans.md dashboard 減量（第 3 回 cleanup）**（R2 docs-only、PR #12 @ inventory-system-desktop squash merge `8f8b44e`、2026-08-28）: 本 dashboard を 320 行 / 24.7 万字から 115 行へ再編。旧全文は [snapshot](archive/plans/2026-08-28-plans-dashboard-cleanup.md) へ verbatim 退避（未了 50 項目の全数残存を Final Review が 1 対 1 照合）。証跡: [archived Packet](archive/plans/2026-08-28-plans-dashboard-cleanup-packet.md)
 
 ## 次の行動
 
 - [ ] ③ UI backlog の表示磨き batch: 着手時に owner と選定
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
-- [ ] **Plans.md dashboard 減量（第 3 回 cleanup、R2 docs-only、owner 承認済み方針 2026-08-28）**: 完了済み verbose 履歴（約 12 万字規模）を snapshot chain へ verbatim 退避し、dashboard を未了事項 + 直近文脈のみへ再編する。backlog 巨大セル（9,585 字）は「Backlog（未了）」節の 1 項目 1 bullet へ分解、「次の行動」は未来形専用へ、Wave Registry は圧縮保持。packet: [docs/plans/2026-08-28-plans-dashboard-cleanup.md](plans/2026-08-28-plans-dashboard-cleanup.md)
 
 ### Wave Registry
 
