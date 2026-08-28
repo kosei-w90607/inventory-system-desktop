@@ -44,7 +44,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- Plans.md が Artifact Map の規定（「現在のフェーズ、進行中の作業、ブロッカー、次の行動のみ。完了済みの詳細履歴は archive に移す」）に再適合する — 完了済み verbose 履歴が snapshot file へ verbatim 退避され、dashboard には未了事項と直近文脈のみが残る。
+- Plans.md が DEV_WORKFLOW Artifact Map の規定（「Current phase, active work, blockers, next actions only.」）と Plans.md 自身の冒頭 tagline（「完了済みの詳細履歴は archive に移す」）に再適合する — 完了済み verbose 履歴が snapshot file へ verbatim 退避され、dashboard には未了事項と直近文脈のみが残る。
 - 退避は情報損失ゼロ（snapshot file に旧 Plans.md 全文を fenced block で保存し、既存 snapshot chain へ Predecessor link で連結）。
 
 ### 失敗定義
@@ -73,9 +73,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 2. `## 現在のフェーズ`: 現況へ更新 — (a) 進捗を wave 6 完走（2026-08-28）まで反映し、残り = ③ 表示磨き batch ④ UI 一覧の背骨 D ⑤ go-live 検証 + MSI docs 化 → v1.0 の骨子は不変のまま記述を現在時点へ揃える。(b) 「現在の基準」に 2026-08-23〜24 の repository rehome（正本 = `kosei-w90607/inventory-system-desktop`、旧 public repo は private 化。詳細は D-077 / PUBLIC_REPO_MIGRATION.md）を反映する。
 3. `## 残作業分類`: 表は維持するが、backlog 行のセル内容（旧 L24、9,585 字）を「下記『Backlog（未了）』節を参照」の 1 行に置換（最長行問題の根治。grey zone 1 の裁定 = セル → 節分解）。
-4. `## 直近の完了`: 2026-08-26 以降の完了 entry（PR #7 / #8 / #9 / #10 / #11、wave 6 の 2 entry を含む）のみを各 1〜3 行の要約 + archived packet link で残す。それ以前の `- [x]` 約 120 entry（進行中節 + 次の行動節の合算）は dashboard から除去（snapshot に全文保存済み）。
+4. `## 直近の完了`: 完了日 2026-08-26 以降の entry のみを各 1〜3 行の要約 + archived packet link で残す。日付基準で該当するのは PR #4（取引先管理実装）/ #5（cost_diffs）/ #6（docs 棚卸し）/ #7（stale 表記 batch）/ #8（plu returnTo fix）/ #9（棚卸し詳細 route）/ #10 / #11（wave 6 両 lane）の 8 entry（起草時実査、日付基準が正で列挙はその全数転記）。それ以前の `- [x]` entry（進行中節 + 次の行動節の合算）は dashboard から除去（snapshot に全文保存済み）。
 5. `## 次の行動`: 本来の未来形専用へ再編（grey zone 2 の裁定）— リリースへの道筋 残り ③④⑤ の各 1 bullet（着手時は owner と選定、の現行方針を維持）+ 本 packet の active link（`- [ ]`、closeout で完了化）。
-6. `## Backlog（未了）`: 旧 L24 セルの未了 32 項目と旧「後回し Backlog の参照先」節の未了分を 1 項目 1 bullet へ統合（grey zone 4 の裁定 = 節へ一本化。同一 topic の重複は 1 bullet に統合し、両記述の情報は losslessly 併合。項目本文は原文を尊重し要約で意味を削らない）。完了マーカー付き項目は移さない（snapshot 保存で足りる）。
+6. `## Backlog（未了）`: 旧 L24 セルの未了 32 項目と旧「後回し Backlog の参照先」節の未了分を 1 項目 1 bullet へ統合（grey zone 4 の裁定 = 節へ一本化。同一 topic の重複は 1 bullet に統合し、両記述の情報は losslessly 併合。項目本文は原文を尊重し要約で意味を削らない）。完了マーカー付き項目は移さない（snapshot 保存で足りる）。例外 1 件: 完了済み item「PK 系 checker gap」内に入れ子で残置されている未解決注記「PK4 の section 抽出が `###` 小見出しで打ち切られ `### Wave Registry` 配下 link が検査対象外になる問題（優先度は owner 判断）」は、Backlog（未了）節の**独立 bullet として起こして残す**（Wave Registry 節末尾の同内容の観測行は圧縮時に除去してよい — 写し先を本 bullet に一本化）。
 7. `### Wave Registry`（次の行動 節配下、現行位置維持）: 形式行を維持し、wave 1〜6 を各 1 行（PR 番号 + merge SHA + archived packet link）へ圧縮 + 「現在 active wave なし」を明記（grey zone 3 の裁定 = PK4 経路を保った圧縮保持）。
 8. `## ブロッカー` / `## 注意リスト`: 無改変。
 9. `## 最近の archive`: 直近 5 件 + 「それ以前は `docs/archive/plans/` と GitHub PR 履歴を参照」の index 案内へ圧縮。
@@ -99,7 +99,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - AC-2: `wc -l docs/Plans.md` ≤ 140（設計値。起草時 320 行）。
 - AC-3: `awk '{print length}' docs/Plans.md | sort -rn | head -1` ≤ 3000（設計値。起草時 9,585 字。backlog 1 項目 1 bullet 化の機械 oracle）。
 - AC-4: snapshot file が `rg -F -c 'Predecessor snapshot' docs/archive/plans/2026-08-28-plans-dashboard-cleanup.md` ≥ 1、かつ旧 Plans.md 全文の fenced block を含む（行数照合: fenced block 内の行数 = 退避時点の Plans.md 実行数と一致）。
-- AC-5: 未了 backlog の残存 spot 5 項目が新 Plans.md に各 ≥ 1 hit — `MSI 配布手順` / `PLUスロット永続割当` / `「前の画面へ戻る」導線契約` / `入出庫履歴の完成形 runway 復帰` / `shortcuts の retroactive unit test`（`rg -F -c` で各確認）。
+- AC-5: 未了 backlog の残存 spot 5 項目が新 Plans.md の **`## Backlog（未了）` 節の抽出内**（`awk` 等で同節のみ切り出した範囲）で各 ≥ 1 hit — `MSI 配布手順` / `PLUスロット永続割当` / `「前の画面へ戻る」導線契約` / `入出庫履歴の完成形 runway 復帰` / `shortcuts の retroactive unit test`。（節限定にする理由: `MSI 配布手順` 等は KEEP 対象の他節にも出現し、全文検索では移植漏れを検出できない — Plan Review round 1 P2）
 - AC-6: 除去済み verbose の消滅 spot 3 件が 0 hit — `rg -F -c 'describeError' docs/Plans.md` = 0、`rg -F -c 'useBlocker' docs/Plans.md` = 0、`rg -F -c 'JAN 専用欄の共通正規化' docs/Plans.md` = 0。
 - AC-7: Wave Registry に形式行 + wave 1〜6 の圧縮行 6 本 + 「active wave なし」記述が存在（`rg -c "wave [1-6]" docs/Plans.md` ≥ 6）。
 - AC-8: 本 packet への link が「次の行動」節内に存在（PK4。closeout まで維持）。
