@@ -1385,6 +1385,54 @@ mod tests {
     }
 
     #[test]
+    fn test_list_inventory_records_req206_csv_item_count_includes_voided() {
+        // REQ-206 / D-d: rollback後もvoided明細を件数・代表商品へ含める
+        let (_dir, conn) = setup_test_db();
+        let import_id = seed_csv_import(
+            &conn,
+            "rolled_back",
+            "2026-08-03",
+            "2026-08-03T10:00:00",
+            "CSV-A-VOIDED",
+            true,
+        );
+        conn.execute(
+            "UPDATE products SET name = '取消済みCSV商品' WHERE product_code = 'CSV-A-VOIDED'",
+            [],
+        )
+        .unwrap();
+        seed_product(&conn, "CSV-Z-ACTIVE");
+        conn.execute(
+            "UPDATE products SET name = '有効CSV商品' WHERE product_code = 'CSV-Z-ACTIVE'",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO sale_records
+             (csv_import_id, product_code, sale_date, quantity, amount, source, source_line_no, is_voided, created_at)
+             VALUES (?1, 'CSV-Z-ACTIVE', '2026-08-03', 1, 500, 'auto', 2, 0, '2026-08-03T10:00:00')",
+            rusqlite::params![import_id],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE csv_imports SET total_items = 2 WHERE id = ?1",
+            rusqlite::params![import_id],
+        )
+        .unwrap();
+
+        let result = list_inventory_records(&conn, &inventory_query("csv_import")).unwrap();
+        let record = result
+            .items
+            .iter()
+            .find(|row| row.record_id == import_id)
+            .unwrap();
+
+        assert_eq!(record.item_count, 2);
+        assert_eq!(record.representative_item, "取消済みCSV商品");
+        assert_ne!(record.representative_item, "明細なし");
+    }
+
+    #[test]
     fn test_list_inventory_records_req206_filter_active_excludes() {
         // REQ-206 / 65 §65.4.1: 外側 status WHERE は data/count の双方に効く
         let (_dir, conn) = setup_test_db();
