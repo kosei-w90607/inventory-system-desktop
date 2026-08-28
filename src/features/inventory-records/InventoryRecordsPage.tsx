@@ -260,6 +260,9 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             </select>
           </div>
         </div>
+        <p className="text-sm text-muted-foreground">
+          商品・部門での絞り込みは、CSV取込みでは取込み明細、棚卸しでは差異のあった商品が対象です。
+        </p>
       </section>
 
       {recordsQuery.isLoading ? (
@@ -305,33 +308,44 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recordsQuery.data.items.map((record) => (
-                <TableRow key={`${record.record_type}-${String(record.record_id)}`}>
-                  <TableCell>{formatRecordType(record.record_type)}</TableCell>
-                  <TableCell className="font-mono tabular-nums">
-                    #{String(record.record_id)}
-                  </TableCell>
-                  <TableCell>{record.business_date}</TableCell>
-                  <TableCell className="min-w-[12rem] whitespace-normal">
-                    {record.representative_item}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{record.item_count}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{formatRecordStatus(record.status)}</Badge>
-                  </TableCell>
-                  <TableCell className="font-mono tabular-nums">
-                    {formatDateTime(record.created_at)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild variant="outline" size="sm">
-                      <Link {...buildDetailLinkProps(record.detail_route, returnTo)}>
-                        <Eye aria-hidden="true" />
-                        詳細を見る
-                      </Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {recordsQuery.data.items.map((record) => {
+                const isInProgressStocktake =
+                  record.record_type === "stocktake" && record.status === "in_progress";
+                const representativeItem = isInProgressStocktake
+                  ? "-"
+                  : record.record_type === "stocktake" && record.item_count === 0
+                    ? "差異なし"
+                    : record.representative_item;
+                return (
+                  <TableRow key={`${record.record_type}-${String(record.record_id)}`}>
+                    <TableCell>{formatRecordType(record.record_type)}</TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      #{String(record.record_id)}
+                    </TableCell>
+                    <TableCell>{record.business_date}</TableCell>
+                    <TableCell className="min-w-[12rem] whitespace-normal">
+                      {representativeItem}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {isInProgressStocktake ? "-" : record.item_count}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{formatRecordStatus(record.status)}</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {formatDateTime(record.created_at)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm">
+                        <Link {...buildDetailLinkProps(record.detail_route, returnTo)}>
+                          <Eye aria-hidden="true" />
+                          詳細を見る
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           <ProductPagination

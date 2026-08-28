@@ -239,7 +239,7 @@ pub fn list_disposal_records(
 /// 入出庫履歴ハブ用に業務記録をヘッダ単位で取得する。
 ///
 /// 65-inventory-record-traceability.md §65.4 / TRACE-D1
-/// 入庫 / 返品・交換 / 手動販売 / 廃棄・破損を横断して返す。
+/// 入庫 / 返品・交換 / 手動販売 / 廃棄・破損 / CSV取込み / 棚卸しを横断して返す。
 pub fn list_inventory_records(
     conn: &DbConnection,
     query: &InventoryRecordQuery,
@@ -252,7 +252,10 @@ pub fn list_inventory_records(
     };
     let (limit, offset) = validate_and_offset(&list_query)?;
 
-    if !matches!(query.status.as_deref(), None | Some("all") | Some("active")) {
+    if !matches!(
+        query.status.as_deref(),
+        None | Some("all") | Some("active") | Some("canceled") | Some("in_progress")
+    ) {
         return Ok(PaginatedResult {
             items: Vec::new(),
             total_count: 0,
@@ -270,6 +273,11 @@ pub fn list_inventory_records(
         item_fk_col: &'static str,
         date_col: &'static str,
         route_prefix: &'static str,
+        status_expr: Option<&'static str>,
+        item_count_expr: Option<&'static str>,
+        date_expr: Option<&'static str>,
+        created_at_col: Option<&'static str>,
+        filter_item_extra_where: &'static str,
     }
 
     const SPECS: &[RecordSpec] = &[
@@ -282,6 +290,11 @@ pub fn list_inventory_records(
             item_fk_col: "receiving_record_id",
             date_col: "receiving_date",
             route_prefix: "/inventory/receiving/records",
+            status_expr: None,
+            item_count_expr: None,
+            date_expr: None,
+            created_at_col: None,
+            filter_item_extra_where: "",
         },
         RecordSpec {
             record_type: "return_record",
@@ -292,6 +305,11 @@ pub fn list_inventory_records(
             item_fk_col: "return_record_id",
             date_col: "return_date",
             route_prefix: "/inventory/return/records",
+            status_expr: None,
+            item_count_expr: None,
+            date_expr: None,
+            created_at_col: None,
+            filter_item_extra_where: "",
         },
         RecordSpec {
             record_type: "manual_sale",
@@ -302,6 +320,11 @@ pub fn list_inventory_records(
             item_fk_col: "manual_sale_id",
             date_col: "sale_date",
             route_prefix: "/inventory/manual-sale/records",
+            status_expr: None,
+            item_count_expr: None,
+            date_expr: None,
+            created_at_col: None,
+            filter_item_extra_where: "",
         },
         RecordSpec {
             record_type: "disposal_record",
@@ -312,6 +335,53 @@ pub fn list_inventory_records(
             item_fk_col: "disposal_record_id",
             date_col: "disposal_date",
             route_prefix: "/inventory/disposal/records",
+            status_expr: None,
+            item_count_expr: None,
+            date_expr: None,
+            created_at_col: None,
+            filter_item_extra_where: "",
+        },
+        RecordSpec {
+            record_type: "csv_import",
+            header_table: "csv_imports",
+            header_alias: "ci",
+            item_table: "sale_records",
+            item_alias_prefix: "sr",
+            item_fk_col: "csv_import_id",
+            date_col: "settlement_date",
+            route_prefix: "/csv-import/records",
+            status_expr: Some(
+                "CASE {header_alias}.status WHEN 'rolled_back' THEN 'canceled' ELSE 'active' END",
+            ),
+            item_count_expr: None,
+            date_expr: Some("{header_alias}.settlement_date"),
+            created_at_col: Some("imported_at"),
+            filter_item_extra_where: "",
+        },
+        RecordSpec {
+            record_type: "stocktake",
+            header_table: "stocktakes",
+            header_alias: "st",
+            item_table: "inventory_movements",
+            item_alias_prefix: "im",
+            item_fk_col: "reference_id",
+            date_col: "completed_at",
+            route_prefix: "/stocktake/records",
+            status_expr: Some(
+                "CASE {header_alias}.status WHEN 'completed' THEN 'active' ELSE 'in_progress' END",
+            ),
+            item_count_expr: Some(
+                "(SELECT COUNT(*) FROM inventory_movements {item_alias}_count
+                  WHERE {item_alias}_count.reference_id = {header_alias}.id
+                    AND {item_alias}_count.reference_type = 'stocktake'
+                    AND {item_alias}_count.is_voided = 0)",
+            ),
+            date_expr: Some(
+                "DATE(COALESCE({header_alias}.completed_at, {header_alias}.started_at))",
+            ),
+            created_at_col: Some("started_at"),
+            filter_item_extra_where:
+                " AND {item_alias}.reference_type = 'stocktake' AND {item_alias}.is_voided = 0",
         },
     ];
 
@@ -337,23 +407,26 @@ pub fn list_inventory_records(
 
     for spec in selected_specs {
         let mut where_clauses = Vec::new();
+        let date_expr = spec
+            .date_expr
+            .map(|expr| expr.replace("{header_alias}", spec.header_alias))
+            .unwrap_or_else(|| format!("{}.{}", spec.header_alias, spec.date_col));
+        let status_expr = spec
+            .status_expr
+            .map(|expr| expr.replace("{header_alias}", spec.header_alias))
+            .unwrap_or_else(|| "'active'".to_string());
+        let created_at_col = spec.created_at_col.unwrap_or("created_at");
+        let extra_where = |item_alias: &str| {
+            spec.filter_item_extra_where
+                .replace("{item_alias}", item_alias)
+        };
 
         if let Some(ref from) = query.date_from {
-            where_clauses.push(format!(
-                "{}.{} >= ?{}",
-                spec.header_alias,
-                spec.date_col,
-                params.len() + 1
-            ));
+            where_clauses.push(format!("{} >= ?{}", date_expr, params.len() + 1));
             params.push(Box::new(from.clone()));
         }
         if let Some(ref to) = query.date_to {
-            where_clauses.push(format!(
-                "{}.{} <= ?{}",
-                spec.header_alias,
-                spec.date_col,
-                params.len() + 1
-            ));
+            where_clauses.push(format!("{} <= ?{}", date_expr, params.len() + 1));
             params.push(Box::new(to.clone()));
         }
         if let Some(record_id) = query.record_id {
@@ -361,18 +434,21 @@ pub fn list_inventory_records(
             params.push(Box::new(record_id));
         }
         if let Some(department_id) = query.department_id {
+            let item_alias = format!("{}_dept", spec.item_alias_prefix);
             where_clauses.push(format!(
                 "EXISTS (
                     SELECT 1
                     FROM {item_table} {item_alias}_dept
                     JOIN products p_dept ON p_dept.product_code = {item_alias}_dept.product_code
                     WHERE {item_alias}_dept.{item_fk_col} = {header_alias}.id
+                      {filter_item_extra_where}
                       AND p_dept.department_id = ?{param_index}
                 )",
                 item_table = spec.item_table,
                 item_alias = spec.item_alias_prefix,
                 item_fk_col = spec.item_fk_col,
                 header_alias = spec.header_alias,
+                filter_item_extra_where = extra_where(&item_alias),
                 param_index = params.len() + 1
             ));
             params.push(Box::new(department_id));
@@ -380,12 +456,14 @@ pub fn list_inventory_records(
         if let Some(ref keyword) = query.product_keyword {
             let trimmed = keyword.trim();
             if !trimmed.is_empty() {
+                let item_alias = format!("{}_kw", spec.item_alias_prefix);
                 where_clauses.push(format!(
                     "EXISTS (
                         SELECT 1
                         FROM {item_table} {item_alias}_kw
                         JOIN products p_kw ON p_kw.product_code = {item_alias}_kw.product_code
                         WHERE {item_alias}_kw.{item_fk_col} = {header_alias}.id
+                          {filter_item_extra_where}
                           AND (
                             p_kw.product_code LIKE ?{param_index}
                             OR p_kw.name LIKE ?{param_index}
@@ -396,6 +474,7 @@ pub fn list_inventory_records(
                     item_alias = spec.item_alias_prefix,
                     item_fk_col = spec.item_fk_col,
                     header_alias = spec.header_alias,
+                    filter_item_extra_where = extra_where(&item_alias),
                     param_index = params.len() + 1
                 ));
                 params.push(Box::new(format!("%{}%", trimmed)));
@@ -408,38 +487,61 @@ pub fn list_inventory_records(
             format!("WHERE {}", where_clauses.join(" AND "))
         };
 
+        let representative_alias = format!("{}_rep", spec.item_alias_prefix);
+        // filter / representative / item_count は同じ明細母集団を表す。棚卸しでは
+        // 多態FK衝突を避ける reference_type/is_voided 条件を意図的に重複保持する。
+        let representative_extra_where = extra_where(&representative_alias);
+        let item_count_expr = spec
+            .item_count_expr
+            .map(|expr| {
+                expr.replace("{header_alias}", spec.header_alias)
+                    .replace("{item_alias}", spec.item_alias_prefix)
+            })
+            .unwrap_or_else(|| {
+                format!(
+                    "(SELECT COUNT(*)
+                      FROM {item_table} {item_alias}_count
+                      WHERE {item_alias}_count.{item_fk_col} = {header_alias}.id)",
+                    item_table = spec.item_table,
+                    item_alias = spec.item_alias_prefix,
+                    item_fk_col = spec.item_fk_col,
+                    header_alias = spec.header_alias,
+                )
+            });
+
         select_sqls.push(format!(
             "SELECT
                 '{record_type}' AS record_type,
                 {header_alias}.id AS record_id,
-                {header_alias}.{date_col} AS business_date,
+                {date_expr} AS business_date,
                 COALESCE(
                     (
                         SELECT p.name
                         FROM {item_table} {item_alias}_rep
                         JOIN products p ON p.product_code = {item_alias}_rep.product_code
                         WHERE {item_alias}_rep.{item_fk_col} = {header_alias}.id
+                          {representative_extra_where}
                         ORDER BY p.product_code ASC
                         LIMIT 1
                     ),
                     '明細なし'
                 ) AS representative_item,
-                (
-                    SELECT COUNT(*)
-                    FROM {item_table} {item_alias}_count
-                    WHERE {item_alias}_count.{item_fk_col} = {header_alias}.id
-                ) AS item_count,
-                'active' AS status,
-                {header_alias}.created_at AS created_at,
+                {item_count_expr} AS item_count,
+                {status_expr} AS status,
+                {header_alias}.{created_at_col} AS created_at,
                 '{route_prefix}/' || {header_alias}.id AS detail_route
              FROM {header_table} {header_alias}
              {where_sql}",
             record_type = spec.record_type,
             header_alias = spec.header_alias,
-            date_col = spec.date_col,
+            date_expr = date_expr,
             item_table = spec.item_table,
             item_alias = spec.item_alias_prefix,
             item_fk_col = spec.item_fk_col,
+            representative_extra_where = representative_extra_where,
+            item_count_expr = item_count_expr,
+            status_expr = status_expr,
+            created_at_col = created_at_col,
             route_prefix = spec.route_prefix,
             header_table = spec.header_table,
             where_sql = where_sql,
@@ -447,7 +549,18 @@ pub fn list_inventory_records(
     }
 
     let union_sql = select_sqls.join(" UNION ALL ");
-    let count_sql = format!("SELECT COUNT(*) FROM ({}) records", union_sql);
+    let status_where_sql = match query.status.as_deref() {
+        Some(status) if status != "all" => {
+            let placeholder = params.len() + 1;
+            params.push(Box::new(status.to_string()));
+            format!("WHERE status = ?{placeholder}")
+        }
+        _ => String::new(),
+    };
+    let count_sql = format!(
+        "SELECT COUNT(*) FROM ({}) records {}",
+        union_sql, status_where_sql
+    );
     let total_count: u32 = conn.query_row(
         &count_sql,
         rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())),
@@ -458,9 +571,11 @@ pub fn list_inventory_records(
         "SELECT record_type, record_id, business_date, representative_item,
                 item_count, status, created_at, detail_route
          FROM ({}) records
+         {}
          ORDER BY business_date DESC, record_id DESC, record_type ASC
          LIMIT ?{} OFFSET ?{}",
         union_sql,
+        status_where_sql,
         params.len() + 1,
         params.len() + 2,
     );
@@ -617,6 +732,156 @@ mod tests {
     use super::*;
     use crate::db::test_support::*;
     use crate::db::DbError;
+
+    fn inventory_query(record_type: &str) -> InventoryRecordQuery {
+        InventoryRecordQuery {
+            record_type: Some(record_type.to_string()),
+            date_from: None,
+            date_to: None,
+            record_id: None,
+            product_keyword: None,
+            department_id: None,
+            status: None,
+            page: 1,
+            per_page: 100,
+        }
+    }
+
+    fn seed_csv_import(
+        conn: &DbConnection,
+        status: &str,
+        settlement_date: &str,
+        imported_at: &str,
+        product_code: &str,
+        is_voided: bool,
+    ) -> i64 {
+        seed_product(conn, product_code);
+        conn.execute(
+            "INSERT INTO csv_imports
+             (filename, settlement_date, file_hash, total_items, total_amount, skipped_count, status, imported_at)
+             VALUES (?1, ?2, ?3, 1, 500, 0, ?4, ?5)",
+            rusqlite::params![
+                format!("{product_code}.csv"),
+                settlement_date,
+                format!("hash-{product_code}"),
+                status,
+                imported_at,
+            ],
+        )
+        .unwrap();
+        let import_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO sale_records
+             (csv_import_id, product_code, sale_date, quantity, amount, source, source_line_no, is_voided, created_at)
+             VALUES (?1, ?2, ?3, 1, 500, 'auto', 1, ?4, ?5)",
+            rusqlite::params![import_id, product_code, settlement_date, is_voided, imported_at],
+        )
+        .unwrap();
+        import_id
+    }
+
+    fn seed_stocktake(
+        conn: &DbConnection,
+        status: &str,
+        started_at: &str,
+        completed_at: Option<&str>,
+    ) -> i64 {
+        conn.execute(
+            "INSERT INTO stocktakes (started_at, completed_at, status, total_cost)
+             VALUES (?1, ?2, ?3, 0)",
+            rusqlite::params![started_at, completed_at, status],
+        )
+        .unwrap();
+        conn.last_insert_rowid()
+    }
+
+    fn seed_stocktake_movement(
+        conn: &DbConnection,
+        stocktake_id: i64,
+        product_code: &str,
+        is_voided: bool,
+        created_at: &str,
+    ) {
+        conn.execute(
+            "INSERT INTO inventory_movements
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
+             VALUES (?1, 'stocktake', 1, 1, 'stocktake', ?2, '差異', ?3, ?4)",
+            rusqlite::params![product_code, stocktake_id, is_voided, created_at],
+        )
+        .unwrap();
+    }
+
+    fn seed_existing_four_records(conn: &DbConnection) {
+        for code in ["IR-RCV-X", "IR-RET-X", "IR-MS-X", "IR-DSP-X"] {
+            seed_product(conn, code);
+        }
+        conn.execute(
+            "INSERT INTO receiving_records
+             (receiving_date, note, idempotency_key, request_fingerprint, created_at)
+             VALUES ('2026-08-01', '入庫', 'six-rcv', 'fp', '2026-08-01T09:00:00')",
+            [],
+        )
+        .unwrap();
+        let id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+             VALUES (?1, 'IR-RCV-X', 1, 100)",
+            rusqlite::params![id],
+        )
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO return_records
+             (return_type, return_date, register_processed, idempotency_key, request_fingerprint, created_at)
+             VALUES ('return', '2026-08-02', 0, 'six-ret', 'fp', '2026-08-02T10:00:00')",
+            [],
+        )
+        .unwrap();
+        let id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO return_items (return_record_id, product_code, direction, quantity)
+             VALUES (?1, 'IR-RET-X', 'in', 1)",
+            rusqlite::params![id],
+        )
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO manual_sales
+             (sale_date, reason, note, idempotency_key, request_fingerprint, created_at)
+             VALUES ('2026-08-03', 'other', '手動販売', 'six-ms', 'fp', '2026-08-03T11:00:00')",
+            [],
+        )
+        .unwrap();
+        let id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO manual_sale_items (manual_sale_id, product_code, quantity, amount)
+             VALUES (?1, 'IR-MS-X', 1, 500)",
+            rusqlite::params![id],
+        )
+        .unwrap();
+
+        let id = insert_disposal_record(
+            conn,
+            &NewDisposalRecord {
+                disposal_date: "2026-08-04".to_string(),
+                idempotency_key: "six-dsp".to_string(),
+                request_fingerprint: "fp".to_string(),
+            },
+        )
+        .unwrap();
+        insert_disposal_item(
+            conn,
+            &NewDisposalItem {
+                disposal_record_id: id,
+                product_code: "IR-DSP-X".to_string(),
+                disposal_type: "damage".to_string(),
+                quantity: 1,
+                cost_price: 100,
+                reason: "破損".to_string(),
+            },
+        )
+        .unwrap();
+    }
 
     #[test]
     fn test_insert_disposal_record_req204_normal() {
@@ -1022,5 +1287,539 @@ mod tests {
             .items
             .iter()
             .any(|item| item.detail_route == format!("/inventory/disposal/records/{disposal_id}")));
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_six_types() {
+        // REQ-206 / 65 §65.10 slice 4d: 6種を業務日付降順で横断する
+        let (_dir, conn) = setup_test_db();
+        seed_existing_four_records(&conn);
+        seed_csv_import(
+            &conn,
+            "completed",
+            "2026-08-05",
+            "2026-08-05T12:00:00",
+            "IR-CSV-X",
+            false,
+        );
+        let stocktake_id = seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-06T08:00:00",
+            Some("2026-08-06T18:00:00"),
+        );
+        seed_product(&conn, "IR-ST-X");
+        seed_stocktake_movement(&conn, stocktake_id, "IR-ST-X", false, "2026-08-06T18:00:00");
+
+        let result = list_inventory_records(&conn, &inventory_query("all")).unwrap();
+
+        assert_eq!(result.total_count, 6);
+        assert_eq!(
+            result
+                .items
+                .iter()
+                .map(|row| row.record_type.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "stocktake",
+                "csv_import",
+                "disposal_record",
+                "manual_sale",
+                "return_record",
+                "receiving_record",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_status_normalization() {
+        // REQ-206 / 65 §65.6.1: CSV 3値・棚卸し2値を正規化する
+        let (_dir, conn) = setup_test_db();
+        let completed = seed_csv_import(
+            &conn,
+            "completed",
+            "2026-08-01",
+            "2026-08-01T10:00:00",
+            "CSV-COMPLETED",
+            false,
+        );
+        let partial = seed_csv_import(
+            &conn,
+            "completed_partial",
+            "2026-08-02",
+            "2026-08-02T10:00:00",
+            "CSV-PARTIAL",
+            false,
+        );
+        let rolled_back = seed_csv_import(
+            &conn,
+            "rolled_back",
+            "2026-08-03",
+            "2026-08-03T10:00:00",
+            "CSV-ROLLED",
+            true,
+        );
+        let in_progress = seed_stocktake(&conn, "in_progress", "2026-08-04T09:00:00", None);
+        let stocktake_completed = seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-05T09:00:00",
+            Some("2026-08-05T18:00:00"),
+        );
+
+        let result = list_inventory_records(&conn, &inventory_query("all")).unwrap();
+        let status_for = |record_type: &str, id: i64| {
+            result
+                .items
+                .iter()
+                .find(|row| row.record_type == record_type && row.record_id == id)
+                .map(|row| row.status.as_str())
+                .unwrap()
+        };
+
+        assert_eq!(status_for("csv_import", completed), "active");
+        assert_eq!(status_for("csv_import", partial), "active");
+        assert_eq!(status_for("csv_import", rolled_back), "canceled");
+        assert_eq!(status_for("stocktake", in_progress), "in_progress");
+        assert_eq!(status_for("stocktake", stocktake_completed), "active");
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_csv_item_count_includes_voided() {
+        // REQ-206 / D-d: rollback後もvoided明細を件数・代表商品へ含める
+        let (_dir, conn) = setup_test_db();
+        let import_id = seed_csv_import(
+            &conn,
+            "rolled_back",
+            "2026-08-03",
+            "2026-08-03T10:00:00",
+            "CSV-A-VOIDED",
+            true,
+        );
+        conn.execute(
+            "UPDATE products SET name = '取消済みCSV商品' WHERE product_code = 'CSV-A-VOIDED'",
+            [],
+        )
+        .unwrap();
+        seed_product(&conn, "CSV-Z-ACTIVE");
+        conn.execute(
+            "UPDATE products SET name = '有効CSV商品' WHERE product_code = 'CSV-Z-ACTIVE'",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO sale_records
+             (csv_import_id, product_code, sale_date, quantity, amount, source, source_line_no, is_voided, created_at)
+             VALUES (?1, 'CSV-Z-ACTIVE', '2026-08-03', 1, 500, 'auto', 2, 0, '2026-08-03T10:00:00')",
+            rusqlite::params![import_id],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE csv_imports SET total_items = 2 WHERE id = ?1",
+            rusqlite::params![import_id],
+        )
+        .unwrap();
+
+        let result = list_inventory_records(&conn, &inventory_query("csv_import")).unwrap();
+        let record = result
+            .items
+            .iter()
+            .find(|row| row.record_id == import_id)
+            .unwrap();
+
+        assert_eq!(record.item_count, 2);
+        assert_eq!(record.representative_item, "取消済みCSV商品");
+        assert_ne!(record.representative_item, "明細なし");
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_filter_active_excludes() {
+        // REQ-206 / 65 §65.4.1: 外側 status WHERE は data/count の双方に効く
+        let (_dir, conn) = setup_test_db();
+        seed_existing_four_records(&conn);
+        seed_csv_import(
+            &conn,
+            "rolled_back",
+            "2026-08-05",
+            "2026-08-05T10:00:00",
+            "CSV-CANCELED",
+            true,
+        );
+        seed_stocktake(&conn, "in_progress", "2026-08-06T09:00:00", None);
+        let mut query = inventory_query("all");
+        query.status = Some("active".to_string());
+
+        let result = list_inventory_records(&conn, &query).unwrap();
+
+        assert_eq!(result.total_count, 4);
+        assert_eq!(result.items.len(), 4);
+        assert!(result.items.iter().all(|row| row.status == "active"));
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_filter_in_progress() {
+        // REQ-206: 進行中 filter は棚卸し行を非空で返す
+        let (_dir, conn) = setup_test_db();
+        let stocktake_id = seed_stocktake(&conn, "in_progress", "2026-08-06T09:00:00", None);
+        let mut query = inventory_query("all");
+        query.status = Some("in_progress".to_string());
+
+        let result = list_inventory_records(&conn, &query).unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.items[0].record_type, "stocktake");
+        assert_eq!(result.items[0].record_id, stocktake_id);
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_filter_canceled() {
+        // REQ-206: 取消済み filter は rolled_back CSV のみを非空で返す
+        let (_dir, conn) = setup_test_db();
+        seed_existing_four_records(&conn);
+        let csv_id = seed_csv_import(
+            &conn,
+            "rolled_back",
+            "2026-08-05",
+            "2026-08-05T10:00:00",
+            "CSV-CANCELED",
+            true,
+        );
+        seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-06T09:00:00",
+            Some("2026-08-06T18:00:00"),
+        );
+        let mut query = inventory_query("all");
+        query.status = Some("canceled".to_string());
+
+        let result = list_inventory_records(&conn, &query).unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.items[0].record_type, "csv_import");
+        assert_eq!(result.items[0].record_id, csv_id);
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_status_gate_four_values() {
+        // REQ-206 / 21-io §10.5: canceled/in_progress は gate を通り未知値だけ空ページ
+        let (_dir, conn) = setup_test_db();
+        seed_csv_import(
+            &conn,
+            "rolled_back",
+            "2026-08-05",
+            "2026-08-05T10:00:00",
+            "CSV-GATE",
+            true,
+        );
+        seed_stocktake(&conn, "in_progress", "2026-08-06T09:00:00", None);
+
+        for status in ["canceled", "in_progress"] {
+            let mut query = inventory_query("all");
+            query.status = Some(status.to_string());
+            assert_eq!(
+                list_inventory_records(&conn, &query).unwrap().total_count,
+                1
+            );
+        }
+        let mut query = inventory_query("all");
+        query.status = Some("unknown_status".to_string());
+        assert_eq!(
+            list_inventory_records(&conn, &query).unwrap().total_count,
+            0
+        );
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_stocktake_item_count_diff_only() {
+        // REQ-206 / D-b: 棚卸し item_count は非void差異 movement 件数
+        let (_dir, conn) = setup_test_db();
+        let stocktake_id = seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-06T09:00:00",
+            Some("2026-08-06T18:00:00"),
+        );
+        for index in 0..5 {
+            let code = format!("ST-ITEM-{index}");
+            seed_product(&conn, &code);
+            conn.execute(
+                "INSERT INTO stocktake_items
+                 (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at)
+                 VALUES (?1, ?2, 10, 9, 100, '2026-08-06T12:00:00')",
+                rusqlite::params![stocktake_id, code],
+            )
+            .unwrap();
+        }
+        for (code, is_voided) in [
+            ("ST-ITEM-0", false),
+            ("ST-ITEM-1", false),
+            ("ST-ITEM-2", true),
+        ] {
+            seed_stocktake_movement(&conn, stocktake_id, code, is_voided, "2026-08-06T18:00:00");
+        }
+
+        let result = list_inventory_records(&conn, &inventory_query("stocktake")).unwrap();
+
+        assert_eq!(result.items[0].item_count, 2);
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_cross_type_id_collision() {
+        // REQ-206 / D-f: 同一数値IDの他種別 movement を棚卸しへ混入させない
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "AA-STOCK-OWN");
+        seed_product(&conn, "ZZ-COLLISION-GHOST");
+        conn.execute(
+            "UPDATE products SET department_id = 2 WHERE product_code = 'ZZ-COLLISION-GHOST'",
+            [],
+        )
+        .unwrap();
+        let disposal_id = insert_disposal_record(
+            &conn,
+            &NewDisposalRecord {
+                disposal_date: "2026-08-06".to_string(),
+                idempotency_key: "collision-disposal".to_string(),
+                request_fingerprint: "fp".to_string(),
+            },
+        )
+        .unwrap();
+        let stocktake_id = seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-06T09:00:00",
+            Some("2026-08-06T18:00:00"),
+        );
+        assert_eq!(disposal_id, stocktake_id);
+        seed_stocktake_movement(
+            &conn,
+            stocktake_id,
+            "AA-STOCK-OWN",
+            false,
+            "2026-08-06T18:00:00",
+        );
+        conn.execute(
+            "INSERT INTO inventory_movements
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, note, is_voided, created_at)
+             VALUES ('ZZ-COLLISION-GHOST', 'disposal', -1, 0, 'disposal_record', ?1, '別種別', 0, '2026-08-06T17:00:00')",
+            rusqlite::params![disposal_id],
+        )
+        .unwrap();
+
+        let result = list_inventory_records(&conn, &inventory_query("stocktake")).unwrap();
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.items[0].representative_item, "テスト商品");
+        assert_eq!(result.items[0].item_count, 1);
+
+        let mut own_keyword = inventory_query("stocktake");
+        own_keyword.product_keyword = Some("AA-STOCK-OWN".to_string());
+        assert_eq!(
+            list_inventory_records(&conn, &own_keyword)
+                .unwrap()
+                .total_count,
+            1
+        );
+
+        let mut ghost_keyword = inventory_query("stocktake");
+        ghost_keyword.product_keyword = Some("ZZ-COLLISION-GHOST".to_string());
+        assert_eq!(
+            list_inventory_records(&conn, &ghost_keyword)
+                .unwrap()
+                .total_count,
+            0
+        );
+
+        let mut ghost_department = inventory_query("stocktake");
+        ghost_department.department_id = Some(2);
+        assert_eq!(
+            list_inventory_records(&conn, &ghost_department)
+                .unwrap()
+                .total_count,
+            0
+        );
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_csv_business_date_settlement() {
+        // REQ-206 / D-c: CSV業務日は imported_at ではなく settlement_date
+        let (_dir, conn) = setup_test_db();
+        seed_csv_import(
+            &conn,
+            "completed",
+            "2026-08-05",
+            "2026-08-09T10:00:00",
+            "CSV-DATE",
+            false,
+        );
+        let mut settlement_query = inventory_query("csv_import");
+        settlement_query.date_from = Some("2026-08-05".to_string());
+        settlement_query.date_to = Some("2026-08-05".to_string());
+        assert_eq!(
+            list_inventory_records(&conn, &settlement_query)
+                .unwrap()
+                .total_count,
+            1
+        );
+
+        let mut imported_query = inventory_query("csv_import");
+        imported_query.date_from = Some("2026-08-09".to_string());
+        imported_query.date_to = Some("2026-08-09".to_string());
+        assert_eq!(
+            list_inventory_records(&conn, &imported_query)
+                .unwrap()
+                .total_count,
+            0
+        );
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_stocktake_date_fallback() {
+        // REQ-206 / D-c: in_progress は completed_at NULL 時に started_at 日を使う
+        let (_dir, conn) = setup_test_db();
+        seed_stocktake(&conn, "in_progress", "2026-08-06T09:30:00", None);
+        let mut query = inventory_query("stocktake");
+        query.date_from = Some("2026-08-06".to_string());
+        query.date_to = Some("2026-08-06".to_string());
+
+        let result = list_inventory_records(&conn, &query).unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.items[0].business_date, "2026-08-06");
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_stocktake_single_day_boundary() {
+        // REQ-206 / D-c: DATE() により完了日18時台も単日検索へ含める
+        let (_dir, conn) = setup_test_db();
+        seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-05T09:00:00",
+            Some("2026-08-06T18:45:00"),
+        );
+        let mut query = inventory_query("stocktake");
+        query.date_from = Some("2026-08-06".to_string());
+        query.date_to = Some("2026-08-06".to_string());
+
+        assert_eq!(
+            list_inventory_records(&conn, &query).unwrap().total_count,
+            1
+        );
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_filter_and_count_same_population() {
+        // REQ-206: keyword判定と item_count は同じ非void stocktake movement 母集団を使う
+        let (_dir, conn) = setup_test_db();
+        for code in ["POP-A", "POP-B", "POP-VOID"] {
+            seed_product(&conn, code);
+        }
+        let stocktake_id = seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-06T09:00:00",
+            Some("2026-08-06T18:00:00"),
+        );
+        seed_stocktake_movement(&conn, stocktake_id, "POP-A", false, "2026-08-06T18:00:00");
+        seed_stocktake_movement(&conn, stocktake_id, "POP-B", false, "2026-08-06T18:01:00");
+        seed_stocktake_movement(&conn, stocktake_id, "POP-VOID", true, "2026-08-06T18:02:00");
+        let mut query = inventory_query("stocktake");
+        query.product_keyword = Some("POP-B".to_string());
+
+        let result = list_inventory_records(&conn, &query).unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.items[0].item_count, 2);
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_in_progress_filter_exclusion() {
+        // REQ-206 / D-i: 進行中棚卸しは明細商品を持っても差異 movement filter には hit しない
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "INPROGRESS-TARGET");
+        let stocktake_id = seed_stocktake(&conn, "in_progress", "2026-08-06T09:00:00", None);
+        conn.execute(
+            "INSERT INTO stocktake_items
+             (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price, counted_at)
+             VALUES (?1, 'INPROGRESS-TARGET', 10, 10, 100, '2026-08-06T12:00:00')",
+            rusqlite::params![stocktake_id],
+        )
+        .unwrap();
+        assert_eq!(
+            list_inventory_records(&conn, &inventory_query("stocktake"))
+                .unwrap()
+                .total_count,
+            1
+        );
+
+        let mut keyword_query = inventory_query("stocktake");
+        keyword_query.product_keyword = Some("INPROGRESS-TARGET".to_string());
+        assert_eq!(
+            list_inventory_records(&conn, &keyword_query)
+                .unwrap()
+                .total_count,
+            0
+        );
+
+        let mut department_query = inventory_query("stocktake");
+        department_query.department_id = Some(1);
+        assert_eq!(
+            list_inventory_records(&conn, &department_query)
+                .unwrap()
+                .total_count,
+            0
+        );
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_existing_four_types_unchanged() {
+        // REQ-206: 既存4種は active・明細件数・filter 挙動を維持する
+        let (_dir, conn) = setup_test_db();
+        seed_existing_four_records(&conn);
+        let mut query = inventory_query("all");
+        query.department_id = Some(1);
+        query.status = Some("active".to_string());
+
+        let result = list_inventory_records(&conn, &query).unwrap();
+
+        assert_eq!(result.total_count, 4);
+        assert!(result.items.iter().all(|row| row.status == "active"));
+        assert!(result.items.iter().all(|row| row.item_count == 1));
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_created_at_col_mapping() {
+        // REQ-206 / 21-io §10.5: 記録日時は CSV=imported_at、棚卸し=started_at
+        let (_dir, conn) = setup_test_db();
+        let csv_id = seed_csv_import(
+            &conn,
+            "completed",
+            "2026-08-05",
+            "2026-08-09T10:15:00",
+            "CSV-CREATED",
+            false,
+        );
+        let stocktake_id = seed_stocktake(
+            &conn,
+            "completed",
+            "2026-08-01T08:30:00",
+            Some("2026-08-06T18:45:00"),
+        );
+        let result = list_inventory_records(&conn, &inventory_query("all")).unwrap();
+        let csv = result
+            .items
+            .iter()
+            .find(|row| row.record_type == "csv_import" && row.record_id == csv_id)
+            .unwrap();
+        let stocktake = result
+            .items
+            .iter()
+            .find(|row| row.record_type == "stocktake" && row.record_id == stocktake_id)
+            .unwrap();
+
+        assert_eq!(csv.created_at, "2026-08-09T10:15:00");
+        assert_ne!(csv.created_at, csv.business_date);
+        assert_eq!(stocktake.created_at, "2026-08-01T08:30:00");
+        assert_ne!(stocktake.created_at, stocktake.business_date);
     }
 }

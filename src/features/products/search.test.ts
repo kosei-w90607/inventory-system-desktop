@@ -203,10 +203,14 @@ describe("feature-owned finite search schemas", () => {
       { value: "return_record", label: "返品・交換" },
       { value: "manual_sale", label: "手動販売出庫" },
       { value: "disposal_record", label: "廃棄・破損" },
+      { value: "csv_import", label: "CSV取込み" },
+      { value: "stocktake", label: "棚卸し" },
     ]);
     expect(INVENTORY_RECORD_STATUS_OPTIONS).toEqual([
       { value: "all", label: "すべて" },
       { value: "active", label: "有効" },
+      { value: "canceled", label: "取消済み" },
+      { value: "in_progress", label: "進行中" },
     ]);
     expect(DAILY_SORT_DESCRIPTORS).toEqual([
       { value: "product_code", label: "商品コード", align: "left" },

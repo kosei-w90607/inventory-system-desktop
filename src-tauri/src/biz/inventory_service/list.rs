@@ -85,12 +85,17 @@ pub fn list_inventory_records(
             | Some("return_record")
             | Some("manual_sale")
             | Some("disposal_record")
+            | Some("csv_import")
+            | Some("stocktake")
     ) {
         return Err(BizError::ValidationFailed(
             "未対応の記録種別です".to_string(),
         ));
     }
-    if !matches!(query.status.as_deref(), None | Some("all") | Some("active")) {
+    if !matches!(
+        query.status.as_deref(),
+        None | Some("all") | Some("active") | Some("canceled") | Some("in_progress")
+    ) {
         return Err(BizError::ValidationFailed("未対応の状態です".to_string()));
     }
 
@@ -520,7 +525,7 @@ mod tests {
         // REQ-206: 未対応のrecord_typeはBIZ validationとして拒否する
         let conn = setup_db();
         let query = crate::db::disposal_repo::InventoryRecordQuery {
-            record_type: Some("csv_import".to_string()),
+            record_type: Some("unknown_type".to_string()),
             date_from: None,
             date_to: None,
             record_id: None,
@@ -534,6 +539,54 @@ mod tests {
         let err = list_inventory_records(&conn, &query).unwrap_err();
 
         assert!(matches!(err, BizError::ValidationFailed(msg) if msg.contains("記録種別")));
+    }
+
+    #[test]
+    fn test_list_inventory_records_req206_allowlist_six_types_four_statuses() {
+        // REQ-206 / 44-cmd §23.10: 値域だけを6種・4値へ拡張し未知値は拒否する
+        let conn = setup_db();
+        for record_type in ["csv_import", "stocktake"] {
+            let query = crate::db::disposal_repo::InventoryRecordQuery {
+                record_type: Some(record_type.to_string()),
+                date_from: None,
+                date_to: None,
+                record_id: None,
+                product_keyword: None,
+                department_id: None,
+                status: None,
+                page: 1,
+                per_page: 20,
+            };
+            assert!(list_inventory_records(&conn, &query).is_ok());
+        }
+        for status in ["all", "active", "canceled", "in_progress"] {
+            let query = crate::db::disposal_repo::InventoryRecordQuery {
+                record_type: Some("all".to_string()),
+                date_from: None,
+                date_to: None,
+                record_id: None,
+                product_keyword: None,
+                department_id: None,
+                status: Some(status.to_string()),
+                page: 1,
+                per_page: 20,
+            };
+            assert!(list_inventory_records(&conn, &query).is_ok());
+        }
+
+        let query = crate::db::disposal_repo::InventoryRecordQuery {
+            record_type: Some("all".to_string()),
+            date_from: None,
+            date_to: None,
+            record_id: None,
+            product_keyword: None,
+            department_id: None,
+            status: Some("unknown_status".to_string()),
+            page: 1,
+            per_page: 20,
+        };
+        let error = list_inventory_records(&conn, &query).unwrap_err();
+        assert!(matches!(error, BizError::ValidationFailed(msg) if msg.contains("状態")));
     }
 
     #[test]

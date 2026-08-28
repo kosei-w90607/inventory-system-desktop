@@ -27,7 +27,7 @@
 
 ## 次の行動
 
-- [ ] **入出庫履歴 6 種対称化 実装 PR B（R3、next）**: design-first は PR #13 で完了。次段は backend `listInventoryRecords` の種別拡張 + hub UI の Plan Packet / Test Matrix 起票と Codex 発注。[遷移契約 sweep 記録](archive/plans/2026-08-26-transition-contract-sweep.md) と「Backlog（未了）」の入出庫履歴 runway 項目を継続参照し、「前の画面へ戻る」導線契約は別 design-first 候補のまま維持する。
+- [ ] **入出庫履歴 6 種対称化 実装 PR B（R3、next）**: design-first は PR #13 で完了。Plan Packet / Test Matrix は起票済み — [active Packet](plans/2026-08-29-records-six-symmetry-impl.md) / [Matrix](plans/test-matrices/2026-08-29-records-six-symmetry-impl.md)。次段は独立 Plan Review → Codex 発注。[遷移契約 sweep 記録](archive/plans/2026-08-26-transition-contract-sweep.md) と「Backlog（未了）」の入出庫履歴 runway 項目を継続参照し、「前の画面へ戻る」導線契約は別 design-first 候補のまま維持する。
 - [ ] ③ UI backlog の表示磨き batch: 着手時に owner と選定
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
