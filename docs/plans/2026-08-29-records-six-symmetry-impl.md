@@ -4,11 +4,11 @@ Design Phase は PR #13（squash `6c688fe`、2026-08-29 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: local-verified
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 2941807
-- Amendments: none
+- Amendments: 3460133
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
@@ -330,3 +330,4 @@ Phase 遷移記録（本 final content commit に同乗）: `implementing -> loc
 
 - round 1（Claude Sonnet 5 独立 fresh context、対象 = `d771c88..95a8022`）: **P1 = 0** / P2×1（Scope 1 の D-d 契約〈csv の item_count / representative_item は is_voided 行を含む〉が Design Intent Trace・Contract Coverage Ledger・Test Design Matrix のいずれにも対応行を持たず、rolled_back csv の item_count / representative_item を assert する test も不在 — is_voided filter を csv 側へ誤追加する mutant が無検出で survive する negative-space gap）/ P3×1（decision-log D-052 Contract 行で C11 の root() 置換が訂正文①と追記文③の 2 箇所で重複記述 — 機能上の誤りなし）。観点 1（SQL 生成・injection 面・既存 4 種 regression）/ 2（設計契約突合）/ 4（D-052 実変更・oracle 独立転記・prefix 包含の技術的裏付け）/ 5（scope 突合 — packet 外 hunk は search.test.ts +4 行のみで options 第二 oracle への必然的随伴と適合判定）/ 6（層境界・bindings 差分ゼロ）/ 7（state-only 95a8022 の allowlist 適合）/ 8（test 品質・REQ token・90 再生成)は指摘なし
 - Coordinator 裁定: P2-1 は rg + 実読（実測: `rg -n "item_count" src-tauri/src/db/disposal_repo.rs` → assert 行の実測出力は L1160〈disposal 既存 test〉/ L1516・L1564〈stocktake T7 / T8〉のみで csv 種別の assert は 0 件）で独立実証のうえ **accept** — gated Amendment 1（Ledger D-d 行 + Design Intent Trace D-d 行 + Matrix T25 / X12 追補）+ Codex relay round 2 で test 追加。P3-1 **accept** — 同 relay で重複 1 文の dedup。code fix を要するため implementing へ backtrack（本 commit）
+- round 2 Writer 是正: T25 を追加し、X12 実注入で RED → 復元後 GREEN を確認。D-052 C11 記述を意味不変で dedup し、REQ-206 traceability を再生成した。L1 full は PASS / CLEAN。`implementing -> local-verified` に再遷移し、正式な Final Review と Coordinator mutation 独立再実測は引き続き未実施。
