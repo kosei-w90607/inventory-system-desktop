@@ -4,12 +4,12 @@
 
 - Phase: plan-gate
 - Risk: R2
-- Execution Mode: codex-only
+- Execution Mode: fable-window
 - Plan Commit: pending
 - Amendments: none
-- Coordinator: Codex（本 session）
+- Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（本 session）
-- Plan Reviewer: pending（Codex Writer と別 vendor の reviewer は本 session で利用不能）
+- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-29、P1/P2 = 0。P2-1 は 58c7667cfec1217e8a6ea29e739dab95f1ef0509 で是正済み）
 - Final Reviewer: pending
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -17,6 +17,8 @@
 - Human Gate: Plan Review、Ready、merge
 
 この content commit は `kickoff -> spec-check -> design -> plan-draft -> plan-gate` を materialize する。task scope / Risk は本 packet、design の必要性と出力は指定 5 source docs、packet 完備と commit は本 change を evidence とする。Plan Reviewer の独立性が未充足のため `plan-approved` へは進めない。
+
+2026-08-29: Fable window 内で Plan Review を実施（Sonnet subagent 一次 + Fable 裁定、11 節照合・実 schema 突合・P2-1 是正確認）。独立性制約（Writer = Codex ≠ Reviewer = Claude 側）を充足し、plan-approved の evidence が成立した。
 
 ## Owner Effort Budget
 
