@@ -8,7 +8,7 @@
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Fable (Claude Code)
-- Writer: Fable (Claude Code)（§3 例外適用: 2 file・数行の機械的文言同期であり、発注 relay / subagent spawn の overhead が編集実費を上回るため。独立性は Sonnet Plan Reviewer / Sonnet Final Reviewer で維持）
+- Writer: Sonnet subagent (worker, fresh context)（§3.1「投入しない場合: … docs 同期」に該当するため希少 slot を Writer に充てない。Plan Reviewer / Final Reviewer とはそれぞれ別の fresh context で独立性を維持）
 - Plan Reviewer: Sonnet subagent (independent)
 - Final Reviewer: Sonnet subagent (independent)
 - Reviewed Content HEAD: pending
@@ -44,7 +44,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- `docs/function-design/74-ui-operation-logs.md` の stocktake 除外理由 3 箇所（表 UI-11c-D7 行 / §74.9 相当 bullet / §末尾表）が、正本 65 §65.8.3（2026-08-27 改訂済み）と同型の「stocktake 系 `record_type` を書き込む producer が 0 件」理由に同期され、「詳細 route が未実装のため」という stale な理由（PR #9 の route 実装で失効）が消える。
+- `docs/function-design/74-ui-operation-logs.md` の stocktake 除外理由 3 箇所（表 UI-11c-D7 行 / §74.9 相当 bullet / §末尾表）が、正本 65 §65.8.3（2026-08-27 改訂済み）と同型の「stocktake 系 `record_type` を書き込む producer が0件」理由に同期され、「詳細 route が未実装のため」という stale な理由（PR #9 の route 実装で失効）が消える。
 - `docs/DEV_SETUP_CHECKLIST.md` に、fresh checkout / 環境再構築後は frontend gate（typecheck / lint / test）実行前に `npm run generate:routes` を明示実行する前提が 1 行明記される。
 
 ### 失敗定義
@@ -66,9 +66,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **A. 74-ui stocktake 除外理由の同期（3 箇所 + 更新履歴）**
 
-1. L57（UI-11c-D7 表 row・補足列）: 「`stocktake` は `/stocktake/records/$stocktakeId` 詳細 route が未実装のため初期 allow-list から除外し、対応する detail route 実装後に registry へ追加する。」→「`stocktake` は詳細 route（`/stocktake/records/$stocktakeId`）が実装済みだが、stocktake 系 `record_type` を書き込む producer が 0 件のため初期 allow-list からの除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて registry へ追加する。」（同 cell 内の csv_import 文と同型になる）
-2. L243（許可リスト bullet）: 「`stocktake` は同節の完成形 route 表には載っているが、対応する `$stocktakeId` 詳細 route が未実装のため、当該 route が実装されるまで許可リストから除外する。」→「`stocktake` は詳細 route（`/stocktake/records/$stocktakeId`）が実装済みだが、stocktake 系 `record_type` を書き込む producer が 0 件のため許可リストからの除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて許可リストへ追加する。」
-3. L564（§末尾表 cell）: 「`stocktake` は対応する詳細 route（`/stocktake/records/$stocktakeId`）が未実装のため除外する」→「`stocktake` は詳細 route が実装済みだが、stocktake 系 `record_type` を書き込む producer が 0 件のため除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて追加する」
+1. L57（UI-11c-D7 表 row・補足列）: 「`stocktake` は `/stocktake/records/$stocktakeId` 詳細 route が未実装のため初期 allow-list から除外し、対応する detail route 実装後に registry へ追加する。」→「`stocktake` は詳細 route（`/stocktake/records/$stocktakeId`）が実装済みだが、stocktake 系 `record_type` を書き込む producer が0件のため初期 allow-list からの除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて registry へ追加する。」（同 cell 内の csv_import 文と同型になる）
+2. L243（許可リスト bullet）: 「`stocktake` は同節の完成形 route 表には載っているが、対応する `$stocktakeId` 詳細 route が未実装のため、当該 route が実装されるまで許可リストから除外する。」→「`stocktake` は詳細 route（`/stocktake/records/$stocktakeId`）が実装済みだが、stocktake 系 `record_type` を書き込む producer が0件のため許可リストからの除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて許可リストへ追加する。」
+3. L564（§末尾表 cell）: 「`stocktake` は対応する詳細 route（`/stocktake/records/$stocktakeId`）が未実装のため除外する」→「`stocktake` は詳細 route が実装済みだが、stocktake 系 `record_type` を書き込む producer が0件のため除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて追加する」
 4. §更新履歴（L609 実在確認済み）へ日付 + 要旨 1 行を追加（PR 番号は非転記、dated 形式 — D-050 / PR #6 表記規約と同じ）。
 
 **B. DEV_SETUP_CHECKLIST fresh checkout 前提の明記（1 箇所）**
@@ -80,7 +80,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Non-scope
 
 - 65-inventory-record-traceability.md（正本側、2026-08-27 改訂済みで無改変）。
-- 74-ui の他の記述（producer 0 件の一般記述 L57 前半、csv_import 除外記述 — いずれも現況適合を起草時実査で確認済み）。
+- 74-ui の他の記述（producer 0件の一般記述 L57 前半、csv_import 除外記述 — いずれも現況適合を起草時実査で確認済み）。
 - Plans.md backlog の当該 entry 取り消し線化（closeout で実施）。
 - `.claude/` / `.codex/` / scripts / CI 側の変更。
 
@@ -89,7 +89,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 検索 oracle は自己参照回避のため検索対象を明示 path に限定する（本 packet の在る `docs/plans` を検索対象に含めない。rg の負 glob は環境既知 bug のため使わない）。
 
 - AC-1: `rg -c "未実装" docs/function-design/74-ui-operation-logs.md` が hit 0（exit 1。起草時実査で現状 hit はこの 3 行のみ）。
-- AC-2: `rg -F -c 'stocktake 系 `record_type` を書き込む producer が 0 件' docs/function-design/74-ui-operation-logs.md` ≥ 3（新文言 exact presence の対 oracle）。
+- AC-2: `rg -F -c 'stocktake 系 `record_type` を書き込む producer が0件' docs/function-design/74-ui-operation-logs.md` ≥ 3（新文言 exact presence の対 oracle）。
 - AC-3: `rg -F -c 'npm run generate:routes' docs/DEV_SETUP_CHECKLIST.md` ≥ 1（起草時実査で現状 0）。
 - AC-4: `bash scripts/doc-consistency-check.sh` PASS（ERROR 0）。
 - AC-5: 74-ui §更新履歴に日付 + 要旨行が追加されている（`rg -c "2026-08-28" docs/function-design/74-ui-operation-logs.md` ≥ 1）。
@@ -122,7 +122,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| UI-11c-D7 | 74-ui L57 / L243 / L564 | 65 §65.8.3（2026-08-27 改訂）を正本として同期 | route 実装（PR #9 相当）で「未実装」理由が失効。結論（除外）は producer 0 件により不変のため、理由のみ正本と同型へ差替え | 74-ui 3 箇所 | AC-1/AC-2（機械 oracle） |
+| UI-11c-D7 | 74-ui L57 / L243 / L564 | 65 §65.8.3（2026-08-27 改訂）を正本として同期 | route 実装（PR #9 相当）で「未実装」理由が失効。結論（除外）は producer 0件により不変のため、理由のみ正本と同型へ差替え | 74-ui 3 箇所 | AC-1/AC-2（機械 oracle） |
 
 ## Design Intent Audit
 
