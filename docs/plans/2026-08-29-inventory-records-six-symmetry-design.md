@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: c2d38a2201269e2110035ca40e63f792c24b310a
@@ -10,8 +10,8 @@
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（本 session）
 - Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-29、P1/P2 = 0。P2-1 は 58c7667cfec1217e8a6ea29e739dab95f1ef0509 で是正済み）
-- Final Reviewer: pending
-- Reviewed Content HEAD: pending
+- Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定（2026-08-29、P1/P2 = 0）
+- Reviewed Content HEAD: 58c7667cfec1217e8a6ea29e739dab95f1ef0509
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: Plan Review、Ready、merge
