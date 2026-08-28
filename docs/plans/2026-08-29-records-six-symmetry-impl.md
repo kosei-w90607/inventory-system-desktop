@@ -4,7 +4,7 @@ Design Phase は PR #13（squash `6c688fe`、2026-08-29 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 2941807
@@ -13,7 +13,7 @@ Design Phase は PR #13（squash `6c688fe`、2026-08-29 merge）で完了済み�
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 6b9fb32
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner 目視（操作系 UI 変更: hub 一覧の種別 6 種化・状態 filter 4 値化・注記常設・「-」/「差異なし」表示の Windows native 確認）+ Ready 承認 + merge
@@ -331,3 +331,9 @@ Phase 遷移記録（本 final content commit に同乗）: `implementing -> loc
 - round 1（Claude Sonnet 5 独立 fresh context、対象 = `d771c88..95a8022`）: **P1 = 0** / P2×1（Scope 1 の D-d 契約〈csv の item_count / representative_item は is_voided 行を含む〉が Design Intent Trace・Contract Coverage Ledger・Test Design Matrix のいずれにも対応行を持たず、rolled_back csv の item_count / representative_item を assert する test も不在 — is_voided filter を csv 側へ誤追加する mutant が無検出で survive する negative-space gap）/ P3×1（decision-log D-052 Contract 行で C11 の root() 置換が訂正文①と追記文③の 2 箇所で重複記述 — 機能上の誤りなし）。観点 1（SQL 生成・injection 面・既存 4 種 regression）/ 2（設計契約突合）/ 4（D-052 実変更・oracle 独立転記・prefix 包含の技術的裏付け）/ 5（scope 突合 — packet 外 hunk は search.test.ts +4 行のみで options 第二 oracle への必然的随伴と適合判定）/ 6（層境界・bindings 差分ゼロ）/ 7（state-only 95a8022 の allowlist 適合）/ 8（test 品質・REQ token・90 再生成)は指摘なし
 - Coordinator 裁定: P2-1 は rg + 実読（実測: `rg -n "item_count" src-tauri/src/db/disposal_repo.rs` → assert 行の実測出力は L1160〈disposal 既存 test〉/ L1516・L1564〈stocktake T7 / T8〉のみで csv 種別の assert は 0 件）で独立実証のうえ **accept** — gated Amendment 1（Ledger D-d 行 + Design Intent Trace D-d 行 + Matrix T25 / X12 追補）+ Codex relay round 2 で test 追加。P3-1 **accept** — 同 relay で重複 1 文の dedup。code fix を要するため implementing へ backtrack（本 commit）
 - round 2 Writer 是正: T25 を追加し、X12 実注入で RED → 復元後 GREEN を確認。D-052 C11 記述を意味不変で dedup し、REQ-206 traceability を再生成した。L1 full は PASS / CLEAN。`implementing -> local-verified` に再遷移し、正式な Final Review と Coordinator mutation 独立再実測は引き続き未実施。
+
+### Final Review 記録（2026-08-29、append-only）
+
+- Sonnet 独立 fresh context の Contract Audit（対象 = Reviewed Content HEAD `6b9fb32`）: Contract Coverage Ledger **27/27 行適合**（不適合 0、65 §65.4.1 / 21-io §10.5 の通読による negative-space 検出 0）。AC 独立再実測 = AC2 / AC3 / AC4 / AC5 / AC11 を reviewer 自身が実行し全 PASS（bindings・traceability は再生成後 diff なし + tree clean）、AC1 / AC12 は PR #14 body との整合確認。round 2 delta 適合（T25 fixture は Matrix どおり / decision-log C11 dedup は意味不変 / gated Amendment 1 と Amendments 行整合）。anti-tautology（独立転記 oracle の production 定数非 import）/ Non-scope 遵守（packet 外は search.test.ts +4 の必然的随伴のみ）/ state-only 3 commit の hunk audit / PK5 ancestry（`git merge-base --is-ancestor` で Plan Commit `2941807` が初回実装 commit `64f4013` に先行）すべて適合。**P1/P2/P3 = 0**
+- Coordinator mutation 独立再実測: **X1〜X12 の 12/12 全 kill、survivor 0**（clean tree HEAD `6b9fb32`、注入形は Matrix から独立導出・Writer 記録非参照。各注入 → 対応 test red → git restore → `git status --porcelain` 0 検分、最終 green は targeted Rust 21/21・FE 19/19）。X4 は T7 に加え T12〈母集団整合 regression〉も red の二重防御、X11 / X12 は T24 / T25 が単独 red となり Plan Review / review-only で追補した 2 契約の弁別性を実証
+- local-verified → independent-review → human-confirm の materialize evidence: 上記 Contract Audit P1/P2 = 0 + mutation 全 kill。残 Human Gate = owner Windows native L3 目視 + Ready 承認 + merge
