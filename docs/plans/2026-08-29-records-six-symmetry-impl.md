@@ -4,10 +4,10 @@ Design Phase は PR #13（squash `6c688fe`、2026-08-29 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 2941807
 - Amendments: none
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
@@ -315,3 +315,6 @@ Fill after review.
 ### Plan Review rally 記録（2026-08-29、append-only）
 
 - round 1（Claude Sonnet 5 独立 fresh context、対象 = plan-first commit `1f4ba47`）: P1×1（created_at_col〈記録日時〉契約の Ledger 行・専用 test 欠落 — disposal_repo.rs L433 の `{header_alias}.created_at` ハードコードは csv/stocktake に created_at 列が無いため置換必須なのに、値の取り違えを検出する assert が Matrix に無い）/ P2×1（decision-log D-052 Contract 行の既存 2 文〈stocktakeDetailRoot の C1/C3/C11 stale 化・C15 非追加〉が本 change の root() 置換・C15 root() 追加と矛盾したまま残存するリスク — 追記のみでは不足、訂正の義務化が必要）/ P3×1（formatRecordStatus への in_progress 追加記述は options 先行検索の既存実装〈types.ts L84-87〉と重複し、不要な if 分岐追加を誘発し得る）。Coordinator が全 3 件の引用 file:line（disposal_repo.rs L433 / schema_v1.rs L140・L212 / decision-log.md D-052 Contract 行 / types.ts L83-91）を実読で独立裏取りし全件 accept。是正 = Ledger created_at_col 行 + Matrix T24・X11 追加、Scope 7 を「既存記述の訂正 + 追記」へ改訂、Scope 8 の formatRecordStatus 記述を「コード変更不要」へ是正、旧前提の packet / Matrix 全節 rg sweep 済み。観点 b（oracle 妥当性）/ c（D-052 導出 — 欠落・過剰・dailyReportImport 非対象・呼出し site 実効性）/ d / e / f / g / h は指摘なし
+- round 2 closure（別 Sonnet fresh context、対象 = 是正 commit `2941807`）: 3/3 CLOSED（T24 fixture の弁別性〈created_at_col と date_expr の取り違え検出〉、Scope 7 訂正指示と decision-log D-052 実文言の verbatim 突合、types.ts L83-91 実装との整合をそれぞれ実読確認）、旧前提 sweep hit 0、delta 起因の新規 findings 0。**P1/P2 残 0**
+- owner Plan Gate 承認（2026-08-29、介入 1/3）
+- plan-gate → plan-approved → implementing の materialize evidence: 上記 P1/P2=0、plan-first commit `1f4ba47` + rally 是正 `2941807` = Plan Commit が全実装 commit に先行（実装 commit 未作成）、Writer は Codex（発注書駆動）
