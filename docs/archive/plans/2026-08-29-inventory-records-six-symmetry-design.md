@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: c2d38a2201269e2110035ca40e63f792c24b310a
@@ -211,3 +211,5 @@ docs-only Design Phase。runtime 実装は後続 PR B（R3）。
 - Review-only skipped because: narrow R2 docs-only Design Phase で runtime mutation がなく、指定の機械検証と owner / external review を Draft PR 上で行うため。
 
 2026-08-29: Final Review 完了（Sonnet 独立 fresh context、Plan Reviewer とは別 subagent）。監査対象 content commit 58c7667cfec1217e8a6ea29e739dab95f1ef0509、P1/P2 = 0、Goal Invariant 充足 = yes、P3 1 件（上記 Acceptance Criteria 注記で解消）。
+
+2026-08-29: PR #13 squash merge 6c688fe（hosted run 33198223058 success、三点一致成立）。closeout で archive へ移動。

@@ -4,7 +4,7 @@
 
 ## 現在のフェーズ
 
-- 製品フェーズ: Phase 3 UI 群は PR #117 までに完了。Phase 4 は UI-11b（PR #144）/ UI-11a（PR #151/#152）/ UI-10 棚卸し（PR #159）/ UI-11c 操作ログ（PR #164）/ UI-13 整合性検証（Public PR #5）で完了。`v0.8.0-ui-daily` tag は `f44f99a`。**リリースへの道筋**: 新画面を伴う当初仕様は UI-15（PR #4、2026-08-26）で全て実装完了。①実装 PR C（入庫 cost_diffs、PR #5）②docs 実装状況棚卸し（PR #6）に続き、実コード側 stale 表記 batch（PR #7）・商品一覧 plu filter の returnTo 脱落 fix（PR #8）・棚卸し詳細 route（PR #9）・wave 6 docs 衛生 batch + failpoint 並列 race 是正（PR #10・#11、2026-08-28 完了）まで消化済み。残り = ③ UI backlog の表示磨き batch ④ UI 一覧の背骨 D（Lane 1〜5、完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化 → v1.0。着手順は「次の行動」で owner と選定。
+- 製品フェーズ: Phase 3 UI 群は PR #117 までに完了。Phase 4 は UI-11b（PR #144）/ UI-11a（PR #151/#152）/ UI-10 棚卸し（PR #159）/ UI-11c 操作ログ（PR #164）/ UI-13 整合性検証（Public PR #5）で完了。`v0.8.0-ui-daily` tag は `f44f99a`。**リリースへの道筋**: 新画面を伴う当初仕様は UI-15（PR #4、2026-08-26）で全て実装完了。①実装 PR C（入庫 cost_diffs、PR #5）②docs 実装状況棚卸し（PR #6）に続き、実コード側 stale 表記 batch（PR #7）・商品一覧 plu filter の returnTo 脱落 fix（PR #8）・棚卸し詳細 route（PR #9）・wave 6 docs 衛生 batch + failpoint 並列 race 是正（PR #10・#11、2026-08-28 完了）・6 種対称化 Design Phase（PR #13、2026-08-29）まで消化済み。残り = ③ UI backlog の表示磨き batch ④ UI 一覧の背骨 D（Lane 1〜5、完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化 → v1.0。着手順は「次の行動」で owner と選定。
 - 現在の基準: 正本 repo は `kosei-w90607/inventory-system-desktop`（2026-08-23〜24 rehome、旧 public repo `inventory-system-public` は private 化）。詳細は decision-log D-077 / [docs/PUBLIC_REPO_MIGRATION.md](PUBLIC_REPO_MIGRATION.md) を参照。
 - 2026-06-30 UI-08 前フィールド確認: 現店舗の日報主入力は `Z001` / `Z002` / `Z005`、`Z004` は PLU(商品) / 商品別トラックとして扱う。詳細は [plu-export-and-real-csv-verification.md](plu-export-and-real-csv-verification.md)。
 
@@ -23,10 +23,11 @@
 - [x] **PR #10 wave 6 lane 1: docs 衛生 batch**（R2、PR #10 @ inventory-system-desktop squash merge `42b6679`、2026-08-28）: 74-ui の stocktake 除外理由同期 + fresh checkout gate 前提明記。証跡: [archived Packet](archive/plans/2026-08-28-docs-hygiene-sync.md)
 - [x] **PR #11 wave 6 lane 2: product_service failpoint の並列 test race 是正**（R2、PR #11 @ inventory-system-desktop squash merge `cec68ba`、2026-08-28）: failpoint 4 本を thread-local 化し武装 test の他 test への漏れを機構レベルで排除。証跡: [archived Packet](archive/plans/2026-08-28-failpoint-test-race.md)
 - [x] **PR #12 Plans.md dashboard 減量（第 3 回 cleanup）**（R2 docs-only、PR #12 @ inventory-system-desktop squash merge `8f8b44e`、2026-08-28）: 本 dashboard を 320 行 / 24.7 万字から 115 行へ再編。旧全文は [snapshot](archive/plans/2026-08-28-plans-dashboard-cleanup.md) へ verbatim 退避（未了 50 項目の全数残存を Final Review が 1 対 1 照合）。証跡: [archived Packet](archive/plans/2026-08-28-plans-dashboard-cleanup-packet.md)
+- [x] **PR #13 入出庫履歴 6 種対称化 Design Phase（slice 4d）**（R2 docs-only、PR #13 @ inventory-system-desktop squash merge `6c688fe`、2026-08-29）: 65/21-io/44-cmd/73-ui/55-ui の 5 doc 11 節へ 6 種横断契約（status 正規化・差異件数・検索母集団・operator 表示・専用一覧 runway 残置）を確定。証跡: [archived Packet](archive/plans/2026-08-29-inventory-records-six-symmetry-design.md)
 
 ## 次の行動
 
-- [ ] **入出庫履歴 6 種対称化 Design Phase（R2、active）**: branch `agent/records-six-symmetry-design` で 5 source docs・11 節を改訂し、Draft PR checkpoint まで進める。active packet: [2026-08-29-inventory-records-six-symmetry-design.md](plans/2026-08-29-inventory-records-six-symmetry-design.md)。後続 PR B は runtime 実装 R3。「前の画面へ戻る」導線契約は別 design-first 候補のまま維持する。
+- [ ] **入出庫履歴 6 種対称化 実装 PR B（R3、next）**: design-first は PR #13 で完了。次段は backend `listInventoryRecords` の種別拡張 + hub UI の Plan Packet / Test Matrix 起票と Codex 発注。[遷移契約 sweep 記録](archive/plans/2026-08-26-transition-contract-sweep.md) と「Backlog（未了）」の入出庫履歴 runway 項目を継続参照し、「前の画面へ戻る」導線契約は別 design-first 候補のまま維持する。
 - [ ] ③ UI backlog の表示磨き batch: 着手時に owner と選定
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
