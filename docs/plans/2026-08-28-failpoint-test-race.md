@@ -200,7 +200,9 @@ N/A — 実データ・secrets・破壊的操作なし。
 
 ## Implementation Results
 
-Fill after implementation.
+- `product_service` の test 専用 failpoint を thread-local 化し、同一 thread 内の RAII 武装・解除を維持したまま、別 test thread への武装漏れを構造的に排除した。
+- spawn 先で failpoint が未武装であることを BIZ 呼び出しで検証する regression test を追加し、AtomicBool へ戻す mutant で red、thread-local 実装へ復帰後に green となる感度を確認した。
+- 既存 rollback test の assert・期待値と production code path は変更せず、局所検証・連続 stress・Rust lint・traceability drift 検査を通過した。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
