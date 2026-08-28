@@ -76,9 +76,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 3. IO 同 file: status 早期リターン gate（L255-262 `!matches!(query.status.as_deref(), None | Some("all") | Some("active"))`）を 4 値 allowlist（+ canceled / in_progress）へ拡張（拡張漏れだと canceled / in_progress が BIZ 通過後も空ページ短絡し新設 WHERE に到達しない — 21-io §10.5）
 4. BIZ `src-tauri/src/biz/inventory_service/list.rs`: record_type allowlist（L81-92）へ csv_import / stocktake 追加、status allowlist（L93-95）を 4 値へ拡張（44-cmd §23.10: 公開シグネチャ不変、内部 allowlist のみ拡張）
 5. CMD 層はコード変更なし（薄い委譲）。bindings は型不変のため差分ゼロ（AC4 で機械確認）
-6. Rust test: 既存拒否 test `test_list_inventory_records_req206_rejects_unknown_record_type`（list.rs L518-537）の oracle を `csv_import` から実在しない token（`unknown_type`）へ差し替え（test 名・意図は不変 — 設計判断 D-e、既存 test 削除・無効化禁止に抵触しない意味追随）+ 新規 test 一式（Test Design Matrix T1-T16）
-7. D-052 invalidation 拡張（Revisit 条項に従い同一 PR で SSOT / oracle / 再実測を同期）: `csvImportCommit` / `stocktakeStart` へ `queryKeys.inventoryRecords.root()` を追加、`stocktakeComplete` は `stocktakeDetailRoot()` を `root()` へ置換（root() は prefix で stocktakeDetail を包含。6 種化により commit / start / complete が hub 一覧の行集合・status・item_count を変えるため。`csvImportRollback` の root() 先例と同型の最小集合化）。`productCreate` / `productImport` は変更なし（進行中棚卸しへの明細自動追加は hub の in_progress 行では両列「-」表示のため読取り集合と交差しない — 導出は PR body に記録）。`docs/decision-log.md` D-052 Contract 行へ 1 文追記 + 独立転記 oracle test（`src/test/invalidation-oracle.ts`）追随
-8. FE `src/features/inventory-records/types.ts`: `INVENTORY_RECORD_TYPE_OPTIONS` へ csv_import「CSV取込み」/ stocktake「棚卸し」追加（label は `resolve_movement_source`（list.rs L225-226）と一致）、`INVENTORY_RECORD_STATUS_OPTIONS` を 4 値へ（すべて / 有効 / 取消済み / 進行中）、`formatRecordStatus` へ `in_progress` → 「進行中」追加
+6. Rust test: 既存拒否 test `test_list_inventory_records_req206_rejects_unknown_record_type`（list.rs L518-537）の oracle を `csv_import` から実在しない token（`unknown_type`）へ差し替え（test 名・意図は不変 — 設計判断 D-e、既存 test 削除・無効化禁止に抵触しない意味追随）+ 新規 test 一式（Test Design Matrix T1-T16・T24）
+7. D-052 invalidation 拡張（Revisit 条項に従い同一 PR で SSOT / oracle / 再実測を同期）: `csvImportCommit` / `stocktakeStart` へ `queryKeys.inventoryRecords.root()` を追加、`stocktakeComplete` は `stocktakeDetailRoot()` を `root()` へ置換（root() は prefix で stocktakeDetail を包含。6 種化により commit / start / complete が hub 一覧の行集合・status・item_count を変えるため。`csvImportRollback` の root() 先例と同型の最小集合化）。`productCreate` / `productImport` は変更なし（進行中棚卸しへの明細自動追加は hub の in_progress 行では両列「-」表示のため読取り集合と交差しない — 導出は PR body に記録）。`docs/decision-log.md` D-052 Contract 行は既存記述の訂正 + 追記（Plan Review round 1 P2-1: ①既存文「棚卸し詳細 prefix（`inventoryRecords.stocktakeDetailRoot()`）は C1 / C3 / C11 で stale 化する」を C1 / C3 の直接参照 + C11 は root() の prefix 包含経由へ訂正 ②既存文「C15 棚卸し開始 / C16 棚卸し明細個数更新は列レベル導出で非追加」を「C15 は slice 4d で root() 追加（hub 一覧に in_progress 行が出現するため）、C16 は非追加のまま」へ訂正 ③C8 csvImportCommit / C15 への root() 追加の 1 文追記。追記のみでは既存 2 文が実装後に文字通り誤りとして残存する）+ 独立転記 oracle test（`src/test/invalidation-oracle.ts`）追随
+8. FE `src/features/inventory-records/types.ts`: `INVENTORY_RECORD_TYPE_OPTIONS` へ csv_import「CSV取込み」/ stocktake「棚卸し」追加（label は `resolve_movement_source`（list.rs L225-226）と一致）、`INVENTORY_RECORD_STATUS_OPTIONS` を 4 値へ（すべて / 有効 / 取消済み / 進行中）。`formatRecordStatus` はコード変更不要（options 配列を先に引く既存実装〈types.ts L84-87〉のため 4 値化で `in_progress` / `canceled` とも自動解決される — 重複 if 分岐を追加しない。Plan Review round 1 P3-1）
 9. FE `src/features/inventory-records/InventoryRecordsPage.tsx`: filter 部に 65 §65.8.1 確定文言の 1 行注記を常設（「商品・部門での絞り込みは、CSV取込みでは取込み明細、棚卸しでは差異のあった商品が対象です。」）、stocktake × in_progress は代表商品・明細数の両列「-」表示、stocktake × active（completed）× item_count 0 は代表商品「差異なし」（明細数は `0` のまま。汎用 fallback「明細なし」を使わない）
 10. FE test `InventoryRecordsPage.test.tsx`: 既存 options oracle test「REQ-206: 記録種別フィルターで4種の業務記録を選べる」（L67-98、単一 it() が種別 / 状態両配列を検証）を 6 種 + 4 値へ拡張し test 名の「4種」も「6種」へ改名 + csv / stocktake の href / SPA 遷移 test + 注記 / 「-」 / 「差異なし」表示 test（Matrix T17-T22）。既存 disposal 遷移 test は不変
 11. REQ-206 / REQ-207 token 付き test 追加 → `cargo run --bin generate_traceability` で 90 再生成（R1 direct-impl drift generators の教訓）
@@ -97,7 +97,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Acceptance Criteria
 
 - AC1（変更前 canary）: main 時点で hub が 4 種のみである実出力（`rg -c "csv_import" src-tauri/src/db/disposal_repo.rs` = 0〈exit 1〉）を PR body に収録する
-- AC2: `cd src-tauri && cargo test` green（Matrix T1-T16 の新規 test + 既存 suite を含む）
+- AC2: `cd src-tauri && cargo test` green（Matrix T1-T16・T24 の新規 test + 既存 suite を含む）
 - AC3: `npm test` green（Matrix T17-T23 を含む）
 - AC4: `cargo run --bin generate_bindings` 再実行後 `git diff --exit-code src/lib/bindings.ts` = 0（型不変 = 差分ゼロ）
 - AC5: 拒否 test の oracle 差し替え（`rg -c "unknown_type" src-tauri/src/biz/inventory_service/list.rs` ≥ 1 かつ 当該 test 内 `csv_import` oracle 0）で test 名不変のまま green
@@ -128,7 +128,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | DB / transaction / audit / rollback / migration | schema_v1.rs CHECK 値（read-only、schema 変更なし） | existing sufficient |
 | Screen / UI / route state / Japanese wording | 65 §65.8.1（確定文言・badge・「-」・「差異なし」） | existing sufficient（PR #13 で改訂済み） |
 | CSV / TSV / report / import / export format | — | 触らない |
-| Durable decision / ADR | decision-log D-052 Contract 行 | updated in this PR（consumer 集合拡張の 1 文追記 — Scope 7） |
+| Durable decision / ADR | decision-log D-052 Contract 行 | updated in this PR（既存記述の訂正 + 追記 — Scope 7） |
 
 ## Registration / Generation Obligations
 
@@ -182,7 +182,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Design Readiness
 
 - Existing design docs are sufficient because: PR #13（squash `6c688fe`）が 65 / 21-io / 44-cmd / 73-ui / 55-ui の 5 doc 11 節へ slice 4d 契約（status 正規化・差異件数・検索母集団・date_expr・created_at_col・gate 4 値・hub UI 表示規定・確定文言）を確定済み。Final Review で「改訂済み source docs だけで実装可能」を確認済み
-- Source docs updated in this PR: `docs/decision-log.md` D-052 Contract 行への 1 文追記のみ（Revisit 条項の同一 PR 同期 — Scope 7）
+- Source docs updated in this PR: `docs/decision-log.md` D-052 Contract 行の既存記述訂正 + 追記のみ（Revisit 条項の同一 PR 同期 — Scope 7）
 - Design gaps intentionally deferred: 専用一覧 runway / slice 5 / slice 6
 - Durable decisions discovered and promoted: D-052 consumer 集合拡張（csvImportCommit / stocktakeStart / stocktakeComplete、6 種化起因）
 
@@ -216,6 +216,7 @@ N/A — 新規の未検証外部前提なし。依存する前提はすべて検
 | D-c: csv business_date = settlement_date | csv date_expr | T9（settlement_date で検索 hit / imported_at 日では非 hit の対 oracle） | — |
 | D-c: stocktake business_date = COALESCE fallback（in_progress は started_at） | stocktake date_expr | T10 | — |
 | D-c: DATE() ラップの単日検索境界 | 同上 | T11（date_from = date_to = 完了日で該当行が出る。ラップ欠落だと date_to 境界で消える） | — |
+| 21-io §10.5 / 65 slice 4d: created_at_col（記録日時）csv=`imported_at` / stocktake=`started_at`（両 table に created_at 列なし — L433 ハードコードの置換） | created_at_col field + SELECT 置換 | T24（csv / stocktake seed で記録日時値が imported_at / started_at と一致し business_date と異なることを assert） | — |
 | 65 §65.4.1 / D-i: in_progress × dept / keyword filter の構造的非 hit（既知の制約） | filter テンプレート | T13（filter 指定で非 hit + filter 無指定で表示の対 oracle） | — |
 | 既存 4 種 regression: 新 field 既定値継承で挙動同一 | RecordSpec 既定値 | T14（既存 4 種の一覧・filter・件数が変更前後で同一）+ 既存 suite green（AC2） | — |
 | D-e: 拒否 test oracle 差し替え（意味追随、test 名不変） | list.rs 拒否 test | T15 / AC5 | — |
@@ -225,10 +226,10 @@ N/A — 新規の未検証外部前提なし。依存する前提はすべて検
 | 65 §65.8.1: 母集団差注記の確定文言常設 | InventoryRecordsPage.tsx filter 部 | T18（exact 文言 oracle 独立転記） | L3 視認 |
 | 65 §65.8.1: in_progress は代表商品・明細数とも「-」+「進行中」badge（色だけに依存しない） | 同 Page | T19（対象商品を持つ in_progress seed で両列「-」+ label text assert） | L3 視認 |
 | 65 §65.8.1: completed × 差異 0 件は代表商品「差異なし」・明細数 `0`（「明細なし」不使用） | 同 Page | T20（全数一致完了 seed の独立 test） | L3 視認 |
-| formatRecordStatus: in_progress → 進行中 | types.ts | T21 | — |
+| formatRecordStatus: in_progress → 進行中（STATUS_OPTIONS 4 値化経由 — options 先行検索の既存実装で自動解決、if 分岐追加なし） | types.ts STATUS_OPTIONS | T21 | — |
 | REQ-207: csv / stocktake 行 → 詳細への SPA 遷移 | 同 Page（既存 href 機構） | T22（userEvent.click → 遷移後 render assert、href 単独不可） | L3 視認 |
 | D-052 拡張: csvImportCommit / stocktakeStart へ root() 追加、stocktakeComplete は stocktakeDetailRoot() → root() 置換 | invalidation-contract.ts + oracle | T23 / AC10 | — |
-| D-052 Revisit: decision-log Contract 行 1 文追記 | docs/decision-log.md | 実装 review で diff 確認（doc 行） | — |
+| D-052 Revisit: decision-log Contract 行の既存記述訂正 + 追記（Scope 7 ①②③） | docs/decision-log.md | 実装 review で diff 確認（doc 行） | — |
 | D-052: productCreate / productImport 非変更の導出記録 | PR body | — | 導出根拠を PR body 記録 |
 | REQ token → 90 再生成 | generate_traceability | AC11 | — |
 | 既存 flow 回帰なし（既存 4 種 hub・6 詳細画面・stocktake / csv-import flow） | — | 既存 suite green（AC2 / AC3） | — |
@@ -287,6 +288,7 @@ Contract ID: SPEC-65-4D-SIX-SYMMETRY-2026-08-29
 | REQ-206（正規化 + filter 実効） | Scope 1-4 | T2-T6 | gate 拡張漏れ・外側 WHERE | Matrix |
 | REQ-206（差異件数 + 衝突） | Scope 1 | T7 / T8 | expr / extra_where 対応関係 | Matrix |
 | REQ-206（business_date） | Scope 1 | T9-T11 | 単日境界 fixture の時刻設計 | Matrix |
+| REQ-206（記録日時 created_at_col） | Scope 1 | T24 | date_expr との取り違え弁別 | Matrix |
 | REQ-206（hub UI 表示） | Scope 8-10 | T17-T21 / AC9 | 文言独立転記 | PR body |
 | REQ-207（詳細遷移） | Scope 9-10 | T22 | click SPA 遷移証明 | Matrix |
 | D-i（構造的非 hit） | Scope 1 | T13 | 対 oracle | Matrix |
@@ -309,3 +311,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review rally 記録（2026-08-29、append-only）
+
+- round 1（Claude Sonnet 5 独立 fresh context、対象 = plan-first commit `1f4ba47`）: P1×1（created_at_col〈記録日時〉契約の Ledger 行・専用 test 欠落 — disposal_repo.rs L433 の `{header_alias}.created_at` ハードコードは csv/stocktake に created_at 列が無いため置換必須なのに、値の取り違えを検出する assert が Matrix に無い）/ P2×1（decision-log D-052 Contract 行の既存 2 文〈stocktakeDetailRoot の C1/C3/C11 stale 化・C15 非追加〉が本 change の root() 置換・C15 root() 追加と矛盾したまま残存するリスク — 追記のみでは不足、訂正の義務化が必要）/ P3×1（formatRecordStatus への in_progress 追加記述は options 先行検索の既存実装〈types.ts L84-87〉と重複し、不要な if 分岐追加を誘発し得る）。Coordinator が全 3 件の引用 file:line（disposal_repo.rs L433 / schema_v1.rs L140・L212 / decision-log.md D-052 Contract 行 / types.ts L83-91）を実読で独立裏取りし全件 accept。是正 = Ledger created_at_col 行 + Matrix T24・X11 追加、Scope 7 を「既存記述の訂正 + 追記」へ改訂、Scope 8 の formatRecordStatus 記述を「コード変更不要」へ是正、旧前提の packet / Matrix 全節 rg sweep 済み。観点 b（oracle 妥当性）/ c（D-052 導出 — 欠落・過剰・dailyReportImport 非対象・呼出し site 実効性）/ d / e / f / g / h は指摘なし
