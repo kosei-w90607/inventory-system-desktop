@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 34041e0
 - Amendments: none
 - Coordinator: Fable (Claude Code)
 - Writer: Sonnet subagent (worker, fresh context)（§3.1「投入しない場合: … docs 同期」に該当するため希少 slot を Writer に充てない）
@@ -225,3 +225,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Gate 記録（append-only）
+
+- Plan Gate rally: 独立 Sonnet Plan Reviewer、2 round 収束（round 1 = P1: 0 / P2: 3 / P3: 2。P2 = 直近完了の日付基準と列挙の不一致〈PR #4/#5/#6 脱落リスク〉/ AC-5 spot 語の非一意〈節限定へ〉/ PK4 打ち切り gap 入れ子注記の写し先消滅リスク。P3-2〈引用出典分離〉採用、P3-1〈Phase 段ずれ〉は compression 規則の正規 flow につき不採用を round 2 が支持。是正 `0b7b544`。round 2 = delta 検証で 4 件反映・8 entry 全数検証一致・新規指摘 0、P1/P2/P3 = 0）。
+- owner 起票承認: 2026-08-28 の作業計画会話（quiet point での Plans.md 減量を含む全体順序を承認）+ wave 6 完了報告時に着手を予告済み。本 lane 介入 1/3。
+- state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `34041e0` + Plan Gate 前 in-place 是正 `0b7b544`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Sonnet subagent への実装開始許可（plan-approved->implementing）。
