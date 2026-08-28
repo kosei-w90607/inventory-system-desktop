@@ -206,6 +206,8 @@ Fill after implementation.
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
+74-ui の stocktake 除外理由 3 箇所を、65 §65.8.3 と同型の「stocktake 系 `record_type` producer が0件」理由へ同期した。更新履歴の要旨行は AC-1（`未実装` 全域 0 件）と衝突しない言い回しへ調整済み（旧文言をそのまま引用しない paraphrase）。DEV_SETUP_CHECKLIST §4.5 には fresh checkout 後の `npm run generate:routes` 前提を注記として追加した。AC-1〜AC-5 は実測ですべて期待どおり。
+
 ## Review Response
 
 Fill after review.

@@ -240,6 +240,8 @@ cargo install tauri-cli --version "^2"
 - [x] プロジェクトディレクトリで `cargo tauri dev` → GUI ウィンドウが表示される
 - [x] Claude Code の作業ディレクトリは WSL2 上の `/home/{user}/inventory-system-public` に固定（プロジェクト外保存禁止、CLAUDE.md 「やってはいけないこと」参照）
 
+> fresh checkout / 環境再構築（`npm ci --ignore-scripts`）直後は、frontend gate（typecheck / lint / test）実行前に `npm run generate:routes` を明示実行する。`.npmrc` の `ignore-scripts=true` が `pretypecheck` / `prelint` / `pretest` の `tsr generate` 実行を抑止するため、routeTree 未生成のままだと typecheck / lint が fail する（2026-08-26 実測）。
+
 ### 4.6 Phase 2 着手時の Windows native ビルド確認
 
 Tauri 2 on Linux IME 制約のため、Phase 2 (UI-00 ホーム画面以降) の日本語入力検証は Windows native ビルドで行う（§1.4 参照）。Phase 2 完了時に Windows 11 Home で MSI ビルドを生成して動作確認する。
