@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DailyReportImportResult, DailyReportPreviewData } from "@/lib/bindings";
@@ -158,16 +158,23 @@ describe("DailyReportImportPage_req401", () => {
     ).toBeInTheDocument();
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("既存分（2回）");
-    expect(dialog).toHaveTextContent("ID 100");
+    // UI-07-D13 の規定項目（Scope 3 構造化: import ID / filename(s) / 金額 / 取込み日時）が
+    // ラベル付きで、複数件を省略なく全て表示されることを確認する（T3）。
+    const existingItems = within(dialog).getAllByText("ID");
+    expect(existingItems.length).toBe(2);
+    expect(within(dialog).getByText("100")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("Z001_old.CSV / Z002_old.CSV / Z005_old.CSV");
     expect(dialog).toHaveTextContent("総売上 ¥9,000 / 純売上 ¥8,000");
     expect(dialog).toHaveTextContent("2026-03-21T09:00:00");
-    expect(dialog).toHaveTextContent("ID 99");
+    expect(within(dialog).getByText("99")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("Z001_older.CSV / Z002_older.CSV / Z005_older.CSV");
     expect(dialog).toHaveTextContent("総売上 未取得 / 純売上 ¥7,000");
     expect(dialog).toHaveTextContent("今回分");
     expect(dialog).toHaveTextContent("Z001_260321.CSV / Z002_260321.CSV / Z005_260321.CSV");
     expect(dialog).toHaveTextContent("総売上 ¥12,000 / 純売上 ¥11,000");
+    expect(within(dialog).getAllByText("ファイル名").length).toBeGreaterThanOrEqual(3);
+    expect(within(dialog).getAllByText("金額").length).toBeGreaterThanOrEqual(3);
+    expect(within(dialog).getAllByText("取込み日時").length).toBeGreaterThanOrEqual(3);
     await user.click(screen.getByRole("button", { name: "キャンセル" }));
     expect(confirmImport).not.toHaveBeenCalled();
     await user.click(importButton);
@@ -257,14 +264,22 @@ describe("DailyReportImportPage_req401", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "取り消す" }));
-    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    const rollbackDialog = screen.getByRole("alertdialog");
+    expect(rollbackDialog).toBeInTheDocument();
     expect(screen.getByText("日報取込みを取り消しますか？")).toBeInTheDocument();
-    expect(screen.getByRole("alertdialog")).toHaveTextContent(
-      "この取込みだけを取り消します。同じ日の他の取込みは残ります。",
+    expect(rollbackDialog).toHaveTextContent(
+      "この取込みだけを取り消します。同じ日の他の取込みは残ります。取消しても在庫数は変わりません。",
     );
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("ID 501");
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("Z001_260321.CSV");
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("総売上 ¥12,000");
+    // UI-07-D14 の規定項目（Scope 2 構造化: ID / 対象日 / source filenames / 総売上 / 純売上）が
+    // ラベル付きで全て残っていることを確認する（T2）。
+    expect(within(rollbackDialog).getByText("取込み ID")).toBeInTheDocument();
+    expect(within(rollbackDialog).getByText("501")).toBeInTheDocument();
+    expect(within(rollbackDialog).getByText("対象日")).toBeInTheDocument();
+    expect(rollbackDialog).toHaveTextContent("Z001_260321.CSV");
+    expect(within(rollbackDialog).getByText("総売上")).toBeInTheDocument();
+    expect(rollbackDialog).toHaveTextContent("¥12,000");
+    expect(within(rollbackDialog).getByText("純売上")).toBeInTheDocument();
+    expect(rollbackDialog).toHaveTextContent("¥11,000");
 
     await user.click(screen.getByRole("button", { name: "キャンセル" }));
     expect(rollback).not.toHaveBeenCalled();
@@ -315,5 +330,25 @@ describe("DailyReportImportPage_req401", () => {
       expect(router.state.location.pathname).toBe("/reports/daily");
     });
     expect(router.state.location.search).toEqual({ date: "2026-03-21" });
+  });
+
+  it("T1 (UI 表示磨き batch Scope 1): 完了画面の action ボタン群が単一の flex 行 container 配下に render される", async () => {
+    setFlow({
+      status: "result",
+      result: makeResult(),
+      reportDate: "2026-03-21",
+      filenames: ["Z001_260321.CSV", "Z002_260321.CSV", "Z005_260321.CSV"],
+    });
+
+    renderWithRouter(<DailyReportImportPage />);
+
+    const dailySalesLink = await screen.findByRole("link", { name: "日次売上を見る" });
+    const rollbackButton = screen.getByRole("button", { name: "取り消す" });
+    // Z004 側 ResultStep.tsx L67 と同型の `flex flex-wrap gap-2` container 配下に
+    // 両方の action が並ぶことを確認する（間隔調整ではなく構造化、Plan Review round 1 P3-3）。
+    const buttonRow = dailySalesLink.closest("div");
+    expect(buttonRow).not.toBeNull();
+    expect(buttonRow).toHaveClass("flex", "flex-wrap", "gap-2");
+    expect(buttonRow).toContainElement(rollbackButton);
   });
 });

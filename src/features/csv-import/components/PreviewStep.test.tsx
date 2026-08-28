@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { PreviewData } from "@/lib/bindings";
@@ -58,16 +58,22 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     expect(screen.getByText("同じ日のデータを追加で取り込みますか？")).toBeInTheDocument();
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("既存分（2回）");
-    expect(dialog).toHaveTextContent("ID 12");
+    // UI-07-D13 の規定項目（Scope 3 構造化: import ID / filename(s) / 金額 / 取込み日時）が
+    // ラベル付きで、複数件を省略なく全て表示されることを確認する（T3）。
+    expect(within(dialog).getByText("12")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("Z004_0001.CSV");
     expect(dialog).toHaveTextContent("¥1,200 / 3件");
     expect(dialog).toHaveTextContent("2026-03-21T09:00:00");
-    expect(dialog).toHaveTextContent("ID 11");
+    expect(within(dialog).getByText("11")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("Z004_0000.CSV");
     expect(dialog).toHaveTextContent("¥-300 / 1件");
     expect(dialog).toHaveTextContent("今回分");
     expect(dialog).toHaveTextContent("Z004_0002.CSV");
     expect(dialog).toHaveTextContent("¥900 / 2件");
+    expect(within(dialog).getAllByText("ID").length).toBe(2);
+    expect(within(dialog).getAllByText("ファイル名").length).toBeGreaterThanOrEqual(3);
+    expect(within(dialog).getAllByText("金額").length).toBeGreaterThanOrEqual(3);
+    expect(within(dialog).getAllByText("取込み日時").length).toBeGreaterThanOrEqual(3);
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByText("精算日:")).toBeInTheDocument();

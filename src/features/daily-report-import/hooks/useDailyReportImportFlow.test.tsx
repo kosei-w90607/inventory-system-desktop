@@ -509,7 +509,11 @@ describe("useDailyReportImportFlow_req401", () => {
       result.current.rollback(501);
     });
     await waitFor(() => {
-      expect(mockToast.success).toHaveBeenCalledWith("日報取込みを取り消しました");
+      // T7 (UI 表示磨き batch Scope 7(a) gated Amendment): 取消完了 toast は既定 duration
+      // (3000ms) より長く表示し、非IT高齢operatorが読み切れる時間を確保する（文言は既存維持）。
+      expect(mockToast.success).toHaveBeenCalledWith("日報取込みを取り消しました", {
+        duration: 8000,
+      });
     });
 
     expect(mockRollback).toHaveBeenCalledWith(501);

@@ -83,7 +83,11 @@ function makeRecord(overrides: Partial<InventoryRecordSummary> = {}): InventoryR
   };
 }
 
+const mockScrollTo = vi.fn();
+
 beforeEach(() => {
+  mockScrollTo.mockReset();
+  vi.stubGlobal("scrollTo", mockScrollTo);
   mockListDepartments.mockReset();
   mockListInventoryRecords.mockReset();
   mockListDepartments.mockResolvedValue({
@@ -625,6 +629,23 @@ describe("InventoryRecordsPage SPEC-UIBB-1/2（filter-empty reset action、65 §
       departmentId: undefined,
       status: undefined,
       page: undefined,
+    });
+  });
+
+  it("T8 (UI 表示磨き batch Scope 7(b)): 表示時にページ先頭へスクロールする", async () => {
+    // layout の <main> は route 遷移をまたいで保持されるため、CSV/日報取込みの
+    // 取消（rollback）完了後に本ハブへ戻ると旧スクロール位置が残り得る（SCREEN_DESIGN
+    // 既存4画面パターンの hub への水平展開、Scope 7(b) / Scope 8(c)）。
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeRecord()], total_count: 1, page: 1, per_page: 20 },
+    });
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
+
+    await screen.findByText("ボタン #02");
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
     });
   });
 });
