@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 34041e0
@@ -11,7 +11,7 @@
 - Writer: Sonnet subagent (worker, fresh context)（§3.1「投入しない場合: … docs 同期」に該当するため希少 slot を Writer に充てない）
 - Plan Reviewer: Sonnet subagent (independent)
 - Final Reviewer: Sonnet subagent (independent)
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: a0f3024
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: Ready 承認（視覚確認なし — operator 画面変更を含まない docs-only）
@@ -226,10 +226,15 @@ Writer 実装完了。手順どおり (1) `git show HEAD:docs/Plans.md` の comm
 
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Final Review; post-freeze exceptions: none.
 
 ### Plan Gate 記録（append-only）
 
 - Plan Gate rally: 独立 Sonnet Plan Reviewer、2 round 収束（round 1 = P1: 0 / P2: 3 / P3: 2。P2 = 直近完了の日付基準と列挙の不一致〈PR #4/#5/#6 脱落リスク〉/ AC-5 spot 語の非一意〈節限定へ〉/ PK4 打ち切り gap 入れ子注記の写し先消滅リスク。P3-2〈引用出典分離〉採用、P3-1〈Phase 段ずれ〉は compression 規則の正規 flow につき不採用を round 2 が支持。是正 `0b7b544`。round 2 = delta 検証で 4 件反映・8 entry 全数検証一致・新規指摘 0、P1/P2/P3 = 0）。
 - owner 起票承認: 2026-08-28 の作業計画会話（quiet point での Plans.md 減量を含む全体順序を承認）+ wave 6 完了報告時に着手を予告済み。本 lane 介入 1/3。
 - state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `34041e0` + Plan Gate 前 in-place 是正 `0b7b544`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Sonnet subagent への実装開始許可（plan-approved->implementing）。
+
+### Final Review / 遷移記録（append-only）
+
+- Final Review（独立 Sonnet、fresh context、read-only）2026-08-28: diff 3 file 限定を確認 / AC-1〜AC-8 独立再実測（`bash scripts/doc-consistency-check.sh` ほか packet 記載コマンド）全 PASS / **失敗定義の全数監査 = 旧未了項目 50 件中 50 件残存**（旧 L24 セル未了 32 + 後回し節未了 17 + PK4 gap 例外 1 の 1 対 1 機械照合、消失 0）/ lossless 併合 5 件実読突合 / 「直近の完了」8 entry の merge SHA・packet link 全数裏取り / rehome 記述の D-077 整合 + `gh api` 実測一致 / snapshot fenced block は退避元と byte 完全一致 / PK4 経路維持。P1: 0 / P2: 0 / P3: 1（UI-09b 由来注記の脱落）→ 同 PR 復元（1 行 diff）+ delta ack で P1/P2/P3 = 0。
+- state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate の L1 `local-ci.sh full` CLEAN PASS evidence（implementing->local-verified。exact SHA と evidence 位置は PR body を正とする）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。
