@@ -220,6 +220,8 @@ Fill after implementation.
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
+Writer 実装完了。手順どおり (1) `git show HEAD:docs/Plans.md` の committed 版全文を precedent chain 踏襲の snapshot file `docs/archive/plans/2026-08-28-plans-dashboard-cleanup.md` へ verbatim 退避（fenced block 行数と退避元行数の一致を照合済み）、(2) `docs/Plans.md` を Scope B の節構成へ再編（現在のフェーズの現況化 + repository rehome 反映、残作業分類の表を Backlog 節参照 1 文へ圧縮、直近の完了 8 entry、次の行動を未来形専用化 + Wave Registry を wave 1〜6 の圧縮行へ、旧 L24 巨大セルの未了 32 項目 + 後回し Backlog 節の未了分を 1 項目 1 bullet の Backlog（未了）節へ統合、PK4 の `###` 打ち切り gap の入れ子注記を独立 bullet として起こし）。AC-1〜AC-8 は機械 oracle で全て実測 PASS（doc-consistency-check ERROR 0 + `--target plan` 全通過、行数・最長行・snapshot 行数一致・backlog spot 5 語・除去語 3 種 0 hit・wave 1〜6 圧縮行・active packet link 位置）。未了 32 項目は全数を新 Backlog 節で個別確認済み。
+
 ## Review Response
 
 Fill after review.
