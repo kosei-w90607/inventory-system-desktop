@@ -119,22 +119,26 @@ where
 
 #[cfg(test)]
 pub(crate) mod failpoint {
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::{cell::Cell, thread::LocalKey};
 
-    pub static CREATE_PRODUCT_AFTER_INSERT: AtomicBool = AtomicBool::new(false);
-    pub static CREATE_PRODUCT_AFTER_MOVEMENT: AtomicBool = AtomicBool::new(false);
-    pub static UPDATE_PRODUCT_AFTER_PRICE_HISTORY: AtomicBool = AtomicBool::new(false);
-    pub static BULK_SET_PLU_TARGET_AFTER_SECOND_UPDATE: AtomicBool = AtomicBool::new(false);
+    thread_local! {
+        pub static CREATE_PRODUCT_AFTER_INSERT: Cell<bool> = const { Cell::new(false) };
+        pub static CREATE_PRODUCT_AFTER_MOVEMENT: Cell<bool> = const { Cell::new(false) };
+        pub static UPDATE_PRODUCT_AFTER_PRICE_HISTORY: Cell<bool> = const { Cell::new(false) };
+        pub static BULK_SET_PLU_TARGET_AFTER_SECOND_UPDATE: Cell<bool> = const { Cell::new(false) };
+    }
+
+    // test が明示 spawn した thread から BIZ を呼ぶ場合は武装が届かない（意図的に武装するなら spawn 先で arm する）。
 
     /// RAII ガード — Drop 時にフラグを自動リセット（並列テスト汚染防止）
-    pub struct FailpointGuard(&'static AtomicBool);
+    pub struct FailpointGuard(&'static LocalKey<Cell<bool>>);
     impl Drop for FailpointGuard {
         fn drop(&mut self) {
-            self.0.store(false, Ordering::SeqCst);
+            self.0.with(|flag| flag.set(false));
         }
     }
-    pub fn arm(flag: &'static AtomicBool) -> FailpointGuard {
-        flag.store(true, Ordering::SeqCst);
+    pub fn arm(flag: &'static LocalKey<Cell<bool>>) -> FailpointGuard {
+        flag.with(|flag| flag.set(true));
         FailpointGuard(flag)
     }
 }
@@ -226,7 +230,7 @@ pub fn create_product(
     }
 
     #[cfg(test)]
-    if failpoint::CREATE_PRODUCT_AFTER_INSERT.load(std::sync::atomic::Ordering::SeqCst) {
+    if failpoint::CREATE_PRODUCT_AFTER_INSERT.with(|f| f.get()) {
         return Err(BizError::DatabaseError(DbError::QueryFailed(
             "failpoint: create_product_after_insert".into(),
         )));
@@ -247,7 +251,7 @@ pub fn create_product(
     }
 
     #[cfg(test)]
-    if failpoint::CREATE_PRODUCT_AFTER_MOVEMENT.load(std::sync::atomic::Ordering::SeqCst) {
+    if failpoint::CREATE_PRODUCT_AFTER_MOVEMENT.with(|f| f.get()) {
         return Err(BizError::DatabaseError(DbError::QueryFailed(
             "failpoint: create_product_after_movement".into(),
         )));
@@ -322,7 +326,7 @@ pub fn update_product(
     }
 
     #[cfg(test)]
-    if failpoint::UPDATE_PRODUCT_AFTER_PRICE_HISTORY.load(std::sync::atomic::Ordering::SeqCst) {
+    if failpoint::UPDATE_PRODUCT_AFTER_PRICE_HISTORY.with(|f| f.get()) {
         return Err(BizError::DatabaseError(DbError::QueryFailed(
             "failpoint: update_product_after_price_history".into(),
         )));
@@ -434,9 +438,7 @@ pub fn revise_product_price(
     }
 
     #[cfg(test)]
-    if changed
-        && failpoint::UPDATE_PRODUCT_AFTER_PRICE_HISTORY.load(std::sync::atomic::Ordering::SeqCst)
-    {
+    if changed && failpoint::UPDATE_PRODUCT_AFTER_PRICE_HISTORY.with(|f| f.get()) {
         return Err(BizError::DatabaseError(DbError::QueryFailed(
             "failpoint: update_product_after_price_history".into(),
         )));
@@ -609,8 +611,7 @@ pub fn bulk_set_plu_target(
 
         #[cfg(test)]
         if updated_count == 2
-            && failpoint::BULK_SET_PLU_TARGET_AFTER_SECOND_UPDATE
-                .load(std::sync::atomic::Ordering::SeqCst)
+            && failpoint::BULK_SET_PLU_TARGET_AFTER_SECOND_UPDATE.with(|f| f.get())
         {
             return Err(BizError::DatabaseError(DbError::QueryFailed(
                 "failpoint: bulk_set_plu_target_after_second_update".into(),
@@ -1913,6 +1914,24 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(dept.next_seq, 1, "next_seq が巻き戻っているべき");
+    }
+
+    #[test]
+    #[serial]
+    fn test_failpoint_arm_is_not_visible_to_spawned_thread() {
+        let _guard = failpoint::arm(&failpoint::CREATE_PRODUCT_AFTER_INSERT);
+
+        let result = std::thread::spawn(|| {
+            let (_dir, mut conn) = setup_test_db();
+            create_product(&mut conn, default_create_request())
+        })
+        .join()
+        .expect("spawn 先の test thread が panic しないこと");
+
+        assert!(
+            result.is_ok(),
+            "spawn 先では現 thread の failpoint が未武装であること: {result:?}"
+        );
     }
 
     #[test]
