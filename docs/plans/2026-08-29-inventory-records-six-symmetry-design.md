@@ -79,6 +79,7 @@ Goal Invariant:
 - operator 文言「商品・部門での絞り込みは、CSV取込みでは取込み明細、棚卸しでは差異のあった商品が対象です。」が source doc に固定される。
 - `bash scripts/doc-consistency-check.sh`、新文言 `rg -F -c`、旧文言 0 hit、`git diff --check` が pass する。
 - 変更を 1 commit に集約し、Draft PR を open して Ready / merge 前で停止する。
+- 実績は Plan Review P2-1 是正（58c7667cfec1217e8a6ea29e739dab95f1ef0509）を含む 2 content commit。是正 commit はレビュー過程の正当な産物として Final Review P3 裁定で容認（2026-08-29）。
 
 ## Design Sources
 
@@ -208,3 +209,5 @@ docs-only Design Phase。runtime 実装は後続 PR B（R3）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none。
 - Plan Reviewer は current `codex-only` session では Writer と別 vendor を満たせないため pending。Draft PR は owner の明示発注による early checkpoint として open し、Plan Gate を通過したとは扱わない。
 - Review-only skipped because: narrow R2 docs-only Design Phase で runtime mutation がなく、指定の機械検証と owner / external review を Draft PR 上で行うため。
+
+2026-08-29: Final Review 完了（Sonnet 独立 fresh context、Plan Reviewer とは別 subagent）。監査対象 content commit 58c7667cfec1217e8a6ea29e739dab95f1ef0509、P1/P2 = 0、Goal Invariant 充足 = yes、P3 1 件（上記 Acceptance Criteria 注記で解消）。
