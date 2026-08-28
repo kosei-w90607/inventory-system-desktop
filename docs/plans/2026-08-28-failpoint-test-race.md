@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: e6d4d76
 - Amendments: none
 - Coordinator: Fable (Claude Code)
 - Writer: Codex
@@ -209,3 +209,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Gate 記録（append-only）
+
+- Plan Gate rally: 独立 Sonnet Plan Reviewer、2 round 収束（round 1 = P1: 0 / P2: 3 / P3: 2。P2 は packet 内数値主張の実測不一致 3 件〈check site 数 / AC-1 起草時カウント / Non-scope の db/mod.rs AtomicBool hit 数〉— Coordinator が独立再実測で一致確認の上、全採用・是正 `38d1504`。P3 の全数値 sweep 助言も採用し、Ledger 内の追随漏れ 1 件を同 commit で是正。round 2 = delta 検証で 3 件の反映・新規事実誤りなしを確認、新規指摘 0、P1/P2/P3 = 0）。
+- owner 起票承認 2026-08-28（wave 6 batch 起票の会話にて。本 lane 介入 1/3）。
+- state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `e6d4d76` + Plan Gate 前 in-place 是正 `38d1504`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Codex への実装開始許可（plan-approved->implementing）。
