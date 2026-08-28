@@ -216,6 +216,8 @@ useMutation には queryKey を持たせない（TanStack Query v5 仕様、muta
 
 UI-07 画面内に常設の CSV 取込み履歴一覧は置かない。ただし追加確認時は `duplicate_check.same_date_imports` の全件snapshotを表示する。常設履歴は既存の一覧/詳細経路を使い、本画面では `useQuery({ queryKey: queryKeys.csvImportLists() })` を呼ばない。
 
+6 種対称化後も `/inventory/records` が横断検索の正本であり、UI-07 画面内には CSV 取込み履歴一覧を引き続き置かない。
+
 #### settlementDate 抽出の責務
 
 `settlementDate` は結果表示・rollback state のため、`state.status === "preview"` の `preview.file_info.settlement_date` から `useCsvImportFlow` 内で取り出して action に詰める。daily sales の invalidation は個別日付ではなく D-052-C8/C9 の root/prefix 契約が担う。

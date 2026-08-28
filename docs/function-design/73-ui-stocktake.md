@@ -60,6 +60,7 @@
 - **決定**: 開始前画面と確定結果画面に、前回完了棚卸しの `total_cost` / `completed_at` を併記する。新規 CMD `get_last_completed_stocktake()`（IO query + BIZ 薄 wrapper + CMD、future）を追加し、戻り値は `Option<LastStocktakeSummary { stocktake_id, completed_at, total_cost }>`。
 - **Why**: ヒアリング⑥「合計が前年と極端に違わないか見る」という既存の目視確認をシステム側で軽く支援する。棚卸し履歴の一覧画面や比較グラフのような重い機能は過剰。
 - **Rejected**: 棚卸し履歴一覧画面の新設（過去複数回分の一覧・詳細は要求されておらず、直近1回との比較で足りる）。前回比較なし（ヒアリングの目視確認要求に応えられない）。
+- **別経路での充足（2026-08-27 owner 裁定）**: `/inventory/records` への横断合流（[65-inventory-record-traceability.md](65-inventory-record-traceability.md) slice 4d）で代替充足し、専用一覧 `/stocktake/records` と `listStocktakeRecords` は runway 残置とする。
 - **Revisit trigger**: 複数年分の推移を見たいという要望が出た時。
 - **契約監査追記（2026-07-08、Codex）**: `complete_stocktake` 成功後、§73.11 の契約どおり `lastCompleted` query を invalidate すると、`get_last_completed_stocktake()`（`ORDER BY completed_at DESC, id DESC LIMIT 1`）は「今確定した棚卸し自身」を返す（確定処理が先に `stocktakes.status` を `completed` にするため）。結果画面はその再取得後の値をそのまま表示していたため、「前回の棚卸し」が今回確定した棚卸し自身に置き換わるバグがあった（既存 T11 の `mockGetLast` が常に同一値を返す実装だったため検出できていなかった）。`handleCompleteConfirm` で `complete_stocktake` 呼び出し直後・invalidate 前の `lastCompletedQuery.data` を local state にスナップショットし、結果画面にはそのスナップショットを渡すよう修正（invalidate 自体は次の未開始画面表示のために維持）。T19 追加。
 
@@ -363,6 +364,7 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 - BIZ-06 確定ロジックの変更（`counted_at` 以降の在庫変動の自動織り込み等、UI-10-D2）。
 - 一覧のソート追加（UI-10-D3）。
 - 棚卸し履歴一覧画面（複数回分の比較。UI-10-D5、前回 1 回分の比較のみ実装）。
+  - 2026-08-27 owner 裁定により `/inventory/records` への横断合流（65 doc slice 4d）で代替充足し、専用一覧 `/stocktake/records` と `listStocktakeRecords` は runway 残置とする。
 - IPC channel によるカウント/確定処理の進捗表示（UI-10-D6、10-4a は不採用で確定）。
 - UI-11c / UI-13 の設計。
 - ルーティング実装、コンポーネント実装、hooks 実装、specta 属性付与、テストコード（本書は Design Phase のみ。実装 PR (R3) の scope）。

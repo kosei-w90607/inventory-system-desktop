@@ -26,7 +26,7 @@
 
 ## 次の行動
 
-- [ ] **次セッションの本命（owner 選定 2026-08-28）**: 入出庫履歴の完成形 runway 復帰 — `/inventory/records` の種別 6 種対称化（owner 裁定 2026-08-27、棚卸しのハブ横断検索合流を含む。backend `listInventoryRecords` の種別拡張 + hub UI が主対象、design-first で着手。詳細は下記 Backlog（未了）の同名 bullet と [sweep 記録](archive/plans/2026-08-26-transition-contract-sweep.md)）。並行で「前の画面へ戻る」導線契約 design-first の裁定材料を準備
+- [ ] **入出庫履歴 6 種対称化 Design Phase（R2、active）**: branch `agent/records-six-symmetry-design` で 5 source docs・11 節を改訂し、Draft PR checkpoint まで進める。active packet: [2026-08-29-inventory-records-six-symmetry-design.md](plans/2026-08-29-inventory-records-six-symmetry-design.md)。後続 PR B は runtime 実装 R3。「前の画面へ戻る」導線契約は別 design-first 候補のまま維持する。
 - [ ] ③ UI backlog の表示磨き batch: 着手時に owner と選定
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
