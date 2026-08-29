@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 1957458
 - Amendments: none
 - Coordinator: Fable (Claude Code)
 - Writer: Codex（発注書駆動の実装者。発注 prompt は Coordinator が作成し owner が relay）
@@ -233,3 +233,5 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - owner 起票承認 2026-08-30（wave 7 衛生 batch 起票の会話にて。2 lane 編成の owner 裁定を含む。本 lane 介入 1/3）。
 - Plan Gate rally round 1（独立 Sonnet Plan Reviewer、2026-08-30）: P1: 1 / P2: 1 / P3: 2。P1-1 = Scope S3-4 例示の行全体一致 pipe filter が content 側衝突で genuine hit を握りつぶす構造的欠陥（Coordinator が最小再現で実証確認: pipe 版 exit 1・awk path 単独照合版は検知維持）→ 是正方式を path 単独照合に限定し AC-4 へ (e) を追加。P2-1 = AC-2 に `git check-ignore -v` の機能的効果確認を追加。P3-1 = AC-4(d) の文言を path/content 両側の誤マッチ検査へ拡張。P3-2 = S1-2 は現行手順指示 0 件のため実質 no-op 見込みを AC-6 へ注記。全採用、in-place 是正（plan-draft 中の pre-gate 是正）。round 2 の delta 再検証で新規指摘 0 を確認して plan-gate 通過とする。
 - Plan Gate rally round 2（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 1 の 4 findings 反映は全件確認。新規 P1: 1 / P2: 1 / P3: 1 — いずれも round 1 是正例自体の欠陥。P1 = pipeline を `if` へ直結すると awk の exit 0 により 0 hit でも真になる（Coordinator が 0 hit 条件で再現確定）→ 変数捕捉 + 非空判定へ Scope 例を差替え。P2 = 末尾一致 regex の境界アンカー欠如で `somelib/bindings.ts` 型の誤除外（Coordinator 再現確定）→ `(^|\/)` アンカー必須化。P3 = Test Plan の negative tests 行が (e) 未反映 → 反映。全採用、in-place 是正。round 3（rally 天井）の delta 再検証で新規 P1/P2 = 0 を確認して plan-gate 通過、超過時は DEV_WORKFLOW Review Rules の disposition route へ。
+- Plan Gate rally round 3（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 2 の 3 findings 反映を 1 対 1 で全件確認。修正版例示コードの 5 象限 empirical 検証（0 hit クリーン偽 / mutant 検知 / 除外対象の除外 / somelib 型の非誤除外 / content 側衝突の検知維持）すべて期待どおり。旧方式（行全体一致 / if 直結 / アンカーなし regex）の残存 0。新規 P1/P2/P3 = 0 で rally 収束、plan-gate 通過。非 blocking 観察 1 件（`2>/dev/null` が rg exit 2 を 0 hit と区別不能にする既存同型構造）は既存構造のため見送り記録のみ。
+- state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `1957458` + pre-gate 是正 `7122965` / `01acbe8`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer rally 3 round 収束 P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Codex への実装開始許可・発注書 relay（plan-approved->implementing）。

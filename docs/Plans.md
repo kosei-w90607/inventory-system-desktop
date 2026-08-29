@@ -40,8 +40,8 @@
 
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。lane packet の選択と PK4 は、この「次の行動」節内の link を正本として fail-closed 判定する。
 - wave 7（2 lane、衛生 batch）: active 2026-08-30 — merge train 順序は human-confirm 到達順を既定案として Ready 承認時に確定。
-  - lane 1: docs 整合性衛生 batch（REQ-901 採番是正 + 表記同期 + 棚卸し母集団明記）— branch `agent/docs-consistency-hygiene` / [active packet](plans/2026-08-30-docs-consistency-hygiene.md) / Draft PR: pending / Phase: plan-draft / 介入 1/3（起票承認 2026-08-30）
-  - lane 2: repo・scripts 衛生 batch（退役 Docker 資材削除 + protected-paths 補完 + probe script 負 glob 是正）— branch `agent/repo-scripts-hygiene` / [active packet](plans/2026-08-30-repo-scripts-hygiene.md) / Draft PR: pending / Phase: plan-draft / 介入 1/3（起票承認 2026-08-30）
+  - lane 1: docs 整合性衛生 batch（REQ-901 採番是正 + 表記同期 + 棚卸し母集団明記）— branch `agent/docs-consistency-hygiene` / [active packet](plans/2026-08-30-docs-consistency-hygiene.md) / Draft PR: pending / Phase: implementing（Plan Gate rally 2 round 収束 2026-08-30）/ 介入 1/3（起票承認 2026-08-30）
+  - lane 2: repo・scripts 衛生 batch（退役 Docker 資材削除 + protected-paths 補完 + probe script 負 glob 是正）— branch `agent/repo-scripts-hygiene` / [active packet](plans/2026-08-30-repo-scripts-hygiene.md) / Draft PR: pending / Phase: implementing（Plan Gate rally 3 round 収束 2026-08-30）/ 介入 1/3（起票承認 2026-08-30）
 - wave 1（2 lane pilot）: 完了 2026-07-28 — PR #29 squash `8f67315` / PR #30 squash `eac9d20`。[WER](archive/plans/2026-07-28-wave-1-pilot-workflow-effectiveness-review.md)
 - wave 2（2 lane worktree）: 完了 2026-07-28 — merge train PR #33 squash `6c53c44` -> PR #32 squash `29b35ed`。[WER](archive/plans/2026-07-28-wave-2-workflow-effectiveness-review.md)
 - wave 3（3 lane）: 完了 2026-07-29 — merge train PR #34 squash `3f5086b` -> PR #35 squash `b9d7e49` -> PR #36 squash `90cc963`。[WER](archive/plans/2026-07-29-wave-3-workflow-effectiveness-review.md)

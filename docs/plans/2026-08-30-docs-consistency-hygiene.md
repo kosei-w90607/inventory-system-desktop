@@ -2,10 +2,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 1957458
 - Amendments: none
 - Coordinator: Fable (Claude Code)
 - Writer: Sonnet subagent (worker, fresh context)（docs + traceability comment 同期の lane のため §3.1「投入しない場合: … docs 同期」に従い希少 slot を Writer に充てない。Plan Reviewer / Final Reviewer とはそれぞれ別の fresh context で独立性を維持）
@@ -258,3 +258,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - owner 起票承認 2026-08-30（wave 7 衛生 batch 起票の会話にて。B-6 = 案 a / B-5 同意 / 2 lane 編成の owner 裁定を含む。本 lane 介入 1/3）。
 - Plan Gate rally round 1（独立 Sonnet Plan Reviewer、2026-08-30）: P1: 1 / P2: 2 / P3: 2。P1-1 = AC-2 の対 oracle が AC-1 対象 4 file 中 2 file しかカバーせず「REQ-905 を削るだけ」mutant を素通し → AC-2 を全 4 file へ拡張。P2-1 = 失敗定義が D-036 承認済みの CMD-11 backup/restore 系 REQ-905 タグ（settings_cmd.rs、Coordinator 実証確認済み）と字面衝突 → UI-11b 文脈へ限定。P2-2 = S1-5（requirements.md 対応列）に oracle なし → AC-11 追加。P3-1 = S3 の一次証拠を cmd-task-specs 表へ変更（reviewer 予備実査で「MNT-02 削除」分岐が正と確認済み）。P3-2 = D-050 帰属の不正確な引用を実務根拠の文言へ差替え。全採用、in-place 是正（plan-draft 中の pre-gate 是正）。round 2 の delta 再検証で新規指摘 0 を確認して plan-gate 通過とする。
 - Plan Gate rally round 2（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 1 の 5 findings 反映を 1 対 1 で全件確認。oracle 構文の実測検証（reviewer 実測: AC-1 の `rg -c "REQ-905"` は対象 file 全てで hit あり = 未達成側、AC-2・AC-11 の `rg -F -c "REQ-901"` / `rg -F -c "MNT-01, UI-11b"` は hit なし = 未達成側。実装後に充足へ反転する対構造）健全。新規 P1/P2 = 0、新規 P3 = 1（Design Intent Trace / Ledger の Test target 欄に AC-11 未反映の cross-reference 漏れ）→ reviewer 修正案どおり in-place 反映（本記録と同 commit）。rally 収束、plan-gate 通過。
+- state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `1957458` + pre-gate 是正 `4d717b7` / `47c02b3`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer rally 2 round 収束 P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Sonnet subagent（worktree isolation）への実装開始許可（plan-approved->implementing）。
