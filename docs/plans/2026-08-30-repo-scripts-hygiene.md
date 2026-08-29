@@ -36,7 +36,7 @@
 Risk: R2
 
 Reason:
-developer workflow のみに影響する repo 衛生（退役資材削除 / .gitignore 補完 / 運用補助 script の既知 bug 同型是正）。`check-phase1-probe-removed.sh` は local-ci / pre-push / CI のいずれからも呼ばれない運用補助スクリプト（起草時実査: 参照元は `docs/project-profile.md` のみ）で、merge gate・workflow gate には該当しない。runtime・契約・画面に不接触。
+developer workflow のみに影響する repo 衛生（退役資材削除 / .gitignore 補完。旧 S3 の script 是正は gated amendment で descope 済み）。runtime・契約・画面に不接触。
 
 ## Goal
 
@@ -46,19 +46,16 @@ Goal Invariant:
 
 - 退役済み `Dockerfile` / `docker-compose.yml` が repo から消え、現行手順 docs に Docker 前提の現行指示が残らない。
 - `.gitignore` protected-paths block に `.claude/hooks` / `.claude/loop.md` が登録され、sandbox device mask による git status DIRTY 化が tracked 設定で防止される。
-- `scripts/check-phase1-probe-removed.sh` の src/ 検索が実際に機能する（負 glob 起因の silent no-op が解消し、greet 残留を検知できる）。
 
 ### 失敗定義
 
 - 歴史記録（`docs/DOCKER_REPAIR_LOG.md`、DEV_SETUP_CHECKLIST §A.1 の退役履歴）を書き換える。
-- probe script の是正後も mutant（greet 仮挿入）を検知できない。
-- 除外対象（routeTree.gen.ts / lib/bindings.ts）の greet 偽陽性が新たに発生する構造にする。
 
 ### 非目的
 
 - Docker 環境の再導入・代替手順の新設（退役方針 2026-04-03 の維持）。
 - `.git/info/exclude` の暫定 2 行の削除（untracked local 設定。merge 後に owner 端末 or 次 session で削除して二重管理を解消、closeout メモに残す）。
-- 他 script への負 glob sweep（doc-consistency-check.sh 側は PR #39 是正済み、本件で全 scripts を `rg -- '--glob'` で sweep し、hit があれば backlog 起票のみ行い本 PR では触らない）。
+- **旧 S3（probe script 負 glob 是正）— gated amendment で descope**: 前提の「負 glob 起因 silent no-op」が三重実測（Writer Codex: rg 15.2.0 / linuxbrew 15.1.0 で mutant 検知 exit 1、Coordinator: linuxbrew rg 15.1.0 で literal 負 glob・wildcard 負 glob・明示 file 引数のいずれも正常動作）で不成立と確定（owner 裁定 2026-08-30、介入 2/3）。現行 script は正しく動作しており是正対象が実在しない。rally round 1〜3 で確立した書換え時の技術知見（path 単独照合 / 変数捕捉 / 境界アンカー）は Plan Gate 記録に保存。
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
 
@@ -75,23 +72,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 3. `.gitignore` L107-120 の protected-paths 実体リストへ `.claude/hooks` / `.claude/loop.md` の 2 行を既存の辞書順配置に合わせて追加。
 
-**S3. check-phase1-probe-removed.sh の負 glob 是正**
+**旧 S3. check-phase1-probe-removed.sh の負 glob 是正 — descope（gated amendment 2026-08-30）**
 
-4. `scripts/check-phase1-probe-removed.sh` L39 の `--glob '!routeTree.gen.ts' --glob '!lib/bindings.ts'` を除去し、除外を **path 部分のみ・segment 境界アンカー付きで照合し、pipeline 出力を変数捕捉して非空判定する方式**へ置換。例:
-
-   ```bash
-   matches="$(rg -n '\bgreet\b' "$REPO_ROOT/src" 2>/dev/null | awk -F: '$1 !~ /(^|\/)routeTree\.gen\.ts$/ && $1 !~ /(^|\/)lib\/bindings\.ts$/')"
-   if [ -n "$matches" ]; then
-       echo "$matches"
-       echo "❌ src/ に greet 参照が残っています"
-       found=1
-   fi
-   ```
-
-   禁止事項（rally 実証済み、2026-08-30）: (i) `rg -v -F` 等で出力行全体（`path:line:content`）に文字列一致させる方式は content 側衝突の偽陰性を作る（round 1 P1-1）。(ii) pipeline を `if` へ直結する方式は awk が出力 0 行でも exit 0 を返すため 0 hit でも真になり誤動作する（round 2 P1、変数捕捉 + 非空判定が必須）。(iii) 境界アンカーなしの末尾一致 regex は `somelib/bindings.ts` 型の別 file を誤除外する（round 2 P2、`(^|\/)` アンカー必須）。exit code 設計（0/1/2）と非 set -e 前提は維持。
-5. 是正の前後で挙動を実証し PR body へ記録: (a) 是正前に src 配下へ `greet` token を仮挿入して現行 script が検知しない（silent no-op）ことを確認、(b) 是正後に同じ mutant で exit 1 になることを確認、(c) mutant 除去後のクリーン状態で exit 0、(d) 除外対象 file 名を path に含む場合に偽陽性が出ないこと、(e) 除外対象外 file の greet 行が content 側に除外文字列（例: `lib/bindings.ts` への言及コメント）を含んでも検知されること（content 側衝突の偽陰性なし）。仮挿入は検証後に必ず除去し、commit に含めない。
-
-前提（既知実測）: 当環境の linuxbrew ripgrep 15.1.0 は `--glob '!...'` をリテラル解釈し全マッチ 0 件を返す（PR #39 で doc-consistency-check.sh 側は是正済み。本 script は同型残存）。
+前提としていた「負 glob 起因の silent no-op」が実装フェーズの Writer 実測（fail-closed 停止）と Coordinator 追実測の三重実証で不成立と確定したため、S3 全体（旧 4・5 項）を scope から除去（詳細は Goal 非目的と Plan Gate 記録の amendment 経緯を参照）。`scripts/check-phase1-probe-removed.sh` は無改変。
 
 ## Non-scope
 
@@ -103,8 +86,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - AC-1: `git ls-files Dockerfile docker-compose.yml` の出力 0 行。
 - AC-2: `rg -F -c ".claude/hooks" .gitignore` ≥ 1 かつ `rg -F -c ".claude/loop.md" .gitignore` ≥ 1、かつ `git check-ignore -v .claude/hooks .claude/loop.md` が exit 0（ignore の機能的効果の確認）、かつ `bash scripts/check-env-safety.sh` PASS。
-- AC-3: `rg -c -- "--glob" scripts/check-phase1-probe-removed.sh` hit 0（exit 1）。
-- AC-4: mutant 実証（Scope S3-5 の (a)〜(e)）が PR body に記録され、是正後 script がクリーン状態で exit 0・mutant 状態で exit 1。除外判定の誤マッチは path 側（偽陽性）・content 側（偽陰性）の双方を検査する。
+- AC-3 / AC-4: S3 descope（gated amendment 2026-08-30）により削除。`scripts/check-phase1-probe-removed.sh` が無改変であることを Final Review で確認する。
 - AC-5: `bash scripts/doc-consistency-check.sh` PASS（ERROR 0）。
 - AC-6: `docs/DEV_SETUP_CHECKLIST.md` / `docs/PROJECT_HANDOFF.md` に Docker を現行手順として指示する記述が残らない（歴史記録は残存可 — Final Review 実読突合。Plan Review round 1 の悉皆実査では現行手順指示 0 件のため、S1-2 は無変更・AC-6 即 PASS の見込み）。
 
@@ -138,7 +120,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|---|---|---|
 | DEV_SETUP §A.1 | Docker 退役記録 2026-04-03 | 既決の物理的完遂 | 退役済み資材の残置は pin 乖離（rust:1.94 / Node 20 vs 現運用）の誤誘導源。再同期は退役方針と矛盾するため削除 | S1 | AC-1/AC-6 |
 | protected-paths block | .gitignore L104-120 | sandbox device mask 既知事象 | `.git/info/exclude` の暫定対処を tracked 設定へ昇格 | S2 | AC-2 |
-| Phase 1 probe 検知 | check-phase1-probe-removed.sh 冒頭コメント | PR #39 同型（rg 15.1.0 負 glob） | 負 glob 依存の除外は当環境で silent no-op。path 単独照合 filter へ置換（行全体一致の pipe filter は content 側衝突の偽陰性を作るため却下） | S3 | AC-3/AC-4 |
+| Phase 1 probe 検知 | check-phase1-probe-removed.sh 冒頭コメント | descope（amendment 2026-08-30） | 前提の silent no-op が三重実測で不成立と確定し scope から除去。script 無改変 | 旧 S3（削除） | Final Review の無改変確認 |
 
 ## Design Intent Audit
 
@@ -146,7 +128,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: なし
 - Assumptions and constraints: 歴史記録（DOCKER_REPAIR_LOG / §A.1 履歴）は無改変
 - Deferred design gaps, risk, and follow-up target: `.git/info/exclude` 暫定 2 行の削除（closeout メモ）/ 全 scripts の負 glob sweep で hit が出た場合の backlog 起票
-- Test Design Matrix can cite design decision IDs or source doc sections: Matrix は R2 optional 判定で省略（mutant 実証 AC-4 が実効 oracle）
+- Test Design Matrix can cite design decision IDs or source doc sections: Matrix は R2 optional 判定で省略（oracle は AC-1/2/5/6 に機械化済み。旧 AC-4 は descope で削除）
 - Absolute guarantee / escape hatch self-check completed: 該当なし
 
 ## Impact Review Lenses
@@ -172,7 +154,7 @@ Minimum design checks:
 
 ## Contract Probe
 
-rg 15.1.0 の負 glob リテラル解釈は既知実測（Plans.md backlog 記録 + 当環境 `rg --version` = ripgrep 15.1.0、起草時実査 2026-08-30）。現行 script の silent no-op 実証（Scope S3-5 (a)）を是正前に実施し、結果 1 行を PR body へ記録する。
+**amendment 更新（2026-08-30）**: 起草時に依拠した「rg 15.1.0 の負 glob リテラル解釈で全マッチ 0 件」（Plans.md 旧 backlog 記録）は、実装フェーズの実測で**不成立**と確定した。実測: Writer（Codex）が rg 15.2.0 / linuxbrew 15.1.0 の双方で greet mutant を検知（exit 1）、Coordinator が linuxbrew rg 15.1.0 で literal 負 glob（`rg -n '\bgreet\b' <dir> --glob '!routeTree.gen.ts'` = 検知 + 除外正常）・wildcard 負 glob・明示 file 引数 + 負 glob のすべてで正常動作を確認。教訓 = 記録済み claim も packet 前提化する前に起草時実測すること（Contract Probe の Writer 後置は不可）。
 
 ## Contract Coverage Ledger
 
@@ -182,14 +164,14 @@ R2 簡易版（触れる契約行のみ）:
 |---|---|---|---|
 | Docker 退役（§A.1 既決） | S1 | AC-1/AC-6 | non-scope |
 | protected-paths 補完 | S2 | AC-2（check-env-safety 含む） | non-scope |
-| probe script 実効性 | S3 | AC-3/AC-4（mutant 実証） | non-scope |
+| probe script 実効性 | descope（amendment 2026-08-30、実測で非欠陥確定） | Final Review の無改変確認 | non-scope |
 
 ## Test Plan
 
-Test Design Matrix は R2 optional 判定で省略（理由: 挙動 oracle は AC-4 の mutant 実証に機械化済み）。
+Test Design Matrix は R2 optional 判定で省略（理由: docs + 設定 file の削除・追記のみで oracle は AC-1/2/5/6 に機械化済み。旧 S3 の mutant 実証は descope に伴い削除）。
 
-- targeted tests: `bash scripts/check-phase1-probe-removed.sh`（クリーン exit 0 / mutant exit 1）
-- negative tests: AC-4 (d)(e) 除外判定の偽陽性・偽陰性なし（path 側・content 側の双方）
+- targeted tests: なし（script 無改変）
+- negative tests: 不要
 - compatibility checks: `bash scripts/doc-consistency-check.sh`（AC-5）/ `bash scripts/check-env-safety.sh`（AC-2）
 - data safety checks: 削除対象は `Dockerfile` / `docker-compose.yml` の 2 file のみ（git 管理下、復元可能）。他の削除なし
 - main wiring/integration checks: L1 full（Ready 前の exact HEAD で実行）
@@ -201,7 +183,7 @@ N/A — JSON / CSV / DTO / bindings / DB 互換のいずれにも触れない。
 ## Review Focus
 
 - 削除が明名 2 file に限定され、歴史記録が無改変であること
-- probe script 是正の除外方式が偽陽性・偽陰性双方に対して実証されていること（AC-4 の 4 象限）
+- `scripts/check-phase1-probe-removed.sh` が無改変であること（descope の遵守確認）
 - .gitignore 追加 2 行が protected-paths block の既存構造・並びに整合すること
 - docs 参照整合が「現行手順としての Docker 指示」のみを対象にし、履歴記述へ波及していないこと
 
@@ -215,7 +197,7 @@ N/A（R2、Design Intent Trace 参照）。
 
 ## Data Safety
 
-削除対象は退役済み `Dockerfile` / `docker-compose.yml` の 2 file のみ（本 packet と owner 起票承認で明名済み、git 履歴から復元可能）。実データ・secrets への接触なし。mutant 仮挿入は検証後に除去し commit へ含めない（AC-4）。
+削除対象は退役済み `Dockerfile` / `docker-compose.yml` の 2 file のみ（本 packet と owner 起票承認で明名済み、git 履歴から復元可能）。実データ・secrets への接触なし。
 
 ## Implementation Results
 
@@ -235,3 +217,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - Plan Gate rally round 2（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 1 の 4 findings 反映は全件確認。新規 P1: 1 / P2: 1 / P3: 1 — いずれも round 1 是正例自体の欠陥。P1 = pipeline を `if` へ直結すると awk の exit 0 により 0 hit でも真になる（Coordinator が 0 hit 条件で再現確定）→ 変数捕捉 + 非空判定へ Scope 例を差替え。P2 = 末尾一致 regex の境界アンカー欠如で `somelib/bindings.ts` 型の誤除外（Coordinator 再現確定）→ `(^|\/)` アンカー必須化。P3 = Test Plan の negative tests 行が (e) 未反映 → 反映。全採用、in-place 是正。round 3（rally 天井）の delta 再検証で新規 P1/P2 = 0 を確認して plan-gate 通過、超過時は DEV_WORKFLOW Review Rules の disposition route へ。
 - Plan Gate rally round 3（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 2 の 3 findings 反映を 1 対 1 で全件確認。修正版例示コードの 5 象限 empirical 検証（0 hit クリーン偽 / mutant 検知 / 除外対象の除外 / somelib 型の非誤除外 / content 側衝突の検知維持）すべて期待どおり。旧方式（行全体一致 / if 直結 / アンカーなし regex）の残存 0。新規 P1/P2/P3 = 0 で rally 収束、plan-gate 通過。非 blocking 観察 1 件（`2>/dev/null` が rg exit 2 を 0 hit と区別不能にする既存同型構造）は既存構造のため見送り記録のみ。
 - state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `1957458` + pre-gate 是正 `7122965` / `01acbe8`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer rally 3 round 収束 P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Codex への実装開始許可・発注書 relay（plan-approved->implementing）。
+- **gated amendment 経緯（2026-08-30）**: Writer（Codex）が実装前の AC-4(a) 実証で「mutant を検知し exit 1、silent no-op 前提と矛盾」の fail-closed 停止（branch 98c43b8、rg 15.2.0 / linuxbrew 15.1.0 双方で再現）。Coordinator が linuxbrew rg 15.1.0 の scratch 実測で追認（literal 負 glob / wildcard 負 glob / 明示 file 引数のすべてで正常動作、「全マッチ 0 件」はどの形でも再現せず）→ S3 の前提欠陥は実在しないと確定。owner 裁定（介入 2/3）= S3 descope。rally は round 3 天井到達済みのため追加 round は開始せず、disposition = owner escalation で処置。本 amendment の監査は Final Review（independent-review phase）が S1/S2 diff + script 無改変確認として実施する。原 `Plan Commit` は不変、amendment SHA は Workflow State `Amendments` 行に記帳。
