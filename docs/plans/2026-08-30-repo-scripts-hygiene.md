@@ -6,7 +6,7 @@
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1957458
-- Amendments: none
+- Amendments: e618470
 - Coordinator: Fable (Claude Code)
 - Writer: Codex（発注書駆動の実装者。発注 prompt は Coordinator が作成し owner が relay）
 - Plan Reviewer: Sonnet subagent (independent)（Writer = Codex のため D-062 の非同一 vendor 要件を満たす）

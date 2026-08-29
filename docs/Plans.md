@@ -41,7 +41,7 @@
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。lane packet の選択と PK4 は、この「次の行動」節内の link を正本として fail-closed 判定する。
 - wave 7（2 lane、衛生 batch）: active 2026-08-30 — merge train 順序は human-confirm 到達順を既定案として Ready 承認時に確定。
   - lane 1: docs 整合性衛生 batch（REQ-901 採番是正 + 表記同期 + 棚卸し母集団明記）— branch `agent/docs-consistency-hygiene` / [active packet](plans/2026-08-30-docs-consistency-hygiene.md) / Draft PR: pending / Phase: implementing（Plan Gate rally 2 round 収束 2026-08-30）/ 介入 1/3（起票承認 2026-08-30）
-  - lane 2: repo・scripts 衛生 batch（退役 Docker 資材削除 + protected-paths 補完 + probe script 負 glob 是正）— branch `agent/repo-scripts-hygiene` / [active packet](plans/2026-08-30-repo-scripts-hygiene.md) / Draft PR: pending / Phase: implementing（Plan Gate rally 3 round 収束 2026-08-30）/ 介入 1/3（起票承認 2026-08-30）
+  - lane 2: repo・scripts 衛生 batch（退役 Docker 資材削除 + protected-paths 補完。probe script 是正は amendment `e618470` で descope——前提の三重実測不成立）— branch `agent/repo-scripts-hygiene` / [active packet](plans/2026-08-30-repo-scripts-hygiene.md) / Draft PR: pending / Phase: implementing / 介入 2/3（起票承認 + descope 裁定 2026-08-30）
 - wave 1（2 lane pilot）: 完了 2026-07-28 — PR #29 squash `8f67315` / PR #30 squash `eac9d20`。[WER](archive/plans/2026-07-28-wave-1-pilot-workflow-effectiveness-review.md)
 - wave 2（2 lane worktree）: 完了 2026-07-28 — merge train PR #33 squash `6c53c44` -> PR #32 squash `29b35ed`。[WER](archive/plans/2026-07-28-wave-2-workflow-effectiveness-review.md)
 - wave 3（3 lane）: 完了 2026-07-29 — merge train PR #34 squash `3f5086b` -> PR #35 squash `b9d7e49` -> PR #36 squash `90cc963`。[WER](archive/plans/2026-07-29-wave-3-workflow-effectiveness-review.md)
@@ -93,7 +93,7 @@
 - 棚卸しカウント除外の長期滞留在庫（issue #91、2026-08-22 回答済み）: 除外基準は年数でなく原価根拠の有無（伝票保管義務範囲外で廃棄済み・取引先データなし・バーコードなし・販売に適さない見た目）、規模は例年 1〜2 点・多い年で 4〜5 点。owner 提案どおりシステムでは表現しない（除外品は単品コード非付与 = 商品マスタ外、部門キーで商品非連動販売、復活時は新規登録）。35-biz-stocktake-service.md / 73-ui-stocktake.md への母集団明記のみ残作業、owner 同意で close 候補。
 - cargo 側の advisory 2 件（rand low `GHSA-cq8v-f236-94qc` / glib medium `GHSA-wrw7-89jp-8q8g`）: D-067 で tolerable_risk として dismiss 済み（upstream-blocked）、revisit = Tauri 更新時。
 - npm dependency-security 常設 monitoring の運用（週次〈月曜 06:00 JST〉+ manual dispatch で `npm audit` high+ と監視 advisory の state 変化を check し issue 通知。監視対象 advisory の追加・整理は `scripts/npm-security-monitor.sh` の `WATCHED_ADVISORIES` を編集）。
-- linuxbrew ripgrep 15.1.0 のネガティブ glob 誤解釈（`--glob '!...'` をリテラル解釈し全マッチ 0 件を返す。`scripts/doc-consistency-check.sh` `test_token_exists()` の負 glob 除去〈PK3 偽 WARN 対策、exit code 影響なし〉を別 PR で対応）。
+- ~~linuxbrew ripgrep 15.1.0 のネガティブ glob 誤解釈~~ **close（2026-08-30 実測是正）**: doc-consistency-check.sh 側の負 glob 除去は PR #39（`669dfee`）で対応済み。残存を疑った `check-phase1-probe-removed.sh` の同型は wave 7 lane 2 の三重実測（rg 15.2.0 / linuxbrew 15.1.0、literal・wildcard・明示 file 引数の全形で正常動作）で**非欠陥と確定**し descope。当時の「リテラル解釈で全マッチ 0 件」診断は現行 binary では再現せず、一般化しない（経緯は [lane 2 packet](plans/2026-08-30-repo-scripts-hygiene.md) の amendment 記録参照）。
 - 日報取込み標準手順の残設計（issue #135 派生。保持期間・命名・取込み途中・再取込みの設計と店舗マニュアル反映が残る。同日複数精算は D-071 / PR #79・#80 で実装済み）。
 - 日報画面の Excel 印刷・バインダー代替受入判定（現行 Excel + 印刷 + バインダーが日別記録を残す唯一の手段。実 1 日分での公式集計・過去日到達・欠落日・修正/再取込み・backup/restore 後の再現を横並び確認し、印刷機能の要否を go-live 前に判定する）。
 - 検証用スキャニング PLU 4 件の掃除（issue #76 店舗訪問の残項目、任意・実害なし）。
