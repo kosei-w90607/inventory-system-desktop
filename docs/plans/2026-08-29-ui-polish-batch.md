@@ -9,11 +9,11 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: local-verified
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
-- Amendments: none
+- Amendments: b1cd203（gated Amendment 2 — Scope 7(b) 除外 + T7 確定 + T2 強化、実装後レビュー round 1 裁定）
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Claude Sonnet 5 (subagent、worktree isolation、§5.6 従来型発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
@@ -256,11 +256,13 @@ Contract ID: SPEC-UI-POLISH-BATCH1-2026-08-29
 
 ## Implementation Results
 
-Scope 1-7, 9 の表示磨きと Scope 8 の doc 追記 4 箇所を実装し、Matrix T1-T8/T10 の RTL oracle を追加した（既存 test の削除・無効化なし、文言追随のみ）。ResultStep / DailyReportResultStep の rollback 確認 summary と AdditionalImportConfirmDialog の追加確認 summary は 3 site 共通のラベル付き `<dl>` 構造化様式に統一し、UI-07-D13/D14 の規定項目集合は維持した。CostDiffDialog は IntegrityCheckPage 踏襲の success token Alert へ統一し、更新成功後のマスタ原価反映と footer 状態対応文言を追加した。RenameSupplierRow に統合と対称の完了 toast を追加、取消完了 toast は個別 duration 延長（T7 gated Amendment、選定根拠は PR body）、InventoryRecordsPage は表示時の先頭スクロールを追加（Scope 7(b) の解釈は PR body に明記）。IntegrityCheckPage の PageHeader title を doc 正本「在庫整合性検証」へ統一。
+Scope 1-7(a), 9 の表示磨きと Scope 8 の doc 追記 3 箇所を実装し、Matrix T1-T7/T10 の RTL oracle を追加した（既存 test の削除・無効化なし、文言追随のみ）。ResultStep / DailyReportResultStep の rollback 確認 summary と AdditionalImportConfirmDialog の追加確認 summary は 3 site 共通のラベル付き `<dl>` 構造化様式に統一し、UI-07-D13/D14 の規定項目集合は維持した。CostDiffDialog は IntegrityCheckPage 踏襲の success token Alert へ統一し、更新成功後のマスタ原価反映と footer 状態対応文言を追加した。RenameSupplierRow に統合と対称の完了 toast を追加、取消完了 toast は個別 duration 延長（T7 gated Amendment 確定）。IntegrityCheckPage の PageHeader title を doc 正本「在庫整合性検証」へ統一。
 
-ローカル gate（typecheck / lint / format:check / npm test / build / cargo test / cargo check --release / bindings.ts 差分ゼロ / doc-consistency-check.sh ERROR 0 / local-ci.sh full）は全て CLEAN。
+実装後レビュー round 1（Opus 修正案 + Codex cross、gated Amendment 2、Coordinator 全件 accept）を受けて是正: ①Scope 7(b) 先頭スクロールを完全 revert（mount effect / T8 / SCREEN_DESIGN 追記を撤去、design-first 裁定候補として backlog 起票予定）②T2 を日報 source filenames 3 件 fixture の全件個別 assert へ強化（先頭 1 件化 mutation の survivor 是正）③break-all を break-words へ置換し、複数 filenames を " / " 連結でなく個別行表示（`ExistingImportSummary.filenames` を `string[]` 化）+ 既存分「ファイル名」の col-span-2 欠落是正 ④3 site（ResultStep / DailyReportResultStep / AdditionalImportConfirmDialog）の dl gap トークンと「取込み ID」「合計金額」「ファイル名」ラベル語彙を統一。
 
-Draft PR: https://github.com/kosei-w90607/inventory-system-desktop/pull/15
+ローカル gate（typecheck / lint / format:check / npm test / build / cargo test / cargo check --release / bindings.ts 差分ゼロ / doc-consistency-check.sh ERROR 0 / local-ci.sh full）は是正反映後も全て CLEAN。
+
+Draft PR: https://github.com/kosei-w90607/inventory-system-desktop/pull/15（是正反映後に body 更新済み）
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
