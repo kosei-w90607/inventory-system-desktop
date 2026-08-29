@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 316cd094011071985174f16b0107978520350798
@@ -10,13 +10,17 @@
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（本 session）
 - Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（round 1 = P1 0 / P2 1 / P3 2 全件 accept、是正 commit fe0e76c2bf2fa442aef7cf4d1b94cbe34b28fa1d、条件付き round 2 で P1/P2 = 0 成立）
-- Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定（pending）
-- Reviewed Content HEAD: pending
+- Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定（2026-08-30、P1/P2 = 0・P3 = 1〈evidence 記録改善、本 narrative で反映〉、Goal Invariant 充足 = yes。監査は再生成 commit 9a26d97 まで延長済み）
+- Reviewed Content HEAD: 9a26d977f7372ce81ea18d0bd7c3748aa9cd2a71
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: Plan Review、L3、Ready、merge
 
 Phase 遷移記録（本 plan-first content commit に同乗）: `kickoff -> spec-check -> design -> plan-draft -> plan-gate`。kickoff で発注書の 6 件、branch、R2、停止点を固定した。spec-check で対象 component、既存 RTL、`src-tauri/src/db/product_repo.rs::merge_suppliers` の `products` / `receiving_records` 更新後の source `DELETE`、および Design Sources の実在節を `rg` と直接読取で確認した。design で文言契約 3 件を `50 §50.6 / §50.8`、`61 §61.1 UI-02-D15 / §61.5 / §61.9`、`78 §78.7 / §78.11` へ同期し、scroll と構造是正は既存 `UI-11b-D11 / D12`、`DSR-16 / DSR-17` で十分と判定した。plan-draft で本 Packet と Matrix を作成し、両者を同一 plan-first commit に載せて plan-gate を materialize する。実装は Coordinator の `plan-approved` 合図まで開始しない。
+
+2026-08-30: Plan Review round 2 の再確認内容（Final Review P3 の記録改善提案を反映して明記）: (1) fe0e76c の P2-1 是正が処方どおり L100 の `REQ-103`→`REQ-907` 1 token 置換のみで同行他要素が不変であること (2) Trace 3 行が行別一択処方（該当 REQ なし〈QR-05 起点〉/ REQ-209 / REQ-904）と一致すること (3) Matrix へ L3 目視行が追加されたこと — を Coordinator が実 diff で検証し、Plan Reviewer の条件付き round 2 判定（処方 verbatim 適用時に P1/P2 = 0）の成立条件を確認した。
+
+2026-08-30: 実装 candidate c832077 の L1 full は traceability gate T1 で FAIL（RTL の REQ token 追加に伴う 90-traceability.md 生成結果不一致 — PR #72 と同型の既知 gap、発注書の品質 gate に再生成を明記しなかった Coordinator 起因）。機械的是正として Haiku subagent が generate_traceability を再実行し 9a26d97 を commit（diff = 生成 file 1 file・件数 bump 2 箇所のみ）。Final Reviewer が監査を 9a26d97 まで延長し、生成器由来であること・`--check` ERROR 0 を独立再現、P1/P2 = 0 と Goal Invariant 充足を維持と判定。L1 full は 9a26d97 で RESULT=PASS（evidence は PR body を正とする）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は Windows native L3、Ready、merge。
 
 この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `316cd09` は全実装 commit に先行し PK5 ancestry を充足する。
 
