@@ -285,9 +285,40 @@ font-size を全体一律に底上げする再設計は本ルールの scope 外
 
 ---
 
+## DSR-17 画面遷移と scroll の 3 分類
+
+**ルール**: 画面遷移時の scroll は、①同一画面内の状態遷移、②route 遷移を伴う一覧→詳細→戻り、③操作完了に伴う Home への programmatic navigate の 3 分類で決める。全画面へ無条件に適用する mount 一律 scroll は禁止する。
+
+**Why**: 本アプリは persistent な `<main>`（`src/components/layout/RootLayout.tsx`、RootLayout 構成の正本は [52-ui-shared-layout.md §52.1](../function-design/52-ui-shared-layout.md#521-コンポーネント構成)）が唯一の scroll container であり、TanStack Router の `scrollRestoration` は未設定である。route 遷移で `<main>` は unmount されないため scroll 位置が持ち越され、stale scroll は全画面共通の構造事象になる。一方、mount 一律の先頭 scroll は一覧→詳細→戻りの位置を失わせることが PR #15 Amendment 2 で実証され、revert 済みである。操作結果の可視性と戻り動線の連続性を両立するには、遷移の契機ごとに発火条件を分ける必要がある。
+
+**判定フロー / 具体例**:
+
+```
+scroll を伴う遷移はどれか？
+├─ ① 同一画面内の状態遷移（保存・確定・取消）
+│    → event-driven で scrollPageToTop() を呼ぶ
+│      （DSR-03「状態遷移後の可視性」/ UI-08-D6 を参照）
+├─ ② route 遷移を伴う一覧→詳細→戻り
+│    → 戻り時の scroll 位置を復元する（先頭 scroll ではない）
+│      現時点の未実装は許容し、TanStack Router scrollRestoration の
+│      検証 spike を伴う別 change で実装する
+└─ ③ 操作完了に伴う Home への programmatic navigate
+     → one-shot の in-memory flag を消費した時だけ Home を先頭表示で開始する
+       （UI-11b-D11 型。通常の Home 到達では scroll しない）
+```
+
+分類①の結果表示契約は DSR-03「状態遷移後の可視性」と UI-08-D6 を正本とし、本節では重複定義しない。分類③の現行 producer は復元成功 flow だけであり、実装時は flag なしの通常 Home 到達で scroll しない negative test を必須とする。将来、操作完了後に Home へ遷移する同型 producer を追加する場合も、通常到達と区別できる one-shot flag の消費時だけ発火させる。
+
+**禁止**: route component の mount を契機に無条件で `scrollPageToTop()` を呼んではならない。詳細から戻った際の位置喪失を招くためであり、PR #15 Amendment 2 の revert を再導入しない。
+
+**関連**: DSR-03「状態遷移後の可視性」 / UI-08-D6 / UI-11b-D11 / UI-11b-D12。review-checklist カテゴリ 9 対応（操作結果の初期可視性と一覧へ戻る位置の連続性が、遷移分類に沿って両立しているか）。
+
+---
+
 ## 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-08-29 | scroll-policy-design 裁定 | DSR-17 新設: 画面遷移と scroll を 3 分類し、同一画面内は event-driven、詳細戻りは位置復元、操作完了後の Home は one-shot flag 消費時だけ先頭表示とする。mount 一律 scroll を禁止。 |
 | 2026-08-29 | PR #15（gated Amendment 3） | DSR-16 新設: 同型情報のグループ化と囲みの階層。owner L3-lite 可読性 FAIL（per-card dl 反復の clutter / 比較不能）を受け、NN/g Common Region と GOV.UK summary list を根拠に判断フローを正本化。 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: DSR-03の同日追加AlertとDSR-07の高影響な重複計上防止境界を正本化。 |
