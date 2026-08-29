@@ -58,24 +58,29 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     expect(screen.getByText("同じ日のデータを追加で取り込みますか？")).toBeInTheDocument();
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("既存分（2回）");
-    // UI-07-D13 の規定項目（Scope 3 構造化: import ID / filename(s) / 金額 / 取込み日時）が
-    // ラベル付きで、複数件を省略なく全て表示されることを確認する（T3）。
-    expect(within(dialog).getByText("12")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Z004_0001.CSV");
-    expect(dialog).toHaveTextContent("¥1,200 / 3件");
-    expect(dialog).toHaveTextContent("2026-03-21T09:00:00");
-    expect(within(dialog).getByText("11")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Z004_0000.CSV");
-    expect(dialog).toHaveTextContent("¥-300 / 1件");
-    expect(dialog).toHaveTextContent("今回分");
+    // UI-07-D13 の規定項目（import ID / filename(s) / 金額 / 取込み日時）が省略なく
+    // 全件表示されることを確認する（T3 項目完全性 oracle、gated Amendment 3 でも不変）。
+    // DSR-16 構造 assert: 既存分は列を揃えた表（比較目的の structured list）で render される。
+    const table = within(dialog).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "取込み ID" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "ファイル名" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "合計金額" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "取込み日時" })).toBeInTheDocument();
+    // ヘッダ行 + 既存分2件 = 3行。per-card の反復ではなく1つの表に全件が並ぶ。
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(within(table).getByText("12")).toBeInTheDocument();
+    expect(table).toHaveTextContent("Z004_0001.CSV");
+    expect(table).toHaveTextContent("¥1,200 / 3件");
+    // 取込み日時は人間向け表示（既存 formatDateTime 慣行: ISOの"T"を空白へ）。
+    expect(table).toHaveTextContent("2026-03-21 09:00:00");
+    expect(within(table).getByText("11")).toBeInTheDocument();
+    expect(table).toHaveTextContent("Z004_0000.CSV");
+    expect(table).toHaveTextContent("¥-300 / 1件");
+    // 今回分は「今回分」ラベル付きの独立領域（単一レコード確認 = definition list のまま）。
+    expect(within(dialog).getByText("今回分")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("Z004_0002.CSV");
     expect(dialog).toHaveTextContent("¥900 / 2件");
-    // ラベル語彙は 3 site 統一（実装後レビュー round 1 是正 4）: 「ID」は「取込み ID」、
-    // 「金額」は「合計金額」に揃える。
-    expect(within(dialog).getAllByText("取込み ID").length).toBe(2);
-    expect(within(dialog).getAllByText("ファイル名").length).toBeGreaterThanOrEqual(3);
-    expect(within(dialog).getAllByText("合計金額").length).toBeGreaterThanOrEqual(3);
-    expect(within(dialog).getAllByText("取込み日時").length).toBeGreaterThanOrEqual(3);
+    expect(dialog).toHaveTextContent("2026-03-21 10:00:00");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByText("精算日:")).toBeInTheDocument();

@@ -158,32 +158,36 @@ describe("DailyReportImportPage_req401", () => {
     ).toBeInTheDocument();
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("既存分（2回）");
-    // UI-07-D13 の規定項目（Scope 3 構造化: import ID / filename(s) / 金額 / 取込み日時）が
-    // ラベル付きで、複数件を省略なく全て表示されることを確認する（T3）。
-    // ラベル語彙は 3 site 統一（実装後レビュー round 1 是正 4）: 「ID」は「取込み ID」、
-    // 「金額」は「合計金額」に揃える。
-    const existingItems = within(dialog).getAllByText("取込み ID");
-    expect(existingItems.length).toBe(2);
-    expect(within(dialog).getByText("100")).toBeInTheDocument();
+    // UI-07-D13 の規定項目（import ID / filename(s) / 金額 / 取込み日時）が省略なく
+    // 全件表示されることを確認する（T3 項目完全性 oracle、gated Amendment 3 でも不変）。
+    // DSR-16 構造 assert: 既存分は列を揃えた表（比較目的の structured list）で render される。
+    const table = within(dialog).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "取込み ID" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "ファイル名" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "合計金額" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "取込み日時" })).toBeInTheDocument();
+    // ヘッダ行 + 既存分2件 = 3行。per-card の反復ではなく1つの表に全件が並ぶ。
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(within(table).getByText("100")).toBeInTheDocument();
     // 複数 filenames は " / " 連結でなく個別行表示（実装後レビュー round 1 是正 3）。
-    expect(within(dialog).getByText("Z001_old.CSV")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z002_old.CSV")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z005_old.CSV")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("総売上 ¥9,000 / 純売上 ¥8,000");
-    expect(dialog).toHaveTextContent("2026-03-21T09:00:00");
-    expect(within(dialog).getByText("99")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z001_older.CSV")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z002_older.CSV")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z005_older.CSV")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("総売上 未取得 / 純売上 ¥7,000");
-    expect(dialog).toHaveTextContent("今回分");
-    expect(within(dialog).getAllByText("Z001_260321.CSV").length).toBeGreaterThanOrEqual(1);
-    expect(within(dialog).getAllByText("Z002_260321.CSV").length).toBeGreaterThanOrEqual(1);
-    expect(within(dialog).getAllByText("Z005_260321.CSV").length).toBeGreaterThanOrEqual(1);
+    expect(within(table).getByText("Z001_old.CSV")).toBeInTheDocument();
+    expect(within(table).getByText("Z002_old.CSV")).toBeInTheDocument();
+    expect(within(table).getByText("Z005_old.CSV")).toBeInTheDocument();
+    expect(table).toHaveTextContent("総売上 ¥9,000 / 純売上 ¥8,000");
+    // 取込み日時は人間向け表示（既存 formatDateTime 慣行: ISOの"T"を空白へ）。
+    expect(table).toHaveTextContent("2026-03-21 09:00:00");
+    expect(within(table).getByText("99")).toBeInTheDocument();
+    expect(within(table).getByText("Z001_older.CSV")).toBeInTheDocument();
+    expect(within(table).getByText("Z002_older.CSV")).toBeInTheDocument();
+    expect(within(table).getByText("Z005_older.CSV")).toBeInTheDocument();
+    expect(table).toHaveTextContent("総売上 未取得 / 純売上 ¥7,000");
+    // 今回分は「今回分」ラベル付きの独立領域（単一レコード確認 = definition list のまま）。
+    expect(within(dialog).getByText("今回分")).toBeInTheDocument();
+    expect(within(dialog).getByText("Z001_260321.CSV")).toBeInTheDocument();
+    expect(within(dialog).getByText("Z002_260321.CSV")).toBeInTheDocument();
+    expect(within(dialog).getByText("Z005_260321.CSV")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("総売上 ¥12,000 / 純売上 ¥11,000");
-    expect(within(dialog).getAllByText("ファイル名").length).toBeGreaterThanOrEqual(3);
-    expect(within(dialog).getAllByText("合計金額").length).toBeGreaterThanOrEqual(3);
-    expect(within(dialog).getAllByText("取込み日時").length).toBeGreaterThanOrEqual(3);
+    expect(dialog).toHaveTextContent("2026-03-21 10:00:00");
     await user.click(screen.getByRole("button", { name: "キャンセル" }));
     expect(confirmImport).not.toHaveBeenCalled();
     await user.click(importButton);
