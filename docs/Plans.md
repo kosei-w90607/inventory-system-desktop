@@ -33,11 +33,15 @@
 
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
+- [ ] wave 7 lane 1: docs 整合性衛生 batch — [active packet](plans/2026-08-30-docs-consistency-hygiene.md)（詳細は Wave Registry）
+- [ ] wave 7 lane 2: repo・scripts 衛生 batch — [active packet](plans/2026-08-30-repo-scripts-hygiene.md)（詳細は Wave Registry）
 
 ### Wave Registry
 
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。lane packet の選択と PK4 は、この「次の行動」節内の link を正本として fail-closed 判定する。
-- 現在 active wave なし。
+- wave 7（2 lane、衛生 batch）: active 2026-08-30 — merge train 順序は human-confirm 到達順を既定案として Ready 承認時に確定。
+  - lane 1: docs 整合性衛生 batch（REQ-901 採番是正 + 表記同期 + 棚卸し母集団明記）— branch `agent/docs-consistency-hygiene` / [active packet](plans/2026-08-30-docs-consistency-hygiene.md) / Draft PR: pending / Phase: plan-draft / 介入 1/3（起票承認 2026-08-30）
+  - lane 2: repo・scripts 衛生 batch（退役 Docker 資材削除 + protected-paths 補完 + probe script 負 glob 是正）— branch `agent/repo-scripts-hygiene` / [active packet](plans/2026-08-30-repo-scripts-hygiene.md) / Draft PR: pending / Phase: plan-draft / 介入 1/3（起票承認 2026-08-30）
 - wave 1（2 lane pilot）: 完了 2026-07-28 — PR #29 squash `8f67315` / PR #30 squash `eac9d20`。[WER](archive/plans/2026-07-28-wave-1-pilot-workflow-effectiveness-review.md)
 - wave 2（2 lane worktree）: 完了 2026-07-28 — merge train PR #33 squash `6c53c44` -> PR #32 squash `29b35ed`。[WER](archive/plans/2026-07-28-wave-2-workflow-effectiveness-review.md)
 - wave 3（3 lane）: 完了 2026-07-29 — merge train PR #34 squash `3f5086b` -> PR #35 squash `b9d7e49` -> PR #36 squash `90cc963`。[WER](archive/plans/2026-07-29-wave-3-workflow-effectiveness-review.md)
@@ -48,9 +52,9 @@
 ## Backlog（未了）
 
 - command drift detection（`collect_commands!` / `generate_handler!` の drift detection 未導入）。合わせて repository root に残る未参照の退役 `Dockerfile` / `docker-compose.yml` は `DEV_SETUP_CHECKLIST.md` §A.1 の履歴コピーとの不一致（Rust / Node pin 含む）を確認のうえ削除または再同期を別 change で判断する。
-- TanStack Router generation settings の統一。
+- TanStack Router generation settings の統一（起草時実査 2026-08-30: vite plugin `tanstackRouter({ autoCodeSplitting: true })` と `tsr generate` CLI の 2 系統併存・tsr.config.json なし。統一方針〈CLI script 撤去 or tsr.config 明示化〉の小裁定 + 生成物同一性検証を伴う単独小 change として着手）。
 - UI-09a・09b 将来設計（UI-09b の日報 coverage 表示「一部日だけ日報がある月」の取込み済み日数、SALES2-D3 で自覚的 defer〈batch A から移管〉、34-biz §19.4 参照。`get_monthly_sales` DTO 拡張を伴う R3）。
-- bindings whitespace（bindings trailing-whitespace generation の扱い）。
+- bindings trailing-whitespace generation の扱い（2026-08-30 実測: commit 済み `src/lib/bindings.ts` に trailing whitespace 0 件。生成時のみ発生する可能性が残るため、次回 bindings 再生成を伴う change で実測して要否判定）。
 - PLUスロット永続割当の恒久設計（CV17 import が メモリNo. merge のため現行再採番と衝突。[2026-07-03 packet](archive/plans/2026-07-03-post-ui08-janless-plu-target-design.md) D-6 参照）。
 - MSI 配布手順 docs 化（v1.0 gate。「次の行動」⑤と対応）。
 - バックアップ一覧の肥大化 UX（保持日数で自然減のため優先度低）。
