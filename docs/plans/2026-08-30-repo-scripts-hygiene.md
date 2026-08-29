@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1957458
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: fd2ccc4
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending Ready 承認（画面非接触のため視覚確認・L3 は非該当。Dockerfile / docker-compose.yml の削除対象は本 packet で明名済み）
+- Human Gate: none（Ready 承認 2026-08-30 済み — wave 7 train 承認で owner が Ready 遷移実行・merge・closeout を Coordinator へ委任、本 lane 介入 3/3。視覚確認・L3 は非該当、削除対象 2 file は packet 明名済み）
 
 ## Owner Effort Budget
 
@@ -222,3 +222,4 @@ S1（Dockerfile / docker-compose.yml の git rm、docs の現行手順指示は�
 
 - Final Review（独立 Sonnet、fresh context、read-only、git show ベース）2026-08-30: `git diff e1c668a..fd2ccc4` の全 hunk を S1/S2 と 1 対 1 突合（3 file のみ、packet 外 hunk 0）/ 削除は明名 2 file 限定 / `check-phase1-probe-removed.sh` byte 無改変（descope 遵守）/ .gitignore 2 行は辞書順正位置・既存行無改変 / AC-1・AC-2 presence の static 再実測 PASS / AC-6 は歴史記述のみ残存で現行手順指示 0 / 越境なし / commit subject 適合。P1: 0 / P2: 0 / P3: 0。実行系 gate（git check-ignore / check-env-safety / doc-consistency-check）は Writer L1 full evidence（PR body 記載）で担保。
 - state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate fd2ccc4 の L1 `local-ci.sh full` CLEAN PASS evidence（implementing->local-verified。exact SHA と evidence 位置は PR body を正とする）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。先頭 lane merge 後の origin/main 単段 merge（`efbfcd6`、conflict-free・docs-only delta）は D-074 手順に従い Rebase Map 不要、Plan Commit / Amendments の ancestry 維持。
+- state-only 遷移 `human-confirm->ready-hosted-final` の根拠: owner の wave 7 train 承認 2026-08-30（lane 1 Ready 承認と同時に「締めまで」の委任 — D-055 の train 承認による全 lane Ready 遷移実行の委任。本 lane 介入 3/3 計上）。exact HEAD の L1 full evidence と hosted run は PR body を正とする。
