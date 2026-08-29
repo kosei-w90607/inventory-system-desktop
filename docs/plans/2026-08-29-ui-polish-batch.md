@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -19,7 +19,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Opus 5 修正案 claims-producer round（§5.4 低制約、read-only）+ Codex cross review + Coordinator 裁定
   - Opus 投入の例外記録（manual §3 L36「通常レビューは既存分業を維持」に対する例外、Plan Review round 1 P2-1）: owner 明示の座組決定（2026-08-29「その座組でやってみたいね」）による pilot 投入。目的 = ①保留中の Opus×Sonnet 並走レビュー実験（Plans.md 記録）の「簡単 backlog 水準」較正 ②operator-facing UI 磨きにおける修正案 claims-producer 型の実務検証。read-only・§5.4 低制約・Writer 非割当の D-056 機構は不変。本例外の最終確定は Plan Gate 承認に含める
-- Reviewed Content HEAD: 291e32d
+- Reviewed Content HEAD: aafa06a
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner 目視（operator 画面の表示変更 9 件の視認確認、L3-lite 1 回）+ Ready 承認 + merge
@@ -353,3 +353,9 @@ Fill after review.
 - Coordinator 独立確認（全 true positive）: `CostDiffDialog.tsx` L76-81 の onOpenChange guard は isPending 中のみ / `ReceivingPage.tsx` の結果画面に再 open 経路なし / 61 §61.5 L35 Why「商品ごとの確認を必須にする」と暗黙 dismiss が不整合（L131 の次回入庫再提示は残るが、再確認のための入庫再実行という危険誘導が実演された）。dismissal 意味論は PR #5 由来の pre-existing で本 batch は表示のみ接触 — ただし当 dialog は Scope 4/5 の当事者であり本 PR で是正する
 - 裁定（gated Amendment 5）: ①CostDiffDialog のみ modal 硬化 — DialogContent へ `onPointerDownOutside` / `onEscapeKeyDown` の preventDefault + `showCloseButton={false}`（共通 dialog.tsx は無変更、prop 実在を L45 で確認済み）。終了経路は footer の「見送って閉じる / 閉じる」のみ ②結果画面への再表示ボタンは今回**不採用**（状態管理拡大の回避、見送り時の次回入庫再提示契約が safety net） ③61 §61.5 へ「原価差分ダイアログは明示ボタンのみで閉じる（外側クリック・Escape・× では閉じない）」1 文追記 ④回帰 test T11: overlay pointer-down / Escape で dialog 残存・×ボタン不在・footer 明示ボタンで閉じる・更新中 / 成功後の既存表示契約維持
 - 是正のため implementing へ backtrack（本 commit）
+
+### round 5 delta closure と human-confirm 再遷移（2026-08-29、append-only）
+
+- Writer round 5（`19f4d65..aafa06a`）: CostDiffDialog の modal 硬化（showCloseButton={false} + onPointerDownOutside / onEscapeKeyDown preventDefault、L89-94。共通 dialog.tsx 無変更・isPending guard 維持・終了は footer 明示ボタンのみ）+ 61 §61.5 の 1 文追記 + T11（4 assert、是正前差し戻しで red を実証後 green 復元）。既存 T4/T5/T7-T9 green 維持。L1 実 envelope = HEAD `aafa06a` / CLEAN / PASS
+- delta closure = Coordinator 直接検分（dismissal 3 prop・doc 追記・T11 の data-slot assert を diff / rg 実測。R2 裁量根拠は round 3 と同）。P1/P2 相当の未解決 finding なし
+- local-verified → independent-review → human-confirm の再 materialize（content-riding 形）。残 = owner L3 最終確認 + Ready + merge
