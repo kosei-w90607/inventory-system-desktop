@@ -53,11 +53,13 @@ export function PreviewStep({
       {/* DSR-03: 同日追加確認はデータ安全系（進めると危ない状態）のため、画面上部の
           Alert 帯専用スロットへ置く（紐付け結果・エラー詳細より前）。主情報はここが担い、
           ファイル情報カードの Badge は補助的な状態表示に留める（gated Amendment 4、
-          owner L3-lite round 2 裁定）。 */}
+          owner L3-lite round 2 裁定）。warning tone は日報側 DailyReportImportPage.tsx
+          と対称に統一する（gated Amendment 5、owner L3-lite round 3 裁定②: 是正前は
+          neutral で日報側と非対称だった）。 */}
       {requiresAdditionalConfirm && (
-        <Alert>
+        <Alert className="border-warning bg-warning-soft text-warning-strong">
           <AlertTitle>同じ日の取込みがあります</AlertTitle>
-          <AlertDescription>
+          <AlertDescription className="text-warning-strong">
             既存分を残したまま今回分を追加します。内容を確認してください。
           </AlertDescription>
         </Alert>
@@ -67,7 +69,13 @@ export function PreviewStep({
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>ファイル情報</CardTitle>
           {requiresAdditionalConfirm && (
-            <Badge variant="outline">
+            // gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠（既定 outline）は
+            // 補助状態を主警告（上部 Alert）より強く見せ、情報階層が逆転するため不採用。
+            // soft warning token（StockStatusBadge.tsx の低在庫バッジと同型）へ統一する。
+            <Badge
+              variant="outline"
+              className="border-warning-border bg-warning-soft text-warning-strong"
+            >
               <TriangleAlertIcon aria-hidden="true" />
               同日データあり
             </Badge>

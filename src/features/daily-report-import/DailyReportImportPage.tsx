@@ -164,10 +164,17 @@ function DailyReportPreviewStep({
             variant={
               alreadyImported ? "destructive" : requiresAdditionalConfirm ? "outline" : "secondary"
             }
+            className={
+              requiresAdditionalConfirm
+                ? "border-warning-border bg-warning-soft text-warning-strong"
+                : undefined
+            }
           >
             {/* DSR-03: 同日追加確認の主情報は上部 Alert 帯が担うため、Badge は補助的な
                 状態表示に留める（gated Amendment 4、PreviewStep.tsx と対称の改名。
-                本画面の Alert は元々上部専用スロットに配置済みのため移動は不要）。 */}
+                本画面の Alert は元々上部専用スロットに配置済みのため移動は不要）。
+                gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠（既定 outline）は
+                補助状態を主警告より強く見せるため、soft warning token へ統一する。 */}
             {alreadyImported ? (
               "取込み済み"
             ) : requiresAdditionalConfirm ? (

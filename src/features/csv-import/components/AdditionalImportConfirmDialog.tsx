@@ -80,7 +80,11 @@ export function AdditionalImportConfirmDialog({
         if (!next) onCancel();
       }}
     >
-      <AlertDialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-3xl">
+      {/* gated Amendment 5（owner L3-lite round 3 裁定①）: 共通 alert-dialog.tsx L53 の
+          `data-[size=default]:sm:max-w-lg` は属性 selector 付きで詳細度が高く、素の
+          `sm:max-w-3xl` では負けて default 幅のままだった。同じ data-size 修飾子を付けて
+          詳細度を揃え、意図した 720px 幅を実 DOM で有効化する（共通 primitive は不変）。 */}
+      <AlertDialogContent className="max-h-[80vh] overflow-y-auto data-[size=default]:sm:max-w-3xl">
         <AlertDialogHeader>
           <AlertDialogTitle>同じ日のデータを追加で取り込みますか？</AlertDialogTitle>
           <AlertDialogDescription>
