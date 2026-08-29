@@ -133,4 +133,5 @@ Phase B の実装文言は次の固定要素句で検査する。count は行数
 
 - 実際の Windows WebView で Home が先頭へ smooth scroll し復元成功 Alert が初期 viewport に入ることは jsdom で代替できないため Windows native L3 で確認する。
 - heading の視覚階層、長い商品名 / 取引先名の折返し、divide-y の読みやすさは Windows native L3 で確認する。
+- CostDiffDialog / MergeSupplierDialog / PluBulkTargetConfirmDialog の 3 dialog の文言レイアウト目視（L3 checklist）
 - Plan Review 後に契約または oracle を変える必要が出た場合は gated Amendment とし、Packet `Amendments` へ commit SHA を追記してから実装する。

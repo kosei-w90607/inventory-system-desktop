@@ -97,7 +97,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 ## Design Sources
 
-- Requirements / spec: REQ-103 / UI-01a-D11、REQ-209 / UI-02-D15、REQ-107 / SPEC-SUP-D4 / D6、REQ-904 / UI-13-D5、UI-11b-D11 / D12。
+- Requirements / spec: REQ-907 / UI-01a-D11、REQ-209 / UI-02-D15、REQ-107 / SPEC-SUP-D4 / D6、REQ-904 / UI-13-D5、UI-11b-D11 / D12。
 - Architecture: [ARCHITECTURE.md](../ARCHITECTURE.md)（UI -> CMD -> BIZ -> IO/MNT。今回は UI のみ）。
 - Function / command / DTO: [50-ui-product-list.md](../function-design/50-ui-product-list.md) §50.2 UI-01a-D11 / §50.6 / §50.8、[61-ui-receiving.md](../function-design/61-ui-receiving.md) §61.1 UI-02-D15 / §61.5 / §61.9、[68-ui-backup-restore.md](../function-design/68-ui-backup-restore.md) §68.5 UI-11b-D11 / D12、[75-ui-integrity-check.md](../function-design/75-ui-integrity-check.md) §75.2 UI-13-D5 / §75.5、[78-ui-supplier-management.md](../function-design/78-ui-supplier-management.md) §78.2 SPEC-SUP-D4 / D6 / §78.7 / §78.11。
 - DB: `src-tauri/src/db/product_repo.rs::merge_suppliers`（fact check のみ。products / receiving_records の参照更新後に source supplier を DELETE。変更対象外）。
@@ -126,9 +126,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 | REQ-209 / SPEC-PRV-D8 | 61 §61.1 / §61.5 / §61.9 | UI-02-D15 | 保存済み入庫と任意のマスタ更新を混同させない。自動更新、見送り時の入庫取消、再表示ボタンは採用しない | `CostDiffDialog.tsx` | Matrix T1 / T6 |
 | REQ-107 | 78 §78.2 / §78.7 / §78.11 | SPEC-SUP-D4 / D6 | backend の source DELETE と参照付替えを最終確認前に明示する。不可逆性だけの抽象警告では削除対象が読めない | `MergeSupplierDialog.tsx` | Matrix T2 |
 | REQ-907 | 50 §50.2 / §50.6 / §50.8 | UI-01a-D11 | 件数だけでなく filter 外が非対象である境界を明示する。page 内だけの更新や filter 意味論変更は採用しない | `PluBulkTargetConfirmDialog.tsx` | Matrix T3 |
-| 復元成功 Alert | 68 §68.5 | UI-11b-D11 / D12、DSR-17 分類③ | one-shot consume 時だけ先頭表示する。mount 一律 scroll は詳細戻り UX を壊すため禁止 | `HomePage.tsx` | Matrix T4 / T5 |
-| 原価差分の複数商品 | 61 §61.5 | UI-02-D15 / DSR-16 | 固有操作を持つ反復は一意見出し付き summary card にする。商品名 `dd` のみでは見出し移動で識別できない | `CostDiffDialog.tsx` | Matrix T6 |
-| 整合性補正結果 | 75 §75.2 / §75.5 | UI-13-D5 / DSR-16 | 同一 summary 内の反復は per-item box ではなく行区切りにする。OperationLogsPage と同型 | `IntegrityCheckPage.tsx` | Matrix T7 |
+| 復元成功 Alert | 68 §68.5 | 該当 REQ なし（QR-05 / UI-11b-D11・D12 起点。REQ-905 は requirements.md の定義と drift があるため引用しない） | one-shot consume 時だけ先頭表示する。mount 一律 scroll は詳細戻り UX を壊すため禁止 | `HomePage.tsx` | Matrix T4 / T5 |
+| 原価差分の複数商品 | 61 §61.5 | REQ-209 | 固有操作を持つ反復は一意見出し付き summary card にする。商品名 `dd` のみでは見出し移動で識別できない | `CostDiffDialog.tsx` | Matrix T6 |
+| 整合性補正結果 | 75 §75.2 / §75.5 | REQ-904 | 同一 summary 内の反復は per-item box ではなく行区切りにする。OperationLogsPage と同型 | `IntegrityCheckPage.tsx` | Matrix T7 |
 
 ## Design Intent Audit
 
