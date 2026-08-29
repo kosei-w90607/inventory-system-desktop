@@ -9,6 +9,8 @@
 
 年末（10月〜大晦日）の長期棚卸し作業を、開始・中断・再開・確定まで単独の operator が扱えるようにする。現運用は一人運用・数週間かけて商品マスタ全件（数千点規模）を回る前提であり（ヒアリングシート C60/B60/Q12/Q13/Q20）、既存 BIZ-06/CMD-10 契約（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）をそのまま UI から使う。新規に追加するのは軽量 CMD 3 本（進行中判定用 `get_active_stocktake`、カウント対象解決用 `find_stocktake_item`、前回比較用 `get_last_completed_stocktake`、いずれも future）のみで、DB スキーマ変更や BIZ 確定ロジックの変更は伴わない。
 
+**カウント対象の母集団（issue #91 owner 回答 2026-08-22）**: 画面がカウントさせる母集団は商品マスタ全件（[35-biz-stocktake-service.md](35-biz-stocktake-service.md) `find_stocktake_eligible_products` が返す全商品）であり、年数による除外はしない。実店舗で現物カウントの対象外になるのは、伝票保管義務範囲外で廃棄済み・取引先データなし・バーコードなし・販売に適さない見た目という原価根拠を欠く現物（例年 1〜2 点、多い年で 4〜5 点）で、これらは単品コードを付与せず商品マスタへ未登録のため、システム上は最初から母集団の外にある。除外を表す専用フラグや画面表示は追加しない。
+
 ## 73.2 関数要求
 
 | ID | 要求 |
@@ -388,3 +390,4 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 2026-07-08 | #159 (private archive) Codex レビュー起因 | UI-10-D2 契約監査追記2: 商品名検索欄追加時に、`ReceivingPage.tsx` の商品検索欄に既にある `event.nativeEvent.isComposing` guard を移植し忘れており、日本語 IME の変換確定 Enter でも検索が発火していた。検索欄・数量入力欄の両方の `onKeyDown` に guard を追加。T23 追加。 |
 | 2026-08-03 | ui-polish-batch-b（本 PR） | §73.6 一覧の 0 件表示行に filter-empty reset action（catalog ⑥、部門フィルタ + 未入力のみ表示が対象）を追記。 |
 | 2026-08-03 | ui-polish-batch-b round 2 是正（本 PR） | round 2 P2-1 対応: §73.6 filter-empty reset action の戻す対象に `page`（`StocktakeSearch` 既存 param、既定 1）を追加し、部門フィルタ / 未入力のみ toggle / `page` の 3 者を既定値へ戻す契約に更新。 |
+| 2026-08-30 | docs 整合性衛生 batch（本 PR） | §73.1 に棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）を明記。 |

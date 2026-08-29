@@ -133,7 +133,7 @@
   - 詳細な command contract、状態遷移、L3確認項目は [function-design/67-ui-plu-export.md](function-design/67-ui-plu-export.md) を正とする
 
 ### バックアップ・復元画面
-- **対応仕様**: QR-05 / REQ-905（バックアップ・復元、設定・ログ・バックアップ系 CMD）
+- **対応仕様**: QR-05 / REQ-901（バックアップ・復元）
 - **レイアウト判断**:
   - UI-11b はシステム管理エリアの独立画面として扱う。route（`/settings/backup`）は実装済みで、`src/config/navigation.ts` の `ui-11b` も active 化済み。
   - `backup_enabled` / `backup_time` / `backup_path` / `backup_retention_days` はこの画面が所有する。UI-11a 閾値設定には混ぜない。

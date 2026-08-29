@@ -64,7 +64,7 @@ usage 件数は `N件` と単位を付けて表示する。0 件も `0件` と�
 
 | generated command / DTO | 用途 |
 |---|---|
-| `commands.listSuppliersWithUsage()` / `SupplierWithUsage` | name 昇順一覧。`id` / `name` / `productCount` / `receivingRecordCount` |
+| `commands.listSuppliersWithUsage()` / `SupplierWithUsage` | name 昇順一覧。`id` / `name` / `product_count` / `receiving_record_count` |
 | `commands.createSupplier(name)` / `Supplier` | 「新しい取引先を追加」。既存 wire を無変更で流用 |
 | `commands.renameSupplier(supplierId, name)` / `Supplier` | インライン改名 |
 | `commands.mergeSuppliers(sourceId, targetId)` / `SupplierMergeResult` | 重複統合。商品・入庫記録の付替え件数を返す |
@@ -162,5 +162,6 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-08-30 | docs 整合性衛生 batch（本 PR） | §78.4 の `SupplierWithUsage` field 表記を実 wire（snake_case、`product_count` / `receiving_record_count`）に是正。 |
 | 2026-08-30 | UI 表示磨き batch 第 2 弾 design sync | 統合 stage 2 に source の一覧削除と商品・入庫記録の引き継ぎ文言を明記。 |
 | 2026-08-25 | 取引先管理 design-first | SPEC-SUP-D1〜D10、REQ-106/107、UI-15 の追加・改名・統合契約を新設。 |

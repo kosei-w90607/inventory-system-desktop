@@ -1,7 +1,7 @@
 # UI-11b: バックアップ・復元画面
 
 > 親文書: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
-> 対応REQ: QR-05 / REQ-905
+> 対応REQ: QR-05 / REQ-901
 > Design Phase: 2026-07-06。PR #141 で settings / log / backup 系 command bindings は配線済み。実効保存先常時表示（PR #144 L3 / Fable 裁定起源の follow-up）を追記。
 
 UI-11b は、ローカル SQLite DB の手動バックアップ、バックアップ設定、バックアップ一覧、復元を operator が 1 画面で扱うための画面である。backend 契約の正本は [71-mnt-backup.md](71-mnt-backup.md) と [43-cmd-settings-log.md](43-cmd-settings-log.md) に置き、本書は UI 側の状態遷移、文言、安全確認、query cache の扱い、Windows native L3 を固定する。

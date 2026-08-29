@@ -150,7 +150,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | CMD-08 | PLU書出しコマンド群 | BIZ-04 | PLUファイル生成の入口 |
 | CMD-09 | 売上集計コマンド群 | BIZ-05 | 日次・月次集計データ取得の入口 |
 | CMD-10 | 棚卸しコマンド群 | BIZ-06 | 棚卸し操作の入口 |
-| CMD-11 | 設定・ログコマンド群 | BIZ-09, BIZ-02, MNT-01, MNT-02 | 設定CRUD、ログ取得、バックアップ/復元、領収書画像保存の入口（D-060） |
+| CMD-11 | 設定・ログコマンド群 | BIZ-09, BIZ-02, MNT-01 | 設定CRUD、ログ取得、バックアップ/復元、領収書画像保存の入口（D-060） |
 | CMD-12 | 日報取込みコマンド群 | BIZ-08 | Z001/Z002/Z005 bundle preview/commit/rollback/listの入口 |
 
 ### BIZ層（ビジネスロジック）
@@ -225,7 +225,8 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 
 第6段階: 保守＋仕上げ
   MNT-01（バックアップ）
-  MNT-02 → CMD-11 → UI-11a/UI-11b/UI-11c（設定・バックアップ・ログ）
+  MNT-02（操作ログ管理。アプリ起動時cleanupのみ、CMD-11とは非連結）
+  CMD-11 → UI-11a/UI-11b/UI-11c（設定・バックアップ・ログ）
   IO-05（CSVエクスポート）
   IO-06（画像管理）
 
@@ -308,3 +309,4 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | 2026-04-13 | ログ初期化をアプリ起動シーケンスの最初に配置 | DB初期化やマイグレーションの失敗もログに残すため。ログ初期化自体の失敗はstderrフォールバックで対応 |
 | 2026-04-13 | 全初期化処理をTauri setup hook内に移動 | Tauri公式推奨: "Don't write code before Tauri starts, write it in the setup hook instead!"。setup hookはウィンドウ作成前に実行される。app.path().app_data_dir()でパス解決でき、dirsクレートの追加が不要。DB初期化の相対パス("inventory.db")もapp_data_dir配下の絶対パスに修正 |
 | 2026-04-16 | UI技術スタック選定（React 19 + Tauri 2 + shadcn/ui + TanStack + Tailwind stone系）+ ウォーム系パレット採用 | refactoring-ui §4 の「Pure grays look lifeless」原則と手芸店業務の4根拠（環境一致・利用者距離感・目の疲労軽減・差別化）。デザイン哲学は核心4本柱（refactoring-ui / ux-principles / GOV.UK / IBM Carbon）+ 補助3原則（Polaris / Atlassian / Fluent 2）+ japanese-webdesign 観点借用で構成。詳細は [UI_TECH_STACK.md](UI_TECH_STACK.md) を参照 |
+| 2026-08-30 | CMD-11 の MNT-02 依存記述を実査是正（docs 整合性衛生 batch、本 PR） | `docs/architecture/cmd-task-specs.md` CMD-11 mapping と `rg -n "mnt" src-tauri/src/cmd/` 実査により、CMD-11 配下いずれの command も MNT-02（操作ログ管理）を直接・間接（BIZ-09 経由含む）に消費していないと確認。L153 依存列から MNT-02 を削除し、L228 flow 行を実態（MNT-02 は起動時 cleanup のみで CMD-11 と非連結）へ是正 |
