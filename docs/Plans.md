@@ -28,7 +28,7 @@
 
 ## 次の行動
 
-- [ ] ③ UI backlog の表示磨き batch: 着手時に owner と選定
+- [ ] **③ UI 表示磨き batch 第 1 弾（R2、active）**: owner 座組決定 2026-08-29（Sonnet Writer × Opus 修正案レビュー × Codex cross）。10 件（PR #80 / PR #5 / UI-15 / PR #14 起源 + 名称統一）— [active Packet](plans/2026-08-29-ui-polish-batch.md) / [Matrix](plans/test-matrices/2026-08-29-ui-polish-batch.md)。「状態表現の統一」は §65.6.1 の意図的乖離と衝突するため batch から除外し design-first 裁定候補として backlog 残置
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 

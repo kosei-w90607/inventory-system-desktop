@@ -1,4 +1,4 @@
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -164,8 +164,27 @@ function DailyReportPreviewStep({
             variant={
               alreadyImported ? "destructive" : requiresAdditionalConfirm ? "outline" : "secondary"
             }
+            className={
+              requiresAdditionalConfirm
+                ? "border-warning-border bg-warning-soft text-warning-strong"
+                : undefined
+            }
           >
-            {alreadyImported ? "取込み済み" : requiresAdditionalConfirm ? "追加確認" : "確認済み"}
+            {/* DSR-03: 同日追加確認の主情報は上部 Alert 帯が担うため、Badge は補助的な
+                状態表示に留める（gated Amendment 4、PreviewStep.tsx と対称の改名。
+                本画面の Alert は元々上部専用スロットに配置済みのため移動は不要）。
+                gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠（既定 outline）は
+                補助状態を主警告より強く見せるため、soft warning token へ統一する。 */}
+            {alreadyImported ? (
+              "取込み済み"
+            ) : requiresAdditionalConfirm ? (
+              <>
+                <TriangleAlertIcon aria-hidden="true" />
+                同日データあり
+              </>
+            ) : (
+              "確認済み"
+            )}
           </Badge>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm md:grid-cols-2">
@@ -242,12 +261,12 @@ function DailyReportPreviewStep({
         open={dialogOpen}
         existingImports={preview.duplicate_check.same_date_imports.map((item) => ({
           id: item.id,
-          filenames: item.source_filenames.join(" / "),
+          filenames: item.source_filenames,
           amount: `総売上 ${formatMoney(item.gross_amount)} / 純売上 ${formatMoney(item.net_amount)}`,
           importedAt: item.imported_at,
         }))}
         incomingImport={{
-          filenames: filenames.join(" / "),
+          filenames,
           amount: `総売上 ${formatMoney(preview.totals.gross_amount)} / 純売上 ${formatMoney(preview.totals.net_amount)}`,
           importedAt: preview.preview_created_at,
         }}
@@ -314,34 +333,68 @@ function DailyReportResultStep({
           <AlertTitle>在庫数は変わりません</AlertTitle>
           <AlertDescription>取消しても在庫数は変わりません。</AlertDescription>
         </Alert>
-        <Button asChild>
-          <Link to="/reports/daily" search={{ date: reportDate }}>
-            日次売上を見る
-          </Link>
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" disabled={isRollingBack}>
-              {isRollingBack && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />}
-              {isRollingBack ? "取り消し中…" : "取り消す"}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>日報取込みを取り消しますか？</AlertDialogTitle>
-              <AlertDialogDescription>
-                この取込みだけを取り消します。同じ日の他の取込みは残ります。ID{" "}
-                {result.daily_report_import_id} / {reportDate} / {filenames.join(" / ")} / 総売上{" "}
-                {formatMoney(result.gross_amount)} / 純売上 {formatMoney(result.net_amount)}
-                。取消しても在庫数は変わりません。
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>キャンセル</AlertDialogCancel>
-              <AlertDialogAction onClick={onRollback}>取り消す</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link to="/reports/daily" search={{ date: reportDate }}>
+              日次売上を見る
+            </Link>
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={isRollingBack}>
+                {isRollingBack && (
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                )}
+                {isRollingBack ? "取り消し中…" : "取り消す"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>日報取込みを取り消しますか？</AlertDialogTitle>
+                <AlertDialogDescription>
+                  この取込みだけを取り消します。同じ日の他の取込みは残ります。取消しても在庫数は変わりません。
+                </AlertDialogDescription>
+                {/* DSR-16: 単一レコード確認の definition list は原則適合。囲み階層が
+                    AlertDialogContent と二重にならないよう、独立した box border は持たせず
+                    border-t の行区切りのみにする（gated Amendment 3 最小調整）。 */}
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-3 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">取込み ID</dt>
+                    <dd className="font-medium">{result.daily_report_import_id}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">対象日</dt>
+                    <dd className="font-medium">{reportDate}</dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-muted-foreground">ファイル名</dt>
+                    <dd className="font-medium">
+                      <ul className="space-y-0.5">
+                        {filenames.map((name) => (
+                          <li key={name} className="break-words">
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">総売上</dt>
+                    <dd className="font-medium">{formatMoney(result.gross_amount)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">純売上</dt>
+                    <dd className="font-medium">{formatMoney(result.net_amount)}</dd>
+                  </div>
+                </dl>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                <AlertDialogAction onClick={onRollback}>取り消す</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </CardContent>
     </Card>
   );

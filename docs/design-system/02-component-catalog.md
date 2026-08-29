@@ -517,6 +517,20 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 - 可逆操作に確認を挟んで操作を重くしない（DSR-07）
 - 「OK / キャンセル」のような曖昧ボタン文言にしない
 
+**比較用 variant（DSR-16 適用形）**: dialog 内に同型レコードを複数件示し、利用者が比較して判断する必要がある場合（例: 同じ日の既存取込みと今回分を見比べて重複を判断する）は、確認ダイアログの標準構造に加えて次を満たす。
+
+- **canonical**: `src/features/csv-import/components/AdditionalImportConfirmDialog.tsx`（追加取込み確認、gated Amendment 3 で DSR-16 準拠へ再構成）
+- 既存レコード群は per-card の `dl` 反復ではなく、列の揃った structured list（共通の列見出し、または揃った grid 行）で示し、囲みは全体で 1 つに留める（内部の反復は余白 / `border-b` の行区切り）
+- 今回分（新規に追加しようとしている 1 件）は「今回」ラベル付きの独立領域として分離し、既存分との境界を明確にする
+- 日時は machine 形式でなく人間向け表示（`YYYY-MM-DD HH:mm` 等）にする
+- 列を並べて比較するため、既定の `AlertDialogContent` 幅では窮屈になりやすい。比較に必要な列数に応じて幅を拡張する（`sm:max-w-2xl` 等、既存 dialog の幅指定慣行に従う）
+
+**Do**:
+- 同型レコードの比較には列を揃えた structured list を使う（per-card 反復にしない、DSR-16）
+
+**Don't**:
+- 比較目的の複数件を、囲み（border/カード）だけを識別信号にした per-card 反復で並べない（DSR-16）
+
 ---
 
 ## ⑨ 検索 + フィルタ

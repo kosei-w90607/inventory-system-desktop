@@ -264,8 +264,30 @@ font-size を全体一律に底上げする再設計は本ルールの scope 外
 
 ---
 
+## DSR-16 同型情報のグループ化と囲みの階層
+
+**ルール**: 同型レコード（同じ形の複数件）を並べて示すときは、以下の判断フローで表示形式を選ぶ。囲み（`border` / カード）は意味階層ごとに 1 つまでとし、内部の反復は余白・行区切り（`border-b`）で示す。薄い `border` を単独のグループ信号にしない。
+
+```
+複数件をどう見せるか？
+├─ 比較が目的（同じ項目を横並びで見比べる） → 列を揃えた表 / structured list
+│    （per-card の dl 反復を避け、共通の列見出しまたは揃った grid 行にする）
+├─ レコードごとに固有の操作がある（行削除・個別編集ボタン等） → 一意見出し付きの summary card
+│    （カード反復は許容するが、カード自体を唯一の識別信号にせず見出しで区別する）
+└─ 単一レコードの確認（1 件だけを確認する） → key/value の definition list（原則適合）
+```
+
+**Why**: NN/g の *Common Region*（近接した要素を共有の境界で囲むと 1 グループとして知覚される強い原理）は、境界を多用すると clutter を生み、かえって比較を妨げる。GOV.UK Design System の *Summary list* パターンは、少量の関連する key-value を per-card の反復でなくカード 1 枚の中で列を揃えて示し、同型レコードの比較を可能にする。囲みを比較目的で反復すると、各レコードが独立した「箱」に見え、利用者は箱をまたいで値を目で追う負荷を負う。非 IT・高齢の operator ほどこの負荷の影響を受けやすい（2026-08-29 owner L3-lite 実測: D13 項目完全性は PASS でも「磨かれて見やすい」が FAIL になった直接原因）。
+
+**判定フロー / 具体例**: 追加確認 dialog（`AdditionalImportConfirmDialog.tsx`）の既存分 3 件は「比較が目的」（同じ日の取込みを見比べて重複か判断する）に該当するため、per-card の `dl` 反復を廃し、列の揃った structured list へ再構成した（gated Amendment 3）。一方、rollback 確認 summary（`ResultStep.tsx` / `DailyReportResultStep`）は「単一レコードの確認」（今から取り消す 1 件だけを確認する）に該当し、既存の definition list のままで原則適合と判定した（囲み階層が 2 重以上でないかだけ点検する）。
+
+**関連**: パターン⑧Dialog/確認（比較用 variant）。review-checklist カテゴリ 9 対応（同型情報の表示形式が DSR-16 の判断フローに適合するか）。
+
+---
+
 ## 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-08-29 | PR #15（gated Amendment 3） | DSR-16 新設: 同型情報のグループ化と囲みの階層。owner L3-lite 可読性 FAIL（per-card dl 反復の clutter / 比較不能）を受け、NN/g Common Region と GOV.UK summary list を根拠に判断フローを正本化。 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: DSR-03の同日追加AlertとDSR-07の高影響な重複計上防止境界を正本化。 |

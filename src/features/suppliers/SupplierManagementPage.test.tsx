@@ -178,6 +178,8 @@ describe("SupplierManagementPage UI-15 / REQ-107", () => {
       expect(mockRename).toHaveBeenCalledWith(1, "新名称");
     });
     expect(await within(row).findByText("新名称")).toBeInTheDocument();
+    // T6 (UI 表示磨き batch Scope 6): 統合（78.7）の完了通知と対称の toast を出す（78.6 追記）。
+    expect(toast.success).toHaveBeenCalledWith("取引先名を変更しました");
 
     await user.click(within(row).getByRole("button", { name: "名前を変更" }));
     const reopened = within(row).getByLabelText("新名称の新しい取引先名");

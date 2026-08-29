@@ -183,7 +183,7 @@ export function IntegrityCheckPage() {
     <div className="relative min-h-screen space-y-6 p-6">
       <div className="space-y-2">
         <PageHeader
-          title="在庫整合性チェック"
+          title="在庫整合性検証"
           actions={
             <Button type="button" disabled={isBusy} onClick={() => void handleCheck()}>
               {phase === "completed" ? (

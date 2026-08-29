@@ -291,6 +291,9 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
 
     expect(mockRollback).toHaveBeenCalledWith(401);
     expectExactInvalidations(invalidateSpy.mock.calls, d052InvalidationOracle.csvImportRollback());
+    // T7 (UI 表示磨き batch Scope 7(a) gated Amendment): 取消完了 toast は既定 duration (3000ms)
+    // より長く表示し、非IT高齢operatorが読み切れる時間を確保する（文言は既存維持）。
+    expect(toast.success).toHaveBeenCalledWith("取込みを取り消しました", { duration: 8000 });
   });
 
   it("REQ-401: commit 中だけ useBlocker と beforeunload を有効化する", async () => {

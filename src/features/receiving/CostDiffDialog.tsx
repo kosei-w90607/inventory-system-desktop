@@ -1,5 +1,7 @@
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +19,7 @@ import { unwrapResult } from "@/lib/invoke";
 type UpdateState =
   | { status: "idle" }
   | { status: "updating" }
-  | { status: "success" }
+  | { status: "success"; newCostPrice: number }
   | { status: "error"; detail: string };
 
 function formatYen(value: number): string {
@@ -35,6 +37,11 @@ export function CostDiffDialog({
 }) {
   const [rowStates, setRowStates] = useState<Record<string, UpdateState>>({});
   const revisePrice = useReviseProductPrice();
+  const allProcessed =
+    costDiffs.length > 0 &&
+    costDiffs.every(
+      (diff) => (rowStates[diff.product_code] ?? { status: "idle" as const }).status === "success",
+    );
 
   async function updateMasterCost(diff: CostDiff) {
     setRowStates((current) => ({
@@ -54,7 +61,7 @@ export function CostDiffDialog({
       });
       setRowStates((current) => ({
         ...current,
-        [diff.product_code]: { status: "success" },
+        [diff.product_code]: { status: "success", newCostPrice: diff.received_cost_price },
       }));
     } catch (error) {
       setRowStates((current) => ({
@@ -72,7 +79,21 @@ export function CostDiffDialog({
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+      {/* gated Amendment 5（owner L3 P1 — merge blocker）: 商品ごとの確認を必須にする
+          61 §61.5 契約に反し、外側クリック・Escape・右上×での暗黙 dismiss が入庫記録の
+          二重加算を誘発した実機不具合の是正。終了経路は footer の明示ボタンのみに限定する
+          （共通 dialog.tsx は無変更、showCloseButton / onPointerDownOutside /
+          onEscapeKeyDown はいずれも既存 prop）。 */}
+      <DialogContent
+        className="max-h-[80vh] overflow-y-auto sm:max-w-2xl"
+        showCloseButton={false}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>入庫原価を確認してください</DialogTitle>
           <DialogDescription>
@@ -102,7 +123,11 @@ export function CostDiffDialog({
                 <dl className="grid gap-3 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-muted-foreground">マスタ原価</dt>
-                    <dd className="font-medium">{formatYen(diff.master_cost_price)}</dd>
+                    <dd className="font-medium">
+                      {formatYen(
+                        state.status === "success" ? state.newCostPrice : diff.master_cost_price,
+                      )}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">今回の実原価</dt>
@@ -111,24 +136,26 @@ export function CostDiffDialog({
                 </dl>
 
                 {state.status === "success" ? (
-                  <p className="text-sm font-medium" role="status">
-                    マスタ原価を更新しました
-                  </p>
+                  <Alert role="status" className="border-success bg-success-soft text-success">
+                    <CheckCircle2 aria-hidden="true" className="text-success" />
+                    <AlertTitle>マスタ原価を更新しました</AlertTitle>
+                  </Alert>
                 ) : state.status === "error" ? (
-                  <div className="space-y-2" role="alert">
-                    <p className="text-sm font-medium text-destructive">
-                      マスタ原価の更新に失敗しました
-                    </p>
-                    <p className="text-sm text-muted-foreground">{state.detail}</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={revisePrice.isPending}
-                      onClick={() => void updateMasterCost(diff)}
-                    >
-                      再試行する
-                    </Button>
-                  </div>
+                  <Alert variant="destructive" role="alert">
+                    <AlertTriangle aria-hidden="true" />
+                    <AlertTitle>マスタ原価の更新に失敗しました</AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p>{state.detail}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={revisePrice.isPending}
+                        onClick={() => void updateMasterCost(diff)}
+                      >
+                        再試行する
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
                 ) : (
                   <Button
                     type="button"
@@ -154,7 +181,7 @@ export function CostDiffDialog({
               onOpenChange(false);
             }}
           >
-            見送って閉じる
+            {allProcessed ? "閉じる" : "見送って閉じる"}
           </Button>
         </DialogFooter>
       </DialogContent>

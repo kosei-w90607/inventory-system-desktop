@@ -726,4 +726,183 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     expect(mockGetProduct).not.toHaveBeenCalled();
     expect(mockReviseProductPrice).not.toHaveBeenCalled();
   });
+
+  it("T4 (UI 表示磨き batch Scope 4): 原価更新の成功/失敗を role とテキストで判別できる success token 表示にする", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 906,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+          {
+            product_code: "P-902",
+            product_name: "テストボタン",
+            master_cost_price: 100,
+            received_cost_price: 110,
+          },
+        ],
+      },
+    });
+    mockGetProduct.mockImplementation((productCode: string) =>
+      Promise.resolve({
+        status: "ok",
+        data: makeMockProductWithRelations({ product_code: productCode, selling_price: 1200 }),
+      }),
+    );
+    mockReviseProductPrice
+      .mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          product_code: "P-901",
+          changed: true,
+          plu_dirty_set: false,
+          supplier_assigned: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        status: "error",
+        error: { kind: "internal", message: "更新失敗", field: null, error_id: null },
+      });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
+    const buttons = within(dialog).getAllByRole("button", {
+      name: "マスタ原価をこの実原価に更新する",
+    });
+    expect(buttons).toHaveLength(2);
+    await user.click(buttons[0]);
+    await user.click(buttons[1]);
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole("status")).toHaveTextContent("マスタ原価を更新しました");
+    });
+    // 色だけに依存しない判別（UI-02-D15）: role と日本語テキストの両方で成功/失敗を見分けられる。
+    await waitFor(() => {
+      expect(within(dialog).getByRole("alert")).toHaveTextContent("マスタ原価の更新に失敗しました");
+    });
+  });
+
+  it("T5 (UI 表示磨き batch Scope 5): 原価更新成功後にマスタ原価表示が新値へ更新され、全行処理済みで閉じるボタン文言が変わる", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 907,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+        ],
+      },
+    });
+    mockGetProduct.mockResolvedValue({
+      status: "ok",
+      data: makeMockProductWithRelations({ product_code: "P-901", selling_price: 1200 }),
+    });
+    mockReviseProductPrice.mockResolvedValue({
+      status: "ok",
+      data: {
+        product_code: "P-901",
+        changed: true,
+        plu_dirty_set: false,
+        supplier_assigned: false,
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
+    function masterCostValue() {
+      const label = within(dialog).getByText("マスタ原価");
+      return label.parentElement?.querySelector("dd")?.textContent;
+    }
+    expect(masterCostValue()).toBe("500 円");
+    // footer は未処理のうちは既存の「見送って閉じる」のまま。
+    expect(within(dialog).getByRole("button", { name: "見送って閉じる" })).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "マスタ原価をこの実原価に更新する" }),
+    );
+
+    await waitFor(() => {
+      expect(masterCostValue()).toBe("501 円");
+    });
+    // 61 §61.5 追記: 全行の更新完了後、footer 文言が状態対応（「閉じる」）に変わる。
+    expect(within(dialog).getByRole("button", { name: "閉じる" })).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("button", { name: "見送って閉じる" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("T11 (owner L3 P1 — merge blocker): 原価差分ダイアログは外側クリック・Escape・×では閉じず、明示ボタンでのみ閉じる", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 908,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+        ],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
+
+    // 右上×（DialogPrimitive.Close、既定 showCloseButton）が render されないこと。
+    expect(document.querySelector('[data-slot="dialog-close"]')).not.toBeInTheDocument();
+
+    // overlay への pointer-down（dialog 外側クリック相当）で dialog が残ること。
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+    if (overlay === null) throw new Error("dialog-overlay not found");
+    fireEvent.pointerDown(overlay);
+    expect(screen.getByRole("dialog", { name: "入庫原価を確認してください" })).toBeInTheDocument();
+
+    // Escape keydown で dialog が残ること。
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "入庫原価を確認してください" })).toBeInTheDocument();
+
+    // 更新中は disabled・成功後は success 表示という既存契約は維持されている
+    // （T4/T5 の回帰、ここでは disabled 状態の入口だけ再確認する）。
+    expect(
+      within(dialog).getByRole("button", { name: "マスタ原価をこの実原価に更新する" }),
+    ).toBeEnabled();
+
+    // footer の明示ボタン（「見送って閉じる」）でのみ閉じること。
+    await user.click(within(dialog).getByRole("button", { name: "見送って閉じる" }));
+    expect(
+      screen.queryByRole("dialog", { name: "入庫原価を確認してください" }),
+    ).not.toBeInTheDocument();
+  });
 });

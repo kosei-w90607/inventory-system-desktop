@@ -8,6 +8,7 @@
 
 - **対応 REQ**: REQ-904
 - **route**: `/settings/integrity`
+- **PageHeader title**: 「在庫整合性検証」（サイドバーの表記「整合性検証」〈52 §52.3 メニュー正本表〉とは別に画面見出しとして正本化する）
 - **呼び出す CMD**: `runIntegrityCheck()` / `fixIntegrity(productCodes)` / `listLogs(query)`
 - **主動線**: idle で明示実行 → running overlay → completed で差異なし、または差異一覧 → 行単位選択 → 確認dialog → fix結果 → 必要なら手動再チェック。
 

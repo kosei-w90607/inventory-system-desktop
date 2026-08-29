@@ -3,6 +3,7 @@
 // Step 2/3: プレビュー確認 + 取込み / 選び直し CTA + 同日追加確認。
 // 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4 step 6-10 / §55.5
 
+import { TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import { FilePicker, type PickedFile } from "@/components/FilePicker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -49,10 +50,36 @@ export function PreviewStep({
 
   return (
     <div className="space-y-4">
+      {/* DSR-03: 同日追加確認はデータ安全系（進めると危ない状態）のため、画面上部の
+          Alert 帯専用スロットへ置く（紐付け結果・エラー詳細より前）。主情報はここが担い、
+          ファイル情報カードの Badge は補助的な状態表示に留める（gated Amendment 4、
+          owner L3-lite round 2 裁定）。warning tone は日報側 DailyReportImportPage.tsx
+          と対称に統一する（gated Amendment 5、owner L3-lite round 3 裁定②: 是正前は
+          neutral で日報側と非対称だった）。 */}
+      {requiresAdditionalConfirm && (
+        <Alert className="border-warning bg-warning-soft text-warning-strong">
+          <AlertTitle>同じ日の取込みがあります</AlertTitle>
+          <AlertDescription className="text-warning-strong">
+            既存分を残したまま今回分を追加します。内容を確認してください。
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>ファイル情報</CardTitle>
-          {requiresAdditionalConfirm && <Badge variant="outline">追加確認</Badge>}
+          {requiresAdditionalConfirm && (
+            // gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠（既定 outline）は
+            // 補助状態を主警告（上部 Alert）より強く見せ、情報階層が逆転するため不採用。
+            // soft warning token（StockStatusBadge.tsx の低在庫バッジと同型）へ統一する。
+            <Badge
+              variant="outline"
+              className="border-warning-border bg-warning-soft text-warning-strong"
+            >
+              <TriangleAlertIcon aria-hidden="true" />
+              同日データあり
+            </Badge>
+          )}
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div>
@@ -100,15 +127,6 @@ export function PreviewStep({
 
       {error_summary.count > 0 && <ErrorRowsTable errorSummary={error_summary} />}
 
-      {requiresAdditionalConfirm && (
-        <Alert>
-          <AlertTitle>同じ日の取込みがあります</AlertTitle>
-          <AlertDescription>
-            既存分を残したまま今回分を追加します。内容を確認してください。
-          </AlertDescription>
-        </Alert>
-      )}
-
       <div className="flex flex-wrap gap-2">
         <Button onClick={handleImportClick} disabled={isImporting}>
           取り込む
@@ -128,12 +146,12 @@ export function PreviewStep({
         open={dialogOpen}
         existingImports={duplicate_check.same_date_imports.map((item) => ({
           id: item.id,
-          filenames: item.filename,
+          filenames: [item.filename],
           amount: `¥${item.total_amount.toLocaleString("ja-JP")} / ${item.total_items.toLocaleString("ja-JP")}件`,
           importedAt: item.imported_at,
         }))}
         incomingImport={{
-          filenames: file_info.filename,
+          filenames: [file_info.filename],
           amount: `¥${matched_summary.total_amount.toLocaleString("ja-JP")} / ${matched_summary.count.toLocaleString("ja-JP")}件`,
           importedAt: preview.preview_created_at,
         }}
