@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -329,3 +329,10 @@ Fill after review.
 - Writer round 3（`8ef3597..295bfcd`）: 横 overflow 是正（sm:max-w-3xl = 内容幅 ≈720px、table-fixed 10/40/25/25%、filename whitespace-normal break-words、日時 2 行折返し、min-w-0。金額 cell への whitespace-normal は同目的の技術補完として Writer 透明申告）+ 今回行の同一 Table 最終行化（「今回」Badge + 淡背景）+ DSR-03 整合（Z004 Alert を最上部へ、日報側は元々適合を rg 確認、Badge は両 tab「同日データあり」+ TriangleAlert へ）+ T3 追随。L1 実 envelope = HEAD `295bfcd` / TREE_STATE=CLEAN / RESULT=PASS
 - delta closure = **Coordinator 直接検分**（独立 subagent round は省略。理由: R2 で独立 review は本 PR で既に 2 full round 実施済み、delta は 6 file の狭範囲、owner の時間効率要請。検分実測: 共通 table.tsx の diff 0 行 / table-fixed + w-[10%] 列幅の実在 / 「同日データあり」改名 / 今回行の同一 Table 化と設計意図 comment / Writer gate 全 green + L1 CLEAN）。P1/P2 相当の未解決 finding なし
 - local-verified → independent-review → human-confirm の再 materialize（content-riding 形、STATECAP 経緯は既records）。残 = owner L3-lite round 3 + Ready + merge（介入 +1 超過の承認を L3 依頼に併記）
+
+### owner L3-lite round 3 と裁定（2026-08-29、append-only）
+
+- owner L3-lite round 3（content = `295bfcd`）: 上部 Alert 移動 / Badge 文言 + アイコン / 表への今回行統合 / 横スクロール消失 = **PASS**。意図した dialog 幅の適用 = **FAIL** / Z004 Alert の warning tone = 要是正。findings は owner 観察（実機写真）+ Codex 言語化の relay
+- Coordinator 独立確認（全 3 点 true positive）: ①共通 `alert-dialog.tsx` L53 に `data-[size=default]:sm:max-w-lg` が実在 — 属性 selector 付きで呼出し側の素の `sm:max-w-3xl` より CSS 詳細度が強く、720px 設計が実 DOM で負けて default 幅のまま ②Z004 `PreviewStep.tsx` L58 の同日追加 Alert は neutral、日報側 L152 は `border-warning bg-warning-soft text-warning-strong` で非対称 ③warning token 群は実在
+- 裁定（packet 契約不変の実装是正のため Amendment 追加なし、本 narrative が記録）: ①呼出し側を `data-[size=default]:sm:max-w-3xl` へ（共通 primitive の wide size 新設は今回不採用 — 単一利用箇所に最小変更） ②Z004 上部 Alert を日報側と同一の warning tone へ統一 ③Badge は黒枠でなく soft warning token（`border-warning-border bg-warning-soft text-warning-strong` 系）— 黒枠は補助状態を主警告より強く見せ operable にも見える情報階層の逆転のため不採用。強弱設計 = 上部 Alert（warning、主）> Badge（soft warning、補助）> 表（具体確認）
+- 是正のため implementing へ backtrack（本 commit）
