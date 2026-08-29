@@ -160,20 +160,29 @@ describe("DailyReportImportPage_req401", () => {
     expect(dialog).toHaveTextContent("既存分（2回）");
     // UI-07-D13 の規定項目（Scope 3 構造化: import ID / filename(s) / 金額 / 取込み日時）が
     // ラベル付きで、複数件を省略なく全て表示されることを確認する（T3）。
-    const existingItems = within(dialog).getAllByText("ID");
+    // ラベル語彙は 3 site 統一（実装後レビュー round 1 是正 4）: 「ID」は「取込み ID」、
+    // 「金額」は「合計金額」に揃える。
+    const existingItems = within(dialog).getAllByText("取込み ID");
     expect(existingItems.length).toBe(2);
     expect(within(dialog).getByText("100")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Z001_old.CSV / Z002_old.CSV / Z005_old.CSV");
+    // 複数 filenames は " / " 連結でなく個別行表示（実装後レビュー round 1 是正 3）。
+    expect(within(dialog).getByText("Z001_old.CSV")).toBeInTheDocument();
+    expect(within(dialog).getByText("Z002_old.CSV")).toBeInTheDocument();
+    expect(within(dialog).getByText("Z005_old.CSV")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("総売上 ¥9,000 / 純売上 ¥8,000");
     expect(dialog).toHaveTextContent("2026-03-21T09:00:00");
     expect(within(dialog).getByText("99")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Z001_older.CSV / Z002_older.CSV / Z005_older.CSV");
+    expect(within(dialog).getByText("Z001_older.CSV")).toBeInTheDocument();
+    expect(within(dialog).getByText("Z002_older.CSV")).toBeInTheDocument();
+    expect(within(dialog).getByText("Z005_older.CSV")).toBeInTheDocument();
     expect(dialog).toHaveTextContent("総売上 未取得 / 純売上 ¥7,000");
     expect(dialog).toHaveTextContent("今回分");
-    expect(dialog).toHaveTextContent("Z001_260321.CSV / Z002_260321.CSV / Z005_260321.CSV");
+    expect(within(dialog).getAllByText("Z001_260321.CSV").length).toBeGreaterThanOrEqual(1);
+    expect(within(dialog).getAllByText("Z002_260321.CSV").length).toBeGreaterThanOrEqual(1);
+    expect(within(dialog).getAllByText("Z005_260321.CSV").length).toBeGreaterThanOrEqual(1);
     expect(dialog).toHaveTextContent("総売上 ¥12,000 / 純売上 ¥11,000");
     expect(within(dialog).getAllByText("ファイル名").length).toBeGreaterThanOrEqual(3);
-    expect(within(dialog).getAllByText("金額").length).toBeGreaterThanOrEqual(3);
+    expect(within(dialog).getAllByText("合計金額").length).toBeGreaterThanOrEqual(3);
     expect(within(dialog).getAllByText("取込み日時").length).toBeGreaterThanOrEqual(3);
     await user.click(screen.getByRole("button", { name: "キャンセル" }));
     expect(confirmImport).not.toHaveBeenCalled();
@@ -271,11 +280,16 @@ describe("DailyReportImportPage_req401", () => {
       "この取込みだけを取り消します。同じ日の他の取込みは残ります。取消しても在庫数は変わりません。",
     );
     // UI-07-D14 の規定項目（Scope 2 構造化: ID / 対象日 / source filenames / 総売上 / 純売上）が
-    // ラベル付きで全て残っていることを確認する（T2）。
+    // ラベル付きで全て残っていることを確認する（T2）。source filenames は 3 件 fixture で
+    // 全件を個別 assert する（先頭 1 件化 mutation の検出 — gated Amendment 2、
+    // Codex cross review 実測 survivor の是正）。
     expect(within(rollbackDialog).getByText("取込み ID")).toBeInTheDocument();
     expect(within(rollbackDialog).getByText("501")).toBeInTheDocument();
     expect(within(rollbackDialog).getByText("対象日")).toBeInTheDocument();
-    expect(rollbackDialog).toHaveTextContent("Z001_260321.CSV");
+    expect(within(rollbackDialog).getByText("ファイル名")).toBeInTheDocument();
+    expect(within(rollbackDialog).getByText("Z001_260321.CSV")).toBeInTheDocument();
+    expect(within(rollbackDialog).getByText("Z002_260321.CSV")).toBeInTheDocument();
+    expect(within(rollbackDialog).getByText("Z005_260321.CSV")).toBeInTheDocument();
     expect(within(rollbackDialog).getByText("総売上")).toBeInTheDocument();
     expect(rollbackDialog).toHaveTextContent("¥12,000");
     expect(within(rollbackDialog).getByText("純売上")).toBeInTheDocument();

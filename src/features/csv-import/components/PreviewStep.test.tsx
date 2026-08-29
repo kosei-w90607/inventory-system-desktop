@@ -70,9 +70,11 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     expect(dialog).toHaveTextContent("今回分");
     expect(dialog).toHaveTextContent("Z004_0002.CSV");
     expect(dialog).toHaveTextContent("¥900 / 2件");
-    expect(within(dialog).getAllByText("ID").length).toBe(2);
+    // ラベル語彙は 3 site 統一（実装後レビュー round 1 是正 4）: 「ID」は「取込み ID」、
+    // 「金額」は「合計金額」に揃える。
+    expect(within(dialog).getAllByText("取込み ID").length).toBe(2);
     expect(within(dialog).getAllByText("ファイル名").length).toBeGreaterThanOrEqual(3);
-    expect(within(dialog).getAllByText("金額").length).toBeGreaterThanOrEqual(3);
+    expect(within(dialog).getAllByText("合計金額").length).toBeGreaterThanOrEqual(3);
     expect(within(dialog).getAllByText("取込み日時").length).toBeGreaterThanOrEqual(3);
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
