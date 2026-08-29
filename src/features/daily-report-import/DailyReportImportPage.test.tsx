@@ -150,8 +150,16 @@ describe("DailyReportImportPage_req401", () => {
     const importButton = await screen.findByRole("button", { name: "取り込む" });
     // Badge は主情報を上部 Alert（本画面は元々上部専用スロットに配置済み）に譲り、
     // 補助的な状態表示へ改名（gated Amendment 4、PreviewStep.tsx と対称）。
-    expect(screen.getByText("同日データあり")).toBeInTheDocument();
+    const badge = screen.getByText("同日データあり");
+    expect(badge).toBeInTheDocument();
     expect(screen.queryByText("追加確認")).not.toBeInTheDocument();
+    // gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠でなく soft warning token
+    // （PreviewStep.tsx と対称）。
+    expect(badge.closest('[data-slot="badge"]')).toHaveClass(
+      "border-warning-border",
+      "bg-warning-soft",
+      "text-warning-strong",
+    );
     await user.click(importButton);
     expect(screen.getByText("同じ日のデータを追加で取り込みますか？")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
@@ -162,6 +170,11 @@ describe("DailyReportImportPage_req401", () => {
     ).toBeInTheDocument();
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("既存分（2回）");
+    // gated Amendment 5（owner L3-lite round 3 裁定①）: 共通 alert-dialog.tsx の
+    // data-[size=default]:sm:max-w-lg に詳細度で勝つ data-size 修飾子付きの幅指定
+    // （AdditionalImportConfirmDialog.tsx は両 tab 共有のため PreviewStep.test.tsx と重複
+    // assert だが、日報 tab 経由でも同じ dialog が適用されることを固定する）。
+    expect(dialog).toHaveClass("data-[size=default]:sm:max-w-3xl");
     // UI-07-D13 の規定項目（import ID / filename(s) / 金額 / 取込み日時）が省略なく
     // 全件表示されることを確認する（T3 項目完全性 oracle、gated Amendment 3/4 でも不変）。
     // DSR-16 構造 assert: 既存分・今回分とも同一の列を揃えた表（比較目的の structured
