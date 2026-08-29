@@ -105,6 +105,7 @@ usage 件数は `N件` と単位を付けて表示する。0 件も `0件` と�
 - `「<source名>」を「<target名>」に統合します。`
 - source 行の usage 件数を使い、`<product_count>件の商品 / <receiving_record_count>件の入庫記録が付け替わります` と表示する
 - 画面文言の型は「◯件の商品 / ◯件の入庫記録が付け替わります」とし、◯へ source の実件数を入れる
+- `統合すると、取引先「<source名>」は取引先一覧から削除され、商品・入庫記録は取引先「<target名>」へ引き継がれます。` と、source 削除と両参照の引き継ぎを同時に明記する
 - `この操作は元に戻せません。別の取引先を誤って統合しないよう、名称と件数を確認してください。` と不可逆性を明記する
 - destructive action label は `統合する`、戻る action は `残す取引先を選び直す`、中止は `キャンセル` とする
 
@@ -146,7 +147,7 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 - SPEC-SUP-D2 / D9: システム管理 navigation から UI-15 に到達し、name 昇順・商品件数・入庫記録件数・追加導線が表示される
 - SPEC-SUP-D3 / D5: trim、空文字、同値 no-op、他行との同名衝突、updated_at / operation_log の契約が成立する
 - SPEC-SUP-D4: products と receiving_records の両参照を付け替えて source を削除し、途中失敗は transaction 全体を rollback する
-- SPEC-SUP-D6: 統合が 2 段階で、影響件数文言と不可逆文言を省略できない
+- SPEC-SUP-D6: 統合が 2 段階で、影響件数、source が一覧から削除されること、商品・入庫記録が target へ引き継がれること、不可逆性の各文言を省略できない
 - SPEC-SUP-D7: C21 / C22 が予約された全 consumer を invalidate し、片側の supplier cache だけを更新しない
 - SPEC-SUP-D8: existing list / create の wire が不変で、新規 3 command と DTO 2 種だけが generated bindings に追加される
 - operator UI: Loading / Empty / Error、件数、validation、完了通知を日本語 text / role / value で assert し、色 class だけの test にしない
@@ -161,4 +162,5 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-08-30 | UI 表示磨き batch 第 2 弾 design sync | 統合 stage 2 に source の一覧削除と商品・入庫記録の引き継ぎ文言を明記。 |
 | 2026-08-25 | 取引先管理 design-first | SPEC-SUP-D1〜D10、REQ-106/107、UI-15 の追加・改名・統合契約を新設。 |
