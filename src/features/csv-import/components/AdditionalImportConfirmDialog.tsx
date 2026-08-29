@@ -15,7 +15,7 @@ import {
 
 export interface ExistingImportSummary {
   id: number;
-  filenames: string;
+  filenames: string[];
   amount: string;
   importedAt: string;
 }
@@ -26,6 +26,20 @@ export interface AdditionalImportConfirmDialogProps {
   incomingImport: Omit<ExistingImportSummary, "id">;
   onConfirm: () => void;
   onCancel: () => void;
+}
+
+/// 複数ファイル名は " / " 連結ではなく個別行で示す（任意位置での折返しを避けるため、
+/// Scope 3 是正: Codex/Opus 実装後レビュー round 1）。
+function FilenameList({ filenames }: { filenames: string[] }) {
+  return (
+    <ul className="space-y-0.5">
+      {filenames.map((filename) => (
+        <li key={filename} className="break-words">
+          {filename}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /// open は parent state、open=false にする経路は (1) onConfirm (2) onCancel (Esc / 外側クリック / キャンセルボタン)。
@@ -57,17 +71,19 @@ export function AdditionalImportConfirmDialog({
             <ul className="space-y-2">
               {existingImports.map((item) => (
                 <li key={item.id} className="rounded-md border p-3">
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
                     <div>
-                      <dt className="text-muted-foreground">ID</dt>
+                      <dt className="text-muted-foreground">取込み ID</dt>
                       <dd className="font-medium">{item.id}</dd>
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <dt className="text-muted-foreground">ファイル名</dt>
-                      <dd className="font-medium break-all">{item.filenames}</dd>
+                      <dd className="font-medium">
+                        <FilenameList filenames={item.filenames} />
+                      </dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">金額</dt>
+                      <dt className="text-muted-foreground">合計金額</dt>
                       <dd className="font-medium">{item.amount}</dd>
                     </div>
                     <div>
@@ -80,13 +96,15 @@ export function AdditionalImportConfirmDialog({
             </ul>
             <p className="font-medium">今回分</p>
             <div className="rounded-md border p-3">
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
                 <div className="col-span-2">
                   <dt className="text-muted-foreground">ファイル名</dt>
-                  <dd className="font-medium break-all">{incomingImport.filenames}</dd>
+                  <dd className="font-medium">
+                    <FilenameList filenames={incomingImport.filenames} />
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">金額</dt>
+                  <dt className="text-muted-foreground">合計金額</dt>
                   <dd className="font-medium">{incomingImport.amount}</dd>
                 </div>
                 <div>

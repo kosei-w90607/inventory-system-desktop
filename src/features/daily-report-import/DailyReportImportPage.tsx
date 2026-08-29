@@ -242,12 +242,12 @@ function DailyReportPreviewStep({
         open={dialogOpen}
         existingImports={preview.duplicate_check.same_date_imports.map((item) => ({
           id: item.id,
-          filenames: item.source_filenames.join(" / "),
+          filenames: item.source_filenames,
           amount: `総売上 ${formatMoney(item.gross_amount)} / 純売上 ${formatMoney(item.net_amount)}`,
           importedAt: item.imported_at,
         }))}
         incomingImport={{
-          filenames: filenames.join(" / "),
+          filenames,
           amount: `総売上 ${formatMoney(preview.totals.gross_amount)} / 純売上 ${formatMoney(preview.totals.net_amount)}`,
           importedAt: preview.preview_created_at,
         }}
@@ -345,8 +345,16 @@ function DailyReportResultStep({
                     <dd className="font-medium">{reportDate}</dd>
                   </div>
                   <div className="col-span-2">
-                    <dt className="text-muted-foreground">ファイル</dt>
-                    <dd className="font-medium break-all">{filenames.join(" / ")}</dd>
+                    <dt className="text-muted-foreground">ファイル名</dt>
+                    <dd className="font-medium">
+                      <ul className="space-y-0.5">
+                        {filenames.map((name) => (
+                          <li key={name} className="break-words">
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">総売上</dt>

@@ -102,7 +102,7 @@ export function ResultStep({
                 </div>
                 <div className="col-span-2">
                   <dt className="text-muted-foreground">ファイル名</dt>
-                  <dd className="font-medium break-all">{filename}</dd>
+                  <dd className="font-medium break-words">{filename}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">取込み件数</dt>

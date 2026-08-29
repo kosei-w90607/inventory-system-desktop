@@ -128,12 +128,12 @@ export function PreviewStep({
         open={dialogOpen}
         existingImports={duplicate_check.same_date_imports.map((item) => ({
           id: item.id,
-          filenames: item.filename,
+          filenames: [item.filename],
           amount: `¥${item.total_amount.toLocaleString("ja-JP")} / ${item.total_items.toLocaleString("ja-JP")}件`,
           importedAt: item.imported_at,
         }))}
         incomingImport={{
-          filenames: file_info.filename,
+          filenames: [file_info.filename],
           amount: `¥${matched_summary.total_amount.toLocaleString("ja-JP")} / ${matched_summary.count.toLocaleString("ja-JP")}件`,
           importedAt: preview.preview_created_at,
         }}
