@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 84b1179754d2742f09c09670371b78d3f2640f25
@@ -23,6 +23,8 @@
 2026-08-29: L1 `local-ci.sh full` CLEAN（RESULT=PASS、対象 HEAD = state-only c3de9cd、content は 14c0613 と同一。evidence の所在は PR body を正とする）。Final Review 完了（Sonnet subagent 独立 fresh context、Plan Reviewer とは別個体。監査対象 content commit 14c06136eb828620cd5027b17ab3c32d952c58c8、P1/P2/P3 = 0、Goal Invariant 充足 = yes、source doc とコード構造事実の突合・presence oracle・state-only c3de9cd の hunk 監査を含む。Fable 裁定 accept）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize し、`Reviewed Content HEAD` に 14c0613 を記録する。残る Human Gate は Ready 承認と merge。
 
 2026-08-29: owner が Ready を承認（介入 3 回目 / 予算 3 回）。この state-only commit は `human-confirm -> ready-hosted-final` を Draft のまま materialize する。この resulting HEAD で L1 full を再取得し、exact-HEAD evidence は PR body を正とする。残る Human Gate は owner の Ready 操作（hosted final）と merge。
+
+2026-08-29: PR #16 squash merge a8c1c82。逸脱記録: docs-only は ci.md の paths-ignore により Ready 化しても自動 run が作られず、required の exact-HEAD hosted run（c340fe8）を欠いたまま owner が merge した。起因は Coordinator（Fable）の Ready 案内が「hosted-required docs-only は Ready 後に owner の workflow_dispatch が必要」という CI-TRIGGER-D1 の手順を欠いたこと。回復: owner 承認の下で merge 後 main（a8c1c82）へ `workflow_dispatch` を 1 run 実行し success（run 33258151489、dispatch は full routing で全 gate 検証。PR #13 の hosted evidence 33198223058 も同型の merge 後 main dispatch であり先例と一致）。owner disposition = backfill 受理（2026-08-29）。closeout で archive へ移動。
 
 ## Owner Effort Budget
 
