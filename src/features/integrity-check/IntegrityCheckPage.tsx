@@ -251,11 +251,11 @@ export function IntegrityCheckPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {fixResult.adjustments.length > 0 ? (
-                    <ul className="space-y-2">
+                    <ul className="divide-y">
                       {fixResult.adjustments.map((adjustment) => (
                         <li
                           key={adjustment.product_code}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                          className="flex flex-wrap items-center justify-between gap-2 py-2"
                         >
                           <span className="font-mono font-medium">{adjustment.product_code}</span>
                           <span>

@@ -30,7 +30,7 @@
 
 ## 次の行動
 
-- [ ] ③ UI 表示磨き batch 第 2 弾: 候補 = 原価差分ダイアログの選択結果説明充実 / 取消 toast の Alert 併用（所感次第） / Home 復元成功 one-shot scroll 実装（UI-11b-D12） / CostDiffDialog 商品名の見出し格上げ（dd → 明示見出し） / 整合性検証の補正結果 per-item border の divide-y 化。owner と選定
+- [ ] ③ UI 表示磨き batch 第 2 弾: [active Packet](plans/2026-08-30-ui-polish-batch-2.md)（branch `agent/ui-polish-batch-2` / Phase `plan-gate`）。原価差分・取引先統合・PLU 一括の説明文言、Home 復元成功 one-shot scroll（UI-11b-D12）、CostDiffDialog 商品名見出し、整合性補正結果の行区切りを対象とする
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
