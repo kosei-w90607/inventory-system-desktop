@@ -110,7 +110,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Design Sources
 
 - Requirements / spec: REQ-105（原価改定系）/ REQ-107（取引先）/ REQ-206（記録追跡）— 表示磨きのため要求追加なし
-- Function / command / DTO: [55-ui-csv-import.md](../function-design/55-ui-csv-import.md) §55.2 UI-07-D13（L176-189）/ UI-07-D14（L191-195）、[61-ui-receiving.md](../function-design/61-ui-receiving.md) §61.5 UI-02-D15（L118）、[78-ui-supplier-management.md](../function-design/78-ui-supplier-management.md) §78.6 / §78.7（L110 完了通知）、[65-inventory-record-traceability.md](../function-design/65-inventory-record-traceability.md) §65.6.1（L134 意図的乖離 — 非接触の根拠）、[75-ui-integrity-check.md](../function-design/75-ui-integrity-check.md)、[52-ui-shared-layout.md](../function-design/52-ui-shared-layout.md) §52.3
+- Function / command / DTO: [55-ui-csv-import.md](../../function-design/55-ui-csv-import.md) §55.2 UI-07-D13（L176-189）/ UI-07-D14（L191-195）、[61-ui-receiving.md](../../function-design/61-ui-receiving.md) §61.5 UI-02-D15（L118）、[78-ui-supplier-management.md](../../function-design/78-ui-supplier-management.md) §78.6 / §78.7（L110 完了通知）、[65-inventory-record-traceability.md](../../function-design/65-inventory-record-traceability.md) §65.6.1（L134 意図的乖離 — 非接触の根拠）、[75-ui-integrity-check.md](../../function-design/75-ui-integrity-check.md)、[52-ui-shared-layout.md](../../function-design/52-ui-shared-layout.md) §52.3
 - Screen / UI: `docs/SCREEN_DESIGN.md` L263 / L283 / L417 / L419（先頭スクロール既存パターン）・L42 / L62 / L426（在庫整合性検証）、`docs/design-system/README.md`
 - Decision log / ADR: D-056（Opus role — 本編成の遵守対象）、D-062（Plan Reviewer vendor 規則の適用判定）、manual §2 / §3 / §5.4 / §5.6
 

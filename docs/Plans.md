@@ -4,7 +4,7 @@
 
 ## 現在のフェーズ
 
-- 製品フェーズ: Phase 3 UI 群は PR #117 までに完了。Phase 4 は UI-11b（PR #144）/ UI-11a（PR #151/#152）/ UI-10 棚卸し（PR #159）/ UI-11c 操作ログ（PR #164）/ UI-13 整合性検証（Public PR #5）で完了。`v0.8.0-ui-daily` tag は `f44f99a`。**リリースへの道筋**: 新画面を伴う当初仕様は UI-15（PR #4、2026-08-26）で全て実装完了。①実装 PR C（入庫 cost_diffs、PR #5）②docs 実装状況棚卸し（PR #6）に続き、実コード側 stale 表記 batch（PR #7）・商品一覧 plu filter の returnTo 脱落 fix（PR #8）・棚卸し詳細 route（PR #9）・wave 6 docs 衛生 batch + failpoint 並列 race 是正（PR #10・#11、2026-08-28 完了）・6 種対称化（Design PR #13 + 実装 PR #14、2026-08-29）まで消化済み。残り = ③ UI backlog の表示磨き batch ④ UI 一覧の背骨 D（Lane 1〜5、完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化 → v1.0。着手順は「次の行動」で owner と選定。
+- 製品フェーズ: Phase 3 UI 群は PR #117 までに完了。Phase 4 は UI-11b（PR #144）/ UI-11a（PR #151/#152）/ UI-10 棚卸し（PR #159）/ UI-11c 操作ログ（PR #164）/ UI-13 整合性検証（Public PR #5）で完了。`v0.8.0-ui-daily` tag は `f44f99a`。**リリースへの道筋**: 新画面を伴う当初仕様は UI-15（PR #4、2026-08-26）で全て実装完了。①実装 PR C（入庫 cost_diffs、PR #5）②docs 実装状況棚卸し（PR #6）に続き、実コード側 stale 表記 batch（PR #7）・商品一覧 plu filter の returnTo 脱落 fix（PR #8）・棚卸し詳細 route（PR #9）・wave 6 docs 衛生 batch + failpoint 並列 race 是正（PR #10・#11、2026-08-28 完了）・6 種対称化（Design PR #13 + 実装 PR #14、2026-08-29）・UI 表示磨き batch 第 1 弾 + DSR-16 正本化（PR #15、2026-08-29）まで消化済み。残り = ③ UI backlog の表示磨き batch 第 2 弾（説明文言系 + scroll 方針 design-first 後）④ UI 一覧の背骨 D（Lane 1〜5、完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化 → v1.0。着手順は「次の行動」で owner と選定。
 - 現在の基準: 正本 repo は `kosei-w90607/inventory-system-desktop`（2026-08-23〜24 rehome、旧 public repo `inventory-system-public` は private 化）。詳細は decision-log D-077 / [docs/PUBLIC_REPO_MIGRATION.md](PUBLIC_REPO_MIGRATION.md) を参照。
 - 2026-06-30 UI-08 前フィールド確認: 現店舗の日報主入力は `Z001` / `Z002` / `Z005`、`Z004` は PLU(商品) / 商品別トラックとして扱う。詳細は [plu-export-and-real-csv-verification.md](plu-export-and-real-csv-verification.md)。
 
@@ -25,10 +25,11 @@
 - [x] **PR #12 Plans.md dashboard 減量（第 3 回 cleanup）**（R2 docs-only、PR #12 @ inventory-system-desktop squash merge `8f8b44e`、2026-08-28）: 本 dashboard を 320 行 / 24.7 万字から 115 行へ再編。旧全文は [snapshot](archive/plans/2026-08-28-plans-dashboard-cleanup.md) へ verbatim 退避（未了 50 項目の全数残存を Final Review が 1 対 1 照合）。証跡: [archived Packet](archive/plans/2026-08-28-plans-dashboard-cleanup-packet.md)
 - [x] **PR #13 入出庫履歴 6 種対称化 Design Phase（slice 4d）**（R2 docs-only、PR #13 @ inventory-system-desktop squash merge `6c688fe`、2026-08-29）: 65/21-io/44-cmd/73-ui/55-ui の 5 doc 11 節へ 6 種横断契約（status 正規化・差異件数・検索母集団・operator 表示・専用一覧 runway 残置）を確定。証跡: [archived Packet](archive/plans/2026-08-29-inventory-records-six-symmetry-design.md)
 - [x] **PR #14 入出庫履歴 6 種対称化 実装（slice 4d）**（R3、PR #14 @ inventory-system-desktop squash merge `8ca7e78`、2026-08-29）: `listInventoryRecords` を 6 種横断へ拡張（status 正規化 3 値 + filter 4 値の WHERE 実効化 + 棚卸し差異件数 + hub UI 注記・「-」・「差異なし」+ D-052 invalidation 拡張）。owner Windows native L3 全項目 PASS。証跡: [archived Packet](archive/plans/2026-08-29-records-six-symmetry-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-29-records-six-symmetry-impl.md)
+- [x] **PR #15 UI 表示磨き batch 第 1 弾 + DSR-16 正本化**（R2、PR #15 @ inventory-system-desktop squash merge `c6b6eb7`、2026-08-29）: 表示磨き 9 件（summary 構造化・CostDiffDialog Alert 化/マスタ原価反映/footer 文言・改名 toast・取消 toast 8s・名称統一「在庫整合性検証」）+ **DSR-16「同型情報のグループ化と囲みの階層」新設** + design-system 正本 4 doc 更新（--border 4.5:1 誤記→実測 1.20:1 修正含む）+ CostDiffDialog 暗黙 dismiss の modal 硬化（owner L3 発見 P1、在庫二重加算誘導の解消）。新編成 pilot（Sonnet Writer × Opus 修正案 × Codex cross）成立、owner L3 全項目 PASS。証跡: [archived Packet](archive/plans/2026-08-29-ui-polish-batch.md) / [Matrix](archive/plans/test-matrices/2026-08-29-ui-polish-batch.md)
 
 ## 次の行動
 
-- [ ] **③ UI 表示磨き batch 第 1 弾（R2、active）**: owner 座組決定 2026-08-29（Sonnet Writer × Opus 修正案レビュー × Codex cross）。10 件（PR #80 / PR #5 / UI-15 / PR #14 起源 + 名称統一）— [active Packet](plans/2026-08-29-ui-polish-batch.md) / [Matrix](plans/test-matrices/2026-08-29-ui-polish-batch.md)。「状態表現の統一」は §65.6.1 の意図的乖離と衝突するため batch から除外し design-first 裁定候補として backlog 残置
+- [ ] ③ UI 表示磨き batch 第 2 弾: 候補 = 原価差分ダイアログの選択結果説明充実 / 取消 toast の Alert 併用（所感次第）等。scroll 方針 design-first の裁定後に owner と選定
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -57,21 +58,24 @@
 - 70-mnt-diagnostic-log.md §のサンプルコード陳腐化（189-198 行付近が `.expect()` ベースで実コード〈`?` 伝搬〉と乖離。setup 失敗可視化 change の Plan Review round 1 P3-1 起源、doc 整理時に実コードへ同期）。
 - ARCHITECTURE.md §2 CMD-11 行の MNT-02 表記 cleanup（実 import は MNT-01 のみで cmd-task-specs に MNT-02 mapping なし。pre-existing の集約表記慣習で D-060 起因ではない。順12 Final Review P3-1 起源、削除または注記化を将来判断）。
 - .gitignore protected-paths block の補完（`.claude/hooks` / `.claude/loop.md` が sandbox device mask 対象なのに未登録で sandbox 内 git status が DIRTY 化。104-120 行の既存 block へ 2 行追加、暫定対処は `.git/info/exclude` で実施済み）。
-- 整合性検証の名称統一検討（サイドバー label「整合性検証」と遷移先ページ見出し「在庫整合性チェック」の名称差。双方とも正本どおりの実装で操作可能なため非 blocker、統一は表示幅含め後日検討 — 受入台本 L3 round 3 2026-08-13 の owner 観察起源〈PR #74 comment〉、P3）。
 - 在庫状態表示の filter 依存不整合（在庫 2・基準 3 の同一商品が「すべて」filter では状態「通常」、「在庫少」filter では「在庫少」と表示される。query source 依存の pre-existing 仕様で受入台本 L3 2026-08-13 の owner 観察起源〈PR #74 comment〉。operator には矛盾に見えるため follow-up 要否を検討、優先度は owner 判断）。
 - 部門 17「本」のバーコードなし本・ISBN-10 本の登録経路（JAN 専用欄正規化 change の owner 裁定 2026-08-11 起源 = 本は 13 桁 JAN〈EAN-13/ISBN-13〉登録・ISBN-10 特例なし。部門 17 は code_prefix NULL のため JAN 欄空白の escape hatch が使えず、ISBN-10 のみの古書・バーコードなし本は登録不能のまま。要望発生時に code_prefix 付与 or ISBN-10 対応を再裁定）。
-- 同日冪等取込みの UI polish 3 件（日報完了画面の action 間隔 / 両 tab rollback summary のラベル付き構造化・改行 / 追加確認 summary のラベル付き構造化・任意位置折返し回避。PR #80 owner human visual confirmation 2026-08-16 起源の P3、契約非変更の表示磨きとして後日 1 PR で束ねる）。
 - I-G1 sweep test の gitignore 非尊重（pure Rust walk 化〈PR #80 是正 `980a211`〉は gitignored file も走査するため、将来 `src/routeTree.gen.ts` 等の生成物が旧 token を偶然含むと偽陽性 fail し得る。安全側にしか倒れない構造差で現時点 hit 0 を実測済み、顕在化時に走査除外 or 生成物パターン skip を判断）。
 - STATECAP 検査の stacked train 継承除外（`check-workflow-git.sh` の範囲 `merge-base(origin/main, HEAD)..HEAD` が stack 点以前の他 lane forward state-only commit を自 PR に計上する。PR #86 で実測、docs 側の運用規律は正本化済み、機械側の範囲判定是正は設計非自明のため将来判断）。
 - UI-01a 商品検索への取引先 filter 露出（backend `ProductSearchQuery` の `supplier_id` / `include_unassigned` は PR #95 で実装済み・UI 露出は UI-14 のみ。50-ui 画面契約の改訂が必要。UI-15 は PR #4 で完了済みのため着手可、UI 一覧の背骨 D 系の画面見直しとの前後関係は着手時に owner 判断）。
 - 78 §78.4 の `SupplierWithUsage` field 名表記是正（doc の camelCase 表記を実 wire の snake_case〈40-cmd 記載と一致〉へ 1 行是正。UI-15 実装 PR #4 Final Review P3-1 起源、機能影響なし）。
 - UI-15 改名ボタンの double-click 貫通リスク（保存確定の連打で二重送信し得る懸念。pending 中の行単位 disabled は実装・RTL 検証済みのため顕在化時に再評価、L3 owner 所感 2026-08-26 起源の P3）。
-- UI-15 改名成功時の完了通知なし非対称（統合は完了通知あり・改名は行内反映のみ。78 doc は改名時通知を規定せず設計適合、同日冪等取込み UI polish 3 件と同じ表示磨き batch 候補）。
-- 入庫原価差分ダイアログの UI polish 3 件（更新成功表示が本文テキストのみで視認性弱〈緑色成功 Alert との統一検討〉/ 更新成功後もカードのマスタ原価が旧値表示のままで更新済み状態との対応が曖昧 / 更新成功後も footer が「見送って閉じる」のままで完了後の操作名として紛らわしい。PR #5 L3 owner 所感 2026-08-26 起源の非阻害 P3、表示磨き batch 候補）。
 - 「前の画面へ戻る」導線契約の規範化 design-first 候補（設計未定義 gap 8 件同型: recent list 発 4 + 保存結果発 3 + 操作ログ関連記録発 1 が returnTo 未送信で無絞り込み `/inventory/records` へ fallback、ラベルと実挙動の乖離。戻り先を遷移元にするか hub 正でラベル変更かの owner 裁定要）。
 - 操作ログ関連記録の producer 0 件（74 §74.9 の link UI はあるが record_type 書込み producer が 0 件で実データ発火 0。上記戻り gap と二重 gap）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
-- 入出庫履歴 hub の UI polish 5 件（PR #14 L3 owner 所感 2026-08-29 起源の非阻害 P3: 成功通知の視認性 / 復元後の先頭スクロール / 取消確認の整形 / 戻り先の検索維持〈既存「前の画面へ戻る」導線契約 design-first 候補と関連〉/ 状態表現の統一。表示磨き batch 候補として同種 polish 群と束ねる）。
+- 画面横断の scroll 復元方針 design-first（PR #15 Amendment 2 裁定起源: persistent `<main>` による stale scroll は全画面事象で、mount 一律 scroll は詳細戻り UX を壊す〈hub で実証済み〉。Home 復元成功後の one-shot スクロール〈UI-11b-D11 の成功 Alert が画面外になる P2、owner L3 2026-08-29 起源。候補 = `consumeRestoreSuccessPending()` true 時のみ `scrollPageToTop()` の event-driven + 通常遷移を壊さない negative test〉と統合裁定する。hub「復元後の先頭スクロール」もここへ合流）。
+- 入出庫履歴の状態表現統一の design-first 裁定（hub 正規化 3 値 vs 詳細 raw 粒度は 65 §65.6.1 の意図的乖離。文言統一するなら §65.6.1/§65.8.1 の改訂を伴う owner 裁定要 — PR #14 L3 所感起源、PR #15 で除外裁定済み）。
+- repo 全体の card-soup 監査（DSR-16 の水平展開 design-first。同型情報の per-card 反復・囲み過多を全画面走査し是正候補を列挙 — PR #15 起源）。
+- inventory-operator-ui SKILL.md への DSR-16 判断手順追加（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex 発注 or owner 手動の小 change、PR #15 起源）。
+- 原価差分ダイアログの選択結果説明の充実（入庫記録は保存済み / 更新 = マスタ原価変更 / 見送り = 変更なし、の 3 点明記。owner L3 2026-08-29 起源の非阻害 P3、表示磨き batch 第 2 弾候補）。
+- CostDiffDialog 結果画面への再表示ボタン（PR #15 P1 裁定で今回不採用 — 状態管理拡大を伴うため要望が続けば別 change。見送り時は次回入庫で再提示される既存契約が safety net）。
+- 取消完了 toast の視認性追加検討（PR #15 で duration 8s 化済み。owner 所感で不足なら ページ内 Alert 併用を第 2 弾で検討）。
+- dialog/AlertDialog 内の dl・table が aria-describedby に含まれない既存同型制約（3 site 共通、スクリーンリーダー初期読み上げ対象外 — Opus round 指摘起源のアクセシビリティ磨き候補）。
 - receipt 添付の follow-up（63 §63.8: 画像表示・削除・orphan cleanup・共通添付化）。
 - 在庫詳細→取引画面の prefill（61/63/64: productCode/direction 事前入力、現行は商品再検索が必要）。
 - 一括価格改定の運用支援 3 点（77 §77.9: 新売価算出補助・複数行一括確定・改定前入力の長期保持）。
@@ -110,9 +114,9 @@
 
 ## 最近の archive
 
+- [2026-08-29 UI 表示磨き batch 第 1 弾 + DSR-16](archive/plans/2026-08-29-ui-polish-batch.md)
 - [2026-08-29 入出庫履歴 6 種対称化 実装](archive/plans/2026-08-29-records-six-symmetry-impl.md)
 - [2026-08-29 入出庫履歴 6 種対称化 Design Phase](archive/plans/2026-08-29-inventory-records-six-symmetry-design.md)
 - [2026-08-28 product_service failpoint 並列 test race 是正](archive/plans/2026-08-28-failpoint-test-race.md)
 - [2026-08-28 docs 衛生 batch](archive/plans/2026-08-28-docs-hygiene-sync.md)
-- [2026-08-27 棚卸し詳細 route 実装](archive/plans/2026-08-27-stocktake-record-detail.md)
 - それ以前は `docs/archive/plans/` と GitHub PR 履歴を参照。旧 verbose dashboard の snapshot chain: [2026-08-28](archive/plans/2026-08-28-plans-dashboard-cleanup.md) / [2026-07-04](archive/plans/2026-07-04-plans-dashboard-cleanup.md) / [2026-06-06](archive/plans/2026-06-06-plans-dashboard-cleanup.md)。
