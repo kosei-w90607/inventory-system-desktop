@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -314,3 +314,10 @@ Fill after review.
 
 - Sonnet 独立 fresh context の delta closure（対象 = `7be74f0..efe4d24`、Reviewed Content HEAD を `efe4d24` へ更新）: Amendment 3 の Scope 3 5 要素・Scope 8 (d)-(h) 5 doc に全 hunk が 1 対 1 対応、scope 外 hunk なし。DSR-16 は既存 DSR 文体に整合、`00-foundations.md` の修正値は reviewer 独立検算 **1.2022:1** で doc 記載 ≈1.20:1 と一致。dialog は Table 化（列見出し 4 種 + 行区切り + 外周囲み 1 つ）+「今回分」独立領域 + formatDateTime + sm:max-w-2xl（既存慣行整合）。T3 は role ベースの構造 assert + 全件表示 assert で mutation 耐性維持。AC1/AC2/AC3/AC6 再実測 全 PASS。遷移 commit `efe4d24` の hunk audit 適合（非 literal subject の STATECAP 経緯は commit body + PR body で追跡可能）。既存 test 凍結維持。**新規 P1/P2/P3 = 0**
 - local-verified → independent-review → human-confirm の再 materialize evidence: 上記 P1/P2 = 0。STATECAP aggregate cap 3 消化済みのため本遷移も content-riding 形（非 literal subject、経緯は本節と PR body が追跡）。残 Human Gate = owner L3-lite round 2（再目視）+ Ready 承認 + merge
+
+### owner L3-lite round 2 と裁定（2026-08-29、append-only）
+
+- owner L3-lite round 2（content = `efe4d24`）: D13 項目完全性 PASS / 既存分の構造化・比較性 PASS / **横スクロールなしの可読性 FAIL（blocker — 日時列と主操作ボタンが画面内で完結しない）** / 今回分との比較性 要改善。DB mutation なし。findings は owner 観察 + Codex 言語化の relay で、Coordinator が独立確認: ①DSR-03 は実在し「同日追加確認」を**上部 Alert 帯の専用スロット**へ literal 規定 — 現配置（紐付け結果・エラー詳細の後方）は pre-existing 違反（本 PR の PreviewStep 接触は filenames 追随 2 行のみと diff 実測）②`whitespace-nowrap` は共通 `src/components/ui/table.tsx` の TableHead / TableCell 既定 ③「追加確認」Badge は PreviewStep L55 に実在
+- Coordinator 裁定（全件 accept、gated Amendment 4）: ①**横 overflow 是正** — dialog を sm:max-w-3xl へ + table-fixed + ファイル名 cell の whitespace-normal break-words（共通 table.tsx は変更せず利用側 className override）+ 日時の空白位置 2 行折返し + grid/container へ min-w-0。**L3 条件: 最小 1024×720 で横スクロールなし** ②**DSR-03 整合** — 同日追加 Alert を画面上部専用スロットへ移動（pre-existing 違反の是正を owner 指示で bundle） ③Badge は「同日データあり」へ改名 + TriangleAlert アイコンの補助状態表示化（主情報は上部 Alert が担う役割分担） ④**今回分を同一 Table の最終行へ**（別 tbody / footer、ID 列に「今回」Badge、淡背景 + テキストで色非依存判別。definition list 分離を廃止 — 比較対象は列を揃える DSR-16 の帰結）
+- 介入実績: 5 回中 4 消化（Plan Gate / L3r1 / DSR-16 承認 / L3r2）。残り L3r3 + Ready で **+1 超過見込み**を owner へ明示
+- 是正のため implementing へ backtrack（本 commit）
