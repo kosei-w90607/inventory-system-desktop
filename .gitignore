@@ -114,7 +114,9 @@ docs/research/real-csv/*
 .ripgreprc
 .mcp.json
 .claude/agents
+.claude/hooks
 .claude/launch.json
+.claude/loop.md
 .claude/routines
 .claude/scheduled_tasks.json
 .claude/workflows
