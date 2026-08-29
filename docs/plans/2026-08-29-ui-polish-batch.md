@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -19,7 +19,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Opus 5 修正案 claims-producer round（§5.4 低制約、read-only）+ Codex cross review + Coordinator 裁定
   - Opus 投入の例外記録（manual §3 L36「通常レビューは既存分業を維持」に対する例外、Plan Review round 1 P2-1）: owner 明示の座組決定（2026-08-29「その座組でやってみたいね」）による pilot 投入。目的 = ①保留中の Opus×Sonnet 並走レビュー実験（Plans.md 記録）の「簡単 backlog 水準」較正 ②operator-facing UI 磨きにおける修正案 claims-producer 型の実務検証。read-only・§5.4 低制約・Writer 非割当の D-056 機構は不変。本例外の最終確定は Plan Gate 承認に含める
-- Reviewed Content HEAD: ca8637e
+- Reviewed Content HEAD: efe4d24
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner 目視（operator 画面の表示変更 9 件の視認確認、L3-lite 1 回）+ Ready 承認 + merge
@@ -309,3 +309,8 @@ Fill after review.
 - owner relay の Codex 調査を Coordinator が独立確認（全 claims 裏付けあり）: ①`00-foundations.md` L17 の `--border` #e7e5e4「4.5:1 境界可視性」は誤記 — 対 `--background` #fafaf9 の実測算出は約 1.20:1（直下の muted-foreground 行〈本物の AA 4.5:1〉からの転記ミスの形。薄い border を唯一のグループ信号とする正本根拠が不成立）②`01-decision-rules.md` は DSR-15 まででカード/表選択・囲み階層・共通領域の判断規則が不在（該当語 0 hit）③理論引用（NN/g Common Region = 共通領域は強いグループ化原理だが囲み多用は clutter / GOV.UK summary list = 小量の関連 key-value はカードでなく summary list）は確立文献の正確な要約
 - Coordinator 裁定（owner 承認 2026-08-29、介入 3/3 消化 + 再 L3・Ready・merge の超過 +2 を事前承認済み）: ①可読性 FAIL は本 PR の責務として是正 — 追加取込み dialog を **DSR-16 の canonical 実例**として再構成（既存 3 件 = 列の揃った structured list / 今回分 = 「今回」ラベル付き独立領域 / 日時の人間向け表示 / dialog 幅拡大）、rollback summary 2 site は DSR-16 照合の最小調整に留める ②gated Amendment 3（Scope 2/3 改訂 + docs 5 点追加 + Matrix T3 追随）③repo 全体の card-soup 監査と `inventory-operator-ui` SKILL.md 更新は**後続 task へ分離**（後者は sandbox の `.claude/skills` write deny により Claude worker 経路では書けず Codex / owner 経路）。新 Skill 不要・memory 不要（durable 判断は repo docs 正本）の Codex 見解に同意
 - 是正のため implementing へ backtrack（本 commit）
+
+### Final Review round 2 記録（2026-08-29、append-only）
+
+- Sonnet 独立 fresh context の delta closure（対象 = `7be74f0..efe4d24`、Reviewed Content HEAD を `efe4d24` へ更新）: Amendment 3 の Scope 3 5 要素・Scope 8 (d)-(h) 5 doc に全 hunk が 1 対 1 対応、scope 外 hunk なし。DSR-16 は既存 DSR 文体に整合、`00-foundations.md` の修正値は reviewer 独立検算 **1.2022:1** で doc 記載 ≈1.20:1 と一致。dialog は Table 化（列見出し 4 種 + 行区切り + 外周囲み 1 つ）+「今回分」独立領域 + formatDateTime + sm:max-w-2xl（既存慣行整合）。T3 は role ベースの構造 assert + 全件表示 assert で mutation 耐性維持。AC1/AC2/AC3/AC6 再実測 全 PASS。遷移 commit `efe4d24` の hunk audit 適合（非 literal subject の STATECAP 経緯は commit body + PR body で追跡可能）。既存 test 凍結維持。**新規 P1/P2/P3 = 0**
+- local-verified → independent-review → human-confirm の再 materialize evidence: 上記 P1/P2 = 0。STATECAP aggregate cap 3 消化済みのため本遷移も content-riding 形（非 literal subject、経緯は本節と PR body が追跡）。残 Human Gate = owner L3-lite round 2（再目視）+ Ready 承認 + merge
