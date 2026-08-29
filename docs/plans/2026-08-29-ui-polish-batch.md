@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -19,7 +19,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Opus 5 修正案 claims-producer round（§5.4 低制約、read-only）+ Codex cross review + Coordinator 裁定
   - Opus 投入の例外記録（manual §3 L36「通常レビューは既存分業を維持」に対する例外、Plan Review round 1 P2-1）: owner 明示の座組決定（2026-08-29「その座組でやってみたいね」）による pilot 投入。目的 = ①保留中の Opus×Sonnet 並走レビュー実験（Plans.md 記録）の「簡単 backlog 水準」較正 ②operator-facing UI 磨きにおける修正案 claims-producer 型の実務検証。read-only・§5.4 低制約・Writer 非割当の D-056 機構は不変。本例外の最終確定は Plan Gate 承認に含める
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: ca8637e
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner 目視（operator 画面の表示変更 9 件の視認確認、L3-lite 1 回）+ Ready 承認 + merge
@@ -293,3 +293,9 @@ Fill after review.
   5. local-verified 判定を取り下げ implementing へ backtrack。是正後の clean exact HEAD で L1 full を再取得し、canonical な state-only 遷移で再実体化
   6. Opus P3-1 は owner L3-lite 所感待ちの disposition、P3-2 はアクセシビリティ磨き候補として closeout で backlog、Codex P3-1 は 7(b) revert により行ずれが自己解消（撤回後に参照先の実位置を再確認）
 - 是正のため implementing へ backtrack（本 commit）
+
+### Final Review 記録（2026-08-29、append-only）
+
+- Sonnet 独立 fresh context の Final Review（対象 = Reviewed Content HEAD `ca8637e`）: 実装後レビュー round 1 の全 findings **CLOSED**（7(b) revert の完全性を rg 実測 0 件で確認 / T2 強化は `filenames.slice(0,1)` 変異の実注入 → red → 復元 green で kill を実証 / break-words 置換は対象 4 箇所完全〈src/ 残存の break-all 8 件は Non-scope 画面の既存分〉/ dl gap・語彙 3 site 統一 / T7 Amendment 記録済み）。AC1-AC6 独立再実測 全 PASS（bindings 差分ゼロ・doc-consistency ERROR 0 含む）。Amendment 2 適合（旧前提の残骸は append-only narrative 内のみ）、是正 delta 全 hunk が裁定 6 点に 1 対 1 対応、`ExistingImportSummary.filenames` の string→string[] は FE 内部型で wire 非接触、state-only `ca8637e` の hunk audit 適合（canonical subject 一致）、既存 test 凍結維持（撤去は T8 のみ = 7(b) revert の正当な随伴）。**新規 P1/P2/P3 = 0**
+- L1 evidence の Coordinator 独立検分: evidence log 実 envelope の END_HEAD_SHA = `ca8637e` / END_TREE_STATE=CLEAN / MERGE_EVIDENCE_VALID=true / RESULT=PASS（中間の別 SHA block は local-ci self-test の fixture envelope — 既知の型）
+- local-verified → independent-review → human-confirm の materialize evidence: 上記 Final Review P1/P2 = 0。残 Human Gate = owner L3-lite 目視（9 件）+ Ready 承認 + merge
