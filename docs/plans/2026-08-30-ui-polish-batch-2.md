@@ -2,14 +2,14 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 316cd094011071985174f16b0107978520350798
 - Amendments: none
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（本 session）
-- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（pending）
+- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（round 1 = P1 0 / P2 1 / P3 2 全件 accept、是正 commit fe0e76c2bf2fa442aef7cf4d1b94cbe34b28fa1d、条件付き round 2 で P1/P2 = 0 成立）
 - Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定（pending）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -17,6 +17,8 @@
 - Human Gate: Plan Review、L3、Ready、merge
 
 Phase 遷移記録（本 plan-first content commit に同乗）: `kickoff -> spec-check -> design -> plan-draft -> plan-gate`。kickoff で発注書の 6 件、branch、R2、停止点を固定した。spec-check で対象 component、既存 RTL、`src-tauri/src/db/product_repo.rs::merge_suppliers` の `products` / `receiving_records` 更新後の source `DELETE`、および Design Sources の実在節を `rg` と直接読取で確認した。design で文言契約 3 件を `50 §50.6 / §50.8`、`61 §61.1 UI-02-D15 / §61.5 / §61.9`、`78 §78.7 / §78.11` へ同期し、scroll と構造是正は既存 `UI-11b-D11 / D12`、`DSR-16 / DSR-17` で十分と判定した。plan-draft で本 Packet と Matrix を作成し、両者を同一 plan-first commit に載せて plan-gate を materialize する。実装は Coordinator の `plan-approved` 合図まで開始しない。
+
+この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `316cd09` は全実装 commit に先行し PK5 ancestry を充足する。
 
 ## Owner Effort Budget
 
