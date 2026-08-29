@@ -77,8 +77,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **S3. check-phase1-probe-removed.sh の負 glob 是正**
 
-4. `scripts/check-phase1-probe-removed.sh` L39 の `--glob '!routeTree.gen.ts' --glob '!lib/bindings.ts'` を除去し、除外を負 glob に依存しない方式（例: `rg -n '\bgreet\b' "$REPO_ROOT/src" | rg -v -F 'routeTree.gen.ts' | rg -v -F 'lib/bindings.ts'` の pipe filter、または個別 path 除外の実在検証付き代替）へ置換。exit code 設計（0/1/2）と if 節の非 set -e 前提は維持。
-5. 是正の前後で挙動を実証し PR body へ記録: (a) 是正前に src 配下へ `greet` token を仮挿入して現行 script が検知しない（silent no-op）ことを確認、(b) 是正後に同じ mutant で exit 1 になることを確認、(c) mutant 除去後のクリーン状態で exit 0、(d) 除外対象 file 名を含む path で偽陽性が出ないこと。仮挿入は検証後に必ず除去し、commit に含めない。
+4. `scripts/check-phase1-probe-removed.sh` L39 の `--glob '!routeTree.gen.ts' --glob '!lib/bindings.ts'` を除去し、除外を **path 部分のみを照合する filter** へ置換（例: `rg -n '\bgreet\b' "$REPO_ROOT/src" | awk -F: '$1 !~ /(routeTree\.gen\.ts|lib\/bindings\.ts)$/'`）。`rg -v -F` 等で出力行全体（`path:line:content`）に文字列一致させる方式は、content 側に除外文字列を偶然含む genuine hit を握りつぶすため禁止（Plan Review round 1 P1-1、Coordinator 再現実証済み 2026-08-30）。exit code 設計（0/1/2）と if 節の非 set -e 前提は維持。
+5. 是正の前後で挙動を実証し PR body へ記録: (a) 是正前に src 配下へ `greet` token を仮挿入して現行 script が検知しない（silent no-op）ことを確認、(b) 是正後に同じ mutant で exit 1 になることを確認、(c) mutant 除去後のクリーン状態で exit 0、(d) 除外対象 file 名を path に含む場合に偽陽性が出ないこと、(e) 除外対象外 file の greet 行が content 側に除外文字列（例: `lib/bindings.ts` への言及コメント）を含んでも検知されること（content 側衝突の偽陰性なし）。仮挿入は検証後に必ず除去し、commit に含めない。
 
 前提（既知実測）: 当環境の linuxbrew ripgrep 15.1.0 は `--glob '!...'` をリテラル解釈し全マッチ 0 件を返す（PR #39 で doc-consistency-check.sh 側は是正済み。本 script は同型残存）。
 
@@ -91,11 +91,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Acceptance Criteria
 
 - AC-1: `git ls-files Dockerfile docker-compose.yml` の出力 0 行。
-- AC-2: `rg -F -c ".claude/hooks" .gitignore` ≥ 1 かつ `rg -F -c ".claude/loop.md" .gitignore` ≥ 1、かつ `bash scripts/check-env-safety.sh` PASS。
+- AC-2: `rg -F -c ".claude/hooks" .gitignore` ≥ 1 かつ `rg -F -c ".claude/loop.md" .gitignore` ≥ 1、かつ `git check-ignore -v .claude/hooks .claude/loop.md` が exit 0（ignore の機能的効果の確認）、かつ `bash scripts/check-env-safety.sh` PASS。
 - AC-3: `rg -c -- "--glob" scripts/check-phase1-probe-removed.sh` hit 0（exit 1）。
-- AC-4: mutant 実証（Scope S3-5 の (a)〜(d)）が PR body に記録され、是正後 script がクリーン状態で exit 0・mutant 状態で exit 1。
+- AC-4: mutant 実証（Scope S3-5 の (a)〜(e)）が PR body に記録され、是正後 script がクリーン状態で exit 0・mutant 状態で exit 1。除外判定の誤マッチは path 側（偽陽性）・content 側（偽陰性）の双方を検査する。
 - AC-5: `bash scripts/doc-consistency-check.sh` PASS（ERROR 0）。
-- AC-6: `docs/DEV_SETUP_CHECKLIST.md` / `docs/PROJECT_HANDOFF.md` に Docker を現行手順として指示する記述が残らない（歴史記録は残存可 — Final Review 実読突合）。
+- AC-6: `docs/DEV_SETUP_CHECKLIST.md` / `docs/PROJECT_HANDOFF.md` に Docker を現行手順として指示する記述が残らない（歴史記録は残存可 — Final Review 実読突合。Plan Review round 1 の悉皆実査では現行手順指示 0 件のため、S1-2 は無変更・AC-6 即 PASS の見込み）。
 
 ## Design Sources
 
@@ -127,7 +127,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|---|---|---|
 | DEV_SETUP §A.1 | Docker 退役記録 2026-04-03 | 既決の物理的完遂 | 退役済み資材の残置は pin 乖離（rust:1.94 / Node 20 vs 現運用）の誤誘導源。再同期は退役方針と矛盾するため削除 | S1 | AC-1/AC-6 |
 | protected-paths block | .gitignore L104-120 | sandbox device mask 既知事象 | `.git/info/exclude` の暫定対処を tracked 設定へ昇格 | S2 | AC-2 |
-| Phase 1 probe 検知 | check-phase1-probe-removed.sh 冒頭コメント | PR #39 同型（rg 15.1.0 負 glob） | 負 glob 依存の除外は当環境で silent no-op。pipe filter へ置換 | S3 | AC-3/AC-4 |
+| Phase 1 probe 検知 | check-phase1-probe-removed.sh 冒頭コメント | PR #39 同型（rg 15.1.0 負 glob） | 負 glob 依存の除外は当環境で silent no-op。path 単独照合 filter へ置換（行全体一致の pipe filter は content 側衝突の偽陰性を作るため却下） | S3 | AC-3/AC-4 |
 
 ## Design Intent Audit
 
@@ -220,3 +220,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 ### Plan Gate 記録（append-only）
 
 - owner 起票承認 2026-08-30（wave 7 衛生 batch 起票の会話にて。2 lane 編成の owner 裁定を含む。本 lane 介入 1/3）。
+- Plan Gate rally round 1（独立 Sonnet Plan Reviewer、2026-08-30）: P1: 1 / P2: 1 / P3: 2。P1-1 = Scope S3-4 例示の行全体一致 pipe filter が content 側衝突で genuine hit を握りつぶす構造的欠陥（Coordinator が最小再現で実証確認: pipe 版 exit 1・awk path 単独照合版は検知維持）→ 是正方式を path 単独照合に限定し AC-4 へ (e) を追加。P2-1 = AC-2 に `git check-ignore -v` の機能的効果確認を追加。P3-1 = AC-4(d) の文言を path/content 両側の誤マッチ検査へ拡張。P3-2 = S1-2 は現行手順指示 0 件のため実質 no-op 見込みを AC-6 へ注記。全採用、in-place 是正（plan-draft 中の pre-gate 是正）。round 2 の delta 再検証で新規指摘 0 を確認して plan-gate 通過とする。
