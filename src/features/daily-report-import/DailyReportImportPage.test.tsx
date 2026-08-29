@@ -148,6 +148,10 @@ describe("DailyReportImportPage_req401", () => {
     renderWithRouter(<DailyReportImportPage />);
 
     const importButton = await screen.findByRole("button", { name: "取り込む" });
+    // Badge は主情報を上部 Alert（本画面は元々上部専用スロットに配置済み）に譲り、
+    // 補助的な状態表示へ改名（gated Amendment 4、PreviewStep.tsx と対称）。
+    expect(screen.getByText("同日データあり")).toBeInTheDocument();
+    expect(screen.queryByText("追加確認")).not.toBeInTheDocument();
     await user.click(importButton);
     expect(screen.getByText("同じ日のデータを追加で取り込みますか？")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
@@ -159,15 +163,16 @@ describe("DailyReportImportPage_req401", () => {
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("既存分（2回）");
     // UI-07-D13 の規定項目（import ID / filename(s) / 金額 / 取込み日時）が省略なく
-    // 全件表示されることを確認する（T3 項目完全性 oracle、gated Amendment 3 でも不変）。
-    // DSR-16 構造 assert: 既存分は列を揃えた表（比較目的の structured list）で render される。
+    // 全件表示されることを確認する（T3 項目完全性 oracle、gated Amendment 3/4 でも不変）。
+    // DSR-16 構造 assert: 既存分・今回分とも同一の列を揃えた表（比較目的の structured
+    // list）で render される（gated Amendment 4: 今回分の definition list 分離を廃止）。
     const table = within(dialog).getByRole("table");
     expect(within(table).getByRole("columnheader", { name: "取込み ID" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "ファイル名" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "合計金額" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "取込み日時" })).toBeInTheDocument();
-    // ヘッダ行 + 既存分2件 = 3行。per-card の反復ではなく1つの表に全件が並ぶ。
-    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    // ヘッダ行 + 既存分2件 + 今回分1行 = 4行。per-card の反復ではなく1つの表に全件が並ぶ。
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
     expect(within(table).getByText("100")).toBeInTheDocument();
     // 複数 filenames は " / " 連結でなく個別行表示（実装後レビュー round 1 是正 3）。
     expect(within(table).getByText("Z001_old.CSV")).toBeInTheDocument();
@@ -181,13 +186,13 @@ describe("DailyReportImportPage_req401", () => {
     expect(within(table).getByText("Z002_older.CSV")).toBeInTheDocument();
     expect(within(table).getByText("Z005_older.CSV")).toBeInTheDocument();
     expect(table).toHaveTextContent("総売上 未取得 / 純売上 ¥7,000");
-    // 今回分は「今回分」ラベル付きの独立領域（単一レコード確認 = definition list のまま）。
-    expect(within(dialog).getByText("今回分")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z001_260321.CSV")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z002_260321.CSV")).toBeInTheDocument();
-    expect(within(dialog).getByText("Z005_260321.CSV")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("総売上 ¥12,000 / 純売上 ¥11,000");
-    expect(dialog).toHaveTextContent("2026-03-21 10:00:00");
+    // 今回分は同一 table の最終行（ID 列に「今回」Badge、既存分と同列位置）。
+    expect(within(table).getByText("今回")).toBeInTheDocument();
+    expect(within(table).getByText("Z001_260321.CSV")).toBeInTheDocument();
+    expect(within(table).getByText("Z002_260321.CSV")).toBeInTheDocument();
+    expect(within(table).getByText("Z005_260321.CSV")).toBeInTheDocument();
+    expect(table).toHaveTextContent("総売上 ¥12,000 / 純売上 ¥11,000");
+    expect(table).toHaveTextContent("2026-03-21 10:00:00");
     await user.click(screen.getByRole("button", { name: "キャンセル" }));
     expect(confirmImport).not.toHaveBeenCalled();
     await user.click(importButton);

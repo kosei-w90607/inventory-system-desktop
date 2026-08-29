@@ -49,25 +49,35 @@ describe("PreviewStep REQ-401 same-day addition", () => {
       />,
     );
 
-    expect(screen.getByText("同じ日の取込みがあります")).toBeInTheDocument();
+    // DSR-03 gated Amendment 4: 同日追加確認は画面上部の Alert 帯専用スロットに置き、
+    // 紐付け結果カードより DOM 順で先行する（owner L3-lite round 2 裁定）。
+    const alertBanner = screen.getByRole("alert");
+    expect(alertBanner).toHaveTextContent("同じ日の取込みがあります");
+    expect(alertBanner).toHaveTextContent(
+      "既存分を残したまま今回分を追加します。内容を確認してください。",
+    );
+    const matchingResultHeading = screen.getByText("紐付け結果");
     expect(
-      screen.getByText("既存分を残したまま今回分を追加します。内容を確認してください。"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("追加確認")).toBeInTheDocument();
+      alertBanner.compareDocumentPosition(matchingResultHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // Badge は主情報を上部 Alert に譲り、補助的な状態表示へ改名（gated Amendment 4）。
+    expect(screen.getByText("同日データあり")).toBeInTheDocument();
+    expect(screen.queryByText("追加確認")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "取り込む" }));
     expect(screen.getByText("同じ日のデータを追加で取り込みますか？")).toBeInTheDocument();
     const dialog = screen.getByRole("alertdialog");
     expect(dialog).toHaveTextContent("既存分（2回）");
     // UI-07-D13 の規定項目（import ID / filename(s) / 金額 / 取込み日時）が省略なく
-    // 全件表示されることを確認する（T3 項目完全性 oracle、gated Amendment 3 でも不変）。
-    // DSR-16 構造 assert: 既存分は列を揃えた表（比較目的の structured list）で render される。
+    // 全件表示されることを確認する（T3 項目完全性 oracle、gated Amendment 3/4 でも不変）。
+    // DSR-16 構造 assert: 既存分・今回分とも同一の列を揃えた表（比較目的の structured
+    // list）で render される（gated Amendment 4: 今回分の definition list 分離を廃止）。
     const table = within(dialog).getByRole("table");
     expect(within(table).getByRole("columnheader", { name: "取込み ID" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "ファイル名" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "合計金額" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "取込み日時" })).toBeInTheDocument();
-    // ヘッダ行 + 既存分2件 = 3行。per-card の反復ではなく1つの表に全件が並ぶ。
-    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    // ヘッダ行 + 既存分2件 + 今回分1行 = 4行。per-card の反復ではなく1つの表に全件が並ぶ。
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
     expect(within(table).getByText("12")).toBeInTheDocument();
     expect(table).toHaveTextContent("Z004_0001.CSV");
     expect(table).toHaveTextContent("¥1,200 / 3件");
@@ -76,11 +86,11 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     expect(within(table).getByText("11")).toBeInTheDocument();
     expect(table).toHaveTextContent("Z004_0000.CSV");
     expect(table).toHaveTextContent("¥-300 / 1件");
-    // 今回分は「今回分」ラベル付きの独立領域（単一レコード確認 = definition list のまま）。
-    expect(within(dialog).getByText("今回分")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Z004_0002.CSV");
-    expect(dialog).toHaveTextContent("¥900 / 2件");
-    expect(dialog).toHaveTextContent("2026-03-21 10:00:00");
+    // 今回分は同一 table の最終行（ID 列に「今回」Badge、既存分と同列位置）。
+    expect(within(table).getByText("今回")).toBeInTheDocument();
+    expect(table).toHaveTextContent("Z004_0002.CSV");
+    expect(table).toHaveTextContent("¥900 / 2件");
+    expect(table).toHaveTextContent("2026-03-21 10:00:00");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByText("精算日:")).toBeInTheDocument();
