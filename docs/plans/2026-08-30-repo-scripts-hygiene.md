@@ -77,7 +77,18 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **S3. check-phase1-probe-removed.sh の負 glob 是正**
 
-4. `scripts/check-phase1-probe-removed.sh` L39 の `--glob '!routeTree.gen.ts' --glob '!lib/bindings.ts'` を除去し、除外を **path 部分のみを照合する filter** へ置換（例: `rg -n '\bgreet\b' "$REPO_ROOT/src" | awk -F: '$1 !~ /(routeTree\.gen\.ts|lib\/bindings\.ts)$/'`）。`rg -v -F` 等で出力行全体（`path:line:content`）に文字列一致させる方式は、content 側に除外文字列を偶然含む genuine hit を握りつぶすため禁止（Plan Review round 1 P1-1、Coordinator 再現実証済み 2026-08-30）。exit code 設計（0/1/2）と if 節の非 set -e 前提は維持。
+4. `scripts/check-phase1-probe-removed.sh` L39 の `--glob '!routeTree.gen.ts' --glob '!lib/bindings.ts'` を除去し、除外を **path 部分のみ・segment 境界アンカー付きで照合し、pipeline 出力を変数捕捉して非空判定する方式**へ置換。例:
+
+   ```bash
+   matches="$(rg -n '\bgreet\b' "$REPO_ROOT/src" 2>/dev/null | awk -F: '$1 !~ /(^|\/)routeTree\.gen\.ts$/ && $1 !~ /(^|\/)lib\/bindings\.ts$/')"
+   if [ -n "$matches" ]; then
+       echo "$matches"
+       echo "❌ src/ に greet 参照が残っています"
+       found=1
+   fi
+   ```
+
+   禁止事項（rally 実証済み、2026-08-30）: (i) `rg -v -F` 等で出力行全体（`path:line:content`）に文字列一致させる方式は content 側衝突の偽陰性を作る（round 1 P1-1）。(ii) pipeline を `if` へ直結する方式は awk が出力 0 行でも exit 0 を返すため 0 hit でも真になり誤動作する（round 2 P1、変数捕捉 + 非空判定が必須）。(iii) 境界アンカーなしの末尾一致 regex は `somelib/bindings.ts` 型の別 file を誤除外する（round 2 P2、`(^|\/)` アンカー必須）。exit code 設計（0/1/2）と非 set -e 前提は維持。
 5. 是正の前後で挙動を実証し PR body へ記録: (a) 是正前に src 配下へ `greet` token を仮挿入して現行 script が検知しない（silent no-op）ことを確認、(b) 是正後に同じ mutant で exit 1 になることを確認、(c) mutant 除去後のクリーン状態で exit 0、(d) 除外対象 file 名を path に含む場合に偽陽性が出ないこと、(e) 除外対象外 file の greet 行が content 側に除外文字列（例: `lib/bindings.ts` への言及コメント）を含んでも検知されること（content 側衝突の偽陰性なし）。仮挿入は検証後に必ず除去し、commit に含めない。
 
 前提（既知実測）: 当環境の linuxbrew ripgrep 15.1.0 は `--glob '!...'` をリテラル解釈し全マッチ 0 件を返す（PR #39 で doc-consistency-check.sh 側は是正済み。本 script は同型残存）。
@@ -178,7 +189,7 @@ R2 簡易版（触れる契約行のみ）:
 Test Design Matrix は R2 optional 判定で省略（理由: 挙動 oracle は AC-4 の mutant 実証に機械化済み）。
 
 - targeted tests: `bash scripts/check-phase1-probe-removed.sh`（クリーン exit 0 / mutant exit 1）
-- negative tests: AC-4 (d) 除外対象の偽陽性なし
+- negative tests: AC-4 (d)(e) 除外判定の偽陽性・偽陰性なし（path 側・content 側の双方）
 - compatibility checks: `bash scripts/doc-consistency-check.sh`（AC-5）/ `bash scripts/check-env-safety.sh`（AC-2）
 - data safety checks: 削除対象は `Dockerfile` / `docker-compose.yml` の 2 file のみ（git 管理下、復元可能）。他の削除なし
 - main wiring/integration checks: L1 full（Ready 前の exact HEAD で実行）
@@ -221,3 +232,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 - owner 起票承認 2026-08-30（wave 7 衛生 batch 起票の会話にて。2 lane 編成の owner 裁定を含む。本 lane 介入 1/3）。
 - Plan Gate rally round 1（独立 Sonnet Plan Reviewer、2026-08-30）: P1: 1 / P2: 1 / P3: 2。P1-1 = Scope S3-4 例示の行全体一致 pipe filter が content 側衝突で genuine hit を握りつぶす構造的欠陥（Coordinator が最小再現で実証確認: pipe 版 exit 1・awk path 単独照合版は検知維持）→ 是正方式を path 単独照合に限定し AC-4 へ (e) を追加。P2-1 = AC-2 に `git check-ignore -v` の機能的効果確認を追加。P3-1 = AC-4(d) の文言を path/content 両側の誤マッチ検査へ拡張。P3-2 = S1-2 は現行手順指示 0 件のため実質 no-op 見込みを AC-6 へ注記。全採用、in-place 是正（plan-draft 中の pre-gate 是正）。round 2 の delta 再検証で新規指摘 0 を確認して plan-gate 通過とする。
+- Plan Gate rally round 2（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 1 の 4 findings 反映は全件確認。新規 P1: 1 / P2: 1 / P3: 1 — いずれも round 1 是正例自体の欠陥。P1 = pipeline を `if` へ直結すると awk の exit 0 により 0 hit でも真になる（Coordinator が 0 hit 条件で再現確定）→ 変数捕捉 + 非空判定へ Scope 例を差替え。P2 = 末尾一致 regex の境界アンカー欠如で `somelib/bindings.ts` 型の誤除外（Coordinator 再現確定）→ `(^|\/)` アンカー必須化。P3 = Test Plan の negative tests 行が (e) 未反映 → 反映。全採用、in-place 是正。round 3（rally 天井）の delta 再検証で新規 P1/P2 = 0 を確認して plan-gate 通過、超過時は DEV_WORKFLOW Review Rules の disposition route へ。
