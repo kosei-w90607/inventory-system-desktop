@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 316cd094011071985174f16b0107978520350798
@@ -21,6 +21,8 @@ Phase 遷移記録（本 plan-first content commit に同乗）: `kickoff -> spe
 2026-08-30: Plan Review round 2 の再確認内容（Final Review P3 の記録改善提案を反映して明記）: (1) fe0e76c の P2-1 是正が処方どおり L100 の `REQ-103`→`REQ-907` 1 token 置換のみで同行他要素が不変であること (2) Trace 3 行が行別一択処方（該当 REQ なし〈QR-05 起点〉/ REQ-209 / REQ-904）と一致すること (3) Matrix へ L3 目視行が追加されたこと — を Coordinator が実 diff で検証し、Plan Reviewer の条件付き round 2 判定（処方 verbatim 適用時に P1/P2 = 0）の成立条件を確認した。
 
 2026-08-30: 実装 candidate c832077 の L1 full は traceability gate T1 で FAIL（RTL の REQ token 追加に伴う 90-traceability.md 生成結果不一致 — PR #72 と同型の既知 gap、発注書の品質 gate に再生成を明記しなかった Coordinator 起因）。機械的是正として Haiku subagent が generate_traceability を再実行し 9a26d97 を commit（diff = 生成 file 1 file・件数 bump 2 箇所のみ）。Final Reviewer が監査を 9a26d97 まで延長し、生成器由来であること・`--check` ERROR 0 を独立再現、P1/P2 = 0 と Goal Invariant 充足を維持と判定。L1 full は 9a26d97 で RESULT=PASS（evidence は PR body を正とする）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は Windows native L3、Ready、merge。
+
+2026-08-30: owner Windows native L3 全項目 PASS（PR #17 comment 5463874988 が正本。exact HEAD f2f3c10、recovery baseline へ再復元検証済み、非阻害 follow-up 候補 5 件は Post-Merge Closeout で backlog 起票）。owner が Ready を承認し、Ready 操作〜merge〜closeout の実行を Coordinator へ委任（介入 4 回目 / 予算 4 回）。この state-only commit は `human-confirm -> ready-hosted-final` を Draft のまま materialize する。resulting HEAD で L1 full を再取得し、exact-HEAD evidence は PR body を正とする。
 
 この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `316cd09` は全実装 commit に先行し PK5 ancestry を充足する。
 
