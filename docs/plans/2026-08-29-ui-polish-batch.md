@@ -66,6 +66,7 @@ Goal Invariant:
 ### 非目的
 
 - 「状態表現の統一」「戻り先の検索維持」「UI-08 Alert 改善」（冒頭の対象外裁定どおり）
+- repo 全体の card-soup 監査（DSR-16 の水平展開 — design-first の後続 task）と `inventory-operator-ui` SKILL.md 更新（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex / owner 経路の後続 task）— gated Amendment 3
 - 通知基盤（Toaster 設定）の全画面的変更 — 個別通知の改善に留める
 - backend / wire / route / filter 意味論の変更（なし）
 - 新規 component 依存の追加（既存 shadcn/ui + success token の範囲）
@@ -75,13 +76,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Scope
 
 1. **日報完了画面の action ボタン行の構造化**: `src/features/daily-report-import/DailyReportImportPage.tsx` L305-345 の `DailyReportResultStep` — 現況は `CardContent className="space-y-4"` 配下に「日次売上を見る」Button と rollback AlertDialog が別々の block 要素として縦積み（flex 行が存在しない）。これを Z004 側 `src/features/csv-import/components/ResultStep.tsx` L67-112 の `flex flex-wrap gap-2` パターンへ**初めて構造化して統一**する（Plan Review round 1 P3-3: 「間隔調整」ではなく構造化）
-2. **rollback summary のラベル付き構造化（両 tab）**: `ResultStep.tsx` L91-96 と `DailyReportImportPage.tsx` L332-337 の文字列連結 summary を、ラベル付きの構造化表示（definition list 等）+ 適切な改行へ。**UI-07-D14 の規定項目集合（Z004: ID / 精算日 / filename / 件数 / 金額、日報: ID / 対象日 / source filenames / 総売上 / 純売上）を欠落なく維持**
-3. **追加確認 summary の構造化・折返し回避**: `src/features/csv-import/components/AdditionalImportConfirmDialog.tsx` L57-68（両 tab 共有）— **UI-07-D13 の規定項目（import ID / filename(s) / 金額 / 取込み日時）+ scroll 可能一覧 + 省略禁止を維持**したままラベル付き構造化 + 任意位置折返しの回避
+2. **rollback summary のラベル付き構造化（両 tab）**: `ResultStep.tsx` L91-96 と `DailyReportImportPage.tsx` L332-337 の文字列連結 summary を、ラベル付きの構造化表示（definition list 等）+ 適切な改行へ（gated Amendment 3: 単一レコード確認 = definition list は DSR-16 に原則適合。囲み階層の点検による最小調整のみ、再構成はしない）。**UI-07-D14 の規定項目集合（Z004: ID / 精算日 / filename / 件数 / 金額、日報: ID / 対象日 / source filenames / 総売上 / 純売上）を欠落なく維持**
+3. **追加確認 summary の DSR-16 準拠再構成（gated Amendment 3 で改訂）**: `AdditionalImportConfirmDialog.tsx`（両 tab 共有）— **UI-07-D13 の規定項目 + scroll 可能一覧 + 省略禁止を維持**したまま、DSR-16 の canonical 実例として再構成する: ①既存分 3 件は**列の揃った structured list**（同型レコードの比較が目的のため、per-card の dl 反復でなく列を揃える — GOV.UK summary list 型）②今回分は**「今回」ラベル付きの独立領域**（意味階層ごとに共通領域 1 つ）③取込み日時は人間向け表示（既存 formatter 慣行に従う）④dialog を比較に必要な幅へ拡大 ⑤薄い border だけを唯一のグループ信号にしない（余白・行区切り優先）
 4. **CostDiffDialog の成功・エラー表示の Alert 化**: `src/features/receiving/CostDiffDialog.tsx` L113-131 — 手組み `<p>` を既存 success token パターン（`IntegrityCheckPage` の成功 Alert と同型）へ統一。**UI-02-D15（色だけに依存しない・成功/失敗を同じ行で判別）を維持**（role="status" / テキスト判別を保持）
 5. **CostDiffDialog の更新成功後表示**: (a) マスタ原価表示（L104-105、prop 固定値）を更新成功後に新値へ反映 (b) footer 文言（L148-159、常時「見送って閉じる」）を全行処理済み時は「閉じる」等の状態対応文言へ
 6. **UI-15 改名成功 toast**: `src/features/suppliers/components/RenameSupplierRow.tsx` L33-48 の成功時に `toast.success`（統合 `MergeSupplierDialog.tsx` L63-64 と対称の完了通知）
 7. **hub 系**: (a) 取込み取消の成功通知の視認性改善 — gated Amendment 2 で確定: `useCsvImportFlow.ts` / `useDailyReportImportFlow.ts` の取消完了 `toast.success` 2 箇所の duration を個別指定 8000ms へ（Toaster 全体設定は変更しない） (b) **除外（gated Amendment 2、実装後レビュー round 1 裁定①）**: 先頭スクロールは mount 一律実装が詳細 returnTo 戻りの位置喪失を招き、rollback 起点の one-shot 伝搬は別 route 間で自然な経路がないため本 batch から revert。scroll 復元方針は画面横断の design-first 裁定候補として closeout で backlog 起票
-8. **設計 doc の軽微追記 3 箇所（Writer が同 PR で実施、referent 実査済み。旧 (c) SCREEN_DESIGN スクロール追記は 7(b) 除外に伴い revert — gated Amendment 2）**: (a) `61-ui-receiving.md` §61.5 へ「更新成功後はカードのマスタ原価表示を更新後の値へ反映する」1 文 (b) `78-ui-supplier-management.md` §78.6 へ改名成功時の完了通知規定 1 文（§78.7 統合の完了通知規定と対称化） (c) `75-ui-integrity-check.md` へ PageHeader title の正式文言を明記
+8. **設計 doc の更新 8 箇所（Writer が同 PR で実施、referent 実査済み。旧 SCREEN_DESIGN スクロール追記は Amendment 2 で revert 済み）**: (a) `61-ui-receiving.md` §61.5 1 文 (b) `78-ui-supplier-management.md` §78.6 1 文 (c) `75-ui-integrity-check.md` PageHeader 文言明記 — 以上実施済み。gated Amendment 3 で追加: (d) `docs/design-system/01-decision-rules.md` へ **DSR-16「同型情報のグループ化と囲みの階層」新設**（判断フロー: 比較目的 = 列を揃えた表/structured list、レコード固有操作あり = 一意見出しの summary card、単一レコード確認 = key/value definition list。共通領域は意味階層ごとに 1 つ、内部反復は余白/行区切り、薄い border を唯一のグループ信号にしない。根拠 = NN/g Common Region・GOV.UK summary list） (e) `00-foundations.md` L17 の `--border` 行「4.5:1 境界可視性」誤記を実測比（対 #fafaf9 ≈ 1.20:1）へ修正し、境界の役割記述を DSR-16 と整合させる (f) `03-philosophy.md` へ理論参照 1 段落（共通領域・比較可能性） (g) `02-component-catalog.md` の確認 Dialog へ比較用 variant 追記 (h) `docs/quality/review-checklist.md` へ「同型情報の表示形式が DSR-16 の判断フローに適合するか」1 行
 9. **整合性検証の名称統一**: `IntegrityCheckPage.tsx` L185-186 の PageHeader title「在庫整合性チェック」→「**在庫整合性検証**」へ（doc 正本〈75 doc 見出し「在庫整合性検証画面」/ SCREEN_DESIGN L42・62・426「在庫整合性検証」〉に一致させる。サイドバー「整合性検証」〈52 §52.3 メニュー正本表と一致〉は幅制約もあり不変。**統一先の最終確定は Plan Gate 承認に含める**）
 10. FE test: 各磨き項目の RTL oracle（Test Design Matrix 参照）。既存 test の削除・無効化・skip 禁止。summary 構造化に伴う既存 assert の文言追随は意味不変の範囲で可
 11. commit 分割: 磨き実装（画面群ごとに 1-2 commit）→ doc 追記 → test の順は Writer 裁量、ただし doc 追記と対応実装は同 PR 必須
@@ -102,7 +103,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC3: `cd src-tauri && cargo test` green（backend 無変更の regression 確認）+ `git diff --exit-code src/lib/bindings.ts`（差分ゼロ）
 - AC4: UI-07-D13/D14 の項目集合維持 — 構造化後の summary に規定項目の全 token が render される RTL assert（T2 / T3）
 - AC5: `rg -c "在庫整合性チェック" src/ --glob '!src/lib/bindings.ts'` = 0（exit 1、旧見出しの全滅。`src/lib/bindings.ts` L290 の 1 件は `integrity_cmd.rs` L10 の Rust doc comment 由来の生成 JSDoc で operator 非可視・backend 非接触の Non-scope により許容 — Plan Review round 1 P1-1）+ `rg -c "在庫整合性検証" src/features/integrity-check/IntegrityCheckPage.tsx` ≥ 1
-- AC6: doc 追記 3 箇所（Scope 8）の diff が存在し（SCREEN_DESIGN の追記なし = revert 済みを含む） `bash scripts/doc-consistency-check.sh` ERROR 0
+- AC6: doc 更新 8 箇所（Scope 8 (a)-(h)）の diff が存在し（SCREEN_DESIGN の追記なし = revert 済みを含む） `bash scripts/doc-consistency-check.sh` ERROR 0
 - AC7: `bash scripts/local-ci.sh full` CLEAN（L1、exact-HEAD evidence は PR body 所管）
 - AC8: Human Gate に owner 目視を含むため Writer 完了条件に `cargo check --release`（CI gate ではない）
 

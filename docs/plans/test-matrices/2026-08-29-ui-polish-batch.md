@@ -34,7 +34,7 @@ Risk: R2
 |---|---|---|---|---|
 | ボタン行パターン統一 | wrapper 欠落 | RTL | T1 日報 ResultStep のボタン群が単一の flex 行 container 配下に render される assert | wrapper 未実装 |
 | UI-07-D14 項目集合 | 項目欠落・filenames の部分表示 | RTL | T2 両 tab の rollback 確認 summary に規定 5 項目の値 token（fixture の ID・日付・filename・件数/総売上・金額/純売上）が**全て** render される assert。**日報の source filenames は 3 件 fixture で全件を個別 assert**（先頭 1 件化 mutation の検出 — Codex cross review 実測 survivor の是正、gated Amendment 2） | 構造化で項目を落とす / filenames を先頭 1 件に縮める実装 |
-| UI-07-D13 項目集合 | 項目欠落・省略発生 | RTL | T3 追加確認 dialog に規定 4 項目の値 token + 複数件 fixture の全行 render assert | 項目欠落・件数省略 |
+| UI-07-D13 項目集合 + DSR-16 構造 | 項目欠落・省略発生・比較不能な per-card 反復 | RTL | T3 追加確認 dialog に規定 4 項目の値 token + 複数件 fixture の全行 render assert（項目完全性 oracle 不変）+ gated Amendment 3: 既存分が列の揃った structured list で render・今回分が「今回」ラベル付き独立領域で render される構造 assert + 日時の人間向け表示 assert | 項目欠落・件数省略・DSR-16 構造の退行 |
 | UI-02-D15 + Alert 化 | 色のみ判別化 | RTL | T4 更新成功行に success 表示 + 「マスタ原価を更新しました」テキスト + role の存在、失敗行に失敗テキスト（成功/失敗の同時 fixture） | テキスト・role を落として色だけにする実装 |
 | 61 §61.5 追記 | 旧値表示継続 | RTL | T5 updateMasterCost 成功後にカードのマスタ原価が新値で render + footer 文言が状態対応（全行処理済みで「閉じる」系）に変わる assert | 反映欠落・固定文言 |
 | 78 §78.6 追記 | 無通知のまま | RTL | T6 改名 submit 成功で toast.success が呼ばれる assert（mock、文言は追記 doc と一致の独立転記） | toast 追加漏れ・文言 drift |
@@ -112,3 +112,5 @@ not applicable の行が多いため対象 state のみ:
 - 視認性（間隔・折返し・Alert の見た目・toast の目立ち方）の最終判定は自動 test で代替不能 → owner 目視（L3-lite）
 - T7 の oracle は gated Amendment 2 で確定済み（duration 8000 実 assert）
 - Opus 修正案 round の指摘反映後に assert を追補する場合も、Plan Gate 後の Matrix 変更はすべて gated Amendment（Amendments 行への SHA 記録）で行う
+
+- gated Amendment 3（L3 可読性 FAIL 裁定）: T3 を DSR-16 構造 assert へ拡張。docs 5 点（DSR-16 / foundations 誤記 / philosophy / catalog / checklist）は実装 review の diff 確認 + doc-consistency で検査
