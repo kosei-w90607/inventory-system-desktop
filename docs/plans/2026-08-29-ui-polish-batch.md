@@ -9,11 +9,11 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: local-verified
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
-- Amendments: b1cd203（gated Amendment 2 — Scope 7(b) 除外 + T7 確定 + T2 強化、実装後レビュー round 1 裁定）
+- Amendments: b1cd203 7be74f0（gated Amendment 2 — Scope 7(b) 除外 + T7 確定 + T2 強化、実装後レビュー round 1 裁定 / gated Amendment 3 — DSR-16 準拠再構成 + docs 5 点追加、owner L3-lite round 1 可読性 FAIL の裁定）
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Claude Sonnet 5 (subagent、worktree isolation、§5.6 従来型発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
@@ -262,6 +262,8 @@ Scope 1-7(a), 9 の表示磨きと Scope 8 の doc 追記 3 箇所を実装し�
 実装後レビュー round 1（Opus 修正案 + Codex cross、gated Amendment 2、Coordinator 全件 accept）を受けて是正: ①Scope 7(b) 先頭スクロールを完全 revert（mount effect / T8 / SCREEN_DESIGN 追記を撤去、design-first 裁定候補として backlog 起票予定）②T2 を日報 source filenames 3 件 fixture の全件個別 assert へ強化（先頭 1 件化 mutation の survivor 是正）③break-all を break-words へ置換し、複数 filenames を " / " 連結でなく個別行表示（`ExistingImportSummary.filenames` を `string[]` 化）+ 既存分「ファイル名」の col-span-2 欠落是正 ④3 site（ResultStep / DailyReportResultStep / AdditionalImportConfirmDialog）の dl gap トークンと「取込み ID」「合計金額」「ファイル名」ラベル語彙を統一。
 
 ローカル gate（typecheck / lint / format:check / npm test / build / cargo test / cargo check --release / bindings.ts 差分ゼロ / doc-consistency-check.sh ERROR 0 / local-ci.sh full）は是正反映後も全て CLEAN。
+
+owner L3-lite round 1（D13 項目完全性 PASS / 可読性 FAIL）を受けた gated Amendment 3 是正: ①docs 5 点を design-first で先行更新（`01-decision-rules.md` DSR-16 新設、`00-foundations.md` `--border` 誤記修正、`03-philosophy.md` 理論参照、`02-component-catalog.md` 比較用 variant、`review-checklist.md` DSR-16 確認項目）②`AdditionalImportConfirmDialog.tsx` を DSR-16 canonical 実例へ再構成（既存分 = 列を揃えた Table、今回分 = 「今回分」ラベル付き独立領域、取込み日時を人間向け表示、dialog 幅拡大）③rollback summary 2 site（ResultStep / DailyReportResultStep）は definition list のまま囲み階層の二重化だけ解消（再構成なし）④Matrix T3 を構造 assert（列揃え Table / 「今回分」ラベル領域 / 人間向け日時）で拡張、項目完全性 oracle は不変。
 
 Draft PR: https://github.com/kosei-w90607/inventory-system-desktop/pull/15（是正反映後に body 更新済み）
 
