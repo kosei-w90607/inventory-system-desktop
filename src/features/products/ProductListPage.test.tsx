@@ -131,6 +131,7 @@ describe("ProductListPage (UI-01a)", () => {
     await user.click(screen.getByRole("button", { name: "PLU 対象にする" }));
     expect(screen.getByText("表示中の商品をPLU対象にしますか")).toBeInTheDocument();
     expect(screen.getByText(/現在の絞り込み条件に一致する 37 件が対象です/)).toBeInTheDocument();
+    expect(screen.getByText(/現在の絞り込みに一致しない商品は変更されません/)).toBeInTheDocument();
     expect(screen.getByText(/PLU 書出しと PC ツールの取込みが別途必要です/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "キャンセル" }));
     expect(mockBulkSetPluTarget).not.toHaveBeenCalled();

@@ -270,13 +270,18 @@ describe("SupplierManagementPage UI-15 / REQ-107", () => {
     expect(screen.queryByRole("option", { name: "あ取引先" })).not.toBeInTheDocument();
   });
 
-  it("段階 2 は source の usage 件数で「◯件の商品 / ◯件の入庫記録が付け替わります」と「元に戻せません」を表示する", async () => {
+  it("REQ-107 Matrix T2: 段階 2 は source 削除・両参照の引き継ぎ・不可逆性を表示する", async () => {
     const user = userEvent.setup();
     renderPage();
     await openMerge(user);
     await selectMergeTarget(user);
     await user.click(screen.getByRole("button", { name: "次へ" }));
     expect(screen.getByText("2件の商品 / 1件の入庫記録が付け替わります")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "統合すると、取引先「あ取引先」は取引先一覧から削除され、商品・入庫記録は取引先「か取引先」へ引き継がれます。",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/この操作は元に戻せません/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "残す取引先を選び直す" }));
     expect(screen.getByRole("button", { name: "次へ" })).toBeInTheDocument();

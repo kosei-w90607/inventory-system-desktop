@@ -116,6 +116,10 @@ export function MergeSupplierDialog({
               {source.product_count}件の商品 / {source.receiving_record_count}
               件の入庫記録が付け替わります
             </p>
+            <p>
+              統合すると、取引先「{source.name}」は取引先一覧から削除され、商品・入庫記録は取引先「
+              {target?.name ?? ""}」へ引き継がれます。
+            </p>
             <Alert variant="destructive" role="alert">
               <AlertDescription>
                 この操作は元に戻せません。別の取引先を誤って統合しないよう、名称と件数を確認してください。

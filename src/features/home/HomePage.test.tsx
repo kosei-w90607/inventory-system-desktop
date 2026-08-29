@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 
 import { commands } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
+import { consumeRestoreSuccessPending } from "@/lib/restore-success-notification";
 import type {
   CmdError,
   CsvImport,
@@ -36,11 +38,18 @@ vi.mock("@/lib/bindings", () => ({
   },
 }));
 
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
+vi.mock("@/lib/restore-success-notification", () => ({
+  consumeRestoreSuccessPending: vi.fn(),
+}));
+
 const mockGetDailySales = vi.mocked(commands.getDailySales);
 const mockListLowStock = vi.mocked(commands.listLowStock);
 const mockListPluDirty = vi.mocked(commands.listPluDirty);
 const mockListCsvImports = vi.mocked(commands.listCsvImports);
 const mockToastError = vi.mocked(toast.error);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
+const mockConsumeRestoreSuccessPending = vi.mocked(consumeRestoreSuccessPending);
 
 const syntheticError: CmdError = {
   kind: "internal",
@@ -143,10 +152,27 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockConsumeRestoreSuccessPending.mockReturnValue(false);
   installSuccessfulCommands();
 });
 
 describe("HomePage UI-00 orchestration wiring", () => {
+  it("UI-11b-D12 Matrix T4: 復元成功 flag ありの mount でページ先頭へ one-shot scroll する", async () => {
+    mockConsumeRestoreSuccessPending.mockReturnValue(true);
+
+    renderPage();
+
+    expect(await screen.findByText("バックアップから復元しました")).toBeInTheDocument();
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
+  });
+
+  it("UI-11b-D12 Matrix T5: 復元成功 flag なしの通常 mount では scroll しない", async () => {
+    renderPage();
+
+    expect(await screen.findByText(/昨日の売上/)).toBeInTheDocument();
+    expect(mockScrollPageToTop).not.toHaveBeenCalled();
+  });
+
   it("renders the stale-import warning and healthy summary from real query results", async () => {
     renderPage();
 

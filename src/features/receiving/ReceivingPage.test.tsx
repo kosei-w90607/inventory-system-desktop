@@ -515,7 +515,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     expect(await screen.findByText("午前便")).toBeInTheDocument();
   });
 
-  it("REQ-209 T5: 保存成功時の原価差分を日本語ラベル付きダイアログで表示する", async () => {
+  it("REQ-209 T5 / Matrix T1: 保存済み入庫と更新・見送りの影響を原価差分ダイアログで説明する", async () => {
     const user = userEvent.setup();
     mockCreateReceiving.mockResolvedValue({
       status: "ok",
@@ -540,14 +540,55 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     await user.click(screen.getByRole("button", { name: "入庫を保存" }));
 
     const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
-    expect(within(dialog).getByText("商品名")).toBeInTheDocument();
-    expect(within(dialog).getByText("テスト毛糸")).toBeInTheDocument();
+    expect(within(dialog).getByText(/入庫の記録は保存済みです/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/商品マスタの原価が今回の実原価に変わります/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/入庫記録はそのまま残り、商品マスタの原価は変わりません/),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "テスト毛糸" })).toBeInTheDocument();
     expect(within(dialog).getByText("商品コード")).toBeInTheDocument();
     expect(within(dialog).getByText("P-901")).toBeInTheDocument();
     expect(within(dialog).getByText("マスタ原価")).toBeInTheDocument();
     expect(within(dialog).getByText("500 円")).toBeInTheDocument();
     expect(within(dialog).getByText("今回の実原価")).toBeInTheDocument();
     expect(within(dialog).getByText("501 円")).toBeInTheDocument();
+  });
+
+  it("REQ-209 / DSR-16 Matrix T6: 複数の原価差分商品を一意の見出しで識別できる", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 902,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+          {
+            product_code: "P-902",
+            product_name: "テスト生地",
+            master_cost_price: 700,
+            received_cost_price: 720,
+          },
+        ],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
+    expect(within(dialog).getByRole("heading", { name: "テスト毛糸" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "テスト生地" })).toBeInTheDocument();
   });
 
   it("REQ-209 T6: 原価差分が空または冪等再送ならダイアログを表示しない", async () => {

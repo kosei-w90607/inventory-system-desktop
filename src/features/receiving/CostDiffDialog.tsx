@@ -97,7 +97,7 @@ export function CostDiffDialog({
         <DialogHeader>
           <DialogTitle>入庫原価を確認してください</DialogTitle>
           <DialogDescription>
-            今回の実原価が商品マスタと異なります。更新する商品を1件ずつ確認してください。
+            入庫の記録は保存済みです。「マスタ原価をこの実原価に更新する」を選ぶと、商品マスタの原価が今回の実原価に変わります。「見送って閉じる」を選ぶと、入庫記録はそのまま残り、商品マスタの原価は変わりません。
           </DialogDescription>
         </DialogHeader>
 
@@ -110,11 +110,8 @@ export function CostDiffDialog({
                 className="space-y-3 rounded-md border p-4"
                 aria-label={`${diff.product_name}の原価差分`}
               >
-                <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-muted-foreground">商品名</dt>
-                    <dd className="font-semibold">{diff.product_name}</dd>
-                  </div>
+                <h3 className="text-base font-semibold">{diff.product_name}</h3>
+                <dl className="text-sm">
                   <div>
                     <dt className="text-muted-foreground">商品コード</dt>
                     <dd className="font-medium">{diff.product_code}</dd>

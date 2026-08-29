@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { consumeRestoreSuccessPending } from "@/lib/restore-success-notification";
 import { InventoryActionGrid } from "./components/InventoryActionGrid";
 import { MiscActionRow } from "./components/MiscActionRow";
@@ -36,6 +37,7 @@ export function HomePage() {
   useEffect(() => {
     if (consumeRestoreSuccessPending()) {
       setShowRestoreSuccessAlert(true);
+      scrollPageToTop();
     }
   }, []);
 

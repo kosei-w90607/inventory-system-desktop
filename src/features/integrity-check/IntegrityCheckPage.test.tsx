@@ -311,7 +311,10 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     await openFixDialog();
     await confirmFix();
     expect(await screen.findByText("1件を補正しました")).toBeInTheDocument();
-    expect(screen.getByText("10 → 7")).toBeInTheDocument();
+    const adjustmentRow = screen.getByText("10 → 7").closest("li");
+    expect(adjustmentRow).not.toBeNull();
+    expect(adjustmentRow).not.toHaveClass("rounded-md", "border");
+    expect(adjustmentRow?.parentElement).toHaveClass("divide-y");
     expect(screen.queryByText("一部の商品は補正されませんでした")).toBeNull();
     expect(runIntegrityCheck).toHaveBeenCalledTimes(1);
   });

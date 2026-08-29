@@ -35,7 +35,8 @@ export function PluBulkTargetConfirmDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             現在の絞り込み条件に一致する {count.toLocaleString("ja-JP")}{" "}
-            件が対象です。レジへの反映には PLU 書出しと PC ツールの取込みが別途必要です。
+            件が対象です。現在の絞り込みに一致しない商品は変更されません。レジへの反映には PLU
+            書出しと PC ツールの取込みが別途必要です。
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
