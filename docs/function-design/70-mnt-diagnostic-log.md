@@ -184,7 +184,7 @@ pub fn run() {
 }
 ```
 
-**変更後の起動順序（setup hook方式）**:
+**変更後の起動順序（setup hook方式、実装同期版）**:
 ```
 pub fn run() {
     tauri::Builder::default()
@@ -193,9 +193,16 @@ pub fn run() {
             // app_data_dir: tauri.conf.json の identifier から自動解決
             // Linux: ~/.local/share/com.kosei.inventory/
             // Windows: C:\Users\{user}\AppData\Roaming\com.kosei.inventory\
-            let app_data = app.path().app_data_dir()
-                .expect("app_data_dir取得失敗");
-            std::fs::create_dir_all(&app_data)?;
+            let app_data = run_startup_step(
+                StartupFailureKind::AppDataDir,
+                || app.path().app_data_dir(),
+                show_pre_window_fatal,
+            )?;
+            run_startup_step(
+                StartupFailureKind::CreateAppDataDir,
+                || std::fs::create_dir_all(&app_data),
+                show_pre_window_fatal,
+            )?;
 
             // 1. 診断ログ初期化（setup内の最初。失敗してもアプリ起動は続行）
             let log_config = DiagnosticLogConfig {
@@ -204,31 +211,51 @@ pub fn run() {
                 file_prefix: "app".to_string(),
             };
             if let Err(e) = mnt::diagnostic_log::init_diagnostics(&log_config) {
-                eprintln!("警告: 診断ログの初期化に失敗しました: {:?}", e);
+                eprintln!("警告: 診断ログの初期化に失敗しました: {}", e);
             }
 
             // 2. 古ログファイル削除（ログ初期化後に実行）
             if let Err(e) = mnt::diagnostic_log::cleanup_old_log_files(&log_config) {
-                tracing::warn!("古いログファイルの削除に失敗しました: {}", e);
+                tracing::warn!(error = %e, "古いログファイルの削除に失敗");
             }
 
-            // 3. DB初期化（app_data_dir配下。ここからのエラーはログに記録される）
-            let db_path = app_data.join("inventory.db");
-            let conn = db::init_database(db_path.to_str().unwrap())?;
+            // 3-4. reconcile → legacy移行 → DB初期化。いずれかの失敗も fail-closed（利用者向け固定文言を表示して起動中止）
+            let conn = match prepare_database(&app_data) {
+                Ok(conn) => conn,
+                Err(error) => {
+                    if let Some(message) = error.operator_message() {
+                        show_pre_window_fatal(&message);
+                    }
+                    return Err(error.to_string().into());
+                }
+            };
 
-            // 4. State管理（setup内でmanage）
+            // 5. 操作ログ自動削除（DB初期化後に実行。失敗してもアプリ起動は続行）
+            if let Err(e) = mnt::log_manager::cleanup_old_logs(&conn) {
+                tracing::warn!(error = %e, "操作ログの自動削除に失敗");
+            }
+
+            // 6. 自動バックアップチェック（起動時。失敗してもアプリ起動は続行）
+            run_startup_auto_backup(&conn, &app_data);
+
+            // 7. State管理（setup内でmanage）
             app.manage(AppState {
                 db: Mutex::new(conn),
                 preview_cache: Mutex::new(HashMap::new()),
+                daily_report_preview_cache: Mutex::new(HashMap::new()),
             });
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![...])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|error| {
+            handle_run_failure(error, show_pre_window_fatal, std::process::exit);
+        });
 }
 ```
+
+`app_data_dir` 取得・作成の失敗、および DB 初期化系の失敗はいずれも `.expect()` によるパニックではなく `run_startup_step` / `handle_run_failure` を介した fail-closed 経路（利用者向け固定文言表示 + プロセス終了）に統一されている（`src-tauri/src/lib.rs` `run_startup_step` L84 定義）。操作ログ自動削除（MNT-02）と自動バックアップチェック（MNT-01）は DB 初期化後・State 管理前に実行され、いずれも失敗してもアプリ起動は継続する。
 
 **app_data_dirの取得方針（2026-04-13 設計変更）**:
 - Tauri 2.0 の setup hook 内で `app.path().app_data_dir()` を使用する

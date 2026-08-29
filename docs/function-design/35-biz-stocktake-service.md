@@ -121,6 +121,10 @@ fn start_stocktake(
 - 対象商品0件 → BizError::ValidationFailed
 - DB操作失敗 → RAII自動ROLLBACK → BizError::DatabaseError(DbError)
 
+**設計判断 — 棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）**:
+- `find_stocktake_eligible_products` が返す母集団は商品マスタに登録済みの全商品である（`is_discontinued` を問わない）。実店舗の除外基準は年数ではなく原価根拠の有無で、伝票保管義務範囲外で廃棄済み・取引先データなし・バーコードなし・販売に適さない見た目という原価根拠を欠く現物は、単品コードを付与しない = 商品マスタへ登録しないことで自然に母集団から外れる。規模は例年 1〜2 点、多い年で 4〜5 点。
+- システム側で除外品を表現する専用フラグや状態は追加しない（owner 方針）。部門キーで商品非連動販売として扱い、現物が再流通する場合は新規商品として改めて登録する。
+
 **設計判断 — 廃番在庫0の自動入力**:
 - is_discontinued=1 かつ stock_quantity=0 の商品は、棚に存在しないことが確実（廃番で在庫ゼロ）。カウント入力の手間を省くため、actual_count=0 を自動入力する
 - is_discontinued=1 かつ stock_quantity>0 の商品は対象に含める（棚に残っている可能性があるためカウント必要）
@@ -512,3 +516,4 @@ CMD層では `kind="validation"` と BIZ の message / field をそのまま保�
 | 2026-04-12 | PR #21 | 初版作成（BIZ-06 stocktake_service 4関数 + stocktake_repo 12関数） |
 | 2026-04-12 | PR #21 | StocktakeItemForComplete を 5フィールド（IO設計書版）→ 3フィールド（id/product_code/actual_count）に統一。BIZ設計書を採用した理由: complete_stocktake の処理ステップ5で必要なのは更新対象IDと商品コードと実カウントのみで、system_stock や counted_at は product_repo::find_by_product_code から取得する方が責務分離として正しい |
 | 2026-08-27 | （本 PR） | §20.6a get_stocktake_record（棚卸し記録詳細 read、65 slice 4c）+ StocktakeStatus enum 新設 + 差異定義（補正 movement 正）の設計ノートを追加 |
+| 2026-08-30 | docs 整合性衛生 batch（本 PR） | §20.3 に棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）を設計判断として追加 |

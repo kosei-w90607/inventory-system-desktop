@@ -35,7 +35,7 @@
 | REQ-501 | 日次の売上一覧をJANコード・商品名・個数・金額付きで表示できること | UI-09a, BIZ-05 | 要求仕様書 v2.1 | required |
 | REQ-502 | 月次の売上集計・傾向を表示できること | UI-09b, BIZ-05 | 要求仕様書 v2.1 | required |
 | REQ-700 | 診断ログ | MNT-04 | 開発拡張 | required |
-| REQ-901 | バックアップ | MNT-01 | 開発拡張 | required |
+| REQ-901 | バックアップ | MNT-01, UI-11b | 開発拡張 | required |
 | REQ-902 | ログ管理（操作ログ記録/一覧/自動削除） | MNT-02 | 開発拡張 | required |
 | REQ-903 | マイグレーション/DB基盤（初期化/スキーマ更新） | MNT-03, IO-01 | 開発拡張 | required |
 | REQ-904 | 整合性チェック（在庫数突合/修復） | BIZ-07, UI-13 | 開発拡張 | required |

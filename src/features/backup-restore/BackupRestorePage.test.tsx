@@ -144,8 +144,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
-  it("QR-05 REQ-905 shows break-glass only when pre-restore backup fails", async () => {
+describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
+  it("QR-05 REQ-901 shows break-glass only when pre-restore backup fails", async () => {
     const user = userEvent.setup();
     mockCreateBackup.mockResolvedValueOnce(cmdError("保存先にバックアップを作成できませんでした"));
 
@@ -168,7 +168,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(screen.getByRole("button", { name: "7月3日 21:00 の控えに戻す" })).toBeEnabled();
   });
 
-  it("QR-05 REQ-905 treats recovered restore failure as retryable", async () => {
+  it("QR-05 REQ-901 treats recovered restore failure as retryable", async () => {
     const user = userEvent.setup();
     mockRestoreBackup.mockResolvedValueOnce(cmdError("復元対象のファイルを読み込めませんでした"));
 
@@ -185,7 +185,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(screen.queryByText("アプリを閉じて、もう一度開いてください")).not.toBeInTheDocument();
   });
 
-  it("QR-05 REQ-905 branches restore failures by CmdError kind", async () => {
+  it("QR-05 REQ-901 branches restore failures by CmdError kind", async () => {
     const user = userEvent.setup();
     mockRestoreBackup.mockResolvedValueOnce({
       status: "error",
@@ -204,7 +204,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(await screen.findByText("再起動が必要です")).toBeInTheDocument();
   });
 
-  it("QR-05 REQ-905 shows non-assertive guidance for durability unknown", async () => {
+  it("QR-05 REQ-901 shows non-assertive guidance for durability unknown", async () => {
     const user = userEvent.setup();
     mockRestoreBackup.mockResolvedValueOnce({
       status: "error",
@@ -249,7 +249,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     },
   );
 
-  it("QR-05 REQ-905 shows restart guidance and disables operations on double failure", async () => {
+  it("QR-05 REQ-901 shows restart guidance and disables operations on double failure", async () => {
     const user = userEvent.setup();
     mockRestoreBackup.mockResolvedValueOnce(
       cmdError(
@@ -269,7 +269,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(screen.getByRole("button", { name: "この控えに戻す" })).toBeDisabled();
   });
 
-  it("QR-05 REQ-905 stops auto backup checks after double failure", async () => {
+  it("QR-05 REQ-901 stops auto backup checks after double failure", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     mockCheckAutoBackup.mockResolvedValue(ok(false));
@@ -292,7 +292,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(mockCheckAutoBackup).toHaveBeenCalledTimes(callsAtFatal);
   });
 
-  it("QR-05 REQ-905 clears query cache and navigates home after restore success", async () => {
+  it("QR-05 REQ-901 clears query cache and navigates home after restore success", async () => {
     const user = userEvent.setup();
     const { clearSpy } = renderWithClient(<BackupRestorePage />);
 
@@ -340,7 +340,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(mockToastSuccess).toHaveBeenCalledWith("バックアップから復元しました");
   });
 
-  it("QR-05 REQ-905 shows created backup file path after manual backup", async () => {
+  it("QR-05 REQ-901 shows created backup file path after manual backup", async () => {
     const user = userEvent.setup();
 
     renderWithClient(<BackupRestorePage />);
@@ -354,7 +354,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     ).toBeInTheDocument();
   });
 
-  it("QR-05 REQ-905 updates backup_path only from directory picker", async () => {
+  it("QR-05 REQ-901 updates backup_path only from directory picker", async () => {
     const user = userEvent.setup();
     mockOpen.mockResolvedValueOnce(null).mockResolvedValueOnce("/tmp/new-backups");
 
@@ -376,14 +376,14 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(mockOpen).toHaveBeenCalledWith({ directory: true, multiple: false });
   });
 
-  it("QR-05 REQ-905 shows effective backup dir returned by backend", async () => {
+  it("QR-05 REQ-901 shows effective backup dir returned by backend", async () => {
     renderWithClient(<BackupRestorePage />);
     await screen.findByRole("heading", { name: "バックアップ・復元" });
 
     expect(await screen.findByText("/tmp/backups")).toBeInTheDocument();
   });
 
-  it("QR-05 REQ-905 shows fallback note when backup_path is unset", async () => {
+  it("QR-05 REQ-901 shows fallback note when backup_path is unset", async () => {
     mockGetSettings.mockResolvedValue(
       ok([
         { key: "backup_enabled", value: "1", updated_at: "2026-07-06T00:00:00" },
@@ -403,7 +403,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     ).toBeInTheDocument();
   });
 
-  it("QR-05 REQ-905 hides effective backup dir row when the fetch fails", async () => {
+  it("QR-05 REQ-901 hides effective backup dir row when the fetch fails", async () => {
     mockGetEffectiveBackupDir.mockResolvedValue(cmdError("実効保存先を取得できませんでした"));
 
     renderWithClient(<BackupRestorePage />);
@@ -418,7 +418,7 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-905)", () => {
     expect(screen.getByRole("button", { name: "今すぐバックアップを作成" })).toBeEnabled();
   });
 
-  it("QR-05 REQ-905 checks auto backup every 60 seconds", async () => {
+  it("QR-05 REQ-901 checks auto backup every 60 seconds", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockCheckAutoBackup.mockResolvedValue(ok(true));
 
