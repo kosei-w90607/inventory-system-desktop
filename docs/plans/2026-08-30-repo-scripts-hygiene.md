@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1957458
@@ -11,7 +11,7 @@
 - Writer: Codex（発注書駆動の実装者。発注 prompt は Coordinator が作成し owner が relay）
 - Plan Reviewer: Sonnet subagent (independent)（Writer = Codex のため D-062 の非同一 vendor 要件を満たす）
 - Final Reviewer: Sonnet subagent (independent)
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: fd2ccc4
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: pending Ready 承認（画面非接触のため視覚確認・L3 は非該当。Dockerfile / docker-compose.yml の削除対象は本 packet で明名済み）
@@ -201,14 +201,13 @@ N/A（R2、Design Intent Trace 参照）。
 
 ## Implementation Results
 
-Fill after implementation.
-
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+
+S1（Dockerfile / docker-compose.yml の git rm、docs の現行手順指示は実査どおり 0 件で無改変）+ S2（.gitignore protected-paths へ 2 行を辞書順追加）を Writer = Codex が実装（PR #19）。旧 S3 は amendment `e618470` の descope に従い `scripts/check-phase1-probe-removed.sh` 無改変。AC-1/2/5/6 は Writer 実測 PASS、`local-ci.sh changed` および L1 full CLEAN PASS（exact SHA / evidence は PR body を正とする）。先頭 lane（PR #18）merge 後の base 追随は origin/main 単段 merge（conflict-free、D-074 手順）で実施。
 
 ## Review Response
 
-Fill after review.
-If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
+- Findings Freeze: frozen after Final Review; post-freeze exceptions: none.
 
 ### Plan Gate 記録（append-only）
 
@@ -218,3 +217,8 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - Plan Gate rally round 3（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 2 の 3 findings 反映を 1 対 1 で全件確認。修正版例示コードの 5 象限 empirical 検証（0 hit クリーン偽 / mutant 検知 / 除外対象の除外 / somelib 型の非誤除外 / content 側衝突の検知維持）すべて期待どおり。旧方式（行全体一致 / if 直結 / アンカーなし regex）の残存 0。新規 P1/P2/P3 = 0 で rally 収束、plan-gate 通過。非 blocking 観察 1 件（`2>/dev/null` が rg exit 2 を 0 hit と区別不能にする既存同型構造）は既存構造のため見送り記録のみ。
 - state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `1957458` + pre-gate 是正 `7122965` / `01acbe8`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer rally 3 round 収束 P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Codex への実装開始許可・発注書 relay（plan-approved->implementing）。
 - **gated amendment 経緯（2026-08-30）**: Writer（Codex）が実装前の AC-4(a) 実証で「mutant を検知し exit 1、silent no-op 前提と矛盾」の fail-closed 停止（branch 98c43b8、rg 15.2.0 / linuxbrew 15.1.0 双方で再現）。Coordinator が linuxbrew rg 15.1.0 の scratch 実測で追認（literal 負 glob / wildcard 負 glob / 明示 file 引数のすべてで正常動作、「全マッチ 0 件」はどの形でも再現せず）→ S3 の前提欠陥は実在しないと確定。owner 裁定（介入 2/3）= S3 descope。rally は round 3 天井到達済みのため追加 round は開始せず、disposition = owner escalation で処置。本 amendment の監査は Final Review（independent-review phase）が S1/S2 diff + script 無改変確認として実施する。原 `Plan Commit` は不変、amendment SHA は Workflow State `Amendments` 行に記帳。
+
+### Final Review / 遷移記録（append-only）
+
+- Final Review（独立 Sonnet、fresh context、read-only、git show ベース）2026-08-30: `git diff e1c668a..fd2ccc4` の全 hunk を S1/S2 と 1 対 1 突合（3 file のみ、packet 外 hunk 0）/ 削除は明名 2 file 限定 / `check-phase1-probe-removed.sh` byte 無改変（descope 遵守）/ .gitignore 2 行は辞書順正位置・既存行無改変 / AC-1・AC-2 presence の static 再実測 PASS / AC-6 は歴史記述のみ残存で現行手順指示 0 / 越境なし / commit subject 適合。P1: 0 / P2: 0 / P3: 0。実行系 gate（git check-ignore / check-env-safety / doc-consistency-check）は Writer L1 full evidence（PR body 記載）で担保。
+- state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate fd2ccc4 の L1 `local-ci.sh full` CLEAN PASS evidence（implementing->local-verified。exact SHA と evidence 位置は PR body を正とする）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。先頭 lane merge 後の origin/main 単段 merge（`efbfcd6`、conflict-free・docs-only delta）は D-074 手順に従い Rebase Map 不要、Plan Commit / Amendments の ancestry 維持。
