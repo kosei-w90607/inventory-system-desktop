@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1957458
@@ -11,10 +11,10 @@
 - Writer: Sonnet subagent (worker, fresh context)（docs + traceability comment 同期の lane のため §3.1「投入しない場合: … docs 同期」に従い希少 slot を Writer に充てない。Plan Reviewer / Final Reviewer とはそれぞれ別の fresh context で独立性を維持）
 - Plan Reviewer: Sonnet subagent (independent)
 - Final Reviewer: Sonnet subagent (independent)
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 865a7de
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending Ready 承認（画面挙動・runtime 契約に不接触のため視覚確認・L3 は非該当）
+- Human Gate: none（Ready 承認 2026-08-30 済み — 視覚確認は docs + test comment のみのため非該当）
 
 ## Owner Effort Budget
 
@@ -244,13 +244,13 @@ N/A — 実データ・secrets・破壊的操作なし。
 
 ## Implementation Results
 
-Fill after implementation.
+S1〜S6 を packet Scope どおり実装（docs 11 file + BackupRestorePage.test.tsx の REQ token 同期 + 90-traceability 再生成）。S3 は cmd-task-specs 表 + 実 import 実査で「MNT-02 削除」分岐を採用。AC-1〜AC-11 は Writer 実測 + Final Review 独立再実測（実行系 AC-3/AC-9 は L1 evidence）で全 PASS。exact SHA / test counts は PR body を正とする。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
 ## Review Response
 
-Fill after review.
+- Findings Freeze: frozen after Final Review; post-freeze exceptions: none.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 
 ### Plan Gate 記録（append-only）
@@ -259,3 +259,9 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - Plan Gate rally round 1（独立 Sonnet Plan Reviewer、2026-08-30）: P1: 1 / P2: 2 / P3: 2。P1-1 = AC-2 の対 oracle が AC-1 対象 4 file 中 2 file しかカバーせず「REQ-905 を削るだけ」mutant を素通し → AC-2 を全 4 file へ拡張。P2-1 = 失敗定義が D-036 承認済みの CMD-11 backup/restore 系 REQ-905 タグ（settings_cmd.rs、Coordinator 実証確認済み）と字面衝突 → UI-11b 文脈へ限定。P2-2 = S1-5（requirements.md 対応列）に oracle なし → AC-11 追加。P3-1 = S3 の一次証拠を cmd-task-specs 表へ変更（reviewer 予備実査で「MNT-02 削除」分岐が正と確認済み）。P3-2 = D-050 帰属の不正確な引用を実務根拠の文言へ差替え。全採用、in-place 是正（plan-draft 中の pre-gate 是正）。round 2 の delta 再検証で新規指摘 0 を確認して plan-gate 通過とする。
 - Plan Gate rally round 2（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 1 の 5 findings 反映を 1 対 1 で全件確認。oracle 構文の実測検証（reviewer 実測: AC-1 の `rg -c "REQ-905"` は対象 file 全てで hit あり = 未達成側、AC-2・AC-11 の `rg -F -c "REQ-901"` / `rg -F -c "MNT-01, UI-11b"` は hit なし = 未達成側。実装後に充足へ反転する対構造）健全。新規 P1/P2 = 0、新規 P3 = 1（Design Intent Trace / Ledger の Test target 欄に AC-11 未反映の cross-reference 漏れ）→ reviewer 修正案どおり in-place 反映（本記録と同 commit）。rally 収束、plan-gate 通過。
 - state-only 遷移 `plan-draft->plan-gate->plan-approved->implementing` の根拠: packet 完成・commit 済み〈plan-first `1957458` + pre-gate 是正 `4d717b7` / `47c02b3`〉（plan-draft->plan-gate）/ 独立 Plan Reviewer rally 2 round 収束 P1/P2 = 0 + Plan Commit 記入 + plan-first commit が全実装 commit に先行（plan-gate->plan-approved）/ Writer = Sonnet subagent（worktree isolation）への実装開始許可（plan-approved->implementing）。
+
+### Final Review / 遷移記録（append-only）
+
+- Final Review（独立 Sonnet、fresh context、read-only）2026-08-30: diff 全 hunk を Scope S1〜S6 と突合し packet 外 hunk 0 / rg oracle 独立再実測（AC-1/2/4/5/6/7/11）全 PASS / 新文言の事実正確性（issue #91・UI_TECH_STACK §2.5・lib.rs 実装）突合 OK / S3 分岐の独立実査で MNT-02 非連結を追認 / 90-traceability は機械的再生成の形で手編集痕なし / 設定管理側 REQ-905 4 file は byte 同一 / 更新履歴は純追記・「（本 PR）」慣習整合。P1: 0 / P2: 0 / P3: 0。実行系 AC-3/AC-9 は L1 full evidence（PR body 記載）で担保。
+- state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate の L1 `local-ci.sh full` CLEAN PASS evidence（implementing->local-verified。exact SHA と evidence 位置は PR body を正とする）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。
+- state-only 遷移 `human-confirm->ready-hosted-final` の根拠: owner Ready 承認 2026-08-30（本 lane 介入 2/3。train 先頭 = lane 1、Ready 遷移実行・merge・closeout を Coordinator へ委任）。exact HEAD の L1 full evidence と hosted run は PR body を正とする。
