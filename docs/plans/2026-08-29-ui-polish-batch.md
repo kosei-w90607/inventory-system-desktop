@@ -9,11 +9,11 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: local-verified
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
-- Amendments: b1cd203 7be74f0 8ef3597（gated Amendment 2 — Scope 7(b) 除外 + T7 確定 + T2 強化、実装後レビュー round 1 裁定 / gated Amendment 3 — DSR-16 準拠再構成 + docs 5 点追加、owner L3-lite round 1 可読性 FAIL の裁定 / gated Amendment 4 — 横 overflow 是正 + DSR-03 整合 + 今回行の同一 Table 化、owner L3-lite round 2 FAIL の裁定）。owner L3-lite round 3 裁定（dialog 幅 CSS 詳細度是正 / Z004 Alert・両 tab Badge の warning tone 統一）は packet 契約不変の実装是正のため新規 Amendment を追加しない — 「owner L3-lite round 3 と裁定」節の narrative が正本
+- Amendments: b1cd203 7be74f0 8ef3597 19f4d65（gated Amendment 2 — Scope 7(b) 除外 + T7 確定 + T2 強化、実装後レビュー round 1 裁定 / gated Amendment 3 — DSR-16 準拠再構成 + docs 5 点追加、owner L3-lite round 1 可読性 FAIL の裁定 / gated Amendment 4 — 横 overflow 是正 + DSR-03 整合 + 今回行の同一 Table 化、owner L3-lite round 2 FAIL の裁定 / gated Amendment 5 — CostDiffDialog 暗黙 dismiss 硬化 + T11 追補、owner L3 で発見の P1〈merge blocker〉裁定）。owner L3-lite round 3 裁定（dialog 幅 CSS 詳細度是正 / Z004 Alert・両 tab Badge の warning tone 統一）は packet 契約不変の実装是正のため新規 Amendment を追加しない — 「owner L3-lite round 3 と裁定」節の narrative が正本
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Claude Sonnet 5 (subagent、worktree isolation、§5.6 従来型発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
@@ -268,6 +268,8 @@ owner L3-lite round 1（D13 項目完全性 PASS / 可読性 FAIL）を受けた
 owner L3-lite round 2（横スクロールなしの可読性 blocker / 今回分との比較性要改善）を受けた gated Amendment 4 是正: ①`AdditionalImportConfirmDialog.tsx` の横 overflow 是正（`sm:max-w-3xl` + `table-fixed` + 列幅設計〈ID 10% / ファイル名 40% / 合計金額 25% / 取込み日時 25%〉+ ファイル名 cell `whitespace-normal break-words` + 金額・日時 cell `whitespace-normal` + `min-w-0`。共通 `table.tsx` は変更せず利用側 className で override）②今回分の definition list 独立領域を廃止し、同一 Table の最終行（別 tbody、ID 列に「今回」Badge、行に `bg-muted/50`）へ統合③`PreviewStep.tsx`（Z004）の同日追加確認 Alert を画面上部の専用スロットへ移動（DSR-03 pre-existing 違反の是正）+ Badge を「同日データあり」+ TriangleAlertIcon の補助状態表示へ改名④日報 tab 側は Alert 配置が元々正しいため変更なし、Badge のみ対称で同様に改名⑤Matrix T3 を「同一 table 内の今回行」構造 assert + 上部 Alert 配置 assert + Badge 改名 assert へ追随。
 
 owner L3-lite round 3（「owner L3-lite round 3 と裁定」節の Coordinator 裁定どおり、packet 契約不変のため新規 Amendment なし）を受けた是正 3 点: ①`AdditionalImportConfirmDialog.tsx` の `AlertDialogContent` className を `sm:max-w-3xl` から `data-[size=default]:sm:max-w-3xl` へ（共通 `alert-dialog.tsx` L53 の `data-[size=default]:sm:max-w-lg` に対して CSS 詳細度で負けていたため。共通 primitive は不変）②`PreviewStep.tsx`（Z004）の同日追加確認 Alert を日報側と同一の `border-warning bg-warning-soft text-warning-strong` warning tone へ統一（是正前は neutral で非対称だった）③両 tab の「同日データあり」Badge を黒枠（既定 outline）から soft warning token（`border-warning-border bg-warning-soft text-warning-strong`、`StockStatusBadge.tsx` の低在庫バッジと同型）へ。既存 test へ幅 class・Alert tone class・Badge token class の render assert を最小追随。
+
+owner L3（Windows 実機）で発見の P1（merge blocker）を受けた gated Amendment 5 是正: 入庫確定後の原価差分ダイアログが外クリック・Escape・右上×で閉じ、結果画面に再表示経路がないため、owner が再確認のため入庫を再実行し在庫二重加算が実発生（61 §61.5「商品ごとの確認を必須にする」と不整合）。①`CostDiffDialog.tsx` の `DialogContent` へ `onPointerDownOutside` / `onEscapeKeyDown` の `preventDefault` + `showCloseButton={false}` を追加し modal を硬化（共通 `dialog.tsx` は無変更、prop 実在は L45 で確認済み）。既存の `isPending` guard は維持。終了経路は footer の「見送って閉じる / 閉じる」のみ②結果画面への再表示ボタンは不採用（状態管理拡大の回避、見送り時の次回入庫再提示契約が既存 safety net）③`61-ui-receiving.md` §61.5 へ「原価差分ダイアログは明示ボタンのみで閉じる（外側クリック・Escape・× では閉じない）」を追記④Matrix T11: overlay pointer-down / Escape で dialog 残存・×ボタン不在・footer 明示ボタンで閉じるの 4 assert を実装し、是正前の実装へ一時的に戻して red 化することを確認した上で復元（mutation kill 実証）。更新中 disabled・成功後表示の既存 T4/T5/T7-T9 は無変更で green のまま。
 
 Draft PR: https://github.com/kosei-w90607/inventory-system-desktop/pull/15（是正反映後に body 更新済み）
 
