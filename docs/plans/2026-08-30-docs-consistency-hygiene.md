@@ -154,7 +154,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| REQ-901 / QR-05 | requirements.md L38（正本） | owner 裁定 2026-08-30 = 案 a | backup-restore 文脈を REQ-901 へ是正。requirements.md 側の定義変更（案 b）は設定管理定義と衝突するため却下 | S1（4 doc + test comment + 再生成） | AC-1/2/3 |
+| REQ-901 / QR-05 | requirements.md L38（正本） | owner 裁定 2026-08-30 = 案 a | backup-restore 文脈を REQ-901 へ是正。requirements.md 側の定義変更（案 b）は設定管理定義と衝突するため却下 | S1（4 doc + test comment + 再生成） | AC-1/2/3/AC-11 |
 | UI-15 / SupplierWithUsage | 40-cmd-product.md L234（正本） | PR #4 Final Review P3-1 起源 | doc 側 camelCase が実 wire と乖離 | S2 | AC-4 |
 | CMD-11 | ARCHITECTURE.md L153/L228 | 順12 Final Review P3-1 起源 | 実 import 実査に基づく表記一致（削除 or mapping 追記の実査分岐） | S3 | AC-10 |
 | D-052-E1 | UI_TECH_STACK §2.5（正本） | 順17 plan-gate round 1 P3 起源 | 歴史的 ID 衝突の語義確定（新 ID 分離は衝突相手が撤去済みのため不要） | S4 | AC-7 |
@@ -201,7 +201,7 @@ R2 簡易版（触れる契約行のみ）:
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
-| REQ-901 対応表記（backup-restore） | S1 | AC-1/AC-2/AC-3 | non-scope（画面不変） |
+| REQ-901 対応表記（backup-restore） | S1 | AC-1/AC-2/AC-3/AC-11 | non-scope（画面不変） |
 | SupplierWithUsage wire 表記 | S2 | AC-4 | non-scope |
 | CMD-11 依存表記 | S3 | AC-10（実査突合） | non-scope |
 | D-052-E1 語義 | S4 | AC-7 | non-scope |
@@ -257,3 +257,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 - owner 起票承認 2026-08-30（wave 7 衛生 batch 起票の会話にて。B-6 = 案 a / B-5 同意 / 2 lane 編成の owner 裁定を含む。本 lane 介入 1/3）。
 - Plan Gate rally round 1（独立 Sonnet Plan Reviewer、2026-08-30）: P1: 1 / P2: 2 / P3: 2。P1-1 = AC-2 の対 oracle が AC-1 対象 4 file 中 2 file しかカバーせず「REQ-905 を削るだけ」mutant を素通し → AC-2 を全 4 file へ拡張。P2-1 = 失敗定義が D-036 承認済みの CMD-11 backup/restore 系 REQ-905 タグ（settings_cmd.rs、Coordinator 実証確認済み）と字面衝突 → UI-11b 文脈へ限定。P2-2 = S1-5（requirements.md 対応列）に oracle なし → AC-11 追加。P3-1 = S3 の一次証拠を cmd-task-specs 表へ変更（reviewer 予備実査で「MNT-02 削除」分岐が正と確認済み）。P3-2 = D-050 帰属の不正確な引用を実務根拠の文言へ差替え。全採用、in-place 是正（plan-draft 中の pre-gate 是正）。round 2 の delta 再検証で新規指摘 0 を確認して plan-gate 通過とする。
+- Plan Gate rally round 2（独立 Sonnet Plan Reviewer delta 検証、2026-08-30）: round 1 の 5 findings 反映を 1 対 1 で全件確認。oracle 構文の実測検証（reviewer 実測: AC-1 の `rg -c "REQ-905"` は対象 file 全てで hit あり = 未達成側、AC-2・AC-11 の `rg -F -c "REQ-901"` / `rg -F -c "MNT-01, UI-11b"` は hit なし = 未達成側。実装後に充足へ反転する対構造）健全。新規 P1/P2 = 0、新規 P3 = 1（Design Intent Trace / Ledger の Test target 欄に AC-11 未反映の cross-reference 漏れ）→ reviewer 修正案どおり in-place 反映（本記録と同 commit）。rally 収束、plan-gate 通過。
