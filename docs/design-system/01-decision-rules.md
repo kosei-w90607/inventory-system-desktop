@@ -289,7 +289,7 @@ font-size を全体一律に底上げする再設計は本ルールの scope 外
 
 **ルール**: 画面遷移時の scroll は、①同一画面内の状態遷移、②route 遷移を伴う一覧→詳細→戻り、③操作完了に伴う Home への programmatic navigate の 3 分類で決める。全画面へ無条件に適用する mount 一律 scroll は禁止する。
 
-**Why**: 本アプリは persistent な `<main>`（`src/components/layout/RootLayout.tsx`）が唯一の scroll container であり、TanStack Router の `scrollRestoration` は未設定である。route 遷移で `<main>` は unmount されないため scroll 位置が持ち越され、stale scroll は全画面共通の構造事象になる。一方、mount 一律の先頭 scroll は一覧→詳細→戻りの位置を失わせることが PR #15 Amendment 2 で実証され、revert 済みである。操作結果の可視性と戻り動線の連続性を両立するには、遷移の契機ごとに発火条件を分ける必要がある。
+**Why**: 本アプリは persistent な `<main>`（`src/components/layout/RootLayout.tsx`、RootLayout 構成の正本は [52-ui-shared-layout.md §52.1](../function-design/52-ui-shared-layout.md#521-コンポーネント構成)）が唯一の scroll container であり、TanStack Router の `scrollRestoration` は未設定である。route 遷移で `<main>` は unmount されないため scroll 位置が持ち越され、stale scroll は全画面共通の構造事象になる。一方、mount 一律の先頭 scroll は一覧→詳細→戻りの位置を失わせることが PR #15 Amendment 2 で実証され、revert 済みである。操作結果の可視性と戻り動線の連続性を両立するには、遷移の契機ごとに発火条件を分ける必要がある。
 
 **判定フロー / 具体例**:
 

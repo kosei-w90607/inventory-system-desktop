@@ -59,6 +59,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `docs/design-system/01-decision-rules.md` に DSR-17 を追加し、画面遷移と scroll の 3 分類、発火条件、mount 一律 scroll 禁止を正本化する。
 - `docs/function-design/68-ui-backup-restore.md` に UI-11b-D12 を追加し、復元成功 Alert の初期可視性と通常 Home 到達の negative contract を固定する。
+- `docs/quality/review-checklist.md` カテゴリ 9 に DSR-17 対応行を追加する。
 - `Plans.md` の「次の行動」③と関連 backlog を owner 裁定に合わせて再編する。
 - 本 Plan Packet を作成し、1 content commit と Draft PR にまとめる。
 
@@ -80,14 +81,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - DSR-17 が persistent `<main>` / `scrollRestoration` 未設定の構造前提、3 分類、分類別の発火契約、mount 一律 scroll 禁止を source doc だけで説明する。
 - UI-11b-D12 が D11 flag 取り込み時だけの `scrollPageToTop()`、通常 Home 到達では発火しない negative test 義務、DSR-17 分類③との関係を固定する。
 - `Plans.md` は状態表現統一を現状維持で close し、card-soup 監査を違反 0・グレー 2 件の表示磨き候補編入で close し、詳細戻り scroll だけを別 change backlog に残す。
-- `src/` / `src-tauri/` と Scope 外 docs に diff がなく、変更 file が Scope の 4 file だけである。
+- `src/` / `src-tauri/` と Scope 外 docs に diff がなく、変更 file が Scope の 5 file だけである。
 - `bash scripts/doc-consistency-check.sh`、`rg -F -c` による DSR-17 / UI-11b-D12 実在確認、`git diff --check`、`git diff --stat`、`git status --short` が pass する。
 - 変更を 1 content commit に集約し、remote ref を実確認して Draft PR を open し、Ready / merge 前で停止する。
 
 ## Design Sources
 
 - Requirements / spec: `docs/function-design/68-ui-backup-restore.md` の対応 REQ（QR-05 / REQ-905）。新規 REQ は採番しない。
-- Architecture: `src/components/layout/RootLayout.tsx` の persistent `<main>` と `src/main.tsx` の router 設定（構造事実の確認のみ）。
+- Architecture: `docs/function-design/52-ui-shared-layout.md` §52.1（RootLayout 構成の正本）。`src/components/layout/RootLayout.tsx` の persistent `<main>` と `src/main.tsx` の router 設定は構造事実の確認のみ。
 - Function / command / DTO: `docs/function-design/68-ui-backup-restore.md` UI-11b-D11 / D12。
 - DB: 変更なし。
 - Screen / UI: `docs/design-system/01-decision-rules.md` DSR-03 / DSR-17、UI-08-D6。
