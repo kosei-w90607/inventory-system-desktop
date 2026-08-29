@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 316cd094011071985174f16b0107978520350798
@@ -23,6 +23,8 @@ Phase 遷移記録（本 plan-first content commit に同乗）: `kickoff -> spe
 2026-08-30: 実装 candidate c832077 の L1 full は traceability gate T1 で FAIL（RTL の REQ token 追加に伴う 90-traceability.md 生成結果不一致 — PR #72 と同型の既知 gap、発注書の品質 gate に再生成を明記しなかった Coordinator 起因）。機械的是正として Haiku subagent が generate_traceability を再実行し 9a26d97 を commit（diff = 生成 file 1 file・件数 bump 2 箇所のみ）。Final Reviewer が監査を 9a26d97 まで延長し、生成器由来であること・`--check` ERROR 0 を独立再現、P1/P2 = 0 と Goal Invariant 充足を維持と判定。L1 full は 9a26d97 で RESULT=PASS（evidence は PR body を正とする）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は Windows native L3、Ready、merge。
 
 2026-08-30: owner Windows native L3 全項目 PASS（PR #17 comment 5463874988 が正本。exact HEAD f2f3c10、recovery baseline へ再復元検証済み、非阻害 follow-up 候補 5 件は Post-Merge Closeout で backlog 起票）。owner が Ready を承認し、Ready 操作〜merge〜closeout の実行を Coordinator へ委任（介入 4 回目 / 予算 4 回）。この state-only commit は `human-confirm -> ready-hosted-final` を Draft のまま materialize する。resulting HEAD で L1 full を再取得し、exact-HEAD evidence は PR body を正とする。
+
+2026-08-30: PR #17 squash merge 3195736（hosted run 33266480424 success @ aee69e2、Ready 化の ready_for_review event で自動起動、三点一致成立。Ready 操作と merge は owner 委任により Coordinator が代行）。L3 の非阻害 follow-up 候補 5 件と Plan Review 発見の REQ-905 drift は closeout で Plans.md backlog へ起票。closeout で archive へ移動。
 
 この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `316cd09` は全実装 commit に先行し PK5 ancestry を充足する。
 
@@ -106,10 +108,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 ## Design Sources
 
 - Requirements / spec: REQ-907 / UI-01a-D11、REQ-209 / UI-02-D15、REQ-107 / SPEC-SUP-D4 / D6、REQ-904 / UI-13-D5、UI-11b-D11 / D12。
-- Architecture: [ARCHITECTURE.md](../ARCHITECTURE.md)（UI -> CMD -> BIZ -> IO/MNT。今回は UI のみ）。
-- Function / command / DTO: [50-ui-product-list.md](../function-design/50-ui-product-list.md) §50.2 UI-01a-D11 / §50.6 / §50.8、[61-ui-receiving.md](../function-design/61-ui-receiving.md) §61.1 UI-02-D15 / §61.5 / §61.9、[68-ui-backup-restore.md](../function-design/68-ui-backup-restore.md) §68.5 UI-11b-D11 / D12、[75-ui-integrity-check.md](../function-design/75-ui-integrity-check.md) §75.2 UI-13-D5 / §75.5、[78-ui-supplier-management.md](../function-design/78-ui-supplier-management.md) §78.2 SPEC-SUP-D4 / D6 / §78.7 / §78.11。
+- Architecture: [ARCHITECTURE.md](../../ARCHITECTURE.md)（UI -> CMD -> BIZ -> IO/MNT。今回は UI のみ）。
+- Function / command / DTO: [50-ui-product-list.md](../../function-design/50-ui-product-list.md) §50.2 UI-01a-D11 / §50.6 / §50.8、[61-ui-receiving.md](../../function-design/61-ui-receiving.md) §61.1 UI-02-D15 / §61.5 / §61.9、[68-ui-backup-restore.md](../../function-design/68-ui-backup-restore.md) §68.5 UI-11b-D11 / D12、[75-ui-integrity-check.md](../../function-design/75-ui-integrity-check.md) §75.2 UI-13-D5 / §75.5、[78-ui-supplier-management.md](../../function-design/78-ui-supplier-management.md) §78.2 SPEC-SUP-D4 / D6 / §78.7 / §78.11。
 - DB: `src-tauri/src/db/product_repo.rs::merge_suppliers`（fact check のみ。products / receiving_records の参照更新後に source supplier を DELETE。変更対象外）。
-- Screen / UI: [SCREEN_DESIGN.md](../SCREEN_DESIGN.md)、[UI_TECH_STACK.md](../UI_TECH_STACK.md)、[01-decision-rules.md](../design-system/01-decision-rules.md) DSR-16 / DSR-17、[02-component-catalog.md](../design-system/02-component-catalog.md) Dialog。
+- Screen / UI: [SCREEN_DESIGN.md](../../SCREEN_DESIGN.md)、[UI_TECH_STACK.md](../../UI_TECH_STACK.md)、[01-decision-rules.md](../../design-system/01-decision-rules.md) DSR-16 / DSR-17、[02-component-catalog.md](../../design-system/02-component-catalog.md) Dialog。
 - Decision log / ADR: DSR-16、DSR-17。新規 durable decision なし。
 
 ## Required Design Artifacts
