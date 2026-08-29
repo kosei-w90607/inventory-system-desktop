@@ -91,7 +91,10 @@ export function ResultStep({
               <AlertDialogDescription>
                 この取込みだけを取り消します。同じ日の他の取込みは残ります。この取込みによる在庫数も元に戻ります。
               </AlertDialogDescription>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border p-3 text-sm">
+              {/* DSR-16: 単一レコード確認の definition list は原則適合。囲み階層が
+                  AlertDialogContent と二重にならないよう、独立した box border は持たせず
+                  border-t の行区切りのみにする（gated Amendment 3 最小調整）。 */}
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-3 text-sm">
                 <div>
                   <dt className="text-muted-foreground">取込み ID</dt>
                   <dd className="font-medium">{result.csv_import_id}</dd>
