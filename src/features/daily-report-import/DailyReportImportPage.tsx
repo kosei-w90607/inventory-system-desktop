@@ -1,4 +1,4 @@
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -165,7 +165,19 @@ function DailyReportPreviewStep({
               alreadyImported ? "destructive" : requiresAdditionalConfirm ? "outline" : "secondary"
             }
           >
-            {alreadyImported ? "取込み済み" : requiresAdditionalConfirm ? "追加確認" : "確認済み"}
+            {/* DSR-03: 同日追加確認の主情報は上部 Alert 帯が担うため、Badge は補助的な
+                状態表示に留める（gated Amendment 4、PreviewStep.tsx と対称の改名。
+                本画面の Alert は元々上部専用スロットに配置済みのため移動は不要）。 */}
+            {alreadyImported ? (
+              "取込み済み"
+            ) : requiresAdditionalConfirm ? (
+              <>
+                <TriangleAlertIcon aria-hidden="true" />
+                同日データあり
+              </>
+            ) : (
+              "確認済み"
+            )}
           </Badge>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm md:grid-cols-2">

@@ -3,6 +3,7 @@
 // Step 2/3: プレビュー確認 + 取込み / 選び直し CTA + 同日追加確認。
 // 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4 step 6-10 / §55.5
 
+import { TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import { FilePicker, type PickedFile } from "@/components/FilePicker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -49,10 +50,28 @@ export function PreviewStep({
 
   return (
     <div className="space-y-4">
+      {/* DSR-03: 同日追加確認はデータ安全系（進めると危ない状態）のため、画面上部の
+          Alert 帯専用スロットへ置く（紐付け結果・エラー詳細より前）。主情報はここが担い、
+          ファイル情報カードの Badge は補助的な状態表示に留める（gated Amendment 4、
+          owner L3-lite round 2 裁定）。 */}
+      {requiresAdditionalConfirm && (
+        <Alert>
+          <AlertTitle>同じ日の取込みがあります</AlertTitle>
+          <AlertDescription>
+            既存分を残したまま今回分を追加します。内容を確認してください。
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>ファイル情報</CardTitle>
-          {requiresAdditionalConfirm && <Badge variant="outline">追加確認</Badge>}
+          {requiresAdditionalConfirm && (
+            <Badge variant="outline">
+              <TriangleAlertIcon aria-hidden="true" />
+              同日データあり
+            </Badge>
+          )}
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div>
@@ -99,15 +118,6 @@ export function PreviewStep({
       </Card>
 
       {error_summary.count > 0 && <ErrorRowsTable errorSummary={error_summary} />}
-
-      {requiresAdditionalConfirm && (
-        <Alert>
-          <AlertTitle>同じ日の取込みがあります</AlertTitle>
-          <AlertDescription>
-            既存分を残したまま今回分を追加します。内容を確認してください。
-          </AlertDescription>
-        </Alert>
-      )}
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={handleImportClick} disabled={isImporting}>
