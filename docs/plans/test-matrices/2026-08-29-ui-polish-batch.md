@@ -114,3 +114,5 @@ not applicable の行が多いため対象 state のみ:
 - Opus 修正案 round の指摘反映後に assert を追補する場合も、Plan Gate 後の Matrix 変更はすべて gated Amendment（Amendments 行への SHA 記録）で行う
 
 - gated Amendment 3（L3 可読性 FAIL 裁定）: T3 を DSR-16 構造 assert へ拡張。docs 5 点（DSR-16 / foundations 誤記 / philosophy / catalog / checklist）は実装 review の diff 確認 + doc-consistency で検査
+
+- gated Amendment 4（L3 round 2 FAIL 裁定）: T3 の構造 assert を「同一 table 内の今回行（『今回』Badge + 同列位置）」へ追随、上部 Alert 移動と Badge 改名の render assert を追加。**横スクロールなし（1024×720）は jsdom で検証不能のため L3 条件**として Residual Gaps に置く
