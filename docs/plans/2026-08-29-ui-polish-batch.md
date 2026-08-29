@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -279,3 +279,16 @@ Fill after review.
 - round 2 closure（別 Sonnet fresh context、対象 = 是正 commit `b3ca503`）: 6/6 CLOSED（AC5 glob 除外の実測動作確認、例外記録と manual §3 L36 / D-056 実文の literal 突合、SCREEN_DESIGN L42 実文確認を含む）、旧前提 sweep 実質 0（rally 記録内の意図的引用のみ）、delta 起因の新規 findings 0。**P1/P2 残 0**
 - owner Plan Gate 承認（2026-08-29、介入 1/3）。承認に含まれる確定 2 点: ①Opus 5 投入の例外適用（manual §3 L36 に対する例外、Workflow State 記載の根拠どおり）②名称統一先 = PageHeader「在庫整合性検証」（サイドバー不変）
 - plan-gate → plan-approved → implementing の materialize evidence: 上記 P1/P2=0、plan-first commit `e865aec` + rally 是正 `b3ca503` = Plan Commit が全実装 commit に先行（実装 commit 未作成）、Writer は Claude Sonnet 5 subagent（worktree isolation、発注書駆動）
+
+### 実装後レビュー round 1 記録（Opus 修正案 + Codex cross、2026-08-29、append-only）
+
+- Opus 5 修正案 claims-producer round（§5.4 低制約、対象 = `c88c814..c5298c2`）: P1×2（hub の mount 一律 `scrollPageToTop` が詳細 returnTo 戻りのスクロール位置を毎回失わせる — 既存 5 site は mutation handler 内の event-driven で mount 契機は本 hub のみの新規パターン / 追加確認 dialog 既存分の「ファイル名」に col-span-2 欠落 — 半幅 + break-all で Scope 3 が排除対象とした任意位置折返しを再生産）/ P2×2（T7 の gated Amendment 未記録 / 3 site の dl gap トークン・ラベル語彙の不統一）/ P3×2（duration 延長のみの視認性改善は L3 所感次第で Alert 併用検討余地 / dl が aria-describedby に含まれない既存同型制約）
+- Codex cross review: P2×5 / P3×1 + mutation 抜き取り 6 件実測（**survivor 1 = 日報 D14 の filenames を先頭 1 件化しても T2 が GREEN**）。P2-1 = Opus P1-1 同型（mount scroll、T8 は mount 時呼出しのみ固定で回帰未検出）/ P2-2（T2 oracle 弱 — 上記 survivor）/ P2-3 = Opus P2-1 同型（T7 の事前 Amendment 不在）/ P2-4（PR body の L1 evidence が HEAD `c88c814` + TREE_STATE=DIRTY で `c5298c2` の clean exact-content 証跡でない + 遷移 commit subject 非 canonical — local-verified 判定の根拠喪失）/ P2-5（break-all は「任意位置折返し回避」と逆方向、4 箇所）/ P3-1（SCREEN_DESIGN 追記自身による既存例参照の行ずれ）
+- Coordinator 裁定（実証: scrollPageToTop の mount effect L82-84 と col-span-2 非対称を worktree 実読で確認、L1 evidence の DIRTY は Codex 実測引用を採用）: **全件 accept**。
+  1. Scope 7(b) は本 batch から**除外**（gated Amendment 2）— persistent `<main>` による stale scroll は hub 固有でなく画面横断の事象であり、mount 一律は最基本動線（一覧→詳細→戻る）を壊す。rollback 起点の one-shot 遷移情報は rollback 画面と hub が別 route のため自然な伝搬経路がなく、scroll 復元方針は design-first 裁定候補として closeout で backlog 起票。実装 revert（mount effect + T8 + SCREEN_DESIGN 追記）
+  2. T7 は gated Amendment 2 で確定記録（取込み取消 2 toast の duration 8000ms）
+  3. T2 を日報 filenames 全件の個別 assert へ強化（Codex mutation survivor の是正）
+  4. break-all を break-words へ置換し filenames は full-width / リスト表示化（4 箇所）+ dl gap・ラベル語彙（ID / 金額系）の 3 site 統一（Opus P2-2 併合）
+  5. local-verified 判定を取り下げ implementing へ backtrack。是正後の clean exact HEAD で L1 full を再取得し、canonical な state-only 遷移で再実体化
+  6. Opus P3-1 は owner L3-lite 所感待ちの disposition、P3-2 はアクセシビリティ磨き候補として closeout で backlog、Codex P3-1 は 7(b) revert により行ずれが自己解消（撤回後に参照先の実位置を再確認）
+- 是正のため implementing へ backtrack（本 commit）
