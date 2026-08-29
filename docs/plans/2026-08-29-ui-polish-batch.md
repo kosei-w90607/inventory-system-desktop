@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -19,7 +19,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Opus 5 修正案 claims-producer round（§5.4 低制約、read-only）+ Codex cross review + Coordinator 裁定
   - Opus 投入の例外記録（manual §3 L36「通常レビューは既存分業を維持」に対する例外、Plan Review round 1 P2-1）: owner 明示の座組決定（2026-08-29「その座組でやってみたいね」）による pilot 投入。目的 = ①保留中の Opus×Sonnet 並走レビュー実験（Plans.md 記録）の「簡単 backlog 水準」較正 ②operator-facing UI 磨きにおける修正案 claims-producer 型の実務検証。read-only・§5.4 低制約・Writer 非割当の D-056 機構は不変。本例外の最終確定は Plan Gate 承認に含める
-- Reviewed Content HEAD: efe4d24
+- Reviewed Content HEAD: 295bfcd
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner 目視（operator 画面の表示変更 9 件の視認確認、L3-lite 1 回）+ Ready 承認 + merge
@@ -323,3 +323,9 @@ Fill after review.
 - Coordinator 裁定（全件 accept、gated Amendment 4）: ①**横 overflow 是正** — dialog を sm:max-w-3xl へ + table-fixed + ファイル名 cell の whitespace-normal break-words（共通 table.tsx は変更せず利用側 className override）+ 日時の空白位置 2 行折返し + grid/container へ min-w-0。**L3 条件: 最小 1024×720 で横スクロールなし** ②**DSR-03 整合** — 同日追加 Alert を画面上部専用スロットへ移動（pre-existing 違反の是正を owner 指示で bundle） ③Badge は「同日データあり」へ改名 + TriangleAlert アイコンの補助状態表示化（主情報は上部 Alert が担う役割分担） ④**今回分を同一 Table の最終行へ**（別 tbody / footer、ID 列に「今回」Badge、淡背景 + テキストで色非依存判別。definition list 分離を廃止 — 比較対象は列を揃える DSR-16 の帰結）
 - 介入実績: 5 回中 4 消化（Plan Gate / L3r1 / DSR-16 承認 / L3r2）。残り L3r3 + Ready で **+1 超過見込み**を owner へ明示
 - 是正のため implementing へ backtrack（本 commit）
+
+### round 3 delta closure と human-confirm 再遷移（2026-08-29、append-only）
+
+- Writer round 3（`8ef3597..295bfcd`）: 横 overflow 是正（sm:max-w-3xl = 内容幅 ≈720px、table-fixed 10/40/25/25%、filename whitespace-normal break-words、日時 2 行折返し、min-w-0。金額 cell への whitespace-normal は同目的の技術補完として Writer 透明申告）+ 今回行の同一 Table 最終行化（「今回」Badge + 淡背景）+ DSR-03 整合（Z004 Alert を最上部へ、日報側は元々適合を rg 確認、Badge は両 tab「同日データあり」+ TriangleAlert へ）+ T3 追随。L1 実 envelope = HEAD `295bfcd` / TREE_STATE=CLEAN / RESULT=PASS
+- delta closure = **Coordinator 直接検分**（独立 subagent round は省略。理由: R2 で独立 review は本 PR で既に 2 full round 実施済み、delta は 6 file の狭範囲、owner の時間効率要請。検分実測: 共通 table.tsx の diff 0 行 / table-fixed + w-[10%] 列幅の実在 / 「同日データあり」改名 / 今回行の同一 Table 化と設計意図 comment / Writer gate 全 green + L1 CLEAN）。P1/P2 相当の未解決 finding なし
+- local-verified → independent-review → human-confirm の再 materialize（content-riding 形、STATECAP 経緯は既records）。残 = owner L3-lite round 3 + Ready + merge（介入 +1 超過の承認を L3 依頼に併記）
