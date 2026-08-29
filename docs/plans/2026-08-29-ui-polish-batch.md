@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -299,3 +299,10 @@ Fill after review.
 - Sonnet 独立 fresh context の Final Review（対象 = Reviewed Content HEAD `ca8637e`）: 実装後レビュー round 1 の全 findings **CLOSED**（7(b) revert の完全性を rg 実測 0 件で確認 / T2 強化は `filenames.slice(0,1)` 変異の実注入 → red → 復元 green で kill を実証 / break-words 置換は対象 4 箇所完全〈src/ 残存の break-all 8 件は Non-scope 画面の既存分〉/ dl gap・語彙 3 site 統一 / T7 Amendment 記録済み）。AC1-AC6 独立再実測 全 PASS（bindings 差分ゼロ・doc-consistency ERROR 0 含む）。Amendment 2 適合（旧前提の残骸は append-only narrative 内のみ）、是正 delta 全 hunk が裁定 6 点に 1 対 1 対応、`ExistingImportSummary.filenames` の string→string[] は FE 内部型で wire 非接触、state-only `ca8637e` の hunk audit 適合（canonical subject 一致）、既存 test 凍結維持（撤去は T8 のみ = 7(b) revert の正当な随伴）。**新規 P1/P2/P3 = 0**
 - L1 evidence の Coordinator 独立検分: evidence log 実 envelope の END_HEAD_SHA = `ca8637e` / END_TREE_STATE=CLEAN / MERGE_EVIDENCE_VALID=true / RESULT=PASS（中間の別 SHA block は local-ci self-test の fixture envelope — 既知の型）
 - local-verified → independent-review → human-confirm の materialize evidence: 上記 Final Review P1/P2 = 0。残 Human Gate = owner L3-lite 目視（9 件）+ Ready 承認 + merge
+
+### owner L3-lite round 1 と可読性 FAIL の裁定（2026-08-29、append-only）
+
+- owner L3-lite round 1（content = Reviewed Content HEAD `ca8637e`）: D13 項目完全性・構造化 = PASS / **可読性（磨かれて見やすい）= FAIL**（追加取込みは未実行・DB mutation なしで停止）。Goal Invariant「owner 目視で磨かれたと確認できる」の未達
+- owner relay の Codex 調査を Coordinator が独立確認（全 claims 裏付けあり）: ①`00-foundations.md` L17 の `--border` #e7e5e4「4.5:1 境界可視性」は誤記 — 対 `--background` #fafaf9 の実測算出は約 1.20:1（直下の muted-foreground 行〈本物の AA 4.5:1〉からの転記ミスの形。薄い border を唯一のグループ信号とする正本根拠が不成立）②`01-decision-rules.md` は DSR-15 まででカード/表選択・囲み階層・共通領域の判断規則が不在（該当語 0 hit）③理論引用（NN/g Common Region = 共通領域は強いグループ化原理だが囲み多用は clutter / GOV.UK summary list = 小量の関連 key-value はカードでなく summary list）は確立文献の正確な要約
+- Coordinator 裁定（owner 承認 2026-08-29、介入 3/3 消化 + 再 L3・Ready・merge の超過 +2 を事前承認済み）: ①可読性 FAIL は本 PR の責務として是正 — 追加取込み dialog を **DSR-16 の canonical 実例**として再構成（既存 3 件 = 列の揃った structured list / 今回分 = 「今回」ラベル付き独立領域 / 日時の人間向け表示 / dialog 幅拡大）、rollback summary 2 site は DSR-16 照合の最小調整に留める ②gated Amendment 3（Scope 2/3 改訂 + docs 5 点追加 + Matrix T3 追随）③repo 全体の card-soup 監査と `inventory-operator-ui` SKILL.md 更新は**後続 task へ分離**（後者は sandbox の `.claude/skills` write deny により Claude worker 経路では書けず Codex / owner 経路）。新 Skill 不要・memory 不要（durable 判断は repo docs 正本）の Codex 見解に同意
+- 是正のため implementing へ backtrack（本 commit）
