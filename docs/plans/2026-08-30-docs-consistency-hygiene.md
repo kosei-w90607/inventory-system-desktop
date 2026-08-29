@@ -44,7 +44,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- backup-restore 文脈の対応 REQ が live docs / test comment で REQ-901 に統一され、REQ-905 は設定管理（CMD-11 / UI-11a）のみを指す。90-traceability は再生成済みで `--check` PASS。
+- backup-restore の UI-11b 文脈（live docs / frontend test comment）の対応 REQ が REQ-901 に統一され、REQ-905 は設定管理（CMD-11 / UI-11a。D-036 承認済みの CMD-11 backup/restore 系 test タグを含む）のみを指す。90-traceability は再生成済みで `--check` PASS。
 - 78 §78.4 の `SupplierWithUsage` field 表記が実 wire（snake_case）と一致する。
 - ARCHITECTURE.md の CMD-11 依存行が cmd 層の実 import 実査と一致する。
 - decision-log D-052 に E1 語義注記が入り、D-052-E1 が UI_TECH_STACK §2.5 除外表の一意な意味に確定する。
@@ -53,7 +53,7 @@ Goal Invariant:
 
 ### 失敗定義
 
-- backup-restore 文脈の REQ-905 が live docs / src に 1 箇所でも残る。
+- UI-11b（BackupRestorePage 関連の live docs / frontend test comment）文脈の REQ-905 が 1 箇所でも残る。CMD-11 backup/restore コマンド群の既存 REQ-905 タグ（`src-tauri/src/cmd/settings_cmd.rs` 等、D-036 前例）は対象外で無改変が正。
 - 是正で書く新文言が正本（requirements.md / issue #91 owner 回答 / lib.rs 実装 / 40-cmd-product.md）と食い違う。
 - 90-traceability を再生成以外の方法（手編集）で更新する。
 
@@ -87,7 +87,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **S3. ARCHITECTURE CMD-11 依存行の実査是正**
 
-8. Writer は `rg -n "mnt" src-tauri/src/cmd/` 等で cmd 層の MNT consumption を実査する。CMD-11 配下 command に MNT-02（操作ログ管理）の直接消費が無ければ `docs/ARCHITECTURE.md` L153 依存列から MNT-02 を削除し、L228 の flow 行 `MNT-02 → CMD-11 → …` を実態へ是正する。直接消費が有れば逆に `docs/architecture/cmd-task-specs.md` CMD-11 節（L111-128 付近）へ mapping を追記する。いずれの分岐でも実査証跡（rg 出力要旨）を PR body へ記録する。L187 の MNT-02 定義行・L305 の履歴行は無改変。
+8. Writer は `docs/architecture/cmd-task-specs.md` CMD-11 表の既存 mapping（`list_logs → BIZ-09` 等、MNT-02 は全 command に不登場 — Plan Review round 1 予備実査済み）を一次証拠とし、`rg -n "mnt" src-tauri/src/cmd/` 等の実 import 実査を補強証拠として cmd 層の MNT consumption を確定する（`biz::system_service` 経由の間接呼び出しを MNT 直接消費と誤認しないこと）。CMD-11 配下 command に MNT-02（操作ログ管理）の直接消費が無ければ `docs/ARCHITECTURE.md` L153 依存列から MNT-02 を削除し、L228 の flow 行 `MNT-02 → CMD-11 → …` を実態へ是正する。直接消費が有れば逆に `docs/architecture/cmd-task-specs.md` CMD-11 節（L111-128 付近）へ mapping を追記する。いずれの分岐でも実査証跡（rg 出力要旨）を PR body へ記録する。L187 の MNT-02 定義行・L305 の履歴行は無改変。
 
 **S4. D-052 E1 語義注記**
 
@@ -101,7 +101,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 11. `docs/function-design/70-mnt-diagnostic-log.md` L174-229 付近の起動サンプル・説明を実コード `src-tauri/src/lib.rs`（`run_startup_step` L84 定義、起草時実査）と突合し、乖離箇所のみ同期する（一律の `.expect` 排除ではなく実装準拠。`app_data_dir取得失敗` の `.expect` サンプルは失効確定、tauri boilerplate の `.expect` は実装と一致すれば残置可）。
 
-各 doc に更新履歴節が存在する場合は dated 形式（PR 番号非転記、D-050）で要旨 1 行を追記する。
+各 doc に更新履歴節が存在する場合は dated 形式で要旨 1 行を追記する（自 PR 番号は plan-first commit 時点では割当前のため非転記。既存の「（本 PR）」プレースホルダ慣習に合わせる）。
 
 ## Non-scope
 
@@ -114,8 +114,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Acceptance Criteria
 
 - AC-1: `rg -c "REQ-905" docs/function-design/68-ui-backup-restore.md docs/FUNCTION_DESIGN.md docs/SCREEN_DESIGN.md src/features/backup-restore/BackupRestorePage.test.tsx` が全 file hit 0（exit 1）。
-- AC-2: `rg -F -c "REQ-901" src/features/backup-restore/BackupRestorePage.test.tsx` ≥ 1、かつ `rg -F -c "REQ-901" docs/function-design/68-ui-backup-restore.md` ≥ 1（新採番 exact presence の対 oracle）。
+- AC-2: `rg -F -c "REQ-901" src/features/backup-restore/BackupRestorePage.test.tsx` ≥ 1、`rg -F -c "REQ-901" docs/function-design/68-ui-backup-restore.md` ≥ 1、`rg -F -c "REQ-901" docs/FUNCTION_DESIGN.md` ≥ 2、`rg -F -c "REQ-901" docs/SCREEN_DESIGN.md` ≥ 1（新採番 exact presence の対 oracle、AC-1 の全 4 file をカバー）。
 - AC-3: `cd src-tauri && cargo run --bin generate_traceability -- --check` PASS。
+- AC-11: `rg -F -c "MNT-01, UI-11b" docs/spec/requirements.md` ≥ 1（S1-5 の対応列追記の oracle）。
 - AC-4: `rg -c "productCount|receivingRecordCount" docs/function-design/78-ui-supplier-management.md` hit 0（exit 1）かつ `rg -F -c "product_count" docs/function-design/78-ui-supplier-management.md` ≥ 1。
 - AC-5: `rg -F -c "run_startup_step" docs/function-design/70-mnt-diagnostic-log.md` ≥ 1 かつ `rg -F -c "app_data_dir取得失敗" docs/function-design/70-mnt-diagnostic-log.md` hit 0。
 - AC-6: `rg -F -c "原価根拠" docs/function-design/35-biz-stocktake-service.md` ≥ 1 かつ `rg -F -c "原価根拠" docs/function-design/73-ui-stocktake.md` ≥ 1。
@@ -255,3 +256,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 ### Plan Gate 記録（append-only）
 
 - owner 起票承認 2026-08-30（wave 7 衛生 batch 起票の会話にて。B-6 = 案 a / B-5 同意 / 2 lane 編成の owner 裁定を含む。本 lane 介入 1/3）。
+- Plan Gate rally round 1（独立 Sonnet Plan Reviewer、2026-08-30）: P1: 1 / P2: 2 / P3: 2。P1-1 = AC-2 の対 oracle が AC-1 対象 4 file 中 2 file しかカバーせず「REQ-905 を削るだけ」mutant を素通し → AC-2 を全 4 file へ拡張。P2-1 = 失敗定義が D-036 承認済みの CMD-11 backup/restore 系 REQ-905 タグ（settings_cmd.rs、Coordinator 実証確認済み）と字面衝突 → UI-11b 文脈へ限定。P2-2 = S1-5（requirements.md 対応列）に oracle なし → AC-11 追加。P3-1 = S3 の一次証拠を cmd-task-specs 表へ変更（reviewer 予備実査で「MNT-02 削除」分岐が正と確認済み）。P3-2 = D-050 帰属の不正確な引用を実務根拠の文言へ差替え。全採用、in-place 是正（plan-draft 中の pre-gate 是正）。round 2 の delta 再検証で新規指摘 0 を確認して plan-gate 通過とする。
