@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1957458
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: 865a7de
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending Ready 承認（画面挙動・runtime 契約に不接触のため視覚確認・L3 は非該当）
+- Human Gate: none（Ready 承認 2026-08-30 済み — 視覚確認は docs + test comment のみのため非該当）
 
 ## Owner Effort Budget
 
@@ -264,3 +264,4 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 - Final Review（独立 Sonnet、fresh context、read-only）2026-08-30: diff 全 hunk を Scope S1〜S6 と突合し packet 外 hunk 0 / rg oracle 独立再実測（AC-1/2/4/5/6/7/11）全 PASS / 新文言の事実正確性（issue #91・UI_TECH_STACK §2.5・lib.rs 実装）突合 OK / S3 分岐の独立実査で MNT-02 非連結を追認 / 90-traceability は機械的再生成の形で手編集痕なし / 設定管理側 REQ-905 4 file は byte 同一 / 更新履歴は純追記・「（本 PR）」慣習整合。P1: 0 / P2: 0 / P3: 0。実行系 AC-3/AC-9 は L1 full evidence（PR body 記載）で担保。
 - state-only 遷移 `implementing->local-verified->independent-review->human-confirm` の根拠: content candidate の L1 `local-ci.sh full` CLEAN PASS evidence（implementing->local-verified。exact SHA と evidence 位置は PR body を正とする）/ 独立 Final Reviewer 監査完了（local-verified->independent-review）/ findings P1/P2 = 0 裁定済み + Reviewed Content HEAD 設定（independent-review->human-confirm）。
+- state-only 遷移 `human-confirm->ready-hosted-final` の根拠: owner Ready 承認 2026-08-30（本 lane 介入 2/3。train 先頭 = lane 1、Ready 遷移実行・merge・closeout を Coordinator へ委任）。exact HEAD の L1 full evidence と hosted run は PR body を正とする。
