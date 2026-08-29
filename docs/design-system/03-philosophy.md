@@ -67,6 +67,12 @@
 
 ---
 
+## 観点借用: NN/g Common Region + GOV.UK Summary List（同型情報の比較可能性）
+
+**明記**: Nielsen Norman Group の *Common Region*（近接した要素を共有の境界で囲むと 1 グループとして知覚される強いグループ化原理。ただし境界の多用は clutter を生み、かえって比較を妨げる）と、GOV.UK Design System の *Summary list* パターン（少量の関連する key-value は per-card の反復でなく、列を揃えた定義リストで示し同型レコードの比較を容易にする）を**観点として借用**する。DSR-16（同型情報のグループ化と囲みの階層）の判断根拠に用いる: 囲みは比較目的の反復に使うと逆効果になり、単一レコードの key/value 確認にのみ適切という整理（2026-08-29 owner L3-lite 可読性 FAIL の是正で採用）。
+
+---
+
 ## 参考程度の位置付け
 
 - **frontend-design** (anthropic/skills): 「汎用AI美学を避ける」意識だけ借用。具体原則（ボールド・対称崩し）は業務アプリに過剰で不採用

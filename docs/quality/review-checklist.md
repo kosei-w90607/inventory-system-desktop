@@ -77,6 +77,7 @@
 - [ ] Select / filter の候補を現在の filtered result から派生していないか。派生する場合、選択後に候補が現在値だけへ縮退せず、他候補へ直接切り替えられるか（DSR-10）
 - [ ] 明細行を持つフォームでは、行の追加 / 編集 / 削除 / 再追加後に validation error が stale 表示されないか。変更・削除された行のエラーだけ消え、未変更行のエラーは残るか（DSR-07）
 - [ ] operator-facing UI flow / status の変更で Windows native L3 が必要か、必要なら Plan / PR evidence に記録されているか（DSR-08）
+- [ ] 同型情報（複数件の同じ形のレコード）の表示形式が DSR-16 の判断フロー（比較目的 = 列を揃えた表・structured list / レコード固有操作あり = 一意見出しの summary card / 単一レコード確認 = definition list）に適合するか。囲み（border/カード）を比較目的の反復で唯一のグループ信号にしていないか
 
 ## 設計判断レンズ（model-neutral 必須観点）
 
