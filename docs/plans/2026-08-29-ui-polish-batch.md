@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -22,7 +22,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 - Reviewed Content HEAD: aafa06a
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner 目視（operator 画面の表示変更 9 件の視認確認、L3-lite 1 回）+ Ready 承認 + merge
+- Human Gate: none（owner Windows native L3 最終確認 全項目 PASS 2026-08-29。残る owner 操作は Ready 化と merge のみ〈merge は委任範囲〉）
 
 Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R2 判定は本 packet に記録。spec-check では表示磨き 10 件の規定 doc 節を全数実査（Coordinator 発注の read-only 調査で file:line / 節番号 / 契約接触の有無を確認）し、既存 docs は「4 件の軽微 doc 追記（Scope 8）を Writer が同 PR で行う」前提で実装十分と判定 — 未解決の設計問題はないため spec-check → plan-draft の許可された skip を適用。編成規律の適合は Coordinator が正本実読で確認済み: D-062 (c) の別 vendor Plan Reviewer 義務は Writer が Codex の packet 限定で本 packet 非適用、manual §2 の Writer ≠ Plan/Final Reviewer + fresh context 独立は別 context 起用で充足、manual §3 L35（希少・高コスト slot を通常実装 Writer に充てない）に Sonnet は非該当、L36 により Opus 5 は read-only Reviewer 発注書ロールのまま（Writer 割り当てなし）。
 
@@ -359,3 +359,9 @@ Fill after review.
 - Writer round 5（`19f4d65..aafa06a`）: CostDiffDialog の modal 硬化（showCloseButton={false} + onPointerDownOutside / onEscapeKeyDown preventDefault、L89-94。共通 dialog.tsx 無変更・isPending guard 維持・終了は footer 明示ボタンのみ）+ 61 §61.5 の 1 文追記 + T11（4 assert、是正前差し戻しで red を実証後 green 復元）。既存 T4/T5/T7-T9 green 維持。L1 実 envelope = HEAD `aafa06a` / CLEAN / PASS
 - delta closure = Coordinator 直接検分（dismissal 3 prop・doc 追記・T11 の data-slot assert を diff / rg 実測。R2 裁量根拠は round 3 と同）。P1/P2 相当の未解決 finding なし
 - local-verified → independent-review → human-confirm の再 materialize（content-riding 形）。残 = owner L3 最終確認 + Ready + merge
+
+### owner L3 最終確認 PASS と ready-hosted-final 遷移（2026-08-29、append-only）
+
+- owner Windows native L3 最終確認（対象 PR HEAD `118a5a4` / 是正 content `aafa06a`）: **判定 PASS（P1/P2 残なし）** — CostDiffDialog の暗黙 dismiss 是正 5 項目（× 不在 / 外クリック残存 / Esc 残存 / footer で閉じる / 表示項目）全 PASS、追加取込みダイアログ 5 項目（幅 / 横スクロールなし比較 / warning tone Alert / soft warning Badge / 今回行の同一表最終行）全 PASS。検証データはアプリ内復元機能で baseline へ復元済み、追加取込みは未実行
+- owner P3 follow-up（非阻害）: 原価差分ダイアログの選択結果説明の充実（入庫記録は保存済み / 更新の意味 / 見送りの意味の 3 点明記）— 別 change の改善候補として closeout で backlog 起票
+- human-confirm → ready-hosted-final の evidence: Human Gate 全項目解決（上記 PASS）+ owner の bundled 依頼（PASS + Ready 進行）への応答として PASS 報告受領。遷移は Draft のまま本 commit で作成し、その exact HEAD で L1 full → PR body 全面 refresh → owner Ready 化 → hosted 三点一致 → merge（PR #14 と同じ委任範囲）の順
