@@ -853,4 +853,56 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
       within(dialog).queryByRole("button", { name: "見送って閉じる" }),
     ).not.toBeInTheDocument();
   });
+
+  it("T11 (owner L3 P1 — merge blocker): 原価差分ダイアログは外側クリック・Escape・×では閉じず、明示ボタンでのみ閉じる", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 908,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [
+          {
+            product_code: "P-901",
+            product_name: "テスト毛糸",
+            master_cost_price: 500,
+            received_cost_price: 501,
+          },
+        ],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "入庫原価を確認してください" });
+
+    // 右上×（DialogPrimitive.Close、既定 showCloseButton）が render されないこと。
+    expect(document.querySelector('[data-slot="dialog-close"]')).not.toBeInTheDocument();
+
+    // overlay への pointer-down（dialog 外側クリック相当）で dialog が残ること。
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+    if (overlay === null) throw new Error("dialog-overlay not found");
+    fireEvent.pointerDown(overlay);
+    expect(screen.getByRole("dialog", { name: "入庫原価を確認してください" })).toBeInTheDocument();
+
+    // Escape keydown で dialog が残ること。
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "入庫原価を確認してください" })).toBeInTheDocument();
+
+    // 更新中は disabled・成功後は success 表示という既存契約は維持されている
+    // （T4/T5 の回帰、ここでは disabled 状態の入口だけ再確認する）。
+    expect(
+      within(dialog).getByRole("button", { name: "マスタ原価をこの実原価に更新する" }),
+    ).toBeEnabled();
+
+    // footer の明示ボタン（「見送って閉じる」）でのみ閉じること。
+    await user.click(within(dialog).getByRole("button", { name: "見送って閉じる" }));
+    expect(
+      screen.queryByRole("dialog", { name: "入庫原価を確認してください" }),
+    ).not.toBeInTheDocument();
+  });
 });
