@@ -79,7 +79,21 @@ export function CostDiffDialog({
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+      {/* gated Amendment 5（owner L3 P1 — merge blocker）: 商品ごとの確認を必須にする
+          61 §61.5 契約に反し、外側クリック・Escape・右上×での暗黙 dismiss が入庫記録の
+          二重加算を誘発した実機不具合の是正。終了経路は footer の明示ボタンのみに限定する
+          （共通 dialog.tsx は無変更、showCloseButton / onPointerDownOutside /
+          onEscapeKeyDown はいずれも既存 prop）。 */}
+      <DialogContent
+        className="max-h-[80vh] overflow-y-auto sm:max-w-2xl"
+        showCloseButton={false}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>入庫原価を確認してください</DialogTitle>
           <DialogDescription>
