@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -344,3 +344,10 @@ Fill after review.
 - Writer round 4（`8415479..291e32d`、6 file / +56-10）: ①幅 override `data-[size=default]:sm:max-w-3xl`（AdditionalImportConfirmDialog L87、共通 primitive 無変更）②Z004 同日追加 Alert を日報側と同一の warning tone へ（PreviewStep L60）③両 tab Badge を soft warning token へ（`border-warning-border bg-warning-soft text-warning-strong`、StockStatusBadge 同型・token 実在を globals.css で確認）+ class assert test 追随。L1 実 envelope = HEAD `291e32d` / CLEAN / PASS
 - delta closure = Coordinator 直接検分（3 点の class を diff 実測で確認、round 3 と同じ R2 裁量根拠）。commit subject の「gated Amendment 5」表記は informal shorthand で、tracked Amendments 行は 3 件のまま + 非追加の明記あり — 正本無矛盾を検分済み
 - local-verified → independent-review → human-confirm の再 materialize（content-riding 形）。残 = owner L3-lite round 4 + Ready + merge
+
+### owner L3 で発見の P1（CostDiffDialog 暗黙 dismiss）と裁定（2026-08-29、append-only）
+
+- owner L3（Windows 実機）: 入庫確定後の原価差分ダイアログが外クリック・Escape・右上×で閉じ、結果画面に再表示経路がない。アプリ前面化のための余白クリックだけで dialog が消え、再確認のため入庫を再実行して記録 ID 3→4・在庫二重加算が実発生。**merge blocker**
+- Coordinator 独立確認（全 true positive）: `CostDiffDialog.tsx` L76-81 の onOpenChange guard は isPending 中のみ / `ReceivingPage.tsx` の結果画面に再 open 経路なし / 61 §61.5 L35 Why「商品ごとの確認を必須にする」と暗黙 dismiss が不整合（L131 の次回入庫再提示は残るが、再確認のための入庫再実行という危険誘導が実演された）。dismissal 意味論は PR #5 由来の pre-existing で本 batch は表示のみ接触 — ただし当 dialog は Scope 4/5 の当事者であり本 PR で是正する
+- 裁定（gated Amendment 5）: ①CostDiffDialog のみ modal 硬化 — DialogContent へ `onPointerDownOutside` / `onEscapeKeyDown` の preventDefault + `showCloseButton={false}`（共通 dialog.tsx は無変更、prop 実在を L45 で確認済み）。終了経路は footer の「見送って閉じる / 閉じる」のみ ②結果画面への再表示ボタンは今回**不採用**（状態管理拡大の回避、見送り時の次回入庫再提示契約が safety net） ③61 §61.5 へ「原価差分ダイアログは明示ボタンのみで閉じる（外側クリック・Escape・× では閉じない）」1 文追記 ④回帰 test T11: overlay pointer-down / Escape で dialog 残存・×ボタン不在・footer 明示ボタンで閉じる・更新中 / 成功後の既存表示契約維持
+- 是正のため implementing へ backtrack（本 commit）
