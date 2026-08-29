@@ -9,7 +9,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b3ca503
@@ -19,7 +19,7 @@ Plans.md「次の行動」③（UI backlog の表示磨き batch）の第 1 弾�
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context、Writer とは別 context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Opus 5 修正案 claims-producer round（§5.4 低制約、read-only）+ Codex cross review + Coordinator 裁定
   - Opus 投入の例外記録（manual §3 L36「通常レビューは既存分業を維持」に対する例外、Plan Review round 1 P2-1）: owner 明示の座組決定（2026-08-29「その座組でやってみたいね」）による pilot 投入。目的 = ①保留中の Opus×Sonnet 並走レビュー実験（Plans.md 記録）の「簡単 backlog 水準」較正 ②operator-facing UI 磨きにおける修正案 claims-producer 型の実務検証。read-only・§5.4 低制約・Writer 非割当の D-056 機構は不変。本例外の最終確定は Plan Gate 承認に含める
-- Reviewed Content HEAD: 295bfcd
+- Reviewed Content HEAD: 291e32d
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner 目視（operator 画面の表示変更 9 件の視認確認、L3-lite 1 回）+ Ready 承認 + merge
@@ -338,3 +338,9 @@ Fill after review.
 - Coordinator 独立確認（全 3 点 true positive）: ①共通 `alert-dialog.tsx` L53 に `data-[size=default]:sm:max-w-lg` が実在 — 属性 selector 付きで呼出し側の素の `sm:max-w-3xl` より CSS 詳細度が強く、720px 設計が実 DOM で負けて default 幅のまま ②Z004 `PreviewStep.tsx` L58 の同日追加 Alert は neutral、日報側 L152 は `border-warning bg-warning-soft text-warning-strong` で非対称 ③warning token 群は実在
 - 裁定（packet 契約不変の実装是正のため Amendment 追加なし、本 narrative が記録）: ①呼出し側を `data-[size=default]:sm:max-w-3xl` へ（共通 primitive の wide size 新設は今回不採用 — 単一利用箇所に最小変更） ②Z004 上部 Alert を日報側と同一の warning tone へ統一 ③Badge は黒枠でなく soft warning token（`border-warning-border bg-warning-soft text-warning-strong` 系）— 黒枠は補助状態を主警告より強く見せ operable にも見える情報階層の逆転のため不採用。強弱設計 = 上部 Alert（warning、主）> Badge（soft warning、補助）> 表（具体確認）
 - 是正のため implementing へ backtrack（本 commit）
+
+### round 4 delta closure と human-confirm 再遷移（2026-08-29、append-only）
+
+- Writer round 4（`8415479..291e32d`、6 file / +56-10）: ①幅 override `data-[size=default]:sm:max-w-3xl`（AdditionalImportConfirmDialog L87、共通 primitive 無変更）②Z004 同日追加 Alert を日報側と同一の warning tone へ（PreviewStep L60）③両 tab Badge を soft warning token へ（`border-warning-border bg-warning-soft text-warning-strong`、StockStatusBadge 同型・token 実在を globals.css で確認）+ class assert test 追随。L1 実 envelope = HEAD `291e32d` / CLEAN / PASS
+- delta closure = Coordinator 直接検分（3 点の class を diff 実測で確認、round 3 と同じ R2 裁量根拠）。commit subject の「gated Amendment 5」表記は informal shorthand で、tracked Amendments 行は 3 件のまま + 非追加の明記あり — 正本無矛盾を検分済み
+- local-verified → independent-review → human-confirm の再 materialize（content-riding 形）。残 = owner L3-lite round 4 + Ready + merge
