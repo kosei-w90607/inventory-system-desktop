@@ -36,6 +36,7 @@
 
 ## 次の行動
 
+- [ ] **DSR-18 戻り導線 returnTo R3**（R3 キュー ①、owner 裁定 2026-08-30 = ① → ② scroll 復元 → ③ DSR-19/20 runtime）: gap 8 site への returnTo 付与 + 共通 helper（DSR-15 prefix 検証 + fallback 引数化）+ 契約 test。[active packet](plans/2026-08-30-dsr18-returnto-impl.md) / [Matrix](plans/test-matrices/2026-08-30-dsr18-returnto-impl.md)
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
