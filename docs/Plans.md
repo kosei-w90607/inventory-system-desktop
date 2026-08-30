@@ -14,6 +14,7 @@
 
 ## 直近の完了
 
+- [x] **PR #22 成功 feedback / destructive dialog 横断規約 Design Phase**（R2 docs-only、PR #22 @ inventory-system-desktop squash merge `8b744f1`、2026-08-30）: DSR-19「作成・保存成功の feedback 規約」（toast 最低保証 + 併用基準〈適合 4 形 + R3 是正 2 件〉+ duration 3s/5s/8s + id 規約 + DSR-03 refine）と DSR-20「destructive 確認 dialog の配置・dismiss 規約」（variant 統一 + 並び順・3 ボタン先例 + cancel ブリッジ本則と硬化条件 + 暗黙硬化禁止 + Cancel 文言基準）を新設。SPEC-SUP-D11 / SPEC-PRV-D8 追記 + catalog ⑦ duration drift 是正 + 理論引用（『UXデザインの法則』第 2 版）を Why 限定で正本化。runtime 是正は後続 R3。証跡: [archived Packet](archive/plans/2026-08-30-feedback-dialog-conventions-design.md)
 - [x] **PR #21 DSR-17 拡張 Design Phase（3+1 分類）**（R2 docs-only、PR #21 @ inventory-system-desktop squash merge `22504af`、2026-08-30）: 分類④「主ナビゲーションは遷移先先頭」新設（owner 所感 PR #17 comment 起源、mount 一律禁止と発火契機で両立）+ 分類②の実装方式契約 (a)〜(h) 確定（push 戻り + href key + `<main>` 復元 + 競合優先順位 + R3 Probe / L3 義務、TanStack Router 1.168.23 の `__TSR_key` drift を版数付き記録）+ review-checklist カテゴリ 9 同期。R3 着手順 = DSR-18 R3 先行 → scroll 復元 R3。証跡: [archived Packet](archive/plans/2026-08-30-scroll-policy-extension-design.md)
 - [x] **PR #20 「前の画面へ戻る」導線契約の規範化 Design Phase**（R2 docs-only、PR #20 @ inventory-system-desktop squash merge `0d5f73c`、2026-08-30）: DSR-18「詳細画面の戻り導線契約」新設（遷移元本則 + returnTo 送信義務 + fallback + DSR-15 extend の共通 helper 方針）+ TRACE-D11 の遷移元横断化（65 の 4 箇所同期）+ 送信側契約 5 件採番（UI-02-D16 / UI-03-D22 / UI-04-D17 / UI-05-D17 / UI-11c-D16）+ review-checklist カテゴリ 9 対応行。gap 8 site の runtime 是正は後続 R3 packet。証跡: [archived Packet](archive/plans/2026-08-30-return-navigation-contract-design.md)
 - [x] **PR #4 取引先管理実装**（R3、PR #4 @ inventory-system-desktop merge `c2cdda8`、2026-08-26）: UI-15 `/settings/suppliers` 画面（一覧 + usage 件数 + インライン改名 + 統合 dialog 2 段階）+ migration v6 + `rename_supplier` / `merge_suppliers` / `list_suppliers_with_usage` を実装。証跡: [archived Packet](archive/plans/2026-08-25-supplier-management-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-25-supplier-management-impl.md)
@@ -35,7 +36,6 @@
 
 ## 次の行動
 
-- [ ] **PR #22 成功 feedback / destructive dialog 横断規約の Design content**（R2 docs-only、Phase `implementing`）: [active Plan Packet](plans/2026-08-30-feedback-dialog-conventions-design.md)。Plan Review 通過後に Writer content commit → Coordinator が L1 と Final Review へ進める。
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
