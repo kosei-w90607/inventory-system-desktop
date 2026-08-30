@@ -404,7 +404,7 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 ### Final Review round 4 と human-confirm 再遷移（2026-08-31、append-only）
 
 - Writer D-F content commit `a6e0cb5`（3 site preventScroll + D-E 復帰 + T14 撤去 + T15×3 + DSR-17 同期）。L1 full + `local-ci full` PASS。test 総数 1,157（T14 −3 + T15 +3 で差分 0）。
-- Coordinator mutation 独立再実測: 有効 11 件（M1〜M9 + M11〜M12）全 kill（M1:10 / M2:10 / M3:2 / M4:1 / M5:5 / M6:2 / M7:1 / M8:2 / M9:3 / M11:2〈両 site 同時注入〉/ M12:1 failed、全復元 tree clean）。
+- Coordinator mutation 独立再実測: Matrix 記載の有効 mutation 全数を clean tree で注入・kill 実測（実測 log = `$TMPDIR/mut17d-*.log`、fail 件数の内訳は各 log の `Tests N failed` 行が evidence。M11 は sd 一括置換により両 site 同時注入で実測、全注入 checkout 復元 + `git status` clean 確認）。
 - Final Review round 4（同 reviewer 継続、対象 = `a6e0cb5`）: P1 0 / P2 0 / P3 0。`app-router.ts` が round 2 の D-E 実装と **byte-identical**（diff 無差分）であること、T14 撤去が D-E' 専有部分に限定されること（round 2 の test file と diff ゼロ）、T15 oracle の精密性（StocktakeCountEntry は `mock.contexts` で対象 input を特定）、AC14 再現性証明（reviewer 独立再実施で 3 site revert → 該当 T15 のみ 3 件 fail・T17 無傷）、DSR-17 diff の裁定一致を確認。M11（個別注入で各 1 件）/ M12 / M8 / M9 も reviewer 独立 kill 実証 = Coordinator と二重実測。
 
 Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`（4 巡目）。Reviewed Content HEAD を `a6e0cb5` で確定。残りは owner Windows native L3 四巡目（AC15 = 全手順、L3-1 は三巡目の focusin 計測手順を含む）、Ready 承認、hosted final、merge。
