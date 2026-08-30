@@ -4,7 +4,7 @@ Design Phase は PR #20（squash `0d5f73c`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 08333ce
@@ -13,7 +13,7 @@ Design Phase は PR #20（squash `0d5f73c`、2026-08-30 merge）で完了済み�
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: c7aa25b
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 site 往復 + fallback + 操作ログ state 復元。synthetic fixture は Ready 依頼と同時に提示）
@@ -265,6 +265,11 @@ Phase 遷移記録（本 content commit に同乗）: `plan-gate -> plan-approve
   - P1-1 **採用**: detail 6 page のうち negative `//` case を持つのは Stocktake / CsvImport のみで、Receiving / Return / ManualSale / Disposal 4 page は M5 型 bypass regression を自動 test で検出できない（Coordinator 裏取り: Receiving / Return / ManualSale は detail 専用 test file 自体が不在、Disposal は正常系 1 case のみ — reviewer 実証と三点一致）。shipped code に実害なし、防御 gap のみ。是正 = 4 page への negative case 追加（同一 PR、Codex 是正発注）。
   - P2-1 **採用**: Matrix M4 の記載が D-B 実装と乖離（param 単位の直列化コード不在）。Coordinator の読み替え実測と同一認識。本 gated amendment で M4 / M5 / T11 を改訂。
   - P3-1 **同梱裁定**: T2 / T4 / T6 の T-ID ラベル不統一は P1-1 是正と同じ file 群のため Codex 発注に相乗り（backlog 化せず）。
+- 是正 content commit `c7aa25b`（Codex、test 5 file のみ・production 非接触）: `OtherRecordDetailPages.test.tsx` 新設（Receiving / Return / ManualSale の T11 3 case × 3 page）+ Disposal の T11 3 case 化 + T2/T4/T6 ラベル追記。Writer L1 full PASS。
+- Coordinator M5 全数独立再実測（是正後、clean tree）: 4 page（Receiving / Return / ManualSale / Disposal）それぞれへ `value ?? fallback` 注入 → 各 page で negative 2 case fail の kill を確認 → 復元・tree clean。
+- Final Review round 2（同 reviewer 別 context 継続、対象 = `c7aa25b`）: P1 0 / P2 0 / P3 0。production 非接触・oracle 品質（literal / 3 case / 先例同型）・P3-1 ラベル・改訂後 Matrix 整合を確認。reviewer 自身も 4 page への M5 型注入と M4 読み替え注入を独立実測し、Coordinator の kill 主張と一致（full suite 1,133 tests green、round 1 比 +11 = it.each 新設分と一致）。
+
+Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Final Review rally round 2 収束（P1/P2 = 0）により independent-review を通過、Reviewed Content HEAD を `c7aa25b` で確定。残りは owner Windows native L3（L3-1〜L3-3）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
 
 ## Data Safety
 
