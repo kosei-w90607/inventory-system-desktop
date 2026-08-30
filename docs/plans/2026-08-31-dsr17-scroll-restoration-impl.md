@@ -343,6 +343,12 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 
 **AC 追加**: AC10 = clamp 模擬 harness 下で「遅延 content でも復元位置に到達する」T12 が green、かつ是正前実装（`687ae6b` 相当）に T12 を当てると fail する（故障モード再現性の証明）。AC11 = revised exact HEAD での owner L3-1〜L3-5 + L3-3b 全手順再実施。
 
+### D-E 是正の検分と traceability drift 裁定（2026-08-31、append-only）
+
+- Writer 是正 content commit `50f5397`（3 file: app-router.ts + test + DSR-17 (i) 追記）。Writer L1 full PASS、AC10 再現性証明（是正前相当で T10/T12 fail、D-E 実装後 green）と M8/M9 kill を報告。実装は D-E 契約に忠実（消費先行の排他・clamp 検出・MutationObserver + 即時 1 回試行・解除 3 条件・armed 高々 1 本）を Coordinator 実読確認。
+- **traceability drift 裁定**: Writer が非指定で実行した `local-ci.sh changed` の T4 FAIL（baseline 22 / 現在 26）を「既存 branch 由来・scope 外」と主張したが、Coordinator 実測で **`687ae6b` の新規 test 4 file（RootLayout / SidebarHeader / app-router / main-nav-scroll）が原因**と確定（describe が DSR-17 表記のみで checker の REQ-NNN / UI-NN pattern 非該当 → 未参照数増加）。T4 の本則（増加時は describe/it へ ID 付与）に従い、4 file を 52 §52.1（RootLayout 構成・sidebar・main container）帰属で **UI-12** を describe へ付与 + 90-traceability 再同期（Coordinator 直接是正 `409f661` + `0ef5fe4` — 機械的作業のため conductor-mode 軽微修正の範囲と裁定）。`local-ci.sh changed` PASS（exit 0）を確認。
+- 反省記録: packet Registration / Generation Obligations が再生成義務を「REQ token 追加時のみ」の条件付きにしていたが、T4 は未参照 file 数の baseline 照合も行うため、**新規 test file の追加自体が ID 付与 + 再生成の義務を生む**。次回以降の packet では新規 test file 追加を義務 trigger に含める。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
