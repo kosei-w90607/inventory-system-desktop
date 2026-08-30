@@ -29,6 +29,7 @@ route は `/products/price-revision`、file route は `src/routes/products/price
 | REQ-105 | SPEC-PRV-D5 | 確定は行単位で `revise_product_price` を呼ぶ。 | 複数行を 1 request にまとめず、途中停止・部分失敗・再試行を商品単位で閉じる。 |
 | REQ-106 | SPEC-PRV-D6 | 取引先 filter から「新しい取引先を追加」でき、未設定の商品にだけ選択中の取引先を漸進紐付けする。紐付け toggle は既定 on。 | 約 80 社の事前投入を避け、値上げリストを処理する文脈でメーカー/ブランドを補完する。 |
 | REQ-105 | SPEC-PRV-D7 | 確定済み状態は DB の価格と price_history から復元し、本日改定した行を「最近改定」と示す。 | 数日またぎでも追加の永続状態を持たず、確定済みデータを再開点にする。 |
+| DSR-19 | SPEC-PRV-D8 | 行確定の成功時は DSR-19 に適合する完了 toast を出し、対象商品と価格改定が完了したことを示す。 | 入力欄の clear と「最近改定」badge だけでは、確定操作が成功した瞬間の完了を判別しにくい。 |
 
 ## 77.3 画面構成
 
@@ -103,10 +104,11 @@ CMD の署名と wire DTO の正本は [40-cmd-product.md](40-cmd-product.md) �
 - 現売価は値上げリストの「旧売価」と目視で突合するために使う。不一致は上乗せ品または別商品の目印であり、追加の自動判定は行わない
 - 価格は `¥` と桁区切りを表示し、入力 label / column header は日本語で意味を固定する
 
-### 行確定と中断・再開（SPEC-PRV-D5 / D7）
+### 行確定と中断・再開（SPEC-PRV-D5 / D7 / D8）
 
 - `確定` は該当行だけを送信する。pending 中は同じ行の入力と確定操作を無効化し、他行の閲覧は妨げない
 - 成功後は DB の現売価・現原価を再表示し、価格が変わった行を完了として扱う。失敗は該当行に日本語 error と再試行導線を残す
+- 成功後は DSR-19 に適合する完了 toast で、対象商品と価格改定が完了したことを示す。duration と toast id は DSR-19 の階層・適用基準に従う。runtime への追加は後続 R3 で行う
 - **draft 保存テーブルは設けない**。確定済み行は再訪時にも更新後の現価格として取得できる
 - 当該商品の直近 `price_history.changed_at` が本日（ローカル日付）なら、行頭に icon + text badge `最近改定` を表示する。これは price_history からの導出で、別 field を永続化しない
 - `画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。` を絞り込み枠と一覧の間に常時表示する
@@ -128,6 +130,7 @@ CMD の署名と wire DTO の正本は [40-cmd-product.md](40-cmd-product.md) �
 - SPEC-PRV-D5: 行確定が 1 商品だけを送り、成功後に現価格を再取得する。失敗行だけ入力保持・再試行できる
 - SPEC-PRV-D6: 未設定商品だけへ supplier を設定し、既存 supplier を上書きしない。取引先追加の trim / 空文字拒否 / 同名既存行返却を確認する
 - SPEC-PRV-D7: 本日の changed_at だけが icon + text `最近改定` になり、再読込で確定前入力が消える旨の常時文言がある
+- SPEC-PRV-D8: 行確定成功時に対象商品と完了を示す toast が出て、duration / toast id が DSR-19 の基準に適合することを後続 R3 で確認する
 - operator UI: column header、toggle、button、empty/error が日本語で、状態の assertion は text / role / value を使い Tailwind 色 class だけに依存しない
 - navigation: `src/config/navigation.ts` の商品管理に UI-14 が存在し、REQ-105 の到達テストが通る
 - Windows native L3（実装 PR B）: 400 行級で絞り込み → 旧売価突合 → 入力 → 行確定を反復し、紙の二重転記より速い主動線になっているかを確認する
@@ -143,5 +146,6 @@ CMD の署名と wire DTO の正本は [40-cmd-product.md](40-cmd-product.md) �
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #22 DSR-19 design sync | SPEC-PRV-D8 を追加し、行確定成功の完了 toast 契約を正本化（runtime は後続 R3）。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D3〜D7 / REQ-105 / REQ-106 の UI-14 契約を新設。 |
 | 2026-08-23 | 価格改定支援 実装 B | UI-14 一括価格改定画面、取引先 filter、行単位確定、最近改定表示を実装。 |

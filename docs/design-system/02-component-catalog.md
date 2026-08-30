@@ -451,11 +451,11 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 - **認知されないと困るか** = Yes → Banner / No → Toast
 - **利用者のアクション必須** = Yes → Dialog / No → Toast or Banner
 
-**id 規約**: 同種の通知が連発しても重ならないよう、安定 id を付ける。保存系は `product-save-success`、出力系は `export-${reportType}-success` / `export-${reportType}-error` のように対象ごとに dedup する。
+**id 規約**: 連打・再試行・連続 callback で同一通知が重なり得る場合は、DSR-19 の適用基準に従って安定 id を付ける。保存系は `product-save-success`、出力系は `export-${reportType}-success` / `export-${reportType}-error` のように、利用者が個別に識別すべき別対象まで潰さない範囲で dedup する。
 
 **使用トークン**: 成功 = Success（`green-700`）系、警告 = Warning（`amber-600`）系、失敗 = Destructive（`red-700`）系。色は Sonner の variant（`toast.success` / `toast.error`）経由で当て、生 Tailwind 色 class を書かない（DSR-08）。
 
-**状態**: 自動消去（`duration` 既定 5000ms）。hover / focus / active / disabled / error は規定なし（error 内容は toast 文言で表す）。
+**状態**: `RootLayout` の Toaster 全体既定は `duration={3000}`（3000ms）。個別上書きは DSR-19 の階層に従い、重要情報付きの成功通知を 5000ms、取消結果または非 IT operator の読了配慮が必要な通知を 8000ms とする。hover / focus / active / disabled / error は規定なし（error 内容は toast 文言で表す）。
 
 **アクセシビリティ**: 通知文言は「何が」「どうなったか」を日本語で具体的に書く（例: 商品名 + 商品コードを含める）。Sonner が live region で読み上げる。
 
@@ -488,7 +488,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
     </AlertDialogHeader>
     <AlertDialogFooter>
       <AlertDialogCancel onClick={onCancel}>キャンセル</AlertDialogCancel>
-      <AlertDialogAction onClick={onConfirm}>廃番にする</AlertDialogAction>
+      <AlertDialogAction variant="destructive" onClick={onConfirm}>廃番にする</AlertDialogAction>
     </AlertDialogFooter>
   </AlertDialogContent>
 </AlertDialog>
@@ -501,21 +501,25 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **確認境界**: 破壊的・不可逆操作のみ確認を通す。可逆操作（「表示に戻す」等）は直接実行する。廃番化 = 確認あり / 表示に戻す = 直接実行が実例（DSR-07）。
 
-**使用トークン**: `AlertDialog` の shadcn/ui 既定。確認ボタン（`AlertDialogAction`）はボタン primitive 既定、キャンセルは `AlertDialogCancel`。
+**使用トークン**: `AlertDialog` の shadcn/ui 既定。destructive 確認の実行 Action は `variant="destructive"`、キャンセルは `AlertDialogCancel` とする（DSR-20）。
 
 **状態**:
 - **open**: parent state で制御。`open=false` への経路は (1) onConfirm (2) onCancel（Esc / 外側クリック / キャンセルボタン）の 2 つ
+- **配置**: 2 ボタンの DOM 順は Cancel → Action。`sm` 以上は Cancel 左 / Action 右、narrow 幅は footer の `flex-col-reverse` により Action 上 / Cancel 下とする。3 ボタンは取引先統合 stage 2 の secondary → Cancel → Action を先例とする
+- **硬化**: Esc / 外側クリックは cancel ブリッジが本則。選択前 dismiss が実害へ直結する保存結果、または未保存破棄の明示選択を求める場合だけ、DSR-20 の明示 prop（`onEscapeKeyDown` / `onPointerDownOutside`、close button を持つ場合は `showCloseButton={false}`）で硬化する
 - hover / focus / active / disabled / error: ボタン primitive の既定に従う
 
-**アクセシビリティ**: `AlertDialogTitle`（問い）+ `AlertDialogDescription`（影響と復帰可否）を必ず書く。Esc・外側クリックを `onOpenChange` 経由で cancel にブリッジし、キーボードだけで閉じられるようにする。確認ボタンの文言は操作内容そのもの（例: "廃番にする"）にする。
+**アクセシビリティ**: `AlertDialogTitle`（問い）+ `AlertDialogDescription`（影響と復帰可否）を必ず書く。Esc・外側クリックを `onOpenChange` 経由で cancel にブリッジし、キーボードだけで閉じられるようにする。DSR-20 の硬化条件に該当する例外では、Esc が無効であることを明示 prop と test から判読可能にする。確認ボタンの文言は操作内容そのもの（例: "廃番にする"）、Cancel は既定「キャンセル」または後状態を具体化する文言にする。
 
 **Do**:
 - 破壊的操作の直前にのみ確認を挟む
-- 確認ボタンの文言を操作内容と一致させる
+- destructive Action の variant・配置・文言を DSR-20 にそろえる
+- 確認ボタンの文言を操作内容と一致させ、硬化は条件と実装手段を明示する
 
 **Don't**:
 - 可逆操作に確認を挟んで操作を重くしない（DSR-07）
-- 「OK / キャンセル」のような曖昧ボタン文言にしない
+- `onOpenChange` の非配線で暗黙に硬化しない（DSR-20）
+- destructive Action を「OK」のような実行内容の分からない文言にしない
 
 **比較用 variant（DSR-16 適用形）**: dialog 内に同型レコードを複数件示し、利用者が比較して判断する必要がある場合（例: 同じ日の既存取込みと今回分を見比べて重複を判断する）は、確認ダイアログの標準構造に加えて次を満たす。
 

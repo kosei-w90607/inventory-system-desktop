@@ -35,7 +35,7 @@
 
 ## 次の行動
 
-- [ ] **PR #22 成功 feedback / destructive dialog 横断規約の Design content**（R2 docs-only、Phase `plan-gate`）: [active Plan Packet](plans/2026-08-30-feedback-dialog-conventions-design.md)。Plan Review 通過後に Writer content commit → Coordinator が L1 と Final Review へ進める。
+- [ ] **PR #22 成功 feedback / destructive dialog 横断規約の Design content**（R2 docs-only、Phase `implementing`）: [active Plan Packet](plans/2026-08-30-feedback-dialog-conventions-design.md)。Plan Review 通過後に Writer content commit → Coordinator が L1 と Final Review へ進める。
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -74,8 +74,8 @@
 - hub 等の詳細戻り scroll 位置復元は design 確定済み（PR #21、DSR-17 を 3+1 分類へ拡張: 分類④「主ナビゲーションは遷移先先頭」+ 分類②の href key / `<main>` 復元方式契約）。owner 裁定の R3 着手順は、DSR-18 R3（`returnTo` 8 site + 共通 helper）を先行し、その後に TanStack Router `scrollRestoration` の Contract Probe 付き scroll 復元 R3 とする。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
-- 取引先追加成功 toast の横断規約（新規作成成功の feedback を toast にするか否かの画面横断規約が未定義 — owner L3 2026-08-30 所感起源）。
-- 統合 dialog のボタン配置・外クリック方針（destructive 確認 dialog のボタン順・外クリック dismiss の横断方針。CostDiffDialog は PR #15 で modal 硬化済み、他 dialog への展開判断 — owner L3 2026-08-30 所感起源）。
+- 取引先追加成功 toast の横断規約は Design 確定（PR #22、DSR-19）: 作成・保存成功の toast 最低保証、持続的結果表示との併用基準、duration 3s / 5s / 8s、toast id 適用基準を規範化。取引先追加・価格改定行確定の runtime 是正は後続 R3 で実装する。
+- 統合 dialog のボタン配置・外クリック方針は Design 確定（PR #22、DSR-20）: destructive variant、DOM / responsive 配置、cancel ブリッジ本則、条件付き硬化と明示実装、Cancel 文言を同一 PR で規範化。variant 統一・暗黙硬化解消等の runtime 是正は後続 R3 で実装する。
 - inventory-operator-ui SKILL.md への DSR-16 判断手順追加（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex 発注 or owner 手動の小 change、PR #15 起源）。
 - CostDiffDialog 結果画面への再表示ボタン（PR #15 P1 裁定で今回不採用 — 状態管理拡大を伴うため要望が続けば別 change。見送り時は次回入庫で再提示される既存契約が safety net）。
 - 取消完了 toast の視認性追加検討（PR #15 で duration 8s 化済み。owner 所感で不足なら ページ内 Alert 併用を第 2 弾で検討）。

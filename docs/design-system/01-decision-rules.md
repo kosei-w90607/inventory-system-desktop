@@ -1,4 +1,4 @@
-# 判断ルール集（DSR-01〜15）
+# 判断ルール集（DSR-01〜20）
 
 > **親文書**: [README.md](README.md)
 > **責務**: 実装時の迷いを一意に解消するルール集。「どちらを使うか」「いつ使うか」を DSR 番号で参照できる。
@@ -354,10 +354,61 @@ scroll を伴う遷移はどれか？
 
 ---
 
+## DSR-19 作成・保存成功の feedback 規約
+
+**ルール**: 作成・保存の成功後に同じ作業文脈へ戻る flow は、成功 toast を最低保証とする。保存後に利用者が確認または継続操作すべき内容がある場合は、toast に加えて result panel を残し、専用 result step または結果画面へ全面遷移する flow は、その持続的な結果表示自体を完了 feedback としてよい。
+
+**Why**: Peak-End rule の観点では、操作の終端を明示することが一連の体験の評価を安定させる。Zeigarnik 効果の観点でも、完了した操作を未完了のまま記憶に残させず、作業の区切りを明確にする必要がある。参照: Jon Yablonski『UXデザインの法則 ―最高のプロダクトとサービスを支える心理学』第 2 版、相島雅樹・磯谷拓也 訳、オライリー・ジャパン、2025-01（原著 *Laws of UX*）。
+
+**判定フロー / 具体例**:
+
+```
+成功後の表示はどこか？
+├─ 同じ入力・一覧の作業文脈へ戻る
+│    ├─ 完了だけを伝えればよい → toast
+│    └─ 確認事項・次の操作がある → toast + result panel
+└─ 専用 result step / 結果画面へ全面遷移する
+     → 持続的な結果表示（同内容の toast 併用は任意）
+```
+
+- **適合先例**: 起票時に実測した 5 方式のうち、toast のみ（取引先改名・統合、PLU 一括、設定保存、帳票出力等）、toast + result panel（入庫・返品交換・手動販売・廃棄の保存）、専用 result step のみ（売上 CSV / 日報取込み確定）、結果画面への全面置換（棚卸し確定）は、上記の表示先と継続作業の差に沿った適合形である。
+- **R3 是正対象**: 同じ作業文脈へ戻るのに完了 feedback がない取引先追加と価格改定の行確定は、本則に適合しない。後続 R3 で成功 toast を追加する。
+- **duration 階層**: 単純な完了通知は Toaster 全体既定の `3000ms`。商品名・商品コードを含み、成功と同時に読んで確認する重要情報付きの通知は `5000ms`。取消結果、または非 IT operator 向けに結果・次の手の読了時間を確保する通知は `8000ms` とする。時間延長だけでは回復導線にならないため、操作が必要な状態は DSR-03 に従い Alert に残す。
+- **toast id**: 同じ操作が連打・再試行・連続 callback で重なり得る場合は、操作種別と必要な対象範囲を表す安定 id を付け、同一通知を置換する。別商品・別帳票など利用者が個別に識別すべき成功まで同じ id で潰さない。単発で重複経路がない通知には id を必須としない。
+
+本規約は DSR-03 を supersede しない。DSR-03 が toast / Alert / Dialog の役割と回復導線の置き場所を決め、本規約はそのうち作成・保存成功の最低 feedback、持続的結果表示との組合せ、duration、重複抑止を refine する。
+
+**関連**: DSR-03「Toast vs Alert 使い分け基準」 / パターン⑦Toast。review-checklist カテゴリ 9 対応（作成・保存成功が適切な feedback で閉じ、重要度に応じた表示時間と重複抑止になっているか）。
+
+---
+
+## DSR-20 destructive 確認 dialog の配置・dismiss 規約
+
+**ルール**: destructive 確認の実行 Action は `variant="destructive"` に統一し、2 ボタンの DOM 順を Cancel → Action とする。Esc・外側クリックは Cancel と同じ経路へブリッジするのを本則とし、明示選択なしの dismiss が実害につながる場合、または未保存内容の扱いを明示選択させる場合だけ、明示 prop で硬化する。
+
+**Why**: Von Restorff 効果により、危険な選択肢を通常操作から視覚的・位置的・言語的に区別すると、確認場面で選択肢を取り違えにくい。未保存編集の確認で Esc を無効にし、利用者自身に「編集を続ける」か「破棄して移動」かを選ばせる friction は、Zeigarnik 効果を意図的に活用して未完了作業を曖昧に閉じない先例である。参照: Jon Yablonski『UXデザインの法則 ―最高のプロダクトとサービスを支える心理学』第 2 版、相島雅樹・磯谷拓也 訳、オライリー・ジャパン、2025-01（原著 *Laws of UX*）。
+
+**配置と dismiss の契約**:
+
+- **variant**: destructive Action は必ず `variant="destructive"` とし、title / description で対象・影響・復帰可否を示し、Action label に実行内容を明記する。色だけを危険性のシグナルにしない。
+- **2 ボタン**: DOM 順は Cancel → Action。`sm` 以上では Cancel を左、Action を右に置く。narrow 幅では footer の `flex-col-reverse` により視覚上 Action が上、Cancel が下になるが、これは action の到達性と既存 primitive の一貫性を保つ意図された挙動であり、DOM 順を反転しない。
+- **3 ボタン**: 取引先統合 stage 2 を先例とし、DOM 順を「前段階へ戻る secondary」→ Cancel → destructive Action とする。`sm` 以上は同じ左から右、narrow 幅は `flex-col-reverse` により Action → Cancel → secondary の上から下になる。
+- **dismiss 本則**: Esc・外側クリック・close control は `onOpenChange` を通じて Cancel と同じ処理へブリッジし、明示 Cancel button と同じ後状態を作る。
+- **硬化条件**: (a) 選択を確定せず閉じると保存結果が曖昧になり、再実行による在庫二重計上等の実害へ直結する場合（`CostDiffDialog` 先例）、または (b) 未保存内容を破棄するか継続するかを明示選択させる必要がある場合（`UnsavedChangesDialog` 先例）に限り、Esc・外側クリックを無効化する。単に重要そう、誤操作が心配という理由だけでは硬化しない。
+- **硬化手段**: content primitive の `onEscapeKeyDown` / `onPointerDownOutside` で `preventDefault()` し、close button を持つ Dialog では `showCloseButton={false}` を明示する 1 系統を正とする。`onOpenChange` を配線しないことで偶然閉じなくする暗黙硬化は禁止する。確定・Cancel button など許可した close 経路は parent state へ明示的に接続する。
+- **Cancel 文言**: 既定は `キャンセル`。保存中の内容を保持する、または戻り先を具体的に示す方が判断しやすい場合に限り、`編集を続ける` や `残す取引先を選び直す` のような結果・遷移先を表す文言を使ってよい。`戻る` / `やめる` のように後状態が判別できない語へ置き換えない。前段階へ戻る secondary action は Cancel と別の操作として扱う。
+
+DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出すと決めた destructive dialog 内の強調・配置・dismiss を決める。DSR-08 との関係では、`variant="destructive"` は色だけの警告ではなく、配置、具体的な Action label、title / description と組み合わせた複合強調である。dialog 内に同型レコードを複数示す場合の構造は DSR-16 に従い、危険性の強調を理由に囲みを反復しない。
+
+**関連**: DSR-07「確認ダイアログを出す境界」 / DSR-08「semantic 色のみで意味を伝えない」 / DSR-16「同型情報のグループ化と囲みの階層」 / パターン⑧Dialog/確認。review-checklist カテゴリ 9 対応（variant、DOM / visual 順、dismiss 本則と硬化条件、Cancel 文言が一貫しているか）。
+
+---
+
 ## 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #22 | DSR-19「作成・保存成功の feedback 規約」と DSR-20「destructive 確認 dialog の配置・dismiss 規約」を新設。toast 最低保証・3/5/8 秒階層・id 適用基準、および destructive variant・配置・dismiss / 硬化・Cancel 文言を横断契約化。 |
 | 2026-08-30 | PR #21 | DSR-17 を 3+1 分類へ拡張。分類④「主ナビゲーションは遷移先先頭」を追加し、分類②の push 戻り + href key + `<main>` 復元、分類間の優先順位、R3 Probe / L3 義務を確定。 |
 | 2026-08-30 | PR #20 | DSR-18 新設: 詳細画面の戻り先を遷移元 URL とし、業務記録詳細 link の `returnTo` 送信義務、遷移先ごとの fallback、DSR-15 を extend する共通 helper 方針を確定。 |
 | 2026-08-29 | scroll-policy-design 裁定 | DSR-17 新設: 画面遷移と scroll を 3 分類し、同一画面内は event-driven、詳細戻りは位置復元、操作完了後の Home は one-shot flag 消費時だけ先頭表示とする。mount 一律 scroll を禁止。 |

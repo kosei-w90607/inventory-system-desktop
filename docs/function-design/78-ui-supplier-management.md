@@ -33,6 +33,7 @@ UI-15 は、漸進追加で生じた表記揺れや同一メーカー/ブラン�
 | SPEC-SUP-D7 | rename は D-052 C21、merge は C22 の invalidation 契約を後続実装で追加する。 | UI-01b、UI-14、UI-15 の取引先名や products 系一覧を stale にしない。 |
 | SPEC-SUP-D8 | 新規 wire は rename / merge / usage 付き一覧の 3 command。既存 list / create wire は変更しない。 | 既存画面を壊さず UI-15 に必要な境界だけを追加する。 |
 | SPEC-SUP-D9 | navigation system エリアに `ui-15` を登録し、route 到達テストを持つ。 | route 実装だけ存在して operator が到達できない failure class を防ぐ。 |
+| SPEC-SUP-D11 | 取引先追加の成功時は DSR-19 に適合する完了 toast を出し、返された取引先と追加操作の完了を示す。 | 改名・統合には完了通知がある一方、追加だけ通知がなく、同じ管理画面内の操作結果が非対称だった。 |
 
 ## 78.3 画面構成
 
@@ -76,7 +77,7 @@ usage 件数は `N件` と単位を付けて表示する。0 件も `0件` と�
 1. 一覧上部の `新しい取引先を追加` で dialog を開く
 2. `取引先名` を入力し、保存時に UI で trim する。空文字は field error `取引先名を入力してください` とし CMD を呼ばない
 3. `commands.createSupplier(name)` を呼ぶ。同名なら既存行が返る既存契約を維持する
-4. 成功後は UI-15 の usage 付き一覧だけを再取得し、返された行が一覧に見える状態へ戻す。既存 inline 追加と同型のため D-052 entry は増やさない
+4. 成功後は UI-15 の usage 付き一覧だけを再取得し、返された行が一覧に見える状態へ戻す。DSR-19 に適合する完了 toast で返された取引先と追加操作の完了を示し、§78.6 / §78.7 の完了通知と対称にする。duration と toast id は DSR-19 の階層・適用基準に従う。runtime への追加は後続 R3 で行う。既存 inline 追加と同型のため D-052 entry は増やさない
 5. 失敗時は dialog と入力値を保持し、field error または再試行可能な Alert を dialog 内に表示する
 
 ## 78.6 インライン改名（REQ-107 / SPEC-SUP-D3 / D5）
@@ -139,6 +140,7 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 - `src/config/navigation.ts` のシステム管理エリアに `id: "ui-15"` / `to: "/settings/suppliers"` / `status: "active"` の entry を追加する
 - `navigation.test.ts` に REQ-107 を付け、サイドバーから `/settings/suppliers` へ到達できる test を追加する
 - RTL / Rust tests は REQ-106 / REQ-107 / SPEC-SUP-D1〜D10 を紐付け、追加、改名、統合、usage 件数、失敗時入力保持、C21/C22 invalidation を検証する
+- 後続 R3 の RTL は SPEC-SUP-D11 を紐付け、追加成功時の完了 toast と DSR-19 の duration / toast id 基準を検証する
 - human visual confirmation: Windows native で UI-15 への到達、追加 happy path、インライン改名 happy path、統合 happy path、段階 2 の影響件数文言と不可逆文言を目視確認する
 
 ## 78.11 テスト観点
@@ -150,6 +152,7 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 - SPEC-SUP-D6: 統合が 2 段階で、影響件数、source が一覧から削除されること、商品・入庫記録が target へ引き継がれること、不可逆性の各文言を省略できない
 - SPEC-SUP-D7: C21 / C22 が予約された全 consumer を invalidate し、片側の supplier cache だけを更新しない
 - SPEC-SUP-D8: existing list / create の wire が不変で、新規 3 command と DTO 2 種だけが generated bindings に追加される
+- SPEC-SUP-D11: 追加成功時に返された取引先と完了を示す toast が出て、duration / toast id が DSR-19 の基準に適合する
 - operator UI: Loading / Empty / Error、件数、validation、完了通知を日本語 text / role / value で assert し、色 class だけの test にしない
 
 ## 78.12 Deferred
@@ -162,6 +165,7 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #22 DSR-19 design sync | SPEC-SUP-D11 を追加し、取引先追加成功の完了 toast 契約を正本化（runtime は後続 R3）。 |
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §78.4 の `SupplierWithUsage` field 表記を実 wire（snake_case、`product_count` / `receiving_record_count`）に是正。 |
 | 2026-08-30 | UI 表示磨き batch 第 2 弾 design sync | 統合 stage 2 に source の一覧削除と商品・入庫記録の引き継ぎ文言を明記。 |
 | 2026-08-25 | 取引先管理 design-first | SPEC-SUP-D1〜D10、REQ-106/107、UI-15 の追加・改名・統合契約を新設。 |
