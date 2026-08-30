@@ -94,7 +94,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 1. **router 生成の test 可能化**: `main.tsx` の `createRouter` 呼出しを `src/lib/app-router.ts`（新設）へ切り出し、`main.tsx` は import + render のみにする。router options の契約 test（T9）と onRendered 購読の配線を同 module に置くため。
 2. **scrollRestoration 導入**（(b)(d)）: `app-router.ts` の `createRouter` へ `scrollRestoration: true`、`getScrollRestorationKey: (location) => location.href`、`scrollToTopSelectors: ['[data-scroll-restoration-id="main"]']` を設定。
 3. **container の安定識別**（(c)）: `RootLayout.tsx` の `<main>` へ `data-scroll-restoration-id="main"` を付与。
-4. **分類④ one-shot 機構**（D-C、(g)）: `src/lib/main-nav-scroll.ts` 新設 — `markMainNavScroll(targetPath)`（遷移先識別子付き flag set、再 mark は上書き）と `consumeMainNavScroll()`（one-shot 消費、戻り値は記録した識別子）の in-memory module（UI-11b-D11 と同型 + target 記録）。`app-router.ts` で router 生成直後に `router.subscribe("onRendered", ...)` を登録し、**flag を消費（残留させない）した上で、記録識別子が現 location と一致する時のみ** `<main>`（`[data-scroll-restoration-id="main"]`）を instant（behavior 指定なし）で先頭 scroll する。不一致時は消費のみ行い scroll しない（同一 href 再クリックの残留 flag が後続の無関係な遷移で誤発火しない — P2-1 対策）。mark は主ナビ **3 経路**（`SidebarLink.tsx` の `<Link>` onClick / `ActiveMatchSidebarLink` の click handler / `SidebarHeader.tsx` の店名ロゴ `<Link to="/">` onClick）で呼ぶ。
+4. **分類④ one-shot 機構**（D-C、(g)）: `src/lib/main-nav-scroll.ts` 新設 — `markMainNavScroll(targetPath)`（遷移先識別子付き flag set、再 mark は上書き）と `consumeMainNavScroll()`（one-shot 消費、戻り値は記録した識別子）の in-memory module（UI-11b-D11 と同型 + target 記録）。`app-router.ts` で router 生成直後に `router.subscribe("onRendered", ...)` を登録し、**flag を消費（残留させない）した上で、記録識別子が現 location と一致する時のみ** `<main>`（`[data-scroll-restoration-id="main"]`）を instant（behavior 指定なし）で先頭 scroll する。不一致時は消費のみ行い scroll しない（同一 href 再クリックの残留 flag が後続の無関係な遷移で誤発火しない — P2-1 対策）。mark は主ナビ **3 経路**（`SidebarLink.tsx` の `<Link>` onClick / `ActiveMatchSidebarLink` の click handler / `SidebarHeader.tsx` の店名ロゴ `<Link to="/">` onClick）で呼ぶ。**識別子の比較粒度は search を含む完全 href**（`router.latestLocation.href` と同粒度。pathname 粒度は `/stock` を search 差分で共有する主ナビ 2 項目〈`navigation.ts:89` 在庫照会 / `:200-202` 在庫少一覧〉を区別できないため不可 — Plan Review round 2 P2 採用）。
 5. **DSR-17 (g) への spike 結果追記**（docs、PR #21 Final Review P3 裁定の履行）: `resetScroll` 候補の不成立確定（cache hit 復元が常に先行する実装順序、版数 1.168.15）、function 化の「④には不成立 / (h) 除外には可」、目印 + 一意 key の set/get 非対称による不成立、採用機構 = app 層 one-shot flag + `onRendered` 購読（subscriber 挿入順保証が根拠）を、実現候補 3 行の置換 + 注記として追記。review-checklist 対応行の変更は不要（カテゴリ 9 既存行が 3+1 分類を既に参照）。
 6. **契約 test 追加**: Matrix T1〜T10。既存 test の削除・無効化なし（(h) の HomePage negative / page-scroll 既存 test は無変更 green が AC）。
 
@@ -246,7 +246,7 @@ Contract ID: SPEC-DSR17-SCROLL-RESTORATION-2026-08-31
 - router は `scrollRestoration` 有効 + `location.href` key + `[data-scroll-restoration-id="main"]` の先頭 scroll 対象で構成する
 - `<main>`（唯一の scroll container）は `data-scroll-restoration-id="main"` で安定識別する
 - returnTo push 戻り（DSR-18）で遷移元の `<main>` scroll 位置が復元される。cache miss 時は `<main>` 先頭
-- sidebar 主ナビゲーション操作（SidebarLink 2 経路 + SidebarHeader 店名ロゴの 3 経路）による遷移は、同一 href の cache hit が残っていても常に先頭表示する（app 層の遷移先識別子付き one-shot flag + `onRendered` 購読、復元より後に実行。flag は消費が必ず先行し、識別子不一致時は scroll しない）
+- sidebar 主ナビゲーション操作（SidebarLink 2 経路 + SidebarHeader 店名ロゴの 3 経路）による遷移は、同一 href の cache hit が残っていても常に先頭表示する（app 層の遷移先識別子付き one-shot flag + `onRendered` 購読、復元より後に実行。flag は消費が必ず先行し、識別子不一致時は scroll しない。識別子は search を含む完全 href 粒度）
 - `scrollPageToTop()`（分類①③）と HomePage one-shot（UI-11b-D11/D12）は無変更で併存する
 - route component の mount を契機とする無条件 scroll は追加しない
 
@@ -291,6 +291,10 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
   - P1-1 **採用**: 主ナビに `SidebarHeader.tsx:12-17` の店名ロゴ `<Link to="/">`（3 経路目）が漏れていた。Coordinator が実読 + layout 層全 file の rg で 3 経路全数を確定し、Scope 4 / AC4 / Spec Contract / Ledger / Review Focus / L3-3 / Matrix T3 へ反映。
   - P1-2 **採用**: test 環境を jsdom と誤記（実際は happy-dom、`vitest.config.ts:11` — Coordinator 実読確認）。happy-dom は `Element.scrollTo()` 同期セットと sessionStorage をサポートするため、T10 の自動化範囲を拡大し Residual Gaps を視認干渉 + WebView2 実機に絞る再判定を実施。
   - P2-1 **採用**: 同一 href への遷移では `onRendered` が発火しない（`Match.js:113-114` の href gate — Coordinator 実読確認）ため、単純 boolean flag では active 項目再クリックの残留 flag が後続遷移で誤発火する。D-C を「遷移先識別子付き one-shot（消費先行 + target 一致時のみ scroll）」へ改訂し、AC9 / T11 / M6 / L3-3b を追加。
+- round 2（同 reviewer、対象 = 是正 commit `5ee1855`）: P1 0 / P2 3 / P3 0。round 1 是正は反例なしと確認（残留 flag の無害化は「残留 flag の target は残留時点の現 href に等しく、次の `onRendered` は href 変化時のみ発火するため定義上 target と一致し得ない」という構造的証明つき）。
+  - P2-2 **採用**: 識別子の比較粒度が未規定 — `/stock` を search 差分で共有する主ナビ 2 項目（`navigation.ts:89/:200-202`、Coordinator 実読確認）を pathname 粒度は区別できない。「search を含む完全 href」を D-C / Spec Contract / T2 に明記。
+  - P2-3 **採用**: mutation 表に SidebarHeader 経路の欠落 — M7 を追加（7 件化）。
+  - P2-4 **採用**: Matrix「Mutation-style Adequacy Questions」節の旧前提 2 行（片経路 / boolean consume）を新セマンティクスへ更新（Coordinator の round 1 sweep 漏れ）。
 
 ## 発注・レビュー段取り
 

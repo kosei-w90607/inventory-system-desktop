@@ -34,7 +34,7 @@ Risk: R3
 | ID | 対象 | 種別 | 検証内容 / oracle | Cite |
 |---|---|---|---|---|
 | T1 | getScrollRestorationKey unit | 新規 | `state.__TSR_key` を持つ location を与えても戻り値が `location.href` と完全一致（literal 期待値）。href が異なる 2 location で異なる key | DSR-17 (b) / D-A |
-| T2 | main-nav-scroll module unit | 新規 | `markMainNavScroll(target)` 後の `consumeMainNavScroll()` が記録した識別子を 1 回だけ返し、2 回目以降と未 mark 時は「なし」を返す（one-shot 消費）。再 mark は上書き | D-C |
+| T2 | main-nav-scroll module unit | 新規 | `markMainNavScroll(target)` 後の `consumeMainNavScroll()` が記録した識別子を 1 回だけ返し、2 回目以降と未 mark 時は「なし」を返す（one-shot 消費）。再 mark は上書き。識別子は search を含む完全 href 粒度（`/stock` と `/stock?status=low` を別識別子として扱う case を含める） | D-C |
 | T3 | 主ナビ flag 配線（3 経路） | 新規 | `SidebarLink` の `<Link>` 経路 / `ActiveMatchSidebarLink` 経路 / `SidebarHeader` 店名ロゴ経路それぞれの click で対応する遷移先識別子の flag が set される（**3 経路を個別 test に分ける** — 経路漏れ mutation の検出） | D-C / (g) |
 | T4 | onRendered handler | 新規 | flag 消費時に `[data-scroll-restoration-id="main"]` 要素へ先頭 scroll（scrollTo spy: top 0 / behavior が smooth でない）。flag なしで handler が scroll を呼ばない（negative） | D-C |
 | T5 | 分類④ cache hit 上書き | 新規 | T10 harness 上で、cache hit が成立する href へ主ナビ flag 経由で再訪 → `<main>` scrollTop が 0（復元値でない）。**cache hit が実在すること自体を前段 assert する**（hit なしで green になる空検証の排除） | (g) / PR #21 P3 |
@@ -91,11 +91,13 @@ Risk: R3
 - getScrollRestorationKey を削除（既定 key に戻す）したら？ → T10 の復元 case が fail（push 戻りが miss になる）。
 - `<main>` の data 属性を外したら？ → T6 が fail、T10 の復元 / miss fallback も fail。
 - scrollToTopSelectors を外したら？ → T10 の miss fallback case（`<main>` scrollTop 0 確認）が fail。
-- SidebarLink 片経路の mark を外したら？ → T3 の該当経路 test が fail。
-- consume を常に false / 常に true にしたら？ → T2（one-shot 消費）と T4（negative）が fail。
+- 主ナビ 3 経路（SidebarLink `<Link>` / `ActiveMatchSidebarLink` / SidebarHeader 店名ロゴ）のいずれかの mark を外したら？ → T3 の該当経路 test が fail。
+- consume を「常になし」/「消費せず残す」にしたら？ → T2（one-shot 消費）と T4（negative）が fail。
+- target 一致判定を外して消費すれば常に scroll する boolean 劣化にしたら？ → T11 が fail。
+- 識別子を pathname 粒度に落としたら？ → T2 の `/stock` vs `/stock?status=low` case が fail。
 - onRendered 購読を外したら？ → T4 / T5 が fail。
 
-## 必須 mutation 注入（Final Review で clean tree 独立再実測、6 件）
+## 必須 mutation 注入（Final Review で clean tree 独立再実測、7 件）
 
 | # | 注入 | kill 期待 |
 |---|---|---|
@@ -105,6 +107,7 @@ Risk: R3
 | M4 | `ActiveMatchSidebarLink` 経路の `markMainNavScroll()` 呼出しを削除 | T3（該当経路） |
 | M5 | onRendered handler の flag 消費分岐を常に「なし」化 | T4 / T5 |
 | M6 | handler の target 一致判定を除去（消費すれば常に scroll する boolean 劣化） | T11 |
+| M7 | `SidebarHeader` 店名ロゴ経路の `markMainNavScroll()` 呼出しを削除 | T3（該当経路） |
 
 ## Residual Test Gaps
 
