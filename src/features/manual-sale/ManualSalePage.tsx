@@ -3,7 +3,7 @@
 // UI-04 手動販売出庫 page。設計: docs/function-design/62-ui-manual-sale.md
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, Hand, RotateCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -130,6 +130,7 @@ function clearStaleRowErrors(
 export function ManualSalePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const returnTo = useRouterState({ select: (state) => state.location.href });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [initialValues, setInitialValues] = useState<ManualSaleFormValues>(createEmptyForm);
   const [values, setValues] = useState<ManualSaleFormValues>(initialValues);
@@ -376,6 +377,7 @@ export function ManualSalePage() {
                 <Link
                   to="/inventory/manual-sale/records/$recordId"
                   params={{ recordId: String(result.sale_id) }}
+                  search={{ returnTo }}
                 >
                   <Eye aria-hidden="true" />
                   詳細を見る
@@ -741,6 +743,7 @@ export function ManualSalePage() {
                         <Link
                           to="/inventory/manual-sale/records/$recordId"
                           params={{ recordId: String(record.record_id) }}
+                          search={{ returnTo }}
                         >
                           <Eye aria-hidden="true" />
                           詳細を見る

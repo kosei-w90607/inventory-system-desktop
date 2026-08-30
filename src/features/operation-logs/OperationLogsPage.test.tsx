@@ -18,12 +18,17 @@ const listTypes = vi.mocked(commands.listLogOperationTypes);
 
 type SearchChange = (updater: (previous: OperationLogsSearch) => OperationLogsSearch) => void;
 
-function renderPage(search: OperationLogsSearch = {}, onSearchChange = vi.fn<SearchChange>()) {
+function renderPage(
+  search: OperationLogsSearch = {},
+  onSearchChange = vi.fn<SearchChange>(),
+  initialPath = "/settings/logs",
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   renderWithRouter(
     <QueryClientProvider client={client}>
       <OperationLogsPage search={search} onSearchChange={onSearchChange} />
     </QueryClientProvider>,
+    initialPath,
   );
   return onSearchChange;
 }
@@ -45,6 +50,7 @@ function renderStatefulPage(initialSearch: OperationLogsSearch = {}) {
     <QueryClientProvider client={client}>
       <StatefulPage />
     </QueryClientProvider>,
+    "/settings/logs",
   );
 }
 const log = (
@@ -797,6 +803,41 @@ describe("UI-11c REQ-902", () => {
     expect(screen.getAllByText("関連記録ID")).toHaveLength(1);
   });
 
+  it("T9 UI-11c-D16: related records carry every current investigation search parameter", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [log('{"record_type":"receiving_record","record_id":7}')],
+        total_count: 1,
+        page: 4,
+        per_page: 20,
+      },
+    });
+    renderPage(
+      {
+        start_date: "2026-07-01",
+        end_date: "2026-07-31",
+        operation_type: "backup_create",
+        page: 4,
+      },
+      vi.fn<SearchChange>(),
+      "/settings/logs?start_date=2026-07-01&end_date=2026-07-31&operation_type=backup_create&page=4",
+    );
+    await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
+
+    const link = screen.getByRole("link", { name: "関連記録を見る" });
+    const detailUrl = new URL(link.getAttribute("href") ?? "", "https://app.invalid");
+    expect(detailUrl.pathname).toBe("/inventory/receiving/records/7");
+    const returnTo = detailUrl.searchParams.get("returnTo");
+    expect(returnTo).not.toBeNull();
+    const returnUrl = new URL(returnTo ?? "", "https://app.invalid");
+    expect(returnUrl.pathname).toBe("/settings/logs");
+    expect(returnUrl.searchParams.get("start_date")).toBe("2026-07-01");
+    expect(returnUrl.searchParams.get("end_date")).toBe("2026-07-31");
+    expect(returnUrl.searchParams.get("operation_type")).toBe("backup_create");
+    expect(returnUrl.searchParams.get("page")).toBe("4");
+  });
+
   it("handles null and invalid detail JSON safely", async () => {
     listLogs.mockResolvedValue({
       status: "ok",
@@ -834,7 +875,7 @@ describe("UI-11c REQ-902", () => {
     expect(screen.getByText(/他 4 件のフィールド/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "関連記録を見る" })).toHaveAttribute(
       "href",
-      "/inventory/receiving/records/7",
+      "/inventory/receiving/records/7?returnTo=%2Fsettings%2Flogs",
     );
     await userEvent.setup().click(screen.getByText("技術情報（JSON）"));
     expect(screen.getByText(/以降は長すぎるため省略しました/)).toBeInTheDocument();
@@ -873,7 +914,7 @@ describe("UI-11c REQ-902", () => {
     await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
     expect(screen.getByRole("link", { name: "関連記録を見る" })).toHaveAttribute(
       "href",
-      "/inventory/receiving/records/1",
+      "/inventory/receiving/records/1?returnTo=%2Fsettings%2Flogs",
     );
   });
 

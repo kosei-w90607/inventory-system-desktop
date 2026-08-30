@@ -39,6 +39,8 @@ vi.mock("@tanstack/react-router", () => ({
     const href = `${path}${query}`;
     return <a href={href}>{children}</a>;
   },
+  useRouterState: ({ select }: { select: (state: { location: { href: string } }) => unknown }) =>
+    select({ location: { href: "/inventory/return" } }),
 }));
 
 vi.mock("sonner", () => ({
@@ -157,7 +159,7 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     expect(screen.getAllByText(registerUnprocessedStockDescription).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
       "href",
-      "/inventory/return/records/30",
+      "/inventory/return/records/30?returnTo=%2Finventory%2Freturn",
     );
     await waitFor(() => {
       expectExactInvalidations(
@@ -196,7 +198,7 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     );
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
       "href",
-      "/inventory/return/records/30",
+      "/inventory/return/records/30?returnTo=%2Finventory%2Freturn",
     );
   });
 

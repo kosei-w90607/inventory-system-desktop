@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, ScrollText } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
@@ -112,7 +112,7 @@ function parseIntegrityAdjustments(
   return adjustments;
 }
 
-function Detail({ log }: { log: OperationLog }) {
+function Detail({ log, returnTo }: { log: OperationLog; returnTo: string }) {
   const detail = parseDetail(log.detail_json);
   if (detail.kind === "empty") return <p>詳細情報はありません</p>;
   const raw = detail.kind === "object" ? JSON.stringify(detail.parsed, null, 2) : detail.raw;
@@ -184,7 +184,7 @@ function Detail({ log }: { log: OperationLog }) {
       )}
       {relatedRoute && recordId && (
         <Button asChild variant="outline" size="sm">
-          <Link to={relatedRoute} params={{ recordId: String(recordId) }}>
+          <Link to={relatedRoute} params={{ recordId: String(recordId) }} search={{ returnTo }}>
             関連記録を見る
           </Link>
         </Button>
@@ -218,6 +218,7 @@ export function OperationLogsPage({
   search: OperationLogsSearch;
   onSearchChange: (updater: (prev: OperationLogsSearch) => OperationLogsSearch) => void;
 }) {
+  const returnTo = useRouterState({ select: (state) => state.location.href });
   const now = new Date();
   const normalized = normalizeOperationLogsSearch(search, now);
   const invalidRange =
@@ -506,7 +507,7 @@ export function OperationLogsPage({
                     {expanded === item.id && (
                       <TableRow id={`log-detail-${String(item.id)}`}>
                         <TableCell colSpan={4}>
-                          <Detail log={item} />
+                          <Detail log={item} returnTo={returnTo} />
                         </TableCell>
                       </TableRow>
                     )}

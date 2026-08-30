@@ -25,6 +25,7 @@ import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
+import { normalizeReturnTo } from "@/lib/return-to";
 import { formatDateTime, formatRecordStatus } from "./types";
 
 export interface ReturnRecordDetailPageProps {
@@ -59,13 +60,8 @@ function hasNote(value: string | null | undefined): boolean {
   return (value?.trim() ?? "") !== "";
 }
 
-function normalizeReturnTo(value: string | undefined): string {
-  if (value !== undefined && value.startsWith("/") && !value.startsWith("//")) return value;
-  return "/inventory/records";
-}
-
 export function ReturnRecordDetailPage({ recordId, returnTo }: ReturnRecordDetailPageProps) {
-  const backHref = normalizeReturnTo(returnTo);
+  const backHref = normalizeReturnTo(returnTo, "/inventory/records");
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.returnDetail(recordId),
     queryFn: () =>

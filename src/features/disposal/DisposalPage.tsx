@@ -3,7 +3,7 @@
 // UI-05 廃棄・破損 page。設計: docs/function-design/64-ui-disposal.md
 
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, RotateCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -125,6 +125,7 @@ function clearStaleRowErrors(
 
 export function DisposalPage() {
   const queryClient = useQueryClient();
+  const returnTo = useRouterState({ select: (state) => state.location.href });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const isFormLockedRef = useRef(false);
   const [initialValues, setInitialValues] = useState<DisposalFormValues>(createEmptyForm);
@@ -684,6 +685,7 @@ export function DisposalPage() {
                       <Link
                         to="/inventory/disposal/records/$recordId"
                         params={{ recordId: String(item.id) }}
+                        search={{ returnTo }}
                       >
                         <Eye aria-hidden="true" />
                         詳細を見る
