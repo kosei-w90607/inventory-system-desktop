@@ -14,6 +14,7 @@
 
 ## 直近の完了
 
+- [x] **PR #24 DSR-17 scroll 位置復元 + 主ナビ先頭表示（scrollRestoration 導入）**（R3、PR #24 @ inventory-system-desktop squash merge `f1d5590`、2026-08-31）: TanStack Router `scrollRestoration` 導入（href key + `<main>` data 属性 + miss 先頭 fallback）+ 分類④主ナビ 3 経路の遷移先識別子付き one-shot 機構 + D-E（初回 clamp 時の遅延再適用 = cold 安全網）+ **D-F 根本是正**（mount focus 3 site の `preventScroll` 化 — L3 で特定された「mount autofocus の native scroll が復元を上書き」への直撃是正）+ DSR-17 追記（(g) spike 結果 / (i) / 禁止行拡張）。owner Windows native L3 は 4 巡（clamp 系仮説 2 回の誤診を owner 実機計測が是正、経緯は archived packet の append-only 記録）で全項目 PASS。証跡: [archived Packet](archive/plans/2026-08-31-dsr17-scroll-restoration-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md)
 - [x] **PR #23 DSR-18 戻り導線 returnTo 8 site + 共通 helper 実装**（R3、PR #23 @ inventory-system-desktop squash merge `16b73d8`、2026-08-31）: gap 8 site（保存結果 3 + recent list 4 + 操作ログ関連記録 1）へ `returnTo` 付与（`useRouterState` location href 方式）+ detail 6 page の `normalizeReturnTo` を `src/lib/return-to.ts`（DSR-15 prefix 検証 + fallback 必須引数）へ集約 + 契約 test（往復 end-to-end + detail 6 page 全数 negative）。owner Windows native L3 = 到達可能 7 site 全 PASS、操作ログ 1 site は既知 producer gap により waiver 裁定 A（実データ L3 は producer 実効化 R3 の Human Gate へ義務引き継ぎ、backlog 参照）。証跡: [archived Packet](archive/plans/2026-08-30-dsr18-returnto-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-30-dsr18-returnto-impl.md)
 - [x] **PR #22 成功 feedback / destructive dialog 横断規約 Design Phase**（R2 docs-only、PR #22 @ inventory-system-desktop squash merge `8b744f1`、2026-08-30）: DSR-19「作成・保存成功の feedback 規約」（toast 最低保証 + 併用基準〈適合 4 形 + R3 是正 2 件〉+ duration 3s/5s/8s + id 規約 + DSR-03 refine）と DSR-20「destructive 確認 dialog の配置・dismiss 規約」（variant 統一 + 並び順・3 ボタン先例 + cancel ブリッジ本則と硬化条件 + 暗黙硬化禁止 + Cancel 文言基準）を新設。SPEC-SUP-D11 / SPEC-PRV-D8 追記 + catalog ⑦ duration drift 是正 + 理論引用（『UXデザインの法則』第 2 版）を Why 限定で正本化。runtime 是正は後続 R3。証跡: [archived Packet](archive/plans/2026-08-30-feedback-dialog-conventions-design.md)
 - [x] **PR #21 DSR-17 拡張 Design Phase（3+1 分類）**（R2 docs-only、PR #21 @ inventory-system-desktop squash merge `22504af`、2026-08-30）: 分類④「主ナビゲーションは遷移先先頭」新設（owner 所感 PR #17 comment 起源、mount 一律禁止と発火契機で両立）+ 分類②の実装方式契約 (a)〜(h) 確定（push 戻り + href key + `<main>` 復元 + 競合優先順位 + R3 Probe / L3 義務、TanStack Router 1.168.23 の `__TSR_key` drift を版数付き記録）+ review-checklist カテゴリ 9 同期。R3 着手順 = DSR-18 R3 先行 → scroll 復元 R3。証跡: [archived Packet](archive/plans/2026-08-30-scroll-policy-extension-design.md)
@@ -37,7 +38,7 @@
 
 ## 次の行動
 
-- [ ] **scroll 復元 R3**（R3 キュー ②、owner 裁定 2026-08-30 = ① → ② → ③。① DSR-18 R3 は PR #23 で完了）: TanStack Router `scrollRestoration` 導入（href key + `<main>` 復元 + 分類④ one-shot 機構〈起票時 spike で確定〉+ DSR-17 (g) spike 結果追記）。[active packet](plans/2026-08-31-dsr17-scroll-restoration-impl.md) / [Matrix](plans/test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md)
+- [ ] **R3 キュー残り 2 件の挟み方選定**（owner と選定）: ③ DSR-19/20 runtime batch（toast 2 件 + destructive variant 統一 + 暗黙硬化の明示化 + cancel 文言）と、操作ログ producer 実効化 R3（PR #23 L3-3 waiver の義務 L3 込み、backlog 参照）。①②は PR #23 / #24 で完了
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -74,7 +75,6 @@
 - 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` を追加するか（現行 UI-05-D17 は「保存結果に link なし」を契約化済み。追加には UI-05-D17 改訂の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源。歴史的非対称であり表示すべきでない業務理由は source docs に見当たらない、が owner 観察）。
 - 4 作業画面の保存結果 panel を詳細往復時だけ one-shot 復元する案（現行は詳細 → 戻りで panel が消える。復元条件・サイドバー再訪との区別は DSR-03/DSR-19 系の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
-- hub 等の詳細戻り scroll 位置復元は design 確定済み（PR #21、DSR-17 を 3+1 分類へ拡張: 分類④「主ナビゲーションは遷移先先頭」+ 分類②の href key / `<main>` 復元方式契約）。owner 裁定の R3 着手順（① DSR-18 → ② scroll 復元 → ③ DSR-19/20 runtime）のうち ① は PR #23 で完了。次は TanStack Router `scrollRestoration` の Contract Probe 付き scroll 復元 R3（「次の行動」参照）。
 - `app-router.ts` top-level の router singleton 副作用（test が named export だけ import しても実 router が構築されグローバル scroll/pagehide listener が登録される。現状は test 側の一意 query で cache 衝突を回避済みで実害なし。router 関連改修時に遅延生成 or test util 分離を検討 — PR #24 Final Review P3-2、2026-08-31）。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
