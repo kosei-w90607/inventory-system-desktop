@@ -34,6 +34,7 @@
 
 ## 次の行動
 
+- [ ] **PR #21 DSR-17 拡張 Design content**（R2 docs-only、Phase `implementing`）: [active Plan Packet](plans/2026-08-30-scroll-policy-extension-design.md)。content commit 完了後は Coordinator が L1 と Final Review へ進める。
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -69,7 +70,7 @@
 - CsvImport / Stocktake detail page の静的入口未整備（PR #20 packet 起票時実測起源）: `/csv-import/records/$importId` / `/stocktake/records/$stocktakeId` は横断 hub 経由のみ到達可能で、専用一覧などの静的入口は未整備。入口設計は実需発生時の別 change とする。
 - 操作ログ関連記録の producer 0 件（74 §74.9 の link UI はあるが record_type 書込み producer が 0 件で実データ発火 0。上記戻り gap と二重 gap）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
-- hub 等の詳細戻り scroll 位置復元（DSR-17 分類②の実装。TanStack Router `scrollRestoration` の検証 spike 付き別 change、規範は DSR-17 で確定済み 2026-08-29。owner L3 2026-08-30 所感の「主ナビゲーションは遷移先先頭」新分類も同じ design-first で DSR-17 拡張として統合裁定する）。
+- hub 等の詳細戻り scroll 位置復元は design 確定済み（PR #21、DSR-17 を 3+1 分類へ拡張: 分類④「主ナビゲーションは遷移先先頭」+ 分類②の href key / `<main>` 復元方式契約）。owner 裁定の R3 着手順は、DSR-18 R3（`returnTo` 8 site + 共通 helper）を先行し、その後に TanStack Router `scrollRestoration` の Contract Probe 付き scroll 復元 R3 とする。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
 - 取引先追加成功 toast の横断規約（新規作成成功の feedback を toast にするか否かの画面横断規約が未定義 — owner L3 2026-08-30 所感起源）。

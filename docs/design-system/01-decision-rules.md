@@ -285,11 +285,13 @@ font-size を全体一律に底上げする再設計は本ルールの scope 外
 
 ---
 
-## DSR-17 画面遷移と scroll の 3 分類
+## DSR-17 画面遷移と scroll の 3+1 分類
 
-**ルール**: 画面遷移時の scroll は、①同一画面内の状態遷移、②route 遷移を伴う一覧→詳細→戻り、③操作完了に伴う Home への programmatic navigate の 3 分類で決める。全画面へ無条件に適用する mount 一律 scroll は禁止する。
+**ルール**: 画面遷移時の scroll は、①同一画面内の状態遷移、②route 遷移を伴う一覧→詳細→戻り、③操作完了に伴う Home への programmatic navigate の 3 分類に、④主ナビゲーション操作による route 遷移を加えた 3+1 分類で決める。分類④は遷移先を常に先頭表示する。発火契機は sidebar 等の主ナビゲーション操作であり、route component の mount ではない。したがって、全画面へ無条件に適用する mount 一律 scroll の禁止と両立する（分類④の起源: owner 所感、PR #17 comment 5463874988）。
 
-**Why**: 本アプリは persistent な `<main>`（`src/components/layout/RootLayout.tsx`、RootLayout 構成の正本は [52-ui-shared-layout.md §52.1](../function-design/52-ui-shared-layout.md#521-コンポーネント構成)）が唯一の scroll container であり、TanStack Router の `scrollRestoration` は未設定である。route 遷移で `<main>` は unmount されないため scroll 位置が持ち越され、stale scroll は全画面共通の構造事象になる。一方、mount 一律の先頭 scroll は一覧→詳細→戻りの位置を失わせることが PR #15 Amendment 2 で実証され、revert 済みである。操作結果の可視性と戻り動線の連続性を両立するには、遷移の契機ごとに発火条件を分ける必要がある。
+**Why（app 契約の背景）**: 本アプリは persistent な `<main>`（`src/components/layout/RootLayout.tsx`、RootLayout 構成の正本は [52-ui-shared-layout.md §52.1](../function-design/52-ui-shared-layout.md#521-コンポーネント構成)）が唯一の scroll container である。route 遷移で `<main>` は unmount されないため、scroll 位置を明示的に扱わないと stale scroll が全画面へ持ち越される。一方、mount 一律の先頭 scroll は一覧→詳細→戻りの位置を失わせることが PR #15 Amendment 2 で実証され、revert 済みである。操作結果の可視性、戻り導線の連続性、主ナビゲーションの予測可能な初期表示を両立するには、mount ではなく遷移の契機ごとに発火条件を分ける必要がある。
+
+**Why（library 観測事実、TanStack Router 1.168.23）**: 現行 app は `scrollRestoration` 未設定である。`@tanstack/react-router` 1.168.23 の型定義 JSDoc は既定 key を `location.href` と説明するが、実装既定は `location.state.__TSR_key || location.href` である。`__TSR_key` は history entry ごとに新規発行されるため、DSR-18 が維持する `<Link>` の push 戻りでは同じ href へ戻っても既存 cache key と一致せず、既定のままでは位置を復元できない。また cache miss 時の先頭 scroll は `window.scrollTo` と `scrollToTopSelectors` に委ねられ、既定 selector は `['window']` なので唯一の scroll container `<main>` には効かない。cache は sessionStorage（`tsr-scroll-restoration-v1_3`）へ `pagehide` 時に保存され、library は `window.history.scrollRestoration = "manual"` を設定する。これらは版数に依存する観測事実であり、下記の app 契約とは分離し、router 更新時と後続 R3 Contract Probe で再検証する。
 
 **判定フロー / 具体例**:
 
@@ -300,18 +302,30 @@ scroll を伴う遷移はどれか？
 │      （DSR-03「状態遷移後の可視性」/ UI-08-D6 を参照）
 ├─ ② route 遷移を伴う一覧→詳細→戻り
 │    → 戻り時の scroll 位置を復元する（先頭 scroll ではない）
-│      現時点の未実装は許容し、TanStack Router scrollRestoration の
-│      検証 spike を伴う別 change で実装する
-└─ ③ 操作完了に伴う Home への programmatic navigate
-     → one-shot の in-memory flag を消費した時だけ Home を先頭表示で開始する
-       （UI-11b-D11 型。通常の Home 到達では scroll しない）
+├─ ③ 操作完了に伴う Home への programmatic navigate
+│    → one-shot の in-memory flag を消費した時だけ Home を先頭表示で開始する
+│      （UI-11b-D11 / UI-11b-D12 型。通常の Home 到達では scroll しない）
+└─ ④ sidebar 等の主ナビゲーション操作による route 遷移
+     → 復元 cache の有無にかかわらず遷移先を先頭表示する
+       （発火契機は navigation 操作。route component の mount ではない）
 ```
 
-分類①の結果表示契約は DSR-03「状態遷移後の可視性」と UI-08-D6 を正本とし、本節では重複定義しない。分類③の現行 producer は復元成功 flow だけであり、実装時は flag なしの通常 Home 到達で scroll しない negative test を必須とする。将来、操作完了後に Home へ遷移する同型 producer を追加する場合も、通常到達と区別できる one-shot flag の消費時だけ発火させる。
+分類①の結果表示契約は DSR-03「状態遷移後の可視性」と UI-08-D6 を正本とし、本節では重複定義しない。分類③の現行 producer は復元成功 flow だけであり、将来、操作完了後に Home へ遷移する同型 producer を追加する場合も、通常到達と区別できる one-shot flag の消費時だけ発火させる。
+
+**分類②の実装方式契約（app 契約）**:
+
+- **(a) push 戻りを維持する**: 戻り導線は DSR-18 の `returnTo` を使う `<Link>` push 遷移のままとし、`history.back()` へ変更しない。`returnTo` が遷移元 href を再現し、href key の scroll 復元がその位置を再現する相互補完関係とする。
+- **(b) href key を明示する**: TanStack Router の `scrollRestoration` 導入時は `getScrollRestorationKey` を上書きし、`location.href` を key にする。1.168.23 の実装既定 `__TSR_key` に依存しない。
+- **(c) container を安定識別する**: 唯一の scroll container `<main>` に `data-scroll-restoration-id` を付与する。CSS 階層や class の位置に依存した cache key を使わない。
+- **(d) `<main>` を先頭 scroll 対象にする**: `scrollToTopSelectors` へ `<main>` の selector を設定し、復元 miss 時と分類④の先頭 scroll が `window` ではなく実際の scroll container に作用するようにする。
+- **(e) event-driven 経路を併存させる**: 既存の `scrollPageToTop()` は分類①・③の正本実装として残し、router の復元機構へ吸収しない。
+- **(f) R3 で実機前提を検証する**: 後続 R3 は是正を仮適用した Contract Probe と Windows native L3 の両方で、WebView2 の sessionStorage 挙動、cache hit / miss、`scrollPageToTop()` の smooth scroll と router の位置決めの干渉を検証する。いずれかが fail した場合は、本方式を固定せず DSR-17 の方式選定へ戻る revisit trigger とする。
+- **(g) 分類④を復元より優先する**: href key は URL が同じなら push / back / 主ナビゲーションの別を表現しないため、同一 href の cache hit では主ナビ発火時は分類④が復元より優先（常に遷移先先頭）する。実現候補は、主ナビ navigation への `resetScroll` 指定（router-core `buildAndCommitLocation` の option）、`scrollRestoration` の function 化による対象 route 制御、主ナビ link への restoration 対象外の目印とする。採用機構は後続 R3 spike で選定し、cache hit が残る同一 href への主ナビ再訪を必須検証にする。
+- **(h) 分類③の negative 契約を機構分離する**: UI-11b-D12 の negative 契約は smooth scroll（`scrollPageToTop()` 経路）の専有契約であり、router の遷移時位置決めとは機構分離する。`scrollRestoration` の cache miss fallback を UI-11b-D12 の one-shot 発火と解釈してはならない。後続 R3 の必須 Acceptance Criteria に既存 `HomePage.test.tsx` の negative test が regression しないことを置き、必要なら `scrollRestoration` の function 化による分類③対象 route の適用除外を機構候補に含める。
 
 **禁止**: route component の mount を契機に無条件で `scrollPageToTop()` を呼んではならない。詳細から戻った際の位置喪失を招くためであり、PR #15 Amendment 2 の revert を再導入しない。
 
-**関連**: DSR-03「状態遷移後の可視性」 / UI-08-D6 / UI-11b-D11 / UI-11b-D12。review-checklist カテゴリ 9 対応（操作結果の初期可視性と一覧へ戻る位置の連続性が、遷移分類に沿って両立しているか）。
+**関連**: DSR-03「状態遷移後の可視性」 / DSR-18「詳細画面の戻り導線契約」 / UI-08-D6 / UI-11b-D11 / UI-11b-D12。review-checklist カテゴリ 9 対応（操作結果の初期可視性、一覧へ戻る位置の連続性、主ナビゲーション遷移の先頭表示が 3+1 分類に沿って両立しているか）。
 
 ---
 
@@ -344,6 +358,7 @@ scroll を伴う遷移はどれか？
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #21 | DSR-17 を 3+1 分類へ拡張。分類④「主ナビゲーションは遷移先先頭」を追加し、分類②の push 戻り + href key + `<main>` 復元、分類間の優先順位、R3 Probe / L3 義務を確定。 |
 | 2026-08-30 | PR #20 | DSR-18 新設: 詳細画面の戻り先を遷移元 URL とし、業務記録詳細 link の `returnTo` 送信義務、遷移先ごとの fallback、DSR-15 を extend する共通 helper 方針を確定。 |
 | 2026-08-29 | scroll-policy-design 裁定 | DSR-17 新設: 画面遷移と scroll を 3 分類し、同一画面内は event-driven、詳細戻りは位置復元、操作完了後の Home は one-shot flag 消費時だけ先頭表示とする。mount 一律 scroll を禁止。 |
 | 2026-08-29 | PR #15（gated Amendment 3） | DSR-16 新設: 同型情報のグループ化と囲みの階層。owner L3-lite 可読性 FAIL（per-card dl 反復の clutter / 比較不能）を受け、NN/g Common Region と GOV.UK summary list を根拠に判断フローを正本化。 |
