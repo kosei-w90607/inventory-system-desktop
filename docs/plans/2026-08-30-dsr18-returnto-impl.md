@@ -4,7 +4,7 @@ Design Phase は PR #20（squash `0d5f73c`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 08333ce
@@ -16,7 +16,7 @@ Design Phase は PR #20（squash `0d5f73c`、2026-08-30 merge）で完了済み�
 - Reviewed Content HEAD: c7aa25b
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3（8 site 往復 + fallback + 操作ログ state 復元。synthetic fixture は Ready 依頼と同時に提示）
+- Human Gate: none（owner Windows native L3 = 到達可能 7 site 全 PASS + L3-3 は既知 producer gap による waiver 裁定 A、Ready 承認済み 2026-08-31。残る owner 操作は PR #23 の Ready 化と merge のみ）
 
 Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R3 判定は本 packet に記録。spec-check では in-scope source docs（design-system 01 DSR-15/17/18、65、61〜64、74）が PR #20/#21 で改訂済み・実装十分と判定し、spec-check → plan-draft の許可された skip（Design Readiness が既存 docs 充足を引用）を適用。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。
 
