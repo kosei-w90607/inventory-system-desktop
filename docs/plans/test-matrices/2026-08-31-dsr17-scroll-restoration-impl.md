@@ -46,7 +46,8 @@ Risk: R3
 | T11 | flag 残留の無害化 | 新規 | T10 harness 上で、active 項目相当の同一 href 遷移（onRendered 非発火）後に flag が残留した状態を作り → 一覧 scroll → 詳細 → returnTo 戻り → **位置が復元される**（残留 flag が誤発火して先頭に飛ばない）。中間遷移（詳細への push）で flag が消費済みになることも assert | D-C / AC9 / P2-1 |
 | T12 | 復元 clamp の遅延再適用（gated amendment） | 新規 | clamp 模擬 harness（`<main>` に `defineProperty` で `scrollHeight - clientHeight` clamp setter + 遅延 resolve の一覧 stub）で、戻り時に復元が 0 へ clamp → content 拡大（DOM 変異）→ **保存位置へ 1 回だけ再適用**される。negative: 再適用前に利用者入力（wheel 等）を発火させると再適用されない / 次 navigation で解除される。**是正前実装（`687ae6b` 相当）に本 test を当てると fail することを Writer が確認**（故障モード再現性 = AC10） | D-E / L3-1 FAIL |
 | T13 | 分類④と遅延再適用の排他 | 新規 | 主ナビ flag 一致の遷移では、cache に正の保存値があっても遅延再適用が armed されず先頭のまま | D-E / D-C |
-| T14 | 成功後喪失の回収（gated amendment 第 2 弾） | 新規 | owner L3 二巡目の再現系列: tall content で初回代入が**成功**（scrollTop = 保存値）→ content 高さ縮小で native clamp 相当の scrollTop 0（JS 代入なしの喪失を模擬）→ content 再拡張 → 保存値が**一度だけ**再適用される（適用回数 spy で過剰適用なしも assert）。負系: 再適用後にもう一度喪失させても追加適用されない（上限 1 回）/ 利用者入力後の喪失は回収されない | D-E' / L3-1 再 FAIL |
+| ~~T14~~ | ~~成功後喪失の回収~~ | **superseded** | L3 三巡目で根本原因が SearchBar mount autofocus の native scroll と確定（packet「L3 三巡目結果」節）。D-E' とともに撤去（gated amendment 第 3 弾 = D-F）。D-E（初回 clamp 時のみ armed）の契約 test は T12 が引き続き担う | D-F |
+| T15 | SearchBar mount focus の preventScroll（D-F 根本是正） | 新規 | `LiveSearchBar` / `CommitSearchBar` の各 variant で、mount 時の `focus` 呼出しが `{ preventScroll: true }` 付きで行われる（focus spy の option assert、**variant ごとに個別 case** — 片側漏れ mutation の検出）。実機の focus → native scroll は happy-dom で再現不能のため option 検証にとどめ、実機実証は L3 四巡目 | D-F / DSR-17 禁止行拡張 |
 
 ## State Lifecycle Matrix
 
@@ -100,7 +101,7 @@ Risk: R3
 - 識別子を pathname 粒度に落としたら？ → T2 の `/stock` vs `/stock?status=low` case が fail。
 - onRendered 購読を外したら？ → T4 / T5 が fail。
 
-## 必須 mutation 注入（Final Review で clean tree 独立再実測、10 件 — gated amendment で M8〜M10 追加）
+## 必須 mutation 注入（Final Review で clean tree 独立再実測 — 現行有効 = M1〜M9 + M11 の 10 件。M10 は D-F で superseded）
 
 | # | 注入 | kill 期待 |
 |---|---|---|
@@ -113,7 +114,8 @@ Risk: R3
 | M7 | `SidebarHeader` 店名ロゴ経路の `markMainNavScroll()` 呼出しを削除 | T3（該当経路） |
 | M8 | 遅延再適用 logic（clamp 検出 or MutationObserver 適用）を除去 | T12 |
 | M9 | 利用者入力（wheel / pointerdown / keydown）による解除を除去 | T12（negative case） |
-| M10 | 成功時 armed を外す（適用成功で即解除する旧 D-E へ退行） | T14 |
+| ~~M10~~ | ~~成功時 armed を外す~~ | **superseded**（D-E' 撤去に伴い対象消滅 — D-F） |
+| M11 | SearchBar mount focus の `preventScroll: true` を除去（片 variant ずつ） | T15（該当 variant） |
 
 ## Residual Test Gaps
 
@@ -122,3 +124,4 @@ Risk: R3
 - T10/T11 harness が happy-dom でも成立しない検証点が出た場合、Writer は mock 偽装せず本節へ追記して L3 へ振り替える（fail-closed）。
 - **gated amendment（L3-1 FAIL 起因）**: happy-dom の `scrollTop` setter は clamp を持たない（`Element.js:157-158`）ため、実機の clamp 故障モードは素の harness で再現不能 — T10/T12 は `defineProperty` の clamp 模擬 setter + 遅延 resolve stub を必須とする。owner L3-1 FAIL（2026-08-31）が本 gap の実証。
 - **gated amendment 第 2 弾（L3-1 再 FAIL 起因）**: T12 の「初回代入時点で即 clamp」模擬だけでは「一度成功 → native 喪失 → content 安定」の実機系列（owner L3 二巡目観測）を再現できず false-green だった。T14 が本系列を模擬する。位置を失わせる実機側の直接要因（content 一時縮小 / focus / scroll anchoring 等）は未確定のため、T14 は「JS 代入なしの scrollTop 喪失」を harness 側で直接起こす要因不問の模擬とし、実機実証は L3 三巡目が担う。
+- **gated amendment 第 3 弾（D-F、L3 三巡目で根本原因確定）**: 喪失の実機要因は SearchBar mount autofocus の native scroll と確定（focus → WebView2 の可視化 scroll。happy-dom は layout がなく focus の scroll 副作用を再現不能）。上記第 2 弾の T14 は D-E' とともに superseded。T15 は focus option の検証にとどめ、「preventScroll で実際に位置が保たれる」実機実証は L3 四巡目が最終 gate。
