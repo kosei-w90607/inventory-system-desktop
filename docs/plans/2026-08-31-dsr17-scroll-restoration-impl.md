@@ -4,7 +4,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
