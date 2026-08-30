@@ -4,7 +4,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
@@ -13,7 +13,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: 0ef5fe4
+- Reviewed Content HEAD: 83ba457
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（WebView2 の sessionStorage 実機挙動 + cache hit/miss + smooth scroll 干渉 + 主ナビ先頭。DSR-17 (f) の revisit trigger 判定を含む）
@@ -362,7 +362,7 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 
 ### 設計判断 D-E'（成功後喪失の回収 — gated amendment 第 2 弾、D-E を supersede）
 
-D-E の「適用成功で即解除」を廃止し、適用の成否にかかわらず監視を armed し、成功後の位置喪失を**再適用上限 = 初回 + `1` 回**（owner L3 二巡目の観測「再入力後は保存位置へ移動して留まる」= 喪失は一過性、が根拠。`未実測` の時間閾値は置かない）で回収する。
+D-E の「適用成功で即解除」を廃止し、適用の成否にかかわらず監視を armed し、成功後の位置喪失を回収する。適用回数の勘定は「**router-core の初回復元代入（別 subscriber、カウント外）+ app 層の再適用 `1` 回上限**」（Final Review round 3 P3 の明確化 — DSR-17 (i) 本文と実装が正本。owner L3 二巡目の観測「再入力後は保存位置へ移動して留まる」= 喪失は一過性、が上限根拠。`未実測` の時間閾値は置かない）。clamp → app 適用 → 二次喪失の複合系列は上限により諦めて従来挙動へ（T14 が意図的境界として assert 済み、実機発生は AC13 = L3 三巡目が最終 gate）。
 
 1. `onRendered` で分類④ flag 一致時は先頭 scroll のみ（既存排他、不変）。
 2. それ以外で保存値（`scrollY > 0`）があるとき、初回適用を試みたうえで（現 scrollTop が保存値以上でも）**必ず armed する**。現行の「`main.scrollTop >= savedScrollTop` なら成功として return」を撤廃する。
@@ -372,6 +372,14 @@ D-E の「適用成功で即解除」を廃止し、適用の成否にかかわ�
 
 **Matrix 是正（第 2 弾）**: T12 は「初回代入時点で即 clamp」の既存 case として存置し、**T14 を新設** — owner 提示の再現系列そのもの:「tall content 上で初回代入を成功させる → onRendered 初期判定後に content 高さを縮小し native clamp 相当で scrollTop を 0 にする → content 高さを再拡張する → 保存値が**一度だけ**再適用される（適用回数 spy で過剰適用なしも assert）」。加えて D-E' logic 無効時（成功時 armed を外した状態）に T14 が fail する再現性証明（AC12）。M10 = 「成功時 armed を外す（旧 D-E へ退行）」→ T14 kill。
 **AC 追加**: AC12 = T14 の再現性証明（D-E' 無効化で fail / 有効で green）。AC13 = L3 三巡目の全手順 PASS。
+
+### Final Review round 3 と human-confirm 再遷移（2026-08-31、append-only）
+
+- Writer 是正 content commit `83ba457`（app-router.ts + test + DSR-17 (i) 同期）。L1 full + `local-ci full` PASS（exact HEAD 83ba457）。
+- Coordinator mutation 独立再実測: M1〜M10 全数 kill（M1:13 / M2:13 / M3:2 / M4:1 / M5:5 / M6:2 / M7:1 / M8:4 / M9:4 / M10:2 failed、全復元 tree clean）。
+- Final Review round 3（同 reviewer 継続、対象 = `83ba457`）: P1 0 / P2 0 / P3 1。D-E' 契約逐条・T14 oracle（clamp harness の縮小時再 clamp 拡張含む）・DSR-17 (i) 同期・AC12 再現性証明（reviewer 独立再実施で Writer 報告と一致）すべて PASS。M8/M9/M10 も reviewer 独立 kill 実証（Coordinator 実測件数と全一致 = 二重実測）。「初回 + 再適用 1 回」の帰属は「実装・DSR-17 (i) が正確、packet 文言が言葉足らず」と判定 — P3 採用で本 commit の文言明確化を実施（router 初回カウント外 / app 再適用 1 回上限）。複合系列（clamp → 適用 → 二次喪失）の非回収は T14 が assert 済みの意図的境界で、実機発生は AC13 が最終 gate。
+
+Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`（3 巡目）。Reviewed Content HEAD を `83ba457` で確定。残りは owner Windows native L3 三巡目（AC13 = L3-1〜L3-5 + L3-3b 全手順、L3-1 は二巡目の再現手順を含む）、Ready 承認、hosted final、merge。
 
 ## 発注・レビュー段取り
 
