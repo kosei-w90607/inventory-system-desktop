@@ -35,6 +35,7 @@
 
 ## 次の行動
 
+- [ ] **PR #22 成功 feedback / destructive dialog 横断規約の Design content**（R2 docs-only、Phase `plan-gate`）: [active Plan Packet](plans/2026-08-30-feedback-dialog-conventions-design.md)。Plan Review 通過後に Writer content commit → Coordinator が L1 と Final Review へ進める。
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 

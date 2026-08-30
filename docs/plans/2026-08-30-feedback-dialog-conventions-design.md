@@ -9,7 +9,7 @@
 - Amendments: none
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（外部端末、発注書 relay。§3.1 により Fable は docs Writer に投入しない）
-- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定
+- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-30、round 1 = P1×0 / P2×1〈Scope DSR-20 の項目数と AC 5 要素の不整合〉/ P3×1〈PK4 link の plan-first 前倒し提案〉、全件 accept → 是正 commit で Scope (1)〜(5) 化 + Plans.md active link 前倒し追加、round 2 独立再検証は pending）
 - Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -65,7 +65,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `docs/design-system/01-decision-rules.md`:
   - **DSR-19「作成・保存成功の feedback 規約」新設**（番号 19 は本 packet で予約）: (1) 作成・保存の成功は toast を最低保証とする（owner 裁定 B-2）、(2) result panel / 画面全置換は「保存後に継続作業・確認事項がある flow」の併用として基準化（既存の入庫系 result panel・棚卸し結果・CSV 取込み result step は基準適合の先例として整理）、(3) duration 階層の明文化 = 基本 3s（Toaster 全体既定）/ 重要情報付き 5s（商品保存の先例）/ 取消・非 IT operator 向け読了配慮 8s（PR #15 の先例）、(4) toast id 規約（連打重複抑止）の適用基準、(5) DSR-03「Toast vs Alert」を supersede せず refine する関係の明記。Why に『UXデザインの法則』第 2 版（Jon Yablonski、オライリー・ジャパン、2025-01）の Peak-End rule / Zeigarnik 効果を書誌付きで cite。
-  - **DSR-20「destructive 確認 dialog の配置・dismiss 規約」新設**（番号 20 予約）: (1) destructive 確認の Action は `variant="destructive"` に統一（owner 裁定 B-3、現状 12 件中 3 件）、(2) ボタン並び順 = DOM 順 Cancel→Action（sm 以上で Cancel 左 / Action 右）を規範化し、narrow 幅の `flex-col-reverse`（Action が上）も意図された挙動として明文化、3 ボタン構成の順序先例（統合 stage 2）を規定、(3) 外クリック / Esc は cancel ブリッジを本則とし、硬化（dismiss 不可）の適用条件（誤 dismiss が在庫二重計上等の実害に直結する dialog — CostDiffDialog 先例 / 未保存破棄の意図的 friction — UnsavedChangesDialog、Zeigarnik の意図的活用として肯定）と実装手段の 1 系統化（prop 明示硬化を正、`onOpenChange` 非配線の暗黙硬化は禁止）を規定、(4) cancel 文言の基準（既定「キャンセル」、文脈上の具体文言は許容条件付き）。Why に Von Restorff 効果を書誌付きで cite。DSR-07（確認 dialog を出す境界）/ DSR-08（色単独禁止 — variant 統一は色 + 配置 + 文言の複合強調）/ DSR-16 との整合を明記。
+  - **DSR-20「destructive 確認 dialog の配置・dismiss 規約」新設**（番号 20 予約）: (1) destructive 確認の Action は `variant="destructive"` に統一（owner 裁定 B-3、現状 12 件中 3 件）、(2) ボタン並び順 = DOM 順 Cancel→Action（sm 以上で Cancel 左 / Action 右）を規範化し、narrow 幅の `flex-col-reverse`（Action が上）も意図された挙動として明文化、3 ボタン構成の順序先例（統合 stage 2）を規定、(3) 外クリック / Esc は cancel ブリッジを本則とし、硬化（dismiss 不可）の適用条件（誤 dismiss が在庫二重計上等の実害に直結する dialog — CostDiffDialog 先例 / 未保存破棄の意図的 friction — UnsavedChangesDialog、Zeigarnik の意図的活用として肯定）を規定、(4) 硬化の実装手段の 1 系統化（prop 明示硬化を正、`onOpenChange` 非配線の暗黙硬化は禁止）、(5) cancel 文言の基準（既定「キャンセル」、文脈上の具体文言は許容条件付き）。Why に Von Restorff 効果を書誌付きで cite。DSR-07（確認 dialog を出す境界）/ DSR-08（色単独禁止 — variant 統一は色 + 配置 + 文言の複合強調）/ DSR-16 との整合を明記。
   - 見出しの採番表記 drift 是正（「DSR-01〜15」→ 実体に同期）。
   - 更新履歴へ行追加。
 - `docs/design-system/02-component-catalog.md`: ⑦ Toast の duration 記載を実装（全体既定 3000ms）+ DSR-19 階層へ是正（現行「既定 5000ms」は doc/impl drift）、⑧ Dialog / 確認へ並び順・variant・硬化条件の DSR-20 参照を追記。
@@ -73,7 +73,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `docs/function-design/77-ui-bulk-price-revision.md`: 行確定の成功 feedback 契約（toast、DSR-19 適合）を該当節へ追記（実装は後続 R3）。
 - `docs/UI_TECH_STACK.md`: §6.1 スタブの委譲先が catalog 更新で足りるか Writer が確認し、必要な場合のみ参照行を同期。UI-USW-D2（破棄確認 dialog）へ Esc 無効の明文化を追記（現状は実装のみで doc 記載なし）。
 - `docs/quality/review-checklist.md`: DSR-19 / DSR-20 対応行を追加。
-- `Plans.md`: 「次の行動」へ本 packet の active link を追加（PR #21 の PK4 教訓）、backlog の「取引先追加成功 toast の横断規約」「統合 dialog のボタン配置・外クリック方針」2 行を design 確定へ更新し、runtime 是正の R3 を後続候補として記録。
+- `Plans.md`: 「次の行動」の active packet link は Plan Review round 1 是正 commit で Coordinator が追加済み（PR #21 の PK4 fail-closed で relay 1 往復を消費した教訓の前倒し適用）。Writer は backlog の「取引先追加成功 toast の横断規約」「統合 dialog のボタン配置・外クリック方針」2 行を design 確定へ更新し、runtime 是正の R3 を後続候補として記録し、merge までに active link の文言を最新 Phase へ保つ。
 - 本 Plan Packet の作成・commit（plan-first）。
 
 ## Non-scope
