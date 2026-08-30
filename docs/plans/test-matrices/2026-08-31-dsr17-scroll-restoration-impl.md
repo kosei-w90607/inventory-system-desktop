@@ -44,6 +44,8 @@ Risk: R3
 | T9 | router options 配線 | 新規 | `app-router.ts` が export する router の `options.scrollRestoration` 有効 / `scrollToTopSelectors` に `[data-scroll-restoration-id="main"]` / `getScrollRestorationKey` が href を返す（文字列 source 比較でなく挙動で検証） | DSR-17 (b)(d) |
 | T10 | 分類② end-to-end（Contract Probe 兼務） | 新規 | 実 routeTree + memory history + 実 `setupScrollRestoration` harness。一覧の `<main>` に scrollTop を与え scroll event を dispatch → 詳細へ push → returnTo で戻る → scrollTop 復元。cache 未保存 href への遷移 → 先頭（miss fallback）。happy-dom（`Element.scrollTo()` 同期セット + sessionStorage 実働）を前提に自動化し、成立しない検証点が出た場合のみ mock で偽装せず Residual Gaps へ記録して L3 へ振替 | 分類② / (a)(b)(c)(d) |
 | T11 | flag 残留の無害化 | 新規 | T10 harness 上で、active 項目相当の同一 href 遷移（onRendered 非発火）後に flag が残留した状態を作り → 一覧 scroll → 詳細 → returnTo 戻り → **位置が復元される**（残留 flag が誤発火して先頭に飛ばない）。中間遷移（詳細への push）で flag が消費済みになることも assert | D-C / AC9 / P2-1 |
+| T12 | 復元 clamp の遅延再適用（gated amendment） | 新規 | clamp 模擬 harness（`<main>` に `defineProperty` で `scrollHeight - clientHeight` clamp setter + 遅延 resolve の一覧 stub）で、戻り時に復元が 0 へ clamp → content 拡大（DOM 変異）→ **保存位置へ 1 回だけ再適用**される。negative: 再適用前に利用者入力（wheel 等）を発火させると再適用されない / 次 navigation で解除される。**是正前実装（`687ae6b` 相当）に本 test を当てると fail することを Writer が確認**（故障モード再現性 = AC10） | D-E / L3-1 FAIL |
+| T13 | 分類④と遅延再適用の排他 | 新規 | 主ナビ flag 一致の遷移では、cache に正の保存値があっても遅延再適用が armed されず先頭のまま | D-E / D-C |
 
 ## State Lifecycle Matrix
 
@@ -97,7 +99,7 @@ Risk: R3
 - 識別子を pathname 粒度に落としたら？ → T2 の `/stock` vs `/stock?status=low` case が fail。
 - onRendered 購読を外したら？ → T4 / T5 が fail。
 
-## 必須 mutation 注入（Final Review で clean tree 独立再実測、7 件）
+## 必須 mutation 注入（Final Review で clean tree 独立再実測、9 件 — gated amendment で M8/M9 追加）
 
 | # | 注入 | kill 期待 |
 |---|---|---|
@@ -108,9 +110,12 @@ Risk: R3
 | M5 | onRendered handler の flag 消費分岐を常に「なし」化 | T4 / T5 |
 | M6 | handler の target 一致判定を除去（消費すれば常に scroll する boolean 劣化） | T11 |
 | M7 | `SidebarHeader` 店名ロゴ経路の `markMainNavScroll()` 呼出しを削除 | T3（該当経路） |
+| M8 | 遅延再適用 logic（clamp 検出 or MutationObserver 適用）を除去 | T12 |
+| M9 | 利用者入力（wheel / pointerdown / keydown）による解除を除去 | T12（negative case） |
 
 ## Residual Test Gaps
 
 - test 環境は happy-dom（`vitest.config.ts:11`）: `Element.scrollTo()` 非 smooth の同期セット・scrollTop/scrollLeft の値保持・sessionStorage が実働するため、cache 保存→復元・miss fallback・flag 残留（T10/T11）は自動 test で被覆する。
 - 自動 test 対象外は「視認品質」（smooth scroll と復元の干渉によるがたつき・二段 scroll の見え方）と「WebView2 実機挙動」（pagehide 発火・アプリ再起動時の sessionStorage 残存/消滅）— L3-1〜L3-5 + L3-3b で被覆（DSR-17 (f)）。
 - T10/T11 harness が happy-dom でも成立しない検証点が出た場合、Writer は mock 偽装せず本節へ追記して L3 へ振り替える（fail-closed）。
+- **gated amendment（L3-1 FAIL 起因）**: happy-dom の `scrollTop` setter は clamp を持たない（`Element.js:157-158`）ため、実機の clamp 故障モードは素の harness で再現不能 — T10/T12 は `defineProperty` の clamp 模擬 setter + 遅延 resolve stub を必須とする。owner L3-1 FAIL（2026-08-31）が本 gap の実証。

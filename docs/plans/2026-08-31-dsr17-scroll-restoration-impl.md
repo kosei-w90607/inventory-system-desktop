@@ -318,6 +318,31 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 - 原因境界（owner 確定分): WebView2 scroll 取得 / sessionStorage 保存 / href key / selector / 正の scrollTop 適用 / DB・fixture は除外。未確定 = onRendered 発火有無・cache key ずれ・復元後の 0 上書き・タイミング依存。
 - **Coordinator 裁定**: DSR-17 (f) の revisit trigger として `human-confirm -> implementing` へ正規 backtrack（次 commit）。Ready / merge へ進めない。Coordinator 第一仮説 =「復元が走る `onRendered`（useLayoutEffect、paint 前）の時点で、戻り先一覧の async データ（React Query）が未描画で `<main>` の content 高さが不足し、`scrollTop` 代入が clamp されて 0 に落ちる。probe 下 PASS / 通常 FAIL は query cache の warm/cold 差、T10 の green は harness mock の即時 resolve による false-green」。まず happy-dom harness に遅延 resolve を入れた再現実験で仮説を確定し、確定後に是正設計（方式追補）→ T10/T11 harness 是正 → Writer 是正発注 → Final Review 再走 → revised exact HEAD で L3-1 から全手順再開、の順とする。
 
+### L3-1 FAIL 原因確定と是正設計（2026-08-31、gated amendment、append-only）
+
+**原因確定（Coordinator 実読検証）**: 故障機序は「復元 1 回きり × 実 DOM の scrollTop clamp × async content の遅延描画」の合成。
+
+- router-core の復元は `onRendered` subscriber 内の `element.scrollTop = scrollY` 直接代入 1 回のみで再試行なし（`scroll-restoration.js:125-152`、spike 節で実読済み）。
+- 実 WebView2 の `scrollTop` 代入は `scrollHeight - clientHeight` で clamp される標準挙動。復元時点（paint 前）で戻り先一覧の React Query データが未描画だと scroll 余地がなく 0 へ clamp され、その後 content が伸びても再適用されない。
+- **false-green の機序**: happy-dom の `set scrollTop(value)` は無条件代入で clamp が存在しない（`node_modules/happy-dom/lib/nodes/element/Element.js:157-158` 実読）。加えて T10 harness は一覧 page を同期 stub で `vi.mock` しており遅延描画も発生しない。clamp 故障モードは現行 harness で構造的に検出不能。
+- owner 観測との整合: 「後続の同一 href 到達で遅延適用」= その時点では DOM が高さを持ち clamp されなかった。「setter probe 下で PASS」= `defineProperty` による setter 差し替えが native clamp を bypass。「がたつきなし」= 復元が 0 に clamp され視覚上何も起きない。
+- Windows での事前診断採取（owner 依頼）は、上記の実装実読 + happy-dom 実読 + owner 採取 log の三者整合により機序確定に達したため省略を提案する（是正後の L3-1 再実施が実機実証を兼ねる）。owner が事前診断を希望する場合は非侵襲 instrument を先行する。
+
+**設計判断 D-E（復元 clamp 対策 — 遅延再適用）**: `app-router.ts` の `onRendered` subscriber を拡張する。
+
+1. 分類④ flag 消費・一致時は先頭 scroll のみ（既存 D-C）。遅延再適用は起動しない。
+2. それ以外は `getElementScrollRestorationEntry(router, { id: "main", getKey: getAppScrollRestorationKey })`（router-core 公開 export、`scroll-restoration.js:56-59`）で現 location の保存値を取得。保存 `scrollY > 0` かつ実 `scrollTop < scrollY`（clamp 検出）のときだけ遅延再適用を armed する。
+3. 監視機構は **MutationObserver**（`<main>` subtree の childList。layout 非依存で happy-dom でも変異発火し、データ到着 = DOM 子要素追加を確実に検知）。変異のたびに `scrollHeight >= scrollY + clientHeight` を判定し、達したら `scrollTop = scrollY` を 1 回適用して解除。
+4. 解除条件: (a) 適用成功、(b) 利用者入力（`wheel` / `pointerdown` / `keydown` のいずれか — 利用者が読み始めた位置を奪わない）、(c) 次の `onBeforeLoad`（navigation で無効化）。armed は常に高々 1 本。
+5. ResizeObserver は happy-dom で layout 計算がなく発火保証がないため不採用。rAF poll は変異駆動より効率が劣るため不採用。router 内部への介入（cache 直接操作）は D-C と同じ理由で不採用。
+
+**是正 scope 追加（Scope 7〜8）**:
+
+7. D-E の実装（`app-router.ts` 拡張 + 必要なら helper 分離）+ DSR-17 分類②実装方式契約への追記（(i) として「復元は async content の遅延描画で clamp され得るため、app は clamp 検出時に content 拡大を監視して 1 回だけ再適用し、利用者入力・次 navigation で解除する」を正本化。(f) の L3 検証項目に本故障モードを含める旨も同期）。
+8. Matrix 是正: T10 harness へ遅延 resolve 一覧 stub + clamp 模擬 setter（`defineProperty` で `scrollHeight - clientHeight` clamp を再現）を導入し、実機故障モードを自動 test で再現。新規 T12（clamp 検出 → content 拡大 → 遅延再適用 + 利用者入力での解除 negative）/ T13（分類④ flag 時は遅延再適用が起動しない）/ M8（遅延再適用 logic 除去 → T12 kill）/ M9（利用者入力解除の除去 → T12 negative kill）。
+
+**AC 追加**: AC10 = clamp 模擬 harness 下で「遅延 content でも復元位置に到達する」T12 が green、かつ是正前実装（`687ae6b` 相当）に T12 を当てると fail する（故障モード再現性の証明）。AC11 = revised exact HEAD での owner L3-1〜L3-5 + L3-3b 全手順再実施。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
