@@ -160,7 +160,7 @@ async function renderAppRouterAt(initialHref: string) {
   return { router, main };
 }
 
-describe("DSR-17 app router configuration", () => {
+describe("UI-12 / DSR-17 app router configuration", () => {
   beforeEach(() => {
     consumeMainNavScroll();
     sessionStorage.clear();

@@ -7,7 +7,7 @@ import { renderWithRouter } from "@/test/render-with-router";
 
 import { SidebarHeader } from "./SidebarHeader";
 
-describe("DSR-17 SidebarHeader main navigation scroll marker", () => {
+describe("UI-12 / DSR-17 SidebarHeader main navigation scroll marker", () => {
   beforeEach(() => {
     consumeMainNavScroll();
   });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { consumeMainNavScroll, markMainNavScroll } from "./main-nav-scroll";
 
-describe("DSR-17 D-C main navigation scroll marker", () => {
+describe("UI-12 / DSR-17 D-C main navigation scroll marker", () => {
   beforeEach(() => {
     consumeMainNavScroll();
   });

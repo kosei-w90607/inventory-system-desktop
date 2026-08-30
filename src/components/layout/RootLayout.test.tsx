@@ -36,7 +36,7 @@ vi.mock("@/features/shortcuts", () => ({
   useShortcutsDialog: () => ({ open: false, setOpen: vi.fn() }),
 }));
 
-describe("DSR-17 RootLayout scroll container", () => {
+describe("UI-12 / DSR-17 RootLayout scroll container", () => {
   it("T6: gives the persistent main element its restoration id", async () => {
     const outerRoute = createRootRoute({ component: () => <Outlet /> });
     const layoutRoute = createRoute({
