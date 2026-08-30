@@ -118,20 +118,25 @@ describe("DisposalRecordDetailPage (REQ-204 / REQ-206)", () => {
     );
   });
 
-  it("REQ-207: returnToがある場合はmovement検索状態へ戻れる", async () => {
-    mockGetDisposalRecord.mockResolvedValue({ status: "ok", data: makeDetail() });
-
-    renderWithClient(
-      <DisposalRecordDetailPage
-        recordId={7}
-        returnTo="/stock/DP-001/movements?type=disposal&page=2"
-      />,
-    );
-
-    expect(await screen.findByRole("heading", { name: "廃棄・破損 #7" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "前の画面へ戻る" })).toHaveAttribute(
-      "href",
+  it.each([
+    [
       "/stock/DP-001/movements?type=disposal&page=2",
-    );
-  });
+      "/stock/DP-001/movements?type=disposal&page=2",
+    ],
+    ["https://example.invalid/escape", "/inventory/records"],
+    ["//example.invalid/escape", "/inventory/records"],
+  ])(
+    "REQ-207 / T11 DSR-18: DisposalRecordDetailPage の returnTo %s を安全に %s へ正規化する",
+    async (returnTo, expected) => {
+      mockGetDisposalRecord.mockResolvedValue({ status: "ok", data: makeDetail() });
+
+      renderWithClient(<DisposalRecordDetailPage recordId={7} returnTo={returnTo} />);
+
+      expect(await screen.findByRole("heading", { name: "廃棄・破損 #7" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "前の画面へ戻る" })).toHaveAttribute(
+        "href",
+        expected,
+      );
+    },
+  );
 });

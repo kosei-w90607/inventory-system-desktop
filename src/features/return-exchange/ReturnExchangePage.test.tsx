@@ -169,6 +169,7 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     });
   });
 
+  // T4 (UI-03-D22): recent list returnTo contract.
   it("REQ-202/REQ-206: recent list exposes all-history and detail links", async () => {
     mockListReturns.mockResolvedValue({
       status: "ok",

@@ -195,6 +195,27 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
     );
   });
 
+  it.each([
+    [
+      "/stock/RCV-001/movements?type=receiving&page=2",
+      "/stock/RCV-001/movements?type=receiving&page=2",
+    ],
+    ["https://example.invalid/escape", "/inventory/records"],
+    ["//example.invalid/escape", "/inventory/records"],
+  ])(
+    "T11 DSR-18: ReceivingRecordDetailPage の returnTo %s を安全に %s へ正規化する",
+    async (returnTo, expected) => {
+      mockGetReceivingRecord.mockResolvedValue({ status: "ok", data: makeReceivingDetail() });
+
+      renderWithClient(<ReceivingRecordDetailPage recordId={12} returnTo={returnTo} />);
+
+      expect(await screen.findByRole("link", { name: "前の画面へ戻る" })).toHaveAttribute(
+        "href",
+        expected,
+      );
+    },
+  );
+
   it("REQ-202: 返品・交換詳細にレジ戻し状態、レシート有無、方向付き明細を表示する", async () => {
     mockGetReturnRecord.mockResolvedValue({ status: "ok", data: makeReturnDetail() });
 
@@ -210,6 +231,24 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
     expect(screen.getByText("戻り（在庫+）")).toBeInTheDocument();
     expect(screen.getByText("返品テスト商品")).toBeInTheDocument();
   });
+
+  it.each([
+    ["/stock/RTN-001/movements?type=return&page=2", "/stock/RTN-001/movements?type=return&page=2"],
+    ["https://example.invalid/escape", "/inventory/records"],
+    ["//example.invalid/escape", "/inventory/records"],
+  ])(
+    "T11 DSR-18: ReturnRecordDetailPage の returnTo %s を安全に %s へ正規化する",
+    async (returnTo, expected) => {
+      mockGetReturnRecord.mockResolvedValue({ status: "ok", data: makeReturnDetail() });
+
+      renderWithClient(<ReturnRecordDetailPage recordId={22} returnTo={returnTo} />);
+
+      expect(await screen.findByRole("link", { name: "前の画面へ戻る" })).toHaveAttribute(
+        "href",
+        expected,
+      );
+    },
+  );
 
   it("REQ-202/UI-03-D19: 返品・交換詳細は備考なしを独立表示する", async () => {
     mockGetReturnRecord.mockResolvedValue({
@@ -240,4 +279,25 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
     expect(screen.getByText("-1")).toBeInTheDocument();
     expect(screen.getByText("減少")).toBeInTheDocument();
   });
+
+  it.each([
+    [
+      "/stock/MS-001/movements?type=sale_manual&page=2",
+      "/stock/MS-001/movements?type=sale_manual&page=2",
+    ],
+    ["https://example.invalid/escape", "/inventory/records"],
+    ["//example.invalid/escape", "/inventory/records"],
+  ])(
+    "T11 DSR-18: ManualSaleRecordDetailPage の returnTo %s を安全に %s へ正規化する",
+    async (returnTo, expected) => {
+      mockGetManualSaleRecord.mockResolvedValue({ status: "ok", data: makeManualSaleDetail() });
+
+      renderWithClient(<ManualSaleRecordDetailPage recordId={32} returnTo={returnTo} />);
+
+      expect(await screen.findByRole("link", { name: "前の画面へ戻る" })).toHaveAttribute(
+        "href",
+        expected,
+      );
+    },
+  );
 });

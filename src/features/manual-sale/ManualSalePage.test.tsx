@@ -123,6 +123,7 @@ beforeEach(() => {
 });
 
 describe("ManualSalePage (UI-04 / REQ-203)", () => {
+  // T6 (UI-04-D17): recent list returnTo contract.
   it("REQ-203/REQ-206: recent list exposes all-history and detail links", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",

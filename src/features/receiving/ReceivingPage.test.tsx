@@ -269,6 +269,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     });
   });
 
+  // T2 (UI-02-D16): recent list returnTo contract.
   it("REQ-201/REQ-206: recent list exposes all-history and detail links", async () => {
     mockListReceivings.mockResolvedValue({
       status: "ok",
