@@ -9,7 +9,7 @@
 - Amendments: none
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（外部端末、発注書 relay。§3.1 により Fable は docs Writer に投入しない）
-- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定
+- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-30、round 1 = P1×1〈DSR-15 未調整〉/ P3×2、全件 Fable 実読裏取りの上 accept → 是正 commit、round 2 独立再検証は pending）
 - Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -63,7 +63,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Scope
 
-- `docs/design-system/01-decision-rules.md` に DSR-18「詳細画面の戻り導線契約」を新設する（番号 18 は本 packet で予約）。内容: (1) 「前の画面へ戻る」ラベルの導線は遷移元の URL（search state 含む）へ戻ることを本則とする、(2) 業務記録詳細 route へ遷移する link は returnTo を送信する義務を負う、(3) returnTo 欠落・不正時の fallback は遷移先ごとの既定 hub（安全側、現行挙動を fallback として温存）、(4) returnTo sanitize はアプリ内 path のみ許可の allowlist 型を共通 helper へ集約する方針（products 専用 `return-to.ts` と records 側 6 箇所コピーの `normalizeReturnTo` の統一方向）。
+- `docs/design-system/01-decision-rules.md` に DSR-18「詳細画面の戻り導線契約」を新設する（番号 18 は本 packet で予約）。内容: (1) 「前の画面へ戻る」ラベルの導線は遷移元の URL（search state 含む）へ戻ることを本則とする、(2) 業務記録詳細 route へ遷移する link は returnTo を送信する義務を負う、(3) returnTo 欠落・不正時の fallback は遷移先ごとの既定 hub（安全側、現行挙動を fallback として温存）、(4) returnTo sanitize の共通 helper 方針: DSR-18 は既存 DSR-15「returnTo 等のリダイレクト系 param は検証してから使う」を supersede せず **extend** する。共通 helper の正は DSR-15 の prefix 検証（`/` 始まりかつ `//` 始まりでない）+ fallback 先の parameter 化（遷移先ごとの既定 hub を引数で受ける）とし、DSR-15 が「共通 util 抽出は別 PR」と残した宿題をここで契約化する。products 専用 `return-to.ts` の exact-allowlist（`pathname === "/products"` 限定）は typed parse-back 用途の上位互換として存置し、DSR-18 本文に両者の関係（最低基準 = DSR-15 prefix 検証、typed 復元が必要な場合のみ exact 型へ強化）を明記して矛盾を排除する。
 - `docs/function-design/65-inventory-record-traceability.md` の TRACE-D11 を「入出庫履歴一覧発」限定から遷移元横断（一覧発 / recent list 発 / 保存結果発 / 操作ログ発）へ改訂し、決定表・本文（§65 遷移契約）・実装方針・受入基準の 4 箇所を同期する。TRACE の新番号は増やさず、送信側義務の画面横断正本は DSR-18 に置く。
 - `docs/function-design/74-ui-operation-logs.md` §74.9 の「関連記録を見る」に returnTo 送信契約（操作ログの検索 state = 期間・種別・page の直列化と戻り時復元）を UI-11c-D 次番として追記する。既存 UI-11c-D5（click 競合回避）と矛盾しないこと。
 - `docs/function-design/61-ui-receiving.md` / `62-ui-manual-sale.md` / `63-ui-return-exchange.md` / `64-ui-disposal.md` の該当節（recent list 導線 4 doc + 保存結果導線 3 doc、64 は保存結果に詳細 link なし）へ returnTo 送信契約を各 doc の次番 Dn として追記する（各 doc の実 ID root と次番は Writer が rg で確定）。
@@ -81,7 +81,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## 起票時実測（gap 8 件、2026-08-30、HEAD afe1cc9）
 
-Explore subagent による実読検証（`rg 'to="/(inventory|stocktake|csv-import)' src/` 全数走査 + 各 site 実読）。実在 8/8、消滅 0、記録外の同型 gap 0。
+Explore subagent による実読検証（静的 link は `rg 'to="/(inventory|stocktake|csv-import)' src/` 全数走査、動的 route 式は `to={...}` 形の別 sweep で補完 — gap #8 の `to={relatedRoute}` は後者で捕捉 — + 各 site 実読）。実在 8/8、消滅 0、記録外の同型 gap 0。
 
 | # | 発生源 | file:line | ラベル | returnTo | fallback |
 |---|---|---|---|---|---|
@@ -98,7 +98,7 @@ Explore subagent による実読検証（`rg 'to="/(inventory|stocktake|csv-impo
 
 - 遷移先の業務記録詳細 6 page はいずれも returnTo prop の受け口実装済み（`ReceivingRecordDetailPage.tsx:39` ほか、3 行 `normalizeReturnTo` の 6 箇所コピー）。戻りラベルは 6 page とも exact「前の画面へ戻る」。
 - returnTo 送信済みの現行 producer は `InventoryRecordsPage.tsx:66-68,340` と `MovementTable.tsx:41-44,85` の 2 site のみ（TRACE-D11 の一覧発契約どおり）。
-- returnTo build/sanitize 実装は products 専用 `src/features/products/lib/return-to.ts`（allowlist 型: origin 検証 + pathname 制限、build :35 / parse :59、regression test あり）と records 側個別実装（`InventoryRecordsPage.tsx:57` / `StockMovementsPage.tsx:60-68`）に分裂。
+- returnTo build/sanitize 実装は products 専用 `src/features/products/lib/return-to.ts`（exact-allowlist 型: origin 検証 + `pathname === "/products"` 限定、sanitize :7 / build :30 / parse :44、regression test あり）と records 側個別実装（`InventoryRecordsPage.tsx:57` / `StockMovementsPage.tsx:60-68`、DSR-15 prefix 型）に分裂。
 - 旧記録の「契約乖離 4 hop（plu 脱落）」は PR #8 で是正済み・消滅。棚卸し詳細 404 も PR #9 で route 実在。CsvImport / Stocktake detail は静的入口なし（hub 経由のみ）— backlog 追記対象。
 
 ## Acceptance Criteria
@@ -117,7 +117,7 @@ Explore subagent による実読検証（`rg 'to="/(inventory|stocktake|csv-impo
 - Function / command / DTO: `docs/function-design/61-ui-receiving.md` / `62-ui-manual-sale.md` / `63-ui-return-exchange.md` / `64-ui-disposal.md` / `65-inventory-record-traceability.md` / `74-ui-operation-logs.md`
 - DB: 変更なし
 - Screen / UI: `docs/SCREEN_DESIGN.md`、`docs/design-system/01-decision-rules.md`（DSR-16 / DSR-17 先例）
-- Decision log / ADR: DSR-17（詳細戻りは位置復元本則 — 本件の戻り先契約と整合させる）
+- Decision log / ADR: DSR-15（returnTo 検証契約 — DSR-18 が extend する既存正本、`docs/design-system/01-decision-rules.md`）/ DSR-17（詳細戻りは位置復元本則 — 本件の戻り先契約と整合させる）
 
 ## Required Design Artifacts
 
@@ -139,7 +139,7 @@ Explore subagent による実読検証（`rg 'to="/(inventory|stocktake|csv-impo
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | REQ-206 / return | 65 決定表・本文・実装方針・受入 | TRACE-D11（改訂） | 一覧発限定の戻り契約を遷移元横断へ拡張。hub 正 + ラベル変更案（B 案）は owner 裁定（2026-08-30）で棄却 — 作業画面へ戻れない不便と操作ログ state 喪失を仕様として固定化するため | 後続 R3 packet | 後続 R3 Matrix |
-| DSR-18（本 packet で番号予約） | design-system/01-decision-rules.md | DSR-18 | 送信義務・fallback・共通 helper 方針の画面横断正本。各 doc 分散のみの案は同型契約 drift（normalizeReturnTo 6 箇所コピーの再演）リスクで棄却 | 後続 R3 packet | 後続 R3 Matrix |
+| DSR-18（本 packet で番号予約、DSR-15 を extend） | design-system/01-decision-rules.md | DSR-18 | 送信義務・fallback・共通 helper 方針の画面横断正本。DSR-15 の prefix 検証を最低基準として継承し「共通 util 抽出は別 PR」の宿題を契約化。各 doc 分散のみの案は同型契約 drift（normalizeReturnTo 6 箇所コピーの再演）リスクで棄却 | 後続 R3 packet | 後続 R3 Matrix |
 | UI-11c | 74 §74.9 | UI-11c-D 次番 | 関連記録遷移で操作ログの調査 state（期間・種別・page）を保持。復帰導線なしの現状は調査 flow を破壊 | 後続 R3 packet | 後続 R3 Matrix |
 | 61〜64 の実 ID root（61 は UI-02 系、他は Writer が rg で確定） | 各 doc の導線該当節 | 各 doc 次番 Dn | recent list 発 / 保存結果発の returnTo 送信義務を doc 側にも固定（DSR-18 を cite） | 後続 R3 packet | 後続 R3 Matrix |
 
@@ -214,7 +214,8 @@ N/A — R2 docs-only。後続 R3 packet で 8 site × 契約行の Ledger を必
 - gap 8 site の全被覆: 各 site が DSR-18 + どの doc 契約に対応するかの突合。
 - TRACE-D11 改訂の 4 箇所同期と旧文言残存 0。
 - 74 §74.9 追記が UI-11c-D5（click 競合回避）と矛盾しないこと。
-- DSR-18 の共通 helper 方針が products 側 `return-to.ts` の allowlist 型と矛盾しないこと。
+- DSR-18 と DSR-15 の整合: DSR-18 が DSR-15 を extend する関係（最低基準 = prefix 検証、supersede しない）が本文で明示され、両 DSR が同一トピックで矛盾しないこと。
+- DSR-18 の共通 helper 方針が products 側 `return-to.ts` の exact-allowlist 型（typed parse-back 用途）と矛盾しないこと。
 - Plans.md 再編が owner 裁定 A' と一致すること。
 
 ## Spec Contract
