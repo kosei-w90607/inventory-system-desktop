@@ -8,7 +8,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
-- Amendments: 7ec8d4a
+- Amendments: 7ec8d4a 80c9f89
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
