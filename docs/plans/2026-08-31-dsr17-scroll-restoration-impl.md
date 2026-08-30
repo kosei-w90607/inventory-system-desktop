@@ -4,7 +4,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
@@ -13,7 +13,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: 83ba457
+- Reviewed Content HEAD: a6e0cb5
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（WebView2 の sessionStorage 実機挙動 + cache hit/miss + smooth scroll 干渉 + 主ナビ先頭。DSR-17 (f) の revisit trigger 判定を含む）
@@ -400,6 +400,14 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 - Writer（Codex）が D-F 実装中の review gate で fail-closed 停止し P2 を報告: `StocktakePage.tsx:427-429` に `useEffect(..., [])` 契機の mount autofocus が残存（`StocktakeCountEntry`、route page 内 mount、既存 `StocktakePage.test.tsx` T17 が初期 autofocus を契約化）。packet D-F 前提「mount 契機は SearchBar 2 箇所のみ」は誤り。
 - **Coordinator 反省**: 当該行は sweep 出力に表示されていたが、setTimeout 系の操作起因 focus と一括りに誤分類し、mount effect であることを実読確認しなかった（:427-429 実読 + T17 実読で Writer 報告と三点一致を確認済み）。
 - **裁定（候補 1 採用）**: `StocktakeCountEntry` の mount focus も D-F scope に追加し `focus({ preventScroll: true })` へ。T15 に第 3 case（StocktakeCountEntry）と M12（同 preventScroll 除去 → 該当 T15 kill）を追加。DSR-17 禁止行は一般形（route 遷移で再 mount される component の mount 契機 focus 全般）を維持 — SearchBar 限定へ狭める候補 2 は規範の一般性を壊すため棄却。既存 T17（focus 契約）は preventScroll でも `toHaveFocus` が成立するため無変更 green を維持する。
+
+### Final Review round 4 と human-confirm 再遷移（2026-08-31、append-only）
+
+- Writer D-F content commit `a6e0cb5`（3 site preventScroll + D-E 復帰 + T14 撤去 + T15×3 + DSR-17 同期）。L1 full + `local-ci full` PASS。test 総数 1,157（T14 −3 + T15 +3 で差分 0）。
+- Coordinator mutation 独立再実測: 有効 11 件（M1〜M9 + M11〜M12）全 kill（M1:10 / M2:10 / M3:2 / M4:1 / M5:5 / M6:2 / M7:1 / M8:2 / M9:3 / M11:2〈両 site 同時注入〉/ M12:1 failed、全復元 tree clean）。
+- Final Review round 4（同 reviewer 継続、対象 = `a6e0cb5`）: P1 0 / P2 0 / P3 0。`app-router.ts` が round 2 の D-E 実装と **byte-identical**（diff 無差分）であること、T14 撤去が D-E' 専有部分に限定されること（round 2 の test file と diff ゼロ）、T15 oracle の精密性（StocktakeCountEntry は `mock.contexts` で対象 input を特定）、AC14 再現性証明（reviewer 独立再実施で 3 site revert → 該当 T15 のみ 3 件 fail・T17 無傷）、DSR-17 diff の裁定一致を確認。M11（個別注入で各 1 件）/ M12 / M8 / M9 も reviewer 独立 kill 実証 = Coordinator と二重実測。
+
+Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`（4 巡目）。Reviewed Content HEAD を `a6e0cb5` で確定。残りは owner Windows native L3 四巡目（AC15 = 全手順、L3-1 は三巡目の focusin 計測手順を含む）、Ready 承認、hosted final、merge。
 
 ## 発注・レビュー段取り
 
