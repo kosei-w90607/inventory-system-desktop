@@ -4,7 +4,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
@@ -13,7 +13,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: 687ae6b
+- Reviewed Content HEAD: 0ef5fe4
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（WebView2 の sessionStorage 実機挙動 + cache hit/miss + smooth scroll 干渉 + 主ナビ先頭。DSR-17 (f) の revisit trigger 判定を含む）
@@ -348,6 +348,9 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 - Writer 是正 content commit `50f5397`（3 file: app-router.ts + test + DSR-17 (i) 追記）。Writer L1 full PASS、AC10 再現性証明（是正前相当で T10/T12 fail、D-E 実装後 green）と M8/M9 kill を報告。実装は D-E 契約に忠実（消費先行の排他・clamp 検出・MutationObserver + 即時 1 回試行・解除 3 条件・armed 高々 1 本）を Coordinator 実読確認。
 - **traceability drift 裁定**: Writer が非指定で実行した `local-ci.sh changed` の T4 FAIL（baseline 22 / 現在 26）を「既存 branch 由来・scope 外」と主張したが、Coordinator 実測で **`687ae6b` の新規 test 4 file（RootLayout / SidebarHeader / app-router / main-nav-scroll）が原因**と確定（describe が DSR-17 表記のみで checker の REQ-NNN / UI-NN pattern 非該当 → 未参照数増加）。T4 の本則（増加時は describe/it へ ID 付与）に従い、4 file を 52 §52.1（RootLayout 構成・sidebar・main container）帰属で **UI-12** を describe へ付与 + 90-traceability 再同期（Coordinator 直接是正 `409f661` + `0ef5fe4` — 機械的作業のため conductor-mode 軽微修正の範囲と裁定）。`local-ci.sh changed` PASS（exit 0）を確認。
 - 反省記録: packet Registration / Generation Obligations が再生成義務を「REQ token 追加時のみ」の条件付きにしていたが、T4 は未参照 file 数の baseline 照合も行うため、**新規 test file の追加自体が ID 付与 + 再生成の義務を生む**。次回以降の packet では新規 test file 追加を義務 trigger に含める。
+- Final Review round 2（同 reviewer 別 context 継続、対象 = 是正 3 commit `50f5397` + `409f661` + `0ef5fe4`、HEAD `75f4948`）: P1 0 / P2 0 / P3 0。D-E 契約逐条（排他・clamp 検出・即時 1 回試行・解除 3 条件・armed 単一 slot の stale クリア誤爆防止まで）/ DSR-17 (i) 追記の正確性（node_modules 実読一致）/ T12・T13 oracle（clamp 模擬の忠実性）/ traceability 是正（UI-12 帰属の正当性 + describe 変更が assertion 非接触）を PASS 判定。**AC10 再現性証明を reviewer が独立再実施**（`687ae6b` 時点実装に現行 T10/T12/T13 を適用 → T10/T12 のみ fail で Writer 報告と完全一致）。M8/M9 も reviewer が clean tree 独立 kill 実証（M8 → T10/T12 fail、M9 → T12 negative 3 件 fail）。Coordinator の M1〜M9 全数再実測と合わせ、amendment 後 Matrix の mutation 9 件は二重の独立実測で全 kill。
+
+Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`（L3-1 FAIL backtrack 後の 2 巡目）。Writer L1 full PASS + `local-ci changed` PASS + Final Review round 2 収束（P1/P2 = 0）により independent-review を再通過、Reviewed Content HEAD を `0ef5fe4` で確定。残りは owner Windows native L3 の全手順再実施（AC11、fail は再度 revisit trigger）、Ready 承認、hosted final、merge。
 
 ## 発注・レビュー段取り
 
