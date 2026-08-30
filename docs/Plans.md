@@ -14,6 +14,7 @@
 
 ## 直近の完了
 
+- [x] **PR #23 DSR-18 戻り導線 returnTo 8 site + 共通 helper 実装**（R3、PR #23 @ inventory-system-desktop squash merge `16b73d8`、2026-08-31）: gap 8 site（保存結果 3 + recent list 4 + 操作ログ関連記録 1）へ `returnTo` 付与（`useRouterState` location href 方式）+ detail 6 page の `normalizeReturnTo` を `src/lib/return-to.ts`（DSR-15 prefix 検証 + fallback 必須引数）へ集約 + 契約 test（往復 end-to-end + detail 6 page 全数 negative）。owner Windows native L3 = 到達可能 7 site 全 PASS、操作ログ 1 site は既知 producer gap により waiver 裁定 A（実データ L3 は producer 実効化 R3 の Human Gate へ義務引き継ぎ、backlog 参照）。証跡: [archived Packet](archive/plans/2026-08-30-dsr18-returnto-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-30-dsr18-returnto-impl.md)
 - [x] **PR #22 成功 feedback / destructive dialog 横断規約 Design Phase**（R2 docs-only、PR #22 @ inventory-system-desktop squash merge `8b744f1`、2026-08-30）: DSR-19「作成・保存成功の feedback 規約」（toast 最低保証 + 併用基準〈適合 4 形 + R3 是正 2 件〉+ duration 3s/5s/8s + id 規約 + DSR-03 refine）と DSR-20「destructive 確認 dialog の配置・dismiss 規約」（variant 統一 + 並び順・3 ボタン先例 + cancel ブリッジ本則と硬化条件 + 暗黙硬化禁止 + Cancel 文言基準）を新設。SPEC-SUP-D11 / SPEC-PRV-D8 追記 + catalog ⑦ duration drift 是正 + 理論引用（『UXデザインの法則』第 2 版）を Why 限定で正本化。runtime 是正は後続 R3。証跡: [archived Packet](archive/plans/2026-08-30-feedback-dialog-conventions-design.md)
 - [x] **PR #21 DSR-17 拡張 Design Phase（3+1 分類）**（R2 docs-only、PR #21 @ inventory-system-desktop squash merge `22504af`、2026-08-30）: 分類④「主ナビゲーションは遷移先先頭」新設（owner 所感 PR #17 comment 起源、mount 一律禁止と発火契機で両立）+ 分類②の実装方式契約 (a)〜(h) 確定（push 戻り + href key + `<main>` 復元 + 競合優先順位 + R3 Probe / L3 義務、TanStack Router 1.168.23 の `__TSR_key` drift を版数付き記録）+ review-checklist カテゴリ 9 同期。R3 着手順 = DSR-18 R3 先行 → scroll 復元 R3。証跡: [archived Packet](archive/plans/2026-08-30-scroll-policy-extension-design.md)
 - [x] **PR #20 「前の画面へ戻る」導線契約の規範化 Design Phase**（R2 docs-only、PR #20 @ inventory-system-desktop squash merge `0d5f73c`、2026-08-30）: DSR-18「詳細画面の戻り導線契約」新設（遷移元本則 + returnTo 送信義務 + fallback + DSR-15 extend の共通 helper 方針）+ TRACE-D11 の遷移元横断化（65 の 4 箇所同期）+ 送信側契約 5 件採番（UI-02-D16 / UI-03-D22 / UI-04-D17 / UI-05-D17 / UI-11c-D16）+ review-checklist カテゴリ 9 対応行。gap 8 site の runtime 是正は後続 R3 packet。証跡: [archived Packet](archive/plans/2026-08-30-return-navigation-contract-design.md)
@@ -36,7 +37,7 @@
 
 ## 次の行動
 
-- [ ] **DSR-18 戻り導線 returnTo R3**（R3 キュー ①、owner 裁定 2026-08-30 = ① → ② scroll 復元 → ③ DSR-19/20 runtime）: gap 8 site への returnTo 付与 + 共通 helper（DSR-15 prefix 検証 + fallback 引数化）+ 契約 test。[active packet](plans/2026-08-30-dsr18-returnto-impl.md) / [Matrix](plans/test-matrices/2026-08-30-dsr18-returnto-impl.md)
+- [ ] **scroll 復元 R3**（R3 キュー ②、owner 裁定 2026-08-30 = ① → ② → ③。① DSR-18 R3 は PR #23 で完了）: TanStack Router `scrollRestoration` 導入、DSR-17 (a)〜(h) が方式正本。Contract Probe は是正仮適用の end-to-end、(g) resetScroll 注記 1 文を packet 起草時に DSR-17 へ追加（PR #21 Final Review P3 裁定）、(h) HomePage.test.tsx negative test regression なし必須、WebView2 sessionStorage は Windows native L3。着手時に起票時実測から
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -68,13 +69,12 @@
 - STATECAP 検査の stacked train 継承除外（`check-workflow-git.sh` の範囲 `merge-base(origin/main, HEAD)..HEAD` が stack 点以前の他 lane forward state-only commit を自 PR に計上する。PR #86 で実測、docs 側の運用規律は正本化済み、機械側の範囲判定是正は設計非自明のため将来判断）。
 - UI-01a 商品検索への取引先 filter 露出（backend `ProductSearchQuery` の `supplier_id` / `include_unassigned` は PR #95 で実装済み・UI 露出は UI-14 のみ。50-ui 画面契約の改訂が必要。UI-15 は PR #4 で完了済みのため着手可、UI 一覧の背骨 D 系の画面見直しとの前後関係は着手時に owner 判断）。
 - UI-15 改名ボタンの double-click 貫通リスク（保存確定の連打で二重送信し得る懸念。pending 中の行単位 disabled は実装・RTL 検証済みのため顕在化時に再評価、L3 owner 所感 2026-08-26 起源の P3）。
-- 「前の画面へ戻る」導線契約は Design 確定済み（PR #20、DSR-18）: 遷移元 URL を本則とし、業務記録詳細 link の `returnTo` 送信義務、遷移先ごとの fallback、DSR-15 を extend する共通 helper 方針を規範化。gap 8 site の runtime 是正は後続 R3 Plan Packet で実装する。
 - CsvImport / Stocktake detail page の静的入口未整備（PR #20 packet 起票時実測起源）: `/csv-import/records/$importId` / `/stocktake/records/$stocktakeId` は横断 hub 経由のみ到達可能で、専用一覧などの静的入口は未整備。入口設計は実需発生時の別 change とする。
 - 操作ログ関連記録の producer 0 件（74 §74.9 の link UI はあるが record_type 書込み producer が 0 件で実データ発火 0）。**producer 実効化 R3 候補**（優先度昇格 2026-08-31）: 入庫・返品交換・手動販売・廃棄の操作ログ書込みに `record_type` / `record_id` を記録し「関連記録を見る」を実データ発火可能にする。この R3 の Human Gate には、PR #23 L3-3 で waiver した「実データの関連記録 link → 詳細 → 調査 state 復元」の Windows native L3 を義務として含める（waiver disposition は PR #23 packet 参照）。
 - 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` を追加するか（現行 UI-05-D17 は「保存結果に link なし」を契約化済み。追加には UI-05-D17 改訂の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源。歴史的非対称であり表示すべきでない業務理由は source docs に見当たらない、が owner 観察）。
 - 4 作業画面の保存結果 panel を詳細往復時だけ one-shot 復元する案（現行は詳細 → 戻りで panel が消える。復元条件・サイドバー再訪との区別は DSR-03/DSR-19 系の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
-- hub 等の詳細戻り scroll 位置復元は design 確定済み（PR #21、DSR-17 を 3+1 分類へ拡張: 分類④「主ナビゲーションは遷移先先頭」+ 分類②の href key / `<main>` 復元方式契約）。owner 裁定の R3 着手順は、DSR-18 R3（`returnTo` 8 site + 共通 helper）を先行し、その後に TanStack Router `scrollRestoration` の Contract Probe 付き scroll 復元 R3 とする。
+- hub 等の詳細戻り scroll 位置復元は design 確定済み（PR #21、DSR-17 を 3+1 分類へ拡張: 分類④「主ナビゲーションは遷移先先頭」+ 分類②の href key / `<main>` 復元方式契約）。owner 裁定の R3 着手順（① DSR-18 → ② scroll 復元 → ③ DSR-19/20 runtime）のうち ① は PR #23 で完了。次は TanStack Router `scrollRestoration` の Contract Probe 付き scroll 復元 R3（「次の行動」参照）。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
 - 取引先追加成功 toast の横断規約は Design 確定（PR #22、DSR-19）: 作成・保存成功の toast 最低保証、持続的結果表示との併用基準、duration 3s / 5s / 8s、toast id 適用基準を規範化。取引先追加・価格改定行確定の runtime 是正は後続 R3 で実装する。
