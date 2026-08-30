@@ -381,6 +381,20 @@ D-E の「適用成功で即解除」を廃止し、適用の成否にかかわ�
 
 Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`（3 巡目）。Reviewed Content HEAD を `83ba457` で確定。残りは owner Windows native L3 三巡目（AC13 = L3-1〜L3-5 + L3-3b 全手順、L3-1 は二巡目の再現手順を含む）、Ready 承認、hosted final、merge。
 
+### owner Windows native L3 三巡目結果（2026-08-31、append-only）— L3-1 再々 FAIL、根本原因確定
+
+- **L3-1 FAIL（D-E' 後も再現）**。owner 追加計測で根本原因を確定: 戻り先 `/inventory/records` は `scrollHeight 1422` と十分な高さがあるのに `scrollTop 0`、同時点で `focusin` 発生・`activeElement` = id なし INPUT = **`LiveSearchBar`**。系列 =「router `onRendered` で保存位置を復元 → `InventoryRecordsPage` / `LiveSearchBar` が再 mount → passive effect の `inputRef.current?.focus()` → WebView2 が検索欄を可視領域へ入れる **native scroll** → scrollTop 0」。content 高さは十分で childList mutation も発生しないため、D-E / D-E' の MutationObserver は再適用契機を得られない。「開始日の再入力時だけ位置が残る」観測とも整合（search 変更では SearchBar が再 mount されず mount focus が再発火しない）。
+- **根本原因は「async content clamp」ではなく「SearchBar mount autofocus による復元成功後の native scroll 上書き」**。Coordinator の clamp 仮説（amendment 第 1〜2 弾）は誤診だった — clamp 機序自体は実在する（happy-dom / router-core 実読は正しい）が、本 FAIL の主因ではなかった。実測なき機序の「三者整合」判定で診断を確定させた反省を記録する（owner の Windows 診断提案を 2 度省略した判断も一因）。
+- Coordinator 実測（sweep）: mount 契機の `focus()` は `SearchBar.tsx:55`（LiveSearchBar）/ `:127`（CommitSearchBar）の 2 箇所のみ。他 12 箇所（stocktake / disposal / receiving / manual-sale / return-exchange）は操作起因の `setTimeout` focus で mount 契機でなく、今回 scope 外。
+- **Coordinator 裁定 D-F（owner + Codex 整理案を条件付き採用、gated amendment 第 3 弾）**:
+  1. 根本是正: SearchBar 両 variant の mount focus を `focus({ preventScroll: true })` へ（autofocus 契約は維持、scroll 副作用のみ抑止）。
+  2. **D-E' を撤回し D-E へ復帰**（初回 clamp 時のみ armed、適用成功で stop）。D-E' は誤診由来の補償ロジックで、根本是正後は不要。scrollbar 操作を引き戻す理論上のリスクも消える。D-E は cold 状態（アプリ再起動直後などデータ未描画での戻り）への安全網として存置する。
+  3. T14 / M10 は「根本原因確定により superseded」として撤去（本 amendment が設計 supersede の正本記録。既存 test 削除禁止規律の例外は、supersede された設計 D-E' の専有契約 test に限る）。T12 / M8 / M9 / T1〜T13 は存置。
+  4. 新 T15: SearchBar 両 variant の mount focus が `preventScroll: true` 付きで呼ばれる（focus spy の option assert、variant ごとに個別 case）。M11 = preventScroll 除去 → T15 kill。実 routeTree の復元維持は既存 T10 が引き続き担う。
+  5. DSR-17 正本化: 禁止行を拡張（「route 遷移で再 mount される component の mount 契機 `focus()` は `preventScroll: true` を必須とする — focus の native scroll が分類②の復元を上書きするため」）+ (i) の D-E' 記述を D-E へ戻す同期。
+  6. AC14 = 是正前実装（preventScroll なし）で「mount focus が preventScroll なしで呼ばれる」ことを T15 が fail として検出する再現性証明。AC15 = L3 四巡目全手順 PASS。
+- 実機の focus → native scroll は happy-dom で再現不能（layout なし）のため、T15 は focus 呼出しの option 検証にとどめ、実機実証は L3 四巡目が担う（Residual Gaps へ追記）。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
