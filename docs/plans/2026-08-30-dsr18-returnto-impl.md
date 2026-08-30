@@ -4,10 +4,10 @@ Design Phase は PR #20（squash `0d5f73c`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 08333ce
 - Amendments: none
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
@@ -252,7 +252,10 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
 
 ### Plan Review rally 記録（2026-08-30、append-only）
 
-- round 1（Sonnet 独立 reviewer、対象 = plan-first commit `08333ce`）: P1 0 / P2 1 / P3 0。観点 1〜6（契約整合 / 前提事実 / 実装可能性 / Matrix 質 / scope 境界 / 形式）は指摘なし。P2-1「`OperationLogsPage.test.tsx` の既存 href 固定値アサートが Scope 7 実装で fail するため、T13 の無変更対象から明示除外しないと Writer が誤読し relay を浪費する」— Coordinator が :835 / :874 を実読裏取りのうえ**採用**。さらに同型を repo 全体 sweep し、4 作業画面 test の「詳細を見る」href 固定値アサート 7 箇所を追加検出、是正を 9 箇所へ一般化して Scope 8 / Review Focus / Matrix T13・Adjacent Pattern Audit へ明記（本 commit）。D-B の保存結果 panel 懸念は reviewer が `setResult` 非 navigate を実読確認し問題なしと判定。
+- round 1（Sonnet 独立 reviewer、対象 = plan-first commit `08333ce`）: P1 0 / P2 1 / P3 0。観点 1〜6（契約整合 / 前提事実 / 実装可能性 / Matrix 質 / scope 境界 / 形式）は指摘なし。P2-1「`OperationLogsPage.test.tsx` の既存 href 固定値アサートが Scope 7 実装で fail するため、T13 の無変更対象から明示除外しないと Writer が誤読し relay を浪費する」— Coordinator が :835 / :874 を実読裏取りのうえ**採用**。さらに同型を repo 全体 sweep し、4 作業画面 test の「詳細を見る」href 固定値アサート 7 箇所を追加検出、是正を 9 箇所へ一般化して Scope 8 / Review Focus / Matrix T13・Adjacent Pattern Audit へ明記（是正 commit `0fe9d78`）。D-B の保存結果 panel 懸念は reviewer が `setResult` 非 navigate を実読確認し問題なしと判定。
+- round 2（同 reviewer、対象 = 是正 commit `0fe9d78`）: P1 0 / P2 0 / P3 0。9 箇所の file:line 実在・全数性（`InventoryRecordsPage.test.tsx:314-316` は returnTo 済み・T13 保護対象として正しく除外）・文言整合（「無変更」系記述と 9 箇所例外の対象集合が排他的で矛盾なし）を独立再 sweep で確認。plan-approved 判断へ異論なし。
+
+Phase 遷移記録（本 content commit に同乗）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 2 で新規指摘 0 に収束（P1/P2 = 0）。Plan Commit を `08333ce` で確定。次は Codex 発注（Writer content commit）。
 
 ## Data Safety
 
