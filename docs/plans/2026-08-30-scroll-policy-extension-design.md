@@ -2,14 +2,14 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 7f6f7c61773a95e491df52f8042c548bb932fa75
 - Amendments: none
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（外部端末、発注書 relay。§3.1 により Fable は docs Writer に投入しない）
-- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-30、round 1 = P1×2〈(g) 分類④×cache hit 競合未解決 / (h) 分類③ negative 契約との干渉未検討〉+ P3×1〈file:line offset〉、全件 Fable 実読裏取りの上 accept → 是正 commit、round 2 独立再検証は pending）
+- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-30、round 1 = P1×2〈(g) 分類④×cache hit 競合未解決 / (h) 分類③ negative 契約との干渉未検討〉+ P3×1〈file:line offset〉、全件 Fable 実読裏取りの上 accept → 是正 commit、round 2 = 別個体 Sonnet の独立再検証で P1/P2 = 0・regression なし・(g)(h) の設計論理と file:line を全件裏取り一致、是正 commit 5750676）
 - Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -17,6 +17,8 @@
 - Human Gate: Codex 発注 relay、Ready（docs-only のため Ready 後の owner `workflow_dispatch` を含む、CI-TRIGGER-D1）、merge
 
 この plan-first commit は `kickoff -> spec-check -> design -> plan-draft -> plan-gate` を materialize する。task scope / Risk は本 packet、design の必要性は「起票時実測」節（復元機構 0 件 + router 既定 key と push 戻りの不整合 + owner 裁定 2 件）、design 出力（DSR-17 拡張ほか）は plan-approved 後の Writer content commit で追加する。Plan Reviewer の独立性は Claude 側で充足するため、Plan Review を pending のまま Draft PR checkpoint で停止する。
+
+2026-08-30: Plan Review 完了（Sonnet subagent 一次、Writer = Codex と別主体。round 1 = P1×2 / P3×1、全件 Fable 実読裏取りの上 accept、是正 commit 5750676。round 2 = 別個体 Sonnet の独立再検証で P1/P2 = 0・regression なし）。plan-approved の evidence が成立した。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。plan-first commit 7f6f7c6 は全 content commit の先頭にあり PK5 ancestry を充足する。次は Writer（Codex）の design content commit を待ち、その L1 evidence で `implementing -> local-verified` へ進む。
 
 ## Owner Effort Budget
 
