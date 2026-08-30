@@ -252,6 +252,18 @@ describe("StocktakePage (UI-10)", () => {
     expect(mockUpdateCount).toHaveBeenCalledWith(501, 8);
   });
 
+  it("DSR-17 T15: StocktakeCountEntry mount focus prevents native scroll", async () => {
+    const focus = vi.spyOn(HTMLInputElement.prototype, "focus");
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+
+    await renderPage();
+    const codeInput = await screen.findByLabelText("商品を検索・スキャン");
+    const callIndex = focus.mock.contexts.findIndex((context) => context === codeInput);
+
+    expect(callIndex).toBeGreaterThanOrEqual(0);
+    expect(focus.mock.calls[callIndex]).toEqual([{ preventScroll: true }]);
+  });
+
   it("T17 focus moves code→quantity→code across scan cycle for continuous HID scanning (UI-10-D11)", async () => {
     const user = userEvent.setup();
     mockGetActive.mockResolvedValue(ok(activeStocktake()));

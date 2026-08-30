@@ -2,6 +2,7 @@ import { Link, useLinkProps, useRouterState } from "@tanstack/react-router";
 
 import type { NavItem } from "@/config/navigation";
 import { cn } from "@/lib/utils";
+import { markMainNavScroll } from "@/lib/main-nav-scroll";
 import { SELECTION_TONE_ACTIVE, SELECTION_TONE_ACTIVE_ICON } from "@/components/ui/selection-tone";
 
 interface SidebarLinkProps {
@@ -40,6 +41,12 @@ function ActiveMatchSidebarLink({ item }: ActiveMatchSidebarLinkProps) {
     // UI-12-D1 の search predicate に基づく値で上書きする。
     <a
       {...linkProps}
+      href={linkProps.href}
+      onClick={(event) => {
+        const targetHref = event.currentTarget.getAttribute("href");
+        if (targetHref !== null) markMainNavScroll(targetHref);
+        linkProps.onClick?.(event);
+      }}
       className={cn(
         baseClass,
         focusRingClass,
@@ -89,6 +96,10 @@ export function SidebarLink({ item }: SidebarLinkProps) {
     <Link
       to={item.to}
       {...(item.search === undefined ? {} : { search: item.search })}
+      onClick={(event) => {
+        const targetHref = event.currentTarget.getAttribute("href");
+        if (targetHref !== null) markMainNavScroll(targetHref);
+      }}
       activeOptions={{ exact: true, includeSearch: false }}
       className={cn(baseClass, focusRingClass)}
       activeProps={{

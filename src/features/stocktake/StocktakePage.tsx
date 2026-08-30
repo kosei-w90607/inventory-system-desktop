@@ -425,7 +425,7 @@ export function StocktakeCountEntry({
   }, [productSuggest, productSuggestRef]);
 
   useEffect(() => {
-    codeInputRef.current?.focus();
+    codeInputRef.current?.focus({ preventScroll: true });
   }, []);
 
   function selectItem(item: StocktakeItemDetail) {

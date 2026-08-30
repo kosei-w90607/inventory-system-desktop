@@ -37,7 +37,7 @@
 
 ## 次の行動
 
-- [ ] **scroll 復元 R3**（R3 キュー ②、owner 裁定 2026-08-30 = ① → ② → ③。① DSR-18 R3 は PR #23 で完了）: TanStack Router `scrollRestoration` 導入、DSR-17 (a)〜(h) が方式正本。Contract Probe は是正仮適用の end-to-end、(g) resetScroll 注記 1 文を packet 起草時に DSR-17 へ追加（PR #21 Final Review P3 裁定）、(h) HomePage.test.tsx negative test regression なし必須、WebView2 sessionStorage は Windows native L3。着手時に起票時実測から
+- [ ] **scroll 復元 R3**（R3 キュー ②、owner 裁定 2026-08-30 = ① → ② → ③。① DSR-18 R3 は PR #23 で完了）: TanStack Router `scrollRestoration` 導入（href key + `<main>` 復元 + 分類④ one-shot 機構〈起票時 spike で確定〉+ DSR-17 (g) spike 結果追記）。[active packet](plans/2026-08-31-dsr17-scroll-restoration-impl.md) / [Matrix](plans/test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md)
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -75,6 +75,7 @@
 - 4 作業画面の保存結果 panel を詳細往復時だけ one-shot 復元する案（現行は詳細 → 戻りで panel が消える。復元条件・サイドバー再訪との区別は DSR-03/DSR-19 系の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
 - hub 等の詳細戻り scroll 位置復元は design 確定済み（PR #21、DSR-17 を 3+1 分類へ拡張: 分類④「主ナビゲーションは遷移先先頭」+ 分類②の href key / `<main>` 復元方式契約）。owner 裁定の R3 着手順（① DSR-18 → ② scroll 復元 → ③ DSR-19/20 runtime）のうち ① は PR #23 で完了。次は TanStack Router `scrollRestoration` の Contract Probe 付き scroll 復元 R3（「次の行動」参照）。
+- `app-router.ts` top-level の router singleton 副作用（test が named export だけ import しても実 router が構築されグローバル scroll/pagehide listener が登録される。現状は test 側の一意 query で cache 衝突を回避済みで実害なし。router 関連改修時に遅延生成 or test util 分離を検討 — PR #24 Final Review P3-2、2026-08-31）。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
 - 取引先追加成功 toast の横断規約は Design 確定（PR #22、DSR-19）: 作成・保存成功の toast 最低保証、持続的結果表示との併用基準、duration 3s / 5s / 8s、toast id 適用基準を規範化。取引先追加・価格改定行確定の runtime 是正は後続 R3 で実装する。

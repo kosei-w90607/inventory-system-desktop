@@ -9,9 +9,13 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SearchBar } from "./SearchBar";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // ---------------------------------------------------------------------------
 // commit 型（debounceMs 未指定）— products 現実装から移管
@@ -21,6 +25,14 @@ describe("SearchBar commit 型（debounceMs 未指定、REQ-103 商品検索の�
   it("初期表示時に検索 input へ focus する", () => {
     render(<SearchBar value="" onSearchChange={vi.fn()} />);
     expect(screen.getByLabelText("商品検索")).toHaveFocus();
+  });
+
+  it("DSR-17 T15: commit 型の mount focus は native scroll を抑止する", () => {
+    const focus = vi.spyOn(HTMLInputElement.prototype, "focus");
+
+    render(<SearchBar value="" onSearchChange={vi.fn()} />);
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
   it("Enter で確定値（trim 済み）を onSearchChange に渡す", async () => {
@@ -73,6 +85,14 @@ describe("SearchBar live 型（debounceMs 指定、REQ-301 在庫照会の検索
   it("初期表示時に検索 input へ focus する", () => {
     render(<SearchBar value="" onSearchChange={vi.fn()} debounceMs={200} />);
     expect(screen.getByLabelText("商品検索")).toHaveFocus();
+  });
+
+  it("DSR-17 T15: live 型の mount focus は native scroll を抑止する", () => {
+    const focus = vi.spyOn(HTMLInputElement.prototype, "focus");
+
+    render(<SearchBar value="" onSearchChange={vi.fn()} debounceMs={200} />);
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
   it("Enter で debounce を待たず即時に onSearchChange を呼ぶ", async () => {

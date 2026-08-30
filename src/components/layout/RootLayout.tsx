@@ -62,7 +62,7 @@ export function RootLayout() {
         <aside className="min-h-0 overflow-hidden border-r border-border bg-muted">
           <Sidebar />
         </aside>
-        <main className="min-h-0 min-w-0 overflow-auto">
+        <main data-scroll-restoration-id="main" className="min-h-0 min-w-0 overflow-auto">
           <Outlet />
         </main>
       </div>

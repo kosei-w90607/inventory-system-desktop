@@ -9,7 +9,7 @@
 // activeOptions.includeSearch:false により search params 付き URL でも path 一致のみで
 // active 判定されることを data-status="active" 属性で検証する (クラス hardcode は脆い)。
 
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -25,6 +25,11 @@ import { SidebarLink } from "./SidebarLink";
 import { SidebarArea } from "./SidebarArea";
 import { navigation } from "@/config/navigation";
 import type { NavItem } from "@/config/navigation";
+import { consumeMainNavScroll } from "@/lib/main-nav-scroll";
+
+beforeEach(() => {
+  consumeMainNavScroll();
+});
 
 // navigation.ts の在庫照会 NavItem (to: "/stock") 相当。単一 NavItem で十分 (20 項目は不要)。
 const stockItem: NavItem = {
@@ -132,6 +137,26 @@ describe("SidebarLink UI-12-D1: 同一 route の排他 active", () => {
       expect(router.state.location.pathname).toBe("/stock");
       expect(router.state.location.search).toEqual({ status: "low_stock" });
     });
+  });
+});
+
+describe("DSR-17 D-C main navigation scroll marker", () => {
+  it("T3: marks the plain Link destination href", async () => {
+    const user = userEvent.setup();
+    renderAt("/");
+
+    await user.click(await screen.findByRole("link", { name: "在庫照会" }));
+
+    expect(consumeMainNavScroll()).toBe("/stock");
+  });
+
+  it("T3: marks the ActiveMatchSidebarLink destination including search", async () => {
+    const user = userEvent.setup();
+    renderStockNavigationAt("/");
+
+    await user.click(await screen.findByRole("link", { name: "在庫少一覧" }));
+
+    expect(consumeMainNavScroll()).toBe("/stock?status=low_stock");
   });
 });
 
