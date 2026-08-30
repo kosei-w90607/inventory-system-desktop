@@ -143,6 +143,8 @@ function installNativeScrollClamp(main: HTMLElement) {
     requestedTops,
     setScrollHeight: (scrollHeight: number) => {
       forcedScrollHeight = scrollHeight;
+      const maximumTop = Math.max(0, scrollHeight - main.clientHeight);
+      actualTop = Math.min(actualTop, maximumTop);
     },
   };
 }
@@ -423,5 +425,94 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     });
     expect(main.scrollTop).toBe(0);
     expect(clamp.requestedTops.filter((top) => top === 390)).toHaveLength(1);
+  });
+
+  it("T14: rearms after an initially successful restoration and reapplies after native loss", async () => {
+    const sourceHref = "/inventory/records?recordType=receiving_record&page=14";
+    const detailHref = "/inventory/receiving/records/12?case=successful-then-lost";
+    const { router, main } = await renderAppRouterAt(sourceHref);
+    const clamp = installNativeScrollClamp(main);
+
+    trackScroll(main, 360);
+    await navigateAndRender(router, detailHref);
+    clamp.requestedTops.length = 0;
+
+    await navigateAndRender(router, sourceHref);
+    expect(main.scrollTop).toBe(360);
+    expect(clamp.requestedTops.filter((top) => top === 360)).toHaveLength(1);
+
+    clamp.setScrollHeight(500);
+    expect(main.scrollTop).toBe(0);
+    clamp.setScrollHeight(1_000);
+    await act(async () => {
+      main
+        .querySelector('[data-testid="inventory-records-content"]')
+        ?.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+
+    expect(main.scrollTop).toBe(360);
+    expect(clamp.requestedTops.filter((top) => top === 360)).toHaveLength(2);
+  });
+
+  it("T14: does not reapply after the successful-restoration recovery limit is reached", async () => {
+    const sourceHref = "/inventory/records?recordType=receiving_record&page=15";
+    const detailHref = "/inventory/receiving/records/12?case=reapply-limit";
+    const { router, main } = await renderAppRouterAt(sourceHref);
+    const clamp = installNativeScrollClamp(main);
+
+    trackScroll(main, 370);
+    await navigateAndRender(router, detailHref);
+    clamp.requestedTops.length = 0;
+    await navigateAndRender(router, sourceHref);
+
+    clamp.setScrollHeight(500);
+    clamp.setScrollHeight(1_000);
+    await act(async () => {
+      main
+        .querySelector('[data-testid="inventory-records-content"]')
+        ?.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+    expect(main.scrollTop).toBe(370);
+
+    clamp.setScrollHeight(500);
+    expect(main.scrollTop).toBe(0);
+    clamp.setScrollHeight(1_000);
+    await act(async () => {
+      main
+        .querySelector('[data-testid="inventory-records-content"]')
+        ?.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+
+    expect(main.scrollTop).toBe(0);
+    expect(clamp.requestedTops.filter((top) => top === 370)).toHaveLength(2);
+  });
+
+  it("T14: does not recover a successful restoration lost after user input", async () => {
+    const sourceHref = "/inventory/records?recordType=receiving_record&page=16";
+    const detailHref = "/inventory/receiving/records/12?case=successful-user-cancel";
+    const { router, main } = await renderAppRouterAt(sourceHref);
+    const clamp = installNativeScrollClamp(main);
+
+    trackScroll(main, 380);
+    await navigateAndRender(router, detailHref);
+    clamp.requestedTops.length = 0;
+    await navigateAndRender(router, sourceHref);
+    expect(main.scrollTop).toBe(380);
+
+    main.dispatchEvent(new Event("wheel", { bubbles: true }));
+    clamp.setScrollHeight(500);
+    clamp.setScrollHeight(1_000);
+    await act(async () => {
+      main
+        .querySelector('[data-testid="inventory-records-content"]')
+        ?.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+
+    expect(main.scrollTop).toBe(0);
+    expect(clamp.requestedTops.filter((top) => top === 380)).toHaveLength(1);
   });
 });
