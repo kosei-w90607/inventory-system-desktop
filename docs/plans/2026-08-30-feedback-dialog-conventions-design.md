@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 0c71ccb85ae0f8b5d21f9bc71b41d6b49fa77488
@@ -21,6 +21,8 @@
 2026-08-30: Plan Review 完了（Sonnet subagent 一次、Writer = Codex と別主体。round 1 = P2×1 / P3×1、全件 accept、是正 commit 9cd454a — DSR-20 Scope の 5 要素同期 + PK4 active link の plan-first 前倒し追加〈PR #21 教訓の構造的回避〉。round 2 = 別個体 Sonnet の独立再検証で P1/P2 = 0・regression なし・doc-check exit 0 実行確認）。plan-approved の evidence が成立した。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。plan-first commit 0c71ccb は全 content commit の先頭にあり PK5 ancestry を充足する。次は Writer（Codex）の design content commit を待ち、その L1 evidence で `implementing -> local-verified` へ進む。
 
 2026-08-30: Writer（Codex）の content commit 1c0bf20 に対し、L1 `local-ci.sh full` CLEAN（RESULT=PASS、対象 HEAD = content commit 1c0bf20 と同一。evidence の所在は PR body を正とする）。Final Review 完了（Sonnet subagent 独立 fresh context、Plan Reviewer とは別個体。監査対象 1c0bf20、P1/P2/P3 = 0、Goal Invariant 充足 = yes。Fable 裁定 accept）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize し、`Reviewed Content HEAD` に 1c0bf20 を記録する。残る Human Gate は Ready 承認（docs-only のため Ready 後の owner `workflow_dispatch` 込み）と merge。
+
+2026-08-30: owner が Ready を承認（介入 3 回目 / 予算 3 回）。この state-only commit は `human-confirm -> ready-hosted-final` を Draft のまま materialize する。この resulting HEAD で L1 full を再取得し、exact-HEAD evidence は PR body を正とする。残る Human Gate は owner の Ready 操作 → CI-TRIGGER-D1 に従う同一 HEAD run 0 件確認後の `workflow_dispatch`（docs-only のため自動 run なし）→ merge。
 
 ## Owner Effort Budget
 
