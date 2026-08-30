@@ -52,7 +52,7 @@ function CommitSearchBar({
   }, [value]);
 
   React.useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   const inputId = id ?? "search-input";
@@ -124,7 +124,7 @@ function LiveSearchBar({
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   React.useEffect(() => {

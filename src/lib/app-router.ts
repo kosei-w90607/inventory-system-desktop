@@ -52,14 +52,13 @@ export function createAppRouter(options: { history?: RouterHistory } = {}) {
       main === null ||
       savedScrollTop === undefined ||
       !Number.isFinite(savedScrollTop) ||
-      savedScrollTop <= 0
+      savedScrollTop <= 0 ||
+      main.scrollTop >= savedScrollTop
     ) {
       return;
     }
 
     const userInputEvents = ["wheel", "pointerdown", "keydown"] as const;
-    const maximumReapplications = 1;
-    let reapplicationCount = 0;
     const stop = () => {
       observer.disconnect();
       for (const eventName of userInputEvents) {
@@ -68,16 +67,10 @@ export function createAppRouter(options: { history?: RouterHistory } = {}) {
       if (cancelDelayedRestoration === stop) cancelDelayedRestoration = undefined;
     };
     const applyWhenScrollable = () => {
-      if (
-        main.scrollTop >= savedScrollTop ||
-        main.scrollHeight < savedScrollTop + main.clientHeight
-      ) {
-        return;
-      }
+      if (main.scrollHeight < savedScrollTop + main.clientHeight) return;
 
       main.scrollTop = savedScrollTop;
-      reapplicationCount += 1;
-      if (reapplicationCount >= maximumReapplications) stop();
+      stop();
     };
 
     const observer = new MutationObserver(applyWhenScrollable);
