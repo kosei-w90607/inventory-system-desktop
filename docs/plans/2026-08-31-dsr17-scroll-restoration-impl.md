@@ -310,6 +310,14 @@ Phase 遷移記録（本 content commit に同乗）: `plan-gate -> plan-approve
 
 Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Final Review 収束（P1/P2 = 0）により independent-review を通過、Reviewed Content HEAD を `687ae6b` で確定。残りは owner Windows native L3（L3-1〜L3-5 + L3-3b、fail は DSR-17 (f) revisit trigger）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
 
+### owner Windows native L3 結果（2026-08-31、append-only）— L3-1 FAIL、DSR-17 (f) revisit trigger 発動
+
+- 実施環境: Windows native / WebView2 / `npm run tauri dev`、HEAD `ab73db4`（Reviewed Content HEAD `687ae6b` + docs 遷移 commit）、L3 前に手動バックアップ作成済み・DB 変更なし。
+- **L3-1 FAIL**: 入出庫履歴を最下部まで scroll → 詳細 → 「前の画面へ戻る」で位置復元されず先頭（`mainTop = 0`、`contentHeight = 1417` で scroll 余地あり）。L3-2〜L3-5 / L3-3b は fail-closed で未実施。がたつき・二段 scroll は観測なし。
+- owner 切り分け（採取 log 付き、原本は owner L3 報告）: `<main>` の scroll event 取得 / href key への位置保存（sessionStorage `persisted.scrollY = 616.8`）/ WebView2 の scrollTop 適用能力（setter probe 下では requested 616.8 → actual 616.8 で PASS）はすべて成立。**即時の詳細戻りでは適用されず、後続の同一 href 到達（filter 入力で href が保存済み key に一致した瞬間）で旧位置が遅延適用される**。probe 有無で挙動が変わるタイミング依存の不安定 FAIL。
+- 原因境界（owner 確定分): WebView2 scroll 取得 / sessionStorage 保存 / href key / selector / 正の scrollTop 適用 / DB・fixture は除外。未確定 = onRendered 発火有無・cache key ずれ・復元後の 0 上書き・タイミング依存。
+- **Coordinator 裁定**: DSR-17 (f) の revisit trigger として `human-confirm -> implementing` へ正規 backtrack（次 commit）。Ready / merge へ進めない。Coordinator 第一仮説 =「復元が走る `onRendered`（useLayoutEffect、paint 前）の時点で、戻り先一覧の async データ（React Query）が未描画で `<main>` の content 高さが不足し、`scrollTop` 代入が clamp されて 0 に落ちる。probe 下 PASS / 通常 FAIL は query cache の warm/cold 差、T10 の green は harness mock の即時 resolve による false-green」。まず happy-dom harness に遅延 resolve を入れた再現実験で仮説を確定し、確定後に是正設計（方式追補）→ T10/T11 harness 是正 → Writer 是正発注 → Final Review 再走 → revised exact HEAD で L3-1 から全手順再開、の順とする。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
