@@ -271,6 +271,15 @@ Phase 遷移記録（本 content commit に同乗）: `plan-gate -> plan-approve
 
 Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Final Review rally round 2 収束（P1/P2 = 0）により independent-review を通過、Reviewed Content HEAD を `c7aa25b` で確定。残りは owner Windows native L3（L3-1〜L3-3）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
 
+### owner Windows native L3 結果と disposition（2026-08-31、append-only）
+
+- L3 実施: Windows native / clean tree / 開発 DB / HEAD `3bc8933`（Reviewed Content HEAD `c7aa25b` + docs 遷移 commit）。
+- **L3-1: 到達可能な 7 site すべて PASS**（入庫・返品交換・手動販売の保存結果 + recent list 各 2、廃棄 recent list 1）。利用者視点で従来の hub 固定でなく元の作業画面へ復帰。
+- L3-2: 実 UI に returnTo なし遷移が残存しないため console 直接遷移の代替手順（省略可・T11 自動被覆）として案内済み。
+- **L3-3: BLOCKED → waiver（Coordinator 裁定 A、2026-08-31）**。「関連記録を見る」の表示条件（`detail_json.record_type` 許可リスト + positive safe integer `record_id`）を満たすログが実データ 0 件。原因は操作ログ producer 0 件の既知先行 gap（`Plans.md` backlog 記録済み、Coordinator が backend rg で再実測: record_type を書く producer 不在を確認）であり、本 PR の regression ではない。本 PR が導入した UI 契約（returnTo 送信 → state 復元）は T9 / T10 の自動 test で被覆済み。実データでの L3 検証は producer 実効化 R3 の Human Gate に義務として引き継ぐ（Plans.md backlog に明記）。
+- Coordinator 反省記録: L3 依頼時の「fixture は手順内で自給可能」前提は、Plans.md 記録済みの producer 不在 backlog（実測: `rg -ln "record_type" src-tauri/src/` の hit は読み側 `inventory_service/list.rs` と `disposal_repo.rs` のみで、保存系 service の操作ログ書込みに producer なし — 2026-08-31 再実測）と突合せずに書いた誤り。L3 手順の fixture 前提は記録済み gap との突合を必須とする（agent memory へ教訓化）。
+- L3 中の非ブロッキング UI 観察（保存結果 panel が詳細往復で消える / 廃棄のみ保存結果に詳細 link なし — いずれも owner L3 報告 2026-08-31 起源）は、設計判断（DSR-03/19 系・UI-05-D17 改訂）を要するため design-first で backlog 起票。本 PR では対応しない（UI-05-D17 の現行契約「廃棄保存結果に link を追加しない」に本 PR は適合している）。
+
 ## Data Safety
 
 synthetic fixture のみ使用（test は既存 mock command 応答、L3 は owner 手元の開発 DB）。実店舗の商品・取引データを test にも docs にも commit しない。
