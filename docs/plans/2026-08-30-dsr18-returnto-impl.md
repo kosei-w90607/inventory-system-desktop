@@ -257,6 +257,15 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
 
 Phase 遷移記録（本 content commit に同乗）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 2 で新規指摘 0 に収束（P1/P2 = 0）。Plan Commit を `08333ce` で確定。次は Codex 発注（Writer content commit）。
 
+### Final Review 記録（2026-08-30、append-only）
+
+- Writer content commit `7360a41`（Codex、28 file）。Writer L1 full PASS（typecheck / lint / format:check / test / build / `cargo check --release` / local-ci full）、bindings diff 0、pre-PR review-only P1/P2 = 0。Draft PR #23。
+- Coordinator mutation 独立再実測（clean tree、commit 後）: M1〜M3 / M5 = Matrix どおり注入し対応 test で kill（M5 は Stocktake へ注入、2 failed）。M4 は D-B 採用により Matrix 記載の注入対象が実装に存在せず、同型の「producer select を `location.pathname` 固定化」へ読み替えて T9 で kill（1 failed）。全注入は checkout 復元し tree clean を確認。
+- Final Review round 1（Sonnet 独立 reviewer 別個体、対象 = `7360a41`）: P1 1 / P2 1 / P3 1。検証項目 8 点（Scope 完全性 / AC 突合 / 契約逐条 / oracle 独立転記 / 既存 test 扱い / Matrix 対応実在 / 回帰リスク / コード品質）は全 PASS。
+  - P1-1 **採用**: detail 6 page のうち negative `//` case を持つのは Stocktake / CsvImport のみで、Receiving / Return / ManualSale / Disposal 4 page は M5 型 bypass regression を自動 test で検出できない（Coordinator 裏取り: Receiving / Return / ManualSale は detail 専用 test file 自体が不在、Disposal は正常系 1 case のみ — reviewer 実証と三点一致）。shipped code に実害なし、防御 gap のみ。是正 = 4 page への negative case 追加（同一 PR、Codex 是正発注）。
+  - P2-1 **採用**: Matrix M4 の記載が D-B 実装と乖離（param 単位の直列化コード不在）。Coordinator の読み替え実測と同一認識。本 gated amendment で M4 / M5 / T11 を改訂。
+  - P3-1 **同梱裁定**: T2 / T4 / T6 の T-ID ラベル不統一は P1-1 是正と同じ file 群のため Codex 発注に相乗り（backlog 化せず）。
+
 ## Data Safety
 
 synthetic fixture のみ使用（test は既存 mock command 応答、L3 は owner 手元の開発 DB）。実店舗の商品・取引データを test にも docs にも commit しない。

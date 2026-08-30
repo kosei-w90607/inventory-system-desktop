@@ -45,7 +45,7 @@ Risk: R3
 | T8 | DisposalPage recent list | 新規 | T2 同型。同 test 内で保存結果 panel に「詳細を見る」link が存在しないことも assert（誤追加検出、空集合 oracle 単独にしない） | UI-05-D17 |
 | T9 | OperationLogsPage 関連記録 | 新規 | 期間・種別・page を非既定値に設定した状態で「関連記録を見る」link の `returnTo` が `/settings/logs?start_date=…&end_date=…&operation_type=…&page=…` を含む（4 param 個別 assert — 1 param 落ち mutation 検出用） | UI-11c-D16 / D-B |
 | T10 | 往復 end-to-end（Contract Probe 兼務） | 新規 | memory history で search state 付き遷移元 → 詳細へ `<Link>` 遷移 → 「前の画面へ戻る」click → location が遷移元 URL（search 込み）へ復元。遷移が `<Link>` push であること（history 長の増加）も確認 | TRACE-D11 / DSR-17② (a) / DSR-18 |
-| T11 | detail fallback | 新規 | returnTo なしで詳細を直接 render → 戻り先 href が `/inventory/records` / returnTo=`//evil.example` でも同様に fallback | DSR-18 / DSR-15 |
+| T11 | detail fallback | 新規 | **detail 6 page 全数**で「returnTo なし → `/inventory/records`」「`//` 始まり → fallback」「絶対 URL → fallback」を検証。negative case が Stocktake / CsvImport の 2 page のみでは、残り 4 page の helper bypass regression（M5 型）を検出できない（Final Review round 1 P1-1、gated amendment） | DSR-18 / DSR-15 |
 | T12 | 操作ログ link と行展開の独立 | 既存確認 or 新規 | 関連記録 link の click が行展開 state を変化させない（既存 test があれば regression 指定、なければ新規） | UI-11c-D5 |
 | T13 | products / 既存 producer regression | 既存 | `src/features/products/lib/return-to.ts` の既存 regression test・InventoryRecordsPage / MovementTable / StockMovementsPage の既存 returnTo test が**無変更で** green（変更したら失敗定義に抵触）。packet Scope 8 列挙の producer test href 固定値アサート 9 箇所は T13 対象外 — 実装に伴う正当な更新対象（Plan Review round 1 P2 + 全 sweep 一般化） | DSR-18 存置 / TRACE-D11 |
 
@@ -107,8 +107,8 @@ Risk: R3
 | M1 | `src/lib/return-to.ts` の `!value.startsWith("//")` 条件を除去 | T1 / T11 |
 | M2 | helper の fallback 引数を無視し `/inventory/records` 固定を返す | T1（`/settings/logs` fallback case） |
 | M3 | ReceivingPage recent list の `search={{ returnTo }}` を除去 | T2 |
-| M4 | OperationLogsPage の直列化から `page` を除去 | T9 |
-| M5 | detail 側 helper 呼出しを検証なし `value ?? fallback` に置換 | T11（`//evil.example` case） |
+| M4 | ~~OperationLogsPage の直列化から `page` を除去~~ → **読み替え**: producer の `useRouterState` select を `location.pathname` 固定化 | T9（4 param 個別 assert）。D-B 採用（location.href 丸ごと再利用）により「直列化から param 除去」の対象コードは実装に存在せず、param 単位 drop は構造的に不可能（Final Review round 1 P2-1、gated amendment。Coordinator は読み替え注入形で kill 実測済み） |
+| M5 | detail 側 helper 呼出しを検証なし `value ?? fallback` に置換 | T11（`//evil.example` case）。**detail 6 page のいずれに注入しても kill されること**（P1-1 是正後の T11 全数化が前提。是正前は Stocktake / CsvImport のみ kill 可能だった） |
 
 ## Residual Test Gaps
 
