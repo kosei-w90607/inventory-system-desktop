@@ -409,6 +409,12 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 
 Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`（4 巡目）。Reviewed Content HEAD を `a6e0cb5` で確定。残りは owner Windows native L3 四巡目（AC15 = 全手順、L3-1 は三巡目の focusin 計測手順を含む）、Ready 承認、hosted final、merge。
 
+### owner Windows native L3 四巡目結果（2026-08-31、append-only）— 全項目 PASS（AC15 充足）
+
+- 実施環境: Windows native / WebView2、HEAD `aa611db`（Reviewed Content HEAD `a6e0cb5`）、L3_SYNC / L3_APP PASS。
+- **L3-1 位置復元 PASS**（scroll → 詳細 → 戻りで元位置へ復元、がたつき・二段 scroll なし）/ **L3-2 miss 先頭 PASS** / **L3-3 主ナビ先頭 PASS**（sidebar 再訪 + 店名ロゴ → Home とも先頭、誤復元なし）/ **L3-3b 残留 flag 無害 PASS** / **L3-4 既存挙動共存 PASS**（バックアップ復元成功後の Home 先頭、視認干渉なし）/ **L3-5 実機 sessionStorage・再起動 PASS**（起動直後 Home 先頭・再訪先頭・往復復元成功）。
+- Residual Gap 確認: WebView2 実機で `focus({ preventScroll: true })` が復元位置を保持し、SearchBar mount autofocus の先頭 scroll 上書きは再現せず。発見事項・追加 FAIL なし。L3_FINAL=PASS。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
