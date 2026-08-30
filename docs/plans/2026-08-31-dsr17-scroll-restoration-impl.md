@@ -51,7 +51,9 @@ Risk Tiers R3 行のうち route/search state（全 route 遷移の scroll 位�
 - `<main className="min-h-0 min-w-0 overflow-auto">` は `RootLayout.tsx:65` の唯一 scroll container、`data-scroll-restoration-id` 未付与。
 - `scrollPageToTop()`（`src/lib/page-scroll.ts`）は `document.querySelector("main")` + smooth scroll。分類①③の正本実装として存置対象（(e)）。
 - HomePage one-shot（UI-11b-D11、`HomePage.tsx:32-40`）と negative test（`HomePage.test.tsx` 「flag なしの通常 mount では scroll しない」）実在 — (h) の AC 対象。
-- 主ナビは `SidebarLink.tsx` の 2 経路: `<Link>` 直接 + `ActiveMatchSidebarLink`（`useLinkProps`）。分類④の発火契機はこの両経路。
+- 主ナビは **3 経路**（Plan Review round 1 P1-1 で 1 経路追加）: `SidebarLink.tsx` の `<Link>` 直接 + `ActiveMatchSidebarLink`（`useLinkProps`）+ `SidebarHeader.tsx:12-17` の店名ロゴ `<Link to="/">`（52 §52.1 が SidebarLink と並記する主ナビ要素）。layout 層の他 file（Sidebar / SidebarArea / RootLayout / DisplayScaleControl）に Link なしを rg で全数確認済み。分類④の発火契機はこの 3 経路。
+- test 環境は **happy-dom**（`vitest.config.ts:11`、Plan Review round 1 P1-2 是正）: happy-dom の `Element.scrollTo()` は非 smooth 時に `scrollTop`/`scrollLeft` を同期セットし、`sessionStorage` も機能する。T10 harness の自動化範囲はこの実挙動を前提に判定する（jsdom の「scrollTo 未実装」制約は本 repo に当てはまらない）。
+- **同一 href への遷移では `onRendered` が発火しない**（`react-router/dist/esm/Match.js:113-114` — emit 条件は `prevHrefRef.current !== currentHref`、`currentHref = router.latestLocation.href`。effect deps の `__TSR_key` が変わっても href 不変なら emit されない）。active な主ナビ項目の再クリックで flag が消費されず残留し得るため、D-C は target href 付き one-shot とする（Plan Review round 1 P2-1 対策）。
 
 spike（router-core 1.168.15 dist 実読、file:line は `node_modules/@tanstack/router-core/dist/esm/` 基準）:
 
@@ -92,7 +94,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 1. **router 生成の test 可能化**: `main.tsx` の `createRouter` 呼出しを `src/lib/app-router.ts`（新設）へ切り出し、`main.tsx` は import + render のみにする。router options の契約 test（T9）と onRendered 購読の配線を同 module に置くため。
 2. **scrollRestoration 導入**（(b)(d)）: `app-router.ts` の `createRouter` へ `scrollRestoration: true`、`getScrollRestorationKey: (location) => location.href`、`scrollToTopSelectors: ['[data-scroll-restoration-id="main"]']` を設定。
 3. **container の安定識別**（(c)）: `RootLayout.tsx` の `<main>` へ `data-scroll-restoration-id="main"` を付与。
-4. **分類④ one-shot 機構**（D-C、(g)）: `src/lib/main-nav-scroll.ts` 新設 — `markMainNavScroll()`（flag set）と `consumeMainNavScroll()`（one-shot 消費）の in-memory module（UI-11b-D11 と同型）。`app-router.ts` で router 生成直後に `router.subscribe("onRendered", ...)` を登録し、flag 消費時に `<main>`（`[data-scroll-restoration-id="main"]`）を instant（behavior 指定なし）で先頭 scroll する。`SidebarLink.tsx` の 2 経路（`<Link>` の onClick / `ActiveMatchSidebarLink` の click handler）で `markMainNavScroll()` を呼ぶ。
+4. **分類④ one-shot 機構**（D-C、(g)）: `src/lib/main-nav-scroll.ts` 新設 — `markMainNavScroll(targetPath)`（遷移先識別子付き flag set、再 mark は上書き）と `consumeMainNavScroll()`（one-shot 消費、戻り値は記録した識別子）の in-memory module（UI-11b-D11 と同型 + target 記録）。`app-router.ts` で router 生成直後に `router.subscribe("onRendered", ...)` を登録し、**flag を消費（残留させない）した上で、記録識別子が現 location と一致する時のみ** `<main>`（`[data-scroll-restoration-id="main"]`）を instant（behavior 指定なし）で先頭 scroll する。不一致時は消費のみ行い scroll しない（同一 href 再クリックの残留 flag が後続の無関係な遷移で誤発火しない — P2-1 対策）。mark は主ナビ **3 経路**（`SidebarLink.tsx` の `<Link>` onClick / `ActiveMatchSidebarLink` の click handler / `SidebarHeader.tsx` の店名ロゴ `<Link to="/">` onClick）で呼ぶ。
 5. **DSR-17 (g) への spike 結果追記**（docs、PR #21 Final Review P3 裁定の履行）: `resetScroll` 候補の不成立確定（cache hit 復元が常に先行する実装順序、版数 1.168.15）、function 化の「④には不成立 / (h) 除外には可」、目印 + 一意 key の set/get 非対称による不成立、採用機構 = app 層 one-shot flag + `onRendered` 購読（subscriber 挿入順保証が根拠）を、実現候補 3 行の置換 + 注記として追記。review-checklist 対応行の変更は不要（カテゴリ 9 既存行が 3+1 分類を既に参照）。
 6. **契約 test 追加**: Matrix T1〜T10。既存 test の削除・無効化なし（(h) の HomePage negative / page-scroll 既存 test は無変更 green が AC）。
 
@@ -106,7 +108,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - **D-A（href key）**: `getScrollRestorationKey` は `location.href` を返す（DSR-17 (b) の契約どおり）。PR #23 の returnTo が遷移元 href を再現するため、set 側（離脱時保存）と get 側（戻り時参照）が同一 key で一致し、push 戻り復元が成立する。既定 `__TSR_key` は push ごとに新規発行で戻り復元不成立（DSR-17 Why + spike 確認）。
 - **D-B（selector）**: cache selector と先頭 scroll 対象の両方を `[data-scroll-restoration-id="main"]` に統一（(c)(d)）。CSS class・DOM 階層に依存しない。
-- **D-C（分類④機構）**: spike の結論により、DSR-17 (g) の実現候補 3 つはいずれも単独不成立。採用は第 4 の機構「app 層 one-shot flag + `router.subscribe("onRendered")` 購読で、復元後に `<main>` を先頭 scroll」。根拠は spike 節（順序保証・同一 frame・公開 API のみ使用・UI-11b-D11 同型の repo 先例）。flag は主ナビ click でのみ set し、onRendered で 1 回だけ消費する。復元機構への内部介入（cache 直接操作・private API）は版数脆弱のため不採用。
+- **D-C（分類④機構）**: spike の結論により、DSR-17 (g) の実現候補 3 つはいずれも単独不成立。採用は第 4 の機構「app 層 one-shot flag + `router.subscribe("onRendered")` 購読で、復元後に `<main>` を先頭 scroll」。根拠は spike 節（順序保証・同一 frame・公開 API のみ使用・UI-11b-D11 同型の repo 先例）。flag は主ナビ 3 経路の click でのみ set し、onRendered で 1 回だけ消費する。**flag は遷移先識別子を保持し、handler は消費を必ず行った上で現 location 一致時のみ scroll する** — 同一 href への遷移では `onRendered` が発火しない（`Match.js:113-114` の href gate）ため、識別子なしの単純 flag では active 項目再クリックの残留 flag が後続遷移で誤発火し分類②を壊す（Plan Review round 1 P2-1）。復元機構への内部介入（cache 直接操作・private API）は版数脆弱のため不採用。
 - **D-D（(h) 機構分離の既定）**: HomePage one-shot は `scrollPageToTop()`（smooth）専有契約のまま。router 復元（layoutEffect、paint 前）→ HomePage effect（mount 後）の順で実行されるため干渉は理論上限定的だが、実機の smooth scroll 干渉は (f) どおり L3 で検証し、fail 時は DSR-17 の revisit trigger（方式選定へ戻る）とする。
 
 ## Acceptance Criteria
@@ -114,7 +116,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC1: `app-router.ts` の router options に `scrollRestoration` / `getScrollRestorationKey`（href 返却）/ `scrollToTopSelectors`（`[data-scroll-restoration-id="main"]`）が設定されている（T9 + T1）。
 - AC2: `RootLayout` の `<main>` が `data-scroll-restoration-id="main"` を持つ（T6）。
 - AC3: 一覧 scroll → 詳細 → returnTo 戻りで `<main>` の scroll 位置が復元される（Contract Probe = T10 end-to-end）。
-- AC4: cache hit が残る同一 href への主ナビ再訪で `<main>` が先頭表示される（T5、PR #21 P3 の必須検証）。
+- AC4: cache hit が残る同一 href への主ナビ再訪で `<main>` が先頭表示される（T5、PR #21 P3 の必須検証）。mark 配線は主ナビ 3 経路（SidebarLink 2 + SidebarHeader 店名ロゴ）すべて（T3）。
+- AC9: active な主ナビ項目の再クリック（同一 href、`onRendered` 非発火）で残留した flag が、直後の `returnTo` 戻りの位置復元を壊さない（T11）。
 - AC5: 既存 `HomePage.test.tsx` の negative test（UI-11b-D12）と `page-scroll.test.ts` が**無変更で** green（(h) / (e)）。
 - AC6: `src/lib/bindings.ts` の diff ゼロ。
 - AC7: frontend gate（`npm run typecheck` / `npm run lint` / `npm run format:check` / `npm test` / `npm run build`）green + `cargo check --release` PASS。
@@ -179,8 +182,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | Replacement path | not applicable（外部システム非接触） | — |
 | Data safety / evidence | scroll 位置座標のみ。業務データ非接触 | — |
 | Reporting / accounting semantics | not applicable | — |
-| Manual verification | WebView2 sessionStorage / smooth scroll 干渉 / 実 scroll 挙動は jsdom で判別不能 — L3 必須（(f)） | Human Gate |
-| 環境・再現性 | jsdom は `window.scrollTo` 未実装・scroll 座標の実測不能。test は spy / 属性 / 配線検証に限定し、実 scroll は Probe（可能な範囲）+ L3 で被覆 | Matrix Residual Gaps |
+| Manual verification | WebView2 sessionStorage 実機挙動と smooth scroll 干渉の視認品質は自動 test で判別不能 — L3 必須（(f)） | Human Gate |
+| 環境・再現性 | test 環境は happy-dom（`vitest.config.ts:11`）: `Element.scrollTo()` は非 smooth 時に scrollTop/scrollLeft を同期セット、sessionStorage も機能する。T10 の cache 保存→復元・miss fallback は自動 test で成立見込み。視認干渉（smooth のがたつき）と WebView2 実機挙動のみ L3 | Matrix Residual Gaps |
 
 ## Design Readiness
 
@@ -188,7 +191,7 @@ DSR-17 (a)〜(h) が方式契約を、52 §52.1 が container 前提を確定済
 
 ## Contract Probe
 
-是正仮適用の end-to-end（T10）: Writer は実装後、実 routeTree + memory history + 実 `setupScrollRestoration` の harness で「一覧で `<main>` に scroll 値を与える（`scrollTop` 直接設定 + scroll event dispatch）→ 詳細へ push → returnTo で戻る → `<main>.scrollTop` が復元される」を通し、「cache 未保存の href へ遷移 → 先頭」「主ナビ flag 経由の再訪 → cache hit があっても先頭」を同 harness で通す。jsdom の制約（`window.scrollTo` 未実装等）で harness が成立しない検証点は、無理に mock で偽装せず Residual Gaps へ記録して L3 項目に振り替え、Coordinator へ報告する（RTL で判別不能な race を green で塗り潰さない — Matrix 記載の規律）。
+是正仮適用の end-to-end（T10）: Writer は実装後、実 routeTree + memory history + 実 `setupScrollRestoration` の harness で「一覧で `<main>` に scroll 値を与える（`scrollTop` 直接設定 + scroll event dispatch）→ 詳細へ push → returnTo で戻る → `<main>.scrollTop` が復元される」を通し、「cache 未保存の href へ遷移 → 先頭」「主ナビ flag 経由の再訪 → cache hit があっても先頭」を同 harness で通す。happy-dom（`vitest.config.ts:11`）は `Element.scrollTo()` の同期セットと sessionStorage をサポートするため、これらは自動 test で成立する前提で組む。happy-dom でも成立しない検証点が出た場合のみ、mock で偽装せず Residual Gaps へ記録して L3 項目に振り替え、Coordinator へ報告する（RTL で判別不能な race を green で塗り潰さない — Matrix 記載の規律）。
 
 ## Contract Coverage Ledger
 
@@ -200,7 +203,7 @@ DSR-17 (a)〜(h) が方式契約を、52 §52.1 が container 前提を確定済
 | DSR-17 (d) `<main>` 先頭 scroll 対象 | scrollToTopSelectors | T9 / T10（miss fallback） | L3-2 |
 | DSR-17 (e) event-driven 併存 | 変更なし | T8（page-scroll 既存 test 無変更 green） | — |
 | DSR-17 (f) 実機前提検証 | — | —（自動 test 対象外） | L3-1〜L3-4 + revisit trigger |
-| DSR-17 (g) 分類④優先（D-C 機構） | main-nav-scroll.ts + SidebarLink 2 経路 + onRendered 購読 | T2 / T3 / T4 / T5 | L3-3 |
+| DSR-17 (g) 分類④優先（D-C 機構） | main-nav-scroll.ts + 主ナビ 3 経路（SidebarLink 2 + SidebarHeader）+ onRendered 購読 | T2 / T3 / T4 / T5 / T11 | L3-3 |
 | DSR-17 (h) 分類③機構分離 | 変更なし（既定は除外しない — D-D） | T7（HomePage negative 無変更 green） | L3-4 |
 | DSR-17 禁止（mount 一律 scroll 再導入禁止） | 全 Scope | T7 + 実装 diff review（route component への scroll 追加なし） | — |
 | 52 §52.1 `<main>` 唯一 container | RootLayout（属性追加のみ） | T6 | — |
@@ -210,7 +213,7 @@ DSR-17 (a)〜(h) が方式契約を、52 §52.1 が container 前提を確定済
 
 Test Design Matrix: [test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md](test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md)
 
-- targeted tests: getKey unit（T1）、one-shot module unit（T2）、SidebarLink 2 経路の flag 配線（T3）、onRendered handler の消費時 scroll / 非消費時無動作（T4）、主ナビ cache hit 上書き（T5）、`<main>` 属性（T6）、router options 配線（T9）
+- targeted tests: getKey unit（T1）、one-shot module unit（T2）、主ナビ 3 経路の flag 配線（T3）、onRendered handler の消費時 scroll / 非消費時無動作（T4）、主ナビ cache hit 上書き（T5）、`<main>` 属性（T6）、router options 配線（T9）、flag 残留の無害化（T11）
 - negative tests: flag 未 set で先頭 scroll しない（T4）、HomePage flag なし mount で scroll しない（T7 既存）
 - compatibility checks: HomePage.test.tsx / page-scroll.test.ts 無変更 green（T7/T8、AC5）、bindings 差分ゼロ（AC6）
 - data safety checks: 業務データ非接触
@@ -228,10 +231,11 @@ Test Design Matrix: [test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md](
 ## Review Focus
 
 - 既定 key への依存混入（`getScrollRestorationKey` 欠落・`__TSR_key` fallback の残存 — 戻り復元が silent に不成立になる型。T1/T9 の弁別性）
-- 分類④ one-shot の両経路配線（SidebarLink の `<Link>` と `ActiveMatchSidebarLink` の片側漏れ — T3 が 2 経路を個別 assert しているか)
+- 分類④ one-shot の 3 経路配線（SidebarLink の `<Link>` / `ActiveMatchSidebarLink` / SidebarHeader 店名ロゴの漏れ — T3 が 3 経路を個別 assert しているか)
+- flag の target 一致契約（消費が必ず先行し、不一致時に scroll しない — 単純 boolean flag への劣化は同一 href 再クリックの残留で分類②を壊す。T11 の弁別性）
 - onRendered handler の instant scroll（smooth にすると復元との干渉が視認される — behavior 未指定 / `"instant"` を確認）
 - flag のリーク（消費されない flag が次の無関係な遷移で誤発火 — T4 の消費一回性）
-- T10 harness の実効性（`setupScrollRestoration` を実際に通しているか、mock で復元を偽装していないか。jsdom 制約で不成立の検証点が green に偽装されず Residual Gaps に記録されているか）
+- T10 harness の実効性（`setupScrollRestoration` を実際に通しているか、mock で復元を偽装していないか。happy-dom でも不成立の検証点が green に偽装されず Residual Gaps に記録されているか）
 - DSR-17 (g) 追記の正確性（spike の file:line・版数・不成立理由が本 packet spike 節と一致し、誇張・省略がないか）
 - mount 一律 scroll の再導入がないか（route component への scroll 呼出し追加ゼロ — DSR-17 禁止行）
 
@@ -242,7 +246,7 @@ Contract ID: SPEC-DSR17-SCROLL-RESTORATION-2026-08-31
 - router は `scrollRestoration` 有効 + `location.href` key + `[data-scroll-restoration-id="main"]` の先頭 scroll 対象で構成する
 - `<main>`（唯一の scroll container）は `data-scroll-restoration-id="main"` で安定識別する
 - returnTo push 戻り（DSR-18）で遷移元の `<main>` scroll 位置が復元される。cache miss 時は `<main>` 先頭
-- sidebar 主ナビゲーション操作による遷移は、同一 href の cache hit が残っていても常に先頭表示する（app 層 one-shot flag + `onRendered` 購読、復元より後に実行）
+- sidebar 主ナビゲーション操作（SidebarLink 2 経路 + SidebarHeader 店名ロゴの 3 経路）による遷移は、同一 href の cache hit が残っていても常に先頭表示する（app 層の遷移先識別子付き one-shot flag + `onRendered` 購読、復元より後に実行。flag は消費が必ず先行し、識別子不一致時は scroll しない）
 - `scrollPageToTop()`（分類①③）と HomePage one-shot（UI-11b-D11/D12）は無変更で併存する
 - route component の mount を契機とする無条件 scroll は追加しない
 
@@ -252,7 +256,7 @@ Contract ID: SPEC-DSR17-SCROLL-RESTORATION-2026-08-31
 |---|---|---|---|---|
 | DSR-17 (b) href key | Scope 1-2 | T1 / T9 | 既定 key 依存混入 | Matrix |
 | DSR-17 (c)(d) container | Scope 2-3 | T6 / T9 / T10 | selector 統一 | Matrix |
-| DSR-17 (g) 分類④ D-C | Scope 4 | T2〜T5 | 両経路配線・消費一回性 | Matrix |
+| DSR-17 (g) 分類④ D-C | Scope 4 | T2〜T5 / T11 | 3 経路配線・消費一回性・target 一致 | Matrix |
 | DSR-17 (e)(h) 併存分離 | 変更なし | T7 / T8 | 既存 test 無変更 green | PR body |
 | DSR-17 分類② end-to-end | Scope 1-4 | T10 | harness 実効性 | Matrix |
 | DSR-17 (f) 実機 | — | — | — | L3 + PR body |
@@ -268,7 +272,8 @@ fixture: 追加投入不要（PR #23 L3 で使用した既存開発 DB の記録
 
 - L3-1（分類② 復元）: 入出庫履歴 hub で下へ scroll → 「詳細を見る」→「前の画面へ戻る」→ 同じ位置に復元される。
 - L3-2（miss fallback）: 初回訪問の画面へ遷移 → 先頭表示される（stale scroll が残らない）。
-- L3-3（分類④）: 一覧で scroll → 詳細 → 戻り（cache 生成）→ sidebar で別画面 → sidebar で同じ一覧へ再訪 → **先頭表示される**（位置に飛ばない — PR #21 P3 の必須検証）。
+- L3-3（分類④）: 一覧で scroll → 詳細 → 戻り（cache 生成）→ sidebar で別画面 → sidebar で同じ一覧へ再訪 → **先頭表示される**（位置に飛ばない — PR #21 P3 の必須検証）。店名ロゴ → Home でも同様に先頭表示（3 経路目）。
+- L3-3b（flag 残留なし）: active な主ナビ項目をそのまま再クリック → その後、一覧 scroll → 詳細 → 戻りの位置復元が壊れない（AC9 の実機確認）。
 - L3-4（分類③干渉なし）: バックアップ復元成功 → Home が先頭表示（既存 one-shot）+ 通常の Home 再訪では scroll しない。smooth scroll と復元の視認干渉（がたつき・二段 scroll）がないか。
 - L3-5（sessionStorage 実機）: アプリを閉じて再起動 → 直前の scroll cache の残存/消滅いずれでも操作破綻がない（(f)）。
 
@@ -279,6 +284,13 @@ fixture: 追加投入不要（PR #23 L3 で使用した既存開発 DB の記録
 Plan Review / Final Review の記録は本節へ append-only で追記する。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review rally 記録（2026-08-31、append-only）
+
+- round 1（Sonnet 独立 reviewer、対象 = plan-first commit `4b90108`）: P1 2 / P2 1 / P3 0。spike の file:line 引用は全数実読一致（resetScroll 不成立・順序保証・D-C 成立根拠は正確と判定）。
+  - P1-1 **採用**: 主ナビに `SidebarHeader.tsx:12-17` の店名ロゴ `<Link to="/">`（3 経路目）が漏れていた。Coordinator が実読 + layout 層全 file の rg で 3 経路全数を確定し、Scope 4 / AC4 / Spec Contract / Ledger / Review Focus / L3-3 / Matrix T3 へ反映。
+  - P1-2 **採用**: test 環境を jsdom と誤記（実際は happy-dom、`vitest.config.ts:11` — Coordinator 実読確認）。happy-dom は `Element.scrollTo()` 同期セットと sessionStorage をサポートするため、T10 の自動化範囲を拡大し Residual Gaps を視認干渉 + WebView2 実機に絞る再判定を実施。
+  - P2-1 **採用**: 同一 href への遷移では `onRendered` が発火しない（`Match.js:113-114` の href gate — Coordinator 実読確認）ため、単純 boolean flag では active 項目再クリックの残留 flag が後続遷移で誤発火する。D-C を「遷移先識別子付き one-shot（消費先行 + target 一致時のみ scroll）」へ改訂し、AC9 / T11 / M6 / L3-3b を追加。
 
 ## 発注・レビュー段取り
 
