@@ -9,7 +9,7 @@
 - Amendments: none
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（外部端末、発注書 relay。§3.1 により Fable は docs Writer に投入しない）
-- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定
+- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-30、round 1 = P1×2〈(g) 分類④×cache hit 競合未解決 / (h) 分類③ negative 契約との干渉未検討〉+ P3×1〈file:line offset〉、全件 Fable 実読裏取りの上 accept → 是正 commit、round 2 独立再検証は pending）
 - Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -65,7 +65,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `docs/design-system/01-decision-rules.md` の DSR-17 を拡張する:
   - **分類④「主ナビゲーションは遷移先先頭」を新設**（owner 所感、PR #17 comment 5463874988 起源）。発火契機は主ナビゲーション（sidebar 等の navigation 操作）による route 遷移であり、route component の mount ではない——既存の「mount 一律 scroll 禁止」（PR #15 Amendment 2 revert の再導入禁止）とは発火契機で切り分けて両立することを明文化する。
-  - **分類②の実装方式契約を確定**する: (a) 戻り導線は `<Link>` push 遷移を維持（DSR-18 returnTo 契約と整合、`history.back()` 化は棄却）、(b) TanStack Router `scrollRestoration` 導入時は `getScrollRestorationKey` を href key へ上書きする（実装既定の `__TSR_key` は history entry ごとに新規発行され push 戻りで復元不能 — 起票時実測参照）、(c) 唯一の scroll container `<main>` へ `data-scroll-restoration-id` を付与し CSS selector の位置依存 cache を排除、(d) 復元 miss / 分類④の先頭 scroll は `scrollToTopSelectors` で `<main>` を対象化（既定 fallback は window 限定で `<main>` に効かない — 起票時実測参照）、(e) 既存 event-driven `scrollPageToTop()`（分類①③の正本）は router 機構へ吸収せず併存、(f) WebView2 の sessionStorage 実機挙動・smooth scroll との干渉は R3 の Contract Probe + L3 で検証し、検証 fail 時は方式再裁定を revisit trigger として明記する。
+  - **分類②の実装方式契約を確定**する: (a) 戻り導線は `<Link>` push 遷移を維持（DSR-18 returnTo 契約と整合、`history.back()` 化は棄却）、(b) TanStack Router `scrollRestoration` 導入時は `getScrollRestorationKey` を href key へ上書きする（実装既定の `__TSR_key` は history entry ごとに新規発行され push 戻りで復元不能 — 起票時実測参照）、(c) 唯一の scroll container `<main>` へ `data-scroll-restoration-id` を付与し CSS selector の位置依存 cache を排除、(d) 復元 miss / 分類④の先頭 scroll は `scrollToTopSelectors` で `<main>` を対象化（既定 fallback は window 限定で `<main>` に効かない — 起票時実測参照）、(e) 既存 event-driven `scrollPageToTop()`（分類①③の正本）は router 機構へ吸収せず併存、(f) WebView2 の sessionStorage 実機挙動・smooth scroll との干渉は R3 の Contract Probe + L3 で検証し、検証 fail 時は方式再裁定を revisit trigger として明記する、(g) **分類④と href key 復元の競合優先順位**: href key は URL 同一なら遷移契機（push / back / 主ナビ）を問わず同一 key になるため、同一 href に scroll cache が残る状態で主ナビから再訪すると復元が先頭 scroll に勝ち得る。契約は「主ナビ発火時は分類④が復元より優先（常に遷移先先頭）」とし、実現機構の候補（主ナビ navigation への `resetScroll` 指定〈router-core `buildAndCommitLocation` の `resetScroll` option、実在確認済み〉/ `scrollRestoration` の function 化による対象 route 制御 / 主ナビ link への restoration 対象外の目印）を列挙、選定は R3 spike の検証対象とする、(h) **分類③（Home one-shot、UI-11b-D12）との干渉整理**: `scrollRestoration` 有効化は cache miss 時に全 route の通常遷移へ先頭 scroll fallback を既定発火させるため、UI-11b-D12 の negative 契約（flag なしの通常 Home 到達では one-shot smooth scroll を発火しない）と衝突し得る。DSR-17 拡張本文で「UI-11b-D12 の negative 契約は smooth scroll（`scrollPageToTop()` 経路）の専有契約であり router の遷移時位置決めと機構分離する」旨を整理した上で、既存 negative test（`HomePage.test.tsx`）の regression なしを R3 の必須 AC とし、必要なら分類③対象 route の `scrollRestoration` 適用除外（function 化）を機構候補に含める。
   - 更新履歴へ行追加。
 - `docs/quality/review-checklist.md` カテゴリ 9 の DSR-17 対応行を 3+1 分類へ同期する。
 - `Plans.md`: backlog「hub 等の詳細戻り scroll 位置復元」行を design 確定済みへ更新し、R3 の着手順（DSR-18 R3〈returnTo 付与 + 共通 helper〉先行 → scroll 復元 R3）の owner 裁定を記録する。
@@ -82,10 +82,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 Explore subagent による実読検証（design docs / `src/main.tsx` / `RootLayout.tsx` / 各 page の scroll 呼出 sweep + `node_modules/@tanstack` の router 実装読解）。
 
-- **現状の復元機構は 0 件**: router 生成（`src/main.tsx:26-30`）は `defaultPreload` / `defaultErrorComponent` のみで `scrollRestoration` 未設定（既定 false）。scroll container は persistent `<main className="min-h-0 min-w-0 overflow-auto">`（`src/components/layout/RootLayout.tsx:66`、Outlet の外で unmount されない）。route 遷移で scrollTop が持ち越され、短い詳細 page 側で clamp されるため戻る前に位置が失われる構造。DSR-17 本文の前提記述（`<main>` 唯一 container・`scrollRestoration` 未設定）は HEAD で真。
+- **現状の復元機構は 0 件**: router 生成（`src/main.tsx:25-29`）は `defaultPreload` / `defaultErrorComponent` のみで `scrollRestoration` 未設定（既定 false）。scroll container は persistent `<main className="min-h-0 min-w-0 overflow-auto">`（`src/components/layout/RootLayout.tsx:65`、Outlet の外で unmount されない）。route 遷移で scrollTop が持ち越され、短い詳細 page 側で clamp されるため戻る前に位置が失われる構造。DSR-17 本文の前提記述（`<main>` 唯一 container・`scrollRestoration` 未設定）は HEAD で真。
 - **既存の意図的 scroll は全て event-driven で DSR-17 遵守**: 共通 helper `scrollPageToTop()`（`src/lib/page-scroll.ts:3`、smooth）。分類③ = `HomePage.tsx:37-43`（one-shot flag 消費時のみ、negative test あり）。分類① = 保存成功/失敗 handler（Receiving/Disposal/ManualSale/ReturnExchange）+ PluExport の step 遷移。mount 一律 scroll は 0 件。
-- **router 実装既定 key の drift（本 change の設計根拠）**: `@tanstack/react-router` 1.168.23（package.json `^1.168.23`、lock・node_modules 実体一致）。`router.d.ts:321` の JSDoc は `@default (location) => location.href` と言うが、実装 `scroll-restoration.js:44-46` の既定は `location.state.__TSR_key || location.href`。`__TSR_key` は history entry ごとに新規発行されるため、現行の `<Link to={backHref}>` push 戻り（`DisposalRecordDetailPage.tsx:84,105` ほか 6 detail page 同型）では既定のまま復元が効かない。
-- **fallback は window 限定**: 復元 entry が無い場合は `window.scrollTo` + `scrollToTopSelectors`（既定 `['window']`）のみ実行（`scroll-restoration.js:152-172`）。`scrollRestoration: true` だけでは分類④（主ナビで `<main>` 先頭）は満たせない。
+- **router 実装既定 key の drift（本 change の設計根拠）**: `@tanstack/react-router` 1.168.23（package.json `^1.168.23`、lock・node_modules 実体一致）。`router.d.ts:321` の JSDoc は `@default (location) => location.href` と言うが、実装 `scroll-restoration.js:44-46` の既定は `location.state.__TSR_key || location.href`。`__TSR_key` は history entry ごとに新規発行されるため、現行の `<Link to={backHref}>` push 戻り（`DisposalRecordDetailPage.tsx:85,103` ほか 6 detail page 同型）では既定のまま復元が効かない。
+- **fallback は window 限定**: 復元 entry が無い場合は `window.scrollTo` + `scrollToTopSelectors`（既定 `['window']`）のみ実行（`scroll-restoration.js:153-174`）。`scrollRestoration: true` だけでは分類④（主ナビで `<main>` 先頭）は満たせない。
 - **cache は sessionStorage**（key `tsr-scroll-restoration-v1_3`、`scroll-restoration.js:11-22`、`pagehide` persist）+ `window.history.scrollRestoration = "manual"` の強制（`:75`）。WebView2 での再起動またぎ挙動は未知 — R3 の L3 検証対象。
 - **owner 所感④の原文所在**: PR #17 comment 5463874988「主ナビゲーションは遷移先先頭、詳細戻りは位置復元、操作完了 Home は one-shot とする横断 scroll 契約」。repo 内参照 = `docs/archive/plans/2026-08-30-ui-polish-batch-2.md:25`、backlog 統合裁定文言 = Plans.md の該当行、起票 commit `87bda10`。
 - **対象 page（長い一覧 ⇄ 詳細の往復）**: `/inventory/records` hub（詳細 6 種）、`/products`（typed return-to 済み）、`/settings/logs`、作業 4 画面の recent list、`/stocktake`、`/csv-import`。
@@ -93,7 +93,7 @@ Explore subagent による実読検証（design docs / `src/main.tsx` / `RootLay
 ## Acceptance Criteria
 
 - DSR-17 に分類④が新設され、発火契機（navigation 操作）と mount 一律禁止の切り分けが明文化されている。
-- 分類②の実装方式契約 (a)〜(f) が DSR-17 本文に確定し、後続 R3 が chat 非依存で方式（href key 上書き / `data-scroll-restoration-id` / `scrollToTopSelectors` / 併存方針）と検証義務（Contract Probe + L3、fail 時 revisit）を復元できる。
+- 分類②の実装方式契約 (a)〜(h) が DSR-17 本文に確定し、後続 R3 が chat 非依存で方式（href key 上書き / `data-scroll-restoration-id` / `scrollToTopSelectors` / 併存方針）、競合優先順位（分類④ > 復元 cache、分類③ negative 契約の非侵食）、検証義務（Contract Probe + L3、fail 時 revisit）を復元できる。
 - 実装既定 key の drift（`__TSR_key` 問題）が版数付きで DSR-17 の Why または判定フローに記録され、再検証の起点になる。
 - review-checklist カテゴリ 9 の DSR-17 行が 3+1 分類へ同期している。
 - `Plans.md` の backlog 再編が owner 裁定 2 件（分類④統合 / DSR-18 R3 先行）と一致する。
@@ -134,9 +134,9 @@ Explore subagent による実読検証（design docs / `src/main.tsx` / `RootLay
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: 本 PR 完了後、DSR-17 拡張本文で成立する。owner 所感の原文は PR comment 起源のため、要旨と出典（PR #17 comment ID）を DSR-17 側に記録する。
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: owner 裁定 2 件（分類④統合 / DSR-18 R3 先行）→ DSR-17 本文と Plans.md へ promote。
 - Assumptions and constraints: router 1.168.23 の実装挙動（既定 key / fallback / sessionStorage）は node_modules 実読による観測事実であり、版数更新で変わり得る——DSR-17 に版数付きで記録し、R3 Contract Probe を再検証の関門にする。
-- Deferred design gaps, risk, and follow-up target: spike 実行と WebView2 実機挙動（R3）、DSR-18 R3（先行実装）、`/stock` 詳細入口未整備（既存 backlog）。
-- Test Design Matrix can cite design decision IDs or source doc sections: 後続 R3 Matrix が DSR-17 の (a)〜(f) を行単位で cite できる粒度で書く。
-- Absolute guarantee / escape hatch self-check completed: 復元 miss 時は先頭 scroll fallback（安全側）。検証 fail 時の revisit trigger を DSR-17 に明記し、片道決定にしない。
+- Deferred design gaps, risk, and follow-up target: spike 実行と WebView2 実機挙動（R3）、(g) 競合機構の選定と (h) 分類③非侵食の実証（R3 spike / regression test）、DSR-18 R3（先行実装）、`/stock` 詳細入口未整備（既存 backlog）。
+- Test Design Matrix can cite design decision IDs or source doc sections: 後続 R3 Matrix が DSR-17 の (a)〜(h) を行単位で cite できる粒度で書く。
+- Absolute guarantee / escape hatch self-check completed: 復元 miss 時は先頭 scroll fallback（安全側）。例外 2 系（(g) 主ナビ×cache hit 競合 = 分類④優先、(h) 分類③ route への既定 fallback 波及 = negative 契約非侵食の義務化）を契約に計上済み。検証 fail 時の revisit trigger を DSR-17 に明記し、片道決定にしない。
 
 ## Impact Review Lenses
 
@@ -167,7 +167,7 @@ Minimum design checks for business-app work:
 - Persistence / transaction / audit impact: なし（scroll 位置は sessionStorage のみ）。
 - Operator workflow / Japanese UI wording: 文言変更なし、挙動契約のみ。
 - Error, empty, retry, and recovery behavior: 復元 miss 時の先頭 scroll fallback を契約化。
-- Testability and traceability IDs: DSR-17 (a)〜(f) を後続 R3 の Matrix / Probe が cite。
+- Testability and traceability IDs: DSR-17 (a)〜(h) を後続 R3 の Matrix / Probe が cite。
 
 ## Contract Probe
 
@@ -175,7 +175,7 @@ N/A — 本 PR は docs-only で外部前提の実行検証を伴わない。rou
 
 ## Contract Coverage Ledger
 
-N/A — R2 docs-only。後続 scroll R3 packet で DSR-17 (a)〜(f) × 対象 page の Ledger を必須とする。
+N/A — R2 docs-only。後続 scroll R3 packet で DSR-17 (a)〜(h) × 対象 page の Ledger を必須とする。
 
 ## Test Plan
 
@@ -198,7 +198,8 @@ N/A — R2 docs-only。後続 scroll R3 packet で DSR-17 (a)〜(f) × 対象 pa
 ## Review Focus
 
 - 分類④の発火契機定義が「mount 一律 scroll 禁止」と矛盾なく切り分けられているか。
-- 分類②方式契約 (a)〜(f) が R3 実装者に十分な粒度か、かつ library 観測事実（版数付き）と app 契約が分離して書かれているか。
+- 分類②方式契約 (a)〜(h) が R3 実装者に十分な粒度か、かつ library 観測事実（版数付き）と app 契約が分離して書かれているか。
+- (g) 競合優先順位（分類④ > 復元 cache）と (h) 分類③ negative 契約の非侵食が、機構候補の列挙 + R3 検証義務として閉じているか。
 - DSR-18（push 戻り + returnTo）との整合——href key 復元との相互補完関係が正しく記述されているか。
 - Plans.md 再編が owner 裁定 2 件と一致するか。
 - 既存分類①③の正本（DSR-03 / UI-08-D6 / UI-11b-D12）を侵食していないか。
