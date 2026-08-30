@@ -362,7 +362,7 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 
 ### 設計判断 D-E'（成功後喪失の回収 — gated amendment 第 2 弾、D-E を supersede）
 
-D-E の「適用成功で即解除」を廃止し、**適用の成否にかかわらず監視を armed し、成功後の位置喪失を最大 1 回だけ回収する**。
+D-E の「適用成功で即解除」を廃止し、適用の成否にかかわらず監視を armed し、成功後の位置喪失を**再適用上限 = 初回 + `1` 回**（owner L3 二巡目の観測「再入力後は保存位置へ移動して留まる」= 喪失は一過性、が根拠。`未実測` の時間閾値は置かない）で回収する。
 
 1. `onRendered` で分類④ flag 一致時は先頭 scroll のみ（既存排他、不変）。
 2. それ以外で保存値（`scrollY > 0`）があるとき、初回適用を試みたうえで（現 scrollTop が保存値以上でも）**必ず armed する**。現行の「`main.scrollTop >= savedScrollTop` なら成功として return」を撤廃する。
