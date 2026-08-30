@@ -352,6 +352,14 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 
 Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`（L3-1 FAIL backtrack 後の 2 巡目）。Writer L1 full PASS + `local-ci changed` PASS + Final Review round 2 収束（P1/P2 = 0）により independent-review を再通過、Reviewed Content HEAD を `0ef5fe4` で確定。残りは owner Windows native L3 の全手順再実施（AC11、fail は再度 revisit trigger）、Ready 承認、hosted final、merge。
 
+### owner Windows native L3 二巡目結果（2026-08-31、append-only）— L3-1 再 FAIL、revisit trigger 再発動
+
+- 実施環境: Windows native / WebView2、revised exact HEAD `d574ae2`（Reviewed Content HEAD `0ef5fe4`）。
+- **L3-1 FAIL（D-E 是正後も再現）**: 戻りで保存位置でなく先頭。再現手順つきの新観測 =「開始日 filter の再入力で保存済み href が成立した瞬間、保存位置へ即座に移動する」（再現性あり）。既存計測では「router が保存値 616.8 を要求 → 代入直後の実 scrollTop も 616.8 → **JS による scrollTop=0 の記録なしで**最終的に 0」。
+- owner 分析（Coordinator 追認）: scrollY の保存消失・href key 不一致は除外。主因候補 =「**復元代入は一度成功するが、その後の DOM/layout/WebView native 処理で位置を失う**」ケースを D-E が監視していないこと。現行実装は onRendered 直後に `main.scrollTop >= savedScrollTop` なら成功として armed せず、成功後の喪失を回収できない。T12 の clamp harness は「最初の代入時点で即 clamp」のみを模擬し、「一度成功 → 後から 0 → content 安定」の実機系列を再現しない false-green。
+- 位置を失わせる実機側の直接要因（content 高さの一時縮小 / focus / scroll anchoring 等）は未確定。owner は方式変更を Coordinator 裁定事項として fail-closed 停止。
+- **Coordinator 裁定**: revisit trigger 再発動、`human-confirm -> implementing` へ再 backtrack（次 commit）。是正方式は D-E'（下記 gated amendment 第 2 弾）。喪失の直接要因は未確定のまま対症拡張となるが、owner 観測「再入力後は保存位置へ移動して**留まる**」から喪失は初期の一過性と推定され、要因不問のロバスト設計（成功後も監視 + 再適用 1 回）が実務的最善と判断。要因診断のための Windows 往復は行わず、D-E' 適用後の L3 三巡目で実証する。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
