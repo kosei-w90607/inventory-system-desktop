@@ -8,7 +8,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
-- Amendments: none
+- Amendments: 7ec8d4a
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
@@ -320,7 +320,7 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 
 ### L3-1 FAIL 原因確定と是正設計（2026-08-31、gated amendment、append-only）
 
-**原因確定（Coordinator 実読検証）**: 故障機序は「復元 1 回きり × 実 DOM の scrollTop clamp × async content の遅延描画」の合成。
+**原因確定（Coordinator 実読検証）**: 故障機序は「復元は再試行なし（`scroll-restoration.js` 実読）× 実 DOM の `scrollTop` clamp × async content の遅延描画」の合成。
 
 - router-core の復元は `onRendered` subscriber 内の `element.scrollTop = scrollY` 直接代入 1 回のみで再試行なし（`scroll-restoration.js:125-152`、spike 節で実読済み）。
 - 実 WebView2 の `scrollTop` 代入は `scrollHeight - clientHeight` で clamp される標準挙動。復元時点（paint 前）で戻り先一覧の React Query データが未描画だと scroll 余地がなく 0 へ clamp され、その後 content が伸びても再適用されない。
