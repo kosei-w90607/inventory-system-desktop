@@ -4,10 +4,10 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 4b90108
 - Amendments: none
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
@@ -295,6 +295,9 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
   - P2-2 **採用**: 識別子の比較粒度が未規定 — `/stock` を search 差分で共有する主ナビ 2 項目（`navigation.ts:89/:200-202`、Coordinator 実読確認）を pathname 粒度は区別できない。「search を含む完全 href」を D-C / Spec Contract / T2 に明記。
   - P2-3 **採用**: mutation 表に `SidebarHeader` 経路の欠落 — `M7` を追加（Matrix「必須 mutation 注入」表を実勘定して M1〜M7 に拡張）。
   - P2-4 **採用**: Matrix「Mutation-style Adequacy Questions」節の旧前提 2 行（片経路 / boolean consume）を新セマンティクスへ更新（Coordinator の round 1 sweep 漏れ）。
+- round 3（同 reviewer、対象 = 是正 commit `c83df49` + `d36ec85`）: P1 0 / P2 0 / P3 0。P2×3 の反映を実読確認（navigation.ts 引用行の実在含む）、新たな矛盾なし。rally は天井 3 round 内で新規指摘 0 に収束。
+
+Phase 遷移記録（本 content commit に同乗）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 3 で収束（P1/P2 = 0）。Plan Commit を `4b90108` で確定。次は Codex 発注（Writer content commit）。
 
 ## 発注・レビュー段取り
 
