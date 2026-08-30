@@ -2,14 +2,14 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 0c71ccb85ae0f8b5d21f9bc71b41d6b49fa77488
 - Amendments: none
 - Coordinator: Fable（Claude Code session、conductor）
 - Writer: Codex（外部端末、発注書 relay。§3.1 により Fable は docs Writer に投入しない）
-- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-30、round 1 = P1×0 / P2×1〈Scope DSR-20 の項目数と AC 5 要素の不整合〉/ P3×1〈PK4 link の plan-first 前倒し提案〉、全件 accept → 是正 commit で Scope (1)〜(5) 化 + Plans.md active link 前倒し追加、round 2 独立再検証は pending）
+- Plan Reviewer: Sonnet subagent（fresh context）一次 + Fable 裁定（2026-08-30、round 1 = P1×0 / P2×1〈Scope DSR-20 の項目数と AC 5 要素の不整合〉/ P3×1〈PK4 link の plan-first 前倒し提案〉、全件 accept → 是正 commit で Scope (1)〜(5) 化 + Plans.md active link 前倒し追加、round 2 = 別個体 Sonnet の独立再検証で P1/P2 = 0・regression なし・doc-check exit 0 と PK4 解消を実行確認、是正 commit 9cd454a）
 - Final Reviewer: Sonnet subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -17,6 +17,8 @@
 - Human Gate: Codex 発注 relay、Ready（docs-only のため Ready 後の owner `workflow_dispatch` を含む、CI-TRIGGER-D1）、merge
 
 この plan-first commit は `kickoff -> spec-check -> design -> plan-draft -> plan-gate` を materialize する。task scope / Risk は本 packet、design の必要性は「起票時実測」節（feedback 5 方式分岐・通知なし 2 件・dialog 規範の空白 + owner 裁定 3 件）、design 出力（DSR-19 / DSR-20 ほか）は plan-approved 後の Writer content commit で追加する。Plan Reviewer の独立性は Claude 側で充足するため、Plan Review を pending のまま Draft PR checkpoint で停止する。
+
+2026-08-30: Plan Review 完了（Sonnet subagent 一次、Writer = Codex と別主体。round 1 = P2×1 / P3×1、全件 accept、是正 commit 9cd454a — DSR-20 Scope の 5 要素同期 + PK4 active link の plan-first 前倒し追加〈PR #21 教訓の構造的回避〉。round 2 = 別個体 Sonnet の独立再検証で P1/P2 = 0・regression なし・doc-check exit 0 実行確認）。plan-approved の evidence が成立した。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。plan-first commit 0c71ccb は全 content commit の先頭にあり PK5 ancestry を充足する。次は Writer（Codex）の design content commit を待ち、その L1 evidence で `implementing -> local-verified` へ進む。
 
 ## Owner Effort Budget
 
