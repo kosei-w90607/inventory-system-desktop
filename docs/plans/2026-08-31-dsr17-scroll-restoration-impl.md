@@ -360,6 +360,19 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
 - 位置を失わせる実機側の直接要因（content 高さの一時縮小 / focus / scroll anchoring 等）は未確定。owner は方式変更を Coordinator 裁定事項として fail-closed 停止。
 - **Coordinator 裁定**: revisit trigger 再発動、`human-confirm -> implementing` へ再 backtrack（次 commit）。是正方式は D-E'（下記 gated amendment 第 2 弾）。喪失の直接要因は未確定のまま対症拡張となるが、owner 観測「再入力後は保存位置へ移動して**留まる**」から喪失は初期の一過性と推定され、要因不問のロバスト設計（成功後も監視 + 再適用 1 回）が実務的最善と判断。要因診断のための Windows 往復は行わず、D-E' 適用後の L3 三巡目で実証する。
 
+### 設計判断 D-E'（成功後喪失の回収 — gated amendment 第 2 弾、D-E を supersede）
+
+D-E の「適用成功で即解除」を廃止し、**適用の成否にかかわらず監視を armed し、成功後の位置喪失を最大 1 回だけ回収する**。
+
+1. `onRendered` で分類④ flag 一致時は先頭 scroll のみ（既存排他、不変）。
+2. それ以外で保存値（`scrollY > 0`）があるとき、初回適用を試みたうえで（現 scrollTop が保存値以上でも）**必ず armed する**。現行の「`main.scrollTop >= savedScrollTop` なら成功として return」を撤廃する。
+3. armed 中、MutationObserver（`<main>` subtree childList、既存機構）の発火ごとに「`scrollHeight >= scrollY + clientHeight` かつ `scrollTop < scrollY`」を判定し、成立時に `scrollTop = scrollY` を適用する。**適用は初回 + 再適用 1 回を上限**とする（native 喪失は owner 観測から初期の一過性と推定。上限超過の異常系は諦めて従来挙動へ — 恣意的な時間閾値を置かない）。
+4. 解除条件: (a) 利用者入力（`wheel` / `pointerdown` / `keydown`、既存）、(b) 次の `onBeforeLoad`（既存）、(c) 再適用上限の到達。**「適用成功」は解除条件から除外**する（本 FAIL の穴）。
+5. scrollbar drag は Chromium 系で `pointerdown` を発火しない既知挙動があり、監視中の scrollbar 操作が再適用で引き戻される誤動作の窓が理論上残るが、窓は「再適用 1 回が残っている間」のみに限定される（回数上限が誤動作の抑止を兼ねる）。L3 三巡目で違和感がないか観察対象とする。
+
+**Matrix 是正（第 2 弾）**: T12 は「初回代入時点で即 clamp」の既存 case として存置し、**T14 を新設** — owner 提示の再現系列そのもの:「tall content 上で初回代入を成功させる → onRendered 初期判定後に content 高さを縮小し native clamp 相当で scrollTop を 0 にする → content 高さを再拡張する → 保存値が**一度だけ**再適用される（適用回数 spy で過剰適用なしも assert）」。加えて D-E' logic 無効時（成功時 armed を外した状態）に T14 が fail する再現性証明（AC12）。M10 = 「成功時 armed を外す（旧 D-E へ退行）」→ T14 kill。
+**AC 追加**: AC12 = T14 の再現性証明（D-E' 無効化で fail / 有効で green）。AC13 = L3 三巡目の全手順 PASS。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
