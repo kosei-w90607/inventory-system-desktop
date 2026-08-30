@@ -76,7 +76,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 5. **手動販売 2 site**（UI-04-D17）: `ManualSalePage` 同上（保存結果は sale_id 非 null 条件付き link のまま）。
 6. **廃棄・破損 1 site**（UI-05-D17）: `DisposalPage` recent list 同上。保存結果には詳細 link を追加しない（doc が明記する producer 範囲）。
 7. **操作ログ 1 site**（UI-11c-D16）: `OperationLogsPage` の「関連記録を見る」`<Link>` に、現在の `/settings/logs` URL（`start_date` / `end_date` / `operation_type` / `page` の search state 込み）を `returnTo` として付与。link は UI-11c-D5 の展開行内操作のまま（行展開 toggle を発火させない）。
-8. **契約 test 追加**: Matrix T1〜T13。既存 test の削除・無効化なし。
+8. **契約 test 追加**: Matrix T1〜T13。既存 test の削除・無効化なし。ただし Scope 3〜7 の対象 producer の既存 test にある「詳細を見る」/「関連記録を見る」の href 固定値アサート 9 箇所（`ReceivingPage.test.tsx:258,297` / `ReturnExchangePage.test.tsx:158,197` / `ManualSalePage.test.tsx:165,477` / `DisposalPage.test.tsx:390` / `OperationLogsPage.test.tsx:835,874` — 2026-08-30 実測）は、href に `?returnTo=…` が付くため実装に伴う**正当な更新対象**であり、T13 の「無変更 green」対象に含まれない（アサート更新であり test の削除・無効化ではない — Plan Review round 1 P2 採用 + Coordinator 全 sweep で一般化）。
 
 ## Non-scope
 
@@ -217,7 +217,7 @@ Test Design Matrix: [test-matrices/2026-08-30-dsr18-returnto-impl.md](test-matri
 - 操作ログ直列化の 4 param 個別 assert（1 param 落ち mutation の検出 — combined 文字列比較 1 本にしない）
 - detail 6 page の集約完全性（AC2 の機械確認 + import 元が `src/lib/return-to.ts` であり products 版でないこと）
 - test oracle の独立転記（returnTo 期待値を production の直列化関数から導出しない — SSOT 共有の mutation 感度自壊の型）
-- 既存 test の削除・改変ゼロ（T13 は既存 test の無変更 green が oracle）
+- 既存 test の削除・改変ゼロ（T13 は既存 test の無変更 green が oracle）。ただし Scope 8 に列挙した producer test の href 固定値アサート 9 箇所のみ実装に伴う正当な更新対象（T13 対象外）。更新は record path 検証を保つこと（returnTo 付き完全一致 or path + returnTo の個別 assert、`toContain` への安易な弱体化不可）
 
 ## Spec Contract
 
@@ -249,6 +249,10 @@ Contract ID: SPEC-DSR18-RETURNTO-2026-08-30
 Plan Review / Final Review の記録は本節へ append-only で追記する。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review rally 記録（2026-08-30、append-only）
+
+- round 1（Sonnet 独立 reviewer、対象 = plan-first commit `08333ce`）: P1 0 / P2 1 / P3 0。観点 1〜6（契約整合 / 前提事実 / 実装可能性 / Matrix 質 / scope 境界 / 形式）は指摘なし。P2-1「`OperationLogsPage.test.tsx` の既存 href 固定値アサートが Scope 7 実装で fail するため、T13 の無変更対象から明示除外しないと Writer が誤読し relay を浪費する」— Coordinator が :835 / :874 を実読裏取りのうえ**採用**。さらに同型を repo 全体 sweep し、4 作業画面 test の「詳細を見る」href 固定値アサート 7 箇所を追加検出、是正を 9 箇所へ一般化して Scope 8 / Review Focus / Matrix T13・Adjacent Pattern Audit へ明記（本 commit）。D-B の保存結果 panel 懸念は reviewer が `setResult` 非 navigate を実読確認し問題なしと判定。
 
 ## Data Safety
 

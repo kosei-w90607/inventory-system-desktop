@@ -47,7 +47,7 @@ Risk: R3
 | T10 | 往復 end-to-end（Contract Probe 兼務） | 新規 | memory history で search state 付き遷移元 → 詳細へ `<Link>` 遷移 → 「前の画面へ戻る」click → location が遷移元 URL（search 込み）へ復元。遷移が `<Link>` push であること（history 長の増加）も確認 | TRACE-D11 / DSR-17② (a) / DSR-18 |
 | T11 | detail fallback | 新規 | returnTo なしで詳細を直接 render → 戻り先 href が `/inventory/records` / returnTo=`//evil.example` でも同様に fallback | DSR-18 / DSR-15 |
 | T12 | 操作ログ link と行展開の独立 | 既存確認 or 新規 | 関連記録 link の click が行展開 state を変化させない（既存 test があれば regression 指定、なければ新規） | UI-11c-D5 |
-| T13 | products / 既存 producer regression | 既存 | `src/features/products/lib/return-to.ts` の既存 regression test・InventoryRecordsPage / MovementTable / StockMovementsPage の既存 returnTo test が**無変更で** green（変更したら失敗定義に抵触） | DSR-18 存置 / TRACE-D11 |
+| T13 | products / 既存 producer regression | 既存 | `src/features/products/lib/return-to.ts` の既存 regression test・InventoryRecordsPage / MovementTable / StockMovementsPage の既存 returnTo test が**無変更で** green（変更したら失敗定義に抵触）。packet Scope 8 列挙の producer test href 固定値アサート 9 箇所は T13 対象外 — 実装に伴う正当な更新対象（Plan Review round 1 P2 + 全 sweep 一般化） | DSR-18 存置 / TRACE-D11 |
 
 ## State Lifecycle Matrix
 
@@ -65,6 +65,7 @@ Risk: R3
 - StockMovementsPage の `detailReturnTo` 手組みも非接触（同上）。
 - detail 6 page のうち CsvImport / Stocktake も共通 helper 化対象（受信側集約は 6 page 全部）だが、producer 側の静的入口追加は非目的。
 - 61〜63 の保存成功時ページ先頭 scroll 契約は本変更と独立 — 既存 test regression で確認。
+- producer 側既存 test の「詳細を見る」/「関連記録を見る」href 固定値アサート 9 箇所（packet Scope 8 に file:line 列挙）は、href に `?returnTo=…` が付くため更新が必要 — アサート更新のみ許可、test 削除・無効化・oracle の弱体化（`toContain` への安易な置換で record path 検証を失う等）は不可。
 
 ## Negative Paths
 
