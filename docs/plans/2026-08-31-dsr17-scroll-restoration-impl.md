@@ -293,7 +293,7 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
   - P2-1 **採用**: 同一 href への遷移では `onRendered` が発火しない（`Match.js:113-114` の href gate — Coordinator 実読確認）ため、単純 boolean flag では active 項目再クリックの残留 flag が後続遷移で誤発火する。D-C を「遷移先識別子付き one-shot（消費先行 + target 一致時のみ scroll）」へ改訂し、AC9 / T11 / M6 / L3-3b を追加。
 - round 2（同 reviewer、対象 = 是正 commit `5ee1855`）: P1 0 / P2 3 / P3 0。round 1 是正は反例なしと確認（残留 flag の無害化は「残留 flag の target は残留時点の現 href に等しく、次の `onRendered` は href 変化時のみ発火するため定義上 target と一致し得ない」という構造的証明つき）。
   - P2-2 **採用**: 識別子の比較粒度が未規定 — `/stock` を search 差分で共有する主ナビ 2 項目（`navigation.ts:89/:200-202`、Coordinator 実読確認）を pathname 粒度は区別できない。「search を含む完全 href」を D-C / Spec Contract / T2 に明記。
-  - P2-3 **採用**: mutation 表に SidebarHeader 経路の欠落 — M7 を追加（7 件化）。
+  - P2-3 **採用**: mutation 表に `SidebarHeader` 経路の欠落 — `M7` を追加（Matrix「必須 mutation 注入」表を実勘定して M1〜M7 に拡張）。
   - P2-4 **採用**: Matrix「Mutation-style Adequacy Questions」節の旧前提 2 行（片経路 / boolean consume）を新セマンティクスへ更新（Coordinator の round 1 sweep 漏れ）。
 
 ## 発注・レビュー段取り
