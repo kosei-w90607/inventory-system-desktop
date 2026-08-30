@@ -34,6 +34,7 @@
 | REQ-203 / UI-04 | UI-04-D14 | Windows native L3 は owner 目視確認を必須にする。確認対象は navigation、商品検索/スキャン相当 Enter 追加、同一商品数量加算、validation、PLU警告確認フロー、保存結果、日次売上への遷移、日次売上の「手動」Badge 可読性、在庫照会へ戻る導線。 | 新規 operator-facing screen であり、PLU警告文言、連続入力、フォーカス戻し、手動 Badge の可読性は CI だけでは判断しづらい。PR #99 で手動 Badge は UI-04 実装時 L3 へ持ち越している。 |
 | REQ-203 / REQ-206 / UI-04 | UI-04-D15 | 手動販売出庫にも保存直後確認用の recent list を置く。表示は直近数件の業務日付、記録ID、代表商品、明細数、状態、記録日時、詳細導線とし、`すべての履歴を見る` は `/inventory/records?recordType=manual_sale` へ遷移する。 | UI-02/03/05 と同じ「保存直後の確認」体験にそろえる。作成画面内で検索・取消・訂正まで扱う案は、入力作業を重くし、調査責務を `入出庫履歴` と重複させるため採用しない。 |
 | REQ-203 / product add suggest | UI-04-D16 | 商品追加欄に live 候補プレビュー（catalog ⑮ ProductAddSuggest / SPEC-SUGGEST-D1〜D11）を追加する。Enter commit 経路（UI-04-D4）とフォーカス戻し（UI-04-D5）は不変。lock source は既存 `isFormLocked` 派生 state、候補確定は既存の複数件候補テーブル選択と同一 handler。 | UI-02-D14 と同一の variant B 判断（純 autocomplete 型はスキャナ退行のため不採用）。契約正本は catalog ⑮。 |
+| REQ-203 / REQ-206 / return | UI-04-D17 | 保存結果と recent list の「詳細を見る」は、search state を含む現在の `/inventory/manual-sale` URL を `returnTo` として手動販売詳細へ送る（DSR-18）。 | 詳細確認後に手動販売作業画面へ戻れるようにする。送信・検証・fallback の横断規範は DSR-18 を正とし、本書では手動販売画面の producer だけを固定する。 |
 
 ## 62.2 Component / Route 構成
 
@@ -120,9 +121,9 @@ UI-04 実装 PR では以下を generated binding に出す。
 - 明細が 0 件の場合、保存ボタンは disabled にし、理由を「商品が追加されていません」と表示する。
 - 保存ボタンは通常 `手動販売を保存`、PLU確認待ちでは `確認して保存` とする。
 - PLU確認待ちでは warning Alert を表示し、BIZ が返した `plu_warnings` を行ごとに見せる。利用者は「確認して保存」または明細修正を選べる。
-- 保存成功後は result panel へ移り、フォーム本文は操作不可にする。保存結果、PLU確認待ち、保存系エラーの Alert はページ先頭側に出るため、`createManualSale` の成功応答または command 失敗時はページ先頭へスクロールする。
+- 保存成功後は result panel へ移り、フォーム本文は操作不可にする。保存結果の「詳細を見る」は UI-04-D17 に従って現在の手動販売画面 URL を `returnTo` として送る。保存結果、PLU確認待ち、保存系エラーの Alert はページ先頭側に出るため、`createManualSale` の成功応答または command 失敗時はページ先頭へスクロールする。
 - 画面下部に `直近の手動販売出庫` セクションを置く。見出し右側に `すべての履歴を見る` を置き、`/inventory/records?recordType=manual_sale` へ遷移する。
-- recent list は保存直後確認 UI として、直近数件の業務日付、記録ID、代表商品、明細数、状態、記録日時、`詳細を見る` を表示する。`詳細を見る` は `/inventory/manual-sale/records/$recordId` へ遷移する。
+- recent list は保存直後確認 UI として、直近数件の業務日付、記録ID、代表商品、明細数、状態、記録日時、`詳細を見る` を表示する。`詳細を見る` は `/inventory/manual-sale/records/$recordId` へ遷移し、UI-04-D17 に従って現在の手動販売画面 URL を `returnTo` として送る。
 - recent list が空の場合は `直近の手動販売出庫はありません` と表示する。取得失敗時は入力フォームを壊さず、recent セクション内に再試行可能なエラー表示を置く。
 
 ## 62.6 Error / Recovery
@@ -170,11 +171,13 @@ UI-04 実装 PR では以下を generated binding に出す。
 - UI-04-D13: 保存成功時の実呼出し集合が D-052-C6 の独立 test oracle と完全一致する。
 - UI-04-D14: Windows native L3 で連続入力、フォーカス戻し、日本語表示、PLU警告確認、保存結果、日次売上の「手動」Badge を確認する。
 - UI-04-D15: recent list に `すべての履歴を見る` と `詳細を見る` が表示され、保存成功後に recent list が更新される。取得失敗時も入力フォームは継続できる。
+- UI-04-D17: 保存結果と recent list の「詳細を見る」が、現在の手動販売画面 URL を `returnTo` として送る。
 
 ## 62.10 変更履歴
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #20 / DSR-18 | UI-04-D17 を追加し、保存結果 / recent list の詳細導線に手動販売画面への `returnTo` 送信契約を設定。 |
 | 2026-08-05 | product add suggest design | UI-04-D16 新設: 商品追加欄の live 候補プレビュー（正本 = catalog ⑮ SPEC-SUGGEST-D1〜D10）。Enter commit 経路・フォーカス戻しは不変。 |
 | 2026-08-03 | UI safety net implementation | 手動販売 form の dirty 判定を共通離脱ガードへ接続し、保存中 / 保存結果の非 block を実装。 |
 | 2026-06-28 | Save result visibility follow-up | 保存成功、PLU確認待ち、command 失敗時はページ先頭へスクロールし、result panel / Alert が画面内に入るようにした。frontend validation は近傍表示のためスクロールしない。 |

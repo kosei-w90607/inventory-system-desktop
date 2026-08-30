@@ -63,6 +63,7 @@ export function useOperationLogs(args: {
 | UI-11c-D13 | `SCREEN_DESIGN.md` の QR-06 行にあった旧 CSV export/archive 記述を、閲覧 MVP + 365日 cleanup（archive 不要）に同期する。CSV 出力と MNT-04 診断ログ導線は別 task として明記する。 | Owner Decision #1 + Missing UI item 13。`72-mnt-log-manager.md` の実装済み `cleanup_old_logs` は物理削除のみで archive を作らない（DB設計上の事実）。 |
 | UI-11c-D14 | `integrity_fix` の detail_json（adjustments の product_code / old_stock / new_stock / adjustment）は在庫整合性補正の**唯一の監査痕跡**（補正は inventory_movements に行を残さない — BIZ-07-D2/D3、[D-051](../decision-log.md)）。詳細表示は既知 key 要約（UI-11c-D6）に加え、adjustments を「商品コード / 旧在庫 → 新在庫 / 差分」の operator-readable な一覧として表示し、生 JSON は折りたたみ「技術情報」に残す。 | 非IT operator が唯一の監査痕跡を読めることは、movement を残さない直接更新意味論の説明可能性の前提。rejected: 生 JSON のみの現状維持 = operator が補正内容を読めない。365日 cleanup（D-051 retention）までが閲覧可能期間である点は D-051 に従う。実装は follow-up PR（`OperationLogsPage.tsx` + test）。 |
 | UI-11c-D15 | 逆転範囲で参照する「直前に commit 済みの valid normalized search」は state に保持し、valid render が commit した後の effect でだけ更新する。valid render 自身は現在の normalized search を query key / CMD引数 / pagination に直ちに使い、invalid render のときだけ commit 済み snapshot を使う。 | render 中の ref 更新は破棄された render の search を共有 ref に残す。state/effect 方式なら未commit renderは snapshot を更新しない。valid render で state snapshot の反映を待つ案は通常のfilter変更に1 renderの遅延を生むため棄却し、valid側は現在値を直接使う。effect commitからsnapshot反映までにinvalid更新が割り込む極小窓では、前回snapshotを一時表示した後に最新commit済みsnapshotへ同期し得る。この差を許容するか、`useLayoutEffect` でpaint前同期するかは Plan Gate のowner裁定対象とする。 |
+| UI-11c-D16 | 「関連記録を見る」は、現在の `/settings/logs` URL（期間 `start_date` / `end_date`、`operation_type`、`page` の search state を含む）を `returnTo` として業務記録詳細へ送る。詳細の「前の画面へ戻る」で同じ検索 state を復元する（DSR-18）。 | 操作ログの調査中に関連記録を確認しても、期間・種別・page を組み直さず同じ調査位置へ戻れるようにする。link は UI-11c-D5 の展開行内の明示的な操作のままとし、行全体 click や展開 toggle を追加しない。 |
 
 ---
 
@@ -234,7 +235,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + ProductPagination
 
 ---
 
-### 74.9 関連業務記録リンク契約（UI-11c-D7）
+### 74.9 関連業務記録リンク契約（UI-11c-D7 / UI-11c-D16）
 
 - `detail_json` を JSON オブジェクトとしてパースできた場合のみ評価する。
 - 次の**両方**を満たす場合だけ「関連記録を見る」ボタンを表示する:
@@ -250,6 +251,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + ProductPagination
 | `manual_sale` | `/inventory/manual-sale/records/$recordId` |
 | `disposal_record` | `/inventory/disposal/records/$recordId` |
 
+- 「関連記録を見る」link は UI-11c-D16 / DSR-18 に従い、現在の `/settings/logs` と search state（`start_date` / `end_date` / `operation_type` / `page`）を直列化した `returnTo` を遷移先へ送る。詳細から戻ると同じ期間・種別・page を route search として復元する。link は展開行内の独立した操作であり、押下しても UI-11c-D5 の行展開 toggle を発火させない。
 - 条件を満たさない場合（フィールド欠落、`record_type` が許可リスト外、`record_id` が0以下や非数値）はリンクを一切出さず、`summary` / detail 要約の表示のみ継続する。これは JSON の任意 key からの heuristic 推測ではなく、事前合意された2 field 名 + 許可リストという明示 contract に対する厳密一致判定である。
 - **現状の producer 状況**: `rg -n '"record_id"' src-tauri/src` の実測で、`record_id` は `src-tauri/src/biz/inventory_service/receiving.rs:209` / `disposal.rs:211` / `returns.rs:244` の3 producer が既に detail_json へ書き込み済みである。一方 `rg -n '"record_type"' src-tauri/src` は0件で、`record_type` を書き込む producer は存在しない。したがって2 field が両方揃うログは実データ上0件（表示ロジックとしては安全に動作するが、実データでの発火は0件）。この3箇所（receiving/disposal/returns）へ `record_type` を追加することが producer 側採用の最小候補であり、既存 BIZ producer への追加作業自体は本設計の非対象として Plan Packet の follow-up に記録する（§74.16）。参考: `insert_operation_log` を呼ぶファイルは `src-tauri/src` 配下に18ファイルある（`rg -l insert_operation_log src-tauri/src` 実測）。
 
@@ -610,6 +612,7 @@ Test Design Matrix 作成時に、以下が「モックの偶然一致」でグ�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #20 / DSR-18 | UI-11c-D16 を追加し、「関連記録を見る」が期間・種別・page を含む操作ログ URL を `returnTo` として送り、詳細から同じ調査 state へ戻る契約を確定。 |
 | 2026-07-11 | Design Phase（本 PR） | 新規作成。UI-11c 操作ログ画面の route/URL state、JST 期間 predicate、canonical operation_type registry（新規 CMD/IO 含む）、table/detail_json/関連記録リンク契約、pagination/empty/error/retry、a11y、traceability 是正、Windows native L3 を確定 |
 | 2026-07-12 | PR #164 final audit remediation | Owner裁定によりD5の展開正本を明示的な「詳細を表示／閉じる」buttonへ同期。D7をpositive safe integerへ厳格化し、L3-8を自動バックアップ無効化・復元を含むdemo DB限定手順へ更新 |
 | 2026-07-12 | PR #164 final-audit remediation | CMD日付をASCII strict形式+実在暦日へ明確化。片側/明示clear URL state、逆転rangeで直前valid一覧を保持するlifecycle、3 filter個別page resetのtest契約、L3-7 exclusive-lock / L3-8 synthetic emptyの再現手順を追記 |

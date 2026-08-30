@@ -34,6 +34,7 @@
 | REQ-204 / UI-05 | UI-05-D14 | Windows native L3 は owner 目視確認を必須にする。確認対象は navigation、商品検索/スキャン相当 Enter 追加、同一商品+種別+理由の数量加算、種別/理由/原価 validation、保存中 disable、保存結果、recent list、在庫照会へ戻る導線。 | 新規 operator-facing screen であり、ロス理由の入力、連続入力、フォーカス戻し、保存結果の可読性は CI だけでは判断しづらい。 |
 | REQ-204 / async result gate | UI-05-D15 | 非同期商品検索結果の採否に使う form lock ref は render 中に同期せず、保存eventの先頭でlock、validation / command失敗eventとreset eventでunlock、保存成功後はlock維持とする。商品候補の選択eventと検索完了callbackはこのrefを読む。 | render-phase ref更新は未commit renderのlockを残し得る。effect同期だけでは保存eventからcommit/effectまでに検索結果が解決するraceを閉じないためevent境界を採用する。保存clickからpending renderまでの極小窓で従来は結果が反映され得たのに対し、本方式は保存開始時点から破棄する。この可視差はUI-05-D10の「保存中は商品追加をlock」に合わせる是正だが、Plan Gateのowner裁定対象とする。 |
 | REQ-204 / product add suggest | UI-05-D16 | 商品追加欄に live 候補プレビュー（catalog ⑮ ProductAddSuggest / SPEC-SUGGEST-D1〜D11）を追加する。Enter commit 経路（UI-05-D5）とフォーカス戻し（UI-05-D6）は不変。lock source は UI-05-D15 の lock ref（suggest 層は同 ref を `isLocked()` として読み、保存 event 内で `invalidateAndClose()` を同期呼出しする。新規 lock は作らない）。候補確定は既存の複数件候補テーブル選択と同一 handler。 | UI-02-D14 と同一の variant B 判断 + 本画面固有の async lock 整合（catalog ⑮ D4/D10）。契約正本は catalog ⑮。 |
+| REQ-204 / REQ-206 / return | UI-05-D17 | recent list の「詳細を見る」は、search state を含む現在の `/inventory/disposal` URL を `returnTo` として廃棄・破損詳細へ送る（DSR-18）。保存結果には詳細 link がないため、この送信契約の producer に含めない。 | 詳細確認後に廃棄・破損作業画面へ戻れるようにする。送信・検証・fallback の横断規範は DSR-18 を正とし、本書では実在する recent list producer だけを固定する。 |
 
 ## 64.2 Component / Route 構成
 
@@ -116,7 +117,7 @@ UI-05 実装 PR では以下を generated binding に出す。
 - 理由欄は明細ごとに入力し、空白なら保存前 validation で止める。
 - 明細が 0 件の場合、保存ボタンは disabled にし、理由を「商品が追加されていません」と表示する。
 - 保存ボタンは `廃棄・破損を保存`。保存成功後は result panel へ移り、フォーム本文は操作不可にする。保存結果や保存系エラーの Alert はページ先頭側に出るため、保存成功または command 失敗時はページ先頭へスクロールする。
-- 最近の廃棄・破損一覧は日付、記録ID、記録日時を表示する。詳細編集や取消は出さない。
+- 最近の廃棄・破損一覧は日付、記録ID、記録日時を表示する。「詳細を見る」は UI-05-D17 に従って現在の廃棄・破損画面 URL を `returnTo` として送る。作成画面内に詳細本文、編集、取消は出さない。
 
 ## 64.6 Error / Recovery
 
@@ -161,11 +162,13 @@ UI-05 実装 PR では以下を generated binding に出す。
 - UI-05-D13: 保存成功時の実呼出し集合が D-052-C7 の独立 test oracle と完全一致する。
 - UI-05-D14: Windows native L3 で連続入力、フォーカス戻し、日本語表示、種別/理由/原価 validation、保存結果を確認する。
 - UI-05-D15: 保存eventがpending renderより先にasync gateをlockし、同eventと競合して完了した検索結果を反映しない。validation / command失敗とresetではunlockする。
+- UI-05-D17: recent list の「詳細を見る」が現在の廃棄・破損画面 URL を `returnTo` として送り、保存結果には詳細 link を追加しない。
 
 ## 64.10 変更履歴
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #20 / DSR-18 | UI-05-D17 を追加し、recent list の詳細導線に廃棄・破損画面への `returnTo` 送信契約を設定。保存結果は詳細 link なしの現行契約を維持。 |
 | 2026-08-05 | product add suggest design | UI-05-D16 新設: 商品追加欄の live 候補プレビュー（正本 = catalog ⑮ SPEC-SUGGEST-D1〜D10、lock は UI-05-D15 ref と単一 source）。Enter commit 経路・フォーカス戻しは不変。 |
 | 2026-08-03 | UI safety net implementation | 廃棄・破損 form の dirty 判定を共通離脱ガードへ接続し、保存中 / 保存結果の非 block を実装。 |
 | 2026-07-23 | UI-05-D15 | form lock ref をrender同期から保存/失敗/reset event同期へ移し、非同期商品検索結果の採否タイミングを固定。 |

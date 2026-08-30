@@ -315,10 +315,36 @@ scroll を伴う遷移はどれか？
 
 ---
 
+## DSR-18 詳細画面の戻り導線契約
+
+**ルール**: 「前の画面へ戻る」ラベルの導線は、遷移元の URL（pathname と search state）へ戻す。業務記録詳細 route へ遷移するすべての link は遷移元 URL を `returnTo` として送り、`returnTo` が欠落または不正な場合だけ遷移先ごとの既定 hub へフォールバックする。
+
+**Why**: 入出庫履歴の絞り込み、作業画面の recent list、保存結果、操作ログの調査結果から詳細を確認したあと、無条件に別の hub へ戻すと、ラベルと実挙動が一致せず、検索条件や page を組み直す必要がある。遷移元を本則にしつつ、欠落・不正時は従来の既定 hub を安全側の escape hatch として残すことで、調査の連続性と既存 deep link の互換性を両立する。
+
+**判定フロー / 具体例**:
+
+```
+業務記録詳細へ遷移する link か？
+├─ Yes → 現在の pathname + search state を returnTo に直列化して送る
+│         └─ 詳細側の「前の画面へ戻る」で共通 helper を通す
+│              ├─ 「/」始まり、かつ「//」始まりでない → returnTo へ戻る
+│              └─ 欠落・不正 → 呼出側が渡した遷移先ごとの既定 hub へ戻る
+└─ No  → その導線固有の契約に従う
+```
+
+共通 helper は DSR-15 の prefix 検証を最低基準とし、フォールバック先を引数で受ける。これは DSR-15 を supersede せず extend し、DSR-15 が別 PR の宿題としていた共通 util 抽出を、後続実装の必須契約にするものである。
+
+商品一覧の typed parse-back に使う `src/features/products/lib/return-to.ts` は、この共通 helper へ緩和しない。`pathname` が `/products` または `/products/` の場合だけ許可する exact-allowlist は、復元対象の search 型まで限定する用途で prefix 検証を強化した上位互換として存置する。typed 復元が必要な導線は同様に許可範囲を強化してよいが、共通 helper の最低基準を下回ってはならない。
+
+**関連**: DSR-15「returnTo 等のリダイレクト系 param は検証してから使う」 / DSR-17 分類②「一覧→詳細→戻り」。review-checklist カテゴリ 9 対応（戻りラベル、遷移元 URL、search state、fallback、検証強度が同じ契約を示しているか）。
+
+---
+
 ## 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-08-30 | PR #20 | DSR-18 新設: 詳細画面の戻り先を遷移元 URL とし、業務記録詳細 link の `returnTo` 送信義務、遷移先ごとの fallback、DSR-15 を extend する共通 helper 方針を確定。 |
 | 2026-08-29 | scroll-policy-design 裁定 | DSR-17 新設: 画面遷移と scroll を 3 分類し、同一画面内は event-driven、詳細戻りは位置復元、操作完了後の Home は one-shot flag 消費時だけ先頭表示とする。mount 一律 scroll を禁止。 |
 | 2026-08-29 | PR #15（gated Amendment 3） | DSR-16 新設: 同型情報のグループ化と囲みの階層。owner L3-lite 可読性 FAIL（per-card dl 反復の clutter / 比較不能）を受け、NN/g Common Region と GOV.UK summary list を根拠に判断フローを正本化。 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: DSR-03の同日追加AlertとDSR-07の高影響な重複計上防止境界を正本化。 |
