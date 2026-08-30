@@ -14,6 +14,7 @@
 
 ## 直近の完了
 
+- [x] **PR #20 「前の画面へ戻る」導線契約の規範化 Design Phase**（R2 docs-only、PR #20 @ inventory-system-desktop squash merge `0d5f73c`、2026-08-30）: DSR-18「詳細画面の戻り導線契約」新設（遷移元本則 + returnTo 送信義務 + fallback + DSR-15 extend の共通 helper 方針）+ TRACE-D11 の遷移元横断化（65 の 4 箇所同期）+ 送信側契約 5 件採番（UI-02-D16 / UI-03-D22 / UI-04-D17 / UI-05-D17 / UI-11c-D16）+ review-checklist カテゴリ 9 対応行。gap 8 site の runtime 是正は後続 R3 packet。証跡: [archived Packet](archive/plans/2026-08-30-return-navigation-contract-design.md)
 - [x] **PR #4 取引先管理実装**（R3、PR #4 @ inventory-system-desktop merge `c2cdda8`、2026-08-26）: UI-15 `/settings/suppliers` 画面（一覧 + usage 件数 + インライン改名 + 統合 dialog 2 段階）+ migration v6 + `rename_supplier` / `merge_suppliers` / `list_suppliers_with_usage` を実装。証跡: [archived Packet](archive/plans/2026-08-25-supplier-management-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-25-supplier-management-impl.md)
 - [x] **PR #5 入庫時原価差分検出 cost_diffs**（R3、PR #5 @ inventory-system-desktop merge `854948f`、2026-08-26）: 入庫保存完了時の原価差分ダイアログ（マスタ原価更新オプション）を実装。証跡: [archived Packet](archive/plans/2026-08-26-receiving-cost-diffs-impl-c.md) / [Matrix](archive/plans/test-matrices/2026-08-26-receiving-cost-diffs-impl-c.md)
 - [x] **PR #6 docs 実装状況棚卸し**（R2、PR #6 @ inventory-system-desktop merge `bb4969e`、2026-08-26）: 実装状況 stale 表記 16 箇所を是正 + REQ-206/207 を required 昇格。証跡: [archived Packet](archive/plans/2026-08-26-docs-impl-status-inventory.md)
@@ -33,7 +34,6 @@
 
 ## 次の行動
 
-- [ ] **PR #20 「前の画面へ戻る」導線契約の Design content**（R2 docs-only、Phase `implementing`）: [active Plan Packet](plans/2026-08-30-return-navigation-contract-design.md)。content commit 完了後は Coordinator が L1 と Final Review へ進める。
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 

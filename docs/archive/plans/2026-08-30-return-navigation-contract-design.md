@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 9afcc795d8e36a6136d302f5ad48e5d1e7c3fd9e
@@ -23,6 +23,8 @@
 2026-08-30: Writer（Codex）の content commit 5307453 に対し、L1 `local-ci.sh full` CLEAN（RESULT=PASS、対象 HEAD = content commit 5307453 と同一。evidence の所在は PR body を正とする）。Final Review 完了（Sonnet subagent 独立 fresh context、Plan Reviewer とは別個体。監査対象 content commit 5307453、P1/P2/P3 = 0、Goal Invariant 充足 = yes、AC 6 項目全数突合・gap 8 site 被覆の独立突合・presence oracle 独立再実行・採番次番検証・実コード前提の実読を含む。Fable 裁定 accept）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize し、`Reviewed Content HEAD` に 5307453 を記録する。残る Human Gate は Ready 承認（docs-only のため Ready 後の owner `workflow_dispatch` 込み）と merge。
 
 2026-08-30: owner が Ready を承認（介入 3 回目 / 予算 3 回）。この state-only commit は `human-confirm -> ready-hosted-final` を Draft のまま materialize する。この resulting HEAD で L1 full を再取得し、exact-HEAD evidence は PR body を正とする。残る Human Gate は owner の Ready 操作と、CI-TRIGGER-D1 に従う同一 HEAD run 0 件確認後の `workflow_dispatch`（docs-only のため自動 run なし）、および merge。
+
+2026-08-30: PR #20 squash merge 0d5f73c。hosted final は CI-TRIGGER-D1 の docs-only 経路どおり owner Ready 化後の `workflow_dispatch` 1 run（run 33304411780、exact-HEAD 891ce1a、success）で取得し、merge 前に run 実在と headSha 一致を確認済み（PR #16 逸脱の再発なし）。closeout で archive へ移動。
 
 ## Owner Effort Budget
 
