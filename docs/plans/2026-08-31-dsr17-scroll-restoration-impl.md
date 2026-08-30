@@ -4,7 +4,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
@@ -13,7 +13,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 687ae6b
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（WebView2 の sessionStorage 実機挙動 + cache hit/miss + smooth scroll 干渉 + 主ナビ先頭。DSR-17 (f) の revisit trigger 判定を含む）
@@ -298,6 +298,17 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
 - round 3（同 reviewer、対象 = 是正 commit `c83df49` + `d36ec85`）: P1 0 / P2 0 / P3 0。P2×3 の反映を実読確認（navigation.ts 引用行の実在含む）、新たな矛盾なし。rally は天井 3 round 内で新規指摘 0 に収束。
 
 Phase 遷移記録（本 content commit に同乗）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 3 で収束（P1/P2 = 0）。Plan Commit を `4b90108` で確定。次は Codex 発注（Writer content commit）。
+
+### Final Review 記録（2026-08-31、append-only）
+
+- Writer content commit `687ae6b`（Codex、15 file）。Writer L1 full PASS（typecheck / lint / format:check / test / build / `cargo check --release` / doc-consistency-check ERROR 0）、bindings diff 0、pre-PR review-only P1/P2 = 0。Draft PR #24。scope 外の必要最小変更 1 件（`useUnsavedChangesWarning.continueEditing` での marker 破棄 — 遷移取消では `onRendered` 非発火のため marker が残留する欠陥への防御、regression test 同梱。Coordinator 実読 + Final Reviewer 独立検証で妥当と裁定）。
+- Coordinator mutation 独立再実測（clean tree）: M1〜M7 全数を Matrix どおり注入し kill 成立（M1: 4 fail / M2: 4 / M3: 2 / M4: 1 / M5: 4 / M6: 2 / M7: 1）。全注入 checkout 復元・tree clean 確認。
+- Final Review round 1（Sonnet 独立 reviewer 別個体、対象 = `687ae6b`）: P1 0 / P2 0 / P3 3。検証 8 項目 PASS。reviewer 自身も M1〜M7 を clean tree で独立再実測し全 kill 確認（Coordinator 実測と合わせ二重の独立実測）。spike 主張の node_modules 実読検証・DSR-17 (g) 追記の正確性・oracle 独立転記（T5 の cache hit 前段 assert / T11 の中間消費 assert 実在）も PASS。
+  - P3-1（SidebarLink の href 明示指定の冗長）: **対応不要**と裁定（機能差分なし、spread 順序への防御として許容）。
+  - P3-2（`app-router.ts` top-level の router singleton 副作用 — test import 時にも実 router が構築されグローバル listener 登録。現状実害なし）: **backlog 記録**と裁定（router 関連改修時の設計メモ）。
+  - P3-3（Final Reviewer は build 系 AC7 を未再実行）: Writer L1 PASS 済み + hosted final（required）の green を merge 前に Coordinator が確認することで被覆。
+
+Phase 遷移記録（本 content commit に同乗）: `implementing -> local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Final Review 収束（P1/P2 = 0）により independent-review を通過、Reviewed Content HEAD を `687ae6b` で確定。残りは owner Windows native L3（L3-1〜L3-5 + L3-3b、fail は DSR-17 (f) revisit trigger）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
 
 ## 発注・レビュー段取り
 
