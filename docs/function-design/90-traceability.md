@@ -61,6 +61,8 @@
 
 ## 4. 付録: REQ/UI ID 未参照の FE テストファイル
 
+- `src/components/layout/RootLayout.test.tsx`
+- `src/components/layout/SidebarHeader.test.tsx`
 - `src/components/patterns/DepartmentFilter.test.tsx`
 - `src/components/patterns/EmptyState.test.tsx`
 - `src/components/patterns/FormSection.test.tsx`
@@ -82,4 +84,6 @@
 - `src/features/monthly-sales/lib/format-month-label.test.ts`
 - `src/features/monthly-sales/lib/pick-top-ranking.test.ts`
 - `src/features/monthly-sales/lib/sort-items.test.ts`
+- `src/lib/app-router.test.tsx`
 - `src/lib/extractFilename.test.ts`
+- `src/lib/main-nav-scroll.test.ts`
