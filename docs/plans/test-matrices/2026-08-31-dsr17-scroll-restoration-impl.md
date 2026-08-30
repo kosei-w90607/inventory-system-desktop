@@ -47,7 +47,7 @@ Risk: R3
 | T12 | 復元 clamp の遅延再適用（gated amendment） | 新規 | clamp 模擬 harness（`<main>` に `defineProperty` で `scrollHeight - clientHeight` clamp setter + 遅延 resolve の一覧 stub）で、戻り時に復元が 0 へ clamp → content 拡大（DOM 変異）→ **保存位置へ 1 回だけ再適用**される。negative: 再適用前に利用者入力（wheel 等）を発火させると再適用されない / 次 navigation で解除される。**是正前実装（`687ae6b` 相当）に本 test を当てると fail することを Writer が確認**（故障モード再現性 = AC10） | D-E / L3-1 FAIL |
 | T13 | 分類④と遅延再適用の排他 | 新規 | 主ナビ flag 一致の遷移では、cache に正の保存値があっても遅延再適用が armed されず先頭のまま | D-E / D-C |
 | ~~T14~~ | ~~成功後喪失の回収~~ | **superseded** | L3 三巡目で根本原因が SearchBar mount autofocus の native scroll と確定（packet「L3 三巡目結果」節）。D-E' とともに撤去（gated amendment 第 3 弾 = D-F）。D-E（初回 clamp 時のみ armed）の契約 test は T12 が引き続き担う | D-F |
-| T15 | SearchBar mount focus の preventScroll（D-F 根本是正） | 新規 | `LiveSearchBar` / `CommitSearchBar` の各 variant で、mount 時の `focus` 呼出しが `{ preventScroll: true }` 付きで行われる（focus spy の option assert、**variant ごとに個別 case** — 片側漏れ mutation の検出）。実機の focus → native scroll は happy-dom で再現不能のため option 検証にとどめ、実機実証は L3 四巡目 | D-F / DSR-17 禁止行拡張 |
+| T15 | mount focus の preventScroll（D-F 根本是正） | 新規 | `LiveSearchBar` / `CommitSearchBar` / `StocktakeCountEntry`（Writer P2 で追加）の各 site で、mount 時の `focus` 呼出しが `{ preventScroll: true }` 付きで行われる（focus spy の option assert、**site ごとに個別 case** — 漏れ mutation の検出）。既存 T17（stocktake の focus 遷移契約）は無変更 green を維持。実機の focus → native scroll は happy-dom で再現不能のため option 検証にとどめ、実機実証は L3 四巡目 | D-F / DSR-17 禁止行拡張 |
 
 ## State Lifecycle Matrix
 
@@ -101,7 +101,7 @@ Risk: R3
 - 識別子を pathname 粒度に落としたら？ → T2 の `/stock` vs `/stock?status=low` case が fail。
 - onRendered 購読を外したら？ → T4 / T5 が fail。
 
-## 必須 mutation 注入（Final Review で clean tree 独立再実測 — 現行有効 = M1〜M9 + M11 の 10 件。M10 は D-F で superseded）
+## 必須 mutation 注入（Final Review で clean tree 独立再実測 — 現行有効 = M1〜M9 + M11〜M12 の 11 件。M10 は D-F で superseded）
 
 | # | 注入 | kill 期待 |
 |---|---|---|
@@ -116,6 +116,7 @@ Risk: R3
 | M9 | 利用者入力（wheel / pointerdown / keydown）による解除を除去 | T12（negative case） |
 | ~~M10~~ | ~~成功時 armed を外す~~ | **superseded**（D-E' 撤去に伴い対象消滅 — D-F） |
 | M11 | SearchBar mount focus の `preventScroll: true` を除去（片 variant ずつ） | T15（該当 variant） |
+| M12 | `StocktakeCountEntry` mount focus の `preventScroll: true` を除去 | T15（該当 case） |
 
 ## Residual Test Gaps
 

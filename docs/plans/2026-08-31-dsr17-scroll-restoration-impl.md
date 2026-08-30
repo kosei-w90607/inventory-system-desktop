@@ -395,6 +395,12 @@ Phase 遷移記録（本 content commit に同乗）: `implementing -> local-ver
   6. AC14 = 是正前実装（preventScroll なし）で「mount focus が preventScroll なしで呼ばれる」ことを T15 が fail として検出する再現性証明。AC15 = L3 四巡目全手順 PASS。
 - 実機の focus → native scroll は happy-dom で再現不能（layout なし）のため、T15 は focus 呼出しの option 検証にとどめ、実機実証は L3 四巡目が担う（Residual Gaps へ追記）。
 
+### D-F 実装中の Writer P2 と裁定（2026-08-31、append-only）
+
+- Writer（Codex）が D-F 実装中の review gate で fail-closed 停止し P2 を報告: `StocktakePage.tsx:427-429` に `useEffect(..., [])` 契機の mount autofocus が残存（`StocktakeCountEntry`、route page 内 mount、既存 `StocktakePage.test.tsx` T17 が初期 autofocus を契約化）。packet D-F 前提「mount 契機は SearchBar 2 箇所のみ」は誤り。
+- **Coordinator 反省**: 当該行は sweep 出力に表示されていたが、setTimeout 系の操作起因 focus と一括りに誤分類し、mount effect であることを実読確認しなかった（:427-429 実読 + T17 実読で Writer 報告と三点一致を確認済み）。
+- **裁定（候補 1 採用）**: `StocktakeCountEntry` の mount focus も D-F scope に追加し `focus({ preventScroll: true })` へ。T15 に第 3 case（StocktakeCountEntry）と M12（同 preventScroll 除去 → 該当 T15 kill）を追加。DSR-17 禁止行は一般形（route 遷移で再 mount される component の mount 契機 focus 全般）を維持 — SearchBar 限定へ狭める候補 2 は規範の一般性を壊すため棄却。既存 T17（focus 契約）は preventScroll でも `toHaveFocus` が成立するため無変更 green を維持する。
+
 ## 発注・レビュー段取り
 
 - Writer: Codex（発注書は plan-approved 後に Coordinator が作成）。
