@@ -20,6 +20,8 @@ vi.mock("@/hooks/useUnsavedChangesWarning", () => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
   useNavigate: () => vi.fn(),
+  useRouterState: ({ select }: { select: (state: { location: { href: string } }) => unknown }) =>
+    select({ location: { href: "/inventory/manual-sale" } }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), dismiss: vi.fn() } }));
 vi.mock("@/lib/bindings", () => ({

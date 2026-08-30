@@ -26,6 +26,7 @@ import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
+import { normalizeReturnTo } from "@/lib/return-to";
 import { formatDateTime, formatYen } from "./types";
 
 export interface CsvImportRecordDetailPageProps {
@@ -50,13 +51,8 @@ function formatQuantity(value: number, unit: string): string {
   return `${value.toLocaleString("ja-JP")} ${unit}`;
 }
 
-function normalizeReturnTo(value: string | undefined): string {
-  if (value !== undefined && value.startsWith("/") && !value.startsWith("//")) return value;
-  return "/inventory/records";
-}
-
 export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecordDetailPageProps) {
-  const backHref = normalizeReturnTo(returnTo);
+  const backHref = normalizeReturnTo(returnTo, "/inventory/records");
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.csvImportDetail(importId),
     queryFn: () =>

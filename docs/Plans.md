@@ -36,6 +36,7 @@
 
 ## 次の行動
 
+- [ ] **DSR-18 戻り導線 returnTo R3**（R3 キュー ①、owner 裁定 2026-08-30 = ① → ② scroll 復元 → ③ DSR-19/20 runtime）: gap 8 site への returnTo 付与 + 共通 helper（DSR-15 prefix 検証 + fallback 引数化）+ 契約 test。[active packet](plans/2026-08-30-dsr18-returnto-impl.md) / [Matrix](plans/test-matrices/2026-08-30-dsr18-returnto-impl.md)
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -69,7 +70,9 @@
 - UI-15 改名ボタンの double-click 貫通リスク（保存確定の連打で二重送信し得る懸念。pending 中の行単位 disabled は実装・RTL 検証済みのため顕在化時に再評価、L3 owner 所感 2026-08-26 起源の P3）。
 - 「前の画面へ戻る」導線契約は Design 確定済み（PR #20、DSR-18）: 遷移元 URL を本則とし、業務記録詳細 link の `returnTo` 送信義務、遷移先ごとの fallback、DSR-15 を extend する共通 helper 方針を規範化。gap 8 site の runtime 是正は後続 R3 Plan Packet で実装する。
 - CsvImport / Stocktake detail page の静的入口未整備（PR #20 packet 起票時実測起源）: `/csv-import/records/$importId` / `/stocktake/records/$stocktakeId` は横断 hub 経由のみ到達可能で、専用一覧などの静的入口は未整備。入口設計は実需発生時の別 change とする。
-- 操作ログ関連記録の producer 0 件（74 §74.9 の link UI はあるが record_type 書込み producer が 0 件で実データ発火 0。上記戻り gap と二重 gap）。
+- 操作ログ関連記録の producer 0 件（74 §74.9 の link UI はあるが record_type 書込み producer が 0 件で実データ発火 0）。**producer 実効化 R3 候補**（優先度昇格 2026-08-31）: 入庫・返品交換・手動販売・廃棄の操作ログ書込みに `record_type` / `record_id` を記録し「関連記録を見る」を実データ発火可能にする。この R3 の Human Gate には、PR #23 L3-3 で waiver した「実データの関連記録 link → 詳細 → 調査 state 復元」の Windows native L3 を義務として含める（waiver disposition は PR #23 packet 参照）。
+- 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` を追加するか（現行 UI-05-D17 は「保存結果に link なし」を契約化済み。追加には UI-05-D17 改訂の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源。歴史的非対称であり表示すべきでない業務理由は source docs に見当たらない、が owner 観察）。
+- 4 作業画面の保存結果 panel を詳細往復時だけ one-shot 復元する案（現行は詳細 → 戻りで panel が消える。復元条件・サイドバー再訪との区別は DSR-03/DSR-19 系の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
 - hub 等の詳細戻り scroll 位置復元は design 確定済み（PR #21、DSR-17 を 3+1 分類へ拡張: 分類④「主ナビゲーションは遷移先先頭」+ 分類②の href key / `<main>` 復元方式契約）。owner 裁定の R3 着手順は、DSR-18 R3（`returnTo` 8 site + 共通 helper）を先行し、その後に TanStack Router `scrollRestoration` の Contract Probe 付き scroll 復元 R3 とする。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。

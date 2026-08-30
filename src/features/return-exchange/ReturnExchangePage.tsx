@@ -3,7 +3,7 @@
 // UI-03 返品・交換 page。設計: docs/function-design/63-ui-return-exchange.md
 
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, ImagePlus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -175,6 +175,7 @@ function clearStaleRowErrors(
 
 export function ReturnExchangePage() {
   const queryClient = useQueryClient();
+  const returnTo = useRouterState({ select: (state) => state.location.href });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [initialValues, setInitialValues] = useState<ReturnExchangeFormValues>(createEmptyForm);
   const [values, setValues] = useState<ReturnExchangeFormValues>(initialValues);
@@ -481,6 +482,7 @@ export function ReturnExchangePage() {
               <Link
                 to="/inventory/return/records/$recordId"
                 params={{ recordId: String(result.record_id) }}
+                search={{ returnTo }}
               >
                 <Eye aria-hidden="true" />
                 詳細を見る
@@ -969,6 +971,7 @@ export function ReturnExchangePage() {
                       <Link
                         to="/inventory/return/records/$recordId"
                         params={{ recordId: String(record.id) }}
+                        search={{ returnTo }}
                       >
                         <Eye aria-hidden="true" />
                         詳細を見る

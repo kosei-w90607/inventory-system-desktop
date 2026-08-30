@@ -42,6 +42,8 @@ vi.mock("@tanstack/react-router", () => ({
     return <a href={href}>{children}</a>;
   },
   useNavigate: () => mockNavigate,
+  useRouterState: ({ select }: { select: (state: { location: { href: string } }) => unknown }) =>
+    select({ location: { href: "/inventory/manual-sale" } }),
 }));
 
 vi.mock("sonner", () => ({
@@ -121,6 +123,7 @@ beforeEach(() => {
 });
 
 describe("ManualSalePage (UI-04 / REQ-203)", () => {
+  // T6 (UI-04-D17): recent list returnTo contract.
   it("REQ-203/REQ-206: recent list exposes all-history and detail links", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
@@ -164,7 +167,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     );
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
       "href",
-      "/inventory/manual-sale/records/2",
+      "/inventory/manual-sale/records/2?returnTo=%2Finventory%2Fmanual-sale",
     );
   });
 
@@ -446,6 +449,29 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     expect(screen.getByRole("button", { name: "手動販売を保存" })).toBeInTheDocument();
   });
 
+  it("T7 UI-04-D17: null sale id keeps the detail link hidden", async () => {
+    const user = userEvent.setup();
+    mockCreateManualSale.mockResolvedValue({
+      status: "ok",
+      data: {
+        sale_id: null,
+        created: false,
+        idempotent_replay: false,
+        plu_warnings: ["MS-001: この商品はレジで打てます（PLU登録済み）"],
+        stock_warnings: [],
+        needs_confirmation: true,
+        confirmation_token: "confirm-token-1",
+      },
+    });
+
+    renderWithClient(<ManualSalePage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "手動販売を保存" }));
+
+    expect(await screen.findByText("PLU登録済みの商品があります")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "詳細を見る" })).not.toBeInTheDocument();
+  });
+
   it("REQ-203 displays manual sale result and invalidates inventory and sales queries", async () => {
     const user = userEvent.setup();
     mockCreateManualSale.mockResolvedValue({
@@ -476,7 +502,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     expect(screen.getByText("MS-001: 在庫がマイナスになりました（-1）")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
       "href",
-      "/inventory/manual-sale/records/41",
+      "/inventory/manual-sale/records/41?returnTo=%2Finventory%2Fmanual-sale",
     );
     expect(screen.getByRole("button", { name: "手動販売を保存" })).toBeDisabled();
     await waitFor(() => {

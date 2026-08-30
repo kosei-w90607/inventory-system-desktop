@@ -40,6 +40,8 @@ vi.mock("@tanstack/react-router", () => ({
       </a>
     );
   },
+  useRouterState: ({ select }: { select: (state: { location: { href: string } }) => unknown }) =>
+    select({ location: { href: "/inventory/disposal" } }),
 }));
 
 vi.mock("sonner", () => ({
@@ -286,6 +288,21 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     });
   });
 
+  it("T8 UI-05-D17: saved disposal result does not add a detail link", async () => {
+    const user = userEvent.setup();
+    mockCreateDisposal.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 41, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    renderWithClient(<DisposalPage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
+
+    expect(await screen.findByText("廃棄・破損を保存しました")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "詳細を見る" })).not.toBeInTheDocument();
+  });
+
   it("REQ-204 keeps the idempotency key for same-content retry and rotates it after edits or reset", async () => {
     const user = userEvent.setup();
     mockCreateDisposal
@@ -389,7 +406,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     );
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
       "href",
-      "/inventory/disposal/records/12",
+      "/inventory/disposal/records/12?returnTo=%2Finventory%2Fdisposal",
     );
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveClass("border");
   });

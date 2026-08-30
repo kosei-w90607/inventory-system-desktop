@@ -42,6 +42,8 @@ vi.mock("@tanstack/react-router", () => ({
     const href = `${path}${query}`;
     return <a href={href}>{children}</a>;
   },
+  useRouterState: ({ select }: { select: (state: { location: { href: string } }) => unknown }) =>
+    select({ location: { href: "/inventory/receiving" } }),
 }));
 
 vi.mock("sonner", () => ({
@@ -257,7 +259,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     expect(screen.getByText("P-001: 在庫がマイナスになりました（-1）")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
       "href",
-      "/inventory/receiving/records/11",
+      "/inventory/receiving/records/11?returnTo=%2Finventory%2Freceiving",
     );
     expect(screen.getByRole("button", { name: "入庫を保存" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "入庫を保存" }));
@@ -267,6 +269,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     });
   });
 
+  // T2 (UI-02-D16): recent list returnTo contract.
   it("REQ-201/REQ-206: recent list exposes all-history and detail links", async () => {
     mockListReceivings.mockResolvedValue({
       status: "ok",
@@ -296,7 +299,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     );
     expect(screen.getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
       "href",
-      "/inventory/receiving/records/11",
+      "/inventory/receiving/records/11?returnTo=%2Finventory%2Freceiving",
     );
   });
 
