@@ -37,7 +37,7 @@
 
 ## 次の行動
 
-- [ ] **scroll 復元 R3**（R3 キュー ②、owner 裁定 2026-08-30 = ① → ② → ③。① DSR-18 R3 は PR #23 で完了）: TanStack Router `scrollRestoration` 導入、DSR-17 (a)〜(h) が方式正本。Contract Probe は是正仮適用の end-to-end、(g) resetScroll 注記 1 文を packet 起草時に DSR-17 へ追加（PR #21 Final Review P3 裁定）、(h) HomePage.test.tsx negative test regression なし必須、WebView2 sessionStorage は Windows native L3。着手時に起票時実測から
+- [ ] **scroll 復元 R3**（R3 キュー ②、owner 裁定 2026-08-30 = ① → ② → ③。① DSR-18 R3 は PR #23 で完了）: TanStack Router `scrollRestoration` 導入（href key + `<main>` 復元 + 分類④ one-shot 機構〈起票時 spike で確定〉+ DSR-17 (g) spike 結果追記）。[active packet](plans/2026-08-31-dsr17-scroll-restoration-impl.md) / [Matrix](plans/test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md)
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
