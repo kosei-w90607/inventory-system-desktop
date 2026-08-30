@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
+import { consumeMainNavScroll, markMainNavScroll } from "@/lib/main-nav-scroll";
 import { useUnsavedChangesWarning } from "./useUnsavedChangesWarning";
 
 interface TestBlockerOptions {
@@ -62,6 +63,7 @@ function Harness({ isDirty }: { isDirty: boolean }) {
 }
 
 beforeEach(() => {
+  consumeMainNavScroll();
   mockUseBlocker.mockReturnValue(idleResolver());
   reset.mockReset();
   proceed.mockReset();
@@ -101,6 +103,18 @@ describe("useUnsavedChangesWarning (UI-12/UI-USW-D1/D2 / SPEC-UISN-2/3)", () => 
     expect(reset).toHaveBeenCalledTimes(1);
     expect(proceed).not.toHaveBeenCalled();
     expect(screen.getByLabelText("編集中の値")).toHaveValue("保持される入力");
+  });
+
+  it("DSR-17: 主ナビ遷移を取り消すと pending marker を破棄する", async () => {
+    const user = userEvent.setup();
+    mockUseBlocker.mockReturnValue(blockedResolver());
+    markMainNavScroll("/products");
+    render(<Harness isDirty />);
+
+    await user.click(await screen.findByRole("button", { name: "編集を続ける" }));
+
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(consumeMainNavScroll()).toBeUndefined();
   });
 
   it("UI-USW-D2 T4: 破棄して移動すると proceed する", async () => {

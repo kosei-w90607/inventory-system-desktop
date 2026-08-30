@@ -1,5 +1,7 @@
 import { useBlocker } from "@tanstack/react-router";
 
+import { consumeMainNavScroll } from "@/lib/main-nav-scroll";
+
 export interface UnsavedChangesWarning {
   isBlocked: boolean;
   continueEditing: () => void;
@@ -18,7 +20,11 @@ export function useUnsavedChangesWarning(isDirty: boolean): UnsavedChangesWarnin
   return {
     isBlocked: blocker.status === "blocked",
     continueEditing: () => {
-      if (blocker.status === "blocked") blocker.reset();
+      if (blocker.status === "blocked") {
+        // onRendered は取り消した遷移では発火しないため、主ナビ marker をここで破棄する。
+        consumeMainNavScroll();
+        blocker.reset();
+      }
     },
     discardAndProceed: () => {
       if (blocker.status === "blocked") blocker.proceed();

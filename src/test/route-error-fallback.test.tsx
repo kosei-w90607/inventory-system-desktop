@@ -52,8 +52,8 @@ describe("route error fallback (UI-12/UI-EB-D1/D2/D3 / SPEC-UISN-1)", () => {
     expect(screen.getByRole("navigation", { name: "サイドバー" })).toBeInTheDocument();
     expect(screen.getByText("保存済みのデータは失われていません。")).toBeInTheDocument();
 
-    const mainSource = readFileSync(`${process.cwd()}/src/main.tsx`, "utf8");
-    expect(mainSource).toContain("defaultErrorComponent: RouteErrorFallback");
+    const appRouterSource = readFileSync(`${process.cwd()}/src/lib/app-router.ts`, "utf8");
+    expect(appRouterSource).toContain("defaultErrorComponent: RouteErrorFallback");
   });
 
   it("UI-EB-D1 T7: RootLayout相当のthrowをroot errorComponentで全画面fallbackにする", async () => {
