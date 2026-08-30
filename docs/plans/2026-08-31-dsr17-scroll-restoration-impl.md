@@ -4,7 +4,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4b90108
@@ -16,7 +16,7 @@ Design Phase は PR #21（squash `22504af`、2026-08-30 merge）で完了済み�
 - Reviewed Content HEAD: a6e0cb5
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3（WebView2 の sessionStorage 実機挙動 + cache hit/miss + smooth scroll 干渉 + 主ナビ先頭。DSR-17 (f) の revisit trigger 判定を含む）
+- Human Gate: none（owner Windows native L3 四巡目 = 全項目 PASS〈AC15〉、Ready 承認済み 2026-08-31。残る owner 操作は PR #24 の Ready 化と merge のみ）
 
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R3 判定は本 packet に記録。spec-check では DSR-17 (a)〜(h) が方式正本として実装十分、ただし (g) の採用機構のみ「R3 spike で選定」の宿題であったため、design phase として起票時 spike（router-core 1.168.15 実読 + 順序保証実測）を実施し機構を確定（設計判断 D-C）。spike 判明事実の DSR-17 (g) への追記は本 packet の Scope 4（PR #21 Final Review P3 裁定の注記 1 文を含む）。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。
 
