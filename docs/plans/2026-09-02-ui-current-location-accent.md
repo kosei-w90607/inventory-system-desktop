@@ -4,7 +4,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
@@ -13,16 +13,18 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: b718530cd68c90c8148b5ecf729a9ca0c0a068d0
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: L3（owner render oracle）、Ready、merge
+- Human Gate: L3（owner render oracle、AC6 (i)〜(iv)）、Ready、merge
 
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で owner 裁定 (a) と同乗 1 件、branch、R2 を固定。spec-check で foundations L62 / catalog L300-301 / `selection-tone.ts` / `SidebarLink.tsx` / `segmented-control.tsx` L12 / `PluNotificationBar.tsx` L23-24 / `PluExportPage.tsx` L406-412 / `alert.tsx` L7（svg slot）・L30（`role="alert"`）を Coordinator が直接読取し、drift が doc↔doc 衝突であること、`SELECTION_TONE_ACTIVE` の消費者が SidebarLink のみであること、`SELECTION_TONE_CHIP_ON` が StatusChips 専用であること、SegmentedControl が独自 stone 定義であることを確認。design phase として DSR-21 の規範文を本 packet「Design Intent Trace」直下に確定（design output は本 plan-first change に置き、Writer が verbatim 転記する）。plan-draft で本 packet を作成し、Matrix は R2 optional 判定で省略（class 存在 oracle と L3 目視の 2 段で足りる）。実装は Coordinator の `plan-approved` 合図まで開始しない。
 
 2026-09-02: Plan Review round 1（Sonnet subagent fresh context）= P1 0 / P2 3 / P3 3、全件 accept（P2-2 は処方を literal token 独立転記へ差替えて accept）、是正 commit `2caea99`。round 2（同 reviewer の条件付き再確認、diff 実読）= P1/P2 = 0。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `b2c333f` は全実装 commit に先行し PK5 ancestry を充足する。
 
 2026-09-02: gated amendment（AC2 oracle 是正）— 起票時の 0 hit 確認は `--glob '*.ts*'` 付きで実行されており、`src/styles/globals.css` の token 定義注釈（`/* amber-700 */` 等 9 件）を見ていなかった Coordinator 起因。Writer は停止点 §6-2 で正しく停止。是正 = oracle を TS/TSX に限定（CSS 注釈は DSR-08 対象外、globals.css 無改変）。Scope / Goal / 他 AC は不変。
+
+2026-09-02: Writer（Codex）が Draft PR #28 を作成（L1 full RESULT=PASS / CLEAN @ `b718530`、evidence は PR body を正とする）。独立 Final Review = P1/P2 = 0・P3 = 2（Review Response 参照）、mutation 3 種 kill、CSS 宣言順を dist build で独立再現。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は owner Windows native L3（AC6 (i)〜(iv)、render oracle）、Ready、merge。
 
 ## Owner Effort Budget
 
@@ -243,9 +245,11 @@ not applicable（commit 禁止物なし。`~/Downloads/inventory-field-check/` �
 
 ## Implementation Results
 
-Fill after implementation.
+PR #28（`agent/ui-current-location-accent`、content `9be8f2e` → `3411047` → `b718530`、gated amendment `c4ce326` + 記帳 `49c6d32`）。`selection-tone.ts` に `CURRENT_LOCATION_ACCENT = "border-l-primary"` を追加し、SidebarLink の base に `border-l-[3px] border-l-transparent`、active 2 経路（`<Link activeProps>` / `ActiveMatchSidebarLink`）にアクセントを合成（layout shift なし）。PluNotificationBar に `<AlertTriangle />` を先頭子要素として追加。DSR-21 を 01-decision-rules へ verbatim 転記、catalog L300-301 改訂、52 §52.6 L218 レシピ + 更新履歴、README 索引「DSR-01〜21」、review-checklist カテゴリ 9 追記。UI_TECH_STACK.md L693 は単一の DSR-20 参照で列挙ではないため無変更（Writer 実読報告、Final Review が独立確認）。Contract Probe: 生成 CSS で `border-stone-400` の後に同一 specificity の `border-l-primary` が宣言され左辺色を上書き（`!` 不要）。新規 PLU test には Home の spec ID `UI-00` を traceability token として付与（REQ token 追加なし、生成物変更なし）。exact SHA / test 件数 / evidence path は PR body を正とする。
 
 ## Review Response
 
-Fill after review.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Final Review（Sonnet subagent fresh context、Plan Reviewer とは別個体）@ `b718530`: P1/P2 = 0、P3 = 2、Goal Invariant 充足 = yes。DSR-21 転記 verbatim、Scope 11 file 一致、amendment diff は Scope 6 / AC2 / Amendments 行 / narrative のみ。
+- mutation 再実証（Final Reviewer 自己注入）: (a) アクセント合成除去 → 新 test 2 件のみ red、既存 14 件 green (b) `<AlertTriangle />` 除去 → icon test 1 件のみ red (c) 定数値を `border-l-transparent` へ改変 → 両 accent test red（literal oracle が値 drift も捕捉）。
+- P3-1（UI_TECH_STACK 読取報告が PR body に不在）: Writer の最終報告に「単一 DSR-20 参照のため無変更」が含まれており Implementation Results に転記、accept。P3-2（`UI_TECH_STACK.md` L403 の「DSR-01〜13」stale、本 PR 非接触）: closeout で Plans.md backlog へ起票。
+- Findings Freeze: frozen after Broad Audit; post-freeze exceptions: none.
