@@ -145,7 +145,12 @@ describe("SidebarLink DSR-21: 現在地アクセント", () => {
   // 契約 token であり、その存在自体を独立した contract oracle とする。
   it("plain Link は active のみ Primary 左端バーを持つ", async () => {
     const active = renderAt("/stock");
-    expect(await screen.findByRole("link", { name: "在庫照会" })).toHaveClass("border-l-primary");
+    const activeLink = await screen.findByRole("link", { name: "在庫照会" });
+    expect(activeLink).toHaveClass("border-l-primary");
+    // TanStack <Link> は base className と activeProps.className を merge せず連結するため、
+    // base 側に border-l-transparent が残っていると active 時に border-l-primary と共存し
+    // cascade 後勝ちで Primary バーが不可視化しうる（2026-09-02 wave 8 lane 1 是正）。
+    expect(activeLink).not.toHaveClass("border-l-transparent");
     active.unmount();
 
     renderAt("/");
@@ -157,7 +162,11 @@ describe("SidebarLink DSR-21: 現在地アクセント", () => {
   it("ActiveMatchSidebarLink は active のみ Primary 左端バーを持つ", async () => {
     renderStockNavigationAt("/stock?status=low_stock");
 
-    expect(await screen.findByRole("link", { name: "在庫少一覧" })).toHaveClass("border-l-primary");
+    const activeLink = await screen.findByRole("link", { name: "在庫少一覧" });
+    expect(activeLink).toHaveClass("border-l-primary");
+    // ActiveMatchSidebarLink は単一 cn() で merge するため元々安全だが、base の
+    // border-l-transparent 撤去を回帰させないよう同じ negative assertion で固定する。
+    expect(activeLink).not.toHaveClass("border-l-transparent");
     expect(screen.getByRole("link", { name: "在庫照会" })).not.toHaveClass("border-l-primary");
   });
 });

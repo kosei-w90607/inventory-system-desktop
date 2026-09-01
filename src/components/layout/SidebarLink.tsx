@@ -13,8 +13,15 @@ interface SidebarLinkProps {
   item: NavItem;
 }
 
+// TanStack <Link> は base className と activeProps.className を連結するのみで
+// merge しない（tailwind-merge 非経由）。base 側に active アクセントと同一 CSS
+// property（border-l-* の色）を持つ class を置くと、active 時に両方が出力され
+// 定義順で後勝ちする tailwind の cascade により active アクセントが不可視化しうる
+// （2026-09-02 wave 8 lane 1 是正: border-l-transparent が border-l-primary を
+// 打ち消し Windows で Primary バーが見えなくなっていた）。base は
+// `border-transparent`（左辺含む透明）+ `border-l-[3px]`（幅のみ）に留める。
 const baseClass =
-  "flex items-center gap-2 rounded-md border border-transparent border-l-[3px] border-l-transparent px-2 py-1.5 text-sm transition-colors";
+  "flex items-center gap-2 rounded-md border border-transparent border-l-[3px] px-2 py-1.5 text-sm transition-colors";
 
 // UI_TECH_STACK.md §5.4 系統① focus ring（52 §52.1 規定）。focusable な link（active /
 // inactive）のみに適用し、pending の tabIndex={-1} span には付与しない（batch A packet、2026-08-03）。
