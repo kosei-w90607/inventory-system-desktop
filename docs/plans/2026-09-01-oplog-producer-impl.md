@@ -4,10 +4,10 @@ UI-11c（PR #164）で操作ログ画面の「関連記録を見る」link UI（
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: ef9a8df
 - Amendments: none
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
@@ -285,3 +285,6 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
   - 新規 P2 **採用**: AC5 の残存検査 rg oracle は Scope 6 (iv)（§74.16 row の**削除**）を検出できない — 削除対象は新記述を持たず、現行文面が pattern 3 種のいずれにも hit しない（Coordinator の起票時 sweep 実測でも `:565` は非 hit で三点一致）。是正 = Scope 6 (iv) へ「rg oracle 対象外、`git diff` で消失を直接確認 + Final Review 手動突合」を明記し、AC5 を「(iv) を除く 6 箇所の exact 存在 + 残 hit 2 行 + (iv) は diff 直接確認」へ是正。Writer / Final Review 発注書にも明記する。
   - 新規 P3 **採用**: changelog 行の節名表記「§74.19 の 2026-08-28 行」は正しくは §74.19 直後の無番号「更新履歴」節内 — Scope 6 の表記を是正（round 1 記録中の同表記は append-only のため本記録での訂正をもって正とする。line 内容・日付・oracle への影響なし）。
   - reviewer 判定は「plan-approved へ異論なし（新規 P2 は非 blocking 性質だが発注書明記を推奨）」。Coordinator は上記是正を同一 commit で適用し、P1/P2 = 0 の確認を round 2 reviewer の追検証で取得のうえ plan-approved へ遷移する。
+- round 2 追検証（同 reviewer、対象 = 是正 commit `e8880b4`）: 検証 4 項目（P2 是正適用 / P3 是正適用 / 是正 diff の regression なし・doc-check exit 0 / 残余走査）すべて PASS、**P1/P2 = 0、plan-approved へ異論なし**。
+
+Phase 遷移記録（本 state-only commit で materialize）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 2 + 追検証で新規 P1/P2 = 0 に収束（round 実績: round 1 → 是正 → round 2 → 是正 + 追検証、round 天井 3 の内数 2）。Plan Commit を `ef9a8df` で確定（plan-first commit は全 content commit の先頭にあり PK5 ancestry を充足する）。次は Codex 発注（Writer content commit、worktree 側 clone で実装、Draft PR open まで）。
