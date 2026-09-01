@@ -40,13 +40,17 @@
 
 ## 次の行動
 
+- [ ] wave 8 lane 1: 現在地アクセント（DSR-21 正本化 + SidebarLink 実装）+ PLU 通知バー icon 同乗 — [active packet](plans/2026-09-02-ui-current-location-accent.md)（詳細は Wave Registry）
+- [ ] wave 8 lane 2: 棚卸しカウントの数量空欄ガード（C5 機能欠陥級）— [active packet](plans/2026-09-02-stocktake-empty-count-guard.md) / [Matrix](plans/test-matrices/2026-09-02-stocktake-empty-count-guard.md)（詳細は Wave Registry）
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
 ### Wave Registry
 
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。lane packet の選択と PK4 は、この「次の行動」節内の link を正本として fail-closed 判定する。
-- 現在 active wave なし。
+- **wave 8（2 lane、UI ガッツリ整えターン第 1 便）: plan-gate（2026-09-02 起票）** — merge train 順序は human-confirm 到達順を既定案として Ready 承認時に確定。footprint 互いに素（lane 1 = `src/components/ui/selection-tone.ts` / `src/components/layout/SidebarLink.tsx` / `src/features/home/components/PluNotificationBar.tsx` + design-system docs、lane 2 = `src/features/stocktake/StocktakePage.tsx` + 同 test + `73-ui-stocktake.md`）。生成物再生成は lane 2 のみ条件付き（REQ token 追加時の 90-traceability）。owner 介入は起票選定（2026-09-02 会話）で各 lane 1 回。編成 = Fable Coordinator / Codex Writer（発注書駆動、worktree isolation）/ 独立 Sonnet Plan + Final Reviewer。
+  - lane 1: 現在地アクセント（DSR-21 正本化 + SidebarLink 実装）+ PLU 通知バー icon 同乗（R2、design+runtime）— branch `agent/ui-current-location-accent` / [active packet](plans/2026-09-02-ui-current-location-accent.md) / Draft PR: pending / Phase: plan-gate / 介入 1/5（起票承認 2026-09-02、視覚系につき予算 5）
+  - lane 2: 棚卸しカウントの数量空欄ガード（空欄 Enter / 保存で actual_count=0 サイレント保存の是正、R3）— branch `agent/stocktake-empty-count-guard` / [active packet](plans/2026-09-02-stocktake-empty-count-guard.md) / [Matrix](plans/test-matrices/2026-09-02-stocktake-empty-count-guard.md) / Draft PR: pending / Phase: plan-gate / 介入 1/3（起票承認 2026-09-02）
 - wave 7（2 lane、衛生 batch）: 完了 2026-08-30 — merge train PR #18 squash `d5cef6e` -> PR #19 squash `920c2a7`。lane 2 は前提の三重実測不成立により S3 を gated amendment `e618470` で descope（Writer Codex の fail-closed 停止が起点、rally 天井内で owner escalation 処置）。後続 lane の base 追随は origin/main 単段 merge（D-074 手順、conflict-free）。[archived Packet lane 1](archive/plans/2026-08-30-docs-consistency-hygiene.md) / [lane 2](archive/plans/2026-08-30-repo-scripts-hygiene.md)
 - wave 1（2 lane pilot）: 完了 2026-07-28 — PR #29 squash `8f67315` / PR #30 squash `eac9d20`。[WER](archive/plans/2026-07-28-wave-1-pilot-workflow-effectiveness-review.md)
 - wave 2（2 lane worktree）: 完了 2026-07-28 — merge train PR #33 squash `6c53c44` -> PR #32 squash `29b35ed`。[WER](archive/plans/2026-07-28-wave-2-workflow-effectiveness-review.md)
@@ -73,7 +77,7 @@
 - UI-15 改名ボタンの double-click 貫通リスク（保存確定の連打で二重送信し得る懸念。pending 中の行単位 disabled は実装・RTL 検証済みのため顕在化時に再評価、L3 owner 所感 2026-08-26 起源の P3）。
 - CsvImport / Stocktake detail page の静的入口未整備（PR #20 packet 起票時実測起源）: `/csv-import/records/$importId` / `/stocktake/records/$stocktakeId` は横断 hub 経由のみ到達可能で、専用一覧などの静的入口は未整備。入口設計は実需発生時の別 change とする。
 - csv_import / stocktake の関連記録 link 実効化（詳細 route は実装済み。record_type producer 採用 + §74.9 許可リスト追加を併せて行う別 follow-up — 2026-09-01 の producer 実効化 R3〈PR #26〉では owner 裁定で据置、74 §74.9 / §74.16 に据置判断明記済み。実需発生時に起票）。
-- UX 磨き 3 観察（PLU 警告の視認性 / 処理中フィードバック不足 / 薄いグレーの多用 — PR #26 L3 owner 所感 2026-09-01 起源、機能契約非影響。design-first で要望が続けば起票、参考候補に Refero サイトを含める〈owner 提示〉）。
+- UX 磨き 3 観察（PLU 警告の視認性 / 処理中フィードバック不足 / 薄いグレーの多用 — PR #26 L3 owner 所感 2026-09-01 起源、機能契約非影響。design-first で要望が続けば起票、参考候補に Refero サイトを含める〈owner 提示〉）。**2026-09-02 更新**: 『UIデザインの教科書』突合で 3 観察とも根拠付き（薄いグレー ↔ 現在地色 drift、PLU 警告 ↔ DSR-08 icon 欠落、処理中 ↔ リアルタイム検証 / feedback）。PLU 警告の視認性は wave 8 lane 1（PluNotificationBar icon 同乗）で消化中、残 2 観察は UI ターンの画面単位 design packet 群へ編入。
 - 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` を追加するか（現行 UI-05-D17 は「保存結果に link なし」を契約化済み。追加には UI-05-D17 改訂の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源。歴史的非対称であり表示すべきでない業務理由は source docs に見当たらない、が owner 観察）。
 - 4 作業画面の保存結果 panel を詳細往復時だけ one-shot 復元する案（現行は詳細 → 戻りで panel が消える。復元条件・サイドバー再訪との区別は DSR-03/DSR-19 系の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
