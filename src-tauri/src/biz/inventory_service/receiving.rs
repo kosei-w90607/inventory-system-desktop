@@ -218,6 +218,7 @@ pub fn create_receiving(
 
     // 操作ログ
     let detail = serde_json::json!({
+        "record_type": "receiving_record",
         "record_id": record_id,
         "item_count": req.items.len(),
         "warning_count": stock_warnings.len(),
@@ -449,12 +450,12 @@ mod tests {
 
     #[test]
     fn test_create_receiving_req201_operation_log() {
-        // REQ-201: 入庫記録 — operation_log が正しく記録されること
+        // REQ-201 / UI-11c-D7: 入庫記録の operation_log が関連記録 contract を満たすこと
         let (_dir, mut conn) = setup_test_db();
         create_test_product(&conn, "RCV-010", 10);
 
         let req = make_receiving_req("recv-key-10", vec![receiving_item("RCV-010", 3, 200)]);
-        create_receiving(&mut conn, req).unwrap();
+        let result = create_receiving(&mut conn, req).unwrap();
 
         let (op_type, detail_str): (String, String) = conn
             .query_row(
@@ -466,7 +467,11 @@ mod tests {
         assert_eq!(op_type, "receiving_create");
 
         let detail: serde_json::Value = serde_json::from_str(&detail_str).unwrap();
+        assert_eq!(detail["record_type"], "receiving_record");
+        assert!(detail["record_id"].is_number());
+        assert_eq!(detail["record_id"].as_i64(), Some(result.record_id));
         assert_eq!(detail["item_count"], 1);
+        assert_eq!(detail["warning_count"], 0);
         assert_eq!(detail["idempotency_key"], "recv-key-10");
     }
 

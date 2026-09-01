@@ -39,7 +39,7 @@
 
 ## 次の行動
 
-- [ ] **操作ログ producer 実効化 R3**（R3 キュー最終、着手時に owner と選定）: 入庫・返品交換・手動販売・廃棄の操作ログ書込みへ `record_type` / `record_id` を記録し「関連記録を見る」を実データ発火可能にする。Human Gate に PR #23 L3-3 waiver の義務 L3 を含む（backlog 参照）。①②③は PR #23 / #24 / #25 で完了
+- [ ] **操作ログ producer 実効化 R3**（R3 キュー最終、owner 選定 2026-09-01・着手中）: 入庫・返品交換・手動販売・廃棄の操作ログ書込みへ `record_type` / `record_id` を記録し「関連記録を見る」を実データ発火可能にする。manual_sale は `sale_id` → `record_id` 一本化、csv_import / stocktake は backlog 据置（owner 裁定 2026-09-01）。Human Gate に PR #23 L3-3 waiver の義務 L3 を含む（backlog 参照）。①②③は PR #23 / #24 / #25 で完了。[active Packet](plans/2026-09-01-oplog-producer-impl.md) / [Matrix](plans/test-matrices/2026-09-01-oplog-producer-impl.md)
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
