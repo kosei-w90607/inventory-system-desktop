@@ -14,6 +14,7 @@
 
 ## 直近の完了
 
+- [x] **PR #25 DSR-19/20 runtime 是正 batch（toast 2 件 + destructive variant 統一 + 硬化明示化 + cancel 文言）**（R3、PR #25 @ inventory-system-desktop squash merge `f88d262`、2026-09-01）: 取引先追加 2 実装 + 価格改定行確定へ成功 toast（SPEC-SUP-D11 / SPEC-PRV-D8、行確定は 5000ms + 商品単位 id）+ destructive 確認 7 dialog の `variant="destructive"` 統一（D-C disposition、PLU 一括 / 統合 stage 1「次へ」は default 維持）+ cancel 文言 2 件是正（「戻る」「やめる」→「キャンセル」）+ UnsavedChangesDialog の暗黙硬化を明示 prop 化（gated amendment `2433199`: `AlertDialogContentProps` が `onPointerDownOutside` を型 Omit するため `onEscapeKeyDown` のみ明示 + 外側クリックは primitive 既定の非 dismiss を T10 regression oracle で固定）。owner Windows native L3 は商品取込み 2 観測（fixture 不足の残余リスク受容、T7/T9 自動被覆）を除き全 PASS。証跡: [archived Packet](archive/plans/2026-09-01-dsr19-20-runtime-batch.md) / [Matrix](archive/plans/test-matrices/2026-09-01-dsr19-20-runtime-batch.md)
 - [x] **PR #24 DSR-17 scroll 位置復元 + 主ナビ先頭表示（scrollRestoration 導入）**（R3、PR #24 @ inventory-system-desktop squash merge `f1d5590`、2026-08-31）: TanStack Router `scrollRestoration` 導入（href key + `<main>` data 属性 + miss 先頭 fallback）+ 分類④主ナビ 3 経路の遷移先識別子付き one-shot 機構 + D-E（初回 clamp 時の遅延再適用 = cold 安全網）+ **D-F 根本是正**（mount focus 3 site の `preventScroll` 化 — L3 で特定された「mount autofocus の native scroll が復元を上書き」への直撃是正）+ DSR-17 追記（(g) spike 結果 / (i) / 禁止行拡張）。owner Windows native L3 は 4 巡（clamp 系仮説 2 回の誤診を owner 実機計測が是正、経緯は archived packet の append-only 記録）で全項目 PASS。証跡: [archived Packet](archive/plans/2026-08-31-dsr17-scroll-restoration-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-31-dsr17-scroll-restoration-impl.md)
 - [x] **PR #23 DSR-18 戻り導線 returnTo 8 site + 共通 helper 実装**（R3、PR #23 @ inventory-system-desktop squash merge `16b73d8`、2026-08-31）: gap 8 site（保存結果 3 + recent list 4 + 操作ログ関連記録 1）へ `returnTo` 付与（`useRouterState` location href 方式）+ detail 6 page の `normalizeReturnTo` を `src/lib/return-to.ts`（DSR-15 prefix 検証 + fallback 必須引数）へ集約 + 契約 test（往復 end-to-end + detail 6 page 全数 negative）。owner Windows native L3 = 到達可能 7 site 全 PASS、操作ログ 1 site は既知 producer gap により waiver 裁定 A（実データ L3 は producer 実効化 R3 の Human Gate へ義務引き継ぎ、backlog 参照）。証跡: [archived Packet](archive/plans/2026-08-30-dsr18-returnto-impl.md) / [Matrix](archive/plans/test-matrices/2026-08-30-dsr18-returnto-impl.md)
 - [x] **PR #22 成功 feedback / destructive dialog 横断規約 Design Phase**（R2 docs-only、PR #22 @ inventory-system-desktop squash merge `8b744f1`、2026-08-30）: DSR-19「作成・保存成功の feedback 規約」（toast 最低保証 + 併用基準〈適合 4 形 + R3 是正 2 件〉+ duration 3s/5s/8s + id 規約 + DSR-03 refine）と DSR-20「destructive 確認 dialog の配置・dismiss 規約」（variant 統一 + 並び順・3 ボタン先例 + cancel ブリッジ本則と硬化条件 + 暗黙硬化禁止 + Cancel 文言基準）を新設。SPEC-SUP-D11 / SPEC-PRV-D8 追記 + catalog ⑦ duration drift 是正 + 理論引用（『UXデザインの法則』第 2 版）を Why 限定で正本化。runtime 是正は後続 R3。証跡: [archived Packet](archive/plans/2026-08-30-feedback-dialog-conventions-design.md)
@@ -38,8 +39,7 @@
 
 ## 次の行動
 
-- [ ] **③ DSR-19/20 runtime 是正 batch（実装 R3、active）**: toast 2 件（SPEC-SUP-D11 / SPEC-PRV-D8）+ destructive variant 統一 7 dialog + 暗黙硬化の明示化 + cancel 文言是正 2 件。owner 委任（2026-09-01、順不問・選定任せる）により Coordinator が R3 キュー残 2 件から選定。[Packet](plans/2026-09-01-dsr19-20-runtime-batch.md) / [Matrix](plans/test-matrices/2026-09-01-dsr19-20-runtime-batch.md)
-- [ ] 操作ログ producer 実効化 R3（R3 キュー次番、PR #23 L3-3 waiver の義務 L3 込み、backlog 参照）: ③ 完了後に起票。①②は PR #23 / #24 で完了
+- [ ] **操作ログ producer 実効化 R3**（R3 キュー最終、着手時に owner と選定）: 入庫・返品交換・手動販売・廃棄の操作ログ書込みへ `record_type` / `record_id` を記録し「関連記録を見る」を実データ発火可能にする。Human Gate に PR #23 L3-3 waiver の義務 L3 を含む（backlog 参照）。①②③は PR #23 / #24 / #25 で完了
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -79,8 +79,10 @@
 - `app-router.ts` top-level の router singleton 副作用（test が named export だけ import しても実 router が構築されグローバル scroll/pagehide listener が登録される。現状は test 側の一意 query で cache 衝突を回避済みで実害なし。router 関連改修時に遅延生成 or test util 分離を検討 — PR #24 Final Review P3-2、2026-08-31）。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
-- 取引先追加成功 toast の横断規約は Design 確定（PR #22、DSR-19）: 作成・保存成功の toast 最低保証、持続的結果表示との併用基準、duration 3s / 5s / 8s、toast id 適用基準を規範化。取引先追加・価格改定行確定の runtime 是正は後続 R3 で実装する。
-- 統合 dialog のボタン配置・外クリック方針は Design 確定（PR #22、DSR-20）: destructive variant、DOM / responsive 配置、cancel ブリッジ本則、条件付き硬化と明示実装、Cancel 文言を同一 PR で規範化。variant 統一・暗黙硬化解消等の runtime 是正は後続 R3 で実装する。
+- DSR-20 硬化手段列挙の AlertDialog 系追記候補（DSR-20 本文の `onEscapeKeyDown` / `onPointerDownOutside` 列挙は Dialog 前提。AlertDialog 系は `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型 Omit し外側クリックは primitive 既定で非 dismiss — PR #25 gated amendment `2433199` 起源。次回 design-system 改訂 change に同乗）。
+- T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。
+- 棚卸しの表示件数設定案（owner L3 2026-09-01 所感起源。表示件数の設定化は design 判断が先行、要望が続けば起票）。
+- 商品取込み上書き確認の実機 visual 未観測（PR #25 L3 で fixture 不足〈上書き確認へ到達する import file 不在〉の残余リスク受容済み、T7/T9 自動被覆あり。import file fixture が整った機会の随時確認で足りる、義務ではない）。
 - inventory-operator-ui SKILL.md への DSR-16 判断手順追加（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex 発注 or owner 手動の小 change、PR #15 起源）。
 - CostDiffDialog 結果画面への再表示ボタン（PR #15 P1 裁定で今回不採用 — 状態管理拡大を伴うため要望が続けば別 change。見送り時は次回入庫で再提示される既存契約が safety net）。
 - 取消完了 toast の視認性追加検討（PR #15 で duration 8s 化済み。owner 所感で不足なら ページ内 Alert 併用を第 2 弾で検討）。
