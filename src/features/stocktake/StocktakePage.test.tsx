@@ -404,6 +404,67 @@ describe("StocktakePage (UI-10)", () => {
     expect(mockUpdateCount).not.toHaveBeenCalled();
   });
 
+  it("T-C5-1 empty quantity + Enter shows FieldError and does not call updateCount", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-001{Enter}");
+    const quantityInput = await screen.findByLabelText("実際の数");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "{Enter}");
+
+    expect(await screen.findByText("数量を入力してください")).toBeInTheDocument();
+    expect(mockUpdateCount).not.toHaveBeenCalled();
+  });
+
+  it("T-C5-2 empty quantity + save click shows FieldError and does not call updateCount", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-001{Enter}");
+    await user.clear(await screen.findByLabelText("実際の数"));
+    await user.click(screen.getByRole("button", { name: "数を保存" }));
+
+    expect(await screen.findByText("数量を入力してください")).toBeInTheDocument();
+    expect(mockUpdateCount).not.toHaveBeenCalled();
+  });
+
+  it("T-C5-3 whitespace-only quantity + Enter shows FieldError and does not call updateCount", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-001{Enter}");
+    const quantityInput = await screen.findByLabelText("実際の数");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "  {Enter}");
+
+    expect(await screen.findByText("数量を入力してください")).toBeInTheDocument();
+    expect(mockUpdateCount).not.toHaveBeenCalled();
+  });
+
+  it('T-C5-4 explicit "0" + Enter calls updateCount with 0 and shows no FieldError', async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-001{Enter}");
+    const quantityInput = await screen.findByLabelText("実際の数");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "0{Enter}");
+
+    await waitFor(() => {
+      expect(mockUpdateCount).toHaveBeenCalledWith(501, 0);
+    });
+    expect(screen.queryByText("数量を入力してください")).not.toBeInTheDocument();
+  });
+
   it("T9 complete with no uncounted always confirms and sends force_fill false", async () => {
     const user = userEvent.setup();
     mockGetActive.mockResolvedValue(ok(activeStocktake()));

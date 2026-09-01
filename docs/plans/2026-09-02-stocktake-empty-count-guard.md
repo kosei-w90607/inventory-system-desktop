@@ -4,7 +4,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 2。�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
@@ -13,14 +13,18 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 2。�
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（fresh context、Plan Reviewer とは別個体）+ Coordinator mutation 独立再実測 + Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: f293f1856f5080fc9deda071a878c5d703f13f85
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: L3（Windows native、空欄経路 + 明示 0 経路）、Ready、merge
+- Human Gate: Ready、merge
 
 Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で C5 単独 R3、branch、停止点を固定。spec-check で `StocktakePage.tsx` L490-517 / L619-650、`useUpdateCount.ts` L11-19、`stocktake_service.rs` L260-269、`73-ui-stocktake.md` §73.5 L201-202 / エラー表 L269、既存 test T8（`StocktakePage.test.tsx` L391-405）を Coordinator 発注の read-only 調査 + 直接読取で確認。73 doc は負数規則のみで空欄規則を持たないが、是正は「空欄を送信前に止める」1 規則の追記で足り、既存の負数規則・toast なし規則・IME guard と衝突しないため、spec-check → plan-draft の許可された skip（Design Readiness が既存 docs 充足 + Writer による同 PR 軽微追記を引用）を適用。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。実装は Coordinator の `plan-approved` 合図まで開始しない。
 
 2026-09-02: Plan Review round 1（Sonnet subagent fresh context、既存 suite 28/28 green を独立確認）= P1 0 / P2 2 / P3 1、全件 accept、是正 commit `2caea99`。round 2（同 reviewer の条件付き再確認、diff 実読）= P1/P2 = 0。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `b2c333f` は全実装 commit に先行し PK5 ancestry を充足する。
+
+2026-09-02: Writer（Codex）が Draft PR #27 を作成（content commit `5686764` + 層名訂正 `f293f18`、L1 full RESULT=PASS / CLEAN、exact SHA と evidence は PR body を正とする）。Writer 透明申告 2 件を Coordinator が accept: (1) 新規 test の画面待機不足を新規 test 側のみ補正（既存 test 無改変、Final Review lens 3 で `git show` 比較により確認）(2) 73 doc 追記の負数検証責務層を packet Scope 2 の字面「CMD 側」から live source（`src-tauri/src/biz/stocktake_service.rs`）どおり「BIZ 側」へ訂正 — packet 側の字面誤りであり Scope 意図は不変、amendment 不要と裁定。独立 Final Review（Sonnet subagent fresh context、Plan Reviewer とは別個体）= P1/P2/P3 = 0、Goal Invariant 充足 = yes、Ledger 6 行全て HEAD で一致、`updateCount` の迂回経路なし（`useUpdateCount.ts` 経由 1 箇所のみ）。Coordinator 発注の mutation 独立再実測（隔離 worktree、X1〜X4 自己注入）= 全 kill・survivor なし。X4 は Matrix 期待列（T-C5-1）より広く T-C5-2 / T-C5-3 も red（Matrix の保守的過少見積もり、感度上の問題なし、P3 記録のみ）。追加探査 X5（ガードを整数検査の後へ移動）は生存するが `Number("")` / `Number("  ")` が 0 で整数検査を通過し空欄検査へ落ちるため観測挙動が同値の等価変異であり検出 gap ではない。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は owner Windows native L3（AC6）、Ready、merge。
+
+2026-09-02: owner Windows native L3 = AC6 (i)〜(v) 全項目 PASS（PR #27 comment 5499410325 が正本。run identity = HEAD `9ccd553` / content `f293f18`、L3_SYNC PASS、介入 2/3）。lane 2 差分の回帰なし。L3 で観察された既存・非 blocking finding 3 件（live 候補選択後の前商品 FieldError 残留 / 廃番・在庫あり商品が live 候補・商品名 fallback から除外 / FieldError 表示時の保存ボタン位置ずれ）は本 PR Scope 外として PASS disposition から分離し、Post-Merge Closeout で Plans.md backlog へ起票する。owner が Ready を承認し、Ready 遷移 commit と L1 再取得を Coordinator へ委任。この state-only commit は `human-confirm -> ready-hosted-final` を Draft のまま materialize する。resulting HEAD で L1 full を再取得し、exact-HEAD evidence は PR body を正とする。残る owner 操作は Ready 化と merge（介入 3/3）。
 
 ## Owner Effort Budget
 
@@ -244,9 +248,10 @@ Contract ID: SPEC-ST-C5
 
 ## Implementation Results
 
-Fill after implementation.
+PR #27（`agent/stocktake-empty-count-guard`）。`saveCount()` 冒頭に `quantity.trim() === ""` ガード 4 行を追加し FieldError「数量を入力してください」で return、既存の負数 / 非整数分岐・`isComposing` guard・保存ボタン disabled 条件は不変。73 §73.5 step 4 に空欄規則 + ST-C5-D1 の理由を追記、§73.9 に UI 送信前ガード行（backend 不到達を明記）、更新履歴 dated 行。T-C5-1〜4 を追加（既存 test 無改変）。Adjacent Pattern Audit: 入庫 / 手動売上 / 返品交換 / 廃棄破損は `parseRequiredSafeInteger` で空欄拒否済み、同型の未ガード送信経路なし。REQ-205 は file-level token で足り traceability drift なし。exact SHA / test 件数 / evidence path は PR body を正とする。
 
 ## Review Response
 
-Fill after review.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Final Review（Sonnet subagent fresh context、Plan Reviewer とは別個体）: P1/P2/P3 = 0、Goal Invariant 充足 = yes。Review-only sub-agent は実施済み（skip なし）。
+- mutation 独立再実測（Coordinator 発注、隔離 worktree）: X1〜X4 全 kill、survivor なし。X4 の Matrix 期待列過少（P3、記録のみ）。追加探査 X5 は等価変異。
+- Findings Freeze: frozen after Broad Audit; post-freeze exceptions: none.

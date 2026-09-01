@@ -198,7 +198,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 1. `counting` 状態で、部門フィルタ・未入力のみ toggle を指定して `get_stocktake_items` を呼び、明細一覧（`StocktakeItemDetail[]` + `progress`）を取得する。
 2. 検索/スキャン欄（対象確認欄。素の `Input` 直接実装で、catalog ⑮ ProductAddSuggest の live 候補プレビューを結線する — ⑨ SearchBar は一覧 filter 用のため本欄には用いない）に商品コードまたは JAN を入力する。HID スキャナは Enter キー入力として扱う既存パターンを踏襲する。商品名で探したい場合は既存の商品検索（`commands.searchProducts`、入出庫系画面の商品追加と同じ経路）で候補から選び、その `product_code` を使う。
 3. 入力値（商品コード/JAN）を `find_stocktake_item({ stocktake_id, code })` に渡し、該当明細（`StocktakeItemDetail`）を 1 発解決する（UI-10-D2、§73.8）。解決できたら数量入力欄にフォーカスを移す。counted 済み商品を指定した場合も同じ導線で現在値を初期表示し、上書き入力を許可する（UI-10-D2）。`None` の場合、`commands.searchProducts` で商品名検索にフォールバックする（UI-10-D2 契約監査追記）: 0 件は §73.9 の回復に従う。1 件は自動的にその `product_code` で再解決して選択。複数件は候補テーブル（商品コード/商品名/部門）を表示し、選択した `product_code` で再解決する。検索/スキャン欄は入力中に live 候補プレビュー（UI-10-D12、catalog ⑮）を表示し、プレビューからの候補確定も本 step の `find_stocktake_item` 解決と同じ経路を通る。
-4. 数量入力後 Enter または保存操作で `update_count({ stocktake_item_id, actual_count })` を呼ぶ。負数は送信前に FieldError で止める（CMD 側も同じ検証を持つ防御的二重チェック）。
+4. 数量入力後 Enter または保存操作で `update_count({ stocktake_item_id, actual_count })` を呼ぶ。空欄・空白のみは送信前に FieldError「数量を入力してください」で止める。これは `Number("")` が `0` になる経路を塞ぐガードであり、wire は `i64` のため backend の BIZ 側は負数のみ検証する。保存ボタンの disabled 化は理由が見えないため採用しない（ST-C5-D1、DSR-05）。負数は送信前に FieldError で止める（BIZ 側も同じ検証を持つ防御的二重チェック）。
 5. 保存成功で該当行の `actual_count` / `current_difference` / `counted_at` を即時反映する。1 件保存ごとの toast は出さない（4000 件規模の反復操作で toast が積み重なるとかえって妨げになるため、一覧行の即時反映のみで結果を示す）。
 6. 一覧・進捗（`progress.counted_items` / `uncounted_items`）を invalidate して次の入力に備える。
 
@@ -266,6 +266,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | `stocktake_in_progress`（開始時、他経路で既に開始済み） | 開始操作を止め、`get_active_stocktake` query を invalidate/再取得して `counting` 表示へ切り替える。エラーメッセージそのものは表示せず、パースもしない（状況が解決した形で見せる。UI-10-D1）。 |
 | `stocktake_not_in_progress`（カウント/確定時、完了済み棚卸しに対する操作） | UI 固定文言「この棚卸しは既に完了しています」を表示する（バックエンドのエラーメッセージ文字列をそのまま出さない）。`get_active_stocktake` / `get_stocktake_items` query を invalidate/再取得して `not_started` 表示へ切り替える。`update_count` / `complete_stocktake` どちらの呼び出しで発生した場合も同じ回復を行う。**結果表示への自動切り替えはしない**: 他端末で完了した棚卸しの `total_cost` / `adjusted_items` はこのクライアントの `complete_stocktake` レスポンスとしてしか得られず、技術的に再現できないため（実装レビュー起因、2026-07-08 契約監査）。 |
 | `find_stocktake_item` が `None`（棚卸し対象に存在しないコード/JAN） | 検索欄直下に「この商品は棚卸しの対象にありません。商品コードまたはJANを確認してください。新しく登録した商品は自動で追加されます」を表示する。エラー扱いにせず次の入力を受け付ける。 |
+| UI 送信前（`actual_count` が空欄または空白のみ） | FieldError「数量を入力してください」。backend には到達しない（wire は `i64` で空欄の概念を持たない）。 |
 | `validation`（`actual_count` 負数） | 発生源直近の FieldError「0以上の数値を入力してください」（DSR-03）。送信しない。 |
 | `validation`（`complete_stocktake` の未入力超過 + `force_fill=false`） | 通常はクライアント側で `uncounted_items` を見て事前に確認ダイアログへ誘導するため到達しない。到達しうるのは、別端末更新、または mutation 後の invalidation/refetch と確定操作の race により、表示中の `uncounted_items` が最新 DB 状態へ追随する前に確定 CTA を押した場合である。確定直前に別画面で新商品登録を行い（UI-10-D9 の自動追加）、棚卸し画面へ戻った直後はその一例である。専用の kind 別再試行導線は実装しない（`CmdError.kind` は `validation` 共通で `actual_count` 負数と区別できず、message 文字列判別は UI-10-D1 で却下したアンチパターンに該当するため）。到達時は汎用エラー表示（`describeError`、バックエンドのメッセージには「force_fill=true で確定する」旨の案内を含む）に加え、一覧 query（`itemsRoot`）を invalidate/再取得する。これにより次回の確定 CTA 押下では最新の `uncounted_items` に基づいて正しいダイアログ文言・`force_fill` 値になり、実質的な再試行導線として機能する（2026-07-08 owner 指摘起因）。 |
 | `integrity_result: null` | 結果画面に「整合性チェックは実行できませんでした」を表示する。棚卸し確定自体は成功として扱う（BIZ 側で確定 TX とは独立して整合性チェックが実行されるため）。 |
@@ -391,3 +392,4 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 2026-08-03 | ui-polish-batch-b（本 PR） | §73.6 一覧の 0 件表示行に filter-empty reset action（catalog ⑥、部門フィルタ + 未入力のみ表示が対象）を追記。 |
 | 2026-08-03 | ui-polish-batch-b round 2 是正（本 PR） | round 2 P2-1 対応: §73.6 filter-empty reset action の戻す対象に `page`（`StocktakeSearch` 既存 param、既定 1）を追加し、部門フィルタ / 未入力のみ toggle / `page` の 3 者を既定値へ戻す契約に更新。 |
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §73.1 に棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）を明記。 |
+| 2026-09-02 | stocktake-empty-count-guard（本 PR） | §73.5 step 4 と §73.9 に、数量の空欄・空白のみを `update_count` 送信前の FieldError「数量を入力してください」で止める契約（ST-C5-D1）を追加。 |
