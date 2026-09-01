@@ -75,7 +75,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 3. **廃棄**: `disposal.rs` へ `"record_type": "disposal_record"` を追加（同上）。
 4. **手動販売**: `manual_sale.rs` へ `"record_type": "manual_sale"` と `"record_id": sale_id` を追加し、`"sale_id"` key を撤去（D-2。`item_count` / `warning_count` / `idempotency_key` は不変）。
 5. **backend 契約 test**: Matrix T1〜T4（4 producer 個別の literal oracle assert + manual_sale の `sale_id` 0 hit 対 oracle）。既存 test の削除・無効化なし。既存 test に detail_json の key 構成を assert する箇所がある場合（起票時実測: `receiving.rs` の最新ログ検査 test）は実装に伴う**正当な更新対象**であり、Writer は更新箇所を PR body に列挙し、アサートの弱体化はしない。
-6. **doc drift 是正（D-3 / D-4 の sweep）**: 是正対象は次の **7 箇所** — (i) `docs/function-design/74-ui-operation-logs.md:57` UI-11c-D7 行の現状記述、(ii) 同 `:244` §74.9 除外文面（据置明記）、(iii) 同 `:256` §74.9 現状の producer 状況（実効化後の状態へ書換え。新記述は D-050 に従い volatile count を転記しない）、(iv) 同 `:565` §74.16 producer 追加 row（実効化完了により削除）、(v) 同 `:566` §74.16 csv_import・stocktake row（据置判断明記）、(vi) `docs/function-design/65-inventory-record-traceability.md:242` の関連記録リンク現状記述（stocktake route の時制 drift 含む）、(vii) `docs/FUNCTION_DESIGN.md:54` UI-11c 行の producer 側 defer 記述。是正後の残存検査は `rg -n "producer が0件|record_type を書き込む|3 producer" docs --glob '!docs/archive/**' --glob '!docs/plans/**'` で行い、**残 hit が更新履歴の歴史記録 2 行のみ**（`74-ui-operation-logs.md` §74.19 の 2026-08-28 行 / `65-inventory-record-traceability.md` 更新履歴の 2026-07-11 行 — 歴史記録として非改変）であることを確認する。`Plans.md` backlog 行（表記変形「producer が 0 件」のため上記 pattern 非該当）の消込みは closeout で行い、本 PR では触らない。
+6. **doc drift 是正（D-3 / D-4 の sweep）**: 是正対象は次の **7 箇所** — (i) `docs/function-design/74-ui-operation-logs.md:57` UI-11c-D7 行の現状記述、(ii) 同 `:244` §74.9 除外文面（据置明記）、(iii) 同 `:256` §74.9 現状の producer 状況（実効化後の状態へ書換え。新記述は D-050 に従い volatile count を転記しない）、(iv) 同 `:565` §74.16 producer 追加 row（実効化完了により削除。**行削除は新記述を持たず残存検査 rg の pattern にも hit しないため rg oracle の対象外** — Writer は `git diff` で該当 row の消失を直接確認し、Final Review で Scope 6 列挙との手動突合を行う）、(v) 同 `:566` §74.16 csv_import・stocktake row（据置判断明記）、(vi) `docs/function-design/65-inventory-record-traceability.md:242` の関連記録リンク現状記述（stocktake route の時制 drift 含む）、(vii) `docs/FUNCTION_DESIGN.md:54` UI-11c 行の producer 側 defer 記述。是正後の残存検査は `rg -n "producer が0件|record_type を書き込む|3 producer" docs --glob '!docs/archive/**' --glob '!docs/plans/**'` で行い、**残 hit が更新履歴の歴史記録 2 行のみ**（`74-ui-operation-logs.md` 更新履歴節〈§74.19 直後の無番号節〉の 2026-08-28 行 / `65-inventory-record-traceability.md` 更新履歴の 2026-07-11 行 — 歴史記録として非改変）であることを確認する。`Plans.md` backlog 行（表記変形「producer が 0 件」のため上記 pattern 非該当）の消込みは closeout で行い、本 PR では触らない。
 
 ## Non-scope
 
@@ -96,7 +96,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC2: manual_sale の新規 `detail_json` に `"sale_id"` key が存在しない（T4 の対 oracle）。
 - AC3: 冪等再送・失敗 rollback でログを書かない既存挙動が不変 — 該当既存 test（operation_logs COUNT 検査・失敗系）を無変更のまま `cargo test` が green（T5）。
 - AC4: `src/lib/bindings.ts` の diff ゼロ + frontend 変更ゼロ（`git diff --stat` で src/ 配下 0 file）。
-- AC5: doc 是正の対 oracle — Scope 6 の 7 箇所すべてで新記述（4 producer 実効化済み + 据置判断）が exact 存在し、Scope 6 の残存検査 rg（archive / `docs/plans/` 除外）の残 hit が更新履歴の歴史記録 2 行のみ。`bash scripts/doc-consistency-check.sh` green。
+- AC5: doc 是正の対 oracle — Scope 6 の 7 箇所のうち (iv) を除く 6 箇所で新記述（4 producer 実効化済み + 据置判断）が exact 存在し、Scope 6 の残存検査 rg（archive / `docs/plans/` 除外）の残 hit が更新履歴の歴史記録 2 行のみ。(iv) の row 削除は rg oracle 対象外のため `git diff` での消失直接確認 + Final Review 手動突合で担保する。`bash scripts/doc-consistency-check.sh` green。
 - AC6: 既存 test の削除・無効化（skip 含む）なし — backend `cargo fmt --check` / `cargo clippy` / `cargo test` green、frontend 全 gate green、`cargo check --release` PASS（L3 前 Writer 完了条件）。
 
 ## Design Sources
@@ -281,3 +281,7 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
   - P2-1 **採用**: Scope 6 列挙に `docs/FUNCTION_DESIGN.md:54`（UI-11c 行の同型 defer 記述）が欠落。Coordinator 実読で drift を確認し、7 箇所列挙の (vii) として追加。
   - P3-1 **採用**: Matrix Adjacent Pattern Audit の「18 file・約 30 site」は 74 doc §74.9 の stale 記述の転記（reviewer 実測 20 file）で、本 packet の fresh 実測ではなかった。D-050 に従い volatile count を転記しない表現へ是正（74 doc :256 の新記述にも同旨を Scope 6 (iii) で明記済み）。
 - 是正後も Phase は plan-gate に留まり、round 2（別個体 Sonnet の独立再検証）で是正の実装事実整合と残余 P1/P2 を確認する。
+- round 2（別個体 Sonnet、対象 = 是正 commit `4eda007`）: 検証 6 項目中 5 項目 PASS（P2-1 / P3-1 是正適用・是正 diff の regression なし・doc-check exit 0）、P1-1 是正の実効性検証で新規 P2 1 件 / P3 1 件。
+  - 新規 P2 **採用**: AC5 の残存検査 rg oracle は Scope 6 (iv)（§74.16 row の**削除**）を検出できない — 削除対象は新記述を持たず、現行文面が pattern 3 種のいずれにも hit しない（Coordinator の起票時 sweep 実測でも `:565` は非 hit で三点一致）。是正 = Scope 6 (iv) へ「rg oracle 対象外、`git diff` で消失を直接確認 + Final Review 手動突合」を明記し、AC5 を「(iv) を除く 6 箇所の exact 存在 + 残 hit 2 行 + (iv) は diff 直接確認」へ是正。Writer / Final Review 発注書にも明記する。
+  - 新規 P3 **採用**: changelog 行の節名表記「§74.19 の 2026-08-28 行」は正しくは §74.19 直後の無番号「更新履歴」節内 — Scope 6 の表記を是正（round 1 記録中の同表記は append-only のため本記録での訂正をもって正とする。line 内容・日付・oracle への影響なし）。
+  - reviewer 判定は「plan-approved へ異論なし（新規 P2 は非 blocking 性質だが発注書明記を推奨）」。Coordinator は上記是正を同一 commit で適用し、P1/P2 = 0 の確認を round 2 reviewer の追検証で取得のうえ plan-approved へ遷移する。
