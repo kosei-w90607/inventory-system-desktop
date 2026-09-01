@@ -86,7 +86,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## 設計判断（実装方式の確定）
 
-- **D-A（取引先追加 toast）**: 文言は取引先名を含む完了通知（例: `取引先「{name}」を追加しました`）。duration は全体既定 3000ms — DSR-19 判定で「単純な完了通知」（§78.6 改名・§78.7 統合の既存完了通知と同格・対称、取引先名は完了対象の識別であって読了必須の重要情報ではない）。toast id なし — dialog は成功時に閉じ、連打・再試行の重複経路がない（DSR-19「単発で重複経路がない通知には id を必須としない」）。2 実装は同一文言とし、suppliers 版は `onCreated()` が supplier を受け取らないため呼出し元で名称を確保する（実装詳細は Writer 裁量、文言契約のみ固定）。
+- **D-A（取引先追加 toast）**: 文言は取引先名を含む完了通知（例: `取引先「{name}」を追加しました`）。duration は全体既定 3000ms — DSR-19 判定で「単純な完了通知」（§78.6 改名・§78.7 統合の既存完了通知と同格・対称、取引先名は完了対象の識別であって読了必須の重要情報ではない）。toast id なし — dialog は成功時に閉じ、連打・再試行の重複経路がない（DSR-19「単発で重複経路がない通知には id を必須としない」）。2 実装は同一文言とし、両実装とも dialog 内部の `submit()` が確定済みで保持する trim 済み入力名（`trimmed`）を使って `toast.success` を呼ぶ — `onCreated` / caller 側の変更は不要（suppliers 版の `onCreated()` が supplier を返さない非対称は本 toast 実装に無関係。backend `find_or_create_supplier` は name exact match のため server 往復値を使う必然性もない — Plan Review round 1 P1-1 是正）。
 - **D-B（行確定 toast）**: 文言は対象商品名を含む（SPEC-PRV-D8「対象商品と価格改定が完了したことを示す」）。duration 5000ms — DSR-19「商品名を含み、成功と同時に読んで確認する重要情報付き」（`ProductFormPage` 商品保存 5000 の先例と同型）。toast id は商品単位（例: `price-revision-success-${productId}`）— 同一商品の再確定・連打は置換し、別商品の連続確定は個別に残す（DSR-19「別商品…の成功まで同じ id で潰さない」の直適用。価格改定は 1 行ずつ連続確定する画面で、この分岐が実際に発生する）。
 - **D-C（variant disposition table）**: 判定基準は DSR-07 の確認境界（破壊的・不可逆・重複計上高影響）× DSR-20「destructive 確認の実行 Action は variant destructive」。2026-09-01 再実測の 12 件全数に対する裁定:
 
@@ -112,7 +112,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - AC1: 取引先追加 2 実装とも成功時に取引先名を含む `toast.success` が呼ばれる（T1 / T2、SPEC-SUP-D11）。
 - AC2: 行確定成功時に商品名を含む toast が `duration: 5000` / 商品単位 `id` で出る（T4 / T5、SPEC-PRV-D8）。
-- AC3: disposition table の是正 7 件すべての実行 Action が `variant="destructive"`、維持 2 件（#3 / #11）が default のまま（T7 / T8）。`rg -n 'variant="destructive"'` の dialog Action hit が是正後 10 箇所（既存 3 + 是正 7）。
+- AC3: disposition table の是正 7 件すべての実行 Action が `variant="destructive"`、維持 2 件（#3 / #11）が default のまま。機械確認の正は T7 / T8 の per-dialog assert とする。補助の目視 sweep は D-C 表の 12 dialog file に path filter した `rg -n 'variant="destructive"' <対象 file 群>` で Action hit 10 箇所（既存 3 + 是正 7）— 裸の repo 全体 rg は `<Alert variant="destructive">` 50 箇所超が混入するため使わない（Plan Review round 1 P2-1 是正）。
 - AC4: 対象 2 dialog（`ProductImportPreview.tsx` / `BackupRestorePage.tsx` 復元確認）の cancel 文言が「キャンセル」exact で、旧文言（当該 button の「戻る」「やめる」）が 0 hit（T9、対 oracle）。
 - AC5: `UnsavedChangesDialog.tsx` が明示 prop + 意図 comment を持ち、Esc / 外側クリックで閉じない挙動が不変（T10 / T11）。
 - AC6: `src/lib/bindings.ts` の diff ゼロ。
@@ -265,12 +265,6 @@ Contract ID: SPEC-DSR1920-RUNTIME-2026-09-01
 | DSR-20 硬化手段（D-E） | Scope 5 | T10 / T11 | 挙動同値・probe 記録 | Matrix + PR body |
 | 既存 regression | 変更なし | T12 | 正当更新の列挙 | PR body |
 
-## Review Response
-
-Plan Review / Final Review の記録は本節へ append-only で追記する。
-
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
-
 ## Data Safety
 
 synthetic fixture のみ使用（test は既存 mock command 応答、L3 は owner 手元の開発 DB）。実店舗の商品・取引データを test にも docs にも commit しない。
@@ -281,7 +275,7 @@ L3 項目（既存開発 DB で実施可能 — 取引先・商品・棚卸し�
 
 - L3-1: 取引先管理画面と価格改定内「新しい取引先を追加」の両経路で取引先を追加 → 取引先名入りの完了 toast が右下に出る。
 - L3-2: 価格改定で 2 商品を連続で行確定 → 商品名入り toast が出て、2 件目が 1 件目を潰さず読める（5 秒表示）。
-- L3-3: 代表 destructive dialog 3 件（商品の廃番確認 / 棚卸し確定 / 商品取込みの上書き実行）の実行 button が赤系の destructive 表示で、Cancel と取り違えない見え方になっている。
+- L3-3: 代表 destructive dialog 3 件（商品の廃番確認 / 棚卸し確定 / 商品取込みの上書き実行）の実行 button が赤系の destructive 表示で、Cancel と取り違えない見え方になっている。代表 3 件で足りる根拠: 是正 7 件はいずれも同一 primitive（`AlertDialogAction` / `Button`）への `variant="destructive"` 付与のみで custom className 差分がなく（起票時実測）、PR #15 型の CSS 詳細度差異が生じる余地がないため（Plan Review round 1 P3-1）。
 - L3-4: 商品取込み preview と控え復元確認の cancel button 文言が「キャンセル」。
 - L3-5: 未保存編集の確認 dialog が Esc / 外側クリックで閉じない（従来同様）。
 
@@ -291,3 +285,24 @@ L3 項目（既存開発 DB で実施可能 — 取引先・商品・棚卸し�
 - Plan Reviewer: Sonnet subagent（fresh context、P1/P2 = 0 で plan-approved）。
 - Final Reviewer: Sonnet subagent 別個体 + Coordinator が Matrix 記載の mutation を clean tree で独立再実測。
 - hosted final: non-doc R3 のため Ready 化で自動 run。
+
+## Implementation Results
+
+Fill after implementation.
+
+Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+
+## Review Response
+
+Plan Review / Final Review の記録は本節へ append-only で追記する。
+
+- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review rally 記録（2026-09-01、append-only）
+
+- round 1（Sonnet 独立 reviewer、対象 = plan-first commit `5d7abb3`）: P1 1 / P2 1 / P3 3。観点 2（前提事実 — 起票時実測の file:line 全数突合）は指摘なし。
+  - P1-1 **採用**: D-A の「suppliers 版は呼出し元で名称を確保」は誤り — 両実装とも `submit()` 内の `trimmed` で toast が完結し、caller 変更（Scope 外 file）を誘発する記述だった。Coordinator が `CreateSupplierDialog.tsx`（suppliers 版 :33,45）と `SupplierManagementPage.tsx:66-72`（`onCreated` は refetch のみ）を実読裏取りし三点一致。D-A を dialog 内完結の記述へ是正。
+  - P2-1 **採用**: AC3 の裸 `rg 'variant="destructive"'` は `<Alert variant="destructive">` 混入で期待値 10 にならない（Coordinator 実測: repo 全体 56 hit）。機械確認の正を T7 / T8 の per-dialog assert とし、rg は対象 file への path filter 付き目視補助へ是正。
+  - P3-1 **採用**: L3-3 の代表 3 件サンプリング根拠（是正 7 件が同一 primitive `AlertDialogAction` / `Button` への variant 付与のみで custom className 差分なし — reviewer 実読）を Human Gate 節に明記。
+  - P3-2 **記録のみ**: Non-scope の「20 site 超」は spot check と大きく矛盾しないが精密カウントではない — retrofit しない結論に影響なしのため数値主張は現状維持（起票時実測節に Explore 実測の粒度を明記済み）。
+  - P3-3 **採用**: 節順を `docs/templates/plan-packet.md` の正順（Data Safety → Implementation Results → Review Response）へ整列、`Implementation Results` placeholder を追加。
