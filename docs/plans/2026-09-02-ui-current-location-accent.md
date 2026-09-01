@@ -4,7 +4,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
@@ -13,7 +13,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
-- Reviewed Content HEAD: ee038932643c38be8ac5177a8aa392408ab7358c
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: L3（owner render oracle、AC6 (i)〜(iv)、是正後 exact HEAD で canonical first step から再実施）、Ready、merge
@@ -29,6 +29,8 @@ Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-g
 2026-09-02: owner Windows native L3 = **FAIL**（PR #28 comment 5499838456、HEAD `c31fe1b` / content `b718530`、介入 2/5）。PLU 通知バーの icon は PASS、Home の active SidebarLink は stone 背景のみで Primary 3px 左端バーが不視認（AC6 (i) FAIL、(ii)〜(iv) は fail-closed で未実施、データ変更なし）。機序は Coordinator 発注の実測で確定: TanStack `<Link>` は base className と `activeProps.className` を空白連結するだけで tailwind-merge を通さない（`@tanstack/react-router` 1.168.23 `link.js` L138-140）ため、plain `<Link>` 経路の active 要素に base の `border-l-transparent` と active の `border-l-primary` が共存し、dist CSS で `.border-l-primary`（offset 22645）より後に `.border-l-transparent`（22759）が出現して同一詳細度で transparent が勝つ。`ActiveMatchSidebarLink` 経路は単一 `cn()` で base+active を merge するため非該当。RTL の class 存在 oracle と Final Review の twMerge probe（`ActiveMatchSidebarLink` 側の cn() 出力を検査）はこの経路差を捕捉できなかった。是正 = base から `border-l-transparent` を除去（base の `border-transparent` が左辺も透明にし `border-l-[3px]` は幅のみ、inactive の見た目と layout shift 回避は維持）+ regression oracle「active な plain Link の className に `border-l-transparent` が共存しない」を追加。packet 契約（Scope 2「layout shift 回避の設計は Writer」）は不変のため gated amendment ではなく content 是正。relay 往復上限 2 に達しているため Writer は Sonnet subagent（worktree 隔離、manual §3 許容、PR #15 先例）へ切替え、Final Review round 2 は別個体の fresh Sonnet。この state-backtrack commit は `human-confirm -> implementing` の単一後退遷移を記録する。
 
 2026-09-02: 是正 content commit `ee03893`（Writer = Sonnet subagent、worktree 隔離）: base から `border-l-transparent` を除去（`border-transparent` + `border-l-[3px]` で inactive 寸法不変）+ DSR-21 の 2 test に負 assert `not.toHaveClass("border-l-transparent")` + 52 §52.6 に TanStack 連結制約 1 文 + 更新履歴。Final Review round 2（別個体の fresh Sonnet）= P1/P2/P3 = 0: dist CSS で `.border-l-primary`（22645）が `.border-transparent`（22335）/ `.border-stone-400`（22237）より後に出現し左辺色を上書き、実 DOM の active Home link に `border-l-primary` あり・`border-l-transparent` なし、inactive に `border-transparent` + `border-l-[3px]` あり、mutation（`border-l-transparent` 再付与）で plain Link test のみ red。観察（finding 外、既存・一過性）: `focus-visible:border-ring` は詳細度 0-2-0 で focus 中のみ左辺色を上書きし得る（at rest は無関係、AC6 非該当）。L1 full は Coordinator が exact HEAD `ee03893` で再取得（RESULT=PASS / CLEAN / MERGE_EVIDENCE_VALID=true、evidence は PR body を正とする）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は owner Windows native L3（AC6 (i)〜(iv)、canonical first step から再実施）、Ready、merge。
+
+2026-09-02: owner Windows native L3 round 2 = **FAIL**（PR #28 comment 5500388813、HEAD `01350de` / content `ee03893`、介入 3/5）。(i)(ii)(iii) と PLU icon は PASS、(iv) FAIL = plain `<Link activeProps>` 経路と `ActiveMatchSidebarLink` 経路で active の全周枠が不一致（在庫照会は `border-stone-400` の全周枠あり、月次売上は全周枠なし）。機序は owner が CSS 順まで確定: round 1 と同根で、plain 経路では base の `border-transparent` と active の `border-stone-400` が連結共存し、生成 CSS 順 `.border-stone-400` → `.border-transparent` で透明が勝つ（`ActiveMatchSidebarLink` は単一 `cn()` merge で `border-transparent` が除去される）。PR 以前から潜在していた経路差だが、現在地の視認性を目的とする本 packet の Goal に直結するため本 lane で是正する（Scope 7）。追加観察（sidebar recenter / 入庫・廃棄間 loop / 商品検索への誤遷移、owner 再現手順記録済み）は本 PR diff（border class のみ）では説明できず、Coordinator 実読で有力候補 H2 を特定: PR #24 の `scrollRestoration: true` は `@tanstack/router-core` 1.168.15 `scroll-restoration.js` が document capture で拾った任意要素（sidebar の ScrollArea viewport を含む）を CSS selector で cache し（L83-98）遷移後に `querySelector` + `scrollTo` で復元する（L139-142）ため、route ごとに sidebar 位置が異なる履歴があると遷移直後に sidebar が跳び pointer 下の項目が入れ替わる。owner 要請の一時 in-app probe（Scope 8）で時系列 log を取り機序を確定する。H2 の是正（sidebar viewport を restoration 対象から除外）は router option 変更 = R3 のため別 lane へ起票し、本 lane では扱わない。この state-backtrack commit は `human-confirm -> implementing` の単一後退遷移を記録する。
 
 ## Owner Effort Budget
 
