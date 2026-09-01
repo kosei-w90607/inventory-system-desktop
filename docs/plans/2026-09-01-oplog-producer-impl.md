@@ -4,7 +4,7 @@ UI-11c（PR #164）で操作ログ画面の「関連記録を見る」link UI（
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: ef9a8df
@@ -16,7 +16,7 @@ UI-11c（PR #164）で操作ログ画面の「関連記録を見る」link UI（
 - Reviewed Content HEAD: 0e17087
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: pending L3（L3-1〜L3-5。L3-5 は PR #23 L3-3 waiver の引き継ぎ義務） + Ready 承認 + merge
+- Human Gate: none（owner Windows native L3 全件 PASS + Ready 承認済み 2026-09-01 — 下記 L3 記録参照。残る owner 操作は PR #26 の Ready 化と merge のみ）
 
 Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R3 判定は本 packet に記録。spec-check では in-scope source docs（74 §74.9 / UI-11c-D7 / UI-11c-D16、65 §65.3、db-design tracking-system-tables）が実装十分と判定し、spec-check → plan-draft の許可された skip（Design Readiness が既存 docs 充足を引用）を適用。source docs の producer 記述 drift（下記 D-3）は新規設計ではなく事実状態の追随であり、実装と同一 PR の doc sync として Scope に含める。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。
 
@@ -303,4 +303,15 @@ Phase 遷移記録（本 state-only commit で materialize）: `plan-gate -> pla
 - Final Review round 1（Sonnet 独立 reviewer 別個体、対象 = `a80e2c3..0e17087`）: 検証 8 点（Ledger 逐条再検証〈4 literal + 詳細 route PK query との整合を repo 実読で確認〉/ Scope confinement〈bindings・src/・Plans.md 差分ゼロ〉/ AC1〜6〈AC5 残存検査 rg の残 hit = changelog 歴史記録 2 行のみ + (iv) row 削除を diff 直接確認〉/ oracle 独立性 / 既存 test 扱い〈削除・弱体化ゼロ〉/ doc 是正品質 / 回帰・negative-space / Workflow State・PR body 整合）**全 PASS、P1/P2/P3 = 0、Goal Invariant 充足 = yes**。reviewer 独立実測でも契約 test 27 passed / 0 failed。
 - Findings Freeze: Final Review の Broad Audit 完了により発効。以降の round は closure 確認のみ。
 
-Phase 遷移記録（本 state-only commit で materialize）: `local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Coordinator mutation 全 kill + Final Review round 1 収束（P1/P2 = 0）により通過。`Reviewed Content HEAD` を `0e17087` で確定。残りは owner Windows native L3（L3-1〜L3-5）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
+Phase 遷移記録（state-only commit `1e61d55` で materialize）: `local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Coordinator mutation 全 kill + Final Review round 1 収束（P1/P2 = 0）により通過。`Reviewed Content HEAD` を `0e17087` で確定。残りは owner Windows native L3（L3-1〜L3-5）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
+
+### owner Windows native L3 結果と disposition（2026-09-01、append-only）
+
+- L3 実施: Windows native / branch pull 済み HEAD `1e61d55`（= Reviewed Content HEAD `0e17087` + docs 遷移 commit）。復元基準の控えを取得のうえ実施（owner 記録）。
+- **L3-1〜L3-4: 全 PASS**。入庫 / 返品交換 / 手動販売 / 廃棄それぞれ実データ 1 件を作成し、操作ログの「関連記録を見る」表示と当該記録詳細への到達を確認。手動販売は複数クリック後も重複なし（追加観察）。
+- **L3-5: PASS**。期間・種別・page を設定した調査 state が、実データ link での詳細往復後も route search として復元されることを確認 — **PR #23 L3-3 waiver の引き継ぎ義務を解消**。
+- 任意確認: `record_type` を持たない過去ログに link が出ないこと（fail-closed の実データ確認）も PASS。
+- 非ブロッキング UX 観察（機能契約に影響なし、closeout で design-first backlog 起票): PLU 警告の視認性 / 処理中フィードバック不足 / 薄いグレーの多用。参考候補として Refero サイトを含める（owner 提示）。
+- owner 裁定: Ready へ進める（L3 実施 = 介入 4 回目、Ready 承認 = 介入 5 回目 / 予算 5 回 — 予算到達、owner 報告 2026-09-01 実記録。以降の owner 操作は Draft PR #26 の Ready 化と merge のみ）。
+
+Phase 遷移記録（本 state-only commit で materialize）: `human-confirm -> ready-hosted-final`。Draft のまま遷移し、resulting exact HEAD で L1 full を再取得して PR body を更新する。Ready 化 → hosted 自動 run（non-doc R3）→ 三点一致（PR HEAD = PR body final L1 SHA = hosted run headSha）確認 → merge。
