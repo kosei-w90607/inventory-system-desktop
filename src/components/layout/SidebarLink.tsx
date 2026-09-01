@@ -13,22 +13,28 @@ interface SidebarLinkProps {
   item: NavItem;
 }
 
-// TanStack <Link> は base className と activeProps.className を連結するのみで
-// merge しない（tailwind-merge 非経由）。base 側に active アクセントと同一 CSS
-// property（border-l-* の色）を持つ class を置くと、active 時に両方が出力され
-// 定義順で後勝ちする tailwind の cascade により active アクセントが不可視化しうる
+// TanStack <Link> は base className と activeProps/inactiveProps.className を連結する
+// のみで merge しない（tailwind-merge 非経由）。base 側に border 色 class を置くと、
+// active/inactive どちらの経路でも同一 CSS property（border-* の色）が二重に出力され、
+// 生成 CSS の定義順に応じて後勝ちする tailwind の cascade で色が不可視化しうる
 // （2026-09-02 wave 8 lane 1 是正: border-l-transparent が border-l-primary を
-// 打ち消し Windows で Primary バーが見えなくなっていた）。base は
-// `border-transparent`（左辺含む透明）+ `border-l-[3px]`（幅のみ）に留める。
+// 打ち消し Windows で Primary バーが見えなくなっていた／round 3: plain <Link> 連結経路と
+// ActiveMatchSidebarLink 単一 cn() 経路で active の全周枠 border-stone-400 の有無が
+// 分岐していた、L3 round 2 (iv) FAIL）。base は border 色 class を一切持たず
+// `border border-l-[3px]`（幅のみ）に留める。色は active 側（SELECTION_TONE_ACTIVE /
+// CURRENT_LOCATION_ACCENT）と inactive 側（inactiveClass の border-transparent）でのみ持つ。
 const baseClass =
-  "flex items-center gap-2 rounded-md border border-transparent border-l-[3px] px-2 py-1.5 text-sm transition-colors";
+  "flex items-center gap-2 rounded-md border border-l-[3px] px-2 py-1.5 text-sm transition-colors";
 
 // UI_TECH_STACK.md §5.4 系統① focus ring（52 §52.1 規定）。focusable な link（active /
 // inactive）のみに適用し、pending の tabIndex={-1} span には付与しない（batch A packet、2026-08-03）。
 const focusRingClass =
   "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
-const inactiveClass = cn("text-foreground hover:bg-stone-200/60", "[&_svg]:text-stone-500");
+const inactiveClass = cn(
+  "border-transparent text-foreground hover:bg-stone-200/60",
+  "[&_svg]:text-stone-500",
+);
 
 interface ActiveMatchSidebarLinkProps {
   item: NavItem & { to: string; activeMatch: NonNullable<NavItem["activeMatch"]> };
@@ -90,7 +96,7 @@ export function SidebarLink({ item }: SidebarLinkProps) {
         role="link"
         aria-disabled="true"
         tabIndex={-1}
-        className={cn(baseClass, "cursor-not-allowed text-stone-500 opacity-60")}
+        className={cn(baseClass, "cursor-not-allowed border-transparent text-stone-500 opacity-60")}
       >
         <Icon className="size-4 stroke-[1.5] text-stone-500" aria-hidden="true" />
         <span>{item.label}</span>
