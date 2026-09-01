@@ -4,7 +4,7 @@ Design Phase は PR #22（squash `8b744f1`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 5d7abb3
@@ -16,7 +16,7 @@ Design Phase は PR #22（squash `8b744f1`、2026-08-30 merge）で完了済み�
 - Reviewed Content HEAD: 032b75d
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3（L3-1〜L3-5）、Ready 承認、merge
+- Human Gate: none（owner Windows native L3 完了 + Ready 承認済み 2026-09-01。L3-3/L3-4 の商品取込み 2 観測は fixture 不足の残余リスク受容 — 下記 L3 記録参照。残る owner 操作は PR #25 の Ready 化と merge のみ）
 
 Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R3 判定は本 packet に記録。spec-check では in-scope source docs（design-system 01 DSR-03/07/08/19/20、catalog ⑦⑧、78 §78.5、77）が PR #22 で改訂済み・実装十分と判定し、spec-check → plan-draft の許可された skip（Design Readiness が既存 docs 充足を引用）を適用。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。
 
@@ -317,4 +317,17 @@ Phase 遷移記録（state-only commit `3aff0c4` で materialize）: `plan-gate 
 - Coordinator mutation 独立再実測（main tree の detached HEAD = `032b75d`、clean tree、commit 後）: M1〜M5 を Matrix どおり注入し全件 kill を確認 — M1 は suppliers 側 T1 のみ fail で products 側 green（2 実装の個別性成立）、M2 は T4 + T5 の 2 件 fail、M3 は `data-variant="destructive"` assert で fail（正当 oracle）、M4 は T9 で fail、M5 は literal contract case で fail（挙動が暗黙硬化と同値のため、gated amendment 後の Matrix どおり literal oracle が正）。全注入は checkout 復元し tree clean を確認。
 - Final Review round 1（Sonnet 独立 reviewer 別個体、対象 = `032b75d` + amendment `2433199`）: P1/P2/P3 = 0。検証 8 点（Scope 完全性 / AC 突合 / 契約逐条 / oracle 独立転記 / 既存 test 扱い / Matrix 対応実在〈T1〜T12 対応表を作成、全件実在〉/ 回帰リスク / コード品質）全 PASS、Goal Invariant 充足 = yes。amendment が Coordinator 指示の 3 編集に限定されていることも独立確認。非ブロッカー所見 1 件（T10 の source 文字列 test が formatter 変更に脆い）は closeout で backlog 起票する。
 
-Phase 遷移記録（本 state-only commit で materialize）: `implementing -> local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Coordinator mutation 全 kill + Final Review round 1 収束（P1/P2 = 0）により通過。Reviewed Content HEAD を `032b75d` で確定し、`Amendments` に `2433199` を追記。残りは owner Windows native L3（L3-1〜L3-5）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
+Phase 遷移記録（state-only commit `e3db116` で materialize）: `implementing -> local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Coordinator mutation 全 kill + Final Review round 1 収束（P1/P2 = 0）により通過。Reviewed Content HEAD を `032b75d` で確定し、`Amendments` に `2433199` を追記。残りは owner Windows native L3（L3-1〜L3-5）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
+
+### owner Windows native L3 結果と disposition（2026-09-01、append-only）
+
+- L3 実施: Windows native / branch pull 済み HEAD `e3db116`（= Reviewed Content HEAD `032b75d` + docs 遷移 commit）。
+- **L3-1 / L3-2 / L3-5: PASS**。取引先追加 toast 両経路・行確定 toast の連続確定個別表示・未保存編集 dialog の Esc / 外側クリック非 dismiss を利用者視点で確認。
+- **L3-3: PASS（条件付き）**。廃番確認・棚卸し確定の destructive 表示は実機 PASS。商品取込みの上書き実行 dialog は fixture 不足（上書き確認へ到達する import file が開発環境に不在）で実機未観測 → owner が残余リスク受容、Coordinator 同意。根拠: 是正 7 件は同一 primitive への `variant="destructive"` 付与のみで custom className 差分なし（packet L3-3 サンプリング根拠）+ T7 の per-dialog assert 被覆。同型 visual 2 件の実機 PASS を代表とする。
+- **L3-4: PASS（条件付き）**。控え復元確認の「キャンセル」は実機 PASS。商品取込み preview の cancel 文言は同 fixture 不足で実機未観測 → 同上の受容（T9 の対 oracle 被覆）。
+- 追加確認: 基準控えへの rollback PASS（BackupRestorePage 系の回帰なし）。
+- 非ブロッキング観察: 棚卸しの表示件数設定案 → follow-up 候補として closeout で backlog 起票。
+- Coordinator 反省記録: L3 手順の「新規 fixture 前提なし」は開発 DB のデータのみを想定して書き、商品取込み flow が **DB 外の入力物（import file）** を fixture として要する点を見落とした（PR #23 L3-3 waiver と同型の教訓の再演。L3 手順の fixture 前提突合は DB 外の入力物〈file / CSV〉を含めて行う — agent memory へ教訓化する）。
+- owner 裁定: Ready へ進める（介入 5 回目 / 予算 5 回 — 予算到達、owner 報告 2026-09-01 実記録。以降の owner 操作は Draft PR `#25` の Ready 化と merge のみ）。
+
+Phase 遷移記録（本 state-only commit で materialize）: `human-confirm -> ready-hosted-final`。Draft のまま遷移し、resulting exact HEAD で L1 full を再取得して PR body を更新する。Ready 化 → hosted 自動 run（non-doc R3）→ 三点一致（PR HEAD = PR body final L1 SHA = hosted run headSha）確認 → merge。
