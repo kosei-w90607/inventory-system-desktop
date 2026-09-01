@@ -140,6 +140,28 @@ describe("SidebarLink UI-12-D1: 同一 route の排他 active", () => {
   });
 });
 
+describe("SidebarLink DSR-21: 現在地アクセント", () => {
+  // 一般の見た目 class hardcode は脆いが、border-l-primary は DSR-21 が名指しする
+  // 契約 token であり、その存在自体を独立した contract oracle とする。
+  it("plain Link は active のみ Primary 左端バーを持つ", async () => {
+    const active = renderAt("/stock");
+    expect(await screen.findByRole("link", { name: "在庫照会" })).toHaveClass("border-l-primary");
+    active.unmount();
+
+    renderAt("/");
+    expect(await screen.findByRole("link", { name: "在庫照会" })).not.toHaveClass(
+      "border-l-primary",
+    );
+  });
+
+  it("ActiveMatchSidebarLink は active のみ Primary 左端バーを持つ", async () => {
+    renderStockNavigationAt("/stock?status=low_stock");
+
+    expect(await screen.findByRole("link", { name: "在庫少一覧" })).toHaveClass("border-l-primary");
+    expect(screen.getByRole("link", { name: "在庫照会" })).not.toHaveClass("border-l-primary");
+  });
+});
+
 describe("DSR-17 D-C main navigation scroll marker", () => {
   it("T3: marks the plain Link destination href", async () => {
     const user = userEvent.setup();

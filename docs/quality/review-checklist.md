@@ -73,6 +73,7 @@
 - [ ] `在庫切れ` / `在庫少` / `商品コード` / `売上明細数` などの表示文言が業務上の意味と一致しているか（DSR-11）
 - [ ] テーブル、カード、チップの密度・幅・truncate が主要値の理解を壊していないか（DSR-12）
 - [ ] keyboard focus、active state、filter selection が色以外でも判別できるか（DSR-02）
+- [ ] 現在地と選択状態の色分離が DSR-21 に従い、主ナビゲーションの現在地だけに Primary アクセントを重ね、filter chip / SegmentedControl は stone のままか
 - [ ] 状態を変える control は、変更後も到達可能で、元に戻す / 別状態へ移る recovery path が残っているか（例: 表示拡大後に表示サイズ control へ戻れる）（DSR-07）
 - [ ] Select / filter の候補を現在の filtered result から派生していないか。派生する場合、選択後に候補が現在値だけへ縮退せず、他候補へ直接切り替えられるか（DSR-10）
 - [ ] 明細行を持つフォームでは、行の追加 / 編集 / 削除 / 再追加後に validation error が stale 表示されないか。変更・削除された行のエラーだけ消え、未変更行のエラーは残るか（DSR-07）

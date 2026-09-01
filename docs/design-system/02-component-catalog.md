@@ -297,8 +297,8 @@ function FormSection({ title, description, children }: FormSectionProps) {
 **実装ルール**:
 - route-driven navigation（例: 日次/月次）は `<Link>` に `segmentedControlListClass` / `segmentedControlItemClass` / active / inactive class を適用する
 - local view mode（例: 商品別ランキング/部門別構成比）は `SegmentedControl` の button group を使い、`aria-pressed` と `data-state=active|inactive` を出す
-- SidebarLink / StatusChips は同じ stone 系 selection tone だが、画面ナビや状態 chip の視認性を優先して `border-stone-400` を許容する。二択切替は押しボタン状の濃い外枠を避けるため `border-stone-300` にする
-- amber は在庫少や通知などの業務セマンティック色、または主要アクションに残し、選択状態の背景色とは分離する
+- SidebarLink の現在地は stone 系 selection tone に DSR-21 の Primary アクセントを重ねる。StatusChips / SegmentedControl は選択状態のため stone のままとし、状態 chip は `border-stone-400`、二択切替は押しボタン状の濃い外枠を避けて `border-stone-300` にする
+- amber は在庫少や通知などの業務セマンティック色、または主要アクションと DSR-21 の現在地アクセントに残し、選択状態の背景色とは分離する
 
 **アクセシビリティ**: `role="group"` + `aria-label` で群を識別。button group は `aria-pressed` で選択状態を伝える。Windows native L3 では active / inactive / hover / クリック後 focus の 4 状態を比較し、同じ二択切替パターンに見えることを確認する。
 

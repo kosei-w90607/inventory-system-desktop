@@ -215,7 +215,7 @@ UI-12 内で唯一「処理 + エラーハンドリング + 書式規約」を�
 
 - **notFoundComponent の min-h-screen 削除**: `__root.tsx` の現行 `min-h-screen` を削除し、RootLayout の `h-screen` 枠内で 404 描画する。サイドバーから戻れる 404 になる（Nielsen ヒューリスティック #3）
 - **SidebarLink の a11y**: pending リンクは `<span role="link" aria-disabled="true" tabIndex={-1}>` + `<span className="sr-only">（未実装）</span>`。スクリーンリーダ・Tab 巡回から除外。Phase 1 ではコード上で実装、可能なら NVDA / VoiceOver で目視確認
-- **SidebarLink active 時の hover**: active 状態は shared stone selection tone (`bg-stone-300` + `border-stone-400` + `font-semibold`) で表現し、hover 時も同 tone を維持する。inactive の hover 上書き (`hover:bg-stone-200/60`) で active 状態が灰色化する事故を防ぐ。active / inactive 双方の寸法が変わらないよう `border border-transparent` を base に持たせる
+- **SidebarLink active 時の hover**: active 状態は shared stone selection tone (`bg-stone-300` + `border-stone-400` + `font-semibold`) で表現し、hover 時も同 tone を維持する。DSR-21 の現在地アクセント（`border-l-primary` 系）を重ね、active / inactive 双方の寸法が変わらないよう base 側に同幅の transparent 左 border を持たせる。inactive の hover 上書き (`hover:bg-stone-200/60`) で active 状態が灰色化する事故を防ぐ。共通の外枠寸法は `border border-transparent` を base に持たせる
 - **SidebarLink の TanStack Router props 分離**: `<Link>` の `activeProps` は base `className` に**追加**されるだけで上書きしないため、`className` に `hover:bg-stone-200/60` を含めると active 時も stone hover が残って灰色化する。これを防ぐため `className` には共通 `baseClass` のみ、active/inactive それぞれの背景色 + hover は `activeProps.className` / `inactiveProps.className` に完全分離する (2026-04-21 実機確認で確定)
 - **デスクトップ前提**: 固定幅 240px サイドバー（レスポンシブ非対象）、hover 状態を主要導線に使って良い（タッチ非対応）、URL は内部識別子（ブックマーク非想定）。詳細は `memory/desktop-app-ui-constraints.md` 参照
 - **invoke 境界**: Phase 2 closeout で `invoke-fallback.ts` は撤去済み。`components/layout/**` と `config/**` は引き続き invoke 層に触らず、画面側は `commands.*` + `unwrapResult` を使う
@@ -252,6 +252,7 @@ UI-12 内で唯一「処理 + エラーハンドリング + 書式規約」を�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-02 | wave 8 lane 1 | SidebarLink の shared stone selection tone に DSR-21 の Primary 左端バーを重ね、base 側の同幅 transparent 左 border で active 切替時の layout shift を防ぐ契約を追加 |
 | 2026-04-21 | 7-3 UI-12（本 PR） | 新規作成。設計合意書 [ui-12-design-agreement.md](../archive/plans/2026-04-21-ui-12-design-agreement.md) §2-§5 を関数設計書形式（業務ロジックなし版、主要 3 項目 + ウィンドウタイトル機構の独立節）で転記 + 実装と同 PR で統合 |
 | 2026-06-07 | display-scale follow-up | Sidebar footer に表示サイズ Select を追加。`localStorage` token + Tauri WebView zoom (`core:webview:allow-set-webview-zoom`) で全画面表示を 3 段階にする。拡大後も control に戻れるよう Sidebar navigation を `min-h-0` ScrollArea 化。DB/settings 画面統合は Phase 4 UI-11 系へ defer |
 | 2026-06-08 | selection-tone follow-up | SidebarLink active tone を amber 系から shared stone selection tone へ統一。amber は在庫少などの業務セマンティック色に残し、navigation selection とは分離 |

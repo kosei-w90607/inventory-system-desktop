@@ -3,14 +3,18 @@ import { Link, useLinkProps, useRouterState } from "@tanstack/react-router";
 import type { NavItem } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import { markMainNavScroll } from "@/lib/main-nav-scroll";
-import { SELECTION_TONE_ACTIVE, SELECTION_TONE_ACTIVE_ICON } from "@/components/ui/selection-tone";
+import {
+  CURRENT_LOCATION_ACCENT,
+  SELECTION_TONE_ACTIVE,
+  SELECTION_TONE_ACTIVE_ICON,
+} from "@/components/ui/selection-tone";
 
 interface SidebarLinkProps {
   item: NavItem;
 }
 
 const baseClass =
-  "flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm transition-colors";
+  "flex items-center gap-2 rounded-md border border-transparent border-l-[3px] border-l-transparent px-2 py-1.5 text-sm transition-colors";
 
 // UI_TECH_STACK.md §5.4 系統① focus ring（52 §52.1 規定）。focusable な link（active /
 // inactive）のみに適用し、pending の tabIndex={-1} span には付与しない（batch A packet、2026-08-03）。
@@ -50,7 +54,9 @@ function ActiveMatchSidebarLink({ item }: ActiveMatchSidebarLinkProps) {
       className={cn(
         baseClass,
         focusRingClass,
-        isActive ? cn(SELECTION_TONE_ACTIVE, SELECTION_TONE_ACTIVE_ICON) : inactiveClass,
+        isActive
+          ? cn(SELECTION_TONE_ACTIVE, SELECTION_TONE_ACTIVE_ICON, CURRENT_LOCATION_ACCENT)
+          : inactiveClass,
       )}
       aria-current={isActive ? "page" : undefined}
       data-status={isActive ? "active" : undefined}
@@ -103,7 +109,7 @@ export function SidebarLink({ item }: SidebarLinkProps) {
       activeOptions={{ exact: true, includeSearch: false }}
       className={cn(baseClass, focusRingClass)}
       activeProps={{
-        className: cn(SELECTION_TONE_ACTIVE, SELECTION_TONE_ACTIVE_ICON),
+        className: cn(SELECTION_TONE_ACTIVE, SELECTION_TONE_ACTIVE_ICON, CURRENT_LOCATION_ACCENT),
       }}
       inactiveProps={{
         className: inactiveClass,
