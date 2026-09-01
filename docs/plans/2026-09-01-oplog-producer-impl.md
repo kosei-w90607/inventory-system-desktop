@@ -288,3 +288,10 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
 - round 2 追検証（同 reviewer、対象 = 是正 commit `e8880b4`）: 検証 4 項目（P2 是正適用 / P3 是正適用 / 是正 diff の regression なし・doc-check exit 0 / 残余走査）すべて PASS、**P1/P2 = 0、plan-approved へ異論なし**。
 
 Phase 遷移記録（本 state-only commit で materialize）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 2 + 追検証で新規 P1/P2 = 0 に収束（round 実績: round 1 → 是正 → round 2 → 是正 + 追検証、round 天井 3 の内数 2）。Plan Commit を `ef9a8df` で確定（plan-first commit は全 content commit の先頭にあり PK5 ancestry を充足する）。次は Codex 発注（Writer content commit、worktree 側 clone で実装、Draft PR open まで）。
+
+### Writer review-only 記録（2026-09-01、append-only）
+
+- content candidate `8cc7654` を独立 review-only sub-agent が確認し、P2 1件 / P3 1件を報告。Writer が live source / Matrix と突合し、両件を採用した。
+- P2: Matrix T5 の「4 service の冪等再送 test が operation_logs COUNT 非増加を検査」という起票時前提に対し、manual_sale の既存 replay test は result contract のみを検査していた。Matrix 本文と既存 test は変更せず、manual_sale replay 前後の operation_logs COUNT 不変を検査する独立 regression test を追加して実被覆を補完した。
+- P3: 74 §74.8 の `record_id` 説明に実効化前の3 producer列挙が残っていたため、volatile な列挙を削除し §74.9 参照へ同期した。
+- Findings Freeze: review-only 初回 broad audit の finding set は上記2件で freeze。Phase は `local-verified` のまま維持し、Final Reviewer / Coordinator の独立確認を待つ。

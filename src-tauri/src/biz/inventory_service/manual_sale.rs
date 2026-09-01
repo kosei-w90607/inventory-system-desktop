@@ -573,6 +573,33 @@ mod tests {
     }
 
     #[test]
+    fn test_create_manual_sale_req203_idempotent_replay_does_not_duplicate_operation_log() {
+        // REQ-203: 冪等性リプレイで operation_log が重複しないこと
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "MS-LOG-REPLAY", 10);
+
+        let req = make_manual_sale_req(
+            "ms-log-replay-key",
+            vec![manual_sale_item("MS-LOG-REPLAY", 1, 500)],
+        );
+        let first = create_manual_sale(&mut conn, req.clone()).unwrap();
+
+        let log_count_before: i64 = conn
+            .query_row("SELECT COUNT(*) FROM operation_logs", [], |r| r.get(0))
+            .unwrap();
+
+        let replay = create_manual_sale(&mut conn, req).unwrap();
+        assert!(!replay.created);
+        assert!(replay.idempotent_replay);
+        assert_eq!(replay.sale_id, first.sale_id);
+
+        let log_count_after: i64 = conn
+            .query_row("SELECT COUNT(*) FROM operation_logs", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(log_count_before, log_count_after);
+    }
+
+    #[test]
     fn test_create_manual_sale_req203_idempotency_conflict() {
         // REQ-203: 手動販売出庫 — 同じキー+異なる内容 → IdempotencyConflict
         let (_dir, mut conn) = setup_test_db();

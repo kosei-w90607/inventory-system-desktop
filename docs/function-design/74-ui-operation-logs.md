@@ -223,7 +223,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + ProductPagination
 
 ### 74.8 detail_json 契約
 
-- **既知 field 要約**: `detail_json` が有効な JSON オブジェクトとしてパースできた場合、トップレベル key を共有の「既知 key 日本語ラベル辞書」（例: `file_name`→ファイル名, `size_bytes`→サイズ（バイト）, `count`→件数, `product_code`→商品コード, `record_id`→関連記録ID（`receiving.rs`/`disposal.rs`/`returns.rs`が既に書き込み済みの最頻出 key、§74.9）等、実装時に既存 detail_json 生成箇所を棚卸しして拡張可能な辞書として実装）で変換し、`ラベル: 値` の一覧として先頭表示する。辞書未収載の key は key 文字列そのものをラベル代わりに使う（raw key 表示、非表示にはしない）。
+- **既知 field 要約**: `detail_json` が有効な JSON オブジェクトとしてパースできた場合、トップレベル key を共有の「既知 key 日本語ラベル辞書」（例: `file_name`→ファイル名, `size_bytes`→サイズ（バイト）, `count`→件数, `product_code`→商品コード, `record_id`→関連記録ID（§74.9）等、実装時に既存 detail_json 生成箇所を棚卸しして拡張可能な辞書として実装）で変換し、`ラベル: 値` の一覧として先頭表示する。辞書未収載の key は key 文字列そのものをラベル代わりに使う（raw key 表示、非表示にはしない）。
 - **値の描画**: 値が文字列/数値/真偽値ならそのまま表示。値がネストしたオブジェクト/配列の場合はその value だけ JSON 文字列化して等幅フォントで表示する（再帰的な既知 field 展開はしない。スコープを viewing MVP に収める）。
 - **常に text-only**: 値・key のいずれも `dangerouslySetInnerHTML` 等の HTML 解釈を行わない。プレーンテキストノードとしてのみ描画する。
 - **null / 空文字**: 「詳細情報はありません」を表示し、折りたたみの技術情報自体を出さない。
