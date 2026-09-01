@@ -184,6 +184,10 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     await selectForFix("SYN-001");
     await openFixDialog();
     expect(fixIntegrity).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "補正を実行する" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
     await confirmFix();
     await waitFor(() => {
       expect(fixIntegrity).toHaveBeenCalledTimes(1);

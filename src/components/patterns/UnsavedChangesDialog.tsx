@@ -16,7 +16,13 @@ import {
 export function UnsavedChangesDialog({ warning }: { warning: UnsavedChangesWarning }) {
   return (
     <AlertDialog open={warning.isBlocked}>
-      <AlertDialogContent>
+      {/* DSR-20 硬化条件 (b): 未保存内容を破棄するか継続するかを明示選択させる。
+          外側クリックは Radix AlertDialog primitive 既定で非 dismiss（handler 非提供）。 */}
+      <AlertDialogContent
+        onEscapeKeyDown={(event) => {
+          event.preventDefault();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogMedia>
             <TriangleAlert aria-hidden="true" />

@@ -106,6 +106,10 @@ describe("ProductForm (UI-01b)", () => {
     expect(
       screen.getByText(/商品「在庫商品」は商品一覧の通常表示から外れます/),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "廃番にする" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
 
     // キャンセルで toggle は呼ばれない
     await user.click(screen.getByRole("button", { name: "キャンセル" }));

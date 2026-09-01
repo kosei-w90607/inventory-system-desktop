@@ -662,7 +662,7 @@ function RestoreConfirmDialog({ open, label, onOpenChange, onRestore }: RestoreC
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>やめる</AlertDialogCancel>
+          <AlertDialogCancel>キャンセル</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={(event) => {

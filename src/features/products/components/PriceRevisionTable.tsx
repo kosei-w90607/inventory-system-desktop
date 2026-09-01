@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AlertCircle, Check, Clock3, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,10 @@ function PriceRevisionRowView({
 
   const mutation = useReviseProductPrice({
     onSuccess: () => {
+      toast.success(`${product.name}の価格を改定しました`, {
+        duration: 5000,
+        id: `price-revision-success-${product.product_code}`,
+      });
       setSelling("");
       setCost("");
       setCostTouched(false);

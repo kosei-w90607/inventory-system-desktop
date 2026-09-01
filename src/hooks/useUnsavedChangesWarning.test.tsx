@@ -1,4 +1,6 @@
-import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+
+import { fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -126,5 +128,33 @@ describe("useUnsavedChangesWarning (UI-12/UI-USW-D1/D2 / SPEC-UISN-2/3)", () => 
 
     expect(proceed).toHaveBeenCalledTimes(1);
     expect(reset).not.toHaveBeenCalled();
+  });
+
+  it("DSR-20 D-E T10: Escape と外側 pointer-down では閉じず callback も発火しない", async () => {
+    mockUseBlocker.mockReturnValue(blockedResolver());
+    render(<Harness isDirty />);
+
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "編集内容が保存されていません",
+    });
+    const overlay = document.querySelector('[data-slot="alert-dialog-overlay"]');
+    if (overlay === null) throw new Error("alert-dialog-overlay not found");
+
+    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+    expect(dialog).toBeInTheDocument();
+    expect(reset).not.toHaveBeenCalled();
+    expect(proceed).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(overlay);
+    expect(dialog).toBeInTheDocument();
+    expect(reset).not.toHaveBeenCalled();
+    expect(proceed).not.toHaveBeenCalled();
+  });
+
+  it("DSR-20 D-E T10: Escape の preventDefault を明示 prop として保持する", () => {
+    const source = readFileSync("src/components/patterns/UnsavedChangesDialog.tsx", "utf8");
+
+    expect(source).toContain("onEscapeKeyDown={(event) => {");
+    expect(source).toContain("event.preventDefault();");
   });
 });

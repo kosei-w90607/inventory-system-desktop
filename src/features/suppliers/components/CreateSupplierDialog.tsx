@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export function CreateSupplierDialog({
         cmd: "create_supplier",
       });
       await onCreated();
+      toast.success(`取引先「${trimmed}」を追加しました`);
       setName("");
       onOpenChange(false);
     } catch (caught) {

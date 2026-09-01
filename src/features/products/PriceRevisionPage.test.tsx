@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands } from "@/lib/bindings";
@@ -17,6 +18,8 @@ import type { PriceRevisionSearch } from "./priceRevisionSearch";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
 }));
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("@/lib/bindings", () => ({
   commands: {
@@ -305,6 +308,57 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       .map((key) => JSON.stringify(key))
       .sort();
     expect(actual).toEqual(expected);
+    expect(toast.success).toHaveBeenCalledWith("価格商品Aの価格を改定しました", {
+      duration: 5000,
+      id: "price-revision-success-P-001",
+    });
+  });
+
+  it("SPEC-PRV-D8 / DSR-19 T5: 行確定 toast の id は商品単位で安定し別商品では異なる", async () => {
+    mockReviseProductPrice.mockImplementation((input) =>
+      Promise.resolve({
+        status: "ok",
+        data: {
+          product_code: input.product_code,
+          changed: true,
+          plu_dirty_set: true,
+          supplier_assigned: false,
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderStateful();
+    const rowA = await screen.findByTestId("price-row-P-001");
+    const rowB = screen.getByTestId("price-row-P-002");
+
+    await user.type(within(rowA).getByLabelText("P-001 新売価"), "1200");
+    await user.click(within(rowA).getByRole("button", { name: "P-001 を確定" }));
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledTimes(1);
+    });
+
+    await user.type(within(rowB).getByLabelText("P-002 新売価"), "500");
+    await user.click(within(rowB).getByRole("button", { name: "P-002 を確定" }));
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledTimes(2);
+    });
+
+    await user.type(within(rowA).getByLabelText("P-001 新売価"), "1300");
+    await user.click(within(rowA).getByRole("button", { name: "P-001 を確定" }));
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledTimes(3);
+    });
+
+    const toastIds = vi.mocked(toast.success).mock.calls.map(([, options]) => options?.id);
+    expect(toastIds).toEqual([
+      "price-revision-success-P-001",
+      "price-revision-success-P-002",
+      "price-revision-success-P-001",
+    ]);
+    expect(toastIds[0]).not.toBe("");
+    expect(toastIds[1]).not.toBe("");
+    expect(toastIds[0]).not.toBe(toastIds[1]);
+    expect(toastIds[0]).toBe(toastIds[2]);
   });
 
   it("確定失敗時は該当行だけ「確定できませんでした」と再試行を出し入力を保持し他行は変わらない", async () => {
@@ -330,6 +384,7 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     await user.type(within(rowB).getByLabelText("P-002 新売価"), "500");
     await user.click(within(rowA).getByRole("button", { name: "P-001 を確定" }));
     expect(await within(rowA).findByText("確定できませんでした")).toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
     expect(within(rowA).getByLabelText("P-001 新売価")).toHaveValue(1200);
     expect(within(rowB).getByLabelText("P-002 新売価")).toHaveValue(500);
     await user.click(within(rowA).getByRole("button", { name: "P-001 を再試行" }));
@@ -465,6 +520,8 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(mockCreateSupplier).toHaveBeenCalledWith("新規取引先");
     expect(screen.getByLabelText("取引先")).toHaveValue("44");
     expect(screen.getByRole("checkbox", { name: "取引先未設定の商品も含める" })).toBeChecked();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith("取引先「新規取引先」を追加しました");
   });
 
   it("取引先名が空白のみなら createSupplier を呼ばず field error を出し失敗時は入力を保持する", async () => {
@@ -488,6 +545,7 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(input).toHaveValue("保持する取引先");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("部門候補の取得失敗は商品一覧を隠さず再試行できる", async () => {

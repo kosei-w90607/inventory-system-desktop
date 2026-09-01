@@ -40,6 +40,10 @@ it("test_import_result_req401_rollback_dialog_identifies_exact_import_and_siblin
   expect(dialog).toHaveTextContent("2 件");
   expect(within(dialog).getByText("合計金額")).toBeInTheDocument();
   expect(dialog).toHaveTextContent("¥-300");
+  expect(within(dialog).getByRole("button", { name: "取り消す" })).toHaveAttribute(
+    "data-variant",
+    "destructive",
+  );
   await user.click(screen.getByRole("button", { name: "取り消す" }));
   expect(onRollback).toHaveBeenCalledTimes(1);
 });

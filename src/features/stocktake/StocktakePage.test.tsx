@@ -425,6 +425,10 @@ describe("StocktakePage (UI-10)", () => {
     expect(document.getElementById(noUncountedDescribedBy ?? "")).toHaveTextContent(
       "確定すると取り消せません。入力した内容で棚卸しを確定します。",
     );
+    expect(screen.getByRole("button", { name: "確定する" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
     await user.click(screen.getByRole("button", { name: "確定する" }));
 
     await waitFor(() => {

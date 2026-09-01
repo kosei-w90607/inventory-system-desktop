@@ -113,6 +113,10 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     expect(onConfirm).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "取り込む" }));
+    expect(screen.getByRole("button", { name: "追加で取り込む" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
     await user.click(screen.getByRole("button", { name: "追加で取り込む" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onConfirm).toHaveBeenCalledWith(true);
