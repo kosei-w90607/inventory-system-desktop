@@ -4,7 +4,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
@@ -13,10 +13,10 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
-- Reviewed Content HEAD: b718530cd68c90c8148b5ecf729a9ca0c0a068d0
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: L3（owner render oracle、AC6 (i)〜(iv)）、Ready、merge
+- Human Gate: L3（owner render oracle、AC6 (i)〜(iv)、是正後 exact HEAD で canonical first step から再実施）、Ready、merge
 
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で owner 裁定 (a) と同乗 1 件、branch、R2 を固定。spec-check で foundations L62 / catalog L300-301 / `selection-tone.ts` / `SidebarLink.tsx` / `segmented-control.tsx` L12 / `PluNotificationBar.tsx` L23-24 / `PluExportPage.tsx` L406-412 / `alert.tsx` L7（svg slot）・L30（`role="alert"`）を Coordinator が直接読取し、drift が doc↔doc 衝突であること、`SELECTION_TONE_ACTIVE` の消費者が SidebarLink のみであること、`SELECTION_TONE_CHIP_ON` が StatusChips 専用であること、SegmentedControl が独自 stone 定義であることを確認。design phase として DSR-21 の規範文を本 packet「Design Intent Trace」直下に確定（design output は本 plan-first change に置き、Writer が verbatim 転記する）。plan-draft で本 packet を作成し、Matrix は R2 optional 判定で省略（class 存在 oracle と L3 目視の 2 段で足りる）。実装は Coordinator の `plan-approved` 合図まで開始しない。
 
@@ -25,6 +25,8 @@ Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-g
 2026-09-02: gated amendment（AC2 oracle 是正）— 起票時の 0 hit 確認は `--glob '*.ts*'` 付きで実行されており、`src/styles/globals.css` の token 定義注釈（`/* amber-700 */` 等 9 件）を見ていなかった Coordinator 起因。Writer は停止点 §6-2 で正しく停止。是正 = oracle を TS/TSX に限定（CSS 注釈は DSR-08 対象外、globals.css 無改変）。Scope / Goal / 他 AC は不変。
 
 2026-09-02: Writer（Codex）が Draft PR #28 を作成（L1 full RESULT=PASS / CLEAN @ `b718530`、evidence は PR body を正とする）。独立 Final Review = P1/P2 = 0・P3 = 2（Review Response 参照）、mutation 3 種 kill、CSS 宣言順を dist build で独立再現。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は owner Windows native L3（AC6 (i)〜(iv)、render oracle）、Ready、merge。
+
+2026-09-02: owner Windows native L3 = **FAIL**（PR #28 comment 5499838456、HEAD `c31fe1b` / content `b718530`、介入 2/5）。PLU 通知バーの icon は PASS、Home の active SidebarLink は stone 背景のみで Primary 3px 左端バーが不視認（AC6 (i) FAIL、(ii)〜(iv) は fail-closed で未実施、データ変更なし）。機序は Coordinator 発注の実測で確定: TanStack `<Link>` は base className と `activeProps.className` を空白連結するだけで tailwind-merge を通さない（`@tanstack/react-router` 1.168.23 `link.js` L138-140）ため、plain `<Link>` 経路の active 要素に base の `border-l-transparent` と active の `border-l-primary` が共存し、dist CSS で `.border-l-primary`（offset 22645）より後に `.border-l-transparent`（22759）が出現して同一詳細度で transparent が勝つ。`ActiveMatchSidebarLink` 経路は単一 `cn()` で base+active を merge するため非該当。RTL の class 存在 oracle と Final Review の twMerge probe（`ActiveMatchSidebarLink` 側の cn() 出力を検査）はこの経路差を捕捉できなかった。是正 = base から `border-l-transparent` を除去（base の `border-transparent` が左辺も透明にし `border-l-[3px]` は幅のみ、inactive の見た目と layout shift 回避は維持）+ regression oracle「active な plain Link の className に `border-l-transparent` が共存しない」を追加。packet 契約（Scope 2「layout shift 回避の設計は Writer」）は不変のため gated amendment ではなく content 是正。relay 往復上限 2 に達しているため Writer は Sonnet subagent（worktree 隔離、manual §3 許容、PR #15 先例）へ切替え、Final Review round 2 は別個体の fresh Sonnet。この state-backtrack commit は `human-confirm -> implementing` の単一後退遷移を記録する。
 
 ## Owner Effort Budget
 
