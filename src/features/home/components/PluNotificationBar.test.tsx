@@ -19,7 +19,7 @@ function renderBar(
   );
 }
 
-describe("PluNotificationBar DSR-08 warning icon", () => {
+describe("PluNotificationBar UI-00 / DSR-08 warning icon", () => {
   it("成功かつ未反映ありでは alert 内に icon を 1 つ表示する", async () => {
     renderBar({ isSuccess: true, isLoading: false, isError: false }, 1);
 
