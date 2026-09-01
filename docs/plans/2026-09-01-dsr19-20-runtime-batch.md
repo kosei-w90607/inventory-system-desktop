@@ -4,16 +4,16 @@ Design Phase は PR #22（squash `8b744f1`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 5d7abb3
-- Amendments: none
+- Amendments: 2433199
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 032b75d
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（L3-1〜L3-5）、Ready 承認、merge
@@ -308,4 +308,13 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
   - P3-3 **採用**: 節順を `docs/templates/plan-packet.md` の正順（Data Safety → Implementation Results → Review Response）へ整列、`Implementation Results` placeholder を追加。
 - round 2（別個体 Sonnet の独立再検証、対象 = 是正 commit `859b124`）: 検証 6 項目（P1-1 是正の実装事実整合 / P2-1 是正の実行可能性 / P3-1・P3-3 適用 / 是正 diff の regression なし・Matrix 完全無変更 / doc-check exit 0 実行確認 / 残余 P1/P2 再走査）すべて PASS、P1/P2 = 0、plan-approved へ異論なし。新規 P3 1 件を append-only 訂正として記録: round 1 記録中の「repo 全体 56 hit」は `src/` scope の実測値（`rg -n 'variant="destructive"' src/` = 56。repo 全体は docs 含め 85）— AC3 本文の結論（T7/T8 per-dialog assert が正）に影響なし。
 
-Phase 遷移記録（本 state-only commit で materialize）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 2 で新規 P1/P2 = 0 に収束。Plan Commit を `5d7abb3` で確定（plan-first commit は全 content commit の先頭にあり PK5 ancestry を充足する）。次は Codex 発注（Writer content commit、worktree isolation）。
+Phase 遷移記録（state-only commit `3aff0c4` で materialize）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 2 で新規 P1/P2 = 0 に収束。Plan Commit を `5d7abb3` で確定（plan-first commit は全 content commit の先頭にあり PK5 ancestry を充足する）。次は Codex 発注（Writer content commit、worktree isolation）。
+
+### Final Review 記録（2026-09-01、append-only）
+
+- Writer 停止 1 回（fail-closed、正動作）: `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型レベルで Omit しており D-E 当初の明示 prop 契約と衝突。Coordinator が型定義（`node_modules/@radix-ui/react-alert-dialog/dist/index.d.ts:23`）を実読裏取りし、Matrix M5 が起票時から予見していた逃げ道どおり gated amendment `2433199` で D-E / Boundary / M5 を確定（`onEscapeKeyDown` のみ明示 + 外側クリックは primitive 既定の非 dismiss を T10 regression oracle で固定）。primitive/wrapper 拡張案は Scope 外 + 存在しない dismiss 経路への handler 追加のため不採用。
+- Writer content commit `032b75d`（Codex、24 file、worktree isolation）。Writer L1 full PASS（evidence の所在は PR body を正とする）、bindings diff 0、review-only closure P1/P2 = 0。Draft PR #25。
+- Coordinator mutation 独立再実測（main tree の detached HEAD = `032b75d`、clean tree、commit 後）: M1〜M5 を Matrix どおり注入し全件 kill を確認 — M1 は suppliers 側 T1 のみ fail で products 側 green（2 実装の個別性成立）、M2 は T4 + T5 の 2 件 fail、M3 は `data-variant="destructive"` assert で fail（正当 oracle）、M4 は T9 で fail、M5 は literal contract case で fail（挙動が暗黙硬化と同値のため、gated amendment 後の Matrix どおり literal oracle が正）。全注入は checkout 復元し tree clean を確認。
+- Final Review round 1（Sonnet 独立 reviewer 別個体、対象 = `032b75d` + amendment `2433199`）: P1/P2/P3 = 0。検証 8 点（Scope 完全性 / AC 突合 / 契約逐条 / oracle 独立転記 / 既存 test 扱い / Matrix 対応実在〈T1〜T12 対応表を作成、全件実在〉/ 回帰リスク / コード品質）全 PASS、Goal Invariant 充足 = yes。amendment が Coordinator 指示の 3 編集に限定されていることも独立確認。非ブロッカー所見 1 件（T10 の source 文字列 test が formatter 変更に脆い）は closeout で backlog 起票する。
+
+Phase 遷移記録（本 state-only commit で materialize）: `implementing -> local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Coordinator mutation 全 kill + Final Review round 1 収束（P1/P2 = 0）により通過。Reviewed Content HEAD を `032b75d` で確定し、`Amendments` に `2433199` を追記。残りは owner Windows native L3（L3-1〜L3-5）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
