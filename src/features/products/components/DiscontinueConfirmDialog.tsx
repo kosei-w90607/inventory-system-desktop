@@ -49,7 +49,9 @@ export function DiscontinueConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>キャンセル</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>廃番にする</AlertDialogAction>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            廃番にする
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

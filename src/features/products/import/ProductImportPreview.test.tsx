@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ImportRow } from "@/lib/bindings";
@@ -63,5 +64,40 @@ describe("ProductImportPreview", () => {
     ).toBeInTheDocument();
     const warning = screen.getByText("JAN が13桁でないため対象外として取り込みます");
     expect(warning.parentElement?.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+  });
+
+  it("DSR-20 D-C/D-D T7/T9: 上書き確認は destructive Action とキャンセル文言を使う", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProductImportPreview
+        filename="synthetic.csv"
+        preview={{
+          valid_rows: [],
+          duplicate_rows: [
+            {
+              line_no: 2,
+              import_row: row("P-DUP", true),
+              existing_product_code: "P-DUP",
+            },
+          ],
+          error_rows: [],
+        }}
+        overwriteCodes={["P-DUP"]}
+        targetCount={1}
+        isCommitting={false}
+        onToggleOverwrite={vi.fn()}
+        onCommit={vi.fn()}
+        onReselect={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "インポート実行" }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByRole("button", { name: "キャンセル" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "戻る" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "上書きして実行" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
   });
 });

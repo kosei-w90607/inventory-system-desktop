@@ -145,7 +145,9 @@ export function AdditionalImportConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>キャンセル</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>追加で取り込む</AlertDialogAction>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            追加で取り込む
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

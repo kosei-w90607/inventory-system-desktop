@@ -313,6 +313,10 @@ describe("DailyReportImportPage_req401", () => {
     expect(within(rollbackDialog).getByText("Z002_260321.CSV")).toBeInTheDocument();
     expect(within(rollbackDialog).getByText("Z005_260321.CSV")).toBeInTheDocument();
     expect(within(rollbackDialog).getByText("総売上")).toBeInTheDocument();
+    expect(within(rollbackDialog).getByRole("button", { name: "取り消す" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
     expect(rollbackDialog).toHaveTextContent("¥12,000");
     expect(within(rollbackDialog).getByText("純売上")).toBeInTheDocument();
     expect(rollbackDialog).toHaveTextContent("¥11,000");

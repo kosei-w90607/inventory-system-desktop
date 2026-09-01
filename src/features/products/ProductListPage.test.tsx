@@ -138,6 +138,10 @@ describe("ProductListPage (UI-01a)", () => {
 
     await user.click(screen.getByRole("button", { name: "PLU 対象にする" }));
     const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByRole("button", { name: "PLU 対象にする" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
     await user.click(within(dialog).getByRole("button", { name: "PLU 対象にする" }));
     await waitFor(() => {
       expect(mockBulkSetPluTarget).toHaveBeenCalledWith(

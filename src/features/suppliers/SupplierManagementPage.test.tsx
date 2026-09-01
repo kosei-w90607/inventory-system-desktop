@@ -130,6 +130,8 @@ describe("SupplierManagementPage UI-15 / REQ-107", () => {
     });
     expect(await screen.findByText("新取引先")).toBeInTheDocument();
     expect(invalidate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith("取引先「新取引先」を追加しました");
   });
 
   it("取引先名が空白のみなら createSupplier を呼ばず field error を出す", async () => {
@@ -155,6 +157,7 @@ describe("SupplierManagementPage UI-15 / REQ-107", () => {
     expect(await screen.findByRole("button", { name: "再試行" })).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("取引先名")).toHaveValue("保持する取引先名");
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("名前を変更で行が入力欄になり保存で renameSupplier を呼び Escape で現在名に戻す", async () => {
@@ -265,6 +268,7 @@ describe("SupplierManagementPage UI-15 / REQ-107", () => {
     await openMerge(user);
     expect(screen.queryByRole("option", { name: "あ取引先" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "次へ" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "次へ" })).toHaveAttribute("data-variant", "default");
     expect(screen.queryByRole("button", { name: "統合する" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("combobox", { name: "残す取引先" }));
     expect(screen.queryByRole("option", { name: "あ取引先" })).not.toBeInTheDocument();

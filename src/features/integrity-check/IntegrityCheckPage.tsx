@@ -420,7 +420,11 @@ export function IntegrityCheckPage() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isBusy}>キャンセル</AlertDialogCancel>
-            <AlertDialogAction disabled={isBusy} onClick={() => void handleFix()}>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isBusy}
+              onClick={() => void handleFix()}
+            >
               補正を実行する
             </AlertDialogAction>
           </AlertDialogFooter>

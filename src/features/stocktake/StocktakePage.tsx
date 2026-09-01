@@ -836,6 +836,7 @@ export function StocktakeCompleteDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isCompleting}>キャンセル</AlertDialogCancel>
           <AlertDialogAction
+            variant="destructive"
             disabled={isCompleting}
             onClick={() => {
               onConfirm(hasUncounted);

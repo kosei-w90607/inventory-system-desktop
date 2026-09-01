@@ -144,6 +144,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("DSR-20 D-D", () => {
+  it("T9: 復元確認の中止 button はキャンセル文言を使う", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<BackupRestorePage />);
+
+    await startRestoreConfirmation(user);
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByRole("button", { name: "キャンセル" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "やめる" })).not.toBeInTheDocument();
+  });
+});
+
 describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
   it("QR-05 REQ-901 shows break-glass only when pre-restore backup fails", async () => {
     const user = userEvent.setup();

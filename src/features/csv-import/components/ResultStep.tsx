@@ -119,7 +119,9 @@ export function ResultStep({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>キャンセル</AlertDialogCancel>
-              <AlertDialogAction onClick={onRollback}>取り消す</AlertDialogAction>
+              <AlertDialogAction variant="destructive" onClick={onRollback}>
+                取り消す
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
