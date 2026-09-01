@@ -4,7 +4,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
@@ -13,7 +13,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（fresh context、Plan Reviewer とは別個体）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: ee038932643c38be8ac5177a8aa392408ab7358c
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: L3（owner render oracle、AC6 (i)〜(iv)、是正後 exact HEAD で canonical first step から再実施）、Ready、merge
@@ -27,6 +27,8 @@ Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-g
 2026-09-02: Writer（Codex）が Draft PR #28 を作成（L1 full RESULT=PASS / CLEAN @ `b718530`、evidence は PR body を正とする）。独立 Final Review = P1/P2 = 0・P3 = 2（Review Response 参照）、mutation 3 種 kill、CSS 宣言順を dist build で独立再現。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は owner Windows native L3（AC6 (i)〜(iv)、render oracle）、Ready、merge。
 
 2026-09-02: owner Windows native L3 = **FAIL**（PR #28 comment 5499838456、HEAD `c31fe1b` / content `b718530`、介入 2/5）。PLU 通知バーの icon は PASS、Home の active SidebarLink は stone 背景のみで Primary 3px 左端バーが不視認（AC6 (i) FAIL、(ii)〜(iv) は fail-closed で未実施、データ変更なし）。機序は Coordinator 発注の実測で確定: TanStack `<Link>` は base className と `activeProps.className` を空白連結するだけで tailwind-merge を通さない（`@tanstack/react-router` 1.168.23 `link.js` L138-140）ため、plain `<Link>` 経路の active 要素に base の `border-l-transparent` と active の `border-l-primary` が共存し、dist CSS で `.border-l-primary`（offset 22645）より後に `.border-l-transparent`（22759）が出現して同一詳細度で transparent が勝つ。`ActiveMatchSidebarLink` 経路は単一 `cn()` で base+active を merge するため非該当。RTL の class 存在 oracle と Final Review の twMerge probe（`ActiveMatchSidebarLink` 側の cn() 出力を検査）はこの経路差を捕捉できなかった。是正 = base から `border-l-transparent` を除去（base の `border-transparent` が左辺も透明にし `border-l-[3px]` は幅のみ、inactive の見た目と layout shift 回避は維持）+ regression oracle「active な plain Link の className に `border-l-transparent` が共存しない」を追加。packet 契約（Scope 2「layout shift 回避の設計は Writer」）は不変のため gated amendment ではなく content 是正。relay 往復上限 2 に達しているため Writer は Sonnet subagent（worktree 隔離、manual §3 許容、PR #15 先例）へ切替え、Final Review round 2 は別個体の fresh Sonnet。この state-backtrack commit は `human-confirm -> implementing` の単一後退遷移を記録する。
+
+2026-09-02: 是正 content commit `ee03893`（Writer = Sonnet subagent、worktree 隔離）: base から `border-l-transparent` を除去（`border-transparent` + `border-l-[3px]` で inactive 寸法不変）+ DSR-21 の 2 test に負 assert `not.toHaveClass("border-l-transparent")` + 52 §52.6 に TanStack 連結制約 1 文 + 更新履歴。Final Review round 2（別個体の fresh Sonnet）= P1/P2/P3 = 0: dist CSS で `.border-l-primary`（22645）が `.border-transparent`（22335）/ `.border-stone-400`（22237）より後に出現し左辺色を上書き、実 DOM の active Home link に `border-l-primary` あり・`border-l-transparent` なし、inactive に `border-transparent` + `border-l-[3px]` あり、mutation（`border-l-transparent` 再付与）で plain Link test のみ red。観察（finding 外、既存・一過性）: `focus-visible:border-ring` は詳細度 0-2-0 で focus 中のみ左辺色を上書きし得る（at rest は無関係、AC6 非該当）。L1 full は Coordinator が exact HEAD `ee03893` で再取得（RESULT=PASS / CLEAN / MERGE_EVIDENCE_VALID=true、evidence は PR body を正とする）。この state-only commit は既評価の `implementing -> local-verified -> independent-review -> human-confirm` を materialize する。残る Human Gate は owner Windows native L3（AC6 (i)〜(iv)、canonical first step から再実施）、Ready、merge。
 
 ## Owner Effort Budget
 
@@ -247,11 +249,12 @@ not applicable（commit 禁止物なし。`~/Downloads/inventory-field-check/` �
 
 ## Implementation Results
 
-PR #28（`agent/ui-current-location-accent`、content `9be8f2e` → `3411047` → `b718530`、gated amendment `c4ce326` + 記帳 `49c6d32`）。`selection-tone.ts` に `CURRENT_LOCATION_ACCENT = "border-l-primary"` を追加し、SidebarLink の base に `border-l-[3px] border-l-transparent`、active 2 経路（`<Link activeProps>` / `ActiveMatchSidebarLink`）にアクセントを合成（layout shift なし）。PluNotificationBar に `<AlertTriangle />` を先頭子要素として追加。DSR-21 を 01-decision-rules へ verbatim 転記、catalog L300-301 改訂、52 §52.6 L218 レシピ + 更新履歴、README 索引「DSR-01〜21」、review-checklist カテゴリ 9 追記。UI_TECH_STACK.md L693 は単一の DSR-20 参照で列挙ではないため無変更（Writer 実読報告、Final Review が独立確認）。Contract Probe: 生成 CSS で `border-stone-400` の後に同一 specificity の `border-l-primary` が宣言され左辺色を上書き（`!` 不要）。新規 PLU test には Home の spec ID `UI-00` を traceability token として付与（REQ token 追加なし、生成物変更なし）。exact SHA / test 件数 / evidence path は PR body を正とする。
+PR #28（`agent/ui-current-location-accent`、content `9be8f2e` → `3411047` → `b718530`、gated amendment `c4ce326` + 記帳 `49c6d32`）。`selection-tone.ts` に `CURRENT_LOCATION_ACCENT = "border-l-primary"` を追加し、SidebarLink の base に `border-l-[3px] border-l-transparent`、active 2 経路（`<Link activeProps>` / `ActiveMatchSidebarLink`）にアクセントを合成（layout shift なし）。PluNotificationBar に `<AlertTriangle />` を先頭子要素として追加。DSR-21 を 01-decision-rules へ verbatim 転記、catalog L300-301 改訂、52 §52.6 L218 レシピ + 更新履歴、README 索引「DSR-01〜21」、review-checklist カテゴリ 9 追記。UI_TECH_STACK.md L693 は単一の DSR-20 参照で列挙ではないため無変更（Writer 実読報告、Final Review が独立確認）。Contract Probe: 生成 CSS で `border-stone-400` の後に同一 specificity の `border-l-primary` が宣言され左辺色を上書き（`!` 不要）。新規 PLU test には Home の spec ID `UI-00` を traceability token として付与（REQ token 追加なし、生成物変更なし）。exact SHA / test 件数 / evidence path は PR body を正とする。是正 `ee03893`（L3 FAIL 起因）: base の `border-l-transparent` 除去 + 負 assert + 52 §52.6 連結制約、詳細は Workflow State の 2026-09-02 記録。
 
 ## Review Response
 
 - Final Review（Sonnet subagent fresh context、Plan Reviewer とは別個体）@ `b718530`: P1/P2 = 0、P3 = 2、Goal Invariant 充足 = yes。DSR-21 転記 verbatim、Scope 11 file 一致、amendment diff は Scope 6 / AC2 / Amendments 行 / narrative のみ。
 - mutation 再実証（Final Reviewer 自己注入）: (a) アクセント合成除去 → 新 test 2 件のみ red、既存 14 件 green (b) `<AlertTriangle />` 除去 → icon test 1 件のみ red (c) 定数値を `border-l-transparent` へ改変 → 両 accent test red（literal oracle が値 drift も捕捉）。
+- Final Review round 2（是正 `ee03893`、別個体 fresh Sonnet）: P1/P2/P3 = 0、CSS 出現順 + 実 DOM 共存検査 + mutation を独立再現。
 - P3-1（UI_TECH_STACK 読取報告が PR body に不在）: Writer の最終報告に「単一 DSR-20 参照のため無変更」が含まれており Implementation Results に転記、accept。P3-2（`UI_TECH_STACK.md` L403 の「DSR-01〜13」stale、本 PR 非接触）: closeout で Plans.md backlog へ起票。
 - Findings Freeze: frozen after Broad Audit; post-freeze exceptions: none.
