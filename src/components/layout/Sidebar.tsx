@@ -1,20 +1,14 @@
-import { useEffect } from "react";
-
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { navigation } from "@/config/navigation";
 
 import { DisplayScaleControl } from "./DisplayScaleControl";
 import { SidebarArea } from "./SidebarArea";
 import { SidebarHeader } from "./SidebarHeader";
-import { installSidebarDiagnosticProbe } from "./sidebar-diagnostic-probe";
 
 // UI-12 サイドバー本体。240px 幅の aside 内側を構成する。
 // 設計: docs/function-design/52-ui-shared-layout.md §52.1 / §52.4
 // ヘッダ (店名ロゴ) + ScrollArea + 4 エリア (毎日 / 商品管理 / 入出庫 / システム管理) + 表示サイズを縦に並べる。
 export function Sidebar() {
-  // 一時 diagnostic probe（packet Scope 8、Ready 前に撤去）
-  useEffect(() => installSidebarDiagnosticProbe(), []);
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <SidebarHeader />
