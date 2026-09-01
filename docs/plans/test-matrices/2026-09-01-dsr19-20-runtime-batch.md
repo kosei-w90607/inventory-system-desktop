@@ -108,7 +108,7 @@ Risk: R3
 | M2 | PriceRevisionTable の toast id を固定文字列 `"price-revision-success"` に置換 | T5（別商品 case） |
 | M3 | 是正 7 件のうち 1 件（StocktakePage 確定）の variant を default へ戻す | T7（該当 case のみ fail = 個別 assert 確認） |
 | M4 | ProductImportPreview の cancel 文言を「戻る」へ戻す | T9 |
-| M5 | UnsavedChangesDialog の Esc 系明示 prop を除去 | T10（Esc case）。Radix AlertDialog の primitive 挙動により kill 不能と判明した場合（外側クリックは primitive 既定で非 dismiss のため注入対象は Esc 系のみ）は、Contract Probe (2) の実測記録を根拠に注入形を読み替え、Coordinator へ報告のうえ gated amendment で Matrix を改訂する |
+| M5 | UnsavedChangesDialog の `onEscapeKeyDown` preventDefault を除去 | T10（Esc case）。外側クリックは primitive 既定の非 dismiss（`AlertDialogContentProps` が該当 handler を Omit）のため注入形なし — T10 の外側 case は primitive 既定の regression oracle として維持（gated amendment 2026-09-01 で確定） |
 
 ## Residual Test Gaps
 

@@ -106,7 +106,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 12 | MergeSupplierDialog stage 2 | 統合する / 再試行 | 適合済み（変更なし） | 取引先統合（不可逆） |
 
 - **D-D（cancel 文言）**: #8「戻る」/ #10「やめる」は DSR-20 が名指しで禁止する「後状態が判別できない語」のため既定の「キャンセル」へ。結果・遷移先を表す文言（「編集を続ける」型）への置換は、両 dialog とも「閉じて元の画面に留まる」以上の特別な後状態を持たず既定で十分と判断。#1「編集を続ける」/ #12「残す取引先を選び直す」は DSR-20 本文が許容例として明記済みで変更しない。
-- **D-E（明示硬化）**: `UnsavedChangesDialog` は硬化条件 (b)（未保存内容の破棄/継続を明示選択させる）該当。CostDiffDialog（`src/features/receiving/CostDiffDialog.tsx:88-95`）を参照実装とし、Esc / 外側クリックの明示 preventDefault + 硬化条件 (b) を引く意図 comment を付す。Radix AlertDialog は外側クリック非 dismiss が primitive 既定・Esc は `onOpenChange` 経由という非対称があるため、Writer は Contract Probe で primitive 実挙動を実測してから明示 prop の組を確定する（挙動不変が oracle。`showCloseButton` は AlertDialog に close button がなければ対象外）。
+- **D-E（明示硬化）**: `UnsavedChangesDialog` は硬化条件 (b)（未保存内容の破棄/継続を明示選択させる）該当。CostDiffDialog（`src/features/receiving/CostDiffDialog.tsx:88-95`）を参照実装とし、Esc / 外側クリックの明示 preventDefault + 硬化条件 (b) を引く意図 comment を付す。probe (2) + typecheck 実証（2026-09-01）により明示 prop の組を確定: `AlertDialogContentProps` は `onPointerDownOutside` / `onInteractOutside` を型レベルで Omit しており適用不能（`node_modules/@radix-ui/react-alert-dialog/dist/index.d.ts:23`、Coordinator 実読裏取り済み）。明示硬化は `onEscapeKeyDown` の preventDefault のみとし、意図 comment に硬化条件 (b) と「外側クリックは Radix AlertDialog primitive 既定で非 dismiss（handler 非提供）」を明記する。外側クリックの非 dismiss は T10 の regression oracle として test で固定する。DSR-20 硬化手段の列挙が Dialog 前提である点は DSR-20 追記候補として closeout で起票（gated amendment 2026-09-01）。
 
 ## Acceptance Criteria
 
@@ -229,7 +229,7 @@ Test Design Matrix: [test-matrices/2026-09-01-dsr19-20-runtime-batch.md](test-ma
 
 - producer / consumer / wire type: 変更なし。Tauri command / DTO / generated bindings / JSON wire shape に非接触（AC6 で機械確認）
 - toast 契約: sonner 2.0.7 の `toast.success(message, { duration?, id? })` 既存 API のみ使用。新規依存なし
-- primitive 挙動: Radix AlertDialog は外側クリック非 dismiss が既定、Esc は `onOpenChange` 経由 — 明示 prop の組は Contract Probe (2) の実測で確定（D-E）
+- primitive 挙動: 明示 prop の組は確定済み — `onEscapeKeyDown` のみ（`AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を Omit。外側クリックは primitive 既定で非 dismiss、gated amendment 2026-09-01）
 - invalid input: なし（表示層のみ、入力検証の変更なし）
 - compatibility: toast 追加は加算的変更。variant / 文言変更は表示のみで操作手順・DOM 順不変
 
