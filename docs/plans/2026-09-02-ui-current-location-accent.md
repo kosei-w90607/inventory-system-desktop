@@ -4,10 +4,10 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
 - Amendments: none
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
@@ -16,9 +16,11 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Plan Review、L3（owner render oracle）、Ready、merge
+- Human Gate: L3（owner render oracle）、Ready、merge
 
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で owner 裁定 (a) と同乗 1 件、branch、R2 を固定。spec-check で foundations L62 / catalog L300-301 / `selection-tone.ts` / `SidebarLink.tsx` / `segmented-control.tsx` L12 / `PluNotificationBar.tsx` L23-24 / `PluExportPage.tsx` L406-412 / `alert.tsx` L7（svg slot）・L30（`role="alert"`）を Coordinator が直接読取し、drift が doc↔doc 衝突であること、`SELECTION_TONE_ACTIVE` の消費者が SidebarLink のみであること、`SELECTION_TONE_CHIP_ON` が StatusChips 専用であること、SegmentedControl が独自 stone 定義であることを確認。design phase として DSR-21 の規範文を本 packet「Design Intent Trace」直下に確定（design output は本 plan-first change に置き、Writer が verbatim 転記する）。plan-draft で本 packet を作成し、Matrix は R2 optional 判定で省略（class 存在 oracle と L3 目視の 2 段で足りる）。実装は Coordinator の `plan-approved` 合図まで開始しない。
+
+2026-09-02: Plan Review round 1（Sonnet subagent fresh context）= P1 0 / P2 3 / P3 3、全件 accept（P2-2 は処方を literal token 独立転記へ差替えて accept）、是正 commit `2caea99`。round 2（同 reviewer の条件付き再確認、diff 実読）= P1/P2 = 0。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `b2c333f` は全実装 commit に先行し PK5 ancestry を充足する。
 
 ## Owner Effort Budget
 

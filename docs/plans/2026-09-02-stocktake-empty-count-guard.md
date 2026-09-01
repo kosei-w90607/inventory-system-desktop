@@ -4,10 +4,10 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 2。�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
 - Amendments: none
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
@@ -16,9 +16,11 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 2。�
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Plan Review、L3（Windows native、空欄経路 + 明示 0 経路）、Ready、merge
+- Human Gate: L3（Windows native、空欄経路 + 明示 0 経路）、Ready、merge
 
 Phase 遷移記録（kickoff → spec-check → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で C5 単独 R3、branch、停止点を固定。spec-check で `StocktakePage.tsx` L490-517 / L619-650、`useUpdateCount.ts` L11-19、`stocktake_service.rs` L260-269、`73-ui-stocktake.md` §73.5 L201-202 / エラー表 L269、既存 test T8（`StocktakePage.test.tsx` L391-405）を Coordinator 発注の read-only 調査 + 直接読取で確認。73 doc は負数規則のみで空欄規則を持たないが、是正は「空欄を送信前に止める」1 規則の追記で足り、既存の負数規則・toast なし規則・IME guard と衝突しないため、spec-check → plan-draft の許可された skip（Design Readiness が既存 docs 充足 + Writer による同 PR 軽微追記を引用）を適用。packet + Test Design Matrix を同 commit で commit し plan-gate に至る。実装は Coordinator の `plan-approved` 合図まで開始しない。
+
+2026-09-02: Plan Review round 1（Sonnet subagent fresh context、既存 suite 28/28 green を独立確認）= P1 0 / P2 2 / P3 1、全件 accept、是正 commit `2caea99`。round 2（同 reviewer の条件付き再確認、diff 実読）= P1/P2 = 0。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `b2c333f` は全実装 commit に先行し PK5 ancestry を充足する。
 
 ## Owner Effort Budget
 
