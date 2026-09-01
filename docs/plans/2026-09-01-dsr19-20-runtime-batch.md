@@ -4,10 +4,10 @@ Design Phase は PR #22（squash `8b744f1`、2026-08-30 merge）で完了済み�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 5d7abb3
 - Amendments: none
 - Coordinator: Claude Fable 5 (main session)
 - Writer: Codex (GPT-5.6、発注書駆動)
@@ -306,3 +306,6 @@ Plan Review / Final Review の記録は本節へ append-only で追記する。
   - P3-1 **採用**: L3-3 の代表 3 件サンプリング根拠（是正 7 件が同一 primitive `AlertDialogAction` / `Button` への variant 付与のみで custom className 差分なし — reviewer 実読）を Human Gate 節に明記。
   - P3-2 **記録のみ**: Non-scope の「20 site 超」は spot check と大きく矛盾しないが精密カウントではない — retrofit しない結論に影響なしのため数値主張は現状維持（起票時実測節に Explore 実測の粒度を明記済み）。
   - P3-3 **採用**: 節順を `docs/templates/plan-packet.md` の正順（Data Safety → Implementation Results → Review Response）へ整列、`Implementation Results` placeholder を追加。
+- round 2（別個体 Sonnet の独立再検証、対象 = 是正 commit `859b124`）: 検証 6 項目（P1-1 是正の実装事実整合 / P2-1 是正の実行可能性 / P3-1・P3-3 適用 / 是正 diff の regression なし・Matrix 完全無変更 / doc-check exit 0 実行確認 / 残余 P1/P2 再走査）すべて PASS、P1/P2 = 0、plan-approved へ異論なし。新規 P3 1 件を append-only 訂正として記録: round 1 記録中の「repo 全体 56 hit」は `src/` scope の実測値（`rg -n 'variant="destructive"' src/` = 56。repo 全体は docs 含め 85）— AC3 本文の結論（T7/T8 per-dialog assert が正）に影響なし。
+
+Phase 遷移記録（本 state-only commit で materialize）: `plan-gate -> plan-approved -> implementing`。Plan Review rally は round 2 で新規 P1/P2 = 0 に収束。Plan Commit を `5d7abb3` で確定（plan-first commit は全 content commit の先頭にあり PK5 ancestry を充足する）。次は Codex 発注（Writer content commit、worktree isolation）。
