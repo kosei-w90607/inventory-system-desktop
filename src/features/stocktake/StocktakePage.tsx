@@ -489,6 +489,10 @@ export function StocktakeCountEntry({
 
   async function saveCount() {
     if (selectedItem === null || disabled) return;
+    if (quantity.trim() === "") {
+      setFieldError("数量を入力してください");
+      return;
+    }
     const actualCount = Number(quantity);
     if (!Number.isInteger(actualCount) || actualCount < 0) {
       setFieldError("0以上の数値を入力してください");
