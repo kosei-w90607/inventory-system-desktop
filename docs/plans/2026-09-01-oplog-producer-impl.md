@@ -4,7 +4,7 @@ UI-11c（PR #164）で操作ログ画面の「関連記録を見る」link UI（
 
 ## Workflow State
 
-- Phase: local-verified
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: ef9a8df
@@ -13,7 +13,7 @@ UI-11c（PR #164）で操作ログ画面の「関連記録を見る」link UI（
 - Writer: Codex (GPT-5.6、発注書駆動)
 - Plan Reviewer: Claude Sonnet 5 (independent fresh context)
 - Final Reviewer: Claude Sonnet 5 (independent fresh context) + Coordinator mutation 独立再実測
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 0e17087
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: pending L3（L3-1〜L3-5。L3-5 は PR #23 L3-3 waiver の引き継ぎ義務） + Ready 承認 + merge
@@ -295,3 +295,12 @@ Phase 遷移記録（本 state-only commit で materialize）: `plan-gate -> pla
 - P2: Matrix T5 の「4 service の冪等再送 test が operation_logs COUNT 非増加を検査」という起票時前提に対し、manual_sale の既存 replay test は result contract のみを検査していた。Matrix 本文と既存 test は変更せず、manual_sale replay 前後の operation_logs COUNT 不変を検査する独立 regression test を追加して実被覆を補完した。
 - P3: 74 §74.8 の `record_id` 説明に実効化前の3 producer列挙が残っていたため、volatile な列挙を削除し §74.9 参照へ同期した。
 - Findings Freeze: review-only 初回 broad audit の finding set は上記2件で freeze。Phase は `local-verified` のまま維持し、Final Reviewer / Coordinator の独立確認を待つ。
+
+### Final Review 記録（2026-09-01、append-only）
+
+- Writer content commit: `a670b6b`（4 producer 実装 + doc 7 箇所是正）/ `8cc7654`（90-traceability 再生成）/ `0e17087`（review-only P2 対応の manual_sale replay COUNT test 追加）。Writer L1 full PASS（evidence の所在は PR body を正とする）、bindings diff 0、review-only closure P1/P2 = 0。Draft PR #26。発注書の cwd pin からの逸脱 1 件: Writer は public-writer clone でなく Coordinator と同一 clone で作業した — tree clean・remote 一致・PK5/STATECAP OK・非同期競合なしで実害なしと裁定、教訓は closeout で記録する。
+- Coordinator mutation 独立再実測（同 tree の branch HEAD = `0e17087`、clean tree、commit 後）: M1〜M5 を Matrix どおり注入し全件 kill — M1（receiving record_type 行削除）は当該 test のみ fail で他 3 producer green（個別性成立）、M2（許可リスト内誤値）/ M3（record_id を実 PK からずらす）/ M4（sale_id key 再追加）/ M5（許可リスト外値）もすべて期待 test のみ fail。全注入は checkout 復元し、復元後 baseline green・tree clean・HEAD 不変を確認。
+- Final Review round 1（Sonnet 独立 reviewer 別個体、対象 = `a80e2c3..0e17087`）: 検証 8 点（Ledger 逐条再検証〈4 literal + 詳細 route PK query との整合を repo 実読で確認〉/ Scope confinement〈bindings・src/・Plans.md 差分ゼロ〉/ AC1〜6〈AC5 残存検査 rg の残 hit = changelog 歴史記録 2 行のみ + (iv) row 削除を diff 直接確認〉/ oracle 独立性 / 既存 test 扱い〈削除・弱体化ゼロ〉/ doc 是正品質 / 回帰・negative-space / Workflow State・PR body 整合）**全 PASS、P1/P2/P3 = 0、Goal Invariant 充足 = yes**。reviewer 独立実測でも契約 test 27 passed / 0 failed。
+- Findings Freeze: Final Review の Broad Audit 完了により発効。以降の round は closure 確認のみ。
+
+Phase 遷移記録（本 state-only commit で materialize）: `local-verified -> independent-review -> human-confirm`。Writer L1 full PASS + Coordinator mutation 全 kill + Final Review round 1 収束（P1/P2 = 0）により通過。`Reviewed Content HEAD` を `0e17087` で確定。残りは owner Windows native L3（L3-1〜L3-5）、Ready 承認、hosted final、merge。exact-HEAD evidence は D-035/D-038 どおり PR body を正本とする。
