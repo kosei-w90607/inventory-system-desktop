@@ -75,7 +75,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 3. **廃棄**: `disposal.rs` へ `"record_type": "disposal_record"` を追加（同上）。
 4. **手動販売**: `manual_sale.rs` へ `"record_type": "manual_sale"` と `"record_id": sale_id` を追加し、`"sale_id"` key を撤去（D-2。`item_count` / `warning_count` / `idempotency_key` は不変）。
 5. **backend 契約 test**: Matrix T1〜T4（4 producer 個別の literal oracle assert + manual_sale の `sale_id` 0 hit 対 oracle）。既存 test の削除・無効化なし。既存 test に detail_json の key 構成を assert する箇所がある場合（起票時実測: `receiving.rs` の最新ログ検査 test）は実装に伴う**正当な更新対象**であり、Writer は更新箇所を PR body に列挙し、アサートの弱体化はしない。
-6. **doc drift 是正（D-3 / D-4 の sweep）**: 74 doc の UI-11c-D7 行（現状記述）/ §74.9 現状の producer 状況 / §74.16 producer 追加 row（実効化完了により削除）+ csv_import・stocktake row（据置判断明記）、65 doc §65.8.3 相当の現状記述（stocktake route の時制 drift 含む）を実効化後の状態へ是正。Writer は `rg -n "producer が0件|record_type を書き込む|3 producer" docs --glob '!docs/archive/**'` で全 hit を同一 commit 内で是正する（archive と changelog 行は非改変）。`Plans.md` backlog 行の消込みは closeout で行い、本 PR では触らない。
+6. **doc drift 是正（D-3 / D-4 の sweep）**: 是正対象は次の **7 箇所** — (i) `docs/function-design/74-ui-operation-logs.md:57` UI-11c-D7 行の現状記述、(ii) 同 `:244` §74.9 除外文面（据置明記）、(iii) 同 `:256` §74.9 現状の producer 状況（実効化後の状態へ書換え。新記述は D-050 に従い volatile count を転記しない）、(iv) 同 `:565` §74.16 producer 追加 row（実効化完了により削除）、(v) 同 `:566` §74.16 csv_import・stocktake row（据置判断明記）、(vi) `docs/function-design/65-inventory-record-traceability.md:242` の関連記録リンク現状記述（stocktake route の時制 drift 含む）、(vii) `docs/FUNCTION_DESIGN.md:54` UI-11c 行の producer 側 defer 記述。是正後の残存検査は `rg -n "producer が0件|record_type を書き込む|3 producer" docs --glob '!docs/archive/**' --glob '!docs/plans/**'` で行い、**残 hit が更新履歴の歴史記録 2 行のみ**（`74-ui-operation-logs.md` §74.19 の 2026-08-28 行 / `65-inventory-record-traceability.md` 更新履歴の 2026-07-11 行 — 歴史記録として非改変）であることを確認する。`Plans.md` backlog 行（表記変形「producer が 0 件」のため上記 pattern 非該当）の消込みは closeout で行い、本 PR では触らない。
 
 ## Non-scope
 
@@ -96,7 +96,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC2: manual_sale の新規 `detail_json` に `"sale_id"` key が存在しない（T4 の対 oracle）。
 - AC3: 冪等再送・失敗 rollback でログを書かない既存挙動が不変 — 該当既存 test（operation_logs COUNT 検査・失敗系）を無変更のまま `cargo test` が green（T5）。
 - AC4: `src/lib/bindings.ts` の diff ゼロ + frontend 変更ゼロ（`git diff --stat` で src/ 配下 0 file）。
-- AC5: doc 是正の対 oracle — 新記述（4 producer 実効化済み + 据置判断）が exact 存在し、live docs（archive 除く）で旧前提（「record_type を書き込む producer は0件」「3 producer が既に書き込み済み」等 Scope 6 の rg pattern）が 0 hit。`bash scripts/doc-consistency-check.sh` green。
+- AC5: doc 是正の対 oracle — Scope 6 の 7 箇所すべてで新記述（4 producer 実効化済み + 据置判断）が exact 存在し、Scope 6 の残存検査 rg（archive / `docs/plans/` 除外）の残 hit が更新履歴の歴史記録 2 行のみ。`bash scripts/doc-consistency-check.sh` green。
 - AC6: 既存 test の削除・無効化（skip 含む）なし — backend `cargo fmt --check` / `cargo clippy` / `cargo test` green、frontend 全 gate green、`cargo check --release` PASS（L3 前 Writer 完了条件）。
 
 ## Design Sources
@@ -172,7 +172,7 @@ Explore subagent の全数調査を Coordinator が load-bearing 箇所の実読
 - 消費側 UI: `OperationLogsPage.tsx` に route map・§74.9 guard（typeof / `Number.isSafeInteger` / `> 0`、coercion なし）・「関連記録を見る」link + returnTo 生成・negative 8 種 test（zero / negative / fractional / numeric string / unsafe integer / unknown type / missing 各種）が実在。4 詳細 route file 実在、returnTo を受理。
 - `sale_id` の他参照: `bindings.ts` の `ManualSaleCreateResult.sale_id`（DTO field — detail_json とは別物、非接触）と `ManualSalePage` 系のみ。frontend で detail_json の `sale_id` key を機能参照する箇所は 0。
 - 既存 test の detail 検査: `receiving.rs` に最新 operation_logs row の `operation_type` / `detail_json` を検査する test あり（正当更新対象の候補）。冪等再送でログ非増加を検査する test が 4 service にあり（COUNT 検査 — 無変更 green 対象）。
-- doc drift: 74 doc の UI-11c-D7 行 / §74.9 / §74.16 と 65 doc の関連記述が「3 producer + record_type 0 件」の実効化前状態を記載し、manual_sale を producer 候補から脱落。live docs の該当 hit は Scope 6 の rg pattern で全列挙済み（74 doc 4 箇所 + 65 doc 1 箇所 + Plans.md backlog 行〈closeout で消込み〉。§74.19 changelog 行と archive は歴史記録として非改変）。
+- doc drift: 74 doc の UI-11c-D7 行 / §74.9 / §74.16、65 doc、`docs/FUNCTION_DESIGN.md:54` の関連記述が「3 producer + record_type 0 件」の実効化前状態を記載し、manual_sale を producer 候補から脱落。是正対象は Scope 6 に 7 箇所として全列挙（Plans.md backlog 行は closeout 消込み。§74.19 / 65 更新履歴の changelog 行と archive は歴史記録として非改変。packet 自身の実測記述は sweep 対象外 — Plan Review round 1 P1-1 是正）。
 - PR #23 L3-3 waiver: archived packet に「実データでの L3 検証は producer 実効化 R3 の Human Gate に義務として含める」と明記（台本 = 期間・種別・page 設定 → 関連記録を見る → 戻りで同 state 復元）。
 
 ## Contract Probe
@@ -217,7 +217,7 @@ Test Design Matrix: [test-matrices/2026-09-01-oplog-producer-impl.md](test-matri
 - T1〜T4 の per-producer 個別性（4 site を 1 loop / 1 combined test にしない — 1 site 漏れ mutation の検出粒度）
 - record_id oracle の実 PK 突合（固定値 assert でなく、当該 test で挿入した業務記録の実 PK と突合すること — 固定値は id 採番変化で偽 red / 偽 green 両方の脆さ）
 - T4 対 oracle の実効性（`sale_id` key 不在 assert が JSON parse 後の object key 検査であること — 文字列 contains では `record_id` の部分一致等で偽判定しうる）
-- doc 是正 sweep の全数性（Scope 6 の rg pattern が live docs で 0 hit になるか。§74.19 changelog・archive の歴史記録を巻き込まないこと）
+- doc 是正 sweep の全数性（Scope 6 の 7 箇所の置換完了と、残存検査 rg の残 hit が changelog 歴史記録 2 行のみであること。changelog・archive・packet 自身の実測記述を巻き込まないこと）
 - 既存 test 更新の正当性（receiving の最新ログ検査 test 等、更新は key 追加への追随のみでアサート弱体化がないこと）
 
 ## Spec Contract
@@ -273,3 +273,11 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Plan Review / Final Review の記録は本節へ append-only で追記する。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review rally 記録（2026-09-01、append-only）
+
+- round 1（Sonnet 独立 reviewer、対象 = plan-first commit `ef9a8df`）: P1 1 / P2 1 / P3 1。観点 1（前提事実 — 起票時実測の file 実読突合）は全項目一致、oracle 品質・L3 妥当性・リスク観点は不整合なし。
+  - P1-1 **採用**: Scope 6 の sweep rg と AC5「0 hit」oracle の自己矛盾 — 当該 pattern は非改変と規定した changelog 行（74 doc §74.19 の 2026-08-28 行 / 65 doc 更新履歴の 2026-07-11 行）と packet 自身（docs/plans/ 配下 6 hit）にも hit するため、Writer が literal に従うと非改変ルール違反か AC5 恒久不成立のいずれかに陥る。Coordinator が rg 実測で再現し三点一致。是正 = 是正対象を 7 箇所へ明示列挙 + 残存検査 rg へ `--glob '!docs/plans/**'` 追加 + 期待残 hit を changelog 歴史記録 2 行に確定（Scope 6 / AC5 / 起票時実測 / Review Focus / Matrix の関連記述を同一 commit で同期是正）。
+  - P2-1 **採用**: Scope 6 列挙に `docs/FUNCTION_DESIGN.md:54`（UI-11c 行の同型 defer 記述）が欠落。Coordinator 実読で drift を確認し、7 箇所列挙の (vii) として追加。
+  - P3-1 **採用**: Matrix Adjacent Pattern Audit の「18 file・約 30 site」は 74 doc §74.9 の stale 記述の転記（reviewer 実測 20 file）で、本 packet の fresh 実測ではなかった。D-050 に従い volatile count を転記しない表現へ是正（74 doc :256 の新記述にも同旨を Scope 6 (iii) で明記済み）。
+- 是正後も Phase は plan-gate に留まり、round 2（別個体 Sonnet の独立再検証）で是正の実装事実整合と残余 P1/P2 を確認する。

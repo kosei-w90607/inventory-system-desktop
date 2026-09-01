@@ -50,7 +50,7 @@ T1〜T4 は 4 producer を**個別の test（または個別 case）**とし、1
 
 ## Adjacent Pattern Audit
 
-- `insert_operation_log` 呼出しは 18 file・約 30 site あるが、§74.9 の対象は業務記録 4 操作の作成 site のみ。他 site（設定変更・保守系等）への `record_type` 追加は Non-scope — 対象 4 site 以外の diff が出ないことを review で確認。
+- `insert_operation_log` の呼出し site は 4 操作以外にも多数ある（設定変更・保守系等。件数は volatile のため転記しない — D-050）が、§74.9 の対象は業務記録 4 操作の作成 site のみ。他 site への `record_type` 追加は Non-scope — 対象 4 site 以外の diff が出ないことを review で確認。
 - 4 操作の取消・訂正系に追加の書込み site はない（起票時実測: 各操作とも作成 site 単一）。
 - `record_id` 既書込みの 3 site と manual_sale の書式差（`sale_id`）は本 change で解消 — 対称性は T1〜T4 の同型 oracle で固定。
 
@@ -85,7 +85,7 @@ T1〜T4 は 4 producer を**個別の test（または個別 case）**とし、1
 - manual_sale の `record_id` を `sale_id + 1` にしたら？ → T4 の実 PK 突合が fail。
 - manual_sale に `sale_id` key を残したら？ → T4 の対 oracle が fail。
 - record_id を文字列で書いたら？ → T1〜T4 の型検査が fail。
-- doc 是正を 1 箇所漏らしたら？ → AC5 の rg sweep（live docs 0 hit）が fail。
+- doc 是正を 1 箇所漏らしたら？ → AC5 の残存検査 rg（残 hit = changelog 歴史記録 2 行のみが期待値）が fail。
 
 ## 必須 mutation 注入（Final Review で clean tree 独立再実測、5 件）
 
