@@ -239,7 +239,7 @@ UI-03 の既存 `return_records.receipt_image_path` は互換維持し、共通�
 - detail_json の要約表示
 - 関連 record_type / record_id がある場合だけ詳細リンク
 
-詳細な route/URL state、期間・種別 filter、pagination、detail_json 安全設計、関連記録リンクの許可リスト・ルートマッピング、Windows native L3 は [function-design/74-ui-operation-logs.md](74-ui-operation-logs.md)（UI-11c Design Phase、2026-07-11）を正とする。関連記録リンクは `record_type`（`receiving_record` / `return_record` / `manual_sale` / `disposal_record` のいずれか）と正の整数 `record_id` が detail_json に両方揃う場合だけ表示する明示 contract とする。現時点で `record_id` は `receiving.rs` / `disposal.rs` / `returns.rs` の3 producer が既に書き込み済みだが、`record_type` を書き込む producer は0件のため2 field が揃うログは実データ上0件（既存 BIZ producer への `record_type` 追加は別 follow-up）。`csv_import` の詳細 route は実装済みだが、csv_import 系 `record_type` を書き込む producer が0件のため許可リストからの除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて追加する。`stocktake` の詳細 route は §65.10 slice 4c で実装されるが、stocktake 系 `record_type` を書き込む producer が0件のため許可リストからの除外を維持し、producer 側の `record_type` 採用（既存 follow-up）と併せて追加する。
+詳細な route/URL state、期間・種別 filter、pagination、detail_json 安全設計、関連記録リンクの許可リスト・ルートマッピング、Windows native L3 は [function-design/74-ui-operation-logs.md](74-ui-operation-logs.md)（UI-11c Design Phase、2026-07-11）を正とする。関連記録リンクは `record_type`（`receiving_record` / `return_record` / `manual_sale` / `disposal_record` のいずれか）と正の整数 `record_id` が detail_json に両方揃う場合だけ表示する明示 contract とする。入庫・返品交換・手動販売・廃棄の作成 producer は、許可リストに対応する `record_type` と当該業務記録 PK の `record_id` を格納し、新規ログを実データでリンク可能にする。`csv_import` と `stocktake` の詳細 route はいずれも実装済みだが、2026-09-01 の producer 実効化 R3 では両種を据置とし、許可リストからの除外を維持する。csv_import / stocktake producer への `record_type` 採用と許可リスト追加は、それぞれ別 follow-up で行う。
 
 ## 65.9 出力
 

@@ -209,6 +209,7 @@ pub fn create_disposal(
     let stock_warnings: Vec<String> = stock_warnings_map.into_values().collect();
 
     let detail = serde_json::json!({
+        "record_type": "disposal_record",
         "record_id": record_id,
         "item_count": req.items.len(),
         "warning_count": stock_warnings.len(),
@@ -296,6 +297,36 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(p.product.stock_quantity, 8);
+    }
+
+    #[test]
+    fn test_create_disposal_req204_operation_log_record_contract() {
+        // REQ-204 / UI-11c-D7: 廃棄記録の operation_log が関連記録 contract を満たすこと
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "DSP-LOG", 10);
+
+        let req = make_disposal_req(
+            "dsp-log-key",
+            vec![disposal_item("DSP-LOG", 2, 300, "袋破れ")],
+        );
+        let result = create_disposal(&mut conn, req).unwrap();
+
+        let (op_type, detail_str): (String, String) = conn
+            .query_row(
+                "SELECT operation_type, detail_json FROM operation_logs ORDER BY id DESC LIMIT 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(op_type, "disposal_create");
+
+        let detail: serde_json::Value = serde_json::from_str(&detail_str).unwrap();
+        assert_eq!(detail["record_type"], "disposal_record");
+        assert!(detail["record_id"].is_number());
+        assert_eq!(detail["record_id"].as_i64(), Some(result.record_id));
+        assert_eq!(detail["item_count"], 1);
+        assert_eq!(detail["warning_count"], 0);
+        assert_eq!(detail["idempotency_key"], "dsp-log-key");
     }
 
     #[test]

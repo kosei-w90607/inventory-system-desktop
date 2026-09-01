@@ -4,7 +4,7 @@ UI-11c（PR #164）で操作ログ画面の「関連記録を見る」link UI（
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: local-verified
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: ef9a8df

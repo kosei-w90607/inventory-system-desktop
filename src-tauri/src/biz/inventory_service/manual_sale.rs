@@ -288,7 +288,8 @@ pub fn create_manual_sale(
     let stock_warnings: Vec<String> = stock_warnings_map.into_values().collect();
 
     let detail = serde_json::json!({
-        "sale_id": sale_id,
+        "record_type": "manual_sale",
+        "record_id": sale_id,
         "item_count": req.items.len(),
         "warning_count": stock_warnings.len(),
         "idempotency_key": normalized_key,
@@ -369,6 +370,36 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(p.product.stock_quantity, 8);
+    }
+
+    #[test]
+    fn test_create_manual_sale_req203_operation_log_record_contract() {
+        // REQ-203 / UI-11c-D7: 手動販売の operation_log が関連記録 contract を満たすこと
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "MS-LOG", 10);
+
+        let req = make_manual_sale_req("ms-log-key", vec![manual_sale_item("MS-LOG", 2, 1000)]);
+        let result = create_manual_sale(&mut conn, req).unwrap();
+        let sale_id = result.sale_id.unwrap();
+
+        let (op_type, detail_str): (String, String) = conn
+            .query_row(
+                "SELECT operation_type, detail_json FROM operation_logs ORDER BY id DESC LIMIT 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(op_type, "manual_sale_create");
+
+        let detail: serde_json::Value = serde_json::from_str(&detail_str).unwrap();
+        let detail_object = detail.as_object().unwrap();
+        assert_eq!(detail["record_type"], "manual_sale");
+        assert!(detail["record_id"].is_number());
+        assert_eq!(detail["record_id"].as_i64(), Some(sale_id));
+        assert!(!detail_object.contains_key("sale_id"));
+        assert_eq!(detail["item_count"], 1);
+        assert_eq!(detail["warning_count"], 0);
+        assert_eq!(detail["idempotency_key"], "ms-log-key");
     }
 
     #[test]

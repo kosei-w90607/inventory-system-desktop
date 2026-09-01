@@ -273,6 +273,7 @@ pub fn create_return(
     let stock_warnings: Vec<String> = stock_warnings_map.into_values().collect();
 
     let detail = serde_json::json!({
+        "record_type": "return_record",
         "record_id": record_id,
         "item_count": req.items.len(),
         "return_type": req.return_type,
@@ -400,6 +401,34 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(p.product.stock_quantity, 12);
+    }
+
+    #[test]
+    fn test_create_return_req202_operation_log_record_contract() {
+        // REQ-202 / UI-11c-D7: 返品記録の operation_log が関連記録 contract を満たすこと
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "RTN-LOG", 10);
+
+        let req = make_return_req("ret-log-key", vec![return_item("RTN-LOG", "in", 2)]);
+        let result = create_return(&mut conn, req).unwrap();
+
+        let (op_type, detail_str): (String, String) = conn
+            .query_row(
+                "SELECT operation_type, detail_json FROM operation_logs ORDER BY id DESC LIMIT 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(op_type, "return_create");
+
+        let detail: serde_json::Value = serde_json::from_str(&detail_str).unwrap();
+        assert_eq!(detail["record_type"], "return_record");
+        assert!(detail["record_id"].is_number());
+        assert_eq!(detail["record_id"].as_i64(), Some(result.record_id));
+        assert_eq!(detail["item_count"], 1);
+        assert_eq!(detail["return_type"], "return");
+        assert_eq!(detail["register_processed"], false);
+        assert_eq!(detail["idempotency_key"], "ret-log-key");
     }
 
     #[test]
