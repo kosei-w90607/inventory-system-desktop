@@ -18,7 +18,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 - Hosted CI Requirement: required
 - Human Gate: Plan Review、L3（owner render oracle）、Ready、merge
 
-Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で owner 裁定 (a) と同乗 1 件、branch、R2 を固定。spec-check で foundations L62 / catalog L300-301 / `selection-tone.ts` / `SidebarLink.tsx` / `segmented-control.tsx` L12 / `PluNotificationBar.tsx` L23-24 / `PluExportPage.tsx` L406-412 / `alert.tsx` L7 を Coordinator が直接読取し、drift が doc↔doc 衝突であること、`SELECTION_TONE_ACTIVE` の消費者が SidebarLink のみであること、`SELECTION_TONE_CHIP_ON` が StatusChips 専用であること、SegmentedControl が独自 stone 定義であることを確認。design phase として DSR-21 の規範文を本 packet「Design Intent Trace」直下に確定（design output は本 plan-first change に置き、Writer が verbatim 転記する）。plan-draft で本 packet を作成し、Matrix は R2 optional 判定で省略（class 存在 oracle と L3 目視の 2 段で足りる）。実装は Coordinator の `plan-approved` 合図まで開始しない。
+Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で owner 裁定 (a) と同乗 1 件、branch、R2 を固定。spec-check で foundations L62 / catalog L300-301 / `selection-tone.ts` / `SidebarLink.tsx` / `segmented-control.tsx` L12 / `PluNotificationBar.tsx` L23-24 / `PluExportPage.tsx` L406-412 / `alert.tsx` L7（svg slot）・L30（`role="alert"`）を Coordinator が直接読取し、drift が doc↔doc 衝突であること、`SELECTION_TONE_ACTIVE` の消費者が SidebarLink のみであること、`SELECTION_TONE_CHIP_ON` が StatusChips 専用であること、SegmentedControl が独自 stone 定義であることを確認。design phase として DSR-21 の規範文を本 packet「Design Intent Trace」直下に確定（design output は本 plan-first change に置き、Writer が verbatim 転記する）。plan-draft で本 packet を作成し、Matrix は R2 optional 判定で省略（class 存在 oracle と L3 目視の 2 段で足りる）。実装は Coordinator の `plan-approved` 合図まで開始しない。
 
 ## Owner Effort Budget
 
@@ -76,11 +76,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
    - `docs/design-system/01-decision-rules.md`: `## DSR-21 現在地と選択状態の色分離` を DSR-20 の後に新設（**ルール** / **Why** / **判定フロー / 具体例** / **関連** の DSR-08 型構成 + 更新履歴 dated 行）
    - `docs/design-system/02-component-catalog.md` L300-301: 実装ルール 2 行を改訂 — SidebarLink の現在地は stone selection tone に DSR-21 の Primary アクセントを重ねる / StatusChips・SegmentedControl は選択状態のため stone のまま / 「amber は選択状態の**背景色**とは分離する」は維持（アクセントは背景でない）。Sidebar パターン節（あれば）にも DSR-21 参照 1 行
    - `docs/quality/review-checklist.md` カテゴリ 9（Operator UI visibility）: 「現在地と選択状態の色分離が DSR-21 に従うか」1 行
+   - `docs/function-design/52-ui-shared-layout.md` L218（SidebarLink active 時の hover）: 実装レシピに「+ DSR-21 の現在地アクセント（`border-l-primary` 系、base 側に同幅の transparent 左 border）」を 1 文追記し、L257 と同型の更新履歴 dated 行を追加（DS2/DS4 は function-design を走査しないため、この同期は Writer 責務 + Final Review 観点）
+   - `docs/design-system/README.md` L13 の「DSR-01〜15」を「DSR-01〜21」へ更新（DSR-16〜20 も未反映の既存 stale、本 PR で一括是正）
    - `docs/UI_TECH_STACK.md` L693 付近が DSR 列挙なら DSR-21 を追記（列挙でなければ不要、Writer が実読で判定し報告）
 5. **tests**:
-   - `src/components/layout/SidebarLink.test.tsx`: 現在地アクセント token の存在 oracle を追加 — active link は `CURRENT_LOCATION_ACCENT` 相当の class を持ち、inactive link は持たない。既存 test（`data-status` / `aria-current` / focus ring）は改変しない
+   - `src/components/layout/SidebarLink.test.tsx`: 現在地アクセント token の存在 oracle を追加 — active link は `border-l-primary` class を持ち、inactive link は持たない。oracle は **literal token の独立転記**とし、`selection-tone.ts` の定数を import して期待値にしない（production 定数を期待に使うと定数改変 mutant を素通しする、`docs/DEV_WORKFLOW.md` の oracle 独立原則）。同 file L10 の「クラス hardcode は脆い」との関係は test 内 comment で明示する: 一般の見た目 class は hardcode しないが、`border-l-primary` は DSR-21 が名指しする契約 token であり、その存在自体が契約 oracle である。既存 test（`data-status` / `aria-current` / focus ring）は改変しない
    - `src/features/home/components/PluNotificationBar.test.tsx` 新設: `pluDirtyCount >= 1` で `role="alert"`（Alert primitive の既定 role を Writer が実読確認）内に `svg` が 1 つ描画される / `isLoading` `isError` `count 0` で非描画（既存契約の固定）
-6. 生成物・gate: `bash scripts/doc-consistency-check.sh`（DS3 token HEX 整合を含む）PASS、`npm run lint`（palette 外色 ban）PASS、`rg -n "amber-" src` = 0 hit。REQ token を test に追加する場合のみ `cargo run --bin generate_traceability` 再生成（追加しない方針、Writer 判断で追加時は再生成必須）。
+6. 生成物・gate: `bash scripts/doc-consistency-check.sh`（DS3 token HEX 整合を含む）PASS、`npm run lint` PASS、`rg -n "amber-" src` = 0 hit。注意: eslint の palette 外色 ban（`eslint.config.js` L79 `no-restricted-syntax`）の `files` glob は `src/features/**` と `src/components/patterns/**` のみで、本 packet が触る `src/components/ui/**` / `src/components/layout/**` は対象外。よって本 PR の生 `amber-` 混入防止は AC2 の `rg` が唯一の機械 oracle（glob 拡張は Plans.md backlog へ起票、本 packet では変更しない）。REQ token を test に追加する場合のみ `cargo run --bin generate_traceability` 再生成（追加しない方針、Writer 判断で追加時は再生成必須）。
 
 ## Non-scope
 
@@ -93,10 +95,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 ## Acceptance Criteria
 
 - AC1: `SidebarLink.test.tsx` の新 test が「active link に現在地アクセント class あり / inactive link になし」を assert し green。アクセント合成を外す mutant（Scope 2 の `cn(...)` からアクセント定数を除去）で当該 test のみ red
-- AC2: `rg -n "amber-" src` が 0 hit（起票時 0 hit を維持）、`npm run lint` PASS
+- AC2: `rg -n "amber-" src` が 0 hit（起票時 0 hit を維持。eslint glob 外の `src/components/ui|layout` を含めた唯一の機械 oracle）、`npm run lint` PASS
 - AC3: `git diff --name-only` に `StatusChips.tsx` / `segmented-control.tsx` / `ModeTabs.tsx` が含まれない、`segmented-control.test.tsx` green
 - AC4: `PluNotificationBar.test.tsx` が icon（`svg`）描画と 3 種の非描画条件を assert し green。icon 除去 mutant で icon test のみ red
-- AC5: `rg -n "DSR-21" docs/design-system/01-decision-rules.md docs/design-system/02-component-catalog.md docs/quality/review-checklist.md` が各 file ≥1 hit、`bash scripts/doc-consistency-check.sh` PASS
+- AC5: `rg -n "DSR-21" docs/design-system/01-decision-rules.md docs/design-system/02-component-catalog.md docs/quality/review-checklist.md docs/function-design/52-ui-shared-layout.md docs/design-system/README.md` が各 file ≥1 hit、`bash scripts/doc-consistency-check.sh` PASS
 - AC6（L3、owner render oracle）: (i) Home で PLU 通知バー表示状態のとき、サイドバー現在地アクセントと通知バーが「警告」と「現在地」として区別できる (ii) 主要ボタン（Primary）と現在地アクセントが同一画面で競合しない (iii) active / inactive の切替でテキスト開始位置がずれない (iv) 全画面で現在地が一目で分かる。(i)(ii) 不成立時は gated amendment でアクセント縮退（バー幅 2px、または icon 色のみ）を 1 往復で処置
 - AC7: `SidebarLink.tsx` の active 判定（`aria-current` / `data-status` / activeMatch）に diff がなく、既存 SidebarLink test 全件 green
 
@@ -128,7 +130,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| 00-foundations L62 | サイドバー = 単色 stone + アクティブ項目のみ Primary アクセント | UI-CL-D1（2026-09-02） | 現在地は有彩色（教科書 5-3）。全面 amber 背景は catalog「選択状態の背景色とは分離」と PLU 通知バー同色競合で不採用。amber テキスト on stone-300 は AA コントラスト未達見込みで不採用 → 左端 Primary バー（背景でないアクセント） | `selection-tone.ts` / `SidebarLink.tsx` | SidebarLink accent test / L3 (i)-(iv) |
+| 00-foundations L62 | サイドバー = 単色 stone + アクティブ項目のみ Primary アクセント | UI-CL-D1（2026-09-02） | 現在地は有彩色（教科書 5-3）。全面 amber 背景は catalog「選択状態の背景色とは分離」と PLU 通知バー同色競合で不採用（52 §更新履歴 L257: 2026-06-08 に SidebarLink を amber 系から stone へ統一した先行判断も同根で、本 packet はその理由を温存する）。amber テキスト on stone-300 は AA コントラスト未達見込みで不採用 → 左端 Primary バー（背景でないアクセント） | `selection-tone.ts` / `SidebarLink.tsx` | SidebarLink accent test / L3 (i)-(iv) |
 | catalog L300-301 | selection tone の stone 統一 | UI-CL-D2（2026-09-02） | 選択状態（filter chip / 二択切替）は「何を絞っているか」であり現在地ではない → 無彩色維持。route-driven の日次/月次 tab は catalog 既定の押しボタン外観回避を優先し stone 維持（画面位置は sidebar 現在地で一意）、要望発生時に再裁定 | 変更なし（Non-scope） | AC3 |
 | DSR-08 | 色は二次シグナル、意味は text + icon が一次 | UI-CL-D3（2026-09-02） | PLU 通知バーだけ icon なし（同型 3 site 中 1 site の実装差分）。owner 所感「PLU 警告の視認性」の機序 | `PluNotificationBar.tsx` | PluNotificationBar icon test |
 

@@ -86,6 +86,7 @@
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
 - DSR-20 硬化手段列挙の AlertDialog 系追記候補（DSR-20 本文の `onEscapeKeyDown` / `onPointerDownOutside` 列挙は Dialog 前提。AlertDialog 系は `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型 Omit し外側クリックは primitive 既定で非 dismiss — PR #25 gated amendment `2433199` 起源。次回 design-system 改訂 change に同乗）。
 - T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。
+- eslint palette 外色 ban（`eslint.config.js` `no-restricted-syntax`）の `files` glob 拡張（現行は `src/features/**` + `src/components/patterns/**` のみで `src/components/ui/**` / `src/components/layout/**` は非対象。wave 8 lane 1 Plan Review P2 起源 2026-09-02、当該 PR は `rg` を唯一の機械 oracle として運用、glob 拡張は既存違反の棚卸しが先行）。
 - 棚卸しの表示件数設定案（owner L3 2026-09-01 所感起源。表示件数の設定化は design 判断が先行、要望が続けば起票）。
 - 商品取込み上書き確認の実機 visual 未観測（PR #25 L3 で fixture 不足〈上書き確認へ到達する import file 不在〉の残余リスク受容済み、T7/T9 自動被覆あり。import file fixture が整った機会の随時確認で足りる、義務ではない）。
 - inventory-operator-ui SKILL.md への DSR-16 判断手順追加（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex 発注 or owner 手動の小 change、PR #15 起源）。

@@ -52,7 +52,7 @@ T-C5-1〜4 の名前は Writer が既存 test の命名慣行（`T8 ...` 型）�
 
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
-| 数量入力の空欄ガード | `StocktakePage.tsx` `saveCount()`（対象）。同型の「数量 + Enter 保存」= 入庫 / 出庫 / 返品交換 / 廃棄破損の行内数量欄 — Writer が `rg -n 'Number\(' src/features/{receiving,shipping,return-exchange,disposal}` で空欄経路の有無を確認し、結果を Implementation Results に列挙する | 本 packet は棚卸しのみ | 他 4 画面は Scope 外（同型欠陥があれば backlog 起票、本 packet で是正しない） | Writer 報告 |
+| 数量入力の空欄ガード | `StocktakePage.tsx` `saveCount()`（対象）。同型の「数量 + Enter 保存」= 入庫 / 手動売上 / 返品交換 / 廃棄破損の行内数量欄（`src/features/shipping` は存在せず、出庫は履歴 view のみ）— Writer が `rg -n 'Number\(' src/features/{receiving,manual-sale,return-exchange,disposal}`（`manual-sale/lib/manual-sale-row-utils.ts:5` に同型 `Number(value)` あり） で空欄経路の有無を確認し、結果を Implementation Results に列挙する | 本 packet は棚卸しのみ | 他 4 画面は Scope 外（同型欠陥があれば backlog 起票、本 packet で是正しない） | Writer 報告 |
 | Enter handling + IME `isComposing` guard | `StocktakePage.tsx` L628-634 | 不変 | — | 既存 test 実在を Writer が rg 確認、未被覆なら「契約不変・未被覆」と本表に記録 |
 | FieldError 表示 | `setFieldError` 既存経路 | 文言追加のみ | — | T-C5-1 |
 

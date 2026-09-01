@@ -70,7 +70,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 ## Scope
 
 1. **`src/features/stocktake/StocktakePage.tsx` `saveCount()`**: `Number(quantity)` の前に `quantity.trim() === ""` を判定し、該当時は `setFieldError("数量を入力してください")` で return（`update_count` 未呼出）。既存の負数 / 非整数 FieldError「0以上の数値を入力してください」は不変。Enter 経路（`onKeyDown`、`isComposing` guard 不変）と保存ボタン経路の両方が同一 `saveCount()` を通るため、ガードは 1 箇所。
-2. **`docs/function-design/73-ui-stocktake.md`**: §73.5 step 4（L201）に「空欄・空白のみは送信前に FieldError『数量を入力してください』で止める（`Number("")` が 0 になる経路を塞ぐ、CMD 側は負数のみ検証）」を追記。エラー表（L269 付近）に `validation`（`actual_count` 空欄）→ FieldError「数量を入力してください」行を追加。更新履歴 dated 行。
+2. **`docs/function-design/73-ui-stocktake.md`**: §73.5 step 4（L201）に「空欄・空白のみは送信前に FieldError『数量を入力してください』で止める（`Number("")` が 0 になる経路を塞ぐ、CMD 側は負数のみ検証）」を追記。エラー表（L269 付近）に UI 送信前ガード行（`actual_count` 空欄 → FieldError「数量を入力してください」）を追加。既存 `validation` 行と異なり backend には到達しない（wire は `i64` で空欄の概念なし）ことを行内に明記し、backend `kind` を暗示しない文言にする。更新履歴 dated 行。
 3. **tests `src/features/stocktake/StocktakePage.test.tsx`**（既存 test 無改変、新規 test 追加のみ）:
    - T-C5-1: 数量空欄で Enter → FieldError「数量を入力してください」表示、`commands.updateCount` 未呼出
    - T-C5-2: 数量空欄で保存ボタン click → 同上
@@ -102,7 +102,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - Architecture: `docs/ARCHITECTURE.md` UI → CMD → BIZ（frontend validation は防御的二重チェックの UI 側）
 - Function / command / DTO: `src/features/stocktake/hooks/useUpdateCount.ts`（`commands.updateCount(stocktakeItemId, actualCount)`、wire 不変）、`src-tauri/src/biz/stocktake_service.rs` L260-269（負数のみ拒否、不変）
 - DB: 不変（`actual_count` i64）
-- Screen / UI: `docs/design-system/01-decision-rules.md` DSR-08（意味は text が一次）、DSR-19（保存成功 feedback 規約、本 packet では toast なし契約を維持）
+- Screen / UI: `docs/design-system/01-decision-rules.md` DSR-05（read-only vs disabled の使い分け — disabled は「なぜ触れないのか」を誤解させる）、DSR-19（保存成功 feedback 規約、本 packet では toast なし契約を維持）
 - Decision log / ADR: UI-10 系裁定（棚卸し中止 Reject、差異列色分け Reject — 本 packet は非接触）
 
 ## Required Design Artifacts
@@ -128,7 +128,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| REQ-205 / 73 §73.5 step 4 | 数量入力 → `update_count`、負数は送信前 FieldError | ST-C5-D1（2026-09-02） | 空欄は「未入力」であり 0 ではない。`Number("")===0` は言語仕様の罠で業務意図と乖離。保存ボタン disabled 化は理由が見えず操作者が止まる（DSR-08 text 一次と不整合）→ FieldError 一本化、Enter / click 両経路を同一関数で塞ぐ | `saveCount()` 冒頭の trim 空判定 | T-C5-1〜3 |
+| REQ-205 / 73 §73.5 step 4 | 数量入力 → `update_count`、負数は送信前 FieldError | ST-C5-D1（2026-09-02） | 空欄は「未入力」であり 0 ではない。`Number("")===0` は言語仕様の罠で業務意図と乖離。保存ボタン disabled 化は理由が見えず操作者が止まる（DSR-05: disabled は「なぜ触れないのか」を誤解させる）→ FieldError 一本化、Enter / click 両経路を同一関数で塞ぐ | `saveCount()` 冒頭の trim 空判定 | T-C5-1〜3 |
 | 73 §73.5 step 4（負数） | 既存 FieldError「0以上の数値を入力してください」 | — | 不変。明示 0 は正当な棚卸し実数（欠品確認） | 不変 | T-C5-4 / T8 |
 | 73 §73.5 L202 | 1 件保存ごとの toast なし | — | 不変。FieldError は inline 表示で toast 契約に触れない | 不変 | 既存 |
 
