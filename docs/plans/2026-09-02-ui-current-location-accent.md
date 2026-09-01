@@ -22,6 +22,8 @@ Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-g
 
 2026-09-02: Plan Review round 1（Sonnet subagent fresh context）= P1 0 / P2 3 / P3 3、全件 accept（P2-2 は処方を literal token 独立転記へ差替えて accept）、是正 commit `2caea99`。round 2（同 reviewer の条件付き再確認、diff 実読）= P1/P2 = 0。この state-only commit は `plan-gate -> plan-approved -> implementing` を materialize する。Plan Commit `b2c333f` は全実装 commit に先行し PK5 ancestry を充足する。
 
+2026-09-02: gated amendment（AC2 oracle 是正）— 起票時の 0 hit 確認は `--glob '*.ts*'` 付きで実行されており、`src/styles/globals.css` の token 定義注釈（`/* amber-700 */` 等 9 件）を見ていなかった Coordinator 起因。Writer は停止点 §6-2 で正しく停止。是正 = oracle を TS/TSX に限定（CSS 注釈は DSR-08 対象外、globals.css 無改変）。Scope / Goal / 他 AC は不変。
+
 ## Owner Effort Budget
 
 - 介入回数上限: 5
@@ -84,7 +86,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 5. **tests**:
    - `src/components/layout/SidebarLink.test.tsx`: 現在地アクセント token の存在 oracle を追加 — active link は `border-l-primary` class を持ち、inactive link は持たない。oracle は **literal token の独立転記**とし、`selection-tone.ts` の定数を import して期待値にしない（production 定数を期待に使うと定数改変 mutant を素通しする、`docs/DEV_WORKFLOW.md` の oracle 独立原則）。同 file L10 の「クラス hardcode は脆い」との関係は test 内 comment で明示する: 一般の見た目 class は hardcode しないが、`border-l-primary` は DSR-21 が名指しする契約 token であり、その存在自体が契約 oracle である。既存 test（`data-status` / `aria-current` / focus ring）は改変しない
    - `src/features/home/components/PluNotificationBar.test.tsx` 新設: `pluDirtyCount >= 1` で `role="alert"`（Alert primitive の既定 role を Writer が実読確認）内に `svg` が 1 つ描画される / `isLoading` `isError` `count 0` で非描画（既存契約の固定）
-6. 生成物・gate: `bash scripts/doc-consistency-check.sh`（DS3 token HEX 整合を含む）PASS、`npm run lint` PASS、`rg -n "amber-" src` = 0 hit。注意: eslint の palette 外色 ban（`eslint.config.js` L79 `no-restricted-syntax`）の `files` glob は `src/features/**` と `src/components/patterns/**` のみで、本 packet が触る `src/components/ui/**` / `src/components/layout/**` は対象外。よって本 PR の生 `amber-` 混入防止は AC2 の `rg` が唯一の機械 oracle（glob 拡張は Plans.md backlog へ起票、本 packet では変更しない）。REQ token を test に追加する場合のみ `cargo run --bin generate_traceability` 再生成（追加しない方針、Writer 判断で追加時は再生成必須）。
+6. 生成物・gate: `bash scripts/doc-consistency-check.sh`（DS3 token HEX 整合を含む）PASS、`npm run lint` PASS、`rg -n "amber-" src --glob "*.{ts,tsx}"` = 0 hit（`src/styles/globals.css` の token 定義注釈 `/* amber-700 */` 等は DSR-08 の対象外のため CSS は oracle から除外）。注意: eslint の palette 外色 ban（`eslint.config.js` L79 `no-restricted-syntax`）の `files` glob は `src/features/**` と `src/components/patterns/**` のみで、本 packet が触る `src/components/ui/**` / `src/components/layout/**` は対象外。よって本 PR の生 `amber-` 混入防止は AC2 の `rg` が唯一の機械 oracle（glob 拡張は Plans.md backlog へ起票、本 packet では変更しない）。REQ token を test に追加する場合のみ `cargo run --bin generate_traceability` 再生成（追加しない方針、Writer 判断で追加時は再生成必須）。
 
 ## Non-scope
 
@@ -97,7 +99,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 ## Acceptance Criteria
 
 - AC1: `SidebarLink.test.tsx` の新 test が「active link に現在地アクセント class あり / inactive link になし」を assert し green。アクセント合成を外す mutant（Scope 2 の `cn(...)` からアクセント定数を除去）で当該 test のみ red
-- AC2: `rg -n "amber-" src` が 0 hit（起票時 0 hit を維持。eslint glob 外の `src/components/ui|layout` を含めた唯一の機械 oracle）、`npm run lint` PASS
+- AC2: `rg -n "amber-" src --glob "*.{ts,tsx}"` が 0 hit（起票時 0 hit を維持。eslint glob 外の `src/components/ui|layout` を含めた唯一の機械 oracle。CSS の token 定義注釈は対象外）、`npm run lint` PASS
 - AC3: `git diff --name-only` に `StatusChips.tsx` / `segmented-control.tsx` / `ModeTabs.tsx` が含まれない、`segmented-control.test.tsx` green
 - AC4: `PluNotificationBar.test.tsx` が icon（`svg`）描画と 3 種の非描画条件を assert し green。icon 除去 mutant で icon test のみ red
 - AC5: `rg -n "DSR-21" docs/design-system/01-decision-rules.md docs/design-system/02-component-catalog.md docs/quality/review-checklist.md docs/function-design/52-ui-shared-layout.md docs/design-system/README.md` が各 file ≥1 hit、`bash scripts/doc-consistency-check.sh` PASS
