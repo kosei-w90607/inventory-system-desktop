@@ -4,7 +4,7 @@ DSR-17 分類②④の実装（PR #24、archived）は `<main>` の復元を主�
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 1d9c577
@@ -25,6 +25,8 @@ Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-g
 2026-09-02: Writer（Codex）が worktree isolation で content commit + Implementation Results 記録 commit を積み Draft PR #29 を作成（frontend gate / `cargo check --release` / L1 full RESULT=PASS、exact SHA と evidence は PR body を正とする）。Writer の mutation 自己検証は Codex 安全審査で注入不可となり Coordinator 裁定でスキップ（relay 2/2 消費）。Final Review round 1 = P1/P2 = 0 / P3 2、Coordinator mutation 独立再実測 X1〜X5 全 kill（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = Writer 最終 commit。次 = owner Windows native L3（介入 2/3）。
 
 2026-09-02: owner Windows native L3（PR #29 comment 5508055961、run identity = human-confirm 遷移 HEAD、`L3_SYNC=PASS`）= 手順 1〜5 全 PASS（sidebar 途中 scroll からの sidebar 遷移 / 一覧→詳細→戻り / 主ナビ先頭表示 / アプリ再起動後の起動時 sweep）。補足観察の「詳細 route で sidebar active 表示が一時的に外れる」は既存の exact pathname active 契約どおりで scroll 位置は不変、本 change の対象外。介入 2/3 消費。`human-confirm -> ready-hosted-final` を本 state-only commit で遷移（post-impl state-only 2/2）、Ready 化・hosted final 確認・merge は Coordinator 代行（介入 3/3）。
+
+2026-09-02: Coordinator が PR #29 を Ready 化、hosted final success（exact HEAD = ready-hosted-final 遷移 commit `5dd8a08`、PR head・remote ref・run head の三点一致成立、content は `8b02cf3`）、squash merge `2964c5e`（2026-09-02、Ready と merge は owner 委任で Coordinator 代行）。実績 = 介入 2/3（起票選定 + L3、Ready・merge は Coordinator 代行）・relay 2/2・post-impl state-only 2/2。closeout で archive へ移動。
 
 ## Owner Effort Budget
 
@@ -115,7 +117,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **Why（app 契約の背景）置換後の全文**（既存 1 文目のみ変更、残りは無変更）:
 
-> 本アプリは persistent な `<main>`（`src/components/layout/RootLayout.tsx`、RootLayout 構成の正本は [52-ui-shared-layout.md §52.1](../function-design/52-ui-shared-layout.md#521-コンポーネント構成)）が route content の唯一の scroll container である（sidebar の Radix `ScrollArea` viewport は chrome の scroll container であり、これとは別枠 — (j) 参照）。route 遷移で `<main>` は unmount されないため、scroll 位置を明示的に扱わないと stale scroll が全画面へ持ち越される。一方、mount 一律の先頭 scroll は一覧→詳細→戻りの位置を失わせることが PR #15 Amendment 2 で実証され、revert 済みである。操作結果の可視性、戻り導線の連続性、主ナビゲーションの予測可能な初期表示を両立するには、mount ではなく遷移の契機ごとに発火条件を分ける必要がある。
+> 本アプリは persistent な `<main>`（`src/components/layout/RootLayout.tsx`、RootLayout 構成の正本は [52-ui-shared-layout.md §52.1](../../function-design/52-ui-shared-layout.md#521-コンポーネント構成)）が route content の唯一の scroll container である（sidebar の Radix `ScrollArea` viewport は chrome の scroll container であり、これとは別枠 — (j) 参照）。route 遷移で `<main>` は unmount されないため、scroll 位置を明示的に扱わないと stale scroll が全画面へ持ち越される。一方、mount 一律の先頭 scroll は一覧→詳細→戻りの位置を失わせることが PR #15 Amendment 2 で実証され、revert 済みである。操作結果の可視性、戻り導線の連続性、主ナビゲーションの予測可能な初期表示を両立するには、mount ではなく遷移の契機ごとに発火条件を分ける必要がある。
 
 **Why（library 観測事実、TanStack Router 1.168.23）置換後の全文**（「唯一の scroll container」表現の修正 + 末尾に document capture listener の観測事実を追記）:
 

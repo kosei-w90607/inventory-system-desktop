@@ -14,6 +14,7 @@
 
 ## 直近の完了
 
+- [x] **PR #29 sidebar viewport の scroll restoration 除外（復元対象を main に限定、DSR-17 (j) 新設）**（R3、PR #29 @ inventory-system-desktop squash merge `2964c5e`、2026-09-02）: `@tanstack/router-core` 1.168.15 の document capture listener が sidebar の Radix ScrollArea viewport も cache・復元していた欠陥（PR #28 L3 起源）を、`app-router.ts` の `pruneScrollRestorationEntries`（router 生成直後の全 key sweep + 各 `onBeforeLoad` の遷移元 key prune、`<main>` selector のみ allowlist、null cache no-op）で是正 + SP1〜SP4 契約 test + DSR-17 Why/(c) の「唯一の scroll container」を route content 限定へ訂正 + (j) 新設。Backlog 記載の第一是正案（`data-scroll-restoration-id` 付与）は起票時実読で除外にならないと反証済み。Plan Gate 2 round 収束、Writer = Codex worktree isolation（mutation 自己検証は Codex 安全審査で注入不可のためスキップ）、Final Review 1 round P1/P2 = 0、Coordinator mutation 独立再実測 X1〜X5 全 kill、owner Windows native L3 手順 1〜5 全 PASS（再起動後の起動時 sweep 含む、comment 5508055961）、hosted final success・三点一致。実績 = 介入 2/3（起票選定 + L3、Ready・merge は Coordinator 代行）・relay 2/2・post-impl state-only 2/2。証跡: [archived Packet](archive/plans/2026-09-02-sidebar-scroll-restoration-exclusion.md) / [Matrix](archive/plans/test-matrices/2026-09-02-sidebar-scroll-restoration-exclusion.md)
 - [x] **PR #28 wave 8 lane 1: 現在地アクセント DSR-21 正本化 + SidebarLink 実装 + PLU 通知バー icon**（R2、PR #28 @ inventory-system-desktop squash merge `0b32547`、2026-09-02）: DSR-21「現在地と選択状態の色分離」を 01-decision-rules へ新設（『UIデザインの教科書［新版］』5-3 を Why に引用）+ catalog L300-301 / 52 §52.6 / README 索引 / review-checklist カテゴリ 9 同期 + `selection-tone.ts` に `CURRENT_LOCATION_ACCENT`（`border-l-primary`）+ SidebarLink の active に Primary 左端バー + PluNotificationBar に `AlertTriangle`。L3 3 round（round 1 = TanStack `<Link>` の className 連結で `border-l-transparent` が CSS 順で勝ち不視認 / round 2 = 同根で全周枠の経路差 → base から border 色 class を全て外し両経路の class 集合を同一化 + parity oracle / round 3 = 全 PASS、一時 probe で sidebar 跳びの機序 H2 を確定）。Final Review 3 round P1/P2 = 0、hosted final success・三点一致。実績 = 介入 4/5・relay 2/2（Writer は Codex → Sonnet subagent へ切替）・gated amendment 2 件。証跡: [archived Packet](archive/plans/2026-09-02-ui-current-location-accent.md)
 - [x] **PR #27 wave 8 lane 2: 棚卸しカウントの数量空欄ガード**（R3、PR #27 @ inventory-system-desktop squash merge `e4382b0`、2026-09-02）: `saveCount()` の `Number("")===0` 素通りで actual_count=0 がサイレント保存される欠陥を trim 空判定の FieldError「数量を入力してください」で遮断（明示 0 は従来どおり保存、保存ボタン disabled 化は ST-C5-D1 で不採用）+ 73 §73.5 / §73.9 同期 + T-C5-1〜4。Plan Gate 2 round 収束、Final Review P1/P2/P3 = 0、mutation 独立再実測 X1〜X4 全 kill、owner L3 AC6 全 PASS、hosted final success・三点一致。実績 = 介入 3/3・relay 1/2・forward state-only 3/3。証跡: [archived Packet](archive/plans/2026-09-02-stocktake-empty-count-guard.md) / [Matrix](archive/plans/test-matrices/2026-09-02-stocktake-empty-count-guard.md)
 - [x] **PR #26 操作ログ producer 実効化（record_type / record_id 4 producer 書込み + 関連記録 link 実データ発火）**（R3 キュー最終、PR #26 @ inventory-system-desktop squash merge `818c9b1`、2026-09-01）: 入庫・返品交換・手動販売・廃棄の操作ログ detail_json へ §74.9 許可リストどおりの `record_type` + 実 PK の `record_id` を書込み（manual_sale は `sale_id` → `record_id` 一本化、DTO `ManualSaleCreateResult.sale_id` は非接触）+ producer 個別の実 SQLite E2E 契約 test（Coordinator mutation M1〜M5 独立再実測 全 kill）+ 74/65/FUNCTION_DESIGN の producer 記述 drift 是正（csv_import / stocktake は owner 裁定で据置明記）。owner Windows native L3 全 PASS — L3-5 で PR #23 L3-3 waiver の引き継ぎ義務を解消。証跡: [archived Packet](archive/plans/2026-09-01-oplog-producer-impl.md) / [Matrix](archive/plans/test-matrices/2026-09-01-oplog-producer-impl.md)
@@ -42,7 +43,6 @@
 
 ## 次の行動
 
-- [ ] sidebar viewport の scroll restoration 除外（R3）: PR #24 の `scrollRestoration: true` で sidebar の Radix `ScrollArea` viewport も route 別に復元される欠陥（PR #28 L3 round 2〜3 実観測、`scrollTop 100 → 0` / `0 → 100`、comment 5502166679）の是正。Backlog に記録していた第一是正案（sidebar viewport への `data-scroll-restoration-id` 付与）は起票時実測で不成立と確定（selector が positional から attribute に変わるだけで cache・復元対象から外れない）。採用は app 層 allowlist prune（router 生成時 + 各 `onBeforeLoad` で `<main>` 以外の cache entry を削除、DSR-17 (j) 追記）。[active packet](plans/2026-09-02-sidebar-scroll-restoration-exclusion.md) / [Matrix](plans/test-matrices/2026-09-02-sidebar-scroll-restoration-exclusion.md)
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -137,6 +137,7 @@
 
 ## 最近の archive
 
+- [2026-09-02 sidebar viewport の scroll restoration 除外](archive/plans/2026-09-02-sidebar-scroll-restoration-exclusion.md)
 - [2026-08-29 UI 表示磨き batch 第 1 弾 + DSR-16](archive/plans/2026-08-29-ui-polish-batch.md)
 - [2026-08-29 入出庫履歴 6 種対称化 実装](archive/plans/2026-08-29-records-six-symmetry-impl.md)
 - [2026-08-29 入出庫履歴 6 種対称化 Design Phase](archive/plans/2026-08-29-inventory-records-six-symmetry-design.md)
