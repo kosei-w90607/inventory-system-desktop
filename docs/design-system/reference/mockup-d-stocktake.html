@@ -41,8 +41,9 @@ h3{font-size:18px;line-height:1.4;font-weight:600;margin:0}
 .summary-card.warn .val{color:var(--warn-strong)}
 .summary-card .lbl svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-3px;margin-right:4px}
 .summary-card .warn-sub{margin-top:4px}
-/* ===== A': 枠なしサマリ帯 1 本（owner 所感「カードの多用」対応、DSR-16 の囲み削減） ===== */
-.aprime{background:var(--accent);border-radius:8px;overflow:hidden}
+/* ===== A': 枠なしサマリ帯 1 本（owner 所感「カードの多用」対応、DSR-16 の囲み削減）。
+   外周に 1 本だけ 3:1 の枠（--d-ctl、border-strong 候補値 8a8480、対 --bg 実測 3.53:1）を付ける — カード 3 枚の枠を 1 本へ減らす意図のため囲みは増えない ===== */
+.aprime{background:var(--accent);border:1px solid var(--d-ctl);border-radius:8px;overflow:hidden}
 .aprime-row{display:flex;flex-wrap:wrap}
 .aprime-item{flex:1 1 140px;padding:16px 20px}
 .aprime-item + .aprime-item{border-left:1px solid var(--d-line)}
@@ -50,7 +51,9 @@ h3{font-size:18px;line-height:1.4;font-weight:600;margin:0}
 .aprime-item .val{display:flex;align-items:center;gap:6px;font-size:28px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
 .aprime-item .val.warn{color:var(--warn-strong)}
 .aprime-item .val svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
-.aprime-progress{height:6px;background:var(--card)}
+/* track は --bg（canonical --background #fafaf9）を使う。--card はこの mockup では demo 値 #fff で、
+   canonical --card #f5f5f4 は帯背景 --accent と同値になり track が消える（O-P3-1） */
+.aprime-progress{height:6px;background:var(--bg)}
 .aprime-progress i{display:block;height:100%;background:var(--primary)}
 /* ===== B: 見出しの役割分離 + Separator 付きの器 ===== */
 .b-box{border:1px solid var(--d-line);border-radius:8px;padding:16px}
@@ -144,7 +147,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
     </div>
     <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
   </div>
-  <p class="note"><b>1'.</b> owner の「カードの多用」懸念を受け、A のカード 3 枚を枠なしの淡い stone 背景（`--accent`）1 段へ統合。区切りは余白 + 細い縦罫（`--d-line`）のみで、カード枠を反復しない（DSR-16 の囲み削減）。数値は大きく・ラベルは小さく muted のまま維持し、progress bar は帯の下辺に沿わせて器を 1 つにまとめる。未入力の値は A と同じく icon 併記で色だけに頼らない（DSR-08）。<b>これを採ると何が変わるか</b>: 視覚的な「箱」の数が A の 3 枚 + 進捗バーから帯 1 枚へ減り、囲みの反復感が薄れる。数値サイズ・語彙は A と同一。<b>Coordinator 推奨</b>: A' を既定案とする（同じ情報量で囲みが少ない）。</p>
+  <p class="note"><b>1'.</b> owner の「カードの多用」懸念を受け、A のカード 3 枚を枠なしの淡い stone 背景（`--accent`）1 段へ統合。カード枠 3 本は反復しないが、帯自体が背景（`--accent` #f5f5f4）と地色（`--bg` #fafaf9）で識別できるよう外周に 3:1 の枠 1 本（`--d-ctl`、border-strong 候補値 8a8480、対 `--bg` 実測 3.53:1）を付ける（DSR-22 原則 13。囲みはカード 3 本 → 帯 1 本のみで DSR-16 の削減意図は変わらない）。区切りは余白 + 細い縦罫（`--d-line`）のみ。数値は大きく・ラベルは小さく muted のまま維持し、progress bar は帯の下辺に沿わせて器を 1 つにまとめる。未入力の値は A と同じく icon 併記で色だけに頼らない（DSR-08）。<b>これを採ると何が変わるか</b>: 視覚的な「箱」の数が A の 3 枚 + 進捗バーから帯 1 枚（外周枠 1 本）へ減り、囲みの反復感が薄れる。数値サイズ・語彙は A と同一。<b>Coordinator 推奨</b>: A' を既定案とする（同じ情報量で囲みが少ない）。</p>
 </div>
 
 <div class="variant">
@@ -274,6 +277,6 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 </ol>
 </div>
 
-<div class="note">位置付け: 正本は `04-backbone.md` 原則 13〜16 / `01-decision-rules.md` DSR-22 / `02-component-catalog.md` ⑯・②サマリカード。A' は owner「カードの多用」懸念を受けた対案（枠なし帯 1 本、背景 `--accent` #f5f5f4）で Coordinator 推奨。帯上のテキストは WCAG 相対輝度で実測済み: 通常値 `--fg` #1c1917 は対 #f5f5f4 16.0:1、未入力の warning 値 `--warn-strong` #78350f は対 #f5f5f4 実測 8.32:1、ラベル `--muted` #57534e は対 #f5f5f4 実測 6.99:1 — いずれも AA 4.5:1 を上回る。増減・不整合の色は `00-foundations.md` の既存 Warning（`--warning` amber-600 #d97706 系、強調テキストは `--warning-strong` #78350f）/ Destructive（`--destructive` red-700 #b91c1c 系、強調テキストは `--destructive-strong` #7f1d1d）に合わせて本 mockup の CSS 変数を訂正した。データは合成値（実店舗の商品名・価格・取引先名を含まない）。sidebar / PageHeader / ボタンの見た目は本 mockup の対象外。</div>
+<div class="note">位置付け: 正本は `04-backbone.md` 原則 13〜16 / `01-decision-rules.md` DSR-22 / `02-component-catalog.md` ⑯・②サマリカード。A' は owner「カードの多用」懸念を受けた対案（枠なし帯 1 本、背景 `--accent` #f5f5f4）で Coordinator 推奨。**本 mockup の palette は demo 値（`--fg` / `--warn-strong` / `--muted` 等）で、canonical token（`src/styles/globals.css`）と数値が一致するものと一致しないものが混在する** — `--fg` #1c1917 は canonical `--foreground` #1c1917 と同値、`--warn-strong` #78350f は canonical `--warning-strong` #78350f と同値だが、`--muted` #57534e は canonical `--muted-foreground` #78716c とは**異なる demo 専用の値**。帯上テキストは canonical token を基準に WCAG 相対輝度で実測（`src/styles/globals.css` の `--background` #fafaf9 / `--card` #f5f5f4 を使用）: `--foreground` #1c1917 は対 `--card` 16.0:1、`--warning-strong` #78350f は対 `--card` 8.32:1（いずれも AA 4.5:1 を上回る）。**ラベルは canonical `--muted-foreground` #78716c で計算すると対 `--card` 4.40:1 = AA 未達**（本 mockup の demo 値 `--muted` #57534e では 6.99:1 と誤って上回って見えるが、これは demo palette 起源の誤差であり `00-foundations.md:18` の既存実測「4.59:1（対 `--background`）/ 4.40:1（対 `--card`、AA 未達）」と整合する）。実装時は `--foreground` 系へ上げるか帯背景を `--background` に寄せるかのいずれかで是正する（Lane 2 申し送り、packet 参照）。増減・不整合の色は `00-foundations.md` の既存 Warning（`--warning` amber-600 #d97706 系、強調テキストは `--warning-strong` #78350f）/ Destructive（`--destructive` red-700 #b91c1c 系、強調テキストは `--destructive-strong` #7f1d1d）に合わせて本 mockup の CSS 変数を訂正した。データは合成値（実店舗の商品名・価格・取引先名を含まない）。sidebar / PageHeader / ボタンの見た目は本 mockup の対象外。</div>
 </div>
 </body></html>

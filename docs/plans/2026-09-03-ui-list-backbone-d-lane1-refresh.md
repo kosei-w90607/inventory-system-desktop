@@ -263,6 +263,8 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 
 **この節は Final Review round 1 Coordinator 裁定（S-P2-1、`#`/backtick の有無で DS1/DS3 検査対象から意図的に外す表記）を撤回して置き換えたものである。** Codex（Human Gate 後の PR #31 review、P2-2）が、その表記細工は恒久的 false-green の温床になると指摘し、未実装候補（token 提案値・`ListShell` path）は canonical docs（00-foundations.md / 04-backbone.md / 02-component-catalog.md）から完全に撤去した（候補値は本 packet「設計判断」節 / `docs/design-system/reference/2026-08-23-current-design-analysis.md`「2026-09-03 提案値」節、mockup CSS に保持）。Lane 2 への申し送りは次のとおり: `--border-strong` / `--row-current` を `globals.css` `:root` に実装した時点で、00-foundations.md のカラーパレット表へ正式登録し DS3 の突合対象に含める。`src/components/patterns/ListShell.tsx` を新設した時点で、02-component-catalog.md ⑯ の canonical 記載を backtick 付き `` `src/components/patterns/ListShell.tsx` `` へ戻し DS1 の対象化する。
 
+- **A' 帯ラベルのコントラスト不足（Opus round 6 O-P1-1）**: `mockup-d-stocktake.html` の A' 帯ラベルは mockup demo 値 `--muted` #57534e（対 `--card` 実測 6.99:1）で描いているが、canonical `--muted-foreground` #78716c で計算すると対 `--card`（#f5f5f4）実測 **4.40:1（AA 未達）**（`00-foundations.md:18` の既存実測と整合）。Lane 2 実装時は、ラベル文字色を `--foreground` 系へ上げるか、帯背景を `--background`（#fafaf9、`--muted-foreground` 対比 4.59:1）に寄せるかのいずれかで是正する。
+
 ## Acceptance Criteria
 
 - 差分表（起票時実測節）が旧 Lane 1 の 6 成果 + 追加発見 2 件（件数文言 / DSR-16 宙ぶらりん 3 箇所）を漏れなく現状判定している。
@@ -482,6 +484,10 @@ Writer（Sonnet subagent、worktree isolation）が Lane 1a の規範文一式 +
 - owner Human Gate 会話裁定（`### Gated Amendment 1` に dated sub-list として append）: 進捗 header に A' 案（枠なし帯 1 本、Coordinator 推奨）を追加し `mockup-d-stocktake.html` を 4 段構成へ拡張、A' 帯上テキストのコントラストを WCAG 相対輝度で実測（`--fg` 対 `--accent` 16.0:1 / `--warn-strong` 対 `--accent` 8.32:1 / `--muted` 対 `--accent` 6.99:1）。完了画面は C に確定し未決項目から除去。指標順は現状維持。色は 00-foundations.md の既存 Warning/Destructive 割当（`:24-34`）をそのまま棚卸し完了画面へ適用する形で明記し、mockup C の CSS 変数実値が既存 token（`--destructive-strong` #7f1d1d、`--success-emphasis` #16a34a）と不一致だったため訂正した（旧 `--bad-strong` #991b1b、`--ok-strong` #14532d は誤り）。
 
 **gate 実測（round 4 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 3 の WARN セットと diff 0 行）。DS1/DS3 とも引き続き `[INFO]` のみ。`--target plan` → `結果: 全チェック通過`。全 AC oracle 再実行し期待値どおり。prettier `--check` は本ラウンド touched 全 5 file で整形済み。
+
+**Opus round 6 是正（P1 1 / P2 3 / P3 1、Coordinator 全件 accept）**: round 5 の A' 帯 contrast 注記が mockup demo palette（`--muted` #57534e）を使っており canonical `src/styles/globals.css` の `--muted-foreground`（#78716c）と数値が異なっていた。WCAG 相対輝度公式で canonical token を独立に再計算: `--foreground` #1c1917 対 `--card` #f5f5f4 = 16.0:1、`--warning-strong` #78350f 対 `--card` = 8.32:1（demo 値と一致）、`--muted-foreground` #78716c 対 `--card` = **4.40:1（AA 未達、`00-foundations.md:18` の既存実測と一致）**。mockup note を demo/canonical 明示の書式へ全面改稿し、is-且つ is-not 一致トークンを列挙、Lane 2 申し送りへ是正方針（`--foreground` 系へ上げる／帯背景を `--background` に寄せる）を追記（O-P1-1）。DSR-22 Why の「枠線か文字色のどちらかで 3:1」を AND 条件表現「境界で 3:1、文字は別途 1.4.3 の 4.5:1」へ整合（O-P2-1、`rg -c "どちらかで"` = 0 確認）。A' 帯（`.aprime`）に外周 3:1 枠（`--d-ctl` 8a8480、対 `--bg` 実測 3.53:1）を追加し囲み数は変えず可視化（O-P2-2）。DSR-22 mapping の入出庫履歴行に実列順（`InventoryRecordsPage.tsx:300-306` = 種別/記録ID/業務日付/代表商品/明細数/状態/記録日時、非隣接・非先頭）と Lane 3〜5 の並べ替え注記（header 配列一致 test 更新含む）を追加（O-P2-3、L3 再判定注記は維持）。`.aprime-progress` の track 色を demo `--card`（#fff）から `--bg`（canonical `--background` 相当）へ変更し、canonical では `--card` が帯背景と同値（#f5f5f4）になり track が消える問題を回避（O-P3-1）。
+
+**gate 実測（round 5 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 4 の WARN セットと diff 0 行）。DS1/DS3 とも引き続き `[INFO]` のみ。`--target plan` → `結果: 全チェック通過`。全 AC oracle 再実行し期待値どおり。prettier `--check` は本ラウンド touched 全 3 file で整形済み。
 
 Human Gate（owner の mockup 2 file 視認 + Ready 後の workflow_dispatch + merge）と Reviewed Content HEAD の確定は未実施（Coordinator/owner の後続作業）。PR は未作成のため PR link は Coordinator が別途記録する。
 
