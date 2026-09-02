@@ -319,9 +319,10 @@ Contract ID: SPEC-DSR17-SIDEBAR-SCROLL-EXCLUSION-2026-09-02
 
 ## Implementation Results
 
-Fill after implementation.
-
-Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+- `pruneScrollRestorationEntries` を追加し、router 生成直後の全 key sweep と `onBeforeLoad` の遷移元 key prune を配線した。`<main>` entry は保持し、sidebar 等の non-main selector entry だけを削除する。
+- SP1〜SP4 と既存 regression を実装・確認した。SP4 は sessionStorage access を事前に失敗させる precondition が成立し、実 `scrollRestorationCache === null` 経路を採用した（fallback 注入は不使用）。
+- DSR-17 Why / (c) の scroll container 表現を route content 限定へ訂正し、(j) の allowlist prune 契約と更新履歴を反映した。
+- Draft PR: [#29](https://github.com/kosei-w90607/inventory-system-desktop/pull/29)
 
 ## Review Response
 

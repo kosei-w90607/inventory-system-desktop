@@ -1,4 +1,4 @@
-import { getElementScrollRestorationEntry } from "@tanstack/router-core";
+import { getElementScrollRestorationEntry, scrollRestorationCache } from "@tanstack/router-core";
 import { createRouter, type ParsedLocation, type RouterHistory } from "@tanstack/react-router";
 
 import { RouteErrorFallback } from "@/components/patterns/RouteErrorFallback";
@@ -10,6 +10,25 @@ const MAIN_SCROLL_SELECTOR = '[data-scroll-restoration-id="main"]';
 
 export function getAppScrollRestorationKey(location: ParsedLocation): string {
   return location.href;
+}
+
+/** DSR-17 (j): <main> 以外の selector entry を cache から除去する（key 未指定 = 全 key） */
+export function pruneScrollRestorationEntries(
+  key?: string,
+  cache: typeof scrollRestorationCache = scrollRestorationCache,
+): void {
+  if (!cache) return;
+  cache.set((state) => {
+    const keys = key === undefined ? Object.keys(state) : [key];
+    for (const k of keys) {
+      const entry = state[k] as (typeof state)[string] | undefined;
+      if (!entry) continue;
+      for (const selector of Object.keys(entry)) {
+        if (selector !== MAIN_SCROLL_SELECTOR) Reflect.deleteProperty(entry, selector);
+      }
+    }
+    return state;
+  });
 }
 
 export function applyMainNavScroll(locationHref: string): boolean {
@@ -30,11 +49,15 @@ export function createAppRouter(options: { history?: RouterHistory } = {}) {
     scrollToTopSelectors: [MAIN_SCROLL_SELECTOR],
     ...(options.history === undefined ? {} : { history: options.history }),
   });
+  pruneScrollRestorationEntries();
 
   let cancelDelayedRestoration: (() => void) | undefined;
 
-  appRouter.subscribe("onBeforeLoad", () => {
+  appRouter.subscribe("onBeforeLoad", (event) => {
     cancelDelayedRestoration?.();
+    if (event.fromLocation) {
+      pruneScrollRestorationEntries(getAppScrollRestorationKey(event.fromLocation));
+    }
   });
 
   appRouter.subscribe("onRendered", () => {

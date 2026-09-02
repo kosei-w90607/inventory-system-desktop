@@ -1,9 +1,14 @@
 import { createMemoryHistory, RouterProvider, type ParsedLocation } from "@tanstack/react-router";
-import { getElementScrollRestorationEntry } from "@tanstack/router-core";
+import { getElementScrollRestorationEntry, scrollRestorationCache } from "@tanstack/router-core";
 import { act, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { applyMainNavScroll, createAppRouter, getAppScrollRestorationKey } from "./app-router";
+import {
+  applyMainNavScroll,
+  createAppRouter,
+  getAppScrollRestorationKey,
+  pruneScrollRestorationEntries,
+} from "./app-router";
 import { consumeMainNavScroll, markMainNavScroll } from "./main-nav-scroll";
 
 const MAIN_SELECTOR = '[data-scroll-restoration-id="main"]';
@@ -66,6 +71,10 @@ vi.mock("@/features/inventory-records/InventoryRecordsPage", async () => {
 
 vi.mock("@/features/inventory-records/ReceivingRecordDetailPage", () => ({
   ReceivingRecordDetailPage: () => <div>receiving record detail route</div>,
+}));
+
+vi.mock("@/features/stock-inquiry/StockInquiryPage", () => ({
+  StockInquiryPage: () => <div>stock inquiry route</div>,
 }));
 
 function locationWith(href: string, historyKey: string): ParsedLocation {
@@ -423,5 +432,95 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     });
     expect(main.scrollTop).toBe(0);
     expect(clamp.requestedTops.filter((top) => top === 390)).toHaveLength(1);
+  });
+
+  it("SP1: startup sweep prunes non-main entries across all keys", () => {
+    // DSR-17 (j) / D-G: startup removes every non-main selector from every key.
+    if (scrollRestorationCache === null) throw new Error("scroll restoration cache is required");
+    const stockMain = { scrollX: 1, scrollY: 101 };
+    const itemsMain = { scrollX: 2, scrollY: 202 };
+    const positionalSelector = "div:nth-child(2) > nav:nth-child(1)";
+    scrollRestorationCache.set(() => ({
+      "/stock": {
+        '[data-scroll-restoration-id="main"]': stockMain,
+        [positionalSelector]: { scrollX: 3, scrollY: 303 },
+      },
+      "/items": {
+        '[data-scroll-restoration-id="main"]': itemsMain,
+        [positionalSelector]: { scrollX: 4, scrollY: 404 },
+      },
+    }));
+
+    createAppRouter();
+
+    expect(scrollRestorationCache.state["/stock"]['[data-scroll-restoration-id="main"]']).toEqual(
+      stockMain,
+    );
+    expect(scrollRestorationCache.state["/items"]['[data-scroll-restoration-id="main"]']).toEqual(
+      itemsMain,
+    );
+    expect(scrollRestorationCache.state["/stock"][positionalSelector]).toBeUndefined();
+    expect(scrollRestorationCache.state["/items"][positionalSelector]).toBeUndefined();
+  });
+
+  it("SP2: onBeforeLoad prunes only the fromLocation key", async () => {
+    // DSR-17 (j) / D-G: the first load has no fromLocation; later pruning is source-key only.
+    if (scrollRestorationCache === null) throw new Error("scroll restoration cache is required");
+    const { router } = await renderAppRouterAt("/stock");
+    expect(router.stores.resolvedLocation.get()?.href).toBe("/stock");
+
+    const stockMain = { scrollX: 5, scrollY: 505 };
+    const itemsMain = { scrollX: 6, scrollY: 606 };
+    const positionalSelector = "div:nth-child(2) > nav:nth-child(1)";
+    const itemsPositional = { scrollX: 7, scrollY: 707 };
+    scrollRestorationCache.set(() => ({
+      "/stock": {
+        '[data-scroll-restoration-id="main"]': stockMain,
+        [positionalSelector]: { scrollX: 8, scrollY: 808 },
+      },
+      "/items": {
+        '[data-scroll-restoration-id="main"]': itemsMain,
+        [positionalSelector]: itemsPositional,
+      },
+    }));
+
+    const sidebarViewport = document.createElement("div");
+    sidebarViewport.style.overflow = "auto";
+    document.body.append(sidebarViewport);
+    sidebarViewport.scrollTop = 77;
+    sidebarViewport.dispatchEvent(new Event("scroll", { bubbles: true }));
+
+    await act(async () => {
+      await router.navigate({ to: "/items" as never });
+    });
+
+    expect(scrollRestorationCache.state["/stock"]['[data-scroll-restoration-id="main"]']).toEqual(
+      stockMain,
+    );
+    expect(Object.keys(scrollRestorationCache.state["/stock"] ?? {})).toEqual([
+      '[data-scroll-restoration-id="main"]',
+    ]);
+    expect(scrollRestorationCache.state["/items"]['[data-scroll-restoration-id="main"]']).toEqual(
+      itemsMain,
+    );
+    expect(scrollRestorationCache.state["/items"][positionalSelector]).toEqual(itemsPositional);
+  });
+
+  it("SP3: main entry survives prune", () => {
+    // DSR-17 (j) / D-G: the main selector and its coordinates are preserved verbatim.
+    if (scrollRestorationCache === null) throw new Error("scroll restoration cache is required");
+    const mainEntry = { scrollX: 9, scrollY: 909 };
+    scrollRestorationCache.set(() => ({
+      "/a": {
+        '[data-scroll-restoration-id="main"]': mainEntry,
+        "div:nth-child(3) > aside:nth-child(1)": { scrollX: 10, scrollY: 1_010 },
+      },
+    }));
+
+    pruneScrollRestorationEntries("/a");
+
+    expect(scrollRestorationCache.state["/a"]['[data-scroll-restoration-id="main"]']).toEqual(
+      mainEntry,
+    );
   });
 });
