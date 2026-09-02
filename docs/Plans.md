@@ -44,8 +44,9 @@
 
 ## 次の行動
 
-- [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）。候補に「ページ送りの表上下両配置」「perPage 選択肢の 40 刻み化」を追加（棚卸しカウント画面の磨き batch 起票時実測起源、2026-09-02、backlog 参照）
-  - owner 方針（2026-09-02）: ④ は全一覧画面を一律整備する。現状は画面ごとに perPage が固定値のままバラバラで、`Select` による選択肢を持つのは商品一覧のみ（`ManualSalePage.tsx:63,75` `per_page: 10`/`5`、`useStocktakeItems.ts:9` `STOCKTAKE_PER_PAGE = 200`、`ReturnExchangePage.tsx:66` `per_page: 10`、`useStockInquiry.ts:63` `per_page: 50`、`IntegrityCheckPage.tsx:44,81` `PER_PAGE = 100` / `per_page: 1`、`StocktakePage.tsx:105` `per_page: 10`、`DisposalPage.tsx:62` `per_page: 10`、`stock-movements/types.ts:52` `MOVEMENTS_PER_PAGE = 20`、`ReceivingPage.tsx:57` `per_page: 10`、`OperationLogsPage.tsx:32` `PER_PAGE = 20`、`InventoryRecordsPage.tsx:43` `PER_PAGE = 20`）。catalog ⑩ を単一規約として全画面へ一括適用し、perPage 選択肢の刻み・ページ送りの上下配置もその中で裁定する
+- [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）。旧 Draft PR #2（`agent/ui-list-backbone-d` branch、2026-08-23、main から 163 commit 遅れ）は本 packet で superseded。候補に「ページ送りの表上下両配置」「perPage 選択肢の 40 刻み化」を追加（棚卸しカウント画面の磨き batch 起票時実測起源、2026-09-02、backlog 参照）
+  - owner 方針（2026-09-02）: ④ は全一覧画面を一律整備する。現状は画面ごとに perPage が固定値のままバラバラで、`Select` による選択肢を持つのは商品一覧のみ（`ManualSalePage.tsx:63,75` `per_page: 10`/`5`、`useStocktakeItems.ts:9` `STOCKTAKE_PER_PAGE = 200`、`ReturnExchangePage.tsx:66` `per_page: 10`、`useStockInquiry.ts:63` `per_page: 50`、`IntegrityCheckPage.tsx:44,81` `PER_PAGE = 100` / `per_page: 1`、`StocktakePage.tsx:105` `per_page: 10`、`DisposalPage.tsx:62` `per_page: 10`、`stock-movements/types.ts:52` `MOVEMENTS_PER_PAGE = 20`、`ReceivingPage.tsx:57` `per_page: 10`、`OperationLogsPage.tsx:32` `PER_PAGE = 20`、`InventoryRecordsPage.tsx:43` `PER_PAGE = 20`）。catalog ⑩ を単一規約として全画面へ一括適用し、perPage 選択肢の刻み・ページ送りの上下配置もその中で裁定する — deferral 2 件（上下両配置 / 40 刻み化）は下記 active packet（Lane 1 refresh）で裁定予定
+- [ ] ④ Lane 1 refresh active packet: [UI 一覧の背骨 D — Lane 1 refresh](plans/2026-09-03-ui-list-backbone-d-lane1-refresh.md)（現状同期 + 理論蒸留 + mockup D 更新、docs-only、2026-09-03 起票。Lane 1a = 本 packet〈規範文一式 + mockup 2 file: lists / stocktake〉、Lane 1b = 残り mockup 5 file の現状同期を後続 Lane 2 実装 PR に同乗）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
 ### Wave Registry
@@ -121,6 +122,7 @@
 - smoke E2E / visual regression の再評価トリガー（全画面横断 typography / density 変更時、Phase 3 の最初の画面横断 workflow 計画時、Phase 4 完了後の `v1.0.0` 候補前に再評価する契約。UI_TECH_STACK §7.2）。
 - Workflow 自走化 mechanical slice 2（PK4/PK5、drift grep test、hook 評価。design + implementation slice 1 は PR #162/#163 で完了、slice 2 は Appendix C として別 Plan Packet へ deferred）。
 - Workflow 自走化 第 3 層（自走ドライバ）: 単一エントリポイントが状態ファイル群から次の dependency-ready フェーズを決定 → 実行 → gate 通過で状態更新、を人間ゲートに当たるまでループする構想。前提 = 第 2 層完了、3 層構想の経緯は第 2 層着手時の Design Phase で decision-log / 設計書へ昇格予定。
+- 廃棄・破損画面にヘッダ備考（任意）がない（入庫 / 返品交換には備考あり、`64-ui-disposal.md` は明細の理由のみ。owner 所感 2026-09-03。DB 列追加を伴う R3 のため Lane 3〜5 で廃棄・破損画面を触る際に同乗候補、母集団は 35-biz と DB_DESIGN で裁定）
 
 ## ブロッカー
 

@@ -637,3 +637,12 @@ Use concise ADR-style entries.
 - 実装 PR の consumer 全数導出（SPEC-SUPI-D2）により、C21 も C22 と同一の 8 key 集合に確定した（集合の正本は D-052 Contract 行と `src/lib/invalidation-contract.ts`）。
 - Alternatives considered: 単独削除を同時提供する案（参照の扱いと誤操作時の回復が不明確で統合により主要場面を代替できるため不採用）; 商品管理エリアに置く案（日常の商品操作と低頻度の保守操作が混在するため不採用）; 約 80 社の事前一括投入（廃業・統廃合を含む維持コストが見合わないため D-075 の漸進補完を維持）; 住所・連絡先・問屋種別などを同時追加する案（現在の業務要求がなく speculative schema になるため不採用）。
 - Revisit: 同一実体ではない取引先間で履歴を分割・移管する要求が出たとき、問屋チャネルを発注業務として管理するとき、または誤統合の専用復元機能が必要になったとき。
+
+## D-079: UI 視覚系 change の座組（Sonnet Writer / Opus デザインレビュー専任 / Codex ロジックレビュー 1 回 / Fable 指揮）（2026-09-03）
+
+- Decision: UI 一覧の背骨 D — Lane 1 refresh から、design-only な UI 視覚系 change の座組を次のとおり owner 承認事実として記録する。Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断（owner 指示 2026-09-03）であり、`AGENT_OPERATING_MANUAL` §3 の独立性制約（Writer ≠ Plan Reviewer ≠ Final Reviewer、自己承認禁止）は維持する。実装 code の Writer 既定は変えない。Coordinator = Fable（指揮）、Writer = Claude Sonnet 5 subagent（design docs / mockup HTML、worktree isolation）、Plan Reviewer = Sonnet 独立 fresh context 一次 + Opus 5 のデザイン面レビュー（D-056 の read-only claims-producer 範囲、§5.4 低制約 profile）+ Fable 裁定、Final Reviewer = Codex（ロジック・整合面、PR review 1 回）+ Opus 5 デザイン面 + Fable 裁定。Opus は D-056 の read-only claims-producer であり、Writer・Coordinator・state 遷移管理には割り当てない。
+- Status: accepted（owner 承認 2026-09-03）
+- Why: owner 所感「UI 視覚系は Claude が触る方が良い結果」（2026-09-03）により、design docs Writer 役を Coordinator の役割配分判断として Claude Sonnet 5 subagent に割り当てる。一方、Opus 5 は D-056 で Writer / Coordinator を明示的に除外された read-only claims-producer 専任 slot であり、デザイン面の検出力を使う場合も Plan/Final Reviewer の一構成要素（read-only、発注書駆動）に留める必要がある。両者を混同すると D-056 の rollback 条件（process 契約を内面化させない）に抵触するため、座組を明文化して切り分ける。
+- Impact: 以後の UI 視覚系 design-only change は本 entry を座組の先例として引用できる。`AGENT_OPERATING_MANUAL` §3 の自己承認禁止（Writer と Plan/Final Reviewer の分離）は本座組でも独立 fresh context の Sonnet／Codex が担うことで維持する。実装 code（Lane 2〜5 等の R3）の Writer 割当ては本 entry の対象外で、既存分業（Codex 発注 or Sonnet subagent、change ごとに Coordinator 判断）のまま。
+- Alternatives considered: Opus 5 を Writer に格上げする案（D-056 accepted 時点の「read-only claims-producer 専任」を change ごとの owner 裁定なしに拡張することになり、既定の分業実績を崩すため不採用。Opus 5 デザイン面「レビュー」に留める）; Codex を Writer のまま維持する案（owner 所感と矛盾するため不採用）。
+- Revisit: Opus 5 の役割拡張が複数 change で反復要請される場合、または D-056 の rollback 条件に抵触する運用が観測された場合。

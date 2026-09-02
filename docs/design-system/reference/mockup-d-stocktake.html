@@ -1,0 +1,317 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>棚卸し画面 D — Lane 1 refresh</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+/* ===== token: 統合案 C / mockup-d-lists.html と同一（04-backbone） ===== */
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#e7e5e4;--accent:#f5f5f4;
+--primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
+--warn-soft:#fffbeb;--warn-border:#fde68a;--warn-strong:#78350f;--warn:#d97706;
+--bad-soft:#fef2f2;--bad-border:#fecaca;--bad-strong:#7f1d1d;--bad:#b91c1c;
+--ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#16a34a;--ok:#16a34a;
+--ring:#b45309;--d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#f5f5f4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+.top{position:sticky;top:0;z-index:50;padding:10px 16px;background:#292524;color:#fafaf9;font-size:14px}
+.top b{font-size:14px;letter-spacing:.04em}
+.top span{color:#d6d3d1;margin-left:8px}
+.page{padding:24px;display:flex;flex-direction:column;gap:32px;max-width:1080px;margin:0 auto}
+h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
+h2{font-size:20px;line-height:1.35;font-weight:600;margin:0 0 4px}
+h3{font-size:18px;line-height:1.4;font-weight:600;margin:0}
+.lead{color:var(--muted);font-size:14px;margin:0;max-width:920px}
+.variant{border:1px solid var(--d-line);border-radius:8px;padding:16px 20px;background:var(--card);display:flex;flex-direction:column;gap:12px}
+.v-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
+.v-label .tag{background:var(--accent);color:var(--fg);border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
+.v-label .tag.rec{background:var(--primary-soft);color:var(--warn-strong)}
+/* ===== 現行（実装ママの再現） ===== */
+.cur-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.cur-head h4{font-size:20px;font-weight:600;margin:0}
+.cur-head p{font-size:14px;color:var(--muted);margin:2px 0 0}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:9999px;white-space:nowrap;vertical-align:middle}
+.badge svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.b-warn{background:var(--warn-soft);border:1px solid var(--warn-border);color:var(--warn-strong)}
+.b-ok{background:var(--ok);color:#fff}
+.b-bad{background:var(--bad-soft);border:1px solid var(--bad-border);color:var(--bad-strong)}
+.progress{height:8px;border-radius:9999px;background:var(--accent);overflow:hidden}
+.progress > i{display:block;height:100%;background:var(--primary)}
+.filters-plain{display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:14px;color:var(--muted)}
+/* ===== A: サマリ帯（既存 SummaryCard を横並び） ===== */
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:720px){.summary-row{grid-template-columns:1fr}}
+.summary-card{border:1px solid var(--d-line);border-radius:8px;padding:12px 16px;background:#fff}
+.summary-card .lbl{font-size:14px;font-weight:500;color:var(--muted)}
+.summary-card .val{font-size:28px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.summary-card.warn .val{color:var(--warn-strong)}
+.summary-card .lbl svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-3px;margin-right:4px}
+.summary-card .warn-sub{margin-top:4px}
+/* ===== A': 枠なしサマリ帯 1 本（owner 所感「カードの多用」対応、DSR-16 の囲み削減）。
+   外周に 1 本だけ 3:1 の枠（--d-ctl、border-strong 候補値 8a8480、対 --bg 実測 3.53:1）を付ける — カード 3 枚の枠を 1 本へ減らす意図のため囲みは増えない ===== */
+.aprime{background:var(--accent);border:1px solid var(--d-ctl);border-radius:8px;overflow:hidden}
+.aprime-row{display:flex;flex-wrap:wrap}
+.aprime-item{flex:1 1 140px;padding:16px 20px}
+.aprime-item + .aprime-item{border-left:1px solid var(--d-line)}
+.aprime-item .lbl{font-size:14px;font-weight:500;color:var(--muted)}
+.aprime-item .val{display:flex;align-items:center;gap:6px;font-size:28px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.aprime-item .val.warn{color:var(--warn-strong)}
+.aprime-item .val svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+.aprime-item .val .aprime-frac{font-size:14px;font-weight:500;color:var(--muted);margin-left:2px}
+/* track は --bg（canonical --background #fafaf9）を使う。--card はこの mockup では demo 値 #fff で、
+   canonical --card #f5f5f4 は帯背景 --accent と同値になり track が消える（O-P3-1） */
+.aprime-progress{height:6px;background:var(--bg)}
+.aprime-progress i{display:block;height:100%;background:var(--primary)}
+/* ===== B: 見出しの役割分離 + Separator 付きの器 ===== */
+.b-box{border:1px solid var(--d-line);border-radius:8px;padding:16px}
+.b-box h4{font-size:20px;font-weight:600;margin:0}
+.b-box .sub{font-size:14px;color:var(--muted);margin:2px 0 12px}
+.sep{border:0;border-top:1px solid var(--d-line);margin:12px 0}
+/* ===== 完了画面: 現行 = Card 2 枚 ===== */
+.card{border:1px solid var(--d-line);border-radius:8px;background:#fff;padding:16px}
+.card .ct{font-size:14px;font-weight:500;color:var(--muted);margin:0 0 4px}
+.card .cv-lg{font-size:30px;font-weight:600;margin:0;font-variant-numeric:tabular-nums}
+.card .cv-sm{font-size:16px;font-weight:600;margin:0;font-variant-numeric:tabular-nums}
+.two-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.two-cards{grid-template-columns:1fr}}
+/* ===== 完了画面: C = 列を揃えた structured list（DSR-16 準拠） ===== */
+.dl-compare{border:1px solid var(--d-line);border-radius:8px;overflow:hidden}
+.dl-row{display:grid;grid-template-columns:1fr 1fr 1fr;font-size:16px}
+.dl-row + .dl-row{border-top:1px solid var(--d-line)}
+.dl-row > div{padding:10px 14px}
+.dl-row.head > div{font-size:14px;color:var(--muted);font-weight:600;background:var(--d-head)}
+.dl-row .num{text-align:right;font-variant-numeric:tabular-nums}
+.dl-row .up{color:var(--ok-strong)}
+.dl-row .down{color:var(--bad-strong)}
+table.diff{width:100%;border-collapse:separate;border-spacing:0;font-size:16px}
+table.diff th{font-size:14px;color:var(--muted);font-weight:600;text-align:left;padding:8px 12px;border-bottom:1px solid var(--d-line);background:var(--d-head)}
+table.diff td{padding:8px 12px;border-bottom:1px solid var(--d-line);height:40px;vertical-align:middle}
+table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
+.plain-empty{color:var(--fg);font-size:16px;margin:8px 0}
+.alert{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:12px 16px;border:1px solid;border-radius:6px;font-size:16px}
+.alert svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;margin-top:2px}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.state-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.state-grid{grid-template-columns:1fr}}
+.state-grid .col h5{font-size:14px;font-weight:600;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em}
+.state-block{border:2px dashed var(--d-line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.decision{border:1px dashed var(--d-line);border-radius:8px;padding:16px;background:var(--card)}
+.decision b{color:var(--fg)}
+.decision ol{margin:8px 0 0;padding-left:22px}
+.decision li{margin:8px 0}
+.decision small{color:var(--muted)}
+.note{font-size:14px;color:var(--muted);margin:0}
+</style></head><body>
+<div class="top"><b>棚卸し画面 D — Lane 1 refresh</b><span>お手本 mockup。実装の正本ではない（正本は 04-backbone / DSR-22 / catalog ⑯・SummaryCard）</span></div>
+<div class="page">
+
+<div><h1>棚卸し「ベタっと」所感への提案（進捗 header / 完了画面）</h1><p class="lead">owner 所感（2026-09-03）を受けた進捗 header の検討過程を記録する。**進行中 header は A'+器（帯の枠あり）に確定**（owner 最終裁定 2026-09-03）— A の器（h2「棚卸し中」+ 別行 muted「開始 …」+ Separator）に A' の帯（3 指標 + 142/238 分数 + 進捗バー）を入れ、帯自身の外周 3:1 枠も維持する。囲みは器 + 帯の 2 階層だが、器＝進捗セクションの区切り／帯＝指標群のグルーピングと意味が分かれるため DSR-16 の条件を満たす。現行 / A / A'（枠なし帯）/ A'B（合体案）/ B は比較用として本 mockup に残す。完了画面は **C（DSR-16 準拠再構成）に確定**（owner 裁定 2026-09-03）を差異 0 件 / 12 件 / 不整合ありの 3 データ状態で示す。sidebar / PageHeader / ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続）。データは合成値。</p></div>
+
+<section>
+<h2>1. 進捗 header（進行中）</h2>
+<p class="lead">対象コード: `StocktakeProgressHeader`（`StocktakePage.tsx:379-411`）。6 案を同一ページに縦 6 段で並べる（採用は A'+器・帯の枠あり、他は比較用の記録）。</p>
+
+<div class="variant">
+  <div class="v-label"><span class="tag">現行（比較用）</span></div>
+  <div class="cur-head">
+    <div>
+      <div style="font-size:20px;font-weight:600">棚卸し中（開始日: 2026-09-01 09:12）</div>
+      <p>入力済み 142 / 全 238</p>
+    </div>
+    <span class="badge b-warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>未入力 96</span>
+  </div>
+  <div class="progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
+  <p class="note">最重要の数値「入力済み 142 / 全 238」が <code>text-sm text-muted-foreground</code> — 画面で一番知りたい数が最小・最薄の文字（Q8 原則④の逆）。見出しに開始日時が混在し見出しと補足情報が未分離（Q8 原則①）。進捗ブロックだけ器がない。</p>
+</div>
+
+<div class="variant">
+  <div class="v-label"><span class="tag">A（比較用）サマリ帯 + B の見出し構造</span></div>
+  <div class="b-box">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始日: 2026-09-01 09:12</p>
+    <hr class="sep">
+    <div class="summary-row">
+      <div class="summary-card"><div class="lbl">入力済み</div><div class="val">142 件</div></div>
+      <div class="summary-card warn"><div class="lbl"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>未入力</div><div class="val">96 件</div><div class="warn-sub"><span class="badge b-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>要入力</span></div></div>
+      <div class="summary-card"><div class="lbl">進捗</div><div class="val">60%</div></div>
+    </div>
+    <div class="progress" aria-label="棚卸し進捗" style="margin-top:12px"><i style="width:60%"></i></div>
+  </div>
+  <p class="note"><b>1.</b> 既存 <code>SummaryCard</code>（小さい muted ラベル + 大きい値）を横 3 枚並べ、「棚卸し中」h2 と「開始 …」を別行 muted に分離、進捗ブロックを Separator 付きの器（`FormSection.tsx:42` と同型）へ入れる（B の見出し構造を内包）。未入力カードは色だけに頼らず warning icon + 「要入力」の状態 badge（outline + icon + soft 背景、原則 4 ①）を併記する（DSR-08。12px は badge の中だけ、原則 1）。新しい font-size は作らず DSR-13 に触れず、ホームと同部品を使うことで画面間のばらつきも減る。<b>これを採ると何が変わるか</b>: 「入力済み」「未入力」「進捗%」が 28px 太字で並び最重要数値が最初に目に入り、見出しと補足情報も視覚的に分かれる。</p>
+</div>
+
+<div class="variant">
+  <div class="v-label"><span class="tag">A'（比較用）枠なし帯 1 本</span></div>
+  <div class="b-box" style="border:0;padding:0">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始日: 2026-09-01 09:12</p>
+  </div>
+  <div class="aprime">
+    <div class="aprime-row">
+      <div class="aprime-item"><div class="lbl">入力済み</div><div class="val">142 件</div></div>
+      <div class="aprime-item"><div class="lbl">未入力</div><div class="val warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>96 件</div></div>
+      <div class="aprime-item"><div class="lbl">進捗</div><div class="val">60%</div></div>
+    </div>
+    <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
+  </div>
+  <p class="note"><b>1'.</b> owner の「カードの多用」懸念を受け、A のカード 3 枚を枠なしの淡い stone 背景（`--accent`）1 段へ統合。カード枠 3 本は反復しないが、帯自体が背景（`--accent` #f5f5f4）と地色（`--bg` #fafaf9）で識別できるよう外周に 3:1 の枠 1 本（`--d-ctl`、border-strong 候補値 8a8480、対 `--bg` 実測 3.53:1）を付ける（DSR-22 原則 13。囲みはカード 3 本 → 帯 1 本のみで DSR-16 の削減意図は変わらない）。区切りは余白 + 細い縦罫（`--d-line`）のみ。数値は大きく・ラベルは小さく muted のまま維持し、progress bar は帯の下辺に沿わせて器を 1 つにまとめる。未入力の値は A と同じく icon 併記で色だけに頼らない（DSR-08）。<b>これを採ると何が変わるか</b>: 視覚的な「箱」の数が A の 3 枚 + 進捗バーから帯 1 枚（外周枠 1 本）へ減り、囲みの反復感が薄れる。数値サイズ・語彙は A と同一。<b>Coordinator 推奨</b>: A' を既定案とする（同じ情報量で囲みが少ない）。</p>
+</div>
+
+<div class="variant">
+  <div class="v-label"><span class="tag">A'B（比較用）合体案</span></div>
+  <div class="b-box" style="border:0;padding:0">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始 2026-09-03 10:12</p>
+  </div>
+  <div class="aprime">
+    <div class="aprime-row">
+      <div class="aprime-item"><div class="lbl">入力済み</div><div class="val">142<span class="aprime-frac"> / 238</span></div></div>
+      <div class="aprime-item"><div class="lbl">未入力</div><div class="val warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>96 件</div></div>
+      <div class="aprime-item"><div class="lbl">進捗</div><div class="val">60%</div></div>
+    </div>
+    <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
+  </div>
+  <p class="note"><b>1''.</b> owner 再視認所感「入力済みの情報が被るからストーンのところだけにして全数をどこかに移したい」（2026-09-03）を受けた合体案。B の見出し構造（h2「棚卸し中」+ 別行 muted「開始 …」）に A' の帯をそのまま続け、B 単体が持っていた平文行「入力済み 142 / 全 238」は廃止する（帯側の入力済み指標と数値が重複するため）。全数「238」は帯の入力済み指標へ小さな分数として統合する（大きな「142」+ 小さな muted「/ 238」、ラベルは「入力済み」のまま。未入力・進捗% は A' と同一）。progress bar は A' と同じく帯の下辺に沿わせる。<b>これを採ると何が変わるか</b>: 数値の出所が帯 1 箇所だけになり、B 単体で生じていた「入力済み 142」の重複表示が解消する。<b>代案</b>: 全 238 件を見出し行（h2「棚卸し中」）の右端に置く案も検討可能（本 mockup では未描画、文章のみの説明）。</p>
+</div>
+
+<div class="variant">
+  <div class="v-label"><span class="tag rec">A'+器（決定、帯の枠あり）</span></div>
+  <div class="b-box">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始日: 2026-09-01 09:12</p>
+    <hr class="sep">
+    <div class="aprime">
+      <div class="aprime-row">
+        <div class="aprime-item"><div class="lbl">入力済み</div><div class="val">142<span class="aprime-frac"> / 238</span></div></div>
+        <div class="aprime-item"><div class="lbl">未入力</div><div class="val warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>96 件</div></div>
+        <div class="aprime-item"><div class="lbl">進捗</div><div class="val">60%</div></div>
+      </div>
+      <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
+    </div>
+  </div>
+  <p class="note"><b>1'''.</b> <b>決定（owner 2026-09-03）: A'+器、帯の枠あり。</b> owner 要望「赤で囲った下の帯を上の器の中にマージ」（2026-09-03、マークアップ付きスクリーンショット）を受けた案。A の器（h2「棚卸し中」+ 別行 muted「開始 …」+ Separator）を維持し、内側の SummaryCard 3 枚を A' の帯（3 指標 + 「142 / 238」分数 + 未入力の warning icon/状態語 + 進捗バー、帯の下辺に沿わせる）へ差し替え、帯自身の外周 3:1 枠（`--d-ctl`、border-strong 候補値 8a8480、対 `--bg` 実測 3.53:1）も維持する（「器の中に帯」）。囲みは器 + 帯の 2 階層だが、器＝進捗セクションの区切り、帯＝指標群のグルーピングと意味が分かれるため DSR-16 の条件を満たす。枠なし版（帯の外周枠を外しトーンのみにする代案）は不採用。<b>これを採ると何が変わるか</b>: A の器の一貫性（Separator 付き、既存 `FormSection` と同型）を保ったまま、内容だけを A' の高密度な帯へ差し替え、帯自体の可視境界も残る。</p>
+</div>
+
+<div class="variant">
+  <div class="v-label"><span class="tag">B（比較用）</span> 見出しの役割分離のみ（サマリ帯なし、現行の数値表示のまま）</div>
+  <div class="b-box">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始日: 2026-09-01 09:12</p>
+    <hr class="sep">
+    <div class="cur-head">
+      <p style="margin:0">入力済み 142 / 全 238</p>
+      <span class="badge b-warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>未入力 96</span>
+    </div>
+    <div class="progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
+  </div>
+  <p class="note"><b>2.</b> 「棚卸し中」h2 と「開始 …」を別行 muted に分離し、進捗ブロックを Separator 付きの器へ入れる点のみを A から切り出した最小案（サマリ帯は導入しない）。<b>これを採ると何が変わるか</b>: 見出しと補足情報が視覚的に分かれ進捗ブロックが独立した器として認識できるが、最重要数値の文字サイズは現行のまま。</p>
+</div>
+</section>
+
+<section>
+<h2>2. 完了画面（現行 vs C、3 データ状態） — <b>C に確定（owner 裁定 2026-09-03）</b></h2>
+<p class="lead">対象コード: `StocktakeResultPage`（`StocktakePage.tsx:923-997`）。差異 0 件 / 12 件 / 不整合ありの 3 状態で、現行と C（DSR-16 準拠再構成）を左右に並べる。owner が Human Gate 会話で C を採用と裁定済み。実装は Lane 3〜5（本 mockup は規範の確認用）。</p>
+
+<div class="state-grid">
+  <div class="col"><h5>現行</h5>
+    <div class="state-block">
+      <div class="two-cards">
+        <div class="card"><p class="ct">仕入原価総額</p><p class="cv-lg">¥1,284,600</p></div>
+        <div class="card"><p class="ct">前回の棚卸し（2026-08-01）</p><p class="cv-sm">仕入原価総額 ¥1,260,400</p></div>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品</h4><p class="plain-empty">差異はありませんでした</p></div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">整合性チェック</h4><p style="margin:0">238件を確認しました。不整合 0件</p></div>
+    </div>
+  </div>
+  <div class="col"><h5>C（DSR-16 準拠再構成）</h5>
+    <div class="state-block">
+      <div class="dl-compare">
+        <div class="dl-row head"><div>今回総額</div><div>前回総額</div><div>増減</div></div>
+        <div class="dl-row"><div class="num">¥1,284,600</div><div class="num">¥1,260,400</div><div class="num up">+¥24,200</div></div>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品（0件）</h4><p class="plain-empty">差異はありませんでした</p></div>
+      <p style="margin:0;font-size:14px;color:var(--muted)">整合性チェック 238件を確認 · 不整合 0件（色付けなし、正常時は無強調のまま）</p>
+    </div>
+  </div>
+</div>
+
+<div class="state-grid">
+  <div class="col"><h5>現行</h5>
+    <div class="state-block">
+      <div class="two-cards">
+        <div class="card"><p class="ct">仕入原価総額</p><p class="cv-lg">¥1,308,900</p></div>
+        <div class="card"><p class="ct">前回の棚卸し（2026-08-01）</p><p class="cv-sm">仕入原価総額 ¥1,260,400</p></div>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品</h4>
+        <table class="diff"><thead><tr><th>商品コード</th><th>商品名</th><th class="num">システム在庫</th><th class="num">実際の数</th><th class="num">差異</th></tr></thead><tbody>
+        <tr><td>HZ-0047</td><td>並太毛糸（生成）</td><td class="num">18 玉</td><td class="num">16 玉</td><td class="num">-2 玉</td></tr>
+        <tr><td>F-0132</td><td>コットンブロード（無地・生成）</td><td class="num">1,240 cm</td><td class="num">1,260 cm</td><td class="num">+20 cm</td></tr>
+        <tr><td>…</td><td>他 10 件</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        </tbody></table>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">整合性チェック</h4><p style="margin:0">238件を確認しました。不整合 0件</p></div>
+    </div>
+  </div>
+  <div class="col"><h5>C（DSR-16 準拠再構成）</h5>
+    <div class="state-block">
+      <div class="dl-compare">
+        <div class="dl-row head"><div>今回総額</div><div>前回総額</div><div>増減</div></div>
+        <div class="dl-row"><div class="num">¥1,308,900</div><div class="num">¥1,260,400</div><div class="num up">+¥48,500</div></div>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品（12件）</h4>
+        <table class="diff"><thead><tr><th>商品コード</th><th>商品名</th><th class="num">システム在庫</th><th class="num">実際の数</th><th class="num">差異</th></tr></thead><tbody>
+        <tr><td>HZ-0047</td><td>並太毛糸（生成）</td><td class="num">18 玉</td><td class="num">16 玉</td><td class="num">-2 玉</td></tr>
+        <tr><td>F-0132</td><td>コットンブロード（無地・生成）</td><td class="num">1,240 cm</td><td class="num">1,260 cm</td><td class="num">+20 cm</td></tr>
+        <tr><td>…</td><td>他 10 件</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        </tbody></table>
+      </div>
+      <p style="margin:0;font-size:14px;color:var(--muted)">整合性チェック 238件を確認 · 不整合 0件</p>
+    </div>
+  </div>
+</div>
+
+<div class="state-grid">
+  <div class="col"><h5>現行</h5>
+    <div class="state-block">
+      <div class="two-cards">
+        <div class="card"><p class="ct">仕入原価総額</p><p class="cv-lg">¥1,231,800</p></div>
+        <div class="card"><p class="ct">前回の棚卸し（2026-08-01）</p><p class="cv-sm">仕入原価総額 ¥1,260,400</p></div>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品</h4>
+        <table class="diff"><thead><tr><th>商品コード</th><th>商品名</th><th class="num">システム在庫</th><th class="num">実際の数</th><th class="num">差異</th></tr></thead><tbody>
+        <tr><td>H-0009</td><td>木製ボタン（大）</td><td class="num">3 個</td><td class="num">0 個</td><td class="num">-3 個</td></tr>
+        <tr><td>…</td><td>他 3 件</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        </tbody></table>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">整合性チェック</h4><p style="margin:0">238件を確認しました。不整合 5件</p></div>
+    </div>
+  </div>
+  <div class="col"><h5>C（DSR-16 準拠再構成）</h5>
+    <div class="state-block">
+      <div class="dl-compare">
+        <div class="dl-row head"><div>今回総額</div><div>前回総額</div><div>増減</div></div>
+        <div class="dl-row"><div class="num">¥1,231,800</div><div class="num">¥1,260,400</div><div class="num down">-¥28,600</div></div>
+      </div>
+      <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品（4件）</h4>
+        <table class="diff"><thead><tr><th>商品コード</th><th>商品名</th><th class="num">システム在庫</th><th class="num">実際の数</th><th class="num">差異</th></tr></thead><tbody>
+        <tr><td>H-0009</td><td>木製ボタン（大）</td><td class="num">0 個</td><td class="num">3 個</td><td class="num">+3 個</td></tr>
+        <tr><td>…</td><td>他 3 件</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        </tbody></table>
+      </div>
+      <div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>不整合 5件</b> — 在庫記録の照合が必要です</div></div>
+    </div>
+  </div>
+</div>
+
+<p class="note"><b>3.</b> C を採ると: Card 2 枚（今回 / 前回）が列を揃えた structured list に変わり、今回・前回・増減が同一視野で比較できる（DSR-16「比較が目的 → 列を揃えた表 / structured list」に適合）。差異件数を見出しへ明記し、0 件時は既存 `<p>差異はありませんでした</p>` のまま（同一 file 内の `EmptyState` との不一致は Lane 3〜5 の別課題）。不整合 n &gt; 0 は warning Alert + icon（DSR-08 の色 + icon + 日本語 3 点）で示す。<b>これを採ると何が変わるか</b>: 増減を目で計算しなくて済み、不整合は色だけでなく icon と Alert 枠で気付ける。</p>
+</section>
+
+<div class="decision">
+<b>未決項目</b>
+<p style="margin:4px 0 0">なし（2026-09-03 owner 最終裁定で進行中 header を含めすべて確定。以下「決定事項」参照）。</p>
+<b>決定事項（owner 裁定 2026-09-03、Human Gate 会話）</b>
+<ol>
+<li><b>決定: A'+器（帯の枠あり）。</b> 進行中 header は A の器（h2 + 別行 muted「開始 …」+ Separator）に A' の帯（3 指標 + 142/238 分数 + 進捗バー）を入れ、帯自身の外周 3:1 枠も維持する。A / A' / A'B / B は比較用として本 mockup に残す。</li>
+<li><b>完了画面は C に確定。</b> 実装は独立の Lane 3〜5 packet（本 PR は mockup 提示のみ）。</li>
+<li><b>指標順は維持。</b> 進行中: 入力済み→未入力→進捗% / 完了: 今回総額→前回総額→増減。</li>
+<li><b>不整合 badge/Alert は warning（`--warning` amber-600 系）+ icon + 日本語、完了画面のマイナス増減は destructive（`--destructive` red-700）+ 記号併記に確定。</b>（DSR-08。00-foundations.md セマンティックカラー表「在庫切れ、前月比マイナス」= Destructive / 「PLU通知、手動バッジ、在庫少」= Warning の既存割当を、棚卸し完了画面の不整合・マイナス増減に適用）</li>
+</ol>
+</div>
+
+<div class="note">位置付け: 正本は `04-backbone.md` 原則 13〜16 / `01-decision-rules.md` DSR-22 / `02-component-catalog.md` ⑯・②サマリカード。A' は owner「カードの多用」懸念を受けた対案（枠なし帯 1 本、背景 `--accent` #f5f5f4）で Coordinator 推奨。**本 mockup の palette は demo 値（`--fg` / `--warn-strong` / `--muted` 等）で、canonical token（`src/styles/globals.css`）と数値が一致するものと一致しないものが混在する** — `--fg` #1c1917 は canonical `--foreground` #1c1917 と同値、`--warn-strong` #78350f は canonical `--warning-strong` #78350f と同値だが、`--muted` #57534e は canonical `--muted-foreground` #78716c とは**異なる demo 専用の値**。帯上テキストは canonical token を基準に WCAG 相対輝度で実測（`src/styles/globals.css` の `--background` #fafaf9 / `--card` #f5f5f4 を使用）: `--foreground` #1c1917 は対 `--card` 16.0:1、`--warning-strong` #78350f は対 `--card` 8.32:1（いずれも AA 4.5:1 を上回る）。**ラベルは canonical `--muted-foreground` #78716c で計算すると対 `--card` 4.40:1 = AA 未達**（本 mockup の demo 値 `--muted` #57534e では 6.99:1 と誤って上回って見えるが、これは demo palette 起源の誤差であり `00-foundations.md:18` の既存実測「4.59:1（対 `--background`）/ 4.40:1（対 `--card`、AA 未達）」と整合する）。実装時は `--foreground` 系へ上げるか帯背景を `--background` に寄せるかのいずれかで是正する（Lane 2 申し送り、packet 参照）。増減・不整合の色は `00-foundations.md` の既存 Warning（`--warning` amber-600 #d97706 系、強調テキストは `--warning-strong` #78350f）/ Destructive（`--destructive` red-700 #b91c1c 系、強調テキストは `--destructive-strong` #7f1d1d）に合わせて本 mockup の CSS 変数を訂正した。データは合成値（実店舗の商品名・価格・取引先名を含まない）。sidebar / PageHeader / ボタンの見た目は本 mockup の対象外。</div>
+</div>
+</body></html>
