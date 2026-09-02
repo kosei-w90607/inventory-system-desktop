@@ -73,8 +73,7 @@ tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 .density{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media (max-width:900px){.density{grid-template-columns:1fr}}
 .density .col h3{font-size:16px;margin:0 0 8px}
-.density .scroll{max-height:420px}
-.density .scroll.dense{max-height:420px}
+/* 実高で描く（O-P2-2: 同じ max-height に clamp すると 50/200 の密度差が判別できないため、意図的に clamp しない） */
 .note{font-size:14px;color:var(--muted);margin:6px 0 0}
 </style></head><body>
 <div class="top"><b>一覧の器 D — Lane 1 refresh</b><span>お手本 mockup。実装の正本ではない（正本は 04-backbone / DSR-22 / catalog ⑯）</span></div>
@@ -83,7 +82,7 @@ tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 
 <div class="filters"><div class="search"><input placeholder="商品コード・商品名・JAN・メーカー品番で検索" aria-label="商品検索"><button class="btn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>検索</button></div><select class="ctl"><option>すべての部門</option></select><div class="sep"></div><label>並び替え <select class="ctl"><option>商品コード</option></select></label><label>表示件数 <select class="ctl" style="width:7rem" id="perpage-main"><option value="50">50 件</option><option value="200">200 件</option></select></label></div>
 
-<div class="pager top"><span class="cnt">238 件<small style="font-weight:400;color:var(--muted);margin-left:8px">1〜50 件目を表示 · 1 / 5 ページ</small></span><div class="pg"><button class="btn sm" disabled>← 前へ</button><span>1 / 5</span><button class="btn sm">次へ →</button></div></div>
+<div class="pager top"><span class="cnt">238 件中 1〜50 件目 · 1 / 5 ページ</span><span class="note" style="margin:0">pager ボタンは任意（catalog ⑩ Don't — 上部に下部と同じボタン群を無条件で重ねない。本 mockup では上部は text のみ、pager ボタンは下部にのみ置く）</span></div>
 <div class="tbl"><div class="scroll" id="scroll-main" style="--id-w:10.5rem;max-height:56vh"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>部門</th><th class="num">売価</th><th class="num">原価</th><th class="num">在庫数</th><th>PLU</th><th></th></tr></thead><tbody id="tb-main"></tbody></table></div></div>
 <div class="pager"><span>238 件中 1〜50 件目 · 1 / 5 ページ</span><div class="pg"><button class="btn sm" disabled>← 前へ</button><button class="btn sm">次へ →</button></div></div>
 
@@ -103,7 +102,7 @@ tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 <div class="decision">
 <b>D の要点（差分のみ・番号付き未決項目）</b>
 <ol>
-<li><b>総件数と現在位置を上にも</b>（DSR-22）: 「238 件・1〜50 件目・1 / 5 ページ」を table 直上に text 表示（必須）。pager ボタンは任意 — <b>これを採ると何が変わるか</b>: 長い一覧で「いま何件目か」を下までスクロールせずに確認できる。<small>viewport を超えない短い一覧では省略してよいか（catalog ⑩ opt-in 条件）は未決。</small></li>
+<li><b>総件数と現在位置を上にも</b>（DSR-22）: 統一形「238 件中 1〜50 件目 · 1 / 5 ページ」を table 直上に text 表示（必須）。pager ボタンは任意で、本 mockup では上部に置かず下部のみに置く（catalog ⑩ Don't）— <b>これを採ると何が変わるか</b>: 長い一覧で「いま何件目か」を下までスクロールせずに確認でき、同じ操作ボタンを 2 組出さないため判断コストも増えない。<small>viewport を超えない短い一覧では省略してよいか（catalog ⑩ opt-in 条件）は未決。</small></li>
 <li><b>table header を sticky</b>: 列名が常に見える。<b>これを採ると何が変わるか</b>: 横スクロール中も列の意味を見失わない。<small>sticky header の背景色は `--d-head`（stone-100 相当）でよいか、カード地色 `--card` のままでよいかは未決。</small></li>
 <li><b>識別列（商品コード + 商品名）を左固定</b>: 横スクロール時に右端へ影。<small>識別列固定を持たない履歴系画面は日時 + 種別を固定する方針（catalog ⑯ 必須構成 4）だが、対象画面リストの最終確定は Lane 2 実装時。</small></li>
 <li><b>操作枠・構造線のコントラスト</b>（DSR-22 原則 13）: 構造線 `--border` を一段濃く（提案 #cdc8c4）、操作枠 `--border-strong`（提案 #8a8480）を新設。<small>実測値は Lane 2 の L3 で確定（本 mockup は提案値のみ）。</small></li>

@@ -15,7 +15,7 @@
 | 前景（本文） | `--foreground` | `stone-900` | #1c1917 | 実測 16.7:1（対 `--background`）/ 16.0:1（対 `--card`）、いずれも AAA（2026-09-03 訂正、旧「コントラスト比12.6:1（AAA+）」は対象背景の明記なしで誤記） |
 | カード背景 | `--card` | `stone-100` | #f5f5f4 | 背景との差分8% で情報ブロック識別 |
 | ボーダー（構造線） | `--border` | `stone-200` | #e7e5e4 | 対 `--background` 実測比 ≈1.20:1（補助的な区切り。単独のグループ信号にしない、DSR-16） |
-| ボーダー・強（操作枠、提案、DSR-22） | `--border-strong` | 未定義（提案 stone-400 相当） | 8a8480（未実装、globals.css 未収載） | 対 `--background` 実測提案値 3.69:1 / 対 `--card` 3.53:1（WCAG 2.2 SC 1.4.11 非テキスト 3:1 対応。入力・ボタン outline・select・segmented・状態 badge の枠・focus ring に使う。確定値は Lane 2 の L3 で確定 — token 最終値の確定は本 PR の非目的） |
+| ボーダー・強（操作枠、提案、DSR-22） | `--border-strong` | 未定義（提案 stone-400 相当） | 提案値 `8a8480`（`#` は Lane 2 実装時に付与し DS3 の突合対象へ戻す） | 対 `--background` 実測提案値 3.69:1 / 対 `--card` 3.53:1（WCAG 2.2 SC 1.4.11 非テキスト 3:1 対応。入力・ボタン outline・select・segmented・状態 badge の枠・focus ring に使う。確定値は Lane 2 の L3 で確定 — token 最終値の確定は本 PR の非目的） |
 | サブテキスト | `--muted-foreground` | `stone-500` | #78716c | 実測 4.59:1（対 `--background`、AA）/ 4.40:1（対 `--card`、AA 未達）（2026-09-03 訂正、旧「コントラスト比 4.5:1（AA）」は対象背景の明記なしで誤記） |
 
 **セマンティックカラー**:
@@ -38,7 +38,7 @@
 | Rank Top BG | `--rank-top-bg` | `amber-50` (#fffbeb) | 1位行背景 |
 | Rank Top Badge BG | `--rank-top-badge-bg` | `amber-100` (#fef3c7) | 1位 Badge 背景 |
 | Rank Top Badge Text | `--rank-top-badge-text` | `amber-800` (#92400e) | 1位 Badge テキスト |
-| Row Current（提案、DSR-22） | `--row-current` | 未定義（提案 fff8e6、globals.css 未収載） | 現在行（入力中 / 開いている行 / 選択行）の淡い背景。左 4px primary バー + badge/文言と併用し、色だけに頼らない（対 `--foreground` 本文 16.5:1）。確定値は Lane 2 の L3 で確定 |
+| Row Current（提案、DSR-22） | `--row-current` | 提案値 `fff8e6`（`#` は Lane 2 実装時に付与し DS3 の突合対象へ戻す） | 現在行（入力中 / 開いている行 / 選択行）の淡い背景。左 4px primary バー + badge/文言と併用し、色だけに頼らない（対 `--foreground` 本文 16.5:1）。確定値は Lane 2 の L3 で確定 |
 
 各色の明色版（background 用）は `{color}-50` を使用し、コントラスト確保。
 

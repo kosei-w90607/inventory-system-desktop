@@ -183,6 +183,8 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
 
 **バリエーション: 直近実績サマリテーブル**（PR #116）: 業務入力画面（入庫 / 返品・交換 / 手動販売 / 廃棄の 4 画面で確立）の下部に「直近の{業務名}」見出しと「すべての履歴を見る」（outline、`/inventory/records` へ recordType 付き遷移）を横並びで置き、直近 N 件テーブル（Skeleton / Error / Empty / データの 4 状態、パターン⑥）と各行の「詳細を見る」導線を付ける。直近リストの取得失敗時は「入力中の内容はそのままです。保存や商品追加は続けられます」のように業務継続を保証する文言を出し、フォーム入力を壊さない。新規の業務入力画面でも同じ構成を踏襲する。
 
+**opt-in（⑯ 一覧の器で使用）**: viewport を超える一覧では、`<thead>` を sticky にし（`position: sticky; top: 0`、z-index は header > 固定列 > 本文）、商品コード + 商品名等の識別列を `position: sticky; left: 0` で左固定できる（履歴系は日時 + 種別を固定）。2 列目以降の識別列は 1 列目の実測幅を `left` に反映し、固定 rem 直書きにしない。1 画面に収まる短い一覧には適用しない。適用条件・必須構成の全体は [⑯ 一覧の器（ListShell）](#⑯-一覧の器listshell) を参照（DSR-22）。
+
 **アクセシビリティ**: `Table` primitive の `TableHead` でヘッダーセルを構造化する。sortable headerはactive asc/descを`aria-sort="ascending"` / `"descending"`、inactiveを`aria-sort="none"`で示し、可視indicator `▲` / `▼` は`aria-hidden="true"`とする。状態は色だけでなく日本語ラベル（`廃番` 等の Badge）で示す（DSR-08）。桁揃えは `tabular-nums` で読み取りを助ける。
 
 **Do**:
@@ -890,18 +892,18 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 ## ⑯ 一覧の器（ListShell）
 
-**使いどころ**: pagination を持つ一覧画面（商品一覧 / 在庫照会 / 一括価格改定 / 棚卸し / 整合性チェック / 入出庫履歴 等）の共通の器。toolbar・件数表示・table・pager をこの構成でまとめる。
+**使いどころ**: pagination を持つ一覧画面（商品一覧 / 在庫照会 / 一括価格改定 / 棚卸し / 整合性チェック / 入出庫履歴 等）の共通の器。toolbar・件数表示・table・pager をこの構成でまとめる。対象は viewport を超える一覧。1 画面に収まる短い一覧は項目 2 の上部表示を省略してよく、検索欄を持たない画面は toolbar 1 段でよい。
 
-**canonical**: 未実装（予定パス src/components/patterns/ListShell.tsx、Lane 2 で新設）。本 PR は規範文のみを定め、mockup D [`mockup-d-lists.html`](reference/mockup-d-lists.html) をお手本として置く。
+**canonical（予定）**: src/components/patterns/ListShell.tsx（Lane 2 で新設後に backtick 表記へ戻し DS1 対象化）。本 PR は規範文のみを定め、mockup D [`mockup-d-lists.html`](reference/mockup-d-lists.html) をお手本として置く。
 
-**必須構成（6 項目）**:
+**必須構成（6 項目、viewport を超える一覧が対象。収まる一覧は項目 2 の上部表示を省略してよい。検索欄を持たない画面は toolbar 1 段でよい）**:
 
-1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、原則 6 の枠〈`rounded-md border p-4`〉に入れる）
-2. **上下の件数・現在位置**（上部は「{n} 件中 {from}〜{to} 件目」の text 表示を必須、pager ボタンは任意。下部は既存どおり件数 + pager フル装備。文言は統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」で pin）
+1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、原則 6 の枠〈`rounded-md border p-4`〉に入れる。検索欄を持たない画面は 1 段でよい）
+2. **上下の件数・現在位置**（上部は「{n} 件中 {from}〜{to} 件目」の text 表示を必須、pager ボタンは任意。viewport を超える一覧が対象、収まる一覧は省略してよい。下部は既存どおり件数 + pager フル装備。文言は統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」で pin）
 3. **sticky header**（単一 `<table>` 内、横スクロール時は固定列右端に影）
-4. **識別列 opt-in**（商品コード + 商品名等を持つ一覧は固定、履歴系は日時 + 種別を固定）
+4. **識別列 opt-in**（商品コード + 商品名等を持つ一覧は固定。履歴系（識別列を持たない画面）は日時 + 種別を固定する）
 5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22）
-6. **読込みは `ListSkeleton`**（原則 11）+ 履歴系（識別列を持たない画面）の扱いを別途明記
+6. **読込みは `ListSkeleton`**（原則 11）
 
 **使用トークン**: `--border-strong`（操作枠）/ `--row-current`（現在行背景）/ 既存 `--border`（構造線）。詳細は [00-foundations.md](00-foundations.md)。
 
@@ -910,7 +912,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **アクセシビリティ**: 現在地（page / totalPages）はテキストで常時可視にする。sticky header・固定列の影は視覚のみの補助であり、screen reader の読み順は table の DOM 順に従う。
 
 **Do**:
-- 必須構成 6 項目すべてを満たす
+- 対象範囲（viewport 超過一覧）で必須構成 6 項目を満たす。収まる一覧・検索欄なし画面は柱書の条件に従い一部省略可
 - perPage 共有定数は 1 本のまま、既定値だけ画面ごとに変える（DSR-22 裁定）
 
 **Don't**:

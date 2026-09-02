@@ -218,6 +218,10 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 - mockup D の Lane 1b 対象 5 file（forms-a / forms-b / import-export / history / home-sales-admin）の現状同期（後続 Lane 2 実装 PR に同乗）。
 - sidebar / PageHeader / ボタンの見た目（旧 SPEC-UILB-D6 継続）。
 
+### Lane 2 への申し送り（DS1/DS3 復元義務、Final Review round 1 Coordinator 裁定 S-P2-1）
+
+`--border-strong` / `--row-current` token と `ListShell.tsx` は本 PR では未実装のため、DS1（src path 実在）/ DS3（token HEX 整合）の突合対象から意図的に外す表記（backtick なしの path、`#` を付けない hex）を 00-foundations.md / 04-backbone.md / 02-component-catalog.md に用いている。Lane 2 で実装したら、次を復元する義務を負う: (1) `--border-strong` / `--row-current` を globals.css `:root` へ追加し、doc 側の hex 表記を `#8a8480` / `#fff8e6` の backtick + `#` 付きへ戻して DS3 の突合対象に含める、(2) `src/components/patterns/ListShell.tsx` を新設したら 02-component-catalog.md ⑯ の canonical 記載を backtick 付き `` `src/components/patterns/ListShell.tsx` `` 表記へ戻して DS1 の対象化する。Opus P3-2（今すぐ `#` を復元する）はこの裁定により却下（unimplemented token を DS3 に含めると常時 ERROR になるため）。
+
 ## Acceptance Criteria
 
 - 差分表（起票時実測節）が旧 Lane 1 の 6 成果 + 追加発見 2 件（件数文言 / DSR-16 宙ぶらりん 3 箇所）を漏れなく現状判定している。
@@ -388,7 +392,24 @@ Writer（Sonnet subagent、worktree isolation）が Lane 1a の規範文一式 +
 
 **gate 実測**: `bash scripts/doc-consistency-check.sh` は ERROR 0 / WARN 5（是正前の pre-existing WARN セットと完全一致、新規 WARN 0）。`--target plan` も全チェック通過。全 AC の rg/fd oracle を個別実行し期待値と一致を確認（04-backbone の negative oracle 3 パターン含む）。prettier `--check` は touched md/html 全件で整形済み。DS1（src path 実在）/ DS3（token HEX 整合）は `--border-strong` / `--row-current` / `ListShell.tsx` が未実装である旨を検出しない書式（backtick 付き `src/` path・`#hex` の同居を避ける）へ調整して通過させた（globals.css / src/** は非変更のまま）。
 
-**裁定の記録**: catalog ③ テーブルへの sticky header / 識別列 opt-in 追記は Coordinator の Lane 1a Deliverables 指定に明示が無く、Non-scope「04-backbone 原則 1〜12 の改訂」の精神に合わせてスコープ外とした（⑯ ListShell 側で同内容を規範化済み）。Plans.md ④ は Coordinator 指示により本 Writer worktree では触っていない（既存 line 49 が Lane 1a/1b 分割を既に反映済み。line 48/49 の「残り mockup 4 file」表記は実体 5 file と 1 件差異があるが、Plans.md 編集は明示的に非対象のため記録のみ）。
+**裁定の記録**: Plans.md ④ は Coordinator 指示により本 Writer worktree では触っていない（既存 line 49 が Lane 1a/1b 分割を既に反映済み。Coordinator が別途「5 file」へ訂正済み）。
+
+**Final Review round 1 是正（Sonnet P1=2/P2=1、Opus P1=2/P2=5/P3=3、Coordinator 全件 accept）**:
+
+- S-P1-1: Q17 が docs 本文のどこにも無いまま「反映済み」と誤って主張していた（`rg -n "Q17" docs/design-system docs/quality` = 0 件を確認済み）。04-backbone.md 前提節に Q17（⑤カラムに適合、③ヘッダは本アプリに不在、書誌付き）を追加し、更新履歴の記述を実際の反映箇所（前提節）に合わせて訂正した。
+- S-P1-2: catalog ③ テーブルへの sticky header / 識別列 opt-in 追記を実装した（Scope item を省略していたのを是正）。前回 Implementation Results の自己正当化記述は撤回。
+- S-P2-1（Coordinator 裁定）: `--border-strong` / `--row-current` / `ListShell.tsx` は未実装のため DS1/DS3 の対象外に保つ方針を維持しつつ、00-foundations.md / 04-backbone.md の表記を「提案値 `8a8480`（`#` は Lane 2 実装時に付与し DS3 の突合対象へ戻す）」に統一。catalog ⑯ canonical も「canonical（予定）: src/components/patterns/ListShell.tsx（Lane 2 で新設後に backtick 表記へ戻し DS1 対象化）」に統一。Non-scope 節に「Lane 2 への申し送り」を新設し復元義務を明記。**Opus P3-2（今すぐ `#` を復元する）はこの Coordinator 裁定により却下**（unimplemented token を DS3 突合対象に含めると常時 ERROR になるため）。
+- O-P1-1: mockup-d-stocktake.html の A 案「未入力 96」が色のみだった（DSR-08 違反）ため、warning icon + 「要入力」文言を追加。
+- O-P1-2: catalog ⑯ 必須構成と 04-backbone 原則 14 が無条件表現だったため、「viewport を超える一覧が対象。収まる一覧は項目 2 を省略可、検索欄なし画面は toolbar 1 段でよい」を明記。
+- O-P2-1: A 案が見出し/開始日時を落としていたため、A を「B の見出し構造を内包したサマリ帯」として描き直し、B は「見出し構造のみの最小案」に再定義。未決項目 1 の記述も合わせて更新。
+- O-P2-2: density 比較の 2 ペインが同一 `max-height:420px` で clamp され密度差が判別不能だったため、clamp を撤去し実高で描画。
+- O-P2-3: 上部件数文言をパン統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」の実値表記へ揃え、上部の前へ/次へボタンは catalog ⑩ Don't と矛盾するため撤去し「pager ボタンは任意・下部のみ」と note した。
+- O-P2-4: 完了画面 C の 3 状態がすべてプラス増減だったため、3 状態目を仕入原価総額の減少（-¥28,600、`.down` class）に変更。
+- O-P2-5: Q8 主典拠の規範行「ラベルは小さく muted、値は大きく — 見出し / ラベル / 値の 3 段を画面をまたいで同じ型にする」を原則 15 の太字要約へ追加。
+- O-P3-1: catalog ⑯ 項目 6 を `ListSkeleton` のみに絞り、履歴系（識別列なし）の扱いは項目 4 へ統合。
+- O-P3-3: 04-backbone.md 原則 13〜16 を「1 文 + 由来」の契約（L13）に沿って圧縮し、token 提案値・必須構成・L3 checklist 詳細は DSR-22 / catalog ⑯ 本文へ委譲。
+
+**gate 実測（round 1 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（pre-existing WARN セットと完全一致、diff 0 行）。`--target plan` → `結果: 全チェック通過`。全 AC oracle（新規追加分含む）を再実行し期待値と一致。prettier `--check` は本ラウンド touched 全 6 file で整形済み。
 
 Human Gate（owner の mockup 2 file 視認 + Ready 後の workflow_dispatch + merge）と Reviewed Content HEAD の確定は未実施（Coordinator/owner の後続作業）。PR は未作成のため PR link は Coordinator が別途記録する。
 

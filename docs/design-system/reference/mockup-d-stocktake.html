@@ -39,6 +39,8 @@ h3{font-size:18px;line-height:1.4;font-weight:600;margin:0}
 .summary-card .lbl{font-size:14px;font-weight:500;color:var(--muted)}
 .summary-card .val{font-size:28px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
 .summary-card.warn .val{color:var(--warn-strong)}
+.summary-card .lbl svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-2px;margin-right:4px}
+.summary-card .warn-sub{font-size:12px;font-weight:600;color:var(--warn-strong);margin-top:2px}
 /* ===== B: 見出しの役割分離 + Separator 付きの器 ===== */
 .b-box{border:1px solid var(--d-line);border-radius:8px;padding:16px}
 .b-box h4{font-size:20px;font-weight:600;margin:0}
@@ -102,18 +104,23 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 </div>
 
 <div class="variant">
-  <div class="v-label"><span class="tag rec">A（推奨）サマリ帯</span></div>
-  <div class="summary-row">
-    <div class="summary-card"><div class="lbl">入力済み</div><div class="val">142</div></div>
-    <div class="summary-card warn"><div class="lbl">未入力</div><div class="val">96</div></div>
-    <div class="summary-card"><div class="lbl">進捗</div><div class="val">60%</div></div>
+  <div class="v-label"><span class="tag rec">A（推奨）サマリ帯 + B の見出し構造</span></div>
+  <div class="b-box">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始日: 2026-09-01 09:12</p>
+    <hr class="sep">
+    <div class="summary-row">
+      <div class="summary-card"><div class="lbl">入力済み</div><div class="val">142 件</div></div>
+      <div class="summary-card warn"><div class="lbl"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>未入力</div><div class="val">96 件</div><div class="warn-sub">要入力</div></div>
+      <div class="summary-card"><div class="lbl">進捗</div><div class="val">60%</div></div>
+    </div>
+    <div class="progress" aria-label="棚卸し進捗" style="margin-top:12px"><i style="width:60%"></i></div>
   </div>
-  <div class="progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
-  <p class="note"><b>1.</b> 既存 <code>SummaryCard</code>（小さい muted ラベル + 大きい値）を横 3 枚並べる。新しい font-size を作らず DSR-13 に触れず、ホームと同部品を使うことで画面間のばらつきも減る。<b>これを採ると何が変わるか</b>: 「入力済み」「未入力」「進捗%」が 28px 太字で並び、最重要数値が最初に目に入る。</p>
+  <p class="note"><b>1.</b> 既存 <code>SummaryCard</code>（小さい muted ラベル + 大きい値）を横 3 枚並べ、「棚卸し中」h2 と「開始 …」を別行 muted に分離、進捗ブロックを Separator 付きの器（`FormSection.tsx:42` と同型）へ入れる（B の見出し構造を内包）。未入力カードは色だけに頼らず warning icon + 「要入力」の文言を併記する（DSR-08）。新しい font-size は作らず DSR-13 に触れず、ホームと同部品を使うことで画面間のばらつきも減る。<b>これを採ると何が変わるか</b>: 「入力済み」「未入力」「進捗%」が 28px 太字で並び最重要数値が最初に目に入り、見出しと補足情報も視覚的に分かれる。</p>
 </div>
 
 <div class="variant">
-  <div class="v-label"><span class="tag">B</span> 見出しの役割分離（A と併用可）</div>
+  <div class="v-label"><span class="tag">B</span> 見出しの役割分離のみ（サマリ帯なし、現行の数値表示のまま）</div>
   <div class="b-box">
     <h4>棚卸し中</h4>
     <p class="sub">開始日: 2026-09-01 09:12</p>
@@ -124,7 +131,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
     </div>
     <div class="progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
   </div>
-  <p class="note"><b>2.</b> 「棚卸し中」h2 と「開始 …」を別行 muted に分離し、進捗ブロックを Separator 付きの器（`FormSection.tsx:42` と同型）へ入れる。<b>これを採ると何が変わるか</b>: 見出しと補足情報が視覚的に分かれ、進捗ブロックが独立した器として認識できる。</p>
+  <p class="note"><b>2.</b> 「棚卸し中」h2 と「開始 …」を別行 muted に分離し、進捗ブロックを Separator 付きの器へ入れる点のみを A から切り出した最小案（サマリ帯は導入しない）。<b>これを採ると何が変わるか</b>: 見出しと補足情報が視覚的に分かれ進捗ブロックが独立した器として認識できるが、最重要数値の文字サイズは現行のまま。</p>
 </div>
 </section>
 
@@ -194,12 +201,12 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
   <div class="col"><h5>現行</h5>
     <div class="state-block">
       <div class="two-cards">
-        <div class="card"><p class="ct">仕入原価総額</p><p class="cv-lg">¥1,297,200</p></div>
+        <div class="card"><p class="ct">仕入原価総額</p><p class="cv-lg">¥1,231,800</p></div>
         <div class="card"><p class="ct">前回の棚卸し（2026-08-01）</p><p class="cv-sm">仕入原価総額 ¥1,260,400</p></div>
       </div>
       <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品</h4>
         <table class="diff"><thead><tr><th>商品コード</th><th>商品名</th><th class="num">システム在庫</th><th class="num">実際の数</th><th class="num">差異</th></tr></thead><tbody>
-        <tr><td>H-0009</td><td>木製ボタン（大）</td><td class="num">0 個</td><td class="num">3 個</td><td class="num">+3 個</td></tr>
+        <tr><td>H-0009</td><td>木製ボタン（大）</td><td class="num">3 個</td><td class="num">0 個</td><td class="num">-3 個</td></tr>
         <tr><td>…</td><td>他 3 件</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
         </tbody></table>
       </div>
@@ -210,7 +217,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
     <div class="state-block">
       <div class="dl-compare">
         <div class="dl-row head"><div>今回総額</div><div>前回総額</div><div>増減</div></div>
-        <div class="dl-row"><div class="num">¥1,297,200</div><div class="num">¥1,260,400</div><div class="num up">+¥36,800</div></div>
+        <div class="dl-row"><div class="num">¥1,231,800</div><div class="num">¥1,260,400</div><div class="num down">-¥28,600</div></div>
       </div>
       <div><h4 style="font-size:18px;margin:0 0 4px">差異のあった商品（4件）</h4>
         <table class="diff"><thead><tr><th>商品コード</th><th>商品名</th><th class="num">システム在庫</th><th class="num">実際の数</th><th class="num">差異</th></tr></thead><tbody>
@@ -229,7 +236,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 <div class="decision">
 <b>未決項目（番号ごとに個別に返答可）</b>
 <ol>
-<li>進捗 header は A・B のどちらを採るか（併用可）。現行維持も選択肢に残す。</li>
+<li>進捗 header は A（サマリ帯 + 見出し構造を内包した既定案）か、B（見出し構造のみの最小案）かを選ぶ。現行維持も選択肢に残す。</li>
 <li>完了画面は現行維持か C 準拠再構成か。実装は独立の Lane 3〜5 packet になる（本 PR は mockup 提示のみ）。</li>
 <li>SummaryCard 3 枚の並び順（進行中: 入力済み→未入力→進捗% / 完了: 今回総額→前回総額→増減、でよいか）。</li>
 <li>不整合 badge/Alert の色（本 mockup は warning。件数が多い・在庫金額影響が大きい場合は destructive にすべきか）。</li>
