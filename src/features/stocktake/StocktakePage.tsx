@@ -683,7 +683,13 @@ export function StocktakeCountEntry({
               ) : null}
             </div>
           </div>
-          <div className="flex items-end">
+          <div className="flex flex-col items-start gap-2">
+            {/* Gated Amendment 1（S3 追加是正、案 a）: 数量欄 column（Label + Input + FieldError slot）と
+                同じ行構造を持たせる。invisible な Label 高さ分の spacer でボタン上端を Input 上端に揃え、
+                下に min-h-5 の空 slot を置いて行高さも対称にする。 */}
+            <Label className="invisible" aria-hidden="true">
+              実際の数
+            </Label>
             <Button
               type="button"
               disabled={disabled || updateMutation.isPending}
@@ -692,6 +698,7 @@ export function StocktakeCountEntry({
               {updateMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
               数を保存
             </Button>
+            <div className="min-h-5" aria-hidden="true" />
           </div>
         </div>
       ) : null}
@@ -741,21 +748,6 @@ export function StocktakeItemList({
           }}
         />
         <div className="flex items-center gap-2">
-          <Checkbox
-            id="stocktake-uncounted-only"
-            checked={search.counted_only === false}
-            disabled={disabled}
-            onCheckedChange={(checked) => {
-              onSearchChange((prev) => ({
-                ...prev,
-                counted_only: checked === true ? false : undefined,
-                page: 1,
-              }));
-            }}
-          />
-          <Label htmlFor="stocktake-uncounted-only">未入力のみ表示</Label>
-        </div>
-        <div className="flex items-center gap-2">
           <Label className="text-muted-foreground" htmlFor="stocktake-per-page">
             表示件数
           </Label>
@@ -780,6 +772,21 @@ export function StocktakeItemList({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="stocktake-uncounted-only"
+            checked={search.counted_only === false}
+            disabled={disabled}
+            onCheckedChange={(checked) => {
+              onSearchChange((prev) => ({
+                ...prev,
+                counted_only: checked === true ? false : undefined,
+                page: 1,
+              }));
+            }}
+          />
+          <Label htmlFor="stocktake-uncounted-only">未入力のみ表示</Label>
         </div>
       </div>
 

@@ -907,6 +907,31 @@ describe("StocktakePage (UI-10)", () => {
     expect(quantityInput.parentElement?.querySelector(".min-h-5")).toBe(slot);
   });
 
+  it("SC3b: save button top edge stays aligned with the quantity input's top edge regardless of FieldError", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await user.type(await screen.findByLabelText("商品を検索・スキャン"), "P-001{Enter}");
+
+    const saveButton = await screen.findByRole("button", { name: "数を保存" });
+    const buttonColumn = saveButton.closest(".flex");
+    // 案(a) 採用: button column に min-h-5 相当の予約 slot（Label 高さ分の spacer を含む）を持たせ、
+    // items-end ではなく items-start へ切り替えて入力欄の上端と揃える。
+    expect(buttonColumn).toHaveClass("items-start");
+    expect(buttonColumn?.querySelector(".min-h-5")).toBeInTheDocument();
+
+    // FieldError の出入りでこの構造が崩れないことも確認する。
+    const quantityInput = await screen.findByLabelText("実際の数");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "-1{Enter}");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    const buttonColumnAfterError = (
+      await screen.findByRole("button", { name: "数を保存" })
+    ).closest(".flex");
+    expect(buttonColumnAfterError).toHaveClass("items-start");
+    expect(buttonColumnAfterError?.querySelector(".min-h-5")).toBeInTheDocument();
+  });
+
   it("SC4: target-not-found message renders as status info, not an alert", async () => {
     const user = userEvent.setup();
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
@@ -1012,6 +1037,23 @@ describe("StocktakePage (UI-10)", () => {
     expect(screen.getByRole("option", { name: "50 件" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "100 件" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "200 件" })).toBeInTheDocument();
+  });
+
+  it("SC10: filter row lists department filter, then per-page select, then uncounted-only checkbox in that DOM order", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+
+    const departmentTrigger = await screen.findByRole("combobox", { name: "部門" });
+    const perPageTrigger = screen.getByRole("combobox", { name: "表示件数" });
+    const uncountedCheckbox = screen.getByRole("checkbox", { name: "未入力のみ表示" });
+
+    // 部門 → 表示件数 → 未入力のみ表示 の順で DOM 上に並ぶことを compareDocumentPosition で assert する。
+    expect(
+      departmentTrigger.compareDocumentPosition(perPageTrigger) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      perPageTrigger.compareDocumentPosition(uncountedCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 

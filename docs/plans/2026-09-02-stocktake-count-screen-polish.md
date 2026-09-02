@@ -8,7 +8,7 @@
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4ffa162
-- Amendments: none
+- Amendments: 9176a39
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
@@ -515,6 +515,8 @@ Contract ID: SPEC-STOCKTAKE-COUNT-POLISH-2026-09-02
 ## Implementation Results
 
 棚卸しカウント画面の primary CTA、FieldError、対象外表示、未入力 Badge、廃番候補検索、表示件数・ページ送りを Scope S1〜S8 の契約どおり統一した。共有 live 候補 hook は任意 override の追加だけに留め、棚卸し以外の既定検索条件を維持した。S9 の AlertDialog 制約を含む source docs を提案文面どおり同期した。
+
+Gated Amendment 1（L3 run 1 是正）: S3 追加是正はボタン垂直整列の候補 (a) を採用し、button column に数量欄 column の Label 高さ相当の invisible spacer と数量欄と対称な `min-h-5` 空 slot を追加、`items-end` を `items-start` へ切り替えて「数を保存」の上端を数量入力欄の上端と揃えた。FieldError slot はこれまでどおり数量欄 column 内の常設要素のまま位置を変えていない。S10 は `StocktakeItemList` の filter row の JSX 順序を、部門フィルタ → 表示件数 → 未入力のみ表示 へ入れ替え、各 block 内部の `id`/`htmlFor`/`aria-*`/ハンドラは無変更のまま維持した。SC3b（button column の構造 oracle、案 a 採用・案 b は N/A）と SC10（filter row の DOM 順序 oracle）は TDD で先にテストを追加して red を確認したのち実装し、green に到達させた。
 
 ## Review Response
 

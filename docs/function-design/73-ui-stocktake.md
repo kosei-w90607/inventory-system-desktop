@@ -217,7 +217,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | 差異列（UI-10-D10） | `current_stock - actual_count`（`update_count` の `current_difference` と同一計算式）。`actual_count` が `null` なら「—」。色分けなし、符号付き数値のプレーンテキストのみ（結果画面 `adjusted_items` テーブルと表現統一）。 |
 | 最終カウント列（UI-10-D10） | `counted_at`。`null` なら「—」、値ありは `formatMovementDateTime` と同じ `T`→スペース変換（`src/features/stock-movements/lib/movement-formatters.ts` 流用）。 |
 | 並び順 | 変更しない（`ORDER BY si.id ASC`、UI-10-D3）。 |
-| 表示件数 | catalog ⑩ canonical `ProductPagination`（`docs/design-system/02-component-catalog.md` §⑩）+ `PRODUCT_PER_PAGE_OPTIONS`（50/100/200、既定 50）の `Select`。変更時は `page` を 1 へ戻す。IO 側 200 クランプ（`PAGINATION_MAX_PER_PAGE`）は不変。配置は表の下（catalog 既定）のまま。 |
+| 表示件数 | catalog ⑩ canonical `ProductPagination`（`docs/design-system/02-component-catalog.md` §⑩）+ `PRODUCT_PER_PAGE_OPTIONS`（50/100/200、既定 50）の `Select`。変更時は `page` を 1 へ戻す。IO 側 200 クランプ（`PAGINATION_MAX_PER_PAGE`）は不変。配置は表の下（catalog 既定）のまま。 filter row 内の並び順は 部門フィルタ → 表示件数 → 未入力のみ表示。 |
 | 0 件表示 | `patterns/EmptyState`。「この条件に一致する商品がありません」+ フィルタ解除導線。**filter-empty reset action**（2026-08-03 batch B、[02-component-catalog.md](../design-system/02-component-catalog.md) ⑥）: 部門フィルタ / 未入力のみ toggle のいずれかが既定値以外、かつ結果 0 件のときのみ「絞り込みを解除」ボタンを表示し、押下で部門フィルタ / 未入力のみ toggle / `page` をすべて既定値へ戻す（`page` は `StocktakeSearch` の既存 param、既定 1）。既定値のまま 0 件（棚卸し明細が実在しない）のときは表示しない。 |
 
 ## 73.7 確定フロー
@@ -379,6 +379,7 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 日付 | PR | 内容 |
 |------|-----|------|
 | 2026-09-02 | 本 PR | UI ガッツリ整えターン disposition culling（棚卸し UX audit C1/C4/C8/C9/C10 + PR #27 L3 owner 観察 3 件）を消化。UI-10-D2 契約監査追記3（FieldError 残留是正・「対象にありません」情報表示化・廃番商品の名前検索包含）+ §73.6 表示件数行（catalog ⑩ 再利用）+ §73.10 主動線 CTA / 未入力 Badge tone 記述更新。C10（単位併記）は起票時実測で `StocktakeItemDetail` に単位 field が無いと確定し見送り。 |
+| 2026-09-02 | 本 PR | Gated Amendment 1（owner Windows native L3 run 1、PR #30 comment 5509800525）。S3 に整列是正（ボタン上端を入力欄上端と揃える）を追加、S10 として一覧 filter row 順序を 部門→表示件数→未入力のみ表示 へ変更。 |
 | 2026-07-07 | - | UI-10 Design Phase 初版（UI-10-D1〜D9、`docs/archive/plans/2026-07-07-ui10-stocktake-design.md` 準拠） |
 | 2026-07-08 | #159 (private archive) レビュー起因 | 新規 CMD `get_active_stocktake()` を追加（UI-10-D1 更新）。実装 PR #159 で進行中判定が `localStorage` + `start_stocktake` のエラーメッセージ文字列パースで代替されていたのを P1 として却下し、DB 問い合わせ CMD による正式な進行中判定に差し替え。specta 化本数を既存4+新規2=6本 → 既存4+新規3=7本に更新。 |
 | 2026-07-08 | #159 (private archive) 実装レビュー起因 | UI-10-D10 追加（一覧の差異・最終カウント列、確定ダイアログ title 統一、前回比較独立カード）。同日の Codex レビュー P2 是正で、一覧・カウント入力欄の在庫列を `system_stock` から `current_stock` へ統一（列名「システム在庫」→「現在在庫」）し、差異の計算根拠と表示在庫値の不一致を解消。 |
