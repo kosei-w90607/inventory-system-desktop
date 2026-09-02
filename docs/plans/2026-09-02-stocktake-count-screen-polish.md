@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4ffa162
@@ -13,12 +13,14 @@
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Coordinator mutation 独立再実測 + Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 603563f
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（render oracle）
 
 2026-09-02: Plan Review round 1（Sonnet subagent fresh context、実装ソース・Rust IO・design-system 各書と突合）= P1 2 / P2 2 / P3 0、全件 accept、是正 commit `570f2b4`（S8 既定 50 化に伴う既存 T2/T3 の `per_page` 期待値更新を明記 / S6 の live 候補は 5 画面共有 hook の定数を変えず `queryOverrides` option 方式へ + catalog ⑮ SPEC-SUGGEST-D13 追記 / REQ 引用の実測訂正 / SC1 到達手順の具体化）。round 2（同 reviewer、diff 実読 + 全文再読 + hook 実装・bindings 型・DS2/DS4 突合）= P1/P2/P3 = 0。Plan Gate 収束（介入 1/3 = disposition culling）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `4ffa162`。
+
+2026-09-02: Writer（Codex）が worktree isolation で content commit 1 本を積み Draft PR #30 を作成（frontend gate / `cargo check --release` / L1 full RESULT=PASS、exact SHA と evidence は PR body を正とする。mutation 自己検証は発注書どおり不実施）。Final Review round 1 = P1/P2 = 0 / P3 2、Coordinator mutation 独立再実測 11 体全 kill（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = Writer content commit。次 = owner Windows native L3（介入 2/3、PR body の 7 手順）。
 
 ## Owner Effort Budget
 
@@ -461,6 +463,12 @@ Contract ID: SPEC-STOCKTAKE-COUNT-POLISH-2026-09-02
 
 ## Review Response
 
-（Review 後に記入）
+2026-09-02 Final Review round 1（Sonnet subagent fresh context、差分 11 file を Scope S1〜S9 / verbatim docs block / Matrix と突合）= P1 0 / P2 0 / P3 2。docs 是正は 73 契約監査追記 3 件 + §73.6 / §73.10、SCREEN_DESIGN、01 DSR-20、catalog ⑮ D8 / D13 が verbatim block と完全一致、旧文言 0 hit。`bindings.ts` / `src-tauri` 差分ゼロ、既存 test の改変は T2 / T3 の `per_page` 期待値更新のみ。共有 hook は `queryOverridesRef` 方式で既定挙動 byte 同一、他 4 画面の呼出し無変更。
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- P3-1（記録のみ）: `ProductAddSuggest.tsx` の import 順（`Button` → `Badge`）がアルファベット順に反する。lint 通過済みのため機能影響なし。
+- P3-2（記録のみ）: `StocktakePage.tsx` の `queryOverrides: { is_discontinued: null }` が render ごとに新規 object となり hook 側 effect が再実行される。ref 経由で常に最新値を読むため実害なし、perf nit。
+- Coordinator 裁定の補足: `ProductAddSuggest.tsx`（共有 component）への廃番 Badge 追加は Scope S6(c)「候補行に廃番 Badge を併記」の描画先が共有 component であるための必要変更で in-scope。他画面は廃番を候補に出さないため見た目は不変。`StocktakeItemList` の `<fieldset disabled>` で `ProductPagination` を包む実装は canonical を改変せず disabled を伝播する妥当な手段（Final Reviewer 所見と一致）。
+
+Coordinator mutation 独立再実測（隔離 worktree、clean tree = Reviewed Content HEAD、stocktake 系 + `ProductAddSuggest.test.tsx` を mutant ごとに単独実行）: X1（確定ボタン outline 撤去）→ SC1、X2（`selectItem` の FieldError クリア撤去）→ SC2、X3（`min-h-5` slot を条件 render へ）→ SC3、X4（`role="alert"` + `text-destructive` へ戻す）→ SC4、X5（Badge tone 分岐撤去）→ SC5、X6（ローカル query を `false` へ）→ SC6、X6b（override spread 撤去）→ SC6b、X6c（共有既定を `null` へ）→ SC6b + 共有 S1、X7（既定 perPage 200 へ、`useStocktakeItems` は perPage 必須引数のため `StocktakePage` の `useState(50)` へ注入）→ SC8a + T2 / T3、X8（page リセット撤去）→ SC8b、X9（canonical を手書き pager へ）→ SC8c'。**11 体全 kill、survivor なし**、Matrix 期待列と一致。Writer 側の mutation 自己検証は発注書で不実施としており、本独立再実測が唯一の kill 証跡。
+
+- Findings Freeze: frozen at Final Review round 1（P1/P2 = 0）; post-freeze exceptions: none.
