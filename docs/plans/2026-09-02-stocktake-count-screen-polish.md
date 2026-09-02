@@ -4,10 +4,10 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 4ffa162
 - Amendments: none
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
@@ -17,6 +17,8 @@
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（render oracle）
+
+2026-09-02: Plan Review round 1（Sonnet subagent fresh context、実装ソース・Rust IO・design-system 各書と突合）= P1 2 / P2 2 / P3 0、全件 accept、是正 commit `570f2b4`（S8 既定 50 化に伴う既存 T2/T3 の `per_page` 期待値更新を明記 / S6 の live 候補は 5 画面共有 hook の定数を変えず `queryOverrides` option 方式へ + catalog ⑮ SPEC-SUGGEST-D13 追記 / REQ 引用の実測訂正 / SC1 到達手順の具体化）。round 2（同 reviewer、diff 実読 + 全文再読 + hook 実装・bindings 型・DS2/DS4 突合）= P1/P2/P3 = 0。Plan Gate 収束（介入 1/3 = disposition culling）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `4ffa162`。
 
 ## Owner Effort Budget
 
