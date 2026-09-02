@@ -6,6 +6,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
+import { AlertTriangle } from "lucide-react";
 import type { HomeSummaryQueries, HomeSummaryDerived } from "../types";
 
 export interface PluNotificationBarProps {
@@ -21,6 +22,7 @@ export function PluNotificationBar({ pluDirty, pluDirtyCount }: PluNotificationB
 
   return (
     <Alert className="border-warning bg-warning-soft text-warning-strong">
+      <AlertTriangle />
       <AlertTitle>PLU 未反映商品があります</AlertTitle>
       <AlertDescription className="flex items-center justify-between gap-2">
         <span>{pluDirtyCount} 件の商品で PLU 書出しが必要です。</span>

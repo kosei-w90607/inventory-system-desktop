@@ -3,5 +3,7 @@ export const SELECTION_TONE_ACTIVE =
 
 export const SELECTION_TONE_ACTIVE_ICON = "[&_svg]:text-stone-700";
 
+export const CURRENT_LOCATION_ACCENT = "border-l-primary";
+
 export const SELECTION_TONE_CHIP_ON =
   "data-[state=on]:border-stone-400 data-[state=on]:bg-stone-300 data-[state=on]:font-semibold data-[state=on]:text-stone-950 data-[state=on]:hover:bg-stone-300 data-[state=on]:hover:text-stone-950";

@@ -1,4 +1,4 @@
-# 判断ルール集（DSR-01〜20）
+# 判断ルール集（DSR-01〜21）
 
 > **親文書**: [README.md](README.md)
 > **責務**: 実装時の迷いを一意に解消するルール集。「どちらを使うか」「いつ使うか」を DSR 番号で参照できる。
@@ -410,10 +410,23 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 ---
 
+## DSR-21 現在地と選択状態の色分離
+
+**ルール**: 「今どこにいるか」を示す現在地（主ナビゲーションの active link、`aria-current="page"`）は、stone 系 selection tone に Primary token のアクセント 1 点（左端バー、`border-l-primary` 系 token）を重ねて有彩色で示す。「何を絞っているか / どのモードか」を示す選択状態（filter chip の on、SegmentedControl の active）は無彩色 stone のままとし、有彩色を使わない。hover は両者とも無彩色。アクセントは背景色ではなく細いバーに限定し、`amber-` 生 class は使わない（DSR-08）。
+
+**Why**: 『UIデザインの教科書［新版］』（原田秀司、翔泳社、2020）5-3 は「現在地は有彩色、hover は無彩色」で現在地と一時状態を区別する。`00-foundations.md` の「アクティブ項目のみ Primary アクセント 1 色」はこれと一致する。一方 Primary（amber-700）は warning 系（PLU 通知・在庫少）と同系色のため、背景全面に使うと警告と現在地の区別が崩れる。背景は stone に残しバーだけ有彩色にすることで、`02-component-catalog.md` の「amber は選択状態の背景色とは分離する」を維持したまま現在地を有彩色化できる。
+
+**判定フロー / 具体例**: 対象が「画面の位置」を表すなら現在地 → アクセントあり（例: SidebarLink の active）。対象が「絞り込み・表示モード」を表すなら選択状態 → stone のみ（例: 在庫照会の状態 chip、商品別 / 部門別の切替、日次 / 月次 tab）。迷う場合は「他画面へ移動しても残る状態か」で判定し、移動で消える状態は選択状態とする。
+
+**関連**: パターン SegmentedControl（`02-component-catalog.md` 実装ルール）、DSR-08（色は二次シグナル）。review-checklist カテゴリ 9 対応（現在地と選択状態の色分離）。
+
+---
+
 ## 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-02 | wave 8 lane 1 | DSR-21「現在地と選択状態の色分離」を新設。主ナビゲーションの現在地は stone 系 selection tone に Primary 左端バーを重ね、filter chip / SegmentedControl の選択状態は stone のまま維持する。 |
 | 2026-08-30 | PR #22 | DSR-19「作成・保存成功の feedback 規約」と DSR-20「destructive 確認 dialog の配置・dismiss 規約」を新設。toast 最低保証・3/5/8 秒階層・id 適用基準、および destructive variant・配置・dismiss / 硬化・Cancel 文言を横断契約化。 |
 | 2026-08-30 | PR #21 | DSR-17 を 3+1 分類へ拡張。分類④「主ナビゲーションは遷移先先頭」を追加し、分類②の push 戻り + href key + `<main>` 復元、分類間の優先順位、R3 Probe / L3 義務を確定。 |
 | 2026-08-30 | PR #20 | DSR-18 新設: 詳細画面の戻り先を遷移元 URL とし、業務記録詳細 link の `returnTo` 送信義務、遷移先ごとの fallback、DSR-15 を extend する共通 helper 方針を確定。 |

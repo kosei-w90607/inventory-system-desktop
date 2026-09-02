@@ -140,6 +140,78 @@ describe("SidebarLink UI-12-D1: 同一 route の排他 active", () => {
   });
 });
 
+describe("SidebarLink DSR-21: 現在地アクセント", () => {
+  // 一般の見た目 class hardcode は脆いが、border-l-primary は DSR-21 が名指しする
+  // 契約 token であり、その存在自体を独立した contract oracle とする。
+  it("plain Link は active のみ Primary 左端バーを持つ", async () => {
+    const active = renderAt("/stock");
+    const activeLink = await screen.findByRole("link", { name: "在庫照会" });
+    expect(activeLink).toHaveClass("border-l-primary");
+    // TanStack <Link> は base className と activeProps.className を merge せず連結するため、
+    // base 側に border-l-transparent が残っていると active 時に border-l-primary と共存し
+    // cascade 後勝ちで Primary バーが不可視化しうる（2026-09-02 wave 8 lane 1 是正）。
+    expect(activeLink).not.toHaveClass("border-l-transparent");
+    active.unmount();
+
+    renderAt("/");
+    expect(await screen.findByRole("link", { name: "在庫照会" })).not.toHaveClass(
+      "border-l-primary",
+    );
+  });
+
+  it("ActiveMatchSidebarLink は active のみ Primary 左端バーを持つ", async () => {
+    renderStockNavigationAt("/stock?status=low_stock");
+
+    const activeLink = await screen.findByRole("link", { name: "在庫少一覧" });
+    expect(activeLink).toHaveClass("border-l-primary");
+    // ActiveMatchSidebarLink は単一 cn() で merge するため元々安全だが、base の
+    // border-l-transparent 撤去を回帰させないよう同じ negative assertion で固定する。
+    expect(activeLink).not.toHaveClass("border-l-transparent");
+    expect(screen.getByRole("link", { name: "在庫照会" })).not.toHaveClass("border-l-primary");
+  });
+});
+
+// L3 round 2 (iv) FAIL 是正（gated amendment Scope 7 / AC8）: plain <Link> 連結経路と
+// ActiveMatchSidebarLink 単一 cn() 経路で active の全周枠 border-stone-400 の有無が
+// 分岐していた（在庫照会は全周枠あり、月次売上は全周枠なし）。base から border 色 class を
+// 完全に除き、色は active/inactive 側にのみ置くことで両経路の class 集合を一致させる。
+describe("SidebarLink Scope 7: active 全周枠の経路 parity", () => {
+  it("(a) plain Link は active で border-stone-400 を持ち border-transparent を持たない", async () => {
+    renderAt("/stock");
+    const activeLink = await screen.findByRole("link", { name: "在庫照会" });
+    expect(activeLink).toHaveClass("border-stone-400");
+    expect(activeLink).not.toHaveClass("border-transparent");
+  });
+
+  it("(b) plain Link は inactive で border-transparent を持つ", async () => {
+    renderAt("/");
+    const inactiveLink = await screen.findByRole("link", { name: "在庫照会" });
+    expect(inactiveLink).toHaveClass("border-transparent");
+  });
+
+  it("(c) parity oracle: plain Link active と ActiveMatchSidebarLink active の border class 集合が一致する", async () => {
+    // TanStack <Link> は base + activeProps.className を連結するだけ、ActiveMatchSidebarLink は
+    // 単一 cn() で merge する。生成 CSS 順に依存せず両経路が同一結果になることを、
+    // border- で始まる class 集合の完全一致で確認する（L3 round 2 (iv) FAIL の再発防止）。
+    const plainRender = renderAt("/stock");
+    const plainActiveLink = await screen.findByRole("link", { name: "在庫照会" });
+    const plainBorderClasses = plainActiveLink.className
+      .split(/\s+/)
+      .filter((c) => c.startsWith("border"))
+      .sort();
+    plainRender.unmount();
+
+    renderStockNavigationAt("/stock?status=low_stock");
+    const activeMatchLink = await screen.findByRole("link", { name: "在庫少一覧" });
+    const activeMatchBorderClasses = activeMatchLink.className
+      .split(/\s+/)
+      .filter((c) => c.startsWith("border"))
+      .sort();
+
+    expect(plainBorderClasses).toEqual(activeMatchBorderClasses);
+  });
+});
+
 describe("DSR-17 D-C main navigation scroll marker", () => {
   it("T3: marks the plain Link destination href", async () => {
     const user = userEvent.setup();
