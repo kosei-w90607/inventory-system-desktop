@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4ffa162
@@ -27,6 +27,8 @@
 2026-09-02: gated amendment 1 を append-only で追記（Amendments 行へ SHA 記録）。Sonnet Writer が隔離 worktree で TDD（SC3b / SC10 を先に red → 是正で green）により content commit 1 本を積み、追って Coordinator 再実測の survivor X3b-iii 是正として SC3b 強化の test-only commit 1 本を積んだ（frontend gate / `cargo check --release` / L1 full RESULT=PASS / pre-push PASS、exact SHA は PR body）。Writer teardown で worktree の `node_modules` symlink が実 directory として実体化し `rm -rf` が本体 `node_modules` を消す事故が発生、`npm ci --ignore-scripts` で復旧・lockfile 無傷・tree clean を Coordinator が確認（教訓は auto-memory 化、以後 mutation 再実測は本体 tree の detached checkout 方式）。Final Review round 2 = P1/P2 = 0 / P3 1、mutation 第 2 回は survivor 是正後に全 kill。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（forward state-only 3/3 到達。以後の `human-confirm -> ready-hosted-final` は post-L3 の content commit〈Final Review round 1 P3-1 の import 順是正〉へ同乗、PR #28 の probe 撤去先例）、Reviewed Content HEAD = SC3b 強化 commit。次 = owner Windows native L3 run 2（介入 3/3、canonical 手順 1 から再開、手順 8 = filter row 順序を追加）。
 
 2026-09-03: owner Windows native L3 run 2（PR #30 comment 5511716949、run identity = human-confirm 再遷移 HEAD、`L3_SYNC` PASS）= 手順 1〜8 全 PASS（整列・filter row 順序を含む）、復元・アプリ終了まで完了。介入 3/3 消費。`human-confirm -> ready-hosted-final` は forward state-only 上限 3/3 到達のため本 content commit（Final Review round 1 P3-1 の import 順是正、behaviour-neutral）へ同乗（PR #28 の probe 撤去先例）。Ready 化・hosted final 確認・merge・closeout は Coordinator 代行。
+
+2026-09-03: Coordinator が PR #30 を Ready 化、hosted final success（exact HEAD = ready-hosted-final 遷移に同乗した post-L3 content commit `9e01c97`〈import 順 nit〉、PR head・remote ref・run head の三点一致成立）、squash merge `72d32d7`（2026-09-03、Ready と merge は owner 委任で Coordinator 代行）。実績 = 介入 3/3（disposition culling + L3 run 1 + L3 run 2、Ready・merge は Coordinator 代行）・relay 2/2・forward state-only 3/3・state-backtrack 1・gated amendment 1。closeout で archive へ移動。
 
 ## Owner Effort Budget
 
