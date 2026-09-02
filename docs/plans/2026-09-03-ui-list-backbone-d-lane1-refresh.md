@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: ec80c57
@@ -19,7 +19,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Claude Sonnet 5 subagent（design docs + mockup HTML、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Fable 裁定
-- Reviewed Content HEAD: a58a291
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner が mockup D 2 file（Lane 1a、下記「Lane 1a/1b 分割」参照）を開いて視認（render oracle）+ docs-only hosted final の owner `workflow_dispatch`（Ready 後、CI-TRIGGER-D1）+ merge
@@ -27,6 +27,8 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 2026-09-03: Plan Review round 1（独立 Sonnet subagent fresh context = P1 2 / P2 7、Opus 5 デザイン面レビュー〈発注書駆動・read-only〉= P1 2 / P2 5 / P3 3）→ 全件 accept、是正 commit `e594aa4`（§3.1 design board 例外の誤適用を撤回し Coordinator の役割配分判断へ / DSR-16 宙ぶらりん参照 3 箇所 / 「ベタっと」仮説を実読 4 点 + 完了画面 DSR-16 抵触へ差替 / Q8 追加・Q17 を ⑤ 限定・Q5-② 適用外注記 / deferral 裁定案 = 上部は件数 + 現在位置 text 必須・perPage 定数 1 本 + 画面別既定値 / Lane 1a（規範文 + mockup 2 file）・1b（残 5 file は Lane 2 同乗）分割 / catalog ⑯ 必須構成 6 項目 + 件数文言 pin）。round 2（Sonnet = P1 1 / P3 2、Opus = P2 3 / P3 2）→ 全件 accept、是正 commit `b928e6c`（00-foundations に更新履歴節なし / Lane 1b = 5 file / Q12 §1 へ典拠差替 / 密度注記式 200 × 40px ÷ 900px ≈ 9 画面 / DSR-16 pattern 限定 oracle）。round 3（Sonnet、最終）= P1/P2 = 0 / P3 1（Plan Review 記録の置き場、本 commit で Workflow State 側へ移設）。Plan Gate 収束（round 3/3、介入 1/3 = 起票選定）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `ec80c57`。Writer = Sonnet subagent（Lane 1a）、Opus はレビュー専任。
 
 2026-09-03: Sonnet Writer が隔離 worktree で Lane 1a を起草（content `26f4287` + Implementation Results `488a8c0`、Coordinator の Plans.md 表記訂正 `34fac41`）、Draft PR #31。Final Review round 1 = Sonnet P1 2 / P2 1 + Opus P1 2 / P2 5 / P3 3 → 是正 `6ecbc6e`、round 2 = Sonnet 0 / Opus P2 3 / P3 2 → 是正 `a58a291`、round 3 = Opus P1/P2 0（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = round 2 是正 commit。次 = owner が mockup 2 枚を視認して番号付き未決項目を culling（介入 2/3）+ Codex ロジック面レビュー relay（relay 1/2）。
+
+2026-09-03: Human Gate（owner 視認、介入 2/3）+ Codex ロジック面レビュー（PR #31 comment 5513654850、relay 1/2 消費）= P1 0 / P2 4 / P3 3。Codex P2 は全件 accept: (1) catalog ⑩ の件数文言 pin「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」は既存 canonical `ProductPagination` の表示契約（`{totalCount} 件中 {page} / {totalPages} ページ`、from / to なし）を暗黙に変更しており「配置規約のみ」の互換性判断が不成立 → 本 PR の ⑩ skeleton は現行文言に戻し、範囲文言は Lane 2 の移行対象（component + 全 caller + test）として明記 (2) 提案 token / ListShell path を `#` / backtick の有無で DS1 / DS3 から外す表記細工は恒久的 false-green の温床 → **Coordinator の前裁定を撤回**し、未実装候補（token 提案値・path）は canonical docs（00 / 02 / 04）から外して packet / reference 分析 doc / mockup に置き、規範には意味要件（操作枠 3:1 以上・現在行専用 tone・ListShell は Lane 2 新設予定）だけを書く (3) DSR-22 / ⑯ / mockup 間で適用範囲・固定列条件が一意でない → 1 本に pin（ListShell = pagination を持つ一覧全体 / 上部件数・sticky header = 実表示が viewport を超えるとき / 識別列固定 = 横 overflow 時のみ / 画面→固定列 mapping を DSR-22 に列挙して決定済みにし、mockup の「Lane 2 で最終確定」表現を撤去）(4) AC oracle `rg -c "DSR-01〜22"` の期待 1 に対し実測 2（title + 更新履歴）なのに「全一致」と記録 → heading 限定 regex へ直し FAIL → PASS を正直に記録。P3 3 件（更新履歴の「wave 8 lane 1」誤記 / `--border-strong` の contrast 再計算 3.53:1 / 3.38:1 / 04 の参照先宙ぶらりん）も accept。owner 視認所感: lists の器は「基本的に良い」/ 廃番 Badge が薄い（黄み白の soft 背景が白地で見づらい、既存の灰色系 Badge も同根）→ DSR-22 の UI 部品枠 3:1 を Badge にも明示適用し mockup の廃番 Badge を是正、既存 secondary Badge の見づらさは Lane 3〜5 の sweep 項目に / perPage 既定値は妥当 / 「入力中」現在行 Badge の適用先は棚卸しカウント・一括価格改定・入庫明細等の行編集画面。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正後は Sonnet + Opus の軽い再確認 → owner 再視認（未決項目の番号回答を含む）→ 証跡付きの圧縮遷移で ready-hosted-final へ。
 
 ## Owner Effort Budget
 
