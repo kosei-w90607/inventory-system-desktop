@@ -51,7 +51,7 @@ Risk Tiers R3 行のうち route/search state（全 route 遷移の scroll resto
 - `src/components/layout/Sidebar.tsx` は `@/components/ui/scroll-area.tsx` の `ScrollArea`（Radix `ScrollAreaPrimitive.Viewport`）を使い、`data-scroll-restoration-id` を持たない。`<main>`（`RootLayout.tsx`）だけが `data-scroll-restoration-id="main"` を持つ（`rg -n 'data-scroll-restoration-id' src/` で確認、hit は `RootLayout.tsx` の 1 箇所のみ）。
 - `document.addEventListener("scroll", onScroll, true)`（`scroll-restoration.js:104`）は capture phase で document 配下の任意の scroll イベントを拾い、`trackedScrollEntries`（Map、key = イベント発生要素）へ記録する。
 - `onBeforeLoad` の `snapshotCurrentScrollTargets(restoreKey)`（`:90-103`）が `trackedScrollEntries` の各要素を `cache.state[restoreKey][selector] = position` へ書く。selector は `target.getAttribute("data-scroll-restoration-id")` があれば `[data-scroll-restoration-id="<値>"]`、なければ `getCssSelector(target)`（親を辿る positional selector、`:47-55`）。
-- `onRendered`（`:113-171`）は `cache.state[cacheKey]` の**全 selector を無条件に** `document.querySelector(selector)` + `element.scrollLeft/scrollTop = position` で復元する（`:142-148`）。復元対象は `<main>` に限定されず、`applyMainNavScroll`（`src/lib/app-router.ts:15-21`、app 層の分類④ one-shot）や `getElementScrollRestorationEntry(... id: "main" ...)`（同 `:45-48`、D-E 遅延再適用）はいずれも `<main>` だけを個別に扱う app 層の**追加**処理であり、library 本体の全 selector 復元を止める仕組みではない。
+- `onRendered`（`:113-182`）は `cache.state[cacheKey]` の**全 selector を無条件に** `document.querySelector(selector)` + `element.scrollLeft/scrollTop = position` で復元する（`:142-148`）。復元対象は `<main>` に限定されず、`applyMainNavScroll`（`src/lib/app-router.ts:15-21`、app 層の分類④ one-shot）や `getElementScrollRestorationEntry(... id: "main" ...)`（同 `:45-48`、D-E 遅延再適用）はいずれも `<main>` だけを個別に扱う app 層の**追加**処理であり、library 本体の全 selector 復元を止める仕組みではない。
 - **`data-scroll-restoration-id` 付与は除外にならない（Backlog 記載の第一候補の反証）**: 属性を付けると selector が `getCssSelector` 由来の positional から `[data-scroll-restoration-id="..."]` に変わるだけで（`:96-98`）、`elementEntries` への記録と `onRendered` の復元対象からは外れない。除外には selector の種類ではなく「そもそも `cache.state` に残さない／復元させない」処理が要る。
 - router option を rg した結果（`node_modules/@tanstack/router-core/dist/esm/router.d.ts:309-334`）、公開 API は `scrollRestoration | getScrollRestorationKey | scrollRestorationBehavior | scrollToTopSelectors` の 4 つのみで、per-element の除外オプションは存在しない。`scrollRestoration` の function 化は location 単位の全体 opt-out（`<main>` の分類②復元も失う）であり不採用。`getScrollRestorationKey` は set/get 双方で使われる対称 key のため、sidebar だけを別 key にする方法もない。
 - `scrollRestorationCache`（`scroll-restoration.js:37`、`export { ..., scrollRestorationCache, ... }` を `index.d.ts:43` で re-export）は `@tanstack/router-core` の named export として公開されており、`@tanstack/react-router` からは re-export されない（`app-router.ts` は既に同モジュールから `getElementScrollRestorationEntry` を import している先例あり）。`.state` は plain object、`.set(updater)` は `functionalUpdate(updater, state) || state` を代入する non-nullable updater。sessionStorage が使えない環境（`getSafeSessionStorage()` 失敗）では `createScrollRestorationCache()` が `null` を返すため、**`scrollRestorationCache` は null であり得る**（`:14`）。
@@ -87,7 +87,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 1. **`pruneScrollRestorationEntries` の新設**（`src/lib/app-router.ts` のみ、新規 module 不要）: `scrollRestorationCache.state` から `[data-scroll-restoration-id="main"]` 以外の selector entry を削除する pure helper。引数 `key?: string` — 指定時はその key のみ、未指定時は全 key を対象にする。`scrollRestorationCache` が `null`（sessionStorage 不可環境）のときは no-op（null-safe）。
 2. **起動時 sweep**: `createAppRouter` 内、`createRouter(...)` 呼出し直後に `pruneScrollRestorationEntries()`（全 key）を呼ぶ。sessionStorage から `pagehide` で永続化された既存 cache（是正前の汚染分を含む）を router 生成時点で一括除染する。
 3. **`onBeforeLoad` 購読への追加**: 既存の `appRouter.subscribe("onBeforeLoad", (event) => { cancelDelayedRestoration?.(); ... })`（`app-router.ts:36-38`）に `if (event.fromLocation) pruneScrollRestorationEntries(getAppScrollRestorationKey(event.fromLocation));` を追加する。library の `setupScrollRestoration` は router constructor 内で先に `onBeforeLoad` を購読し（`router.js:118`、DSR-17 (g) で既に確認済みの順序保証）、`snapshotCurrentScrollTargets(fromLocation key)` を実行してから app の handler が呼ばれるため、app の prune は「library が直前に書いた fromLocation の snapshot」に対して確実に後から効く。
-4. **契約 test 追加**: Matrix T1〜T5。既存 test（`app-router.test.tsx` T1〜T13、`HomePage.test.tsx`、`page-scroll.test.ts`）の削除・無効化なし。
+4. **契約 test 追加**: Matrix SP1〜SP5。既存 DSR-17 test（`app-router.test.tsx` T1/T4/T5/T9/T10/T11/T12/T13、`HomePage.test.tsx`、`page-scroll.test.ts`）の削除・無効化なし。SP4（null cache）は別 test file（例: `src/lib/app-router.null-cache.test.tsx`）に置く — `app-router.test.tsx` file scope で `vi.mock("@tanstack/router-core")` すると同一 file 内の real-cache regression test（T10/T12/T13）が壊れ、かつ Contract Probe P1b で `vi.resetModules()` は externalize された node_modules を file 内で再評価しないと判明済みのため。方式: file 先頭、`@tanstack/router-core` / `./app-router` の最初の import 前（setup 後の top-level `await import(...)` を使う）で `window.sessionStorage` を access 時に throw させる（`Object.defineProperty(window, "sessionStorage", { get() { throw new Error("sessionStorage disabled"); } })`）ことで、その file の isolated module context（`vitest.config.ts` は `isolate` 既定 `true`）で module 評価される `createScrollRestorationCache()`（`scroll-restoration.js:12-19`）が `null` を返すようにする。SP4 はまず `scrollRestorationCache === null`（同一 file で import）を precondition として assert し、成立しない場合は silent pass にせず test を FAIL させる（isolation が実際に null 環境を作ったことの証明）。その上で `createAppRouter()` と `pruneScrollRestorationEntries()` / `pruneScrollRestorationEntries("/stock")` が例外を投げないことを確認する。Fallback（pre-approved、amendment 不要）: この vitest 設定で precondition が成立しない場合、Writer は helper signature を `pruneScrollRestorationEntries(key?: string, cache = scrollRestorationCache)` へ変更し cache を注入可能な最終引数にして、SP4 は `null` を明示的に渡す。採用した経路は Implementation Results に記録する。
 5. **DSR-17 docs 是正**（`docs/design-system/01-decision-rules.md`）:
    - Why（app 契約の背景）文の「`<main>`（...）が唯一の scroll container である」を「`<main>`（...）が route content の唯一の scroll container である」へ修正（289 行目付近）。sidebar の Radix `ScrollArea` viewport は chrome の scroll container であり、PR #28 L3 で復元される事実が実証済みのため、無限定の「唯一」は不正確。
    - Why（library 観測事実）文中の同型表現「唯一の scroll container `<main>` には効かない」も同一修正（同一節内での自己矛盾を避けるため、起票時実測で判明した事実を同じ pass で反映する）。
@@ -134,7 +134,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC2（分類④・D-E 維持）: sidebar 主ナビ再訪で `<main>` が先頭表示される（既存 T4/T5/T13）、および clamp 検出時の遅延再適用（既存 T12）が regression-free。
 - AC3（(h) 維持）: `HomePage.test.tsx` の negative test（UI-11b-D12）と `page-scroll.test.ts` が無変更で green。
 - AC4（fallback-suppression の明示）: `<main>` を一度も scroll していない画面への遷移が引き続き先頭表示になる（miss fallback、既存 T10 の miss case で被覆済みであることを確認）。
-- AC5: `test-matrices/2026-09-02-sidebar-scroll-restoration-exclusion.md` の T1〜T5 が green、必須 mutation 注入 X1〜X5 が全 kill（Coordinator 独立再実測 + Final Reviewer 独立再実測）。
+- AC5: `test-matrices/2026-09-02-sidebar-scroll-restoration-exclusion.md` の SP1〜SP5 が green、必須 mutation 注入 X1〜X5 が全 kill（Coordinator 独立再実測 + Final Reviewer 独立再実測）。
 - AC6: `src/lib/bindings.ts` の diff ゼロ。
 - AC7: frontend gate（`npm run typecheck` / `npm run lint` / `npm run format:check` / `npm test` / `npm run build`）green + `cargo check --release` PASS。
 - AC8: DSR-17 (j) 追記・Why 訂正・changelog 行が反映され、`bash scripts/doc-consistency-check.sh` clean。
@@ -165,8 +165,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | 新規追加物 | 登録・生成義務 | 対応 |
 |---|---|---|
-| 新規 export `pruneScrollRestorationEntries`（`src/lib/app-router.ts` 内、新規 module ではない） | — | test 同梱（Matrix T1〜T5）。route / command / doc 新設なし |
-| REQ coverage | 該当なし — `src/lib/app-router.test.tsx` の既存 test（T1〜T13）は DSR-17 決定 ID（D-A〜D-F）を cite する形式で REQ token を使っていない（`90-traceability.md` に DSR-17 / `app-router` の hit なし、`rg -n 'REQ-' src/lib/app-router.test.tsx` hit 0 を確認済み）。新規 Matrix T1〜T5 も同じ decision ID 引用の慣行（D-G）に従うため、`generate_traceability` 再生成は不要と判断する | 不要（結論確定） |
+| 新規 export `pruneScrollRestorationEntries`（`src/lib/app-router.ts` 内、新規 module ではない） | — | test 同梱（Matrix SP1〜SP5）。route / command / doc 新設なし |
+| REQ coverage | 該当なし — `src/lib/app-router.test.tsx` の既存 DSR-17 test（T1/T4/T5/T9/T10/T11/T12/T13）は DSR-17 決定 ID（D-A〜D-F）を cite する形式で REQ token を使っていない（`90-traceability.md` に DSR-17 / `app-router` の hit なし、`rg -n 'REQ-' src/lib/app-router.test.tsx` hit 0 を確認済み）。新規 Matrix SP1〜SP5 も同じ decision ID 引用の慣行（D-G）に従うため、`generate_traceability` 再生成は不要と判断する | 不要（結論確定） |
 | route / operator 画面 / Tauri command | — | 該当なし |
 
 **docs 内「唯一の scroll container」表現の sweep 結果**（`rg -n '唯一' docs --glob '!docs/archive/**'` の全 hit を確認。「唯一」の一般的な用法は他多数あるため、scroll container を指す文脈に絞って抽出）:
@@ -183,8 +183,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| DSR-17 分類②④（sidebar 非復元） | 01 DSR-17 (j)（新設） | D-G | Backlog 記載の第一候補（sidebar へ `data-scroll-restoration-id` 付与）は起票時実測で不成立と確定（selector 種別が変わるだけで除外にならない、`scroll-restoration.js:96-98`）。per-element 除外 option は 1.168.15 に存在しない（`router.d.ts:309-334`）。採用は app 層 allowlist prune（`scrollRestorationCache` を直接書き換え、`<main>` selector だけ残す） | Scope 1-3 | T1 / T2 / T3 |
-| DSR-17 (j) null-safety | 01 DSR-17 (j) | D-G | `scrollRestorationCache` は sessionStorage 不可環境で `null`（`scroll-restoration.js:14`）。prune helper は null-safe に実装し、null 環境で例外を投げない | Scope 1 | T4 |
+| DSR-17 分類②④（sidebar 非復元） | 01 DSR-17 (j)（新設） | D-G | Backlog 記載の第一候補（sidebar へ `data-scroll-restoration-id` 付与）は起票時実測で不成立と確定（selector 種別が変わるだけで除外にならない、`scroll-restoration.js:96-98`）。per-element 除外 option は 1.168.15 に存在しない（`router.d.ts:309-334`）。採用は app 層 allowlist prune（`scrollRestorationCache` を直接書き換え、`<main>` selector だけ残す） | Scope 1-3 | SP1 / SP2 / SP3 |
+| DSR-17 (j) null-safety | 01 DSR-17 (j) | D-G | `scrollRestorationCache` は sessionStorage 不可環境で `null`（`scroll-restoration.js:14`）。prune helper は null-safe に実装し、null 環境で例外を投げない | Scope 1 | SP4 |
 | DSR-17 (b)(c)(d)(g)(i) 既存契約の非破壊 | 01 DSR-17 (b)(c)(d)(g)(i) | D-A〜D-F（既存） | prune は `<main>` selector を allowlist するだけで既存の復元パス自体を変更しないため、分類②④・D-E は無変更で動作する想定。regression test で確認 | 変更なし | 既存 T1/T4/T5/T9/T10/T12/T13 |
 | 01-decision-rules.md 「唯一の scroll container」表現の訂正 | 01 DSR-17 Why / (c) | Scope 5 | 排他的な「唯一」表現は sidebar が chrome scroll container として復元される実証済み事実と矛盾する。「route content の唯一」へ限定 | Scope 5 | doc-consistency-check + diff |
 
@@ -225,7 +225,7 @@ Minimum design checks for business-app work:
 - Command / DTO / data contract: 変更なし（AC6 で機械確認）。
 - Persistence / transaction / audit impact: 変更なし（sessionStorage のみ、DB 非接触）。
 - Operator workflow / Japanese UI wording: sidebar 跳びバグの解消（AC-L3）。文言変更なし。
-- Error, empty, retry, and recovery behavior: `scrollRestorationCache` null 時は no-op（AC5 / T4）。
+- Error, empty, retry, and recovery behavior: `scrollRestorationCache` null 時は no-op（AC5 / SP4）。
 - Testability and traceability IDs: DSR-17 決定 ID（D-G）を Matrix が cite（REQ token 不使用、既存慣行どおり）。
 
 ## Contract Probe
@@ -233,7 +233,7 @@ Minimum design checks for business-app work:
 登録漏れ是正を含む probe は、是正を仮適用した状態で end-to-end に実行する — 未登録状態のままの probe は、登録後に初めて顕在化する義務を検出できない。本 packet の premise は「library の実挙動」であり登録漏れ型ではないため、この規律は非該当（is-N/A）。
 
 - **P1（起動時 sweep の可視性）**: `scrollRestorationCache.set(...)` で `/stock` key に `[data-scroll-restoration-id="main"]` + positional selector（`"div:nth-child(2) > nav:nth-child(1)"`）の 2 entry を直接 seed → 同一 test 内で `createAppRouter()` を呼び、`scrollRestorationCache.state["/stock"]` が seed 直後の singleton と同一インスタンスであることを確認 → **PASS**（同一 module singleton を読む限り、起動時 sweep は seed した entry を確実に見える。実測は `src/lib/__probe_scroll_prune.test.tsx`〈削除済み、一時 probe〉の "P1" test）。
-  - 追加実験 **P1b（sessionStorage 直接 seed + `vi.resetModules()` + dynamic import での module 再評価）**: `sessionStorage.setItem("tsr-scroll-restoration-v1_3", ...)` → `vi.resetModules()` → `await import("@tanstack/router-core")` で singleton が sessionStorage を再読込みするかを検証 → **FAIL（技術として不成立と判明）**: この test file 内で `@tanstack/router-core` が既に他 test 経由でロード済みの場合、vitest の `resetModules()` は外部 npm package（node_modules 配下、非 project source）の singleton まで再評価しない（vitest のデフォルト externalization により、`node_modules` 配下は module registry reset の対象外になる）。**結論**: T1（Matrix）は `scrollRestorationCache.set(...)` による直接 seed 方式を採用する（sessionStorage 経由の起動時再現ではなく、`createAppRouter()` 呼出し時点で `scrollRestorationCache.state` に何が入っているかだけを検証すれば起動時 sweep の契約は十分に検証できる — 本番の module 初期化順序は「sessionStorage 読込みは module import 時に 1 回」で決定的であり、その後 `createAppRouter()` が読む対象は常に同一 singleton）。
+  - 追加実験 **P1b（sessionStorage 直接 seed + `vi.resetModules()` + dynamic import での module 再評価）**: `sessionStorage.setItem("tsr-scroll-restoration-v1_3", ...)` → `vi.resetModules()` → `await import("@tanstack/router-core")` で singleton が sessionStorage を再読込みするかを検証 → **FAIL（技術として不成立と判明）**: この test file 内で `@tanstack/router-core` が既に他 test 経由でロード済みの場合、vitest の `resetModules()` は外部 npm package（node_modules 配下、非 project source）の singleton まで再評価しない（vitest のデフォルト externalization により、`node_modules` 配下は module registry reset の対象外になる）。**結論**: SP1（Matrix）は `scrollRestorationCache.set(...)` による直接 seed 方式を採用する（sessionStorage 経由の起動時再現ではなく、`createAppRouter()` 呼出し時点で `scrollRestorationCache.state` に何が入っているかだけを検証すれば起動時 sweep の契約は十分に検証できる — 本番の module 初期化順序は「sessionStorage 読込みは module import 時に 1 回」で決定的であり、その後 `createAppRouter()` が読む対象は常に同一 singleton）。
 - **P2（subscriber 順序 + `event.fromLocation`）**: `createAppRouter` で router を起動し、`<main>` と sidebar 相当の attribute-tagged 要素（`data-scroll-restoration-id="sidebar"`）を用意 → sidebar 側へ scroll event を dispatch → 別の app `onBeforeLoad` 購読を登録し、その中で `scrollRestorationCache.state[fromHref]?.['[data-scroll-restoration-id="sidebar"]']` を観測 → navigate 実行 → **PASS**: 観測値は `{ scrollX: 0, scrollY: 77 }`（seed 値どおり）— library の `snapshotCurrentScrollTargets` が app の `onBeforeLoad` handler より確実に先に entry を書き込んでいることを確認（Set 挿入順、library が router constructor 内で先に subscribe する既存事実〈DSR-17 (g) 節で確認済み〉と整合）。`router.navigate({ href })` は `onBeforeLoad` を `fromLocation` 付きで確実に emit する（`fromLocationSeen === true` を確認）。
 - **P3（`data-scroll-restoration-id` 付与は除外にならないことの実証）**: P2 と同じ harness で、sidebar 要素に `data-scroll-restoration-id="sidebar"` を付与した状態のまま navigate → `scrollRestorationCache.state["/stock"]["[data-scroll-restoration-id=\"sidebar\"]"]` が `{ scrollX: 0, scrollY: 77 }` として cache に残ることを確認 → **PASS（除外にならないことの実証成功）**。Backlog 記載の第一候補が起票時実測（node_modules 静読）と実行時実測（本 probe）の両方で不成立と確定。
 - **P4（`scrollRestorationCache.set` による削除の可視性）**: `.set(() => ({ "/a": { main: {...}, positional: {...} } }))` で 2 entry を seed → `.set((s) => { delete s["/a"]["positional > selector"]; return s; })` で削除 → `.state["/a"]` が main entry のみになることを確認 → **PASS**（`functionalUpdate` は updater の戻り値をそのまま新 state として代入するため、mutate-and-return パターンで削除が確実に反映される。`pruneScrollRestorationEntries` の実装方式として採用）。
@@ -244,14 +244,14 @@ Minimum design checks for business-app work:
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
-| DSR-17 (j) 起動時 sweep（全 key の非 main entry を削除） | `app-router.ts` `createAppRouter` 内の `pruneScrollRestorationEntries()` 呼出し | T1 | — |
-| DSR-17 (j) `onBeforeLoad` prune（`fromLocation` key のみ） | `app-router.ts` 既存 `onBeforeLoad` 購読への追加行 | T2 | — |
-| DSR-17 (j) `<main>` entry の保存（allowlist） | `pruneScrollRestorationEntries` の allowlist 判定 | T3 | AC-L3 |
-| DSR-17 (j) null-safety | `pruneScrollRestorationEntries` の `scrollRestorationCache` null guard | T4 | — |
-| DSR-17 (b)(c)(d) 分類②既存契約の非破壊 | 変更なし（既存 T1/T6/T9/T10） | T5（regression 実行） | — |
-| DSR-17 (g) 分類④既存契約の非破壊 | 変更なし（既存 T4/T5/T13） | T5（regression 実行） | — |
-| DSR-17 (i) clamp 遅延再適用の非破壊 | 変更なし（既存 T12） | T5（regression 実行） | — |
-| DSR-17 (h) 分類③負契約の非破壊 | 変更なし（`HomePage.test.tsx`） | T5（regression 実行） | — |
+| DSR-17 (j) 起動時 sweep（全 key の非 main entry を削除） | `app-router.ts` `createAppRouter` 内の `pruneScrollRestorationEntries()` 呼出し | SP1 | — |
+| DSR-17 (j) `onBeforeLoad` prune（`fromLocation` key のみ） | `app-router.ts` 既存 `onBeforeLoad` 購読への追加行 | SP2 | — |
+| DSR-17 (j) `<main>` entry の保存（allowlist） | `pruneScrollRestorationEntries` の allowlist 判定 | SP3 | AC-L3 |
+| DSR-17 (j) null-safety | `pruneScrollRestorationEntries` の `scrollRestorationCache` null guard | SP4 | — |
+| DSR-17 (b)(c)(d) 分類②既存契約の非破壊 | 変更なし（既存 T1/T9/T10） | SP5（regression 実行） | — |
+| DSR-17 (g) 分類④既存契約の非破壊 | 変更なし（既存 T4/T5/T13） | SP5（regression 実行） | — |
+| DSR-17 (i) clamp 遅延再適用の非破壊 | 変更なし（既存 T12） | SP5（regression 実行） | — |
+| DSR-17 (h) 分類③負契約の非破壊 | 変更なし（`HomePage.test.tsx`） | SP5（regression 実行） | — |
 | DSR-17 禁止（mount 一律 scroll 再導入禁止） | 全 Scope | 実装 diff review（route component への scroll 追加なし） | — |
 | sidebar 跳びバグの解消（PR #28 L3 実観測） | Scope 1-3 全体 | — | AC-L3（Human Gate） |
 | 01-decision-rules.md 「唯一」表現訂正 | Scope 5 | doc-consistency-check | — |
@@ -260,11 +260,11 @@ Minimum design checks for business-app work:
 
 Test Design Matrix: [test-matrices/2026-09-02-sidebar-scroll-restoration-exclusion.md](test-matrices/2026-09-02-sidebar-scroll-restoration-exclusion.md)
 
-- targeted tests: 起動時 sweep（T1）、`onBeforeLoad` prune の key 限定性（T2）、`<main>` entry 保存の regression（T3）、null-safety（T4）
-- negative tests: T2 の他 key 非破壊（non-empty presence oracle）、T4 の null cache 例外なし
-- compatibility checks: 既存 `app-router.test.tsx`（T1〜T13）/ `HomePage.test.tsx` / `page-scroll.test.ts` 無変更 green（T5、AC1〜AC4）
+- targeted tests: 起動時 sweep（SP1）、`onBeforeLoad` prune の key 限定性（SP2）、`<main>` entry 保存の regression（SP3）、null-safety（SP4）
+- negative tests: SP2 の他 key 非破壊（non-empty presence oracle）、SP4 の null cache 例外なし
+- compatibility checks: 既存 `app-router.test.tsx`（T1/T4/T5/T9/T10/T11/T12/T13）/ `HomePage.test.tsx` / `page-scroll.test.ts` 無変更 green（SP5、AC1〜AC4）
 - data safety checks: 業務データ非接触
-- main wiring/integration checks: `createAppRouter` 内での sweep 配線（build green で担保）、`onBeforeLoad` 購読内の prune 配線（T2）
+- main wiring/integration checks: `createAppRouter` 内での sweep 配線（build green で担保）、`onBeforeLoad` 購読内の prune 配線（SP2）
 - Human Gate に L3 を含めるため、Writer 完了条件に `cargo check --release` を含める（CI gate ではない — release build blind spot 対策）
 
 ## Boundary / Wire Contract
@@ -280,7 +280,8 @@ Test Design Matrix: [test-matrices/2026-09-02-sidebar-scroll-restoration-exclusi
 
 ## Review Focus
 
-- `scrollRestorationCache` の null-safety（sessionStorage 不可環境で `pruneScrollRestorationEntries` / `createAppRouter` が例外を投げないか — T4 の弁別性）。
+- `scrollRestorationCache` の null-safety（sessionStorage 不可環境で `pruneScrollRestorationEntries` / `createAppRouter` が例外を投げないか — SP4 の弁別性）。
+- SP4 の前提 assert（`scrollRestorationCache === null`）が実在し、silent pass になっていないか。
 - key の等価性（`getAppScrollRestorationKey` が返す文字列と `event.fromLocation` から算出する prune 対象 key が一致しているか。href 完全一致でなく別粒度になっていないか）。
 - subscriber 順序への依存（library の `onBeforeLoad`〈snapshot 書込み〉が app の `onBeforeLoad`〈prune〉より確実に先に実行される保証が、`router.subscribe` の Set 挿入順という既存の暗黙契約に依存している点 — 版数更新時に崩れ得るリスクとして DSR-17 (f) の再検証対象に含めるべきか）。
 - oracle の独立性（Matrix の selector literal `'[data-scroll-restoration-id="main"]'` が `app-router.ts` の `MAIN_SCROLL_SELECTOR` 定数を import せず、独立転記になっているか）。
@@ -300,11 +301,11 @@ Contract ID: SPEC-DSR17-SIDEBAR-SCROLL-EXCLUSION-2026-09-02
 
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
-| DSR-17 (j) 起動時 sweep | Scope 1-2 | T1 | null-safety・sweep 範囲 | Matrix |
-| DSR-17 (j) onBeforeLoad prune | Scope 3 | T2 | key 等価性・非破壊範囲 | Matrix |
-| DSR-17 (j) main entry 保存 | Scope 1 | T3 | allowlist 判定 | Matrix |
-| DSR-17 (j) null-safety | Scope 1 | T4 | 例外なし | Matrix |
-| DSR-17 (a)〜(i) 既存契約非破壊 | 変更なし | T5（regression） | 既存 test 無変更 green | PR body |
+| DSR-17 (j) 起動時 sweep | Scope 1-2 | SP1 | null-safety・sweep 範囲 | Matrix |
+| DSR-17 (j) onBeforeLoad prune | Scope 3 | SP2 | key 等価性・非破壊範囲 | Matrix |
+| DSR-17 (j) main entry 保存 | Scope 1 | SP3 | allowlist 判定 | Matrix |
+| DSR-17 (j) null-safety | Scope 1 | SP4 | 例外なし | Matrix |
+| DSR-17 (a)〜(i) 既存契約非破壊 | 変更なし | SP5（regression） | 既存 test 無変更 green | PR body |
 | DSR-17 (j) 追記・「唯一」訂正 | Scope 5 | AC8 | 追記の正確性 | doc check + diff |
 | sidebar 跳びバグ解消 | Scope 1-3 | — | 実機視認 | L3 + PR body |
 
