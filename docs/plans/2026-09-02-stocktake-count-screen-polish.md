@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4ffa162
@@ -13,7 +13,7 @@
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Coordinator mutation 独立再実測 + Fable 裁定
-- Reviewed Content HEAD: 603563f
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（render oracle）
@@ -21,6 +21,8 @@
 2026-09-02: Plan Review round 1（Sonnet subagent fresh context、実装ソース・Rust IO・design-system 各書と突合）= P1 2 / P2 2 / P3 0、全件 accept、是正 commit `570f2b4`（S8 既定 50 化に伴う既存 T2/T3 の `per_page` 期待値更新を明記 / S6 の live 候補は 5 画面共有 hook の定数を変えず `queryOverrides` option 方式へ + catalog ⑮ SPEC-SUGGEST-D13 追記 / REQ 引用の実測訂正 / SC1 到達手順の具体化）。round 2（同 reviewer、diff 実読 + 全文再読 + hook 実装・bindings 型・DS2/DS4 突合）= P1/P2/P3 = 0。Plan Gate 収束（介入 1/3 = disposition culling）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `4ffa162`。
 
 2026-09-02: Writer（Codex）が worktree isolation で content commit 1 本を積み Draft PR #30 を作成（frontend gate / `cargo check --release` / L1 full RESULT=PASS、exact SHA と evidence は PR body を正とする。mutation 自己検証は発注書どおり不実施）。Final Review round 1 = P1/P2 = 0 / P3 2、Coordinator mutation 独立再実測 11 体全 kill（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = Writer content commit。次 = owner Windows native L3（介入 2/3、PR body の 7 手順）。
+
+2026-09-02: owner Windows native L3 run 1（PR #30 comment 5509800525、run identity = human-confirm 遷移 HEAD、content = Writer commit、`L3_SYNC` PASS）= 手順 1 PASS（CTA hierarchy）、手順 1 の途中で利用者可視 blocker を発見し fail-closed 停止（手順 2〜7 NOT RUN）、backup から棚卸し開始前へ復元済み。blocker = 数量入力欄に対して「数を保存」が下へずれて見える（S3 の常設 `min-h-5` slot を数量欄 column 内へ置いたため grid row 高さに含まれ、隣の button column の `flex items-end` が row 最下部へ揃えて予約高さぶん押し出す）。owner 追加 disposition = 一覧 filter row を左から「部門 → 表示件数 → 未入力のみ表示」へ（現状の checkbox と表示件数 Select を入れ替え）。介入 2/3 消費、次回 L3 は介入 3/3。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ戻す）。是正契約は gated amendment（S3 整列契約の具体化 + S10 filter row 順序）として append-only で追記し、Writer は relay 上限到達のため Codex から Sonnet subagent（worktree isolation）へ切替（PR #28 先例）。
 
 ## Owner Effort Budget
 
