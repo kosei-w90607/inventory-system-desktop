@@ -375,7 +375,22 @@ N/A — R2（Design Intent Trace を参照）。
 
 ## Implementation Results
 
-Fill after implementation.
+Writer（Sonnet subagent、worktree isolation）が Lane 1a の規範文一式 + mockup 2 file を起草した。
+
+- 04-backbone.md: 原則 13〜16 を新設（DSR-22 + catalog ⑯ を承継、Q5/Q7/Q8/Q12/Q15/Q17 と Laws of UX を Why に反映、Q5-② 適用外注記込み）。「12 の原則」を「16 の原則」へ改題、token 表に枠 2 段（`--border-strong`）と現在行（`--row-current`）の提案行を追加、宙ぶらりん DSR-16 参照 3 箇所（token 表 badge 行 / 00〜03 反映先 / 適用の順序）を是正し、badge 3 種は原則 4 の記述を正とする方向（DSR 新設なし）で解消した。
+- 00-foundations.md: `--foreground` / `--muted-foreground` を対象背景明記の実測値へ訂正、`--border-strong`（提案 8a8480）と `--row-current`（提案 fff8e6）を token 行として追加。更新履歴節は無いため訂正は該当行への注記に留めた。
+- 01-decision-rules.md: DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」を新設（DSR-16 / DSR-21 との主題重複を Why 内で明記して回避）。title を DSR-01〜22 に更新。
+- 02-component-catalog.md: ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目、canonical は未実装で予定パスのみ記載）。⑩ ページネーションに上部 variant（件数 + 現在位置 text 必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定案（棚卸し 50 / 商品一覧 100、pending owner render oracle）を追記。title・責務・README 目次を 16 パターンへ改訂。
+- README.md / review-checklist.md: DSR-22・⑯ の索引反映、カテゴリ 9 に DSR-22 対応行を追加。
+- reference/README.md + mockup-d-lists.html + mockup-d-stocktake.html: 一覧の器（上部件数 + sticky header + 識別列固定 + 現在行 3 点、perPage 50/200 密度比較と「約 9 画面」注記）と棚卸し画面（進捗 header 現行/A/B、完了画面 現行 vs C を差異 0 件/12 件/不整合ありの 3 状態）を新規作成。sidebar / PageHeader / ボタンの見た目は描いていない（旧 SPEC-UILB-D6 継続）。2026-08-23 分析 doc を旧 branch から移植。
+- 旧 packet を `docs/archive/plans/2026-08-23-ui-list-backbone-d.md` へ superseded 注記付きで移植（本文は verbatim）。
+- D-079（座組事実）を decision-log.md へ追記（§3.1 言及なし、D-056 と矛盾しない範囲で記述）。
+
+**gate 実測**: `bash scripts/doc-consistency-check.sh` は ERROR 0 / WARN 5（是正前の pre-existing WARN セットと完全一致、新規 WARN 0）。`--target plan` も全チェック通過。全 AC の rg/fd oracle を個別実行し期待値と一致を確認（04-backbone の negative oracle 3 パターン含む）。prettier `--check` は touched md/html 全件で整形済み。DS1（src path 実在）/ DS3（token HEX 整合）は `--border-strong` / `--row-current` / `ListShell.tsx` が未実装である旨を検出しない書式（backtick 付き `src/` path・`#hex` の同居を避ける）へ調整して通過させた（globals.css / src/** は非変更のまま）。
+
+**裁定の記録**: catalog ③ テーブルへの sticky header / 識別列 opt-in 追記は Coordinator の Lane 1a Deliverables 指定に明示が無く、Non-scope「04-backbone 原則 1〜12 の改訂」の精神に合わせてスコープ外とした（⑯ ListShell 側で同内容を規範化済み）。Plans.md ④ は Coordinator 指示により本 Writer worktree では触っていない（既存 line 49 が Lane 1a/1b 分割を既に反映済み。line 48/49 の「残り mockup 4 file」表記は実体 5 file と 1 件差異があるが、Plans.md 編集は明示的に非対象のため記録のみ）。
+
+Human Gate（owner の mockup 2 file 視認 + Ready 後の workflow_dispatch + merge）と Reviewed Content HEAD の確定は未実施（Coordinator/owner の後続作業）。PR は未作成のため PR link は Coordinator が別途記録する。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
