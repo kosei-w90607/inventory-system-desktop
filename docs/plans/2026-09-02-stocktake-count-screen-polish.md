@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4ffa162
@@ -13,7 +13,7 @@
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Coordinator mutation 独立再実測 + Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 1fab1c0
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（render oracle）
@@ -23,6 +23,8 @@
 2026-09-02: Writer（Codex）が worktree isolation で content commit 1 本を積み Draft PR #30 を作成（frontend gate / `cargo check --release` / L1 full RESULT=PASS、exact SHA と evidence は PR body を正とする。mutation 自己検証は発注書どおり不実施）。Final Review round 1 = P1/P2 = 0 / P3 2、Coordinator mutation 独立再実測 11 体全 kill（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = Writer content commit。次 = owner Windows native L3（介入 2/3、PR body の 7 手順）。
 
 2026-09-02: owner Windows native L3 run 1（PR #30 comment 5509800525、run identity = human-confirm 遷移 HEAD、content = Writer commit、`L3_SYNC` PASS）= 手順 1 PASS（CTA hierarchy）、手順 1 の途中で利用者可視 blocker を発見し fail-closed 停止（手順 2〜7 NOT RUN）、backup から棚卸し開始前へ復元済み。blocker = 数量入力欄に対して「数を保存」が下へずれて見える（S3 の常設 `min-h-5` slot を数量欄 column 内へ置いたため grid row 高さに含まれ、隣の button column の `flex items-end` が row 最下部へ揃えて予約高さぶん押し出す）。owner 追加 disposition = 一覧 filter row を左から「部門 → 表示件数 → 未入力のみ表示」へ（現状の checkbox と表示件数 Select を入れ替え）。介入 2/3 消費、次回 L3 は介入 3/3。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ戻す）。是正契約は gated amendment（S3 整列契約の具体化 + S10 filter row 順序）として append-only で追記し、Writer は relay 上限到達のため Codex から Sonnet subagent（worktree isolation）へ切替（PR #28 先例）。
+
+2026-09-02: gated amendment 1 を append-only で追記（Amendments 行へ SHA 記録）。Sonnet Writer が隔離 worktree で TDD（SC3b / SC10 を先に red → 是正で green）により content commit 1 本を積み、追って Coordinator 再実測の survivor X3b-iii 是正として SC3b 強化の test-only commit 1 本を積んだ（frontend gate / `cargo check --release` / L1 full RESULT=PASS / pre-push PASS、exact SHA は PR body）。Writer teardown で worktree の `node_modules` symlink が実 directory として実体化し `rm -rf` が本体 `node_modules` を消す事故が発生、`npm ci --ignore-scripts` で復旧・lockfile 無傷・tree clean を Coordinator が確認（教訓は auto-memory 化、以後 mutation 再実測は本体 tree の detached checkout 方式）。Final Review round 2 = P1/P2 = 0 / P3 1、mutation 第 2 回は survivor 是正後に全 kill。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（forward state-only 3/3 到達。以後の `human-confirm -> ready-hosted-final` は post-L3 の content commit〈Final Review round 1 P3-1 の import 順是正〉へ同乗、PR #28 の probe 撤去先例）、Reviewed Content HEAD = SC3b 強化 commit。次 = owner Windows native L3 run 2（介入 3/3、canonical 手順 1 から再開、手順 8 = filter row 順序を追加）。
 
 ## Owner Effort Budget
 
@@ -528,4 +530,10 @@ Gated Amendment 1（L3 run 1 是正）: S3 追加是正はボタン垂直整列�
 
 Coordinator mutation 独立再実測（隔離 worktree、clean tree = Reviewed Content HEAD、stocktake 系 + `ProductAddSuggest.test.tsx` を mutant ごとに単独実行）: X1（確定ボタン outline 撤去）→ SC1、X2（`selectItem` の FieldError クリア撤去）→ SC2、X3（`min-h-5` slot を条件 render へ）→ SC3、X4（`role="alert"` + `text-destructive` へ戻す）→ SC4、X5（Badge tone 分岐撤去）→ SC5、X6（ローカル query を `false` へ）→ SC6、X6b（override spread 撤去）→ SC6b、X6c（共有既定を `null` へ）→ SC6b + 共有 S1、X7（既定 perPage 200 へ、`useStocktakeItems` は perPage 必須引数のため `StocktakePage` の `useState(50)` へ注入）→ SC8a + T2 / T3、X8（page リセット撤去）→ SC8b、X9（canonical を手書き pager へ）→ SC8c'。**11 体全 kill、survivor なし**、Matrix 期待列と一致。Writer 側の mutation 自己検証は発注書で不実施としており、本独立再実測が唯一の kill 証跡。
 
-- Findings Freeze: frozen at Final Review round 1（P1/P2 = 0）; post-freeze exceptions: none.
+2026-09-02 Final Review round 2（別個体の Sonnet subagent fresh context、gated amendment 1 と是正 commit の突合）= P1 0 / P2 0 / P3 1。S3 是正は候補 (a)（button column を `flex flex-col items-start` にし、`invisible` + `aria-hidden` の Label 高さ spacer と末尾 `min-h-5` 空 slot で数量欄と行構造を揃える）、FieldError slot（`min-h-5` / `aria-live` / `role`）は無変更。S10 は JSX 順序のみで `id` / `htmlFor` / disabled 伝播無変更、73 §73.6 追記と更新履歴行は amendment の verbatim と一致。既存 test 改変ゼロ。
+
+- P3-1（記録のみ）: `md` 未満の単一列 stack でも spacer と空 slot が残り余白が出る。デスクトップ Tauri app で `md` 未満に達する運用は想定外のため実害なし。
+
+Coordinator mutation 独立再実測 第 2 回（本体 tree の detached checkout、`git checkout -- <file>` で復元）: X3（slot 条件 render 化）→ SC3、X3b-i（`items-end` 復帰）→ SC3b、X3b-ii（末尾空 slot 撤去）→ SC3b、X10（filter 順序復帰）→ SC10 が kill。**X3b-iii（Label 高さ spacer 撤去）は survivor** = 等価変異ではなく test gap（spacer がボタン上端を入力欄上端に揃える当の要素）。裁定 = SC3b の oracle を Matrix 最小指定の superset へ強化（spacer の `aria-hidden` + `invisible` と button との隣接を pre / post error で assert）、Matrix 本文は不変。Writer が test-only commit で強化し、同注入で SC3b fail → 復元で green を確認。
+
+- Findings Freeze: frozen at Final Review round 2（P1/P2 = 0）; post-freeze exceptions: SC3b oracle 強化（test-only、mutation survivor 起源、Matrix 契約の superset）.
