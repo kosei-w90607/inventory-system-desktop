@@ -218,6 +218,8 @@ owner が Human Gate で mockup D 2 file を視認した際の所感・裁定を
 
 同日の他の owner 裁定（既出、再確認のため本 sub-list にも記録）: lists の器 = 採用 / perPage 既定値 裁定案 = 了承 / 現在行 Badge の適用先 = 行編集画面（棚卸しカウント・一括価格改定・入庫・返品交換の明細）/ 廃棄・破損 備考 = backlog 起票済み（`docs/Plans.md` Backlog 節）。
 
+5. **再視認（`9f5a0ba`）**: header は A' を明確に支持、A' + B 合体案の提示を要望（本 commit で A'B を追加）/ 廃番 Badge 是正版 OK / lists の未決項目 1〜n はすべて同意（2 = sticky header の意味を確認のうえ同意）。
+
 ### Lane 3〜5 への申し送り
 
 - 既存 secondary Badge（stone 系、実装済み画面）の可読性 sweep（枠線 3:1 の付与要否を画面ごとに確認）— Gated Amendment 1 (c) 起源。

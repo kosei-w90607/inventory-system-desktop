@@ -51,6 +51,7 @@ h3{font-size:18px;line-height:1.4;font-weight:600;margin:0}
 .aprime-item .val{display:flex;align-items:center;gap:6px;font-size:28px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
 .aprime-item .val.warn{color:var(--warn-strong)}
 .aprime-item .val svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+.aprime-item .val .aprime-frac{font-size:14px;font-weight:500;color:var(--muted);margin-left:2px}
 /* track は --bg（canonical --background #fafaf9）を使う。--card はこの mockup では demo 値 #fff で、
    canonical --card #f5f5f4 は帯背景 --accent と同値になり track が消える（O-P3-1） */
 .aprime-progress{height:6px;background:var(--bg)}
@@ -98,11 +99,11 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 <div class="top"><b>棚卸し画面 D — Lane 1 refresh</b><span>お手本 mockup。実装の正本ではない（正本は 04-backbone / DSR-22 / catalog ⑯・SummaryCard）</span></div>
 <div class="page">
 
-<div><h1>棚卸し「ベタっと」所感への提案（進捗 header / 完了画面）</h1><p class="lead">owner 所感（2026-09-03）を受け、進捗 header は 現行 / A（サマリ帯 + 見出し構造）/ A'（枠なし帯 1 本、owner「カードの多用」懸念への対案）/ B（見出しの役割分離のみ）の 4 案、完了画面は **C（DSR-16 準拠再構成）に確定**（owner 裁定 2026-09-03）を差異 0 件 / 12 件 / 不整合ありの 3 データ状態で示す。進捗 header は仮説であり owner 視認（Human Gate 会話）で A / A' を最終選定する。sidebar / PageHeader / ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続）。データは合成値。</p></div>
+<div><h1>棚卸し「ベタっと」所感への提案（進捗 header / 完了画面）</h1><p class="lead">owner 所感（2026-09-03）を受け、進捗 header は 現行 / A（サマリ帯 + 見出し構造）/ A'（枠なし帯 1 本、owner「カードの多用」懸念への対案）/ **A'B（推奨、合体案。owner 再視認 2026-09-03 の要望を受けて追加）** / B（見出しの役割分離のみ）の 5 案、完了画面は **C（DSR-16 準拠再構成）に確定**（owner 裁定 2026-09-03）を差異 0 件 / 12 件 / 不整合ありの 3 データ状態で示す。進捗 header は owner 再視認で A' を明確に支持済み、残るは A' と A'B（全数の置き場）の最終選定。sidebar / PageHeader / ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続）。データは合成値。</p></div>
 
 <section>
 <h2>1. 進捗 header（進行中）</h2>
-<p class="lead">対象コード: `StocktakeProgressHeader`（`StocktakePage.tsx:379-411`）。4 案を同一ページに縦 4 段で並べる。</p>
+<p class="lead">対象コード: `StocktakeProgressHeader`（`StocktakePage.tsx:379-411`）。5 案を同一ページに縦 5 段で並べる。</p>
 
 <div class="variant">
   <div class="v-label"><span class="tag">現行</span></div>
@@ -148,6 +149,23 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
     <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
   </div>
   <p class="note"><b>1'.</b> owner の「カードの多用」懸念を受け、A のカード 3 枚を枠なしの淡い stone 背景（`--accent`）1 段へ統合。カード枠 3 本は反復しないが、帯自体が背景（`--accent` #f5f5f4）と地色（`--bg` #fafaf9）で識別できるよう外周に 3:1 の枠 1 本（`--d-ctl`、border-strong 候補値 8a8480、対 `--bg` 実測 3.53:1）を付ける（DSR-22 原則 13。囲みはカード 3 本 → 帯 1 本のみで DSR-16 の削減意図は変わらない）。区切りは余白 + 細い縦罫（`--d-line`）のみ。数値は大きく・ラベルは小さく muted のまま維持し、progress bar は帯の下辺に沿わせて器を 1 つにまとめる。未入力の値は A と同じく icon 併記で色だけに頼らない（DSR-08）。<b>これを採ると何が変わるか</b>: 視覚的な「箱」の数が A の 3 枚 + 進捗バーから帯 1 枚（外周枠 1 本）へ減り、囲みの反復感が薄れる。数値サイズ・語彙は A と同一。<b>Coordinator 推奨</b>: A' を既定案とする（同じ情報量で囲みが少ない）。</p>
+</div>
+
+<div class="variant">
+  <div class="v-label"><span class="tag rec">A'B（推奨、合体案）</span></div>
+  <div class="b-box" style="border:0;padding:0">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始 2026-09-03 10:12</p>
+  </div>
+  <div class="aprime">
+    <div class="aprime-row">
+      <div class="aprime-item"><div class="lbl">入力済み</div><div class="val">142<span class="aprime-frac"> / 238</span></div></div>
+      <div class="aprime-item"><div class="lbl">未入力</div><div class="val warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>96 件</div></div>
+      <div class="aprime-item"><div class="lbl">進捗</div><div class="val">60%</div></div>
+    </div>
+    <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
+  </div>
+  <p class="note"><b>1''.</b> owner 再視認所感「入力済みの情報が被るからストーンのところだけにして全数をどこかに移したい」（2026-09-03）を受けた合体案。B の見出し構造（h2「棚卸し中」+ 別行 muted「開始 …」）に A' の帯をそのまま続け、B 単体が持っていた平文行「入力済み 142 / 全 238」は廃止する（帯側の入力済み指標と数値が重複するため）。全数「238」は帯の入力済み指標へ小さな分数として統合する（大きな「142」+ 小さな muted「/ 238」、ラベルは「入力済み」のまま。未入力・進捗% は A' と同一）。progress bar は A' と同じく帯の下辺に沿わせる。<b>これを採ると何が変わるか</b>: 数値の出所が帯 1 箇所だけになり、B 単体で生じていた「入力済み 142」の重複表示が解消する。<b>代案</b>: 全 238 件を見出し行（h2「棚卸し中」）の右端に置く案も検討可能（本 mockup では未描画、文章のみの説明）。</p>
 </div>
 
 <div class="variant">
@@ -267,7 +285,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 <div class="decision">
 <b>未決項目（番号ごとに個別に返答可）</b>
 <ol>
-<li>進捗 header は A か A' かを選ぶ（Coordinator 推奨 = A'）。B は見出し役割分離のみの部分案として A / A' いずれとも併用可（A・A' はすでに B の見出し構造を内包）。現行維持も選択肢に残す。</li>
+<li>A'B を既定（owner 選好 A' + B 合体）— 全数の置き場: 帯内の分数（推奨）か見出し行右端か。</li>
 </ol>
 <b>決定事項（owner 裁定 2026-09-03、Human Gate 会話）</b>
 <ol>
