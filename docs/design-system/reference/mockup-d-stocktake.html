@@ -39,8 +39,8 @@ h3{font-size:18px;line-height:1.4;font-weight:600;margin:0}
 .summary-card .lbl{font-size:14px;font-weight:500;color:var(--muted)}
 .summary-card .val{font-size:28px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
 .summary-card.warn .val{color:var(--warn-strong)}
-.summary-card .lbl svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-2px;margin-right:4px}
-.summary-card .warn-sub{font-size:12px;font-weight:600;color:var(--warn-strong);margin-top:2px}
+.summary-card .lbl svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-3px;margin-right:4px}
+.summary-card .warn-sub{margin-top:4px}
 /* ===== B: 見出しの役割分離 + Separator 付きの器 ===== */
 .b-box{border:1px solid var(--d-line);border-radius:8px;padding:16px}
 .b-box h4{font-size:20px;font-weight:600;margin:0}
@@ -111,12 +111,12 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
     <hr class="sep">
     <div class="summary-row">
       <div class="summary-card"><div class="lbl">入力済み</div><div class="val">142 件</div></div>
-      <div class="summary-card warn"><div class="lbl"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>未入力</div><div class="val">96 件</div><div class="warn-sub">要入力</div></div>
+      <div class="summary-card warn"><div class="lbl"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>未入力</div><div class="val">96 件</div><div class="warn-sub"><span class="badge b-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>要入力</span></div></div>
       <div class="summary-card"><div class="lbl">進捗</div><div class="val">60%</div></div>
     </div>
     <div class="progress" aria-label="棚卸し進捗" style="margin-top:12px"><i style="width:60%"></i></div>
   </div>
-  <p class="note"><b>1.</b> 既存 <code>SummaryCard</code>（小さい muted ラベル + 大きい値）を横 3 枚並べ、「棚卸し中」h2 と「開始 …」を別行 muted に分離、進捗ブロックを Separator 付きの器（`FormSection.tsx:42` と同型）へ入れる（B の見出し構造を内包）。未入力カードは色だけに頼らず warning icon + 「要入力」の文言を併記する（DSR-08）。新しい font-size は作らず DSR-13 に触れず、ホームと同部品を使うことで画面間のばらつきも減る。<b>これを採ると何が変わるか</b>: 「入力済み」「未入力」「進捗%」が 28px 太字で並び最重要数値が最初に目に入り、見出しと補足情報も視覚的に分かれる。</p>
+  <p class="note"><b>1.</b> 既存 <code>SummaryCard</code>（小さい muted ラベル + 大きい値）を横 3 枚並べ、「棚卸し中」h2 と「開始 …」を別行 muted に分離、進捗ブロックを Separator 付きの器（`FormSection.tsx:42` と同型）へ入れる（B の見出し構造を内包）。未入力カードは色だけに頼らず warning icon + 「要入力」の状態 badge（outline + icon + soft 背景、原則 4 ①）を併記する（DSR-08。12px は badge の中だけ、原則 1）。新しい font-size は作らず DSR-13 に触れず、ホームと同部品を使うことで画面間のばらつきも減る。<b>これを採ると何が変わるか</b>: 「入力済み」「未入力」「進捗%」が 28px 太字で並び最重要数値が最初に目に入り、見出しと補足情報も視覚的に分かれる。</p>
 </div>
 
 <div class="variant">

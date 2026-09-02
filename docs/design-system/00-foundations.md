@@ -77,6 +77,7 @@ SCREEN_DESIGN.md §2 で定義された 4色エリア（緑=毎日の業務 / �
 | body | 16px (1rem) | 1.5 | 400 | 本文、テーブルセル |
 | label | 14px (0.875rem) | 1.5 | 500 | ラベル、ボタン、タブ |
 | caption | 12px (0.75rem) | 1.5 | 400 | 補助説明、タイムスタンプ |
+| metric（数値強調、提案、DSR-22） | 28 or 30px（提案、Lane 2 で確定） | 1.2 | 600 | サマリカードの値（一覧の器・現在行の「ラベルは小さく muted、値は大きく」原則 15、04-backbone 参照）。既存 `StocktakePage.tsx:933` の `text-3xl`（30px）が先行使用のインスタンス |
 
 **フォントファミリー**: システムフォントスタック（`-apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif`）。カスタムWebフォントは読み込み遅延のリスクと業務アプリの堅実性を優先して不採用。
 

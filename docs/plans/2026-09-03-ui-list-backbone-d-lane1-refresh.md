@@ -411,6 +411,16 @@ Writer（Sonnet subagent、worktree isolation）が Lane 1a の規範文一式 +
 
 **gate 実測（round 1 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（pre-existing WARN セットと完全一致、diff 0 行）。`--target plan` → `結果: 全チェック通過`。全 AC oracle（新規追加分含む）を再実行し期待値と一致。prettier `--check` は本ラウンド touched 全 6 file で整形済み。
 
+**Final Review round 2 是正（Sonnet = clean（P1/P2/P3 0）、Opus P2×3/P3×2、Coordinator 全件 accept）**:
+
+- O-P2-1: 04-backbone.md 原則 16 で圧縮時に落ちていた「DPI 125% / 150% で崩れない（rem / em 基準、px 直書きを避ける）」を復元。参照先の dangling pointer（DSR-22 に該当節が無いまま「DSR-22 本文・Human Gate 文面を参照」としていた）を、01-decision-rules.md DSR-22 に新設した「低視力 L3」節（forced-colors / DPI 125〜150% / 当たり判定 24×24 / rem・em）へ差し替え。review-checklist.md L86 の DSR-22 行に「低視力 L3（forced-colors / DPI 125〜150% / 当たり判定 24×24）」の 4 観点目を追加。
+- O-P2-2: 00-foundations.md タイポグラフィ表に metric（数値強調、提案）行を追加（28 or 30px / 600、既存 `StocktakePage.tsx:933` の `text-3xl` を先行インスタンスとして引用）。04-backbone 原則 15 からこの行を参照。
+- O-P2-3: mockup-d-stocktake.html の A 案「要入力」を裸の 12px 文字列から state badge（outline + icon + soft 背景、原則 4 ①）へ変更し、`.summary-card .lbl svg` を 14px → 16px に統一。
+- O-P3-1: mockup-d-lists.html 上部 pager row から pager ボタン任意の説明文を除去し count/position text のみに戻す（説明は既に決定事項 1 番の未決項目文に同内容があるため重複記載を解消）。
+- O-P3-2: 04-backbone 原則 15 の太字要約を「現在の行は 3 点で示す。」のみへ戻し、ラベル/値の 3 段規範文は非太字の本文へ移動（Q8 引用・metric 行参照は維持）。
+
+**gate 実測（round 2 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 1 の WARN セットと diff 0 行）。`--target plan` → `結果: 全チェック通過`。`rg -n "px 直書き" docs/design-system` = 1 件、`rg -n "低視力" docs/quality/review-checklist.md` = 1 件、`rg -c "width:14px" mockup-d-stocktake.html` = 0 件を確認。原典 AC oracle（DSR-22 / ⑯ / 16の原則 / negative oracle / checklist / pin wording / `.down`）を再実行し全て期待値どおり。prettier `--check` は本ラウンド touched 全 6 file で整形済み。
+
 Human Gate（owner の mockup 2 file 視認 + Ready 後の workflow_dispatch + merge）と Reviewed Content HEAD の確定は未実施（Coordinator/owner の後続作業）。PR は未作成のため PR link は Coordinator が別途記録する。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.

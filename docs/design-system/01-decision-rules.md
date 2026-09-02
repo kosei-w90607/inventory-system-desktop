@@ -432,7 +432,9 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 **判定フロー / 具体例**: 商品一覧・在庫照会・一括価格改定・棚卸し・整合性チェック等の pagination を持つ一覧は本則に従う。1 画面に収まる短い一覧は上部 pager を省略してよい（viewport 超過一覧のみ opt-in）。perPage の既定値は画面ごとに変えてよいが、共有定数（`PRODUCT_PER_PAGE_OPTIONS` 等）は 1 本のまま維持する（裁定案: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100。owner が mockup の密度比較で最終決定する）。
 
-**関連**: パターン③テーブル / ⑩ページネーション / ⑯一覧の器（ListShell）。DSR-08「semantic 色のみで意味を伝えない」/ DSR-16「同型情報のグループ化と囲みの階層」（表示形式の選定は DSR-16、器は DSR-22）/ DSR-21「現在地と選択状態の色分離」（画面レベルの現在地は DSR-21、レコードレベルの現在行は DSR-22）。review-checklist カテゴリ 9 対応（一覧の器・現在行・UI 部品枠のコントラストが DSR-22 に沿っているか）。
+**低視力 L3**: 操作者画面の L3 checklist に (a) Windows forced-colors（ハイコントラスト）で状態・枠・focus が消えない (b) DPI 125% / 150% で崩れない（rem / em 基準、px 直書きを避ける）(c) 実利用者（緑内障等）の Windows native 1 セッションを代表画面で、を含める。行内の icon のみボタンは見た目 16px のまま当たり判定 24×24 以上（padding）にする（WCAG 2.2 2.5.8 target size）。一覧の器・現在行に限らず低視力を前提にした全画面の L3 判定に適用する。
+
+**関連**: パターン③テーブル / ⑩ページネーション / ⑯一覧の器（ListShell）。DSR-08「semantic 色のみで意味を伝えない」/ DSR-16「同型情報のグループ化と囲みの階層」（表示形式の選定は DSR-16、器は DSR-22）/ DSR-21「現在地と選択状態の色分離」（画面レベルの現在地は DSR-21、レコードレベルの現在行は DSR-22）。review-checklist カテゴリ 9 対応（一覧の器・現在行・UI 部品枠のコントラスト、低視力 L3 が DSR-22 に沿っているか）。
 
 ---
 
@@ -440,7 +442,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-03 | 本 PR | DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」を新設。title を「DSR-01〜22」に更新。DSR-16（同型情報のグループ化）・DSR-21（現在地と選択状態の色分離）と主題重複しないことを明記（旧 Lane 1 branch の DSR-16 提案を再採番して承継） |
+| 2026-09-03 | 本 PR | DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」を新設。title を「DSR-01〜22」に更新。DSR-16（同型情報のグループ化）・DSR-21（現在地と選択状態の色分離）と主題重複しないことを明記（旧 Lane 1 branch の DSR-16 提案を再採番して承継）。Final Review round 2 是正で「低視力 L3」節（forced-colors / DPI 125〜150% / 当たり判定 24×24 / rem・em）を追加し、04-backbone 原則 16 の dangling pointer を解消 |
 | 2026-09-02 | 本 PR | DSR-20 に AlertDialog 系の制約（Radix `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型 Omit するため、硬化手段は `onEscapeKeyDown` のみが対象になる）を追記。Plans.md backlog（PR #25 gated amendment `2433199` 起源）の同乗解消。 |
 | 2026-09-02 | PR #29 | DSR-17 に (j)「復元対象を main に限定する」を新設。document capture listener が sidebar 等の chrome scroll container も cache・復元してしまう実挙動（PR #28 L3 実観測）に対し、app 層 allowlist prune で main 以外の cache entry を router 生成時と各 onBeforeLoad で削除する契約を追加。Why / (c) の「唯一の scroll container」表現を route content 限定へ訂正。 |
 | 2026-09-02 | wave 8 lane 1 | DSR-21「現在地と選択状態の色分離」を新設。主ナビゲーションの現在地は stone 系 selection tone に Primary 左端バーを重ね、filter chip / SegmentedControl の選択状態は stone のまま維持する。 |

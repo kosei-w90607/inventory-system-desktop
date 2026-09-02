@@ -83,7 +83,7 @@
 - [ ] 「前の画面へ戻る」導線が DSR-18 に従い、業務記録詳細への link は search state を含む遷移元 URL を `returnTo` として送っているか。欠落・不正時は遷移先ごとの既定 hub へ fallback し、共通 helper は DSR-15 の prefix 検証を下回っていないか
 - [ ] 作成・保存成功の feedback が DSR-19 に従い、同じ作業文脈へ戻る flow では toast を最低保証し、確認・継続操作がある場合は result panel、専用 result step / 結果画面では持続的結果表示を使い分けているか。duration の 3s / 5s / 8s 階層と、重複し得る通知だけに適用する toast id の範囲が適切か
 - [ ] destructive 確認 dialog が DSR-20 に従い、Action は `variant="destructive"`、DOM 順は Cancel → Action、`sm` 以上は Cancel 左 / Action 右、narrow は Action 上 / Cancel 下になっているか。Esc / 外側クリックは cancel ブリッジを本則とし、硬化時は適用条件を満たして明示 prop を使い、Cancel 文言から後状態を判別できるか
-- [ ] 一覧の器（toolbar 2 段・上下の件数と現在位置・sticky header・識別列 opt-in）と現在の行（左端バー + 淡い背景 + badge/文言の 3 点）、UI 部品の枠（操作枠 3:1 / 構造線を一段濃く）が DSR-22 に従っているか。同型情報のグループ化（DSR-16）・現在地の色分離（DSR-21）と主題を混同していないか
+- [ ] 一覧の器（toolbar 2 段・上下の件数と現在位置・sticky header・識別列 opt-in）と現在の行（左端バー + 淡い背景 + badge/文言の 3 点）、UI 部品の枠（操作枠 3:1 / 構造線を一段濃く）、低視力 L3（forced-colors / DPI 125〜150% / 当たり判定 24×24）が DSR-22 に従っているか。同型情報のグループ化（DSR-16）・現在地の色分離（DSR-21）と主題を混同していないか
 
 ## 設計判断レンズ（model-neutral 必須観点）
 
