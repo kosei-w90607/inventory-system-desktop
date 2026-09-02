@@ -9,8 +9,8 @@ import {
   type ReactElement,
 } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { isComposedDigitsOnly, normalizeComposedDigits } from "./normalizeComposedDigits";
 import type { ProductAddSuggestController } from "./useProductAddSuggest";
 

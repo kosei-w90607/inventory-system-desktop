@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 4ffa162
@@ -25,6 +25,8 @@
 2026-09-02: owner Windows native L3 run 1（PR #30 comment 5509800525、run identity = human-confirm 遷移 HEAD、content = Writer commit、`L3_SYNC` PASS）= 手順 1 PASS（CTA hierarchy）、手順 1 の途中で利用者可視 blocker を発見し fail-closed 停止（手順 2〜7 NOT RUN）、backup から棚卸し開始前へ復元済み。blocker = 数量入力欄に対して「数を保存」が下へずれて見える（S3 の常設 `min-h-5` slot を数量欄 column 内へ置いたため grid row 高さに含まれ、隣の button column の `flex items-end` が row 最下部へ揃えて予約高さぶん押し出す）。owner 追加 disposition = 一覧 filter row を左から「部門 → 表示件数 → 未入力のみ表示」へ（現状の checkbox と表示件数 Select を入れ替え）。介入 2/3 消費、次回 L3 は介入 3/3。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ戻す）。是正契約は gated amendment（S3 整列契約の具体化 + S10 filter row 順序）として append-only で追記し、Writer は relay 上限到達のため Codex から Sonnet subagent（worktree isolation）へ切替（PR #28 先例）。
 
 2026-09-02: gated amendment 1 を append-only で追記（Amendments 行へ SHA 記録）。Sonnet Writer が隔離 worktree で TDD（SC3b / SC10 を先に red → 是正で green）により content commit 1 本を積み、追って Coordinator 再実測の survivor X3b-iii 是正として SC3b 強化の test-only commit 1 本を積んだ（frontend gate / `cargo check --release` / L1 full RESULT=PASS / pre-push PASS、exact SHA は PR body）。Writer teardown で worktree の `node_modules` symlink が実 directory として実体化し `rm -rf` が本体 `node_modules` を消す事故が発生、`npm ci --ignore-scripts` で復旧・lockfile 無傷・tree clean を Coordinator が確認（教訓は auto-memory 化、以後 mutation 再実測は本体 tree の detached checkout 方式）。Final Review round 2 = P1/P2 = 0 / P3 1、mutation 第 2 回は survivor 是正後に全 kill。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（forward state-only 3/3 到達。以後の `human-confirm -> ready-hosted-final` は post-L3 の content commit〈Final Review round 1 P3-1 の import 順是正〉へ同乗、PR #28 の probe 撤去先例）、Reviewed Content HEAD = SC3b 強化 commit。次 = owner Windows native L3 run 2（介入 3/3、canonical 手順 1 から再開、手順 8 = filter row 順序を追加）。
+
+2026-09-03: owner Windows native L3 run 2（PR #30 comment 5511716949、run identity = human-confirm 再遷移 HEAD、`L3_SYNC` PASS）= 手順 1〜8 全 PASS（整列・filter row 順序を含む）、復元・アプリ終了まで完了。介入 3/3 消費。`human-confirm -> ready-hosted-final` は forward state-only 上限 3/3 到達のため本 content commit（Final Review round 1 P3-1 の import 順是正、behaviour-neutral）へ同乗（PR #28 の probe 撤去先例）。Ready 化・hosted final 確認・merge・closeout は Coordinator 代行。
 
 ## Owner Effort Budget
 
@@ -524,7 +526,7 @@ Gated Amendment 1（L3 run 1 是正）: S3 追加是正はボタン垂直整列�
 
 2026-09-02 Final Review round 1（Sonnet subagent fresh context、差分 11 file を Scope S1〜S9 / verbatim docs block / Matrix と突合）= P1 0 / P2 0 / P3 2。docs 是正は 73 契約監査追記 3 件 + §73.6 / §73.10、SCREEN_DESIGN、01 DSR-20、catalog ⑮ D8 / D13 が verbatim block と完全一致、旧文言 0 hit。`bindings.ts` / `src-tauri` 差分ゼロ、既存 test の改変は T2 / T3 の `per_page` 期待値更新のみ。共有 hook は `queryOverridesRef` 方式で既定挙動 byte 同一、他 4 画面の呼出し無変更。
 
-- P3-1（記録のみ）: `ProductAddSuggest.tsx` の import 順（`Button` → `Badge`）がアルファベット順に反する。lint 通過済みのため機能影響なし。
+- P3-1（記録のみ）: `ProductAddSuggest.tsx` の import 順（`Button` → `Badge`）がアルファベット順に反する。lint 通過済みのため機能影響なし → post-L3 content commit で是正済み（behaviour-neutral、L3 再実施不要）。
 - P3-2（記録のみ）: `StocktakePage.tsx` の `queryOverrides: { is_discontinued: null }` が render ごとに新規 object となり hook 側 effect が再実行される。ref 経由で常に最新値を読むため実害なし、perf nit。
 - Coordinator 裁定の補足: `ProductAddSuggest.tsx`（共有 component）への廃番 Badge 追加は Scope S6(c)「候補行に廃番 Badge を併記」の描画先が共有 component であるための必要変更で in-scope。他画面は廃番を候補に出さないため見た目は不変。`StocktakeItemList` の `<fieldset disabled>` で `ProductPagination` を包む実装は canonical を改変せず disabled を伝播する妥当な手段（Final Reviewer 所見と一致）。
 
