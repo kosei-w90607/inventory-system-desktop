@@ -10,6 +10,12 @@
 
 `AGENTS.md` `Session Start` が唯一の canonical reading order。Claude Code でもその順序とリンク先に従い、ここへ順序や共通 workflow を複製しない。Codex/OpenAI harness の `.agents/skills/*/SKILL.md` は、Claude Code が Skill として load しない場合も plain procedure docs として読める。
 
+## Fable 5.1 補助
+
+- 長い tool 作業では、開始前に行うことを一行で伝え、節目では現在の結果・不確実性・次の行動を短く共有する。
+- 次に必要な tool call を先に整理し、互いに依存しないものは同じ turn でまとめて並行実行する。
+- 最終応答は、それ単独で結果・確認した証拠・未完了事項が分かる形にする。
+
 ## Claude subagent / project hook
 
 Role / availability mode / subagent budget は `docs/AGENT_OPERATING_MANUAL.md` と `docs/DEV_WORKFLOW.md` を正とする。Claude worker が編集するときは worktree isolation または Plan Packet に明示した非重複 ownership を使い、writer を自己承認者にしない。
