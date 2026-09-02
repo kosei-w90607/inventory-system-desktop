@@ -919,17 +919,26 @@ describe("StocktakePage (UI-10)", () => {
     // items-end ではなく items-start へ切り替えて入力欄の上端と揃える。
     expect(buttonColumn).toHaveClass("items-start");
     expect(buttonColumn?.querySelector(".min-h-5")).toBeInTheDocument();
+    // mutation X3b-iii 是正: spacer 撤去（items-start と min-h-5 slot だけ残す）を kill するため、
+    // ボタン直前に invisible + aria-hidden の spacer が実在することも独立に assert する。
+    const spacer = buttonColumn?.firstElementChild;
+    expect(spacer).toHaveAttribute("aria-hidden", "true");
+    expect(spacer).toHaveClass("invisible");
+    expect(spacer?.nextElementSibling).toBe(saveButton);
 
     // FieldError の出入りでこの構造が崩れないことも確認する。
     const quantityInput = await screen.findByLabelText("実際の数");
     await user.clear(quantityInput);
     await user.type(quantityInput, "-1{Enter}");
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    const buttonColumnAfterError = (
-      await screen.findByRole("button", { name: "数を保存" })
-    ).closest(".flex");
+    const saveButtonAfterError = await screen.findByRole("button", { name: "数を保存" });
+    const buttonColumnAfterError = saveButtonAfterError.closest(".flex");
     expect(buttonColumnAfterError).toHaveClass("items-start");
     expect(buttonColumnAfterError?.querySelector(".min-h-5")).toBeInTheDocument();
+    const spacerAfterError = buttonColumnAfterError?.firstElementChild;
+    expect(spacerAfterError).toHaveAttribute("aria-hidden", "true");
+    expect(spacerAfterError).toHaveClass("invisible");
+    expect(spacerAfterError?.nextElementSibling).toBe(saveButtonAfterError);
   });
 
   it("SC4: target-not-found message renders as status info, not an alert", async () => {
