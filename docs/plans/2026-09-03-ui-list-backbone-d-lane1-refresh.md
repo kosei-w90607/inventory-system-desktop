@@ -10,10 +10,10 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: ec80c57
 - Amendments: none
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（design docs + mockup HTML、worktree isolation）
@@ -23,6 +23,8 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner が mockup D 2 file（Lane 1a、下記「Lane 1a/1b 分割」参照）を開いて視認（render oracle）+ docs-only hosted final の owner `workflow_dispatch`（Ready 後、CI-TRIGGER-D1）+ merge
+
+2026-09-03: Plan Review round 1（独立 Sonnet subagent fresh context = P1 2 / P2 7、Opus 5 デザイン面レビュー〈発注書駆動・read-only〉= P1 2 / P2 5 / P3 3）→ 全件 accept、是正 commit `e594aa4`（§3.1 design board 例外の誤適用を撤回し Coordinator の役割配分判断へ / DSR-16 宙ぶらりん参照 3 箇所 / 「ベタっと」仮説を実読 4 点 + 完了画面 DSR-16 抵触へ差替 / Q8 追加・Q17 を ⑤ 限定・Q5-② 適用外注記 / deferral 裁定案 = 上部は件数 + 現在位置 text 必須・perPage 定数 1 本 + 画面別既定値 / Lane 1a（規範文 + mockup 2 file）・1b（残 5 file は Lane 2 同乗）分割 / catalog ⑯ 必須構成 6 項目 + 件数文言 pin）。round 2（Sonnet = P1 1 / P3 2、Opus = P2 3 / P3 2）→ 全件 accept、是正 commit `b928e6c`（00-foundations に更新履歴節なし / Lane 1b = 5 file / Q12 §1 へ典拠差替 / 密度注記式 200 × 40px ÷ 900px ≈ 9 画面 / DSR-16 pattern 限定 oracle）。round 3（Sonnet、最終）= P1/P2 = 0 / P3 1（Plan Review 記録の置き場、本 commit で Workflow State 側へ移設）。Plan Gate 収束（round 3/3、介入 1/3 = 起票選定）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `ec80c57`。Writer = Sonnet subagent（Lane 1a）、Opus はレビュー専任。
 
 ## Owner Effort Budget
 
@@ -381,6 +383,4 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
-- Plan Review round 1（独立 Sonnet: P1×2 / P2×7、Opus デザインレビュー: P1×2 / P2×5 / P3×3、2026-09-03）: Coordinator が全件 accept して本 commit へ反映。主な是正 = §3.1 design board 例外の誤用を Workflow State / 設計判断 / D-079 の全箇所から除去し「Coordinator の役割配分判断」へ書き直し（S-P1-1）、Workflow State の 14 番目フィールド `Design Board Exception` を削除し 13 field へ復元（S-P2-7）、DSR-16 宙ぶらりん自己言及を 2 箇所→3 箇所へ訂正し negative oracle 追加（S-P1-2/O-P1-1）、`text-sm` 実測値を 204→199 へ訂正（S-P2-3）、完了画面の構成を Card 2 枚 + FormSection 2 つと確定（S-P2-5）、catalog title 文言修正（S-P2-6）、旧 packet の archive 移植を Scope/AC へ追加（S-P2-8）、5 file の更新履歴行追加を Scope/AC へ追加（S-P2-9）、README DSR 列挙採番修正（O-P3-1）、foreground/muted-foreground の対象背景明記（O-P3-2）、「ベタっと」仮説の全面差し替え（S-P2-4/O-P2-3/O-P2-4）、理論引用の Q17 適用対象限定・Q8 追加・Q5 原則②適用外注記・Q12 注意書き追加（O-P1-2 + Opus §3）、Deferral 裁定の上部 pager 必須要素と perPage 既定値方式への書き直し（Opus §4）、Lane 1a/1b 分割によるスコープ限定（Opus §1、S-P3-3）、catalog ⑯ 必須構成 6 項目の明文化（O-P2-1/O-P2-2/O-P2-5）、件数文言統一形の pin（Opus §4 隣接）を実施。
-- Plan Review round 2（独立 Sonnet: P1×1 / P3×2、Opus デザインレビュー: P2×3 / P3×2、2026-09-03）: Coordinator が全件 accept して本 commit へ反映。全ての既存性主張を本 round 内で実行したコマンドで再検証済み: S-P1-1（`rg -n "^## 更新履歴" docs/design-system/00-foundations.md` = 0 件、00-foundations には更新履歴節が無いと判明 — Scope 1 と AC を 4 file 限定＋「00-foundations は該当節なし」の明記へ訂正）、O-P2-1（`git diff --stat $(git merge-base agent/ui-list-backbone-d main) agent/ui-list-backbone-d -- docs/design-system/reference/` で旧 mockup-d 6 file 実在確認、Lane 1b は残り「5」file が正 — 6 箇所の「4 file」誤記を訂正）、O-P2-2（`ui-design-rules-qa-v2.md:419` Q12 §1「初心者は操作体系がシンプルなほうが使いやすい」を実読し pager 任意化の Why を Q12「記載なし」から差し替え）、O-P2-3（`src/components/ui/table.tsx:61` の header cell `h-10`〈=40px〉と 04-backbone 原則 12 の契約値 40px を確認し、200 行 × 40px = 8000px ÷ viewport 900px ≈ 8.9 → 約 9 画面の数値注記を mockup-d-lists 要件に追加）、O-P3-1（`StocktakePage.tsx:794` の `EmptyState` と `:956` の素の `<p>` を実読し、同一 file 内の空状態表現の不統一として書き直し）、O-P3-2（`rg -c "DSR-16 として新設|原則 4（DSR-16|\+ DSR-16$" docs/design-system/04-backbone.md` = 3〈各パターン 1 件、L38/L43/L51〉を実測し negative oracle をパターン限定形へ差し替え、例外節を削除）、S-P3-1（`rg -n '"active"' src/config/navigation.ts` で leaf entry 22 件〈type 定義行を除く〉を実測し「21 項目」を「22 項目」へ訂正）、S-P3-2（`rg -n "AGENT_OPERATING_MANUAL" docs/decision-log.md` で既存 D entry の表記を確認し、D-079 verbatim 内の「manual §3」を `AGENT_OPERATING_MANUAL §3` へ訂正、設計判断節の重複表記「AGENT_OPERATING_MANUAL manual §3」も同時に是正）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
