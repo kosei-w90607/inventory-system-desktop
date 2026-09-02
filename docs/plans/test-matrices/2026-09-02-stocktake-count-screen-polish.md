@@ -16,6 +16,8 @@ Risk: R3
 - S6: `PRODUCT_NAME_SEARCH_QUERY.is_discontinued` は `null`（廃番商品も候補に含む）。候補行は廃番商品に「廃番」Badge を付す。
 - S6b（Plan Review round 1 P1-2）: 5 画面共有 `useProductAddSuggest.ts` の既定 `PRODUCT_SEARCH_QUERY`（`is_discontinued: false`）は変更しない。新設 optional `queryOverrides` が未指定なら default クエリのまま（byte-identical）、`StocktakePage.tsx` だけが `{ is_discontinued: null }` を渡す。
 - S8: `useStocktakeItems` の `perPage` は呼び出し側が明示指定し既定 50、変更時に `page` を 1 へ戻す。一覧のページ送りは catalog ⑩ canonical `ProductPagination` を使い、独自 markup を残さない。
+- S3 追加是正（Gated Amendment 1、PR27-2 追加是正）: FieldError スロットの有無にかかわらず「数を保存」ボタンの上端が数量入力欄（`Input`）の上端と揃う。実装方針（案 a: button column にも `min-h-5` 空 slot + `items-start` / 案 b: FieldError slot を grid 行外へ）のいずれかを Writer が採用する。
+- S10（Gated Amendment 1、owner disposition）: 一覧 filter row の DOM 順序は 部門フィルタ → 表示件数 `Select` → 「未入力のみ表示」`Checkbox`。
 
 ## Failure Modes
 
@@ -30,6 +32,8 @@ Risk: R3
 - `useStocktakeItems` の既定 `perPage` が 200（旧固定値）のまま残る。
 - 表示件数変更時に `page` が 1 へ戻らない。
 - `StocktakeItemList` が catalog ⑩ `ProductPagination` を使わず独自ページ送り markup を残す。
+- ボタン上端が数量入力欄上端と揃わない（整列手段〈案 a/b/c〉が未実装、または実装後に `items-end` 等へ差し戻されている）。
+- filter row の DOM 順序が 部門 → 未入力のみ表示 → 表示件数（旧順）のまま、または 表示件数 → 部門 → 未入力のみ表示 等の別順に誤って変更されている。
 
 ## Test Matrix
 
@@ -46,6 +50,8 @@ Risk: R3
 | S8b per_page 変更時の page reset | page が 1 へ戻らない | unit | SC8b: changing per_page resets page to 1 | 表示件数 `Select` を変更した後の `getStocktakeItems` 呼び出しで `page` が変更前の値のまま（1 以外） |
 | S8c' catalog ⑩ 統一 | 独自 markup 残置 | unit | SC8c': list pagination uses the canonical ProductPagination component | 「前のページ」/「次のページ」`aria-label`（`ProductPagination.tsx` から独立転記したリテラル）を持つボタンが存在しない、または表示件数 `Select` の option ラベル「50 件」「100 件」「200 件」が render されない（non-empty presence oracle） |
 | 既存 UI-10-D1〜D12 契約の非破壊 | S1〜S6/S8 導入による既存動作の破壊 | regression | SC9: existing StocktakePage / suggest / SPEC-UIBB / ProductAddSuggest suites stay green except the T2/T3 per_page expectation update | Plan Review round 1 P1-1 是正: `StocktakePage.test.tsx`（T1〜T23、うち T2〈`:217`〉/ T3〈`:232`〉は既定 `perPage` 変更〈200→50〉に伴い `getStocktakeItems` の `per_page` 期待値のみ `200`→`50` へ更新した上で green を要求。それ以外の変更は regression）/ `StocktakePage.suggest.test.tsx`（W5/W7/W8/W12/W17）/ SPEC-UIBB-1/2 / `ProductAddSuggest.test.tsx`（S1 含む全 test、無変更）のいずれかが（許可された T2/T3 期待値更新を除いて）fail する |
+| S3 追加是正 ボタン垂直整列（Gated Amendment 1） | 整列手段未実装/差し戻し | unit | SC3b: save button top edge stays aligned with the quantity input's top edge regardless of FieldError | Writer 採用方式に応じた 2 案のいずれかを assert（他方は N/A 記録）。案 a: button column に `min-h-5` 相当の予約 slot が存在しない、または `items-start` になっていない場合 fail。案 b: FieldError slot が入力行 grid の外（全幅別行）に render されていない場合 fail |
+| S10 filter row 順序（Gated Amendment 1） | DOM 順序が旧順のまま | unit | SC10: filter row lists department filter, then per-page select, then uncounted-only checkbox in that DOM order | 部門 Select の label → 表示件数 Select の label/trigger → 「未入力のみ表示」checkbox の順序を `compareDocumentPosition`（またはコンテナ内 index 比較）で assert し、この順序でない場合 fail |
 
 ## State Lifecycle Matrix
 
@@ -124,6 +130,8 @@ Risk: R3
 - `useStocktakeItems` の既定 `perPage` を `200` に戻したら？ → SC8a が fail。
 - 表示件数変更時の `page: 1` リセットを削除したら？ → SC8b が fail。
 - `ProductPagination` を使わず旧 markup に戻したら？ → SC8c' が fail（aria-label / Select option ラベルの presence oracle）。
+- 整列手段（案 a/b/c いずれか）を撤去し `items-end` 単独へ戻したら？ → SC3b が fail（予約 slot 不在 or grid 行外配置の消失）。
+- filter row の JSX 順序を checkbox → 表示件数 の旧順へ戻したら？ → SC10 が fail（DOM 順序 assert）。
 
 ## 必須 mutation 注入（Final Review で clean tree 独立再実測）
 
@@ -140,8 +148,11 @@ Risk: R3
 | X7 | `useStocktakeItems` の既定 `perPage` を `200` に戻す | SC8a |
 | X8 | 表示件数変更時の `page: 1` リセット呼び出しを削除する | SC8b |
 | X9 | `StocktakeItemList` のページ送りを `ProductPagination` から旧手書き markup へ差し戻す | SC8c' |
+| X3b | 整列手段（案 a/b/c のいずれか）を撤去し `flex items-end` 単独へ戻す | SC3b |
+| X10 | filter row の JSX 順序を「未入力のみ表示」→ 表示件数 の旧順へ戻す | SC10 |
 
 ## Residual Test Gaps
 
 - Badge/Button の視覚トーン・レイアウトずれ（S1/S3/S4/S5/S8）は happy-dom の class 検査で構造は保証できるが、実際の色・余白の見た目は AC-L3-1〜AC-L3-5（owner Windows native）で被覆する。
 - S6 の live 候補プレビュー経路（`ProductAddSuggest`）は Plan Review round 1 P1-2 是正で SC6b が直接被覆する（`queryOverrides` の適用有無を独立 assert）。SC6 は商品名検索フォールバック経路（`PRODUCT_NAME_SEARCH_QUERY`）のみを担当し、両経路で担当が分離されたため残 gap ではない。
+- S3 追加是正（ボタン垂直整列、Gated Amendment 1）のピクセルレベルの見た目再現は SC3b の構造検査でも完全担保できず、最終確認は AC-L3-2（owner Windows native L3）で行う。S10（filter row 順序）の視覚確認は AC-L3-8 で担保する。

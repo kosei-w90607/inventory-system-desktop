@@ -215,6 +215,44 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 
 `docs/design-system/01-decision-rules.md` DSR-20（`:392-410`）「硬化手段」bullet（`:405`）の直後に、AlertDialog 系の型制約を追記する（下記「docs 是正」節、verbatim）。根拠: `node_modules/@radix-ui/react-alert-dialog/dist/index.d.mts:23` `interface AlertDialogContentProps extends Omit<DialogContentProps, 'onPointerDownOutside' | 'onInteractOutside'>` — AlertDialog は Radix の型定義そのものが外側クリック系 prop を受け付けない（Dialog と異なり、外側クリックは prop 無しで常に非 dismiss）。硬化に使えるのは `onEscapeKeyDown` のみ。DSR 番号は増やさない（既存 DSR-20 の追記）ため DS2（DSR 参照整合）/ DS4（review-checklist カテゴリ 9 の DSR 対応）は影響を受けない — 両者とも「DSR ID の新規定義・参照」を検査対象とし、既存 DSR-20 の本文追記はどちらの検査対象でもない。
 
+### Gated Amendment 1（2026-09-02、L3 run 1 起源）
+
+owner Windows native L3 run 1（PR #30 comment 5509800525、詳細は Workflow State 2026-09-02 節参照）は手順 1 の途中で利用者可視 blocker を検出し fail-closed 停止した（手順 2〜7 NOT RUN）。本 amendment は同 blocker の是正契約（S3 追加是正）と owner 追加 disposition（S10 新設）を append-only で定義する。Writer は本節を Scope 本体の一部として適用し、既存 S1〜S9 の記述は変更しない。
+
+**S3 追加是正: 整列契約の具体化（PR27-2 追加是正）**
+
+現状の機序: 数量入力欄の grid（`md:grid-cols-[1fr_12rem_auto]`、`StocktakePage.tsx:648`）の第 2 列（数量欄 column、`:659-685`）は `Label` + `Input` + 常設 FieldError slot（`min-h-5`、`:678-684`）の 3 要素を縦積みし、第 3 列（button column、`:686-695`）は `flex items-end`（`:686`）で row 最下部へボタンを揃える。S3 実装済みの常設 slot（`min-h-5`、20px 予約）が数量欄 column の高さに常に加算されるため、button column が `items-end` で揃える row 最下部が slot 分だけ下がり、「数を保存」ボタンが数量入力欄に対して視覚的に下へずれる（owner Windows native L3 run 1 blocker）。
+
+契約の具体化: 既存契約（FieldError の出入りで「数を保存」の位置が動かない、S3 原文）に加え、**ボタンは数量入力欄と垂直に整列する**（新規）。実装方針は Writer 裁量とし、以下いずれかを候補とする:
+
+(a) button column にも同じ `min-h-5` の空 slot を持たせて両 column の行構造を揃え、`items-end` を `items-start` へ変更する。
+(b) FieldError slot を grid 行の外（入力行の下に全幅の別行）へ出し、grid 自体の高さが FieldError の有無に左右されない構造にする。
+(c) button column を `items-start` にし、`Label` 分の高さを `mt-*` 等で offset する。
+
+いずれの方針でも `aria-live="polite"` と `role="alert"`（エラー発生時のみ mount、DSR-03「毎試行置換」）は維持する。
+
+AC-L3-2 の具体化: 「エラーの有無にかかわらずボタン上端が入力欄（`Input`）上端と揃う」を視認基準に追加する（元の「垂直位置が変化しない」は維持、下記 Acceptance Criteria 節に追記）。
+
+Matrix 追加（詳細は `test-matrices/2026-09-02-stocktake-count-screen-polish.md` 側に反映）: `SC3b` = DOM 構造で契約を検査できる最小 oracle。案(a) 採用時はボタン column に予約 slot（`min-h-5`）が存在すること、案(b) 採用時は FieldError slot が入力行 grid の外にあることを assert する。Matrix には両案の oracle を記載し、Writer が採用した方を実装し他方は N/A 記録とする。既存 SC3（FieldError 出入りでのボタン位置不変）は維持する。mutation `X3b` = 整列手段の撤去（`items-end` 復帰 / 追加した空 slot・行外だしの撤去）→ SC3b kill。render oracle は L3（AC-L3-2）。
+
+**S10 新設: 一覧 filter row 順序（owner disposition、L3 run 1 追加所感）**
+
+現状の DOM 順序: `StocktakeItemList` の filter row（`StocktakePage.tsx:733-784`）は 部門フィルタ（`DepartmentFilter`、`:734-742`）→ 「未入力のみ表示」`Checkbox`（`:743-757`）→ 表示件数 `Select`（`:758-783`）の順。
+
+是正後の順序: 部門フィルタ → 表示件数 `Select` → 「未入力のみ表示」`Checkbox`。実装は `:743-757`（checkbox block）と `:758-783`（per-page block）の JSX 順序を入れ替えるのみで、各 block 内部（`id`/`htmlFor`/`aria-*` の対応）は変更しない。
+
+73 §73.6 docs 是正提案（verbatim、次回 Writer が `docs/function-design/73-ui-stocktake.md` の「表示件数」行末に追記する）:
+
+> filter row 内の並び順は 部門フィルタ → 表示件数 → 未入力のみ表示。
+
+73 更新履歴表への追記（verbatim、最上段の既存 2026-09-02 行の直後に新規行として追加、または既存最上段行への追記いずれでも可 — 既存行 shape に合わせるのは Writer 裁量）:
+
+> 内容列: Gated Amendment 1（owner Windows native L3 run 1、PR #30 comment 5509800525）。S3 に整列是正（ボタン上端を入力欄上端と揃える）を追加、S10 として一覧 filter row 順序を 部門→表示件数→未入力のみ表示 へ変更。
+
+SCREEN_DESIGN.md 同期要否: `docs/SCREEN_DESIGN.md:195`（「一覧は進捗管理用（部門フィルタ + 未入力のみ toggle + 入力済み/全件の進捗表示、UI-10-D3）」）は列挙のみで filter row の並び順を明言しておらず、表示件数にも触れていない。並び順の主張が現状存在しないため同期不要。
+
+Matrix 追加: `SC10` = filter row 内の DOM 順序を 部門 Select の label → 表示件数 Select の label/trigger → 「未入力のみ表示」checkbox の順に `compareDocumentPosition` または container 内 index で assert する（oracle は文言 literal の独立転記）。mutation `X10` = checkbox と表示件数 Select の順序を戻す → SC10 kill。AC-L3-8 として owner 視認項目を追加する。
+
 ## Non-scope
 
 - S7（数量欄の単位併記）: `StocktakeItemDetail` に単位 field が無いため実装不能。DTO 拡張は非目的。
@@ -284,6 +322,12 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 - AC7: frontend gate（`npm run typecheck` / `npm run lint` / `npm run format:check` / `npm test` / `npm run build`）green + `cargo check --release` PASS（Human Gate に L3 を含むため）。
 - AC8: `73-ui-stocktake.md` / `SCREEN_DESIGN.md` 棚卸し節 / `01-decision-rules.md` DSR-20 / `02-component-catalog.md` ⑮（SPEC-SUGGEST-D13）の是正が反映され、`bash scripts/doc-consistency-check.sh` clean（WARN は既存分から増分なし）。
 
+**Gated Amendment 1 による AC 追加・具体化**
+
+- AC-L3-2（Amendment 1 で具体化）: 元の「FieldError の出現・消失で「数を保存」ボタンの垂直位置が変化しない」に加え、「エラーの有無にかかわらずボタン上端が入力欄（`Input`）上端と揃う」ことを owner が視認確認する。
+- AC-L3-8（S10、render oracle）: 一覧 filter row（`StocktakeItemList`）が左から 部門フィルタ → 表示件数 → 未入力のみ表示 の順で並ぶことを owner が視認確認する。
+- AC9（Amendment 1）: `test-matrices/2026-09-02-stocktake-count-screen-polish.md` の `SC3b`/`SC10` が green、必須 mutation `X3b`/`X10` が全 kill（Coordinator 独立再実測 + Final Reviewer 独立再実測）。
+
 ## Design Sources
 
 - Requirements / spec: UI-10（REQ-205）、DSR-01/02/03/04/08/11/20/21、catalog ⑮ SPEC-SUGGEST-D1〜D12
@@ -314,6 +358,7 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 | `useProductAddSuggest.ts` へ optional `queryOverrides` 追加（P1-2、共有 hook 非破壊拡張） | — | 呼び出し元 5 箇所中 `StocktakePage.tsx:414-418` のみ override を渡す。他 4 箇所（`DisposalPage.tsx:184` / `ManualSalePage.tsx:203` / `ReceivingPage.tsx:188` / `ReturnExchangePage.tsx:265`）は無変更のまま既定 `PRODUCT_SEARCH_QUERY` を使用。test 同梱（SC6b、`ProductAddSuggest.test.tsx` 既存 S1 は regression 対象・SC9 へ追加） |
 | REQ coverage | Plan Review round 1 P2-1 是正: `rg -n 'REQ-' src/features/stocktake/*.test.tsx` の実測結果は **hit 2 件**（`StocktakePage.test.tsx:3` / `StocktakePage.suggest.test.tsx:1`、いずれも file 冒頭のヘッダーコメントで `REQ-205` を cite）であり、以前の記載「hit 0」は誤り。`generate_traceability` の file 参照判定 `fe_file_references_ids`（`src-tauri/src/bin/generate_traceability.rs:546`、正規表現 `\b(REQ-[0-9]{3}\b\|UI-[0-9]{2}[a-z]?\b)`）は `REQ-` トークンと `UI-\d{2}` トークンのいずれかを file 内に含めば true になる。両 test file は既に `UI-10`（`StocktakePage.test.tsx:3` の「UI-10 Test Design Matrix」/ `StocktakePage.suggest.test.tsx:1` の「UI-10-D2/D11/D12」）も cite しているため、`REQ-205` トークンの有無に関わらず file 単位の参照判定は既に true で不変。新規 SC1〜SC9 も既存 decision ID 引用の慣行（新規 REQ token を追加しない）に従うため、`generate_traceability` 再生成は不要 | 不要（結論確定、根拠を実測に基づき更新） |
 | route / operator 画面 / Tauri command | — | 該当なし |
+| Gated Amendment 1（73 更新履歴行の追記） | 73 更新履歴表最上段に Amendment 1 の変更内容を追記（verbatim は Scope 節「Gated Amendment 1」参照） | 対応: 上記 verbatim を次回 Writer が反映。`SCREEN_DESIGN.md` は filter row 並び順の主張が現状存在しないため同期不要（`SCREEN_DESIGN.md:195` 実測、Scope 節に根拠記載） |
 
 ## Design Intent Trace
 
@@ -389,6 +434,8 @@ Minimum design checks for business-app work:
 | C1 表示件数 + catalog ⑩ 統一 | `useStocktakeItems` + `StocktakeItemList`（S8） | SC8a/SC8b/SC8c' | AC-L3-5 |
 | 既存 UI-10-D1〜D12 契約の非破壊 | 変更なし | SC9（regression 実行） | — |
 | DSR-20 AlertDialog 系硬化手段追記 | `01-decision-rules.md`（S9） | doc-consistency-check | — |
+| PR27-2 追加是正（ボタン垂直整列、Gated Amendment 1） | 数量入力欄 grid の整列手段（S3 追加是正） | SC3b | AC-L3-2（具体化） |
+| S10 filter row 順序（owner disposition、Gated Amendment 1） | `StocktakeItemList` filter row（S10） | SC10 | AC-L3-8 |
 
 ## Test Plan
 
@@ -423,6 +470,8 @@ Test Design Matrix: [test-matrices/2026-09-02-stocktake-count-screen-polish.md](
 - design-system sweep（S5 の Badge tone が `02-component-catalog.md` の既存 Badge 規約から逸脱していないか、新規 semantic token を要求していないか）。
 - 共有 hook 非破壊性（`useProductAddSuggest.ts` の `queryOverrides` 未指定時が `PRODUCT_SEARCH_QUERY` のみのマージと byte-identical か、他 4 画面の呼び出しが無変更のままか、`ProductAddSuggest.test.tsx` の既存 S1〜他 test が無改変か）。
 - AC-L3-1 の到達手順が実装と一致するか（`resolveItem` の 0 候補 clear / 複数候補 keep-selected 分岐、`:458`/`:473` 相当のロジックが変更されていないか）。
+- 整列手段が CSS 詳細度や grid 副作用で崩れないか（Gated Amendment 1、S3 追加是正の a/b/c いずれの方式でも既存 S1/S4/S5 の class と衝突しないか）。
+- filter row の a11y（`Label htmlFor` / `Checkbox id` / `SelectTrigger id` の対応関係）が並び替え後も維持されているか（Gated Amendment 1、S10）。
 
 ## Spec Contract
 
@@ -437,6 +486,8 @@ Contract ID: SPEC-STOCKTAKE-COUNT-POLISH-2026-09-02
 - `useProductAddSuggest.ts` の共有既定 `PRODUCT_SEARCH_QUERY`（`is_discontinued: false`）は変更しない。`queryOverrides` 未指定時は既存 5 画面すべてが byte-identical な挙動を維持し、棚卸し画面のみ `{ is_discontinued: null }` を明示的に渡して廃番を live 候補へ含める。
 - `useStocktakeItems` の `perPage` は呼び出し側が明示指定し、既定値は `StocktakePage` の画面内 state（初期値 50、`PRODUCT_PER_PAGE_OPTIONS` の最小値）が持つ。表示件数変更時は `page` を 1 へ戻す。
 - 一覧のページ送りは catalog ⑩ canonical `ProductPagination`（「前のページ」/「次のページ」`aria-label`）を使う。表示件数 `Select` の選択肢は `PRODUCT_PER_PAGE_OPTIONS` を直接参照する（リテラル再宣言禁止）。
+- Gated Amendment 1（S3 追加是正）: FieldError スロットの有無にかかわらず、「数を保存」ボタンの上端は数量入力欄（`Input`）の上端と揃う。
+- Gated Amendment 1（S10）: 一覧 filter row は左から 部門フィルタ → 表示件数 `Select` → 「未入力のみ表示」`Checkbox` の順に並ぶ。
 
 ## Trace Matrix
 
@@ -452,6 +503,8 @@ Contract ID: SPEC-STOCKTAKE-COUNT-POLISH-2026-09-02
 | 表示件数 + catalog ⑩ 統一 | Scope S8 | SC8a/SC8b/SC8c' | page reset・canonical component 使用 | Matrix + AC-L3-5 |
 | 既存契約非破壊（T2/T3 期待値更新含む） | Scope S8（T2/T3 のみ） | SC9（regression） | 既存 test 無変更 green（T2/T3 除く） | PR body |
 | DSR-20 AlertDialog 系追記 | Scope S9 | doc-consistency-check | 文面正確性 | doc check + diff |
+| ボタン垂直整列追加是正（Gated Amendment 1） | Scope S3 追加是正 | SC3b | 整列手段が CSS 詳細度で崩れないか | Matrix + AC-L3-2 |
+| filter row 順序（Gated Amendment 1、owner disposition） | Scope S10 | SC10 | DOM 順 oracle の独立性 | Matrix + AC-L3-8 |
 
 ## Data Safety
 
