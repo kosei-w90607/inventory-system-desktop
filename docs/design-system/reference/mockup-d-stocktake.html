@@ -99,11 +99,11 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 <div class="top"><b>棚卸し画面 D — Lane 1 refresh</b><span>お手本 mockup。実装の正本ではない（正本は 04-backbone / DSR-22 / catalog ⑯・SummaryCard）</span></div>
 <div class="page">
 
-<div><h1>棚卸し「ベタっと」所感への提案（進捗 header / 完了画面）</h1><p class="lead">owner 所感（2026-09-03）を受け、進捗 header は 現行 / A（サマリ帯 + 見出し構造）/ A'（枠なし帯 1 本、owner「カードの多用」懸念への対案）/ **A'B（推奨、合体案。owner 再視認 2026-09-03 の要望を受けて追加）** / B（見出しの役割分離のみ）の 5 案、完了画面は **C（DSR-16 準拠再構成）に確定**（owner 裁定 2026-09-03）を差異 0 件 / 12 件 / 不整合ありの 3 データ状態で示す。進捗 header は owner 再視認で A' を明確に支持済み、残るは A' と A'B（全数の置き場）の最終選定。sidebar / PageHeader / ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続）。データは合成値。</p></div>
+<div><h1>棚卸し「ベタっと」所感への提案（進捗 header / 完了画面）</h1><p class="lead">owner 所感（2026-09-03）を受け、進捗 header は 現行 / A（サマリ帯 + 見出し構造）/ A'（枠なし帯 1 本、owner「カードの多用」懸念への対案）/ A'B（推奨、合体案。owner 再視認 2026-09-03 の要望を受けて追加）/ **A'+器（owner 要望、A の器に A' の帯を入れた案。owner 再々視認 2026-09-03 で追加）** / B（見出しの役割分離のみ）の 6 案、完了画面は **C（DSR-16 準拠再構成）に確定**（owner 裁定 2026-09-03）を差異 0 件 / 12 件 / 不整合ありの 3 データ状態で示す。進捗 header は owner 再視認で A' を明確に支持済み、残るは A'B と A'+器（見出しを器に入れるか、全数の置き場）の最終選定。sidebar / PageHeader / ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続）。データは合成値。</p></div>
 
 <section>
 <h2>1. 進捗 header（進行中）</h2>
-<p class="lead">対象コード: `StocktakeProgressHeader`（`StocktakePage.tsx:379-411`）。5 案を同一ページに縦 5 段で並べる。</p>
+<p class="lead">対象コード: `StocktakeProgressHeader`（`StocktakePage.tsx:379-411`）。6 案を同一ページに縦 6 段で並べる。</p>
 
 <div class="variant">
   <div class="v-label"><span class="tag">現行</span></div>
@@ -166,6 +166,24 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
     <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
   </div>
   <p class="note"><b>1''.</b> owner 再視認所感「入力済みの情報が被るからストーンのところだけにして全数をどこかに移したい」（2026-09-03）を受けた合体案。B の見出し構造（h2「棚卸し中」+ 別行 muted「開始 …」）に A' の帯をそのまま続け、B 単体が持っていた平文行「入力済み 142 / 全 238」は廃止する（帯側の入力済み指標と数値が重複するため）。全数「238」は帯の入力済み指標へ小さな分数として統合する（大きな「142」+ 小さな muted「/ 238」、ラベルは「入力済み」のまま。未入力・進捗% は A' と同一）。progress bar は A' と同じく帯の下辺に沿わせる。<b>これを採ると何が変わるか</b>: 数値の出所が帯 1 箇所だけになり、B 単体で生じていた「入力済み 142」の重複表示が解消する。<b>代案</b>: 全 238 件を見出し行（h2「棚卸し中」）の右端に置く案も検討可能（本 mockup では未描画、文章のみの説明）。</p>
+</div>
+
+<div class="variant">
+  <div class="v-label"><span class="tag rec">A'+器（owner 要望、A の器に A' の帯）</span></div>
+  <div class="b-box">
+    <h4>棚卸し中</h4>
+    <p class="sub">開始日: 2026-09-01 09:12</p>
+    <hr class="sep">
+    <div class="aprime" style="border:0">
+      <div class="aprime-row">
+        <div class="aprime-item"><div class="lbl">入力済み</div><div class="val">142<span class="aprime-frac"> / 238</span></div></div>
+        <div class="aprime-item"><div class="lbl">未入力</div><div class="val warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>96 件</div></div>
+        <div class="aprime-item"><div class="lbl">進捗</div><div class="val">60%</div></div>
+      </div>
+      <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
+    </div>
+  </div>
+  <p class="note"><b>1'''.</b> owner 要望「赤で囲った下の帯を上の器の中にマージ」（2026-09-03、マークアップ付きスクリーンショット）を受けた案。A の器（h2「棚卸し中」+ 別行 muted「開始 …」+ Separator）はそのまま維持し、内側の SummaryCard 3 枚を A' の帯（3 指標 + 「142 / 238」分数 + 未入力の warning icon/状態語 + 進捗バー、帯の下辺に沿わせる）へ差し替える（「器の中に帯」）。既定はこの図のとおり帯自身の外周枠を外し（トーンのみの塗り）、囲みを器 1 つに保つ（DSR-16）。帯にも独自の 3:1 枠（`--d-ctl`）を残す代案は、囲みが器 + 帯の 2 階層になる。DSR-16 は囲みを意味階層ごとに 1 つまでとするため、2 階層が許容されるのは「器＝進捗セクションの区切り」「帯＝指標群のグルーピング」という異なる意味を持つ場合に限る。<b>Lane 2 で確認すべき 1 点</b>: 2 階層案の採否は owner と Lane 2 の L3 で最終確認する。<b>これを採ると何が変わるか</b>: A の器の一貫性（Separator 付き、既存 `FormSection` と同型）を保ったまま、内容だけを A' の高密度な帯へ差し替えられる。</p>
 </div>
 
 <div class="variant">
@@ -285,7 +303,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 <div class="decision">
 <b>未決項目（番号ごとに個別に返答可）</b>
 <ol>
-<li>A'B を既定（owner 選好 A' + B 合体）— 全数の置き場: 帯内の分数（推奨）か見出し行右端か。</li>
+<li>A'B（見出しは器なし）か A'+器（見出しと帯を同じ器に入れる）か — 全数の置き場は両案とも帯内の分数（推奨）か見出し行右端か。A'+器 を採る場合、帯自身の 3:1 枠を残すか外すか（外す既定案では囲みは器 1 つ、残すと器+帯の 2 階層）も併せて確認する。</li>
 </ol>
 <b>決定事項（owner 裁定 2026-09-03、Human Gate 会話）</b>
 <ol>
