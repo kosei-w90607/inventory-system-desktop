@@ -4,10 +4,10 @@ DSR-17 分類②④の実装（PR #24、archived）は `<main>` の復元を主�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 1d9c577
 - Amendments: none
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
@@ -19,6 +19,8 @@ DSR-17 分類②④の実装（PR #24、archived）は `<main>` の復元を主�
 - Human Gate: owner Windows native L3（sidebar 跳びの再現手順で PASS 確認）
 
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R3 判定は本 packet に記録。spec-check では PR #28 L3 round 2〜3 の owner 実観測（sidebar `scrollTop` の `100 → 0` / `0 → 100`）と Plans.md backlog の第一候補是正案（`data-scroll-restoration-id` 付与）を前提としたが、design phase として起票時に `node_modules/@tanstack/router-core/dist/esm/scroll-restoration.js` 1.168.15 を実読した結果、当該候補は不成立と判明した（下記「起票時実測」節）。是正方式を app 層 allowlist prune へ確定し、packet + Test Design Matrix を同 commit で commit して plan-gate に至る。
+
+2026-09-02: Plan Review round 1（Sonnet subagent fresh context、router-core `router.js` の constructor 購読順と `emit` の Set 挿入順・`event.fromLocation` 付与を実読で独立再現）= P1 0 / P2 2 / P3 2、全件 accept、是正 commit `d7e9e4a`（新規 test ID を SP1〜SP5 へ改名、SP4 の別 file + sessionStorage 事前破壊 + precondition assert 方式を明記）。round 2（同 reviewer、diff 実読 + 全文再読）= P1/P2 = 0 / P3 2 + 既存 gap 1、全件 accept、是正 commit `9ef97ba`。Plan Gate 収束（介入 1/3 = 起票選定）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `1d9c577`。
 
 ## Owner Effort Budget
 
