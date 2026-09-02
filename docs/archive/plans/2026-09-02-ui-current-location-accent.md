@@ -4,7 +4,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: b2c333fdc8da012c47f8376065d93e1b56b52f49
@@ -16,7 +16,7 @@ UI ガッツリ整えターン（owner 宣言 2026-09-02）の wave 8 lane 1。�
 - Reviewed Content HEAD: c088fbeea7b35c0b304f5f899079b75fc0afab9a
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Ready、merge（owner 委任により Coordinator 代行、2026-09-02）
+- Human Gate: none
 
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: kickoff で owner 裁定 (a) と同乗 1 件、branch、R2 を固定。spec-check で foundations L62 / catalog L300-301 / `selection-tone.ts` / `SidebarLink.tsx` / `segmented-control.tsx` L12 / `PluNotificationBar.tsx` L23-24 / `PluExportPage.tsx` L406-412 / `alert.tsx` L7（svg slot）・L30（`role="alert"`）を Coordinator が直接読取し、drift が doc↔doc 衝突であること、`SELECTION_TONE_ACTIVE` の消費者が SidebarLink のみであること、`SELECTION_TONE_CHIP_ON` が StatusChips 専用であること、SegmentedControl が独自 stone 定義であることを確認。design phase として DSR-21 の規範文を本 packet「Design Intent Trace」直下に確定（design output は本 plan-first change に置き、Writer が verbatim 転記する）。plan-draft で本 packet を作成し、Matrix は R2 optional 判定で省略（class 存在 oracle と L3 目視の 2 段で足りる）。実装は Coordinator の `plan-approved` 合図まで開始しない。
 
@@ -33,6 +33,8 @@ Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-g
 2026-09-02: owner Windows native L3 round 2 = **FAIL**（PR #28 comment 5500388813、HEAD `01350de` / content `ee03893`、介入 3/5）。(i)(ii)(iii) と PLU icon は PASS、(iv) FAIL = plain `<Link activeProps>` 経路と `ActiveMatchSidebarLink` 経路で active の全周枠が不一致（在庫照会は `border-stone-400` の全周枠あり、月次売上は全周枠なし）。機序は owner が CSS 順まで確定: round 1 と同根で、plain 経路では base の `border-transparent` と active の `border-stone-400` が連結共存し、生成 CSS 順 `.border-stone-400` → `.border-transparent` で透明が勝つ（`ActiveMatchSidebarLink` は単一 `cn()` merge で `border-transparent` が除去される）。PR 以前から潜在していた経路差だが、現在地の視認性を目的とする本 packet の Goal に直結するため本 lane で是正する（Scope 7）。追加観察（sidebar recenter / 入庫・廃棄間 loop / 商品検索への誤遷移、owner 再現手順記録済み）は本 PR diff（border class のみ）では説明できず、Coordinator 実読で有力候補 H2 を特定: PR #24 の `scrollRestoration: true` は `@tanstack/router-core` 1.168.15 `scroll-restoration.js` が document capture で拾った任意要素（sidebar の ScrollArea viewport を含む）を CSS selector で cache し（L83-98）遷移後に `querySelector` + `scrollTo` で復元する（L139-142）ため、route ごとに sidebar 位置が異なる履歴があると遷移直後に sidebar が跳び pointer 下の項目が入れ替わる。owner 要請の一時 in-app probe（Scope 8）で時系列 log を取り機序を確定する。H2 の是正（sidebar viewport を restoration 対象から除外）は router option 変更 = R3 のため別 lane へ起票し、本 lane では扱わない。gated amendment 第 2 弾（本 commit）: Scope 7（active 全周枠の経路 parity）+ Scope 8（一時 diagnostic probe、撤去義務付き）+ AC8 / AC9 + AC6 (iv) 補足を追加。Goal / Risk / 既存 Scope 1〜6 / AC1〜AC7 は不変。この state-backtrack commit は `human-confirm -> implementing` の単一後退遷移を記録する。
 
 2026-09-02: 是正 content `096f857`（parity、Writer = Sonnet subagent）+ `c088fbe`（一時 probe）。Final Review round 3（別個体 fresh Sonnet）= P1/P2/P3 = 0（実 DOM で両経路の active border 集合 `[border, border-l-[3px], border-l-primary, border-stone-400]` が完全一致、active に `border-transparent` なし、mutation m1/m2 kill、probe の install/cleanup 対称）。L1 full @ `c088fbe` RESULT=PASS / CLEAN / MERGE_EVIDENCE_VALID=true（evidence は PR body）。owner Windows native L3 round 3 @ `c088fbe` = **AC6 (i)〜(iv) 全 PASS + PLU icon PASS**（PR #28 comment 5502166679、介入 4/5）。probe log で **H2 confirmed**: route 描画完了（`onRendered`）時に sidebar viewport の `scrollTop` が経路別に `100 → 0` / `0 → 100` と復元され、`focusin` は復元後。sidebar recenter / 誤遷移は本 PR の差分ではなく PR #24 `scrollRestoration` が sidebar viewport も復元する既存挙動と確定、別 R3 lane（sidebar viewport を restoration 対象から除外）へ closeout で起票。本 content commit は一時 probe を撤去し（AC9: `rg -n "sidebar-diagnostic-probe|installSidebarDiagnosticProbe" src` = 0 hit、`git diff 01350de -- src/components/layout/Sidebar.tsx` 空）、既評価の `implementing -> local-verified -> independent-review -> human-confirm` を同乗で materialize する（forward state-only 3 本のうち 2 本消費済みのため、残 1 本を Ready 遷移に温存する content-riding 圧縮）。撤去 diff は削除のみで L3 済み挙動に影響せず、Coordinator が AC9 で機械確認した残余として記録する。残る Human Gate は Ready、merge（owner 委任により Coordinator 代行）。owner L3 round 3 PASS と owner 宣言（Ready 化と merge は Coordinator が一貫して代行）を受け、`human-confirm -> ready-hosted-final` も本 content commit に同乗で materialize する（post-implementation の state-only 遷移は上限 2 本で、L3 FAIL loop の human-confirm 2 回で消費済み。state-only の Ready 遷移 `8b50e92` は STATECAP ERROR のため取り下げ、本 commit へ折り込んだ）。Draft のまま、本 HEAD（= content candidate）で L1 full を取得し exact-HEAD evidence は PR body を正とする。Ready 化 → hosted run success（headSha 一致）→ squash merge → closeout を Coordinator が連続実行する（介入 5/5 相当は owner の L3 round 3 PASS 報告で充足）。
+
+2026-09-02: L1 full @ `14f86ca` RESULT=PASS / CLEAN / MERGE_EVIDENCE_VALID=true（evidence は PR body）。Coordinator が PR #28 を Ready 化、hosted run 33573352575 が exact HEAD `14f86ca` で success、三点一致成立、squash merge `0b32547`（2026-09-02、Ready と merge は owner 委任で Coordinator 代行）。実績 = 介入 4/5・relay 2/2・forward state-only 2 本 + backtrack 2 本 + content-riding 1 本・gated amendment 2 件（`c4ce326` `6dace5b`）・Writer は Codex → Sonnet subagent へ切替（relay 上限）。L3 で確定した既存 finding（H2 = PR #24 scrollRestoration の sidebar viewport 復元 / `UI_TECH_STACK.md` L403 の DSR 索引 stale / focus 中の `focus-visible:border-ring` による左辺色上書き）は closeout で Plans.md backlog へ起票。closeout で archive へ移動。
 
 ## Owner Effort Budget
 
