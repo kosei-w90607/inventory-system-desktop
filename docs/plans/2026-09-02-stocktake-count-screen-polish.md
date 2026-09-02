@@ -42,7 +42,7 @@
 Risk: R3
 
 Reason:
-Risk Tiers R3 行のうち operator workflow（棚卸しカウントの主動線 CTA・FieldError 表示・母集団を横断的に変更する）、route/search state（一覧の表示件数・ページ状態の扱いを変更する）に該当。Tauri command / DTO / bindings / DB は変更しない（AC7 で bindings 差分ゼロを機械確認）。
+Risk Tiers R3 行のうち operator workflow（棚卸しカウントの主動線 CTA・FieldError 表示・母集団を横断的に変更する）、route/search state（一覧の表示件数・ページ状態の扱いを変更する）に該当。加えて Plan Review round 1 P1-2 是正により、5 画面（Stocktake/Disposal/ManualSale/Receiving/ReturnExchange）が共有する `src/components/patterns/useProductAddSuggest.ts` へ非破壊拡張（optional `queryOverrides` 追加）を加えるため、共有パターン touch として regression 範囲が棚卸し画面外にも及ぶ（他 4 画面は default 引数のまま呼ぶため挙動不変、`ProductAddSuggest.test.tsx` の contract test で保証）。Tauri command / DTO / bindings / DB は変更しない（AC7 で bindings 差分ゼロを機械確認）。
 
 ## 起票時実測（2026-09-02、HEAD `a1e9811` から分岐）
 
@@ -166,9 +166,15 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 文言「未入力 {N}」は維持。`AlertTriangle` / `CheckCircle2` は既存 import を再利用（新規 import 不要）。
 
-**S6: 廃番商品の名前検索包含（PR27-3、母集団整合）**
+**S6: 廃番商品の名前検索包含（PR27-3、母集団整合、共有 live-suggest hook を非破壊で拡張）**
 
-`PRODUCT_NAME_SEARCH_QUERY`（`StocktakePage.tsx:99-106`）の `is_discontinued: false` を起票時実測（上記）に基づき `is_discontinued: null` へ変更する（全件 = 現行品 + 廃番）。加えて商品名検索フォールバックの候補テーブル（`:585-602`）に廃番 Badge を追記する。`candidates` の型は `ProductWithRelations[]`（`is_discontinued: boolean` を `Product` から継承、`bindings.ts:1174,1298-1302`）ですでに保持しているため、候補行の商品名セルへ既存 catalog パターン（`docs/design-system/02-component-catalog.md:157` `{item.is_discontinued && <Badge variant="secondary">廃番</Badge>}`）と同型で追記する:
+Plan Review round 1 P1-2 是正: `src/components/patterns/useProductAddSuggest.ts:9-16` の `PRODUCT_SEARCH_QUERY`（`is_discontinued: false` 固定）は棚卸しの live 候補プレビューだけでなく `Disposal` / `ManualSale` / `Receiving` / `ReturnExchange` の商品追加欄が共有する定数で、`src/components/patterns/ProductAddSuggest.test.tsx:139-147`（S1）が default 挙動をリテラル `is_discontinued: false` を含む完全一致で契約テストしている。この共有定数を直接書き換えると 4 画面すべての live 候補が廃番を含む方向へ変わり、販売・入庫等では廃番を候補にしない既存業務判断（`ProductAddSuggest.test.tsx:139-147` の default が正）を壊す。よって以下のとおり非破壊で拡張する:
+
+(a) 商品名検索フォールバック（`resolveItem` 内、`PRODUCT_NAME_SEARCH_QUERY`、`StocktakePage.tsx:99-106`）の `is_discontinued: false` は起票時実測（上記）に基づき `is_discontinued: null` へ変更する（全件 = 現行品 + 廃番）。これは棚卸し画面ローカルの定数で、他画面に影響しない。
+
+(b) 共有 hook `useProductAddSuggest.ts` の `PRODUCT_SEARCH_QUERY`（`:9-16`）自体は変更しない。`UseProductAddSuggestOptions`（`:17-21`）へ任意 `queryOverrides?: Partial<ProductSearchQuery>` を追加し、`loadSuggestions` 内の `commands.searchProducts({ ...PRODUCT_SEARCH_QUERY, keyword: query })`（`:86`）を `commands.searchProducts({ ...PRODUCT_SEARCH_QUERY, ...queryOverridesRef.current, keyword: query })` へ変更する。`onSelect` / `isLocked` と同じ ref 経由パターン（`:56-60` の `useEffect` 同期ブロック）で `queryOverridesRef` を追加し、`queryOverrides` 未指定時は `PRODUCT_SEARCH_QUERY` のみのマージ（= 従来と byte-identical な挙動）になることを保証する。`StocktakePage.tsx` の `useProductAddSuggest` 呼び出し（`:414-418`）だけが `{ queryOverrides: { is_discontinued: null } }` を渡し、他 4 画面（`Disposal` / `ManualSale` / `Receiving` / `ReturnExchange`）の呼び出しは無変更のまま既定の `is_discontinued: false` を使い続ける。
+
+(c) 商品名検索フォールバックの候補テーブル（`:585-602`）と live 候補プレビュー（`ProductAddSuggest`）双方に廃番 Badge を追記する。`candidates` の型は `ProductWithRelations[]`（`is_discontinued: boolean` を `Product` から継承、`bindings.ts:1174,1298-1302`）ですでに保持しているため、候補行の商品名セルへ既存 catalog パターン（`docs/design-system/02-component-catalog.md:157` `{item.is_discontinued && <Badge variant="secondary">廃番</Badge>}`）と同型で追記する:
 
 ```tsx
 <TableCell>
@@ -179,7 +185,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 </TableCell>
 ```
 
-live 候補プレビュー（`ProductAddSuggest`、UI-10-D12）の suggest fetch も同じ `commands.searchProducts` 経路を使うため、`is_discontinued` フィルタの変更点を確認し、live 候補側にも同じクエリパラメータが使われていれば同時に廃番が含まれることを Contract Probe で確認する（別経路のクエリ定数を持つ場合は独立して揃える）。
+Scope に含む touched files: `src/components/patterns/useProductAddSuggest.ts`（+ その test file `useProductAddSuggest` を直接 exercise する既存 test、および `ProductAddSuggest.test.tsx`）。
 
 **S7: 数量欄の単位併記 — 見送り（起票時実測で確定）**
 
@@ -197,6 +203,7 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 - `perPage` 切替 UI は `ProductListPage.tsx:182-204` の先例（`Select` + `SelectTrigger id="product-per-page"` + `PRODUCT_PER_PAGE_OPTIONS.map(...)`、`{option} 件` ラベル）と同型で `StocktakeItemList` のフィルタ行（部門フィルタ + 未入力のみ toggle、`:690-715`）に追加する。`id` は `stocktake-per-page` など画面固有にする（`product-per-page` との重複回避）。
 - `StocktakeItemList` は `perPage: (typeof PRODUCT_PER_PAGE_OPTIONS)[number]` / `onPerPageChange: (value: (typeof PRODUCT_PER_PAGE_OPTIONS)[number]) => void` props を新規に受け取る。
 - 表示件数変更時は `onPerPageChange(next)` に加えて `onSearchChange((prev) => ({ ...prev, page: 1 }))` を呼び、`page` を 1 へ戻す。
+- Plan Review round 1 P1-1 是正: 既定 `perPage` を `200` → `50` に変更するため、`getStocktakeItems` の `per_page` 引数を旧既定 `200` で assert している既存 test を新既定に合わせて更新する（削除・skip ではなく期待値更新）。対象は `StocktakePage.test.tsx:217`（T2 `expect(mockGetItems).toHaveBeenCalledWith(77, null, null, 1, 200)` → `..., 1, 50)`）と `:232`（T3 `expect(mockGetItems).toHaveBeenLastCalledWith(77, 1, false, 1, 200)` → `..., 1, 50)`）の 2 箇所。73 §73.6 の表示件数行（下記 docs 是正）の既定値記述と同期する。
 
 **S9: DSR-20 AlertDialog 系追記（同乗、Plans.md backlog L88）**
 
@@ -221,7 +228,7 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 
 **`docs/function-design/73-ui-stocktake.md` UI-10-D2 節、「契約監査追記2」の直後に追加する段落**（見出しレベル・書式は既存の契約監査追記と同型）:
 
-> **契約監査追記3（本 PR、UI ガッツリ整えターン disposition culling 起源）**: 3 点を是正する。①`selectItem` が対象切替時に `setFieldError(null)` を呼ばず、live 候補選択・商品名検索フォールバックの単一候補自動選択を経由した場合に前商品の数量 FieldError が残留していた（PR #27 L3 owner 観察 2026-09-02）。対象商品が切り替わる全経路の集約点である `selectItem` へ `setFieldError(null)` を追加して是正する。②§73.9 の「対象にありません」はエラー扱いにしない契約だが、実装は `role="alert"` + `text-destructive` の destructive 表示になっていた（doc↔実装 drift）。`role="status"` + `text-muted-foreground` + `Info` icon の情報系表示へ是正する（DSR-08/DSR-11 準拠）。③商品名検索フォールバック（`PRODUCT_NAME_SEARCH_QUERY`）が `is_discontinued: false` 固定のため、棚卸し item 母集団（廃番商品を含む、§73.1 issue #91 回答済み）と商品コード/JAN 完全一致検索（`find_stocktake_item`、母集団の制限なし）には存在する廃番商品が、名前検索経路だけ候補から漏れる非対称があった（PR #27 L3 owner 観察 2026-09-02）。`is_discontinued: null`（`ProductSearchQuery` の `None` は「全件、フィルタなし」を意味する、`product_repo.rs:804-805` 実読で確定）へ変更し、候補行に廃番 Badge（catalog `02-component-catalog.md:157` と同型）を追記して是正する。
+> **契約監査追記3（本 PR、UI ガッツリ整えターン disposition culling 起源）**: 3 点を是正する。①`selectItem` が対象切替時に `setFieldError(null)` を呼ばず、live 候補選択・商品名検索フォールバックの単一候補自動選択を経由した場合に前商品の数量 FieldError が残留していた（PR #27 L3 owner 観察 2026-09-02）。対象商品が切り替わる全経路の集約点である `selectItem` へ `setFieldError(null)` を追加して是正する。②§73.9 の「対象にありません」はエラー扱いにしない契約だが、実装は `role="alert"` + `text-destructive` の destructive 表示になっていた（doc↔実装 drift）。`role="status"` + `text-muted-foreground` + `Info` icon の情報系表示へ是正する（DSR-08/DSR-11 準拠）。③商品名検索フォールバック（`PRODUCT_NAME_SEARCH_QUERY`）が `is_discontinued: false` 固定のため、棚卸し item 母集団（廃番商品を含む、§73.1 issue #91 回答済み）と商品コード/JAN 完全一致検索（`find_stocktake_item`、母集団の制限なし）には存在する廃番商品が、名前検索経路だけ候補から漏れる非対称があった（PR #27 L3 owner 観察 2026-09-02）。名前検索フォールバックの `PRODUCT_NAME_SEARCH_QUERY`（棚卸し画面ローカル）は `is_discontinued: null`（`ProductSearchQuery` の `None` は「全件、フィルタなし」を意味する、`product_repo.rs:804-805` 実読で確定）へ変更する。live 候補プレビュー（catalog ⑮）側は 5 画面共有の `useProductAddSuggest.ts` の default `PRODUCT_SEARCH_QUERY`（`is_discontinued: false`）を直接変更せず、新設の optional `queryOverrides`（catalog ⑮ SPEC-SUGGEST-D13、下記 docs 是正）で棚卸し画面だけ `{ is_discontinued: null }` を渡す（他 4 画面は default のまま廃番を除外し続ける）。両経路の候補行に廃番 Badge（catalog `02-component-catalog.md:157` と同型）を追記して是正する。
 
 **`docs/function-design/73-ui-stocktake.md` §73.6 の表、「並び順」行の直後・「0 件表示」行の直前に追加する行**:
 
@@ -247,30 +254,38 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 
 内容列: DSR-20 に AlertDialog 系の制約（Radix `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型 Omit するため、硬化手段は `onEscapeKeyDown` のみが対象になる）を追記。Plans.md backlog（PR #25 gated amendment `2433199` 起源）の同乗解消。
 
+**`docs/design-system/02-component-catalog.md` ⑮ 商品追加欄 live 候補プレビュー、D12（`:866`）の直後に追加する bullet**（Plan Review round 1 P1-2 是正: 共有 hook `useProductAddSuggest.ts` へ optional `queryOverrides` を追加するため、SPEC-SUGGEST 凍結正本〈D1〜D12〉に新規 D13 を追加する。D1〜D12 の本文・意味論は無変更）:
+
+> - D13 = SPEC-SUGGEST-D13（画面別クエリ上書き、本 PR 追加）: hook は optional `queryOverrides?: Partial<ProductSearchQuery>` を受け取り、suggest fetch のクエリを `{ ...PRODUCT_SEARCH_QUERY, ...queryOverrides, keyword }` としてマージする。`queryOverrides` 未指定時は `PRODUCT_SEARCH_QUERY`（D3 の `per_page 5` を含む既定値）のみが使われ、既存 5 画面の挙動と byte-identical のまま変わらない。棚卸し（UI-10-D2）は `{ is_discontinued: null }` を渡し、名前検索候補に廃番商品を含める（棚卸し item 母集団に廃番が含まれる契約、§73.1、との整合）。取引 4 画面（入庫 61 / 手動販売 62 / 返品・交換 63 / 廃棄・破損 64）は `queryOverrides` を渡さず、廃番を候補から除外する既存業務判断を維持する。D1〜D12 の契約意味論（二層構造・Enter 分岐・IME・破棄条件等）は変更しない。
+
+**`docs/design-system/02-component-catalog.md` ⑮ D8（`:862`）の置換後の全文**（棚卸しの override 使用を明記する 1 文を追記、既存文の残り部分は無変更）:
+
+> D8（棚卸し）: 棚卸しの suggest fetch は `searchProducts`（部分一致）を用い、`queryOverrides: { is_discontinued: null }`（D13）で廃番商品も候補に含める。候補確定は既存 UI-10-D2 の `find_stocktake_item` 経由で棚卸し対象化する。UI-10-D11 の focus 遷移契約（解決成功で数量欄へ）は候補確定経由でも同一に発火する。候補確定後に `find_stocktake_item` が稀に `None` を返す場合は既存 `selectCandidate` の無言 no-op 挙動をそのまま継承する（既知の pre-existing gap、本 change の scope 外）。
+
 ## Acceptance Criteria
 
-- AC-L3-1（S1、render oracle）: `StocktakePage.tsx` counting 画面で amber の primary ボタンが「数を保存」の 1 個だけであることを owner が Windows native で確認する。「棚卸しを確定する」「選択」（候補表示時）は outline 見た目である。
+- AC-L3-1（S1、render oracle、Plan Review round 1 P2-2 是正で到達手順を訂正）: `StocktakePage.tsx` counting 画面で、(i) 商品を選択済みの状態から別の検索語で複数候補が返り、候補テーブルと「数を保存」欄が共存する状態（`resolveItem` は 0 候補時のみ `selectedItem` をクリアし〈`:458`〉、複数候補時は `selectedItem` を保持したまま `setCandidates` する〈`:473`〉ため到達可能）で、amber の primary ボタンが「数を保存」の 1 個だけであることを owner が視認確認する。「棚卸しを確定する」「選択」（候補行）は outline 見た目である。(ii) 商品を未選択のまま複数候補だけが表示されている状態（`selectedItem === null`）では primary ボタンは 0 個が正しい挙動であり、1 個であることを求めない。
 - AC1（S2）: `SC2` green — live 候補選択で前商品の FieldError が消え、新商品名が表示される。
 - AC-L3-2（S3、render oracle）: `StocktakeCountEntry` の FieldError の出現・消失で「数を保存」ボタンの垂直位置が変化しないことを owner が視認確認する。
 - AC-L3-3（S4、render oracle）: 「対象にありません」表示が赤色でなく `Info` アイコン付きの通常トーンで表示されることを owner が視認確認する。
 - AC-L3-4（S5、render oracle）: 未入力 N>0 で警告色 + `AlertTriangle`、N=0 で完了色 + `CheckCircle2` の Badge を owner が視認確認する。
-- AC2（S6）: `SC6` green — 商品名検索で廃番商品が候補に出る（`is_discontinued: null`）+ 候補行に「廃番」Badge が出る。
+- AC2（S6）: `SC6` green — 商品名検索フォールバックで廃番商品が候補に出る（`is_discontinued: null`）+ 候補行に「廃番」Badge が出る。`SC6b` green — live 候補プレビュー側は `queryOverrides` 未指定の他 4 画面で `is_discontinued: false` の既定挙動が不変、棚卸しのみ override 適用で廃番を含む。
 - AC-L3-5（S8、render oracle）: 一覧のページ送りが catalog ⑩ canonical `ProductPagination`（「前のページ」/「次のページ」`aria-label`、outline ボタン）で表示され、表示件数 `Select`（50/100/200 件）が選べることを owner が視認確認する。
 - AC3（S8）: `SC8a`/`SC8b`/`SC8c'` green — 既定 50 件、変更時に `page` が 1 へ戻る、canonical component が実際に render される（独自 markup が残っていない）。
 - AC4: `test-matrices/2026-09-02-stocktake-count-screen-polish.md` の SC1〜SC9 が green、必須 mutation X1〜X9 が全 kill（Coordinator 独立再実測 + Final Reviewer 独立再実測）。
-- AC5: 既存 `StocktakePage.test.tsx`（T1〜T23）/ `StocktakePage.suggest.test.tsx`（W5/W7/W8/W12/W17）/ SPEC-UIBB-1/2 が regression-free（SC9）。
+- AC5（Plan Review round 1 P1-1 是正）: 既存 `StocktakePage.test.tsx`（T1〜T23、うち T2/T3 は `per_page` 期待値を `200` → `50` へ更新済みであること）/ `StocktakePage.suggest.test.tsx`（W5/W7/W8/W12/W17）/ SPEC-UIBB-1/2 / `ProductAddSuggest.test.tsx`（S1 含む既存 suite）が regression-free（SC9）。regression-free の定義は「T2/T3 の `per_page` 期待値更新以外は既存 test に変更がない」こと。
 - AC6: `git diff --stat -- src/lib/bindings.ts src-tauri` がゼロ行（Tauri command / DTO / DB 非接触）。
 - AC7: frontend gate（`npm run typecheck` / `npm run lint` / `npm run format:check` / `npm test` / `npm run build`）green + `cargo check --release` PASS（Human Gate に L3 を含むため）。
-- AC8: `73-ui-stocktake.md` / `SCREEN_DESIGN.md` 棚卸し節 / `01-decision-rules.md` DSR-20 の是正が反映され、`bash scripts/doc-consistency-check.sh` clean（WARN は既存分から増分なし）。
+- AC8: `73-ui-stocktake.md` / `SCREEN_DESIGN.md` 棚卸し節 / `01-decision-rules.md` DSR-20 / `02-component-catalog.md` ⑮（SPEC-SUGGEST-D13）の是正が反映され、`bash scripts/doc-consistency-check.sh` clean（WARN は既存分から増分なし）。
 
 ## Design Sources
 
-- Requirements / spec: UI-10（REQ-205）、DSR-01/02/03/04/08/11/20/21
+- Requirements / spec: UI-10（REQ-205）、DSR-01/02/03/04/08/11/20/21、catalog ⑮ SPEC-SUGGEST-D1〜D12
 - Architecture: 変更なし（UI 層内）
 - Function / command / DTO: `docs/function-design/73-ui-stocktake.md`（変更なし・contract 追記のみ）
 - DB: 変更なし
-- Screen / UI: `docs/SCREEN_DESIGN.md` 棚卸し節（L190-201）、`docs/design-system/01-decision-rules.md` DSR-20
-- Decision log / ADR: 変更なし（UI-10-D2 契約監査追記へ集約、新規 D 番号は振らない）
+- Screen / UI: `docs/SCREEN_DESIGN.md` 棚卸し節（L190-201）、`docs/design-system/01-decision-rules.md` DSR-20、`docs/design-system/02-component-catalog.md` ⑮
+- Decision log / ADR: catalog ⑮ に SPEC-SUGGEST-D13（`queryOverrides`、Plan Review round 1 P1-2 是正）を新規採番。他は UI-10-D2 契約監査追記へ集約し新規 D 番号は振らない。
 
 ## Required Design Artifacts
 
@@ -281,7 +296,7 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 | DB / transaction / audit / rollback / migration | 変更なし | existing sufficient |
 | Screen / UI / route state / Japanese wording | UI-10-D2 契約監査追記3 + §73.6/§73.10 + SCREEN_DESIGN 棚卸し節 | updated in this PR |
 | CSV / TSV / report / import / export format | 変更なし | existing sufficient |
-| Durable decision / ADR | DSR-20 硬化手段追記（S9） | updated in this PR |
+| Durable decision / ADR | DSR-20 硬化手段追記（S9）+ catalog ⑮ SPEC-SUGGEST-D13 新設（S6、共有 hook 非破壊拡張） | updated in this PR |
 
 ## Registration / Generation Obligations
 
@@ -289,8 +304,9 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 
 | 新規追加物 | 登録・生成義務 | 対応 |
 |---|---|---|
-| `useStocktakeItems` signature 変更（`perPage` 明示引数化） | — | 呼び出し元は `StocktakePage.tsx` の 1 箇所のみ（`rg -n 'useStocktakeItems' src` で確認済み）。test 同梱（SC8a/SC8b） |
-| REQ coverage | 該当なし — `StocktakePage.test.tsx` の既存 test（T1〜T23）は REQ token を使わず UI-10-D 決定 ID を cite する形式（`rg -n 'REQ-' src/features/stocktake/*.test.tsx` hit 0 を確認済み）。新規 SC1〜SC9 も同じ decision ID 引用の慣行に従うため `generate_traceability` 再生成は不要 | 不要（結論確定） |
+| `useStocktakeItems` signature 変更（`perPage` 明示引数化） | — | 呼び出し元は `StocktakePage.tsx` の 1 箇所のみ（`rg -n 'useStocktakeItems' src` で確認済み）。test 同梱（SC8a/SC8b）。既存 `StocktakePage.test.tsx:217`（T2）/`:232`（T3）の `per_page` 期待値 `200` を新既定 `50` へ更新する（P1-1、削除・skip ではない） |
+| `useProductAddSuggest.ts` へ optional `queryOverrides` 追加（P1-2、共有 hook 非破壊拡張） | — | 呼び出し元 5 箇所中 `StocktakePage.tsx:414-418` のみ override を渡す。他 4 箇所（`DisposalPage.tsx:184` / `ManualSalePage.tsx:203` / `ReceivingPage.tsx:188` / `ReturnExchangePage.tsx:265`）は無変更のまま既定 `PRODUCT_SEARCH_QUERY` を使用。test 同梱（SC6b、`ProductAddSuggest.test.tsx` 既存 S1 は regression 対象・SC9 へ追加） |
+| REQ coverage | Plan Review round 1 P2-1 是正: `rg -n 'REQ-' src/features/stocktake/*.test.tsx` の実測結果は **hit 2 件**（`StocktakePage.test.tsx:3` / `StocktakePage.suggest.test.tsx:1`、いずれも file 冒頭のヘッダーコメントで `REQ-205` を cite）であり、以前の記載「hit 0」は誤り。`generate_traceability` の file 参照判定 `fe_file_references_ids`（`src-tauri/src/bin/generate_traceability.rs:546`、正規表現 `\b(REQ-[0-9]{3}\b\|UI-[0-9]{2}[a-z]?\b)`）は `REQ-` トークンと `UI-\d{2}` トークンのいずれかを file 内に含めば true になる。両 test file は既に `UI-10`（`StocktakePage.test.tsx:3` の「UI-10 Test Design Matrix」/ `StocktakePage.suggest.test.tsx:1` の「UI-10-D2/D11/D12」）も cite しているため、`REQ-205` トークンの有無に関わらず file 単位の参照判定は既に true で不変。新規 SC1〜SC9 も既存 decision ID 引用の慣行（新規 REQ token を追加しない）に従うため、`generate_traceability` 再生成は不要 | 不要（結論確定、根拠を実測に基づき更新） |
 | route / operator 画面 / Tauri command | — | 該当なし |
 
 ## Design Intent Trace
@@ -302,7 +318,8 @@ owner 所感「表示件数が多い」への是正は、**catalog ⑩ の再利
 | PR27-2 FieldError 予約高さ | 73 §73.5 | UI-10-D2 契約監査追記3 | wrapper 常時 render 方式（条件付き `role="alert"` 内側は維持し a11y regression なし） | Scope S3 | SC3 |
 | C8 対象にありません tone | 73 §73.9 | UI-10-D2 契約監査追記3 | doc（非エラー）と実装（destructive）の drift 是正、DSR-08/DSR-11 準拠 | Scope S4 | SC4 |
 | C9 未入力 Badge tone | 73 §73.6 | UI-10-D2 契約監査追記3 | 新規 Badge variant を追加せず既存 2 パターン（`StockStatusBadge` / `IntegrityCheckPage`）を再利用 | Scope S5 | SC5 |
-| PR27-3 廃番商品の名前検索包含 | 73 §73.5 UI-10-D2 | UI-10-D2 契約監査追記3 | `is_discontinued: null` が「全件」を意味すると起票時実測で確定（product_repo.rs:804-805） | Scope S6 | SC6 |
+| PR27-3 廃番商品の名前検索包含（名前検索フォールバック） | 73 §73.5 UI-10-D2 | UI-10-D2 契約監査追記3 | `is_discontinued: null` が「全件」を意味すると起票時実測で確定（product_repo.rs:804-805） | Scope S6 | SC6 |
+| P1-2 廃番商品の live 候補包含（共有 hook 非破壊拡張） | catalog ⑮ SPEC-SUGGEST-D13（新設） | Plan Review round 1 P1-2 是正 | `queryOverrides` 未指定時は既存 5 画面と byte-identical、棚卸しのみ override で廃番を含める | Scope S6 | SC6b |
 | C10 単位併記 | — | — | `StocktakeItemDetail` に単位 field なしと起票時実測で確定、DTO 拡張は非目的につき見送り | Non-scope | — |
 | C1 表示件数 + catalog ⑩ 統一 | 73 §73.6 | UI-10-D2 契約監査追記3 | canonical `ProductPagination` + `PRODUCT_PER_PAGE_OPTIONS` 再利用に限定、画面内 state のみ、IO 200 クランプは不変。上下配置・40 刻み化は④へ委譲 | Scope S8 | SC8a/SC8b/SC8c' |
 | S9 DSR-20 AlertDialog 系追記 | 01 DSR-20 | 本 packet | Radix `AlertDialogContentProps` の型 Omit を根拠に硬化手段を `onEscapeKeyDown` のみへ限定明記 | Scope S9 | doc-consistency-check |
@@ -349,7 +366,7 @@ Minimum design checks for business-app work:
 
 ## Contract Probe
 
-- **S6 live 候補プレビューの `is_discontinued` フィルタ**: `ProductAddSuggest` / `useProductAddSuggest`（`StocktakePage.tsx:414-418`）の suggest fetch クエリが `PRODUCT_NAME_SEARCH_QUERY` と同一定数を参照するか、独立したクエリパラメータを持つかを Writer が実装時に確認する -> 独立していれば live 候補側にも同様の `is_discontinued: null` を適用する（Contract Coverage Ledger の SC6 row で live 候補・フォールバック両方を明示）。
+- **S6 live 候補プレビューの `is_discontinued` フィルタ**: Plan Review round 1 P1-2 是正により確定済み。`useProductAddSuggest.ts:9-16` の `PRODUCT_SEARCH_QUERY` は 5 画面共有かつ `ProductAddSuggest.test.tsx:139-147`（S1）で default 挙動が契約テストされているため、直接変更しない -> optional `queryOverrides` を hook に追加し `StocktakePage.tsx:414-418` の呼び出しだけへ `{ is_discontinued: null }` を渡す（catalog ⑮ SPEC-SUGGEST-D13、下記 docs 是正）。Writer 実装時の確認事項は「`queryOverrides` 未指定時の suggest fetch クエリが `PRODUCT_SEARCH_QUERY` と完全一致すること」（SC6b の独立 literal oracle で担保）。
 - 登録漏れ是正を含む probe は、是正を仮適用した状態で end-to-end に実行する — 本 packet は登録漏れ型ではないため、この規律は非該当（is-N/A）。
 
 ## Contract Coverage Ledger
@@ -361,7 +378,8 @@ Minimum design checks for business-app work:
 | PR27-2 FieldError 予約高さ | 数量入力欄 wrapper（S3） | SC3 | AC-L3-2 |
 | C8 対象にありません tone | `targetMessage` 表示（S4） | SC4 | AC-L3-3 |
 | C9 未入力 Badge tone | `StocktakeProgressHeader`（S5） | SC5 | AC-L3-4 |
-| PR27-3 廃番商品の名前検索包含 | `PRODUCT_NAME_SEARCH_QUERY` + 候補 Badge（S6） | SC6 | — |
+| PR27-3 廃番商品の名前検索包含（フォールバック） | `PRODUCT_NAME_SEARCH_QUERY` + 候補 Badge（S6） | SC6 | — |
+| catalog ⑮ SPEC-SUGGEST-D13 廃番包含（live 候補、共有 hook 非破壊拡張） | `useProductAddSuggest.ts` `queryOverrides`（S6） | SC6b | — |
 | C1 表示件数 + catalog ⑩ 統一 | `useStocktakeItems` + `StocktakeItemList`（S8） | SC8a/SC8b/SC8c' | AC-L3-5 |
 | 既存 UI-10-D1〜D12 契約の非破壊 | 変更なし | SC9（regression 実行） | — |
 | DSR-20 AlertDialog 系硬化手段追記 | `01-decision-rules.md`（S9） | doc-consistency-check | — |
@@ -370,9 +388,9 @@ Minimum design checks for business-app work:
 
 Test Design Matrix: [test-matrices/2026-09-02-stocktake-count-screen-polish.md](test-matrices/2026-09-02-stocktake-count-screen-polish.md)
 
-- targeted tests: SC1（primary count）、SC2（FieldError クリア）、SC3（reserved height slot）、SC4（対象にありません tone）、SC5（Badge tone）、SC6（廃番検索）、SC8a/SC8b/SC8c'（表示件数 + catalog ⑩ 統一）
-- negative tests: SC2 の presence oracle（新商品名が表示される）、SC5 の N=0 presence oracle（success tone の実在確認）、SC8b の page reset 確認、SC8c' の独自 markup 非残置確認
-- compatibility checks: 既存 `StocktakePage.test.tsx`（T1〜T23）/ `StocktakePage.suggest.test.tsx`（W5/W7/W8/W12/W17）/ SPEC-UIBB-1/2 無変更 green（SC9、AC5）
+- targeted tests: SC1（primary count）、SC2（FieldError クリア）、SC3（reserved height slot）、SC4（対象にありません tone）、SC5（Badge tone）、SC6（廃番検索フォールバック）、SC6b（共有 hook 非破壊拡張）、SC8a/SC8b/SC8c'（表示件数 + catalog ⑩ 統一）
+- negative tests: SC2 の presence oracle（新商品名が表示される）、SC5 の N=0 presence oracle（success tone の実在確認）、SC6b の default 非破壊 presence oracle（`is_discontinued: false` を含む呼び出し引数の完全一致 assert）、SC8b の page reset 確認、SC8c' の独自 markup 非残置確認
+- compatibility checks: 既存 `StocktakePage.test.tsx`（T1〜T23、T2/T3 は `per_page` 期待値更新のみ）/ `StocktakePage.suggest.test.tsx`（W5/W7/W8/W12/W17）/ SPEC-UIBB-1/2 / `ProductAddSuggest.test.tsx`（S1 含む既存 suite、無変更）green（SC9、AC5）
 - data safety checks: 業務データ非接触
 - main wiring/integration checks: `useStocktakeItems` の `perPage` 引数が `StocktakePage` から実際に配線されていること（SC8a/SC8b で query 呼び出し引数を検証）
 - Human Gate に L3 を含めるため、Writer 完了条件に `cargo check --release` を含める（CI gate ではない — release build blind spot 対策）
@@ -380,9 +398,9 @@ Test Design Matrix: [test-matrices/2026-09-02-stocktake-count-screen-polish.md](
 ## Boundary / Wire Contract
 
 - producer: `commands.searchProducts`（既存、`ProductSearchQuery.is_discontinued: boolean | null`）、`commands.getStocktakeItems`（既存、`per_page: number`）。
-- consumer: `StocktakePage.tsx` / `useStocktakeItems.ts`。
+- consumer: `StocktakePage.tsx` / `useStocktakeItems.ts` / `useProductAddSuggest.ts`（新規 optional `queryOverrides` 引数、wire 型を跨がない画面内マージのみ）。
 - wire type: 既存 `ProductSearchQuery` / `getStocktakeItems` 引数（変更は値のみ、型は無変更）。
-- internal type: `perPage: 40 | 100 | 200`（画面内 state、wire を跨がない）。
+- internal type: `perPage: (typeof PRODUCT_PER_PAGE_OPTIONS)[number]`（`50 | 100 | 200`、画面内 state、wire を跨がない）。`queryOverrides?: Partial<ProductSearchQuery>`（`useProductAddSuggest.ts` の新規 optional 引数、hook 内部でのみマージされ wire を跨がない）。
 - precision/range: `per_page` は既存どおり IO 側 `PAGINATION_MAX_PER_PAGE`（200）でクランプされる。
 - round-trip path: なし（表示件数は永続化しない）。
 - invalid input: 該当なし（`Select` は `PRODUCT_PER_PAGE_OPTIONS` の 3 択のみが選択可能、任意入力なし）。
@@ -397,6 +415,8 @@ Test Design Matrix: [test-matrices/2026-09-02-stocktake-count-screen-polish.md](
 - page reset の確実性（SC8b: `onPerPageChange` と `onSearchChange` の呼び出し順序に関わらず、最終的に `page=1` へ収束するか）。
 - oracle の独立性（Matrix の class literal・アイコン名が実装 module から import されず独立転記になっているか）。
 - design-system sweep（S5 の Badge tone が `02-component-catalog.md` の既存 Badge 規約から逸脱していないか、新規 semantic token を要求していないか）。
+- 共有 hook 非破壊性（`useProductAddSuggest.ts` の `queryOverrides` 未指定時が `PRODUCT_SEARCH_QUERY` のみのマージと byte-identical か、他 4 画面の呼び出しが無変更のままか、`ProductAddSuggest.test.tsx` の既存 S1〜他 test が無改変か）。
+- AC-L3-1 の到達手順が実装と一致するか（`resolveItem` の 0 候補 clear / 複数候補 keep-selected 分岐、`:458`/`:473` 相当のロジックが変更されていないか）。
 
 ## Spec Contract
 
@@ -407,7 +427,8 @@ Contract ID: SPEC-STOCKTAKE-COUNT-POLISH-2026-09-02
 - FieldError 表示スロットは常時 render し、エラー有無で「数を保存」ボタンの位置を変えない。
 - 「対象にありません」は `role="status"` + `text-muted-foreground` + `Info` icon で表示し、`role="alert"` / `text-destructive` を使わない。
 - 未入力 Badge は件数 0 のとき success tone（`bg-success`）+ `CheckCircle2`、1 件以上のとき warning tone（`border-warning-border bg-warning-soft text-warning-strong`）+ `AlertTriangle` を表示する。
-- 商品名検索（`PRODUCT_NAME_SEARCH_QUERY`）は `is_discontinued: null` とし、廃番商品も候補に含める。候補行は廃番商品に `廃番` Badge を付す。
+- 商品名検索フォールバック（`PRODUCT_NAME_SEARCH_QUERY`）は `is_discontinued: null` とし、廃番商品も候補に含める。候補行は廃番商品に `廃番` Badge を付す。
+- `useProductAddSuggest.ts` の共有既定 `PRODUCT_SEARCH_QUERY`（`is_discontinued: false`）は変更しない。`queryOverrides` 未指定時は既存 5 画面すべてが byte-identical な挙動を維持し、棚卸し画面のみ `{ is_discontinued: null }` を明示的に渡して廃番を live 候補へ含める。
 - `useStocktakeItems` の `perPage` は呼び出し側が明示指定し、既定値は `StocktakePage` の画面内 state（初期値 50、`PRODUCT_PER_PAGE_OPTIONS` の最小値）が持つ。表示件数変更時は `page` を 1 へ戻す。
 - 一覧のページ送りは catalog ⑩ canonical `ProductPagination`（「前のページ」/「次のページ」`aria-label`）を使う。表示件数 `Select` の選択肢は `PRODUCT_PER_PAGE_OPTIONS` を直接参照する（リテラル再宣言禁止）。
 
@@ -420,9 +441,10 @@ Contract ID: SPEC-STOCKTAKE-COUNT-POLISH-2026-09-02
 | FieldError 予約高さ | Scope S3 | SC3 | reserved height 実測 | Matrix + AC-L3-2 |
 | 対象にありません tone | Scope S4 | SC4 | icon presence | Matrix + AC-L3-3 |
 | 未入力 Badge tone | Scope S5 | SC5 | tone 分岐 + presence | Matrix + AC-L3-4 |
-| 廃番商品の名前検索包含 | Scope S6 | SC6 | query literal + Badge presence | Matrix |
+| 廃番商品の名前検索包含（フォールバック） | Scope S6 | SC6 | query literal + Badge presence | Matrix |
+| catalog ⑮ SPEC-SUGGEST-D13 共有 hook 非破壊拡張 | Scope S6 | SC6b | default 不変性・override 適用の両立 | Matrix |
 | 表示件数 + catalog ⑩ 統一 | Scope S8 | SC8a/SC8b/SC8c' | page reset・canonical component 使用 | Matrix + AC-L3-5 |
-| 既存契約非破壊 | 変更なし | SC9（regression） | 既存 test 無変更 green | PR body |
+| 既存契約非破壊（T2/T3 期待値更新含む） | Scope S8（T2/T3 のみ） | SC9（regression） | 既存 test 無変更 green（T2/T3 除く） | PR body |
 | DSR-20 AlertDialog 系追記 | Scope S9 | doc-consistency-check | 文面正確性 | doc check + diff |
 
 ## Data Safety
