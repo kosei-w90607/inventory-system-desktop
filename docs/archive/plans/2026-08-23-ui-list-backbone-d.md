@@ -1,4 +1,4 @@
-> **superseded by** [2026-09-03-ui-list-backbone-d-lane1-refresh](../../plans/2026-09-03-ui-list-backbone-d-lane1-refresh.md)。旧 Draft PR #2（`agent/ui-list-backbone-d` branch @ inventory-system-desktop、2026-08-23）は main 未 merge のまま本 packet に superseded された。DSR-16 / catalog ⑯ の採番はその後別内容へ消費済みのため、以下の本文は当時の提案（archive、非正本）として保存する。実際の規範文は上記 Lane 1 refresh packet が起票し、DSR-22 / catalog ⑯（再採番）として main へ反映済み。
+> **superseded by** [2026-09-03-ui-list-backbone-d-lane1-refresh](2026-09-03-ui-list-backbone-d-lane1-refresh.md)。旧 Draft PR #2（`agent/ui-list-backbone-d` branch @ inventory-system-desktop、2026-08-23）は main 未 merge のまま本 packet に superseded された。DSR-16 / catalog ⑯ の採番はその後別内容へ消費済みのため、以下の本文は当時の提案（archive、非正本）として保存する。実際の規範文は上記 Lane 1 refresh packet が起票し、DSR-22 / catalog ⑯（再採番）として main へ反映済み。
 
 # Plan Packet: UI 一覧の背骨 D — L3 所見 5 点の規範化（04-backbone 原則 13〜16 / 00-foundations 枠コントラスト訂正 / DSR-16 / 02-component-catalog ⑯ 一覧の器 / reference mockup D）（docs-only、R2）
 
