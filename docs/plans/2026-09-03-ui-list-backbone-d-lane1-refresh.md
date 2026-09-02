@@ -220,10 +220,15 @@ owner が Human Gate で mockup D 2 file を視認した際の所感・裁定を
 
 5. **再視認（`9f5a0ba`）**: header は A' を明確に支持、A' + B 合体案の提示を要望（本 commit で A'B を追加）/ 廃番 Badge 是正版 OK / lists の未決項目 1〜n はすべて同意（2 = sticky header の意味を確認のうえ同意）。
 6. **再々視認（`09a08c4`）**: A の器に A' の帯を入れた合体案を要望 → 本 commit で A'+器 を追加。
+7. **最終裁定（`da50639` 視認）**: 進行中 header = A'+器・帯の枠あり（2 階層、器 = 進捗セクション / 帯 = 指標群）。完了画面 = C。廃番 Badge = 是正版で OK。lists 未決項目 = 全同意。Human Gate（render oracle）完了。
 
 ### Lane 3〜5 への申し送り
 
 - 既存 secondary Badge（stone 系、実装済み画面）の可読性 sweep（枠線 3:1 の付与要否を画面ごとに確認）— Gated Amendment 1 (c) 起源。
+
+### Lane 3〜5 への申し送り（棚卸し）
+
+- 実装は A'+器（帯枠あり）+ C。進捗 header は器（h2 + 別行 muted「開始 …」+ Separator）の中に帯（入力済み・未入力・進捗% の 3 指標 + 帯自身の 3:1 枠 + 帯下辺の progress bar）を入れる。全数（238）は帯内の入力済み指標へ分数として統合する（大きな値 + 小さな muted「/ 238」）。完了画面の色は不整合 = warning + icon + 日本語、マイナス増減 = destructive + 記号併記。
 
 ## 棚卸し「ベタっと」の仮説（owner 所感、mockup 提示 → render oracle で確定）
 
@@ -491,6 +496,8 @@ Writer（Sonnet subagent、worktree isolation）が Lane 1a の規範文一式 +
 **Opus round 6 是正（P1 1 / P2 3 / P3 1、Coordinator 全件 accept）**: round 5 の A' 帯 contrast 注記が mockup demo palette（`--muted` #57534e）を使っており canonical `src/styles/globals.css` の `--muted-foreground`（#78716c）と数値が異なっていた。WCAG 相対輝度公式で canonical token を独立に再計算: `--foreground` #1c1917 対 `--card` #f5f5f4 = 16.0:1、`--warning-strong` #78350f 対 `--card` = 8.32:1（demo 値と一致）、`--muted-foreground` #78716c 対 `--card` = **4.40:1（AA 未達、`00-foundations.md:18` の既存実測と一致）**。mockup note を demo/canonical 明示の書式へ全面改稿し、is-且つ is-not 一致トークンを列挙、Lane 2 申し送りへ是正方針（`--foreground` 系へ上げる／帯背景を `--background` に寄せる）を追記（O-P1-1）。DSR-22 Why の「枠線か文字色のどちらかで 3:1」を AND 条件表現「境界で 3:1、文字は別途 1.4.3 の 4.5:1」へ整合（O-P2-1、`rg -c "どちらかで"` = 0 確認）。A' 帯（`.aprime`）に外周 3:1 枠（`--d-ctl` 8a8480、対 `--bg` 実測 3.53:1）を追加し囲み数は変えず可視化（O-P2-2）。DSR-22 mapping の入出庫履歴行に実列順（`InventoryRecordsPage.tsx:300-306` = 種別/記録ID/業務日付/代表商品/明細数/状態/記録日時、非隣接・非先頭）と Lane 3〜5 の並べ替え注記（header 配列一致 test 更新含む）を追加（O-P2-3、L3 再判定注記は維持）。`.aprime-progress` の track 色を demo `--card`（#fff）から `--bg`（canonical `--background` 相当）へ変更し、canonical では `--card` が帯背景と同値（#f5f5f4）になり track が消える問題を回避（O-P3-1）。
 
 **gate 実測（round 5 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 4 の WARN セットと diff 0 行）。DS1/DS3 とも引き続き `[INFO]` のみ。`--target plan` → `結果: 全チェック通過`。全 AC oracle 再実行し期待値どおり。prettier `--check` は本ラウンド touched 全 3 file で整形済み。
+
+`mockup-d-stocktake.html` の owner 視認往復（A' 支持 → A'B 要望 → A'+器 要望 → 帯枠ありで最終裁定）を経て、進行中 header = A'+器（帯枠あり）、完了画面 = C の 2 点が owner の最終裁定として mockup に確定表示済み（他案は比較用として同ページに残置）。
 
 Human Gate（owner の mockup 2 file 視認 + Ready 後の workflow_dispatch + merge）と Reviewed Content HEAD の確定は未実施（Coordinator/owner の後続作業）。PR は未作成のため PR link は Coordinator が別途記録する。
 

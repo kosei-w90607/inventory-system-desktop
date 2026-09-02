@@ -99,14 +99,14 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 <div class="top"><b>棚卸し画面 D — Lane 1 refresh</b><span>お手本 mockup。実装の正本ではない（正本は 04-backbone / DSR-22 / catalog ⑯・SummaryCard）</span></div>
 <div class="page">
 
-<div><h1>棚卸し「ベタっと」所感への提案（進捗 header / 完了画面）</h1><p class="lead">owner 所感（2026-09-03）を受け、進捗 header は 現行 / A（サマリ帯 + 見出し構造）/ A'（枠なし帯 1 本、owner「カードの多用」懸念への対案）/ A'B（推奨、合体案。owner 再視認 2026-09-03 の要望を受けて追加）/ **A'+器（owner 要望、A の器に A' の帯を入れた案。owner 再々視認 2026-09-03 で追加）** / B（見出しの役割分離のみ）の 6 案、完了画面は **C（DSR-16 準拠再構成）に確定**（owner 裁定 2026-09-03）を差異 0 件 / 12 件 / 不整合ありの 3 データ状態で示す。進捗 header は owner 再視認で A' を明確に支持済み、残るは A'B と A'+器（見出しを器に入れるか、全数の置き場）の最終選定。sidebar / PageHeader / ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続）。データは合成値。</p></div>
+<div><h1>棚卸し「ベタっと」所感への提案（進捗 header / 完了画面）</h1><p class="lead">owner 所感（2026-09-03）を受けた進捗 header の検討過程を記録する。**進行中 header は A'+器（帯の枠あり）に確定**（owner 最終裁定 2026-09-03）— A の器（h2「棚卸し中」+ 別行 muted「開始 …」+ Separator）に A' の帯（3 指標 + 142/238 分数 + 進捗バー）を入れ、帯自身の外周 3:1 枠も維持する。囲みは器 + 帯の 2 階層だが、器＝進捗セクションの区切り／帯＝指標群のグルーピングと意味が分かれるため DSR-16 の条件を満たす。現行 / A / A'（枠なし帯）/ A'B（合体案）/ B は比較用として本 mockup に残す。完了画面は **C（DSR-16 準拠再構成）に確定**（owner 裁定 2026-09-03）を差異 0 件 / 12 件 / 不整合ありの 3 データ状態で示す。sidebar / PageHeader / ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続）。データは合成値。</p></div>
 
 <section>
 <h2>1. 進捗 header（進行中）</h2>
-<p class="lead">対象コード: `StocktakeProgressHeader`（`StocktakePage.tsx:379-411`）。6 案を同一ページに縦 6 段で並べる。</p>
+<p class="lead">対象コード: `StocktakeProgressHeader`（`StocktakePage.tsx:379-411`）。6 案を同一ページに縦 6 段で並べる（採用は A'+器・帯の枠あり、他は比較用の記録）。</p>
 
 <div class="variant">
-  <div class="v-label"><span class="tag">現行</span></div>
+  <div class="v-label"><span class="tag">現行（比較用）</span></div>
   <div class="cur-head">
     <div>
       <div style="font-size:20px;font-weight:600">棚卸し中（開始日: 2026-09-01 09:12）</div>
@@ -119,7 +119,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 </div>
 
 <div class="variant">
-  <div class="v-label"><span class="tag rec">A（推奨）サマリ帯 + B の見出し構造</span></div>
+  <div class="v-label"><span class="tag">A（比較用）サマリ帯 + B の見出し構造</span></div>
   <div class="b-box">
     <h4>棚卸し中</h4>
     <p class="sub">開始日: 2026-09-01 09:12</p>
@@ -135,7 +135,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 </div>
 
 <div class="variant">
-  <div class="v-label"><span class="tag rec">A'（Coordinator 推奨）枠なし帯 1 本</span></div>
+  <div class="v-label"><span class="tag">A'（比較用）枠なし帯 1 本</span></div>
   <div class="b-box" style="border:0;padding:0">
     <h4>棚卸し中</h4>
     <p class="sub">開始日: 2026-09-01 09:12</p>
@@ -152,7 +152,7 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 </div>
 
 <div class="variant">
-  <div class="v-label"><span class="tag rec">A'B（推奨、合体案）</span></div>
+  <div class="v-label"><span class="tag">A'B（比較用）合体案</span></div>
   <div class="b-box" style="border:0;padding:0">
     <h4>棚卸し中</h4>
     <p class="sub">開始 2026-09-03 10:12</p>
@@ -169,12 +169,12 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 </div>
 
 <div class="variant">
-  <div class="v-label"><span class="tag rec">A'+器（owner 要望、A の器に A' の帯）</span></div>
+  <div class="v-label"><span class="tag rec">A'+器（決定、帯の枠あり）</span></div>
   <div class="b-box">
     <h4>棚卸し中</h4>
     <p class="sub">開始日: 2026-09-01 09:12</p>
     <hr class="sep">
-    <div class="aprime" style="border:0">
+    <div class="aprime">
       <div class="aprime-row">
         <div class="aprime-item"><div class="lbl">入力済み</div><div class="val">142<span class="aprime-frac"> / 238</span></div></div>
         <div class="aprime-item"><div class="lbl">未入力</div><div class="val warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>96 件</div></div>
@@ -183,11 +183,11 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
       <div class="aprime-progress" aria-label="棚卸し進捗"><i style="width:60%"></i></div>
     </div>
   </div>
-  <p class="note"><b>1'''.</b> owner 要望「赤で囲った下の帯を上の器の中にマージ」（2026-09-03、マークアップ付きスクリーンショット）を受けた案。A の器（h2「棚卸し中」+ 別行 muted「開始 …」+ Separator）はそのまま維持し、内側の SummaryCard 3 枚を A' の帯（3 指標 + 「142 / 238」分数 + 未入力の warning icon/状態語 + 進捗バー、帯の下辺に沿わせる）へ差し替える（「器の中に帯」）。既定はこの図のとおり帯自身の外周枠を外し（トーンのみの塗り）、囲みを器 1 つに保つ（DSR-16）。帯にも独自の 3:1 枠（`--d-ctl`）を残す代案は、囲みが器 + 帯の 2 階層になる。DSR-16 は囲みを意味階層ごとに 1 つまでとするため、2 階層が許容されるのは「器＝進捗セクションの区切り」「帯＝指標群のグルーピング」という異なる意味を持つ場合に限る。<b>Lane 2 で確認すべき 1 点</b>: 2 階層案の採否は owner と Lane 2 の L3 で最終確認する。<b>これを採ると何が変わるか</b>: A の器の一貫性（Separator 付き、既存 `FormSection` と同型）を保ったまま、内容だけを A' の高密度な帯へ差し替えられる。</p>
+  <p class="note"><b>1'''.</b> <b>決定（owner 2026-09-03）: A'+器、帯の枠あり。</b> owner 要望「赤で囲った下の帯を上の器の中にマージ」（2026-09-03、マークアップ付きスクリーンショット）を受けた案。A の器（h2「棚卸し中」+ 別行 muted「開始 …」+ Separator）を維持し、内側の SummaryCard 3 枚を A' の帯（3 指標 + 「142 / 238」分数 + 未入力の warning icon/状態語 + 進捗バー、帯の下辺に沿わせる）へ差し替え、帯自身の外周 3:1 枠（`--d-ctl`、border-strong 候補値 8a8480、対 `--bg` 実測 3.53:1）も維持する（「器の中に帯」）。囲みは器 + 帯の 2 階層だが、器＝進捗セクションの区切り、帯＝指標群のグルーピングと意味が分かれるため DSR-16 の条件を満たす。枠なし版（帯の外周枠を外しトーンのみにする代案）は不採用。<b>これを採ると何が変わるか</b>: A の器の一貫性（Separator 付き、既存 `FormSection` と同型）を保ったまま、内容だけを A' の高密度な帯へ差し替え、帯自体の可視境界も残る。</p>
 </div>
 
 <div class="variant">
-  <div class="v-label"><span class="tag">B</span> 見出しの役割分離のみ（サマリ帯なし、現行の数値表示のまま）</div>
+  <div class="v-label"><span class="tag">B（比較用）</span> 見出しの役割分離のみ（サマリ帯なし、現行の数値表示のまま）</div>
   <div class="b-box">
     <h4>棚卸し中</h4>
     <p class="sub">開始日: 2026-09-01 09:12</p>
@@ -301,12 +301,11 @@ table.diff td.num{text-align:right;font-variant-numeric:tabular-nums}
 </section>
 
 <div class="decision">
-<b>未決項目（番号ごとに個別に返答可）</b>
-<ol>
-<li>A'B（見出しは器なし）か A'+器（見出しと帯を同じ器に入れる）か — 全数の置き場は両案とも帯内の分数（推奨）か見出し行右端か。A'+器 を採る場合、帯自身の 3:1 枠を残すか外すか（外す既定案では囲みは器 1 つ、残すと器+帯の 2 階層）も併せて確認する。</li>
-</ol>
+<b>未決項目</b>
+<p style="margin:4px 0 0">なし（2026-09-03 owner 最終裁定で進行中 header を含めすべて確定。以下「決定事項」参照）。</p>
 <b>決定事項（owner 裁定 2026-09-03、Human Gate 会話）</b>
 <ol>
+<li><b>決定: A'+器（帯の枠あり）。</b> 進行中 header は A の器（h2 + 別行 muted「開始 …」+ Separator）に A' の帯（3 指標 + 142/238 分数 + 進捗バー）を入れ、帯自身の外周 3:1 枠も維持する。A / A' / A'B / B は比較用として本 mockup に残す。</li>
 <li><b>完了画面は C に確定。</b> 実装は独立の Lane 3〜5 packet（本 PR は mockup 提示のみ）。</li>
 <li><b>指標順は維持。</b> 進行中: 入力済み→未入力→進捗% / 完了: 今回総額→前回総額→増減。</li>
 <li><b>不整合 badge/Alert は warning（`--warning` amber-600 系）+ icon + 日本語、完了画面のマイナス増減は destructive（`--destructive` red-700）+ 記号併記に確定。</b>（DSR-08。00-foundations.md セマンティックカラー表「在庫切れ、前月比マイナス」= Destructive / 「PLU通知、手動バッジ、在庫少」= Warning の既存割当を、棚卸し完了画面の不整合・マイナス増減に適用）</li>
