@@ -6,9 +6,11 @@ import { queryKeys } from "@/lib/query-keys";
 
 import type { StocktakeSearch } from "../types";
 
-const STOCKTAKE_PER_PAGE = 200;
-
-export function useStocktakeItems(stocktakeId: number | null, search: StocktakeSearch) {
+export function useStocktakeItems(
+  stocktakeId: number | null,
+  search: StocktakeSearch,
+  perPage: number,
+) {
   const departmentId = search.dept ?? null;
   const countedOnly = search.counted_only ?? null;
   const page = search.page ?? 1;
@@ -21,19 +23,13 @@ export function useStocktakeItems(stocktakeId: number | null, search: StocktakeS
             departmentId,
             countedOnly,
             page,
-            perPage: STOCKTAKE_PER_PAGE,
+            perPage,
           }),
     enabled: stocktakeId !== null,
     staleTime: 0,
     queryFn: () =>
       unwrapResult(
-        commands.getStocktakeItems(
-          stocktakeId ?? 0,
-          departmentId,
-          countedOnly,
-          page,
-          STOCKTAKE_PER_PAGE,
-        ),
+        commands.getStocktakeItems(stocktakeId ?? 0, departmentId, countedOnly, page, perPage),
         { source: "commands", cmd: "get_stocktake_items" },
       ),
   });

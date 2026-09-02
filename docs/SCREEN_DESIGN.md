@@ -198,6 +198,7 @@
   - 一人運用・数週間スパンの反復作業を前提に、1 件保存ごとの toast は出さず一覧行の即時反映で結果を示す。
   - 棚卸し対象外のコード/JAN をスキャンした場合はエラー扱いにせず、回復文言を出して次の入力を受け付ける。
   - 部門フィルタ・未入力のみ表示の絞り込みで該当 0 件のときは「絞り込みを解除」ボタンでページ番号も含めて既定条件へ一括復帰できる（filter-empty reset、[design-system/02-component-catalog.md](design-system/02-component-catalog.md) ⑥ 参照）。
+  - 主動線ボタンは「数を保存」の 1 個のみを primary にし、対象商品切替時の入力検証エラー・「対象にありません」表示・未入力件数バッジの視覚 tone を是正する（UI ガッツリ整えターン disposition culling、本 PR）。表示件数は catalog ⑩ canonical pagination（50/100/200）から選べる。
   - 詳細な command contract、状態遷移、文言、Windows native L3 は [function-design/73-ui-stocktake.md](function-design/73-ui-stocktake.md) を正とする。
 
 ### 日次売上レポート画面

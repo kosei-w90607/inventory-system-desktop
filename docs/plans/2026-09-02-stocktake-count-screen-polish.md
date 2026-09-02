@@ -457,7 +457,7 @@ Contract ID: SPEC-STOCKTAKE-COUNT-POLISH-2026-09-02
 
 ## Implementation Results
 
-（Writer 実装後に記入）
+棚卸しカウント画面の primary CTA、FieldError、対象外表示、未入力 Badge、廃番候補検索、表示件数・ページ送りを Scope S1〜S8 の契約どおり統一した。共有 live 候補 hook は任意 override の追加だけに留め、棚卸し以外の既定検索条件を維持した。S9 の AlertDialog 制約を含む source docs を提案文面どおり同期した。
 
 ## Review Response
 

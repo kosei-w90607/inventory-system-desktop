@@ -403,6 +403,7 @@ scroll を伴う遷移はどれか？
 - **dismiss 本則**: Esc・外側クリック・close control は `onOpenChange` を通じて Cancel と同じ処理へブリッジし、明示 Cancel button と同じ後状態を作る。
 - **硬化条件**: (a) 選択を確定せず閉じると保存結果が曖昧になり、再実行による在庫二重計上等の実害へ直結する場合（`CostDiffDialog` 先例）、または (b) 未保存内容を破棄するか継続するかを明示選択させる必要がある場合（`UnsavedChangesDialog` 先例）に限り、Esc・外側クリックを無効化する。単に重要そう、誤操作が心配という理由だけでは硬化しない。
 - **硬化手段**: content primitive の `onEscapeKeyDown` / `onPointerDownOutside` で `preventDefault()` し、close button を持つ Dialog では `showCloseButton={false}` を明示する 1 系統を正とする。`onOpenChange` を配線しないことで偶然閉じなくする暗黙硬化は禁止する。確定・Cancel button など許可した close 経路は parent state へ明示的に接続する。
+- **AlertDialog 系の制約**: `AlertDialogContent`（`radix-ui` 経由の `@radix-ui/react-alert-dialog`）は `AlertDialogContentProps extends Omit<DialogContentProps, 'onPointerDownOutside' | 'onInteractOutside'>`（`node_modules/@radix-ui/react-alert-dialog/dist/index.d.mts:23`）のため、そもそも `onPointerDownOutside` / `onInteractOutside` を受け付けない。AlertDialog の外側クリックは prop 無しで常に非 dismiss（primitive 既定、PR #25 gated amendment `2433199` で実証済み）であり、AlertDialog 系で使える明示硬化手段は `onEscapeKeyDown` の `preventDefault()` のみである（通常の `Dialog` と異なる）。
 - **Cancel 文言**: 既定は `キャンセル`。保存中の内容を保持する、または戻り先を具体的に示す方が判断しやすい場合に限り、`編集を続ける` や `残す取引先を選び直す` のような結果・遷移先を表す文言を使ってよい。`戻る` / `やめる` のように後状態が判別できない語へ置き換えない。前段階へ戻る secondary action は Cancel と別の操作として扱う。
 
 DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出すと決めた destructive dialog 内の強調・配置・dismiss を決める。DSR-08 との関係では、`variant="destructive"` は色だけの警告ではなく、配置、具体的な Action label、title / description と組み合わせた複合強調である。dialog 内に同型レコードを複数示す場合の構造は DSR-16 に従い、危険性の強調を理由に囲みを反復しない。
@@ -427,6 +428,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-02 | 本 PR | DSR-20 に AlertDialog 系の制約（Radix `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型 Omit するため、硬化手段は `onEscapeKeyDown` のみが対象になる）を追記。Plans.md backlog（PR #25 gated amendment `2433199` 起源）の同乗解消。 |
 | 2026-09-02 | PR #29 | DSR-17 に (j)「復元対象を main に限定する」を新設。document capture listener が sidebar 等の chrome scroll container も cache・復元してしまう実挙動（PR #28 L3 実観測）に対し、app 層 allowlist prune で main 以外の cache entry を router 生成時と各 onBeforeLoad で削除する契約を追加。Why / (c) の「唯一の scroll container」表現を route content 限定へ訂正。 |
 | 2026-09-02 | wave 8 lane 1 | DSR-21「現在地と選択状態の色分離」を新設。主ナビゲーションの現在地は stone 系 selection tone に Primary 左端バーを重ね、filter chip / SegmentedControl の選択状態は stone のまま維持する。 |
 | 2026-08-30 | PR #22 | DSR-19「作成・保存成功の feedback 規約」と DSR-20「destructive 確認 dialog の配置・dismiss 規約」を新設。toast 最低保証・3/5/8 秒階層・id 適用基準、および destructive variant・配置・dismiss / 硬化・Cancel 文言を横断契約化。 |
