@@ -42,7 +42,7 @@ Risk: R3
 
 - `applyMainNavScroll`（分類④ one-shot flag 消費、`app-router.ts:15-21`）は prune と独立した既存処理。prune が `<main>` entry を残す前提と衝突しないことを SP3 + SP5（既存 T4/T5/T13）で確認する。
 - D-E 遅延再適用（`onRendered` handler 内の `MutationObserver` 経路、`app-router.ts:44-83`）は `getElementScrollRestorationEntry(... id: "main" ...)` で main entry を直接読むため、prune が main entry を保存し続ける限り無変更で動作する（SP5 = 既存 T12 で確認）。
-- library の `onRendered` 自体の復元ロジック（`scroll-restoration.js:113-171`）は変更しない。prune は「復元対象になる前の cache 内容」を減らすだけの前段フィルタであり、復元ロジックへ手を入れない設計であることを Scope / Non-scope に明記済み。
+- library の `onRendered` 自体の復元ロジック（`scroll-restoration.js:113-182`）は変更しない。prune は「復元対象になる前の cache 内容」を減らすだけの前段フィルタであり、復元ロジックへ手を入れない設計であることを Scope / Non-scope に明記済み。
 
 ## Negative Paths
 
@@ -97,7 +97,7 @@ Risk: R3
 - `onBeforeLoad` prune の対象 key を `event.fromLocation` から `event.toLocation` / `router.latestLocation` に変えたら？ → SP2 が fail（意図した key が prune されず、無関係な key が prune される）。
 - allowlist 判定を反転させて main entry まで消すようにしたら？ → SP3 が fail（main entry が消失する）。
 - `onBeforeLoad` 購読への prune 追加行を削除したら？ → SP2 が fail（2 回目以降の遷移で positional entry が再蓄積する）。
-- `scrollRestorationCache` null guard を外したら？ → SP4 が fail（null mock 下で例外が投げられる）。
+- `scrollRestorationCache` null guard を外したら？ → SP4 が fail（sessionStorage 破壊による実 null 環境下で例外が投げられる）。
 
 ## 必須 mutation 注入（Final Review で clean tree 独立再実測）
 

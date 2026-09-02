@@ -185,7 +185,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|---|---|---|
 | DSR-17 分類②④（sidebar 非復元） | 01 DSR-17 (j)（新設） | D-G | Backlog 記載の第一候補（sidebar へ `data-scroll-restoration-id` 付与）は起票時実測で不成立と確定（selector 種別が変わるだけで除外にならない、`scroll-restoration.js:96-98`）。per-element 除外 option は 1.168.15 に存在しない（`router.d.ts:309-334`）。採用は app 層 allowlist prune（`scrollRestorationCache` を直接書き換え、`<main>` selector だけ残す） | Scope 1-3 | SP1 / SP2 / SP3 |
 | DSR-17 (j) null-safety | 01 DSR-17 (j) | D-G | `scrollRestorationCache` は sessionStorage 不可環境で `null`（`scroll-restoration.js:14`）。prune helper は null-safe に実装し、null 環境で例外を投げない | Scope 1 | SP4 |
-| DSR-17 (b)(c)(d)(g)(i) 既存契約の非破壊 | 01 DSR-17 (b)(c)(d)(g)(i) | D-A〜D-F（既存） | prune は `<main>` selector を allowlist するだけで既存の復元パス自体を変更しないため、分類②④・D-E は無変更で動作する想定。regression test で確認 | 変更なし | 既存 T1/T4/T5/T9/T10/T12/T13 |
+| DSR-17 (b)(c)(d)(g)(i) 既存契約の非破壊 | 01 DSR-17 (b)(c)(d)(g)(i) | D-A〜D-F（既存） | prune は `<main>` selector を allowlist するだけで既存の復元パス自体を変更しないため、分類②④・D-E は無変更で動作する想定。regression test で確認 | 変更なし | 既存 T1/T4/T5/T9/T10/T11/T12/T13 |
 | 01-decision-rules.md 「唯一の scroll container」表現の訂正 | 01 DSR-17 Why / (c) | Scope 5 | 排他的な「唯一」表現は sidebar が chrome scroll container として復元される実証済み事実と矛盾する。「route content の唯一」へ限定 | Scope 5 | doc-consistency-check + diff |
 
 ## Design Intent Audit
