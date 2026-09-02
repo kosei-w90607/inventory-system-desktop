@@ -9,6 +9,7 @@ import {
   type ReactElement,
 } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { isComposedDigitsOnly, normalizeComposedDigits } from "./normalizeComposedDigits";
 import type { ProductAddSuggestController } from "./useProductAddSuggest";
@@ -123,7 +124,10 @@ export function ProductAddSuggest({
                 }}
               >
                 <span className="font-medium">{product.product_code}</span>
-                <span className="min-w-0 truncate">{product.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 truncate">{product.name}</span>
+                  {product.is_discontinued ? <Badge variant="secondary">廃番</Badge> : null}
+                </span>
                 <span className="truncate text-muted-foreground">{product.department_name}</span>
               </Button>
             );

@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
+  Info,
   Loader2,
   RotateCcw,
   Search,
@@ -36,6 +37,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -56,6 +64,8 @@ import { describeError } from "@/lib/describe-error";
 import { isInvokeError, unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { queryKeys } from "@/lib/query-keys";
+import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { PRODUCT_PER_PAGE_OPTIONS } from "@/features/products/search";
 
 import { useCompleteStocktake } from "./hooks/useCompleteStocktake";
 import {
@@ -98,7 +108,7 @@ const STOCKTAKE_NOT_IN_PROGRESS_MESSAGE = "この棚卸しは既に完了して�
 
 const PRODUCT_NAME_SEARCH_QUERY = {
   department_id: null,
-  is_discontinued: false,
+  is_discontinued: null,
   sort_key: "ProductCode" as const,
   sort_order: "Asc" as const,
   page: 1,
@@ -110,6 +120,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
   const stocktakeStatus = useStocktakeStatus();
   const activeStocktakeId = stocktakeStatus.activeStocktakeId;
   const [effectiveSearch, setEffectiveSearch] = useState<StocktakeSearch>(search);
+  const [perPage, setPerPage] = useState<(typeof PRODUCT_PER_PAGE_OPTIONS)[number]>(50);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -129,7 +140,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
       unwrapResult(commands.listDepartments(), { source: "commands", cmd: "list_departments" }),
   });
   const lastCompletedQuery = useLastCompletedStocktake();
-  const itemsQuery = useStocktakeItems(activeStocktakeId, effectiveSearch);
+  const itemsQuery = useStocktakeItems(activeStocktakeId, effectiveSearch, perPage);
   const findMutation = useFindStocktakeItem();
   const updateMutation = useUpdateCount();
   const completeMutation = useCompleteStocktake();
@@ -281,13 +292,16 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
             departments={departmentsQuery.data ?? []}
             search={effectiveSearch}
             disabled={isCompleting}
+            perPage={perPage}
             totalCount={itemsData?.total_count ?? 0}
+            onPerPageChange={setPerPage}
             onSearchChange={updateSearch}
           />
 
           <div className="flex justify-end">
             <Button
               type="button"
+              variant="outline"
               disabled={isCompleting}
               onClick={() => {
                 setIsConfirmOpen(true);
@@ -376,7 +390,20 @@ export function StocktakeProgressHeader({ startedAt, progress }: StocktakeProgre
             入力済み {progress.counted_items} / 全 {progress.total_items}
           </p>
         </div>
-        <Badge variant="secondary">未入力 {progress.uncounted_items}</Badge>
+        {progress.uncounted_items > 0 ? (
+          <Badge
+            variant="outline"
+            className="border-warning-border bg-warning-soft text-warning-strong"
+          >
+            <AlertTriangle aria-hidden="true" />
+            未入力 {progress.uncounted_items}
+          </Badge>
+        ) : (
+          <Badge className="bg-success text-primary-foreground">
+            <CheckCircle2 aria-hidden="true" />
+            未入力 {progress.uncounted_items}
+          </Badge>
+        )}
       </div>
       <Progress value={percent} aria-label="棚卸し進捗" />
     </div>
@@ -415,6 +442,7 @@ export function StocktakeCountEntry({
     value: code,
     isLocked: () => disabled,
     onSelect: (product) => selectCandidate(product.product_code),
+    queryOverrides: { is_discontinued: null },
   });
 
   useEffect(() => {
@@ -429,6 +457,7 @@ export function StocktakeCountEntry({
   }, []);
 
   function selectItem(item: StocktakeItemDetail) {
+    setFieldError(null);
     setSelectedItem(item);
     setQuantity(item.actual_count === null ? "" : String(item.actual_count));
     setCandidates([]);
@@ -564,7 +593,8 @@ export function StocktakeCountEntry({
       </fieldset>
 
       {targetMessage !== null ? (
-        <p className="mt-2 text-sm text-destructive" role="alert">
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground" role="status">
+          <Info aria-hidden="true" className="size-4" />
           {targetMessage}
         </p>
       ) : null}
@@ -586,11 +616,19 @@ export function StocktakeCountEntry({
                 {candidates.map((candidate) => (
                   <TableRow key={candidate.product_code}>
                     <TableCell className="font-medium">{candidate.product_code}</TableCell>
-                    <TableCell>{candidate.name}</TableCell>
+                    <TableCell>
+                      {candidate.name}
+                      {candidate.is_discontinued ? (
+                        <Badge variant="secondary" className="ml-2">
+                          廃番
+                        </Badge>
+                      ) : null}
+                    </TableCell>
                     <TableCell>{candidate.department_name}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"
+                        variant="outline"
                         size="sm"
                         disabled={disabled}
                         onClick={() => void selectCandidate(candidate.product_code)}
@@ -637,13 +675,21 @@ export function StocktakeCountEntry({
                 }
               }}
             />
-            {fieldError !== null ? (
-              <p className="text-sm text-destructive" role="alert">
-                {fieldError}
-              </p>
-            ) : null}
+            <div className="min-h-5" aria-live="polite">
+              {fieldError !== null ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {fieldError}
+                </p>
+              ) : null}
+            </div>
           </div>
-          <div className="flex items-end">
+          <div className="flex flex-col items-start gap-2">
+            {/* Gated Amendment 1（S3 追加是正、案 a）: 数量欄 column（Label + Input + FieldError slot）と
+                同じ行構造を持たせる。invisible な Label 高さ分の spacer でボタン上端を Input 上端に揃え、
+                下に min-h-5 の空 slot を置いて行高さも対称にする。 */}
+            <Label className="invisible" aria-hidden="true">
+              実際の数
+            </Label>
             <Button
               type="button"
               disabled={disabled || updateMutation.isPending}
@@ -652,6 +698,7 @@ export function StocktakeCountEntry({
               {updateMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
               数を保存
             </Button>
+            <div className="min-h-5" aria-hidden="true" />
           </div>
         </div>
       ) : null}
@@ -664,7 +711,9 @@ interface StocktakeItemListProps {
   departments: { id: number; name: string }[];
   search: StocktakeSearch;
   disabled: boolean;
+  perPage: (typeof PRODUCT_PER_PAGE_OPTIONS)[number];
   totalCount: number;
+  onPerPageChange: (value: (typeof PRODUCT_PER_PAGE_OPTIONS)[number]) => void;
   onSearchChange: (updater: (prev: StocktakeSearch) => StocktakeSearch) => void;
 }
 
@@ -673,11 +722,12 @@ export function StocktakeItemList({
   departments,
   search,
   disabled,
+  perPage,
   totalCount,
+  onPerPageChange,
   onSearchChange,
 }: StocktakeItemListProps) {
   const page = search.page ?? 1;
-  const pageCount = Math.max(1, Math.ceil(totalCount / 200));
   // filter-empty reset action（catalog ⑥、SPEC-UIBB-1/2）: 部門フィルタ / 未入力のみ toggle の
   // いずれかが既定値以外か。
   const isFilterDefault = search.dept === undefined && search.counted_only === undefined;
@@ -697,6 +747,32 @@ export function StocktakeItemList({
             onSearchChange((prev) => ({ ...prev, dept: dept ?? undefined, page: 1 }));
           }}
         />
+        <div className="flex items-center gap-2">
+          <Label className="text-muted-foreground" htmlFor="stocktake-per-page">
+            表示件数
+          </Label>
+          <Select
+            value={String(perPage)}
+            disabled={disabled}
+            onValueChange={(value) => {
+              const next = PRODUCT_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+              if (next === undefined) return;
+              onPerPageChange(next);
+              onSearchChange((prev) => ({ ...prev, page: 1 }));
+            }}
+          >
+            <SelectTrigger id="stocktake-per-page" className="w-[7rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PRODUCT_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} 件
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center gap-2">
           <Checkbox
             id="stocktake-uncounted-only"
@@ -772,31 +848,16 @@ export function StocktakeItemList({
         </Table>
       )}
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled || page <= 1}
-          onClick={() => {
-            onSearchChange((prev) => ({ ...prev, page: Math.max(1, page - 1) }));
+      <fieldset disabled={disabled}>
+        <ProductPagination
+          page={page}
+          perPage={perPage}
+          totalCount={totalCount}
+          onPageChange={(nextPage) => {
+            onSearchChange((prev) => ({ ...prev, page: nextPage }));
           }}
-        >
-          前へ
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          {page} / {pageCount}
-        </span>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled || page >= pageCount}
-          onClick={() => {
-            onSearchChange((prev) => ({ ...prev, page: page + 1 }));
-          }}
-        >
-          次へ
-        </Button>
-      </div>
+        />
+      </fieldset>
     </FormSection>
   );
 }

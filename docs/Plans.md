@@ -43,8 +43,10 @@
 
 ## 次の行動
 
-- [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
+- [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）。候補に「ページ送りの表上下両配置」「perPage 選択肢の 40 刻み化」を追加（棚卸しカウント画面の磨き batch 起票時実測起源、2026-09-02、backlog 参照）
+  - owner 方針（2026-09-02）: ④ は全一覧画面を一律整備する。現状は画面ごとに perPage が固定値のままバラバラで、`Select` による選択肢を持つのは商品一覧のみ（`ManualSalePage.tsx:63,75` `per_page: 10`/`5`、`useStocktakeItems.ts:9` `STOCKTAKE_PER_PAGE = 200`、`ReturnExchangePage.tsx:66` `per_page: 10`、`useStockInquiry.ts:63` `per_page: 50`、`IntegrityCheckPage.tsx:44,81` `PER_PAGE = 100` / `per_page: 1`、`StocktakePage.tsx:105` `per_page: 10`、`DisposalPage.tsx:62` `per_page: 10`、`stock-movements/types.ts:52` `MOVEMENTS_PER_PAGE = 20`、`ReceivingPage.tsx:57` `per_page: 10`、`OperationLogsPage.tsx:32` `PER_PAGE = 20`、`InventoryRecordsPage.tsx:43` `PER_PAGE = 20`）。catalog ⑩ を単一規約として全画面へ一括適用し、perPage 選択肢の刻み・ページ送りの上下配置もその中で裁定する
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
+- [ ] 棚卸しカウント画面の磨き batch（disposition table 採用分、R3、owner disposition culling 2026-09-02）: 主動線 CTA 1 個化・FieldError 残留是正・FieldError 予約高さ・「対象にありません」tone 是正・未入力 Badge tone・廃番商品の名前検索包含・表示件数（catalog ⑩ 再利用）+ DSR-20 AlertDialog 系追記の同乗。[active packet](plans/2026-09-02-stocktake-count-screen-polish.md) / [Matrix](plans/test-matrices/2026-09-02-stocktake-count-screen-polish.md)（起票承認待ち）
 
 ### Wave Registry
 
@@ -85,15 +87,11 @@
 - `app-router.ts` top-level の router singleton 副作用（test が named export だけ import しても実 router が構築されグローバル scroll/pagehide listener が登録される。現状は test 側の一意 query で cache 衝突を回避済みで実害なし。router 関連改修時に遅延生成 or test util 分離を検討 — PR #24 Final Review P3-2、2026-08-31）。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
-- DSR-20 硬化手段列挙の AlertDialog 系追記候補（DSR-20 本文の `onEscapeKeyDown` / `onPointerDownOutside` 列挙は Dialog 前提。AlertDialog 系は `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型 Omit し外側クリックは primitive 既定で非 dismiss — PR #25 gated amendment `2433199` 起源。次回 design-system 改訂 change に同乗）。
 - T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。
 - eslint palette 外色 ban（`eslint.config.js` `no-restricted-syntax`）の `files` glob 拡張（現行は `src/features/**` + `src/components/patterns/**` のみで `src/components/ui/**` / `src/components/layout/**` は非対象。wave 8 lane 1 Plan Review P2 起源 2026-09-02、当該 PR は `rg` を唯一の機械 oracle として運用、glob 拡張は既存違反の棚卸しが先行）。
 - `docs/UI_TECH_STACK.md` L403 の「DSR-01〜13」列挙が stale（DSR-14〜21 未反映。PR #28 Final Review round 1 観察、design-system README は同 PR で「DSR-01〜21」へ是正済み）。
 - SidebarLink の focus 中は `focus-visible:border-ring`（詳細度 0-2-0）が DSR-21 の左辺 Primary を上書きする（at rest は無関係、一過性。PR #28 Final Review round 2〜3 観察、意図的な a11y 挙動のため要望があれば DSR-21 に focus 時の扱いを追記）。
-- 棚卸しカウント画面の live 候補選択後に前商品の数量 FieldError が残留する（`resolveItem()` は `setFieldError(null)` するが `selectCandidate() -> selectItem()` は消去しない。PR #27 L3 owner 観察 2026-09-02 起源の既存・非 blocking finding、棚卸し design packet で扱う）。
-- 廃番・在庫あり商品が棚卸しの live 候補と商品名 fallback から除外される（`is_discontinued: false` 固定。一覧と商品コード / JAN 完全一致検索には存在するため名前検索だけ不整合。PR #27 L3 owner 観察 2026-09-02 起源、棚卸し design packet で母集団を裁定）。
-- 棚卸しカウント画面で FieldError 表示時にエラー行の高さ分だけ「数を保存」ボタンが下へずれる（既存の負数エラーでも同じ。PR #27 L3 owner 観察 2026-09-02 起源の layout 磨き候補、reserved-height 等は棚卸し design packet で扱う）。
-- 棚卸しの表示件数設定案（owner L3 2026-09-01 所感起源。表示件数の設定化は design 判断が先行、要望が続けば起票）。
+- 確定処理の所要時間を件数増で実測（棚卸しカウント画面の磨き batch owner 判断 2026-09-02 起源、C7 見送り分。「体感待ちなし、件数増で 1 秒超なら progress を検討、処理高速化に投資する方が良い」との owner 判断を受け、実測が先行事項として残る）。
 - 商品取込み上書き確認の実機 visual 未観測（PR #25 L3 で fixture 不足〈上書き確認へ到達する import file 不在〉の残余リスク受容済み、T7/T9 自動被覆あり。import file fixture が整った機会の随時確認で足りる、義務ではない）。
 - inventory-operator-ui SKILL.md への DSR-16 判断手順追加（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex 発注 or owner 手動の小 change、PR #15 起源）。
 - CostDiffDialog 結果画面への再表示ボタン（PR #15 P1 裁定で今回不採用 — 状態管理拡大を伴うため要望が続けば別 change。見送り時は次回入庫で再提示される既存契約が safety net）。

@@ -42,6 +42,7 @@
 - **Revisit trigger**: Z004/PLU 運用が始まり商品単位の販売データが `sale_records` に載るようになった時。
 - **契約監査追記（2026-07-08、owner L3 実機発見）**: §73.5 は Design Phase 初版から「商品名で探したい場合は既存の商品検索（`commands.searchProducts`）で候補から選び、その `product_code` を使う」と明記していたが、実装から丸ごと漏れていた。owner が実機 L3 で「棚卸し中に新商品を登録し、その商品名で棚卸し検索欄に入力する」という自然な操作を行った際、`find_stocktake_item` は商品コード/JAN の完全一致のみ検索するため `None` を返し、「この商品は棚卸しの対象にありません」という誤解を招くメッセージが出た（一覧には UI-10-D9 の自動追加で実際に存在しているのに、検索では見つからないという矛盾した体験）。`resolveItem` を拡張し、`find_stocktake_item` が `None` を返した場合に `commands.searchProducts`（`ReceivingPage.tsx` の商品名検索と同じ経路・クエリ）へフォールバックする。0 件は既存の「対象にありません」文言、1 件は自動的にその `product_code` で `find_stocktake_item` を再実行して選択、複数件は候補テーブル（商品コード/商品名/部門 + 選択ボタン、`ReceivingPage.tsx` の候補表示パターンを踏襲）を表示する。T21/T22 追加。
 - **契約監査追記2（2026-07-08、Codex レビュー）**: 商品名検索欄に日本語 IME の変換確定 Enter でも `resolveItem` が発火する欠落があった（`event.nativeEvent.isComposing` guard 未実装）。`ReceivingPage.tsx` の商品検索欄には既にこの guard があり、今回追加した商品名検索フォールバックが「同じパターン」を謳う以上この点でも一致させる必要があった。検索欄・数量入力欄の両方の `onKeyDown` に `if (event.nativeEvent.isComposing) return;` を追加（数量欄は `inputMode="numeric"` だが全角数字入力等の IME 経由ケースへの防御として追加）。T23 追加。
+- **契約監査追記3（本 PR、UI ガッツリ整えターン disposition culling 起源）**: 3 点を是正する。①`selectItem` が対象切替時に `setFieldError(null)` を呼ばず、live 候補選択・商品名検索フォールバックの単一候補自動選択を経由した場合に前商品の数量 FieldError が残留していた（PR #27 L3 owner 観察 2026-09-02）。対象商品が切り替わる全経路の集約点である `selectItem` へ `setFieldError(null)` を追加して是正する。②§73.9 の「対象にありません」はエラー扱いにしない契約だが、実装は `role="alert"` + `text-destructive` の destructive 表示になっていた（doc↔実装 drift）。`role="status"` + `text-muted-foreground` + `Info` icon の情報系表示へ是正する（DSR-08/DSR-11 準拠）。③商品名検索フォールバック（`PRODUCT_NAME_SEARCH_QUERY`）が `is_discontinued: false` 固定のため、棚卸し item 母集団（廃番商品を含む、§73.1 issue #91 回答済み）と商品コード/JAN 完全一致検索（`find_stocktake_item`、母集団の制限なし）には存在する廃番商品が、名前検索経路だけ候補から漏れる非対称があった（PR #27 L3 owner 観察 2026-09-02）。名前検索フォールバックの `PRODUCT_NAME_SEARCH_QUERY`（棚卸し画面ローカル）は `is_discontinued: null`（`ProductSearchQuery` の `None` は「全件、フィルタなし」を意味する、`product_repo.rs:804-805` 実読で確定）へ変更する。live 候補プレビュー（catalog ⑮）側は 5 画面共有の `useProductAddSuggest.ts` の default `PRODUCT_SEARCH_QUERY`（`is_discontinued: false`）を直接変更せず、新設の optional `queryOverrides`（catalog ⑮ SPEC-SUGGEST-D13、下記 docs 是正）で棚卸し画面だけ `{ is_discontinued: null }` を渡す（他 4 画面は default のまま廃番を除外し続ける）。両経路の候補行に廃番 Badge（catalog `02-component-catalog.md:157` と同型）を追記して是正する。
 
 ### UI-10-D3: 一覧は進捗管理用、ソートは既存のまま変更しない
 
@@ -216,6 +217,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | 差異列（UI-10-D10） | `current_stock - actual_count`（`update_count` の `current_difference` と同一計算式）。`actual_count` が `null` なら「—」。色分けなし、符号付き数値のプレーンテキストのみ（結果画面 `adjusted_items` テーブルと表現統一）。 |
 | 最終カウント列（UI-10-D10） | `counted_at`。`null` なら「—」、値ありは `formatMovementDateTime` と同じ `T`→スペース変換（`src/features/stock-movements/lib/movement-formatters.ts` 流用）。 |
 | 並び順 | 変更しない（`ORDER BY si.id ASC`、UI-10-D3）。 |
+| 表示件数 | catalog ⑩ canonical `ProductPagination`（`docs/design-system/02-component-catalog.md` §⑩）+ `PRODUCT_PER_PAGE_OPTIONS`（50/100/200、既定 50）の `Select`。変更時は `page` を 1 へ戻す。IO 側 200 クランプ（`PAGINATION_MAX_PER_PAGE`）は不変。配置は表の下（catalog 既定）のまま。 filter row 内の並び順は 部門フィルタ → 表示件数 → 未入力のみ表示。 |
 | 0 件表示 | `patterns/EmptyState`。「この条件に一致する商品がありません」+ フィルタ解除導線。**filter-empty reset action**（2026-08-03 batch B、[02-component-catalog.md](../design-system/02-component-catalog.md) ⑥）: 部門フィルタ / 未入力のみ toggle のいずれかが既定値以外、かつ結果 0 件のときのみ「絞り込みを解除」ボタンを表示し、押下で部門フィルタ / 未入力のみ toggle / `page` をすべて既定値へ戻す（`page` は `StocktakeSearch` の既存 param、既定 1）。既定値のまま 0 件（棚卸し明細が実在しない）のときは表示しない。 |
 
 ## 73.7 確定フロー
@@ -306,7 +308,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | 差異一覧 0件 | 差異はありませんでした |
 | 整合性チェック失敗フォールバック | 整合性チェックは実行できませんでした |
 
-- 主動線 CTA は 1 個（DSR-01）。状態は色だけで表さず、「入力済み」「未入力のみ表示」等の日本語ラベルを主情報にする（DSR-08）。
+- 主動線 CTA は 1 個（DSR-01）。counting 画面の primary は「数を保存」のみとし、「棚卸しを確定する」「選択」（候補行）は `variant="outline"` へ降格する（本 PR、UI-10-D2 契約監査追記3）。未開始画面の「棚卸しを開始する」は同一画面に他の primary が無いため引き続き primary。状態は色だけで表さず、「入力済み」「未入力のみ表示」「未入力 N」等の日本語ラベル + アイコンを主情報にする（DSR-08）。未入力 Badge は件数 0 で success tone（`bg-success` + `CheckCircle2`）、1 件以上で warning tone（`border-warning-border bg-warning-soft text-warning-strong` + `AlertTriangle`）に分岐する（本 PR）。
 - 確定確認ダイアログは確定 CTA 押下時に**常に**表示する（UI-10-D4/D10。DSR-07 の不可逆操作直前確認 — 確定取消 API が存在しないため確認を省略しない）。`AlertDialogTitle` は未入力有無で状態を示す文言、`AlertDialogContent` 直下の warning Alert（常時表示）が `AlertTitle`「確定すると取り消せません」で不可逆性を明示し、`AlertDescription` のみ未入力有無で本文が分岐する。DSR-08（色のみで意味を伝えない）を満たすため、warning の色は `AlertTriangle` アイコン + 太字テキストと併用する。
 
 ## 73.11 Query Invalidation
@@ -376,6 +378,8 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 
 | 日付 | PR | 内容 |
 |------|-----|------|
+| 2026-09-02 | 本 PR | UI ガッツリ整えターン disposition culling（棚卸し UX audit C1/C4/C8/C9/C10 + PR #27 L3 owner 観察 3 件）を消化。UI-10-D2 契約監査追記3（FieldError 残留是正・「対象にありません」情報表示化・廃番商品の名前検索包含）+ §73.6 表示件数行（catalog ⑩ 再利用）+ §73.10 主動線 CTA / 未入力 Badge tone 記述更新。C10（単位併記）は起票時実測で `StocktakeItemDetail` に単位 field が無いと確定し見送り。 |
+| 2026-09-02 | 本 PR | Gated Amendment 1（owner Windows native L3 run 1、PR #30 comment 5509800525）。S3 に整列是正（ボタン上端を入力欄上端と揃える）を追加、S10 として一覧 filter row 順序を 部門→表示件数→未入力のみ表示 へ変更。 |
 | 2026-07-07 | - | UI-10 Design Phase 初版（UI-10-D1〜D9、`docs/archive/plans/2026-07-07-ui10-stocktake-design.md` 準拠） |
 | 2026-07-08 | #159 (private archive) レビュー起因 | 新規 CMD `get_active_stocktake()` を追加（UI-10-D1 更新）。実装 PR #159 で進行中判定が `localStorage` + `start_stocktake` のエラーメッセージ文字列パースで代替されていたのを P1 として却下し、DB 問い合わせ CMD による正式な進行中判定に差し替え。specta 化本数を既存4+新規2=6本 → 既存4+新規3=7本に更新。 |
 | 2026-07-08 | #159 (private archive) 実装レビュー起因 | UI-10-D10 追加（一覧の差異・最終カウント列、確定ダイアログ title 統一、前回比較独立カード）。同日の Codex レビュー P2 是正で、一覧・カウント入力欄の在庫列を `system_stock` から `current_stock` へ統一（列名「システム在庫」→「現在在庫」）し、差異の計算根拠と表示在庫値の不一致を解消。 |

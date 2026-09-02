@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Input } from "@/components/ui/input";
 import { makeMockProductWithRelations } from "@/features/products/lib/test-fixtures";
-import { commands, type ProductWithRelations } from "@/lib/bindings";
+import { commands, type ProductSearchQuery, type ProductWithRelations } from "@/lib/bindings";
 import { ProductAddSuggest, type ProductAddSuggestController } from "./ProductAddSuggest";
 import { normalizeComposedDigits } from "./normalizeComposedDigits";
 import { useProductAddSuggest } from "./useProductAddSuggest";
@@ -56,6 +56,7 @@ interface HarnessProps {
   onComposedDigitsCommit?: (normalized: string) => void;
   onSelect?: (product: ProductWithRelations) => void;
   controllerRef?: RefObject<ProductAddSuggestController | null>;
+  queryOverrides?: Partial<ProductSearchQuery>;
   children?: ReactNode;
 }
 
@@ -67,6 +68,7 @@ function Harness({
   onComposedDigitsCommit,
   onSelect = vi.fn(),
   controllerRef,
+  queryOverrides,
 }: HarnessProps) {
   const [internalValue, setInternalValue] = useState("");
   const value = externalValue ?? internalValue;
@@ -74,6 +76,7 @@ function Harness({
     value,
     isLocked: () => locked,
     onSelect,
+    queryOverrides,
   });
 
   useEffect(() => {
@@ -144,6 +147,46 @@ describe("ProductAddSuggest (SPEC-SUGGEST-D1〜D12)", () => {
       page: 1,
       per_page: 5,
       keyword: "糸",
+    });
+  });
+
+  it("SC6b: useProductAddSuggest default query is byte-identical without an override, and applies the override when passed", async () => {
+    const defaultProduct = makeMockProductWithRelations({ name: "既定候補" });
+    mockSearchProducts.mockResolvedValueOnce(okProducts([defaultProduct]));
+    const first = render(<Harness />);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "既定" } });
+    await advance(200);
+
+    expect(screen.getByText("既定候補")).toBeInTheDocument();
+    expect(mockSearchProducts).toHaveBeenCalledWith({
+      department_id: null,
+      is_discontinued: false,
+      sort_key: "ProductCode",
+      sort_order: "Asc",
+      page: 1,
+      per_page: 5,
+      keyword: "既定",
+    });
+
+    first.unmount();
+    mockSearchProducts.mockClear();
+    mockSearchProducts.mockResolvedValueOnce(
+      okProducts([makeMockProductWithRelations({ name: "廃番候補", is_discontinued: true })]),
+    );
+    render(<Harness queryOverrides={{ is_discontinued: null }} />);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "廃番" } });
+    await advance(200);
+
+    const option = screen.getByRole("option", { name: /廃番候補/ });
+    expect(within(option).getByText("廃番")).toBeInTheDocument();
+    expect(mockSearchProducts).toHaveBeenCalledWith({
+      department_id: null,
+      is_discontinued: null,
+      sort_key: "ProductCode",
+      sort_order: "Asc",
+      page: 1,
+      per_page: 5,
+      keyword: "廃番",
     });
   });
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
-import { commands, type ProductWithRelations } from "@/lib/bindings";
+import { commands, type ProductSearchQuery, type ProductWithRelations } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
 
 const DEBOUNCE_MS = 200;
@@ -19,6 +19,7 @@ export interface UseProductAddSuggestOptions {
   value: string;
   isLocked: () => boolean;
   onSelect: (product: ProductWithRelations) => void | Promise<void>;
+  queryOverrides?: Partial<ProductSearchQuery>;
 }
 
 export interface ProductAddSuggestController {
@@ -40,6 +41,7 @@ export function useProductAddSuggest({
   value,
   isLocked,
   onSelect,
+  queryOverrides,
 }: UseProductAddSuggestOptions): ProductAddSuggestController {
   const id = useId();
   const listboxId = `${id}-product-add-suggest-listbox`;
@@ -52,12 +54,14 @@ export function useProductAddSuggest({
   const notifiedValueRef = useRef(value);
   const isLockedRef = useRef(isLocked);
   const onSelectRef = useRef(onSelect);
+  const queryOverridesRef = useRef(queryOverrides);
 
   useEffect(() => {
     latestValueRef.current = value;
     isLockedRef.current = isLocked;
     onSelectRef.current = onSelect;
-  }, [isLocked, onSelect, value]);
+    queryOverridesRef.current = queryOverrides;
+  }, [isLocked, onSelect, queryOverrides, value]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -83,7 +87,11 @@ export function useProductAddSuggest({
       if (isLockedRef.current()) return;
       try {
         const result = await unwrapResult(
-          commands.searchProducts({ ...PRODUCT_SEARCH_QUERY, keyword: query }),
+          commands.searchProducts({
+            ...PRODUCT_SEARCH_QUERY,
+            ...queryOverridesRef.current,
+            keyword: query,
+          }),
           { source: "commands", cmd: "search_products" },
         );
         if (

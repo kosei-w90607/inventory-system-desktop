@@ -13,7 +13,7 @@ import { commands } from "@/lib/bindings";
 import type { CmdErrorKind, Department, Stocktake, StocktakeItemDetail } from "@/lib/bindings";
 import { d052InvalidationOracle, expectExactInvalidations } from "@/test/invalidation-oracle";
 
-import { StocktakePage } from "./StocktakePage";
+import { StocktakePage, StocktakeProgressHeader } from "./StocktakePage";
 import type { StocktakeSearch } from "./types";
 
 vi.mock("sonner", () => ({
@@ -214,7 +214,7 @@ describe("StocktakePage (UI-10)", () => {
       expect(mockStart).toHaveBeenCalledTimes(1);
     });
     expect(await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）")).toBeInTheDocument();
-    expect(mockGetItems).toHaveBeenCalledWith(77, null, null, 1, 200);
+    expect(mockGetItems).toHaveBeenCalledWith(77, null, null, 1, 50);
     expectExactInvalidations(invalidateSpy.mock.calls, d052InvalidationOracle.stocktakeStart());
   });
 
@@ -229,7 +229,7 @@ describe("StocktakePage (UI-10)", () => {
     await user.click(screen.getByLabelText("未入力のみ表示"));
 
     await waitFor(() => {
-      expect(mockGetItems).toHaveBeenLastCalledWith(77, 1, false, 1, 200);
+      expect(mockGetItems).toHaveBeenLastCalledWith(77, 1, false, 1, 50);
     });
   });
 
@@ -818,6 +818,251 @@ describe("StocktakePage (UI-10)", () => {
     });
     expect(screen.queryByText("新しい商品を追加しました")).not.toBeInTheDocument();
     expect(within(screen.getByRole("table")).getByText("青い糸")).toBeInTheDocument();
+  });
+
+  it("SC1: counting screen has exactly one primary-styled button while a selected item and a candidate table coexist", async () => {
+    const user = userEvent.setup();
+    const candidates = [
+      makeMockProductWithRelations({ product_code: "P-101", name: "候補の糸A" }),
+      makeMockProductWithRelations({ product_code: "P-102", name: "候補の糸B" }),
+    ];
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockFindItem
+      .mockResolvedValueOnce(ok(null))
+      .mockResolvedValueOnce(ok(stocktakeItem({ product_code: "P-101", name: "候補の糸A" })))
+      .mockResolvedValueOnce(ok(null));
+    mockSearchProducts
+      .mockResolvedValueOnce(ok({ items: candidates, total_count: 2, page: 1, per_page: 10 }))
+      .mockResolvedValueOnce(ok({ items: candidates, total_count: 2, page: 1, per_page: 10 }));
+    await renderPage();
+
+    const codeInput = await screen.findByLabelText("商品を検索・スキャン");
+    await user.type(codeInput, "候補{Enter}");
+    await screen.findByText("候補から商品を選んでください");
+    expect(
+      screen
+        .getAllByRole("button")
+        .filter((button) => button.className.includes("bg-primary text-primary-foreground")),
+    ).toHaveLength(0);
+
+    await user.click(within(screen.getByRole("row", { name: /候補の糸A/ })).getByRole("button"));
+    expect(await screen.findByText("候補の糸A")).toBeInTheDocument();
+    await user.clear(codeInput);
+    await user.type(codeInput, "別候補{Enter}");
+    await screen.findByText("候補から商品を選んでください");
+
+    const primaryButtons = screen
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("bg-primary text-primary-foreground"));
+    expect(primaryButtons).toHaveLength(1);
+    expect(primaryButtons[0]).toHaveAccessibleName("数を保存");
+  });
+
+  it("SC2: switching target via candidate selection clears previous FieldError", async () => {
+    const user = userEvent.setup();
+    const nextCandidates = [
+      makeMockProductWithRelations({ product_code: "P-201", name: "切替先商品A" }),
+      makeMockProductWithRelations({ product_code: "P-202", name: "切替先商品B" }),
+    ];
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockFindItem
+      .mockResolvedValueOnce(ok(baseStocktakeItem()))
+      .mockResolvedValueOnce(ok(stocktakeItem({ product_code: "P-201", name: "切替先商品A" })));
+    mockSearchProducts.mockResolvedValueOnce(
+      ok({ items: nextCandidates, total_count: 2, page: 1, per_page: 10 }),
+    );
+    await renderPage();
+
+    const codeInput = await screen.findByLabelText("商品を検索・スキャン");
+    await user.type(codeInput, "P-001{Enter}");
+    const quantityInput = await screen.findByLabelText("実際の数");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "-1{Enter}");
+    expect(await screen.findByText("0以上の数値を入力してください")).toBeInTheDocument();
+
+    await user.clear(codeInput);
+    await user.type(codeInput, "切替先");
+    await user.click(
+      within(await screen.findByRole("listbox")).getByRole("option", { name: /切替先商品A/ }),
+    );
+
+    expect(await screen.findByText("切替先商品A")).toBeInTheDocument();
+    expect(screen.queryByText("0以上の数値を入力してください")).not.toBeInTheDocument();
+  });
+
+  it("SC3: FieldError slot renders at fixed height with and without an error", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await user.type(await screen.findByLabelText("商品を検索・スキャン"), "P-001{Enter}");
+
+    const quantityInput = await screen.findByLabelText("実際の数");
+    const slot = quantityInput.parentElement?.querySelector(".min-h-5");
+    expect(slot).toBeInTheDocument();
+    expect(slot).toHaveAttribute("aria-live", "polite");
+
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "-1{Enter}");
+    expect(await screen.findByRole("alert")).toHaveTextContent("0以上の数値を入力してください");
+    expect(quantityInput.parentElement?.querySelector(".min-h-5")).toBe(slot);
+  });
+
+  it("SC3b: save button top edge stays aligned with the quantity input's top edge regardless of FieldError", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await user.type(await screen.findByLabelText("商品を検索・スキャン"), "P-001{Enter}");
+
+    const saveButton = await screen.findByRole("button", { name: "数を保存" });
+    const buttonColumn = saveButton.closest(".flex");
+    // 案(a) 採用: button column に min-h-5 相当の予約 slot（Label 高さ分の spacer を含む）を持たせ、
+    // items-end ではなく items-start へ切り替えて入力欄の上端と揃える。
+    expect(buttonColumn).toHaveClass("items-start");
+    expect(buttonColumn?.querySelector(".min-h-5")).toBeInTheDocument();
+    // mutation X3b-iii 是正: spacer 撤去（items-start と min-h-5 slot だけ残す）を kill するため、
+    // ボタン直前に invisible + aria-hidden の spacer が実在することも独立に assert する。
+    const spacer = buttonColumn?.firstElementChild;
+    expect(spacer).toHaveAttribute("aria-hidden", "true");
+    expect(spacer).toHaveClass("invisible");
+    expect(spacer?.nextElementSibling).toBe(saveButton);
+
+    // FieldError の出入りでこの構造が崩れないことも確認する。
+    const quantityInput = await screen.findByLabelText("実際の数");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "-1{Enter}");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    const saveButtonAfterError = await screen.findByRole("button", { name: "数を保存" });
+    const buttonColumnAfterError = saveButtonAfterError.closest(".flex");
+    expect(buttonColumnAfterError).toHaveClass("items-start");
+    expect(buttonColumnAfterError?.querySelector(".min-h-5")).toBeInTheDocument();
+    const spacerAfterError = buttonColumnAfterError?.firstElementChild;
+    expect(spacerAfterError).toHaveAttribute("aria-hidden", "true");
+    expect(spacerAfterError).toHaveClass("invisible");
+    expect(spacerAfterError?.nextElementSibling).toBe(saveButtonAfterError);
+  });
+
+  it("SC4: target-not-found message renders as status info, not an alert", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockFindItem.mockResolvedValueOnce(ok(null));
+    await renderPage();
+    await user.type(await screen.findByLabelText("商品を検索・スキャン"), "NOPE{Enter}");
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("この商品は棚卸しの対象にありません");
+    expect(status).toHaveClass("text-muted-foreground");
+    expect(status).not.toHaveClass("text-destructive");
+    expect(status.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("SC5: uncounted badge tone switches between warning and success", () => {
+    const { rerender } = render(
+      <StocktakeProgressHeader
+        startedAt="2026-10-01T09:00:00"
+        progress={{ total_items: 1, counted_items: 0, uncounted_items: 1 }}
+      />,
+    );
+    const warningBadge = screen.getByText("未入力 1").closest('[data-slot="badge"]');
+    expect(warningBadge).toHaveClass(
+      "border-warning-border",
+      "bg-warning-soft",
+      "text-warning-strong",
+    );
+    expect(warningBadge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+
+    rerender(
+      <StocktakeProgressHeader
+        startedAt="2026-10-01T09:00:00"
+        progress={{ total_items: 1, counted_items: 1, uncounted_items: 0 }}
+      />,
+    );
+    const successBadge = screen.getByText("未入力 0").closest('[data-slot="badge"]');
+    expect(successBadge).toHaveClass("bg-success", "text-primary-foreground");
+    expect(successBadge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+  });
+
+  it("SC6: product-name search fallback query includes discontinued products and marks them", async () => {
+    const user = userEvent.setup();
+    const discontinued = makeMockProductWithRelations({
+      product_code: "D-001",
+      name: "廃番の糸",
+      is_discontinued: true,
+    });
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockFindItem.mockResolvedValueOnce(ok(null));
+    mockSearchProducts.mockResolvedValueOnce(
+      ok({
+        items: [discontinued, makeMockProductWithRelations({ product_code: "P-002" })],
+        total_count: 2,
+        page: 1,
+        per_page: 10,
+      }),
+    );
+    await renderPage();
+    await user.type(await screen.findByLabelText("商品を検索・スキャン"), "廃番{Enter}");
+
+    expect(mockSearchProducts).toHaveBeenCalledWith({
+      department_id: null,
+      is_discontinued: null,
+      sort_key: "ProductCode",
+      sort_order: "Asc",
+      page: 1,
+      per_page: 10,
+      keyword: "廃番",
+    });
+    const row = await screen.findByRole("row", { name: /廃番の糸/ });
+    expect(within(row).getByText("廃番")).toBeInTheDocument();
+  });
+
+  it("SC8a: default per_page in the initial items query is 50", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+    await waitFor(() => {
+      expect(mockGetItems).toHaveBeenCalledWith(77, null, null, 1, 50);
+    });
+  });
+
+  it("SC8b: changing per_page resets page to 1", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage({ page: 3 });
+    await user.click(await screen.findByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "100 件" }));
+
+    await waitFor(() => {
+      expect(mockGetItems).toHaveBeenLastCalledWith(77, null, null, 1, 100);
+    });
+  });
+
+  it("SC8c': list pagination uses the canonical ProductPagination component", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+
+    expect(await screen.findByRole("button", { name: "前のページ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "次のページ" })).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    expect(screen.getByRole("option", { name: "50 件" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "100 件" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "200 件" })).toBeInTheDocument();
+  });
+
+  it("SC10: filter row lists department filter, then per-page select, then uncounted-only checkbox in that DOM order", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage();
+
+    const departmentTrigger = await screen.findByRole("combobox", { name: "部門" });
+    const perPageTrigger = screen.getByRole("combobox", { name: "表示件数" });
+    const uncountedCheckbox = screen.getByRole("checkbox", { name: "未入力のみ表示" });
+
+    // 部門 → 表示件数 → 未入力のみ表示 の順で DOM 上に並ぶことを compareDocumentPosition で assert する。
+    expect(
+      departmentTrigger.compareDocumentPosition(perPageTrigger) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      perPageTrigger.compareDocumentPosition(uncountedCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 
