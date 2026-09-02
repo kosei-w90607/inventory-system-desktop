@@ -42,6 +42,7 @@
 
 ## 次の行動
 
+- [ ] sidebar viewport の scroll restoration 除外（R3）: PR #24 の `scrollRestoration: true` で sidebar の Radix `ScrollArea` viewport も route 別に復元される欠陥（PR #28 L3 round 2〜3 実観測、`scrollTop 100 → 0` / `0 → 100`、comment 5502166679）の是正。Backlog に記録していた第一是正案（sidebar viewport への `data-scroll-restoration-id` 付与）は起票時実測で不成立と確定（selector が positional から attribute に変わるだけで cache・復元対象から外れない）。採用は app 層 allowlist prune（router 生成時 + 各 `onBeforeLoad` で `<main>` 以外の cache entry を削除、DSR-17 (j) 追記）。[active packet](plans/2026-09-02-sidebar-scroll-restoration-exclusion.md) / [Matrix](plans/test-matrices/2026-09-02-sidebar-scroll-restoration-exclusion.md)
 - [ ] ④ UI 一覧の背骨 D Lane 1〜5: 着手時に owner と選定（完了時に E2E / visual regression 再評価〈UI_TECH_STACK §7.2〉）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
@@ -87,7 +88,6 @@
 - DSR-20 硬化手段列挙の AlertDialog 系追記候補（DSR-20 本文の `onEscapeKeyDown` / `onPointerDownOutside` 列挙は Dialog 前提。AlertDialog 系は `AlertDialogContentProps` が `onPointerDownOutside` / `onInteractOutside` を型 Omit し外側クリックは primitive 既定で非 dismiss — PR #25 gated amendment `2433199` 起源。次回 design-system 改訂 change に同乗）。
 - T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。
 - eslint palette 外色 ban（`eslint.config.js` `no-restricted-syntax`）の `files` glob 拡張（現行は `src/features/**` + `src/components/patterns/**` のみで `src/components/ui/**` / `src/components/layout/**` は非対象。wave 8 lane 1 Plan Review P2 起源 2026-09-02、当該 PR は `rg` を唯一の機械 oracle として運用、glob 拡張は既存違反の棚卸しが先行）。
-- **sidebar viewport の scroll restoration 除外（R3 候補、優先）**: PR #24 の `scrollRestoration: true` は `@tanstack/router-core` 1.168.15 `scroll-restoration.js` が document capture で拾った任意要素を CSS selector で cache し（L83-98）遷移後に `querySelector` + `scrollTo` で復元する（L139-142）ため、sidebar の ScrollArea viewport も route 別に復元される。PR #28 L3 round 2〜3 で owner が再現・probe log で確定（`onRendered` 時に sidebar `scrollTop` が `100 → 0` / `0 → 100`、comment 5502166679）: 短い window で sidebar を scroll した履歴があると遷移直後に sidebar が跳び pointer 下の項目が入れ替わって誤遷移 loop になる。是正案 = sidebar viewport に `data-scroll-restoration-id` を付けて除外するか、restoration 対象を `<main>` に限定する router option（DSR-17 (g) 追記を伴う design 判断）。
 - `docs/UI_TECH_STACK.md` L403 の「DSR-01〜13」列挙が stale（DSR-14〜21 未反映。PR #28 Final Review round 1 観察、design-system README は同 PR で「DSR-01〜21」へ是正済み）。
 - SidebarLink の focus 中は `focus-visible:border-ring`（詳細度 0-2-0）が DSR-21 の左辺 Primary を上書きする（at rest は無関係、一過性。PR #28 Final Review round 2〜3 観察、意図的な a11y 挙動のため要望があれば DSR-21 に focus 時の扱いを追記）。
 - 棚卸しカウント画面の live 候補選択後に前商品の数量 FieldError が残留する（`resolveItem()` は `setFieldError(null)` するが `selectCandidate() -> selectItem()` は消去しない。PR #27 L3 owner 観察 2026-09-02 起源の既存・非 blocking finding、棚卸し design packet で扱う）。
