@@ -209,6 +209,15 @@ owner が Human Gate で mockup D 2 file を視認した際の所感・裁定を
 - **perPage 既定値**: catalog ⑩ の裁定案（棚卸し既定 50 / 商品一覧既定 100）を owner が了承。
 - **「入力中」現在行 Badge の適用先**: 行編集を持つ画面（棚卸しカウント / 一括価格改定 / 入庫・返品交換の明細）に限定する。一覧の閲覧専用画面（在庫照会等）には適用しない。
 
+#### owner 裁定 2026-09-03（Human Gate 会話、append-only）
+
+1. **進行中 header**: A（サマリ帯）+ B（見出し分離）を支持。ただし owner は「カードの多用」を懸念したため、mockup に **A'** を追加した — 枠なしのサマリ帯 1 本（淡い stone 背景 `--accent` 1 段、区切りは余白と細い縦罫のみ、数値大・ラベル小 muted、帯の下辺に progress bar を沿わせる、DSR-16 の囲み削減）。`mockup-d-stocktake.html` の進捗 header section を 現行 / A（SummaryCard 3 枚）/ A'（枠なし帯）/ B の 4 段へ拡張し、未決項目 1 を「A か A' か（B は併用可）」へ書き換えた。**Coordinator 推奨 = A'**（mockup note に明記）。
+2. **完了画面 = C（DSR-16 準拠再構成）で確定。** mockup の未決項目から外し「決定」と明記した。
+3. **SummaryCard / 帯の指標順（入力済み / 未入力 / 進捗%、今回総額 / 前回総額 / 増減）は維持。**
+4. **色**: 不整合 = warning（`--warning` amber-600 系、強調テキスト `--warning-strong` #78350f）+ icon + 日本語。完了画面のマイナス増減 = destructive（`--destructive` red-700 系、強調テキスト `--destructive-strong` #7f1d1d）+ 記号併記（DSR-08）。mockup C の CSS 変数（`--bad-strong` / `--ok-strong`）を実測し、`00-foundations.md:24-34` の実 token 値と不一致だったため訂正した（旧 `--bad-strong` #991b1b → `--destructive-strong` 実値 #7f1d1d、旧 `--ok-strong` #14532d → `--success-emphasis`〈増減プラス数値の既存割当〉実値 #16a34a）。色の意味付けは 00-foundations.md セマンティックカラー表の既存割当（Destructive = 「在庫切れ、前月比マイナス」/ Warning = 「PLU通知、手動バッジ、在庫少」）を棚卸し完了画面へ適用したものであり、新規ルールは作らない。
+
+同日の他の owner 裁定（既出、再確認のため本 sub-list にも記録）: lists の器 = 採用 / perPage 既定値 裁定案 = 了承 / 現在行 Badge の適用先 = 行編集画面（棚卸しカウント・一括価格改定・入庫・返品交換の明細）/ 廃棄・破損 備考 = backlog 起票済み（`docs/Plans.md` Backlog 節）。
+
 ### Lane 3〜5 への申し送り
 
 - 既存 secondary Badge（stone 系、実装済み画面）の可読性 sweep（枠線 3:1 の付与要否を画面ごとに確認）— Gated Amendment 1 (c) 起源。
@@ -464,6 +473,15 @@ Writer（Sonnet subagent、worktree isolation）が Lane 1a の規範文一式 +
 - Plans.md「## Backlog（未了）」に、owner 所感（廃棄・破損画面のヘッダ備考欠如、2026-09-03）を Coordinator 指定の exact text で追記。
 
 **gate 実測（round 3 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 2 の WARN セットと diff 0 行）。DS1 は `[INFO] DS1: src/ path 参照 38 件すべて実在`、DS3 は `[INFO] DS3: token HEX 整合 OK（21 件突合）` — いずれも `[ERROR]` なし（未実装候補を canonical から完全撤去したため「隠すものがない」）。`--target plan` → `結果: 全チェック通過`。訂正後 AC oracle `rg -c '^# .*DSR-01〜22' docs/design-system/01-decision-rules.md` = 1 を含め全 AC oracle を再実行し期待値どおり。prettier `--check` は本ラウンド touched 全 10 file（Plans.md 含む）で整形済み。
+
+**Opus round 5 是正 + owner Human Gate 会話裁定（Sonnet round 3 = clean、Opus P1 1 / P2 2 / P3 1、Coordinator 全件 accept）**:
+
+- O-P1-1: 04-backbone.md 原則 4 ②「分類 = secondary pill・icon なし」が Gated Amendment 1 の廃番 Badge 是正（border + icon）と矛盾していたため、「分類 = secondary pill + 枠線（隣接背景に対し 3:1）。icon は識別に必要な場合に限り可（廃番等）」へ訂正。02-component-catalog.md ③ skeleton（`:157` 付近）にコメントで枠線要件と Lane 3〜5 sweep 対象である旨を追記（実装 `Badge` secondary variant は `src/components/ui/badge.tsx:13` で border なしと確認済み、非 src 変更）。token 表の badge 行にも 1 文追記。`rg -c "icon なし" docs/design-system docs/quality` = 0 を確認。
+- O-P2-1: DSR-22 の Badge/outline chip 3:1 記述を「境界（枠線または背景）が 3:1、かつ文字は WCAG 1.4.3 の 4.5:1（12px badge は large text ではない）」の AND 条件へ書き換え。判定フロー例（廃番 Badge の枠線是正）は維持。
+- O-P2-2 / O-P3-1: DSR-22 の画面→固定列 mapping を実コード確認で細分化した。入出庫履歴（`InventoryRecordsPage.tsx:306` 記録日時 / `:303` 代表商品）、在庫変動履歴（`StockMovementsPage.tsx:73-101` 単一商品ページ、商品名列なし、`MovementTable.tsx:52-53` 日時+種別のまま）、操作ログ（`OperationLogsPage.tsx:461-462` 日時+種別）、取引先管理（`SupplierUsageTable.tsx:19` 取引先名のみ、コード列は存在しないため確認）、backup 一覧（`BackupRestorePage.tsx:520,522` 作成日時+ファイル名）。旧分析 doc の「仮置き」（`2026-08-23-current-design-analysis.md:18`）由来と明記し、Lane 2 L3 での実利用者確認を注記した。**Opus 提案の一部（在庫変動履歴を「日時+商品名」とする案）はコード確認の結果不採用** — `StockMovementsPage.tsx` は単一商品ページで商品名列自体が存在しないため、日時+種別のまま維持した（実測に基づく訂正、file:line 引用済み）。
+- owner Human Gate 会話裁定（`### Gated Amendment 1` に dated sub-list として append）: 進捗 header に A' 案（枠なし帯 1 本、Coordinator 推奨）を追加し `mockup-d-stocktake.html` を 4 段構成へ拡張、A' 帯上テキストのコントラストを WCAG 相対輝度で実測（`--fg` 対 `--accent` 16.0:1 / `--warn-strong` 対 `--accent` 8.32:1 / `--muted` 対 `--accent` 6.99:1）。完了画面は C に確定し未決項目から除去。指標順は現状維持。色は 00-foundations.md の既存 Warning/Destructive 割当（`:24-34`）をそのまま棚卸し完了画面へ適用する形で明記し、mockup C の CSS 変数実値が既存 token（`--destructive-strong` #7f1d1d、`--success-emphasis` #16a34a）と不一致だったため訂正した（旧 `--bad-strong` #991b1b、`--ok-strong` #14532d は誤り）。
+
+**gate 実測（round 4 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 3 の WARN セットと diff 0 行）。DS1/DS3 とも引き続き `[INFO]` のみ。`--target plan` → `結果: 全チェック通過`。全 AC oracle 再実行し期待値どおり。prettier `--check` は本ラウンド touched 全 5 file で整形済み。
 
 Human Gate（owner の mockup 2 file 視認 + Ready 後の workflow_dispatch + merge）と Reviewed Content HEAD の確定は未実施（Coordinator/owner の後続作業）。PR は未作成のため PR link は Coordinator が別途記録する。
 

@@ -155,6 +155,7 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{item.name}</span>
             {item.is_discontinued && <Badge variant="secondary">廃番</Badge>}
+            {/* 分類 badge は枠線 3:1（DSR-22）が規範。現状 variant="secondary" は border なし、Lane 3〜5 sweep 対象 */}
           </div>
         </TableCell>
         <TableCell>{item.department_name}</TableCell>

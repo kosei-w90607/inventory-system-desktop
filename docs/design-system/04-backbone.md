@@ -17,7 +17,7 @@
 1. **文字は本文 16px を最低線にする。** 12px は badge の中だけ。見出しは h1 24px / h2 20px。（16px = 既存 foundations タイポグラフィの履行 — A 診断 #1。「12px は badge 内のみ」= B 推奨表 1 行目。現行の caption 段（12px、補助説明・タイムスタンプ）は badge 以外で 20 箇所超使われており、batch 1 で 00-foundations の caption 行を「14px muted」へ改める）
 2. **色は家族で使う。** destructive（赤）/ warning（琥珀）/ success（緑）の 3 家族、各 soft・border・strong・emphasis の 4 段。`info` 家族は作らず、お知らせ・注意喚起は warning トーンで描く。token は使う前に foundations の色表へ登録する。（A 診断 #2: `success-strong` / `info-*` の未定義参照 5 箇所が本 doc 成立の契機）
 3. **状態は icon + 日本語 + 色の 3 点で伝える。** 色だけ・icon だけは不可。（既存 DSR-08 — A / B 一致）
-4. **badge は 3 種だけ。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等）②分類 = secondary pill・icon なし（廃番 / 手動 等）③強調 = 琥珀 pill（ランキング 1 位 / 最新 等）。4 種目を作らない。（B §2.6）
+4. **badge は 3 種だけ。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等）②分類 = secondary pill + 枠線（隣接背景に対し 3:1、DSR-22）。icon は識別に必要な場合に限り可（廃番等、Gated Amendment 1）③強調 = 琥珀 pill（ランキング 1 位 / 最新 等）。4 種目を作らない。（B §2.6、②の枠線化は 2026-09-03 owner Human Gate 所感の Gated Amendment 1 是正を受けて訂正）
 5. **1 画面に primary（琥珀塗り）は 1 つ。** 入口（ホーム）は最重要導線 1 つだけ primary にする。0 primary の画面は昇格を検討する。（既存 DSR-01 + A 診断 #3）
 6. **画面の器は 1 つ。** `PageShell`（p-6 / space-y-6）を唯一の page root にする。一覧画面の検索・絞り込みは枠（rounded-md border p-4）に入れ、「検索条件」と「並び替え・件数」は段を分ける。（B §2.2 + A 診断 #5 #6 + B D15。00-foundations スペーシング表の「space-8 = ページ余白」行と数値が異なる = 現行実装の多数派 p-6 に合わせる意図、batch 1 で同行を修正）
 7. **検索欄は全画面で同じ挙動。** live 型（入力で絞り込み）+ 検索ボタン併記。Enter を押させる commit 型の画面を残さない。（B D7、owner 裁定 2026-08-20。02-component-catalog ⑨ の canonical `SearchBar` は live 型「ボタンなし」/ commit 型の 2 実装で、本行と異なる = batch 1〜2 で ⑨ の skeleton を「live + ボタン併記」の単一形へ改める）
@@ -41,7 +41,7 @@
 | 操作目標 | min-height 40px | ボタン既定 36 → 40 |
 | icon | 16 / 20 / 24 | 「見出し隣接 = 20」を表に明記 |
 | 検索欄 | live + 検索ボタン併記 | 部門 select 幅は全画面同一 |
-| badge | 12px / 600 / pill、3 種 | 3 種構成は原則 4 の記述を正とする（DSR 新設なし） |
+| badge | 12px / 600 / pill、3 種 | 3 種構成は原則 4 の記述を正とする（DSR 新設なし）。②分類は枠線 3:1、icon は識別に必要な場合のみ可（原則 4 訂正、Gated Amendment 1） |
 | 枠（原則 13） | 操作枠は隣接背景に対し 3:1 以上（WCAG 2.2 SC 1.4.11）。構造線は 3:1 対象外だが現行より一段濃くする | candidate 値は canonical に置かず packet 起票時実測 / `reference/2026-08-23-current-design-analysis.md` を参照（DSR-22。Lane 2 で `--border-strong` を globals.css に実装した時点で本表へ正式登録） |
 | 現在行（原則 15） | 専用 tone（現在行 3 点表現の 1 つ。左 4px primary バー + badge/文言と併用） | candidate 値は canonical に置かず packet 起票時実測 / `reference/2026-08-23-current-design-analysis.md` を参照（DSR-22。Lane 2 で `--row-current` を globals.css に実装した時点で本表へ正式登録） |
 
