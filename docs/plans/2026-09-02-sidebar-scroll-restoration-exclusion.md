@@ -4,7 +4,7 @@ DSR-17 分類②④の実装（PR #24、archived）は `<main>` の復元を主�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 1d9c577
@@ -23,6 +23,8 @@ Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-g
 2026-09-02: Plan Review round 1（Sonnet subagent fresh context、router-core `router.js` の constructor 購読順と `emit` の Set 挿入順・`event.fromLocation` 付与を実読で独立再現）= P1 0 / P2 2 / P3 2、全件 accept、是正 commit `d7e9e4a`（新規 test ID を SP1〜SP5 へ改名、SP4 の別 file + sessionStorage 事前破壊 + precondition assert 方式を明記）。round 2（同 reviewer、diff 実読 + 全文再読）= P1/P2 = 0 / P3 2 + 既存 gap 1、全件 accept、是正 commit `9ef97ba`。Plan Gate 収束（介入 1/3 = 起票選定）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `1d9c577`。
 
 2026-09-02: Writer（Codex）が worktree isolation で content commit + Implementation Results 記録 commit を積み Draft PR #29 を作成（frontend gate / `cargo check --release` / L1 full RESULT=PASS、exact SHA と evidence は PR body を正とする）。Writer の mutation 自己検証は Codex 安全審査で注入不可となり Coordinator 裁定でスキップ（relay 2/2 消費）。Final Review round 1 = P1/P2 = 0 / P3 2、Coordinator mutation 独立再実測 X1〜X5 全 kill（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = Writer 最終 commit。次 = owner Windows native L3（介入 2/3）。
+
+2026-09-02: owner Windows native L3（PR #29 comment 5508055961、run identity = human-confirm 遷移 HEAD、`L3_SYNC=PASS`）= 手順 1〜5 全 PASS（sidebar 途中 scroll からの sidebar 遷移 / 一覧→詳細→戻り / 主ナビ先頭表示 / アプリ再起動後の起動時 sweep）。補足観察の「詳細 route で sidebar active 表示が一時的に外れる」は既存の exact pathname active 契約どおりで scroll 位置は不変、本 change の対象外。介入 2/3 消費。`human-confirm -> ready-hosted-final` を本 state-only commit で遷移（post-impl state-only 2/2）、Ready 化・hosted final 確認・merge は Coordinator 代行（介入 3/3）。
 
 ## Owner Effort Budget
 
