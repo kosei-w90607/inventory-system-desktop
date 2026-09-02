@@ -1,0 +1,157 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>一覧の器 D — Lane 1 refresh</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+/* ===== token: 統合案 C と同一（04-backbone）。D で追加した token は末尾に --d- 接頭。2026-09-03 Lane 1 refresh で密度比較セクションを追加、sidebar/PageHeader/ボタンの見た目は描かない（旧 SPEC-UILB-D6 継続） ===== */
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#e7e5e4;--accent:#f5f5f4;
+--primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
+--warn-soft:#fffbeb;--warn-border:#fde68a;--warn-strong:#78350f;--warn:#d97706;
+--bad-soft:#fef2f2;--bad-border:#fecaca;--bad-strong:#991b1b;--bad:#dc2626;
+--ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
+--ring:#b45309;
+/* D: 構造線 / 操作枠 / 現在行 / 固定列の影（04-backbone 原則 13/14/15 の提案値） */
+--d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#f5f5f4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+.top{position:sticky;top:0;z-index:50;padding:10px 16px;background:#292524;color:#fafaf9;font-size:14px}
+.top b{font-size:14px;letter-spacing:.04em}
+.top span{color:#d6d3d1;margin-left:8px}
+.page{padding:24px;display:flex;flex-direction:column;gap:24px;max-width:1240px;margin:0 auto}
+h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
+h2{font-size:20px;line-height:1.35;font-weight:600;margin:0}
+.lead{color:var(--muted);font-size:14px;margin:0;max-width:920px}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--d-ctl);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
+.btn.sm{min-height:36px;font-size:14px;padding:0 12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px;background:var(--card);border:1px solid var(--d-line);border-radius:8px}
+.filters label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.search{display:flex;align-items:center;gap:0}
+.search input{min-height:40px;width:280px;border:1px solid var(--d-ctl);border-radius:6px 0 0 6px;padding:0 12px;font:inherit;font-size:16px}
+.search .btn{border-radius:0 6px 6px 0;border-left:0}
+select.ctl{min-height:40px;border:1px solid var(--d-ctl);border-radius:6px;padding:0 8px;font:inherit;font-size:16px;background:#fff;width:9rem}
+.sep{flex-basis:100%;height:0}
+.tbl{background:var(--card);border:1px solid var(--d-line);border-radius:8px;overflow:hidden}
+.scroll{overflow:auto}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:16px}
+th{position:sticky;top:0;z-index:3;font-size:14px;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:2px solid var(--d-line);background:var(--d-head);white-space:nowrap;box-shadow:0 1px 0 var(--d-line)}
+td{padding:8px 12px;border-bottom:1px solid var(--d-line);vertical-align:middle;height:40px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.row:hover td{background:var(--accent)}
+td.chev{width:40px;text-align:center;color:var(--muted)}
+td.chev svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+td .code{font-weight:600;font-variant-numeric:tabular-nums}
+/* 識別列（商品コード + 商品名）を左に固定。2 列目の left は 1 列目の実幅計測（JS） */
+th.id,td.id{position:sticky;left:0;z-index:2;background:var(--card)}
+th.id{z-index:4;background:var(--d-head)}
+th.id2,td.id2{position:sticky;left:var(--id-w,11rem);z-index:2;background:var(--card)}
+.scroll.sx td.id2{box-shadow:6px 0 6px -4px var(--d-shadow)}
+.scroll.sx th.id2{box-shadow:6px 0 6px -4px var(--d-shadow),0 1px 0 var(--d-line)}
+th.id2{z-index:4;background:var(--d-head)}
+tr.row:hover td.id,tr.row:hover td.id2{background:var(--accent)}
+/* badges: 3 kinds（C 承継） */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:9999px;white-space:nowrap;vertical-align:middle}
+.badge svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.b-state{border:1px solid var(--d-ctl);background:#fff;color:var(--fg)}
+.b-state.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.b-state.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.b-state.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.b-class{background:var(--accent);color:var(--muted)}
+/* 現在行 3 点: 左バー + 淡い背景 + badge/文言（色だけに頼らない、DSR-08） */
+tr.cur td{background:var(--d-row-cur)}
+tr.cur td.id,tr.cur td.id2{background:var(--d-row-cur)}
+tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
+/* 上部 pager variant（DSR-22: 件数 + 現在位置 text は必須、pager ボタンは任意。viewport 超過一覧のみ opt-in） */
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
+.pager.top .cnt{color:var(--fg);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.pager .pg{display:flex;gap:8px;align-items:center}
+.decision{border:1px dashed var(--d-line);border-radius:8px;padding:16px;background:var(--card)}
+.decision b{color:var(--fg)}
+.decision ol{margin:8px 0 0;padding-left:22px}
+.decision li{margin:6px 0}
+.decision small{color:var(--muted)}
+.formula{font-size:14px;color:var(--muted);background:var(--accent);border-radius:6px;padding:8px 12px;font-variant-numeric:tabular-nums}
+.density{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:900px){.density{grid-template-columns:1fr}}
+.density .col h3{font-size:16px;margin:0 0 8px}
+.density .scroll{max-height:420px}
+.density .scroll.dense{max-height:420px}
+.note{font-size:14px;color:var(--muted);margin:6px 0 0}
+</style></head><body>
+<div class="top"><b>一覧の器 D — Lane 1 refresh</b><span>お手本 mockup。実装の正本ではない（正本は 04-backbone / DSR-22 / catalog ⑯）</span></div>
+<div class="page">
+<div><h1>商品検索・一覧（現状同期 + 理論反映）</h1><p class="lead">統合案 C（[mockup-c-products.html](mockup-c-products.html)）からの差分だけを示す。C の枠・検索欄・badge 3 種・primary 1 つ・行高 40px・本文 16px は不変。sidebar / PageHeader / 「商品登録」等ボタンの見た目はここでは描かない（旧 SPEC-UILB-D6 継続、正本は現行アプリの shadcn 部品）。</p></div>
+
+<div class="filters"><div class="search"><input placeholder="商品コード・商品名・JAN・メーカー品番で検索" aria-label="商品検索"><button class="btn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>検索</button></div><select class="ctl"><option>すべての部門</option></select><div class="sep"></div><label>並び替え <select class="ctl"><option>商品コード</option></select></label><label>表示件数 <select class="ctl" style="width:7rem" id="perpage-main"><option value="50">50 件</option><option value="200">200 件</option></select></label></div>
+
+<div class="pager top"><span class="cnt">238 件<small style="font-weight:400;color:var(--muted);margin-left:8px">1〜50 件目を表示 · 1 / 5 ページ</small></span><div class="pg"><button class="btn sm" disabled>← 前へ</button><span>1 / 5</span><button class="btn sm">次へ →</button></div></div>
+<div class="tbl"><div class="scroll" id="scroll-main" style="--id-w:10.5rem;max-height:56vh"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>部門</th><th class="num">売価</th><th class="num">原価</th><th class="num">在庫数</th><th>PLU</th><th></th></tr></thead><tbody id="tb-main"></tbody></table></div></div>
+<div class="pager"><span>238 件中 1〜50 件目 · 1 / 5 ページ</span><div class="pg"><button class="btn sm" disabled>← 前へ</button><button class="btn sm">次へ →</button></div></div>
+
+<h2>密度比較: perPage 50 のとき / 200 のとき</h2>
+<p class="lead">刻み（40/80/120 等）の変更ではなく、既定値の画面別最適化（catalog ⑩ 裁定案）を density で見せる。共有定数 <code>PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]</code> は 1 本のまま維持し、既定値だけを画面ごとに変える。</p>
+<div class="density">
+  <div class="col"><h3>perPage 50（商品一覧の裁定案: 既定 100 だが密度確認用に 50 も比較）</h3>
+    <div class="tbl"><div class="scroll dense" style="--id-w:10.5rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">在庫数</th><th>PLU</th></tr></thead><tbody id="tb-d50"></tbody></table></div></div>
+    <p class="formula">50 行 × 行高 40px（04-backbone 原則 12 契約値、`table.tsx:61` の header cell `h-10` と整合）= 2000px、viewport 高 900px 換算で 2000 ÷ 900 ≈ 2.2 → 約 2 画面。</p>
+  </div>
+  <div class="col"><h3>perPage 200（棚卸しの裁定案: 未入力を潰し切る全走査が主動線のため既定 50 だが密度確認用に 200 も比較）</h3>
+    <div class="tbl"><div class="scroll dense" style="--id-w:10.5rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">在庫数</th><th>PLU</th></tr></thead><tbody id="tb-d200"></tbody></table></div></div>
+    <p class="formula">200 行 × 行高 40px（04-backbone 原則 12 契約値、`src/components/ui/table.tsx:61` の header cell `h-10` と整合）= 8000px、viewport 高 900px 換算で 8000 ÷ 900 ≈ 8.9 → 約 9 画面。未入力の見落とし区間が生じる。</p>
+  </div>
+</div>
+
+<div class="decision">
+<b>D の要点（差分のみ・番号付き未決項目）</b>
+<ol>
+<li><b>総件数と現在位置を上にも</b>（DSR-22）: 「238 件・1〜50 件目・1 / 5 ページ」を table 直上に text 表示（必須）。pager ボタンは任意 — <b>これを採ると何が変わるか</b>: 長い一覧で「いま何件目か」を下までスクロールせずに確認できる。<small>viewport を超えない短い一覧では省略してよいか（catalog ⑩ opt-in 条件）は未決。</small></li>
+<li><b>table header を sticky</b>: 列名が常に見える。<b>これを採ると何が変わるか</b>: 横スクロール中も列の意味を見失わない。<small>sticky header の背景色は `--d-head`（stone-100 相当）でよいか、カード地色 `--card` のままでよいかは未決。</small></li>
+<li><b>識別列（商品コード + 商品名）を左固定</b>: 横スクロール時に右端へ影。<small>識別列固定を持たない履歴系画面は日時 + 種別を固定する方針（catalog ⑯ 必須構成 4）だが、対象画面リストの最終確定は Lane 2 実装時。</small></li>
+<li><b>操作枠・構造線のコントラスト</b>（DSR-22 原則 13）: 構造線 `--border` を一段濃く（提案 #cdc8c4）、操作枠 `--border-strong`（提案 #8a8480）を新設。<small>実測値は Lane 2 の L3 で確定（本 mockup は提案値のみ）。</small></li>
+<li><b>現在行 3 点</b>（DSR-22 原則 15）: 左 4px バー + 淡い背景 `--row-current` + badge/文言。表内の 3 行目に適用例あり（下にスクロールして確認）。<small>badge/文言の具体的な語彙（「入力中」「編集中」等）は画面ごとに Lane 2〜5 で決める。</small></li>
+<li><b>perPage 既定値</b>（catalog ⑩ 裁定案）: 商品一覧は既定 100、棚卸しは既定 50（裁定案、owner 最終決定）。<b>これを採ると何が変わるか</b>: 棚卸しは未入力の見落としを減らすため 1 ページの走査量を絞り、商品一覧は 1 件探索の効率を優先してページ送り回数を減らす。<small>40 刻み化は不採用の裁定案（既存 test 影響・移行コスト）。</small></li>
+</ol>
+</div>
+
+<div class="note"><b>位置付け</b>: 正本は 04-backbone.md 原則 13〜16 / 01-decision-rules.md DSR-22 / 02-component-catalog.md ⑯（一覧の器 ListShell）。本 mockup は 2026-08-23 の Windows native L3（UI-14）所見 5 点 + owner 新規所感（2026-09-03、棚卸し画面）を反映した Lane 1a 版。sidebar・PageHeader・「商品登録」などのボタンの見た目は統合案 C の描き方をそのまま使っており、D の提案ではない。数値（線 #cdc8c4 / 操作枠 #8a8480 / 現在行 #fff8e6）は本 mockup の提案値で、実測コントラスト表は Lane 2 の L3 で確定する。</div>
+</div>
+<script>
+(function(){
+  var names=['並太毛糸（生成）','コットンブロード（無地・生成）','木製ボタン（大）','刺しゅう糸 25番（赤系アソート）','ワッペン（星・3枚入）','レース（コットン 20mm）','ファスナー 20cm（黒）','マスキングテープ（花柄）','ビーズ（丸小・金）','フェルト（赤・18cm角）','接着芯（薄手）','手芸はさみ（小）','リボン サテン 9mm（赤）','刺しゅう枠 12cm','編み針 8号（2本）','毛糸 中細（紺）','ボタン 貝調 15mm','チャコペン（白）','ゴムひも 8コール','ミシン糸 60番（白）'];
+  var depts=['毛糸','生地','手芸小物','刺しゅう','飾り','生地','手芸小物','文具','ビーズ','生地'];
+  var codes=['HZ-0047','F-0132','H-0009','4901234567894','W-0213','L-0044','Z-0120','MT-0310','B-0506','FE-0018','S-0203','T-0011','R-0099','E-0031','N-0008','HZ-0051','H-0027','C-0003','G-0012','M-0060'];
+  var sell=[520,780,120,165,330,240,180,260,150,110,450,880,95,620,540,430,140,220,130,210];
+  var cost=[364,546,84,115,231,168,126,182,105,77,315,616,66,434,378,301,98,154,91,147];
+  var stock=['18 玉','1,240 cm','0 個','64 本','12 枚','380 cm','25 本','30 個','8 袋','40 枚','6 m','4 丁','22 m','7 個','9 組','14 玉','3 個','11 本','35 m','16 個'];
+  function svgChev(){return '<td class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></td>'}
+  var iWarn='<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>',iOk='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>',iPen='<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>';
+  function yen(n){return '¥'+n.toLocaleString('ja-JP')}
+  function rowsHtml(n){
+    var h='';
+    for(var i=0;i<n;i++){
+      var k=i%20;
+      var cur=i===2;
+      var plu=i%3===0?'<span class="badge b-state warn">'+iWarn+'未反映</span>':i%3===1?'<span class="badge b-state ok">'+iOk+'反映済み</span>':'<span class="badge b-state">対象外</span>';
+      var nm=names[k]+(i===4?' <span class="badge b-class">廃番</span>':'');
+      h+='<tr class="row'+(cur?' cur':'')+'" tabindex="0"><td class="id"><span class="code">'+codes[k]+(i>=20?'-'+(i-19):'')+'</span>'+(cur?'<div><span class="badge b-state warn">'+iPen+'入力中</span></div>':'')+'</td><td class="id2">'+nm+'</td><td>'+depts[k%10]+'</td><td class="num">'+yen(sell[k])+'</td><td class="num">'+yen(cost[k])+'</td><td class="num">'+stock[k]+'</td><td>'+plu+'</td>'+svgChev()+'</tr>';
+    }
+    return h;
+  }
+  function rowsHtmlNarrow(n){
+    var h='';
+    for(var i=0;i<n;i++){
+      var k=i%20;
+      h+='<tr class="row" tabindex="0"><td class="id"><span class="code">'+codes[k]+(i>=20?'-'+(i-19):'')+'</span></td><td class="id2">'+names[k]+'</td><td class="num">'+stock[k]+'</td><td>'+(i%3===0?'<span class="badge b-state warn">'+iWarn+'未反映</span>':i%3===1?'<span class="badge b-state ok">'+iOk+'反映済み</span>':'<span class="badge b-state">対象外</span>')+'</td></tr>';
+    }
+    return h;
+  }
+  document.getElementById('tb-main').innerHTML=rowsHtml(50);
+  document.getElementById('tb-d50').innerHTML=rowsHtmlNarrow(50);
+  document.getElementById('tb-d200').innerHTML=rowsHtmlNarrow(200);
+  function syncIdWidth(){document.querySelectorAll('.scroll').forEach(function(sc){var th=sc.querySelector('th.id');if(th){sc.style.setProperty('--id-w',th.getBoundingClientRect().width+'px')}})}
+  syncIdWidth();
+  window.addEventListener('resize',syncIdWidth);
+  if(window.ResizeObserver){document.querySelectorAll('th.id').forEach(function(th){new ResizeObserver(syncIdWidth).observe(th)})}
+  document.querySelectorAll('.scroll').forEach(function(sc){function f(){sc.classList.toggle('sx',sc.scrollLeft>0)}sc.addEventListener('scroll',f);f()});
+})();
+</script>
+</body></html>

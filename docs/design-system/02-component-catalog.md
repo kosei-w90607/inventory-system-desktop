@@ -1,7 +1,7 @@
-# コンポーネントカタログ（15 パターン）
+# コンポーネントカタログ（16 パターン）
 
 > **親文書**: [README.md](README.md)
-> **責務**: 繰り返し使われる 15 パターンの canonical 定義。各パターンに使いどころ・JSX skeleton・使用トークン・全状態・a11y 要件・Do-Don't・canonical ファイル参照を記載する。
+> **責務**: 繰り返し使われる 16 パターンの canonical 定義。各パターンに使いどころ・JSX skeleton・使用トークン・全状態・a11y 要件・Do-Don't・canonical ファイル参照を記載する。
 
 ---
 
@@ -598,16 +598,23 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 ## ⑩ ページネーション
 
-**使いどころ**: 件数の多い一覧の前後送り。1 ページあたり表示件数（perPage）と前へ / 次へを提供する。
+**使いどころ**: 件数の多い一覧の前後送り。1 ページあたり表示件数（perPage）と前へ / 次へを提供する。viewport を超える一覧（DSR-22）は table 上部にも件数 + 現在位置を置く。
 
-**canonical**: `src/features/products/components/ProductPagination.tsx`（前へ / 次へ + 件数表示）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `PRODUCT_PER_PAGE_OPTIONS`）
+**canonical**: `src/features/products/components/ProductPagination.tsx`（前へ / 次へ + 件数表示、下部 pager）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `PRODUCT_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text 必須、pager ボタンは任意）は DSR-22 の裁定に基づく追加方針で、viewport 超過一覧のみ opt-in（実装は Lane 2）。
 
 **構造**:
 
 ```tsx
-// ページ送り（component 本体）
+// 上部 variant（viewport 超過一覧のみ opt-in、DSR-22。件数 + 現在位置 text は必須、pager ボタンは任意）
+<div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+  <div className="font-medium text-foreground">
+    {totalCount.toLocaleString("ja-JP")} 件中 {from}〜{to} 件目 · {page} / {totalPages} ページ
+  </div>
+</div>
+
+// ページ送り（component 本体、下部）
 <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-  <div>{totalCount.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ</div>
+  <div>{totalCount.toLocaleString("ja-JP")} 件中 {from}〜{to} 件目 · {page} / {totalPages} ページ</div>
   <div className="flex items-center gap-2">
     <Button variant="outline" size="sm" disabled={!canPrev} aria-label="前のページ" onClick={…}>
       <ChevronLeft aria-hidden="true" />
@@ -630,23 +637,25 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Select>
 ```
 
-**使用トークン**: 件数・ページ表示は `text-sm text-muted-foreground`。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium`。perPage 切替は `w-[7rem]`。
+**使用トークン**: 件数・ページ表示は `text-sm text-muted-foreground`（上部 variant は `text-sm font-medium text-foreground`）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium`。perPage 切替は `w-[7rem]`。
 
 **状態**:
 - **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする
 - hover / focus / active / error: ボタン primitive の既定に従う
 
-**perPage 規約**: 表示件数の選択肢は `PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。
+**perPage 規約**: 表示件数の選択肢は `PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。共有定数は 1 本のまま維持し、既定値だけを画面ごとに変える（**裁定案（pending owner render oracle）**: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100。`mockup-d-lists.html` の密度比較〈perPage 50 / 200〉を owner が視認して最終決定する）。40 刻み化（40/80/120 等）は既存の固定文言 test への影響と移行コストに見合わないため不採用の裁定案。
 
 **アクセシビリティ**: 前後ボタンに `aria-label`（"前のページ" / "次のページ"）を付け、方向アイコンには `aria-hidden`。現在地（page / totalPages）はテキストで常時可視にする。
 
 **Do**:
 - 端ページで前後ボタンを disabled にする
 - perPage は定数（50 / 100 / 200）を参照する
+- viewport を超える一覧は上部にも件数 + 現在位置 text を出す（DSR-22）
 
 **Don't**:
 - 現在ページ・総ページ数をアイコンだけで示さない
 - perPage の選択肢をマジックナンバーで直書きしない
+- 上部 variant に下部と同じボタン群を無条件で重ねる（選択肢が増え判断コストが上がる、Q12 §1）
 
 ---
 
@@ -879,6 +888,39 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 ---
 
+## ⑯ 一覧の器（ListShell）
+
+**使いどころ**: pagination を持つ一覧画面（商品一覧 / 在庫照会 / 一括価格改定 / 棚卸し / 整合性チェック / 入出庫履歴 等）の共通の器。toolbar・件数表示・table・pager をこの構成でまとめる。
+
+**canonical**: 未実装（予定パス src/components/patterns/ListShell.tsx、Lane 2 で新設）。本 PR は規範文のみを定め、mockup D [`mockup-d-lists.html`](reference/mockup-d-lists.html) をお手本として置く。
+
+**必須構成（6 項目）**:
+
+1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、原則 6 の枠〈`rounded-md border p-4`〉に入れる）
+2. **上下の件数・現在位置**（上部は「{n} 件中 {from}〜{to} 件目」の text 表示を必須、pager ボタンは任意。下部は既存どおり件数 + pager フル装備。文言は統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」で pin）
+3. **sticky header**（単一 `<table>` 内、横スクロール時は固定列右端に影）
+4. **識別列 opt-in**（商品コード + 商品名等を持つ一覧は固定、履歴系は日時 + 種別を固定）
+5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22）
+6. **読込みは `ListSkeleton`**（原則 11）+ 履歴系（識別列を持たない画面）の扱いを別途明記
+
+**使用トークン**: `--border-strong`（操作枠）/ `--row-current`（現在行背景）/ 既存 `--border`（構造線）。詳細は [00-foundations.md](00-foundations.md)。
+
+**状態**: 上部 pager は viewport 超過一覧のみ opt-in（DSR-22）。読込みは `ListSkeleton`、空は既存 `EmptyState`（原則 11）。
+
+**アクセシビリティ**: 現在地（page / totalPages）はテキストで常時可視にする。sticky header・固定列の影は視覚のみの補助であり、screen reader の読み順は table の DOM 順に従う。
+
+**Do**:
+- 必須構成 6 項目すべてを満たす
+- perPage 共有定数は 1 本のまま、既定値だけ画面ごとに変える（DSR-22 裁定）
+
+**Don't**:
+- 上部 pager ボタンを viewport に収まる短い一覧にも無条件で出す
+- 識別列固定を全画面へ無条件適用する
+
+**関連**: DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」。パターン③テーブル / ⑩ページネーション / ⑥空状態・エラー・ローディング（`ListSkeleton`）。
+
+---
+
 ## 小さい文字・密な表への対応（横断）
 
 - 局所的な `text-lg` 化を初手にしない。行高、列幅、`min-w-0`、`truncate`、折り返し可否、主要値の回復手段を同時に設計する（DSR-12）
@@ -892,4 +934,5 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: パターン⑧を売上同日追加の高影響確認へ追随し、実装前の契約正本をUI-07へ接続。 |
