@@ -78,7 +78,7 @@ Goal Invariant: 旧 Lane 1（`agent/ui-list-backbone-d` branch 資産、2026-08-
 - 旧 branch `agent/ui-list-backbone-d` の rebase（superseded、旧 Draft PR #2 は本 packet の PR merge 後に Coordinator が close する）。
 - token 最終値の確定（提案値 + 実測を置き、アプリ内の見え方は Lane 2 の L3 で確定 — 旧 SPEC-UILB-D7 の方針を承継）。
 - Fable 自身による画面実装着手（owner 保留、token 予算）。
-- mockup D の残り 4 file（forms-a / forms-b / import-export / history / home-sales-admin のうち lists 以外）の現状同期（Lane 1b、下記参照）。
+- mockup D の残り 5 file（forms-a / forms-b / import-export / history / home-sales-admin）の現状同期（Lane 1b、下記参照）。
 - sidebar / PageHeader / ボタンの見た目（旧 SPEC-UILB-D6 継続、mockup では描かない）。
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
@@ -94,7 +94,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 3 | `--muted-foreground` 行「4.5:1（AA）」を card 上 4.40:1（AA 未達）で訂正、`--foreground` 行を実測 16.7:1 へ訂正 | 未反映。`00-foundations.md:15` は今も「コントラスト比12.6:1（AAA+）」（対象背景の明記なし）、`:18` は今も「コントラスト比 4.5:1（AA）」の generic 表記（対象背景の明記なし） | **未反映** |
 | 4 | DSR-16「一覧の器・現在行・UI 部品枠のコントラスト」新設 | 番号が別内容へ消費済み。DSR-16 は 2026-08-29 PR #15 gated amendment 3 で「同型情報のグループ化と囲みの階層」として新設（`01-decision-rules.md:267-284`）。DSR-17〜21 も新設済み（scroll 3+1 分類 / 戻り導線 / feedback / destructive dialog / 現在地色）。次の空き番号は DSR-22（`01-decision-rules.md:415` が DSR-21 で最後、`README.md:13` も「DSR-01〜21」） | **番号衝突・再採番必須** — DSR-22 |
 | 5 | catalog ⑯「一覧の器（ListShell）」新設 | 未反映。catalog は ⑮「商品追加欄 live 候補プレビュー」（`02-component-catalog.md:845`）が最後で ⑯ は存在しない。⑩ ページネーションは canonical `ProductPagination` + `PRODUCT_PER_PAGE_OPTIONS = [50,100,200]` として既に正本化されており（`02-component-catalog.md:599-651`）、PR #30（2026-09-03）で棚卸し一覧が同 canonical を再利用済み（Plans.md L17） | **未反映** — ⑯ は本 packet で新設 |
-| 6 | reference README + mockup D 6 file 追加 | 未反映。`fd -e html mockup-d docs/design-system/reference` = 0 件、`reference/README.md` は mockup-c-* 3 file のみ列挙。mockup D は旧 branch 上に存在するのみ（`git show agent/ui-list-backbone-d --stat` で 6 file 確認済み） | **未反映（0 件）** — 本 packet では Lane 1a として 2 file（lists / 新規 stocktake）のみ着手、残り 4 file は Lane 1b（下記参照） |
+| 6 | reference README + mockup D 6 file 追加 | 未反映。`fd -e html mockup-d docs/design-system/reference` = 0 件、`reference/README.md` は mockup-c-* 3 file のみ列挙。mockup D は旧 branch 上に存在するのみ（`git diff --stat $(git merge-base agent/ui-list-backbone-d main) agent/ui-list-backbone-d -- docs/design-system/reference/` で 6 file 確認済み: forms-a / forms-b / history / home-sales-admin / import-export / lists） | **未反映（0 件）** — 本 packet では Lane 1a として 2 file（lists / 新規 stocktake）のみ着手、残り 5 file は Lane 1b（下記参照） |
 | 7 | review-checklist カテゴリ 9 に非テキスト枠 3:1 / 一覧の器 / 現在行 3 点 / 低視力 L3 の 4 項目追加 | 未反映。現行カテゴリ 9（`review-checklist.md:68-85`）は DSR-01/08/13/11/12/02/21/07/10/16/17/18/19/20 の 14 項目に対応済みだが、旧 Lane 1 提案の 4 項目は含まれない | **未反映** |
 | （追加発見・件数文言） | 旧分析 doc「件数文言の揺れ」（`2026-08-23-current-design-analysis.md:14`）: 統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」を Lane 1 で pin する提案 | 未反映。`02-component-catalog.md:610` の ⑩ 構造例は今も「{n} 件中 {p} / {t} ページ」のまま範囲表記なし | **未反映** — catalog ⑩ + 04-backbone 原則 14 で統一形を pin する（Scope 1） |
 | （追加発見・DSR-16 宙ぶらりん自己言及） | — | `04-backbone.md` に badge 3 種を指す誤ったポインタが **3 箇所**残存: `:38`（token 表「badge \| 12px / 600 / pill、3 種 \| DSR-16 として新設」）、`:43`（反映先「01-decision-rules.md: 原則 4（DSR-16 新設）/ …」）、`:51`（適用の順序「3. badge 3 種の全画面適用 + DSR-16」）。いずれも実際の DSR-16（グループ化）とは無関係な badge 3 種の話を指す | **新規 drift（旧 Lane 1 起票時点では正しかったが、その後の DSR-16 占有で陳腐化）** — 本 packet の Scope 1 で 3 箇所とも是正 |
@@ -105,7 +105,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ### 役割配分（Scope 5 の前提、D-079 で記録）
 
-Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断（owner 指示 2026-09-03「UI 視覚系は Claude が触る方が良い結果」）である。AGENT_OPERATING_MANUAL manual §3 の独立性制約（Writer ≠ Plan Reviewer ≠ Final Reviewer、自己承認禁止）は維持し、Plan Reviewer 一次と Final Reviewer は Writer とは別主体（独立 fresh context の Sonnet / Codex）が担う。実装 code（Lane 2〜5）の Writer 既定は変えない。Opus 5 は D-056 の read-only claims-producer 専任（発注書駆動、§5.4 低制約 profile）であり、Plan/Final Reviewer の一構成要素としてデザイン面の検出力を使う。Coordinator = Fable（指揮）/ Writer = Claude Sonnet 5 subagent（design docs + mockup、worktree isolation）/ Plan Reviewer = Sonnet 独立 + Opus 5 デザイン面 + Fable 裁定 / Final Reviewer = Codex（ロジック・整合面、PR review 1 回）+ Opus 5 デザイン面 + Fable 裁定 / Human Gate = owner render oracle + Ready の owner `workflow_dispatch` + merge。
+Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断（owner 指示 2026-09-03「UI 視覚系は Claude が触る方が良い結果」）である。`AGENT_OPERATING_MANUAL` §3 の独立性制約（Writer ≠ Plan Reviewer ≠ Final Reviewer、自己承認禁止）は維持し、Plan Reviewer 一次と Final Reviewer は Writer とは別主体（独立 fresh context の Sonnet / Codex）が担う。実装 code（Lane 2〜5）の Writer 既定は変えない。Opus 5 は D-056 の read-only claims-producer 専任（発注書駆動、§5.4 低制約 profile）であり、Plan/Final Reviewer の一構成要素としてデザイン面の検出力を使う。Coordinator = Fable（指揮）/ Writer = Claude Sonnet 5 subagent（design docs + mockup、worktree isolation）/ Plan Reviewer = Sonnet 独立 + Opus 5 デザイン面 + Fable 裁定 / Final Reviewer = Codex（ロジック・整合面、PR review 1 回）+ Opus 5 デザイン面 + Fable 裁定 / Human Gate = owner render oracle + Ready の owner `workflow_dispatch` + merge。
 
 **Plan Review round 1 是正（S-P1-1）**: 当初案は本節と D-079 verbatim・Workflow State に AGENT_OPERATING_MANUAL §3.1 design board 例外（希少・最高能力 slot を design docs の Coordinator/Writer に割り当てる例外）を根拠として引用していたが、Sonnet は希少・高コスト slot ではなく §3.1 の主語（Fable 自身が Writer/Coordinator になる場合）に該当しないため誤用だった。§3.1 への言及は Workflow State・座組・D-079 の全箇所から削除し、上記のとおり「Coordinator の役割配分判断」として書き直した（S-P2-7: Workflow State の 14 番目フィールド `Design Board Exception` も削除し、13 field に戻した）。
 
@@ -113,16 +113,16 @@ Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断
 
 本 PR は **Lane 1a** のみを扱う: 規範文一式（04-backbone 原則 13〜16 / DSR-22 / catalog ⑯ + ⑩ 改訂 / 00 訂正 / README・checklist 同期 / 採番是正 / D-079 / Plans.md）+ mockup **2 file**:
 
-- (i) `mockup-d-lists.html`（一覧の器: 上部件数 + sticky header + 識別列固定 + 現在行 3 点、perPage 50 のときと 200 のときの画面高さを並べて見せる密度比較 2 態）
+- (i) `mockup-d-lists.html`（一覧の器: 上部件数 + sticky header + 識別列固定 + 現在行 3 点、perPage 50 のときと 200 のときの密度比較 2 態。200 態は数値注記を必須とする — 「200 行 = 縦スクロール約 9 画面ぶん（200 行 × 行高 40px〈04-backbone 原則 12 契約値、`src/components/ui/table.tsx:61` の header cell `h-10` と整合〉= 8000px、viewport 高 900px 換算で 8000 ÷ 900 ≈ 8.9 → 約 9 画面。未入力の見落とし区間が生じる」の形で明記する。実寸描画は任意）
 - (ii) 新規 `mockup-d-stocktake.html`（進行中 header の 現行 / A / B を同一ページ内に縦 3 段で並べ、完了画面の 現行 vs C を差異 0 件 / 12 件 / 不整合ありの 3 状態で示す）
 
 各 mockup は「これを採ると何が変わるか」を 1 行の note で示し、未決項目に番号を振って owner が「3 番だけ嫌」のように個別に返せる形にする。描かないもの = sidebar / PageHeader / ボタンの見た目（旧 SPEC-UILB-D6 継続）。
 
-**Lane 1b**（本 PR の Non-scope、後続 Lane 2 実装 PR に同乗）: 残り mockup 4 file（forms-a / forms-b / import-export / history / home-sales-admin）の現状同期。Lane 2 への申し送り: Lane 2 は `ListShell` より先に `PageShell` を出す（`StocktakePage.tsx:215` と `StocktakePage.tsx:926` がそれぞれ独自 root `min-h-screen space-y-6 p-6` を持ち、旧分析 doc §1-6 が指摘した「page root 3 系統、`PageShell` 未実装」が今も未解消のため、一覧の器〈ListShell〉より先に page root の統一を済ませる必要がある）。
+**Lane 1b**（本 PR の Non-scope、後続 Lane 2 実装 PR に同乗）: 残り mockup **5** file（forms-a / forms-b / import-export / history / home-sales-admin。旧branch の 6 file から Lane 1a の lists を除いた残り、`git diff --stat` の merge-base 突合で 6 file 確認済み）の現状同期。Lane 2 への申し送り: Lane 2 は `ListShell` より先に `PageShell` を出す（`StocktakePage.tsx:215` と `StocktakePage.tsx:926` がそれぞれ独自 root `min-h-screen space-y-6 p-6` を持ち、旧分析 doc §1-6 が指摘した「page root 3 系統、`PageShell` 未実装」が今も未解消のため、一覧の器〈ListShell〉より先に page root の統一を済ませる必要がある）。
 
 ### Deferral 裁定案（Plans.md ④ sub-bullet、PR #30 起票時実測起源の 2 件、Opus §4 反映）
 
-- **ページ送りの上下両配置**: 採用。対象は「table の行数が viewport を超える一覧画面」に限定し、全一覧へ無条件適用しない（旧 SPEC-UILB-D2 の判定と同型。1 画面に収まる短い一覧では下だけで足りる）。catalog ⑩ の canonical `ProductPagination` に上部 variant を追加する方針とし、**上部 variant は「件数 + 現在位置テキスト」を必須、pager ボタンは任意**とする（同じボタンが上下 2 組あると非 IT 利用者の判断が増えるため、`ui-design-rules-qa-v2.md` Q12「ITに不慣れな利用者への配慮: 記載なし」を踏まえ、操作対象を減らす安全側の設計にする）。既存呼び出し側（商品一覧等）は画面ごとに opt-in する。
+- **ページ送りの上下両配置**: 採用。対象は「table の行数が viewport を超える一覧画面」に限定し、全一覧へ無条件適用しない（旧 SPEC-UILB-D2 の判定と同型。1 画面に収まる短い一覧では下だけで足りる）。catalog ⑩ の canonical `ProductPagination` に上部 variant を追加する方針とし、**上部 variant は「件数 + 現在位置テキスト」を必須、pager ボタンは任意**とする。同じ操作ボタンが上下 2 組あると選択肢が増え判断コストが上がるため、`ui-design-rules-qa-v2.md` Q12 §1「初めてインターフェースを触るユーザー（初心者）にとっては、操作体系はシンプルなほうが使いやすい（インタラクションコストが少なくて済むため）」（`:419`）を根拠に、操作対象を減らす安全側の設計にする。既存呼び出し側（商品一覧等）は画面ごとに opt-in する。
 - **perPage 選択肢の刻み**: 共有定数 `PRODUCT_PER_PAGE_OPTIONS`（またはそれに準ずる catalog ⑩ 正本の共有定数）は **1 本のまま維持**し、**既定値だけを画面ごとに変える**（裁定案: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100）。40 刻み化（40/80/120 等）は既存の固定文言 test（`ProductTable.test.tsx` 等）と旧分析 doc §1-11 が指摘する移行コストに見合わないため不採用の裁定案とする。mockup では刻みの変更ではなく「perPage 50 のとき / 200 のときの画面高さ」を並べて見せ、owner が既定値を Human Gate で最終決定する。owner の 2026-09-02「40 刻み」の要望は、値の刻み変更ではなく本裁定案（既定値の画面別最適化 + mockup での密度比較提示）で応える。
 
 ## D-079 verbatim 案
@@ -132,27 +132,27 @@ Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断
 ```
 ## D-079: UI 視覚系 change の座組（Sonnet Writer / Opus デザインレビュー専任 / Codex ロジックレビュー 1 回 / Fable 指揮）（2026-09-03）
 
-- Decision: UI 一覧の背骨 D — Lane 1 refresh から、design-only な UI 視覚系 change の座組を次のとおり owner 承認事実として記録する。Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断（owner 指示 2026-09-03）であり、manual §3 の独立性制約（Writer ≠ Plan Reviewer ≠ Final Reviewer、自己承認禁止）は維持する。実装 code の Writer 既定は変えない。Coordinator = Fable（指揮）、Writer = Claude Sonnet 5 subagent（design docs / mockup HTML、worktree isolation）、Plan Reviewer = Sonnet 独立 fresh context 一次 + Opus 5 のデザイン面レビュー（D-056 の read-only claims-producer 範囲、§5.4 低制約 profile）+ Fable 裁定、Final Reviewer = Codex（ロジック・整合面、PR review 1 回）+ Opus 5 デザイン面 + Fable 裁定。Opus は D-056 の read-only claims-producer であり、Writer・Coordinator・state 遷移管理には割り当てない。
+- Decision: UI 一覧の背骨 D — Lane 1 refresh から、design-only な UI 視覚系 change の座組を次のとおり owner 承認事実として記録する。Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断（owner 指示 2026-09-03）であり、`AGENT_OPERATING_MANUAL` §3 の独立性制約（Writer ≠ Plan Reviewer ≠ Final Reviewer、自己承認禁止）は維持する。実装 code の Writer 既定は変えない。Coordinator = Fable（指揮）、Writer = Claude Sonnet 5 subagent（design docs / mockup HTML、worktree isolation）、Plan Reviewer = Sonnet 独立 fresh context 一次 + Opus 5 のデザイン面レビュー（D-056 の read-only claims-producer 範囲、§5.4 低制約 profile）+ Fable 裁定、Final Reviewer = Codex（ロジック・整合面、PR review 1 回）+ Opus 5 デザイン面 + Fable 裁定。Opus は D-056 の read-only claims-producer であり、Writer・Coordinator・state 遷移管理には割り当てない。
 - Status: accepted（owner 承認 2026-09-03）
 - Why: owner 所感「UI 視覚系は Claude が触る方が良い結果」（2026-09-03）により、design docs Writer 役を Coordinator の役割配分判断として Claude Sonnet 5 subagent に割り当てる。一方、Opus 5 は D-056 で Writer / Coordinator を明示的に除外された read-only claims-producer 専任 slot であり、デザイン面の検出力を使う場合も Plan/Final Reviewer の一構成要素（read-only、発注書駆動）に留める必要がある。両者を混同すると D-056 の rollback 条件（process 契約を内面化させない）に抵触するため、座組を明文化して切り分ける。
-- Impact: 以後の UI 視覚系 design-only change は本 entry を座組の先例として引用できる。manual §3 の自己承認禁止（Writer と Plan/Final Reviewer の分離）は本座組でも独立 fresh context の Sonnet／Codex が担うことで維持する。実装 code（Lane 2〜5 等の R3）の Writer 割当ては本 entry の対象外で、既存分業（Codex 発注 or Sonnet subagent、change ごとに Coordinator 判断）のまま。
+- Impact: 以後の UI 視覚系 design-only change は本 entry を座組の先例として引用できる。`AGENT_OPERATING_MANUAL` §3 の自己承認禁止（Writer と Plan/Final Reviewer の分離）は本座組でも独立 fresh context の Sonnet／Codex が担うことで維持する。実装 code（Lane 2〜5 等の R3）の Writer 割当ては本 entry の対象外で、既存分業（Codex 発注 or Sonnet subagent、change ごとに Coordinator 判断）のまま。
 - Alternatives considered: Opus 5 を Writer に格上げする案（D-056 accepted 時点の「read-only claims-producer 専任」を change ごとの owner 裁定なしに拡張することになり、既定の分業実績を崩すため不採用。Opus 5 デザイン面「レビュー」に留める）; Codex を Writer のまま維持する案（owner 所感と矛盾するため不採用）。
 - Revisit: Opus 5 の役割拡張が複数 change で反復要請される場合、または D-056 の rollback 条件に抵触する運用が観測された場合。
 ```
 
 ## Scope
 
-1. **現状同期**（Scope 1）: 「起票時実測」節の差分表を根拠に、以下の改訂方針を Writer が起草する。各 file とも改訂の一部として `## 更新履歴` へ 1 行追加する（00-foundations / 01-decision-rules / 02-component-catalog / 04-backbone / review-checklist の 5 file とも既存の `## 更新履歴` セクションを持つことを Writer が起草前に `rg -n "^## 更新履歴"` で確認する）。
+1. **現状同期**（Scope 1）: 「起票時実測」節の差分表を根拠に、以下の改訂方針を Writer が起草する。`rg -n "^## 更新履歴"` で実測した結果、`## 更新履歴` セクションを持つのは 01-decision-rules.md（`:427`）/ 02-component-catalog.md（`:891`）/ 04-backbone.md（`:54`）/ review-checklist.md（`:110`）の 4 file であり、**00-foundations.md には `## 更新履歴` セクションが存在しない**（`rg -n "^## 更新履歴" docs/design-system/00-foundations.md` = 0 件）。上記 4 file はそれぞれ改訂の一部として `## 更新履歴` へ 1 行追加する。00-foundations.md は更新履歴節を新設せず、訂正内容（`--border-strong` / `--row-current` token 追加、`--muted-foreground` / `--foreground` の対象背景明記）を該当 token 行の注記自体で足りるものとする。
    - `04-backbone.md`: 「12 の原則」を「16 の原則」へ改題し、原則 13〜16（骨子は下記「設計判断」外の各節参照）を追記。宙ぶらりん `DSR-16` 自己言及 **3 箇所**（`:38` token 表 badge 行 / `:43` 反映先「原則 4（DSR-16 新設）」/ `:51` 適用の順序「badge 3 種の全画面適用 + DSR-16」）を、実際の DSR-16（グループ化）と無関係であることを明記した上で是正する（badge 3 種は既存原則 4 の記述で足りるため DSR 参照自体を削除する方向。最終判断は Writer 起草 + Plan Review）。`README.md:16` の「12 行」を「16 行」へ。catalog ⑩ と合わせ、件数文言の統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」（旧分析 doc `2026-08-23-current-design-analysis.md:14` 起源）を原則 14 で pin する。
    - `00-foundations.md`: `--border` 行（`:17`）は現行の是正済み文言を維持しつつ、新設 `--border-strong`（操作枠 3:1）と `--row-current`（現在行背景）token を追加。`--muted-foreground`（`:18`）と `--foreground`（`:15`）の比を実測値へ訂正し、対象背景を明記する: `--foreground` = 16.7:1（対 `--background`）/ 16.0:1（対 `--card`）、`--muted-foreground` = 4.59:1（対 `--background`）/ 4.40:1（対 `--card`、AA 未達）。
    - `01-decision-rules.md`: DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」を DSR-21（`:415-424`）の後・更新履歴（`:427`）の手前に新設。title を「DSR-01〜22」に更新。本文は DSR-16（グループ化、同型情報の表示形式）・DSR-21（現在地色、ナビゲーションの active）と主題が重複しないことを明記した上で書く（DSR-22 は「枠の可視性」「現在行＝編集中/選択中の行」「一覧の器の構造」に限定する）。
    - `02-component-catalog.md`: ⑯「一覧の器（ListShell）」を ⑮（`:845`）の後・更新履歴（`:891`）の手前に新設。title の「15 パターン」は（`README.md:14` 同様）現状未変更 — ⑯ 追加に伴い両方「16 パターン」へ改訂する。③ テーブルへ sticky header / 識別列固定 opt-in を追記、⑩ ページネーションへ上部 variant（Deferral 裁定「上下両配置」、件数 + 現在位置テキスト必須・pager 任意）と perPage 既定値の画面別裁定注記を追記。⑯ の必須構成は下記「catalog ⑯ 必須構成」節を参照。
-   - `reference/README.md`: mockup D 2 file（Lane 1a: `mockup-d-lists.html` / `mockup-d-stocktake.html`）の行を追加。旧 gated amendment 1 の `2026-08-23-current-design-analysis.md` も分析資料として同時に移植し 1 行追加する。残り 4 file（Lane 1b）は本 PR では追加しない旨を注記する。
+   - `reference/README.md`: mockup D 2 file（Lane 1a: `mockup-d-lists.html` / `mockup-d-stocktake.html`）の行を追加。旧 gated amendment 1 の `2026-08-23-current-design-analysis.md` も分析資料として同時に移植し 1 行追加する。残り 5 file（Lane 1b）は本 PR では追加しない旨を注記する。
    - `review-checklist.md`: カテゴリ 9 に DSR-22 対応行を追加（枠 3:1 / 一覧の器 / 現在行 3 点 / 低視力 L3 の 4 観点を DSR-16/17 と同様 1〜2 行に集約）。
    - **archive 移植**: 旧 packet を `git show agent/ui-list-backbone-d:docs/plans/2026-08-23-ui-list-backbone-d.md` から取得し、`docs/archive/plans/2026-08-23-ui-list-backbone-d.md` へ「superseded by 本 PR」注記付きで移植する（Writer 作業、S-P2-8）。
 2. **理論蒸留**（Scope 2）: `ui-design-rules-qa-v2.md` の該当 Q を 04-backbone 原則へ書誌付きで流し込む。
    - Q5 原則①（並べ替え時の基準列明示）: 現行のどの一覧にも明示規約がない新規要素。原則 14（一覧の器）へ「ソート機能を持つ一覧は基準列を明示する」を追加する方針（実装対象の有無は Writer が `rg` で確認）。
-   - Q5 原則②（3 大操作の左配置）: 原則 14 の Why に引用する際、**必須の適用外注記**を付す — 「左 rail は global nav（21 項目 sidebar、`RootLayout.tsx:62`）が既に占有しているため、本アプリでは Q5 原則②の左配置をそのまま採らず、横 toolbar 2 段（原則 6）で代替する」。
+   - Q5 原則②（3 大操作の左配置）: 原則 14 の Why に引用する際、**必須の適用外注記**を付す — 「左 rail は global nav（sidebar 22 項目、`src/config/navigation.ts` の `status: "active"` 実測値、`RootLayout.tsx:62`）が既に占有しているため、本アプリでは Q5 原則②の左配置をそのまま採らず、横 toolbar 2 段（原則 6）で代替する」。
    - Q5 原則③（余白グルーピング）・Q5 原則④（見切れによるスクロール示唆）: 原則 14 の Why（一覧の器の構成根拠）へ引用。
    - Q7 原則①（色数制限）: 原則 2（色は家族で）の Why を補強。
    - **Q8 原則①（見出しと本文の明確な区別、`ui-design-rules-qa-v2.md:312`）・原則③（PC はやや遠い距離、実サイズを大きめに、`:324-328`）・原則④（色数を絞った上で文字サイズの強弱による視線誘導、`:332-337`）**: 原則 13〜16 が求める「見出し / ラベル / 値の 3 段を全画面同型にする」ことの主典拠、および原則 1（本文 16px 最低線）の Why の補強として引用する。
@@ -195,7 +195,7 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 **完了画面（`StocktakeResultPage`、`StocktakePage.tsx:923-997`）**:
 
 - 今回の総額（`:933`、`text-3xl`）と前回（`:946`、`text-base`）を **Card 2 枚に分離**（`:928` / `:937`）しており、増減を算出していない。DSR-16（`01-decision-rules.md:273-274`「比較が目的 → 列を揃えた表 / structured list」）に抵触する構造。
-- 「差異のあった商品」見出し（`:954`）に件数がなく、0 件が素の `<p>`（`:956`、原則 11 の `EmptyState` 未履行、同 file の一覧側 `:738` 付近の description 文言とも不統一）。
+- 「差異のあった商品」見出し（`:954`）に件数がなく、0 件が素の `<p>差異はありませんでした</p>`（`:956`、原則 11 の `EmptyState` 未履行）。同じ `StocktakePage.tsx` 内、一覧側の絞り込み結果 0 件（`:793-796`）は `EmptyState`（`title="この条件に一致する商品がありません"`）を使っており、同一 file 内で空状態の表現が `EmptyState` と素の `<p>` の 2 系統に分かれている。
 - 整合性チェック「不整合 n 件」（`:990`）が n > 0 でも無色・無 icon（DSR-08 の icon+日本語+色 3 点が未適用）。
 
 **提案方向（mockup `mockup-d-stocktake.html` で並べて owner が選ぶ）**:
@@ -213,7 +213,7 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 - 04-backbone 原則 1〜12 の改訂。
 - token 最終値の確定（提案値 + 実測を置くのみ）。
 - 棚卸し「ベタっと」所感の是正実装（mockup 提案のみ、実装は Lane 3〜5 の R3 packet）。
-- mockup D の Lane 1b 対象 4 file（forms-a / forms-b / import-export / history / home-sales-admin）の現状同期（後続 Lane 2 実装 PR に同乗）。
+- mockup D の Lane 1b 対象 5 file（forms-a / forms-b / import-export / history / home-sales-admin）の現状同期（後続 Lane 2 実装 PR に同乗）。
 - sidebar / PageHeader / ボタンの見た目（旧 SPEC-UILB-D6 継続）。
 
 ## Acceptance Criteria
@@ -222,12 +222,12 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 - `rg -c "^## DSR-22 " docs/design-system/01-decision-rules.md` = 1、`rg -c "DSR-01〜22" docs/design-system/01-decision-rules.md` = 1。
 - `rg -c "^## ⑯ " docs/design-system/02-component-catalog.md` = 1、`rg -c "16 パターン" docs/design-system/02-component-catalog.md` ≥ 2（title + 責務）、`rg -c "16 パターン" docs/design-system/README.md` ≥ 1。catalog ⑯ 本文に「必須構成」6 項目（toolbar 2 段 / 上下の件数・現在位置 / sticky header / 識別列 opt-in / 現在行 3 点 / `ListSkeleton`）が literal に存在する。
 - `rg -c "16 の原則" docs/design-system/04-backbone.md` ≥ 1、`rg -c "12 の原則" docs/design-system/04-backbone.md` = 0、`rg -c "16 行" docs/design-system/README.md` ≥ 1、`rg -c "12 行" docs/design-system/README.md` = 0。
-- `rg -c "DSR-16" docs/design-system/04-backbone.md` = 0（badge 関連 3 箇所を除去した negative oracle。是正後に DSR-16 への正当な言及〈本文中で「DSR-16 とは別」と明示する形〉が残る場合は、Writer が badge 関連 3 箇所の除去と残存箇所が実際の DSR-16 トピック〈グループ化〉を指すことの両方を Plan Review で示す）。
+- `rg -c "DSR-16 として新設|原則 4（DSR-16|\+ DSR-16$" docs/design-system/04-backbone.md` = 0（badge 関連の宙ぶらりん参照 3 パターンに限定した negative oracle。現状は 3 パターンとも 1 件ずつ計 3 件ヒット — `DSR-16 として新設`:38、`原則 4（DSR-16`:43、`\+ DSR-16$`:51、`rg -c` 実測で確認済み）。
 - `fd -e html mockup-d docs/design-system/reference | wc -l` = 2（Lane 1a: `mockup-d-lists.html` / `mockup-d-stocktake.html`）、`rg -c "mockup-d-" docs/design-system/reference/README.md` ≥ 2。
 - `rg -c "DSR-22" docs/quality/review-checklist.md` ≥ 1。
 - `rg -c "^## D-079" docs/decision-log.md` = 1、D-079 本文に `§3.1` の文字列が含まれない（negative oracle、S-P1-1）、D-056 を矛盾なく引用している（reviewer 確認）。
 - `docs/archive/plans/2026-08-23-ui-list-backbone-d.md` が存在し `superseded` の注記を含む。
-- 00-foundations / 01-decision-rules / 02-component-catalog / 04-backbone / review-checklist の 5 file それぞれの `## 更新履歴` に本 PR の行が追加されている。
+- 01-decision-rules / 02-component-catalog / 04-backbone / review-checklist の 4 file それぞれの `## 更新履歴` に本 PR の行が追加されている（00-foundations.md には更新履歴節がないため対象外、訂正は該当 token 行の注記で足りる）。
 - `docs/Plans.md` ④ の行が本 packet への active packet link（basename `2026-09-03-ui-list-backbone-d-lane1-refresh.md`）を持ち、Lane 1a/1b の分割が分かる。
 - `bash scripts/doc-consistency-check.sh` ERROR 0、`bash scripts/doc-consistency-check.sh --target plan` 通過。
 - mockup D 2 file（Lane 1a）に棚卸し header 案（現行 / A / B）・完了画面案（現行 / C）が含まれ、owner が視認して culling できる状態（Human Gate）。
@@ -278,7 +278,7 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: 本 PR 完了後、04-backbone 原則 13〜16・DSR-22・catalog ⑯ の本文に由来（起票時実測 / Q5・Q7・Q8・Q15・Q17 / Laws of UX）を明記した状態で成立する。
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: Deferral 裁定 2 件 → 04-backbone/catalog ⑩、座組事実 → D-079。
 - Assumptions and constraints: 旧 Lane 1 実測値（WCAG 相対輝度、2026-08-23 時点の token）は再検証せず流用可能（token 値自体は main で不変、`00-foundations.md` の該当行を確認済み）。棚卸し「ベタっと」は仮説であり owner 視認前に断定しない。
-- Deferred design gaps, risk, and follow-up target: token 最終値（Lane 2 L3）、perPage 既定値の最終決定（owner が mockup で選定）、上部 pager variant の実装（Lane 2）、mockup D Lane 1b 4 file（Lane 2 実装 PR 同乗）。
+- Deferred design gaps, risk, and follow-up target: token 最終値（Lane 2 L3）、perPage 既定値の最終決定（owner が mockup で選定）、上部 pager variant の実装（Lane 2）、mockup D Lane 1b 5 file（Lane 2 実装 PR 同乗）。
 - Test Design Matrix can cite design decision IDs or source doc sections: R2 docs-only で省略、AC の rg presence oracle が代替。
 - Absolute guarantee / escape hatch self-check completed: docs-only。既存 DSR-16/17/21 の本文は変更しない（重複回避を明記するのみ）。escape hatch なし。
 
@@ -300,7 +300,7 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 
 - Existing design docs are sufficient because: 04-backbone に原則枠・token 表・反映先の構造が既にあり、01/02/00/checklist/README に追記先の節が実在する（起票時実測で行番号確認済み）。
 - Source docs updated in this PR: 04-backbone / 00-foundations / 01-decision-rules / 02-component-catalog / reference README + mockup 2 file（Lane 1a）+ 分析 doc + 旧 packet archive / quality/review-checklist / decision-log（D-079）/ Plans.md。
-- Design gaps intentionally deferred: token 最終値、perPage 既定値の最終決定、mockup D Lane 1b 4 file、Lane 2〜5 の実装。
+- Design gaps intentionally deferred: token 最終値、perPage 既定値の最終決定、mockup D Lane 1b 5 file、Lane 2〜5 の実装。
 - Durable decisions discovered in this plan and promoted to source docs: Deferral 裁定 2 件、座組事実（D-079）、Lane 1a/1b 分割。
 
 Minimum design checks for business-app work:
@@ -323,7 +323,7 @@ N/A — docs-only。理論引用の正確さと DSR/catalog 採番の非衝突�
 |---|---|---|---|
 | DSR-22 新設 + 重複回避 | 01-decision-rules | AC rg `^## DSR-22 ` = 1、`DSR-01〜22` = 1 | — |
 | catalog ⑯ 新設 + 必須構成 6 項目 | 02-component-catalog | AC rg `^## ⑯ ` = 1、`16 パターン` ≥ 2、6 項目 literal presence | — |
-| 04-backbone 原則 13〜16 + DSR-16 宙ぶらりん 3 箇所是正 | 04-backbone / README | AC rg `16 の原則` ≥ 1、`12 の原則` = 0、`DSR-16` = 0（04-backbone）、`16 行` ≥ 1（README）、`12 行` = 0（README） | — |
+| 04-backbone 原則 13〜16 + DSR-16 宙ぶらりん 3 箇所是正 | 04-backbone / README | AC rg `16 の原則` ≥ 1、`12 の原則` = 0、`DSR-16 として新設\|原則 4（DSR-16\|\+ DSR-16$` = 0（04-backbone）、`16 行` ≥ 1（README）、`12 行` = 0（README） | — |
 | mockup D 2 file（Lane 1a）+ 分析 doc + 旧 packet archive | reference / archive | AC fd = 2、`mockup-d-` ≥ 2、archive file 存在 | 棚卸し header/完了画面案は Human Gate render oracle |
 | Deferral 裁定 2 件 | 04-backbone 原則 14 / catalog ⑩ | reviewer 突合（perPage 既定値は画面別、owner が mockup で最終決定と明記） | — |
 | D-079 + §3.1 誤用除去 | decision-log | reviewer D-056 矛盾チェック + `§3.1` negative oracle | — |
@@ -335,7 +335,7 @@ N/A — docs-only。理論引用の正確さと DSR/catalog 採番の非衝突�
 Test Design Matrix: 省略（R2 optional 判定で省略、PR #21 scroll-policy-extension-design と同型）。
 
 - targeted tests: AC の rg / fd presence oracle、`doc-consistency-check.sh`（無引数 + `--target plan`）。
-- negative tests: 旧記載残存 0（`12 の原則` / `12 行` / `04-backbone.md` 内 DSR-16 / D-079 内 `§3.1`）。
+- negative tests: 旧記載残存 0（`12 の原則` / `12 行` / `04-backbone.md` 内 badge 関連 DSR-16 参照 3 パターン / D-079 内 `§3.1`）。
 - compatibility checks: DSR-16 / DSR-17 / DSR-21 の既存本文が変更されないこと（`git diff` に該当節の hunk がないこと）、catalog ⑩ canonical（`ProductPagination` / `PRODUCT_PER_PAGE_OPTIONS`）の既存契約が変更されないこと。
 - data safety checks: mockup はダミーデータ。
 - main wiring/integration checks: README → 2 file のリンク実在、04 → 00/01/02 の反映先に対応する節が実在。owner render oracle（mockup 2 file を開いて視認）。
@@ -355,7 +355,7 @@ N/A — docs-only、wire 変更なし。
 - 棚卸し「ベタっと」所感の記述が仮説（断定ではない）として書かれているか。
 - D-079 が D-056 と矛盾しないか、§3.1 design board 例外への言及が残っていないか（Opus 5 が Writer/Coordinator に格上げされていないか）。
 - 04-backbone の宙ぶらりん DSR-16 自己言及 3 箇所が正しく是正されているか。
-- Lane 1a/1b の境界（mockup 2 file のみ本 PR、残り 4 file は Lane 2 同乗）が Scope・Non-scope・Plans.md で一貫しているか。
+- Lane 1a/1b の境界（mockup 2 file のみ本 PR、残り 5 file は Lane 2 同乗）が Scope・Non-scope・Plans.md で一貫しているか。
 
 ## Spec Contract
 
@@ -382,4 +382,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Plan Review round 1（独立 Sonnet: P1×2 / P2×7、Opus デザインレビュー: P1×2 / P2×5 / P3×3、2026-09-03）: Coordinator が全件 accept して本 commit へ反映。主な是正 = §3.1 design board 例外の誤用を Workflow State / 設計判断 / D-079 の全箇所から除去し「Coordinator の役割配分判断」へ書き直し（S-P1-1）、Workflow State の 14 番目フィールド `Design Board Exception` を削除し 13 field へ復元（S-P2-7）、DSR-16 宙ぶらりん自己言及を 2 箇所→3 箇所へ訂正し negative oracle 追加（S-P1-2/O-P1-1）、`text-sm` 実測値を 204→199 へ訂正（S-P2-3）、完了画面の構成を Card 2 枚 + FormSection 2 つと確定（S-P2-5）、catalog title 文言修正（S-P2-6）、旧 packet の archive 移植を Scope/AC へ追加（S-P2-8）、5 file の更新履歴行追加を Scope/AC へ追加（S-P2-9）、README DSR 列挙採番修正（O-P3-1）、foreground/muted-foreground の対象背景明記（O-P3-2）、「ベタっと」仮説の全面差し替え（S-P2-4/O-P2-3/O-P2-4）、理論引用の Q17 適用対象限定・Q8 追加・Q5 原則②適用外注記・Q12 注意書き追加（O-P1-2 + Opus §3）、Deferral 裁定の上部 pager 必須要素と perPage 既定値方式への書き直し（Opus §4）、Lane 1a/1b 分割によるスコープ限定（Opus §1、S-P3-3）、catalog ⑯ 必須構成 6 項目の明文化（O-P2-1/O-P2-2/O-P2-5）、件数文言統一形の pin（Opus §4 隣接）を実施。
+- Plan Review round 2（独立 Sonnet: P1×1 / P3×2、Opus デザインレビュー: P2×3 / P3×2、2026-09-03）: Coordinator が全件 accept して本 commit へ反映。全ての既存性主張を本 round 内で実行したコマンドで再検証済み: S-P1-1（`rg -n "^## 更新履歴" docs/design-system/00-foundations.md` = 0 件、00-foundations には更新履歴節が無いと判明 — Scope 1 と AC を 4 file 限定＋「00-foundations は該当節なし」の明記へ訂正）、O-P2-1（`git diff --stat $(git merge-base agent/ui-list-backbone-d main) agent/ui-list-backbone-d -- docs/design-system/reference/` で旧 mockup-d 6 file 実在確認、Lane 1b は残り「5」file が正 — 6 箇所の「4 file」誤記を訂正）、O-P2-2（`ui-design-rules-qa-v2.md:419` Q12 §1「初心者は操作体系がシンプルなほうが使いやすい」を実読し pager 任意化の Why を Q12「記載なし」から差し替え）、O-P2-3（`src/components/ui/table.tsx:61` の header cell `h-10`〈=40px〉と 04-backbone 原則 12 の契約値 40px を確認し、200 行 × 40px = 8000px ÷ viewport 900px ≈ 8.9 → 約 9 画面の数値注記を mockup-d-lists 要件に追加）、O-P3-1（`StocktakePage.tsx:794` の `EmptyState` と `:956` の素の `<p>` を実読し、同一 file 内の空状態表現の不統一として書き直し）、O-P3-2（`rg -c "DSR-16 として新設|原則 4（DSR-16|\+ DSR-16$" docs/design-system/04-backbone.md` = 3〈各パターン 1 件、L38/L43/L51〉を実測し negative oracle をパターン限定形へ差し替え、例外節を削除）、S-P3-1（`rg -n '"active"' src/config/navigation.ts` で leaf entry 22 件〈type 定義行を除く〉を実測し「21 項目」を「22 項目」へ訂正）、S-P3-2（`rg -n "AGENT_OPERATING_MANUAL" docs/decision-log.md` で既存 D entry の表記を確認し、D-079 verbatim 内の「manual §3」を `AGENT_OPERATING_MANUAL §3` へ訂正、設計判断節の重複表記「AGENT_OPERATING_MANUAL manual §3」も同時に是正）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
