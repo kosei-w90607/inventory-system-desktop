@@ -4,7 +4,7 @@ DSR-17 分類②④の実装（PR #24、archived）は `<main>` の復元を主�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 1d9c577
@@ -13,7 +13,7 @@ DSR-17 分類②④の実装（PR #24、archived）は `<main>` の復元を主�
 - Writer: Codex（GPT-5.6、発注書駆動、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Fable 裁定
 - Final Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Coordinator mutation 独立再実測 + Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 8b02cf3
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（sidebar 跳びの再現手順で PASS 確認）
@@ -21,6 +21,8 @@ DSR-17 分類②④の実装（PR #24、archived）は `<main>` の復元を主�
 Phase 遷移記録（kickoff → spec-check → design → plan-draft → plan-gate、本 plan-first commit に同乗）: task scope と R3 判定は本 packet に記録。spec-check では PR #28 L3 round 2〜3 の owner 実観測（sidebar `scrollTop` の `100 → 0` / `0 → 100`）と Plans.md backlog の第一候補是正案（`data-scroll-restoration-id` 付与）を前提としたが、design phase として起票時に `node_modules/@tanstack/router-core/dist/esm/scroll-restoration.js` 1.168.15 を実読した結果、当該候補は不成立と判明した（下記「起票時実測」節）。是正方式を app 層 allowlist prune へ確定し、packet + Test Design Matrix を同 commit で commit して plan-gate に至る。
 
 2026-09-02: Plan Review round 1（Sonnet subagent fresh context、router-core `router.js` の constructor 購読順と `emit` の Set 挿入順・`event.fromLocation` 付与を実読で独立再現）= P1 0 / P2 2 / P3 2、全件 accept、是正 commit `d7e9e4a`（新規 test ID を SP1〜SP5 へ改名、SP4 の別 file + sessionStorage 事前破壊 + precondition assert 方式を明記）。round 2（同 reviewer、diff 実読 + 全文再読）= P1/P2 = 0 / P3 2 + 既存 gap 1、全件 accept、是正 commit `9ef97ba`。Plan Gate 収束（介入 1/3 = 起票選定）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移、Plan Commit = plan-first commit `1d9c577`。
+
+2026-09-02: Writer（Codex）が worktree isolation で content commit + Implementation Results 記録 commit を積み Draft PR #29 を作成（frontend gate / `cargo check --release` / L1 full RESULT=PASS、exact SHA と evidence は PR body を正とする）。Writer の mutation 自己検証は Codex 安全審査で注入不可となり Coordinator 裁定でスキップ（relay 2/2 消費）。Final Review round 1 = P1/P2 = 0 / P3 2、Coordinator mutation 独立再実測 X1〜X5 全 kill（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = Writer 最終 commit。次 = owner Windows native L3（介入 2/3）。
 
 ## Owner Effort Budget
 
@@ -327,6 +329,11 @@ Contract ID: SPEC-DSR17-SIDEBAR-SCROLL-EXCLUSION-2026-09-02
 
 ## Review Response
 
-Fill after review.
-If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+2026-09-02 Final Review round 1（Sonnet subagent fresh context、Contract Audit を DSR-17 (j) / Scope 1〜5 / Matrix SP1〜SP5 から実施、router-core `router.js:118` と `scroll-restoration.js:104-108` の購読順を実読で再確認）= P1 0 / P2 0 / P3 2。文言表 presence oracle: 旧文言「が唯一の scroll container である」0 hit、新文言「route content の唯一の scroll container」3 hit（Why×2 + (c)）。`bindings.ts` / `Sidebar.tsx` / `scroll-area.tsx` / `package.json` は差分ゼロ。
+
+- P3-1（記録のみ）: SP3 は main entry 保存だけを assert し、同 test 内で非 main entry の削除は assert しない。Matrix の SP3 Failure Mode は「main entry の誤削除」限定で、非 main 削除は SP1 / SP2 が担保するため Matrix 逸脱ではない。
+- P3-2（記録のみ）: `cache` injectable 引数は SP4 fallback 用として条件付き pre-approved だったが、helper signature に恒常的に組み込まれている。Scope 1 は signature を規定しておらず、既定値が module singleton で呼出し側は既定値のみ使うため実害なし。
+
+Coordinator mutation 独立再実測（隔離 worktree、clean tree = Reviewed Content HEAD、`app-router.test.tsx` + `app-router.null-cache.test.tsx` を mutant ごとに単独実行）: X1（allowlist 全 admit）→ SP1 / SP2 kill、X2（起動時 sweep 削除）→ SP1 kill、X3（`toLocation` 取り違え）→ SP2 kill、X4（allowlist 反転）→ SP3 + SP1 / SP2 + 既存 T5 / T10 / T11 / T12 / T13 kill、X5（`onBeforeLoad` prune 行削除）→ SP2 kill。**X1〜X5 全 kill、survivor なし**、Matrix 期待列と一致（X4 は超過 kill）。Writer 側の mutation 自己検証は安全審査で注入不可のため未実施（Implementation Results 記載）で、本独立再実測が唯一の kill 証跡。
+
+- Findings Freeze: frozen at Final Review round 1（P1/P2 = 0）; post-freeze exceptions: none.
