@@ -602,21 +602,22 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **使いどころ**: 件数の多い一覧の前後送り。1 ページあたり表示件数（perPage）と前へ / 次へを提供する。viewport を超える一覧（DSR-22）は table 上部にも件数 + 現在位置を置く。
 
-**canonical**: `src/features/products/components/ProductPagination.tsx`（前へ / 次へ + 件数表示、下部 pager）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `PRODUCT_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text 必須、pager ボタンは任意）は DSR-22 の裁定に基づく追加方針で、viewport 超過一覧のみ opt-in（実装は Lane 2）。
+**canonical**: `src/features/products/components/ProductPagination.tsx`（`:26-30`、前へ / 次へ + 件数表示、下部 pager。現行文言は `{totalCount} 件中 {page} / {totalPages} ページ` で from/to 範囲を含まない）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `PRODUCT_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text 必須、pager ボタンは任意）は DSR-22 の裁定に基づく追加方針で、viewport 超過一覧のみ opt-in（実装は Lane 2）。
 
-**構造**:
+**構造**（下部は現行 canonical と一致。上部 variant の範囲文言は Lane 2 移行対象 — 下記「件数文言」参照）:
 
 ```tsx
-// 上部 variant（viewport 超過一覧のみ opt-in、DSR-22。件数 + 現在位置 text は必須、pager ボタンは任意）
+// 上部 variant（viewport 超過一覧のみ opt-in、DSR-22。件数 + 現在位置 text は必須、pager ボタンは任意。
+// 範囲文言〈{from}〜{to} 件目〉は Lane 2 移行対象。それまでは下部と同じ現行文言でよい）
 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
   <div className="font-medium text-foreground">
-    {totalCount.toLocaleString("ja-JP")} 件中 {from}〜{to} 件目 · {page} / {totalPages} ページ
+    {totalCount.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ
   </div>
 </div>
 
-// ページ送り（component 本体、下部）
+// ページ送り（component 本体、下部。現行 canonical、ProductPagination.tsx:26-30 と一致）
 <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-  <div>{totalCount.toLocaleString("ja-JP")} 件中 {from}〜{to} 件目 · {page} / {totalPages} ページ</div>
+  <div>{totalCount.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ</div>
   <div className="flex items-center gap-2">
     <Button variant="outline" size="sm" disabled={!canPrev} aria-label="前のページ" onClick={…}>
       <ChevronLeft aria-hidden="true" />
@@ -638,6 +639,8 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
   </SelectContent>
 </Select>
 ```
+
+**件数文言**: 現行 canonical は `{totalCount} 件中 {page} / {totalPages} ページ`（from/to 範囲なし、`ProductPagination.tsx:26-30`）。範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」は **Lane 2 移行対象**（`ProductPagination` + 全 caller + test を一括移行するまで、規範は現行文言のまま。上部 variant を先行導入する場合も同じ現行文言でよい）。
 
 **使用トークン**: 件数・ページ表示は `text-sm text-muted-foreground`（上部 variant は `text-sm font-medium text-foreground`）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium`。perPage 切替は `w-[7rem]`。
 
@@ -892,34 +895,35 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 ## ⑯ 一覧の器（ListShell）
 
-**使いどころ**: pagination を持つ一覧画面（商品一覧 / 在庫照会 / 一括価格改定 / 棚卸し / 整合性チェック / 入出庫履歴 等）の共通の器。toolbar・件数表示・table・pager をこの構成でまとめる。対象は viewport を超える一覧。1 画面に収まる短い一覧は項目 2 の上部表示を省略してよく、検索欄を持たない画面は toolbar 1 段でよい。
+**使いどころ**: pagination を持つ一覧画面（商品一覧 / 在庫照会 / 一括価格改定 / 棚卸し / 整合性チェック / 入出庫履歴 等）の共通の器。toolbar・件数表示・table・pager をこの構成でまとめる。適用範囲・発動条件（viewport 超過時のみ上部表示 / 横 overflow 時のみ識別列固定 / 画面→固定列 mapping）は DSR-22 を正本とし、本節では重複記載しない。
 
-**canonical（予定）**: src/components/patterns/ListShell.tsx（Lane 2 で新設後に backtick 表記へ戻し DS1 対象化）。本 PR は規範文のみを定め、mockup D [`mockup-d-lists.html`](reference/mockup-d-lists.html) をお手本として置く。
+**canonical**: なし（Lane 2 で `ListShell` を新設予定）。本 PR は規範文のみを定め、mockup D [`mockup-d-lists.html`](reference/mockup-d-lists.html) をお手本として置く。
 
-**必須構成（6 項目、viewport を超える一覧が対象。収まる一覧は項目 2 の上部表示を省略してよい。検索欄を持たない画面は toolbar 1 段でよい）**:
+**必須構成（6 項目。適用条件は DSR-22 を正本とする）**:
 
 1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、原則 6 の枠〈`rounded-md border p-4`〉に入れる。検索欄を持たない画面は 1 段でよい）
-2. **上下の件数・現在位置**（上部は「{n} 件中 {from}〜{to} 件目」の text 表示を必須、pager ボタンは任意。viewport を超える一覧が対象、収まる一覧は省略してよい。下部は既存どおり件数 + pager フル装備。文言は統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」で pin）
+2. **上下の件数・現在位置**（上部は「{n} 件中 {p} / {t} ページ」の text 表示を必須〈現行 canonical、`ProductPagination.tsx:26-30`〉、pager ボタンは任意。下部は既存どおり件数 + pager フル装備。範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」は Lane 2 移行対象〈`ProductPagination` + 全 caller + test を一括移行、それまで規範は現行文言〉）
 3. **sticky header**（単一 `<table>` 内、横スクロール時は固定列右端に影）
-4. **識別列 opt-in**（商品コード + 商品名等を持つ一覧は固定。履歴系（識別列を持たない画面）は日時 + 種別を固定する）
+4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする）
 5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22）
 6. **読込みは `ListSkeleton`**（原則 11）
 
-**使用トークン**: `--border-strong`（操作枠）/ `--row-current`（現在行背景）/ 既存 `--border`（構造線）。詳細は [00-foundations.md](00-foundations.md)。
+**使用トークン**: `--border-strong`（操作枠）/ `--row-current`（現在行背景）/ 既存 `--border`（構造線）。候補値は canonical に置かず本 packet「起票時実測」節 / `reference/2026-08-23-current-design-analysis.md` を参照（Lane 2 で globals.css に実装した時点で [00-foundations.md](00-foundations.md) へ正式登録）。
 
-**状態**: 上部 pager は viewport 超過一覧のみ opt-in（DSR-22）。読込みは `ListSkeleton`、空は既存 `EmptyState`（原則 11）。
+**状態**: 上部 pager の発動条件は DSR-22 を正本とする。読込みは `ListSkeleton`、空は既存 `EmptyState`（原則 11）。
 
 **アクセシビリティ**: 現在地（page / totalPages）はテキストで常時可視にする。sticky header・固定列の影は視覚のみの補助であり、screen reader の読み順は table の DOM 順に従う。
 
 **Do**:
-- 対象範囲（viewport 超過一覧）で必須構成 6 項目を満たす。収まる一覧・検索欄なし画面は柱書の条件に従い一部省略可
+- 必須構成 6 項目を満たす（発動条件は DSR-22 を正本とする）
 - perPage 共有定数は 1 本のまま、既定値だけ画面ごとに変える（DSR-22 裁定）
+- 上部・下部とも現行文言 `{totalCount} 件中 {page} / {totalPages} ページ` を使う（範囲付きは Lane 2 移行後）
 
 **Don't**:
-- 上部 pager ボタンを viewport に収まる短い一覧にも無条件で出す
-- 識別列固定を全画面へ無条件適用する
+- DSR-22 の発動条件外で上部 pager や識別列固定を無条件適用する
+- 範囲付き文言を Lane 2 移行前に部分導入する（component / caller / test の不整合を招く）
 
-**関連**: DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」。パターン③テーブル / ⑩ページネーション / ⑥空状態・エラー・ローディング（`ListSkeleton`）。
+**関連**: DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」（適用条件・画面 mapping の正本）。パターン③テーブル / ⑩ページネーション / ⑥空状態・エラー・ローディング（`ListSkeleton`）。
 
 ---
 
@@ -936,5 +940,6 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を現行 canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は Lane 2 移行対象と明記。⑯ の canonical を「なし（Lane 2 で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: パターン⑧を売上同日追加の高影響確認へ追随し、実装前の契約正本をUI-07へ接続。 |

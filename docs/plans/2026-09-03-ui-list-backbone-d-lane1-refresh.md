@@ -131,6 +131,18 @@ Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断
 - **ページ送りの上下両配置**: 採用。対象は「table の行数が viewport を超える一覧画面」に限定し、全一覧へ無条件適用しない（旧 SPEC-UILB-D2 の判定と同型。1 画面に収まる短い一覧では下だけで足りる）。catalog ⑩ の canonical `ProductPagination` に上部 variant を追加する方針とし、**上部 variant は「件数 + 現在位置テキスト」を必須、pager ボタンは任意**とする。同じ操作ボタンが上下 2 組あると選択肢が増え判断コストが上がるため、`ui-design-rules-qa-v2.md` Q12 §1「初めてインターフェースを触るユーザー（初心者）にとっては、操作体系はシンプルなほうが使いやすい（インタラクションコストが少なくて済むため）」（`:419`）を根拠に、操作対象を減らす安全側の設計にする。既存呼び出し側（商品一覧等）は画面ごとに opt-in する。
 - **perPage 選択肢の刻み**: 共有定数 `PRODUCT_PER_PAGE_OPTIONS`（またはそれに準ずる catalog ⑩ 正本の共有定数）は **1 本のまま維持**し、**既定値だけを画面ごとに変える**（裁定案: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100）。40 刻み化（40/80/120 等）は既存の固定文言 test（`ProductTable.test.tsx` 等）と旧分析 doc §1-11 が指摘する移行コストに見合わないため不採用の裁定案とする。mockup では刻みの変更ではなく「perPage 50 のとき / 200 のときの画面高さ」を並べて見せ、owner が既定値を Human Gate で最終決定する。owner の 2026-09-02「40 刻み」の要望は、値の刻み変更ではなく本裁定案（既定値の画面別最適化 + mockup での密度比較提示）で応える。
 
+### Token 候補値（canonical docs から分離、Codex P2-2、2026-09-03）
+
+Final Review round 3（Human Gate + Codex review）で、未実装の token 候補値・path は false-green の温床になるため canonical docs（00-foundations.md / 04-backbone.md / 02-component-catalog.md）から撤去する裁定に至った（Coordinator の前ラウンド裁定 = `#`/backtick の有無で DS1/DS3 検査対象から外す表記は撤回）。候補値そのものは本節と `docs/design-system/reference/2026-08-23-current-design-analysis.md`「2026-09-03 提案値」節、および mockup の CSS 変数として保持する。
+
+- **構造線 `--border`（提案）**: `cdc8c4`。対 `--background`（`#fafaf9`）実測 1.66:1。
+- **操作枠 `--border-strong`（提案、新設）**: `8a8480`。対 `--background`（`#fafaf9`）実測 **3.53:1**、対 `--card`（`#f5f5f4`）実測 **3.38:1**（Codex P3 の指摘を受け WCAG 2.x 相対輝度公式で独立に再計算し確認済み。前ラウンドの記録値 3.69:1 / 3.53:1 は誤りだった）。
+- **現在行 `--row-current`（提案、新設）**: `fff8e6`。対 `--foreground`（`#1c1917`）本文実測 16.5:1。
+
+Lane 2 で `--border-strong` / `--row-current` を `globals.css` `:root` に実装した時点で、00-foundations.md のカラーパレット表へ正式登録し DS3（`00-foundations` ↔ `globals.css` の token HEX 整合検査）の突合対象に含める。catalog ⑯ の canonical（`ListShell.tsx`）も同様に、Lane 2 で新設した時点で backtick 付き `src/` path 表記へ戻し DS1（design-system docs 内 src/ path 実在検査）の対象化する。
+
+**DS1/DS3 実測（本是正後）**: `bash scripts/doc-consistency-check.sh` の DS1/DS3 行はいずれも `[INFO]` のみで `[ERROR]` を含まない（`DS1: src/ path 参照 ... 件すべて実在` / `DS3: token HEX 整合 OK（... 件突合）`）。未実装候補は 00/02/04 の本文から撤去済みのため、検査が「隠すものがない」状態になった。
+
 ## D-079 verbatim 案
 
 `docs/decision-log.md` へ追記する entry 案（D-078 の shape に合わせる。既存文言は変更しない、追記のみ）。Plan Review round 1 の指摘（S-P1-1）を反映し、§3.1 design board 例外への言及を全て削除した。
@@ -185,6 +197,22 @@ Writer の Sonnet subagent 割当は Coordinator（Fable）の役割配分判断
 
 Acceptance Criteria の該当行で、catalog ⑯ 本文にこの 6 項目それぞれが literal に存在することを確認する。
 
+### Gated Amendment 1（2026-09-03、owner 視認起源）
+
+owner が Human Gate で mockup D 2 file を視認した際の所感・裁定を append-only で記録する（Coordinator が Amendments 行へ SHA を後日記録）。
+
+- **Badge legibility（是正対象）**: `mockup-d-lists.html` の廃番 Badge（黄み白の soft 背景のみ、white 地で見づらい）を owner が指摘。既存の灰色系 secondary Badge も同根の問題を持つ。
+  - (a) DSR-22 の UI 部品枠 3:1 ルールを Badge / outline chip に明示適用した（枠線または文字色のいずれかが背景に対し 3:1 以上、soft 背景単独はシグナルにならない）。
+  - (b) `mockup-d-lists.html` の廃番 Badge を、枠線（`--border-strong` 相当、対 `--background` 実測 3.53:1、WCAG 相対輝度で再計算し確認済み）+ icon（DSR-08 の色 + icon + 日本語 3 点）を持つ variant へ是正した。
+  - (c) 既存 secondary Badge（stone 系、実装済み画面）の可読性 sweep を Lane 3〜5 申し送りへ追加する（下記「Lane 3〜5 への申し送り」参照）。
+- **lists mockup の器**: owner 所感「基本的に良い」— 一覧画面の器の base として採用。
+- **perPage 既定値**: catalog ⑩ の裁定案（棚卸し既定 50 / 商品一覧既定 100）を owner が了承。
+- **「入力中」現在行 Badge の適用先**: 行編集を持つ画面（棚卸しカウント / 一括価格改定 / 入庫・返品交換の明細）に限定する。一覧の閲覧専用画面（在庫照会等）には適用しない。
+
+### Lane 3〜5 への申し送り
+
+- 既存 secondary Badge（stone 系、実装済み画面）の可読性 sweep（枠線 3:1 の付与要否を画面ごとに確認）— Gated Amendment 1 (c) 起源。
+
 ## 棚卸し「ベタっと」の仮説（owner 所感、mockup 提示 → render oracle で確定）
 
 Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon がない」「同じ視覚 weight」）を実装コードと再突合し、以下へ差し替えた。
@@ -222,14 +250,14 @@ Plan Review round 1（S-P2-4, O-P2-3, O-P2-4）で当初の仮説（「icon が�
 - mockup D の Lane 1b 対象 5 file（forms-a / forms-b / import-export / history / home-sales-admin）の現状同期（後続 Lane 2 実装 PR に同乗）。
 - sidebar / PageHeader / ボタンの見た目（旧 SPEC-UILB-D6 継続）。
 
-### Lane 2 への申し送り（DS1/DS3 復元義務、Final Review round 1 Coordinator 裁定 S-P2-1）
+### Lane 2 への申し送り（token / canonical 正式登録、Codex P2-2 裁定で S-P2-1 を撤回）
 
-`--border-strong` / `--row-current` token と `ListShell.tsx` は本 PR では未実装のため、DS1（src path 実在）/ DS3（token HEX 整合）の突合対象から意図的に外す表記（backtick なしの path、`#` を付けない hex）を 00-foundations.md / 04-backbone.md / 02-component-catalog.md に用いている。Lane 2 で実装したら、次を復元する義務を負う: (1) `--border-strong` / `--row-current` を globals.css `:root` へ追加し、doc 側の hex 表記を `#8a8480` / `#fff8e6` の backtick + `#` 付きへ戻して DS3 の突合対象に含める、(2) `src/components/patterns/ListShell.tsx` を新設したら 02-component-catalog.md ⑯ の canonical 記載を backtick 付き `` `src/components/patterns/ListShell.tsx` `` 表記へ戻して DS1 の対象化する。Opus P3-2（今すぐ `#` を復元する）はこの裁定により却下（unimplemented token を DS3 に含めると常時 ERROR になるため）。
+**この節は Final Review round 1 Coordinator 裁定（S-P2-1、`#`/backtick の有無で DS1/DS3 検査対象から意図的に外す表記）を撤回して置き換えたものである。** Codex（Human Gate 後の PR #31 review、P2-2）が、その表記細工は恒久的 false-green の温床になると指摘し、未実装候補（token 提案値・`ListShell` path）は canonical docs（00-foundations.md / 04-backbone.md / 02-component-catalog.md）から完全に撤去した（候補値は本 packet「設計判断」節 / `docs/design-system/reference/2026-08-23-current-design-analysis.md`「2026-09-03 提案値」節、mockup CSS に保持）。Lane 2 への申し送りは次のとおり: `--border-strong` / `--row-current` を `globals.css` `:root` に実装した時点で、00-foundations.md のカラーパレット表へ正式登録し DS3 の突合対象に含める。`src/components/patterns/ListShell.tsx` を新設した時点で、02-component-catalog.md ⑯ の canonical 記載を backtick 付き `` `src/components/patterns/ListShell.tsx` `` へ戻し DS1 の対象化する。
 
 ## Acceptance Criteria
 
 - 差分表（起票時実測節）が旧 Lane 1 の 6 成果 + 追加発見 2 件（件数文言 / DSR-16 宙ぶらりん 3 箇所）を漏れなく現状判定している。
-- `rg -c "^## DSR-22 " docs/design-system/01-decision-rules.md` = 1、`rg -c "DSR-01〜22" docs/design-system/01-decision-rules.md` = 1。
+- `rg -c "^## DSR-22 " docs/design-system/01-decision-rules.md` = 1、`rg -c '^# .*DSR-01〜22' docs/design-system/01-decision-rules.md` = 1（heading 限定 oracle。単純な `rg -c "DSR-01〜22"` は 更新履歴 の本文言及も拾い実測 2 になるため不使用 — Codex P2-4、2026-09-03）。
 - `rg -c "^## ⑯ " docs/design-system/02-component-catalog.md` = 1、`rg -c "16 パターン" docs/design-system/02-component-catalog.md` ≥ 2（title + 責務）、`rg -c "16 パターン" docs/design-system/README.md` ≥ 1。catalog ⑯ 本文に「必須構成」6 項目（toolbar 2 段 / 上下の件数・現在位置 / sticky header / 識別列 opt-in / 現在行 3 点 / `ListSkeleton`）が literal に存在する。
 - `rg -c "16 の原則" docs/design-system/04-backbone.md` ≥ 1、`rg -c "12 の原則" docs/design-system/04-backbone.md` = 0、`rg -c "16 行" docs/design-system/README.md` ≥ 1、`rg -c "12 行" docs/design-system/README.md` = 0。
 - `rg -c "DSR-16 として新設|原則 4（DSR-16|\+ DSR-16$" docs/design-system/04-backbone.md` = 0（badge 関連の宙ぶらりん参照 3 パターンに限定した negative oracle。現状は 3 パターンとも 1 件ずつ計 3 件ヒット — `DSR-16 として新設`:38、`原則 4（DSR-16`:43、`\+ DSR-16$`:51、`rg -c` 実測で確認済み）。
@@ -331,7 +359,7 @@ N/A — docs-only。理論引用の正確さと DSR/catalog 採番の非衝突�
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
-| DSR-22 新設 + 重複回避 | 01-decision-rules | AC rg `^## DSR-22 ` = 1、`DSR-01〜22` = 1 | — |
+| DSR-22 新設 + 重複回避 | 01-decision-rules | AC rg `^## DSR-22 ` = 1、`^# .*DSR-01〜22` = 1（heading 限定） | — |
 | catalog ⑯ 新設 + 必須構成 6 項目 | 02-component-catalog | AC rg `^## ⑯ ` = 1、`16 パターン` ≥ 2、6 項目 literal presence | — |
 | 04-backbone 原則 13〜16 + DSR-16 宙ぶらりん 3 箇所是正 | 04-backbone / README | AC rg `16 の原則` ≥ 1、`12 の原則` = 0、`DSR-16 として新設\|原則 4（DSR-16\|\+ DSR-16$` = 0（04-backbone）、`16 行` ≥ 1（README）、`12 行` = 0（README） | — |
 | mockup D 2 file（Lane 1a）+ 分析 doc + 旧 packet archive | reference / archive | AC fd = 2、`mockup-d-` ≥ 2、archive file 存在 | 棚卸し header/完了画面案は Human Gate render oracle |
@@ -424,6 +452,18 @@ Writer（Sonnet subagent、worktree isolation）が Lane 1a の規範文一式 +
 - O-P3-2: 04-backbone 原則 15 の太字要約を「現在の行は 3 点で示す。」のみへ戻し、ラベル/値の 3 段規範文は非太字の本文へ移動（Q8 引用・metric 行参照は維持）。
 
 **gate 実測（round 2 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 1 の WARN セットと diff 0 行）。`--target plan` → `結果: 全チェック通過`。`rg -n "px 直書き" docs/design-system` = 1 件、`rg -n "低視力" docs/quality/review-checklist.md` = 1 件、`rg -c "width:14px" mockup-d-stocktake.html` = 0 件を確認。原典 AC oracle（DSR-22 / ⑯ / 16の原則 / negative oracle / checklist / pin wording / `.down`）を再実行し全て期待値どおり。prettier `--check` は本ラウンド touched 全 6 file で整形済み。
+
+**Human Gate（owner 視認）+ Codex review 是正（PR #31 comment 5513654850、P1 0 / P2 4 / P3 3、Coordinator 全件 accept）**:
+
+- Codex P2-2（最優先、REVERSAL）: Final Review round 1 の Coordinator 裁定（`#`/backtick を外して未実装候補を DS1/DS3 検査対象から意図的に外す表記）を撤回。00-foundations.md から `--border-strong` / `--row-current` の 2 提案 token 行を削除、04-backbone.md の token 表を意味要件のみ（HEX なし）へ書き換え、02-component-catalog.md ⑯ の canonical を「なし（Lane 2 で ListShell を新設予定）」へ。候補値（構造線 cdc8c4 / 操作枠 8a8480 / 現在行 fff8e6）は packet「設計判断」節の新設「Token 候補値」節と `reference/2026-08-23-current-design-analysis.md`「2026-09-03 提案値」節（新設 §8）へ移動、mockup CSS はそのまま維持。操作枠 8a8480 のコントラストを WCAG 相対輝度で独立に再計算し、対 `--background` **3.53:1** / 対 `--card` **3.38:1** と確定（前ラウンド記録値 3.69:1 / 3.53:1 は誤りだった）。00-foundations.md の metric 行は「30px、既存 `text-3xl`」へ書き換え（新規提案ではなく既存実装の規範化と明記）。DS1/DS3 実測は本文参照。
+- Codex P2-1: catalog ⑩ の下部 skeleton を現行 canonical `{totalCount} 件中 {page} / {totalPages} ページ`（`ProductPagination.tsx:26-30` 実測確認済み、from/to 範囲なし）へ復元。範囲付き統一形は「Lane 2 移行対象（ProductPagination + 全 caller + test を一括移行、それまで規範は現行文言）」として ⑩・⑯・04 原則 14 に明記。mockup-d-lists.html の下部 pager も現行文言へ、上部の範囲文言は Lane 2 移行後の表示例と位置付けた。
+- Codex P2-3: DSR-22 に適用範囲・発動条件・画面→固定列 mapping 表（商品系 / 棚卸し / 在庫・履歴系 / 管理系）を一本化して pin し、⑯・04 原則 14・mockup からは同内容の重複記載を撤去して DSR-22 参照へ差し替え。
+- Codex P2-4: AC oracle を `rg -c "DSR-01〜22"` = 1（誤り、実測 2 = title + 更新履歴）から `rg -c '^# .*DSR-01〜22' docs/design-system/01-decision-rules.md` = 1（heading 限定、実測どおり PASS）へ訂正。旧 oracle は FAIL していたと正直に記録する。
+- Codex P3: 04-backbone / README 更新履歴の「wave 8 lane 1 refresh」表記を「UI 一覧の背骨 D Lane 1a refresh（PR #31、2026-09-03）」へ統一。原則 13/15 の「DSR-22 本文の token 値・実測を参照」を「packet / reference 分析 doc を参照」へ差替え（値が canonical から出たため）。
+- owner Human Gate 所感 → Gated Amendment 1（packet 本文に append-only 記録）: 廃番 Badge の可読性是正（DSR-22 に Badge/outline chip の 3:1 適用を明記 + mockup-d-lists.html の廃番 Badge を枠線〈対 `--background` 実測 3.53:1〉+ icon 付きへ変更）、lists の器は「基本的に良い」で採用、perPage 既定値裁定案は了承、「入力中」現在行 Badge の適用先は行編集画面（棚卸しカウント / 一括価格改定 / 入庫・返品交換の明細）に限定。既存 secondary Badge の sweep を Lane 3〜5 申し送りへ追加。
+- Plans.md「## Backlog（未了）」に、owner 所感（廃棄・破損画面のヘッダ備考欠如、2026-09-03）を Coordinator 指定の exact text で追記。
+
+**gate 実測（round 3 是正後）**: `bash scripts/doc-consistency-check.sh` → `結果: WARN 5 件（ERROR なし）`（round 2 の WARN セットと diff 0 行）。DS1 は `[INFO] DS1: src/ path 参照 38 件すべて実在`、DS3 は `[INFO] DS3: token HEX 整合 OK（21 件突合）` — いずれも `[ERROR]` なし（未実装候補を canonical から完全撤去したため「隠すものがない」）。`--target plan` → `結果: 全チェック通過`。訂正後 AC oracle `rg -c '^# .*DSR-01〜22' docs/design-system/01-decision-rules.md` = 1 を含め全 AC oracle を再実行し期待値どおり。prettier `--check` は本ラウンド touched 全 10 file（Plans.md 含む）で整形済み。
 
 Human Gate（owner の mockup 2 file 視認 + Ready 後の workflow_dispatch + merge）と Reviewed Content HEAD の確定は未実施（Coordinator/owner の後続作業）。PR は未作成のため PR link は Coordinator が別途記録する。
 

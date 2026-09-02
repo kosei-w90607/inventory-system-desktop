@@ -101,8 +101,21 @@
 - data table guides: GOV.UK Home Office design system（tables）/ USWDS table / Stanford sticky table
 - Microsoft Learn: accessible text requirements / Make Windows easier to see
 
+## 8. 2026-09-03 提案値（Lane 1a refresh、Codex P2-2 是正で canonical docs から分離）
+
+一覧の器・現在行・UI 部品枠のコントラスト（DSR-22）に関する token 候補値は、未実装のまま canonical docs（00-foundations.md / 04-backbone.md / 02-component-catalog.md）に置くと DS1/DS3 の false-green を招くため、本節と Lane 1a packet「設計判断」節、mockup CSS 変数にのみ保持する。Lane 2 で実装した時点で canonical docs へ正式登録する。
+
+| 用途 | token（新設） | 候補 HEX | 対 `--background`（`#fafaf9`）実測 | 対 `--card`（`#f5f5f4`）実測 |
+|---|---|---|---|---|
+| 構造線（`--border` の一段濃い版） | 既存 `--border` の値変更案 | `cdc8c4` | 1.66:1 | — |
+| 操作枠 | `--border-strong` | `8a8480` | **3.53:1** | **3.38:1** |
+| 現在行背景 | `--row-current` | `fff8e6` | 対 `--foreground`（`#1c1917`）本文 16.5:1 | — |
+
+**操作枠の実測再計算（Codex P3、2026-09-03）**: WCAG 2.x 相対輝度公式で `8a8480` の相対輝度を独立に算出すると L ≈ 0.2346。`#fafaf9` の相対輝度 L ≈ 0.9556 との比は (0.9556+0.05)/(0.2346+0.05) ≈ **3.53:1**。`#f5f5f4` の相対輝度 L ≈ 0.9125 との比は (0.9125+0.05)/(0.2346+0.05) ≈ **3.38:1**。前ラウンド（2026-09-03 Final Review round 1/2）の記録値「対 `--background` 3.69:1 / 対 `--card` 3.53:1」は誤りであり、本節の値（3.53:1 / 3.38:1）が正。
+
 ## 更新履歴
 
 | 日付 | 内容 |
 |---|---|
+| 2026-09-03 | §8「2026-09-03 提案値」を追加。DSR-22 の token 候補値（`--border-strong` = 8a8480、`--row-current` = fff8e6）を canonical docs から分離し本節へ集約。`8a8480` の対 `--background` / `--card` コントラストを WCAG 相対輝度で再計算し 3.53:1 / 3.38:1 へ訂正（Codex PR #31 comment 5513654850 P3） |
 | 2026-08-23 | 初版（Coordinator = Fable、mockup D 6 file と Lane 0 調査、owner 所感を集約） |

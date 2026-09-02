@@ -122,6 +122,7 @@
 - smoke E2E / visual regression の再評価トリガー（全画面横断 typography / density 変更時、Phase 3 の最初の画面横断 workflow 計画時、Phase 4 完了後の `v1.0.0` 候補前に再評価する契約。UI_TECH_STACK §7.2）。
 - Workflow 自走化 mechanical slice 2（PK4/PK5、drift grep test、hook 評価。design + implementation slice 1 は PR #162/#163 で完了、slice 2 は Appendix C として別 Plan Packet へ deferred）。
 - Workflow 自走化 第 3 層（自走ドライバ）: 単一エントリポイントが状態ファイル群から次の dependency-ready フェーズを決定 → 実行 → gate 通過で状態更新、を人間ゲートに当たるまでループする構想。前提 = 第 2 層完了、3 層構想の経緯は第 2 層着手時の Design Phase で decision-log / 設計書へ昇格予定。
+- 廃棄・破損画面にヘッダ備考（任意）がない（入庫 / 返品交換には備考あり、`64-ui-disposal.md` は明細の理由のみ。owner 所感 2026-09-03。DB 列追加を伴う R3 のため Lane 3〜5 で廃棄・破損画面を触る際に同乗候補、母集団は 35-biz と DB_DESIGN で裁定）
 
 ## ブロッカー
 
