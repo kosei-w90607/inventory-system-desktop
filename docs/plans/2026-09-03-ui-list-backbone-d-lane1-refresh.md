@@ -10,16 +10,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: ec80c57
-- Amendments: none
+- Amendments: 195e54a 465ca53 09a08c4 da50639 7486894
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（design docs + mockup HTML、worktree isolation）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 7486894
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner が mockup D 2 file（Lane 1a、下記「Lane 1a/1b 分割」参照）を開いて視認（render oracle）+ docs-only hosted final の owner `workflow_dispatch`（Ready 後、CI-TRIGGER-D1）+ merge
@@ -29,6 +29,8 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 2026-09-03: Sonnet Writer が隔離 worktree で Lane 1a を起草（content `26f4287` + Implementation Results `488a8c0`、Coordinator の Plans.md 表記訂正 `34fac41`）、Draft PR #31。Final Review round 1 = Sonnet P1 2 / P2 1 + Opus P1 2 / P2 5 / P3 3 → 是正 `6ecbc6e`、round 2 = Sonnet 0 / Opus P2 3 / P3 2 → 是正 `a58a291`、round 3 = Opus P1/P2 0（Review Response 節）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2）、Reviewed Content HEAD = round 2 是正 commit。次 = owner が mockup 2 枚を視認して番号付き未決項目を culling（介入 2/3）+ Codex ロジック面レビュー relay（relay 1/2）。
 
 2026-09-03: Human Gate（owner 視認、介入 2/3）+ Codex ロジック面レビュー（PR #31 comment 5513654850、relay 1/2 消費）= P1 0 / P2 4 / P3 3。Codex P2 は全件 accept: (1) catalog ⑩ の件数文言 pin「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」は既存 canonical `ProductPagination` の表示契約（`{totalCount} 件中 {page} / {totalPages} ページ`、from / to なし）を暗黙に変更しており「配置規約のみ」の互換性判断が不成立 → 本 PR の ⑩ skeleton は現行文言に戻し、範囲文言は Lane 2 の移行対象（component + 全 caller + test）として明記 (2) 提案 token / ListShell path を `#` / backtick の有無で DS1 / DS3 から外す表記細工は恒久的 false-green の温床 → **Coordinator の前裁定を撤回**し、未実装候補（token 提案値・path）は canonical docs（00 / 02 / 04）から外して packet / reference 分析 doc / mockup に置き、規範には意味要件（操作枠 3:1 以上・現在行専用 tone・ListShell は Lane 2 新設予定）だけを書く (3) DSR-22 / ⑯ / mockup 間で適用範囲・固定列条件が一意でない → 1 本に pin（ListShell = pagination を持つ一覧全体 / 上部件数・sticky header = 実表示が viewport を超えるとき / 識別列固定 = 横 overflow 時のみ / 画面→固定列 mapping を DSR-22 に列挙して決定済みにし、mockup の「Lane 2 で最終確定」表現を撤去）(4) AC oracle `rg -c "DSR-01〜22"` の期待 1 に対し実測 2（title + 更新履歴）なのに「全一致」と記録 → heading 限定 regex へ直し FAIL → PASS を正直に記録。P3 3 件（更新履歴の「wave 8 lane 1」誤記 / `--border-strong` の contrast 再計算 3.53:1 / 3.38:1 / 04 の参照先宙ぶらりん）も accept。owner 視認所感: lists の器は「基本的に良い」/ 廃番 Badge が薄い（黄み白の soft 背景が白地で見づらい、既存の灰色系 Badge も同根）→ DSR-22 の UI 部品枠 3:1 を Badge にも明示適用し mockup の廃番 Badge を是正、既存 secondary Badge の見づらさは Lane 3〜5 の sweep 項目に / perPage 既定値は妥当 / 「入力中」現在行 Badge の適用先は棚卸しカウント・一括価格改定・入庫明細等の行編集画面。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正後は Sonnet + Opus の軽い再確認 → owner 再視認（未決項目の番号回答を含む）→ 証跡付きの圧縮遷移で ready-hosted-final へ。
+
+2026-09-03: backtrack 後の是正列 = `195e54a`（Codex P2 4 / P3 3 + Gated Amendment 1 導入）→ Opus round 5（P1 1 / P2 2 / P3 1）→ `465ca53`（是正 + owner 裁定 A' / C / 色）→ Opus round 6（P1 1 / P2 3 / P3 1: contrast 注記が demo 色・A' 帯の境界 1.045:1・Why の or 残存・入出庫履歴の並べ替え）→ `9f5a0ba` → owner 再視認（A' 支持・A'+B 要望・廃番 Badge OK・lists 全同意）→ `09a08c4`（A'B）→ owner 要望（A の器に A' の帯）→ `da50639`（A'+器）→ owner 最終裁定「A'+器・帯の枠あり、完了画面 C」→ `7486894`。Sonnet 最終確認（`195e54a..7486894`）= P1/P2/P3 0、AC oracle 全 PASS、doc gate WARN 5 / ERROR 0（DS1 38 件・DS3 21 件とも実在）。Gated Amendment 1 は Human Gate 起源（Badge 3:1 / header 案 / 完了画面 C / 適用条件の pin）で Amendments 行に是正 commit を列記。本 state-only commit は forward 上限 3/3 を `implementing -> local-verified -> independent-review -> human-confirm -> ready-hosted-final` の圧縮遷移で消費: local-verified の証跡 = Writer 各 commit の doc gate + Sonnet の隔離 worktree 再実行 / independent-review の証跡 = Review Response 節（Sonnet 3 round + 最終確認、Opus 6 round、Codex 1 回）/ human-confirm の証跡 = PR #31 comment 5515283374（owner 裁定の Coordinator 記録、Gated Amendment 1 owner 裁定 sub-list）。介入 = 起票選定 1 + 視認 culling 1（複数往復は同一 gate 内）= 2/3、relay 1/2。次 = Ready 化 → owner の承認返信 + `workflow_dispatch`（介入 3/3）→ merge → 旧 Draft PR #2 close → closeout。
 
 ## Owner Effort Budget
 
@@ -509,4 +511,4 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 round 2（Sonnet = P1/P2/P3 0、Opus = P2 3 / P3 2）→ 全件 accept: 原則 16 圧縮で消えた「rem / em 基準、px 直書きを避ける」を復元 + DSR-22 に「低視力 L3」節新設 + checklist 4 観点目 / タイポ表に metric 行（28 or 30px、`text-3xl` 先行インスタンス）/ mockup A の「要入力」を badge 化・icon 16px / 上部 pager 行は text のみ / 原則 15 太字を現在行に限定。是正 commit `a58a291`。
 round 3（Opus 最終確認）= P1/P2 0 / P3 1（未入力カードで warning icon がラベル側と badge 側で重複、Lane 3〜5 の実装判断で足りる・記録のみ）。docs-only のため Coordinator mutation 再実測は非該当（AC oracle は Writer と両 reviewer が独立に再実行して一致）。Codex ロジック面レビューは Draft PR #31 で owner relay（relay 1/2）。
 
-- Findings Freeze: frozen at Final Review round 2（Sonnet P1/P2 = 0、Opus P1/P2 = 0）; post-freeze exceptions: none.
+- Findings Freeze: frozen at Final light check（Sonnet P1/P2/P3 = 0、Opus round 6 是正後 P1/P2 = 0）; post-freeze exceptions: Human Gate 起源の Gated Amendment 1（Badge 3:1・header 案・完了画面 C、owner 裁定）.
