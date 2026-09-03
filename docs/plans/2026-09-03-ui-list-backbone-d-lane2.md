@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
@@ -19,7 +19,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: 2a2ff14
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b)）+ Lane 1b mockup 5 file の視認（履歴系固定列 mapping の最終確定を含む）
@@ -616,5 +616,13 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 2026-09-04: **owner L3 run 2 = FAIL（途中停止）**（PR #32 comment 5527090250、head `916696c` / content `b9f0ba5`、100% 表示、介入 2/3 の同一 gate 内）。PASS = SegmentedControl 群枠（AC-L3-1 (f)）。懸念付き PASS = PLU 一括操作 caption（作用範囲と確認ありは読めるが、括弧書きが仕様注釈に見える。owner 提案 = 左寄せ 2 段 + 実件数）。FAIL = summary 帯と table header の 1 帯化（AC-L3-2）: `ListShell.tsx:73` root の `space-y-3` が summary 帯と table の間にも 12px の page 地を挟み、summary 文言は水平 inset なしで th `px-2` の左基準線と 8px ずれ、通常位置と sticky 位置で見え方が変わる。未実施 = dialog 残像（AC-L3-6 後段）/ DPI 125%・150% / 横 scroll / `?perPage=50` / forced-colors・focus / mockup 5 file + history 固定列 mapping / `9d11287` 例外承認。非 blocking 所感 = control surface と toolbar 地の明度差（Final Review round 1 P1-1 の `--card` 候補と同根、本 lane 不変）/ 帯文言「全453件のうち1〜100件を表示」案（DSR-22 統一形の改訂、P3 backlog）。Coordinator 所見: Amendment 2 S11 は surface と幅のみ規定し垂直隣接と水平 inset を書いておらず、mockup `.pager.top` も背景なし・`.tbl` と 24px gap の別構造のため「1 つの帯」を目で照合できる正本が無かった（Opus デザイン面レビューが 529 で未実施だった影響）。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正は Gated Amendment 3（S13〜S15）として起票し、Opus デザイン面レビュー（発注書駆動・read-only）→ Writer 是正 → Sonnet 独立 closure（新規 X21〜X23 含む）→ human-confirm 再遷移は post-impl STATECAP 2/2 到達のため content commit 同乗で materialize → L3 run 3 は canonical の最初から。
 
 2026-09-04 owner L3 run 2 FAIL → Gated Amendment 3（S13〜S15、`357941c`、Opus デザイン面 Plan Review P1 5 / P2 6 / P3 5 全件 accept）+ 追補（S16〜S19、`75d5e30`、closure round 1 Opus P1 3 / P2 5 / P3 4 → P1-2 は主張 accept・修正方向 rebut）+ closure round 2 是正（S20 / S21、`ec56d20`、Opus P1 0 / P2 2 / P3 3 全件 accept）: Writer content commit = `39f8683` `72f3f23` `76dc43e` / `b3c8b24` `13fad54` `4539416` / `b03958d` `2a2ff14`。独立 closure 3 round = Sonnet mutation X16〜X34 survivor 0、Opus デザイン面 P1/P2 = 0（round 3 は docs 字面 + test 強化のみで Opus 省略、Coordinator が S21 差分を実読）。`implementing -> local-verified -> independent-review -> human-confirm` を本 content commit（Ledger + 結果記入）に同乗で materialize（post-impl state-only 2/2 到達のため、先例 `2026-07-17-backup-migration-failure-contract-design.md:259`）。Reviewed Content HEAD = `2a2ff14`。L3 run 3 は canonical の最初から。
+
+2026-09-04: **owner L3 run 3 = FAIL（AC-L3-5 途中停止）**（head `a21d2a5` / content `2a2ff14`、介入 2/3 の同一 gate 内）。PASS = AC-L3-1 の入庫・廃棄・進行中棚卸し・ホーム・商品一覧・dialog / sidebar、AC-L3-2 の縦 scroll 中の summary + thead 一帯化・現在位置・罫線・横 overflow 右端追随、AC-L3-3 の表示件数 100 → 50 → 100、AC-L3-4 の forced-colors 検索欄 focus / sticky 帯境界 / 入出庫履歴 cell button focus、AC-L3-6 の PLU caption / dialog 文言 / cancel 後の反対文言残像なし。横 overflow では DSR-17 の `<main>` 単一 scroll により title / toolbar も横へ流れるが、重なり・帯切れはなく既存設計どおりとして懸念付き PASS。OS DPI 125% は崩れなしを確認した一方、owner はノート PC の通常運用として大きすぎ、operator が Windows 設定を切り替える想定も現実的でないと判定。in-app 特大 × OS 125% / OS 150% / form 150% は未実施で、forced-colors も今回初めて追加された実運用外の試験として mandatory 継続を撤回したいとの所感を記録（既実装の安全網は無害かつ描画 PASS のため、削除是正は要求しない）。
+
+AC-L3-5 の forms-a は比較 panel 内の旧 16px 側が、外周余白との釣合い上、新 24px 側より自然という所感。ただし実画面の PageShell 24px は AC-L3-1 で採否済みのため runtime FAIL にはしない。forms-b は棚卸し ListShell 方向・amber progress とも異論なし（section 20px は旧見本の事実表示で採否対象外）。history は固定列を含む現実装を維持する方向で、入出庫履歴の明細数省略は可、在庫少一覧は現実装の `状態 → 在庫数 → 売価` が自然。操作ログ mockup の `実行者 店主` は DB に field がなく架空で、期間 filter は `開始日` / `終了日` を同居させるなら `期間` group 化が候補、一覧と整合性補正 detail は現実装の概要列 + semantic list の方が優秀で nested table / 列見出し化は不採用。商品一覧 mockup の角丸 table 外枠は見た目がすっきりする一方、runtime は sticky を壊す `overflow:hidden` を避ける既決 trade-off があるため本 amendment では実装しない。
+
+**停止理由** = `mockup-d-home-sales-admin.html` が Lane 2 の token / border / spacing 比較を越え、既存画面の情報・導線・データ契約を独自に再設計しており、「現状同期」の AC-L3-5 oracle として使えない。Home は説明文付き quick action の方向自体は良いが、入庫 / 返品・交換 / 手動販売出庫 / 廃棄・破損を落としたのは意図した省略ではなく mockup drift、非 link card の「すぐ確認」は誤誘導。日次は現実装の別置き日次/月次 tabs・前日/翌日・summary（売上合計 / 販売点数 / 売上明細数 / 前日比）・bottom-right ExportBar を維持し、平均単価 / 部門数への置換、filter card への tabs / export 取込み、全 section の表化は不採用。前日比の正負色は runtime 実装済み。公式 Z001 / Z002 / Z005 section も runtime に存在するが、保存済み Z001 summary line の gross / net 以外は DTO / UI に未公開であり別 R3 の機能 gap 候補、Z004 由来の部門小計を商品明細から別表へ分離する案も後続候補。印刷は日次 / 月次とも Phase 4 の disabled placeholder で印刷紙面未実装、CSV は backend / frontend と自動 test はあるが owner native 出力未確認。月次は runtime に公式部門集計の説明と金額右端の列順があり、mockup の説明欠落・`部門 / 売上金額 / 構成比` への置換は不採用、商品ランキング 1 位 badge のみ肯定。Backup は現行導線を維持し、mockup から採用候補は page subtitle / `YYYY-MM-DD HH:mm` 表示、最新 badge は現実装済み、復元 dialog も現実装が対象日時を含む。保存先 card / 今すぐバックアップ / 一覧見出しを崩す案は不採用。
+
+owner が是正方針 A（mockup を現実装 + Lane 2 の比較差分に限定し、上記所感・採否理由を packet へ残す）を明示選択したため、`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。次は Gated Amendment 4 を起票し、mockup の架空 field / 未実装機能 / 独自共通化を除去、実装済み・後続候補・本 Lane の視認対象を分離してから docs gate / independent review / canonical L3 を再開する。
 
 - Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）.
