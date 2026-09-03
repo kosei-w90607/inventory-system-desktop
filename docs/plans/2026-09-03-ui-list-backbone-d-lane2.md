@@ -10,16 +10,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
-- Amendments: 4401112
+- Amendments: 4401112 b318240
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: b9f0ba5
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b)）+ Lane 1b mockup 5 file の視認（履歴系固定列 mapping の最終確定を含む）
@@ -558,6 +558,10 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 
 2026-09-03: **owner L3 run 1 = FAIL**（PR #32 comment 5526295095、介入 2/3 の同一 gate 内）。PASS = 入庫の余白・階層・sidebar / 125%・150% / 色の階層（懸念付き）/ 商品一覧の sticky 動作と罫線。FAIL 4 点 = (1) SegmentedControl の未選択肢が操作群に見えない（AC-L3-1 (f) 否）(2) PLU 一括操作の作用範囲と確認ありが押す前に分からない (3) sticky 帯が `bg-muted` で本文と近く、cell 単位の背景が左右端で切れて 1 つの帯に見えない（AC-L3-2）(4) `PLU 対象から外す` dialog の退出 200ms 中に `bulkTarget` が null → fallback true へ反転し反対文言が残像表示（`ProductListPage.tsx:303-309`、`b2389b19` 起源の latent bug、P2）。未実施 = AC-L3-2 の DPI / 横 scroll / forced-colors、AC-L3-3、AC-L3-4 の商品一覧、AC-L3-5、`9d11287` 例外承認。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正は Gated Amendment 2（S9〜S12）として起票し、Writer 是正 → Sonnet 独立 closure（新規 X17〜X20 含む）+ Opus デザイン面軽確認 → human-confirm 再遷移（post-impl state-only 2/2）→ L3 run 2 は canonical の最初から。
 
+2026-09-03: Gated Amendment 2 の Writer 是正 = `c1928c9`（S9〜S12 実装）/ `7136d53`（SC6〜SC9、S12 は是正前に bug 再現を確認してから TDD）/ `4fda5a2`（`--list-head` 登録 + mockup 同期）/ `b9f0ba5`（caption の作用範囲を「絞り込みに一致する商品すべて・他ページ含む」へ精密化 — Coordinator が `bulk_set_plu_target` の作用範囲を実読して突合）。Probe 4 は Writer 計測不能（L3 run 2 が oracle）。独立 closure（Sonnet fresh context、隔離 worktree）= X17〜X20 + X16 再測 全 kill（survivor 0、baseline 349 test green）、S9〜S12 の着地 anchor 付き closed、doc gate ERROR 0 / WARN 5（pre-existing）、P1/P2/P3 = 0。Opus デザイン面の軽確認は API 529 Overloaded ×2 で起動できず**未実施**（座組上の必須 round ではなく、Final Review round 1 の Opus 検分と owner の render oracle〈L3 run 2〉で代替。service 回復後に owner が望めば実施可）。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（**post-impl state-only 2/2 = 上限到達、forward 手動計上 3/3**。以後の `human-confirm -> ready-hosted-final` は L3 PASS 後の content commit に同乗する〈PR #30 先例〉）。Reviewed Content HEAD = `b9f0ba5`。次 = owner L3 run 2（AC-L3-1〜6、canonical の最初から、介入 2/3 のまま）。
+
 2026-09-03 Final Review round 1: Codex（PR #32 comment 5525240043）P1 0 / P2 4 → 全件 accept（P2-1 Amendments → 本 commit で `4401112` 記録 / P2-2 `9d11287` subject → 履歴書換え不採用・手動計上 + owner 承認の例外 / P2-3 docs drift 4 箇所 → `ef782b8` / P2-4 SC2b occurrence 43 + allowlist → `ef782b8`）。Opus デザイン面 P1 1 / P2 6 / P3 4 → 全件 accept（P1-1 `--card` 同色は記録済み逸脱 + AC-L3-2 判定項目、実装維持 / P2-1 DSR-22 上部文言 / P2-2・P2-3 mockup 保留項目 3・4 / P2-4 帯 `truncate` + AC-L3-2 に可読性・横 scroll 項目 / P2-5 横 scroll 時の帯 → AC-L3-2 / P2-6 mockup ボタン枠色を実装と 1:1 / P3-1 ListSkeleton 枠 → S8 (vii) / P3-2 bulkError を toolbarSecondary 内へ / P3-3 `space-y-3` 補記 / P3-4 `--d-ctl` 重複削除）。Sonnet mutation 独立再実測 X1〜X15 kill / X16 survivor（`[&_tbody_td]:border-b` が `[&_tbody_td]:border-border` に部分一致）→ `ListShell.test.tsx` を token 完全一致へ（test-only）。是正 = `2c9d77c`（test）/ `e60fa2a`（ui）/ `ef782b8`（docs）。独立 closure = X16 / X15 / X3 変種 / X9 全 kill、着地 14 件 closed、P1/P2/P3 = 0。
 
-- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: none.
+2026-09-03 owner L3 run 1 FAIL → Gated Amendment 2（S9〜S12、`b318240`）: 是正 `c1928c9` `7136d53` `4fda5a2` `b9f0ba5`。独立 closure = X17〜X20 + X16 全 kill、着地 closed、P1/P2/P3 = 0。Opus 軽確認は 529 ×2 で未実施（L3 run 2 を oracle）。
+
+- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）.
