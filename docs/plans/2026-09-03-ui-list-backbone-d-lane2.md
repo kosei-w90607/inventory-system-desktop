@@ -10,16 +10,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
-- Amendments: none
+- Amendments: 4401112
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: ef782b8
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b)）+ Lane 1b mockup 5 file の視認（履歴系固定列 mapping の最終確定を含む）
@@ -523,6 +523,10 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 
 2026-09-03 Plan Review round 3（最終、closure）: Sonnet = P1/P2/P3 0（round 2 の 18 件 closed、cross-section 整合・marker 0 を確認）。Opus = P1 0 / P2 1 / P3 2（round 2 の 15 件 closed、最終 class set は承認 mockup `:33-37,65,85-86` を記録済み逸脱 3 件以外で再現すると確認）。P2-A（`stickyHeader` のみ真で `topSummary` 偽のとき th が `top-10` 固定で 40px 浮く）→ D-2 (iii) / Spec Contract / SC4d を「summary 帯を描画するときのみ `top-10`、それ以外 `top-0`」へ条件付け。P3-A（Impact Lenses / Coverage Ledger / Trace Matrix の「`border-separate` で境界線を残す」等の表現 drift 3 箇所）→ cell 罫線へ統一。P3-B（th font-weight / padding、td height、th box-shadow の既存差が未記録）→ D-2 に記録済み逸脱として追記。round 天井 3 に到達したため追加 round は設けず、是正 3 件は契約の条件付けと表現統一のみで新規設計を含まないことを Coordinator が実読で確認して収束とする（介入 1/3 = 起票選定のまま）。
 
-2026-09-03: Plan Gate 収束（round 3/3、是正 commit = round 1 `1711667` / round 2 `b62b23f` / round 3 は直前の content commit）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移（forward state-only 1/3）: plan-approved の証跡 = Review Response 節（Sonnet 3 round + Opus 3 round、最終 P1/P2 = 0 に是正済み）、Plan Commit = plan-first commit `244a5dd`。Writer = Sonnet subagent（worktree isolation、発注書は Coordinator 起草、runtime → docs → mockup の順、D-8 descope 経路あり）。
+2026-09-03: Plan Gate 収束（round 3/3、是正 commit = round 1 `1711667` / round 2 `b62b23f` / round 3 は直前の content commit）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移（forward state-only 1/3）: plan-approved の証跡 = Review Response 節（Sonnet 3 round + Opus 3 round、最終 P1/P2 = 0 に是正済み）、Plan Commit = plan-first commit `244a5dd`。Writer = Sonnet subagent（worktree isolation、発注書は Coordinator 起草、runtime → docs → mockup の順、D-8 descope 経路あり）。**記録訂正（Codex P2-2）**: `9d11287` の subject は Coordinator の起票ミスで canonical token `state-only遷移` を欠き、`check-workflow-git.sh` の STATECAP 計数に載らない。`9d11287` 以降の 15 commit は Codex / Opus / mutation 再実測 / PR head が SHA で参照しており、履歴書換えは証跡を無効化するため不採用（SHA 書換え禁止の先例 PR #85）。forward state-only は Coordinator が手動計上し `9d11287` = 1/3、以後の遷移は canonical subject で積む。この例外の承認を Human Gate の承認依頼に含める。
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+2026-09-03: Sonnet Writer が worktree で S1〜S8 を実装（content 11 commit、HEAD `467fe67`）。Writer 報告の判断 2 件（`generate_traceability` T1/T4 FAIL、旧 `ProductPagination` path の function-design 残存）を Gated Amendment 1（`4401112`、Coordinator 起票: T4 は tool 指示どおり新規 test 3 file を `UI-01a` へ紐付け・baseline 不変・src-tauri 不可侵維持 / T1 は 90-traceability 再生成 / 旧 path sweep / Probe 2 計測不能の記録）として packet に記録し、Writer が `c036bf4` で対応（gate 全 green、traceability check OK）。push → Draft PR #32。Final Review round 1 = Codex（PR #32 comment 5525240043、relay 1/2 消費）P1 0 / P2 4（Amendments 未記録 → 本 commit で記録 / `9d11287` subject 非 canonical → 上記の例外 / docs drift 4 箇所 / SC2b が 43 箇所を固定しない）+ Opus デザイン面 P1 1（runtime `--card` = `--muted` = #f5f5f4 で toolbar 箱と帯が同色、承認 mockup は `--card:#fff` の canonical 逸脱 → 実装は 00-foundations に忠実なため維持、記録済み逸脱 + AC-L3-2 の owner 判定項目、`--card` 見直しは Lane 3〜5 候補）/ P2 6 / P3 4 + Sonnet mutation 独立再実測（隔離 worktree）X1〜X15 kill / **X16 survivor**（`toContain` の部分文字列一致、test-only の oracle 強化）。全件 accept、Writer 是正 `2c9d77c` `e60fa2a` `ef782b8`（Coordinator 返信 = PR #32 comment 5525596726）。独立 closure（Sonnet fresh context、隔離 worktree）= X16 / X15 / X3 変種（Codex P2-4）/ X9 を再注入し全 kill、是正 14 件の着地を anchor 付きで確認、doc gate ERROR 0 / WARN 5（pre-existing）、P1/P2/P3 = 0。`implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（post-impl state-only 1/2、forward 手動計上 2/3）: local-verified の証跡 = Writer 各 commit の gate（typecheck / lint / test 1226 / format / build / doc-consistency-check / plan / traceability）+ closure の doc gate 再実行 / independent-review の証跡 = Review Response 節 + PR #32 comment 5525240043・5525596726。Reviewed Content HEAD = `ef782b8`。次 = owner Windows native L3（AC-L3-1〜5）+ mockup 5 file 視認（介入 2/3）。
+
+2026-09-03 Final Review round 1: Codex（PR #32 comment 5525240043）P1 0 / P2 4 → 全件 accept（P2-1 Amendments → 本 commit で `4401112` 記録 / P2-2 `9d11287` subject → 履歴書換え不採用・手動計上 + owner 承認の例外 / P2-3 docs drift 4 箇所 → `ef782b8` / P2-4 SC2b occurrence 43 + allowlist → `ef782b8`）。Opus デザイン面 P1 1 / P2 6 / P3 4 → 全件 accept（P1-1 `--card` 同色は記録済み逸脱 + AC-L3-2 判定項目、実装維持 / P2-1 DSR-22 上部文言 / P2-2・P2-3 mockup 保留項目 3・4 / P2-4 帯 `truncate` + AC-L3-2 に可読性・横 scroll 項目 / P2-5 横 scroll 時の帯 → AC-L3-2 / P2-6 mockup ボタン枠色を実装と 1:1 / P3-1 ListSkeleton 枠 → S8 (vii) / P3-2 bulkError を toolbarSecondary 内へ / P3-3 `space-y-3` 補記 / P3-4 `--d-ctl` 重複削除）。Sonnet mutation 独立再実測 X1〜X15 kill / X16 survivor（`[&_tbody_td]:border-b` が `[&_tbody_td]:border-border` に部分一致）→ `ListShell.test.tsx` を token 完全一致へ（test-only）。是正 = `2c9d77c`（test）/ `e60fa2a`（ui）/ `ef782b8`（docs）。独立 closure = X16 / X15 / X3 変種 / X9 全 kill、着地 14 件 closed、P1/P2/P3 = 0。
+
+- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: none.
