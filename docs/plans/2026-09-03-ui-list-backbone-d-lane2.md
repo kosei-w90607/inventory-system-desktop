@@ -348,7 +348,114 @@ Contract ID: SPEC-UILB-D-LANE2-2026-09-03
 
 ## Implementation Results
 
-（Writer が記入。S2 の before/after 表は機械抽出、Probe 1〜3 の結果を列挙）
+### S2 before/after（機械抽出、`rg -n --glob '*Page.tsx' --glob '!*.test.tsx' 'className="[^"]*\bp-6\b[^"]*"' src/features | sort`）
+
+before（HEAD `9d11287`、45 hit）:
+
+```
+src/features/backup-restore/BackupRestorePage.tsx:333:    <div className="min-h-screen space-y-6 p-6">
+src/features/csv-import/CsvImportPage.tsx:40:    <div className="min-h-screen space-y-6 p-6">
+src/features/daily-sales/DailySalesPage.tsx:76:    <div className="min-h-screen space-y-6 p-6">
+src/features/disposal/DisposalPage.tsx:274:    <div className="space-y-5 p-6">
+src/features/home/HomePage.tsx:61:    <div className="min-h-screen space-y-6 p-6">
+src/features/integrity-check/IntegrityCheckPage.tsx:183:    <div className="relative min-h-screen space-y-6 p-6">
+src/features/integrity-check/IntegrityCheckPage.tsx:438:          className="absolute inset-0 z-40 flex items-center justify-center bg-background/85 p-6 backdrop-blur-[1px]"
+src/features/integrity-check/IntegrityCheckPage.tsx:440:          <div className="w-full max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-lg">
+src/features/inventory-records/CsvImportRecordDetailPage.tsx:104:    <div className="space-y-5 p-6">
+src/features/inventory-records/CsvImportRecordDetailPage.tsx:70:      <div className="space-y-4 p-6">
+src/features/inventory-records/CsvImportRecordDetailPage.tsx:80:      <div className="space-y-4 p-6">
+src/features/inventory-records/DisposalRecordDetailPage.tsx:62:      <div className="space-y-4 p-6">
+src/features/inventory-records/DisposalRecordDetailPage.tsx:72:      <div className="space-y-4 p-6">
+src/features/inventory-records/DisposalRecordDetailPage.tsx:94:    <div className="space-y-5 p-6">
+src/features/inventory-records/InventoryRecordsPage.tsx:143:    <div className="space-y-5 p-6">
+src/features/inventory-records/ManualSaleRecordDetailPage.tsx:64:      <div className="space-y-4 p-6">
+src/features/inventory-records/ManualSaleRecordDetailPage.tsx:74:      <div className="space-y-4 p-6">
+src/features/inventory-records/ManualSaleRecordDetailPage.tsx:96:    <div className="space-y-5 p-6">
+src/features/inventory-records/ReceivingRecordDetailPage.tsx:56:      <div className="space-y-4 p-6">
+src/features/inventory-records/ReceivingRecordDetailPage.tsx:66:      <div className="space-y-4 p-6">
+src/features/inventory-records/ReceivingRecordDetailPage.tsx:88:    <div className="space-y-5 p-6">
+src/features/inventory-records/ReturnRecordDetailPage.tsx:111:    <div className="space-y-5 p-6">
+src/features/inventory-records/ReturnRecordDetailPage.tsx:79:      <div className="space-y-4 p-6">
+src/features/inventory-records/ReturnRecordDetailPage.tsx:89:      <div className="space-y-4 p-6">
+src/features/inventory-records/StocktakeRecordDetailPage.tsx:106:    <div className="space-y-5 p-6">
+src/features/inventory-records/StocktakeRecordDetailPage.tsx:72:      <div className="space-y-4 p-6">
+src/features/inventory-records/StocktakeRecordDetailPage.tsx:82:      <div className="space-y-4 p-6">
+src/features/manual-sale/ManualSalePage.tsx:299:    <div className="space-y-5 p-6">
+src/features/monthly-sales/MonthlySalesPage.tsx:75:    <div className="min-h-screen space-y-6 p-6">
+src/features/operation-logs/OperationLogsPage.tsx:329:    <div className="space-y-5 p-6">
+src/features/plu-export/PluExportPage.tsx:358:    <div className="space-y-5 p-6">
+src/features/products/PriceRevisionPage.tsx:45:    <div className="space-y-4 p-6">
+src/features/products/ProductFormPage.tsx:189:      <div className="space-y-4 p-6">
+src/features/products/ProductFormPage.tsx:198:      <div className="space-y-4 p-6">
+src/features/products/ProductFormPage.tsx:218:    <div className="space-y-4 p-6">
+src/features/products/ProductImportPage.tsx:18:    <div className="space-y-4 p-6">
+src/features/products/ProductListPage.tsx:90:    <div className="space-y-4 p-6">
+src/features/receiving/ReceivingPage.tsx:276:    <div className="space-y-5 p-6">
+src/features/return-exchange/ReturnExchangePage.tsx:407:    <div className="space-y-5 p-6">
+src/features/stock-inquiry/StockInquiryPage.tsx:87:    <div className="space-y-4 p-6">
+src/features/stock-movements/StockMovementsPage.tsx:72:    <div className="space-y-4 p-6">
+src/features/stocktake/StocktakePage.tsx:215:    <div className="min-h-screen space-y-6 p-6">
+src/features/stocktake/StocktakePage.tsx:926:    <div className="min-h-screen space-y-6 p-6">
+src/features/suppliers/SupplierManagementPage.tsx:33:    <div className="space-y-4 p-6">
+src/features/threshold-settings/ThresholdSettingsPage.tsx:183:    <div className="min-h-screen space-y-6 p-6">
+```
+
+after（本 commit、2 hit = 非 root の card / overlay のみ、残存許容）:
+
+```
+src/features/integrity-check/IntegrityCheckPage.tsx:439:          className="absolute inset-0 z-40 flex items-center justify-center bg-background/85 p-6 backdrop-blur-[1px]"
+src/features/integrity-check/IntegrityCheckPage.tsx:441:          <div className="w-full max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-lg">
+```
+
+file 数 `rg -l "<PageShell" src/features --glob '!*.test.tsx' | wc -l` = 28、箇所数 `rg -c "<PageShell" src/features --glob '!*.test.tsx' | awk -F: '{s+=$2} END{print s}'` = 43（AC2 一致）。
+
+### Probe 1（S2、`min-h-screen` 依存、実装前確認）
+
+9 root（8 file + StocktakePage の 2 root）を `rg -n "min-h-screen|sticky bottom|absolute inset|sticky top|fixed "` で確認。footer 固定・中央寄せへの依存は 0 件。唯一の依存は `IntegrityCheckPage.tsx:438` の `absolute inset-0`（補正確認オーバーレイ）で、その祖先 root（`:183`）に `relative` が必要。→ `PageShell` 本体には `min-h-screen` を入れず、`IntegrityCheckPage` のみ `className="relative"` で補った（実装済み）。
+
+### Probe 2（S4、overflow 上書き、商品一覧 perPage 200 + 最長商品名）
+
+**計測不能**。理由: worktree の `node_modules` に Playwright/Puppeteer 等のブラウザ計測ツールが存在せず（`ls node_modules/.bin | grep -i playwright` = 0 件）、Writer 実行環境（sandboxed agent、GUI ブラウザなし）から実ブラウザでの幅計測ができない。`npm run dev`（Vite 単体）の起動自体は確認済み（正常起動、`VITE ready`）だが、Tauri command が mock されないため画面は空になり描画確認も伴わない。
+
+代替として静的構造分析を行った: `ProductTable.tsx` の商品名列は既に `min-w-[14rem] whitespace-normal`（可変長テキストの折り返し設定）を持ち、他列（商品コード・部門・数量系・PLU バッジ）は固定長コンテンツで無制限幅にならない。`table.tsx` 既定の `TableCell` は `whitespace-nowrap` だが商品名列はこれを上書き済み。したがって perPage 200 + 最長商品名でも table が `<main>` 幅を超えて水平 overflow する可能性は低いと推測されるが、これは実測ではない。**Coordinator 確認事項**: AC-L3-2 の Windows native L3 実測で足りるか、別途ブラウザ計測環境を用意して Probe 2 を独立再実行するか判断を仰ぐ。実測できないまま `stickyHeader` を pilot で有効のまま実装した（D-2 の記載どおり、overflow 実発生の証拠が無い段階では方式を固定しない前提を維持）。
+
+### Probe 3（S3、0 件表示、8 caller）
+
+8 caller（Stocktake / InventoryRecords / OperationLogs / IntegrityCheck / PriceRevision / StockInquiry / StockMovements、および移設前の商品一覧）すべてで `items.length === 0` 分岐が `Pagination` の代わりに `EmptyState`（または同等の空表示）を描画しており、`Pagination` が `totalCount === 0` で呼ばれる実行パスは存在しない（8 file を `rg` で確認）。D-3 の「0 件」契約は 8 caller の実運用では発火せず、`Pagination` 単体 test（SC3b）でのみ検証される。pilot（`ListShell` 経由の商品一覧）も D-5 の `totalCount > 0` gating により 0 件時は上下とも非描画で、こちらも「0 件」文言のパスを通らない（SC5b で確認済み）。
+
+### DS1 / DS3 実在件数（before/after、`doc-consistency-check.sh` 実測）
+
+- DS1（design-system docs 内 `src/` path 実在）: baseline（HEAD `9d11287`）38 件 → 本 commit 40 件（+2、`Pagination.tsx` / `ListShell.tsx` の canonical path 追加）
+- DS3（token HEX 整合、00-foundations ↔ globals.css）: baseline 21 件 → 本 commit 23 件（+2、`--border-strong` / `--row-current` の正式登録）
+
+### AC9 gate 結果まとめ
+
+| gate | 結果 |
+|---|---|
+| `npm run typecheck` | pass |
+| `npm run lint` | pass |
+| `npm run test` | pass（160 file / 1226 test） |
+| `npm run format:check` | pass（`npm run format` を 1 回適用後） |
+| `npm run build` | pass |
+| `bash scripts/doc-consistency-check.sh` | ERROR 0（WARN 5、いずれも本 lane 起因ではない pre-existing） |
+| `bash scripts/doc-consistency-check.sh --target plan` | pass |
+| `git diff --stat 9d11287 -- src/lib/bindings.ts src-tauri` | 空（0 行） |
+| `cd src-tauri && cargo run --bin generate_traceability -- --check` | **FAIL**（詳細下記） |
+
+### 未解決事項（Coordinator 判断待ち）
+
+**generate_traceability T1/T4 と src-tauri 不可侵の衝突**: 本 lane で新設した shared component の contract test 4 file のうち、`PageShell.test.tsx` / `src/styles/globals.test.ts` / `src/test/page-root-pageshell-sweep.test.ts` の 3 file は REQ-nnn / UI-nn を持たない。これは既存の `PageHeader.test.tsx` 等 5 file と同型の「画面非依存の共通部品」で、`generate_traceability.rs:40-42` のコメントが明記する意図的除外パターンに合致する。4 file 目 `ListShell.test.tsx` は唯一の実採用画面が UI-01a（商品一覧 pilot）であることを header comment に明記し、baseline 差分を 4→3 へ縮小した（`8a4d07e`〜本 commit 群で反映済み）。
+
+残り 3 file 分は `FE_UNREFERENCED_BASELINE`（`src-tauri/src/bin/generate_traceability.rs:43`）を 22→25 へ更新して再生成（`docs/function-design/90-traceability.md` の T1 drift も同時に解消）しない限り `--check` が通らない。しかしこの定数は `src-tauri/**` 配下にあり、発注書の「変更禁止: ... `src-tauri/**` と `src/lib/bindings.ts`」および AC9 の `git diff --stat -- src/lib/bindings.ts src-tauri` = 0 行と直接衝突する。
+
+contract を独断で変更しない方針に従い、**src-tauri 配下は未変更のまま stop した**（`git diff --stat 9d11287 -- src-tauri` は空のまま）。Coordinator 判断選択肢:
+
+(a) 本 lane に限り `FE_UNREFERENCED_BASELINE` 22→25 の 1 行更新 + `90-traceability.md` 再生成を Gated Amendment として許可する（範囲: baseline 定数と生成物のみ、他の src-tauri ロジック変更なし）。
+(b) 4 file の一部を既存の REQ/UI 参照済み test file へ統合し、新規 unreferenced file 数を増やさない設計に作り直す（TDD 構造・可読性は低下する）。
+(c) T4 failure を記録したまま Final Review（Codex）へ引き継ぎ、Codex 側の判断・権限で src-tauri 変更を検討する。
+
+現状は `generate_traceability -- --check` が ERROR 2 件（T1 drift / T4 baseline 22 vs 現在 25）で fail する状態のまま、他の全 gate は green。
+
 
 ## Review Response
 
