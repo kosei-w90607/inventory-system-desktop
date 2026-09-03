@@ -1,6 +1,7 @@
 // src/components/patterns/ListShell.test.tsx
 //
-// SC4a〜SC4e: 一覧の器（catalog ⑯、D-2 / D-5）の契約 test。
+// SC4a〜SC4e: 一覧の器（catalog ⑯、D-2 / D-5）の契約 test。Lane 2 時点の唯一の実採用画面は
+// 商品一覧（UI-01a pilot、ProductListPage.tsx）。
 // Plan Packet: docs/plans/2026-09-03-ui-list-backbone-d-lane2.md S4
 // Test Design Matrix: docs/plans/test-matrices/2026-09-03-ui-list-backbone-d-lane2.md SC4a〜SC4e
 
