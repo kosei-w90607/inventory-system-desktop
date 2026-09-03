@@ -603,28 +603,27 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **使いどころ**: 件数の多い一覧の前後送り。1 ページあたり表示件数（perPage）と前へ / 次へを提供する。viewport を超える一覧（DSR-22）は table 上部にも件数 + 現在位置を置く。
 
-**canonical**: `src/features/products/components/ProductPagination.tsx`（`:26-30`、前へ / 次へ + 件数表示、下部 pager。現行文言は `{totalCount} 件中 {page} / {totalPages} ページ` で from/to 範囲を含まない）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `PRODUCT_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text 必須、pager ボタンは任意）は DSR-22 の裁定に基づく追加方針で、viewport 超過一覧のみ opt-in（実装は Lane 2）。
+**canonical**: `src/components/patterns/Pagination.tsx`（`Pagination` = 前へ / 次へ + 件数表示の下部 pager、`PaginationSummary` = 上部 text-only variant。Lane 2 で旧 features/products 配下の `ProductPagination` から移設し 8 caller を一括更新、D-9）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `PRODUCT_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text 必須、pager ボタンは任意）は DSR-22 の裁定に基づく追加方針で、viewport 超過一覧のみ opt-in。
 
-**構造**（下部は現行 canonical と一致。上部 variant の範囲文言は Lane 2 移行対象 — 下記「件数文言」参照）:
+**構造**:
 
 ```tsx
-// 上部 variant（viewport 超過一覧のみ opt-in、DSR-22。件数 + 現在位置 text は必須、pager ボタンは任意。
-// 範囲文言〈{from}〜{to} 件目〉は Lane 2 移行対象。それまでは下部と同じ現行文言でよい）
-<div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-  <div className="font-medium text-foreground">
-    {totalCount.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ
-  </div>
+// 上部 variant（PaginationSummary、viewport 超過一覧のみ opt-in、DSR-22。件数 + 現在位置 text のみ、pager ボタンは持たない）
+<div className="text-base font-semibold text-foreground tabular-nums">
+  {totalCount.toLocaleString("ja-JP")} 件中 {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件目 · {page} / {totalPages} ページ
 </div>
 
-// ページ送り（component 本体、下部。現行 canonical、ProductPagination.tsx:26-30 と一致）
+// ページ送り（component 本体、下部。Pagination.tsx canonical）
 <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-  <div>{totalCount.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ</div>
+  <div className="tabular-nums">
+    {totalCount.toLocaleString("ja-JP")} 件中 {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件目 · {page} / {totalPages} ページ
+  </div>
   <div className="flex items-center gap-2">
     <Button variant="outline" size="sm" disabled={!canPrev} aria-label="前のページ" onClick={…}>
       <ChevronLeft aria-hidden="true" />
       前へ
     </Button>
-    <span className="min-w-20 text-center font-medium text-foreground">{page} / {totalPages} ページ</span>
+    <span className="min-w-20 text-center font-medium text-foreground tabular-nums">{page} / {totalPages} ページ</span>
     <Button variant="outline" size="sm" disabled={!canNext} aria-label="次のページ" onClick={…}>
       次へ
       <ChevronRight aria-hidden="true" />
@@ -641,17 +640,17 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Select>
 ```
 
-**件数文言**: 現行 canonical は `{totalCount} 件中 {page} / {totalPages} ページ`（from/to 範囲なし、`ProductPagination.tsx:26-30`）。範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」は **Lane 2 移行対象**（`ProductPagination` + 全 caller + test を一括移行するまで、規範は現行文言のまま。上部 variant を先行導入する場合も同じ現行文言でよい）。
+**件数文言**: 範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalCount === 0` のときは「0 件」のみを表示し前後ボタンは両方 disabled。
 
-**使用トークン**: 件数・ページ表示は `text-sm text-muted-foreground`（上部 variant は `text-sm font-medium text-foreground`）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium`。perPage 切替は `w-[7rem]`。
+**使用トークン**: 下部件数・ページ表示は `text-sm text-muted-foreground`（tabular-nums）。上部 `PaginationSummary` は `text-base font-semibold text-foreground tabular-nums`（16px、04 原則 1「本文 16px 最低線」）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium tabular-nums`。perPage 切替は `w-[7rem]`。
 
 **状態**:
-- **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする
+- **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする（`totalCount === 0` は両方 disabled）
 - hover / focus / active / error: ボタン primitive の既定に従う
 
-**perPage 規約**: 表示件数の選択肢は `PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。共有定数は 1 本のまま維持し、既定値だけを画面ごとに変える（**裁定案（pending owner render oracle）**: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100。`mockup-d-lists.html` の密度比較〈perPage 50 / 200〉を owner が視認して最終決定する）。40 刻み化（40/80/120 等）は既存の固定文言 test への影響と移行コストに見合わないため不採用の裁定案。
+**perPage 規約**: 表示件数の選択肢は `PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。共有定数は 1 本のまま維持し、既定値だけを画面ごとに変える（裁定・owner 了承 2026-09-03: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100、Lane 2 実装済み）。40 刻み化（40/80/120 等）は既存の固定文言 test への影響と移行コストに見合わないため不採用の裁定案。
 
-**アクセシビリティ**: 前後ボタンに `aria-label`（"前のページ" / "次のページ"）を付け、方向アイコンには `aria-hidden`。現在地（page / totalPages）はテキストで常時可視にする。
+**アクセシビリティ**: 前後ボタンに `aria-label`（"前のページ" / "次のページ"）を付け、方向アイコンには `aria-hidden`。現在地（page / totalPages）はテキストで常時可視にする。上部 `PaginationSummary` と下部 `Pagination` は同一文言が DOM に重複するが `aria-hidden` は付けない（Lane 3〜5 の判断材料として記録）。
 
 **Do**:
 - 端ページで前後ボタンを disabled にする
@@ -898,18 +897,18 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **使いどころ**: pagination を持つ一覧画面（商品一覧 / 在庫照会 / 一括価格改定 / 棚卸し / 整合性チェック / 入出庫履歴 等）の共通の器。toolbar・件数表示・table・pager をこの構成でまとめる。適用範囲・発動条件（viewport 超過時のみ上部表示 / 横 overflow 時のみ識別列固定 / 画面→固定列 mapping）は DSR-22 を正本とし、本節では重複記載しない。
 
-**canonical**: なし（Lane 2 で `ListShell` を新設予定）。本 PR は規範文のみを定め、mockup D [`mockup-d-lists.html`](reference/mockup-d-lists.html) をお手本として置く。
+**canonical**: `src/components/patterns/ListShell.tsx`（Lane 2 実装、商品一覧を pilot 採用）。mockup D [`mockup-d-lists.html`](reference/mockup-d-lists.html) をお手本として置く。
 
 **必須構成（6 項目。適用条件は DSR-22 を正本とする）**:
 
-1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、原則 6 の枠〈`rounded-md border p-4`〉に入れる。検索欄を持たない画面は 1 段でよい）
-2. **上下の件数・現在位置**（上部は「{n} 件中 {p} / {t} ページ」の text 表示を必須〈現行 canonical、`ProductPagination.tsx:26-30`〉、pager ボタンは任意。下部は既存どおり件数 + pager フル装備。範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」は Lane 2 移行対象〈`ProductPagination` + 全 caller + test を一括移行、それまで規範は現行文言〉）
-3. **sticky header**（単一 `<table>` 内、横スクロール時は固定列右端に影）
-4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする）
-5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22）
-6. **読込みは `ListSkeleton`**（原則 11）
+1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4` の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）
+2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」の text 表示。下部は `Pagination`、同文言 + pager フル装備。両者とも `totalCount > 0` のときだけ描画する）
+3. **sticky header**（単一 `<table>` 内、summary 帯 + `thead` を 1 つの sticky 帯として `<main>` 相対に留める）
+4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする。横スクロール時は固定列右端に影。Lane 2 では `identityColumns` prop を予約するのみで描画には影響しない、実装は Lane 3〜5）
+5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22。token は Lane 2 で提供、消費は Lane 3〜5）
+6. **読込みは `ListSkeleton`**（原則 11、既定 skeleton。`isLoading` のとき children の代わりに描画）
 
-**使用トークン**: `--border-strong`（操作枠）/ `--row-current`（現在行背景）/ 既存 `--border`（構造線）。候補値は canonical に置かず本 packet「起票時実測」節 / `reference/2026-08-23-current-design-analysis.md` を参照（Lane 2 で globals.css に実装した時点で [00-foundations.md](00-foundations.md) へ正式登録）。
+**使用トークン**: `--border-strong`（操作枠、`--input` が参照）/ `--row-current`（現在行背景、消費は Lane 3〜5）/ `--border`（構造線）。3 token とも `globals.css` に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とする。
 
 **状態**: 上部 pager の発動条件は DSR-22 を正本とする。読込みは `ListSkeleton`、空は既存 `EmptyState`（原則 11）。
 
@@ -918,11 +917,11 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **Do**:
 - 必須構成 6 項目を満たす（発動条件は DSR-22 を正本とする）
 - perPage 共有定数は 1 本のまま、既定値だけ画面ごとに変える（DSR-22 裁定）
-- 上部・下部とも現行文言 `{totalCount} 件中 {page} / {totalPages} ページ` を使う（範囲付きは Lane 2 移行後）
+- 上部・下部とも範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」を使う
 
 **Don't**:
 - DSR-22 の発動条件外で上部 pager や識別列固定を無条件適用する
-- 範囲付き文言を Lane 2 移行前に部分導入する（component / caller / test の不整合を招く）
+- 範囲付き文言を component / caller / test のいずれかで不整合のまま部分導入する
 
 **関連**: DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」（適用条件・画面 mapping の正本）。パターン③テーブル / ⑩ページネーション / ⑥空状態・エラー・ローディング（`ListSkeleton`）。
 
@@ -941,6 +940,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を現行 canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は Lane 2 移行対象と明記。⑯ の canonical を「なし（Lane 2 で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
+| 2026-09-03 | UI 一覧の背骨 D — Lane 2 | ⑩ canonical を `src/components/patterns/Pagination.tsx`（`Pagination` + `PaginationSummary`）へ、件数文言を範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」へ実装。⑯ canonical を `src/components/patterns/ListShell.tsx` へ（商品一覧 pilot 採用）、必須構成 1 の枠を `rounded-lg border bg-card p-4` へ、必須構成 3 の固定列影の記載を必須構成 4 側へ移動 |
+| 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を当時の canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は後続 lane での移行対象と明記。⑯ の canonical を「なし（後続 lane で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: パターン⑧を売上同日追加の高影響確認へ追随し、実装前の契約正本をUI-07へ接続。 |

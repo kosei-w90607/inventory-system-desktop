@@ -400,7 +400,7 @@ Tauri 初期ウィンドウは `src-tauri/tauri.conf.json` で 1280x800、最小
 | サブ docs | 主な内容 |
 |---------|--------|
 | [design-system/00-foundations.md](design-system/00-foundations.md) | カラーパレット・セマンティックトークン・タイポグラフィ・スペーシング・アイコンサイズ・業務ステータス視認性 |
-| [design-system/01-decision-rules.md](design-system/01-decision-rules.md) | DSR-01〜13 実装判断ルール集 |
+| [design-system/01-decision-rules.md](design-system/01-decision-rules.md) | DSR-01〜22 実装判断ルール集 |
 | [design-system/02-component-catalog.md](design-system/02-component-catalog.md) | 13 パターンカタログ（⑤SegmentedControl / ⑥空状態・ローディング / ⑦Toast / ⑧Dialog / ⑬ステータスバッジ 等） |
 | [design-system/03-philosophy.md](design-system/03-philosophy.md) | 核心4本柱・補助3原則・japanese-webdesign 観点借用・参考位置付け |
 
