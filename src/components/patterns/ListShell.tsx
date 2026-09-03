@@ -43,7 +43,10 @@ const STICKY_TABLE_CLASSES = [
   "[&_[data-slot=table]]:border-spacing-0",
   "[&_thead_th]:sticky",
   "[&_thead_th]:z-10",
-  "[&_thead_th]:bg-muted",
+  // Gated Amendment 2 S11（owner L3 FAIL-3）: summary 帯と thead を同一 surface
+  // （--list-head）にし、bg-muted は残さない。左右端を揃えるため tr にも敷く。
+  "[&_thead_th]:bg-list-head",
+  "[&_thead_tr]:bg-list-head",
   "[&_thead_th]:border-b-2",
   "[&_thead_th]:border-border",
   "[&_tbody_td]:border-b",
@@ -81,7 +84,7 @@ export function ListShell({
 
       {showTopSummary && pagination ? (
         stickyHeader ? (
-          <div className="sticky top-0 z-20 flex h-10 items-center truncate bg-muted">
+          <div className="sticky top-0 z-20 flex h-10 w-full items-center truncate bg-list-head">
             <PaginationSummary
               page={pagination.page}
               perPage={pagination.perPage}

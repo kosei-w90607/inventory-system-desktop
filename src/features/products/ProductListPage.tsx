@@ -52,7 +52,12 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
     search,
   });
   const queryClient = useQueryClient();
-  const [bulkTarget, setBulkTarget] = useState<boolean | null>(null);
+  // Gated Amendment 2 S12（owner L3 FAIL-4）: open/closed と「最後に選んだ target」を別 state に
+  // 分離する。旧実装は bulkTarget: boolean | null の 1 state で兼用し、close 時に null へ戻すと
+  // pluTarget={bulkTarget ?? true} の fallback で退出アニメーション中に反対文言へ反転していた
+  // （b2389b19 起源の latent bug）。close は setBulkDialogOpen(false) のみで target を触らない。
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkTarget, setBulkTarget] = useState<boolean>(true);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const bulkMutation = useMutation({
     mutationFn: (pluTarget: boolean) =>
@@ -65,7 +70,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         `${result.updated_count.toLocaleString("ja-JP")} 件を更新しました（JAN 不備 ${result.invalid_jan_skipped_count.toLocaleString("ja-JP")} 件 / 廃番 ${result.discontinued_skipped_count.toLocaleString("ja-JP")} 件は対象外）`,
       );
       setBulkError(null);
-      setBulkTarget(null);
+      setBulkDialogOpen(false);
       await invalidateByContract(queryClient, invalidationContract.pluBulkTarget());
     },
     onError: () => {
@@ -191,27 +196,39 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           </SelectContent>
         </Select>
       </div>
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={totalCount === 0 || bulkMutation.isPending}
-          onClick={() => {
-            setBulkTarget(true);
-          }}
+      <div className="ml-auto flex flex-col items-end gap-1">
+        <p id="plu-bulk-caption" className="text-sm">
+          <span className="font-medium text-foreground">PLU 一括操作</span>{" "}
+          <span className="text-muted-foreground">（表示中の商品すべてが対象・確認画面あり）</span>
+        </p>
+        <div
+          role="group"
+          aria-labelledby="plu-bulk-caption"
+          className="flex flex-wrap items-center gap-2"
         >
-          PLU 対象にする
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={totalCount === 0 || bulkMutation.isPending}
-          onClick={() => {
-            setBulkTarget(false);
-          }}
-        >
-          PLU 対象から外す
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={totalCount === 0 || bulkMutation.isPending}
+            onClick={() => {
+              setBulkTarget(true);
+              setBulkDialogOpen(true);
+            }}
+          >
+            PLU 対象にする
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={totalCount === 0 || bulkMutation.isPending}
+            onClick={() => {
+              setBulkTarget(false);
+              setBulkDialogOpen(true);
+            }}
+          >
+            PLU 対象から外す
+          </Button>
+        </div>
       </div>
       {bulkError !== null ? (
         <Alert variant="destructive">
@@ -301,15 +318,15 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         ) : null}
       </ListShell>
       <PluBulkTargetConfirmDialog
-        open={bulkTarget !== null}
-        pluTarget={bulkTarget ?? true}
+        open={bulkDialogOpen}
+        pluTarget={bulkTarget}
         count={totalCount}
         isPending={bulkMutation.isPending}
         onOpenChange={(open) => {
-          if (!open && !bulkMutation.isPending) setBulkTarget(null);
+          if (!open && !bulkMutation.isPending) setBulkDialogOpen(false);
         }}
         onConfirm={() => {
-          if (bulkTarget !== null && totalCount > 0) bulkMutation.mutate(bulkTarget);
+          if (totalCount > 0) bulkMutation.mutate(bulkTarget);
         }}
       />
     </PageShell>
