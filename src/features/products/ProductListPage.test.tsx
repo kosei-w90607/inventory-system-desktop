@@ -671,3 +671,36 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
     );
   });
 });
+
+describe("ProductListPage S10 PLU 一括 caption（Gated Amendment 2 / owner L3 FAIL-2）", () => {
+  beforeEach(() => {
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [] });
+  });
+
+  it("SC7: caption「PLU 一括操作」+ 作用範囲・確認予告文が toolbarSecondary にあり、2 button が同じ group に属する", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-CAP" })],
+        total_count: 1,
+        page: 1,
+        per_page: 100,
+      },
+    });
+    renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
+    await screen.findByText("P-CAP");
+
+    const captionLabel = screen.getByText("PLU 一括操作");
+    expect(captionLabel).toHaveClass("font-medium", "text-foreground");
+    const captionNote = screen.getByText("（表示中の商品すべてが対象・確認画面あり）");
+    expect(captionNote).toHaveClass("text-muted-foreground");
+
+    const addButton = screen.getByRole("button", { name: "PLU 対象にする" });
+    const removeButton = screen.getByRole("button", { name: "PLU 対象から外す" });
+    const addGroup = addButton.closest('[role="group"]');
+    const removeGroup = removeButton.closest('[role="group"]');
+    expect(addGroup).not.toBeNull();
+    expect(addGroup).toBe(removeGroup);
+    expect(addGroup).toHaveAttribute("aria-labelledby");
+  });
+});

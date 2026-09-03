@@ -187,7 +187,11 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(bandTokens).toContain("flex");
     expect(bandTokens).toContain("h-10");
     expect(bandTokens).toContain("items-center");
-    expect(bandTokens).toContain("bg-muted");
+    expect(bandTokens).toContain("w-full");
+    // Gated Amendment 2 S11（owner L3 FAIL-3）: summary 帯と thead を同一 surface
+    // （--list-head）にし、bg-muted は残さない。
+    expect(bandTokens).toContain("bg-list-head");
+    expect(bandTokens).not.toContain("bg-muted");
     // Final Review round 1 P2（帯の文言が長いとき「…」で切れるようにする）:
     // truncate は overflow-hidden + text-ellipsis + whitespace-nowrap の shorthand。
     expect(bandTokens).toContain("truncate");
@@ -202,7 +206,9 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     const rootTokens = classTokens(container.firstElementChild);
     expect(rootTokens).toContain("[&_thead_th]:sticky");
     expect(rootTokens).toContain("[&_thead_th]:z-10");
-    expect(rootTokens).toContain("[&_thead_th]:bg-muted");
+    expect(rootTokens).toContain("[&_thead_th]:bg-list-head");
+    expect(rootTokens).toContain("[&_thead_tr]:bg-list-head");
+    expect(rootTokens).not.toContain("[&_thead_th]:bg-muted");
     expect(rootTokens).toContain("[&_thead_th]:border-b-2");
     expect(rootTokens).toContain("[&_thead_th]:border-border");
     expect(rootTokens).toContain("[&_thead_th]:top-10");
@@ -244,6 +250,8 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(rootTokens).not.toContain("[&_thead_th]:border-b-2");
     expect(rootTokens).not.toContain("[&_thead_th]:border-b");
     expect(rootTokens).not.toContain("[&_thead_th]:border-border");
+    expect(rootTokens).not.toContain("[&_thead_th]:bg-list-head");
+    expect(rootTokens).not.toContain("[&_thead_tr]:bg-list-head");
     expect(rootTokens).not.toContain("[&_[data-slot=table-container]]:overflow-visible");
     expect(rootTokens).not.toContain("[&_[data-slot=table]]:border-separate");
     expect(rootTokens).not.toContain("[&_[data-slot=table]]:border-spacing-0");
@@ -260,6 +268,26 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(classTokens(table)).not.toContain("border-separate");
     const summaryBand = container.querySelector(".sticky");
     expect(summaryBand).toBeNull();
+  });
+});
+
+describe("SC8: sticky band surface uses --list-head, not bg-muted (Gated Amendment 2 S11 / owner L3 FAIL-3)", () => {
+  it("applies bg-list-head to the summary band, thead th and thead tr; no bg-muted remains on them", () => {
+    const { container } = render(
+      <ListShell stickyHeader topSummary pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+    const summaryBand = container.querySelector(".sticky.top-0.z-20");
+    const bandTokens = classTokens(summaryBand);
+    expect(bandTokens).toContain("bg-list-head");
+    expect(bandTokens).not.toContain("bg-muted");
+
+    const rootTokens = classTokens(container.firstElementChild);
+    expect(rootTokens).toContain("[&_thead_th]:bg-list-head");
+    expect(rootTokens).toContain("[&_thead_tr]:bg-list-head");
+    expect(rootTokens).not.toContain("[&_thead_th]:bg-muted");
+    expect(rootTokens).not.toContain("[&_thead_tr]:bg-muted");
   });
 });
 
