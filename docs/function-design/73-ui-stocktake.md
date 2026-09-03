@@ -217,7 +217,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | 差異列（UI-10-D10） | `current_stock - actual_count`（`update_count` の `current_difference` と同一計算式）。`actual_count` が `null` なら「—」。色分けなし、符号付き数値のプレーンテキストのみ（結果画面 `adjusted_items` テーブルと表現統一）。 |
 | 最終カウント列（UI-10-D10） | `counted_at`。`null` なら「—」、値ありは `formatMovementDateTime` と同じ `T`→スペース変換（`src/features/stock-movements/lib/movement-formatters.ts` 流用）。 |
 | 並び順 | 変更しない（`ORDER BY si.id ASC`、UI-10-D3）。 |
-| 表示件数 | catalog ⑩ canonical `ProductPagination`（`docs/design-system/02-component-catalog.md` §⑩）+ `PRODUCT_PER_PAGE_OPTIONS`（50/100/200、既定 50）の `Select`。変更時は `page` を 1 へ戻す。IO 側 200 クランプ（`PAGINATION_MAX_PER_PAGE`）は不変。配置は表の下（catalog 既定）のまま。 filter row 内の並び順は 部門フィルタ → 表示件数 → 未入力のみ表示。 |
+| 表示件数 | catalog ⑩ canonical `Pagination`（旧 `ProductPagination`）（`docs/design-system/02-component-catalog.md` §⑩）+ `PRODUCT_PER_PAGE_OPTIONS`（50/100/200、既定 50）の `Select`。変更時は `page` を 1 へ戻す。IO 側 200 クランプ（`PAGINATION_MAX_PER_PAGE`）は不変。配置は表の下（catalog 既定）のまま。 filter row 内の並び順は 部門フィルタ → 表示件数 → 未入力のみ表示。 |
 | 0 件表示 | `patterns/EmptyState`。「この条件に一致する商品がありません」+ フィルタ解除導線。**filter-empty reset action**（2026-08-03 batch B、[02-component-catalog.md](../design-system/02-component-catalog.md) ⑥）: 部門フィルタ / 未入力のみ toggle のいずれかが既定値以外、かつ結果 0 件のときのみ「絞り込みを解除」ボタンを表示し、押下で部門フィルタ / 未入力のみ toggle / `page` をすべて既定値へ戻す（`page` は `StocktakeSearch` の既存 param、既定 1）。既定値のまま 0 件（棚卸し明細が実在しない）のときは表示しない。 |
 
 ## 73.7 確定フロー

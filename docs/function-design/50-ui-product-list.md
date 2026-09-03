@@ -40,7 +40,7 @@ src/features/products/ProductListPage.tsx
 src/components/patterns/SearchBar.tsx        # 旧 ProductSearchBar、PR-B で統合（live 型 debounceMs=200、2026-08-03 owner L3 是正で commit 型から変更）
 src/components/patterns/DepartmentFilter.tsx # 旧 features/products/components/DepartmentFilter、PR-B で統合
 src/features/products/components/ProductTable.tsx
-src/features/products/components/ProductPagination.tsx
+src/components/patterns/Pagination.tsx                  # 旧 features/products/components/ProductPagination、UI 一覧の背骨 D Lane 2 で統合
 ```
 
 `src/routes/products/index.tsx` は route / search params / title を管理し、画面本体は `ProductListPage` に委譲する。`ProductListPage` は CMD 呼び出し、派生表示、子コンポーネントへの props 配線を担当する。業務判定や DB 操作は UI に置かない。

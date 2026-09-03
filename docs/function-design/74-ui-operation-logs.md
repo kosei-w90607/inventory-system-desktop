@@ -192,7 +192,7 @@ OperationLogsPage
        end_date: end_date ?? null,
      })
        ↓
-OperationLogFilters + OperationLogTable（展開行1件） + ProductPagination
+OperationLogFilters + OperationLogTable（展開行1件） + Pagination
 ```
 
 - `typesQuery` と `logsQuery` は独立 query として部分障害を許容する（`typesQuery` 失敗時は operation_type filter を「すべて」のみに縮退表示し、一覧本体は表示継続する。§74.11）。
@@ -260,7 +260,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + ProductPagination
 ### 74.10 Pagination 契約
 
 - 既定 `per_page = 20`（増減 UI なし。`StockMovementsPage` / `InventoryRecordsPage` と同一、§74.17）。
-- 文言: `{total_count.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ`（`ProductPagination` をそのまま再利用）。
+- 文言: `{total_count.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ`（`Pagination` をそのまま再利用）。
 - **範囲外 page 回復**（UI-11c-D8）: `logsQuery.data.items.length === 0 && logsQuery.data.total_count > 0 && normalizedSearch.page > 1` の場合、通常の EmptyState ではなく専用メッセージ「このページには表示するログがありません」+ 「先頭ページに戻る」ボタン（`updateSearch({ page: 1 })`）を表示する。
 - IO層は`page` / clamp後の`per_page`を`i64`へ変換してからoffsetを計算する。URL/CMD wireで表現可能な最大positive page（`u32::MAX`）でもRust側でpanic/wrapせず、SQLiteの範囲外offsetによる空`items`と上記回復導線へ到達させる。
 - filter 変更時は常に `page=1`（§74.3）に戻るため、この回復導線は「filter 変更を伴わない外部要因（365日 cleanup、URL 直接改変、他端末からの delete 等）で総ページ数が減った」場合にのみ到達する。
@@ -575,7 +575,7 @@ SELECT changes() AS deleted_rows;
 |---|---|---|---|
 | URL state | zod、`.catch()`、filter変更でpage=1 | 同左 | 再利用（同一パターン） |
 | filter reset ボタン | なし（設計時点） | なし（設計時点） | なし（横断 backlog に合わせる、§74.11。**2026-08-03 batch B で 3 画面とも filter-empty reset action を追加**、[02-component-catalog.md](../design-system/02-component-catalog.md) ⑥、§74.11 参照） |
-| pagination | `ProductPagination`固定20件 | 同左 | 再利用 |
+| pagination | `Pagination`固定20件 | 同左 | 再利用 |
 | retry ボタン | **なし**（Alert のみ、文言のみで再試行の導線なし） | **なし**（同左） | **追加する**（Missing UI item 9 の明示要求 + `DailySalesPage`/`MonthlySalesPage`/`ThresholdSettingsPage`/`StocktakePage` の既存 retry パターンを再利用。意図的な相違、§74.2 UI-11c-D9） |
 | EmptyState | 単一文言 | 単一文言 | **2系統に分岐**（既定0件 vs filter該当0件。意図的な相違、UI-11c-D9） |
 | 範囲外 page 回復 | なし | なし | **追加する**（意図的な相違、UI-11c-D8） |

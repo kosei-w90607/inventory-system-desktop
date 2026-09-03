@@ -103,7 +103,7 @@ StockMovementsPage
        per_page: 20,
      })
        ↓
-MovementSummary + MovementTable + ProductPagination
+MovementSummary + MovementTable + Pagination
 ```
 
 ### 66.5 UI 表示

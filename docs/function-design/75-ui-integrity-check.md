@@ -99,7 +99,7 @@ type IntegrityPhase = "idle" | "running" | "completed";
 業務値5列は、商品コード、名前、システム在庫、入出庫の合計、差異。行ごとのcheckboxは別の操作列とする。
 
 - client-side pagingは100件固定。101件ならpage 1に100件、page 2に1件。check再実行時はpage 1へ戻る。
-- `ProductPagination`を`totalCount=mismatches.length`、`perPage=100`で再利用する。
+- `Pagination`を`totalCount=mismatches.length`、`perPage=100`で再利用する。
 - tableは横overflow可能なwrapperと安定した列幅を持つ。商品名は回復不能なtruncateをしない。
 - `difference > 0`は「システム在庫が多い」、`difference < 0`は「入出庫の合計が多い」。0は防御的に「差異なし」。
 - UI-10棚卸し（73-ui-stocktake.md UI-10-D10）の列名「現在在庫」とは意図的に語彙を分ける。本画面はシステムに記録された数字自体の正しさを疑う場であり、「現在」と断言する語を使うと検証対象の数字を無条件に信頼しているように読める。「システム在庫」は検証対象であることを示し、「入出庫の合計」はsidebarで既習の「入出庫」語彙に寄せて計算根拠を伝える。
@@ -180,7 +180,7 @@ navigation（`src/config/navigation.ts`）の ui-13 entry は `/settings/integri
 |---|---|---|
 | PageHeader / retry Alert / table overflow | `OperationLogsPage` | 再利用 |
 | Progress / pending disabled / confirmation dialog | `StocktakePage` | 再利用 |
-| pagination | `ProductPagination` | client-side 100件固定で再利用 |
+| pagination | `Pagination` | client-side 100件固定で再利用 |
 | generated command + unwrapResult | 既存features | 同一pattern。手書きinvoke禁止 |
 | URL state | `OperationLogsPage`等 | ephemeralな別scenarioのため意図的に不採用 |
 | query cache | logs / stocktake | latest logだけQuery。check/fix resultはlocal state |
