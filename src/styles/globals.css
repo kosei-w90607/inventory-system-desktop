@@ -98,6 +98,17 @@
   --rank-top-badge-text: #92400e; /* amber-800 */
 }
 
+/* Gated Amendment 3 追補 S16（Opus P1-1、AC-L3-4）: forced-colors では box-shadow が無効化され
+   border 色も system color に置換されるため、outline-none + focus-visible:border-ring + ring の
+   2 系統だけでは focus が完全に消える。@layer 外（unlayered）に置き @layer utilities の
+   outline-none に勝つ。通常表示は不変。 */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--border);

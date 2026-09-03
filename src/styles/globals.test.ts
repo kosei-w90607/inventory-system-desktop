@@ -27,3 +27,42 @@ describe("SC1: globals.css declares border-strong / row-current / border / input
     expect(GLOBALS_CSS).toContain("--color-list-head: var(--list-head);");
   });
 });
+
+// SC13（Gated Amendment 3 追補 S16、Opus P1-1 / AC-L3-4）: forced-colors では box-shadow が
+// 無効化され border 色も system color に置換されるため、`outline-none` + `focus-visible:border-ring`
+// だけでは focus が消える。`@layer` 外（unlayered）の `:focus-visible` outline で
+// `@layer utilities` の `outline-none` に勝つ。
+describe("SC13: globals.css declares an unlayered forced-colors focus outline (Gated Amendment 3 追補 S16 / AC-L3-4)", () => {
+  it("declares exactly one forced-colors media block, positioned before @layer base, giving :focus-visible a Highlight outline", () => {
+    const mediaLiteral = "@media (forced-colors: active)";
+    const occurrences = GLOBALS_CSS.split(mediaLiteral).length - 1;
+    expect(occurrences).toBe(1);
+
+    const mediaIndex = GLOBALS_CSS.indexOf(mediaLiteral);
+    const layerBaseIndex = GLOBALS_CSS.indexOf("@layer base {");
+    expect(mediaIndex).toBeGreaterThan(-1);
+    expect(layerBaseIndex).toBeGreaterThan(-1);
+    expect(mediaIndex).toBeLessThan(layerBaseIndex);
+
+    // block は `{` から対応する `}` まで（prettier の折返しで複数行になり得るため
+    // 改行ではなく波括弧の対応を数えて block の終端を求める）。
+    const openIndex = GLOBALS_CSS.indexOf("{", mediaIndex);
+    expect(openIndex).toBeGreaterThan(-1);
+    let depth = 0;
+    let closeIndex = -1;
+    for (let i = openIndex; i < GLOBALS_CSS.length; i += 1) {
+      if (GLOBALS_CSS[i] === "{") depth += 1;
+      else if (GLOBALS_CSS[i] === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          closeIndex = i;
+          break;
+        }
+      }
+    }
+    expect(closeIndex).toBeGreaterThan(-1);
+    const block = GLOBALS_CSS.slice(mediaIndex, closeIndex + 1);
+    expect(block).toContain(":focus-visible");
+    expect(block).toContain("Highlight");
+  });
+});
