@@ -90,7 +90,7 @@ describe("ProductListPage (UI-01a)", () => {
       sort_key: "ProductCode",
       sort_order: "Asc",
       page: 1,
-      per_page: 50,
+      per_page: 100,
     });
   });
 
@@ -215,11 +215,11 @@ describe("ProductListPage (UI-01a)", () => {
     ).toEqual(["表示中", "すべて", "廃番のみ"]);
     expect(screen.getByRole("link", { name: "商品登録" })).toHaveAttribute(
       "href",
-      "/products/new?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26plu%3Dall%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D50",
+      "/products/new?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26plu%3Dall%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D100",
     );
     expect(screen.getByRole("link", { name: "修正" })).toHaveAttribute(
       "href",
-      "/products/P-001/edit?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26plu%3Dall%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D50",
+      "/products/P-001/edit?returnTo=%2Fproducts%3Fdiscontinued%3Dactive%26plu%3Dall%26sort%3Dproduct_code%26dir%3Dasc%26page%3D1%26perPage%3D100",
     );
     await waitFor(() => {
       expect(mockListDepartments).toHaveBeenCalledTimes(1);
@@ -567,5 +567,109 @@ describe("ProductListPage SPEC-UIBB-10/11（live 型検索 + 複数ボタン中�
     expect(
       registerLink.compareDocumentPosition(resetButton) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+});
+
+describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
+  beforeEach(() => {
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [] });
+  });
+
+  it("SC5a: URL 指定なしは per_page 100、?perPage=50 指定時は per_page 50", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-100" })],
+        total_count: 1,
+        page: 1,
+        per_page: 100,
+      },
+    });
+    renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
+    await screen.findByText("P-100");
+    expect(mockSearchProducts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ per_page: 100 }),
+    );
+
+    mockSearchProducts.mockClear();
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-050" })],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    renderWithClient(<ProductListPage search={{ perPage: 50 }} onSearchChange={vi.fn()} />);
+    await screen.findByText("P-050");
+    expect(mockSearchProducts).toHaveBeenLastCalledWith(expect.objectContaining({ per_page: 50 }));
+  });
+
+  it("SC5b: toolbar 枠・上部件数・下部 pager・ListSkeleton・0 件時の非描画", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-200" })],
+        total_count: 150,
+        page: 1,
+        per_page: 100,
+      },
+    });
+    const onSearchChange = vi.fn();
+    const { container } = renderWithClient(
+      <ProductListPage search={{}} onSearchChange={onSearchChange} />,
+    );
+    await screen.findByText("P-200");
+
+    // toolbar 枠（rounded-lg border bg-card p-4）
+    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    // 上部件数（PaginationSummary、text-base font-semibold）
+    const topSummary = container.querySelector(".text-base.font-semibold");
+    expect(topSummary).not.toBeNull();
+    expect(topSummary).toHaveTextContent("150 件中 1〜100 件目 · 1 / 2 ページ");
+    // 下部 pager が search state を更新する
+    await userEvent.setup().click(screen.getByRole("button", { name: "次のページ" }));
+    const updater = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1]?.[0] as (
+      prev: ProductListSearch,
+    ) => ProductListSearch;
+    expect(updater({}).page).toBe(2);
+  });
+
+  it("SC5b: isLoading 中は自前 Skeleton ではなく ListSkeleton を描画する", () => {
+    mockSearchProducts.mockReturnValue(new Promise(() => undefined));
+    renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
+    expect(screen.getByLabelText("一覧を読み込み中")).toBeInTheDocument();
+  });
+
+  it("SC5b: 0 件時は上部件数・下部 pager のいずれも描画しない", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 100 },
+    });
+    const { container } = renderWithClient(
+      <ProductListPage search={{}} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByRole("heading", { name: "該当する商品がありません" });
+    expect(container.querySelector(".text-base.font-semibold")).toBeNull();
+    expect(screen.queryByRole("button", { name: "次のページ" })).toBeNull();
+  });
+
+  it("SC5c: returnTo は既定 100 / Select 変更後 200 の perPage を保持する", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-RT" })],
+        total_count: 1,
+        page: 1,
+        per_page: 200,
+      },
+    });
+    renderWithClient(<ProductListPage search={{ perPage: 200 }} onSearchChange={vi.fn()} />);
+    await screen.findByText("P-RT");
+    expect(screen.getByRole("link", { name: "商品登録" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("perPage%3D200"),
+    );
   });
 });

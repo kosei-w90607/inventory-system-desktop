@@ -49,7 +49,7 @@ describe("product list search mapping (UI-01a)", () => {
       sort_key: "ProductCode",
       sort_order: "Asc",
       page: 1,
-      per_page: 50,
+      per_page: 100,
     });
   });
 
@@ -97,9 +97,9 @@ describe("product list search mapping (UI-01a)", () => {
       sort: "product_code",
       dir: "asc",
       page: 1,
-      perPage: 50,
+      perPage: 100,
     });
-    expect(buildProductSearchQuery(normalized).per_page).toBe(50);
+    expect(buildProductSearchQuery(normalized).per_page).toBe(100);
   });
 
   it("REQ-907 B-V2: normalizes PLU URL values and builds the unpaged bulk filter", () => {

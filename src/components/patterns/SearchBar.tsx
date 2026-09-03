@@ -95,7 +95,7 @@ function CommitSearchBar({
         }}
       />
       {showButton && (
-        <Button type="button" variant="outline" onClick={commit}>
+        <Button type="button" variant="outline" className="border-border-strong" onClick={commit}>
           <Search aria-hidden="true" />
           検索
         </Button>
