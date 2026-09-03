@@ -213,6 +213,12 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           PLU 対象から外す
         </Button>
       </div>
+      {bulkError !== null ? (
+        <Alert variant="destructive">
+          <AlertTitle>PLU対象の一括更新に失敗しました</AlertTitle>
+          <AlertDescription>{bulkError}</AlertDescription>
+        </Alert>
+      ) : null}
     </div>
   );
 
@@ -229,13 +235,6 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           </Button>
         }
       />
-
-      {bulkError !== null ? (
-        <Alert variant="destructive">
-          <AlertTitle>PLU対象の一括更新に失敗しました</AlertTitle>
-          <AlertDescription>{bulkError}</AlertDescription>
-        </Alert>
-      ) : null}
 
       <ListShell
         toolbar={toolbar}
