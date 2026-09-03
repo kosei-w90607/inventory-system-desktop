@@ -73,6 +73,8 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 .pager{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
 .pager .pg{display:flex;gap:8px;align-items:center}
 .pager.top{display:none}
+/* Gated Amendment 3 追補 S18（mockup-d-lists.html と同型）: 上部件数を summary 帯として帯化する */
+.pager.top{background:var(--d-head);padding:0 12px;min-height:40px}
 .note{font-size:14px;color:var(--muted);border-top:1px dashed var(--border);padding:16px 24px;max-width:1240px;line-height:1.6}
 .note b{color:var(--fg)}
 .note ol{margin:8px 0 0;padding-left:22px}
@@ -130,8 +132,7 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <div class="cards"><div class="card"><div class="lbl">対象日</div><div class="val" style="font-size:20px">2026-08-23</div><div class="sub">file_hash a1e4f9c2…</div></div><div class="card"><div class="lbl">総売上</div><div class="val">¥182,400</div></div><div class="card"><div class="lbl">純売上</div><div class="val">¥179,600</div></div><div class="card"><div class="lbl">支払集計</div><div class="val" style="font-size:18px">現金 ¥120,300 / カード ¥59,300</div></div></div>
 <div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>同じ日の取込みが既にあります。</b><span>追加で取り込むと、既存分は残したまま新しい取込みが加わります。「取り込む」を押すと確認が出ます。</span></div></div>
 <div class="fs"><h2>部門別集計</h2>
-<div class="pager top"><span class="cnt">18 部門<small>部門未対応 2 件を含む</small></span></div>
-<div class="tbl"><div class="scroll" style="--id-w:9rem"><table><thead><tr><th class="id">部門コード</th><th class="id2">部門名</th><th class="num">点数</th><th class="num">売上</th><th>状態</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">18 部門<small>部門未対応 2 件を含む</small></span></div><div class="scroll" style="--id-w:9rem"><table><thead><tr><th class="id">部門コード</th><th class="id2">部門名</th><th class="num">点数</th><th class="num">売上</th><th>状態</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
 </div>
 <div style="display:flex;gap:8px"><button class="btn primary">取り込む</button><span class="sub" style="align-self:center">取込み後は「日次売上を見る」から確認できます</span></div>
 </div>
@@ -152,8 +153,7 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <div class="cards"><div class="card"><div class="lbl">新規登録候補</div><div class="val">1,142</div></div><div class="card"><div class="lbl">エラー行</div><div class="val" style="color:var(--bad-strong)">18</div></div><div class="card"><div class="lbl">重複行</div><div class="val" style="color:var(--warn-strong)">44</div></div><div class="card"><div class="lbl">上書き選択数</div><div class="val">0</div><div class="sub">未選択</div></div></div>
 <p class="sub">任意列「PLU対象」の値は 対象 / 対象外 / 既定（13桁JANなら対象）で表示します。JAN が13桁でない行は warning とともに対象外として取り込みます。</p>
 <div class="fs"><h2>プレビュー（先頭 50 行）</h2>
-<div class="pager top"><span class="cnt">1,204 行<small>先頭 50 行を表示</small></span></div>
-<div class="tbl"><div class="scroll" style="--id-w:8rem"><table style="min-width:900px"><thead><tr><th class="id">行番号</th><th class="id2">商品コード</th><th>商品名</th><th>JAN</th><th>PLU対象</th><th>状態</th></tr></thead><tbody id="tb-pimport"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">1,204 行<small>先頭 50 行を表示</small></span></div><div class="scroll" style="--id-w:8rem"><table style="min-width:900px"><thead><tr><th class="id">行番号</th><th class="id2">商品コード</th><th>商品名</th><th>JAN</th><th>PLU対象</th><th>状態</th></tr></thead><tbody id="tb-pimport"></tbody></table></div></div>
 </div>
 <div style="display:flex;align-items:center;gap:12px"><button class="btn primary">取り込む</button><span class="sub">取り込む対象は新規登録候補 + 上書き選択済みの重複行のみです。エラー行は取り込まれません</span></div>
 </div><div class="note"><b>D の要点（商品一括インポート）</b> — 60-ui-01c-D5/D8/D16 の契約（3 系統プレビュー、エラー行があっても commit 可、PLU対象の 3 値表示）はそのまま。<ol><li><b>行番号 + 商品コードを左に固定</b>: 1,204 行のプレビューでエラー行がどの商品か見失わない。</li><li><b>エラー行を淡い赤背景 + 行内バッジで強調</b>（色だけに頼らず「フォーマット異常」等の日本語ラベルと組み合わせる）。</li><li><b>件数サマリを table 直上にも repeat</b>: 「1,204 行・先頭 50 行を表示」。</li></ol><b>現仕様維持</b>: カードの並び（新規 / エラー / 重複 / 上書き選択数）、エラー種別のラベル文言（フォーマット異常 / JAN 不正 / 数値不正 / 未登録 JAN）は 60-ui / 55-ui の error_type マトリクスどおり。<br><b>未決</b>: 行番号列を識別列として左固定する案は本 mockup の提案（doc は「行番号 + エラーメッセージ」としか規定していない）。</div></section>
@@ -167,15 +167,14 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <p class="sub">JANコードが未登録または不正な商品は、スキャニングPLU書出しに含められません。商品マスタで13桁JANを確認してください。</p>
 </div>
 <div class="fs"><h2>書出し対象</h2>
-<div class="pager top"><span class="cnt">42 件<small>差分（未反映 + 解除待ち）</small></span></div>
-<div class="tbl"><div class="scroll" style="--id-w:8rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>JAN</th><th>memory No.</th><th>状態</th></tr></thead><tbody id="tb-plu"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">42 件<small>差分（未反映 + 解除待ち）</small></span></div><div class="scroll" style="--id-w:8rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>JAN</th><th>memory No.</th><th>状態</th></tr></thead><tbody id="tb-plu"></tbody></table></div></div>
 </div>
 <div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>Full書出しの前に、既存 PLU バックアップを確認してください。</b></div></div>
 <div style="display:flex;gap:8px"><button class="btn primary">この書出しを未反映から外す</button><button class="btn sm">再書出し</button></div>
 <p class="sub">アプリで確認できるのはPLUファイル保存までです。PCツールへの取込み、SDカード書出し、レジ読込みは手動で確認してください。</p>
 </div><div class="note"><b>D の要点（PLU書出し）</b> — 67-ui の契約（above the fold の占有要約、要修正一覧を状態表示の直後に warning アイコン付きで配置、色だけで示さない）はそのまま。<ol><li><b>書出し対象・要修正一覧の両方に識別列固定 + sticky header</b>: 42 件級でも商品コードを見失わない。</li><li><b>占有要約カードを最上部</b>（doc の above the fold 指定に一致）。</li><li><b>復帰バナー</b>（保存済み未確認）を ok トーンの Alert で最上部に固定表示。</li></ol><b>現仕様維持</b>: 「アプリで確認できるのはPLUファイル保存までです…」等の文言は 67-ui §67.9 のまま一字一句。<br><b>未決</b>: 要修正一覧の列構成（商品コード / 商品名 / JAN / 状態）は doc に列定義が無いため mockup 用に補った。</div></section>
 </main></div>
-<div class="note"><b>位置付け</b>: 正本は各 function-design（55-ui / 60-ui / 67-ui）と <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22。本 mockup は Lane 2 実装値（`--border` 濃化、`#cdc8c4`）に token を同期した参考資料。<b>これを採ると何が変わるか</b>: table・card・FilePicker（`.picker`）・トラック切替（`.trkbar`）の構造線が濃くなり境界が見える。本画面は実入力欄（input/select/textarea）を持たないため `--border-strong` の消費者は無い（FilePicker はファイル選択 button のみで、パス表示はテキストではなく static 表示）。列定義や細部文言のうち doc に明記が無い箇所は各画面 note の「未決」に列挙した。<b>番号付き保留項目</b>: (1) 識別列固定（部門コード+部門名 / 行番号+商品コード / 商品コード+商品名）は Lane 3〜5 (2) sticky × 識別列固定の両立方式は D-2 の probe 待ち (3) 部門別集計・プレビュー・PLU 対象一覧を `ListShell` へ移行するかは個別画面ごとに Lane 3〜5 で判断する。</div>
+<div class="note"><b>位置付け</b>: 正本は各 function-design（55-ui / 60-ui / 67-ui）と <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22。本 mockup は Lane 2 実装値（`--border` 濃化、`#cdc8c4`）に token を同期した参考資料。<b>これを採ると何が変わるか</b>: table・card・FilePicker（`.picker`）・トラック切替（`.trkbar`）の構造線が濃くなり境界が見える。本画面は実入力欄（input/select/textarea）を持たないため `--border-strong` の消費者は無い（FilePicker はファイル選択 button のみで、パス表示はテキストではなく static 表示）。列定義や細部文言のうち doc に明記が無い箇所は各画面 note の「未決」に列挙した。<b>番号付き保留項目</b>: (1) 識別列固定（部門コード+部門名 / 行番号+商品コード / 商品コード+商品名）は Lane 3〜5 (2) sticky × 識別列固定の両立方式は D-2 の probe 待ち (3) 部門別集計・プレビュー・PLU 対象一覧を `ListShell` へ移行するかは個別画面ごとに Lane 3〜5 で判断する (4) 上部件数の帯化（catalog ⑯ 第 3 項）を反映済み。</div>
 <script>
 (function(){
   var iWarn='<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>',iOk='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>',iBad='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9l6 6m0-6-6 6"/></svg>';

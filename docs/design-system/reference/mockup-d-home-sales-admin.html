@@ -95,6 +95,8 @@ td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border
 .pager{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
 .pager .pg{display:flex;gap:8px;align-items:center}
 .pager.top{display:none}
+/* Gated Amendment 3 追補 S18（mockup-d-lists.html と同型）: 上部件数を summary 帯として帯化する */
+.pager.top{background:var(--d-head);padding:0 12px;min-height:40px}
 .note{font-size:14px;color:var(--muted);border-top:1px dashed var(--border);padding:16px 24px;max-width:1240px;line-height:1.6}
 .note b{color:var(--fg)}
 .note ol{margin:8px 0 0;padding-left:22px}
@@ -189,8 +191,7 @@ td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border
 <div class="ph"><div><h1>日次売上</h1><p>レジ日報の当日実績と前日比を確認します</p></div><div style="display:flex;gap:8px"><button class="btn sm">← 前日</button><button class="btn sm">翌日 →</button></div></div>
 <div class="filters"><label>対象日 <input class="ctl" type="date" value="2026-08-22"></label><select class="ctl"><option>すべての部門</option></select><div class="seg"><button class="on">日次</button><button>月次</button></div><div class="sep"></div><button class="btn sm">CSV 出力</button><button class="btn sm">印刷</button></div>
 <div class="cards"><div class="card"><div class="lbl">売上合計</div><div class="val">¥48,200</div><div class="sub">前日比 +6.3%</div></div><div class="card"><div class="lbl">売上明細数</div><div class="val">37 件</div><div class="sub">手動販売 2 件を含む</div></div><div class="card"><div class="lbl">部門数</div><div class="val">6 部門</div><div class="sub">売上のあった部門</div></div><div class="card"><div class="lbl">平均単価</div><div class="val">¥1,303</div><div class="sub">— </div></div></div>
-<div class="pager top"><span class="cnt">37 件<small>商品別内訳・部門小計を含む</small></span></div>
-<div class="tbl"><div class="scroll" style="--id-w:9rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">数量</th><th class="num">単価</th><th class="num">金額</th></tr></thead><tbody id="tb-daily"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">37 件<small>商品別内訳・部門小計を含む</small></span></div><div class="scroll" style="--id-w:9rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">数量</th><th class="num">単価</th><th class="num">金額</th></tr></thead><tbody id="tb-daily"></tbody></table></div></div>
 </div><div class="note"><b>D の要点（日次売上）</b> — 56-ui の契約（部門小計行 / 単価 null = 「—」/ 手動行の黄色バッジ）はそのまま。<ol><li>識別列（商品コード + 商品名）を固定、部門小計行は固定列をまたいでも grey 帯で識別できる。</li><li>sticky header と操作枠のコントラスト強化。</li></ol><b>現仕様維持</b>: DateNavigator（前日/翌日）、CSV 出力・印刷、Tabs（日次/月次）の見た目。<b>未決</b>: サマリカード 4 枚の構成・並びは 56-ui に個数の規定がなく、mockup 独自に置いた（実装は既存 <code>SummaryCardsBar</code> の構成を正とする）。</div></section>
 <!-- ========== 月次売上 ========== -->
 <section class="screen" id="s-monthly"><div class="page">
@@ -199,23 +200,20 @@ td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border
 <h2 style="font-size:18px;font-weight:600;margin:0">公式部門集計（レジ日報由来）</h2>
 <div class="tbl"><div class="scroll" style="max-height:32vh"><table><thead><tr><th>部門</th><th class="num">売上金額</th><th class="num">構成比</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
 <h2 style="font-size:18px;font-weight:600;margin:0">商品ランキング（上位 10、Z004・手動販売由来）</h2>
-<div class="pager top"><span class="cnt">上位 10 件<small>同順位なし前提（BIZ-05 row_number）</small></span></div>
-<div class="tbl"><div class="scroll" style="--id-w:9rem;max-height:40vh"><table><thead><tr><th></th><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">数量</th><th class="num">金額</th></tr></thead><tbody id="tb-rank"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">上位 10 件<small>同順位なし前提（BIZ-05 row_number）</small></span></div><div class="scroll" style="--id-w:9rem;max-height:40vh"><table><thead><tr><th></th><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">数量</th><th class="num">金額</th></tr></thead><tbody id="tb-rank"></tbody></table></div></div>
 </div><div class="note"><b>D の要点（月次売上）</b> — 57-ui の契約（公式部門集計 / 商品ランキングを別セクション・別根拠として提示、1 位バッジは <code>ranking===1</code> に追従）はそのまま。<ol><li>ランキング table のみ識別列固定 + sticky header（部門集計は列数が少なく対象外）。</li><li>1 位の強調 badge（琥珀 pill）はそのまま、順位列も badge の隣で明示。</li></ol><b>現仕様維持</b>: SegmentedControl（商品別ランキング / 部門別構成比）、DatePicker 非採用（native <code>input type=month</code> 相当）。</div></section>
 <!-- ========== バックアップ・復元 ========== -->
 <section class="screen" id="s-backup"><div class="page">
 <div class="ph"><div><h1>バックアップ・復元</h1><p>データの控えを手動で作成し、必要なときに過去の状態へ戻します</p></div><button class="btn primary"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>今すぐバックアップ</button></div>
 <div class="formsec"><h2>保存先</h2><div class="sub">現在の保存先: <code>D:\\在庫管理バックアップ\\</code></div></div>
-<div class="pager top"><span class="cnt">6 件<small>バックアップ一覧</small></span></div>
-<div class="tbl"><div class="scroll" style="--id-w:11rem;max-height:40vh"><table><thead><tr><th class="id">作成日時</th><th class="id2">ファイル名</th><th class="num">サイズ</th><th></th></tr></thead><tbody id="tb-backup"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">6 件<small>バックアップ一覧</small></span></div><div class="scroll" style="--id-w:11rem;max-height:40vh"><table><thead><tr><th class="id">作成日時</th><th class="id2">ファイル名</th><th class="num">サイズ</th><th></th></tr></thead><tbody id="tb-backup"></tbody></table></div></div>
 <div class="dialog-sample"><h3>元に戻せません</h3><p>この時点の状態に戻ります。この控えより後に記録した内容は消えます</p><div class="acts"><button class="btn sm">編集を続ける</button><button class="btn sm destructive">2026-08-22 09:00 の状態に戻す</button></div></div>
 </div><div class="note"><b>D の要点（バックアップ・復元）</b> — 68-ui の契約（復元前の強制事前バックアップ、確認 2 段、最終確認 title「元に戻せません」+ 実行ボタンに対象日時）はそのまま。<ol><li>一覧 table に sticky header + 上部件数 + 操作枠コントラスト。識別列は「作成日時」（商品コードに相当する列がないため、Lane 0-b の指摘どおり画面ごとに識別列を選ぶ）。</li></ol><b>現仕様維持</b>: 最終確認 dialog の文言・破棄側ボタンの destructive 表現、break-glass checkbox（事前バックアップ失敗時のみ表示、本 mockup では常時表示していない＝未決）。</div></section>
 <!-- ========== 整合性チェック ========== -->
 <section class="screen" id="s-integrity"><div class="page">
 <div class="ph"><div><h1>整合性チェック</h1><p>システム在庫と入出庫の合計の食い違いを検出し、選んだ商品だけを補正します</p></div><button class="btn primary">チェックを実行</button></div>
 <div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>一部の商品は補正されませんでした</b><span>2 件は補正時に対象外になりました。</span></div></div>
-<div class="pager top"><span class="cnt">4 件<small>差異のある商品</small></span></div>
-<div class="tbl"><div class="scroll" style="--id-w:9rem;max-height:40vh"><table><thead><tr><th></th><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">システム在庫</th><th class="num">入出庫の合計</th><th class="num">差異</th><th>状態</th></tr></thead><tbody id="tb-integrity"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">4 件<small>差異のある商品</small></span></div><div class="scroll" style="--id-w:9rem;max-height:40vh"><table><thead><tr><th></th><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">システム在庫</th><th class="num">入出庫の合計</th><th class="num">差異</th><th>状態</th></tr></thead><tbody id="tb-integrity"></tbody></table></div></div>
 <div style="display:flex;justify-content:flex-end"><button class="btn primary">補正を確定</button></div>
 <div class="dialog-sample"><h3>在庫数を入出庫の合計に合わせて補正します</h3><p>補正すると元に戻せません。選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。</p><div class="acts"><button class="btn sm">編集を続ける</button><button class="btn sm destructive">補正を確定</button></div></div>
 </div><div class="note"><b>D の要点（整合性チェック）</b> — 75-ui の語彙（「システム在庫」「入出庫の合計」「補正する」、棚卸し語彙の排除、行単位 checkbox・select-all なし）はそのまま。<ol><li>識別列（商品コード + 商品名）固定 + sticky header + 上部件数（client-side paging 100 件固定）。</li><li>状態は「差異なし / システム在庫が多い / 入出庫の合計が多い / 補正済み / 一部未補正」を icon + 日本語 + soft 背景の状態 badge で表現（DSR-08 準拠）。</li></ol><b>現仕様維持</b>: 確認 dialog 2 段の文言、「補正を確定」ボタンの disabled 条件（選択 0 件）。</div></section>
@@ -232,7 +230,7 @@ td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border
 </div>
 </div><div class="note"><b>D の要点（在庫少の基準）</b> — 69-ui の契約（フィールドは「一般商品の基準」「生地の基準」の 2 件のみ、単一「保存する」ボタン、部分失敗は失敗フィールドを明示し成功分は保存済みのまま）はそのまま。<ol><li>入力欄・ボタンの操作枠コントラストを強化。</li><li>list ではないため D の sticky / 識別列固定は対象外。</li></ol><b>doc との食い違い（要報告）</b>: 発注時の想定は「部門別 table + inline input」だったが、69-ui-threshold-settings.md は「一般商品 / 生地」の 2 key 固定（部門別ではない）と明記（UI-11a-D1: app_settings key を 2 件に限定）。本 mockup は doc を正として 2 フィールド form で描いた。</div></section>
 </main></div>
-<div class="note"><b>位置付け</b>: 正本は <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22。本ファイルは Lane 2 実装値（`--border` 濃化）に token を同期した参考資料（ホーム・日次売上・月次売上・バックアップ復元・整合性チェック・在庫少の基準の 6 画面）で、実装の正本ではない。数値・文言は各 function-design doc から可能な限り exact 転記し、doc に無い箇所は各画面 note の「未決」に明記した。<b>番号付き保留項目</b>: (1) 各画面の一覧 table（日次売上・月次ランキング・backup 一覧・整合性チェック）を `ListShell` 化するかは Lane 3〜5 の個別判断（本 lane の pilot は商品一覧のみ） (2) sticky 帯 × 識別列固定の両立方式は D-2 の probe 待ち。</div>
+<div class="note"><b>位置付け</b>: 正本は <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22。本ファイルは Lane 2 実装値（`--border` 濃化）に token を同期した参考資料（ホーム・日次売上・月次売上・バックアップ復元・整合性チェック・在庫少の基準の 6 画面）で、実装の正本ではない。数値・文言は各 function-design doc から可能な限り exact 転記し、doc に無い箇所は各画面 note の「未決」に明記した。<b>番号付き保留項目</b>: (1) 各画面の一覧 table（日次売上・月次ランキング・backup 一覧・整合性チェック）を `ListShell` 化するかは Lane 3〜5 の個別判断（本 lane の pilot は商品一覧のみ） (2) sticky 帯 × 識別列固定の両立方式は D-2 の probe 待ち (3) 上部件数の帯化（catalog ⑯ 第 3 項）を反映済み。</div>
 <script>
 (function(){
   function yen(n){return '¥'+n.toLocaleString('ja-JP')}

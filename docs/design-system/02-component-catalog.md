@@ -901,7 +901,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **必須構成（6 項目。適用条件は DSR-22 を正本とする）**:
 
-1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4`（2 段時は段間 `space-y-3`）の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）。node 構造の 2 段であり視覚行数ではない（PLU 一括操作 block は `basis-full` で独立行、125% 以上では視覚 3 行以上になりうる）。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱・sticky 帯・th が同一明度になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）
+1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4`（2 段時は段間 `space-y-3`）の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）。node 構造の 2 段であり視覚行数ではない（PLU 一括操作 block は `basis-full` で独立行、125% 以上では視覚 3 行以上になりうる）。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱 #f5f5f4 / sticky 帯・th #e7e5e4 / ページ地 #fafaf9 の 3 段（1.04:1 / 1.15:1 / 1.20:1、Gated Amendment 2 S11 で分離）になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）
 2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」の text 表示。下部は `Pagination`、同文言 + pager フル装備。両者とも `totalCount > 0` のときだけ描画する）
 3. **sticky header**（`<table>` は単一（header を別 table に分けない）。summary 帯（`<table>` 外の `div`、`h-10` / `px-2` / `--list-head`）と `thead` を page 地を挟まず垂直に隣接させ、同一 surface・同一 inset の 1 つの sticky 帯として `<main>` 相対に留める。記録済み逸脱: mockup `.tbl` の外枠（border + radius + `overflow:hidden`）は runtime では付けない（`overflow-hidden` が sticky を殺す、Plan Review round 2）。inset 値は mockup 12px / runtime 8px で、揃えるのは帯と thead の相互一致であって絶対値ではない）
 4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする。横スクロール時は固定列右端に影。Lane 2 では `identityColumns` prop を予約するのみで描画には影響しない、実装は Lane 3〜5）
