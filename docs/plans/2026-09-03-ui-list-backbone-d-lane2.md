@@ -10,10 +10,10 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 244a5dd
 - Amendments: none
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
@@ -357,5 +357,7 @@ Contract ID: SPEC-UILB-D-LANE2-2026-09-03
 2026-09-03 Plan Review round 2（独立 Sonnet = P1 1 / P2 1 / P3 1、Opus デザイン面 = P1 3 / P2 7 / P3 3。round 1 の 24 件は両者とも closed 確認、誤是正なし）: 全件 accept。Sonnet P1-1 = Opus P1-1（`border-separate` は `tr` の border を描画しないため tbody 行の区切りも消える、mockup `:37` は `td` に border-bottom）→ D-2 (ii) を th `border-b-2` + td `border-b` の cell 単位へ拡張 / Opus P1-2（thead `border-b` に oracle と mutant なし）→ SC4d oracle 拡張 + X15 / X16、AC10 = X1〜X16 / Opus P1-3（SegmentedControl `border-stone-300` 1.43:1 < 新 `--border` 1.59:1）→ Non-scope・AC-L3-1・S8 (iv) に追記 / Sonnet P2-1 = Opus P2-3（`h-10` / `top-10` の magic pair）→ `flex h-10 items-center whitespace-nowrap overflow-hidden` で 1 行固定、可変 offset は不採用 / Opus P2-1（SearchBar の入力枠 3.53:1 と outline ボタン 1.59:1 の段差）→ 検索ボタンのみ本 lane で `border-border-strong`（D-7 例外 1 件、S5）/ P2-2（表の外枠は `overflow:hidden` が sticky を殺す）→ 本 lane では付けない旨を D-2 に明記 / P2-4（AC1 の `#e7e5e4` 0 hit は reference `:19` で達成不能）→ 00 と reference で oracle 分離 / P2-5（sticky は th cell 単位）→ D-2 (iii) 一本化 / P2-6（focus 判別性 4.0:1 → 1.36:1、`--ring` は据え置き）→ AC-L3-4 に focus 項目 / P2-7（適用機構が未 pin）→ descendant variant のみを D-2 / Spec Contract に明記 / P3-1（th 下端 2px、summary 帯に線なし）/ P3-2（th は `text-foreground` 維持）/ P3-3（⑯ 3 の影は項目 4 側）→ D-2 / S6 に反映。Sonnet P3-1（badge / RootLayout は明示 utility）→ 起票時実測の表現を精緻化。Opus 回答（z-index 衝突なし / card-on-card は pilot 安全・S8 (v) へ / summary 16px semibold は PageHeader 24px と競合せず維持 / S7 pin 3 点で十分、150% は AC-L3-4 の form 画面追加で代替）→ 反映。
 
 2026-09-03 Plan Review round 3（最終、closure）: Sonnet = P1/P2/P3 0（round 2 の 18 件 closed、cross-section 整合・marker 0 を確認）。Opus = P1 0 / P2 1 / P3 2（round 2 の 15 件 closed、最終 class set は承認 mockup `:33-37,65,85-86` を記録済み逸脱 3 件以外で再現すると確認）。P2-A（`stickyHeader` のみ真で `topSummary` 偽のとき th が `top-10` 固定で 40px 浮く）→ D-2 (iii) / Spec Contract / SC4d を「summary 帯を描画するときのみ `top-10`、それ以外 `top-0`」へ条件付け。P3-A（Impact Lenses / Coverage Ledger / Trace Matrix の「`border-separate` で境界線を残す」等の表現 drift 3 箇所）→ cell 罫線へ統一。P3-B（th font-weight / padding、td height、th box-shadow の既存差が未記録）→ D-2 に記録済み逸脱として追記。round 天井 3 に到達したため追加 round は設けず、是正 3 件は契約の条件付けと表現統一のみで新規設計を含まないことを Coordinator が実読で確認して収束とする（介入 1/3 = 起票選定のまま）。
+
+2026-09-03: Plan Gate 収束（round 3/3、是正 commit = round 1 `1711667` / round 2 `b62b23f` / round 3 は直前の content commit）。`plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移（forward state-only 1/3）: plan-approved の証跡 = Review Response 節（Sonnet 3 round + Opus 3 round、最終 P1/P2 = 0 に是正済み）、Plan Commit = plan-first commit `244a5dd`。Writer = Sonnet subagent（worktree isolation、発注書は Coordinator 起草、runtime → docs → mockup の順、D-8 descope 経路あり）。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
