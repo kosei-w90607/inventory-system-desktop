@@ -908,7 +908,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22。token は Lane 2 で提供、消費は Lane 3〜5）
 6. **読込みは `ListSkeleton`**（原則 11、既定 skeleton。`isLoading` のとき children の代わりに描画）
 
-**使用トークン**: `--border-strong`（操作枠、`--input` が参照）/ `--row-current`（現在行背景、消費は Lane 3〜5）/ `--border`（構造線）。3 token とも `globals.css` に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とする。
+**使用トークン**: `--border-strong`（操作枠、`--input` が参照）/ `--row-current`（現在行背景、消費は Lane 3〜5）/ `--border`（構造線）/ `--list-head`（sticky 帯 surface、summary 帯 + `thead` を同一色にし左右端を揃える、Gated Amendment 2 S11）。4 token とも `globals.css` に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とする。
 
 **状態**: 上部 pager の発動条件は DSR-22 を正本とする。読込みは `ListSkeleton`、空は既存 `EmptyState`（原則 11）。
 

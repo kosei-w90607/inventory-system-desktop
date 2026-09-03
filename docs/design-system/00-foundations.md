@@ -17,6 +17,7 @@
 | ボーダー（構造線） | `--border` | — | #cdc8c4 | 対 `--background` 実測 1.59:1（DSR-22「構造線は一段濃く」、補助的な区切り。単独のグループ信号にしない、DSR-16。2026-09-03 Lane 2 で旧 stone-200 相当〈≈1.20:1〉から濃化） |
 | 操作枠 | `--border-strong` | — | #8a8480 | 対 `--background` 3.53:1・対 `--card` 3.38:1（DSR-22、`--input` が参照。2026-09-03 Lane 2 実装） |
 | 現在行背景 | `--row-current` | — | #fff8e6 | 対 `--foreground` 16.5:1（DSR-22、消費者は Lane 3〜5。2026-09-03 Lane 2 実装） |
+| 一覧 sticky 帯 | `--list-head` | `stone-200` | #e7e5e4 | 対 `--background` 1.20:1・対 `--foreground` 13.93:1（WCAG 相対輝度で実測。summary 帯 + `thead` を同一 surface にし左右端を揃える、Gated Amendment 2 S11、2026-09-03 Lane 2 実装） |
 | サブテキスト | `--muted-foreground` | `stone-500` | #78716c | 実測 4.59:1（対 `--background`、AA）/ 4.40:1（対 `--card`、AA 未達）（2026-09-03 訂正、旧「コントラスト比 4.5:1（AA）」は対象背景の明記なしで誤記） |
 
 **セマンティックカラー**:

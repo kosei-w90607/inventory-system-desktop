@@ -7,7 +7,7 @@
 --ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
 --ring:#b45309;
 /* D: 構造線 / 操作枠 / 現在行 / 固定列の影（04-backbone 原則 13/14/15 の提案値） */
---d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#f5f5f4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
+--d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#e7e5e4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
@@ -103,7 +103,7 @@ tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 <b>D の要点（差分のみ・番号付き未決項目）</b>
 <ol>
 <li><b>総件数と現在位置を上にも</b>（DSR-22）: 上部は「238 件中 1〜50 件目 · 1 / 5 ページ」を必須表示（Lane 2 実装済み canonical `Pagination` / `PaginationSummary`、旧 `ProductPagination.tsx:26-30`）、pager ボタンは任意で本 mockup では下部のみに置く（catalog ⑩ Don't）。範囲付き統一形は Lane 2 で実装済み（旧 `ProductPagination` + 全 caller + test を一括移行済み、規範も範囲付き統一形へ更新済み）。発動条件は viewport 超過時のみ（DSR-22 で確定、未決事項なし）— <b>これを採ると何が変わるか</b>: 長い一覧で「いま何件目か」を下までスクロールせずに確認でき、同じ操作ボタンを 2 組出さないため判断コストも増えない。</li>
-<li><b>table header を sticky</b>: 発動条件は viewport 超過時のみ（DSR-22）。列名が常に見える。<b>これを採ると何が変わるか</b>: 横スクロール中も列の意味を見失わない。<small>sticky header の背景色は `--d-head`（= `bg-muted`、stone-100 相当）を採用（Lane 2 実装で確定、`ListShell` の summary 帯 + `thead th`）。機構差分（Lane 2 実装で不採用にしたもの、注記のみ）: 本 mockup の箱内スクロール（`.tbl > .scroll{max-height:56vh}`）は不採用 — DSR-17 の `<main>` 単一 scroll container と衝突するため。表の外枠（`.tbl` の `border-radius:8px; overflow:hidden`）も不採用 — `overflow:hidden` が `<main>` 相対の sticky を殺すため。th の文字色は本 mockup の `--muted`（薄い灰）ではなく実装では `text-foreground` を維持（`--muted-foreground` 対 `bg-muted` 4.40:1 は 14px の 4.5:1 未達のため）。</small></li>
+<li><b>table header を sticky</b>: 発動条件は viewport 超過時のみ（DSR-22）。列名が常に見える。<b>これを採ると何が変わるか</b>: 横スクロール中も列の意味を見失わない。<small>sticky header の背景色は `--d-head`（= 実装 `--list-head`、stone-200 相当、#e7e5e4）を採用（Gated Amendment 2 S11、owner L3 run 1 FAIL-3 是正。旧採用案の `bg-muted`〈stone-100、#f5f5f4〉は本文の `--card`/`--muted` と近く sticky 帯が浮き上がらなかったため変更、`ListShell` の summary 帯 + `thead th` + `thead tr`）。機構差分（Lane 2 実装で不採用にしたもの、注記のみ）: 本 mockup の箱内スクロール（`.tbl > .scroll{max-height:56vh}`）は不採用 — DSR-17 の `<main>` 単一 scroll container と衝突するため。表の外枠（`.tbl` の `border-radius:8px; overflow:hidden`）も不採用 — `overflow:hidden` が `<main>` 相対の sticky を殺すため。th の文字色は本 mockup の `--muted`（薄い灰）ではなく実装では `text-foreground` を維持（`--muted-foreground` 対 `bg-muted` 4.40:1 は 14px の 4.5:1 未達のため）。</small></li>
 <li><b>識別列（商品コード + 商品名）を左固定</b>: 発動条件は横 overflow 発生時のみ、mapping は DSR-22 表を正本とする（未決事項なし）。横スクロール時に右端へ影。</li>
 <li><b>操作枠・構造線のコントラスト</b>（DSR-22 原則 13）: 構造線 `--border` を一段濃く、操作枠 `--border-strong` を新設。<small>実装済み（`--border` #cdc8c4 / `--border-strong` #8a8480、値は 00-foundations カラーパレット表が正本）。</small></li>
 <li><b>現在行 3 点</b>（DSR-22 原則 15）: 左 4px バー + 淡い背景 `--row-current` + badge/文言。表内の 3 行目に適用例あり（下にスクロールして確認）。<small>badge/文言の具体的な語彙（「入力中」「編集中」等）は画面ごとに Lane 2〜5 で決める。</small></li>
