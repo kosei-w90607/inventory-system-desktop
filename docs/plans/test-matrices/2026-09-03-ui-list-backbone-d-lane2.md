@@ -11,7 +11,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 - SC1: token 4 件（`--border-strong` / `--row-current` / `--border` / `--input`）+ `@theme` map 2 件
 - SC2a / SC2b: `PageShell` の root 契約（`cn` 順序含む）/ page root 全置換
 - SC3a / SC3b / SC3c: 範囲付き文言 / 0 件契約 / `PaginationSummary` text-only + typography
-- SC4a〜SC4e: `ListShell` の toolbar 枠 / topSummary + gating / skeleton / sticky 帯 + `border-separate` + overflow 上書き / pager 配線
+- SC4a〜SC4e: `ListShell` の toolbar 枠 / topSummary + gating / skeleton / sticky 帯（th cell 単位）+ `border-separate` + th / td cell 罫線 + `h-10` `whitespace-nowrap` + overflow 上書き / pager 配線
 - SC5a / SC5b / SC5c: 商品一覧 既定 100（URL 優先）/ pilot 構成（isLoading、0 件）/ returnTo 保持
 
 ## Failure Modes
@@ -21,7 +21,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 - from / to の off-by-one、to の未 clamp、0 件で「0〜0 件目」
 - Summary にボタン混入、14px のまま、topSummary 既定 true、0 件で summary / pager 描画
 - skeleton 時に children も描画
-- sticky class 欠落、`border-separate` 欠落、overflow 上書き欠落、summary が帯に入らない
+- sticky class 欠落、`border-separate` 欠落、th / td の cell 罫線欠落（tbody の区切り線が消える）、overflow 上書き欠落、summary が帯に入らない・2 行に折り返す、caller className 方式への逸脱
 - pager の onPageChange 未配線
 - 既定 100 が URL 明示値を上書き、`returnTo` が perPage を落とす、棚卸し既定が巻き込まれる
 - `components/patterns` が `features` を import
@@ -39,7 +39,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | SC4a toolbar 枠 | 枠 class 欠落 / 2 段未分離 / toolbar 省略で枠が出る | unit | SC4a: ListShell wraps toolbar and toolbarSecondary in one rounded-lg border bg-card p-4 box as two rows, and renders no box when toolbar is omitted | 枠要素に `border` / `rounded-lg` / `bg-card` / `p-4` のいずれかが無い、toolbarSecondary が枠外、または toolbar 省略時に枠要素が存在 |
 | SC4b topSummary + gating | 既定 true / 常時描画 / 0 件で描画 | unit | SC4b: ListShell renders PaginationSummary above the table only when topSummary is true and totalCount > 0, and renders neither summary nor bottom pager when totalCount is 0 | 省略時に summary text が存在、true 時に不在、table より後に出現、または totalCount 0 で summary / pager のいずれかが存在 |
 | SC4c skeleton | children も描画 | unit | SC4c: ListShell renders ListSkeleton (or given skeleton) instead of children while isLoading | isLoading 時に children の test id が存在、または `aria-label="一覧を読み込み中"` が不在 |
-| SC4d sticky 帯 | class 欠落 / separate 欠落 / overflow 上書き欠落 | unit | SC4d: ListShell with stickyHeader marks summary sticky top-0 bg-muted, thead sticky top-10 bg-muted, table border-separate border-spacing-0, and overrides table-container overflow to visible; without stickyHeader none is applied | summary / `thead` の classList に `sticky` / `top-0` or `top-10` / `bg-muted` が無い、table に `border-separate` が無い、`[data-slot=table-container]` の overflow 上書き class が無い、または false 時にも付与 |
+| SC4d sticky 帯 | class 欠落 / separate 欠落 / cell 罫線欠落 / overflow 上書き欠落 / 2 行化 | unit | SC4d: ListShell with stickyHeader marks the summary band sticky top-0 z-20 h-10 whitespace-nowrap bg-muted, every thead th sticky top-10 z-10 bg-muted border-b-2, every tbody td border-b (last row border-b-0), table border-separate border-spacing-0, and overrides table-container overflow to visible — all via ListShell root classes; without stickyHeader none is applied | summary の classList に `sticky` / `top-0` / `h-10` / `whitespace-nowrap` / `bg-muted` のいずれかが無い、`thead th` に `sticky` / `top-10` / `bg-muted` / `border-b-2` のいずれかが無い、`tbody td` に `border-b` が無い、table に `border-separate` が無い、`[data-slot=table-container]` の overflow 上書き class が無い、children 側の `Table` に className が渡っている、または false 時にも付与 |
 | SC4e pager 配線 | onPageChange 未配線 | unit | SC4e: clicking 次のページ in ListShell bottom pager calls pagination.onPageChange with page+1 | mock が呼ばれない、または引数違い |
 | SC5a 既定 100 | 既定 50 のまま / URL 上書き | unit | SC5a: ProductListPage requests per_page 100 by default and per_page 50 when URL perPage=50 | `searchProducts` mock の `per_page` が既定で 100 でない、または URL 明示 50 が 100 に化ける |
 | SC5b pilot 構成 | ListShell 未経由 / isLoading 未配線 / 0 件で summary | unit | SC5b: ProductListPage renders top summary text, toolbar box, and bottom pager wired to search state; shows ListSkeleton while loading; renders EmptyState without summary or pager for 0 results | summary text 不在、枠不在、次のページ click で search state の page が進まない、loading 時に `aria-label="一覧を読み込み中"` 不在、または 0 件で「0 件」text / pager が存在 |
@@ -78,7 +78,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 
 - from / to: page 1 → 1〜perPage、最終ページ → to = totalCount、totalCount < perPage → 1〜totalCount
 - `toLocaleString("ja-JP")` の 3 桁区切りが n / from / to すべてに掛かる（SC3a の 1,234 case）
-- sticky 帯の thead offset は summary 高（`h-10` = `top-10`）と一致（SC4d の class pair）
+- sticky 帯の th offset は summary 高（`h-10` = `top-10`）と一致し、summary は `whitespace-nowrap` で 1 行固定（SC4d の class pair）
 
 ## Compatibility Checks
 
@@ -105,6 +105,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 - from の計算を `page*perPage` にしたら SC3a が落ちるか
 - Summary にボタンを足したら SC3c が落ちるか
 - overflow 上書き class だけ消したら SC4d が落ちるか
+- th / td の cell 罫線 class だけ消したら SC4d が落ちるか
 - `totalCount > 0` gating を外したら SC4b が落ちるか
 - 既定を 50 に戻したら SC5a が落ちるか
 - pilot から `isLoading` 配線を外したら SC5b が落ちるか
@@ -127,6 +128,8 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | X12 | `search.ts` の perPage 既定を 50 に戻す | SC5a |
 | X13 | ListShell の `isLoading` 分岐を外し常に children を描画 | SC4c |
 | X14 | `ProductListPage` から `isLoading` prop の受け渡しを削除 | SC5b |
+| X15 | ListShell の `thead th` から `border-b-2` を削除 | SC4d |
+| X16 | ListShell の `tbody td` から `border-b` を削除 | SC4d |
 
 ## Residual Test Gaps
 
