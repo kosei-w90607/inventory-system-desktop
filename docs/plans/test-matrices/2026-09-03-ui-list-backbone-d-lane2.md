@@ -48,7 +48,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | 文言 regression | 旧文言残存 | 既存 test 更新 | IntegrityCheckPage / StockInquiryPage / OperationLogsPage の `件中` assert 6 箇所 | 新文言で fail（更新は期待値置換のみ、削除・skip 不可） |
 | 棚卸し既定 | 巻き込み | 既存 test（無変更） | `StocktakePage.test.tsx` T2 / T3 `per_page: 50` | 50 以外 |
 | SC6 SegmentedControl 群枠 | stone-300 直書き残存 / 群枠なし | unit（`SegmentedControl.test.tsx` + fs literal） | SC6: SegmentedControl group wrapper has border-border-strong and the source contains no stone-300 literal; unselected items stay buttons | wrapper の token 完全一致 classList に `border-border-strong` が無い、file に `stone-300` が残る、または未選択肢が `button` role でない |
-| SC7 PLU 一括 caption | caption 欠落 / group 外 | unit | SC7: ProductListPage renders the "PLU 一括操作" caption with 表示中の商品すべてが対象 and both PLU bulk buttons inside the same labelled group | caption text 不在、または 2 button の `closest('[role=group]')` が異なる / null |
+| SC7 PLU 一括 caption | caption 欠落 / group 外 | unit | SC7: ProductListPage renders the "PLU 一括操作" caption with 絞り込みに一致する商品すべてが対象 and both PLU bulk buttons inside the same labelled group | caption text 不在、または 2 button の `closest('[role=group]')` が異なる / null |
 | SC8 sticky 帯 surface | `bg-muted` 残存 / 帯と th の token 不一致 | unit | SC8: ListShell with stickyHeader applies bg-list-head to the summary band, thead th and thead tr, and no bg-muted remains on them | いずれかに `bg-list-head` が無い、または `bg-muted` が残る |
 | SC9 dialog target 保持 | close で target が反転 | unit（`vi.mock` で dialog props 記録） | SC9: after opening 対象から外す and cancelling, the last rendered PluBulkTargetConfirmDialog props keep pluTarget false while open becomes false | 最終 render の `pluTarget` が `true`、または `open` が false にならない |
 
