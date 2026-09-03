@@ -56,7 +56,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | SC10 帯の隣接 + inset + 横追随 + ellipsis + forced-colors 線 | 帯と table の間に page 地 / 左基準線ずれ / root の `space-y-3` 消失 / wrapper 幅が table に追随しない / hard clip / forced-colors で帯消失 | unit（`ListShell.test.tsx`） | SC10: ListShell with stickyHeader and topSummary renders the summary band with px-2, overflow-hidden, child truncate and forced-colors border inside a wrapper whose className is exactly w-min min-w-full and is not the root, the root keeps space-y-3, and the band's next sibling is the table container | 帯の classList に `px-2` / `overflow-hidden` / `[&>div]:min-w-0` / `[&>div]:truncate` / `forced-colors:border-b` のいずれかが無い、裸の `truncate` が残る、wrapper の `className` が `w-min min-w-full` と不一致、wrapper が `container.firstElementChild` と同一、root の classList に `space-y-3` が無い、または `nextElementSibling` が `[data-slot=table-container]` でない |
 | SC11 caption 2 段 + 実件数 + dialog title | 文言分岐誤り / describedby 欠落 / 右寄せ・`ml-auto` 残存 / dialog title 旧文言 | unit（`ProductListPage.test.tsx`、total_count 1234 / 0 / 読込中、期待文言は test 内 literal） | SC11: ProductListPage renders the two-line PLU caption as a full-width left-aligned block, with the 1,234 件 sentence for total_count 1234, the disabled reason for 0, the loading sentence before data, the group described by the sentence, and the dialog title 絞り込みに一致する商品を… | (a)(b)(c) の文言完全一致が崩れる（「1,234」の桁区切りを含む）、group の `aria-describedby` が説明文 `id` を指さない、block の classList に `basis-full` / `items-start` が無い、`ml-auto` / `items-end` が残る、または dialog title に「表示中の商品を」が残る |
 | SC12 mockup / catalog / 文言表 同期 | mockup 帯なし / catalog 字面 stale / 文言表 未登録 / 3 file 未帯化 / history 上部文言 / 同一明度 stale | doc oracle（rg、presence + absence） | SC12: mockup-d-lists, history, home-sales-admin and import-export all nest `.pager.top` inside `.tbl` with `--d-head`; history has no 件目を表示; catalog ⑯ item 3 carries the new wording and item 1 says 3 段; the wording table registers the caption and the new dialog title | S15 Spec の 7 本、S18 Spec の 3 file × 3 本 + history 1 本、S19 Spec の 2 file × 2 本 のいずれかが期待値と異なる |
-| SC13 forced-colors focus | forced-colors で focus 不可視 | fs literal（`globals.css`） | SC13: globals.css declares an unlayered forced-colors media block giving :focus-visible a Highlight outline | `@media (forced-colors: active)` が 0 件、block 内に `:focus-visible` / `Highlight` が無い、または block が `@layer base {` より後にある |
+| SC13 forced-colors focus | forced-colors で focus 不可視 / block が `@layer` 内 / outline 幅 0 | fs literal（`globals.css`、`globals.test.ts`） | SC13: globals.css declares exactly one forced-colors media block at brace nesting depth 0 whose :focus-visible rule pins outline: 2px solid Highlight | `@media (forced-colors: active)` が 1 件でない、block 開始位置までの `{` / `}` 対応数が 0 でない（`@layer` 内）、または block 内に `:focus-visible` と literal `outline: 2px solid Highlight` が無い |
 
 ## State Lifecycle Matrix
 
@@ -158,6 +158,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | X31 | ListShell の wrapper から `w-min min-w-full` を削除 | SC10 |
 | X32 | ListShell の帯から `[&>div]:truncate` を削除し裸の `truncate` に戻す | SC10 |
 | X33 | ListShell の帯から `forced-colors:border-b` を削除 | SC10 |
+| X34 | `globals.css` の forced-colors block を `@layer base { ... }` の内側へ移す（file 内の位置は現在のまま） | SC13 |
 
 ## Residual Test Gaps
 
