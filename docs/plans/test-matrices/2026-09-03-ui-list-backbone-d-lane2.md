@@ -14,6 +14,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 - SC4a〜SC4e: `ListShell` の toolbar 枠 / topSummary + gating / skeleton / sticky 帯（th cell 単位）+ `border-separate` + th / td cell 罫線 + `h-10` `whitespace-nowrap` + overflow 上書き / pager 配線
 - SC5a / SC5b / SC5c: 商品一覧 既定 100（URL 優先）/ pilot 構成（isLoading、0 件）/ returnTo 保持
 - SC6 / SC7 / SC8 / SC9（Gated Amendment 2）: SegmentedControl 群枠 / PLU 一括 caption + group / sticky 帯 surface `--list-head` / dialog target 保持
+- SC10 / SC11 / SC12（Gated Amendment 3）: summary 帯と thead の垂直隣接 + `px-2` inset（正負の oracle）/ PLU 一括 caption 独立行左寄せ 2 段 + 実件数 3 分岐 + `aria-describedby` + dialog title 同期 / mockup `.pager.top` + catalog ⑯ + 文言表の presence / absence 対 oracle
 
 ## Failure Modes
 
@@ -51,6 +52,9 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | SC7 PLU 一括 caption | caption 欠落 / group 外 | unit | SC7: ProductListPage renders the "PLU 一括操作" caption with 絞り込みに一致する商品すべてが対象 and both PLU bulk buttons inside the same labelled group | caption text 不在、または 2 button の `closest('[role=group]')` が異なる / null |
 | SC8 sticky 帯 surface | `bg-muted` 残存 / 帯と th の token 不一致 | unit | SC8: ListShell with stickyHeader applies bg-list-head to the summary band, thead th and thead tr, and no bg-muted remains on them | いずれかに `bg-list-head` が無い、または `bg-muted` が残る |
 | SC9 dialog target 保持 | close で target が反転 | unit（`vi.mock` で dialog props 記録） | SC9: after opening 対象から外す and cancelling, the last rendered PluBulkTargetConfirmDialog props keep pluTarget false while open becomes false | 最終 render の `pluTarget` が `true`、または `open` が false にならない |
+| SC10 帯の隣接 + inset | 帯と table の間に page 地 / 左基準線ずれ / root の `space-y-3` 消失 | unit（`ListShell.test.tsx`） | SC10: ListShell with stickyHeader and topSummary renders the summary band with px-2 inside a wrapper that carries no spacing utility and is not the root, the root keeps space-y-3, and the band's next sibling is the table container | 帯の classList に `px-2` が無い、`parentElement` の classList に `space-y-` / `gap-` / `mt-` / `mb-` / `pt-` / `pb-` 始まりの token がある、`parentElement` が `container.firstElementChild` と同一、root の classList に `space-y-3` が無い、または `nextElementSibling` が `[data-slot=table-container]` でない |
+| SC11 caption 2 段 + 実件数 + dialog title | 文言分岐誤り / describedby 欠落 / 右寄せ・`ml-auto` 残存 / dialog title 旧文言 | unit（`ProductListPage.test.tsx`、total_count 1234 / 0 / 読込中、期待文言は test 内 literal） | SC11: ProductListPage renders the two-line PLU caption as a full-width left-aligned block, with the 1,234 件 sentence for total_count 1234, the disabled reason for 0, the loading sentence before data, the group described by the sentence, and the dialog title 絞り込みに一致する商品を… | (a)(b)(c) の文言完全一致が崩れる（「1,234」の桁区切りを含む）、group の `aria-describedby` が説明文 `id` を指さない、block の classList に `basis-full` / `items-start` が無い、`ml-auto` / `items-end` が残る、または dialog title に「表示中の商品を」が残る |
+| SC12 mockup / catalog / 文言表 同期 | mockup 帯なし / catalog 字面 stale / 文言表 未登録 | doc oracle（rg、presence + absence） | SC12: mockup `.pager.top` CSS contains `--d-head` and the markup nests it inside `.tbl`; catalog ⑯ item 3 carries the new wording and no longer starts with the old 単一 table wording; the wording table registers the caption and the new dialog title | S15 Spec の 7 本の rg のいずれかが期待値と異なる（mockup CSS / markup、catalog absence 1 + presence 2、文言表 presence 1 + absence 1） |
 
 ## State Lifecycle Matrix
 
@@ -139,6 +143,15 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | X18 | ProductListPage の PLU 一括 caption を削除 | SC7 |
 | X19 | ListShell の summary 帯を `bg-muted` に戻す | SC8 |
 | X20 | ProductListPage の dialog を `pluTarget={bulkTarget ?? true}` 単一 state に戻す | SC9 |
+| X21 | ListShell の帯 + table wrapper を外し帯を root 直下へ戻す（gap 復活） | SC10 |
+| X22 | ListShell の summary 帯から `px-2` を削除 | SC10 |
+| X23 | ProductListPage の caption block の `items-start` を `items-end` に戻す | SC11 |
+| X24 | ProductListPage の group から `aria-describedby` のみ削除 | SC11 |
+| X25 | caption の `totalCount.toLocaleString("ja-JP")` を `String(totalCount)` に置換 | SC11 |
+| X26 | caption 2 段目を旧括弧文言「（絞り込みに一致する商品すべてが対象・他ページ含む・確認画面あり）」に戻す | SC11 |
+| X27 | caption の (b)(c) 分岐を削除し常に (a) の文を出す | SC11 |
+| X28 | caption block の `basis-full` を `ml-auto` に戻す | SC11 |
+| X29 | ListShell root から `space-y-3` を削除 | SC10 |
 
 ## Residual Test Gaps
 
