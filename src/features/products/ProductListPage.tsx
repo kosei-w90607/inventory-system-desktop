@@ -24,7 +24,7 @@ import { EmptyState } from "@/components/patterns/EmptyState";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
 import { PageShell } from "@/components/patterns/PageShell";
-import { ProductPagination } from "./components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { ProductTable } from "./components/ProductTable";
 import { PluBulkTargetConfirmDialog } from "./components/PluBulkTargetConfirmDialog";
 import { useProductList } from "./hooks/useProductList";
@@ -288,7 +288,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
       ) : productsQuery.data ? (
         <div className="space-y-3">
           <ProductTable items={productsQuery.data.items} returnTo={returnTo} />
-          <ProductPagination
+          <Pagination
             page={productsQuery.data.page}
             perPage={productsQuery.data.per_page}
             totalCount={productsQuery.data.total_count}

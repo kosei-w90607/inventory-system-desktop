@@ -22,7 +22,7 @@ import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { PageShell } from "@/components/patterns/PageShell";
-import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
@@ -349,7 +349,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
               })}
             </TableBody>
           </Table>
-          <ProductPagination
+          <Pagination
             page={recordsQuery.data.page}
             perPage={recordsQuery.data.per_page}
             totalCount={recordsQuery.data.total_count}

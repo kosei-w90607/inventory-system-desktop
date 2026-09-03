@@ -42,7 +42,7 @@ export const stockInquirySearchSchema = z.object({
  *
  * `search_products` は `PaginatedResult<T>`、`list_low_stock` は `T[]` で形状が
  * 異なるため、hook 内でこの型に正規化する（§58.5 Round 6 P2(a)）。
- * 自動展開 / EmptySearchPlaceholder 判定 / ProductPagination は常に
+ * 自動展開 / EmptySearchPlaceholder 判定 / Pagination は常に
  * `items` / `totalCount` を参照する（生 DTO 直接参照禁止、type narrowing 維持）。
  *
  * UI-06a-D1（2026-08-03 batch B）: `truncated` field は撤去済み。pagination 導入により

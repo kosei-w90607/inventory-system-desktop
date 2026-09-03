@@ -35,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { commands, type IntegrityFixResult, type IntegrityResult } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
@@ -373,7 +373,7 @@ export function IntegrityCheckPage() {
                 </Table>
               </div>
 
-              <ProductPagination
+              <Pagination
                 page={page}
                 perPage={PER_PAGE}
                 totalCount={mismatches.length}

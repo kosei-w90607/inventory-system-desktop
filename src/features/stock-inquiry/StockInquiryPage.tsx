@@ -20,7 +20,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 import { ProductListTable } from "./components/ProductListTable";
 import { EmptySearchPlaceholder } from "./components/EmptySearchPlaceholder";
 import { StockDetailCard } from "./components/StockDetailCard";
-import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 
 export interface StockInquiryPageProps {
   search: StockInquirySearch;
@@ -195,7 +195,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
           />
           {/* status === "all" のときだけ表示（UI-06a-D1、02-component-catalog.md ⑩ canonical を結線） */}
           {statusValue === "all" && data.totalCount !== null && (
-            <ProductPagination
+            <Pagination
               page={pageValue}
               perPage={50}
               totalCount={data.totalCount}

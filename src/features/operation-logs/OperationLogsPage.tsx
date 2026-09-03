@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { commands, type OperationLog } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -517,7 +517,7 @@ export function OperationLogsPage({
               </TableBody>
             </Table>
           </div>
-          <ProductPagination
+          <Pagination
             page={effectiveSearch.page}
             perPage={PER_PAGE}
             totalCount={logsQuery.data.total_count}

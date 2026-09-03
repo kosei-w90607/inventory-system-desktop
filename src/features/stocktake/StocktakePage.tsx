@@ -65,7 +65,7 @@ import { describeError } from "@/lib/describe-error";
 import { isInvokeError, unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { queryKeys } from "@/lib/query-keys";
-import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { PRODUCT_PER_PAGE_OPTIONS } from "@/features/products/search";
 
 import { useCompleteStocktake } from "./hooks/useCompleteStocktake";
@@ -850,7 +850,7 @@ export function StocktakeItemList({
       )}
 
       <fieldset disabled={disabled}>
-        <ProductPagination
+        <Pagination
           page={page}
           perPage={perPage}
           totalCount={totalCount}

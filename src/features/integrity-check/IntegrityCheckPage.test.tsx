@@ -407,7 +407,7 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     expect(await screen.findByText("合成商品 SYN-000")).toBeInTheDocument();
     expect(screen.getByText("合成商品 SYN-099")).toBeInTheDocument();
     expect(screen.queryByText("合成商品 SYN-100")).toBeNull();
-    expect(screen.getByText("101 件中 1 / 2 ページ")).toBeInTheDocument();
+    expect(screen.getByText("101 件中 1〜100 件目 · 1 / 2 ページ")).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "次のページ" }));
     expect(await screen.findByText("合成商品 SYN-100")).toBeInTheDocument();
     expect(screen.queryByText("合成商品 SYN-000")).toBeNull();

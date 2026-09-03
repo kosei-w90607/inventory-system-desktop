@@ -488,7 +488,7 @@ describe("StockInquiryPage SPEC-UIBB-5（51件 synthetic で page 2 到達 + tru
       <StockInquiryPage search={{ q: "毛糸", status: "all", page: 2 }} onSearchChange={vi.fn()} />,
     );
     expect(await screen.findByText("P-051")).toBeInTheDocument();
-    expect(screen.getByText("51 件中 2 / 2 ページ")).toBeInTheDocument();
+    expect(screen.getByText("51 件中 51〜51 件目 · 2 / 2 ページ")).toBeInTheDocument();
   });
 });
 

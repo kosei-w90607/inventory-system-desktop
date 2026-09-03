@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PriceRevisionFilters } from "./components/PriceRevisionFilters";
 import { PriceRevisionTable } from "./components/PriceRevisionTable";
-import { ProductPagination } from "./components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { usePriceRevisionList } from "./hooks/usePriceRevisionList";
 import {
   resetPriceRevisionSearch,
@@ -126,7 +126,7 @@ export function PriceRevisionPage({
             selectedSupplierId={list.normalizedSearch.supplier}
             assignSupplier={assignSupplier}
           />
-          <ProductPagination
+          <Pagination
             page={list.productsQuery.data.page}
             perPage={list.productsQuery.data.per_page}
             totalCount={list.productsQuery.data.total_count}
