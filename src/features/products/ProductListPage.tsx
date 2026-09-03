@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
+import { PageShell } from "@/components/patterns/PageShell";
 import { ProductPagination } from "./components/ProductPagination";
 import { ProductTable } from "./components/ProductTable";
 import { PluBulkTargetConfirmDialog } from "./components/PluBulkTargetConfirmDialog";
@@ -87,7 +88,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
   const totalCount = productsQuery.data?.total_count ?? 0;
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader
         title="商品検索・一覧"
         actions={
@@ -309,6 +310,6 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           if (bulkTarget !== null && totalCount > 0) bulkMutation.mutate(bulkTarget);
         }}
       />
-    </div>
+    </PageShell>
   );
 }

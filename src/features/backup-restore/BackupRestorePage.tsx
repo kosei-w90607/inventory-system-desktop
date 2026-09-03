@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -330,7 +331,7 @@ export function BackupRestorePage() {
   const loadError = settingsQuery.isError || backupsQuery.isError;
 
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <PageHeader title="バックアップ・復元" />
 
       {fatalRestoreKind ? (
@@ -637,7 +638,7 @@ export function BackupRestorePage() {
         }}
         onRestore={() => void handleRestore()}
       />
-    </div>
+    </PageShell>
   );
 }
 

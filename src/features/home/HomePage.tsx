@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import { consumeRestoreSuccessPending } from "@/lib/restore-success-notification";
 import { InventoryActionGrid } from "./components/InventoryActionGrid";
@@ -58,7 +59,7 @@ export function HomePage() {
 
   // a11y: HTML5 main landmark は 1 ページ 1 つ。RootLayout の <main> 内側のため <div> を採用
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <PageHeader title="ホーム" subtitle={today} />
 
       {showRestoreSuccessAlert ? (
@@ -98,6 +99,6 @@ export function HomePage() {
         <h2 className="text-lg font-medium">その他</h2>
         <MiscActionRow />
       </section>
-    </div>
+    </PageShell>
   );
 }

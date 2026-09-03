@@ -13,6 +13,7 @@ import type { OfficialMonthlyDepartmentTotal, SalesMode, SalesReportType } from 
 import { describeError } from "@/lib/describe-error";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { useExportFile } from "@/lib/hooks/useExportFile";
 import { TabsHeader } from "@/components/sales/TabsHeader";
 import {
@@ -72,7 +73,7 @@ export function MonthlySalesPage({ search, onSearchChange }: MonthlySalesPagePro
   };
 
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <PageHeader title="月次売上" />
 
       <TabsHeader />
@@ -140,7 +141,7 @@ export function MonthlySalesPage({ search, onSearchChange }: MonthlySalesPagePro
           )}
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 

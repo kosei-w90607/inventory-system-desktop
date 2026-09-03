@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { FormSection } from "@/components/patterns/FormSection";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
+import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 
@@ -180,7 +181,7 @@ export function ThresholdSettingsPage() {
   const showForm = !settingsQuery.isError && hasHydrated;
 
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <UnsavedChangesDialog warning={unsavedChanges} />
       <PageHeader
         title="在庫少の基準"
@@ -259,6 +260,6 @@ export function ThresholdSettingsPage() {
           </fieldset>
         </form>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

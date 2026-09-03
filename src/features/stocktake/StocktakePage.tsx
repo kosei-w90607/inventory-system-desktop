@@ -19,6 +19,7 @@ import {
   type ProductAddSuggestController,
 } from "@/components/patterns/ProductAddSuggest";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
+import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -212,7 +213,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
   }
 
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <PageHeader
         title="棚卸し"
         subtitle="商品コードまたはJANを読み取り、実際の在庫数を入力します"
@@ -327,7 +328,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
           />
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -923,7 +924,7 @@ interface StocktakeResultPageProps {
 export function StocktakeResultPage({ result, lastStocktake }: StocktakeResultPageProps) {
   const adjustedItems = useMemo(() => result.adjusted_items, [result.adjusted_items]);
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <PageHeader title="棚卸し結果" />
       <Card>
         <CardHeader>
@@ -992,6 +993,6 @@ export function StocktakeResultPage({ result, lastStocktake }: StocktakeResultPa
           </p>
         )}
       </FormSection>
-    </div>
+    </PageShell>
   );
 }

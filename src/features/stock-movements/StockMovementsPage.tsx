@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { ProductPagination } from "@/features/products/components/ProductPagination";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import type { StockMovementsSearch } from "./types";
@@ -69,7 +70,7 @@ export function StockMovementsPage({
   }`;
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader
         title="在庫変動履歴"
         actions={
@@ -211,6 +212,6 @@ export function StockMovementsPage({
           />
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

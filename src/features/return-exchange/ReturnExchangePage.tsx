@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
+import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReturnCreateResult } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -404,7 +405,7 @@ export function ReturnExchangePage() {
   }
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <UnsavedChangesDialog warning={unsavedChanges} />
       <PageHeader
         title="返品・交換"
@@ -984,6 +985,6 @@ export function ReturnExchangePage() {
           </Table>
         ) : null}
       </section>
-    </div>
+    </PageShell>
   );
 }

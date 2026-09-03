@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { MovementTable } from "@/features/stock-movements/components/MovementTable";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -61,17 +62,17 @@ export function ManualSaleRecordDetailPage({
 
   if (detailQuery.isLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
-      </div>
+      </PageShell>
     );
   }
 
   if (detailQuery.isError) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <PageHeader title="手動販売詳細" />
         <Alert variant="destructive">
           <AlertTitle>{describeError(detailQuery.error)}</AlertTitle>
@@ -85,7 +86,7 @@ export function ManualSaleRecordDetailPage({
             前の画面へ戻る
           </Link>
         </Button>
-      </div>
+      </PageShell>
     );
   }
 
@@ -93,7 +94,7 @@ export function ManualSaleRecordDetailPage({
   if (!detail) return null;
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <PageHeader
         title={`手動販売出庫 #${String(detail.id)}`}
         actions={
@@ -201,6 +202,6 @@ export function ManualSaleRecordDetailPage({
           <MovementTable movements={detail.movements} />
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

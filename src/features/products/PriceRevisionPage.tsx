@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { ListSkeleton } from "@/components/patterns/ListSkeleton";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,7 +43,7 @@ export function PriceRevisionPage({
     list.normalizedSearch.discontinued;
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader
         title="一括価格改定"
         subtitle="値上げリストを商品と照合し、1行ずつ売価・原価を確定します。"
@@ -135,6 +136,6 @@ export function PriceRevisionPage({
           />
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

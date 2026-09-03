@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
+import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { formatDateTime, formatRecordStatus } from "@/features/inventory-records/types";
 import { commands, type ManualSaleCreateResult, type ProductWithRelations } from "@/lib/bindings";
@@ -296,7 +297,7 @@ export function ManualSalePage() {
   }
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <UnsavedChangesDialog warning={unsavedChanges} />
       <PageHeader
         title="手動販売出庫"
@@ -757,6 +758,6 @@ export function ManualSalePage() {
           </div>
         ) : null}
       </section>
-    </div>
+    </PageShell>
   );
 }

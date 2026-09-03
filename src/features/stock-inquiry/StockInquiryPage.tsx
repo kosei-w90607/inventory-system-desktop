@@ -16,6 +16,7 @@ import { useStockInquiry } from "./hooks/useStockInquiry";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { StatusChips } from "./components/StatusChips";
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
+import { PageShell } from "@/components/patterns/PageShell";
 import { ProductListTable } from "./components/ProductListTable";
 import { EmptySearchPlaceholder } from "./components/EmptySearchPlaceholder";
 import { StockDetailCard } from "./components/StockDetailCard";
@@ -84,7 +85,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
   return (
     // p-6: 売上レポート（daily/monthly）と全周余白を揃える（RootLayout main は padding を持たず
     // 各ページ root が自前で付ける設計、Codex 実装レビュー Round 1 後の L3 デモ発見）
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader title="在庫照会" />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -205,6 +206,6 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
           )}
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

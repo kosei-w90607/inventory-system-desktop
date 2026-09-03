@@ -10,6 +10,7 @@ import {
 import { useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -180,7 +181,7 @@ export function IntegrityCheckPage() {
       : "まだ実行されていません";
 
   return (
-    <div className="relative min-h-screen space-y-6 p-6">
+    <PageShell className="relative">
       <div className="space-y-2">
         <PageHeader
           title="在庫整合性検証"
@@ -450,6 +451,6 @@ export function IntegrityCheckPage() {
           </div>
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }
