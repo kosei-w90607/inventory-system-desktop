@@ -82,25 +82,33 @@ export function ListShell({
         </div>
       )}
 
-      {showTopSummary && pagination ? (
-        stickyHeader ? (
-          <div className="sticky top-0 z-20 flex h-10 w-full items-center truncate bg-list-head">
+      {stickyHeader && showTopSummary && pagination ? (
+        // Gated Amendment 3 S13（owner L3 run 2 FAIL、AC-L3-2）: summary 帯と
+        // table を spacing utility を持たない 1 つの wrapper に包み、root の
+        // space-y-3 が toolbar /（帯 + table）/ 下部 Pagination の間だけに
+        // 効くようにする（帯と table の間に page 地を挟まない）。
+        <div>
+          <div className="sticky top-0 z-20 flex h-10 w-full items-center truncate bg-list-head px-2">
             <PaginationSummary
               page={pagination.page}
               perPage={pagination.perPage}
               totalCount={pagination.totalCount}
             />
           </div>
-        ) : (
-          <PaginationSummary
-            page={pagination.page}
-            perPage={pagination.perPage}
-            totalCount={pagination.totalCount}
-          />
-        )
-      ) : null}
-
-      {isLoading ? (skeleton ?? <ListSkeleton />) : children}
+          {isLoading ? (skeleton ?? <ListSkeleton />) : children}
+        </div>
+      ) : (
+        <>
+          {showTopSummary && pagination ? (
+            <PaginationSummary
+              page={pagination.page}
+              perPage={pagination.perPage}
+              totalCount={pagination.totalCount}
+            />
+          ) : null}
+          {isLoading ? (skeleton ?? <ListSkeleton />) : children}
+        </>
+      )}
 
       {hasResults && pagination && (
         <Pagination

@@ -291,6 +291,36 @@ describe("SC8: sticky band surface uses --list-head, not bg-muted (Gated Amendme
   });
 });
 
+describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FAIL / AC-L3-2）", () => {
+  it("wraps the sticky summary band and the table together with px-2 inset, keeping root's space-y-3 outside the wrapper", () => {
+    const { container } = render(
+      <ListShell stickyHeader topSummary pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+
+    const root = container.firstElementChild;
+    expect(classTokens(root)).toContain("space-y-3");
+
+    const summaryBand = container.querySelector(".sticky.top-0.z-20");
+    expect(summaryBand).not.toBeNull();
+    expect(classTokens(summaryBand)).toContain("px-2");
+
+    const wrapper = summaryBand?.parentElement ?? null;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper).not.toBe(root);
+    const wrapperTokens = classTokens(wrapper);
+    const spacingPrefixes = ["space-y-", "gap-", "mt-", "mb-", "pt-", "pb-"];
+    expect(
+      wrapperTokens.some((token) => spacingPrefixes.some((prefix) => token.startsWith(prefix))),
+    ).toBe(false);
+
+    const tableContainer = container.querySelector('[data-slot="table-container"]');
+    expect(tableContainer).not.toBeNull();
+    expect(summaryBand?.nextElementSibling).toBe(tableContainer);
+  });
+});
+
 describe("SC4e: bottom pager onPageChange wiring", () => {
   it("clicking 次のページ calls pagination.onPageChange with page+1", async () => {
     const onPageChange = vi.fn();
