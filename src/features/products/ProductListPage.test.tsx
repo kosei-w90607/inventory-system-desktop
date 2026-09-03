@@ -692,7 +692,9 @@ describe("ProductListPage S10 PLU 一括 caption（Gated Amendment 2 / owner L3 
 
     const captionLabel = screen.getByText("PLU 一括操作");
     expect(captionLabel).toHaveClass("font-medium", "text-foreground");
-    const captionNote = screen.getByText("（表示中の商品すべてが対象・確認画面あり）");
+    const captionNote = screen.getByText(
+      "（絞り込みに一致する商品すべてが対象・他ページ含む・確認画面あり）",
+    );
     expect(captionNote).toHaveClass("text-muted-foreground");
 
     const addButton = screen.getByRole("button", { name: "PLU 対象にする" });

@@ -199,7 +199,9 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
       <div className="ml-auto flex flex-col items-end gap-1">
         <p id="plu-bulk-caption" className="text-sm">
           <span className="font-medium text-foreground">PLU 一括操作</span>{" "}
-          <span className="text-muted-foreground">（表示中の商品すべてが対象・確認画面あり）</span>
+          <span className="text-muted-foreground">
+            （絞り込みに一致する商品すべてが対象・他ページ含む・確認画面あり）
+          </span>
         </p>
         <div
           role="group"
