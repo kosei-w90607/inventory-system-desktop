@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
@@ -19,7 +19,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: b9f0ba5
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b)）+ Lane 1b mockup 5 file の視認（履歴系固定列 mapping の最終確定を含む）
@@ -563,5 +563,7 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 2026-09-03 Final Review round 1: Codex（PR #32 comment 5525240043）P1 0 / P2 4 → 全件 accept（P2-1 Amendments → 本 commit で `4401112` 記録 / P2-2 `9d11287` subject → 履歴書換え不採用・手動計上 + owner 承認の例外 / P2-3 docs drift 4 箇所 → `ef782b8` / P2-4 SC2b occurrence 43 + allowlist → `ef782b8`）。Opus デザイン面 P1 1 / P2 6 / P3 4 → 全件 accept（P1-1 `--card` 同色は記録済み逸脱 + AC-L3-2 判定項目、実装維持 / P2-1 DSR-22 上部文言 / P2-2・P2-3 mockup 保留項目 3・4 / P2-4 帯 `truncate` + AC-L3-2 に可読性・横 scroll 項目 / P2-5 横 scroll 時の帯 → AC-L3-2 / P2-6 mockup ボタン枠色を実装と 1:1 / P3-1 ListSkeleton 枠 → S8 (vii) / P3-2 bulkError を toolbarSecondary 内へ / P3-3 `space-y-3` 補記 / P3-4 `--d-ctl` 重複削除）。Sonnet mutation 独立再実測 X1〜X15 kill / X16 survivor（`[&_tbody_td]:border-b` が `[&_tbody_td]:border-border` に部分一致）→ `ListShell.test.tsx` を token 完全一致へ（test-only）。是正 = `2c9d77c`（test）/ `e60fa2a`（ui）/ `ef782b8`（docs）。独立 closure = X16 / X15 / X3 変種 / X9 全 kill、着地 14 件 closed、P1/P2/P3 = 0。
 
 2026-09-03 owner L3 run 1 FAIL → Gated Amendment 2（S9〜S12、`b318240`）: 是正 `c1928c9` `7136d53` `4fda5a2` `b9f0ba5`。独立 closure = X17〜X20 + X16 全 kill、着地 closed、P1/P2/P3 = 0。Opus 軽確認は 529 ×2 で未実施（L3 run 2 を oracle）。
+
+2026-09-04: **owner L3 run 2 = FAIL（途中停止）**（PR #32 comment 5527090250、head `916696c` / content `b9f0ba5`、100% 表示、介入 2/3 の同一 gate 内）。PASS = SegmentedControl 群枠（AC-L3-1 (f)）。懸念付き PASS = PLU 一括操作 caption（作用範囲と確認ありは読めるが、括弧書きが仕様注釈に見える。owner 提案 = 左寄せ 2 段 + 実件数）。FAIL = summary 帯と table header の 1 帯化（AC-L3-2）: `ListShell.tsx:73` root の `space-y-3` が summary 帯と table の間にも 12px の page 地を挟み、summary 文言は水平 inset なしで th `px-2` の左基準線と 8px ずれ、通常位置と sticky 位置で見え方が変わる。未実施 = dialog 残像（AC-L3-6 後段）/ DPI 125%・150% / 横 scroll / `?perPage=50` / forced-colors・focus / mockup 5 file + history 固定列 mapping / `9d11287` 例外承認。非 blocking 所感 = control surface と toolbar 地の明度差（Final Review round 1 P1-1 の `--card` 候補と同根、本 lane 不変）/ 帯文言「全453件のうち1〜100件を表示」案（DSR-22 統一形の改訂、P3 backlog）。Coordinator 所見: Amendment 2 S11 は surface と幅のみ規定し垂直隣接と水平 inset を書いておらず、mockup `.pager.top` も背景なし・`.tbl` と 24px gap の別構造のため「1 つの帯」を目で照合できる正本が無かった（Opus デザイン面レビューが 529 で未実施だった影響）。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正は Gated Amendment 3（S13〜S15）として起票し、Opus デザイン面レビュー（発注書駆動・read-only）→ Writer 是正 → Sonnet 独立 closure（新規 X21〜X23 含む）→ human-confirm 再遷移は post-impl STATECAP 2/2 到達のため content commit 同乗で materialize → L3 run 3 は canonical の最初から。
 
 - Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）.
