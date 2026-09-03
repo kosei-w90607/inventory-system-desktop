@@ -260,7 +260,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + Pagination
 ### 74.10 Pagination 契約
 
 - 既定 `per_page = 20`（増減 UI なし。`StockMovementsPage` / `InventoryRecordsPage` と同一、§74.17）。
-- 文言: `{total_count.toLocaleString("ja-JP")} 件中 {page} / {totalPages} ページ`（`Pagination` をそのまま再利用）。
+- 文言: `{total_count.toLocaleString("ja-JP")} 件中 {from}〜{to} 件目 · {page} / {totalPages} ページ`（範囲付き統一形、`Pagination` をそのまま再利用）。
 - **範囲外 page 回復**（UI-11c-D8）: `logsQuery.data.items.length === 0 && logsQuery.data.total_count > 0 && normalizedSearch.page > 1` の場合、通常の EmptyState ではなく専用メッセージ「このページには表示するログがありません」+ 「先頭ページに戻る」ボタン（`updateSearch({ page: 1 })`）を表示する。
 - IO層は`page` / clamp後の`per_page`を`i64`へ変換してからoffsetを計算する。URL/CMD wireで表現可能な最大positive page（`u32::MAX`）でもRust側でpanic/wrapせず、SQLiteの範囲外offsetによる空`items`と上記回復導線へ到達させる。
 - filter 変更時は常に `page=1`（§74.3）に戻るため、この回復導線は「filter 変更を伴わない外部要因（365日 cleanup、URL 直接改変、他端末からの delete 等）で総ページ数が減った」場合にのみ到達する。

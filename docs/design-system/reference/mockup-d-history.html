@@ -7,7 +7,7 @@
 --ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
 --ring:#b45309;
 /* D: 構造線 / 操作枠 / 現在行 / 固定列の影 */
---d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#f5f5f4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
+--d-line:#cdc8c4;--d-head:#f5f5f4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
@@ -118,6 +118,7 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 .d th{position:sticky;top:0;z-index:3;background:var(--d-head);border-bottom:2px solid var(--d-line);box-shadow:0 1px 0 var(--d-line)}
 .d td{border-bottom-color:var(--d-line)}
 .d select.ctl,.d .search input,.d input[type=date]{border-color:var(--border-strong)}
+.d .search .btn{border-color:var(--border-strong)}
 .d .pager.top{display:flex}
 .d .pager .cnt{color:var(--fg);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 .d .pager .cnt small{font-size:14px;color:var(--muted);font-weight:400;margin-left:8px}

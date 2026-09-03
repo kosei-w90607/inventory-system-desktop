@@ -19,7 +19,7 @@
 3. **状態は icon + 日本語 + 色の 3 点で伝える。** 色だけ・icon だけは不可。（既存 DSR-08 — A / B 一致）
 4. **badge は 3 種だけ。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等）②分類 = secondary pill + 枠線（隣接背景に対し 3:1、DSR-22）。icon は識別に必要な場合に限り可（廃番等、Gated Amendment 1）③強調 = 琥珀 pill（ランキング 1 位 / 最新 等）。4 種目を作らない。（B §2.6、②の枠線化は 2026-09-03 owner Human Gate 所感の Gated Amendment 1 是正を受けて訂正）
 5. **1 画面に primary（琥珀塗り）は 1 つ。** 入口（ホーム）は最重要導線 1 つだけ primary にする。0 primary の画面は昇格を検討する。（既存 DSR-01 + A 診断 #3）
-6. **画面の器は 1 つ。** `PageShell`（`src/components/patterns/PageShell.tsx`、p-6 / space-y-6）を唯一の page root にする（Lane 2 実装、`src/features/**/*Page.tsx` 43 箇所を統一済み）。一覧画面の検索・絞り込みは枠（`rounded-lg border bg-card p-4`、`ListShell` toolbar box）に入れ、「検索条件」と「並び替え・件数」は段を分ける。（B §2.2 + A 診断 #5 #6 + B D15。00-foundations スペーシング表の「space-8 = ページ余白」行と数値が異なる = 現行実装の多数派 p-6 に合わせる意図、batch 1 で同行を修正）
+6. **画面の器は 1 つ。** `PageShell`（`src/components/patterns/PageShell.tsx`、p-6 / space-y-6）を唯一の page root にする（Lane 2 実装、`src/features/**/*Page.tsx` 43 箇所を統一済み）。一覧画面の検索・絞り込みは枠（`rounded-lg border bg-card p-4`、`ListShell` toolbar box、2 段時は段間 `space-y-3`）に入れ、「検索条件」と「並び替え・件数」は段を分ける。（B §2.2 + A 診断 #5 #6 + B D15。00-foundations スペーシング表の「space-8 = ページ余白」行と数値が異なる = 現行実装の多数派 p-6 に合わせる意図、batch 1 で同行を修正）
 7. **検索欄は全画面で同じ挙動。** live 型（入力で絞り込み）+ 検索ボタン併記。Enter を押させる commit 型の画面を残さない。（B D7、owner 裁定 2026-08-20。02-component-catalog ⑨ の canonical `SearchBar` は live 型「ボタンなし」/ commit 型の 2 実装で、本行と異なる = batch 1〜2 で ⑨ の skeleton を「live + ボタン併記」の単一形へ改める）
 8. **押せるものは押せる顔をしている。** 行は hover 背景 + 右端 chevron、ボタン・入力欄は最小高 40px。（B D13 D17）
 9. **入口と見出しは「何をする画面か」を 1 行で添える。** ホームの大ボタンは icon（24px）+ 題名 + 1 行説明、PageHeader は subtitle と actions を同時に持てる。（B D6 D11、SCREEN_DESIGN の元意図）

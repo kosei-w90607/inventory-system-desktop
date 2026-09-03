@@ -901,7 +901,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **必須構成（6 項目。適用条件は DSR-22 を正本とする）**:
 
-1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4` の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）
+1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4`（2 段時は段間 `space-y-3`）の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱・sticky 帯・th が同一明度になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）
 2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」の text 表示。下部は `Pagination`、同文言 + pager フル装備。両者とも `totalCount > 0` のときだけ描画する）
 3. **sticky header**（単一 `<table>` 内、summary 帯 + `thead` を 1 つの sticky 帯として `<main>` 相対に留める）
 4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする。横スクロール時は固定列右端に影。Lane 2 では `identityColumns` prop を予約するのみで描画には影響しない、実装は Lane 3〜5）

@@ -18,7 +18,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,B
 h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
 h2{font-size:20px;line-height:1.35;font-weight:600;margin:0}
 .lead{color:var(--muted);font-size:14px;margin:0;max-width:920px}
-.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--d-ctl);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
 .btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
 .btn.sm{min-height:36px;font-size:14px;padding:0 12px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -27,7 +27,7 @@ h2{font-size:20px;line-height:1.35;font-weight:600;margin:0}
 .filters label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
 .search{display:flex;align-items:center;gap:0}
 .search input{min-height:40px;width:280px;border:1px solid var(--d-ctl);border-radius:6px 0 0 6px;padding:0 12px;font:inherit;font-size:16px}
-.search .btn{border-radius:0 6px 6px 0;border-left:0}
+.search .btn{border-radius:0 6px 6px 0;border-left:0;border-color:var(--d-ctl)}
 select.ctl{min-height:40px;border:1px solid var(--d-ctl);border-radius:6px;padding:0 8px;font:inherit;font-size:16px;background:#fff;width:9rem}
 .sep{flex-basis:100%;height:0}
 .tbl{background:var(--card);border:1px solid var(--d-line);border-radius:8px;overflow:hidden}
@@ -84,7 +84,7 @@ tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 
 <div class="pager top"><span class="cnt">238 件中 1〜50 件目 · 1 / 5 ページ</span></div>
 <div class="tbl"><div class="scroll" id="scroll-main" style="--id-w:10.5rem;max-height:56vh"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>部門</th><th class="num">売価</th><th class="num">原価</th><th class="num">在庫数</th><th>PLU</th><th></th></tr></thead><tbody id="tb-main"></tbody></table></div></div>
-<div class="pager"><span>238 件中 1 / 5 ページ</span><div class="pg"><button class="btn sm" disabled>← 前へ</button><button class="btn sm">次へ →</button></div></div>
+<div class="pager"><span>238 件中 1〜50 件目 · 1 / 5 ページ</span><div class="pg"><button class="btn sm" disabled>← 前へ</button><button class="btn sm">次へ →</button></div></div>
 
 <h2>密度比較: perPage 50 のとき / 200 のとき</h2>
 <p class="lead">刻み（40/80/120 等）の変更ではなく、既定値の画面別最適化（catalog ⑩ 裁定案）を density で見せる。共有定数 <code>PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]</code> は 1 本のまま維持し、既定値だけを画面ごとに変える。</p>
@@ -104,15 +104,15 @@ tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 <ol>
 <li><b>総件数と現在位置を上にも</b>（DSR-22）: 上部は「238 件中 1〜50 件目 · 1 / 5 ページ」を必須表示（Lane 2 実装済み canonical `Pagination` / `PaginationSummary`、旧 `ProductPagination.tsx:26-30`）、pager ボタンは任意で本 mockup では下部のみに置く（catalog ⑩ Don't）。範囲付き統一形は Lane 2 で実装済み（旧 `ProductPagination` + 全 caller + test を一括移行済み、規範も範囲付き統一形へ更新済み）。発動条件は viewport 超過時のみ（DSR-22 で確定、未決事項なし）— <b>これを採ると何が変わるか</b>: 長い一覧で「いま何件目か」を下までスクロールせずに確認でき、同じ操作ボタンを 2 組出さないため判断コストも増えない。</li>
 <li><b>table header を sticky</b>: 発動条件は viewport 超過時のみ（DSR-22）。列名が常に見える。<b>これを採ると何が変わるか</b>: 横スクロール中も列の意味を見失わない。<small>sticky header の背景色は `--d-head`（= `bg-muted`、stone-100 相当）を採用（Lane 2 実装で確定、`ListShell` の summary 帯 + `thead th`）。機構差分（Lane 2 実装で不採用にしたもの、注記のみ）: 本 mockup の箱内スクロール（`.tbl > .scroll{max-height:56vh}`）は不採用 — DSR-17 の `<main>` 単一 scroll container と衝突するため。表の外枠（`.tbl` の `border-radius:8px; overflow:hidden`）も不採用 — `overflow:hidden` が `<main>` 相対の sticky を殺すため。th の文字色は本 mockup の `--muted`（薄い灰）ではなく実装では `text-foreground` を維持（`--muted-foreground` 対 `bg-muted` 4.40:1 は 14px の 4.5:1 未達のため）。</small></li>
-<li><b>識別列（商品コード + 商品名）を左固定</b>: 発動条件は横 overflow 発生時のみ、固定列は DSR-22 の画面→固定列 mapping（商品系: 商品コード + 商品名 / 棚卸し: 商品コード + 商品名 / 在庫・履歴系: 日時 + 種別 / 管理系: 主キー相当）で pin 済み（未決事項なし）。横スクロール時に右端へ影。</li>
-<li><b>操作枠・構造線のコントラスト</b>（DSR-22 原則 13）: 構造線 `--border` を一段濃く（提案 cdc8c4）、操作枠 `--border-strong`（提案 8a8480、対 `--background` 実測 3.53:1 / 対 `--card` 実測 3.38:1、WCAG 相対輝度で再計算済み）を新設。<small>候補値は canonical に置かず本 packet / reference 分析 doc に記載。確定値は Lane 2 の L3 で確定。</small></li>
+<li><b>識別列（商品コード + 商品名）を左固定</b>: 発動条件は横 overflow 発生時のみ、mapping は DSR-22 表を正本とする（未決事項なし）。横スクロール時に右端へ影。</li>
+<li><b>操作枠・構造線のコントラスト</b>（DSR-22 原則 13）: 構造線 `--border` を一段濃く、操作枠 `--border-strong` を新設。<small>実装済み（`--border` #cdc8c4 / `--border-strong` #8a8480、値は 00-foundations カラーパレット表が正本）。</small></li>
 <li><b>現在行 3 点</b>（DSR-22 原則 15）: 左 4px バー + 淡い背景 `--row-current` + badge/文言。表内の 3 行目に適用例あり（下にスクロールして確認）。<small>badge/文言の具体的な語彙（「入力中」「編集中」等）は画面ごとに Lane 2〜5 で決める。</small></li>
 <li><b>perPage 既定値</b>（catalog ⑩ 裁定案、owner 了承 2026-09-03）: 商品一覧は既定 100、棚卸しは既定 50。<b>これを採ると何が変わるか</b>: 棚卸しは未入力の見落としを減らすため 1 ページの走査量を絞り、商品一覧は 1 件探索の効率を優先してページ送り回数を減らす。40 刻み化は不採用の裁定案（既存 test 影響・移行コスト）。</li>
 <li><b>廃番 Badge の可読性</b>（DSR-22 原則 13、owner Human Gate 所感 2026-09-03）: soft 背景のみの分類 pill は白地で見づらいため、枠線（`--border-strong` 相当、対 `--background` 実測 3.53:1）+ icon を追加した。<b>これを採ると何が変わるか</b>: 枠線と icon で「廃番」であることが白地でも判別できる。<small>既存の灰色系 secondary Badge（実装済み画面）も同根の可読性課題があり、Lane 3〜5 の sweep 項目とする。</small></li>
 </ol>
 </div>
 
-<div class="note"><b>位置付け</b>: 正本は 04-backbone.md 原則 13〜16 / 01-decision-rules.md DSR-22 / 02-component-catalog.md ⑯（一覧の器 ListShell）。本 mockup は 2026-08-23 の Windows native L3（UI-14）所見 5 点 + owner 新規所感（2026-09-03、棚卸し画面）+ Human Gate 所感（2026-09-03、廃番 Badge 可読性）を反映した Lane 1a 版。sidebar・PageHeader・「商品登録」などのボタンの見た目は統合案 C の描き方をそのまま使っており、D の提案ではない。数値（線 cdc8c4 / 操作枠 8a8480 / 現在行 fff8e6）は canonical docs には置かず本 mockup と packet「起票時実測」節 / reference 分析 doc の提案値。操作枠の対 `--background` 実測 3.53:1 / 対 `--card` 実測 3.38:1 は WCAG 相対輝度で再計算し確認済み。確定は Lane 2 の L3 で行う。</div>
+<div class="note"><b>位置付け</b>: 正本は 04-backbone.md 原則 13〜16 / 01-decision-rules.md DSR-22 / 02-component-catalog.md ⑯（一覧の器 ListShell）。本 mockup は 2026-08-23 の Windows native L3（UI-14）所見 5 点 + owner 新規所感（2026-09-03、棚卸し画面）+ Human Gate 所感（2026-09-03、廃番 Badge 可読性）を反映した Lane 1a 版。sidebar・PageHeader・「商品登録」などのボタンの見た目は統合案 C の描き方をそのまま使っており、D の提案ではない。数値（線 cdc8c4 / 操作枠 8a8480 / 現在行 fff8e6）は canonical docs には置かず本 mockup と packet「起票時実測」節 / reference 分析 doc の提案値。操作枠の対 `--background` 実測 3.53:1 / 対 `--card` 実測 3.38:1 は WCAG 相対輝度で再計算し確認済み。確定は Lane 2 の L3 で行う。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱・sticky 帯・th が同一明度になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）。</div>
 </div>
 <script>
 (function(){
