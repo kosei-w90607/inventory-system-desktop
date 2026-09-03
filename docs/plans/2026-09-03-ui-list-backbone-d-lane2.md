@@ -10,16 +10,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
-- Amendments: 4401112 b318240
+- Amendments: 4401112 b318240 357941c 75d5e30 ec56d20
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 2a2ff14
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b)）+ Lane 1b mockup 5 file の視認（履歴系固定列 mapping の最終確定を含む）
@@ -315,6 +315,12 @@ Minimum design checks for business-app work:
 | D-6 pilot 構成（isLoading 配線、0 件） | ProductListPage.tsx | SC5b | AC-L3-2 |
 | D-6 returnTo 保持 | ProductListPage.tsx | SC5c | — |
 | D-9 依存方向 | Pagination.tsx 移設 | AC3 / AC4（rg oracle） | — |
+| Gated Amendment 2 S9 SegmentedControl 群枠 | segmented-control.tsx | SC6 | AC-L3-1 (f) |
+| Gated Amendment 2 S10 / Amendment 3 S14 PLU caption + dialog title | ProductListPage.tsx / PluBulkTargetConfirmDialog.tsx | SC7 / SC11 | AC-L3-6 |
+| Gated Amendment 2 S11 / Amendment 3 S13 / 追補 S17 sticky 帯（surface・隣接・inset・横追随・ellipsis・forced-colors 線） | ListShell.tsx / globals.css | SC8 / SC10 | AC-L3-2 / AC-L3-4 |
+| Gated Amendment 2 S12 dialog target 保持 | ProductListPage.tsx | SC9 | AC-L3-6 |
+| Amendment 3 S15 / 追補 S18 / S19 / S21 doc 同期（mockup 4 file・catalog ⑯・文言表・00-foundations） | docs/design-system, docs/function-design | SC12（doc oracle） | AC-L3-5 |
+| 追補 S16 forced-colors focus indicator | globals.css | SC13 | AC-L3-4 |
 | DSR-22 低視力 | — | — | AC-L3-4 |
 | S6 docs | design-system / 59 / checklist / UI_TECH_STACK / mockup 注記 | AC6（rg oracle） | — |
 | S7 mockup | reference | AC7 | AC-L3-5 |
@@ -571,6 +577,22 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 
 **再実測 gate（全 green）**: `npm run typecheck` / `lint` / `test`（161 file / 1233 test）/ `format:check`（`npm run format` を 1 回適用後 差分なし）/ `build`。`bash scripts/doc-consistency-check.sh`（ERROR 0、WARN 5 pre-existing、DS1 = 40 件・DS3 = 24 件〈+1、`--list-head`〉）。`--target plan`（全チェック通過）。`cd src-tauri && cargo run --bin generate_traceability -- --check`（OK、ERROR 0 / WARN 0。新規 test file `ProductListPage.bulk-dialog-target.test.tsx` は本文中の `REQ-907` 言及により FE 未参照 baseline 22 のまま維持、`90-traceability.md` 再生成 1 行差分を commit に含める）。`git diff --stat 9d11287 -- src-tauri src/lib/bindings.ts` = 0 行を維持。S9（`rg -c stone-300 segmented-control.tsx` = 0）を含む全 AC を再実測し green を確認。
 
+### Gated Amendment 3 対応（2026-09-04、owner L3 run 2 FAIL 是正 + closure 起源の追補、S13〜S21）
+
+**Writer content commit**: S13〜S15 = `39f8683` / `72f3f23` / `76dc43e`（closure round 1 candidate）、追補 S16〜S19 = `b3c8b24` / `13fad54` / `4539416`（closure round 2 candidate）、closure round 2 是正 S20 / S21 = `b03958d` / `2a2ff14`（最終 content candidate、Reviewed Content HEAD）。
+
+**S13**: `ListShell.tsx` の `stickyHeader && showTopSummary` 分岐で summary 帯と children を wrapper（追補 S17 で `w-min min-w-full`）に包み、帯に `px-2`。root `space-y-3` は不変。**S14**: `ProductListPage.tsx` の caption block を `basis-full flex flex-col items-start gap-1`、2 段目 `#plu-bulk-description` を (a)(b)(c) 3 分岐、group に `aria-describedby`。dialog title を「絞り込みに一致する商品を…」へ（`50-ui-product-list.md` 文言表・test literal 同期、`docs/screen_mockups.html:357` の「表示中の商品数」は在庫 summary card の別文脈で不変）。**S15**: mockup-d-lists の `.pager.top` を `.tbl` 内 + `--d-head`、catalog ⑯ 第 3 項の字面（語順は「`<table>` は単一（…）。」— packet 字面「単一 `<table>` 内」は自身の absence oracle `sticky header**（単一` = 0 と衝突する Coordinator 起草ミスで、Writer の語順変更を採用、内容等価）、第 1 項に「node 構造の 2 段」注記、文言表に toolbar caption 行 + 3 文 literal 脚注。**S16**: `globals.css` に unlayered forced-colors `:focus-visible` outline（`Highlight`）。**S17**: wrapper `w-min min-w-full`、帯 `overflow-hidden` + `[&>div]:min-w-0 [&>div]:truncate` + `forced-colors:border-b`。**S18**: mockup history / home-sales-admin / import-export の帯化（3 / 4 / 3 箇所）+ history 上部文言統一形。**S19**: catalog :904 / mockup-d-lists :116 の「同一明度」→ 3 段。**S20**: SC13 を nesting depth 0 + `outline: 2px solid Highlight` literal に強化。**S21**: 00-foundations に forced-colors focus 安全網 1 行、catalog ⑯ 第 3 項に wrapper / forced-colors 線 / ellipsis を追記。
+
+**Probe（帯の隣接・inset・横追随の目視）**: Writer は GUI なしで計測不能。静的 DOM 分析（SC10 の正負 oracle: wrapper ≠ root、root は `space-y-3` 保持、帯の次兄弟が table-container、wrapper `className` 完全一致）で構造を保証。実描画は L3 run 3（AC-L3-2）が oracle。
+
+**独立 closure**: round 1（`76dc43e`）= Sonnet mutation X21〜X29 全 kill + X16〜X20 再測全 kill、findings 0 / Opus デザイン面（L3 run 3 canonical 全項目スコープ）P1 3 / P2 5 / P3 4 → 追補 S16〜S19。round 2（`4539416`）= Sonnet X30〜X33 + X21〜X29 + X19 全 kill、findings 0 / Opus 軽確認 P1 0 / P2 2 / P3 3 → S20 / S21。round 3（`2a2ff14`）= Sonnet X34 + X30 + 追加 mutant（outline 幅 0）全 kill（SC13 の describe 内 it を S20 仕様へ書き換え、net 削除なし）、S21 doc oracle 3 本一致。着地 S13〜S21 closed、既存 test の削除・skip 0。
+
+**再実測 gate（各 round で Writer + closure が独立に全 green）**: typecheck / lint / test / format:check / build / `doc-consistency-check.sh --target plan` / `doc-consistency-check.sh`（ERROR 0、WARN 5 pre-existing）。test 件数は PR body を正本とし転記しない。
+
+**X21〜X34 の Writer 自己注入**: 未実施（発注書どおり、独立 closure が再実測）。
+
+**遷移**: post-impl state-only 2/2 到達のため、`implementing -> local-verified -> independent-review -> human-confirm` を本 commit（Contract Coverage Ledger SC6〜SC13 行 + 本結果記入 + Workflow State）に同乗して materialize。根拠 = content candidate `2a2ff14`（closure round 3 で P1/P2 = 0）、L1 evidence は PR body。
+
 ## Review Response
 
 2026-09-03 Plan Review round 1（独立 Sonnet = P1 2 / P2 4 / P3 3、Opus デザイン面 = P1 4 / P2 8 / P3 3）: 全件 accept。Sonnet P1-1（AC2 の `rg -l` は 28 file、43 は箇所数）→ AC2 を file 数 + 箇所数の二段構えへ / P1-2（Matrix SC3a の to は 1,100）→ 訂正 / P2-3（`#cdc8c4` は 1.59:1、1.66 は対純白）→ 起票時実測・S1・reference §8 訂正を scope 化 / P2-4（patterns → features 逆依存）→ D-9 で `Pagination.tsx` へ移設、旧 Non-scope 撤回 / P2-5（returnTo は自動化可能）→ SC5c 新設、AC-L3-3 を render 確認のみへ / P2-6（SC4c / SC5b に X なし）→ X13 / X14 追加、AC10 = X1〜X14 / P3-7（`:36`）/ P3-8（`npm run build`）/ P3-9（3 file 6 箇所）→ 訂正。Opus P1-1（sticky 背景は mockup `--d-head` = `bg-muted`）/ P1-2（`border-collapse` で下端線が消える → `border-separate border-spacing-0` + thead cell `border-b`）/ P1-3（`--border` 単独濃化で階層反転 → `--input: var(--border-strong)` を同時適用、outline / Badge / chip は Lane 3〜5 sweep）/ P1-4（上部 summary が流れ去る → summary + thead の 1 帯 sticky、mockup 箱内スクロール不採用理由を注記）→ D-2 / D-7 改訂。P2-1（枠は `rounded-lg border bg-card p-4`、04 原則 6 を同期）/ P2-2（`totalCount > 0` gating、`toolbar` optional）/ P2-3（pilot に `isLoading` 配線）/ P2-4（summary は 16px semibold tabular-nums、catalog ⑩ `:646` を是正）/ P2-5（1.59:1）/ P2-6（AC-L3-1 に dialog + sidebar）/ P2-7（静的 boolean の近似採用を D-5 に明記）/ P2-8（S7 の描画内容 pin + DSR-22 `:441` の最終確定を AC-L3-5 へ）→ 反映。P3-1（`cn` 順序 + SC2a case）/ P3-2（README `:16` stale）/ P3-3（重複読み上げの記録）→ 反映。
@@ -593,4 +615,6 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 
 2026-09-04: **owner L3 run 2 = FAIL（途中停止）**（PR #32 comment 5527090250、head `916696c` / content `b9f0ba5`、100% 表示、介入 2/3 の同一 gate 内）。PASS = SegmentedControl 群枠（AC-L3-1 (f)）。懸念付き PASS = PLU 一括操作 caption（作用範囲と確認ありは読めるが、括弧書きが仕様注釈に見える。owner 提案 = 左寄せ 2 段 + 実件数）。FAIL = summary 帯と table header の 1 帯化（AC-L3-2）: `ListShell.tsx:73` root の `space-y-3` が summary 帯と table の間にも 12px の page 地を挟み、summary 文言は水平 inset なしで th `px-2` の左基準線と 8px ずれ、通常位置と sticky 位置で見え方が変わる。未実施 = dialog 残像（AC-L3-6 後段）/ DPI 125%・150% / 横 scroll / `?perPage=50` / forced-colors・focus / mockup 5 file + history 固定列 mapping / `9d11287` 例外承認。非 blocking 所感 = control surface と toolbar 地の明度差（Final Review round 1 P1-1 の `--card` 候補と同根、本 lane 不変）/ 帯文言「全453件のうち1〜100件を表示」案（DSR-22 統一形の改訂、P3 backlog）。Coordinator 所見: Amendment 2 S11 は surface と幅のみ規定し垂直隣接と水平 inset を書いておらず、mockup `.pager.top` も背景なし・`.tbl` と 24px gap の別構造のため「1 つの帯」を目で照合できる正本が無かった（Opus デザイン面レビューが 529 で未実施だった影響）。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正は Gated Amendment 3（S13〜S15）として起票し、Opus デザイン面レビュー（発注書駆動・read-only）→ Writer 是正 → Sonnet 独立 closure（新規 X21〜X23 含む）→ human-confirm 再遷移は post-impl STATECAP 2/2 到達のため content commit 同乗で materialize → L3 run 3 は canonical の最初から。
 
-- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）.
+2026-09-04 owner L3 run 2 FAIL → Gated Amendment 3（S13〜S15、`357941c`、Opus デザイン面 Plan Review P1 5 / P2 6 / P3 5 全件 accept）+ 追補（S16〜S19、`75d5e30`、closure round 1 Opus P1 3 / P2 5 / P3 4 → P1-2 は主張 accept・修正方向 rebut）+ closure round 2 是正（S20 / S21、`ec56d20`、Opus P1 0 / P2 2 / P3 3 全件 accept）: Writer content commit = `39f8683` `72f3f23` `76dc43e` / `b3c8b24` `13fad54` `4539416` / `b03958d` `2a2ff14`。独立 closure 3 round = Sonnet mutation X16〜X34 survivor 0、Opus デザイン面 P1/P2 = 0（round 3 は docs 字面 + test 強化のみで Opus 省略、Coordinator が S21 差分を実読）。`implementing -> local-verified -> independent-review -> human-confirm` を本 content commit（Ledger + 結果記入）に同乗で materialize（post-impl state-only 2/2 到達のため、先例 `2026-07-17-backup-migration-failure-contract-design.md:259`）。Reviewed Content HEAD = `2a2ff14`。L3 run 3 は canonical の最初から。
+
+- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）.
