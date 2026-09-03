@@ -4,6 +4,7 @@
 // root class として p-6 を直書きする箇所が PageShell 経由以外に残っていないことを
 // fs scan で保証する。許容 2 箇所（非 root: overlay / card、IntegrityCheckPage.tsx）のみ許す。
 // Plan Packet: docs/plans/2026-09-03-ui-list-backbone-d-lane2.md S2
+// 共有部品の contract test。traceability 上は Lane 2 pilot = UI-01a へ紐付け（Gated Amendment 1）。
 
 import { readFileSync, readdirSync } from "node:fs";
 import { extname, join, relative } from "node:path";
@@ -34,7 +35,7 @@ function collectPageFiles(dir: string): string[] {
   return files;
 }
 
-describe("SC2b: no feature page file declares a p-6 root className outside PageShell", () => {
+describe("SC2b: no feature page file declares a p-6 root className outside PageShell (UI-01a pilot / 共有 page root)", () => {
   it("p-6 直書き className の hit は非 root 2 箇所のみ", () => {
     const pageFiles = collectPageFiles(FEATURES_ROOT);
     const rootClassPattern = /className="[^"]*\bp-6\b[^"]*"/g;

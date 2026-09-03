@@ -1,13 +1,14 @@
 // src/components/patterns/PageShell.test.tsx
 //
 // SC2a: PageShell の単一 root 契約（04 原則 6、D-1）。
+// 共有部品の contract test。traceability 上は Lane 2 pilot = UI-01a へ紐付け（Gated Amendment 1）。
 // Plan Packet: docs/plans/2026-09-03-ui-list-backbone-d-lane2.md S2 / D-1
 
 import { render } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { PageShell } from "./PageShell";
 
-describe("SC2a: PageShell renders a single root with space-y-6 p-6", () => {
+describe("SC2a: PageShell renders a single root with space-y-6 p-6 (UI-01a pilot / 共有 page root)", () => {
   it("root は space-y-6 と p-6 の両方を持つ単一 div", () => {
     const { container } = render(
       <PageShell>
