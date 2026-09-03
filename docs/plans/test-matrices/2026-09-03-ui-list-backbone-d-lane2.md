@@ -13,6 +13,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 - SC3a / SC3b / SC3c: 範囲付き文言 / 0 件契約 / `PaginationSummary` text-only + typography
 - SC4a〜SC4e: `ListShell` の toolbar 枠 / topSummary + gating / skeleton / sticky 帯（th cell 単位）+ `border-separate` + th / td cell 罫線 + `h-10` `whitespace-nowrap` + overflow 上書き / pager 配線
 - SC5a / SC5b / SC5c: 商品一覧 既定 100（URL 優先）/ pilot 構成（isLoading、0 件）/ returnTo 保持
+- SC6 / SC7 / SC8 / SC9（Gated Amendment 2）: SegmentedControl 群枠 / PLU 一括 caption + group / sticky 帯 surface `--list-head` / dialog target 保持
 
 ## Failure Modes
 
@@ -46,6 +47,10 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | SC5c returnTo 保持 | perPage 脱落 | unit（既存 `ProductListPage.test.tsx:218,222` の更新） | SC5c: returnTo search string carries the current perPage (100 by default, 200 after Select change) | `returnTo` に `perPage=100` / `perPage=200` が含まれない |
 | 文言 regression | 旧文言残存 | 既存 test 更新 | IntegrityCheckPage / StockInquiryPage / OperationLogsPage の `件中` assert 6 箇所 | 新文言で fail（更新は期待値置換のみ、削除・skip 不可） |
 | 棚卸し既定 | 巻き込み | 既存 test（無変更） | `StocktakePage.test.tsx` T2 / T3 `per_page: 50` | 50 以外 |
+| SC6 SegmentedControl 群枠 | stone-300 直書き残存 / 群枠なし | unit（`SegmentedControl.test.tsx` + fs literal） | SC6: SegmentedControl group wrapper has border-border-strong and the source contains no stone-300 literal; unselected items stay buttons | wrapper の token 完全一致 classList に `border-border-strong` が無い、file に `stone-300` が残る、または未選択肢が `button` role でない |
+| SC7 PLU 一括 caption | caption 欠落 / group 外 | unit | SC7: ProductListPage renders the "PLU 一括操作" caption with 表示中の商品すべてが対象 and both PLU bulk buttons inside the same labelled group | caption text 不在、または 2 button の `closest('[role=group]')` が異なる / null |
+| SC8 sticky 帯 surface | `bg-muted` 残存 / 帯と th の token 不一致 | unit | SC8: ListShell with stickyHeader applies bg-list-head to the summary band, thead th and thead tr, and no bg-muted remains on them | いずれかに `bg-list-head` が無い、または `bg-muted` が残る |
+| SC9 dialog target 保持 | close で target が反転 | unit（`vi.mock` で dialog props 記録） | SC9: after opening 対象から外す and cancelling, the last rendered PluBulkTargetConfirmDialog props keep pluTarget false while open becomes false | 最終 render の `pluTarget` が `true`、または `open` が false にならない |
 
 ## State Lifecycle Matrix
 
@@ -130,6 +135,10 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | X14 | `ProductListPage` から `isLoading` prop の受け渡しを削除 | SC5b |
 | X15 | ListShell の `thead th` から `border-b-2` を削除 | SC4d |
 | X16 | ListShell の `tbody td` から `border-b` を削除 | SC4d |
+| X17 | `segmented-control.tsx` の群枠を `border-stone-300` に戻す | SC6 |
+| X18 | ProductListPage の PLU 一括 caption を削除 | SC7 |
+| X19 | ListShell の summary 帯を `bg-muted` に戻す | SC8 |
+| X20 | ProductListPage の dialog を `pluTarget={bulkTarget ?? true}` 単一 state に戻す | SC9 |
 
 ## Residual Test Gaps
 
