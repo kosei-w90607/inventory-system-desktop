@@ -587,9 +587,7 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
     });
     renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
     await screen.findByText("P-100");
-    expect(mockSearchProducts).toHaveBeenLastCalledWith(
-      expect.objectContaining({ per_page: 100 }),
-    );
+    expect(mockSearchProducts).toHaveBeenLastCalledWith(expect.objectContaining({ per_page: 100 }));
 
     mockSearchProducts.mockClear();
     mockSearchProducts.mockResolvedValue({

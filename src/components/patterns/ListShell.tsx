@@ -81,7 +81,7 @@ export function ListShell({
 
       {showTopSummary && pagination ? (
         stickyHeader ? (
-          <div className="sticky top-0 z-20 flex h-10 items-center whitespace-nowrap overflow-hidden bg-muted">
+          <div className="sticky top-0 z-20 flex h-10 items-center overflow-hidden bg-muted whitespace-nowrap">
             <PaginationSummary
               page={pagination.page}
               perPage={pagination.perPage}
