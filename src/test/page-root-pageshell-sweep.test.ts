@@ -2,7 +2,8 @@
 //
 // SC2b: page root 全置換（04 原則 6、D-1）。src/features/**/*Page.tsx（test 除外）の
 // root class として p-6 を直書きする箇所が PageShell 経由以外に残っていないことを
-// fs scan で保証する。許容 2 箇所（非 root: overlay / card、IntegrityCheckPage.tsx）のみ許す。
+// fs scan で保証する。許容 2 箇所（非 root: overlay / card、IntegrityCheckPage.tsx）は
+// 件数だけでなく file path + class 文字列の allowlist で固定する（Codex Final Review P2-4）。
 // Plan Packet: docs/plans/2026-09-03-ui-list-backbone-d-lane2.md S2
 // 共有部品の contract test。traceability 上は Lane 2 pilot = UI-01a へ紐付け（Gated Amendment 1）。
 
@@ -13,8 +14,17 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = join(__dirname, "../..");
 const FEATURES_ROOT = join(REPO_ROOT, "src/features");
 
-// 許容される非 root p-6 direct className（root ではないため PageShell 化の対象外）
-const ALLOWED_NON_ROOT_HITS = 2;
+// 許容される非 root p-6 direct className（root ではないため PageShell 化の対象外）。
+// 件数（2）だけでなく file path + 実 class 文字列そのものを allowlist として固定する
+// （件数一致だけでは別の非 root p-6 が紛れ込んでも検出できない、Codex Final Review P2-4）。
+const ALLOWED_NON_ROOT_HITS = [
+  'src/features/integrity-check/IntegrityCheckPage.tsx: className="absolute inset-0 z-40 flex items-center justify-center bg-background/85 p-6 backdrop-blur-[1px]"',
+  'src/features/integrity-check/IntegrityCheckPage.tsx: className="w-full max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-lg"',
+];
+
+// PageShell 全置換の機械抽出値（AC2 と突合、機械抽出表は Implementation Results に貼る）。
+const EXPECTED_PAGESHELL_FILE_COUNT = 28;
+const EXPECTED_PAGESHELL_OCCURRENCE_COUNT = 43;
 
 function collectPageFiles(dir: string): string[] {
   const entries = readdirSync(dir, { withFileTypes: true });
@@ -36,31 +46,40 @@ function collectPageFiles(dir: string): string[] {
 }
 
 describe("SC2b: no feature page file declares a p-6 root className outside PageShell (UI-01a pilot / 共有 page root)", () => {
-  it("p-6 直書き className の hit は非 root 2 箇所のみ", () => {
+  it("p-6 直書き className の hit は非 root allowlist の 2 箇所のみ（file path + class 文字列で一致）", () => {
     const pageFiles = collectPageFiles(FEATURES_ROOT);
     const rootClassPattern = /className="[^"]*\bp-6\b[^"]*"/g;
-    let hitCount = 0;
     const hits: string[] = [];
 
     for (const file of pageFiles) {
       const source = readFileSync(file, "utf8");
       const matches = source.match(rootClassPattern);
       if (matches) {
-        hitCount += matches.length;
         for (const match of matches) {
           hits.push(`${relative(REPO_ROOT, file)}: ${match}`);
         }
       }
     }
 
-    expect(hitCount, hits.join("\n")).toBe(ALLOWED_NON_ROOT_HITS);
+    expect(hits.sort()).toEqual([...ALLOWED_NON_ROOT_HITS].sort());
   });
 
-  it("28 file が PageShell を import して page root に使う", () => {
+  it("28 file / 43 箇所が PageShell を import して page root に使う", () => {
     const pageFiles = collectPageFiles(FEATURES_ROOT);
-    const filesUsingPageShell = pageFiles.filter((file) =>
-      readFileSync(file, "utf8").includes("<PageShell"),
-    );
-    expect(filesUsingPageShell.length).toBe(28);
+    const pageShellOccurrencePattern = /<PageShell\b/g;
+    let totalOccurrences = 0;
+    let fileCount = 0;
+
+    for (const file of pageFiles) {
+      const source = readFileSync(file, "utf8");
+      const matches = source.match(pageShellOccurrencePattern);
+      if (matches) {
+        fileCount += 1;
+        totalOccurrences += matches.length;
+      }
+    }
+
+    expect(fileCount).toBe(EXPECTED_PAGESHELL_FILE_COUNT);
+    expect(totalOccurrences).toBe(EXPECTED_PAGESHELL_OCCURRENCE_COUNT);
   });
 });

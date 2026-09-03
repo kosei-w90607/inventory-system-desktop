@@ -2,6 +2,7 @@
 //
 // SC4a〜SC4e: 一覧の器（catalog ⑯、D-2 / D-5）の契約 test。Lane 2 時点の唯一の実採用画面は
 // 商品一覧（UI-01a pilot、ProductListPage.tsx）。
+// 共有部品の contract test。traceability 上は Lane 2 pilot = UI-01a へ紐付け（Gated Amendment 1）。
 // Plan Packet: docs/plans/2026-09-03-ui-list-backbone-d-lane2.md S4
 // Test Design Matrix: docs/plans/test-matrices/2026-09-03-ui-list-backbone-d-lane2.md SC4a〜SC4e
 
@@ -39,6 +40,15 @@ function SampleTable() {
   );
 }
 
+// Final Review round 1 P1（Sonnet mutation 独立再実測 X16 survivor 是正）: class 属性の
+// 部分文字列一致（`toContain` on a raw string）は "[&_tbody_td]:border-b" が
+// "[&_tbody_td]:border-border" の前方一致になり X16（td の border-b 削除）を素通りさせた。
+// class 属性を空白区切りトークンへ分解し、配列の完全一致（`toContain` on an array）で
+// 検証することでトークン単位の存在確認にする。
+function classTokens(el: Element | null | undefined): string[] {
+  return (el?.className ?? "").split(/\s+/).filter(Boolean);
+}
+
 const pagination = (totalCount: number) => ({
   page: 1,
   perPage: 10,
@@ -55,7 +65,11 @@ describe("SC4a: toolbar box", () => {
     );
     const box = container.querySelector(".rounded-lg.border.bg-card.p-4");
     expect(box).not.toBeNull();
-    expect(box).toHaveClass("rounded-lg", "border", "bg-card", "p-4");
+    const tokens = classTokens(box);
+    expect(tokens).toContain("rounded-lg");
+    expect(tokens).toContain("border");
+    expect(tokens).toContain("bg-card");
+    expect(tokens).toContain("p-4");
     expect(box).toContainElement(screen.getByText("検索行"));
     expect(box).toContainElement(screen.getByText("並び替え行"));
   });
@@ -86,6 +100,9 @@ describe("SC4b: topSummary + totalCount > 0 gating", () => {
     if (summary === null || table === null) {
       throw new Error("unreachable: asserted not null above");
     }
+    const summaryTokens = classTokens(summary);
+    expect(summaryTokens).toContain("text-base");
+    expect(summaryTokens).toContain("font-semibold");
     expect(summary).toHaveTextContent("25 件中 1〜10 件目 · 1 / 3 ページ");
     expect(summary.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -160,48 +177,49 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
       </ListShell>,
     );
 
-    // summary band 自体（ListShell が直接描画する要素）は実クラスで検証する。
+    // summary band 自体（ListShell が直接描画する要素）は実クラスで検証する（token 完全一致）。
     const summaryBand = container.querySelector(".sticky.top-0.z-20");
     expect(summaryBand).not.toBeNull();
-    expect(summaryBand).toHaveClass(
-      "sticky",
-      "top-0",
-      "z-20",
-      "flex",
-      "h-10",
-      "items-center",
-      "whitespace-nowrap",
-      "overflow-hidden",
-      "bg-muted",
-    );
+    const bandTokens = classTokens(summaryBand);
+    expect(bandTokens).toContain("sticky");
+    expect(bandTokens).toContain("top-0");
+    expect(bandTokens).toContain("z-20");
+    expect(bandTokens).toContain("flex");
+    expect(bandTokens).toContain("h-10");
+    expect(bandTokens).toContain("items-center");
+    expect(bandTokens).toContain("bg-muted");
+    // Final Review round 1 P2（帯の文言が長いとき「…」で切れるようにする）:
+    // truncate は overflow-hidden + text-ellipsis + whitespace-nowrap の shorthand。
+    expect(bandTokens).toContain("truncate");
 
     // table 内部（th / td / table-container / table）への上書きは caller の
     // children（Table primitive）に className を渡さず、ListShell root の
     // descendant variant（`[&_...]:`）のみで行う契約（D-2）。実 CSS カスケードは
-    // happy-dom では計算されないため、root の class 文字列に token が載っている
-    // ことをオラクルとする。
-    const root = container.firstElementChild;
-    const rootClass = root?.className ?? "";
-    expect(rootClass).toContain("[&_thead_th]:sticky");
-    expect(rootClass).toContain("[&_thead_th]:z-10");
-    expect(rootClass).toContain("[&_thead_th]:bg-muted");
-    expect(rootClass).toContain("[&_thead_th]:border-b-2");
-    expect(rootClass).toContain("[&_thead_th]:border-border");
-    expect(rootClass).toContain("[&_thead_th]:top-10");
-    expect(rootClass).toContain("[&_[data-slot=table-container]]:overflow-visible");
-    expect(rootClass).toContain("[&_[data-slot=table]]:border-separate");
-    expect(rootClass).toContain("[&_[data-slot=table]]:border-spacing-0");
-    expect(rootClass).toContain("[&_tbody_td]:border-b");
-    expect(rootClass).toContain("[&_tbody_td]:border-border");
-    expect(rootClass).toContain("[&_tbody_tr:last-child_td]:border-b-0");
+    // happy-dom では計算されないため、root の class トークン一覧に含まれることをオラクルとする。
+    // Final Review round 1 P1（X16 survivor 是正）: 部分文字列一致（`rootClass.toContain(...)`）
+    // は "[&_tbody_td]:border-b" が "[&_tbody_td]:border-border" に前方一致してしまうため、
+    // トークン配列の完全一致（`classTokens(root).toContain(...)`）へ全面置換する。
+    const rootTokens = classTokens(container.firstElementChild);
+    expect(rootTokens).toContain("[&_thead_th]:sticky");
+    expect(rootTokens).toContain("[&_thead_th]:z-10");
+    expect(rootTokens).toContain("[&_thead_th]:bg-muted");
+    expect(rootTokens).toContain("[&_thead_th]:border-b-2");
+    expect(rootTokens).toContain("[&_thead_th]:border-border");
+    expect(rootTokens).toContain("[&_thead_th]:top-10");
+    expect(rootTokens).toContain("[&_[data-slot=table-container]]:overflow-visible");
+    expect(rootTokens).toContain("[&_[data-slot=table]]:border-separate");
+    expect(rootTokens).toContain("[&_[data-slot=table]]:border-spacing-0");
+    expect(rootTokens).toContain("[&_tbody_td]:border-b");
+    expect(rootTokens).toContain("[&_tbody_td]:border-border");
+    expect(rootTokens).toContain("[&_tbody_tr:last-child_td]:border-b-0");
 
     // children 側の Table には className が渡っていないこと（caller className 方式への逸脱防止）。
     const th = container.querySelector("thead th");
     const table = container.querySelector('[data-slot="table"]');
     const tableContainer = container.querySelector('[data-slot="table-container"]');
-    expect(th?.className).not.toMatch(/\bsticky\b/);
-    expect(table?.className).not.toMatch(/\bborder-separate\b/);
-    expect(tableContainer?.className).not.toMatch(/\boverflow-visible\b/);
+    expect(classTokens(th)).not.toContain("sticky");
+    expect(classTokens(table)).not.toContain("border-separate");
+    expect(classTokens(tableContainer)).not.toContain("overflow-visible");
   });
 
   it("uses top-0 on th when the summary band is not rendered (topSummary false)", () => {
@@ -210,9 +228,9 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
         <SampleTable />
       </ListShell>,
     );
-    const root = container.firstElementChild;
-    expect(root?.className ?? "").toContain("[&_thead_th]:top-0");
-    expect(root?.className ?? "").not.toContain("[&_thead_th]:top-10");
+    const rootTokens = classTokens(container.firstElementChild);
+    expect(rootTokens).toContain("[&_thead_th]:top-0");
+    expect(rootTokens).not.toContain("[&_thead_th]:top-10");
   });
 
   it("applies none of the sticky/border/overflow classes when stickyHeader is false", () => {
@@ -221,19 +239,25 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
         <SampleTable />
       </ListShell>,
     );
-    const root = container.firstElementChild;
-    const rootClass = root?.className ?? "";
-    expect(rootClass).not.toContain("[&_thead_th]:sticky");
-    expect(rootClass).not.toContain("[&_thead_th]:border-b-2");
-    expect(rootClass).not.toContain("[&_[data-slot=table-container]]:overflow-visible");
-    expect(rootClass).not.toContain("[&_[data-slot=table]]:border-separate");
+    const rootTokens = classTokens(container.firstElementChild);
+    expect(rootTokens).not.toContain("[&_thead_th]:sticky");
+    expect(rootTokens).not.toContain("[&_thead_th]:border-b-2");
+    expect(rootTokens).not.toContain("[&_thead_th]:border-b");
+    expect(rootTokens).not.toContain("[&_thead_th]:border-border");
+    expect(rootTokens).not.toContain("[&_[data-slot=table-container]]:overflow-visible");
+    expect(rootTokens).not.toContain("[&_[data-slot=table]]:border-separate");
+    expect(rootTokens).not.toContain("[&_[data-slot=table]]:border-spacing-0");
+    expect(rootTokens).not.toContain("[&_tbody_td]:border-b");
+    expect(rootTokens).not.toContain("[&_tbody_td]:border-border");
+    expect(rootTokens).not.toContain("[&_tbody_tr:last-child_td]:border-b-0");
+
     const th = container.querySelector("thead th");
     const tableContainer = container.querySelector('[data-slot="table-container"]');
     const table = container.querySelector('[data-slot="table"]');
-    expect(th?.className).not.toContain("sticky");
-    expect(th?.className).not.toContain("border-b-2");
-    expect(tableContainer?.className).not.toContain("overflow-visible");
-    expect(table?.className).not.toContain("border-separate");
+    expect(classTokens(th)).not.toContain("sticky");
+    expect(classTokens(th)).not.toContain("border-b-2");
+    expect(classTokens(tableContainer)).not.toContain("overflow-visible");
+    expect(classTokens(table)).not.toContain("border-separate");
     const summaryBand = container.querySelector(".sticky");
     expect(summaryBand).toBeNull();
   });
