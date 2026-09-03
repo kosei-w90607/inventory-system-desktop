@@ -32,17 +32,26 @@ describe("SC1: globals.css declares border-strong / row-current / border / input
 // 無効化され border 色も system color に置換されるため、`outline-none` + `focus-visible:border-ring`
 // だけでは focus が消える。`@layer` 外（unlayered）の `:focus-visible` outline で
 // `@layer utilities` の `outline-none` に勝つ。
-describe("SC13: globals.css declares an unlayered forced-colors focus outline (Gated Amendment 3 追補 S16 / AC-L3-4)", () => {
-  it("declares exactly one forced-colors media block, positioned before @layer base, giving :focus-visible a Highlight outline", () => {
+// closure round 2 S20（Opus P2-1）: 「`@layer base {` より前」という位置プロキシは
+// `@layer base { ... }` の出現位置に依存し揺れる。block 開始位置までの file 文字列で
+// `{` / `}` の対応数が 0（nesting depth 0 = どの block にも入っていない）ことを直接検査する
+// 形に替え、`outline: 2px solid Highlight` を literal で pin する
+// （`outline: 0 solid Highlight` のような値差し替えを素通ししない）。
+describe("SC13: globals.css declares an unlayered forced-colors focus outline (Gated Amendment 3 追補 S16 / AC-L3-4 / closure round 2 S20)", () => {
+  it("declares exactly one forced-colors media block at brace nesting depth 0, pinning the Highlight outline literal", () => {
     const mediaLiteral = "@media (forced-colors: active)";
     const occurrences = GLOBALS_CSS.split(mediaLiteral).length - 1;
     expect(occurrences).toBe(1);
 
     const mediaIndex = GLOBALS_CSS.indexOf(mediaLiteral);
-    const layerBaseIndex = GLOBALS_CSS.indexOf("@layer base {");
     expect(mediaIndex).toBeGreaterThan(-1);
-    expect(layerBaseIndex).toBeGreaterThan(-1);
-    expect(mediaIndex).toBeLessThan(layerBaseIndex);
+
+    // block 開始位置までの file 文字列で `{` / `}` の対応数を数え、0（nesting depth 0）
+    // であることを直接検査する（どの @layer / block にも入っていない）。
+    const beforeMedia = GLOBALS_CSS.slice(0, mediaIndex);
+    const opensBefore = (beforeMedia.match(/{/g) ?? []).length;
+    const closesBefore = (beforeMedia.match(/}/g) ?? []).length;
+    expect(opensBefore - closesBefore).toBe(0);
 
     // block は `{` から対応する `}` まで（prettier の折返しで複数行になり得るため
     // 改行ではなく波括弧の対応を数えて block の終端を求める）。
@@ -63,6 +72,9 @@ describe("SC13: globals.css declares an unlayered forced-colors focus outline (G
     expect(closeIndex).toBeGreaterThan(-1);
     const block = GLOBALS_CSS.slice(mediaIndex, closeIndex + 1);
     expect(block).toContain(":focus-visible");
-    expect(block).toContain("Highlight");
+    // `outline: 2px solid Highlight` を literal で pin する（prettier の空白差には
+    // robust にしつつ、`2px solid Highlight` の値は literal 固定で「0」等への
+    // 差し替えを素通ししない）。
+    expect(block).toMatch(/outline:\s*2px solid Highlight/);
   });
 });
