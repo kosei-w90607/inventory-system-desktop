@@ -192,9 +192,15 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     // （--list-head）にし、bg-muted は残さない。
     expect(bandTokens).toContain("bg-list-head");
     expect(bandTokens).not.toContain("bg-muted");
-    // Final Review round 1 P2（帯の文言が長いとき「…」で切れるようにする）:
-    // truncate は overflow-hidden + text-ellipsis + whitespace-nowrap の shorthand。
-    expect(bandTokens).toContain("truncate");
+    // 追補 S17（Opus P1-2 / P2-2 / P2-3、AC-L3-2 / AC-L3-4）: flex item の直接
+    // truncate は min-width:auto により hard clip になるため、帯自体は overflow-hidden
+    // にし、子（PaginationSummary root）を min-w-0 + truncate にして ellipsis させる。
+    // forced-colors では背景色のみの帯が Canvas に潰れるため border-b を追加する。
+    expect(bandTokens).toContain("overflow-hidden");
+    expect(bandTokens).toContain("[&>div]:min-w-0");
+    expect(bandTokens).toContain("[&>div]:truncate");
+    expect(bandTokens).toContain("forced-colors:border-b");
+    expect(bandTokens).not.toContain("truncate");
 
     // table 内部（th / td / table-container / table）への上書きは caller の
     // children（Table primitive）に className を渡さず、ListShell root の
@@ -309,6 +315,9 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
     const wrapper = summaryBand?.parentElement ?? null;
     expect(wrapper).not.toBeNull();
     expect(wrapper).not.toBe(root);
+    // 追補 S17（Opus P1-2、AC-L3-2）: wrapper は w-min min-w-full に完全一致（他 class を足さない）。
+    // min-content = table の最小幅。overflow 時は wrapper = table 幅となり帯が横追随する。
+    expect(wrapper?.className).toBe("w-min min-w-full");
     const wrapperTokens = classTokens(wrapper);
     const spacingPrefixes = ["space-y-", "gap-", "mt-", "mb-", "pt-", "pb-"];
     expect(

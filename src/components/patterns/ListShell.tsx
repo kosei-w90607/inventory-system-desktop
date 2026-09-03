@@ -87,8 +87,12 @@ export function ListShell({
         // table を spacing utility を持たない 1 つの wrapper に包み、root の
         // space-y-3 が toolbar /（帯 + table）/ 下部 Pagination の間だけに
         // 効くようにする（帯と table の間に page 地を挟まない）。
-        <div>
-          <div className="sticky top-0 z-20 flex h-10 w-full items-center truncate bg-list-head px-2">
+        <div className="w-min min-w-full">
+          {/* 追補 S17（Opus P1-2 / P2-2 / P2-3、AC-L3-2 / AC-L3-4）: 帯自体は overflow-hidden
+              にし、子（PaginationSummary root）を min-w-0 + truncate で ellipsis させる
+              （flex item への直接 truncate は min-width:auto で hard clip になる）。
+              forced-colors では背景色のみの帯が Canvas に潰れるため border-b を付ける。 */}
+          <div className="sticky top-0 z-20 flex h-10 w-full items-center overflow-hidden bg-list-head px-2 forced-colors:border-b [&>div]:min-w-0 [&>div]:truncate">
             <PaginationSummary
               page={pagination.page}
               perPage={pagination.perPage}
