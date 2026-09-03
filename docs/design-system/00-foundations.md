@@ -20,6 +20,8 @@
 | 一覧 sticky 帯 | `--list-head` | `stone-200` | #e7e5e4 | 対 `--background` 1.20:1・対 `--foreground` 13.93:1（WCAG 相対輝度で実測。summary 帯 + `thead` を同一 surface にし左右端を揃える、Gated Amendment 2 S11、2026-09-03 Lane 2 実装） |
 | サブテキスト | `--muted-foreground` | `stone-500` | #78716c | 実測 4.59:1（対 `--background`、AA）/ 4.40:1（対 `--card`、AA 未達）（2026-09-03 訂正、旧「コントラスト比 4.5:1（AA）」は対象背景の明記なしで誤記） |
 
+forced-colors focus indicator: `globals.css` の unlayered `@media (forced-colors: active) { :focus-visible { outline: 2px solid Highlight; outline-offset: 2px } }`。component の `outline-none` はこの安全網を前提とし、unlayered で `outline` を上書きしない（Gated Amendment 3 追補 S16）。
+
 **セマンティックカラー**:
 
 | 状態 | `--{name}` | Tailwind | 用途 |
