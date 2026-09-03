@@ -129,7 +129,7 @@ describe("ProductListPage (UI-01a)", () => {
     );
     await screen.findByText("PLU-BULK");
     await user.click(screen.getByRole("button", { name: "PLU 対象にする" }));
-    expect(screen.getByText("表示中の商品をPLU対象にしますか")).toBeInTheDocument();
+    expect(screen.getByText("絞り込みに一致する商品をPLU対象にしますか")).toBeInTheDocument();
     expect(screen.getByText(/現在の絞り込み条件に一致する 37 件が対象です/)).toBeInTheDocument();
     expect(screen.getByText(/現在の絞り込みに一致しない商品は変更されません/)).toBeInTheDocument();
     expect(screen.getByText(/PLU 書出しと PC ツールの取込みが別途必要です/)).toBeInTheDocument();
@@ -170,7 +170,9 @@ describe("ProductListPage (UI-01a)", () => {
     await screen.findByText("P-0001");
     await user.click(screen.getByRole("button", { name: "PLU 対象から外す" }));
     const dialog = screen.getByRole("alertdialog");
-    expect(within(dialog).getByText("表示中の商品をPLU対象から外しますか")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("絞り込みに一致する商品をPLU対象から外しますか"),
+    ).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "PLU 対象から外す" }));
     await waitFor(() => {
       expect(mockBulkSetPluTarget).toHaveBeenCalledWith(
@@ -691,9 +693,9 @@ describe("ProductListPage S10 PLU 一括 caption（Gated Amendment 2 / owner L3 
     await screen.findByText("P-CAP");
 
     const captionLabel = screen.getByText("PLU 一括操作");
-    expect(captionLabel).toHaveClass("font-medium", "text-foreground");
+    expect(captionLabel).toHaveClass("text-sm", "font-medium", "text-foreground");
     const captionNote = screen.getByText(
-      "（絞り込みに一致する商品すべてが対象・他ページ含む・確認画面あり）",
+      "絞り込みに一致する 1 件すべてが対象です。他のページの商品も含みます。押すと確認画面が開きます。",
     );
     expect(captionNote).toHaveClass("text-muted-foreground");
 
@@ -704,5 +706,93 @@ describe("ProductListPage S10 PLU 一括 caption（Gated Amendment 2 / owner L3 
     expect(addGroup).not.toBeNull();
     expect(addGroup).toBe(removeGroup);
     expect(addGroup).toHaveAttribute("aria-labelledby");
+  });
+});
+
+describe("ProductListPage SC11: PLU 一括 caption 独立行 2 段 + 実件数 3 分岐 + dialog title 同期（Gated Amendment 3 S14）", () => {
+  beforeEach(() => {
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [] });
+  });
+
+  function captionBlock(description: HTMLElement): string[] {
+    return (description.parentElement?.className ?? "").split(/\s+/).filter(Boolean);
+  }
+
+  it("(a) total_count > 0: 実件数を含む 3 文 + describedby + basis-full の独立行", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-CAP-A" })],
+        total_count: 1234,
+        page: 1,
+        per_page: 100,
+      },
+    });
+    renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
+
+    const description = await screen.findByText(
+      "絞り込みに一致する 1,234 件すべてが対象です。他のページの商品も含みます。押すと確認画面が開きます。",
+    );
+    expect(description).toHaveAttribute("id", "plu-bulk-description");
+
+    const group = description.parentElement?.querySelector('[role="group"]') ?? null;
+    expect(group).not.toBeNull();
+    expect(group).toHaveAttribute("aria-describedby", "plu-bulk-description");
+    expect(group).toHaveAttribute("aria-labelledby", "plu-bulk-caption");
+
+    const tokens = captionBlock(description);
+    expect(tokens).toContain("basis-full");
+    expect(tokens).toContain("items-start");
+    expect(tokens).not.toContain("ml-auto");
+    expect(tokens).not.toContain("items-end");
+  });
+
+  it("(b) total_count === 0: 実行できない理由文", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 100 },
+    });
+    renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
+
+    const description = await screen.findByText("絞り込みに一致する商品がないため実行できません。");
+    expect(description).toHaveAttribute("id", "plu-bulk-description");
+    const group = description.parentElement?.querySelector('[role="group"]') ?? null;
+    expect(group).not.toBeNull();
+    expect(group).toHaveAttribute("aria-describedby", "plu-bulk-description");
+  });
+
+  it("(c) データ未取得（読込中）: 読込中の文言", () => {
+    mockSearchProducts.mockReturnValue(new Promise(() => undefined));
+    renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
+
+    const description = screen.getByText(
+      "件数を読み込んでいます。読み込みが終わると操作できます。",
+    );
+    expect(description).toHaveAttribute("id", "plu-bulk-description");
+    const group = description.parentElement?.querySelector('[role="group"]') ?? null;
+    expect(group).not.toBeNull();
+    expect(group).toHaveAttribute("aria-describedby", "plu-bulk-description");
+  });
+
+  it("dialog title は「絞り込みに一致する商品を…」で caption の作用範囲と矛盾しない", async () => {
+    const user = userEvent.setup();
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-CAP-T" })],
+        total_count: 1,
+        page: 1,
+        per_page: 100,
+      },
+    });
+    renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
+    await screen.findByText("P-CAP-T");
+
+    await user.click(screen.getByRole("button", { name: "PLU 対象にする" }));
+    expect(screen.getByText("絞り込みに一致する商品をPLU対象にしますか")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "キャンセル" }));
+
+    await user.click(screen.getByRole("button", { name: "PLU 対象から外す" }));
+    expect(screen.getByText("絞り込みに一致する商品をPLU対象から外しますか")).toBeInTheDocument();
   });
 });

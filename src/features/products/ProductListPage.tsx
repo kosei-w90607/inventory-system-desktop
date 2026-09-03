@@ -90,6 +90,15 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
     normalizedSearch.discontinued === "active" &&
     normalizedSearch.plu === "all";
   const totalCount = productsQuery.data?.total_count ?? 0;
+  // Gated Amendment 3 S14（owner L3 run 2 懸念付き PASS、AC-L3-6 前段）: PLU 一括操作の
+  // 説明文を実件数入りの 3 分岐にする。totalCount だけでは (b) 0 件と (c) 読込中を区別できない
+  // ため productsQuery.data の有無で分岐する。
+  const pluBulkCaptionDescription =
+    productsQuery.data === undefined
+      ? "件数を読み込んでいます。読み込みが終わると操作できます。"
+      : totalCount > 0
+        ? `絞り込みに一致する ${totalCount.toLocaleString("ja-JP")} 件すべてが対象です。他のページの商品も含みます。押すと確認画面が開きます。`
+        : "絞り込みに一致する商品がないため実行できません。";
 
   const toolbar = (
     <div className="flex flex-wrap items-center gap-3">
@@ -196,16 +205,17 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           </SelectContent>
         </Select>
       </div>
-      <div className="ml-auto flex flex-col items-end gap-1">
-        <p id="plu-bulk-caption" className="text-sm">
-          <span className="font-medium text-foreground">PLU 一括操作</span>{" "}
-          <span className="text-muted-foreground">
-            （絞り込みに一致する商品すべてが対象・他ページ含む・確認画面あり）
-          </span>
+      <div className="flex basis-full flex-col items-start gap-1">
+        <p id="plu-bulk-caption" className="text-sm font-medium text-foreground">
+          PLU 一括操作
+        </p>
+        <p id="plu-bulk-description" className="text-sm text-muted-foreground">
+          {pluBulkCaptionDescription}
         </p>
         <div
           role="group"
           aria-labelledby="plu-bulk-caption"
+          aria-describedby="plu-bulk-description"
           className="flex flex-wrap items-center gap-2"
         >
           <Button
