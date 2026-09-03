@@ -449,7 +449,7 @@ file 数 `rg -l "<PageShell" src/features --glob '!*.test.tsx' | wc -l` = 28、�
 | `bash scripts/doc-consistency-check.sh` | ERROR 0（WARN 5、いずれも本 lane 起因ではない pre-existing） |
 | `bash scripts/doc-consistency-check.sh --target plan` | pass |
 | `git diff --stat 9d11287 -- src/lib/bindings.ts src-tauri` | 空（0 行） |
-| `cd src-tauri && cargo run --bin generate_traceability -- --check` | **FAIL**（詳細下記） |
+| `cd src-tauri && cargo run --bin generate_traceability -- --check` | 初回 **FAIL**（T1/T4）→ Gated Amendment 1 対応後 **pass**（ERROR 0 / WARN 0、詳細下記） |
 
 ### 未解決事項（Coordinator 判断待ち）
 
@@ -463,8 +463,29 @@ contract を独断で変更しない方針に従い、**src-tauri 配下は未�
 (b) 4 file の一部を既存の REQ/UI 参照済み test file へ統合し、新規 unreferenced file 数を増やさない設計に作り直す（TDD 構造・可読性は低下する）。
 (c) T4 failure を記録したまま Final Review（Codex）へ引き継ぎ、Codex 側の判断・権限で src-tauri 変更を検討する。
 
-現状は `generate_traceability -- --check` が ERROR 2 件（T1 drift / T4 baseline 22 vs 現在 25）で fail する状態のまま、他の全 gate は green。
+現状は `generate_traceability -- --check` が ERROR 2 件（T1 drift / T4 baseline 22 vs 現在 25）で fail する状態のまま、他の全 gate は green（Gated Amendment 1 起票前の記録として保持、対応結果は下記）。
 
+### Gated Amendment 1 対応（2026-09-03、Coordinator 起票分）
+
+Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従い、`src-tauri` 配下を一切変更せずに A1-a / A1-b を実施した。
+
+**A1-a（T4 / T1、baseline は変更しない）**:
+
+- 変更 file（3）: `src/components/patterns/PageShell.test.tsx` / `src/styles/globals.test.ts` / `src/test/page-root-pageshell-sweep.test.ts`。各 file の header comment に「共有部品の contract test。traceability 上は Lane 2 pilot = UI-01a へ紐付け（Gated Amendment 1）」を追記し、`describe` 文字列に `UI-01a` を含める（例: `SC2a: PageShell renders a single root with space-y-6 p-6 (UI-01a pilot / 共有 page root)`）。`FE_UNREFERENCED_BASELINE`（`src-tauri/src/bin/generate_traceability.rs:43`）は無変更。
+- `cd src-tauri && cargo run --bin generate_traceability`（`--check` なし）で `docs/function-design/90-traceability.md` を再生成 → 出力は commit 済みの内容と byte-identical（`git diff --stat` 0 行、追加 commit なし）。
+- before: `generate_traceability -- --check` = ERROR 2 件（`[T1]` 90-traceability.md drift、`[T4]` baseline 22 / 現在 25）。after: `traceability check: OK（ERROR 0 件 / WARN 0 件）`。FE 未参照ファイル数は 25 → 22（baseline どおり）。
+- `git diff --stat 9d11287 -- src-tauri src/lib/bindings.ts` = 0 行（維持）。
+
+**A1-b（旧 path / 名の sweep 拡張）**:
+
+- 変更 file（9）: `docs/FUNCTION_DESIGN.md`（:39,139）/ `docs/design-system/01-decision-rules.md`（:429）/ `docs/design-system/reference/mockup-d-lists.html`（:105）/ `docs/function-design/50-ui-product-list.md`（:43）/ `58-ui-stock-inquiry.md`（10 箇所）/ `66-ui-stock-movements.md`（:106）/ `73-ui-stocktake.md`（:220）/ `74-ui-operation-logs.md`（3 箇所）/ `75-ui-integrity-check.md`（2 箇所）。現行描画・現行契約を指す箇所は `ProductPagination` → `Pagination`（`src/components/patterns/Pagination.tsx`）へ置換。歴史記述（当時の名称を指す changelog 行・decision 行）は「旧 `ProductPagination`」を明記して残す（例: `58-ui-stock-inquiry.md:633` の 2026-08-03 changelog 行）。
+- `mockup-d-lists.html:105` の保留項目文言「238 件中 1 / 5 ページ」→「238 件中 1〜50 件目 · 1 / 5 ページ」（`〜` = U+301C、`·` = U+00B7、実文字コードを確認済み）。同 li 内の「**Lane 2 移行対象**」記述も実装済み表記へ更新。
+- `StocktakePage.test.tsx:1038` は AC5（diff 0 行）優先で無変更（棚卸し lane で更新予定）。
+- oracle: `rg -n "ProductPagination" docs/function-design docs/FUNCTION_DESIGN.md docs/design-system --glob '!**/2026-08-23-current-design-analysis.md' | rg -v "旧"` = **0 hit**（before は 21 hit（旧 path/名の未タグ付き参照））。
+
+**再実行 gate（全 green）**: `bash scripts/doc-consistency-check.sh`（ERROR 0、WARN 5、pre-existing）/ `--target plan`（全チェック通過）/ `npm run test`（160 file / 1226 test）/ `npm run lint` / `npm run format:check`。`cd src-tauri && cargo run --bin generate_traceability -- --check`（OK、ERROR 0 / WARN 0）。`git diff --stat 9d11287 -- src-tauri src/lib/bindings.ts` = 0 行。
+
+これにより AC9 の traceability 条件（Gated Amendment 1 で追記された「T4 = 新規 test の `UI-01a` 紐付けで baseline 22 のまま」）と AC3 追加条件（旧 path/名 sweep）を共に満たし、未解決事項は解消した。
 
 ## Review Response
 
