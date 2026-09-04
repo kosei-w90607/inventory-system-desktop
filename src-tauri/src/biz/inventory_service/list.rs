@@ -18,7 +18,7 @@ use crate::db::return_repo::{self, ReturnRecordDetail, ReturnRecordSummary};
 use crate::db::{DbConnection, DbError, PaginatedResult};
 
 /// per_page の上限
-const MAX_PER_PAGE: u32 = 100;
+const MAX_PER_PAGE: u32 = 200;
 
 /// ページパラメータのバリデーション
 fn validate_page_params(query: &ListQuery) -> Result<(), BizError> {
@@ -323,7 +323,7 @@ mod tests {
         let conn = setup_db();
         let query = ListQuery {
             page: 1,
-            per_page: 101,
+            per_page: 201,
             date_from: None,
             date_to: None,
         };
@@ -385,6 +385,23 @@ mod tests {
         // 有効な movement_type ならバリデーションを通過（空結果OK）
         let result = list_movements(&conn, &query).unwrap();
         assert_eq!(result.total_count, 0);
+    }
+
+    #[test]
+    fn test_list_movements_accepts_per_page_200() {
+        let conn = setup_db();
+        let query = MovementQuery {
+            product_code: "TEST-001".to_string(),
+            date_from: None,
+            date_to: None,
+            movement_type: None,
+            page: 1,
+            per_page: 200,
+        };
+
+        let result = list_movements(&conn, &query).unwrap();
+
+        assert_eq!(result.per_page, 200);
     }
 
     #[test]
@@ -501,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_list_inventory_records_req206_rejects_invalid_page_params() {
-        // REQ-206 / TRACE-D1: 入出庫履歴ハブは per_page 上限100をBIZで検証する
+        // REQ-206 / TRACE-D1: 入出庫履歴ハブは per_page 上限200をBIZで検証する
         let conn = setup_db();
         let query = crate::db::disposal_repo::InventoryRecordQuery {
             record_type: Some("disposal_record".to_string()),
@@ -512,12 +529,32 @@ mod tests {
             department_id: None,
             status: None,
             page: 1,
-            per_page: 101,
+            per_page: 201,
         };
 
         let err = list_inventory_records(&conn, &query).unwrap_err();
 
         assert!(matches!(err, BizError::ValidationFailed(_)));
+    }
+
+    #[test]
+    fn test_list_inventory_records_accepts_per_page_200() {
+        let conn = setup_db();
+        let query = crate::db::disposal_repo::InventoryRecordQuery {
+            record_type: None,
+            date_from: None,
+            date_to: None,
+            record_id: None,
+            product_keyword: None,
+            department_id: None,
+            status: None,
+            page: 1,
+            per_page: 200,
+        };
+
+        let result = list_inventory_records(&conn, &query).unwrap();
+
+        assert_eq!(result.per_page, 200);
     }
 
     #[test]

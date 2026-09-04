@@ -115,7 +115,7 @@ UI-03 実装 PR では以下を generated binding に出す。
 
 `extension` は Rust DTO / generated binding では `string` のままとし、frontend helper が `jpg|jpeg|png|gif|webp` の allowlist を事前 validation する。CMD/IO 側も不正拡張子を validation error として返す。
 
-`listReturns` は `perPage=10` を初期値とし、CMD/BIZ の上限100を UI から超えない。
+`listReturns` は `perPage=10` を初期値とし、CMD/BIZ の上限200を UI から超えない。
 
 ## 63.5 表示 / 操作
 

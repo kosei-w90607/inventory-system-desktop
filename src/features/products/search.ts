@@ -9,6 +9,7 @@ import type {
   SortKey,
   SortOrder,
 } from "@/lib/bindings";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { z } from "zod";
 
 export const PRODUCT_DISCONTINUED_OPTIONS = [
@@ -33,13 +34,11 @@ export const PRODUCT_SORT_DIRECTION_OPTIONS = [
   { value: "asc", label: "昇順", payload: "Asc" },
   { value: "desc", label: "降順", payload: "Desc" },
 ] as const satisfies readonly { value: string; label: string; payload: SortOrder }[];
-export const PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200] as const;
-
 export type ProductDiscontinuedMode = (typeof PRODUCT_DISCONTINUED_OPTIONS)[number]["value"];
 export type ProductPluMode = (typeof PRODUCT_PLU_OPTIONS)[number]["value"];
 export type ProductSortParam = (typeof PRODUCT_SORT_OPTIONS)[number]["value"];
 export type ProductSortDirParam = (typeof PRODUCT_SORT_DIRECTION_OPTIONS)[number]["value"];
-export type ProductPerPage = (typeof PRODUCT_PER_PAGE_OPTIONS)[number];
+export type ProductPerPage = (typeof LIST_PER_PAGE_OPTIONS)[number];
 
 function descriptorValues<
   const T extends readonly [{ readonly value: string }, ...{ readonly value: string }[]],
@@ -63,7 +62,7 @@ export const productListSearchSchema = z.object({
   perPage: z.coerce
     .number()
     .refine((value): value is ProductPerPage =>
-      PRODUCT_PER_PAGE_OPTIONS.includes(value as ProductPerPage),
+      LIST_PER_PAGE_OPTIONS.includes(value as ProductPerPage),
     )
     .optional()
     .catch(undefined),
@@ -129,7 +128,7 @@ function normalizeDepartment(value: unknown): number | undefined {
 
 function normalizePerPage(value: unknown): ProductPerPage {
   const numberValue = typeof value === "number" ? value : Number(value);
-  return PRODUCT_PER_PAGE_OPTIONS.includes(numberValue as ProductPerPage)
+  return LIST_PER_PAGE_OPTIONS.includes(numberValue as ProductPerPage)
     ? (numberValue as ProductPerPage)
     : 100; // D-6: 商品一覧は 1 件探索が主動線のため既定 100（URL 明示値は優先維持）
 }

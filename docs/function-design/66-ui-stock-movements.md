@@ -59,7 +59,7 @@ export function useStockMovements(args: {
 | ID | 決定 | 理由 / 棄却案 |
 |---|---|---|
 | UI-06c-D1 | route は `/stock/$code/movements` とし、商品コードを path param に置く。 | 商品別台帳であり、F5 / bookmark / 共有時に対象商品が一意になる。query だけで `product_code` を持つ案は在庫照会本体の検索 state と衝突しやすいため棄却。 |
-| UI-06c-D2 | search params は `dateFrom` / `dateTo` / `type` / `page` に限定する。 | 初回 UI は調査に必要な絞り込みに絞る。perPage は 20 固定で、表示件数選択は実利用で必要になったら追加する。 |
+| UI-06c-D2 | search params は `dateFrom` / `dateTo` / `type` / `page` に限定する。 | perPage は既定 50 + `Select`（50 / 100 / 200、owner 直回答 E10、2026-09-05）。search params は従来どおり `dateFrom` / `dateTo` / `type` / `page` に限定し perPage はローカル state（L3-D3）。 |
 | UI-06c-D3 | product header と movement list は 2 useQuery とし、部分障害を許容する。 | movement が失敗しても商品名・現在庫を表示して対象商品を確認できる。商品詳細が失敗しても movement は商品コード単位で取得できる。 |
 | UI-06c-D4 | movement 種別は frontend で日本語ラベルへ変換し、未知種別は元文字列を表示する。 | backend contract は string。表示不能にせず調査可能性を優先する。未知値で落とす案は legacy/corrupt row の追跡を妨げるため棄却。 |
 | UI-06c-D5 | 増減数量は `+N` / `-N` と日本語の「増加」「減少」ラベルで示し、色だけに頼らない。 | DSR-08。業務上の意味を非IT利用者が判別できる必要がある。 |
@@ -82,7 +82,7 @@ type StockMovementsSearch = {
 - 不正な `type` は `"all"` に fallback する。
 - `page < 1` または数値化できない page は `1` に fallback する。
 - `dateFrom` / `dateTo` / `type` を変更したら `page=1` に戻す。
-- `per_page` は 20 固定。CMD/BIZ の上限 100 を踏まえ、UI から上限超過を送らない。
+- `per_page` は既定 50、`Select` で 50 / 100 / 200。CMD/BIZ の上限 200 を超える選択肢は置かない。
 
 ### 66.4 Data Flow
 
@@ -100,7 +100,7 @@ StockMovementsPage
        date_to: dateTo ?? null,
        movement_type: type === "all" ? null : type,
        page,
-       per_page: 20,
+       per_page: perPage,
      })
        ↓
 MovementSummary + MovementTable + Pagination

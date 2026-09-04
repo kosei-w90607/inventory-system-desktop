@@ -6,9 +6,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import {
   PRODUCT_DISCONTINUED_OPTIONS,
-  PRODUCT_PER_PAGE_OPTIONS,
   PRODUCT_PLU_OPTIONS,
   PRODUCT_SORT_DIRECTION_OPTIONS,
   PRODUCT_SORT_OPTIONS,
@@ -184,7 +184,7 @@ describe("feature-owned finite search schemas", () => {
       { value: "asc", label: "昇順", payload: "Asc" },
       { value: "desc", label: "降順", payload: "Desc" },
     ]);
-    expect(PRODUCT_PER_PAGE_OPTIONS).toEqual([50, 100, 200]);
+    expect(LIST_PER_PAGE_OPTIONS).toEqual([50, 100, 200]);
   });
 
   it("UI-STATE-D2: adjacent finite descriptors match the fixed URL and UI contract", () => {

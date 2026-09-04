@@ -24,13 +24,13 @@ import { SearchBar } from "@/components/patterns/SearchBar";
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
 import { ListShell } from "@/components/patterns/ListShell";
 import { PageShell } from "@/components/patterns/PageShell";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { ProductTable } from "./components/ProductTable";
 import { PluBulkTargetConfirmDialog } from "./components/PluBulkTargetConfirmDialog";
 import { useProductList } from "./hooks/useProductList";
 import { buildProductListReturnTo } from "./lib/return-to";
 import {
   PRODUCT_DISCONTINUED_OPTIONS,
-  PRODUCT_PER_PAGE_OPTIONS,
   PRODUCT_PLU_OPTIONS,
   PRODUCT_SORT_DIRECTION_OPTIONS,
   PRODUCT_SORT_OPTIONS,
@@ -41,6 +41,7 @@ import {
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
+import { scrollPageToTop } from "@/lib/page-scroll";
 
 export interface ProductListPageProps {
   search: ProductListSearch;
@@ -189,15 +190,18 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         <Select
           value={String(normalizedSearch.perPage)}
           onValueChange={(value) => {
-            const perPage = PRODUCT_PER_PAGE_OPTIONS.find((option) => String(option) === value);
-            if (perPage !== undefined) updateSearch({ perPage });
+            const perPage = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+            if (perPage !== undefined) {
+              updateSearch({ perPage });
+              scrollPageToTop();
+            }
           }}
         >
           <SelectTrigger id="product-per-page" className="w-[7rem]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PRODUCT_PER_PAGE_OPTIONS.map((option) => (
+            {LIST_PER_PAGE_OPTIONS.map((option) => (
               <SelectItem key={option} value={String(option)}>
                 {option} 件
               </SelectItem>

@@ -4,7 +4,7 @@
 
 **ListQuery構造体**（入庫/返品/廃棄の一覧取得で共通）:
 - page: u32（1始まり）
-- per_page: u32（デフォルト50、上限100。100超はBIZ層でバリデーションエラー）
+- per_page: u32（デフォルト50、上限200。200超はBIZ層でバリデーションエラー）
 - date_from: Option<String>（YYYY-MM-DD）
 - date_to: Option<String>（YYYY-MM-DD）
 

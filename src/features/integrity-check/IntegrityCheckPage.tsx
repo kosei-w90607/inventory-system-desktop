@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,6 +29,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -40,9 +48,8 @@ import { commands, type IntegrityFixResult, type IntegrityResult } from "@/lib/b
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
-
-const PER_PAGE = 100;
 
 type IntegrityPhase = "idle" | "running" | "completed";
 type PendingOperation = "check" | "fix" | null;
@@ -68,6 +75,7 @@ export function IntegrityCheckPage() {
   const [result, setResult] = useState<IntegrityResult | null>(null);
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(100);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [fixResult, setFixResult] = useState<IntegrityFixResult | null>(null);
   const [fixedCodes, setFixedCodes] = useState<Set<string>>(() => new Set());
@@ -94,8 +102,8 @@ export function IntegrityCheckPage() {
   const isBusy = pendingOperation !== null;
   const mismatches = useMemo(() => result?.mismatches ?? [], [result]);
   const visibleMismatches = useMemo(
-    () => mismatches.slice((page - 1) * PER_PAGE, page * PER_PAGE),
-    [mismatches, page],
+    () => mismatches.slice((page - 1) * perPage, page * perPage),
+    [mismatches, page, perPage],
   );
   const selectedMismatches = useMemo(
     () => mismatches.filter((item) => selectedCodes.has(item.product_code)),
@@ -221,6 +229,39 @@ export function IntegrityCheckPage() {
             </Button>
           </AlertDescription>
         </Alert>
+      ) : null}
+
+      {phase === "completed" && result !== null ? (
+        <div className="flex items-center gap-2">
+          <label
+            id="integrity-check-per-page-label"
+            htmlFor="integrity-check-per-page"
+            className="text-sm text-muted-foreground"
+          >
+            表示件数
+          </label>
+          <Select
+            value={String(perPage)}
+            onValueChange={(value) => {
+              const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+              if (next === undefined) return;
+              setPerPage(next);
+              setPage(1);
+              scrollPageToTop();
+            }}
+          >
+            <SelectTrigger id="integrity-check-per-page" className="w-[7rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LIST_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} 件
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       ) : null}
 
       {phase === "completed" && result !== null ? (
@@ -375,7 +416,7 @@ export function IntegrityCheckPage() {
 
               <Pagination
                 page={page}
-                perPage={PER_PAGE}
+                perPage={perPage}
                 totalCount={mismatches.length}
                 onPageChange={setPage}
               />

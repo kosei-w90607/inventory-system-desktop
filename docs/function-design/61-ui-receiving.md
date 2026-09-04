@@ -102,7 +102,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 }
 ```
 
-`listReceivings` は `perPage=10` を初期値とし、CMD/BIZ の上限100を UI から超えない。
+`listReceivings` は `perPage=10` を初期値とし、CMD/BIZ の上限200を UI から超えない。
 
 `ReceivingCreateResult` は既存 field に `cost_diffs: CostDiff[]` を追加するだけで、既存 consumer は無視できる。idempotent replay は空配列を返す（SPEC-PRV-D8）。
 

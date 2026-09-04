@@ -49,8 +49,6 @@ export interface NormalizedStockMovementsSearch {
   page: number;
 }
 
-export const MOVEMENTS_PER_PAGE = 20;
-
 export function normalizeStockMovementsSearch(
   search: StockMovementsSearch,
 ): NormalizedStockMovementsSearch {

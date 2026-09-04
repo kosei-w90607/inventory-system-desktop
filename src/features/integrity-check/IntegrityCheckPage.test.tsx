@@ -4,16 +4,19 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type IntegrityMismatch } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { d052InvalidationOracle, expectExactInvalidations } from "@/test/invalidation-oracle";
 import { IntegrityCheckPage } from "./IntegrityCheckPage";
 
 vi.mock("@/lib/bindings", () => ({
   commands: { runIntegrityCheck: vi.fn(), fixIntegrity: vi.fn(), listLogs: vi.fn() },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 
 const runIntegrityCheck = vi.mocked(commands.runIntegrityCheck);
 const fixIntegrity = vi.mocked(commands.fixIntegrity);
 const listLogs = vi.mocked(commands.listLogs);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 function mismatch(code: string, stock = 10, movements = 7): IntegrityMismatch {
   return {
@@ -95,6 +98,7 @@ beforeEach(() => {
   runIntegrityCheck.mockReset();
   fixIntegrity.mockReset();
   listLogs.mockReset();
+  mockScrollPageToTop.mockReset();
   listLogs.mockResolvedValue({
     status: "ok",
     data: { items: [], total_count: 0, page: 1, per_page: 1 },
@@ -407,10 +411,49 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     expect(await screen.findByText("合成商品 SYN-000")).toBeInTheDocument();
     expect(screen.getByText("合成商品 SYN-099")).toBeInTheDocument();
     expect(screen.queryByText("合成商品 SYN-100")).toBeNull();
-    expect(screen.getByText("101 件中 1〜100 件目 · 1 / 2 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 101 件のうち 1〜100 件を表示（1 / 2 ページ）")).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "次のページ" }));
     expect(await screen.findByText("合成商品 SYN-100")).toBeInTheDocument();
     expect(screen.queryByText("合成商品 SYN-000")).toBeNull();
+  });
+
+  it("SC4f: 表示件数を50へ変更すると表示行を50件以下に制限し追加requestを発火しない", async () => {
+    runIntegrityCheck.mockResolvedValue(
+      checkResult(
+        Array.from({ length: 101 }, (_, index) =>
+          mismatch(`SYN-${String(index).padStart(3, "0")}`),
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await runCheck();
+    expect(await screen.findByText("合成商品 SYN-099")).toBeInTheDocument();
+    const listLogsCallsBeforeSelection = listLogs.mock.calls.length;
+
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "50 件" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox")).toHaveLength(50);
+    });
+    expect(screen.queryByText("合成商品 SYN-050")).toBeNull();
+    expect(listLogs).toHaveBeenCalledTimes(listLogsCallsBeforeSelection);
+  });
+
+  it("SC7: 差異0件でも表示件数Selectを表示し選択後も一覧行は空のまま", async () => {
+    runIntegrityCheck.mockResolvedValue(checkResult([]));
+    const user = userEvent.setup();
+    renderPage();
+    await runCheck();
+    expect(await screen.findByText("差異はありません")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /を補正する/ })).toBeNull();
+
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "50 件" }));
+
+    expect(screen.getByRole("combobox", { name: "表示件数" })).toHaveTextContent("50 件");
+    expect(screen.queryByRole("checkbox", { name: /を補正する/ })).toBeNull();
   });
 
   it("test_integrity_page_req904_mismatch_columns_complete", async () => {
@@ -440,5 +483,22 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     expect(await screen.findByText("補正済み")).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "再度チェック" }));
     expect(await screen.findByText("差異はありません")).toBeInTheDocument();
+  });
+});
+
+describe("IntegrityCheckPage perPage scroll（UI-13）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    runIntegrityCheck.mockResolvedValue(
+      checkResult(Array.from({ length: 101 }, (_, index) => mismatch(`SYN-${String(index)}`))),
+    );
+    renderPage();
+    await runCheck();
+    await screen.findByText("合成商品 SYN-0");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "50 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });

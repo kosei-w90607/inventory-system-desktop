@@ -5,11 +5,20 @@
 import { Eye, PackageSearch } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -25,6 +34,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 import { Pagination } from "@/components/patterns/Pagination";
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import {
   INVENTORY_RECORD_STATUS_OPTIONS,
@@ -40,8 +50,6 @@ export interface InventoryRecordsPageProps {
   search: InventoryRecordsSearch;
   onSearchChange: (updater: (prev: InventoryRecordsSearch) => InventoryRecordsSearch) => void;
 }
-
-const PER_PAGE = 20;
 
 function buildInventoryRecordsReturnTo(search: ReturnType<typeof normalizeInventoryRecordsSearch>) {
   const params = new URLSearchParams();
@@ -72,6 +80,7 @@ function buildDetailLinkProps(
 export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecordsPageProps) {
   const normalized = normalizeInventoryRecordsSearch(search);
   const returnTo = buildInventoryRecordsReturnTo(normalized);
+  const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
 
   const departmentsQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.departments(),
@@ -85,7 +94,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
     retry: 0,
   });
   const recordsQuery = useQuery({
-    queryKey: queryKeys.inventoryRecords.list(normalized),
+    queryKey: queryKeys.inventoryRecords.list({ ...normalized, perPage }),
     queryFn: () =>
       unwrapResult(
         commands.listInventoryRecords({
@@ -97,7 +106,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
           department_id: normalized.departmentId ?? null,
           status: normalized.status === "all" ? null : normalized.status,
           page: normalized.page,
-          per_page: PER_PAGE,
+          per_page: perPage,
         }),
         { source: "commands", cmd: "list_inventory_records" },
       ),
@@ -259,6 +268,32 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
                 </option>
               ))}
             </select>
+          </div>
+          <div className="grid gap-1">
+            <label className="text-sm text-muted-foreground" htmlFor="inventory-records-per-page">
+              表示件数
+            </label>
+            <Select
+              value={String(perPage)}
+              onValueChange={(value) => {
+                const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+                if (next === undefined) return;
+                setPerPage(next);
+                updateSearch({}, true);
+                scrollPageToTop();
+              }}
+            >
+              <SelectTrigger id="inventory-records-per-page" className="w-[7rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LIST_PER_PAGE_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option} 件
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">

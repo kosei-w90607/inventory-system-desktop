@@ -29,6 +29,7 @@ export interface UseStockInquiryArgs {
   dept: number | null;
   /** 1 始まり。status !== "all" では無視（既存 client filter 経路は非対象）。 */
   page: number;
+  perPage: number;
   selected: string | null;
   /** URL search params の部分更新（page 側で navigate をラップして渡す）。 */
   navigate: (search: Partial<StockInquirySearch>) => void;
@@ -49,7 +50,7 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
   const isAllEmpty = args.status === "all" && args.q.trim() === "";
 
   const listQuery = useQuery({
-    queryKey: queryKeys.stockInquiry.list(args.status, args.q, args.dept, args.page),
+    queryKey: queryKeys.stockInquiry.list(args.status, args.q, args.dept, args.page, args.perPage),
     queryFn: async (): Promise<StockInquiryListResult> => {
       if (args.status === "all") {
         const data = await unwrapResult(
@@ -60,7 +61,7 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
             sort_key: "ProductCode",
             sort_order: "Asc",
             page: args.page,
-            per_page: 50,
+            per_page: args.perPage,
           }),
           { source: "commands", cmd: "search_products" },
         );

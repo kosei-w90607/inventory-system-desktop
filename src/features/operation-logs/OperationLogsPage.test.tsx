@@ -5,6 +5,7 @@ import { startTransition, Suspense, use, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { renderWithRouter } from "@/test/render-with-router";
 import { OperationLogsPage } from "./OperationLogsPage";
 import * as operationLogTypes from "./types";
@@ -13,8 +14,10 @@ import { normalizeOperationLogsSearch, type OperationLogsSearch } from "./types"
 vi.mock("@/lib/bindings", () => ({
   commands: { listLogs: vi.fn(), listLogOperationTypes: vi.fn() },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 const listLogs = vi.mocked(commands.listLogs);
 const listTypes = vi.mocked(commands.listLogOperationTypes);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 type SearchChange = (updater: (previous: OperationLogsSearch) => OperationLogsSearch) => void;
 
@@ -66,6 +69,7 @@ const log = (
 beforeEach(() => {
   listLogs.mockReset();
   listTypes.mockReset();
+  mockScrollPageToTop.mockReset();
   listTypes.mockResolvedValue({ status: "ok", data: ["backup_create", "future_type"] });
 });
 
@@ -131,7 +135,7 @@ describe("UI-11c REQ-902", () => {
           ...dates,
           operation_type: null,
           page: 1,
-          per_page: 20,
+          per_page: 50,
         });
       });
     },
@@ -169,12 +173,12 @@ describe("UI-11c REQ-902", () => {
           end_date: "2026-07-11",
           operation_type: "backup_create",
           page: 3,
-          per_page: 20,
+          per_page: 50,
         });
       });
       fireEvent.change(document.getElementById(id) as HTMLInputElement, { target: { value } });
       await waitFor(() => {
-        expect(listLogs).toHaveBeenLastCalledWith({ ...expected, page: 1, per_page: 20 });
+        expect(listLogs).toHaveBeenLastCalledWith({ ...expected, page: 1, per_page: 50 });
       });
     },
   );
@@ -193,8 +197,27 @@ describe("UI-11c REQ-902", () => {
         end_date: "2026-07-11",
         operation_type: "future_type",
         page: 1,
-        per_page: 20,
+        per_page: 50,
       });
+    });
+  });
+
+  it("SC4d: 表示件数を200へ変更するとpage 1・per_page 200で再取得する", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 200 },
+    });
+    renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-11", page: 3 });
+    await screen.findByText("合成ログ");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(await screen.findByRole("option", { name: "200 件" }));
+
+    await waitFor(() => {
+      expect(listLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, per_page: 200 }),
+      );
     });
   });
 
@@ -212,7 +235,7 @@ describe("UI-11c REQ-902", () => {
         end_date: "2026-07-11",
         operation_type: null,
         page: 1,
-        per_page: 20,
+        per_page: 50,
       });
     });
   });
@@ -231,7 +254,7 @@ describe("UI-11c REQ-902", () => {
         end_date: null,
         operation_type: null,
         page: 1,
-        per_page: 20,
+        per_page: 50,
       });
     });
   });
@@ -254,7 +277,7 @@ describe("UI-11c REQ-902", () => {
     renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-10", page: 3 });
     await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
     expect(listLogs).toHaveBeenCalledTimes(1);
@@ -266,7 +289,7 @@ describe("UI-11c REQ-902", () => {
     expect(listLogs).toHaveBeenCalledTimes(1);
     expect(screen.getAllByText("合成ログ")).toHaveLength(2);
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
 
@@ -278,7 +301,7 @@ describe("UI-11c REQ-902", () => {
       end_date: "2026-07-10",
       operation_type: null,
       page: 1,
-      per_page: 20,
+      per_page: 50,
     });
   });
 
@@ -393,7 +416,7 @@ describe("UI-11c REQ-902", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "valid transitionを開始" }));
     await waitFor(() => {
@@ -405,7 +428,7 @@ describe("UI-11c REQ-902", () => {
       "開始日は終了日と同じ日か、それより前の日付にしてください",
     );
     expect(screen.getByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
     expect(listLogs).toHaveBeenCalledTimes(1);
   });
 
@@ -441,10 +464,20 @@ describe("UI-11c REQ-902", () => {
     expect(screen.getByText("その他（synthetic_unregistered_type）")).toBeVisible();
   });
 
+  // UI-11c: Gated Amendment 2 A2-c — category and option order are independent literals.
   it("orders operation type groups and options by the canonical registry, with unknown values last", async () => {
     listTypes.mockResolvedValue({
       status: "ok",
-      data: ["backup_create", "future_type", "csv_import", "product_update", "product_create"],
+      data: [
+        "backup_create",
+        "supplier_merge",
+        "future_type",
+        "csv_import",
+        "receiving_create",
+        "product_update",
+        "supplier_rename",
+        "product_create",
+      ],
     });
     listLogs.mockResolvedValue({
       status: "ok",
@@ -453,21 +486,39 @@ describe("UI-11c REQ-902", () => {
     renderPage();
     const select = await screen.findByLabelText<HTMLSelectElement>("種別");
     await waitFor(() => {
-      expect(Array.from(select.options).map((option) => option.value)).toEqual([
-        "",
-        "product_create",
-        "product_update",
-        "csv_import",
-        "backup_create",
-        "future_type",
+      expect(Array.from(select.querySelectorAll("optgroup")).map((group) => group.label)).toEqual([
+        "商品管理",
+        "取引先管理",
+        "入出庫",
+        "売上データ取込み",
+        "システム管理",
+        "その他",
       ]);
     });
-    expect(Array.from(select.querySelectorAll("optgroup")).map((group) => group.label)).toEqual([
-      "商品管理",
-      "売上データ取込み",
-      "システム管理",
-      "その他",
+    expect(Array.from(select.options).map((option) => option.value)).toEqual([
+      "",
+      "product_create",
+      "product_update",
+      "supplier_rename",
+      "supplier_merge",
+      "receiving_create",
+      "csv_import",
+      "backup_create",
+      "future_type",
     ]);
+  });
+
+  it("UI-11c SC9c: 期間・種別のnative入力欄にcontrol tokenを適用する", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 50 },
+    });
+    renderPage();
+    await screen.findByText("合成ログ");
+
+    for (const label of ["開始日", "終了日", "種別"]) {
+      expect(screen.getByLabelText(label)).toHaveClass("border-input", "bg-control-surface");
+    }
   });
 
   it("does not derive operation type options from the current page", async () => {
@@ -990,7 +1041,7 @@ describe("UI-11c REQ-902", () => {
     renderPage({ page: maxPage });
 
     expect(await screen.findByRole("button", { name: "先頭ページに戻る" })).toBeInTheDocument();
-    expect(listLogs).toHaveBeenCalledWith(expect.objectContaining({ page: maxPage, per_page: 20 }));
+    expect(listLogs).toHaveBeenCalledWith(expect.objectContaining({ page: maxPage, per_page: 50 }));
   });
 
   it("SPEC-UIBB-1 絞り込み該当なしで解除ボタンを表示する", async () => {
@@ -1079,5 +1130,35 @@ describe("UI-11c REQ-902", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/\[commands:/)).not.toBeInTheDocument();
+  });
+});
+
+describe("OperationLogsPage perPage scroll（UI-11c）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 120, page: 2, per_page: 50 },
+    });
+    renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-11", page: 2 });
+    await screen.findByText("合成ログ");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "100 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
+  });
+
+  it("SC9a control: ページ送りでは画面を先頭へ戻さない", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 120, page: 1, per_page: 50 },
+    });
+    renderPage({ start_date: "2026-07-01", end_date: "2026-07-11" });
+    await screen.findByText("合成ログ");
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "次のページ" }));
+
+    expect(mockScrollPageToTop).not.toHaveBeenCalled();
   });
 });

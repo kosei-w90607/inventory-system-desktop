@@ -64,9 +64,10 @@ import {
 import { describeError } from "@/lib/describe-error";
 import { isInvokeError, unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import { Pagination } from "@/components/patterns/Pagination";
-import { PRODUCT_PER_PAGE_OPTIONS } from "@/features/products/search";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 
 import { useCompleteStocktake } from "./hooks/useCompleteStocktake";
 import {
@@ -121,7 +122,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
   const stocktakeStatus = useStocktakeStatus();
   const activeStocktakeId = stocktakeStatus.activeStocktakeId;
   const [effectiveSearch, setEffectiveSearch] = useState<StocktakeSearch>(search);
-  const [perPage, setPerPage] = useState<(typeof PRODUCT_PER_PAGE_OPTIONS)[number]>(50);
+  const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -712,9 +713,9 @@ interface StocktakeItemListProps {
   departments: { id: number; name: string }[];
   search: StocktakeSearch;
   disabled: boolean;
-  perPage: (typeof PRODUCT_PER_PAGE_OPTIONS)[number];
+  perPage: (typeof LIST_PER_PAGE_OPTIONS)[number];
   totalCount: number;
-  onPerPageChange: (value: (typeof PRODUCT_PER_PAGE_OPTIONS)[number]) => void;
+  onPerPageChange: (value: (typeof LIST_PER_PAGE_OPTIONS)[number]) => void;
   onSearchChange: (updater: (prev: StocktakeSearch) => StocktakeSearch) => void;
 }
 
@@ -756,17 +757,18 @@ export function StocktakeItemList({
             value={String(perPage)}
             disabled={disabled}
             onValueChange={(value) => {
-              const next = PRODUCT_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+              const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
               if (next === undefined) return;
               onPerPageChange(next);
               onSearchChange((prev) => ({ ...prev, page: 1 }));
+              scrollPageToTop();
             }}
           >
             <SelectTrigger id="stocktake-per-page" className="w-[7rem]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PRODUCT_PER_PAGE_OPTIONS.map((option) => (
+              {LIST_PER_PAGE_OPTIONS.map((option) => (
                 <SelectItem key={option} value={String(option)}>
                   {option} 件
                 </SelectItem>

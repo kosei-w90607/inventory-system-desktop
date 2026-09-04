@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMockProductWithRelations } from "@/features/products/lib/test-fixtures";
 import { commands } from "@/lib/bindings";
 import type { CmdErrorKind, Department, Stocktake, StocktakeItemDetail } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { d052InvalidationOracle, expectExactInvalidations } from "@/test/invalidation-oracle";
 
 import { StocktakePage, StocktakeProgressHeader } from "./StocktakePage";
@@ -33,6 +34,7 @@ vi.mock("@/lib/bindings", () => ({
     searchProducts: vi.fn(),
   },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 
 const mockListDepartments = vi.mocked(commands.listDepartments);
 const mockSearchProducts = vi.mocked(commands.searchProducts);
@@ -43,6 +45,7 @@ const mockGetItems = vi.mocked(commands.getStocktakeItems);
 const mockFindItem = vi.mocked(commands.findStocktakeItem);
 const mockUpdateCount = vi.mocked(commands.updateCount);
 const mockComplete = vi.mocked(commands.completeStocktake);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 function ok<T>(data: T) {
   return { status: "ok" as const, data };
@@ -138,6 +141,7 @@ beforeEach(() => {
   mockUpdateCount.mockReset();
   mockComplete.mockReset();
   mockSearchProducts.mockReset();
+  mockScrollPageToTop.mockReset();
   mockSearchProducts.mockResolvedValue(ok({ items: [], total_count: 0, page: 1, per_page: 10 }));
 
   const departments: Department[] = [
@@ -1106,5 +1110,18 @@ describe("StocktakePage SPEC-UIBB-1/2（filter-empty reset action、73 §73.6）
     expect(result.dept).toBeUndefined();
     expect(result.counted_only).toBeUndefined();
     expect(result.page).toBeUndefined();
+  });
+});
+
+describe("StocktakePage perPage scroll（UI-10）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    await renderPage({ page: 3 });
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "100 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });

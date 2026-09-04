@@ -83,7 +83,7 @@
 
 ### 65.4.2 並び替え / ページング
 
-- 一覧は `page` 1 始まり、`per_page` 上限 100。
+- 一覧は `page` 1 始まり、`per_page` 上限 200。
 - 既定 sort は業務日付 DESC、記録ID DESC。
 - sort は `business_date`、`record_id`、`created_at`、`product_name`、`department_name`、`loss_cost_total` の範囲に限定する。各画面で対象外の列は非表示にし、sort key としても受け付けない。
 - 検索対象が明細 JOIN を含む場合でも、返却単位は業務記録ヘッダ単位にする。明細単位 CSV は export command に分ける。

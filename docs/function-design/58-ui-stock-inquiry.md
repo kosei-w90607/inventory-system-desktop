@@ -142,9 +142,9 @@ export type PaginatedResult<T> = {
 ```
 URL search params (q, dept, status, page, selected)
   ↓ validateSearch + zod 4 fallback
-useStockInquiry({ status, q, dept, page, selected, navigate })
+useStockInquiry({ status, q, dept, page, perPage, selected, navigate })
   ↓ list useQuery（status により分岐）
-  │   status === "all" + q あり → commands.searchProducts(ProductSearchQuery { page, per_page: 50, ... }) → PaginatedResult<ProductWithRelations>
+  │   status === "all" + q あり → commands.searchProducts(ProductSearchQuery { page, per_page: perPage, ... }) → PaginatedResult<ProductWithRelations>
   │   status === "stockout" | "low_stock" → commands.listLowStock(false) → ProductWithRelations[]（page 非対象、既存挙動）
   │   ↓ StockInquiryListResult { items, totalCount, source } に正規化（UI-06a-D1: `truncated` は撤去済み）
   ├ detail useQuery（selected != null）
@@ -220,13 +220,14 @@ export function useStockInquiry(params: {
   q: string;
   dept: number | null;
   page: number;                    // 1 始まり。status !== "all" では無視（既存 client filter 経路は非対象）
+  perPage: number;                 // ローカル state、既定 50
   selected: string | null;
   navigate: (search: Partial<StockInquirySearch>) => void;
 }) {
   const isAllEmpty = params.status === "all" && !params.q.trim();
 
   const listQuery = useQuery({
-    queryKey: queryKeys.stockInquiry.list(params.status, params.q, params.dept, params.page),
+    queryKey: queryKeys.stockInquiry.list(params.status, params.q, params.dept, params.page, params.perPage),
     queryFn: async (): Promise<StockInquiryListResult> => {
       if (params.status === "all") {
         const data = await unwrapResult(
@@ -237,7 +238,7 @@ export function useStockInquiry(params: {
             sort_key: "ProductCode",
             sort_order: "Asc",
             page: params.page,
-            per_page: 50,
+            per_page: params.perPage,
           }),
           { source: "commands", cmd: "search_products" },
         );
@@ -386,8 +387,9 @@ function StockInquiryPage() {
   const statusValue = status ?? "all";
   const pageValue = page ?? 1;
   const selectedValue = selected ?? null;
+  const [perPage, setPerPage] = useState(50);
   const { listQuery, detailQuery, departmentOptionsQuery, departmentOptions, isAllEmpty } = useStockInquiry({
-    status: statusValue, q: qValue, dept: deptValue, page: pageValue, selected: selectedValue,
+    status: statusValue, q: qValue, dept: deptValue, page: pageValue, perPage, selected: selectedValue,
     navigate: (search) => navigate({ search: (prev) => ({ ...prev, ...search }) }),
   });
   // q / dept / status の変更は page も既定（1）へ戻す（UI-06a-D1、50 §50.4 慣行の踏襲）。
@@ -451,7 +453,7 @@ function StockInquiryPage() {
             <Pagination
               page={pageValue}
               totalCount={listQuery.data!.totalCount}
-              perPage={50}
+              perPage={perPage}
               onPageChange={(next) => navigate({ search: (p) => ({ ...p, page: next }) })}
             />
           )}
@@ -563,7 +565,7 @@ function StockInquiryPage() {
 
 #### 契約 I 「すべて」チップの検索駆動表示（ラベルと実データの一致）
 
-> status === "all" かつ q 空文字の場合、search_products は呼ばず「商品コード、商品名、または JAN コードで検索してください」を表示する。q 入力後のみ search_products(page, per_page: 50) を呼ぶ。per_page 上限は search_products 既存契約どおり 200 で、200 超は IO 層でクランプされる（UI-06a は固定値 50 のみ使用）。全件へは pagination（§58.4 / UI-06a-D1）でページ送りして到達する。
+> status === "all" かつ q 空文字の場合、search_products は呼ばず「商品コード、商品名、または JAN コードで検索してください」を表示する。q 入力後のみ search_products(page, per_page: perPage) を呼ぶ。perPage はローカル state（既定 50）で、`Select` から 50 / 100 / 200 を選べる。per_page 上限は search_products 既存契約どおり 200 で、200 超は IO 層でクランプされる。全件へは pagination（§58.4 / UI-06a-D1）でページ送りして到達する。
 
 #### UI-06a-D1: pagination 導入 + truncated alert 撤去（2026-08-03 batch B）
 

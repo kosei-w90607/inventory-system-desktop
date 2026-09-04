@@ -55,7 +55,7 @@ export function useOperationLogs(args: {
 | UI-11c-D5 | Table は1行1ログとし、各行の明示的なnative button「詳細を表示」で detail をその場（同じ行の直下）に展開する。展開中の可視文言とaccessible nameは「詳細を閉じる」に変わる。Enter / Spaceはnative button契約で動作する。行全体clickは追加せず、同時に展開できる行は常に1件（新しい行を開くと前の展開行は閉じる）。 | キーボード・アクセシビリティ上の操作対象を明確にし、行内の関連記録リンクとのclick競合と誤展開を避ける。複数同時展開も棄却（ページが際限なく伸び、スクロール位置を見失うリスクが高い）。 |
 | UI-11c-D6 | detail_json は既知 field の日本語要約を優先表示し、生 JSON は既定で折りたたみの「技術情報」に隠す。null/空/不正 JSON/巨大 payload は要約なしで安全に案内する。HTML として解釈せず常に text として描画する。 | Owner Decision #4。既存 detail_json は operation_type ごとに自由形式（`db-design/tracking-system-tables.md` §18 設計意図）であり、per-type スキーマを作る工数は viewing MVP の scope を超える。既知 key 名の共通マップ + 未知 key の raw 表示に留める。 |
 | UI-11c-D7 | 関連業務記録リンクは、detail_json が `record_type`（`receiving_record` \| `return_record` \| `manual_sale` \| `disposal_record` のいずれか）とpositive safe integerの `record_id` を両方含む場合だけ表示する。それ以外（欠落・zero・negative・fractional・string・unsafe integer・未知 `record_type`）はリンクを出さず、summary 表示のみ継続する。入庫・返品交換・手動販売・廃棄の作成 producer は、許可リストに対応する `record_type` と当該業務記録 PK の `record_id` を detail_json に格納する（§74.9）。 | Missing UI item 7 は「任意の JSON key からの heuristic 推測」と文字列からの数値coercionを明示的に禁止する。既存 4 record_type は `InventoryRecordsSearch.recordType` / `65-inventory-record-traceability.md` §65.3 の実装済み detail route と一致させる。`csv_import` / `stocktake` は 2026-09-01 の producer 実効化 R3 では据置とし、初期 allow-list からの除外を維持する。それぞれの producer 側採用と registry 追加は別 follow-up で行う。 |
-| UI-11c-D8 | pagination は `per_page=20` 固定（増減 UI なし）。範囲外 page（`items` 空 かつ `total_count > 0` かつ `page > 1`）は「このページには表示するログがありません」+「先頭ページに戻る」導線を出す。 | `StockMovementsPage` / `InventoryRecordsPage` と同じ固定 20 件（§74.17）。範囲外 page 回復は既存2画面が持たない新規契約だが、Missing UI item 8 が明示要求するため追加する。 |
+| UI-11c-D8 | pagination は既定 50 + `Select`（50 / 100 / 200）。URL search state は UI-11c-D1 の 4 キー限定を維持し perPage はローカル state（L3-D3）。範囲外 page（`items` 空 かつ `total_count > 0` かつ `page > 1`）は「このページには表示するログがありません」+「先頭ページに戻る」導線を出す。 | 表示件数を選べる一方、URL search schema は増やさない。範囲外 page 回復は既存2画面が持たない新規契約だが、Missing UI item 8 が明示要求するため追加する。 |
 | UI-11c-D9 | 空状態は「ログそのものが0件」と「filter に該当するログが0件」を区別する。既定 filter（today-29..today、operation_type 未指定）と一致した状態で0件なら前者、それ以外の filter が適用された状態で0件なら後者の文言にする。エラー時は destructive Alert + 「再試行」ボタンを出し、再試行は現在の filter を保持したまま同一 query を再実行する。 | Missing UI item 9。既存2画面は単一 EmptyState 文言・retry ボタンなしだが、操作ログはトラブル対応で使う画面のため取得失敗時の再試行を明示的に用意する（`DailySalesPage` / `MonthlySalesPage` / `ThresholdSettingsPage` / `StocktakePage` の再試行 Button パターンを再利用、§74.17）。「全体0件かどうか」を判定する専用 CMD は追加しない（既定 filter 自体が30日範囲を持つため真の「全体0件」判定には無期限 count が必要になり、viewing MVP の scope を超えるため見送り。既定 filter との一致判定で近似する）。 |
 | UI-11c-D10 | `queryKey` は `queryKeys.operationLogs.list(normalizedSearch)`、`staleTime: 0` / `gcTime: 5min` とし、自動ポーリングはしない。バックグラウンドの365日 cleanup は起動時1回のみのため、セッション中の total_count 変化は次回 fetch（filter 変更・page 変更・再訪・再試行）で自然に反映される。 | 事故調査という利用シーンでは表示時点の最新性を優先する（`UI-10 棚卸し進行中` の `staleTime: 0` と同じ判断）。ポーリングは新規複雑さの割に運用上の要求がない（単一 operator、トラブル発生後に開く画面）。 |
 | UI-11c-D11 | operation_type filter は `<select>` によるドロップダウン選択のみとし、自由入力・IME 対応の検索欄は持たない。 | Owner Decision #3 は個別 exact value の選択を要求しており、`InventoryRecordsPage` の商品名部分一致検索のような自由入力欄は不要。IME `isComposing` 対応は本画面に適用対象がない（§74.13 で明示）。 |
@@ -139,7 +139,7 @@ export interface NormalizedOperationLogsSearch {
 
 #### 74.5.2 Frontend ラベル registry（既存コード実測ベース）
 
-`src/features/operation-logs/operation-type-labels.ts`（新規）に、現行コードベースで実際に使われている operation_type 値（`rg 'operation_type: "[a-z_]+"' src-tauri/src` で実測、`test_op` を除く24種）を初期 entries とする。
+`src/features/operation-logs/operation-type-labels.ts`（新規）に、現行コードベースで実際に使われている operation_type 値（`rg 'operation_type: "[a-z_]+"' src-tauri/src` で実測、`test_op` を除く29種）を初期 entries とする。
 
 | カテゴリ | operation_type | 日本語ラベル |
 |---|---|---|
@@ -147,6 +147,10 @@ export interface NormalizedOperationLogsSearch {
 | 商品管理 | `product_update` | 商品修正 |
 | 商品管理 | `product_discontinue` | 廃番切替 |
 | 商品管理 | `product_import` | 商品一括インポート |
+| 商品管理 | `product_price_revise` | 一括価格改定 |
+| 商品管理 | `product_bulk_plu_target` | PLU 対象一括切替 |
+| 取引先管理 | `supplier_rename` | 取引先の改名 |
+| 取引先管理 | `supplier_merge` | 取引先の統合 |
 | 入出庫 | `receiving_create` | 入庫記録 |
 | 入出庫 | `return_create` | 返品・交換記録 |
 | 入出庫 | `manual_sale_create` | 手動販売出庫記録 |
@@ -162,6 +166,7 @@ export interface NormalizedOperationLogsSearch {
 | 棚卸し | `stocktake_start` | 棚卸し開始 |
 | 棚卸し | `stocktake_complete` | 棚卸し確定 |
 | PLU書出し | `plu_export` | PLU書出し |
+| PLU書出し | `plu_register_snapshot_import` | PLU 登録状態の取込み |
 | 整合性検証 | `integrity_check` | 整合性チェック実行 |
 | 整合性検証 | `integrity_fix` | 整合性補正 |
 | システム管理 | `backup_create` | バックアップ作成 |
@@ -169,7 +174,7 @@ export interface NormalizedOperationLogsSearch {
 | システム管理 | `log_cleanup` | 操作ログ自動削除 |
 
 - **registry ownership**: frontend（`src/features/operation-logs/operation-type-labels.ts`）が単一の SSOT を持つ。backend は distinct 値の集合のみ返す。
-- **初期 entries/順序**: 上表の24件、カテゴリ順（商品管理 → 入出庫 → 売上データ取込み → 棚卸し → PLU書出し → 整合性検証 → システム管理）→ カテゴリ内は表の記載順を初期表示順とする。
+- **初期 entries/順序**: 上表の29件、カテゴリ順（商品管理 → 取引先管理 → 入出庫 → 売上データ取込み → 棚卸し → PLU書出し → 整合性検証 → システム管理）→ カテゴリ内は表の記載順を初期表示順とする。
 - **拡張ルール**: 新しい operation_type を biz/mnt 層で導入する実装 PR は、同じ PR で `operation-type-labels.ts` にカテゴリ + 日本語ラベルを追加する。追加を怠っても機能は壊れない（raw fallback）が、operator 可読性が下がるためレビュー観点に加える。
 - **未知値 fallback**: registry 未収載の値は「その他（`{raw_value}`）」の形式でカテゴリ「その他」にグルーピングして表示する。フィルタ選択肢としても `{raw_value}` のまま選べる。
 - **フィルタ選択肢のソース**: `typesQuery`（`list_log_operation_types` の結果）と `operation-type-labels.ts` を突き合わせ、`typesQuery` に実在する値だけを選択肢にする（未来のいつか使われるかもしれない registry entry を実在しないのに選べる状態にしない）。
@@ -186,7 +191,7 @@ OperationLogsPage
   ├ typesQuery: commands.listLogOperationTypes()
   └ logsQuery: commands.listLogs({
        page,
-       per_page: 20,
+       per_page: perPage,
        operation_type: operation_type ?? null,
        start_date: start_date ?? null,
        end_date: end_date ?? null,
@@ -259,8 +264,8 @@ OperationLogFilters + OperationLogTable（展開行1件） + Pagination
 
 ### 74.10 Pagination 契約
 
-- 既定 `per_page = 20`（増減 UI なし。`StockMovementsPage` / `InventoryRecordsPage` と同一、§74.17）。
-- 文言: `{total_count.toLocaleString("ja-JP")} 件中 {from}〜{to} 件目 · {page} / {totalPages} ページ`（範囲付き統一形、`Pagination` をそのまま再利用）。
+- 既定 `per_page = 50`（`Select` で 50 / 100 / 200）。
+- 文言: `全 {total_count.toLocaleString("ja-JP")} 件のうち {from}〜{to} 件を表示（{page} / {totalPages} ページ）`（範囲付き統一形、`Pagination` をそのまま再利用）。
 - **範囲外 page 回復**（UI-11c-D8）: `logsQuery.data.items.length === 0 && logsQuery.data.total_count > 0 && normalizedSearch.page > 1` の場合、通常の EmptyState ではなく専用メッセージ「このページには表示するログがありません」+ 「先頭ページに戻る」ボタン（`updateSearch({ page: 1 })`）を表示する。
 - IO層は`page` / clamp後の`per_page`を`i64`へ変換してからoffsetを計算する。URL/CMD wireで表現可能な最大positive page（`u32::MAX`）でもRust側でpanic/wrapせず、SQLiteの範囲外offsetによる空`items`と上記回復導線へ到達させる。
 - filter 変更時は常に `page=1`（§74.3）に戻るため、この回復導線は「filter 変更を伴わない外部要因（365日 cleanup、URL 直接改変、他端末からの delete 等）で総ページ数が減った」場合にのみ到達する。
@@ -575,7 +580,7 @@ SELECT changes() AS deleted_rows;
 |---|---|---|---|
 | URL state | zod、`.catch()`、filter変更でpage=1 | 同左 | 再利用（同一パターン） |
 | filter reset ボタン | なし（設計時点） | なし（設計時点） | なし（横断 backlog に合わせる、§74.11。**2026-08-03 batch B で 3 画面とも filter-empty reset action を追加**、[02-component-catalog.md](../design-system/02-component-catalog.md) ⑥、§74.11 参照） |
-| pagination | `Pagination`固定20件 | 同左 | 再利用 |
+| pagination | `Pagination` 既定 50 + `Select` | 同左 | 再利用 |
 | retry ボタン | **なし**（Alert のみ、文言のみで再試行の導線なし） | **なし**（同左） | **追加する**（Missing UI item 9 の明示要求 + `DailySalesPage`/`MonthlySalesPage`/`ThresholdSettingsPage`/`StocktakePage` の既存 retry パターンを再利用。意図的な相違、§74.2 UI-11c-D9） |
 | EmptyState | 単一文言 | 単一文言 | **2系統に分岐**（既定0件 vs filter該当0件。意図的な相違、UI-11c-D9） |
 | 範囲外 page 回復 | なし | なし | **追加する**（意図的な相違、UI-11c-D8） |

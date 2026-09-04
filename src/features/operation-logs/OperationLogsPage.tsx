@@ -4,12 +4,20 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 
 import { EmptyState } from "@/components/patterns/EmptyState";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -22,6 +30,7 @@ import { Pagination } from "@/components/patterns/Pagination";
 import { commands, type OperationLog } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import {
   OPERATION_TYPE_LABELS,
@@ -30,7 +39,6 @@ import {
 } from "./operation-type-labels";
 import { normalizeOperationLogsSearch, type OperationLogsSearch } from "./types";
 
-const PER_PAGE = 20;
 const KNOWN_KEYS: Partial<Record<string, string>> = {
   file_name: "ファイル名",
   size_bytes: "サイズ（バイト）",
@@ -222,12 +230,16 @@ export function OperationLogsPage({
   const returnTo = useRouterState({ select: (state) => state.location.href });
   const now = new Date();
   const normalized = normalizeOperationLogsSearch(search, now);
+  const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
   const invalidRange =
     normalized.start_date !== undefined &&
     normalized.end_date !== undefined &&
     normalized.start_date > normalized.end_date;
   const [lastCommittedValidSearch, setLastCommittedValidSearch] = useState(normalized);
-  const effectiveSearch = invalidRange ? lastCommittedValidSearch : normalized;
+  const effectiveSearch = {
+    ...(invalidRange ? lastCommittedValidSearch : normalized),
+    perPage,
+  };
   useEffect(() => {
     if (invalidRange) return;
     setLastCommittedValidSearch({
@@ -269,7 +281,7 @@ export function OperationLogsPage({
       unwrapResult(
         commands.listLogs({
           page: effectiveSearch.page,
-          per_page: PER_PAGE,
+          per_page: effectiveSearch.perPage,
           operation_type: effectiveSearch.operation_type ?? null,
           start_date: effectiveSearch.start_date ?? null,
           end_date: effectiveSearch.end_date ?? null,
@@ -339,7 +351,7 @@ export function OperationLogsPage({
               id="log-start"
               type="date"
               value={normalized.start_date ?? ""}
-              className="h-9 rounded-md border px-3"
+              className="h-9 rounded-md border border-input bg-control-surface px-3"
               onChange={(e) => {
                 updateDate("start_date", e.currentTarget.value);
               }}
@@ -353,7 +365,7 @@ export function OperationLogsPage({
               id="log-end"
               type="date"
               value={normalized.end_date ?? ""}
-              className="h-9 rounded-md border px-3"
+              className="h-9 rounded-md border border-input bg-control-surface px-3"
               onChange={(e) => {
                 updateDate("end_date", e.currentTarget.value);
               }}
@@ -366,7 +378,7 @@ export function OperationLogsPage({
             <select
               id="log-type"
               value={normalized.operation_type ?? ""}
-              className="h-9 min-w-52 rounded-md border px-3"
+              className="h-9 min-w-52 rounded-md border border-input bg-control-surface px-3"
               onChange={(e) => {
                 update({ operation_type: e.currentTarget.value || undefined }, true);
               }}
@@ -382,6 +394,32 @@ export function OperationLogsPage({
                 </optgroup>
               ))}
             </select>
+          </div>
+          <div className="grid gap-1">
+            <label htmlFor="operation-logs-per-page" className="text-sm text-muted-foreground">
+              表示件数
+            </label>
+            <Select
+              value={String(perPage)}
+              onValueChange={(value) => {
+                const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+                if (next === undefined) return;
+                setPerPage(next);
+                update({}, true);
+                scrollPageToTop();
+              }}
+            >
+              <SelectTrigger id="operation-logs-per-page" className="w-[7rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LIST_PER_PAGE_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option} 件
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         {invalidRange && (
@@ -519,7 +557,7 @@ export function OperationLogsPage({
           </div>
           <Pagination
             page={effectiveSearch.page}
-            perPage={PER_PAGE}
+            perPage={logsQuery.data.per_page}
             totalCount={logsQuery.data.total_count}
             onPageChange={(page) => {
               update({ page });

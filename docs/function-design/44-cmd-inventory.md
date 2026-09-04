@@ -158,7 +158,7 @@ fn list_receivings(
 
 **入力パラメータ**（個別引数方式。CMD層で `ListQuery` を組み立ててBIZ層に渡す）:
 - `page: u32` — 1始まり
-- `per_page: u32` — 上限100（BIZ層でバリデーション）
+- `per_page: u32` — 上限200（BIZ層でバリデーション）
 - `date_from: Option<String>` — YYYY-MM-DD
 - `date_to: Option<String>` — YYYY-MM-DD
 
@@ -1053,7 +1053,7 @@ fn list_movements(
 ```
 
 各関数の処理:
-1. ページパラメータのバリデーション（page >= 1, 1 <= per_page <= 100）
+1. ページパラメータのバリデーション（page >= 1, 1 <= per_page <= 200）
 2. 対応するrepo関数を呼び出し
 3. `DbError` → `BizError::DatabaseError` に変換して返す
 

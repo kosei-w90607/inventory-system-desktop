@@ -3,15 +3,24 @@ import { PackageSearch } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { EmptyState } from "@/components/patterns/EmptyState";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { ListSkeleton } from "@/components/patterns/ListSkeleton";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PriceRevisionFilters } from "./components/PriceRevisionFilters";
 import { PriceRevisionTable } from "./components/PriceRevisionTable";
 import { Pagination } from "@/components/patterns/Pagination";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { usePriceRevisionList } from "./hooks/usePriceRevisionList";
 import {
   resetPriceRevisionSearch,
@@ -55,6 +64,36 @@ export function PriceRevisionPage({
         departmentsQuery={list.departmentsQuery}
         onPatch={patchSearch}
       />
+      <div className="flex items-center gap-2">
+        <label
+          id="price-revision-per-page-label"
+          htmlFor="price-revision-per-page"
+          className="text-sm text-muted-foreground"
+        >
+          表示件数
+        </label>
+        <Select
+          value={String(list.normalizedSearch.perPage)}
+          onValueChange={(value) => {
+            const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+            if (next !== undefined) {
+              patchSearch({ perPage: next });
+              scrollPageToTop();
+            }
+          }}
+        >
+          <SelectTrigger id="price-revision-per-page" className="w-[7rem]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LIST_PER_PAGE_OPTIONS.map((option) => (
+              <SelectItem key={option} value={String(option)}>
+                {option} 件
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {list.normalizedSearch.supplier !== undefined ? (
         <label
           htmlFor="price-revision-assign-supplier"

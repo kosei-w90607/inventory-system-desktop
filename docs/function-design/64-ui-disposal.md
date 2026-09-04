@@ -103,7 +103,7 @@ UI-05 実装 PR では以下を generated binding に出す。
 }
 ```
 
-`listDisposals` は `perPage=10` を初期値とし、CMD/BIZ の上限100を UI から超えない。
+`listDisposals` は `perPage=10` を初期値とし、CMD/BIZ の上限200を UI から超えない。
 
 ## 64.5 表示 / 操作
 

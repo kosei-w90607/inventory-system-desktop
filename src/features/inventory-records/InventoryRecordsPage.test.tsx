@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands } from "@/lib/bindings";
 import type { InventoryRecordSummary } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { renderWithRouter } from "@/test/render-with-router";
 import { InventoryRecordsPage } from "./InventoryRecordsPage";
 import { formatRecordStatus, type InventoryRecordsSearch } from "./types";
@@ -24,9 +25,11 @@ vi.mock("@/lib/bindings", () => ({
     listInventoryRecords: vi.fn(),
   },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 
 const mockListDepartments = vi.mocked(commands.listDepartments);
 const mockListInventoryRecords = vi.mocked(commands.listInventoryRecords);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 function renderWithClient(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -86,6 +89,7 @@ function makeRecord(overrides: Partial<InventoryRecordSummary> = {}): InventoryR
 beforeEach(() => {
   mockListDepartments.mockReset();
   mockListInventoryRecords.mockReset();
+  mockScrollPageToTop.mockReset();
   mockListDepartments.mockResolvedValue({
     status: "ok",
     data: [
@@ -109,7 +113,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206: 記録種別フィルターで6種の業務記録を選べる", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
 
     renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
@@ -146,7 +150,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206 / 65 §65.8.1: 商品・部門filterの母集団差注記を常時表示する", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
 
     renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
@@ -174,7 +178,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
         ],
         total_count: 1,
         page: 1,
-        per_page: 20,
+        per_page: 50,
       },
     });
 
@@ -204,7 +208,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
         ],
         total_count: 1,
         page: 1,
-        per_page: 20,
+        per_page: 50,
       },
     });
 
@@ -253,7 +257,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
           ],
           total_count: 1,
           page: 1,
-          per_page: 20,
+          per_page: 50,
         },
       });
       const user = userEvent.setup();
@@ -271,7 +275,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206: search stateからlistInventoryRecords queryを作り廃棄詳細へリンクする", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [makeRecord()], total_count: 1, page: 2, per_page: 20 },
+      data: { items: [makeRecord()], total_count: 1, page: 2, per_page: 50 },
     });
     const user = userEvent.setup();
 
@@ -301,7 +305,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
         department_id: 2,
         status: "active",
         page: 2,
-        per_page: 20,
+        per_page: 50,
       });
     });
     expect(await screen.findByText("入出庫履歴")).toBeInTheDocument();
@@ -331,7 +335,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206: filter変更時はpageを1に戻す", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 3, per_page: 20 },
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
     });
     const user = userEvent.setup();
     const onSearchChange = vi.fn();
@@ -355,10 +359,34 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     });
   });
 
+  it("SC4b: 表示件数を200へ変更するとpage 1・per_page 200で再取得する", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeRecord()], total_count: 1, page: 1, per_page: 200 },
+    });
+
+    function Harness() {
+      const [search, setSearch] = useState<InventoryRecordsSearch>({ page: 3 });
+      return <InventoryRecordsPage search={search} onSearchChange={setSearch} />;
+    }
+
+    renderWithClient(<Harness />);
+    await screen.findByText("#7");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(await screen.findByRole("option", { name: "200 件" }));
+
+    await waitFor(() => {
+      expect(mockListInventoryRecords).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, per_page: 200 }),
+      );
+    });
+  });
+
   it("REQ-206 / TRACE-D12: 商品検索を200ms後に反映しpageを1へ戻す", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 2, per_page: 20 },
+      data: { items: [], total_count: 0, page: 2, per_page: 50 },
     });
     const onSearchChange = vi.fn();
 
@@ -398,7 +426,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206 / TRACE-D12: Enterはdebounceを待たず商品検索を即時反映する", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 2, per_page: 20 },
+      data: { items: [], total_count: 0, page: 2, per_page: 50 },
     });
     const onSearchChange = vi.fn();
 
@@ -431,7 +459,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206 / TRACE-D12: 商品検索のクリアでqを外しpageを1へ戻す", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 3, per_page: 20 },
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
     });
     const onSearchChange = vi.fn();
 
@@ -455,7 +483,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206 / TRACE-D12: IME変換確定Enterはflushせず確定後の最終文字列を反映する", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 2, per_page: 20 },
+      data: { items: [], total_count: 0, page: 2, per_page: 50 },
     });
     const onSearchChange = vi.fn();
 
@@ -517,7 +545,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206 / TRACE-D12: raw qの前後空白を入力表示に保持しqueryだけtrimする", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 2, per_page: 20 },
+      data: { items: [], total_count: 0, page: 2, per_page: 50 },
     });
 
     function Harness() {
@@ -546,7 +574,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   it("REQ-206 / SPEC-UICB-6: live型既定の名前・placeholderを使い外付けlabelを持たない", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
 
     renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
@@ -563,7 +591,7 @@ describe("InventoryRecordsPage SPEC-UIBB-1/2（filter-empty reset action、65 §
   it("SPEC-UIBB-1 絞り込み該当なしで解除ボタンを表示する", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
     renderWithClient(<InventoryRecordsPage search={{ q: "該当なし" }} onSearchChange={vi.fn()} />);
     expect(await screen.findByRole("button", { name: "絞り込みを解除" })).toBeInTheDocument();
@@ -572,7 +600,7 @@ describe("InventoryRecordsPage SPEC-UIBB-1/2（filter-empty reset action、65 §
   it("SPEC-UIBB-1 既定条件の0件では解除ボタンを出さない", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
     renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
     expect(await screen.findByText("入出庫履歴がありません")).toBeInTheDocument();
@@ -582,7 +610,7 @@ describe("InventoryRecordsPage SPEC-UIBB-1/2（filter-empty reset action、65 §
   it("SPEC-UIBB-2 解除で全検索条件とpageが既定値に戻る", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 3, per_page: 20 },
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
     });
     const onSearchChange = vi.fn();
     renderWithClient(
@@ -626,5 +654,22 @@ describe("InventoryRecordsPage SPEC-UIBB-1/2（filter-empty reset action、65 §
       status: undefined,
       page: undefined,
     });
+  });
+});
+
+describe("InventoryRecordsPage perPage scroll（REQ-206 / TRACE-D1）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeRecord()], total_count: 120, page: 2, per_page: 50 },
+    });
+    renderWithClient(<InventoryRecordsPage search={{ page: 2 }} onSearchChange={vi.fn()} />);
+    await screen.findByText("#7");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "100 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });

@@ -9,6 +9,7 @@ import { useState, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { toast } from "sonner";
 import { d052InvalidationOracle, expectExactInvalidations } from "@/test/invalidation-oracle";
 import { makeMockDepartment, makeMockProductWithRelations } from "./lib/test-fixtures";
@@ -42,11 +43,13 @@ vi.mock("@/lib/bindings", () => ({
     bulkSetPluTarget: vi.fn(),
   },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const mockSearchProducts = vi.mocked(commands.searchProducts);
 const mockListDepartments = vi.mocked(commands.listDepartments);
 const mockBulkSetPluTarget = vi.mocked(commands.bulkSetPluTarget);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 const mockToastSuccess = vi.mocked(toast.success);
 
 function renderWithClient(ui: ReactNode) {
@@ -60,6 +63,7 @@ beforeEach(() => {
   mockSearchProducts.mockReset();
   mockListDepartments.mockReset();
   mockBulkSetPluTarget.mockReset();
+  mockScrollPageToTop.mockReset();
   mockToastSuccess.mockReset();
 });
 
@@ -624,10 +628,13 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
 
     // toolbar 枠（rounded-lg border bg-card p-4）
     expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
-    // 上部件数（PaginationSummary、text-base font-semibold）
-    const topSummary = container.querySelector(".text-base.font-semibold");
+    // 上部件数（PaginationSummary、text-base。下部 Pagination は text-sm）
+    const topSummaries = container.querySelectorAll("div.text-base");
+    expect(topSummaries).toHaveLength(1);
+    expect(container.querySelector("div.text-sm.text-base")).toBeNull();
+    const topSummary = topSummaries.item(0);
     expect(topSummary).not.toBeNull();
-    expect(topSummary).toHaveTextContent("150 件中 1〜100 件目 · 1 / 2 ページ");
+    expect(topSummary).toHaveTextContent("全 150 件のうち 1〜100 件を表示（1 / 2 ページ）");
     // 下部 pager が search state を更新する
     await userEvent.setup().click(screen.getByRole("button", { name: "次のページ" }));
     const updater = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1]?.[0] as (
@@ -651,7 +658,7 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
       <ProductListPage search={{}} onSearchChange={vi.fn()} />,
     );
     await screen.findByRole("heading", { name: "該当する商品がありません" });
-    expect(container.querySelector(".text-base.font-semibold")).toBeNull();
+    expect(container.querySelector("div.text-base")).toBeNull();
     expect(screen.queryByRole("button", { name: "次のページ" })).toBeNull();
   });
 
@@ -706,6 +713,31 @@ describe("ProductListPage S10 PLU 一括 caption（Gated Amendment 2 / owner L3 
     expect(addGroup).not.toBeNull();
     expect(addGroup).toBe(removeGroup);
     expect(addGroup).toHaveAttribute("aria-labelledby");
+  });
+});
+
+describe("ProductListPage perPage scroll（UI-01a）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-SCROLL" })],
+        total_count: 150,
+        page: 2,
+        per_page: 100,
+      },
+    });
+    mockListDepartments.mockResolvedValue({ status: "ok", data: [] });
+    renderWithClient(
+      <ProductListPage search={{ page: 2, perPage: 100 }} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByText("P-SCROLL");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "50 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -603,20 +603,20 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **使いどころ**: 件数の多い一覧の前後送り。1 ページあたり表示件数（perPage）と前へ / 次へを提供する。viewport を超える一覧（DSR-22）は table 上部にも件数 + 現在位置を置く。
 
-**canonical**: `src/components/patterns/Pagination.tsx`（`Pagination` = 前へ / 次へ + 件数表示の下部 pager、`PaginationSummary` = 上部 text-only variant。Lane 2 で旧 features/products 配下の `ProductPagination` から移設し 8 caller を一括更新、D-9）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `PRODUCT_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text 必須、pager ボタンは任意）は DSR-22 の裁定に基づく追加方針で、viewport 超過一覧のみ opt-in。
+**canonical**: `src/components/patterns/Pagination.tsx`（`Pagination` = 前へ / 次へ + 件数表示の下部 pager、`PaginationSummary` = 上部 text-only variant。Lane 2 で旧 features/products 配下の `ProductPagination` から移設し 8 caller を一括更新、D-9）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `LIST_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text 必須、pager ボタンは任意）は DSR-22 の裁定に基づく追加方針で、viewport 超過一覧のみ opt-in。
 
 **構造**:
 
 ```tsx
 // 上部 variant（PaginationSummary、viewport 超過一覧のみ opt-in、DSR-22。件数 + 現在位置 text のみ、pager ボタンは持たない）
-<div className="text-base font-semibold text-foreground tabular-nums">
-  {totalCount.toLocaleString("ja-JP")} 件中 {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件目 · {page} / {totalPages} ページ
+<div className="text-base text-foreground tabular-nums">
+  全 {totalCount.toLocaleString("ja-JP")} 件のうち {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件を表示（{page} / {totalPages} ページ）
 </div>
 
 // ページ送り（component 本体、下部。Pagination.tsx canonical）
 <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
   <div className="tabular-nums">
-    {totalCount.toLocaleString("ja-JP")} 件中 {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件目 · {page} / {totalPages} ページ
+    全 {totalCount.toLocaleString("ja-JP")} 件のうち {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件を表示（{page} / {totalPages} ページ）
   </div>
   <div className="flex items-center gap-2">
     <Button variant="outline" size="sm" disabled={!canPrev} aria-label="前のページ" onClick={…}>
@@ -635,20 +635,20 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 <Select value={String(perPage)} onValueChange={…}>
   <SelectTrigger id="product-per-page" className="w-[7rem]"><SelectValue /></SelectTrigger>
   <SelectContent>
-    {PRODUCT_PER_PAGE_OPTIONS.map((o) => <SelectItem key={o} value={String(o)}>{o} 件</SelectItem>)}
+    {LIST_PER_PAGE_OPTIONS.map((o) => <SelectItem key={o} value={String(o)}>{o} 件</SelectItem>)}
   </SelectContent>
 </Select>
 ```
 
-**件数文言**: 範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalCount === 0` のときは「0 件」のみを表示し前後ボタンは両方 disabled。
+**件数文言**: 範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalCount === 0` のときは「0 件」のみを表示し前後ボタンは両方 disabled。
 
-**使用トークン**: 下部件数・ページ表示は `text-sm text-muted-foreground`（tabular-nums）。上部 `PaginationSummary` は `text-base font-semibold text-foreground tabular-nums`（16px、04 原則 1「本文 16px 最低線」）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium tabular-nums`。perPage 切替は `w-[7rem]`。
+**使用トークン**: 下部件数・ページ表示は `text-sm text-muted-foreground`（tabular-nums）。上部 `PaginationSummary` は `text-base text-foreground tabular-nums`（16px、04 原則 1「本文 16px 最低線」）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium tabular-nums`。perPage 切替は `w-[7rem]`。
 
 **状態**:
 - **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする（`totalCount === 0` は両方 disabled）
 - hover / focus / active / error: ボタン primitive の既定に従う
 
-**perPage 規約**: 表示件数の選択肢は `PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。共有定数は 1 本のまま維持し、既定値だけを画面ごとに変える（裁定・owner 了承 2026-09-03: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100、Lane 2 実装済み）。40 刻み化（40/80/120 等）は既存の固定文言 test への影響と移行コストに見合わないため不採用の裁定案。
+**perPage 規約**: 表示件数の選択肢は `LIST_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。共有定数は 1 本のまま維持し、既定値だけを画面ごとに変える（裁定・owner 了承 2026-09-03: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100、Lane 2 実装済み）。40 刻み化（40/80/120 等）は既存の固定文言 test への影響と移行コストに見合わないため不採用の裁定案。
 
 **アクセシビリティ**: 前後ボタンに `aria-label`（"前のページ" / "次のページ"）を付け、方向アイコンには `aria-hidden`。現在地（page / totalPages）はテキストで常時可視にする。上部 `PaginationSummary` と下部 `Pagination` は同一文言が DOM に重複するが `aria-hidden` は付けない（Lane 3〜5 の判断材料として記録）。
 
@@ -902,7 +902,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **必須構成（6 項目。適用条件は DSR-22 を正本とする）**:
 
 1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4`（2 段時は段間 `space-y-3`）の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）。node 構造の 2 段であり視覚行数ではない（PLU 一括操作 block は `basis-full` で独立行、125% 以上では視覚 3 行以上になりうる）。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱 #f5f5f4 / sticky 帯・th #e7e5e4 / ページ地 #fafaf9 の 3 段（1.04:1 / 1.15:1 / 1.20:1、Gated Amendment 2 S11 で分離）になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）。操作面は `--control-surface` #fff（S44）で箱 #f5f5f4 と区別する（Gated Amendment 6）
-2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」の text 表示。下部は `Pagination`、同文言 + pager フル装備。両者とも `totalCount > 0` のときだけ描画する）
+2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」の text 表示。下部は `Pagination`、同文言 + pager フル装備。両者とも `totalCount > 0` のときだけ描画する）
 3. **sticky header**（`<table>` は単一（header を別 table に分けない）。件数行（`bg-background`、線なし）と `thead`（`--list-head` 面 + 2px 下線）を page 地を挟まず垂直に隣接させ、同一 inset で sticky にする。灰色面は列見出しのみ（owner L3 run 4、Gated Amendment 5 S39）。件数行の上端の線は owner run 6 で撤去（Gated Amendment 7 S47）。記録済み逸脱: mockup `.tbl` の外枠（border + radius + `overflow:hidden`）は runtime では付けない（`overflow-hidden` が sticky を殺す、Plan Review round 2）。inset 値は mockup 12px / runtime 8px で、揃えるのは帯と thead の相互一致であって絶対値ではない）。件数行と table の wrapper は `w-min min-w-full`（横 overflow 時に帯が table 幅へ追随、非 overflow 時は 100%）。帯文言の溢れは子 `PaginationSummary` で「…」にする（追補 S17）。列見出し面の左右上は `rounded-md`（owner run 5、Gated Amendment 6 S43）。列見出し面は th cell 背景 + tr 背景（最小幅で cell 間に出る subpixel seam を塞ぐ）+ corner mask（`list-shell-sticky` hook、角丸維持、owner run 6、Gated Amendment 7 S48）
 4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする。横スクロール時は固定列右端に影。Lane 2 では `identityColumns` prop を予約するのみで描画には影響しない、実装は Lane 3〜5）
 5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22。token は Lane 2 で提供、消費は Lane 3〜5）
@@ -917,7 +917,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **Do**:
 - 必須構成 6 項目を満たす（発動条件は DSR-22 を正本とする）
 - perPage 共有定数は 1 本のまま、既定値だけ画面ごとに変える（DSR-22 裁定）
-- 上部・下部とも範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」を使う
+- 上部・下部とも範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」を使う
 
 **Don't**:
 - DSR-22 の発動条件外で上部 pager や識別列固定を無条件適用する

@@ -11,7 +11,6 @@ import type {
   PriceRevisionSearch,
   PriceRevisionSearchPatch,
 } from "../priceRevisionSearch";
-import { PRODUCT_PER_PAGE_OPTIONS } from "../search";
 import { CreateSupplierDialog } from "./CreateSupplierDialog";
 
 export function PriceRevisionFilters({
@@ -88,23 +87,6 @@ export function PriceRevisionFilters({
             }}
           />
           廃番を含む
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          表示件数
-          <select
-            className="h-9 rounded-md border bg-background px-3 text-foreground"
-            aria-label="表示件数"
-            value={normalized.perPage}
-            onChange={(event) => {
-              onPatch({ perPage: Number(event.target.value) as 50 | 100 | 200 });
-            }}
-          >
-            {PRODUCT_PER_PAGE_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}件
-              </option>
-            ))}
-          </select>
         </label>
       </div>
       {normalized.supplier !== undefined ? (
