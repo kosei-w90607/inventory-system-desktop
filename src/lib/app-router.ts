@@ -5,6 +5,7 @@ import { RouteErrorFallback } from "@/components/patterns/RouteErrorFallback";
 import { routeTree } from "@/routeTree.gen";
 
 import { consumeMainNavScroll } from "./main-nav-scroll";
+import { consumeForceScrollTop } from "./page-scroll";
 
 const MAIN_SCROLL_SELECTOR = '[data-scroll-restoration-id="main"]';
 
@@ -62,9 +63,18 @@ export function createAppRouter(options: { history?: RouterHistory } = {}) {
 
   appRouter.subscribe("onRendered", () => {
     cancelDelayedRestoration?.();
+    // Gated Amendment 3 (A3-a): 内蔵 scroll restoration の subscriber はこの subscribe より
+    // 先に登録され、同じ onRendered イベントで main.scrollTop を直接代入し得る。ここで flag を
+    // 消費し、有効なら後勝ちで先頭へ戻す（applyMainNavScroll と同じ位置で判定する）。
+    const forceScrollTop = consumeForceScrollTop();
     if (applyMainNavScroll(appRouter.latestLocation.href)) return;
 
     const main = document.querySelector<HTMLElement>(MAIN_SCROLL_SELECTOR);
+    if (forceScrollTop) {
+      if (main !== null) main.scrollTop = 0;
+      return;
+    }
+
     const entry = getElementScrollRestorationEntry(appRouter, {
       id: "main",
       getKey: getAppScrollRestorationKey,

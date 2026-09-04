@@ -10,6 +10,7 @@ import {
   pruneScrollRestorationEntries,
 } from "./app-router";
 import { consumeMainNavScroll, markMainNavScroll } from "./main-nav-scroll";
+import { scrollPageToTop } from "./page-scroll";
 
 const MAIN_SELECTOR = '[data-scroll-restoration-id="main"]';
 
@@ -314,6 +315,56 @@ describe("UI-12 / DSR-17 app router configuration", () => {
 
     await navigateAndRender(router, sourceHref);
     expect(main.scrollTop).toBe(470);
+  });
+
+  it("SC10b: a valid force-scroll-top flag overrides a proven cache hit (Gated Amendment 3, A3-a)", async () => {
+    const sourceHref = "/inventory/records?page=20";
+    const detailHref = "/inventory/receiving/records/12?case=force-scroll-top-active";
+    const { router, main } = await renderAppRouterAt(sourceHref);
+    // happy-dom の smooth scroll 模擬は setTimeout(0) 経由の遅延書込みで、後続 await 中に
+    // main.scrollTop を非同期に上書きし得る（実 browser の割込みと異なる挙動）。scrollPageToTop()
+    // が呼ぶ scrollTo は no-op にし、flag 経由の直接代入だけを見る。
+    vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
+
+    trackScroll(main, 410);
+    await navigateAndRender(router, detailHref);
+    await navigateAndRender(router, sourceHref);
+    expect(main.scrollTop).toBe(410);
+
+    trackScroll(main, 515);
+    await navigateAndRender(router, detailHref);
+    scrollPageToTop();
+    await navigateAndRender(router, sourceHref);
+
+    expect(main.scrollTop).toBe(0);
+    expect(main.scrollTop).not.toBe(515);
+  });
+
+  it("SC10b: an expired force-scroll-top flag lets the normal return restoration proceed (Gated Amendment 3, A3-a)", async () => {
+    const sourceHref = "/inventory/records?page=21";
+    const detailHref = "/inventory/receiving/records/12?case=force-scroll-top-expired";
+    const { router, main } = await renderAppRouterAt(sourceHref);
+    // happy-dom の smooth scroll 模擬は setTimeout(0) 経由の遅延書込みで、後続 await 中に
+    // main.scrollTop を非同期に上書きし得る（実 browser の割込みと異なる挙動）。scrollPageToTop()
+    // が呼ぶ scrollTo は no-op にし、flag の期限判定だけを見る。
+    vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
+
+    trackScroll(main, 410);
+    await navigateAndRender(router, detailHref);
+    await navigateAndRender(router, sourceHref);
+    expect(main.scrollTop).toBe(410);
+
+    trackScroll(main, 515);
+    await navigateAndRender(router, detailHref);
+
+    // flag の期限（1000ms）を実経過時間で切らす。TanStack Router 自身も内部で Date.now() に
+    // 依存するため（pending 状態のタイミング計算等）、Date.now を直接 mock せず実待機する。
+    scrollPageToTop();
+    await new Promise((resolve) => setTimeout(resolve, 1_050));
+    await navigateAndRender(router, sourceHref);
+
+    expect(main.scrollTop).toBe(515);
+    expect(main.scrollTop).not.toBe(0);
   });
 
   it("T12: reapplies a clamped saved position once after delayed content expands", async () => {
