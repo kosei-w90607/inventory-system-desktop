@@ -10,16 +10,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
-- Amendments: 4401112 b318240 357941c 75d5e30 ec56d20 cf56d18 29091d4 9005270 cdd82d9 9e9e76f a823df8
+- Amendments: 4401112 b318240 357941c 75d5e30 ec56d20 cf56d18 29091d4 9005270 cdd82d9 9e9e76f a823df8 eeeca9c
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 18e230c
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b) の実施分）。Lane 1b mockup 5 file の視認は Gated Amendment 5 で non-blocking へ descope（run 5 = 帯 1 点）
@@ -381,6 +381,9 @@ Minimum design checks for business-app work:
 | Amendment 5 S40 AC-L3-5 descope（mockup は reference-only） | reference/README.md | — | AC-L3-5（non-blocking） |
 | Amendment 5 S41 owner 反応 ledger の Plans.md 転記（runtime backlog 9 + 維持 1） | docs/Plans.md | doc oracle（bullet 数 10） | — |
 | Amendment 5 S42 runtime-first（D-080） | docs/decision-log.md / Plans.md ④ | doc oracle（`^## D-080` = 1） | — |
+| Amendment 6 S43 列見出し面の左右上 `rounded-md`、tr 背景撤去 | ListShell.tsx / catalog ⑯ / mockup-d-lists.html | SC4d / SC8（更新）、X35 / X36 | AC-L3-2（run 6） |
+| Amendment 6 S44 `--control-surface` #fff（input / SelectTrigger） | globals.css / input.tsx / select.tsx / 00-foundations / DSR-22 :443 / catalog ⑯ 第 1 項 | SC15（fs literal）、X37 | AC-L3-1（run 6、他画面は Lane 3〜5 residual） |
+| Amendment 6 S45 unit code 生表示 sweep（`formatStockUnitLabel`） | format-stock-display.ts / ProductTable.tsx / Receiving・Disposal・ReturnExchange・ManualSale Page / 58-ui §58.6 / Plans.md ledger | SC16（render + unit + fs literal）、X38 / X39 | AC-L3-3（run 6、「18 個」） |
 | DSR-22 低視力 | — | — | AC-L3-4 |
 | S6 docs | design-system / 59 / checklist / UI_TECH_STACK / mockup 注記 | AC6（rg oracle） | — |
 | S7 mockup | reference | AC7 | AC-L3-5 |
@@ -677,6 +680,18 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 
 **遷移**: post-impl state-only 2/2 到達のため、`implementing -> local-verified -> independent-review -> human-confirm` を本 commit（Contract Coverage Ledger S39〜S42 行 + 本結果記入 + Workflow State）に同乗して materialize。根拠 = content candidate `7b80f67`（src は `cb2994f` から不変）、L1 evidence は PR body。L3 run 5 = 商品一覧の帯 1 点（件数行が地色 + 1px 下線、列見出しだけ灰色、隙間なし、sticky 維持）。
 
+### Gated Amendment 6 対応（2026-09-04、owner run 5 追加要望 + bug、S43〜S45）
+
+**Writer content commit**: `e5377b5`（S43）/ `9c16fe8`（S44）/ `18e230c`（S45、content candidate = Reviewed Content HEAD）。`git diff eeeca9c..18e230c --stat -- src` = 14 file（Spec の集合内）、`src-tauri` / packet 差分 0。
+
+**着地**: S43 = `ListShell.tsx:54-55` に角丸 2 class、`[&_thead_tr]:bg-list-head` 撤去、catalog ⑯ 第 3 項 + mockup-d-lists th CSS。S44 = `globals.css` `--control-surface: #ffffff` + `--color-control-surface`、`input.tsx:11` / `select.tsx:34`（SelectTrigger）`border-input bg-control-surface`、00-foundations 表 + DSR-22 `:443` + catalog ⑯ 第 1 項、DS3 = 25（+1）。SC15 は `file:bg-transparent`（file-selector 用）を除外するため「`border-input bg-transparent` 不在 + `border-input bg-control-surface` 存在」の行内文脈 oracle。S45 = `formatStockUnitLabel`（`pcs` → 個 / `cm` / `—`）、`ProductTable.tsx` 在庫数 = `formatStockDisplay`（「18 個」、`toLocaleString` は外した）、単位列 sweep = Receiving `:557` / Disposal `:584` / ReturnExchange `:866` / ManualSale `:640` の 4 箇所、fs literal `{row.stockUnit}` = 0、58-ui §58.6 + Plans.md ledger の `pcs` 行を「本 PR S45 で是正」へ、S44 residual risk を ledger 末尾に 1 行。TDD で S43 / S44 / S45 とも red → green。`generate_traceability --check` で再生成不要を確認。
+
+**process 記録**: Writer が作業中に誤って `git stash -u` を実行し 20 file の未 commit 変更を一時退避 → 即 `stash pop` で復元、diff 行数一致と全 gate 再実行で green を再確認（データ損失なし、Writer 自己開示）。docs の同一 file 内 hunk が分離できず、catalog ⑯ 第 1 項（S44）は S43 commit に、Plans.md（S45 + S44 residual）は S45 commit に同乗。
+
+**独立 closure**: Sonnet mutation（`18e230c`）= X35〜X39 全 kill、再測 X19 / X33 / X21 / X31 kill、追加 select `bg-transparent` 戻し kill。追加「ReceivingPage:558 を `{row.stockUnit}` に戻す」を survivor と報告（P2 = page 側 test の未被覆）→ Coordinator が同一注入を SC16 の fs literal test（`format-stock-display.test.ts`、`src` 全 `.tsx` 走査）込みで再測し kill（`ReceivingPage.tsx` を名指しで fail）を確認。survivor は closure が `src/features/receiving` の test のみ実行した scoping artifact で、P2 は再現付きで rebut（page render test の追加は不要、fs literal が regression を機械的に捕捉）。sweep 0 hit、doc oracle 6/6、DS3 = 25、既存 test 削除なし、gate 全 green。P1/P2 = 0。
+
+**遷移**: post-impl state-only 2/2 到達のため、`implementing -> local-verified -> independent-review -> human-confirm` を本 commit（Contract Coverage Ledger S43〜S45 行 + 本結果記入 + Workflow State）に同乗して materialize。根拠 = content candidate `18e230c`、L1 evidence は PR body。L3 run 6 = 商品一覧の 3 点（列見出しの左右上の角 / 検索欄・Select の白い面 / 在庫数「18 個」）。
+
 ## Review Response
 
 2026-09-03 Plan Review round 1（独立 Sonnet = P1 2 / P2 4 / P3 3、Opus デザイン面 = P1 4 / P2 8 / P3 3）: 全件 accept。Sonnet P1-1（AC2 の `rg -l` は 28 file、43 は箇所数）→ AC2 を file 数 + 箇所数の二段構えへ / P1-2（Matrix SC3a の to は 1,100）→ 訂正 / P2-3（`#cdc8c4` は 1.59:1、1.66 は対純白）→ 起票時実測・S1・reference §8 訂正を scope 化 / P2-4（patterns → features 逆依存）→ D-9 で `Pagination.tsx` へ移設、旧 Non-scope 撤回 / P2-5（returnTo は自動化可能）→ SC5c 新設、AC-L3-3 を render 確認のみへ / P2-6（SC4c / SC5b に X なし）→ X13 / X14 追加、AC10 = X1〜X14 / P3-7（`:36`）/ P3-8（`npm run build`）/ P3-9（3 file 6 箇所）→ 訂正。Opus P1-1（sticky 背景は mockup `--d-head` = `bg-muted`）/ P1-2（`border-collapse` で下端線が消える → `border-separate border-spacing-0` + thead cell `border-b`）/ P1-3（`--border` 単独濃化で階層反転 → `--input: var(--border-strong)` を同時適用、outline / Badge / chip は Lane 3〜5 sweep）/ P1-4（上部 summary が流れ去る → summary + thead の 1 帯 sticky、mockup 箱内スクロール不採用理由を注記）→ D-2 / D-7 改訂。P2-1（枠は `rounded-lg border bg-card p-4`、04 原則 6 を同期）/ P2-2（`totalCount > 0` gating、`toolbar` optional）/ P2-3（pilot に `isLoading` 配線）/ P2-4（summary は 16px semibold tabular-nums、catalog ⑩ `:646` を是正）/ P2-5（1.59:1）/ P2-6（AC-L3-1 に dialog + sidebar）/ P2-7（静的 boolean の近似採用を D-5 に明記）/ P2-8（S7 の描画内容 pin + DSR-22 `:441` の最終確定を AC-L3-5 へ）→ 反映。P3-1（`cn` 順序 + SC2a case）/ P3-2（README `:16` stale）/ P3-3（重複読み上げの記録）→ 反映。
@@ -717,4 +732,6 @@ owner が是正方針 A（mockup を現実装 + Lane 2 の比較差分に限定�
 
 2026-09-04: **owner L3 run 5 = PASS（帯 1 点）+ 追加要望 2 + bug 1**（head `0499212` / content `7b80f67`、原文、介入 2/3 の同一 gate 内）。帯（件数行 地色 + 1px 下線、列見出しのみ灰色）は PASS。追加要望 = (1) 列見出しの灰色面の左右上の角を丸くしたい (2) 入力欄とドロップダウンの面を白くしたい（run 2 非 blocking 所感の「明度差が小さい」を owner は Codex 経由で要望として伝えたつもりだったが relay されていなかった）。bug = 商品一覧の在庫数にも unit code `pcs` が生表示（`ProductTable.tsx:69`、入庫 `ReceivingPage.tsx:557` / 廃棄 `DisposalPage.tsx:584` / 返品交換 `ReturnExchangePage.tsx:866` の単位列と同根）。owner「まとめてできるならやってしまおう」→ Gated Amendment 6 に 3 点を束ねる。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。
 
-- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）, Gated Amendment 4（owner L3 run 3 AC-L3-5 FAIL 起源 + Codex Final Review、S22〜S38、SC14a / SC14b、docs-only）, Gated Amendment 5（owner L3 run 4 + 方針 A、S39〜S42、runtime は帯 1 点、SC8 / SC10 / SC12 更新）.
+2026-09-04 owner L3 run 5 PASS + 追加要望 2 + bug 1（原文）→ Gated Amendment 6（`eeeca9c`、S43〜S45、owner escalation）: Writer content commit = `e5377b5` `9c16fe8` `18e230c`。Sonnet 独立 closure（`18e230c`）11 mutant 中 10 kill + survivor 1 は Coordinator 再測で kill（scoping artifact、P2 rebut）、findings 0。`implementing -> local-verified -> independent-review -> human-confirm` を本 content commit（Ledger + 結果記入）に同乗で materialize。Reviewed Content HEAD = `18e230c`。L3 run 6 は 3 点のみ。
+
+- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）, Gated Amendment 4（owner L3 run 3 AC-L3-5 FAIL 起源 + Codex Final Review、S22〜S38、SC14a / SC14b、docs-only）, Gated Amendment 5（owner L3 run 4 + 方針 A、S39〜S42、runtime は帯 1 点、SC8 / SC10 / SC12 更新）, Gated Amendment 6（owner run 5 追加要望 + bug、S43〜S45、SC15 / SC16 / X35〜X39）.
