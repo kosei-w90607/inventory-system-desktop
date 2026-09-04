@@ -85,6 +85,11 @@
       - R2-4 在庫照会の検索条件を増やす（どの条件かは未回答、owner に候補提示）→ 別 item、design-first
       - R2-5 入出庫履歴の状態 badge に色を付ける（状態 badge 系は色付けが優しい。DSR-08 どおり文言は残し色は補助）→ Lane 5 候補（mapping は owner と決める）
       - 在庫照会 / 入出庫履歴 / 在庫変動履歴 = AC-L3-1〜4 PASS（在庫変動履歴は件数不足で多ページ未観測）
+    - owner L3 run 3 所感（Lane 3、2026-09-05、HEAD `fa561e3`、原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 3 L3 run 3 原文」。棚卸し / 一括価格改定 / 整合性チェック = AC-L3-1 PASS。Coordinator 転記、裁定は原文を正とする）:
+      - R3-1 状態 badge と差異の数値（+3 / −2 等）に色: 棚卸し / 一括価格改定 / 整合性チェックで「目が滑る」。R2-5（入出庫履歴の状態 badge）と統合し「全画面の状態 badge・増減数値の色付け」1 item へ（DSR-08 どおり文言 / 記号は残し色は補助、mapping は owner と決める）→ Lane 5 後続 or 別 lane
+      - R3-2 前へ / 次へ button の有効状態が薄い: 一括価格改定の 1 ページ目で「前へ（無効）」と「次へ（有効）」の見た目が同じ。R2-2 と統合（有効を濃く + hover 反応、無効との区別を明確に）→ Lane 5 の E13 sweep に同乗候補（`Pagination.tsx` の button variant）
+      - R3-3 一括価格改定の注意文言「画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。」が薄い → Backup の注意書きと同じ warning tone へ（DSR の注意文言 token を実測して揃える）→ 別 item S
+      - R3-4 取引先プルダウンの枠と「取引先追加」button の枠が他と揃っていない（全画面共通の指摘）: プルダウンは Lane 5 の `PriceRevisionFilters.tsx` / `ProductForm.tsx` の native select 対象に含まれ是正済み（run 3 の HEAD は Lane 3 branch のため未反映）。「追加」系 button を primary（オレンジ）にする案は CTA hierarchy の設計判断 → design-first で owner と決める（DSR-03 / catalog Button 節の改訂候補）
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
 ### Wave Registry
