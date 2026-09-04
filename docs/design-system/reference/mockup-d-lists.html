@@ -40,6 +40,9 @@ tr.row:hover td{background:var(--accent)}
 td.chev{width:40px;text-align:center;color:var(--muted)}
 td.chev svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
 td .code{font-weight:600;font-variant-numeric:tabular-nums}
+/* Gated Amendment 6 S43（owner run 5）: 列見出し面の左右上を角丸に */
+th:first-child{border-top-left-radius:6px}
+th:last-child{border-top-right-radius:6px}
 /* 識別列（商品コード + 商品名）を左に固定。2 列目の left は 1 列目の実幅計測（JS） */
 th.id,td.id{position:sticky;left:0;z-index:2;background:var(--card)}
 th.id{z-index:4;background:var(--d-head)}

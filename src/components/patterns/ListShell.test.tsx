@@ -217,7 +217,11 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(rootTokens).toContain("[&_thead_th]:sticky");
     expect(rootTokens).toContain("[&_thead_th]:z-10");
     expect(rootTokens).toContain("[&_thead_th]:bg-list-head");
-    expect(rootTokens).toContain("[&_thead_tr]:bg-list-head");
+    // Gated Amendment 6 S43（owner run 5「列見出しの左右上を丸く」）: tr 背景は
+    // 角丸が効かず角の外側に灰色が四角く覗くため削除し、th の角丸 2 class に置き換える。
+    expect(rootTokens).not.toContain("[&_thead_tr]:bg-list-head");
+    expect(rootTokens).toContain("[&_thead_th:first-child]:rounded-tl-md");
+    expect(rootTokens).toContain("[&_thead_th:last-child]:rounded-tr-md");
     expect(rootTokens).not.toContain("[&_thead_th]:bg-muted");
     expect(rootTokens).toContain("[&_thead_th]:border-b-2");
     expect(rootTokens).toContain("[&_thead_th]:border-border");
@@ -262,6 +266,8 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(rootTokens).not.toContain("[&_thead_th]:border-border");
     expect(rootTokens).not.toContain("[&_thead_th]:bg-list-head");
     expect(rootTokens).not.toContain("[&_thead_tr]:bg-list-head");
+    expect(rootTokens).not.toContain("[&_thead_th:first-child]:rounded-tl-md");
+    expect(rootTokens).not.toContain("[&_thead_th:last-child]:rounded-tr-md");
     expect(rootTokens).not.toContain("[&_[data-slot=table-container]]:overflow-visible");
     expect(rootTokens).not.toContain("[&_[data-slot=table]]:border-separate");
     expect(rootTokens).not.toContain("[&_[data-slot=table]]:border-spacing-0");
@@ -299,7 +305,8 @@ describe("SC8: sticky band uses bg-background + border-b, thead keeps --list-hea
 
     const rootTokens = classTokens(container.firstElementChild);
     expect(rootTokens).toContain("[&_thead_th]:bg-list-head");
-    expect(rootTokens).toContain("[&_thead_tr]:bg-list-head");
+    // Gated Amendment 6 S43: tr の bg-list-head は角丸のため削除済み（th のみが残る）。
+    expect(rootTokens).not.toContain("[&_thead_tr]:bg-list-head");
     expect(rootTokens).not.toContain("[&_thead_th]:bg-muted");
     expect(rootTokens).not.toContain("[&_thead_tr]:bg-muted");
   });

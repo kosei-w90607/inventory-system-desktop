@@ -44,11 +44,15 @@ const STICKY_TABLE_CLASSES = [
   "[&_thead_th]:sticky",
   "[&_thead_th]:z-10",
   // Gated Amendment 2 S11（owner L3 FAIL-3）: summary 帯と thead を同一 surface
-  // （--list-head）にし、bg-muted は残さない。左右端を揃えるため tr にも敷く。
+  // （--list-head）にする。
   "[&_thead_th]:bg-list-head",
-  "[&_thead_tr]:bg-list-head",
   "[&_thead_th]:border-b-2",
   "[&_thead_th]:border-border",
+  // Gated Amendment 6 S43（owner run 5「列見出しの左右上を丸く」）: tr 背景（左右端
+  // 揃えの保険）は角丸が効かず角の外側に灰色が四角く覗くため削除し、th 単体の角丸へ
+  // 置き換える（border-separate + spacing 0 では th だけで端まで埋まる）。
+  "[&_thead_th:first-child]:rounded-tl-md",
+  "[&_thead_th:last-child]:rounded-tr-md",
   "[&_tbody_td]:border-b",
   "[&_tbody_td]:border-border",
   "[&_tbody_tr:last-child_td]:border-b-0",
