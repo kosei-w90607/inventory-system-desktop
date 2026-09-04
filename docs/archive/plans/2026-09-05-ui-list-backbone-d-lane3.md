@@ -1,6 +1,6 @@
 # Plan Packet: UI 一覧の背骨 D — Lane 3（ページ送りの横展開: perPage Select 全画面 + 件数文言の自然文化 + 上部帯の太字撤去 + 履歴系 backend 上限 100→200）
 
-Lane 2（PR #32、squash `7e0ccf1`、2026-09-04）で共有部品化した `Pagination` / `PaginationSummary` / `ListShell`（pilot: 商品一覧のみ）を土台に、ページ送り関連の残 3 項目を全一覧画面へ横展開する。`ListShell` 化そのもの（識別列固定・現在行 3 点を含む Lane 4、`--border-strong` sweep を含む Lane 5）は本 lane の対象外。owner 選定（2026-09-05、[Plans.md ④](../Plans.md) E9/E10/E11 直回答）に基づき、scope を「件数文言の自然文化」「perPage 共有定数 1 本 + 各画面 Select」「履歴系 backend 上限 200」の 3 点に限定する。
+Lane 2（PR #32、squash `7e0ccf1`、2026-09-04）で共有部品化した `Pagination` / `PaginationSummary` / `ListShell`（pilot: 商品一覧のみ）を土台に、ページ送り関連の残 3 項目を全一覧画面へ横展開する。`ListShell` 化そのもの（識別列固定・現在行 3 点を含む Lane 4、`--border-strong` sweep を含む Lane 5）は本 lane の対象外。owner 選定（2026-09-05、[Plans.md ④](../../Plans.md) E9/E10/E11 直回答）に基づき、scope を「件数文言の自然文化」「perPage 共有定数 1 本 + 各画面 Select」「履歴系 backend 上限 200」の 3 点に限定する。
 
 ## Workflow State
 
@@ -8,19 +8,21 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
-- Amendments: f56a5f7 cc7b0e8
+- Amendments: f56a5f7 cc7b0e8 ab3d12a
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（発注書 relay）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（Fable が P1/P2/P3 裁定）
-- Reviewed Content HEAD: 16c10be
+- Reviewed Content HEAD: eada5fb
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 画面の perPage Select 動作 + 入出庫履歴・在庫変動履歴の 200 選択 + 件数文言の新形 + 上部帯の非太字、AC-L3-1〜4）
+
+2026-09-05: PR #34 closeout。hosted final = run 33928546779（head `1881429`、success）→ squash merge `1d44ba2`。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ④ の完了表記）に同乗。実績: 介入 4/3（起票 1 / L3 run 1 FAIL / L3 run 2 FAIL / L3 run 3 PASS + 承認 = 超過 1）、relay 2/2（Codex 実装 + 是正）、Gated Amendment 3 本、state-backtrack 2 本、forward state-only 3/3、mutation 累計 25 体 survivor 0。Lane 4 / Lane 5 への申し送りは Plans.md ④ ledger の R2-1〜5 / R3-1〜4 / R5-1〜5 と backlog（mockup-d-lists.html:110 の旧定数名、D-023 の実装側未充足）。
 
 ## Owner Effort Budget
 
@@ -158,6 +160,27 @@ owner Windows native L3 run 1（Reviewed Content HEAD `cae3d13`）で操作ロ�
 - **Workflow**: `human-confirm -> implementing` を state-backtrack で戻し、Writer（Codex）が test 先行で是正 → L1 full → Final Review round 2 + mutation 追加分の再実測 → 遷移（S12 の Plans.md ④ 更新 content commit に同乗、state-only cap 温存）→ owner L3 run 2（canonical 先頭から AC-L3-1〜5）
 - **Owner Effort Budget**: 介入は 起票 1 / L3 run 1 = 2 で、L3 run 2 が 3/3。承認は L3 run 2 の PASS 報告と同一 message で受け取り 4 回目を発生させない（Coordinator 責務としてここに記録）
 
+### Gated Amendment 3（owner L3 run 2 FAIL 起源、2026-09-05、Coordinator 起票）
+
+owner Windows native L3 run 2（Reviewed Content HEAD `16c10be`、介入 3/3 消費）で操作ログの AC-L3-5 (a) が再発: 表示件数 50 の 2 ページ目から 100 に変更すると、データは 1 ページ目に戻るが viewport が一覧の途中に残る（owner screenshot あり、非公開）。他画面は途中 scroll 状態での変更が実機で試せず未観測。棚卸し / 一括価格改定 / 整合性チェックは未確認のまま停止。データの登録・更新は無し（owner 確認）。
+
+**機序（Coordinator 委譲の code 実読 + 決定論的再現 test で確定、実装実読の三者整合ではなく再現 test を oracle とする）**:
+1. perPage handler（`OperationLogsPage.tsx:404-410`）は `setPerPage` → `update({}, true)`（page reset の `navigate()`、非同期開始）→ `scrollPageToTop()`（`page-scroll.ts:3-11`、`main.scrollTo({top:0, behavior:"smooth"})`）を同期で呼ぶ
+2. TanStack Router 内蔵の `setupScrollRestoration`（`router-core/src/router.ts:1131`）が router 構築時に `onRendered` を **最初に** subscribe し、`createAppRouter()`（`src/lib/app-router.ts:63-106`）の独自 `onRendered`（`applyMainNavScroll` → 復元 cache → 遅延再適用）はその後に subscribe される。subscriber は登録順に走る
+3. 内蔵の `onRendered`（`router-core/src/scroll-restoration.ts:264-309`）は遷移先 href の cache に `main` の entry があれば `element.scrollTop = scrollY` を同期で直接代入する。page reset 後の href（page param なし）は「以前 1 ページ目を閲覧していた時の位置」を `onBeforeLoad` の snapshot（`:227-231`）で保持している
+4. `markMainNavScroll` は Sidebar 経由でしか立たない（`main-nav-scroll.ts`、`SidebarLink.tsx` / `SidebarHeader.tsx` のみ）ため `applyMainNavScroll` は無反応、遅延再適用の `main.scrollTop >= savedScrollTop` 判定も早期 return → 内蔵復元の直接代入が後勝ちし、`scrollPageToTop()` の smooth scroll は中断される
+5. 再現: 本番同一の `createAppRouter` + 実 routeTree を mount し、page 1 で 640 → 次のページ → page 2 で 900 → 表示件数 100 を選択 → `main.scrollTop` が `640`（期待 0）で決定論的に fail（3 回連続）。happy-dom の smooth scroll 模擬は実 browser の割込み挙動を再現しないため、`behavior:"smooth"` の `scrollTo` だけ no-op に spy して測定した（実機 WebView2 で「smooth 中の直接代入が目標未到達で止まる」ことは Chromium 一般挙動からの推定、実機では未観測 = 残る未確定事項）
+6. 既存 SC9a は `scrollPageToTop` mock の呼出し回数のみを assert し、復元との相互作用と最終位置を検査していなかった（oracle の欠陥）
+
+**是正（Coordinator 裁定 = 委譲報告の案 1 を改良）**: `scrollPageToTop()` 自身が「次の render は強制的に先頭」の flag を立てる形にし、`app-router.ts` の独自 `onRendered`（内蔵復元の後に走る）が flag を消費して `main.scrollTop = 0` を後勝ちで適用する。呼出し元 24 箇所（15 画面）は無改修で恩恵を受け、将来の一覧画面も同型 bug を再発しない。flag は有効期限付き（例: 1 秒）とし、navigate を伴わない呼出し（保存後の DSR-03 型）で立った flag が後続の正規の「戻り」復元（DSR-17 ②）を壊さないようにする。復元 cache の href 運用を pop 限定にする案 2 は、push で実現している「一覧→詳細→戻り」（`app-router.test.tsx` T5/T10/T11）との判別が未検証で本 lane では過大として不採用。
+- **A3-a（`src/lib/page-scroll.ts` + `src/lib/app-router.ts`）**: `scrollPageToTop()` で flag を set（期限付き）+ 既存の `scrollTo`。`createAppRouter` の `onRendered` 冒頭（`applyMainNavScroll` と同じ位置）で flag を消費し、有効なら `main.scrollTop = 0` を直接代入し、その render では復元 cache の遅延再適用を skip する。`markMainNavScroll` の既存挙動は不変
+- **A3-b（再現 test の tracked 化）**: `src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` を新規作成（本番 `createAppRouter` + 実 routeTree、上記手順、`behavior:"smooth"` の `scrollTo` は no-op spy）。是正前 fail / 是正後 pass。加えて `app-router.test.tsx` に「flag 期限切れ後の戻り復元は従来どおり」「flag 有効中の render は先頭」の 2 case（T5/T10/T11 は不変）
+- **A3-c（SC9a の oracle 強化）**: 既存 SC9a は呼出し回数 assert のまま残し、最終位置は A3-b の test が担うことを Matrix に明記（SC9a 単独では本 bug を検出できなかった事実を記録）
+- **Writer**: Codex の週次リセット前残量温存（owner 決定 2026-09-05）のため、本 amendment の Writer は **Claude Sonnet 5 subagent（worktree isolation、checkout 必須、packet 編集禁止）** とする。Execution Mode は `fable-window` のまま、独立性（Writer ≠ Final Reviewer、fresh context）は維持
+- **AC 追加**: AC16（下記）、AC-L3-6。Matrix に SC10a〜c。mutation に X18（`onRendered` の flag 消費を外す）/ X19（flag の期限判定を外す）
+- **Owner Effort Budget（超過、Coordinator 責務）**: 介入 3/3 消費済みのため、DEV_WORKFLOW「ceiling を超えそうな時は最小十分な完了経路へ戻す」に従い、L3 run 3 は **操作ログの AC-L3-5 (a) 再現手順 1 点 + 未確認 3 画面（棚卸し / 一括価格改定 / 整合性チェック）の AC-L3-1 のみ** に絞り、PASS 報告と承認を同一 message で受ける（4 回目 = 超過 1 回として記録）。他画面の再確認は run 1 / run 2 の PASS を history として保持する
+- **Workflow**: `human-confirm -> implementing` を state-backtrack（前回 backtrack `e06a847` との間に content commit `d9c83a7` / `16c10be` / `b411c76` / `4c85b3c` / `338cfe0` が実在）→ Sonnet Writer 是正 → Final Review round 3 + mutation → 遷移は content commit 同乗 → L3 run 3
+
 ## Non-scope
 
 - 残り 7 画面の `ListShell` 化（toolbar 2 段・sticky 帯・skeleton 統一。owner 裁定、Lane 3〜5 振り分けの前提）
@@ -204,6 +227,8 @@ owner Windows native L3 run 1（Reviewed Content HEAD `cae3d13`）で操作ロ�
 - AC14（Gated Amendment 2）: 8 画面の perPage 変更 handler で `scrollPageToTop` が呼ばれる — `rg -ln "scrollPageToTop" src/features/products/ProductListPage.tsx src/features/stocktake/StocktakePage.tsx src/features/stock-inquiry/StockInquiryPage.tsx src/features/inventory-records/InventoryRecordsPage.tsx src/features/stock-movements/StockMovementsPage.tsx src/features/operation-logs/OperationLogsPage.tsx src/features/products/PriceRevisionPage.tsx src/features/integrity-check/IntegrityCheckPage.tsx` = 8 file（起票時 0）。各 Page test に「表示件数変更で `scrollPageToTop` mock が 1 回呼ばれる」を追加（handler 経由の呼出しを assert し、ページ送りでは呼ばれないことも 1 case 置く）
 - AC15（Gated Amendment 2）: `rg -n 'className="h-9 rounded-md border px-3"|className="h-9 min-w-52 rounded-md border px-3"' src/features/operation-logs/OperationLogsPage.tsx` = 0（起票時 3）かつ `rg -c "border-input bg-control-surface" src/features/operation-logs/OperationLogsPage.tsx` ≥ 3
 - AC-L3-5（owner Windows native L3、Gated Amendment 2）: 操作ログで (a) 表示件数を変えると画面が先頭から見える (b) 期間・種別の入力欄と表示件数 Select の枠の濃さが揃っている (c) 一括価格改定のログが「一括価格改定」で表示され「その他（`product_price_revise`）」でない（`OperationLogsPage.tsx` の種別 badge を目視）。他 7 画面でも表示件数変更後に先頭表示になる
+- AC16（Gated Amendment 3）: `src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` が存在し（`rg -Fn "createAppRouter" src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` ≥ 1）、`npx vitest run src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` が pass。`rg -n "scrollTop = 0|scrollTop=0" src/lib/app-router.ts` ≥ 1（起票時 0）。`app-router.test.tsx` の既存 T5 / T10 / T11 が不変で pass し、flag 期限切れ / 有効中の 2 case が追加されている
+- AC-L3-6（owner Windows native L3 run 3、最小経路）: 操作ログ（`OperationLogsPage.tsx`）で表示件数 50 の 2 ページ目まで scroll した状態から 100 を選ぶと、1 ページ目のデータが**先頭から**表示される（run 2 の再現手順そのもの、`main.scrollTop` = 0 相当を目視）。あわせて棚卸し / 一括価格改定 / 整合性チェックで AC-L3-1（Select と切替）を確認
 
 ## Design Sources
 
@@ -427,3 +452,13 @@ Review-only skipped because: Final Review を独立 Sonnet subagent（fresh cont
 2026-09-05: Writer test 強化 commit `16c10be`（`OperationLogsPage.test.tsx` のみ: カテゴリ順 test に supplier 2 種別を含めて optgroup 配列を独立転記 literal で assert / SC9c を vitest 化し 3 要素の `border-input` `bg-control-surface` を assert、Writer 自己確認 2 体 fail）。Coordinator 独立再実測（`16c10be`）: X16c / X17 / X17b（開始日 input の `bg-control-surface` 撤去）= **3 体 kill、survivor 0**。期待値が production 定数の import で導出されていないことを実読確認。Lane 3 全体の mutation = 17 体、最終 survivor 0。
 
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を S12（Plans.md ④ 同期）の content commit に同乗させて遷移（state-only cap 温存、forward state-only は 2/3 のまま）: local-verified の証跡 = `d9c83a7` / `16c10be` の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 2 approve + mutation 17/17 kill、Reviewed Content HEAD = `16c10be`。次 = owner Windows native L3 run 2（AC-L3-1〜5、介入 3/3、PASS と承認を同一 message で）。
+
+2026-09-05: owner Windows native L3 run 2（Reviewed Content HEAD `16c10be`、head `b411c76`、介入 3/3 消費）= 在庫照会 / 入出庫履歴 / 在庫変動履歴 PASS、操作ログの一括価格改定 badge PASS、**操作ログ AC-L3-5 (a) FAIL**（50 件 2 ページ目 → 100 件で viewport が途中に残る）で停止。棚卸し / 一括価格改定 / 整合性チェックは未確認。owner 所感の原文は `4c85b3c` / `338cfe0` で tracked 化（Plans ④ R2-1〜5）。機序は Gated Amendment 3（`ab3d12a`）に記録、再現 test で確定。`human-confirm -> implementing` を本 state-backtrack commit で 1 段戻す（Reviewed Content HEAD = pending、Amendments に `ab3d12a`）。次 = Sonnet Writer 是正（A3-a〜c）→ Final Review round 3 + mutation X18/X19 → 遷移は content commit 同乗 → owner L3 run 3（AC-L3-6 最小経路、介入 4/3 = 超過 1、PASS と承認を同一 message で）。
+
+2026-09-05: Writer（Claude Sonnet 5 subagent、worktree isolation）是正 commit `0e9c60f`（A3-a: `page-scroll.ts` に TTL 1000 ms の flag、`app-router.ts` の独自 `onRendered` で consume → `main.scrollTop = 0` + 遅延再適用 skip / A3-b: `OperationLogsPage.scroll-restoration.test.tsx` 本番 `createAppRouter` + 実 routeTree、是正前 `expected 640 to be +0` で fail → 是正後 pass / SC10b 2 case）。全 gate PASS、L1 full RESULT=PASS、traceability `--check` OK（`UI-11c` 紐付け）。Final Review round 3（同 Reviewer、隔離 worktree、subscribe 順を router-core 実読、是正前 fail を再現、X18/X19 kill 確認）= P1×0 / P2×1 / P3×0 → approve。
+- P2（accept、是正）: navigate を伴わない `scrollPageToTop()`（保存後の DSR-03 型、24 箇所中 14）で立った flag が TTL 内の別画面遷移でその画面の正規の「戻り」復元（DSR-17 ②）を潰す。Coordinator 裁定 = flag を立てた時の `pathname` に束縛（不一致は clear）。Writer 是正 commit `eada5fb`（`consumeForceScrollTop(currentPathname)`、`app-router.ts` は `latestLocation.pathname` を渡す、SC10b 2 case を同一 pathname に作り直し + 「pathname 不一致では別画面の戻り復元が守られる」case 追加、`createMemoryHistory` が `window.location` を同期しないため `onBeforeLoad` で `pushState` する test helper）。Reviewer 最終確認（差分限定、`latestLocation` の更新順を router-core `:2330,2397` で実読、X23 を再注入して新 case のみ fail）= approve、P3×1（guard assertion の値の clarity、記録のみ）
+- Coordinator mutation 独立再実測（Sonnet 委譲）: `0e9c60f` で X18〜X22 = 5/5 kill、`eada5fb` で X18〜X25（X23 pathname 判定除去 / X24 pathname 未記録 / X25 固定 `/` を渡す）= **8/8 kill、survivor 0**。Lane 3 累計 25 体、最終 survivor 0。SC9a 単独では X20 を検出できない（`vi.mock` で本体を通らない）ことを実測で記録（Matrix SC10c）
+
+2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を S12（Plans.md ④ 同期）の content commit に同乗させて遷移（forward state-only 2/3 のまま）: local-verified の証跡 = `0e9c60f` / `eada5fb` の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 3 approve + 最終確認 approve + mutation 8/8 kill、Reviewed Content HEAD = `eada5fb`。次 = owner Windows native L3 run 3（AC-L3-6 最小経路: 操作ログの再現手順 1 点 + 棚卸し / 一括価格改定 / 整合性チェックの AC-L3-1、介入 4/3 = 超過 1、PASS と承認を同一 message で）。
+
+2026-09-05: owner Windows native L3 run 3（HEAD `fa561e3`、内容 `eada5fb`、介入 4/3 = 超過 1）= 棚卸し / 一括価格改定 / 整合性チェックの AC-L3-1 PASS、**操作ログ AC-L3-6「なおった」= PASS**、所感の原文は `83a34e0`（R3-1〜4）で tracked 化。owner 承認「治ったなら承認しちゃおう、レーン3承認」（`5d3f98e` で原文保存、同 message で Lane 5 所感 R5-1〜5）。`human-confirm -> ready-hosted-final` を本 state-only commit で遷移（forward state-only 3/3、Ready 化と hosted final は Coordinator 代行）。Human Gate 完了。
