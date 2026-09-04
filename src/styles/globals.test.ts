@@ -81,12 +81,14 @@ describe("SC13: globals.css declares an unlayered forced-colors focus outline (G
   });
 });
 
-// SC15（Gated Amendment 6 S44、owner run 2 所感の要望化）: 入力欄・Select の操作面を
-// 白（--control-surface）にする。file:bg-transparent（input の file-selector-button 疑似要素）
+// SC15（Gated Amendment 6 S44、owner run 2 所感の要望化。Gated Amendment 7 S46 で
+// owner run 6「検索欄と Select の色は FAFAF9 で」により #ffffff → #fafaf9 へ更新）:
+// 入力欄・Select の操作面を独立 token（--background と同値だが分離）にする。
+// file:bg-transparent（input の file-selector-button 疑似要素）
 // は対象外の別 utility のため不変、base の bg-transparent（border-input と対になる面）のみ置換する。
-describe("SC15: control-surface token + input/select surface (Gated Amendment 6 S44)", () => {
-  it("declares --control-surface: #ffffff in :root and maps it in @theme inline", () => {
-    expect(GLOBALS_CSS).toContain("--control-surface: #ffffff;");
+describe("SC15: control-surface token + input/select surface (Gated Amendment 6 S44 / Amendment 7 S46)", () => {
+  it("declares --control-surface: #fafaf9 in :root and maps it in @theme inline", () => {
+    expect(GLOBALS_CSS).toContain("--control-surface: #fafaf9;");
     expect(GLOBALS_CSS).toContain("--color-control-surface: var(--control-surface);");
   });
 
