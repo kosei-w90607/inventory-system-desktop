@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
@@ -19,7 +19,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: 8ae2ac9
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b)）+ Lane 1b mockup 5 file の視認（履歴系固定列 mapping の最終確定を含む）
@@ -671,5 +671,7 @@ AC-L3-5 の forms-a は比較 panel 内の旧 16px 側が、外周余白との�
 owner が是正方針 A（mockup を現実装 + Lane 2 の比較差分に限定し、上記所感・採否理由を packet へ残す）を明示選択したため、`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。次は Gated Amendment 4 を起票し、mockup の架空 field / 未実装機能 / 独自共通化を除去、実装済み・後続候補・本 Lane の視認対象を分離してから docs gate / independent review / canonical L3 を再開する。
 
 2026-09-04 owner L3 run 3 FAIL（AC-L3-5）→ Gated Amendment 4（`cf56d18`、Codex draft を Fable 裁定、owner escalation）+ S27（`29091d4` / 訂正 `9005270`）+ closure round 1 是正 S28〜S34（`cdd82d9`）: Writer content commit = `abcb9ac` `d5b298e` `9922994` `dddfc27` `e529e05` `e5a50c7` `6a40705` `6d24e0d`、統合 merge `fda21da`、closure round 2 是正（`9e9e76f`）`48e0622` `8ae2ac9`。Codex Final Review（relay 2/2）P1 5 / P2 2 全件 accept → 是正。Sonnet 独立 closure（`fda21da`）P1 1 / P2 3 / P3 3 全件 accept → 是正、closure round 3 = Coordinator 実読で P1/P2 = 0。`implementing -> local-verified -> independent-review -> human-confirm` を本 content commit（Ledger + 結果記入）に同乗で materialize。Reviewed Content HEAD = `8ae2ac9`。L3 run 4 は改訂 5 mockup の視認を canonical first action とし、runtime 変更なし（`git diff a21d2a5..8ae2ac9 --stat -- src src-tauri` = 空）。
+
+2026-09-04: **owner L3 run 4 = FAIL（AC-L3-5 forms-a、owner 直接フィードバック = Codex を介さない原文、scratch 保存 → Amendment 5 で Plans.md ledger へ転記）**（head `97f63e9` / content `8ae2ac9`、介入 2/3 の同一 gate 内）。forms-a: 商品登録・修正はレジメモリ No. を「商品の識別」に入れて窮屈、「レジにバーコード登録する」説明が浮く、在庫の現在庫が数量単位を無視、`レジ在庫連携（pos_stock_sync）` は識別子表示で不可、価格履歴は良いが文言は「直近 10 件の売価・原価の変更を新しい順に表示します」へ、toast が黒い（現行のままでよい）。入庫記録・返品・交換は「基本的に現行実装のほうがいい」: 伝票番号は出所不明（runtime に無い）、備考が小さい、商品追加の列は「商品コード / 商品名 / 現在庫 / 入庫数量 / 原価 / 単位 / 操作」が望ましい、runtime の `pcs` 表示は変、リセット button と「すべての履歴を見る」「詳細を見る」が mockup から消えている、最近の入庫記録は直近 10 件でよい、原価差分 dialog は現行の見やすさが上、保存結果の緑 icon / レジ戻し badge / CSV 取込み反映 badge の色 / レシート画像「任意」は肯定、方向 badge の色遣いは要検討、「交換は戻り・渡しの明細が両方必要です」注釈の置き方は改善余地。**runtime**: 商品一覧の件数文言を列見出しと同じ灰色面に入れた帯（Amendment 2 S11 / Amendment 3 S13）は「見栄えが悪い、角が角、入れ込んだのがミス、下に線を引く程度でよい」（run 3 AC-L3-2 PASS の翻意）。**総評**: mockup は抜けが多く現行実装を踏まえきれていない、mockup をやっている間 runtime が進まないのは良くない流れ。owner が方針 A（mockup 視認を本 PR の Human Gate から外し、Lane 3〜5 は runtime-first）を明示選択。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。次は Gated Amendment 5（帯の runtime 是正 / AC-L3-5 descope / owner 反応 ledger の Plans.md 転記 / runtime-first の decision-log）。
 
 - Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）, Gated Amendment 4（owner L3 run 3 AC-L3-5 FAIL 起源 + Codex Final Review、S22〜S34、SC14a / SC14b、docs-only）.
