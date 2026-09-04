@@ -224,6 +224,7 @@ Use concise ADR-style entries.
 - Impact: Implementation PR #140 adds `PAGINATION_MAX_PER_PAGE = 200` to `constants.rs`, replaces the inline `200` clamps in stocktake and system repositories with that constant, and adds an IO-layer `200` clamp to `product_repo::search_products`. Source docs now describe this as implemented behavior rather than a pending follow-up.
 - Exception: `inventory_service`'s `MAX_PER_PAGE = 100` reject contract stays as-is for inventory movement / record BIZ lists. Changing it to clamp would add no operator value and would risk breaking existing tests and UI-06c / traceability contracts that already verify the reject behavior.
 - Alternatives considered: keeping module-specific pagination behavior and documenting the split permanently; changing the inventory BIZ `100` reject to `200` clamp; documenting `PAGINATION_MAX_PER_PAGE` as if it already existed.
+- Superseded in part by: D-081（2026-09-05）changes inventory_service's MAX_PER_PAGE reject contract from 100 to 200; the reject mechanism itself is unchanged.
 
 ## D-032
 - Decision: UI-11b restore uses a forced pre-restore backup, a break-glass exception only when that backup cannot be created, two-step confirmation, post-success full query-cache clear + home transition, and restart guidance for double failure.
@@ -655,3 +656,11 @@ Use concise ADR-style entries.
 - Impact: Lane 3〜5 packet の Test Plan / Human Gate 設計は runtime-first を前提に組む（L3-lite 反復 + closure 無作為抽出突合）。`AGENT_OPERATING_MANUAL` の Writer 割当ては不変（既存分業のまま、change ごとに Coordinator 判断）。
 - Alternatives considered: mockup の精度をさらに追い込む案（Amendment 4 で既に 3 round・30 箇所超是正済みでも run 4 で新規 drift が発生しており、mockup 経由の precision 向上では構造的に追いつかないと判断し不採用）。
 - Revisit: 新規 layout・未実装画面の設計検討で mockup が必要になった場合（本 decision は既存画面の手写しのみを禁止し、新規提案の mockup 利用は妨げない）。
+
+## D-081: inventory_service MAX_PER_PAGE を 100 → 200 へ引き上げ、reject 方式は維持（D-031 例外の部分改訂）（2026-09-05）
+
+- Decision: `inventory_service` の `MAX_PER_PAGE` を 100 から 200 へ引き上げる。上限超過を `ValidationFailed` とする reject 方式は維持する。
+- Status: accepted
+- Why: owner 直回答 E11 により、入出庫履歴・在庫変動履歴で 200 件表示する operator value が生じた。D-031 の懸念だった既存 test / UI-06c / traceability 契約との不整合は、本 lane で boundary test を 101 から 201 へ更新し、設計 doc 10 箇所を同期することで解消する。
+- Impact: `list.rs` の定数値を変更し、同じ上限を使う `list_receivings` / `list_returns` / `list_disposals` / `list_inventory_records` / `list_movements` の 5 関数へ適用する。既存 boundary test 3 本を更新し、200 受理 test 2 本を追加し、設計 doc 10 箇所を同期する。
+- Alternatives considered: clamp 化（reject という既存契約の性質を変え、UI-06c / traceability の「上限超過はエラー」契約と食い違うため不採用）；100 据え置き（owner E11 の要望を満たせないため不採用）。

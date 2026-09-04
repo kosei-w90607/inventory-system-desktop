@@ -373,6 +373,9 @@ Fill after implementation.
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
+- S1〜S11 を実装し、共有 perPage 選択肢、6 画面の Select 配線、件数文言・weight、client-side slice、inventory BIZ の 200 OK / 201 NG 境界、Gated Amendment 1 を含む設計 doc を同期した。
+- Draft PR: [#34](https://github.com/kosei-w90607/inventory-system-desktop/pull/34)
+
 ## Review Response
 
 Plan Review（独立 Sonnet subagent、fresh context、read-only、Coordinator が P1 を全件実測で裏取り）:

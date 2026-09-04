@@ -140,7 +140,7 @@ UI-04 実装 PR では以下を generated binding に出す。
 ## 62.7 Cache / Navigation
 
 - 保存成功時は D-052-C6 の SSOT helper を適用する。具体的な query key 集合は `src/lib/invalidation-contract.ts` だけに置く。
-- recent list は `queryKeys.inventoryRecords.list({ recordType: "manual_sale", page: 1, perPage: 5 })` 相当の stable key を使う。`per_page` は 5 固定で、既存 `listInventoryRecords` の上限 100 内に収める。保存成功後の追随は D-052-C6 が担う。
+- recent list は `queryKeys.inventoryRecords.list({ recordType: "manual_sale", page: 1, perPage: 5 })` 相当の stable key を使う。`per_page` は 5 固定で、既存 `listInventoryRecords` の上限 200 内に収める。保存成功後の追随は D-052-C6 が担う。
 - `navigation.ts` の UI-04 は `to: "/inventory/manual-sale"`, `status: "active"` に切り替える。
 - result panel の `詳細を見る` は `/inventory/manual-sale/records/{sale_id}` へ遷移する。`sale_id=null` の PLU確認待ちでは表示しない。
 - result panel の `日次売上へ` は `/reports/daily?date={saleDate}` へ遷移する。

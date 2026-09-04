@@ -88,7 +88,7 @@ struct PaginatedResult<T> {
 }
 ```
 
-Pagination upper-bound policy is intentionally module-specific. D-031 introduced the real shared `PAGINATION_MAX_PER_PAGE = 200` constant for IO-layer clamps: `search_products`, stocktake item lists, and system log lists clamp to 200 and return the clamped value in `PaginatedResult.per_page`. Inventory movement / record BIZ lists keep the existing `MAX_PER_PAGE = 100` reject contract, and sales import history lists also keep their existing 100 reject behavior.
+Pagination upper-bound policy is intentionally module-specific. D-031 introduced the real shared `PAGINATION_MAX_PER_PAGE = 200` constant for IO-layer clamps: `search_products`, stocktake item lists, and system log lists clamp to 200 and return the clamped value in `PaginatedResult.per_page`. D-081 raises the inventory movement / record BIZ lists' `MAX_PER_PAGE = 200` reject boundary without changing the reject mechanism, while sales import history lists keep their existing 100 reject behavior.
 
 ---
 
