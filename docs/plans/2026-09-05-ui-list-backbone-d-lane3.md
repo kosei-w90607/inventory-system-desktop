@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
@@ -458,3 +458,5 @@ Review-only skipped because: Final Review を独立 Sonnet subagent（fresh cont
 - Coordinator mutation 独立再実測（Sonnet 委譲）: `0e9c60f` で X18〜X22 = 5/5 kill、`eada5fb` で X18〜X25（X23 pathname 判定除去 / X24 pathname 未記録 / X25 固定 `/` を渡す）= **8/8 kill、survivor 0**。Lane 3 累計 25 体、最終 survivor 0。SC9a 単独では X20 を検出できない（`vi.mock` で本体を通らない）ことを実測で記録（Matrix SC10c）
 
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を S12（Plans.md ④ 同期）の content commit に同乗させて遷移（forward state-only 2/3 のまま）: local-verified の証跡 = `0e9c60f` / `eada5fb` の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 3 approve + 最終確認 approve + mutation 8/8 kill、Reviewed Content HEAD = `eada5fb`。次 = owner Windows native L3 run 3（AC-L3-6 最小経路: 操作ログの再現手順 1 点 + 棚卸し / 一括価格改定 / 整合性チェックの AC-L3-1、介入 4/3 = 超過 1、PASS と承認を同一 message で）。
+
+2026-09-05: owner Windows native L3 run 3（HEAD `fa561e3`、内容 `eada5fb`、介入 4/3 = 超過 1）= 棚卸し / 一括価格改定 / 整合性チェックの AC-L3-1 PASS、**操作ログ AC-L3-6「なおった」= PASS**、所感の原文は `83a34e0`（R3-1〜4）で tracked 化。owner 承認「治ったなら承認しちゃおう、レーン3承認」（`5d3f98e` で原文保存、同 message で Lane 5 所感 R5-1〜5）。`human-confirm -> ready-hosted-final` を本 state-only commit で遷移（forward state-only 3/3、Ready 化と hosted final は Coordinator 代行）。Human Gate 完了。
