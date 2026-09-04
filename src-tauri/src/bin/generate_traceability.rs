@@ -37,10 +37,10 @@ const DESIGN_DIR_RELATIVE: &str = "docs/function-design";
 /// WF-TRACE-04: REQ/UI ID 未参照の FE テストファイル数 baseline。
 /// 増減どちらも `--check` ERROR。意図的に減らした場合はこの値を更新して再生成する。
 /// 2026-06-13 PR-B: 17 → 22。画面非依存の共通部品 unit test 5 本
-/// （patterns/ PageHeader / FormSection / SummaryCard / EmptyState / DepartmentFilter）は
-/// 特定 REQ/UI に紐づかないため意図的に未参照とする。画面文脈を持つ
+/// （patterns/ PageHeader / FormSection / SummaryCard / EmptyState / DepartmentFilter、
+/// ui/ button / badge）は特定 REQ/UI に紐づかないため意図的に未参照とする。画面文脈を持つ
 /// characterization / SearchBar test には REQ/UI ID を付与済み。
-const FE_UNREFERENCED_BASELINE: usize = 22;
+const FE_UNREFERENCED_BASELINE: usize = 24;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
