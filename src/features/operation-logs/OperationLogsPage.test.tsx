@@ -464,10 +464,20 @@ describe("UI-11c REQ-902", () => {
     expect(screen.getByText("その他（synthetic_unregistered_type）")).toBeVisible();
   });
 
+  // UI-11c: Gated Amendment 2 A2-c — category and option order are independent literals.
   it("orders operation type groups and options by the canonical registry, with unknown values last", async () => {
     listTypes.mockResolvedValue({
       status: "ok",
-      data: ["backup_create", "future_type", "csv_import", "product_update", "product_create"],
+      data: [
+        "backup_create",
+        "supplier_merge",
+        "future_type",
+        "csv_import",
+        "receiving_create",
+        "product_update",
+        "supplier_rename",
+        "product_create",
+      ],
     });
     listLogs.mockResolvedValue({
       status: "ok",
@@ -476,21 +486,39 @@ describe("UI-11c REQ-902", () => {
     renderPage();
     const select = await screen.findByLabelText<HTMLSelectElement>("種別");
     await waitFor(() => {
-      expect(Array.from(select.options).map((option) => option.value)).toEqual([
-        "",
-        "product_create",
-        "product_update",
-        "csv_import",
-        "backup_create",
-        "future_type",
+      expect(Array.from(select.querySelectorAll("optgroup")).map((group) => group.label)).toEqual([
+        "商品管理",
+        "取引先管理",
+        "入出庫",
+        "売上データ取込み",
+        "システム管理",
+        "その他",
       ]);
     });
-    expect(Array.from(select.querySelectorAll("optgroup")).map((group) => group.label)).toEqual([
-      "商品管理",
-      "売上データ取込み",
-      "システム管理",
-      "その他",
+    expect(Array.from(select.options).map((option) => option.value)).toEqual([
+      "",
+      "product_create",
+      "product_update",
+      "supplier_rename",
+      "supplier_merge",
+      "receiving_create",
+      "csv_import",
+      "backup_create",
+      "future_type",
     ]);
+  });
+
+  it("UI-11c SC9c: 期間・種別のnative入力欄にcontrol tokenを適用する", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 50 },
+    });
+    renderPage();
+    await screen.findByText("合成ログ");
+
+    for (const label of ["開始日", "終了日", "種別"]) {
+      expect(screen.getByLabelText(label)).toHaveClass("border-input", "bg-control-surface");
+    }
   });
 
   it("does not derive operation type options from the current page", async () => {
