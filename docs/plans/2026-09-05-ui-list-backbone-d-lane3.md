@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
@@ -17,7 +17,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Codex（発注書 relay）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（Fable が P1/P2/P3 裁定）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 16c10be
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 画面の perPage Select 動作 + 入出庫履歴・在庫変動履歴の 200 選択 + 件数文言の新形 + 上部帯の非太字、AC-L3-1〜4）
@@ -421,3 +421,9 @@ Review-only skipped because: Final Review を独立 Sonnet subagent（fresh cont
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（forward state-only 2/3）: local-verified の証跡 = Writer content commit の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = 上記 Final Review round 1（P1 disposition 後 P1/P2 = 0）+ mutation 14/14 kill、Reviewed Content HEAD = `cae3d13`、Amendments = `f56a5f7`。次 = owner Windows native L3（AC-L3-1〜4、介入 2/3）。
 
 2026-09-05: owner Windows native L3 run 1（Reviewed Content HEAD `cae3d13`、介入 2/3 消費）= 操作ログ FAIL（表示件数変更後の viewport が途中位置 / native 入力欄と Select の枠の濃淡差 / 一括価格改定ログが「その他（product_price_revise）」fallback）。owner disposition = A（3 件すべて本 PR で修正）→ Gated Amendment 2（`cc7b0e8`）。`human-confirm -> implementing` を本 state-backtrack commit で 1 段戻す（Reviewed Content HEAD = pending へ、Amendments に `cc7b0e8` 追加）。次 = Writer 是正（S13 = A2-a〜c）→ Final Review round 2 + mutation X15/X16 → 遷移は S12 content commit に同乗 → owner L3 run 2（AC-L3-1〜5、介入 3/3、承認同乗）。
+
+2026-09-05: Writer（Codex）是正 commit `d9c83a7`（A2-a〜c、test 先行: 実装前 9 件 fail → 実装後 pass、全 gate PASS、L1 full RESULT=PASS、evidence は PR body）。Final Review round 2（同 Reviewer、隔離 worktree、差分 `e06a847..d9c83a7` 21 file）= P1/P2/P3 = 0、approve（A2-a 8 画面の呼出し位置とページ送り不変 / A2-b 3 要素 / A2-c ラベルとカテゴリ順・74 doc 同期を実読、AC13〜15 + AC8/9/10c/12 を再実行）。Coordinator mutation 独立再実測（Sonnet 委譲、`d9c83a7`）: X15a〜h（8 画面の `scrollPageToTop` 撤去）/ X15i（ページ送りへの追加 = 対照 case の非 vacuous 確認）/ X16a（`product_price_revise` 削除）/ X16b（label 改変）= kill、**survivor 2** = X16c（「取引先管理」entry を配列末尾へ = カテゴリ順の契約に test なし）/ X17（native select の `border-input` 撤去 = SC9c が docs review のみ）。Coordinator 裁定 = P2 × 2、test 強化のみで kill する（production 不変）。
+
+2026-09-05: Writer test 強化 commit `16c10be`（`OperationLogsPage.test.tsx` のみ: カテゴリ順 test に supplier 2 種別を含めて optgroup 配列を独立転記 literal で assert / SC9c を vitest 化し 3 要素の `border-input` `bg-control-surface` を assert、Writer 自己確認 2 体 fail）。Coordinator 独立再実測（`16c10be`）: X16c / X17 / X17b（開始日 input の `bg-control-surface` 撤去）= **3 体 kill、survivor 0**。期待値が production 定数の import で導出されていないことを実読確認。Lane 3 全体の mutation = 17 体、最終 survivor 0。
+
+2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を S12（Plans.md ④ 同期）の content commit に同乗させて遷移（state-only cap 温存、forward state-only は 2/3 のまま）: local-verified の証跡 = `d9c83a7` / `16c10be` の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 2 approve + mutation 17/17 kill、Reviewed Content HEAD = `16c10be`。次 = owner Windows native L3 run 2（AC-L3-1〜5、介入 3/3、PASS と承認を同一 message で）。
