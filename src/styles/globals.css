@@ -111,6 +111,30 @@
   }
 }
 
+/* ListShell sticky 帯の corner mask（Gated Amendment 7 S48）: tr 背景で th 間の subpixel seam を塞ぎ、
+   th の rounded-md（0.375rem）の外側に覗く tr 背景を page 色で覆う。th は position: sticky なので absolute の containing block になる。 */
+.list-shell-sticky thead th:first-child::before,
+.list-shell-sticky thead th:last-child::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 0.375rem;
+  height: 0.375rem;
+  pointer-events: none;
+}
+.list-shell-sticky thead th:first-child::before {
+  left: 0;
+  background: radial-gradient(
+    circle at 100% 100%,
+    transparent 0.375rem,
+    var(--background) 0.375rem
+  );
+}
+.list-shell-sticky thead th:last-child::after {
+  right: 0;
+  background: radial-gradient(circle at 0 100%, transparent 0.375rem, var(--background) 0.375rem);
+}
+
 @layer base {
   * {
     border-color: var(--border);

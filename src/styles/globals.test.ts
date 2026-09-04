@@ -105,3 +105,51 @@ describe("SC15: control-surface token + input/select surface (Gated Amendment 6 
     expect(SELECT_TSX).toContain("dark:bg-input/30");
   });
 });
+
+// SC17（Gated Amendment 7 S48、owner run 6「最小幅で部門と売価の間に白い細線」）:
+// ListShell の thead tr 背景（seam 対策）を復活すると角丸の外側に四角く覗くため、
+// list-shell-sticky hook（root class、ListShell.test.tsx で検証）配下の th 角にだけ
+// page 色（--background）の corner mask を重ねる。SC13 と同じ手法で `@layer` 外（unlayered）
+// であることを brace 対応数で直接検査する。
+describe("SC17: globals.css declares an unlayered corner mask for the list-shell-sticky thead corners (Gated Amendment 7 S48)", () => {
+  const selectors = [
+    ".list-shell-sticky thead th:first-child::before",
+    ".list-shell-sticky thead th:last-child::after",
+  ];
+
+  it("declares both corner mask rules at brace nesting depth 0 with radial-gradient + var(--background)", () => {
+    for (const selector of selectors) {
+      const occurrences = GLOBALS_CSS.split(selector).length - 1;
+      expect(occurrences).toBeGreaterThanOrEqual(1);
+
+      // 各 selector は shared block（content/position/top/width/height/pointer-events）と
+      // 個別の background 宣言の 2 箇所に出現するため、最後（background を持つ方）を検査する。
+      const selectorIndex = GLOBALS_CSS.lastIndexOf(selector);
+      expect(selectorIndex).toBeGreaterThan(-1);
+
+      const before = GLOBALS_CSS.slice(0, selectorIndex);
+      const opensBefore = (before.match(/{/g) ?? []).length;
+      const closesBefore = (before.match(/}/g) ?? []).length;
+      expect(opensBefore - closesBefore).toBe(0);
+
+      const openIndex = GLOBALS_CSS.indexOf("{", selectorIndex);
+      expect(openIndex).toBeGreaterThan(-1);
+      let depth = 0;
+      let closeIndex = -1;
+      for (let i = openIndex; i < GLOBALS_CSS.length; i += 1) {
+        if (GLOBALS_CSS[i] === "{") depth += 1;
+        else if (GLOBALS_CSS[i] === "}") {
+          depth -= 1;
+          if (depth === 0) {
+            closeIndex = i;
+            break;
+          }
+        }
+      }
+      expect(closeIndex).toBeGreaterThan(-1);
+      const block = GLOBALS_CSS.slice(selectorIndex, closeIndex + 1);
+      expect(block).toContain("radial-gradient(");
+      expect(block).toContain("var(--background)");
+    }
+  });
+});

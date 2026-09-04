@@ -46,11 +46,15 @@ const STICKY_TABLE_CLASSES = [
   // Gated Amendment 2 S11（owner L3 FAIL-3）: summary 帯と thead を同一 surface
   // （--list-head）にする。
   "[&_thead_th]:bg-list-head",
+  // Gated Amendment 7 S48（owner run 6「最小幅で部門と売価の間に白い細線」）: Gated
+  // Amendment 6 S43 で外した tr 背景を復活。border-separate + 最小幅の fractional
+  // layout では th 同士の境界に subpixel の隙間が生じ page 地が透けるため、tr 背景で
+  // 塞ぐ（角丸は下記 corner mask + globals.css の list-shell-sticky hook で維持）。
+  "[&_thead_tr]:bg-list-head",
   "[&_thead_th]:border-b-2",
   "[&_thead_th]:border-border",
-  // Gated Amendment 6 S43（owner run 5「列見出しの左右上を丸く」）: tr 背景（左右端
-  // 揃えの保険）は角丸が効かず角の外側に灰色が四角く覗くため削除し、th 単体の角丸へ
-  // 置き換える（border-separate + spacing 0 では th だけで端まで埋まる）。
+  // Gated Amendment 6 S43（owner run 5「列見出しの左右上を丸く」）: th 単体の角丸
+  // （border-separate + spacing 0 では th だけで端まで埋まる）。
   "[&_thead_th:first-child]:rounded-tl-md",
   "[&_thead_th:last-child]:rounded-tr-md",
   "[&_tbody_td]:border-b",
@@ -75,6 +79,7 @@ export function ListShell({
     <div
       className={cn(
         "space-y-3",
+        stickyHeader && "list-shell-sticky",
         stickyHeader && STICKY_TABLE_CLASSES,
         stickyHeader && (showTopSummary ? "[&_thead_th]:top-10" : "[&_thead_th]:top-0"),
       )}

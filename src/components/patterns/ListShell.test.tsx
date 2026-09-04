@@ -218,9 +218,11 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(rootTokens).toContain("[&_thead_th]:sticky");
     expect(rootTokens).toContain("[&_thead_th]:z-10");
     expect(rootTokens).toContain("[&_thead_th]:bg-list-head");
-    // Gated Amendment 6 S43（owner run 5「列見出しの左右上を丸く」）: tr 背景は
-    // 角丸が効かず角の外側に灰色が四角く覗くため削除し、th の角丸 2 class に置き換える。
-    expect(rootTokens).not.toContain("[&_thead_tr]:bg-list-head");
+    // Gated Amendment 6 S43（owner run 5「列見出しの左右上を丸く」）で tr 背景を削除したが、
+    // Gated Amendment 7 S48（owner run 6「最小幅で部門と売価の間に白い細線」）で復活。
+    // border-separate + 最小幅の fractional layout で th 間に subpixel の seam が出るため塞ぐ。
+    // 角丸は corner mask（globals.css の list-shell-sticky hook、SC17）で維持する。
+    expect(rootTokens).toContain("[&_thead_tr]:bg-list-head");
     expect(rootTokens).toContain("[&_thead_th:first-child]:rounded-tl-md");
     expect(rootTokens).toContain("[&_thead_th:last-child]:rounded-tr-md");
     expect(rootTokens).not.toContain("[&_thead_th]:bg-muted");
@@ -288,7 +290,7 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
   });
 });
 
-describe("SC8: sticky band uses bg-background (no underline), thead keeps --list-head (Gated Amendment 5 S39 / Amendment 7 S47)", () => {
+describe("SC8: sticky band uses bg-background (no underline), thead keeps --list-head (Gated Amendment 5 S39 / Amendment 7 S47〜S48)", () => {
   it("applies bg-background (no border-b) to the summary band, bg-list-head to thead th and thead tr; band carries no bg-list-head/bg-muted/forced-colors:border-b", () => {
     const { container } = render(
       <ListShell stickyHeader topSummary pagination={pagination(25)}>
@@ -307,8 +309,9 @@ describe("SC8: sticky band uses bg-background (no underline), thead keeps --list
 
     const rootTokens = classTokens(container.firstElementChild);
     expect(rootTokens).toContain("[&_thead_th]:bg-list-head");
-    // Gated Amendment 6 S43: tr の bg-list-head は角丸のため削除済み（th のみが残る）。
-    expect(rootTokens).not.toContain("[&_thead_tr]:bg-list-head");
+    // Gated Amendment 7 S48（owner run 6「最小幅で部門と売価の間に白い細線」）: S43 で外した
+    // tr 背景を seam 対策として復活（角丸は corner mask で維持、SC17）。
+    expect(rootTokens).toContain("[&_thead_tr]:bg-list-head");
     expect(rootTokens).not.toContain("[&_thead_th]:bg-muted");
     expect(rootTokens).not.toContain("[&_thead_tr]:bg-muted");
   });
@@ -344,6 +347,24 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
     const tableContainer = container.querySelector('[data-slot="table-container"]');
     expect(tableContainer).not.toBeNull();
     expect(summaryBand?.nextElementSibling).toBe(tableContainer);
+  });
+});
+
+describe("SC17: list-shell-sticky hook class (Gated Amendment 7 S48 corner mask)", () => {
+  it("adds list-shell-sticky to root classList only when stickyHeader is true", () => {
+    const { container: sticky } = render(
+      <ListShell stickyHeader topSummary pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+    expect(classTokens(sticky.firstElementChild)).toContain("list-shell-sticky");
+
+    const { container: notSticky } = render(
+      <ListShell topSummary pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+    expect(classTokens(notSticky.firstElementChild)).not.toContain("list-shell-sticky");
   });
 });
 

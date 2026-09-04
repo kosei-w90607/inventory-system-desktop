@@ -43,6 +43,8 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 /* Gated Amendment 6 S43（owner run 5）: 列見出し面の左右上を角丸に */
 th:first-child{border-top-left-radius:6px}
 th:last-child{border-top-right-radius:6px}
+/* Gated Amendment 7 S48（owner run 6「最小幅で部門と売価の間に白い細線」）: tr 背景で cell 間の seam を塞ぐ */
+thead tr{background:var(--d-head)}
 /* 識別列（商品コード + 商品名）を左に固定。2 列目の left は 1 列目の実幅計測（JS） */
 th.id,td.id{position:sticky;left:0;z-index:2;background:var(--card)}
 th.id{z-index:4;background:var(--d-head)}
