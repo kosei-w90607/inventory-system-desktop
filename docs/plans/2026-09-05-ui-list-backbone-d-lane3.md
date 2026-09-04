@@ -8,16 +8,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
-- Amendments: f56a5f7 cc7b0e8
+- Amendments: f56a5f7 cc7b0e8 ab3d12a
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（発注書 relay）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（Fable が P1/P2/P3 裁定）
-- Reviewed Content HEAD: 16c10be
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 画面の perPage Select 動作 + 入出庫履歴・在庫変動履歴の 200 選択 + 件数文言の新形 + 上部帯の非太字、AC-L3-1〜4）
@@ -450,3 +450,5 @@ Review-only skipped because: Final Review を独立 Sonnet subagent（fresh cont
 2026-09-05: Writer test 強化 commit `16c10be`（`OperationLogsPage.test.tsx` のみ: カテゴリ順 test に supplier 2 種別を含めて optgroup 配列を独立転記 literal で assert / SC9c を vitest 化し 3 要素の `border-input` `bg-control-surface` を assert、Writer 自己確認 2 体 fail）。Coordinator 独立再実測（`16c10be`）: X16c / X17 / X17b（開始日 input の `bg-control-surface` 撤去）= **3 体 kill、survivor 0**。期待値が production 定数の import で導出されていないことを実読確認。Lane 3 全体の mutation = 17 体、最終 survivor 0。
 
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を S12（Plans.md ④ 同期）の content commit に同乗させて遷移（state-only cap 温存、forward state-only は 2/3 のまま）: local-verified の証跡 = `d9c83a7` / `16c10be` の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 2 approve + mutation 17/17 kill、Reviewed Content HEAD = `16c10be`。次 = owner Windows native L3 run 2（AC-L3-1〜5、介入 3/3、PASS と承認を同一 message で）。
+
+2026-09-05: owner Windows native L3 run 2（Reviewed Content HEAD `16c10be`、head `b411c76`、介入 3/3 消費）= 在庫照会 / 入出庫履歴 / 在庫変動履歴 PASS、操作ログの一括価格改定 badge PASS、**操作ログ AC-L3-5 (a) FAIL**（50 件 2 ページ目 → 100 件で viewport が途中に残る）で停止。棚卸し / 一括価格改定 / 整合性チェックは未確認。owner 所感の原文は `4c85b3c` / `338cfe0` で tracked 化（Plans ④ R2-1〜5）。機序は Gated Amendment 3（`ab3d12a`）に記録、再現 test で確定。`human-confirm -> implementing` を本 state-backtrack commit で 1 段戻す（Reviewed Content HEAD = pending、Amendments に `ab3d12a`）。次 = Sonnet Writer 是正（A3-a〜c）→ Final Review round 3 + mutation X18/X19 → 遷移は content commit 同乗 → owner L3 run 3（AC-L3-6 最小経路、介入 4/3 = 超過 1、PASS と承認を同一 message で）。
