@@ -298,7 +298,50 @@ Contract ID: SPEC-UILB-D5
 
 ## Implementation Results
 
-Fill after implementation.
+Writer: Claude Sonnet 5 subagent（worktree isolation、`$TMPDIR/lane5-writer`、HEAD `baf5ad4`）。
+
+- S1a〜S1k（11 画面 23 箇所の native 入力欄）: すべて `bg-background` → `bg-control-surface`、`PriceRevisionFilters.tsx:46` のみ `border-input` 新規付与も実施。起票時実測の hit 数（各 file）と実装後 hit 数が完全一致（`rg -c` で個別確認済み）。
+- S2 `button.tsx`: outline variant を `"border bg-background shadow-xs..."` → `"border border-input bg-background shadow-xs..."` へ、冗長化した `dark:border-input` を撤去。新規 `button.test.tsx`（SC1）追加。
+- S3 `badge.tsx`: outline variant を `border-border text-foreground` → `border-border-strong text-foreground` へ（L5-D1、`border-input` でなく直接 utility）。新規 `badge.test.tsx`（SC2）追加。
+- S4 `SegmentedControl`: コード変更なし。`border-stone-300` 残存 0、既存 `segmented-control.test.tsx` SC6 は無変更のまま pass を再確認。
+- S5 docs 同期: `02-component-catalog.md` ⑪ 日付・月ナビの `bg-control-surface`（:685 コード片 + :696 使用トークン文）、toolbar `--control-surface` HEX（:904、`#fff（S44）`→`#fafaf9（Gated Amendment 7 S46）`）、SegmentedControl focus 記述（:296、`border-stone-300`→`border-border-strong`）を同期。`01-decision-rules.md` DSR-22（:443）の `--control-surface` HEX を `#ffffff`→`#fafaf9` へ同期。
+- S6: 本節（Implementation Results）の記入のみ実施。Plans.md ④ / Contract Coverage Ledger の編集は Coordinator 領域のため実施していない。
+
+### 既存 test 変更（class assertion 拡張のみ、削除・skip なし）
+
+| file | 変更内容 |
+|---|---|
+| `InventoryRecordsPage.test.tsx` | 新規 `describe`「native input tokens（Lane 5 SC4a）」を追加（既存 test は無変更） |
+| `ReceivingPage.test.tsx` | 同上（SC4b） |
+| `DisposalPage.test.tsx` | 同上（SC4c） |
+| `ReturnExchangePage.test.tsx` | 同上（SC4d、`:147` registerOptionClass 非退行の assertion 含む） |
+| `ProductForm.test.tsx` | 同上（SC4e） |
+| `StockUnitField.test.tsx` | 同上（SC4f、checkbox 無変更の assertion 含む） |
+| `ManualSalePage.test.tsx` | 同上（SC4g） |
+| `StockMovementsPage.test.tsx` | 同上（SC4h） |
+| `PriceRevisionPage.test.tsx` | 同上（SC4i、`border-input` 新規付与の assertion 含む） |
+| `MonthlySalesPage.test.tsx` | 同上（SC4j） |
+| `DailySalesPage.test.tsx` | 同上（SC4k） |
+
+いずれも既存 `it` の削除・変更・skip はなし、新規 `describe`/`it` の追加のみ。
+
+### mutation 自己確認（抜粋、production は都度 `git checkout --` 相当で復元済み）
+
+- SC4a（`InventoryRecordsPage`）: 記録種別 select の class を `bg-control-surface`→`bg-background` に 1 箇所だけ戻すと、集約 test が `expect(field).toHaveClass("bg-control-surface")` で fail（6 箇所中 1 箇所の取りこぼしを検出）
+- SC4d（`ReturnExchangePage`）: 種別 select（:528 相当）を同様に 1 箇所戻すと同じ assertion で fail（4 箇所中 1 箇所の取りこぼしを検出）
+- SC4e（`ProductForm`）: 部門 select を同様に 1 箇所戻すと fail（3 箇所中 1 箇所の取りこぼしを検出）
+- SC4h（`StockMovementsPage`）: 開始日 input を同様に 1 箇所戻すと fail（3 箇所中 1 箇所の取りこぼしを検出）
+- SC1/SC2/単一箇所の S1b/c/f/g/j/k は red→green の遷移自体が kill 証跡（単一 assertion のため多重欠落パターンの追加確認は不要と判断）
+
+### 実装判断メモ
+
+- T4（`generate_traceability --check`）が baseline 22→24 の drift を検出（新規 `button.test.tsx`/`badge.test.tsx` が REQ/UI ID 未参照のため）。既存 `segmented-control.test.tsx`（shared UI primitive、同じく未参照）の先例に倣い、`FE_UNREFERENCED_BASELINE` を 24 へ更新して再生成した。packet の Registration Obligations 表は「新規 REQ 追加なし、再生成不要」としていたが、これは REQ 表本体（`generate_traceability.rs` の REQ-NNN 対応表）の話であり、T4 の FE 未参照 baseline drift は別軸。起票時実測に含まれていなかった drift のため、ここに実装判断として記録する。
+- AC4（`StockStatusBadge` 等の回帰確認）: 専用 `StockStatusBadge.test.tsx` は存在しない。`src/features/stock-inquiry` 配下の既存 test（11 file 87 test）が無変更のまま pass することで規定の「stock-inquiry 関連既存 test が pass のまま」を満たすと判断。加えて scratch test（commit 対象外、削除済み）で `ok`/`low`/`stockout` の override 色（`border-stone-200`/`border-warning-border`/`border-destructive-border`）が badge.tsx 変更後も tailwind-merge の後勝ちで維持されることを個別に確認した。
+
+### 残リスク / skip した検査
+
+- SegmentedControl active/selected の stone-300 と stone-400 の catalog/実装食い違い（L5-D2）は Non-scope のまま未着手（packet どおり）
+- owner Windows native L3（AC-L3-1〈入力欄の面と枠〉/ AC-L3-2〈outline ボタン・Badge の枠〉）は本 Writer セッションでは未実施（Human Gate、Coordinator 領域）
 
 ## Review Response
 
