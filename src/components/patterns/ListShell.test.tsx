@@ -197,12 +197,13 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     // 追補 S17（Opus P1-2 / P2-2 / P2-3、AC-L3-2 / AC-L3-4）: flex item の直接
     // truncate は min-width:auto により hard clip になるため、帯自体は overflow-hidden
     // にし、子（PaginationSummary root）を min-w-0 + truncate にして ellipsis させる。
-    // Gated Amendment 5 S39: 下線は forced-colors 限定ではなく常時 border-b border-border。
+    // Gated Amendment 7 S47（owner run 6「上端の線だけ外そう」）: 件数行の下線を撤去、
+    // 帯は bg-background のみ（列見出し帯の上端に線が無い状態）。
     expect(bandTokens).toContain("overflow-hidden");
     expect(bandTokens).toContain("[&>div]:min-w-0");
     expect(bandTokens).toContain("[&>div]:truncate");
-    expect(bandTokens).toContain("border-b");
-    expect(bandTokens).toContain("border-border");
+    expect(bandTokens).not.toContain("border-b");
+    expect(bandTokens).not.toContain("border-border");
     expect(bandTokens).not.toContain("forced-colors:border-b");
     expect(bandTokens).not.toContain("truncate");
 
@@ -287,8 +288,8 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
   });
 });
 
-describe("SC8: sticky band uses bg-background + border-b, thead keeps --list-head (Gated Amendment 5 S39, owner L3 run 4)", () => {
-  it("applies bg-background and border-b border-border to the summary band, bg-list-head to thead th and thead tr; band carries no bg-list-head/bg-muted/forced-colors:border-b", () => {
+describe("SC8: sticky band uses bg-background (no underline), thead keeps --list-head (Gated Amendment 5 S39 / Amendment 7 S47)", () => {
+  it("applies bg-background (no border-b) to the summary band, bg-list-head to thead th and thead tr; band carries no bg-list-head/bg-muted/forced-colors:border-b", () => {
     const { container } = render(
       <ListShell stickyHeader topSummary pagination={pagination(25)}>
         <SampleTable />
@@ -297,8 +298,9 @@ describe("SC8: sticky band uses bg-background + border-b, thead keeps --list-hea
     const summaryBand = container.querySelector(".sticky.top-0.z-20");
     const bandTokens = classTokens(summaryBand);
     expect(bandTokens).toContain("bg-background");
-    expect(bandTokens).toContain("border-b");
-    expect(bandTokens).toContain("border-border");
+    // Gated Amendment 7 S47（owner run 6「上端の線だけ外そう」）: 件数行の下線を撤去。
+    expect(bandTokens).not.toContain("border-b");
+    expect(bandTokens).not.toContain("border-border");
     expect(bandTokens).not.toContain("bg-list-head");
     expect(bandTokens).not.toContain("bg-muted");
     expect(bandTokens).not.toContain("forced-colors:border-b");

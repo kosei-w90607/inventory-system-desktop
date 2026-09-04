@@ -96,9 +96,10 @@ export function ListShell({
               にし、子（PaginationSummary root）を min-w-0 + truncate で ellipsis させる
               （flex item への直接 truncate は min-width:auto で hard clip になる）。
               Gated Amendment 5 S39（owner L3 run 4「灰色の塊に入れ込んだのがミス、角が角、
-              下に線を引く程度」）: 件数行は page 地色（bg-background）+ 常時 1px 下線
-              （border-b border-border）。灰色面（--list-head）は列見出しのみに限定する。 */}
-          <div className="sticky top-0 z-20 flex h-10 w-full items-center overflow-hidden border-b border-border bg-background px-2 [&>div]:min-w-0 [&>div]:truncate">
+              下に線を引く程度」）: 件数行は page 地色（bg-background）。灰色面（--list-head）
+              は列見出しのみに限定する。Gated Amendment 7 S47（owner run 6「上端の線だけ
+              外そう」）: 件数行の下線（border-b border-border）を撤去。 */}
+          <div className="sticky top-0 z-20 flex h-10 w-full items-center overflow-hidden bg-background px-2 [&>div]:min-w-0 [&>div]:truncate">
             <PaginationSummary
               page={pagination.page}
               perPage={pagination.perPage}
