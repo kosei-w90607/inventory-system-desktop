@@ -362,7 +362,7 @@ Final Review round 1（独立 Sonnet subagent、fresh context、隔離 worktree�
 
 Coordinator mutation 独立再実測（Sonnet 委譲、隔離 worktree `5d2a8aa`）: Y1 button `border-input` 撤去 / Y2 badge `border-border` へ戻す / Y3〜Y6 多重箇所 file の最後の 1 要素だけ戻す（InventoryRecords 6 / ReturnExchange 4 / ProductForm 3 / StockMovements 3）/ Y9 PriceRevisionFilters の `border-input` のみ撤去 / Y10 ManualSale / Y11 MonthNavigator = **9 体全 kill、survivor 0**。集約 test が全要素を列挙し、2 token を conjunction で assert していることを確認。
 
-Review-only skipped because: Final Review を独立 Sonnet subagent（fresh context）が担い、Coordinator が mutation を別 context で独立再実測したため R3 review-only sub-agent の役割は充足。Codex ロジックレビュー 1 回は週次リセット後に PR 上で実施し、その findings は human-confirm 中に裁定する（Findings Freeze は Codex round 完了時に設定）。
+Review-only skipped because: Final Review を独立 Sonnet subagent（fresh context）が担い、Coordinator が mutation を別 context で独立再実測したため R3 review-only sub-agent の役割は充足。Codex ロジックレビュー 1 回は週次リセット後に Draft PR 上で実施し（`gh pr view` の review comment を evidence とする）、その findings は human-confirm 中に裁定する（Findings Freeze は Codex round 完了時に設定）。
 - Findings Freeze: not yet frozen（Codex ロジックレビュー待ち）; post-freeze exceptions: none.
 
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ④ 同期の content commit に同乗させて遷移（Risk 節の stacked train 方針どおり forward state-only を温存）: local-verified の証跡 = Writer content commit の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 2 approve + mutation 9/9 kill、Reviewed Content HEAD = `251ecde`。次 = Draft PR 作成（base = Lane 3 branch、Lane 3 merge 後に main へ retarget）→ Codex ロジックレビュー（リセット後）→ owner Windows native L3（AC-L3-1〜2、Lane 3 run 3 と同時実施可）。
