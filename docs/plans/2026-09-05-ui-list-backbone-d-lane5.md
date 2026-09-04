@@ -176,7 +176,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | function-design doc 新設 | 該当なし |
 | source / workflow doc 新設・改名 | 該当なし |
 | AGENT_OPERATING_MANUAL §5.5 consultation relay 使用 | 該当なし（§5.5 不使用） |
-| REQ coverage 追加（設計書・テスト追加） | 該当なし（新規 REQ 追加なし、`generate_traceability` 再生成不要） |
+| REQ coverage 追加（設計書・テスト追加） | 新規 REQ 追加なし。ただし新規 `button.test.tsx` / `badge.test.tsx` が REQ / UI ID 未参照のため T4 baseline が 22 → 24 に増加（起票時未検出、実装中に判明）→ L5-D6 で baseline 更新 + 90-traceability 再生成（Writer `a919c16` / comment 是正 `0e1dffe`） |
 | route 新設 | 該当なし |
 | operator 画面新設 | 該当なし |
 
@@ -189,6 +189,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | — | 起票時実測「readOnly 表示欄」節 | L5-D3（2026-09-05） | `ProductFormPage.tsx:233` は `bg-muted` を使う非編集表示専用欄で、D8 の対象例（検索欄・ドロップダウン）とは性質が異なるため Non-scope。type 除外リストに明示されていない境界事例のため Plan Review で妥当性検査対象とする | なし（Non-scope） | 該当なし |
 | — | 起票時実測「ExportBar」節 | L5-D4（2026-09-05） | `ExportBar.tsx` の disabled `<span role="button">` は `<select>`/`<input>`/`<textarea>` でも shadcn `Button` でもないカスタム要素のため D8/E13 いずれの文言にも該当しない | なし（Non-scope） | 該当なし |
 | — | 起票時実測「native `<select>`/`<input>`/`<textarea>` の全列挙」節 | L5-D5（2026-09-05） | D8 の文言は「select/input」だが、`ReturnExchangePage.tsx:616` の `textarea` も同じ非 shadcn native 入力欄であり、D8 の意図（「native 入力欄の token 化 sweep」という packet 全体の目的）に照らして対象に含める妥当な拡張と判断 | `src/features/return-exchange/ReturnExchangePage.tsx` | `ReturnExchangePage.test.tsx` 新規 assertion |
+| — | `src-tauri/src/bin/generate_traceability.rs:38-49`（`FE_UNREFERENCED_BASELINE`） | L5-D6（2026-09-05、Final Review round 1 P1 起源、Coordinator 裁定） | 新規 `button.test.tsx` / `badge.test.tsx` は画面非依存の shared UI primitive の class 契約 test で、REQ / UI ID を付けると偽の traceability になる。tool の指示文（増加時は ID 付与）は画面紐付き test を想定したもので、Lane 2 の `PageShell.test.tsx` に `UI-01a` を付けた先例は pilot 画面が実在した場合。よって baseline を 22 → 24 に更新し、comment に日付付きの独立 bullet として記録する（既存 PR-B bullet の遡及改変は Writer commit `a919c16` で発生 → `0e1dffe` で原文へ復元）。Registration Obligations 表「再生成不要」は REQ 表本体の話で、T4 baseline の増加は起票時実測で未検出だった gap | `generate_traceability.rs`（定数 + comment） | `generate_traceability -- --check` OK（ERROR 0 / WARN 0） |
 
 ## Design Intent Audit
 
@@ -251,6 +252,7 @@ Minimum design checks for business-app work:
 | L5-D3 readOnly `plu-memory-no` 欄の Non-scope 判断 | `src/features/products/ProductFormPage.tsx:233` | 追加テストなし | non-scope |
 | L5-D4 `ExportBar.tsx` の Non-scope 判断 | 変更なし | 追加テストなし | non-scope |
 | L5-D5 `ReturnExchangePage.tsx` textarea を対象に含める判断 | `src/features/return-exchange/ReturnExchangePage.tsx:616` | `ReturnExchangePage.test.tsx` 新規 assertion | AC-L3-1 |
+| L5-D6 shared UI primitive の contract test を traceability baseline へ参入（22 → 24、ID 捏造なし） | `src-tauri/src/bin/generate_traceability.rs:43` + comment | `cargo run --bin generate_traceability -- --check` = OK | non-scope（L3 対象外、機械検査） |
 
 ## Test Plan
 
