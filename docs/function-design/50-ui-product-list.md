@@ -16,7 +16,7 @@
 
 | Spec / requirement ID | Decision ID | 設計判断 | 理由 / 捨てた案 |
 |---|---|---|---|
-| REQ-103 / UI-01a | UI-01a-D1 | 初期表示で廃番以外の商品を一覧表示する。`page=1`, `per_page=50`, `is_discontinued=false` を既定値にする。 | 商品管理の入口は「探すまで何も出ない」より、既存商品の把握と修正対象探しを優先する。在庫照会 UI-06a の検索駆動表示を機械的に横展開しない。 |
+| REQ-103 / UI-01a | UI-01a-D1 | 初期表示で廃番以外の商品を一覧表示する。`page=1`, `per_page=100`, `is_discontinued=false` を既定値にする。 | 商品管理の入口は「探すまで何も出ない」より、既存商品の把握と修正対象探しを優先する。在庫照会 UI-06a の検索駆動表示を機械的に横展開しない。（`per_page` 既定は UI 一覧の背骨 D Lane 2 で 50 → 100 へ変更、§121 参照） |
 | REQ-103 / UI-01a | UI-01a-D2 | 検索条件、廃番モード、並替え、ページングは TanStack Router search params に持つ。 | F5 耐性、URL による再現、queryKey の安定、レビュー時の状態共有を優先する。ローカル `useState` のみは採用しない。 |
 | REQ-103 / UI-01a | UI-01a-D3 | Tauri CMD は既存 `commands.searchProducts(query)` だけを使う。 | 既存 `ProductSearchQuery` が keyword / department / discontinued / sort / paging を持つため、新規 CMD や BIZ 追加は不要。 |
 | REQ-103 / UI-01a | UI-01a-D4 | UI-01a はページング UI を実装する。`perPage` は 50 / 100 / 200 の選択式にし、200 超を UI から送らない。 | 商品マスタは 4000 件規模がありうる。既存 IO 契約は 200 超クランプだが、UI は契約内の選択肢に制限する。 |

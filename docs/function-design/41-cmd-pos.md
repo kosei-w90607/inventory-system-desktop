@@ -449,6 +449,7 @@ struct PluExportPrepareResponse {
     target_product_codes: Vec<String>,  // confirm対象。dedup 群の全メンバーを含むため count と長さが一致しないことがある（D-028）
     prepared_rows: Vec<PluPreparedRowResponse>, // memory_no、row_kind、exact product set
     excluded: Vec<PluExcludedProductResponse>,  // 要修正一覧（D-028）
+    over_limit_warning: bool,        // PLU上限超過警告（互換維持フィールド。BIZ-04側は常に false を返し、実際の上限超過は excluded 経由で表現する）
 }
 
 struct PluPreparedRowResponse {

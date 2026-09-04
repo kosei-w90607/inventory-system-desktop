@@ -58,12 +58,12 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 
 ### 52.3 ルーティング定義
 
-全画面対応表（22 ナビ表示 + 2 ナビ非表示。UI-06b は UI-06a と `/stock` を共用するため route は 23）。設計合意書 §2.1 を転記（D-047 反映済み）。
+全画面対応表（22 ナビ表示 + 2 ナビ非表示。UI-06b は UI-06a と `/stock` を共用するため route は 23）。設計合意書 §2.1 を転記（D-047 反映済み）。各記録種別の記録詳細 route（`/inventory/receiving/records/$recordId` 等、入出庫履歴 6 種、いずれもナビ非表示）はこの表の集計対象外とし、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 を正本とする。
 
 | UI-ID | 画面名 | URL パス | route ファイル | サイドバー4エリア | ナビ表示 | 備考 |
 |---|---|---|---|---|---|---|
 | UI-00 | ホーム | `/` | `src/routes/index.tsx` | 毎日の業務 | ○ | 現 demo (search_products)、Phase 2 (8-1) で置換 |
-| UI-07 | CSV取込み | `/csv-import` | `src/routes/csv-import.tsx`（layout）+ `src/routes/csv-import/index.tsx`（index） | 毎日の業務 | ○ | サイドバー配置は日常業務の心理モデルを優先 |
+| UI-07 | 売上データ取込み | `/csv-import` | `src/routes/csv-import.tsx`（layout）+ `src/routes/csv-import/index.tsx`（index） | 毎日の業務 | ○ | サイドバー配置は日常業務の心理モデルを優先。nav 表示名は D-025 で「売上データ取込み」に変更 |
 | UI-09a | 日次売上 | `/reports/daily` | `src/routes/reports/daily.tsx` | 毎日の業務 | ○ | 日次/月次は別 route（合意書 §7.3） |
 | UI-06a | 在庫照会 | `/stock` | `src/routes/stock/index.tsx` | 毎日の業務 | ○ | REQ-301/302/303 統合画面 |
 | UI-09b | 月次売上 | `/reports/monthly` | `src/routes/reports/monthly.tsx` | 毎日の業務 | ○ | |
@@ -77,13 +77,13 @@ SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表
 | UI-03 | 返品・交換 | `/inventory/return` | `src/routes/inventory/return.tsx` | 入出庫 | ○ | |
 | UI-04 | 手動販売出庫 | `/inventory/manual-sale` | `src/routes/inventory/manual-sale.tsx` | 入出庫 | ○ | |
 | UI-05 | 廃棄・破損 | `/inventory/disposal` | `src/routes/inventory/disposal.tsx` | 入出庫 | ○ | |
-| UI-02b〜05b | 入出庫履歴 | `/inventory/records` | `src/routes/inventory/records.tsx` | 入出庫 | ○ | 入庫/返品・交換/手動販売/廃棄・破損/CSV取込み/棚卸しの追跡入口 |
+| UI-02b〜05b | 入出庫履歴 | `/inventory/records` | `src/routes/inventory/records.tsx` | 入出庫 | ○ | 入庫/返品・交換/手動販売/廃棄・破損/CSV取込み/棚卸しの追跡入口。記録詳細 route は[65-inventory-record-traceability.md](65-inventory-record-traceability.md)を正本とする |
 | UI-06b | 在庫少一覧 | `/stock`（deep-link、専用 route なし） | `src/routes/stock/index.tsx`（UI-06a と共用） | 入出庫 | ○ | 独立画面は廃止し、UI-06a `status=low_stock` フィルタへの deep-link に統合（D-047、UI-12-D1） |
 | UI-10 | 棚卸し | `/stocktake` | `src/routes/stocktake/index.tsx`（layout: `src/routes/stocktake.tsx`、詳細: `src/routes/stocktake.records.$stocktakeId.tsx`） | 入出庫 | ○ | 入出庫エリア末尾配置（年次作業、合意書 §7.4）。`/stocktake/records/$stocktakeId` はナビ非表示の記録詳細 |
 | UI-06c | 在庫変動履歴 | `/stock/$code/movements` | `src/routes/stock/$code.movements.tsx` | （ナビ非表示） | — | $code 必須、商品詳細カードから遷移 |
 | UI-11b | バックアップ・復元 | `/settings/backup` | `src/routes/settings/backup.tsx` | システム管理 | ○ | |
 | UI-11c | 操作ログ | `/settings/logs` | `src/routes/settings/logs.tsx` | システム管理 | ○ | |
-| UI-11a | 閾値設定 | `/settings/thresholds` | `src/routes/settings/thresholds.tsx` | システム管理 | ○ | |
+| UI-11a | 在庫少の基準 | `/settings/thresholds` | `src/routes/settings/thresholds.tsx` | システム管理 | ○ | nav 表示名は[69-ui-threshold-settings.md](69-ui-threshold-settings.md) UI-11a-D6（2026-07-06）で「在庫少の基準」に変更、「閾値」は画面に出さない |
 | UI-13 | 整合性検証 | `/settings/integrity` | `src/routes/settings/integrity.tsx` | システム管理 | ○ | BIZ-07 連携、システム管理側に配置（合意書 §7.5） |
 | UI-15 | 取引先管理 | `/settings/suppliers` | `src/routes/settings/suppliers.tsx` | システム管理 | ○ | REQ-106/107。追加・改名・重複統合を扱う |
 
@@ -132,26 +132,26 @@ export const navigation: readonly NavArea[] = [...] as const;
 
 | エリア | エリアアイコン | 項目数 | 項目（順序固定） |
 |---|---|---|---|
-| 毎日の業務 | `Sun` | 5 | ホーム / CSV取込み / 日次売上 / 在庫照会 / 月次売上 |
+| 毎日の業務 | `Sun` | 5 | ホーム / 売上データ取込み / 日次売上 / 在庫照会 / 月次売上 |
 | 商品管理 | `Package` | 5 | 商品検索・一覧 / 商品登録 / 一括インポート / PLU書出し / 一括価格改定 |
 | 入出庫 | `ArrowLeftRight` | 7 | 入庫記録 / 返品・交換 / 手動販売出庫 / 廃棄・破損 / 入出庫履歴 / 在庫少一覧 / **棚卸し**（末尾、年次作業） |
-| システム管理 | `Wrench` | 5 | バックアップ・復元 / 操作ログ / 閾値設定 / 整合性検証 / 取引先管理 |
+| システム管理 | `Wrench` | 5 | バックアップ・復元 / 操作ログ / 在庫少の基準 / 整合性検証 / 取引先管理 |
 
 #### 各項目アイコン（lucide-react ^1.8.0）
 
 | 項目 | アイコン | 項目 | アイコン |
 |---|---|---|---|
 | ホーム | `Home` | 入庫記録 | `PackagePlus` |
-| CSV取込み | `FileUp` | 返品・交換 | `RotateCcw` |
+| 売上データ取込み | `FileUp` | 返品・交換 | `RotateCcw` |
 | 日次売上 | `BarChart3` | 手動販売出庫 | `Hand` |
 | 在庫照会 | `Search` | 廃棄・破損 | `Trash2` |
-| 月次売上 | `BarChartBig` | 棚卸し | `ClipboardList` |
+| 月次売上 | `BarChartBig` | 入出庫履歴 | `ScrollText` |
 | 商品検索・一覧 | `PackageSearch` | 在庫少一覧 | `AlertTriangle` |
-| 商品登録 | `PackagePlus` | バックアップ・復元 | `DatabaseBackup` |
-| 一括インポート | `FileSpreadsheet` | 操作ログ | `ScrollText` |
-| PLU書出し | `FileDown` | 閾値設定 | `SlidersHorizontal` |
-| 一括価格改定 | `CircleDollarSign` | 整合性検証 | `ShieldCheck` |
-| 取引先管理 | `Building2` | | |
+| 商品登録 | `PackagePlus` | 棚卸し | `ClipboardList` |
+| 一括インポート | `FileSpreadsheet` | バックアップ・復元 | `DatabaseBackup` |
+| PLU書出し | `FileDown` | 操作ログ | `ScrollText` |
+| 一括価格改定 | `CircleDollarSign` | 在庫少の基準 | `SlidersHorizontal` |
+| 取引先管理 | `Building2` | 整合性検証 | `ShieldCheck` |
 
 **アイコンスタイル**: `className="size-4 stroke-[1.5]"`（16px、線細め）。active 時は stone-700、inactive 時は stone-500（[../design-system/00-foundations.md](../design-system/00-foundations.md)「4色エリアモデルの扱い」準拠）。
 
