@@ -43,6 +43,8 @@ Risk: R3
 Reason:
 operator workflow の見た目変更（11 画面 23 箇所の native 入力欄 + 2 個の shared UI primitive〈`Button`/`Badge`〉の枠・面トークン変更）。DB スキーマ・Tauri command・route/search state・POS CSV / PLU TSV 形式の変更はない。`button.tsx`/`badge.tsx` は widely-shared primitive（`variant="outline"` 使用箇所は Button 149 / Badge outline 20 超）のため、1 箇所の誤りが全画面に波及するクラスの変更である。DEV_WORKFLOW Risk Tiers の R3「operator workflow」に該当し、Plan Packet + Test Design Matrix + targeted gates + Windows native L3 を必須とする。
 
+**Stacked train（D-074、DEV_WORKFLOW「Stacked train」節）**: 本 branch は Lane 3（`agent/ui-list-backbone-d-lane3`、Draft PR #34、human-confirm 中）の tip `b411c76` に stack している（`InventoryRecordsPage.tsx` / `StockMovementsPage.tsx` / `PriceRevisionFilters.tsx` が Lane 3 と重なるため main 起点では衝突する）。Lane 3 の squash merge 後は、旧 tip を保存してから最新 `origin/main` を 1 回だけ merge する単段 merge で base を付け替える（rebase しない。SHA 書換えは D-074 rule (d) 違反）。STATECAP の継承: stack 点以前にある Lane 3 の forward state-only commit（`8f38132` / `d2b1dd1`）は Lane 3 merge 後に `merge-base(origin/main, HEAD)..HEAD` の検査範囲へ継承されうるため、本 lane 自身の forward state-only は 1 本（human-confirm → ready-hosted-final）に抑え、他の遷移は content commit 同乗で行う。Writer は Lane 3 の merge 通知を受けたら作業を一旦止め、Coordinator の base 付け替え後に再開する。
+
 ## Goal
 
 Goal Invariant:
@@ -153,7 +155,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Function / command / DTO: 該当なし
 - DB: 変更なし
 - Screen / UI: `docs/design-system/00-foundations.md`（カラーパレット、変更なし・正本参照のみ）/ `docs/design-system/01-decision-rules.md` DSR-08（色は補助）/ DSR-22（一覧の器・現在行・UI 部品枠のコントラスト）/ `docs/design-system/02-component-catalog.md` ⑤ SegmentedControl / ⑨ 検索+フィルタ / ⑪ 日付・月ナビ
-- Decision log / ADR: `docs/decision-log.md` D-079（UI 視覚系 change の座組）。本 lane は owner 決定（D8/E13/E15、Plans.md ④）の執行であり新規 durable decision の追加はない（L5-D1〜D6 は packet 止まりの実装判断）
+- Decision log / ADR: `docs/decision-log.md` D-079（UI 視覚系 change の座組）。本 lane は owner 決定（D8/E13/E15、Plans.md ④）の執行であり新規 durable decision の追加はない（L5-D1〜D5 は packet 止まりの実装判断）
 
 ## Required Design Artifacts
 
