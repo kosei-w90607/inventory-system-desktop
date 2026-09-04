@@ -14,6 +14,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 - SC4a〜SC4e: `ListShell` の toolbar 枠 / topSummary + gating / skeleton / sticky 帯（th cell 単位）+ `border-separate` + th / td cell 罫線 + `h-10` `whitespace-nowrap` + overflow 上書き / pager 配線
 - SC5a / SC5b / SC5c: 商品一覧 既定 100（URL 優先）/ pilot 構成（isLoading、0 件）/ returnTo 保持
 - SC6 / SC7 / SC8 / SC9（Gated Amendment 2）: SegmentedControl 群枠 / PLU 一括 caption + group / sticky 帯 surface `--list-head` / dialog target 保持
+- Gated Amendment 5 S39: SC8 = 帯 `bg-background` + `border-b border-border`（`bg-list-head` / `bg-muted` / `forced-colors:border-b` なし）、thead は `bg-list-head` 維持。SC10 = `forced-colors:border-b` 期待を `border-b` へ。SC12 = lists の `.pager.top` は `--d-head` 0 / `border-bottom` 1
 - SC13（Gated Amendment 3 追補 S16）: globals.css の forced-colors focus outline（fs literal）。SC10 は追補 S17（wrapper `w-min min-w-full` / 帯 `overflow-hidden` + `[&>div]:truncate` + `forced-colors:border-b`）、SC12 は追補 S18 / S19（mockup 3 file 帯化 / history 文言 / 同一明度 字面）で拡張
 - SC10 / SC11 / SC12（Gated Amendment 3）: summary 帯と thead の垂直隣接 + `px-2` inset（正負の oracle）/ PLU 一括 caption 独立行左寄せ 2 段 + 実件数 3 分岐 + `aria-describedby` + dialog title 同期 / mockup `.pager.top` + catalog ⑯ + 文言表の presence / absence 対 oracle
 - SC14a / SC14b（Gated Amendment 4）: mockup 5 file の画面 markup が現実装と Lane 2 差分に限定され架空 field・未実装機能・後続候補を描かないこと（SC14a）/ 末尾 note が 今回採用・現実装維持・後続候補・owner L3 所感 の 4 区分で残ること（SC14b）
@@ -185,7 +186,7 @@ SC14a（画面 markup 範囲）の absence / presence は `rg -v 'class="note"'`
 | X16 | ListShell の `tbody td` から `border-b` を削除 | SC4d |
 | X17 | `segmented-control.tsx` の群枠を `border-stone-300` に戻す | SC6 |
 | X18 | ProductListPage の PLU 一括 caption を削除 | SC7 |
-| X19 | ListShell の summary 帯を `bg-muted` に戻す | SC8 |
+| X19 | ListShell の summary 帯の `bg-background` を `bg-list-head` に戻す（Gated Amendment 5 S39 で書き換え） | SC8 |
 | X20 | ProductListPage の dialog を `pluTarget={bulkTarget ?? true}` 単一 state に戻す | SC9 |
 | X21 | ListShell の帯 + table wrapper を外し帯を root 直下へ戻す（gap 復活） | SC10 |
 | X22 | ListShell の summary 帯から `px-2` を削除 | SC10 |
@@ -199,7 +200,7 @@ SC14a（画面 markup 範囲）の absence / presence は `rg -v 'class="note"'`
 | X30 | `globals.css` の forced-colors block を削除 | SC13 |
 | X31 | ListShell の wrapper から `w-min min-w-full` を削除 | SC10 |
 | X32 | ListShell の帯から `[&>div]:truncate` を削除し裸の `truncate` に戻す | SC10 |
-| X33 | ListShell の帯から `forced-colors:border-b` を削除 | SC10 |
+| X33 | ListShell の summary 帯から `border-b` を削除（Gated Amendment 5 S39 で書き換え、旧 = `forced-colors:border-b` 削除） | SC10 |
 | X34 | `globals.css` の forced-colors block を `@layer base { ... }` の内側へ移す（file 内の位置は現在のまま） | SC13 |
 
 ## Residual Test Gaps
