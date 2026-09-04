@@ -158,6 +158,27 @@ owner Windows native L3 run 1（Reviewed Content HEAD `cae3d13`）で操作ロ�
 - **Workflow**: `human-confirm -> implementing` を state-backtrack で戻し、Writer（Codex）が test 先行で是正 → L1 full → Final Review round 2 + mutation 追加分の再実測 → 遷移（S12 の Plans.md ④ 更新 content commit に同乗、state-only cap 温存）→ owner L3 run 2（canonical 先頭から AC-L3-1〜5）
 - **Owner Effort Budget**: 介入は 起票 1 / L3 run 1 = 2 で、L3 run 2 が 3/3。承認は L3 run 2 の PASS 報告と同一 message で受け取り 4 回目を発生させない（Coordinator 責務としてここに記録）
 
+### Gated Amendment 3（owner L3 run 2 FAIL 起源、2026-09-05、Coordinator 起票）
+
+owner Windows native L3 run 2（Reviewed Content HEAD `16c10be`、介入 3/3 消費）で操作ログの AC-L3-5 (a) が再発: 表示件数 50 の 2 ページ目から 100 に変更すると、データは 1 ページ目に戻るが viewport が一覧の途中に残る（owner screenshot あり、非公開）。他画面は途中 scroll 状態での変更が実機で試せず未観測。棚卸し / 一括価格改定 / 整合性チェックは未確認のまま停止。データの登録・更新は無し（owner 確認）。
+
+**機序（Coordinator 委譲の code 実読 + 決定論的再現 test で確定、実装実読の三者整合ではなく再現 test を oracle とする）**:
+1. perPage handler（`OperationLogsPage.tsx:404-410`）は `setPerPage` → `update({}, true)`（page reset の `navigate()`、非同期開始）→ `scrollPageToTop()`（`page-scroll.ts:3-11`、`main.scrollTo({top:0, behavior:"smooth"})`）を同期で呼ぶ
+2. TanStack Router 内蔵の `setupScrollRestoration`（`router-core/src/router.ts:1131`）が router 構築時に `onRendered` を **最初に** subscribe し、`createAppRouter()`（`src/lib/app-router.ts:63-106`）の独自 `onRendered`（`applyMainNavScroll` → 復元 cache → 遅延再適用）はその後に subscribe される。subscriber は登録順に走る
+3. 内蔵の `onRendered`（`router-core/src/scroll-restoration.ts:264-309`）は遷移先 href の cache に `main` の entry があれば `element.scrollTop = scrollY` を同期で直接代入する。page reset 後の href（page param なし）は「以前 1 ページ目を閲覧していた時の位置」を `onBeforeLoad` の snapshot（`:227-231`）で保持している
+4. `markMainNavScroll` は Sidebar 経由でしか立たない（`main-nav-scroll.ts`、`SidebarLink.tsx` / `SidebarHeader.tsx` のみ）ため `applyMainNavScroll` は無反応、遅延再適用の `main.scrollTop >= savedScrollTop` 判定も早期 return → 内蔵復元の直接代入が後勝ちし、`scrollPageToTop()` の smooth scroll は中断される
+5. 再現: 本番同一の `createAppRouter` + 実 routeTree を mount し、page 1 で 640 → 次のページ → page 2 で 900 → 表示件数 100 を選択 → `main.scrollTop` が `640`（期待 0）で決定論的に fail（3 回連続）。happy-dom の smooth scroll 模擬は実 browser の割込み挙動を再現しないため、`behavior:"smooth"` の `scrollTo` だけ no-op に spy して測定した（実機 WebView2 で「smooth 中の直接代入が目標未到達で止まる」ことは Chromium 一般挙動からの推定、実機では未観測 = 残る未確定事項）
+6. 既存 SC9a は `scrollPageToTop` mock の呼出し回数のみを assert し、復元との相互作用と最終位置を検査していなかった（oracle の欠陥）
+
+**是正（Coordinator 裁定 = 委譲報告の案 1 を改良）**: `scrollPageToTop()` 自身が「次の render は強制的に先頭」の flag を立てる形にし、`app-router.ts` の独自 `onRendered`（内蔵復元の後に走る）が flag を消費して `main.scrollTop = 0` を後勝ちで適用する。呼出し元 24 箇所（15 画面）は無改修で恩恵を受け、将来の一覧画面も同型 bug を再発しない。flag は有効期限付き（例: 1 秒）とし、navigate を伴わない呼出し（保存後の DSR-03 型）で立った flag が後続の正規の「戻り」復元（DSR-17 ②）を壊さないようにする。復元 cache の href 運用を pop 限定にする案 2 は、push で実現している「一覧→詳細→戻り」（`app-router.test.tsx` T5/T10/T11）との判別が未検証で本 lane では過大として不採用。
+- **A3-a（`src/lib/page-scroll.ts` + `src/lib/app-router.ts`）**: `scrollPageToTop()` で flag を set（期限付き）+ 既存の `scrollTo`。`createAppRouter` の `onRendered` 冒頭（`applyMainNavScroll` と同じ位置）で flag を消費し、有効なら `main.scrollTop = 0` を直接代入し、その render では復元 cache の遅延再適用を skip する。`markMainNavScroll` の既存挙動は不変
+- **A3-b（再現 test の tracked 化）**: `src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` を新規作成（本番 `createAppRouter` + 実 routeTree、上記手順、`behavior:"smooth"` の `scrollTo` は no-op spy）。是正前 fail / 是正後 pass。加えて `app-router.test.tsx` に「flag 期限切れ後の戻り復元は従来どおり」「flag 有効中の render は先頭」の 2 case（T5/T10/T11 は不変）
+- **A3-c（SC9a の oracle 強化）**: 既存 SC9a は呼出し回数 assert のまま残し、最終位置は A3-b の test が担うことを Matrix に明記（SC9a 単独では本 bug を検出できなかった事実を記録）
+- **Writer**: Codex の週次リセット前残量温存（owner 決定 2026-09-05）のため、本 amendment の Writer は **Claude Sonnet 5 subagent（worktree isolation、checkout 必須、packet 編集禁止）** とする。Execution Mode は `fable-window` のまま、独立性（Writer ≠ Final Reviewer、fresh context）は維持
+- **AC 追加**: AC16（下記）、AC-L3-6。Matrix に SC10a〜c。mutation に X18（`onRendered` の flag 消費を外す）/ X19（flag の期限判定を外す）
+- **Owner Effort Budget（超過、Coordinator 責務）**: 介入 3/3 消費済みのため、DEV_WORKFLOW「ceiling を超えそうな時は最小十分な完了経路へ戻す」に従い、L3 run 3 は **操作ログの AC-L3-5 (a) 再現手順 1 点 + 未確認 3 画面（棚卸し / 一括価格改定 / 整合性チェック）の AC-L3-1 のみ** に絞り、PASS 報告と承認を同一 message で受ける（4 回目 = 超過 1 回として記録）。他画面の再確認は run 1 / run 2 の PASS を history として保持する
+- **Workflow**: `human-confirm -> implementing` を state-backtrack（前回 backtrack `e06a847` との間に content commit `d9c83a7` / `16c10be` / `b411c76` / `4c85b3c` / `338cfe0` が実在）→ Sonnet Writer 是正 → Final Review round 3 + mutation → 遷移は content commit 同乗 → L3 run 3
+
 ## Non-scope
 
 - 残り 7 画面の `ListShell` 化（toolbar 2 段・sticky 帯・skeleton 統一。owner 裁定、Lane 3〜5 振り分けの前提）
@@ -204,6 +225,8 @@ owner Windows native L3 run 1（Reviewed Content HEAD `cae3d13`）で操作ロ�
 - AC14（Gated Amendment 2）: 8 画面の perPage 変更 handler で `scrollPageToTop` が呼ばれる — `rg -ln "scrollPageToTop" src/features/products/ProductListPage.tsx src/features/stocktake/StocktakePage.tsx src/features/stock-inquiry/StockInquiryPage.tsx src/features/inventory-records/InventoryRecordsPage.tsx src/features/stock-movements/StockMovementsPage.tsx src/features/operation-logs/OperationLogsPage.tsx src/features/products/PriceRevisionPage.tsx src/features/integrity-check/IntegrityCheckPage.tsx` = 8 file（起票時 0）。各 Page test に「表示件数変更で `scrollPageToTop` mock が 1 回呼ばれる」を追加（handler 経由の呼出しを assert し、ページ送りでは呼ばれないことも 1 case 置く）
 - AC15（Gated Amendment 2）: `rg -n 'className="h-9 rounded-md border px-3"|className="h-9 min-w-52 rounded-md border px-3"' src/features/operation-logs/OperationLogsPage.tsx` = 0（起票時 3）かつ `rg -c "border-input bg-control-surface" src/features/operation-logs/OperationLogsPage.tsx` ≥ 3
 - AC-L3-5（owner Windows native L3、Gated Amendment 2）: 操作ログで (a) 表示件数を変えると画面が先頭から見える (b) 期間・種別の入力欄と表示件数 Select の枠の濃さが揃っている (c) 一括価格改定のログが「一括価格改定」で表示され「その他（`product_price_revise`）」でない（`OperationLogsPage.tsx` の種別 badge を目視）。他 7 画面でも表示件数変更後に先頭表示になる
+- AC16（Gated Amendment 3）: `src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` が存在し（`rg -Fn "createAppRouter" src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` ≥ 1）、`npx vitest run src/features/operation-logs/OperationLogsPage.scroll-restoration.test.tsx` が pass。`rg -n "scrollTop = 0|scrollTop=0" src/lib/app-router.ts` ≥ 1（起票時 0）。`app-router.test.tsx` の既存 T5 / T10 / T11 が不変で pass し、flag 期限切れ / 有効中の 2 case が追加されている
+- AC-L3-6（owner Windows native L3 run 3、最小経路）: 操作ログ（`OperationLogsPage.tsx`）で表示件数 50 の 2 ページ目まで scroll した状態から 100 を選ぶと、1 ページ目のデータが**先頭から**表示される（run 2 の再現手順そのもの、`main.scrollTop` = 0 相当を目視）。あわせて棚卸し / 一括価格改定 / 整合性チェックで AC-L3-1（Select と切替）を確認
 
 ## Design Sources
 
