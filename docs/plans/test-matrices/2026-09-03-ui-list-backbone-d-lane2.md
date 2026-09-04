@@ -61,6 +61,29 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 | SC14a mockup 画面 markup | mockup の画面 markup が架空 field / 未実装機能 / Lane 3〜5 候補を実装済み UI として描く | doc oracle（5 HTML の table / card markup 範囲 ↔ current source / function-design の対照、presence + absence。Writer が起票時実測で shell command と件数を確定） | SC14a: screen markup of the five mockups matches current runtime information and controls — no 実行者, no nested detail table, no すぐ確認 / 平均単価 / 部門数 summary card, print controls aria-disabled, no fixed-column class in import-export, history fixed columns per DSR-22 mapping | 画面 markup 範囲の absence 語が残る、presence 語（`入庫・出庫` / 4 action label / `販売点数` / `売上明細数` / `前日比` / `Z001 / Z002 / Z005` / 説明文 / Backup 列順）が欠ける、印刷が active、または import-export に固定列 class がある |
 | SC14b mockup 所感 note | note が 4 区分に分かれず後続候補が採用に見える | doc oracle（5 HTML 末尾 note 範囲、presence） | SC14b: each mockup ends with the four sections 今回採用（Lane 2）/ 現実装維持 / 後続候補（本 mockup へ描かない）/ owner L3 所感, with no 番号付き保留項目 | いずれかの file で 4 見出しのどれかが 0、または `番号付き保留項目` ≥ 1 |
 
+### SC14a / SC14b 実測表（Writer 起票時実測、2026-09-04）
+
+absence 側の rg は screen markup 範囲に限定するため `class="note"` を含む行を除外する（各 file とも table markup と note markup は別物理行、S25 rg scoping）。
+
+| Check | Command | 実測値 | 結果 |
+|---|---|---|---|
+| SC14a absence: history `実行者` | `rg -n '実行者' docs/design-system/reference/mockup-d-history.html \| rg -v 'class="note"' \| wc -l` | 0 | green |
+| SC14a absence: history nested detail table | `rg -n '<table>.*<table>' docs/design-system/reference/mockup-d-history.html \| wc -l` | 0 | green |
+| SC14a absence: home-sales-admin `すぐ確認` | `rg -n 'すぐ確認' docs/design-system/reference/mockup-d-home-sales-admin.html \| rg -v 'class="note"' \| wc -l` | 0 | green |
+| SC14a absence: home-sales-admin `平均単価` | `rg -n '平均単価' docs/design-system/reference/mockup-d-home-sales-admin.html \| rg -v 'class="note"' \| wc -l` | 0 | green |
+| SC14a absence: home-sales-admin summary card `部門数` | `rg -n '部門数' docs/design-system/reference/mockup-d-home-sales-admin.html \| rg -v 'class="note"' \| wc -l` | 0 | green |
+| SC14a absence: active 印刷 button（`aria-disabled` なし） | `rg -n '>印刷</button>' docs/design-system/reference/mockup-d-home-sales-admin.html \| rg -v 'aria-disabled' \| wc -l` | 0（日次 / 月次とも `aria-disabled="true"` 付き 1 件ずつ） | green |
+| SC14a absence: import-export 固定列 class | `rg -n 'class="id"\|class="id2"' docs/design-system/reference/mockup-d-import-export.html \| wc -l` | 0 | green |
+| SC14a presence: `入庫・出庫` | `rg -c '入庫・出庫' docs/design-system/reference/mockup-d-home-sales-admin.html` | 3（見出し 1 + note 2） | green |
+| SC14a presence: 4 action label | `for w in 入庫記録 返品・交換 手動販売出庫 廃棄・破損; do rg -c -- "$w" docs/design-system/reference/mockup-d-home-sales-admin.html; done` | 各 3（sidebar nav + action + note） | green |
+| SC14a presence: `販売点数` / `売上明細数` / `前日比` | `rg -c '販売点数\|売上明細数\|前日比' docs/design-system/reference/mockup-d-home-sales-admin.html`（個別） | 2 / 2 / 2 | green |
+| SC14a presence: `Z001 / Z002 / Z005` | `rg -c 'Z001 / Z002 / Z005' docs/design-system/reference/mockup-d-home-sales-admin.html` | 2 | green |
+| SC14a presence: `日報取込み済み日の Z005 部門別売上合計です。` | `rg -c '日報取込み済み日の Z005 部門別売上合計です。' docs/design-system/reference/mockup-d-home-sales-admin.html` | 1 | green |
+| SC14a presence: Backup 列順 `日時`→`サイズ`→`ファイル名` | `rg -n '<th class="id">日時</th><th class="num">サイズ</th><th>ファイル名</th>' docs/design-system/reference/mockup-d-home-sales-admin.html \| wc -l` | 1 | green |
+| SC14a presence: history 固定列（DSR-22 mapping） | `rg -n '<th class="id">記録日時</th><th class="id2">代表商品</th>\|<th class="id">日時</th><th class="id2">種別</th>' docs/design-system/reference/mockup-d-history.html \| wc -l` | 3（入出庫履歴 / 在庫変動履歴 / 操作ログ） | green |
+| SC14b: 4 見出し各 ≥ 1（5 file） | `for f in forms-a forms-b history home-sales-admin import-export; do for h in "今回採用（Lane 2）" "現実装維持" "後続候補（本 mockup へ描かない）" "owner L3 所感"; do rg -c -- "$h" docs/design-system/reference/mockup-d-$f.html; done; done` | forms-a 1/1/1/1、forms-b 1/1/1/1、history 1/2/2/1、home-sales-admin 1/5/5/1、import-export 1/4/4/1（すべて ≥ 1） | green |
+| SC14b: `番号付き保留項目` = 0（5 file） | `for f in forms-a forms-b history home-sales-admin import-export; do rg -c '番号付き保留項目' docs/design-system/reference/mockup-d-$f.html; done` | 0 / 0 / 0 / 0 / 0 | green |
+
 ## State Lifecycle Matrix
 
 | State/subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
