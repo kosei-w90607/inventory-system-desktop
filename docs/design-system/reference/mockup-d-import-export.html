@@ -132,7 +132,7 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <div class="cards"><div class="card"><div class="lbl">対象日</div><div class="val" style="font-size:20px">2026-08-23</div><div class="sub">file_hash a1e4f9c2…</div></div><div class="card"><div class="lbl">総売上</div><div class="val">¥182,400</div></div><div class="card"><div class="lbl">純売上</div><div class="val">¥179,600</div></div><div class="card"><div class="lbl">支払集計</div><div class="val" style="font-size:18px">現金 ¥120,300 / カード ¥59,300</div></div></div>
 <div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>同じ日の取込みが既にあります。</b><span>追加で取り込むと、既存分は残したまま新しい取込みが加わります。「取り込む」を押すと確認が出ます。</span></div></div>
 <div class="fs"><h2>部門別集計</h2>
-<div class="tbl"><div class="pager top"><span class="cnt">18 部門<small>部門未対応 2 件を含む</small></span></div><div class="scroll" style="--id-w:9rem"><table><thead><tr><th class="id">部門コード</th><th class="id2">部門名</th><th class="num">点数</th><th class="num">売上</th><th>状態</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">18 部門<small>部門未対応 2 件を含む</small></span></div><div class="scroll"><table><thead><tr><th>部門コード</th><th>部門名</th><th class="num">点数</th><th class="num">売上</th><th>状態</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
 </div>
 <div style="display:flex;gap:8px"><button class="btn primary">取り込む</button><span class="sub" style="align-self:center">取込み後は「日次売上を見る」から確認できます</span></div>
 </div>
@@ -145,7 +145,7 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <div class="cards"><div class="card"><div class="lbl">取込み ID</div><div class="val" style="font-size:18px">CSV-2026-0822-1</div></div><div class="card"><div class="lbl">件数</div><div class="val">312</div></div><div class="card"><div class="lbl">合計金額</div><div class="val">¥94,200</div></div><div class="card"><div class="lbl">状態</div><div class="val" style="font-size:16px"><span class="badge b-state ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>成功</span></div></div></div>
 <div style="display:flex;gap:8px"><button class="btn sm">日次売上を見る</button><button class="btn sm">取り消す</button><a class="btn sm" href="#">ホームに戻る</a></div>
 </div>
-</div><div class="note"><b>D の要点（売上データ取込み）</b> — 55-ui の契約（画面タイトルは「売上データ取込み」、既定タブ「日報取込み」、日報とZ004商品別CSVは同一画面内の 2 トラック）はそのまま。<ol><li><b>部門別集計 table に D を適用</b>: sticky header、識別列（部門コード + 部門名）を左に固定、部門未対応は状態 badge（warning + アイコン + 日本語）で行内表示。</li><li><b>件数の先出し</b>: 「18 部門・部門未対応 2 件」を table 直上に。</li><li><b>操作枠のコントラスト</b>: FilePicker の枠、取込みボタンの枠を濃く。</li></ol><b>現仕様維持（D の対象外）</b>: ステップ表示（1/3〜3/3）、上部 Alert の同日追加確認、summary card の内容と並びは 55-ui のまま。<br><b>未決</b>: 「取込み ID」表示や日報の対象日・file_hash の並び順、部門別集計のカード内訳の文言は本 doc に厳密な指定がなく mockup 用に補った。</div></section>
+</div><div class="note"><b>D の要点（売上データ取込み）</b> — 55-ui の契約（画面タイトルは「売上データ取込み」、既定タブ「日報取込み」、日報とZ004商品別CSVは同一画面内の 2 トラック）はそのまま。<ol><li><b>部門別集計 table に D を適用</b>: sticky header、部門未対応は状態 badge（warning + アイコン + 日本語）で行内表示（識別列固定は本画面では対象外、DSR-22 mapping 表に import-export は含まれない）。</li><li><b>件数の先出し</b>: 「18 部門・部門未対応 2 件」を table 直上に。</li><li><b>操作枠のコントラスト</b>: FilePicker の枠、取込みボタンの枠を濃く。</li></ol><b>現実装維持（D の対象外）</b>: ステップ表示（1/3〜3/3）、上部 Alert の同日追加確認、summary card の内容と並びは 55-ui のまま。<b>後続候補（本 mockup へ描かない）</b>: 「取込み ID」表示や日報の対象日・file_hash の並び順、部門別集計のカード内訳の文言は本 doc に厳密な指定がなく mockup 用に補った。</div></section>
 <!-- ========== 商品 CSV 一括インポート（UI-01c） ========== -->
 <section class="screen" id="s-pimport"><div class="page">
 <div class="ph"><div><h1>商品一括インポート</h1><p>CSV から商品をまとめて登録・更新します。エラー行があっても正常な行は取り込めます</p></div></div>
@@ -153,51 +153,51 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <div class="cards"><div class="card"><div class="lbl">新規登録候補</div><div class="val">1,142</div></div><div class="card"><div class="lbl">エラー行</div><div class="val" style="color:var(--bad-strong)">18</div></div><div class="card"><div class="lbl">重複行</div><div class="val" style="color:var(--warn-strong)">44</div></div><div class="card"><div class="lbl">上書き選択数</div><div class="val">0</div><div class="sub">未選択</div></div></div>
 <p class="sub">任意列「PLU対象」の値は 対象 / 対象外 / 既定（13桁JANなら対象）で表示します。JAN が13桁でない行は warning とともに対象外として取り込みます。</p>
 <div class="fs"><h2>プレビュー（先頭 50 行）</h2>
-<div class="tbl"><div class="pager top"><span class="cnt">1,204 行<small>先頭 50 行を表示</small></span></div><div class="scroll" style="--id-w:8rem"><table style="min-width:900px"><thead><tr><th class="id">行番号</th><th class="id2">商品コード</th><th>商品名</th><th>JAN</th><th>PLU対象</th><th>状態</th></tr></thead><tbody id="tb-pimport"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">1,204 行<small>先頭 50 行を表示</small></span></div><div class="scroll"><table style="min-width:900px"><thead><tr><th>行番号</th><th>商品コード</th><th>商品名</th><th>JAN</th><th>PLU対象</th><th>状態</th></tr></thead><tbody id="tb-pimport"></tbody></table></div></div>
 </div>
 <div style="display:flex;align-items:center;gap:12px"><button class="btn primary">取り込む</button><span class="sub">取り込む対象は新規登録候補 + 上書き選択済みの重複行のみです。エラー行は取り込まれません</span></div>
-</div><div class="note"><b>D の要点（商品一括インポート）</b> — 60-ui-01c-D5/D8/D16 の契約（3 系統プレビュー、エラー行があっても commit 可、PLU対象の 3 値表示）はそのまま。<ol><li><b>行番号 + 商品コードを左に固定</b>: 1,204 行のプレビューでエラー行がどの商品か見失わない。</li><li><b>エラー行を淡い赤背景 + 行内バッジで強調</b>（色だけに頼らず「フォーマット異常」等の日本語ラベルと組み合わせる）。</li><li><b>件数サマリを table 直上にも repeat</b>: 「1,204 行・先頭 50 行を表示」。</li></ol><b>現仕様維持</b>: カードの並び（新規 / エラー / 重複 / 上書き選択数）、エラー種別のラベル文言（フォーマット異常 / JAN 不正 / 数値不正 / 未登録 JAN）は 60-ui / 55-ui の error_type マトリクスどおり。<br><b>未決</b>: 行番号列を識別列として左固定する案は本 mockup の提案（doc は「行番号 + エラーメッセージ」としか規定していない）。</div></section>
+</div><div class="note"><b>D の要点（商品一括インポート）</b> — 60-ui-01c-D5/D8/D16 の契約（3 系統プレビュー、エラー行があっても commit 可、PLU対象の 3 値表示）はそのまま。<ol><li><b>sticky header</b>: 1,204 行のプレビューでも列見出しを見失わない（識別列固定は本画面では対象外、DSR-22 mapping 表に import-export は含まれない）。</li><li><b>エラー行を淡い赤背景 + 行内バッジで強調</b>（色だけに頼らず「フォーマット異常」等の日本語ラベルと組み合わせる）。</li><li><b>件数サマリを table 直上にも repeat</b>: 「1,204 行・先頭 50 行を表示」。</li></ol><b>現実装維持</b>: カードの並び（新規 / エラー / 重複 / 上書き選択数）、エラー種別のラベル文言（フォーマット異常 / JAN 不正 / 数値不正 / 未登録 JAN）は 60-ui / 55-ui の error_type マトリクスどおり。<b>後続候補（本 mockup へ描かない）</b>: 行番号 + 商品コードの識別列固定（doc は「行番号 + エラーメッセージ」としか規定していない）。</div></section>
 <!-- ========== PLU書出し（UI-08） ========== -->
 <section class="screen" id="s-plu"><div class="page">
 <div class="ph"><div><h1>PLU書出し</h1><p>対象商品から PLU ファイルを作成し、保存済みとして記録します</p></div></div>
 <div class="alert ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg><div><b>保存済みで未確認のPLU書出しがあります</b><span>保存先: SD:¥EXPORT¥plu_20260822.txt / 42 件 / CP932。「この書出しを未反映から外す」で確認するか、「破棄して再書出し」を選べます。</span></div></div>
 <div class="fs"><h2>レジ登録状況</h2><div class="cards"><div class="card"><div class="lbl">空き</div><div class="val">3,102</div></div><div class="card"><div class="lbl">外部登録</div><div class="val">88</div></div><div class="card"><div class="lbl">アプリ管理</div><div class="val">1,594</div><div class="sub">うち解除待ち 12</div></div><div class="card"><div class="lbl">競合</div><div class="val" style="color:var(--bad-strong)">0</div></div></div><p class="sub">最終読込み: 2026-08-20 09:14（Z004 スナップショット）</p><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>レジ登録状況を読み込む</button></div>
 <div class="fs"><div class="wtitle"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>要修正一覧（書出しから除外、6 件）</div>
-<div class="tbl"><div class="scroll" style="--id-w:8rem;max-height:30vh"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>JAN</th><th>状態</th></tr></thead><tbody id="tb-plu-excl"></tbody></table></div></div>
+<div class="tbl"><div class="scroll" style="max-height:30vh"><table><thead><tr><th>商品コード</th><th>商品名</th><th>JAN</th><th>状態</th></tr></thead><tbody id="tb-plu-excl"></tbody></table></div></div>
 <p class="sub">JANコードが未登録または不正な商品は、スキャニングPLU書出しに含められません。商品マスタで13桁JANを確認してください。</p>
 </div>
 <div class="fs"><h2>書出し対象</h2>
-<div class="tbl"><div class="pager top"><span class="cnt">42 件<small>差分（未反映 + 解除待ち）</small></span></div><div class="scroll" style="--id-w:8rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th>JAN</th><th>memory No.</th><th>状態</th></tr></thead><tbody id="tb-plu"></tbody></table></div></div>
+<div class="tbl"><div class="pager top"><span class="cnt">42 件<small>差分（未反映 + 解除待ち）</small></span></div><div class="scroll"><table><thead><tr><th>商品コード</th><th>商品名</th><th>JAN</th><th>memory No.</th><th>状態</th></tr></thead><tbody id="tb-plu"></tbody></table></div></div>
 </div>
 <div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>Full書出しの前に、既存 PLU バックアップを確認してください。</b></div></div>
 <div style="display:flex;gap:8px"><button class="btn primary">この書出しを未反映から外す</button><button class="btn sm">再書出し</button></div>
 <p class="sub">アプリで確認できるのはPLUファイル保存までです。PCツールへの取込み、SDカード書出し、レジ読込みは手動で確認してください。</p>
-</div><div class="note"><b>D の要点（PLU書出し）</b> — 67-ui の契約（above the fold の占有要約、要修正一覧を状態表示の直後に warning アイコン付きで配置、色だけで示さない）はそのまま。<ol><li><b>書出し対象・要修正一覧の両方に識別列固定 + sticky header</b>: 42 件級でも商品コードを見失わない。</li><li><b>占有要約カードを最上部</b>（doc の above the fold 指定に一致）。</li><li><b>復帰バナー</b>（保存済み未確認）を ok トーンの Alert で最上部に固定表示。</li></ol><b>現仕様維持</b>: 「アプリで確認できるのはPLUファイル保存までです…」等の文言は 67-ui §67.9 のまま一字一句。<br><b>未決</b>: 要修正一覧の列構成（商品コード / 商品名 / JAN / 状態）は doc に列定義が無いため mockup 用に補った。</div></section>
+</div><div class="note"><b>D の要点（PLU書出し）</b> — 67-ui の契約（above the fold の占有要約、要修正一覧を状態表示の直後に warning アイコン付きで配置、色だけで示さない）はそのまま。<ol><li><b>書出し対象・要修正一覧の両方に sticky header</b>: 42 件級でも列見出しを見失わない（識別列固定は本画面では対象外、DSR-22 mapping 表に import-export は含まれない）。</li><li><b>占有要約カードを最上部</b>（doc の above the fold 指定に一致）。</li><li><b>復帰バナー</b>（保存済み未確認）を ok トーンの Alert で最上部に固定表示。</li></ol><b>現実装維持</b>: 「アプリで確認できるのはPLUファイル保存までです…」等の文言は 67-ui §67.9 のまま一字一句。<b>後続候補（本 mockup へ描かない）</b>: 要修正一覧の列構成（商品コード / 商品名 / JAN / 状態）は doc に列定義が無いため mockup 用に補った。</div></section>
 </main></div>
-<div class="note"><b>位置付け</b>: 正本は各 function-design（55-ui / 60-ui / 67-ui）と <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22。本 mockup は Lane 2 実装値（`--border` 濃化、`#cdc8c4`）に token を同期した参考資料。<b>これを採ると何が変わるか</b>: table・card・FilePicker（`.picker`）・トラック切替（`.trkbar`）の構造線が濃くなり境界が見える。本画面は実入力欄（input/select/textarea）を持たないため `--border-strong` の消費者は無い（FilePicker はファイル選択 button のみで、パス表示はテキストではなく static 表示）。列定義や細部文言のうち doc に明記が無い箇所は各画面 note の「未決」に列挙した。<b>番号付き保留項目</b>: (1) 識別列固定（部門コード+部門名 / 行番号+商品コード / 商品コード+商品名）は Lane 3〜5 (2) sticky × 識別列固定の両立方式は D-2 の probe 待ち (3) 部門別集計・プレビュー・PLU 対象一覧を `ListShell` へ移行するかは個別画面ごとに Lane 3〜5 で判断する (4) 上部件数の帯化（catalog ⑯ 第 3 項）を反映済み。</div>
+<div class="note"><b>位置付け</b>: 正本は各 function-design（55-ui / 60-ui / 67-ui）と <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22。本 mockup は runtime の現状を土台に、Lane 2 で実装済みの <code>PageShell</code> 24px、<code>--border</code> / <code>--input</code>、商品一覧 pilot で確定した帯 token を確認する reference。後続候補を画面へ先行実装しない。<b>今回採用（Lane 2）</b>: table・card・FilePicker（`.picker`）・トラック切替（`.trkbar`）の構造線を `--border` 濃化。本画面は実入力欄（input/select/textarea）を持たないため `--border-strong` の消費者は無い（FilePicker はファイル選択 button のみで、パス表示はテキストではなく static 表示）。<b>現実装維持</b>: 各 table の sticky header と件数の先出し、カード構成、エラー種別ラベル、67-ui §67.9 の文言一字一句。<b>後続候補（本 mockup へ描かない）</b>: 識別列固定（import-export は DSR-22 mapping 表の対象外のため本 mockup では固定列を描かない）、sticky × 識別列固定の両立方式（D-2 probe 待ち）、部門別集計・プレビュー・PLU 対象一覧を `ListShell` へ移行するかの Lane 3〜5 判断、doc に明記のない列定義・並び順の各画面 note の記載事項。<b>owner L3 所感</b>: 本 file は owner L3 run 3 で AC-L3-5 途中停止前に到達しておらず個別所感の記録はない。DSR-22 mapping 表に import-export は含まれないため識別列固定は本 Amendment で描かない（S25）。</div>
 <script>
 (function(){
   var iWarn='<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>',iOk='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>',iBad='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9l6 6m0-6-6 6"/></svg>';
   function yen(n){return '¥'+n.toLocaleString('ja-JP')}
   var depts=[['10','毛糸',312,145200,0],['20','生地',188,98400,0],['30','手芸小物',420,52300,0],['40','刺しゅう',96,18900,0],['50','ビーズ',150,21400,0],['99','未設定',6,3200,1],['91','未設定(旧)',2,900,1]];
-  var h='';for(var i=0;i<depts.length;i++){var r=depts[i];h+='<tr class="row'+(r[4]?' err':'')+'"><td class="id"><span class="code">'+r[0]+'</span></td><td class="id2">'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+yen(r[3])+'</td><td>'+(r[4]?'<span class="badge b-state warn">'+iWarn+'部門未対応</span>':'<span class="badge b-state ok">'+iOk+'対応済み</span>')+'</td></tr>'}
+  var h='';for(var i=0;i<depts.length;i++){var r=depts[i];h+='<tr class="row'+(r[4]?' err':'')+'"><td><span class="code">'+r[0]+'</span></td><td>'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+yen(r[3])+'</td><td>'+(r[4]?'<span class="badge b-state warn">'+iWarn+'部門未対応</span>':'<span class="badge b-state ok">'+iOk+'対応済み</span>')+'</td></tr>'}
   document.getElementById('tb-dept').innerHTML=h;
 
   var names=['並太毛糸（生成）','コットンブロード','木製ボタン（大）','刺しゅう糸 25番','ワッペン（星）','レース 20mm','ファスナー 20cm','マスキングテープ','ビーズ（丸小）','フェルト 18cm角'];
   var codes=['HZ-0047','F-0132','H-0009','E-0031','W-0213','L-0044','Z-0120','MT-0310','B-0506','FE-0018'];
   h='';for(i=0;i<24;i++){var k=i%10;var st=i%9===0?'invalid_format':i%7===0?'invalid_jan':i%11===0?'invalid_number':'valid';var plu=i%3===0?'対象外（JAN不正）':i%3===1?'対象':'既定';
     var badge=st==='valid'?'<span class="badge b-state ok">'+iOk+'登録可'+'</span>':st==='invalid_format'?'<span class="badge b-state bad">'+iBad+'フォーマット異常</span>':st==='invalid_jan'?'<span class="badge b-state warn">'+iWarn+'JAN 不正</span>':'<span class="badge b-state warn">'+iWarn+'数値不正</span>';
-    h+='<tr class="row'+(st!=='valid'?' err':'')+'"><td class="id"><span class="code">'+(i+2)+'</span></td><td class="id2"><span class="code">'+codes[k]+'</span></td><td>'+names[k]+'</td><td>490000000'+(1000+i)+'</td><td>'+plu+'</td><td>'+badge+'</td></tr>'}
+    h+='<tr class="row'+(st!=='valid'?' err':'')+'"><td><span class="code">'+(i+2)+'</span></td><td><span class="code">'+codes[k]+'</span></td><td>'+names[k]+'</td><td>490000000'+(1000+i)+'</td><td>'+plu+'</td><td>'+badge+'</td></tr>'}
   document.getElementById('tb-pimport').innerHTML=h;
 
   var exNames=['刺しゅう糸 25番（青系）','ビーズ（丸小・銀）','レース 15mm','リボン サテン 6mm','ゴムひも 10コール','チャコペン（赤）'];
   var exCodes=['E-0044','B-0512','L-0051','R-0102','G-0018','C-0009'];
-  h='';for(i=0;i<exCodes.length;i++){h+='<tr class="row"><td class="id"><span class="code">'+exCodes[i]+'</span></td><td class="id2">'+exNames[i]+'</td><td>'+(i%2===0?'（未登録）':'12桁不足')+'</td><td><span class="badge b-state bad">'+iBad+'JAN 不正</span></td></tr>'}
+  h='';for(i=0;i<exCodes.length;i++){h+='<tr class="row"><td><span class="code">'+exCodes[i]+'</span></td><td>'+exNames[i]+'</td><td>'+(i%2===0?'（未登録）':'12桁不足')+'</td><td><span class="badge b-state bad">'+iBad+'JAN 不正</span></td></tr>'}
   document.getElementById('tb-plu-excl').innerHTML=h;
 
   var pluNames=['並太毛糸（生成）','コットンブロード','木製ボタン（大）','刺しゅう糸 25番','ワッペン（星）','レース 20mm','ファスナー 20cm','マスキングテープ'];
   var pluCodes=['HZ-0047','F-0132','H-0009','E-0031','W-0213','L-0044','Z-0120','MT-0310'];
-  h='';for(i=0;i<8;i++){var cur=i===1;h+='<tr class="row'+(cur?' cur':'')+'"><td class="id"><span class="code">'+pluCodes[i]+'</span></td><td class="id2">'+pluNames[i]+'</td><td>490000000'+(2000+i)+'</td><td>'+(217+i)+'</td><td><span class="badge b-state warn">'+iWarn+'未反映</span></td></tr>'}
+  h='';for(i=0;i<8;i++){var cur=i===1;h+='<tr class="row'+(cur?' cur':'')+'"><td><span class="code">'+pluCodes[i]+'</span></td><td>'+pluNames[i]+'</td><td>490000000'+(2000+i)+'</td><td>'+(217+i)+'</td><td><span class="badge b-state warn">'+iWarn+'未反映</span></td></tr>'}
   document.getElementById('tb-plu').innerHTML=h;
 
   var tabs=document.querySelectorAll('.chrome .tabs button');
