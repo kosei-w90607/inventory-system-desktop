@@ -8,16 +8,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
-- Amendments: none
+- Amendments: f56a5f7
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（発注書 relay）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（Fable が P1/P2/P3 裁定）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: cae3d13
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 画面の perPage Select 動作 + 入出庫履歴・在庫変動履歴の 200 選択 + 件数文言の新形 + 上部帯の非太字、AC-L3-1〜4）
@@ -385,6 +385,16 @@ Plan Review（独立 Sonnet subagent、fresh context、read-only、Coordinator �
 
 2026-09-05: Plan Gate 収束（round 3/3、是正 commit = round 1 `8d8cad3` / round 2 `d8c3afd`）。`plan-draft -> plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移（forward state-only 1/3）: plan-gate の証跡 = plan-first commit `fa15866`（Plans.md ④ active link 同乗）と上記 round 1〜3、plan-approved の証跡 = round 3 approve（最終 P1/P2 = 0、P2 記録のみ 1）、Plan Commit = plan-first commit `fa15866`。
 
-Fill after review.
-If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+2026-09-05: Writer（Codex）が worktree isolation で content commit 3 本（`b649257` / `b703f28` / `cae3d13`）を積み Draft PR #34 を作成（frontend gate / cargo test / `cargo check --release` / doc gate / check-workflow-git / L1 full RESULT=PASS / traceability `--check` clean。exact SHA と evidence は PR body を正とする。mutation 自己検証は発注書どおり不実施）。実装中の停止 2 回: (1) `66-ui-stock-movements.md:62` の固定 perPage 契約漏れ → Gated Amendment 1（`f56a5f7`）、(2) 在庫照会 test の無名 `combobox` query が新 Select と多重一致 → Coordinator が `DepartmentFilter` の `<label htmlFor>`「部門」を実読確認し、accessible name 付与のみ（expect 不変）を許可。変更 3 test は Writer 報告に列挙。
+
+Final Review round 1（独立 Sonnet subagent、fresh context、隔離 worktree、対象 `f56a5f7..cae3d13`、AC を実行で再実測）: P1×1 / P2×0 / P3×1。
+- P1（accept、手順違反）: PR body の `Reviewed Content HEAD` を Writer が Draft PR 作成時に `cae3d13` で先行記入（packet 側は `pending` のまま）。DEV_WORKFLOW `:84,102` どおり本 field は independent-review → human-confirm の state-only 遷移 commit で Coordinator が設定する。是正 = 本遷移 commit で packet 側を `cae3d13` に設定し、PR body の値はその時点で正となる（merge gate の三点一致には含まれない field、`:119,420`）。Writer 発注書に「PR body の Reviewed Content HEAD は pending で置く」を次回から明記する
+- P3（記録のみ、backlog）: `docs/design-system/reference/mockup-d-lists.html:110` の `PRODUCT_PER_PAGE_OPTIONS` 表記が旧名のまま（S11 の mockup 対象は文言のみで定数名は scope 外）。D-080 で mockup は reference-only のため、次に mockup を触る lane で同期する
+- 上記以外はすべて clean: owner 決定（文言 / 既定値 8 画面 / 選択肢 / `font-semibold` / `MAX_PER_PAGE` reject 維持）一致、Scope 逸脱なし、Writer による packet 改稿は Implementation Results 3 行のみ、test oracle は独立転記（Reviewer が mutation 2 体で非 vacuous を実証）、L3-D3 の URL / local state 分岐、page reset、query key の perPage 包含、D-081 / D-031 書式、docs 10 + 13 箇所の anchor、PR body 必須項目
+
+Coordinator mutation 独立再実測（Sonnet 委譲、隔離 worktree `cae3d13` clean tree、`npm ci --ignore-scripts` 実 directory、Rust は target 共有）: X1 文言 1 文字 / X2 0 件文言 / X3 選択肢 `[50,100,300]` / X4 `font-semibold` 復活 / X5〜X10 6 画面の既定値改変 / X11 page reset 撤去 / X12 `MAX_PER_PAGE` 100 / X13 `MAX_PER_PAGE` 201 / X14 整合性チェックの固定 100 slice = **14 体全 kill、survivor 0**。各 mutant 後の `git status --short` 空を確認、teardown 完了。Rust の実 path は `src-tauri/src/biz/inventory_service/list.rs`（packet の `src-tauri/src/inventory_service/list.rs` 表記は module path 略記、機能影響なし）。
+
+Review-only skipped because: Final Review を独立 Sonnet subagent（fresh context）が担い、Coordinator が mutation を別 context で独立再実測したため、R3 review-only sub-agent の役割は充足済み。
+- Findings Freeze: frozen at Final Review round 1（P1/P2 = 0 after disposition）; post-freeze exceptions: none.
+
+2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（forward state-only 2/3）: local-verified の証跡 = Writer content commit の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = 上記 Final Review round 1（P1 disposition 後 P1/P2 = 0）+ mutation 14/14 kill、Reviewed Content HEAD = `cae3d13`、Amendments = `f56a5f7`。次 = owner Windows native L3（AC-L3-1〜4、介入 2/3）。
