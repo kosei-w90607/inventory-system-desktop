@@ -4,7 +4,7 @@ owner 決定（D8/E13/E15、2026-09-04〜05、[Plans.md ④](../Plans.md) owner 
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 259155c
@@ -13,7 +13,7 @@ owner 決定（D8/E13/E15、2026-09-04〜05、[Plans.md ④](../Plans.md) owner 
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（fresh context）+ Codex ロジックレビュー 1 回（週次リセット後に実施、それまで Final Review は Sonnet のみで進め human-confirm で待機）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 251ecde
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈入力欄の面と枠〉/ AC-L3-2〈outline ボタン・Badge の枠〉の 2 項目）
@@ -354,5 +354,15 @@ Plan Review（独立 Sonnet subagent、fresh context、隔離 worktree、read-on
 
 2026-09-05: Plan Gate 収束（round 3/3、是正 commit = round 1 `f64992e` / round 2 `be8acf5`）。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ④ 同期の content commit に同乗させて遷移（Risk 節の stacked train 方針どおり forward state-only を温存）: plan-gate の証跡 = plan-first commit `259155c`（Plans.md ④ active link 同乗）と上記 round 1〜3、plan-approved の証跡 = round 3 approve（最終 P1/P2 = 0）、Plan Commit = `259155c`。Writer = Claude Sonnet 5 subagent（worktree isolation、Lane 3 の Sonnet Writer とは別 context）。
 
-Fill after review.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+2026-09-05: Writer（Claude Sonnet 5 subagent、worktree isolation、TDD）が content commit 6 本（`ebe3f75` S1a〜S1k / `5fa72cf` S2 / `5f51394` S3 / `b3fccb2` S5 / `a919c16` traceability baseline / `5d2a8aa` Implementation Results）を積んだ。全 gate PASS、L1 full RESULT=PASS、`generate_traceability --check` OK（exact SHA と evidence は PR body を正とする）。
+
+Final Review round 1（独立 Sonnet subagent、fresh context、隔離 worktree、AC1〜AC8 を実行で再実測、Badge / Button の全 caller sweep）: P1×1 / P2×0 / P3×0。
+- P1（accept）: `FE_UNREFERENCED_BASELINE` 22 → 24 の変更に伴い、Writer が既存 PR-B bullet（2026-06-13、17 → 22）に `button / badge` を遡って挿入し履歴 comment が事実と食い違った。加えて baseline 変更が Registration Obligations 表の想定外で審査経路に載っていなかった。Coordinator 裁定 = baseline 24 は維持（画面非依存の shared primitive に UI ID を付けるのは偽の traceability、L5-D6）、comment は原文復元 + 日付付き独立 bullet（Writer `0e1dffe`）、L5-D6 を Design Intent Trace / Ledger / Registration Obligations へ記録（Coordinator `251ecde`）
+- round 2（対象 `251ecde`）: PR-B bullet が `baf5ad4` の原文と byte 一致、Lane 5 bullet 独立、module doc に増加時の規則追記、`--check` OK、L5-D6 記録が審査経路の欠落を満たす → **approve**（新規 P1/P2 なし）
+
+Coordinator mutation 独立再実測（Sonnet 委譲、隔離 worktree `5d2a8aa`）: Y1 button `border-input` 撤去 / Y2 badge `border-border` へ戻す / Y3〜Y6 多重箇所 file の最後の 1 要素だけ戻す（InventoryRecords 6 / ReturnExchange 4 / ProductForm 3 / StockMovements 3）/ Y9 PriceRevisionFilters の `border-input` のみ撤去 / Y10 ManualSale / Y11 MonthNavigator = **9 体全 kill、survivor 0**。集約 test が全要素を列挙し、2 token を conjunction で assert していることを確認。
+
+Review-only skipped because: Final Review を独立 Sonnet subagent（fresh context）が担い、Coordinator が mutation を別 context で独立再実測したため R3 review-only sub-agent の役割は充足。Codex ロジックレビュー 1 回は週次リセット後に PR 上で実施し、その findings は human-confirm 中に裁定する（Findings Freeze は Codex round 完了時に設定）。
+- Findings Freeze: not yet frozen（Codex ロジックレビュー待ち）; post-freeze exceptions: none.
+
+2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ④ 同期の content commit に同乗させて遷移（Risk 節の stacked train 方針どおり forward state-only を温存）: local-verified の証跡 = Writer content commit の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 2 approve + mutation 9/9 kill、Reviewed Content HEAD = `251ecde`。次 = Draft PR 作成（base = Lane 3 branch、Lane 3 merge 後に main へ retarget）→ Codex ロジックレビュー（リセット後）→ owner Windows native L3（AC-L3-1〜2、Lane 3 run 3 と同時実施可）。
