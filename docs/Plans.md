@@ -53,14 +53,12 @@
     - 後続候補: ホーム action への説明文追加、操作ログの `開始日` / `終了日` を `期間` group 化、日次売上 Z001 summary の全項目公開（現 `OfficialDailyReportSummary` は gross/net/payment/department のみ）、Z004・手動販売の部門小計分離、Backup 日時書式 `YYYY-MM-DD HH:mm` と page subtitle、CSV native 出力の owner 確認、日次 / 月次の印刷要否・紙面設計（Phase 4 disabled placeholder）、入出庫履歴の識別列並べ替え（記録日時 + 代表商品を先頭 2 列へ、header 配列一致 test 更新を含む）、`FormSection` shared pattern 化の可否・命名（理由: DTO 未公開・native 出力未確認・紙面設計未着手など実装コストが本 Lane を超える）
     - 明示不採用: 架空の操作ログ `実行者`、非 link 「すぐ確認」card、平均単価 / 部門数への summary card 置換、画面固有の意味を壊す共通化、未実装機能を有効 button として描くこと（理由: 架空 field・誤誘導・DB / DTO に無い情報の先行表示のため）
   - (vii) AC-L3-4 residual risk（Gated Amendment 4）: OS 150% / in-app 特大 1.3 × OS 125% / form 画面 150% / forced-colors 再実施は本 PR の Human Gate から外したため未実測のまま merge。Lane 3〜5 の L3 checklist に「特大 × 125%」を 1 回含める + operator からの実利用報告を検出経路とする。closure round では対照表外の画面を 1〜2 件無作為抽出して runtime 突合する（Amendment 4 closure round 2 是正、Lane 3〜5 Test Plan 申し送り）
-  - owner 反応 ledger（run 1〜4、原文優先、runtime-first の入力。Gated Amendment 5 S41、出典 = scratchpad owner-reaction-ledger.md「## Coordinator 裁定」表）:
-    - runtime backlog: 商品登録・修正: レジメモリ No. と「レジにバーコード登録する」を「商品の識別」から分離し、レジ登録の小 section としてまとまりを出す（owner「識別に突っ込んだから窮屈」「浮いて見える」）。UI-01b-D10 の section 構成に影響するため実装前に owner 確認、M
-    - runtime backlog: 商品登録・修正 在庫 section: 現在庫に数量単位を併記し、並びを 数量単位 → 現在庫 へ（owner「数量単位無視して 18 玉」「単位バラバラ」）、S
+  - owner 反応 ledger（run 1〜4、原文優先、runtime-first の入力。Gated Amendment 5 S41、出典 = scratchpad owner-reaction-ledger.md「## Coordinator 裁定」表）: owner 原文による訂正 2026-09-04: レジメモリ No. / バーコード登録の配置、現在庫と数量単位の並び・単位表示は mockup への指摘で runtime は対象外（runtime は レジメモリ No. を form 外の読み取り専用欄、在庫 section は 現在庫 → 数量単位 の順で既に owner の意図どおり）。ledger 記録のみ
     - runtime backlog: 価格履歴の説明文を「直近 10 件の売価・原価の変更を新しい順に表示します。」へ（`PriceHistorySection.tsx:43`、default limit 10 と整合）、S
-    - runtime backlog: 入庫の商品追加 list の列を 商品コード / 商品名 / 現在庫 / 入庫数量 / 原価 / 単位 / 操作 へ（現在庫列の追加と並び替え、`ReceivingPage.tsx:543-549`）、M
+    - 候補（owner 条件付き「やるなら」）: 入庫の商品追加 list を 商品コード / 商品名 / 現在庫 / 入庫数量 / 単位 / 原価 / 操作 へ（現在庫列の追加、単位は入庫数量の隣、原価を数量と単位の間に置かない。owner の一次判断は「商品を追加 section も現行実装のほうがいい」なので実装前に owner 確認、`ReceivingPage.tsx:543-549`）、M
     - runtime bug: 入庫の単位列が unit code `pcs` を生表示（`ReceivingPage.tsx:557`）。`formatStockDisplay` 相当の日本語ラベル変換を入庫 / 商品 form にも適用、S
     - runtime backlog: 入庫画面の「直近の入庫」は既に `per_page: 10`（`ReceivingPage.tsx:58`）なので見出し・説明に「直近 10 件」であることを明示する、S
-    - runtime backlog: 返品・交換の「交換は戻り・渡しの明細が両方必要です」注釈をポツンと置かず、明細 table の見出し直下または入力 group の説明として配置（`ReturnExchangePage.tsx:790-791`）、S
+    - runtime backlog: 返品・交換の「交換は戻り・渡しの明細が両方必要です」注釈がポツンと置かれている（`ReturnExchangePage.tsx:790-791`）。置き場所は未定（owner「どうにかいい表示の仕方ないものか」）。実装前に候補 2〜3 案を実機で見て owner が決める、S
     - runtime backlog: 返品・交換の方向 badge（戻り（在庫+）/ 渡し（在庫-））の色遣いを再検討。DSR-08 どおり文言 + 記号を主、色は補助に、S
     - runtime backlog: 返品・交換のレシート画像 label に「（任意）」を付ける（`ReturnExchangePage.tsx:624`）、S
     - 維持（肯定）: 保存結果の緑 icon toast / 原価差分 dialog の「マスタ原価 → 実原価」表示 / 返品・交換のレジ戻し badge と CSV 取込み反映 badge の色 / 検索欄と toolbar の明度差は問題視せず。後続 sweep で消さない
