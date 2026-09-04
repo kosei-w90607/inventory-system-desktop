@@ -7,4 +7,4 @@ Use for scoped implementation, routine coordination, focused diagnosis, and revi
 - If an unresolved dependency would change the result, surface it instead of inventing a default.
 - Escalate to broader synthesis only when the scoped evidence is insufficient.
 
-Apply the [shared contract](../gpt-5.6-shared.md) without modification.
+Apply the [shared contract](../shared.md) without modification.
