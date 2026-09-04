@@ -1,6 +1,6 @@
 # Plan Packet: UI 一覧の背骨 D — Lane 3（ページ送りの横展開: perPage Select 全画面 + 件数文言の自然文化 + 上部帯の太字撤去 + 履歴系 backend 上限 100→200）
 
-Lane 2（PR #32、squash `7e0ccf1`、2026-09-04）で共有部品化した `Pagination` / `PaginationSummary` / `ListShell`（pilot: 商品一覧のみ）を土台に、ページ送り関連の残 3 項目を全一覧画面へ横展開する。`ListShell` 化そのもの（識別列固定・現在行 3 点を含む Lane 4、`--border-strong` sweep を含む Lane 5）は本 lane の対象外。owner 選定（2026-09-05、[Plans.md ④](../Plans.md) E9/E10/E11 直回答）に基づき、scope を「件数文言の自然文化」「perPage 共有定数 1 本 + 各画面 Select」「履歴系 backend 上限 200」の 3 点に限定する。
+Lane 2（PR #32、squash `7e0ccf1`、2026-09-04）で共有部品化した `Pagination` / `PaginationSummary` / `ListShell`（pilot: 商品一覧のみ）を土台に、ページ送り関連の残 3 項目を全一覧画面へ横展開する。`ListShell` 化そのもの（識別列固定・現在行 3 点を含む Lane 4、`--border-strong` sweep を含む Lane 5）は本 lane の対象外。owner 選定（2026-09-05、[Plans.md ④](../../Plans.md) E9/E10/E11 直回答）に基づき、scope を「件数文言の自然文化」「perPage 共有定数 1 本 + 各画面 Select」「履歴系 backend 上限 200」の 3 点に限定する。
 
 ## Workflow State
 
@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
@@ -21,6 +21,8 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 画面の perPage Select 動作 + 入出庫履歴・在庫変動履歴の 200 選択 + 件数文言の新形 + 上部帯の非太字、AC-L3-1〜4）
+
+2026-09-05: PR #34 closeout。hosted final = run 33928546779（head `1881429`、success）→ squash merge `1d44ba2`。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ④ の完了表記）に同乗。実績: 介入 4/3（起票 1 / L3 run 1 FAIL / L3 run 2 FAIL / L3 run 3 PASS + 承認 = 超過 1）、relay 2/2（Codex 実装 + 是正）、Gated Amendment 3 本、state-backtrack 2 本、forward state-only 3/3、mutation 累計 25 体 survivor 0。Lane 4 / Lane 5 への申し送りは Plans.md ④ ledger の R2-1〜5 / R3-1〜4 / R5-1〜5 と backlog（mockup-d-lists.html:110 の旧定数名、D-023 の実装側未充足）。
 
 ## Owner Effort Budget
 
