@@ -79,7 +79,7 @@
       - G20 / G21: 20 は PR #31 で最終裁定済みの「A'+器（帯の枠あり）」を棚卸し lane で実装する時に、帯ラベルの contrast も是正するという item（別の案ではない）。「リストを囲む」= 器の一部として同 lane
       - H22: owner「何とも言えない、わからん」= 保留のまま（要望が続けば起票）
     - owner L3 run 2 所感（Lane 3、2026-09-05、原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 3 L3 run 2 原文」。Coordinator 転記、裁定は原文を正とする。いずれも Lane 3 の scope 外で、Lane 4 / 5 または別 lane の候補）:
-      - R2-1 ページ送りの上下切り分け（一覧 8 画面共通）: 上部 summary は件数が perPage 未満でも常に出す（現 `totalCount > 0` gating + 単一ページ時は下部行ごと非表示、在庫照会で観測）。下部は summary + 前へ / 次へを複数ページ時のみ。上部に button は置かない。上部の見た目は「下のと同じでいい」（商品一覧の大きい表示を全画面共通にするか、下部と同じ小さい表示に揃えるかは owner 原文が両方に読めるため実機候補で確定）。edge: 51 件で 2 ページ目に行った時に「前へ」が無い、を test で必ず塞ぐ → Lane 4 候補（ページ送り契約の改訂、catalog ⑩ 改訂を伴う）
+      - R2-1 ページ送りの上下切り分け（一覧 8 画面共通）: 上部 summary は件数が perPage 未満でも常に出す（現 `totalCount > 0` gating + 単一ページ時は下部行ごと非表示、在庫照会で観測）。下部は summary + 前へ / 次へを複数ページ時のみ。上部に button は置かない。上部の見た目は owner 決定（2026-09-05「下部と同じ小さい表示に揃えるよ」）で下部の summary と同じ `text-sm text-muted-foreground`（Lane 3 で太字を外した `PaginationSummary` の `text-base` も下部と同サイズへ、DSR-22 / catalog ⑩ の上部 variant 記述を改訂）。edge: 51 件で 2 ページ目に行った時に「前へ」が無い、を test で必ず塞ぐ → Lane 4 候補（ページ送り契約の改訂、catalog ⑩ 改訂を伴う）
       - R2-2 次へ button が薄い: 有効状態を濃くし、hover で色変化 or さらに濃く → Lane 5（E13 `--border-strong` sweep）に同乗候補（outline button の枠 + 文字色 + hover）
       - R2-3 在庫照会: 展開中の行をもう一度触ったら閉じる（既存の「検索結果 1 件なら自動展開」との衝突を要整理）→ 別 item S
       - R2-4 在庫照会の検索条件を増やす（どの条件かは未回答、owner に候補提示）→ 別 item、design-first
