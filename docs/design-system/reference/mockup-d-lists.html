@@ -62,8 +62,8 @@ tr.cur td.id,tr.cur td.id2{background:var(--d-row-cur)}
 tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 /* 上部 pager variant（DSR-22: 件数 + 現在位置 text は必須、pager ボタンは任意。viewport 超過一覧のみ opt-in） */
 .pager{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
-/* Gated Amendment 3 S13/S15: summary 帯と thead を同一 surface・同一 inset の 1 つの帯にする（AC-L3-2） */
-.pager.top{background:var(--d-head);padding:0 12px;min-height:40px}
+/* Gated Amendment 5 S39（owner L3 run 4）: 件数行は page 地色 + 1px 下線、灰色面は列見出しのみ */
+.pager.top{background:var(--bg);border-bottom:1px solid var(--d-line);padding:0 12px;min-height:40px}
 .pager.top .cnt{color:var(--fg);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 .pager .pg{display:flex;gap:8px;align-items:center}
 .decision{border:1px dashed var(--d-line);border-radius:8px;padding:16px;background:var(--card)}
