@@ -76,11 +76,15 @@ absence 側の rg は screen markup 範囲に限定するため `class="note"` �
 | SC14a absence: import-export 固定列 class | `rg -n 'class="id"\|class="id2"' docs/design-system/reference/mockup-d-import-export.html \| wc -l` | 0 | green |
 | SC14a presence: `入庫・出庫` | `rg -c '入庫・出庫' docs/design-system/reference/mockup-d-home-sales-admin.html` | 3（見出し 1 + note 2） | green |
 | SC14a presence: 4 action label | `for w in 入庫記録 返品・交換 手動販売出庫 廃棄・破損; do rg -c -- "$w" docs/design-system/reference/mockup-d-home-sales-admin.html; done` | 各 3（sidebar nav + action + note） | green |
-| SC14a presence: `販売点数` / `売上明細数` / `前日比` | `rg -c '販売点数\|売上明細数\|前日比' docs/design-system/reference/mockup-d-home-sales-admin.html`（個別） | 2 / 2 / 2 | green |
+| SC14a presence: `販売点数` / `売上明細数` / `前日比` | `rg -c '販売点数\|売上明細数\|前日比' docs/design-system/reference/mockup-d-home-sales-admin.html`（個別） | 4 / 2 / 2（`販売点数` は S27 で追加した `月間販売点数` の部分一致 2 件を含む） | green |
 | SC14a presence: `Z001 / Z002 / Z005` | `rg -c 'Z001 / Z002 / Z005' docs/design-system/reference/mockup-d-home-sales-admin.html` | 2 | green |
 | SC14a presence: `日報取込み済み日の Z005 部門別売上合計です。` | `rg -c '日報取込み済み日の Z005 部門別売上合計です。' docs/design-system/reference/mockup-d-home-sales-admin.html` | 1 | green |
 | SC14a presence: Backup 列順 `日時`→`サイズ`→`ファイル名` | `rg -n '<th class="id">日時</th><th class="num">サイズ</th><th>ファイル名</th>' docs/design-system/reference/mockup-d-home-sales-admin.html \| wc -l` | 1 | green |
 | SC14a presence: history 固定列（DSR-22 mapping） | `rg -n '<th class="id">記録日時</th><th class="id2">代表商品</th>\|<th class="id">日時</th><th class="id2">種別</th>' docs/design-system/reference/mockup-d-history.html \| wc -l` | 3（入出庫履歴 / 在庫変動履歴 / 操作ログ） | green |
+| SC14a S27 presence: `月間売上合計` / `月間販売点数` / `前月比` | `for w in 月間売上合計 月間販売点数 前月比; do rg -c -F -- "$w" docs/design-system/reference/mockup-d-home-sales-admin.html; done` | 2 / 2 / 2（各 summary card 1 行 + note 1 行） | green |
+| SC14a S27 presence: `在庫整合性検証` / `整合性チェック実行` / `補正する` | `for w in 在庫整合性検証 整合性チェック実行 補正する; do rg -c -F -- "$w" docs/design-system/reference/mockup-d-home-sales-admin.html; done` | 1 / 1 / 4（見出し行の説明文 + 確定 button 同居 1 行、dialog 警告文「補正すると」1 行、checkbox aria-label 1 行、note 2 箇所同居 1 行） | green |
+| SC14a S27 absence: `チェックを実行` / `補正を確定` / `BIZ-05`（画面 markup 範囲） | `for w in "チェックを実行" "補正を確定" "BIZ-05"; do rg -n -F -- "$w" docs/design-system/reference/mockup-d-home-sales-admin.html \| rg -v 'class="note"' \| wc -l; done` | 0 / 0 / 0（`BIZ-05` は note 側へ移設した 1 件のみ残存、画面 markup 範囲では 0） | green |
+| SC14a S27 presence: 在庫少の基準 descriptor 実値 | `for w in "一般商品の基準（必須）" "生地の基準（必須）" "在庫がこの個数以下になったら在庫少（初期値: 3個）" "在庫がこの長さ以下になったら在庫少（初期値: 500cm = 5m）"; do rg -c -F -- "$w" docs/design-system/reference/mockup-d-home-sales-admin.html; done` | 1 / 1 / 1 / 1（`extract-thresholds.ts` descriptor から exact 転記） | green |
 | SC14b: 4 見出し各 ≥ 1（5 file） | `for f in forms-a forms-b history home-sales-admin import-export; do for h in "今回採用（Lane 2）" "現実装維持" "後続候補（本 mockup へ描かない）" "owner L3 所感"; do rg -c -- "$h" docs/design-system/reference/mockup-d-$f.html; done; done` | forms-a 1/1/1/1、forms-b 1/1/1/1、history 1/2/2/1、home-sales-admin 1/5/5/1、import-export 1/4/4/1（すべて ≥ 1） | green |
 | SC14b: `番号付き保留項目` = 0（5 file） | `for f in forms-a forms-b history home-sales-admin import-export; do rg -c '番号付き保留項目' docs/design-system/reference/mockup-d-$f.html; done` | 0 / 0 / 0 / 0 / 0 | green |
 
