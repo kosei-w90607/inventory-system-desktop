@@ -56,12 +56,13 @@
   - owner 反応 ledger（run 1〜4、原文優先、runtime-first の入力。Gated Amendment 5 S41、出典 = scratchpad owner-reaction-ledger.md「## Coordinator 裁定」表）: owner 原文による訂正 2026-09-04: レジメモリ No. / バーコード登録の配置、現在庫と数量単位の並び・単位表示は mockup への指摘で runtime は対象外（runtime は レジメモリ No. を form 外の読み取り専用欄、在庫 section は 現在庫 → 数量単位 の順で既に owner の意図どおり）。ledger 記録のみ
     - runtime backlog: 価格履歴の説明文を「直近 10 件の売価・原価の変更を新しい順に表示します。」へ（`PriceHistorySection.tsx:43`、default limit 10 と整合）、S
     - 候補（owner 条件付き「やるなら」）: 入庫の商品追加 list を 商品コード / 商品名 / 現在庫 / 入庫数量 / 単位 / 原価 / 操作 へ（現在庫列の追加、単位は入庫数量の隣、原価を数量と単位の間に置かない。owner の一次判断は「商品を追加 section も現行実装のほうがいい」なので実装前に owner 確認、`ReceivingPage.tsx:543-549`）、M
-    - runtime bug: 入庫の単位列が unit code `pcs` を生表示（`ReceivingPage.tsx:557`）。`formatStockDisplay` 相当の日本語ラベル変換を入庫 / 商品 form にも適用、S
+    - runtime bug: 入庫の単位列が unit code `pcs` を生表示（`ReceivingPage.tsx:557`）。PR #32 Gated Amendment 6 S45 で是正（商品一覧 / 入庫 / 廃棄 / 返品交換 / 手動販売）
     - runtime backlog: 入庫画面の「直近の入庫」は既に `per_page: 10`（`ReceivingPage.tsx:58`）なので見出し・説明に「直近 10 件」であることを明示する、S
     - runtime backlog: 返品・交換の「交換は戻り・渡しの明細が両方必要です」注釈がポツンと置かれている（`ReturnExchangePage.tsx:790-791`）。置き場所は未定（owner「どうにかいい表示の仕方ないものか」）。実装前に候補 2〜3 案を実機で見て owner が決める、S
     - runtime backlog: 返品・交換の方向 badge（戻り（在庫+）/ 渡し（在庫-））の色遣いを再検討。DSR-08 どおり文言 + 記号を主、色は補助に、S
     - runtime backlog: 返品・交換のレシート画像 label に「（任意）」を付ける（`ReturnExchangePage.tsx:624`）、S
     - 維持（肯定）: 保存結果の緑 icon toast / 原価差分 dialog の「マスタ原価 → 実原価」表示 / 返品・交換のレジ戻し badge と CSV 取込み反映 badge の色 / 検索欄と toolbar の明度差は問題視せず。後続 sweep で消さない
+    - residual risk（Gated Amendment 6 S44）: 入力欄・Select の `--control-surface` #fff 化は L3 で商品一覧のみ確認。他画面の入力欄の白面は Lane 3〜5 の実機で確認する
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
 ### Wave Registry

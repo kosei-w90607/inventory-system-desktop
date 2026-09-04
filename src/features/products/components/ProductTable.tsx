@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import type { ProductWithRelations } from "@/lib/bindings";
 import { CircleCheck, CircleMinus, Clock3 } from "lucide-react";
 
@@ -66,7 +67,7 @@ export function ProductTable({ items, returnTo = "/products" }: ProductTableProp
               {yenFormatter.format(item.cost_price)}
             </TableCell>
             <TableCell className="text-right tabular-nums">
-              {item.stock_quantity.toLocaleString("ja-JP")} {item.stock_unit}
+              {formatStockDisplay(item.stock_quantity, item.stock_unit)}
             </TableCell>
             <TableCell>
               {!item.plu_target ? (

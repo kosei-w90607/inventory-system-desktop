@@ -29,6 +29,7 @@ import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
 import { PageShell } from "@/components/patterns/PageShell";
+import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReturnCreateResult } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -863,7 +864,7 @@ export function ReturnExchangePage() {
                         }}
                       />
                     </TableCell>
-                    <TableCell>{row.stockUnit}</TableCell>
+                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"

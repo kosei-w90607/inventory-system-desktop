@@ -350,6 +350,11 @@ export function useStockInquiry(params: {
 - `unit === "cm"` → `"300 cm"`（数量 + 「cm」、生地、SCREEN_DESIGN.md L131）
 - 上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
 
+#### formatStockUnitLabel（[unit] → string、Gated Amendment 6 S45）
+
+- 数量を伴わない単位列（入庫 / 廃棄 / 返品交換 / 手動販売の行データ等）の unit code を日本語ラベルへ変換する
+- `unit === "pcs"` → `"個"`、`unit === "cm"` → `"cm"`、上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
+
 #### format-last-date（[value: string | null] → string）
 
 - `value === null` → `"—"`（None 表示、Q-2）

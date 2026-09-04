@@ -138,4 +138,22 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     if (row === null) throw new Error("row not found");
     expect(within(row).getByText("￥567")).toBeInTheDocument();
   });
+
+  it("SC16 (Gated Amendment 6 S45): renders stock quantity with the Japanese unit label, no raw unit code", () => {
+    render(
+      <ProductTable
+        items={[
+          makeMockProductWithRelations({
+            product_code: "UNIT-001",
+            stock_quantity: 18,
+            stock_unit: "pcs",
+          }),
+        ]}
+      />,
+    );
+    const row = screen.getByText("UNIT-001").closest("tr");
+    if (row === null) throw new Error("row not found");
+    expect(within(row).getByText("18 個")).toBeInTheDocument();
+    expect(within(row).queryByText(/pcs/)).not.toBeInTheDocument();
+  });
 });
