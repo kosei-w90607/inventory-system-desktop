@@ -8,16 +8,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
-- Amendments: f56a5f7
+- Amendments: f56a5f7 cc7b0e8
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（発注書 relay）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（Fable が P1/P2/P3 裁定）
-- Reviewed Content HEAD: cae3d13
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 画面の perPage Select 動作 + 入出庫履歴・在庫変動履歴の 200 選択 + 件数文言の新形 + 上部帯の非太字、AC-L3-1〜4）
@@ -418,3 +418,5 @@ Review-only skipped because: Final Review を独立 Sonnet subagent（fresh cont
 - Findings Freeze: frozen at Final Review round 1（P1/P2 = 0 after disposition）; post-freeze exceptions: none.
 
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を本 state-only commit で圧縮遷移（forward state-only 2/3）: local-verified の証跡 = Writer content commit の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = 上記 Final Review round 1（P1 disposition 後 P1/P2 = 0）+ mutation 14/14 kill、Reviewed Content HEAD = `cae3d13`、Amendments = `f56a5f7`。次 = owner Windows native L3（AC-L3-1〜4、介入 2/3）。
+
+2026-09-05: owner Windows native L3 run 1（Reviewed Content HEAD `cae3d13`、介入 2/3 消費）= 操作ログ FAIL（表示件数変更後の viewport が途中位置 / native 入力欄と Select の枠の濃淡差 / 一括価格改定ログが「その他（product_price_revise）」fallback）。owner disposition = A（3 件すべて本 PR で修正）→ Gated Amendment 2（`cc7b0e8`）。`human-confirm -> implementing` を本 state-backtrack commit で 1 段戻す（Reviewed Content HEAD = pending へ、Amendments に `cc7b0e8` 追加）。次 = Writer 是正（S13 = A2-a〜c）→ Final Review round 2 + mutation X15/X16 → 遷移は S12 content commit に同乗 → owner L3 run 2（AC-L3-1〜5、介入 3/3、承認同乗）。
