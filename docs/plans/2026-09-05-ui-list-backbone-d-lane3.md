@@ -8,10 +8,10 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: fa15866
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（発注書 relay）
@@ -356,6 +356,13 @@ Fill after implementation.
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
 ## Review Response
+
+Plan Review（独立 Sonnet subagent、fresh context、read-only、Coordinator が P1 を全件実測で裏取り）:
+- round 1（対象 `fa15866`）: P1×3（catalog ⑩ の旧文言 hit 数 3 → 7 の過小申告 / AC10 の literal anchor が対象 doc の実表記と不一致 / `MAX_PER_PAGE` を記述する design doc が 3 → 10 箇所）+ P2×2 + P3×1 → 全件 accept。Coordinator が実測中に decision-log D-031 の例外条項（inventory_service 上限 100 据え置き）との衝突を発見し、D-081 新設を S10 に追加。是正 commit `8d8cad3`
+- round 2（対象 `8d8cad3`）: round 1 の P1 3 件 fixed、P2-1 partial（catalog ⑩ `:612` `:638` の列挙漏れ）、新規 P1×1（`66-ui-stock-movements.md` の anchor がバッククォート込みで literal 不一致 = vacuous oracle）→ accept。是正 commit `d8c3afd`
+- round 3（対象 `d8c3afd`）: 両是正を実測で確認、新規 P1 なし、P2×1（`既定 50` anchor の将来衝突の素地、記録のみ）→ **approve**（round 3/3）
+
+2026-09-05: Plan Gate 収束（round 3/3、是正 commit = round 1 `8d8cad3` / round 2 `d8c3afd`）。`plan-draft -> plan-gate -> plan-approved -> implementing` を本 state-only commit で圧縮遷移（forward state-only 1/3）: plan-gate の証跡 = plan-first commit `fa15866`（Plans.md ④ active link 同乗）と上記 round 1〜3、plan-approved の証跡 = round 3 approve（最終 P1/P2 = 0、P2 記録のみ 1）、Plan Commit = plan-first commit `fa15866`。
 
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
