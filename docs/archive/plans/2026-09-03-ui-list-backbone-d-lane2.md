@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
@@ -23,6 +23,8 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b) の実施分）。Lane 1b mockup 5 file の視認は Gated Amendment 5 で non-blocking へ descope（run 5 = 帯 1 点）
+
+2026-09-05: PR #32 closeout。owner run 7「OK, 全 PASS で締めよう」（2026-09-04）→ squash merge `7e0ccf1`（2026-09-04）。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ④ の link 更新）に同乗。Lane 3〜5 の入力は Plans.md ④ owner 反応 ledger（run 1〜7 原文 = `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`）。Lane 3 は同日起票（`docs/plans/2026-09-05-ui-list-backbone-d-lane3.md`）。
 
 役割配分の記録（D-079 Impact「実装 code の Writer 割当ては change ごとに Coordinator 判断」に基づく 1 行）: 本 lane は UI 視覚系の runtime change であり、owner 所感「UI 視覚系は Claude が触る方が良い結果」（2026-09-03、D-079 Why）を実装 code にも適用して Writer を Sonnet subagent とする。`AGENT_OPERATING_MANUAL` §3 の独立性（Writer ≠ Plan Reviewer / Writer ≠ Final Reviewer / Final Reviewer は fresh context）は、Plan Reviewer 一次・mutation 独立再実測を Writer とは別の Sonnet fresh context、Final Review を Codex が担うことで維持する。
 
