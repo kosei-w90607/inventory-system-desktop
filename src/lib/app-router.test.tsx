@@ -158,8 +158,16 @@ function installNativeScrollClamp(main: HTMLElement) {
 }
 
 async function renderAppRouterAt(initialHref: string) {
+  window.history.pushState(null, "", initialHref);
   const router = createAppRouter({
     history: createMemoryHistory({ initialEntries: [initialHref] }),
+  });
+  // scrollPageToTop() の flag は window.location.pathname に束縛される（Final Review round 3
+  // P2）。実 browser history と異なり createMemoryHistory は window.location を更新しないため、
+  // pathname 判定 test が実挙動を再現できるよう onBeforeLoad（render commit より前）で
+  // pushState を明示的に同期する（router 挙動には無関係、test 側の副作用のみ）。
+  router.subscribe("onBeforeLoad", () => {
+    window.history.pushState(null, "", router.latestLocation.href);
   });
   render(<RouterProvider router={router} />);
   await waitFor(() => {
@@ -317,52 +325,81 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     expect(main.scrollTop).toBe(470);
   });
 
-  it("SC10b: a valid force-scroll-top flag overrides a proven cache hit (Gated Amendment 3, A3-a)", async () => {
-    const sourceHref = "/inventory/records?page=20";
-    const detailHref = "/inventory/receiving/records/12?case=force-scroll-top-active";
-    const { router, main } = await renderAppRouterAt(sourceHref);
+  it("SC10b: a valid same-pathname force-scroll-top flag overrides a proven cache hit (Gated Amendment 3, A3-a)", async () => {
+    // DSR-03 型（navigate を伴わない scrollPageToTop 呼出し、perPage reset の実態）を模した
+    // 同一 pathname・search のみ差し替えのシナリオ（"/inventory/records" 固定、page だけが変わる）。
+    const listHrefA = "/inventory/records?page=20";
+    const listHrefB = "/inventory/records?page=200";
+    const { router, main } = await renderAppRouterAt(listHrefA);
     // happy-dom の smooth scroll 模擬は setTimeout(0) 経由の遅延書込みで、後続 await 中に
     // main.scrollTop を非同期に上書きし得る（実 browser の割込みと異なる挙動）。scrollPageToTop()
     // が呼ぶ scrollTo は no-op にし、flag 経由の直接代入だけを見る。
     vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
 
     trackScroll(main, 410);
-    await navigateAndRender(router, detailHref);
-    await navigateAndRender(router, sourceHref);
+    await navigateAndRender(router, listHrefB);
+    await navigateAndRender(router, listHrefA);
     expect(main.scrollTop).toBe(410);
 
     trackScroll(main, 515);
-    await navigateAndRender(router, detailHref);
+    await navigateAndRender(router, listHrefB);
+    // listHrefB（listHrefA と同じ pathname）で flag を立てる
     scrollPageToTop();
-    await navigateAndRender(router, sourceHref);
+    await navigateAndRender(router, listHrefA);
 
     expect(main.scrollTop).toBe(0);
-    expect(main.scrollTop).not.toBe(515);
+    expect(main.scrollTop).not.toBe(410);
   });
 
-  it("SC10b: an expired force-scroll-top flag lets the normal return restoration proceed (Gated Amendment 3, A3-a)", async () => {
-    const sourceHref = "/inventory/records?page=21";
-    const detailHref = "/inventory/receiving/records/12?case=force-scroll-top-expired";
-    const { router, main } = await renderAppRouterAt(sourceHref);
+  it("SC10b: an expired same-pathname force-scroll-top flag lets the normal return restoration proceed (Gated Amendment 3, A3-a)", async () => {
+    const listHrefA = "/inventory/records?page=21";
+    const listHrefB = "/inventory/records?page=210";
+    const { router, main } = await renderAppRouterAt(listHrefA);
     // happy-dom の smooth scroll 模擬は setTimeout(0) 経由の遅延書込みで、後続 await 中に
     // main.scrollTop を非同期に上書きし得る（実 browser の割込みと異なる挙動）。scrollPageToTop()
     // が呼ぶ scrollTo は no-op にし、flag の期限判定だけを見る。
     vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
 
     trackScroll(main, 410);
-    await navigateAndRender(router, detailHref);
-    await navigateAndRender(router, sourceHref);
+    await navigateAndRender(router, listHrefB);
+    await navigateAndRender(router, listHrefA);
     expect(main.scrollTop).toBe(410);
 
     trackScroll(main, 515);
-    await navigateAndRender(router, detailHref);
+    await navigateAndRender(router, listHrefB);
 
     // flag の期限（1000ms）を実経過時間で切らす。TanStack Router 自身も内部で Date.now() に
     // 依存するため（pending 状態のタイミング計算等）、Date.now を直接 mock せず実待機する。
     scrollPageToTop();
     await new Promise((resolve) => setTimeout(resolve, 1_050));
-    await navigateAndRender(router, sourceHref);
+    await navigateAndRender(router, listHrefA);
 
+    expect(main.scrollTop).toBe(515);
+    expect(main.scrollTop).not.toBe(0);
+  });
+
+  it("SC10b: a force-scroll-top flag bound to a different pathname does not override another screen's return restoration (Final Review round 3, P2)", async () => {
+    const listHref = "/inventory/records?page=22";
+    const detailHref = "/inventory/receiving/records/12?case=force-scroll-top-cross-pathname";
+    const { router, main } = await renderAppRouterAt(listHref);
+    // happy-dom の smooth scroll 模擬は setTimeout(0) 経由の遅延書込みで、後続 await 中に
+    // main.scrollTop を非同期に上書きし得る（実 browser の割込みと異なる挙動）。scrollPageToTop()
+    // が呼ぶ scrollTo は no-op にし、pathname 束縛の判定だけを見る。
+    vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
+
+    trackScroll(main, 410);
+    await navigateAndRender(router, detailHref);
+    await navigateAndRender(router, listHref);
+    expect(main.scrollTop).toBe(410);
+
+    trackScroll(main, 515);
+    await navigateAndRender(router, detailHref);
+    // pathname A（detailHref）で flag を立てる。navigate を伴わない DSR-03 型呼出しの近似
+    scrollPageToTop();
+    // TTL 内に pathname B（listHref、別画面）へ遷移 → pathname 不一致のため flag は無視される
+    await navigateAndRender(router, listHref);
+
+    // listHref 自身の正規の戻り復元（proven cache hit = 515）が保たれる
     expect(main.scrollTop).toBe(515);
     expect(main.scrollTop).not.toBe(0);
   });

@@ -81,8 +81,16 @@ describe("AC16 / SC10a: OperationLogsPage perPage 変更後の scroll 位置（G
   });
 
   it("SC10a: page 1(640)→次のページ→page 2(900)→表示件数100 で main.scrollTop が 0 になる", async () => {
+    window.history.pushState(null, "", "/settings/logs?page=1");
     const router = createAppRouter({
       history: createMemoryHistory({ initialEntries: ["/settings/logs?page=1"] }),
+    });
+    // scrollPageToTop() の flag は window.location.pathname に束縛される（Final Review round 3
+    // P2）。実 browser history と異なり createMemoryHistory は window.location を更新しないため、
+    // pathname 判定が実挙動を再現できるよう onBeforeLoad（render commit より前）で pushState を
+    // 明示的に同期する（router 挙動には無関係、test 側の副作用のみ）。
+    router.subscribe("onBeforeLoad", () => {
+      window.history.pushState(null, "", router.latestLocation.href);
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
