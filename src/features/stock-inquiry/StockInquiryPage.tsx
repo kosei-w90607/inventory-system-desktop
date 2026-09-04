@@ -22,6 +22,7 @@ import { EmptySearchPlaceholder } from "./components/EmptySearchPlaceholder";
 import { StockDetailCard } from "./components/StockDetailCard";
 import { Pagination } from "@/components/patterns/Pagination";
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import {
   Select,
   SelectContent,
@@ -138,6 +139,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
               if (next === undefined) return;
               setPerPage(next);
               onSearchChange((prev) => ({ ...prev, page: undefined }));
+              scrollPageToTop();
             }}
           >
             <SelectTrigger id="stock-inquiry-per-page" className="w-[7rem]">

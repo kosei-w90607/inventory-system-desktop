@@ -34,6 +34,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 import { Pagination } from "@/components/patterns/Pagination";
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import {
   INVENTORY_RECORD_STATUS_OPTIONS,
@@ -279,6 +280,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
                 if (next === undefined) return;
                 setPerPage(next);
                 updateSearch({}, true);
+                scrollPageToTop();
               }}
             >
               <SelectTrigger id="inventory-records-per-page" className="w-[7rem]">

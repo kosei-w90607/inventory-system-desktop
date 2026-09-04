@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 import { Pagination } from "@/components/patterns/Pagination";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import type { StockMovementsSearch } from "./types";
 import { MOVEMENT_TYPE_OPTIONS, normalizeStockMovementsSearch } from "./types";
 import { useStockMovements } from "./hooks/useStockMovements";
@@ -192,6 +193,7 @@ export function StockMovementsPage({
               if (next === undefined) return;
               setPerPage(next);
               updateSearch({}, true);
+              scrollPageToTop();
             }}
           >
             <SelectTrigger id="stock-movements-per-page" className="w-[7rem]">

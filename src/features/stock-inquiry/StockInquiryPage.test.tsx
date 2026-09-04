@@ -16,6 +16,7 @@ import { commands } from "@/lib/bindings";
 import { renderWithRouter } from "@/test/render-with-router";
 import type { StockInquirySearch } from "./types";
 import { StockInquiryPage } from "./StockInquiryPage";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import {
   makeMockDepartment,
   makeMockProductWithRelations,
@@ -30,11 +31,13 @@ vi.mock("@/lib/bindings", () => ({
     listDepartments: vi.fn(),
   },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 
 const mockSearch = vi.mocked(commands.searchProducts);
 const mockLowStock = vi.mocked(commands.listLowStock);
 const mockDetail = vi.mocked(commands.getStockDetail);
 const mockListDepartments = vi.mocked(commands.listDepartments);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 function renderWithClient(ui: ReactNode, qc?: QueryClient) {
   const client =
@@ -50,6 +53,7 @@ beforeEach(() => {
   mockLowStock.mockReset();
   mockDetail.mockReset();
   mockListDepartments.mockReset();
+  mockScrollPageToTop.mockReset();
   mockListDepartments.mockResolvedValue({ status: "ok", data: [] });
 });
 
@@ -621,5 +625,29 @@ describe("StockInquiryPage SPEC-UIBB-9（部門候補 loading / error 結線）"
     await user.click(screen.getByRole("combobox", { name: "部門" }));
     // dept=1 選択中でも布（id=2）が候補に残っている（DSR-10 縮退なし）
     expect(await screen.findByRole("option", { name: "布" })).toBeInTheDocument();
+  });
+});
+
+describe("StockInquiryPage perPage scroll（UI-06a）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    mockSearch.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-SCROLL" })],
+        total_count: 120,
+        page: 2,
+        per_page: 50,
+      },
+    });
+    renderWithClient(
+      <StockInquiryPage search={{ q: "P", status: "all", page: 2 }} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByText("P-SCROLL");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "100 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });

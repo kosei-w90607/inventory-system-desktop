@@ -139,7 +139,7 @@ export interface NormalizedOperationLogsSearch {
 
 #### 74.5.2 Frontend ラベル registry（既存コード実測ベース）
 
-`src/features/operation-logs/operation-type-labels.ts`（新規）に、現行コードベースで実際に使われている operation_type 値（`rg 'operation_type: "[a-z_]+"' src-tauri/src` で実測、`test_op` を除く24種）を初期 entries とする。
+`src/features/operation-logs/operation-type-labels.ts`（新規）に、現行コードベースで実際に使われている operation_type 値（`rg 'operation_type: "[a-z_]+"' src-tauri/src` で実測、`test_op` を除く29種）を初期 entries とする。
 
 | カテゴリ | operation_type | 日本語ラベル |
 |---|---|---|
@@ -147,6 +147,10 @@ export interface NormalizedOperationLogsSearch {
 | 商品管理 | `product_update` | 商品修正 |
 | 商品管理 | `product_discontinue` | 廃番切替 |
 | 商品管理 | `product_import` | 商品一括インポート |
+| 商品管理 | `product_price_revise` | 一括価格改定 |
+| 商品管理 | `product_bulk_plu_target` | PLU 対象一括切替 |
+| 取引先管理 | `supplier_rename` | 取引先の改名 |
+| 取引先管理 | `supplier_merge` | 取引先の統合 |
 | 入出庫 | `receiving_create` | 入庫記録 |
 | 入出庫 | `return_create` | 返品・交換記録 |
 | 入出庫 | `manual_sale_create` | 手動販売出庫記録 |
@@ -162,6 +166,7 @@ export interface NormalizedOperationLogsSearch {
 | 棚卸し | `stocktake_start` | 棚卸し開始 |
 | 棚卸し | `stocktake_complete` | 棚卸し確定 |
 | PLU書出し | `plu_export` | PLU書出し |
+| PLU書出し | `plu_register_snapshot_import` | PLU 登録状態の取込み |
 | 整合性検証 | `integrity_check` | 整合性チェック実行 |
 | 整合性検証 | `integrity_fix` | 整合性補正 |
 | システム管理 | `backup_create` | バックアップ作成 |
@@ -169,7 +174,7 @@ export interface NormalizedOperationLogsSearch {
 | システム管理 | `log_cleanup` | 操作ログ自動削除 |
 
 - **registry ownership**: frontend（`src/features/operation-logs/operation-type-labels.ts`）が単一の SSOT を持つ。backend は distinct 値の集合のみ返す。
-- **初期 entries/順序**: 上表の24件、カテゴリ順（商品管理 → 入出庫 → 売上データ取込み → 棚卸し → PLU書出し → 整合性検証 → システム管理）→ カテゴリ内は表の記載順を初期表示順とする。
+- **初期 entries/順序**: 上表の29件、カテゴリ順（商品管理 → 取引先管理 → 入出庫 → 売上データ取込み → 棚卸し → PLU書出し → 整合性検証 → システム管理）→ カテゴリ内は表の記載順を初期表示順とする。
 - **拡張ルール**: 新しい operation_type を biz/mnt 層で導入する実装 PR は、同じ PR で `operation-type-labels.ts` にカテゴリ + 日本語ラベルを追加する。追加を怠っても機能は壊れない（raw fallback）が、operator 可読性が下がるためレビュー観点に加える。
 - **未知値 fallback**: registry 未収載の値は「その他（`{raw_value}`）」の形式でカテゴリ「その他」にグルーピングして表示する。フィルタ選択肢としても `{raw_value}` のまま選べる。
 - **フィルタ選択肢のソース**: `typesQuery`（`list_log_operation_types` の結果）と `operation-type-labels.ts` を突き合わせ、`typesQuery` に実在する値だけを選択肢にする（未来のいつか使われるかもしれない registry entry を実在しないのに選べる状態にしない）。

@@ -64,6 +64,7 @@ import {
 import { describeError } from "@/lib/describe-error";
 import { isInvokeError, unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import { Pagination } from "@/components/patterns/Pagination";
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
@@ -760,6 +761,7 @@ export function StocktakeItemList({
               if (next === undefined) return;
               onPerPageChange(next);
               onSearchChange((prev) => ({ ...prev, page: 1 }));
+              scrollPageToTop();
             }}
           >
             <SelectTrigger id="stocktake-per-page" className="w-[7rem]">

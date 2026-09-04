@@ -41,6 +41,7 @@ import {
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
+import { scrollPageToTop } from "@/lib/page-scroll";
 
 export interface ProductListPageProps {
   search: ProductListSearch;
@@ -190,7 +191,10 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           value={String(normalizedSearch.perPage)}
           onValueChange={(value) => {
             const perPage = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
-            if (perPage !== undefined) updateSearch({ perPage });
+            if (perPage !== undefined) {
+              updateSearch({ perPage });
+              scrollPageToTop();
+            }
           }}
         >
           <SelectTrigger id="product-per-page" className="w-[7rem]">

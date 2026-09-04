@@ -14,6 +14,7 @@ import {
 } from "./lib/test-fixtures";
 import { PriceRevisionPage } from "./PriceRevisionPage";
 import type { PriceRevisionSearch } from "./priceRevisionSearch";
+import { scrollPageToTop } from "@/lib/page-scroll";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
@@ -31,6 +32,7 @@ vi.mock("@/lib/bindings", () => ({
     createSupplier: vi.fn(),
   },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 
 const mockSearchProducts = vi.mocked(commands.searchProducts);
 const mockListSuppliers = vi.mocked(commands.listSuppliers);
@@ -38,6 +40,7 @@ const mockListDepartments = vi.mocked(commands.listDepartments);
 const mockListPriceHistory = vi.mocked(commands.listPriceHistory);
 const mockReviseProductPrice = vi.mocked(commands.reviseProductPrice);
 const mockCreateSupplier = vi.mocked(commands.createSupplier);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 const DEFAULT_PRODUCTS = [
   makeMockProductWithRelations({
@@ -650,5 +653,18 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     await waitFor(() => {
       expect(mockSearchProducts).toHaveBeenCalledTimes(3);
     });
+  });
+});
+
+describe("PriceRevisionPage perPage scroll（UI-14）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    const user = userEvent.setup();
+    renderStateful({ page: 2 });
+    await screen.findByText("P-001");
+
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "100 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });

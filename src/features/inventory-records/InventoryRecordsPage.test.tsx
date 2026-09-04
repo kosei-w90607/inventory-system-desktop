@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands } from "@/lib/bindings";
 import type { InventoryRecordSummary } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { renderWithRouter } from "@/test/render-with-router";
 import { InventoryRecordsPage } from "./InventoryRecordsPage";
 import { formatRecordStatus, type InventoryRecordsSearch } from "./types";
@@ -24,9 +25,11 @@ vi.mock("@/lib/bindings", () => ({
     listInventoryRecords: vi.fn(),
   },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 
 const mockListDepartments = vi.mocked(commands.listDepartments);
 const mockListInventoryRecords = vi.mocked(commands.listInventoryRecords);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 function renderWithClient(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -86,6 +89,7 @@ function makeRecord(overrides: Partial<InventoryRecordSummary> = {}): InventoryR
 beforeEach(() => {
   mockListDepartments.mockReset();
   mockListInventoryRecords.mockReset();
+  mockScrollPageToTop.mockReset();
   mockListDepartments.mockResolvedValue({
     status: "ok",
     data: [
@@ -650,5 +654,22 @@ describe("InventoryRecordsPage SPEC-UIBB-1/2（filter-empty reset action、65 §
       status: undefined,
       page: undefined,
     });
+  });
+});
+
+describe("InventoryRecordsPage perPage scroll（REQ-206 / TRACE-D1）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeRecord()], total_count: 120, page: 2, per_page: 50 },
+    });
+    renderWithClient(<InventoryRecordsPage search={{ page: 2 }} onSearchChange={vi.fn()} />);
+    await screen.findByText("#7");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "100 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });

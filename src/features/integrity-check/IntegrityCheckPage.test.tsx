@@ -4,16 +4,19 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type IntegrityMismatch } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { d052InvalidationOracle, expectExactInvalidations } from "@/test/invalidation-oracle";
 import { IntegrityCheckPage } from "./IntegrityCheckPage";
 
 vi.mock("@/lib/bindings", () => ({
   commands: { runIntegrityCheck: vi.fn(), fixIntegrity: vi.fn(), listLogs: vi.fn() },
 }));
+vi.mock("@/lib/page-scroll", () => ({ scrollPageToTop: vi.fn() }));
 
 const runIntegrityCheck = vi.mocked(commands.runIntegrityCheck);
 const fixIntegrity = vi.mocked(commands.fixIntegrity);
 const listLogs = vi.mocked(commands.listLogs);
+const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
 function mismatch(code: string, stock = 10, movements = 7): IntegrityMismatch {
   return {
@@ -95,6 +98,7 @@ beforeEach(() => {
   runIntegrityCheck.mockReset();
   fixIntegrity.mockReset();
   listLogs.mockReset();
+  mockScrollPageToTop.mockReset();
   listLogs.mockResolvedValue({
     status: "ok",
     data: { items: [], total_count: 0, page: 1, per_page: 1 },
@@ -479,5 +483,22 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     expect(await screen.findByText("補正済み")).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "再度チェック" }));
     expect(await screen.findByText("差異はありません")).toBeInTheDocument();
+  });
+});
+
+describe("IntegrityCheckPage perPage scroll（UI-13）", () => {
+  it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
+    runIntegrityCheck.mockResolvedValue(
+      checkResult(Array.from({ length: 101 }, (_, index) => mismatch(`SYN-${String(index)}`))),
+    );
+    renderPage();
+    await runCheck();
+    await screen.findByText("合成商品 SYN-0");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "50 件" }));
+
+    expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });

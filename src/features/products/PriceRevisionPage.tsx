@@ -20,6 +20,7 @@ import {
 import { PriceRevisionFilters } from "./components/PriceRevisionFilters";
 import { PriceRevisionTable } from "./components/PriceRevisionTable";
 import { Pagination } from "@/components/patterns/Pagination";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { usePriceRevisionList } from "./hooks/usePriceRevisionList";
 import {
   resetPriceRevisionSearch,
@@ -75,7 +76,10 @@ export function PriceRevisionPage({
           value={String(list.normalizedSearch.perPage)}
           onValueChange={(value) => {
             const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
-            if (next !== undefined) patchSearch({ perPage: next });
+            if (next !== undefined) {
+              patchSearch({ perPage: next });
+              scrollPageToTop();
+            }
           }}
         >
           <SelectTrigger id="price-revision-per-page" className="w-[7rem]">

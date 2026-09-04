@@ -30,6 +30,7 @@ import { Pagination } from "@/components/patterns/Pagination";
 import { commands, type OperationLog } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import {
   OPERATION_TYPE_LABELS,
@@ -350,7 +351,7 @@ export function OperationLogsPage({
               id="log-start"
               type="date"
               value={normalized.start_date ?? ""}
-              className="h-9 rounded-md border px-3"
+              className="h-9 rounded-md border border-input bg-control-surface px-3"
               onChange={(e) => {
                 updateDate("start_date", e.currentTarget.value);
               }}
@@ -364,7 +365,7 @@ export function OperationLogsPage({
               id="log-end"
               type="date"
               value={normalized.end_date ?? ""}
-              className="h-9 rounded-md border px-3"
+              className="h-9 rounded-md border border-input bg-control-surface px-3"
               onChange={(e) => {
                 updateDate("end_date", e.currentTarget.value);
               }}
@@ -377,7 +378,7 @@ export function OperationLogsPage({
             <select
               id="log-type"
               value={normalized.operation_type ?? ""}
-              className="h-9 min-w-52 rounded-md border px-3"
+              className="h-9 min-w-52 rounded-md border border-input bg-control-surface px-3"
               onChange={(e) => {
                 update({ operation_type: e.currentTarget.value || undefined }, true);
               }}
@@ -405,6 +406,7 @@ export function OperationLogsPage({
                 if (next === undefined) return;
                 setPerPage(next);
                 update({}, true);
+                scrollPageToTop();
               }}
             >
               <SelectTrigger id="operation-logs-per-page" className="w-[7rem]">

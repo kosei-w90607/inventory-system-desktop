@@ -48,6 +48,7 @@ import { commands, type IntegrityFixResult, type IntegrityResult } from "@/lib/b
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 
 type IntegrityPhase = "idle" | "running" | "completed";
@@ -246,6 +247,7 @@ export function IntegrityCheckPage() {
               if (next === undefined) return;
               setPerPage(next);
               setPage(1);
+              scrollPageToTop();
             }}
           >
             <SelectTrigger id="integrity-check-per-page" className="w-[7rem]">
