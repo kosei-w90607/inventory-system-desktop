@@ -142,6 +142,22 @@ Writer（Codex）が実装着手前の突合で、`docs/function-design/66-ui-st
 - **AC 追加**: AC10c（下記）。Contract Coverage Ledger に「UI 契約 4 file の固定 perPage 記述」行を追加。Test Matrix に SC8c を追加
 - **起票時実測の訂正**: 「旧文言 hit 数」節の `66-ui-stock-movements.md` は `:85` のみを対象としていたが、`:62`（camelCase）と `:103`（sample）も対象。sweep は snake_case の `per_page` 表記だけで行っており camelCase を取りこぼした（同型の取りこぼしを防ぐため AC10c の anchor は camelCase / snake_case / 「件固定」の 3 表記を個別に持つ）
 
+### Gated Amendment 2（owner L3 run 1 FAIL 起源、2026-09-05、Coordinator 起票）
+
+owner Windows native L3 run 1（Reviewed Content HEAD `cae3d13`）で操作ログ画面が FAIL。owner disposition = **A（3 件すべて本 PR で修正）**。Coordinator が code で機序を裏取りし、同型の漏れを sweep した上で Scope に追加する。owner 決定（既定値・選択肢・文言）の変更は含まない。
+
+- **A2-a（viewport、8 画面 sweep）**: 表示件数変更 handler は `page` を 1 に戻すが scroll を先頭へ戻さないため、長い一覧では 1 ページ目のデータが画面途中から見える。DSR-17 分類①「同一画面内の状態遷移 → event-driven で `scrollPageToTop()` を呼ぶ」に該当。実測: 8 画面とも perPage handler から `scrollPageToTop()`（`src/lib/page-scroll.ts:3`）を呼んでいない。是正 = 8 画面すべての perPage 変更 handler（URL search state 画面は navigate 直後、local state 画面は setState 直後）で `scrollPageToTop()` を呼ぶ。ページ送り（前後 page）時の scroll は既存挙動のまま（本 lane 対象外、L3 run 2 で owner が問題視すれば別 item）
+- **A2-b（枠線、操作ログのみ）**: 操作ログの native `<input type="date">` ×2（`OperationLogsPage.tsx:349,363`、class `h-9 rounded-md border px-3`）と native `<select>`（`:377`、`h-9 min-w-52 rounded-md border px-3`）が `--border` を使い、隣の shadcn `Select`（`border-input` = `--border-strong`、`bg-control-surface`）と濃淡差が出る。是正 = 3 要素を `border-input bg-control-surface` へ。これは Plans ④ D8（native 入力欄の token 化 sweep、Lane 5）の操作ログ分の前倒しで、入出庫履歴（既に `border-input`）/ 入庫 / 廃棄の native 入力欄は Lane 5 のまま
+- **A2-c（操作種別 registry、5 種別）**: backend が現行機能として出力する `product_price_revise` が `operation-type-labels.ts` に未登録のため「その他（product_price_revise）」fallback で表示される（`74-ui-operation-logs.md:172`「拡張ルール: 新 operation_type を導入する PR は同じ PR で registry へ追加」の drift）。sweep（`src-tauri/src` の `operation_type: "…"` 出力 − registry key、test fixture `test_op` / `z_unknown` は除外）で未登録は 5 種別: `product_price_revise` / `product_bulk_plu_target` / `plu_register_snapshot_import` / `supplier_rename` / `supplier_merge`。是正 = 5 entry を registry と `74-ui-operation-logs.md:146` 付近の registry 表へ追加。ラベル（Coordinator 案、owner は L3 run 2 の表示で確認）:
+  - `product_price_revise` → 商品管理 / 一括価格改定
+  - `product_bulk_plu_target` → 商品管理 / PLU 対象一括切替
+  - `plu_register_snapshot_import` → PLU書出し / PLU 登録状態の取込み
+  - `supplier_rename` → 取引先管理 / 取引先の改名（新カテゴリ「取引先管理」を 商品管理 の直後に置く）
+  - `supplier_merge` → 取引先管理 / 取引先の統合
+- **AC 追加**: AC13（registry 5 key の存在 + 74 doc 表の同期）、AC14（8 画面の perPage handler で `scrollPageToTop` 呼出し）、AC15（操作ログ native 3 要素の token）、AC-L3-5（下記）。Test Matrix に SC9a〜c を追加。mutation 再実測に X15（`scrollPageToTop` 呼出し撤去）/ X16（registry から `product_price_revise` を外す）を追加
+- **Workflow**: `human-confirm -> implementing` を state-backtrack で戻し、Writer（Codex）が test 先行で是正 → L1 full → Final Review round 2 + mutation 追加分の再実測 → 遷移（S12 の Plans.md ④ 更新 content commit に同乗、state-only cap 温存）→ owner L3 run 2（canonical 先頭から AC-L3-1〜5）
+- **Owner Effort Budget**: 介入は 起票 1 / L3 run 1 = 2 で、L3 run 2 が 3/3。承認は L3 run 2 の PASS 報告と同一 message で受け取り 4 回目を発生させない（Coordinator 責務としてここに記録）
+
 ## Non-scope
 
 - 残り 7 画面の `ListShell` 化（toolbar 2 段・sticky 帯・skeleton 統一。owner 裁定、Lane 3〜5 振り分けの前提）
@@ -184,6 +200,10 @@ Writer（Codex）が実装着手前の突合で、`docs/function-design/66-ui-st
 - AC-L3-2（owner Windows native L3）: 入出庫履歴・在庫変動履歴で 200 を選んで `ValidationFailed` にならない
 - AC-L3-3（owner Windows native L3）: `Pagination.tsx` の件数文言が新形で表示される
 - AC-L3-4（owner Windows native L3）: 上部の `PaginationSummary` 帯が太字（`font-semibold`）でない
+- AC13（Gated Amendment 2）: `rg -Fn "product_price_revise" src/features/operation-logs/operation-type-labels.ts` = 1、同様に `product_bulk_plu_target` / `plu_register_snapshot_import` / `supplier_rename` / `supplier_merge` が各 1（起票時 0）。`rg -Fn "product_price_revise" docs/function-design/74-ui-operation-logs.md` ≥ 1（起票時 0）。新規 test が 5 key のラベル文字列を独立転記で完全一致比較する
+- AC14（Gated Amendment 2）: 8 画面の perPage 変更 handler で `scrollPageToTop` が呼ばれる — `rg -ln "scrollPageToTop" src/features/products/ProductListPage.tsx src/features/stocktake/StocktakePage.tsx src/features/stock-inquiry/StockInquiryPage.tsx src/features/inventory-records/InventoryRecordsPage.tsx src/features/stock-movements/StockMovementsPage.tsx src/features/operation-logs/OperationLogsPage.tsx src/features/products/PriceRevisionPage.tsx src/features/integrity-check/IntegrityCheckPage.tsx` = 8 file（起票時 0）。各 Page test に「表示件数変更で `scrollPageToTop` mock が 1 回呼ばれる」を追加（handler 経由の呼出しを assert し、ページ送りでは呼ばれないことも 1 case 置く）
+- AC15（Gated Amendment 2）: `rg -n 'className="h-9 rounded-md border px-3"|className="h-9 min-w-52 rounded-md border px-3"' src/features/operation-logs/OperationLogsPage.tsx` = 0（起票時 3）かつ `rg -c "border-input bg-control-surface" src/features/operation-logs/OperationLogsPage.tsx` ≥ 3
+- AC-L3-5（owner Windows native L3、Gated Amendment 2）: 操作ログで (a) 表示件数を変えると画面が先頭から見える (b) 期間・種別の入力欄と表示件数 Select の枠の濃さが揃っている (c) 一括価格改定のログが「一括価格改定」で表示され「その他（`product_price_revise`）」でない（`OperationLogsPage.tsx` の種別 badge を目視）。他 7 画面でも表示件数変更後に先頭表示になる
 
 ## Design Sources
 
