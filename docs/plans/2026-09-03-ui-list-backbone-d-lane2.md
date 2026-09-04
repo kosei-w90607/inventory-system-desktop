@@ -10,16 +10,16 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
-- Amendments: 4401112 b318240 357941c 75d5e30 ec56d20 cf56d18 29091d4 9005270 cdd82d9 9e9e76f
+- Amendments: 4401112 b318240 357941c 75d5e30 ec56d20 cf56d18 29091d4 9005270 cdd82d9 9e9e76f a823df8
 - Coordinator: Claude Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 7b80f67
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b) の実施分）。Lane 1b mockup 5 file の視認は Gated Amendment 5 で non-blocking へ descope（run 5 = 帯 1 点）
@@ -365,7 +365,11 @@ Minimum design checks for business-app work:
 | 追補 S16 forced-colors focus indicator | globals.css | SC13 | AC-L3-4 |
 | Amendment 4 S22〜S32 mockup 5 file の画面 markup（runtime + Lane 2 差分に限定、DSR-22 mapping 対象のみ固定列） | docs/design-system/reference/mockup-d-{forms-a,forms-b,history,home-sales-admin,import-export}.html | SC14a（doc oracle、画面本体範囲） | AC-L3-5 |
 | Amendment 4 S22 / S26 / S34 末尾 note 4 区分 + Plans.md 4 区分 handoff | 同 5 file + docs/Plans.md | SC14b（doc oracle、末尾 note 範囲） | AC-L3-5 |
-| Amendment 4 S28（追補 S18 の supersede）lists pilot のみ帯化 | mockup-d-lists.html + 4 file | SC12（縮小） | AC-L3-5 |
+| Amendment 4 S28（追補 S18 の supersede）lists pilot のみ帯化 | mockup-d-lists.html + 4 file | SC12（縮小） | AC-L3-5（descope） |
+| Amendment 5 S39 件数行 `bg-background` + 1px 下線、灰色面は thead のみ | ListShell.tsx / catalog ⑯ / 00-foundations / mockup-d-lists.html | SC8 / SC10 / SC12（更新）、X19 / X33 | AC-L3-2（run 5 = 帯 1 点） |
+| Amendment 5 S40 AC-L3-5 descope（mockup は reference-only） | reference/README.md | — | AC-L3-5（non-blocking） |
+| Amendment 5 S41 owner 反応 ledger の Plans.md 転記（runtime backlog 9 + 維持 1） | docs/Plans.md | doc oracle（bullet 数 10） | — |
+| Amendment 5 S42 runtime-first（D-080） | docs/decision-log.md / Plans.md ④ | doc oracle（`^## D-080` = 1） | — |
 | DSR-22 低視力 | — | — | AC-L3-4 |
 | S6 docs | design-system / 59 / checklist / UI_TECH_STACK / mockup 注記 | AC6（rg oracle） | — |
 | S7 mockup | reference | AC7 | AC-L3-5 |
@@ -650,6 +654,18 @@ Coordinator 起票の Gated Amendment 1（本 packet `## Scope` 末尾）に従�
 
 **遷移**: post-impl state-only 2/2 到達のため、`implementing -> local-verified -> independent-review -> human-confirm` を本 commit（Contract Coverage Ledger SC14a / SC14b / SC12 行 + 本結果記入 + Workflow State）に同乗して materialize。根拠 = content candidate `8ae2ac9`、L1 evidence は PR body。
 
+### Gated Amendment 5 対応（2026-09-04、owner L3 run 4 起源 + 方針 A、S39〜S42）
+
+**Writer content commit**: `1de174b`（S39、ListShell.tsx + test のみ）/ `cf9b255`（S39 docs + S40）/ `cb2994f`（S41 / S42）/ `7b80f67`（S41 の owner 原文訂正、Haiku 機械置換、content candidate = Reviewed Content HEAD）。`git diff 0ecce49..cb2994f --stat -- src` = ListShell.tsx + ListShell.test.tsx の 2 file、`src-tauri` / packet / DSR-22 差分 0。
+
+**着地**: S39 = `ListShell.tsx:97` の帯を `bg-background` + `border-b border-border` へ（`bg-list-head` / `forced-colors:border-b` 除去、thead の `bg-list-head` / `border-b-2` は不変、wrapper・`h-10` / `top-10`・`px-2`・ellipsis・横追随は不変）。TDD で SC4d / SC8 を先に更新して red → green。catalog ⑯ 第 3 項「灰色面は列見出しのみ」、00-foundations `--list-head` = thead surface、mockup-d-lists `.pager.top` = `var(--bg)` + `border-bottom`、Matrix SC8 / SC10 / SC12 更新。S40 = reference README 5 行に reference-only。S41 = Plans.md Lane 3〜5 申し送りに「owner 反応 ledger（run 1〜4、原文優先）」10 bullet（runtime backlog 9 = 商品登録のレジ登録 section 分離 / 現在庫の数量単位併記 / 価格履歴文言 / 入庫商品追加の列構成 / `pcs` 生表示 bug / 直近 10 件の明示 / 交換注釈の配置 / 方向 badge の色 / レシート画像「（任意）」、維持 1）。S42 = decision-log D-080（runtime-first、既存画面の手写し mockup は行わない）+ Plans.md ④ 参照。
+
+**process 記録**: owner run 4 は Codex を介さない原文で受領（scratch 保存 → packet evidence）。反応 ledger は Sonnet が read-only で 38 行に起こし、Coordinator が runtime 実在を確認して裁定（mockup のみの反応 13 件は runtime が既に正しいため Plans.md に書かず、対応済み 6 件は転記不要）。 **owner 原文による訂正（同日）**: Coordinator の裁定 4 件が mockup への指摘を runtime 要望に読み替えていた — レジメモリ No. / バーコード登録の配置（runtime は form 外の読み取り専用欄、`ProductFormPage.tsx:228-240`）と 現在庫・数量単位（runtime は 現在庫 → 数量単位 で owner の意図どおり）は記録のみへ、入庫 list の列順は「商品コード / 商品名 / 現在庫 / 入庫数量 / 単位 / 原価 / 操作」の owner 条件付き候補へ、交換注釈の置き場所は「未定、実機で候補を見て決める」へ（Plans.md 訂正 commit = `7b80f67`）。owner 指摘の meta: forced-colors L3 の mandatory 化は owner 意図でなく AI レビュー側（DSR-22 低視力 L3 節 = Coordinator 起草、追補 S16 = Opus P1-1）が持ち込んだ要件で、Codex / subagent を介した要約が意見を歪めた例。以後 owner 反応は原文を evidence に直接保存し、要約を裁定の一次資料にしない。
+
+**独立 closure**: Sonnet mutation（`cb2994f`）= X19 / X33 新注入 kill、X21 / X22 / X29 / X31 / X32 再測 kill、追加 2 件（`border-border` 削除 / thead `bg-list-head` 削除）kill、survivor 0。doc oracle 7/7、既存 test 削除なし（SC8 は同一 case の書き換え）、gate 全 green、findings 0。`7b80f67` は Plans.md のみの docs 訂正で Coordinator が実読確認（旧字面 0 / 新字面 1、bullet 8）。P1/P2 = 0。
+
+**遷移**: post-impl state-only 2/2 到達のため、`implementing -> local-verified -> independent-review -> human-confirm` を本 commit（Contract Coverage Ledger S39〜S42 行 + 本結果記入 + Workflow State）に同乗して materialize。根拠 = content candidate `7b80f67`（src は `cb2994f` から不変）、L1 evidence は PR body。L3 run 5 = 商品一覧の帯 1 点（件数行が地色 + 1px 下線、列見出しだけ灰色、隙間なし、sticky 維持）。
+
 ## Review Response
 
 2026-09-03 Plan Review round 1（独立 Sonnet = P1 2 / P2 4 / P3 3、Opus デザイン面 = P1 4 / P2 8 / P3 3）: 全件 accept。Sonnet P1-1（AC2 の `rg -l` は 28 file、43 は箇所数）→ AC2 を file 数 + 箇所数の二段構えへ / P1-2（Matrix SC3a の to は 1,100）→ 訂正 / P2-3（`#cdc8c4` は 1.59:1、1.66 は対純白）→ 起票時実測・S1・reference §8 訂正を scope 化 / P2-4（patterns → features 逆依存）→ D-9 で `Pagination.tsx` へ移設、旧 Non-scope 撤回 / P2-5（returnTo は自動化可能）→ SC5c 新設、AC-L3-3 を render 確認のみへ / P2-6（SC4c / SC5b に X なし）→ X13 / X14 追加、AC10 = X1〜X14 / P3-7（`:36`）/ P3-8（`npm run build`）/ P3-9（3 file 6 箇所）→ 訂正。Opus P1-1（sticky 背景は mockup `--d-head` = `bg-muted`）/ P1-2（`border-collapse` で下端線が消える → `border-separate border-spacing-0` + thead cell `border-b`）/ P1-3（`--border` 単独濃化で階層反転 → `--input: var(--border-strong)` を同時適用、outline / Badge / chip は Lane 3〜5 sweep）/ P1-4（上部 summary が流れ去る → summary + thead の 1 帯 sticky、mockup 箱内スクロール不採用理由を注記）→ D-2 / D-7 改訂。P2-1（枠は `rounded-lg border bg-card p-4`、04 原則 6 を同期）/ P2-2（`totalCount > 0` gating、`toolbar` optional）/ P2-3（pilot に `isLoading` 配線）/ P2-4（summary は 16px semibold tabular-nums、catalog ⑩ `:646` を是正）/ P2-5（1.59:1）/ P2-6（AC-L3-1 に dialog + sidebar）/ P2-7（静的 boolean の近似採用を D-5 に明記）/ P2-8（S7 の描画内容 pin + DSR-22 `:441` の最終確定を AC-L3-5 へ）→ 反映。P3-1（`cn` 順序 + SC2a case）/ P3-2（README `:16` stale）/ P3-3（重複読み上げの記録）→ 反映。
@@ -686,4 +702,6 @@ owner が是正方針 A（mockup を現実装 + Lane 2 の比較差分に限定�
 
 2026-09-04: **owner L3 run 4 = FAIL（AC-L3-5 forms-a、owner 直接フィードバック = Codex を介さない原文、scratch 保存 → Amendment 5 で Plans.md ledger へ転記）**（head `97f63e9` / content `8ae2ac9`、介入 2/3 の同一 gate 内）。forms-a: 商品登録・修正はレジメモリ No. を「商品の識別」に入れて窮屈、「レジにバーコード登録する」説明が浮く、在庫の現在庫が数量単位を無視、`レジ在庫連携（pos_stock_sync）` は識別子表示で不可、価格履歴は良いが文言は「直近 10 件の売価・原価の変更を新しい順に表示します」へ、toast が黒い（現行のままでよい）。入庫記録・返品・交換は「基本的に現行実装のほうがいい」: 伝票番号は出所不明（runtime に無い）、備考が小さい、商品追加の列は「商品コード / 商品名 / 現在庫 / 入庫数量 / 原価 / 単位 / 操作」が望ましい、runtime の `pcs` 表示は変、リセット button と「すべての履歴を見る」「詳細を見る」が mockup から消えている、最近の入庫記録は直近 10 件でよい、原価差分 dialog は現行の見やすさが上、保存結果の緑 icon / レジ戻し badge / CSV 取込み反映 badge の色 / レシート画像「任意」は肯定、方向 badge の色遣いには疑問あり、「交換は戻り・渡しの明細が両方必要です」注釈の置き方は改善余地。**runtime**: 商品一覧の件数文言を列見出しと同じ灰色面に入れた帯（Amendment 2 S11 / Amendment 3 S13）は「見栄えが悪い、角が角、入れ込んだのがミス、下に線を引く程度でよい」（run 3 AC-L3-2 PASS の翻意）。**総評**: mockup は抜けが多く現行実装を踏まえきれていない、mockup をやっている間 runtime が進まないのは良くない流れ。owner が方針 A（mockup 視認を本 PR の Human Gate から外し、Lane 3〜5 は runtime-first）を明示選択。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。次は Gated Amendment 5（帯の runtime 是正 / AC-L3-5 descope / owner 反応 ledger の Plans.md 転記 / runtime-first の decision-log）。
 
-- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）, Gated Amendment 4（owner L3 run 3 AC-L3-5 FAIL 起源 + Codex Final Review、S22〜S34、SC14a / SC14b、docs-only）.
+2026-09-04 owner L3 run 4 FAIL（AC-L3-5 forms-a、原文）+ 方針 A → Gated Amendment 5（`a823df8` + 語句 `0ecce49`、S39〜S42、owner escalation）: Writer content commit = `1de174b` `cf9b255` `cb2994f` + owner 原文訂正 `7b80f67`（Plans.md のみ）。Sonnet 独立 closure（`cb2994f`）全 9 mutant kill・findings 0、`7b80f67` は Coordinator 実読で P1/P2 = 0。`implementing -> local-verified -> independent-review -> human-confirm` を本 content commit（Ledger + 結果記入）に同乗で materialize。Reviewed Content HEAD = `7b80f67`。L3 run 5 は帯 1 点のみ（mockup 視認は descope）。
+
+- Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）, Gated Amendment 4（owner L3 run 3 AC-L3-5 FAIL 起源 + Codex Final Review、S22〜S38、SC14a / SC14b、docs-only）, Gated Amendment 5（owner L3 run 4 + 方針 A、S39〜S42、runtime は帯 1 点、SC8 / SC10 / SC12 更新）.
