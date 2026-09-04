@@ -271,9 +271,9 @@ td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border
 </tbody></table></div>
 </div>
 
-</div><div class="note"><b>D の要点（入庫記録）</b><ol><li>明細 table は一覧と同じ器（sticky header + 操作枠コントラスト）。入力中の行は左バー + 淡背景 + 「入力中」badge。</li><li>商品追加欄の候補一覧（ProductAddSuggest）は既存契約のまま、枠のコントラストだけ揃える。</li><li>件数が少ない画面（明細・履歴）は上部 pager を置かない（77-ui / 一覧画面と違い 1 画面に収まる想定のため）。</li></ol>
+</div><div class="note"><b>D の要点（入庫記録）</b><ol><li>明細 table は一覧と同じ器（sticky header + 操作枠コントラスト）。</li><li>商品追加欄の候補一覧（ProductAddSuggest）は既存契約のまま、枠のコントラストだけ揃える。</li><li>件数が少ない画面（明細・履歴）は上部 pager を置かない（77-ui / 一覧画面と違い 1 画面に収まる想定のため）。</li></ol>
 <b>現仕様維持</b>: 保存中の disable・スクロール挙動・冪等キー・候補プレビューの挙動（catalog ⑮）は 61-ui の契約どおりで D は変更しない。<br>
-<b>未決</b>: 明細行の「入力中」badge は一覧画面（77-ui / 実装 B）の表現を入庫にも転用した提案で、61-ui 自体には明記が無い（採用可否は Lane 1 で判断）。「見送る」button 文言は 61-ui に明記が無い仮置き（doc は「見送りは無記録」とのみ規定）。
+<b>未決</b>: 「見送る」button 文言は 61-ui に明記が無い仮置き（doc は「見送りは無記録」とのみ規定）。
 </div></section>
 
 <!-- ========== 返品・交換（UI-03）========== -->
@@ -324,19 +324,18 @@ td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border
 </div></section>
 
 </main></div>
-<div class="note"><b>位置付け</b>: 正本は <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22 + 各 function-design（51-ui / 61-ui / 63-ui）。本 mockup は runtime の現状を土台に、Lane 2 で実装済みの <code>PageShell</code> 24px、<code>--border</code> / <code>--input</code>、商品一覧 pilot で確定した帯 token を確認する reference。後続候補を画面へ先行実装しない。<b>今回採用（Lane 2）</b>: 入力欄・select・textarea の枠を `--border-strong` へ、`PageShell` の `space-y-6` 24px 統一。<b>現実装維持</b>: サイドバー・「保存する」等ボタンの意匠は mockup-d-lists.html と同じ描き方のまま（owner 所感 2026-08-23）、セクション分割・read-only の muted 背景・確認ダイアログの要否は各 function-design の契約どおり。<b>後続候補（本 mockup へ描かない）</b>: `FormSection` shared pattern 化の可否・命名（Lane 3〜5）、「離脱確認」modal の枠濃化が Windows native L3 で強すぎないかの確認（AC-L3-1 の dialog 項目）。<b>owner L3 所感</b>: 上部の 16px/24px 比較 panel は説明用・実装対象外であり、旧 16px 側が外周余白との釣合い上、新 24px 側より自然という所感を記録するが、実画面の `PageShell` 24px は AC-L3-1 で採否済みのため runtime FAIL にはしない。</div>
+<div class="note"><b>位置付け</b>: 正本は <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22 + 各 function-design（51-ui / 61-ui / 63-ui）。本 mockup は runtime の現状を土台に、Lane 2 で実装済みの <code>PageShell</code> 24px、<code>--border</code> / <code>--input</code>、商品一覧 pilot で確定した帯 token を確認する reference。後続候補を画面へ先行実装しない。<b>今回採用（Lane 2）</b>: 入力欄・select・textarea の枠を `--border-strong` へ、`PageShell` の `space-y-6` 24px 統一。<b>現実装維持</b>: サイドバー・「保存する」等ボタンの意匠は mockup-d-lists.html と同じ描き方のまま（owner 所感 2026-08-23）、セクション分割・read-only の muted 背景・確認ダイアログの要否は各 function-design の契約どおり。<b>後続候補（本 mockup へ描かない）</b>: `FormSection` shared pattern 化の可否・命名（Lane 3〜5）、「離脱確認」modal の枠濃化が Windows native L3 で強すぎないかの確認（AC-L3-1 の dialog 項目）、入庫記録の明細行「入力中」badge + 左バー（一覧画面 D-7 の現在行表現を転用した提案、61-ui に明記なし、Amendment 4 closure round 1 で画面から除去）。<b>owner L3 所感</b>: 上部の 16px/24px 比較 panel は説明用・実装対象外であり、旧 16px 側が外周余白との釣合い上、新 24px 側より自然という所感を記録するが、実画面の `PageShell` 24px は AC-L3-1 で採否済みのため runtime FAIL にはしない。</div>
 <script>
 (function(){
   var iChev='<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
   function rowdel(){return '<td><button class="rowdel" aria-label="行を削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td>'}
   /* 入庫明細 */
   var rrows=[
-    {name:'並太毛糸（生成）',code:'HZ-0047',stock:'18 玉',qty:24,cost:350,unit:'個',cur:false},
-    {name:'コットンブロード（無地・生成）',code:'F-0132',stock:'1,240 cm',qty:200,cost:540,unit:'cm',cur:true},
-    {name:'刺しゅう糸 25番（赤系アソート）',code:'4901234567894',stock:'64 本',qty:60,cost:120,unit:'本',cur:false}
+    {name:'並太毛糸（生成）',code:'HZ-0047',stock:'18 玉',qty:24,cost:350,unit:'個'},
+    {name:'コットンブロード（無地・生成）',code:'F-0132',stock:'1,240 cm',qty:200,cost:540,unit:'cm'},
+    {name:'刺しゅう糸 25番（赤系アソート）',code:'4901234567894',stock:'64 本',qty:60,cost:120,unit:'本'}
   ];
-  var h=rrows.map(function(r){return '<tr class="row'+(r.cur?' cur':'')+'"><td>'+r.name+(r.cur?'<div><span class="badge b-state warn">'+
-    '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>入力中</span></div>':'')+'</td><td><span class="code">'+r.code+'</span></td><td class="num">'+r.stock+'</td><td class="num"><input class="cell" aria-label="入庫数量" value="'+r.qty+'"></td><td class="num"><input class="cell" aria-label="原価" value="'+r.cost+'"></td><td>'+r.unit+'</td>'+rowdel()+'</tr>'}).join('');
+  var h=rrows.map(function(r){return '<tr class="row"><td>'+r.name+'</td><td><span class="code">'+r.code+'</span></td><td class="num">'+r.stock+'</td><td class="num"><input class="cell" aria-label="入庫数量" value="'+r.qty+'"></td><td class="num"><input class="cell" aria-label="原価" value="'+r.cost+'"></td><td>'+r.unit+'</td>'+rowdel()+'</tr>'}).join('');
   document.getElementById('tb-receiving').innerHTML=h;
   /* 返品・交換明細（種別=交換: 戻り2 + 渡し1） */
   var xrows=[
