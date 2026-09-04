@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
+import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -186,16 +187,16 @@ export function ProductFormPage({
 
   if (mode === "edit" && productQuery.isLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-32 w-full" />
-      </div>
+      </PageShell>
     );
   }
 
   if (mode === "edit" && productQuery.isError) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <PageHeader title={title} />
         <Alert variant="destructive">
           <AlertTitle>商品が見つかりません</AlertTitle>
@@ -210,12 +211,12 @@ export function ProductFormPage({
         >
           一覧へ戻る
         </Button>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <UnsavedChangesDialog warning={unsavedChanges} />
       <PageHeader title={title} />
       {departmentsQuery.isError ? (
@@ -272,6 +273,6 @@ export function ProductFormPage({
           toggleMutation.mutate();
         }}
       />
-    </div>
+    </PageShell>
   );
 }

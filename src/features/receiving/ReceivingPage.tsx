@@ -27,6 +27,8 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
+import { PageShell } from "@/components/patterns/PageShell";
+import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReceivingCreateResult } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -273,7 +275,7 @@ export function ReceivingPage() {
   }
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <UnsavedChangesDialog warning={unsavedChanges} />
       {result !== null ? (
         <CostDiffDialog
@@ -553,7 +555,7 @@ export function ReceivingPage() {
                   <TableRow key={row.productCode}>
                     <TableCell className="font-medium">{row.productCode}</TableCell>
                     <TableCell>{row.productName}</TableCell>
-                    <TableCell>{row.stockUnit}</TableCell>
+                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -704,6 +706,6 @@ export function ReceivingPage() {
           </Table>
         ) : null}
       </section>
-    </div>
+    </PageShell>
   );
 }

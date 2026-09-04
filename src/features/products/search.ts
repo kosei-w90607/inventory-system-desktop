@@ -131,7 +131,7 @@ function normalizePerPage(value: unknown): ProductPerPage {
   const numberValue = typeof value === "number" ? value : Number(value);
   return PRODUCT_PER_PAGE_OPTIONS.includes(numberValue as ProductPerPage)
     ? (numberValue as ProductPerPage)
-    : 50;
+    : 100; // D-6: 商品一覧は 1 件探索が主動線のため既定 100（URL 明示値は優先維持）
 }
 
 function normalizeEnum<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {

@@ -31,7 +31,9 @@ export function PluBulkTargetConfirmDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {pluTarget ? "表示中の商品をPLU対象にしますか" : "表示中の商品をPLU対象から外しますか"}
+            {pluTarget
+              ? "絞り込みに一致する商品をPLU対象にしますか"
+              : "絞り込みに一致する商品をPLU対象から外しますか"}
           </AlertDialogTitle>
           <AlertDialogDescription>
             現在の絞り込み条件に一致する {count.toLocaleString("ja-JP")}{" "}

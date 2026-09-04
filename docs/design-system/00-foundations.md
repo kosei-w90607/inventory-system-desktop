@@ -14,8 +14,14 @@
 | 背景 | `--background` | `stone-50` | #fafaf9 | 長時間凝視で目の負担が少ないウォームニュートラル |
 | 前景（本文） | `--foreground` | `stone-900` | #1c1917 | 実測 16.7:1（対 `--background`）/ 16.0:1（対 `--card`）、いずれも AAA（2026-09-03 訂正、旧「コントラスト比12.6:1（AAA+）」は対象背景の明記なしで誤記） |
 | カード背景 | `--card` | `stone-100` | #f5f5f4 | 背景との差分8% で情報ブロック識別 |
-| ボーダー（構造線） | `--border` | `stone-200` | #e7e5e4 | 対 `--background` 実測比 ≈1.20:1（補助的な区切り。単独のグループ信号にしない、DSR-16） |
+| ボーダー（構造線） | `--border` | — | #cdc8c4 | 対 `--background` 実測 1.59:1（DSR-22「構造線は一段濃く」、補助的な区切り。単独のグループ信号にしない、DSR-16。2026-09-03 Lane 2 で旧 stone-200 相当〈≈1.20:1〉から濃化） |
+| 操作枠 | `--border-strong` | — | #8a8480 | 対 `--background` 3.53:1・対 `--card` 3.38:1（DSR-22、`--input` が参照。2026-09-03 Lane 2 実装） |
+| 現在行背景 | `--row-current` | — | #fff8e6 | 対 `--foreground` 16.5:1（DSR-22、消費者は Lane 3〜5。2026-09-03 Lane 2 実装） |
+| 一覧 sticky 帯 | `--list-head` | `stone-200` | #e7e5e4 | 対 `--background` 1.20:1・対 `--foreground` 13.93:1（WCAG 相対輝度で実測。`thead` surface（件数行は `--background`）、Gated Amendment 2 S11 / Gated Amendment 5 S39、2026-09-03 Lane 2 実装） |
+| 操作面 | `--control-surface` | — | #fafaf9 | owner run 6 指定。対 `--card` #f5f5f4 1.02:1（面の差は僅少、枠 `--border-strong` 3.53:1 が操作対象の主信号）（Gated Amendment 7 S46） |
 | サブテキスト | `--muted-foreground` | `stone-500` | #78716c | 実測 4.59:1（対 `--background`、AA）/ 4.40:1（対 `--card`、AA 未達）（2026-09-03 訂正、旧「コントラスト比 4.5:1（AA）」は対象背景の明記なしで誤記） |
+
+forced-colors focus indicator: `globals.css` の unlayered `@media (forced-colors: active) { :focus-visible { outline: 2px solid Highlight; outline-offset: 2px } }`。component の `outline-none` はこの安全網を前提とし、unlayered で `outline` を上書きしない（Gated Amendment 3 追補 S16）。
 
 **セマンティックカラー**:
 

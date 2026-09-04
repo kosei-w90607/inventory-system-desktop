@@ -22,3 +22,22 @@ export function formatStockDisplay(quantity: number, unit: string): string {
       return "—";
   }
 }
+
+/**
+ * 数量を伴わない単位列（入庫 / 廃棄 / 返品交換 / 手動販売の行データ等）の unit code
+ * を日本語ラベルへ変換する（Gated Amendment 6 S45、owner run 5 bug: `pcs` 生表示）。
+ *
+ * - unit="pcs" → 「個」
+ * - unit="cm"  → 「cm」（生地、単位そのまま）
+ * - 上記以外（unexpected）→ 「—」（fallback、Q-4 網羅）
+ */
+export function formatStockUnitLabel(unit: string): string {
+  switch (unit) {
+    case "pcs":
+      return "個";
+    case "cm":
+      return "cm";
+    default:
+      return "—";
+  }
+}

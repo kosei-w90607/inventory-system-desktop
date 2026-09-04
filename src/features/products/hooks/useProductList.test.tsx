@@ -63,7 +63,7 @@ describe("useProductList (UI-01a)", () => {
       sort_key: "ProductCode",
       sort_order: "Asc",
       page: 1,
-      per_page: 50,
+      per_page: 100,
     });
   });
 

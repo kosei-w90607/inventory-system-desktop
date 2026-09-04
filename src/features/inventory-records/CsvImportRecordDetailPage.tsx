@@ -8,6 +8,7 @@ import { ArrowLeft, FileWarning, PackageSearch } from "lucide-react";
 
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,17 +68,17 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
 
   if (detailQuery.isLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
-      </div>
+      </PageShell>
     );
   }
 
   if (detailQuery.isError) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <PageHeader title="CSV取込み詳細" />
         <Alert variant="destructive">
           <AlertTitle>
@@ -93,7 +94,7 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
             前の画面へ戻る
           </Link>
         </Button>
-      </div>
+      </PageShell>
     );
   }
 
@@ -101,7 +102,7 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
   if (!detail) return null;
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <PageHeader
         title={`CSV取込み #${String(detail.id)}`}
         actions={
@@ -260,6 +261,6 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
           <MovementTable movements={detail.movements} />
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

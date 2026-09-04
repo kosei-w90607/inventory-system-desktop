@@ -5,6 +5,7 @@
 // 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4
 
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import type { PickedFile } from "@/components/FilePicker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DailyReportImportPage } from "@/features/daily-report-import/DailyReportImportPage";
@@ -37,7 +38,7 @@ function computeCurrentStep(status: CsvImportState["status"]): StepNumber {
 
 export function CsvImportPage() {
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <PageHeader
         title="売上データ取込み"
         subtitle="日報（Z001/Z002/Z005）と商品別CSV（Z004）を分けて取り込みます"
@@ -54,7 +55,7 @@ export function CsvImportPage() {
           <CsvImportFlowPanel />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }
 

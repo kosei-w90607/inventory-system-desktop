@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { ListSkeleton } from "@/components/patterns/ListSkeleton";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PriceRevisionFilters } from "./components/PriceRevisionFilters";
 import { PriceRevisionTable } from "./components/PriceRevisionTable";
-import { ProductPagination } from "./components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { usePriceRevisionList } from "./hooks/usePriceRevisionList";
 import {
   resetPriceRevisionSearch,
@@ -42,7 +43,7 @@ export function PriceRevisionPage({
     list.normalizedSearch.discontinued;
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader
         title="一括価格改定"
         subtitle="値上げリストを商品と照合し、1行ずつ売価・原価を確定します。"
@@ -125,7 +126,7 @@ export function PriceRevisionPage({
             selectedSupplierId={list.normalizedSearch.supplier}
             assignSupplier={assignSupplier}
           />
-          <ProductPagination
+          <Pagination
             page={list.productsQuery.data.page}
             perPage={list.productsQuery.data.per_page}
             totalCount={list.productsQuery.data.total_count}
@@ -135,6 +136,6 @@ export function PriceRevisionPage({
           />
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

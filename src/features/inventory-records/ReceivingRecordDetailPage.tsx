@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { MovementTable } from "@/features/stock-movements/components/MovementTable";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -53,17 +54,17 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
 
   if (detailQuery.isLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
-      </div>
+      </PageShell>
     );
   }
 
   if (detailQuery.isError) {
     return (
-      <div className="space-y-4 p-6">
+      <PageShell>
         <PageHeader title="入庫記録詳細" />
         <Alert variant="destructive">
           <AlertTitle>{describeError(detailQuery.error)}</AlertTitle>
@@ -77,7 +78,7 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
             前の画面へ戻る
           </Link>
         </Button>
-      </div>
+      </PageShell>
     );
   }
 
@@ -85,7 +86,7 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
   if (!detail) return null;
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <PageHeader
         title={`入庫記録 #${String(detail.id)}`}
         actions={
@@ -190,6 +191,6 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
           <MovementTable movements={detail.movements} />
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

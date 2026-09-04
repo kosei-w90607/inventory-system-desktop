@@ -27,6 +27,8 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
+import { PageShell } from "@/components/patterns/PageShell";
+import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type DisposalCreateResult, type ProductWithRelations } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -271,7 +273,7 @@ export function DisposalPage() {
   }
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <UnsavedChangesDialog warning={unsavedChanges} />
       <PageHeader
         title="廃棄・破損"
@@ -580,7 +582,7 @@ export function DisposalPage() {
                         }}
                       />
                     </TableCell>
-                    <TableCell>{row.stockUnit}</TableCell>
+                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"
@@ -698,6 +700,6 @@ export function DisposalPage() {
           </Table>
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

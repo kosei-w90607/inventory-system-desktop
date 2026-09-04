@@ -1,0 +1,358 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>入力画面 統合案 D（商品・入庫・返品）</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+/* ===== token: 統合案 C / mockup-d-lists.html と同一（04-backbone） ===== */
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#cdc8c4;--border-strong:#8a8480;--row-current:#fff8e6;--accent:#f5f5f4;
+--primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
+--warn-soft:#fffbeb;--warn-border:#fde68a;--warn-strong:#78350f;--warn:#d97706;
+--bad-soft:#fef2f2;--bad-border:#fecaca;--bad-strong:#991b1b;--bad:#dc2626;
+--ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
+--ring:#b45309;
+--d-line:#cdc8c4;--d-head:#e7e5e4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+/* ===== mockup chrome ===== */
+.chrome{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;background:#292524;color:#fafaf9;font-size:14px}
+.chrome b{font-size:14px;letter-spacing:.04em}
+.chrome .tabs{display:inline-flex;border:1px solid #57534e;border-radius:6px;overflow:hidden}
+.chrome .tabs button{min-height:36px;padding:0 14px;border:0;border-left:1px solid #57534e;background:transparent;color:#fafaf9;font:inherit;font-size:14px;cursor:pointer}
+.chrome .tabs button:first-child{border-left:0}
+.chrome .tabs button.on{background:#fafaf9;color:#1c1917;font-weight:600}
+.chrome .sw{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
+.chrome .sw label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.chrome .sw input{width:18px;height:18px;accent-color:#f59e0b}
+.chrome .legend{font-size:13px;color:#d6d3d1}
+/* ===== app frame（C と同一） ===== */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
+.sb{background:var(--card);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:16px}
+.brand{font-size:16px;font-weight:700;padding:4px 8px}
+.area h4{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:8px 8px 4px}
+.nav a{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;color:var(--fg);text-decoration:none;font-size:14px;line-height:1.4}
+.nav a.cur{background:var(--primary-soft);font-weight:600}
+.nav svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;color:var(--muted)}
+.nav a.cur svg{color:var(--primary)}
+.page{padding:24px;display:flex;flex-direction:column;gap:24px;max-width:1080px}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.ph h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
+.ph p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
+.btn.primary{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.destructive{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.sm{min-height:36px;font-size:14px;padding:0 12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.nav a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.alert{display:grid;grid-template-columns:20px 1fr;gap:12px;align-items:start;padding:12px 16px;border:1px solid;border-radius:6px}
+.alert svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;margin-top:2px}
+.alert b{display:block;font-size:16px}
+.alert span{font-size:14px}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.alert.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.seg button{min-height:40px;padding:0 14px;border:0;background:#fff;font:inherit;font-size:16px;color:var(--fg);border-left:1px solid var(--border);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--primary-soft);font-weight:600}
+.sub{font-size:14px;color:var(--muted)}
+/* table（明細・履歴・一覧、C を踏襲） */
+.tbl{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.scroll{overflow:auto;max-height:52vh}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:16px}
+th{font-size:14px;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);background:#fafaf9;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;height:40px}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td .code{font-weight:600;font-variant-numeric:tabular-nums}
+td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border-radius:6px;padding:0 10px;font:inherit;font-size:16px;text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:9999px;white-space:nowrap;vertical-align:middle}
+.badge svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.b-state{border:1px solid var(--border);background:#fff;color:var(--fg)}
+.b-state.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.b-state.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.b-state.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.b-class{background:var(--accent);color:var(--muted)}
+.rowdel{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+.rowdel svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.75}
+.rowdel:hover{background:var(--accent);color:var(--bad-strong)}
+.rowerr{font-size:14px;color:var(--bad-strong);display:flex;align-items:center;gap:8px;margin-top:4px}
+.rowerr svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.note{font-size:14px;color:var(--muted);border-top:1px dashed var(--border);padding:16px 24px;max-width:1080px;line-height:1.6}
+.note b{color:var(--fg)}
+.note ol{margin:8px 0 0;padding-left:22px}
+.note li{margin:2px 0}
+.screen{display:none}.screen.on{display:block}
+/* ===== 入力画面固有: FormSection / grid / field ===== */
+.fs{border:1px solid var(--border);border-radius:8px;padding:20px;background:var(--card);display:flex;flex-direction:column;gap:16px}
+.fs h2{font-size:20px;font-weight:600;margin:0}
+.fs .desc{font-size:14px;color:var(--muted);margin:-8px 0 0}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:16px;font-weight:500}
+.field .hint{font-size:13px;color:var(--muted)}
+.field input[type=text],.field input[type=number],.field input[type=date],.field select,.field textarea{min-height:40px;border:1px solid var(--border);border-radius:6px;padding:0 12px;font:inherit;font-size:16px;background:#fff;width:100%}
+.field textarea{min-height:88px;padding:10px 12px;resize:vertical;font:inherit}
+.field input[readonly],.field select:disabled{background:var(--accent);color:var(--fg)}
+.field .err{font-size:14px;color:var(--bad-strong);display:flex;align-items:center;gap:6px}
+.field .err svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.chkrow{display:flex;align-items:center;gap:10px;min-height:40px}
+.chkrow input[type=checkbox]{width:20px;height:20px;accent-color:var(--primary)}
+.chkrow label{font-size:16px}
+.panel-choice{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pc{border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.pc.on{border-color:var(--primary);background:var(--primary-soft)}
+.pc b{font-size:16px;display:flex;align-items:center;gap:8px}
+.pc span{font-size:14px;color:var(--muted)}
+.drop{border:2px dashed var(--border);border-radius:8px;padding:16px;display:flex;align-items:center;gap:16px;color:var(--muted)}
+.drop svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.75;flex:none}
+.thumb{width:64px;height:64px;border-radius:8px;border:1px solid var(--border);background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--muted);flex:none}
+.thumb svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.5}
+.dropinfo{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.dropinfo b{color:var(--fg);font-size:16px;font-weight:500}
+.suggest{position:relative}
+.suggest-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(28,25,23,.14);z-index:10;overflow:hidden}
+.suggest-item{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;font-size:16px;cursor:pointer}
+.suggest-item:hover,.suggest-item.hi{background:var(--accent)}
+.suggest-item .sname{font-weight:500}
+.suggest-item .smeta{color:var(--muted);font-size:14px;white-space:nowrap}
+.result{background:var(--ok-soft);border:1px solid var(--ok-border);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.result > b{color:var(--ok-strong);font-size:16px;display:flex;align-items:center;gap:8px}
+.result > b svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
+.dl2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:14px}
+.dl2 dt{color:var(--muted);margin:0}.dl2 dd{margin:0;font-size:16px;font-weight:600}
+.note-block{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.note-block > b{display:block;font-size:14px;color:var(--muted);margin-bottom:4px}
+.note-block p{margin:0;font-size:16px;white-space:pre-wrap}
+.note-block p.muted{color:var(--muted)}
+.samplewrap{border:1px dashed var(--border-strong);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;background:#fdfcfb}
+.samplewrap > .tag{align-self:flex-start;font-size:12px;font-weight:600;color:var(--warn-strong);background:var(--warn-soft);border:1px solid var(--warn-border);padding:2px 8px;border-radius:9999px}
+.modal{background:#fff;border-radius:12px;padding:24px;width:420px;max-width:100%;box-shadow:0 8px 24px rgba(28,25,23,.16);display:flex;flex-direction:column;gap:12px;border:1px solid var(--border)}
+.modal h3{margin:0;font-size:18px;font-weight:600}
+.modal p{margin:0;font-size:14px;color:var(--muted)}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.diffbox{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.diffrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.diffrow:last-child{border-bottom:0}
+.diffrow .dname{font-size:16px;font-weight:500}
+.diffrow .dcode{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.diffrow .dprice{font-size:14px;display:flex;gap:8px;align-items:center}
+.diffrow .dprice b{font-size:16px;font-weight:600}
+.toast{display:inline-flex;align-items:center;gap:10px;background:#1c1917;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;width:fit-content}
+.toast svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;color:#4ade80;flex:none}
+/* ===== D: L3 所見の適用（body.d のときだけ効く） ===== */
+.d .tbl{border-color:var(--d-line)}
+.d th{position:sticky;top:0;z-index:3;background:var(--d-head);border-bottom:2px solid var(--d-line);box-shadow:0 1px 0 var(--d-line)}
+.d td{border-bottom-color:var(--d-line)}
+.d select,.d input[type=text],.d input[type=number],.d input[type=date],.d textarea,.d td input.cell{border-color:var(--border-strong)}
+.d tr.row:hover td{background:var(--accent)}
+.d tr.cur td{background:var(--d-row-cur)}
+.d tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
+.d tr.row:focus-within td{background:var(--d-row-cur)}
+</style></head><body class="d">
+<div class="chrome"><b>入力画面 統合案 D</b><div class="tabs" role="tablist"><button role="tab" class="on" data-s="product">商品登録・修正</button><button role="tab" data-s="receiving">入庫記録</button><button role="tab" data-s="return">返品・交換</button></div><div class="sw"><label><input type="checkbox" id="dsw" checked> D（改善案）を適用</label><span class="legend">外すと統合案 C（現行お手本）の見え方</span></div></div>
+<div class="app"><aside class="sb"><div class="brand">在庫管理システム</div><div class="area"><h4>毎日の業務</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>売上データ取込み</a><a href="#"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>日次売上</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>在庫照会</a><a href="#"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>月次売上</a></nav></div><div class="area"><h4>商品管理</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/></svg>商品検索・一覧</a><a href="#" id="nav-product"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>商品登録</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>一括インポート</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 4h8l8 8-8 8-8-8zM8 8h.01"/></svg>PLU書出し</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7M17 14v6m0 0 3-3m-3 3-3-3"/></svg>一括価格改定</a></nav></div><div class="area"><h4>入出庫</h4><nav class="nav"><a href="#" id="nav-receiving"><svg viewBox="0 0 24 24"><path d="M20 12H4m0 0 6-6m-6 6 6 6"/></svg>入庫記録</a><a href="#" id="nav-return"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4m4 4-4 4M20 16H6l4 4m-4-4 4-4"/></svg>返品・交換</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 12h16m0 0-6-6m6 6-6 6"/></svg>手動販売出庫</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg>廃棄・破損</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>入出庫履歴</a><a href="#"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>在庫少一覧</a><a href="#"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM6 6h12v14H6zM9 12h6M9 16h4"/></svg>棚卸し</a></nav></div><div class="area"><h4>システム管理</h4><nav class="nav"><a href="#"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>バックアップ・復元</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 9h6M9 13h6"/></svg>操作ログ</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M12 14l4-4"/></svg>在庫少の基準</a></nav></div></aside>
+<main>
+<!-- ========== 商品登録・修正（UI-01b、edit mode）========== -->
+<section class="screen on" id="s-product"><div class="page">
+<div class="ph"><div><h1>商品を修正</h1><p>商品マスタの内容を確認・変更します（登録済み商品）</p></div><div style="display:flex;align-items:center;gap:10px"><span class="badge b-state ok"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>表示中</span><button class="btn"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg>廃番にする</button></div></div>
+
+<div class="fs" style="gap:8px"><h2 style="font-size:16px">PageShell の余白統一（Lane 2、前後比較）</h2><p class="sub" style="margin:0"><span class="badge b-state warn">説明用・実装対象外</span></p><p class="desc">page root の section 間余白を旧 3 系統（<code>space-y-4</code> 16px / <code>space-y-5</code> 20px / <code>min-h-screen space-y-6</code> 24px）から <code>PageShell</code>（<code>space-y-6</code> 24px 一本）へ統一した。本画面自体の実装値は右側（新）と同じ 24px。</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div><h3 style="font-size:14px;color:var(--muted);margin:0 0 8px;font-weight:600">旧: space-y-4（16px、3 系統の 1 つ・商品登録・修正 / 一括インポート等が該当していた）</h3>
+    <div style="display:flex;flex-direction:column;gap:16px;border:1px dashed var(--border);border-radius:8px;padding:12px;background:var(--accent)">
+      <div class="fs" style="padding:12px;gap:8px"><h2 style="font-size:14px">セクション A（商品の識別）</h2></div>
+      <div class="fs" style="padding:12px;gap:8px"><h2 style="font-size:14px">セクション B（分類と取引先）</h2></div>
+    </div>
+  </div>
+  <div><h3 style="font-size:14px;color:var(--fg);margin:0 0 8px;font-weight:600">新: space-y-6（24px、PageShell 実装値・本画面はこちら）</h3>
+    <div style="display:flex;flex-direction:column;gap:24px;border:1px solid var(--primary);border-radius:8px;padding:12px;background:var(--accent)">
+      <div class="fs" style="padding:12px;gap:8px"><h2 style="font-size:14px">セクション A（商品の識別）</h2></div>
+      <div class="fs" style="padding:12px;gap:8px"><h2 style="font-size:14px">セクション B（分類と取引先）</h2></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="fs"><h2>商品の識別</h2><p class="desc">登録後は商品コードと JAN コードを変更できません</p>
+<div class="grid3">
+<div class="field"><label>商品コード</label><input type="text" readonly value="HZ-0047"><span class="hint">登録後は変更できません</span></div>
+<div class="field"><label>JANコード</label><input type="text" readonly value="4900000000012"><span class="hint">登録後は変更できません</span></div>
+<div class="field"><label>メーカー品番</label><input type="text" value="CL-2410"></div>
+</div>
+<div class="grid2">
+<div class="field"><label>商品名（必須）</label><input type="text" id="pname" value="" aria-invalid="true"><span class="err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg>商品名を入力してください</span></div>
+<div class="field"><label>レジメモリNo.</label><input type="text" readonly value="未割当"></div>
+</div>
+</div>
+
+<div class="fs"><h2>分類と取引先</h2><p class="desc">取引先は任意です。値上げリストの整理にも使います</p>
+<div class="grid2">
+<div class="field"><label>部門（必須）</label><select><option>毛糸</option></select></div>
+<div class="field"><label>取引先</label><div style="display:flex;gap:8px"><select style="flex:1"><option>クロバー（株）</option></select><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>追加</button></div></div>
+</div>
+</div>
+
+<div class="fs"><h2>価格</h2><p class="desc">税率は商品ごとに設定できます</p>
+<div class="grid3">
+<div class="field"><label>売価（必須）</label><input type="number" value="520"></div>
+<div class="field"><label>原価（必須）</label><input type="number" value="-50" aria-invalid="true"><span class="err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg>原価は0以上の整数で入力してください</span></div>
+<div class="field"><label>税率</label><select><option>10%</option><option>8%</option><option>0%</option></select></div>
+</div>
+</div>
+
+<div class="fs"><h2>在庫</h2><p class="desc">数量単位と現在庫はこの画面から変更できません（入庫記録で増減します）</p>
+<div class="grid3">
+<div class="field"><label>数量単位</label><select disabled><option>個</option></select></div>
+<div class="field"><label>現在庫</label><input type="text" readonly value="18 玉"></div>
+<div class="field"><label>&nbsp;</label><div class="chkrow"><input type="checkbox" id="pos" checked><label for="pos">レジ在庫連携（pos_stock_sync）</label></div></div>
+</div>
+<div class="chkrow"><input type="checkbox" id="plu" checked><label for="plu">レジにバーコード登録する</label></div><span class="hint">オフから オンへ変更すると、PLU 未反映として一覧・ホームに表示されます</span>
+</div>
+
+<div class="fs"><h2>価格履歴</h2><p class="desc">直近10件を新しい順に表示します</p>
+<div class="tbl"><table><thead><tr><th>変更日</th><th class="num">売価</th><th class="num">原価</th></tr></thead><tbody>
+<tr><td>2026-08-10</td><td class="num">¥480 → ¥520</td><td class="num">¥340 → ¥364</td></tr>
+<tr><td>2026-05-02</td><td class="num">¥450 → ¥480</td><td class="num">¥310 → ¥340</td></tr>
+<tr><td>2026-01-18</td><td class="num">¥450 → ¥450</td><td class="num">¥290 → ¥310</td></tr>
+</tbody></table></div>
+<button class="btn sm" style="align-self:flex-start">すべて表示</button>
+</div>
+
+<div style="display:flex;justify-content:flex-end;gap:12px"><button class="btn">キャンセル</button><button class="btn primary">保存する</button></div>
+
+<div class="toast"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>HZ-0047 を保存しました（サンプル: 保存成功 toast）</div>
+
+<div class="samplewrap"><span class="tag">サンプル: 離脱確認</span><p class="sub" style="margin:0">編集中に「商品検索・一覧」など他画面へ移動しようとしたときに表示されます。</p>
+<div class="modal"><h3>編集内容が保存されていません</h3><p>このまま移動すると、入力した内容は破棄されます。</p><div class="acts"><button class="btn">編集を続ける</button><button class="btn destructive">破棄して移動</button></div></div>
+</div>
+
+</div><div class="note"><b>D の要点（商品登録・修正、Lane 2 実装値へ同期）</b>: これを採ると何が変わるか — 入力欄・select・textarea の枠が `--border`（#cdc8c4、対 `--background` 1.59:1）から `--border-strong`（#8a8480、対 `--background` 3.53:1）へ濃くなり、静止時でも操作対象と分かる。button / card / FormSection 枠は `--border` 濃化のみに留め border-strong 化しない（D-7 Non-scope、Lane 3〜5 sweep 対象）。<ol><li><b>操作枠のコントラスト</b>: 入力欄・select・textarea の枠を `--border`（#cdc8c4、1.59:1）から `--border-strong`（#8a8480、対 `--background` 3.53:1、WCAG 相対輝度で独立再計算した値。旧 3.69:1 は誤記で本 mockup 更新時に訂正）へ。button・card・FormSection の枠は `--border` 濃化のみ（Lane 2 では border-strong 化しない、Non-scope）。文字は変えない。</li><li>価格履歴は一覧と同じ `.tbl`（sticky header 対象、行数が増えても崩れない）。</li><li>必須項目は色ではなく「（必須）」の文字と、エラーは icon + 赤文字 + 具体的な直し方（04-backbone 原則 3）。</li><li><b>page root の余白統一</b>: 本画面の `.page{gap:24px}` は `PageShell`（`space-y-6`）の実装値。上部の比較パネルは旧 `space-y-4`（16px、3 系統の 1 つ）との前後比較（Lane 2 で PageShell が 43 箇所を統一）。</li></ol>
+<b>現仕様維持（D の対象外）</b>: セクション分割・read-only の muted 背景・「廃番にする」確認ダイアログの要否・「レジにバーコード登録する」の挙動は 51-ui の契約どおりで、D は見た目に手を入れていない。<br>
+<b>未決（doc にない文言・値を仮に置いた箇所）</b>: 保存ボタン文言「保存する」（51-ui は button 文言を明記していない）／「レジ在庫連携」ラベル（51-ui は `pos_stock_sync` の説明文のみで表示ラベルを明記していない、実装時に既存 UI-01b の実 label を確認する）／原価 -50・商品名空欄は validation 表示のための仮値。「編集内容が保存されていません」等は UI_TECH_STACK §6.11 UI-USW-D2 の正本文言をそのまま使用（未決ではない）。
+</div></section>
+
+<!-- ========== 入庫記録（UI-02）========== -->
+<section class="screen" id="s-receiving"><div class="page">
+<div class="ph"><div><h1>入庫記録</h1><p>仕入れ商品が届いたときに、数量と原価をまとめて記録し在庫へ反映します</p></div></div>
+
+<div class="fs"><h2>入庫ヘッダ</h2>
+<div class="grid3">
+<div class="field"><label>入庫日</label><input type="date" value="2026-08-24"></div>
+<div class="field"><label>取引先</label><select><option>クロバー（株）</option></select></div>
+<div class="field"><label>備考</label><input type="text" placeholder="任意"></div>
+</div>
+</div>
+
+<div class="fs"><h2>商品を追加</h2>
+<div class="suggest"><input type="text" placeholder="商品コード・JAN・商品名で追加" value="刺しゅ" aria-label="商品追加">
+<div class="suggest-list"><div class="suggest-item hi"><span class="sname">刺しゅう糸 25番（赤系アソート）</span><span class="smeta">4901234567894 · 刺しゅう</span></div><div class="suggest-item"><span class="sname">刺しゅう枠 12cm</span><span class="smeta">E-0031 · 刺しゅう</span></div></div>
+</div>
+<span class="hint">Enter で追加、↓/↑ で候補選択。バーコードスキャナは Enter として届きます</span>
+</div>
+
+<div class="tbl"><div class="scroll"><table><thead><tr><th>商品名</th><th>商品コード</th><th class="num">現在庫</th><th class="num">入庫数量</th><th class="num">原価</th><th>単位</th><th></th></tr></thead><tbody id="tb-receiving"></tbody></table></div></div>
+
+<div style="display:flex;justify-content:flex-end"><button class="btn primary">入庫を記録</button></div>
+
+<div class="samplewrap"><span class="tag">サンプル: 保存成功後（原価差分あり）</span>
+<div class="diffbox">
+<div class="diffrow"><div><div class="dname">並太毛糸（生成）</div><div class="dcode">HZ-0047</div></div><div class="dprice">マスタ原価 <b>¥364</b> → 実原価 <b>¥350</b></div><div style="display:flex;gap:8px"><button class="btn sm primary">マスタ原価をこの実原価に更新する</button><button class="btn sm">見送る</button></div></div>
+<div class="diffrow"><div><div class="dname">刺しゅう糸 25番（赤系アソート）</div><div class="dcode">4901234567894</div></div><div class="dprice">マスタ原価 <b>¥115</b> → 実原価 <b>¥120</b></div><div style="display:flex;gap:8px"><button class="btn sm primary">マスタ原価をこの実原価に更新する</button><button class="btn sm">見送る</button></div></div>
+</div>
+</div>
+
+<div class="result"><b><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>入庫を記録しました（サンプル: 保存結果）</b>
+<div class="dl2"><div><dt>伝票番号</dt><dd>R-2026-0824-03</dd></div><div><dt>登録明細数</dt><dd>3 件</dd></div><div><dt>在庫警告</dt><dd>なし</dd></div></div>
+<div style="display:flex;gap:8px"><button class="btn sm">続けて入庫</button><button class="btn sm">在庫照会へ戻る</button></div>
+</div>
+
+<div class="fs"><h2>最近の入庫記録</h2>
+<div class="tbl"><table><thead><tr><th>日付</th><th>取引先</th><th>備考</th><th>記録日時</th></tr></thead><tbody>
+<tr><td>2026-08-23</td><td>クロバー（株）</td><td class="sub">秋の新色まとめ入荷</td><td class="sub">2026-08-23 10:12</td></tr>
+<tr><td>2026-08-20</td><td>—</td><td class="sub">備考なし</td><td class="sub">2026-08-20 09:40</td></tr>
+</tbody></table></div>
+</div>
+
+</div><div class="note"><b>D の要点（入庫記録）</b><ol><li>明細 table は一覧と同じ器（sticky header + 操作枠コントラスト）。</li><li>商品追加欄の候補一覧（ProductAddSuggest）は既存契約のまま、枠のコントラストだけ揃える。</li><li>件数が少ない画面（明細・履歴）は上部 pager を置かない（77-ui / 一覧画面と違い 1 画面に収まる想定のため）。</li></ol>
+<b>現仕様維持</b>: 保存中の disable・スクロール挙動・冪等キー・候補プレビューの挙動（catalog ⑮）は 61-ui の契約どおりで D は変更しない。<br>
+<b>未決</b>: 「見送る」button 文言は 61-ui に明記が無い仮置き（doc は「見送りは無記録」とのみ規定）。
+</div></section>
+
+<!-- ========== 返品・交換（UI-03）========== -->
+<section class="screen" id="s-return"><div class="page">
+<div class="ph"><div><h1>返品・交換</h1><p>顧客返品・交換を記録し、レジ戻し未処理の場合だけ在庫を増減します</p></div></div>
+
+<div class="fs"><h2>返品・交換ヘッダ</h2>
+<div class="grid3">
+<div class="field"><label>返品日</label><input type="date" value="2026-08-24"></div>
+<div class="field"><label>種別</label><div class="seg"><button>返品</button><button class="on">交換</button></div></div>
+<div class="field"><label>&nbsp;</label><span class="hint">交換は戻り・渡しの明細が両方必要です</span></div>
+</div>
+<div class="panel-choice">
+<div class="pc on"><b><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><path d="M4 8h14l-4-4m4 4-4 4M20 16H6l4 4m-4-4 4-4"/></svg>レジ戻し済み <span class="badge b-state ok">CSV取込みで反映</span></b><span>レジで戻し処理済み。この画面では在庫を動かしません</span></div>
+<div class="pc"><b>未処理 <span class="badge b-state warn">この保存で反映</span></b><span>レジで戻していない返品・交換。保存すると在庫が増減します</span></div>
+</div>
+<div class="field"><label>備考</label><textarea>サイズ違いのため交換希望。お客様対応済み、レシート持参。</textarea></div>
+</div>
+
+<div class="fs"><h2>商品を追加</h2>
+<div class="suggest"><input type="text" placeholder="商品コード・JAN・商品名で追加" aria-label="商品追加"></div>
+</div>
+
+<div class="tbl"><div class="scroll"><table><thead><tr><th>商品名</th><th>商品コード</th><th>部門</th><th class="num">現在庫</th><th>方向</th><th class="num">数量</th><th>単位</th><th></th></tr></thead><tbody id="tb-return"></tbody></table></div></div>
+
+<div class="fs"><h2>レシート画像（任意）</h2>
+<div class="drop"><div class="thumb"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 13l3-3 3 3 2-2 2 2"/><circle cx="9" cy="9" r="1.5"/></svg></div><div class="dropinfo"><b>receipt_0824.jpg</b><span class="sub">320KB · ドラッグ＆ドロップまたは選択で差し替え</span></div><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>削除</button></div>
+</div>
+
+<div style="display:flex;justify-content:flex-end"><button class="btn primary">返品・交換を保存</button></div>
+
+<div class="result"><b><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>返品・交換を記録しました（サンプル: 保存結果）</b>
+<div class="dl2"><div><dt>伝票番号</dt><dd>X-2026-0824-01</dd></div><div><dt>登録明細数</dt><dd>3 件</dd></div><div><dt>レジ戻し</dt><dd>済み</dd></div></div>
+<div class="note-block"><b>備考</b><p>サイズ違いのため交換希望。お客様対応済み、レシート持参。</p></div>
+<div style="display:flex;gap:8px"><button class="btn sm">続けて返品・交換</button><button class="btn sm">在庫照会へ戻る</button></div>
+</div>
+
+<div class="fs"><h2>最近の返品・交換</h2>
+<div class="tbl"><table><thead><tr><th>日付</th><th>種別</th><th>レジ戻し</th><th>備考</th><th>記録日時</th></tr></thead><tbody>
+<tr><td>2026-08-22</td><td>交換</td><td><span class="badge b-state ok">済み</span></td><td class="sub">サイズ違い</td><td class="sub">2026-08-22 14:03</td></tr>
+<tr><td>2026-08-19</td><td>返品</td><td><span class="badge b-state warn">未処理</span></td><td class="sub muted">備考なし</td><td class="sub">2026-08-19 11:20</td></tr>
+</tbody></table></div>
+</div>
+
+</div><div class="note"><b>D の要点（返品・交換）</b><ol><li>備考は input ではなく複数行 textarea + 保存結果の独立 `.note-block`（UI-03-D19、文字は本文色 16px、空は「備考なし」muted）。</li><li>「レジ戻し済み」true/false を色付き badge だけでなく選択肢ごとの説明文で示す（既存契約、D は枠のコントラストのみ追加）。</li><li>明細・画像 drop zone・result panel の枠を操作枠コントラストへ揃える。</li></ol>
+<b>現仕様維持</b>: 種別による方向制約（返品=戻りのみ／交換=戻り+渡し）、画像の共通 FilePicker（D-054）、冪等キー、候補プレビューは 63-ui の契約どおり。<br>
+<b>未決</b>: 明細 0 件時の disabled 理由文言「商品が追加されていません」は 61-ui（UI-02）の文言を UI-03 にも転用した仮置き（63-ui 本文に同一文言の明記は無い）。ドロップゾーンの空状態コピーは本 mockup で仮置き（63-ui は「ドロップゾーン + ファイル選択ボタン」とのみ規定）。
+</div></section>
+
+</main></div>
+<div class="note"><b>位置付け</b>: 正本は <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22 + 各 function-design（51-ui / 61-ui / 63-ui）。本 mockup は runtime の現状を土台に、Lane 2 で実装済みの <code>PageShell</code> 24px、<code>--border</code> / <code>--input</code>、商品一覧 pilot で確定した帯 token を確認する reference。後続候補を画面へ先行実装しない。<b>今回採用（Lane 2）</b>: 入力欄・select・textarea の枠を `--border-strong` へ、`PageShell` の `space-y-6` 24px 統一。<b>現実装維持</b>: サイドバー・「保存する」等ボタンの意匠は mockup-d-lists.html と同じ描き方のまま（owner 所感 2026-08-23）、セクション分割・read-only の muted 背景・確認ダイアログの要否は各 function-design の契約どおり。<b>後続候補（本 mockup へ描かない）</b>: `FormSection` shared pattern 化の可否・命名（Lane 3〜5）、「離脱確認」modal の枠濃化が Windows native L3 で強すぎないかの確認（AC-L3-1 の dialog 項目）、入庫記録の明細行「入力中」badge + 左バー（一覧画面 D-7 の現在行表現を転用した提案、61-ui に明記なし、Amendment 4 closure round 1 で画面から除去）。<b>owner L3 所感</b>: 上部の 16px/24px 比較 panel は説明用・実装対象外であり、旧 16px 側が外周余白との釣合い上、新 24px 側より自然という所感を記録するが、実画面の `PageShell` 24px は AC-L3-1 で採否済みのため runtime FAIL にはしない。</div>
+<script>
+(function(){
+  var iChev='<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+  function rowdel(){return '<td><button class="rowdel" aria-label="行を削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td>'}
+  /* 入庫明細 */
+  var rrows=[
+    {name:'並太毛糸（生成）',code:'HZ-0047',stock:'18 玉',qty:24,cost:350,unit:'個'},
+    {name:'コットンブロード（無地・生成）',code:'F-0132',stock:'1,240 cm',qty:200,cost:540,unit:'cm'},
+    {name:'刺しゅう糸 25番（赤系アソート）',code:'4901234567894',stock:'64 本',qty:60,cost:120,unit:'本'}
+  ];
+  var h=rrows.map(function(r){return '<tr class="row"><td>'+r.name+'</td><td><span class="code">'+r.code+'</span></td><td class="num">'+r.stock+'</td><td class="num"><input class="cell" aria-label="入庫数量" value="'+r.qty+'"></td><td class="num"><input class="cell" aria-label="原価" value="'+r.cost+'"></td><td>'+r.unit+'</td>'+rowdel()+'</tr>'}).join('');
+  document.getElementById('tb-receiving').innerHTML=h;
+  /* 返品・交換明細（種別=交換: 戻り2 + 渡し1） */
+  var xrows=[
+    {name:'並太毛糸（生成）',code:'HZ-0047',dept:'毛糸',stock:'18 玉',dir:'in',qty:2,unit:'個'},
+    {name:'木製ボタン（大）',code:'H-0009',dept:'手芸小物',stock:'0 個',dir:'in',qty:1,unit:'個'},
+    {name:'木製ボタン（大・白）',code:'H-0010',dept:'手芸小物',stock:'12 個',dir:'out',qty:1,unit:'個'}
+  ];
+  h=xrows.map(function(r){var dir=r.dir==='in'?'<span class="badge b-state ok">戻り（在庫+）</span>':'<span class="badge b-state warn">渡し（在庫-）</span>';
+    return '<tr class="row"><td>'+r.name+'</td><td><span class="code">'+r.code+'</span></td><td>'+r.dept+'</td><td class="num">'+r.stock+'</td><td>'+dir+'</td><td class="num"><input class="cell" aria-label="数量" value="'+r.qty+'"></td><td>'+r.unit+'</td>'+rowdel()+'</tr>'}).join('');
+  document.getElementById('tb-return').innerHTML=h;
+  /* tabs + C/D switch */
+  var tabs=document.querySelectorAll('.chrome .tabs button');
+  var map={product:'product',receiving:'receiving','return':'return'};
+  function show(s){tabs.forEach(function(b){b.classList.toggle('on',b.dataset.s===s)});document.querySelectorAll('.screen').forEach(function(e){e.classList.toggle('on',e.id==='s-'+s)});['product','receiving','return'].forEach(function(n){document.getElementById('nav-'+n).classList.toggle('cur',n===s)});window.scrollTo(0,0)}
+  tabs.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.s)})});
+  ['product','receiving','return'].forEach(function(n){document.getElementById('nav-'+n).addEventListener('click',function(e){e.preventDefault();show(n)})});
+  show('product');
+  document.getElementById('dsw').addEventListener('change',function(){document.body.classList.toggle('d',this.checked)});
+})();
+</script></body></html>

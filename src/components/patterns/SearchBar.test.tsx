@@ -35,6 +35,11 @@ describe("SearchBar commit 型（debounceMs 未指定、REQ-103 商品検索の�
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
+  it("D-7 例外: 検索ボタンは border-border-strong を持つ（入力枠 3.53:1 との段差防止）", () => {
+    render(<SearchBar value="" onSearchChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "検索" })).toHaveClass("border-border-strong");
+  });
+
   it("Enter で確定値（trim 済み）を onSearchChange に渡す", async () => {
     const onSearchChange = vi.fn();
     const user = userEvent.setup();

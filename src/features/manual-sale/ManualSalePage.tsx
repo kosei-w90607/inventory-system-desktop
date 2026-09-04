@@ -27,8 +27,10 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
+import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { formatDateTime, formatRecordStatus } from "@/features/inventory-records/types";
+import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
 import { commands, type ManualSaleCreateResult, type ProductWithRelations } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
@@ -296,7 +298,7 @@ export function ManualSalePage() {
   }
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <UnsavedChangesDialog warning={unsavedChanges} />
       <PageHeader
         title="手動販売出庫"
@@ -636,7 +638,7 @@ export function ManualSalePage() {
                         }}
                       />
                     </TableCell>
-                    <TableCell>{row.stockUnit}</TableCell>
+                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"
@@ -757,6 +759,6 @@ export function ManualSalePage() {
           </div>
         ) : null}
       </section>
-    </div>
+    </PageShell>
   );
 }

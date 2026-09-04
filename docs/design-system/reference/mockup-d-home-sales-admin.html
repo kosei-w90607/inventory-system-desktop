@@ -1,0 +1,315 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ホーム・売上・管理画面 統合案 D</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#cdc8c4;--border-strong:#8a8480;--row-current:#fff8e6;--accent:#f5f5f4;
+--primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
+--warn-soft:#fffbeb;--warn-border:#fde68a;--warn-strong:#78350f;--warn:#d97706;
+--bad-soft:#fef2f2;--bad-border:#fecaca;--bad-strong:#991b1b;--bad:#dc2626;
+--ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
+--ring:#b45309;
+--d-line:#cdc8c4;--d-head:#e7e5e4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10);--d-card-muted:#766f6b}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+.chrome{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;background:#292524;color:#fafaf9;font-size:14px}
+.chrome b{font-size:14px;letter-spacing:.04em}
+.chrome .tabs{display:inline-flex;flex-wrap:wrap;border:1px solid #57534e;border-radius:6px;overflow:hidden}
+.chrome .tabs button{min-height:36px;padding:0 12px;border:0;border-left:1px solid #57534e;background:transparent;color:#fafaf9;font:inherit;font-size:13px;cursor:pointer}
+.chrome .tabs button:first-child{border-left:0}
+.chrome .tabs button.on{background:#fafaf9;color:#1c1917;font-weight:600}
+.chrome .sw{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
+.chrome .sw label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.chrome .sw input{width:18px;height:18px;accent-color:#f59e0b}
+.chrome .legend{font-size:13px;color:#d6d3d1}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
+.sb{background:var(--card);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:16px}
+.brand{font-size:16px;font-weight:700;padding:4px 8px}
+.area h4{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:8px 8px 4px}
+.nav a{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;color:var(--fg);text-decoration:none;font-size:14px;line-height:1.4}
+.nav a.cur{background:var(--primary-soft);font-weight:600}
+.nav svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;color:var(--muted)}
+.nav a.cur svg{color:var(--primary)}
+.page{padding:24px;display:flex;flex-direction:column;gap:24px;max-width:1240px}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.ph h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
+.ph p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75}
+.btn.primary{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.sm{min-height:36px;font-size:14px;padding:0 12px}
+.btn.destructive{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,.nav a:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.alert{display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:start;padding:12px 16px;border:1px solid;border-radius:6px}
+.alert svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;margin-top:2px}
+.alert b{display:block;font-size:16px}
+.alert span{font-size:14px}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.alert.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.alert.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
+.card .lbl{font-size:14px;color:var(--muted)}
+.card .val{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3;margin-top:4px}
+.card .sub{font-size:14px;color:var(--muted);margin-top:2px}
+.sec h2{font-size:20px;font-weight:600;margin:0 0 12px}
+.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.action{display:grid;grid-template-columns:24px 1fr;gap:12px;align-items:start;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--fg);min-height:72px}
+.action svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.75;color:var(--muted);margin-top:2px}
+.action b{display:block;font-size:16px;font-weight:600}
+.action span{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.action.primary{border-color:var(--primary);background:var(--primary-soft)}
+.action.primary svg{color:var(--primary)}
+.action:hover{background:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.filters label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.search{display:flex;align-items:center;gap:0}
+.search input{min-height:40px;width:260px;border:1px solid var(--border);border-radius:6px 0 0 6px;padding:0 12px;font:inherit;font-size:16px}
+.search .btn{border-radius:0 6px 6px 0;border-left:0}
+select.ctl{min-height:40px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font:inherit;font-size:16px;background:#fff;width:11rem}
+input.ctl{min-height:40px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font:inherit;font-size:16px;background:#fff}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.seg button{min-height:40px;padding:0 14px;border:0;background:#fff;font:inherit;font-size:16px;color:var(--fg);border-left:1px solid var(--border);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--primary-soft);font-weight:600}
+.sep{flex-basis:100%;height:0}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.scroll{overflow:auto;max-height:56vh}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:16px}
+th{font-size:14px;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);background:#fafaf9;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;height:40px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.row{cursor:pointer}
+tr.row:hover td{background:var(--accent)}
+td.chev{width:40px;text-align:center;color:var(--muted)}
+td.chev svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+td .code{font-weight:600;font-variant-numeric:tabular-nums}
+td input.cell{min-height:40px;width:6.5rem;border:1px solid var(--border);border-radius:6px;padding:0 10px;font:inherit;font-size:16px;text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:9999px;white-space:nowrap;vertical-align:middle}
+.badge svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.b-state{border:1px solid var(--border);background:#fff;color:var(--fg)}
+.b-state.warn{background:var(--warn-soft);border-color:var(--warn-border);color:var(--warn-strong)}
+.b-state.bad{background:var(--bad-soft);border-color:var(--bad-border);color:var(--bad-strong)}
+.b-state.ok{background:var(--ok-soft);border-color:var(--ok-border);color:var(--ok-strong)}
+.b-class{background:var(--accent);color:var(--muted)}
+.b-emph{background:var(--primary);color:#fff}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
+.pager .pg{display:flex;gap:8px;align-items:center}
+.pager.top{display:none}
+/* Gated Amendment 3 追補 S18（mockup-d-lists.html と同型）: 上部件数を summary 帯として帯化する */
+.pager.top{background:var(--d-head);padding:0 12px;min-height:40px}
+.note{font-size:14px;color:var(--muted);border-top:1px dashed var(--border);padding:16px 24px;max-width:1240px;line-height:1.6}
+.note b{color:var(--fg)}
+.note ol{margin:8px 0 0;padding-left:22px}
+.note li{margin:2px 0}
+.screen{display:none}.screen.on{display:block}
+.formsec{border:1px solid var(--border);border-radius:8px;padding:16px;background:var(--card);display:flex;flex-direction:column;gap:12px}
+.formsec h2{font-size:20px;font-weight:600;margin:0}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;color:var(--muted)}
+.field .req::after{content:" *";color:var(--bad)}
+.field .err{font-size:14px;color:var(--bad-strong);display:flex;align-items:center;gap:6px}
+.field .err svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.dialog-sample{border:1px solid var(--border);border-radius:8px;background:var(--card);max-width:420px;padding:20px;box-shadow:0 4px 16px var(--d-shadow)}
+.dialog-sample h3{margin:0 0 8px;font-size:18px}
+.dialog-sample p{margin:0 0 16px;color:var(--muted);font-size:14px;line-height:1.6}
+.dialog-sample .acts{display:flex;gap:8px;justify-content:flex-end}
+/* D */
+.d .tbl{border-color:var(--d-line)}
+.d th{position:sticky;top:0;z-index:3;background:var(--d-head);border-bottom:2px solid var(--d-line);box-shadow:0 1px 0 var(--d-line)}
+.d td{border-bottom-color:var(--d-line)}
+.d select.ctl,.d input.ctl,.d .search input,.d td input.cell{border-color:var(--border-strong)}
+.d .search .btn{border-color:var(--border-strong)}
+.d .pager.top{display:flex}
+.d .pager .cnt{color:var(--fg);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.d .pager .cnt small{font-size:14px;color:var(--muted);font-weight:400;margin-left:8px}
+.d th.id,.d td.id{position:sticky;left:0;z-index:2;background:var(--card)}
+.d th.id{z-index:4;background:var(--d-head)}
+.d th.id2,.d td.id2{position:sticky;left:var(--id-w,11rem);z-index:2;background:var(--card)}
+.d .scroll.sx td.id2{box-shadow:6px 0 6px -4px var(--d-shadow)}
+.d .scroll.sx th.id2{box-shadow:6px 0 6px -4px var(--d-shadow),0 1px 0 var(--d-line)}
+.d th.id2{z-index:4;background:var(--d-head)}
+.d tr.row:hover td,.d tr.row:hover td.id,.d tr.row:hover td.id2{background:var(--accent)}
+.d tr.cur td{background:var(--d-row-cur)}
+.d tr.cur td.id,.d tr.cur td.id2{background:var(--d-row-cur)}
+.d tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
+.d tr.row:focus-within td{background:var(--d-row-cur)}
+.d .card .sub{color:var(--d-card-muted)}
+@media (prefers-reduced-motion:no-preference){.d th{transition:box-shadow .12s}}
+</style></head><body class="d">
+<div class="chrome"><b>ホーム・売上・管理画面 統合案 D</b><div class="tabs" role="tablist"><button role="tab" class="on" data-s="home">ホーム</button><button role="tab" data-s="daily">日次売上</button><button role="tab" data-s="monthly">月次売上</button><button role="tab" data-s="backup">バックアップ・復元</button><button role="tab" data-s="integrity">整合性チェック</button><button role="tab" data-s="threshold">在庫少の基準</button></div><div class="sw"><label><input type="checkbox" id="dsw" checked> D（改善案）を適用</label><span class="legend">外すと統合案 C の見え方</span></div></div>
+<div class="app"><aside class="sb"><div class="brand">在庫管理システム</div>
+<div class="area"><h4>毎日の業務</h4><nav class="nav">
+<a href="#" id="nav-home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>売上データ取込み</a>
+<a href="#" id="nav-daily"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>日次売上</a>
+<a href="#"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>在庫照会</a>
+<a href="#" id="nav-monthly"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>月次売上</a>
+</nav></div>
+<div class="area"><h4>商品管理</h4><nav class="nav">
+<a href="#"><svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/></svg>商品検索・一覧</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>商品登録</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>一括インポート</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M4 4h8l8 8-8 8-8-8zM8 8h.01"/></svg>PLU書出し</a>
+</nav></div>
+<div class="area"><h4>入出庫</h4><nav class="nav">
+<a href="#"><svg viewBox="0 0 24 24"><path d="M20 12H4m0 0 6-6m-6 6 6 6"/></svg>入庫記録</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4m4 4-4 4M20 16H6l4 4m-4-4 4-4"/></svg>返品・交換</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M4 12h16m0 0-6-6m6 6-6 6"/></svg>手動販売出庫</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg>廃棄・破損</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>入出庫履歴</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>在庫少一覧</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM6 6h12v14H6zM9 12h6M9 16h4"/></svg>棚卸し</a>
+</nav></div>
+<div class="area"><h4>システム管理</h4><nav class="nav">
+<a href="#" id="nav-backup"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>バックアップ・復元</a>
+<a href="#"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 9h6M9 13h6"/></svg>操作ログ</a>
+<a href="#" id="nav-integrity"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 3a9 9 0 100 18 9 9 0 000-18z"/></svg>整合性チェック</a>
+<a href="#" id="nav-threshold"><svg viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M12 14l4-4"/></svg>在庫少の基準</a>
+</nav></div>
+</aside>
+<main>
+<!-- ========== ホーム ========== -->
+<section class="screen on" id="s-home"><div class="page">
+<div class="ph"><div><h1>ホーム</h1><p>2026年8月23日（日）</p></div></div>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>PLU 未反映商品があります</b><span>3 件の商品で PLU 書出しが必要です。</span></div><a class="btn sm" href="#">PLU 書出しへ</a></div>
+<div class="alert bad"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>前日分が未取込みです</b><span>最後の取込み精算日: 2026-08-21</span></div></div>
+<div class="cards" style="grid-template-columns:repeat(3,1fr)"><div class="card"><div class="lbl">昨日の売上（8/22）</div><div class="val">¥48,200</div><div class="sub">37 点</div></div><div class="card"><div class="lbl">在庫切れ</div><div class="val">2 件</div></div><div class="card"><div class="lbl">在庫少</div><div class="val">5 件</div></div></div>
+<section class="sec"><h2>毎日の作業</h2><div class="actions">
+<a href="#" class="action primary"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><b>売上データ取込み</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg><b>日次売上</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><b>在庫照会</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/></svg><b>商品検索・一覧</b></a>
+</div></section>
+<section class="sec"><h2>入庫・出庫</h2><div class="actions">
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M20 12H4m0 0 6-6m-6 6 6 6"/></svg><b>入庫記録</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4m4 4-4 4M20 16H6l4 4m-4-4 4-4"/></svg><b>返品・交換</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M4 12h16m0 0-6-6m6 6-6 6"/></svg><b>手動販売出庫</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg><b>廃棄・破損</b></a>
+</div></section>
+<section class="sec"><h2>その他</h2><div class="actions">
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM6 6h12v14H6zM9 12h6M9 16h4"/></svg><b>棚卸し</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg><b>バックアップ・復元</b></a>
+<a href="#" class="action"><svg viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0M12 14l4-4"/></svg><b>在庫少の基準</b></a>
+</div></section>
+</div><div class="note"><b>D の要点（ホーム、Lane 2 実装値へ同期）</b>: card 群・action 群・確認 dialog（<code>.dialog-sample</code>、下の画面タブで見られる）の枠線が `--border`（#cdc8c4、対 `--background` 1.59:1、Lane 2 で `#e7e5e4`〈≈1.20:1〉から濃化）になり、静止時でも境界が見える（dialog は入力欄ではないため `--border-strong` ではなく `--border` のみ、D-7 Non-scope）。Lane 0-c 実測で card 上の <code>muted-foreground</code>（#78716c）は 4.40:1 で AA 未達のため、card 内の補助文字だけ #766f6b 相当（4.5:1 以上）に上げる（数値・見出しの文字色は変えない）。<b>現実装維持</b>: サマリカード 3 枚（昨日の売上 / 在庫切れ / 在庫少、補助文字は昨日の売上のみ）、`毎日の作業` 4 action（売上データ取込み primary / 日次売上 / 在庫照会 / 商品検索・一覧）、`入庫・出庫` 4 action（入庫記録 / 返品・交換 / 手動販売出庫 / 廃棄・破損）、`その他` 3 action（棚卸し / バックアップ・復元 / 在庫少の基準）、action は icon + 1 行ラベルのみで説明文を持たない。<b>後続候補（本 mockup へ描かない）</b>: (1) action への説明文追加（owner は方向性を肯定したが現実装に無いため画面へは描かない） (2) dialog 枠が `--border` 濃化のみで十分な視認性か、AC-L3-1 の dialog 項目で owner が確認 (3) card-on-card（card 内に card 相当の要素を持つ画面）は Lane 2 pilot に無いため Plans.md ④ 申し送り (v) として Lane 3〜5 へ。</div></section>
+<!-- ========== 日次売上 ========== -->
+<section class="screen" id="s-daily"><div class="page">
+<div class="ph"><h1>日次売上</h1></div>
+<div class="seg" role="tablist" aria-label="売上レポート切替"><button class="on">日次</button><button>月次</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:8px"><button class="btn sm">前日</button><span style="min-width:10rem;text-align:center;font-size:14px;font-weight:600">2026年8月22日（土）</span><input class="ctl" type="date" value="2026-08-22" style="width:10rem"><button class="btn sm">翌日</button></div><select class="ctl"><option>すべての部門</option></select></div>
+<div class="cards"><div class="card"><div class="lbl">売上合計</div><div class="val">¥48,200</div></div><div class="card"><div class="lbl">販売点数</div><div class="val">37 点</div></div><div class="card"><div class="lbl">売上明細数</div><div class="val">37 件</div><div class="sub">自動 35 / 手動 2</div></div><div class="card"><div class="lbl">前日比</div><div class="val" style="color:var(--ok)">+¥2,860</div><div class="sub" style="color:var(--ok)">+6.3%</div></div></div>
+<section class="sec"><h2 style="font-size:18px;font-weight:600;margin:0">レジ日報（公式）</h2><p class="sub">Z001 / Z002 / Z005 日報から保存した公式集計です。</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-top:12px">
+<div><div class="sub">総売上</div><div style="font-size:16px;font-weight:600">¥48,200</div></div>
+<div><div class="sub">純売上</div><div style="font-size:16px;font-weight:600">¥47,650</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+<div class="tbl"><div style="padding:10px 12px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border)">支払集計</div><table><thead><tr><th>区分</th><th class="num">件数</th><th class="num">金額</th></tr></thead><tbody><tr><td>現金</td><td class="num">28 件</td><td class="num">¥38,100</td></tr><tr><td>クレジット</td><td class="num">9 件</td><td class="num">¥10,100</td></tr></tbody></table></div>
+<div class="tbl"><div style="padding:10px 12px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border)">部門別集計</div><table><thead><tr><th>部門</th><th class="num">数量</th><th class="num">件数</th><th class="num">金額</th></tr></thead><tbody><tr><td>毛糸</td><td class="num">12</td><td class="num">10</td><td class="num">¥18,900</td></tr><tr><td>生地</td><td class="num">8</td><td class="num">7</td><td class="num">¥15,200</td></tr></tbody></table></div>
+</div>
+</section>
+<div class="tbl"><div class="scroll"><table><thead><tr><th>商品コード</th><th>商品名</th><th>部門</th><th class="num">数量</th><th class="num">単価</th><th class="num">金額</th></tr></thead><tbody id="tb-daily"></tbody></table></div></div>
+<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn sm">CSV 出力</button><button class="btn sm" aria-disabled="true" style="opacity:.5;cursor:not-allowed">印刷</button></div>
+</div><div class="note"><b>D の要点（日次売上）</b> — 56-ui の契約（部門小計行 / 単価 null = 「—」/ 手動行の黄色バッジ）はそのまま。<ol><li>部門小計行は grey 帯で識別できる。</li><li>操作枠のコントラスト強化。識別列固定・sticky header は商品一覧 pilot のみの `ListShell` 実装のため本画面には未描画（後続候補）。</li></ol><b>現実装維持</b>: `TabsHeader`（日次/月次、filters と別置き）、`DateNavigator`（前日/翌日 + 日付ラベル + 入力）、4 summary（売上合計 / 販売点数 / 売上明細数 / 前日比、前日比は文言 + 符号 + 色）、`レジ日報（公式）` の総売上・純売上・支払集計・部門別集計、右下 CSV 出力（active）+ 印刷（`aria-disabled="true"`）。<b>後続候補（本 mockup へ描かない）</b>: (1) Z001 summary 全項目の公開（現 DTO は gross/net/payment/department のみ） (2) 印刷紙面設計（Phase 4） (3) CSV native 出力の owner 確認。</div></section>
+<!-- ========== 月次売上 ========== -->
+<section class="screen" id="s-monthly"><div class="page">
+<div class="ph"><h1>月次売上</h1></div>
+<div class="seg" role="tablist" aria-label="売上レポート切替"><button>日次</button><button class="on">月次</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:8px"><button class="btn sm">前月</button><span style="min-width:8rem;text-align:center;font-size:14px;font-weight:600">2026年8月</span><input class="ctl" type="month" value="2026-08" style="width:9rem"><button class="btn sm">翌月</button></div><div class="seg"><button class="on">商品別ランキング</button><button>部門別構成比</button></div></div>
+<div class="cards"><div class="card"><div class="lbl">月間売上合計</div><div class="val">¥675,700</div></div><div class="card"><div class="lbl">月間販売点数</div><div class="val">273 点</div></div><div class="card"><div class="lbl">期間</div><div class="val" style="font-size:16px">2026/08/01 〜 2026/08/31</div></div><div class="card"><div class="lbl">前月比</div><div class="val" style="color:var(--ok)">+¥42,300</div><div class="sub" style="color:var(--ok)">+6.7%</div></div></div>
+<h2 style="font-size:18px;font-weight:600;margin:0">公式部門集計（レジ日報由来）</h2>
+<p class="sub" style="margin-top:-8px">日報取込み済み日の Z005 部門別売上合計です。</p>
+<div class="tbl"><div class="scroll" style="max-height:32vh"><table><thead><tr><th>部門</th><th class="num">数量</th><th class="num">件数</th><th class="num">金額</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
+<h2 style="font-size:18px;font-weight:600;margin:0">商品ランキング（上位 10、Z004・手動販売由来）</h2>
+<div class="tbl"><div class="scroll" style="max-height:40vh"><table><thead><tr><th></th><th>商品コード</th><th>商品名</th><th class="num">数量</th><th class="num">金額</th></tr></thead><tbody id="tb-rank"></tbody></table></div></div>
+<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn sm">CSV 出力</button><button class="btn sm" aria-disabled="true" style="opacity:.5;cursor:not-allowed">印刷</button></div>
+</div><div class="note"><b>D の要点（月次売上）</b> — 57-ui の契約（公式部門集計 / 商品ランキングを別セクション・別根拠として提示、1 位バッジは <code>ranking===1</code> に追従）はそのまま。<ol><li>1 位の強調 badge（琥珀 pill）はそのまま、順位列も badge の隣で明示。</li><li>識別列固定 + sticky header は商品一覧 pilot のみの `ListShell` 実装のため本画面には未描画（後続候補）。</li></ol><b>現実装維持</b>: `TabsHeader`（日次/月次、別置き）、`MonthNavigator` + mode tabs（商品別ランキング / 部門別構成比、DatePicker 非採用で native <code>input type=month</code> 相当）、mode tabs 直下の `SummaryCardsBar` 4 card（月間売上合計 / 月間販売点数 / 期間 / 前月比、S27 で追加、`SummaryCardsBar.tsx` から実 label 転記）、公式部門集計の説明文 + 列 `部門 / 数量 / 件数 / 金額`、右下 ExportBar（CSV active + 印刷 `aria-disabled="true"`）、商品ランキング 1 位 badge（商品ランキングは同順位なし前提 `BIZ-05 row_number`、内部語彙のため画面文言には出さない）。<b>後続候補（本 mockup へ描かない）</b>: 印刷紙面設計（Phase 4）。</div></section>
+<!-- ========== バックアップ・復元 ========== -->
+<section class="screen" id="s-backup"><div class="page">
+<div class="ph"><h1>バックアップ・復元</h1></div>
+<div class="grid2">
+<div class="formsec"><h2>バックアップ設定</h2>
+<label style="display:flex;align-items:center;gap:8px;font-size:16px"><input type="checkbox" checked style="width:20px;height:20px">自動バックアップを使う</label>
+<div class="field"><label>自動バックアップ時刻</label><input class="ctl" type="time" value="03:00" style="width:10rem"></div>
+<div class="field"><label>保存日数</label><input class="ctl" type="number" value="14" style="width:8rem"></div>
+<div class="field"><label>現在の保存先</label><div class="sub" style="background:#f5f5f4;border-radius:6px;padding:8px 10px">D:\在庫管理バックアップ\</div><button class="btn sm" style="align-self:flex-start">保存先を選ぶ</button></div>
+</div>
+<div class="formsec"><h2>手動バックアップ</h2><p class="sub">今のデータを控えとして保存します。復元前にも自動で同じバックアップを作成します。</p><button class="btn primary" style="align-self:flex-start"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>今すぐバックアップを作成</button></div>
+</div>
+<div class="formsec"><h2>バックアップ一覧</h2>
+<div class="tbl"><div class="scroll" style="max-height:40vh"><table><thead><tr><th>日時</th><th class="num">サイズ</th><th>ファイル名</th><th>操作</th></tr></thead><tbody id="tb-backup"></tbody></table></div></div>
+</div>
+<div class="formsec"><h2>復元</h2>
+<p class="sub" style="margin:0">2026-08-22 09:00 の控え</p><p class="sub" style="margin:0">サイズ: 18.4 MB</p>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>復元すると今の記録は戻せません</b><span>この時点の状態に戻ります。この控えより後に記録した内容は消えます</span></div></div>
+<button class="btn primary" style="align-self:flex-start">復元の確認へ進む</button>
+<div class="dialog-sample" style="max-width:none;margin-top:4px"><h3>元に戻せません</h3><p>2026-08-22 09:00 の控えに戻します。この控えより後に記録した内容は消えます。<br>復元後、画面はホームに戻ります。</p><div class="acts"><button class="btn sm">キャンセル</button><button class="btn sm destructive">2026-08-22 09:00 の控えに戻す</button></div></div>
+</div>
+</div><div class="note"><b>D の要点（バックアップ・復元）</b> — 68-ui の契約（復元前の強制事前バックアップ、控え選択 → 警告 alert → 最終確認の 3 段、最終確認 title「元に戻せません」+ 実行ボタンに対象日時）は `BackupRestorePage.tsx:550,619,657-675` から exact 転記。<ol><li>一覧行の操作は「この控えに戻す」outline button のみ（`復元` 表記は使わない）。選択すると「復元」card に控えの日時・サイズ、警告 alert「復元すると今の記録は戻せません」、「復元の確認へ進む」primary button を表示し、最終確認 dialog で「キャンセル」/「{日時} の控えに戻す」を選ぶ。</li><li>操作枠コントラスト。識別列固定・sticky header は商品一覧 pilot のみの `ListShell` 実装のため本画面には未描画（DSR-22 mapping は 作成日時 + ファイル名、後続候補）。</li></ol><b>現実装維持</b>: `バックアップ設定` / `手動バックアップ` / `バックアップ一覧` / `復元` の 4 card、保存先・作成ボタンは各 card 内（PageHeader / 独立帯へ移さない）、列順 `日時`→`サイズ`→`ファイル名`→`操作`、最新 badge。<b>後続候補（本 mockup へ描かない）</b>: break-glass checkbox（事前バックアップ失敗時のみ表示）、日時 `YYYY-MM-DD HH:mm` 表示形式、page subtitle、識別列固定 + sticky header の `ListShell` 移行判断。</div></section>
+<!-- ========== 整合性チェック ========== -->
+<section class="screen" id="s-integrity"><div class="page">
+<div class="ph"><div><h1>在庫整合性検証</h1><p>システム在庫と入出庫の記録を照合し、差異を確認します。</p></div><button class="btn primary">整合性チェック実行</button></div>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>一部の商品は補正されませんでした</b><span>2 件は状態が変わっていたため、補正を見送りました。</span></div></div>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap"><div><h2 style="font-size:18px;font-weight:600;margin:0">差異のある商品</h2><p class="sub" style="margin-top:4px">補正する商品を行ごとに選び、内容を確認して確定してください。</p></div><button class="btn primary">補正を確定</button></div>
+<div class="tbl"><div class="scroll" style="max-height:40vh"><table><thead><tr><th>商品コード</th><th>名前</th><th class="num">システム在庫</th><th class="num">入出庫の合計</th><th class="num">差異</th><th>操作</th></tr></thead><tbody id="tb-integrity"></tbody></table></div></div>
+<div class="dialog-sample"><h3>在庫数を入出庫の合計に合わせて補正します</h3><p>補正すると元に戻せません。選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。</p><div class="acts"><button class="btn sm">編集を続ける</button><button class="btn sm destructive">補正を実行する</button></div></div>
+</div><div class="note"><b>D の要点（整合性チェック）</b> — 75-ui の語彙（「システム在庫」「入出庫の合計」「補正する」、棚卸し語彙の排除、行単位 checkbox・select-all なし）はそのまま。<ol><li>差異は符号付き数値 + `differenceLabel`（システム在庫が多い / 入出庫の合計が多い / 差異なし）の outline badge を縦積み表示。操作列は行ごとに補正 checkbox + 「補正する」ラベル、補正済みは緑 badge（`IntegrityCheckPage.tsx:333-364`、列は商品コード / 名前 / システム在庫 / 入出庫の合計 / 差異 / 操作の 6 列、checkbox は独立列にしない）。</li><li>client-side paging 100 件固定、上部件数表示は実装になく S27 で除去。識別列固定 + sticky header は商品一覧 pilot のみの `ListShell` 実装のため本画面には未描画（後続候補）。</li></ol><b>現仕様維持</b>: 確認 dialog 2 段の文言、「補正する」ボタンの disabled 条件（選択 0 件）。<b>S27 是正（2026-09-04 Coordinator 追補）</b>: 見出し・実行/確定 button・部分失敗 alert・上部件数表示の有無を `IntegrityCheckPage.tsx` から実測転記（Writer 判断点 2 = 対照表外として未点検、Coordinator が drift と裁定）。</div></section>
+<!-- ========== 在庫少の基準 ========== -->
+<section class="screen" id="s-threshold"><div class="page">
+<div class="ph"><div><h1>在庫少の基準</h1><p>「在庫少」と判定する数量の基準を設定します</p></div></div>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>保存できませんでした</b><span>生地の基準の保存に失敗しました。一般商品の基準は保存済みです。もう一度保存してください</span></div></div>
+<div class="formsec"><h2>基準値</h2>
+<div class="grid2">
+<div class="field"><label>一般商品の基準（必須）</label><div style="display:flex;align-items:center;gap:8px"><input class="ctl" type="number" value="5" style="width:8rem"><span class="sub">個</span></div><span class="sub">在庫がこの個数以下になったら在庫少（初期値: 3個）</span></div>
+<div class="field"><label>生地の基準（必須）</label><div style="display:flex;align-items:center;gap:8px"><input class="ctl" type="number" value="300" style="width:8rem"><span class="sub">cm</span></div><span class="sub">在庫がこの長さ以下になったら在庫少（初期値: 500cm = 5m）</span><div class="err"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>1〜99999 の範囲で入力してください</div></div>
+</div>
+<div><button class="btn primary">保存する</button></div>
+</div>
+</div><div class="note"><b>D の要点（在庫少の基準）</b> — 69-ui の契約（フィールドは「一般商品の基準」「生地の基準」の 2 件のみ、単一「保存する」ボタン、部分失敗は失敗フィールドを明示し成功分は保存済みのまま）はそのまま。<ol><li>入力欄・ボタンの操作枠コントラストを強化。</li><li>list ではないため D の sticky / 識別列固定は対象外。</li></ol><b>doc との食い違い（要報告）</b>: 発注時の想定は「部門別 table + inline input」だったが、69-ui-threshold-settings.md は「一般商品 / 生地」の 2 key 固定（部門別ではない）と明記（UI-11a-D1: app_settings key を 2 件に限定）。本 mockup は doc を正として 2 フィールド form で描いた。<b>S27 是正（2026-09-04 Coordinator 追補）</b>: label / unit / description を `extract-thresholds.ts` の descriptor 実値へ転記、失敗 alert のタイトルを常時 `保存できませんでした` に統一（`IntegrityCheckPage.tsx` 隣接画面として対照表外だったものを追加点検、Writer 判断点 2 = Coordinator drift 裁定）。</div></section>
+</main></div>
+<div class="note"><b>位置付け</b>: 正本は <code>04-backbone.md</code> + <code>01-decision-rules.md</code> DSR-22。本ファイルは runtime の現状を土台に、Lane 2 で実装済みの <code>PageShell</code> 24px、<code>--border</code> / <code>--input</code>、商品一覧 pilot で確定した帯 token を確認する reference（ホーム・日次売上・月次売上・バックアップ復元・整合性チェック・在庫少の基準の 6 画面）。後続候補を画面へ先行実装しない。数値・文言は各 function-design doc から可能な限り exact 転記した。sticky 帯・上部件数表示・識別列固定は商品一覧 pilot のみの `ListShell` 実装のため、本ファイルの日次商品明細・月次ランキング・Backup 一覧・整合性チェックの 4 一覧には描かない。<b>今回採用（Lane 2）</b>: card / action / dialog 群の <code>--border</code> 濃化、月次ランキング 1 位 badge。<b>現実装維持</b>: ホームのサマリカード 3 枚 + PLU warning + 前日未取込み alert（`前日分が未取込みです`、`HomePage.tsx:79`）+ `毎日の作業` / `入庫・出庫` / `その他` の action 構成（icon + 1 行ラベルのみ）、日次商品明細の列 商品コード / 商品名 / 部門 / 数量 / 単価 / 金額（`ProductTable.tsx`）、日次 / 月次の別置き `TabsHeader` + 専用 layout（月次は mode tabs 直下に `SummaryCardsBar` 4 card、S27 で追加）、Backup の 4 card 導線・一覧行「この控えに戻す」→ 復元 card の警告 alert →「復元の確認へ進む」→ 最終確認 dialog の 3 段（`BackupRestorePage.tsx`）、整合性チェックの見出し・実行/確定 button・部分失敗 alert（S27 で `IntegrityCheckPage.tsx` から実測転記）と 6 列（商品コード / 名前 / システム在庫 / 入出庫の合計 / 差異 / 操作、Amendment 4 closure round 1 で runtime 同期）、在庫少の基準の label / unit / description（S27 で `extract-thresholds.ts` の descriptor から実測転記）。<b>後続候補（本 mockup へ描かない）</b>: action への説明文、Z001 / Z002 / Z005 summary の全項目公開、Z004・手動販売の部門小計分離、Backup 日時書式 `YYYY-MM-DD HH:mm` と page subtitle、CSV native 出力の owner 確認、印刷要否・紙面設計、各画面の一覧 table を `ListShell` 化するかの Lane 3〜5 判断、sticky 帯 × 識別列固定の両立方式（D-2 probe 待ち）。<b>owner L3 所感</b>: 停止理由は本ファイルが Lane 2 の token / border / spacing 比較を越え、既存画面の情報・導線・データ契約を独自に再設計していたこと（架空の非 link「すぐ確認」、平均単価・部門数への置換、`入庫・出庫` action の欠落、独自 PLU summary card）。owner が是正方針 A（現実装 + Lane 2 差分へ限定し所感・採否理由を残す）を明示選択し、本 Amendment 4 で反映した。2026-09-04 追記（S27）: Writer 判断点 1（月次の `SummaryCardsBar` を S24 の字面に無いことを理由に未描画）と判断点 2（整合性チェック・在庫少の基準を対照表外として未点検）は、S22 の原則「runtime の現状を土台にする」に照らし Coordinator が drift と裁定し、本 file へ追加反映した。確定 button は runtime <code>IntegrityCheckPage.tsx:303</code> どおり <code>補正を確定</code>（S27 初版の <code>補正する</code> は Coordinator の誤記、S27 訂正 <code>9005270</code> で是正）。</div>
+<script>
+(function(){
+  function yen(n){return '¥'+n.toLocaleString('ja-JP')}
+  var iWarn='<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>',iOk='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>',iBad='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9l6 6m0-6-6 6"/></svg>';
+  var names=['並太毛糸（生成）','コットンブロード（無地・生成）','木製ボタン（大）','刺しゅう糸 25番（赤系アソート）','ワッペン（星・3枚入）','レース（コットン 20mm）','ファスナー 20cm（黒）','マスキングテープ（花柄）','ビーズ（丸小・金）','フェルト（赤・18cm角）'];
+  var codes=['HZ-0047','F-0132','H-0009','4901234567894','W-0213','L-0044','Z-0120','MT-0310','B-0506','FE-0018'];
+  /* 日次売上 */
+  var h='';var qty=[3,5,2,8,1,4,6,2,1,3],unit=[520,780,120,165,330,240,180,260,150,110],dnames=['毛糸','毛糸','手芸小物','生地','手芸小物','生地','手芸小物','文具','ビーズ','生地'];
+  for(var i=0;i<10;i++){h+='<tr class="row"><td><span class="code">'+codes[i]+'</span></td><td>'+names[i]+(i===3?' <span class="badge b-class">手動</span>':'')+'</td><td>'+dnames[i]+'</td><td class="num">'+qty[i]+'</td><td class="num">'+(unit[i]===0?'—':yen(unit[i]))+'</td><td class="num">'+yen(qty[i]*unit[i])+'</td></tr>';
+    if(i===4){h+='<tr style="background:#f5f5f4;font-weight:600"><td colspan="3">毛糸・手芸小物 小計</td><td class="num">19</td><td></td><td class="num">'+yen(9820)+'</td></tr>'}}
+  document.getElementById('tb-daily').innerHTML=h;
+  /* 月次 部門集計 */
+  var depts=['毛糸','生地','手芸小物','刺しゅう','飾り','ビーズ'],damt=[182400,256300,98200,64100,41200,33500],tot=675700;
+  h='';for(i=0;i<depts.length;i++){h+='<tr><td>'+depts[i]+'</td><td class="num">'+yen(damt[i])+'</td><td class="num">'+(Math.round(damt[i]/tot*1000)/10).toFixed(1)+' %</td></tr>'}
+  document.getElementById('tb-dept').innerHTML=h;
+  /* 月次 ランキング */
+  h='';var rq=[42,38,35,30,28,25,22,20,18,15],ramt=[21840,29640,4200,4950,9240,6000,3960,5200,2700,1650];
+  for(i=0;i<10;i++){h+='<tr class="row'+(i===0?' cur':'')+'"><td>'+(i===0?'<span class="badge b-emph">1 位</span>':(i+1)+' 位')+'</td><td><span class="code">'+codes[i]+'</span></td><td>'+names[i]+'</td><td class="num">'+rq[i]+'</td><td class="num">'+yen(ramt[i])+'</td></tr>'}
+  document.getElementById('tb-rank').innerHTML=h;
+  /* backup */
+  var bdates=['2026-08-22 09:00','2026-08-21 09:00','2026-08-20 18:32','2026-08-20 09:00','2026-08-19 09:00','2026-08-18 09:00'];
+  h='';for(i=0;i<bdates.length;i++){h+='<tr class="row'+(i===0?' cur':'')+'"><td>'+bdates[i]+(i===0?'<div><span class="badge b-state ok">'+iOk+'最新</span></div>':'')+'</td><td class="num">18.4 MB</td><td>backup_'+bdates[i].replace(/[-: ]/g,'')+'.db</td><td><button class="btn sm">この控えに戻す</button></td></tr>'}
+  document.getElementById('tb-backup').innerHTML=h;
+  /* integrity */
+  var idata=[{d:3,fixed:false},{d:-2,fixed:false},{d:0,fixed:true},{d:1,fixed:false}];
+  h='';for(i=0;i<4;i++){var it=idata[i];
+    var diffLabel=it.d>0?'システム在庫が多い':it.d<0?'入出庫の合計が多い':'差異なし';
+    var diffCell='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span style="font-weight:600">'+(it.d>0?'+':'')+it.d+'</span><span class="badge b-state">'+diffLabel+'</span></div>';
+    var opCell=it.fixed?'<span class="badge b-state ok">'+iOk+'補正済み</span>':'<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" aria-label="'+codes[i]+'を補正する" checked><span style="font-size:14px">補正する</span></label>';
+    h+='<tr class="row'+(i===1?' cur':'')+'"><td><span class="code">'+codes[i]+'</span></td><td>'+names[i]+'</td><td class="num">'+(12+i)+'</td><td class="num">'+(12+i-it.d)+'</td><td class="num">'+diffCell+'</td><td>'+opCell+'</td></tr>'}
+  document.getElementById('tb-integrity').innerHTML=h;
+  /* tabs */
+  var ids=['home','daily','monthly','backup','integrity','threshold'];
+  var tabs=document.querySelectorAll('.chrome .tabs button');
+  function show(s){tabs.forEach(function(b){b.classList.toggle('on',b.dataset.s===s)});document.querySelectorAll('.screen').forEach(function(e){e.classList.toggle('on',e.id==='s-'+s)});ids.forEach(function(n){var el=document.getElementById('nav-'+n);if(el)el.classList.toggle('cur',n===s)});window.scrollTo(0,0);syncIdWidth()}
+  tabs.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.s)})});
+  ids.forEach(function(n){var el=document.getElementById('nav-'+n);if(el)el.addEventListener('click',function(e){e.preventDefault();show(n)})});
+  document.getElementById('dsw').addEventListener('change',function(){document.body.classList.toggle('d',this.checked);syncIdWidth()});
+  function syncIdWidth(){document.querySelectorAll('.scroll').forEach(function(sc){var th=sc.querySelector('th.id');if(th){sc.style.setProperty('--id-w',th.getBoundingClientRect().width+'px')}})}
+  window.addEventListener('resize',syncIdWidth);
+  if(window.ResizeObserver){document.querySelectorAll('th.id').forEach(function(th){new ResizeObserver(syncIdWidth).observe(th)})}
+  show('home');
+})();
+</script><script>document.querySelectorAll(".scroll").forEach(function(sc){function f(){sc.classList.toggle("sx",sc.scrollLeft>0)}sc.addEventListener("scroll",f);f()})</script></body></html>

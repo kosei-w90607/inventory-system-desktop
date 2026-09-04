@@ -4,6 +4,7 @@ import { useState } from "react";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { ListSkeleton } from "@/components/patterns/ListSkeleton";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { SupplierWithUsage } from "@/lib/bindings";
@@ -30,7 +31,7 @@ export function SupplierManagementPage() {
   );
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader title="取引先管理" actions={addButton} />
       <p className="text-sm text-muted-foreground">
         メーカー・ブランドの追加、名称変更、重複した取引先の統合を行います。
@@ -79,6 +80,6 @@ export function SupplierManagementPage() {
         }}
         onStale={() => void suppliersQuery.refetch()}
       />
-    </div>
+    </PageShell>
   );
 }

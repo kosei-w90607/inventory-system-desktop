@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { describeError } from "@/lib/describe-error";
 import { ProductImportDropzone } from "./import/ProductImportDropzone";
 import { ProductImportPreview } from "./import/ProductImportPreview";
@@ -15,7 +16,7 @@ export function ProductImportPage() {
   const isCommitting = state.status === "committing";
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader
         title="商品一括インポート"
         actions={
@@ -110,7 +111,7 @@ export function ProductImportPage() {
           </AlertDescription>
         </Alert>
       ) : null}
-    </div>
+    </PageShell>
   );
 }
 

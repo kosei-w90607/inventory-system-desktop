@@ -5,6 +5,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { Pagination } from "@/components/patterns/Pagination";
 import { commands, type OperationLog } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -326,7 +327,7 @@ export function OperationLogsPage({
     logsQuery.data.total_count > 0 &&
     effectiveSearch.page > 1;
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <PageHeader title="操作ログ" subtitle="システムの操作履歴を期間・種別で確認します" />
       <section className="space-y-3 rounded-md border p-4">
         <div className="flex flex-wrap items-end gap-3">
@@ -516,7 +517,7 @@ export function OperationLogsPage({
               </TableBody>
             </Table>
           </div>
-          <ProductPagination
+          <Pagination
             page={effectiveSearch.page}
             perPage={PER_PAGE}
             totalCount={logsQuery.data.total_count}
@@ -526,6 +527,6 @@ export function OperationLogsPage({
           />
         </>
       )}
-    </div>
+    </PageShell>
   );
 }

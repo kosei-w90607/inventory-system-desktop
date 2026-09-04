@@ -254,7 +254,7 @@ describe("UI-11c REQ-902", () => {
     renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-10", page: 3 });
     await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
     expect(listLogs).toHaveBeenCalledTimes(1);
@@ -266,7 +266,7 @@ describe("UI-11c REQ-902", () => {
     expect(listLogs).toHaveBeenCalledTimes(1);
     expect(screen.getAllByText("合成ログ")).toHaveLength(2);
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
 
@@ -393,7 +393,7 @@ describe("UI-11c REQ-902", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "valid transitionを開始" }));
     await waitFor(() => {
@@ -405,7 +405,7 @@ describe("UI-11c REQ-902", () => {
       "開始日は終了日と同じ日か、それより前の日付にしてください",
     );
     expect(screen.getByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
     expect(listLogs).toHaveBeenCalledTimes(1);
   });
 

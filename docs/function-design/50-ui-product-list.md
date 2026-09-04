@@ -40,7 +40,7 @@ src/features/products/ProductListPage.tsx
 src/components/patterns/SearchBar.tsx        # 旧 ProductSearchBar、PR-B で統合（live 型 debounceMs=200、2026-08-03 owner L3 是正で commit 型から変更）
 src/components/patterns/DepartmentFilter.tsx # 旧 features/products/components/DepartmentFilter、PR-B で統合
 src/features/products/components/ProductTable.tsx
-src/features/products/components/ProductPagination.tsx
+src/components/patterns/Pagination.tsx                  # 旧 features/products/components/ProductPagination、UI 一覧の背骨 D Lane 2 で統合
 ```
 
 `src/routes/products/index.tsx` は route / search params / title を管理し、画面本体は `ProductListPage` に委譲する。`ProductListPage` は CMD 呼び出し、派生表示、子コンポーネントへの props 配線を担当する。業務判定や DB 操作は UI に置かない。
@@ -56,9 +56,11 @@ src/features/products/components/ProductPagination.tsx
 | `sort` | `product_code` / `name` / `stock_quantity` / `selling_price` | `product_code` | `product_code -> ProductCode`, `name -> Name`, `stock_quantity -> StockQuantity`, `selling_price -> SellingPrice` |
 | `dir` | `asc` / `desc` | `asc` | `asc -> Asc`, `desc -> Desc` |
 | `page` | number >= 1 | `1` | `page` |
-| `perPage` | `50` / `100` / `200` | `50` | `per_page` |
+| `perPage` | `50` / `100` / `200` | `100` | `per_page` |
 
 検索語、部門、廃番モード、PLU 移行 filter、並替え、`perPage` が変わったときは `page=1` に戻す。ページ移動だけは現在の検索条件を維持する。
+
+**2026-09-03 更新履歴（UI 一覧の背骨 D Lane 2）**: `perPage` の既定値を `50` → `100` へ変更（`src/features/products/search.ts` `normalizePerPage`、1 件探索が主動線のため。URL 明示値が優先される挙動・共有定数 `PRODUCT_PER_PAGE_OPTIONS` は不変）。
 
 `q` は live 型（[59-ui-shared-patterns.md](59-ui-shared-patterns.md) §59.1 SearchBar、`debounceMs=200`）で、入力から 200ms 後に search param へ反映する。Enter は debounce を待たず即時反映し（trim なし）、IME 変換確定中の Enter は `event.isComposing` で除外して検索確定と取り違えない。CMD 呼び出し直前の `keyword` 変換でのみ trim する（UI-01a-D9、2026-08-03 owner L3 判断、gated amendment）。
 
@@ -98,9 +100,11 @@ per_page: number  // 上限 200。UI は 50 / 100 / 200 のみ送信し、200 �
 |---|---|
 | badge | `対象外` / `未反映` / `反映済み` |
 | ボタン | `PLU 対象にする` / `PLU 対象から外す` |
-| dialog title | `表示中の商品をPLU対象にしますか` / `表示中の商品をPLU対象から外しますか` |
+| toolbar caption | (a)(b)(c) の 3 文 |
+| dialog title | `絞り込みに一致する商品をPLU対象にしますか` / `絞り込みに一致する商品をPLU対象から外しますか` |
 | dialog description | `現在の絞り込み条件に一致する {n} 件が対象です。現在の絞り込みに一致しない商品は変更されません。レジへの反映には PLU 書出しと PC ツールの取込みが別途必要です。` |
 | 成功 toast | `{updated} 件を更新しました（JAN 不備 {a} 件 / 廃番 {b} 件は対象外）` |
+- toolbar caption の (a)(b)(c) は `totalCount` で分岐する: (a) `絞り込みに一致する {n} 件すべてが対象です。他のページの商品も含みます。押すと確認画面が開きます。` (b) `絞り込みに一致する商品がないため実行できません。` (c) `件数を読み込んでいます。読み込みが終わると操作できます。`
 - 行クリックは商品修正へ遷移する。新規登録ボタンは商品登録へ遷移する。正確な UI-01b route は UI-01b Design Phase で確定し、UI-01a 実装時は `navigation.ts` と UI-01b 設計に合わせる。
 
 ## 50.7 Loading / Empty / Error
@@ -114,7 +118,7 @@ per_page: number  // 上限 200。UI は 50 / 100 / 200 のみ送信し、200 �
 
 UI-01a 実装時は、以下を trace ID 付きで検証する。
 
-- UI-01a-D1: 既定表示で `is_discontinued=false`, `page=1`, `per_page=50` の検索が走る。
+- UI-01a-D1: 既定表示で `is_discontinued=false`, `page=1`, `per_page=100` の検索が走る（URL 明示値がある場合はそちらを優先、UI 一覧の背骨 D Lane 2 で既定 50 → 100 へ変更）。
 - UI-01a-D2: URL search params の既定値、無効値補正、F5 相当の復元が効く。
 - UI-01a-D3: `commands.searchProducts` に渡る payload が URL state と一致する。
 - UI-01a-D4: page / perPage の変更、検索条件変更時の page reset、total_count からの最終ページ計算。

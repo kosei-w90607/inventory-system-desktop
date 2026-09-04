@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { DateNavigator } from "./components/DateNavigator";
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
+import { PageShell } from "@/components/patterns/PageShell";
 import { ExportBar } from "./components/ExportBar";
 import { ProductTable } from "./components/ProductTable";
 import { SummaryCardsBar } from "./components/SummaryCardsBar";
@@ -73,7 +74,7 @@ export function DailySalesPage({ search, onSearchChange }: DailySalesPageProps) 
   };
 
   return (
-    <div className="min-h-screen space-y-6 p-6">
+    <PageShell>
       <PageHeader title="日次売上" />
 
       <TabsHeader />
@@ -153,7 +154,7 @@ export function DailySalesPage({ search, onSearchChange }: DailySalesPageProps) 
           </div>
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 

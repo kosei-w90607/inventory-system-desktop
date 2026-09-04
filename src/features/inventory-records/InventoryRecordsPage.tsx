@@ -21,7 +21,8 @@ import {
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { SearchBar } from "@/components/patterns/SearchBar";
-import { ProductPagination } from "@/features/products/components/ProductPagination";
+import { PageShell } from "@/components/patterns/PageShell";
+import { Pagination } from "@/components/patterns/Pagination";
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
@@ -140,7 +141,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
   };
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <PageHeader
         title="入出庫履歴"
         subtitle="入庫・返品・販売出庫・廃棄などの業務記録を後から確認します"
@@ -348,7 +349,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
               })}
             </TableBody>
           </Table>
-          <ProductPagination
+          <Pagination
             page={recordsQuery.data.page}
             perPage={recordsQuery.data.per_page}
             totalCount={recordsQuery.data.total_count}
@@ -358,6 +359,6 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
           />
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

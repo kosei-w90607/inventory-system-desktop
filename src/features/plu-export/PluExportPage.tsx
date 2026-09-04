@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/patterns/PageHeader";
+import { PageShell } from "@/components/patterns/PageShell";
 import { FilePicker, type PickedFile } from "@/components/FilePicker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -355,7 +356,7 @@ export function PluExportPage() {
     pendingExport !== null || status === "saved" || status === "confirm_failed";
 
   return (
-    <div className="space-y-5 p-6">
+    <PageShell>
       <PageHeader title="PLU書出し" />
 
       <Alert className="border-info bg-info-soft text-info-strong">
@@ -738,6 +739,6 @@ export function PluExportPage() {
           </CardContent>
         </Card>
       </section>
-    </div>
+    </PageShell>
   );
 }

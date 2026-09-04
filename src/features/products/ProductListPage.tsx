@@ -19,11 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
-import { ProductPagination } from "./components/ProductPagination";
+import { ListShell } from "@/components/patterns/ListShell";
+import { PageShell } from "@/components/patterns/PageShell";
 import { ProductTable } from "./components/ProductTable";
 import { PluBulkTargetConfirmDialog } from "./components/PluBulkTargetConfirmDialog";
 import { useProductList } from "./hooks/useProductList";
@@ -52,7 +52,12 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
     search,
   });
   const queryClient = useQueryClient();
-  const [bulkTarget, setBulkTarget] = useState<boolean | null>(null);
+  // Gated Amendment 2 S12（owner L3 FAIL-4）: open/closed と「最後に選んだ target」を別 state に
+  // 分離する。旧実装は bulkTarget: boolean | null の 1 state で兼用し、close 時に null へ戻すと
+  // pluTarget={bulkTarget ?? true} の fallback で退出アニメーション中に反対文言へ反転していた
+  // （b2389b19 起源の latent bug）。close は setBulkDialogOpen(false) のみで target を触らない。
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkTarget, setBulkTarget] = useState<boolean>(true);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const bulkMutation = useMutation({
     mutationFn: (pluTarget: boolean) =>
@@ -65,7 +70,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         `${result.updated_count.toLocaleString("ja-JP")} 件を更新しました（JAN 不備 ${result.invalid_jan_skipped_count.toLocaleString("ja-JP")} 件 / 廃番 ${result.discontinued_skipped_count.toLocaleString("ja-JP")} 件は対象外）`,
       );
       setBulkError(null);
-      setBulkTarget(null);
+      setBulkDialogOpen(false);
       await invalidateByContract(queryClient, invalidationContract.pluBulkTarget());
     },
     onError: () => {
@@ -85,9 +90,169 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
     normalizedSearch.discontinued === "active" &&
     normalizedSearch.plu === "all";
   const totalCount = productsQuery.data?.total_count ?? 0;
+  // Gated Amendment 3 S14（owner L3 run 2 懸念付き PASS、AC-L3-6 前段）: PLU 一括操作の
+  // 説明文を実件数入りの 3 分岐にする。totalCount だけでは (b) 0 件と (c) 読込中を区別できない
+  // ため productsQuery.data の有無で分岐する。
+  const pluBulkCaptionDescription =
+    productsQuery.data === undefined
+      ? "件数を読み込んでいます。読み込みが終わると操作できます。"
+      : totalCount > 0
+        ? `絞り込みに一致する ${totalCount.toLocaleString("ja-JP")} 件すべてが対象です。他のページの商品も含みます。押すと確認画面が開きます。`
+        : "絞り込みに一致する商品がないため実行できません。";
+
+  const toolbar = (
+    <div className="flex flex-wrap items-center gap-3">
+      {/* live 型（UI-01a-D9、owner L3 2026-08-03）。controlled value は raw search.q — trim 済みの
+          normalizedSearch.q を結線すると live 反映のたびに trim 済み値が書き戻され「trim なし」契約が破れる。
+          trim は CMD query 変換（buildProductSearchQuery）でのみ行う。page reset は updateSearch の
+          pageOnlyChange 機構が担う。 */}
+      <SearchBar
+        value={search.q ?? ""}
+        placeholder="商品コード・商品名・JAN・メーカー品番で検索"
+        debounceMs={200}
+        onSearchChange={(value) => {
+          updateSearch({ q: value === "" ? undefined : value });
+        }}
+      />
+      <DepartmentFilter
+        options={departmentOptions}
+        selected={normalizedSearch.dept ?? null}
+        disabled={departmentsQuery.isLoading}
+        onChange={(dept) => {
+          updateSearch({ dept });
+        }}
+        allLabel="すべての部門"
+        widthClass="w-[11rem]"
+        idPrefix="product-dept-filter"
+      />
+      {departmentsQuery.isError ? (
+        <p className="text-sm text-destructive" role="alert">
+          部門一覧の取得に失敗しました
+        </p>
+      ) : null}
+      <SegmentedControl
+        ariaLabel="廃番表示"
+        value={normalizedSearch.discontinued}
+        options={PRODUCT_DISCONTINUED_OPTIONS}
+        onValueChange={(value) => {
+          updateSearch({ discontinued: value });
+        }}
+      />
+      <SegmentedControl
+        ariaLabel="PLU表示"
+        value={normalizedSearch.plu}
+        options={PRODUCT_PLU_OPTIONS}
+        onValueChange={(value) => {
+          updateSearch({ plu: value });
+        }}
+      />
+    </div>
+  );
+
+  const toolbarSecondary = (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-muted-foreground" htmlFor="product-sort">
+          並び替え
+        </label>
+        <Select
+          value={normalizedSearch.sort}
+          onValueChange={(value) => {
+            const sort = PRODUCT_SORT_OPTIONS.find((option) => option.value === value)?.value;
+            if (sort !== undefined) updateSearch({ sort });
+          }}
+        >
+          <SelectTrigger id="product-sort" className="w-[10rem]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PRODUCT_SORT_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <SegmentedControl
+        ariaLabel="並び順"
+        value={normalizedSearch.dir}
+        options={PRODUCT_SORT_DIRECTION_OPTIONS}
+        onValueChange={(value) => {
+          updateSearch({ dir: value });
+        }}
+      />
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-muted-foreground" htmlFor="product-per-page">
+          表示件数
+        </label>
+        <Select
+          value={String(normalizedSearch.perPage)}
+          onValueChange={(value) => {
+            const perPage = PRODUCT_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+            if (perPage !== undefined) updateSearch({ perPage });
+          }}
+        >
+          <SelectTrigger id="product-per-page" className="w-[7rem]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PRODUCT_PER_PAGE_OPTIONS.map((option) => (
+              <SelectItem key={option} value={String(option)}>
+                {option} 件
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex basis-full flex-col items-start gap-1">
+        <p id="plu-bulk-caption" className="text-sm font-medium text-foreground">
+          PLU 一括操作
+        </p>
+        <p id="plu-bulk-description" className="text-sm text-muted-foreground">
+          {pluBulkCaptionDescription}
+        </p>
+        <div
+          role="group"
+          aria-labelledby="plu-bulk-caption"
+          aria-describedby="plu-bulk-description"
+          className="flex flex-wrap items-center gap-2"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            disabled={totalCount === 0 || bulkMutation.isPending}
+            onClick={() => {
+              setBulkTarget(true);
+              setBulkDialogOpen(true);
+            }}
+          >
+            PLU 対象にする
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={totalCount === 0 || bulkMutation.isPending}
+            onClick={() => {
+              setBulkTarget(false);
+              setBulkDialogOpen(true);
+            }}
+          >
+            PLU 対象から外す
+          </Button>
+        </div>
+      </div>
+      {bulkError !== null ? (
+        <Alert variant="destructive">
+          <AlertTitle>PLU対象の一括更新に失敗しました</AlertTitle>
+          <AlertDescription>{bulkError}</AlertDescription>
+        </Alert>
+      ) : null}
+    </div>
+  );
 
   return (
-    <div className="space-y-4 p-6">
+    <PageShell>
       <PageHeader
         title="商品検索・一覧"
         actions={
@@ -100,215 +265,82 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        {/* live 型（UI-01a-D9、owner L3 2026-08-03）。controlled value は raw search.q — trim 済みの
-            normalizedSearch.q を結線すると live 反映のたびに trim 済み値が書き戻され「trim なし」契約が破れる。
-            trim は CMD query 変換（buildProductSearchQuery）でのみ行う。page reset は updateSearch の
-            pageOnlyChange 機構が担う。 */}
-        <SearchBar
-          value={search.q ?? ""}
-          placeholder="商品コード・商品名・JAN・メーカー品番で検索"
-          debounceMs={200}
-          onSearchChange={(value) => {
-            updateSearch({ q: value === "" ? undefined : value });
-          }}
-        />
-        <DepartmentFilter
-          options={departmentOptions}
-          selected={normalizedSearch.dept ?? null}
-          disabled={departmentsQuery.isLoading}
-          onChange={(dept) => {
-            updateSearch({ dept });
-          }}
-          allLabel="すべての部門"
-          widthClass="w-[11rem]"
-          idPrefix="product-dept-filter"
-        />
-        {departmentsQuery.isError ? (
-          <p className="text-sm text-destructive" role="alert">
-            部門一覧の取得に失敗しました
-          </p>
-        ) : null}
-        <SegmentedControl
-          ariaLabel="廃番表示"
-          value={normalizedSearch.discontinued}
-          options={PRODUCT_DISCONTINUED_OPTIONS}
-          onValueChange={(value) => {
-            updateSearch({ discontinued: value });
-          }}
-        />
-        <SegmentedControl
-          ariaLabel="PLU表示"
-          value={normalizedSearch.plu}
-          options={PRODUCT_PLU_OPTIONS}
-          onValueChange={(value) => {
-            updateSearch({ plu: value });
-          }}
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground" htmlFor="product-sort">
-            並び替え
-          </label>
-          <Select
-            value={normalizedSearch.sort}
-            onValueChange={(value) => {
-              const sort = PRODUCT_SORT_OPTIONS.find((option) => option.value === value)?.value;
-              if (sort !== undefined) updateSearch({ sort });
-            }}
-          >
-            <SelectTrigger id="product-sort" className="w-[10rem]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_SORT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <SegmentedControl
-          ariaLabel="並び順"
-          value={normalizedSearch.dir}
-          options={PRODUCT_SORT_DIRECTION_OPTIONS}
-          onValueChange={(value) => {
-            updateSearch({ dir: value });
-          }}
-        />
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground" htmlFor="product-per-page">
-            表示件数
-          </label>
-          <Select
-            value={String(normalizedSearch.perPage)}
-            onValueChange={(value) => {
-              const perPage = PRODUCT_PER_PAGE_OPTIONS.find((option) => String(option) === value);
-              if (perPage !== undefined) updateSearch({ perPage });
-            }}
-          >
-            <SelectTrigger id="product-per-page" className="w-[7rem]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_PER_PAGE_OPTIONS.map((option) => (
-                <SelectItem key={option} value={String(option)}>
-                  {option} 件
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={totalCount === 0 || bulkMutation.isPending}
-            onClick={() => {
-              setBulkTarget(true);
-            }}
-          >
-            PLU 対象にする
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={totalCount === 0 || bulkMutation.isPending}
-            onClick={() => {
-              setBulkTarget(false);
-            }}
-          >
-            PLU 対象から外す
-          </Button>
-        </div>
-      </div>
-
-      {bulkError !== null ? (
-        <Alert variant="destructive">
-          <AlertTitle>PLU対象の一括更新に失敗しました</AlertTitle>
-          <AlertDescription>{bulkError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {productsQuery.isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      ) : productsQuery.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>商品一覧の取得に失敗しました</AlertTitle>
-          <AlertDescription>
-            検索条件を変えるか、しばらくしてからもう一度お試しください。
-          </AlertDescription>
-        </Alert>
-      ) : productsQuery.data?.items.length === 0 ? (
-        // 意図的差分③: bare div → EmptyState 標準 UI（catalog ⑥）
-        // filter-empty reset action（catalog ⑥、SPEC-UIBB-1/2）: 既存「商品を登録する」action は
-        // 常設のまま維持し、絞り込みが非既定（q / dept / discontinued のいずれか）のときだけ
-        // reset ボタンを横並びで併置する（既存 action が先、reset ボタンが後）。
-        // sort / dir / perPage は結果集合を狭めないため reset 対象外（変更しない）。
-        <EmptyState
-          icon={PackageSearch}
-          title="該当する商品がありません"
-          description="検索条件を変更するか、新しい商品を登録してください"
-          action={
-            // 複数ボタンは中央揃え（catalog ⑥、owner L3 2026-08-03 是正、SPEC-UIBB-11）
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button type="button" asChild variant="outline">
-                <Link to="/products/new" search={{ returnTo }}>
-                  商品を登録する
-                </Link>
-              </Button>
-              {!isFilterDefault && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    updateSearch({
-                      q: undefined,
-                      dept: undefined,
-                      discontinued: undefined,
-                      plu: undefined,
-                      page: undefined,
-                    });
-                  }}
-                >
-                  絞り込みを解除
+      <ListShell
+        toolbar={toolbar}
+        toolbarSecondary={toolbarSecondary}
+        pagination={{
+          page: productsQuery.data?.page ?? normalizedSearch.page,
+          perPage: productsQuery.data?.per_page ?? normalizedSearch.perPage,
+          totalCount,
+          onPageChange: (page) => {
+            updateSearch({ page });
+          },
+        }}
+        topSummary
+        stickyHeader
+        isLoading={productsQuery.isLoading}
+      >
+        {productsQuery.isError ? (
+          <Alert variant="destructive">
+            <AlertTitle>商品一覧の取得に失敗しました</AlertTitle>
+            <AlertDescription>
+              検索条件を変えるか、しばらくしてからもう一度お試しください。
+            </AlertDescription>
+          </Alert>
+        ) : productsQuery.data?.items.length === 0 ? (
+          // 意図的差分③: bare div → EmptyState 標準 UI（catalog ⑥）
+          // filter-empty reset action（catalog ⑥、SPEC-UIBB-1/2）: 既存「商品を登録する」action は
+          // 常設のまま維持し、絞り込みが非既定（q / dept / discontinued のいずれか）のときだけ
+          // reset ボタンを横並びで併置する（既存 action が先、reset ボタンが後）。
+          // sort / dir / perPage は結果集合を狭めないため reset 対象外（変更しない）。
+          <EmptyState
+            icon={PackageSearch}
+            title="該当する商品がありません"
+            description="検索条件を変更するか、新しい商品を登録してください"
+            action={
+              // 複数ボタンは中央揃え（catalog ⑥、owner L3 2026-08-03 是正、SPEC-UIBB-11）
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button type="button" asChild variant="outline">
+                  <Link to="/products/new" search={{ returnTo }}>
+                    商品を登録する
+                  </Link>
                 </Button>
-              )}
-            </div>
-          }
-        />
-      ) : productsQuery.data ? (
-        <div className="space-y-3">
-          <ProductTable items={productsQuery.data.items} returnTo={returnTo} />
-          <ProductPagination
-            page={productsQuery.data.page}
-            perPage={productsQuery.data.per_page}
-            totalCount={productsQuery.data.total_count}
-            onPageChange={(page) => {
-              updateSearch({ page });
-            }}
+                {!isFilterDefault && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      updateSearch({
+                        q: undefined,
+                        dept: undefined,
+                        discontinued: undefined,
+                        plu: undefined,
+                        page: undefined,
+                      });
+                    }}
+                  >
+                    絞り込みを解除
+                  </Button>
+                )}
+              </div>
+            }
           />
-        </div>
-      ) : null}
+        ) : productsQuery.data ? (
+          <ProductTable items={productsQuery.data.items} returnTo={returnTo} />
+        ) : null}
+      </ListShell>
       <PluBulkTargetConfirmDialog
-        open={bulkTarget !== null}
-        pluTarget={bulkTarget ?? true}
+        open={bulkDialogOpen}
+        pluTarget={bulkTarget}
         count={totalCount}
         isPending={bulkMutation.isPending}
         onOpenChange={(open) => {
-          if (!open && !bulkMutation.isPending) setBulkTarget(null);
+          if (!open && !bulkMutation.isPending) setBulkDialogOpen(false);
         }}
         onConfirm={() => {
-          if (bulkTarget !== null && totalCount > 0) bulkMutation.mutate(bulkTarget);
+          if (totalCount > 0) bulkMutation.mutate(bulkTarget);
         }}
       />
-    </div>
+    </PageShell>
   );
 }

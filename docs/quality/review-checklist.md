@@ -84,6 +84,7 @@
 - [ ] 作成・保存成功の feedback が DSR-19 に従い、同じ作業文脈へ戻る flow では toast を最低保証し、確認・継続操作がある場合は result panel、専用 result step / 結果画面では持続的結果表示を使い分けているか。duration の 3s / 5s / 8s 階層と、重複し得る通知だけに適用する toast id の範囲が適切か
 - [ ] destructive 確認 dialog が DSR-20 に従い、Action は `variant="destructive"`、DOM 順は Cancel → Action、`sm` 以上は Cancel 左 / Action 右、narrow は Action 上 / Cancel 下になっているか。Esc / 外側クリックは cancel ブリッジを本則とし、硬化時は適用条件を満たして明示 prop を使い、Cancel 文言から後状態を判別できるか
 - [ ] 一覧の器（toolbar 2 段・上下の件数と現在位置・sticky header・識別列 opt-in、識別列 mapping は DSR-22 の分類表に従う）と現在の行（左端バー + 淡い背景 + badge/文言の 3 点）、UI 部品の枠（操作枠 3:1 / 構造線を一段濃く / Badge・outline chip も 3:1 対象で soft 背景だけに頼らない）、低視力 L3（forced-colors / DPI 125〜150% / 当たり判定 24×24）が DSR-22 に従っているか。同型情報のグループ化（DSR-16）・現在地の色分離（DSR-21）と主題を混同していないか
+- [ ] page root は `PageShell`（`src/components/patterns/PageShell.tsx`）、一覧の器は `ListShell`（`src/components/patterns/ListShell.tsx`）を経由しているか。`p-6` 直書き root や自前 pagination/skeleton の再実装になっていないか（04 原則 6、DSR-22、Lane 2）
 
 ## 設計判断レンズ（model-neutral 必須観点）
 
@@ -112,5 +113,6 @@
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-03 | UI 一覧の背骨 D — Lane 2 | カテゴリ 9 に「page root は `PageShell`、一覧の器は `ListShell`」の確認行を追加。 |
 | 2026-09-03 | 本 PR | カテゴリ 9 に DSR-22（一覧の器・現在行・UI 部品枠のコントラスト）対応行を追加。 |
 | 2026-08-16 | PR #79 | D-071 / SPEC-SDI-D4: TXレビュー観点を同日追加のinsert-only + snapshot再検証へ更新。 |
