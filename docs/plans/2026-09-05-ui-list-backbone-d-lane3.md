@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fa15866
@@ -17,7 +17,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Codex（発注書 relay）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（Fable が P1/P2/P3 裁定）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: eada5fb
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（8 画面の perPage Select 動作 + 入出庫履歴・在庫変動履歴の 200 選択 + 件数文言の新形 + 上部帯の非太字、AC-L3-1〜4）
@@ -452,3 +452,9 @@ Review-only skipped because: Final Review を独立 Sonnet subagent（fresh cont
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を S12（Plans.md ④ 同期）の content commit に同乗させて遷移（state-only cap 温存、forward state-only は 2/3 のまま）: local-verified の証跡 = `d9c83a7` / `16c10be` の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 2 approve + mutation 17/17 kill、Reviewed Content HEAD = `16c10be`。次 = owner Windows native L3 run 2（AC-L3-1〜5、介入 3/3、PASS と承認を同一 message で）。
 
 2026-09-05: owner Windows native L3 run 2（Reviewed Content HEAD `16c10be`、head `b411c76`、介入 3/3 消費）= 在庫照会 / 入出庫履歴 / 在庫変動履歴 PASS、操作ログの一括価格改定 badge PASS、**操作ログ AC-L3-5 (a) FAIL**（50 件 2 ページ目 → 100 件で viewport が途中に残る）で停止。棚卸し / 一括価格改定 / 整合性チェックは未確認。owner 所感の原文は `4c85b3c` / `338cfe0` で tracked 化（Plans ④ R2-1〜5）。機序は Gated Amendment 3（`ab3d12a`）に記録、再現 test で確定。`human-confirm -> implementing` を本 state-backtrack commit で 1 段戻す（Reviewed Content HEAD = pending、Amendments に `ab3d12a`）。次 = Sonnet Writer 是正（A3-a〜c）→ Final Review round 3 + mutation X18/X19 → 遷移は content commit 同乗 → owner L3 run 3（AC-L3-6 最小経路、介入 4/3 = 超過 1、PASS と承認を同一 message で）。
+
+2026-09-05: Writer（Claude Sonnet 5 subagent、worktree isolation）是正 commit `0e9c60f`（A3-a: `page-scroll.ts` に TTL 1000 ms の flag、`app-router.ts` の独自 `onRendered` で consume → `main.scrollTop = 0` + 遅延再適用 skip / A3-b: `OperationLogsPage.scroll-restoration.test.tsx` 本番 `createAppRouter` + 実 routeTree、是正前 `expected 640 to be +0` で fail → 是正後 pass / SC10b 2 case）。全 gate PASS、L1 full RESULT=PASS、traceability `--check` OK（`UI-11c` 紐付け）。Final Review round 3（同 Reviewer、隔離 worktree、subscribe 順を router-core 実読、是正前 fail を再現、X18/X19 kill 確認）= P1×0 / P2×1 / P3×0 → approve。
+- P2（accept、是正）: navigate を伴わない `scrollPageToTop()`（保存後の DSR-03 型、24 箇所中 14）で立った flag が TTL 内の別画面遷移でその画面の正規の「戻り」復元（DSR-17 ②）を潰す。Coordinator 裁定 = flag を立てた時の `pathname` に束縛（不一致は clear）。Writer 是正 commit `eada5fb`（`consumeForceScrollTop(currentPathname)`、`app-router.ts` は `latestLocation.pathname` を渡す、SC10b 2 case を同一 pathname に作り直し + 「pathname 不一致では別画面の戻り復元が守られる」case 追加、`createMemoryHistory` が `window.location` を同期しないため `onBeforeLoad` で `pushState` する test helper）。Reviewer 最終確認（差分限定、`latestLocation` の更新順を router-core `:2330,2397` で実読、X23 を再注入して新 case のみ fail）= approve、P3×1（guard assertion の値の clarity、記録のみ）
+- Coordinator mutation 独立再実測（Sonnet 委譲）: `0e9c60f` で X18〜X22 = 5/5 kill、`eada5fb` で X18〜X25（X23 pathname 判定除去 / X24 pathname 未記録 / X25 固定 `/` を渡す）= **8/8 kill、survivor 0**。Lane 3 累計 25 体、最終 survivor 0。SC9a 単独では X20 を検出できない（`vi.mock` で本体を通らない）ことを実測で記録（Matrix SC10c）
+
+2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を S12（Plans.md ④ 同期）の content commit に同乗させて遷移（forward state-only 2/3 のまま）: local-verified の証跡 = `0e9c60f` / `eada5fb` の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 3 approve + 最終確認 approve + mutation 8/8 kill、Reviewed Content HEAD = `eada5fb`。次 = owner Windows native L3 run 3（AC-L3-6 最小経路: 操作ログの再現手順 1 点 + 棚卸し / 一括価格改定 / 整合性チェックの AC-L3-1、介入 4/3 = 超過 1、PASS と承認を同一 message で）。
