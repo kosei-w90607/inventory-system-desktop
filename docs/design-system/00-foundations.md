@@ -18,6 +18,7 @@
 | 操作枠 | `--border-strong` | — | #8a8480 | 対 `--background` 3.53:1・対 `--card` 3.38:1（DSR-22、`--input` が参照。2026-09-03 Lane 2 実装） |
 | 現在行背景 | `--row-current` | — | #fff8e6 | 対 `--foreground` 16.5:1（DSR-22、消費者は Lane 3〜5。2026-09-03 Lane 2 実装） |
 | 一覧 sticky 帯 | `--list-head` | `stone-200` | #e7e5e4 | 対 `--background` 1.20:1・対 `--foreground` 13.93:1（WCAG 相対輝度で実測。`thead` surface（件数行は `--background`）、Gated Amendment 2 S11 / Gated Amendment 5 S39、2026-09-03 Lane 2 実装） |
+| 操作面 | `--control-surface` | — | #ffffff | 対 `--card` 1.04:1・対 `--background` 1.02:1（面の差で操作対象を示す、owner run 2・run 5「入力欄と Select の面を toolbar 箱 #f5f5f4 と区別」。枠 3:1 の要件は `--border-strong` 据え置き、Gated Amendment 6 S44） |
 | サブテキスト | `--muted-foreground` | `stone-500` | #78716c | 実測 4.59:1（対 `--background`、AA）/ 4.40:1（対 `--card`、AA 未達）（2026-09-03 訂正、旧「コントラスト比 4.5:1（AA）」は対象背景の明記なしで誤記） |
 
 forced-colors focus indicator: `globals.css` の unlayered `@media (forced-colors: active) { :focus-visible { outline: 2px solid Highlight; outline-offset: 2px } }`。component の `outline-none` はこの安全網を前提とし、unlayered で `outline` を上書きしない（Gated Amendment 3 追補 S16）。
