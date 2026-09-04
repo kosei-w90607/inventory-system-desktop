@@ -130,6 +130,18 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **S11 docs 同期**: 起票時実測の「旧文言 hit 数」節に列挙した非除外・非 archived の doc をすべて新文言へ更新: `02-component-catalog.md`（構造例 2 箇所 `:613,619` + 文言節 `:643` + 必須構成 2「上下の件数・現在位置」`:905` + Don't 節 `:920`、`:943,944` は変更履歴表のため編集しない）/ `01-decision-rules.md` DSR-22（`:429` 2 箇所）/ `74-ui-operation-logs.md:263`/ mockup 4 file（`mockup-d-lists.html` 3 / `mockup-d-history.html` 3 / `mockup-d-forms-b.html` 1 / `mockup-c-products.html` 1）。`04-backbone.md` と `review-checklist.md` は実測 0 hit のため対象外（起票時実測で記録済み）。**catalog ⑩ の個別項目**（Plan Review round 1 P2-1、round 2 で `:612` `:638` 追加）: 構造例 JSX の `:612`（`font-semibold` の class 記述）と `:638`（`PRODUCT_PER_PAGE_OPTIONS.map`）も同時更新する。`:606`「perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う」文中と `:651`「perPage 規約」節の `PRODUCT_PER_PAGE_OPTIONS` を `LIST_PER_PAGE_OPTIONS` へ改称（S1 と対）/ `:645`「使用トークン」節の上部 `PaginationSummary` class 記述から `font-semibold` を削除（S2 と対）。REQ token を新規追加しないため `generate_traceability` 再生成は不要（実装後に `rg -n "REQ-" src --glob '*.test.tsx'` の差分で再確認）
 - **S12 Plans.md ④ + Contract Coverage Ledger 記入**: 本 packet の active link を反映（本 commit で同時実施）。Contract Coverage Ledger は下記節を参照
 
+### Gated Amendment 1（Writer 環境準備時の指摘起源、2026-09-05、Coordinator 起票）
+
+Writer（Codex）が実装着手前の突合で、`docs/function-design/66-ui-stock-movements.md:62`（UI-06c-D2「perPage は 20 固定で、表示件数選択は実利用で必要になったら…」camelCase 表記）が S6 の変更対象から漏れていることを検出し、A) gated amendment で契約を追加 / B) S6 取り下げ の 2 択で停止した。Coordinator 裁定 = **A**。同型の漏れを S4〜S9 の対象画面 UI doc 全 6 file で sweep した結果、在庫変動履歴以外にも 3 file で「固定 perPage」の durable 契約が実装と矛盾したまま残ることが判明したため、まとめて追加する。契約の追加であって owner 決定（既定値・選択肢・文言）の変更ではない。`Amendments` 欄は次の state-only 遷移 commit で本 amendment commit の SHA を記入する（Lane 2 先例 `646fa1c`）。
+
+- **A1-a（在庫変動履歴、S6 の doc 同期）**: `66-ui-stock-movements.md:62` UI-06c-D2 の「perPage は 20 固定で、表示件数選択は実利用で必要になったら追加する」を「perPage は既定 50 + `Select`（50 / 100 / 200、owner 直回答 E10、2026-09-05）。search params は従来どおり `dateFrom` / `dateTo` / `type` / `page` に限定し perPage はローカル state（L3-D3）」へ。`:103` の sample code `per_page: 20,` を `per_page: perPage,`（state）へ。`:85` は既存 S10 対象
+- **A1-b（操作ログ、S7 の doc 同期）**: `74-ui-operation-logs.md:58` UI-11c-D8「pagination は `per_page=20` 固定（増減 UI なし）」→「既定 50 + `Select`（50 / 100 / 200）、URL search state は UI-11c-D1 の 4 キー限定を維持し perPage はローカル state（L3-D3）」。`:189` sample `per_page: 20,` → `per_page: perPage,`。`:262`「既定 `per_page = 20`（増減 UI なし。…）」→「既定 `per_page = 50`（`Select` で 50 / 100 / 200）」。`:578` 再利用表「`Pagination`固定20件」→「`Pagination` 既定 50 + `Select`」
+- **A1-c（整合性チェック、S9 の doc 同期）**: `75-ui-integrity-check.md:101`「client-side pagingは100件固定」→「client-side paging は既定 100、`Select` で 50 / 100 / 200（L3-D6）」、`:102`「`perPage=100`」→「`perPage={perPage}`（state、既定 100）」、`:183`「client-side 100件固定で再利用」→「client-side 既定 100 + `Select` で再利用」。`:118` の `per_page=1`（直近チェック確認クエリ）は無関係のため触らない
+- **A1-d（在庫照会、S4 の doc 同期）**: `58-ui-stock-inquiry.md:147` flow 図と `:240` sample の `per_page: 50` → `per_page: perPage`（state、既定 50）、`:454`「`perPage={50}`」→「`perPage={perPage}`」。`:80` の「デフォルト 50、上限 200」は既定値と一致するため据え置き
+- **入出庫履歴・一括価格改定**: 入出庫履歴の UI 契約は `65-inventory-record-traceability.md`（`:86` は S10 対象）と `74-ui-operation-logs.md:262` の言及のみで固定 perPage の独立契約なし。一括価格改定は `77-ui-bulk-price-revision.md:69` が既に「50 / 100 / 200、既定 50」で S8 と一致。いずれも追加対象なし
+- **AC 追加**: AC10c（下記）。Contract Coverage Ledger に「UI 契約 4 file の固定 perPage 記述」行を追加。Test Matrix に SC8c を追加
+- **起票時実測の訂正**: 「旧文言 hit 数」節の `66-ui-stock-movements.md` は `:85` のみを対象としていたが、`:62`（camelCase）と `:103`（sample）も対象。sweep は snake_case の `per_page` 表記だけで行っており camelCase を取りこぼした（同型の取りこぼしを防ぐため AC10c の anchor は camelCase / snake_case / 「件固定」の 3 表記を個別に持つ）
+
 ## Non-scope
 
 - 残り 7 画面の `ListShell` 化（toolbar 2 段・sticky 帯・skeleton 統一。owner 裁定、Lane 3〜5 振り分けの前提）
@@ -160,6 +172,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `rg -n "上限 100" docs/function-design/62-ui-manual-sale.md` = 0（`:143`）かつ `rg -n "上限 200" docs/function-design/62-ui-manual-sale.md` ≥ 1
   - `rg -n "MAX_PER_PAGE = 100" docs/function-design/10-common-rules.md` = 0（`:91`）かつ `rg -n "MAX_PER_PAGE = 200" docs/function-design/10-common-rules.md` ≥ 1
 - AC10b: `docs/decision-log.md` に D-081 entry が存在し D-031 に付記がある — `rg -Fn "## D-081" docs/decision-log.md` = 1 件、`rg -Fn "Superseded in part by: D-081" docs/decision-log.md` = 1 件
+- AC10c（Gated Amendment 1）: UI 契約 4 file の固定 perPage 記述が 0、新記述が 1 件以上（表記ごとに個別 anchor、起票時 hit 数を併記）:
+  - `rg -Fn "perPage は 20 固定" docs/function-design/66-ui-stock-movements.md` = 0（起票時 1、`:62`）かつ `rg -Fn "per_page: 20," docs/function-design/66-ui-stock-movements.md` = 0（起票時 1、`:103`）かつ `rg -n "既定 50" docs/function-design/66-ui-stock-movements.md` ≥ 2（`:62` + `:85`）
+  - `rg -n "per_page=20.*固定" docs/function-design/74-ui-operation-logs.md` = 0（起票時 1、`:58`）かつ `rg -Fn "per_page: 20," docs/function-design/74-ui-operation-logs.md` = 0（起票時 1、`:189`）かつ `rg -Fn "per_page = 20" docs/function-design/74-ui-operation-logs.md` = 0（起票時 1、`:262`）かつ `rg -Fn "固定20件" docs/function-design/74-ui-operation-logs.md` = 0（起票時 1、`:578`）かつ `rg -n "既定 50" docs/function-design/74-ui-operation-logs.md` ≥ 1
+  - `rg -Fn "100件固定" docs/function-design/75-ui-integrity-check.md` = 0（起票時 2、`:101` `:183`）かつ `rg -Fn "perPage=100" docs/function-design/75-ui-integrity-check.md` = 0（起票時 1、`:102`）かつ `rg -n "既定 100" docs/function-design/75-ui-integrity-check.md` ≥ 1
+  - `rg -Fn "per_page: 50" docs/function-design/58-ui-stock-inquiry.md` = 0（起票時 3、`:147` `:240` + 1）かつ `rg -Fn "perPage={50}" docs/function-design/58-ui-stock-inquiry.md` = 0（起票時 1、`:454`）かつ `rg -n "既定 50" docs/function-design/58-ui-stock-inquiry.md` ≥ 1（`:80` の「デフォルト 50」は据え置きで可）
 - AC11: catalog ⑩・DSR-22 の文言 pin が新形に統一される — `rg -Fn "件のうち" docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md` 各 1 件以上、`rg -Fn "件中" docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md` が偽陽性（`:943,944` 変更履歴表 + DSR-22 `:460`）を除き 0
 - AC11b: catalog ⑩ の `PRODUCT_PER_PAGE_OPTIONS` 残存が 0、`font-semibold` が ⑩ 節内（`:602-665`）で 0 — `rg -Fn "PRODUCT_PER_PAGE_OPTIONS" docs/design-system/02-component-catalog.md` = 0 かつ `rg -Fn "LIST_PER_PAGE_OPTIONS" docs/design-system/02-component-catalog.md` ≥ 1 かつ `rg -n "font-semibold" docs/design-system/02-component-catalog.md` が ⑩ 節（`:602-665`）内で 0
 - AC12: `generate_traceability` 再生成が不要であることの確認 — 実装後 `git diff --stat src/**/*.test.tsx` の REQ token 追加差分が 0（新規 REQ を追加していない）
@@ -275,6 +292,7 @@ Required for R3/R4. Include every contract or design decision in the touched sou
 | L3-D2 共有定数移設 | `list-per-page.ts` + 6 file の import 更新 | `search.test.ts`（更新）+ 新規 `list-per-page.test.ts` | non-scope（L3 対象外、機械的契約） |
 | L3-D3 perPage 永続化先の分岐 | 5 画面の `useState` | 各 Page.test.tsx | AC-L3-1 |
 | L3-D4 → D-081 `MAX_PER_PAGE` 100→200 引き上げ | `list.rs:21` + `docs/decision-log.md`（D-081 新規 + D-031 付記） | `list.rs` 3 test 更新 + 新規 2 test + `rg -Fn "## D-081" docs/decision-log.md` | AC-L3-2 / AC10b |
+| UI 契約 4 file の固定 perPage 記述（Gated Amendment 1: `66-ui-stock-movements.md:62,103` / `74-ui-operation-logs.md:58,189,262,578` / `75-ui-integrity-check.md:101,102,183` / `58-ui-stock-inquiry.md:147,240,454`） | S4 / S6 / S7 / S9 の doc 同期 | AC10c の表記別 anchor（camelCase / snake_case / 件固定） | AC-L3-1 / AC10c |
 | L3-D5 `.text-base` selector | `ListShell.test.tsx` / `ProductListPage.test.tsx` | 同左（selector 更新） | non-scope（内部 test 契約） |
 | L3-D6 整合性チェック client-side slice | `IntegrityCheckPage.tsx` | `IntegrityCheckPage.test.tsx` 新規 | AC-L3-1 |
 | DSR-22 件数文言 pin | `01-decision-rules.md:429` | 該当なし（docs review） | non-scope |
