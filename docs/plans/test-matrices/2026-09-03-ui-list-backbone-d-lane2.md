@@ -14,6 +14,7 @@ R3（route/search state + operator workflow の見た目変更）。render の�
 - SC4a〜SC4e: `ListShell` の toolbar 枠 / topSummary + gating / skeleton / sticky 帯（th cell 単位）+ `border-separate` + th / td cell 罫線 + `h-10` `whitespace-nowrap` + overflow 上書き / pager 配線
 - SC5a / SC5b / SC5c: 商品一覧 既定 100（URL 優先）/ pilot 構成（isLoading、0 件）/ returnTo 保持
 - SC6 / SC7 / SC8 / SC9（Gated Amendment 2）: SegmentedControl 群枠 / PLU 一括 caption + group / sticky 帯 surface `--list-head` / dialog target 保持
+- Gated Amendment 6: SC15（S44、fs literal: `--control-surface: #ffffff` / input・select の `bg-control-surface`、`bg-transparent` 0）/ SC16（S45、ProductTable render「18 個」+ `formatStockUnitLabel` 3 分岐 + fs literal `{row.stockUnit}` 0）。SC4d / SC8 は S43 で角丸 2 class 必須・`[&_thead_tr]:bg-list-head` 不在へ更新
 - Gated Amendment 5 S39: SC8 = 帯 `bg-background` + `border-b border-border`（`bg-list-head` / `bg-muted` / `forced-colors:border-b` なし）、thead は `bg-list-head` 維持。SC10 = `forced-colors:border-b` 期待を `border-b` へ。SC12 = lists の `.pager.top` は `--d-head` 0 / `border-bottom` 1
 - SC13（Gated Amendment 3 追補 S16）: globals.css の forced-colors focus outline（fs literal）。SC10 は追補 S17（wrapper `w-min min-w-full` / 帯 `overflow-hidden` + `[&>div]:truncate` + `forced-colors:border-b`）、SC12 は追補 S18 / S19（mockup 3 file 帯化 / history 文言 / 同一明度 字面）で拡張
 - SC10 / SC11 / SC12（Gated Amendment 3）: summary 帯と thead の垂直隣接 + `px-2` inset（正負の oracle）/ PLU 一括 caption 独立行左寄せ 2 段 + 実件数 3 分岐 + `aria-describedby` + dialog title 同期 / mockup `.pager.top` + catalog ⑯ + 文言表の presence / absence 対 oracle
@@ -202,6 +203,11 @@ SC14a（画面 markup 範囲）の absence / presence は `rg -v 'class="note"'`
 | X32 | ListShell の帯から `[&>div]:truncate` を削除し裸の `truncate` に戻す | SC10 |
 | X33 | ListShell の summary 帯から `border-b` を削除（Gated Amendment 5 S39 で書き換え、旧 = `forced-colors:border-b` 削除） | SC10 |
 | X34 | `globals.css` の forced-colors block を `@layer base { ... }` の内側へ移す（file 内の位置は現在のまま） | SC13 |
+| X35 | ListShell root から `[&_thead_th:first-child]:rounded-tl-md` / `[&_thead_th:last-child]:rounded-tr-md` を削除 | SC4d / SC8 |
+| X36 | ListShell root に `[&_thead_tr]:bg-list-head` を復活 | SC4d / SC8 |
+| X37 | `input.tsx` の `bg-control-surface` を `bg-transparent` に戻す | SC15 |
+| X38 | `ProductTable.tsx` の在庫数を `{quantity} {stock_unit}` の生連結に戻す | SC16 |
+| X39 | `formatStockUnitLabel` の `pcs` 分岐を `pcs` 返却へ | SC16 |
 
 ## Residual Test Gaps
 
