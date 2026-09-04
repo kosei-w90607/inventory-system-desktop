@@ -1,9 +1,10 @@
 import type { ProductSearchQuery, SortKey } from "@/lib/bindings";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { z } from "zod";
 
-import { PRODUCT_PER_PAGE_OPTIONS, PRODUCT_SORT_OPTIONS } from "./search";
+import { PRODUCT_SORT_OPTIONS } from "./search";
 
-export type PriceRevisionPerPage = (typeof PRODUCT_PER_PAGE_OPTIONS)[number];
+export type PriceRevisionPerPage = (typeof LIST_PER_PAGE_OPTIONS)[number];
 export type PriceRevisionSort = (typeof PRODUCT_SORT_OPTIONS)[number]["value"];
 
 const sortValues = PRODUCT_SORT_OPTIONS.map(({ value }) => value) as [
@@ -27,7 +28,7 @@ export const priceRevisionSearchSchema = z.object({
   perPage: z.coerce
     .number()
     .refine((value): value is PriceRevisionPerPage =>
-      PRODUCT_PER_PAGE_OPTIONS.includes(value as PriceRevisionPerPage),
+      LIST_PER_PAGE_OPTIONS.includes(value as PriceRevisionPerPage),
     )
     .optional()
     .catch(undefined),
@@ -85,7 +86,7 @@ function normalizedBoolean(value: unknown, fallback: boolean): boolean {
 
 function normalizedPerPage(value: unknown): PriceRevisionPerPage {
   const numeric = typeof value === "number" ? value : Number(value);
-  return PRODUCT_PER_PAGE_OPTIONS.includes(numeric as PriceRevisionPerPage)
+  return LIST_PER_PAGE_OPTIONS.includes(numeric as PriceRevisionPerPage)
     ? (numeric as PriceRevisionPerPage)
     : 50;
 }

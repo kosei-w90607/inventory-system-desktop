@@ -4,7 +4,7 @@
 // RTL テスト容易性）。失敗 4 状態の出し分け + 主動線（検索 → 一覧 → 詳細展開）。
 // 設計: docs/function-design/58-ui-stock-inquiry.md §58.7
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,14 @@ import { ProductListTable } from "./components/ProductListTable";
 import { EmptySearchPlaceholder } from "./components/EmptySearchPlaceholder";
 import { StockDetailCard } from "./components/StockDetailCard";
 import { Pagination } from "@/components/patterns/Pagination";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface StockInquiryPageProps {
   search: StockInquirySearch;
@@ -33,6 +41,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
   const statusValue: ListChipFilter = search.status ?? "all";
   const pageValue = search.page ?? 1;
   const selectedValue = search.selected ?? null;
+  const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
 
   const { listQuery, detailQuery, departmentOptionsQuery, departmentOptions, isAllEmpty } =
     useStockInquiry({
@@ -40,6 +49,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
       q: qValue,
       dept: deptValue,
       page: pageValue,
+      perPage,
       selected: selectedValue,
       navigate: (partial) => {
         onSearchChange((prev) => ({ ...prev, ...partial }));
@@ -117,6 +127,31 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
           idPrefix="stock-dept-filter"
           disabled={departmentOptionsQuery.isLoading}
         />
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground" htmlFor="stock-inquiry-per-page">
+            表示件数
+          </label>
+          <Select
+            value={String(perPage)}
+            onValueChange={(value) => {
+              const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+              if (next === undefined) return;
+              setPerPage(next);
+              onSearchChange((prev) => ({ ...prev, page: undefined }));
+            }}
+          >
+            <SelectTrigger id="stock-inquiry-per-page" className="w-[7rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LIST_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} 件
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* 候補取得失敗は listQuery とは独立に別途文言表示（catalog ⑨、round 2 P1-1） */}
@@ -197,7 +232,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
           {statusValue === "all" && data.totalCount !== null && (
             <Pagination
               page={pageValue}
-              perPage={50}
+              perPage={perPage}
               totalCount={data.totalCount}
               onPageChange={(next) => {
                 onSearchChange((prev) => ({ ...prev, page: next }));

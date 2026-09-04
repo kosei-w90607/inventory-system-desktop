@@ -140,6 +140,21 @@ beforeEach(() => {
 });
 
 describe("PriceRevisionPage UI-14 / REQ-105", () => {
+  it("SC4e: 表示件数を200へ変更するとURL searchと次の一覧取得へ反映する", async () => {
+    const user = userEvent.setup();
+    renderStateful({ page: 3 });
+    await screen.findByText("P-001");
+
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(screen.getByRole("option", { name: "200 件" }));
+
+    await waitFor(() => {
+      expect(mockSearchProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, per_page: 200 }),
+      );
+    });
+  });
+
   it("取引先を選ぶと「取引先未設定の商品も含める」が既定 on で表示され off にすると include_unassigned=false で再検索する", async () => {
     const user = userEvent.setup();
     renderStateful();

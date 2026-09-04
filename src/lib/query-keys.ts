@@ -31,8 +31,8 @@ export const queryKeys = {
   // UI-06a 在庫照会
   // 設計: docs/function-design/58-ui-stock-inquiry.md §58.5 useStockInquiry
   stockInquiry: {
-    list: (status: string, q: string, dept: number | null, page: number) =>
-      ["stock-inquiry", "list", { status, q, dept, page }] as const,
+    list: (status: string, q: string, dept: number | null, page: number, perPage: number) =>
+      ["stock-inquiry", "list", { status, q, dept, page, perPage }] as const,
     // UI-06a-D2（DSR-10、2026-08-03 batch B）: 部門候補は page/q/dept/status に依存しない
     // 無引数・一定 key。listDepartments() の master 全件から作るため候補集合が引数で変わらない。
     departmentOptions: () => ["stock-inquiry", "department-options"] as const,

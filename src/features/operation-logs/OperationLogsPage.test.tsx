@@ -131,7 +131,7 @@ describe("UI-11c REQ-902", () => {
           ...dates,
           operation_type: null,
           page: 1,
-          per_page: 20,
+          per_page: 50,
         });
       });
     },
@@ -169,12 +169,12 @@ describe("UI-11c REQ-902", () => {
           end_date: "2026-07-11",
           operation_type: "backup_create",
           page: 3,
-          per_page: 20,
+          per_page: 50,
         });
       });
       fireEvent.change(document.getElementById(id) as HTMLInputElement, { target: { value } });
       await waitFor(() => {
-        expect(listLogs).toHaveBeenLastCalledWith({ ...expected, page: 1, per_page: 20 });
+        expect(listLogs).toHaveBeenLastCalledWith({ ...expected, page: 1, per_page: 50 });
       });
     },
   );
@@ -193,8 +193,27 @@ describe("UI-11c REQ-902", () => {
         end_date: "2026-07-11",
         operation_type: "future_type",
         page: 1,
-        per_page: 20,
+        per_page: 50,
       });
+    });
+  });
+
+  it("SC4d: 表示件数を200へ変更するとpage 1・per_page 200で再取得する", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 200 },
+    });
+    renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-11", page: 3 });
+    await screen.findByText("合成ログ");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(await screen.findByRole("option", { name: "200 件" }));
+
+    await waitFor(() => {
+      expect(listLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, per_page: 200 }),
+      );
     });
   });
 
@@ -212,7 +231,7 @@ describe("UI-11c REQ-902", () => {
         end_date: "2026-07-11",
         operation_type: null,
         page: 1,
-        per_page: 20,
+        per_page: 50,
       });
     });
   });
@@ -231,7 +250,7 @@ describe("UI-11c REQ-902", () => {
         end_date: null,
         operation_type: null,
         page: 1,
-        per_page: 20,
+        per_page: 50,
       });
     });
   });
@@ -254,7 +273,7 @@ describe("UI-11c REQ-902", () => {
     renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-10", page: 3 });
     await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
     expect(listLogs).toHaveBeenCalledTimes(1);
@@ -266,7 +285,7 @@ describe("UI-11c REQ-902", () => {
     expect(listLogs).toHaveBeenCalledTimes(1);
     expect(screen.getAllByText("合成ログ")).toHaveLength(2);
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
 
@@ -278,7 +297,7 @@ describe("UI-11c REQ-902", () => {
       end_date: "2026-07-10",
       operation_type: null,
       page: 1,
-      per_page: 20,
+      per_page: 50,
     });
   });
 
@@ -393,7 +412,7 @@ describe("UI-11c REQ-902", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "valid transitionを開始" }));
     await waitFor(() => {
@@ -405,7 +424,7 @@ describe("UI-11c REQ-902", () => {
       "開始日は終了日と同じ日か、それより前の日付にしてください",
     );
     expect(screen.getByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("45 件中 41〜45 件目 · 3 / 3 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
     expect(listLogs).toHaveBeenCalledTimes(1);
   });
 
@@ -990,7 +1009,7 @@ describe("UI-11c REQ-902", () => {
     renderPage({ page: maxPage });
 
     expect(await screen.findByRole("button", { name: "先頭ページに戻る" })).toBeInTheDocument();
-    expect(listLogs).toHaveBeenCalledWith(expect.objectContaining({ page: maxPage, per_page: 20 }));
+    expect(listLogs).toHaveBeenCalledWith(expect.objectContaining({ page: maxPage, per_page: 50 }));
   });
 
   it("SPEC-UIBB-1 絞り込み該当なしで解除ボタンを表示する", async () => {

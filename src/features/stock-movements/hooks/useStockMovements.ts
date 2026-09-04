@@ -11,11 +11,11 @@ import type { MovementRecord, PaginatedResult, StockDetail } from "@/lib/binding
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
 import type { NormalizedStockMovementsSearch } from "../types";
-import { MOVEMENTS_PER_PAGE } from "../types";
 
 export interface UseStockMovementsArgs {
   productCode: string;
   search: NormalizedStockMovementsSearch;
+  perPage: number;
 }
 
 export interface UseStockMovementsResult {
@@ -37,7 +37,10 @@ export function useStockMovements(args: UseStockMovementsArgs): UseStockMovement
   });
 
   const movementsQuery = useQuery({
-    queryKey: queryKeys.stockMovements.list(args.productCode, args.search),
+    queryKey: queryKeys.stockMovements.list(args.productCode, {
+      ...args.search,
+      perPage: args.perPage,
+    }),
     queryFn: () =>
       unwrapResult(
         commands.listMovements({
@@ -46,7 +49,7 @@ export function useStockMovements(args: UseStockMovementsArgs): UseStockMovement
           date_to: args.search.dateTo ?? null,
           movement_type: args.search.type === "all" ? null : args.search.type,
           page: args.search.page,
-          per_page: MOVEMENTS_PER_PAGE,
+          per_page: args.perPage,
         }),
         { source: "commands", cmd: "list_movements" },
       ),

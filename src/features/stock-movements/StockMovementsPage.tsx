@@ -5,10 +5,19 @@
 
 import { ArrowLeft, PackageSearch } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
@@ -31,9 +40,11 @@ export function StockMovementsPage({
   onSearchChange,
 }: StockMovementsPageProps) {
   const normalizedSearch = normalizeStockMovementsSearch(search);
+  const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
   const { productQuery, movementsQuery } = useStockMovements({
     productCode,
     search: normalizedSearch,
+    perPage,
   });
 
   const updateSearch = (patch: Partial<StockMovementsSearch>, resetPage = false) => {
@@ -169,6 +180,31 @@ export function StockMovementsPage({
               </option>
             ))}
           </select>
+        </div>
+        <div className="grid gap-1">
+          <label className="text-sm text-muted-foreground" htmlFor="stock-movements-per-page">
+            表示件数
+          </label>
+          <Select
+            value={String(perPage)}
+            onValueChange={(value) => {
+              const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+              if (next === undefined) return;
+              setPerPage(next);
+              updateSearch({}, true);
+            }}
+          >
+            <SelectTrigger id="stock-movements-per-page" className="w-[7rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LIST_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} 件
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

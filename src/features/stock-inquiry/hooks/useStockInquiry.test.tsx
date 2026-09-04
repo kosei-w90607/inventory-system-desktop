@@ -71,6 +71,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "毛糸",
           dept: null,
           page: 1,
+          perPage: 50,
           selected: null,
           navigate,
         }),
@@ -101,6 +102,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "",
           dept: null,
           page: 1,
+          perPage: 50,
           selected: null,
           navigate,
         }),
@@ -120,7 +122,15 @@ describe("useStockInquiry (REQ-301/302)", () => {
     const navigate = vi.fn();
     const { result } = renderHook(
       () =>
-        useStockInquiry({ status: "all", q: "", dept: null, page: 1, selected: null, navigate }),
+        useStockInquiry({
+          status: "all",
+          q: "",
+          dept: null,
+          page: 1,
+          perPage: 50,
+          selected: null,
+          navigate,
+        }),
       { wrapper: makeWrapper() },
     );
     expect(result.current.isAllEmpty).toBe(true);
@@ -149,6 +159,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "毛糸",
           dept: null,
           page: 2,
+          perPage: 50,
           selected: null,
           navigate,
         }),
@@ -178,6 +189,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "SOLO",
           dept: null,
           page: 1,
+          perPage: 50,
           selected: null,
           navigate,
         }),
@@ -207,6 +219,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "SOLO",
           dept: null,
           page: 1,
+          perPage: 50,
           selected: "SOLO-1",
           navigate,
         }),
@@ -240,6 +253,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "P",
           dept: null,
           page: 1,
+          perPage: 50,
           selected: "P-001",
           navigate,
         }),
@@ -279,6 +293,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "P",
           dept: null,
           page: 1,
+          perPage: 50,
           selected: "STALE-999",
           navigate,
         }),
@@ -300,6 +315,7 @@ describe("useStockInquiry (REQ-301/302)", () => {
           q: "", // isAllEmpty = true
           dept: null,
           page: 1,
+          perPage: 50,
           selected: "STALE-1",
           navigate,
         }),
@@ -341,7 +357,15 @@ describe("useStockInquiry (REQ-301/302)", () => {
         (args: Parameters<typeof useStockInquiry>[0]) => useStockInquiry(args),
         {
           wrapper: makeWrapper(qc),
-          initialProps: { status: "all", q: "", dept: null, page: 1, selected: null, navigate },
+          initialProps: {
+            status: "all",
+            q: "",
+            dept: null,
+            page: 1,
+            perPage: 50,
+            selected: null,
+            navigate,
+          },
         },
       );
       await waitFor(() => {
@@ -354,14 +378,54 @@ describe("useStockInquiry (REQ-301/302)", () => {
       expect(result.current.departmentOptions).toEqual(expected);
 
       // page を変更
-      rerender({ status: "all", q: "", dept: null, page: 2, selected: null, navigate });
+      rerender({
+        status: "all",
+        q: "",
+        dept: null,
+        page: 2,
+        perPage: 50,
+        selected: null,
+        navigate,
+      });
       // q を変更
-      rerender({ status: "all", q: "毛糸", dept: null, page: 2, selected: null, navigate });
+      rerender({
+        status: "all",
+        q: "毛糸",
+        dept: null,
+        page: 2,
+        perPage: 50,
+        selected: null,
+        navigate,
+      });
       // dept を選択
-      rerender({ status: "all", q: "毛糸", dept: 1, page: 2, selected: null, navigate });
+      rerender({
+        status: "all",
+        q: "毛糸",
+        dept: 1,
+        page: 2,
+        perPage: 50,
+        selected: null,
+        navigate,
+      });
       // status を変更（all → low_stock → stockout）
-      rerender({ status: "low_stock", q: "毛糸", dept: 1, page: 2, selected: null, navigate });
-      rerender({ status: "stockout", q: "毛糸", dept: 1, page: 2, selected: null, navigate });
+      rerender({
+        status: "low_stock",
+        q: "毛糸",
+        dept: 1,
+        page: 2,
+        perPage: 50,
+        selected: null,
+        navigate,
+      });
+      rerender({
+        status: "stockout",
+        q: "毛糸",
+        dept: 1,
+        page: 2,
+        perPage: 50,
+        selected: null,
+        navigate,
+      });
 
       await waitFor(() => {
         expect(result.current.departmentOptions).toEqual(expected);
@@ -385,7 +449,15 @@ describe("useStockInquiry (REQ-301/302)", () => {
       const navigate = vi.fn();
       const { result } = renderHook(
         () =>
-          useStockInquiry({ status: "all", q: "糸", dept: 1, page: 1, selected: null, navigate }),
+          useStockInquiry({
+            status: "all",
+            q: "糸",
+            dept: 1,
+            page: 1,
+            perPage: 50,
+            selected: null,
+            navigate,
+          }),
         { wrapper: makeWrapper() },
       );
       await waitFor(() => {

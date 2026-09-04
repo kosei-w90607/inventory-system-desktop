@@ -624,10 +624,13 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
 
     // toolbar 枠（rounded-lg border bg-card p-4）
     expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
-    // 上部件数（PaginationSummary、text-base font-semibold）
-    const topSummary = container.querySelector(".text-base.font-semibold");
+    // 上部件数（PaginationSummary、text-base。下部 Pagination は text-sm）
+    const topSummaries = container.querySelectorAll("div.text-base");
+    expect(topSummaries).toHaveLength(1);
+    expect(container.querySelector("div.text-sm.text-base")).toBeNull();
+    const topSummary = topSummaries.item(0);
     expect(topSummary).not.toBeNull();
-    expect(topSummary).toHaveTextContent("150 件中 1〜100 件目 · 1 / 2 ページ");
+    expect(topSummary).toHaveTextContent("全 150 件のうち 1〜100 件を表示（1 / 2 ページ）");
     // 下部 pager が search state を更新する
     await userEvent.setup().click(screen.getByRole("button", { name: "次のページ" }));
     const updater = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1]?.[0] as (
@@ -651,7 +654,7 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
       <ProductListPage search={{}} onSearchChange={vi.fn()} />,
     );
     await screen.findByRole("heading", { name: "該当する商品がありません" });
-    expect(container.querySelector(".text-base.font-semibold")).toBeNull();
+    expect(container.querySelector("div.text-base")).toBeNull();
     expect(screen.queryByRole("button", { name: "次のページ" })).toBeNull();
   });
 

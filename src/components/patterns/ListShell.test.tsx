@@ -91,19 +91,22 @@ describe("SC4b: topSummary + totalCount > 0 gating", () => {
         <SampleTable />
       </ListShell>,
     );
-    // PaginationSummary（上部）は text-base font-semibold で一意に特定できる
+    // PaginationSummary（上部）は text-base で一意に特定できる
     // （下部 Pagination の同文言は text-sm text-muted-foreground 内の tabular-nums div）。
-    const summary = container.querySelector(".text-base.font-semibold");
+    const summaries = container.querySelectorAll(".text-base");
+    expect(summaries).toHaveLength(1);
+    expect(container.querySelector(".text-sm.text-base")).toBeNull();
+    const summary = summaries.item(0);
     const table = screen.getByText("列").closest("table");
     expect(summary).not.toBeNull();
     expect(table).not.toBeNull();
-    if (summary === null || table === null) {
+    if (table === null) {
       throw new Error("unreachable: asserted not null above");
     }
     const summaryTokens = classTokens(summary);
     expect(summaryTokens).toContain("text-base");
-    expect(summaryTokens).toContain("font-semibold");
-    expect(summary).toHaveTextContent("25 件中 1〜10 件目 · 1 / 3 ページ");
+    expect(summaryTokens).not.toContain("font-semibold");
+    expect(summary).toHaveTextContent("全 25 件のうち 1〜10 件を表示（1 / 3 ページ）");
     expect(summary.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -113,7 +116,7 @@ describe("SC4b: topSummary + totalCount > 0 gating", () => {
         <SampleTable />
       </ListShell>,
     );
-    expect(container.querySelector(".text-base.font-semibold")).toBeNull();
+    expect(container.querySelector(".text-base")).toBeNull();
   });
 
   it("renders neither summary nor bottom pager when totalCount is 0", () => {

@@ -2,12 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { commands } from "@/lib/bindings";
 import type { MovementRecord, StockDetail } from "@/lib/bindings";
 import { renderWithRouter } from "@/test/render-with-router";
 import { StockMovementsPage } from "./StockMovementsPage";
+import type { StockMovementsSearch } from "./types";
 
 vi.mock("@/lib/bindings", () => ({
   commands: {
@@ -83,7 +84,7 @@ describe("StockMovementsPage (UI-06c)", () => {
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
     mockListMovements.mockResolvedValue({
       status: "ok",
-      data: { items: [makeMovement()], total_count: 1, page: 2, per_page: 20 },
+      data: { items: [makeMovement()], total_count: 1, page: 2, per_page: 50 },
     });
 
     renderWithClient(
@@ -106,7 +107,7 @@ describe("StockMovementsPage (UI-06c)", () => {
         date_to: "2026-06-30",
         movement_type: "disposal",
         page: 2,
-        per_page: 20,
+        per_page: 50,
       });
     });
     expect(await screen.findByText("ボタン #02")).toBeInTheDocument();
@@ -123,7 +124,7 @@ describe("StockMovementsPage (UI-06c)", () => {
     });
     mockListMovements.mockResolvedValue({
       status: "ok",
-      data: { items: [makeMovement()], total_count: 1, page: 1, per_page: 20 },
+      data: { items: [makeMovement()], total_count: 1, page: 1, per_page: 50 },
     });
 
     renderWithClient(
@@ -143,7 +144,7 @@ describe("StockMovementsPage (UI-06c)", () => {
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
     mockListMovements.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 3, per_page: 20 },
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
     });
     const onSearchChange = vi.fn();
     const user = userEvent.setup();
@@ -180,6 +181,31 @@ describe("StockMovementsPage (UI-06c)", () => {
     };
     expect(updater({ type: "all", page: 3 })).toEqual({ type: "receiving", page: 1 });
   });
+
+  it("SC4c: 表示件数を200へ変更するとpage 1・per_page 200で再取得する", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeMovement()], total_count: 1, page: 1, per_page: 200 },
+    });
+
+    function Harness() {
+      const [search, setSearch] = useState<StockMovementsSearch>({ page: 3 });
+      return <StockMovementsPage productCode="BT0002" search={search} onSearchChange={setSearch} />;
+    }
+
+    renderWithClient(<Harness />);
+    await screen.findByText("廃棄・破損 #7");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(await screen.findByRole("option", { name: "200 件" }));
+
+    await waitFor(() => {
+      expect(mockListMovements).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, per_page: 200 }),
+      );
+    });
+  });
 });
 
 describe("StockMovementsPage SPEC-UIBB-1/2（filter-empty reset action、66 §66.6）", () => {
@@ -187,7 +213,7 @@ describe("StockMovementsPage SPEC-UIBB-1/2（filter-empty reset action、66 §66
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
     mockListMovements.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
     renderWithClient(
       <StockMovementsPage
@@ -203,7 +229,7 @@ describe("StockMovementsPage SPEC-UIBB-1/2（filter-empty reset action、66 §66
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
     mockListMovements.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
     renderWithClient(
       <StockMovementsPage productCode="BT0002" search={{}} onSearchChange={vi.fn()} />,
@@ -216,7 +242,7 @@ describe("StockMovementsPage SPEC-UIBB-1/2（filter-empty reset action、66 §66
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
     mockListMovements.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 3, per_page: 20 },
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
     });
     const onSearchChange = vi.fn();
     renderWithClient(

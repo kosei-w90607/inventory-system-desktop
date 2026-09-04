@@ -106,7 +106,7 @@ mod tests {
         assert!(result.items.is_empty());
     }
 
-    /// list_movements: per_page > 100 → ValidationFailed
+    /// list_movements: per_page > 200 → ValidationFailed
     #[test]
     fn test_list_movements_req303_per_page_exceeds_max() {
         // REQ-303: 在庫変動履歴
@@ -117,7 +117,7 @@ mod tests {
             date_to: None,
             movement_type: None,
             page: 1,
-            per_page: 101,
+            per_page: 201,
         };
         let err = crate::biz::inventory_service::list_movements(&conn, &query).unwrap_err();
         match err {

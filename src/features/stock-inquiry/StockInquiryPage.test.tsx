@@ -327,6 +327,37 @@ describe("StockInquiryPage SPEC-UIBB-1/2（filter-empty reset action）", () => 
 });
 
 describe("StockInquiryPage SPEC-UIBB-4（pagination の条件 reset / 維持）", () => {
+  it("SC4a: 表示件数を100へ変更するとpage 1・per_page 100で再取得する", async () => {
+    mockSearch.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeMockProductWithRelations({ product_code: "P-001" }),
+          makeMockProductWithRelations({ product_code: "P-002" }),
+        ],
+        total_count: 120,
+        page: 1,
+        per_page: 100,
+      },
+    });
+    function Harness() {
+      const [search, setSearch] = useState<StockInquirySearch>({ q: "P", status: "all", page: 2 });
+      return <StockInquiryPage search={search} onSearchChange={setSearch} />;
+    }
+    renderWithClient(<Harness />);
+    await screen.findByText("P-001");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "表示件数" }));
+    await user.click(await screen.findByRole("option", { name: "100 件" }));
+
+    await waitFor(() => {
+      expect(mockSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, per_page: 100 }),
+      );
+    });
+  });
+
   it("SPEC-UIBB-4 検索条件変更でpage=1に戻る", async () => {
     mockSearch.mockResolvedValue({
       status: "ok",
@@ -396,7 +427,7 @@ describe("StockInquiryPage SPEC-UIBB-4（pagination の条件 reset / 維持）"
     );
     await screen.findByText("P-001");
     const user = userEvent.setup();
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "部門" }));
     await user.click(await screen.findByRole("option", { name: "布" }));
     const prev: StockInquirySearch = { q: "毛糸", status: "all", page: 2 };
     const deptChangeCall = onSearchChange.mock.calls.find((call) => {
@@ -488,7 +519,7 @@ describe("StockInquiryPage SPEC-UIBB-5（51件 synthetic で page 2 到達 + tru
       <StockInquiryPage search={{ q: "毛糸", status: "all", page: 2 }} onSearchChange={vi.fn()} />,
     );
     expect(await screen.findByText("P-051")).toBeInTheDocument();
-    expect(screen.getByText("51 件中 51〜51 件目 · 2 / 2 ページ")).toBeInTheDocument();
+    expect(screen.getByText("全 51 件のうち 51〜51 件を表示（2 / 2 ページ）")).toBeInTheDocument();
   });
 });
 
@@ -538,7 +569,7 @@ describe("StockInquiryPage SPEC-UIBB-9（部門候補 loading / error 結線）"
       <StockInquiryPage search={{ q: "毛糸", status: "all" }} onSearchChange={vi.fn()} />,
     );
     await waitFor(() => {
-      expect(screen.getByRole("combobox")).toBeDisabled();
+      expect(screen.getByRole("combobox", { name: "部門" })).toBeDisabled();
     });
   });
 
@@ -587,7 +618,7 @@ describe("StockInquiryPage SPEC-UIBB-9（部門候補 loading / error 結線）"
     );
     await screen.findByText("P-001");
     const user = userEvent.setup();
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "部門" }));
     // dept=1 選択中でも布（id=2）が候補に残っている（DSR-10 縮退なし）
     expect(await screen.findByRole("option", { name: "布" })).toBeInTheDocument();
   });

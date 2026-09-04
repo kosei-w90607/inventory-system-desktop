@@ -40,7 +40,7 @@ function rangeText(
   if (totalCount === 0) {
     return "0 件";
   }
-  return `${totalCount.toLocaleString("ja-JP")} 件中 ${from.toLocaleString("ja-JP")}〜${to.toLocaleString("ja-JP")} 件目 · ${String(page)} / ${String(totalPages)} ページ`;
+  return `全 ${totalCount.toLocaleString("ja-JP")} 件のうち ${from.toLocaleString("ja-JP")}〜${to.toLocaleString("ja-JP")} 件を表示（${String(page)} / ${String(totalPages)} ページ）`;
 }
 
 export function Pagination({ page, perPage, totalCount, onPageChange }: PaginationProps) {
@@ -96,7 +96,7 @@ export function PaginationSummary({ page, perPage, totalCount }: PaginationSumma
   const { totalPages, from, to } = computeRange(page, perPage, totalCount);
 
   return (
-    <div className="text-base font-semibold text-foreground tabular-nums">
+    <div className="text-base text-foreground tabular-nums">
       {rangeText(totalCount, from, to, page, totalPages)}
     </div>
   );
