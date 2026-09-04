@@ -72,15 +72,21 @@ preserve the user's normal native footer exactly. To avoid the mouse-wheel bug,
 run the default command from a non-tmux shell; the wrapper cannot remove an
 already active parent tmux session.
 
-The wrapper pins the normal inventory session to `gpt-5.6-sol` with `high`
-reasoning effort and `on-request` approval policy. Override these per launch
-with `CODEX_INVENTORY_MODEL`, `CODEX_INVENTORY_REASONING_EFFORT`, and
-`CODEX_INVENTORY_APPROVAL_POLICY`; set either model/effort variable to an empty
-string to omit that pin. The wrapper also exports
-`CODEX_INVENTORY_PINNED_MODEL` and `CODEX_INVENTORY_PINNED_EFFORT` so the agent
-can confirm that it was launched through the pinned wrapper. These environment
-values report wrapper intent; the owner-visible native status line remains the
-runtime confirmation surface.
+通常のモデル選択は `$CODEX_HOME/config.toml`（未指定なら `~/.codex/config.toml`）の
+`model` に集約する。ラッパーはモデル・effort の既定値を持たず、Codex 本体の設定解決に
+任せる。`inventory-no-bar.config.toml` にはモデル名を重複指定しない。
+effort など用途別設定は profile で調整できる。一時指定には `-m` または
+`CODEX_INVENTORY_MODEL`、effort には `CODEX_INVENTORY_REASONING_EFFORT` を使う。
+環境変数が未指定・空ならラッパーはその pin を追加しない。
+承認方針は従来どおり `on-request`（`CODEX_INVENTORY_APPROVAL_POLICY` で一時変更可）。
+
+`CODEX_INVENTORY_PINNED_MODEL` / `CODEX_INVENTORY_PINNED_EFFORT` はラッパーの一時指定だけを
+表し、config・CLI 引数・実際の serving model の証明ではない。起動時や resume 後の
+実モデルと effort は native status line で確認し、不一致なら `/model` で選び直す。
+旧コメントの「`-m` で自動降格を防止できる」は現行仕様で確認できないため保証としない。
+モデル更新時は選択設定と [モデル差分メモ](../docs/agent-guidance/model-notes.md) を見直し、
+ラッパー・共通契約・回帰テストへ新しいモデル名を書き足さない。
+設定仕様: [公式 config reference](https://learn.chatgpt.com/docs/config-file/config-reference)。
 
 Mouse wheel absorption into the Codex composer is tracked separately in
 `status-bar/README.md`. The split-pane bar was tested as a possible cause, but
@@ -110,8 +116,8 @@ Current local wiring:
 - `~/.zshrc` maps `codex-inventory` to
   `CODEX_INVENTORY_REPO=/home/kosei/Projects/inventory-system-public /home/kosei/Projects/inventory-system-public/.codex/bin/codex-inventory`.
 - `bin/codex-inventory` defaults to plain Codex with an expanded native footer.
-- `bin/codex-inventory` passes explicit model / reasoning-effort pins and
-  exposes those wrapper values through `CODEX_INVENTORY_PINNED_*`.
+- `bin/codex-inventory` delegates model / effort defaults to Codex and forwards
+  only explicit environment pins through `CODEX_INVENTORY_PINNED_*`.
 - `CODEX_INVENTORY_TMUX_BAR=1 codex-inventory` starts a `tmux` session when
   needed and adds the lower-pane bar.
 - `~/.codex/config.toml` keeps the native Codex footer limited to

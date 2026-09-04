@@ -9,4 +9,4 @@ Use for coordination, difficult planning, architecture synthesis, adversarial re
 - Make a conditional recommendation when the available evidence supports one.
 - Use deeper verification for irreversible, high-risk, or cross-cutting claims.
 
-Apply the [shared contract](../gpt-5.6-shared.md) without modification.
+Apply the [shared contract](../shared.md) without modification.

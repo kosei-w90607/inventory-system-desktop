@@ -258,24 +258,51 @@ printf '%s\n' \
     'printf "arg=%s\n" "$@"' >"$fake_codex"
 chmod +x "$fake_codex"
 
-assert_success "T10 launcher forwards default pins" env \
+assert_success "T10 launcher delegates model selection to Codex" env \
+    -u CODEX_INVENTORY_MODEL -u CODEX_INVENTORY_REASONING_EFFORT \
     REAL_CODEX="$fake_codex" \
     CODEX_INVENTORY_REPO="$fixture_repo" \
     CODEX_INVENTORY_NO_BAR=1 \
     CODEX_INVENTORY_DISABLE_ALT_SCROLL=0 \
     "$launcher" fixture-prompt
 for expected in \
-    'env_model=gpt-5.6-sol' \
-    'env_effort=high' \
-    'arg=-m' \
-    'arg=gpt-5.6-sol' \
-    'arg=model_reasoning_effort="high"' \
+    'env_model=' \
+    'env_effort=' \
     'arg=--ask-for-approval' \
     'arg=on-request' \
     'arg=fixture-prompt'; do
     grep -Fxq -- "$expected" "$out" ||
-        fail "T10 launcher default pins omitted $expected"
+        fail "T10 launcher default arguments omitted $expected"
 done
+if grep -Fxq 'arg=-m' "$out" ||
+    grep -Fq 'arg=model_reasoning_effort=' "$out"; then
+    fail "T10 launcher overrode native model/effort configuration"
+fi
+
+assert_success "T10 launcher forwards explicit pins" env \
+    REAL_CODEX="$fake_codex" \
+    CODEX_INVENTORY_REPO="$fixture_repo" \
+    CODEX_INVENTORY_NO_BAR=1 \
+    CODEX_INVENTORY_DISABLE_ALT_SCROLL=0 \
+    CODEX_INVENTORY_MODEL=fixture-model \
+    CODEX_INVENTORY_REASONING_EFFORT=low \
+    "$launcher"
+for expected in 'env_model=fixture-model' 'env_effort=low' \
+    'arg=-m' 'arg=fixture-model' 'arg=model_reasoning_effort="low"'; do
+    grep -Fxq -- "$expected" "$out" ||
+        fail "T10 launcher omitted explicit override $expected"
+done
+
+assert_success "T10 launcher forwards CLI model without a competing pin" env \
+    -u CODEX_INVENTORY_MODEL -u CODEX_INVENTORY_REASONING_EFFORT \
+    REAL_CODEX="$fake_codex" \
+    CODEX_INVENTORY_REPO="$fixture_repo" \
+    CODEX_INVENTORY_NO_BAR=1 \
+    CODEX_INVENTORY_DISABLE_ALT_SCROLL=0 \
+    "$launcher" -m cli-fixture-model
+[[ "$(grep -Fxc 'arg=-m' "$out")" == 1 ]] ||
+    fail "T10 launcher added a competing CLI model pin"
+grep -Fxq 'arg=cli-fixture-model' "$out" || fail "T10 launcher lost CLI model"
 
 assert_success "T10 launcher permits pin overrides" env \
     REAL_CODEX="$fake_codex" \
