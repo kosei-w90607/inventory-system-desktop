@@ -91,8 +91,10 @@ export function ListShell({
           {/* 追補 S17（Opus P1-2 / P2-2 / P2-3、AC-L3-2 / AC-L3-4）: 帯自体は overflow-hidden
               にし、子（PaginationSummary root）を min-w-0 + truncate で ellipsis させる
               （flex item への直接 truncate は min-width:auto で hard clip になる）。
-              forced-colors では背景色のみの帯が Canvas に潰れるため border-b を付ける。 */}
-          <div className="sticky top-0 z-20 flex h-10 w-full items-center overflow-hidden bg-list-head px-2 forced-colors:border-b [&>div]:min-w-0 [&>div]:truncate">
+              Gated Amendment 5 S39（owner L3 run 4「灰色の塊に入れ込んだのがミス、角が角、
+              下に線を引く程度」）: 件数行は page 地色（bg-background）+ 常時 1px 下線
+              （border-b border-border）。灰色面（--list-head）は列見出しのみに限定する。 */}
+          <div className="sticky top-0 z-20 flex h-10 w-full items-center overflow-hidden border-b border-border bg-background px-2 [&>div]:min-w-0 [&>div]:truncate">
             <PaginationSummary
               page={pagination.page}
               perPage={pagination.perPage}

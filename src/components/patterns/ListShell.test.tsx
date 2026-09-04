@@ -188,18 +188,22 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(bandTokens).toContain("h-10");
     expect(bandTokens).toContain("items-center");
     expect(bandTokens).toContain("w-full");
-    // Gated Amendment 2 S11（owner L3 FAIL-3）: summary 帯と thead を同一 surface
-    // （--list-head）にし、bg-muted は残さない。
-    expect(bandTokens).toContain("bg-list-head");
+    // Gated Amendment 5 S39（owner run 4「灰色の塊に入れ込んだのがミス、角が角、
+    // 下に線を引く程度」、AC-L3-2 の翻意）: 件数行は page 地色 + 1px 下線、
+    // 灰色面（--list-head）は列見出しのみに限定する。
+    expect(bandTokens).toContain("bg-background");
+    expect(bandTokens).not.toContain("bg-list-head");
     expect(bandTokens).not.toContain("bg-muted");
     // 追補 S17（Opus P1-2 / P2-2 / P2-3、AC-L3-2 / AC-L3-4）: flex item の直接
     // truncate は min-width:auto により hard clip になるため、帯自体は overflow-hidden
     // にし、子（PaginationSummary root）を min-w-0 + truncate にして ellipsis させる。
-    // forced-colors では背景色のみの帯が Canvas に潰れるため border-b を追加する。
+    // Gated Amendment 5 S39: 下線は forced-colors 限定ではなく常時 border-b border-border。
     expect(bandTokens).toContain("overflow-hidden");
     expect(bandTokens).toContain("[&>div]:min-w-0");
     expect(bandTokens).toContain("[&>div]:truncate");
-    expect(bandTokens).toContain("forced-colors:border-b");
+    expect(bandTokens).toContain("border-b");
+    expect(bandTokens).toContain("border-border");
+    expect(bandTokens).not.toContain("forced-colors:border-b");
     expect(bandTokens).not.toContain("truncate");
 
     // table 内部（th / td / table-container / table）への上書きは caller の
@@ -277,8 +281,8 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
   });
 });
 
-describe("SC8: sticky band surface uses --list-head, not bg-muted (Gated Amendment 2 S11 / owner L3 FAIL-3)", () => {
-  it("applies bg-list-head to the summary band, thead th and thead tr; no bg-muted remains on them", () => {
+describe("SC8: sticky band uses bg-background + border-b, thead keeps --list-head (Gated Amendment 5 S39, owner L3 run 4)", () => {
+  it("applies bg-background and border-b border-border to the summary band, bg-list-head to thead th and thead tr; band carries no bg-list-head/bg-muted/forced-colors:border-b", () => {
     const { container } = render(
       <ListShell stickyHeader topSummary pagination={pagination(25)}>
         <SampleTable />
@@ -286,8 +290,12 @@ describe("SC8: sticky band surface uses --list-head, not bg-muted (Gated Amendme
     );
     const summaryBand = container.querySelector(".sticky.top-0.z-20");
     const bandTokens = classTokens(summaryBand);
-    expect(bandTokens).toContain("bg-list-head");
+    expect(bandTokens).toContain("bg-background");
+    expect(bandTokens).toContain("border-b");
+    expect(bandTokens).toContain("border-border");
+    expect(bandTokens).not.toContain("bg-list-head");
     expect(bandTokens).not.toContain("bg-muted");
+    expect(bandTokens).not.toContain("forced-colors:border-b");
 
     const rootTokens = classTokens(container.firstElementChild);
     expect(rootTokens).toContain("[&_thead_th]:bg-list-head");
