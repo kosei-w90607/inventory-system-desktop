@@ -62,7 +62,7 @@
     - runtime backlog: 返品・交換の方向 badge（戻り（在庫+）/ 渡し（在庫-））の色遣いを再検討。DSR-08 どおり文言 + 記号を主、色は補助に、S
     - runtime backlog: 返品・交換のレシート画像 label に「（任意）」を付ける（`ReturnExchangePage.tsx:624`）、S
     - 維持（肯定）: 保存結果の緑 icon toast / 原価差分 dialog の「マスタ原価 → 実原価」表示 / 返品・交換のレジ戻し badge と CSV 取込み反映 badge の色 / 検索欄と toolbar の明度差は問題視せず。後続 sweep で消さない
-    - residual risk（Gated Amendment 6 S44）: 入力欄・Select の `--control-surface` #fff 化は L3 で商品一覧のみ確認。他画面の入力欄の白面は Lane 3〜5 の実機で確認する
+    - residual risk（Gated Amendment 6 S44）: 入力欄・Select の `--control-surface` #fafaf9 化（Gated Amendment 7 S46 で #fff から変更）は L3 で商品一覧のみ確認。他画面の入力欄の白面は Lane 3〜5 の実機で確認する
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 
 ### Wave Registry

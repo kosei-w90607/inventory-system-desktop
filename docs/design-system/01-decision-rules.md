@@ -438,7 +438,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 | 管理系 | 取引先管理（`SupplierUsageTable.tsx:19`、取引先コード列は存在しない） | 取引先名 |
 | 管理系 | backup 一覧（`BackupRestorePage.tsx:520,522`） | 作成日時（`created_at`）+ ファイル名（`file_name`） |
 
-履歴系（入出庫履歴 / 在庫変動履歴 / 操作ログ）の固定列は、旧分析 doc の実装未確認の「仮置き」判断（`2026-08-23-current-design-analysis.md:18`）を実コード確認で更新したものであり、Lane 2 の L3 で実利用者確認のうえ最終確定する。
+履歴系（入出庫履歴 / 在庫変動履歴 / 操作ログ）の固定列は、旧分析 doc の実装未確認の「仮置き」判断（`2026-08-23-current-design-analysis.md:18`）を実コード確認で更新したものであり、Lane 2 の L3（PR #32 run 3「history は固定列を含む現実装を維持」、run 4〜7 で異議なし、2026-09-04）で実利用者確認済みとして**最終確定**した。
 
 入力中 / 開いている行 / 選択行は「現在行」として左 4px の primary バー + 淡い背景 `--row-current` + badge/文言の 3 点で示す（色だけに頼らない、DSR-08）。UI 部品の枠は、操作枠（入力・ボタン outline・select・segmented・状態 badge・outline chip の枠・focus ring）を隣接背景（ページ背景）に対し 3:1 以上（WCAG 2.2 SC 1.4.11 / 2.4.13）にする。**Badge / outline chip も対象**とし、境界（枠線または背景色）が隣接背景に対し 3:1 以上、かつ文字は WCAG 1.4.3 の通常テキスト基準 4.5:1 を維持することを要求する（12px の badge 文字は SC 1.4.3 の large text 基準〈18px、または 14px bold〉を満たさないため通常テキスト扱い）。soft 背景色のみでは非テキスト UI 部品のコントラスト要件を満たすシグナルにならない。構造線（行区切り・表枠・card 枠）は 3:1 の対象外だが `--border`（`#cdc8c4`、対 `--background` 1.59:1、Lane 2 で `#e7e5e4`〈≈1.20:1〉から濃化済み）を用いる。token は `--border`（構造線）/ `--border-strong`（操作枠、`#8a8480`、対 `--background` 3.53:1、`--input` が参照）/ `--row-current`（現在行背景、`#fff8e6`、消費者は Lane 3〜5）/ `--control-surface`（操作面、`#ffffff`、対 `--card` 1.04:1・対 `--background` 1.02:1、入力欄・Select、Gated Amendment 6 S44）の 4 種。globals.css に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とし DS3 の突合対象に含める。
 

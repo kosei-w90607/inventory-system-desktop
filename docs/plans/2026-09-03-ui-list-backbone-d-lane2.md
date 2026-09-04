@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
@@ -761,5 +761,7 @@ owner が是正方針 A（mockup を現実装 + Lane 2 の比較差分に限定�
 2026-09-04: **owner L3 run 6 = 部分 PASS（原文）**（head `fab5920` / content `18e230c`、介入 2/3 の同一 gate 内）。PASS = 在庫数「18 個」（S45）、列見出しの左右上の角（S43）。要修正 = (1) 検索欄と Select の面の色は #FAFAF9 で設定（S44 の #fff は不採用）(2) 列見出し帯の上端の線（件数行の 1px 下線、S39）を外す (3) window を左右限界まで縮めると 部門 と 売価 の列見出しの間に白い細い縦線が 1 本入る（S43 で tr 背景を外したため cell 境界の subpixel 隙間に page 地が透ける、Amendment 2 S11 の tr 背景が塞いでいた）。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正は Gated Amendment 7（S46〜S48）。
 
 2026-09-04 owner L3 run 6 部分 PASS（原文）→ Gated Amendment 7（`4b7eecf`、S46〜S48、owner escalation）: Writer content commit = `8b68d03` `632eb4d` `12667a0`。Sonnet 独立 closure（`12667a0`）10 mutant 全 kill、findings 0。`implementing -> local-verified -> independent-review -> human-confirm` を本 content commit（Ledger + 結果記入）に同乗で materialize。Reviewed Content HEAD = `12667a0`。L3 run 7 は 3 点のみ。
+
+2026-09-04: **owner L3 run 7 = 全 PASS**（head `d8e457e` / content `12667a0`、原文「OK,全PASSで締めよう」）。介入 2/3 の Human Gate を閉じる。`human-confirm -> ready-hosted-final` を本 content commit（DSR-22 `:441` 履歴系固定列 mapping の最終確定 + owner L3 原文の tracked 化 `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md` + Plans.md の `--control-surface` 値同期）に同乗で materialize（post-impl state-only 2/2、PR #30 先例）。`9d11287` subject 非 canonical の手動計上例外は merge 承認の一言（介入 3/3）で併せて承認を求める。L1 full は本 HEAD で再実行し PR body へ。
 
 - Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）, Gated Amendment 4（owner L3 run 3 AC-L3-5 FAIL 起源 + Codex Final Review、S22〜S38、SC14a / SC14b、docs-only）, Gated Amendment 5（owner L3 run 4 + 方針 A、S39〜S42、runtime は帯 1 点、SC8 / SC10 / SC12 更新）, Gated Amendment 6（owner run 5 追加要望 + bug、S43〜S45、SC15 / SC16 / X35〜X39）, Gated Amendment 7（owner run 6 要修正 3 点、S46〜S48、SC17 / X40〜X41）.
