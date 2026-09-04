@@ -601,3 +601,15 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     expect(screen.queryByText(/\[commands:/)).not.toBeInTheDocument();
   });
 });
+
+describe("DisposalPage native input tokens（Lane 5 SC4c）", () => {
+  it("SC4c: 種別selectがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<DisposalPage />);
+    await addSingleProduct(user);
+
+    const disposalType = screen.getByLabelText("DP-001 の種別");
+    expect(disposalType).toHaveClass("bg-control-surface");
+    expect(disposalType).not.toHaveClass("bg-background");
+  });
+});

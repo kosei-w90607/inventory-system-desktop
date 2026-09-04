@@ -164,7 +164,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             </label>
             <select
               id="records-type"
-              className="h-9 w-40 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-40 rounded-md border border-input bg-control-surface px-3 text-sm"
               value={normalized.recordType}
               onChange={(event) => {
                 const recordType = INVENTORY_RECORD_TYPE_OPTIONS.find(
@@ -186,7 +186,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             </label>
             <input
               id="records-date-from"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 rounded-md border border-input bg-control-surface px-3 text-sm"
               type="date"
               value={normalized.dateFrom ?? ""}
               onChange={(event) => {
@@ -200,7 +200,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             </label>
             <input
               id="records-date-to"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 rounded-md border border-input bg-control-surface px-3 text-sm"
               type="date"
               value={normalized.dateTo ?? ""}
               onChange={(event) => {
@@ -215,7 +215,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             </label>
             <input
               id="records-id"
-              className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-28 rounded-md border border-input bg-control-surface px-3 text-sm"
               type="number"
               min="1"
               value={normalized.recordId ?? ""}
@@ -231,7 +231,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             </label>
             <select
               id="records-department"
-              className="h-9 w-44 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-44 rounded-md border border-input bg-control-surface px-3 text-sm"
               value={normalized.departmentId ?? "all"}
               disabled={departmentsQuery.isLoading || departmentsQuery.isError}
               onChange={(event) => {
@@ -253,7 +253,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             </label>
             <select
               id="records-status"
-              className="h-9 w-32 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-32 rounded-md border border-input bg-control-surface px-3 text-sm"
               value={normalized.status}
               onChange={(event) => {
                 const status = INVENTORY_RECORD_STATUS_OPTIONS.find(
