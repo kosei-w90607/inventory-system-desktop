@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 244a5dd
@@ -19,7 +19,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Claude Sonnet 5 subagent（runtime code + design docs + mockup HTML、worktree isolation、TDD）
 - Plan Reviewer: Claude Sonnet 5 subagent（independent fresh context）+ Opus 5 デザイン面レビュー（発注書駆動・read-only・§5.4 低制約 profile、D-056 準拠）+ Fable 裁定
 - Final Reviewer: Codex（GPT-5.6、ロジック・整合面、PR review 1 回 = relay 1/2）+ Opus 5 デザイン面レビュー（read-only）+ Claude Sonnet 5 subagent mutation 独立再実測（隔離 worktree、Writer とは別 fresh context）+ Fable 裁定
-- Reviewed Content HEAD: 18e230c
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（商品一覧 pilot の器・sticky 帯・範囲付き文言・PageShell 余白・`--border` / `--input` 濃化の render oracle + DSR-22 低視力 L3 (a)(b) の実施分）。Lane 1b mockup 5 file の視認は Gated Amendment 5 で non-blocking へ descope（run 5 = 帯 1 点）
@@ -733,5 +733,7 @@ owner が是正方針 A（mockup を現実装 + Lane 2 の比較差分に限定�
 2026-09-04: **owner L3 run 5 = PASS（帯 1 点）+ 追加要望 2 + bug 1**（head `0499212` / content `7b80f67`、原文、介入 2/3 の同一 gate 内）。帯（件数行 地色 + 1px 下線、列見出しのみ灰色）は PASS。追加要望 = (1) 列見出しの灰色面の左右上の角を丸くしたい (2) 入力欄とドロップダウンの面を白くしたい（run 2 非 blocking 所感の「明度差が小さい」を owner は Codex 経由で要望として伝えたつもりだったが relay されていなかった）。bug = 商品一覧の在庫数にも unit code `pcs` が生表示（`ProductTable.tsx:69`、入庫 `ReceivingPage.tsx:557` / 廃棄 `DisposalPage.tsx:584` / 返品交換 `ReturnExchangePage.tsx:866` の単位列と同根）。owner「まとめてできるならやってしまおう」→ Gated Amendment 6 に 3 点を束ねる。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。
 
 2026-09-04 owner L3 run 5 PASS + 追加要望 2 + bug 1（原文）→ Gated Amendment 6（`eeeca9c`、S43〜S45、owner escalation）: Writer content commit = `e5377b5` `9c16fe8` `18e230c`。Sonnet 独立 closure（`18e230c`）11 mutant 中 10 kill + survivor 1 は Coordinator 再測で kill（scoping artifact、P2 rebut）、findings 0。`implementing -> local-verified -> independent-review -> human-confirm` を本 content commit（Ledger + 結果記入）に同乗で materialize。Reviewed Content HEAD = `18e230c`。L3 run 6 は 3 点のみ。
+
+2026-09-04: **owner L3 run 6 = 部分 PASS（原文）**（head `fab5920` / content `18e230c`、介入 2/3 の同一 gate 内）。PASS = 在庫数「18 個」（S45）、列見出しの左右上の角（S43）。要修正 = (1) 検索欄と Select の面の色は #FAFAF9 で設定（S44 の #fff は不採用）(2) 列見出し帯の上端の線（件数行の 1px 下線、S39）を外す (3) window を左右限界まで縮めると 部門 と 売価 の列見出しの間に白い細い縦線が 1 本入る（S43 で tr 背景を外したため cell 境界の subpixel 隙間に page 地が透ける、Amendment 2 S11 の tr 背景が塞いでいた）。`human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）。是正は Gated Amendment 7（S46〜S48）。
 
 - Findings Freeze: frozen at Final Review round 1（是正 `ef782b8` 後の独立 closure で P1/P2 = 0）; post-freeze exceptions: Gated Amendment 2（owner L3 run 1 FAIL 起源、S9〜S12、SC6〜SC9 / X17〜X20 は Matrix 契約の superset）, Gated Amendment 3 + 追補（owner L3 run 2 FAIL 起源 + closure round 1 / 2 の Opus finding、S13〜S21、SC10〜SC13 / X21〜X34 は Matrix 契約の superset）, Gated Amendment 4（owner L3 run 3 AC-L3-5 FAIL 起源 + Codex Final Review、S22〜S38、SC14a / SC14b、docs-only）, Gated Amendment 5（owner L3 run 4 + 方針 A、S39〜S42、runtime は帯 1 点、SC8 / SC10 / SC12 更新）, Gated Amendment 6（owner run 5 追加要望 + bug、S43〜S45、SC15 / SC16 / X35〜X39）.
