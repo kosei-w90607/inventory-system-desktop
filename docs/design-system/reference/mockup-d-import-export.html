@@ -130,9 +130,9 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <div class="step"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>2/3 プレビュー</div>
 <div class="picker"><div class="path"><b>選択済み:</b> Z001_20260823.txt / Z002_20260823.txt / Z005_20260823.txt（CV17取込み後の PC 側 EcrDatas フォルダ）</div><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>ファイルを選び直す</button></div>
 <div class="cards"><div class="card"><div class="lbl">対象日</div><div class="val" style="font-size:20px">2026-08-23</div><div class="sub">file_hash a1e4f9c2…</div></div><div class="card"><div class="lbl">総売上</div><div class="val">¥182,400</div></div><div class="card"><div class="lbl">純売上</div><div class="val">¥179,600</div></div><div class="card"><div class="lbl">支払集計</div><div class="val" style="font-size:18px">現金 ¥120,300 / カード ¥59,300</div></div></div>
-<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>同じ日の取込みが既にあります。</b><span>追加で取り込むと、既存分は残したまま新しい取込みが加わります。「取り込む」を押すと確認が出ます。</span></div></div>
+<div class="alert warn"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg><div><b>同じ日の取込みがあります</b><span>追加で取り込むと、既存分は残したまま新しい取込みが加わります。「取り込む」を押すと確認が出ます。</span></div></div>
 <div class="fs"><h2>部門別集計</h2>
-<div class="tbl"><div class="scroll"><table><thead><tr><th>部門コード</th><th>部門名</th><th class="num">点数</th><th class="num">売上</th><th>状態</th></tr></thead><tbody id="tb-dept"></tbody></table></div></div>
+<div id="dept-list" style="display:flex;flex-direction:column;gap:8px"></div>
 </div>
 <div style="display:flex;gap:8px"><button class="btn primary">取り込む</button><span class="sub" style="align-self:center">取込み後は「日次売上を見る」から確認できます</span></div>
 </div>
@@ -141,7 +141,7 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 <div class="picker"><div class="path">未選択</div><button class="btn sm"><svg viewBox="0 0 24 24"><path d="M4 17v3h16v-3M12 4v12m0 0 4-4m-4 4-4-4"/></svg>ファイルを選ぶ（.csv / .txt）</button></div>
 <p class="sub">PLU 登録後に、商品別売上・在庫連動として取得できるトラックです（PLU 運用前は日報取込みを主にお使いください）。</p>
 </div>
-</div><div class="note"><b>D の要点（売上データ取込み）</b> — 55-ui の契約（画面タイトルは「売上データ取込み」、既定タブ「日報取込み」、日報とZ004商品別CSVは同一画面内の 2 トラック）はそのまま。<ol><li><b>部門別集計 table に D を適用</b>: 部門未対応は状態 badge（warning + アイコン + 日本語）で行内表示（識別列固定は本画面では対象外、DSR-22 mapping 表に import-export は含まれない）。</li><li><b>操作枠のコントラスト</b>: FilePicker の枠、取込みボタンの枠を濃く。</li></ol><b>現実装維持（D の対象外）</b>: ステップ表示（1/3〜3/3）、上部 Alert の同日追加確認、summary card の内容と並びは 55-ui のまま。プレビュー（`preview`）と前回結果（`result`）は `DailyReportImportPage.tsx:26-63` の state machine で排他表示のため、プレビュー中は前回結果を同時に描かない（Amendment 4 closure round 1 で除去、結果画面自体は別 state のため本 mockup では省略）。<b>後続候補（本 mockup へ描かない）</b>: 「取込み ID」表示や日報の対象日・file_hash の並び順、部門別集計のカード内訳の文言は本 doc に厳密な指定がなく mockup 用に補った。sticky header・件数の先出しは商品一覧 pilot のみの `ListShell` 実装のため本画面には未描画。</div></section>
+</div><div class="note"><b>D の要点（売上データ取込み）</b> — 55-ui の契約（画面タイトルは「売上データ取込み」、既定タブ「日報取込み」、日報とZ004商品別CSVは同一画面内の 2 トラック）はそのまま。<ol><li><b>部門別集計は runtime どおり 2 項目 list</b>: `raw_department_name → 金額` の label / value（識別列固定は本画面では対象外、DSR-22 mapping 表に import-export は含まれない）。</li><li><b>操作枠のコントラスト</b>: FilePicker の枠、取込みボタンの枠を濃く。</li></ol><b>現実装維持（D の対象外）</b>: ステップ表示（1/3〜3/3）、上部 Alert の同日追加確認、summary card の内容と並びは 55-ui のまま。プレビュー（`preview`）と前回結果（`result`）は `DailyReportImportPage.tsx:26-63` の state machine で排他表示のため、プレビュー中は前回結果を同時に描かない（Amendment 4 closure round 1 で除去、結果画面自体は別 state のため本 mockup では省略）。<b>後続候補（本 mockup へ描かない）</b>: 「取込み ID」表示や日報の対象日・file_hash の並び順は本 doc に厳密な指定がなく mockup 用に補った。部門別集計の 5 列 table（部門コード列・状態 badge による部門未対応表現）は DTO 未使用 field（`department_id` / `quantity` / `count`）の可視化として別 R3 候補。sticky header・件数の先出しは商品一覧 pilot のみの `ListShell` 実装のため本画面には未描画。</div></section>
 <!-- ========== 商品 CSV 一括インポート（UI-01c） ========== -->
 <section class="screen" id="s-pimport"><div class="page">
 <div class="ph"><div><h1>商品一括インポート</h1><p>CSV から商品をまとめて登録・更新します。エラー行があっても正常な行は取り込めます</p></div></div>
@@ -189,9 +189,9 @@ td .code{font-weight:600;font-variant-numeric:tabular-nums}
 (function(){
   var iWarn='<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4m0 3h.01"/></svg>',iOk='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/></svg>',iBad='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9l6 6m0-6-6 6"/></svg>';
   function yen(n){return '¥'+n.toLocaleString('ja-JP')}
-  var depts=[['10','毛糸',312,145200,0],['20','生地',188,98400,0],['30','手芸小物',420,52300,0],['40','刺しゅう',96,18900,0],['50','ビーズ',150,21400,0],['99','未設定',6,3200,1],['91','未設定(旧)',2,900,1]];
-  var h='';for(var i=0;i<depts.length;i++){var r=depts[i];h+='<tr class="row'+(r[4]?' err':'')+'"><td><span class="code">'+r[0]+'</span></td><td>'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+yen(r[3])+'</td><td>'+(r[4]?'<span class="badge b-state warn">'+iWarn+'部門未対応</span>':'<span class="badge b-state ok">'+iOk+'対応済み</span>')+'</td></tr>'}
-  document.getElementById('tb-dept').innerHTML=h;
+  var depts=[['毛糸',145200],['生地',98400],['手芸小物',52300],['刺しゅう',18900],['ビーズ',21400],['未設定',3200],['未設定(旧)',900]];
+  var h='';for(var i=0;i<depts.length;i++){var r=depts[i];h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span class="sub">'+r[0]+'</span><span style="font-variant-numeric:tabular-nums">'+yen(r[1])+'</span></div>'}
+  document.getElementById('dept-list').innerHTML=h;
 
   var names=['並太毛糸（生成）','コットンブロード','木製ボタン（大）','刺しゅう糸 25番','ワッペン（星）','レース 20mm','ファスナー 20cm','マスキングテープ','ビーズ（丸小）','フェルト 18cm角'];
   var codes=['HZ-0047','F-0132','H-0009','E-0031','W-0213','L-0044','Z-0120','MT-0310','B-0506','FE-0018'];

@@ -151,7 +151,7 @@ td .del svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.
 <!-- ========== UI-04 手動販売出庫 ========== -->
 <section class="screen on" id="s-sale"><div class="page">
 <div class="ph"><div><h1>手動販売出庫</h1><p>レジのCSVに入らない販売を手入力し、在庫と売上へ反映します</p></div></div>
-<div class="fsec"><h2>伝票情報</h2><div class="grid">
+<div class="fsec"><h2>販売内容</h2><div class="grid">
 <div class="field"><label for="sd">販売日</label><input id="sd" type="date" value="2026-08-23"></div>
 <div class="field"><label for="sr">理由</label><select id="sr"><option>PLU未登録商品の販売</option><option>その他</option></select></div>
 <div class="field" style="grid-column:span 1"><label for="sn">備考（任意）</label><input id="sn" type="text" placeholder="任意のメモ"></div>
@@ -175,7 +175,7 @@ td .del svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.
 <!-- ========== UI-05 廃棄・破損 ========== -->
 <section class="screen" id="s-disposal"><div class="page">
 <div class="ph"><div><h1>廃棄・破損</h1><p>販売や返品ではない理由で在庫を減らし、ロス理由と原価を記録します</p></div></div>
-<div class="fsec"><h2>伝票情報</h2><div class="grid g2"><div class="field"><label for="dd">廃棄日</label><input id="dd" type="date" value="2026-08-23"></div></div></div>
+<div class="fsec"><h2>廃棄・破損内容</h2><div class="grid g2"><div class="field"><label for="dd">廃棄日</label><input id="dd" type="date" value="2026-08-23"></div></div></div>
 <div class="fsec"><h2>商品を追加</h2><div class="suggest"><input type="text" placeholder="商品コード・JAN・商品名で追加" aria-label="商品を追加"></div>
 <div class="sub">商品コード・JAN・商品名を入力して Enter、またはバーコードスキャナで読み取ってください</div></div>
 <div class="tbl"><div class="scroll"><table><thead><tr><th>商品コード</th><th>商品名</th><th>部門</th><th>現在庫</th><th>種別</th><th class="num">数量</th><th class="num">原価</th><th>理由</th><th></th></tr></thead><tbody id="tb-disposal"></tbody></table></div></div>
