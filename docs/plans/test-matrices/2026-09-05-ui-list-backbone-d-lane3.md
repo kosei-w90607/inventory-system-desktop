@@ -15,6 +15,7 @@ R3（route/search state の新設 6 画面 + backend バリデーション契約
 - SC5: `MAX_PER_PAGE` 200 boundary（`list_inventory_records` / `list_movements` の 200 OK・201 NG）
 - SC6: 既存 3 test（`list_receivings`/`list_inventory_records`/`list_movements` の exceeds-max）の境界値更新
 - SC7: 商品一覧・棚卸しの import 元切替後の非退行（既存既定値・既存 test 無変更）
+- SC8: 設計 doc 10 箇所の旧表記→新表記 対 anchor + `docs/decision-log.md` D-081 entry / D-031 付記の存在（Plan Review round 1 P1-2/P1-3、AC10/AC10b と対）
 
 ## Failure Modes
 
@@ -26,6 +27,7 @@ R3（route/search state の新設 6 画面 + backend バリデーション契約
 - `MAX_PER_PAGE` 引き上げにより既存の「上限超過」test が無意味化（101 が通ってしまう）まま放置される
 - 整合性チェックの Select が backend request を誤って発火する、または slice 件数が変わらない
 - 商品一覧・棚卸しが import 元切替で既定値・挙動を退行させる
+- 設計 doc 10 箇所のいずれかで旧表記「上限100」系が残る、または D-081 entry が `docs/decision-log.md` に存在しない・D-031 に付記されない
 
 ## Test Matrix
 
@@ -50,6 +52,8 @@ R3（route/search state の新設 6 画面 + backend バリデーション契約
 | SC5c 201 NG（維持、境界値更新） | 境界値が古いまま無意味化 | unit（`list.rs:321`,`list.rs:503`,`inventory_cmd.rs:111` 更新） | SC5c: test_list_receivings_req201_per_page_exceeds_max / test_list_inventory_records_req206_rejects_invalid_page_params / test_list_movements_req303_per_page_exceeds_max use per_page 201 and expect ValidationFailed | per_page が 101 のまま残っていると `unwrap_err()` が `Ok` を受け取り panic する（更新漏れの直接検出） |
 | SC6 商品一覧・棚卸しの非退行 | import 元切替で既定値破壊 | unit（既存 `ProductListPage.test.tsx` / `StocktakePage.test.tsx`、無変更のまま pass 必須） | SC6: ProductListPage defaults to per_page 100, StocktakePage defaults to per_page 50, both unaffected by the LIST_PER_PAGE_OPTIONS move | いずれかの既定値が変わる、または import 解決エラーで test が落ちる |
 | SC7 空集合 oracle | 空集合期待の組合せが mutant を素通し | unit（`IntegrityCheckPage.test.tsx` 新規、非空 1 case を含める） | SC7: with 0 mismatches, IntegrityCheckPage's per-page Select is present but the list renders no rows regardless of selection（非空 case は SC4f が担当、本 test は 0 件 case 専用） | 0 件時に Select 自体が消える、または非空 case との組合せ mutant が両方 pass してしまう（0 件 test を独立させることで検出） |
+| SC8a 設計 doc 10 箇所の対 anchor | 旧表記残存 | docs review（`rg -Fn`、非 vitest/cargo） | SC8a: each of the 10 design-doc locations shows 0 hits for its old wording and ≥1 hit for its new wording（Plan Packet AC10 の file 別 anchor 列挙どおり、`21-io-inventory-repo.md:7` / `44-cmd-inventory.md:161,1056` / `65-inventory-record-traceability.md:86` / `61-ui-receiving.md:105` / `63-ui-return-exchange.md:118` / `64-ui-disposal.md:106` / `66-ui-stock-movements.md:85` / `62-ui-manual-sale.md:143` / `10-common-rules.md:91`） | 10 箇所のいずれかで旧表記「上限100」系（またはその画面固有表記）が 1 件以上残る、または新表記が 0 件 |
+| SC8b decision-log D-081 新規 + D-031 付記 | entry 欠落 / 付記漏れ | docs review（`rg -Fn`、非 vitest/cargo） | SC8b: docs/decision-log.md contains exactly one `## D-081` heading and one `Superseded in part by: D-081` line inside the D-031 entry（`:220-227`） | `rg -Fn "## D-081" docs/decision-log.md` が 0 または 2 件以上、あるいは `Superseded in part by: D-081` が D-031 entry 範囲内に存在しない |
 
 ## Mutation Oracle Notes
 
@@ -61,4 +65,4 @@ R3（route/search state の新設 6 画面 + backend バリデーション契約
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。ledger 側で「non-scope（docs review）」とした行（DSR-22 pin / catalog ⑩ pin / 3 design doc の上限値記述）は自動テストを持たないため本 Matrix に対応行を置かない — 実装後の docs review（`rg` 完全一致確認）が oracle になる。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。ledger 側で「non-scope（docs review）」とした行のうち DSR-22 pin / catalog ⑩ pin（文言・定数名・weight）は SC3d / 個別 docs review に含める。設計 doc 10 箇所の上限値記述と decision-log D-081/D-031 は SC8a/SC8b で `rg -Fn` の docs review オラクルとして本 Matrix に明示した（vitest/cargo ではない静的検査だが、Plan Gate/Final Review の再検証対象として Test Matrix に含める）。`66-ui-stock-movements.md` の `per_page` 固定記述改訂のみ SC4c/SC8a の両方に関連する（Contract Coverage Ledger の AC8 行と対）。

@@ -79,32 +79,40 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - **8 画面の現 per_page 値・定数名・file:line・Select 有無**（Explore 前提と突合し全件一致、line 番号のみ現行 HEAD で更新）:
   - 商品一覧: `src/features/products/search.ts:36` `PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]`、既定 100（`normalizePerPage` fallback 50、URL 明示があれば優先）。Select 実装済み（`ProductListPage.tsx:189-206`、id `product-per-page`、label 「表示件数」）
-  - 棚卸し: `StocktakePage.tsx:124` `useState(50)`、`:69` で `PRODUCT_PER_PAGE_OPTIONS` を import。Select 実装済み（`:755-775`、id `stocktake-per-page`、label 「表示件数」、perPage 変更で `page: 1` に reset）
+  - 棚卸し: `StocktakePage.tsx:124` `useState(50)`、`:69` で `PRODUCT_PER_PAGE_OPTIONS` を import。Select 実装済み（label `:752` 「表示件数」、`SelectItem` map `:769` `PRODUCT_PER_PAGE_OPTIONS.map`、id `stocktake-per-page`、perPage 変更で `page: 1` に reset）
   - 在庫照会: `src/features/stock-inquiry/hooks/useStockInquiry.ts:63` `per_page: 50`（`commands.searchProducts` 呼出し、backend は `product_repo.rs:774` `per_page.min(PAGINATION_MAX_PER_PAGE=200)` で 200 まで clamp 済み）。`StockInquiryPage.tsx:200` は `perPage={50}` 固定値を `PaginationSummary`/`Pagination` へ渡すのみ。Select 未実装
   - 入出庫履歴: `src/features/inventory-records/InventoryRecordsPage.tsx:44` `const PER_PAGE = 20`、`:100` `per_page: PER_PAGE`（`list_inventory_records` 呼出し、backend は `inventory_service/list.rs:21` `MAX_PER_PAGE=100` で 101 以上が `ValidationFailed`）。Select 未実装
   - 在庫変動履歴: `src/features/stock-movements/types.ts:52` `MOVEMENTS_PER_PAGE = 20`、`hooks/useStockMovements.ts:49` `per_page: MOVEMENTS_PER_PAGE`（`list_movements` 呼出し、同じ `MAX_PER_PAGE=100`）。Select 未実装
   - 操作ログ: `src/features/operation-logs/OperationLogsPage.tsx:33` `const PER_PAGE = 20`、`:272` `per_page: PER_PAGE`（`commands.listLogs` → `system_service::list_operation_logs` → `system_repo.rs:124` `per_page.min(PAGINATION_MAX_PER_PAGE=200)` で 200 まで clamp 済み、`MAX_PER_PAGE` とは別系統）。Select 未実装
-  - 一括価格改定: `src/features/products/priceRevisionSearch.ts:27-30` で `PRODUCT_PER_PAGE_OPTIONS` を再利用した `PriceRevisionPerPage` 型を既に定義（Select 実装は未配線 — `PriceRevisionPage.tsx` に `<Select>` JSX なし、`PriceRevisionFilters.tsx:102` は `PRODUCT_PER_PAGE_OPTIONS.map` を含むが要素種別は独立確認要）。URL search（`src/routes/products/price-revision.tsx:10` `validateSearch: priceRevisionSearchSchema`）を持つ。backend は `product_repo.rs:774` 経由で 200 まで clamp 済み
+  - 一括価格改定: `src/features/products/priceRevisionSearch.ts:6` で `PRODUCT_PER_PAGE_OPTIONS` を再利用した型 `PriceRevisionPerPage = (typeof PRODUCT_PER_PAGE_OPTIONS)[number]` を定義、`:27-30` は zod `perPage` field の `.refine()` で同定数に対する値検証（型定義と検証ロジックは別行）。Select 実装は未配線（`PriceRevisionPage.tsx` に `<Select>` JSX なし、`PriceRevisionFilters.tsx:102` は `PRODUCT_PER_PAGE_OPTIONS.map` を含むが要素種別は独立確認要）。URL search（`src/routes/products/price-revision.tsx:10` `validateSearch: priceRevisionSearchSchema`）を持つ。backend は `product_repo.rs:774` 経由で 200 まで clamp 済み
   - 整合性チェック: `src/features/integrity-check/IntegrityCheckPage.tsx:45` `const PER_PAGE = 100`、`:97` `mismatches.slice((page-1)*PER_PAGE, page*PER_PAGE)` — **client-side slice**。`:82` の `per_page: 1` は無関係な別クエリ（`commands.listLogs` で直近の整合性チェック実行有無を確認するだけの呼出しで、一覧の pagination とは無関係）。整合性チェックの一覧は `run_integrity_check` の結果を全件メモリに保持して分割表示するため、backend `MAX_PER_PAGE` の影響を受けない。Select 未実装
   - 上記のうち **backend `MAX_PER_PAGE`（`list.rs:21`）の影響を受けるのは入出庫履歴・在庫変動履歴の 2 画面のみ**。在庫照会・操作ログ・一括価格改定・棚卸し・商品一覧は `PAGINATION_MAX_PER_PAGE=200`（`constants.rs:6`）系の silent clamp を経由し、選択肢上限 200 が既に通る。整合性チェックはどちらの系統にも属さない
 - **旧文言 `件中` / `件目` の hit 数**（`rg -c` 実測、HEAD `6fc4aba`）:
   - src 側の真の pagination pin: `src/components/patterns/Pagination.tsx:43`（`rangeText` 実装、`Pagination` 下部・`PaginationSummary` 上部の両方がこの 1 関数を共有）
   - test 側 6 file 12 箇所: `Pagination.test.tsx:36,41,46,63`（SC3a/SC3c、上限・端数・0件境界の 3 ケース + summary 1 ケース）/ `ListShell.test.tsx:106` / `OperationLogsPage.test.tsx:257,269,396,408`（4 箇所同一文言）/ `IntegrityCheckPage.test.tsx:410` / `StockInquiryPage.test.tsx:491` / `ProductListPage.test.tsx:630`
   - docs 側で pin している箇所（S11 対象、archived plans と reference 分析 doc は D-050 非遡及のため対象外）:
-    - `docs/design-system/02-component-catalog.md` ⑩ ページネーション: 構造例 2 箇所（`:613`,`:619`）+ 文言節 1 箇所（`:643`）
+    - `docs/design-system/02-component-catalog.md` ⑩ ページネーション: `rg -n "件中|件目" docs/design-system/02-component-catalog.md` = **7 hit**（Plan Review round 1 P1-1、当初申告の 3 箇所は過小、訂正済み）。うち S11 対象 5 箇所 = 構造例 2 箇所（`:613`,`:619`）+ 文言節 1 箇所（`:643`）+ 必須構成 2「上下の件数・現在位置」（`:905`）+ Don't 節（`:920`）。**`:943`,`:944` は変更履歴表の行**（Lane 2 完了時点の canonical を記述した過去表記、DSR-22 `:460` と同じ D-050 非遡及対象）で編集しない
     - `docs/design-system/01-decision-rules.md` DSR-22（`:427` 見出し）: ルール文中 2 箇所（`:429`）。同ファイル `:460` は 2026-09-03 時点の変更履歴（当時の canonical を記述した過去表記）で、D-050 の非遡及対象として編集しない
     - `docs/function-design/74-ui-operation-logs.md:263`: 「範囲付き統一形」の pin 1 箇所
     - mockup 4 file: `mockup-d-lists.html`（3 箇所）/ `mockup-d-history.html`（3 箇所）/ `mockup-d-forms-b.html`（1 箇所）/ `mockup-c-products.html`（1 箇所）
-    - **偽陽性として除外**（同じ「件中」「件目」文字列だが pagination と無関係、S11 で触らない）: `docs/function-design/36-biz-integrity-check.md:92`（operation_log summary 文言「{checked_count}件中{mismatch_count}件の不整合」）/ `docs/function-design/53-ui-home.md:88`（レビュー指摘の個数を指す「11 件中」）/ `docs/function-design/73-ui-stocktake.md:114`（「1 件目はスキャンできても」の運用描写）/ `docs/function-design/75-ui-integrity-check.md:195`（fixture 設計の「100件目、101件目」）
+    - **偽陽性として除外**（同じ「件中」「件目」文字列だが pagination と無関係、S11 で触らない）: `docs/function-design/36-biz-integrity-check.md:92`（operation_log summary 文言「{checked_count}件中{mismatch_count}件の不整合」）/ `docs/function-design/53-ui-home.md:88`（レビュー指摘の個数を指す「11 件中」）/ `docs/function-design/73-ui-stocktake.md:114`（「1 件目はスキャンできても」の運用描写）/ `docs/function-design/75-ui-integrity-check.md:195`（fixture 設計の「100件目、101件目」）/ `docs/design-system/02-component-catalog.md:943,944`（変更履歴表、D-050 非遡及）
   - **食い違い**: 発注時の想定「DSR-22 / 04-backbone / review-checklist / mockup 注記の旧文言」のうち `docs/design-system/04-backbone.md` と `docs/quality/review-checklist.md` は `rg -c "件中|件目"` = 0（実測、両 file とも hit なし）。この 2 file は S11 の対象から除外する
 - **Pagination.test.tsx / ListShell.test.tsx / 各 Page test の文言 oracle の位置**: 上記「旧文言 hit 数」節に列挙した test 側 6 file 12 箇所と同一
 - **`.text-base.font-semibold` selector の破損リスク**（実装実読で判明、発注時未記載）: `ListShell.test.tsx:96,116` と `ProductListPage.test.tsx:628,654` が `container.querySelector(".text-base.font-semibold")` で上部 `PaginationSummary` を一意特定している。`font-semibold` を外すと 4 箇所とも selector が何も一致しなくなる。下部 `Pagination` は `text-sm text-muted-foreground`（`font-semibold` を含んだことがない）なので `.text-base` 単独でも上部と衝突しないことを確認済み（S2 の完了条件に採用）
 - **`MAX_PER_PAGE` の Rust test の位置と現 boundary test の値**: `src-tauri/src/biz/inventory_service/list.rs:321` `test_list_receivings_req201_per_page_exceeds_max`（`:326` `per_page: 101`）/ `list.rs:503` `test_list_inventory_records_req206_rejects_invalid_page_params`（`:515` `per_page: 101`）/ `src-tauri/src/cmd/inventory_cmd.rs:111` `test_list_movements_req303_per_page_exceeds_max`（`:120` `per_page: 101`）。3 test とも `MAX_PER_PAGE` を 200 へ上げると `per_page: 101` が上限内に収まり `unwrap_err()` が `Ok` を返して panic する（テストの意図が無意味化）。境界値を `201` へ更新しないと即 fail する
 - **`MAX_PER_PAGE` を共有する関数**（発注時「2 系統ある事実」より詳細）: `list.rs:21` の `MAX_PER_PAGE` は `validate_page_params`（`list_receivings` / `list_returns` / `list_disposals` / `list_inventory_records` が共有）と `list_movements` 内の直接比較（`:204`）の**両方**から参照される。100→200 の変更は本 lane スコープ外の `list_receivings`/`list_returns`/`list_disposals`（入庫・返品・廃棄の「直近」ミニ一覧、`per_page: 10` 固定で UI から可変にならない）にも同時適用されるが、これらの画面は per_page を UI から変更できないため機能影響はない。設計 doc は「共通型」として書かれているため 3 箇所とも 200 へ揃える（下記 Design Sources）
-- **`MAX_PER_PAGE` を設計 doc に明記する 3 箇所**（`rg -n "per_page|上限" docs/function-design/`実測、docs 番号は rg で実在確認済み）:
-  - `docs/function-design/21-io-inventory-repo.md:7` §10.1「per_page: u32（デフォルト50、上限100。100超はBIZ層でバリデーションエラー）」— `ListQuery` 共通型（入庫/返品/廃棄/入出庫履歴ハブが共有）
-  - `docs/function-design/44-cmd-inventory.md:1056` §23.10「ページパラメータのバリデーション（page >= 1, 1 <= per_page <= 100）」— BIZ 層 list ラッパー全般（`list_movements` を含む）
-  - `docs/function-design/65-inventory-record-traceability.md:86` §65.4.2「一覧は `page` 1 始まり、`per_page` 上限 100。」— `list_inventory_records` 専用
+- **`MAX_PER_PAGE` を設計 doc に明記する 10 箇所**（Plan Review round 1 P1-2/P1-3、当初申告の 3 箇所は過小。`rg -Fn` で全箇所を個別に実在確認済み、旧表記 → 新表記の対で記録する）:
+  - `docs/function-design/21-io-inventory-repo.md:7` §10.1「per_page: u32（デフォルト50、上限100。100超はBIZ層でバリデーションエラー）」→「上限200」— `ListQuery` 共通型（入庫/返品/廃棄/入出庫履歴ハブが共有）
+  - `docs/function-design/44-cmd-inventory.md:161`「`per_page: u32` — 上限100（BIZ層でバリデーション）」→「上限200」— CMD-02 入庫コマンド群の個別記述
+  - `docs/function-design/44-cmd-inventory.md:1056` §23.10「ページパラメータのバリデーション（page >= 1, 1 <= per_page <= 100）」→「1 <= per_page <= 200」— BIZ 層 list ラッパー全般（`list_movements` を含む）
+  - `docs/function-design/65-inventory-record-traceability.md:86` §65.4.2「一覧は `page` 1 始まり、`per_page` 上限 100。」→「`per_page` 上限 200。」— `list_inventory_records` 専用
+  - `docs/function-design/61-ui-receiving.md:105`「`listReceivings` は `perPage=10` を初期値とし、CMD/BIZ の上限100を UI から超えない。」→「上限200」— UI から可変にならないため機能影響なし（Non-scope、S10 で doc 値のみ同期）
+  - `docs/function-design/63-ui-return-exchange.md:118`「`listReturns` は `perPage=10` を初期値とし、CMD/BIZ の上限100を UI から超えない。」→「上限200」— 同上
+  - `docs/function-design/64-ui-disposal.md:106`「`listDisposals` は `perPage=10` を初期値とし、CMD/BIZ の上限100を UI から超えない。」→「上限200」— 同上
+  - `docs/function-design/66-ui-stock-movements.md:85`「`per_page` は 20 固定。CMD/BIZ の上限 100 を踏まえ、UI から上限超過を送らない。」→「`per_page` は既定 50 + `Select` で 50/100/200 を選択可能（S6）。CMD/BIZ の上限 200 を踏まえ、UI から上限超過を送らない。」— **`per_page` 20 固定の記述自体が S6 の実装で成立しなくなる唯一の箇所**（他 7 箇所は上限値のみの更新）
+  - `docs/function-design/62-ui-manual-sale.md:143`「`per_page` は 5 固定で、既存 `listInventoryRecords` の上限 100 内に収める。」→「上限200」— `ManualSalePage.tsx` の recent list（`per_page: 5` 固定、UI から可変にならない）、Non-scope
+  - `docs/function-design/10-common-rules.md:91` policy 段落「Inventory movement / record BIZ lists keep the existing `MAX_PER_PAGE = 100` reject contract, and sales import history lists also keep their existing 100 reject behavior.」→「Inventory movement / record BIZ lists now reject above `MAX_PER_PAGE = 200`（D-081 で 100 から引き上げ、reject 方式〈clamp ではなくエラー〉は維持）。Sales import history lists keep their existing 100 reject behavior（本 lane 非対象）.」— 文中 "sales import history" 節は変更しない（S10 で明記）
+- **`docs/decision-log.md` D-031（`:220-227`）が本 lane の変更を明示的に例外化している**（Coordinator 発見、Plan Review round 1 最重要指摘）: D-031 の `Exception` 行「`inventory_service`'s `MAX_PER_PAGE = 100` reject contract stays as-is for inventory movement / record BIZ lists. Changing it to clamp would add no operator value and would risk breaking existing tests and UI-06c / traceability contracts that already verify the reject behavior.」は本 packet の S10 と正面から矛盾する。本 lane はこの例外を部分改訂するため、新規 decision-log entry（D-081）を S10 の作業として追加し、D-031 側にも追記を残す（下記 Design Intent Trace L3-D4 / S10 参照）。`rg -n "Amended|Superseded" docs/decision-log.md` で確認した既存書式は `- Superseded in part by: D-0xx は〜を変更する。…は不変。` の 1 行付記のみ（`Amended:` という field 名は repo に前例なし）で、D-081 側も同じ書式（`Decision` / `Status` / `Why` / `Impact` / `Alternatives considered`、D-080 に倣う）で書く
 - **REQ 番号**（Design Intent Trace 用、既存 test から実在確認）: 入出庫履歴 = REQ-206（`InventoryRecordsPage.test.tsx:108`）/ 在庫変動履歴 = REQ-303（`StockMovementsPage.test.tsx:82`）/ 在庫照会 = REQ-301（`StockInquiryPage.test.tsx:3`）/ 操作ログ = REQ-902・UI-11c（`OperationLogsPage.test.tsx:77`）/ 一括価格改定 = REQ-105・UI-14（`PriceRevisionPage.test.tsx:142`）/ 整合性チェック = REQ-904・UI-13（`IntegrityCheckPage.test.tsx:104`）/ 商品一覧 = UI-01a / 棚卸し = REQ-205・UI-10。既存 REQ トークンの再利用のみで新規 REQ は追加しないため `generate_traceability` 再生成は不要（S11 で再確認する）
 
 ## Scope
@@ -118,8 +126,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **S7 操作ログ Select**: `OperationLogsPage.tsx:33` の `const PER_PAGE = 20` をローカル state（既定 50）に置き換え、`:272` を state 参照に変更。Select 追加（id `operation-logs-per-page`）。backend は `system_repo.rs` 経由で 200 まで clamp 済みのため backend 変更は不要
 - **S8 一括価格改定 Select**: `PriceRevisionPage.tsx` に `Select` JSX を追加（`priceRevisionSearch.ts` の URL search state `perPage` は既存、UI 未配線分のみ実装）。既定値は owner 決定（2026-09-05）どおり 50。現状の fallback（`priceRevisionSearch.ts:90` の `: 50`）と一致するため値の変更はなく、Select の配線のみ。backend は 200 まで clamp 済みのため backend 変更不要
 - **S9 整合性チェック Select**: `IntegrityCheckPage.tsx:45` の `const PER_PAGE = 100`（既定 100、現状維持）をローカル state に置き換え、Select 追加（id `integrity-check-per-page`）。**client-side slice** のため、他画面と異なり「request per_page」ではなく「`visibleMismatches` の件数上限」がテスト対象になる（L3-D6）。完了条件: Select で 50 を選ぶと 1 ページの表示行数が 50 以下になることを assert する新規 test（mock request の `per_page` assert は該当なし）
-- **S10 backend `MAX_PER_PAGE` 200**: `src-tauri/src/biz/inventory_service/list.rs:21` の `MAX_PER_PAGE: u32 = 100` を `200` へ変更。既存 3 test の境界値を `101` → `201` へ更新（`list.rs:326`,`list.rs:515`,`src-tauri/src/cmd/inventory_cmd.rs:120`）。新規に `per_page: 200` が `Ok` を返すことを確認する boundary test を `list_inventory_records` と `list_movements` それぞれに追加する。設計 doc 3 箇所（`21-io-inventory-repo.md:7` / `44-cmd-inventory.md:1056` / `65-inventory-record-traceability.md:86`）の「上限100」を「上限200」へ更新。`constants.rs:6` の `PAGINATION_MAX_PER_PAGE = 200` は変更しない（既に 200、2 系統併存の事実を doc へ注記するかは Coordinator 裁定）
-- **S11 docs 同期**: 起票時実測の「旧文言 hit 数」節に列挙した非除外・非 archived の doc をすべて新文言へ更新: `02-component-catalog.md`（構造例 2 箇所 `:613,619` + 文言節 `:643` + 既定値表・class 記述の整合確認）/ `01-decision-rules.md` DSR-22（`:429` 2 箇所）/ `74-ui-operation-logs.md:263`/ mockup 4 file（`mockup-d-lists.html` 3 / `mockup-d-history.html` 3 / `mockup-d-forms-b.html` 1 / `mockup-c-products.html` 1）。`04-backbone.md` と `review-checklist.md` は実測 0 hit のため対象外（起票時実測で記録済み）。REQ token を新規追加しないため `generate_traceability` 再生成は不要（実装後に `rg -n "REQ-" src --glob '*.test.tsx'` の差分で再確認）
+- **S10 backend `MAX_PER_PAGE` 200 + decision-log D-081**: `src-tauri/src/biz/inventory_service/list.rs:21` の `MAX_PER_PAGE: u32 = 100` を `200` へ変更。既存 3 test の境界値を `101` → `201` へ更新（`list.rs:326`,`list.rs:515`,`src-tauri/src/cmd/inventory_cmd.rs:120`）。新規に `per_page: 200` が `Ok` を返すことを確認する boundary test を `list_inventory_records` と `list_movements` それぞれに追加する。設計 doc **10 箇所**の「上限100」系表記を「上限200」系へ更新（起票時実測の「`MAX_PER_PAGE` を設計 doc に明記する 10 箇所」節の対 anchor どおり）: `21-io-inventory-repo.md:7` / `44-cmd-inventory.md:161,1056` / `65-inventory-record-traceability.md:86` / `61-ui-receiving.md:105` / `63-ui-return-exchange.md:118` / `64-ui-disposal.md:106` / `66-ui-stock-movements.md:85`（`per_page` 固定記述も S6 実装に合わせて改訂）/ `62-ui-manual-sale.md:143` / `10-common-rules.md:91`。`constants.rs:6` の `PAGINATION_MAX_PER_PAGE = 200` は変更しない（既に 200、2 系統併存は `10-common-rules.md:91` の policy 段落が既に記述）。**decision-log 更新**: `docs/decision-log.md` に新規 `## D-081: inventory_service MAX_PER_PAGE を 100 → 200 へ引き上げ、reject 方式は維持（D-031 例外の部分改訂）（2026-09-05）` entry を追加する。書式は D-080（`:650-657`）に倣い `Decision` / `Status: accepted` / `Why`（owner 直回答 E11 = 入出庫履歴・在庫変動履歴で 200 を選ぶ operator value が生じた。clamp へは変えず reject の値だけ動かす。D-031 の懸念「既存 test / UI-06c / traceability 契約を壊す」は本 lane の boundary test 更新〈101→201〉と design doc 10 箇所の同期で解消） / `Impact`（`list.rs:21` の値変更、影響する 5 関数、既存 test 3 本の境界値更新 + 新規 2 本、design doc 10 箇所） / `Alternatives considered`（clamp 化は不採用〈reject という既存契約の性質を変え、UI-06c/traceability の「上限超過はエラー」契約と食い違う〉、100 据え置きは不採用〈owner E11 の要望を満たせない〉）を書く。`docs/decision-log.md:220-227` の D-031 末尾に `- Superseded in part by: D-081（2026-09-05）changes inventory_service's MAX_PER_PAGE reject contract from 100 to 200; the reject mechanism itself is unchanged.` の 1 行を追記する（既存の `Superseded in part by:` 書式に合わせる、`Amended:` という field 名は repo に前例がないため使わない）
+- **S11 docs 同期**: 起票時実測の「旧文言 hit 数」節に列挙した非除外・非 archived の doc をすべて新文言へ更新: `02-component-catalog.md`（構造例 2 箇所 `:613,619` + 文言節 `:643` + 必須構成 2「上下の件数・現在位置」`:905` + Don't 節 `:920`、`:943,944` は変更履歴表のため編集しない）/ `01-decision-rules.md` DSR-22（`:429` 2 箇所）/ `74-ui-operation-logs.md:263`/ mockup 4 file（`mockup-d-lists.html` 3 / `mockup-d-history.html` 3 / `mockup-d-forms-b.html` 1 / `mockup-c-products.html` 1）。`04-backbone.md` と `review-checklist.md` は実測 0 hit のため対象外（起票時実測で記録済み）。**catalog ⑩ の個別項目**（Plan Review round 1 P2-1）: `:606`「perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う」文中と `:651`「perPage 規約」節の `PRODUCT_PER_PAGE_OPTIONS` を `LIST_PER_PAGE_OPTIONS` へ改称（S1 と対）/ `:645`「使用トークン」節の上部 `PaginationSummary` class 記述から `font-semibold` を削除（S2 と対）。REQ token を新規追加しないため `generate_traceability` 再生成は不要（実装後に `rg -n "REQ-" src --glob '*.test.tsx'` の差分で再確認）
 - **S12 Plans.md ④ + Contract Coverage Ledger 記入**: 本 packet の active link を反映（本 commit で同時実施）。Contract Coverage Ledger は下記節を参照
 
 ## Non-scope
@@ -143,8 +151,17 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC7: `MAX_PER_PAGE` 超過境界が `201` に更新されている — `cargo test test_list_receivings_req201_per_page_exceeds_max` / `test_list_inventory_records_req206_rejects_invalid_page_params` / `test_list_movements_req303_per_page_exceeds_max` が pass
 - AC8: 6 画面（在庫照会/入出庫履歴/在庫変動履歴/操作ログ/一括価格改定/整合性チェック）それぞれに `Select` が新規追加される — 各 Page.test.tsx に Select 変更 test が存在（vitest test name で確認）
 - AC9: 入出庫履歴・在庫変動履歴で perPage 200 選択時に `ValidationFailed` が発生しない — 対応 Page.test.tsx の統合 test（mock backend 経由）
-- AC10: 設計 doc 3 箇所（`21-io-inventory-repo.md` §10.1 / `44-cmd-inventory.md` §23.10 / `65-inventory-record-traceability.md` §65.4.2）が「上限200」と記述する — `rg -Fn "上限200" docs/function-design/21-io-inventory-repo.md docs/function-design/44-cmd-inventory.md docs/function-design/65-inventory-record-traceability.md` 各 1 件以上
-- AC11: catalog ⑩・DSR-22 の文言 pin が新形に統一される — `rg -Fn "件のうち" docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md` 各 1 件以上、`rg -Fn "件中" docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md` が偽陽性を除き 0
+- AC10: 設計 doc 10 箇所それぞれで旧表記が 0、新表記が 1 件以上（対 anchor、file ごとに個別 `rg -Fn` で検査）:
+  - `rg -Fn "上限100" docs/function-design/21-io-inventory-repo.md` = 0 かつ `rg -Fn "上限200" docs/function-design/21-io-inventory-repo.md` ≥ 1
+  - `rg -Fn "上限100" docs/function-design/44-cmd-inventory.md` = 0（`:161`）かつ `rg -Fn "1 <= per_page <= 100" docs/function-design/44-cmd-inventory.md` = 0（`:1056`）かつ `rg -Fn "上限200" docs/function-design/44-cmd-inventory.md` ≥ 1 かつ `rg -Fn "1 <= per_page <= 200" docs/function-design/44-cmd-inventory.md` ≥ 1
+  - `rg -n "per_page.*上限.*100" docs/function-design/65-inventory-record-traceability.md` = 0（`:86`）かつ `rg -n "per_page.*上限.*200" docs/function-design/65-inventory-record-traceability.md` ≥ 1
+  - `rg -Fn "上限100" docs/function-design/61-ui-receiving.md docs/function-design/63-ui-return-exchange.md docs/function-design/64-ui-disposal.md` = 0（各 `:105`,`:118`,`:106`）かつ `rg -Fn "上限200" docs/function-design/61-ui-receiving.md docs/function-design/63-ui-return-exchange.md docs/function-design/64-ui-disposal.md` 各 1 件以上
+  - `rg -n "上限 100" docs/function-design/66-ui-stock-movements.md` = 0（`:85`）かつ `rg -n "上限 200" docs/function-design/66-ui-stock-movements.md` ≥ 1 かつ `rg -Fn "per_page は 20 固定" docs/function-design/66-ui-stock-movements.md` = 0
+  - `rg -n "上限 100" docs/function-design/62-ui-manual-sale.md` = 0（`:143`）かつ `rg -n "上限 200" docs/function-design/62-ui-manual-sale.md` ≥ 1
+  - `rg -n "MAX_PER_PAGE = 100" docs/function-design/10-common-rules.md` = 0（`:91`）かつ `rg -n "MAX_PER_PAGE = 200" docs/function-design/10-common-rules.md` ≥ 1
+- AC10b: `docs/decision-log.md` に D-081 entry が存在し D-031 に付記がある — `rg -Fn "## D-081" docs/decision-log.md` = 1 件、`rg -Fn "Superseded in part by: D-081" docs/decision-log.md` = 1 件
+- AC11: catalog ⑩・DSR-22 の文言 pin が新形に統一される — `rg -Fn "件のうち" docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md` 各 1 件以上、`rg -Fn "件中" docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md` が偽陽性（`:943,944` 変更履歴表 + DSR-22 `:460`）を除き 0
+- AC11b: catalog ⑩ の `PRODUCT_PER_PAGE_OPTIONS` 残存が 0、`font-semibold` が ⑩ 節内（`:602-665`）で 0 — `rg -Fn "PRODUCT_PER_PAGE_OPTIONS" docs/design-system/02-component-catalog.md` = 0 かつ `rg -Fn "LIST_PER_PAGE_OPTIONS" docs/design-system/02-component-catalog.md` ≥ 1 かつ `rg -n "font-semibold" docs/design-system/02-component-catalog.md` が ⑩ 節（`:602-665`）内で 0
 - AC12: `generate_traceability` 再生成が不要であることの確認 — 実装後 `git diff --stat src/**/*.test.tsx` の REQ token 追加差分が 0（新規 REQ を追加していない）
 - AC-L3-1（owner Windows native L3）: 8 画面で `Select`（`LIST_PER_PAGE_OPTIONS`）が出て 50/100/200 が選べる
 - AC-L3-2（owner Windows native L3）: 入出庫履歴・在庫変動履歴で 200 を選んで `ValidationFailed` にならない
@@ -157,10 +174,10 @@ List the source design docs this plan relies on. Plan Packets are not durable de
 
 - Requirements / spec: `docs/spec/requirements.md`（REQ-105/206/301/303/902/904 は既存）
 - Architecture: `docs/ARCHITECTURE.md`（UI → CMD → BIZ → IO 一方向、変更なし）
-- Function / command / DTO: `docs/function-design/21-io-inventory-repo.md` §10.1 / `44-cmd-inventory.md` §23.10 / `65-inventory-record-traceability.md` §65.4.2 / `59-ui-shared-patterns.md`
+- Function / command / DTO: `docs/function-design/21-io-inventory-repo.md` §10.1 / `44-cmd-inventory.md` §23.10（+ CMD-02 個別記述 `:161`） / `65-inventory-record-traceability.md` §65.4.2 / `61-ui-receiving.md` / `63-ui-return-exchange.md` / `64-ui-disposal.md` / `66-ui-stock-movements.md` / `62-ui-manual-sale.md` / `10-common-rules.md`（10 箇所、起票時実測節参照） / `59-ui-shared-patterns.md`
 - DB: 変更なし
 - Screen / UI: `docs/design-system/02-component-catalog.md` ⑩ ページネーション / `docs/design-system/01-decision-rules.md` DSR-22
-- Decision log / ADR: なし（本 packet の L3-D1〜D6 が新規決定）
+- Decision log / ADR: `docs/decision-log.md` D-031（`:220-227`、既存の例外裁定）を本 lane で部分改訂する新規 D-081 entry を追加（S10）。L3-D1〜D3/D5/D6 は packet 止まりの新規決定
 
 ## Required Design Artifacts
 
@@ -168,12 +185,12 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 
 | Area touched by upcoming work | Required source doc / artifact | Status: existing sufficient / updated in this PR / intentionally deferred |
 |---|---|---|
-| Backend function / command / repository / validation / error | `21-io-inventory-repo.md` §10.1 / `44-cmd-inventory.md` §23.10 / `65-inventory-record-traceability.md` §65.4.2 | updated in this PR（S10） |
+| Backend function / command / repository / validation / error | 設計 doc 10 箇所（`21-io-inventory-repo.md` §10.1 / `44-cmd-inventory.md` §23.10・`:161` / `65-inventory-record-traceability.md` §65.4.2 / `61-ui-receiving.md` / `63-ui-return-exchange.md` / `64-ui-disposal.md` / `66-ui-stock-movements.md` / `62-ui-manual-sale.md` / `10-common-rules.md`） | updated in this PR（S10） |
 | Command / DTO / generated binding / wire shape | `ListQuery` / `MovementQuery` の `per_page` 上限（型は変更なし） | existing sufficient（値のみ変更、DTO shape 不変） |
 | DB / transaction / audit / rollback / migration | — | 該当なし |
 | Screen / UI / route state / Japanese wording | `02-component-catalog.md` ⑩ / `01-decision-rules.md` DSR-22 | updated in this PR（S11） |
 | CSV / TSV / report / import / export format | — | 該当なし |
-| durable decision / ADR | 本 packet の L3-D1〜D6（Design Intent Trace 参照） | new in this PR |
+| durable decision / ADR | `docs/decision-log.md` D-031 の部分改訂（新規 D-081 entry + D-031 への付記） + 本 packet の L3-D1〜D3/D5/D6（Design Intent Trace 参照） | new in this PR（S10） |
 
 ## Registration / Generation Obligations
 
@@ -182,12 +199,13 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 | 新規追加物 | 登録・生成義務 |
 |---|---|
 | Tauri command（frontend から呼ぶ） | 該当なし（既存 command の per_page 値のみ変更、新規 command なし） |
-| function-design doc 新設 | 該当なし（既存 doc 3 箇所の値更新のみ、新設なし） |
+| function-design doc 新設 | 該当なし（既存 doc 10 箇所の値更新のみ、新設なし） |
 | source / workflow doc 新設・改名 | 該当なし |
 | AGENT_OPERATING_MANUAL §5.5 consultation relay 使用 | 該当なし（§5.5 不使用） |
 | REQ coverage 追加（設計書・テスト追加） | 該当なし（既存 REQ-105/206/301/303/902/904 の再利用のみ、新規 REQ 追加なし。実装後に `rg -n "REQ-" src --glob '*.test.tsx'` の差分で新規 REQ token が無いことを再確認） |
 | route 新設 | 該当なし |
 | operator 画面新設 | 該当なし（既存画面への Select 追加のみ） |
+| durable decision（decision-log 新規 entry） | D-031（`docs/decision-log.md:220-227`）の `Exception` 記述を部分改訂するため、新規 `## D-081` entry を追加し D-031 側に `Superseded in part by: D-081` を付記する（S10、D-080 書式踏襲） |
 
 ## Design Intent Trace
 
@@ -196,14 +214,14 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 | — | `02-component-catalog.md` ⑩ / `01-decision-rules.md` DSR-22 | L3-D1（2026-09-05） | 件数文言を「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」から「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」へ。owner 直回答 E9「文言は自然文型で確定」。代替案（現行維持）は owner が明示的に棄却 | `Pagination.tsx` `rangeText` | `Pagination.test.tsx` SC3a/SC3c |
 | — | `02-component-catalog.md` ⑩「perPage 規約」 | L3-D2（2026-09-05） | 共有定数を `features/products` から `components/patterns` へ移設。理由: Lane 2 D-9 が確立した「patterns は features を import しない」逆依存禁止の原則を、定数の定義側にも適用する（現状は逆に features 側の定数を patterns 以外の 6 画面が import する歪な構成だった）。型エイリアス名は変更コスト対効果が低いため据え置き | `src/components/patterns/list-per-page.ts`（新設） | `search.test.ts` の定数 import 元更新 |
 | — | Plans.md ④ owner 反応 ledger E9〜E11 | L3-D3（2026-09-05） | perPage の永続化先は画面ごとに分岐: URL search state を既に持つ画面（商品一覧・一括価格改定）はそれを踏襲、それ以外（在庫照会・入出庫履歴・在庫変動履歴・操作ログ・整合性チェック）はローカル state のみとし再訪でリセットする。理由: 6 画面に新規 URL search schema を追加するのは本 lane の scope（perPage 横展開のみ）を超える設計変更になる。Coordinator 確定（2026-09-05） | 5 画面の `useState` | 各 Page.test.tsx |
-| — | `21-io-inventory-repo.md` §10.1 / `44-cmd-inventory.md` §23.10 / `65-inventory-record-traceability.md` §65.4.2 | L3-D4（2026-09-05） | `MAX_PER_PAGE`（list.rs:21）は `list_receivings`/`list_returns`/`list_disposals`/`list_inventory_records`/`list_movements` の5関数で共有される単一定数のため、100→200 の変更は入出庫履歴・在庫変動履歴以外にも及ぶ。UI から可変にならない 3 関数（receivings/returns/disposals）は機能影響なしと確認済み | `list.rs:21` | `list.rs` 既存 3 test の境界値更新 + 新規 200 OK test 2 本 |
+| — | 設計 doc 10 箇所（起票時実測節参照） | **L3-D4 → D-081 へ昇格**（2026-09-05、Plan Review round 1 P1-3 指摘により decision-log 昇格が確定） | `MAX_PER_PAGE`（list.rs:21）は `list_receivings`/`list_returns`/`list_disposals`/`list_inventory_records`/`list_movements` の5関数で共有される単一定数のため、100→200 の変更は入出庫履歴・在庫変動履歴以外にも及ぶ。UI から可変にならない 3 関数（receivings/returns/disposals）は機能影響なしと確認済み。`docs/decision-log.md` D-031 の `Exception`（「`MAX_PER_PAGE = 100` reject contract stays as-is … would add no operator value」）を部分改訂するため、L3-D4 は packet 止まりの決定ではなく decision-log D-081 として昇格する（他の L3-D と異なり Design Intent Audit の「昇格不要」対象から除外） | `list.rs:21` + `docs/decision-log.md`（D-081 新規 + D-031 付記） | `list.rs` 既存 3 test の境界値更新 + 新規 200 OK test 2 本 + `rg -Fn "## D-081" docs/decision-log.md` |
 | — | `ListShell.test.tsx` / `ProductListPage.test.tsx` | L3-D5（2026-09-05） | `font-semibold` 撤去に伴い `.text-base.font-semibold` selector が機能しなくなるため `.text-base` 単独へ切替。下部 `Pagination` は `text-sm` のため衝突しないことを確認済み | `ListShell.test.tsx:96,116` / `ProductListPage.test.tsx:628,654` | 同上（selector 更新自体が contract） |
 | — | `IntegrityCheckPage.tsx` | L3-D6（2026-09-05） | 整合性チェックは `run_integrity_check` 全件取得後の client-side slice のため、他画面のような「request per_page」オラクルが成立しない。Select の効果は「1 ページの表示行数上限」で検証する | `IntegrityCheckPage.tsx:45,97` | `IntegrityCheckPage.test.tsx` 新規 test |
 
 ## Design Intent Audit
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: 本 packet の「起票時実測」節と Design Intent Trace が値・理由の一次情報。実装後は S11 で catalog ⑩ / DSR-22 に文言 pin を反映し、packet 依存を解消する
-- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: L3-D1（文言）と L3-D4（`MAX_PER_PAGE` 共有範囲）は S11/S10 で catalog ⑩・DSR-22・design doc 3 箇所へ反映する。L3-D2/D3/D5/D6 は実装詳細のため packet 止まりで良い（source doc への昇格不要、Coordinator 裁定）
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: L3-D1（文言）は S11 で catalog ⑩・DSR-22 へ反映する。**L3-D4 は decision-log D-081 へ昇格**（既存 D-031 の `Exception` 裁定を部分改訂するため packet 止まりでは足りないと Plan Review round 1 で指摘・確定。S10 で design doc 10 箇所へも反映）。L3-D2/D3/D5/D6 は実装詳細のため packet 止まりで良い（source doc への昇格不要、Coordinator 裁定）
 - Assumptions and constraints: 画面別既定 perPage は owner 決定（2026-09-05）で全 8 画面確定済み。URL param 対象画面の判定（L3-D3）は Coordinator 確定（2026-09-05）、Plan Review は妥当性を検査する
 - Deferred design gaps, risk, and follow-up target: `list_receivings`/`list_returns`/`list_disposals` の 200 boundary test は本 lane で追加しない（UI 非公開のため）。Lane 4/5 の contract audit で拾う候補として記録
 - Test Design Matrix can cite design decision IDs or source doc sections: Yes（[Test Matrix](test-matrices/2026-09-05-ui-list-backbone-d-lane3.md) 各行に L3-D 番号か DSR-22/catalog ⑩ 節番号を付す）
@@ -256,14 +274,18 @@ Required for R3/R4. Include every contract or design decision in the touched sou
 | L3-D1 件数文言 | `Pagination.tsx` `rangeText` | `Pagination.test.tsx` SC3a/SC3c（更新） | AC-L3-3 |
 | L3-D2 共有定数移設 | `list-per-page.ts` + 6 file の import 更新 | `search.test.ts`（更新）+ 新規 `list-per-page.test.ts` | non-scope（L3 対象外、機械的契約） |
 | L3-D3 perPage 永続化先の分岐 | 5 画面の `useState` | 各 Page.test.tsx | AC-L3-1 |
-| L3-D4 `MAX_PER_PAGE` 共有範囲 | `list.rs:21` | `list.rs` 3 test 更新 + 新規 2 test | AC-L3-2 |
+| L3-D4 → D-081 `MAX_PER_PAGE` 100→200 引き上げ | `list.rs:21` + `docs/decision-log.md`（D-081 新規 + D-031 付記） | `list.rs` 3 test 更新 + 新規 2 test + `rg -Fn "## D-081" docs/decision-log.md` | AC-L3-2 / AC10b |
 | L3-D5 `.text-base` selector | `ListShell.test.tsx` / `ProductListPage.test.tsx` | 同左（selector 更新） | non-scope（内部 test 契約） |
 | L3-D6 整合性チェック client-side slice | `IntegrityCheckPage.tsx` | `IntegrityCheckPage.test.tsx` 新規 | AC-L3-1 |
 | DSR-22 件数文言 pin | `01-decision-rules.md:429` | 該当なし（docs review） | non-scope |
-| catalog ⑩ 件数文言 pin + perPage 規約 | `02-component-catalog.md:613,619,643,651` | 該当なし（docs review） | non-scope |
+| catalog ⑩ 件数文言 pin + perPage 規約 + 定数名 + weight | `02-component-catalog.md:613,619,643,651,905,920,645` | 該当なし（docs review） | non-scope |
 | 21-io-inventory-repo.md §10.1 上限値 | `docs/function-design/21-io-inventory-repo.md:7` | 該当なし（docs review） | non-scope |
-| 44-cmd-inventory.md §23.10 上限値 | `docs/function-design/44-cmd-inventory.md:1056` | 該当なし（docs review） | non-scope |
+| 44-cmd-inventory.md 上限値（§23.10 + CMD-02 個別記述） | `docs/function-design/44-cmd-inventory.md:161,1056` | 該当なし（docs review） | non-scope |
 | 65-inventory-record-traceability.md §65.4.2 上限値 | `docs/function-design/65-inventory-record-traceability.md:86` | 該当なし（docs review） | non-scope |
+| 61/63/64-ui-*.md の上限値記述（receivings/returns/disposals） | `61-ui-receiving.md:105` / `63-ui-return-exchange.md:118` / `64-ui-disposal.md:106` | 該当なし（docs review） | non-scope |
+| 66-ui-stock-movements.md の上限値 + per_page 固定記述 | `docs/function-design/66-ui-stock-movements.md:85` | `StockMovementsPage.test.tsx` 新規（S6 と対） | AC8 |
+| 62-ui-manual-sale.md の上限値記述 | `docs/function-design/62-ui-manual-sale.md:143` | 該当なし（docs review） | non-scope |
+| 10-common-rules.md の pagination policy 段落 | `docs/function-design/10-common-rules.md:91` | 該当なし（docs review） | non-scope |
 | `list_receivings`/`list_returns`/`list_disposals` の上限緩和副作用 | `list.rs:21`（共有定数） | 追加テストなし（UI 非公開のため） | non-scope（Lane 4/5 audit 候補として記録） |
 
 ## Test Plan
