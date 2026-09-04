@@ -646,3 +646,12 @@ Use concise ADR-style entries.
 - Impact: 以後の UI 視覚系 design-only change は本 entry を座組の先例として引用できる。`AGENT_OPERATING_MANUAL` §3 の自己承認禁止（Writer と Plan/Final Reviewer の分離）は本座組でも独立 fresh context の Sonnet／Codex が担うことで維持する。実装 code（Lane 2〜5 等の R3）の Writer 割当ては本 entry の対象外で、既存分業（Codex 発注 or Sonnet subagent、change ごとに Coordinator 判断）のまま。
 - Alternatives considered: Opus 5 を Writer に格上げする案（D-056 accepted 時点の「read-only claims-producer 専任」を change ごとの owner 裁定なしに拡張することになり、既定の分業実績を崩すため不採用。Opus 5 デザイン面「レビュー」に留める）; Codex を Writer のまま維持する案（owner 所感と矛盾するため不採用）。
 - Revisit: Opus 5 の役割拡張が複数 change で反復要請される場合、または D-056 の rollback 条件に抵触する運用が観測された場合。
+
+## D-080: 既存画面の視覚整えは runtime-first、standalone mockup は新規・未実装画面限定（2026-09-04）
+
+- Decision: 既存画面の視覚整えは runtime-first（実装 → 実機 L3-lite 反復、closure では対照表外の画面を 1〜2 件無作為抽出して runtime 突合）とする。standalone HTML mockup は新規 layout・未実装画面にのみ使い、既存画面の手写しは行わない。
+- Status: accepted（owner 2026-09-04、方針 A）
+- Why: PR #32 Gated Amendment 4 で mockup 5 file を 3 round・30 箇所超是正しても、owner L3 run 4 で伝票番号 / toast 色 / リセット button 欠落等の drift が残り、mockup 作業中は runtime が進まなかった（owner 総評）。mockup 経由の手写しは既存画面との drift が構造的に出続けるため、既存画面の視覚整えは実装して実機で見る方式へ切り替える。
+- Impact: Lane 3〜5 packet の Test Plan / Human Gate 設計は runtime-first を前提に組む（L3-lite 反復 + closure 無作為抽出突合）。`AGENT_OPERATING_MANUAL` の Writer 割当ては不変（既存分業のまま、change ごとに Coordinator 判断）。
+- Alternatives considered: mockup の精度をさらに追い込む案（Amendment 4 で既に 3 round・30 箇所超是正済みでも run 4 で新規 drift が発生しており、mockup 経由の precision 向上では構造的に追いつかないと判断し不採用）。
+- Revisit: 新規 layout・未実装画面の設計検討で mockup が必要になった場合（本 decision は既存画面の手写しのみを禁止し、新規提案の mockup 利用は妨げない）。
