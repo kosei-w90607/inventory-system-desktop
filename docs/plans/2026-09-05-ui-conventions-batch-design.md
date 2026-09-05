@@ -12,7 +12,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
-- Amendments: none
+- Amendments: Gated Amendment 1（2026-09-05、`src/styles/globals.css` token 2 行、SHA は Writer commit 後に追記）
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
@@ -280,7 +280,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC11: `rg -Fc "badge（状態/分類/強調）は 3:1 の対象外" docs/design-system/01-decision-rules.md` ≥ 1（DSR-22 narrow 化）、`rg -Fc "Badge / outline chip も対象" docs/design-system/01-decision-rules.md` = 0（旧文言 0 件）、`rg -Fc "\`secondary\` pill のまま \`--border\` 枠線を追加" docs/design-system/01-decision-rules.md` ≥ 1（判定フロー例の同期）、`rg -Fc "境界（枠線または背景）で 3:1 を担保し" docs/design-system/01-decision-rules.md` = 0（`:445` Why の旧文言 0 件、Plan Review round 3 是正）、`rg -Fc "Badge/outline chip の 3:1" docs/design-system/01-decision-rules.md` = 0（`:451` 関連の旧文言 0 件、Plan Review round 3 是正）、`rg -Fc "分類 badge は枠線 3:1（DSR-22）が規範" docs/design-system/02-component-catalog.md` = 0（`02-component-catalog.md:158` JSX コメントの旧文言 0 件、Plan Review round 3 是正、Opus 指摘 6 番）。
 - AC12: `01-decision-rules.md` / `02-component-catalog.md` / `review-checklist.md` / `04-backbone.md` の `## 更新履歴` 表それぞれに本 PR の行が 1 行追加されている（`git diff` の hunk が各 file の該当表にのみ存在）。
 - AC13: `docs/Plans.md` ⑦ が本 packet（basename `2026-09-05-ui-conventions-batch-design.md`）への active link と owner 回答サブ bullet（v2/v3 決定込み）を持つ。
-- AC14: `git diff --name-only 07302b5..HEAD` に `src/` 配下の file が 0 件。
+- AC14: `git diff --name-only 07302b5..HEAD -- src` の出力が `src/styles/globals.css` の 1 行のみ、かつ `git diff 07302b5..HEAD -- src/styles/globals.css` の追加行が `--success-border` / `--success-strong` の 2 行（削除行 0）に限られる（Gated Amendment 1 で「src 0 件」から改訂）。
 - AC15: `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0 で通過。
 - AC16: `rg -Fc "増減用途は DSR-08 が置換、icon 用途 1 site（ProductImportPreview）残置" docs/design-system/00-foundations.md` ≥ 1（`--success-emphasis` `:42`）、`rg -Fc "取込み完了" docs/design-system/00-foundations.md` ≥ 1（`--success` `:31` の用途が残ること）、`rg -Fc "増減プラス数値" docs/design-system/00-foundations.md` = 0（旧用途文言が残っていないこと）、`rg -Fc "①状態 badge success tone の soft 背景" docs/design-system/00-foundations.md` ≥ 1（`--success-soft` `:41` の repoint、Plan Review round 3 是正、Opus 指摘 7 番）、`rg -Fc "前月比プラス soft 背景" docs/design-system/00-foundations.md` = 0（旧用途文言が残っていないこと）。**Plan Review round 2/3 是正（Sonnet/Opus 指摘）**: 旧 AC16 は「同一文字列を両セルに強制する」形で用途差を表現できなかったため、セルごとに異なる文字列へ差替え。round 3 で `--success-soft`（`:41`）が旧文言のまま残ると `:42` の用途撤去と同一表内で矛盾するため repoint 用オラクルを追加。
 - AC-HumanGate: owner が①状態 tone family マッピング表の owner culling 列を design PR 上で埋める（原文回答）。Alert warning（候補 (c)、v4）・③強調 pill 枠色（`--warning`、v3）は既に owner 決定済みのため Human Gate の対象外（Plan Review round 2 是正、Opus 指摘 9 番 — v4 で確定済みの事項が未決のまま Human Gate に残っていた）。
@@ -498,3 +498,10 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 2026-09-05: Plan Gate 収束（round 3/3。round 1 = Opus reject P1 4 / Sonnet approve-with-P2 → 是正 3 便 + owner 決定 5 便 / round 2 = Opus reject P1 5 / Sonnet approve-with-P2 → 是正 `a90a872` / round 3 = Opus reject・Sonnet reject とも Matrix と packet の oracle 不一致 7 件のみで設計欠陥なし → 是正 `f7e0a04`）。round 3 の是正は同一 vendor ラリー天井のため Coordinator が該当行（Matrix `-F` 化 / `検索 `Input` は両モードとも` anchor / success-emphasis 第 3 消費者 / AC7 literal / D10b 対象 file / 3:1 負 oracle 4 本 / success-soft 用途）を直接検分して閉じた（owner 許可 2026-09-05）。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑦ 同期の本 content commit に同乗させて遷移。Plan Commit = `fbbcf19`（plan-first commit、main `07302b5` 直上、以後の是正 commit はその子孫）。Codex ロジック・整合面 1 回は §3.3 pending のまま。
 
 - Findings Freeze: not yet frozen（Final Review が未実施のため）; post-freeze exceptions: none.
+
+### Gated Amendment 1（2026-09-05、Coordinator 起票、docs gate 起源）
+
+- 事象: Writer の docs 実装後、`bash scripts/doc-consistency-check.sh`（full）が DS3 ERROR 2 件（`--success-border` / `--success-strong` が 00-foundations に登録済みで `src/styles/globals.css` `:root` に無い）。full check は `ci.yml:327` / `local-ci.sh:193` / `pre-push.sh:217` の全部で必須のため、docs-only のままでは merge 不能。
+- 裁定: token 2 行（値は 00-foundations と同一: `#bbf7d0` / `#14532d`）を `globals.css` `:root` に追加する。runtime の消費者は追加しない（消費は runtime lane）。AC14 を上記のとおり改訂。hosted CI は `src` を触るため通常 run になり、docs-only の owner dispatch は不要になる。
+- 根拠: Lane 1a（PR #31）Codex P2 (2)「未実装候補の token を canonical から外す」と同じ DS3 不変条件を、今回は逆側（実装側に 2 行足す）で満たす。token 追加は挙動変更を伴わない。
+- Writer commit: pending（追記予定）
