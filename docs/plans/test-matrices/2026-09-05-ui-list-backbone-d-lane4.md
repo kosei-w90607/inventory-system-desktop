@@ -1,16 +1,16 @@
-# Test Design Matrix: UI 一覧の背骨 D — Lane 4（表を縮ませる / ページ送りの上下切り分け / 表示件数の位置統一 / 枠の地色）
+# Test Design Matrix: UI 一覧の背骨 D — Lane 4（識別列固定 / ページ送りの上下切り分け / 表示件数の位置統一 / 枠の地色）
 
 Plan Packet: [../2026-09-05-ui-list-backbone-d-lane4.md](../2026-09-05-ui-list-backbone-d-lane4.md)
 
-Plan Review round 1（Opus）が reject した旧 SC1（`ListShell` wrapper 撤去）・旧 SC2b〜SC2f（7 画面中 6 画面の長文列/table 幅変更）は撤回済み。round 2（Opus、reject）で在庫照会の上部 summary 条件・整合性チェックの frame 除外・table wrapper の rounded-lg 統一・範囲外 page の検知漏れを是正した（第 1 便、フィードバック項目 1/3/4「折返しの効果・floor 概算」は owner 決定待ちのため次便）。本 Matrix はこれらすべてを反映した Scope に対応する。
+Plan Review round 1（Opus）が reject した旧 SC1（`ListShell` wrapper 撤去）・旧 SC2b〜SC2f（7 画面中 6 画面の長文列/table 幅変更）は撤回済み。round 2（Opus、reject）で在庫照会の上部 summary 条件・整合性チェックの frame 除外・table wrapper の rounded-lg 統一・範囲外 page の検知漏れを是正した（第 1 便）。**owner 決定（2026-09-05、第 2 便）で item (1) を D（表を縮ませる）から識別列固定（Excel 型、`<main>` 基準 sticky-left、商品一覧のみ）へ書き換え**、旧 SC-PT（部門列 `whitespace-normal`）を撤回し SC9（識別列固定）へ置き換えた。本 Matrix はこれらすべてを反映した Scope に対応する。
 
 ## Risk
 
-R3（商品一覧の table overflow 挙動 + 共有 component `Pagination`/`PaginationSummary` の変更 + operator workflow の見た目変更）。狭幅での「出っ張り」消失・部門列の折返しは happy-dom のレイアウト計算では判定できないため、AC-L3-1（窓を狭める実機確認、商品一覧 1 画面）が oracle。本 Matrix は DOM の class 契約・条件分岐（render/no-render）・DOM 順に限定する。
+R3（商品一覧の識別列固定・table overflow 挙動 + 共有 component `Pagination`/`PaginationSummary` の変更 + operator workflow の見た目変更）。狭幅での識別列固定・toolbar sticky の実際の見え方は happy-dom のレイアウト計算では判定できないため、AC-L3-1（窓を狭める実機確認、商品一覧 1 画面）が oracle。本 Matrix は DOM の class 契約・条件分岐（render/no-render）・DOM 順に限定する。
 
 ## Contracts Under Test
 
-- SC-PT: `ProductTable.tsx` 部門列に `whitespace-normal` が付く（新規 `min-w-*` を追加しない、`ListShell.tsx` は無変更）
+- SC9: `ListShell.tsx` の `identityColumns` prop を活性化すると、先頭 2 列（`thead th`/`tbody td`）に `sticky left-0`/`sticky left-[7rem]`・`tbody` は `bg-background`/`z-[1]`/右端 shadow + `forced-colors:border-r` が付き、3 列目以降には付かない。`identityColumns` 未設定では何も付かない（`ListShell.tsx` 自体は既存 wrapper・sticky-top 指定を無変更のまま）。toolbar frame（`ListShell.tsx:88`）に `sticky left-0` が付く。`ProductListPage.tsx` は `identityColumns={2}` を渡し、`ProductTable.tsx` 商品コード列に `w-28` が付く（他の列 class は無変更）
 - SC1a〜SC1c: `Pagination`（下部）が `totalPages <= 1`（`totalCount === 0` 含む）のとき何も描画せず、`totalPages > 1` では従来どおり描画し、51 件/perPage 50 の 2 ページ目で「前へ」が有効
 - SC2: `PaginationSummary` が新規に `text-sm text-muted-foreground tabular-nums` を持つ（`text-base text-foreground` 撤去、下部の分割表記とは別に 1 箇所だけ新規出現）
 - SC3a〜SC3g: 7 画面（`ListShell` を使わない全画面）で `totalCount > 0` の結果表示時に上部 `PaginationSummary` が新規描画され、既存の単数一致 `getByText` 重複文言 test 3 file 6 箇所が是正される。**SC3b（在庫照会）のみ round 2 是正**: 下部と同じ `statusValue === "all" && totalCount !== null` の 2 条件でのみ描画（`totalCount: number | null`、`types.ts:54`）
@@ -23,8 +23,10 @@ R3（商品一覧の table overflow 挙動 + 共有 component `Pagination`/`Pagi
 
 ## Failure Modes
 
-- `ProductTable.tsx` 部門列が `whitespace-nowrap`（table primitive 既定）のまま残る、または折返しに加えて不要な `min-w-*` の床を新規追加してしまう（Opus P2 の過剰適用）
-- 商品一覧以外の 7 画面に table 幅・長文列の変更が混入する（Non-scope 逸脱）
+- `identityColumns` を渡しても `ListShell.tsx` の先頭 2 列に固定 class が付かない、または `identityColumns` を渡さない画面に固定 class が誤って付く
+- 固定 class が誤った列数（1 列だけ、または 3 列目以降にも）に適用される
+- toolbar frame に `sticky left-0` が付かない、または `ListShell.tsx:99` の `w-min min-w-full` wrapper・`overflow-visible`・sticky-top 指定が変更されてしまう
+- 商品一覧以外の 7 画面に `identityColumns` の配線・table 幅・長文列の変更が混入する（Non-scope 逸脱）
 - `Pagination` が `totalPages <= 1` でもボタン・文言を描画してしまう、または `totalPages > 1` なのに誤って非表示になる
 - 上部 `PaginationSummary` が 7 画面のいずれかで描画されない、`totalCount === 0` 相当のタイミングで誤って描画される、または新設に伴う重複文言で既存 test が壊れたまま放置される
 - 枠色が `bg-card` にならない画面が残る、または `bg-card` 追加で page 内の他要素（`StockMovementsPage.tsx:98` の商品情報 card 等、Non-scope）を誤って巻き込む
@@ -39,7 +41,10 @@ R3（商品一覧の table overflow 挙動 + 共有 component `Pagination`/`Pagi
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| SC-PT ProductTable 部門列 | nowrap 残存 / 過剰な min-w 追加 | unit（既存 `ProductTable.test.tsx` 拡張） | SC-PT: 部門 cell has whitespace-normal and no new min-w-* class; 商品名 cell の既存 min-w-[14rem] whitespace-normal は不変 | 部門 `TableCell` が `whitespace-normal` を持たない、または新規 `min-w-*` が付与される |
+| SC9a ListShell 識別列 class（あり） | 固定 class 欠落 / 誤った列数 | unit（既存 `ListShell.test.tsx` 拡張） | SC9a: with identityColumns={2}, thead th/tbody td columns 1-2 get sticky + left-0/left-[7rem] (+ tbody: bg-background, z-[1], right-edge shadow, forced-colors:border-r); column 3+ get none | 列 1-2 に固定 class が欠落する、または列 3 以降に誤って付く |
+| SC9b ListShell 識別列 class（なし、対照） | 誤爆 | unit（既存 `ListShell.test.tsx` 拡張、対照 case） | SC9b: without identityColumns, no column gets sticky/left-*/z-[1]/forced-colors:border-r | `identityColumns` 未設定でも固定 class が付く |
+| SC9c ListShell wrapper/toolbar 不変 + sticky left-0 | wrapper 変更 / toolbar 未対応 | unit（既存 `ListShell.test.tsx` 拡張） | SC9c: `:99` wrapper className stays exactly `w-min min-w-full`; toolbar root gains `sticky left-0` alongside existing `rounded-lg border bg-card p-4` | wrapper の class が変わる、または toolbar に `sticky left-0` が付かない |
+| SC9d ProductListPage/ProductTable 配線 | 未配線 | unit（`ProductListPage.test.tsx`/`ProductTable.test.tsx` 拡張） | SC9d: ProductListPage passes identityColumns={2} to ListShell; ProductTable's 商品コード cell has w-28 | `identityColumns={2}` が渡らない、または `w-28` が付かない |
 | SC1a Pagination 単一ページ非表示 | ボタン/文言残存 | unit（既存 `Pagination.test.tsx` 拡張） | SC1a: totalPages<=1 (including totalCount===0) renders null | `container.firstChild` が null にならない |
 | SC1b Pagination 複数ページ表示 | 過剰適用（空集合 oracle 対） | unit（同上、対照 case） | SC1b: totalPages>1 still renders summary + 前へ/次へ | totalPages>1 なのに null になる |
 | SC1c 51件/50件表示の 2 ページ目 edge | 「前へ」欠落 | unit（既存 `Pagination.test.tsx` 拡張、edge oracle） | SC1c: totalCount=51, perPage=50, page=2 renders an enabled 前へ button | 「前へ」が disabled または非表示になる |
@@ -61,8 +66,10 @@ R3（商品一覧の table overflow 挙動 + 共有 component `Pagination`/`Pagi
 - SC4a〜SC4g は file ごとに旧 class の `rg -Fn` 完全一致文字列を Plan Packet の Scope S1 節から転記し、新旧が同一 test 内で排他であることを確認する
 - SC5a は Checkbox の `aria-label`／`htmlFor` 等、既存 assertion を壊さない形で DOM 順のみを rewrite する（新規 test を追加しない）
 - SC5b は「配線漏れ」mutant（`onPerPageChange` を渡さない）を既存 SC9a が検出することを前提に、新規に追加するのは DOM 位置（最後尾）の assertion のみとする
-- SC-PT は「部門列に `whitespace-normal` を付けるが `min-w-*` は追加しない」という 2 条件を同一 test 内で確認し、過剰適用（不要な床の追加）も検出する
+- SC9a/SC9b は対の oracle（`identityColumns` あり/なし）。あり側だけの単独 test は「常に固定 class を付ける」mutant を通すため、なし側の非付与期待が必須（空集合 oracle 衝突の回避）
+- SC9a は「列 1-2 に付く」「列 3 以降に付かない」の両方を同一 test 内で確認し、列数の過不足（Opus P2 型の過剰適用）を検出する
+- SC9c は `w-min min-w-full` の完全一致（既存 `:343` assertion と同じ厳密度）を維持し、識別列固定の実装が wrapper 側へ意図せず波及しないことを保証する
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC-PT〜SC7 はすべて vitest（happy-dom の class/DOM 順検査）。実際の視覚的な「出っ張り消失」「部門列の折返し」は happy-dom で判定できないため、AC-L3-1〜AC-L3-3 の owner Windows native L3 が唯一の oracle（Lane 3/5 の docs-review 先例とは異なり、本 lane に docs-only の静的 oracle は無い — DSR-22/catalog ⑩/⑯ の文言同期は Plan Packet Scope S6〜S8 で `rg -Fn`/`rg -c` 完全一致検査を行う。`rg -c` は一致した行数を数える点に注意）。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC9〜SC7 はすべて vitest（happy-dom の class/DOM 順検査）。実際の視覚的な「識別列が固定されたまま右側だけ流れる」見え方は happy-dom で判定できないため、AC-L3-1〜AC-L3-3 の owner Windows native L3 が唯一の oracle（Lane 3/5 の docs-review 先例とは異なり、本 lane に docs-only の静的 oracle は無い — DSR-22/catalog ⑩/⑯ の文言同期は Plan Packet Scope S6〜S8 で `rg -Fn`/`rg -c` 完全一致検査を行う。`rg -c` は一致した行数を数える点に注意）。

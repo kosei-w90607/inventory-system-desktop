@@ -1,6 +1,6 @@
-# Plan Packet: UI 一覧の背骨 D — Lane 4（表を縮ませる / ページ送りの上下切り分け / 表示件数の位置統一 / 枠の地色）
+# Plan Packet: UI 一覧の背骨 D — Lane 4（識別列固定 / ページ送りの上下切り分け / 表示件数の位置統一 / 枠の地色）
 
-owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4 各 sub-bullet + E12、`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md:95,109,145`）に基づき、「窓を狭めると表が枠から出っ張る」現象を識別列 sticky ではなく表そのものを縮ませる方式（D）で解消し、ページ送りの上下帯を「上部は常時表示・ボタンなし」「下部は複数ページ時のみ」へ切り分け、表示件数 `Select` の位置と filter/toolbar 枠の地色を 8 画面で統一する。E12 が示した「横 scroll 容器 + 識別列 sticky」案は、DSR-17 `<main>` 単一 scroll 契約と CSS の overflow 計算規則から Contract Probe（Playwright 不要）で不採用と確定し、`ListShell` の `identityColumns` prop は引き続き未使用のまま予約する。
+owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4 各 sub-bullet + E12、`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md:95,109,145`）に基づき、「窓を狭めると表が枠から出っ張る」現象を Excel 型の識別列固定（商品コード + 商品名を左端に固定し、残りの列だけが `<main>` 基準で横に流れる）で解消し、ページ送りの上下帯を「上部は常時表示・ボタンなし」「下部は複数ページ時のみ」へ切り分け、表示件数 `Select` の位置と filter/toolbar 枠の地色を 8 画面で統一する。**item (1) は 2026-09-05 の owner 決定（第 2 便）で D（表を縮ませる）から識別列固定へ書き換えられた**（D は Opus round 2 の実測で効果僅少と判明、下記「起票時実測」節参照）。E12 が当初示した「横 scroll 容器（新規 `overflow-x:auto` box）+ 識別列 sticky」案は、DSR-17 `<main>` 単一 scroll 契約と CSS の overflow 計算規則から Contract Probe（Playwright 不要）で不採用のまま——本 lane が採る識別列固定は**新規 scroll 容器を作らず**、`<main>`（既に `overflow-auto` で両軸 scroll 可能、`RootLayout.tsx:65`）を唯一の scroll container としたまま `position: sticky` の `left` オフセットを追加するだけで、sticky thead（`top` オフセット）と同じ scrolling ancestor を共有する。`ListShell` の予約 prop `identityColumns` を商品一覧のみで活性化する。
 
 **Plan Review round 1（独立 Sonnet subagent + Opus 5 read-only claims-producer、D-056）は reject**。Coordinator が P1 を実装・既存 test に対して裏取りし、本 packet（plan-draft 差し戻し是正）へ反映した。要点: (1) `ListShell.tsx:99` の `w-min min-w-full` wrapper は撤去しない——Lane 2 追補 S17（`docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:165`）が横 overflow 時に summary 帯を table 幅へ追随させるために導入し、owner が AC-L3-2 で確認済み、`ListShell.test.tsx:343` が `className` の完全一致で保護している。是正は wrapper を触らず、対象列の折返しで min-content の床を下げること。(2) 表を縮ませる対象は**商品一覧 `ProductTable.tsx` のみ**——`stickyHeader` を採用するのは `ProductListPage.tsx:284` だけであり、他 7 画面は `table.tsx:9` の `overflow-x-auto` で内部 scroll するため page 地へ出っ張ることは無い。詳細は「起票時実測」節と `## Review Response` を参照。**round 2（Opus 5）も reject**（並行した Sonnet round 2 は rate limit で中断、Workflow State の妥当性検証のみ完了）: 上部 summary 導入に伴う既存 test の重複文言破綻・SC7b の配線退行 oracle・catalog 旧文言の対句・在庫照会の上部 summary 条件・整合性チェックの frame 除外・table wrapper の rounded-lg 統一・範囲外 page の検知漏れを指摘、いずれも本 commit（第 1 便）で反映済み。item (1) 折返しの効果と floor 概算（Opus #1/#3/#4）は owner 決定待ちのため第 2 便で扱う。
 
@@ -18,7 +18,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3 — AC-L3-1 窓を狭めても商品一覧の表が枠内に収まり部門列が折り返す, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3 表示件数 Select の位置と枠の地色が 6 画面で揃う（整合性チェックの単独 Select は対象外、下記 S1 参照）
+- Human Gate: owner Windows native L3 — AC-L3-1 商品一覧で窓を狭めると商品コード + 商品名と列見出しが固定されたまま右側の列だけが横に流れ、検索/filter 枠も左端に留まり、縦 scroll でページが横にジャンプしない, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3 表示件数 Select の位置と枠の地色が 6 画面で揃う（整合性チェックの単独 Select は対象外、下記 S1 参照）
 
 ## Owner Effort Budget
 
@@ -52,7 +52,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 商品一覧で、窓を狭めても表が toolbar 枠の幅を越えて出っ張らない（部門列が折り返す。Lane 2 の「横 overflow 時に summary 帯が table 幅へ追随する」挙動自体は不変・維持）
+- 商品一覧で、窓を狭めると商品コード + 商品名（列見出しを含む）が `<main>` を基準に左端固定され、右側の列だけが横に流れる（Excel の行/列固定と同じ体験）。検索/filter 枠も左端に固定される。Lane 2 の「横 overflow 時に summary 帯が table 幅へ追随する」挙動自体は不変・維持
 - 上部に `PaginationSummary`（範囲付き統一形、`text-sm text-muted-foreground`、ボタンなし）が `totalCount > 0` のとき常に表示される（`ListShell` の 1 画面 + 新規 7 画面）
 - 下部 `Pagination`（summary + 前へ/次へ）は `totalPages > 1` のときだけ表示され、`totalPages <= 1`（0 件を含む）では何も描画しない
 - 表示件数 `Select` が 8 画面すべてで toolbar/filter 枠内の最後尾（右端）に位置する
@@ -60,19 +60,21 @@ Goal Invariant:
 
 ### 失敗定義
 
-- 商品一覧で窓を狭めたときに表が枠外へ出っ張る、または部門列が折り返さず横 scroll のみに依存したままになる
-- 他 7 画面の table 幅・長文列に不要な変更を加えてしまう（Non-scope 逸脱、7 画面は内部 `overflow-x-auto` scroll のため元々 bleed しない）
+- 商品一覧で窓を狭めたときに商品コード・商品名・列見出しが固定されない、検索/filter 枠が左端に固定されない、または縦 scroll でページ全体が横にジャンプする
+- 他 7 画面に `identityColumns` を配線してしまう、または table 幅・長文列に不要な変更を加えてしまう（Non-scope 逸脱、後続 lane で opt-in する）
 - 上部 summary が 7 画面のいずれかで欠落する、または `totalCount === 0` の場面で誤って描画される、または新規追加により既存の件数文言 assertion（`getByText` 単数一致）が壊れたまま放置される
 - 下部 `Pagination` が単一ページで描画される、または複数ページで誤って非表示になる（51 件 / perPage 50 の 2 ページ目で「前へ」が消える等）
 - 表示件数 `Select` が 8 画面のいずれかで枠外、または枠内の最後尾以外に残る
 - 8 画面のいずれかで枠地色が `bg-card` にならない、または新規 token を追加してしまう
-- `identityColumns` sticky 経路の実装に着手してしまう、または `ListShell.tsx:99` の wrapper を撤去・変更してしまう（Non-scope 逸脱）
+- `ListShell.tsx:99` の `w-min min-w-full` wrapper を撤去・変更してしまう、または新規 `overflow-x:auto` スクロール容器を作ってしまう（`<main>` 単一 scroll 契約からの逸脱）
 
 ### 非目的
 
-- `ListShell.tsx:99` の `w-min min-w-full` wrapper の撤去・変更（Plan Review round 1 で reject、Lane 2 追補 S17 の既存挙動を維持する）
-- 識別列固定（sticky）の実装。DSR-22 `identityColumns` prop は予約のまま維持し、`ListShell` へ配線しない
-- 商品一覧以外の 7 画面（棚卸し / 在庫照会 / 入出庫履歴 / 在庫変動履歴 / 操作ログ / 一括価格改定 / 整合性チェック）の table 幅・長文列の変更。いずれも `stickyHeader` を使わず `table.tsx:9` の `overflow-x-auto` で内部 scroll するため、窓を狭めても page 地へ出っ張ることはない（Plan Review round 1 で確定した scope 縮小）
+- `ListShell.tsx:99` の `w-min min-w-full` wrapper の撤去・変更（Lane 2 追補 S17 の既存挙動を維持する）
+- 新規 `overflow-x:auto` スクロール容器の導入（E12 当初案、DSR-17 `<main>` 単一 scroll 契約と衝突するため不採用のまま）
+- 商品一覧以外の 7 画面（棚卸し / 在庫照会 / 入出庫履歴 / 在庫変動履歴 / 操作ログ / 一括価格改定 / 整合性チェック）への `identityColumns` 配線・table 幅変更。いずれも `stickyHeader` を使わず `table.tsx:9` の `overflow-x-auto` で内部 scroll するため、窓を狭めても page 地へ出っ張ることはない。将来 opt-in する場合も同じ `identityColumns` 機構を再利用する（本 lane では配線しない）
+- 固定列 cell の行 hover（`hover:bg-muted/50`）・選択行（`data-[state=selected]:bg-muted`）背景への追随（`bg-background` 固定という既知の trade-off、Residual Risk 参照）
+- 列幅の動的計測（`ResizeObserver` 等）。商品コード列は固定 width class（`w-28`）を採用する
 - 非 ListShell 画面を `ListShell` 化すること（frame class は直接適用し、component 差し替えは行わない）
 - `Playwright` の devDep 追加（Plans.md ④ の旧記述はこの packet が supersede する。probe は CSS 仕様の静的確認のみで足り、headless browser は不要）
 - R2-3 / R2-4（在庫照会の展開行再クリック・検索条件追加）、badge 色（⑦）、native `<select>` → shadcn `Select` 置換（⑧）
@@ -83,38 +85,41 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## 起票時実測（2026-09-05、worktree base `04f89a4`〈Lane 5 branch tip、Draft PR #35 human-confirm 中〉、すべて本 packet 起草者が rg で再確認。行番号は Lane 5 実装後の現行値であり、Plans.md ④ の R2-1〜R5-4 起草時点の行番号とは異なる。Plan Review round 1/2 是正で本節を全面改訂）
 
-### ListShell / table primitive の overflow 機構（出っ張りの機序、round 1 是正版）
+### ListShell / table primitive の overflow 機構（`w-min min-w-full` wrapper は不変）
 
 - `table.tsx:9` の `Table` container は `relative w-full overflow-x-auto`（data-slot=table-container）。通常の非 sticky 画面ではこの `overflow-x-auto` が横 overflow 時に**内部スクロールバー**を出し、page 地には出っ張らない（7 画面はこの経路のみで、本 lane の対象外）
 - `ListShell.tsx` の `STICKY_TABLE_CLASSES`（`:40-63`）は sticky 時に `[&_[data-slot=table-container]]:overflow-visible` でこの内部スクロールを打ち消す（sticky thead の `top` 基準を `<main>` に保つため。DSR-17 `:292` が `<main>` を唯一の scroll container と定める契約に従う設計）
-- `ListShell.tsx:99` の帯+table wrapper `<div className="w-min min-w-full">` は Lane 2 追補 S17（`docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:165`）で導入された。`w-min` = `width: min-content`、`min-w-full` = `min-width: 100%` であり、CSS の `width`/`min-width` 解決規則により実効幅は **`max(内容の min-content, 親幅 100%)`** になる（`min-width` が `width` を下回らせない）。すなわち: 内容の min-content が親幅以下なら wrapper は親幅 100%（帯が toolbar 幅に一致）、内容の min-content が親幅を超えたときだけ wrapper がその min-content 幅まで広がり、overflow-visible な子と組み合わさって `<main>` へ余分な横幅を持ち込む——これが「toolbar は縮むのに下の list が右へ出っ張る」（owner E12 原文）の機序
-- **Lane 2 の意図は正しく機能している**: 横 overflow が実際に生じている間、帯（summary band）が table の内容幅へ追随して同じ右端に揃うのは、`owner` が AC-L3-2（Lane 2 L3）で確認済みの**望ましい**挙動であり、`ListShell.test.tsx:343`（`expect(wrapper?.className).toBe("w-min min-w-full")`）が `className` の完全一致で回帰を防いでいる。Plan Review round 1 の Opus P1 はこの点を指摘し、当初案（wrapper を `w-full` に固定）が Lane 2 の contract を破壊すると判定した——**accept**
-- **是正の要点（round 1 是正）**: wrapper には触れない。出っ張りは「内容の min-content が親幅を超えている」間だけ起きるので、対象列（商品一覧の部門列）を折り返させて min-content の床（floor）を下げ、出っ張りが発生する窓幅の下限を狭める。床を下回るまで窓を狭めれば、Lane 2 の想定どおり帯が table 幅へ追随する——それは bleed ではなく仕様どおりの追随であり、本 lane の失敗定義には含めない
+- `ListShell.tsx:99` の帯+table wrapper `<div className="w-min min-w-full">` は Lane 2 追補 S17（`docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:165`）で導入された、横 overflow 時に summary 帯が table 幅へ追随する意図した挙動（owner AC-L3-2 確認済み、`ListShell.test.tsx:343` 完全一致で保護）。**本 lane はこの wrapper に一切触れない**（round 1 是正で確定済み、item (1) の書換え後も変更不要）
 
-### 表を縮ませる対象は商品一覧 `ProductTable.tsx` のみである根拠（round 1 是正）
+### item (1) 書換えの経緯（owner 決定 2026-09-05、第 2 便）: D（表を縮ませる）の効果は実測で僅少
 
-- `stickyHeader` prop を渡す `ListShell` caller は `ProductListPage.tsx:284` の 1 画面のみ（`rg -n "stickyHeader" src/features --glob '!*.test.*'` で確認、他 7 画面はいずれも `ListShell` を使わない）
-- 他 7 画面はすべて `table.tsx:9` の `overflow-x-auto`（`overflow-visible` の上書きなし）が有効なままのため、内容が幅を超えても内部スクロールバーで吸収され、page 地への出っ張りは発生しない。したがって「窓を狭めると出っ張る」症状は商品一覧固有であり、Plan Review round 1 の Opus P1（他 7 画面への長文列折返し・table 幅撤去は Non-scope）を **accept** し、旧 S2b〜S2f（棚卸し / 在庫照会 / 整合性チェック / 在庫変動履歴 / 操作ログ / 一括価格改定）を撤回する
+- round 1/2 是正で「表を縮ませる」対象を商品一覧 `ProductTable.tsx` の部門列折返しに限定していたが、Opus round 2 の追加測定（item #1/#3/#4）で、部門列の折返しが table の min-content floor に与える効果は **−0〜56px 程度**に留まると判明した。floor の主因は部門列ではなく **商品名列 `min-w-[14rem]`＝224px の固定 floor** と **売価・原価・在庫数の数値 3 列（nowrap 前提、折返し不可）** であり、部門列だけ折り返しても table 全体の floor はほとんど動かない
+- owner はこの実測を受け、D（部門列折返し）を**取り下げ**、item (1) を識別列固定（Excel 型、商品コード + 商品名を左端に固定し残りが `<main>` 基準で横に流れる）へ書き換えた。旧 L4-D2（`ProductTable.tsx` 部門列 `whitespace-normal`）・floor 概算節・AC-L3-1 の「部門列が折り返す」記述はすべて本節と Design Intent Trace の書換えで置き換える。`ProductTable.tsx` の既存 column class（商品名の `min-w-[14rem] whitespace-normal` を含む）は無変更のまま
 
-### `ProductTable.tsx` 列監査（floor 対象の特定、round 1 是正で新規追加）
+### 識別列固定の実装方式：新規 scroll 容器を作らない（Contract Probe、round 1 の CSS 根拠を維持しつつ新方式を確定）
 
-| 列 | 現 class（`ProductTable.tsx`） | floor への寄与 | 本 lane の扱い |
-|---|---|---|---|
-| 商品コード（`:52`） | `font-mono text-sm font-medium`（既定 nowrap） | 小（短い mono code） | 不変（nowrap 維持） |
-| 商品名（`:53-61`） | `min-w-[14rem] whitespace-normal`（対応済み、Badge 「廃番」+ JAN 行を内包） | `min-w-[14rem]`＝224px に固定（折返し済みで無制限に伸びない） | 不変（既に対応済み、Lane 2 で実装） |
-| 部門（`:62`） | `<TableCell>{item.department_name}</TableCell>`（class なし＝既定 nowrap） | **大**（部門名の全文字数だけ横幅を要求、店の部門名は 2〜6 文字程度だが nowrap のため 1 行分の実測幅がそのまま floor になる） | **本 lane で `whitespace-normal` を付与**（唯一の変更対象） |
-| 売価・原価・在庫数（`:63-71`） | `text-right tabular-nums`（既定 nowrap） | 小〜中（数値 3 列、桁数は固定長に近い） | 不変（数値は折返し不可、Coordinator が明示的に nowrap 維持を選択） |
-| PLU（`:72-89`） | `Badge`（`gap-1 whitespace-nowrap`、対象外/未反映/反映済みの 3 状態） | 中（badge 自体は短い固定文言 + icon） | 不変（badge は意味的に 1 行で示す部品のため折返し対象にしない） |
-| 操作（`:90-100`） | `text-right`、`Button size="sm"`「修正」 | 小 | 不変（ボタン文言は折返し対象にしない） |
+- **E12 当初案（新規 `overflow-x:auto` box + 識別列 sticky）は引き続き不採用**: CSS Overflow の仕様上、要素の `overflow-x` と `overflow-y` の一方が `visible` 以外（例: `auto`）のとき、`visible` のままのもう一方は `auto` へ computed される。したがって「表を新規の横 scroll 容器（`overflow-x: auto`）に包む」設計は、その要素を**縦方向にもスクロール可能な独立 scrolling ancestor**に変え、DSR-17 `:292` が `<main>` を唯一の scroll container と定める契約と衝突し、sticky thead の `top` 基準（`<main>` 相対）と両立しない。この結論は CSS 仕様から静的に導けるため、Playwright / headless Chromium での実行時 probe は不要（Contract Probe = 本節の記述そのもの、追加実験なし、N/A）
+- **owner が採る新方式は「新規容器を作らない」**: `RootLayout.tsx:65` `<main data-scroll-restoration-id="main" className="min-h-0 min-w-0 overflow-auto">` は Tailwind `overflow-auto`（= `overflow: auto`、両軸）を既に持ち、`<main>` は**縦・横どちらの overflow でも既に scroll 可能**（実装確認済み、追加実験不要）。したがって table の内容幅が toolbar 幅を超えたとき、`ListShell.tsx:99` の wrapper が広がった分だけ `<main>` 自体が横スクロールする——これは E12 案のような「新規のローカル scroll 容器」ではなく、sticky thead が既に前提としている scrolling ancestor（`<main>`）と**同一**である
+- CSS の `position: sticky` は `top`/`left`/`right`/`bottom` を独立に指定でき、1 要素が複数軸で sticky になることは仕様上問題ない。したがって識別列（`thead th`/`tbody td` の先頭 1・2 列目）に `sticky left-*` を追加しても、既存の `sticky top-*`（thead 全体）とは独立して共存する——`<main>` が縦に scroll すれば `top` 基準で、横に scroll すれば `left` 基準で、それぞれ独立に固定される
+- 結論: 識別列 sticky そのものは Non-scope ではなくなった。Non-scope のまま残るのは「新規 scroll 容器を作る」実装方式（E12 当初案）のみ
 
-- **floor の概算（プランニング目的の概算、ブラウザ実測ではない。AC-L3-1 の owner 実機確認が唯一の正式な oracle）**: 各 cell は `table.tsx:69-79` の `p-2`（padding 8px×2＝16px）を共通で持つ。商品コード ≈ 100px（mono 10 文字 + padding）、商品名 ≈ 224px（`min-w-[14rem]` で固定、折返し済み）、部門 ≈ 折返し後は 1 行あたり最短で成立する幅（Tailwind の `whitespace-normal` は追加の `min-w`/`max-w` を伴わない限り parent の空き幅まで縮む——本 lane では新規 `min-w-*` を追加しない、Opus P2 準拠）、売価/原価/在庫数 ≈ 75px×3＝225px（¥7桁程度の tabular-nums）、PLU ≈ 106px（badge + icon + padding）、操作 ≈ 80px（sm button + padding）。部門列を折返し可能にした後の table 全体の min-content floor は概算で **≈ 730〜760px**（部門列の折返し後の最小幅を 1 文字分＋padding ≈ 30〜40px として計算、対して現状（部門 nowrap）は部門名の長さ次第で floor が青天井に伸びうる）。RootLayout のサイドバー幅・page 余白（`RootLayout.tsx`、概算 240〜280px）を足すと、出っ張りが解消する窓幅のおおよその下限は **≈ 980〜1050px 程度**と見積もる。この数値は Writer 実装時・Plan Review・AC-L3-1 の owner 実機確認で置き換えられる暫定値であり、packet はこれをピクセル契約として固定しない
-- **AC-L3-1 の運用**: 商品一覧を上記の概算下限幅（またはそれ以下）まで窓を狭め、表が枠内に収まり部門列が折り返すことを owner が確認する。他 7 画面は Non-scope のため AC-L3-1 の対象に含めない
+### DSR-22 識別列 mapping 表（`01-decision-rules.md:431-439`）と本 lane の対象
 
-### 識別列 sticky（E12 案）が Non-scope である技術的根拠（Contract Probe、Playwright 不要、変更なし）
+- mapping 表の「商品系」行（`:433`）: 「商品一覧 / 在庫照会 / 一括価格改定 / 整合性チェック / 日次・月次 ranking」に対し固定列「商品コード + 商品名」（2 列）
+- 本 lane で `identityColumns` を配線するのは **商品一覧のみ**（`stickyHeader` を採用する唯一の `ListShell` caller、`ProductListPage.tsx:284`、かつ「窓を狭めると出っ張る」症状が実際に起きる唯一の画面）。同じ「商品系」行に属する在庫照会・一括価格改定・整合性チェックは `ListShell` を使わず `table.tsx:9` の内部 scroll のままのため、本 lane では配線しない（Non-scope、将来 opt-in 時に同じ mapping・同じ機構を再利用する）
+- mapping 表の他行（棚卸し・入出庫履歴・在庫変動履歴・操作ログ・管理系）も本 lane では触らない（全て非 `ListShell` 画面）
 
-- CSS Overflow の仕様上、要素の `overflow-x` と `overflow-y` の一方が `visible` 以外（例: `auto`）のとき、`visible` のままのもう一方は `auto` へ computed される（2 軸を跨ぐスクロールは意味を持たないため）。したがって「表を横 scroll 容器（`overflow-x: auto`）に包む」設計は、その要素を**縦方向にもスクロール可能な独立 scrolling ancestor**に変える
-- DSR-17 `:292` は `<main>`（`RootLayout.tsx`）を route content の唯一の scroll container と定める。`position: sticky` の `top` オフセットは最近傍の scrolling ancestor を基準にするため、横 scroll 容器を挟むと sticky thead の基準が `<main>` からその容器へ切り替わり、`ListShell` が前提とする `<main>` 相対の sticky 挙動（DSR-22 の sticky header）と両立しない
-- この帰結は CSS 仕様から静的に導けるため、Playwright / headless Chromium での実行時 probe は不要（Contract Probe = 本節の記述そのもの、追加実験なし、N/A）。E12 が示唆した「両立方式の probe」（`01-decision-rules.md:429` 末尾の申し送り）はこの結論をもって**不採用**とし、`identityColumns` prop は Lane 2 からの予約状態のまま維持する
+### `identityColumns` の API 選定（既存の予約型をそのまま使う、ponytail: 汎用 N 列 generator は作らない）
+
+- `ListShell.tsx:30-34` の型宣言 `identityColumns?: number;` は既に「固定する先頭列の**本数**」という最小 API で予約済み。DSR-22 mapping 表の固定列数は全行が 1（管理系・取引先）か 2（それ以外すべて）で、任意 N への一般化が要る場面は無い（YAGNI）
+- Tailwind の JIT は静的解析でしか class を拾えないため、`` `[&_tbody_td:nth-child(${i})]:sticky` `` のような実行時テンプレートリテラルは CSS を生成しない。したがって `identityColumns` の値（1 or 2）ごとに**リテラル class 配列を持つ小さな lookup**で実装する（`STICKY_TABLE_CLASSES` と同じ「静的配列を条件で選ぶ」パターンの踏襲であり、新しい抽象は増やさない）
+- 列 1・2 の幅安定化: 列 2 の `left-[<幅>]` は列 1 の幅が変動しないことに依存する。`ResizeObserver` 等の動的計測は導入せず、`ProductTable.tsx:52` 商品コード列に固定 width class `w-28`（7rem=112px、mono 10〜13 文字程度を想定）を付与する——この想定はコードの根拠（固定桁数の規定は見当たらない）に基づく仮定であり、AC-L3-1 の owner 実機確認で実データの折返し有無を最終確認する
+
+### 既知の相互作用（round 2 第 2 便で明示）
+
+- **(a) Lane 3 scroll restoration との無関係**: `OperationLogsPage.scroll-restoration.test.tsx` と `app-router.ts` の DSR-17 scroll 復元 flag は `main.scrollTop`（縦方向）のみを扱う。識別列固定は `left`（横方向）オフセットのみを追加し、`scrollTop`/縦の復元ロジックには触れないため無関係・無影響
+- **(c) `TableCell` の既定 `whitespace-nowrap` は不変**: 商品コード・商品名セルとも、識別列固定は position/z-index/背景のみの変更であり、既存の折返し設定（商品名は Lane 2 で `whitespace-normal` 済み、商品コードは既定 `nowrap`）を変えない
+- **(d) forced-colors**: box-shadow は forced-colors（Windows ハイコントラスト）で無視されるため、識別列の右端 shadow だけでは境界線が消える。Lane 2 S17 が summary 帯に追加した `forced-colors:border-b` と同じ理由で、識別列にも `forced-colors:border-r` を追加する（詳細は Scope S9）
 
 ### 8 画面の frame / perPage Select / pagination 現況サーベイ（table 幅・長文列列は商品一覧のみ対象のため列を割愛）
 
@@ -171,16 +176,31 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - 在庫照会 / 入出庫履歴 / 在庫変動履歴 / 操作ログ は起票時実測のとおり既に filter 行の最後尾のため変更不要（回帰確認のみ、L4-D5）
   - 完了条件: S4a は `StocktakePage.test.tsx:1054` の rewrite 後の `compareDocumentPosition` 期待順で pass。S4b は `rg -n "price-revision-per-page" src/features/products/components/PriceRevisionFilters.tsx` ≥ 1（起票時 0）かつ `rg -n "price-revision-per-page" src/features/products/PriceRevisionPage.tsx` = 0（起票時 1、独立 Select 削除）かつ `PriceRevisionPage.test.tsx:660-669` の SC9a が無変更のまま pass
 - **S5 `StocktakePage.tsx:854` の空 `<fieldset>` ガード**（P3、round 1 是正で新規追加。`Pagination` が `totalPages<=1` で null を返すと `<fieldset disabled={disabled}><Pagination/></fieldset>` が中身の無い `<fieldset>` だけを残す。他 2 箇所は table と同じ `space-y-*` container 内の兄弟のため React が null 子を描画せず stray gap は生じない——`IntegrityCheckPage.tsx:417`/`StockMovementsPage.tsx:243` は verified non-issue として変更しない、下記 Review Focus 参照）: `StocktakePage.tsx` 側で `totalPages`（`Pagination.tsx` と同じ `Math.max(1, Math.ceil(totalCount / perPage))` 式）を計算し、`totalPages > 1` のときだけ `<fieldset>` を描画する。完了条件: `StocktakePage.test.tsx` に「単一ページのとき `<fieldset>` が描画されない」新規 assertion
-- **S6 DSR-22 の文言改訂**（`docs/design-system/01-decision-rules.md:429`、L4-D7）: 「上部の件数・現在位置 text と table header の sticky 化は、実表示が viewport を超えるときにだけ発動する（1 画面に収まる短い一覧では省略してよい。…）。上部は `PaginationSummary` で範囲付き統一形…の text 表示を必須、pager ボタンは任意（`Pagination` 下部と別 component）。下部は件数 + pager フル装備で、canonical は `Pagination`…」を「`ListShell` 採用画面では `topSummary` prop（既定 `false`、`ListShell.tsx:69`）で上部表示を明示的に opt-in し、非 `ListShell` 画面では対応する `PaginationSummary` を直接描画することで、pagination を持つ一覧画面すべてに適用する。opt-in 後の上部の件数・現在位置 text は `totalCount > 0` のとき常に表示する（table header の sticky 化は引き続き `ListShell` の `stickyHeader` prop 採用画面のみ）。上部は `PaginationSummary` で範囲付き統一形…の text 表示のみを持ち、pager ボタンは置かない。下部は `totalPages > 1` のときだけ、件数 + pager フル装備の `Pagination`（`src/components/patterns/Pagination.tsx`）を描画する…」へ改める。識別列固定の記述（同 `:429` 後半の mapping 表・E12 由来の「両立方式の probe」申し送り）は「Lane 4 で Contract Probe（CSS 仕様の静的確認）により不採用と確定、`identityColumns` prop は予約のまま維持する」を追記する。完了条件: `rg -Fn "実表示が viewport を超えるときにだけ発動する" docs/design-system/01-decision-rules.md` = 0（起票時 1）かつ `rg -Fn "totalCount > 0 のとき常に表示する" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fn "pager ボタンは任意" docs/design-system/01-decision-rules.md` = 0（起票時 1）かつ `rg -Fn "pager ボタンは置かない" docs/design-system/01-decision-rules.md` ≥ 1
+- **S6 DSR-22 の文言改訂**（`docs/design-system/01-decision-rules.md:429`、L4-D7）: 「上部の件数・現在位置 text と table header の sticky 化は、実表示が viewport を超えるときにだけ発動する（1 画面に収まる短い一覧では省略してよい。…）。上部は `PaginationSummary` で範囲付き統一形…の text 表示を必須、pager ボタンは任意（`Pagination` 下部と別 component）。下部は件数 + pager フル装備で、canonical は `Pagination`…」を「`ListShell` 採用画面では `topSummary` prop（既定 `false`、`ListShell.tsx:69`）で上部表示を明示的に opt-in し、非 `ListShell` 画面では対応する `PaginationSummary` を直接描画することで、pagination を持つ一覧画面すべてに適用する。opt-in 後の上部の件数・現在位置 text は `totalCount > 0` のとき常に表示する（table header の sticky 化は引き続き `ListShell` の `stickyHeader` prop 採用画面のみ）。上部は `PaginationSummary` で範囲付き統一形…の text 表示のみを持ち、pager ボタンは置かない。下部は `totalPages > 1` のときだけ、件数 + pager フル装備の `Pagination`（`src/components/patterns/Pagination.tsx`）を描画する…」へ改める。識別列固定の記述（同 `:429` 末尾の「両立方式〈sticky × 識別列固定 × DSR-17 `<main>` 単一 scroll〉の probe は横 overflow が実発生する画面を確認してから Lane 3〜5 で行う」）は「Lane 4 で商品一覧のみ実装済み: 新規 scroll 容器を作らず、`<main>`（既に `overflow-auto`）を唯一の scroll container としたまま識別列に `sticky left-*` を追加する方式で両立を確認した（`identityColumns` prop 活性化、S9）。他画面は同じ mapping・同じ機構のまま opt-in 未実施」へ改める。完了条件: `rg -Fn "実表示が viewport を超えるときにだけ発動する" docs/design-system/01-decision-rules.md` = 0（起票時 1）かつ `rg -Fn "totalCount > 0 のとき常に表示する" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fn "pager ボタンは任意" docs/design-system/01-decision-rules.md` = 0（起票時 1）かつ `rg -Fn "pager ボタンは置かない" docs/design-system/01-decision-rules.md` ≥ 1 かつ `rg -Fn "probe は横 overflow が実発生する画面を確認してから Lane 3〜5 で行う" docs/design-system/01-decision-rules.md` = 0（起票時 1）かつ `rg -Fn "Lane 4 で商品一覧のみ実装済み" docs/design-system/01-decision-rules.md` ≥ 1
 - **S7 catalog ⑩ ページネーションの改訂**（`docs/design-system/02-component-catalog.md:602-663`、L4-D8）: `:608-641` の構造例（上部 variant の class を `text-base text-foreground` → `text-sm text-muted-foreground` へ）・`:643`（「`totalCount === 0` のときは『0 件』のみを表示し前後ボタンは両方 disabled」→「`totalPages <= 1`（0 件含む）は下部 pager を描画しない」）・`:645` 使用トークン節（上部 `PaginationSummary` の記述を下部と同じトークンへ）・`:648`（「`totalCount === 0` は両方 disabled」→「`totalPages <= 1`（0 件含む）は下部 pager 自体を描画しない」）・`:653` アクセシビリティ節（上部/下部の同時描画前提の記述を「下部は複数ページ時のみ描画」へ）・`:658` Do 節（「viewport を超える一覧は上部にも…」→「一覧はすべて上部に…常に」）・`:663` Don't 節（「下部を単一ページ（totalPages<=1）で表示しない」を追加）を改訂する。完了条件: `rg -Fn "text-base text-foreground tabular-nums" docs/design-system/02-component-catalog.md` = 0（起票時 2 箇所、`:612`,`:645`）かつ `rg -c "text-sm text-muted-foreground tabular-nums" docs/design-system/02-component-catalog.md` ≥ 2 かつ `rg -Fn "のときは「0 件」のみを表示し前後ボタンは両方 disabled" docs/design-system/02-component-catalog.md` = 0（起票時 1、`:643`。実文は `` `totalCount === 0` `` の直後にこの句が続く）かつ `rg -Fn "は両方 disabled）" docs/design-system/02-component-catalog.md` = 0（起票時 1、`:648`）かつ `rg -Fn "viewport を超える一覧は上部にも" docs/design-system/02-component-catalog.md` = 0（起票時 1）
 - **S8 catalog ⑯ 一覧の器の改訂**（`docs/design-system/02-component-catalog.md:896-926`、L4-D8 続き。round 1 是正で対象を項目 2 のみへ縮小——項目 3 の `w-min min-w-full` 記述は現状の実装（不変）と一致しているため変更しない）: 項目 2（`:905`、「両者とも `totalCount > 0` のときだけ描画する」→「上部は `totalCount > 0` のとき常に、下部は `totalPages > 1` のときだけ描画する」）のみ改訂する。完了条件: `rg -Fn "両者とも \`totalCount > 0\` のときだけ描画する" docs/design-system/02-component-catalog.md` = 0（起票時 1）かつ `rg -n "totalPages > 1" docs/design-system/02-component-catalog.md` ≥ 1（項目 2 内）。項目 3（`w-min min-w-full` の記述）は無変更のまま残ることを回帰確認する（``rg -Fn 'min-w-full`（横 overflow 時に帯が table 幅へ追随' docs/design-system/02-component-catalog.md`` ≥ 1 を維持、単一引用符内でバックティックはエスケープしない）
-- **S9 Plans.md ④ + Contract Coverage Ledger 記入**: 本 packet の active link を反映（本 commit で同時実施）。Lane 4 の item (1) は「商品一覧の折返しに限定（他 7 画面は内部横 scroll で出っ張らない）」と明記する。Contract Coverage Ledger は下記節を参照
+- **S9 識別列固定の実装（商品一覧のみ、owner 決定 2026-09-05 第 2 便で item (1) を D から書換え）**:
+  - `ListShell.tsx:30-34` の予約 prop `identityColumns?: number` を活性化する（型は変更しない、`number` = 固定する先頭列の本数）。`identityColumns` の値ごとにリテラル class 配列を持つ小さな lookup（`1`/`2` の 2 パターン、DSR-22 mapping 表が要求する最大値）で `thead th`/`tbody td` の先頭 N 列へ class を適用する。汎用 N 列 generator は作らない（起票時実測「API 選定」節参照）
+  - 適用 class（`ListShell.tsx` root の descendant variant、children〈`ProductTable`〉に className を渡さない既存方針を維持）:
+    - `thead th`/`tbody td` の 1 列目: `sticky left-0`
+    - `thead th`/`tbody td` の 2 列目: `sticky left-[7rem]`（`ProductTable.tsx` 商品コード列の固定幅 `w-28`＝7rem と一致させる）
+    - `tbody td` の 1・2 列目: `bg-background`（不透明化。`thead th` は既存の `[&_thead_th]:bg-list-head` を共有するため追加不要）
+    - `tbody td` の 1・2 列目: `z-[1]`（他の非 sticky td より上、`thead th` の既存 `z-10` より下）
+    - `tbody td` の 1・2 列目の右端: `shadow-[inset_-1px_0_0_var(--border)]`（実 `border-r` によるセル幅増加・subpixel seam を避ける。Gated Amendment 7 S48 が同じ border-separate + border-spacing-0 の table で採用した box-shadow 技法を踏襲）+ `forced-colors:border-r`（box-shadow は forced-colors で無視されるため、Lane 2 S17 の帯 `forced-colors:border-b` と同じ理由で実 border を追加）
+    - `thead th` の 1・2 列目: 既存の `top`/`z-10`（sticky top 部分）に加え `left-0`/`left-[7rem]` を追加するのみ（`top` 指定は不変）
+  - `ListShell.tsx:88` の toolbar frame に `sticky left-0` を追加する（幅は不変。`<main>` が横 scroll したとき検索/filter 枠を左端に留める）。summary 帯（Lane 2 S17）は無変更——table 幅へ追随する既存挙動のまま
+  - `ProductListPage.tsx:284` の `<ListShell>` 呼出しに `identityColumns={2}` を追加する（DSR-22 商品系行）
+  - `ProductTable.tsx:52` 商品コード列に `w-28` を追加する（他の列 class は無変更、商品名の `min-w-[14rem] whitespace-normal` を含め touch しない）
+  - 完了条件: `rg -n "identityColumns" src/components/patterns/ListShell.tsx` の hit が型宣言のみの現状（1 件）から増える（消費する分岐が実装される）かつ `rg -Fn "identityColumns={2}" src/features/products/ProductListPage.tsx` ≥ 1（起票時 0）かつ `rg -Fn "w-28" src/features/products/components/ProductTable.tsx` ≥ 1（起票時 0）かつ `ListShell.tsx` 内で toolbar 側の `sticky left-0` と thead/tbody 側の `sticky left-0`/`sticky left-[7rem]` が合わせて 3 箇所以上出現する
+- **S10 Plans.md ④ + Contract Coverage Ledger 記入**: 本 packet の active link を反映（本 commit で同時実施）。Lane 4 の item (1) は「D から識別列固定（Excel 型、`<main>` 基準 sticky-left + toolbar sticky-left、商品一覧のみ）へ owner 決定 2026-09-05（D は実測で効果僅少）」と明記する。Contract Coverage Ledger は下記節を参照
 
 ## Non-scope
 
-- `ListShell.tsx:99` の `w-min min-w-full` wrapper の撤去・変更（Plan Review round 1 で reject、Lane 2 追補 S17 の既存挙動・`ListShell.test.tsx:343` の完全一致契約を維持する）
-- 識別列固定（sticky）の実装、`identityColumns` prop の配線（Contract Probe で不採用確定）
-- 商品一覧以外の 7 画面の table 幅・長文列変更（`stickyHeader` 非採用画面は `table.tsx:9` の内部 `overflow-x-auto` で bleed しないため、Plan Review round 1 で Non-scope 確定）。`PriceRevisionTable.tsx` の `min-w-[1280px]`/商品名折返しを含む
+- `ListShell.tsx:99` の `w-min min-w-full` wrapper の撤去・変更（Lane 2 追補 S17 の既存挙動・`ListShell.test.tsx:343` の完全一致契約を維持する）
+- 新規 `overflow-x:auto` scroll 容器の導入（E12 当初案、DSR-17 `<main>` 単一 scroll 契約と衝突するため不採用のまま）
+- 商品一覧以外の 7 画面への `identityColumns` 配線・table 幅・長文列変更（`stickyHeader` 非採用画面は `table.tsx:9` の内部 `overflow-x-auto` で bleed しないため、後続 lane で opt-in する）。`PriceRevisionTable.tsx` の `min-w-[1280px]`/商品名折返しを含む
+- 固定列 cell の行 hover（`hover:bg-muted/50`）・選択行（`data-[state=selected]:bg-muted`）背景への追随（`bg-background` 固定、Residual Risk 参照）
+- 列幅の動的計測（`ResizeObserver` 等）。商品コード列は固定 width class（`w-28`）を採用する
 - 非 ListShell 7 画面の `ListShell` 化（frame class の直接適用のみ）
 - `Playwright` devDep 追加（Plans.md ④ 旧記述を本 packet が supersede）
 - R2-3 / R2-4（在庫照会）、badge 色・増減数値の色（⑦）、native `<select>` → shadcn `Select` 置換（⑧、R5-3）
@@ -191,6 +211,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Residual Risk
 
 - **⑧ 未 merge のまま実装した場合の既知残件（round 2 是正、Opus P2）**: S4b は `PriceRevisionFilters.tsx` の取引先 native `<select>`（`:46`）が lane ⑧ で shadcn `Select` に置換済みであることを前提にする。もし何らかの事情で ⑧ が本 lane より先に merge されないまま Writer が実装した場合、表示件数 `Select`（shadcn）の隣に取引先 native `<select>` が残り、枠の濃淡差（Lane 5 の `--control-surface`/`--border-strong` sweep 対象）は解消済みでも見た目の部品種別は揃わない。Coordinator は実装着手前に ⑧ の merge 状態を確認し、未 merge なら Stacked train の merge train 順（Lane 5 → ⑧ → Lane 4）どおり待つ。待たずに実装する場合はこの既知残件を owner L3 の所感として記録し、別 item 化する
+- **固定列の行 hover/選択背景が追随しない（識別列固定、owner 決定 2026-09-05 第 2 便）**: `tbody td` の識別列（1・2 列目）は不透明化のため `bg-background` 固定にする（S9）。行 hover（`TableRow` の `hover:bg-muted/50`）・選択行（`data-[state=selected]:bg-muted`）・将来の現在行背景（`--row-current`）は、これらの class が `TableRow`/`TableCell` に付き `ListShell` の descendant variant より詳細度が低いため、固定列の 2 セルだけ hover/選択の色が乗らない見た目になる。動的な背景注入は `children`（`ProductTable`）へ prop を渡す必要があり、`ListShell` の「children に className を渡さない」既存方針（D-9）と衝突するため本 lane では対応しない。owner L3 で許容可否を確認し、気になる場合は後続 lane で `TableRow`/`TableCell` 側からの背景伝播を設計する
 
 ## Acceptance Criteria
 
@@ -203,11 +224,12 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC7: `StocktakePage.test.tsx:1042`（SC8c'）が `Pagination` の `totalPages<=1` null 化後も pass する（fixture の `total_count` を perPage 超に上げる、または前へ/次への不在を assert する形へ是正）
 - AC8: `StocktakePage.tsx:854` の `<fieldset>` が単一ページで描画されない — 新規 assertion（Scope S5）
 - AC9: `ListShell.test.tsx` の既存 17 it（`:343` の wrapper 完全一致 assertion を含む）が無変更のまま pass する — 回帰確認（本 lane は `ListShell.tsx` を一切変更しない）
-- AC10: DSR-22 の文言が新形へ更新される（`topSummary`/`identityColumns` の既存 opt-in 機構と矛盾しない形で） — Scope S6 の `rg -Fn` 完全一致検査
+- AC10: DSR-22 の文言が新形へ更新される（`topSummary` の既存 opt-in 機構、および `identityColumns` が商品一覧で実装済みとなった事実と矛盾しない形で） — Scope S6 の `rg -Fn` 完全一致検査
 - AC11: catalog ⑩ の文言・構造例・トークン記述・`totalCount===0` 系の pre-S2 記述（`:643`,`:648`）が新形へ更新される — Scope S7 の `rg -Fn`/`rg -c` 完全一致検査
 - AC12: catalog ⑯ 項目 2 のみ新形へ更新され、項目 3（`w-min min-w-full`）は無変更のまま残る — Scope S8 の `rg -Fn` 完全一致検査（新形出現 + 旧項目 3 残存の両方を確認）
 - AC13（round 2 是正、Opus P2）: `page > totalPages` の状態で描画される画面が無いこと — 8 画面のうち `StockInquiryPage.tsx:196`（`isOutOfRangePage`）と `OperationLogsPage.tsx:452`（`outOfRange`）の 2 画面は既存の「先頭ページに戻る」`EmptyState` で明示的に検知・復帰する。残り 6 画面は専用の範囲外検知 UI を持たず、フィルタ変更時に page をリセットする既存 handler（`Error, empty, retry, and recovery behavior` 節に例示済み）のみで防いでいる。下部 `Pagination` が `totalPages<=1` で非表示になっても、フィルタ変更で `totalCount` が変わった直後に一時的に `page > totalPages` になり得る経路が新たに生まれていないことを、フィルタ変更で `totalCount` を perPage 未満へ減らす新規 test 1 本（対象画面は Writer が残り 6 画面から 1 画面選定、既存の page-reset handler 経路を通る）で確認する — 新規 vitest 1 本
-- AC-L3-1（owner Windows native L3）: `ProductListPage.tsx`（商品一覧）で窓を狭めても表が枠内に収まり部門列が折り返す（対象は商品一覧 1 画面のみ、起票時実測の floor 概算 ≈ 980〜1050px 付近から確認）
+- AC14（owner 決定 2026-09-05 第 2 便、識別列固定）: 商品一覧の `thead th`/`tbody td` の先頭 2 列（商品コード・商品名）に `sticky`（`left-0`/`left-[7rem]`）・不透明背景（`tbody` は `bg-background`）・`z-[1]`（`tbody`）・右端の境界（`shadow-[inset_-1px_0_0_var(--border)]` + `forced-colors:border-r`）が付き、3 列目以降には付かない。toolbar frame（`ListShell.tsx:88`）に `sticky left-0` が付く。他 7 画面の table には一切変更が無い — 新規 vitest（`ListShell.test.tsx` 拡張: `identityColumns` あり/なしの対照 assertion、`ProductListPage.test.tsx`/`ProductTable.test.tsx`: `identityColumns={2}`/`w-28` の配線確認）
+- AC-L3-1（owner Windows native L3）: 商品一覧で窓を狭めると商品コード + 商品名と列見出しが固定されたまま右側の列だけが横に流れ、検索/filter 枠が左端に留まり、縦 scroll でページが横にジャンプしない。実データの商品コードが `w-28`（7rem）に収まり折返し・はみ出しが無いことも確認する（起票時実測「幅の前提」節の想定検証）
 - AC-L3-2（owner Windows native L3）: `Pagination.tsx` の複数ページの画面 1 つで下部ページ送りが表示され、単一ページの画面 1 つで下部ページ送りが非表示になる（上部件数のみ残る）
 - AC-L3-3（owner Windows native L3）: 表示件数 `Select` の位置が 8 画面で揃って見え、filter/toolbar 枠の地色が対象 6 画面（整合性チェックを除く、round 2 是正）で揃って見える
 
@@ -217,7 +239,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Architecture: `docs/ARCHITECTURE.md`（変更なし、UI 層内の class/component 構成変更のみ）
 - Function / command / DTO: 該当なし
 - DB: 変更なし
-- Screen / UI: `docs/design-system/00-foundations.md`（`--card` #f5f5f4、変更なし・正本参照のみ）/ `docs/design-system/01-decision-rules.md` DSR-17（`:292`、`<main>` 単一 scroll 契約、参照のみ）/ DSR-22（`:429`、S6 で改訂）/ `docs/design-system/02-component-catalog.md` ⑩ ページネーション（S7）/ ⑯ 一覧の器（S8）/ `docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:165`（S17、`w-min min-w-full` の導入経緯、参照のみ・変更なし）
+- Screen / UI: `docs/design-system/00-foundations.md`（`--card` #f5f5f4、変更なし・正本参照のみ）/ `docs/design-system/01-decision-rules.md` DSR-17（`:292`、`<main>` 単一 scroll 契約、参照のみ）/ DSR-22（`:429`、S6 で改訂。識別列 mapping 表 `:431-439` は参照のみ・変更なし）/ `docs/design-system/02-component-catalog.md` ⑩ ページネーション（S7）/ ⑯ 一覧の器（S8）/ `docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:165`（S17、`w-min min-w-full` の導入経緯、参照のみ・変更なし）/ `src/components/layout/RootLayout.tsx:65`（`<main>` の `overflow-auto`、参照のみ・変更なし）
 - Decision log / ADR: `docs/decision-log.md` D-074（Stacked train）/ D-079（UI 視覚系 change の座組）。本 lane は owner 決定（Plans.md ④ R2-1/R2-2/R3-2/R5-2/R5-4、E12）の執行であり新規 durable decision の追加はない（L4-D3〜D8 は packet 止まりの実装判断）
 
 ## Required Design Artifacts
@@ -247,9 +269,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| — | 起票時実測「識別列 sticky（E12 案）が Non-scope である技術的根拠」節 | L4-D1（2026-09-05） | E12 が示した横 scroll 容器 + 識別列 sticky 案は、CSS の overflow 計算規則（`overflow-x: auto` は `overflow-y` を `auto` へ computed する）により当該容器を独立 scrolling ancestor に変え、DSR-17 `:292` の「`<main>` が唯一の scroll container」契約と衝突し `ListShell` の sticky thead（`<main>` 相対）と両立しない。この結論は CSS 仕様から静的に導けるため Playwright/headless probe は不要（Contract Probe = 本節記述、N/A）。owner は D（表を縮ませる）を選定し、E12 案は不採用 | なし（Non-scope 確定） | 該当なし |
-| — | 起票時実測「ListShell / table primitive の overflow 機構（round 1 是正版）」節 | L4-D2（2026-09-05、round 1 是正） | 当初案（`ListShell.tsx:99` の wrapper を `w-full` に固定）は Plan Review round 1（Opus）の P1 で reject。Lane 2 追補 S17 が導入した `w-min min-w-full` は横 overflow 時に summary 帯を table 幅へ追随させる**意図した**挙動で、owner が AC-L3-2 で確認済み、`ListShell.test.tsx:343` が完全一致で保護している。是正: wrapper は不変のまま、表を縮ませる対象を商品一覧 `ProductTable.tsx` の部門列折返しに限定し、min-content の床を下げることで出っ張りが発生する窓幅の下限を狭める（床を超えて窓を狭めれば Lane 2 の追随挙動が発動する——bleed ではなく仕様どおり） | `ProductTable.tsx`（部門列のみ） | S1（frame）とは独立、Writer が `ProductTable.test.tsx` へ新規 assertion（部門列 `whitespace-normal`、既存 `min-w-*` を追加しないことの確認を含む） |
-| — | 起票時実測「表を縮ませる対象は商品一覧 `ProductTable.tsx` のみである根拠」節 | L4-D2 続き（2026-09-05、round 1 是正） | `stickyHeader` を採用するのは `ProductListPage.tsx:284` のみで、他 7 画面は `table.tsx:9` の `overflow-x-auto` により内部 scroll するため出っ張らない。旧 S2b〜S2f（6 画面の長文列折返し・固定 table 幅撤去）は Non-scope へ撤回した | なし（Non-scope 確定） | 該当なし |
+| — | 起票時実測「識別列固定の実装方式：新規 scroll 容器を作らない」節 | L4-D1（2026-09-05、owner 決定第 2 便で改訂） | E12 当初案（新規 `overflow-x:auto` box + 識別列 sticky）は、CSS の overflow 計算規則（`overflow-x: auto` は `overflow-y` を `auto` へ computed する）により当該容器を独立 scrolling ancestor に変え、DSR-17 `:292` の「`<main>` が唯一の scroll container」契約と衝突するため引き続き不採用。owner は D（表を縮ませる、実測で効果僅少）ではなく、新規容器を作らない識別列固定（`<main>` が既に `overflow-auto` で両軸 scroll 可能、`RootLayout.tsx:65`）を選定した。`ListShell.tsx` の `identityColumns` prop を商品一覧のみ活性化する（S9） | `ListShell.tsx`、`ProductListPage.tsx` | S9 新規 assertion |
+| — | 起票時実測「item (1) 書換えの経緯」節 | L4-D2（2026-09-05、owner 決定第 2 便で改訂） | round 1/2 是正で「表を縮ませる」対象を商品一覧 `ProductTable.tsx` の部門列折返しに限定していたが、Opus round 2 の実測で部門列折返しの floor 効果は −0〜56px 程度に留まり、floor の主因は商品名 `min-w-[14rem]`＝224px と数値 3 列の nowrap と判明した。owner はこの実測を受け D を取り下げ、識別列固定へ item (1) を書き換えた。`ProductTable.tsx` の部門列 `whitespace-normal` 化は行わない（column class は無変更） | なし（旧 L4-D2 は撤回） | 該当なし |
+| — | 起票時実測「DSR-22 識別列 mapping 表と本 lane の対象」節 | L4-D1 続き（2026-09-05） | `stickyHeader` を採用する `ListShell` caller は `ProductListPage.tsx:284` のみで、他 7 画面（同じ「商品系」mapping 行に属する在庫照会・一括価格改定・整合性チェックを含む）は `table.tsx:9` の `overflow-x-auto` により内部 scroll するため出っ張らず、`identityColumns` を本 lane では配線しない（将来 opt-in 時に同じ機構を再利用） | なし（Non-scope、後続 lane 候補） | 該当なし |
+| — | 起票時実測「`identityColumns` の API 選定」節 | L4-D10（2026-09-05） | `identityColumns?: number`（予約済みの型）をそのまま使い、実装は値 1/2 のリテラル class 配列 lookup に限定する（DSR-22 mapping 表の全行が 1 か 2 のため、任意 N 列の generator は YAGNI）。列 2 の `left-[7rem]` は列 1 の固定 width class（`ProductTable.tsx` 商品コード `w-28`）に依存し、`ResizeObserver` 等の動的計測は導入しない（ponytail、固定値の妥当性は AC-L3-1 で確認） | `ListShell.tsx`、`ProductTable.tsx` | S9 新規 assertion |
+| — | Residual Risk「固定列の行 hover/選択背景が追随しない」節 | L4-D11（2026-09-05） | 識別列 cell を `bg-background` で不透明化すると、`TableRow` の `hover:bg-muted/50`/`data-[state=selected]:bg-muted` が乗らなくなる既知の trade-off。動的背景の伝播は `ListShell` の「children に className を渡さない」方針（D-9）と衝突するため本 lane では対応せず、owner L3 で許容可否を確認する | なし（許容前提、L3 で確認） | AC-L3-1（所感確認のみ） |
 | — | Plans.md ④ R5-4 owner 決定 | L4-D3（2026-09-05） | owner は「既存 `--card` #f5f5f4 に統一、新規 token なし」を明示（R5-4 sub-bullet の `--list-toolbar`（仮）token 案は旧案として本 packet が supersede する）。理由は既存 toolbar 枠（商品一覧）との統一で追加の視覚差分を持ち込まないこと | 7 画面の filter/toolbar 枠 | S1 各新規 assertion |
 | — | Plans.md ④ R2-1 owner 決定 | L4-D4（2026-09-05） | 上部は常時表示・ボタンなし、下部は複数ページ時のみという上下非対称の設計は、Q12 §1「初心者ほど操作体系はシンプルなほうがよい」（DSR-22 Why 既存引用）を単一ページ時にも徹底したもの。共有 component（`Pagination.tsx`）1 箇所の修正で 8 画面全 caller に反映する設計を採る（owner「呼出し元を直せば一気に全部変わる設計」選好、Lane 3 flag 是正の先例と同型） | `Pagination.tsx` | S2 新規 assertion |
 | — | Plans.md ④ R5-2 owner 決定 | L4-D5（2026-09-05） | 表示件数 Select は toolbar 枠内の右端に統一。起票時実測で 5/7 画面は既に最後尾のため、構造変更が必要なのは棚卸し（reorder）と一括価格改定（Filters への移設 + prop 配線）のみ。既に条件を満たす画面まで無用に書き換えない（ponytail: 既に満たす契約への追加変更は避ける） | `StocktakePage.tsx`、`PriceRevisionFilters.tsx`/`PriceRevisionPage.tsx` | S4 各新規/是正 assertion |
@@ -260,34 +284,34 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Design Intent Audit
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: 本 packet の「起票時実測」節が値・機序・理由の一次情報。実装後は S6〜S8 で DSR-22/catalog へ反映し packet 依存を解消する
-- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: なし。L4-D1〜D9 は実装詳細の Coordinator 判断のため packet 止まりでよい（owner 決定 R2-1/R5-2/R5-4/E12 は既に Plans.md ④ に記録済み）
-- Assumptions and constraints: 対象範囲を商品一覧 1 画面（table 幅）+ 8 画面共通（frame/pagination/Select）に確定。Plan Review round 1/2 でこの境界線（特に 7 画面 Non-scope 化）の妥当性を検査済み
-- Deferred design gaps, risk, and follow-up target: 識別列 sticky の恒久不採用（L4-D1、`identityColumns` prop は削除せず予約のまま）。`PriceRevisionTable` 等 7 画面の table 幅・長文列は本 lane では扱わない（内部 scroll のため現状のままで機能上の問題はない）
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: なし。L4-D1〜D11 は実装詳細の Coordinator/owner 判断のため packet 止まりでよい（owner 決定 R2-1/R5-2/R5-4/E12/item(1)書換えは既に Plans.md ④ に記録済み）
+- Assumptions and constraints: 対象範囲を商品一覧 1 画面（識別列固定）+ 8 画面共通（frame/pagination/Select）に確定。商品コード列の固定幅（`w-28`）は仮定であり AC-L3-1 の owner 実機確認で検証する
+- Deferred design gaps, risk, and follow-up target: 他 7 画面への `identityColumns` opt-in（同じ機構を再利用）。固定列の行 hover/選択背景の非追随（Residual Risk、L4-D11）
 - Test Design Matrix can cite design decision IDs or source doc sections: Yes（[Test Matrix](test-matrices/2026-09-05-ui-list-backbone-d-lane4.md) 各行に L4-D 番号か DSR-22/catalog 節番号を付す）
-- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 例外は `StockMovementsPage.tsx:98` 商品情報 card（別 section、不変）と `IntegrityCheckPage.tsx:417`/`StockMovementsPage.tsx:243` の null-child no-op（verified non-issue）のみ。すべて起票時実測・Review Focus で列挙し、抜け道なし
+- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 例外は `StockMovementsPage.tsx:98` 商品情報 card（別 section、不変）、`IntegrityCheckPage.tsx:417`/`StockMovementsPage.tsx:243` の null-child no-op（verified non-issue）、固定列の hover/選択背景非追随（L4-D11、owner 許容前提）のみ。すべて起票時実測・Review Focus・Residual Risk で列挙し、抜け道なし
 
 ## Impact Review Lenses
 
 | Lens | Applicability / finding | Follow-up artifact |
 |---|---|---|
 | Adapter / core boundary | not applicable — UI 層内の class/component 構成変更のみ | — |
-| Fact check / design decision split | 適用: Plans.md ④ R2-1 の「在庫照会で観測」claim を実コードで再確認し、現状は該当挙動が存在しないことを確認（起票時実測節）。加えて Plan Review round 1 の Opus P1（wrapper 撤去・7 画面 scope）を実装・既存 test に対して裏取りし accept | 起票時実測「Plans.md ④ の記録済み claim の訂正」、`## Review Response` |
+| Fact check / design decision split | 適用: Plans.md ④ R2-1 の「在庫照会で観測」claim を実コードで再確認し、現状は該当挙動が存在しないことを確認（起票時実測節）。加えて Plan Review round 1/2 の Opus 指摘と owner 決定（item (1) 書換え）を実装・既存 test に対して裏取りし accept | 起票時実測「Plans.md ④ の記録済み claim の訂正」、`## Review Response` |
 | Lifecycle / retry | not applicable | — |
-| Operator workflow | 適用: 商品一覧の折返し + 8 画面のページ送り・表示件数配置・枠地色が変わる。owner L3 で確認（AC-L3-1〜3） | AC-L3-1〜3 |
+| Operator workflow | 適用: 商品一覧の識別列固定 + 8 画面のページ送り・表示件数配置・枠地色が変わる。owner L3 で確認（AC-L3-1〜3） | AC-L3-1〜3 |
 | Replacement path | not applicable | — |
 | Data safety / evidence | not applicable — DB 書込みなし | — |
 | Reporting / accounting semantics | not applicable | — |
 | Manual verification | 適用: owner Windows native L3（AC-L3-1〜3） | Human Gate |
-| 環境・再現性 | not applicable — toolchain / CI runner 変更なし。Playwright 等の新規依存は追加しない（Non-scope） | — |
+| 環境・再現性 | not applicable — toolchain / CI runner 変更なし。Playwright 等の新規依存は追加しない（Non-scope）。`<main>` の `overflow-auto` は既存実装（変更なし） | — |
 
 ## Design Readiness
 
-- Existing design docs are sufficient because: DSR-17（`<main>` 単一 scroll）/ DSR-22（一覧の器の適用条件）/ catalog ⑩⑯ は Lane 2〜5 で正本化済み。本 lane は既存契約の適用条件を owner 決定に合わせて改訂する（S6〜S8）のみで、新規 token・新規 component は追加しない
-- Source docs updated in this PR: `01-decision-rules.md` DSR-22（S6）/ `02-component-catalog.md` ⑩（S7）/ ⑯ 項目 2 のみ（S8）
-- Design gaps intentionally deferred: 商品一覧以外の 7 画面の table 幅・長文列（内部 scroll のため現状で機能上の問題はない、Non-scope）
+- Existing design docs are sufficient because: DSR-17（`<main>` 単一 scroll）/ DSR-22（一覧の器・識別列 mapping 表）/ catalog ⑩⑯ は Lane 2〜5 で正本化済み。本 lane は DSR-22 が既に想定していた「Lane 3〜5 で識別列 sticky の両立方式を確認する」を実施し、`identityColumns` prop（Lane 2 で予約済み）を活性化するのみで、新規 token・新規 component は追加しない
+- Source docs updated in this PR: `01-decision-rules.md` DSR-22（S6、S9 の実装結果を反映）/ `02-component-catalog.md` ⑩（S7）/ ⑯ 項目 2 のみ（S8）
+- Design gaps intentionally deferred: 商品一覧以外の 7 画面への `identityColumns` opt-in（Non-scope、後続 lane）。固定列の hover/選択背景非追随（L4-D11）
 - Durable decisions discovered in this plan and promoted to source docs: なし（既存 owner 決定の執行）
-- **識別列 sticky 不採用の記録**（Design Readiness 固有の記載事項）: E12 が提案した「横 scroll 容器 + 識別列 sticky」の両立方式は、DSR-17 の `<main>` 単一 scroll 契約と CSS の overflow 計算規則（`overflow-x: auto` は `overflow-y` を `auto` へ computed し、独立 scrolling ancestor を作る）から静的に導ける矛盾により Contract Probe（追加実験なし）で不採用と確定した。`ListShell.tsx` の `identityColumns` prop は Lane 2 からの予約状態のまま維持し、削除しない（将来 DSR-22 の mapping 表が使われる可能性を閉じないため）
-- **wrapper 不変の記録（round 1 是正）**: `ListShell.tsx:99` の `w-min min-w-full` は Lane 2 追補 S17 の意図した挙動（横 overflow 時の帯追随、owner AC-L3-2 確認済み）であり、`ListShell.test.tsx:343` の完全一致 assertion で保護されている。本 lane はこの wrapper に触れず、表を縮ませる対象を商品一覧の部門列折返しに限定してこの挙動と両立させる
+- **新規 scroll 容器の不採用は維持（Design Readiness 固有の記載事項）**: E12 当初案「横 scroll 容器 + 識別列 sticky」のうち、**新規 `overflow-x:auto` 容器を作る**部分は、DSR-17 の `<main>` 単一 scroll 契約と CSS の overflow 計算規則（`overflow-x: auto` は `overflow-y` を `auto` へ computed し、独立 scrolling ancestor を作る）から静的に導ける矛盾により Contract Probe（追加実験なし）で不採用のまま。owner が 2026-09-05（第 2 便）で選んだ方式は**新規容器を作らず**、既存の `<main>`（`overflow-auto`、`RootLayout.tsx:65`）に `sticky left-*` を追加するだけであり、この矛盾に抵触しない
+- **wrapper 不変の記録（round 1 是正、維持）**: `ListShell.tsx:99` の `w-min min-w-full` は Lane 2 追補 S17 の意図した挙動（横 overflow 時の帯追随、owner AC-L3-2 確認済み）であり、`ListShell.test.tsx:343` の完全一致 assertion で保護されている。本 lane（識別列固定への書換え後も）この wrapper に触れない
 
 Minimum design checks for business-app work:
 
@@ -295,21 +319,24 @@ Minimum design checks for business-app work:
 - Backend function design: 該当なし
 - Command / DTO / data contract: 該当なし
 - Persistence / transaction / audit impact: なし
-- Operator workflow / Japanese UI wording: 文言変更なし（件数文言そのものは Lane 3 で確定済み）、見た目（部門列の折返し・枠・配置）のみ
+- Operator workflow / Japanese UI wording: 文言変更なし（件数文言そのものは Lane 3 で確定済み）、見た目（識別列固定・枠・配置）のみ
 - Error, empty, retry, and recovery behavior: `Pagination` の `totalPages<=1` null 化は EmptyState 分岐（既存、totalCount===0 は先に EmptyState で処理される）と重複しない副作用のみ。既存の error/empty/loading 分岐は不変。フィルタ変更時に page をリセットする既存 handler（例: `StocktakePage.tsx` の部門/未入力のみフィルタが `page: 1` を設定、`StockInquiryPage.tsx` の検索語・部門・状態フィルタが `page: undefined` を設定）はいずれも本 lane で変更しないため、下部 pager が消えても「範囲外 page に取り残される」経路は生まれない（Writer は実装時に全 8 画面のフィルタ handler をこの観点で再点検する。上記 2 画面は本 packet 起草者が確認済みの代表例で、残り画面の網羅的な確認は Writer の実装時作業とする）
 - Testability and traceability IDs: 新規 REQ 追加なし
 
 ## Contract Probe
 
-- E12 の「横 scroll 容器 + 識別列 sticky」両立可否: 起票時実測「識別列 sticky（E12 案）が Non-scope である技術的根拠」節に記載の CSS 仕様（overflow-x/overflow-y の computed 規則）と DSR-17 `:292` の `<main>` 単一 scroll 契約から静的に導出。追加実験不要（N/A、Playwright/headless Chromium は使わない）
-- `ListShell` sticky thead の `top` 基準・`w-min min-w-full` wrapper の追随挙動: 本 lane では `ListShell.tsx` を一切変更しないため前提の再検証は不要（静的コード確認、N/A）
+- E12 当初案「新規 `overflow-x:auto` 容器 + 識別列 sticky」の不採用: 起票時実測「識別列固定の実装方式」節に記載の CSS 仕様（overflow-x/overflow-y の computed 規則）と DSR-17 `:292` の `<main>` 単一 scroll 契約から静的に導出。追加実験不要（N/A、Playwright/headless Chromium は使わない）
+- `<main>` が既に横 scroll 可能という前提: `RootLayout.tsx:65` `className="min-h-0 min-w-0 overflow-auto"` を実読で確認済み（Tailwind `overflow-auto` = 両軸 `overflow: auto`）。追加実験不要（静的コード確認、N/A）
+- `ListShell` sticky thead の `top` 基準・`w-min min-w-full` wrapper の追随挙動: wrapper 自体は本 lane で変更しない。`left-*` の追加が `top-*`/`overflow-visible` の既存指定と独立して共存することは CSS 仕様（`position: sticky` の各オフセットは独立）から静的に導出、追加実験不要（N/A）
 
 ## Contract Coverage Ledger
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
-| L4-D1 識別列 sticky 不採用（owner D 決定） | なし（Non-scope 確定） | 該当なし | non-scope |
-| L4-D2 ProductTable 部門列 whitespace-normal（round 1 是正、対象を 1 画面へ縮小） | `ProductTable.tsx` | `ProductTable.test.tsx` 新規 assertion | AC-L3-1 |
+| L4-D1 識別列固定、新規 scroll 容器なし（owner 決定第 2 便） | `ListShell.tsx`、`ProductListPage.tsx` | S9 新規 assertion | AC-L3-1 |
+| L4-D2 D（表を縮ませる）取り下げの理由（Opus round 2 実測） | なし（記録のみ） | 該当なし | non-scope |
+| L4-D10 identityColumns API 選定 + 幅の前提 | `ListShell.tsx`、`ProductTable.tsx` | S9 新規 assertion | AC-L3-1 |
+| L4-D11 固定列 hover/選択背景 非追随（residual risk） | なし（許容前提） | 該当なし | AC-L3-1（所感） |
 | S1a〜S1f 枠地色 bg-card 統一（L4-D3、整合性チェック除く） | 6 file | 各 Page/Component test 拡張 | AC-L3-3 |
 | S1g table wrapper rounded-lg 統一（round 2 是正） | `IntegrityCheckPage.tsx`/`OperationLogsPage.tsx` | 各 test 拡張 | AC1（L3 対象外） |
 | S2 Pagination 上下切り分け（L4-D4） | `Pagination.tsx` | `Pagination.test.tsx` 拡張 | AC-L3-2 |
@@ -321,6 +348,7 @@ Minimum design checks for business-app work:
 | S6 DSR-22 改訂（L4-D7） | `docs/design-system/01-decision-rules.md` | 該当なし（docs review） | non-scope |
 | S7 catalog ⑩ 改訂（L4-D8） | `docs/design-system/02-component-catalog.md` | 該当なし（docs review） | non-scope |
 | S8 catalog ⑯ 項目 2 改訂（L4-D8） | `docs/design-system/02-component-catalog.md` | 該当なし（docs review） | non-scope |
+| S9 識別列固定の実装 | `ListShell.tsx`、`ProductListPage.tsx`、`ProductTable.tsx` | `ListShell.test.tsx`/`ProductListPage.test.tsx`/`ProductTable.test.tsx` 新規 assertion | AC-L3-1 |
 
 ## 実装原則（ponytail、full）
 
@@ -328,15 +356,15 @@ Minimum design checks for business-app work:
 規則: 実装 1 つの interface / 製品 1 つの factory / 変わらない値の config を作らない。将来用の scaffold を作らない。追加より削除、賢さより退屈さ。file 数は最少、動く最短 diff（ただし問題を理解してから。正しい場所の小さな変更 > 間違った場所の最小変更）。同サイズの選択肢は edge case に正しい方。意図的に角を落とした箇所（上限のある近似・O(n²)・global lock 等）は `ponytail:` comment を残す。
 例外: 正しさ・データ安全・既存 test の契約・packet の AC を削る方向には使わない。
 
-本 lane での適用例: S2 は `Pagination.tsx` 1 箇所の修正で 8 画面全 caller に反映する（画面ごとに個別ロジックを複製しない）。S4 は起票時実測で既に条件を満たす 5 画面には触れず、満たさない 2 画面のみを直す（満たしている契約への冗長な書き換えをしない）。round 1 是正では「表を縮ませる」対象を出っ張りの実症状がある商品一覧 1 画面へ絞り、症状のない 7 画面への投機的な変更をしない（YAGNI、Opus P1 が正しく検出した過剰適用）。部門列の折返しに新規 `min-w-*` の床を追加しない（Opus P2、既存の `whitespace-normal` 1 class で足りる）。
+本 lane での適用例: S2 は `Pagination.tsx` 1 箇所の修正で 8 画面全 caller に反映する（画面ごとに個別ロジックを複製しない）。S4 は起票時実測で既に条件を満たす 5 画面には触れず、満たさない 2 画面のみを直す（満たしている契約への冗長な書き換えをしない）。S9（識別列固定）は既存の予約 prop `identityColumns` をそのまま使い、値は DSR-22 mapping 表が要求する 1・2 のみに対応するリテラル class 配列で足りるため、任意 N 列の generator は作らない（YAGNI）。配線も症状のある商品一覧 1 画面に限定し、症状のない 7 画面への投機的な配線をしない。
 
 ## Test Plan
 
 Test Design Matrix: [test-matrices/2026-09-05-ui-list-backbone-d-lane4.md](test-matrices/2026-09-05-ui-list-backbone-d-lane4.md)
 - If the Human Gate includes L3, Writer completion includes `cargo check --release` before the owner native build; this is not a CI gate（本 lane は frontend のみだが release check の慣行は維持する）。
 
-- targeted tests: 商品一覧の部門列 class assertion、8 画面 + `Pagination` の class・DOM 順・条件分岐 assertion（既存 test file の拡張が中心、新規 test file は原則追加しない）
-- negative tests: `totalPages <= 1`（0 件含む）で `Pagination` が描画されないことの対照 case、EmptyState 分岐で新規 `PaginationSummary` が誤って描画されないことの対照 case、7 画面の table 幅/長文列が本 lane で変更されていないことの回帰
+- targeted tests: 商品一覧の識別列固定 class assertion（`identityColumns` あり/なし対照）、8 画面 + `Pagination` の class・DOM 順・条件分岐 assertion（既存 test file の拡張が中心、新規 test file は原則追加しない）
+- negative tests: `totalPages <= 1`（0 件含む）で `Pagination` が描画されないことの対照 case、EmptyState 分岐で新規 `PaginationSummary` が誤って描画されないことの対照 case、`identityColumns` 未設定時に固定 class が付かないことの対照 case、7 画面に `identityColumns`/table 幅変更が本 lane で混入していないことの回帰
 - compatibility checks: `ListShell.test.tsx` 既存 17 it が pass のまま（AC9、本 lane は `ListShell.tsx` を変更しないため無変更で pass する）、`Pagination.test.tsx` の「0 件」表示 test は仕様変更として更新（削除ではない）、`StocktakePage.test.tsx:1042`/`:1054`、`PriceRevisionPage.test.tsx:660-669`、`IntegrityCheckPage.test.tsx:414`、`OperationLogsPage.test.tsx:280,292,419,431`、`StockInquiryPage.test.tsx:526` の既存 test 是正
 - data safety checks: 該当なし（DB 書込みなし）
 - main wiring/integration checks: `PriceRevisionFilters` への perPage prop 追加が `PriceRevisionPage.tsx` の既存 state/handler と正しく配線されること（S4b、既存 SC9a が oracle）
@@ -347,14 +375,16 @@ Test Design Matrix: [test-matrices/2026-09-05-ui-list-backbone-d-lane4.md](test-
 
 ## Review Focus
 
-- `ProductTable.tsx` の部門列 `whitespace-normal` 化が新規の `min-w-*` 床を追加していないこと（Opus P2、YAGNI）
-- 商品一覧以外の 7 画面に table 幅・長文列の変更が一切入っていないこと（Non-scope 逸脱の検出）
-- `ListShell.tsx` が 1 行も変更されていないこと（`ListShell.test.tsx` 17 it が無変更のまま pass、特に `:343` の wrapper 完全一致）
+- `ListShell.tsx` の識別列 class が `identityColumns` の値（1/2）ごとのリテラル配列で実装され、実行時テンプレートリテラルで class 文字列を組み立てていないこと（Tailwind JIT が静的解析できる形か）
+- 識別列（商品コード・商品名）以外の列に `sticky`/`left-*`/`bg-background`/`z-[1]` が付いていないこと、`identityColumns` を渡さない呼び出しで固定 class が一切付かないこと
+- 商品一覧以外の 7 画面に `identityColumns` の配線・table 幅変更が一切入っていないこと（Non-scope 逸脱の検出）
+- `ListShell.tsx:99` の `w-min min-w-full` wrapper・`top`/`overflow-visible` 指定が無変更のこと（`ListShell.test.tsx` 17 it が pass、特に `:343` の wrapper 完全一致）
 - `Pagination.tsx` の `totalPages <= 1` null 化（S2）が `totalCount === 0` の既存契約（EmptyState 分岐が先に処理する前提）と矛盾しないこと
 - 上部 `PaginationSummary` ロールアウト（S3）が EmptyState / エラー / ローディング分岐に誤って描画されないこと、かつ重複文言による既存 test 破綻（`IntegrityCheckPage.test.tsx:414` 等）がすべて是正されていること
 - `PriceRevisionFilters` への perPage 移設（S4b）が既存の `patchSearch`/`scrollPageToTop` 呼出しと `PriceRevisionPage.test.tsx:660-669`（SC9a）を壊していないこと
 - `StocktakePage.tsx:854` の `<fieldset>` が単一ページで空要素として残っていないこと（S5）。`IntegrityCheckPage.tsx:417`/`StockMovementsPage.tsx:243` は verified non-issue のため変更が無いことを確認する
-- Non-scope（識別列 sticky、`ListShell.tsx:99` wrapper、`StockMovementsPage.tsx:98`、商品一覧以外の table 幅）に列挙した項目が変更されていないこと
+- Non-scope（新規 scroll 容器、`StockMovementsPage.tsx:98`、商品一覧以外の 7 画面への `identityColumns` 配線・table 幅変更）に列挙した項目が変更されていないこと
+- toolbar frame の `sticky left-0` が summary 帯（Lane 2 S17 の table 幅追随）と干渉していないこと
 - 在庫照会の上部 summary（S3b）が下部と同じ `statusValue === "all" && totalCount !== null` 条件で描画されること（round 2 是正）
 - `IntegrityCheckPage.tsx:234` の Select 単独ラッパーに frame（`bg-card`）が付いていないこと、`IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:496` の table wrapper が `rounded-lg` に統一されていること（round 2 是正、S1）
 - フィルタ変更で `totalCount` が減っても `page > totalPages` の状態で描画される画面が無いこと（AC13、round 2 是正）
@@ -363,13 +393,13 @@ Test Design Matrix: [test-matrices/2026-09-05-ui-list-backbone-d-lane4.md](test-
 
 Contract ID: SPEC-UILB-D6
 
-- 商品一覧の表が窓を狭めても toolbar 枠の幅を超えて出っ張らず部門列が折り返し（他 7 画面は不変）、ページ送りが上部常時表示（ボタンなし）・下部複数ページ限定へ切り分けられ、表示件数 `Select` の位置と filter/toolbar 枠の地色（既存 `--card`）が 8 画面で統一される
+- 商品一覧で窓を狭めると商品コード + 商品名と列見出しが `<main>` 基準で左端に固定され、右側の列だけが横に流れる（Excel 型識別列固定、他 7 画面は不変）。ページ送りが上部常時表示（ボタンなし）・下部複数ページ限定へ切り分けられ、表示件数 `Select` の位置と filter/toolbar 枠の地色（既存 `--card`）が 8 画面で統一される
 
 ## Trace Matrix
 
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
-| SPEC-UILB-D6 | L4-D2（商品一覧部門列） | `ProductTable.test.tsx` 新規 assertion | 商品一覧の折返し | vitest |
+| SPEC-UILB-D6 | S9（識別列固定） | `ListShell.test.tsx`/`ProductListPage.test.tsx`/`ProductTable.test.tsx` 新規 assertion | 商品一覧の識別列固定 | vitest |
 | SPEC-UILB-D6 | S1a〜S1g | 各 Page/Component test 拡張 | 枠地色 | vitest |
 | SPEC-UILB-D6 | S2 | `Pagination.test.tsx` 拡張 | 上下切り分け | vitest |
 | SPEC-UILB-D6 | S3a〜S3g | 各 Page test 拡張 + 重複文言 test 是正 | 上部 summary 常時表示 | vitest |
@@ -409,4 +439,6 @@ Plan Review round 2（Opus 5、read-only claims-producer）: **reject**（第 1 
 - P3（accept）: `StocktakePage.tsx:821-852` の else 分岐は現在 `<Table>` を裸で返す。S3a の記述を「1 行追加」から「Fragment/div で `<Table>` を包み直す」へ訂正した
 - P3（accept）: filter frame が `rounded-lg` になる一方、`IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:496` の table wrapper が `rounded-md` のまま残ると角丸が食い違う。S1g（新設）で両 file の `rounded-md` → `rounded-lg` を同じ sweep に含めた（`bg-card` は付けない）
 - 本 packet はこれらすべてを反映済み。item 1/3/4（floor 概算・折返し効果、owner 決定待ち）は次便で扱う。次回 Plan Review で新規 P1/P2 なしを確認後、`plan-gate -> plan-approved` へ進める予定
-- Findings Freeze: not yet frozen（round 1/2 是正の再レビュー、および item 1/3/4 の owner 決定が未完了のため）; post-freeze exceptions: none.
+- Findings Freeze: not yet frozen（round 1/2 是正の再レビューが未完了のため）; post-freeze exceptions: none.
+
+**owner 決定（2026-09-05、第 2 便）**: item (1) を D（表を縮ませる、round 1/2 で商品一覧の部門列折返しに縮小）から**識別列固定**（Excel 型、`<main>` 基準 sticky-left + toolbar sticky-left、商品一覧のみ）へ書き換える。Opus round 2 item #1/#3/#4 が指摘した通り、D の実測効果は僅少（部門列の折返しで floor が −0〜56px 程度しか動かず、floor の主因は商品名 `min-w-[14rem]`＝224px + 数値 3 列の nowrap であり、部門列折返し単体では出っ張り解消に実質寄与しない）。この owner 決定により、旧 L4-D2（ProductTable 部門列 whitespace-normal）と floor 概算節は全面撤回し、識別列固定（新設 S9）に置き換える。詳細は「起票時実測」節と Design Intent Trace L4-D1/D2（改訂）を参照。
