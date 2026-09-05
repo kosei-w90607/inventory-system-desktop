@@ -8,7 +8,7 @@ owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 5d94a72
-- Amendments: none
+- Amendments: Gated Amendment 2（2026-09-06、共有 `select.tsx` の空文字 echo 無視、Writer commit `348ea3d`、Final Review Opus 採用）
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
@@ -349,3 +349,10 @@ Plan Review round 3（独立 Sonnet subagent、fresh context + 独立 Opus 5 rea
 2026-09-05: Plan Gate 収束（round 3/3。round 1 = Opus reject P1 5 / Sonnet approve-with-P2、是正 amend / round 2 = Opus reject P1 2 / Sonnet approve、是正 amend / round 3 = Sonnet approve、Opus reject は oracle 記述 3 件 + P3 1 件で設計欠陥なし）。round 3 の是正 4 件は同一 vendor ラリー天井のため Coordinator が該当行（S6 二重 oracle / SC6 `mockSearchProducts` supplier_id 44 / SC8b `renderStateful` spy hoist / S9 `<SelectGroup`）を直接検分して閉じた（owner 許可 2026-09-05「ラリーが止まらない時は Fable が見る」）。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑧ 同期の本 content commit に同乗させて遷移（forward state-only は温存）。Plan Commit = `5d94a72`（plan-first commit、Lane 5 tip `04f89a4` 直上）。Codex ロジックレビュー 1 回は §3.3 pending のまま。
 
 - Findings Freeze: not yet frozen（Final Review が未実施のため）; post-freeze exceptions: none.
+
+### Gated Amendment 2（2026-09-06、Final Review 起源、Coordinator 記録）
+
+- 事象: Writer が S8（ProductForm 部門 / 取引先）の実装中に、`<form>` 内の Radix `Select` が hidden native select（bubble input）の echo で `onValueChange("")` を発火し、同一 render で value と選択肢一覧が変わる場面（非同期取得した既存値の初期表示・作成直後の自動選択）に数値 ID を空で上書きする実バグを発見（`ProductFormPage.test.tsx:217` 付近の既存 duplicate-error test で再現）。呼び出し側の delay hack でなく `src/components/ui/select.tsx` の共有 `Select` で `value === ""` の `onValueChange` を無視する root-cause 修正を Writer commit `348ea3d` で投入（packet 未記載 = 本 amendment で遡及記録）。
+- Final Review（Opus、2026-09-06）の裏取り: `@radix-ui/react-select` 2.2.6 `dist/index.mjs:75,115-133,919-922,1070-1085`（`isFormControl` / `SelectBubbleInput` の uncontrolled `defaultValue` + `prevValue !== value` 時の value 代入と `change` dispatch / `SelectItemText` の `useLayoutEffect` 登録が 1 commit 遅れ）で機序を確認、`select.tsx:25` の guard を削除すると `ProductFormPage.test.tsx:246` が fail（1 failed / 9 passed）→ 復元で 10 passed を実測。全 19 `<Select>` 消費者は controlled（`defaultValue` 0 件）で、`SelectItem value=""` は Radix が throw（`dist:825`）かつ DSR-23 で禁止のため、空文字 callback の抑止は同期ずれを起こさない。より狭い代替（数値 3 site の guard / form 限定）は残り 13 site を同じ echo に晒す or Radix 内部依存のため不採用。
+- 裁定: 採用。Scope に S13「共有 `Select` の空文字 echo guard」（oracle: `rg -Fc `if (value === "") return;` src/components/ui/select.tsx` = 1）、Matrix に SC15（mutant = guard 削除、kill test = `ProductFormPage.test.tsx` duplicate-error test）、DSR-23 に guard の存在理由 1 文（後から「掃除」されないため）を追加する。是正は Final Review P2 と同じ Writer commit で行う。
+- 併記（Final Review P2/P3）: `select.tsx:15` comment の literal `<select` が AC の `rg "<select" src` = 0 を壊す → 文言変更 / SC8a（`ProductForm.test.tsx:782-797`）が `update` 値を assert せず mutant X2 が当該 file で生存 → `expect(onValuesChange).toHaveBeenCalledWith(expect.objectContaining({ departmentId: 1 }))` を追加 / L8-D6 の条件撤去は vitest oracle なし（static `rg` のみ、PR body にそう書く）/ `disabled` は `SelectTrigger` でなく Root（`Select`）に載せた実装で機能同等（packet 文言の方が古い）。
