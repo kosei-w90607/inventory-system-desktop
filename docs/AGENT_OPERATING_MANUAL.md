@@ -72,16 +72,18 @@ Execution Mode は vendor 単位の可用性を扱う。個別の役割担当（
 
 informational only（非規範。archive 文書の slot 名解読とCodex guidance profile選択用）。本節の独立性制約・§3.1〜§3.3 の規範を代替しない。Codex/OpenAI側のprofileは[agent-guidance index](agent-guidance/README.md)へ進み、shared contractを必ず併読する。
 
-| Slot | 現行実体（2026-07-28 時点） | Codex guidance profile |
+OpenAI 側の実モデルはセッションの選択設定が所有し、この表では固定しない。`frontier` は task-fit の既定値であり、モデル名や能力の保証ではない。Claude 側の記録は 2026-07-28 時点を維持し、役割権限・vendor 独立性・budget は変更しない。
+
+| Slot | 実体 | Codex guidance profile |
 |---|---|---|
 | Fable | Claude Fable 5（サブスク枠にある間のみ） | — |
-| Sol | Codex/OpenAI 側の主力 reasoning モデル | [frontier](agent-guidance/profiles/frontier.md) |
-| Terra | Codex/OpenAI 側の実装向けモデル | [balanced](agent-guidance/profiles/balanced.md) |
-| Luna | Codex/OpenAI 側の軽量探索モデル | [high-throughput](agent-guidance/profiles/high-throughput.md) |
+| OpenAI | セッションで選択されたモデル | [frontier](agent-guidance/profiles/frontier.md)（既定） |
 | Sonnet | Claude Sonnet 5（subagent または単独セッション） | — |
 | Opus | Claude Opus 5（区分は §3 の高自律・低制約適性 slot 項 / D-056 参照） | — |
 
-モデル更改時はこの表だけを更新する。owner をモデル間の伝書鳩にしない: 各役割への発注は Plan Packet / PR body / review packet という repository 証跡経由で渡し、owner の手作業転送を前提にしない。
+旧称 Sol / Terra / Luna は過去の packet・監査記録の解読用に限り、それぞれ当時の主力 reasoning / 実装向け / 軽量探索 slot を指す。新規の OpenAI 側割当は上表を使う。`balanced` / `high-throughput` profile は model-neutral な作業特性として残し、旧モデルを起動する指定にはしない。
+
+モデル更改時は選択設定と [モデル差分メモ](agent-guidance/model-notes.md) を更新する。役割対応の変更は task-fit の実測が根拠になる場合だけこの表へ反映する。owner をモデル間の伝書鳩にしない: 各役割への発注は Plan Packet / PR body / review packet という repository 証跡経由で渡し、owner の手作業転送を前提にしない。
 
 ### 3.5 Task Shape: one-shot irreversible
 
@@ -97,7 +99,7 @@ informational only（非規範。archive 文書の slot 名解読とCodex guidan
 | 場面 | 使う資産 |
 |---|---|
 | start / resume kickoff | [.agents/skills/inventory-workflow-start](../.agents/skills/inventory-workflow-start/SKILL.md) + Plan Packet `Workflow State` |
-| Codex/OpenAI GPT-5.6 session | [agent-guidance index](agent-guidance/README.md) + shared contract + §3.4で対応するslot-neutral profile |
+| Codex/OpenAI session | [agent-guidance index](agent-guidance/README.md) + shared contract + §3.4で対応するslot-neutral profile |
 | wave 編成 / resume / merge train | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Wave Operation」+ [Plans.md](Plans.md)「Wave Registry」 |
 | Design Phase | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Design Phase Rules / Impact Review Lenses」 |
 | 実装 | [.agents/skills/inventory-implementation](../.agents/skills/inventory-implementation/SKILL.md) + [docs/templates/plan-packet.md](templates/plan-packet.md) |

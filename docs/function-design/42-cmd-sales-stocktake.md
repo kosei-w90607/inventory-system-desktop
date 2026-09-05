@@ -128,6 +128,23 @@ struct SalesExportResponse {
 
 ### 22.5 CMD-10 コマンド
 
+#### get_active_stocktake
+
+**関数要求**: 進行中の棚卸しを取得する（読み取り専用）
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+fn get_active_stocktake(
+    state: State<AppState>,
+) -> Result<Option<Stocktake>, CmdError>
+```
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::stocktake_service::get_active_stocktake(&conn) を呼ぶ（IO層 stocktake_repo::find_active_stocktake の薄いラッパー）
+3. 進行中の棚卸しがなければ None を返す
+
 #### start_stocktake
 
 **関数要求**: 新しい棚卸しを開始する
@@ -185,6 +202,25 @@ struct StocktakeItemListResponse {
 
 **pagination 実態**: stocktake_repo::list_stocktake_items は per_page を D-031 の `PAGINATION_MAX_PER_PAGE = 200` でクランプし、レスポンスの per_page もクランプ後の値を返す。
 
+#### find_stocktake_item
+
+**関数要求**: 商品コードまたはJANコードで棚卸しアイテムを取得する（読み取り専用）
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+fn find_stocktake_item(
+    state: State<AppState>,
+    stocktake_id: i64,
+    code: String,
+) -> Result<Option<StocktakeItemDetail>, CmdError>
+```
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::stocktake_service::find_stocktake_item(&conn, stocktake_id, &code) を呼ぶ（IO層 stocktake_repo::find_stocktake_item_by_code の薄いラッパー）
+3. 該当アイテムがなければ None を返す
+
 #### update_count
 
 **関数要求**: 棚卸しアイテムのカウントを更新する
@@ -228,6 +264,23 @@ fn complete_stocktake(
 4. Ok → StocktakeResult を返す（整合性チェック結果を含む。PR-5 で BIZ-07 統合後）
 5. Err(BizError::StocktakeNotInProgress(msg)) → CmdError { kind: "stocktake_not_in_progress" }
 6. Err(other) → CmdError に通常変換（ValidationFailed → "validation" で未入力警告を含む）
+
+#### get_last_completed_stocktake
+
+**関数要求**: 最後に完了した棚卸しを取得する（読み取り専用、UI-10-D5 前回比較用）
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+fn get_last_completed_stocktake(
+    state: State<AppState>,
+) -> Result<Option<LastStocktakeSummary>, CmdError>
+```
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::stocktake_service::get_last_completed_stocktake(&conn) を呼ぶ（IO層 stocktake_repo::find_last_completed_stocktake の薄いラッパー）
+3. 完了済み棚卸しがなければ None を返す
 
 #### get_stocktake_record
 

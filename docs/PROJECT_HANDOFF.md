@@ -178,7 +178,7 @@
 ### 大方針（セッション#1で確定した最重要判断）
 - **workflow の wave 運用（D-055）**: 互いに非干渉な lane は `Plans.md` の Wave Registry で 2〜3 lane を Draft PR まで並列化し、per-lane gateを維持したままmerge trainは直列に進める。wave 1の2 lane pilotに続き、wave 3で初の3 lane（小R2×2 + R3×1）を完走した。file footprint分離・generated artifact lane専有・terminal名固定は成立。次waveのreview発注は`Sonnet 5 / xHigh`とBase / merge-base / Reviewed Content HEAD / State HEADをReview Baseline Bundleとして明示し、state遷移は既存compression rule + 直後workflow-gitを徹底する。詳細は[wave 3 WER](archive/plans/2026-07-29-wave-3-workflow-effectiveness-review.md)。
 - **Opus 系 slot の役割確定（D-056）**: 高自律・低制約適性 slot は read-only の claims-producer 専任（レビュー難所一次・広域調査）。発注は AGENT_OPERATING_MANUAL §5.4 の低制約 profile、メインスレッド代役は不採用（代役ドラフトは Fable slot 恒久喪失時に revisit）。
-- **GPT-5.6 guidanceとlocal extensionの分離（D-057）**: tracked guidanceはfamily共通の判断・approval・検証契約とslot-neutral task-fit profileだけを持つ。具体model対応はAGENT_OPERATING_MANUAL §3.4、個人用の応答人格はignored root overrideが所有し、overrideは必ずtracked AGENTSを先にloadする。
+- **Codex/OpenAI guidanceとlocal extensionの分離（D-057）**: tracked guidanceはモデル世代共通の判断・approval・検証契約とslot-neutral task-fit profileを持つ。共有契約は `docs/agent-guidance/shared.md`、世代差分は `model-notes.md`。OpenAI 側の選択は個人用 config に集約し、ラッパー・Skill・役割表に固定しない（2026-09-05 owner 指示）。役割対応はAGENT_OPERATING_MANUAL §3.4、個人用の応答人格はignored root overrideが所有し、overrideは必ずtracked AGENTSを先にloadする。
 - **PLU一括登録方式を採用。ただし段階導入と固定slotがgo-live前提**: 商品マスタからPLU登録用 `.txt` を生成→カシオPCツール経由でレジに書込み、という REQ-402 方針は維持する。CV17 1.1.1向けは `.txt` / 11列 / 13桁JAN必須で、PLU総枠5000を通常PLUとスキャニングPLUで共有する。現地profileでは通常PLU216枠使用によりスキャニングPLU217始まり。アプリ導入時は全商品を1日で登録せず段階的にPLU販売へ移すowner意図があるため、毎回217から再採番する現行Full運用のまま進めず、固定slot割当とbulk onboardingを別R3で設計する。Z004は既に個数・金額を持つ確認済みPLU別売上で、BIZ-03のsale_records・`pos_stock_sync`在庫増減・rollbackも実装済み。将来作業はlayout A/B対応と店舗採取shapeでのend-to-end再検証である。Z001/Z002/Z005の公式日報集計とは別trackを維持する。
 - **会計フローは変更しない**: 利用者は今まで通りレジでバーコードスキャン→精算→レシート発行。レジ側の操作は一切変えない
 - **システムは日次バッチ更新**: 精算後にSDカード→PC→CSV取込みの流れ。リアルタイム連携はしない
@@ -496,4 +496,3 @@ pm run build / src-tauri cargo check 成功
 - POS CSVサンプル → Z001/Z002/Z004/Z005。CP932、NEL改行（Z001のみCRLF）
 - 要求仕様 → `docs/spec/requirements.md` + `docs/spec/requirements-coverage.md` + 各行からリンクする design docs
 - Tauri 2.0公式ドキュメント → https://v2.tauri.app/
-

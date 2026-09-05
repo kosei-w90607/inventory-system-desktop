@@ -14,7 +14,7 @@ When the task touches this project, read in this order:
 3. `Plans.md`
 4. `docs/project-memory.md`
 5. the specific design doc needed for the task:
-   - For Codex/OpenAI GPT-5.6 family sessions, first read
+   - For Codex/OpenAI sessions, first read
      `docs/agent-guidance/README.md` and the shared guidance/profile it routes to.
      If the runtime identity is unavailable, use the `frontier` profile.
    - `docs/DEV_WORKFLOW.md`
