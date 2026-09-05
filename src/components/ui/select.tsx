@@ -6,13 +6,11 @@ import { Select as SelectPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
-function Select({
-  onValueChange,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.Root>) {
+function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return (
     <SelectPrimitive.Root
       data-slot="select"
+      {...props}
       onValueChange={(value) => {
         // ponytail: <form> 内で使う Select は Radix が hidden native <select>
         // (bubble input) を併設する。その選択肢一覧は各 SelectItem の
@@ -25,9 +23,8 @@ function Select({
         // では発生しないため、空文字はこの echo だけの signature として無視する
         // （呼び出し側ごとの delay hack でなく発生源 1 箇所での root-cause 対処）。
         if (value === "") return;
-        onValueChange?.(value);
+        props.onValueChange?.(value);
       }}
-      {...props}
     />
   );
 }
