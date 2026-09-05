@@ -45,6 +45,9 @@ function rangeText(
 
 export function Pagination({ page, perPage, totalCount, onPageChange }: PaginationProps) {
   const { totalPages, from, to } = computeRange(page, perPage, totalCount);
+  if (totalPages <= 1) {
+    return null;
+  }
   const canPrev = totalCount > 0 && page > 1;
   const canNext = totalCount > 0 && page < totalPages;
 
@@ -96,7 +99,7 @@ export function PaginationSummary({ page, perPage, totalCount }: PaginationSumma
   const { totalPages, from, to } = computeRange(page, perPage, totalCount);
 
   return (
-    <div className="text-base text-foreground tabular-nums">
+    <div className="text-sm text-muted-foreground tabular-nums">
       {rangeText(totalCount, from, to, page, totalPages)}
     </div>
   );
