@@ -18,7 +18,7 @@ R3（商品一覧の識別列固定・table overflow 挙動 + 共有 component `
 - SC4g: `IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:496` の table wrapper が `overflow-x-auto rounded-md border` → `overflow-x-auto rounded-lg border` へ（round 2 是正、`bg-card` は付けない）
 - SC5a〜SC5b: `StocktakePage` と一括価格改定（`PriceRevisionFilters`）で表示件数 `Select` が枠内の最後尾（他要素の後）に描画される。既存 SC10/SC9a の rewrite・pass 維持が oracle
 - SC6: `StocktakePage.tsx:854` の `<fieldset>` が単一ページで描画されない
-- SC7: `ListShell.test.tsx` 既存 17 it（`:343` の wrapper 完全一致を含む）が無変更のまま pass する（回帰確認、本 lane は `ListShell.tsx` を変更しない）
+- SC7: `ListShell.test.tsx` の既存 it は `:343` の wrapper 完全一致を含め、S2 の `text-base` 判別子書換え（`:96,98,107,119`）以外は無変更のまま pass する（回帰確認。本 lane は `ListShell.tsx` を S9 の範囲〈identityColumns〉でのみ変更する）
 - SC8（round 2 是正、AC13。round 3 で行番号を再確認）: フィルタ変更で `totalCount` が perPage 未満へ減っても `page > totalPages` の状態で描画される画面が無い（`StockInquiryPage.tsx:194`/`OperationLogsPage.tsx:449` の既存「先頭ページに戻る」`EmptyState` 以外の画面から 1 画面選定）
 
 ## Failure Modes
@@ -57,7 +57,7 @@ R3（商品一覧の識別列固定・table overflow 挙動 + 共有 component `
 | SC5a StocktakePage Select 最後尾（既存 SC10 rewrite） | 順序不変 | unit（既存 `StocktakePage.test.tsx:1055` の SC10 rewrite、新規 test ではない） | SC10（rewrite）: filter row lists department filter, then uncounted-only checkbox, then per-page select in that DOM order | DOM 順で Select が Checkbox より前にある |
 | SC5b PriceRevisionFilters Select 配線（既存 SC9a が oracle） | 未配線残存 | unit（既存 `PriceRevisionPage.test.tsx:660-669` の SC9a、無変更のまま pass 必須 + `PriceRevisionFilters` 側の位置 assertion 追加） | SC9a（無変更）+ 新規: 表示件数 Select renders inside PriceRevisionFilters as the last child of the filter row, and clicking it still calls mockScrollPageToTop | SC9a が fail する（`onPerPageChange` 配線漏れ）、または Select が `PriceRevisionPage.tsx` 側に独立して残る |
 | SC6 StocktakePage fieldset ガード | 空 fieldset 残存 | unit（既存 `StocktakePage.test.tsx` 拡張） | SC6: fieldset wrapping the bottom Pagination is absent when totalPages<=1 | 単一ページで空の `<fieldset>` が DOM に残る |
-| SC7 ListShell 回帰 | 意図しない副作用 | unit（既存 `ListShell.test.tsx`、無変更のまま pass 必須、17 it） | SC7: existing 17 it (including :343 wrapper exact-match) still pass unmodified | 本 lane の変更が `ListShell.tsx` に混入し既存 it のいずれかを fail させる |
+| SC7 ListShell 回帰 | 意図しない副作用 | unit（既存 `ListShell.test.tsx`、S2 起因の判別子書換え 4 箇所以外は無変更 pass 必須） | SC7: existing it (including :343 wrapper exact-match) still pass unmodified | 本 lane の変更が `ListShell.tsx` に混入し既存 it のいずれかを fail させる |
 | SC8 範囲外 page 非到達（round 2 是正、AC13） | page > totalPages のまま描画される | unit（1 画面、既存 test 拡張。フィルタ変更で totalCount を減らして page reset を確認） | SC8: changing a filter that shrinks totalCount below the current page's range still leaves page <= totalPages (via existing reset handler) | フィルタ変更後も `page > totalPages` の状態で一覧が描画される |
 
 ## Mutation Oracle Notes
