@@ -43,6 +43,10 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 主動線が無い画面（例: 商品登録・修正）は `<header className="space-y-1">` に h1 のみを置き、右側のアクションを省く。
 
+**バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を `PageHeader` 直後に置く。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。
+
+**component gap（runtime lane 申し送り）**: `PageHeader.tsx:27-45` は `actions` が渡されると `flex` レイアウトを返し `subtitle` を描画しない分岐になっており、`actions` と `subtitle`（および説明セクション）は現状排他である。この gap により `SupplierManagementPage.tsx:35-38`（説明文がヘッダー外側の兄弟要素になり `PageShell` の `space-y-6` に流れ込み間隔が崩れる）、および `ReceivingPage.tsx:288-291` / `ManualSalePage.tsx:303-306` / `ReturnExchangePage.tsx:411-414` / `DisposalPage.tsx:278-281`（`subtitle` prop の値が render 結果から消え、説明文が画面に一切表示されない）の計 5 画面が影響を受けている。推奨は `PageHeader.tsx:29-36` の `actions` 分岐を「`<h1>` + 条件付き `<p>` を `<div className="space-y-1">` にまとめ、`actions` と並べる」形へ直す root-cause fix（外側 `<header>` の class は不変のため `PageHeader.test.tsx:61-73` は green のまま）。呼び出し側で wrapper を都度書く使用パターンは、この component 拡張が入るまでの代替であり Non-scope（runtime lane が実施）。
+
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
 **使用トークン**: h1 = タイポ `h1`（24px / weight 600）。アクションボタンは Primary（`amber-700`）。要素間ギャップは `space-3`（12px）。
@@ -169,7 +173,7 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
 </Table>
 ```
 
-**使用トークン**: コード列は等幅 `font-mono`。数値列は `tabular-nums` + `text-right` で桁を揃える。廃番行は `text-muted-foreground`（`stone-500`）で減衰させる。商品名セルは `min-w-[14rem]` で最小幅を確保し折り返す。
+**使用トークン**: コード列は等幅 `font-mono`。数値列は `tabular-nums` + `text-right` で桁を揃える。廃番行は `text-muted-foreground`（`stone-500`）で減衰させる。商品名セルは `min-w-[14rem]` で最小幅を確保し折り返す。数量 + 単位の表示は共通 `formatStockDisplay`/`formatStockUnitLabel`（`src/features/stock-inquiry/lib/format-stock-display.ts`）を使い、`unit` コードを直接文字列結合しない（UI 磨き batch 3 design L8-1）。
 
 **状態**:
 - 行の減衰: 廃番など従的状態の行は `text-muted-foreground` で薄くする
@@ -183,6 +187,10 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
 **バリエーション: 元記録リンク列**（PR #113/#115、canonical: `src/features/stock-movements/components/MovementTable.tsx`）: 在庫変動明細は `MovementTable{movements, returnTo?}` を在庫変動履歴 + 入出庫 4 詳細ページで共有する。`movement.source`（`{ label, route } | null`）が `null` なら「元記録なし」を表示し、値があれば returnTo 付きリンクで元業務記録の詳細へ遷移する。増減は矢印アイコン + 符号付き数値で示し、色のみに依存しない（DSR-08）。
 
 **バリエーション: 直近実績サマリテーブル**（PR #116）: 業務入力画面（入庫 / 返品・交換 / 手動販売 / 廃棄の 4 画面で確立）の下部に「直近の{業務名}」見出しと「すべての履歴を見る」（outline、`/inventory/records` へ recordType 付き遷移）を横並びで置き、直近 N 件テーブル（Skeleton / Error / Empty / データの 4 状態、パターン⑥）と各行の「詳細を見る」導線を付ける。直近リストの取得失敗時は「入力中の内容はそのままです。保存や商品追加は続けられます」のように業務継続を保証する文言を出し、フォーム入力を壊さない。新規の業務入力画面でも同じ構成を踏襲する。
+
+**備考列の規則**（UI 磨き batch 3 design、L8-6 + A1(a)(b)(c) 統合）: 備考は対象記録に note フィールドがある画面（入庫・返品交換・手動販売、および `MovementTable.tsx` を共有する在庫変動履歴・記録詳細 7 画面）で必須列とする。廃棄・破損は note フィールドを持たないため対象外（Non-scope、混同しない）。空欄表示は「—」に統一する（`MovementTable.tsx:93-94` の `"—"` 空値表示〈三項演算子〉が 7 画面共有かつアプリ全体でも主流。薄字「備考なし」（`ReturnExchangePage.tsx`）は不採用（owner culling 2026-09-06 で「—」に確定、runtime lane で「—」へ揃える））。一定文字数超過時は truncate + `title` 属性で省略表示する（`OperationLogsPage.tsx:522` 相当のパターンを再利用。`MovementTable.tsx:94` は現状 truncate のみで `title` を欠くため是正対象）。全文確認手段は各記録詳細ページ本体が担う（DSR-12）。
+
+**「直近の○○」系4画面の統一**（A1a/b/c）: 見出し直下に「直近 {N} 件の{対象}を新しい順に表示します。」の文型を置く（例: 価格履歴 = 「直近 10 件の売価・原価の変更を新しい順に表示します。」）。価格履歴を表構造へ変更したうえで `TableHead` 列見出しを付ける（runtime lane）。囲み（`border`）は意味階層ごとに 1 つまでとし（DSR-16）、`ManualSalePage.tsx` の内側の追加枠を外して他 3 画面（入庫・返品交換・廃棄）と揃える（他 3 画面へ箱を追加する方向は DSR-16 に反するため不採用）。
 
 **opt-in（⑯ 一覧の器で使用）**: viewport を超える一覧では、`<thead>` を sticky にし（`position: sticky; top: 0`、z-index は header > 固定列 > 本文）、商品コード + 商品名等の識別列を `position: sticky; left: 0` で左固定できる（履歴系は日時 + 種別を固定）。2 列目以降の識別列は 1 列目の実測幅を `left` に反映し、固定 rem 直書きにしない。1 画面に収まる短い一覧には適用しない。適用条件・必須構成の全体は [⑯ 一覧の器（ListShell）](#⑯-一覧の器listshell) を参照（DSR-22）。
 
@@ -940,6 +948,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-06 | UI 磨き batch 3 design | ① にページ説明セクション使用パターンと `PageHeader` の `actions`/`subtitle` 排他 component gap（5画面）を追加。③ に備考列規則（必須列・空欄「—」統一・truncate+`title`）・「直近 {N} 件の」文言統一・`ManualSalePage.tsx` 二重囲み是正方針・共通 formatter（`formatStockDisplay`/`formatStockUnitLabel`）使用ルールを追加 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | ⑩ canonical を `src/components/patterns/Pagination.tsx`（`Pagination` + `PaginationSummary`）へ、件数文言を範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」へ実装。⑯ canonical を `src/components/patterns/ListShell.tsx` へ（商品一覧 pilot 採用）、必須構成 1 の枠を `rounded-lg border bg-card p-4` へ、必須構成 3 の固定列影の記載を必須構成 4 側へ移動 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を当時の canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は後続 lane での移行対象と明記。⑯ の canonical を「なし（後続 lane で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |
