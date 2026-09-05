@@ -33,7 +33,7 @@ export interface ListShellProps {
    * （Tailwind JIT は実行時テンプレートリテラルを拾えないため）、任意 N 列の
    * generator は作らない（YAGNI、DSR-22 mapping 表の最大値は 2）。
    */
-  identityColumns?: number;
+  identityColumns?: 1 | 2;
   isLoading?: boolean;
   skeleton?: ReactNode;
   children: ReactNode;
@@ -68,7 +68,7 @@ const STICKY_TABLE_CLASSES = [
 // 全行が 1 か 2 のため、この 2 パターンのみで足りる（ponytail: 汎用 N 列 generator
 // は作らない）。列 2 の left-[7rem] は ProductTable.tsx 商品コード列の固定幅
 // w-28（7rem）と一致させる。
-const IDENTITY_COLUMN_CLASSES: Record<number, string[]> = {
+const IDENTITY_COLUMN_CLASSES: Record<1 | 2, string[]> = {
   1: [
     "[&_thead_th:nth-child(1)]:sticky",
     "[&_thead_th:nth-child(1)]:left-0",
@@ -123,7 +123,7 @@ export function ListShell({
         stickyHeader && "list-shell-sticky",
         stickyHeader && STICKY_TABLE_CLASSES,
         stickyHeader && (showTopSummary ? "[&_thead_th]:top-10" : "[&_thead_th]:top-0"),
-        identityColumns !== undefined && IDENTITY_COLUMN_CLASSES[identityColumns],
+        stickyHeader && identityColumns !== undefined && IDENTITY_COLUMN_CLASSES[identityColumns],
       )}
     >
       {toolbar !== undefined && (

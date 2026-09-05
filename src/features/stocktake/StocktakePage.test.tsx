@@ -1093,6 +1093,19 @@ describe("StocktakePage (UI-10)", () => {
     ).toBeTruthy();
   });
 
+  it("SC4a: filter row root has rounded-lg border bg-card p-4 (old borderless frame removed)", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse());
+    const { container } = await renderPage();
+    await screen.findByRole("combobox", { name: "部門" });
+    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    // 旧 frame（枠なし、`flex flex-wrap items-center gap-4` のみ）が残っていないこと。
+    const oldFrame = Array.from(container.querySelectorAll("div")).find(
+      (el) => el.className === "flex flex-wrap items-center gap-4",
+    );
+    expect(oldFrame).toBeUndefined();
+  });
+
   it("SC3a: renders the top PaginationSummary above the results table when totalCount > 0", async () => {
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
     mockGetItems.mockResolvedValue(listResponse({ total_count: 2, per_page: 200 }));

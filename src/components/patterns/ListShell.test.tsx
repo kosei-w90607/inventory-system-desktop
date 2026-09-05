@@ -388,9 +388,9 @@ describe("SC4e: bottom pager onPageChange wiring", () => {
 });
 
 describe("SC9a/SC9b: identityColumns activates root class tokens for the first N columns", () => {
-  it("SC9a: with identityColumns={2}, root carries sticky/left/background/z-index/edge tokens for columns 1-2 (thead th + tbody td), and no nth-child(3)+ variant", () => {
+  it("SC9a: with stickyHeader + identityColumns={2}, root carries sticky/left/background/z-index/edge tokens for columns 1-2 (thead th + tbody td), and no nth-child(3)+ variant", () => {
     const { container } = render(
-      <ListShell identityColumns={2}>
+      <ListShell stickyHeader identityColumns={2}>
         <SampleTable />
       </ListShell>,
     );
@@ -421,7 +421,7 @@ describe("SC9a/SC9b: identityColumns activates root class tokens for the first N
 
   it("SC9b: without identityColumns, root carries none of the identity-specific tokens (空集合 oracle 対)", () => {
     const { container } = render(
-      <ListShell>
+      <ListShell stickyHeader>
         <SampleTable />
       </ListShell>,
     );
@@ -429,6 +429,16 @@ describe("SC9a/SC9b: identityColumns activates root class tokens for the first N
     expect(rootTokens.some((token) => token.includes("nth-child"))).toBe(false);
     expect(rootTokens).not.toContain("[&_thead_th:nth-child(1)]:z-[11]");
     expect(rootTokens).not.toContain("[&_tbody_td:nth-child(1)]:forced-colors:border-r");
+  });
+
+  it("SC9b続き: identityColumns があっても stickyHeader が false なら識別列 token を付けない（thead th の bg-list-head が無く識別列だけ浮くのを防ぐ）", () => {
+    const { container } = render(
+      <ListShell identityColumns={2}>
+        <SampleTable />
+      </ListShell>,
+    );
+    const rootTokens = classTokens(container.firstElementChild);
+    expect(rootTokens.some((token) => token.includes("nth-child"))).toBe(false);
   });
 });
 

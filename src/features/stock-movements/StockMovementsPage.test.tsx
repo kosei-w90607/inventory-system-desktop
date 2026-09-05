@@ -223,7 +223,13 @@ describe("StockMovementsPage Lane 4 S1d/S3d: frame color + top summary", () => {
     await waitFor(() => {
       expect(mockListMovements).toHaveBeenCalled();
     });
-    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    // 商品情報 card（:98、既存 bg-card、Non-scope）も同じ組合せ class を持つため
+    // querySelector 単独では最初の一致（商品情報 card）を拾ってしまう
+    // （filter frame を戻しても検知できない）。開始日 label の祖先を frame として
+    // 特定し、frame class の出現数（商品情報 card + filter frame の 2 個）を検査する。
+    const filterFrame = screen.getByText("開始日").closest(".rounded-lg.border.bg-card.p-4");
+    expect(filterFrame).not.toBeNull();
+    expect(container.querySelectorAll(".rounded-lg.border.bg-card.p-4")).toHaveLength(2);
   });
 
   it("SC3d: renders the top PaginationSummary above the table when total_count > 0", async () => {

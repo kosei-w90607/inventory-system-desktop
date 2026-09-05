@@ -35,8 +35,8 @@ export function PriceRevisionFilters({
   suppliersQuery: UseQueryResult<Supplier[]>;
   departmentsQuery: UseQueryResult<Department[]>;
   onPatch: (patch: PriceRevisionSearchPatch) => void;
-  perPage: number;
-  onPerPageChange: (value: number) => void;
+  perPage: (typeof LIST_PER_PAGE_OPTIONS)[number];
+  onPerPageChange: (value: (typeof LIST_PER_PAGE_OPTIONS)[number]) => void;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const departments = (departmentsQuery.data ?? []).map(({ id, name }) => ({ id, name }));

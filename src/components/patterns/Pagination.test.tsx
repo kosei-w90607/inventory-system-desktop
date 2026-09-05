@@ -84,6 +84,11 @@ describe("SC1c: 51 件 / perPage 50 の 2 ページ目 edge", () => {
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
   });
+
+  it("page > totalPages では pager を描画し 前へ が有効（範囲外 page の pre-lane 挙動を維持）", () => {
+    render(<Pagination page={5} perPage={50} totalCount={3} onPageChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
+  });
 });
 
 describe("SC2/SC3c: PaginationSummary is text-only, text-sm text-muted-foreground (S2)", () => {

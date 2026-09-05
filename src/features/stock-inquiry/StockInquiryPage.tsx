@@ -221,9 +221,10 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
         />
       ) : data ? (
         <div className="space-y-2">
-          {/* S3b（round 2/3 是正）: 下部 Pagination と同じ条件（status === "all" かつ
-              totalCount が 0 より大きい）でのみ描画する。source: "low_stock" は
-              totalCount が null のため対象外、totalCount === 0 は誤って描画しない。 */}
+          {/* S3b（round 2/3 是正）: 下部と同じ見え方（下部は Pagination が totalPages で
+              self-gate する）になるよう、status === "all" かつ totalCount が 0 より
+              大きいときだけ描画する。source: "low_stock" は totalCount が null のため
+              対象外、totalCount === 0 は誤って描画しない。 */}
           {statusValue === "all" && (data.totalCount ?? 0) > 0 && (
             <PaginationSummary
               page={pageValue}

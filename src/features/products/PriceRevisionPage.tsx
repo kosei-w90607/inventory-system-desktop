@@ -17,7 +17,6 @@ import { usePriceRevisionList } from "./hooks/usePriceRevisionList";
 import {
   resetPriceRevisionSearch,
   updatePriceRevisionSearch,
-  type PriceRevisionPerPage,
   type PriceRevisionSearch,
   type PriceRevisionSearchPatch,
 } from "./priceRevisionSearch";
@@ -58,7 +57,7 @@ export function PriceRevisionPage({
         onPatch={patchSearch}
         perPage={list.normalizedSearch.perPage}
         onPerPageChange={(next) => {
-          patchSearch({ perPage: next as PriceRevisionPerPage });
+          patchSearch({ perPage: next });
           scrollPageToTop();
         }}
       />

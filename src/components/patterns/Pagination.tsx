@@ -45,7 +45,7 @@ function rangeText(
 
 export function Pagination({ page, perPage, totalCount, onPageChange }: PaginationProps) {
   const { totalPages, from, to } = computeRange(page, perPage, totalCount);
-  if (totalPages <= 1) {
+  if (totalPages <= 1 && page <= totalPages) {
     return null;
   }
   const canPrev = totalCount > 0 && page > 1;
