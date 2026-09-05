@@ -6,8 +6,30 @@ import { Select as SelectPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
-function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+function Select({
+  onValueChange,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  return (
+    <SelectPrimitive.Root
+      data-slot="select"
+      onValueChange={(value) => {
+        // ponytail: <form> 内で使う Select は Radix が hidden native <select>
+        // (bubble input) を併設する。その選択肢一覧は各 SelectItem の
+        // useLayoutEffect で1テンポ遅れて登録されるため、controlled value と
+        // 選択肢一覧が同一 render で同時に変わる瞬間（例: 非同期取得した既存値を
+        // 初期表示する場面）に一致する option が一時的に無くなり、ブラウザが
+        // 別の option を暫定選択 → React の value tracker が不一致を検知して
+        // 空文字の change を echo し、この Root の onValueChange まで伝播する。
+        // SelectItem value="" はアプリ全体で禁止済み（DSR-23）で実ユーザー操作
+        // では発生しないため、空文字はこの echo だけの signature として無視する
+        // （呼び出し側ごとの delay hack でなく発生源 1 箇所での root-cause 対処）。
+        if (value === "") return;
+        onValueChange?.(value);
+      }}
+      {...props}
+    />
+  );
 }
 
 function SelectGroup({ ...props }: React.ComponentProps<typeof SelectPrimitive.Group>) {

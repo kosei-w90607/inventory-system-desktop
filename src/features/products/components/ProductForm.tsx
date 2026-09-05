@@ -372,15 +372,6 @@ export function ProductForm({
                           cmd: "list_suppliers",
                         });
                         setSupplierOptions(refreshed);
-                        // ponytail: shadcn Select（Radix）は選択肢一覧を hidden native
-                        // <select> へ useLayoutEffect 経由で1テンポ遅れて反映する。選択肢
-                        // 更新と value 更新を同一 tick で行うと、hidden select が一時的に
-                        // 新しい value に一致する option を持たず、ブラウザが先頭 option
-                        // へ自動選択 → React の value tracker がその不一致を検知して change
-                        // echo を発火し value が上書きされる（Radix + React controlled
-                        // select の既知の相互作用）。macrotask 境界（setTimeout）まで
-                        // 空けて選択肢反映を先に確定させてから value を更新する。
-                        await new Promise((resolve) => setTimeout(resolve, 0));
                         update("supplierId", created.id);
                         setSupplierName("");
                         setShowSupplierInput(false);
