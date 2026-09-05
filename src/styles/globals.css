@@ -94,6 +94,8 @@
   --destructive-border: #fecaca; /* red-200 */
   --destructive-strong: #7f1d1d; /* red-900 */
   --success-soft: #f0fdf4; /* green-50 */
+  --success-border: #bbf7d0; /* green-200 */
+  --success-strong: #14532d; /* green-900 */
   --success-emphasis: #16a34a; /* green-600 */
   --rank-top-bg: #fffbeb; /* amber-50 */
   --rank-top-badge-bg: #fef3c7; /* amber-100 */
