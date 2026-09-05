@@ -51,7 +51,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 在庫少・在庫切れ一覧（在庫照会 `status=stockout|low_stock`、`list_low_stock` 経由）に取引先列が表示され、取引先名 昇順（取引先なしは最後）→ 同名内は在庫数 昇順 → 商品名 昇順で並ぶ
+- 在庫照会の一覧テーブル（`ProductListTable`、「すべて」/「在庫少」/「在庫切れ」共通の単一 component、`StockInquiryPage.tsx:224`）に取引先列が表示される。並び順は在庫少・在庫切れ（`status=stockout|low_stock`、`list_low_stock` 経由）でのみ 取引先名 昇順（取引先なしは最後）→ 同名内は在庫数 昇順 → 商品名 昇順に変わり、「すべて」（`search_products` 経由）は既存の `ORDER BY p.product_code` のまま変更しない
 - 棚卸しカウント画面の一覧テーブル（`StocktakePage.tsx` の counted/uncounted 統合テーブル）で、対象商品が廃番のとき行内に「廃番」badge が表示される（`variant="secondary"` + `border-border`、⑦ 改定後の DSR-22/04-backbone 正本〈枠は tone 固有色または `--border`、3:1 対象外〉に準拠）。同じ file 内の既存候補行 badge（`:624`）も同じ形へ揃える
 - 在庫照会の展開行は、選択中の行を再クリックすると閉じる。結果 1 件時の自動展開は同一検索条件（status/q/dept/page）内で 1 度だけ発火し、手動クローズ後に同じ条件のまま再展開しない
 
@@ -67,7 +67,7 @@ Goal Invariant:
 - 在庫照会への検索条件追加（R2-4。owner 決定「検索条件追加は不要、欲しいのは取引先別に並ぶこと」により Non-scope）
 - 取引先消滅の専用データ列・UI 追加（d-3。`suppliers` へ状態列を追加しない設計〈`docs/db-design/master-tables.md:170-182`〉を維持し、「該当商品を廃番に更新する運用」で代替）
 - `StocktakePage.tsx` 以外の既存 secondary badge（`ProductTable.tsx:56`/`ProductAddSuggest.tsx:129` 等）への枠 sweep。`02-component-catalog.md` に記録済みの Lane 3〜5 backlog のまま。本 lane は `StocktakePage.tsx` 内の 2 箇所（新規追加する棚卸しリスト行の badge + 同 file 内の既存候補行 badge）のみを対象とする（同一 file 内の一貫性のため、下記 Scope S6 参照）
-- 「すべて」view（`search_products` 経由、pagination あり）の並び順・列構成変更
+- 「すべて」view（`search_products` 経由）の並び順・pagination 変更（列構成は共有 `ProductListTable` のため「すべて」にも取引先列が出る。下記「起票時実測」参照）
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
 
@@ -76,7 +76,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **(d-1) データ経路**: 在庫少・在庫切れ一覧は `useStockInquiry.ts:74-79` の `commands.listLowStock(false)` → `filterLowStockList(rows, q, dept, status)`（`filter-low-stock-list.ts:19-47`）で、**pagination なし**（`totalCount: null, source: "low_stock"`）。バックエンド `list_low_stock_products`（`product_repo.rs:1194-1237`）は `ProductWithRelations`（`:103-109`）を返し、`supplier_name: Option<String>` は既存フィールド、`ORDER BY p.stock_quantity ASC, p.name ASC`（`:1225`）。`filter-low-stock-list.ts` は現状フィルタのみで**ソートしない**（SQL 順のまま透過）。全件クライアント保持済み・pagination なしのため、並び替えはクライアント側（`filterLowStockList` 拡張）が SQL `ORDER BY` 変更より小さい差分（Rust 変更・新規 Rust test 不要、既存 IO 層の他消費者への影響もゼロ）。本 packet はこちらを採用する
 - **(d-1) 実装対象**: `filter-low-stock-list.ts` の公開関数を `filterLowStockList` → `filterAndSortLowStockList` にリネームし（フィルタだけでなくソートも行う実態に合わせる、呼び出し元 1 箇所 + test file 1 箇所のみが影響）、フィルタ後に `Array.prototype.sort` で (1) `supplier_name`（`null` は最後、非 null は `localeCompare`）(2) `stock_quantity` 昇順 (3) `name`（`localeCompare`）の順で安定ソートする。呼び出し元は `useStockInquiry.ts:78`
 - **(d-1) UI 列**: `ProductListTable.tsx:56-64` の列は 商品コード / 商品名 / 部門 / 状態 / 在庫数 / 売価（6 列、`colSpan={6}` を `:98` で使用）。取引先列は 部門 の直後・状態 の前に挿入する（マスタ系列を隣接させる）。null 表示は `—`（`73-ui` の `counted_at`/差異列と同じ既存慣行に揃える）。列追加で `colSpan={6}` → `colSpan={7}` に更新が必要（`ProductListTable.tsx:98`、旧 `colSpan=5→6` 移行時と同型の regression リスク）
-- **(d-1) 「すべて」view 非対象**: `search_products` 経由（`useStockInquiry.ts:55-72`）は変更しない。`ProductListTable` は `source: "search" | "low_stock"` で分岐しており、取引先列と新ソートは `source === "low_stock"` の表示のみに適用する（`ProductWithRelations.supplier_name` は search 側でも DTO 上は存在するが、search 結果は既存の `ORDER BY p.product_code`〈`sort_key: "ProductCode"`〉のまま変更しない）
+- **(d-1) 「すべて」view は列構成を共有、並び順のみ非対象（Plan Review round 1 P2、Coordinator 実測で訂正）**: `ProductListTable` は `StockInquiryPage.tsx:224` の**単一 component**で、`source: "search" | "low_stock"` は `deriveStockState` 等の状態導出にのみ使い、列の出し分けは行っていない（条件分岐レンダリングなし）。したがって取引先列は「すべて」（`source="search"`）でも**同じ 7 列で表示される**。変更しないのは並び順とページングのみ: `search_products` 経由（`useStockInquiry.ts:55-72`）の `ORDER BY p.product_code`〈`sort_key: "ProductCode"`〉と pagination（`totalCount` あり）はそのまま。`ProductWithRelations.supplier_name` は search 結果 DTO にも既存フィールドとして存在するため、値の表示自体に追加実装は不要（列を出すだけで値は出る）
 - **(d-2) DTO**: `StocktakeItemDetail`（`stocktake_repo.rs:63-74`）に `is_discontinued` フィールドなし。構築箇所は 2 つ、いずれも既に `products p` を `JOIN` 済み（新規 JOIN 不要、SELECT 列と struct field の追加のみ）:
   - `find_stocktake_item_by_code`（`:342-372`、SELECT は `:348-349`、struct 構築は `:360-370`）— 商品コード/JAN 完全一致検索の対象解決に使う
   - `list_stocktake_items`（`:485-560`、SELECT は `:537-539`、struct 構築は `:548-558`）— 棚卸しカウント画面のページング一覧本体
@@ -90,10 +90,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Scope
 
 - **S1 filter-low-stock-list のリネーム + ソート追加**: `filter-low-stock-list.ts` の `filterLowStockList` を `filterAndSortLowStockList` へリネームし、フィルタ後に `supplier_name`（null 最後、非 null は昇順）→ `stock_quantity` 昇順 → `name` 昇順の安定ソートを追加する。呼び出し元 `useStockInquiry.ts:78` を更新。完了条件: `rg -c "filterAndSortLowStockList" src/features/stock-inquiry/hooks/useStockInquiry.ts` ≥ 1 かつ `rg -c "filterLowStockList" src/features/stock-inquiry` = 0（リネーム漏れなし）
-- **S2 ProductListTable に取引先列を追加**: `ProductListTable.tsx` の列を 商品コード / 商品名 / 部門 / **取引先** / 状態 / 在庫数 / 売価（7 列）へ。取引先 null は `—`。展開行 `colSpan` を `6` → `7` へ更新。列は `source === "low_stock"` のときのみソート済み前提で表示（`source === "search"` でも同じ列を出すが並び順は search 側のまま）。完了条件: `rg -Fc 'colSpan={7}' src/features/stock-inquiry/components/ProductListTable.tsx` ≥ 1 かつ `rg -Fc 'colSpan={6}' src/features/stock-inquiry/components/ProductListTable.tsx` = 0
+- **S2 ProductListTable に取引先列を追加（両 view 共通、無条件）**: `ProductListTable.tsx` の列を 商品コード / 商品名 / 部門 / **取引先** / 状態 / 在庫数 / 売価（7 列）へ。取引先 null は `—`。展開行 `colSpan` を `6` → `7` へ更新。`ProductListTable` は「すべて」/「在庫少」/「在庫切れ」で条件分岐しない単一 component（`StockInquiryPage.tsx:224`）のため、取引先列は `source` に関わらず両 view に無条件で出る。並び順は S1 のソートが `source === "low_stock"` の呼び出し経路（`useStockInquiry.ts` の `filterAndSortLowStockList`）にのみ適用され、「すべて」（`source === "search"`）は既存の `ORDER BY p.product_code` のまま。完了条件: `rg -Fc 'colSpan={7}' src/features/stock-inquiry/components/ProductListTable.tsx` ≥ 1 かつ `rg -Fc 'colSpan={6}' src/features/stock-inquiry/components/ProductListTable.tsx` = 0
 - **S3 展開行トグルクローズ + 自動展開の検索条件単位制限（R2-3）**: `ProductListTable.tsx` の行 `onClick` を、選択中行の再クリックで `onSelect(null)` を呼ぶよう変更（`onSelect` の型を `(productCode: string | null) => void` へ）。`StockInquiryPage.tsx` の `onSelect` wiring を `selected: code ?? undefined` へ。`useStockInquiry.ts` の自動展開 `useEffect`（`:126-132`）に、検索条件（`status`/`q`/`dept`/`page`）から導出した key を `useRef` で保持し、同じ key で一度自動展開したら再展開しない guard を追加する（UI-06a-D5、下記 Design Intent Trace）。完了条件: `ProductListTable.test.tsx` に再クリックで選択解除される test、`useStockInquiry.test.tsx` に「同一条件で手動クローズ後は再自動展開しない」+「条件変化後は再度自動展開する」の対 test
 - **S4 `StocktakeItemDetail` に `is_discontinued` を追加**: `stocktake_repo.rs:64` の struct へ `pub is_discontinued: bool` を追加し、`find_stocktake_item_by_code`（`:348-349,360-370`）と `list_stocktake_items`（`:537-539,548-558`）の両 SQL に `p.is_discontinued` を追加、struct 構築に `is_discontinued: row.get(N)?` を追加する（新規 JOIN 不要、SELECT 列追加のみ）。完了条件: `rg -Fc 'pub is_discontinued: bool' src-tauri/src/db/stocktake_repo.rs` = 1、両関数の SELECT 文に `p.is_discontinued` が含まれる（`rg -c 'is_discontinued' src-tauri/src/db/stocktake_repo.rs` ≥ 4〈struct 定義 1 + SELECT 2 + 構築 2 = 5 が期待値、Writer 実装後に実数へ合わせて Matrix で確定〉）
-- **S5 bindings 再生成**: `cd src-tauri && cargo run --bin generate_bindings` を実行し `src/lib/bindings.ts` を再生成する。完了条件: `git diff --stat -- src/lib/bindings.ts` が `StocktakeItemDetail` 型定義への `is_discontinued: boolean` 追加 1 行のみであることを確認（予期しない diff が出た場合は原因を特定してから進める）
+- **S5 bindings 再生成**: `cd src-tauri && cargo run --bin generate_bindings` を実行し `src/lib/bindings.ts` を再生成する。完了条件は AC6（機械 oracle: `git diff --numstat` の追加 1/削除 0 + `is_discontinued: boolean,` の fs literal）参照。予期しない diff が出た場合は原因を特定してから進める
 - **S6 StocktakePage.tsx に廃番 badge を追加 + 候補行 badge を同じ形へ揃える**: `StocktakePage.tsx:838` 商品名セルへ `{item.is_discontinued ? <Badge variant="secondary" className="border-border">廃番</Badge> : null}` を追加する。icon は付けない（⑦ 改定後ルールで②分類の icon は任意、既存候補行の前例〈icon なし〉に揃える）。同じ commit で `StocktakePage.tsx:624` の既存候補行 badge（`<Badge variant="secondary" className="ml-2">廃番</Badge>`）にも `border-border` を追加し（`className="ml-2 border-border"` 等）、同一 file 内の 2 箇所を同じ枠仕様に揃える（見た目の不一致を残さない）。完了条件: `rg -Fc 'border-border"' src/features/stocktake/StocktakePage.tsx` ≥ 2（新規箇所 + 候補行の是正箇所）、`rg -c 'border-border-strong' src/features/stocktake/StocktakePage.tsx` = 0（旧仕様の混入なし）
 - **S7 docs 同期**: `58-ui-stock-inquiry.md` に UI-06a-D4（取引先列 + 並び順）/ UI-06a-D5（展開行トグルクローズ + 自動展開の検索条件単位制限）を §58.10 に追加し、§58.7 ProductListTable 節の列挙・colSpan 記述・§58.4 selected ライフサイクル節を更新する。`73-ui-stocktake.md` に UI-10-D13（棚卸しリストの廃番 badge）を §73.3 に追加し、§73.6 一覧・フィルタ表へ「廃番 badge」行を追加する。両 file の更新履歴に本 PR の 1 行を追加
 
@@ -102,19 +102,20 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - R2-4 在庫照会への検索条件追加（owner 決定「不要」、⑦ (d) から削除済み）
 - d-3 取引先消滅の専用データ列・UI（`suppliers` へ状態列を追加しない設計を維持、「該当商品を廃番に更新する運用」で代替）
 - `StocktakePage.tsx` 以外の既存 secondary badge（`ProductTable.tsx:56`/`ProductAddSuggest.tsx:129` 等）への `border-border` sweep。**注記**: `StocktakePage.tsx:624` の候補行 badge は本 lane が編集する同じ file 内にあり、新規追加する badge（S6）と隣り合うため、本 lane の Scope（S6）に含めて同じ commit で `border-border` へ揃える（Non-scope からは除外）。他 file の同種 badge は Lane 3〜5 backlog のまま
-- 「すべて」view（`search_products` 経由）の並び順・列構成・pagination 変更
+- 「すべて」view（`search_products` 経由）の並び順・pagination 変更（列構成は S2 により両 view 共通で変わる。「すべて」に取引先列が出ること自体は Scope、その並び順・ページングだけが Non-scope）
 - `UncountedItem`（`stocktake_repo.rs:87-91`）への `is_discontinued` 追加（frontend 非公開の内部専用構造体、消費者なし）
 
 ## Acceptance Criteria
 
-- AC1: 取引先列が `ProductListTable.tsx` に存在し、`source === "low_stock"` の一覧で取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順に並ぶ — `filter-low-stock-list.test.ts` に 3 取引先（うち 1 件 null）を含む非空期待の sort test
+- AC1a: 取引先列が `ProductListTable.tsx` に存在し（両 view 共通）、「在庫少」「在庫切れ」（`source === "low_stock"`）で取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順に並ぶ — `filter-low-stock-list.test.ts` に 3 取引先（うち 1 件 null）を含む非空期待の sort test
+- AC1b: 「すべて」（`source === "search"`）でも取引先列ヘッダ「取引先」が表示される — `ProductListTable.test.tsx` に非空期待の test（Plan Review round 1 P2、共有 component のため列は無条件表示）
 - AC2: `colSpan={7}`（旧 `colSpan={6}` は 0 件）— `rg -Fc 'colSpan={7}' src/features/stock-inquiry/components/ProductListTable.tsx` ≥ 1 かつ `rg -Fc 'colSpan={6}' src/features/stock-inquiry/components/ProductListTable.tsx` = 0
 - AC3: 選択中行の再クリックで詳細展開が閉じる（`selected` が `undefined` になる）— `ProductListTable.test.tsx` に regression test
-- AC4: 自動展開は同一検索条件内で 1 度のみ — `useStockInquiry.test.tsx` に「手動クローズ後、同条件では再展開しない」+「条件変化後は再展開する」の対 test
+- AC4: 自動展開は同一検索条件内で 1 度のみ — `useStockInquiry.test.tsx` に「手動クローズ後、同条件では再展開しない」+「条件変化後は再展開する」の対 test。**P3 注記（test 不要）**: full remount（route 再入場）では `useRef` が初期化され同条件でも再展開する。これは意図どおりの挙動でありデフェクトではない（UI-06a-D5 の Design Intent Trace 参照）
 - AC5: `StocktakeItemDetail` に `is_discontinued: bool` が追加され、両 SQL 経路（`find_stocktake_item_by_code`/`list_stocktake_items`）で正しい値が返る — Rust `#[cfg(test)]` に `test_list_stocktake_items_req205_includes_is_discontinued` / `test_find_stocktake_item_by_code_req205_includes_is_discontinued` を追加
-- AC6: `bindings.ts` の diff が `StocktakeItemDetail` への `is_discontinued: boolean` 追加のみ — `git diff --stat -- src/lib/bindings.ts` を目視確認
+- AC6: `bindings.ts` の diff が `StocktakeItemDetail` への `is_discontinued: boolean` 追加 1 行のみ（Plan Review round 1 P2、目視確認から機械 oracle へ）— `git diff 1a8ba62..HEAD --numstat -- src/lib/bindings.ts` の出力が `1<TAB>0<TAB>src/lib/bindings.ts`（追加 1 行・削除 0 行）、かつ `git diff 1a8ba62..HEAD -- src/lib/bindings.ts | rg -Fc '+    is_discontinued: boolean,'` = 1（インデント・末尾カンマは `StocktakeItemDetail` 型の既存 sibling field、例 `current_stock: number,`〈`bindings.ts:1576`〉と同じ 4 スペース + 末尾カンマ書式で実測済み。Writer が異なる位置に挿入した場合は前後の sibling field 書式を再確認してから literal を合わせる）
 - AC7: 廃番商品の棚卸し行に「廃番」badge（`variant="secondary"` + `border-border`、icon なし）が表示され、非廃番行には表示されない — `StocktakePage.test.tsx` に非空期待の対 test
-- AC8: `cargo run --bin generate_traceability -- --check` が ERROR 0 / WARN 0（FE baseline 24 のまま。新規 test file を追加しない想定のため不変見込み）
+- AC8: `cargo run --bin generate_traceability -- --check` が ERROR 0 / WARN 0。`useStockInquiry.test.tsx`（起票時実測で実在確認済み、`src/features/stock-inquiry/hooks/useStockInquiry.test.tsx`）を含む既存 test file の拡張のみを想定するため FE baseline（現 24）は不変見込み。**条件付き（Plan Review round 1 P3）**: Writer が実装中に新規 test file を作る必要が生じた場合は baseline を 24 → 25 へ更新し、`generate_traceability.rs` の該当 comment に日付付きで理由を記録してから再生成する（Lane 5 L5-D6 の先例）。この場合 AC8 の期待値は「baseline 25、`--check` ERROR 0 / WARN 0」に読み替える
 - AC9: `StocktakePage.tsx:624` の既存候補行 badge も `border-border` を持つ（is_discontinued 表示 2 箇所が同じ枠仕様になる） — `rg -c 'border-border-strong' src/features/stocktake/StocktakePage.tsx` = 0
 - AC-L3-1（owner Windows native L3）: 在庫少・在庫切れ一覧が取引先名順に並んで見える。取引先列の位置（部門の直後・状態の前）は owner 決定事項ではなく Coordinator 判断のため、L3 で owner が別位置を望む場合は Gated Amendment として調整する
 - AC-L3-2（owner Windows native L3）: 棚卸しリストの廃番商品行に badge が視認できる
@@ -148,7 +149,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | function-design doc 新設 | 該当なし |
 | source / workflow doc 新設・改名 | 該当なし |
 | AGENT_OPERATING_MANUAL §5.5 consultation relay 使用 | 該当なし（§5.5 不使用） |
-| REQ coverage 追加（設計書・テスト追加） | 新規 REQ 追加なし。既存 REQ-301/302/205 の test file 拡張のみで新規 test file を追加しない想定のため traceability FE baseline（現 24）は不変見込み |
+| REQ coverage 追加（設計書・テスト追加） | 新規 REQ 追加なし。既存 REQ-301/302/205 の test file 拡張のみで新規 test file を追加しない想定のため traceability FE baseline（現 24）は不変見込み。新規 test file が必要になった場合は baseline を +1 し `generate_traceability.rs` の comment に日付付きで記録する（AC8 参照、Lane 5 L5-D6 の先例） |
 | route 新設 | 該当なし |
 | operator 画面新設 | 該当なし |
 | generated binding | `cargo run --bin generate_bindings`（S5）で `bindings.ts` を再生成し、diff を `StocktakeItemDetail.is_discontinued` 追加のみに限定確認する |
@@ -160,7 +161,7 @@ L1 full の生成系検査は bindings / frontend routes / traceability の 3 �
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | REQ-302 | `58-ui-stock-inquiry.md` §58.6/§58.7 | UI-06a-D4（2026-09-06） | 在庫少・在庫切れ一覧の並び順を取引先名優先へ変更する。SQL `ORDER BY` 変更（`product_repo.rs:1225`）ではなくクライアント側ソートを採用: (a) 一覧は既に pagination なしの全件クライアント保持（`useStockInquiry.ts:74-79`）で、フィルタ後の配列を並べ替えるだけで済む (b) SQL 変更は新規 Rust test・IO 層の契約変更・design doc（`20-io-product-repo.md`）改訂を伴い、変更面積が大きい (c) 「すべて」view（`search_products`）の並び順には影響させたくない、という要件をクライアント側の方が自然に満たす | `filter-low-stock-list.ts`（リネーム + ソート追加）/ `useStockInquiry.ts` | `filter-low-stock-list.test.ts` |
-| REQ-302 | `58-ui-stock-inquiry.md` §58.7 | UI-06a-D5（2026-09-06） | 展開行の再クリックで閉じる操作を実装するには、既存の「結果 1 件で自動展開」（`useStockInquiry.ts:126-132`、`selected === null` ガードのみ）を「同一検索条件で 1 度だけ」に絞る必要がある。検索条件（`status`/`q`/`dept`/`page`）から導出した key を `useRef` に保持し、同じ key で既に自動展開済みなら再発火しないガードを追加する。代替案（`selected` の変化元〈ユーザー操作 vs 自動展開〉を別 state で追跡する）は state 数が増え、URL 一本化の既存方針（§58.4）に反するため不採用 | `useStockInquiry.ts` | `useStockInquiry.test.tsx` |
+| REQ-302 | `58-ui-stock-inquiry.md` §58.7 | UI-06a-D5（2026-09-06、Plan Review round 1 P3 で境界を明記） | 展開行の再クリックで閉じる操作を実装するには、既存の「結果 1 件で自動展開」（`useStockInquiry.ts:126-132`、`selected === null` ガードのみ）を「同一検索条件で 1 度だけ」に絞る必要がある。検索条件（`status`/`q`/`dept`/`page`）から導出した key を `useRef` に保持し、同じ key で既に自動展開済みなら再発火しないガードを追加する。代替案（`selected` の変化元〈ユーザー操作 vs 自動展開〉を別 state で追跡する）は state 数が増え、URL 一本化の既存方針（§58.4）に反するため不採用。**境界（意図的、defect ではない）**: `useRef` はコンポーネントインスタンスのメモリに載るため、full remount（サイドバー遷移で `/stock` を離れて戻る等の route 再入場）が起きると ref は初期化され、同じ検索条件でも自動展開が再度発火する。これは「1 セッション内で条件を変えずに何度も開閉する」操作を対象にした guard であり、画面を離れて戻る操作まで記憶する要件ではないため、remount 時の再発火は仕様として許容する（test 不要、AC4 は同一マウント内の挙動のみを検査する） | `useStockInquiry.ts` | `useStockInquiry.test.tsx` |
 | REQ-205 | `73-ui-stocktake.md` §73.3/§73.6 | UI-10-D13（2026-09-06、⑦ 改定反映） | 棚卸しリストの行に廃番 badge を追加する。badge 仕様は新規に決めず、⑦（`agent/ui-conventions-batch`、owner 決定 2026-09-05）が改定した design-system 正本（②分類 badge の枠は `--border`、icon は識別に必要な場合のみ可で必須ではない）をそのまま適用する。旧 Gated Amendment 1（`--border-strong` 3:1 + icon 必須）は ⑦ が明示的に narrow 化・置換済みのため参照しない。理由: 既存候補行 badge（icon なし、枠なし）が改定後ルールにも未適合のため、同一 file 内の 2 箇所（新規追加分 + 候補行）を同じ commit で改定後仕様（`border-border`、icon なし）に揃える方が、新旧 2 種類の badge が同一画面に混在するより手戻りが少ない | `stocktake_repo.rs` / `StocktakePage.tsx` | `stocktake_repo.rs` `#[cfg(test)]` / `StocktakePage.test.tsx` |
 
 ## Design Intent Audit
@@ -224,7 +225,7 @@ Test Design Matrix: [test-matrices/2026-09-06-stock-supplier-column-and-stocktak
 
 - targeted tests: `filter-low-stock-list.test.ts`（ソート追加）/ `ProductListTable.test.tsx`（取引先列・colSpan・トグルクローズ）/ `useStockInquiry.test.tsx`（自動展開の検索条件単位制限）/ `stocktake_repo.rs` `#[cfg(test)]`（`is_discontinued` 両経路）/ `StocktakePage.test.tsx`（badge 表示）
 - negative tests: 取引先 null の商品が最後に来ること、非廃番商品に badge が出ないこと、条件変化がない限り自動展開が再発火しないこと
-- compatibility checks: 「すべて」view の並び順・列構成が無変更であること、候補行 badge の既存 test（disabled 状態・「選択」button 等の周辺 assertion）が badge の class 変更以外は無変更で pass すること
+- compatibility checks: 「すべて」view の並び順・pagination が無変更であること（列構成は S2 により両 view 共通で変わる想定、AC1b 参照）、候補行 badge の既存 test（disabled 状態・「選択」button 等の周辺 assertion）が badge の class 変更以外は無変更で pass すること
 - data safety checks: 該当なし（DB 書込みなし）
 - main wiring/integration checks: `bindings.ts` の diff が `is_discontinued` 追加のみであること（S5 完了条件）
 
@@ -241,13 +242,13 @@ Test Design Matrix: [test-matrices/2026-09-06-stock-supplier-column-and-stocktak
 
 ## Review Focus
 
-- 在庫少・在庫切れ一覧の並び順が取引先名優先（null 最後）→ 在庫数 → 商品名の 3 段になっていること。「すべて」view の並び順が変わっていないこと
+- 在庫少・在庫切れ一覧の並び順が取引先名優先（null 最後）→ 在庫数 → 商品名の 3 段になっていること。「すべて」view の並び順・pagination が変わっていないこと（列構成は両 view 共通で変わるのが正しい、AC1b 参照）
 - `colSpan` 更新漏れ（6 のまま残っていないか）
-- 展開行トグルクローズと自動展開の相互作用: 手動クローズ後に同条件で再展開しないこと、条件変化後は再展開すること（両方の対 test があること）
+- 展開行トグルクローズと自動展開の相互作用: 手動クローズ後に同条件で再展開しないこと、条件変化後は再展開すること（両方の対 test があること）。full remount（route 再入場）で再展開することは意図どおりで test 不要（UI-06a-D5 の Design Intent Trace 参照）
 - `StocktakeItemDetail` への `is_discontinued` 追加が両 SQL 経路（`find_stocktake_item_by_code`/`list_stocktake_items`）に反映されていること、`UncountedItem` には不要な追従をしていないこと
 - badge の class が `border-border`（`border-border-strong` ではない）で、icon を付けていないこと（⑦ 改定後仕様 + 候補行の前例に一致）
 - 同一 file 内の候補行 badge（`StocktakePage.tsx:624`）も同じ commit で `border-border` へ揃えられていること（新旧 2 種類の badge が混在していないこと）
-- Non-scope に列挙した項目（R2-4、d-3、`StocktakePage.tsx` 以外の既存 badge sweep、「すべて」view）が変更されていないこと
+- Non-scope に列挙した項目（R2-4、d-3、`StocktakePage.tsx` 以外の既存 badge sweep、「すべて」view の並び順・pagination）が変更されていないこと
 
 ## Spec Contract
 

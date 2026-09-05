@@ -9,14 +9,15 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 ## Contracts Under Test
 
 - SC1（UI-06a-D4）: `filterAndSortLowStockList`（旧 `filterLowStockList`）が、フィルタ後の結果を `supplier_name`（null 最後、非 null は昇順）→ `stock_quantity` 昇順 → `name` 昇順で安定ソートする
-- SC2（UI-06a-D4）: `ProductListTable.tsx` に取引先列（商品コード/商品名/部門/**取引先**/状態/在庫数/売価の 7 列）が追加され、`supplier_name` が `null` のとき `—` を表示する
+- SC2（UI-06a-D4）: `ProductListTable.tsx` に取引先列（商品コード/商品名/部門/**取引先**/状態/在庫数/売価の 7 列）が追加され、`supplier_name` が `null` のとき `—` を表示する。`ProductListTable` は `source` で条件分岐しない単一 component（`StockInquiryPage.tsx:224`）のため、`source="search"`（「すべて」）でも同じ列構成になる（Plan Review round 1 P2）
 - SC3（UI-06a-D4）: 展開行の `colSpan` が `7`（旧 `6` は残らない）
 - SC4（UI-06a-D5）: 選択中の行を再クリックすると `onSelect` が `null` で呼ばれ、`selected` URL state が `undefined` になる（詳細展開が閉じる）
 - SC5（UI-06a-D5）: 自動展開は同一検索条件（`status`/`q`/`dept`/`page`）内で 1 度のみ発火する。手動クローズ（`selected` が `null` に戻る）後、同じ条件で `listItems.length === 1` のままでも再展開しない。条件が変化した後、新しい条件で `listItems.length === 1` なら再展開する
 - SC6（UI-10-D13）: `StocktakeItemDetail` に `is_discontinued: bool` が追加され、`find_stocktake_item_by_code` と `list_stocktake_items` の両経路で商品の実際の `products.is_discontinued` 値が正しく返る
 - SC7（UI-10-D13）: `StocktakePage.tsx` の一覧テーブルで、`item.is_discontinued === true` の行にのみ「廃番」badge（`variant="secondary"` + `border-border` class、icon なし。⑦〈`agent/ui-conventions-batch`〉が改定した design-system 正本に準拠）が表示される
 - SC9（UI-10-D13）: `StocktakePage.tsx:624` の既存候補行 badge も同じ commit で `border-border` class を持つよう是正され、`border-border-strong` を持つ badge が file 内に残らない
-- SC8（「すべて」view 非干渉、compatibility）: `source === "search"` の一覧（`ProductListPage` 系ではなく在庫照会の「すべて」チップ）の並び順・列構成が本 lane で変化しない
+- SC8（「すべて」view 非干渉、compatibility）: `source === "search"` の一覧（`ProductListPage` 系ではなく在庫照会の「すべて」チップ）の並び順・pagination が本 lane で変化しない（列構成は SC10 のとおり共有 component のため両 view で変わる。SC8 は並び順・pagination のみを対象とする、Plan Review round 1 P2 で訂正）
+- SC10（UI-06a-D4、Plan Review round 1 P2 で追加）: 「すべて」（`source="search"`）の一覧でも取引先列ヘッダ「取引先」が表示される（`ProductListTable` が両 view 共通 component であることの直接確認）
 
 ## Failure Modes
 
@@ -28,7 +29,7 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 - `StocktakeItemDetail` の 2 つの構築箇所のうち片方だけに `is_discontinued` を追加し、もう片方が既定値（`false` 固定等）で誤魔化される
 - badge が全行に出る、または `border-border` を持たない（枠なしのまま、⑦ 改定後ルールにも未適合）
 - `StocktakePage.tsx:624` の既存候補行 badge が是正されず `border-border-strong`（旧仕様）または枠なしのまま残る
-- 「すべて」view の並び順・列構成が誤って変更される
+- 「すべて」view の並び順・pagination が誤って変更される、または逆に「すべて」view に取引先列が出ない（共有 component の前提が崩れる）
 
 ## Test Matrix
 
@@ -41,8 +42,9 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 | SC5 自動展開の条件単位制限（UI-06a-D5） | guard 誤動作 | unit（`useStockInquiry.test.tsx` 拡張） | SC5a: 検索条件が同一のまま `listItems.length === 1` で `selected` が `null` → `undefined`（手動クローズ相当）に変化しても `navigate` が再度呼ばれない。SC5b: `status`/`q`/`dept`/`page` のいずれかが変化した後、新しい条件で `listItems.length === 1` かつ `selected === null` なら `navigate` が呼ばれる（既存の自動展開が生きていることの回帰確認） | SC5a: 手動クローズ後に同条件で自動再展開してしまう。SC5b: 条件変化後の自動展開が壊れる（既存 test `REQ-301: 結果 1 件で詳細カード自動展開` の回帰） |
 | SC6 `StocktakeItemDetail.is_discontinued`（UI-10-D13） | 片方の経路だけ反映 / 既定値誤魔化し | unit（`stocktake_repo.rs` `#[cfg(test)]` 拡張） | SC6a: `test_list_stocktake_items_req205_includes_is_discontinued` — 廃番商品 1 件 + 非廃番商品 1 件を fixture に含む棚卸しで `list_stocktake_items` を呼び、返り値の `is_discontinued` が商品ごとの実値と一致する。SC6b: `test_find_stocktake_item_by_code_req205_includes_is_discontinued` — 同様に `find_stocktake_item_by_code` で廃番商品を検索し `is_discontinued: true` が返る | いずれかの経路で `is_discontinued` が常に `false`（未反映）、または実際の商品状態と一致しない |
 | SC7 廃番 badge 表示（UI-10-D13） | 全行表示 / 枠欠落 | unit（`StocktakePage.test.tsx` 拡張） | SC7: 廃番商品の行に「廃番」テキストを含む要素が存在し、その要素（または祖先）が `border-border` class を持つ。icon（`svg`）は要求しない（⑦ 改定後ルールで②分類の icon は任意、候補行の前例に合わせ付けない）。非廃番商品の行には「廃番」テキストが存在しない（対で確認、空集合 oracle を避ける） | badge が非廃番行にも出る、廃番行に出ない、または `border-border` class を持たない（枠なしのまま、⑦ 改定後ルールにも未適合の mutant） |
-| SC8 「すべて」view 非干渉 | 意図しない副作用 | unit（`ProductListTable.test.tsx`/`useStockInquiry.test.tsx` 既存 test の無変更 pass 確認） | SC8: `source="search"` の既存 test（並び順・列構成に関する既存 assertion）が本 lane の変更後も無変更で pass する | 取引先列 or ソートが `source="search"` 側にも意図せず適用される |
+| SC8 「すべて」view 並び順・pagination 非干渉 | 意図しない副作用 | unit（`ProductListTable.test.tsx`/`useStockInquiry.test.tsx` 既存 test の無変更 pass 確認） | SC8: `source="search"` の既存 test（並び順・pagination に関する既存 assertion）が本 lane の変更後も無変更で pass する | ソートが `source="search"` 側にも意図せず適用される、または pagination の挙動が変わる |
 | SC9 候補行 badge の是正（UI-10-D13） | 新旧 badge 混在 | unit（`StocktakePage.test.tsx` 拡張、fs literal） | SC9: `rg -c 'border-border-strong' src/features/stocktake/StocktakePage.tsx` = 0 かつ `rg -Fc 'border-border"' src/features/stocktake/StocktakePage.tsx` ≥ 2（新規箇所 + 候補行）。加えて候補行の既存 test（disabled 状態・「選択」button 等）が badge の class 変更以外は無変更で pass する | `border-border-strong` が file 内に残る、`border-border` の hit 数が 2 未満、または候補行の既存 test が回帰する |
+| SC10 「すべて」view の取引先列（UI-06a-D4） | 列欠落（共有 component の前提崩れ） | unit（`ProductListTable.test.tsx` 拡張） | SC10: `source="search"` の一覧で取引先列ヘッダ「取引先」が存在する（非空期待） | 「すべて」view で取引先列ヘッダが存在しない（列が `source` で条件分岐している mutant） |
 
 ## Mutation Oracle Notes
 
@@ -55,4 +57,4 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1〜SC5, SC7〜SC9 は vitest、SC6 は cargo test。S5（bindings 再生成）と S7（docs 同期）は `git diff`/`rg` の docs review オラクルで Plan Packet 側の完了条件に記載済み、本 Matrix には独立行を立てない（Plan Packet Registration / Generation Obligations 参照）。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1〜SC5, SC7〜SC10 は vitest、SC6 は cargo test。S5（bindings 再生成）は AC6 の機械 oracle（`git diff --numstat` + fs literal）で Plan Packet 側の完了条件に記載済み、S7（docs 同期）は `rg` の docs review オラクルで同様、本 Matrix には独立行を立てない（Plan Packet Registration / Generation Obligations 参照）。
