@@ -748,7 +748,7 @@ fn list_stocktake_items(conn: &DbConnection, stocktake_id: i64, department_id: O
 ```
 
 **StocktakeItemDetail構造体**:
-- id: i64, stocktake_id: i64, product_code: String, name: String, department_name: String, system_stock: i64, actual_count: Option<i64>, counted_at: Option<String>, current_stock: i64（動的: products.stock_quantity）
+- id: i64, stocktake_id: i64, product_code: String, name: String, department_name: String, system_stock: i64, actual_count: Option<i64>, counted_at: Option<String>, current_stock: i64（動的: products.stock_quantity）, is_discontinued: bool（products.is_discontinued）
 
 **処理ステップ**:
 1. WHERE句構築: department_id → p.department_id = ?、counted_only=true → si.actual_count IS NOT NULL、counted_only=false → si.actual_count IS NULL

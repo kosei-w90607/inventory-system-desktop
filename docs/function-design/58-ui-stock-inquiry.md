@@ -195,7 +195,7 @@ const searchSchema = z.object({
 
 - **status チップ切替時** = `selected` を URL から clear（`navigate` で `selected: undefined`）。新 list query 結果 1 件で自動展開が再発火可能、状態の race を回避
 - **q / dept 変更時** = `selected` を URL から clear（status チップ切替時と同じ。新 list 取得後の非同期な含有判定を避けて race を回避する。Phase 2 では選択を「現 list 条件に対する状態」として扱い、stale な詳細カードを残さない。結果 1 件なら自動展開が再発火するため絞り込み動線は崩れない）
-- 自動展開 useEffect の発火条件は `selected == null` ガードで 1 度のみ
+- 自動展開 useEffect の発火条件は `selected == null` ガードに加え、検索条件（`status`/`q`/`dept`/`page`）単位で 1 度のみ（UI-06a-D5、`useRef` に自動展開済みの条件 key を保持）。選択中行の再クリックで `onSelect(null)` が呼ばれ展開が閉じた（R2-3）後も、同じ検索条件のままでは自動展開が再発火しない。検索条件が変わった場合は新しい条件 key として改めて 1 度だけ自動展開する
 - **list 成功時に `selected` が現 list の items に不在**（stale/手打ち URL、CSV 取込み invalidation 後の該当外化）= `selected` を clear（`navigate` で `selected: undefined`、C-P2-1）。行インライン展開（§58.8）の描画先消失を防ぎ「選択は現 list 条件に対する状態」を一貫させる。`listQuery.isSuccess` ガードで loading 中の誤判定を回避。1 件なら clear 後に自動展開が後続発火し現 list の唯一商品へ収束する（"selected 不在 = 詳細が必ず消える" ではない）
 - **検索前（isAllEmpty: status=all + q 空）に `selected` が残る**（手打ち/F5/bookmark URL）= `selected` を clear（Codex 実装レビュー Round 1 P2-2）。list は EmptySearchPlaceholder なのに detail query が空振りするのを防ぐ。detail query の `enabled` にも `!isAllEmpty` guard を入れて二重防御（§58.5）
 
@@ -252,7 +252,7 @@ export function useStockInquiry(params: {
         source: "commands",
         cmd: "list_low_stock",
       });
-      const filtered = filterLowStockList(rows, params.q, params.dept, params.status);
+      const filtered = filterAndSortLowStockList(rows, params.q, params.dept, params.status);
       return { items: filtered, totalCount: null, source: "low_stock" };
     },
     enabled: !isAllEmpty,           // status=all + q 空文字 → search_products 呼ばない（契約 I）
@@ -361,13 +361,14 @@ export function useStockInquiry(params: {
 - `value === null` → `"—"`（None 表示、Q-2）
 - `value !== null` → `value` をそのまま返す（`YYYY-MM-DD`、DB_DESIGN.md 日付書式規約）
 
-#### filter-low-stock-list（[items, q, dept, status] → ProductWithRelations[]）
+#### filterAndSortLowStockList（[items, q, dept, status] → ProductWithRelations[]、旧 filterLowStockList、UI-06a-D4 でリネーム）
 
 - `status === "stockout"` → `items.filter((p) => p.stock_quantity <= 0)`
 - `status === "low_stock"` → `items.filter((p) => p.stock_quantity > 0)`
 - 加えて `q` あり → `product_code` / `name` / `jan_code` の部分一致で絞り込み
 - 加えて `dept` あり → `department_id === dept` で絞り込み
-- `list_low_stock` 返り値は 100 件以下想定で frontend filter で高速（Q-1 user 確定の frontend 派生範囲内）
+- フィルタ後、`supplier_name` 昇順（`localeCompare`、`null` は最後）→ `stock_quantity` 昇順 → `name` 昇順（`localeCompare`）で安定ソートする（UI-06a-D4、`status === "all"` の `search_products` 経路には適用しない）
+- `list_low_stock` 返り値は 100 件以下想定で frontend filter/sort で高速（Q-1 user 確定の frontend 派生範囲内）
 
 #### makeMockProductWithRelations / makeMockStockDetail（factory、test-fixtures.ts）
 
@@ -487,15 +488,16 @@ function StockInquiryPage() {
 
 #### ProductListTable（高視認性状態表示契約 H、選択行直下インライン展開）
 
-- 列: 商品コード / 商品名 / 部門 / 状態 / 在庫数（`format-stock-display`、生地は単位付き）/ 売価
+- 列: 商品コード / 商品名 / 部門 / 取引先 / 状態 / 在庫数（`format-stock-display`、生地は単位付き）/ 売価（UI-06a-D4、7 列）
+- 取引先列（`supplier_name`）は `source` に関わらず両 view（「すべて」/「在庫少」/「在庫切れ」）で無条件に表示する。`ProductListTable` は `source` で列構成を条件分岐しない単一 component のため。値が `null` の場合は `—` を表示する
 - `source` prop を `derive-stock-state(item, source)` に引き渡し、状態列で `StockStatusBadge` を表示する
   - `stockout` = `CircleAlertIcon` + 「在庫切れ」Badge
   - `low` = `TriangleAlertIcon` + 「在庫少」Badge
   - `ok` = muted 「通常」Badge
 - 在庫数セルの stockout red / low yellow / ok default は二次シグナルとして残す。意味そのものは状態列の日本語ラベルで伝える
 - H-6 feedback 対応として、商品コードセルと詳細 header の商品コードは `font-mono text-sm font-medium` とする。旧 `text-xs` は最小級で、全体 WebView 表示スケール導入後も読みづらさが残るため使わない
-- 行クリックで `onSelect(product_code)` 発火 → `selected` URL state 更新 → **選択行の直下**に colSpan 展開行で `StockDetailContent` をインライン描画（`detailQuery` props を受け取る、collapsible 不使用 = 条件描画）。展開行は `bg-muted` を明示固定し選択行と視覚的に一体化（New-1）。list 失敗時の独立描画はフォールバック `StockDetailCard` が担う（§58.8）
-- 状態列追加後のインライン展開は `colSpan=6`。旧 `colSpan=5` は table 列数と不一致になるため regression test で防ぐ
+- 行クリックで `onSelect(isSelected ? null : product_code)` 発火（UI-06a-D5、R2-3 展開行トグルクローズ） → `selected` URL state 更新（`code ?? undefined`） → **選択行の直下**に colSpan 展開行で `StockDetailContent` をインライン描画（`detailQuery` props を受け取る、collapsible 不使用 = 条件描画）。選択中行を再クリックすると `onSelect(null)` が呼ばれ展開が閉じる。展開行は `bg-muted` を明示固定し選択行と視覚的に一体化（New-1）。list 失敗時の独立描画はフォールバック `StockDetailCard` が担う（§58.8）
+- 取引先列追加後のインライン展開は `colSpan=7`。旧 `colSpan=6`（さらに旧 `colSpan=5`）は table 列数と不一致になるため regression test で防ぐ
 
 #### EmptySearchPlaceholder（契約 I）/ Pagination（UI-06a-D1）
 
@@ -537,10 +539,10 @@ function StockInquiryPage() {
 | `derive-stock-state.test.ts` | source=search + stock>0 → ok / source=search + stock<=0 → stockout / source=low_stock + stock>0 → low / source=low_stock + stock<=0 → stockout / stock=0 境界 |
 | `format-stock-display.test.ts` | `"pcs"` → 「個」/ `"cm"` → 「cm」/ unexpected → 「—」（Q-4 網羅） |
 | `format-last-date.test.ts` | null → 「—」/ `YYYY-MM-DD` そのまま / 空文字扱い |
-| `filter-low-stock-list.test.ts` | stockout 分岐 / low_stock 分岐 / q 部分一致 / dept 絞り込み / 複合 / 空配列 |
-| `useStockInquiry.test.tsx` | search → PaginatedResult 正規化（source/totalCount、`truncated` は撤去済み） / low_stock → 配列正規化 / status=all+q空 で enabled=false / 1 件自動展開 / status 切替 → selected clear → 新 list 1 件で再展開 / detail 部分障害 / list 成功 + selected 不在 → clear（C-P2-1） / isAllEmpty + selected → clear + detail 非発火（Round 1 P2-2） / page が queryKey とクエリ引数に反映される（SPEC-UIBB-3/4） / SPEC-UIBB-9: `departmentOptionsQuery` が `listDepartments()` を呼び、page/q/dept/status 変更後も候補が不変で選択中部門から別部門へ直接切替できる（round 1 P1-3、DSR-10）。status 変更（all → low_stock → stockout）も候補不変であることを追加 assert（round 2 P2-3）。同一 `QueryClient` 上で page/q/dept/status を変えても `listDepartments` の call count = 1 に留まる（round 2 P2-3、query-key 安定性の mutant 検出）。`queryKeys.stockInquiry.departmentOptions()` が無引数で呼ぶたびに同一・一定の key を返す unit test（round 2 P1-1、無引数化の regression 防止） |
+| `filter-low-stock-list.test.ts` | stockout 分岐 / low_stock 分岐 / q 部分一致 / dept 絞り込み / 複合 / 空配列 / `filterAndSortLowStockList`: 取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順ソート（UI-06a-D4） |
+| `useStockInquiry.test.tsx` | search → PaginatedResult 正規化（source/totalCount、`truncated` は撤去済み） / low_stock → 配列正規化 / status=all+q空 で enabled=false / 1 件自動展開 / status 切替 → selected clear → 新 list 1 件で再展開 / detail 部分障害 / list 成功 + selected 不在 → clear（C-P2-1） / isAllEmpty + selected → clear + detail 非発火（Round 1 P2-2） / page が queryKey とクエリ引数に反映される（SPEC-UIBB-3/4） / SPEC-UIBB-9: `departmentOptionsQuery` が `listDepartments()` を呼び、page/q/dept/status 変更後も候補が不変で選択中部門から別部門へ直接切替できる（round 1 P1-3、DSR-10）。status 変更（all → low_stock → stockout）も候補不変であることを追加 assert（round 2 P2-3）。同一 `QueryClient` 上で page/q/dept/status を変えても `listDepartments` の call count = 1 に留まる（round 2 P2-3、query-key 安定性の mutant 検出）。`queryKeys.stockInquiry.departmentOptions()` が無引数で呼ぶたびに同一・一定の key を返す unit test（round 2 P1-1、無引数化の regression 防止） / 手動クローズ後、同一検索条件では自動展開が再発火しない・条件変化後は再度発火する対 test（UI-06a-D5） |
 | `SearchBar.test.tsx` + `StockInquiryPage.test.tsx` | `autoFocus` 検証 / Enter で debounce flush + 即時 search / 結果 1 件で自動展開 useEffect → URL state `selected` 更新 / list 成功 + selected でインライン展開 / 行クリックで selected 更新 → 展開（stateful harness、C-P2-3）/ list 失敗 + detail 成功でフォールバックカード独立描画（部分障害許容、Codex Round 1 P2-1）/ search flow の在庫切れ label / low_stock flow の在庫少 label（RTL + user-event）/ SPEC-UIBB-1/2: 絞り込み非既定+0件で reset action 表示・押下で全条件+page 既定復帰 / SPEC-UIBB-4: q・dept・status 変更で page=1、page 移動は条件維持 / SPEC-UIBB-5: 51 件 synthetic で page 2 に到達、`TruncatedResultsAlert` 残存 0（rg 静的 sweep） / SPEC-UIBB-8: `items` 空 + `total_count > 0` + `page > 1` で範囲外 page 専用メッセージ + 「先頭ページに戻る」を表示し、filter-empty reset action より優先判定される（UI-06a-D3、round 1 P1-2） / SPEC-UIBB-9: 候補 query pending 中は `DepartmentFilter` trigger が disabled（`departmentOptionsQuery.isLoading`、round 3 P2-3） / SPEC-UIBB-9: `listDepartments` reject + list query 成功で `role="alert"`「部門候補の取得に失敗しました」と商品一覧が**同時に**表示される（一覧独立の結合退行検出、round 3 P2-3）。test harness は QueryClient retry を無効化して失敗状態を一意に確定させる |
-| `ProductListTable.test.tsx` | 状態列の「在庫切れ」「在庫少」「通常」text / 商品コード cell `text-sm` readability guard / 選択行直下インライン展開 / nextElementSibling colSpan=6 guard（旧下部固定・旧 5 列混入検出）/ 非選択時展開なし / detail 失敗 inline（C-P2-3） / 展開行 whitespace-normal guard（Round 1 P2-1） |
+| `ProductListTable.test.tsx` | 状態列の「在庫切れ」「在庫少」「通常」text / 商品コード cell `text-sm` readability guard / 選択行直下インライン展開 / nextElementSibling colSpan=7 guard（旧下部固定・旧 5/6 列混入検出）/ 非選択時展開なし / detail 失敗 inline（C-P2-3） / 展開行 whitespace-normal guard（Round 1 P2-1） / 取引先列ヘッダ・null 表示・両 view 共通表示（UI-06a-D4） / 選択中行の再クリックで `onSelect(null)` 発火（展開行トグルクローズ、UI-06a-D5） |
 | `StatusChips.test.tsx` | selected chip の `data-state="on"` / chip click の filter value 発火 / deselect 空文字無視（常に 1 つ選択維持） |
 
 `vi.mock("@/lib/bindings")` で commands mock + TanStack Router test wrapper（memory `feedback-vitest-react19-setup-pattern.md` 踏襲）。状態表示のテストは Tailwind color class ではなく text / DOM state / table structure を assert する。
@@ -585,6 +587,19 @@ function StockInquiryPage() {
 - **決定**: `items` 空 かつ `total_count > 0` かつ `page > 1` のとき、通常の EmptyState / filter-empty reset action ではなく専用メッセージ「このページには表示する商品がありません」+「先頭ページに戻る」ボタン（`page=1` へ navigate、他条件維持）を表示する。判定は EmptyState 系より優先する。
 - **Why**: 74 §74.10（UI-11c-D8）と同型の契約を踏襲し、在庫照会だけの新しい UX を発明しない。50 §50.4 / `Pagination.tsx`（旧 `ProductPagination.tsx`）に clamp 契約は存在しないため、範囲外 page を無言で先頭ページへ丸める（clamp）案は既存 canonical の慣行から逸脱する。
 - **Rejected**: 範囲外 page を `page=1` へ自動 clamp する案（既存 50 / 旧 ProductPagination（現 Pagination）に clamp 契約が実在しないため新規発明になり、利用者に無断で条件を書き換える点でも UI-11c-D8 の明示回復導線パターンと不整合）。
+
+#### UI-06a-D4: 在庫少・在庫切れ一覧の取引先列 + 取引先名優先ソート（2026-09-06）
+
+- **決定**: `ProductListTable` に取引先列（`supplier_name`、null は `—`）を追加する。列は `source` に関わらず両 view（「すべて」/「在庫少」/「在庫切れ」）に無条件で出る（単一 component のため）。並び順は `status === "stockout" | "low_stock"`（`list_low_stock` 経路）でのみ `filterAndSortLowStockList` が取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順にクライアント側でソートする。「すべて」（`search_products` 経路、`ORDER BY p.product_code`）とページングは変更しない。
+- **Why**: `list_low_stock` は既に pagination なしの全件クライアント保持（§58.5）のため、フィルタ後配列を並べ替えるだけで済むクライアント側ソートが SQL `ORDER BY` 変更より変更面積が小さい（新規 Rust test・IO 層契約変更・design doc 改訂が不要）。「すべて」の並び順を変えない要件も自然に満たす。
+- **Rejected**: `list_low_stock_products`（`product_repo.rs`）の SQL `ORDER BY` を変更する案（IO 層契約変更・新規 Rust test・`20-io-product-repo.md` 改訂を伴い変更面積が大きい上、「すべて」に影響させない制御が別途必要になる）。
+
+#### UI-06a-D5: 展開行トグルクローズ + 自動展開の検索条件単位制限（R2-3、2026-09-06）
+
+- **決定**: `ProductListTable` の行クリックを、選択中行の再クリックで `onSelect(null)` を呼ぶよう変更する（`selected` URL state が `undefined` になり展開が閉じる）。自動展開 `useEffect`（§58.4）に、検索条件（`status`/`q`/`dept`/`page`）から導出した key を `useRef` で保持するガードを追加し、同じ条件で一度自動展開したら再展開しない。条件が変われば新しい key として改めて 1 度だけ自動展開する。
+- **Why**: 既存の自動展開は `selected === null` ガードのみのため、再クリックで `selected` を `null` に戻しても同じ検索条件で結果がまだ 1 件なら即座に再展開し、「閉じる」操作を打ち消してしまう。`useRef` は URL 一本化の既存方針（§58.4）に追加の state を持ち込まずに済む。
+- **境界（意図的、defect ではない）**: `useRef` はコンポーネントインスタンスのメモリ上のため、full remount（サイドバー遷移で `/stock` を離れて戻る等）が起きると ref は初期化され、同じ検索条件でも自動展開が再度発火する。1 セッション内で条件を変えずに何度も開閉する操作を対象にした guard であり、画面を離れて戻る操作まで記憶する要件ではない。
+- **Rejected**: `selected` の変化元（ユーザー操作 vs 自動展開）を別 state で追跡する案（state 数が増え、URL 一本化の既存方針に反する）。
 
 #### 廃番除外
 
@@ -641,3 +656,4 @@ function StockInquiryPage() {
 | 2026-08-03 | ui-polish-batch-b round 1 是正（本 PR） | UI-06a-D2 追加: 部門候補 query を `listDepartments()` master 全件へ切替（DSR-10、round 1 P1-3）、`departmentOptionsQuery` を dept/status 非依存の単一 query へ再設計（§58.5/§58.7/§58.10）。UI-06a-D3 追加: 範囲外 page（`items` 空 + `total_count > 0` + `page > 1`）に専用回復導線「先頭ページに戻る」を新設し、filter-empty reset action より優先判定（74 UI-11c-D8 同型、round 1 P1-2、§58.4/§58.7/§58.8/§58.9/§58.10）。EmptyState 疑似コードの `message=` prop を実契約 `title=` へ是正（round 1 P2-5、§58.7/§58.8） |
 | 2026-08-03 | ui-polish-batch-b round 2 是正（本 PR） | round 2 P1-1 対応: `useStockInquiry` の return に `departmentOptionsQuery` / `departmentOptions`（`Department[] → DepartmentOption[]` 変換済み）を追加し、`StockInquiryPage` の `DepartmentFilter` を canonical props（`options` / `selected` / `onChange` / `disabled`、59 §59.1）へ結線（§58.3/§58.5/§58.7）。候補取得失敗時は `departmentOptionsQuery.isError` で「部門候補の取得に失敗しました」を listQuery と独立に表示する挙動を明記（§58.5/§58.7）。`queryKeys.stockInquiry.departmentOptions()` の無引数化（現状 `(status, q)` 引数付き）を implementation target として明示、対象は src/lib/query-keys.ts / useStockInquiry.ts / useStockInquiry.test.tsx（§58.5）。§58.9 SPEC-UIBB-9 に status 変更後の候補不変 assert / 同一 QueryClient での `listDepartments` call count = 1 / `departmentOptions()` 無引数・一定 key の unit test を追加 |
 | 2026-08-03 | ui-polish-batch-b round 3 是正（本 PR） | P2-1（FilePicker ripple、対象は 60/63/SCREEN_DESIGN/FUNCTION_DESIGN/UI_TECH_STACK、本 file 対象外）と合わせて、本 file の要約層を詳細（§58.5/§58.3）と同期: 冒頭テンプレ判定表・§58.2 hook 行・§58.5 見出しを「2 useQuery」→「3 useQuery」、URL state を「4 key」→「5 key（q/dept/status/page/selected）」、§58.3 データフロー返却値を実疑似コードと同じ `{ listQuery, detailQuery, departmentOptionsQuery, departmentOptions, isAllEmpty }` へ修正（round 3 P2-2）。§58.9 に SPEC-UIBB-9 の loading（候補 pending 中は DepartmentFilter trigger disabled）/ error（`listDepartments` reject + list 成功で alert と一覧が同時表示、QueryClient retry 無効化）2 test を追加（round 3 P2-3） |
+| 2026-09-06 | ⑨ 在庫少一覧の取引先列 + 棚卸し廃番 badge + R2-3（本 PR） | UI-06a-D4 追加: `ProductListTable` に取引先列（両 view 共通、null は `—`）を追加し、`filterLowStockList` を `filterAndSortLowStockList` へリネームして取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順のクライアント側ソートを追加（§58.6/§58.7/§58.9/§58.10）。展開行 `colSpan` を `6` → `7` へ更新。UI-06a-D5 追加（R2-3）: 選択中行の再クリックで `onSelect(null)` を呼び展開が閉じるトグルクローズと、自動展開を検索条件（status/q/dept/page）単位で 1 度に制限する `useRef` ガードを追加（§58.4/§58.7/§58.9/§58.10） |

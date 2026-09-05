@@ -122,6 +122,13 @@
 - **Rejected**: 純 autocomplete 型（Enter 追加廃止）はスキャナ Enter が候補 async 読込み前に届くため退行、不採用（owner 方針 2026-08-04）。
 - **Revisit trigger**: catalog ⑮ の契約変更時。
 
+### UI-10-D13: 棚卸しリストの廃番 badge（2026-09-06）
+
+- **決定**: `StocktakeItemDetail` に `is_discontinued: bool` を追加し（`find_stocktake_item_by_code` / `list_stocktake_items` 両 SQL 経路、既存 `JOIN products p` を利用、新規 JOIN 不要）、棚卸しカウント画面の一覧テーブル（§73.6）の商品名セルに、対象商品が廃番のとき「廃番」badge（`variant="secondary"` + `border-border`、icon なし）を表示する。同一 file 内の既存候補行 badge（対象確認欄の live 候補プレビュー、UI-10-D12）も同じ commit で `border-border` へ揃える。
+- **Why**: 棚卸しは廃棄判断の基準になるため、廃番商品かどうかが一覧上で視認できる必要がある。badge 仕様は新規に決めず、design-system 正本（`04-backbone.md` 原則 4 / `01-decision-rules.md` DSR-22、②分類 badge の枠は tone 固有色または `--border`、icon は識別に必要な場合のみ可）をそのまま適用する。既存候補行 badge（icon なし、枠なし）も改定後ルールに未適合のため、同一画面に新旧 2 種類の badge が混在しないよう同じ commit で揃える。
+- **Rejected**: `UncountedItem`（force_fill 専用の内部構造体、frontend 非公開）への追従（消費者がなく不要）。他 file の既存 secondary badge（`ProductTable.tsx` / `ProductAddSuggest.tsx` 等）への枠 sweep（本 lane の対象外、Lane 3〜5 backlog のまま）。
+- **Revisit trigger**: なし。
+
 ## 73.4 Route / 状態遷移 / Components（future）
 
 ```
@@ -216,6 +223,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | 進捗表示 | 「入力済み {counted_items} / 全 {total_items}」+ `Progress`（value = `counted_items / total_items * 100`、`02-component-catalog.md` 既存採用パターン）。`uncounted_items` は確定ダイアログの文言にのみ使う。 |
 | 差異列（UI-10-D10） | `current_stock - actual_count`（`update_count` の `current_difference` と同一計算式）。`actual_count` が `null` なら「—」。色分けなし、符号付き数値のプレーンテキストのみ（結果画面 `adjusted_items` テーブルと表現統一）。 |
 | 最終カウント列（UI-10-D10） | `counted_at`。`null` なら「—」、値ありは `formatMovementDateTime` と同じ `T`→スペース変換（`src/features/stock-movements/lib/movement-formatters.ts` 流用）。 |
+| 廃番 badge（UI-10-D13） | `item.is_discontinued === true` の行の商品名セルに「廃番」badge（`variant="secondary"` + `border-border`、icon なし）を表示する。非廃番行には表示しない。 |
 | 並び順 | 変更しない（`ORDER BY si.id ASC`、UI-10-D3）。 |
 | 表示件数 | catalog ⑩ canonical `Pagination`（旧 `ProductPagination`）（`docs/design-system/02-component-catalog.md` §⑩）+ `PRODUCT_PER_PAGE_OPTIONS`（50/100/200、既定 50）の `Select`。変更時は `page` を 1 へ戻す。IO 側 200 クランプ（`PAGINATION_MAX_PER_PAGE`）は不変。配置は表の下（catalog 既定）のまま。 filter row 内の並び順は 部門フィルタ → 表示件数 → 未入力のみ表示。 |
 | 0 件表示 | `patterns/EmptyState`。「この条件に一致する商品がありません」+ フィルタ解除導線。**filter-empty reset action**（2026-08-03 batch B、[02-component-catalog.md](../design-system/02-component-catalog.md) ⑥）: 部門フィルタ / 未入力のみ toggle のいずれかが既定値以外、かつ結果 0 件のときのみ「絞り込みを解除」ボタンを表示し、押下で部門フィルタ / 未入力のみ toggle / `page` をすべて既定値へ戻す（`page` は `StocktakeSearch` の既存 param、既定 1）。既定値のまま 0 件（棚卸し明細が実在しない）のときは表示しない。 |
@@ -397,3 +405,4 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 2026-08-03 | ui-polish-batch-b round 2 是正（本 PR） | round 2 P2-1 対応: §73.6 filter-empty reset action の戻す対象に `page`（`StocktakeSearch` 既存 param、既定 1）を追加し、部門フィルタ / 未入力のみ toggle / `page` の 3 者を既定値へ戻す契約に更新。 |
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §73.1 に棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）を明記。 |
 | 2026-09-02 | stocktake-empty-count-guard（本 PR） | §73.5 step 4 と §73.9 に、数量の空欄・空白のみを `update_count` 送信前の FieldError「数量を入力してください」で止める契約（ST-C5-D1）を追加。 |
+| 2026-09-06 | ⑨ 在庫少一覧の取引先列 + 棚卸し廃番 badge + R2-3（本 PR） | UI-10-D13 追加: `StocktakeItemDetail` に `is_discontinued: bool` を追加し、棚卸しカウント画面の一覧テーブルに廃番 badge（`variant="secondary"` + `border-border`、icon なし）を表示する（§73.3/§73.6）。同一 file 内の既存候補行 badge も同じ commit で `border-border` へ揃える。 |
