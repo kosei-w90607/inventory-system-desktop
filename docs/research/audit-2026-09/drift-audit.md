@@ -139,7 +139,7 @@
 
 ## 一致確認済み（drift なし。主要なもののみ抜粋、全件は各Explore agentのtranscript参照）
 
-- 数値契約: `PAGINATION_MAX_PER_PAGE=200`(D-031)／`inventory_service::MAX_PER_PAGE=100`維持／`50-ui-product-list.md`のperPage選択肢`[50,100,200]`／各画面の初期perPage(10,5,1)／`threshold-settings`の1〜99999範囲／backup retention既定3日とfallback非実行／diagnostic-log retention既定30日／PLU memory_no範囲217-5000・4784slot／CSV import file size 20MB・line limit 10,000・error row 100件・PREVIEW_CACHE_LIMIT 10件・TTL 30分／busy_timeout=5000／debounceMs=200／候補最大5件
+- 数値契約: `PAGINATION_MAX_PER_PAGE=200`(D-031)／`inventory_service::MAX_PER_PAGE=100`維持（origin/main `6fc4aba` 時点のスナップショット。同日 D-081 / PR #34 で 200 へ変更済み、現 HEAD では `list.rs:21` = 200）／`50-ui-product-list.md`のperPage選択肢`[50,100,200]`／各画面の初期perPage(10,5,1)／`threshold-settings`の1〜99999範囲／backup retention既定3日とfallback非実行／diagnostic-log retention既定30日／PLU memory_no範囲217-5000・4784slot／CSV import file size 20MB・line limit 10,000・error row 100件・PREVIEW_CACHE_LIMIT 10件・TTL 30分／busy_timeout=5000／debounceMs=200／候補最大5件
 - decision-log: D-031 Exception（inventory_service reject契約維持）、D-026/D-029のSuperseded内容（CI push:main撤去、npm-security-monitor weekly化）はいずれも現行CI設定と一致
 - enum/registry: record_type 6種（receiving/return/manual_sale/disposal/csv_import/stocktake）はdoc・src・frontendで完全一致。関連記録リンク許可4種も一致。status系（all/active/canceled/in_progress、PLU slot 5値、CSV import status 3値）はdoc・src・frontendで完全一致。CmdErrorKind 12 variantも一致
 - UI固定値契約: 66/62/53/58/63/56/51/69/67/54番docの固定値記述（per_page固定値、件数バッジ非表示、include_discontinued固定、返品方向固定、部門順固定、価格履歴件数、backup/threshold key所有、PLUスロット数、shortcuts件数）は全て実装と一致
