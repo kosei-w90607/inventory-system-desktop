@@ -100,6 +100,14 @@
 - [x] ⑥ drift 総点検の docs 同期 PR: 完了（PR #37 squash `31e6a00`、2026-09-05）。S2 7 件を実装へ同期、監査記録 = [drift-audit](research/audit-2026-09/drift-audit.md)。レビュー P3 2 件は Backlog へ（65-doc §65.3「完成形」の実装状況注記 / 52-doc の非表示 route 列挙）
 - [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: (a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
 - [ ] ⑧ native `<select>` 23 箇所 → shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）: Lane 5 merge 後に起票
+- [ ] ⑩ UI 磨き batch 3 design（owner「⑧ PR #38 L3 結果」原文 2026-09-06 起票、L8 ledger の design-first 判定 6 件を design-system canonical docs へ規範化。docs-only、Codex 1 round 込み）: [design packet](plans/2026-09-06-ui-polish-batch3-design.md) / [Matrix](plans/test-matrices/2026-09-06-ui-polish-batch3-design.md)、branch `agent/ui-polish-batch3-design`、Phase: plan-draft
+  - L8-1 単位表示 sweep（入出庫記録詳細 6 画面 + 商品追加候補一覧 3 箇所の raw `pcs` 表示、9 箇所の重複 local `formatQuantity` を実測。在庫変動履歴自体は raw 表示ではないと訂正）
+  - L8-3 記録状態 Badge（`ManualSalePage.tsx:739` のみ plain text、既存 5 箇所の `<Badge variant="outline">` へ統一）
+  - L8-6 備考の規則（欄は必須・空欄表示は owner culling・truncate+tooltip、A1(a)(b)(c)「直近の○○」系の文言・列見出し・囲み統一と統合。廃棄・破損は note フィールド無しのため対象外）
+  - L8-7 ページ説明セクション（商品一括インポート / PLU 書出し / バックアップに説明文 3 案、owner culling。PLU 書出しは Z004 読込み→占有確認→書出し→保存→未反映から外す の流れを明示）
+  - L8-8 PageHeader 間隔（`SupplierManagementPage.tsx:35-38` の 24px 対 4px 差、`PageHeader.tsx` の `actions`/`subtitle` 排他という component gap を記録）
+  - L8-9 記録ID の表示（種別ごとの連番で一意でない。(a)種別込み表示/(b)一覧から外す/(c)現状維持の 3 案、owner culling。推奨は (b)、DSR-22 識別列マッピングと整合）
+  - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数 summary 未決）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
 
 ### Wave Registry
 
