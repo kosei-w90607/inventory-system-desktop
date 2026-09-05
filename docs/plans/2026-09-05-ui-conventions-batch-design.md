@@ -509,3 +509,12 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 - Writer commit: pending（追記予定）
 - 改訂（2026-09-06、Final Review Opus P2-1）: `:root` 2 行だけでは Tailwind 4 の utility が生成されず（`@theme inline` に `--color-*` alias が無い）、規約が名指す `text-success-strong` / `border-success-border` が無効のまま。AC14 を「計 4 行」へ改訂し、Writer が `@theme inline` に alias 2 行を追加する。既存の `text-success-strong` 消費 4 箇所（`HomePage.tsx:66` / `BackupRestorePage.tsx:358` / `PluExportPage.tsx:521,567`）が結果的に有効化される = 見た目の変化を伴うため、Human Gate で owner が当該 4 箇所を一度視認する（AC-L3 追加）。
 - 再改訂（2026-09-06、Writer 停止起源）: `@theme` alias 追加後、`prettier-plugin-tailwindcss` が `success-strong` / `success-border` を theme color と認識し、既存消費者 3 file（`HomePage.tsx:66` / `BackupRestorePage.tsx:358` / `PluExportPage.tsx:521,567`）の class 文字列を並べ替えるため `format:check` が fail（L1 full `frontend-format` GATE_EXIT_CODE=1、`b90e494`）。Writer は AC14 / Non-scope（`BackupRestorePage.tsx` 名指し）に従い停止。裁定: 3 file の **prettier による class 順のみ** の整形を許容（意味変化なし、上記 oracle で機械検査）。Non-scope の `BackupRestorePage.tsx` 名指しはこの整形に限り例外。
+
+### Human Gate 回答（2026-09-06、owner 原文 + Coordinator 転記。裁定は原文を正とする）
+
+- 原文 1: 「反映済みは橙にしてあるならそっちに寄せるのがいいんじゃない」（取込み済み を赤でなく橙側へ、の一次反応）
+- 原文 2（確定）: 「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」
+- Coordinator 転記（tone family 表の culling 結果）: 緑 = 感情的にプラスの報告 = 反映済み（現状 `variant="default"` 橙 → 緑へ、runtime gap に昇格）/ 補正済み / 成功 / 確認済み。琥珀 = 「ちょっと待ってね」 = 在庫少 / 未入力 N / 同日データあり / 未反映 / 部分成功 / **取込み済み**（destructive 行から warning 行へ移動）。赤 = 警告 = 在庫切れ / 取消済み / 明細取消済み。中立 = 通常 / 記録状態（有効 等）/ 入力中 / レジ未処理 / 差異ラベル 3 値。
+- 規約文言（DSR-08 具体化、catalog ⑬ の tone 表冒頭へ、Writer 反映）: 「tone family は感情で分ける: 緑 = 終わったことを伝えるプラスの報告、琥珀 = 「ちょっと待って」の注意、赤 = 警告。状態の名前を伝えるだけの badge は無色」
+- 注記: 琥珀は ③強調（1 位 / 最新、塗り pill）と warning（soft 背景 + 枠 + icon）で同色相を共有する。形で区別する前提、混同が見えたら owner L3 で報告（residual）。
+- 次の一手（Gated Amendment 2 候補、次枠）: Writer が catalog ⑬ の表（反映済み → success 行 + runtime gap 化、取込み済み → warning 行、owner culling 列に「原文 2」を記入、冒頭の規約文言追加）と DSR-08 の対応文を更新し、Matrix の該当 oracle（反映済み の「runtime gap ではない」文 / destructive 行の 取込み済み）を改訂。Human Gate (2)（既存 4 箇所の視認）は merge 後の main build で実施に改める（owner 判断待ち）。
