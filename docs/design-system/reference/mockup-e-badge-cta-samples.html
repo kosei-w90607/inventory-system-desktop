@@ -31,12 +31,15 @@
   fill #fef3c7 = 1.12:1／対 background = 1.19:1、warning #d97706 対 fill #fef3c7 = 2.86:1／対 background
   = 3.05:1（fill = --rank-top-badge-bg #fef3c7）。「owner 決定」タグは 2026-09-05 時点の owner 選択
   （① 案 A tone border、② --border、⑤ B2 secondary + --border、⑦ 案 (a) warning）を示す。
+- v4（⑦Alert (c) soft 塗り 4 点構成 / (d) 見出し行 / ③ (b) に owner 決定タグ追加）: (c) text #78350f
+  対 bg --warning-soft #fffbeb = 8.75:1（v2 の warning-strong on warning-soft と同値）。(d) title
+  #78350f 対 bg-card #f5f5f4 = 8.32:1（新規計算）。
 -->
 <!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>badge tone / CTA 3段 見本 v2</title>
+<title>badge tone / CTA 3段 見本 v4</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{
@@ -117,6 +120,11 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 .alert.warn{border-color:var(--warning);color:var(--warning-strong)}
 .alert.warn-b{border-color:var(--warning);color:var(--foreground)}
 .alert.warn-b svg{color:var(--warning)}
+.alert.warn-c{background:var(--warning-soft);border-color:var(--warning);color:var(--warning-strong)}
+.alert.warn-c svg{color:var(--warning)}
+.alert.warn-d{border-color:var(--warning);color:var(--foreground)}
+.alert.warn-d svg{color:var(--warning)}
+.alert-title{display:block;font-size:16px;font-weight:600;color:var(--warning-strong);margin-bottom:2px}
 .alert.bad{border-color:var(--destructive);color:var(--destructive)}
 </style>
 </head>
@@ -126,7 +134,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
 <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
 </svg>
-<div class="top"><b>badge tone / CTA 3段 見本 v2</b><span>owner culling 用の視覚見本（デザインレビュー反映）。実装の正本ではない（正本は 04-backbone / badge.tsx / button.tsx）</span></div>
+<div class="top"><b>badge tone / CTA 3段 見本 v4</b><span>owner culling 用の視覚見本（デザインレビュー反映）。実装の正本ではない（正本は 04-backbone / badge.tsx / button.tsx）</span></div>
 <div class="page">
 <div><h1>Badge tone・分類枠・増減数値・CTA 3 段・Alert の見本</h1><p class="lead">各節で現状 vs 案を並べる。文字は本文 16px、badge のみ 12px（backbone 原則 1）。①③の案は枠強度を A（tone 固有色）/ B（--border）/ C（--border-strong）の 3 案で比較する。</p></div>
 
@@ -269,7 +277,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <span class="pill amber border-a">1 位</span>
 <span class="pill amber border-a">最新</span>
 </div><p class="caption">border #fde68a 対 fill #fef3c7 = 1.12:1／対 background = 1.19:1</p></div>
-<div class="col"><h3>案 (b): 枠 warning #d97706</h3><div class="chips">
+<div class="col"><h3>案 (b): 枠 warning #d97706<span class="owner-tag">owner 決定</span></h3><div class="chips">
 <span class="pill amber border-b">1 位</span>
 <span class="pill amber border-b">最新</span>
 </div><p class="caption">border #d97706 対 fill #fef3c7 = 2.86:1／対 background = 3.05:1</p></div>
@@ -345,7 +353,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 
 <section>
 <h2>⑦ Alert</h2>
-<p class="lead">一括価格改定の注意文言を 4 パターンで比較する（文言はそのまま）。</p>
+<p class="lead">一括価格改定の注意文言を 6 パターンで比較する（文言はそのまま）。</p>
 <div class="row">
 <div class="col"><h3>現状（プレーン: border #cdc8c4）</h3>
 <div class="alert">画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
@@ -355,6 +363,14 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 </div>
 <div class="col"><h3>案 (b): warning（枠・icon のみ #d97706、text は foreground #1c1917）</h3>
 <div class="alert warn-b"><svg><use href="#i-triangle"/></svg>画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
+</div>
+<div class="col"><h3>案 (c): warning soft 塗り（bg --warning-soft / border --warning / icon --warning / text --warning-strong）</h3>
+<div class="alert warn-c"><svg><use href="#i-triangle"/></svg>画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
+<p class="caption">①状態 badge と同じ 4 点構成（soft/border/icon/strong）。text #78350f 対 bg #fffbeb = 8.75:1</p>
+</div>
+<div class="col"><h3>案 (d): 見出し行（bg-card / border --warning / icon --warning / title「ご注意」--warning-strong 16px 600）</h3>
+<div class="alert warn-d"><svg><use href="#i-triangle"/></svg><div><span class="alert-title">ご注意</span>画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div></div>
+<p class="caption">title #78350f 対 bg-card #f5f5f4 = 8.32:1</p>
 </div>
 <div class="col"><h3>参考: destructive（Backup の Alert、border/text #b91c1c）</h3>
 <div class="alert bad">画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
