@@ -781,7 +781,9 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
 
   it("SC8a: 部門selectは未選択時にplaceholderを表示し偽optionを持たず、実在部門選択でsuffix込み表示とnumber復元がround-tripする（L8-D2, L8-D5）", async () => {
     const user = userEvent.setup();
-    renderForm(createProductFormDefaults, { errors: { departmentId: "部門を選択してください" } });
+    const { onValuesChange } = renderForm(createProductFormDefaults, {
+      errors: { departmentId: "部門を選択してください" },
+    });
 
     const trigger = screen.getByLabelText("部門（必須）");
     expect(trigger).toHaveAttribute("data-slot", "select-trigger");
@@ -794,6 +796,16 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
     await user.click(screen.getByRole("option", { name: "毛糸（独自コード可）" }));
 
     expect(trigger).toHaveTextContent("毛糸（独自コード可）");
+    // onValuesChange は React.Dispatch<SetStateAction<...>> なので functional updater
+    // (prev) => ({ ...prev, departmentId: Number(value) }) を受け取る。updater を解決して
+    // departmentId が number（"1" でなく 1）であることを検査する
+    // （ProductForm.tsx:284 の Number() 欠落 mutant を kill する）。
+    const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
+      prev: ProductFormValues,
+    ) => ProductFormValues;
+    expect(lastCall(createProductFormDefaults)).toEqual(
+      expect.objectContaining({ departmentId: 1 }),
+    );
   });
 
   it("SC8b: 取引先selectは「取引先なし」選択でsupplierIdがnullになる", async () => {
@@ -809,6 +821,29 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
     await user.click(screen.getByRole("option", { name: "取引先なし" }));
 
     expect(trigger).toHaveTextContent("取引先なし");
+  });
+
+  it("SC8b: 取引先selectで実在取引先を手動選択するとsupplierIdがnumberになる（round-trip、L8-D5）", async () => {
+    const user = userEvent.setup();
+    const { onValuesChange } = renderForm(createProductFormDefaults, {
+      suppliers: [
+        makeMockSupplier({ id: 1, name: "既存取引先" }),
+        makeMockSupplier({ id: 2, name: "新取引先" }),
+      ],
+    });
+
+    const trigger = screen.getByLabelText("取引先");
+    await user.click(trigger);
+    await user.click(await screen.findByRole("option", { name: "新取引先" }));
+
+    expect(trigger).toHaveTextContent("新取引先");
+    // auto-select 経路（:665-681）は Number(value) を経由しないため、手動選択経路
+    // （ProductForm.tsx:307 の update("supplierId", value === "none" ? null : Number(value))）
+    // の Number() 欠落 mutant はこの test でのみ kill できる。
+    const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
+      prev: ProductFormValues,
+    ) => ProductFormValues;
+    expect(lastCall(createProductFormDefaults)).toEqual(expect.objectContaining({ supplierId: 2 }));
   });
 
   it("SC8b: supplierWarningがある間はtrigger がdisabledになる", () => {

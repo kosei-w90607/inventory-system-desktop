@@ -368,6 +368,59 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     });
   });
 
+  it("⑧SC4c: 状態selectで「すべて」を選ぶとall sentinelへ戻りstatusフィルタが外れる", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
+    });
+    const user = userEvent.setup();
+    const onSearchChange = vi.fn();
+
+    renderWithClient(
+      <InventoryRecordsPage
+        search={{ status: "active", page: 3 }}
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    const statusTrigger = await screen.findByLabelText("状態");
+    expect(statusTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(statusTrigger.tagName).toBe("BUTTON");
+    await user.click(statusTrigger);
+    await user.click(await screen.findByRole("option", { name: "すべて" }));
+
+    const lastStatusCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+      (prev: { status?: string; page?: number }) => { status?: string; page?: number },
+    ];
+    expect(lastStatusCall[0]({ status: "active", page: 3 })).toEqual({
+      status: "all",
+      page: 1,
+    });
+  });
+
+  it("⑧SC4a: 記録種別selectでall以外を選ぶとsearch stateがその値へ更新される", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const user = userEvent.setup();
+    const onSearchChange = vi.fn();
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={onSearchChange} />);
+
+    const recordTypeTrigger = await screen.findByLabelText("記録種別");
+    await user.click(recordTypeTrigger);
+    await user.click(await screen.findByRole("option", { name: "廃棄・破損" }));
+
+    const lastCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+      (prev: { recordType?: string; page?: number }) => { recordType?: string; page?: number },
+    ];
+    expect(lastCall[0]({})).toEqual({
+      recordType: "disposal_record",
+      page: 1,
+    });
+  });
+
   it("⑧SC4b: 部門selectで実在部門を選ぶとtrigger表示が部門名になりdepartmentIdがnumberになる（round-trip、L8-D5）", async () => {
     function Harness() {
       const [search, setSearch] = useState<InventoryRecordsSearch>({});

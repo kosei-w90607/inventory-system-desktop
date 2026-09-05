@@ -575,6 +575,14 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
 
     expect(screen.getByLabelText("RT-001 の方向")).toHaveTextContent("渡し（在庫-）");
     expect(screen.getByLabelText("RT-002 の方向")).toHaveTextContent("戻り（在庫+）");
+
+    // row 2 自身の select を直接操作しても row 2 だけが変わること
+    // （"常に rows[0] を書き換える" mutant を kill する）。
+    await user.click(screen.getByLabelText("RT-002 の方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し（在庫-）" }));
+
+    expect(screen.getByLabelText("RT-002 の方向")).toHaveTextContent("渡し（在庫-）");
+    expect(screen.getByLabelText("RT-001 の方向")).toHaveTextContent("渡し（在庫-）");
   });
 });
 
