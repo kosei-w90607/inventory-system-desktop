@@ -66,7 +66,7 @@ import { isInvokeError, unwrapResult } from "@/lib/invoke";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
-import { Pagination } from "@/components/patterns/Pagination";
+import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 
 import { useCompleteStocktake } from "./hooks/useCompleteStocktake";
@@ -733,13 +733,16 @@ export function StocktakeItemList({
   // filter-empty reset action（catalog ⑥、SPEC-UIBB-1/2）: 部門フィルタ / 未入力のみ toggle の
   // いずれかが既定値以外か。
   const isFilterDefault = search.dept === undefined && search.counted_only === undefined;
+  // S5（round 1 是正）: Pagination.tsx と同じ式で totalPages を計算し、totalPages<=1 の
+  // ときは <fieldset> 自体を描画しない（中身の無い空 <fieldset> が残るのを防ぐ）。
+  const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
 
   return (
     <FormSection
       title="棚卸し一覧"
       description="一覧は進捗確認用です。カウント入力は上の入力欄で行います"
     >
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card p-4">
         <DepartmentFilter
           options={departments}
           selected={search.dept ?? null}
@@ -749,6 +752,21 @@ export function StocktakeItemList({
             onSearchChange((prev) => ({ ...prev, dept: dept ?? undefined, page: 1 }));
           }}
         />
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="stocktake-uncounted-only"
+            checked={search.counted_only === false}
+            disabled={disabled}
+            onCheckedChange={(checked) => {
+              onSearchChange((prev) => ({
+                ...prev,
+                counted_only: checked === true ? false : undefined,
+                page: 1,
+              }));
+            }}
+          />
+          <Label htmlFor="stocktake-uncounted-only">未入力のみ表示</Label>
+        </div>
         <div className="flex items-center gap-2">
           <Label className="text-muted-foreground" htmlFor="stocktake-per-page">
             表示件数
@@ -775,21 +793,6 @@ export function StocktakeItemList({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="stocktake-uncounted-only"
-            checked={search.counted_only === false}
-            disabled={disabled}
-            onCheckedChange={(checked) => {
-              onSearchChange((prev) => ({
-                ...prev,
-                counted_only: checked === true ? false : undefined,
-                page: 1,
-              }));
-            }}
-          />
-          <Label htmlFor="stocktake-uncounted-only">未入力のみ表示</Label>
         </div>
       </div>
 
@@ -819,48 +822,57 @@ export function StocktakeItemList({
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>商品コード</TableHead>
-              <TableHead>商品名</TableHead>
-              <TableHead>部門</TableHead>
-              <TableHead className="text-right">現在在庫</TableHead>
-              <TableHead className="text-right">実際の数</TableHead>
-              <TableHead className="text-right">差異</TableHead>
-              <TableHead>最終カウント</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.product_code}</TableCell>
-                <TableCell>{item.name}</TableCell>
-                <TableCell>{item.department_name}</TableCell>
-                <TableCell className="text-right">{item.current_stock}</TableCell>
-                <TableCell className="text-right">{item.actual_count ?? "未入力"}</TableCell>
-                <TableCell className="text-right">
-                  {formatListDifference(computeListDifference(item))}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatCountedAt(item.counted_at)}
-                </TableCell>
+        // S3a（round 2 是正、Opus P3）: この分岐は従来 <Table> を裸で返していたが、上部
+        // PaginationSummary を追加するため Fragment で 2 要素をまとめる。
+        <>
+          {totalCount > 0 ? (
+            <PaginationSummary page={page} perPage={perPage} totalCount={totalCount} />
+          ) : null}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>商品コード</TableHead>
+                <TableHead>商品名</TableHead>
+                <TableHead>部門</TableHead>
+                <TableHead className="text-right">現在在庫</TableHead>
+                <TableHead className="text-right">実際の数</TableHead>
+                <TableHead className="text-right">差異</TableHead>
+                <TableHead>最終カウント</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.product_code}</TableCell>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>{item.department_name}</TableCell>
+                  <TableCell className="text-right">{item.current_stock}</TableCell>
+                  <TableCell className="text-right">{item.actual_count ?? "未入力"}</TableCell>
+                  <TableCell className="text-right">
+                    {formatListDifference(computeListDifference(item))}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatCountedAt(item.counted_at)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
       )}
 
-      <fieldset disabled={disabled}>
-        <Pagination
-          page={page}
-          perPage={perPage}
-          totalCount={totalCount}
-          onPageChange={(nextPage) => {
-            onSearchChange((prev) => ({ ...prev, page: nextPage }));
-          }}
-        />
-      </fieldset>
+      {totalPages > 1 ? (
+        <fieldset disabled={disabled}>
+          <Pagination
+            page={page}
+            perPage={perPage}
+            totalCount={totalCount}
+            onPageChange={(nextPage) => {
+              onSearchChange((prev) => ({ ...prev, page: nextPage }));
+            }}
+          />
+        </fieldset>
+      ) : null}
     </FormSection>
   );
 }
