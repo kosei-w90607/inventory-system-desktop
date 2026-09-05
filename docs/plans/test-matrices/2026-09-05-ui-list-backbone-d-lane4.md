@@ -33,7 +33,7 @@ R3（商品一覧の識別列固定・table overflow 挙動 + 共有 component `
 - 枠色が `bg-card` にならない画面が残る、または `bg-card` 追加で page 内の他要素（`StockMovementsPage.tsx:98` の商品情報 card 等、Non-scope）を誤って巻き込む
 - 表示件数 `Select` が枠内の最後尾に来ない（`StocktakePage` の reorder 漏れ、`PriceRevisionFilters` への配線漏れ、既存 SC9a が検出する `onPerPageChange` 未配線）
 - `StocktakePage.tsx:854` の `<fieldset>` が単一ページで空要素のまま残る
-- `ListShell.tsx` に意図しない変更が混入し `ListShell.test.tsx` の既存 17 it のいずれかが壊れる（特に `:343` の wrapper 完全一致）
+- `ListShell.tsx` に意図しない変更が混入し `ListShell.test.tsx` の既存 it のいずれかが壊れる（特に `:343` の wrapper 完全一致）
 - 在庫照会の上部 summary が下部と異なる条件（`totalCount>0` のみ等）で描画され、`source: "low_stock"` のとき誤って表示される
 - 整合性チェックの Select 単独ラッパーに誤って `bg-card` frame が付く、または table wrapper の `rounded-md`→`rounded-lg` 統一漏れ
 - フィルタ変更で `totalCount` が減った直後に `page > totalPages` のまま一覧が描画される画面が新たに生まれる
