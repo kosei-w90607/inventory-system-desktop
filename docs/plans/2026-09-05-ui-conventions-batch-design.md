@@ -8,7 +8,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
@@ -17,7 +17,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5 デザイン面 + Codex ロジック・整合面 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。それまで §3.3 Capacity-degraded を適用し Codex 成分は pending、Phase は human-confirm で待機し前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: ce1b0ea
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
 - Human Gate: owner が design PR 上で ①状態 badge の tone family マッピング表の owner culling 列を埋める（原文回答、Coordinator が転記し原文を正とする）。Alert warning / ③強調 / CTA secondary / ①状態の枠強度は v2〜v4 mockup で owner 決定済み（下記参照、markers はすべて解消）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
@@ -497,7 +497,9 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 - (P3) Matrix の `src/**` negative oracle は「非パイプ」と称しつつ `| wc -l` を残していたため、`git diff --name-only 07302b5..HEAD -- src` の出力行数を直接見る形（パイプなし）へ訂正。
 2026-09-05: Plan Gate 収束（round 3/3。round 1 = Opus reject P1 4 / Sonnet approve-with-P2 → 是正 3 便 + owner 決定 5 便 / round 2 = Opus reject P1 5 / Sonnet approve-with-P2 → 是正 `a90a872` / round 3 = Opus reject・Sonnet reject とも Matrix と packet の oracle 不一致 7 件のみで設計欠陥なし → 是正 `f7e0a04`）。round 3 の是正は同一 vendor ラリー天井のため Coordinator が該当行（Matrix `-F` 化 / `検索 `Input` は両モードとも` anchor / success-emphasis 第 3 消費者 / AC7 literal / D10b 対象 file / 3:1 負 oracle 4 本 / success-soft 用途）を直接検分して閉じた（owner 許可 2026-09-05）。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑦ 同期の本 content commit に同乗させて遷移。Plan Commit = `fbbcf19`（plan-first commit、main `07302b5` 直上、以後の是正 commit はその子孫）。Codex ロジック・整合面 1 回は §3.3 pending のまま。
 
-- Findings Freeze: not yet frozen（Final Review が未実施のため）; post-freeze exceptions: none.
+2026-09-06: Final Review round 1 = Sonnet fresh approve（AC 45 項目全通過、full doc gate ERROR 0、P3: Matrix の `差異あり` oracle が catalog:522 の無関係文に衝突）+ Opus approve-with-P2（P2: `@theme inline` alias 欠落で utility 未生成 → GA1 改訂 `e162af1` / accname は aria-label 優先 → commit 型も Label のみ / icon 規則の narrow 化を catalog ⑬・backbone へ / destructive 用途 repoint / DSR-01 に secondary の runtime gap 注記、P3: Alert 枠 token の差・tone 表 header・8.69→8.72）→ Writer 是正 `402fd4e`（alias）`b90e494`（docs）→ alias で prettier tailwind plugin が既存 3 file の class 順を並べ替え format gate fail → GA1 再改訂 `3098fbc` → 整形 `ce1b0ea`（numstat 1/1・1/1・2/2、word-diff は既存 class の並べ替えのみ、format:check 0）、L1 full RESULT=PASS（END_HEAD_SHA `ce1b0ea`）。Coordinator が是正行を検分（alias 2 行 / `aria-label` は持たない / 中立 tone は任意 ×2 / 増減数値マイナス / DSR-01 runtime gap）し P1/P2 = 0 を確認、`implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ⑦ 同期の本 content commit に同乗させて遷移、Reviewed Content HEAD = `ce1b0ea`。次 = owner Human Gate（catalog ⑬ tone 表の culling 列記入 + alias 有効化で見た目が変わる既存 4 箇所〈HomePage:66 / BackupRestorePage:358 / PluExportPage:521,567〉の視認、介入 2/3）→ Codex ロジック・整合面 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final（src を含むため hosted は通常 run）。
+
+- Findings Freeze: not yet frozen（Codex レビュー待ち）; post-freeze exceptions: none.
 
 ### Gated Amendment 1（2026-09-05、Coordinator 起票、docs gate 起源）
 
