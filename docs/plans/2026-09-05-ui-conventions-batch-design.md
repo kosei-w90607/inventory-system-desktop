@@ -12,7 +12,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
-- Amendments: Gated Amendment 1（2026-09-05、`src/styles/globals.css` token 2 行、SHA は Writer commit 後に追記）
+- Amendments: Gated Amendment 1（2026-09-05、`src/styles/globals.css` token 4 行 + 既存 3 file の class 順整形、Writer `cd1c2f8` `402fd4e` `ce1b0ea`）/ Gated Amendment 2（2026-09-06、Human Gate 回答の反映、Writer commit は下記に追記）
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
@@ -528,3 +528,11 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 2026-09-06: owner 決定（原文は raw file「⑦ 未取込み通知の tone の owner 決定 原文」）: ホームの「前日分が未取込みです」（`HomePage.tsx:76-84`）は **赤（destructive）のまま + icon（AlertTriangle）を追加**して警告の姿に（日次の取込み漏れは業務上まずいため警告）。日次売上 / 月次売上ページの「レジ日報は未取込みです」（`DailySalesPage.tsx:175`、`MonthlySalesPage.tsx:166`）は情報提示のため Alert warning (c) 琥珀。Coordinator 注記: 日次売上ページの文は「選んだ日付の日報が無い」の情報で、当日分の抜けを警告する役はホームが担う、という切り分け。runtime lane の申し送りに反映。
 
 2026-09-06: owner Human Gate (2) 完了（原文「PLU 書出しの緑 Alert見たけどOKとします」、raw file 参照）。バックアップ画面の緑 Alert は保留（現状維持）、PLU 書出しの緑 Alert は OK。Human Gate (1) tone 表 culling は回答済み（感情で分ける 3 色）。**Human Gate 完了、介入 2/3 消費**。残り = Codex ロジック・整合面 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final（src 含むため hosted は通常 run）。Gated Amendment 2（次枠、Writer 小 1 commit）の内容 = catalog ⑬ tone 表の culling 反映（反映済み → success 行 + runtime gap、取込み済み → warning 行、冒頭に「感情で分ける 3 色」規約文）+ DSR-08 対応文 + Matrix oracle 改訂 + runtime 申し送り（未取込み通知 3 箇所の tone、success Alert 4 箇所は現状維持）。
+
+### Gated Amendment 2（2026-09-06、Human Gate 起源、Coordinator 起票）
+
+- 事象: Human Gate (1) の owner culling 回答（「感情で分ける 3 色」）と Human Gate (2) の所感で、本 PR が実装済みの canonical 文言に 3 点の差分が生じた。
+- 変更（Writer、docs のみ、`src` 変更なし）: (a) `02-component-catalog.md` ⑬ tone 表 — 冒頭に規約文「tone family は感情で分ける: 緑 = 終わったことを伝えるプラスの報告、琥珀 = 「ちょっと待って」の注意、赤 = 警告。状態の名前を伝えるだけの badge は無色」を追加。「反映済み」を success 行へ移し `variant="default"`（橙）→ success tone の runtime gap として記録（「owner 承認済み現状のため runtime gap ではない」文を削除）。「取込み済み」を destructive 行から warning 行へ移動（注意: もう取り込んである）。owner culling 列に原文 2（raw file「⑦ PR #39 Human Gate 回答」）を転記。(b) `01-decision-rules.md` DSR-08 — 上記規約文の要約 1 文を追加（Why: owner 回答 2026-09-06）。(c) catalog Alert 節 — 適用先の列挙に「ホーム『前日分が未取込みです』は destructive のまま AlertTriangle icon を追加（警告）、日次 / 月次売上の『レジ日報は未取込みです』は warning variant」を追記し、success Alert の本文色は現状（`text-success-strong`）を維持と明記（owner 保留）。
+- Matrix / AC（drafter、Writer commit 後）: 上記 3 点の新文言 ≥1 / 旧文言（「owner 承認済み現状のため runtime gap ではない」、destructive 行の「取込み済み」）= 0 の対 oracle を追加。
+- 根拠: Human Gate の回答は本 PR の正本文言を確定させる入力であり、runtime lane へ持ち越すと正本と実装の drift になるため本 PR で反映する。
+- Writer commit: pending
