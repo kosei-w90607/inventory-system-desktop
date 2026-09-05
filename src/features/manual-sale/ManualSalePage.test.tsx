@@ -200,6 +200,33 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     });
   });
 
+  it("SC2: 理由selectはSelect comboboxで選択が保存 payload の reason を更新する", async () => {
+    const user = userEvent.setup();
+    mockCreateManualSale.mockResolvedValueOnce({
+      status: "ok",
+      data: { record_id: 1, created: true, idempotent_replay: false },
+    });
+    renderWithClient(<ManualSalePage />);
+    await addSingleProduct(user);
+
+    const reasonTrigger = screen.getByLabelText("理由");
+    expect(reasonTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(reasonTrigger.tagName).toBe("BUTTON");
+    expect(reasonTrigger).toHaveTextContent("PLU未登録商品の販売");
+
+    await user.click(reasonTrigger);
+    await user.click(await screen.findByRole("option", { name: "その他" }));
+    expect(reasonTrigger).toHaveTextContent("その他");
+
+    await user.click(screen.getByRole("button", { name: "手動販売を保存" }));
+
+    await waitFor(() => {
+      expect(mockCreateManualSale).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: "other" }),
+      );
+    });
+  });
+
   it("REQ-203 requires explicit selection when multiple products match", async () => {
     const user = userEvent.setup();
     mockSearchProducts.mockResolvedValue({
