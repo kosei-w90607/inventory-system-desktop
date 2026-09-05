@@ -118,32 +118,31 @@ describe("InventoryRecordsPage (REQ-206)", () => {
 
     renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
 
+    const user = userEvent.setup();
     const recordType = await screen.findByLabelText("記録種別");
-    expect(
-      Array.from(recordType.querySelectorAll("option"), (option) => ({
-        value: option.value,
-        label: option.textContent,
-      })),
-    ).toEqual([
-      { value: "all", label: "すべて" },
-      { value: "receiving_record", label: "入庫" },
-      { value: "return_record", label: "返品・交換" },
-      { value: "manual_sale", label: "手動販売出庫" },
-      { value: "disposal_record", label: "廃棄・破損" },
-      { value: "csv_import", label: "CSV取込み" },
-      { value: "stocktake", label: "棚卸し" },
+    expect(recordType).toHaveAttribute("data-slot", "select-trigger");
+    expect(recordType.tagName).toBe("BUTTON");
+    await user.click(recordType);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      "すべて",
+      "入庫",
+      "返品・交換",
+      "手動販売出庫",
+      "廃棄・破損",
+      "CSV取込み",
+      "棚卸し",
     ]);
+    await user.click(screen.getByRole("option", { name: "すべて" }));
+
     const status = screen.getByLabelText("状態");
-    expect(
-      Array.from(status.querySelectorAll("option"), (option) => ({
-        value: option.value,
-        label: option.textContent,
-      })),
-    ).toEqual([
-      { value: "all", label: "すべて" },
-      { value: "active", label: "有効" },
-      { value: "canceled", label: "取消済み" },
-      { value: "in_progress", label: "進行中" },
+    expect(status).toHaveAttribute("data-slot", "select-trigger");
+    expect(status.tagName).toBe("BUTTON");
+    await user.click(status);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      "すべて",
+      "有効",
+      "取消済み",
+      "進行中",
     ]);
   });
 
@@ -309,9 +308,15 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       });
     });
     expect(await screen.findByText("入出庫履歴")).toBeInTheDocument();
-    expect(await screen.findByLabelText("部門")).toHaveValue("2");
+    const departmentTrigger = await screen.findByLabelText("部門");
+    expect(departmentTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(departmentTrigger.tagName).toBe("BUTTON");
+    expect(departmentTrigger).toHaveTextContent("ボタン");
     expect(screen.getByLabelText("記録ID")).toHaveValue(7);
-    expect(screen.getByLabelText("状態")).toHaveValue("active");
+    const statusTrigger = screen.getByLabelText("状態");
+    expect(statusTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(statusTrigger.tagName).toBe("BUTTON");
+    expect(statusTrigger).toHaveTextContent("有効");
     expect(screen.getAllByText("廃棄・破損").length).toBeGreaterThan(0);
     expect(screen.getByText("ボタン #02")).toBeInTheDocument();
     const detailLink = screen.getByRole("link", { name: "詳細を見る" });
@@ -347,7 +352,11 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       />,
     );
 
-    await user.selectOptions(await screen.findByLabelText("記録種別"), "all");
+    const recordTypeTrigger = await screen.findByLabelText("記録種別");
+    expect(recordTypeTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(recordTypeTrigger.tagName).toBe("BUTTON");
+    await user.click(recordTypeTrigger);
+    await user.click(await screen.findByRole("option", { name: "すべて" }));
 
     const lastCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
       (prev: { recordType?: string; page?: number }) => { recordType?: string; page?: number },
@@ -356,6 +365,86 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     expect(updater({ recordType: "disposal_record", page: 3 })).toEqual({
       recordType: "all",
       page: 1,
+    });
+  });
+
+  it("⑧SC4c: 状態selectで「すべて」を選ぶとall sentinelへ戻りstatusフィルタが外れる", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
+    });
+    const user = userEvent.setup();
+    const onSearchChange = vi.fn();
+
+    renderWithClient(
+      <InventoryRecordsPage
+        search={{ status: "active", page: 3 }}
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    const statusTrigger = await screen.findByLabelText("状態");
+    expect(statusTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(statusTrigger.tagName).toBe("BUTTON");
+    await user.click(statusTrigger);
+    await user.click(await screen.findByRole("option", { name: "すべて" }));
+
+    const lastStatusCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+      (prev: { status?: string; page?: number }) => { status?: string; page?: number },
+    ];
+    expect(lastStatusCall[0]({ status: "active", page: 3 })).toEqual({
+      status: "all",
+      page: 1,
+    });
+  });
+
+  it("⑧SC4a: 記録種別selectでall以外を選ぶとsearch stateがその値へ更新される", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const user = userEvent.setup();
+    const onSearchChange = vi.fn();
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={onSearchChange} />);
+
+    const recordTypeTrigger = await screen.findByLabelText("記録種別");
+    await user.click(recordTypeTrigger);
+    await user.click(await screen.findByRole("option", { name: "廃棄・破損" }));
+
+    const lastCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+      (prev: { recordType?: string; page?: number }) => { recordType?: string; page?: number },
+    ];
+    expect(lastCall[0]({})).toEqual({
+      recordType: "disposal_record",
+      page: 1,
+    });
+  });
+
+  it("⑧SC4b: 部門selectで実在部門を選ぶとtrigger表示が部門名になりdepartmentIdがnumberになる（round-trip、L8-D5）", async () => {
+    function Harness() {
+      const [search, setSearch] = useState<InventoryRecordsSearch>({});
+      return <InventoryRecordsPage search={search} onSearchChange={setSearch} />;
+    }
+    const user = userEvent.setup();
+
+    renderWithClient(<Harness />);
+
+    const departmentTrigger = await screen.findByLabelText("部門");
+    expect(departmentTrigger).toHaveTextContent("すべて");
+    await waitFor(() => {
+      expect(departmentTrigger).not.toBeDisabled();
+    });
+    await user.click(departmentTrigger);
+    await user.click(await screen.findByRole("option", { name: "ボタン" }));
+
+    await waitFor(() => {
+      expect(departmentTrigger).toHaveTextContent("ボタン");
+    });
+    await waitFor(() => {
+      expect(mockListInventoryRecords).toHaveBeenLastCalledWith(
+        expect.objectContaining({ department_id: 2 }),
+      );
     });
   });
 

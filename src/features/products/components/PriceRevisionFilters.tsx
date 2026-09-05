@@ -4,6 +4,13 @@ import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Department, Supplier } from "@/lib/bindings";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type {
@@ -40,25 +47,28 @@ export function PriceRevisionFilters({
             onPatch({ q: value === "" ? undefined : value });
           }}
         />
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <label className="text-sm text-muted-foreground" htmlFor="price-revision-supplier">
           取引先
-          <select
-            className="h-9 w-48 rounded-md border border-input bg-control-surface px-3 text-foreground"
-            aria-label="取引先"
-            disabled={suppliersQuery.isLoading}
-            value={normalized.supplier === undefined ? "" : String(normalized.supplier)}
-            onChange={(event) => {
-              onPatch({ supplier: event.target.value === "" ? null : Number(event.target.value) });
-            }}
-          >
-            <option value="">すべての取引先</option>
-            {(suppliersQuery.data ?? []).map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>
-                {supplier.name}
-              </option>
-            ))}
-          </select>
         </label>
+        <Select
+          disabled={suppliersQuery.isLoading}
+          value={normalized.supplier === undefined ? "all" : String(normalized.supplier)}
+          onValueChange={(value) => {
+            onPatch({ supplier: value === "all" ? null : Number(value) });
+          }}
+        >
+          <SelectTrigger id="price-revision-supplier" className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">すべての取引先</SelectItem>
+            {(suppliersQuery.data ?? []).map((supplier) => (
+              <SelectItem key={supplier.id} value={String(supplier.id)}>
+                {supplier.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button
           type="button"
           variant="outline"

@@ -1,7 +1,7 @@
 // src/features/products/components/ProductForm.test.tsx
 
 import React from "react";
-import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -153,7 +153,8 @@ describe("ProductForm (UI-01b)", () => {
 
     // pcs→cm: update が 2 回発火する（stockUnit の更新 + suggest による posStockSync 更新）。
     // functional update なので各呼び出しは prev を受け取り、順次適用される。
-    await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "cm" }));
     // 2 回の updater を順次適用した結果として両フィールドが更新されている
     expect(latestValues.stockUnit).toBe("cm");
     expect(latestValues.posStockSync).toBe(false);
@@ -179,7 +180,8 @@ describe("ProductForm (UI-01b)", () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText("数量単位"), "個");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "個" }));
     expect(latestValues.stockUnit).toBe("pcs");
     expect(latestValues.posStockSync).toBe(true);
   });
@@ -232,7 +234,8 @@ describe("ProductForm (UI-01b)", () => {
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("true");
 
       // cm を選択
-      await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+      await user.click(screen.getByLabelText("数量単位"));
+      await user.click(await screen.findByRole("option", { name: "cm" }));
 
       // lost update がないなら: stockUnit="cm" かつ posStockSync=false になる
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
@@ -246,11 +249,13 @@ describe("ProductForm (UI-01b)", () => {
       const user = userEvent.setup();
       render(<StatefulProductForm />);
 
-      await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+      await user.click(screen.getByLabelText("数量単位"));
+      await user.click(await screen.findByRole("option", { name: "cm" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
-      await user.selectOptions(screen.getByLabelText("数量単位"), "個");
+      await user.click(screen.getByLabelText("数量単位"));
+      await user.click(await screen.findByRole("option", { name: "個" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("pcs");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("true");
       expect(screen.getByTestId("pos-sync-touched")).toHaveTextContent("false");
@@ -267,12 +272,14 @@ describe("ProductForm (UI-01b)", () => {
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
       // 単位を cm に変更しても suggest が発火しないので利用者の false が保持される
-      await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+      await user.click(screen.getByLabelText("数量単位"));
+      await user.click(await screen.findByRole("option", { name: "cm" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
       // 単位を pcs に戻しても suggest が発火しないので false のまま
-      await user.selectOptions(screen.getByLabelText("数量単位"), "個");
+      await user.click(screen.getByLabelText("数量単位"));
+      await user.click(await screen.findByRole("option", { name: "個" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("pcs");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
     });
@@ -507,6 +514,10 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
   });
 
   function renderStateful(mode: "create" | "edit" = "edit") {
+    // round 3 P1: onValuesChange を Harness の外で hoist する。Harness 内で
+    // vi.fn(setValues) を inline 生成すると test scope から参照できないため、
+    // 実 state 更新（setValues）と spy 呼び出し（onValuesChange）を両立させる。
+    const onValuesChange = vi.fn();
     function Harness() {
       const [values, setValues] = React.useState<ProductFormValues>({
         ...createProductFormDefaults,
@@ -524,14 +535,17 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
           productCodeLabel={mode === "edit" ? "PRICE-001" : undefined}
           isSaving={false}
           posSyncTouched={false}
-          onValuesChange={setValues}
+          onValuesChange={(next) => {
+            onValuesChange(next);
+            setValues(next);
+          }}
           onPosSyncTouchedChange={vi.fn()}
           onSubmit={vi.fn()}
           onCancel={vi.fn()}
         />
       );
     }
-    return render(<Harness />);
+    return { ...render(<Harness />), onValuesChange };
   }
 
   it("shows history only in edit mode and calls listPriceHistory with 10", async () => {
@@ -648,13 +662,25 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
       data: [{ id: 44, name: "新規取引先", created_at: "2026-08-22T00:00:00" }],
     });
     const user = userEvent.setup();
-    renderStateful("create");
+    const { onValuesChange } = renderStateful("create");
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "  新規取引先  ");
     await user.click(screen.getByRole("button", { name: "追加する" }));
     expect(mockCreateSupplier).toHaveBeenCalledWith("新規取引先");
     expect(mockListSuppliers).toHaveBeenCalledTimes(1);
-    expect(await screen.findByLabelText("取引先")).toHaveValue("44");
+    // onValuesChange は React.Dispatch<SetStateAction<...>> なので functional updater
+    // (prev) => ({ ...prev, supplierId: created.id }) を受け取る。updater を解決して
+    // supplierId の数値そのもの（off-by-one 等）を検査する。
+    await waitFor(() => {
+      const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1]?.[0] as
+        | ProductFormValues
+        | ((prev: ProductFormValues) => ProductFormValues)
+        | undefined;
+      const resolved =
+        typeof lastCall === "function" ? lastCall(createProductFormDefaults) : lastCall;
+      expect(resolved).toEqual(expect.objectContaining({ supplierId: 44 }));
+    });
+    expect(screen.getByLabelText("取引先")).toHaveTextContent("新規取引先");
   });
 
   it("preserves supplier input and other form values after create failure", async () => {
@@ -716,5 +742,129 @@ describe("ProductForm native input tokens（Lane 5 SC4e）", () => {
       expect(field).toHaveClass("bg-control-surface");
       expect(field).not.toHaveClass("bg-background");
     }
+  });
+});
+
+describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、L8-D2, L8-D5）", () => {
+  function renderForm(
+    initialValues: ProductFormValues = createProductFormDefaults,
+    overrides: Partial<React.ComponentProps<typeof ProductForm>> = {},
+  ) {
+    const onValuesChange = vi.fn();
+    function Harness() {
+      const [values, setValues] = React.useState<ProductFormValues>(initialValues);
+      return (
+        <ProductForm
+          mode="create"
+          values={values}
+          departments={[makeMockDepartment({ id: 1, name: "毛糸", code_prefix: "Y" })]}
+          suppliers={[makeMockSupplier({ id: 1, name: "既存取引先" })]}
+          errors={{}}
+          saveError={null}
+          supplierWarning={null}
+          isSaving={false}
+          posSyncTouched={false}
+          onValuesChange={(next) => {
+            onValuesChange(next);
+            setValues(next);
+          }}
+          onPosSyncTouchedChange={vi.fn()}
+          onSubmit={vi.fn()}
+          onCancel={vi.fn()}
+          {...overrides}
+        />
+      );
+    }
+    render(<Harness />);
+    return { onValuesChange };
+  }
+
+  it("SC8a: 部門selectは未選択時にplaceholderを表示し偽optionを持たず、実在部門選択でsuffix込み表示とnumber復元がround-tripする（L8-D2, L8-D5）", async () => {
+    const user = userEvent.setup();
+    const { onValuesChange } = renderForm(createProductFormDefaults, {
+      errors: { departmentId: "部門を選択してください" },
+    });
+
+    const trigger = screen.getByLabelText("部門（必須）");
+    expect(trigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(trigger.tagName).toBe("BUTTON");
+    expect(trigger).toHaveTextContent("選択してください");
+    expect(screen.getByText("部門を選択してください")).toBeInTheDocument();
+
+    await user.click(trigger);
+    expect(screen.queryByRole("option", { name: "選択してください" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "毛糸（独自コード可）" }));
+
+    expect(trigger).toHaveTextContent("毛糸（独自コード可）");
+    // onValuesChange は React.Dispatch<SetStateAction<...>> なので functional updater
+    // (prev) => ({ ...prev, departmentId: Number(value) }) を受け取る。updater を解決して
+    // departmentId が number（"1" でなく 1）であることを検査する
+    // （ProductForm.tsx:284 の Number() 欠落 mutant を kill する）。
+    const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
+      prev: ProductFormValues,
+    ) => ProductFormValues;
+    expect(lastCall(createProductFormDefaults)).toEqual(
+      expect.objectContaining({ departmentId: 1 }),
+    );
+  });
+
+  it("SC8b: 取引先selectは「取引先なし」選択でsupplierIdがnullになる", async () => {
+    const user = userEvent.setup();
+    renderForm({ ...createProductFormDefaults, supplierId: 1 });
+
+    const trigger = screen.getByLabelText("取引先");
+    expect(trigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(trigger.tagName).toBe("BUTTON");
+    expect(trigger).toHaveTextContent("既存取引先");
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("option", { name: "取引先なし" }));
+
+    expect(trigger).toHaveTextContent("取引先なし");
+  });
+
+  it("SC8b: 取引先selectで実在取引先を手動選択するとsupplierIdがnumberになる（round-trip、L8-D5）", async () => {
+    const user = userEvent.setup();
+    const { onValuesChange } = renderForm(createProductFormDefaults, {
+      suppliers: [
+        makeMockSupplier({ id: 1, name: "既存取引先" }),
+        makeMockSupplier({ id: 2, name: "新取引先" }),
+      ],
+    });
+
+    const trigger = screen.getByLabelText("取引先");
+    await user.click(trigger);
+    await user.click(await screen.findByRole("option", { name: "新取引先" }));
+
+    expect(trigger).toHaveTextContent("新取引先");
+    // auto-select 経路（:665-681）は Number(value) を経由しないため、手動選択経路
+    // （ProductForm.tsx:307 の update("supplierId", value === "none" ? null : Number(value))）
+    // の Number() 欠落 mutant はこの test でのみ kill できる。
+    const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
+      prev: ProductFormValues,
+    ) => ProductFormValues;
+    expect(lastCall(createProductFormDefaults)).toEqual(expect.objectContaining({ supplierId: 2 }));
+  });
+
+  it("SC8b: supplierWarningがある間はtrigger がdisabledになる", () => {
+    renderForm(createProductFormDefaults, {
+      supplierWarning: "取引先の在庫連携に問題があります",
+    });
+    expect(screen.getByLabelText("取引先")).toBeDisabled();
+  });
+
+  it("SC8c: 税率selectはtriggerを開くと3件（10/8/0%）のoptionを持つSelect comboboxである", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const trigger = screen.getByLabelText("税率");
+    expect(trigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(trigger.tagName).toBe("BUTTON");
+    await user.click(trigger);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      "10%",
+      "8%",
+      "0%",
+    ]);
   });
 });
