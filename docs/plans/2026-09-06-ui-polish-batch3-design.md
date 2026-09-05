@@ -15,7 +15,7 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1e758cf5
@@ -24,7 +24,7 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5 デザイン面 + Codex 1 round（§3.3、実施タイミングは起票時点の Codex 枠状況に従う）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 0d75d3e
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
 - Human Gate: owner が design PR 上で (1) 商品一括インポート / PLU 書出し / バックアップの説明文 3 案を culling する（本 packet「設計判断」節の draft、2〜3 文の日本語文案） (2) 記録 ID の表示方針（(a) 種別込み表示 / (b) 一覧から外す / (c) 現状維持）を選ぶ（Coordinator 推奨は (b)、下記「設計判断」節参照） (3) 備考欄が空のときの表示（「—」か薄字「備考なし」か）を選ぶ（Coordinator 推奨は既存 27 箇所の「—」パターンへの統一、下記参照）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
@@ -456,3 +456,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 2026-09-06: owner Human Gate (2) = **(b) 一覧の列から外す で確定**（原文「いや、それならbにするよ」、番号で呼ぶ運用なし）。Human Gate 3 件すべて回答済み。次 = implementing 遷移（Plan Commit `1e758cf5`）→ Sonnet Writer（S1〜S6 の design docs 編集、記録 ID は (b) を DSR-22 マッピング表 + `65-inventory-record-traceability.md:212` へ反映）→ Final Review → human-confirm → Codex 待ち。
 
 2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接〈owner 許可〉+ Opus 並走、round 2 = Sonnet fresh approve）+ Human Gate 3 件回答済み → `plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑩ 同期の本 content commit に同乗させて遷移。Plan Commit = `1e758cf5`（plan-first commit、main `07302b5` 直上）。Codex 1 回は §3.3 pending。
+
+2026-09-06: Final Review round 1 = Sonnet fresh approve-with-P2（AC 全通過、D-038 揮発 evidence 0、P2: DSR-22 :435 の stale 行番号未修正 / packet Goal・Non-scope の「別 commit」文言）+ Opus approve-with-P2（同 stale 行 / 「備考なし」を代替として残す文 / 「直近10件」の空白 / MovementTable 引用の誤り / 価格履歴は `ul` で `TableHead` 指示が不成立）→ Writer 是正 `0d75d3e`（全 5 件 + 「確定後 / 別 commit」文言の canonical 側 0 件確認）。Coordinator が是正行を検分し P1/P2 = 0 を確認、`implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ⑩ 同期の本 content commit に同乗させて遷移、Reviewed Content HEAD = `0d75d3e`。注記: 本 packet の Goal / Non-scope にある「65-doc:212 の改訂は確定後の別 commit」は Human Gate 完了（2026-09-06）により本 PR で前倒し反映済み（Writer commit `6e5ddcf`）。残り = Codex 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final（docs-only、hosted は owner dispatch）。
