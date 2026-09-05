@@ -24,7 +24,8 @@ describe("StockUnitField (UI-01b-D6)", () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "cm" }));
 
     expect(onStockUnitChange).toHaveBeenCalledWith("cm");
     // checkbox onChange (touched 経路) は呼ばれない — suggest 経路を使う
@@ -43,7 +44,8 @@ describe("StockUnitField (UI-01b-D6)", () => {
     );
     onPosStockSyncChange.mockClear();
 
-    await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "cm" }));
 
     expect(onPosStockSyncChange).not.toHaveBeenCalled();
   });
@@ -66,7 +68,8 @@ describe("StockUnitField (UI-01b-D6)", () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "cm" }));
 
     // suggest 経路が false を提案する（= touched を立てない）
     expect(onPosStockSyncSuggest).toHaveBeenCalledWith(false);
@@ -93,7 +96,8 @@ describe("StockUnitField (UI-01b-D6)", () => {
     );
 
     // pcs→cm: suggest(false) が呼ばれる
-    await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "cm" }));
     expect(onPosStockSyncSuggest).toHaveBeenLastCalledWith(false);
 
     onPosStockSyncSuggest.mockClear();
@@ -111,7 +115,8 @@ describe("StockUnitField (UI-01b-D6)", () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText("数量単位"), "個");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "個" }));
 
     expect(onPosStockSyncSuggest).toHaveBeenCalledWith(true);
     // touched を立てる onChange 経路は呼ばれない
@@ -135,7 +140,8 @@ describe("StockUnitField (UI-01b-D6)", () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText("数量単位"), "cm");
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "cm" }));
 
     // touched=true の場合 suggest は発火しない（利用者 override を尊重）
     expect(onPosStockSyncSuggest).not.toHaveBeenCalled();
@@ -165,6 +171,24 @@ describe("StockUnitField (UI-01b-D6)", () => {
     expect(onPosStockSyncChange).toHaveBeenCalledWith(false);
     // suggest 経路は呼ばれない
     expect(onPosStockSyncSuggest).not.toHaveBeenCalled();
+  });
+
+  it("SC5: 数量単位selectはSelect combobox（data-slot=select-trigger）である", () => {
+    render(
+      <StockUnitField
+        mode="create"
+        stockUnit="pcs"
+        posStockSync
+        posSyncTouched={false}
+        onStockUnitChange={vi.fn()}
+        onPosStockSyncChange={vi.fn()}
+        onPosStockSyncSuggest={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByLabelText("数量単位");
+    expect(trigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(trigger.tagName).toBe("BUTTON");
   });
 
   it("SC4f: 数量単位selectがbg-control-surfaceでbg-backgroundを持たない、POS販売チェックボックスは無変更", () => {

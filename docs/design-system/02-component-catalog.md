@@ -247,6 +247,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 **Don't**:
 - 必須を色だけで示さない
 - read-only と disabled を混同しない
+- native `<select>` を使わない（DSR-23）
 
 ---
 
@@ -596,6 +597,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 - フィルタ候補を絞込み結果から派生させない
 - IME 変換中の Enter を検索確定と取り違えない
 - live 型で `aria-label` を外さない（可視 Label がない分、これが唯一の識別子）
+- native `<select>` を使わない（DSR-23）
 
 ---
 
@@ -940,6 +942,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-05 | ⑧ native select 統一 | ④ フォームセクション・⑨ 検索+フィルタの Don't に「native `<select>` を使わない（DSR-23）」を追記 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | ⑩ canonical を `src/components/patterns/Pagination.tsx`（`Pagination` + `PaginationSummary`）へ、件数文言を範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」へ実装。⑯ canonical を `src/components/patterns/ListShell.tsx` へ（商品一覧 pilot 採用）、必須構成 1 の枠を `rounded-lg border bg-card p-4` へ、必須構成 3 の固定列影の記載を必須構成 4 側へ移動 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を当時の canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は後続 lane での移行対象と明記。⑯ の canonical を「なし（後続 lane で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |
