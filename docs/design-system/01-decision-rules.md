@@ -458,6 +458,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-06 | UI 磨き batch 3 design | DSR-22 識別列マッピング表に記録ID表示方針の owner culling 結果（(b) 一覧の表示列から外す、確定 2026-09-06）を注記として追加 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | `--border-strong` / `--row-current` / `--border` 濃化 / `--input` 統一を globals.css に実装、token 候補値の HEX を canonical（本節）へ正式登録。件数文言は `Pagination` / `PaginationSummary`（`src/components/patterns/Pagination.tsx`）が範囲付き統一形を描画する実装済み表記へ更新。identityColumns 予約 prop と両立 probe（sticky × 識別列固定 × DSR-17）の申し送りを追記 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。件数文言を当時の canonical（`{totalCount} 件中 {page} / {totalPages} ページ`）へ揃え範囲付き統一形を後続 lane での移行対象と明記、上部表示・識別列固定の発動条件と画面→固定列 mapping 表を pin（⑯・04 原則 14 の重複記載を解消）、Badge/outline chip を UI 部品枠 3:1 の対象に拡張（owner Human Gate 所感、廃番 Badge 可読性）、token 候補値の HEX を canonical から撤去し packet / reference 分析 doc へ移動 |
 | 2026-09-03 | 本 PR | DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」を新設。title を「DSR-01〜22」に更新。DSR-16（同型情報のグループ化）・DSR-21（現在地と選択状態の色分離）と主題重複しないことを明記（旧 Lane 1 branch の DSR-16 提案を再採番して承継）。Final Review round 2 是正で「低視力 L3」節（forced-colors / DPI 125〜150% / 当たり判定 24×24 / rem・em）を追加し、04-backbone 原則 16 の dangling pointer を解消 |
