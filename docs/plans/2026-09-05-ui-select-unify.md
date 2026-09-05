@@ -4,7 +4,7 @@ owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 5d94a72
@@ -13,7 +13,7 @@ owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded により Codex 成分は pending、human-confirm で待機し Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: ce39c8f
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈プルダウン統一の見た目〉/ AC-L3-2〈開閉・選択・「すべて」・キーボード操作、owner 選定 2 画面〉の 2 項目）
@@ -350,7 +350,9 @@ Plan Review round 3（独立 Sonnet subagent、fresh context + 独立 Opus 5 rea
 
 2026-09-05: Plan Gate 収束（round 3/3。round 1 = Opus reject P1 5 / Sonnet approve-with-P2、是正 amend / round 2 = Opus reject P1 2 / Sonnet approve、是正 amend / round 3 = Sonnet approve、Opus reject は oracle 記述 3 件 + P3 1 件で設計欠陥なし）。round 3 の是正 4 件は同一 vendor ラリー天井のため Coordinator が該当行（S6 二重 oracle / SC6 `mockSearchProducts` supplier_id 44 / SC8b `renderStateful` spy hoist / S9 `<SelectGroup`）を直接検分して閉じた（owner 許可 2026-09-05「ラリーが止まらない時は Fable が見る」）。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑧ 同期の本 content commit に同乗させて遷移（forward state-only は温存）。Plan Commit = `5d94a72`（plan-first commit、Lane 5 tip `04f89a4` 直上）。Codex ロジックレビュー 1 回は §3.3 pending のまま。
 
-- Findings Freeze: not yet frozen（Final Review が未実施のため）; post-freeze exceptions: none.
+2026-09-06: Final Review round 1 = Opus approve-with-P2（`select.tsx` echo guard を機序実証の上で採用 → Gated Amendment 2、P2: comment の `<select` literal / SC8a の値 assert、P3: L8-D6 は static oracle のみ / `disabled` は Root）+ Sonnet fresh reject（全 mutant 再注入で survivor: SC4a / SC4c / SC8a / SC8b、P3 SC10c）→ Writer 是正 `774eee5`（comment + DSR-23 の 1 文）/ `ce39c8f`（test 5 件）→ 独立 closure 再注入（fresh Sonnet、隔離 worktree）で 6/6 kill、full suite 1300/1300 pass、L1 full RESULT=PASS（END_HEAD_SHA `ce39c8f`）。P1/P2 = 0 を確認し `implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ⑧ 同期（S12）の本 content commit に同乗させて遷移、Reviewed Content HEAD = `ce39c8f`。Writer 観察: full suite 1 回目で `app-router.test.tsx` の scroll-restoration が 1 度 fail（単独再実行 pass、closure の再実行でも再現せず）— Lane 3 由来の既知 race 系として記録のみ。次 = owner Windows native L3（AC-L3-1〈プルダウンの見た目統一〉/ AC-L3-2〈開閉・選択・「すべて」・キーボード: ↑↓ で開く / IME 頭文字検索なし / ラベル文字クリックで開かない、per-row 画面 1 つを含む〉、介入 2/3）→ Codex ロジックレビュー 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final。
+
+- Findings Freeze: not yet frozen（Codex ロジックレビュー待ち）; post-freeze exceptions: none.
 
 ### Gated Amendment 2（2026-09-06、Final Review 起源、Coordinator 記録）
 
