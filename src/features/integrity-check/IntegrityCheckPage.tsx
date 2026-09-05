@@ -43,7 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pagination } from "@/components/patterns/Pagination";
+import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { commands, type IntegrityFixResult, type IntegrityResult } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
@@ -345,7 +345,9 @@ export function IntegrityCheckPage() {
                 </Button>
               </div>
 
-              <div className="overflow-x-auto rounded-md border">
+              <PaginationSummary page={page} perPage={perPage} totalCount={mismatches.length} />
+
+              <div className="overflow-x-auto rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow>

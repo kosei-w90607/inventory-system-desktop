@@ -130,6 +130,9 @@ describe("StockInquiryPage (REQ-301 自動展開)", () => {
       throw new Error("P-LOW row not found");
     }
     expect(within(row).getByText("在庫少")).toBeInTheDocument();
+    // SC3b（round 2/3 是正）: status !== "all"（low_stock）のとき totalCount が無いため
+    // 上部 PaginationSummary は描画されない。
+    expect(screen.queryByText(/件のうち/)).not.toBeInTheDocument();
   });
 
   it("REQ-301: 検索結果 1 件で onSearchChange に selected を渡し詳細を自動展開", async () => {
@@ -523,7 +526,9 @@ describe("StockInquiryPage SPEC-UIBB-5（51件 synthetic で page 2 到達 + tru
       <StockInquiryPage search={{ q: "毛糸", status: "all", page: 2 }} onSearchChange={vi.fn()} />,
     );
     expect(await screen.findByText("P-051")).toBeInTheDocument();
-    expect(screen.getByText("全 51 件のうち 51〜51 件を表示（2 / 2 ページ）")).toBeInTheDocument();
+    // S3b（round 3）: 上部 PaginationSummary + 下部 Pagination の両方に同じ件数文言が
+    // 現れるため、単数一致の getByText ではなく getAllByText の件数で確認する。
+    expect(screen.getAllByText("全 51 件のうち 51〜51 件を表示（2 / 2 ページ）")).toHaveLength(2);
   });
 });
 

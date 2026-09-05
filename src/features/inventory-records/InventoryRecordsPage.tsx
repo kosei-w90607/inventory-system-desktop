@@ -31,7 +31,7 @@ import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { PageShell } from "@/components/patterns/PageShell";
-import { Pagination } from "@/components/patterns/Pagination";
+import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { commands } from "@/lib/bindings";
 import { unwrapResult } from "@/lib/invoke";
 import { scrollPageToTop } from "@/lib/page-scroll";
@@ -156,7 +156,7 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
         subtitle="入庫・返品・販売出庫・廃棄などの業務記録を後から確認します"
       />
 
-      <section className="space-y-3 rounded-md border p-4">
+      <section className="space-y-3 rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1">
             <label className="text-sm text-muted-foreground" htmlFor="records-type">
@@ -338,6 +338,13 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
         />
       ) : recordsQuery.data ? (
         <div className="space-y-3">
+          {recordsQuery.data.total_count > 0 && (
+            <PaginationSummary
+              page={recordsQuery.data.page}
+              perPage={recordsQuery.data.per_page}
+              totalCount={recordsQuery.data.total_count}
+            />
+          )}
           <Table>
             <TableHeader>
               <TableRow>

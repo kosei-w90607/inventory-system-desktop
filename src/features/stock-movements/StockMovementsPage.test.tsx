@@ -210,6 +210,37 @@ describe("StockMovementsPage (UI-06c)", () => {
   });
 });
 
+describe("StockMovementsPage Lane 4 S1d/S3d: frame color + top summary", () => {
+  it("SC4d: filter section root has rounded-lg border bg-card p-4", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const { container } = renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={{}} onSearchChange={vi.fn()} />,
+    );
+    await waitFor(() => {
+      expect(mockListMovements).toHaveBeenCalled();
+    });
+    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+  });
+
+  it("SC3d: renders the top PaginationSummary above the table when total_count > 0", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeMovement()], total_count: 1, page: 1, per_page: 50 },
+    });
+    renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={{}} onSearchChange={vi.fn()} />,
+    );
+    expect(
+      await screen.findByText("全 1 件のうち 1〜1 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("StockMovementsPage SPEC-UIBB-1/2（filter-empty reset action、66 §66.6）", () => {
   it("SPEC-UIBB-1 絞り込み該当なしで解除ボタンを表示する", async () => {
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });

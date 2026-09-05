@@ -278,7 +278,7 @@ describe("UI-11c REQ-902", () => {
     renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-10", page: 3 });
     await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
     expect(listLogs).toHaveBeenCalledTimes(1);
@@ -290,7 +290,7 @@ describe("UI-11c REQ-902", () => {
     expect(listLogs).toHaveBeenCalledTimes(1);
     expect(screen.getAllByText("合成ログ")).toHaveLength(2);
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
 
@@ -417,7 +417,7 @@ describe("UI-11c REQ-902", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
 
     fireEvent.click(screen.getByRole("button", { name: "valid transitionを開始" }));
     await waitFor(() => {
@@ -429,7 +429,7 @@ describe("UI-11c REQ-902", () => {
       "開始日は終了日と同じ日か、それより前の日付にしてください",
     );
     expect(screen.getByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
     expect(listLogs).toHaveBeenCalledTimes(1);
   });
 
@@ -1138,6 +1138,45 @@ describe("UI-11c REQ-902", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/\[commands:/)).not.toBeInTheDocument();
+  });
+});
+
+describe("OperationLogsPage Lane 4 S1e/S1g/S3e: frame color, table wrapper rounded-lg, top summary", () => {
+  it("SC4e: filter section root has rounded-lg border bg-card p-4", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+    });
+    renderPage();
+    await screen.findByLabelText("種別");
+    expect(document.body.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+  });
+
+  it("SC4g: table wrapper has overflow-x-auto rounded-lg border, no bg-card, and no rounded-md leftover", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
+    });
+    renderPage();
+    await screen.findByText("合成ログ");
+    const wrapper = document.body.querySelector(".overflow-x-auto");
+    expect(wrapper).not.toBeNull();
+    const tokens = (wrapper?.className ?? "").split(/\s+/);
+    expect(tokens).toContain("rounded-lg");
+    expect(tokens).toContain("border");
+    expect(tokens).not.toContain("rounded-md");
+    expect(tokens).not.toContain("bg-card");
+  });
+
+  it("SC3e: renders the top PaginationSummary above the table when items are present", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
+    });
+    renderPage();
+    expect(
+      await screen.findByText("全 1 件のうち 1〜1 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
   });
 });
 

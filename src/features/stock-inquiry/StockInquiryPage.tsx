@@ -20,7 +20,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 import { ProductListTable } from "./components/ProductListTable";
 import { EmptySearchPlaceholder } from "./components/EmptySearchPlaceholder";
 import { StockDetailCard } from "./components/StockDetailCard";
-import { Pagination } from "@/components/patterns/Pagination";
+import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import {
@@ -99,7 +99,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
     <PageShell>
       <PageHeader title="在庫照会" />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4">
         <SearchBar
           value={qValue}
           debounceMs={200}
@@ -221,6 +221,16 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
         />
       ) : data ? (
         <div className="space-y-2">
+          {/* S3b（round 2/3 是正）: 下部 Pagination と同じ条件（status === "all" かつ
+              totalCount が 0 より大きい）でのみ描画する。source: "low_stock" は
+              totalCount が null のため対象外、totalCount === 0 は誤って描画しない。 */}
+          {statusValue === "all" && (data.totalCount ?? 0) > 0 && (
+            <PaginationSummary
+              page={pageValue}
+              perPage={perPage}
+              totalCount={data.totalCount ?? 0}
+            />
+          )}
           <ProductListTable
             items={data.items}
             source={data.source}

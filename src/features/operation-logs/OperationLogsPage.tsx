@@ -28,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pagination } from "@/components/patterns/Pagination";
+import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { commands, type OperationLog } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -343,7 +343,7 @@ export function OperationLogsPage({
   return (
     <PageShell>
       <PageHeader title="操作ログ" subtitle="システムの操作履歴を期間・種別で確認します" />
-      <section className="space-y-3 rounded-md border p-4">
+      <section className="space-y-3 rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1">
             <label htmlFor="log-start" className="text-sm text-muted-foreground">
@@ -499,7 +499,12 @@ export function OperationLogsPage({
       )}
       {logsQuery.data && logsQuery.data.items.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-md border">
+          <PaginationSummary
+            page={effectiveSearch.page}
+            perPage={logsQuery.data.per_page}
+            totalCount={logsQuery.data.total_count}
+          />
+          <div className="overflow-x-auto rounded-lg border">
             <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
