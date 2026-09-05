@@ -97,7 +97,7 @@
       - R5-4 **owner 決定**: 検索欄・取引先・部門などを囲む外枠の中の地色を `#F5F5F4` に統一（参考 = 商品一覧の toolbar 枠）→ E15 / Lane 2 申し送り (v) card-on-card の裁定として確定。`--list-toolbar`（仮）token を 00-foundations に登録し、ListShell の toolbar 枠と非 ListShell 画面の filter 枠へ適用 → Lane 4 候補
       - R5-5 商品一覧の「廃番」badge には枠が無いが「対象外」badge には枠がある（同一画面内の不整合）。加えて「反映済み / 未反映」等の badge 色付けルールをアプリ内で作るべき → R3-1 / R2-5 と統合し「Badge の色と枠の規約」を DSR として design-first で起草（DSR-08 の具体化、状態 badge の mapping 表）→ 別 lane、owner と mapping を決める
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
-- [ ] ⑥ drift 総点検の docs 同期 PR（2026-09-05 着手、docs-only R1、Sonnet Writer、Codex 不要）: S2 7 件 = 42-cmd の stocktake command 3 件未記載 / 41-cmd の `over_limit_warning` field / 52-ui-shared-layout の nav ラベル 2 件・記録詳細 route 5 件・icon 表の入出庫履歴行 / 50-ui-product-list の perPage 既定値の自己矛盾 / decision-log D-033 → D-043 の逆参照。監査 file を `docs/research/audit-2026-09/drift-audit.md` へ tracked 化（S3 5 件と一致確認済み一覧を含む）
+- [x] ⑥ drift 総点検の docs 同期 PR: 完了（PR #37 squash `31e6a00`、2026-09-05）。S2 7 件を実装へ同期、監査記録 = [drift-audit](research/audit-2026-09/drift-audit.md)。レビュー P3 2 件は Backlog へ（65-doc §65.3「完成形」の実装状況注記 / 52-doc の非表示 route 列挙）
 - [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: (a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
 - [ ] ⑧ native `<select>` 23 箇所 → shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）: Lane 5 merge 後に起票
 
@@ -123,6 +123,7 @@
 - bindings trailing-whitespace generation の扱い（2026-08-30 実測: commit 済み `src/lib/bindings.ts` に trailing whitespace 0 件。生成時のみ発生する可能性が残るため、次回 bindings 再生成を伴う change で実測して要否判定）。
 - PLUスロット永続割当の恒久設計（CV17 import が メモリNo. merge のため現行再採番と衝突。[2026-07-03 packet](archive/plans/2026-07-03-post-ui08-janless-plu-target-design.md) D-6 参照）。
 - MSI 配布手順 docs 化（v1.0 gate。「次の行動」⑤と対応）。
+- drift 同期 PR #37 のレビュー P3（2026-09-05）: `65-inventory-record-traceability.md` §65.3 は「完成形」節で、詳細 route 6 件は実装済み・一覧 route は未実装の注記を足す / `52-ui-shared-layout.md:90-93` の「ナビに出さない route」列挙（2 件のみ）を現状へ更新。次に該当 doc を触る PR で同乗
 - D-023 POS adapter boundary の実装側未充足（2026-09-05 Fable 実測）: IO 層の parser / formatter に adapter trait がなく `z004_parser` / `daily_report_parser` と CASIO 前提、帳票番号 `Z001` 等と CASIO 固有語が BIZ / CMD / DB 層へ漏出（`sales_repo.rs` 37 箇所が最多、migration / csv_import parse / 日報取込み command にも）。レジ機種変更が見えた時点で「帳票番号を app core の抽象名へ寄せる → parser / formatter を adapter trait の背後へ → レジ制約を設定値へ」の 3 段で構造整理 lane にする（機能追加ではない）
 - CSV 出力・印刷の実挙動確認（owner run 3 原文「まともにテストしたことがない」「印刷は中身を作っていない」）: end-to-end で叩いて紙面 / 出力 file の実態を証跡化してから要否を裁定
 - Z001 / Z002 / Z005 の取り込み情報を画面で見られるようにする（owner run 3 原文「無いのはまずい」= 要望、後続候補ではない）: DTO 公開 + 表示設計、design-first
