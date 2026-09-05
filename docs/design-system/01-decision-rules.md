@@ -22,7 +22,7 @@
 
 **Why**: refactoring-ui §1「Not everything can be important」のとおり、すべてを強調するとヒエラルキーが崩れる。非 IT の利用者は「いま何を押せばよいか」を即断したい。Primary が複数あると、どれが本筋の操作か判断に迷う。GOV.UK「Do less」の精神で、1 画面の本筋操作を 1 つに定める。
 
-**判定フロー / 具体例**: 商品一覧の主動線は「商品登録」1 個（Primary）。一覧へ戻る・修正などは outline。フォーム画面の主動線は「登録する / 保存する」1 個で、「一覧へ戻る」は outline に降格する。runtime 是正対象（2026-09-05 起票時実測）: `ProductForm.tsx:343`「追加する」（インライン取引先登録の確定ボタン）と `:481`「登録する / 保存する」が `showSupplierInput` true 時に同一画面へ同時存在し二重 primary の疑いがある — `:343` を `secondary` へ降格する（runtime lane）。
+**判定フロー / 具体例**: 商品一覧の主動線は「商品登録」1 個（Primary）。一覧へ戻る・修正などは outline。フォーム画面の主動線は「登録する / 保存する」1 個で、「一覧へ戻る」は outline に降格する。runtime 是正対象（2026-09-05 起票時実測）: `ProductForm.tsx:343`「追加する」（インライン取引先登録の確定ボタン）と `:481`「登録する / 保存する」が `showSupplierInput` true 時に同一画面へ同時存在し二重 primary の疑いがある — `:343` を `secondary` へ降格する（runtime lane）。`button.tsx:17` の `secondary` は現状 border なし（runtime lane で `border border-border` を追加）。
 
 **関連**: パターン①ページヘッダ / ④フォームセクション。review-checklist カテゴリ 9 対応（既存画面の共通レイアウト継承・別アプリ化防止）。
 

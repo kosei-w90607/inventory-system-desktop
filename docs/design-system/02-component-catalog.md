@@ -380,7 +380,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 ### Alert warning variant（画面上部の注意喚起、owner v4 決定で確定）
 
-業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` に次を追加する: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
+業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` に次を追加する: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。枠は `--warning`（badge ①状態の `--warning-border` より一段濃い）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
 
 ```tsx
 <Alert variant="warning">
@@ -605,7 +605,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **フィルタ候補のソース**: 部門候補は `listDepartments` の master 全件から作る。現在の絞込み結果（filtered result）から候補を作ると、選択値が候補から消えて他候補へ切り替えられなくなる縮退が起きるため、これを禁止する（DSR-10）。
 
-**アクセシビリティ**: commit 型は可視 `Label htmlFor` + `aria-label="商品検索"` の両方を持つ（accessible name は可視 Label が優先）。live 型は可視 `<Label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。フィルタの未選択は「すべての部門」という日本語 default で示す。
+**アクセシビリティ**: commit 型も可視 `Label htmlFor` のみを accessible name とし `aria-label` は持たない（識別方式を混在させない、:618 と整合）。live 型は可視 `<Label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。runtime 反映では commit 型相当の既存 4 箇所（`DisposalPage.tsx:382`「廃棄・破損商品検索」/ `ReturnExchangePage.tsx:688`「返品・交換商品検索」/ `ManualSalePage.tsx:477`「手動販売商品検索」/ `ReceivingPage.tsx:446`「入庫商品検索」）の `aria-label` を外す（runtime lane）。フィルタの未選択は「すべての部門」という日本語 default で示す。
 
 **Do**:
 - commit 型の検索は Enter 確定（スキャナ互換）+ ボタン確定の両経路を持つ
@@ -814,9 +814,9 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Badge>
 ```
 
-**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = `variant="default"` + `border-warning`（琥珀 pill、枠色は owner v3 決定で `--warning` に確定、ランキング・最新 等）。この 3 種以外を作らない。
+**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = `variant="default"` + `border-warning`（琥珀 pill、枠色は owner v3 決定で `--warning` に確定、ランキング・最新 等）。この 3 種以外を作らない。
 
-**①状態の tone family マッピング表**（owner culling 列つき、原文回答で確定。全行 `rg -n "<Badge"` 実測、file:line 明記）:
+**①状態の tone family マッピング表**（owner culling 列は design PR 上で記入（AC-HumanGate、未記入）。全行 `rg -n "<Badge"` 実測、file:line 明記）:
 
 | tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
 |---|---|---|
