@@ -458,7 +458,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 **Why**: owner 決定（R5-3、2026-09-05）。同一画面内に見た目が異なる 2 種類のプルダウン（native と shadcn）が混在していたため統一する。shadcn `Select` は開閉・キーボード操作が一貫し、部門フィルタ等の既存 canonical 実装と揃う。
 
-**具体例**: 空値 sentinel は `SelectItem value="all"`（「すべて」の意味）または `SelectItem value="none"`（「指定なし」「取引先なし」等、明示的な無選択の意味）へ変換する。数値 ID を値に持つ場合は `SelectItem value={String(id)}` へ文字列化し、`onValueChange` で `Number(value)` に復元する。
+**具体例**: 空値 sentinel は `SelectItem value="all"`（「すべて」の意味）または `SelectItem value="none"`（「指定なし」「取引先なし」等、明示的な無選択の意味）へ変換する。数値 ID を値に持つ場合は `SelectItem value={String(id)}` へ文字列化し、`onValueChange` で `Number(value)` に復元する。共有 `Select` は空文字の `onValueChange` を無視する（Radix bubble select の echo 対策、`SelectItem value=""` 禁止と対）。
 
 **関連**: パターン⑨検索 + フィルタ。`DepartmentFilter.tsx` が canonical 実装例。review-checklist カテゴリ 9 対応。
 
