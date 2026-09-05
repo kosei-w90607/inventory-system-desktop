@@ -8,10 +8,10 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: fbbcf19
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
@@ -495,4 +495,6 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 - (6) `01-decision-rules.md:445,451` と `02-component-catalog.md:158` の 3:1 残存 3 箇所（round 2 で Scope には入れたが negative oracle が無かった）に AC11 + Matrix の負のオラクルを追加。`04-backbone.md:44` token 表の旧文言にも AC10 + Matrix の負のオラクルを追加。
 - (7) `00-foundations.md:41` `--success-soft` の用途「前月比プラス soft 背景」が `:42` の用途撤去後に同一表内で矛盾するため、`--success-soft` 用途セルも「①状態 badge success tone の soft 背景 / Alert warning 型に準ずる soft 塗り」へ repoint する行を S2/AC16/Matrix に追加（値は不変）。
 - (P3) Matrix の `src/**` negative oracle は「非パイプ」と称しつつ `| wc -l` を残していたため、`git diff --name-only 07302b5..HEAD -- src` の出力行数を直接見る形（パイプなし）へ訂正。
-- Findings Freeze: not yet frozen（Coordinator の変更行確認待ち）; post-freeze exceptions: none.
+2026-09-05: Plan Gate 収束（round 3/3。round 1 = Opus reject P1 4 / Sonnet approve-with-P2 → 是正 3 便 + owner 決定 5 便 / round 2 = Opus reject P1 5 / Sonnet approve-with-P2 → 是正 `a90a872` / round 3 = Opus reject・Sonnet reject とも Matrix と packet の oracle 不一致 7 件のみで設計欠陥なし → 是正 `f7e0a04`）。round 3 の是正は同一 vendor ラリー天井のため Coordinator が該当行（Matrix `-F` 化 / `検索 `Input` は両モードとも` anchor / success-emphasis 第 3 消費者 / AC7 literal / D10b 対象 file / 3:1 負 oracle 4 本 / success-soft 用途）を直接検分して閉じた（owner 許可 2026-09-05）。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑦ 同期の本 content commit に同乗させて遷移。Plan Commit = `fbbcf19`（plan-first commit、main `07302b5` 直上、以後の是正 commit はその子孫）。Codex ロジック・整合面 1 回は §3.3 pending のまま。
+
+- Findings Freeze: not yet frozen（Final Review が未実施のため）; post-freeze exceptions: none.
