@@ -426,7 +426,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 ## DSR-22 一覧の器・現在行・UI 部品枠のコントラスト
 
-**ルール**: `ListShell`（一覧の器、`src/components/patterns/ListShell.tsx`、Lane 2 実装・商品一覧 pilot 採用）は pagination を持つ一覧画面全体に適用する。上部の件数・現在位置 text と table header の sticky 化は、実表示が viewport を超えるときにだけ発動する（1 画面に収まる短い一覧では省略してよい。Lane 2 の `topSummary` / `stickyHeader` は静的 boolean の近似採用で、結果件数による動的判定はしない）。上部は `PaginationSummary` で範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」の text 表示を必須、pager ボタンは任意（`Pagination` 下部と別 component）。下部は件数 + pager フル装備で、canonical は `Pagination`（`src/components/patterns/Pagination.tsx`）が範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」を描画する（Lane 2 で旧 `ProductPagination` から移設・実装済み）。識別列固定は、横スクロール（overflow）が実際に生じるときにだけ opt-in で発動し、固定対象は画面分類ごとに次のとおり pin する（本 mapping が唯一の正本、⑯・04 原則 14・mockup では重複記載しない。Lane 2 は `identityColumns` prop を予約するのみで、両立方式〈sticky × 識別列固定 × DSR-17 `<main>` 単一 scroll〉の probe は横 overflow が実発生する画面を確認してから Lane 3〜5 で行う）:
+**ルール**: `ListShell`（一覧の器、`src/components/patterns/ListShell.tsx`、Lane 2 実装・商品一覧 pilot 採用）は pagination を持つ一覧画面全体に適用する。`ListShell` 採用画面では `topSummary` prop（既定 `false`、`ListShell.tsx:69`）で上部表示を明示的に opt-in し、非 `ListShell` 画面では対応する `PaginationSummary` を直接描画することで、pagination を持つ一覧画面すべてに適用する。opt-in 後の上部の件数・現在位置 text は totalCount > 0 のとき常に表示する（table header の sticky 化は引き続き `ListShell` の `stickyHeader` prop 採用画面のみ）。上部は `PaginationSummary` で範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」の text 表示のみを持ち、pager ボタンは置かない。下部は `totalPages > 1` のときだけ、件数 + pager フル装備の `Pagination`（`src/components/patterns/Pagination.tsx`）を描画する（Lane 2 で旧 `ProductPagination` から移設・実装済み、Lane 4 で `totalPages <= 1` gating と上部ロールアウトを実装済み）。識別列固定は、横スクロール（overflow）が実際に生じるときにだけ opt-in で発動し、固定対象は画面分類ごとに次のとおり pin する（本 mapping が唯一の正本、⑯・04 原則 14・mockup では重複記載しない。Lane 4 で商品一覧のみ実装済み: 新規 scroll 容器を作らず、`<main>`（既に `overflow-auto`）を唯一の scroll container としたまま識別列に `sticky left-*` を追加する方式で両立を確認した（`identityColumns` prop 活性化、S9）。他画面は同じ mapping・同じ機構のまま opt-in 未実施）:
 
 | 分類 | 画面 | 固定列 |
 |---|---|---|
@@ -468,6 +468,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-05 | UI 一覧の背骨 D — Lane 4 | DSR-22 の上部/下部 pagination 発動条件を改訂: `topSummary`/直接描画による明示 opt-in + `totalCount > 0` で上部常時表示、下部は `totalPages > 1` のときだけ描画（pager ボタンは下部のみ）。識別列固定は商品一覧のみ `identityColumns` prop 活性化で実装済みと明記（他画面は opt-in 未実施のまま） |
 | 2026-09-05 | ⑧ native select 統一 | DSR-23「プルダウンは shadcn Select に統一する」を新設。title を「DSR-01〜23」に更新（owner 決定 R5-3 の執行） |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | `--border-strong` / `--row-current` / `--border` 濃化 / `--input` 統一を globals.css に実装、token 候補値の HEX を canonical（本節）へ正式登録。件数文言は `Pagination` / `PaginationSummary`（`src/components/patterns/Pagination.tsx`）が範囲付き統一形を描画する実装済み表記へ更新。identityColumns 予約 prop と両立 probe（sticky × 識別列固定 × DSR-17）の申し送りを追記 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。件数文言を当時の canonical（`{totalCount} 件中 {page} / {totalPages} ページ`）へ揃え範囲付き統一形を後続 lane での移行対象と明記、上部表示・識別列固定の発動条件と画面→固定列 mapping 表を pin（⑯・04 原則 14 の重複記載を解消）、Badge/outline chip を UI 部品枠 3:1 の対象に拡張（owner Human Gate 所感、廃番 Badge 可読性）、token 候補値の HEX を canonical から撤去し packet / reference 分析 doc へ移動 |

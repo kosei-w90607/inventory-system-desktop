@@ -676,6 +676,48 @@ describe("InventoryRecordsPage (REQ-206)", () => {
   });
 });
 
+describe("InventoryRecordsPage Lane 4 S1c/S3c: frame color + top summary", () => {
+  it("SC4c: filter section root has rounded-lg border bg-card p-4", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const { container } = renderWithClient(
+      <InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByLabelText("記録種別");
+    const box = container.querySelector(".rounded-lg.border.bg-card.p-4");
+    expect(box).not.toBeNull();
+    // 旧 frame class（`space-y-3 rounded-md border p-4`、bg-card なし）が残っていないこと。
+    expect(container.querySelector(".space-y-3.rounded-md.border.p-4")).toBeNull();
+  });
+
+  it("SC3c: renders the top PaginationSummary above the table when total_count > 0", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeRecord({
+            record_type: "stocktake",
+            record_id: 51,
+            representative_item: "算定前商品",
+            item_count: 9,
+            status: "in_progress",
+            detail_route: "/stocktake/records/51",
+          }),
+        ],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
+    expect(
+      await screen.findByText("全 1 件のうち 1〜1 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("InventoryRecordsPage SPEC-UIBB-1/2（filter-empty reset action、65 §65.8.1）", () => {
   it("SPEC-UIBB-1 絞り込み該当なしで解除ボタンを表示する", async () => {
     mockListInventoryRecords.mockResolvedValue({

@@ -210,6 +210,43 @@ describe("StockMovementsPage (UI-06c)", () => {
   });
 });
 
+describe("StockMovementsPage Lane 4 S1d/S3d: frame color + top summary", () => {
+  it("SC4d: filter section root has rounded-lg border bg-card p-4", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const { container } = renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={{}} onSearchChange={vi.fn()} />,
+    );
+    await waitFor(() => {
+      expect(mockListMovements).toHaveBeenCalled();
+    });
+    // 商品情報 card（:98、既存 bg-card、Non-scope）も同じ組合せ class を持つため
+    // querySelector 単独では最初の一致（商品情報 card）を拾ってしまう
+    // （filter frame を戻しても検知できない）。開始日 label の祖先を frame として
+    // 特定し、frame class の出現数（商品情報 card + filter frame の 2 個）を検査する。
+    const filterFrame = screen.getByText("開始日").closest(".rounded-lg.border.bg-card.p-4");
+    expect(filterFrame).not.toBeNull();
+    expect(container.querySelectorAll(".rounded-lg.border.bg-card.p-4")).toHaveLength(2);
+  });
+
+  it("SC3d: renders the top PaginationSummary above the table when total_count > 0", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeMovement()], total_count: 1, page: 1, per_page: 50 },
+    });
+    renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={{}} onSearchChange={vi.fn()} />,
+    );
+    expect(
+      await screen.findByText("全 1 件のうち 1〜1 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("StockMovementsPage SPEC-UIBB-1/2（filter-empty reset action、66 §66.6）", () => {
   it("SPEC-UIBB-1 絞り込み該当なしで解除ボタンを表示する", async () => {
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });

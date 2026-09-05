@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,18 +27,22 @@ export function PriceRevisionFilters({
   suppliersQuery,
   departmentsQuery,
   onPatch,
+  perPage,
+  onPerPageChange,
 }: {
   search: PriceRevisionSearch;
   normalized: NormalizedPriceRevisionSearch;
   suppliersQuery: UseQueryResult<Supplier[]>;
   departmentsQuery: UseQueryResult<Department[]>;
   onPatch: (patch: PriceRevisionSearchPatch) => void;
+  perPage: (typeof LIST_PER_PAGE_OPTIONS)[number];
+  onPerPageChange: (value: (typeof LIST_PER_PAGE_OPTIONS)[number]) => void;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const departments = (departmentsQuery.data ?? []).map(({ id, name }) => ({ id, name }));
 
   return (
-    <div className="space-y-3 rounded-md border bg-stone-50 p-4">
+    <div className="space-y-3 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-center gap-3">
         <SearchBar
           value={search.q ?? ""}
@@ -98,6 +103,35 @@ export function PriceRevisionFilters({
           />
           廃番を含む
         </label>
+        <div className="flex items-center gap-2">
+          <label
+            id="price-revision-per-page-label"
+            htmlFor="price-revision-per-page"
+            className="text-sm text-muted-foreground"
+          >
+            表示件数
+          </label>
+          <Select
+            value={String(perPage)}
+            onValueChange={(value) => {
+              const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+              if (next !== undefined) {
+                onPerPageChange(next);
+              }
+            }}
+          >
+            <SelectTrigger id="price-revision-per-page" className="w-[7rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LIST_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} 件
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       {normalized.supplier !== undefined ? (
         <label

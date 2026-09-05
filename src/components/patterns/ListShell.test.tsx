@@ -91,11 +91,12 @@ describe("SC4b: topSummary + totalCount > 0 gating", () => {
         <SampleTable />
       </ListShell>,
     );
-    // PaginationSummary（上部）は text-base で一意に特定できる
-    // （下部 Pagination の同文言は text-sm text-muted-foreground 内の tabular-nums div）。
-    const summaries = container.querySelectorAll(".text-base");
+    // PaginationSummary（上部、S2）は text-sm/text-muted-foreground/tabular-nums の
+    // 3 class を 1 要素に同時に持つ点で一意に特定できる（下部 Pagination は
+    // text-sm/text-muted-foreground を外側 div、tabular-nums を内側 div に分離する
+    // ため 3 class 同時一致は上部のみ）。
+    const summaries = container.querySelectorAll(".text-sm.text-muted-foreground.tabular-nums");
     expect(summaries).toHaveLength(1);
-    expect(container.querySelector(".text-sm.text-base")).toBeNull();
     const summary = summaries.item(0);
     const table = screen.getByText("列").closest("table");
     expect(summary).not.toBeNull();
@@ -104,7 +105,9 @@ describe("SC4b: topSummary + totalCount > 0 gating", () => {
       throw new Error("unreachable: asserted not null above");
     }
     const summaryTokens = classTokens(summary);
-    expect(summaryTokens).toContain("text-base");
+    expect(summaryTokens).toContain("text-sm");
+    expect(summaryTokens).toContain("text-muted-foreground");
+    expect(summaryTokens).not.toContain("text-base");
     expect(summaryTokens).not.toContain("font-semibold");
     expect(summary).toHaveTextContent("全 25 件のうち 1〜10 件を表示（1 / 3 ページ）");
     expect(summary.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -116,7 +119,7 @@ describe("SC4b: topSummary + totalCount > 0 gating", () => {
         <SampleTable />
       </ListShell>,
     );
-    expect(container.querySelector(".text-base")).toBeNull();
+    expect(container.querySelector(".text-sm.text-muted-foreground.tabular-nums")).toBeNull();
   });
 
   it("renders neither summary nor bottom pager when totalCount is 0", () => {
@@ -384,18 +387,70 @@ describe("SC4e: bottom pager onPageChange wiring", () => {
   });
 });
 
-describe("identityColumns: reserved prop with no rendering effect", () => {
-  it("has no effect on rendered output", () => {
-    const { container: withProp } = render(
+describe("SC9a/SC9b: identityColumns activates root class tokens for the first N columns", () => {
+  it("SC9a: with stickyHeader + identityColumns={2}, root carries sticky/left/background/z-index/edge tokens for columns 1-2 (thead th + tbody td), and no nth-child(3)+ variant", () => {
+    const { container } = render(
+      <ListShell stickyHeader identityColumns={2}>
+        <SampleTable />
+      </ListShell>,
+    );
+    const rootTokens = classTokens(container.firstElementChild);
+    // 列 1
+    expect(rootTokens).toContain("[&_thead_th:nth-child(1)]:sticky");
+    expect(rootTokens).toContain("[&_thead_th:nth-child(1)]:left-0");
+    expect(rootTokens).toContain("[&_thead_th:nth-child(1)]:z-[11]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(1)]:sticky");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(1)]:left-0");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(1)]:bg-background");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(1)]:z-[1]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(1)]:shadow-[inset_-1px_0_0_var(--border)]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(1)]:forced-colors:border-r");
+    // 列 2
+    expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:sticky");
+    expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:left-[7rem]");
+    expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:z-[11]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:sticky");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:left-[7rem]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:bg-background");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:z-[1]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:shadow-[inset_-1px_0_0_var(--border)]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:forced-colors:border-r");
+    // 列 3 以降には一切付かない
+    expect(rootTokens.some((token) => token.includes("nth-child(3)"))).toBe(false);
+  });
+
+  it("SC9b: without identityColumns, root carries none of the identity-specific tokens (空集合 oracle 対)", () => {
+    const { container } = render(
+      <ListShell stickyHeader>
+        <SampleTable />
+      </ListShell>,
+    );
+    const rootTokens = classTokens(container.firstElementChild);
+    expect(rootTokens.some((token) => token.includes("nth-child"))).toBe(false);
+    expect(rootTokens).not.toContain("[&_thead_th:nth-child(1)]:z-[11]");
+    expect(rootTokens).not.toContain("[&_tbody_td:nth-child(1)]:forced-colors:border-r");
+  });
+
+  it("SC9b続き: identityColumns があっても stickyHeader が false なら識別列 token を付けない（thead th の bg-list-head が無く識別列だけ浮くのを防ぐ）", () => {
+    const { container } = render(
       <ListShell identityColumns={2}>
-        <div>x</div>
+        <SampleTable />
       </ListShell>,
     );
-    const { container: withoutProp } = render(
-      <ListShell>
-        <div>x</div>
+    const rootTokens = classTokens(container.firstElementChild);
+    expect(rootTokens.some((token) => token.includes("nth-child"))).toBe(false);
+  });
+});
+
+describe("SC9c: identityColumns does not touch the w-min min-w-full wrapper", () => {
+  it("keeps the summary+table wrapper className exactly w-min min-w-full after identityColumns is activated", () => {
+    const { container } = render(
+      <ListShell stickyHeader topSummary identityColumns={2} pagination={pagination(25)}>
+        <SampleTable />
       </ListShell>,
     );
-    expect(withProp.innerHTML).toBe(withoutProp.innerHTML);
+    const summaryBand = container.querySelector(".sticky.top-0.z-20");
+    const wrapper = summaryBand?.parentElement ?? null;
+    expect(wrapper?.className).toBe("w-min min-w-full");
   });
 });

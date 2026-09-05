@@ -28,10 +28,12 @@ export interface ListShellProps {
   topSummary?: boolean;
   stickyHeader?: boolean;
   /**
-   * 識別列固定（DSR-22 mapping）の予約 prop。Lane 2 では描画に影響しない
-   * （Lane 3〜5 で横 overflow 実発生画面を確認してから実装、D-2）。
+   * 識別列固定（DSR-22 mapping）。固定する先頭列の本数（1 or 2）。Lane 4 で商品一覧
+   * のみ活性化（`identityColumns={2}`）。値ごとのリテラル class 配列で実装し
+   * （Tailwind JIT は実行時テンプレートリテラルを拾えないため）、任意 N 列の
+   * generator は作らない（YAGNI、DSR-22 mapping 表の最大値は 2）。
    */
-  identityColumns?: number;
+  identityColumns?: 1 | 2;
   isLoading?: boolean;
   skeleton?: ReactNode;
   children: ReactNode;
@@ -62,12 +64,51 @@ const STICKY_TABLE_CLASSES = [
   "[&_tbody_tr:last-child_td]:border-b-0",
 ];
 
+// S9（識別列固定）: 列 1・2 のリテラル class 配列。DSR-22 mapping 表の固定列数は
+// 全行が 1 か 2 のため、この 2 パターンのみで足りる（ponytail: 汎用 N 列 generator
+// は作らない）。列 2 の left-[7rem] は ProductTable.tsx 商品コード列の固定幅
+// w-28（7rem）と一致させる。
+const IDENTITY_COLUMN_CLASSES: Record<1 | 2, string[]> = {
+  1: [
+    "[&_thead_th:nth-child(1)]:sticky",
+    "[&_thead_th:nth-child(1)]:left-0",
+    "[&_thead_th:nth-child(1)]:z-[11]",
+    "[&_tbody_td:nth-child(1)]:sticky",
+    "[&_tbody_td:nth-child(1)]:left-0",
+    "[&_tbody_td:nth-child(1)]:bg-background",
+    "[&_tbody_td:nth-child(1)]:z-[1]",
+    "[&_tbody_td:nth-child(1)]:shadow-[inset_-1px_0_0_var(--border)]",
+    "[&_tbody_td:nth-child(1)]:forced-colors:border-r",
+  ],
+  2: [
+    "[&_thead_th:nth-child(1)]:sticky",
+    "[&_thead_th:nth-child(1)]:left-0",
+    "[&_thead_th:nth-child(1)]:z-[11]",
+    "[&_thead_th:nth-child(2)]:sticky",
+    "[&_thead_th:nth-child(2)]:left-[7rem]",
+    "[&_thead_th:nth-child(2)]:z-[11]",
+    "[&_tbody_td:nth-child(1)]:sticky",
+    "[&_tbody_td:nth-child(1)]:left-0",
+    "[&_tbody_td:nth-child(1)]:bg-background",
+    "[&_tbody_td:nth-child(1)]:z-[1]",
+    "[&_tbody_td:nth-child(1)]:shadow-[inset_-1px_0_0_var(--border)]",
+    "[&_tbody_td:nth-child(1)]:forced-colors:border-r",
+    "[&_tbody_td:nth-child(2)]:sticky",
+    "[&_tbody_td:nth-child(2)]:left-[7rem]",
+    "[&_tbody_td:nth-child(2)]:bg-background",
+    "[&_tbody_td:nth-child(2)]:z-[1]",
+    "[&_tbody_td:nth-child(2)]:shadow-[inset_-1px_0_0_var(--border)]",
+    "[&_tbody_td:nth-child(2)]:forced-colors:border-r",
+  ],
+};
+
 export function ListShell({
   toolbar,
   toolbarSecondary,
   pagination,
   topSummary = false,
   stickyHeader = false,
+  identityColumns,
   isLoading = false,
   skeleton,
   children,
@@ -82,6 +123,7 @@ export function ListShell({
         stickyHeader && "list-shell-sticky",
         stickyHeader && STICKY_TABLE_CLASSES,
         stickyHeader && (showTopSummary ? "[&_thead_th]:top-10" : "[&_thead_th]:top-0"),
+        stickyHeader && identityColumns !== undefined && IDENTITY_COLUMN_CLASSES[identityColumns],
       )}
     >
       {toolbar !== undefined && (

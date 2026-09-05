@@ -282,6 +282,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         }}
         topSummary
         stickyHeader
+        identityColumns={2}
         isLoading={productsQuery.isLoading}
       >
         {productsQuery.isError ? (

@@ -49,7 +49,9 @@ export function ProductTable({ items, returnTo = "/products" }: ProductTableProp
             key={item.product_code}
             className={item.is_discontinued ? "text-muted-foreground" : undefined}
           >
-            <TableCell className="font-mono text-sm font-medium">{item.product_code}</TableCell>
+            <TableCell className="w-28 font-mono text-sm font-medium">
+              {item.product_code}
+            </TableCell>
             <TableCell className="min-w-[14rem] whitespace-normal">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{item.name}</span>
