@@ -96,10 +96,20 @@
       - R5-3 **owner 決定**: プルダウンの見た目が 2 種類（native `<select>` と shadcn `Select`）あり、一括価格改定の画面内でも両方が同居する → **部門（shadcn `Select`）のほうにアプリ全体で統一**。Lane 5 の D8（native に token を当てる）は暫定で、正本は native `<select>` 23 箇所を shadcn `Select` へ置換する lane（起票時実測の一覧を再利用、`aria-label` / id / test の query を引き継ぐ）
       - R5-4 **owner 決定**: 検索欄・取引先・部門などを囲む外枠の中の地色を `#F5F5F4` に統一（参考 = 商品一覧の toolbar 枠）→ E15 / Lane 2 申し送り (v) card-on-card の裁定として確定。`--list-toolbar`（仮）token を 00-foundations に登録し、ListShell の toolbar 枠と非 ListShell 画面の filter 枠へ適用 → Lane 4 候補
       - R5-5 商品一覧の「廃番」badge には枠が無いが「対象外」badge には枠がある（同一画面内の不整合）。加えて「反映済み / 未反映」等の badge 色付けルールをアプリ内で作るべき → R3-1 / R2-5 と統合し「Badge の色と枠の規約」を DSR として design-first で起草（DSR-08 の具体化、状態 badge の mapping 表）→ 別 lane、owner と mapping を決める
+    - owner ⑧ L3 所感（2026-09-06、HEAD `ce39c8f`、原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「⑧ PR #38 L3 結果 原文」。Coordinator 転記、裁定は原文を正とする）:
+      - L8-1 単位 code `pcs` の生表示が入出庫履歴・在庫変動履歴・記録詳細のあたりに残っている（PR #32 Gated Amendment 6 S45 で商品一覧 / 入庫 / 廃棄 / 返品交換 / 手動販売の主要画面は `formatStockDisplay`/`formatStockUnitLabel`（`format-stock-display.ts`）へ是正済みだが、同じ file 内でも別 render 箇所が未然のまま残る例あり: `DisposalPage.tsx:459,514` は候補一覧・行内現在庫を local `formatQuantity`（unit 生結合）で描画、`:595` のみ `formatStockUnitLabel` 適用済み）→ 残箇所の sweep、S
+      - L8-2 badge が無色（見た目未着手）は ⑦ design-first 候補（Badge の色と枠の規約）の runtime lane 待ちで想定どおり → 起票不要、記録のみ
+      - L8-3 手動販売出庫の記録状態が Badge でなく plain text「有効」表示（`ManualSalePage.tsx:749` `<TableCell>{formatRecordStatus(record.status)}</TableCell>`、Badge 化していない。同じ `formatRecordStatus` を使う `InventoryRecordsPage.tsx:377` / `ManualSaleRecordDetailPage.tsx:123` は既に `<Badge variant="outline">` 化済みで、この 1 箇所だけ取り残されている）→ Badge 化、S
+      - L8-4 明細数 summary の要否: run 3 原文 (h)「削ってよい」↔ 今回「手動販売出庫は残す方が良さそうに思うが何とも言えず」で食い違う → 未決（owner 再判断待ち）
+      - L8-5 記録日時の font 差は既起票（Plans ④ C5、`ReturnExchangePage.tsx` の `formatDateTime` cell と隣接 cell の `tabular-nums` 有無差が仮説、実機観測で機序確定待ち）→ 重複起票せず参照のみ
+      - L8-6 備考欄の扱い: 欄自体は必須にする、空欄時は「備考なし」等の薄字プレースホルダーか素の空欄かを決める、一定文字数超過時は `...` で途中省略表示にする、「直近の○○」系 section の共通化も合わせて検討 → A1 (a)(b)(c)（直近 N 件系 section の文言・列見出し・囲み統一）と統合、design-first、S
+      - L8-7 商品一括インポート / PLU 書出し / バックアップの各画面にページ説明セクションが無い（title 直下にどういうページか・どういう操作が必要か・何をするとどうなるかを書く。PLU 書出しは owner「流れがぱっと見で分からない」も同根）→ design-first、M
+      - L8-8 取引先管理画面（`SupplierManagementPage.tsx:35-38`）は `PageHeader title="取引先管理"` に `subtitle` を渡さず、説明文を別の兄弟 `<p>` として置いているため、`PageHeader` 内部の `space-y-1` レイアウトが適用される他画面と間隔が変わる → `subtitle` prop 経由へ統一、S
+      - L8-9 記録 ID が種別ごとの連番で全体一意でないため単独の識別子として機能しない（種別とセットでないと検索に使えない）→ 種別込みの表示（prefix 等）にするか一覧から外すかの design 判断、DSR-22 の識別列並べ替え候補と統合、design-first、M
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 - [x] ⑥ drift 総点検の docs 同期 PR: 完了（PR #37 squash `31e6a00`、2026-09-05）。S2 7 件を実装へ同期、監査記録 = [drift-audit](research/audit-2026-09/drift-audit.md)。レビュー P3 2 件は Backlog へ（65-doc §65.3「完成形」の実装状況注記 / 52-doc の非表示 route 列挙）
 - [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: (a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
-- [ ] ⑧ native `<select>` 23 箇所 → shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）: Lane 5 merge 後に起票
+- [ ] ⑧ native `<select>` 16 箇所（select のみ。旧記載「23 箇所」は Lane 5 起票時実測の select + input + textarea 混合値、select だけに絞った実測値は本 packet が正）→ shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）は 2026-09-05 起票、active packet: [native select → shadcn Select 統一](plans/2026-09-05-ui-select-unify.md)（branch `agent/ui-select-unify`、Lane 5 に stack〈D-074〉、merge 後に main へ base 付け替え、merge train Lane 5 → ⑧ → Lane 4、Phase: human-confirm（Plan Commit `5d94a72`、Reviewed Content HEAD `ce39c8f`、Final Review 収束 2026-09-06、owner L3 待ち → Codex 待ち park））。
 
 ### Wave Registry
 
@@ -183,7 +193,8 @@
 
 ## ブロッカー
 
-- 現在ブロッカーなし。Fable exit runway は完了済み（archive 参照）。Phase 4 第1スライス（UI-11b）は PR #144 の Fable 裁定 P2/P3 修正後に再確認。
+- Codex 枠切れ（2026-09-05〜2026-09-07 夜の週次リセットまで）。human-confirm の各 lane（PR #35 Lane 5、以後 ⑧ / Lane 4）は Final Reviewer の Codex ロジックレビュー 1 回を §3.3 Capacity-degraded の pending として待機し、Phase を前進させない（代替指名なし、owner 決定 2026-09-05）。
+- 上記以外のブロッカーなし。Fable exit runway は完了済み（archive 参照）。Phase 4 第1スライス（UI-11b）は PR #144 の Fable 裁定 P2/P3 修正後に再確認。
 
 ## 注意リスト
 

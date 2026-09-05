@@ -164,23 +164,23 @@ export function StockMovementsPage({
           <label className="text-sm text-muted-foreground" htmlFor="movement-type">
             種別
           </label>
-          <select
-            id="movement-type"
-            className="h-9 rounded-md border border-input bg-control-surface px-3 text-sm"
+          <Select
             value={normalizedSearch.type}
-            onChange={(event) => {
-              updateSearch(
-                { type: event.currentTarget.value as StockMovementsSearch["type"] },
-                true,
-              );
+            onValueChange={(value) => {
+              updateSearch({ type: value as StockMovementsSearch["type"] }, true);
             }}
           >
-            {MOVEMENT_TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="movement-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MOVEMENT_TYPE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-1">
           <label className="text-sm text-muted-foreground" htmlFor="stock-movements-per-page">

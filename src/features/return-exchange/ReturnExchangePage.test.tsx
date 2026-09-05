@@ -298,9 +298,11 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
       },
     });
 
-    await user.selectOptions(screen.getByLabelText("種別"), "exchange");
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
     await user.type(await screen.findByLabelText("返品・交換商品検索"), "RT-001{enter}");
-    await user.selectOptions(screen.getByLabelText("追加方向"), "out");
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し" }));
     await user.type(screen.getByLabelText("返品・交換商品検索"), "RT-001{enter}");
 
     expect(screen.getAllByText("RT-001")).toHaveLength(2);
@@ -361,7 +363,8 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
 
     renderWithClient(<ReturnExchangePage />);
     await addSingleProduct(user);
-    await user.selectOptions(screen.getByLabelText("種別"), "exchange");
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
     const file = new File(["receipt"], "invalid.png", { type: "image/png" });
     dropReceipt(file);
     expect(await screen.findByText("invalid.png")).toBeInTheDocument();
@@ -515,9 +518,71 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     renderWithClient(<ReturnExchangePage />);
     await addSingleProduct(user);
 
+    // L8-D6: disabled な trigger は開けないため選択肢構成を happy-dom で検証できない
+    // （選択肢は「戻り」「渡し」を常時2件描画、到達不能性は disabled に一本化、L3-only）。
+    // ここでは disabled 状態そのものだけを assert する。
     expect(screen.getByLabelText("追加方向")).toBeDisabled();
     expect(screen.getByLabelText("RT-001 の方向")).toBeDisabled();
-    expect(screen.queryByRole("option", { name: "渡し（在庫-）" })).not.toBeInTheDocument();
+  });
+
+  it("SC10a/SC10b: 種別・追加方向selectはSelect combobox（data-slot=select-trigger）である", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<ReturnExchangePage />);
+
+    const typeTrigger = screen.getByLabelText("種別");
+    expect(typeTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(typeTrigger.tagName).toBe("BUTTON");
+
+    await user.click(typeTrigger);
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+
+    const directionTrigger = screen.getByLabelText("追加方向");
+    expect(directionTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(directionTrigger.tagName).toBe("BUTTON");
+    expect(directionTrigger).not.toBeDisabled();
+
+    await user.click(directionTrigger);
+    expect(await screen.findByRole("option", { name: "戻り" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "渡し" })).toBeInTheDocument();
+  });
+
+  it("SC10c: per-row の方向selectは他行の表示値へ波及しない（L8-D3）", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<ReturnExchangePage />);
+
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+    await addSingleProduct(user);
+    mockSearchProducts.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "RT-002", name: "返品商品2" })],
+        total_count: 1,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    await user.type(screen.getByLabelText("返品・交換商品検索"), "RT-002{enter}");
+    expect(await screen.findByLabelText("RT-002 の方向")).toBeInTheDocument();
+
+    expect(screen.getByLabelText("RT-001 の方向")).toHaveTextContent("戻り（在庫+）");
+    expect(screen.getByLabelText("RT-002 の方向")).toHaveTextContent("戻り（在庫+）");
+
+    // rowKey に direction が含まれるため選択後は行が再マウントされる
+    // （key 変化）— DOM 参照を使い回さず選択後に再取得する。
+    await user.click(screen.getByLabelText("RT-001 の方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し（在庫-）" }));
+
+    expect(screen.getByLabelText("RT-001 の方向")).toHaveTextContent("渡し（在庫-）");
+    expect(screen.getByLabelText("RT-002 の方向")).toHaveTextContent("戻り（在庫+）");
+
+    // row 2 自身の select を直接操作しても row 2 だけが変わること
+    // （"常に rows[0] を書き換える" mutant を kill する）。
+    await user.click(screen.getByLabelText("RT-002 の方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し（在庫-）" }));
+
+    expect(screen.getByLabelText("RT-002 の方向")).toHaveTextContent("渡し（在庫-）");
+    expect(screen.getByLabelText("RT-001 の方向")).toHaveTextContent("渡し（在庫-）");
   });
 });
 

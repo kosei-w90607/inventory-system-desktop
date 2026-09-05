@@ -162,21 +162,19 @@ describe("StockMovementsPage (UI-06c)", () => {
     );
 
     const movementType = await screen.findByLabelText("種別");
-    expect(
-      Array.from(movementType.querySelectorAll("option"), (option) => ({
-        value: option.value,
-        label: option.textContent,
-      })),
-    ).toEqual([
-      { value: "all", label: "すべて" },
-      { value: "receiving", label: "入庫" },
-      { value: "return", label: "返品・交換" },
-      { value: "sale_auto", label: "POS売上" },
-      { value: "sale_manual", label: "手動販売" },
-      { value: "disposal", label: "廃棄・破損" },
-      { value: "stocktake", label: "棚卸し" },
+    expect(movementType).toHaveAttribute("data-slot", "select-trigger");
+    expect(movementType.tagName).toBe("BUTTON");
+    await user.click(movementType);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      "すべて",
+      "入庫",
+      "返品・交換",
+      "POS売上",
+      "手動販売",
+      "廃棄・破損",
+      "棚卸し",
     ]);
-    await user.selectOptions(movementType, "receiving");
+    await user.click(screen.getByRole("option", { name: "入庫" }));
 
     const lastCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1];
     const updater = lastCall[0] as (prev: { type?: string; page?: number }) => {

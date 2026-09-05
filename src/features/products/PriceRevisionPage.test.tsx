@@ -162,7 +162,8 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     const user = userEvent.setup();
     renderStateful();
     await screen.findByText("P-001");
-    await user.selectOptions(screen.getByLabelText("取引先"), "7");
+    await user.click(screen.getByLabelText("取引先"));
+    await user.click(await screen.findByRole("option", { name: "取引先A" }));
     const toggle = await screen.findByRole("checkbox", { name: "取引先未設定の商品も含める" });
     expect(toggle).toBeChecked();
     await user.click(toggle);
@@ -180,14 +181,16 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(
       screen.queryByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }),
     ).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText("取引先"), "7");
+    await user.click(screen.getByLabelText("取引先"));
+    await user.click(await screen.findByRole("option", { name: "取引先A" }));
     const assign = await screen.findByRole("checkbox", {
       name: "未設定の商品にこの取引先を設定する",
     });
     expect(assign).toBeChecked();
     await user.click(assign);
     expect(assign).not.toBeChecked();
-    await user.selectOptions(screen.getByLabelText("取引先"), "8");
+    await user.click(screen.getByLabelText("取引先"));
+    await user.click(await screen.findByRole("option", { name: "取引先B" }));
     expect(
       await screen.findByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }),
     ).toBeChecked();
@@ -536,7 +539,12 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       expect(mockListSuppliers).toHaveBeenCalledTimes(2);
     });
     expect(mockCreateSupplier).toHaveBeenCalledWith("新規取引先");
-    expect(screen.getByLabelText("取引先")).toHaveValue("44");
+    expect(screen.getByLabelText("取引先")).toHaveTextContent("新規取引先");
+    await waitFor(() => {
+      expect(mockSearchProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ supplier_id: 44 }),
+      );
+    });
     expect(screen.getByRole("checkbox", { name: "取引先未設定の商品も含める" })).toBeChecked();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(toast.success).toHaveBeenCalledWith("取引先「新規取引先」を追加しました");
@@ -652,6 +660,32 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     await user.click(screen.getByRole("button", { name: "再試行" }));
     await waitFor(() => {
       expect(mockSearchProducts).toHaveBeenCalledTimes(3);
+    });
+  });
+});
+
+describe("PriceRevisionPage SC6 取引先 select（⑧、L8-D1, L8-D7, P2-2）", () => {
+  it("SC6: 取引先selectはSelect comboboxでsuppliersQuery loading中disabledになる", async () => {
+    let resolveSuppliers!: (value: Awaited<ReturnType<typeof commands.listSuppliers>>) => void;
+    mockListSuppliers.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSuppliers = resolve;
+      }),
+    );
+    renderStateful({});
+    await screen.findByText("P-001");
+
+    const supplierTrigger = screen.getByLabelText("取引先");
+    expect(supplierTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(supplierTrigger.tagName).toBe("BUTTON");
+    expect(supplierTrigger).toBeDisabled();
+
+    resolveSuppliers({
+      status: "ok",
+      data: [makeMockSupplier({ id: 7, name: "取引先A" })],
+    });
+    await waitFor(() => {
+      expect(supplierTrigger).not.toBeDisabled();
     });
   });
 });
