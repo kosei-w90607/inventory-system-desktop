@@ -98,7 +98,8 @@
       - R5-5 商品一覧の「廃番」badge には枠が無いが「対象外」badge には枠がある（同一画面内の不整合）。加えて「反映済み / 未反映」等の badge 色付けルールをアプリ内で作るべき → R3-1 / R2-5 と統合し「Badge の色と枠の規約」を DSR として design-first で起草（DSR-08 の具体化、状態 badge の mapping 表）→ 別 lane、owner と mapping を決める
 - [ ] ⑤ go-live 検証 flow（PLU 実機再確認 + Z004 layout 有効化 + 部門キー→PLU 移行計画）+ MSI 配布手順 docs 化: 着手時に owner と選定
 - [x] ⑥ drift 総点検の docs 同期 PR: 完了（PR #37 squash `31e6a00`、2026-09-05）。S2 7 件を実装へ同期、監査記録 = [drift-audit](research/audit-2026-09/drift-audit.md)。レビュー P3 2 件は Backlog へ（65-doc §65.3「完成形」の実装状況注記 / 52-doc の非表示 route 列挙）
-- [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: (a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
+- [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: active packet: [UI 規約補強 design batch](plans/2026-09-05-ui-conventions-batch-design.md)（branch `agent/ui-conventions-batch`、Phase plan-draft）。(a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
+      - owner 回答（2026-09-05）: (b) B2 secondary 中間段・色相なし / (c) C1 可視 Label / (a) は backbone 原則 2/4 の具体化（catalog ⑬ tone family 表 + `--success-border`/`--success-strong` の token 登録 gap + badge.tsx 側の runtime gap、新規 DSR は起草しない）(e) は推奨案で起草し culling は design PR 上 / (d) R2-3 は runtime batch へ、R2-4 は条件待ち
 - [ ] ⑧ native `<select>` 23 箇所 → shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）: Lane 5 merge 後に起票
 
 ### Wave Registry
