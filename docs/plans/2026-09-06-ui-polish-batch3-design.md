@@ -15,10 +15,10 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 1e758cf5
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
@@ -454,3 +454,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 2026-09-06: owner Human Gate 回答（原文は raw file「⑩ Human Gate 回答 原文」、Coordinator 転記、裁定は原文を正とする）: (1) 説明文 3 案 = **そのまま採用**（culling なし）。(2) 記録 ID = owner は (a) 種別込み表示にも好意、「労力の差か」と質問 → Coordinator 回答: 労力でなく情報価値（一覧の識別列は DSR-22 の 記録日時 + 代表商品、ID の実用は検索欄の完全一致と操作ログの元記録ラベル〈既に種別 + 番号書式〉のため (a) は既存情報の繰り返し。ただし「入庫の 42 番」と番号で呼ぶ運用があるなら (a) が正当）→ **owner 判断待ち**（運用の有無で決める）。(3) 備考の空欄 = **「—」で確定**（推奨に同意）。Human Gate は (2) の回答で完了。
 
 2026-09-06: owner Human Gate (2) = **(b) 一覧の列から外す で確定**（原文「いや、それならbにするよ」、番号で呼ぶ運用なし）。Human Gate 3 件すべて回答済み。次 = implementing 遷移（Plan Commit `1e758cf5`）→ Sonnet Writer（S1〜S6 の design docs 編集、記録 ID は (b) を DSR-22 マッピング表 + `65-inventory-record-traceability.md:212` へ反映）→ Final Review → human-confirm → Codex 待ち。
+
+2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接〈owner 許可〉+ Opus 並走、round 2 = Sonnet fresh approve）+ Human Gate 3 件回答済み → `plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑩ 同期の本 content commit に同乗させて遷移。Plan Commit = `1e758cf5`（plan-first commit、main `07302b5` 直上）。Codex 1 回は §3.3 pending。
