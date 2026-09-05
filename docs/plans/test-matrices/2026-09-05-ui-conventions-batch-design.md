@@ -9,14 +9,14 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 ## Contracts Under Test
 
 - UICONV-D1: `02-component-catalog.md` ⑬ に badge 3 種構成（04-backbone 原則 4 の反映）+ ①状態 tone family マッピング表（owner culling 列つき、実在 Badge のみ file:line 明記）を追加し、新規 DSR は起草しない。
-- UICONV-D2: `00-foundations.md` に `--success-border`（`#bbf7d0`）/ `--success-strong`（`#14532d`）を**無条件で**登録する（DSR-22 narrow 化により badge の枠は 3:1 を要求されないため conditional 化は不要）。既存 `--success-soft`/`--success`/`--success-emphasis` は色の値を変更しない（用途セルのみ repoint）。
-- UICONV-D3: `01-decision-rules.md` DSR-08 に増減数値の色規則（+ success-strong / − destructive-strong / 0 muted-foreground）を追記し、`00-foundations.md` の `--success`/`--success-emphasis` 用途セルを DSR-08 参照へ repoint する。
+- UICONV-D2: `00-foundations.md` に `--success-border`（`#bbf7d0`）/ `--success-strong`（`#14532d`）を**無条件で**登録する（DSR-22 narrow 化により badge の枠は 3:1 を要求されないため conditional 化は不要）。`--success-soft`/`--success`/`--success-emphasis` の色の値は変更しない。
+- UICONV-D3: `01-decision-rules.md` DSR-08 に増減数値の色規則（+ success-strong / − destructive-strong / 0 muted-foreground）を追記する。`00-foundations.md` の `--success` 用途は「取込み完了」のみ残し、`--success-emphasis` は「用途なし、次の runtime lane で撤去判断」とする（repoint ではなく AA 是正を伴う実質的な色変更、`monthly-sales`/`daily-sales` の `SummaryCardsBar.tsx` の `text-success-emphasis`〈対 `--background` 3.16:1、AA 未達〉→`text-success-strong`〈8.69:1〉が runtime gap、Plan Review round 2 是正）。
 - UICONV-D4: badge.tsx の②分類枠線欠落（`--border` 追加が正、`--border-strong` ではない）・①/③種類取り違え・solid pill 2 箇所を runtime gap として記録する。`ProductTable.tsx:84`「反映済み」は owner 承認済み現状として gap から除外する。
 - UICONV-D5: `01-decision-rules.md` DSR-01 に primary/secondary（`--secondary` 塗り + `--border` 枠）/outline の 3 段 CTA 階層を追記し、`02-component-catalog.md` ① を同期する。
-- UICONV-D6: `02-component-catalog.md` ⑨ の live 型 SearchBar を「可視 Label 必須（既定文言『商品を検索』）+ `aria-label` 廃止（WCAG 2.5.3）」へ書き換える。
+- UICONV-D6: `02-component-catalog.md` ⑨ の live 型 SearchBar を「可視 Label 必須（既定文言『商品を検索』）+ `aria-label` 廃止（WCAG 2.5.3）」へ書き換える。アクセシビリティ節冒頭「両モードとも aria-label」の矛盾文も是正する（Plan Review round 2 是正、Opus 指摘 3 番）。
 - UICONV-D7: `02-component-catalog.md` ⑥ に `Alert` `warning` variant（`bg-warning-soft`+`border-warning`+`AlertTriangle`〈icon text-warning〉+ 本文 text-warning-strong、①状態 badge と同じ 4 点構造）を確定・規範化する（owner v4 決定）。destructive Alert の soft 化は対称性の後続候補として Non-scope。
 - UICONV-D9: DSR-23 は lane ⑧（`agent/ui-select-unify`）が登録する。本 packet は新規 DSR を起草しない。
-- UICONV-D10: `01-decision-rules.md` DSR-22 の枠 3:1 要件を interactive な操作枠のみへ narrow 化し、`04-backbone.md:20` 原則4②・`review-checklist.md:86` を同期する。
+- UICONV-D10: `01-decision-rules.md` DSR-22 の枠 3:1 要件を interactive な操作枠のみへ narrow 化し、**badge の枠線を必須化**（tone 固有色または `--border`、soft 背景単独・枠なし不可。非中立の①状態 badge はさらに icon 必須）。`04-backbone.md:20,44`・`review-checklist.md:86`・`02-component-catalog.md:158` を同期する（Plan Review round 2 是正、Opus 指摘 1・2 番）。
 
 ## Failure Modes
 
@@ -43,9 +43,13 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 | UICONV-D1 | 非実在文言・誤分類の残存 | doc-oracle | `rg -Fc "差異あり" docs/design-system/02-component-catalog.md` = 0（tone table 内、負のオラクル） | 非実在文言が残る場合に検出 |
 | UICONV-D2 | success token 値誤り・conditional 化残存 | doc-oracle | `rg -Fc "#bbf7d0" docs/design-system/00-foundations.md` ≥ 1、`rg -Fc "#14532d" docs/design-system/00-foundations.md` ≥ 1、`rg -c "^| Success Soft " docs/design-system/00-foundations.md` = 1 | 値が異なる、Success Soft 行が 2 行になった、または `--success-border` が未登録のままの場合に検出（owner v2 決定は無条件登録） |
 | UICONV-D3 | 増減数値の色規則の欠落・重複記載 | doc-oracle | `rg -Fc "増減数値の色は補助シグナルとして重ねる" docs/design-system/01-decision-rules.md` ≥ 1 かつ同一文字列が `docs/design-system/02-component-catalog.md` に 0 | DSR-08 に無い、または catalog ⑬ に重複記載された場合に検出 |
-| UICONV-D3 | foundations 用途セル repoint 漏れ | doc-oracle | `rg -Fc "DSR-08 の増減数値色規則を参照" docs/design-system/00-foundations.md` ≥ 2 | `--success`/`--success-emphasis` いずれかの用途セルが repoint されていない場合に検出 |
+| UICONV-D3 | foundations 用途セル未更新 | doc-oracle | `rg -Fc "用途なし、次の runtime lane で撤去判断" docs/design-system/00-foundations.md` ≥ 1（`--success-emphasis`）、`rg -Fc "取込み完了" docs/design-system/00-foundations.md` ≥ 1（`--success`）、`rg -Fc "増減プラス数値" docs/design-system/00-foundations.md` = 0（Plan Review round 2 是正、旧 AC16 は同一文字列を両セルへ強制していた） | `--success`/`--success-emphasis` いずれかの用途セルが旧文言のまま、または誤って同一文言になっている場合に検出 |
 | UICONV-D4 | badge.tsx 枠 token の誤り | doc-oracle | `rg -Fc "border-border" docs/design-system/02-component-catalog.md` の記述が②分類の runtime gap 文脈にあること（reviewer 目視）。`rg -Fc "border-border-strong" docs/design-system/02-component-catalog.md` が②分類 gap の文脈に無いこと | ②分類の枠 gap 記述が `--border-strong` のまま残っている場合に検出 |
 | UICONV-D4 | 反映済みが誤って gap 扱いに戻る | doc-oracle | `rg -Fc "反映済み" docs/design-system/02-component-catalog.md` の周辺に `runtime gap` 文言が付かないこと（reviewer 目視） | `反映済み` が再び runtime gap として記述された場合に検出 |
+| UICONV-D10b | badge 枠線が必須ではなく任意のまま残る | doc-oracle | `rg -Fc "badge は枠線" docs/design-system/01-decision-rules.md` の周辺に「必ず持つ」等の必須表現があること（reviewer 目視、旧「よく」「でよい」の任意表現が残っていないこと） | 枠線が「使ってよい」等の任意表現のまま残っている場合に検出 |
+| UICONV-D10b | 中立①状態の icon 例外が欠落 | doc-oracle | `rg -Fc "中立 tone の①状態 badge は icon 任意" docs/design-system/02-component-catalog.md` ≥ 1（`StockStatusBadge.tsx:42`「通常」が icon なしで準拠する記述） | icon 必須ルールが中立 badge にも一律適用されたままの場合に検出 |
+| UICONV-D3 | success-emphasis 撤去判断の記述漏れ | doc-oracle | `rg -Fc "用途なし、次の runtime lane で撤去判断" docs/design-system/00-foundations.md` ≥ 1、`rg -Fc "増減プラス数値" docs/design-system/00-foundations.md` = 0 | `--success-emphasis` の用途セルが旧文言のまま残っている場合に検出 |
+| 全体 | catalog:588 冒頭矛盾文の残存 | doc-oracle | `rg -Fc "両モードとも" docs/design-system/02-component-catalog.md` = 0 | SearchBar アクセシビリティ節冒頭の「両モードとも aria-label」矛盾文が残っている場合に検出 |
 | UICONV-D5 | DSR-01 3 段階層の欠落・旧文言残存 | doc-oracle | `rg -Fc "それ以外の CTA は 3 段で降格する" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fc "それ以外の CTA は outline / ghost へ降格する。" docs/design-system/01-decision-rules.md` = 0 | 追記漏れ、または旧文言が残った場合に検出 |
 | UICONV-D5 | secondary の枠 token 誤り | doc-oracle | `rg -Fc "\`--secondary\` stone-200 塗り + \`--border\` 枠" docs/design-system/01-decision-rules.md` ≥ 1 | `secondary` の枠が `--border-strong` のまま、または枠記述自体が無い場合に検出 |
 | UICONV-D5 | catalog ① Do bullet 未同期 | doc-oracle | `rg -Fc "残りは 3 段（\`secondary\` 中間段 → \`outline\` / \`ghost\`）で降格する" docs/design-system/02-component-catalog.md` ≥ 1 | catalog ① が DSR-01 と食い違ったままの場合に検出 |
@@ -56,7 +60,7 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 | UICONV-D9 | DSR-23 帰属の明記漏れ | doc-oracle | `rg -Fc "DSR-23 の番号は ⑧ が登録する" docs/plans/2026-09-05-ui-conventions-batch-design.md` ≥ 1 | Workflow State 補足からこの取り決めが消えた場合に検出 |
 | UICONV-D10 | DSR-22 narrow 化の欠落・旧文言残存 | doc-oracle | `rg -Fc "badge（状態/分類/強調）は 3:1 の対象外" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fc "Badge / outline chip も対象" docs/design-system/01-decision-rules.md` = 0 | narrow 化文言が無い、または旧文言が残る場合に検出 |
 | UICONV-D10 | 04-backbone / review-checklist の同期漏れ | doc-oracle | `rg -Fc "枠線（\`--border\`、DSR-22" docs/design-system/04-backbone.md` ≥ 1、`rg -Fc "枠線（隣接背景に対し 3:1、DSR-22）" docs/design-system/04-backbone.md` = 0、`rg -Fc "操作枠 3:1 は interactive 部品限定" docs/quality/review-checklist.md` ≥ 1 | いずれかの file が narrow 化前の旧文言のまま残っている場合に検出 |
-| 全体 | `src/**` 混入 | repo-oracle | `git diff --name-only 07302b5..HEAD \| rg "^src/"` の出力が空 | runtime file が 1 件でも混入した場合に検出 |
+| 全体 | `src/**` 混入 | repo-oracle | `git diff --name-only 07302b5..HEAD -- src \| wc -l` = 0（AC14 と同じ非パイプ pathspec 絞り込みを踏襲、Plan Review round 2 是正、Sonnet 指摘） | runtime file が 1 件でも混入した場合に検出 |
 | 全体 | doc gate 未通過 | CLI | `bash scripts/doc-consistency-check.sh --target plan` | ERROR が 1 件でもあれば検出 |
 | Plans.md 同期 | active link 欠落・basename 不一致 | doc-oracle | `rg -Fc "2026-09-05-ui-conventions-batch-design.md" docs/Plans.md` ≥ 1 | リンクが無い、または basename が違う場合に検出 |
 
