@@ -43,6 +43,10 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 主動線が無い画面（例: 商品登録・修正）は `<header className="space-y-1">` に h1 のみを置き、右側のアクションを省く。
 
+**バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を `PageHeader` 直後に置く。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。
+
+**component gap（runtime lane 申し送り）**: `PageHeader.tsx:27-45` は `actions` が渡されると `flex` レイアウトを返し `subtitle` を描画しない分岐になっており、`actions` と `subtitle`（および説明セクション）は現状排他である。この gap により `SupplierManagementPage.tsx:35-38`（説明文がヘッダー外側の兄弟要素になり `PageShell` の `space-y-6` に流れ込み間隔が崩れる）、および `ReceivingPage.tsx:288-291` / `ManualSalePage.tsx:303-306` / `ReturnExchangePage.tsx:411-414` / `DisposalPage.tsx:278-281`（`subtitle` prop の値が render 結果から消え、説明文が画面に一切表示されない）の計 5 画面が影響を受けている。推奨は `PageHeader.tsx:29-36` の `actions` 分岐を「`<h1>` + 条件付き `<p>` を `<div className="space-y-1">` にまとめ、`actions` と並べる」形へ直す root-cause fix（外側 `<header>` の class は不変のため `PageHeader.test.tsx:61-73` は green のまま）。呼び出し側で wrapper を都度書く使用パターンは、この component 拡張が入るまでの代替であり Non-scope（runtime lane が実施）。
+
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
 **使用トークン**: h1 = タイポ `h1`（24px / weight 600）。アクションボタンは Primary（`amber-700`）。要素間ギャップは `space-3`（12px）。

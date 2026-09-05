@@ -120,6 +120,7 @@ function PluExportPage(): JSX.Element
 ## 67.9 UI / Wording
 
 - ページタイトル: `PLU書出し`
+- ページ説明（① 説明セクション使用パターン、[02-component-catalog.md](../design-system/02-component-catalog.md) ①）: レジのPLU登録状況を書き出すページです。『レジ登録状況を読み込む』でレジのCSV（Z004）を読み込み、空き・外部登録・アプリ管理・競合の件数を確認します。『差分を書き出す』（未反映の商品だけ）か『全件を書き出す』を選んで保存し、『この書出しを未反映から外す』を押して確定します。
 - Diff mode label: `差分を書き出す`
 - Full mode label: `全件を書き出す`
 - confirm button: `この書出しを未反映から外す`
