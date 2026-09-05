@@ -6,10 +6,10 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 59c243d
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
@@ -460,7 +460,9 @@ Plan Review round 2（Opus 5、read-only claims-producer）: **reject**（第 1 
 - P3（accept）: `StocktakePage.tsx:821-852` の else 分岐は現在 `<Table>` を裸で返す。S3a の記述を「1 行追加」から「Fragment/div で `<Table>` を包み直す」へ訂正した
 - P3（accept）: filter frame が `rounded-lg` になる一方、`IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:502` の table wrapper が `rounded-md` のまま残ると角丸が食い違う。S1g（新設）で両 file の `rounded-md` → `rounded-lg` を同じ sweep に含めた（`bg-card` は付けない）
 - 本 packet はこれらすべてを反映済み。item 1/3/4（floor 概算・折返し効果、owner 決定待ち）は次便で扱う。次回 Plan Review で新規 P1/P2 なしを確認後、`plan-gate -> plan-approved` へ進める予定
-- Findings Freeze: not yet frozen（round 1/2 是正の再レビューが未完了のため）; post-freeze exceptions: none.
+2026-09-06: Plan Gate 収束（round 3/3。round 1 = Opus reject P1 5〈S1 は Lane 2 S17 の巻き戻し、商品一覧のみが症状画面〉/ Sonnet reject → 是正 `309e5e1` / round 2 = Opus reject〈部門折返しの効果僅少〉→ owner 決定で item (1) を識別列固定へ書換 `ab538ce` / round 3 = Opus reject〈toolbar sticky は containing block 幅で無効、識別列 th の z、text-base 変更の test 影響〉+ Sonnet approve-with-P2 → 是正 `89d448c`）。同一 vendor ラリー天井のため round 3 是正は Coordinator が該当行を検分して閉じた（owner 許可 2026-09-05）。⑧ tip `885c10d` へ単段 merge `d8a659b` + 行番号再検証 `a850d04` で積み直し済み。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ④ 同期の本 content commit に同乗させて遷移。Plan Commit = `59c243d`（plan-first commit、Lane 5 tip `04f89a4` 直上、以後の是正・merge commit はその子孫）。Codex ロジックレビュー 1 回は §3.3 pending。
+
+- Findings Freeze: not yet frozen（Final Review が未実施のため）; post-freeze exceptions: none.
 
 **owner 決定（2026-09-05、第 2 便）**: item (1) を D（表を縮ませる、round 1/2 で商品一覧の部門列折返しに縮小）から**識別列固定**（Excel 型、`<main>` 基準 sticky-left、商品一覧のみ）へ書き換える。Opus round 2 item #1/#3/#4 が指摘した通り、D の実測効果は僅少（部門列の折返しで floor が −0〜56px 程度しか動かず、floor の主因は商品名 `min-w-[14rem]`＝224px + 数値 3 列の nowrap であり、部門列折返し単体では出っ張り解消に実質寄与しない）。この owner 決定により、旧 L4-D2（ProductTable 部門列 whitespace-normal）と floor 概算節は全面撤回し、識別列固定（新設 S9）に置き換える。詳細は「起票時実測」節と Design Intent Trace L4-D1/D2（改訂）を参照。（当初は toolbar 自体の sticky-left も含めて構想したが、round 3 の Opus P1 で no-op と判明し撤回——下記 round 3 参照）
 
