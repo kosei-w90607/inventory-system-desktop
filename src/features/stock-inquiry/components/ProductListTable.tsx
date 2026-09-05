@@ -30,7 +30,7 @@ export interface ProductListTableProps {
   selected: string | null;
   /** 選択行直下のインライン展開に描画する詳細 query（list 成功時のみ展開、§58.8）。 */
   detailQuery: UseQueryResult<StockDetail>;
-  onSelect: (productCode: string) => void;
+  onSelect: (productCode: string | null) => void;
 }
 
 const STOCK_CLASS: Record<StockStatus, string> = {
@@ -58,6 +58,7 @@ export function ProductListTable({
           <TableHead>商品コード</TableHead>
           <TableHead>商品名</TableHead>
           <TableHead>部門</TableHead>
+          <TableHead>取引先</TableHead>
           <TableHead className="w-24">状態</TableHead>
           <TableHead className="text-right">在庫数</TableHead>
           <TableHead className="text-right">売価</TableHead>
@@ -73,12 +74,13 @@ export function ProductListTable({
                 data-state={isSelected ? "selected" : undefined}
                 className="cursor-pointer"
                 onClick={() => {
-                  onSelect(item.product_code);
+                  onSelect(isSelected ? null : item.product_code);
                 }}
               >
                 <TableCell className="font-mono text-sm font-medium">{item.product_code}</TableCell>
                 <TableCell>{item.name}</TableCell>
                 <TableCell className="text-muted-foreground">{item.department_name}</TableCell>
+                <TableCell className="text-muted-foreground">{item.supplier_name ?? "—"}</TableCell>
                 <TableCell>
                   <StockStatusBadge status={status} />
                 </TableCell>
@@ -95,7 +97,7 @@ export function ProductListTable({
                 <TableRow className="bg-muted hover:bg-muted">
                   {/* table primitive 既定の whitespace-nowrap を打ち消し、詳細コンテンツを通常折り返し
                       させる（Codex 実装レビュー Round 1 P2-1、長い商品名 / CTA 群の横はみ出し防止） */}
-                  <TableCell colSpan={6} className="p-0 align-top whitespace-normal">
+                  <TableCell colSpan={7} className="p-0 align-top whitespace-normal">
                     <StockDetailContent query={detailQuery} />
                   </TableCell>
                 </TableRow>
