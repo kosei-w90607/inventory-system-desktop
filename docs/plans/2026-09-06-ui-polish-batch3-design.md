@@ -193,13 +193,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|
 | アプリのデータ全体をまとめて保存し、必要なときに元に戻すためのページです。 | `docs/function-design/68-ui-backup-restore.md:8`「UI-11b は、ローカル SQLite DB の手動バックアップ、バックアップ設定、バックアップ一覧、復元を operator が 1 画面で扱うための画面である。」 |
 | 自動バックアップの時刻を設定したり、今すぐ手動でバックアップを作成したり、保存先を選んだりできます。 | `src/features/backup-restore/BackupRestorePage.tsx:421`（Label「自動バックアップを使う」）、`:429`（Label「自動バックアップ時刻」）、`:491`（button「今すぐバックアップを作成」）、`:475`（button「保存先を選ぶ」） |
-| 過去のバックアップから復元すると現在の記録は元に戻せませんが、復元の前には自動で今の状態のバックアップが作られます。 | `BackupRestorePage.tsx:580`（AlertTitle「復元すると今の記録は戻せません」）、`:488`「復元前にも自動で同じバックアップを作成します。」/ `docs/function-design/68-ui-backup-restore.md:76`（`createBackup` の自動実行） |
+| 過去のバックアップから復元すると現在の記録は元に戻せませんが、復元の前には自動で今の状態のバックアップが作られます。 | `BackupRestorePage.tsx:580`（AlertTitle「復元すると今の記録は戻せません」）、`:487`「復元前にも自動で同じバックアップを作成します。」/ `docs/function-design/68-ui-backup-restore.md:76`（`createBackup` の自動実行） |
 
 → 結合文案（owner culling）: 「アプリのデータ全体をまとめて保存し、必要なときに元に戻すためのページです。自動バックアップの時刻を設定したり、今すぐ手動でバックアップを作成したり、保存先を選んだりできます。過去のバックアップから復元すると現在の記録は元に戻せませんが、復元の前には自動で今の状態のバックアップが作られます。」
 
 **削除・訂正した文とその理由（Plan Review round 1 是正、2 便で再訂正）**:
 - 1 便: バックアップ案の「保存先やスケジュールを確認・変更したりできます」を丸ごと削除した。2 便で是正: 「スケジュール」という語自体は UI 文言に存在しない（`rg -c "スケジュール" BackupRestorePage.tsx` = 0）が、同等の機能（自動バックアップの有効化・時刻設定、`:421,429`）は実在するため、実際のラベルに基づき書き直した（全面削除は言い過ぎだった）。
-- バックアップ案「（復元の前に、念のため現在の状態も保存することをおすすめします）」— `BackupRestorePage.tsx:488` / `68-ui-backup-restore.md:76` により、これは利用者への推奨ではなく既にアプリが自動で行う挙動であるため、事実と異なる書き方だった。「復元の前には自動で今の状態のバックアップが作られます」へ訂正。
+- バックアップ案「（復元の前に、念のため現在の状態も保存することをおすすめします）」— `BackupRestorePage.tsx:487` / `68-ui-backup-restore.md:76` により、これは利用者への推奨ではなく既にアプリが自動で行う挙動であるため、事実と異なる書き方だった。「復元の前には自動で今の状態のバックアップが作られます」へ訂正。
 
 ### L8-9 記録IDの表示（DSR-22 拡張 + 65-doc 改訂方針）
 
@@ -447,4 +447,6 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 2026-09-06: Plan Review round 1（Coordinator 直接レビュー + Opus 並行分、2 便）→ 全件 accept、本 commit で反映。
 - 便 1（Coordinator）: (P1) 説明文 3 案に file:line 根拠を必須化し根拠のない文を削除、バックアップ案の「スケジュール」を誤って全面削除（便 2 で是正）。(P1) AC2 の `レジ登録状況を読み込む`/`未反映から外す` anchor が `67-ui-plu-export.md` に既に 3 件/6 件存在する false oracle だったため baseline 0 の新規文へ差替え（AC2a/b/c）。(P2) AC5 の「reviewer 目視」を撤去し、baseline 0 確認済みの機械 oracle（`備考は`/`truncate + \`title\``/`直近 {N} 件の`）へ差替え。(P2) L8-3 の tone を「L8-2 待ち」から ⑦ の tone family 表・DSR-22 narrow 化の既存決定へ差替え。(P3) 備考の全文確認手段は詳細ページが担い `title` は DSR-11 に沿う補足と明記。(P3) ⑦ との merge 順序（同一 2 file 編集）を Workflow State に追記。
 - 便 2（Opus 並行）: (P1 訂正) バックアップの自動バックアップ機能は実在する（`:421,429`）ため全面削除ではなく実際のラベルへ書き直し。(P1) `PageHeader` の `actions`/`subtitle` 併存は `SupplierManagementPage.tsx` 以外に `ReceivingPage.tsx`/`ManualSalePage.tsx`/`ReturnExchangePage.tsx`/`DisposalPage.tsx` の 4 画面で実害（`subtitle` 消失）が起きていることが判明し、是正方向を (b) `PageHeader.tsx` root-cause fix へ一本化。(P1) `MovementTable.tsx:57,92-94`（7 画面共有）を備考規則の起票時実測に追加し、`?? "—"`/`"—"` の実測件数（5 箇所4file / 27箇所16file）に基づき空欄表示の推奨を「備考なし」から「—」へ反転。(P2) ⑦ の記録状態 tone 決定と Lane 5 の枠色トークン移行（`--border-strong`→`--border`）の矛盾を明記。(P3) PLU 説明文を実在ボタン文言（『差分を書き出す』/『全件を書き出す』）へ訂正、各説明文を 2〜3 文・非入れ子括弧へ整理。(P3) L8-1 の帰属画面を「一覧本体」から「記録詳細 6 画面」へ訂正。(P3) `ManualSalePage.tsx` 備考列見出し行・DSR-22 の `InventoryRecordsPage.tsx` 行番号の stale 引用を修正。
+2026-09-06: Plan Review round 2（Sonnet fresh）= approve、P3 1 件是正: `BackupRestorePage.tsx:488` 引用（`:196,202`）はタグ閉じ行を指しており、実文言「復元前にも自動で同じバックアップを作成します。」は `:487`。両箇所を `:487` へ修正。
+2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接 + Opus、round 2 = Sonnet fresh approve）。Phase は Human Gate（説明文 3 案 / 記録 ID / 備考空欄）の owner 回答待ちで plan-draft のまま。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
