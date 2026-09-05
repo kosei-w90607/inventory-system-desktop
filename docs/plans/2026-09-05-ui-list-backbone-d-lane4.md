@@ -10,7 +10,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 59c243d
-- Amendments: none
+- Amendments: pending（Gated Amendment 1「商品一覧の表を data grid 型 scroll 箱へ」/ Gated Amendment 2「一括価格改定の取引先追加ボタン隣接」を本 commit で起票。tracked file は自身の commit SHA を含められない〈D-035〉ため、本 commit の SHA は次の state 同期 commit で本欄へ記入する）
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
@@ -18,7 +18,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3 — AC-L3-1 商品一覧で窓を狭めると商品コード + 商品名と列見出しが固定されたまま toolbar 枠を含む右側だけが横に流れ、縦 scroll でページが横にジャンプせず、識別列の hover/選択行/現在行背景の見え方を確認する, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3 表示件数 Select の位置と枠の地色が 6 画面で揃う（整合性チェックの単独 Select は対象外、下記 S1 参照）
+- Human Gate: owner Windows native L3 run 2（run 1 は 2026-09-06 に AC-L3-1/AC-L3-3 所感で FAIL、Gated Amendment 1/2 起票済み）— AC-L3-1（run 2、Gated Amendment 1）: 窓を狭めて表が枠より広い状態で横に滑らせると検索ツール・商品コード・商品名・見出しは動かず部門から右だけが滑る、縦に滑らせても見出しが箱の上に残り下のページ送りは常に見える、「修正」から戻ると同じ位置に戻る, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3（run 2、Gated Amendment 2 追加）表示件数 Select の位置と枠の地色が 6 画面で揃い、一括価格改定の取引先追加ボタンが Select の隣にある（整合性チェックの単独 Select は対象外、下記 S1 参照）
 
 ## Owner Effort Budget
 
@@ -43,6 +43,8 @@ Risk: R3
 
 Reason:
 8 一覧画面（商品一覧 / 棚卸し / 在庫照会 / 入出庫履歴 / 在庫変動履歴 / 操作ログ / 一括価格改定 / 整合性チェック）の operator workflow に見える見た目変更（商品一覧の識別列固定、ページ送りの上下帯構成、表示件数 `Select` の位置、filter/toolbar 枠の地色）+ 共有 UI primitive（`Pagination`/`PaginationSummary`、Button/Badge と並ぶ widely-shared component）の contract 変更。DB スキーマ・Tauri command DTO・POS CSV・PLU TSV 形式の変更はない。DEV_WORKFLOW Risk Tiers の R3「route/search state, operator workflow」に該当し、Plan Packet + Test Design Matrix + targeted gates + Windows native L3 を必須とする。
+
+**item (1) のモデル変更は本 lane で 3 度目（Gated Amendment 1）**: (i) 2026-09-05 owner 決定 D「表を縮ませる」→ (ii) 2026-09-05 owner 決定第 2 便「識別列固定（`<main>` 基準 sticky-left）」→ (iii) 2026-09-06 owner L3 run 1 FAIL・owner 決定 案 X「識別列固定（専用 data grid 型 scroll 箱基準）」。各回とも owner の実機確認（L3）または実測（Opus round 2）を経ての書換えであり、Risk の見積り自体（R3、operator workflow 変更）は変わらない。
 
 **Stacked train（D-074、AGENT_OPERATING_MANUAL §3.3 Stacked train 節）**: 本 branch は当初 Lane 5（`agent/ui-list-backbone-d-lane5`、tip `04f89a4`）から作成した。2026-09-06、⑧（`agent/ui-select-unify`、native `<select>` 16 箇所 → shadcn `Select` 置換、human-confirm 中）の tip `885c10d` に単段 merge `d8a659b` で積み直し済み（旧起点 Lane 5 tip `04f89a4`。plan-first commit `59c243d` とその子孫は SHA 不変、rebase なし、D-039/PK5「Plan Commit ancestry」）。conflict は `docs/Plans.md`（⑧ の ⑧/ブロッカー節と本 branch の ④ Lane 4 節、両方保持）のみで、`ort` strategy による自動解決（conflict marker 0 件を確認済み）。merge delta は `InventoryRecordsPage.tsx`/`OperationLogsPage.tsx`/`PriceRevisionFilters.tsx`/`StockMovementsPage.tsx` 等の native `<select>` → shadcn `Select` 置換を含み、本 packet の該当行番号引用（S1c/S1e/S1f/S3c/S4b 等）を re-stack 後の値へ再検証・更新済み（起票時実測「re-stack 後の行番号再検証」節参照）。forward state-only は本 lane 自身で 1 本（human-confirm → ready-hosted-final）に抑え、他の遷移は content commit 同乗で行う（D-074 rules、forward state-only budget 1）。
 
@@ -212,6 +214,47 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - **完了条件（round 3 是正、Opus P2/P6: descendant variant は文字列連結の都合上 `rg -Fn "sticky left-0"`/`"sticky left-[7rem]"` の完全一致 3 箇所以上という検査が不成立になり得る——`nth-child` selector と組み合わさる実際の文字列は `[&_thead_th:nth-child(1)]:sticky` のように 1 token に融合するため）**: `rg -n "identityColumns" src/components/patterns/ListShell.tsx` の hit が型宣言のみの現状（1 件）から増える（消費する分岐が実装される）かつ `rg -Fn "identityColumns={2}" src/features/products/ProductListPage.tsx` ≥ 1（起票時 0）かつ `rg -Fn "w-28" src/features/products/components/ProductTable.tsx` ≥ 1（起票時 0）かつ `rg -c 'nth-child\(' src/components/patterns/ListShell.tsx` ≥ 4（`thead th`/`tbody td` × 列 1・2 の 4 パターン以上、正規表現なので `\(` のエスケープに注意）かつ `rg -Fc 'left-[7rem]' src/components/patterns/ListShell.tsx` ≥ 2（`thead th`/`tbody td` の 2 列目、`-F` の固定文字列検索でブラケットをエスケープ不要にする）かつ `rg -Fc 'z-[11]' src/components/patterns/ListShell.tsx` ≥ 1（識別列 th の z-index）
 - **S10 Plans.md ④ + Contract Coverage Ledger 記入**: 本 packet の active link を反映（本 commit で同時実施）。Lane 4 の item (1) は「D から識別列固定（Excel 型、`<main>` 基準 sticky-left、商品一覧のみ。toolbar 自体の sticky 化は no-op のため対象外、round 3 是正）へ owner 決定 2026-09-05（D は実測で効果僅少）」と明記する。Contract Coverage Ledger は下記節を参照
 
+### Gated Amendment 1（owner Windows native L3 run 1 起源、2026-09-06、owner 決定 案 X。S9 の `<main>` 基準 sticky-left モデルを data grid 型 scroll 箱へ置換）
+
+owner L3 run 1（PR #40、原文 = `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`「Lane 4 PR #40 L3 run 1 原文」）で AC-L3-1 が FAIL。owner の期待像は「Excel の行/列固定」そのもの——検索ツール（toolbar）も商品コード・商品名の 2 列も画面に留まり、右側だけが滑る。S9（round 1〜3）が実装した `<main>` 基準 sticky-left モデルは、round 3 で toolbar の sticky-left が no-op と判明した時点でこの期待像から乖離していた（toolbar が動いてしまう）。owner は 2026-09-06、代替案の中から **案 X = 商品一覧の表を専用の縦横 scroll 箱に入れる data grid 型**を選んだ。これは本 lane で item (1) の**3 度目のモデル変更**である: (i) 2026-09-05 D「表を縮ませる」→ (ii) 2026-09-05 第 2 便「識別列固定（`<main>` 基準 sticky-left）」→ (iii) 2026-09-06 本 Gated Amendment「識別列固定（専用 scroll 箱基準）」。
+
+**起票時実測（高さ連鎖の確認、2026-09-06）**: `PageShell` に `h-full` 系の class を与えたとき、実際に境界のある高さへ解決するかを確認した。連鎖は `src/styles/globals.css:142-147`（`html, body, #root { height: 100%; overflow: hidden; }`）→ `RootLayout.tsx:61`（`<div className="grid h-full grid-cols-[240px_minmax(0,1fr)] overflow-hidden ...">`、この `h-full` は `#root` の 100% に対して解決する）→ `RootLayout.tsx:65`（`<main data-scroll-restoration-id="main" className="min-h-0 min-w-0 overflow-auto">`、grid の 2 列目セルとして stretch され、grid 行の高さ＝コンテナの `h-full` を継承する）。したがって `<main>` は viewport 由来の**境界のある高さ**を既に持ち、`<main>` の子に `h-full` を与えれば解決する。`max-h-[calc(100dvh-...)]` のような fallback は不要（この高さ連鎖が全 9 画面で機能していることは `PageShell.tsx` 冒頭コメント「min-h-screen は持たない…Probe 1 で 9 画面の依存不在を確認済み」からも傍証される）。
+
+**Design（Coordinator 決定、bake in）**:
+- 対象は**商品一覧のみ**（`ProductListPage.tsx`）。`ProductListPage.tsx:259` の `<PageShell>` に `className="flex h-full min-h-0 flex-col overflow-hidden"` を渡す（`PageShell` の `cn(className, "space-y-6 p-6")` は className を先に評価するため `flex`/`h-full`/`overflow-hidden` は `space-y-6 p-6` と非競合で共存し、`PageShell` 自体のコード変更は不要——ponytail: 既存 API で足りる）。ページ内の `PageHeader` と `ListShell` の toolbar 部分は `shrink-0`（自然な高さのまま縮まない）。
+- `ListShell.tsx`（`stickyHeader` 分岐のみ、他画面には影響しない——`stickyHeader` を渡すのは `ProductListPage.tsx:284` だけ）を再構成する: root の class を `cn("space-y-3", stickyHeader && "flex h-full min-h-0 flex-col", ...)` へ（`space-y-3` は flex-col でも `> * + *` の margin-top として機能するため両立）。toolbar 部分（`:129-134` 相当）に `shrink-0` を追加。既存の帯+table wrapper（`:141` `<div className="w-min min-w-full">`、非 topSummary 分岐は `:159-168` の Fragment）を、新規の外側 box `<div className="min-h-0 flex-1 overflow-auto" data-scroll-container>` で包む。下部 `<Pagination>`（`:171-176`）は box の**外**（flex-col の兄弟、`shrink-0`）に置き、常に見える状態を維持する。
+- box が新たな scrolling ancestor になるため、`STICKY_TABLE_CLASSES` の `[&_thead_th]:sticky`/`top-*` と `IDENTITY_COLUMN_CLASSES` の `sticky left-*` は**そのまま**box基準で機能する（コード変更不要）。`[&_[data-slot=table-container]]:overflow-visible`（`:43`）も不変——box が唯一のスクローラーであることを保つため、内側の `Table` 自身の `overflow-x-auto`（`table.tsx:9`）は引き続き打ち消す。
+- 識別列の右端の境界線（`shadow-[inset_-1px_0_0_var(--border)]`）は削除しない。owner の「なぜ線があるのか」への回答として、Excel の固定ペイン境界線と同じ役割（固定領域と可動領域の境目を示す）であることを DSR-22 の Why に明記する。
+
+**DSR-17 例外（`01-decision-rules.md`）**: DSR-17 の 3+1 分類ルール（`:290`）の末尾に例外を追加する: 「横 overflow が実発生する一覧（現状 商品一覧のみ）は、表自身を縦横の scroll 箱にしてよい。当該画面では `<main>` は scroll せず、scroll 復元・perPage 変更時の先頭 scroll は箱の `scrollTop` を対象にする」。Why: Excel の枠固定という operator の既知メンタルモデルに合わせる（owner L3 run 1、2026-09-06）。完了条件: `rg -Fn "横 overflow が実発生する一覧" docs/design-system/01-decision-rules.md` ≥ 1（起票時 0）。
+
+**DSR-22 / catalog ⑯ の同期**: DSR-22 ルール文（`:429`）の「Lane 4 で商品一覧のみ実装済み: 新規 scroll 容器を作らず、`<main>`（既に `overflow-auto`）を唯一の scroll container としたまま識別列に `sticky left-*` を追加する方式で両立を確認した（`identityColumns` prop 活性化、S9）」を「Gated Amendment 1（2026-09-06、owner 案 X）で商品一覧のみ専用の scroll 箱（`data-scroll-container`）方式へ更新: 表自身が縦横 scroll 箱になり、`<main>` はこの画面で scroll しない。識別列の `sticky left-*` は箱を基準に機能する（`identityColumns` prop、S9 は不変）」へ改める。catalog ⑯（`02-component-catalog.md:909`）の項目 3 に「商品一覧では帯+table の wrapper がさらに専用 scroll 箱（`min-h-0 flex-1 overflow-auto`）に包まれ、`<main>` ではなく箱が scroll する（Gated Amendment 1）」を追記する。完了条件: `rg -Fn "Lane 4 で商品一覧のみ実装済み: 新規 scroll 容器を作らず" docs/design-system/01-decision-rules.md` = 0（起票時 1）かつ `rg -Fn "Gated Amendment 1" docs/design-system/01-decision-rules.md docs/design-system/02-component-catalog.md` ≥ 2。
+
+**Scroll restoration の拡張（Lane 3 の既存機構を再利用、ponytail: 新しい仕組みは作らない）**: `src/lib/page-scroll.ts:45` の `scrollPageToTop()` は現在 `document.querySelector("main")` に固定している。`app-router.ts` の `MAIN_SCROLL_SELECTOR = '[data-scroll-restoration-id="main"]'`（`:10`）と同じ「data 属性で scroller を解決する」設計を踏襲し、両 file とも「`document.querySelector('[data-scroll-container]')` があればそれを、無ければ `main`」の順で解決するよう拡張する（`app-router.ts` の `onRendered` 内、`:76`/`:91`/`:105`/`:107` の `main.scrollTop` 参照箇所を対象とする）。これにより DSR-17 分類②（一覧→詳細→戻り）で商品一覧に戻ったとき箱の scroll 位置が復元され、perPage 変更時の「先頭へ戻す」（`scrollPageToTop()`）も箱を対象にする。既存の 24 箇所の `scrollPageToTop()` 呼出し元は無改修で恩恵を受ける（他画面は `data-scroll-container` を持たないため従来どおり `main` が対象のまま、既存挙動は不変）。
+
+**既知の残余**: 商品一覧の画面上でマウスホイールを回すと箱がスクロールし、`<main>` はスクロールしない（意図どおり——このページには箱以外にスクロールすべきものが無い）。
+
+**Tests（happy-dom、class/属性の存在確認 + 復元ロジックの unit test。実際の見た目は L3 が唯一の oracle）**:
+- `ProductListPage.test.tsx` 新規: `<PageShell>` root（または最も外側の DOM 要素）が `flex h-full min-h-0 flex-col overflow-hidden` を持つ
+- `ListShell.test.tsx` 新規（`stickyHeader` 分岐）: box 要素が `min-h-0 flex-1 overflow-auto` と `data-scroll-container` 属性を持つ；`Pagination` が box の**外**（同じ root の直接の子として box の次の sibling）にあることを `compareDocumentPosition`/DOM 構造で確認；toolbar に `shrink-0` が付く
+- `page-scroll.test.ts`（新規または既存拡張）: fake scroller（`data-scroll-container` を持つ要素）が DOM にある場合は `scrollPageToTop()` がそれを対象にし、無い場合は `main` を対象にする
+- `ProductListPage.scroll-restoration.test.tsx`（新規、`OperationLogsPage.scroll-restoration.test.tsx` のパターンを踏襲）: 本番 `createAppRouter` + 実 routeTree で、商品一覧の箱の scroll 位置が「一覧→詳細→戻り」で復元されることを確認
+- Matrix mutants: box の class が落ちる／`data-scroll-container` 属性が落ちる／解決 helper が属性ありでも `main` にフォールバックしてしまう／`Pagination` が box の中に入ってしまう
+
+**AC-L3-1（run 2、owner Windows native L3）**: 窓を狭めて表が枠より広い状態で横に滑らせると、検索ツール・商品コード・商品名・列見出しは動かず、部門から右の列だけが滑る。縦に滑らせても列見出しが箱の上に残り、下のページ送りは常に見える。「修正」から戻ると同じ scroll 位置に戻る。
+
+**Registration Obligations 追加**: `data-scroll-container` という新規 DOM 属性の命名規約は `app-router.ts` の既存 `data-scroll-restoration-id` と役割が異なるため（後者は復元 ID、前者は「この要素が scroller である」というマーカー）、混同を避けるため両者の使い分けを `page-scroll.ts`/`app-router.ts` のコメントに明記する（新規 doc は起こさない）。
+
+### Gated Amendment 2（owner Windows native L3 run 1 起源、2026-09-06。一括価格改定の「取引先を追加」ボタンが取引先 Select から離れて見える）
+
+owner L3 run 1 の AC-L3-3 所感: 一括価格改定で「新しい取引先を追加」ボタンが取引先 Select の隣から離れて見える。**起票時実測（2026-09-06）**: `PriceRevisionFilters.tsx` の現在の DOM 順序を確認したところ、取引先 `<label>`（`:55-57`）→ 取引先 `<Select>`（`:58-76`）→「新しい取引先を追加」`<Button>`（`:77-85`）は**既に隣接**しており、表示件数 `<Select>`（`:106-134`）も filter 行の**最後尾**にある——DOM 順序自体は S4b の完了条件を満たしたまま崩れていない。したがって owner が「離れた」と感じたのは DOM 順序の問題ではなく、`flex flex-wrap`（`:46`）の折り返しによる**視覚上の分離**である可能性が高い: 個々の flex item は行の残り幅に応じて独立に折り返すため、表示件数ブロックが行末に追加されたことで折り返し位置全体が変わり、ウィンドウ幅によっては「取引先 Select」と「追加ボタン」が別の行に分かれて視覚的に離れて見えることがある。
+
+**Scope（Coordinator 決定）**: 取引先の `<label>`・`<Select>`・「追加」`<Button>` の 3 要素を、表示件数ブロック（`:106-134`）と同じ「`<div className="flex items-center gap-2">` で包んで 1 unit にする」パターンで括る。flex-wrap は unit 単位で折り返すため、3 要素は常に同じ行に留まり、行が折り返しても分離しない。DOM 順序（Select → ボタン）は不変、表示件数 Select は filter 行の最後尾のまま変更しない。
+
+**完了条件**: `rg -Fn '<div className="flex items-center gap-2">' src/features/products/components/PriceRevisionFilters.tsx` の hit 数が現状（表示件数ブロックの 1 箇所）から増える（取引先ブロック分）。新規 test: 取引先 `<label>`/`<Select>`/`<Button>` が共通の親 `<div>` を持つこと、かつ `compareDocumentPosition` で 取引先 Select → 追加ボタン → （中略）→ 表示件数 Select の順が DOM 上で保たれることを確認する（DOM 順序の回帰ガードとして残す——今回の owner 所感の直接原因ではなかったが、S4b が本来意図した契約でもあるため）。
+
+**AC-L3-3（run 2、owner Windows native L3）**: 一括価格改定で「新しい取引先を追加」ボタンが取引先 Select の隣にあることを、窓幅を変えても（折り返しが起きても）確認する。
+
 ## Non-scope
 
 - `ListShell.tsx:99` の `w-min min-w-full` wrapper の撤去・変更（Lane 2 追補 S17 の既存挙動・`ListShell.test.tsx:343` の完全一致契約を維持する）
@@ -249,9 +292,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC12: catalog ⑯ 項目 2 のみ新形へ更新され、項目 3（`w-min min-w-full`）は無変更のまま残る — Scope S8 の `rg -Fn` 完全一致検査（新形出現 + 旧項目 3 残存の両方を確認）
 - AC13（round 2 是正、Opus P2。round 3 で行番号を再確認）: `page > totalPages` の状態で描画される画面が無いこと — 8 画面のうち `StockInquiryPage.tsx:194`（`isOutOfRangePage`）と `OperationLogsPage.tsx:455`（`outOfRange`）の 2 画面は既存の「先頭ページに戻る」`EmptyState` で明示的に検知・復帰する。残り 6 画面は専用の範囲外検知 UI を持たず、フィルタ変更時に page をリセットする既存 handler（`Error, empty, retry, and recovery behavior` 節に例示済み）のみで防いでいる。下部 `Pagination` が `totalPages<=1` で非表示になっても、フィルタ変更で `totalCount` が変わった直後に一時的に `page > totalPages` になり得る経路が新たに生まれていないことを、フィルタ変更で `totalCount` を perPage 未満へ減らす新規 test 1 本（対象画面は Writer が残り 6 画面から 1 画面選定、既存の page-reset handler 経路を通る）で確認する — 新規 vitest 1 本
 - AC14（owner 決定 2026-09-05 第 2 便、識別列固定。round 3 是正で toolbar sticky を削除、z-index を追加）: 商品一覧の `thead th`/`tbody td` の先頭 2 列（商品コード・商品名）に `sticky`（`left-0`/`left-[7rem]`）・不透明背景（`tbody` は `bg-background`）・`z-[1]`（`tbody`）・`z-[11]`（`thead th`、round 3 追加）・右端の境界（`shadow-[inset_-1px_0_0_var(--border)]` + `forced-colors:border-r`）が付き、3 列目以降には付かない。toolbar frame への sticky 追加は行わない（round 3 是正、no-op と判明、下記 Alternatives/Residual Risk 参照）。他 7 画面の table には一切変更が無い — 新規 vitest（`ListShell.test.tsx` 拡張: `identityColumns` あり/なしの対照を root の class token で確認、`ProductListPage.test.tsx`/`ProductTable.test.tsx`: `identityColumns={2}`/`w-28` の配線確認）
-- AC-L3-1（owner Windows native L3。round 3 是正で toolbar 固定の記述を削除、確認事項を修正）: 商品一覧で窓を狭めると商品コード + 商品名と列見出しが固定されたまま右側の列（toolbar 枠を含む）だけが横に流れ、縦 scroll でページが横にジャンプしない。`left-0` が `<main>` の左端（`p-6` gutter の外側）を基準にすることは sticky-top の既存挙動と同型であり defect ではない（既知の相互作用 (e) 参照）。横スクロール中に商品名列（列 2）の左端が商品コード列（列 1）に重ならないことを実データで確認する（`w-28` の想定が実際の `product_code` の長さを covers するかの検証、起票時実測「幅の前提」節参照）。行 hover・選択行・現在行の背景が識別列の 2 セルだけ乗らない見え方（Residual Risk、L4-D11）を owner が許容できるか、または `[&_tbody_tr]:bg-background` 代替案への切替えを求めるかを確認する
+- AC-L3-1（owner Windows native L3、**run 2、Gated Amendment 1 で全面差し替え**）: 窓を狭めて表が枠より広い状態で横に滑らせる → 検索ツールと商品コード・商品名と見出しは動かず、部門から右だけが滑る。縦に滑らせても見出しが箱の上に残り、下のページ送りは常に見える。「修正」から戻ると同じ位置に戻る。**旧 run 1 の AC-L3-1**（`<main>` 基準 sticky-left モデル、toolbar は流れる前提）は FAIL となったため本文を差し替える——旧文の内容は Gated Amendment 1 の起票時実測節・`## Review Response` に経緯として残す
 - AC-L3-2（owner Windows native L3）: `Pagination.tsx` の複数ページの画面 1 つで下部ページ送りが表示され、単一ページの画面 1 つで下部ページ送りが非表示になる（上部件数のみ残る）
-- AC-L3-3（owner Windows native L3）: 表示件数 `Select` の位置が 8 画面で揃って見え、filter/toolbar 枠の地色が対象 6 画面（整合性チェックを除く、round 2 是正）で揃って見える
+- AC-L3-3（owner Windows native L3）: 表示件数 `Select` の位置が 8 画面で揃って見え、filter/toolbar 枠の地色が対象 6 画面（整合性チェックを除く、round 2 是正）で揃って見える。**run 2 追加項目（Gated Amendment 2）**: 一括価格改定で「新しい取引先を追加」ボタンが取引先 Select の隣にあることを、窓幅を変えても（折り返しが起きても）確認する
 
 ## Design Sources
 
@@ -369,7 +412,10 @@ Minimum design checks for business-app work:
 | S6 DSR-22 改訂（L4-D7） | `docs/design-system/01-decision-rules.md` | 該当なし（docs review） | non-scope |
 | S7 catalog ⑩ 改訂（L4-D8） | `docs/design-system/02-component-catalog.md` | 該当なし（docs review） | non-scope |
 | S8 catalog ⑯ 項目 2 改訂（L4-D8） | `docs/design-system/02-component-catalog.md` | 該当なし（docs review） | non-scope |
-| S9 識別列固定の実装 | `ListShell.tsx`、`ProductListPage.tsx`、`ProductTable.tsx` | `ListShell.test.tsx`/`ProductListPage.test.tsx`/`ProductTable.test.tsx` 新規 assertion | AC-L3-1 |
+| S9 識別列固定の実装（class 契約は Gated Amendment 1 でも不変） | `ListShell.tsx`、`ProductListPage.tsx`、`ProductTable.tsx` | `ListShell.test.tsx`/`ProductListPage.test.tsx`/`ProductTable.test.tsx` 新規 assertion | AC-L3-1（run 2） |
+| Gated Amendment 1: data grid 型 scroll 箱（ProductListPage flex 化 + ListShell box + scroll 解決 helper 拡張） | `ProductListPage.tsx`、`ListShell.tsx`、`page-scroll.ts`、`app-router.ts` | GA1a〜GA1d 新規 assertion | AC-L3-1（run 2） |
+| Gated Amendment 1: DSR-17 例外 + DSR-22/catalog ⑯ 同期 | `01-decision-rules.md`、`02-component-catalog.md` | 該当なし（docs review） | non-scope |
+| Gated Amendment 2: PriceRevisionFilters 取引先グルーピング | `PriceRevisionFilters.tsx` | GA2 新規 assertion | AC-L3-3（run 2） |
 
 ## 実装原則（ponytail、full）
 
@@ -485,3 +531,5 @@ Plan Review round 3（Sonnet: approve-with-P2、Opus 5: reject。Final drafter p
 - Findings Freeze: not yet frozen（round 3 是正の再レビューが未完了、item 1/3/4 の owner 決定は本便で反映済みだが Plan Review 天井 3 に到達しているため Coordinator が次の扱いを判断する）; post-freeze exceptions: none.
 
 2026-09-06: owner Windows native L3 run 1（HEAD `ae45f17`、2560×1440 / 125%、介入 2/3、原文 = raw file「Lane 4 PR #40 L3 run 1 原文」）= AC-L3-1 **FAIL**（期待像 = Excel の「ウィンドウ枠の固定」: 検索ツールも 商品コード・商品名 も元の位置に留まり、部門から右だけが表の中で滑る。現状は `<main>` 横 scroll + 2 列が viewport 左端に追従し「これまでとあまり変わらない」）/ AC-L3-2 PASS / AC-L3-3 一括価格改定で「新しい取引先を追加」が取引先 Select の隣から離れ FAIL。owner 決定: 案 X（商品一覧の表を data grid 型の scroll 箱にする）を採用 → `human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）、Gated Amendment 1（識別列固定の型を data grid 型へ、DSR-17 例外 + scroll 復元の箱基準化）と Gated Amendment 2（取引先追加ボタンの隣接復帰）を起票する。新要望「在庫照会 検索ツール充実（並び替え + 昇順降順 + status chip を枠内へ）」は本 lane 外、Plans ④ ledger へ。特大 × 125% は owner の日常環境（125%）で充足。
+
+2026-09-06: Gated Amendment 1・2 を起票（本 commit）。GA1 は起票時実測で高さ連鎖（`globals.css:142-147` → `RootLayout.tsx:61,65`）を確認し、`h-full` が境界のある高さへ解決すること・`max-h-[calc(...)]` 型 fallback が不要なことを確定した。scroll 復元は Lane 3 の既存機構（`page-scroll.ts`/`app-router.ts` の `data-scroll-restoration-id` 方式）を再利用し新しい仕組みは作らない（ponytail）。GA2 は起票時実測で DOM 順序自体は既に正しい（S4b の完了条件どおり）ことを確認し、owner 所感の原因を `flex-wrap` による視覚分離と特定、Scope を「共通 wrapper で括る」1 点に絞った（DOM 順序の想定と異なる部分を無根拠に「壊れている」と扱わない、記録済み claim の起草時実測ルールに従う）。AC-L3-1/AC-L3-3 を run 2 向けに差し替え、Contract Coverage Ledger・Matrix（GA1a〜GA1d、GA2）・Workflow State（Human Gate、Amendments pending）を同期した。Plan Commit `59c243d` は不変（PK5、gated amendment は Amendments 欄への追記のみ）。次 = doc gate → commit → push → owner が Writer 実装後に L3 run 2。

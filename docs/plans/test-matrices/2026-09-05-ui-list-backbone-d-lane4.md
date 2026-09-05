@@ -2,11 +2,11 @@
 
 Plan Packet: [../2026-09-05-ui-list-backbone-d-lane4.md](../2026-09-05-ui-list-backbone-d-lane4.md)
 
-Plan Review round 1（Opus）が reject した旧 SC1（`ListShell` wrapper 撤去）・旧 SC2b〜SC2f（7 画面中 6 画面の長文列/table 幅変更）は撤回済み。round 2（Opus、reject）で在庫照会の上部 summary 条件・整合性チェックの frame 除外・table wrapper の rounded-lg 統一・範囲外 page の検知漏れを是正した（第 1 便）。**owner 決定（2026-09-05、第 2 便）で item (1) を D（表を縮ませる）から識別列固定（Excel 型、`<main>` 基準 sticky-left、商品一覧のみ）へ書き換え**、旧 SC-PT（部門列 `whitespace-normal`）を撤回し SC9（識別列固定）へ置き換えた。本 Matrix はこれらすべてを反映した Scope に対応する。
+Plan Review round 1（Opus）が reject した旧 SC1（`ListShell` wrapper 撤去）・旧 SC2b〜SC2f（7 画面中 6 画面の長文列/table 幅変更）は撤回済み。round 2（Opus、reject）で在庫照会の上部 summary 条件・整合性チェックの frame 除外・table wrapper の rounded-lg 統一・範囲外 page の検知漏れを是正した（第 1 便）。owner 決定（2026-09-05、第 2 便）で item (1) を D（表を縮ませる）から識別列固定（Excel 型、`<main>` 基準 sticky-left、商品一覧のみ）へ書き換え、旧 SC-PT（部門列 `whitespace-normal`）を撤回し SC9（識別列固定）へ置き換えた。**owner Windows native L3 run 1（PR #40、2026-09-06）で AC-L3-1 が FAIL、owner 決定 案 X により item (1) は `<main>` 基準 sticky-left から data grid 型 scroll 箱へさらに書き換え**（Gated Amendment 1、GA1a〜GA1d）。同 run で AC-L3-3（一括価格改定の取引先追加ボタン位置）も所感あり（Gated Amendment 2、GA2）。SC9 自体（`identityColumns` の class 契約）は Gated Amendment 1 でも不変——変わるのは ListShell の外側の構造（scroll 箱で包む）のみ。
 
 ## Risk
 
-R3（商品一覧の識別列固定・table overflow 挙動 + 共有 component `Pagination`/`PaginationSummary` の変更 + operator workflow の見た目変更）。狭幅での識別列固定の実際の見え方は happy-dom のレイアウト計算では判定できないため、AC-L3-1（窓を狭める実機確認、商品一覧 1 画面）が oracle。本 Matrix は DOM の class 契約・条件分岐（render/no-render）・DOM 順に限定する。**round 3 是正（Opus P1）**: toolbar frame への sticky 追加は no-op と判明したため Scope から撤回、本 Matrix の対象外。
+R3（商品一覧の識別列固定・scroll 箱構造・table overflow 挙動 + 共有 component `Pagination`/`PaginationSummary` の変更 + operator workflow の見た目変更）。狭幅での識別列固定・scroll 箱の実際の見え方は happy-dom のレイアウト計算では判定できないため、AC-L3-1（窓を狭める実機確認、商品一覧 1 画面、run 2）が oracle。本 Matrix は DOM の class/属性契約・条件分岐（render/no-render）・DOM 順に限定する。**round 3 是正（Opus P1）**: toolbar frame への sticky 追加は no-op と判明したため Scope から撤回。**Gated Amendment 1（owner L3 run 1、2026-09-06）**: `<main>` 基準 sticky-left モデルを data grid 型 scroll 箱へ置換、GA1a〜GA1d を追加。
 
 ## Contracts Under Test
 
@@ -55,10 +55,15 @@ R3（商品一覧の識別列固定・table overflow 挙動 + 共有 component `
 | SC4a〜SC4f 6 画面の枠 | 旧枠残存/新枠欠落 | unit（各 Page/Component.test.tsx 拡張、file 別 `rg` anchor は Plan Packet Scope S1 参照） | SC4x: filter section root has rounded-lg border bg-card p-4 | 旧 class（`bg-stone-50`／枠なし／`bg-card` 欠落）が残る |
 | SC4g table wrapper rounded-lg 統一（round 2 是正） | rounded-md 残存 / bg-card 誤付与 | unit（`IntegrityCheckPage.test.tsx`/`OperationLogsPage.test.tsx` 拡張） | SC4g: table wrapper div has overflow-x-auto rounded-lg border, no bg-card | `rounded-md` が残る、または `bg-card` が誤って付く |
 | SC5a StocktakePage Select 最後尾（既存 SC10 rewrite） | 順序不変 | unit（既存 `StocktakePage.test.tsx:1055` の SC10 rewrite、新規 test ではない） | SC10（rewrite）: filter row lists department filter, then uncounted-only checkbox, then per-page select in that DOM order | DOM 順で Select が Checkbox より前にある |
-| SC5b PriceRevisionFilters Select 配線（既存 SC9a が oracle） | 未配線残存 | unit（既存 `PriceRevisionPage.test.tsx:660-669` の SC9a、無変更のまま pass 必須 + `PriceRevisionFilters` 側の位置 assertion 追加） | SC9a（無変更）+ 新規: 表示件数 Select renders inside PriceRevisionFilters as the last child of the filter row, and clicking it still calls mockScrollPageToTop | SC9a が fail する（`onPerPageChange` 配線漏れ）、または Select が `PriceRevisionPage.tsx` 側に独立して残る |
+| SC5b PriceRevisionFilters Select 配線（既存 SC9a が oracle） | 未配線残存 | unit（既存 `PriceRevisionPage.test.tsx:694-703`（re-stack 後の行番号）の SC9a、無変更のまま pass 必須 + `PriceRevisionFilters` 側の位置 assertion 追加） | SC9a（無変更）+ 新規: 表示件数 Select renders inside PriceRevisionFilters as the last child of the filter row, and clicking it still calls mockScrollPageToTop | SC9a が fail する（`onPerPageChange` 配線漏れ）、または Select が `PriceRevisionPage.tsx` 側に独立して残る |
 | SC6 StocktakePage fieldset ガード | 空 fieldset 残存 | unit（既存 `StocktakePage.test.tsx` 拡張） | SC6: fieldset wrapping the bottom Pagination is absent when totalPages<=1 | 単一ページで空の `<fieldset>` が DOM に残る |
 | SC7 ListShell 回帰 | 意図しない副作用 | unit（既存 `ListShell.test.tsx`、S2 起因の判別子書換え 4 箇所以外は無変更 pass 必須） | SC7: existing it (including :343 wrapper exact-match) still pass unmodified | 本 lane の変更が `ListShell.tsx` に混入し既存 it のいずれかを fail させる |
 | SC8 範囲外 page 非到達（round 2 是正、AC13） | page > totalPages のまま描画される | unit（1 画面、既存 test 拡張。フィルタ変更で totalCount を減らして page reset を確認） | SC8: changing a filter that shrinks totalCount below the current page's range still leaves page <= totalPages (via existing reset handler) | フィルタ変更後も `page > totalPages` の状態で一覧が描画される |
+| GA1a ProductListPage flex box（Gated Amendment 1） | class 欠落 | unit（`ProductListPage.test.tsx` 新規） | GA1a: PageShell root has flex h-full min-h-0 flex-col overflow-hidden | root class にいずれかが欠ける |
+| GA1b ListShell scroll 箱 + data-scroll-container（Gated Amendment 1） | box 欠落 / 属性欠落 / Pagination が box 内 | unit（`ListShell.test.tsx` 新規、`stickyHeader` 分岐） | GA1b: box element has min-h-0 flex-1 overflow-auto and data-scroll-container; bottom Pagination is a sibling after the box, not inside it | box の class/属性が欠ける、または `Pagination` が box の子として見つかる |
+| GA1c scroll 解決 helper（Gated Amendment 1） | フォールバック不良 | unit（`page-scroll.test.ts` 新規/拡張、fake scroller） | GA1c: with a `[data-scroll-container]` element present, scrollPageToTop targets it; without one, falls back to main | 属性ありでも `main` を対象にしてしまう、または属性なしで例外を投げる |
+| GA1d 商品一覧 scroll restoration（Gated Amendment 1） | 復元先が main のまま | unit（`ProductListPage.scroll-restoration.test.tsx` 新規、`OperationLogsPage.scroll-restoration.test.tsx` 踏襲） | GA1d: box scrollTop is restored on 一覧→詳細→戻り for 商品一覧 | 復元が `main.scrollTop` に対して行われ box の位置が戻らない |
+| GA2 PriceRevisionFilters 取引先グルーピング（Gated Amendment 2） | unit 分離で折返し時に離れる | unit（`PriceRevisionFilters.test.tsx` 新規） | GA2: 取引先 label/Select/Button share one flex wrapper div; DOM order Select→Button→(...)→表示件数 Select is preserved | 3 要素が共通 wrapper を持たない、または DOM 順序が崩れる |
 
 ## Mutation Oracle Notes
 
@@ -71,7 +76,10 @@ R3（商品一覧の識別列固定・table overflow 挙動 + 共有 component `
 - SC9a は「列 1-2 に付く」「列 3 以降に付かない」「`thead th` に `z-[11]` が付く」の 3 条件を同一 test 内で確認し、列数の過不足・z-index 抜け（Opus P1/P2）を検出する
 - SC9c は `w-min min-w-full` の完全一致（既存 `:343` assertion と同じ厳密度）を維持し、識別列固定の実装が wrapper 側へ意図せず波及しないことを保証する。toolbar 側の assertion は行わない（round 3 是正、no-op のため Scope 対象外）
 - S3 是正 4 箇所（`ListShell.test.tsx:96,98,107,119`/`ProductListPage.test.tsx:632-637`/`Pagination.test.tsx:71`）は S2 の class 変更が既存 test の判別子（`.text-base`/`toHaveClass("text-base", ...)`）を壊す mutant 検出であり、是正漏れがあれば既存 test 自体が red のまま残ることを oracle とする（round 3 追加）
+- GA1b は「box の class が欠ける」と「`Pagination` が box の中に入ってしまう」の 2 種の mutant を区別して検出する（前者は class 文字列の欠落、後者は DOM 構造の逸脱で、どちらも「下部ページ送りが常に見える」という owner 期待像を壊す別々の failure mode）
+- GA1c は fake scroller の有無で対照 oracle を作る（属性ありのときだけ helper がそれを対象にする、無いときは `main` にフォールバックする、の両方を同一 test 内で確認し「常に `main` を返す」「常に fake scroller を返す」のどちらの mutant も検出する）
+- GA2 は DOM 順序（`compareDocumentPosition`）と共通 wrapper の存在を両方確認する。owner 所感の直接原因は flex-wrap による視覚分離であり DOM 順序は起票時実測で既に正しいと判明しているため、共通 wrapper の存在確認が本 Gated Amendment の主たる oracle、DOM 順序確認は既存契約の回帰ガード
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC9〜SC7 はすべて vitest（happy-dom の class/DOM 順検査）。実際の視覚的な「識別列が固定されたまま右側だけ流れる」見え方は happy-dom で判定できないため、AC-L3-1〜AC-L3-3 の owner Windows native L3 が唯一の oracle（Lane 3/5 の docs-review 先例とは異なり、本 lane に docs-only の静的 oracle は無い — DSR-22/catalog ⑩/⑯ の文言同期は Plan Packet Scope S6〜S8 で `rg -Fn`/`rg -c` 完全一致検査を行う。`rg -c` は一致した行数を数える点に注意）。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC9〜SC7・GA1a〜GA2 はすべて vitest（happy-dom の class/DOM 順検査）。実際の視覚的な「識別列が固定されたまま右側だけ流れる」「取引先ボタンが隣にある」見え方は happy-dom で判定できないため、AC-L3-1〜AC-L3-3（run 2）の owner Windows native L3 が唯一の oracle（Lane 3/5 の docs-review 先例とは異なり、本 lane に docs-only の静的 oracle は無い — DSR-17/DSR-22/catalog ⑩/⑯/⑰ の文言同期は Plan Packet Scope S6〜S8・Gated Amendment 1 で `rg -Fn`/`rg -c` 完全一致検査を行う。`rg -c` は一致した行数を数える点に注意）。
