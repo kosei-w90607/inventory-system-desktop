@@ -12,7 +12,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
-- Amendments: Gated Amendment 1（2026-09-05、`src/styles/globals.css` token 4 行 + 既存 3 file の class 順整形、Writer `cd1c2f8` `402fd4e` `ce1b0ea`）/ Gated Amendment 2（2026-09-06、Human Gate 回答の反映、Writer commit は下記に追記）
+- Amendments: Gated Amendment 1（2026-09-05、`src/styles/globals.css` token 4 行 + 既存 3 file の class 順整形、Writer `cd1c2f8` `402fd4e` `ce1b0ea`）/ Gated Amendment 2（2026-09-06、Human Gate 回答の反映、Writer `068c82c`）
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
@@ -284,6 +284,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC15: `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0 で通過。
 - AC16: `rg -Fc "増減用途は DSR-08 が置換、icon 用途 1 site（ProductImportPreview）残置" docs/design-system/00-foundations.md` ≥ 1（`--success-emphasis` `:42`）、`rg -Fc "取込み完了" docs/design-system/00-foundations.md` ≥ 1（`--success` `:31` の用途が残ること）、`rg -Fc "増減プラス数値" docs/design-system/00-foundations.md` = 0（旧用途文言が残っていないこと）、`rg -Fc "①状態 badge success tone の soft 背景" docs/design-system/00-foundations.md` ≥ 1（`--success-soft` `:41` の repoint、Plan Review round 3 是正、Opus 指摘 7 番）、`rg -Fc "前月比プラス soft 背景" docs/design-system/00-foundations.md` = 0（旧用途文言が残っていないこと）。**Plan Review round 2/3 是正（Sonnet/Opus 指摘）**: 旧 AC16 は「同一文字列を両セルに強制する」形で用途差を表現できなかったため、セルごとに異なる文字列へ差替え。round 3 で `--success-soft`（`:41`）が旧文言のまま残ると `:42` の用途撤去と同一表内で矛盾するため repoint 用オラクルを追加。
 - AC-HumanGate: owner が①状態 tone family マッピング表の owner culling 列を design PR 上で埋める（原文回答）。Alert warning（候補 (c)、v4）・③強調 pill 枠色（`--warning`、v3）は既に owner 決定済みのため Human Gate の対象外（Plan Review round 2 是正、Opus 指摘 9 番 — v4 で確定済みの事項が未決のまま Human Gate に残っていた）。
+- AC17（Gated Amendment 2、Writer `068c82c`）: `rg -Fc "tone family は感情で分ける: 緑 = 終わったことを伝えるプラスの報告、琥珀 = 「ちょっと待って」の注意、赤 = 警告。状態の名前を伝えるだけの badge は無色" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "owner 承認済み現状のため runtime gap ではない" docs/design-system/02-component-catalog.md` = 0（旧文言 0 件）、`rg -Fc '「反映済み」（\`variant="default"\`（橙）→ success tone の runtime gap）' docs/design-system/02-component-catalog.md` ≥ 1、`rg -F "| destructive" docs/design-system/02-component-catalog.md | rg -Fc "取込み済み"` = 0（destructive 行に残っていないこと、row-scoped）、`rg -F "| warning" docs/design-system/02-component-catalog.md | rg -Fc "取込み済み"` ≥ 1（warning 行へ移動済み、row-scoped）、`rg -Fc "badge の tone family は感情で分ける" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fc "追加適用先（owner 決定、2026-09-06）" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "success Alert の本文色は現状（\`text-success-strong\`）を維持する" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "owner culling 列は design PR 上で記入（AC-HumanGate、未記入）" docs/design-system/02-component-catalog.md` = 0（旧文言 0 件）。全 9 oracle を `rg -c` で実測確認済み（2026-09-06、drafter）。
 
 ## Design Sources
 
@@ -396,6 +397,7 @@ Minimum design checks for business-app work:
 | UICONV-D9 DSR-23 は lane ⑧ が登録（本 packet は起草しない） | `01-decision-rules.md` | AC2 rg | — |
 | UICONV-D10 DSR-22 narrow 化（badge 3:1 対象外、owner v2 決定） | `01-decision-rules.md`、`04-backbone.md`、`review-checklist.md` | AC9/AC10/AC11 rg | — |
 | UICONV-D11 ③強調 pill 枠 `--warning`（owner v3 決定、確定済み） | `02-component-catalog.md`、`04-backbone.md`（runtime gap 記録は badge.tsx 側） | AC8 rg（border-warning hit） | non-scope（枠追加自体は runtime lane） |
+| UICONV-D12 Gated Amendment 2（Human Gate 回答の canonical 反映、Writer `068c82c`） | `02-component-catalog.md`、`01-decision-rules.md` | AC17 rg（9 oracle） | — |
 | S11 更新履歴 4 file | 各 file | AC12 git diff hunk | — |
 | S12 Plans.md ⑦ 同期 | `Plans.md` | AC13 rg | — |
 | 全体整合 | docs | AC15 `doc-consistency-check.sh --target plan` | — |
@@ -506,7 +508,7 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 - 事象: Writer の docs 実装後、`bash scripts/doc-consistency-check.sh`（full）が DS3 ERROR 2 件（`--success-border` / `--success-strong` が 00-foundations に登録済みで `src/styles/globals.css` `:root` に無い）。full check は `ci.yml:327` / `local-ci.sh:193` / `pre-push.sh:217` の全部で必須のため、docs-only のままでは merge 不能。
 - 裁定: token 2 行（値は 00-foundations と同一: `#bbf7d0` / `#14532d`）を `globals.css` `:root` に追加する。runtime の消費者は追加しない（消費は runtime lane）。AC14 を上記のとおり改訂。hosted CI は `src` を触るため通常 run になり、docs-only の owner dispatch は不要になる。
 - 根拠: Lane 1a（PR #31）Codex P2 (2)「未実装候補の token を canonical から外す」と同じ DS3 不変条件を、今回は逆側（実装側に 2 行足す）で満たす。token 追加は挙動変更を伴わない。
-- Writer commit: pending（追記予定）
+- Writer commit: `cd1c2f8`（訂正、Gated Amendment 2 の是正時に誤って `068c82c` を記入していたため修正 — GA1 の Writer commit は Amendments 行のとおり `cd1c2f8`/`402fd4e`/`ce1b0ea`）
 - 改訂（2026-09-06、Final Review Opus P2-1）: `:root` 2 行だけでは Tailwind 4 の utility が生成されず（`@theme inline` に `--color-*` alias が無い）、規約が名指す `text-success-strong` / `border-success-border` が無効のまま。AC14 を「計 4 行」へ改訂し、Writer が `@theme inline` に alias 2 行を追加する。既存の `text-success-strong` 消費 4 箇所（`HomePage.tsx:66` / `BackupRestorePage.tsx:358` / `PluExportPage.tsx:521,567`）が結果的に有効化される = 見た目の変化を伴うため、Human Gate で owner が当該 4 箇所を一度視認する（AC-L3 追加）。
 - 再改訂（2026-09-06、Writer 停止起源）: `@theme` alias 追加後、`prettier-plugin-tailwindcss` が `success-strong` / `success-border` を theme color と認識し、既存消費者 3 file（`HomePage.tsx:66` / `BackupRestorePage.tsx:358` / `PluExportPage.tsx:521,567`）の class 文字列を並べ替えるため `format:check` が fail（L1 full `frontend-format` GATE_EXIT_CODE=1、`b90e494`）。Writer は AC14 / Non-scope（`BackupRestorePage.tsx` 名指し）に従い停止。裁定: 3 file の **prettier による class 順のみ** の整形を許容（意味変化なし、上記 oracle で機械検査）。Non-scope の `BackupRestorePage.tsx` 名指しはこの整形に限り例外。
 
@@ -533,6 +535,7 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 
 - 事象: Human Gate (1) の owner culling 回答（「感情で分ける 3 色」）と Human Gate (2) の所感で、本 PR が実装済みの canonical 文言に 3 点の差分が生じた。
 - 変更（Writer、docs のみ、`src` 変更なし）: (a) `02-component-catalog.md` ⑬ tone 表 — 冒頭に規約文「tone family は感情で分ける: 緑 = 終わったことを伝えるプラスの報告、琥珀 = 「ちょっと待って」の注意、赤 = 警告。状態の名前を伝えるだけの badge は無色」を追加。「反映済み」を success 行へ移し `variant="default"`（橙）→ success tone の runtime gap として記録（「owner 承認済み現状のため runtime gap ではない」文を削除）。「取込み済み」を destructive 行から warning 行へ移動（注意: もう取り込んである）。owner culling 列に原文 2（raw file「⑦ PR #39 Human Gate 回答」）を転記。(b) `01-decision-rules.md` DSR-08 — 上記規約文の要約 1 文を追加（Why: owner 回答 2026-09-06）。(c) catalog Alert 節 — 適用先の列挙に「ホーム『前日分が未取込みです』は destructive のまま AlertTriangle icon を追加（警告）、日次 / 月次売上の『レジ日報は未取込みです』は warning variant」を追記し、success Alert の本文色は現状（`text-success-strong`）を維持と明記（owner 保留）。
-- Matrix / AC（drafter、Writer commit 後）: 上記 3 点の新文言 ≥1 / 旧文言（「owner 承認済み現状のため runtime gap ではない」、destructive 行の「取込み済み」）= 0 の対 oracle を追加。
+- Matrix / AC（drafter、Writer `068c82c` commit 後、2026-09-06 実測反映済み）: AC17 を新設し、上記 3 点の新文言 ≥1 / 旧文言（「owner 承認済み現状のため runtime gap ではない」、「owner culling 列は design PR 上で記入（AC-HumanGate、未記入）」）= 0 / destructive 行に「取込み済み」が無いこと・warning 行にはあること（row-scoped rg）の対 oracle を追加、Matrix にも同一 9 oracle を反映。
 - 根拠: Human Gate の回答は本 PR の正本文言を確定させる入力であり、runtime lane へ持ち越すと正本と実装の drift になるため本 PR で反映する。
-- Writer commit: pending
+- Writer commit: `068c82c`
+- Writer 判断（accepted）: owner 原文 2 を tone family 表の全 4 行（warning/success/destructive/中立）の owner culling 列へ転記した。発注は「反映済み→success 行・取込み済み→warning 行の 2 行移動」を主眼にしていたが、Writer は原文 2 が 4 tone family 全体の割当方針（緑=プラス報告/琥珀=注意/赤=警告/中立=状態名のみ）を一度に述べているため、4 行すべてに同一原文を残す判断をした。Coordinator はこれを accept する（原文は分割要約すると意味が痩せるため、4 行重複の冗長さより一次情報の保全を優先）。
