@@ -154,7 +154,7 @@
 
 **ルール**: 色は `success` / `warning` / `destructive` 系のセマンティックトークンで当て、`emerald-` / `rose-` などの生 Tailwind 色 class を `src/features/**` に直書きしない。色は二次シグナルとし、意味は日本語テキストとアイコンが一次で担う。
 
-**Why**: WCAG 1.4.1 と inventory-operator-ui の中核ルール（色相だけで業務状態を符号化しない）。赤黄を識別しにくい利用者でも、テキストとアイコン形状で意味が読める必要がある。生 Tailwind 色を直書きするとトークン体系から外れ、`00-foundations.md` のパレットと不整合になる。palette 外色の直書きは eslint `no-restricted-syntax`（PR-C 導入）が `src/features/**` + `src/components/patterns/**` で機械検出する。
+**Why**: WCAG 1.4.1 と inventory-operator-ui の中核ルール（色相だけで業務状態を符号化しない）。赤黄を識別しにくい利用者でも、テキストとアイコン形状で意味が読める必要がある。生 Tailwind 色を直書きするとトークン体系から外れ、`00-foundations.md` のパレットと不整合になる。palette 外色の直書きは eslint `no-restricted-syntax`（PR-C 導入）が `src/features/**` + `src/components/patterns/**` で機械検出する。badge の tone family は感情で分ける: 緑 = 終わったことを伝えるプラスの報告、琥珀 = 「ちょっと待って」の注意、赤 = 警告（owner 回答 2026-09-06、catalog ⑬ 参照）。
 
 **判定フロー / 具体例**: 在庫状態は `Badge` + `lucide` アイコン（`CircleAlert` / `TriangleAlert`）+ 日本語ラベル（`在庫切れ` / `在庫少`）で示す。比較のプラス / マイナスも記号 + テキストを併記する。増減数値の色は補助シグナルとして重ねる: + は `text-success-strong`、− は `text-destructive-strong`、0 は `text-muted-foreground`（記号 + 文言併記は維持する）。
 
@@ -456,7 +456,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-05 | 本 PR | UI 規約補強 design batch。DSR-01 に 3 段 CTA 階層（`secondary` 中間段、`--secondary` stone-200 塗り + `--border` 枠）を追記し `ProductForm.tsx` 二重 primary 候補を runtime 是正対象に記録。DSR-08 に増減数値の色規則（+ success-strong / − destructive-strong / 0 muted-foreground）を追記。DSR-22 の枠 3:1 要件を interactive な操作枠へ narrow 化し、badge（状態/分類/強調）を 3:1 対象外・枠線必須（tone 固有色または `--border`）・非中立の①状態は icon 必須へ改訂（owner v2 mockup 決定）。新規 DSR-23 は起草しない（lane ⑧ が登録） |
+| 2026-09-05 | 本 PR | UI 規約補強 design batch。DSR-01 に 3 段 CTA 階層（`secondary` 中間段、`--secondary` stone-200 塗り + `--border` 枠）を追記し `ProductForm.tsx` 二重 primary 候補を runtime 是正対象に記録。DSR-08 に増減数値の色規則（+ success-strong / − destructive-strong / 0 muted-foreground）を追記。DSR-22 の枠 3:1 要件を interactive な操作枠へ narrow 化し、badge（状態/分類/強調）を 3:1 対象外・枠線必須（tone 固有色または `--border`）・非中立の①状態は icon 必須へ改訂（owner v2 mockup 決定）。新規 DSR-23 は起草しない（lane ⑧ が登録） + Human Gate 回答反映（2026-09-06）: DSR-08 Why に tone family の感情区分（緑=報告/琥珀=注意/赤=警告）を追記 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | `--border-strong` / `--row-current` / `--border` 濃化 / `--input` 統一を globals.css に実装、token 候補値の HEX を canonical（本節）へ正式登録。件数文言は `Pagination` / `PaginationSummary`（`src/components/patterns/Pagination.tsx`）が範囲付き統一形を描画する実装済み表記へ更新。identityColumns 予約 prop と両立 probe（sticky × 識別列固定 × DSR-17）の申し送りを追記 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。件数文言を当時の canonical（`{totalCount} 件中 {page} / {totalPages} ページ`）へ揃え範囲付き統一形を後続 lane での移行対象と明記、上部表示・識別列固定の発動条件と画面→固定列 mapping 表を pin（⑯・04 原則 14 の重複記載を解消）、Badge/outline chip を UI 部品枠 3:1 の対象に拡張（owner Human Gate 所感、廃番 Badge 可読性）、token 候補値の HEX を canonical から撤去し packet / reference 分析 doc へ移動 |
 | 2026-09-03 | 本 PR | DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」を新設。title を「DSR-01〜22」に更新。DSR-16（同型情報のグループ化）・DSR-21（現在地と選択状態の色分離）と主題重複しないことを明記（旧 Lane 1 branch の DSR-16 提案を再採番して承継）。Final Review round 2 是正で「低視力 L3」節（forced-colors / DPI 125〜150% / 当たり判定 24×24 / rem・em）を追加し、04-backbone 原則 16 の dangling pointer を解消 |
