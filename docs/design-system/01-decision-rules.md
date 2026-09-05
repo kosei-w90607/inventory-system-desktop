@@ -1,4 +1,4 @@
-# 判断ルール集（DSR-01〜22）
+# 判断ルール集（DSR-01〜23）
 
 > **親文書**: [README.md](README.md)
 > **責務**: 実装時の迷いを一意に解消するルール集。「どちらを使うか」「いつ使うか」を DSR 番号で参照できる。
@@ -452,10 +452,23 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 ---
 
+## DSR-23 プルダウンは shadcn `Select` に統一する
+
+**ルール**: 業務選択肢を表す native `<select>` を使わない。プルダウンは shadcn `Select`（`SelectTrigger`/`SelectContent`/`SelectItem`）に統一する。`SelectItem value=""` は Radix の禁止制約に当たるため、空値 sentinel は非空文字列（`"all"`/`"none"` 等、業務意味に応じて既存ファイル慣習に合わせる）へ変換するか、`SelectValue placeholder` による無 sentinel 方式を使う。
+
+**Why**: owner 決定（R5-3、2026-09-05）。同一画面内に見た目が異なる 2 種類のプルダウン（native と shadcn）が混在していたため統一する。shadcn `Select` は開閉・キーボード操作が一貫し、部門フィルタ等の既存 canonical 実装と揃う。
+
+**具体例**: 空値 sentinel は `SelectItem value="all"`（「すべて」の意味）または `SelectItem value="none"`（「指定なし」「取引先なし」等、明示的な無選択の意味）へ変換する。数値 ID を値に持つ場合は `SelectItem value={String(id)}` へ文字列化し、`onValueChange` で `Number(value)` に復元する。共有 `Select` は空文字の `onValueChange` を無視する（Radix bubble select の echo 対策、`SelectItem value=""` 禁止と対）。
+
+**関連**: パターン⑨検索 + フィルタ。`DepartmentFilter.tsx` が canonical 実装例。review-checklist カテゴリ 9 対応。
+
+---
+
 ## 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-05 | ⑧ native select 統一 | DSR-23「プルダウンは shadcn Select に統一する」を新設。title を「DSR-01〜23」に更新（owner 決定 R5-3 の執行） |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | `--border-strong` / `--row-current` / `--border` 濃化 / `--input` 統一を globals.css に実装、token 候補値の HEX を canonical（本節）へ正式登録。件数文言は `Pagination` / `PaginationSummary`（`src/components/patterns/Pagination.tsx`）が範囲付き統一形を描画する実装済み表記へ更新。identityColumns 予約 prop と両立 probe（sticky × 識別列固定 × DSR-17）の申し送りを追記 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。件数文言を当時の canonical（`{totalCount} 件中 {page} / {totalPages} ページ`）へ揃え範囲付き統一形を後続 lane での移行対象と明記、上部表示・識別列固定の発動条件と画面→固定列 mapping 表を pin（⑯・04 原則 14 の重複記載を解消）、Badge/outline chip を UI 部品枠 3:1 の対象に拡張（owner Human Gate 所感、廃番 Badge 可読性）、token 候補値の HEX を canonical から撤去し packet / reference 分析 doc へ移動 |
 | 2026-09-03 | 本 PR | DSR-22「一覧の器・現在行・UI 部品枠のコントラスト」を新設。title を「DSR-01〜22」に更新。DSR-16（同型情報のグループ化）・DSR-21（現在地と選択状態の色分離）と主題重複しないことを明記（旧 Lane 1 branch の DSR-16 提案を再採番して承継）。Final Review round 2 是正で「低視力 L3」節（forced-colors / DPI 125〜150% / 当たり判定 24×24 / rem・em）を追加し、04-backbone 原則 16 の dangling pointer を解消 |

@@ -92,17 +92,23 @@ describe("ReturnExchangePage ProductAddSuggest (UI-03-D21)", () => {
         5,
       ),
     );
+    const user = userEvent.setup();
     renderPage();
     await screen.findByLabelText("返品・交換商品検索");
-    fireEvent.change(screen.getByLabelText("種別"), { target: { value: "exchange" } });
-    fireEvent.change(screen.getByLabelText("追加方向"), { target: { value: "out" } });
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し" }));
     fireEvent.change(screen.getByLabelText("返品・交換商品検索"), {
       target: { value: "交換候補" },
     });
     const listbox = await screen.findByRole("listbox");
     fireEvent.click(within(listbox).getByRole("option", { name: /RT-L1.*交換候補A/ }));
     expect(await screen.findByText("交換候補A")).toBeInTheDocument();
-    expect(screen.getByLabelText("RT-L1 の方向")).toHaveValue("out");
+    const directionTrigger = screen.getByLabelText("RT-L1 の方向");
+    expect(directionTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(directionTrigger.tagName).toBe("BUTTON");
+    expect(directionTrigger).toHaveTextContent("渡し（在庫-）");
   });
 
   it("W8: activeなしEnterは既存commit検索を実行する", async () => {

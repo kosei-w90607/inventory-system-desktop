@@ -189,8 +189,9 @@ describe("UI-11c REQ-902", () => {
       data: { items: [log()], total_count: 1, page: 3, per_page: 20 },
     });
     renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-11", page: 3 });
-    await screen.findByRole("option", { name: "その他（future_type）" });
-    await userEvent.setup().selectOptions(screen.getByLabelText("種別"), "future_type");
+    const user = userEvent.setup();
+    await user.click(await screen.findByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "その他（future_type）" }));
     await waitFor(() => {
       expect(listLogs).toHaveBeenLastCalledWith({
         start_date: "2026-07-01",
@@ -438,7 +439,14 @@ describe("UI-11c REQ-902", () => {
       data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
     });
     renderPage();
-    expect((await screen.findAllByText("その他（future_type）")).length).toBeGreaterThanOrEqual(2);
+    const user = userEvent.setup();
+    // badge 表示の1件（select を開く前でも見える）。
+    expect((await screen.findAllByText("その他（future_type）")).length).toBeGreaterThanOrEqual(1);
+    // trigger を開いた状態で option としても同じ raw fallback 文言が存在すること。
+    await user.click(screen.getByLabelText("種別"));
+    expect(
+      await screen.findByRole("option", { name: "その他（future_type）" }),
+    ).toBeInTheDocument();
     expect(listTypes).toHaveBeenCalledTimes(1);
   });
 
@@ -484,27 +492,24 @@ describe("UI-11c REQ-902", () => {
       data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
     });
     renderPage();
-    const select = await screen.findByLabelText<HTMLSelectElement>("種別");
-    await waitFor(() => {
-      expect(Array.from(select.querySelectorAll("optgroup")).map((group) => group.label)).toEqual([
-        "商品管理",
-        "取引先管理",
-        "入出庫",
-        "売上データ取込み",
-        "システム管理",
-        "その他",
-      ]);
-    });
-    expect(Array.from(select.options).map((option) => option.value)).toEqual([
-      "",
-      "product_create",
-      "product_update",
-      "supplier_rename",
-      "supplier_merge",
-      "receiving_create",
-      "csv_import",
-      "backup_create",
-      "future_type",
+    const user = userEvent.setup();
+    await user.click(await screen.findByLabelText("種別"));
+
+    const groups = await screen.findAllByRole("group");
+    expect(
+      groups.map((group) => group.querySelector('[data-slot="select-label"]')?.textContent),
+    ).toEqual(["商品管理", "取引先管理", "入出庫", "売上データ取込み", "システム管理", "その他"]);
+
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "すべて",
+      "商品登録",
+      "商品修正",
+      "取引先の改名",
+      "取引先の統合",
+      "入庫記録",
+      "売上データ取込み",
+      "バックアップ作成",
+      "その他（future_type）",
     ]);
   });
 
@@ -543,7 +548,10 @@ describe("UI-11c REQ-902", () => {
     });
     renderPage({ operation_type: "future_type" });
     expect(await screen.findByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "その他（future_type）" })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByLabelText("種別"));
+    expect(
+      await screen.findByRole("option", { name: "その他（future_type）" }),
+    ).toBeInTheDocument();
   });
 
   it("expands one row, labels known fields, and renders hostile JSON as text", async () => {

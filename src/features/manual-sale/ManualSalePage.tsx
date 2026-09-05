@@ -13,6 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -426,21 +433,24 @@ export function ManualSalePage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="manual-sale-reason">理由</Label>
-            <select
-              id="manual-sale-reason"
+            <Select
               value={values.reason}
               disabled={isFormLocked}
-              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
-              onChange={(event) => {
+              onValueChange={(value) => {
                 updateValues((prev) => ({
                   ...prev,
-                  reason: event.target.value as ManualSaleReason,
+                  reason: value as ManualSaleReason,
                 }));
               }}
             >
-              <option value="plu_unregistered">{REASON_LABELS.plu_unregistered}</option>
-              <option value="other">{REASON_LABELS.other}</option>
-            </select>
+              <SelectTrigger id="manual-sale-reason" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="plu_unregistered">{REASON_LABELS.plu_unregistered}</SelectItem>
+                <SelectItem value="other">{REASON_LABELS.other}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
