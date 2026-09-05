@@ -8,7 +8,7 @@ R3（10 画面 16 箇所の native `<select>` を shadcn `Select` へ置換。�
 
 ## Contracts Under Test
 
-- SC1: `DisposalPage.tsx:509` 種別 per-row select が `Select` に置換され、他行へ波及せず（L8-D3）、`disabled={isFormLocked}` が `SelectTrigger` に保持される（round 2 P2-2）
+- SC1: `DisposalPage.tsx:509` 種別 per-row select が `Select` に置換され、他行へ波及せず（L8-D3）、`disabled={isFormLocked}` が `Select`（Root）に保持される（round 2 P2-2、Gated Amendment 2 で `SelectTrigger` 表記を訂正）
 - SC2: `ManualSalePage.tsx:429` 理由 select が `Select` に置換される
 - SC3: `ReceivingPage.tsx:393` 取引先 select が `Select` に置換され、`"none"` sentinel が `null` に写像される（L8-D1）
 - SC4a: `InventoryRecordsPage.tsx:165` 記録種別 select が `Select` に置換され、既存 `"all"` sentinel がそのまま機能する
@@ -18,16 +18,17 @@ R3（10 画面 16 箇所の native `<select>` を shadcn `Select` へ置換。�
 - SC6: `PriceRevisionFilters.tsx:45` 取引先 select が `Select` に置換され、`"all"` sentinel が `undefined` に写像される（L8-D1）。囲み `<label>` を `<label htmlFor>` + `SelectTrigger id` の分離形へ変換し（L8-D7、round 2 P3-4、`htmlFor=`/`id=` を別々に検査、round 3 P1）、`disabled={suppliersQuery.isLoading}` を保持する（round 2 P2-2）。`CreateSupplierDialog` 経由の auto-select（`:133-140`）は numeric ID round-trip 契約の対象で、`onPatch` は observable でないため `PriceRevisionPage.test.tsx:539` は `await waitFor(() => expect(mockSearchProducts).toHaveBeenLastCalledWith(expect.objectContaining({ supplier_id: 44 })))` で検証する（round 3 P1 是正、`priceRevisionSearch.ts:128` の `supplier`→`supplier_id` 写像経由）
 - SC7: `StockMovementsPage.tsx:167` 種別 select が `Select` に置換され、既存 `"all"` sentinel がそのまま機能する
 - SC8a: `ProductForm.tsx:274` 部門 select が `Select` に置換され、常時 controlled（`value={departmentId === null ? "" : String(departmentId)}`、round 2 P1-1 是正）+ placeholder 方式（sentinel item なし）で `FieldError` 表示が不変（L8-D2）、かつ実在部門選択の numeric ID round-trip（`code_prefix !== null` 部門の「（独自コード可）」suffix 込みの表示テキストを含む、round 2 P3-3）が壊れない（L8-D5）
-- SC8b: `ProductForm.tsx:297` 取引先 select が `Select` に置換され、`disabled={supplierWarning !== null}` が `SelectTrigger` に保持され（round 2 P2-2）、`"none"` sentinel が `null` に写像され、実在取引先選択の numeric ID round-trip が壊れない（L8-D1, L8-D5）。自動選択された取引先の ID 一致は表示テキストでなく、`renderStateful` 内で hoist した `const onValuesChange = vi.fn()` を `(next) => { onValuesChange(next); setValues(next); }` 経由で実 state 更新と両立させ（`vi.fn(setValues)` を `Harness` 内に inline すると test scope から参照できないため、round 3 P1 で是正）、戻り値に含めて呼び出し側で `expect(onValuesChange).toHaveBeenCalledWith(expect.objectContaining({ supplierId: 44 }))` を assert する（Plan Review round 1 P2-9、round 2 P2-1、round 3 P1 で具体化）
+- SC8b: `ProductForm.tsx:297` 取引先 select が `Select` に置換され、`disabled={supplierWarning !== null}` が `Select`（Root）に保持され（round 2 P2-2、Gated Amendment 2 で `SelectTrigger` 表記を訂正）、`"none"` sentinel が `null` に写像され、実在取引先選択の numeric ID round-trip が壊れない（L8-D1, L8-D5）。自動選択された取引先の ID 一致は表示テキストでなく、`renderStateful` 内で hoist した `const onValuesChange = vi.fn()` を `(next) => { onValuesChange(next); setValues(next); }` 経由で実 state 更新と両立させ（`vi.fn(setValues)` を `Harness` 内に inline すると test scope から参照できないため、round 3 P1 で是正）、戻り値に含めて呼び出し側で `expect(onValuesChange).toHaveBeenCalledWith(expect.objectContaining({ supplierId: 44 }))` を assert する（Plan Review round 1 P2-9、round 2 P2-1、round 3 P1 で具体化）
 - SC8c: `ProductForm.tsx:413` 税率 select が `Select` に置換される（sentinel 不要）
 - SC9: `OperationLogsPage.tsx:378` 種別 select が `Select` に置換され、`"all"` sentinel が `undefined` に写像され、`<optgroup>` カテゴリ分けが `SelectGroup`/`SelectLabel` で維持される。すべての option 存在確認は trigger を開いた状態で行う（Plan Review round 1 P1-2、Radix は閉状態で `role="option"` を生成しない）
 - SC10a: `ReturnExchangePage.tsx:524` 種別 select が `Select` に置換される（sentinel 不要）
-- SC10b: `ReturnExchangePage.tsx:704` 追加方向 select が `Select` に置換され、条件描画を撤去して「戻り」「渡し」を常時 2 件描画、到達不能性は `disabled` に一本化する（L8-D6、Plan Review round 1 P1-3）。enabled（exchange）側でのみ両 option を assert、disabled（return）側は trigger の disabled 状態のみ assert（選択肢構成は L3-only）
+- SC10b: `ReturnExchangePage.tsx:704` 追加方向 select が `Select` に置換され、条件描画を撤去して「戻り」「渡し」を常時 2 件描画、到達不能性は `disabled` に一本化する（L8-D6、Plan Review round 1 P1-3）。enabled（exchange）側でのみ両 option を assert、disabled（return）側は trigger の disabled 状態のみ assert（選択肢構成は L3-only）。**Final Review P3 注記**: `returnType === "exchange" ?` 条件描画の撤去そのものには vitest oracle が無い（残しても disabled 側は happy-dom で検証不能なため mutant を kill できない）— packet 完了条件の static `rg -Fc 'returnType === "exchange" ? ' ... = 2` のみが撤去の唯一の kill 手段
 - SC10c: `ReturnExchangePage.tsx:823` per-row 方向 select が `Select` に置換され、他行へ波及しない（L8-D3）。option 条件描画の扱いは SC10b と同様（L8-D6）。既存 `ReturnExchangePage.suggest.test.tsx:105` `toHaveValue("out")` を書き換える（round 2 P1-2）
 - SC11: DSR-23 が新設され、`01-decision-rules.md`/`README.md`/`UI_TECH_STACK.md` の DSR 列挙が同期する（docs review、非 vitest）
 - SC12: catalog ④/⑨ に DSR-23 参照が追加される（docs review、非 vitest）
 - SC13（Plan Review round 1 P1-5、round 2 P1-2 で拡充）: S4b/S4c/S6/S8a/S10 の select を別の入口・見落とし箇所から exercise する追加 test が置換後も pass する — `ProductFormPage.test.tsx:115,152`（部門 select、`userEvent.selectOptions` から書き換え）、`ProductFormPage.unsaved-guard.test.tsx:111`（同）、`ReturnExchangePage.suggest.test.tsx:97-98,105`（種別/追加方向/per-row 方向、`fireEvent.change`/`toHaveValue` から書き換え）、`InventoryRecordsPage.test.tsx:312,314`（部門/状態、`toHaveValue` から書き換え）、`PriceRevisionPage.test.tsx:539`（取引先 auto-select、`toHaveValue` から `mockSearchProducts` の `supplier_id` 引数へ、round 3 P1）
 - SC14（Plan Review round 1 P2-10 で追加）: Lane 5 が追加した token-contract regression test（`border-input`/`bg-control-surface` class assertion、10 file）が select 置換後も pass し続ける（`select.tsx` の `SelectTrigger` が同じ class を持つため）。対象一覧は Plan Packet 起票時実測「Lane 5 token-contract regression 一覧」参照
+- SC15（Gated Amendment 2、2026-09-06、S13）: 共有 `Select`（`src/components/ui/select.tsx:25`）は `<form>` 内 hidden native select の echo による `onValueChange("")` を無視する（`if (value === "") return;`）。mutant = guard 行を削除、kill test = `ProductFormPage.test.tsx` の duplicate-error test（`:246`、Final Review 実測: guard 削除で 1 failed / 9 passed）
 
 ## Failure Modes
 
@@ -67,6 +68,7 @@ R3（10 画面 16 箇所の native `<select>` を shadcn `Select` へ置換。�
 | SC12 catalog 参照追加 | 参照欠落 | docs review（`rg -Fn`、非 vitest/cargo） | SC12: `02-component-catalog.md` に `DSR-23` の言及が 2 件以上（④・⑨ 各 1 件以上） | 参照が 1 件以下 |
 | SC13 追加 call-site / 見落とし test line（P1-5, round 2 P1-2） | 未更新の native select 前提が CI で fail | unit（`ProductFormPage.test.tsx:115,152`、`ProductFormPage.unsaved-guard.test.tsx:111`、`ReturnExchangePage.suggest.test.tsx:97-98,105`、`InventoryRecordsPage.test.tsx:312,314`、`PriceRevisionPage.test.tsx:539` 拡張） | SC13: 上記 file の部門/状態/種別/追加方向/per-row 方向/取引先 select 操作・assertion が `user.click(getByRole("combobox"))` → `user.click(getByRole("option"))`（操作）/ round-trip や payload 検証（値確認）へ書き換えられ pass する | `userEvent.selectOptions`/`fireEvent.change`/`toHaveValue` が native select 前提のまま残り、置換後に throw・no-op・または黙って無意味になる |
 | SC14 Lane 5 token-contract regression（P2-10） | Lane 5 の class assertion が誤って壊れる | unit（Plan Packet「Lane 5 token-contract regression 一覧」記載の 10 file、無変更で pass 確認） | SC14: `border-input`/`bg-control-surface` class assertion が select 置換後も pass する（`describe`/`it` タイトルの改名のみ許容） | 対象 test が誤って削除される、または select 対象要素への assertion が消える |
+| SC15 共有 `Select` 空文字 echo guard（Gated Amendment 2） | guard 削除で数値 ID が echo により空上書きされる | unit（既存 `ProductFormPage.test.tsx:246` duplicate-error test、無変更で pass 確認） | SC15: `select.tsx:25` の `if (value === "") return;` が存在し、`ProductFormPage.test.tsx` の duplicate-error test（`:246`）が pass する | guard 行を削除すると `:246` が fail する（Final Review 実測: 1 failed / 9 passed） |
 
 Mandatory oracle rule（Plan Review round 1 P1-1, 全 SC 共通）: SC1〜SC10・SC13 の全 test は、上記「Would fail if」の挙動確認に加えて、対象要素が `data-slot="select-trigger"`（または `element.tagName === "BUTTON"`）を持つことを assert する。`aria-label`/`htmlFor` ベースの `getByRole("combobox", {name})`/`getByLabelText` だけでは native `<select>`（残存していても `role` が同じ場合がある）と shadcn `Select` を区別できないため、component identity の直接検査を必須とする。
 
@@ -86,4 +88,4 @@ Mandatory oracle rule（Plan Review round 2 P2-4, 全 SC 共通）: option の�
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する（round 2 P3-2 で Ledger 側に SC13/L8-D7 行を追加、本節との対応を維持）。SC1〜SC10・SC13・SC14 は vitest、SC11/SC12 は `rg -Fn` の docs review オラクル（vitest/cargo ではない静的検査だが Plan Gate/Final Review の再検証対象として本 Matrix に明示した、Lane 5 SC6a/SC6b の先例に倣う）。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する（round 2 P3-2 で Ledger 側に SC13/L8-D7 行を追加、Gated Amendment 2 で S13/SC15 行を追加、本節との対応を維持）。SC1〜SC10・SC13・SC14・SC15 は vitest、SC11/SC12 は `rg -Fn` の docs review オラクル（vitest/cargo ではない静的検査だが Plan Gate/Final Review の再検証対象として本 Matrix に明示した、Lane 5 SC6a/SC6b の先例に倣う）。
