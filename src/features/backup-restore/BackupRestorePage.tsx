@@ -355,7 +355,7 @@ export function BackupRestorePage() {
       ) : null}
 
       {statusMessage ? (
-        <Alert className="text-success-strong border-success bg-success-soft">
+        <Alert className="border-success bg-success-soft text-success-strong">
           <CheckCircle2 />
           <AlertTitle>{statusMessage}</AlertTitle>
           <AlertDescription className="space-y-1">
