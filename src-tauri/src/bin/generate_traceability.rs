@@ -36,11 +36,16 @@ const INDEX_RELATIVE: &str = "docs/FUNCTION_DESIGN.md";
 const DESIGN_DIR_RELATIVE: &str = "docs/function-design";
 /// WF-TRACE-04: REQ/UI ID 未参照の FE テストファイル数 baseline。
 /// 増減どちらも `--check` ERROR。意図的に減らした場合はこの値を更新して再生成する。
+/// shared UI primitive の contract test を新設して意図的に増やした場合も同様に
+/// 本定数と本 comment を更新する（画面 ID の捏造は行わない）。
 /// 2026-06-13 PR-B: 17 → 22。画面非依存の共通部品 unit test 5 本
 /// （patterns/ PageHeader / FormSection / SummaryCard / EmptyState / DepartmentFilter）は
 /// 特定 REQ/UI に紐づかないため意図的に未参照とする。画面文脈を持つ
 /// characterization / SearchBar test には REQ/UI ID を付与済み。
-const FE_UNREFERENCED_BASELINE: usize = 22;
+/// 2026-09-05 Lane 5（`agent/ui-list-backbone-d-lane5`）: 22 → 24。
+/// `src/components/ui/button.test.tsx` / `badge.test.tsx`（shared UI primitive の
+/// class 契約 test、画面非依存のため REQ/UI ID を付与しない。packet L5-D6）。
+const FE_UNREFERENCED_BASELINE: usize = 24;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

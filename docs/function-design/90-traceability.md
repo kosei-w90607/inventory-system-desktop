@@ -56,7 +56,7 @@
 
 ## 3. FE テスト ID 参照状況（T4 baseline）
 
-- REQ/UI ID 未参照の FE テストファイル数 baseline: 22（増減どちらも `--check` ERROR）
+- REQ/UI ID 未参照の FE テストファイル数 baseline: 24（増減どちらも `--check` ERROR）
 - baseline を意図的に下げた場合は bin 内 `FE_UNREFERENCED_BASELINE` を更新して再生成する
 
 ## 4. 付録: REQ/UI ID 未参照の FE テストファイル
@@ -66,6 +66,8 @@
 - `src/components/patterns/FormSection.test.tsx`
 - `src/components/patterns/PageHeader.test.tsx`
 - `src/components/patterns/SummaryCard.test.tsx`
+- `src/components/ui/badge.test.tsx`
+- `src/components/ui/button.test.tsx`
 - `src/components/ui/segmented-control.test.tsx`
 - `src/features/csv-import/lib/formatErrorRow.test.ts`
 - `src/features/daily-sales/lib/calculate-unit-price.test.ts`

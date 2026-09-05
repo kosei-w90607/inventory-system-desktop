@@ -215,3 +215,13 @@ describe("MonthlySalesPage describeError adoption (B2, UI-ERR-D2)", () => {
     expect(screen.queryByText(/\[commands:/)).not.toBeInTheDocument();
   });
 });
+
+describe("MonthlySalesPage native input tokens（Lane 5 SC4j）", () => {
+  it("SC4j: 月inputがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    renderPage({ month: "2026-05", mode: "by_product" });
+
+    const monthInput = await screen.findByLabelText("月を選択");
+    expect(monthInput).toHaveClass("bg-control-surface");
+    expect(monthInput).not.toHaveClass("bg-background");
+  });
+});
