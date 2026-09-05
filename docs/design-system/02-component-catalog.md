@@ -293,7 +293,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 **状態**:
 - **active**: 選択中は `bg-stone-300` + `border-stone-300` + `font-semibold`
 - **inactive**: `text-foreground/60`、hover で `text-foreground`
-- **focus**: `border-stone-300` + soft ring。mouse click 後に濃い押しボタン状 outline が残らないこと
+- **focus**: `border-border-strong` + soft ring。mouse click 後に濃い押しボタン状 outline が残らないこと
 - disabled: item primitive の `disabled:opacity-50` に従う
 - error: 規定なし
 
@@ -682,7 +682,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
     type="date"
     value={date}
     onChange={(e) => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) onChange(e.target.value); }}
-    className="rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    className="rounded-md border border-input bg-control-surface px-3 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     aria-label="日付を選択"
   />
   <Button variant="outline" size="sm" onClick={() => onChange(addDays(date, 1))} aria-label="翌日">
@@ -693,7 +693,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 月ナビは `type="month"` + `/^\d{4}-\d{2}$/` 検証 + `prevMonth` / `nextMonth` に置き換える（境界で前後値が無い場合は無操作）。
 
-**使用トークン**: 前後ボタンは outline + `size="sm"`。日本語ラベルは `text-sm font-medium`、最小幅 `min-w-[10rem]`（日付）/ `min-w-[8rem]`（月）。input は `border-input bg-background`。要素間 `space-2`。
+**使用トークン**: 前後ボタンは outline + `size="sm"`。日本語ラベルは `text-sm font-medium`、最小幅 `min-w-[10rem]`（日付）/ `min-w-[8rem]`（月）。input は `border-input bg-control-surface`。要素間 `space-2`。
 
 **状態**:
 - focus: input は `focus-visible:ring-2`
@@ -901,7 +901,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **必須構成（6 項目。適用条件は DSR-22 を正本とする）**:
 
-1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4`（2 段時は段間 `space-y-3`）の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）。node 構造の 2 段であり視覚行数ではない（PLU 一括操作 block は `basis-full` で独立行、125% 以上では視覚 3 行以上になりうる）。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱 #f5f5f4 / sticky 帯・th #e7e5e4 / ページ地 #fafaf9 の 3 段（1.04:1 / 1.15:1 / 1.20:1、Gated Amendment 2 S11 で分離）になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）。操作面は `--control-surface` #fff（S44）で箱 #f5f5f4 と区別する（Gated Amendment 6）
+1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4`（2 段時は段間 `space-y-3`）の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）。node 構造の 2 段であり視覚行数ではない（PLU 一括操作 block は `basis-full` で独立行、125% 以上では視覚 3 行以上になりうる）。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱 #f5f5f4 / sticky 帯・th #e7e5e4 / ページ地 #fafaf9 の 3 段（1.04:1 / 1.15:1 / 1.20:1、Gated Amendment 2 S11 で分離）になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）。操作面は `--control-surface` #fafaf9（Gated Amendment 7 S46）で箱 #f5f5f4 と区別する
 2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」の text 表示。下部は `Pagination`、同文言 + pager フル装備。両者とも `totalCount > 0` のときだけ描画する）
 3. **sticky header**（`<table>` は単一（header を別 table に分けない）。件数行（`bg-background`、線なし）と `thead`（`--list-head` 面 + 2px 下線）を page 地を挟まず垂直に隣接させ、同一 inset で sticky にする。灰色面は列見出しのみ（owner L3 run 4、Gated Amendment 5 S39）。件数行の上端の線は owner run 6 で撤去（Gated Amendment 7 S47）。記録済み逸脱: mockup `.tbl` の外枠（border + radius + `overflow:hidden`）は runtime では付けない（`overflow-hidden` が sticky を殺す、Plan Review round 2）。inset 値は mockup 12px / runtime 8px で、揃えるのは帯と thead の相互一致であって絶対値ではない）。件数行と table の wrapper は `w-min min-w-full`（横 overflow 時に帯が table 幅へ追随、非 overflow 時は 100%）。帯文言の溢れは子 `PaginationSummary` で「…」にする（追補 S17）。列見出し面の左右上は `rounded-md`（owner run 5、Gated Amendment 6 S43）。列見出し面は th cell 背景 + tr 背景（最小幅で cell 間に出る subpixel seam を塞ぐ）+ corner mask（`list-shell-sticky` hook、角丸維持、owner run 6、Gated Amendment 7 S48）
 4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする。横スクロール時は固定列右端に影。Lane 2 では `identityColumns` prop を予約するのみで描画には影響しない、実装は Lane 3〜5）

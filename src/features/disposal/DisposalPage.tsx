@@ -510,7 +510,7 @@ export function DisposalPage() {
                         value={row.disposalType}
                         disabled={isFormLocked}
                         aria-label={`${row.productCode} の種別`}
-                        className="h-9 w-28 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 w-28 rounded-md border border-input bg-control-surface px-2 text-sm"
                         onChange={(event) => {
                           updateValues((prev) => ({
                             ...prev,

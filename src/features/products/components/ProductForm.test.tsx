@@ -677,3 +677,44 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
     expect(screen.getByLabelText("商品名（必須）")).toHaveValue("入力済みの商品名");
   });
 });
+
+describe("ProductForm native input tokens（Lane 5 SC4e）", () => {
+  it("SC4e: 部門/取引先/税率の3箇所すべてがbg-control-surfaceでbg-backgroundを持たない", () => {
+    const product = makeMockProductWithRelations({
+      product_code: "P-001",
+      jan_code: "4901234567890",
+      stock_quantity: 20,
+      stock_unit: "cm",
+    });
+
+    render(
+      <ProductForm
+        mode="edit"
+        values={productToFormValues(product)}
+        departments={[makeMockDepartment()]}
+        suppliers={[makeMockSupplier()]}
+        errors={{}}
+        saveError={null}
+        supplierWarning={null}
+        productCodeLabel={product.product_code}
+        isDiscontinued={false}
+        isSaving={false}
+        posSyncTouched={false}
+        onValuesChange={vi.fn()}
+        onPosSyncTouchedChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const fields = [
+      screen.getByLabelText("部門（必須）"),
+      screen.getByLabelText("取引先"),
+      screen.getByLabelText("税率"),
+    ];
+    for (const field of fields) {
+      expect(field).toHaveClass("bg-control-surface");
+      expect(field).not.toHaveClass("bg-background");
+    }
+  });
+});
