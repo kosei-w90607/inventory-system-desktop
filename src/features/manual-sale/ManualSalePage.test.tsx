@@ -204,7 +204,15 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     const user = userEvent.setup();
     mockCreateManualSale.mockResolvedValueOnce({
       status: "ok",
-      data: { record_id: 1, created: true, idempotent_replay: false },
+      data: {
+        sale_id: 1,
+        created: true,
+        idempotent_replay: false,
+        plu_warnings: [],
+        stock_warnings: [],
+        needs_confirmation: false,
+        confirmation_token: null,
+      },
     });
     renderWithClient(<ManualSalePage />);
     await addSingleProduct(user);
