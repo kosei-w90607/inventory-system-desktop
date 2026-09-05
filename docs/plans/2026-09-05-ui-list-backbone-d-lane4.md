@@ -6,7 +6,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 59c243d
@@ -15,7 +15,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後。§3.3 Capacity-degraded により pending、human-confirm で待機し Phase を前進させない）
-- Reviewed Content HEAD: ae45f17
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3 — AC-L3-1 商品一覧で窓を狭めると商品コード + 商品名と列見出しが固定されたまま toolbar 枠を含む右側だけが横に流れ、縦 scroll でページが横にジャンプせず、識別列の hover/選択行/現在行背景の見え方を確認する, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3 表示件数 Select の位置と枠の地色が 6 画面で揃う（整合性チェックの単独 Select は対象外、下記 S1 参照）
@@ -483,3 +483,5 @@ Plan Review round 3（Sonnet: approve-with-P2、Opus 5: reject。Final drafter p
 - P3（accept）: SC9d は `identityColumns={2}` を mock prop capture ではなく rendered `ListShell` root の class token で検証するよう訂正した
 - P3（accept、Backlog 記録のみ）: `PluExportPage.tsx:590` の `overflow-x-auto rounded-md border` は S1g（`IntegrityCheckPage.tsx`/`OperationLogsPage.tsx` のみ対象）の後も `rounded-md` のまま残る。本 lane の Scope 外の画面のため変更しないが、drift として記録する——Plans.md の Backlog は Coordinator 領域のため本 packet では編集しない
 - Findings Freeze: not yet frozen（round 3 是正の再レビューが未完了、item 1/3/4 の owner 決定は本便で反映済みだが Plan Review 天井 3 に到達しているため Coordinator が次の扱いを判断する）; post-freeze exceptions: none.
+
+2026-09-06: owner Windows native L3 run 1（HEAD `ae45f17`、2560×1440 / 125%、介入 2/3、原文 = raw file「Lane 4 PR #40 L3 run 1 原文」）= AC-L3-1 **FAIL**（期待像 = Excel の「ウィンドウ枠の固定」: 検索ツールも 商品コード・商品名 も元の位置に留まり、部門から右だけが表の中で滑る。現状は `<main>` 横 scroll + 2 列が viewport 左端に追従し「これまでとあまり変わらない」）/ AC-L3-2 PASS / AC-L3-3 一括価格改定で「新しい取引先を追加」が取引先 Select の隣から離れ FAIL。owner 決定: 案 X（商品一覧の表を data grid 型の scroll 箱にする）を採用 → `human-confirm -> implementing` へ state-backtrack（Reviewed Content HEAD を pending へ）、Gated Amendment 1（識別列固定の型を data grid 型へ、DSR-17 例外 + scroll 復元の箱基準化）と Gated Amendment 2（取引先追加ボタンの隣接復帰）を起票する。新要望「在庫照会 検索ツール充実（並び替え + 昇順降順 + status chip を枠内へ）」は本 lane 外、Plans ④ ledger へ。特大 × 125% は owner の日常環境（125%）で充足。
