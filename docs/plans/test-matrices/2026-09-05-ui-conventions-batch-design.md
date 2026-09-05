@@ -14,7 +14,7 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 - UICONV-D4: badge.tsx の②分類枠線欠落（`--border` 追加が正、`--border-strong` ではない）・①/③種類取り違え・solid pill 2 箇所を runtime gap として記録する。`ProductTable.tsx:84`「反映済み」は owner 承認済み現状として gap から除外する。
 - UICONV-D5: `01-decision-rules.md` DSR-01 に primary/secondary（`--secondary` 塗り + `--border` 枠）/outline の 3 段 CTA 階層を追記し、`02-component-catalog.md` ① を同期する。
 - UICONV-D6: `02-component-catalog.md` ⑨ の live 型 SearchBar を「可視 Label 必須（既定文言『商品を検索』）+ `aria-label` 廃止（WCAG 2.5.3）」へ書き換える。
-- UICONV-D7: `02-component-catalog.md` ⑥ に `Alert` `warning` variant（`bg-card` 据え置き + border `--warning` 確定 + `AlertTriangle`）を規範化する。text 色は候補 (a)/(b)/(c)/(d)（既定候補 c: soft 塗り + border/icon --warning + text --warning-strong、①状態 badge と同じ 4 点構造）を併記し owner v4 決定待ちと明記する。
+- UICONV-D7: `02-component-catalog.md` ⑥ に `Alert` `warning` variant（`bg-warning-soft`+`border-warning`+`AlertTriangle`〈icon text-warning〉+ 本文 text-warning-strong、①状態 badge と同じ 4 点構造）を確定・規範化する（owner v4 決定）。destructive Alert の soft 化は対称性の後続候補として Non-scope。
 - UICONV-D9: DSR-23 は lane ⑧（`agent/ui-select-unify`）が登録する。本 packet は新規 DSR を起草しない。
 - UICONV-D10: `01-decision-rules.md` DSR-22 の枠 3:1 要件を interactive な操作枠のみへ narrow 化し、`04-backbone.md:20` 原則4②・`review-checklist.md:86` を同期する。
 
@@ -27,7 +27,7 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 - badge.tsx / button.tsx の runtime gap 記述で枠 token が `--border-strong` のまま残る（owner v2 決定は `--border`）。`反映済み`が誤って runtime gap に戻される。
 - DSR-01 の 3 段階層追記で `secondary` の枠が `--border-strong` のまま残る、または「1 画面 1 primary」原則が弱められる。
 - SearchBar live 型 Label 反転が commit 型を巻き込む、または `aria-label` 廃止が runtime lane へ先送りされる。
-- Alert warning が border 着色（`--warning`）を欠く、または text 色が両論併記されず一方に確定してしまう（v3 owner 決定を先取りする）。
+- Alert warning が確定済みの 4 点構造（`bg-warning-soft`+`border-warning`+icon+`text-warning-strong`）を欠く、または destructive Alert の soft 化が本 packet で誤って実装される（Non-scope 違反）。
 - DSR-22 の badge 3:1 要件が narrow 化されないまま残る、または `04-backbone.md`/`review-checklist.md` との同期が漏れる。
 - `src/**` の file が本 commit に混入する。
 - Plans.md ⑦ の active link が本 packet の basename と一致しない、または R2-4（条件待ち）が誤って Backlog へ起票される。
@@ -51,8 +51,8 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 | UICONV-D5 | catalog ① Do bullet 未同期 | doc-oracle | `rg -Fc "残りは 3 段（\`secondary\` 中間段 → \`outline\` / \`ghost\`）で降格する" docs/design-system/02-component-catalog.md` ≥ 1 | catalog ① が DSR-01 と食い違ったままの場合に検出 |
 | UICONV-D6 | live 型 Label 反転の欠落・commit 型巻き込み | doc-oracle | `rg -Fc "live 型も可視" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "live 型は可視 Label を持たない設計" docs/design-system/02-component-catalog.md` = 0 | 反転漏れ、または旧文言が残った場合に検出 |
 | UICONV-D6 | aria-label 廃止が runtime lane へ先送りされる | doc-oracle | `rg -Fc "aria-label は廃止する" docs/design-system/02-component-catalog.md` ≥ 1 | catalog 本文で確定せず先送り文言のままの場合に検出 |
-| UICONV-D7 | Alert warning variant 未記述・border 未着色 | doc-oracle | `rg -Fc 'variant="warning"' docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "border-warning bg-card" docs/design-system/02-component-catalog.md` ≥ 1 | variant 未記述、または border 着色が漏れた場合に検出 |
-| UICONV-D7 | text 色の未決事項が勝手に確定される | doc-oracle | `rg -Fc "owner決定待ち（v4）" docs/design-system/02-component-catalog.md` ≥ 1、4 候補（a/b/c/d）の記述が揃って存在すること（reviewer 目視） | 一方の候補だけが残り決定済みのように書かれた場合に検出 |
+| UICONV-D7 | Alert warning variant 未記述・soft 塗り未反映 | doc-oracle | `rg -Fc 'variant="warning"' docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "bg-warning-soft border-warning" docs/design-system/02-component-catalog.md` ≥ 1 | variant 未記述、または soft 塗り+border の組合せが漏れた場合に検出 |
+| UICONV-D7 | Alert warning の 4 点構造が欠落・誤り | doc-oracle | `rg -Fc "bg-warning-soft" docs/design-system/02-component-catalog.md` の hit に Alert warning 定義行が含まれること（reviewer 目視）、`rg -c "owner決定待ち" docs/design-system/02-component-catalog.md` = 0 | soft 塗り+border+strong text+icon の 4 点構造が catalog に反映されていない、または未決 marker が残っている場合に検出 |
 | UICONV-D9 | DSR-23 帰属の明記漏れ | doc-oracle | `rg -Fc "DSR-23 の番号は ⑧ が登録する" docs/plans/2026-09-05-ui-conventions-batch-design.md` ≥ 1 | Workflow State 補足からこの取り決めが消えた場合に検出 |
 | UICONV-D10 | DSR-22 narrow 化の欠落・旧文言残存 | doc-oracle | `rg -Fc "badge（状態/分類/強調）は 3:1 の対象外" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fc "Badge / outline chip も対象" docs/design-system/01-decision-rules.md` = 0 | narrow 化文言が無い、または旧文言が残る場合に検出 |
 | UICONV-D10 | 04-backbone / review-checklist の同期漏れ | doc-oracle | `rg -Fc "枠線（\`--border\`、DSR-22" docs/design-system/04-backbone.md` ≥ 1、`rg -Fc "枠線（隣接背景に対し 3:1、DSR-22）" docs/design-system/04-backbone.md` = 0、`rg -Fc "操作枠 3:1 は interactive 部品限定" docs/quality/review-checklist.md` ≥ 1 | いずれかの file が narrow 化前の旧文言のまま残っている場合に検出 |
@@ -137,7 +137,7 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 
 - tone family 表の行数と各セルの文言網羅性、②分類/③強調/非Badge除外 note の存在は rg presence oracle だけでは保証できない — reviewer 実読に依存する。
 - DSR-08 増減数値色規則の `+`/`−`/`0` と色クラスの対応が入れ替わっていないかは文字列存在オラクルでは検出できない。
-- Alert warning の text 色が「両論併記」のまま残っているか（一方だけが確定表現になっていないか）は reviewer 目視に依存する。
-- Alert text 色の 4 候補（a/b/c/d）がいずれも catalog に併記され、一方だけが確定表現になっていないかは reviewer 目視に依存する（③強調 pill の枠は v3 で `--warning` に確定済み、この gap は解消済み）。
+- Alert warning の 4 点構造（soft/border/strong/icon）の各クラスが正しい組合せで catalog に書かれているかは reviewer 目視に依存する。
+- Alert text 色・③強調 pill 枠色はいずれも owner 決定済み（v3/v4）で未決事項なし（この gap は解消済み）。destructive Alert の soft 化を Non-scope から誤って実装しないかは reviewer 目視に依存する。
 - badge.tsx/button.tsx の runtime gap 記述が実際に runtime lane で拾われるかは本 packet のスコープ外。
 - `formatRecordStatus`/`STATUS_LABELS` 系の残り call site は個別に file:line 検証していない — owner culling で追加候補として扱う。
