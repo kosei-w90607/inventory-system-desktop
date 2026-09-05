@@ -40,6 +40,8 @@
   --color-destructive-border: var(--destructive-border);
   --color-destructive-strong: var(--destructive-strong);
   --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-success-strong: var(--success-strong);
   --color-success-emphasis: var(--success-emphasis);
   --color-rank-top-bg: var(--rank-top-bg);
   --color-rank-top-badge-bg: var(--rank-top-badge-bg);
