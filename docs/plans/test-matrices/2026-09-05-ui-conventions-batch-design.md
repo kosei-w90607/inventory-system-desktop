@@ -14,7 +14,7 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 - UICONV-D4: badge.tsx の②分類枠線欠落（`--border` 追加が正、`--border-strong` ではない）・①/③種類取り違え・solid pill 2 箇所を runtime gap として記録する。`ProductTable.tsx:84`「反映済み」は owner 承認済み現状として gap から除外する。
 - UICONV-D5: `01-decision-rules.md` DSR-01 に primary/secondary（`--secondary` 塗り + `--border` 枠）/outline の 3 段 CTA 階層を追記し、`02-component-catalog.md` ① を同期する。
 - UICONV-D6: `02-component-catalog.md` ⑨ の live 型 SearchBar を「可視 Label 必須（既定文言『商品を検索』）+ `aria-label` 廃止（WCAG 2.5.3）」へ書き換える。
-- UICONV-D7: `02-component-catalog.md` ⑥ に `Alert` `warning` variant（`bg-card` 据え置き + border `--warning` 確定 + `AlertTriangle`）を規範化する。text 色は候補 (a) `--warning-strong` / (b) `--foreground`+amber 枠 を両論併記し owner v3 決定待ちと明記する。
+- UICONV-D7: `02-component-catalog.md` ⑥ に `Alert` `warning` variant（`bg-card` 据え置き + border `--warning` 確定 + `AlertTriangle`）を規範化する。text 色は候補 (a)/(b)/(c)/(d)（既定候補 c: soft 塗り + border/icon --warning + text --warning-strong、①状態 badge と同じ 4 点構造）を併記し owner v4 決定待ちと明記する。
 - UICONV-D9: DSR-23 は lane ⑧（`agent/ui-select-unify`）が登録する。本 packet は新規 DSR を起草しない。
 - UICONV-D10: `01-decision-rules.md` DSR-22 の枠 3:1 要件を interactive な操作枠のみへ narrow 化し、`04-backbone.md:20` 原則4②・`review-checklist.md:86` を同期する。
 
@@ -52,7 +52,7 @@ Plan Review round 1（Opus reject / Sonnet approve-with-P2 / owner v2 mockup 決
 | UICONV-D6 | live 型 Label 反転の欠落・commit 型巻き込み | doc-oracle | `rg -Fc "live 型も可視" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "live 型は可視 Label を持たない設計" docs/design-system/02-component-catalog.md` = 0 | 反転漏れ、または旧文言が残った場合に検出 |
 | UICONV-D6 | aria-label 廃止が runtime lane へ先送りされる | doc-oracle | `rg -Fc "aria-label は廃止する" docs/design-system/02-component-catalog.md` ≥ 1 | catalog 本文で確定せず先送り文言のままの場合に検出 |
 | UICONV-D7 | Alert warning variant 未記述・border 未着色 | doc-oracle | `rg -Fc 'variant="warning"' docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "border-warning bg-card" docs/design-system/02-component-catalog.md` ≥ 1 | variant 未記述、または border 着色が漏れた場合に検出 |
-| UICONV-D7 | text 色の未決事項が勝手に確定される | doc-oracle | `rg -Fc "owner決定待ち（v3）" docs/design-system/02-component-catalog.md` ≥ 1、両候補（`--warning-strong` と `--foreground`）の記述が両方存在すること（reviewer 目視） | 一方の候補だけが残り決定済みのように書かれた場合に検出 |
+| UICONV-D7 | text 色の未決事項が勝手に確定される | doc-oracle | `rg -Fc "owner決定待ち（v4）" docs/design-system/02-component-catalog.md` ≥ 1、4 候補（a/b/c/d）の記述が揃って存在すること（reviewer 目視） | 一方の候補だけが残り決定済みのように書かれた場合に検出 |
 | UICONV-D9 | DSR-23 帰属の明記漏れ | doc-oracle | `rg -Fc "DSR-23 の番号は ⑧ が登録する" docs/plans/2026-09-05-ui-conventions-batch-design.md` ≥ 1 | Workflow State 補足からこの取り決めが消えた場合に検出 |
 | UICONV-D10 | DSR-22 narrow 化の欠落・旧文言残存 | doc-oracle | `rg -Fc "badge（状態/分類/強調）は 3:1 の対象外" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fc "Badge / outline chip も対象" docs/design-system/01-decision-rules.md` = 0 | narrow 化文言が無い、または旧文言が残る場合に検出 |
 | UICONV-D10 | 04-backbone / review-checklist の同期漏れ | doc-oracle | `rg -Fc "枠線（\`--border\`、DSR-22" docs/design-system/04-backbone.md` ≥ 1、`rg -Fc "枠線（隣接背景に対し 3:1、DSR-22）" docs/design-system/04-backbone.md` = 0、`rg -Fc "操作枠 3:1 は interactive 部品限定" docs/quality/review-checklist.md` ≥ 1 | いずれかの file が narrow 化前の旧文言のまま残っている場合に検出 |
@@ -72,7 +72,7 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 |---|---|---|---|---|
 | ①状態 = outline + icon + soft tone（枠は tone 色、3:1 不要） | `rg -n "<Badge" src/features src/components --glob '!*.test.*'` 全件（約 35 箇所） | `StockStatusBadge.tsx:25,34,42`（stockout/low/ok）、`StocktakePage.tsx:396-401`（未入力 N、warning）、`PreviewStep.tsx:75-80`（同日データあり、warning）、`DailyReportImportPage.tsx:164,183`（同日データあり、warning）、`ProductTable.tsx:84`「反映済み」（owner 承認済み現状） | `ProductTable.tsx:79`「未反映」（`variant="secondary"` 取り違え、runtime gap）、`ResultStep.tsx:47`「部分成功」「成功」（tone なし、runtime gap）、`CsvImportRecordDetailPage.tsx:140,192`「取消済み」「明細取消済み」（tone なし、runtime gap）、`DailyReportImportPage.tsx:179`「取込み済み」（`variant="destructive"` 塗り、runtime gap 候補）、`StocktakePage.tsx:404`/`IntegrityCheckPage.tsx:387`「補正済み」（`bg-success` 直接塗り、4種目相当、要移行）、`IntegrityCheckPage.tsx:381`（差異ラベル、owner culling） | 起票時実測、runtime lane で `rg` 再実行し是正状況を確認 |
 | ②分類 = secondary pill + `--border` 枠（3:1 不要、owner v2 決定） | 同上 sweep | `ProductImportPreview.tsx:74`（ファイル名）、`PriceRevisionTable.tsx:98`（最近改定） | `ProductTable.tsx:56`「廃番」（`badge.tsx` の secondary variant に枠色が無い、runtime gap: `border-border` 追加）、`ProductTable.tsx:74`「対象外」（`variant="outline"` だが②分類の secondary pill 形ではない、runtime gap） | `badge.tsx:8,13` 実読 |
-| ③強調 = 琥珀 pill（`variant="default"`、枠色は owner v3 決定待ち） | 同上 sweep | `ProductImportPreview.tsx:76`（上書き N 件） | `BackupRestorePage.tsx:533`「最新」（`variant="secondary"` に取り違え、runtime gap） | `BackupRestorePage.tsx:533` 実読 |
+| ③強調 = 琥珀 pill + `border-warning`（枠 `--warning`、owner v3 決定済み） | 同上 sweep | `ProductImportPreview.tsx:76`（上書き N 件、枠追加 runtime gap）、`ProductRankingTable.tsx:80`（1 位、枠追加 runtime gap） | `BackupRestorePage.tsx:533`「最新」（`variant="secondary"` に取り違え + 枠追加、runtime gap） | `BackupRestorePage.tsx:533`、`ProductRankingTable.tsx:80` 実読 |
 | 非 Badge 除外 | 同上 sweep | 該当なし（tone table 対象外） | `PriceRevisionTable.tsx:104`「入力中」（原則15 現在行3点、tone family 対象外）、`CsvImportRecordDetailPage.tsx:194`「有効」（plain span）、`ReturnExchangePage.tsx:90,592`「レジ未処理」（plain text radio ラベル、隣接 Badge「この保存で反映」は owner 承認済みで Non-scope） | `04-backbone.md:31` 原則15、各 file 実読 |
 | CTA secondary（Button） | `rg -n 'variant="secondary"' src --glob '!*.test.*'` | 該当なし（0 件） | 全 8 件が `Badge`（上記参照）、`Button variant="secondary"` の既存使用は無い — `--border` 枠追加は既存画面へ無影響 | `rg` 実測（起票時実測節） |
 
@@ -138,6 +138,6 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 - tone family 表の行数と各セルの文言網羅性、②分類/③強調/非Badge除外 note の存在は rg presence oracle だけでは保証できない — reviewer 実読に依存する。
 - DSR-08 増減数値色規則の `+`/`−`/`0` と色クラスの対応が入れ替わっていないかは文字列存在オラクルでは検出できない。
 - Alert warning の text 色が「両論併記」のまま残っているか（一方だけが確定表現になっていないか）は reviewer 目視に依存する。
-- ③強調 pill の枠色（`--warning-border` vs `--warning`）が既定なしのまま記述されているかは reviewer 目視に依存する。
+- Alert text 色の 4 候補（a/b/c/d）がいずれも catalog に併記され、一方だけが確定表現になっていないかは reviewer 目視に依存する（③強調 pill の枠は v3 で `--warning` に確定済み、この gap は解消済み）。
 - badge.tsx/button.tsx の runtime gap 記述が実際に runtime lane で拾われるかは本 packet のスコープ外。
 - `formatRecordStatus`/`STATUS_LABELS` 系の残り call site は個別に file:line 検証していない — owner culling で追加候補として扱う。

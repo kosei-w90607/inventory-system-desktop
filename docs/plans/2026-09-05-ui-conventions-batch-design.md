@@ -20,7 +20,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
-- Human Gate: owner が design PR 上で (1) ①状態 badge の tone family マッピング表の owner culling 列を埋める (2) Alert warning のテキスト色（候補 a/b）と③強調 pill の枠色を v3 mockup で選ぶ（原文回答、Coordinator が転記し原文を正とする）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
+- Human Gate: owner が design PR 上で (1) ①状態 badge の tone family マッピング表の owner culling 列を埋める (2) Alert warning のテキスト色（候補 a/b/c/d）を v4 mockup で選ぶ（③強調 pill の枠色は v3 で `--warning` に確定済み）（原文回答、Coordinator が転記し原文を正とする）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
 
 補足（enum 訂正）: 発注時の指定は「Phase: plan-first」だったが、`scripts/doc-consistency-check.sh` の `WORKFLOW_STATE_PHASES` enum に `plan-first` は存在しない（有効値は `kickoff spec-check design plan-draft plan-gate plan-approved implementing local-verified independent-review human-confirm ready-hosted-final merge archive`）。本 commit は「plan-first commit」（packet を初めて起票する commit）に該当するため、Phase は enum 上の `plan-draft` を使う。
 
@@ -35,7 +35,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
-介入 3 回の内訳: 1 回目 = 起票選定（2026-09-05 回答、B2/C1 確定・(a)(e) は推奨案起草の方針、消費済み）。2 回目 = tone family 表 + Alert text 色 + ③強調枠の owner culling（v2/v3 mockup、消費済み〜継続中）。3 回目 = 承認 + merge（Coordinator 代行）。
+介入 3 回の内訳: 1 回目 = 起票選定（2026-09-05 回答、B2/C1 確定・(a)(e) は推奨案起草の方針、消費済み）。2 回目 = tone family 表 + Alert text 色の owner culling（v2〜v4 mockup、③強調枠は v3 で `--warning` に確定、消費済み〜継続中）。3 回目 = 承認 + merge（Coordinator 代行）。
 
 ## Consultation Relay
 
@@ -63,7 +63,7 @@ Goal Invariant:
 - `01-decision-rules.md` DSR-08 に増減数値の色規則（+ = success-strong / − = destructive-strong / 0 = muted-foreground）が既存の記号+文言併記規定への追記として反映される（新規 DSR は起草しない）。
 - `01-decision-rules.md` DSR-01 に primary / secondary（`--secondary` 塗り + `--border` 枠、中間段）/ outline の 3 段 CTA 階層が明記され、`02-component-catalog.md` ① ページヘッダの Do bullet が同期される（owner 決定 B2、枠色は owner が v2 mockup で `--border` を選択）。
 - `02-component-catalog.md` ⑨ 検索+フィルタの live 型検索欄が「可視 Label を持たない設計」から「可視 Label 必須（既定文言『商品を検索』、画面ごとに上書き可）+ `aria-label` 廃止」へ書き換わる（owner 決定 C1、WCAG 2.5.3）。
-- `02-component-catalog.md` ⑥ 空状態・エラー・ローディングに `Alert` `warning` variant（`bg-card` 据え置き + border `--warning` + `AlertTriangle`）が規範化され、text 色は 2 候補（a: `--warning-strong` / b: `--foreground` 本文 + 枠と icon のみ amber）を owner v3 決定待ちとして両論併記する。適用先候補（`PriceRevisionPage.tsx:112-116`）が記録される。
+- `02-component-catalog.md` ⑥ 空状態・エラー・ローディングに `Alert` `warning` variant（`bg-card` 据え置き + border `--warning` + `AlertTriangle`）が規範化され、text 色は 4 候補（a/b/c/d、既定候補 c）を owner v4 決定待ちとして併記する。適用先候補（`PriceRevisionPage.tsx:112-116`）が記録される。
 - `04-backbone.md`「foundations への追記分」表の success 行・badge 行、`:53`「00〜03 への反映先」の catalog⑬ badge 項目、および原則4②の枠線記述に、本 packet で反映した旨・narrow 化した旨の状態更新が入る（原則本文の構成自体は変更しない）。
 - `docs/Plans.md` ⑦ が本 packet への active link と owner 回答サマリ（v2/v3 mockup 決定含む）を持つ。
 - 上記いずれも `src/**` の変更を伴わない（runtime 反映は別 packet）。
@@ -73,7 +73,7 @@ Goal Invariant:
 - (a) を新規 DSR として起草する、または `04-backbone.md` 原則 2/4 の構成（3 種・4 段）自体を書き換える。
 - `--success-soft` / `--success`（既存 token）を新規登録として重複記載する、または `04-backbone.md` の既定値（border `#bbf7d0` / strong `#14532d`）と異なる値を 00-foundations に登録する、または `--success-border` の登録を owner 決定に反して見送る。
 - 増減数値の色規則を新規 DSR や catalog に書き、DSR-08 拡張より大きい diff にする。
-- owner 決定（B2/C1、DSR-22 narrow 化、②分類/CTA secondary の `--border`）を再度未決のまま書く、または Alert text 色・③強調枠の v3 未決事項を勝手に確定させる。
+- owner 決定（B2/C1、DSR-22 narrow 化、②分類/CTA secondary の `--border`）を再度未決のまま書く、または Alert text 色の v4 未決事項を勝手に確定させる、または③強調 pill の枠色（`--warning`、v3 確定済み）を書き換える。
 - SearchBar commit 型（現状 Label あり）の記述が誤って変更される。
 - `src/**` のいずれかの file が本 commit で変更される。
 - R2-3 / R2-4（在庫照会）を Non-scope から外して規範化してしまう、または R2-4 を Backlog へ誤って起票する。
@@ -87,7 +87,7 @@ Goal Invariant:
 - `ProductListPage.tsx:307-309` の空状態「商品を登録する」CTA の variant 変更（据え置き検討、本 packet では裁定しない）。
 - `--success-border` / `--success-strong` 以外の token 新設・変更。
 - `04-backbone.md` の「00〜03 への反映先」に残る他項目（DSR-01 の「0 primary 画面の昇格」/ 検索欄の単一挙動〈live+ボタン併記への統合〉/ PageHeader subtitle 基準 / ⑨ SearchBar canonical 統合 / ListSkeleton 等）。
-- Alert warning のテキスト色確定、③強調 pill の枠色確定（いずれも owner v3 mockup 決定待ち、本 packet は両論併記に留める）。
+- Alert warning のテキスト色確定（owner v4 mockup 決定待ち、本 packet は候補 a/b/c/d の併記に留める）。
 - DSR-23 の新設・登録（lane ⑧ が担当）。
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
@@ -107,7 +107,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `:74` 「対象外」`<Badge variant="outline" className="gap-1 whitespace-nowrap">` + `CircleMinus` icon — PLU 対象外は在庫切れ/在庫少のような遷移する状態ではなく、廃番と同じ「恒常的な属性」のため **②分類**（tone family 表には含めない）。現状 `variant="outline"`（②分類の secondary pill 形ではない）も runtime gap。
   - `:79` 「未反映」`<Badge variant="secondary" className="gap-1 whitespace-nowrap">` + `Clock3` icon — PLU 未反映は①状態（在庫切れ・在庫少と同じ「変化する状態」）だが `variant="secondary"`（②分類の形）で **種類の取り違え**（runtime gap）。正しくは `variant="outline"` + warning tone。owner raw「未反映バッジとか、バッジ系の色付け、アプリ内でルール作ったほうがいいかもしれん」が本 packet 起票の直接の契機。
   - `:84` 「反映済み」`<Badge variant="default" className="gap-1 whitespace-nowrap">` — owner raw「反映済みはいいとして未反映バッジとか」は現状表示を明示的に許容している。**owner 承認済みの現状として扱い runtime gap には記録しない**。厳密には①状態（`variant="default"` は③強調の形）だが是正の緊急度はなく、runtime lane で任意タイミングに再判断する。
-- **③強調の取り違え例**: `BackupRestorePage.tsx:533` 「最新」`<Badge variant="secondary">最新</Badge>` — ③強調の例示そのもの（`:20`「ランキング 1 位 / 最新 等」）だが `variant="secondary"`（②分類の形）で runtime gap。`ProductImportPreview.tsx:76` 「上書き N 件」`<Badge variant="default">` は③強調として整合（正しい実装例、ただし枠色は下記のとおり owner v3 決定待ち）。
+- **③強調の取り違え例**: `BackupRestorePage.tsx:533` 「最新」`<Badge variant="secondary">最新</Badge>` — ③強調の例示そのもの（`:20`「ランキング 1 位 / 最新 等」）だが `variant="secondary"`（②分類の形）で runtime gap。`ProductImportPreview.tsx:76` 「上書き N 件」`<Badge variant="default">` は③強調として整合（正しい実装例）。③強調の枠色は owner v3 決定で `--warning`（`#d97706`）に確定し、両 site とも `border-warning` を追加する対象になる（下記「badge.tsx runtime gap」節参照）。
 - **①状態のうち原則 4 の 3 種いずれにも該当しない solid pill 2 箇所**: `StocktakePage.tsx:404`（棚卸し全数入力完了時）/ `IntegrityCheckPage.tsx:387`「補正済み」はいずれも `<Badge className="bg-success text-primary-foreground">`（`variant` 未指定＝`default` 形に `bg-success` 直接塗りを重ねた実質 4 種目）。「操作の結果として確定した」状態のため①状態の success family に該当し、runtime lane で `variant="outline"` + `border-success-border bg-success-soft text-success-strong` へ移行する（owner の明示的許容が無いため runtime gap）。
 - **`text-success-strong` が既に runtime で使われているが未登録**: `rg -n "success-strong" src --glob '!*.test.*'` で `BackupRestorePage.tsx:358`・`HomePage.tsx:66`・`PluExportPage.tsx:521,567` の 4 箇所が `text-success-strong border-success bg-success-soft` を使用しているが、`--success-strong` は `globals.css` に未登録（`@theme inline` mapping も無い）ため無効化されている可能性が高い。`IntegrityCheckPage.tsx:269`・`CostDiffDialog.tsx:136` は同じ形を `text-success`（登録済み）で実装しており正しく着色される。**`--success-strong` の登録は「新規機能」ではなく「既に書かれているが無効化されている 4 箇所を直す」修正**でもある。
 - `rg -n "<Badge" src/features src/components --glob '!*.test.*'` の全件 sweep を「設計判断」節に runtime sweep 表として残す（canonical docs 本文には含めない、次の runtime lane が再利用する申し送り）。
@@ -136,7 +136,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `PriceRevisionPage.tsx:112-116` は `<Alert role="note">`（variant 指定なし = `default`）で注意文言を表示しており、視覚的に destructive/warning と区別されていない（R3-3）。
 - 既存 Badge 側には `border-warning-border bg-warning-soft text-warning-strong` + icon の 3 点セット先例が複数ある（`StocktakePage.tsx:396-401`、`PreviewStep.tsx:75-80`）。**追加実測**: `BackupRestorePage.tsx:578` に既に `<Alert className="border-warning bg-warning-soft text-warning-strong">` というインライン warning 表現があり、owner raw「画面を再読み込みすると…注意文言なのに薄いし…どう見せるかはまぁバックアップの注意書きみたいな色でいいんじゃないか」はこの箇所を指している。この既存実装は `bg-warning-soft`（soft 背景）を使っており、`destructive` variant の「`bg-card` 据え置き」とは形が異なる。
 - **owner v2 決定**: `warning` variant は `bg-card` 据え置きのまま **border を `--warning`（`#d97706`）で着色**し `AlertTriangle` icon を持つ（owner「icon 付きで分かりやすい」）。ここまでは確定。
-- **owner v3 決定待ち（text 色）**: 候補 (a) `text-warning-strong`（amber-900、`bg-card` 対比 8.32:1、AA 達成。`--warning` 単色は同背景で 2.92:1 で AA 未達のため text には不採用な理由が既にある — 既定候補） / 候補 (b) 本文は `--foreground`（`bg-card` 対比 16.0:1 相当、常に安全）、枠と icon のみ amber で強調（destructive variant のような「地の文は通常色、accent だけ強調色」形）。両論併記し、既定は (a) とする。
+- **owner v3 決定（③強調 pill の枠）**: `04-backbone.md:20`「琥珀 pill（ランキング 1 位 / 最新 等）」の枠を `--warning`（`#d97706`）に確定。WCAG 相対輝度公式で独立計算: `--warning` 対 fill `#fef3c7`（`--rank-top-badge-bg`）= **2.86:1**、対 `--background` = **3.05:1**（owner 提示の v3 mockup 数値と一致確認）。適用対象は `ProductImportPreview.tsx:76`「上書き N 件」（正しい variant、枠追加のみ）、`ProductRankingTable.tsx:80`「1 位」（`bg-rank-top-badge-bg text-rank-top-badge-text` custom class、枠追加のみ）、`BackupRestorePage.tsx:533`「最新」（`variant="secondary"` の種類取り違えも合わせて是正）の 3 site。runtime lane で `border-warning` を追加する（③強調の枠色決定は完了、以降は runtime gap として扱う）。
+- **owner v4 決定待ち（Alert warning の text 色）**: border `--warning` + `AlertTriangle` は v2 で確定済み。text 色は 4 候補を併記する: 候補 (a) `text-warning-strong`（amber-900、`bg-card` 対比 8.32:1、AA 達成。`--warning` 単色は同背景で 2.92:1 で AA 未達のため不採用な理由が既にある） / 候補 (b) 本文は `--foreground`（`bg-card` 対比で常に安全）、枠と icon のみ amber（owner 所感: 「(b) はすっきりするが warning らしさに欠ける」） / 候補 (c)（**Coordinator 推奨・既定候補**）`bg-warning-soft` の soft 塗り + border/icon `--warning` + text `--warning-strong`（①状態 badge と同じ 4 点構造 — soft/border/strong/icon — を Alert にも揃える形。Badge の soft 背景 3 点セットを Alert に持ち込まない、という当初の判断を撤回し、①状態との視覚言語統一を優先する） / 候補 (d) タイトル「ご注意」を `--warning-strong` の bold、本文は `--foreground`（見出しだけ強調し本文は通常色に留める形）。owner が v4 mockup で選択するまで 4 候補を併記し、既定は (c) とする（`bg-card` 据え置きという当初の家族内一貫性方針は (c) の採用により見直しの可能性があることを Review Focus に明記する）。
 
 ### (d) 在庫照会（Non-scope）
 
@@ -159,7 +160,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 `02-component-catalog.md` ⑬ ステータスバッジに、`04-backbone.md` 原則 4 の 3 種構成を明記し、①状態の tone family マッピング表を追加する（Writer が Plan Gate 後に清書、本節は骨子）:
 
-- **3 種構成の追記**: 「①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）」「②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）」「③強調 = `variant="default"`（琥珀 pill、枠色は owner v3 決定待ち、ランキング・最新 等）」の 3 種以外を作らないことを明記する。
+- **3 種構成の追記**: 「①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）」「②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）」「③強調 = `variant="default"` + `border-warning`（琥珀 pill、枠色は owner v3 決定で `--warning` に確定、ランキング・最新 等）」の 3 種以外を作らないことを明記する。
 - **①状態の tone family マッピング表**（owner culling 列つき、原文回答で確定。全行 `rg -n "<Badge"` 実測、file:line 明記）:
 
   | tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
@@ -171,7 +172,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
   **表から除外した項目とその理由**: 「差異あり」は `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` 実装を実読すると値が「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで実在しない（削除）。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md:31` 原則 15「現在の行は 3 点で示す」の対象であり、tone family の対象外（原則 15 を参照するクロスリファレンスを catalog ⑬ に 1 行置く）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類（下記）へ移す。「有効」は `CsvImportRecordDetailPage.tsx:194` では Badge ではなく `<span className="text-muted-foreground">` の plain text（除外）。「未処理」（正確には「レジ未処理」、`ReturnExchangePage.tsx:90,592`）も plain text の radio ラベルであり Badge ではない（除外）。隣接する実際の Badge（`:592-598`「この保存で反映」、warning tone）は owner が既に色付きを支持済み（`docs/Plans.md:65`）のため Non-scope（現状維持）とする。
   - **②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠（`badge.tsx` の runtime gap は上記「起票時実測」節参照）が正しい形。
-  - **③強調の note**（枠色は owner v3 決定待ち）: 最新（`BackupRestorePage.tsx:533`、現状 runtime gap）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）。枠を `--warning-border`（薄い tone border）にするか `--warning`（濃い枠）にするかは owner が v3 mockup で決定する。既定なし。
+  - **③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx:533`、`variant="secondary"` の種類取り違えも runtime gap）・1 位（`ProductRankingTable.tsx:80`、`bg-rank-top-badge-bg` custom class）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）+ `border-warning` 枠。対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1（owner v3 mockup 数値と一致）。3 site とも枠追加が runtime gap。
 - **関連**: DSR-08（semantic 色）/ DSR-04（状態列 vs セル内 badge）/ `04-backbone.md` 原則 15（現在行 3 点、`入力中` の帰属先）/ DSR-22（枠の 3:1 narrow 化、上記参照）を引用し、DSR-16・DSR-21 とは主題が異なる旨は既存 DSR-22 側の記載に委ねる。
 
 ### (a) 00-foundations.md token 登録（04-backbone 既定値の反映）
@@ -192,7 +193,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - ①状態の種類取り違え: `ProductTable.tsx:79`「未反映」（`variant="secondary"` → `outline`+warning tone）、`ResultStep.tsx:47`「部分成功」「成功」（tone なし → warning/success tone 追加）、`CsvImportRecordDetailPage.tsx:140,192`「取消済み」「明細取消済み」（tone なし → destructive tone 追加）、`DailyReportImportPage.tsx:186`「確認済み」（`variant="secondary"` → `outline`+success tone）。
 - ①状態の中で原則 4 の 3 種いずれにも該当しない solid pill（4 種目相当、要移行）: `StocktakePage.tsx:404` / `IntegrityCheckPage.tsx:387`「補正済み」（`bg-success text-primary-foreground` → `outline`+success tone）、`DailyReportImportPage.tsx:179`「取込み済み」（`variant="destructive"` 塗り → `outline`+destructive tone）。
 - `ProductTable.tsx:84`「反映済み」（`variant="default"`）は owner raw「反映済みはいいとして」により **runtime gap として記録しない**（現状維持）。
-- ③強調の種類取り違え: `BackupRestorePage.tsx:533`「最新」（`variant="secondary"` → `default`、琥珀 pill。枠色は owner v3 決定待ち）。
+- ③強調の種類取り違え: `BackupRestorePage.tsx:533`「最新」（`variant="secondary"` → `default`、琥珀 pill + `border-warning`）。
+- ③強調の枠追加（owner v3 決定 `--warning`、種類は既に正しい）: `ProductImportPreview.tsx:76`「上書き N 件」、`ProductRankingTable.tsx:80`「1 位」に `border-warning` を追加。
 - `--success-strong` 未登録による無効化（登録すれば自動的に解消）: `BackupRestorePage.tsx:358`・`HomePage.tsx:66`・`PluExportPage.tsx:521,567` の `text-success-strong`。
 - CTA: `button.tsx` の `secondary` variant に `border-border` を追加（起票時実測のとおり既存 Button 使用箇所は 0 件のため既存画面への影響なし）。
 - いずれも design（04-backbone 原則 4、DSR-22 narrow 化後）は正しく、runtime 実装が追随していない。本 packet は記録のみ、是正は runtime lane。
@@ -205,19 +207,26 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 `02-component-catalog.md:588` 付近の「live 型は可視 Label を持たない設計（在庫照会の検索駆動レイアウト）のため、`aria-label` を省略しないことが必須要件」を「live 型も可視 `<Label>` を必須とする（既定文言『商品を検索』、画面ごとに上書き可）。可視 Label が accessible name になるため `aria-label` は廃止する（WCAG 2.5.3 Label in Name）。`placeholder` は入力例として併存させる」へ書き換える。Don't 節（`:598`）「live 型で `aria-label` を外さない（可視 Label がない分、これが唯一の識別子）」を「live 型の可視 Label と異なる `aria-label` を併置しない（WCAG 2.5.3、可視 Label が唯一の識別子）」へ更新する。commit 型の記述は変更しない。
 
-### (e) Alert warning variant（border 確定、text 色は owner v3 決定待ち）
+### (e) Alert warning variant（border/icon 確定、text 色は owner v4 決定待ち）
 
-`02-component-catalog.md` ⑥ に新規バリエーション節を追加し、`Alert` `warning` variant を次の形で規範化する: `alertVariants` に `warning: "border-warning bg-card ..."`（`bg-card` 据え置き + border を `--warning` で着色、owner v2 確定）。text/icon 色は 2 候補を両論併記する: (a)（既定候補）`text-warning-strong *:data-[slot=alert-description]:text-warning-strong/90 [&>svg]:text-warning-strong`（`--warning` は `bg-card` 上 2.92:1 で AA 未達、`--warning-strong` は 8.32:1 で達成 — `destructive` variant が濃い shade を使う先例と揃える） / (b) `text-foreground` を本文色にし枠と icon のみ `text-warning`/`border-warning` で強調する形（`--foreground` は `bg-card` 上で常に高コントラスト、amber を装飾に限定）。owner が v3 mockup で選択するまで両論併記のまま catalog に残す。子要素は `AlertTriangle` icon + `AlertTitle`/`AlertDescription` の 2 段（DSR-11 に準拠）。適用先候補: `PriceRevisionPage.tsx:112-116`。既存のインライン warning 表現（`BackupRestorePage.tsx:578`、`bg-warning-soft` 併用）は Non-scope のまま残す。runtime 反映は別 packet。
+`02-component-catalog.md` ⑥ に新規バリエーション節を追加し、`Alert` `warning` variant の border/icon は確定済み（`border-warning` + `AlertTriangle`、owner v2）。text 色（背景を含む塗りの形）は 4 候補を併記する:
+
+- (a) `bg-card` 据え置き + `text-warning-strong`（`bg-card` 対比 8.32:1、AA 達成。`--warning` 単色は同背景で 2.92:1 で AA 未達のため不採用）。
+- (b) `bg-card` 据え置き + `text-foreground` 本文、枠と icon のみ amber。owner 所感「すっきりするが warning らしさに欠ける」で単独採用は見送り。
+- (c)（**Coordinator 推奨・既定候補**）`bg-warning-soft` の soft 塗り + `border-warning` + `text-warning-strong` + icon — ①状態 badge（`border-warning-border bg-warning-soft text-warning-strong` + icon）と同じ soft/border/strong/icon の 4 点構造を Alert にも揃える。**設計判断の変更点**: 当初「`destructive` と同じ `bg-card` 据え置きで家族内一貫性を優先」としていたが、owner が (b) を「物足りない」と評したことを受け、①状態 badge との視覚言語統一を優先する方針へ転換する（`default`/`destructive` variant の `bg-card` 据え置きはそのまま維持し、`warning` だけ soft 塗りにする非対称を許容する）。
+- (d) タイトル「ご注意」を `text-warning-strong` の bold、本文は `text-foreground`（見出しだけ強調する形）。
+
+owner が v4 mockup で選択するまで 4 候補を併記し catalog 本文に残す。子要素は `AlertTriangle` icon + `AlertTitle`/`AlertDescription` の 2 段（DSR-11 に準拠）。適用先候補: `PriceRevisionPage.tsx:112-116`。既存のインライン warning 表現（`BackupRestorePage.tsx:578`、`bg-warning-soft` 併用）は Non-scope のまま残す（(c) 採用時はこの既存実装と統一される可能性がある）。runtime 反映は別 packet。
 
 ## Scope
 
-- **S1 catalog ⑬ 具体化**: `02-component-catalog.md` ⑬ ステータスバッジ（`:770-822`）に badge 3 種構成と①状態 tone family マッピング表（owner culling 列つき、file:line 実測のみ）を追加。②分類 note（廃番・PLU 対象外・最近改定、枠は `--border`）・③強調 note（枠は owner v3 決定待ち）・原則 15 クロスリファレンス（`入力中`）を追加。Don't 節に「secondary（②分類）を①状態の soft tone 代わりに使わない」を追加。
+- **S1 catalog ⑬ 具体化**: `02-component-catalog.md` ⑬ ステータスバッジ（`:770-822`）に badge 3 種構成と①状態 tone family マッピング表（owner culling 列つき、file:line 実測のみ）を追加。②分類 note（廃番・PLU 対象外・最近改定、枠は `--border`）・③強調 note（枠 `--warning`、owner v3 決定済み）・原則 15 クロスリファレンス（`入力中`）を追加。Don't 節に「secondary（②分類）を①状態の soft tone 代わりに使わない」を追加。
 - **S2 00-foundations.md token 登録**: `--success-border`（`#bbf7d0`）/ `--success-strong`（`#14532d`）を無条件でセマンティックカラー表（`:31-42` 付近）に追加。`--success`（`:31`）/ `--success-emphasis`（`:42`）の用途セルを「DSR-08 の増減数値色規則を参照」へ repoint（値は変更しない）。`--success-soft` の既存行は変更しない。
 - **S3 DSR-08 増減数値の色**: `01-decision-rules.md` DSR-08（`:153-165`）の記号+文言併記規定の直後に色規則の 1 文を追加。
 - **S4 DSR-01 3 段階層 + secondary の `--border` 枠**: `01-decision-rules.md` DSR-01（`:19-28`）のルール文を 3 段表現へ拡張し、`secondary` に `--border` 枠を追加。判定フローに `ProductForm.tsx` 二重 primary 候補を runtime 是正対象として追記。
 - **S5 catalog ① 同期**: `02-component-catalog.md` ① ページヘッダ（`:24-64`）の Do bullet を 3 段表現へ更新。
 - **S6 catalog ⑨ SearchBar Label 反転 + aria-label 廃止**: `02-component-catalog.md` ⑨ 検索+フィルタ（`:543-601`）の live 型 Label 記述（`:588`）・Don't 節（`:598`）を owner C1 + WCAG 2.5.3 へ書き換え。
-- **S7 catalog ⑥ Alert warning**: `02-component-catalog.md` ⑥ 空状態・エラー・ローディング（`:318-424`）に warning variant バリエーション節（border `--warning` 確定、text 色 2 候補を両論併記）を新設し、使用トークン行に warning を追記。適用先候補 `PriceRevisionPage.tsx:112-116` を記録。
+- **S7 catalog ⑥ Alert warning**: `02-component-catalog.md` ⑥ 空状態・エラー・ローディング（`:318-424`）に warning variant バリエーション節（border/icon 確定、text 色 4 候補 a/b/c/d を併記、既定候補 c）を新設し、使用トークン行に warning を追記。適用先候補 `PriceRevisionPage.tsx:112-116` を記録。
 - **S8 review-checklist カテゴリ9**: `docs/quality/review-checklist.md` カテゴリ 9 に badge 3 種構成・増減数値の色の 2 行を追加し、`:86` の枠 3:1 記述を interactive 限定へ narrow 化する。
 - **S9 04-backbone.md 状態更新 + narrow 化同期**: 「foundations への追記分」表の success 行・badge 行の備考に反映を追記し、`:53`「00〜03 への反映先」の catalog⑬ badge 項目を完了済みへ更新し、`:20` 原則4②の枠線記述を `--border` + narrow 化の dated note へ更新し、更新履歴に 1 行追加する（原則の 3 種/4 段という構成自体は変更しない）。
 - **S10 DSR-22 narrow 化**: `01-decision-rules.md` DSR-22（`:443` 本文、`:447` 判定フロー例）を badge 3:1 対象外へ改訂し、Why に WCAG 1.4.11 の根拠文を追加する。
@@ -238,7 +247,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `04-backbone.md` 原則 1〜16 の 3 種/4 段という構成自体の改訂（枠線記述・状態更新の備考欄追記のみ）。
 - DSR-23 の新設・登録（lane ⑧ `agent/ui-select-unify` が担当）。
 - `mockup-e-badge-cta-samples.html`（別 commit `5c3bc46`）および続く v3 mockup の内容そのもの — 本 packet は owner culling の材料として参照するのみ。
-- Alert warning のテキスト色確定、③強調 pill の枠色確定（owner v3 mockup 決定待ち、両論併記のまま Plan Gate へ進める）。
+- Alert warning のテキスト色確定（owner v4 mockup 決定待ち、4 候補併記のまま Plan Gate へ進める）。③強調 pill の枠色は v3 で `--warning` に確定済みのため本項からは除外。
 
 ## Acceptance Criteria
 
@@ -249,7 +258,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC5: `rg -Fc "それ以外の CTA は 3 段で降格する" docs/design-system/01-decision-rules.md` ≥ 1、`rg -Fc "それ以外の CTA は outline / ghost へ降格する。" docs/design-system/01-decision-rules.md` = 0、`rg -Fc "\`--secondary\` stone-200 塗り + \`--border\` 枠" docs/design-system/01-decision-rules.md` ≥ 1（secondary の枠は `--border`、`--border-strong` ではないこと）。
 - AC6: `rg -Fc "残りは 3 段（\`secondary\` 中間段 → \`outline\` / \`ghost\`）で降格する" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "残りは outline / ghost に降格する" docs/design-system/02-component-catalog.md` = 0。
 - AC7: `rg -Fc "live 型も可視" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "live 型は可視 Label を持たない設計" docs/design-system/02-component-catalog.md` = 0、`rg -Fc "商品を検索" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "可視 Label がない分、これが唯一の識別子" docs/design-system/02-component-catalog.md` = 0、`rg -Fc "aria-label は廃止する" docs/design-system/02-component-catalog.md` ≥ 1。
-- AC8: `rg -Fc 'variant="warning"' docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "border-warning bg-card" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "AlertTriangle" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "PriceRevisionPage.tsx:112" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "owner決定待ち（v3）" docs/design-system/02-component-catalog.md` ≥ 1（text 色未決の明記）。
+- AC8: `rg -Fc 'variant="warning"' docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "border-warning bg-card" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "AlertTriangle" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "PriceRevisionPage.tsx:112" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "owner決定待ち（v4）" docs/design-system/02-component-catalog.md` ≥ 1（text 色未決の明記）、`rg -Fc "border-warning" docs/design-system/02-component-catalog.md` の hit に③強調 pill の枠記述が含まれること（reviewer 目視、AC1 の tone table とは別建て）。
 - AC9: `rg -Fc "業務上の増減数値（±）が記号 + 文言に加えて色" docs/quality/review-checklist.md` ≥ 1、`rg -Fc "badge 3 種構成" docs/quality/review-checklist.md` ≥ 1、`rg -Fc "操作枠 3:1 は interactive 部品限定" docs/quality/review-checklist.md` ≥ 1（`:86` narrow 化）、`rg -Fc "Badge・outline chip も 3:1 対象で soft 背景だけに頼らない" docs/quality/review-checklist.md` = 0（旧文言 0 件）。
 - AC10: `rg -Fc "本 packet" docs/design-system/04-backbone.md` ≥ 1。`rg -c "^## DSR-" docs/design-system/04-backbone.md` = 0（04-backbone 側にも新規 DSR なし）。`rg -Fc "原則 4（⑬ ステータスバッジに badge 3 種の visual 仕様）（完了" docs/design-system/04-backbone.md` ≥ 1（`:53`）。`rg -Fc "枠線（\`--border\`、DSR-22" docs/design-system/04-backbone.md` ≥ 1（`:20` narrow 化同期）、`rg -Fc "枠線（隣接背景に対し 3:1、DSR-22）" docs/design-system/04-backbone.md` = 0（旧文言 0 件）。
 - AC11: `rg -Fc "badge（状態/分類/強調）は 3:1 の対象外" docs/design-system/01-decision-rules.md` ≥ 1（DSR-22 narrow 化）、`rg -Fc "Badge / outline chip も対象" docs/design-system/01-decision-rules.md` = 0（旧文言 0 件）、`rg -Fc "\`secondary\` pill のまま \`--border\` 枠線を追加" docs/design-system/01-decision-rules.md` ≥ 1（判定フロー例の同期）。
@@ -258,7 +267,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC14: `git diff --name-only 07302b5..HEAD` に `src/` 配下の file が 0 件。
 - AC15: `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0 で通過。
 - AC16: `rg -Fc "DSR-08 の増減数値色規則を参照" docs/design-system/00-foundations.md` ≥ 2（`--success` `:31` と `--success-emphasis` `:42` の用途セル repoint）。
-- AC-HumanGate: owner が①状態 tone family マッピング表の owner culling 列、および Alert text 色候補（a/b）・③強調 pill 枠色を v3 mockup 上で決定する（原文回答）。
+- AC-HumanGate: owner が①状態 tone family マッピング表の owner culling 列、および Alert text 色候補（a/b/c/d）を v4 mockup 上で決定する（原文回答。③強調 pill 枠色は v3 で `--warning` に確定済み）。
 
 ## Design Sources
 
@@ -304,7 +313,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | R5-5（runtime gap） | `04-backbone.md` 原則 4②、`badge.tsx:8,13` | UICONV-D4 | 廃番の枠なしは design の誤りではなく `badge.tsx` の `secondary` variant が枠色（`--border`）を上書きしないための runtime 未追随。PLU 対象外も同型 | なし（runtime lane へ申し送り） | 該当なし |
 | R3-4 | `01-decision-rules.md` DSR-01（改訂） | UICONV-D5（owner 決定 B2） | 3 段階層。枠は `--border-strong`（対 `--secondary` ≈2.94:1）を検討したが owner が「くどい」と却下し `--border` を選択（DSR-22 narrow 化と同じ判断軸） | `01-decision-rules.md`、`02-component-catalog.md` ① | AC5/AC6 rg |
 | R5-1 | `02-component-catalog.md` ⑨ | UICONV-D6（owner 決定 C1） | live 型も可視 Label 必須。`aria-label` は WCAG 2.5.3 により廃止（runtime lane への先送り不採用） | `02-component-catalog.md` | AC7 rg |
-| R3-3 | `02-component-catalog.md` ⑥ | UICONV-D7 | Alert `warning` の border は `--warning` に確定（owner v2）。text 色は `--warning`（2.92:1、AA 未達）を単独では使えないため候補 (a)/(b) を両論併記し owner v3 決定を待つ | `02-component-catalog.md` | AC8 rg |
+| R3-3 | `02-component-catalog.md` ⑥ | UICONV-D7 | Alert `warning` の border は `--warning` に確定（owner v2）。text 色は `--warning`（2.92:1、AA 未達）を単独では使えないため候補 (a)/(b)/(c)/(d) を併記し owner v4 決定を待つ（既定候補 (c)、①状態 badge と同じ soft/border/strong/icon 構造） | `02-component-catalog.md` | AC8 rg |
 | R2-3/R2-4 | — | UICONV-D8 | design 変更なしの runtime ロジック（R2-3）と owner 未回答（R2-4）のため本 packet では扱わない | なし（Non-scope） | 該当なし |
 | なし（Plan Gate 手続き） | Workflow State 補足 | UICONV-D9 | DSR-23 の番号は lane ⑧ が登録する。⑦ は DSR-01/DSR-08/DSR-22 の拡張に留める | なし（運用上の取り決め） | AC2 rg |
 | R5-5 / owner v2 mockup | `01-decision-rules.md` DSR-22、`04-backbone.md` 原則4②、`review-checklist.md` | UICONV-D10（owner 決定） | badge の枠 3:1 要件を owner が「くどい」と却下し interactive な操作枠のみへ narrow 化。WCAG 1.4.11 はテキスト識別 component の境界コントラストを要求しないため、この narrow 化は規格上も正当化できる。数値要件を外しても icon 必須・soft 背景単独不可で 2026-09-03 の禁止事項は維持される | `01-decision-rules.md`、`04-backbone.md`、`review-checklist.md` | AC9/AC10/AC11 rg |
@@ -314,9 +323,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: catalog ⑬ 本文の「Why」に `04-backbone.md` 原則 4 の引用と `ProductTable.tsx` 枠不整合の実測を、DSR-22 の Why に WCAG 1.4.11 の narrow 化根拠を明記し、packet 依存を残さない設計にする。
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: owner 決定 B2/C1、DSR-22 narrow 化は DSR-01/DSR-22/catalog ⑨/⑬ 本文へ昇格。新規 decision-log entry は不要（既存 D-056/D-079 座組の範囲内）。
 - Assumptions and constraints: badge.tsx の①状態 outline 枠色トークン値（`border-border` → `border-border-strong`）は Lane 5（別 branch、進行中）が扱うため、①状態 tone family 表では固定値を書かず「badge.tsx の既定に従う」とした。Lane 5 merge 後に記述が古くならないか runtime lane 起票時に再確認する。
-- Deferred design gaps, risk, and follow-up target: tone family 表の owner culling 列、`IntegrityCheckPage.tsx` の差異ラベル tone（owner culling で個別裁定）、Alert text 色（候補 a/b、v3 決定待ち）、③強調 pill 枠色（v3 決定待ち）、badge.tsx runtime gap 一式、R2-3/R2-4。
+- Deferred design gaps, risk, and follow-up target: tone family 表の owner culling 列、`IntegrityCheckPage.tsx` の差異ラベル tone（owner culling で個別裁定）、Alert text 色（候補 a/b/c/d、v4 決定待ち）、badge.tsx runtime gap 一式（③強調の `border-warning` 追加を含む）、R2-3/R2-4。
 - Test Design Matrix can cite design decision IDs or source doc sections: Yes（[Test Matrix](test-matrices/2026-09-05-ui-conventions-batch-design.md) 各行に UICONV-D 番号か DSR/catalog 節番号を付す）。
-- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 例外は「複数系統に読める文言は表に含めず owner culling」と「Alert text 色・③強調枠は owner v3 決定待ちで両論併記」の 2 種のみで、catalog ⑬ / ⑥ 本文にその旨を明記する。抜け道なし。
+- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 例外は「複数系統に読める文言は表に含めず owner culling」と「Alert text 色は owner v4 決定待ちで 4 候補併記（③強調枠は v3 で `--warning` に確定済み）」の 2 種のみで、catalog ⑬ / ⑥ 本文にその旨を明記する。抜け道なし。
 
 ## Impact Review Lenses
 
@@ -336,7 +345,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - Existing design docs are sufficient because: `04-backbone.md` 原則 2/4 が badge の 3 種/4 段構成を既に確定しており、DSR-01/DSR-22・catalog 16 パターン・token 表の構造も既に存在。owner v2 mockup 決定で枠要件の細部（3:1 narrow 化・`--border` 選択）も確定した。
 - Source docs updated in this PR: `01-decision-rules.md`（DSR-01/DSR-08/DSR-22 改訂、新規 DSR なし）/ `00-foundations.md`（`--success-border`/`--success-strong` 無条件登録 + 用途セル repoint）/ `02-component-catalog.md`（①⑥⑨⑬）/ `review-checklist.md` / `04-backbone.md`（枠記述の narrow 化 + 状態更新）。
-- Design gaps intentionally deferred: tone family 表の owner culling、`IntegrityCheckPage.tsx` 差異ラベルの個別裁定、Alert text 色（v3、候補 a/b）、③強調 pill 枠色（v3）、R2-3/R2-4。
+- Design gaps intentionally deferred: tone family 表の owner culling、`IntegrityCheckPage.tsx` 差異ラベルの個別裁定、Alert text 色（v4、候補 a/b/c/d）、R2-3/R2-4。
 - Durable decisions discovered in this plan and promoted to source docs: owner 決定 B2（DSR-01 3 段階層 + `--border`）/ C1（SearchBar live Label + aria-label 廃止）/ DSR-22 narrow 化（badge 3:1 対象外）。
 
 Minimum design checks for business-app work:
@@ -354,7 +363,7 @@ Minimum design checks for business-app work:
 - `--success-strong` 対 `--success-soft` の WCAG コントラスト: 独立計算 -> **8.71:1**（AA 4.5:1 を上回る）。
 - `--success-border`（`#bbf7d0`）対 `--background`（`#fafaf9`）: 独立計算 -> **1.16:1**。`--warning-border`（`#fde68a`）対 `--background` も同式で **1.19:1** と一致確認（badge は DSR-22 narrow 化により 3:1 を要求されないため、この値は登録判断に影響しない）。
 - `--border-strong`（`#8a8480`）対 `--secondary`（`#e7e5e4`）: 独立計算 -> **≈2.94:1**（3:1 にわずかに届かない。owner はこの数値の妥当性ではなく見た目の「くどさ」を理由に `--border` を選択した）。
-- Alert `warning` の text 色候補: `--warning`（`#d97706`）対 `bg-card`（`#f5f5f4`）= **2.92:1**（AA 未達、候補 a/b いずれでも単独の本文色には不採用）、`--warning-strong`（`#78350f`）対 `bg-card` = **8.32:1**（候補 a で採用）、`--destructive`（`#b91c1c`）対 `bg-card` = **5.93:1**（既存 `destructive` variant が濃い shade を使う理由の裏取り）。
+- Alert `warning` の text 色候補: `--warning`（`#d97706`）対 `bg-card`（`#f5f5f4`）= **2.92:1**（AA 未達、候補 a/b/d いずれでも単独の本文色には不採用。候補 c は soft 塗り + strong text の組合せで別途 AA を満たす）、`--warning-strong`（`#78350f`）対 `bg-card` = **8.32:1**（候補 a で採用）、`--destructive`（`#b91c1c`）対 `bg-card` = **5.93:1**（既存 `destructive` variant が濃い shade を使う理由の裏取り）。
 - Alert `warning` variant の形（`bg-card` 据え置き vs soft 背景）: `destructive`/`default` の既存実装を `alert.tsx` で実読し、両者とも `bg-card` 共通であることを確認済み（N/A、追加実験不要）。
 
 ## Contract Coverage Ledger
@@ -370,6 +379,7 @@ Minimum design checks for business-app work:
 | UICONV-D7 Alert warning variant（border 確定、text 色 2 候補） | `02-component-catalog.md` ⑥ | AC8 rg | non-scope（v3 決定は Human Gate） |
 | UICONV-D9 DSR-23 は lane ⑧ が登録（本 packet は起草しない） | `01-decision-rules.md` | AC2 rg | — |
 | UICONV-D10 DSR-22 narrow 化（badge 3:1 対象外、owner v2 決定） | `01-decision-rules.md`、`04-backbone.md`、`review-checklist.md` | AC9/AC10/AC11 rg | — |
+| UICONV-D11 ③強調 pill 枠 `--warning`（owner v3 決定、確定済み） | `02-component-catalog.md`、`04-backbone.md`（runtime gap 記録は badge.tsx 側） | AC8 rg（border-warning hit） | non-scope（枠追加自体は runtime lane） |
 | S11 更新履歴 4 file | 各 file | AC12 git diff hunk | — |
 | S12 Plans.md ⑦ 同期 | `Plans.md` | AC13 rg | — |
 | 全体整合 | docs | AC15 `doc-consistency-check.sh --target plan` | — |
@@ -399,8 +409,8 @@ Test Design Matrix: [test-matrices/2026-09-05-ui-conventions-batch-design.md](te
 - DSR-08 の増減数値の色追記が catalog ⑬ に重複していないか。`00-foundations.md` の用途セルが repoint されているか。
 - DSR-01 の `secondary` 枠が `--border`（`--border-strong` ではない）で統一されているか。badge.tsx の②分類枠も同じ `--border` か。
 - SearchBar live 型 Label 反転が commit 型を巻き込んでいないか。`aria-label` 廃止が catalog 本文で確定しているか。
-- Alert warning の border（`--warning`、確定）と text 色（候補 a/b、v3 未決）が正しく書き分けられているか（未決を勝手に確定させていないか）。
-- Non-scope（`src/**`、R2-3/R2-4、Lane 4/5/⑧、`ProductListPage.tsx` 空状態 CTA、Alert text 色・③強調枠の v3 未決事項）が誤って Scope に混入していないか。
+- Alert warning の border/icon（確定）と text 色（候補 a/b/c/d、v4 未決、既定候補 c）が正しく書き分けられているか（未決を勝手に確定させていないか）。③強調 pill の枠色（`--warning`、v3 確定）が catalog/DSR 双方に反映されているか。
+- Non-scope（`src/**`、R2-3/R2-4、Lane 4/5/⑧、`ProductListPage.tsx` 空状態 CTA、Alert text 色の v4 未決事項）が誤って Scope に混入していないか。③強調 pill の枠色（`--warning`、v3 確定）を未決のまま書いていないか。
 
 ## Spec Contract
 
@@ -453,4 +463,5 @@ Plan Review round 1（対象 `fbbcf19`、docs-only 見本 mockup `5c3bc46`/v3 �
 - **batch 1（Opus reject）→ 全件 accept**: tone table の非実在文言「差異あり」削除、`入力中`→原則15、`対象外`→②分類、`反映済み`を owner 承認済み現状として gap から除外、`bg-success` 直接塗り 2 箇所を①状態移行対象に明記、`--success-border` 登録を（一時）conditional 化、`00-foundations` 用途セル repoint、DSR-01 `secondary` に `--border-strong` 枠を（一時）追加、Alert `warning` の border を `--warning` に着色し text/icon は `--warning-strong` に（一時）確定、SearchBar `aria-label` 廃止を catalog 本文で確定。
 - **batch 2（Sonnet approve-with-P2）→ 全件 accept**: AC4/AC9 の anchor を bare class/count から exact sentence へ差替え（tone table 自体が `text-success-strong` を含むため旧 anchor は false positive、既存 checklist 2 行が旧 anchor `DSR-08 ≥2` を既に満たしていたため）、`04-backbone.md:53` の反映先リスト完了マーク追加、DSR-23 は lane ⑧ 帰属を明記、Alert warning のコントラスト理由（`--warning` 2.92:1 fail / `--warning-strong` 8.32:1 pass）を明記。
 - **batch 3（owner が v2 mockup を視認して決定）→ batch 1 の項目 5・7 の既定を上書き**: owner 所感「`--border-strong` の枠はくどい。バッジは改める案だとすっきりする」により、DSR-22 の badge 3:1 要件を interactive な操作枠のみへ narrow 化（`04-backbone.md:20`・`review-checklist.md:86` も同期）、`--success-border` の conditional 化を撤回し無条件登録へ復帰（①状態 = 案A〈tone border〉に確定）、②分類・CTA secondary の枠を `--border-strong` から `--border` へ変更（badge.tsx / button.tsx の runtime gap 記述も追随）。Alert warning は border `--warning` + `AlertTriangle` を確定、text 色は owner「icon 付きで分かりやすい」以降 v3 mockup 待ちの 2 候補（`--warning-strong` 既定 / `--foreground` 本文+amber 枠）として両論併記。③強調 pill の枠色（`--warning-border` vs `--warning`）も v3 決定待ちで既定なしとした。
-- Findings Freeze: not yet frozen（batch 3 是正後の再レビュー待ち、v3 mockup の owner 決定が残っている）; post-freeze exceptions: none.
+- **batch 4（owner が v3 mockup を視認して決定）→ ③強調の枠を確定、Alert text 色は再オープン**: ③強調（琥珀 pill）の枠を `--warning`（`#d97706`）に確定（対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1、独立計算で owner 提示値と一致）。適用 3 site（`ProductImportPreview.tsx:76`/`ProductRankingTable.tsx:80`/`BackupRestorePage.tsx:533`）を runtime gap として記録。「owner決定待ち（v3）」marker は③強調について解消、Alert text 色は解消されず — owner は候補 (b) を「すっきりするが warning らしさに欠ける」と評したため、Coordinator が新候補 (c)（soft 塗り + border/icon `--warning` + text `--warning-strong`、①状態 badge と同じ 4 点構造）と (d)（タイトルのみ強調）を追加提案し、v4 mockup で (a)/(b)/(c)/(d) の 4 候補（既定 (c)）を再提示する。marker を「owner決定待ち（v4）」へ更新。
+- Findings Freeze: not yet frozen（batch 4 是正後、v4 mockup の owner 決定〈Alert text 色〉が残っている）; post-freeze exceptions: none.
