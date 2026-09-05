@@ -2,7 +2,7 @@
 
 Plan Packet: [../2026-09-05-ui-list-backbone-d-lane4.md](../2026-09-05-ui-list-backbone-d-lane4.md)
 
-Plan Review round 1（Opus）が reject した旧 SC1（`ListShell` wrapper 撤去）・旧 SC2b〜SC2f（7 画面中 6 画面の長文列/table 幅変更）は撤回済み。本 Matrix は round 1/2 是正後の Scope（商品一覧の部門列折返しのみ + 8 画面共通の frame/pagination/Select）に対応する。
+Plan Review round 1（Opus）が reject した旧 SC1（`ListShell` wrapper 撤去）・旧 SC2b〜SC2f（7 画面中 6 画面の長文列/table 幅変更）は撤回済み。round 2（Opus、reject）で在庫照会の上部 summary 条件・整合性チェックの frame 除外・table wrapper の rounded-lg 統一・範囲外 page の検知漏れを是正した（第 1 便、フィードバック項目 1/3/4「折返しの効果・floor 概算」は owner 決定待ちのため次便）。本 Matrix はこれらすべてを反映した Scope に対応する。
 
 ## Risk
 
@@ -13,11 +13,13 @@ R3（商品一覧の table overflow 挙動 + 共有 component `Pagination`/`Pagi
 - SC-PT: `ProductTable.tsx` 部門列に `whitespace-normal` が付く（新規 `min-w-*` を追加しない、`ListShell.tsx` は無変更）
 - SC1a〜SC1c: `Pagination`（下部）が `totalPages <= 1`（`totalCount === 0` 含む）のとき何も描画せず、`totalPages > 1` では従来どおり描画し、51 件/perPage 50 の 2 ページ目で「前へ」が有効
 - SC2: `PaginationSummary` が新規に `text-sm text-muted-foreground tabular-nums` を持つ（`text-base text-foreground` 撤去、下部の分割表記とは別に 1 箇所だけ新規出現）
-- SC3a〜SC3g: 7 画面（`ListShell` を使わない全画面）で `totalCount > 0` の結果表示時に上部 `PaginationSummary` が新規描画され、既存の単数一致 `getByText` 重複文言 test 3 file 6 箇所が是正される
-- SC4a〜SC4g: 7 画面の枠が `rounded-lg border bg-card p-4`（`bg-stone-50` / 枠なし / `bg-card` 欠落からの是正）
+- SC3a〜SC3g: 7 画面（`ListShell` を使わない全画面）で `totalCount > 0` の結果表示時に上部 `PaginationSummary` が新規描画され、既存の単数一致 `getByText` 重複文言 test 3 file 6 箇所が是正される。**SC3b（在庫照会）のみ round 2 是正**: 下部と同じ `statusValue === "all" && totalCount !== null` の 2 条件でのみ描画（`totalCount: number | null`、`types.ts:54`）
+- SC4a〜SC4f: 6 画面の枠が `rounded-lg border bg-card p-4`（`bg-stone-50` / 枠なし / `bg-card` 欠落からの是正）。整合性チェックは round 2 是正で対象外（`IntegrityCheckPage.tsx:234` は Select 単独ラッパーで filter フィールドを持たない）
+- SC4g: `IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:496` の table wrapper が `overflow-x-auto rounded-md border` → `overflow-x-auto rounded-lg border` へ（round 2 是正、`bg-card` は付けない）
 - SC5a〜SC5b: `StocktakePage` と一括価格改定（`PriceRevisionFilters`）で表示件数 `Select` が枠内の最後尾（他要素の後）に描画される。既存 SC10/SC9a の rewrite・pass 維持が oracle
 - SC6: `StocktakePage.tsx:854` の `<fieldset>` が単一ページで描画されない
 - SC7: `ListShell.test.tsx` 既存 17 it（`:343` の wrapper 完全一致を含む）が無変更のまま pass する（回帰確認、本 lane は `ListShell.tsx` を変更しない）
+- SC8（round 2 是正、AC13）: フィルタ変更で `totalCount` が perPage 未満へ減っても `page > totalPages` の状態で描画される画面が無い（`StockInquiryPage.tsx:196`/`OperationLogsPage.tsx:452` の既存「先頭ページに戻る」`EmptyState` 以外の画面から 1 画面選定）
 
 ## Failure Modes
 
@@ -29,6 +31,9 @@ R3（商品一覧の table overflow 挙動 + 共有 component `Pagination`/`Pagi
 - 表示件数 `Select` が枠内の最後尾に来ない（`StocktakePage` の reorder 漏れ、`PriceRevisionFilters` への配線漏れ、既存 SC9a が検出する `onPerPageChange` 未配線）
 - `StocktakePage.tsx:854` の `<fieldset>` が単一ページで空要素のまま残る
 - `ListShell.tsx` に意図しない変更が混入し `ListShell.test.tsx` の既存 17 it のいずれかが壊れる（特に `:343` の wrapper 完全一致）
+- 在庫照会の上部 summary が下部と異なる条件（`totalCount>0` のみ等）で描画され、`source: "low_stock"` のとき誤って表示される
+- 整合性チェックの Select 単独ラッパーに誤って `bg-card` frame が付く、または table wrapper の `rounded-md`→`rounded-lg` 統一漏れ
+- フィルタ変更で `totalCount` が減った直後に `page > totalPages` のまま一覧が描画される画面が新たに生まれる
 
 ## Test Matrix
 
@@ -40,11 +45,14 @@ R3（商品一覧の table overflow 挙動 + 共有 component `Pagination`/`Pagi
 | SC1c 51件/50件表示の 2 ページ目 edge | 「前へ」欠落 | unit（既存 `Pagination.test.tsx` 拡張、edge oracle） | SC1c: totalCount=51, perPage=50, page=2 renders an enabled 前へ button | 「前へ」が disabled または非表示になる |
 | SC2 PaginationSummary style | 旧 class 残存 / oracle 誤り防止 | unit（既存 `Pagination.test.tsx` 拡張） | SC2: PaginationSummary root has exactly text-sm text-muted-foreground tabular-nums (new, single occurrence), text-base text-foreground has 0 occurrences | 旧 class が残る、新 class が付かない、または下部の分割表記と誤って同一視される |
 | SC3a〜SC3g 7 画面の上部 summary 新規描画 + 既存重複文言 test 是正 | 描画漏れ / 既存 test 破綻放置 | unit（各 Page.test.tsx 拡張、7 file。うち `IntegrityCheckPage.test.tsx`/`OperationLogsPage.test.tsx`/`StockInquiryPage.test.tsx` は既存 `getByText` 是正を含む） | SC3x: results view renders PaginationSummary text above the table when totalCount > 0; existing single-match getByText assertions at IntegrityCheckPage.test.tsx:414, OperationLogsPage.test.tsx:280/292/419/431, StockInquiryPage.test.tsx:526 are rewritten to getAllByText/within and still pass | 対象画面のいずれかで上部 summary が見つからない、または上記 6 箇所のいずれかが多重一致で例外を投げたまま残る |
-| SC4a〜SC4g 7 画面の枠 | 旧枠残存/新枠欠落 | unit（各 Page/Component.test.tsx 拡張、file 別 `rg` anchor は Plan Packet Scope S1 参照） | SC4x: filter section root has rounded-lg border bg-card p-4 | 旧 class（`bg-stone-50`／枠なし／`bg-card` 欠落）が残る |
+| SC3b 在庫照会 上部 summary 条件（round 2 是正） | 上部が誤って常時描画される、または下部と条件が食い違う | unit（既存 `StockInquiryPage.test.tsx` 拡張） | SC3b: top PaginationSummary renders only when statusValue === "all" && totalCount !== null, matching the existing bottom Pagination gate | status が `"all"` 以外（`totalCount===null`）で上部が描画される、または `"all"` で `totalCount!==null` なのに描画されない |
+| SC4a〜SC4f 6 画面の枠 | 旧枠残存/新枠欠落 | unit（各 Page/Component.test.tsx 拡張、file 別 `rg` anchor は Plan Packet Scope S1 参照） | SC4x: filter section root has rounded-lg border bg-card p-4 | 旧 class（`bg-stone-50`／枠なし／`bg-card` 欠落）が残る |
+| SC4g table wrapper rounded-lg 統一（round 2 是正） | rounded-md 残存 / bg-card 誤付与 | unit（`IntegrityCheckPage.test.tsx`/`OperationLogsPage.test.tsx` 拡張） | SC4g: table wrapper div has overflow-x-auto rounded-lg border, no bg-card | `rounded-md` が残る、または `bg-card` が誤って付く |
 | SC5a StocktakePage Select 最後尾（既存 SC10 rewrite） | 順序不変 | unit（既存 `StocktakePage.test.tsx:1054` の SC10 rewrite、新規 test ではない） | SC10（rewrite）: filter row lists department filter, then uncounted-only checkbox, then per-page select in that DOM order | DOM 順で Select が Checkbox より前にある |
 | SC5b PriceRevisionFilters Select 配線（既存 SC9a が oracle） | 未配線残存 | unit（既存 `PriceRevisionPage.test.tsx:660-669` の SC9a、無変更のまま pass 必須 + `PriceRevisionFilters` 側の位置 assertion 追加） | SC9a（無変更）+ 新規: 表示件数 Select renders inside PriceRevisionFilters as the last child of the filter row, and clicking it still calls mockScrollPageToTop | SC9a が fail する（`onPerPageChange` 配線漏れ）、または Select が `PriceRevisionPage.tsx` 側に独立して残る |
 | SC6 StocktakePage fieldset ガード | 空 fieldset 残存 | unit（既存 `StocktakePage.test.tsx` 拡張） | SC6: fieldset wrapping the bottom Pagination is absent when totalPages<=1 | 単一ページで空の `<fieldset>` が DOM に残る |
 | SC7 ListShell 回帰 | 意図しない副作用 | unit（既存 `ListShell.test.tsx`、無変更のまま pass 必須、17 it） | SC7: existing 17 it (including :343 wrapper exact-match) still pass unmodified | 本 lane の変更が `ListShell.tsx` に混入し既存 it のいずれかを fail させる |
+| SC8 範囲外 page 非到達（round 2 是正、AC13） | page > totalPages のまま描画される | unit（1 画面、既存 test 拡張。フィルタ変更で totalCount を減らして page reset を確認） | SC8: changing a filter that shrinks totalCount below the current page's range still leaves page <= totalPages (via existing reset handler) | フィルタ変更後も `page > totalPages` の状態で一覧が描画される |
 
 ## Mutation Oracle Notes
 

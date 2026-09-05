@@ -2,7 +2,7 @@
 
 owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4 各 sub-bullet + E12、`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md:95,109,145`）に基づき、「窓を狭めると表が枠から出っ張る」現象を識別列 sticky ではなく表そのものを縮ませる方式（D）で解消し、ページ送りの上下帯を「上部は常時表示・ボタンなし」「下部は複数ページ時のみ」へ切り分け、表示件数 `Select` の位置と filter/toolbar 枠の地色を 8 画面で統一する。E12 が示した「横 scroll 容器 + 識別列 sticky」案は、DSR-17 `<main>` 単一 scroll 契約と CSS の overflow 計算規則から Contract Probe（Playwright 不要）で不採用と確定し、`ListShell` の `identityColumns` prop は引き続き未使用のまま予約する。
 
-**Plan Review round 1（独立 Sonnet subagent + Opus 5 read-only claims-producer、D-056）は reject**。Coordinator が P1 を実装・既存 test に対して裏取りし、本 packet（plan-draft 差し戻し是正）へ反映した。要点: (1) `ListShell.tsx:99` の `w-min min-w-full` wrapper は撤去しない——Lane 2 追補 S17（`docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:165`）が横 overflow 時に summary 帯を table 幅へ追随させるために導入し、owner が AC-L3-2 で確認済み、`ListShell.test.tsx:343` が `className` の完全一致で保護している。是正は wrapper を触らず、対象列の折返しで min-content の床を下げること。(2) 表を縮ませる対象は**商品一覧 `ProductTable.tsx` のみ**——`stickyHeader` を採用するのは `ProductListPage.tsx:284` だけであり、他 7 画面は `table.tsx:9` の `overflow-x-auto` で内部 scroll するため page 地へ出っ張ることは無い。詳細は「起票時実測」節と `## Review Response` を参照。round 2（Sonnet 継続）は上部 summary 導入に伴う既存 test の重複文言破綻・SC7b の配線退行 oracle・catalog 旧文言の対句を追加指摘、いずれも反映済み。
+**Plan Review round 1（独立 Sonnet subagent + Opus 5 read-only claims-producer、D-056）は reject**。Coordinator が P1 を実装・既存 test に対して裏取りし、本 packet（plan-draft 差し戻し是正）へ反映した。要点: (1) `ListShell.tsx:99` の `w-min min-w-full` wrapper は撤去しない——Lane 2 追補 S17（`docs/archive/plans/2026-09-03-ui-list-backbone-d-lane2.md:165`）が横 overflow 時に summary 帯を table 幅へ追随させるために導入し、owner が AC-L3-2 で確認済み、`ListShell.test.tsx:343` が `className` の完全一致で保護している。是正は wrapper を触らず、対象列の折返しで min-content の床を下げること。(2) 表を縮ませる対象は**商品一覧 `ProductTable.tsx` のみ**——`stickyHeader` を採用するのは `ProductListPage.tsx:284` だけであり、他 7 画面は `table.tsx:9` の `overflow-x-auto` で内部 scroll するため page 地へ出っ張ることは無い。詳細は「起票時実測」節と `## Review Response` を参照。**round 2（Opus 5）も reject**（並行した Sonnet round 2 は rate limit で中断、Workflow State の妥当性検証のみ完了）: 上部 summary 導入に伴う既存 test の重複文言破綻・SC7b の配線退行 oracle・catalog 旧文言の対句・在庫照会の上部 summary 条件・整合性チェックの frame 除外・table wrapper の rounded-lg 統一・範囲外 page の検知漏れを指摘、いずれも本 commit（第 1 便）で反映済み。item (1) 折返しの効果と floor 概算（Opus #1/#3/#4）は owner 決定待ちのため第 2 便で扱う。
 
 ## Workflow State
 
@@ -18,7 +18,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3 — AC-L3-1 窓を狭めても商品一覧の表が枠内に収まり部門列が折り返す, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3 表示件数 Select の位置と枠の地色が 8 画面で揃う, plus one run at 特大 × OS 125%（Plans.md ④ (vii) residual risk、一括価格改定の残存水平 scroll 許容可否）
+- Human Gate: owner Windows native L3 — AC-L3-1 窓を狭めても商品一覧の表が枠内に収まり部門列が折り返す, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3 表示件数 Select の位置と枠の地色が 6 画面で揃う（整合性チェックの単独 Select は対象外、下記 S1 参照）
 
 ## Owner Effort Budget
 
@@ -140,22 +140,23 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Scope
 
-- **S1 filter/toolbar 枠の地色統一**（`rounded-lg border bg-card p-4`、L4-D3。`ListShell.tsx:88` の既存 class 文字列と完全一致させる。Plan Review で変更なし）:
+- **S1 filter/toolbar 枠の地色統一**（`rounded-lg border bg-card p-4`、L4-D3。`ListShell.tsx:88` の既存 class 文字列と完全一致させる。対象は 6 画面——round 2 是正で整合性チェックを除外、下記参照）:
   - S1a 棚卸し `StocktakePage.tsx:742` `<div className="flex flex-wrap items-center gap-4">` → `<div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card p-4">`
   - S1b 在庫照会 `StockInquiryPage.tsx:102` `<div className="flex flex-wrap items-center gap-3">` → 同型で `rounded-lg border bg-card p-4` 追加
   - S1c 入出庫履歴 `InventoryRecordsPage.tsx:159` `className="space-y-3 rounded-md border p-4"` → `className="space-y-3 rounded-lg border bg-card p-4"`
   - S1d 在庫変動履歴 `StockMovementsPage.tsx:134` `<div className="flex flex-wrap items-end gap-3">` → `rounded-lg border bg-card p-4` 追加（`:98` の商品情報 card は不変、Non-scope）
   - S1e 操作ログ `OperationLogsPage.tsx:344` `className="space-y-3 rounded-md border p-4"` → `className="space-y-3 rounded-lg border bg-card p-4"`
   - S1f 一括価格改定 `PriceRevisionFilters.tsx:33` `className="space-y-3 rounded-md border bg-stone-50 p-4"` → `className="space-y-3 rounded-lg border bg-card p-4"`
-  - S1g 整合性チェック `IntegrityCheckPage.tsx:234` `<div className="flex items-center gap-2">` → `rounded-lg border bg-card p-4` 追加
-  - 完了条件（file 別）: 対象 file で `rg -Fn "bg-stone-50"` / 該当の枠なし旧 class 文字列 = 0、`rg -Fn "rounded-lg border bg-card p-4"` ≥ 1
+  - **整合性チェックは対象外（round 2 是正、Opus P2）**: `IntegrityCheckPage.tsx:234` の `<div className="flex items-center gap-2">` は表示件数 `Select` 単独のラッパーで、`phase === "completed" && result !== null` のときにしか描画されず、他 filter フィールドを一切持たない「filter/toolbar 枠」ではない。囲む対象が Select 1 つだけの div に枠を付けても他画面の filter frame と意味が揃わないため、S1 の frame sweep から除外する（AC1 は 6 画面、AC-L3-3 も 6 画面が対象）
+  - S1g 表 frame の `rounded-md` → `rounded-lg` 統一（round 2 是正、Opus P3）: filter/toolbar 枠を `rounded-lg` に揃える一方、同じ画面の table を囲む `overflow-x-auto rounded-md border` wrapper が `rounded-md` のまま残ると角丸が食い違う。`IntegrityCheckPage.tsx:348` と `OperationLogsPage.tsx:496` の `className="overflow-x-auto rounded-md border"` を `className="overflow-x-auto rounded-lg border"` へ（`border`/`overflow-x-auto` は不変、角丸 token のみ 1 箇所ずつ変更。`bg-card` は付けない——table wrapper は filter frame ではないため地色は変えない）
+  - 完了条件（file 別）: 対象 6 file で `rg -Fn "bg-stone-50"` / 該当の枠なし旧 class 文字列 = 0、`rg -Fn "rounded-lg border bg-card p-4"` ≥ 1。`IntegrityCheckPage.tsx:234` の `Select` ラッパーに `bg-card` が付いていないことを回帰確認する（対象外の逸脱防止）。`IntegrityCheckPage.tsx`/`OperationLogsPage.tsx` で `rg -Fn "overflow-x-auto rounded-md border" <file>` = 0 かつ `rg -Fn "overflow-x-auto rounded-lg border" <file>` ≥ 1
 - **S2 `Pagination`/`PaginationSummary` の上下切り分け契約変更**（`src/components/patterns/Pagination.tsx`、L4-D4。8 画面共有の 1 箇所修正で全 caller に反映——owner の「呼出し元を直せば一気に全部変わる」設計選好、Lane 3 の flag 是正先例と同型。Plan Review で変更なし、oracle のみ round 2 で是正）:
   - `PaginationSummary` の className: `"text-base text-foreground tabular-nums"` → `"text-sm text-muted-foreground tabular-nums"`（下部 `Pagination` の左側 summary と同じ見た目に統一）
   - `Pagination`: `computeRange` 直後に `if (totalPages <= 1) return null;` を追加（`totalCount === 0` は `totalPages = max(1, ceil(0/perPage)) = 1` のため同じ分岐で null になる——既存の「0 件」表示 test は本変更で仕様が変わる。下記 AC4 参照）
   - 完了条件（round 2 是正: `rg -Fn "text-sm text-muted-foreground tabular-nums"` は今日 0 件——下部の class は `"flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"`（外側 div）と `"tabular-nums"`（内側 div）に分割されており、結合済み文字列としては存在しない。よって完了条件は「新規に 1 箇所だけ出現する」ことを検査する）: `rg -Fn 'className="text-base text-foreground tabular-nums"' src/components/patterns/Pagination.tsx` = 0（起票時 1）かつ `rg -Fn "text-sm text-muted-foreground tabular-nums" src/components/patterns/Pagination.tsx` = 1（`PaginationSummary` 側のみに新規出現、下部の分割 class 表記とは別）かつ `rg -n "totalPages <= 1" src/components/patterns/Pagination.tsx` ≥ 1（`rg -c` は一致した**行数**を数える点に注意——本 file は該当行が単一のため `-c`/`-Fn` の値は一致する）
 - **S3 上部 `PaginationSummary` の 7 画面ロールアウト + 既存重複文言 test の是正**（`ListShell` を使わない全画面、L4-D5。各画面の「結果あり」分岐内、`<Table>` 直前に 1 行追加するだけの機械的変更。Plan Review round 2 で既存 test 破綻の是正を追加）:
-  - S3a 棚卸し `StocktakePage.tsx`（`items.length === 0` の EmptyState 分岐の else 側、`:822` の `<Table>` 直前）
-  - S3b 在庫照会 `StockInquiryPage.tsx`（`data` 分岐内、`ProductListTable` 直前）
+  - S3a 棚卸し `StocktakePage.tsx`（`items.length === 0` の EmptyState 分岐の else 側、`:821-852`）。**round 2 是正（Opus P3）**: この else 分岐は現在 `<Table>...</Table>` を裸で返す（囲み `<div>`/`<>` なし）。`PaginationSummary` を追加するには 2 要素を返す必要があるため、`<>...</>`（Fragment）または `<div className="space-y-3">` で `<Table>` ごと包み直す（単なる「1 行追加」ではない）
+  - S3b 在庫照会 `StockInquiryPage.tsx`（`data` 分岐内、`ProductListTable` 直前）。**round 2 是正（Opus P1）**: 下部 `<Pagination>` は `statusValue === "all" && data.totalCount !== null` でのみ描画される（`totalCount: number | null`、`types.ts:54`。`source: "low_stock"` のとき `totalCount` は `null`）。上部 `PaginationSummary` にも**同じ条件**を書く——status フィルタが `"all"` 以外（在庫少 等）のときは `totalCount` が無いため上下とも表示しない。他 6 画面と異なり在庫照会だけ「`totalCount > 0` かつ `statusValue === "all"`」の 2 条件になる
   - S3c 入出庫履歴 `InventoryRecordsPage.tsx`（`recordsQuery.data` 分岐内、`:333` の `<Table>` 直前）
   - S3d 在庫変動履歴 `StockMovementsPage.tsx`（`movementsQuery.data` 分岐内、`MovementTable` 直前）
   - S3e 操作ログ `OperationLogsPage.tsx`（`logsQuery.data.items.length > 0` 分岐内、`:496` の table wrapper 直前）
@@ -166,7 +167,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - 完了条件: 各 file で `rg -c "PaginationSummary" <file>` ≥ 1（起票時 0、商品一覧除く）かつ 0 件分岐（EmptyState 系）に新規 import が漏れ出していないこと（対応 test で確認）。上記 3 file 6 箇所の `getByText` が `getAllByText`/`within` へ置き換わっていること（`rg -c "getByText\(\"全 " <file>` が是正後は 0、置換先の `getAllByText`/`within` 使用箇所が同数以上）
 - **S4 表示件数 `Select` の右端統一**（L4-D5 続き。5 画面は起票時実測で既に最後尾——変更不要——のため、実際の構造変更は 2 画面のみ）:
   - S4a 棚卸し `StocktakePage.tsx:752-778` の表示件数 `Select` ブロックを `:779-793` の未入力のみ表示 Checkbox ブロックより**後**へ並べ替える（JSX の子要素順の入替えのみ、ロジック変更なし）。**既存 test の rewrite が必須**: `StocktakePage.test.tsx:1054`（`it("SC10: filter row lists department filter, then per-page select, then uncounted-only checkbox in that DOM order"`）の `compareDocumentPosition` 期待順を「部門 → 未入力のみ表示 → 表示件数」へ書き換える（新規 test を追加するのではなく既存 SC10 を rewrite、Matrix SC4a はこの rewrite を指す）
-  - S4b 一括価格改定: `PriceRevisionPage.tsx:67-96` の表示件数 `Select` ブロックを `PriceRevisionFilters.tsx` の filter 行（`:34-91`）へ**移設**し、その最後尾（`廃番を含む` チェックボックスの後）に配置する。`PriceRevisionFilters` に `perPage: number` / `onPerPageChange: (value: number) => void` prop を追加し、呼び出し元 `PriceRevisionPage.tsx` から現行の state/handler をそのまま渡す（新規 state 追加なし、配線の付け替えのみ）。**既存 test が退行 oracle を兼ねる**: `PriceRevisionPage.test.tsx:660-669`（`it("SC9a: 表示件数変更で画面を先頭へ戻す"`）は accessible name `表示件数` の combobox をクリックし `mockScrollPageToTop` の呼出しを確認する既存 test で、`onPerPageChange` の配線漏れ mutant を検出する（新規 test 追加なし、この既存 test の pass 維持が SC4b の failure-mode oracle）
+  - S4b 一括価格改定: `PriceRevisionPage.tsx:67-96` の表示件数 `Select` ブロックを `PriceRevisionFilters.tsx` の filter 行（`:34-91`）へ**移設**し、その最後尾（`廃番を含む` チェックボックスの後）に配置する。`PriceRevisionFilters` に `perPage: number` / `onPerPageChange: (value: number) => void` prop を追加し、呼び出し元 `PriceRevisionPage.tsx` から現行の state/handler をそのまま渡す（新規 state 追加なし、配線の付け替えのみ）。**既存 test が退行 oracle を兼ねる**: `PriceRevisionPage.test.tsx:660-669`（`it("SC9a: 表示件数変更で画面を先頭へ戻す"`）は accessible name `表示件数` の combobox をクリックし `mockScrollPageToTop` の呼出しを確認する既存 test で、`onPerPageChange` の配線漏れ mutant を検出する（新規 test 追加なし、この既存 test の pass 維持が SC4b の failure-mode oracle）。**round 2 是正（Opus P2）**: `PriceRevisionFilters.tsx:46` は取引先 native `<select>` を同じ filter 行に持つ。lane ⑧（`agent/ui-select-unify`、merge train Lane 5 → ⑧ → Lane 4）がこの native `<select>` を shadcn `Select` へ置換する予定で、本 lane の branch は ⑧ の tip へ単段 merge で付け替えてから実装する（Risk 節の Stacked train 参照）。したがって S4b 実装時点では取引先は既に shadcn `Select` に置換済みのはずであり、本 packet では native `<select>` への対応を追加しない（下記 Residual Risk 参照）
   - 在庫照会 / 入出庫履歴 / 在庫変動履歴 / 操作ログ は起票時実測のとおり既に filter 行の最後尾のため変更不要（回帰確認のみ、L4-D5）
   - 完了条件: S4a は `StocktakePage.test.tsx:1054` の rewrite 後の `compareDocumentPosition` 期待順で pass。S4b は `rg -n "price-revision-per-page" src/features/products/components/PriceRevisionFilters.tsx` ≥ 1（起票時 0）かつ `rg -n "price-revision-per-page" src/features/products/PriceRevisionPage.tsx` = 0（起票時 1、独立 Select 削除）かつ `PriceRevisionPage.test.tsx:660-669` の SC9a が無変更のまま pass
 - **S5 `StocktakePage.tsx:854` の空 `<fieldset>` ガード**（P3、round 1 是正で新規追加。`Pagination` が `totalPages<=1` で null を返すと `<fieldset disabled={disabled}><Pagination/></fieldset>` が中身の無い `<fieldset>` だけを残す。他 2 箇所は table と同じ `space-y-*` container 内の兄弟のため React が null 子を描画せず stray gap は生じない——`IntegrityCheckPage.tsx:417`/`StockMovementsPage.tsx:243` は verified non-issue として変更しない、下記 Review Focus 参照）: `StocktakePage.tsx` 側で `totalPages`（`Pagination.tsx` と同じ `Math.max(1, Math.ceil(totalCount / perPage))` 式）を計算し、`totalPages > 1` のときだけ `<fieldset>` を描画する。完了条件: `StocktakePage.test.tsx` に「単一ページのとき `<fieldset>` が描画されない」新規 assertion
@@ -185,13 +186,18 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - R2-3 / R2-4（在庫照会）、badge 色・増減数値の色（⑦）、native `<select>` → shadcn `Select` 置換（⑧、R5-3）
 - `StockMovementsPage.tsx:98` 商品情報 card（別 section、既存 `bg-card` のまま不変）
 - `IntegrityCheckPage.tsx:417`/`StockMovementsPage.tsx:243` の `Pagination` null 化に伴う wrapper 調整（`space-y-*` container 内の兄弟要素のため null 子は React が描画せず stray gap を生まない、verified non-issue。`StocktakePage.tsx:854` の `<fieldset>` のみ単独子のため S5 で対処する）
+- `IntegrityCheckPage.tsx:234` の表示件数 `Select` 単独ラッパーへの frame 付与（round 2 是正、上記 S1 参照。他 filter フィールドを持たないため対象外）
+
+## Residual Risk
+
+- **⑧ 未 merge のまま実装した場合の既知残件（round 2 是正、Opus P2）**: S4b は `PriceRevisionFilters.tsx` の取引先 native `<select>`（`:46`）が lane ⑧ で shadcn `Select` に置換済みであることを前提にする。もし何らかの事情で ⑧ が本 lane より先に merge されないまま Writer が実装した場合、表示件数 `Select`（shadcn）の隣に取引先 native `<select>` が残り、枠の濃淡差（Lane 5 の `--control-surface`/`--border-strong` sweep 対象）は解消済みでも見た目の部品種別は揃わない。Coordinator は実装着手前に ⑧ の merge 状態を確認し、未 merge なら Stacked train の merge train 順（Lane 5 → ⑧ → Lane 4）どおり待つ。待たずに実装する場合はこの既知残件を owner L3 の所感として記録し、別 item 化する
 
 ## Acceptance Criteria
 
-- AC1: S1a〜S1g の 7 画面すべてで枠が `rounded-lg border bg-card p-4` — 各 file 個別 `rg -Fn`（Scope S1 各 sub-item のとおり）
+- AC1: S1a〜S1f の 6 画面すべてで枠が `rounded-lg border bg-card p-4`（整合性チェックは round 2 是正で対象外、下記参照）— 各 file 個別 `rg -Fn`（Scope S1 各 sub-item のとおり）。加えて S1g（round 2 是正）で `IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:496` の table wrapper が `rounded-md` → `rounded-lg` に統一される（`bg-card` は付かない）
 - AC2: `Pagination` が `totalPages <= 1` で何も描画しない、`totalPages > 1` では従来どおり描画する — 新規 vitest（`Pagination.test.tsx` 拡張、SC1a〜SC1c）。既存の「`totalCount === 0` は『0 件』を表示する」test は本変更で「`totalCount === 0` は null を描画する」へ書き換える（削除ではなく仕様変更としての更新、既存 test の無効化には当たらない）
 - AC3: `PaginationSummary` が新規に `text-sm text-muted-foreground tabular-nums` を持つ（`text-base text-foreground` は 0 件） — `rg -Fn "text-base text-foreground tabular-nums" src/components/patterns/Pagination.tsx` = 0、`rg -Fn "text-sm text-muted-foreground tabular-nums" src/components/patterns/Pagination.tsx` = 1（下部の分割表記とは別、Scope S2 の oracle 注記参照）
-- AC4: 7 画面すべてで `totalCount > 0` の結果表示時に上部 `PaginationSummary` が描画され、かつ `IntegrityCheckPage.test.tsx:414`/`OperationLogsPage.test.tsx:280,292,419,431`/`StockInquiryPage.test.tsx:526` の重複文言 test が `getAllByText`/`within` へ是正されて pass する — 各 Page.test.tsx 新規/是正 assertion（Scope S3 各 sub-item）
+- AC4: 7 画面すべてで `totalCount > 0` の結果表示時に上部 `PaginationSummary` が描画され、かつ `IntegrityCheckPage.test.tsx:414`/`OperationLogsPage.test.tsx:280,292,419,431`/`StockInquiryPage.test.tsx:526` の重複文言 test が `getAllByText`/`within` へ是正されて pass する — 各 Page.test.tsx 新規/是正 assertion（Scope S3 各 sub-item）。**例外（round 2 是正）**: 在庫照会のみ上部 summary は `statusValue === "all" && totalCount !== null` のときだけ描画される（下部と同条件、`source: "low_stock"` では `totalCount` が `null` のため上下とも非表示のままでよい）
 - AC5: 51 件 / perPage 50 のとき page 2 で「前へ」が有効表示される — `Pagination.test.tsx` 新規 edge test
 - AC6: 表示件数 `Select` が 8 画面すべてで filter/toolbar 枠内の最後尾 — `StocktakePage.test.tsx:1054`（SC10 rewrite）、`PriceRevisionFilters.tsx`/`PriceRevisionPage.tsx`（配線先の変更 + `PriceRevisionPage.test.tsx:660-669` SC9a の pass 維持）。他 5 画面は既存 DOM 順が変わらないことを既存 test の pass 維持で確認（回帰）
 - AC7: `StocktakePage.test.tsx:1042`（SC8c'）が `Pagination` の `totalPages<=1` null 化後も pass する（fixture の `total_count` を perPage 超に上げる、または前へ/次への不在を assert する形へ是正）
@@ -200,9 +206,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC10: DSR-22 の文言が新形へ更新される（`topSummary`/`identityColumns` の既存 opt-in 機構と矛盾しない形で） — Scope S6 の `rg -Fn` 完全一致検査
 - AC11: catalog ⑩ の文言・構造例・トークン記述・`totalCount===0` 系の pre-S2 記述（`:643`,`:648`）が新形へ更新される — Scope S7 の `rg -Fn`/`rg -c` 完全一致検査
 - AC12: catalog ⑯ 項目 2 のみ新形へ更新され、項目 3（`w-min min-w-full`）は無変更のまま残る — Scope S8 の `rg -Fn` 完全一致検査（新形出現 + 旧項目 3 残存の両方を確認）
+- AC13（round 2 是正、Opus P2）: `page > totalPages` の状態で描画される画面が無いこと — 8 画面のうち `StockInquiryPage.tsx:196`（`isOutOfRangePage`）と `OperationLogsPage.tsx:452`（`outOfRange`）の 2 画面は既存の「先頭ページに戻る」`EmptyState` で明示的に検知・復帰する。残り 6 画面は専用の範囲外検知 UI を持たず、フィルタ変更時に page をリセットする既存 handler（`Error, empty, retry, and recovery behavior` 節に例示済み）のみで防いでいる。下部 `Pagination` が `totalPages<=1` で非表示になっても、フィルタ変更で `totalCount` が変わった直後に一時的に `page > totalPages` になり得る経路が新たに生まれていないことを、フィルタ変更で `totalCount` を perPage 未満へ減らす新規 test 1 本（対象画面は Writer が残り 6 画面から 1 画面選定、既存の page-reset handler 経路を通る）で確認する — 新規 vitest 1 本
 - AC-L3-1（owner Windows native L3）: `ProductListPage.tsx`（商品一覧）で窓を狭めても表が枠内に収まり部門列が折り返す（対象は商品一覧 1 画面のみ、起票時実測の floor 概算 ≈ 980〜1050px 付近から確認）
 - AC-L3-2（owner Windows native L3）: `Pagination.tsx` の複数ページの画面 1 つで下部ページ送りが表示され、単一ページの画面 1 つで下部ページ送りが非表示になる（上部件数のみ残る）
-- AC-L3-3（owner Windows native L3）: 表示件数 `Select` の位置と filter/toolbar 枠の地色が 8 画面で揃って見える
+- AC-L3-3（owner Windows native L3）: 表示件数 `Select` の位置が 8 画面で揃って見え、filter/toolbar 枠の地色が対象 6 画面（整合性チェックを除く、round 2 是正）で揃って見える
 
 ## Design Sources
 
@@ -303,12 +310,14 @@ Minimum design checks for business-app work:
 |---|---|---|---|
 | L4-D1 識別列 sticky 不採用（owner D 決定） | なし（Non-scope 確定） | 該当なし | non-scope |
 | L4-D2 ProductTable 部門列 whitespace-normal（round 1 是正、対象を 1 画面へ縮小） | `ProductTable.tsx` | `ProductTable.test.tsx` 新規 assertion | AC-L3-1 |
-| S1a〜S1g 枠地色 bg-card 統一（L4-D3） | 7 file | 各 Page/Component test 拡張 | AC-L3-3 |
+| S1a〜S1f 枠地色 bg-card 統一（L4-D3、整合性チェック除く） | 6 file | 各 Page/Component test 拡張 | AC-L3-3 |
+| S1g table wrapper rounded-lg 統一（round 2 是正） | `IntegrityCheckPage.tsx`/`OperationLogsPage.tsx` | 各 test 拡張 | AC1（L3 対象外） |
 | S2 Pagination 上下切り分け（L4-D4） | `Pagination.tsx` | `Pagination.test.tsx` 拡張 | AC-L3-2 |
 | S3a〜S3g 上部 summary ロールアウト + 重複文言 test 是正（L4-D4） | 7 file + 3 file の既存 test 是正 | 各 Page test 拡張/是正 | AC-L3-2 |
 | S4a〜S4b Select 右端統一（L4-D5） | `StocktakePage.tsx`、`PriceRevisionFilters.tsx`/`PriceRevisionPage.tsx` | 既存 SC10/SC9a rewrite・pass 維持 | AC-L3-3 |
 | S5 StocktakePage fieldset ガード（L4-D6） | `StocktakePage.tsx` | 新規 assertion | non-scope（L3 対象外、機械検査） |
 | L4-D9 rangeText 0 件分岐 keep（round 1 P3） | `Pagination.tsx`（変更なし） | 既存 test 更新（AC2） | non-scope |
+| AC13 範囲外 page 非到達確認（round 2 是正） | 6 画面のいずれか 1 画面（既存 page-reset handler 経路） | 新規 vitest 1 本 | non-scope（L3 対象外、機械検査） |
 | S6 DSR-22 改訂（L4-D7） | `docs/design-system/01-decision-rules.md` | 該当なし（docs review） | non-scope |
 | S7 catalog ⑩ 改訂（L4-D8） | `docs/design-system/02-component-catalog.md` | 該当なし（docs review） | non-scope |
 | S8 catalog ⑯ 項目 2 改訂（L4-D8） | `docs/design-system/02-component-catalog.md` | 該当なし（docs review） | non-scope |
@@ -346,6 +355,9 @@ Test Design Matrix: [test-matrices/2026-09-05-ui-list-backbone-d-lane4.md](test-
 - `PriceRevisionFilters` への perPage 移設（S4b）が既存の `patchSearch`/`scrollPageToTop` 呼出しと `PriceRevisionPage.test.tsx:660-669`（SC9a）を壊していないこと
 - `StocktakePage.tsx:854` の `<fieldset>` が単一ページで空要素として残っていないこと（S5）。`IntegrityCheckPage.tsx:417`/`StockMovementsPage.tsx:243` は verified non-issue のため変更が無いことを確認する
 - Non-scope（識別列 sticky、`ListShell.tsx:99` wrapper、`StockMovementsPage.tsx:98`、商品一覧以外の table 幅）に列挙した項目が変更されていないこと
+- 在庫照会の上部 summary（S3b）が下部と同じ `statusValue === "all" && totalCount !== null` 条件で描画されること（round 2 是正）
+- `IntegrityCheckPage.tsx:234` の Select 単独ラッパーに frame（`bg-card`）が付いていないこと、`IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:496` の table wrapper が `rounded-lg` に統一されていること（round 2 是正、S1）
+- フィルタ変更で `totalCount` が減っても `page > totalPages` の状態で描画される画面が無いこと（AC13、round 2 是正）
 
 ## Spec Contract
 
@@ -364,6 +376,7 @@ Contract ID: SPEC-UILB-D6
 | SPEC-UILB-D6 | S4a〜S4b | 既存 SC10/SC9a rewrite・pass 維持 | Select 右端統一 | vitest |
 | SPEC-UILB-D6 | S5 | `StocktakePage.test.tsx` 新規 assertion | fieldset ガード | vitest |
 | SPEC-UILB-D6 | S6〜S8 | docs review（自動テストなし） | DSR-22/catalog ⑩⑯ の記述一致 | `rg` 完全一致 |
+| SPEC-UILB-D6 | AC13（範囲外 page） | 新規 vitest 1 本 | page-reset handler 経路の維持 | vitest |
 
 ## Data Safety
 
@@ -387,5 +400,13 @@ Plan Review round 1（独立 Sonnet subagent、fresh context + Opus 5、read-onl
   - P2（accept）: `AC5`/`S2` の oracle が誤り——`text-sm text-muted-foreground tabular-nums` は今日 0 件（下部は `text-sm text-muted-foreground`（外側）と `tabular-nums`（内側）に分割済み）。oracle を「新規に 1 箇所だけ出現する」検査へ訂正し、`rg -c` は一致行数を数える点を明記
   - P3（accept）: catalog `text-base text-foreground tabular-nums` の出現数を「起票時 2 箇所（`:612`,`:645`）」と明記
   - P3（accept）: catalog `:643`/`:648` の pre-S2（`totalCount===0`）記述を S7 に追加し、新旧の対句オラクルを記録
-- 本 packet はこれらすべてを反映済み。次 round の Plan Review で新規 P1/P2 なしを確認後、`plan-gate -> plan-approved` へ進める予定
-- Findings Freeze: not yet frozen（round 1/2 是正の再レビューが未完了のため）; post-freeze exceptions: none.
+
+Plan Review round 2（Opus 5、read-only claims-producer）: **reject**（第 1 便のみ反映。Sonnet 側の並行 round 2 は rate limit で中断——Workflow State の妥当性検証のみ完了、実装差分の指摘には至らず）。Coordinator が実装・既存 test に対して実読で裏取り、item 1/3/4（部門列折返しの効果と floor 概算の是非）は owner 決定待ちのため本 commit では触れず、次便で扱う:
+- P1（accept）: 在庫照会の下部 `<Pagination>` は `statusValue === "all" && data.totalCount !== null`（`totalCount: number | null`、`types.ts:54`）でのみ描画される。S3b の上部 `PaginationSummary` にも同一条件を明記し、AC4 に在庫照会の例外を追加した
+- P2（accept）: `page > totalPages` の検知は `StockInquiryPage.tsx:196`/`OperationLogsPage.tsx:452` の 2 画面のみが専用 `EmptyState` を持つ。残り 6 画面向けに AC13 + Matrix SC8（1 本）を追加した
+- P2（accept）: `PriceRevisionFilters.tsx:46` に取引先 native `<select>` が残る件は、lane ⑧（merge train Lane 5 → ⑧ → Lane 4）が本 lane の実装前に置換する前提であることを S4b に明記し、⑧ 未 merge のまま実装した場合の既知残件を新設 `## Residual Risk` に記録した（本 lane では対応しない）
+- P2（accept）: `IntegrityCheckPage.tsx:234` は `phase === "completed" && result !== null` でのみ描画される Select 単独ラッパーで filter フィールドを持たないため、S1 の frame sweep（7→6 画面）と AC1/AC-L3-3 から除外した
+- P3（accept）: `StocktakePage.tsx:821-852` の else 分岐は現在 `<Table>` を裸で返す。S3a の記述を「1 行追加」から「Fragment/div で `<Table>` を包み直す」へ訂正した
+- P3（accept）: filter frame が `rounded-lg` になる一方、`IntegrityCheckPage.tsx:348`/`OperationLogsPage.tsx:496` の table wrapper が `rounded-md` のまま残ると角丸が食い違う。S1g（新設）で両 file の `rounded-md` → `rounded-lg` を同じ sweep に含めた（`bg-card` は付けない）
+- 本 packet はこれらすべてを反映済み。item 1/3/4（floor 概算・折返し効果、owner 決定待ち）は次便で扱う。次回 Plan Review で新規 P1/P2 なしを確認後、`plan-gate -> plan-approved` へ進める予定
+- Findings Freeze: not yet frozen（round 1/2 是正の再レビュー、および item 1/3/4 の owner 決定が未完了のため）; post-freeze exceptions: none.
