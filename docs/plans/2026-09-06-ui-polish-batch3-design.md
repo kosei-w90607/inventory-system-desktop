@@ -2,11 +2,16 @@
 
 Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`）のうち design-first 判定を受けた L8-1・L8-3・L8-6・L8-7・L8-8・L8-9 の 6 件を design-system canonical docs へ規範化する。L8-6 は Plans.md ④ 既存の runtime backlog 項目 A1(a)(b)(c)（`docs/Plans.md:68`、「直近の○○」系 section の文言・列見出し・囲み統一）と統合して 1 item として扱う。L8-2（badge 無色、⑦ runtime lane 待ち）・L8-4（明細数 summary 未決）・L8-5（記録日時 font 差、既に Plans ④ C5 で追跡中）は本 packet の対象外（Non-scope、Plans.md 側で参照のみ）。本 packet 自体は docs-only（design-system canonical docs 本体の改訂は Plan Review 後に別 Writer 起草が着手する。本 commit は Plan Packet + Test Design Matrix + `docs/Plans.md` の起票のみ）。
 
+**Plan Review round 1 是正（Coordinator 直接レビュー、Opus 並行分は別途反映。全件 accept、本 commit で反映済み。詳細は文末「Review Response」節）**。本文は是正後の最終状態のみを記す。
+
+**補足（merge 順序、⑦ との重複 file）**: 本 packet（⑩）は `02-component-catalog.md` ①③ と `01-decision-rules.md` DSR-22（注記）を編集する。`agent/ui-conventions-batch`（⑦、未 merge）は同じ `02-component-catalog.md`（⑬ 等）と DSR-22（本文の narrow 化）を編集する。両方とも同じ 2 file を触るため、どちらかが先に merge した場合、後に merge する側が origin/main を取り込んでから自身の rg oracle を再実行すること（行番号ずれ・記述の重複衝突の検出。⑦ の DSR-23 帰属節が ⑧ に対して定めた運用と同型）。
+
 **起草中に判明した事実訂正（Coordinator 指摘、本節で先出し）**:
-- L8-8 の発注前提「`PageHeader` の `description` prop」は誤り。`PageHeader.tsx` に `description` prop は無く、`subtitle` prop のみが存在する（実測は「起票時実測」節参照）。加えて `subtitle` は `actions` が渡されると描画されない分岐になっており、`商品一括インポート`（`ProductImportPage.tsx`、`actions` に「商品一覧へ戻る」ボタンを持つ）のような画面では `subtitle` prop を渡しても表示されない component gap がある。
+- L8-8 の発注前提「`PageHeader` の `description` prop」は誤り。`PageHeader.tsx` に `description` prop は無く、`subtitle` prop のみが存在する（実測は「起票時実測」節参照）。加えて `subtitle` は `actions` が渡されると描画されない分岐になっており、`商品一括インポート`（`ProductImportPage.tsx`、`actions` に「商品一覧へ戻る」ボタンを持つ）のような画面では `subtitle` prop を渡しても表示されない component gap がある。**Plan Review round 1 是正（P1）**: 単一行 `rg` の見落としで、実際には `SupplierManagementPage.tsx` 以外に `ReceivingPage.tsx` / `ManualSalePage.tsx` / `ReturnExchangePage.tsx` / `DisposalPage.tsx` の 4 画面が既に `subtitle` を渡しながら `actions` に握りつぶされ、説明文が画面に一切表示されていない（詳細は「起票時実測」節）。是正方向は使用パターンではなく `PageHeader.tsx` 本体の root-cause fix に一本化する。
 - 04-backbone.md の「1 行説明」原則は発注前提の「原則 8」ではなく **原則 9**（実測は「起票時実測」節参照）。
 - 「直近の○○」系 section の囲みは、発注前提「手動販売出庫だけ囲みがあり他は無い」ではなく、**4 画面とも外枠（`rounded-md border p-4` の `<section>`）は既にあり**、`ManualSalePage.tsx` だけが内側にもう 1 段 `<div className="rounded-md border">` を重ねている（二重囲み）。これは DSR-16「囲みは意味階層ごとに 1 つまで」への違反そのものであり、既存の正典に照らすと是正方向は「他 3 画面に箱を足す」ではなく「`ManualSalePage.tsx` の内側の箱を外す」。
-- L8-1「入出庫セクションとそれに付随する変動履歴とかその辺の画面全部…pcs」は在庫変動履歴（`StockMovementsPage.tsx` / `MovementTable.tsx`）を直接確認する限り再現しない（`stock_unit` の参照は `StockMovementsPage.tsx:126` の 1 箇所のみで、既に canonical `formatStockDisplay` 経由・翻訳済み）。実際に raw `pcs` を出す箇所は入出庫 6 種の記録詳細ページと商品追加候補一覧であり、下記「起票時実測」で確定した実箇所リストを正とする。
+- L8-1「入出庫セクションとそれに付随する変動履歴とかその辺の画面全部…pcs」は、**一覧本体（`StockMovementsPage.tsx` / `MovementTable.tsx`）自体では再現しないが、そこからリンクする記録詳細 6 画面で再現する**（`stock_unit` の参照は `StockMovementsPage.tsx:126` の 1 箇所のみで、既に canonical `formatStockDisplay` 経由・翻訳済み。owner の観察自体は正しく、画面の帰属先だけが異なる）。実際に raw `pcs` を出す箇所は入出庫 6 種の記録詳細ページと商品追加候補一覧であり、下記「起票時実測」で確定した実箇所リストを正とする。
+- L8-6 の空欄表示は Plan Review round 1 で「`ReturnExchangePage.tsx` の薄字『備考なし』」を推奨としたが、round 1 Opus 分の再実測で `MovementTable.tsx:92-94`（7 画面が共有）を含む `?? "—"` 系が 5 箇所 4 file、`"—"` 空値リテラルはアプリ全体で 27 箇所（16 file）と実測され、「備考なし」（1 file のみ）は少数派と判明。推奨を「—」（薄字）へ反転し、「備考なし」は少数派である旨を明記した上で owner culling の対抗案として残す（詳細は「起票時実測」「設計判断」節）。
 
 ## Workflow State
 
@@ -22,7 +27,8 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
-- Human Gate: owner が design PR 上で (1) 商品一括インポート / PLU 書出し / バックアップの説明文 3 案を culling する（本 packet「設計判断」節の draft、2〜4 文の日本語文案） (2) 記録 ID の表示方針（(a) 種別込み表示 / (b) 一覧から外す / (c) 現状維持）を選ぶ（Coordinator 推奨は (b)、下記「設計判断」節参照） (3) 備考欄が空のときの表示（「—」か薄字「備考なし」か）を選ぶ（Coordinator 推奨は既存 `ReturnExchangePage.tsx` の薄字「備考なし」パターンへの統一、下記参照）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
+- Human Gate: owner が design PR 上で (1) 商品一括インポート / PLU 書出し / バックアップの説明文 3 案を culling する（本 packet「設計判断」節の draft、2〜3 文の日本語文案） (2) 記録 ID の表示方針（(a) 種別込み表示 / (b) 一覧から外す / (c) 現状維持）を選ぶ（Coordinator 推奨は (b)、下記「設計判断」節参照） (3) 備考欄が空のときの表示（「—」か薄字「備考なし」か）を選ぶ（Coordinator 推奨は既存 27 箇所の「—」パターンへの統一、下記参照）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
+- Merge 順序: `origin/agent/ui-conventions-batch`（⑦、未 merge）は `02-component-catalog.md`（⑬ 等）・`01-decision-rules.md` DSR-22（本文の narrow 化）・両 file の `## 更新履歴` 表を編集する。本 packet（⑩）は同じ 2 file（catalog ①③、DSR-22 注記）+ 同じ 2 つの更新履歴表を編集する。先に merge した側が勝ち、後に merge する側が origin/main を単段 merge してから自身の rg oracle を再実行する（詳細は本文冒頭「補足」節）。
 
 ## Owner Effort Budget
 
@@ -55,12 +61,12 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- `02-component-catalog.md` ① ページヘッダに、タイトル直下の「説明セクション」使用パターン（2〜4 文、`text-sm text-muted-foreground`、`actions` の有無に関わらず表示できる構成）が追加される。`PageHeader` の `actions` 分岐が `subtitle` を描画しない component gap が「起票時実測」節に記録され、runtime lane への申し送りとして明記される。
+- `02-component-catalog.md` ① ページヘッダに、タイトル直下の「説明セクション」使用パターン（2〜3 文、`text-sm text-muted-foreground`、`actions` の有無に関わらず表示できる構成）が追加される。`PageHeader` の `actions` 分岐が `subtitle` を描画しない component gap が「起票時実測」節に記録され、runtime lane への申し送りとして明記される。
 - `docs/function-design/60-ui-product-import.md` / `67-ui-plu-export.md` / `68-ui-backup-restore.md` の「UI / Wording」相当箇所に、説明セクションの文案（owner culling 列つき）が追加される。PLU 書出しの文案は「レジ登録状況を読み込む → 占有状況確認 → 書き出す → 保存 → 未反映から外す」の一連の流れを明示する。
 - `01-decision-rules.md` DSR-22 の識別列マッピング表（入出庫履歴行）に、記録 ID を一覧の表示列から外す方針（owner culling、推奨案つき）が追記される。`docs/function-design/65-inventory-record-traceability.md` §65.8.1 の結果列挙が方針確定後に更新される対象として明記される（本 commit では未確定のため書き換えない）。
 - `02-component-catalog.md` ③ テーブル「バリエーション: 直近実績サマリテーブル」に、備考列の規則（必須列・空欄表示・truncate + tooltip）と「直近の○○」系 4 画面の文言・列見出し・囲みの統一方針が追記される。DSR-12（truncate）・DSR-16（囲みの階層）の既存規定を書き換えず、具体例として本件を追加する形にする。
 - `ManualSalePage.tsx:739` の記録状態が既存 5 箇所（`InventoryRecordsPage.tsx`・記録詳細 4 ページ）と異なり plain text であるという runtime gap が記録され、是正方針（既存 `<Badge variant="outline">{formatRecordStatus(...)}</Badge>` パターンへの統一、新規デザイン判断は不要）が明記される。
-- `SupplierManagementPage.tsx:35-38` の見出し・説明文の間隔が `PageHeader` の `subtitle` 内蔵レイアウト（`space-y-1`、4px）と異なり `PageShell` の `space-y-6`（24px）に流れ込んでいる runtime gap が記録され、是正方針（`PageHeader` + 説明文を `<div className="space-y-1">` で包むか、`PageHeader` 自体に `actions` と `subtitle`/説明セクションの併存を許す拡張か、の Alternatives つき）が明記される。
+- `SupplierManagementPage.tsx:35-38` の見出し・説明文の間隔が `PageHeader` の `subtitle` 内蔵レイアウト（`space-y-1`、4px）と異なり `PageShell` の `space-y-6`（24px）に流れ込んでいる runtime gap、および `ReceivingPage.tsx`/`ManualSalePage.tsx`/`ReturnExchangePage.tsx`/`DisposalPage.tsx` の 4 画面で `subtitle` が `actions` に握りつぶされ全く表示されていない runtime gap が記録され、`PageHeader.tsx:29-36` の root-cause fix（`actions` 分岐内で `space-y-1` の `<div>` にまとめる）を推奨案として明記する。
 - 単位表示（`stock_unit` の raw 表示）の起票時実測 sweep 結果（9 箇所の重複 local `formatQuantity` + 3 箇所の商品追加候補一覧）が記録され、`02-component-catalog.md` ③ テーブルの使用トークン行に「数量 + 単位は共通 `formatStockDisplay`/`formatStockUnitLabel`（`format-stock-display.ts`）を使い、unit code を直接結合しない」旨の 1 文が追加される。
 - `docs/Plans.md` ④ が本 packet への active link と owner 回答サマリを持つ bullet ⑩ を持つ。
 - 上記いずれも `src/**` の変更を伴わない（runtime 反映は別 packet）。
@@ -90,7 +96,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ### L8-7 ページ説明セクション
 
 - `02-component-catalog.md:24-61` ① ページヘッダの現行 canonical は `PageHeader{title, subtitle?, actions?}` の 3 variant（`:28`）で、タイトル直下の複数文説明は想定していない。
-- `04-backbone.md:25` 原則 9「入口と見出しは「何をする画面か」を 1 行で添える。ホームの大ボタンは icon（24px）+ 題名 + 1 行説明、PageHeader は subtitle と actions を同時に持てる。」— **実装を確認すると「subtitle と actions を同時に持てる」は誤り**（下記 `PageHeader.tsx` 実測）。原則 9 は「1 行」の説明を対象にしており、本件が要求する 2〜4 文の説明セクションはこれより長い別カテゴリのため、原則 9 と矛盾しない拡張として位置づける。
+- `04-backbone.md:25` 原則 9「入口と見出しは「何をする画面か」を 1 行で添える。ホームの大ボタンは icon（24px）+ 題名 + 1 行説明、PageHeader は subtitle と actions を同時に持てる。」— **実装を確認すると「subtitle と actions を同時に持てる」は誤り**（下記 `PageHeader.tsx` 実測）。原則 9 は「1 行」の説明を対象にしており、本件が要求する 2〜3 文の説明セクションはこれより長い別カテゴリのため、原則 9 と矛盾しない拡張として位置づける。
 - `src/components/patterns/PageHeader.tsx:27-45`: `actions !== undefined` のとき `flex` レイアウトを返し `subtitle` を描画しない（`:29-36`）。`actions` が無いときのみ `space-y-1` レイアウトで `subtitle` を描画する（`:39-44`）。つまり **`subtitle`（および将来の説明セクション）は `actions` と併存できない**。
 - `actions` を持つ画面のうち、説明セクションが要る 3 画面の現状:
   - `src/features/products/ProductImportPage.tsx:20-30`（`商品一括インポート`）: `actions` に「商品一覧へ戻る」ボタンを持つ。説明文は現在無い。
@@ -114,12 +120,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `docs/design-system/02-component-catalog.md:185`「バリエーション: 直近実績サマリテーブル」（PR #116）が対象 4 画面（入庫・返品交換・手動販売・廃棄）の canonical 記述。
 - 備考列の現状（file:line 実測）:
   - `src/features/receiving/ReceivingPage.tsx:689`: `<TableCell>{record.note ?? ""}</TableCell>` — 空欄は素の空文字（プレースホルダーなし）。
-  - `src/features/return-exchange/ReturnExchangePage.tsx:103-110,963-969`: `formatNote()`（`trimmed === "" ? "備考なし" : trimmed`）+ `hasNote()` で `text-foreground` / `text-muted-foreground` を切替え、既に**薄字「備考なし」パターンを実装済み**（`max-w-[24rem] min-w-[14rem] whitespace-normal` で折り返し表示、truncate はしていない）。
-  - `src/features/manual-sale/ManualSalePage.tsx:715-745`「直近の手動販売出庫」テーブルには**備考列そのものが無い**（列は 販売日/記録ID/代表商品/明細数/状態/記録日時/操作 の 7 列、`:716-722`）。ただしフォーム側 `:448`「備考」`Input`（`maxLength={200}`）は存在し、保存時に note を受け取っている——一覧に反映されていないだけ。
+  - `src/features/return-exchange/ReturnExchangePage.tsx:103-110,963-969`: `formatNote()`（`trimmed === "" ? "備考なし" : trimmed`）+ `hasNote()` で `text-foreground` / `text-muted-foreground` を切替え、薄字「備考なし」パターンを実装（`max-w-[24rem] min-w-[14rem] whitespace-normal` で折り返し表示、truncate はしていない）。
+  - `src/features/manual-sale/ManualSalePage.tsx:715-745`「直近の手動販売出庫」テーブルには**備考列そのものが無い**（列は 販売日/記録ID/代表商品/明細数/状態/記録日時/操作 の 7 列、`:719-725`）。ただしフォーム側 `:448`「備考」`Input`（`maxLength={200}`）は存在し、保存時に note を受け取っている——一覧に反映されていないだけ。
   - `src/features/disposal/DisposalPage.tsx`: 廃棄・破損記録に備考/note フィールドが存在しない（`rg -n "備考|note" DisposalRecordDetailPage.tsx` 0 件）。廃棄は「理由」（`:496` 列、事由選択）を持つが備考とは別概念。**本件の対象外**（Non-scope）。
-  - 3 者とも異なる扱い（空文字 / 薄字プレースホルダー / 列自体が無い）であること自体が L8-6 の実体。
-- truncate の既存前例: `src/features/operation-logs/OperationLogsPage.tsx:522`: `<TableCell className="max-w-0 truncate" title={item.summary}>` — `truncate` + `title` 属性（tooltip 相当）の組合せが既に本アプリ内にある。
-- `01-decision-rules.md:211-219` DSR-12「truncate と情報密度のバランス」は「truncate した主要値には全文を確認できる手段（折り返し・展開・別表示）を残す」ことを既に規定している。備考は主要値ではなく補足情報のため truncate 自体は許容範囲内（`:196` catalog③ Don't「すべての列に truncate を当てて主要値を隠さない」にも抵触しない）。`title` 属性は「別表示」の一形態として扱える。
+  - **Plan Review round 1 是正（P1、Opus 分）**: `src/features/stock-movements/components/MovementTable.tsx:57`（`<TableHead>備考</TableHead>`）/`:92-94`（`<TableCell className="max-w-80 truncate">{movement.note?.trim() ? movement.note : "—"}</TableCell>`）が**入出庫 4 詳細ページ + CSV取込み/棚卸し詳細 + 在庫変動履歴の 7 画面で共有**されており（`rg -ln "MovementTable" src/features` で `StockMovementsPage.tsx` + 6 記録詳細ページを確認）、既に「—」（無地、薄字クラス無し）+ `truncate`（`title` 属性なし）を実装済み。これは DSR-12「truncate した主要値には全文を確認できる手段を残す」に対する**現存のギャップ**（`title` が無いため hover 以外に全文確認手段が無い、後述）。
+  - 空欄表示の全体像（`rg` 実測）: `?? "—"` パターンは `CsvImportRecordDetailPage.tsx` / `MonthlySalesPage.tsx` / `PriceRevisionTable.tsx`（2 箇所） / `HomePage.tsx` の計 5 箇所・4 file。`"—"` 空値リテラル自体はアプリ全体で 27 箇所・16 file に出現する。対して薄字「備考なし」（`ReturnExchangePage.tsx` のみ）は 1 file に限られる少数派。
+- truncate の既存前例: `src/features/operation-logs/OperationLogsPage.tsx:522`: `<TableCell className="max-w-0 truncate" title={item.summary}>` — `truncate` + `title` 属性（tooltip 相当）の組合せが本アプリ内にある（`MovementTable.tsx:94` は truncate のみで `title` を欠く）。
+- `01-decision-rules.md:211-219` DSR-12「truncate と情報密度のバランス」は「truncate した主要値には全文を確認できる手段（折り返し・展開・別表示）を残す」ことを既に規定している。備考は主要値ではなく補足情報のため truncate 自体は許容範囲内（`:196` catalog③ Don't「すべての列に truncate を当てて主要値を隠さない」にも抵触しない）。全文確認手段は各記録詳細ページ本体が担う（`ManualSaleRecordDetailPage.tsx:149`・`ReceivingRecordDetailPage.tsx:133`・`ReturnRecordDetailPage.tsx:170,175` はいずれも `note` を truncate せず全文表示）——DSR-12 の「全文を確認できる手段」は詳細ページという「別表示」で満たされており、`title` 属性はあくまで一覧上での**補足**（`01-decision-rules.md:199-207` DSR-11「Tooltip は hover / focus でしか出ず…Tooltip は補足に限る」と同じ位置づけ）。`MovementTable.tsx:94` は補足の `title` すら欠く現存のギャップとして記録する。
 - 「直近の○○」系 4 画面の説明文（A1a）: `src/features/products/components/PriceHistorySection.tsx:43`「直近の売価・原価の変更を新しい順に表示します。」（列見出しなし、`FormSection` の `description` prop）。owner 決定文言は「直近 10 件の売価・原価の変更を新しい順に表示します。」（`docs/Plans.md:58` runtime backlog）。他 4 画面（入庫・返品交換・手動販売・廃棄）は見出し「直近の{業務名}」（h2）のみで本文説明が無い。
 - 囲みの実態（A1c、file:line 実測）: 4 画面とも外枠 `<section className="space-y-3 rounded-md border p-4">` を持つ（`ReceivingPage.tsx:652`、`ManualSalePage.tsx:687`、`ReturnExchangePage.tsx:921`、`DisposalPage.tsx:643`）。**`ManualSalePage.tsx:715` のみ**内側にさらに `<div className="rounded-md border">` を重ね、`<Table>` を二重に囲んでいる。他 3 画面（`ReceivingPage.tsx:674`、`ReturnExchangePage.tsx:946`、`DisposalPage.tsx:669`）は `<Table>` を直接置き、内側の追加枠を持たない。`01-decision-rules.md:267-273` DSR-16「囲み（border / カード）は意味階層ごとに 1 つまでとし…薄い border を単独のグループ信号にしない」に照らすと、**是正方向は `ManualSalePage.tsx` の内側の枠を外すこと**（既存 DSR-16 と整合する方向であり、他 3 画面へ箱を追加する方向は DSR-16 に反する）。
 
@@ -127,8 +134,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `src/features/inventory-records/types.ts:87-94` に `formatRecordStatus(status)` が定義され、6 消費箇所すべてがこの関数を import する。
 - 5 箇所は `<Badge variant="outline">{formatRecordStatus(...)}</Badge>` で統一済み: `InventoryRecordsPage.tsx:369`、`ManualSaleRecordDetailPage.tsx:123`、`ReceivingRecordDetailPage.tsx:115`、`DisposalRecordDetailPage.tsx:117`、`ReturnRecordDetailPage.tsx:144`。
-- **`ManualSalePage.tsx:739`** のみ `<TableCell>{formatRecordStatus(record.status)}</TableCell>` の plain text（Badge でない）。「直近の手動販売出庫」一覧内の「状態」列（`:721` header）。
-- tone（色付け）は L8-2（⑦ design-first「Badge の色と枠の規約」）待ちのため、本件は Badge の**形**（`variant="outline"` の中立表示）への統一のみを扱い、色は扱わない。
+- **`ManualSalePage.tsx:739`** のみ `<TableCell>{formatRecordStatus(record.status)}</TableCell>` の plain text（Badge でない）。「直近の手動販売出庫」一覧内の「状態」列（`:723` header）。
+- tone は L8-2 の「別途裁定待ち」ではなく、⑦（`agent/ui-conventions-batch`、未 merge）が既に決定済み: `02-component-catalog.md`（⑦ branch）:828 の①状態 tone family マッピング表「中立」行に `formatRecordStatus`（`active`="有効" 等）が明記され、中立 tone の①状態 badge は icon 任意・色指定なしと確定している。同 branch `01-decision-rules.md:443`（DSR-22 narrow 化）は「badge は枠線（tone 固有色または `--border`）を必ず持つ」ことを要求し、`src/components/ui/badge.tsx:16` の `outline` variant（`border-border text-foreground ...`）は `--border` を使うためこの要件を満たす。したがって本件は既存 5 箇所と同じ `variant="outline"`（無色、`border-border` 枠）へ統一するだけで ⑦ の tone 決定・DSR-22 双方と整合し、追加の色決定を要しない。
 
 ### L8-8 PageHeader間隔
 
@@ -141,7 +148,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   ```
   `actions` があるため `PageHeader` は `subtitle` を受け取っても描画しない `flex` レイアウトになる（上記 L8-7 実測）。説明文 `<p>` は `PageHeader` の外側の兄弟要素になり、`PageShell.tsx:21` の `space-y-6`（24px）がタイトルと説明文の間隔として適用される。
 - 対照: `subtitle` prop 経由の画面（`HomePage.tsx:63` `<PageHeader title="ホーム" subtitle={today} />`）は `PageHeader.tsx:39-44` の内部 `space-y-1`（4px）で描画される。同じ「タイトル + 1 行説明」の見た目が **24px 対 4px（6 倍差）** になっている。
-- `rg -n "PageHeader title=.*actions=" src/features -A 3` を全 33 箇所の `<PageHeader` 呼び出しに対して確認した結果、`actions` + 直後の説明文 `<p>` を持つのは `SupplierManagementPage.tsx` のみ（他に同型の潜在バグ箇所は現状ない）。ただし L8-7 の商品一括インポートは今後この型が必要になる画面のため、単発の runtime パッチではなく `PageHeader` 側の対応が望ましい。
+- **Plan Review round 1 是正（P1）**: 単一行 `rg` は JSX の複数行呼び出しを見落としていた。`for f in $(rg -l "<PageHeader" src/features); do rg -U -o "<PageHeader[\s\S]{0,400}?/>" "$f"; done` で `actions`/`subtitle` 併存を multiline-safe に再走査すると、**`SupplierManagementPage.tsx` 以外に 4 画面が同型で `subtitle` を渡しながら `actions` に握りつぶされている**: `ReceivingPage.tsx:288-291`（`subtitle="届いた商品をまとめて入庫し、在庫へ反映します"`）、`ManualSalePage.tsx:303-306`（`subtitle="レジCSVに入らない販売を手入力し、在庫と売上へ反映します"`）、`ReturnExchangePage.tsx:411-414`（`subtitle="レジ戻し済みなら帳面記録だけ、未処理ならこの保存で在庫を反映します"`）、`DisposalPage.tsx:278-281`（`subtitle="販売ではない理由で在庫を減らし、ロス理由と原価を記録します"`）。この 4 画面は `SupplierManagementPage.tsx` と違い**説明文自体が画面に一切表示されていない**（`<p>` 併記が無く、`subtitle` prop の値が render 結果から消えるだけ）— component gap の実害は当初把握より大きい。
+- `src/components/patterns/PageHeader.tsx:27-36` の `actions !== undefined` 分岐は `<h1>` と `actions` だけを返し `subtitle` を参照しない。この分岐を「`<h1>` + 条件付き `<p>` を `space-y-1` の `<div>` にまとめ、`actions` と並べる」形に変えれば、外側 `<header>` の class（`flex flex-wrap items-center justify-between gap-3`）は変えずに済む。`src/components/patterns/PageHeader.test.tsx:61-73`「subtitle が指定されていても actions が優先されフレックスレイアウトになる」は `header` の class に `flex` が含まれることだけを assert しており（`subtitle` の描画有無は検査していない）、この形の修正でも green のまま通る。**→ 是正方向を (b) `PageHeader.tsx` 拡張（root-cause fix）に一本化**する（下記「設計判断」節参照、(a) 使用パターンは説明セクション slot 自体の記法としてのみ残す）。
 
 ### L8-1 単位表示sweep
 
@@ -155,15 +163,43 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ### L8-7 説明セクション（catalog ① 拡張）
 
-`02-component-catalog.md` ① ページヘッダに、タイトル直下の「説明セクション」使用パターンを追加する: `text-sm text-muted-foreground` の `<p>`（2〜4 文）を `PageHeader` 直後に置き、`PageHeader` と合わせて `<div className="space-y-1">` で包む。`actions` の有無に関わらずこの外側 wrapper が間隔を決めるため、`PageHeader.tsx` 自体の分岐ロジックを変更しなくても 3 画面すべてに適用できる（既存 `space-y-1` の値を流用するだけで新規 token 不要、ponytail 的に最小の追加）。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。既存の 1 行「1 行説明」原則（04-backbone 原則 9）とは矛盾せず、より長い説明が要る画面向けの拡張として位置づける（原則 9 の本文は変更しない）。
+`02-component-catalog.md` ① ページヘッダに、タイトル直下の「説明セクション」使用パターンを追加する: `text-sm text-muted-foreground` の `<p>`（2〜3 文）を `PageHeader` 直後に置く。**Plan Review round 1 是正（P1、L8-8 の是正と一本化）**: 当初案は呼び出し側で `<div className="space-y-1">` を都度書く使用パターンだったが、L8-8 で `actions`/`subtitle` 併存の実害が 4 画面（`ReceivingPage.tsx` 等）で判明したため、`PageHeader.tsx:29-36` 自体を「`actions` 分岐でも `<h1>`+条件付き `<p>` を `space-y-1` にまとめる」形へ直す root-cause fix（L8-8 参照）に一本化する。この component 修正後は、呼び出し側は `subtitle`（1 行）または将来追加する説明セクション相当の prop を渡すだけで `actions` の有無に関わらず正しい間隔になる。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う——ただし本 packet では新規 prop 名を確定しない（runtime lane が `subtitle` を複数文対応にするか新 prop を足すか判断する、Non-scope）。既存の 1 行「1 行説明」原則（04-backbone 原則 9）とは矛盾せず、より長い説明が要る画面向けの拡張として位置づける（原則 9 の本文は変更しない）。
 
-**説明文 3 案（owner culling 対象、function-design 各 doc の「UI / Wording」相当箇所へ追加する）**:
+**説明文 3 案（owner culling 対象、function-design 各 doc の「UI / Wording」相当箇所へ追加する）**: 各文に file:line 根拠を付す。根拠のない文は削除済み。owner culling は画面ごとの説明文全体に対して行う（文単位ではない）。**Plan Review round 1 是正（2 便）**: 各文を 2〜3 文へ整理し、入れ子の括弧を排した（backbone 原則 9「1 行説明」を拡張する節のため簡潔さを優先）。バックアップ案は「スケジュール」という語自体が UI に存在しない一方、自動バックアップ機能自体は実在する（1 便の全面削除は誤り、2 便で是正）ため、実際のラベル「自動バックアップ」「保存先」に基づき書き直した。
 
-| 画面 | 案（2〜4 文） | owner culling |
-|---|---|---|
-| 商品一括インポート | 「CSVファイルから複数の商品をまとめて登録・更新するページです。ファイルを選ぶと内容がプレビュー表示され、新規登録される行・更新される行・エラー行・重複行を確認できます。重複する商品コードは既定でスキップされ、上書きしたい行だけ個別に選んで取り込めます。取り込みを実行すると、登録・更新・スキップの件数が画面に表示されます。」 | |
-| PLU書出し | 「レジのPLU（部門・単品）登録状況を書き出すページです。まず『レジ登録状況を読み込む』でレジのCSV（Z004）を読み込み、現在の空き・使用状況を確認します。次に、レジへの登録がまだ済んでいない商品を対象に書出しファイルを作成し、保存します。保存したら『この書出しを未反映から外す』を押して、書き出し済みであることを確定してください（押し忘れると未反映のまま残ります）。」 | |
-| バックアップ・復元 | 「店舗のデータ（在庫・商品・記録）をまとめて保存し、必要なときに元に戻すためのページです。手動でバックアップを作成したり、保存先やスケジュールを確認・変更したりできます。過去のバックアップから復元すると、現在のデータは過去の状態に置き換わり元には戻せません（復元の前に、念のため現在の状態も保存することをおすすめします）。」 | |
+**商品一括インポート**:
+
+| 文 | 根拠（file:line） |
+|---|---|
+| CSVファイルから複数の商品をまとめて登録・更新するページです。 | `docs/function-design/60-ui-product-import.md:7` |
+| ファイルを選ぶと新規登録候補・既存商品との重複・エラー行の3つに分けて内容を確認でき、重複行は初期状態でスキップされるので上書きする行だけ個別に選んで取り込みます。 | `src/features/products/import/ProductImportPreview.tsx:68,93,104,162`（`新規候補`/`新規登録候補`/`既存商品との重複`/`エラー行`）、`:109`「初期状態では重複行をスキップします」、`:111`「上書きする行だけ選択してください。選択していない重複行は登録しません。」 |
+| 取り込みを実行すると、新規登録・上書き更新・スキップの件数が画面に表示されます。 | `src/features/products/ProductImportPage.tsx:87-89`（`ResultCount label="新規登録"/"上書き更新"/"スキップ"`） |
+
+→ 結合文案（owner culling）: 「CSVファイルから複数の商品をまとめて登録・更新するページです。ファイルを選ぶと新規登録候補・既存商品との重複・エラー行の3つに分けて内容を確認でき、重複行は初期状態でスキップされるので上書きする行だけ個別に選んで取り込みます。取り込みを実行すると、新規登録・上書き更新・スキップの件数が画面に表示されます。」
+
+**PLU書出し**:
+
+| 文 | 根拠（file:line） |
+|---|---|
+| レジのPLU登録状況を書き出すページです。 | `src/features/plu-export/PluExportPage.tsx:360`（画面タイトル）/ `docs/function-design/67-ui-plu-export.md:9` |
+| 『レジ登録状況を読み込む』でレジのCSV（Z004）を読み込み、空き・外部登録・アプリ管理・競合の件数を確認します。 | `PluExportPage.tsx:417`（ariaLabel「レジ登録状況のZ004を選ぶ」）、`:418`（buttonLabel「レジ登録状況を読み込む」）、`:381,387,393,399`（`<dt>` 空き/外部登録/アプリ管理/競合） |
+| 『差分を書き出す』（未反映の商品だけ）か『全件を書き出す』を選んで保存し、『この書出しを未反映から外す』を押して確定します。 | `PluExportPage.tsx:66`（mode `diff` 説明「未反映の商品だけ」）、`:737`（`全件を書き出す`/`差分を書き出す`）、`:463,530`（button「この書出しを未反映から外す」） |
+
+→ 結合文案（owner culling）: 「レジのPLU登録状況を書き出すページです。『レジ登録状況を読み込む』でレジのCSV（Z004）を読み込み、空き・外部登録・アプリ管理・競合の件数を確認します。『差分を書き出す』（未反映の商品だけ）か『全件を書き出す』を選んで保存し、『この書出しを未反映から外す』を押して確定します。」
+
+**バックアップ・復元**:
+
+| 文 | 根拠（file:line） |
+|---|---|
+| アプリのデータ全体をまとめて保存し、必要なときに元に戻すためのページです。 | `docs/function-design/68-ui-backup-restore.md:8`「UI-11b は、ローカル SQLite DB の手動バックアップ、バックアップ設定、バックアップ一覧、復元を operator が 1 画面で扱うための画面である。」 |
+| 自動バックアップの時刻を設定したり、今すぐ手動でバックアップを作成したり、保存先を選んだりできます。 | `src/features/backup-restore/BackupRestorePage.tsx:421`（Label「自動バックアップを使う」）、`:429`（Label「自動バックアップ時刻」）、`:491`（button「今すぐバックアップを作成」）、`:475`（button「保存先を選ぶ」） |
+| 過去のバックアップから復元すると現在の記録は元に戻せませんが、復元の前には自動で今の状態のバックアップが作られます。 | `BackupRestorePage.tsx:580`（AlertTitle「復元すると今の記録は戻せません」）、`:488`「復元前にも自動で同じバックアップを作成します。」/ `docs/function-design/68-ui-backup-restore.md:76`（`createBackup` の自動実行） |
+
+→ 結合文案（owner culling）: 「アプリのデータ全体をまとめて保存し、必要なときに元に戻すためのページです。自動バックアップの時刻を設定したり、今すぐ手動でバックアップを作成したり、保存先を選んだりできます。過去のバックアップから復元すると現在の記録は元に戻せませんが、復元の前には自動で今の状態のバックアップが作られます。」
+
+**削除・訂正した文とその理由（Plan Review round 1 是正、2 便で再訂正）**:
+- 1 便: バックアップ案の「保存先やスケジュールを確認・変更したりできます」を丸ごと削除した。2 便で是正: 「スケジュール」という語自体は UI 文言に存在しない（`rg -c "スケジュール" BackupRestorePage.tsx` = 0）が、同等の機能（自動バックアップの有効化・時刻設定、`:421,429`）は実在するため、実際のラベルに基づき書き直した（全面削除は言い過ぎだった）。
+- バックアップ案「（復元の前に、念のため現在の状態も保存することをおすすめします）」— `BackupRestorePage.tsx:488` / `68-ui-backup-restore.md:76` により、これは利用者への推奨ではなく既にアプリが自動で行う挙動であるため、事実と異なる書き方だった。「復元の前には自動で今の状態のバックアップが作られます」へ訂正。
 
 ### L8-9 記録IDの表示（DSR-22 拡張 + 65-doc 改訂方針）
 
@@ -173,30 +209,27 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **(b) 一覧の表示列から外す（Coordinator 推奨）**。Pros: 記録詳細ページも記録 ID の数値を本文表示しておらず（起票時実測参照）、削除しても既存の識別手段（業務日付・代表商品・記録日時、DSR-22 の識別列マッピングと一致）は変わらない。フィルタ入力欄（`65-inventory-record-traceability.md:77`）は一覧列と独立した UI 要素のため、種別を選んだ上での ID exact match 検索は維持できる。列を 1 つ減らせるため、横スクロール改善（Lane 4 の識別列固定・出っ張り解消）にも副次的に寄与する。Cons: 一覧だけを見て「何番目の記録か」を確認する手段が無くなる（ただし owner 自身の観察「種別とセットでないと検索に使えない」と整合）。
 - (c) 現状維持。Pros: 変更コストが無い。Cons: owner が「効力を発揮しない」と明言した表示をそのまま残す。
 
-採用案が確定した後、`docs/function-design/65-inventory-record-traceability.md:212` の結果列挙と `01-decision-rules.md` DSR-22 識別列マッピング表（`:435` 入出庫履歴行）へ反映する（本 commit では未確定のため書き換えない、Human Gate 後の Plan Gate 通過 Writer が行う）。
+採用案が確定した後、`docs/function-design/65-inventory-record-traceability.md:212` の結果列挙と `01-decision-rules.md` DSR-22 識別列マッピング表（`:435` 入出庫履歴行）へ反映する（本 commit では未確定のため書き換えない、Human Gate 後の Plan Gate 通過 Writer が行う）。**Plan Review round 1 是正（P3）**: DSR-22 の当該行（`:435`）は `InventoryRecordsPage.tsx:300-306` を引用しているが、実列は `InventoryRecordsPage.tsx:336-343`（8 列、種別/記録ID/業務日付/代表商品/明細数/状態/記録日時/操作）に移動済みで、行番号が stale になっている。次の Writer は記録 ID 方針の反映と**同時に**この stale な行番号（`:300-306`→`:336-343`、`:306`〈記録日時〉→`:342`、`:303`〈代表商品〉→`:339`）も修正すること。
 
 ### L8-6 備考の規則 + A1(a)(b)(c)（catalog ③ 拡張）
 
 `02-component-catalog.md` ③ テーブル「バリエーション: 直近実績サマリテーブル」（`:185`）に以下を追記する:
 
-- **備考列は対象記録に note フィールドがある画面（入庫・返品交換・手動販売）で必須列とする**。廃棄・破損は note フィールードを持たないため対象外（Non-scope、混同しない）。
-- **空欄表示は owner culling**。Coordinator 推奨は `ReturnExchangePage.tsx` の既存パターン（`hasNote()` で判定し、空なら薄字 `text-muted-foreground` の「備考なし」、値があれば `text-foreground` で本文）への統一。理由: 3 画面のうち 1 画面が既にこの形を実装済みで、新規パターンを作らずに既存へ揃えるだけで済む（ponytail: 既存パターンの横展開）。対抗案「—」は他の空値列（JAN コード等、`PriceRevisionTable.tsx:92-93` 等）で使われている記号だが、備考欄は「値が無いこと」自体に意味があるため、他の空値列と区別できる文言表現の方が伝わりやすい。
-- **一定文字数超過時は `truncate` + `title` 属性で省略表示する**（`OperationLogsPage.tsx:522` の既存パターンを再利用、DSR-12 の「全文を確認できる手段」を `title` tooltip で満たす）。現行 `ReturnExchangePage.tsx` の `whitespace-normal` 折り返しは行の高さが note の長さに応じて伸びる問題があり、truncate 化で行高を揃える。
+- **備考列は対象記録に note フィールドがある画面（入庫・返品交換・手動販売、および `MovementTable.tsx` を共有する在庫変動履歴・記録詳細 7 画面）で必須列とする**。廃棄・破損は note フィールードを持たないため対象外（Non-scope、混同しない）。
+- **空欄表示は owner culling（Plan Review round 1 是正、Opus 分の再実測で推奨を反転）**。Coordinator 推奨は「—」（薄字）への統一。理由: `MovementTable.tsx:92-94` の `?? "—"` を含め `?? "—"` パターンが 5 箇所・4 file、`"—"` 空値リテラル自体はアプリ全体で 27 箇所・16 file と圧倒的多数派で、`MovementTable.tsx` は 7 画面が共有する。薄字「備考なし」（`ReturnExchangePage.tsx` の `hasNote()`/`formatNote()`）は 1 file のみの少数派だが、「値が無いこと」自体を言葉で示せる利点があるため owner culling の対抗案として残す。
+- **一定文字数超過時は `truncate` + `title` 属性で省略表示する**（`OperationLogsPage.tsx:522` の既存パターンを再利用）。全文確認手段（DSR-12）は各記録詳細ページ本体（`ManualSaleRecordDetailPage.tsx:149` 等、truncate なし）が担い、`title` は一覧上での補足（DSR-11「Tooltip は補足に限る」）と位置づける。`MovementTable.tsx:94` は現在 truncate のみで `title` を欠くため、これも本規則の是正対象に含める。現行 `ReturnExchangePage.tsx` の `whitespace-normal` 折り返しは行の高さが note の長さに応じて伸びる問題があり、truncate 化で行高を揃える。
 - **「直近の○○」系 4 画面の説明文を統一する**（A1a）: `FormSection`/見出し直下に「直近 {N} 件の{対象}を新しい順に表示します。」の文型を採用し、`PriceHistorySection.tsx:43` を「直近10件の売価・原価の変更を新しい順に表示します。」へ（owner 決定済み文言、`docs/Plans.md:58`）、入庫・返品交換・手動販売・廃棄の各 recent list にも同型の説明文を新設する（現状は見出しのみで本文説明が無い）。
 - **価格履歴に列見出しを付ける**（A1b、owner 決定、`docs/Plans.md:68`）。`PriceHistorySection.tsx` のテーブル構造を実装 lane で確認し、他画面と同様の `TableHead` を追加する。
 - **囲みは `ManualSalePage.tsx` の内側の枠を外して統一する**（A1c、DSR-16 準拠。上記「起票時実測」節参照。他 3 画面に箱を追加する方向は DSR-16「囲みは意味階層ごとに 1 つまで」に反するため不採用）。
 
 ### L8-3 記録状態Badge（新規デザイン判断なし、既存パターンへの統一）
 
-`ManualSalePage.tsx:739` を既存 5 箇所と同じ `<Badge variant="outline">{formatRecordStatus(record.status)}</Badge>` へ統一する。tone（色）は L8-2（⑦ design-first「Badge の色と枠の規約」）が別途裁定するため、本 packet では中立表示（`variant="outline"`、色指定なし）の統一のみを扱う。catalog / DSR の記述変更は不要（既存 5 箇所が既に正しい形のため、canonical docs は現状のままで足りる）。
+`ManualSalePage.tsx:739` を既存 5 箇所と同じ `<Badge variant="outline">{formatRecordStatus(record.status)}</Badge>` へ統一する。tone（中立、無色）は ⑦（`agent/ui-conventions-batch`）の①状態 tone family マッピング表が既に確定しており（「起票時実測」節参照）、`variant="outline"` は ⑦ の DSR-22 narrow 化（badge は枠線必須）を満たす形。**Plan Review round 1 是正（P2）**: 5 箇所は Badge の**形**（`variant="outline"`）は同じだが、枠色トークンは移行中——`badge.tsx:16` の `outline` variant は main 上では `border-border`（`--border`）だが、`origin/agent/ui-list-backbone-d-lane5`（human-confirm、PR #35、main 未 merge）では `border-border-strong`（`--border-strong`）に変更済み。一方 ⑦ の DSR-22 narrow 化は badge の枠を `--border-strong` ではなく tone 固有色または `--border` にする決定（owner「くどい」却下）のため、Lane 5 の変更と ⑦ の決定は逆方向。本 packet では新規の色決定は不要だが、canonical docs 側の記述変更も不要（既存 5 箇所は runtime 側の枠色トークンが Lane 5 merge → ⑦ merge の順に揃うのを待つだけで、runtime lane が最終的に ⑦ 規則へ揃える）。
 
 ### L8-8 PageHeader間隔（catalog ① 使用パターン + component gap 記録）
 
-**Alternatives considered**:
-
-- (a) `SupplierManagementPage.tsx` の説明文 `<p>` を `PageHeader` と合わせて `<div className="space-y-1">` で包む使用パターンのみ catalog に明記し、`PageHeader.tsx` 自体は変更しない。Pros: 最小の runtime 差分（1 画面のみ、`PageHeader.tsx` は無変更）。Cons: 将来 `actions` + 説明文を必要とする画面（商品一括インポート等）が増えるたびに同じラップを個別に書く必要があり、書き忘れると同じ間隔バグが再発する。
-- **(b) `PageHeader.tsx` を拡張し、`actions` があっても `subtitle`（または説明セクション相当）を描画できるようにする（Coordinator 推奨、runtime lane 判断）**。Pros: 呼び出し側が意識しなくても正しい間隔になる「root cause fix」（今回のバグの原因はまさに `actions` 分岐が `subtitle` を握りつぶすこと）。1 箇所の component 変更で `SupplierManagementPage.tsx` と将来の商品一括インポートの両方を一度に直せる。Cons: `PageHeader` の DOM 構造契約（`D-B2`、8 画面統合時に固定）に触れるため、既存消費者への影響確認が要る。
-- 本 packet は docs-only のため実装は行わないが、**catalog ① には (a) の使用パターン（説明セクション + `space-y-1` wrapper）を記載しておき**、runtime lane で (b) の component 拡張を検討する際の叩き台にする。両案は排他ではなく、(a) は当面の統一表記、(b) はより根治的な後続改善として Non-scope に明記する。
+**Plan Review round 1 是正（P1、多画面実害の判明を受け反転）**: `SupplierManagementPage.tsx` 1 画面の runtime パッチではなく、**(b) `PageHeader.tsx:29-36` の root-cause fix を推奨案に一本化する**。`actions` 分岐を「`<h1>` + 条件付き `<p>`（`subtitle` があれば）を `<div className="space-y-1">` にまとめ、`actions` と並べる」形に変える（外側 `<header>` の class は不変のため `PageHeader.test.tsx:61-73` は green のまま）。理由: 使用パターン頼み（wrapper div を呼び出し側で都度書く）では、既に 4 画面（`ReceivingPage.tsx` 等）が `subtitle` を渡しているのに気づかず捨てられている実害が起きている——これは「書き忘れると再発する」という仮定の懸念ではなく、**現在進行形で 4 箇所が壊れている**ことの実測。component 側を直せば `SupplierManagementPage.tsx` の間隔・4 画面の消えている `subtitle`・将来の商品一括インポート（`actions` + 説明セクション）を 1 箇所の diff で同時に解消できる。
+catalog ① には、この component 契約（`actions` の有無に関わらず `subtitle`/説明セクションが `space-y-1` で描画される）を使用パターンとして明記する。これは (a)「呼び出し側で毎回 wrapper を書く」案の**代替**であり、component が正しく動く前提のもとでの記法説明に位置づけを変える（Non-scope: `PageHeader.tsx` の実装変更そのもの、runtime lane が担当）。
 
 ### L8-1 単位表示sweep（catalog ③ 使用トークン行に 1 文追加）
 
@@ -227,10 +260,12 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Acceptance Criteria
 
 - AC1: `rg -Fc "説明セクション" docs/design-system/02-component-catalog.md` ≥ 1（① ページヘッダに使用パターンが追加されている）。
-- AC2: `rg -Fc "商品一覧へ戻る" docs/function-design/60-ui-product-import.md` の有無に関わらず、`rg -Fc "レジ登録状況を読み込む" docs/function-design/67-ui-plu-export.md` ≥ 1 かつ `rg -Fc "未反映から外す" docs/function-design/67-ui-plu-export.md` ≥ 1（PLU 書出し説明文が enabling flow に触れている）。
+- AC2a: `rg -Fc "CSVファイルから複数の商品をまとめて登録・更新するページです" docs/function-design/60-ui-product-import.md` ≥ 1（Plan Review round 1 是正 — baseline 0 で本文に無い文であることを確認済み。旧 AC2 は `レジ登録状況を読み込む`/`未反映から外す` を anchor にしていたが、これらは既存本文（`67-ui-plu-export.md`）に既に 3 件・6 件存在する false oracle だった。以後は各画面の説明文冒頭など新規追加箇所にのみ現れる文を anchor にする）。
+- AC2b: `rg -Fc "レジのPLU登録状況を書き出すページです" docs/function-design/67-ui-plu-export.md` ≥ 1（baseline 0 確認済み。PLU 書出し説明文が追加されている）。
+- AC2c: `rg -Fc "アプリのデータ全体をまとめて保存し" docs/function-design/68-ui-backup-restore.md` ≥ 1（baseline 0 確認済み。バックアップ説明文が追加されている）。
 - AC3: `rg -c "^## DSR-23" docs/design-system/01-decision-rules.md` = 0（新規 DSR を起草していないことの negative oracle。本 packet は DSR-22 への注記追加のみ）。
 - AC4: `rg -Fc "owner culling" docs/design-system/01-decision-rules.md` ≥ 1（DSR-22 に記録 ID 方針の owner culling 注記がある）。
-- AC5: `rg -Fc "備考なし" docs/design-system/02-component-catalog.md` の有無を reviewer 目視で確認（owner culling 対象のため exact 文言 oracle にしない。「備考」「truncate」「直近 {N} 件」の 3 語がいずれも catalog ③ に含まれることを機械 oracle とする: `rg -Fc "備考" docs/design-system/02-component-catalog.md` ≥ 1、`rg -Fc "truncate" docs/design-system/02-component-catalog.md` ≥ 1）。
+- AC5: 機械 oracle のみ（Plan Review round 1 是正 — 「reviewer 目視」を撤去し、baseline 0 を確認済みの新規文言のみ使う）: `rg -Fc "備考は" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0 確認済み）、`rg -F "truncate + \`title\`" docs/design-system/02-component-catalog.md` の hit ≥ 1（baseline 0 確認済み、`truncate` 単独は DSR-12 の既存記述で baseline 2 のため anchor にしない）、`rg -Fc "直近 {N} 件の" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0 確認済み、`直近` 単独は baseline 3 のため anchor にしない）。空欄表示の具体文言（「—」か「備考なし」か）は owner culling 対象のため oracle 化しない — **Human Gate 後に確定**、確定後の Writer が該当文言の exact-match oracle を追加する。
 - AC6: `rg -Fc "formatStockDisplay" docs/design-system/02-component-catalog.md` ≥ 1（単位表示ルールが catalog ③ 使用トークンに追記されている）。
 - AC7: `01-decision-rules.md` / `02-component-catalog.md` の `## 更新履歴` 表それぞれに本 PR の行が 1 行追加されている。
 - AC8: `docs/Plans.md` ④ が本 packet（basename `2026-09-06-ui-polish-batch3-design.md`）への active link を持つ bullet ⑩ を持つ。
@@ -409,5 +444,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-Fill after review.
+2026-09-06: Plan Review round 1（Coordinator 直接レビュー + Opus 並行分、2 便）→ 全件 accept、本 commit で反映。
+- 便 1（Coordinator）: (P1) 説明文 3 案に file:line 根拠を必須化し根拠のない文を削除、バックアップ案の「スケジュール」を誤って全面削除（便 2 で是正）。(P1) AC2 の `レジ登録状況を読み込む`/`未反映から外す` anchor が `67-ui-plu-export.md` に既に 3 件/6 件存在する false oracle だったため baseline 0 の新規文へ差替え（AC2a/b/c）。(P2) AC5 の「reviewer 目視」を撤去し、baseline 0 確認済みの機械 oracle（`備考は`/`truncate + \`title\``/`直近 {N} 件の`）へ差替え。(P2) L8-3 の tone を「L8-2 待ち」から ⑦ の tone family 表・DSR-22 narrow 化の既存決定へ差替え。(P3) 備考の全文確認手段は詳細ページが担い `title` は DSR-11 に沿う補足と明記。(P3) ⑦ との merge 順序（同一 2 file 編集）を Workflow State に追記。
+- 便 2（Opus 並行）: (P1 訂正) バックアップの自動バックアップ機能は実在する（`:421,429`）ため全面削除ではなく実際のラベルへ書き直し。(P1) `PageHeader` の `actions`/`subtitle` 併存は `SupplierManagementPage.tsx` 以外に `ReceivingPage.tsx`/`ManualSalePage.tsx`/`ReturnExchangePage.tsx`/`DisposalPage.tsx` の 4 画面で実害（`subtitle` 消失）が起きていることが判明し、是正方向を (b) `PageHeader.tsx` root-cause fix へ一本化。(P1) `MovementTable.tsx:57,92-94`（7 画面共有）を備考規則の起票時実測に追加し、`?? "—"`/`"—"` の実測件数（5 箇所4file / 27箇所16file）に基づき空欄表示の推奨を「備考なし」から「—」へ反転。(P2) ⑦ の記録状態 tone 決定と Lane 5 の枠色トークン移行（`--border-strong`→`--border`）の矛盾を明記。(P3) PLU 説明文を実在ボタン文言（『差分を書き出す』/『全件を書き出す』）へ訂正、各説明文を 2〜3 文・非入れ子括弧へ整理。(P3) L8-1 の帰属画面を「一覧本体」から「記録詳細 6 画面」へ訂正。(P3) `ManualSalePage.tsx` 備考列見出し行・DSR-22 の `InventoryRecordsPage.tsx` 行番号の stale 引用を修正。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
