@@ -111,6 +111,13 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     expect(row.className).not.toContain("text-muted-foreground");
   });
 
+  it("SC9d: product code cell carries the fixed w-28 width class (識別列固定、left-[7rem] の前提)", () => {
+    render(<ProductTable items={[makeMockProductWithRelations({ product_code: "P-090" })]} />);
+    const cell = screen.getByText("P-090").closest("td");
+    if (cell === null) throw new Error("cell not found");
+    expect(cell.className.split(/\s+/)).toContain("w-28");
+  });
+
   it("REQ-105 UI-01a-D13 places cost immediately after selling price and renders the value", () => {
     render(
       <ProductTable
