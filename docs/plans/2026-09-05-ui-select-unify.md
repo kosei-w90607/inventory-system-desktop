@@ -4,10 +4,10 @@ owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 5d94a72
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
@@ -328,7 +328,7 @@ Contract ID: SPEC-UISEL-D1
 
 ## Implementation Results
 
-未着手（Phase: plan-draft）。
+実装中（Phase: implementing、Plan Commit `5d94a72`、2026-09-05 Plan Gate 収束）。
 
 ## Review Response
 
@@ -345,5 +345,7 @@ Plan Review round 2（独立 Sonnet subagent、fresh context + 独立 Opus 5 rea
 Plan Review round 3（独立 Sonnet subagent、fresh context + 独立 Opus 5 read-only claims-producer）: Sonnet approve / Opus reject（oracle mechanics のみ）。Coordinator adjudication（2026-09-05）= Opus 指摘 P1 3 件 + P3 1 件（`git diff --stat` 反映済み）を全件 accept、本 commit（amend、最終ドラフター pass）で反映:
 - P1（3 件、すべて accept）: (1) S6 完了条件 `rg -Fn 'id="price-revision-supplier"' ≥ 2` は `htmlFor="…"` に `id=` literal が含まれず不成立 — `rg -Fc 'htmlFor="price-revision-supplier"' ≥1` と `rg -Fc 'id="price-revision-supplier"' ≥1` の 2 本立てへ分割 (2) `PriceRevisionPage.test.tsx:539` は `onPatch`/`patchSearch` を mock しておらず（mock は router/sonner/bindings/page-scroll のみ、`:19-35`）observable でないと判明 — `mockSearchProducts` の `supplier_id: 44` 呼び出し（`:170-172` と同型、`priceRevisionSearch.ts:128` の写像経由）へ全面差替え（起票時実測 `:111`、S6 完了条件 `:132`、Matrix SC6 を修正） (3) `ProductForm.test.tsx:511` の `Harness` 内で `vi.fn(setValues)` を inline 生成すると test scope から参照できないと判明 — `renderStateful` 直下で `const onValuesChange = vi.fn()` を hoist し `(next) => { onValuesChange(next); setValues(next); }` を渡し、戻り値を `{ ...render(<Harness />), onValuesChange }` へ拡張する形へ具体化（S8 完了条件 `:134`、Matrix SC8b を修正）
 - P3（1 件、accept）: (4) S9 完了条件 `rg -c "SelectGroup"` は import 文の行にも一致するため `rg -c '<SelectGroup'` へ固定（`:135`）
+
+2026-09-05: Plan Gate 収束（round 3/3。round 1 = Opus reject P1 5 / Sonnet approve-with-P2、是正 amend / round 2 = Opus reject P1 2 / Sonnet approve、是正 amend / round 3 = Sonnet approve、Opus reject は oracle 記述 3 件 + P3 1 件で設計欠陥なし）。round 3 の是正 4 件は同一 vendor ラリー天井のため Coordinator が該当行（S6 二重 oracle / SC6 `mockSearchProducts` supplier_id 44 / SC8b `renderStateful` spy hoist / S9 `<SelectGroup`）を直接検分して閉じた（owner 許可 2026-09-05「ラリーが止まらない時は Fable が見る」）。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑧ 同期の本 content commit に同乗させて遷移（forward state-only は温存）。Plan Commit = `5d94a72`（plan-first commit、Lane 5 tip `04f89a4` 直上）。Codex ロジックレビュー 1 回は §3.3 pending のまま。
 
 - Findings Freeze: not yet frozen（Final Review が未実施のため）; post-freeze exceptions: none.
