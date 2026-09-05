@@ -17,7 +17,10 @@
   border px-2 py-0.5 text-xs font-medium）。
 - src/components/ui/button.tsx:7-37 variants（default: bg-primary text-primary-foreground
   hover:bg-primary/90 / secondary: bg-secondary hover:bg-secondary/80 / outline: border bg-background
-  hover:bg-accent / ghost: hover:bg-accent、size default: h-9 px-4 py-2 text-sm）。
+  hover:bg-accent / ghost: hover:bg-accent、size default: h-9 px-4 py-2 text-sm）。branch
+  origin/agent/ui-list-backbone-d-lane5 の button.tsx:16 で outline の border が border-input へ変更済み
+  （--input は globals.css:71 で var(--border-strong) #8a8480 に解決）。本 mockup の .btn.outline は Lane 5
+  後に合わせて border-color を --border-strong にした。
 - src/features/stock-inquiry/components/StockStatusBadge.tsx:16-45 — ①状態 badge の実装先例
   （outline + icon + border-*-border/bg-*-soft/text-*-strong の 3 点構成。ok 状態のみ icon なし）。
 - v2（デザインレビュー反映）: 枠強度は WCAG 相対輝度式で本ファイルが再計算した値（下記各 caption）。
@@ -96,7 +99,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 .btn.secondary.hover{background:rgba(231,229,228,.8)}
 .btn.secondary.framed-weak{border-color:var(--border)}
 .btn.secondary.framed{border-color:var(--border-strong)}
-.btn.outline{background:var(--background);color:var(--foreground);border-color:var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.btn.outline{background:var(--background);color:var(--foreground);border-color:var(--border-strong);box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .btn.outline.hover{background:var(--accent)}
 .btn.ghost{background:transparent;color:var(--foreground)}
 .btn.ghost.hover{background:var(--accent)}
@@ -279,10 +282,10 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <h2>⑤「追加」系 button の 3 段</h2>
 <p class="lead">入庫画面で商品を検索して行へ追加する「追加」button の強さの選択肢。B2 secondary は枠あり/なしを比較する。画面の主 CTA「入庫を確定」（primary）とどれだけ競合するかを併記する。</p>
 <div class="row">
-<div class="col"><h3>現状: outline</h3>
+<div class="col"><h3>現状: outline（Lane 5 後、枠 --border-strong）</h3>
 <div class="strip"><input class="search" placeholder="商品コード・商品名で検索"><button class="btn outline">追加</button></div>
 <div class="strip" style="margin-top:12px"><button class="btn primary">入庫を確定</button></div>
-<p class="caption">outline = 現状。</p></div>
+<p class="caption">outline = 現状。border-input（= --border-strong #8a8480、branch agent/ui-list-backbone-d-lane5）。</p></div>
 <div class="col"><h3>案 B2: secondary（枠なし = 現行 button.tsx）</h3>
 <div class="strip"><input class="search" placeholder="商品コード・商品名で検索"><button class="btn secondary">追加</button></div>
 <div class="strip" style="margin-top:12px"><button class="btn primary">入庫を確定</button></div>
