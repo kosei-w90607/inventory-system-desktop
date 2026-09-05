@@ -90,7 +90,7 @@
       - R3-2 前へ / 次へ button の有効状態が薄い: 一括価格改定の 1 ページ目で「前へ（無効）」と「次へ（有効）」の見た目が同じ。R2-2 と統合（有効を濃く + hover 反応、無効との区別を明確に）→ Lane 5 の E13 sweep に同乗候補（`Pagination.tsx` の button variant）
       - R3-3 一括価格改定の注意文言「画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。」が薄い → Backup の注意書きと同じ warning tone へ（DSR の注意文言 token を実測して揃える）→ 別 item S
       - R3-4 取引先プルダウンの枠と「取引先追加」button の枠が他と揃っていない（全画面共通の指摘）: プルダウンは Lane 5 の `PriceRevisionFilters.tsx` / `ProductForm.tsx` の native select 対象に含まれ是正済み（run 3 の HEAD は Lane 3 branch のため未反映）。「追加」系 button を primary（オレンジ）にする案は CTA hierarchy の設計判断 → design-first で owner と決める（DSR-03 / catalog Button 節の改訂候補）
-    - owner Lane 5 L3 所感（2026-09-05、Lane 5 HEAD `9b97849`、原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 3 承認 + Lane 5 L3 所感 原文」。Lane 3 は同 message で承認。Coordinator 転記、裁定は原文を正とする）:
+    - owner Lane 5 L3 所感（2026-09-05、原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 3 承認 + Lane 5 L3 所感 原文」。Lane 3 は同 message で承認。Coordinator 転記、裁定は原文を正とする）:
       - R5-1 検索欄に欄のタイトルが無いのが寂しい（案は owner も未定）→ design-first の候補提示（placeholder のみ vs label 併記、Laws of UX / DSR-22 の可読性で裁定）
       - R5-2 表示件数 Select の配置が「画面上部の枠の中」と「枠の外」で画面ごとにばらつく → 一覧 8 画面で位置を統一する契約を catalog ⑯ / ⑩ に追加（ListShell の toolbar 内に置くか、件数行の右端に置くか、owner と実機候補で決める）→ Lane 4 候補（ListShell 横展開と同時が自然）
       - R5-3 **owner 決定**: プルダウンの見た目が 2 種類（native `<select>` と shadcn `Select`）あり、一括価格改定の画面内でも両方が同居する → **部門（shadcn `Select`）のほうにアプリ全体で統一**。Lane 5 の D8（native に token を当てる）は暫定で、正本は native `<select>` 23 箇所を shadcn `Select` へ置換する lane（起票時実測の一覧を再利用、`aria-label` / id / test の query を引き継ぐ）
