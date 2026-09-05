@@ -260,9 +260,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
 
     await user.click(screen.getByRole("button", { name: "入庫を保存" }));
     await waitFor(() => {
-      expect(mockCreateReceiving).toHaveBeenCalledWith(
-        expect.objectContaining({ supplier_id: 1 }),
-      );
+      expect(mockCreateReceiving).toHaveBeenCalledWith(expect.objectContaining({ supplier_id: 1 }));
     });
   });
 

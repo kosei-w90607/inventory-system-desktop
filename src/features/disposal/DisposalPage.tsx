@@ -525,10 +525,7 @@ export function DisposalPage() {
                           }));
                         }}
                       >
-                        <SelectTrigger
-                          aria-label={`${row.productCode} の種別`}
-                          className="w-28"
-                        >
+                        <SelectTrigger aria-label={`${row.productCode} の種別`} className="w-28">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

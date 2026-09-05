@@ -235,7 +235,7 @@ describe("ProductForm (UI-01b)", () => {
 
       // cm を選択
       await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+      await user.click(await screen.findByRole("option", { name: "cm" }));
 
       // lost update がないなら: stockUnit="cm" かつ posStockSync=false になる
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
@@ -250,12 +250,12 @@ describe("ProductForm (UI-01b)", () => {
       render(<StatefulProductForm />);
 
       await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+      await user.click(await screen.findByRole("option", { name: "cm" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
       await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "個" }));
+      await user.click(await screen.findByRole("option", { name: "個" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("pcs");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("true");
       expect(screen.getByTestId("pos-sync-touched")).toHaveTextContent("false");
@@ -273,13 +273,13 @@ describe("ProductForm (UI-01b)", () => {
 
       // 単位を cm に変更しても suggest が発火しないので利用者の false が保持される
       await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "cm" }));
+      await user.click(await screen.findByRole("option", { name: "cm" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("cm");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
 
       // 単位を pcs に戻しても suggest が発火しないので false のまま
       await user.click(screen.getByLabelText("数量単位"));
-    await user.click(await screen.findByRole("option", { name: "個" }));
+      await user.click(await screen.findByRole("option", { name: "個" }));
       expect(screen.getByTestId("stock-unit")).toHaveTextContent("pcs");
       expect(screen.getByTestId("pos-stock-sync")).toHaveTextContent("false");
     });
@@ -676,7 +676,8 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
         | ProductFormValues
         | ((prev: ProductFormValues) => ProductFormValues)
         | undefined;
-      const resolved = typeof lastCall === "function" ? lastCall(createProductFormDefaults) : lastCall;
+      const resolved =
+        typeof lastCall === "function" ? lastCall(createProductFormDefaults) : lastCall;
       expect(resolved).toEqual(expect.objectContaining({ supplierId: 44 }));
     });
     expect(screen.getByLabelText("取引先")).toHaveTextContent("新規取引先");

@@ -123,9 +123,15 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     expect(recordType).toHaveAttribute("data-slot", "select-trigger");
     expect(recordType.tagName).toBe("BUTTON");
     await user.click(recordType);
-    expect(
-      (await screen.findAllByRole("option")).map((option) => option.textContent),
-    ).toEqual(["すべて", "入庫", "返品・交換", "手動販売出庫", "廃棄・破損", "CSV取込み", "棚卸し"]);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      "すべて",
+      "入庫",
+      "返品・交換",
+      "手動販売出庫",
+      "廃棄・破損",
+      "CSV取込み",
+      "棚卸し",
+    ]);
     await user.click(screen.getByRole("option", { name: "すべて" }));
 
     const status = screen.getByLabelText("状態");
