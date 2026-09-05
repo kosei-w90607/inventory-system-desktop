@@ -4,10 +4,10 @@ owner 決定（2026-09-05/06、店舗ヒアリング + 合意要約 + owner 決�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 95f33ac
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
@@ -298,3 +298,5 @@ Contract ID: SPEC-STKSUP-D1
 未着手（Phase: plan-draft、Plan Review 前）。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接〈owner 許可〉+ Opus 並走、round 2 = Sonnet fresh approve-with-P2 → AC6 是正 `34d6708`）。Lane 4 human-confirm tip `05ece3f` へ単段 merge `495e42b` + 行番号再検証 `733ceb6` で積み直し済み。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑨ 同期の本 content commit に同乗させて遷移。Plan Commit = `95f33ac`（plan-first commit、Lane 4 旧 tip `1a8ba62` 直上、以後の是正・merge commit はその子孫）。Codex 1 回は §3.3 pending。
