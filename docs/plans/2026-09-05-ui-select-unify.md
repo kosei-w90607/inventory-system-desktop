@@ -13,7 +13,7 @@ owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded により Codex 成分は pending、human-confirm で待機し Phase を前進させない）
-- Reviewed Content HEAD: ce39c8f
+- Reviewed Content HEAD: c66c607
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈プルダウン統一の見た目〉/ AC-L3-2〈開閉・選択・「すべて」・キーボード操作、owner 選定 2 画面〉の 2 項目）
@@ -364,3 +364,5 @@ Plan Review round 3（独立 Sonnet subagent、fresh context + 独立 Opus 5 rea
 2026-09-06: owner Windows native L3（HEAD `ce39c8f`、介入 2/3）= **PASS**（原文「基本問題なさそう」、`docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`「⑧ PR #38 L3 結果 原文」）。AC-L3-1 / AC-L3-2 に指摘なし（キーボード 3 点の受容可否は言及なし = 受容と読む、Coordinator 転記）。所感 8 件は全て本 lane の scope 外で Plans.md ④ ledger へ起票する: (1) 入出庫履歴・在庫変動履歴・記録詳細で単位 code `pcs` 生表示（PR #32 S45 の是正対象外だった残り、sweep）(2) badge 無色は ⑦ runtime lane 待ち（想定どおり）(3) 手動販売出庫の記録状態が plain text「有効」→ Badge へ（`inventory-records/types.ts:14` `formatRecordStatus` の描画箇所）(4) 明細数 summary は run 3 原文 (h)「削ってよい」→ 今回「手動販売出庫は残す寄り、何とも言えず」= 未決のまま (5) 記録日時の font 差は既起票（Plans ④ C5、実機観測で機序確定待ち）(6) 備考: 欄は必須、空欄 vs「備考なし」薄字を決める、一定文字数で … 省略、「直近の○○」series 共通化（A1 (a)(b)(c) と統合）(7) 商品一括インポート / PLU 書出し / バックアップにページ説明セクション（title 直下: どういうページか・何をするか・何が起きるか、backbone 原則 8 の 1 行説明の拡張、design-first）(8) 取引先管理の title と説明の間隔が他 page と不一致 → PageHeader 統一 (9) 記録 ID は種別ごとの連番で一意でない → 種別込みの表示（例: 種別 prefix）か一覧から外す、design 判断（DSR-22 の識別列並べ替え候補と統合）。Human Gate 完了。残り = Codex ロジックレビュー 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final。
 
 2026-09-06: Preflight review（pre-Codex）は doc-only 3 件（D-038 揮発 evidence の除去、Select 消費者数の誤カウント訂正、行番号 pin のテスト名化）を是正、P3 1 件を記録: `InventoryRecordsPage.test.tsx:424` の `it("⑧SC4b: …")`（round-trip test、L8-D5）は同ファイル `:451` の pre-existing `it("SC4b: …")`（表示件数変更、Lane 3 由来、別契約）と SC-id が衝突するが、Writer が `⑧` prefix を付けて命名しており曖昧さは実質解消済み — 採用（accept）、コード変更なし。
+
+2026-09-06: Codex 前 preflight（Opus）= docs 側 fix first → drafter 是正 `0b98a81`（D-038 揮発 evidence 除去、消費者数の訂正、行 pin → test 名）+ Writer `c66c607`（`select.tsx:15` の `ponytail:` 印除去、comment のみ）。Coordinator が `c66c607` の diff を実読（comment 1 行、logic 不変）し Reviewed Content HEAD を `c66c607` へ更新。preflight verdict: code は Codex ready。残り = Codex 1 回（9/7 夜）。
