@@ -53,7 +53,7 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **Do**:
 - 主動線（primary button）は 1 ページ 1 個に絞る（[01-decision-rules.md](01-decision-rules.md) DSR-01）
-- アクションが複数あるときは 1 つだけ Primary、残りは outline / ghost に降格する
+- アクションが複数あるときは 1 つだけ Primary、残りは 3 段（`secondary` 中間段 → `outline` / `ghost`）で降格する
 
 **Don't**:
 - h1 を複数置かない
@@ -155,7 +155,7 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{item.name}</span>
             {item.is_discontinued && <Badge variant="secondary">廃番</Badge>}
-            {/* 分類 badge は枠線 3:1（DSR-22）が規範。現状 variant="secondary" は border なし、Lane 3〜5 sweep 対象 */}
+            {/* 分類 badge は枠線必須（`--border`、DSR-22）が規範。現状 variant="secondary" は border なし、Lane 3〜5 sweep 対象 */}
           </div>
         </TableCell>
         <TableCell>{item.department_name}</TableCell>
@@ -378,6 +378,26 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 **バリエーション: インライン選択エラー 1 スロット**（PR #125、canonical: `src/features/daily-report-import/DailyReportImportPage.tsx` の `SelectionErrorMessage`）: ファイル選択（DSR-14 の path-based 方式）など非フォーム文脈の入力検証エラーは、発生源（選択ボタン）直下の 1 スロットに `role="alert"` + destructive テキスト + アイコンで表示する。エラー state は選択試行のたびに置換し、成功で `null` にクリアする。画面上部の Alert 帯（データ安全系専用）とは役割を混ぜない（DSR-03 の 3 階層）。フォーム文脈の入力検証はパターン④の `FieldError`（入力直下）が既定で、本バリエーションは非フォーム文脈専用。
 
+### Alert warning variant（画面上部の注意喚起、owner v4 決定で確定）
+
+業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` に次を追加する: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。枠は `--warning`（badge ①状態の `--warning-border` より一段濃い）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
+
+```tsx
+<Alert variant="warning">
+  <AlertTriangle aria-hidden="true" />
+  <AlertTitle>ご注意</AlertTitle>
+  <AlertDescription>
+    画面を再読み込みすると、保存していない変更は失われます。
+  </AlertDescription>
+</Alert>
+```
+
+適用先候補: `PriceRevisionPage.tsx:112-116`（現状 `<Alert role="note">` で variant 指定なし、`AlertTitle` も無い 1 段構造。runtime lane で `warning` variant へ切替え、`AlertTitle`「ご注意」を追加し、既存の本文はそのまま `AlertDescription` に残す）。
+
+**Alternatives considered**: (a) `bg-card` 据え置き + `text-warning-strong`（対 `bg-card` 8.32:1、AA 達成だが「薄い」という owner 指摘を soft 背景なしでは解消できず不採用）。(b) `bg-card` 据え置き + `text-foreground` 本文、枠と icon のみ amber（owner が「すっきり見えるが警告表示としての一貫性に欠ける」と評し不採用）。(d) タイトルのみ `text-warning-strong` bold、本文 `text-foreground`（見出しのみの強調では①状態 badge との視覚言語統一に届かず不採用）。
+
+`destructive` variant（`bg-card` + red 系）は本 packet では変更しない。`warning` の soft 塗り確定により両者は非対称になるが、`destructive` の soft 塗り統一は対称性のための後続候補として Non-scope に記録する（別 change で owner 判断）。
+
 ### ローディング状態の標準UI
 
 | パターン | 用途 | コンポーネント |
@@ -407,7 +427,7 @@ WCAG 2.1 AA の前提として、状態・警告・選択・比較の意味を�
 
 在庫照会の `在庫切れ` / `在庫少` はこの対象である。赤 / amber の文字色は補助として残してよいが、実利用者が赤黄を識別できない場合でも意味が読める実装にする。
 
-**使用トークン**: Skeleton は shadcn/ui 既定。エラーは `Alert` destructive variant。空状態は `EmptyState` 既定（囲み `rounded-md border p-12 text-center`、見出し `text-stone-700`、説明 `text-sm text-stone-500`、アイコン 24px `text-stone-400`）。
+**使用トークン**: Skeleton は shadcn/ui 既定。エラーは `Alert` destructive variant。注意喚起（業務は止めない）は `Alert` warning variant（`bg-warning-soft` + `border-warning` + `text-warning-strong` + `AlertTriangle`）。空状態は `EmptyState` 既定（囲み `rounded-md border p-12 text-center`、見出し `text-stone-700`、説明 `text-sm text-stone-500`、アイコン 24px `text-stone-400`）。
 
 **状態**: 本パターン自体が loading / error / empty の 3 状態を表す。hover / focus / active / disabled は規定なし。
 
@@ -585,7 +605,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **フィルタ候補のソース**: 部門候補は `listDepartments` の master 全件から作る。現在の絞込み結果（filtered result）から候補を作ると、選択値が候補から消えて他候補へ切り替えられなくなる縮退が起きるため、これを禁止する（DSR-10）。
 
-**アクセシビリティ**: 検索 `Input` は両モードとも `aria-label="商品検索"` で識別する。commit 型はさらに可視 `Label htmlFor` を併置し、`placeholder` は補助に留める。live 型は可視 Label を持たない設計（在庫照会の検索駆動レイアウト）のため、`aria-label` を省略しないことが必須要件 — `placeholder` だけに識別を頼らない。フィルタの未選択は「すべての部門」という日本語 default で示す。
+**アクセシビリティ**: commit 型も可視 `Label htmlFor` のみを accessible name とし `aria-label` は持たない（識別方式を混在させない、:618 と整合）。live 型は可視 `<Label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。runtime 反映では commit 型相当の既存 4 箇所（`DisposalPage.tsx:382`「廃棄・破損商品検索」/ `ReturnExchangePage.tsx:688`「返品・交換商品検索」/ `ManualSalePage.tsx:477`「手動販売商品検索」/ `ReceivingPage.tsx:446`「入庫商品検索」）の `aria-label` を外す（runtime lane）。フィルタの未選択は「すべての部門」という日本語 default で示す。
 
 **Do**:
 - commit 型の検索は Enter 確定（スキャナ互換）+ ボタン確定の両経路を持つ
@@ -595,7 +615,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **Don't**:
 - フィルタ候補を絞込み結果から派生させない
 - IME 変換中の Enter を検索確定と取り違えない
-- live 型で `aria-label` を外さない（可視 Label がない分、これが唯一の識別子）
+- live 型に `aria-label` を追加しない（可視 Label が唯一の accessible name、commit 型と live 型で識別方式を混在させない）
 
 ---
 
@@ -794,6 +814,27 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Badge>
 ```
 
+**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = `variant="default"` + `border-warning`（琥珀 pill、枠色は owner v3 決定で `--warning` に確定、ランキング・最新 等）。この 3 種以外を作らない。
+
+**①状態の tone family マッピング表**（owner culling 列は design PR 上で記入（AC-HumanGate、未記入）。全行 `rg -n "<Badge"` 実測、file:line 明記）:
+
+| tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
+|---|---|---|
+| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:34`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:79`「未反映」（`variant="secondary"`、runtime gap）/ `ResultStep.tsx:47`「部分成功」（`variant="outline"`、tone なし、runtime gap） | |
+| success（`border-success-border bg-success-soft text-success-strong` + icon） | `IntegrityCheckPage.tsx:387`「補正済み」（`bg-success` 直接塗り pill、runtime gap）/ `StocktakePage.tsx:404`（棚卸し全数完了時の同型 pill、runtime gap）/ `ProductTable.tsx:84`「反映済み」（`variant="default"`、owner 承認済み現状のため runtime gap ではない）/ `ResultStep.tsx:47`「成功」（`variant="secondary"`、tone なし、runtime gap）/ `DailyReportImportPage.tsx:164,186`「確認済み」（`variant="secondary"`、tone なし、runtime gap） | |
+| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:25`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（tone なし、runtime gap）・`:192`「明細取消済み」（tone なし、runtime gap）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（`variant="destructive"` 塗り、runtime gap 候補） | |
+| 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:42`「通常」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | |
+
+**表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 15「現在の行は 3 点で示す」の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:90,592`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
+
+**②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠が正しい形（`badge.tsx` の runtime gap は起票時実測を参照）。
+
+**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx:533`、`variant="secondary"` の種類取り違えも runtime gap）・1 位（`ProductRankingTable.tsx:80`、`bg-rank-top-badge-bg` custom class）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）+ `border-warning` 枠。対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1。3 site とも枠追加が runtime gap。
+
+**非Badge除外のクロスリファレンス**: 「入力中」（`PriceRevisionTable.tsx:104`）は [04-backbone.md](04-backbone.md) 原則 15「現在の行は 3 点で示す」の対象であり、tone family 表・②分類・③強調のいずれにも含めない。
+
+**関連**: DSR-08（semantic 色のみで意味を伝えない）/ 04-backbone 原則 15（現在行 3 点、`入力中` の帰属先）/ [01-decision-rules.md](01-decision-rules.md) DSR-22（枠の narrow 化、badge 枠線必須・非中立①状態 icon 必須）。
+
 標準パターン:
 
 - `Badge` + `lucide-react` アイコン + 日本語ラベルを第一候補にする。例: `CircleAlert` + `在庫切れ`、`TriangleAlert` + `在庫少`
@@ -817,6 +858,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **Don't**:
 - 状態を色（hue）だけで符号化しない（DSR-08）
 - 意味を tooltip だけに閉じ込めない
+- secondary（②分類）を①状態の soft tone 代わりに使わない
 
 ---
 
@@ -940,6 +982,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-05 | 本 PR | UI 規約補強 design batch。① Do bullet を 3 段 CTA 表現へ同期。⑥ に `Alert` `warning` variant（`bg-warning-soft`+`border-warning`+`AlertTriangle`+`text-warning-strong` の 4 点構造、owner v4 決定）を新設し適用先候補 `PriceRevisionPage.tsx:112-116` を記録。⑨ アクセシビリティ節を owner C1 決定へ書き換え（live 型は可視 Label のみを accessible name とし `aria-label` 廃止、WCAG 2.5.3）。⑬ に badge 3 種構成と①状態 tone family マッピング表（owner culling 列つき）・②分類/③強調 note・原則15 クロスリファレンスを追加、Don't に secondary 誤用禁止を追加。JSX コメント（`:158` 相当）の枠線 3:1 記述を `--border` 必須へ更新 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | ⑩ canonical を `src/components/patterns/Pagination.tsx`（`Pagination` + `PaginationSummary`）へ、件数文言を範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」へ実装。⑯ canonical を `src/components/patterns/ListShell.tsx` へ（商品一覧 pilot 採用）、必須構成 1 の枠を `rounded-lg border bg-card p-4` へ、必須構成 3 の固定列影の記載を必須構成 4 側へ移動 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を当時の canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は後続 lane での移行対象と明記。⑯ の canonical を「なし（後続 lane で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |

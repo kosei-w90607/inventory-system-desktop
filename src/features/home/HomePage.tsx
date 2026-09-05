@@ -63,7 +63,7 @@ export function HomePage() {
       <PageHeader title="ホーム" subtitle={today} />
 
       {showRestoreSuccessAlert ? (
-        <Alert className="text-success-strong border-success bg-success-soft">
+        <Alert className="border-success bg-success-soft text-success-strong">
           <CheckCircle2 />
           <AlertTitle>バックアップから復元しました</AlertTitle>
         </Alert>

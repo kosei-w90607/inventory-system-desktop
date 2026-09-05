@@ -28,18 +28,20 @@ forced-colors focus indicator: `globals.css` の unlayered `@media (forced-color
 | 状態 | `--{name}` | Tailwind | 用途 |
 |------|-----------|---------|------|
 | Primary | `--primary` | `amber-700` (#b45309) | 主要ボタン、ハイライト。ウォーム系主アクセント |
-| Success | `--success` | `green-700` (#15803d) | 取込み完了、前月比プラス |
+| Success | `--success` | `green-700` (#15803d) | 取込み完了 |
 | Warning | `--warning` | `amber-600` (#d97706) | PLU通知、手動バッジ、在庫少 |
-| Destructive | `--destructive` | `red-700` (#b91c1c) | 在庫切れ、前月比マイナス |
+| Destructive | `--destructive` | `red-700` (#b91c1c) | 在庫切れ |
 | Warning Soft | `--warning-soft` | `amber-50` (#fffbeb) | 在庫少 Badge soft 背景 |
 | Warning Border | `--warning-border` | `amber-200` (#fde68a) | 在庫少 Badge outline |
 | Warning Strong | `--warning-strong` | `amber-900` (#78350f) | warning 系強調テキスト |
 | Warning Emphasis | `--warning-emphasis` | `amber-700` (#b45309) | 在庫少セル強調 |
 | Destructive Soft | `--destructive-soft` | `red-50` (#fef2f2) | 在庫切れ soft 背景 |
 | Destructive Border | `--destructive-border` | `red-200` (#fecaca) | 在庫切れ outline |
-| Destructive Strong | `--destructive-strong` | `red-900` (#7f1d1d) | 在庫切れ強調テキスト |
-| Success Soft | `--success-soft` | `green-50` (#f0fdf4) | 前月比プラス soft 背景 |
-| Success Emphasis | `--success-emphasis` | `green-600` (#16a34a) | 増減プラス数値 |
+| Destructive Strong | `--destructive-strong` | `red-900` (#7f1d1d) | 在庫切れ強調テキスト、増減数値マイナス（DSR-08） |
+| Success Soft | `--success-soft` | `green-50` (#f0fdf4) | ①状態 badge success tone の soft 背景 |
+| Success Border | `--success-border` | `green-200` (#bbf7d0) | ①状態 badge success tone outline |
+| Success Strong | `--success-strong` | `green-900` (#14532d) | ①状態 badge success tone 強調テキスト、増減数値プラス（DSR-08） |
+| Success Emphasis | `--success-emphasis` | `green-600` (#16a34a) | 増減用途は DSR-08 が置換、icon 用途 1 site（ProductImportPreview）残置 |
 | Rank Top BG | `--rank-top-bg` | `amber-50` (#fffbeb) | 1位行背景 |
 | Rank Top Badge BG | `--rank-top-badge-bg` | `amber-100` (#fef3c7) | 1位 Badge 背景 |
 | Rank Top Badge Text | `--rank-top-badge-text` | `amber-800` (#92400e) | 1位 Badge テキスト |
