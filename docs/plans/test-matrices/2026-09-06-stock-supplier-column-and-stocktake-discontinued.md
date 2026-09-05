@@ -14,7 +14,8 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 - SC4（UI-06a-D5）: 選択中の行を再クリックすると `onSelect` が `null` で呼ばれ、`selected` URL state が `undefined` になる（詳細展開が閉じる）
 - SC5（UI-06a-D5）: 自動展開は同一検索条件（`status`/`q`/`dept`/`page`）内で 1 度のみ発火する。手動クローズ（`selected` が `null` に戻る）後、同じ条件で `listItems.length === 1` のままでも再展開しない。条件が変化した後、新しい条件で `listItems.length === 1` なら再展開する
 - SC6（UI-10-D13）: `StocktakeItemDetail` に `is_discontinued: bool` が追加され、`find_stocktake_item_by_code` と `list_stocktake_items` の両経路で商品の実際の `products.is_discontinued` 値が正しく返る
-- SC7（UI-10-D13）: `StocktakePage.tsx` の一覧テーブルで、`item.is_discontinued === true` の行にのみ「廃番」badge（`variant="secondary"` + `border-border-strong` class + `Archive` icon）が表示される
+- SC7（UI-10-D13）: `StocktakePage.tsx` の一覧テーブルで、`item.is_discontinued === true` の行にのみ「廃番」badge（`variant="secondary"` + `border-border` class、icon なし。⑦〈`agent/ui-conventions-batch`〉が改定した design-system 正本に準拠）が表示される
+- SC9（UI-10-D13）: `StocktakePage.tsx:624` の既存候補行 badge も同じ commit で `border-border` class を持つよう是正され、`border-border-strong` を持つ badge が file 内に残らない
 - SC8（「すべて」view 非干渉、compatibility）: `source === "search"` の一覧（`ProductListPage` 系ではなく在庫照会の「すべて」チップ）の並び順・列構成が本 lane で変化しない
 
 ## Failure Modes
@@ -25,7 +26,8 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 - 再クリックしても閉じない（`onSelect` が旧 `product_code` のまま呼ばれる）
 - 自動展開の guard が検索条件の変化を正しく検出できず、(a) 条件が変わっても再展開しない（別の商品 1 件に絞り込んでも自動で開かない）、または (b) 条件が変わっていないのに再展開する（手動クローズが打ち消される）
 - `StocktakeItemDetail` の 2 つの構築箇所のうち片方だけに `is_discontinued` を追加し、もう片方が既定値（`false` 固定等）で誤魔化される
-- badge が全行に出る、または `border-border-strong` を持たない（既存の枠なし secondary badge と同じ見づらさを複製する）
+- badge が全行に出る、または `border-border` を持たない（枠なしのまま、⑦ 改定後ルールにも未適合）
+- `StocktakePage.tsx:624` の既存候補行 badge が是正されず `border-border-strong`（旧仕様）または枠なしのまま残る
 - 「すべて」view の並び順・列構成が誤って変更される
 
 ## Test Matrix
@@ -38,8 +40,9 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 | SC4 展開行トグルクローズ（UI-06a-D5） | 再クリックで閉じない | unit（`ProductListTable.test.tsx` 拡張） | SC4: 選択中の行（`selected` prop が該当 `product_code` と一致）を再度クリックすると、`onSelect` が `null` を引数に呼ばれる。別の行をクリックした場合は当該行の `product_code` で呼ばれる（回帰） | 再クリックで `onSelect` が呼ばれない、または旧 `product_code` のまま呼ばれて閉じない |
 | SC5 自動展開の条件単位制限（UI-06a-D5） | guard 誤動作 | unit（`useStockInquiry.test.tsx` 拡張） | SC5a: 検索条件が同一のまま `listItems.length === 1` で `selected` が `null` → `undefined`（手動クローズ相当）に変化しても `navigate` が再度呼ばれない。SC5b: `status`/`q`/`dept`/`page` のいずれかが変化した後、新しい条件で `listItems.length === 1` かつ `selected === null` なら `navigate` が呼ばれる（既存の自動展開が生きていることの回帰確認） | SC5a: 手動クローズ後に同条件で自動再展開してしまう。SC5b: 条件変化後の自動展開が壊れる（既存 test `REQ-301: 結果 1 件で詳細カード自動展開` の回帰） |
 | SC6 `StocktakeItemDetail.is_discontinued`（UI-10-D13） | 片方の経路だけ反映 / 既定値誤魔化し | unit（`stocktake_repo.rs` `#[cfg(test)]` 拡張） | SC6a: `test_list_stocktake_items_req205_includes_is_discontinued` — 廃番商品 1 件 + 非廃番商品 1 件を fixture に含む棚卸しで `list_stocktake_items` を呼び、返り値の `is_discontinued` が商品ごとの実値と一致する。SC6b: `test_find_stocktake_item_by_code_req205_includes_is_discontinued` — 同様に `find_stocktake_item_by_code` で廃番商品を検索し `is_discontinued: true` が返る | いずれかの経路で `is_discontinued` が常に `false`（未反映）、または実際の商品状態と一致しない |
-| SC7 廃番 badge 表示（UI-10-D13） | 全行表示 / 枠・icon 欠落 | unit（`StocktakePage.test.tsx` 拡張） | SC7: 廃番商品の行に「廃番」テキストを含む要素が存在し、その要素（または祖先）が `border-border-strong` class を持ち、`Archive` icon（`svg` 子要素、`aria-hidden="true"`）を含む。非廃番商品の行には「廃番」テキストが存在しない（対で確認、空集合 oracle を避ける） | badge が非廃番行にも出る、廃番行に出ない、または `border-border-strong` class を持たない（既存の枠なし badge と同じ見づらさを複製する mutant） |
+| SC7 廃番 badge 表示（UI-10-D13） | 全行表示 / 枠欠落 | unit（`StocktakePage.test.tsx` 拡張） | SC7: 廃番商品の行に「廃番」テキストを含む要素が存在し、その要素（または祖先）が `border-border` class を持つ。icon（`svg`）は要求しない（⑦ 改定後ルールで②分類の icon は任意、候補行の前例に合わせ付けない）。非廃番商品の行には「廃番」テキストが存在しない（対で確認、空集合 oracle を避ける） | badge が非廃番行にも出る、廃番行に出ない、または `border-border` class を持たない（枠なしのまま、⑦ 改定後ルールにも未適合の mutant） |
 | SC8 「すべて」view 非干渉 | 意図しない副作用 | unit（`ProductListTable.test.tsx`/`useStockInquiry.test.tsx` 既存 test の無変更 pass 確認） | SC8: `source="search"` の既存 test（並び順・列構成に関する既存 assertion）が本 lane の変更後も無変更で pass する | 取引先列 or ソートが `source="search"` 側にも意図せず適用される |
+| SC9 候補行 badge の是正（UI-10-D13） | 新旧 badge 混在 | unit（`StocktakePage.test.tsx` 拡張、fs literal） | SC9: `rg -c 'border-border-strong' src/features/stocktake/StocktakePage.tsx` = 0 かつ `rg -Fc 'border-border"' src/features/stocktake/StocktakePage.tsx` ≥ 2（新規箇所 + 候補行）。加えて候補行の既存 test（disabled 状態・「選択」button 等）が badge の class 変更以外は無変更で pass する | `border-border-strong` が file 内に残る、`border-border` の hit 数が 2 未満、または候補行の既存 test が回帰する |
 
 ## Mutation Oracle Notes
 
@@ -48,7 +51,8 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 - SC5 は「条件が変わらない限り再展開しない」（SC5a）と「条件が変われば再展開する」（SC5b）を対のオラクルにする。SC5a 単独だと guard を常時 true にする mutant（一切自動展開しない）を kill できない
 - SC6 は 2 つの構築箇所（`find_stocktake_item_by_code`/`list_stocktake_items`）を独立した test として書く。1 test に統合すると、どちらか片方が未反映でも「もう片方が正しいから全体は pass」という偽陽性を生む
 - SC7 は非廃番行の「廃番」テキスト不在を同一 test 内で確認し、badge が常に表示される mutant（空集合オラクル回避）を検出する。border class の検査は、text 存在確認だけでは「枠なしのまま」の mutant を見逃すため必須
+- SC9 は fs literal で `border-border-strong` の不在（0）と `border-border` の hit 数（≥2）を対で確認し、「新規箇所だけ是正して候補行を放置する」「候補行だけ是正して新規箇所を旧仕様で書く」の両方の mutant を検出する
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1〜SC5, SC7, SC8 は vitest、SC6 は cargo test。S5（bindings 再生成）と S7（docs 同期）は `git diff`/`rg` の docs review オラクルで Plan Packet 側の完了条件に記載済み、本 Matrix には独立行を立てない（Plan Packet Registration / Generation Obligations 参照）。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1〜SC5, SC7〜SC9 は vitest、SC6 は cargo test。S5（bindings 再生成）と S7（docs 同期）は `git diff`/`rg` の docs review オラクルで Plan Packet 側の完了条件に記載済み、本 Matrix には独立行を立てない（Plan Packet Registration / Generation Obligations 参照）。
