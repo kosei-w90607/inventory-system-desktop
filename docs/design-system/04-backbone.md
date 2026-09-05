@@ -17,7 +17,7 @@
 1. **文字は本文 16px を最低線にする。** 12px は badge の中だけ。見出しは h1 24px / h2 20px。（16px = 既存 foundations タイポグラフィの履行 — A 診断 #1。「12px は badge 内のみ」= B 推奨表 1 行目。現行の caption 段（12px、補助説明・タイムスタンプ）は badge 以外で 20 箇所超使われており、batch 1 で 00-foundations の caption 行を「14px muted」へ改める）
 2. **色は家族で使う。** destructive（赤）/ warning（琥珀）/ success（緑）の 3 家族、各 soft・border・strong・emphasis の 4 段。`info` 家族は作らず、お知らせ・注意喚起は warning トーンで描く。token は使う前に foundations の色表へ登録する。（A 診断 #2: `success-strong` / `info-*` の未定義参照 5 箇所が本 doc 成立の契機）
 3. **状態は icon + 日本語 + 色の 3 点で伝える。** 色だけ・icon だけは不可。（既存 DSR-08 — A / B 一致）
-4. **badge は 3 種だけ。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等）②分類 = secondary pill + 枠線（隣接背景に対し 3:1、DSR-22）。icon は識別に必要な場合に限り可（廃番等、Gated Amendment 1）③強調 = 琥珀 pill（ランキング 1 位 / 最新 等）。4 種目を作らない。（B §2.6、②の枠線化は 2026-09-03 owner Human Gate 所感の Gated Amendment 1 是正を受けて訂正）
+4. **badge は 3 種だけ。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等）（非中立 tone は icon 必須、中立 tone は任意）②分類 = secondary pill + 枠線（`--border`、DSR-22。2026-09-05 owner 決定で 3:1 要件は interactive な操作枠へ限定、badge の枠は tone 固有色または `--border` を必須とする）。icon は識別に必要な場合に限り可（廃番等、Gated Amendment 1）③強調 = 琥珀 pill（ランキング 1 位 / 最新 等）。4 種目を作らない。（B §2.6、②の枠線化は 2026-09-03 owner Human Gate 所感の Gated Amendment 1 是正を受けて訂正）
 5. **1 画面に primary（琥珀塗り）は 1 つ。** 入口（ホーム）は最重要導線 1 つだけ primary にする。0 primary の画面は昇格を検討する。（既存 DSR-01 + A 診断 #3）
 6. **画面の器は 1 つ。** `PageShell`（`src/components/patterns/PageShell.tsx`、p-6 / space-y-6）を唯一の page root にする（Lane 2 実装、`src/features/**/*Page.tsx` 43 箇所を統一済み）。一覧画面の検索・絞り込みは枠（`rounded-lg border bg-card p-4`、`ListShell` toolbar box、2 段時は段間 `space-y-3`）に入れ、「検索条件」と「並び替え・件数」は段を分ける。（B §2.2 + A 診断 #5 #6 + B D15。00-foundations スペーシング表の「space-8 = ページ余白」行と数値が異なる = 現行実装の多数派 p-6 に合わせる意図、batch 1 で同行を修正）
 7. **検索欄は全画面で同じ挙動。** live 型（入力で絞り込み）+ 検索ボタン併記。Enter を押させる commit 型の画面を残さない。（B D7、owner 裁定 2026-08-20。02-component-catalog ⑨ の canonical `SearchBar` は live 型「ボタンなし」/ commit 型の 2 実装で、本行と異なる = batch 1〜2 で ⑨ の skeleton を「live + ボタン併記」の単一形へ改める）
@@ -35,13 +35,13 @@
 
 | 種別 | 値 | 備考 |
 |---|---|---|
-| success 家族 | soft `#f0fdf4` / border `#bbf7d0` / strong `#14532d` / emphasis `#16a34a` | strong・border を新設し warning / destructive と同形にする |
+| success 家族 | soft `#f0fdf4` / border `#bbf7d0` / strong `#14532d` / emphasis `#16a34a` | strong・border を新設し warning / destructive と同形にする。2026-09-05 本 PR で `00-foundations.md` へ無条件登録済み |
 | info | 新設しない | お知らせ・注意喚起は warning トーン |
 | page root | p-6 / space-y-6（`PageShell`） | 実装済み（Lane 2、`src/features/**/*Page.tsx` 43 箇所を 1 系統へ統一） |
 | 操作目標 | min-height 40px | ボタン既定 36 → 40 |
 | icon | 16 / 20 / 24 | 「見出し隣接 = 20」を表に明記 |
 | 検索欄 | live + 検索ボタン併記 | 部門 select 幅は全画面同一 |
-| badge | 12px / 600 / pill、3 種 | 3 種構成は原則 4 の記述を正とする（DSR 新設なし）。②分類は枠線 3:1、icon は識別に必要な場合のみ可（原則 4 訂正、Gated Amendment 1） |
+| badge | 12px / 600 / pill、3 種 | 3 種構成は原則 4 の記述を正とする（DSR 新設なし）。②分類は枠線必須（`--border`）、icon は識別に必要な場合のみ可（原則 4 訂正、2026-09-05 narrow 化。本 PR で `02-component-catalog.md` ⑬ へ反映済み） |
 | 枠（原則 13） | 操作枠は隣接背景に対し 3:1 以上（WCAG 2.2 SC 1.4.11）。構造線は 3:1 対象外だが現行より一段濃くする | 実装済み（Lane 2、`--border-strong` `#8a8480` / `--border` `#cdc8c4`、値は 00-foundations カラーパレット表を正本とする、DSR-22） |
 | 現在行（原則 15） | 専用 tone（現在行 3 点表現の 1 つ。左 4px primary バー + badge/文言と併用） | 実装済み（Lane 2、`--row-current` `#fff8e6`、00-foundations へ正式登録済み、消費者は Lane 3〜5、DSR-22） |
 
@@ -49,7 +49,7 @@
 
 - `00-foundations.md`: 原則 1 / 2 / 6 / 8 / 10 / 12（上記 token 表）
 - `01-decision-rules.md`: 5（DSR-01 に「0 primary 画面の昇格」追記）/ 7（検索欄の単一挙動）/ 9（PageHeader subtitle 基準）
-- `02-component-catalog.md`: 原則 4（⑬ ステータスバッジに badge 3 種の visual 仕様）/ 6（⑨ 検索行の器）/ 7（⑨ `SearchBar` canonical を live + ボタン併記の単一形へ）/ 9（① subtitle + actions）/ 11（ListSkeleton）
+- `02-component-catalog.md`: 原則 4（⑬ ステータスバッジに badge 3 種の visual 仕様）（完了、2026-09-05 本 PR）/ 6（⑨ 検索行の器）/ 7（⑨ `SearchBar` canonical を live + ボタン併記の単一形へ）/ 9（① subtitle + actions）/ 11（ListSkeleton）
 - `quality/review-checklist.md`: 原則 1（本文 16px）/ 2（token 登録）
 
 ## 適用の順序（参考、正本は各 batch の Plan Packet）
@@ -63,6 +63,7 @@
 
 | 日付 | 内容 |
 |---|---|
+| 2026-09-05 | UI 規約補強 design batch（本 packet、本 PR）— 原則4②の枠線記述を `--border` 必須 + narrow 化の dated note へ更新（3:1 は interactive な操作枠へ限定、owner v2 mockup 決定）。foundations 追記分表の success 行・badge 行の備考に反映済みを追記。「00〜03 への反映先」の catalog⑬ badge 項目を完了済みへ更新 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 実装。原則 6 の枠文言を `rounded-lg border bg-card p-4` へ、原則 13〜15 の token 参照を実 token 名（`--border-strong` `#8a8480` / `--border` `#cdc8c4` / `--row-current` `#fff8e6`）へ、原則 14 に `ListShell` の実 path を明記。foundations 追記分表の page root / 枠 / 現在行の 3 行を実装済み表記へ更新 |
 | 2026-09-03 | UI 一覧の背骨 D Lane 1a refresh（PR #31、2026-09-03）— Human Gate + Codex review 是正。token 表から未実装 candidate の HEX（`--border-strong` / `--row-current`）を撤去し意味要件のみへ（Codex P2-2、前ラウンドの `#`/backtick 除外表記は撤回）。原則 13/15 の参照先を DSR-22 本文から packet「起票時実測」節 / reference 分析 doc へ差替え。metric 行参照を「30px、既存 `text-3xl`」へ訂正 |
 | 2026-09-03 | UI 一覧の背骨 D Lane 1a refresh（PR #31、2026-09-03）— Final Review round 2 是正。原則 16 に「DPI 125% / 150% で崩れない（rem / em 基準、px 直書きを避ける）」を復元し、参照先を DSR-22「低視力 L3」節（新設）へ差替え。原則 15 の太字要約を「現在の行は 3 点で示す」に戻し、ラベル/値の 3 段規範文は本文へ移動（Q8 引用・metric 行参照は維持）。 |
