@@ -27,6 +27,10 @@
   border #cdc8c4 対 background = 1.59:1（globals.css:66 注記と一致）、border-strong #8a8480 対 background
   = 3.53:1（globals.css:67 注記と一致）、warning-border #fde68a = 1.19:1、success-border 提案 #bbf7d0 =
   1.16:1、destructive-border #fecaca = 1.39:1（この 1 件は globals.css に注記なし、本ファイルで新規計算）。
+- v3（③強調の枠 2 案 / ⑦Alert warning 文字色 2 案 / owner 決定タグ）: warning-border #fde68a 対
+  fill #fef3c7 = 1.12:1／対 background = 1.19:1、warning #d97706 対 fill #fef3c7 = 2.86:1／対 background
+  = 3.05:1（fill = --rank-top-badge-bg #fef3c7）。「owner 決定」タグは 2026-09-05 時点の owner 選択
+  （① 案 A tone border、② --border、⑤ B2 secondary + --border、⑦ 案 (a) warning）を示す。
 -->
 <!doctype html>
 <html lang="ja">
@@ -81,6 +85,9 @@ section{display:flex;flex-direction:column;gap:16px}
 .pill.border-weak{border-color:var(--border)}
 .pill.border-strong{border-color:var(--border-strong)}
 .pill.amber{background:var(--rank-top-badge-bg);color:var(--rank-top-badge-text)}
+.pill.border-a{border-color:var(--warning-border)}
+.pill.border-b{border-color:var(--warning)}
+.owner-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:700;color:var(--rank-top-badge-text);background:var(--rank-top-badge-bg);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle}
 .swatch{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-variant-numeric:tabular-nums;padding:8px 12px;border-radius:6px;border:1px solid var(--border)}
 .swatch i{display:inline-block;width:20px;height:20px;border-radius:4px;border:1px solid rgba(0,0,0,.1)}
 table{border-collapse:collapse;width:100%;font-size:16px}
@@ -108,6 +115,8 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 .alert{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--border);border-radius:8px;padding:12px 16px;background:var(--card);font-size:14px;color:var(--foreground)}
 .alert svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;margin-top:1px}
 .alert.warn{border-color:var(--warning);color:var(--warning-strong)}
+.alert.warn-b{border-color:var(--warning);color:var(--foreground)}
+.alert.warn-b svg{color:var(--warning)}
 .alert.bad{border-color:var(--destructive);color:var(--destructive)}
 </style>
 </head>
@@ -130,7 +139,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <span class="badge outline-now">未反映</span>
 <span class="badge outline-now">未入力 3件</span>
 </div></div>
-<div class="col"><h3>案 A: tone border（warning-border #fde68a）</h3><div class="chips">
+<div class="col"><h3>案 A: tone border（warning-border #fde68a）<span class="owner-tag">owner 決定</span></h3><div class="chips">
 <span class="badge tone-warning"><svg><use href="#i-triangle"/></svg>未反映</span>
 <span class="badge tone-warning"><svg><use href="#i-triangle"/></svg>未入力 3件</span>
 </div><p class="caption">border #fde68a 対 background = 1.19:1</p></div>
@@ -156,7 +165,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <span class="badge outline-now">取込み完了</span>
 <span class="badge outline-now">保存しました</span>
 </div></div>
-<div class="col"><h3>案 A: tone border（success-border 提案 #bbf7d0）</h3><div class="chips">
+<div class="col"><h3>案 A: tone border（success-border 提案 #bbf7d0）<span class="owner-tag">owner 決定</span></h3><div class="chips">
 <span class="badge tone-success"><svg><use href="#i-check"/></svg>補正済み</span>
 <span class="badge tone-success"><svg><use href="#i-check"/></svg>取込み完了</span>
 <span class="badge tone-success"><svg><use href="#i-check"/></svg>保存しました</span>
@@ -187,7 +196,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <span class="badge outline-now">取消済み</span>
 <span class="badge outline-now">失敗</span>
 </div></div>
-<div class="col"><h3>案 A: tone border（destructive-border #fecaca）</h3><div class="chips">
+<div class="col"><h3>案 A: tone border（destructive-border #fecaca）<span class="owner-tag">owner 決定</span></h3><div class="chips">
 <span class="badge tone-destructive"><svg><use href="#i-x"/></svg>取消済み</span>
 <span class="badge tone-destructive"><svg><use href="#i-x"/></svg>失敗</span>
 </div><p class="caption">border #fecaca 対 background = 1.39:1</p></div>
@@ -233,7 +242,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <span class="pill">最近改定</span>
 <span class="pill">128 件</span>
 </div><p class="caption">「廃番」（枠なし pill）と「対象外」（枠あり outline）が同じセルに並ぶ不揃いの実例。</p></div>
-<div class="col"><h3>案: --border #cdc8c4（3:1 未達）</h3><div class="chips">
+<div class="col"><h3>案: --border #cdc8c4（3:1 未達）<span class="owner-tag">owner 決定</span></h3><div class="chips">
 <span class="pill border-weak">廃番</span>
 <span class="badge outline-now">対象外</span>
 <span class="pill border-weak">最近改定</span>
@@ -250,11 +259,21 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 
 <section>
 <h2>③ 強調</h2>
-<p class="lead">backbone 原則 4 ③: 琥珀 pill（ランキング 1 位 / 最新 等）。現行 token（--rank-top-badge-bg #fef3c7 / --rank-top-badge-text #92400e）どおりで変更提案なし。参考として掲載。</p>
-<div class="row"><div class="col"><div class="chips">
+<p class="lead">backbone 原則 4 ③: 琥珀 pill（ランキング 1 位 / 最新 等）。現状は枠なし、案は枠を足す 2 案を比較する。</p>
+<div class="row">
+<div class="col"><h3>現状（枠なし）</h3><div class="chips">
 <span class="pill amber">1 位</span>
 <span class="pill amber">最新</span>
-</div></div></div>
+</div></div>
+<div class="col"><h3>案 (a): 枠 warning-border #fde68a</h3><div class="chips">
+<span class="pill amber border-a">1 位</span>
+<span class="pill amber border-a">最新</span>
+</div><p class="caption">border #fde68a 対 fill #fef3c7 = 1.12:1／対 background = 1.19:1</p></div>
+<div class="col"><h3>案 (b): 枠 warning #d97706</h3><div class="chips">
+<span class="pill amber border-b">1 位</span>
+<span class="pill amber border-b">最新</span>
+</div><p class="caption">border #d97706 対 fill #fef3c7 = 2.86:1／対 background = 3.05:1</p></div>
+</div>
 </section>
 
 <section>
@@ -290,7 +309,7 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 <div class="strip"><input class="search" placeholder="商品コード・商品名で検索"><button class="btn secondary">追加</button></div>
 <div class="strip" style="margin-top:12px"><button class="btn primary">入庫を確定</button></div>
 <p class="caption">secondary = 中間段（DSR-01 維持）。枠なし、secondary 塗り #e7e5e4 対 background = 1.20:1（globals.css:69 --list-head 同値注記）。</p></div>
-<div class="col"><h3>案 B2: secondary（枠 --border #cdc8c4）</h3>
+<div class="col"><h3>案 B2: secondary（枠 --border #cdc8c4）<span class="owner-tag">owner 決定</span></h3>
 <div class="strip"><input class="search" placeholder="商品コード・商品名で検索"><button class="btn secondary framed-weak">追加</button></div>
 <div class="strip" style="margin-top:12px"><button class="btn primary">入庫を確定</button></div>
 <p class="caption">owner 案。分類 badge の枠と同じ色。border #cdc8c4 対 secondary塗り #e7e5e4 = 1.32:1／対 background = 1.59:1。</p></div>
@@ -326,16 +345,20 @@ td.zero{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted-fore
 
 <section>
 <h2>⑦ Alert</h2>
-<p class="lead">一括価格改定の注意文言を 3 パターンで比較する（文言はそのまま）。</p>
+<p class="lead">一括価格改定の注意文言を 4 パターンで比較する（文言はそのまま）。</p>
 <div class="row">
 <div class="col"><h3>現状（プレーン: border #cdc8c4）</h3>
 <div class="alert">画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
 </div>
-<div class="col"><h3>案: warning（border #d97706 / text #78350f）</h3>
+<div class="col"><h3>案 (a): warning（border #d97706 / text #78350f）<span class="owner-tag">owner 決定</span></h3>
 <div class="alert warn"><svg><use href="#i-triangle"/></svg>画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
+</div>
+<div class="col"><h3>案 (b): warning（枠・icon のみ #d97706、text は foreground #1c1917）</h3>
+<div class="alert warn-b"><svg><use href="#i-triangle"/></svg>画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
 </div>
 <div class="col"><h3>参考: destructive（Backup の Alert、border/text #b91c1c）</h3>
 <div class="alert bad">画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。</div>
+<p class="caption">赤 #b91c1c が締まって見える理由: stone + amber の暖色系ページで唯一の寒色寄り彩度色相（色相コントラスト）のため。amber-900 の文字は本文色と色相・輝度の両方が近く、読み分けにくい。</p>
 </div>
 </div>
 </section>
