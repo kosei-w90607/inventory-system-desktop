@@ -23,6 +23,7 @@ function baseItem(overrides: Partial<StocktakeItemDetail> = {}): StocktakeItemDe
     actual_count: null,
     counted_at: null,
     current_stock: 10,
+    is_discontinued: false,
     ...overrides,
   };
 }
