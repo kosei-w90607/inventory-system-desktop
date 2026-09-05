@@ -20,6 +20,13 @@ import {
   isComposedDigitsOnly,
   normalizeComposedDigits,
 } from "@/components/patterns/normalizeComposedDigits";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { commands, type Department, type Supplier } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -271,45 +278,47 @@ export function ProductForm({
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="department-id">部門（必須）</Label>
-            <select
-              id="department-id"
-              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
-              value={values.departmentId ?? ""}
-              onChange={(event) => {
-                update(
-                  "departmentId",
-                  event.target.value === "" ? null : Number(event.target.value),
-                );
+            <Select
+              value={values.departmentId === null ? "" : String(values.departmentId)}
+              onValueChange={(value) => {
+                update("departmentId", Number(value));
               }}
             >
-              <option value="">選択してください</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                  {department.code_prefix !== null ? "（独自コード可）" : ""}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="department-id" className="w-full">
+                <SelectValue placeholder="選択してください" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((department) => (
+                  <SelectItem key={department.id} value={String(department.id)}>
+                    {department.name}
+                    {department.code_prefix !== null ? "（独自コード可）" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FieldError message={errors.departmentId} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="supplier-id">取引先</Label>
-            <select
-              id="supplier-id"
-              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
-              value={values.supplierId ?? ""}
+            <Select
+              value={values.supplierId == null ? "none" : String(values.supplierId)}
               disabled={supplierWarning !== null}
-              onChange={(event) => {
-                update("supplierId", event.target.value === "" ? null : Number(event.target.value));
+              onValueChange={(value) => {
+                update("supplierId", value === "none" ? null : Number(value));
               }}
             >
-              <option value="">取引先なし</option>
-              {supplierOptions.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="supplier-id" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">取引先なし</SelectItem>
+                {supplierOptions.map((supplier) => (
+                  <SelectItem key={supplier.id} value={String(supplier.id)}>
+                    {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               type="button"
               variant="outline"
@@ -363,6 +372,15 @@ export function ProductForm({
                           cmd: "list_suppliers",
                         });
                         setSupplierOptions(refreshed);
+                        // ponytail: shadcn Select（Radix）は選択肢一覧を hidden native
+                        // <select> へ useLayoutEffect 経由で1テンポ遅れて反映する。選択肢
+                        // 更新と value 更新を同一 tick で行うと、hidden select が一時的に
+                        // 新しい value に一致する option を持たず、ブラウザが先頭 option
+                        // へ自動選択 → React の value tracker がその不一致を検知して change
+                        // echo を発火し value が上書きされる（Radix + React controlled
+                        // select の既知の相互作用）。macrotask 境界（setTimeout）まで
+                        // 空けて選択肢反映を先に確定させてから value を更新する。
+                        await new Promise((resolve) => setTimeout(resolve, 0));
                         update("supplierId", created.id);
                         setSupplierName("");
                         setShowSupplierInput(false);
@@ -410,18 +428,21 @@ export function ProductForm({
           </div>
           <div className="space-y-1">
             <Label htmlFor="tax-rate">税率</Label>
-            <select
-              id="tax-rate"
-              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
+            <Select
               value={values.taxRate}
-              onChange={(event) => {
-                update("taxRate", event.target.value as ProductTaxRate);
+              onValueChange={(value) => {
+                update("taxRate", value as ProductTaxRate);
               }}
             >
-              <option value="10">10%</option>
-              <option value="8">8%</option>
-              <option value="0">0%</option>
-            </select>
+              <SelectTrigger id="tax-rate" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10%</SelectItem>
+                <SelectItem value="8">8%</SelectItem>
+                <SelectItem value="0">0%</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </FormSection>
