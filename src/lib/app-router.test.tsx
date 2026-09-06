@@ -13,6 +13,7 @@ import { consumeMainNavScroll, markMainNavScroll } from "./main-nav-scroll";
 import { scrollPageToTop } from "./page-scroll";
 
 const MAIN_SELECTOR = '[data-scroll-restoration-id="main"]';
+const PRODUCTS_LIST_SELECTOR = '[data-scroll-restoration-id="products-list"]';
 
 type AppRouter = ReturnType<typeof createAppRouter>;
 
@@ -126,18 +127,37 @@ function delayNextInventoryRecordsRender(): DeferredRouteRender {
 
 function installNativeScrollClamp(main: HTMLElement) {
   let actualTop = main.scrollTop;
+  let actualLeft = main.scrollLeft;
   let forcedScrollHeight: number | undefined;
+  let forcedScrollWidth: number | undefined;
   const requestedTops: number[] = [];
+  const requestedLefts: number[] = [];
 
   Object.defineProperty(main, "clientHeight", {
     configurable: true,
     get: () => 500,
+  });
+  Object.defineProperty(main, "clientWidth", {
+    configurable: true,
+    get: () => 800,
   });
   Object.defineProperty(main, "scrollHeight", {
     configurable: true,
     get: () =>
       forcedScrollHeight ??
       (main.querySelector('[data-testid="inventory-records-content"]') === null ? 500 : 1_000),
+  });
+  // round 3 是正（Opus P2）: scrollWidth を固定値にすると横判定
+  // （scrollWidth >= savedScrollLeft + clientWidth）が初回から常に満たされ、scrollLeft
+  // 復元行を削除しても pass する mutant が生存する。scrollHeight と同型の条件付き getter
+  // にし、content marker 不在時は clientWidth（伸びる要素がまだ無い）にする。
+  Object.defineProperty(main, "scrollWidth", {
+    configurable: true,
+    get: () =>
+      forcedScrollWidth ??
+      (main.querySelector('[data-testid="inventory-records-content"]') === null
+        ? main.clientWidth
+        : 1_600),
   });
   Object.defineProperty(main, "scrollTop", {
     configurable: true,
@@ -148,11 +168,24 @@ function installNativeScrollClamp(main: HTMLElement) {
       actualTop = Math.min(Math.max(0, requestedTop), maximumTop);
     },
   });
+  Object.defineProperty(main, "scrollLeft", {
+    configurable: true,
+    get: () => actualLeft,
+    set: (requestedLeft: number) => {
+      requestedLefts.push(requestedLeft);
+      const maximumLeft = Math.max(0, main.scrollWidth - main.clientWidth);
+      actualLeft = Math.min(Math.max(0, requestedLeft), maximumLeft);
+    },
+  });
 
   return {
     requestedTops,
+    requestedLefts,
     setScrollHeight: (scrollHeight: number) => {
       forcedScrollHeight = scrollHeight;
+    },
+    setScrollWidth: (scrollWidth: number) => {
+      forcedScrollWidth = scrollWidth;
     },
   };
 }
@@ -202,7 +235,7 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     });
 
     expect(router.options.scrollRestoration).toBe(true);
-    expect(router.options.scrollToTopSelectors).toEqual([MAIN_SELECTOR]);
+    expect(router.options.scrollToTopSelectors).toEqual([MAIN_SELECTOR, PRODUCTS_LIST_SELECTOR]);
     expect(
       router.options.getScrollRestorationKey?.(
         locationWith("/inventory/records?page=3", "unrelated-entry-key"),
@@ -332,9 +365,15 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     const listHrefB = "/inventory/records?page=200";
     const { router, main } = await renderAppRouterAt(listHrefA);
     // happy-dom の smooth scroll 模擬は setTimeout(0) 経由の遅延書込みで、後続 await 中に
-    // main.scrollTop を非同期に上書きし得る（実 browser の割込みと異なる挙動）。scrollPageToTop()
-    // が呼ぶ scrollTo は no-op にし、flag 経由の直接代入だけを見る。
-    vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
+    // main.scrollTop を非同期に上書きし得る（実 browser の割込みと異なる挙動）。scrollTo の
+    // 非同期挙動だけを避け、top/left は同期的に反映する（round 2 是正: forced-top 経路が
+    // main.scrollTop = 0 から main.scrollTo({ top: 0, left: 0 }) へ変わったため、完全な
+    // no-op のままだと flag 適用そのものを検出できない）。
+    vi.spyOn(main, "scrollTo").mockImplementation((options) => {
+      const opts = options as ScrollToOptions;
+      if (typeof opts.top === "number") main.scrollTop = opts.top;
+      if (typeof opts.left === "number") main.scrollLeft = opts.left;
+    });
 
     trackScroll(main, 410);
     await navigateAndRender(router, listHrefB);
@@ -520,6 +559,57 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     });
     expect(main.scrollTop).toBe(0);
     expect(clamp.requestedTops.filter((top) => top === 390)).toHaveLength(1);
+  });
+
+  it("GA1c: applyMainNavScroll targets the list scroll container when present, falling back to main otherwise", () => {
+    const main = installMainScroller(240);
+    const box = document.createElement("div");
+    box.setAttribute("data-list-scroll-container", "");
+    box.setAttribute("data-scroll-restoration-id", "products-list");
+    main.append(box);
+    const boxScrollTo = vi.spyOn(box, "scrollTo").mockImplementation(() => undefined);
+    const mainScrollTo = vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
+    markMainNavScroll("/products?q=thread");
+
+    applyMainNavScroll("/products?q=thread");
+
+    expect(boxScrollTo).toHaveBeenCalledWith({ top: 0, left: 0 });
+    expect(mainScrollTo).not.toHaveBeenCalled();
+  });
+
+  it("GA1c: applyMainNavScroll falls back to main when no list scroll container exists", () => {
+    const main = installMainScroller(240);
+    const mainScrollTo = vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
+    markMainNavScroll("/products?q=thread");
+
+    applyMainNavScroll("/products?q=thread");
+
+    expect(mainScrollTo).toHaveBeenCalledWith({ top: 0, left: 0 });
+  });
+
+  it("GA1c: pruneScrollRestorationEntries keeps both main and products-list selectors across repeated sweeps (round 1 P1 failure mode — allowlist must not collapse to main-only)", () => {
+    // round 1 P1: allowlist が main 単独のままだと箱がまだ DOM に無い起動直後の sweep や
+    // 通常の onBeforeLoad sweep のたびに products-list の cache entry が削られてしまう。
+    // 静的 2-selector 配列（round 2 是正）であれば複数回の sweep を跨いでも両方残る。
+    if (scrollRestorationCache === null) throw new Error("scroll restoration cache is required");
+    const stockMain = { scrollX: 1, scrollY: 111 };
+    const stockList = { scrollX: 2, scrollY: 222 };
+    scrollRestorationCache.set(() => ({
+      "/stock": {
+        '[data-scroll-restoration-id="main"]': stockMain,
+        '[data-scroll-restoration-id="products-list"]': stockList,
+      },
+    }));
+
+    createAppRouter(); // startup sweep（box がまだ DOM に無い状態を模す）
+    pruneScrollRestorationEntries("/stock"); // 2 回目の sweep（onBeforeLoad 相当）
+
+    expect(scrollRestorationCache.state["/stock"]['[data-scroll-restoration-id="main"]']).toEqual(
+      stockMain,
+    );
+    expect(
+      scrollRestorationCache.state["/stock"]['[data-scroll-restoration-id="products-list"]'],
+    ).toEqual(stockList);
   });
 
   it("SP1: startup sweep prunes non-main entries across all keys", () => {

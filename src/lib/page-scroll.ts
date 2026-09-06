@@ -1,4 +1,11 @@
-const PAGE_TOP_SCROLL_OPTIONS: ScrollToOptions = { top: 0, behavior: "smooth" };
+const PAGE_TOP_SCROLL_OPTIONS: ScrollToOptions = { top: 0, left: 0, behavior: "smooth" };
+
+// Gated Amendment 1（2026-09-06）: 商品一覧は表自身が縦横 scroll 箱になり、<main> は
+// scroll しない。箱があればそれを、無ければ <main> を対象にする（他 23 箇所の
+// scrollPageToTop() 呼出し元は無改修で恩恵を受ける）。data-list-scroll-container は
+// 「この要素が scroller」というマーカーで、復元 cache を安定識別する
+// data-scroll-restoration-id とは役割が異なる（app-router.ts 参照）。
+const LIST_SCROLL_CONTAINER_SELECTOR = "[data-list-scroll-container]";
 
 // Gated Amendment 3 (A3-a): TanStack Router 内蔵の scroll restoration は
 // createAppRouter() の独自 onRendered より先に subscribe され、page reset 後の href に
@@ -42,9 +49,10 @@ export function consumeForceScrollTop(currentPathname: string): boolean {
 
 export function scrollPageToTop(): void {
   markForceScrollTop();
-  const main = document.querySelector("main");
-  if (main instanceof HTMLElement && typeof main.scrollTo === "function") {
-    main.scrollTo(PAGE_TOP_SCROLL_OPTIONS);
+  const target =
+    document.querySelector(LIST_SCROLL_CONTAINER_SELECTOR) ?? document.querySelector("main");
+  if (target instanceof HTMLElement && typeof target.scrollTo === "function") {
+    target.scrollTo(PAGE_TOP_SCROLL_OPTIONS);
     return;
   }
 

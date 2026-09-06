@@ -153,7 +153,7 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     await user.click(screen.getByRole("button", { name: "返品・交換を保存" }));
 
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(await screen.findByText("返品・交換を保存しました")).toBeInTheDocument();
     expect(screen.getAllByText(registerUnprocessedStockDescription).length).toBeGreaterThan(0);
@@ -339,7 +339,7 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
       await screen.findByText("一時的なエラー。詳細は診断ログに記録されています。"),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     const firstKey = mockCreateReturn.mock.calls[0][0].idempotency_key;
 
