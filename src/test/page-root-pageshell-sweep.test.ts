@@ -84,14 +84,15 @@ describe("SC2b: no feature page file declares a p-6 root className outside PageS
   });
 });
 
-// GA1e（Gated Amendment 1、round 2 是正 Sonnet P2 で新設）: stickyHeader は page root の
-// 高さ連鎖（PageShell へ flex h-full min-h-0 flex-col 系 class を渡すこと）とセット。
-// 渡し忘れると箱の overflow-auto / sticky が静かに壊れる。fs scan の性質上、
+// GA3b-5（Lane 4 Gated Amendment 3、旧 GA1e の反転）: stickyHeader の箱は行数基準の
+// max-h で自立するようになり、page root からの高さ継承（PageShell へ flex/h-full/
+// min-h-0/flex-col 系 class を渡すこと）はもう不要——渡したまま残っていると死んだ
+// class の残存（GA3b-1 の撤去漏れ）を示す regression になる。fs scan の性質上、
 // stickyHeader を渡す JSX と PageShell の JSX が同一 file 内にある場合にのみ機能する
 // （限界: 配線を別 file の子 component へ分離する画面はこの guard で検出できない、
 // packet「Gated Amendment 1」節参照）。
-describe("GA1e: stickyHeader を渡す Page は同一 file 内で PageShell に高さ連鎖 class を渡す", () => {
-  it("stickyHeader を持つ *Page.tsx はすべて PageShell へ flex/h-full/min-h-0/flex-col 系 class を渡している", () => {
+describe("GA3b-5: stickyHeader を渡す Page は同一 file 内で PageShell に高さ継承 class を渡さない（旧 GA1e の逆転）", () => {
+  it("stickyHeader を持つ *Page.tsx はいずれも PageShell へ flex/h-full/min-h-0/flex-col 系 class を渡していない", () => {
     const pageFiles = collectPageFiles(FEATURES_ROOT);
     const violations: string[] = [];
 
@@ -107,7 +108,7 @@ describe("GA1e: stickyHeader を渡す Page は同一 file 内で PageShell に�
           /\bmin-h-0\b/.test(match) &&
           /\bflex-col\b/.test(match),
       );
-      if (!hasHeightChain) violations.push(relative(REPO_ROOT, file));
+      if (hasHeightChain) violations.push(relative(REPO_ROOT, file));
     }
 
     expect(violations).toEqual([]);

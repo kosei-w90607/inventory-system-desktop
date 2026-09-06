@@ -256,13 +256,11 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
   );
 
   return (
-    // Gated Amendment 1（2026-09-06、owner 案 X）: 商品一覧のみ、表自身を縦横 scroll 箱に
-    // する data grid 型。overflow-hidden は付けない（PageShell 節を超える折返しがあっても
-    // <main> がそのまま scroll でき、下部 Pagination が画面外に切れて出せなくなるのを防ぐ）。
-    <PageShell className="flex h-full min-h-0 flex-col">
-      {/* PageHeader は className prop が無く shrink-0 を明示的に付けられないが、
-          overflow: visible の flex item は automatic minimum size で content 高を
-          下回らないため実害はない（GA1 高さ連鎖の前提）。 */}
+    // Lane 4 Gated Amendment 3 GA3b（2026-09-07）: 商品一覧のみ、表自身を縦横 scroll 箱に
+    // する data grid 型。旧 Gated Amendment 1 の PageShell への
+    // `flex h-full min-h-0 flex-col` は撤去した——箱が行数基準の max-h で自立するため、
+    // page root からの高さ継承は不要（<main> が約 50 行以下で page scroll を担う）。
+    <PageShell>
       <PageHeader
         title="商品検索・一覧"
         actions={
