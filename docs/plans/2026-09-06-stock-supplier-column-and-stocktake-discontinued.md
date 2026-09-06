@@ -4,16 +4,16 @@ owner 決定（2026-09-05/06、店舗ヒアリング + 合意要約 + owner 決�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 95f33ac
-- Amendments: none
+- Amendments: pending（Gated Amendment 1〈AC6 oracle 是正〉を本 commit で起票。tracked file は自身の commit SHA を含められない〈D-035〉ため、本 commit の SHA は次の state 同期 commit で本欄へ記入する）
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded によりCodex成分は pending のまま Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: a78f265
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈在庫少・在庫切れ一覧が取引先名順に並ぶ〉/ AC-L3-2〈棚卸しリストの廃番行に badge が出る〉/ AC-L3-3〈在庫照会の展開行が再クリックで閉じる〉の 3 項目）
@@ -114,7 +114,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC3: 選択中行の再クリックで詳細展開が閉じる（`selected` が `undefined` になる）— `ProductListTable.test.tsx` に regression test
 - AC4: 自動展開は同一検索条件内で 1 度のみ — `useStockInquiry.test.tsx` に「手動クローズ後、同条件では再展開しない」+「条件変化後は再展開する」の対 test。**P3 注記（test 不要）**: full remount（route 再入場）では `useRef` が初期化され同条件でも再展開する。これは意図どおりの挙動でありデフェクトではない（UI-06a-D5 の Design Intent Trace 参照）
 - AC5: `StocktakeItemDetail` に `is_discontinued: bool` が追加され、両 SQL 経路（`find_stocktake_item_by_code`/`list_stocktake_items`）で正しい値が返る — Rust `#[cfg(test)]` に `test_list_stocktake_items_req205_includes_is_discontinued` / `test_find_stocktake_item_by_code_req205_includes_is_discontinued` を追加
-- AC6: `bindings.ts` の diff が `StocktakeItemDetail` への `is_discontinued: boolean` 追加 1 行のみ（Plan Review round 1 P2、目視確認から機械 oracle へ）— 主 gate は `git diff 1a8ba62..HEAD --numstat -- src/lib/bindings.ts` の出力が `1<TAB>0<TAB>src/lib/bindings.ts`（追加 1 行・削除 0 行）。**round 2 是正**: `bindings.ts:1576`（`current_stock: number,`）は 4 スペースではなくタブ 1 個でインデントされている（`sed -n '1576p' src/lib/bindings.ts | cat -A` で `^Icurrent_stock: number,$` を実測確認、`bat` はタブを表示用に空白展開するため round 1 実測はこれを 4 スペースと誤認していた）。インデント文字に依存しない副 gate として `git diff 1a8ba62..HEAD -- src/lib/bindings.ts | rg -c 'is_discontinued: boolean,'` = 1 を使う（先頭の `+` やインデントを pattern に含めない）
+- AC6（**Gated Amendment 1 是正、2026-09-06**: specta は command 戻り値の inline 型にも struct field を複製するため、実測は numstat `2<TAB>0`、副 gate `rg -c 'is_discontinued: boolean,'` = 2。以下の `1 0` / `= 1` は起票時の誤前提であり、Final Review は「追加 2 行がいずれも `is_discontinued: boolean,` で他の差分がない」を機械 oracle として PASS 判定した）: `bindings.ts` の diff が `StocktakeItemDetail` への `is_discontinued: boolean` 追加 1 行のみ（Plan Review round 1 P2、目視確認から機械 oracle へ）— 主 gate は `git diff 1a8ba62..HEAD --numstat -- src/lib/bindings.ts` の出力が `1<TAB>0<TAB>src/lib/bindings.ts`（追加 1 行・削除 0 行）。**round 2 是正**: `bindings.ts:1576`（`current_stock: number,`）は 4 スペースではなくタブ 1 個でインデントされている（`sed -n '1576p' src/lib/bindings.ts | cat -A` で `^Icurrent_stock: number,$` を実測確認、`bat` はタブを表示用に空白展開するため round 1 実測はこれを 4 スペースと誤認していた）。インデント文字に依存しない副 gate として `git diff 1a8ba62..HEAD -- src/lib/bindings.ts | rg -c 'is_discontinued: boolean,'` = 1 を使う（先頭の `+` やインデントを pattern に含めない）
 - AC6 exit code 注意: `rg -c` は 0 件時に無出力・exit 1 を返す。上記コマンドは値が 1 になる想定のため通常は問題ないが、予期せず 0 件になった場合は `; echo "exit=$?"` を付けて明示確認する
 - AC7: 廃番商品の棚卸し行に「廃番」badge（`variant="secondary"` + `border-border`、icon なし）が表示され、非廃番行には表示されない — `StocktakePage.test.tsx` に非空期待の対 test
 - AC8: `cargo run --bin generate_traceability -- --check` が ERROR 0 / WARN 0。`useStockInquiry.test.tsx`（起票時実測で実在確認済み、`src/features/stock-inquiry/hooks/useStockInquiry.test.tsx`）を含む既存 test file の拡張のみを想定するため FE baseline（現 24）は不変見込み。**条件付き（Plan Review round 1 P3）**: Writer が実装中に新規 test file を作る必要が生じた場合は baseline を 24 → 25 へ更新し、`generate_traceability.rs` の該当 comment に日付付きで理由を記録してから再生成する（Lane 5 L5-D6 の先例）。この場合 AC8 の期待値は「baseline 25、`--check` ERROR 0 / WARN 0」に読み替える
@@ -291,7 +291,7 @@ Contract ID: SPEC-STKSUP-D1
 
 ## Implementation Results
 
-未着手（Phase: plan-draft）。
+2026-09-06: Sonnet Writer 4 commit（`b600dba` Rust DTO `is_discontinued` / `10cba02` stock-inquiry 取引先列 + sort + トグルクローズ + 自動展開の条件単位 guard / `5e152a4` stocktake 廃番 badge + 候補行是正 / `1f92e2c` docs 同期）+ Final Review 是正 `a78f265`（`localeCompare` の `"ja"` 明示 / SC1 fixture / §58.4 と comment の収束文言同期 / UI-06a-D5 の conditionKey 明記 / SC5b dept case / SC7 icon 不在 assert / page 結線 test）。L1 full PASS（HEAD `a78f265`、clean tree）。AC1a〜AC9 PASS（AC6 は Gated Amendment 1 是正後の oracle で PASS）。traceability `--check` ERROR 0 / WARN 0、新規 test file なしのため FE baseline 不変。
 
 ## Review Response
 
@@ -300,3 +300,9 @@ Contract ID: SPEC-STKSUP-D1
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
 
 2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接〈owner 許可〉+ Opus 並走、round 2 = Sonnet fresh approve-with-P2 → AC6 是正 `34d6708`）。Lane 4 human-confirm tip `05ece3f` へ単段 merge `495e42b` + 行番号再検証 `733ceb6` で積み直し済み。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑨ 同期の本 content commit に同乗させて遷移。Plan Commit = `95f33ac`（plan-first commit、Lane 4 旧 tip `1a8ba62` 直上、以後の是正・merge commit はその子孫）。Codex 1 回は §3.3 pending。
+
+2026-09-06: Final Review round 1 = Sonnet fresh approve-with-P2（AC 全 PASS、Matrix 13 mutant 全 kill、追加 mutant 3 のうち page 結線 / icon 混入の 2 件が survivor = test 設計の穴）+ Opus approve-with-P2（P1 0。P2: AC6 oracle 不成立 / §58.4 と comment の「唯一商品へ収束」が条件単位 guard 後は不正確 / SC1 fixture が在庫数順と商品名順で同順 / `localeCompare` の locale 未指定〈既存 `sort-items.ts` は `"ja"` 明示〉。P3: conditionKey の dept 成分未検査 / perPage 非 key と q 非 trim の未記述 / SC8 は静的担保）。Coordinator 裁定 = 全件採用。Opus の「在庫数 comparator 削除は survive」は Sonnet 実注入で既存 REQ-302 test が kill しており反証、ただし優先順入替は未注入だったため fixture 強化で対処。→ Writer 是正 `a78f265` → closure（Sonnet fresh、clean tree、独立再注入）: M1 優先順 swap = kill / M2 locale 引数省略 = survive（既存 test では検出不能、静的担保として記録）/ M3 dept 成分除去 = kill / M4 icon 混入 = kill / M5 `code ?? null` = kill。L1 full PASS。Reviewed Content HEAD = `a78f265`、`implementing -> human-confirm`。Human Gate = owner L3（AC-L3-1〜3）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
+
+### Gated Amendment 1（AC6 oracle 是正、2026-09-06、Final Review 起源）
+
+AC6 の主 gate `git diff --numstat -- src/lib/bindings.ts` = `1 0` と副 gate `rg -c 'is_discontinued: boolean,'` = 1 は起票時の誤前提。specta は `find_stocktake_item` command の戻り値 inline 型（Opus 実測 `bindings.ts:259`）にも struct field を複製するため、実測は numstat `2 0`・副 gate 2。Final Review は diff 全文で追加 2 行がいずれも `is_discontinued: boolean,` であり他の差分がないことを確認して PASS 判定。AC6 本文と Matrix Contract Coverage Cross-check の期待値を実測へ是正（Goal / 失敗定義 / 実装は不変）。

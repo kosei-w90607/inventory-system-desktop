@@ -59,4 +59,4 @@ R3（在庫少・在庫切れ一覧の並び順変更、棚卸しリストへの
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1〜SC5, SC7〜SC10 は vitest、SC6 は cargo test。S5（bindings 再生成）は AC6 の機械 oracle（`git diff --numstat` = `1 0` + インデント非依存の `is_discontinued: boolean,` fs literal、round 2 是正: `bindings.ts` はタブインデントのため 4 スペース前提の literal は不成立だった）で Plan Packet 側の完了条件に記載済み、S7（docs 同期）は `rg` の docs review オラクルで同様、本 Matrix には独立行を立てない（Plan Packet Registration / Generation Obligations 参照）。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1〜SC5, SC7〜SC10 は vitest、SC6 は cargo test。S5（bindings 再生成）は AC6 の機械 oracle（`git diff --numstat` = `2 0`〈Gated Amendment 1 是正: 起票時の `1 0` は specta が command 戻り値 inline 型にも field を複製する点の見落とし〉+ インデント非依存の `is_discontinued: boolean,` fs literal、round 2 是正: `bindings.ts` はタブインデントのため 4 スペース前提の literal は不成立だった）で Plan Packet 側の完了条件に記載済み、S7（docs 同期）は `rg` の docs review オラクルで同様、本 Matrix には独立行を立てない（Plan Packet Registration / Generation Obligations 参照）。
