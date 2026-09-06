@@ -181,3 +181,10 @@ Coordinator 補足: AC-L3-1（縦）PASS / 取引先追加ボタン PASS / 追�
 > まず回答としては箱の高さ方針だとaだと思う、まずは見てみてどうなるかというところ。FAILについてはまじでがめんのそのまんま、あそこから更に左へシークバーもっていけない、あそこが左に持ってける限界
 
 Coordinator 補足: 高さ方針 = **(a)**（箱を行数基準の高さにして page scroll を復活、超過分だけ箱 scroll。「まずは見てみて」= 試作を L3 で見る前提、介入予算 3/3 超過は owner 了承と解釈）。FAIL = 箱の横 scrollbar は左端が限界 → `scrollLeft` = 0 で部門列が固定 2 列の下に隠れている = 横位置の戻り不良仮説は棄却。次の仮説 = 固定列（商品名 `min-w-[14rem] whitespace-normal`、sticky `left-[7rem]`）の描画幅が layout 幅を超えて部門列を覆う（2 ページ目以降のみ = 商品名 / JAN の文字幅依存）。機序は実機 DevTools で 部門 th の左端 / 商品名 td の右端 / 箱の `scrollLeft` を取って確定する。
+
+> いや、部／門みたいになってるで[Image #2]
+> これが左の端っこ限界
+
+（[Image #2] = 同じ screenshot。部門の見出しが「部」を商品名列の下に隠して「門」だけ見える状態で、横 scrollbar は左端）
+
+Coordinator 仮説（2026-09-06 夜、code 実読 + screenshot 幾何）: 商品名列の sticky offset は `ListShell.tsx` `IDENTITY_COLUMN_CLASSES` の `left-[7rem]` 決め打ち、商品コード列は `ProductTable.tsx:52` `w-28`（auto table layout では最小幅にならない）。表が `w-min` で最小幅まで縮んだとき、短いコード（`L3-PR-00xx`）では商品コード列の実幅が 7rem 未満になり、商品名列が 7rem まで右へ押し出されて部門列の頭を覆う。1 ページ目は JAN 等の長いコードで列幅 ≥ 7rem のため起きない。「2 ページ目以降のみ」「scrollLeft 0 でも起きる」「隠れるのが 1 文字分」と整合。是正方向 = 商品コード列を sticky offset と一致する固定幅（JAN 13 桁が収まる幅、`w` + `min-w` + `max-w` を揃える）に。確定は再開後に DevTools で商品コード td の実幅（112px 未満の見込み）を 1 回観測してから。
