@@ -8,11 +8,12 @@
 // 設計: docs/design-system/02-component-catalog.md ⑯ 一覧の器（ListShell）
 //       docs/design-system/01-decision-rules.md DSR-22
 //
-// Lane 4 Gated Amendment 3 GA3b（2026-09-07）: stickyHeader の箱は行数基準の
-// max-h-[171rem] overflow-auto で自立し、page root からの高さ継承（旧 Gated
-// Amendment 1 の flex h-full min-h-0 flex-col 一式）は不要になった。約 50 行以下は
-// box が content-fit のまま <main> が page scroll、51 行超で box が内部縦 scroll に
-// 切り替わる（境界は近似値、docs/plans 該当 lane packet「行高の近似値」参照）。回帰は
+// Lane 4 Gated Amendment 4（2026-09-07）: stickyHeader の帯（件数表示）は box の外・
+// root 直下（box の直前の兄弟）にあり box の scroll には追従しない（縦横とも構造的に
+// 固定）。box 自体は viewport 基準の max-h-[calc(100vh-6.75rem)] overflow-auto で
+// 自立し、page root からの高さ継承（旧 Gated Amendment 1 の flex h-full min-h-0
+// flex-col 一式）は不要になった。box は横に常時・内容が box の高さを超えたときのみ
+// 縦に scroll し、<main> は toolbar 分を縦に page scroll する。回帰は
 // src/test/page-root-pageshell-sweep.test.ts の fs scan（GA3b-5、旧 GA1e を反転:
 // 高さ継承 class を持たないことを確認する）。
 
