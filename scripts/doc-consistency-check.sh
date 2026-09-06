@@ -837,7 +837,7 @@ extract_markdown_section() {
 }
 
 # level-2 section の配下にある level-3+ 小見出しも含めて抽出する。
-# Goal Invariant の構造検査専用。既存 PK helpers の境界挙動は変更しない。
+# Goal Invariant 専用ではなく、`###` 小見出しを含みうる level-2 section 全般に使う。
 extract_markdown_h2_section() {
     local file="$1"
     local section="$2"
@@ -1363,7 +1363,7 @@ check_plan_packet_workflow_state() {
         local active_packet active_basename next_actions_section=""
         local next_actions_links=""
         if [ -f "$plans_md" ]; then
-            next_actions_section=$(extract_markdown_section "$plans_md" "次の行動")
+            next_actions_section=$(extract_markdown_h2_section "$plans_md" "次の行動")
             next_actions_links=$(printf '%s\n' "$next_actions_section" \
                 | strip_fenced_code_and_html_comments \
                 | strip_inline_code_spans \
