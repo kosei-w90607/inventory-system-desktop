@@ -52,37 +52,43 @@ export function PriceRevisionFilters({
             onPatch({ q: value === "" ? undefined : value });
           }}
         />
-        <label className="text-sm text-muted-foreground" htmlFor="price-revision-supplier">
-          取引先
-        </label>
-        <Select
-          disabled={suppliersQuery.isLoading}
-          value={normalized.supplier === undefined ? "all" : String(normalized.supplier)}
-          onValueChange={(value) => {
-            onPatch({ supplier: value === "all" ? null : Number(value) });
-          }}
-        >
-          <SelectTrigger id="price-revision-supplier" className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">すべての取引先</SelectItem>
-            {(suppliersQuery.data ?? []).map((supplier) => (
-              <SelectItem key={supplier.id} value={String(supplier.id)}>
-                {supplier.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setDialogOpen(true);
-          }}
-        >
-          新しい取引先を追加
-        </Button>
+        {/* Gated Amendment 2（owner L3 run 1 AC-L3-3）: 取引先の label/Select/追加ボタンは
+            DOM 順序自体は既に隣接していたが、他項目と同じ flex-wrap + 一様 gap-3 のため
+            群化されず離れて見えた。表示件数ブロック（下記）と同型の共通 wrapper で 1 unit にし、
+            flex-wrap でも 3 要素が常に同じ行に留まるようにする。 */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground" htmlFor="price-revision-supplier">
+            取引先
+          </label>
+          <Select
+            disabled={suppliersQuery.isLoading}
+            value={normalized.supplier === undefined ? "all" : String(normalized.supplier)}
+            onValueChange={(value) => {
+              onPatch({ supplier: value === "all" ? null : Number(value) });
+            }}
+          >
+            <SelectTrigger id="price-revision-supplier" className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">すべての取引先</SelectItem>
+              {(suppliersQuery.data ?? []).map((supplier) => (
+                <SelectItem key={supplier.id} value={String(supplier.id)}>
+                  {supplier.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setDialogOpen(true);
+            }}
+          >
+            新しい取引先を追加
+          </Button>
+        </div>
         <DepartmentFilter
           options={departments}
           selected={normalized.dept ?? null}
