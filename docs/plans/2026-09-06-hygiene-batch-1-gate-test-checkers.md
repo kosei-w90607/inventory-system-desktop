@@ -4,10 +4,10 @@ Backlog（`docs/Plans.md:136,149,165`）記載の 3 件（I-G1 sweep test の gi
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: e67711e
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
@@ -265,6 +265,6 @@ Contract ID: SPEC-HYG1-D1
 
 ## Review Response
 
-未着手（Phase: plan-draft、Plan Review 前）。
-
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+2026-09-06: Plan Review round 1 = Sonnet fresh approve（P3 4: Backlog anchor 行番号 / S3 行数 58・72 / 呼び出し元の数え方 / 実働上限の理由）+ Opus approve-with-P2（P1 0。P2: 「他 7 箇所」は定義 + comment 込みの数え方で実際の他 call site は 5 / STATECAP 案A の con が事実誤認〈`check-workflow-git.sh:100-101,192` は既に packet を parse〉/ S1 skip 4 pattern のうち `target` `mutants.out*` は走査 root から到達不能。P3: S2 の挙動保証は sibling test `:133` / S3 の `##` 狭窄は fail-closed / `:840` の stale comment / 座組は Double Audit と整合）。Opus 実測: S3 で `### Wave Registry` 配下 link を検査対象にしても初回 fail 0（PK4 は存在検査のみで節拡張は単調 permissive）→ link 是正の Scope 追加は不要。Coordinator 裁定 = 全件採用 → 是正 `f2a18ca`（S1 skip を到達可能 2 件へ、AC9 追加、実働上限 30 分へ）→ Coordinator 行検分で Plan Gate 閉鎖。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑪ 同期の本 commit に同乗させて遷移。Plan Commit = `e67711e`（plan-first commit）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
