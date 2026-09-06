@@ -93,7 +93,7 @@ tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 <div class="pager"><span>全 238 件のうち 1〜50 件を表示（1 / 5 ページ）</span><div class="pg"><button class="btn sm" disabled>← 前へ</button><button class="btn sm">次へ →</button></div></div>
 
 <h2>密度比較: perPage 50 のとき / 200 のとき</h2>
-<p class="lead">刻み（40/80/120 等）の変更ではなく、既定値の画面別最適化（catalog ⑩ 裁定案）を density で見せる。共有定数 <code>PRODUCT_PER_PAGE_OPTIONS = [50, 100, 200]</code> は 1 本のまま維持し、既定値だけを画面ごとに変える。</p>
+<p class="lead">刻み（40/80/120 等）の変更ではなく、既定値の画面別最適化（catalog ⑩ 裁定案）を density で見せる。共有定数 <code>LIST_PER_PAGE_OPTIONS = [50, 100, 200]</code> は 1 本のまま維持し、既定値だけを画面ごとに変える。</p>
 <div class="density">
   <div class="col"><h3>perPage 50（商品一覧の裁定案: 既定 100 だが密度確認用に 50 も比較）</h3>
     <div class="tbl"><div class="scroll dense" style="--id-w:10.5rem"><table><thead><tr><th class="id">商品コード</th><th class="id2">商品名</th><th class="num">在庫数</th><th>PLU</th></tr></thead><tbody id="tb-d50"></tbody></table></div></div>
