@@ -6,7 +6,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 59c243d
@@ -15,7 +15,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後。§3.3 Capacity-degraded により pending、human-confirm で待機し Phase を前進させない）
-- Reviewed Content HEAD: 4f31b8c
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3 run 2（run 1 は 2026-09-06 に AC-L3-1/AC-L3-3 所感で FAIL、Gated Amendment 1/2 起票済み）— AC-L3-1（run 2、Gated Amendment 1）: 窓を狭めて表が枠より広い状態で横に滑らせると検索ツール・商品コード・商品名・見出しは動かず部門から右だけが滑る、縦に滑らせても見出しが箱の上に残り下のページ送りは常に見える、「修正」から戻ると同じ位置に戻る, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3（run 2、Gated Amendment 2 追加）表示件数 Select の位置と枠の地色が 6 画面で揃い、一括価格改定の取引先追加ボタンが Select の隣にある（整合性チェックの単独 Select は対象外、下記 S1 参照）
