@@ -1,6 +1,8 @@
 # Plan Packet: 衛生 batch 2（config / reference 系、⑫）
 
-Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の 3 件（TanStack Router generation settings の 2 系統併存 / eslint palette 外色 ban の `files` glob 拡張 / mockup 旧定数名同期）を機械的是正として 1 lane にまとめる。3 件は互いに独立した file を編集し footprint は互いに素（`vite.config.ts` + 新規 `tsr.config.json` / `eslint.config.js` + `src/components/ui/segmented-control.tsx` / `docs/design-system/reference/mockup-d-lists.html`）。
+Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の 3 件（TanStack Router generation settings の 2 系統併存 / eslint palette 外色 ban の `files` glob 拡張 / mockup 旧定数名同期）を機械的是正として 1 lane にまとめる。3 件は互いに独立した file を編集し footprint は互いに素（`vite.config.ts` + 新規 `tsr.config.json` / `eslint.config.js` / `docs/design-system/reference/mockup-d-lists.html`）。
+
+**Coordinator ruling（2026-09-06）**: `src/components/ui/**` は Button 自体を含む primitive 層であり、生 `<button>` の実装が正当（それが元々 raw-button ban の scope が `features/**`/`patterns/**` に限定されている理由）。Backlog:149 は palette 色 ban の話であり、生 `<button>` ban ではない。S2 は `no-restricted-syntax` を 2 block へ分離し、**色 selector のみ** `ui/**`/`layout/**` へ拡張、**生 `<button>` selector は現行 scope のまま**とする。`src/components/ui/segmented-control.tsx` には触れない。
 
 ## Workflow State
 
@@ -41,7 +43,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 Risk: R3
 
 Reason:
-S1（TanStack Router 生成設定の統一）と S3（mockup 定数名同期）は単独なら R1〜R2 相当（developer tooling / reference-only doc、runtime・DB・DTO・operator 画面に非接触）。しかし S2（eslint palette 外色 ban の `files` glob 拡張）は `eslint.config.js` を変更し、これは DEV_WORKFLOW Verification Gates 「Frontend」行 `npm run lint` が直接実行する gate 定義そのものである。DEV_WORKFLOW Risk Tiers の「uncertain between R2 and R3, choose R3 when the change touches ... a workflow gate」に該当する（⑪ packet の S3〈`doc-consistency-check.sh` PK4 判定ロジック変更〉と同型の判断）。Contract Audit 節の「Double audit: for R4 and workflow gate changes, run the Contract Audit twice in independent contexts」も適用対象になるため、パケット全体を R3 として扱い、S2 のみ Final Review で Double Audit（独立 2 パス）を実施する。S1/S3 は単独なら R1〜R2 相当（Review Focus で明記）。
+S1（TanStack Router 生成設定の統一）と S3（mockup 定数名同期）は単独なら R1〜R2 相当（developer tooling / reference-only doc、runtime・DB・DTO・operator 画面に非接触）。S2（eslint palette 外色 ban の `files` glob 拡張、`no-restricted-syntax` block 分離）は `eslint.config.js` を変更し、これは DEV_WORKFLOW Verification Gates 「Frontend」行 `npm run lint` が直接実行する gate 定義そのものである。DEV_WORKFLOW Risk Tiers に「glob のみの拡張は R2 に留める」といった明示の切り下げ規定は無く、一般則「uncertain between R2 and R3, choose R3 when the change touches ... a workflow gate」がそのまま適用される。加えて本件は「block を分離し、色 selector だけ拡張、生 `<button>` selector は不変に保つ」という 2 selector 間の切り分け作業であり、起票時の mutant 実験（下記「S2 実測」参照）で「生 `<button>` selector を誤って `ui/**` にも適用してしまう」誤りが実際に組めてしまうことを確認した——これは正に Coordinator が禁止した挙動であり、gate の enforcement surface（何が lint 対象になるか）を変える変更である以上、⑪ packet の S3〈`doc-consistency-check.sh` PK4 判定ロジック変更〉と同型に「gate のカバレッジ・分離が意図どおりか」を独立 2 パスで確認する価値がある。よって R3 を維持し、Contract Audit 節の「Double audit: for R4 and workflow gate changes, run the Contract Audit twice in independent contexts」を S2 に適用する。S1/S3 は単独なら R1〜R2 相当（Review Focus で明記）。
 
 ## Goal
 
@@ -50,19 +52,19 @@ Goal Invariant:
 ### 最小完了条件
 
 - S1: TanStack Router の route 生成設定が単一の `tsr.config.json` に統一され、`npm run generate:routes`（CLI）と `npx vite build`（vite plugin）が同一の `src/routeTree.gen.ts` を生成する（是正後も維持、Contract Probe / AC3-AC4 で再検証）。
-- S2: `eslint.config.js` の `no-restricted-syntax`（palette 外色 ban + 生 `<button>` ban）の対象 `files` が `src/components/ui/**` / `src/components/layout/**` を含み、拡張後に判明した既存違反 1 件（`src/components/ui/segmented-control.tsx` の生 `<button>`）が DOM・視覚・props を変えない機械的置換で解消され、`npx eslint .` が exit 0 になる。
+- S2: `eslint.config.js` の `no-restricted-syntax` が palette 外色 selector と生 `<button>` selector の 2 block に分離され、**色 selector のみ** `src/components/ui/**` / `src/components/layout/**` へ拡張される（生 `<button>` selector は `src/features/**` / `src/components/patterns/**` のまま不変）。拡張後の色 selector は違反 0 件で `npx eslint .` が exit 0 になり、`src/components/ui/segmented-control.tsx` には一切触れない。
 - S3: `docs/design-system/reference/mockup-d-lists.html` の旧定数名 `PRODUCT_PER_PAGE_OPTIONS` が現行定数名 `LIST_PER_PAGE_OPTIONS`（`src/components/patterns/list-per-page.ts`）へ同期される。
 
 ### 失敗定義
 
 - S1: 是正後に CLI と vite plugin の生成物が乖離する、または CLI 経路（`.npmrc` `ignore-scripts=true` 下で `npm run generate:routes` を明示実行する以外に worktree で routeTree を作れない唯一の経路）が壊れる。
-- S2: 是正後も既存の検出力が劣化する（palette 外色 or 生 `<button>` の実害を見逃す）、または `segmented-control.tsx` の DOM・視覚が変わる、または glob 拡張が test file を誤って対象化し class 文字列 assert 等で false positive を起こす。
+- S2: 是正後も既存の検出力が劣化する（palette 外色の実害を `ui/**`/`layout/**` で見逃す、または `features/**`/`patterns/**` で見逃す）、または block 分離の誤りで生 `<button>` selector が `ui/**`/`layout/**` に波及し `segmented-control.tsx` 等の既存 primitive を誤検出する、または glob 拡張が test file を誤って対象化し class 文字列 assert 等で false positive を起こす。
 - S3: 是正後も旧定数名が残る、または Scope 外の他 3 件の現行 doc 参照（`73-ui-stocktake.md:220` / `50-ui-product-list.md:63` / `01-decision-rules.md:447`）に意図せず変更が及ぶ。
 
 ### 非目的
 
 - S1: CLI script（`generate:routes` / `pretypecheck` / `prelint` / `pretest`）の撤去。下記「S1 判断材料」の通り、`.npmrc` `ignore-scripts=true` 下で `typecheck`/`lint`/`test` が routeTree を得る唯一の経路であり、撤去は他 gate を壊す。
-- S2: 視覚が変わり得る palette 色の是正（今回の棚卸しで該当 0 件、下記「S2 起票時実測」参照）。`eslint.config.js` の他の `no-restricted-syntax` block（`src/components/patterns/index.ts` / `src/components/ui/index.ts` の barrel 禁止、:101-117）の変更。
+- S2: 視覚が変わり得る palette 色の是正（今回の棚卸しで該当 0 件、下記「S2 起票時実測」参照）。生 `<button>` selector の scope 拡張、`src/components/ui/segmented-control.tsx` を含む `ui/**`/`layout/**` の DOM/実装変更（Coordinator ruling、primitive 層の生 `<button>` は正当）。`eslint.config.js` の他の `no-restricted-syntax` block（`src/components/patterns/index.ts` / `src/components/ui/index.ts` の barrel 禁止）の変更。
 - S3: `73-ui-stocktake.md` / `50-ui-product-list.md` / `01-decision-rules.md` の同名 stale 参照の同期（Backlog へ新規起票、下記「S3 起票時実測」参照）。
 - `app-router.ts`（Lane 4 PR #40 が改修中）/ `src/lib/bindings.ts`（(d) PR #41 が再生成済み）への接触。新規 runtime 依存の追加。
 
@@ -80,11 +82,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ### S2 実測
 
-- 対象 block: `eslint.config.js:78-97`（`no-restricted-syntax` に palette 外色 selector と 生 `<button>` selector の 2 つが同居、`files: ["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]` / `ignores: [...*.test.{ts,tsx}]`）。**両 selector は同一 block の `files`/`ignores` を共有するため、色 selector だけを個別に拡張することはできない**（Backlog:149 の文言は色 ban を主眼に書かれているが、実際の拡張は 2 selector 同時適用になる）。
-- **既存違反の棚卸し（仮拡張して実測）**: `files`/`ignores` に `src/components/ui/**/*.{ts,tsx}` / `src/components/layout/**/*.{ts,tsx}`（と対応する `*.test.{ts,tsx}` ignore）を一時追加し `npx eslint .` を実行 → **1 件**、`src/components/ui/segmented-control.tsx:51` の生 `<button>`（palette 色 selector の hit は **0 件**）。仮拡張は実測後に repo 状態を元に戻し `git status --porcelain` で復元確認済み。
-- **1 件の性質**: Backlog:149 が想定する「同一 hex → token」の色置換ではなく、生 `<button>` ban（同一 block のもう一方の selector）への抵触。`src/components/ui/button.tsx` はこの ban を `const Comp = asChild ? Slot.Root : "button"; <Comp ... />`（polymorphic 変数を JSX に渡す。`JSXOpeningElement[name.name='button']` は JSX リテラルタグ名のみに一致し変数名には一致しないため非該当）という既存パターンで回避しており、`segmented-control.tsx` にも同じパターンを適用すれば **DOM 要素・props・className は一切変わらず**（同じ native `<button>` を描画）、AST 上の検出対象からのみ外れる。既存 `src/components/ui/segmented-control.test.tsx`（`getByRole("button", ...)` を複数箇所で使用）が DOM/role 不変の regression oracle になる。
-- **判断（Plan Reviewer 確認事項として明記）**: Backlog:149 の (a)/(b) 分類（色 token 等価 → Scope in / 視覚変化 → Scope 外）は色 selector を想定した文言だが、本件は「DOM/props/視覚が一切変わらない機械的 alias 置換」であり (a) の趣旨（視覚不変なら Scope に入れる）を生 `<button>` ban のケースへ適用した。視覚が変わる置換ではないため「視覚系 lane へ申し送り」は不要と判断したが、この解釈自体を Plan Reviewer が確認すること（Review Focus 節に明記）。
-- **baseline 数値**: `rg -Fc '<button' src/components/ui/segmented-control.tsx` = 1 / `rg -Fc 'files: ["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]' eslint.config.js` = 1 / `rg -Fc 'src/components/ui/**/*.{ts,tsx}' eslint.config.js` = 0 / `rg -Fc 'src/components/layout/**/*.{ts,tsx}' eslint.config.js` = 0 / 仮拡張時の `npx eslint .` = exit 1、1 error。仮拡張を戻した状態での `npx eslint .` = exit 0（baseline clean を再確認済み）。
+- 対象 block: `eslint.config.js:78-97`（`no-restricted-syntax` に palette 外色 selector と 生 `<button>` selector の 2 つが同居、`files: ["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]` / `ignores: [...*.test.{ts,tsx}]`）。**両 selector は同一 block の `files`/`ignores` を共有するため、素朴に glob を拡張すると 2 selector が同時に拡張される。**
+- **既存違反の棚卸し（両 selector を仮拡張して実測）**: `files`/`ignores` に `src/components/ui/**/*.{ts,tsx}` / `src/components/layout/**/*.{ts,tsx}`（と対応する `*.test.{ts,tsx}` ignore）を一時追加し `npx eslint .` を実行 → **1 件**、`src/components/ui/segmented-control.tsx:51` の生 `<button>`（palette 色 selector の hit は **0 件**）。仮拡張は実測後に repo 状態を元に戻し `git status --porcelain` で復元確認済み。
+- **Coordinator ruling（2026-09-06）**: `src/components/ui/**` は Button 自体（`button.tsx`）を含む primitive 層であり、生 `<button>` の実装は正当（raw-button ban の scope がそもそも `features/**`/`patterns/**` に限定されているのはこのため）。Backlog:149 は palette 色 ban の `files` 拡張であり、生 `<button>` ban の拡張ではない。よって `segmented-control.tsx` には触れず、**`no-restricted-syntax` を 2 block へ分離**し、色 selector のみ拡張、生 `<button>` selector は現行 scope（`features/**`/`patterns/**`）のまま維持する。
+- **分離後の実測**: block 分離を適用した状態で `npx eslint .` → **exit 0**（`segmented-control.tsx` は対象外のまま検出されない）。分離が「名目だけ」でなく実効的であることを 2 つの mutant で確認:
+  - **mutant A（生 `<button>` selector を誤って `ui/**`/`layout/**` に拡張してしまう mutant）**: 生 `<button>` block の `files`/`ignores` にも `ui/**`/`layout/**` を追加すると `npx eslint .` は **exit 1、`segmented-control.tsx:51` の 1 件のみ**を報告（起票時実測の仮拡張と同一の hit）。これは「Coordinator が禁止した挙動を再現すると、正しく検出される」ことの確認であり、分離が本物であることの証明。mutant 適用後に復元し `npx eslint .` exit 0 を再確認済み。
+  - **mutant B（`ui/**` 内に palette 外色 literal を注入）**: `segmented-control.tsx` に一時的に `className="bg-red-500"` を含む prop を追加すると `npx eslint .` は **exit 1、該当 2 箇所を色 selector が検出**。色 selector 拡張が実効的であることの確認。mutant 適用後に復元し（`segmented-control.tsx` は元の内容へ byte-for-byte 復元、`git diff` で無変更確認）exit 0 を再確認済み。
+- **baseline 数値**: `rg -Fc '<button' src/components/ui/segmented-control.tsx` = 1（是正対象ではなく現状維持の参考値）/ `rg -Fc 'files: ["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]' eslint.config.js` = 1 / `rg -Fc 'src/components/ui/**/*.{ts,tsx}' eslint.config.js` = 0 / `rg -Fc 'src/components/layout/**/*.{ts,tsx}' eslint.config.js` = 0 / 分離後の `npx eslint .` = exit 0 / mutant A = exit 1・1 error / mutant B = exit 1・2 error。すべての一時変更は復元後 `git status --porcelain` で clean を確認済み。
 
 ### S3 実測
 
@@ -100,7 +104,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Scope
 
 - **S1 TanStack Router 生成設定を `tsr.config.json` へ統一**: 新規 `tsr.config.json`（repo root）に `{"target": "react", "autoCodeSplitting": true}` を作成し、`vite.config.ts:12` の `tanstackRouter({ target: "react", autoCodeSplitting: true })` を `tanstackRouter()`（引数なし、他 plugin 引数の並びは変更しない）へ置換する。値は現状の実効値からの変更なし（既存 2 値を 1 箇所へ移動するのみ、新しい設定判断は追加しない）。完了条件: `rg -Fc '"target": "react"' tsr.config.json` = 1、`rg -Fc '"autoCodeSplitting": true' tsr.config.json` = 1、`rg -Fc 'tanstackRouter({ target: "react", autoCodeSplitting: true })' vite.config.ts` = 0（baseline 1）、`rg -Fc 'tanstackRouter()' vite.config.ts` = 1（baseline 0）。是正後、`npm run generate:routes`（CLI）と `npx vite build`（plugin）を再実行し `src/routeTree.gen.ts` が byte-identical であることを `diff` exit code 0 で再確認する（AC3）。
-- **S2 eslint palette 外色 ban の `files` glob 拡張 + 既存違反 1 件の是正**: `eslint.config.js:79-80` の `files`/`ignores` へ `src/components/ui/**/*.{ts,tsx}` / `src/components/layout/**/*.{ts,tsx}` と対応する `*.test.{ts,tsx}` ignore を追加する。`src/components/ui/segmented-control.tsx:51` の生 `<button>` を `src/components/ui/button.tsx` と同じ polymorphic alias パターン（`const Comp = "button";` を定義し `<button` を `<Comp` へ置換、`key`/`type`/`aria-pressed`/`data-state`/`disabled`/`className`/`onClick` 等の props は一切変更しない）で是正する。完了条件: `rg -Fc 'src/components/ui/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0）、`rg -Fc 'src/components/layout/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0）、`rg -Fc '<button' src/components/ui/segmented-control.tsx` = 0（baseline 1）、`npx eslint .` が exit 0。既存 `src/components/ui/segmented-control.test.tsx` は無変更で全 PASS（DOM/role 不変の regression 確認）。
+- **S2 eslint palette 外色 ban の `files` glob 拡張（生 `<button>` ban は現行 scope のまま）**: `eslint.config.js:78-97` の `no-restricted-syntax` block を 2 つへ分離する。(i) 色 selector（palette 外色 literal ban）の block: `files`/`ignores` に `src/components/ui/**/*.{ts,tsx}` / `src/components/layout/**/*.{ts,tsx}` と対応する `*.test.{ts,tsx}` ignore を追加する。(ii) 生 `<button>` selector の block: `files: ["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]` を**変更しない**（`src/components/ui/**`/`src/components/layout/**` は非対象のまま — primitive 層で生 `<button>` は正当、Coordinator ruling）。`src/components/ui/segmented-control.tsx` には一切触れない。完了条件: `rg -Fc 'src/components/ui/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0、色 block にのみ出現）、`rg -Fc 'src/components/layout/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0、色 block にのみ出現）、生 `<button>` block の `files`/`ignores` 文字列は無変更、`npx eslint .` が exit 0（`segmented-control.tsx` は検出されない）。
 - **S3 mockup 旧定数名の同期**: `docs/design-system/reference/mockup-d-lists.html:96`（起票時実測で確認した実際の行番号、Backlog:130 記載の `:110` は stale）の `PRODUCT_PER_PAGE_OPTIONS` を `LIST_PER_PAGE_OPTIONS` へ置換する（`<code>` タグ内のテキストのみ、周辺文の日本語文言は変更しない）。完了条件: `rg -Fc 'PRODUCT_PER_PAGE_OPTIONS' docs/design-system/reference/mockup-d-lists.html` = 0（baseline 1）、`rg -Fc 'LIST_PER_PAGE_OPTIONS' docs/design-system/reference/mockup-d-lists.html` = 1（baseline 0）。
 - **S3b `docs/Plans.md` Backlog への新規行追加**: 上記「S3 追加所見」の 3 file stale 参照を新規 Backlog 行として追記する（「次に該当 doc を触る lane で同期」形式、既存 Backlog 行の書式踏襲）。
 
@@ -109,7 +113,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - CLI script（`generate:routes` / `pretypecheck` / `prelint` / `pretest`）の撤去（上記「S1 判断材料」参照、ignore-scripts 下の唯一の生成経路のため）。
 - `tsr.config.json` へ `target` / `autoCodeSplitting` 以外の項目（`routesDirectory` / `quoteStyle` / `semicolons` / `routeFileIgnorePrefix` 等）を追加すること。現状どちらの経路も既定値のみに依存しており変更不要。
 - palette 外色の hex → token 置換（今回の棚卸しで該当 0 件）。
-- `eslint.config.js:101-117`（`src/components/patterns/index.ts` / `src/components/ui/index.ts` の barrel 禁止 block）の変更。
+- **`src/components/ui/segmented-control.tsx` への変更、および `ui/**`/`layout/**` の DOM 変更全般**（Coordinator ruling: primitive 層の生 `<button>` は正当、raw-button ban の scope はそもそも `features/**`/`patterns/**` 限定）。
+- 生 `<button>` ban selector の scope 拡張（現行 `features/**`/`patterns/**` のまま）。
+- `eslint.config.js` の barrel 禁止 block（`src/components/patterns/index.ts` / `src/components/ui/index.ts`）の変更。
 - `01-decision-rules.md:447` / `50-ui-product-list.md:63` / `73-ui-stocktake.md:220` の旧定数名同期（S3b で Backlog へ新規起票のみ、本 lane では実装しない）。
 - `app-router.ts`（Lane 4 PR #40 改修中）/ `src/lib/bindings.ts`（(d) PR #41 再生成済み）への接触。新規依存の追加。runtime 挙動の変更。
 
@@ -119,11 +125,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC2（S1）: `vite.config.ts` の inline options が除去される — `rg -Fc 'tanstackRouter({ target: "react", autoCodeSplitting: true })' vite.config.ts` = 0（baseline 1）かつ `rg -Fc 'tanstackRouter()' vite.config.ts` = 1（baseline 0）
 - AC3（S1）: 是正後に `npm run generate:routes`（CLI）と `npx vite build`（plugin）が生成する `src/routeTree.gen.ts` が byte-identical — `diff` exit code 0（起票時実測と同じ手順の post-change 再現）
 - AC4（S1、Writer probe、負例）: `tsr.config.json` の `"target"` を一時的に `"solid"` へ変更し、CLI・plugin 両方を再実行して生成物を比較する。是正が正しく単一化されていれば両者は依然として byte-identical（両方が solid 風に揃って変化する）。もし `vite.config.ts` に inline `target: "react"` が残っていれば（Scope 未適用の mutant）plugin 側だけ react のまま固定され乖離する — probe 後は `tsr.config.json` を元の値に戻し、`diff` exit code 0 を再確認して復元する（Implementation Results に記録）
-- AC5（S2）: `eslint.config.js` の対象 block の `files`/`ignores` に `src/components/ui/**` / `src/components/layout/**`（と対応する `*.test.{ts,tsx}` ignore）が追加される — `rg -Fc 'src/components/ui/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0）、`rg -Fc 'src/components/layout/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0）
-- AC6（S2）: `npx eslint .` が exit 0（拡張後 + 是正後。起票時実測の仮拡張のみでは exit 1・1 error だったことと対比）
-- AC7（S2）: `src/components/ui/segmented-control.tsx` に生 `<button` JSX タグが存在しない — `rg -Fc '<button' src/components/ui/segmented-control.tsx` = 0（baseline 1）。かつ既存 `src/components/ui/segmented-control.test.tsx` が無変更で全 PASS（DOM/role 不変の regression 確認、Matrix SC6 参照）
-- AC8（S2、Writer probe、負例）: 是正後の状態から `segmented-control.tsx` の alias 置換を一時的に取り消し生 `<button` に戻す（または他の `ui/**`/`layout/**` 非 test file に一時的な palette 外色 literal を追加する）と `npx eslint .` が exit 1 になることを確認してから復元する（検出力が拡張後も維持されることの確認、Matrix SC5 参照）
-- AC9（S2、Writer probe、負例）: 既存の `ui/**`/`layout/**` いずれかの `*.test.{ts,tsx}` file に palette 外色 literal を含む文字列 assertion を一時的に追加し `npx eslint .` が exit 0 のまま（test file ignore が機能）であることを確認してから復元する（Matrix SC4 参照）
+- AC5（S2）: `eslint.config.js` の `no-restricted-syntax` が 2 block に分離され、色 selector の block のみ `files`/`ignores` に `src/components/ui/**` / `src/components/layout/**`（と対応する `*.test.{ts,tsx}` ignore）が追加される — `rg -Fc 'src/components/ui/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0）、`rg -Fc 'src/components/layout/**/*.{ts,tsx}' eslint.config.js` = 1（baseline 0）
+- AC6（S2）: 生 `<button>` selector の block の `files`/`ignores` が無変更 — `rg -Fc 'files: ["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]' eslint.config.js` = 1（分離後も生 `<button>` block にこの文字列がそのまま残る）。`src/components/ui/segmented-control.tsx` は無変更（`git diff --stat` に出現しない）
+- AC7（S2）: `npx eslint .` が exit 0（分離 + 拡張後。`segmented-control.tsx` は検出されない）
+- AC8（S2、Writer probe、負例、mutant A）: 生 `<button>` selector の block の `files`/`ignores` にも一時的に `ui/**`/`layout/**` を追加すると `npx eslint .` が exit 1・`segmented-control.tsx:51` の 1 件のみを報告することを確認してから復元する（block 分離が名目だけでなく実効的であることの確認、起票時実測で再現済み、Matrix SC6 参照）
+- AC9（S2、Writer probe、負例、mutant B）: `ui/**`/`layout/**` 内の既存 non-test file（例 `segmented-control.tsx`）に一時的な palette 外色 literal（例 `bg-red-500`）を追加すると `npx eslint .` が exit 1 で色 selector がそれを検出することを確認してから byte-for-byte 復元する（色 selector の拡張が実効的であることの確認、起票時実測で再現済み、Matrix SC5 参照）
 - AC10（S3）: `docs/design-system/reference/mockup-d-lists.html` の旧定数名が新定数名へ置換される — `rg -Fc 'PRODUCT_PER_PAGE_OPTIONS' docs/design-system/reference/mockup-d-lists.html` = 0（baseline 1）、`rg -Fc 'LIST_PER_PAGE_OPTIONS' docs/design-system/reference/mockup-d-lists.html` = 1（baseline 0）
 - AC11（全体）: `bash scripts/doc-consistency-check.sh --target plan` と `bash scripts/check-workflow-git.sh` がいずれも exit 0（ERROR 0）
 - AC12（全体）: `npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` が exit 0（S1/S2 は既存 gate に含まれる形で担保、新規 gate は追加しない）
@@ -134,7 +140,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Architecture: 変更なし
 - Function / command / DTO: 変更なし
 - DB: 変更なし
-- Screen / UI: 変更なし（`segmented-control.tsx` の是正は DOM/視覚が不変であることを Scope で保証）
+- Screen / UI: 変更なし（`ui/**`/`layout/**` の DOM には一切触れない、Non-scope 明記）
 - Decision log / ADR: 新規 durable decision なし。DEV_WORKFLOW.md「Risk Tiers」「Contract Audit (R3/R4)」の既存規定と D-080（mockup reference-only）をそのまま適用する
 
 ## Required Design Artifacts
@@ -156,7 +162,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| — | DEV_WORKFLOW.md Risk Tiers / Contract Audit (R3/R4) | なし（既決規定の適用のみ） | S1: 「CLI script 撤去」は ignore-scripts 下の唯一の生成経路を失うため却下、「tsr.config.json 明示化」を採用（起票時実測「S1 判断材料」参照）。S2: 生 `<button>` alias 置換は既存 `button.tsx` 前例の踏襲で新規パターンを増やさない。S3: mockup は D-080 で reference-only、現行契約は runtime 側 `list-per-page.ts` が正 | `tsr.config.json` / `vite.config.ts` / `eslint.config.js` / `segmented-control.tsx` / `mockup-d-lists.html` | AC1-AC4 / AC5-AC9 / AC10 |
+| — | DEV_WORKFLOW.md Risk Tiers / Contract Audit (R3/R4) | なし（既決規定の適用のみ） | S1: 「CLI script 撤去」は ignore-scripts 下の唯一の生成経路を失うため却下、「tsr.config.json 明示化」を採用（起票時実測「S1 判断材料」参照）。S2: `no-restricted-syntax` の 2 block 分離は Coordinator ruling（primitive 層の生 `<button>` は正当）を機械的に反映するのみで新規判断を含まない。S3: mockup は D-080 で reference-only、現行契約は runtime 側 `list-per-page.ts` が正 | `tsr.config.json` / `vite.config.ts` / `eslint.config.js` / `mockup-d-lists.html` | AC1-AC4 / AC5-AC9 / AC10 |
 
 ## Design Intent Audit
 
@@ -194,7 +200,7 @@ Minimum design checks:
 - Backend function design: 変更なし
 - Command / DTO / data contract: 変更なし
 - Persistence / transaction / audit impact: なし
-- Operator workflow / Japanese UI wording: 変更なし（S2 の DOM 置換は視覚不変）
+- Operator workflow / Japanese UI wording: 変更なし（S2 は lint config のみで DOM/UI 非接触）
 - Error, empty, retry, and recovery behavior: 変更なし
 - Testability and traceability IDs: REQ 非接触。新規 test file を追加しないため traceability FE baseline は不変見込み
 
@@ -208,16 +214,16 @@ Minimum design checks:
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
 | TanStack Router 生成設定の統一（S1） | `tsr.config.json` / `vite.config.ts` | `npm run generate:routes` vs `npx vite build` diff（AC3）+ Writer probe（AC4） | non-scope（生成物比較のみ） |
-| eslint palette 外色 ban の glob 拡張 + 生 `<button>` 是正（S2） | `eslint.config.js` / `segmented-control.tsx` | `npx eslint .` exit code（AC6-AC9）+ 既存 `segmented-control.test.tsx`（AC7） | non-scope（lint/vitest のみ） |
+| eslint palette 外色 ban の glob 拡張（生 `<button>` selector は不変、S2） | `eslint.config.js`（block 分離） | `npx eslint .` exit code（AC7）+ mutant A/B（AC8-AC9） | non-scope（lint のみ） |
 | mockup 旧定数名同期（S3） | `mockup-d-lists.html` | `rg -Fc` baseline+delta（AC10） | non-scope（doc 文字列のみ） |
 
 ## Test Plan
 
 Test Design Matrix: [test-matrices/2026-09-06-hygiene-batch-2-config-reference.md](test-matrices/2026-09-06-hygiene-batch-2-config-reference.md)
 
-- targeted tests: `npm run generate:routes && npx vite build`（S1、生成物 diff）/ `npx eslint .`（S2）/ `npm test -- segmented-control`（S2、既存 test 無変更 PASS 確認）
-- negative tests: S1 の `target` mutation probe（AC4）、S2 の button-revert / color-literal 追加 probe（AC8）、S2 の test-file ignore probe（AC9）
-- compatibility checks: S1 の post-change 生成物 diff（AC3、既存 route 構成が壊れないことを担保）、S2 既存 `segmented-control.test.tsx` 無変更 PASS（AC7）
+- targeted tests: `npm run generate:routes && npx vite build`（S1、生成物 diff）/ `npx eslint .`（S2）
+- negative tests: S1 の `target` mutation probe（AC4）、S2 の mutant A（生 `<button>` selector を `ui/**`/`layout/**` へ誤拡張、AC8）、S2 の mutant B（`ui/**` へ palette 外色 literal 注入、AC9）
+- compatibility checks: S1 の post-change 生成物 diff（AC3、既存 route 構成が壊れないことを担保）、S2 生 `<button>` selector block の `files`/`ignores` 無変更（AC6、`segmented-control.tsx` 等の既存 primitive が非接触のまま）
 - data safety checks: 該当なし（DB 非接触）
 - main wiring/integration checks: `bash scripts/doc-consistency-check.sh --target plan` と `bash scripts/check-workflow-git.sh` の exit code（AC11）、frontend フル gate（AC12）
 
@@ -228,9 +234,8 @@ N/A — JSON API / browser state / CSV / DTO / bindings / DB 互換のいずれ�
 ## Review Focus
 
 - S1: `tsr.config.json` の値が現状の実効値（`target: "react"`, `autoCodeSplitting: true`）から 1 文字も変わっていないこと（新しい設定判断を持ち込んでいないこと）。「CLI script 撤去」を却下した判断材料（ignore-scripts 下の唯一の生成経路）が正確であること
-- S2: **要確認事項** — Backlog:149 の (a)/(b) 分類（色 token 等価 → Scope in / 視覚変化 → Scope 外）は色 selector を想定した文言だが、実際に見つかった唯一の違反は生 `<button>` ban（同一 block のもう一方の selector）であり、「DOM/props/視覚が一切変わらない alias 置換」という別の基準で Scope に含めている（起票時実測「S2 実測」の「判断」参照）。この解釈の妥当性を Plan Reviewer が独立に確認すること
-- S2: `segmented-control.tsx` の alias 置換が `button.tsx` の既存パターンを踏襲しており、`key`/`type`/`aria-pressed`/`data-state`/`disabled`/`className`/`onClick` 等の props が 1 つも変更されていないこと
-- S2 は workflow gate 変更（`eslint.config.js`）のため Contract Audit を独立 2 パス（Double Audit）で実施すること（Sonnet fresh 1 パス + Opus 1 パス、それぞれ `eslint.config.js` の diff と Writer probe の記録を独立に読む）
+- S2: 生 `<button>` selector の block の `files`/`ignores` が Scope 適用の前後で文字列として無変更であること（`src/components/ui/segmented-control.tsx` を含む `ui/**`/`layout/**` の生 primitive が一切対象化されないこと、Coordinator ruling の反映）
+- S2 は workflow gate 変更（`eslint.config.js`）のため Contract Audit を独立 2 パス（Double Audit）で実施すること（Sonnet fresh 1 パス + Opus 1 パス、それぞれ `eslint.config.js` の diff と mutant A/B probe の記録を独立に読み、2 block が実際に分離されている＝色 selector の files のみが拡張され生 `<button>` selector の files には手を加えていないことを確認する）
 - S3: 行番号drift（Backlog:130 の `:110` → 実測 `:96`）の原因（Lane 3 `1d44ba2` の同 file 編集）が Implementation Results に記録されていること。置換が `<code>` タグ内のみで周辺の日本語文言を変更していないこと
 - Non-scope に列挙した項目（CLI script 撤去、`tsr.config.json` の他項目追加、色 token 置換、barrel 禁止 block、他 3 file の stale 参照、`app-router.ts`/`bindings.ts`）が変更されていないこと
 
@@ -238,14 +243,14 @@ N/A — JSON API / browser state / CSV / DTO / bindings / DB 互換のいずれ�
 
 Contract ID: SPEC-HYG2-D1
 
-- TanStack Router の CLI・vite plugin 生成物が単一 `tsr.config.json` を土台に同一であり続けること、eslint palette 外色 ban の `files` glob 拡張後も検出力が劣化せず既存違反が視覚非破壊で解消されること、mockup の定数名参照が現行契約と一致すること
+- TanStack Router の CLI・vite plugin 生成物が単一 `tsr.config.json` を土台に同一であり続けること、eslint palette 外色 ban の `files` glob 拡張が色 selector のみに適用され生 `<button>` selector の scope（primitive 層除外）を変えないこと、mockup の定数名参照が現行契約と一致すること
 
 ## Trace Matrix
 
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
 | SPEC-HYG2-D1 | S1 | CLI vs plugin diff（AC3）+ `target` mutation probe（AC4） | 単一化の実効性 | 起票時実測 + Implementation Results |
-| SPEC-HYG2-D1 | S2 | `npx eslint .`（AC6）+ 既存 `segmented-control.test.tsx`（AC7）+ probe（AC8-AC9） | 検出力維持 + DOM/視覚不変 + Double Audit | eslint + vitest + Implementation Results |
+| SPEC-HYG2-D1 | S2 | `npx eslint .`（AC7）+ mutant A/B（AC8-AC9） | block 分離の実効性 + primitive 層非接触 + Double Audit | eslint + Implementation Results |
 | SPEC-HYG2-D1 | S3, S3b | `rg -Fc` baseline+delta（AC10） | 現行定数名との一致 | rg |
 
 ## Data Safety
@@ -267,7 +272,7 @@ Contract ID: SPEC-HYG2-D1
 例外: 正しさ・データ安全・既存 test の契約・packet の AC を削る方向には使わない。
 ```
 
-- 具体的な適用: S1 は `tsr.config.json` に既存 2 値以外を追加しない（ponytail rung 1「そもそも要るか」— 未使用項目の先回り設定はしない）。S2 は `segmented-control.tsx` に新規 helper 関数を作らず `button.tsx` の既存パターン（`const Comp = "button";` の直接踏襲）を再利用する（ponytail rung 2「既に codebase にある」を最優先）。shadcn Button への置き換えはしない（className 契約が異なり視覚が変わり得るため Non-scope）。S3 は `<code>` タグ内の文字列置換のみで周辺文言を書き換えない
+- 具体的な適用: S1 は `tsr.config.json` に既存 2 値以外を追加しない（ponytail rung 1「そもそも要るか」— 未使用項目の先回り設定はしない）。S2 は `no-restricted-syntax` の block を分離するだけで、`segmented-control.tsx` や他の `ui/**`/`layout/**` file には一切触れない（ponytail rung 1「そもそも要るか」— Coordinator ruling により生 `<button>` ban 側の scope 拡張は不要と確定済み）。S3 は `<code>` タグ内の文字列置換のみで周辺文言を書き換えない
 
 ## Implementation Results
 
