@@ -95,6 +95,26 @@ export default tseslint.config(
       ],
     },
   },
+  // ⑫ 衛生 batch 2 S2: palette 外の生 Tailwind 色 class を ui/ layout/ へも拡張（DSR-08）。
+  // 既存 block（features/ patterns/）は無変更のまま維持し、files が重複しないこの新規
+  // block で色 selector のみを追加する（ESLint flat config は同一 files に一致する block 間で
+  // no-restricted-syntax を完全置換するため、生 <button> selector はここに含めない —
+  // ui/ layout/ は primitive 層で生 <button> の実装が正当なため raw-button ban の scope外）。
+  {
+    files: ["src/components/ui/**/*.{ts,tsx}", "src/components/layout/**/*.{ts,tsx}"],
+    ignores: ["src/components/ui/**/*.test.{ts,tsx}", "src/components/layout/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "Literal[value=/\\b(amber|rose|emerald|red|green|orange|yellow|lime|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|slate|gray|zinc|neutral)-(50|100|200|300|400|500|600|700|800|900|950)\\b/]",
+          message:
+            "palette 外の生 Tailwind 色 class は禁止。docs/design-system/00-foundations.md の semantic token（bg-warning-soft / text-success-emphasis / text-destructive 等）を使うこと（DSR-08 / PR-C）。",
+        },
+      ],
+    },
+  },
   // PR-C C3 (ii): patterns/ ui/ の barrel index.ts 作成を禁止（直接 path import 統一の恒久化、
   // prior art PR #48 c5f3786 の invoke-fallback 限定形を任意 source 形へ一般化）。
   // 両 index.ts は現在不在 → 作成された瞬間に lint error になる予防 gate。
