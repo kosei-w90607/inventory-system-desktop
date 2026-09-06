@@ -6,10 +6,10 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 3aa0e8a
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
@@ -291,3 +291,5 @@ Contract ID: SPEC-HYG2-D1
 2026-09-06: Plan Review round 2 = Sonnet approve-with-P2、Opus reject（P1 1 件）。P1 = (1) AC4/Matrix SC2 の「1 コピー内で CLI→plugin を順に実行」設計は leg 1（target solid の CLI 実行）が `src/routes/**` へ書き込む重複 import により leg 2（`vite build`）が `routeTree.gen.ts` を生成する前に `SyntaxError` で失敗し比較不能（Opus、実測で再現）。是正: 独立した使い捨てコピー A（CLI のみ）・B（plugin のみ）に分離し、oracle をコピー A・B の `routeTree.gen.ts` の `diff` のみに限定（コピー B の `vite build` 自体は `@tanstack/solid-router` 不在により non-zero exit するが、これは routeTree 生成後の後段失敗であり pass/fail に含めない——実測で `diff` exit 0 を確認）。P2 = (2) 新規 block の挿入位置を barrel block より前と明記し AC14（行番号 rg 比較）を新設、逆順だと `ui/index.ts` の barrel 禁止が消えることを実測確認（Opus）(3) Matrix SC5 に `ignores` oracle を追記（Opus）(4) AC2 の残存 grep に `target` を追加（Opus、他の無関係な `target` 語が存在しないことも実測確認）(5) AC7/AC9 に `npm run generate:routes` の事前実行が必要である旨を明記（Opus、実測で確認——`routeTree.gen.ts` 不在だと無関係な lint error が出る）(6) `src/components/patterns/index.ts` も barrel block に pre-existing に重複していることを既知 P3 note へ追記（Opus、実測確認、本 lane 起源ではない）。Sonnet P2 = (7) `rg -Fc "JSXOpeningElement\[name.name='button'\]"` は `-F` モードでバックスラッシュが literal 文字として扱われ常に 0 件になる欠陥、packet AC5 + Matrix SC4 の 2 箇所を `rg -Fc "JSXOpeningElement[name.name='button']"`（escape なし）へ修正（実測で再現確認、他に該当パターンなし）。Sonnet P3 = (8) 表記ゆれ「実測で再現、is 是正:」の誤字を修正。Coordinator 裁定 = 8 項目全件採用 → 本 commit で是正。全項目 `$TMPDIR` throwaway copy 上で再現確認済み（worktree 非破壊）。
 
 2026-09-06: Plan Review round 3 = Sonnet approve、Opus approve（P1 0）。Rally 収束。4 項目 + Sonnet P3 1 件を採用: (1) AC4 のコピー作成手順を明示——`cp -a` を使い `node_modules` が実体（symlink でない）であることを確認、破棄はコピー配下のみ（worktree の node_modules symlink を跨いだ `rm -rf` が本体を消した記録済み incident に基づく予防策）(2) Matrix SC5 / packet AC6 に `src/components/layout/**/*.test.{ts,tsx}` の `ignores` oracle を追加（`layout` は現状 palette 外色の実例が 0 件のため `npx eslint .` の exit code だけでは `layout` 側の `ignores` 欠落を検出できない）(3) コピー B の `vite build` 非 0 exit の原因を訂正——`@tanstack/solid-router` パッケージ不在ではなく、route file 側の既存 import と code-splitter が注入する import の重複が原因（solid は code-splitter がサポートするターゲット）。oracle（`diff` のみ、`vite build` 自体の exit code は判定外）は変更なし (4) restore oracle を `git status --short -- src/routes` から tree 全体の `git status --short` へ拡張し、`tsr.config.json` / `vite.config.ts` / `src/routeTree.gen.ts` への probe 由来の混入も検出できるようにした。Sonnet P3 = `docs/Plans.md:103` は変更しない（Coordinator が transition commit で同期する）。本 round は docs のみで実測不要（既存の起票時実測・round 1/2 実測がそのまま根拠）。
+
+2026-09-07: Plan Review round 2 = Sonnet approve-with-P2（`rg -F` pattern の `\[` が常に 0 hit）+ Opus reject（P1: AC4 の 1 copy 連続 probe は leg 2 が `createFileRoute` 重複で必ず壊れる → 2 copy 分離 + diff のみ oracle。P2: 新 block は barrel block より前）→ 是正 `f043e44`。round 3 = Sonnet approve + Opus approve（P1 0。P2: copy は `cp -a` / layout `ignores` oracle。P3: 非 0 exit の帰属 / restore oracle）→ 最終小口 `58b0118` → Coordinator 行検分（`-F` バックスラッシュ bug の残存 0 を sweep）で Plan Gate 閉鎖。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑫ 同期の本 commit に同乗。Plan Commit = `3aa0e8a`（plan-first commit）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
