@@ -100,6 +100,7 @@
 - [x] ⑥ drift 総点検の docs 同期 PR: 完了（PR #37 squash `31e6a00`、2026-09-05）。S2 7 件を実装へ同期、監査記録 = [drift-audit](research/audit-2026-09/drift-audit.md)。レビュー P3 2 件は Backlog へ（65-doc §65.3「完成形」の実装状況注記 / 52-doc の非表示 route 列挙）
 - [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: (a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
 - [ ] ⑧ native `<select>` 23 箇所 → shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）: Lane 5 merge 後に起票
+- [ ] ⑫ 衛生 batch 2（config / reference 系）: TanStack Router generation settings の統一（`tsr.config.json` 明示化） / eslint palette 外色 ban の `files` glob 拡張（既存 block 無変更 + `src/components/ui/**` / `src/components/layout/**` 専用の新規 block 追加、raw-button ban は現行 scope のまま） / 旧定数名 `PRODUCT_PER_PAGE_OPTIONS` → `LIST_PER_PAGE_OPTIONS` 同期（mockup + 現行契約 doc 3 file）。Plan Review round 1〜3（Opus reject ×2 → 是正 `719c15d` `f043e44` `58b0118`、round 3 = 両者 approve）→ Plan Gate 閉鎖、Draft PR #44、Writer 3 commit → Final Review（Sonnet fresh approve / Opus approve-with-P2、P1 0）→ Phase: human-confirm（Plan Commit `3aa0e8a`、Reviewed Content HEAD `cf70277`、L3 なし、2026-09-07）、次 = Codex 1 回 → Findings Freeze → Ready → merge、[packet](plans/2026-09-06-hygiene-batch-2-config-reference.md) / [Matrix](plans/test-matrices/2026-09-06-hygiene-batch-2-config-reference.md)
 
 ### Wave Registry
 
@@ -117,8 +118,9 @@
 
 ## Backlog（未了）
 
+- eslint palette 外色 ban の残り非対象 dir（`src/components/common/**` / `src/components/FilePicker.tsx`。⑫ Final Review Opus P3 2026-09-07、probe では現状 CLEAN）: 次に `eslint.config.js` を触る衛生 batch で `ui/**` `layout/**` と同じ追加 block 方式（既存 block 不変・glob 非重複・barrel block より前）で拡張、S
 - command drift detection（`collect_commands!` / `generate_handler!` の drift detection 未導入）。※退役 Docker 資材の削除は wave 7 lane 2（PR #19、2026-08-30）で完了済み。
-- TanStack Router generation settings の統一（起草時実査 2026-08-30: vite plugin `tanstackRouter({ autoCodeSplitting: true })` と `tsr generate` CLI の 2 系統併存・tsr.config.json なし。統一方針〈CLI script 撤去 or tsr.config 明示化〉の小裁定 + 生成物同一性検証を伴う単独小 change として着手）。
+- TanStack Router generation settings の統一（起草時実査 2026-08-30: vite plugin `tanstackRouter({ autoCodeSplitting: true })` と `tsr generate` CLI の 2 系統併存・tsr.config.json なし。統一方針〈CLI script 撤去 or tsr.config 明示化〉の小裁定 + 生成物同一性検証を伴う単独小 change として着手）。⑫ で起票（tsr.config.json 明示化を採用、生成物 byte-identical 実測済み）。
 - UI-09a・09b 将来設計（UI-09b の日報 coverage 表示「一部日だけ日報がある月」の取込み済み日数、SALES2-D3 で自覚的 defer〈batch A から移管〉、34-biz §19.4 参照。`get_monthly_sales` DTO 拡張を伴う R3）。
 - bindings trailing-whitespace generation の扱い（2026-08-30 実測: commit 済み `src/lib/bindings.ts` に trailing whitespace 0 件。生成時のみ発生する可能性が残るため、次回 bindings 再生成を伴う change で実測して要否判定）。
 - PLUスロット永続割当の恒久設計（CV17 import が メモリNo. merge のため現行再採番と衝突。[2026-07-03 packet](archive/plans/2026-07-03-post-ui08-janless-plu-target-design.md) D-6 参照）。
@@ -127,7 +129,7 @@
 - D-023 POS adapter boundary の実装側未充足（2026-09-05 Fable 実測）: IO 層の parser / formatter に adapter trait がなく `z004_parser` / `daily_report_parser` と CASIO 前提、帳票番号 `Z001` 等と CASIO 固有語が BIZ / CMD / DB 層へ漏出（`sales_repo.rs` 37 箇所が最多、migration / csv_import parse / 日報取込み command にも）。レジ機種変更が見えた時点で「帳票番号を app core の抽象名へ寄せる → parser / formatter を adapter trait の背後へ → レジ制約を設定値へ」の 3 段で構造整理 lane にする（機能追加ではない）
 - CSV 出力・印刷の実挙動確認（owner run 3 原文「まともにテストしたことがない」「印刷は中身を作っていない」）: end-to-end で叩いて紙面 / 出力 file の実態を証跡化してから要否を裁定
 - Z001 / Z002 / Z005 の取り込み情報を画面で見られるようにする（owner run 3 原文「無いのはまずい」= 要望、後続候補ではない）: DTO 公開 + 表示設計、design-first
-- `docs/design-system/reference/mockup-d-lists.html:110` の旧定数名 `PRODUCT_PER_PAGE_OPTIONS`（Lane 3 Final Review P3、mockup は D-080 で reference-only）: 次に mockup を触る lane で同期
+- `docs/design-system/reference/mockup-d-lists.html:110` の旧定数名 `PRODUCT_PER_PAGE_OPTIONS`（Lane 3 Final Review P3、mockup は D-080 で reference-only）: 次に mockup を触る lane で同期。⑫ で起票（実測で行番号は `:96` へ drift 済み、現行定数名 `LIST_PER_PAGE_OPTIONS` へ同期。Plan Review round 1 Opus P2-5 で `01-decision-rules.md:447` / `50-ui-product-list.md:63` / `73-ui-stocktake.md:220` の同名 stale 参照 3 件も Scope へ統合済み — mockup は D-080 reference-only だが 3 file は現行契約を説明する現役 doc で優先度が高いため）
 - バックアップ一覧の肥大化 UX（保持日数で自然減のため優先度低）。
 - architecture_test の re-export 洗浄検出強化（cmd が biz/mnt の re-export 経由で db symbol を消費する間接依存は現行の use 行 literal match で検出不能 — 順12 実装 AMD2 で実証。cmd-task-specs に検出境界を明記済み、検出強化は将来判断）。
 - 在庫状態表示の filter 依存不整合（在庫 2・基準 3 の同一商品が「すべて」filter では状態「通常」、「在庫少」filter では「在庫少」と表示される。query source 依存の pre-existing 仕様で受入台本 L3 2026-08-13 の owner 観察起源〈PR #74 comment〉。operator には矛盾に見えるため follow-up 要否を検討、優先度は owner 判断）。
@@ -146,7 +148,7 @@
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
 - T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。
-- eslint palette 外色 ban（`eslint.config.js` `no-restricted-syntax`）の `files` glob 拡張（現行は `src/features/**` + `src/components/patterns/**` のみで `src/components/ui/**` / `src/components/layout/**` は非対象。wave 8 lane 1 Plan Review P2 起源 2026-09-02、当該 PR は `rg` を唯一の機械 oracle として運用、glob 拡張は既存違反の棚卸しが先行）。
+- eslint palette 外色 ban（`eslint.config.js` `no-restricted-syntax`）の `files` glob 拡張（現行は `src/features/**` + `src/components/patterns/**` のみで `src/components/ui/**` / `src/components/layout/**` は非対象。wave 8 lane 1 Plan Review P2 起源 2026-09-02、当該 PR は `rg` を唯一の機械 oracle として運用、glob 拡張は既存違反の棚卸しが先行）。⑫ で起票（仮拡張実測で違反 1 件〈`segmented-control.tsx` の生 `<button>`、色 literal は 0 件〉、視覚非破壊の alias 置換で是正）。
 - ~~`docs/UI_TECH_STACK.md` L403 の「DSR-01〜13」列挙が stale（DSR-14〜21 未反映。PR #28 Final Review round 1 観察、design-system README は同 PR で「DSR-01〜21」へ是正済み）。~~ 消化済み（UI 一覧の背骨 D — Lane 2、2026-09-03、「DSR-01〜22」へ更新）
 - SidebarLink の focus 中は `focus-visible:border-ring`（詳細度 0-2-0）が DSR-21 の左辺 Primary を上書きする（at rest は無関係、一過性。PR #28 Final Review round 2〜3 観察、意図的な a11y 挙動のため要望があれば DSR-21 に focus 時の扱いを追記）。
 - 確定処理の所要時間を件数増で実測（棚卸しカウント画面の磨き batch owner 判断 2026-09-02 起源、C7 見送り分。「体感待ちなし、件数増で 1 秒超なら progress を検討、処理高速化に投資する方が良い」との owner 判断を受け、実測が先行事項として残る）。
