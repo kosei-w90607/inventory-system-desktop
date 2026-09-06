@@ -356,6 +356,58 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
   });
 });
 
+describe("GA1b: 商品一覧のみ、専用 scroll 箱で帯+table を包む（Gated Amendment 1）", () => {
+  it("box carries min-h-[12rem] flex-1 overflow-auto + data-list-scroll-container + data-scroll-restoration-id=products-list; bottom Pagination is a sibling after the box (not inside it); root uses flex-1 min-h-0 (not h-full)", () => {
+    const { container } = render(
+      <ListShell stickyHeader topSummary pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+
+    const root = container.firstElementChild;
+    const rootTokens = classTokens(root);
+    expect(rootTokens).toContain("flex");
+    expect(rootTokens).toContain("flex-1");
+    expect(rootTokens).toContain("min-h-0");
+    expect(rootTokens).toContain("flex-col");
+    expect(rootTokens).not.toContain("h-full");
+
+    const box = container.querySelector("[data-list-scroll-container]");
+    expect(box).not.toBeNull();
+    const boxTokens = classTokens(box);
+    expect(boxTokens).toContain("min-h-[12rem]");
+    expect(boxTokens).toContain("flex-1");
+    expect(boxTokens).toContain("overflow-auto");
+    expect(box?.getAttribute("data-scroll-restoration-id")).toBe("products-list");
+
+    const pagerButton = screen.getByRole("button", { name: "次のページ" });
+    const paginationRoot = pagerButton.closest(
+      ".flex.flex-wrap.items-center.justify-between.gap-3.text-sm.text-muted-foreground",
+    );
+    expect(paginationRoot).not.toBeNull();
+    expect(box?.contains(paginationRoot)).toBe(false);
+    expect(box?.nextElementSibling).toBe(paginationRoot);
+  });
+
+  it("without stickyHeader, no scroll-container box is rendered (paired oracle: box count is exactly 0)", () => {
+    const { container } = render(
+      <ListShell topSummary pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+    expect(container.querySelectorAll("[data-list-scroll-container]")).toHaveLength(0);
+  });
+
+  it("with stickyHeader, exactly one scroll-container box is rendered (paired oracle: count is exactly 1)", () => {
+    const { container } = render(
+      <ListShell stickyHeader topSummary pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+    expect(container.querySelectorAll("[data-list-scroll-container]")).toHaveLength(1);
+  });
+});
+
 describe("SC17: list-shell-sticky hook class (Gated Amendment 7 S48 corner mask)", () => {
   it("adds list-shell-sticky to root classList only when stickyHeader is true", () => {
     const { container: sticky } = render(

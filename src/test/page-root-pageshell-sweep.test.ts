@@ -83,3 +83,30 @@ describe("SC2b: no feature page file declares a p-6 root className outside PageS
     expect(totalOccurrences).toBe(EXPECTED_PAGESHELL_OCCURRENCE_COUNT);
   });
 });
+
+// GA1e（Gated Amendment 1、round 2 是正 Sonnet P2 で新設）: stickyHeader は page root の
+// 高さ連鎖（PageShell へ flex h-full min-h-0 flex-col 系 class を渡すこと）とセット。
+// 渡し忘れると箱の overflow-auto / sticky が静かに壊れる。fs scan の性質上、
+// stickyHeader を渡す JSX と PageShell の JSX が同一 file 内にある場合にのみ機能する
+// （限界: 配線を別 file の子 component へ分離する画面はこの guard で検出できない、
+// packet「Gated Amendment 1」節参照）。
+describe("GA1e: stickyHeader を渡す Page は同一 file 内で PageShell に高さ連鎖 class を渡す", () => {
+  it("stickyHeader を持つ *Page.tsx はすべて PageShell へ flex/h-full/min-h-0/flex-col 系 class を渡している", () => {
+    const pageFiles = collectPageFiles(FEATURES_ROOT);
+    const violations: string[] = [];
+
+    for (const file of pageFiles) {
+      const source = readFileSync(file, "utf8");
+      if (!/\bstickyHeader\b/.test(source)) continue;
+
+      const pageShellClassMatches = source.match(/<PageShell\b[^>]*className="([^"]*)"/g) ?? [];
+      const hasHeightChain = pageShellClassMatches.some(
+        (match) =>
+          /\bflex\b/.test(match) && /\bmin-h-0\b/.test(match) && /\bflex-col\b/.test(match),
+      );
+      if (!hasHeightChain) violations.push(relative(REPO_ROOT, file));
+    }
+
+    expect(violations).toEqual([]);
+  });
+});

@@ -7,6 +7,13 @@
 // components/patterns は features を import しない（D-9、AC4）。
 // 設計: docs/design-system/02-component-catalog.md ⑯ 一覧の器（ListShell）
 //       docs/design-system/01-decision-rules.md DSR-22
+//
+// Gated Amendment 1（2026-09-06）: stickyHeader は page root の高さ連鎖とセット。
+// root が flex-1 min-h-0 で伸びるには、caller が PageShell へ
+// `className="flex h-full min-h-0 flex-col"` を渡し、<main> 由来の境界のある高さを
+// 継承させる必要がある（渡さないと h-full が auto に落ち、箱の overflow-auto と
+// sticky が静かに壊れる）。回帰は src/test/page-root-pageshell-sweep.test.ts の
+// fs scan（GA1e、同一 file 内の対応関係のみ検出）。
 
 import type { ReactNode } from "react";
 
@@ -116,10 +123,51 @@ export function ListShell({
   const hasResults = (pagination?.totalCount ?? 0) > 0;
   const showTopSummary = topSummary && hasResults;
 
+  // Gated Amendment 1（2026-09-06、owner 案 X）: 帯+table wrapper を専用の縦横 scroll 箱で
+  // 包む。<main> ではなく箱自身が scrolling ancestor になるため、sticky thead / 識別列の
+  // left-* はそのまま箱基準で機能する（コード変更不要）。stickyHeader を渡すのは商品一覧のみ
+  // （identityColumns の症状画面と同一）のため、他 7 画面には影響しない。
+  const bandAndTable =
+    stickyHeader && showTopSummary && pagination ? (
+      // Gated Amendment 3 S13（owner L3 run 2 FAIL、AC-L3-2）: summary 帯と
+      // table を spacing utility を持たない 1 つの wrapper に包み、root の
+      // space-y-3 が toolbar /（帯 + table）/ 下部 Pagination の間だけに
+      // 効くようにする（帯と table の間に page 地を挟まない）。
+      <div className="w-min min-w-full">
+        {/* 追補 S17（Opus P1-2 / P2-2 / P2-3、AC-L3-2 / AC-L3-4）: 帯自体は overflow-hidden
+            にし、子（PaginationSummary root）を min-w-0 + truncate で ellipsis させる
+            （flex item への直接 truncate は min-width:auto で hard clip になる）。
+            Gated Amendment 5 S39（owner L3 run 4「灰色の塊に入れ込んだのがミス、角が角、
+            下に線を引く程度」）: 件数行は page 地色（bg-background）。灰色面（--list-head）
+            は列見出しのみに限定する。Gated Amendment 7 S47（owner run 6「上端の線だけ
+            外そう」）: 件数行の下線（border-b border-border）を撤去。 */}
+        <div className="sticky top-0 z-20 flex h-10 w-full items-center overflow-hidden bg-background px-2 [&>div]:min-w-0 [&>div]:truncate">
+          <PaginationSummary
+            page={pagination.page}
+            perPage={pagination.perPage}
+            totalCount={pagination.totalCount}
+          />
+        </div>
+        {isLoading ? (skeleton ?? <ListSkeleton />) : children}
+      </div>
+    ) : (
+      <>
+        {showTopSummary && pagination ? (
+          <PaginationSummary
+            page={pagination.page}
+            perPage={pagination.perPage}
+            totalCount={pagination.totalCount}
+          />
+        ) : null}
+        {isLoading ? (skeleton ?? <ListSkeleton />) : children}
+      </>
+    );
+
   return (
     <div
       className={cn(
         "space-y-3",
+        stickyHeader && "flex min-h-0 flex-1 flex-col",
         stickyHeader && "list-shell-sticky",
         stickyHeader && STICKY_TABLE_CLASSES,
         stickyHeader && (showTopSummary ? "[&_thead_th]:top-10" : "[&_thead_th]:top-0"),
@@ -127,45 +175,25 @@ export function ListShell({
       )}
     >
       {toolbar !== undefined && (
-        <div className="space-y-3 rounded-lg border bg-card p-4">
+        <div className={cn("space-y-3 rounded-lg border bg-card p-4", stickyHeader && "shrink-0")}>
           {toolbar}
           {toolbarSecondary !== undefined && toolbarSecondary}
         </div>
       )}
 
-      {stickyHeader && showTopSummary && pagination ? (
-        // Gated Amendment 3 S13（owner L3 run 2 FAIL、AC-L3-2）: summary 帯と
-        // table を spacing utility を持たない 1 つの wrapper に包み、root の
-        // space-y-3 が toolbar /（帯 + table）/ 下部 Pagination の間だけに
-        // 効くようにする（帯と table の間に page 地を挟まない）。
-        <div className="w-min min-w-full">
-          {/* 追補 S17（Opus P1-2 / P2-2 / P2-3、AC-L3-2 / AC-L3-4）: 帯自体は overflow-hidden
-              にし、子（PaginationSummary root）を min-w-0 + truncate で ellipsis させる
-              （flex item への直接 truncate は min-width:auto で hard clip になる）。
-              Gated Amendment 5 S39（owner L3 run 4「灰色の塊に入れ込んだのがミス、角が角、
-              下に線を引く程度」）: 件数行は page 地色（bg-background）。灰色面（--list-head）
-              は列見出しのみに限定する。Gated Amendment 7 S47（owner run 6「上端の線だけ
-              外そう」）: 件数行の下線（border-b border-border）を撤去。 */}
-          <div className="sticky top-0 z-20 flex h-10 w-full items-center overflow-hidden bg-background px-2 [&>div]:min-w-0 [&>div]:truncate">
-            <PaginationSummary
-              page={pagination.page}
-              perPage={pagination.perPage}
-              totalCount={pagination.totalCount}
-            />
-          </div>
-          {isLoading ? (skeleton ?? <ListSkeleton />) : children}
+      {stickyHeader ? (
+        // Gated Amendment 1: 新規 scroll 容器を作らない <main> 基準 sticky-left は owner L3
+        // run 1 FAIL（AC-L3-1）。表自身を縦横 scroll 箱にし、<main> はこの画面で scroll しない
+        // （DSR-17 例外、data-scroll-restoration-id="products-list" は復元 cache の安定 selector）。
+        <div
+          className="min-h-[12rem] flex-1 overflow-auto"
+          data-list-scroll-container
+          data-scroll-restoration-id="products-list"
+        >
+          {bandAndTable}
         </div>
       ) : (
-        <>
-          {showTopSummary && pagination ? (
-            <PaginationSummary
-              page={pagination.page}
-              perPage={pagination.perPage}
-              totalCount={pagination.totalCount}
-            />
-          ) : null}
-          {isLoading ? (skeleton ?? <ListSkeleton />) : children}
-        </>
+        bandAndTable
       )}
 
       {hasResults && pagination && (

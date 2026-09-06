@@ -668,6 +668,28 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
     expect(tokens).toContain("[&_tbody_td:nth-child(1)]:bg-background");
   });
 
+  it("GA1a: PageShell root carries flex h-full min-h-0 flex-col (no overflow-hidden, round 1 P2-5)", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-GA1A" })],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    const { container } = renderWithClient(
+      <ProductListPage search={{}} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByText("P-GA1A");
+    const rootTokens = (container.firstElementChild?.className ?? "").split(/\s+/);
+    expect(rootTokens).toContain("flex");
+    expect(rootTokens).toContain("h-full");
+    expect(rootTokens).toContain("min-h-0");
+    expect(rootTokens).toContain("flex-col");
+    expect(rootTokens).not.toContain("overflow-hidden");
+  });
+
   it("SC5b: isLoading 中は自前 Skeleton ではなく ListSkeleton を描画する", () => {
     mockSearchProducts.mockReturnValue(new Promise(() => undefined));
     renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);

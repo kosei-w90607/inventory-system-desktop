@@ -256,7 +256,10 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
   );
 
   return (
-    <PageShell>
+    // Gated Amendment 1（2026-09-06、owner 案 X）: 商品一覧のみ、表自身を縦横 scroll 箱に
+    // する data grid 型。overflow-hidden は付けない（PageShell 節を超える折返しがあっても
+    // <main> がそのまま scroll でき、下部 Pagination が画面外に切れて出せなくなるのを防ぐ）。
+    <PageShell className="flex h-full min-h-0 flex-col">
       <PageHeader
         title="商品検索・一覧"
         actions={
