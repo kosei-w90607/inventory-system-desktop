@@ -8,12 +8,13 @@
 // 設計: docs/design-system/02-component-catalog.md ⑯ 一覧の器（ListShell）
 //       docs/design-system/01-decision-rules.md DSR-22
 //
-// Gated Amendment 1（2026-09-06）: stickyHeader は page root の高さ連鎖とセット。
-// root が flex-1 min-h-0 で伸びるには、caller が PageShell へ
-// `className="flex h-full min-h-0 flex-col"` を渡し、<main> 由来の境界のある高さを
-// 継承させる必要がある（渡さないと h-full が auto に落ち、箱の overflow-auto と
-// sticky が静かに壊れる）。回帰は src/test/page-root-pageshell-sweep.test.ts の
-// fs scan（GA1e、同一 file 内の対応関係のみ検出）。
+// Lane 4 Gated Amendment 3 GA3b（2026-09-07）: stickyHeader の箱は行数基準の
+// max-h-[171rem] overflow-auto で自立し、page root からの高さ継承（旧 Gated
+// Amendment 1 の flex h-full min-h-0 flex-col 一式）は不要になった。約 50 行以下は
+// box が content-fit のまま <main> が page scroll、51 行超で box が内部縦 scroll に
+// 切り替わる（境界は近似値、docs/plans 該当 lane packet「行高の近似値」参照）。回帰は
+// src/test/page-root-pageshell-sweep.test.ts の fs scan（GA3b-5、旧 GA1e を反転:
+// 高さ継承 class を持たないことを確認する）。
 
 import type { ReactNode } from "react";
 
@@ -71,10 +72,20 @@ const STICKY_TABLE_CLASSES = [
   "[&_tbody_tr:last-child_td]:border-b-0",
 ];
 
+// Lane 4 Gated Amendment 3 GA3a（2026-09-07、owner L3 run 2 実機観測で機序確定）:
+// 商品コード td/th 内側 div の固定幅。8rem + td/th padding 1rem（px-2/p-2）= 9rem。
+// 単一 source（Tailwind JIT は実行時テンプレートリテラルを拾えないため、幅と
+// offset は別 literal のまま co-locate する）——ProductTable.tsx の th/td 内 div が
+// この class を import する。rem 値の一致は ListShell.test.tsx の parity oracle が
+// 機械的に保証する（片方だけ変更する mutant を検出）。
+export const PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS = "w-32";
+
 // S9（識別列固定）: 列 1・2 のリテラル class 配列。DSR-22 mapping 表の固定列数は
 // 全行が 1 か 2 のため、この 2 パターンのみで足りる（ponytail: 汎用 N 列 generator
-// は作らない）。列 2 の left-[7rem] は ProductTable.tsx 商品コード列の固定幅
-// w-28（7rem）と一致させる。
+// は作らない）。列 2 の left-[9rem] は PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS
+// （w-32 = 8rem）+ td/th padding（1rem）= 9rem と一致させる（Lane 4 Gated
+// Amendment 3 GA3a、旧オフセット 7rem 決め打ちは商品コード列の実効幅と一致する
+// 保証が無く FAIL した——経緯は docs/plans 該当 lane packet 参照）。
 const IDENTITY_COLUMN_CLASSES: Record<1 | 2, string[]> = {
   1: [
     "[&_thead_th:nth-child(1)]:sticky",
@@ -92,7 +103,7 @@ const IDENTITY_COLUMN_CLASSES: Record<1 | 2, string[]> = {
     "[&_thead_th:nth-child(1)]:left-0",
     "[&_thead_th:nth-child(1)]:z-[11]",
     "[&_thead_th:nth-child(2)]:sticky",
-    "[&_thead_th:nth-child(2)]:left-[7rem]",
+    "[&_thead_th:nth-child(2)]:left-[9rem]",
     "[&_thead_th:nth-child(2)]:z-[11]",
     "[&_tbody_td:nth-child(1)]:sticky",
     "[&_tbody_td:nth-child(1)]:left-0",
@@ -101,7 +112,7 @@ const IDENTITY_COLUMN_CLASSES: Record<1 | 2, string[]> = {
     "[&_tbody_td:nth-child(1)]:shadow-[inset_-1px_0_0_var(--border)]",
     "[&_tbody_td:nth-child(1)]:forced-colors:border-r",
     "[&_tbody_td:nth-child(2)]:sticky",
-    "[&_tbody_td:nth-child(2)]:left-[7rem]",
+    "[&_tbody_td:nth-child(2)]:left-[9rem]",
     "[&_tbody_td:nth-child(2)]:bg-background",
     "[&_tbody_td:nth-child(2)]:z-[1]",
     "[&_tbody_td:nth-child(2)]:shadow-[inset_-1px_0_0_var(--border)]",
@@ -167,7 +178,6 @@ export function ListShell({
     <div
       className={cn(
         "space-y-3",
-        stickyHeader && "flex min-h-0 flex-1 flex-col",
         stickyHeader && "list-shell-sticky",
         stickyHeader && STICKY_TABLE_CLASSES,
         stickyHeader && (showTopSummary ? "[&_thead_th]:top-10" : "[&_thead_th]:top-0"),
@@ -175,7 +185,7 @@ export function ListShell({
       )}
     >
       {toolbar !== undefined && (
-        <div className={cn("space-y-3 rounded-lg border bg-card p-4", stickyHeader && "shrink-0")}>
+        <div className="space-y-3 rounded-lg border bg-card p-4">
           {toolbar}
           {toolbarSecondary !== undefined && toolbarSecondary}
         </div>
@@ -183,10 +193,12 @@ export function ListShell({
 
       {stickyHeader ? (
         // Gated Amendment 1: 新規 scroll 容器を作らない <main> 基準 sticky-left は owner L3
-        // run 1 FAIL（AC-L3-1）。表自身を縦横 scroll 箱にし、<main> はこの画面で scroll しない
-        // （DSR-17 例外、data-scroll-restoration-id="products-list" は復元 cache の安定 selector）。
+        // run 1 FAIL（AC-L3-1）。表自身を縦横 scroll 箱にし（DSR-17 例外、
+        // data-scroll-restoration-id="products-list" は復元 cache の安定 selector）。
+        // Lane 4 Gated Amendment 3 GA3b: 箱の高さは行数基準の max-h（ponytail:
+        // 既存 overflow-auto の自然な挙動を再利用、新しい閾値ロジックは書かない）。
         <div
-          className="min-h-[12rem] flex-1 overflow-auto"
+          className="max-h-[171rem] overflow-auto"
           data-list-scroll-container
           data-scroll-restoration-id="products-list"
         >

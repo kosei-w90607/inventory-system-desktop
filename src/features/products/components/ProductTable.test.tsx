@@ -111,11 +111,30 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     expect(row.className).not.toContain("text-muted-foreground");
   });
 
-  it("SC9d: product code cell carries the fixed w-28 width class (識別列固定、left-[7rem] の前提)", () => {
+  it("GA3a-1: product code td's inner div carries w-32/whitespace-normal/break-all; outer td carries min-w-36 (belt), no w-28", () => {
     render(<ProductTable items={[makeMockProductWithRelations({ product_code: "P-090" })]} />);
     const cell = screen.getByText("P-090").closest("td");
     if (cell === null) throw new Error("cell not found");
-    expect(cell.className.split(/\s+/)).toContain("w-28");
+    const cellTokens = cell.className.split(/\s+/);
+    expect(cellTokens).toContain("min-w-36");
+    expect(cellTokens).not.toContain("w-28");
+    expect(cellTokens).not.toContain("max-w-36");
+    const wrapper = screen.getByText("P-090");
+    const wrapperTokens = wrapper.className.split(/\s+/);
+    expect(wrapperTokens).toContain("w-32");
+    expect(wrapperTokens).toContain("whitespace-normal");
+    expect(wrapperTokens).toContain("break-all");
+  });
+
+  it("GA3a-1: product code th's inner div carries w-32; outer th carries min-w-36 (belt), no max-w-36", () => {
+    render(<ProductTable items={[makeMockProductWithRelations({ product_code: "P-090" })]} />);
+    const headerCell = screen.getByText("商品コード").closest("th");
+    if (headerCell === null) throw new Error("header cell not found");
+    const headerCellTokens = headerCell.className.split(/\s+/);
+    expect(headerCellTokens).toContain("min-w-36");
+    expect(headerCellTokens).not.toContain("max-w-36");
+    const headerWrapperTokens = screen.getByText("商品コード").className.split(/\s+/);
+    expect(headerWrapperTokens).toContain("w-32");
   });
 
   it("REQ-105 UI-01a-D13 places cost immediately after selling price and renders the value", () => {

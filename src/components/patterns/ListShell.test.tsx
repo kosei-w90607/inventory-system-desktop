@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ListShell } from "./ListShell";
+import { ListShell, PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS } from "./ListShell";
 
 function SampleTable() {
   return (
@@ -356,28 +356,33 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
   });
 });
 
-describe("GA1b: 商品一覧のみ、専用 scroll 箱で帯+table を包む（Gated Amendment 1）", () => {
-  it("box carries min-h-[12rem] flex-1 overflow-auto + data-list-scroll-container + data-scroll-restoration-id=products-list; bottom Pagination is a sibling after the box (not inside it); root uses flex-1 min-h-0 (not h-full)", () => {
+describe("GA3b-1〜GA3b-4: 箱の高さ方針を行数基準 max-h へ（Lane 4 Gated Amendment 3、旧 GA1a/GA1b の逆転）", () => {
+  it("GA3b-2/GA3b-3/GA3b-4: box carries max-h-[171rem] overflow-auto (not min-h-[12rem]/flex-1) + data-list-scroll-container + data-scroll-restoration-id=products-list; toolbar has no shrink-0; bottom Pagination is a sibling after the box (not inside it); root has none of flex/flex-1/min-h-0/flex-col (space-y-3/list-shell-sticky/STICKY_TABLE_CLASSES/identityColumns tokens unchanged)", () => {
     const { container } = render(
-      <ListShell stickyHeader topSummary pagination={pagination(25)}>
+      <ListShell stickyHeader topSummary identityColumns={2} pagination={pagination(25)}>
         <SampleTable />
       </ListShell>,
     );
 
     const root = container.firstElementChild;
     const rootTokens = classTokens(root);
-    expect(rootTokens).toContain("flex");
-    expect(rootTokens).toContain("flex-1");
-    expect(rootTokens).toContain("min-h-0");
-    expect(rootTokens).toContain("flex-col");
-    expect(rootTokens).not.toContain("h-full");
+    expect(rootTokens).not.toContain("flex");
+    expect(rootTokens).not.toContain("flex-1");
+    expect(rootTokens).not.toContain("min-h-0");
+    expect(rootTokens).not.toContain("flex-col");
+    // 巻き添え削除が無いことの確認（無関係な token は不変）
+    expect(rootTokens).toContain("space-y-3");
+    expect(rootTokens).toContain("list-shell-sticky");
+    expect(rootTokens).toContain("[&_thead_th]:sticky");
+    expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:left-[9rem]");
 
     const box = container.querySelector("[data-list-scroll-container]");
     expect(box).not.toBeNull();
     const boxTokens = classTokens(box);
-    expect(boxTokens).toContain("min-h-[12rem]");
-    expect(boxTokens).toContain("flex-1");
+    expect(boxTokens).toContain("max-h-[171rem]");
     expect(boxTokens).toContain("overflow-auto");
+    expect(boxTokens).not.toContain("min-h-[12rem]");
+    expect(boxTokens).not.toContain("flex-1");
     expect(box?.getAttribute("data-scroll-restoration-id")).toBe("products-list");
 
     const pagerButton = screen.getByRole("button", { name: "次のページ" });
@@ -387,6 +392,17 @@ describe("GA1b: 商品一覧のみ、専用 scroll 箱で帯+table を包む（G
     expect(paginationRoot).not.toBeNull();
     expect(box?.contains(paginationRoot)).toBe(false);
     expect(box?.nextElementSibling).toBe(paginationRoot);
+  });
+
+  it("GA3b-4: toolbar element does not carry shrink-0", () => {
+    const { container } = render(
+      <ListShell stickyHeader toolbar={<div>toolbar</div>} pagination={pagination(25)}>
+        <SampleTable />
+      </ListShell>,
+    );
+    const toolbar = container.querySelector(".rounded-lg.border.bg-card.p-4");
+    expect(toolbar).not.toBeNull();
+    expect(classTokens(toolbar)).not.toContain("shrink-0");
   });
 
   it("without stickyHeader, no scroll-container box is rendered (paired oracle: box count is exactly 0)", () => {
@@ -459,10 +475,10 @@ describe("SC9a/SC9b: identityColumns activates root class tokens for the first N
     expect(rootTokens).toContain("[&_tbody_td:nth-child(1)]:forced-colors:border-r");
     // 列 2
     expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:sticky");
-    expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:left-[7rem]");
+    expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:left-[9rem]");
     expect(rootTokens).toContain("[&_thead_th:nth-child(2)]:z-[11]");
     expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:sticky");
-    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:left-[7rem]");
+    expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:left-[9rem]");
     expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:bg-background");
     expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:z-[1]");
     expect(rootTokens).toContain("[&_tbody_td:nth-child(2)]:shadow-[inset_-1px_0_0_var(--border)]");
@@ -504,5 +520,35 @@ describe("SC9c: identityColumns does not touch the w-min min-w-full wrapper", ()
     const summaryBand = container.querySelector(".sticky.top-0.z-20");
     const wrapper = summaryBand?.parentElement ?? null;
     expect(wrapper?.className).toBe("w-min min-w-full");
+  });
+});
+
+describe("GA3a-3: 商品コード div 幅と識別列 offset の parity oracle（Lane 4 Gated Amendment 3）", () => {
+  it("PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS の rem 値 + td/th padding(1rem) が IDENTITY_COLUMN_CLASSES[2] の left-[9rem] の rem 値と一致する", () => {
+    const widthRemMatch = /^w-(\d+)$/.exec(PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS);
+    if (widthRemMatch?.[1] === undefined) {
+      throw new Error(`unexpected width class shape: ${PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS}`);
+    }
+    // Tailwind の w-<n> は 0.25rem 単位（w-32 = 32 * 0.25rem = 8rem）
+    const wrapperWidthRem = Number(widthRemMatch[1]) * 0.25;
+    const tdThPaddingRem = 1; // px-2/p-2 = 0.5rem * 2 辺 = 1rem
+
+    const { container } = render(
+      <ListShell stickyHeader identityColumns={2}>
+        <SampleTable />
+      </ListShell>,
+    );
+    const rootTokens = classTokens(container.firstElementChild);
+    const offsetToken = rootTokens.find((token) =>
+      token.startsWith("[&_thead_th:nth-child(2)]:left-["),
+    );
+    if (offsetToken === undefined) throw new Error("offset token not found");
+    const offsetRemMatch = /left-\[(\d+(?:\.\d+)?)rem\]/.exec(offsetToken);
+    if (offsetRemMatch?.[1] === undefined) {
+      throw new Error(`unexpected offset token shape: ${offsetToken}`);
+    }
+    const offsetRem = Number(offsetRemMatch[1]);
+
+    expect(wrapperWidthRem + tdThPaddingRem).toBe(offsetRem);
   });
 });
