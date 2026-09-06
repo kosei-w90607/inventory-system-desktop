@@ -188,3 +188,14 @@ Coordinator 補足: 高さ方針 = **(a)**（箱を行数基準の高さにし�
 （[Image #2] = 同じ screenshot。部門の見出しが「部」を商品名列の下に隠して「門」だけ見える状態で、横 scrollbar は左端）
 
 Coordinator 仮説（2026-09-06 夜、code 実読 + screenshot 幾何）: 商品名列の sticky offset は `ListShell.tsx` `IDENTITY_COLUMN_CLASSES` の `left-[7rem]` 決め打ち、商品コード列は `ProductTable.tsx:52` `w-28`（auto table layout では最小幅にならない）。表が `w-min` で最小幅まで縮んだとき、短いコード（`L3-PR-00xx`）では商品コード列の実幅が 7rem 未満になり、商品名列が 7rem まで右へ押し出されて部門列の頭を覆う。1 ページ目は JAN 等の長いコードで列幅 ≥ 7rem のため起きない。「2 ページ目以降のみ」「scrollLeft 0 でも起きる」「隠れるのが 1 文字分」と整合。是正方向 = 商品コード列を sticky offset と一致する固定幅（JAN 13 桁が収まる幅、`w` + `min-w` + `max-w` を揃える）に。確定は再開後に DevTools で商品コード td の実幅（112px 未満の見込み）を 1 回観測してから。
+
+### Lane 4 L3 run 2 実機観測（2026-09-07 未明、owner DevTools console、商品一覧 `[data-list-scroll-container]` の `thead th` 幅）
+
+> {scrollLeft: 0, codeWidth: 116, nameWidth: 369, deptWidth: 117}
+> {scrollLeft: 0, codeWidth: 112, nameWidth: 286, deptWidth: 146}
+> {scrollLeft: 0, codeWidth: 116, nameWidth: 224, deptWidth: 114}
+> {scrollLeft: 0, codeWidth: 93, nameWidth: 224, deptWidth: 114}
+>
+> 全4パターン、最初二つは起動そのままのやつ、下から二つは横幅縮めたやつ
+
+Coordinator 判定（機序確定）: 最狭幅 × 2 ページ目（短いコード `L3-PR-00xx`）で `codeWidth` = 93 < 112（`left-[7rem]`）。商品名列が sticky offset 112px まで押し出され、部門列の頭 19px（≒「部」1 文字）を覆う。`scrollLeft` は 0 で横位置は無関係。1 ページ目（長いコード）は 116 ≥ 112 で発生しない。逆に 116 > 112 のときは横 scroll 中に商品名列が商品コード列の右 4px を覆う（Final Review Opus P3 の予見どおり）。根本原因 = 商品コード列 `w-28` が auto table layout で最小幅にならず内容依存なのに、商品名列の固定位置が 7rem 決め打ち。是正 = 商品コード列を固定幅（`w`/`min-w`/`max-w` を同値、JAN 13 桁が収まる 9rem、超過は `break-all` で折返し）にし、商品名列の sticky offset を同じ値へ → Gated Amendment 3。
