@@ -383,7 +383,7 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
 });
 
 describe("GA3b-1〜GA3b-4: 箱の高さ方針を行数基準 max-h へ（Lane 4 Gated Amendment 3、旧 GA1a/GA1b の逆転）", () => {
-  it("GA3b-2/GA3b-3/GA3b-4: box carries max-h-[171rem] overflow-auto (not min-h-[12rem]/flex-1) + data-list-scroll-container + data-scroll-restoration-id=products-list; toolbar has no shrink-0; bottom Pagination is a sibling after the box (not inside it); root has none of flex/flex-1/min-h-0/flex-col (space-y-3/list-shell-sticky/STICKY_TABLE_CLASSES/identityColumns tokens unchanged)", () => {
+  it("GA3b-2/GA3b-3/GA3b-4: box carries max-h-[calc(100vh-6.75rem)] overflow-auto (not min-h-[12rem]/flex-1) + data-list-scroll-container + data-scroll-restoration-id=products-list; toolbar has no shrink-0; bottom Pagination is a sibling after the box (not inside it); root has none of flex/flex-1/min-h-0/flex-col (space-y-3/list-shell-sticky/STICKY_TABLE_CLASSES/identityColumns tokens unchanged)", () => {
     const { container } = render(
       <ListShell stickyHeader topSummary identityColumns={2} pagination={pagination(25)}>
         <SampleTable />
@@ -405,7 +405,9 @@ describe("GA3b-1〜GA3b-4: 箱の高さ方針を行数基準 max-h へ（Lane 4 
     const box = container.querySelector("[data-list-scroll-container]");
     expect(box).not.toBeNull();
     const boxTokens = classTokens(box);
-    expect(boxTokens).toContain("max-h-[171rem]");
+    // Lane 4 Gated Amendment 4 GA4b-1: 箱の高さを行数基準から viewport 基準へ
+    // （既存 it 内の assertion のみ差し替え）。
+    expect(boxTokens).toContain("max-h-[calc(100vh-6.75rem)]");
     expect(boxTokens).toContain("overflow-auto");
     expect(boxTokens).not.toContain("min-h-[12rem]");
     expect(boxTokens).not.toContain("flex-1");

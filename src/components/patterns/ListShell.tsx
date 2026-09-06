@@ -215,10 +215,11 @@ export function ListShell({
           {/* Gated Amendment 1: 新規 scroll 容器を作らない <main> 基準 sticky-left は owner
               L3 run 1 FAIL（AC-L3-1）。表自身を縦横 scroll 箱にし（DSR-17 例外、
               data-scroll-restoration-id="products-list" は復元 cache の安定 selector）。
-              Lane 4 Gated Amendment 3 GA3b: 箱の高さは行数基準の max-h（ponytail:
-              既存 overflow-auto の自然な挙動を再利用、新しい閾値ロジックは書かない）。 */}
+              Lane 4 Gated Amendment 4 GA4b: 箱の高さは viewport 基準の max-h
+              （owner決定 (c) の変形、toolbar は式に含めない——toolbar は <main> の
+              page scroll で隠す対象のため）。 */}
           <div
-            className="max-h-[171rem] overflow-auto"
+            className="max-h-[calc(100vh-6.75rem)] overflow-auto"
             data-list-scroll-container
             data-scroll-restoration-id="products-list"
           >
