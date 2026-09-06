@@ -260,6 +260,11 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
     await screen.findByText("P-GA1D");
 
     trackScroll(box, 260, 0);
+    // round 1 是正（Final Review、Sonnet 指摘）: 戻り先の navigate 前に revealed のままだと
+    // built-in 内蔵復元の raw 代入だけで到達してしまい、armed/applyWhenScrollable 経路
+    // （縦のみを見る mutant）を素通りさせる。「両軸」test と同様、いったん scroll 不可に
+    // してから戻り、その後 reveal + 子要素追加で MutationObserver 経由の再適用を強制する。
+    stub.setRevealed(false);
     await act(async () => {
       await router.navigate({ to: "/products/new" });
     });
@@ -267,7 +272,6 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
       expect(router.stores.resolvedLocation.get()?.href).toBe("/products/new");
     });
 
-    stub.setRevealed(true);
     await act(async () => {
       await router.navigate({ href: "/products?case=ga1d-vertical-only" });
     });
@@ -276,10 +280,15 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
     });
     const restoredBox = document.querySelector<HTMLElement>(BOX_SELECTOR);
     if (restoredBox === null) throw new Error("products-list scroll container is required");
+    expect(restoredBox.scrollTop).toBe(0);
 
-    await waitFor(() => {
-      expect(restoredBox.scrollTop).toBe(260);
+    stub.setRevealed(true);
+    await act(async () => {
+      restoredBox.append(document.createElement("div"));
+      await Promise.resolve();
     });
+
+    expect(restoredBox.scrollTop).toBe(260);
     expect(restoredBox.scrollLeft).toBe(0);
   });
 
@@ -288,6 +297,9 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
     await screen.findByText("P-GA1D");
 
     trackScroll(box, 0, 320);
+    // round 1 是正（Final Review、Sonnet 指摘）: 上記「縦のみ」test と同じ理由で、
+    // revealed を戻り navigate の後まで遅らせる。
+    stub.setRevealed(false);
     await act(async () => {
       await router.navigate({ to: "/products/new" });
     });
@@ -295,7 +307,6 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
       expect(router.stores.resolvedLocation.get()?.href).toBe("/products/new");
     });
 
-    stub.setRevealed(true);
     await act(async () => {
       await router.navigate({ href: "/products?case=ga1d-horizontal-only" });
     });
@@ -306,6 +317,13 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
     });
     const restoredBox = document.querySelector<HTMLElement>(BOX_SELECTOR);
     if (restoredBox === null) throw new Error("products-list scroll container is required");
+    expect(restoredBox.scrollLeft).toBe(0);
+
+    stub.setRevealed(true);
+    await act(async () => {
+      restoredBox.append(document.createElement("div"));
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
       expect(restoredBox.scrollLeft).toBe(320);

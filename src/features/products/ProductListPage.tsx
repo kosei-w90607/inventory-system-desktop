@@ -260,6 +260,9 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
     // する data grid 型。overflow-hidden は付けない（PageShell 節を超える折返しがあっても
     // <main> がそのまま scroll でき、下部 Pagination が画面外に切れて出せなくなるのを防ぐ）。
     <PageShell className="flex h-full min-h-0 flex-col">
+      {/* PageHeader は className prop が無く shrink-0 を明示的に付けられないが、
+          overflow: visible の flex item は automatic minimum size で content 高を
+          下回らないため実害はない（GA1 高さ連鎖の前提）。 */}
       <PageHeader
         title="商品検索・一覧"
         actions={

@@ -102,7 +102,10 @@ describe("GA1e: stickyHeader を渡す Page は同一 file 内で PageShell に�
       const pageShellClassMatches = source.match(/<PageShell\b[^>]*className="([^"]*)"/g) ?? [];
       const hasHeightChain = pageShellClassMatches.some(
         (match) =>
-          /\bflex\b/.test(match) && /\bmin-h-0\b/.test(match) && /\bflex-col\b/.test(match),
+          /\bflex\b/.test(match) &&
+          /\bh-full\b/.test(match) &&
+          /\bmin-h-0\b/.test(match) &&
+          /\bflex-col\b/.test(match),
       );
       if (!hasHeightChain) violations.push(relative(REPO_ROOT, file));
     }

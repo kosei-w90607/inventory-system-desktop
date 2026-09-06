@@ -52,7 +52,7 @@ export function Pagination({ page, perPage, totalCount, onPageChange }: Paginati
   const canNext = totalCount > 0 && page < totalPages;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
       <div className="tabular-nums">{rangeText(totalCount, from, to, page, totalPages)}</div>
       <div className="flex items-center gap-2">
         <Button
