@@ -6,7 +6,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 59c243d
@@ -15,7 +15,7 @@ owner 決定（2026-09-05、[Plans.md ④](../Plans.md) R2-1/R2-2/R3-2/R5-2/R5-4
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後。§3.3 Capacity-degraded により pending、human-confirm で待機し Phase を前進させない）
-- Reviewed Content HEAD: 0ae3d76
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3 run 3（run 1 は 2026-09-06 に AC-L3-1/AC-L3-3 所感で FAIL、Gated Amendment 1/2 起票・run 2 で FAIL 1 件 + 設計所感、Lane 4 Gated Amendment 3 起票済み）— AC-L3-1（run 2、Gated Amendment 1、**run 3 で Lane 4 GA3a の是正を確認**）: 窓を狭めて表が枠より広い状態で横に滑らせると検索ツール・商品コード・商品名・見出しは動かず部門から右だけが滑る、縦に滑らせても見出しが箱の上に残り下のページ送りは常に見える、「修正」から戻ると同じ位置に戻る、**最狭幅×2 ページ目以降でも部門列の頭が固定列の下に隠れない、逆方向（横 scroll 中）でも商品名列が商品コード列の右端を覆わない**（GA3a、下記 Lane 4 Gated Amendment 3 参照）。**GA3b 適用時の除外句（round 2 是正、Opus P1）**: 「縦に滑らせても見出しが箱の上に残り下のページ送りは常に見える」は GA3b 適用時は構造的に成立しない（判定対象外、下記 AC-L3-4 の正直な帰結を参照）, AC-L3-2 ページ送り上下（複数ページの画面 1 つ + 単一ページの画面 1 つ）, AC-L3-3（run 2、Gated Amendment 2 追加）表示件数 Select の位置と枠の地色が 6 画面で揃い、一括価格改定の取引先追加ボタンが Select の隣にある（整合性チェックの単独 Select は対象外、下記 S1 参照）, AC-L3-4（run 3 新設、Lane 4 Gated Amendment 3 GA3b、判定材料——PASS/FAIL の合否条件ではなく owner が (a)/(b)/(c) を選ぶための所見）: 箱が既定で 50 行分の高さまで伸び、それ以下では `<main>` の page scroll で一覧を見渡せる（50 行分 ≈ 171rem ≈ 2736px は通常の viewport の 2 倍以上あり、page scroll で見渡す距離も相応に長い）。約 50 行以上（近似、JAN 無し行の混在で 65〜90 行相当まで後ろ倒し、下記「行高の近似値」参照。perPage 100 等）では箱が内部縦 scroll に切り替わるが、箱自身の高さは常に viewport を超えたままのため、列見出し（箱の scrollport 基準の sticky thead）は 51 行超でも page scroll 中は視界から流れ、下部ページ送りは一覧の下端まで page scroll して到達する（round 2 是正、Opus P1: 「51 行超では見出しが常に見える」という旧記述は誤りだったため撤回）。この正直な帰結を確認したうえで owner が方針を選ぶ。**（round 1 是正、Opus P1-1）**: 商品一覧の既定 perPage は 100（`src/features/products/search.ts:133` `normalizePerPage` の fallback、run 2 screenshot も表示件数 100 件）であり、100 > 50 のため **owner は run 3 で何も変えなければ最初から箱 scroll 側だけを見る**。page scroll 側（50 行以下）を見るには表示件数を 50 に切替える操作が要る旨を owner へ案内する。既定値を 50 へ変更するかどうかは owner が run 3 で判断する別選択肢として提示する（Non-scope、本 Gated Amendment では変更しない）
