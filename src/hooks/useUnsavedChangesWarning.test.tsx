@@ -153,8 +153,8 @@ describe("useUnsavedChangesWarning (UI-12/UI-USW-D1/D2 / SPEC-UISN-2/3)", () => 
 
   it("DSR-20 D-E T10: Escape の preventDefault を明示 prop として保持する", () => {
     const source = readFileSync("src/components/patterns/UnsavedChangesDialog.tsx", "utf8");
+    const normalized = source.replace(/\s+/g, " ");
 
-    expect(source).toContain("onEscapeKeyDown={(event) => {");
-    expect(source).toContain("event.preventDefault();");
+    expect(normalized).toContain("onEscapeKeyDown={(event) => { event.preventDefault();");
   });
 });
