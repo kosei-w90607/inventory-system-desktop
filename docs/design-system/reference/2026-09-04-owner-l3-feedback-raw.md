@@ -199,3 +199,13 @@ Coordinator 仮説（2026-09-06 夜、code 実読 + screenshot 幾何）: 商品
 > 全4パターン、最初二つは起動そのままのやつ、下から二つは横幅縮めたやつ
 
 Coordinator 判定（機序確定）: 最狭幅 × 2 ページ目（短いコード `L3-PR-00xx`）で `codeWidth` = 93 < 112（`left-[7rem]`）。商品名列が sticky offset 112px まで押し出され、部門列の頭 19px（≒「部」1 文字）を覆う。`scrollLeft` は 0 で横位置は無関係。1 ページ目（長いコード）は 116 ≥ 112 で発生しない。逆に 116 > 112 のときは横 scroll 中に商品名列が商品コード列の右 4px を覆う（Final Review Opus P3 の予見どおり）。根本原因 = 商品コード列 `w-28` が auto table layout で最小幅にならず内容依存なのに、商品名列の固定位置が 7rem 決め打ち。是正 = 商品コード列を固定幅（`w`/`min-w`/`max-w` を同値、JAN 13 桁が収まる 9rem、超過は `break-all` で折返し）にし、商品名列の sticky offset を同じ値へ → Gated Amendment 3。
+
+### Lane 4 GA3 方向確認（2026-09-07、owner 原文）
+
+> 入れ子でスクロール持つのは筋悪いってことでやめたんだっけ
+
+Coordinator 回答要旨: DSR-17 は入れ子 scroll を不採用、L3 run 1 FAIL で owner 案 X（専用の箱）を商品一覧限定の例外として GA1 化。(a) は縦を `<main>` に戻し横と約 50 行超の縦だけ箱に残す「横だけ入れ子」。三択（入れ子ゼロ = `<main>` 基準 sticky-left or 表を縮ませる D / 横だけ入れ子 = (a) / 縦横とも箱 = GA1）を提示。
+
+> まずはこのままやってみよう
+
+→ owner 決定: (a) 続行（Lane 4 GA3b 試作を L3 run 3 で見てから判断）。
