@@ -184,11 +184,15 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     );
 
     // summary band 自体（ListShell が直接描画する要素）は実クラスで検証する（token 完全一致）。
-    const summaryBand = container.querySelector(".sticky.top-0.z-20");
+    // Lane 4 Gated Amendment 4 GA4a: 帯は box の外・root 直下へ移り sticky/top-0/left-0 を
+    // 失う（`z-20`/`h-10` は不変のため代替 selector として一意に一致する）。
+    const summaryBand = container.querySelector(".z-20.h-10");
     expect(summaryBand).not.toBeNull();
     const bandTokens = classTokens(summaryBand);
-    expect(bandTokens).toContain("sticky");
-    expect(bandTokens).toContain("top-0");
+    expect(bandTokens).not.toContain("sticky");
+    expect(bandTokens).not.toContain("top-0");
+    expect(bandTokens).not.toContain("left-0");
+    expect(bandTokens).toContain("mb-0!");
     expect(bandTokens).toContain("z-20");
     expect(bandTokens).toContain("flex");
     expect(bandTokens).toContain("h-10");
@@ -234,7 +238,10 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(rootTokens).not.toContain("[&_thead_th]:bg-muted");
     expect(rootTokens).toContain("[&_thead_th]:border-b-2");
     expect(rootTokens).toContain("[&_thead_th]:border-border");
-    expect(rootTokens).toContain("[&_thead_th]:top-10");
+    // Lane 4 Gated Amendment 4 GA4a-3: 帯が box の外に出たため box 内オフセットは
+    // topSummary の有無に関わらず常に top-0。
+    expect(rootTokens).toContain("[&_thead_th]:top-0");
+    expect(rootTokens).not.toContain("[&_thead_th]:top-10");
     expect(rootTokens).toContain("[&_[data-slot=table-container]]:overflow-visible");
     expect(rootTokens).toContain("[&_[data-slot=table]]:border-separate");
     expect(rootTokens).toContain("[&_[data-slot=table]]:border-spacing-0");
@@ -251,7 +258,7 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(classTokens(tableContainer)).not.toContain("overflow-visible");
   });
 
-  it("uses top-0 on th when the summary band is not rendered (topSummary false)", () => {
+  it("uses top-0 on th when the summary band is not rendered (topSummary false); GA4a-4: no band element and box never carries mt-0", () => {
     const { container } = render(
       <ListShell stickyHeader pagination={pagination(25)}>
         <SampleTable />
@@ -260,6 +267,11 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     const rootTokens = classTokens(container.firstElementChild);
     expect(rootTokens).toContain("[&_thead_th]:top-0");
     expect(rootTokens).not.toContain("[&_thead_th]:top-10");
+    // Lane 4 Gated Amendment 4 GA4a-4（負側 oracle）: topSummary false のとき帯は
+    // 存在せず、box は却下済み代替案（box 側 mt-0 で隙間を相殺）への先祖返りを起こさない。
+    expect(container.querySelector(".z-20.h-10")).toBeNull();
+    const box = container.querySelector("[data-list-scroll-container]");
+    expect(classTokens(box)).not.toContain("mt-0");
   });
 
   it("applies none of the sticky/border/overflow classes when stickyHeader is false", () => {
@@ -291,7 +303,9 @@ describe("SC4d: sticky band (summary + th) + cell 罫線 + overflow 上書き", 
     expect(classTokens(th)).not.toContain("border-b-2");
     expect(classTokens(tableContainer)).not.toContain("overflow-visible");
     expect(classTokens(table)).not.toContain("border-separate");
-    const summaryBand = container.querySelector(".sticky");
+    // Lane 4 Gated Amendment 4 GA4a: 帯は sticky/top-0/left-0 を失うため .sticky は
+    // stickyHeader true の場合でも vacuous に真になる（GA4a-1 参照）。.z-20.h-10 で判定する。
+    const summaryBand = container.querySelector(".z-20.h-10");
     expect(summaryBand).toBeNull();
   });
 });
@@ -303,7 +317,7 @@ describe("SC8: sticky band uses bg-background (no underline), thead keeps --list
         <SampleTable />
       </ListShell>,
     );
-    const summaryBand = container.querySelector(".sticky.top-0.z-20");
+    const summaryBand = container.querySelector(".z-20.h-10");
     const bandTokens = classTokens(summaryBand);
     expect(bandTokens).toContain("bg-background");
     // Gated Amendment 7 S47（owner run 6「上端の線だけ外そう」）: 件数行の下線を撤去。
@@ -323,8 +337,8 @@ describe("SC8: sticky band uses bg-background (no underline), thead keeps --list
   });
 });
 
-describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FAIL / AC-L3-2）", () => {
-  it("wraps the sticky summary band and the table together with px-2 inset, keeping root's space-y-3 outside the wrapper", () => {
+describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FAIL / AC-L3-2。Lane 4 Gated Amendment 4 GA4a-2 で是正: 帯は box の外・root 直下へ移った）", () => {
+  it("GA4a-2: the band's parent is the ListShell root (not the box), its nextElementSibling is the box directly, it carries mb-0!, and the table wrapper (reached via tableContainer.parentElement) stays exactly w-min min-w-full", () => {
     const { container } = render(
       <ListShell stickyHeader topSummary pagination={pagination(25)}>
         <SampleTable />
@@ -334,11 +348,27 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
     const root = container.firstElementChild;
     expect(classTokens(root)).toContain("space-y-3");
 
-    const summaryBand = container.querySelector(".sticky.top-0.z-20");
+    const summaryBand = container.querySelector(".z-20.h-10");
     expect(summaryBand).not.toBeNull();
     expect(classTokens(summaryBand)).toContain("px-2");
 
-    const wrapper = summaryBand?.parentElement ?? null;
+    // GA4a-2 (1): 帯の親は ListShell root（box の子孫ではない）。
+    expect(summaryBand?.parentElement).toBe(root);
+    // GA4a-2 (3): box `mt-0` ではなく帯自身の `mb-0!` が帯–box 間の隙間を相殺する
+    // （round 2 是正、Opus P1: Tailwind v4 の space-y-3 は margin を先行 sibling
+    // 〈帯〉側の margin-bottom として乗せるため box mt-0 は no-op）。
+    expect(classTokens(summaryBand)).toContain("mb-0!");
+
+    const box = container.querySelector("[data-list-scroll-container]");
+    expect(box).not.toBeNull();
+    // GA4a-2 (2): 帯の nextElementSibling は box そのもの。
+    expect(summaryBand?.nextElementSibling).toBe(box);
+
+    // GA4a-2 (4)（round 2 是正、Opus P2）: summaryBand.parentElement はもう wrapper
+    // ではなく root になるため、wrapper の完全一致契約は table 側から辿る。
+    const tableContainer = container.querySelector('[data-slot="table-container"]');
+    expect(tableContainer).not.toBeNull();
+    const wrapper = tableContainer?.parentElement ?? null;
     expect(wrapper).not.toBeNull();
     expect(wrapper).not.toBe(root);
     // 追補 S17（Opus P1-2、AC-L3-2）: wrapper は w-min min-w-full に完全一致（他 class を足さない）。
@@ -349,10 +379,6 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
     expect(
       wrapperTokens.some((token) => spacingPrefixes.some((prefix) => token.startsWith(prefix))),
     ).toBe(false);
-
-    const tableContainer = container.querySelector('[data-slot="table-container"]');
-    expect(tableContainer).not.toBeNull();
-    expect(summaryBand?.nextElementSibling).toBe(tableContainer);
   });
 });
 
@@ -510,15 +536,17 @@ describe("SC9a/SC9b: identityColumns activates root class tokens for the first N
   });
 });
 
-describe("SC9c: identityColumns does not touch the w-min min-w-full wrapper", () => {
+describe("SC9c: identityColumns does not touch the w-min min-w-full wrapper (Lane 4 Gated Amendment 4 GA4a で是正: wrapper は table 側から辿る)", () => {
   it("keeps the summary+table wrapper className exactly w-min min-w-full after identityColumns is activated", () => {
     const { container } = render(
       <ListShell stickyHeader topSummary identityColumns={2} pagination={pagination(25)}>
         <SampleTable />
       </ListShell>,
     );
-    const summaryBand = container.querySelector(".sticky.top-0.z-20");
-    const wrapper = summaryBand?.parentElement ?? null;
+    // round 2 是正、Opus P2: summaryBand.parentElement は GA4a 後は root になるため、
+    // wrapper は table container 側から辿る（SC10 と同じ理由）。
+    const tableContainer = container.querySelector('[data-slot="table-container"]');
+    const wrapper = tableContainer?.parentElement ?? null;
     expect(wrapper?.className).toBe("w-min min-w-full");
   });
 });
