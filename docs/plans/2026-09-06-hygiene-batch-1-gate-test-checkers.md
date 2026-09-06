@@ -4,7 +4,7 @@ Backlog（`docs/Plans.md:136,149,165`）記載の 3 件（I-G1 sweep test の gi
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: e67711e
@@ -13,7 +13,7 @@ Backlog（`docs/Plans.md:136,149,165`）記載の 3 件（I-G1 sweep test の gi
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded によりCodex成分は pending のまま Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: d364785
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: none（L3 対象なし。scripts / test checker のみで runtime・operator 画面に非接触）
@@ -261,10 +261,12 @@ Contract ID: SPEC-HYG1-D1
 
 ## Implementation Results
 
-未着手（Phase: plan-draft）。
+2026-09-06: Sonnet Writer 3 commit（`df318da` S1 `sweep_dir_for_tokens` の生成物 skip〈`routeTree.gen.ts` 完全一致 / `.rs.bk` 末尾一致、file のみ〉+ `tempfile` test〈skip される 2 件 + skip されない 1 件の対〉/ `d583386` S2 T10 を空白正規化の単一 `toContain` へ〈隣接性契約は保持、旧 2 個独立より厳密〉/ `732d097` S3 PK4「次の行動」抽出を `extract_markdown_h2_section` へ + `:840` stale comment + self-test fixture `write_plans_md_linking_under_wave_registry`）+ Final Review P3 是正 `d364785`（役割分担 comment / 正 assert を `foo.rs:` 終端込みへ）。AC1〜AC9 = Writer 実測 + Final Reviewer 独立再実測で全 PASS（AC3 formatter probe: インデント幅変更 / 1 行整形 / 余分改行 = PASS、復元済み。AC4 `preventDefault` 除去 = FAIL、復元済み。AC6 h2 呼出 1 / 旧呼出 0。AC8 `cargo fmt` / `clippy -D warnings` / `cargo test` / typecheck / lint / format:check / vitest 全 exit 0。AC9 stale comment 0）。L1 full PASS（HEAD `d364785`、clean tree）。traceability `--check` OK（再生成不要）。packet 逸脱なし。
 
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
 
 2026-09-06: Plan Review round 1 = Sonnet fresh approve（P3 4: Backlog anchor 行番号 / S3 行数 58・72 / 呼び出し元の数え方 / 実働上限の理由）+ Opus approve-with-P2（P1 0。P2: 「他 7 箇所」は定義 + comment 込みの数え方で実際の他 call site は 5 / STATECAP 案A の con が事実誤認〈`check-workflow-git.sh:100-101,192` は既に packet を parse〉/ S1 skip 4 pattern のうち `target` `mutants.out*` は走査 root から到達不能。P3: S2 の挙動保証は sibling test `:133` / S3 の `##` 狭窄は fail-closed / `:840` の stale comment / 座組は Double Audit と整合）。Opus 実測: S3 で `### Wave Registry` 配下 link を検査対象にしても初回 fail 0（PK4 は存在検査のみで節拡張は単調 permissive）→ link 是正の Scope 追加は不要。Coordinator 裁定 = 全件採用 → 是正 `f2a18ca`（S1 skip を到達可能 2 件へ、AC9 追加、実働上限 30 分へ）→ Coordinator 行検分で Plan Gate 閉鎖。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑪ 同期の本 commit に同乗させて遷移。Plan Commit = `e67711e`（plan-first commit）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
+
+2026-09-06: Final Review round 1 = Sonnet fresh approve-with-P2（Matrix SC1 / SC2 / SC4 / SC5 の mutant を独立再注入し全 kill、SC6 self-test 27 case pass、追加: 無関係 prop 追加 = 非過敏 / 隣接性破壊 = kill / `extract_markdown_h2_section` の終端 `^##`→`^#` は equivalent mutant〈Scope 外の既存関数〉。main `07302b5` の Plans.md は active packet 0 のため新 PK4 で ERROR なし）+ Opus approve-with-P2（`## 次の行動` → `## Backlog` 直前まで抽出し `### Wave Registry` を含む、節内の完了 lane link は `archive/plans/` 記法で PK4 regex 非該当、他呼出し元 5 箇所無変更、S1 skip は file のみ・完全一致 / 末尾一致、S2 正規化を node で再現）。P1 0。P2 = Implementation Results 未記入（本 commit で記録）。P3 = T10 の役割分担 comment / I-G1 正 assert の `foo.rs.bk` 部分一致 → 是正 `d364785`（Coordinator 行検分、2 行）。P3 記録のみ = T10 正規化は `{` 直後改行の非現実的 reflow で偽 FAIL し得る（prettier 設定では発生せず）/ 節拡張で完了 lane 行の `plans/` link でも PK4 が満たされる偽陰性方向の緩み（現状 `archive/plans/` 記法で実害 0、Wave Registry では `archive/plans/` 記法を継続）。Reviewed Content HEAD = `d364785`、`implementing -> human-confirm`。Human Gate = なし（script / test のみ、L3 不要）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
