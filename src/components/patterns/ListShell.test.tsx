@@ -372,7 +372,7 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
     expect(wrapper).not.toBeNull();
     expect(wrapper).not.toBe(root);
     // 追補 S17（Opus P1-2、AC-L3-2）: wrapper は w-min min-w-full に完全一致（他 class を足さない）。
-    // min-content = table の最小幅。overflow 時は wrapper = table 幅となり帯が横追随する。
+    // min-content = table の最小幅。overflow 時は wrapper = table 幅となる。
     expect(wrapper?.className).toBe("w-min min-w-full");
     const wrapperTokens = classTokens(wrapper);
     const spacingPrefixes = ["space-y-", "gap-", "mt-", "mb-", "pt-", "pb-"];
