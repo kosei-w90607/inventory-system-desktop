@@ -14,7 +14,7 @@
 
 各行は 1 文 + 由来（既存 = 00〜03 に既にある / A / B / owner 裁定）。
 
-1. **文字は本文 16px を最低線にする。** 12px は badge の中だけ。見出しは h1 24px / h2 20px。（16px = 既存 foundations タイポグラフィの履行 — A 診断 #1。「12px は badge 内のみ」= B 推奨表 1 行目。現行の caption 段（12px、補助説明・タイムスタンプ）は badge 以外で 20 箇所超使われており、batch 1 で 00-foundations の caption 行を「14px muted」へ改める）
+1. **文字は本文 16px を最低線にする。** 12px は badge の中だけ。見出しは h1 24px / h2 20px。（16px = 既存 foundations タイポグラフィの履行 — A 診断 #1。「12px は badge 内のみ」= B 推奨表 1 行目。現行の caption 段（12px、補助説明・タイムスタンプ）は badge 以外で 20 箇所超使われており、batch 1 で 00-foundations の caption 行を「14px muted」へ改める）。件数行（`Pagination`/`PaginationSummary` の範囲付き統一形文言）は 14px muted 補助情報として例外とする（owner 決定 2026-09-05、Plans ④ R2-1「下部と同じ小さい表示に揃える」、`text-sm text-muted-foreground`、AA 4.59:1）
 2. **色は家族で使う。** destructive（赤）/ warning（琥珀）/ success（緑）の 3 家族、各 soft・border・strong・emphasis の 4 段。`info` 家族は作らず、お知らせ・注意喚起は warning トーンで描く。token は使う前に foundations の色表へ登録する。（A 診断 #2: `success-strong` / `info-*` の未定義参照 5 箇所が本 doc 成立の契機）
 3. **状態は icon + 日本語 + 色の 3 点で伝える。** 色だけ・icon だけは不可。（既存 DSR-08 — A / B 一致）
 4. **badge は 3 種だけ。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等）②分類 = secondary pill + 枠線（隣接背景に対し 3:1、DSR-22）。icon は識別に必要な場合に限り可（廃番等、Gated Amendment 1）③強調 = 琥珀 pill（ランキング 1 位 / 最新 等）。4 種目を作らない。（B §2.6、②の枠線化は 2026-09-03 owner Human Gate 所感の Gated Amendment 1 是正を受けて訂正）

@@ -127,7 +127,10 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     await addSingleProduct(user);
 
     expect(screen.getByText("廃棄確認 商品")).toBeInTheDocument();
-    expect(screen.getByLabelText("DP-001 の種別")).toHaveValue("damage");
+    const disposalTypeTrigger = screen.getByLabelText("DP-001 の種別");
+    expect(disposalTypeTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(disposalTypeTrigger.tagName).toBe("BUTTON");
+    expect(disposalTypeTrigger).toHaveTextContent("破損");
     expect(screen.getByLabelText("DP-001 の数量")).toHaveValue(1);
     expect(screen.getByLabelText("DP-001 の原価")).toHaveValue(120);
     expect(screen.getByLabelText("DP-001 の理由")).toHaveValue("破損");
@@ -268,7 +271,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
 
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(await screen.findByText("廃棄・破損を保存しました")).toBeInTheDocument();
     expect(screen.getByText("¥240")).toBeInTheDocument();
@@ -330,7 +333,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
       await screen.findByText("一時的なエラー。詳細は診断ログに記録されています。"),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     const firstKey = mockCreateDisposal.mock.calls[0][0].idempotency_key;
 
@@ -431,6 +434,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
       expect(screen.queryByRole("link", { name: "商品登録へ進む" })).not.toBeInTheDocument();
     });
     expect(screen.getByLabelText("DP-001 の数量")).toBeDisabled();
+    expect(screen.getByLabelText("DP-001 の種別")).toBeDisabled();
 
     deferred.resolve({
       status: "ok",
@@ -599,6 +603,29 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/エラーID:/)).toBeInTheDocument();
     expect(screen.queryByText(/\[commands:/)).not.toBeInTheDocument();
+  });
+
+  it("SC1: per-row の種別selectは他行の表示値へ波及しない（L8-D3）", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<DisposalPage />);
+    await addSingleProduct(user);
+    mockSearchProducts.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "DP-002", name: "商品B" })],
+        total_count: 1,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    await user.type(screen.getByLabelText("廃棄・破損商品検索"), "DP-002{enter}");
+    expect(await screen.findByLabelText("DP-002 の種別")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "DP-001 の種別" }));
+    await user.click(await screen.findByRole("option", { name: "廃棄" }));
+
+    expect(screen.getByLabelText("DP-001 の種別")).toHaveTextContent("廃棄");
+    expect(screen.getByLabelText("DP-002 の種別")).toHaveTextContent("破損");
   });
 });
 

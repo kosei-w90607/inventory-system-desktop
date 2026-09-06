@@ -21,7 +21,7 @@ import {
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
-import { Pagination } from "@/components/patterns/Pagination";
+import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import type { StockMovementsSearch } from "./types";
@@ -131,7 +131,7 @@ export function StockMovementsPage({
         ) : null}
       </section>
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
         <div className="grid gap-1">
           <label className="text-sm text-muted-foreground" htmlFor="movement-date-from">
             開始日
@@ -164,23 +164,23 @@ export function StockMovementsPage({
           <label className="text-sm text-muted-foreground" htmlFor="movement-type">
             種別
           </label>
-          <select
-            id="movement-type"
-            className="h-9 rounded-md border border-input bg-control-surface px-3 text-sm"
+          <Select
             value={normalizedSearch.type}
-            onChange={(event) => {
-              updateSearch(
-                { type: event.currentTarget.value as StockMovementsSearch["type"] },
-                true,
-              );
+            onValueChange={(value) => {
+              updateSearch({ type: value as StockMovementsSearch["type"] }, true);
             }}
           >
-            {MOVEMENT_TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="movement-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MOVEMENT_TYPE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-1">
           <label className="text-sm text-muted-foreground" htmlFor="stock-movements-per-page">
@@ -239,6 +239,13 @@ export function StockMovementsPage({
         />
       ) : movementsQuery.data ? (
         <div className="space-y-3">
+          {movementsQuery.data.total_count > 0 && (
+            <PaginationSummary
+              page={movementsQuery.data.page}
+              perPage={movementsQuery.data.per_page}
+              totalCount={movementsQuery.data.total_count}
+            />
+          )}
           <MovementTable movements={movementsQuery.data.items} returnTo={detailReturnTo} />
           <Pagination
             page={movementsQuery.data.page}

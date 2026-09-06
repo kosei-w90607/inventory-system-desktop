@@ -13,6 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -390,26 +397,28 @@ export function ReceivingPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="receiving-supplier">取引先</Label>
-            <select
-              id="receiving-supplier"
-              value={values.supplierId ?? ""}
+            <Select
+              value={values.supplierId === null ? "none" : String(values.supplierId)}
               disabled={isFormLocked || supplierQuery.isLoading}
-              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
-              onChange={(event) => {
-                const value = event.target.value;
+              onValueChange={(value) => {
                 updateValues((prev) => ({
                   ...prev,
-                  supplierId: value === "" ? null : Number(value),
+                  supplierId: value === "none" ? null : Number(value),
                 }));
               }}
             >
-              <option value="">指定なし</option>
-              {supplierOptions.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="receiving-supplier" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">指定なし</SelectItem>
+                {supplierOptions.map((supplier) => (
+                  <SelectItem key={supplier.id} value={String(supplier.id)}>
+                    {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

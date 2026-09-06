@@ -162,7 +162,8 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     const user = userEvent.setup();
     renderStateful();
     await screen.findByText("P-001");
-    await user.selectOptions(screen.getByLabelText("取引先"), "7");
+    await user.click(screen.getByLabelText("取引先"));
+    await user.click(await screen.findByRole("option", { name: "取引先A" }));
     const toggle = await screen.findByRole("checkbox", { name: "取引先未設定の商品も含める" });
     expect(toggle).toBeChecked();
     await user.click(toggle);
@@ -180,14 +181,16 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(
       screen.queryByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }),
     ).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText("取引先"), "7");
+    await user.click(screen.getByLabelText("取引先"));
+    await user.click(await screen.findByRole("option", { name: "取引先A" }));
     const assign = await screen.findByRole("checkbox", {
       name: "未設定の商品にこの取引先を設定する",
     });
     expect(assign).toBeChecked();
     await user.click(assign);
     expect(assign).not.toBeChecked();
-    await user.selectOptions(screen.getByLabelText("取引先"), "8");
+    await user.click(screen.getByLabelText("取引先"));
+    await user.click(await screen.findByRole("option", { name: "取引先B" }));
     expect(
       await screen.findByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }),
     ).toBeChecked();
@@ -536,7 +539,12 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       expect(mockListSuppliers).toHaveBeenCalledTimes(2);
     });
     expect(mockCreateSupplier).toHaveBeenCalledWith("新規取引先");
-    expect(screen.getByLabelText("取引先")).toHaveValue("44");
+    expect(screen.getByLabelText("取引先")).toHaveTextContent("新規取引先");
+    await waitFor(() => {
+      expect(mockSearchProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ supplier_id: 44 }),
+      );
+    });
     expect(screen.getByRole("checkbox", { name: "取引先未設定の商品も含める" })).toBeChecked();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(toast.success).toHaveBeenCalledWith("取引先「新規取引先」を追加しました");
@@ -656,6 +664,32 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
   });
 });
 
+describe("PriceRevisionPage SC6 取引先 select（⑧、L8-D1, L8-D7, P2-2）", () => {
+  it("SC6: 取引先selectはSelect comboboxでsuppliersQuery loading中disabledになる", async () => {
+    let resolveSuppliers!: (value: Awaited<ReturnType<typeof commands.listSuppliers>>) => void;
+    mockListSuppliers.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSuppliers = resolve;
+      }),
+    );
+    renderStateful({});
+    await screen.findByText("P-001");
+
+    const supplierTrigger = screen.getByLabelText("取引先");
+    expect(supplierTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(supplierTrigger.tagName).toBe("BUTTON");
+    expect(supplierTrigger).toBeDisabled();
+
+    resolveSuppliers({
+      status: "ok",
+      data: [makeMockSupplier({ id: 7, name: "取引先A" })],
+    });
+    await waitFor(() => {
+      expect(supplierTrigger).not.toBeDisabled();
+    });
+  });
+});
+
 describe("PriceRevisionPage perPage scroll（UI-14）", () => {
   it("SC9a: 表示件数変更で画面を先頭へ戻す", async () => {
     const user = userEvent.setup();
@@ -666,6 +700,34 @@ describe("PriceRevisionPage perPage scroll（UI-14）", () => {
     await user.click(screen.getByRole("option", { name: "100 件" }));
 
     expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PriceRevisionPage Lane 4 S1f/S3f/S4b: frame color, top summary, per-page position", () => {
+  it("SC4f: filter section root has rounded-lg border bg-card p-4 (bg-stone-50 撤去)", async () => {
+    const { container } = renderStateful({});
+    await screen.findByText("P-001");
+    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    expect(container.querySelector(".bg-stone-50")).toBeNull();
+  });
+
+  it("SC3f: renders the top PaginationSummary above the table when total_count > 0", async () => {
+    renderStateful({});
+    await screen.findByText("P-001");
+    expect(
+      await screen.findByText("全 2 件のうち 1〜2 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+
+  it("SC5b: per-page select renders inside PriceRevisionFilters as the last filter-row child", async () => {
+    renderStateful({});
+    await screen.findByText("P-001");
+    const discontinuedCheckbox = screen.getByRole("checkbox", { name: "廃番を含む" });
+    const perPageTrigger = screen.getByRole("combobox", { name: "表示件数" });
+    expect(
+      discontinuedCheckbox.compareDocumentPosition(perPageTrigger) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 

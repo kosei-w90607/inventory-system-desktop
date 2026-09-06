@@ -189,8 +189,9 @@ describe("UI-11c REQ-902", () => {
       data: { items: [log()], total_count: 1, page: 3, per_page: 20 },
     });
     renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-11", page: 3 });
-    await screen.findByRole("option", { name: "その他（future_type）" });
-    await userEvent.setup().selectOptions(screen.getByLabelText("種別"), "future_type");
+    const user = userEvent.setup();
+    await user.click(await screen.findByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "その他（future_type）" }));
     await waitFor(() => {
       expect(listLogs).toHaveBeenLastCalledWith({
         start_date: "2026-07-01",
@@ -277,7 +278,7 @@ describe("UI-11c REQ-902", () => {
     renderStatefulPage({ start_date: "2026-07-01", end_date: "2026-07-10", page: 3 });
     await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
     expect(listLogs).toHaveBeenCalledTimes(1);
@@ -289,7 +290,7 @@ describe("UI-11c REQ-902", () => {
     expect(listLogs).toHaveBeenCalledTimes(1);
     expect(screen.getAllByText("合成ログ")).toHaveLength(2);
     expect(screen.getByText("商品コード")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "次のページ" })).toBeDisabled();
 
@@ -416,7 +417,7 @@ describe("UI-11c REQ-902", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
 
     fireEvent.click(screen.getByRole("button", { name: "valid transitionを開始" }));
     await waitFor(() => {
@@ -428,7 +429,7 @@ describe("UI-11c REQ-902", () => {
       "開始日は終了日と同じ日か、それより前の日付にしてください",
     );
     expect(screen.getByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toBeInTheDocument();
+    expect(screen.getAllByText("全 45 件のうち 41〜45 件を表示（3 / 3 ページ）")).toHaveLength(2);
     expect(listLogs).toHaveBeenCalledTimes(1);
   });
 
@@ -438,7 +439,14 @@ describe("UI-11c REQ-902", () => {
       data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
     });
     renderPage();
-    expect((await screen.findAllByText("その他（future_type）")).length).toBeGreaterThanOrEqual(2);
+    const user = userEvent.setup();
+    // badge 表示の1件（select を開く前でも見える）。
+    expect((await screen.findAllByText("その他（future_type）")).length).toBeGreaterThanOrEqual(1);
+    // trigger を開いた状態で option としても同じ raw fallback 文言が存在すること。
+    await user.click(screen.getByLabelText("種別"));
+    expect(
+      await screen.findByRole("option", { name: "その他（future_type）" }),
+    ).toBeInTheDocument();
     expect(listTypes).toHaveBeenCalledTimes(1);
   });
 
@@ -484,27 +492,24 @@ describe("UI-11c REQ-902", () => {
       data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
     });
     renderPage();
-    const select = await screen.findByLabelText<HTMLSelectElement>("種別");
-    await waitFor(() => {
-      expect(Array.from(select.querySelectorAll("optgroup")).map((group) => group.label)).toEqual([
-        "商品管理",
-        "取引先管理",
-        "入出庫",
-        "売上データ取込み",
-        "システム管理",
-        "その他",
-      ]);
-    });
-    expect(Array.from(select.options).map((option) => option.value)).toEqual([
-      "",
-      "product_create",
-      "product_update",
-      "supplier_rename",
-      "supplier_merge",
-      "receiving_create",
-      "csv_import",
-      "backup_create",
-      "future_type",
+    const user = userEvent.setup();
+    await user.click(await screen.findByLabelText("種別"));
+
+    const groups = await screen.findAllByRole("group");
+    expect(
+      groups.map((group) => group.querySelector('[data-slot="select-label"]')?.textContent),
+    ).toEqual(["商品管理", "取引先管理", "入出庫", "売上データ取込み", "システム管理", "その他"]);
+
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "すべて",
+      "商品登録",
+      "商品修正",
+      "取引先の改名",
+      "取引先の統合",
+      "入庫記録",
+      "売上データ取込み",
+      "バックアップ作成",
+      "その他（future_type）",
     ]);
   });
 
@@ -543,7 +548,10 @@ describe("UI-11c REQ-902", () => {
     });
     renderPage({ operation_type: "future_type" });
     expect(await screen.findByText("合成ログ")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "その他（future_type）" })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByLabelText("種別"));
+    expect(
+      await screen.findByRole("option", { name: "その他（future_type）" }),
+    ).toBeInTheDocument();
   });
 
   it("expands one row, labels known fields, and renders hostile JSON as text", async () => {
@@ -1130,6 +1138,45 @@ describe("UI-11c REQ-902", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/\[commands:/)).not.toBeInTheDocument();
+  });
+});
+
+describe("OperationLogsPage Lane 4 S1e/S1g/S3e: frame color, table wrapper rounded-lg, top summary", () => {
+  it("SC4e: filter section root has rounded-lg border bg-card p-4", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 20 },
+    });
+    renderPage();
+    await screen.findByLabelText("種別");
+    expect(document.body.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+  });
+
+  it("SC4g: table wrapper has overflow-x-auto rounded-lg border, no bg-card, and no rounded-md leftover", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
+    });
+    renderPage();
+    await screen.findByText("合成ログ");
+    const wrapper = document.body.querySelector(".overflow-x-auto");
+    expect(wrapper).not.toBeNull();
+    const tokens = (wrapper?.className ?? "").split(/\s+/);
+    expect(tokens).toContain("rounded-lg");
+    expect(tokens).toContain("border");
+    expect(tokens).not.toContain("rounded-md");
+    expect(tokens).not.toContain("bg-card");
+  });
+
+  it("SC3e: renders the top PaginationSummary above the table when items are present", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
+    });
+    renderPage();
+    expect(
+      await screen.findByText("全 1 件のうち 1〜1 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
   });
 });
 

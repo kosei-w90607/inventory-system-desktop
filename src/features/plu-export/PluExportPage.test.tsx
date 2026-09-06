@@ -298,7 +298,7 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
     expect(await screen.findByText("保存はキャンセルされました")).toBeInTheDocument();
     expect(screen.getByText("未反映商品は残っています。")).toBeInTheDocument();
     expectStatusRegionBeforeContent();
-    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
   });
 
   it("REQ-402 preserves target products when file save fails", async () => {
@@ -314,7 +314,7 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
     expect(screen.getByRole("button", { name: "もう一度保存する" })).toBeEnabled();
     expect(mockConfirmPluExportSaved).not.toHaveBeenCalled();
     expectStatusRegionBeforeContent();
-    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
   });
 
   it("REQ-402 shows JAN correction guidance when all prepared targets are excluded", async () => {
@@ -360,7 +360,7 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
       filters: [{ name: "PLUテキスト", extensions: ["txt"] }],
     });
     expect(mockConfirmPluExportSaved).not.toHaveBeenCalled();
-    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     const statusRegion = expectStatusRegionBeforeContent();
     expect(
       within(statusRegion).getByRole("button", { name: "この書出しを未反映から外す" }),
@@ -384,7 +384,7 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
       );
     });
     expect(await screen.findByText("未反映から外しました")).toBeInTheDocument();
-    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
   });
 
   it("REQ-402 keeps a saved pending export recovery state without PLU file bytes", async () => {
@@ -539,7 +539,7 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
       within(statusRegion).getByRole("button", { name: "もう一度未反映から外す" }),
     ).toBeEnabled();
     expect(within(statusRegion).queryByText("PLUファイルを保存しました")).not.toBeInTheDocument();
-    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
   });
 
   it("REQ-907 D-052-C18 invalidates the slot summary after prepare succeeds", async () => {

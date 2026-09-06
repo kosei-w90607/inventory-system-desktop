@@ -256,6 +256,10 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
   );
 
   return (
+    // Lane 4 Gated Amendment 3 GA3b（2026-09-07）: 商品一覧のみ、表自身を縦横 scroll 箱に
+    // する data grid 型。旧 Gated Amendment 1 の PageShell への
+    // `flex h-full min-h-0 flex-col` は撤去した——箱が行数基準の max-h で自立するため、
+    // page root からの高さ継承は不要（<main> が約 50 行以下で page scroll を担う）。
     <PageShell>
       <PageHeader
         title="商品検索・一覧"
@@ -282,6 +286,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         }}
         topSummary
         stickyHeader
+        identityColumns={2}
         isLoading={productsQuery.isLoading}
       >
         {productsQuery.isError ? (

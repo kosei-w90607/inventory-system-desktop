@@ -83,3 +83,34 @@ describe("SC2b: no feature page file declares a p-6 root className outside PageS
     expect(totalOccurrences).toBe(EXPECTED_PAGESHELL_OCCURRENCE_COUNT);
   });
 });
+
+// GA3b-5（Lane 4 Gated Amendment 3、旧 GA1e の反転）: stickyHeader の箱は行数基準の
+// max-h で自立するようになり、page root からの高さ継承（PageShell へ flex/h-full/
+// min-h-0/flex-col 系 class を渡すこと）はもう不要——渡したまま残っていると死んだ
+// class の残存（GA3b-1 の撤去漏れ）を示す regression になる。fs scan の性質上、
+// stickyHeader を渡す JSX と PageShell の JSX が同一 file 内にある場合にのみ機能する
+// （限界: 配線を別 file の子 component へ分離する画面はこの guard で検出できない、
+// packet「Gated Amendment 1」節参照）。
+describe("GA3b-5: stickyHeader を渡す Page は同一 file 内で PageShell に高さ継承 class を渡さない（旧 GA1e の逆転）", () => {
+  it("stickyHeader を持つ *Page.tsx はいずれも PageShell へ flex/h-full/min-h-0/flex-col 系 class を渡していない", () => {
+    const pageFiles = collectPageFiles(FEATURES_ROOT);
+    const violations: string[] = [];
+
+    for (const file of pageFiles) {
+      const source = readFileSync(file, "utf8");
+      if (!/\bstickyHeader\b/.test(source)) continue;
+
+      const pageShellClassMatches = source.match(/<PageShell\b[^>]*className="([^"]*)"/g) ?? [];
+      const hasHeightChain = pageShellClassMatches.some(
+        (match) =>
+          /\bflex\b/.test(match) &&
+          /\bh-full\b/.test(match) &&
+          /\bmin-h-0\b/.test(match) &&
+          /\bflex-col\b/.test(match),
+      );
+      if (hasHeightChain) violations.push(relative(REPO_ROOT, file));
+    }
+
+    expect(violations).toEqual([]);
+  });
+});

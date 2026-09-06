@@ -15,6 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -506,24 +513,27 @@ export function DisposalPage() {
                     <TableCell>{row.departmentName}</TableCell>
                     <TableCell>{formatQuantity(row.currentStockQuantity, row.stockUnit)}</TableCell>
                     <TableCell>
-                      <select
+                      <Select
                         value={row.disposalType}
                         disabled={isFormLocked}
-                        aria-label={`${row.productCode} の種別`}
-                        className="h-9 w-28 rounded-md border border-input bg-control-surface px-2 text-sm"
-                        onChange={(event) => {
+                        onValueChange={(value) => {
                           updateValues((prev) => ({
                             ...prev,
                             rows: updateDisposalRow(prev.rows, row.rowId, {
-                              disposalType: event.target.value as DisposalType,
+                              disposalType: value as DisposalType,
                             }),
                           }));
                         }}
                       >
-                        <option value="disposal">{DISPOSAL_TYPE_LABELS.disposal}</option>
-                        <option value="damage">{DISPOSAL_TYPE_LABELS.damage}</option>
-                        <option value="other">{DISPOSAL_TYPE_LABELS.other}</option>
-                      </select>
+                        <SelectTrigger aria-label={`${row.productCode} の種別`} className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="disposal">{DISPOSAL_TYPE_LABELS.disposal}</SelectItem>
+                          <SelectItem value="damage">{DISPOSAL_TYPE_LABELS.damage}</SelectItem>
+                          <SelectItem value="other">{DISPOSAL_TYPE_LABELS.other}</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Input

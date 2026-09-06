@@ -233,6 +233,37 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     expect(await screen.findByText("入庫を保存しました")).toBeInTheDocument();
   });
 
+  it("SC3: 取引先selectはSelect comboboxでsentinelがnullに写像され実在選択でnumberになる", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 20,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+
+    const supplierTrigger = await screen.findByLabelText("取引先");
+    expect(supplierTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(supplierTrigger.tagName).toBe("BUTTON");
+    expect(supplierTrigger).toHaveTextContent("指定なし");
+
+    await user.click(supplierTrigger);
+    await user.click(await screen.findByRole("option", { name: "テスト商事" }));
+    expect(supplierTrigger).toHaveTextContent("テスト商事");
+
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReceiving).toHaveBeenCalledWith(expect.objectContaining({ supplier_id: 1 }));
+    });
+  });
+
   it("successful submit shows result and invalidates receiving/product/inventory record queries", async () => {
     const user = userEvent.setup();
     mockCreateReceiving.mockResolvedValue({
@@ -252,7 +283,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     await user.click(screen.getByRole("button", { name: "入庫を保存" }));
 
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(await screen.findByText("記録ID")).toBeInTheDocument();
     expect(screen.getByText("11")).toBeInTheDocument();
@@ -447,7 +478,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
       await screen.findByText("一時的なエラー。詳細は診断ログに記録されています。"),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     const firstKey = mockCreateReceiving.mock.calls[0][0].idempotency_key;
 
