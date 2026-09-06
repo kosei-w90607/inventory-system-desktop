@@ -331,6 +331,45 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
     });
     expect(restoredBox.scrollTop).toBe(0);
   });
+
+  it("GA3b-6: wheel 入力による disarm は箱の MutationObserver も解除する（単一 slot の合成 stop、片方だけ disconnect する退行を検出）", async () => {
+    const { router, box } = await renderProductsAt("/products?case=ga3b6-disarm");
+    await screen.findByText("P-GA1D");
+
+    trackScroll(box, 0, 340);
+    stub.setRevealed(false);
+    await act(async () => {
+      await router.navigate({ to: "/products/new" });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe("/products/new");
+    });
+
+    await act(async () => {
+      await router.navigate({ href: "/products?case=ga3b6-disarm" });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe("/products?case=ga3b6-disarm");
+    });
+    const restoredBox = document.querySelector<HTMLElement>(BOX_SELECTOR);
+    if (restoredBox === null) throw new Error("products-list scroll container is required");
+    expect(restoredBox.scrollLeft).toBe(0);
+
+    // まだ scroll 不可（revealed=false、armed 継続中）のうちに wheel 入力で disarm する。
+    restoredBox.dispatchEvent(new Event("wheel", { bubbles: true }));
+
+    // disarm 後に内容が伸びても、単一 slot の合成 stop が箱の MutationObserver も
+    // 正しく disconnect していれば、保存済みの目標値（340）は二度と適用されない
+    // （合成漏れで箱 observer だけがリークすると、ここで再適用されてしまう）。
+    stub.setRevealed(true);
+    await act(async () => {
+      restoredBox.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+
+    expect(restoredBox.scrollLeft).toBe(0);
+    expect(restoredBox.scrollLeft).not.toBe(340);
+  });
 });
 
 // GA3b-6（Lane 4 Gated Amendment 3）: <main> は route 遷移を跨いで unmount されない
@@ -430,36 +469,67 @@ describe("GA3b-6: main（縦）と箱（横）が独立に、かつ同時に復�
     expect(restoredBox.scrollLeft).toBe(150);
   });
 
-  it("GA3b-7: forced-top（scrollPageToTop の flag）は main と箱の両方をリセットする", async () => {
-    const { router, box } = await renderProductsAt("/products?case=ga3b7-forced-top");
+  it("GA3b-7: forced-top（scrollPageToTop の flag）は main と箱の両方を、cache 復元より優先してリセットする", async () => {
+    const sourceHref = "/products?case=ga3b7-forced-top";
+    const otherHref = "/products?case=ga3b7-forced-top&page=2";
+    const { router, box } = await renderProductsAt(sourceHref);
     await screen.findByText("P-GA3B6");
     const main = document.querySelector<HTMLElement>(MAIN_SELECTOR);
     if (main === null) throw new Error("main scroll container is required");
     // happy-dom の smooth scroll 模擬による非同期上書きを避ける（app-router.test.tsx
-    // SC10b 先例と同型）。
+    // SC10b 先例と同型）。main/box とも scrollTo を同期的な座標代入として模す。
     vi.spyOn(main, "scrollTo").mockImplementation((options) => {
       const opts = options as ScrollToOptions;
       if (typeof opts.top === "number") main.scrollTop = opts.top;
       if (typeof opts.left === "number") main.scrollLeft = opts.left;
     });
-    const boxScrollTo = vi.spyOn(box, "scrollTo").mockImplementation(() => undefined);
+    vi.spyOn(box, "scrollTo").mockImplementation((options) => {
+      const opts = options as ScrollToOptions;
+      if (typeof opts.top === "number") box.scrollTop = opts.top;
+      if (typeof opts.left === "number") box.scrollLeft = opts.left;
+    });
 
+    // baseline: 通常の cache 復元が効くことを先に確認する（sourceHref は同一 route の
+    // search 違いのため ProductListPage 自体は unmount されず、box/main は同一要素のまま）。
     trackScroll(main, 250, 0);
     trackScroll(box, 0, 90);
-
-    // navigate を伴わない DSR-03 型呼出し（perPage 変更の実態）を模す: 同一 pathname の
-    // search だけを差し替える。
-    scrollPageToTop();
     await act(async () => {
-      await router.navigate({ href: "/products?case=ga3b7-forced-top&page=2" });
+      await router.navigate({ href: otherHref });
     });
     await waitFor(() => {
-      expect(router.stores.resolvedLocation.get()?.href).toBe(
-        "/products?case=ga3b7-forced-top&page=2",
-      );
+      expect(router.stores.resolvedLocation.get()?.href).toBe(otherHref);
+    });
+    await act(async () => {
+      await router.navigate({ href: sourceHref });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe(sourceHref);
+    });
+    expect(main.scrollTop).toBe(250);
+    expect(box.scrollLeft).toBe(90);
+
+    // sourceHref の cache を更新したうえで、navigate を伴わない DSR-03 型呼出し
+    // （perPage 変更の実態）を模して scrollPageToTop() の flag を立ててから戻る。
+    // 是正前の実装（main のみリセット）だと箱は proven cache hit（200）へ戻ってしまう。
+    trackScroll(main, 515, 0);
+    trackScroll(box, 0, 200);
+    await act(async () => {
+      await router.navigate({ href: otherHref });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe(otherHref);
+    });
+    scrollPageToTop();
+    await act(async () => {
+      await router.navigate({ href: sourceHref });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe(sourceHref);
     });
 
     expect(main.scrollTop).toBe(0);
-    expect(boxScrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0, left: 0 }));
+    expect(main.scrollTop).not.toBe(515);
+    expect(box.scrollLeft).toBe(0);
+    expect(box.scrollLeft).not.toBe(200);
   });
 });
