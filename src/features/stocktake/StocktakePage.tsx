@@ -621,7 +621,7 @@ export function StocktakeCountEntry({
                     <TableCell>
                       {candidate.name}
                       {candidate.is_discontinued ? (
-                        <Badge variant="secondary" className="ml-2">
+                        <Badge variant="secondary" className="ml-2 border-border">
                           廃番
                         </Badge>
                       ) : null}
@@ -844,7 +844,14 @@ export function StocktakeItemList({
               {items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.product_code}</TableCell>
-                  <TableCell>{item.name}</TableCell>
+                  <TableCell>
+                    {item.name}
+                    {item.is_discontinued ? (
+                      <Badge variant="secondary" className="ml-2 border-border">
+                        廃番
+                      </Badge>
+                    ) : null}
+                  </TableCell>
                   <TableCell>{item.department_name}</TableCell>
                   <TableCell className="text-right">{item.current_stock}</TableCell>
                   <TableCell className="text-right">{item.actual_count ?? "未入力"}</TableCell>

@@ -84,6 +84,7 @@ function baseStocktakeItem(): StocktakeItemDetail {
     actual_count: null,
     counted_at: null,
     current_stock: 10,
+    is_discontinued: false,
   };
 }
 
@@ -841,6 +842,62 @@ describe("StocktakePage (UI-10)", () => {
     });
     expect(screen.queryByText("新しい商品を追加しました")).not.toBeInTheDocument();
     expect(within(screen.getByRole("table")).getByText("青い糸")).toBeInTheDocument();
+  });
+
+  it("SC7 (UI-10-D13): counted list shows 廃番 badge with border-border only for discontinued items", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(
+      listResponse({
+        items: [
+          stocktakeItem({
+            id: 601,
+            product_code: "D-101",
+            name: "廃番の毛糸",
+            is_discontinued: true,
+          }),
+          stocktakeItem({
+            id: 602,
+            product_code: "N-101",
+            name: "通常の毛糸",
+            is_discontinued: false,
+          }),
+        ],
+      }),
+    );
+    await renderPage();
+
+    const discontinuedRow = await screen.findByRole("row", { name: /廃番の毛糸/ });
+    const badge = within(discontinuedRow).getByText("廃番");
+    expect(badge).toHaveClass("border-border");
+    expect(badge.querySelector("svg")).toBeNull();
+
+    const normalRow = screen.getByRole("row", { name: /通常の毛糸/ });
+    expect(within(normalRow).queryByText("廃番")).not.toBeInTheDocument();
+  });
+
+  it("SC9 (UI-10-D13): candidate row badge is also corrected to border-border (no border-border-strong left in file)", async () => {
+    const user = userEvent.setup();
+    const discontinued = makeMockProductWithRelations({
+      product_code: "D-201",
+      name: "廃番候補の糸",
+      is_discontinued: true,
+    });
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockFindItem.mockResolvedValueOnce(ok(null));
+    mockSearchProducts.mockResolvedValueOnce(
+      ok({
+        items: [discontinued, makeMockProductWithRelations({ product_code: "P-202" })],
+        total_count: 2,
+        page: 1,
+        per_page: 10,
+      }),
+    );
+    await renderPage();
+    await user.type(await screen.findByLabelText("商品を検索・スキャン"), "廃番{Enter}");
+
+    const row = await screen.findByRole("row", { name: /廃番候補の糸/ });
+    const badge = within(row).getByText("廃番");
+    expect(badge).toHaveClass("border-border");
   });
 
   it("SC1: counting screen has exactly one primary-styled button while a selected item and a candidate table coexist", async () => {
