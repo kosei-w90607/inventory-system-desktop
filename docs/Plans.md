@@ -100,7 +100,7 @@
 - [x] ⑥ drift 総点検の docs 同期 PR: 完了（PR #37 squash `31e6a00`、2026-09-05）。S2 7 件を実装へ同期、監査記録 = [drift-audit](research/audit-2026-09/drift-audit.md)。レビュー P3 2 件は Backlog へ（65-doc §65.3「完成形」の実装状況注記 / 52-doc の非表示 route 列挙）
 - [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: (a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
 - [ ] ⑧ native `<select>` 23 箇所 → shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）: Lane 5 merge 後に起票
-- [ ] ⑫ 衛生 batch 2（config / reference 系）: TanStack Router generation settings の統一（`tsr.config.json` 明示化） / eslint palette 外色 ban の `files` glob 拡張（既存 block 無変更 + `src/components/ui/**` / `src/components/layout/**` 専用の新規 block 追加、raw-button ban は現行 scope のまま） / 旧定数名 `PRODUCT_PER_PAGE_OPTIONS` → `LIST_PER_PAGE_OPTIONS` 同期（mockup + 現行契約 doc 3 file）。Plan Review round 1〜3（Opus reject ×2 → 是正 `719c15d` `f043e44` `58b0118`、round 3 = 両者 approve）→ Plan Gate 閉鎖、Draft PR #44、Phase: implementing（Plan Commit `3aa0e8a`）、次 = Sonnet Writer → Final Review（Sonnet fresh + Opus）→ human-confirm（L3 なし）→ Codex 1 回、[packet](plans/2026-09-06-hygiene-batch-2-config-reference.md) / [Matrix](plans/test-matrices/2026-09-06-hygiene-batch-2-config-reference.md)
+- [ ] ⑫ 衛生 batch 2（config / reference 系）: TanStack Router generation settings の統一（`tsr.config.json` 明示化） / eslint palette 外色 ban の `files` glob 拡張（既存 block 無変更 + `src/components/ui/**` / `src/components/layout/**` 専用の新規 block 追加、raw-button ban は現行 scope のまま） / 旧定数名 `PRODUCT_PER_PAGE_OPTIONS` → `LIST_PER_PAGE_OPTIONS` 同期（mockup + 現行契約 doc 3 file）。Plan Review round 1〜3（Opus reject ×2 → 是正 `719c15d` `f043e44` `58b0118`、round 3 = 両者 approve）→ Plan Gate 閉鎖、Draft PR #44、Writer 3 commit → Final Review（Sonnet fresh approve / Opus approve-with-P2、P1 0）→ Phase: human-confirm（Plan Commit `3aa0e8a`、Reviewed Content HEAD `cf70277`、L3 なし、2026-09-07）、次 = Codex 1 回 → Findings Freeze → Ready → merge、[packet](plans/2026-09-06-hygiene-batch-2-config-reference.md) / [Matrix](plans/test-matrices/2026-09-06-hygiene-batch-2-config-reference.md)
 
 ### Wave Registry
 
@@ -118,6 +118,7 @@
 
 ## Backlog（未了）
 
+- eslint palette 外色 ban の残り非対象 dir（`src/components/common/**` / `src/components/FilePicker.tsx`。⑫ Final Review Opus P3 2026-09-07、probe では現状 CLEAN）: 次に `eslint.config.js` を触る衛生 batch で `ui/**` `layout/**` と同じ追加 block 方式（既存 block 不変・glob 非重複・barrel block より前）で拡張、S
 - command drift detection（`collect_commands!` / `generate_handler!` の drift detection 未導入）。※退役 Docker 資材の削除は wave 7 lane 2（PR #19、2026-08-30）で完了済み。
 - TanStack Router generation settings の統一（起草時実査 2026-08-30: vite plugin `tanstackRouter({ autoCodeSplitting: true })` と `tsr generate` CLI の 2 系統併存・tsr.config.json なし。統一方針〈CLI script 撤去 or tsr.config 明示化〉の小裁定 + 生成物同一性検証を伴う単独小 change として着手）。⑫ で起票（tsr.config.json 明示化を採用、生成物 byte-identical 実測済み）。
 - UI-09a・09b 将来設計（UI-09b の日報 coverage 表示「一部日だけ日報がある月」の取込み済み日数、SALES2-D3 で自覚的 defer〈batch A から移管〉、34-biz §19.4 参照。`get_monthly_sales` DTO 拡張を伴う R3）。

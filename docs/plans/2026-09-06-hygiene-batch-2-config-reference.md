@@ -6,7 +6,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 3aa0e8a
@@ -15,7 +15,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（§3.3 pending。Codex 枠状況に応じて実施タイミングは Coordinator が調整し、Codex 成分が pending の間は Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: cf70277
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: none（runtime・operator 画面に非接触。script / config / lint / docs のみ）
@@ -280,7 +280,7 @@ Contract ID: SPEC-HYG2-D1
 
 ## Implementation Results
 
-(Fill after implementation.)
+2026-09-07: Sonnet Writer 3 commit（`52627af` S1 `tsr.config.json` 新設〈`target: "react"` / `autoCodeSplitting: true`〉+ `vite.config.ts` を `tanstackRouter()` 引数なしへ / `6d08719` S2 `eslint.config.js` に色 selector 単独 block を `ui/**` `layout/**`〈test file は ignores〉へ barrel block より前に追加〈新 block 行 104 < barrel 行 122〉/ `cf70277` S3 `PRODUCT_PER_PAGE_OPTIONS` → `LIST_PER_PAGE_OPTIONS` 4 file）。AC1〜AC14 = Writer 実測 + Final Reviewer 独立再実測で全 PASS。AC3: in-tree CLI vs `vite build` の routeTree `diff` exit 0（831 行 byte-identical）。AC4: `$TMPDIR` の独立 2 copy（`cp -a`、node_modules 実体確認）で `target: "solid"`、copy A `generate:routes` exit 0 / copy B `vite build` exit 1〈書き出し後の `createFileRoute` 重複 SyntaxError、想定内〉、2 copy の routeTree `diff` exit 0。restore oracle = worktree の tree 全体 `git status --short` 空。S3 の行番号 drift（Backlog 記載 `:110` → 実 `:96`）の原因 = Lane 3 の mockup 編集 commit `1d44ba2` 以降のずれ。L1 full PASS（HEAD `cf70277`、clean tree）、traceability `--check` ERROR 0 / WARN 0、vitest 164 file / 1272 test pass。packet 逸脱なし。
 
 ## Review Response
 
@@ -293,3 +293,5 @@ Contract ID: SPEC-HYG2-D1
 2026-09-06: Plan Review round 3 = Sonnet approve、Opus approve（P1 0）。Rally 収束。4 項目 + Sonnet P3 1 件を採用: (1) AC4 のコピー作成手順を明示——`cp -a` を使い `node_modules` が実体（symlink でない）であることを確認、破棄はコピー配下のみ（worktree の node_modules symlink を跨いだ `rm -rf` が本体を消した記録済み incident に基づく予防策）(2) Matrix SC5 / packet AC6 に `src/components/layout/**/*.test.{ts,tsx}` の `ignores` oracle を追加（`layout` は現状 palette 外色の実例が 0 件のため `npx eslint .` の exit code だけでは `layout` 側の `ignores` 欠落を検出できない）(3) コピー B の `vite build` 非 0 exit の原因を訂正——`@tanstack/solid-router` パッケージ不在ではなく、route file 側の既存 import と code-splitter が注入する import の重複が原因（solid は code-splitter がサポートするターゲット）。oracle（`diff` のみ、`vite build` 自体の exit code は判定外）は変更なし (4) restore oracle を `git status --short -- src/routes` から tree 全体の `git status --short` へ拡張し、`tsr.config.json` / `vite.config.ts` / `src/routeTree.gen.ts` への probe 由来の混入も検出できるようにした。Sonnet P3 = `docs/Plans.md:103` は変更しない（Coordinator が transition commit で同期する）。本 round は docs のみで実測不要（既存の起票時実測・round 1/2 実測がそのまま根拠）。
 
 2026-09-07: Plan Review round 2 = Sonnet approve-with-P2（`rg -F` pattern の `\[` が常に 0 hit）+ Opus reject（P1: AC4 の 1 copy 連続 probe は leg 2 が `createFileRoute` 重複で必ず壊れる → 2 copy 分離 + diff のみ oracle。P2: 新 block は barrel block より前）→ 是正 `f043e44`。round 3 = Sonnet approve + Opus approve（P1 0。P2: copy は `cp -a` / layout `ignores` oracle。P3: 非 0 exit の帰属 / restore oracle）→ 最終小口 `58b0118` → Coordinator 行検分（`-F` バックスラッシュ bug の残存 0 を sweep）で Plan Gate 閉鎖。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑫ 同期の本 commit に同乗。Plan Commit = `3aa0e8a`（plan-first commit）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
+
+2026-09-07: Final Review round 1 = Sonnet fresh approve（AC1〜AC14 独立再実測、SC2 / SC6 / SC8 実注入 kill、SC4 / SC5 / SC7 / SC9 静的 oracle 一致、Non-scope 侵犯なし）+ Opus approve-with-P2（S2 の 2 block を node で文字列比較し selector 完全一致、`ignores` は `files` の部分集合として機能、barrel ban 維持、S1 は generator が `<root>/tsr.config.json` を読み 2 key とも schema 内で既定値と等価、`tanstackRouter` の option は省略可。P1 0。P2 = Implementation Results 未記入〈本 commit で記録〉。P3 = PR body の Scope 行が mockup 1 file 表記 / `50-ui-product-list.md:63` は更新履歴クラスだが packet 裁定で Scope 内〈非対称は記録のみ〉/ `src/components/common/**` と `src/components/FilePicker.tsx` は色 ban 非対象のまま → Backlog 起票）。Reviewed Content HEAD = `cf70277`、`implementing -> human-confirm`。Human Gate = なし。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
