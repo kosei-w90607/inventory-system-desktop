@@ -8,20 +8,29 @@ import { consumeMainNavScroll } from "./main-nav-scroll";
 import { consumeForceScrollTop } from "./page-scroll";
 
 const MAIN_SCROLL_SELECTOR = '[data-scroll-restoration-id="main"]';
-// Gated Amendment 1（2026-09-06）: 商品一覧は表自身が縦横 scroll 箱（data-list-scroll-container）
-// になり、<main> はこの画面で scroll しない（DSR-17 例外）。allowlist / scrollToTopSelectors は
-// 起動時 sweep・router constructor option として一度だけ評価されるため、resolver 化せず
-// main/products-list の静的 2-selector 配列のまま保つ（round 2 是正、Opus P2 — resolver 化すると
-// 箱がまだ DOM に無い起動直後に main 単独へ退行し、products-list の cache entry を消してしまう）。
+// 商品一覧は表自身が縦横 scroll 箱（data-list-scroll-container）を持つ（DSR-17 例外）。
+// Lane 4 Gated Amendment 3 GA3b（2026-09-07）で <main> の page scroll も併存するように
+// なった（約 50 行以下は main、51 行超の縦・横は常に箱、詳細は resolveScrollTargets/
+// onRendered 参照）。allowlist / scrollToTopSelectors は起動時 sweep・router constructor
+// option として一度だけ評価されるため、resolver 化せず main/products-list の静的
+// 2-selector 配列のまま保つ（round 2 是正、Opus P2 — resolver 化すると箱がまだ DOM に
+// 無い起動直後に main 単独へ退行し、products-list の cache entry を消してしまう）。
 const PRODUCTS_LIST_SCROLL_SELECTOR = '[data-scroll-restoration-id="products-list"]';
 const LIST_SCROLL_CONTAINER_SELECTOR = "[data-list-scroll-container]";
 const SCROLL_RESTORATION_ALLOWLIST = [MAIN_SCROLL_SELECTOR, PRODUCTS_LIST_SCROLL_SELECTOR];
 
-/** onRendered ごとに動的解決する 3 箇所専用。箱があれば箱を、無ければ <main> を返す。 */
-function resolveScrollTarget(): { element: HTMLElement | null; id: "main" | "products-list" } {
-  const box = document.querySelector<HTMLElement>(LIST_SCROLL_CONTAINER_SELECTOR);
-  if (box !== null) return { element: box, id: "products-list" };
-  return { element: document.querySelector<HTMLElement>(MAIN_SCROLL_SELECTOR), id: "main" };
+// Lane 4 Gated Amendment 3 GA3b（2026-09-07）: 商品一覧では <main>（縦、約 50 行以下で
+// page scroll）と箱（横は常に、51 行超のときは縦も）の両方が独立した scroller になる
+// （旧 Gated Amendment 1 の「箱があれば箱、無ければ main」という択一は撤回）。
+// onRendered ごとに動的解決する 3 箇所専用。
+function resolveScrollTargets(): {
+  main: HTMLElement | null;
+  box: HTMLElement | null;
+} {
+  return {
+    main: document.querySelector<HTMLElement>(MAIN_SCROLL_SELECTOR),
+    box: document.querySelector<HTMLElement>(LIST_SCROLL_CONTAINER_SELECTOR),
+  };
 }
 
 export function getAppScrollRestorationKey(location: ParsedLocation): string {
@@ -53,7 +62,11 @@ export function applyMainNavScroll(locationHref: string): boolean {
   const targetHref = consumeMainNavScroll();
   if (targetHref !== locationHref) return false;
 
-  resolveScrollTarget().element?.scrollTo({ top: 0, left: 0 });
+  // GA3b: main（縦）と箱（横 + 51 行超時は縦）の両方をリセットする。box が無い画面では
+  // main だけが存在し従来どおり（GA1c 旧「箱優先」は撤回、両方存在すれば両方リセット）。
+  const { main, box } = resolveScrollTargets();
+  main?.scrollTo({ top: 0, left: 0 });
+  box?.scrollTo({ top: 0, left: 0 });
   return true;
 }
 
@@ -88,77 +101,123 @@ export function createAppRouter(options: { history?: RouterHistory } = {}) {
     const forceScrollTop = consumeForceScrollTop(appRouter.latestLocation.pathname);
     if (applyMainNavScroll(appRouter.latestLocation.href)) return;
 
-    const { element: main, id: scrollId } = resolveScrollTarget();
+    // Lane 4 Gated Amendment 3 GA3b: main（縦）と箱（横は常に、51 行超のときは縦も）を
+    // 独立した 2 target として復元・先頭化する（旧 GA1 の「箱があれば箱のみ」択一は撤回、
+    // packet「Scroll restoration の再設計」armed/disarm 条件表を参照）。
+    const { main, box } = resolveScrollTargets();
     if (forceScrollTop) {
       main?.scrollTo({ top: 0, left: 0 });
+      box?.scrollTo({ top: 0, left: 0 });
       return;
     }
 
-    const entry = getElementScrollRestorationEntry(appRouter, {
-      id: scrollId,
+    const mainEntry = getElementScrollRestorationEntry(appRouter, {
+      id: "main",
       getKey: getAppScrollRestorationKey,
     });
-    const savedScrollTop = entry?.scrollY;
-    const savedScrollLeft = entry?.scrollX;
+    const boxEntry = getElementScrollRestorationEntry(appRouter, {
+      id: "products-list",
+      getKey: getAppScrollRestorationKey,
+    });
 
-    // round 2/3 是正: armed 条件は縦・横いずれかが未到達なら成立する（縦のみの early return は
-    // 横だけスクロールした状態からの復元を握り潰していた）。各軸の「今回適用する目標値」を
-    // 局所 const に確定させ、以降はこの const だけを参照する（クロージャ内で
-    // number | undefined の narrowing が失われるのを避ける、round 3 P3）。
-    const verticalTarget =
+    // round 2/3 是正の踏襲: armed 条件は各 target・各軸ごとに独立して判定する。箱の縦は
+    // 51 行以下では scrollHeight が clientHeight を超えないため、適用条件
+    // （applyWhenScrollable の scrollHeight >= target + clientHeight）が構造的に満たされず
+    // 常に unarmed のまま——box.scrollHeight > box.clientHeight を armed 条件の時点で
+    // 前もって確認すると、box がまだ内容未読込みで一時的に非 scroll 状態のときに armed
+    // 判定そのものを握り潰してしまう（content が後から伸びる場合を見逃す）ため、ここでは
+    // 事前条件にしない。
+    const mainVerticalTarget =
       main !== null &&
-      savedScrollTop !== undefined &&
-      Number.isFinite(savedScrollTop) &&
-      savedScrollTop > 0 &&
-      main.scrollTop < savedScrollTop
-        ? savedScrollTop
+      mainEntry?.scrollY !== undefined &&
+      Number.isFinite(mainEntry.scrollY) &&
+      mainEntry.scrollY > 0 &&
+      main.scrollTop < mainEntry.scrollY
+        ? mainEntry.scrollY
         : undefined;
-    const horizontalTarget =
-      main !== null &&
-      savedScrollLeft !== undefined &&
-      Number.isFinite(savedScrollLeft) &&
-      savedScrollLeft > 0 &&
-      main.scrollLeft < savedScrollLeft
-        ? savedScrollLeft
+    const boxHorizontalTarget =
+      box !== null &&
+      boxEntry?.scrollX !== undefined &&
+      Number.isFinite(boxEntry.scrollX) &&
+      boxEntry.scrollX > 0 &&
+      box.scrollLeft < boxEntry.scrollX
+        ? boxEntry.scrollX
+        : undefined;
+    const boxVerticalTarget =
+      box !== null &&
+      boxEntry?.scrollY !== undefined &&
+      Number.isFinite(boxEntry.scrollY) &&
+      boxEntry.scrollY > 0 &&
+      box.scrollTop < boxEntry.scrollY
+        ? boxEntry.scrollY
         : undefined;
 
-    if (main === null || (verticalTarget === undefined && horizontalTarget === undefined)) {
+    if (
+      mainVerticalTarget === undefined &&
+      boxHorizontalTarget === undefined &&
+      boxVerticalTarget === undefined
+    ) {
       return;
     }
 
     const userInputEvents = ["wheel", "pointerdown", "keydown"] as const;
+    // 単一 slot の合成（packet 参照）: main 用・箱用それぞれの MutationObserver を個別の
+    // stop() にせず、両方の disconnect をまとめて実行する 1 つの合成 stop を
+    // cancelDelayedRestoration に代入する（2 つ目の stop で上書きすると 1 つ目の observer
+    // が解除されずリークする）。
     const stop = () => {
-      observer.disconnect();
+      mainObserver?.disconnect();
+      boxObserver?.disconnect();
       for (const eventName of userInputEvents) {
         document.removeEventListener(eventName, stop, true);
       }
       if (cancelDelayedRestoration === stop) cancelDelayedRestoration = undefined;
     };
-    let verticalDone = verticalTarget === undefined;
-    let horizontalDone = horizontalTarget === undefined;
+    let mainVerticalDone = mainVerticalTarget === undefined;
+    let boxHorizontalDone = boxHorizontalTarget === undefined;
+    let boxVerticalDone = boxVerticalTarget === undefined;
     const applyWhenScrollable = () => {
       if (
-        !verticalDone &&
-        verticalTarget !== undefined &&
-        main.scrollHeight >= verticalTarget + main.clientHeight
+        !mainVerticalDone &&
+        mainVerticalTarget !== undefined &&
+        main !== null &&
+        main.scrollHeight >= mainVerticalTarget + main.clientHeight
       ) {
-        main.scrollTop = verticalTarget;
-        verticalDone = true;
+        main.scrollTop = mainVerticalTarget;
+        mainVerticalDone = true;
       }
       if (
-        !horizontalDone &&
-        horizontalTarget !== undefined &&
-        main.scrollWidth >= horizontalTarget + main.clientWidth
+        !boxHorizontalDone &&
+        boxHorizontalTarget !== undefined &&
+        box !== null &&
+        box.scrollWidth >= boxHorizontalTarget + box.clientWidth
       ) {
-        main.scrollLeft = horizontalTarget;
-        horizontalDone = true;
+        box.scrollLeft = boxHorizontalTarget;
+        boxHorizontalDone = true;
       }
-      // (i) 是正: 解除（stop）は armed だった軸をすべて適用し終えてから一括で行う。
-      if (verticalDone && horizontalDone) stop();
+      if (
+        !boxVerticalDone &&
+        boxVerticalTarget !== undefined &&
+        box !== null &&
+        box.scrollHeight >= boxVerticalTarget + box.clientHeight
+      ) {
+        box.scrollTop = boxVerticalTarget;
+        boxVerticalDone = true;
+      }
+      // (i) 是正の踏襲: 解除（stop）は armed だった軸をすべて適用し終えてから一括で行う。
+      if (mainVerticalDone && boxHorizontalDone && boxVerticalDone) stop();
     };
 
-    const observer = new MutationObserver(applyWhenScrollable);
-    observer.observe(main, { childList: true, subtree: true });
+    let mainObserver: MutationObserver | undefined;
+    let boxObserver: MutationObserver | undefined;
+    if (main !== null && mainVerticalTarget !== undefined) {
+      mainObserver = new MutationObserver(applyWhenScrollable);
+      mainObserver.observe(main, { childList: true, subtree: true });
+    }
+    if (box !== null && (boxHorizontalTarget !== undefined || boxVerticalTarget !== undefined)) {
+      boxObserver = new MutationObserver(applyWhenScrollable);
+      boxObserver.observe(box, { childList: true, subtree: true });
+    }
     for (const eventName of userInputEvents) {
       document.addEventListener(eventName, stop, true);
     }

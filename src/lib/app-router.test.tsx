@@ -561,7 +561,7 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     expect(clamp.requestedTops.filter((top) => top === 390)).toHaveLength(1);
   });
 
-  it("GA1c: applyMainNavScroll targets the list scroll container when present, falling back to main otherwise", () => {
+  it("GA3b-7: applyMainNavScroll resets both main and the list scroll container when both are present (Lane 4 Gated Amendment 3, GA1c の拡張)", () => {
     const main = installMainScroller(240);
     const box = document.createElement("div");
     box.setAttribute("data-list-scroll-container", "");
@@ -574,10 +574,10 @@ describe("UI-12 / DSR-17 app router configuration", () => {
     applyMainNavScroll("/products?q=thread");
 
     expect(boxScrollTo).toHaveBeenCalledWith({ top: 0, left: 0 });
-    expect(mainScrollTo).not.toHaveBeenCalled();
+    expect(mainScrollTo).toHaveBeenCalledWith({ top: 0, left: 0 });
   });
 
-  it("GA1c: applyMainNavScroll falls back to main when no list scroll container exists", () => {
+  it("GA3b-7: applyMainNavScroll falls back to main when no list scroll container exists", () => {
     const main = installMainScroller(240);
     const mainScrollTo = vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
     markMainNavScroll("/products?q=thread");

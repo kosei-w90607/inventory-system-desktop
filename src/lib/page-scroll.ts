@@ -1,8 +1,9 @@
 const PAGE_TOP_SCROLL_OPTIONS: ScrollToOptions = { top: 0, left: 0, behavior: "smooth" };
 
-// Gated Amendment 1（2026-09-06）: 商品一覧は表自身が縦横 scroll 箱になり、<main> は
-// scroll しない。箱があればそれを、無ければ <main> を対象にする（他 23 箇所の
-// scrollPageToTop() 呼出し元は無改修で恩恵を受ける）。data-list-scroll-container は
+// Lane 4 Gated Amendment 3 GA3b（2026-09-07）: 商品一覧は表自身が縦横 scroll 箱になる
+// （旧 Gated Amendment 1）が、GA3b で <main> の page scroll も復活した（約 50 行以下）。
+// 箱と main の両方が存在すれば両方へ scrollTo する（他 23 箇所の scrollPageToTop()
+// 呼出し元は箱が無いため main のみで従来どおり）。data-list-scroll-container は
 // 「この要素が scroller」というマーカーで、復元 cache を安定識別する
 // data-scroll-restoration-id とは役割が異なる（app-router.ts 参照）。
 const LIST_SCROLL_CONTAINER_SELECTOR = "[data-list-scroll-container]";
@@ -49,12 +50,19 @@ export function consumeForceScrollTop(currentPathname: string): boolean {
 
 export function scrollPageToTop(): void {
   markForceScrollTop();
-  const target =
-    document.querySelector(LIST_SCROLL_CONTAINER_SELECTOR) ?? document.querySelector("main");
-  if (target instanceof HTMLElement && typeof target.scrollTo === "function") {
-    target.scrollTo(PAGE_TOP_SCROLL_OPTIONS);
-    return;
+  // Lane 4 Gated Amendment 3 GA3b: 商品一覧では <main>（約 50 行以下で page scroll）と
+  // 箱（横は常に、51 行超で縦も）の両方が scroller になり得るため、どちらも存在すれば
+  // 両方へ scrollTo する（旧 GA1 の `??` 択一は片方しか戻さなかった）。
+  const box = document.querySelector(LIST_SCROLL_CONTAINER_SELECTOR);
+  const main = document.querySelector("main");
+  let scrolled = false;
+  if (box instanceof HTMLElement && typeof box.scrollTo === "function") {
+    box.scrollTo(PAGE_TOP_SCROLL_OPTIONS);
+    scrolled = true;
   }
-
-  window.scrollTo(PAGE_TOP_SCROLL_OPTIONS);
+  if (main instanceof HTMLElement && typeof main.scrollTo === "function") {
+    main.scrollTo(PAGE_TOP_SCROLL_OPTIONS);
+    scrolled = true;
+  }
+  if (!scrolled) window.scrollTo(PAGE_TOP_SCROLL_OPTIONS);
 }

@@ -24,6 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createAppRouter } from "@/lib/app-router";
 import { commands } from "@/lib/bindings";
+import { scrollPageToTop } from "@/lib/page-scroll";
 import { makeMockProductWithRelations } from "./lib/test-fixtures";
 
 vi.mock("@/lib/bindings", () => ({
@@ -329,5 +330,136 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
       expect(restoredBox.scrollLeft).toBe(320);
     });
     expect(restoredBox.scrollTop).toBe(0);
+  });
+});
+
+// GA3b-6（Lane 4 Gated Amendment 3）: <main> は route 遷移を跨いで unmount されない
+// persistent element（DSR-17 前提）のため、箱と異なり同一要素へ直接 geometry stub を当てる
+// （app-router.test.tsx の installNativeScrollClamp と同型、縦のみに簡略化）。
+const MAIN_SELECTOR = '[data-scroll-restoration-id="main"]';
+
+function installMainGeometryStub(main: HTMLElement) {
+  let actualTop = main.scrollTop;
+  let scrollable = false;
+  Object.defineProperty(main, "clientHeight", { configurable: true, get: () => 500 });
+  Object.defineProperty(main, "scrollHeight", {
+    configurable: true,
+    get: () => (scrollable ? 1_000 : 500),
+  });
+  Object.defineProperty(main, "scrollTop", {
+    configurable: true,
+    get: () => actualTop,
+    set: (value: number) => {
+      const max = Math.max(0, (scrollable ? 1_000 : 500) - 500);
+      actualTop = Math.min(Math.max(0, value), max);
+    },
+  });
+  return {
+    setScrollable: (value: boolean) => {
+      scrollable = value;
+    },
+  };
+}
+
+describe("GA3b-6: main（縦）と箱（横）が独立に、かつ同時に復元される（Lane 4 Gated Amendment 3、scroll 復元の main/箱 二元化）", () => {
+  let stub: ReturnType<typeof installBoxGeometryStub>;
+
+  beforeEach(() => {
+    searchProducts.mockReset();
+    listDepartments.mockReset();
+    listDepartments.mockResolvedValue({ status: "ok", data: [] });
+    searchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-GA3B6" })],
+        total_count: 1,
+        page: 1,
+        per_page: 100,
+      },
+    });
+    stub = installBoxGeometryStub();
+  });
+
+  afterEach(() => {
+    stub.restore();
+    document.body.replaceChildren();
+  });
+
+  it("main を縦に、箱を横に、それぞれ独立に scroll した状態から一覧→詳細→戻りで両方が同時に復元される", async () => {
+    const { router, box } = await renderProductsAt("/products?case=ga3b6-both-targets");
+    await screen.findByText("P-GA3B6");
+    const main = document.querySelector<HTMLElement>(MAIN_SELECTOR);
+    if (main === null) throw new Error("main scroll container is required");
+    const mainStub = installMainGeometryStub(main);
+    mainStub.setScrollable(true);
+
+    trackScroll(main, 300, 0);
+    trackScroll(box, 0, 150);
+
+    // 戻り先を一旦 scroll 不可にし、built-in 内蔵復元の raw 代入だけで到達させず
+    // armed/applyWhenScrollable 経路を強制する（GA1d 先例と同型）。
+    mainStub.setScrollable(false);
+    stub.setRevealed(false);
+    await act(async () => {
+      await router.navigate({ to: "/products/new" });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe("/products/new");
+    });
+
+    await act(async () => {
+      await router.navigate({ href: "/products?case=ga3b6-both-targets" });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe("/products?case=ga3b6-both-targets");
+    });
+    const restoredBox = document.querySelector<HTMLElement>(BOX_SELECTOR);
+    if (restoredBox === null) throw new Error("products-list scroll container is required");
+    expect(main.scrollTop).toBe(0);
+    expect(restoredBox.scrollLeft).toBe(0);
+
+    mainStub.setScrollable(true);
+    stub.setRevealed(true);
+    await act(async () => {
+      main.append(document.createElement("div"));
+      restoredBox.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+
+    expect(main.scrollTop).toBe(300);
+    expect(restoredBox.scrollLeft).toBe(150);
+  });
+
+  it("GA3b-7: forced-top（scrollPageToTop の flag）は main と箱の両方をリセットする", async () => {
+    const { router, box } = await renderProductsAt("/products?case=ga3b7-forced-top");
+    await screen.findByText("P-GA3B6");
+    const main = document.querySelector<HTMLElement>(MAIN_SELECTOR);
+    if (main === null) throw new Error("main scroll container is required");
+    // happy-dom の smooth scroll 模擬による非同期上書きを避ける（app-router.test.tsx
+    // SC10b 先例と同型）。
+    vi.spyOn(main, "scrollTo").mockImplementation((options) => {
+      const opts = options as ScrollToOptions;
+      if (typeof opts.top === "number") main.scrollTop = opts.top;
+      if (typeof opts.left === "number") main.scrollLeft = opts.left;
+    });
+    const boxScrollTo = vi.spyOn(box, "scrollTo").mockImplementation(() => undefined);
+
+    trackScroll(main, 250, 0);
+    trackScroll(box, 0, 90);
+
+    // navigate を伴わない DSR-03 型呼出し（perPage 変更の実態）を模す: 同一 pathname の
+    // search だけを差し替える。
+    scrollPageToTop();
+    await act(async () => {
+      await router.navigate({ href: "/products?case=ga3b7-forced-top&page=2" });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe(
+        "/products?case=ga3b7-forced-top&page=2",
+      );
+    });
+
+    expect(main.scrollTop).toBe(0);
+    expect(boxScrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0, left: 0 }));
   });
 });
