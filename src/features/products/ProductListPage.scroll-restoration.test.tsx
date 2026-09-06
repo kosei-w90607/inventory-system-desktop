@@ -232,7 +232,7 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
     // 生存 mutant シナリオそのもの）。
     stub.setRevealed(false);
     await act(async () => {
-      await router.navigate({ to: "/products?case=ga1d-both" });
+      await router.navigate({ href: "/products?case=ga1d-both" });
     });
     await waitFor(() => {
       expect(router.stores.resolvedLocation.get()?.href).toBe("/products?case=ga1d-both");
@@ -269,7 +269,7 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
 
     stub.setRevealed(true);
     await act(async () => {
-      await router.navigate({ to: "/products?case=ga1d-vertical-only" });
+      await router.navigate({ href: "/products?case=ga1d-vertical-only" });
     });
     await waitFor(() => {
       expect(router.stores.resolvedLocation.get()?.href).toBe("/products?case=ga1d-vertical-only");
@@ -297,7 +297,7 @@ describe("GA1d: 商品一覧 scroll restoration（Gated Amendment 1、data grid 
 
     stub.setRevealed(true);
     await act(async () => {
-      await router.navigate({ to: "/products?case=ga1d-horizontal-only" });
+      await router.navigate({ href: "/products?case=ga1d-horizontal-only" });
     });
     await waitFor(() => {
       expect(router.stores.resolvedLocation.get()?.href).toBe(
