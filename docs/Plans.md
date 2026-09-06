@@ -100,6 +100,7 @@
 - [x] ⑥ drift 総点検の docs 同期 PR: 完了（PR #37 squash `31e6a00`、2026-09-05）。S2 7 件を実装へ同期、監査記録 = [drift-audit](research/audit-2026-09/drift-audit.md)。レビュー P3 2 件は Backlog へ（65-doc §65.3「完成形」の実装状況注記 / 52-doc の非表示 route 列挙）
 - [ ] ⑦ design-first 候補提示（owner と mapping / 方針を決めてから runtime lane へ。Codex 不要）: (a) Badge の色と枠の規約 = R2-5 / R3-1 / R5-5（状態 badge・増減数値の色、商品一覧の廃番 / 対象外の枠不整合、DSR-08 の具体化）(b) 「追加」系 button の primary（オレンジ）化 = R3-4（CTA hierarchy、DSR-03 / catalog Button 節）(c) 検索欄のタイトル = R5-1 (d) 在庫照会の検索条件追加 + 展開行の再クリックで閉じる = R2-3 / R2-4 (e) 一括価格改定の注意文言を warning tone へ = R3-3
 - [ ] ⑧ native `<select>` 23 箇所 → shadcn `Select` 置換（R5-3 owner 決定「部門のほうにアプリ全体で統一」。Lane 5 の token 当ては暫定、Lane 5 packet 起票時実測の一覧を再利用、`aria-label` / id / test query を引き継ぐ）: Lane 5 merge 後に起票
+- [ ] ⑪ 衛生 batch 1（gate / test checker 系）: Backlog（I-G1 sweep test の gitignore 非尊重 / T10 source 文字列 test の formatter 脆弱性 / PK4 の `###` section 抽出打ち切り）の機械的是正 3 件を 1 lane にまとめて起票（2026-09-06、branch `agent/hygiene-batch-gates`）。[Plan Packet](plans/2026-09-06-hygiene-batch-1-gate-test-checkers.md) / [Matrix](plans/test-matrices/2026-09-06-hygiene-batch-1-gate-test-checkers.md)。STATECAP 検査の stacked train 継承除外は設計非自明のため候補案 2 つを packet に記録し Scope 外・owner / Coordinator 判断待ちのまま Backlog 残置
 
 ### Wave Registry
 
@@ -132,8 +133,8 @@
 - architecture_test の re-export 洗浄検出強化（cmd が biz/mnt の re-export 経由で db symbol を消費する間接依存は現行の use 行 literal match で検出不能 — 順12 実装 AMD2 で実証。cmd-task-specs に検出境界を明記済み、検出強化は将来判断）。
 - 在庫状態表示の filter 依存不整合（在庫 2・基準 3 の同一商品が「すべて」filter では状態「通常」、「在庫少」filter では「在庫少」と表示される。query source 依存の pre-existing 仕様で受入台本 L3 2026-08-13 の owner 観察起源〈PR #74 comment〉。operator には矛盾に見えるため follow-up 要否を検討、優先度は owner 判断）。
 - 部門 17「本」のバーコードなし本・ISBN-10 本の登録経路（JAN 専用欄正規化 change の owner 裁定 2026-08-11 起源 = 本は 13 桁 JAN〈EAN-13/ISBN-13〉登録・ISBN-10 特例なし。部門 17 は code_prefix NULL のため JAN 欄空白の escape hatch が使えず、ISBN-10 のみの古書・バーコードなし本は登録不能のまま。要望発生時に code_prefix 付与 or ISBN-10 対応を再裁定）。
-- I-G1 sweep test の gitignore 非尊重（pure Rust walk 化〈PR #80 是正 `980a211`〉は gitignored file も走査するため、将来 `src/routeTree.gen.ts` 等の生成物が旧 token を偶然含むと偽陽性 fail し得る。安全側にしか倒れない構造差で現時点 hit 0 を実測済み、顕在化時に走査除外 or 生成物パターン skip を判断）。
-- STATECAP 検査の stacked train 継承除外（`check-workflow-git.sh` の範囲 `merge-base(origin/main, HEAD)..HEAD` が stack 点以前の他 lane forward state-only commit を自 PR に計上する。PR #86 で実測、docs 側の運用規律は正本化済み、機械側の範囲判定是正は設計非自明のため将来判断）。
+- I-G1 sweep test の gitignore 非尊重（pure Rust walk 化〈PR #80 是正 `980a211`〉は gitignored file も走査するため、将来 `src/routeTree.gen.ts` 等の生成物が旧 token を偶然含むと偽陽性 fail し得る。安全側にしか倒れない構造差で現時点 hit 0 を実測済み、顕在化時に走査除外 or 生成物パターン skip を判断）。⑪ で起票（Scope）。
+- STATECAP 検査の stacked train 継承除外（`check-workflow-git.sh` の範囲 `merge-base(origin/main, HEAD)..HEAD` が stack 点以前の他 lane forward state-only commit を自 PR に計上する。PR #86 で実測、docs 側の運用規律は正本化済み、機械側の範囲判定是正は設計非自明のため将来判断）。⑪ packet で候補案 2 つ（Plan Commit 起点化 / 明示 override 引数）とトレードオフを記録済み、設計非自明のため Scope 外・owner / Coordinator 判断待ちのまま Backlog 残置。
 - UI-01a 商品検索への取引先 filter 露出（backend `ProductSearchQuery` の `supplier_id` / `include_unassigned` は PR #95 で実装済み・UI 露出は UI-14 のみ。50-ui 画面契約の改訂が必要。UI-15 は PR #4 で完了済みのため着手可、UI 一覧の背骨 D 系の画面見直しとの前後関係は着手時に owner 判断）。
 - UI-15 改名ボタンの double-click 貫通リスク（保存確定の連打で二重送信し得る懸念。pending 中の行単位 disabled は実装・RTL 検証済みのため顕在化時に再評価、L3 owner 所感 2026-08-26 起源の P3）。
 - CsvImport / Stocktake detail page の静的入口未整備（PR #20 packet 起票時実測起源）: `/csv-import/records/$importId` / `/stocktake/records/$stocktakeId` は横断 hub 経由のみ到達可能で、専用一覧などの静的入口は未整備。入口設計は実需発生時の別 change とする。
@@ -145,7 +146,7 @@
 - `app-router.ts` top-level の router singleton 副作用（test が named export だけ import しても実 router が構築されグローバル scroll/pagehide listener が登録される。現状は test 側の一意 query で cache 衝突を回避済みで実害なし。router 関連改修時に遅延生成 or test util 分離を検討 — PR #24 Final Review P3-2、2026-08-31）。
 - CostDiffDialog の structured action list 化（更新 / 見送りの帰結を定型構造で並べる表示強化。PR #17 で説明文言 3 点は明記済み、さらに一歩の磨きは要望次第 — owner L3 2026-08-30 所感起源）。
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
-- T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。
+- T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。⑪ で起票（Scope）。
 - eslint palette 外色 ban（`eslint.config.js` `no-restricted-syntax`）の `files` glob 拡張（現行は `src/features/**` + `src/components/patterns/**` のみで `src/components/ui/**` / `src/components/layout/**` は非対象。wave 8 lane 1 Plan Review P2 起源 2026-09-02、当該 PR は `rg` を唯一の機械 oracle として運用、glob 拡張は既存違反の棚卸しが先行）。
 - ~~`docs/UI_TECH_STACK.md` L403 の「DSR-01〜13」列挙が stale（DSR-14〜21 未反映。PR #28 Final Review round 1 観察、design-system README は同 PR で「DSR-01〜21」へ是正済み）。~~ 消化済み（UI 一覧の背骨 D — Lane 2、2026-09-03、「DSR-01〜22」へ更新）
 - SidebarLink の focus 中は `focus-visible:border-ring`（詳細度 0-2-0）が DSR-21 の左辺 Primary を上書きする（at rest は無関係、一過性。PR #28 Final Review round 2〜3 観察、意図的な a11y 挙動のため要望があれば DSR-21 に focus 時の扱いを追記）。
@@ -161,7 +162,7 @@
 - 取引先一覧の操作性（78 §78.12: 検索・sort・paging・bulk rename）。
 - shortcuts の retroactive unit test（54 §54.9、延期理由「Vitest 未導入」は失効済み・test file 0 件）。
 - 低優先 deferred 11 件の集約追跡（N8〜N19: CSV import 拡張 / cm・m 表示切替 / global scanner detection / shortcut 拡張 / REQ-704・705 / 操作ログ CSV / 状態チップ件数・廃番 toggle / 棚卸し中止・sort・履歴 / 商品個別閾値 / Z006・Z009・Z011 / ダークモード。詳細と doc 節は [遷移契約 sweep 記録](archive/plans/2026-08-26-transition-contract-sweep.md) 参照、要望発生時に個別裁定）。
-- PK4 の section 抽出が `###` で打ち切られ `### Wave Registry` 配下 link が検査対象外になる問題（wave 1 plan-gate round 1 P1 起源。PK 系 checker gap 是正 PR #69 の Post-Freeze follow-up として別件残置、優先度は owner 判断）。
+- PK4 の section 抽出が `###` で打ち切られ `### Wave Registry` 配下 link が検査対象外になる問題（wave 1 plan-gate round 1 P1 起源。PK 系 checker gap 是正 PR #69 の Post-Freeze follow-up として別件残置、優先度は owner 判断）。⑪ で起票（Scope）。
 - 棚卸しカウント除外の長期滞留在庫（issue #91、2026-08-22 回答済み）: 除外基準は年数でなく原価根拠の有無（伝票保管義務範囲外で廃棄済み・取引先データなし・バーコードなし・販売に適さない見た目）、規模は例年 1〜2 点・多い年で 4〜5 点。owner 提案どおりシステムでは表現しない（除外品は単品コード非付与 = 商品マスタ外、部門キーで商品非連動販売、復活時は新規登録）。35-biz-stocktake-service.md / 73-ui-stocktake.md への母集団明記のみ残作業、owner 同意で close 候補。
 - cargo 側の advisory 2 件（rand low `GHSA-cq8v-f236-94qc` / glib medium `GHSA-wrw7-89jp-8q8g`）: D-067 で tolerable_risk として dismiss 済み（upstream-blocked）、revisit = Tauri 更新時。
 - npm dependency-security 常設 monitoring の運用（週次〈月曜 06:00 JST〉+ manual dispatch で `npm audit` high+ と監視 advisory の state 変化を check し issue 通知。監視対象 advisory の追加・整理は `scripts/npm-security-monitor.sh` の `WATCHED_ADVISORIES` を編集）。
