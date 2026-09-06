@@ -335,7 +335,7 @@ fn test_sweep_dir_for_tokens_skips_known_generated_paths() {
         "*.rs.bk must be skipped: {hits:?}"
     );
     assert!(
-        hits.iter().any(|hit| hit.contains("foo.rs")),
+        hits.iter().any(|hit| hit.contains("foo.rs:")),
         "normal files must still be swept: {hits:?}"
     );
 }

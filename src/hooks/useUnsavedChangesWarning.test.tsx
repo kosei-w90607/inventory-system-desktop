@@ -151,6 +151,8 @@ describe("useUnsavedChangesWarning (UI-12/UI-USW-D1/D2 / SPEC-UISN-2/3)", () => 
     expect(proceed).not.toHaveBeenCalled();
   });
 
+  // 挙動保証は :133 の sibling test、本 test は onEscapeKeyDown prop と event.preventDefault() の
+  // 隣接のみを検査する（formatter 非依存、comment 挿入や型注釈変更では FAIL し得る）。
   it("DSR-20 D-E T10: Escape の preventDefault を明示 prop として保持する", () => {
     const source = readFileSync("src/components/patterns/UnsavedChangesDialog.tsx", "utf8");
     const normalized = source.replace(/\s+/g, " ");
