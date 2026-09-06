@@ -2,12 +2,36 @@
 //
 // UI-01a-D6: 単位付き在庫表示と廃番状態の非色シグナル。
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { makeMockProductWithRelations } from "../lib/test-fixtures";
 import { ProductTable } from "./ProductTable";
+
+const REPO_ROOT = join(__dirname, "../../../..");
+const PRODUCT_TABLE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/products/components/ProductTable.tsx"),
+  "utf8",
+);
+const DISPOSAL_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/disposal/DisposalPage.tsx"),
+  "utf8",
+);
+const INVENTORY_RECORDS_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/inventory-records/InventoryRecordsPage.tsx"),
+  "utf8",
+);
+const RECEIVING_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/receiving/ReceivingPage.tsx"),
+  "utf8",
+);
+const INTEGRITY_CHECK_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/integrity-check/IntegrityCheckPage.tsx"),
+  "utf8",
+);
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -124,6 +148,14 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     expect(wrapperTokens).toContain("w-32");
     expect(wrapperTokens).toContain("whitespace-normal");
     expect(wrapperTokens).toContain("break-all");
+  });
+
+  it("GA3a-4: w-28 消滅チェックは ProductTable.tsx に限定され、他 4 file の正当な w-28 は残る（空集合 oracle 衝突の回避、対 oracle）", () => {
+    expect(PRODUCT_TABLE_SOURCE).not.toContain("w-28");
+    expect(DISPOSAL_PAGE_SOURCE).toContain("w-28");
+    expect(INVENTORY_RECORDS_PAGE_SOURCE).toContain("w-28");
+    expect(RECEIVING_PAGE_SOURCE).toContain("w-28");
+    expect(INTEGRITY_CHECK_PAGE_SOURCE).toContain("w-28");
   });
 
   it("GA3a-1: product code th's inner div carries w-32; outer th carries min-w-36 (belt), no max-w-36", () => {

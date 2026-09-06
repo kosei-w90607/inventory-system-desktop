@@ -143,6 +143,10 @@ export function createAppRouter(options: { history?: RouterHistory } = {}) {
       box.scrollLeft < boxEntry.scrollX
         ? boxEntry.scrollX
         : undefined;
+    // 境界（Final Review round 3 P3、Opus）: 箱が最後まで縦 scroll 可能にならない場合
+    // （51 行以下のまま）でも armed な observer/listener は無期限には残らない——次の
+    // wheel/pointerdown/keydown（stop）か次の route 遷移（onBeforeLoad の
+    // cancelDelayedRestoration 呼出し）のいずれか早い方で必ず解除される。
     const boxVerticalTarget =
       box !== null &&
       boxEntry?.scrollY !== undefined &&
