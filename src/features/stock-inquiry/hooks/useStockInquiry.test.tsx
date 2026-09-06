@@ -259,28 +259,41 @@ describe("useStockInquiry (REQ-301/302)", () => {
   });
 
   it("SC5b (UI-06a-D5): 検索条件が変化した後は新しい条件で自動展開が再度発火する", async () => {
-    mockSearch.mockImplementation((query: { keyword: string | null }) => {
-      if (query.keyword === "SOLO") {
+    mockSearch.mockImplementation(
+      (query: { keyword: string | null; department_id: number | null }) => {
+        if (query.department_id === 7) {
+          return Promise.resolve({
+            status: "ok",
+            data: {
+              items: [makeMockProductWithRelations({ product_code: "DEPT-1" })],
+              total_count: 1,
+              page: 1,
+              per_page: 50,
+            },
+          });
+        }
+        if (query.keyword === "SOLO") {
+          return Promise.resolve({
+            status: "ok",
+            data: {
+              items: [makeMockProductWithRelations({ product_code: "SOLO-1" })],
+              total_count: 1,
+              page: 1,
+              per_page: 50,
+            },
+          });
+        }
         return Promise.resolve({
           status: "ok",
           data: {
-            items: [makeMockProductWithRelations({ product_code: "SOLO-1" })],
+            items: [makeMockProductWithRelations({ product_code: "OTHER-1" })],
             total_count: 1,
             page: 1,
             per_page: 50,
           },
         });
-      }
-      return Promise.resolve({
-        status: "ok",
-        data: {
-          items: [makeMockProductWithRelations({ product_code: "OTHER-1" })],
-          total_count: 1,
-          page: 1,
-          per_page: 50,
-        },
-      });
-    });
+      },
+    );
     const navigate = vi.fn();
     const { rerender } = renderHook(
       (args: Parameters<typeof useStockInquiry>[0]) => useStockInquiry(args),
@@ -312,6 +325,20 @@ describe("useStockInquiry (REQ-301/302)", () => {
     });
     await waitFor(() => {
       expect(navigate).toHaveBeenCalledWith({ selected: "OTHER-1" });
+    });
+    // 検索条件（dept）を変更。q/status/page は変えず selected は null のまま
+    // （conditionKey から dept 成分を落とす mutant を検出する）
+    rerender({
+      status: "all",
+      q: "OTHER",
+      dept: 7,
+      page: 1,
+      perPage: 50,
+      selected: null,
+      navigate,
+    });
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: "DEPT-1" });
     });
   });
 

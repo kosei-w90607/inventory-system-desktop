@@ -95,7 +95,7 @@ describe("filterAndSortLowStockList (UI-06a-D4 取引先名優先ソート)", ()
     }),
     makeMockProductWithRelations({
       product_code: "S-002",
-      name: "に",
+      name: "あ",
       department_id: 1,
       supplier_name: "取引先A",
       stock_quantity: 10,
@@ -116,16 +116,20 @@ describe("filterAndSortLowStockList (UI-06a-D4 取引先名優先ソート)", ()
     }),
     makeMockProductWithRelations({
       product_code: "S-005",
-      name: "あ",
+      name: "た",
       department_id: 1,
       supplier_name: "取引先A",
-      stock_quantity: 3,
+      stock_quantity: 1,
     }),
   ];
 
   it("SC1: 取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順で安定ソートする", () => {
     const result = filterAndSortLowStockList(sortItems, "", null, "low_stock");
-    // 取引先A（在庫数 3=3 は商品名で副次ソート「あ」<「さん」、その後 10）→ 取引先B → 取引先なし（null、最後）
+    // 取引先A 内は在庫数昇順で S-005(1) < S-003(3) < S-002(10)。
+    // 商品名は「あ」(S-002) < 「さん」(S-003) < 「た」(S-005) と逆順になるよう意図的に
+    // 在庫数と商品名の大小関係を食い違わせてあり、比較優先順位を
+    // 入れ替える mutant（商品名優先）ではこの期待順にならない。
+    // → 取引先B（S-001）→ 取引先なし（S-004、null は最後）
     expect(result.map((p) => p.product_code)).toEqual([
       "S-005",
       "S-003",

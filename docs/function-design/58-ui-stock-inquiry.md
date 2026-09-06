@@ -196,7 +196,7 @@ const searchSchema = z.object({
 - **status チップ切替時** = `selected` を URL から clear（`navigate` で `selected: undefined`）。新 list query 結果 1 件で自動展開が再発火可能、状態の race を回避
 - **q / dept 変更時** = `selected` を URL から clear（status チップ切替時と同じ。新 list 取得後の非同期な含有判定を避けて race を回避する。Phase 2 では選択を「現 list 条件に対する状態」として扱い、stale な詳細カードを残さない。結果 1 件なら自動展開が再発火するため絞り込み動線は崩れない）
 - 自動展開 useEffect の発火条件は `selected == null` ガードに加え、検索条件（`status`/`q`/`dept`/`page`）単位で 1 度のみ（UI-06a-D5、`useRef` に自動展開済みの条件 key を保持）。選択中行の再クリックで `onSelect(null)` が呼ばれ展開が閉じた（R2-3）後も、同じ検索条件のままでは自動展開が再発火しない。検索条件が変わった場合は新しい条件 key として改めて 1 度だけ自動展開する
-- **list 成功時に `selected` が現 list の items に不在**（stale/手打ち URL、CSV 取込み invalidation 後の該当外化）= `selected` を clear（`navigate` で `selected: undefined`、C-P2-1）。行インライン展開（§58.8）の描画先消失を防ぎ「選択は現 list 条件に対する状態」を一貫させる。`listQuery.isSuccess` ガードで loading 中の誤判定を回避。1 件なら clear 後に自動展開が後続発火し現 list の唯一商品へ収束する（"selected 不在 = 詳細が必ず消える" ではない）
+- **list 成功時に `selected` が現 list の items に不在**（stale/手打ち URL、CSV 取込み invalidation 後の該当外化）= `selected` を clear（`navigate` で `selected: undefined`、C-P2-1）。行インライン展開（§58.8）の描画先消失を防ぎ「選択は現 list 条件に対する状態」を一貫させる。`listQuery.isSuccess` ガードで loading 中の誤判定を回避。同一検索条件で自動展開済みの場合は再展開せず収束しない（UI-06a-D5 の設計上の帰結、"selected 不在 = 詳細が必ず消える" ではないが自動での再表示も保証しない）
 - **検索前（isAllEmpty: status=all + q 空）に `selected` が残る**（手打ち/F5/bookmark URL）= `selected` を clear（Codex 実装レビュー Round 1 P2-2）。list は EmptySearchPlaceholder なのに detail query が空振りするのを防ぐ。detail query の `enabled` にも `!isAllEmpty` guard を入れて二重防御（§58.5）
 
 ### 58.5 hook 設計
@@ -599,6 +599,7 @@ function StockInquiryPage() {
 - **決定**: `ProductListTable` の行クリックを、選択中行の再クリックで `onSelect(null)` を呼ぶよう変更する（`selected` URL state が `undefined` になり展開が閉じる）。自動展開 `useEffect`（§58.4）に、検索条件（`status`/`q`/`dept`/`page`）から導出した key を `useRef` で保持するガードを追加し、同じ条件で一度自動展開したら再展開しない。条件が変われば新しい key として改めて 1 度だけ自動展開する。
 - **Why**: 既存の自動展開は `selected === null` ガードのみのため、再クリックで `selected` を `null` に戻しても同じ検索条件で結果がまだ 1 件なら即座に再展開し、「閉じる」操作を打ち消してしまう。`useRef` は URL 一本化の既存方針（§58.4）に追加の state を持ち込まずに済む。
 - **境界（意図的、defect ではない）**: `useRef` はコンポーネントインスタンスのメモリ上のため、full remount（サイドバー遷移で `/stock` を離れて戻る等）が起きると ref は初期化され、同じ検索条件でも自動展開が再度発火する。1 セッション内で条件を変えずに何度も開閉する操作を対象にした guard であり、画面を離れて戻る操作まで記憶する要件ではない。
+- **conditionKey の構成要素**: URL 由来の `status`/`q`/`dept`/`page` の 4 項目のみ（`useStockInquiry.ts` の `conditionKey`）。`perPage`（page ローカル state、URL 非依存）は対象外。`q` は `trim()` せず生値をそのまま key に使う。
 - **Rejected**: `selected` の変化元（ユーザー操作 vs 自動展開）を別 state で追跡する案（state 数が増え、URL 一本化の既存方針に反する）。
 
 #### 廃番除外

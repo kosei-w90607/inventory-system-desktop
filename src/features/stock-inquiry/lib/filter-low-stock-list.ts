@@ -54,7 +54,7 @@ export function filterAndSortLowStockList(
       return -1;
     }
     if (a.supplier_name !== null && b.supplier_name !== null) {
-      const supplierCmp = a.supplier_name.localeCompare(b.supplier_name);
+      const supplierCmp = a.supplier_name.localeCompare(b.supplier_name, "ja");
       if (supplierCmp !== 0) {
         return supplierCmp;
       }
@@ -62,6 +62,6 @@ export function filterAndSortLowStockList(
     if (a.stock_quantity !== b.stock_quantity) {
       return a.stock_quantity - b.stock_quantity;
     }
-    return a.name.localeCompare(b.name);
+    return a.name.localeCompare(b.name, "ja");
   });
 }

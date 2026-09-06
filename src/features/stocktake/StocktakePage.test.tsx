@@ -869,6 +869,7 @@ describe("StocktakePage (UI-10)", () => {
     const discontinuedRow = await screen.findByRole("row", { name: /廃番の毛糸/ });
     const badge = within(discontinuedRow).getByText("廃番");
     expect(badge).toHaveClass("border-border");
+    expect(badge.querySelector("svg")).toBeNull();
 
     const normalRow = screen.getByRole("row", { name: /通常の毛糸/ });
     expect(within(normalRow).queryByText("廃番")).not.toBeInTheDocument();

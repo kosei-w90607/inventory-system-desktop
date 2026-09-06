@@ -145,7 +145,8 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
   //     !isAllEmpty guard と二重防御）。
   // (b) list 成功時に selected が現 list に不在（stale URL、CSV 取込み invalidation 後の該当外化）→ 行
   //     インライン展開（§58.8）の描画先消失を防ぐ（C-P2-1）。isSuccess ガードで loading 中の誤判定を
-  //     避ける。list 1 件なら clear 後に上の自動展開が後続発火し、現 list の唯一商品へ収束する。
+  //     避ける。同一検索条件（conditionKey）で自動展開済みの場合は上の自動展開 guard が再発火を
+  //     止めるため再展開せず、収束しない（UI-06a-D5 の設計上の帰結）。
   useEffect(() => {
     if (isAllEmpty && args.selected !== null) {
       args.navigate({ selected: undefined });
