@@ -41,7 +41,7 @@ Backlog（`docs/Plans.md:152,155,167`、本 packet起票時点の行番号）記
 Risk: R3
 
 Reason:
-3 件とも production runtime・DB・DTO・operator 画面に非接触だが、いずれも merge gate（enforcement surface）そのものを変更する: S1 は `npm run lint`（Verification Gates「Frontend」行）が直接実行する `eslint.config.js` に新規 block を追加する。S2 は `scripts/doc-consistency-check.sh`（Verification Gates「Docs/design」「Active plan packet」行、かつ `.github/workflows/ci.yml` の `Design doc consistency` job が直接実行する script）に新規 check を追加する。S3 は `src-tauri/tests/architecture_test.rs`（Verification Gates「Rust/backend」行の `cargo test` が実行する既存 layer-boundary test）に新規 test を追加する。DEV_WORKFLOW Risk Tiers の「uncertain between R2 and R3, choose R3 when the change touches ... a workflow gate」がそのまま適用される。S1 は既存 block 無変更 + 新規 block 追加という⑫ 承認済み方式の反復（違反 3 件の是正含む）で相対的に低リスク。S2（Python を使わない bash+rg での drift 検出ロジック新規実装）と S3（allow list による direct re-export 増分 guard の新規 test ロジック、C′ という設計判断そのものの機械化）は新規ロジックであり workflow gate 変更のため、Contract Audit 節の「Double audit: for R4 and workflow gate changes, run the Contract Audit twice in independent contexts」を S2・S3 に適用する（S1 は⑪/⑫ 型「単独なら R1〜R2 相当」として Double Audit 対象外）。
+3 件とも production runtime・DB・DTO・operator 画面に非接触だが、いずれも merge gate（enforcement surface）そのものを変更する: S1 は `npm run lint`（Verification Gates「Frontend」行）が直接実行する `eslint.config.js` に新規 block を追加する。S2 は `scripts/doc-consistency-check.sh`（Verification Gates「Docs/design」「Active plan packet」行、かつ `.github/workflows/ci.yml` の `Design doc consistency` job が直接実行する script）に新規 check を追加する。S3 は `src-tauri/tests/architecture_test.rs`（Verification Gates「Rust/backend」行の `cargo test` が実行する既存 layer-boundary test）に新規 test を追加する。DEV_WORKFLOW Risk Tiers の「uncertain between R2 and R3, choose R3 when the change touches ... a workflow gate」がそのまま適用される。**S1 も workflow gate 変更である**: ⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md:46`）は本 lane の S1 と全く同じ形（既存 block 無変更 + 新規 block 追加による `eslint.config.js` 変更）を「DEV_WORKFLOW Verification Gates『Frontend』行 `npm run lint` が直接実行する gate 定義そのもの」として R3 判定し、`docs/DEV_WORKFLOW.md:371`「Double audit: for R4 and workflow gate changes」を単独で適用した（同 packet `:241`）。よって本 lane の S1 も同型であり、Double Audit の対象外にする根拠はない。S1・S2・S3 のいずれも workflow gate 変更のため、Contract Audit 節の「Double audit: for R4 and workflow gate changes, run the Contract Audit twice in independent contexts」を 3 件全てに適用する。
 
 ## Goal
 
@@ -51,7 +51,7 @@ Goal Invariant:
 
 - S1: `eslint.config.js` の既存 block が全て無変更のまま、`complexity`/`max-depth`/`max-lines-per-function`/`max-params` の 4 rule を warn severity で持つ新規 block が `src/features/**/*.{ts,tsx}` + `src/components/patterns/**/*.{ts,tsx}`（test 除外）へ追加され、barrel block より前に置かれる。起票時実測で確認した 3 件の違反（`PluExportPage.tsx:188` complexity 69 / `ReturnExchangePage.tsx:185` max-lines-per-function 793 / `Pagination.tsx:33` max-params 5）が disposition どおりに是正・disable され、`npx eslint .` の当該 4 rule 警告が 0 件になる。
 - S2: `scripts/check-command-drift.sh`（bash + `rg` のみ、Python 不使用）が command 宣言（D）・runtime handler（H）・Specta 登録（S）・bindings wire 名（T）の 4 集合の一致と重複無しを検査し、`scripts/doc-consistency-check.sh` の設計モード末尾から 1 箇所だけ呼ばれることで `scripts/local-ci.sh:193` / `scripts/pre-push.sh:217` / `.github/workflows/ci.yml` の `Design doc consistency` job（`:308-327`）の 3 経路すべてへ、それら 3 file を一切変更せずに到達する。
-- S3: `src-tauri/tests/architecture_test.rs` に、`biz/**`・`mnt/**` からの `crate::db::*` / `crate::io::*` の直接 `pub use` 再公開を起票時実測の 30 symbol（17 statement）allow list に限定する新規 `#[test]` が追加され、allow list 外の新規直接再公開（`pub use crate::db::Row;` 等）を検出して fail する。
+- S3: `src-tauri/tests/architecture_test.rs` に、`biz/**`・`mnt/**` からの `crate::db::*` / `crate::io::*` の直接 `pub use` / `pub(crate) use` 再公開を起票時実測の 30 symbol（17 statement）allow list に限定する新規 `#[test]` が追加され、allow list 外の新規直接再公開（`pub use crate::db::Row;` 等）を検出して fail する。
 
 ### 失敗定義
 
@@ -80,7 +80,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   3. `src/components/patterns/Pagination.tsx:33`（`rangeText`、`max-params` 実測 5、max 4）— 実害あり。「同じ number 型の 5 位置引数（totalCount/from/to/page/totalPages）で順序を取り違えやすい。読みやすい object 引数にする候補で A の params 警告を実害ありと判定」（§3 補足実読）。呼び出し元は同一 file 内の 2 箇所のみ（`rg -Fc 'rangeText(' src/components/patterns/Pagination.tsx` = 3、定義 1 + 呼出 2、他 file からの参照なし）。object 引数化は局所改修（関数シグネチャ + 呼出し 2 箇所のみ、約 15 行差分）で ponytail rung 7 の「動く最小 code」に収まるため本 lane で是正する。
 - **disposition（Coordinator 裁定、owner eslint A 確認 2026-09-08 の一部）**: (1)(2) は `// eslint-disable-next-line <rule> -- <理由>` + Backlog 新規行で見送り、(3) は object 引数化で是正する。CLAUDE.md の「既存テストを削除・無効化しない」規律に抵触しないことを確認済み（disable はテスト規律ではなく lint rule の抑制であり、対象は非テストコード。既存 test（`Pagination.test.tsx` 等）は変更しない）。
 - **既存 block 非破壊の実測**（§4・§5）: 新規 block の `files` は既存 1 個目 block（`eslint.config.js:79`、色 selector + 生 `<button>` selector）と完全に同じ `["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]` を再利用するが、rule 名（`complexity`/`max-depth`/`max-lines-per-function`/`max-params`）が既存 `no-restricted-syntax` と異なるため、ESLint flat config の rule merge（同一 `files` に一致する block 間で同一 rule id を完全置換する挙動、⑫ 起票時実測で確認済み）に抵触しない。10a 報告 §1・§7 は通常 450 file・barrel 2 path で既存 rule の実効設定を base config と一時 config で比較し差分 0 であることを確認済み。
-- **glob 非重複の前提整理**（10a 報告 §4 末尾、owner 確認事項）: `rg -n "glob 非重複|glob非重複" docs` は `docs/Plans.md:152,154` の Backlog prose 2 件のみに一致し、`docs/DEV_WORKFLOW.md` / `eslint.config.js` のコメント / `docs/architecture/*.md` / `docs/design-system/*.md` / archived packet ⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md`）本文のいずれにも「glob 非重複」という文言は存在しない（archived packet ⑫ は「`files` が重複しない」という同義だが異なる表現を使う）。したがって「tracked canonical doc の文言を reword する」対象は存在せず、「archive のみ、変更不要」でもない第 3 のケース: 該当は本 lane が同一 commit で annotate する `docs/Plans.md:152,154` の Backlog prose 自体のみであり、正確な規則性（「同一 rule を複数 block で設定しない」）は本 packet の起票時実測で確定済みのため、追加の reword S item は不要と判定する。
+- **glob 非重複の前提整理**（10a 報告 §4 末尾、owner 確認事項）: `rg -n "glob 非重複|glob非重複" docs` は `docs/Plans.md:152,154` の Backlog prose 2 件のみに一致し、`docs/DEV_WORKFLOW.md` / `eslint.config.js` のコメント / `docs/architecture/*.md` / `docs/design-system/*.md` / archived packet ⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md`）本文のいずれにも「glob 非重複」という文言は存在しない（archived packet ⑫ は「`files` が重複しない」という同義だが異なる表現を使う）。したがって「tracked canonical doc の文言を reword する」対象は存在せず、「archive のみ、変更不要」でもない第 3 のケース: 該当は本 lane が同一 commit で annotate する `docs/Plans.md:152,154` の Backlog prose 自体のみであり、正確な規則性（「同一 rule を複数 block で設定しない」）は本 packet の起票時実測で確定済みのため、追加の reword S item は不要と判定する。**この判定自体は Coordinator の裁定であり機械検査で確定した事実ではない**（Plan Review H12、Sonnet P3-1）: 新規 block（`files` は既存 `:79` block と完全に同じ `["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"]`）と既存 block は `files` を共有するが rule id（`complexity`/`max-depth`/`max-lines-per-function`/`max-params` 対 `no-restricted-syntax`）が素であるため後勝ち全置換の対象にならない、という「同一 rule id が重複しなければ `files` の重複は安全」という読み方自体は Final Review で再確認すべき Coordinator 判断であり、本 packet の実測（10a §1・§7 の実効設定差分 0）はこの読み方を裏付けるが、ESLint 側の将来的な rule merge 仕様変更まで保証するものではない。
 - 現行 `npm run lint`（`package.json:23` `eslint .`）に `--max-warnings` は無く、warn は CI を fail させない（10a 報告 §4）。本 lane は phase 1 の warn 開始のみとし、error 昇格・`--max-warnings=0` の導入は Backlog（Non-scope 参照）。
 
 ### S2 実測（`.local/codex-orders/reports/10c-command-drift-and-reexport.md`）
@@ -99,43 +99,43 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **既存 test の境界**: `src-tauri/tests/architecture_test.rs`（現 172 行）は `LAYER_RULES`（db/biz/cmd/io の 4 層、`:35-52`）に対する `use crate::{layer}` の直接 import 行のみを検査し、`mnt/` は `LAYER_RULES` 自体の対象外（10c §3「現行 test と AMD2 の意味」）。`re-export` 経由の間接依存（`biz::Row` を import して `db::Row` を消費する等）は検出しない。
 - **合成 fixture の実測**（10c §3「合成最小例と反例」、`rustc --crate-type lib` でコンパイル成功を確認済み）: `pub use crate::db::Row;`（direct）/ `use crate::db as storage; pub use storage::Row;`（alias）/ `pub type Row = crate::db::Row;`（type alias）の 3 fixture に対し、既存 `architecture_test` はいずれも **PASS（見逃し）**。監査が試作した A（use resolver）は direct/alias を検出（type alias は見逃し）、C（direct pub use 禁止）は direct のみ検出（alias/type alias は見逃し）。
 - **A（全到達検出）は不採用**: cmd → biz/mnt 経由で到達する DB symbol は 41 箇所（10c §3「A の全到達候補」実測出力）あり、その大半（`PaginatedResult`・`ProductWithRelations` 等の DTO 共有）は D-060 が正本化した意図的な CMD-11 層経路である。全到達を禁止すると既存設計を破壊するため不採用。
-- **C（direct pub use 全面禁止）も不採用、C′ を採用**: `biz/**`・`mnt/**` からの `crate::db::*` / `crate::io::*` の直接 `pub use` は現状 **30 symbol / 17 statement**（10c §3「C の全禁止候補」実測出力、下記 allow list に転記）。全面禁止は既存 DTO 公開面（`biz/mod.rs` の CMD-02〜11 用 re-export）と AMD2 が承認した MNT no-create 経路（`mnt/backup.rs:10`）を破壊するため不採用。**C′**（起票時点の 30 symbol を allow list として凍結し、新規直接再公開の追加のみを禁止する）を採用する。
-- **allow list（起票時実測、10c §3「C の全禁止候補」実測出力を転記。file:line は本 packet 起票時点、行番号は S3 実装時に再確認する）**:
+- **C（direct pub use 全面禁止）も不採用、C′ を採用**: `biz/**`・`mnt/**` からの `crate::db::*` / `crate::io::*` の直接 `pub use` / `pub(crate) use`（`mnt/backup.rs:10` は `pub(crate) use`）は現状 **30 symbol / 17 statement**（10c §3「C の全禁止候補」実測出力、下記 allow list に転記）。全面禁止は既存 DTO 公開面（`biz/mod.rs` の CMD-02〜11 用 re-export）と AMD2 が承認した MNT no-create 経路（`mnt/backup.rs:10`）を破壊するため不採用。**C′**（起票時点の 30 symbol を allow list として凍結し、新規直接再公開の追加のみを禁止する）を採用する。
+- **allow list（起票時実測、10c §3「C の全禁止候補」実測出力を転記）。assertion key = `(file, symbol, 再公開元 full path)` の 3 要素タプルであり、行番号（line）は key に含めない**（Plan Review H2、Opus P1-2/P2-2: 15/17 statement が `biz/mod.rs:19-46` の 1 file に集中しており、同 file 冒頭への `pub mod`/`use` 挿入だけで全 line がずれる。line を assertion key に含めると、実装内容が変わらない無関係な編集で merge gate が false FAIL する）。下表の「起票時 line」列は S3 実装時の探索補助コメントに過ぎず、比較ロジックには使わない:
 
-  | file:line（statement） | symbol | 再公開先 |
-  |---|---|---|
-  | `src-tauri/src/biz/mod.rs:19` | `Department` | `crate::db::product_repo::Department` |
-  | `src-tauri/src/biz/mod.rs:19` | `Supplier` | `crate::db::product_repo::Supplier` |
-  | `src-tauri/src/biz/mod.rs:21` | `ProductBulkFilter` | `crate::db::product_repo::ProductBulkFilter` |
-  | `src-tauri/src/biz/mod.rs:21` | `ProductSearchQuery` | `crate::db::product_repo::ProductSearchQuery` |
-  | `src-tauri/src/biz/mod.rs:21` | `ProductWithRelations` | `crate::db::product_repo::ProductWithRelations` |
-  | `src-tauri/src/biz/mod.rs:23` | `CsvImport` | `crate::db::sales_repo::CsvImport` |
-  | `src-tauri/src/biz/mod.rs:25` | `LastStocktakeSummary` | `crate::db::stocktake_repo::LastStocktakeSummary` |
-  | `src-tauri/src/biz/mod.rs:25` | `Stocktake` | `crate::db::stocktake_repo::Stocktake` |
-  | `src-tauri/src/biz/mod.rs:25` | `StocktakeItemDetail` | `crate::db::stocktake_repo::StocktakeItemDetail` |
-  | `src-tauri/src/biz/mod.rs:25` | `StocktakeProgress` | `crate::db::stocktake_repo::StocktakeProgress` |
-  | `src-tauri/src/biz/mod.rs:29` | `AppSetting` | `crate::db::system_repo::AppSetting` |
-  | `src-tauri/src/biz/mod.rs:29` | `OperationLog` | `crate::db::system_repo::OperationLog` |
-  | `src-tauri/src/biz/mod.rs:31` | `DbConnection` | `crate::db::DbConnection` |
-  | `src-tauri/src/biz/mod.rs:33` | `DbError` | `crate::db::DbError` |
-  | `src-tauri/src/biz/mod.rs:35` | `PaginatedResult` | `crate::db::PaginatedResult` |
-  | `src-tauri/src/biz/mod.rs:37` | `DisposalRecordDetail` | `crate::db::disposal_repo::DisposalRecordDetail` |
-  | `src-tauri/src/biz/mod.rs:37` | `DisposalRecordSummary` | `crate::db::disposal_repo::DisposalRecordSummary` |
-  | `src-tauri/src/biz/mod.rs:37` | `InventoryRecordQuery` | `crate::db::disposal_repo::InventoryRecordQuery` |
-  | `src-tauri/src/biz/mod.rs:37` | `InventoryRecordSummary` | `crate::db::disposal_repo::InventoryRecordSummary` |
-  | `src-tauri/src/biz/mod.rs:40` | `ListQuery` | `crate::db::inventory_common::ListQuery` |
-  | `src-tauri/src/biz/mod.rs:41` | `ManualSaleRecordDetail` | `crate::db::manual_sale_repo::ManualSaleRecordDetail` |
-  | `src-tauri/src/biz/mod.rs:42` | `ReceivingRecordDetail` | `crate::db::receiving_repo::ReceivingRecordDetail` |
-  | `src-tauri/src/biz/mod.rs:42` | `ReceivingRecordWithSupplier` | `crate::db::receiving_repo::ReceivingRecordWithSupplier` |
-  | `src-tauri/src/biz/mod.rs:43` | `ReturnRecordDetail` | `crate::db::return_repo::ReturnRecordDetail` |
-  | `src-tauri/src/biz/mod.rs:43` | `ReturnRecordSummary` | `crate::db::return_repo::ReturnRecordSummary` |
-  | `src-tauri/src/biz/mod.rs:45` | `MovementQuery` | `crate::db::inventory_repo::MovementQuery` |
-  | `src-tauri/src/biz/mod.rs:45` | `MovementRecord` | `crate::db::inventory_repo::MovementRecord` |
-  | `src-tauri/src/biz/mod.rs:46` | `StockDetail` | `crate::db::product_repo::StockDetail` |
-  | `src-tauri/src/biz/product_service.rs:17` | `PriceHistoryEntry` | `crate::db::product_repo::PriceHistoryEntry` |
-  | `src-tauri/src/mnt/backup.rs:10` | `open_existing_database` | `crate::db::open_existing_database`（AMD2 承認済み MNT no-create 経路） |
+  | file | symbol | 再公開元（assertion key の一部） | 起票時 line（comment only、実装時に再確認、assertion には使わない） |
+  |---|---|---|---|
+  | `src-tauri/src/biz/mod.rs` | `Department` | `crate::db::product_repo::Department` | `:19` |
+  | `src-tauri/src/biz/mod.rs` | `Supplier` | `crate::db::product_repo::Supplier` | `:19` |
+  | `src-tauri/src/biz/mod.rs` | `ProductBulkFilter` | `crate::db::product_repo::ProductBulkFilter` | `:21` |
+  | `src-tauri/src/biz/mod.rs` | `ProductSearchQuery` | `crate::db::product_repo::ProductSearchQuery` | `:21` |
+  | `src-tauri/src/biz/mod.rs` | `ProductWithRelations` | `crate::db::product_repo::ProductWithRelations` | `:21` |
+  | `src-tauri/src/biz/mod.rs` | `CsvImport` | `crate::db::sales_repo::CsvImport` | `:23` |
+  | `src-tauri/src/biz/mod.rs` | `LastStocktakeSummary` | `crate::db::stocktake_repo::LastStocktakeSummary` | `:25` |
+  | `src-tauri/src/biz/mod.rs` | `Stocktake` | `crate::db::stocktake_repo::Stocktake` | `:25` |
+  | `src-tauri/src/biz/mod.rs` | `StocktakeItemDetail` | `crate::db::stocktake_repo::StocktakeItemDetail` | `:25` |
+  | `src-tauri/src/biz/mod.rs` | `StocktakeProgress` | `crate::db::stocktake_repo::StocktakeProgress` | `:25` |
+  | `src-tauri/src/biz/mod.rs` | `AppSetting` | `crate::db::system_repo::AppSetting` | `:29` |
+  | `src-tauri/src/biz/mod.rs` | `OperationLog` | `crate::db::system_repo::OperationLog` | `:29` |
+  | `src-tauri/src/biz/mod.rs` | `DbConnection` | `crate::db::DbConnection` | `:31` |
+  | `src-tauri/src/biz/mod.rs` | `DbError` | `crate::db::DbError` | `:33` |
+  | `src-tauri/src/biz/mod.rs` | `PaginatedResult` | `crate::db::PaginatedResult` | `:35` |
+  | `src-tauri/src/biz/mod.rs` | `DisposalRecordDetail` | `crate::db::disposal_repo::DisposalRecordDetail` | `:37` |
+  | `src-tauri/src/biz/mod.rs` | `DisposalRecordSummary` | `crate::db::disposal_repo::DisposalRecordSummary` | `:37` |
+  | `src-tauri/src/biz/mod.rs` | `InventoryRecordQuery` | `crate::db::disposal_repo::InventoryRecordQuery` | `:37` |
+  | `src-tauri/src/biz/mod.rs` | `InventoryRecordSummary` | `crate::db::disposal_repo::InventoryRecordSummary` | `:37` |
+  | `src-tauri/src/biz/mod.rs` | `ListQuery` | `crate::db::inventory_common::ListQuery` | `:40` |
+  | `src-tauri/src/biz/mod.rs` | `ManualSaleRecordDetail` | `crate::db::manual_sale_repo::ManualSaleRecordDetail` | `:41` |
+  | `src-tauri/src/biz/mod.rs` | `ReceivingRecordDetail` | `crate::db::receiving_repo::ReceivingRecordDetail` | `:42` |
+  | `src-tauri/src/biz/mod.rs` | `ReceivingRecordWithSupplier` | `crate::db::receiving_repo::ReceivingRecordWithSupplier` | `:42` |
+  | `src-tauri/src/biz/mod.rs` | `ReturnRecordDetail` | `crate::db::return_repo::ReturnRecordDetail` | `:43` |
+  | `src-tauri/src/biz/mod.rs` | `ReturnRecordSummary` | `crate::db::return_repo::ReturnRecordSummary` | `:43` |
+  | `src-tauri/src/biz/mod.rs` | `MovementQuery` | `crate::db::inventory_repo::MovementQuery` | `:45` |
+  | `src-tauri/src/biz/mod.rs` | `MovementRecord` | `crate::db::inventory_repo::MovementRecord` | `:45` |
+  | `src-tauri/src/biz/mod.rs` | `StockDetail` | `crate::db::product_repo::StockDetail` | `:46` |
+  | `src-tauri/src/biz/product_service.rs` | `PriceHistoryEntry` | `crate::db::product_repo::PriceHistoryEntry` | `:17` |
+  | `src-tauri/src/mnt/backup.rs` | `open_existing_database` | `crate::db::open_existing_database`（AMD2 承認済み MNT no-create 経路） | `:10` |
 
-  合計 30 symbol / 17 statement（統計は `file:line` の一意な組の数 = 17、行 = symbol 数 = 30）。うち型のみは 29 symbol / 16 statement、残り 1 statement / 1 symbol（`mnt/backup.rs:10`）が関数。
+  合計 30 symbol / 17 statement（統計は `(file, 起票時 line)` の一意な組の数 = 17、行 = symbol 数 = 30。line は上記のとおり comment のみで assertion key ではない）。うち型のみは 29 symbol / 16 statement、残り 1 statement / 1 symbol（`mnt/backup.rs`）が関数。15/17 statement が `biz/mod.rs:19-46` に集中する。
 
 - **Non-scope の明記**: alias（`use crate::db as storage; pub use storage::Row;`）・type alias（`pub type Row = crate::db::Row;`）を介した再公開の検出（A 拡張）は本 lane の対象外。C′ 採用は「直接 `pub use` の新規追加のみを止める」という狭い契約であり、洗浄全般を解決済み扱いにしない（10c §3「推薦 candidate C′」）。
 
@@ -167,13 +167,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   3. `src/components/patterns/Pagination.tsx:33-44` の `rangeText(totalCount, from, to, page, totalPages)`（5 個の number 型位置引数）を単一の object 引数（`{ totalCount, from, to, page, totalPages }: { totalCount: number; from: number; to: number; page: number; totalPages: number }`）へ変更し、`:56`・`:103` の呼出し 2 箇所を `rangeText({ totalCount, from, to, page, totalPages })` へ更新する（挙動は完全に不変、既存 `Pagination` の test は無変更で pass する想定 — 引数の値と返り値は変わらない）。
   - `docs/Plans.md` へ Backlog 新規行 2 件（PluExportPage complexity 分割 / ReturnExchangePage max-lines 分割、それぞれ規模 M）を追加する。
 
-- **S2 command drift 検出**: 新規 `scripts/check-command-drift.sh`（bash + `rg` のみ、Python を含む外部 interpreter を呼ばない）を作成する。ロジックは 10c 報告 §2 の prototype（Python）を bash へ移植する: `rg` で D（`#[tauri::command...] pub (async)? fn NAME`、`src-tauri/src` 配下）・H（`generate_handler!\[...\]` ブロック内の `cmd::module::name,` entry）・S（`collect_commands!\[...\]` ブロック内の同形 entry）・T（`src/lib/bindings.ts` の `NAME: ... __TAURI_INVOKE("wire_name")` 対応）の 4 集合を収集し、12 方向の差集合と各集合内 multiplicity が全て 0 であることを assert する。0 でなければ diff 一覧を stdout/stderr に出力して exit 1。既知の生成物・ignore path は `rg` の既定 gitignore 尊重に委ねる（I-G1 型の独自 fs walk を新設しない）。
+- **S2 command drift 検出**: 新規 `scripts/check-command-drift.sh`（bash + `rg` のみ、Python を含む外部 interpreter を呼ばない）を作成する。ロジックは 10c 報告 §2 の prototype（Python）を bash へ移植する: `rg` で D（`#[tauri::command...] pub (async)? fn NAME`、`src-tauri/src` 配下）・H（`generate_handler!\[...\]` ブロック内の `cmd::module::name,` entry）・S（`collect_commands!\[...\]` ブロック内の同形 entry）・T（`src/lib/bindings.ts` の `NAME: ... __TAURI_INVOKE("wire_name")` 対応）の 4 集合を収集し、12 方向の差集合と各集合内 multiplicity が全て 0 であることを assert する。0 でなければ diff 一覧を stdout/stderr に出力して exit 1。既知の生成物・ignore path は `rg` の既定 gitignore 尊重に委ねる（I-G1 型の独自 fs walk を新設しない）。**`#[cfg(test)]` 内の `#[tauri::command]`（現状 0 件、`src-tauri/src/cmd/*.rs` はいずれも file 末尾に `#[cfg(test)]` module を 1 個持つが、その内側に `#[tauri::command]` を持つ既存例は無いことを起票時実測で確認済み）は D の収集対象から明示的に除外するルールを持つ（`architecture_test.rs` の `find_forbidden_imports` と同じ brace 深度追跡で `#[cfg(test)]` 領域を切り離してから D を収集する）。現状 0 件のため drift 検出結果に現時点の影響は無いが、将来 test 専用 command が追加された場合に H/S/T との比較で偽陽性 drift を出さないための明示ルールとして残す（Residual Test Gaps 参照）。
   - `scripts/doc-consistency-check.sh` の設計モード（`else` 分岐、`:1983-2032`）末尾、`check_new_wer_retired_rules`（`:2031`）の直後・`fi`（`:2032`）の直前に、新規関数 `check_command_registry_drift`（既存 `check_*` 関数の calling convention — `header`/`warn`/`error` helper、`$ERRORS`/`$WARNINGS` counter — を踏襲し `bash scripts/check-command-drift.sh` を呼び出して非 0 exit を `error` で報告）の定義と呼出しを追加する。plan モード（`if [ "$TARGET_MODE" = "plan" ]`、`:1925-1981`）には追加しない。`scripts/local-ci.sh` / `scripts/pre-push.sh` / `.github/workflows/ci.yml` は変更しない（起票時実測「S2 実測」の hook 位置の裁定を参照。3 file はいずれも既に `bash scripts/doc-consistency-check.sh` を引数無しで呼んでおり、設計モード経由で到達する）。
   - 新規 `scripts/tests/check-command-drift.test.sh`（`scripts/tests/doc-consistency-plan-packet.test.sh` の `mktemp -d` ベース fixture 構築パターンを踏襲）に、10c 報告 §2「最小の mutation 検証」の 5 mode（baseline PASS / handler 欠落 → exit 1 / 重複 → exit 1 / wire 不一致 → exit 1 / gitignored 生成物混入 → 結果不変 exit 0）を実装する。`COMMAND_AUDIT_ROOT` 相当の環境変数（または引数）で fixture ディレクトリを指定できるようにし、tracked tree を変更せずに実行できることを test 自体が保証する。
   - `scripts/local-ci.sh` の `workflow` classification 分岐（`:199-216`）に既存の shell test 群と同様、`run_required check-command-drift-tests "$REPO_ROOT" bash scripts/tests/check-command-drift.test.sh` を追加する。
+  - `scripts/ci/classify-changes.sh:55` の `workflow` 判定 case pattern（`.github/workflows/*|...|scripts/doc-consistency-check.sh|scripts/check-env-safety.sh|scripts/check-workflow-git.sh)`）へ `scripts/check-command-drift.sh` を追加する（Plan Review H5: 現状のこの glob に `scripts/check-command-drift.sh` は含まれていない。`scripts/tests/*` は既にこの glob に含まれるため self-test file 自体の変更は拾われるが、checker 本体〈`scripts/check-command-drift.sh`〉のみを変更する PR は `workflow=false` に分類され、`local-ci.sh` の `workflow` classification 分岐にある `check-command-drift-tests` self-test が実行されない隙間が残る）。
 
-- **S3 architecture_test re-export 増加禁止（C′）**: `src-tauri/tests/architecture_test.rs` に新規 const `DB_IO_REEXPORT_ALLOWLIST`（上記「S3 実測」の 30 symbol/17 statement、`(file, line, symbol)` 3 要素タプルの配列）と新規 `#[test] fn biz_mnt_direct_db_io_reexport_allowlist()` を追加する。既存 `collect_rs_files(dir: &Path)`（`:55`、既に任意 dir を引数に取る）を再利用して `src/biz` と `src/mnt` を走査し、各 `.rs` file 内の `pub use crate::db::...` / `pub(crate) use crate::db::...` / 同形の `crate::io::` 文（複数行の brace-grouped import を含む — `biz/mod.rs:25-27` の `Stocktake` 系グループが実例、既存 `find_forbidden_imports` の `#[cfg(test)]` brace 追跡パターンを踏襲して brace 深度で複数行を束ねる）を検出し、symbol 単位で allow list と完全一致（追加・削除の両方向）することを assert する。不一致時は allow list の file:line と実際の差分、D-083（decision-log）への参照を含む panic message を出す。
-  - negative fixture: 既存 `architecture_test.rs` は fixture 機構を持たない（実 `src` tree を直接走査する）ため、batch 1 S1（`sweep_dir_for_tokens` の `tempfile::tempdir()` 型 test、`src-tauri/tests/import_internal_contract_test.rs`）の前例を踏襲し、新規 test 内で `tempfile::tempdir()` に `biz/mod.rs` 相当の synthetic file を作成して `pub use crate::db::Row;`（allow list に存在しない）を書き込み、新規スキャン関数を直接呼び出して violation が検出されることを確認する（実 repo tree・allow list 本体には影響しない、独立した unit test）。同一 test 内で allow list に実在する symbol（例 `DbConnection`）を含む synthetic file も配置し、既存許可分は violation にならないことを対で確認する（空集合 oracle を避ける、batch 1 SC1/SC2 の設計を踏襲）。
+- **S3 architecture_test re-export 増加禁止（C′）**: `src-tauri/tests/architecture_test.rs` に新規 const `DB_IO_REEXPORT_ALLOWLIST`（上記「S3 実測」の 30 symbol/17 statement、`(file, symbol, 再公開元 full path)` 3 要素タプルの配列 — **行番号は要素に含めない**、Plan Review H2 参照）と新規 `#[test] fn biz_mnt_direct_db_io_reexport_allowlist()` を追加する。既存 `collect_rs_files(dir: &Path)`（`:55`、既に任意 dir を引数に取る）を再利用して `src/biz` と `src/mnt` を走査し、各 `.rs` file 内の `pub use crate::db::...` / `pub(crate) use crate::db::...` / 同形の `crate::io::` 文（複数行の brace-grouped import を含む — `biz/mod.rs:25-27` の `Stocktake` 系グループが実例、既存 `find_forbidden_imports` の `#[cfg(test)]` brace 追跡パターンを踏襲して brace 深度で複数行を束ねる）を検出し、`(file, symbol, 再公開元 full path)` 単位で allow list と完全一致（追加・削除・出所すげ替えの全方向）することを assert する。不一致時は allow list の該当 entry（file + symbol、行番号は含めない）と実際の差分、D-083（decision-log）への参照を含む panic message を出す。
+  - negative fixture: 既存 `architecture_test.rs` は fixture 機構を持たない（実 `src` tree を直接走査する）ため、batch 1 S1（`sweep_dir_for_tokens` の `tempfile::tempdir()` 型 test、`src-tauri/tests/import_internal_contract_test.rs`）の前例を踏襲し、新規 test 内で `tempfile::tempdir()` に `biz/mod.rs` 相当の synthetic file を作成して AC15 の 5 fixture（単純 `pub use` / `pub(crate) use` / grouped import 内 1 symbol混在 / コメント付き / 出所すげ替え）を書き込み、新規スキャン関数を直接呼び出して violation が検出されることを確認する（実 repo tree・allow list 本体には影響しない、独立した unit test）。同一 test 内で allow list に実在する symbol（例 `DbConnection`）を含む synthetic file も配置し、既存許可分は violation にならないことを対で確認する（空集合 oracle を避ける、batch 1 SC1/SC2 の設計を踏襲）。
 
 - **S4 docs 同期（`decision-log.md` / `cmd-task-specs.md` は S3 実装 commit で追加する — plan-first commit には含めない。以下は Writer が S3 で追加する提案文言〈起草者 draft、Final Review で文言確認〉。次の空き番号は `rg -n "^## D-08" docs/decision-log.md | tail -3` で `D-082` が最終（`:670`）であることを起票時実測で確認済み、よって次は `D-083`）**:
   - `docs/decision-log.md` に、既存 `## D-08x` entry と同一 format（Decision / Status / Why / Impact / Alternatives considered / Revisit）で以下を追加する:
@@ -181,7 +182,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
     ```
     ## D-083: biz/mnt からの DB/IO 直接 re-export を allow list で増加禁止（C′、衛生 batch 3）（2026-09-08）
 
-    - Decision: `src-tauri/src/biz/**` と `src-tauri/src/mnt/**` からの `crate::db::*` / `crate::io::*` の直接 `pub use` 再公開を、起票時点の 30 symbol（17 statement）を allow list として凍結し、`src-tauri/tests/architecture_test.rs` の機械検査で新規追加（および allow list からの無断削除）を禁止する。alias 経由・type alias 経由の再公開の検出、および既存 30 symbol の削減・型所有の再設計は本 decision の対象外とする（別設計判断、`docs/Plans.md` Backlog 残置）。
+    - Decision: `src-tauri/src/biz/**` と `src-tauri/src/mnt/**` からの `crate::db::*` / `crate::io::*` の直接 `pub use` / `pub(crate) use` 再公開を、起票時点の 30 symbol（17 statement）を allow list として凍結し、`src-tauri/tests/architecture_test.rs` の機械検査で新規追加（および allow list からの無断削除）を禁止する。alias 経由・type alias 経由の再公開の検出、および既存 30 symbol の削減・型所有の再設計は本 decision の対象外とする（別設計判断、`docs/Plans.md` Backlog 残置）。
     - Status: accepted
     - Why: 衛生 batch 3 起票時の read-only 監査（`.local/codex-orders/reports/10c-command-drift-and-reexport.md` §3）で、cmd → biz/mnt 経由の DB 型共有は D-060 が正本化した意図的設計（CMD-11 backup/restore 経路、CSV/inventory 系 DTO 共有）であり、全面禁止（監査の「C」案）は既存設計を破壊すると判明した。一方で無制限の増加は既存 `architecture_test.rs` の layer check（`use crate::db` の直接 import のみ検出、re-export 経由は対象外）をすり抜ける経路であり、drift の監視が皆無だった。allow list による増分 guard（監査の「C′」案）は、既存の意図的公開面を壊さず新規の無審査な再公開だけを止める最小 gate として選ばれた。
     - Impact: `src-tauri/tests/architecture_test.rs` に allow list 定数と新規 test を追加する（衛生 batch 3、Plan Packet `docs/plans/2026-09-08-hygiene-batch-3-lint-drift-reexport.md`）。`docs/architecture/cmd-task-specs.md:128` の検査境界記述を同期する。allow list への今後の追加は architecture_test.rs の const 編集で行い、無審査の追加を防ぐことが目的のため追加自体を禁止しない。
@@ -192,11 +193,12 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `docs/architecture/cmd-task-specs.md:128` の「検査対象は `use crate::db` / `use crate::io` の直接 import 行であり、re-export 経由の間接依存は対象外（検出強化は backlog）。」に続けて、以下 1 文を追記する:
 
     ```
-    biz/mnt からの直接 `pub use crate::db::*` / `crate::io::*` 再公開は D-083 の allow list（`src-tauri/tests/architecture_test.rs`）で新規追加を禁止する。alias / type alias を介した再公開は対象外のまま（検出強化は backlog）。
+    biz/mnt からの直接 `pub use` / `pub(crate) use crate::db::*` / `crate::io::*` 再公開は D-083 の allow list（`src-tauri/tests/architecture_test.rs`）で新規追加を禁止する。alias / type alias を介した再公開は対象外のまま（検出強化は backlog）。
     ```
 
   - `docs/quality/review-checklist.md` は変更しない（⑪/⑫ と同様、operator UI / runtime 契約に非接触のため既存 9 カテゴリのいずれにも該当しない）。
   - `docs/Plans.md`: Backlog 3 件（`:152,155,167`）へ「⑯ で起票」注記を追加し、⑬ の直後に ⑯ 行を追加する（plan-first commit に含める、Plans.md はダッシュボードであり実装対象ではないため）。新規 Backlog 行 2 件（PluExportPage / ReturnExchangePage の分割候補、S1 disposition 由来）を追加する（同様に plan-first commit）。
+  - `docs/Plans.md` Backlog の D-023 POS adapter boundary entry の事実訂正（Plan Review H6、Coordinator 指示、Codex 監査 `.local/codex-orders/reports/10b-pos-adapter-boundary.md` 起源、gitignore 配下）: 旧記載「`sales_repo.rs` 37 箇所が最多」を、10b 監査（2026-09-08、read-only）の実測——該当 37 箇所は全件 `#[cfg(test)]` 内、production の CASIO 固有語漏出は実測 41 行 / 61 出現（IO 層は正当な置き場所として除外）——へ訂正し、推奨（B 初段: `io::casio` に literal 集約 + `ReportKind` 変換関数、trait/factory/registry は作らない）、owner 状況（現行レジのリース残り約 2 年、満了時に「こっちのアプリに合わせて探す」方針）、起票判断（衛生 batch 3 の次の Codex 実装 lane 候補、M・R3）を記録する。**この rewrite は記録のみであり、B 初段の実装自体は別 lane（本 packet の Scope・AC には含まない）**。plan-first commit に含める（Plans.md 編集のため）。
 
 ## Non-scope
 
@@ -211,7 +213,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - AC1（S1）: `eslint.config.js` の既存 block（`:1-117`、⑪/⑫ が確定させた全 block）が完全に無変更のまま残る — `diff <(git show 47f2163:eslint.config.js | bat --plain --line-range 1:117) <(bat --plain --line-range 1:117 eslint.config.js)` が空（exit 0。⑫ AC5 の逐語比較 oracle を踏襲、`rg -Fc` の出現数チェックは新規 block へ既存 glob を混入させても検出しないため不採用）
 - AC2（S1）: 新規 block が barrel block（`files: ["src/components/patterns/index.ts", "src/components/ui/index.ts"]`）より前に置かれる — `rg -n 'complexity: \["warn", 40\]' eslint.config.js`（新規 block 出現行）が `rg -n 'src/components/patterns/index.ts' eslint.config.js`（barrel block 出現行）より小さい
-- AC3（S1、前提: `npm run generate:routes` 実行済み）: `npx eslint .` の `complexity`/`max-depth`/`max-lines-per-function`/`max-params` 警告が 0 件（disposition 3 件を実施した状態）
+- AC3（S1、前提: `npm run generate:routes` 実行済み、Plan Review H9 是正: スカラー oracle を明記）: `npx eslint .` 全体の exit code だけでなく、対象 4 rule の警告件数そのものを数値で確認する — `npx eslint "src/features/**/*.{ts,tsx}" "src/components/patterns/**/*.{ts,tsx}" -f json | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));const rules=new Set(['complexity','max-depth','max-lines-per-function','max-params']);let n=0;for(const f of d)for(const m of f.messages)if(rules.has(m.ruleId))n++;console.log(n);"` の出力が `0`（disposition 3 件を実施した状態、baseline 3）
 - AC4（S1、Writer probe、正の発火確認、mutant）: 新規 block の `complexity` max を一時的に `1` へ下げて `npx eslint src/components/patterns/Pagination.tsx` を実行すると warning が 1 件以上出ることを確認してから元の `40` へ復元する（rule が実際に発火することの確認 — 警告 0 件が「rule が正しく機能して 0」なのか「glob 誤りで対象外のため常に 0」なのかを区別する。ponytail: 専用 fixture file は新設せず、実在する低複雑度関数への一時的閾値操作で足りる）
 - AC5（S1）: `PluExportPage.tsx` / `ReturnExchangePage.tsx` に disable comment が exact 1 件ずつ存在する — `rg -Fc 'eslint-disable-next-line complexity --' src/features/plu-export/PluExportPage.tsx` = 1（baseline 0）、`rg -Fc 'eslint-disable-next-line max-lines-per-function --' src/features/return-exchange/ReturnExchangePage.tsx` = 1（baseline 0）
 - AC6（S1）: `Pagination.tsx` の `rangeText` が object 引数化される — `rg -Fc 'function rangeText({' src/components/patterns/Pagination.tsx` = 1（baseline 0）、`rg -Fc 'rangeText(totalCount, from, to, page, totalPages)' src/components/patterns/Pagination.tsx` = 0（baseline 2、旧 5 位置引数呼出しが残らない）、既存 `Pagination` 関連 test が無変更で PASS
@@ -219,17 +221,24 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC8（S2）: `scripts/check-command-drift.sh` が Python を含む外部 interpreter を呼ばない — `rg -c 'python3?\b' scripts/check-command-drift.sh` = 0
 - AC9（S2）: 起票時実測の baseline（68/68/68/68、drift 0）で `bash scripts/check-command-drift.sh` が exit 0
 - AC10（S2、Matrix 参照）: `bash scripts/tests/check-command-drift.test.sh` が 5 mode（baseline PASS / handler 欠落 fail / 重複 fail / wire 不一致 fail / gitignored 生成物混入 結果不変）を全て期待どおりに実行し exit 0
-- AC11（S2）: `scripts/local-ci.sh` / `scripts/pre-push.sh` / `.github/workflows/ci.yml` のいずれにも新規 check への直接呼出しが追加されない — 3 file の `git diff 47f2163` が空
-- AC12（S2）: `scripts/doc-consistency-check.sh` の設計モードから新規 check が 1 回だけ呼ばれる — `rg -Fc 'check-command-drift.sh' scripts/doc-consistency-check.sh` = 1、plan モード分岐（`:1925-1981` 相当、行番号は実装後に再確認）には出現しない
+- AC11（S2、Plan Review H1 是正: 旧稿は Scope S2 の `local-ci.sh` self-test 登録行と矛盾していた）: hook 到達境界の非侵襲性を 2 点で確認する。(a) `scripts/pre-push.sh` と `.github/workflows/ci.yml` はいずれも無変更 — `git diff 47f2163 -- scripts/pre-push.sh .github/workflows/ci.yml` が空。(b) `scripts/local-ci.sh` は `workflow` classification 分岐（`:199-216`）内への self-test 登録 1 行の追加のみ — 追加はその `run_required check-command-drift-tests "$REPO_ROOT" bash scripts/tests/check-command-drift.test.sh` の 1 行に限られ、他の行は無変更。かつ checker 本体（`bash scripts/check-command-drift.sh`）への直接呼出しが `doc-consistency-check.sh` の設計モード以外に存在しない — `rg -Fc 'bash scripts/check-command-drift.sh' scripts/local-ci.sh scripts/pre-push.sh .github/workflows/ci.yml` = 0（起票時実測: baseline 0、`check-command-drift.sh` 未実装のため）
+- AC12（S2、Plan Review H8 是正: `rg -Fc 'check-command-drift.sh'` は保守性 comment が script 名を書くだけで 2 になり脆弱）: `scripts/doc-consistency-check.sh` の設計モードから新規 check が 1 回だけ呼ばれる — 呼出し literal で検査する `rg -Fc 'bash scripts/check-command-drift.sh' scripts/doc-consistency-check.sh` = 1（起票時実測 baseline 0）。かつ plan モード分岐（現行 `:1925-1981`、実装後に行番号を再確認する必要がある場合は `check_new_wer_retired_rules` のプラン分岐側呼出し `:1976` を目印にする）にはこの呼出し literal が出現しない
 - AC13（S2）: `bash scripts/doc-consistency-check.sh --target plan` は新規 check を実行しない（AC12 の分岐確認と対）
 - AC14（S3）: `cargo test --test architecture_test` が既存 `layer_dependency_rules` + 新規 `biz_mnt_direct_db_io_reexport_allowlist` の両方で PASS（clean tree、allow list = 起票時実測どおり）
-- AC15（S3、Writer probe、負例、Matrix SC-REX-2 参照）: `src-tauri/src/biz/mod.rs` へ一時的に `pub use crate::db::Row;`（allow list 外、架空 symbol）を追加すると `cargo test --test architecture_test biz_mnt_direct_db_io_reexport_allowlist` が FAIL することを確認してから復元する（`git diff --quiet -- src-tauri/src/biz/mod.rs` で復元確認）
+- AC15（S3、Writer probe、負例、Matrix SC-REX-1 参照、Plan Review H2/H4/H10 反映）: 以下の負例を `src-tauri/src/biz/mod.rs` への一時的な追加として個別に確認し、各回 `cargo test --test architecture_test biz_mnt_direct_db_io_reexport_allowlist` が FAIL することを確かめてから復元する（`git diff --quiet -- src-tauri/src/biz/mod.rs` で復元確認、10c 報告 `:697` の推奨〈`pub(crate)`、group/multiline、コメントも fixture 化〉に従う）:
+  1. `pub use crate::db::Row;`（allow list 外、架空 symbol、単純 `pub use`）
+  2. `pub(crate) use crate::db::Row2;`（allow list 外、`pub(crate) use` 形式 — allow list は `pub use`/`pub(crate) use` 双方を検出対象にすることの確認）
+  3. `pub use crate::db::product_repo::{Department, Row3};`（既存 allow-listed symbol `Department` と架空 symbol `Row3` を同一 grouped import に混在させ、group 内の 1 symbol だけが未許可でも検出できることを確認 — 「出所すげ替え」変種の group 版）
+  4. コメント付き（`// comment\npub use crate::db::Row4;` のような直前行コメントを伴う形）でも検出されることの確認
+  5. **出所すげ替え**（Plan Review H2）: allow list 上に実在する symbol 名を、allow list に記載された再公開元とは異なる `crate::db::...` path から再公開する（例 `PaginatedResult` を `crate::db::PaginatedResult` ではなく合成の `crate::db::other_repo::PaginatedResult` から `pub use` する）— symbol 名の一致だけでなく再公開元 full path の一致も assertion key に含まれていることの確認（symbol 名のみを key にすると見逃す変種）
 - AC16（S3）: 新規 test は allow list に実在する 30 symbol を violation として検出しない — `cargo test --test architecture_test biz_mnt_direct_db_io_reexport_allowlist` が exit 0（AC14 の PASS がこれを含む）
 - AC17（S3）: `docs/decision-log.md` に `## D-083` が新設される — `rg -Fc '## D-083' docs/decision-log.md` = 1
 - AC18（S3）: `docs/architecture/cmd-task-specs.md:128` 相当の記述に D-083 参照が追記される — `rg -Fc 'D-083' docs/architecture/cmd-task-specs.md` ≥ 1
 - AC19（全体）: `bash scripts/doc-consistency-check.sh --target plan` と `bash scripts/check-workflow-git.sh` がいずれも exit 0（ERROR 0）
 - AC20（全体）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` と `npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` がいずれも exit 0
 - AC21（全体）: `docs/Plans.md` の Backlog 3 件（`:152,155,167`、行番号は起票時点）に「⑯ で起票」注記が付与され、⑬ の直後に ⑯ 行が追加される
+- AC22（S2、Plan Review H5）: `scripts/ci/classify-changes.sh:55` の `workflow` 判定 case pattern に `scripts/check-command-drift.sh` が追加される — `rg -Fc 'scripts/check-command-drift.sh' scripts/ci/classify-changes.sh` = 1（起票時実測 baseline 0）
+- AC23（S4、Plan Review H6）: `docs/Plans.md` の D-023 Backlog entry が 10b 監査の事実訂正を反映する — `rg -Fc '全件 \`#\[cfg\(test\)\]\` 内と判明' docs/Plans.md` ≥ 1（起票時実測、本 packet の plan-first commit で既に 1、Coordinator 指示による先行編集）
 
 ## Design Sources
 
@@ -260,7 +269,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | — | DEV_WORKFLOW.md Risk Tiers / Contract Audit (R3/R4) | なし（既決規定の適用） | S1: A 案採用（B 案は test suite ノイズで不採用、起票時実測「S1 実測」） | `eslint.config.js` / `PluExportPage.tsx` / `ReturnExchangePage.tsx` / `Pagination.tsx` | AC1-AC7 |
-| — | 10c 報告 §2 | なし（本 lane の新規実装） | S2: B 案（bash+rg）採用、A 案（pure Rust）は保守コストで不採用、doc-consistency-check.sh 経由の hook で 3 file 非改変 | `scripts/check-command-drift.sh` / `scripts/doc-consistency-check.sh` | AC8-AC13 |
+| — | 10c 報告 §2 | なし（本 lane の新規実装） | S2: B 案（bash+rg）採用、A 案（pure Rust）は保守コストで不採用、doc-consistency-check.sh 経由の hook で 3 file 非改変 | `scripts/check-command-drift.sh` / `scripts/doc-consistency-check.sh` | AC8-AC13, AC22 |
 | — | 10c 報告 §3 | D-083（本 lane で新設） | S3: C′（allow list 増分禁止）採用、A（全到達禁止）と C（全面禁止）は既存設計破壊のため不採用 | `src-tauri/tests/architecture_test.rs` | AC14-AC16 |
 
 ## Design Intent Audit
@@ -335,9 +344,9 @@ N/A — JSON / CSV / DTO / bindings / DB 互換のいずれにも触れない。
 ## Review Focus
 
 - S1: 新規 block が既存 3 block（色/button 2 個 + barrel 1 個）を一切変更していないこと（AC1 の逐語比較）。disable comment 2 件が理由付きで exact 1 件ずつであること（AC5）。`rangeText` の object 引数化が既存呼出し全 2 箇所を漏れなく更新していること（AC6）。閾値 4 値が report の A 案どおり（40/3/650・skipBlankLines/skipComments/IIFEs/4）であること
-- S2: `scripts/check-command-drift.sh` が Python を含む外部 interpreter を一切呼ばないこと（AC8）。`local-ci.sh` / `pre-push.sh` / `ci.yml` を直接編集していないこと（AC11、hook が `doc-consistency-check.sh` の設計モード 1 箇所のみであること、AC12-AC13）。5 mode self-test（AC10）が report 10c §2 の mutation と同型であること。`rg` の gitignore 既定尊重に依存し独自 fs walk を新設していないこと（I-G1 回帰の防止）
+- S2: `scripts/check-command-drift.sh` が Python を含む外部 interpreter を一切呼ばないこと（AC8）。`pre-push.sh` / `ci.yml` は無変更、`local-ci.sh` は self-test 登録の 1 行追加のみであること（AC11(a)(b)）。checker 本体への直接呼出しが `doc-consistency-check.sh` の設計モード以外に存在しないこと（AC11(b) の `rg -Fc` = 0、AC12-AC13）。5 mode self-test（AC10）が report 10c §2 の mutation と同型であること。`rg` の gitignore 既定尊重に依存し独自 fs walk を新設していないこと（I-G1 回帰の防止）。`scripts/ci/classify-changes.sh:55` の workflow glob に `scripts/check-command-drift.sh` が追加され、checker-only PR でも self-test が classify されること（AC22）
 - S3: allow list が起票時実測の 30 symbol/17 statement と過不足なく一致すること（AC14, AC16）。multi-line brace-grouped `pub use`（`biz/mod.rs:25-27` 型）を正しく 1 statement・複数 symbol として解析していること。negative fixture（AC15）が実 repo tree を汚さず復元されること。D-083 の Alternatives 節が A/C 不採用の理由（既存設計破壊）を正しく反映していること
-- S2/S3 とも workflow gate change のため Contract Audit を独立 2 パス（Double Audit）で実施すること（Sonnet fresh 1 パス + Opus 1 パス、それぞれ diff と新規 test/fixture を独立に読む）。S1 は既存 block 非破壊の逐語比較（AC1）を主眼に 1 パスで足りる
+- S1・S2・S3 とも workflow gate change のため Contract Audit を独立 2 パス（Double Audit）で実施すること（Sonnet fresh 1 パス + Opus 1 パス、それぞれ diff と新規 test/fixture を独立に読む）。S1 は⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md:46,:241`）と同型の `eslint.config.js` 変更のため単独でも Double Audit 対象（Plan Review round 1 H3、Risk 節参照）
 
 ## Spec Contract
 
@@ -349,7 +358,7 @@ Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..4, SPEC-HYG3-R
 - SPEC-HYG3-CMD-2: checker が `local-ci.sh`/`pre-push.sh`/`ci.yml` を直接改変せず `doc-consistency-check.sh` 経由の 1 箇所 hook で 3 経路へ到達する
 - SPEC-HYG3-CMD-3: 5 mode self-test が report と同型の mutation を再現する
 - SPEC-HYG3-CMD-4: checker が Python 依存を持たない
-- SPEC-HYG3-REX-1: allow list（30 symbol/17 statement）が新規直接再公開の追加・既存例外の無断削除の両方向で厳密一致検査される
+- SPEC-HYG3-REX-1: allow list（30 symbol/17 statement、`pub use` / `pub(crate) use` 双方を対象）が新規直接再公開の追加・既存例外の無断削除の両方向で厳密一致検査される
 - SPEC-HYG3-REX-2: negative fixture（`pub use crate::db::Row;`）が検出され、実 tree は汚染されない
 - SPEC-HYG3-REX-3: alias/type alias の残存境界が Non-scope として明記され、洗浄完了を主張しない
 
@@ -359,7 +368,7 @@ Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..4, SPEC-HYG3-R
 |---|---|---|---|---|
 | SPEC-HYG3-LINT-1 | S1 | `npx eslint .` | 既存 block 非破壊 + barrel 前挿入 | AC1-AC3 |
 | SPEC-HYG3-LINT-2 | S1 | disable comment 検査 + `rangeText` 契約 test + 発火 probe | disposition 3 件の妥当性 | AC4-AC7 |
-| SPEC-HYG3-CMD-1..4 | S2 | `check-command-drift.sh` + self-test 5 mode | Python 非依存 + hook 到達境界 | AC8-AC13 |
+| SPEC-HYG3-CMD-1..4 | S2 | `check-command-drift.sh` + self-test 5 mode | Python 非依存 + hook 到達境界 | AC8-AC13, AC22 |
 | SPEC-HYG3-REX-1..3 | S3 | `cargo test --test architecture_test` + negative fixture | allow list 厳密一致 + 残存境界の明記 | AC14-AC18 |
 
 ## Data Safety

@@ -4,7 +4,7 @@ Plan Packet: [../2026-09-08-hygiene-batch-3-lint-drift-reexport.md](../2026-09-0
 
 ## Risk
 
-R3（S2 が `scripts/doc-consistency-check.sh`〈local-ci.sh:193 / pre-push.sh:217 / ci.yml の Design doc consistency job が実行する merge gate script〉へ新規 check を追加し、S3 が `src-tauri/tests/architecture_test.rs`〈cargo test が実行する既存 layer-boundary test〉へ新規 test を追加する workflow gate change に該当するため、DEV_WORKFLOW Risk Tiers の uncertain-default 規則で R3 とする。S2/S3 は新規ロジックのため Contract Audit を Double Audit で実施する。S1 は⑫ 承認済み方式の反復で単独なら R1〜R2 相当。runtime・DB・DTO・operator 画面には非接触のため L3 は非対象）。
+R3（S1 が `eslint.config.js`〈`npm run lint` が直接実行する gate 定義〉、S2 が `scripts/doc-consistency-check.sh`〈local-ci.sh:193 / pre-push.sh:217 / ci.yml の Design doc consistency job が実行する merge gate script〉、S3 が `src-tauri/tests/architecture_test.rs`〈cargo test が実行する既存 layer-boundary test〉へそれぞれ新規 block/check/test を追加する workflow gate change に該当するため、DEV_WORKFLOW Risk Tiers の uncertain-default 規則で R3 とする。⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md:46,:241`）が S1 と同型の `eslint.config.js` 変更に Double Audit を単独適用した先例に従い、S1・S2・S3 すべてで Contract Audit を Double Audit で実施する（Plan Review round 1 H3、旧稿は S1 を「⑫ 承認済み方式の反復で単独なら R1〜R2 相当」として Double Audit 対象外としていたが、これは誤りとして撤回する）。runtime・DB・DTO・operator 画面には非接触のため L3 は非対象）。
 
 ## Contracts Under Test
 
@@ -12,10 +12,11 @@ R3（S2 が `scripts/doc-consistency-check.sh`〈local-ci.sh:193 / pre-push.sh:2
 - SC-LINT-2（S1）: 新規 block の 4 rule が実際に発火する（glob 誤りによる恒常的 0 件ではない）
 - SC-LINT-3（S1）: disposition 3 件（disable×2 + object 引数化×1）が理由コメント付き・挙動不変で実施される
 - SC-CMD-1（S2）: D/H/S/T 4 集合とその multiplicity が完全一致する（drift 0）
-- SC-CMD-2（S2）: checker が `local-ci.sh`/`pre-push.sh`/`ci.yml` を直接改変せず、`doc-consistency-check.sh` の設計モード 1 箇所経由で 3 経路（local-ci:193 / pre-push:217 / CI docs job）へ到達する
+- SC-CMD-2（S2、Plan Review H1 是正: 旧稿は Scope の `local-ci.sh` self-test 登録行と矛盾していた）: (a) `pre-push.sh`/`ci.yml` は無変更のまま、(b) `local-ci.sh` は self-test 登録の 1 行追加のみで、checker 本体（`bash scripts/check-command-drift.sh`）への直接呼出しは `doc-consistency-check.sh` の設計モード 1 箇所のみに存在し、3 経路（local-ci:193 / pre-push:217 / CI docs job）へその 1 箇所経由で到達する
 - SC-CMD-3（S2）: checker が Python を含む外部 interpreter に依存しない
 - SC-CMD-4（S2）: `rg` の既定 gitignore 尊重により生成物混入で誤検出しない（I-G1 型欠陥の非回帰）
-- SC-REX-1（S3）: allow list（30 symbol/17 statement）に対する新規直接再公開の追加を検出する
+- SC-CMD-5（S2、Plan Review H5）: `scripts/ci/classify-changes.sh:55` の `workflow` glob に `scripts/check-command-drift.sh` が含まれ、checker 本体のみを変更する PR でも `workflow=true` に分類される
+- SC-REX-1（S3、Plan Review H2/H4 是正: assertion key から行番号を除外し `pub use`/`pub(crate) use` 双方を対象にする）: allow list（30 symbol/17 statement、key = `(file, symbol, 再公開元 full path)`）に対する新規直接再公開の追加（単純 `pub use`・`pub(crate) use`・grouped import 内混在・コメント付き・出所すげ替えの 5 変種）を検出する
 - SC-REX-2（S3）: allow list に実在する 30 symbol（multi-line brace-grouped import を含む）を誤って violation 扱いしない
 - SC-REX-3（S3）: allow list からの無断削除（既存 exception の消失）も検出する
 
@@ -26,7 +27,7 @@ R3（S2 が `scripts/doc-consistency-check.sh`〈local-ci.sh:193 / pre-push.sh:2
 - disable comment に理由が無い、または対象外の rule/site に付与される
 - `rangeText` の object 引数化で呼出し順序や値が入れ替わる（既存 test が無変更で PASS することが唯一の回帰防止線）
 - command drift checker が D/H/S/T いずれかの collection ロジックを誤り、実際の drift（handler 欠落・重複・wire 不一致）を見逃す
-- checker が `local-ci.sh`/`pre-push.sh`/`ci.yml` を直接編集してしまい、二重呼出しまたは新規 workflow ステップになる（Hosted CI 到達性の設計意図から逸脱）
+- checker が `pre-push.sh`/`ci.yml` を直接編集してしまう、または `local-ci.sh` へ self-test 登録以外の変更（checker 本体への直接呼出し等）を紛れ込ませる、または `doc-consistency-check.sh` 以外の場所から checker 本体を呼んでしまい二重呼出しになる（Hosted CI 到達性の設計意図から逸脱）
 - checker が独自の fs walk を実装し gitignore を尊重せず、生成物混入で誤検出する（I-G1 の再発）
 - architecture_test の allow list 比較が multi-line brace-grouped import（`biz/mod.rs:25-27` 型）を 1 symbol としてしか拾わず、グループ内の追加 symbol を見逃す
 - allow list の統計方向が単方向（追加のみ検出、削除は無視）で、既存 exception が無断で消えても検出できない
@@ -39,11 +40,12 @@ R3（S2 が `scripts/doc-consistency-check.sh`〈local-ci.sh:193 / pre-push.sh:2
 | SC-LINT-2 rule 発火の正証明（S1） | glob 誤りで常時 0 件 | unit（Writer probe、負例、AC4） | 新規 block の `complexity` max を一時的に `1` へ下げて `Pagination.tsx` を lint → warning ≥1 を確認して復元 | 閾値を下げても warning が増えない（block が対象ファイルに効いていない） |
 | SC-LINT-3 disposition の妥当性（S1） | disable 理由なし / `rangeText` の挙動変化 | unit（`rg` literal 検査 + 既存 test 回帰） | AC5（disable comment 存在）+ AC6（`rangeText` signature 変更 + 旧呼出し 0 件）+ 既存 `Pagination` test 無変更 PASS | disable comment が無い、または `rangeText` の呼出しで引数の値・順序が入れ替わり既存 test が壊れる |
 | SC-CMD-1 D/H/S/T 一致（S2） | 実際の drift を見逃す | unit（`scripts/tests/check-command-drift.test.sh`、mutation） | `handler 欠落`（`generate_handler!` から 1 entry 除去）→ exit 1 / `重複`（同 entry 重複追加）→ exit 1 / `wire 不一致`（bindings.ts の wire 文字列差し替え）→ exit 1 | いずれかの mutant で exit 0 のまま（drift を検出できない） |
-| SC-CMD-2 hook 到達境界の非侵襲性（S2） | 3 file を直接改変してしまう | regression（`git diff` 空検査） | AC11 の `git diff 47f2163 -- scripts/local-ci.sh scripts/pre-push.sh .github/workflows/ci.yml` が空 + AC12 の `doc-consistency-check.sh` 内 1 箇所 hook 確認 | 3 file のいずれかに差分が生じる、または hook 呼出しが 2 箇所以上／0 箇所になる |
+| SC-CMD-2 hook 到達境界の非侵襲性（S2） | `pre-push.sh`/`ci.yml` を直接改変、または `local-ci.sh` へ self-test 登録以外の変更が紛れ込む | regression（`git diff` 空検査 + 呼出し literal 検査） | AC11(a) の `git diff 47f2163 -- scripts/pre-push.sh .github/workflows/ci.yml` が空 + AC11(b) の `local-ci.sh` self-test 登録 1 行のみ + `rg -Fc 'bash scripts/check-command-drift.sh' scripts/local-ci.sh scripts/pre-push.sh .github/workflows/ci.yml` = 0 + AC12 の `doc-consistency-check.sh` 内 1 箇所 hook 確認（呼出し literal） | `pre-push.sh`/`ci.yml` に差分が生じる、または `local-ci.sh` に self-test 登録行以外の差分が生じる、または checker 本体への直接呼出しが `doc-consistency-check.sh` 以外に見つかる、または hook 呼出しが 2 箇所以上／0 箇所になる |
 | SC-CMD-3 Python 非依存（S2） | 外部 interpreter 依存の混入 | static（`rg` literal 検査） | AC8 の `rg -c 'python3?\b' scripts/check-command-drift.sh` = 0 | script 内に `python`/`python3` 呼出しが存在する |
 | SC-CMD-4 gitignore 非回帰（S2） | 独自 fs walk で誤検出 | unit（`check-command-drift.test.sh` mode 5） | `gitignored 生成物混入` fixture（合成 `.rs` file を `.gitignore` 追記 + `git init` した一時 dir 内に配置）→ baseline と結果不変（exit 0） | gitignore 対象の合成生成物混入で結果が変わる（誤って D に計上される等） |
-| SC-REX-1 新規直接再公開の検出（S3） | allow list 外の追加を見逃す | unit（`architecture_test.rs`、Writer probe、負例） | AC15: `biz/mod.rs` へ一時的に `pub use crate::db::Row;` 追加 → `biz_mnt_direct_db_io_reexport_allowlist` が FAIL、復元後 `git diff --quiet` で確認 | mutant 追加後も test が PASS する（allow list 比較が機能していない） |
-| SC-REX-2 grouped import の正確な解析（S3） | multi-line brace group を見逃す/誤集計 | unit（`architecture_test.rs`、既存 30 symbol の再検証） | AC14/AC16: 既存 `biz/mod.rs:25-27`（`Stocktake`/`StocktakeItemDetail`/`StocktakeProgress`/`LastStocktakeSummary` の 4 symbol 1 statement）が violation にならず allow list どおり pass する | grouped import の 4 symbol のうち一部しか認識されず、残りが「未許可の新規再公開」として誤検出される、または全体が 1 symbol としてしか認識されない |
+| SC-CMD-5 classify-changes.sh の workflow 分類（S2） | checker-only PR が classify されず self-test が実行されない | static（`rg` literal 検査） | AC22 の `rg -Fc 'scripts/check-command-drift.sh' scripts/ci/classify-changes.sh` = 1 | `scripts/check-command-drift.sh` が `:55` の case pattern に含まれない（起票時実測 baseline 0） |
+| SC-REX-1 新規直接再公開の検出（S3、Plan Review H2/H4 是正: 5 変種 + key から line 除外） | allow list 外の追加を見逃す、または line を key に含めて無関係な行ずれで false FAIL する | unit（`architecture_test.rs`、Writer probe、負例） | AC15 の 5 fixture（単純 `pub use` / `pub(crate) use` / grouped import 内混在 / コメント付き / **出所すげ替え**〈allow-listed symbol 名を allow list 記載と異なる `crate::db::...` path から再公開〉）を `biz/mod.rs` へ個別に一時追加 → いずれも `biz_mnt_direct_db_io_reexport_allowlist` が FAIL、復元後 `git diff --quiet` で確認 | いずれかの fixture 追加後も test が PASS する（allow list 比較が機能していない、または symbol 名のみを key にしていて出所すげ替えを見逃す） |
+| SC-REX-2 grouped import の正確な解析（S3、Plan Review H10: 2 箇所を明記） | multi-line brace group を見逃す/誤集計 | unit（`architecture_test.rs`、既存 30 symbol の再検証） | AC14/AC16: 既存 `biz/mod.rs:25-27`（`LastStocktakeSummary`/`Stocktake`/`StocktakeItemDetail`/`StocktakeProgress` の 4 symbol 1 statement）と `biz/mod.rs:37-39`（disposal 系 `DisposalRecordDetail`/`DisposalRecordSummary`/`InventoryRecordQuery`/`InventoryRecordSummary` の 4 symbol 1 statement）の 2 grouped import がいずれも violation にならず allow list どおり pass する | いずれかの grouped import の 4 symbol のうち一部しか認識されず、残りが「未許可の新規再公開」として誤検出される、または全体が 1 symbol としてしか認識されない |
 | SC-REX-3 allow list 双方向一致（S3） | 削除方向の非検出 | unit（`architecture_test.rs`、Writer probe、負例） | allow list 上の既存 1 entry（例 `PriceHistoryEntry`）を `src-tauri/src/biz/product_service.rs` から一時的に削除し、`biz_mnt_direct_db_io_reexport_allowlist` が FAIL する（allow list に存在するが実体が無い）ことを確認して復元 | entry 削除後も test が PASS する（allow list が stale なまま放置されうる、片方向 diff のみの実装） |
 
 ## Adjacent Pattern Audit
@@ -79,7 +81,7 @@ R3（S2 が `scripts/doc-consistency-check.sh`〈local-ci.sh:193 / pre-push.sh:2
 - generated outputs: `src/lib/bindings.ts` は読み取り専用でスキャンするのみ、書き換えない
 - secrets: 該当なし
 - local-only files: S2 self-test の fixture ディレクトリ（`mktemp -d`）、S3 negative fixture の `tempfile::tempdir()`
-- synthetic sample boundaries: negative fixture の symbol 名（`Row`）は実 DB スキーマに存在しない架空名を使い、実 symbol との混同を避ける
+- synthetic sample boundaries: negative fixture の symbol 名（`Row`/`Row2`/`Row3`/`Row4`、AC15 の 5 fixture）は実 DB スキーマに存在しない架空名を使い、実 symbol との混同を避ける（出所すげ替え fixture のみ既存 allow-listed symbol 名 `PaginatedResult` を再利用し、架空の再公開元 path と組み合わせる）
 
 ## Main Wiring / Integration Checks
 
@@ -90,6 +92,7 @@ R3（S2 が `scripts/doc-consistency-check.sh`〈local-ci.sh:193 / pre-push.sh:2
 
 ## Residual Test Gaps
 
+- command drift checker は `#[cfg(test)]` 内の `#[tauri::command]` を D の収集対象から明示的に除外する（Plan Review H11、Opus P3-5）。起票時実測では該当 0 件（`src-tauri/src/cmd/*.rs` の `#[cfg(test)]` module 内に `#[tauri::command]` を持つ既存例は無し）のため現時点の drift 検出結果に影響しないが、この除外ルール自体を直接検証する fixture は本 lane の 5 mode self-test（baseline / handler 欠落 / 重複 / wire 不一致 / gitignored 生成物混入）には含まれない。将来 test 専用 command が追加された場合の挙動（除外され続けるか、誤って D に計上され偽陽性 drift になるか）は未検証のまま残る
 - command drift checker は cfg/feature/target 別の command 到達性を検証しない（10c §2 既知境界、production 未登録の完全性は保証しない）
 - re-export allow list は alias（`use crate::db as storage; pub use storage::Row;`）・type alias（`pub type Row = crate::db::Row;`）を検出しない（10c §3 既知境界、A 拡張は別設計判断）
 - eslint 新規 block は phase 1 の warn のみで CI を fail させない（`--max-warnings` 未導入）。閾値を跨いだ新規違反が merge をブロックしない残余リスクは Backlog の phase 2 昇格まで残る
