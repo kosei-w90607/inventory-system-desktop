@@ -664,6 +664,48 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     expect(request.items.find((item) => item.product_code === "RT-002")?.direction).toBe("out");
   });
 
+  it("Codex round4 P2-class: 追加方向selectで渡しへ切り替えてから戻りへ戻すとRT-001のdirectionがinとして送信される（初期値頼みではない検査）", async () => {
+    const user = userEvent.setup();
+    mockCreateReturn.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 64, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    renderWithClient(<ReturnExchangePage />);
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+
+    // 初期値(戻り)のままでは Radix が onValueChange を発火しないため、
+    // 一度「渡し」へ切り替えてから「戻り」へ戻す実操作を経由させてから RT-001 を追加する。
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し" }));
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "戻り" }));
+    await addSingleProduct(user);
+
+    // 交換は戻り明細と渡し明細の両方が必要なため RT-002 を渡しで追加する。
+    mockSearchProducts.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "RT-002", name: "返品商品2" })],
+        total_count: 1,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し" }));
+    await user.type(screen.getByLabelText("返品・交換商品検索"), "RT-002{enter}");
+    expect(await screen.findByText("RT-002")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "返品・交換を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReturn).toHaveBeenCalledTimes(1);
+    });
+    const request = mockCreateReturn.mock.calls[0][0];
+    expect(request.items.find((item) => item.product_code === "RT-001")?.direction).toBe("in");
+  });
+
   it("Codex round3 P2-class: per-row の方向selectの戻り・渡しがどちらもitems.directionとしてそのまま送信される", async () => {
     const user = userEvent.setup();
     mockCreateReturn.mockResolvedValue({

@@ -291,7 +291,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     });
   });
 
-  it("Codex round3 P2-class: 種別selectで damage 以外を選ぶとdisposal_typeがその値のまま送信される（廃棄・その他の内部値を独立リテラルで検査）", async () => {
+  it("Codex round4 P2-class: 種別selectで全option（廃棄・破損・その他）の内部値が独立リテラルで検査される（初期値damageもonValueChange経由で確認）", async () => {
     const user = userEvent.setup();
     mockCreateDisposal.mockResolvedValue({
       status: "ok",
@@ -300,6 +300,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
 
     const DISPOSAL_TYPE_OPTIONS: [label: string, value: string][] = [
       ["廃棄", "disposal"],
+      ["破損", "damage"],
       ["その他", "other"],
     ];
     for (const [label, expectedValue] of DISPOSAL_TYPE_OPTIONS) {
@@ -310,6 +311,12 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
       fireEvent.change(screen.getByLabelText("DP-001 の理由"), { target: { value: "棚卸差異" } });
 
       await user.click(screen.getByLabelText("DP-001 の種別"));
+      if (expectedValue === "damage") {
+        // 初期値(破損)のままでは Radix が onValueChange を発火しないため、
+        // 一度別の値へ切り替えてから破損へ戻す実操作を経由させる。
+        await user.click(await screen.findByRole("option", { name: "廃棄" }));
+        await user.click(screen.getByLabelText("DP-001 の種別"));
+      }
       await user.click(await screen.findByRole("option", { name: label }));
       await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
 
