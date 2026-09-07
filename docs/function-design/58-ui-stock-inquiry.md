@@ -294,19 +294,34 @@ export function useStockInquiry(params: {
     retry: 1,
   });
 
-  // 結果 1 件で自動展開（Q-3 補強、selected == null ガードで 1 度のみ）
+  // 結果 1 件で自動展開（Q-3 補強）。selected == null ガードに加え、条件 key（status/q/dept/page）
+  // ごとの「消費済み」ガードを持つ（UI-06a-D5、Codex P1-1/P1-2 是正）。消費済みは自動展開・
+  // クリック・URL 復元のいずれの経路でもその key に有効な selected が観測された時点で成立し、
+  // 条件 key が変われば消費済みフラグをリセットする（再訪時に改めて 1 度だけ自動展開する）。
+  const conditionKey = `${params.status}|${params.q}|${String(params.dept)}|${String(params.page)}`;
+  const autoExpandKeyRef = useRef(conditionKey);
+  const autoExpandConsumedRef = useRef(params.selected !== null);
   useEffect(() => {
+    if (autoExpandKeyRef.current !== conditionKey) {
+      autoExpandKeyRef.current = conditionKey;
+      autoExpandConsumedRef.current = params.selected !== null;
+    } else if (params.selected !== null) {
+      autoExpandConsumedRef.current = true;
+    }
     const result = listQuery.data;
-    if (result && result.items.length === 1 && params.selected == null) {
+    if (result && result.items.length === 1 && params.selected == null && !autoExpandConsumedRef.current) {
+      autoExpandConsumedRef.current = true;
       params.navigate({ selected: result.items[0].product_code });
     }
-  }, [listQuery.data, params.selected]);
+  }, [listQuery.data, params.selected, conditionKey]);
 
   // selected を「現 list 条件に対する状態」に保つための clear（§58.4）。2 ケース:
   // (a) 検索前（isAllEmpty）に selected が残る（手打ち/F5/bookmark URL）→ detail 空振り防止で clear
   //     （Codex 実装レビュー Round 1 P2-2、detail enabled の !isAllEmpty guard と二重防御）。
   // (b) list 成功時に selected が現 list に不在 → 行インライン展開（§58.8）の描画先消失を防ぐ（C-P2-1）。
-  //     isSuccess ガードで loading 中の誤判定を回避。1 件なら clear 後に自動展開が後続発火し収束。
+  //     isSuccess ガードで loading 中の誤判定を回避。同一条件 key で自動展開済みの場合は上の
+  //     消費済みガードが再発火を止めるため再展開せず、収束しない（UI-06a-D5 の設計上の帰結）。
+  //     条件 key が変われば新条件として改めて自動展開しうる。
   useEffect(() => {
     if (isAllEmpty && params.selected != null) {
       params.navigate({ selected: undefined });
@@ -447,7 +462,7 @@ function StockInquiryPage() {
             source={listQuery.data!.source}
             selected={selectedValue}
             detailQuery={detailQuery}
-            onSelect={(code) => navigate({ search: (p) => ({ ...p, selected: code }) })}
+            onSelect={(code) => navigate({ search: (p) => ({ ...p, selected: code ?? undefined }) })}
           />
           {/* status === "all" のときだけ表示（UI-06a-D1、02-component-catalog.md ⑩ canonical を結線） */}
           {statusValue === "all" && listQuery.data!.totalCount !== null && (

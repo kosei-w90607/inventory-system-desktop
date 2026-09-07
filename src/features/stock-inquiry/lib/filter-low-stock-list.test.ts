@@ -121,18 +121,38 @@ describe("filterAndSortLowStockList (UI-06a-D4 取引先名優先ソート)", ()
       supplier_name: "取引先A",
       stock_quantity: 1,
     }),
+    // Codex P2-1: 同一取引先・同一在庫数（非 null supplier）の商品名 tie-break を検出する fixture。
+    // 挿入順を期待順（「は」<「ろ」）と逆にしてあり、名前比較を落とす mutant を検出する。
+    makeMockProductWithRelations({
+      product_code: "S-006",
+      name: "ろ",
+      department_id: 1,
+      supplier_name: "取引先A",
+      stock_quantity: 7,
+    }),
+    makeMockProductWithRelations({
+      product_code: "S-007",
+      name: "は",
+      department_id: 1,
+      supplier_name: "取引先A",
+      stock_quantity: 7,
+    }),
   ];
 
   it("SC1: 取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順で安定ソートする", () => {
     const result = filterAndSortLowStockList(sortItems, "", null, "low_stock");
-    // 取引先A 内は在庫数昇順で S-005(1) < S-003(3) < S-002(10)。
+    // 取引先A 内は在庫数昇順で S-005(1) < S-003(3) < S-006/S-007(7) < S-002(10)。
     // 商品名は「あ」(S-002) < 「さん」(S-003) < 「た」(S-005) と逆順になるよう意図的に
     // 在庫数と商品名の大小関係を食い違わせてあり、比較優先順位を
     // 入れ替える mutant（商品名優先）ではこの期待順にならない。
+    // S-006/S-007 は同一取引先・同一在庫数で挿入順を名前順と逆にしてあり、
+    // 名前 tie-break（supplierCmp || stock 比較で name 比較を落とす mutant）を検出する。
     // → 取引先B（S-001）→ 取引先なし（S-004、null は最後）
     expect(result.map((p) => p.product_code)).toEqual([
       "S-005",
       "S-003",
+      "S-007",
+      "S-006",
       "S-002",
       "S-001",
       "S-004",

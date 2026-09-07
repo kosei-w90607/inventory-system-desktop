@@ -342,6 +342,235 @@ describe("useStockInquiry (REQ-301/302)", () => {
     });
   });
 
+  it("Codex P2-2: status のみ変化しても conditionKey の変化として自動展開が再度発火する", async () => {
+    mockLowStock.mockResolvedValue({
+      status: "ok",
+      data: [
+        makeMockProductWithRelations({ product_code: "STOCKOUT-1", stock_quantity: 0 }),
+        makeMockProductWithRelations({ product_code: "LOWSTOCK-1", stock_quantity: 5 }),
+      ],
+    });
+    const navigate = vi.fn();
+    const { rerender } = renderHook(
+      (args: Parameters<typeof useStockInquiry>[0]) => useStockInquiry(args),
+      {
+        wrapper: makeWrapper(),
+        initialProps: {
+          status: "stockout",
+          q: "",
+          dept: null,
+          page: 1,
+          perPage: 50,
+          selected: null,
+          navigate,
+        },
+      },
+    );
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: "STOCKOUT-1" });
+    });
+    // q / dept / page は変えず status だけ変更する（conditionKey から status を落とす mutant を検出）
+    rerender({
+      status: "low_stock",
+      q: "",
+      dept: null,
+      page: 1,
+      perPage: 50,
+      selected: null,
+      navigate,
+    });
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: "LOWSTOCK-1" });
+    });
+  });
+
+  it("Codex P2-2: page のみ変化しても conditionKey の変化として自動展開が再度発火する", async () => {
+    mockSearch.mockImplementation((query: { page: number }) => {
+      if (query.page === 2) {
+        return Promise.resolve({
+          status: "ok",
+          data: {
+            items: [makeMockProductWithRelations({ product_code: "PAGE2-1" })],
+            total_count: 2,
+            page: 2,
+            per_page: 1,
+          },
+        });
+      }
+      return Promise.resolve({
+        status: "ok",
+        data: {
+          items: [makeMockProductWithRelations({ product_code: "PAGE1-1" })],
+          total_count: 2,
+          page: 1,
+          per_page: 1,
+        },
+      });
+    });
+    const navigate = vi.fn();
+    const { rerender } = renderHook(
+      (args: Parameters<typeof useStockInquiry>[0]) => useStockInquiry(args),
+      {
+        wrapper: makeWrapper(),
+        initialProps: {
+          status: "all",
+          q: "X",
+          dept: null,
+          page: 1,
+          perPage: 1,
+          selected: null,
+          navigate,
+        },
+      },
+    );
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: "PAGE1-1" });
+    });
+    // status / q / dept は変えず page だけ変更する（conditionKey から page を落とす mutant を検出）
+    rerender({
+      status: "all",
+      q: "X",
+      dept: null,
+      page: 2,
+      perPage: 1,
+      selected: null,
+      navigate,
+    });
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: "PAGE2-1" });
+    });
+  });
+
+  it("Codex P1-1: URL 復元済み selected（非 null）は 1 件でも自動展開せず、null に閉じても再展開しない", async () => {
+    mockSearch.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "SOLO-1" })],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    mockDetail.mockResolvedValue({ status: "ok", data: makeMockStockDetail() });
+    const navigate = vi.fn();
+    const { result, rerender } = renderHook(
+      (args: Parameters<typeof useStockInquiry>[0]) => useStockInquiry(args),
+      {
+        wrapper: makeWrapper(),
+        initialProps: {
+          status: "all",
+          q: "SOLO",
+          dept: null,
+          page: 1,
+          perPage: 50,
+          selected: "SOLO-1",
+          navigate,
+        },
+      },
+    );
+    await waitFor(() => {
+      expect(result.current.listQuery.isSuccess).toBe(true);
+    });
+    // 選択行の再クリックで閉じる（R2-3）相当: 検索条件は変えず selected だけ null に戻す
+    rerender({
+      status: "all",
+      q: "SOLO",
+      dept: null,
+      page: 1,
+      perPage: 50,
+      selected: null,
+      navigate,
+    });
+    await waitFor(() => {
+      expect(result.current.detailQuery.isFetching).toBe(false);
+    });
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("Codex P1-2: 自動展開しない条件を挟んでも、元の条件に戻れば改めて自動展開する", async () => {
+    mockSearch.mockImplementation(
+      (query: { keyword: string | null; department_id: number | null }) => {
+        if (query.keyword === "SOLO") {
+          return Promise.resolve({
+            status: "ok",
+            data: {
+              items: [makeMockProductWithRelations({ product_code: "SOLO-1" })],
+              total_count: 1,
+              page: 1,
+              per_page: 50,
+            },
+          });
+        }
+        return Promise.resolve({
+          status: "ok",
+          data: {
+            items: [
+              makeMockProductWithRelations({ product_code: "OTHER-1" }),
+              makeMockProductWithRelations({ product_code: "OTHER-2" }),
+            ],
+            total_count: 2,
+            page: 1,
+            per_page: 50,
+          },
+        });
+      },
+    );
+    const navigate = vi.fn();
+    const { rerender } = renderHook(
+      (args: Parameters<typeof useStockInquiry>[0]) => useStockInquiry(args),
+      {
+        wrapper: makeWrapper(),
+        initialProps: {
+          status: "all",
+          q: "SOLO",
+          dept: null,
+          page: 1,
+          perPage: 50,
+          selected: null,
+          navigate,
+        },
+      },
+    );
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: "SOLO-1" });
+    });
+    expect(navigate).toHaveBeenCalledTimes(1);
+    // 手動クローズ相当: 検索条件は変えず selected だけ null に戻す
+    rerender({
+      status: "all",
+      q: "SOLO",
+      dept: null,
+      page: 1,
+      perPage: 50,
+      selected: null,
+      navigate,
+    });
+    // 条件 B（複数件、自動展開しない）を挟む
+    rerender({
+      status: "all",
+      q: "OTHER",
+      dept: null,
+      page: 1,
+      perPage: 50,
+      selected: null,
+      navigate,
+    });
+    // 条件 A に戻す
+    rerender({
+      status: "all",
+      q: "SOLO",
+      dept: null,
+      page: 1,
+      perPage: 50,
+      selected: null,
+      navigate,
+    });
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledTimes(2);
+    });
+    expect(navigate).toHaveBeenNthCalledWith(2, { selected: "SOLO-1" });
+  });
+
   it("REQ-301: selected 既存時は 1 件でも自動展開しない（重複発火回避）", async () => {
     mockSearch.mockResolvedValue({
       status: "ok",

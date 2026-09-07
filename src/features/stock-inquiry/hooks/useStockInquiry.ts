@@ -121,18 +121,23 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
 
   // 結果 1 件で詳細カードを自動展開（Q-3 補強）。
   // selected == null ガードに加え、同一検索条件（status/q/dept/page）内では 1 度しか発火しない
-  // guard を持つ（UI-06a-D5）。手動クローズ（selected → null）後に同条件で再展開しないため、
-  // useRef に「自動展開済みの条件 key」を保持する（条件が変われば新しい key になり再度発火する）。
+  // guard を持つ（UI-06a-D5）。「消費済み」は自動展開・クリック・URL 復元のいずれの経路でも
+  // その条件 key に有効な selected が観測された時点で成立する（Codex P1-1/P1-2 是正: 復元済み
+  // selected を閉じられない／条件往復で再展開しない、を単一 root cause で修正）。条件 key が
+  // 変われば消費済みフラグをリセットし、再訪時に改めて 1 度だけ自動展開する。
   const listItems = listQuery.data?.items;
   const conditionKey = `${args.status}|${args.q}|${String(args.dept)}|${String(args.page)}`;
-  const autoExpandedKeyRef = useRef<string | null>(null);
+  const autoExpandKeyRef = useRef(conditionKey);
+  const autoExpandConsumedRef = useRef(args.selected !== null);
   useEffect(() => {
-    if (
-      listItems?.length === 1 &&
-      args.selected === null &&
-      autoExpandedKeyRef.current !== conditionKey
-    ) {
-      autoExpandedKeyRef.current = conditionKey;
+    if (autoExpandKeyRef.current !== conditionKey) {
+      autoExpandKeyRef.current = conditionKey;
+      autoExpandConsumedRef.current = args.selected !== null;
+    } else if (args.selected !== null) {
+      autoExpandConsumedRef.current = true;
+    }
+    if (listItems?.length === 1 && args.selected === null && !autoExpandConsumedRef.current) {
+      autoExpandConsumedRef.current = true;
       args.navigate({ selected: listItems[0].product_code });
     }
     // args / navigate は安定参照ではないが、依存は listItems・selected・conditionKey の変化に限定する。
