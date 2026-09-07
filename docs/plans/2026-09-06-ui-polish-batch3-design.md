@@ -322,7 +322,7 @@ catalog ① には、この component 契約（`actions` の有無に関わら�
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: catalog ①/③ の追記箇所に、それぞれの runtime gap（`PageHeader` の component 制約、`ManualSalePage.tsx` の二重囲み）を Why として明記し、packet 依存を残さない設計にする。
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: 説明セクション使用パターン・備考規則・単位表示ルールは catalog へ昇格。記録 ID 方針は owner culling 完了後に DSR-22/65-doc へ昇格（本 commit では pending）。新規 decision-log entry は不要。
-- Assumptions and constraints: `PageHeader.tsx` の `actions`/`subtitle` 排他は runtime lane が component 拡張するかどうかで catalog 記述の一部（wrapper 使用パターン vs 新 prop）が変わり得る。runtime lane 起票時に本 packet の記述を再確認する。
+- Assumptions and constraints: `PageHeader.tsx` の `actions`/`subtitle` 排他は root-cause fix（`space-y-1` グループへの描画、catalog:46）で解消する方針を確定済み。runtime lane が判断するのは prop 名・実装詳細のみで、catalog の記法自体の再確認は不要。
 - Deferred design gaps, risk, and follow-up target: 記録 ID 方針の owner culling、説明文 3 案の owner culling、備考空欄表示の owner culling、9 箇所の `formatQuantity` 統合実装、`ManualSalePage.tsx` Badge 化、`SupplierManagementPage.tsx` 間隔是正、`ManualSalePage.tsx` 二重囲み是正 — いずれも runtime lane。
 - Test Design Matrix can cite design decision IDs or source doc sections: Yes（[Test Matrix](test-matrices/2026-09-06-ui-polish-batch3-design.md) 各行に UIB3-D 番号を付す）。
 - Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 唯一の例外は備考空欄表示の具体文言（owner culling のため exact 文言 oracle にできない、AC5 で「備考」「truncate」の 2 語の存在確認に代替）。他は全て owner culling 完了を待たずに機械 oracle 化できている。抜け道なし。
@@ -345,7 +345,7 @@ catalog ① には、この component 契約（`actions` の有無に関わら�
 
 - Existing design docs are sufficient because: DSR-12（truncate）・DSR-16（囲みの階層）・DSR-22（識別列マッピング）・catalog ①（PageHeader）・catalog ③（テーブル・直近実績サマリテーブル）の構造が既に存在し、本 packet は具体例の追加と使用パターンの新設で足りる。
 - Source docs updated in this PR: `01-decision-rules.md`（DSR-22 注記）/ `02-component-catalog.md`（①/③）/ `docs/function-design/60,67,68`（説明文案）。
-- Design gaps intentionally deferred: 記録 ID 方針・説明文 3 案・備考空欄表示の owner culling、`PageHeader.tsx` の component 拡張要否、L8-2/L8-4/L8-5。
+- Design gaps intentionally deferred: 記録 ID 方針・説明文 3 案・備考空欄表示は owner culling 確定済み（本 PR で canonical docs へ反映済み）、残るのは runtime 実装のみ。`PageHeader.tsx` の component 拡張は root-cause fix で採用決定済み（catalog:46）、残るのは実装（prop 名・コード diff）のみ。L8-2/L8-4/L8-5。
 - Durable decisions discovered in this plan and promoted to source docs: 「直近 {N} 件」文言統一・`ManualSalePage.tsx` 二重囲みの是正方向（DSR-16 準拠）・単位表示は共通 formatter 必須、の 3 点は owner culling 不要の既存正典からの導出として確定済み。
 
 Minimum design checks for business-app work:
@@ -395,8 +395,8 @@ Test Design Matrix: [test-matrices/2026-09-06-ui-polish-batch3-design.md](test-m
 ## Review Focus
 
 - 事実訂正 3 件（`PageHeader` の `description` prop 不在、原則 8→9、囲みの実態）が正しく反映されているか。
-- 記録 ID 方針の 3 案が owner culling 前提のまま書かれており、(b) 推奨に断定的な既決事項として書かれていないか。
-- 備考の空欄表示・説明文 3 案が owner culling 前提のまま書かれているか。
+- 記録 ID 方針が (b) 一覧の表示列から外す、で確定した decision として DSR-22（`:443`）・65-doc（`:212`）双方に正しく反映され、owner culling の経緯が保持されているか。
+- 備考の空欄表示（「—」確定）・説明文 3 案（そのまま採用）が確定済み decision として正しく反映されているか。
 - `ManualSalePage.tsx` 二重囲みの是正方向が DSR-16 の明文と整合しているか（他画面へ箱を足す誤読になっていないか）。
 - 廃棄・破損が備考規則の Non-scope であることが明記され、混同されていないか。
 - L8-2/L8-4/L8-5 が Scope に混入していないか。

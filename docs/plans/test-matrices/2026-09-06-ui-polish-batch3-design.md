@@ -32,7 +32,7 @@ Risk: R2（Coordinator 判断で Test Design Matrix を必須化。理由は Pla
 |---|---|---|---|---|
 | UIB3-D1 | 説明セクションパターンの欠落 | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "説明セクション"` ≥ 1（更新履歴表の同一文言に釣られないよう本文範囲に限定） | catalog ① に使用パターンが追加されていない場合に検出 |
 | UIB3-D1 | 説明文3画面の欠落 | doc-oracle | `rg -Fc "CSVファイルから複数の商品をまとめて登録・更新するページです" docs/function-design/60-ui-product-import.md` ≥ 1、`rg -Fc "レジのPLU登録状況を書き出すページです" docs/function-design/67-ui-plu-export.md` ≥ 1、`rg -Fc "アプリのデータ全体をまとめて保存し" docs/function-design/68-ui-backup-restore.md` ≥ 1（Plan Review round 1 是正 P1 — 旧 anchor `レジ登録状況を読み込む`/`未反映から外す` は `67-ui-plu-export.md` に既に 3 件/6 件存在する false oracle だったため、baseline 0 確認済みの新規文へ差替え） | いずれかの画面の説明文が本文に追加されていない場合に検出 |
-| UIB3-D2 | 記録ID方針が owner 確定後も未確定の「案」のまま、または owner culling を経た経緯が消えて書かれる | doc-oracle + reviewer 実読 | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/01-decision-rules.md \| rg -Fc "owner culling"` ≥ 1（更新履歴表の同一文言に釣られないよう本文範囲に限定）かつ reviewer が DSR-22 該当箇所（`:443`）を実読し、「(b) 一覧の表示列から外す、で確定した」という owner 確定済み decision の書き方になっており、かつ 3 案を経た owner culling の経緯が残っていることを確認 | 確定後も「案」のままの書き方、または owner culling の経緯記録が消えた場合に検出 |
+| UIB3-D2 | 記録ID方針が owner 確定後も未確定の「案」のまま、DSR-22 と 65-doc の一方だけが同期し他方が旧「案」のまま残る、または owner culling を経た経緯が消えて書かれる | doc-oracle + reviewer 実読 | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/01-decision-rules.md \| rg -Fc "owner culling"` ≥ 1 かつ `rg -Fc "記録IDは一覧の表示列から外す" docs/function-design/65-inventory-record-traceability.md` ≥ 1（更新履歴表の同一文言に釣られないよう本文範囲に限定）かつ reviewer が DSR-22 該当箇所（`:443`）と 65-doc 該当箇所（`:212`）を実読し、双方とも「(b) 一覧の表示列から外す、で確定した」という owner 確定済み decision の書き方になっており、3 案を経た owner culling の経緯が残っており、かつ §65.4.1 の記録ID exact match フィルタが維持されていることを確認 | 確定後も「案」のままの書き方、owner culling の経緯記録が消えた場合、DSR-22 / 65-doc の一方だけ同期し他方が未反映の場合、または ID フィルタが誤って削除された場合に検出 |
 | UIB3-D2 | 新規 DSR-23 の誤起草 | doc-oracle | `rg -c "^## DSR-23" docs/design-system/01-decision-rules.md` = 0 | DSR-22 拡張ではなく独立 DSR を作った場合に検出 |
 | UIB3-D3 | 備考規則・A1統合の欠落 | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "備考は"` ≥ 1、同様に `rg -F "truncate + \`title\`"` の hit ≥ 1、同様に `rg -Fc "直近 {N} 件の"` ≥ 1（Plan Review round 1 是正 P2 — 素の「備考」「truncate」「直近」は catalog に既存 baseline 非 0〈`truncate`=2、`直近`=3〉の false oracle だったため、baseline 0 確認済みの複合文字列へ差替え。いずれも更新履歴表の同一文言に釣られないよう本文範囲に限定） | 備考列規則・A1 統合が catalog ③ に追加されていない場合に検出 |
 | UIB3-D3 | 空欄表示の owner culling 確定文言（「—」）が rejected 案「備考なし」へ無断で戻される | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "空欄表示は「—」に統一する"` ≥ 1 かつ `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "空欄表示は「備考なし」に統一する"` = 0（更新履歴表の同一文言に釣られないよう本文範囲に限定。**Codex round 2 是正**: bare `「—」` は同段落内の採用経緯文言に一致し反転 mutant を見逃すため、確定文の positive + rejected 文の negative の対 oracle に変更） | catalog:191 の空欄表示規則が「備考なし」へ反転された場合に検出（bare `「—」` オラクルは同段落内の残存文言のため検出できなかった） |
@@ -79,7 +79,7 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 ## Boundary Checks
 
 - threshold: 備考欄の truncate 文字数しきい値は本 packet では確定しない（`max-w-*` クラスの具体値は runtime lane）。movement note の全文確認は `title` を一覧上の補足に留め、`MovementTable` 自身が折り返し・展開等で同じ note の全文を確認できることを必須条件として明記する（catalog:191 契約、**Codex round 2 是正**: 旧文言は `title` 属性のみで全文確認が足りるかのように読めた）。
-- null/default: 備考が `null`/空文字のときの表示が owner culling 対象（本 packet では 2 択のいずれかに確定しない）。
+- null/default: 備考が `null`/空文字のときの表示は「—」に確定済み（owner culling 完了、2026-09-06。catalog:191 の空欄表示規則、AC5 参照）。
 - empty/non-empty: 記録 ID 一覧の「0 件表示」等は既存 EmptyState 契約のまま変更しない。
 - min/max: not applicable。
 - status/policy enum: `formatRecordStatus` の 3 値（有効/取消済み/進行中）が本 packet で増減しないこと（Badge 化は表示形式のみの変更）。
@@ -128,4 +128,4 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 - 囲み是正方向（`ManualSalePage.tsx` 側を外す vs 他 3 画面へ足す）が DSR-16 と整合しているかは rg presence oracle だけでは保証できない — Plan Review / Final Review の reviewer 実読に依存する。
 - 説明文 3 案の各文が file:line 根拠と正しく対応しているか（根拠の引用そのものが正確か）は reviewer 実読に依存する（AC2a/b/c は文が存在することのみを検証し、根拠表の正確性までは検証しない）。
 - `PageHeader.tsx` の `actions`/`subtitle` 排他という component gap が catalog ① の記述に正確に反映されているかは reviewer 実読に依存する（automated では「gap の記述がある」ことの内容までは検証できない）。
-- 記録 ID 方針・備考空欄表示・説明文 3 案が owner culling 完了後に実際に catalog / DSR / function-design 本文へ反映されるかは本 packet のスコープ外（次の Plan Gate 通過 Writer が行う別 commit に依存する運用上のギャップ）。
+- 記録 ID 方針・備考空欄表示・説明文 3 案は owner culling 完了済み（2026-09-06）で catalog / DSR-22 / 65-doc / function-design 本文へ本 PR で反映済み。反映後の runtime 実装（画面側コード変更）のみ本 packet のスコープ外。
