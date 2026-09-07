@@ -6,7 +6,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 3aa0e8a
@@ -15,7 +15,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（§3.3 pending。Codex 枠状況に応じて実施タイミングは Coordinator が調整し、Codex 成分が pending の間は Phase を前進させない）
-- Reviewed Content HEAD: cf70277
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: none（runtime・operator 画面に非接触。script / config / lint / docs のみ）
