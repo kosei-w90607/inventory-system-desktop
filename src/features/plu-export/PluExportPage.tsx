@@ -518,7 +518,7 @@ export function PluExportPage() {
 
           {status === "saved" ? (
             <>
-              <Alert className="text-success-strong border-success bg-success-soft">
+              <Alert className="border-success bg-success-soft text-success-strong">
                 <Save />
                 <AlertTitle>PLUファイルを保存しました</AlertTitle>
                 <AlertDescription className="space-y-3">
@@ -564,7 +564,7 @@ export function PluExportPage() {
           ) : null}
 
           {status === "confirmed" ? (
-            <Alert className="text-success-strong border-success bg-success-soft">
+            <Alert className="border-success bg-success-soft text-success-strong">
               <CheckCircle2 />
               <AlertTitle>未反映から外しました</AlertTitle>
               <AlertDescription>

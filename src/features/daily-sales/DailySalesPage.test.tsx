@@ -167,3 +167,13 @@ describe("DailySalesPage describeError adoption (B1, UI-ERR-D2)", () => {
     expect(screen.queryByText(/\[commands:/)).not.toBeInTheDocument();
   });
 });
+
+describe("DailySalesPage native input tokens（Lane 5 SC4k）", () => {
+  it("SC4k: 日付inputがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    renderPage();
+
+    const dateInput = await screen.findByLabelText("日付を選択");
+    expect(dateInput).toHaveClass("bg-control-surface");
+    expect(dateInput).not.toHaveClass("bg-background");
+  });
+});

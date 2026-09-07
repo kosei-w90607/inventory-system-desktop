@@ -430,7 +430,7 @@ export function ManualSalePage() {
               id="manual-sale-reason"
               value={values.reason}
               disabled={isFormLocked}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
               onChange={(event) => {
                 updateValues((prev) => ({
                   ...prev,

@@ -525,7 +525,7 @@ export function ReturnExchangePage() {
               id="return-type"
               value={values.returnType}
               disabled={isFormLocked}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
               onChange={(event) => {
                 const nextReturnType = event.target.value === "exchange" ? "exchange" : "return";
                 updateValues((prev) => {
@@ -613,7 +613,7 @@ export function ReturnExchangePage() {
             disabled={isFormLocked}
             maxLength={200}
             rows={3}
-            className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-20 w-full rounded-md border border-input bg-control-surface px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="返品理由・交換理由・顧客対応メモを入力"
             onChange={(event) => {
               updateValues((prev) => ({ ...prev, note: event.target.value }));
@@ -705,7 +705,7 @@ export function ReturnExchangePage() {
               id="return-add-direction"
               value={effectiveAddDirection}
               disabled={isFormLocked || values.returnType === "return"}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
               onChange={(event) => {
                 setAddDirection(event.target.value === "out" ? "out" : "in");
               }}
@@ -824,7 +824,7 @@ export function ReturnExchangePage() {
                         value={row.direction}
                         disabled={isFormLocked || values.returnType === "return"}
                         aria-label={`${row.productCode} の方向`}
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        className="h-9 rounded-md border border-input bg-control-surface px-2 text-sm"
                         onChange={(event) => {
                           const nextDirection = event.target.value === "out" ? "out" : "in";
                           updateValues((prev) => ({

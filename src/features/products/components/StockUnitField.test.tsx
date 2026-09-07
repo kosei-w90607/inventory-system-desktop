@@ -166,4 +166,25 @@ describe("StockUnitField (UI-01b-D6)", () => {
     // suggest 経路は呼ばれない
     expect(onPosStockSyncSuggest).not.toHaveBeenCalled();
   });
+
+  it("SC4f: 数量単位selectがbg-control-surfaceでbg-backgroundを持たない、POS販売チェックボックスは無変更", () => {
+    render(
+      <StockUnitField
+        mode="create"
+        stockUnit="pcs"
+        posStockSync
+        posSyncTouched={false}
+        onStockUnitChange={vi.fn()}
+        onPosStockSyncChange={vi.fn()}
+        onPosStockSyncSuggest={vi.fn()}
+      />,
+    );
+
+    const stockUnitSelect = screen.getByLabelText("数量単位");
+    expect(stockUnitSelect).toHaveClass("bg-control-surface");
+    expect(stockUnitSelect).not.toHaveClass("bg-background");
+
+    const posSyncCheckbox = screen.getByLabelText("POS販売で在庫を減らす");
+    expect(posSyncCheckbox).not.toHaveClass("bg-control-surface");
+  });
 });
