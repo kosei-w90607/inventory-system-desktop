@@ -138,7 +138,7 @@ export function StockMovementsPage({
           </label>
           <input
             id="movement-date-from"
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            className="h-9 rounded-md border border-input bg-control-surface px-3 text-sm"
             type="date"
             value={normalizedSearch.dateFrom ?? ""}
             onChange={(event) => {
@@ -152,7 +152,7 @@ export function StockMovementsPage({
           </label>
           <input
             id="movement-date-to"
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            className="h-9 rounded-md border border-input bg-control-surface px-3 text-sm"
             type="date"
             value={normalizedSearch.dateTo ?? ""}
             onChange={(event) => {
@@ -166,7 +166,7 @@ export function StockMovementsPage({
           </label>
           <select
             id="movement-type"
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            className="h-9 rounded-md border border-input bg-control-surface px-3 text-sm"
             value={normalizedSearch.type}
             onChange={(event) => {
               updateSearch(

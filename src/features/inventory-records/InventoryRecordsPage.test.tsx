@@ -673,3 +673,28 @@ describe("InventoryRecordsPage perPage scroll（REQ-206 / TRACE-D1）", () => {
     expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("InventoryRecordsPage native input tokens（Lane 5 SC4a）", () => {
+  it("SC4a: 記録種別/開始日/終了日/記録ID/部門/状態の6箇所すべてがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
+
+    const fields = [
+      await screen.findByLabelText("記録種別"),
+      screen.getByLabelText("開始日"),
+      screen.getByLabelText("終了日"),
+      screen.getByLabelText("記録ID"),
+      screen.getByLabelText("部門"),
+      screen.getByLabelText("状態"),
+    ];
+
+    for (const field of fields) {
+      expect(field).toHaveClass("bg-control-surface");
+      expect(field).not.toHaveClass("bg-background");
+    }
+  });
+});

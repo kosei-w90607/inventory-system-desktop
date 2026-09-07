@@ -668,3 +668,15 @@ describe("PriceRevisionPage perPage scroll（UI-14）", () => {
     expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("PriceRevisionPage native input tokens（Lane 5 SC4i）", () => {
+  it("SC4i: 取引先selectがborder-inputとbg-control-surfaceの両方を持つ", async () => {
+    renderStateful({});
+    await screen.findByText("P-001");
+
+    const supplier = screen.getByLabelText("取引先");
+    expect(supplier).toHaveClass("border-input");
+    expect(supplier).toHaveClass("bg-control-surface");
+    expect(supplier).not.toHaveClass("bg-background");
+  });
+});

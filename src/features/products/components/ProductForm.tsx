@@ -273,7 +273,7 @@ export function ProductForm({
             <Label htmlFor="department-id">部門（必須）</Label>
             <select
               id="department-id"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
               value={values.departmentId ?? ""}
               onChange={(event) => {
                 update(
@@ -296,7 +296,7 @@ export function ProductForm({
             <Label htmlFor="supplier-id">取引先</Label>
             <select
               id="supplier-id"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
               value={values.supplierId ?? ""}
               disabled={supplierWarning !== null}
               onChange={(event) => {
@@ -412,7 +412,7 @@ export function ProductForm({
             <Label htmlFor="tax-rate">税率</Label>
             <select
               id="tax-rate"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
               value={values.taxRate}
               onChange={(event) => {
                 update("taxRate", event.target.value as ProductTaxRate);
