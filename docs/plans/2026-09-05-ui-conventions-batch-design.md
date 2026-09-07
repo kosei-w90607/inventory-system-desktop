@@ -8,7 +8,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
@@ -17,7 +17,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5 デザイン面 + Codex ロジック・整合面 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。それまで §3.3 Capacity-degraded を適用し Codex 成分は pending、Phase は human-confirm で待機し前進させない）
-- Reviewed Content HEAD: 068c82c
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
 - Human Gate: owner が design PR 上で ①状態 badge の tone family マッピング表の owner culling 列を埋める（原文回答、Coordinator が転記し原文を正とする）。Alert warning / ③強調 / CTA secondary / ①状態の枠強度は v2〜v4 mockup で owner 決定済み（下記参照、markers はすべて解消）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
