@@ -15,7 +15,7 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1e758cf5
@@ -24,7 +24,7 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5 デザイン面 + Codex 1 round（§3.3、実施タイミングは起票時点の Codex 枠状況に従う）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 41de5f7
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
 - Human Gate: owner が design PR 上で (1) 商品一括インポート / PLU 書出し / バックアップの説明文 3 案を culling する（本 packet「設計判断」節の draft、2〜3 文の日本語文案） (2) 記録 ID の表示方針（(a) 種別込み表示 / (b) 一覧から外す / (c) 現状維持）を選ぶ（Coordinator 推奨は (b)、下記「設計判断」節参照） (3) 備考欄が空のときの表示（「—」か薄字「備考なし」か）を選ぶ（Coordinator 推奨は既存 27 箇所の「—」パターンへの統一、下記参照）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
@@ -449,7 +449,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - 便 2（Opus 並行）: (P1 訂正) バックアップの自動バックアップ機能は実在する（`:421,429`）ため全面削除ではなく実際のラベルへ書き直し。(P1) `PageHeader` の `actions`/`subtitle` 併存は `SupplierManagementPage.tsx` 以外に `ReceivingPage.tsx`/`ManualSalePage.tsx`/`ReturnExchangePage.tsx`/`DisposalPage.tsx` の 4 画面で実害（`subtitle` 消失）が起きていることが判明し、是正方向を (b) `PageHeader.tsx` root-cause fix へ一本化。(P1) `MovementTable.tsx:57,92-94`（7 画面共有）を備考規則の起票時実測に追加し、`?? "—"`/`"—"` の実測件数（5 箇所4file / 27箇所16file）に基づき空欄表示の推奨を「備考なし」から「—」へ反転。(P2) ⑦ の記録状態 tone 決定と Lane 5 の枠色トークン移行（`--border-strong`→`--border`）の矛盾を明記。(P3) PLU 説明文を実在ボタン文言（『差分を書き出す』/『全件を書き出す』）へ訂正、各説明文を 2〜3 文・非入れ子括弧へ整理。(P3) L8-1 の帰属画面を「一覧本体」から「記録詳細 6 画面」へ訂正。(P3) `ManualSalePage.tsx` 備考列見出し行・DSR-22 の `InventoryRecordsPage.tsx` 行番号の stale 引用を修正。
 2026-09-06: Plan Review round 2（Sonnet fresh）= approve、P3 1 件是正: `BackupRestorePage.tsx:488` 引用（`:196,202`）はタグ閉じ行を指しており、実文言「復元前にも自動で同じバックアップを作成します。」は `:487`。両箇所を `:487` へ修正。
 2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接 + Opus、round 2 = Sonnet fresh approve）。Phase は Human Gate（説明文 3 案 / 記録 ID / 備考空欄）の owner 回答待ちで plan-draft のまま。
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen at 41de5f7（Codex round 4 review 5134030265、2026-09-07、新規指摘なし）; post-freeze exceptions: none.
 
 2026-09-06: owner Human Gate 回答（原文は raw file「⑩ Human Gate 回答 原文」、Coordinator 転記、裁定は原文を正とする）: (1) 説明文 3 案 = **そのまま採用**（culling なし）。(2) 記録 ID = owner は (a) 種別込み表示にも好意、「労力の差か」と質問 → Coordinator 回答: 労力でなく情報価値（一覧の識別列は DSR-22 の 記録日時 + 代表商品、ID の実用は検索欄の完全一致と操作ログの元記録ラベル〈既に種別 + 番号書式〉のため (a) は既存情報の繰り返し。ただし「入庫の 42 番」と番号で呼ぶ運用があるなら (a) が正当）→ **owner 判断待ち**（運用の有無で決める）。(3) 備考の空欄 = **「—」で確定**（推奨に同意）。Human Gate は (2) の回答で完了。
 
@@ -458,3 +458,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接〈owner 許可〉+ Opus 並走、round 2 = Sonnet fresh approve）+ Human Gate 3 件回答済み → `plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑩ 同期の本 content commit に同乗させて遷移。Plan Commit = `1e758cf5`（plan-first commit、main `07302b5` 直上）。Codex 1 回は §3.3 pending。
 
 2026-09-06: Final Review round 1 = Sonnet fresh approve-with-P2（AC 全通過、D-038 揮発 evidence 0、P2: DSR-22 :435 の stale 行番号未修正 / packet Goal・Non-scope の「別 commit」文言）+ Opus approve-with-P2（同 stale 行 / 「備考なし」を代替として残す文 / 「直近10件」の空白 / MovementTable 引用の誤り / 価格履歴は `ul` で `TableHead` 指示が不成立）→ Writer 是正 `0d75d3e`（全 5 件 + 「確定後 / 別 commit」文言の canonical 側 0 件確認）。Coordinator が是正行を検分し P1/P2 = 0 を確認、`implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ⑩ 同期の本 content commit に同乗させて遷移、Reviewed Content HEAD = `0d75d3e`。注記: 本 packet の Goal / Non-scope にある「65-doc:212 の改訂は確定後の別 commit」は Human Gate 完了（2026-09-06）により本 PR で前倒し反映済み（Writer commit `6e5ddcf`）。残り = Codex 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final（docs-only、hosted は owner dispatch）。
+
+2026-09-07: Codex レビュー round 1 = review 5129580409（P2 4 / P3 1、全件 accept）→ 是正 `73bd5b0` `2124145` → `e1842e8` で `state-backtrack human-confirm->implementing`。round 2 = review 5131118268（P2 2 / P3 1）→ 是正 `d82b789`。round 3 = review 5132916146（残 P2 2）→ 是正 `41de5f7`（確定 decision の判定条件 6 箇所 / PageHeader 拡張は決定済み）。round 4 = review 5134030265（**新規指摘なし、Findings Freeze 可**、反転 mutant の kill を独立確認）。owner が Human Gate 完了済み PR の Ready → merge → closeout の代行を承認（2026-09-07）→ **state-only 遷移 implementing->local-verified->independent-review->human-confirm->ready-hosted-final を本 commit で圧縮記録**: local-verified = doc gate ERROR 0（full / `--target plan`）+ Codex round 4 の gate 再実行 PASS、independent-review = Sonnet 一次検証 + Codex round 1〜4（Findings Freeze）、human-confirm = Human Gate 3 件回答済み（2026-09-06、design-only で L3 なし）、ready-hosted-final = owner の Ready 承認。Reviewed Content HEAD = `41de5f7`。docs-only のため hosted final は `ci.yml` workflow_dispatch で実行し success を merge 前に確認する。
