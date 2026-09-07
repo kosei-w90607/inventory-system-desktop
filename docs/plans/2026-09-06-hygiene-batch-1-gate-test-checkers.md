@@ -4,7 +4,7 @@ Backlog（`docs/Plans.md:136,149,165`）記載の 3 件（I-G1 sweep test の gi
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: e67711e
@@ -13,7 +13,7 @@ Backlog（`docs/Plans.md:136,149,165`）記載の 3 件（I-G1 sweep test の gi
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded によりCodex成分は pending のまま Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 17fe9e9
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: STATECAP 手動計上超過の例外承認（owner、Ready 前。非正規 subject の state commit 2 本〈`a890bfe` / `7fa3451`〉を手動計上すると human-confirm 再記録で 3/3・post 2/2、Ready 遷移で 4/3・post 3/2 となる。機械検査は非正規 2 本を数えないため PASS。詳細は 2026-09-07 narrative）。L3 対象なし（scripts / test checker のみで runtime・operator 画面に非接触）
@@ -272,3 +272,5 @@ Contract ID: SPEC-HYG1-D1
 2026-09-06: Final Review round 1 = Sonnet fresh approve-with-P2（Matrix SC1 / SC2 / SC4 / SC5 の mutant を独立再注入し全 kill、SC6 self-test 27 case pass、追加: 無関係 prop 追加 = 非過敏 / 隣接性破壊 = kill / `extract_markdown_h2_section` の終端 `^##`→`^#` は equivalent mutant〈Scope 外の既存関数〉。main `07302b5` の Plans.md は active packet 0 のため新 PK4 で ERROR なし）+ Opus approve-with-P2（`## 次の行動` → `## Backlog` 直前まで抽出し `### Wave Registry` を含む、節内の完了 lane link は `archive/plans/` 記法で PK4 regex 非該当、他呼出し元 5 箇所無変更、S1 skip は file のみ・完全一致 / 末尾一致、S2 正規化を node で再現）。P1 0。P2 = Implementation Results 未記入（本 commit で記録）。P3 = T10 の役割分担 comment / I-G1 正 assert の `foo.rs.bk` 部分一致 → 是正 `d364785`（Coordinator 行検分、2 行）。P3 記録のみ = T10 正規化は `{` 直後改行の非現実的 reflow で偽 FAIL し得る（prettier 設定では発生せず）/ 節拡張で完了 lane 行の `plans/` link でも PK4 が満たされる偽陰性方向の緩み（現状 `archive/plans/` 記法で実害 0、Wave Registry では `archive/plans/` 記法を継続）。Reviewed Content HEAD = `d364785`、`implementing -> human-confirm`。Human Gate = なし（script / test のみ、L3 不要）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
 
 2026-09-07: Codex ロジックレビュー round 1 = review 5129675720（P2 5、全件 accept）→ 是正 `aaebdab`（P2-1 nested `.ts` fixture / P2-2 preventDefault 説明 / P2-3 SC6 の保証範囲）→ `868965e` で `state-backtrack human-confirm->implementing`（P2-4: Codex 成分 pending のまま前進していた自己矛盾の是正）。round 2 = review 5131261315（新規 0、P2-1 / P2-2 閉鎖、残 = P2-5 と P3 2 件 → 本 commit で compatibility checks :210 / Matrix :47 / Plans.md ⑪ 行を同期）。**STATECAP 計上の補償（round 1 P2-5）**: `a890bfe`（plan-approved->implementing）と `7fa3451`（implementing->local-verified->independent-review->human-confirm）は subject が canonical `docs(plans): state-only遷移 <from>-><to>` でないため `check-workflow-git.sh:312` の forward 計数に乗らない。既 push commit の書き換えは force-push を要するため行わず、本 packet では **手動計上で forward 2 本消費済み（post-implementation 1 本）** として扱う。次の前進は Codex round 3 の Findings Freeze 後に canonical subject `docs(plans): state-only遷移 implementing->local-verified->independent-review->human-confirm` の 1 commit（compression）で記録し（手動計上 post-implementation 2 本目 = 上限到達）、その後の `human-confirm->ready-hosted-final` は手動計上では上限 2 を 1 本超過する。機械検査は非正規 subject 2 本を数えないため ERROR にならないが、この超過は owner が Ready 承認時に明示承認する例外として記録する。
+
+2026-09-07: **owner が STATECAP 手動計上超過の例外を承認**（Human Gate 充足、「Ready から締めまで進めてしまっていい」）→ `implementing -> local-verified -> independent-review -> human-confirm -> ready-hosted-final` を本 commit で圧縮記録: local-verified = Writer gate（cargo test 5/5、doc gate ERROR 0）+ Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 + Codex round 1〜3（Findings Freeze at `17fe9e9`、review 5133050497）、human-confirm = Human Gate（STATECAP 例外承認）充足・L3 対象なし、ready-hosted-final = owner の Ready 承認。手動計上は本 commit で forward 3 / post-impl 2（既存の非正規 2 本を含む）、機械計数は 1 / 1。docs-only のため hosted final は `ci.yml` の workflow_dispatch で実行し success を merge 前に確認する。
