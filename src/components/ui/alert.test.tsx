@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { Alert, AlertDescription, AlertTitle } from "./alert";
 
-describe("UI conventions runtime: Alert", () => {
+describe("UI-12 conventions runtime: Alert", () => {
   it("SC18 / DSR-08: warning uses the independent catalog class contract", () => {
     render(
       <Alert variant="warning" role="note">
