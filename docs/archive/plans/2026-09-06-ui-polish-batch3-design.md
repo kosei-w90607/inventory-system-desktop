@@ -15,7 +15,7 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1e758cf5
@@ -460,3 +460,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 2026-09-06: Final Review round 1 = Sonnet fresh approve-with-P2（AC 全通過、D-038 揮発 evidence 0、P2: DSR-22 :435 の stale 行番号未修正 / packet Goal・Non-scope の「別 commit」文言）+ Opus approve-with-P2（同 stale 行 / 「備考なし」を代替として残す文 / 「直近10件」の空白 / MovementTable 引用の誤り / 価格履歴は `ul` で `TableHead` 指示が不成立）→ Writer 是正 `0d75d3e`（全 5 件 + 「確定後 / 別 commit」文言の canonical 側 0 件確認）。Coordinator が是正行を検分し P1/P2 = 0 を確認、`implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ⑩ 同期の本 content commit に同乗させて遷移、Reviewed Content HEAD = `0d75d3e`。注記: 本 packet の Goal / Non-scope にある「65-doc:212 の改訂は確定後の別 commit」は Human Gate 完了（2026-09-06）により本 PR で前倒し反映済み（Writer commit `6e5ddcf`）。残り = Codex 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final（docs-only、hosted は owner dispatch）。
 
 2026-09-07: Codex レビュー round 1 = review 5129580409（P2 4 / P3 1、全件 accept）→ 是正 `73bd5b0` `2124145` → `e1842e8` で `state-backtrack human-confirm->implementing`。round 2 = review 5131118268（P2 2 / P3 1）→ 是正 `d82b789`。round 3 = review 5132916146（残 P2 2）→ 是正 `41de5f7`（確定 decision の判定条件 6 箇所 / PageHeader 拡張は決定済み）。round 4 = review 5134030265（**新規指摘なし、Findings Freeze 可**、反転 mutant の kill を独立確認）。owner が Human Gate 完了済み PR の Ready → merge → closeout の代行を承認（2026-09-07）→ **state-only 遷移 implementing->local-verified->independent-review->human-confirm->ready-hosted-final を本 commit で圧縮記録**: local-verified = doc gate ERROR 0（full / `--target plan`）+ Codex round 4 の gate 再実行 PASS、independent-review = Sonnet 一次検証 + Codex round 1〜4（Findings Freeze）、human-confirm = Human Gate 3 件回答済み（2026-09-06、design-only で L3 なし）、ready-hosted-final = owner の Ready 承認。Reviewed Content HEAD = `41de5f7`。docs-only のため hosted final は `ci.yml` workflow_dispatch で実行し success を merge 前に確認する。
+
+2026-09-07: PR #42 closeout。hosted final = workflow_dispatch run 34144906141（head `239aa16` = Findings Freeze 後に origin/main を取り込んだ head、success）→ squash merge `ee8e294`。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ⑩ の完了表記）に同乗。実績: Codex レビュー round 1 = review 5129580409（P2 4 / P3 1、全件 accept）→ round 2 = review 5131118268（P2 2 / P3 1）→ round 3 = review 5132916146（残 P2 2）→ round 4 = review 5134030265（新規指摘なし、Findings Freeze）、Reviewed Content HEAD `41de5f7` 不変。Human Gate 3 件回答済み（説明文 3 案 / 記録 ID 表示方針 (b) / 備考空欄「—」、2026-09-06）。runtime 反映（説明文の `PageHeader` 内描画、記録 ID 列撤去、備考「—」、`MovementTable` 行 note の全文アクセス等）は後続 runtime lane へ申し送り。
