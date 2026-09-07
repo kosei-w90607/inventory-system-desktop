@@ -432,13 +432,15 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 |---|---|---|
 | 商品系 | 商品一覧 / 在庫照会 / 一括価格改定 / 整合性チェック / 日次・月次 ranking | 商品コード + 商品名 |
 | 棚卸し | 棚卸しカウント一覧 | 商品コード + 商品名 |
-| 入出庫履歴 | 入出庫履歴（`InventoryRecordsPage.tsx:306`〈記録日時〉/ `:303`〈代表商品〉、複数商品の横断一覧。実列順は `:300-306` = 種別 / 記録ID / 業務日付 / 代表商品 / 明細数 / 状態 / 記録日時 で非隣接・非先頭のため、左固定にあたり 記録日時 → 代表商品 を先頭 2 列へ並べ替える（header 配列一致 test の更新を含む、Lane 3〜5）） | 記録日時 + 代表商品 |
+| 入出庫履歴 | 入出庫履歴（`InventoryRecordsPage.tsx:342`〈記録日時〉/ `:339`〈代表商品〉、複数商品の横断一覧。採用後の列順は `:336-343` = 種別 / 業務日付 / 代表商品 / 明細数 / 状態 / 記録日時 / 操作 で非隣接・非先頭のため、左固定にあたり 記録日時 → 代表商品 を先頭 2 列へ並べ替える（header 配列一致 test の更新を含む、Lane 3〜5）（記録ID列は本節の (b) 決定により一覧から除外。現状〈本 PR 時点〉は記録IDを含む 8 列〈種別/記録ID/業務日付/代表商品/明細数/状態/記録日時/操作〉のままで、除去は runtime follow-up で実施する）） | 記録日時 + 代表商品 |
 | 在庫変動履歴 | 在庫変動履歴（`StockMovementsPage.tsx:73-101`、単一商品ページ — 商品は見出しに表示され列は持たない、`MovementTable.tsx:52-53`） | 日時 + 種別 |
 | 操作ログ | 操作ログ（`OperationLogsPage.tsx:461-462`） | 日時 + 種別 |
 | 管理系 | 取引先管理（`SupplierUsageTable.tsx:19`、取引先コード列は存在しない） | 取引先名 |
 | 管理系 | backup 一覧（`BackupRestorePage.tsx:520,522`） | 作成日時（`created_at`）+ ファイル名（`file_name`） |
 
 履歴系（入出庫履歴 / 在庫変動履歴 / 操作ログ）の固定列は、旧分析 doc の実装未確認の「仮置き」判断（`2026-08-23-current-design-analysis.md:18`）を実コード確認で更新したものであり、Lane 2 の L3（PR #32 run 3「history は固定列を含む現実装を維持」、run 4〜7 で異議なし、2026-09-04）で実利用者確認済みとして**最終確定**した。
+
+**記録IDの一覧表示可否（owner culling）**: 入出庫履歴一覧（`InventoryRecordsPage.tsx:336-343`）の記録ID列は種別ごとの連番で全体では一意でなく、記録詳細ページも記録IDの数値を本文表示しない（[UI 磨き batch 3 design](../plans/2026-09-06-ui-polish-batch3-design.md) 起票時実測）。(a) 種別込み複合表示 / (b) 一覧の表示列から外す / (c) 現状維持 の3案を owner culling に諮った結果、**(b) 一覧の表示列から外す**で確定した（2026-09-06、原文回答は同 packet「Review Response」節）。フィルタ入力欄（`65-inventory-record-traceability.md` §65.4.1 の記録ID exact match）は一覧列と独立した UI 要素のため維持する。反映先: `docs/function-design/65-inventory-record-traceability.md` §65.8.1 結果列挙（本 PR で反映済み）。上記固定列 mapping 表（記録日時 + 代表商品）は本決定の影響を受けない。
 
 入力中 / 開いている行 / 選択行は「現在行」として左 4px の primary バー + 淡い背景 `--row-current` + badge/文言の 3 点で示す（色だけに頼らない、DSR-08）。UI 部品の枠は、interactive な操作枠（入力・outline ボタン・select・segmented・focus ring）を隣接背景（ページ背景）に対し 3:1 以上（WCAG 2.2 SC 1.4.11 / 2.4.13）にする — 対象は文字ラベルではなく塗り・枠自体が識別子になる component（focus ring 等）で、`secondary` button のような文字ラベルで識別される部品は塗り・枠を装飾として扱い、この 3:1 要件の対象に含めない。**badge（状態/分類/強調）は 3:1 の対象外**とする（非 interactive のため WCAG 1.4.11 の対象外）。代わりに次を要求する: 文字は WCAG 1.4.3 の通常テキスト基準 4.5:1 以上、**badge は枠線（tone 固有色または `--border`）を必ず持つ**（soft 背景単独・枠なしは不可）、**非中立の①状態 badge（warning/success/destructive tone）はさらに icon を必須にする**（中立 tone の①状態 badge は icon 任意、canonical `通常`=`StockStatusBadge.tsx:41-44` が icon なしで準拠する先例。②分類・③強調も識別に必要な場合のみ icon 可、廃番等は枠線ルールで担保されるため icon 任意）。枠線の強度は 3:1 を要求しない（tone 固有色または `--border` でよい）（2026-09-05 owner 決定、v2 mockup 視認。旧文は Badge/outline chip も 3:1 対象としていたが、owner が「`--border-strong` の枠はくどい」と明示的に却下した）。構造線（行区切り・表枠・card 枠）は 3:1 の対象外だが `--border`（`#cdc8c4`、対 `--background` 1.59:1、Lane 2 で `#e7e5e4`〈≈1.20:1〉から濃化済み）を用いる。token は `--border`（構造線）/ `--border-strong`（操作枠、`#8a8480`、対 `--background` 3.53:1、`--input` が参照）/ `--row-current`（現在行背景、`#fff8e6`、消費者は Lane 3〜5）/ `--control-surface`（操作面、`#fafaf9`、対 `--card` #f5f5f4 1.02:1、入力欄・Select、Gated Amendment 7 S46）の 4 種。globals.css に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とし DS3 の突合対象に含める。
 
@@ -456,6 +458,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-06 | UI 磨き batch 3 design | DSR-22 識別列マッピング表に記録ID表示方針の owner culling 結果（(b) 一覧の表示列から外す、確定 2026-09-06）を注記として追加 |
 | 2026-09-05 | 本 PR | UI 規約補強 design batch。DSR-01 に 3 段 CTA 階層（`secondary` 中間段、`--secondary` stone-200 塗り + `--border` 枠）を追記し `ProductForm.tsx` 二重 primary 候補を runtime 是正対象に記録。DSR-08 に増減数値の色規則（+ success-strong / − destructive-strong / 0 muted-foreground）を追記。DSR-22 の枠 3:1 要件を interactive な操作枠へ narrow 化し、badge（状態/分類/強調）を 3:1 対象外・枠線必須（tone 固有色または `--border`）・非中立の①状態は icon 必須へ改訂（owner v2 mockup 決定）。新規 DSR-23 は起草しない（lane ⑧ が登録） + Human Gate 回答反映（2026-09-06）: DSR-08 Why に tone family の感情区分（緑=報告/琥珀=注意/赤=警告）を追記 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | `--border-strong` / `--row-current` / `--border` 濃化 / `--input` 統一を globals.css に実装、token 候補値の HEX を canonical（本節）へ正式登録。件数文言は `Pagination` / `PaginationSummary`（`src/components/patterns/Pagination.tsx`）が範囲付き統一形を描画する実装済み表記へ更新。identityColumns 予約 prop と両立 probe（sticky × 識別列固定 × DSR-17）の申し送りを追記 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。件数文言を当時の canonical（`{totalCount} 件中 {page} / {totalPages} ページ`）へ揃え範囲付き統一形を後続 lane での移行対象と明記、上部表示・識別列固定の発動条件と画面→固定列 mapping 表を pin（⑯・04 原則 14 の重複記載を解消）、Badge/outline chip を UI 部品枠 3:1 の対象に拡張（owner Human Gate 所感、廃番 Badge 可読性）、token 候補値の HEX を canonical から撤去し packet / reference 分析 doc へ移動 |
