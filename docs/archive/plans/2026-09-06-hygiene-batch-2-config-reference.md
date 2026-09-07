@@ -6,7 +6,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 3aa0e8a
@@ -299,3 +299,5 @@ Contract ID: SPEC-HYG2-D1
 2026-09-07: Codex ロジックレビュー round 1 = issue comment 5567792372（P2 2 / P3 2、全件 accept）→ 是正 `537eb85`（Matrix SC4 / SC5 を全配列一致 + block diff へ、AC4 に生成成功 + baseline 差の前提、⑫ 文言、D-038 件数転記）→ `4614c6d` で `state-backtrack human-confirm->implementing`。round 2 = issue comment 5569875600（P2 1 = packet AC4〜AC6 の旧 oracle 残存）→ 同期 `109c1b3`。round 3 = issue comment 5572386239（**新規指摘なし、Findings Freeze 可**、mutant 独立再実測 + gate 全 PASS）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = doc gate ERROR 0 + Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 + Codex round 1〜3（Findings Freeze）、human-confirm = Human Gate none（runtime 非接触）。Reviewed Content HEAD = `109c1b3`。次: owner 承認 → Ready（docs / config のみのため hosted final は workflow_dispatch）→ merge。
 
 2026-09-07: owner が Ready → merge → closeout の代行を承認（「L3 終わってるやつはマージしてしまおう」、本 lane は L3 対象なし）→ `human-confirm -> ready-hosted-final` を本 commit で記録。hosted final は pull_request run と `ci.yml` workflow_dispatch で実行し success を merge 前に確認する。
+
+2026-09-07: PR #44 closeout。hosted final = pull_request run 34143369630 + workflow_dispatch run 34143417359（head `642e6e6` = Findings Freeze 後に origin/main を取り込んだ head、いずれも success）→ squash merge `76136cf`。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ⑫ の完了表記）に同乗。実績: Codex ロジックレビュー round 1 = issue comment 5567792372（P2 2 / P3 2、全件 accept）→ round 2 = issue comment 5569875600（P2 1）→ round 3 = issue comment 5572386239（新規指摘なし、Findings Freeze）、Reviewed Content HEAD `109c1b3` 不変。Human Gate none（runtime・operator 画面に非接触）。eslint palette 外色 ban の残り非対象 dir（`src/components/common/**` / `src/components/FilePicker.tsx`）は既知 Backlog（`docs/Plans.md`）として残置。
