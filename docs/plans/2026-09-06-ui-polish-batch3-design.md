@@ -259,14 +259,14 @@ catalog ① には、この component 契約（`actions` の有無に関わら�
 
 ## Acceptance Criteria
 
-- AC1: `rg -Fc "説明セクション" docs/design-system/02-component-catalog.md` ≥ 1（① ページヘッダに使用パターンが追加されている）。
+- AC1: `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md | rg -Fc "説明セクション"` ≥ 1（更新履歴表に同一文言があり本文なしでも hit するため `## 更新履歴` 前の本文範囲に限定。① ページヘッダに使用パターンが追加されている）。
 - AC2a: `rg -Fc "CSVファイルから複数の商品をまとめて登録・更新するページです" docs/function-design/60-ui-product-import.md` ≥ 1（Plan Review round 1 是正 — baseline 0 で本文に無い文であることを確認済み。旧 AC2 は `レジ登録状況を読み込む`/`未反映から外す` を anchor にしていたが、これらは既存本文（`67-ui-plu-export.md`）に既に 3 件・6 件存在する false oracle だった。以後は各画面の説明文冒頭など新規追加箇所にのみ現れる文を anchor にする）。
 - AC2b: `rg -Fc "レジのPLU登録状況を書き出すページです" docs/function-design/67-ui-plu-export.md` ≥ 1（baseline 0 確認済み。PLU 書出し説明文が追加されている）。
 - AC2c: `rg -Fc "アプリのデータ全体をまとめて保存し" docs/function-design/68-ui-backup-restore.md` ≥ 1（baseline 0 確認済み。バックアップ説明文が追加されている）。
 - AC3: `rg -c "^## DSR-23" docs/design-system/01-decision-rules.md` = 0（新規 DSR を起草していないことの negative oracle。本 packet は DSR-22 への注記追加のみ）。
-- AC4: `rg -Fc "owner culling" docs/design-system/01-decision-rules.md` ≥ 1（DSR-22 に記録 ID 方針の owner culling 注記がある）。
-- AC5: 機械 oracle のみ（Plan Review round 1 是正 — 「reviewer 目視」を撤去し、baseline 0 を確認済みの新規文言のみ使う）: `rg -Fc "備考は" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0 確認済み）、`rg -F "truncate + \`title\`" docs/design-system/02-component-catalog.md` の hit ≥ 1（baseline 0 確認済み、`truncate` 単独は DSR-12 の既存記述で baseline 2 のため anchor にしない）、`rg -Fc "直近 {N} 件の" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0 確認済み、`直近` 単独は baseline 3 のため anchor にしない）。空欄表示の具体文言（「—」か「備考なし」か）は owner culling 対象のため oracle 化しない — **Human Gate 後に確定**、確定後の Writer が該当文言の exact-match oracle を追加する。
-- AC6: `rg -Fc "formatStockDisplay" docs/design-system/02-component-catalog.md` ≥ 1（単位表示ルールが catalog ③ 使用トークンに追記されている）。
+- AC4: `awk '/^## 更新履歴/{exit}{print}' docs/design-system/01-decision-rules.md | rg -Fc "owner culling"` ≥ 1（更新履歴表に同一文言があり本文なしでも hit するため `## 更新履歴` 前の本文範囲に限定。DSR-22 に記録 ID 方針の owner culling 注記がある）。
+- AC5: 機械 oracle のみ（Plan Review round 1 是正 — 「reviewer 目視」を撤去し、baseline 0 を確認済みの新規文言のみ使う。更新履歴表に同一文言があり本文なしでも hit するため、いずれも `## 更新履歴` 前の本文範囲に限定する）: `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md | rg -Fc "備考は"` ≥ 1（baseline 0 確認済み）、`awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md | rg -F "truncate + \`title\`"` の hit ≥ 1（baseline 0 確認済み、`truncate` 単独は DSR-12 の既存記述で baseline 2 のため anchor にしない）、`awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md | rg -Fc "直近 {N} 件の"` ≥ 1（baseline 0 確認済み、`直近` 単独は baseline 3 のため anchor にしない）。空欄表示は owner culling で「—」に確定した（2026-09-06）ため、`awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md | rg -Fc "「—」"` ≥ 1（catalog:191 の空欄表示規則が rejected 案「備考なし」へ無断で戻された場合に検出）を追加する。
+- AC6: `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md | rg -Fc "formatStockDisplay"` ≥ 1（更新履歴表に同一文言があり本文なしでも hit するため `## 更新履歴` 前の本文範囲に限定。単位表示ルールが catalog ③ 使用トークンに追記されている）。
 - AC7: `01-decision-rules.md` / `02-component-catalog.md` の `## 更新履歴` 表それぞれに本 PR の行が 1 行追加されている。
 - AC8: `docs/Plans.md` ④ が本 packet（basename `2026-09-06-ui-polish-batch3-design.md`）への active link を持つ bullet ⑩ を持つ。
 - AC9: `git diff --name-only 07302b5..HEAD -- src` の出力が空（`src/**` 無変更）。
