@@ -1091,6 +1091,13 @@ describe("StocktakePage (UI-10)", () => {
     expect(
       uncountedCheckbox.compareDocumentPosition(perPageTrigger) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Codex review 5129977808 P2 是正: 文書順だけでは表示件数ブロックが filter-row の
+    // 外へ出ても検出できない。filter-row root への containment + lastElementChild を
+    // 追加で assert する。
+    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-center.gap-4");
+    expect(filterRow).not.toBeNull();
+    expect(filterRow).toContainElement(perPageTrigger);
+    expect(filterRow?.lastElementChild).toContainElement(perPageTrigger);
   });
 
   it("SC4a: filter row root has rounded-lg border bg-card p-4 (old borderless frame removed)", async () => {
@@ -1124,6 +1131,47 @@ describe("StocktakePage (UI-10)", () => {
     // 残っていないこと（単一ページで空 <fieldset> を残さない、S5）。
     expect(container.querySelectorAll("fieldset")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "前のページ" })).not.toBeInTheDocument();
+  });
+
+  it("SC11 (Codex review 5129977808 P1 是正): saving the last uncounted item on the last page keeps the previous-page recovery control", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    // 未入力のみ表示・51 件・50 件表示の 2 ページ目（残り 1 件）を初期表示。
+    mockGetItems.mockResolvedValueOnce(
+      listResponse({
+        items: [stocktakeItem({ id: 999, product_code: "P-051", name: "最後の糸" })],
+        progress: { total_items: 51, counted_items: 0, uncounted_items: 51 },
+        total_count: 51,
+        page: 2,
+        per_page: 50,
+      }),
+    );
+    // 保存 → invalidate 後の再取得: 未入力が 50 件に減り、2 ページ目は空になる
+    // （totalPages は 1 に縮むが page は 2 のまま残る）。
+    mockGetItems.mockResolvedValueOnce(
+      listResponse({
+        items: [],
+        progress: { total_items: 51, counted_items: 1, uncounted_items: 50 },
+        total_count: 50,
+        page: 2,
+        per_page: 50,
+      }),
+    );
+    mockFindItem.mockResolvedValueOnce(ok(stocktakeItem({ id: 999, product_code: "P-051", name: "最後の糸" })));
+    await renderPage({ page: 2, counted_only: false });
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-051");
+    await user.click(screen.getByRole("button", { name: "対象を確認" }));
+    await user.clear(await screen.findByLabelText("実際の数"));
+    await user.type(screen.getByLabelText("実際の数"), "10");
+    await user.click(screen.getByRole("button", { name: "数を保存" }));
+
+    await waitFor(() => {
+      expect(mockGetItems).toHaveBeenLastCalledWith(77, null, false, 2, 50);
+    });
+    expect(await screen.findByRole("button", { name: "前のページ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
   });
 });
 

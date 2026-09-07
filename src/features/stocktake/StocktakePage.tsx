@@ -735,6 +735,10 @@ export function StocktakeItemList({
   const isFilterDefault = search.dept === undefined && search.counted_only === undefined;
   // S5（round 1 是正）: Pagination.tsx と同じ式で totalPages を計算し、totalPages<=1 の
   // ときは <fieldset> 自体を描画しない（中身の無い空 <fieldset> が残るのを防ぐ）。
+  // Codex P1 是正（PR #40）: 最終ページの未入力アイテムを保存すると invalidate 後に
+  // totalPages が縮み page が範囲外に残ることがある。共有 Pagination.tsx:48 はこの
+  // page > totalPages を「前のページ」の回復条件として許容しているため、外側の
+  // gate もこの条件を含めないと回復導線が消える。
   const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
 
   return (
@@ -861,7 +865,7 @@ export function StocktakeItemList({
         </>
       )}
 
-      {totalPages > 1 ? (
+      {totalPages > 1 || page > totalPages ? (
         <fieldset disabled={disabled}>
           <Pagination
             page={page}

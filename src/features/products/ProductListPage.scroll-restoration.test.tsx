@@ -469,6 +469,59 @@ describe("GA3b-6: main（縦）と箱（横）が独立に、かつ同時に復�
     expect(restoredBox.scrollLeft).toBe(150);
   });
 
+  it("Codex review 5129977808 P2 是正: 箱が先に、main が後から別々のタイミングで復元可能になっても両方到達する（mainObserver 生成条件の box 巻き込み mutant を検出）", async () => {
+    const { router, box } = await renderProductsAt("/products?case=ga3b6-staggered");
+    await screen.findByText("P-GA3B6");
+    const main = document.querySelector<HTMLElement>(MAIN_SELECTOR);
+    if (main === null) throw new Error("main scroll container is required");
+    const mainStub = installMainGeometryStub(main);
+    mainStub.setScrollable(true);
+
+    trackScroll(main, 300, 0);
+    trackScroll(box, 0, 150);
+
+    mainStub.setScrollable(false);
+    stub.setRevealed(false);
+    await act(async () => {
+      await router.navigate({ to: "/products/new" });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe("/products/new");
+    });
+
+    await act(async () => {
+      await router.navigate({ href: "/products?case=ga3b6-staggered" });
+    });
+    await waitFor(() => {
+      expect(router.stores.resolvedLocation.get()?.href).toBe("/products?case=ga3b6-staggered");
+    });
+    const restoredBox = document.querySelector<HTMLElement>(BOX_SELECTOR);
+    if (restoredBox === null) throw new Error("products-list scroll container is required");
+    expect(main.scrollTop).toBe(0);
+    expect(restoredBox.scrollLeft).toBe(0);
+
+    // 箱だけを先に scroll 可能にし、箱側の DOM だけを変異させる（main は非 scrollable の
+    // まま）。箱の復元が main を巻き込まないこと、かつこの時点では main が未復元のままで
+    // あることを確認する。
+    stub.setRevealed(true);
+    await act(async () => {
+      restoredBox.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+    expect(restoredBox.scrollLeft).toBe(150);
+    expect(main.scrollTop).toBe(0);
+
+    // 遅れて main だけを scroll 可能にし、main 側の DOM だけを変異させる。mainObserver が
+    // 独立して main の復元を検出できることを確認する（`&& box === null` 相当の mutant は
+    // ここで main.scrollTop が 0 のまま FAIL する）。
+    mainStub.setScrollable(true);
+    await act(async () => {
+      main.append(document.createElement("div"));
+      await Promise.resolve();
+    });
+    expect(main.scrollTop).toBe(300);
+  });
+
   it("GA3b-7: forced-top（scrollPageToTop の flag）は main と箱の両方を、cache 復元より優先してリセットする", async () => {
     const sourceHref = "/products?case=ga3b7-forced-top";
     const otherHref = "/products?case=ga3b7-forced-top&page=2";

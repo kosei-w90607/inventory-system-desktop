@@ -728,6 +728,13 @@ describe("PriceRevisionPage Lane 4 S1f/S3f/S4b: frame color, top summary, per-pa
       discontinuedCheckbox.compareDocumentPosition(perPageTrigger) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Codex review 5129977808 P2 是正: 文書順だけでは表示件数ブロックが filter-row の
+    // 外へ出ても検出できない。filter-row root への containment + lastElementChild を
+    // 追加で assert する。
+    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-center.gap-3");
+    expect(filterRow).not.toBeNull();
+    expect(filterRow).toContainElement(perPageTrigger);
+    expect(filterRow?.lastElementChild).toContainElement(perPageTrigger);
   });
 });
 

@@ -382,7 +382,7 @@ describe("SC10: 帯の隣接 + inset（Gated Amendment 3 S13、owner L3 run 2 FA
   });
 });
 
-describe("GA3b-1〜GA3b-4: 箱の高さ方針を行数基準 max-h へ（Lane 4 Gated Amendment 3、旧 GA1a/GA1b の逆転）", () => {
+describe("GA3b-1〜GA3b-4: 箱の高さ方針を viewport 基準 max-h へ（Lane 4 Gated Amendment 3、旧 GA1a/GA1b の逆転。GA4b で行数基準から viewport 基準へ改訂）", () => {
   it("GA3b-2/GA3b-3/GA3b-4: box carries max-h-[calc(100vh-6.75rem)] overflow-auto (not min-h-[12rem]/flex-1) + data-list-scroll-container + data-scroll-restoration-id=products-list; toolbar has no shrink-0; bottom Pagination is a sibling after the box (not inside it); root has none of flex/flex-1/min-h-0/flex-col (space-y-3/list-shell-sticky/STICKY_TABLE_CLASSES/identityColumns tokens unchanged)", () => {
     const { container } = render(
       <ListShell stickyHeader topSummary identityColumns={2} pagination={pagination(25)}>

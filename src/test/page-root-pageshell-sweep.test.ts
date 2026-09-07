@@ -84,8 +84,9 @@ describe("SC2b: no feature page file declares a p-6 root className outside PageS
   });
 });
 
-// GA3b-5（Lane 4 Gated Amendment 3、旧 GA1e の反転）: stickyHeader の箱は行数基準の
-// max-h で自立するようになり、page root からの高さ継承（PageShell へ flex/h-full/
+// GA3b-5（Lane 4 Gated Amendment 3、旧 GA1e の反転。GA4b で高さ方針を viewport 基準へ
+// 改訂）: stickyHeader の箱は viewport 基準の max-h（`max-h-[calc(100vh-6.75rem)]`）で
+// 自立するようになり、page root からの高さ継承（PageShell へ flex/h-full/
 // min-h-0/flex-col 系 class を渡すこと）はもう不要——渡したまま残っていると死んだ
 // class の残存（GA3b-1 の撤去漏れ）を示す regression になる。fs scan の性質上、
 // stickyHeader を渡す JSX と PageShell の JSX が同一 file 内にある場合にのみ機能する
