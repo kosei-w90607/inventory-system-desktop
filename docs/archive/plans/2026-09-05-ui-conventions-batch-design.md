@@ -8,7 +8,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
@@ -547,3 +547,5 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 2026-09-07: Codex ロジック・整合面レビュー round 1 = review 5129505910（P1 1 / P2 5、全件 accept。P1 = Final Review 是正 `b90e494` が commit 型 SearchBar の Label + aria-label 併存契約を書き換えていた回帰）→ 是正 `02a5491`（契約復元 / live 型構造例 / checklist 中立例外 / 撤回 oracle 整理 + AC14 形 src oracle / AC7 の ⑨ 節内限定 / AC17 quoting）→ `3b15bd0` で `state-backtrack human-confirm->implementing`。round 2 = review 5131012992（P2 2 / P3 2）→ 是正 `679a1d5`（「反映済み」の GA2 前契約を撤去 / accessible name は aria-label 優先〈W3C accname + `SearchBar.tsx` 実読〉/ checklist :87 例外 / AC17 backtick）。round 3 = review 5132801693（**新規指摘なし、Findings Freeze 可**、round 2 の 4 件を独立閉鎖確認、既知 mutant 検出、gate 全通過）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = doc gate ERROR 0（full / `--target plan`）+ Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 ×2 + Codex round 1〜3（Findings Freeze）、human-confirm = Human Gate 完了（culling 回答 + PLU 書出し緑 Alert OK、2026-09-06）は design-only 是正のため有効。Reviewed Content HEAD = `679a1d5`。次: owner 承認 → Ready（docs-only のため hosted final は owner dispatch）→ merge。
 
 2026-09-07: owner が Ready → merge → closeout の代行を承認（「Ready から締めまで進めてしまっていい」）→ `human-confirm -> ready-hosted-final` を本 commit で記録。docs-only のため hosted final は `ci.yml` の workflow_dispatch（`--ref agent/ui-conventions-batch`）で実行し、run の success を merge 前に確認する。
+
+2026-09-07: PR #39 closeout。hosted final = pull_request run 34142123149 + workflow_dispatch run 34142191876（head `9d8cfd6` = Findings Freeze 後に origin/main を取り込んだ head、いずれも success）→ squash merge `6ff2247`。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ⑦ の完了表記）に同乗。実績: Codex ロジック・整合面レビュー round 1 = review 5129505910（P1 1 = Final Review 是正 `b90e494` の commit 型 SearchBar Label 契約汚染を `02a5491` で復元）→ round 2 = review 5131012992 → round 3 = review 5132801693（新規指摘なし、Findings Freeze）、Reviewed Content HEAD `679a1d5` 不変。Human Gate 完了（tone family culling 回答 + PLU 書出しの緑 Alert OK、2026-09-06）。design-only のため runtime 反映（(a) 状態 Badge tone・(b) CTA 中間段・(c) 検索欄 Label・(e) Alert warning）は後続 runtime lane（⑧ 他）へ申し送り。
