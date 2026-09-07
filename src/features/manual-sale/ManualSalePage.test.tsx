@@ -235,6 +235,32 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     });
   });
 
+  it("Codex round3 P2-class: 理由selectの初期値（PLU未登録）はreasonとしてそのまま送信される（otherとの内部値独立検査）", async () => {
+    const user = userEvent.setup();
+    mockCreateManualSale.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        sale_id: 1,
+        created: true,
+        idempotent_replay: false,
+        plu_warnings: [],
+        stock_warnings: [],
+        needs_confirmation: false,
+        confirmation_token: null,
+      },
+    });
+    renderWithClient(<ManualSalePage />);
+    await addSingleProduct(user);
+
+    await user.click(screen.getByRole("button", { name: "手動販売を保存" }));
+
+    await waitFor(() => {
+      expect(mockCreateManualSale).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: "plu_unregistered" }),
+      );
+    });
+  });
+
   it("REQ-203 requires explicit selection when multiple products match", async () => {
     const user = userEvent.setup();
     mockSearchProducts.mockResolvedValue({

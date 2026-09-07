@@ -398,6 +398,36 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     });
   });
 
+  it("⑧SC4c-2: 状態selectでall以外を選ぶとsearch stateがその値へ更新される（Codex round3 P2-R2-1、取消済み/進行中の内部値を含む）", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const user = userEvent.setup();
+    const onSearchChange = vi.fn();
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={onSearchChange} />);
+
+    const statusTrigger = await screen.findByLabelText("状態");
+
+    const STATUS_OPTIONS: [label: string, value: string][] = [
+      ["有効", "active"],
+      ["取消済み", "canceled"],
+      ["進行中", "in_progress"],
+    ];
+    for (const [label, expectedValue] of STATUS_OPTIONS) {
+      await user.click(statusTrigger);
+      await user.click(await screen.findByRole("option", { name: label }));
+      const lastCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+        (prev: { status?: string; page?: number }) => { status?: string; page?: number },
+      ];
+      expect(lastCall[0]({})).toEqual({
+        status: expectedValue,
+        page: 1,
+      });
+    }
+  });
+
   it("⑧SC4a: 記録種別selectでall以外を選ぶとsearch stateがその値へ更新される", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",

@@ -291,6 +291,38 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     });
   });
 
+  it("Codex round3 P2-class: 種別selectで damage 以外を選ぶとdisposal_typeがその値のまま送信される（廃棄・その他の内部値を独立リテラルで検査）", async () => {
+    const user = userEvent.setup();
+    mockCreateDisposal.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 41, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    const DISPOSAL_TYPE_OPTIONS: [label: string, value: string][] = [
+      ["廃棄", "disposal"],
+      ["その他", "other"],
+    ];
+    for (const [label, expectedValue] of DISPOSAL_TYPE_OPTIONS) {
+      mockCreateDisposal.mockClear();
+      const { unmount } = renderWithClient(<DisposalPage />);
+      await addSingleProduct(user);
+      fireEvent.change(screen.getByLabelText("DP-001 の数量"), { target: { value: "2" } });
+      fireEvent.change(screen.getByLabelText("DP-001 の理由"), { target: { value: "棚卸差異" } });
+
+      await user.click(screen.getByLabelText("DP-001 の種別"));
+      await user.click(await screen.findByRole("option", { name: label }));
+      await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
+
+      await waitFor(() => {
+        expect(mockCreateDisposal).toHaveBeenCalled();
+      });
+      const createCalls = mockCreateDisposal.mock.calls as [DisposalCreateRequest][];
+      expect(createCalls[0][0].items[0]?.disposal_type).toBe(expectedValue);
+
+      unmount();
+    }
+  });
+
   it("T8 UI-05-D17: saved disposal result does not add a detail link", async () => {
     const user = userEvent.setup();
     mockCreateDisposal.mockResolvedValue({
