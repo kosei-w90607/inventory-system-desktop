@@ -12,7 +12,7 @@ function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
       data-slot="select"
       {...props}
       onValueChange={(value) => {
-        // ponytail: <form> 内で使う Select は Radix が hidden native select
+        // <form> 内で使う Select は Radix が hidden native select
         // 要素 (bubble input) を併設する。その選択肢一覧は各 SelectItem の
         // useLayoutEffect で1テンポ遅れて登録されるため、controlled value と
         // 選択肢一覧が同一 render で同時に変わる瞬間（例: 非同期取得した既存値を

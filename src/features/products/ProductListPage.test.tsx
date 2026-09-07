@@ -664,8 +664,30 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
     const rootClass = container.querySelector(".list-shell-sticky")?.className ?? "";
     const tokens = rootClass.split(/\s+/);
     expect(tokens).toContain("[&_thead_th:nth-child(1)]:sticky");
-    expect(tokens).toContain("[&_thead_th:nth-child(2)]:left-[7rem]");
+    expect(tokens).toContain("[&_thead_th:nth-child(2)]:left-[9rem]");
     expect(tokens).toContain("[&_tbody_td:nth-child(1)]:bg-background");
+  });
+
+  it("GA3b-1: PageShell root carries none of flex/h-full/min-h-0/flex-col (Lane 4 Gated Amendment 3, GA1a の逆転)", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-GA3B1" })],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    const { container } = renderWithClient(
+      <ProductListPage search={{}} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByText("P-GA3B1");
+    const rootTokens = (container.firstElementChild?.className ?? "").split(/\s+/);
+    expect(rootTokens).not.toContain("flex");
+    expect(rootTokens).not.toContain("h-full");
+    expect(rootTokens).not.toContain("min-h-0");
+    expect(rootTokens).not.toContain("flex-col");
+    expect(rootTokens).not.toContain("overflow-hidden");
   });
 
   it("SC5b: isLoading 中は自前 Skeleton ではなく ListSkeleton を描画する", () => {

@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS } from "@/components/patterns/ListShell";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import type { ProductWithRelations } from "@/lib/bindings";
 import { CircleCheck, CircleMinus, Clock3 } from "lucide-react";
@@ -33,7 +34,9 @@ export function ProductTable({ items, returnTo = "/products" }: ProductTableProp
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>商品コード</TableHead>
+          <TableHead className="min-w-36">
+            <div className={PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS}>商品コード</div>
+          </TableHead>
           <TableHead>商品名</TableHead>
           <TableHead>部門</TableHead>
           <TableHead className="text-right">売価</TableHead>
@@ -49,8 +52,12 @@ export function ProductTable({ items, returnTo = "/products" }: ProductTableProp
             key={item.product_code}
             className={item.is_discontinued ? "text-muted-foreground" : undefined}
           >
-            <TableCell className="w-28 font-mono text-sm font-medium">
-              {item.product_code}
+            <TableCell className="min-w-36 font-mono text-sm font-medium">
+              <div
+                className={`${PRODUCT_CODE_CELL_WRAPPER_WIDTH_CLASS} break-all whitespace-normal`}
+              >
+                {item.product_code}
+              </div>
             </TableCell>
             <TableCell className="min-w-[14rem] whitespace-normal">
               <div className="flex flex-wrap items-center gap-2">

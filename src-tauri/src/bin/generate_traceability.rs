@@ -45,7 +45,13 @@ const DESIGN_DIR_RELATIVE: &str = "docs/function-design";
 /// 2026-09-05 Lane 5（`agent/ui-list-backbone-d-lane5`）: 22 → 24。
 /// `src/components/ui/button.test.tsx` / `badge.test.tsx`（shared UI primitive の
 /// class 契約 test、画面非依存のため REQ/UI ID を付与しない。packet L5-D6）。
-const FE_UNREFERENCED_BASELINE: usize = 24;
+/// 2026-09-06 Lane 4 Gated Amendment 1/2: 24 → 26。
+/// `src/features/products/ProductListPage.scroll-restoration.test.tsx`（GA1d、商品一覧
+/// scroll 箱の scroll restoration 契約 test）/
+/// `src/features/products/components/PriceRevisionFilters.test.tsx`（GA2、取引先
+/// label/Select/追加ボタンの群化 class 契約 test）。いずれも画面非依存の shared UI
+/// primitive／既存 lane 由来の scroll 契約 test で REQ/UI ID を付与しない（packet L5-D6 先例）。
+const FE_UNREFERENCED_BASELINE: usize = 26;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

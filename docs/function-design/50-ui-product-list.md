@@ -60,7 +60,7 @@ src/components/patterns/Pagination.tsx                  # 旧 features/products/
 
 検索語、部門、廃番モード、PLU 移行 filter、並替え、`perPage` が変わったときは `page=1` に戻す。ページ移動だけは現在の検索条件を維持する。
 
-**2026-09-03 更新履歴（UI 一覧の背骨 D Lane 2）**: `perPage` の既定値を `50` → `100` へ変更（`src/features/products/search.ts` `normalizePerPage`、1 件探索が主動線のため。URL 明示値が優先される挙動・共有定数 `PRODUCT_PER_PAGE_OPTIONS` は不変）。
+**2026-09-03 更新履歴（UI 一覧の背骨 D Lane 2）**: `perPage` の既定値を `50` → `100` へ変更（`src/features/products/search.ts` `normalizePerPage`、1 件探索が主動線のため。URL 明示値が優先される挙動・共有定数 `LIST_PER_PAGE_OPTIONS` は不変）。
 
 `q` は live 型（[59-ui-shared-patterns.md](59-ui-shared-patterns.md) §59.1 SearchBar、`debounceMs=200`）で、入力から 200ms 後に search param へ反映する。Enter は debounce を待たず即時反映し（trim なし）、IME 変換確定中の Enter は `event.isComposing` で除外して検索確定と取り違えない。CMD 呼び出し直前の `keyword` 変換でのみ trim する（UI-01a-D9、2026-08-03 owner L3 判断、gated amendment）。
 

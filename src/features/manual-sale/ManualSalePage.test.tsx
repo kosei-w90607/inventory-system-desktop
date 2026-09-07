@@ -235,6 +235,64 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     });
   });
 
+  it("Codex round3 P2-class: 理由selectの初期値（PLU未登録）はreasonとしてそのまま送信される（otherとの内部値独立検査）", async () => {
+    const user = userEvent.setup();
+    mockCreateManualSale.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        sale_id: 1,
+        created: true,
+        idempotent_replay: false,
+        plu_warnings: [],
+        stock_warnings: [],
+        needs_confirmation: false,
+        confirmation_token: null,
+      },
+    });
+    renderWithClient(<ManualSalePage />);
+    await addSingleProduct(user);
+
+    await user.click(screen.getByRole("button", { name: "手動販売を保存" }));
+
+    await waitFor(() => {
+      expect(mockCreateManualSale).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: "plu_unregistered" }),
+      );
+    });
+  });
+
+  it("Codex round4 P2-class: 理由selectでその他へ切り替えてからPLU未登録へ戻すとreasonがplu_unregisteredとして送信される（初期値頼みではない検査）", async () => {
+    const user = userEvent.setup();
+    mockCreateManualSale.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        sale_id: 1,
+        created: true,
+        idempotent_replay: false,
+        plu_warnings: [],
+        stock_warnings: [],
+        needs_confirmation: false,
+        confirmation_token: null,
+      },
+    });
+    renderWithClient(<ManualSalePage />);
+    await addSingleProduct(user);
+
+    const reasonTrigger = screen.getByLabelText("理由");
+    await user.click(reasonTrigger);
+    await user.click(await screen.findByRole("option", { name: "その他" }));
+    await user.click(screen.getByLabelText("理由"));
+    await user.click(await screen.findByRole("option", { name: "PLU未登録商品の販売" }));
+
+    await user.click(screen.getByRole("button", { name: "手動販売を保存" }));
+
+    await waitFor(() => {
+      expect(mockCreateManualSale).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: "plu_unregistered" }),
+      );
+    });
+  });
+
   it("REQ-203 requires explicit selection when multiple products match", async () => {
     const user = userEvent.setup();
     mockSearchProducts.mockResolvedValue({
@@ -332,7 +390,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
       await screen.findByText("一時的なエラー。詳細は診断ログに記録されています。"),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
   });
 
@@ -438,7 +496,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     const warningItem = screen.getByText("MS-001: この商品はレジで打てます（PLU登録済み）");
     expect(warningItem.closest('[data-slot="alert-description"]')).not.toBeNull();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(screen.queryByText("手動販売を保存しました")).not.toBeInTheDocument();
     expect(invalidateSpy).not.toHaveBeenCalled();
@@ -529,7 +587,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     const saleDate = mockCreateManualSale.mock.calls[0][0].sale_date;
 
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(await screen.findByText("手動販売を保存しました")).toBeInTheDocument();
     expect(screen.getByText("41")).toBeInTheDocument();

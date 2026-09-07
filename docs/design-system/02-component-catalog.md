@@ -43,6 +43,10 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 主動線が無い画面（例: 商品登録・修正）は `<header className="space-y-1">` に h1 のみを置き、右側のアクションを省く。
 
+**バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を `PageHeader` 内の `space-y-1` グループ（h1 と同じまとまり、下記 component gap 参照）に描画する。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。既存の `PageHeader` 外側 sibling `<p>` 実装（例: `SupplierManagementPage.tsx:35-38`）は、この記法へ runtime lane で移行する。
+
+**component gap（runtime lane 申し送り）**: `PageHeader.tsx:27-45` は `actions` が渡されると `flex` レイアウトを返し `subtitle` を描画しない分岐になっており、`actions` と `subtitle`（および説明セクション）は現状排他である。この gap により `SupplierManagementPage.tsx:35-38`（説明文がヘッダー外側の兄弟要素になり `PageShell` の `space-y-6` に流れ込み間隔が崩れる）、および `ReceivingPage.tsx:288-291` / `ManualSalePage.tsx:303-306` / `ReturnExchangePage.tsx:411-414` / `DisposalPage.tsx:278-281`（`subtitle` prop の値が render 結果から消え、説明文が画面に一切表示されない）の計 5 画面が影響を受けている。推奨は `PageHeader.tsx:29-36` の `actions` 分岐を「`<h1>` + 条件付き `<p>` を `<div className="space-y-1">` にまとめ、`actions` と並べる」形へ直す root-cause fix（外側 `<header>` の class は不変のため `PageHeader.test.tsx:61-73` は green のまま）。呼び出し側で wrapper を都度書く使用パターンは、この component 拡張が入るまでの代替であり Non-scope（runtime lane が実施）。
+
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
 **使用トークン**: h1 = タイポ `h1`（24px / weight 600）。アクションボタンは Primary（`amber-700`）。要素間ギャップは `space-3`（12px）。
@@ -53,7 +57,7 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **Do**:
 - 主動線（primary button）は 1 ページ 1 個に絞る（[01-decision-rules.md](01-decision-rules.md) DSR-01）
-- アクションが複数あるときは 1 つだけ Primary、残りは outline / ghost に降格する
+- アクションが複数あるときは 1 つだけ Primary、残りは 3 段（`secondary` 中間段 → `outline` / `ghost`）で降格する
 
 **Don't**:
 - h1 を複数置かない
@@ -155,7 +159,7 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{item.name}</span>
             {item.is_discontinued && <Badge variant="secondary">廃番</Badge>}
-            {/* 分類 badge は枠線 3:1（DSR-22）が規範。現状 variant="secondary" は border なし、Lane 3〜5 sweep 対象 */}
+            {/* 分類 badge は枠線必須（`--border`、DSR-22）が規範。現状 variant="secondary" は border なし、Lane 3〜5 sweep 対象 */}
           </div>
         </TableCell>
         <TableCell>{item.department_name}</TableCell>
@@ -169,7 +173,7 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
 </Table>
 ```
 
-**使用トークン**: コード列は等幅 `font-mono`。数値列は `tabular-nums` + `text-right` で桁を揃える。廃番行は `text-muted-foreground`（`stone-500`）で減衰させる。商品名セルは `min-w-[14rem]` で最小幅を確保し折り返す。
+**使用トークン**: コード列は等幅 `font-mono`。数値列は `tabular-nums` + `text-right` で桁を揃える。廃番行は `text-muted-foreground`（`stone-500`）で減衰させる。商品名セルは `min-w-[14rem]` で最小幅を確保し折り返す。数量 + 単位の表示は共通 `formatStockDisplay`/`formatStockUnitLabel`（`src/features/stock-inquiry/lib/format-stock-display.ts`）を使い、`unit` コードを直接文字列結合しない（UI 磨き batch 3 design L8-1）。
 
 **状態**:
 - 行の減衰: 廃番など従的状態の行は `text-muted-foreground` で薄くする
@@ -183,6 +187,10 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
 **バリエーション: 元記録リンク列**（PR #113/#115、canonical: `src/features/stock-movements/components/MovementTable.tsx`）: 在庫変動明細は `MovementTable{movements, returnTo?}` を在庫変動履歴 + 入出庫 4 詳細ページで共有する。`movement.source`（`{ label, route } | null`）が `null` なら「元記録なし」を表示し、値があれば returnTo 付きリンクで元業務記録の詳細へ遷移する。増減は矢印アイコン + 符号付き数値で示し、色のみに依存しない（DSR-08）。
 
 **バリエーション: 直近実績サマリテーブル**（PR #116）: 業務入力画面（入庫 / 返品・交換 / 手動販売 / 廃棄の 4 画面で確立）の下部に「直近の{業務名}」見出しと「すべての履歴を見る」（outline、`/inventory/records` へ recordType 付き遷移）を横並びで置き、直近 N 件テーブル（Skeleton / Error / Empty / データの 4 状態、パターン⑥）と各行の「詳細を見る」導線を付ける。直近リストの取得失敗時は「入力中の内容はそのままです。保存や商品追加は続けられます」のように業務継続を保証する文言を出し、フォーム入力を壊さない。新規の業務入力画面でも同じ構成を踏襲する。
+
+**備考列の規則**（UI 磨き batch 3 design、L8-6 + A1(a)(b)(c) 統合）: 備考は対象記録に note フィールドがある画面（入庫・返品交換・手動販売、および `MovementTable.tsx` を共有する在庫変動履歴・記録詳細 7 画面）で必須列とする。廃棄・破損は note フィールドを持たないため対象外（Non-scope、混同しない）。空欄表示は「—」に統一する（`MovementTable.tsx:93-94` の `"—"` 空値表示〈三項演算子〉が 7 画面共有かつアプリ全体でも主流。薄字「備考なし」（`ReturnExchangePage.tsx`）は不採用（owner culling 2026-09-06 で「—」に確定、runtime lane で「—」へ揃える））。一定文字数超過時は truncate + `title` 属性で省略表示する（`OperationLogsPage.tsx:522` 相当のパターンを再利用。`MovementTable.tsx:94` は現状 truncate のみで `title` を欠くため是正対象）。全文確認手段は note の種類で分かれる: 記録本体の note フィールド（例: `ManualSaleRecordDetailPage.tsx:149` の `detail.note`）は各記録詳細ページのヘッダー部が truncate なしで直接表示する。一方 `MovementTable.tsx` の行 note（`movement.note`）は、`source` が無い行に元記録リンクが無く（`docs/function-design/66-ui-stock-movements.md` UI-06c-D6、`MovementTable.tsx:82-91`）、`StocktakeRecordDetailPage.tsx:234` 等の記録詳細ページ自身も同じ `MovementTable` を再利用し truncate されたままのため、「記録詳細ページに任せれば全文が見える」という代替経路が無い。したがって movement note の全文確認手段は `MovementTable` 自身が担う（`title` 属性に加え、折り返し・展開等の手段を持つ）ことを contract とする（DSR-12）。
+
+**「直近の○○」系4画面の統一**（A1a/b/c）: 見出し直下に「直近 {N} 件の{対象}を新しい順に表示します。」の文型を置く（例: 価格履歴 = 「直近 10 件の売価・原価の変更を新しい順に表示します。」）。価格履歴を表構造へ変更したうえで `TableHead` 列見出しを付ける（runtime lane）。囲み（`border`）は意味階層ごとに 1 つまでとし（DSR-16）、`ManualSalePage.tsx` の内側の追加枠を外して他 3 画面（入庫・返品交換・廃棄）と揃える（他 3 画面へ箱を追加する方向は DSR-16 に反するため不採用）。
 
 **opt-in（⑯ 一覧の器で使用）**: viewport を超える一覧では、`<thead>` を sticky にし（`position: sticky; top: 0`、z-index は header > 固定列 > 本文）、商品コード + 商品名等の識別列を `position: sticky; left: 0` で左固定できる（履歴系は日時 + 種別を固定）。2 列目以降の識別列は 1 列目の実測幅を `left` に反映し、固定 rem 直書きにしない。1 画面に収まる短い一覧には適用しない。適用条件・必須構成の全体は [⑯ 一覧の器（ListShell）](#⑯-一覧の器listshell) を参照（DSR-22）。
 
@@ -379,6 +387,26 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 **バリエーション: インライン選択エラー 1 スロット**（PR #125、canonical: `src/features/daily-report-import/DailyReportImportPage.tsx` の `SelectionErrorMessage`）: ファイル選択（DSR-14 の path-based 方式）など非フォーム文脈の入力検証エラーは、発生源（選択ボタン）直下の 1 スロットに `role="alert"` + destructive テキスト + アイコンで表示する。エラー state は選択試行のたびに置換し、成功で `null` にクリアする。画面上部の Alert 帯（データ安全系専用）とは役割を混ぜない（DSR-03 の 3 階層）。フォーム文脈の入力検証はパターン④の `FieldError`（入力直下）が既定で、本バリエーションは非フォーム文脈専用。
 
+### Alert warning variant（画面上部の注意喚起、owner v4 決定で確定）
+
+業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` に次を追加する: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。枠は `--warning`（badge ①状態の `--warning-border` より一段濃い）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
+
+```tsx
+<Alert variant="warning">
+  <AlertTriangle aria-hidden="true" />
+  <AlertTitle>ご注意</AlertTitle>
+  <AlertDescription>
+    画面を再読み込みすると、保存していない変更は失われます。
+  </AlertDescription>
+</Alert>
+```
+
+適用先候補: `PriceRevisionPage.tsx:112-116`（現状 `<Alert role="note">` で variant 指定なし、`AlertTitle` も無い 1 段構造。runtime lane で `warning` variant へ切替え、`AlertTitle`「ご注意」を追加し、既存の本文はそのまま `AlertDescription` に残す）。追加適用先（owner 決定、2026-09-06）: ホーム『前日分が未取込みです』（`HomePage.tsx:76-84`）は destructive のまま `AlertTriangle` icon を追加（警告）、日次 / 月次売上の『レジ日報は未取込みです』（`DailySalesPage.tsx:175`、`MonthlySalesPage.tsx:166`）は warning variant。success Alert の本文色は現状（`text-success-strong`）を維持する（owner 保留、2026-09-06）。
+
+**Alternatives considered**: (a) `bg-card` 据え置き + `text-warning-strong`（対 `bg-card` 8.32:1、AA 達成だが「薄い」という owner 指摘を soft 背景なしでは解消できず不採用）。(b) `bg-card` 据え置き + `text-foreground` 本文、枠と icon のみ amber（owner が「すっきり見えるが警告表示としての一貫性に欠ける」と評し不採用）。(d) タイトルのみ `text-warning-strong` bold、本文 `text-foreground`（見出しのみの強調では①状態 badge との視覚言語統一に届かず不採用）。
+
+`destructive` variant（`bg-card` + red 系）は本 packet では変更しない。`warning` の soft 塗り確定により両者は非対称になるが、`destructive` の soft 塗り統一は対称性のための後続候補として Non-scope に記録する（別 change で owner 判断）。
+
 ### ローディング状態の標準UI
 
 | パターン | 用途 | コンポーネント |
@@ -408,7 +436,7 @@ WCAG 2.1 AA の前提として、状態・警告・選択・比較の意味を�
 
 在庫照会の `在庫切れ` / `在庫少` はこの対象である。赤 / amber の文字色は補助として残してよいが、実利用者が赤黄を識別できない場合でも意味が読める実装にする。
 
-**使用トークン**: Skeleton は shadcn/ui 既定。エラーは `Alert` destructive variant。空状態は `EmptyState` 既定（囲み `rounded-md border p-12 text-center`、見出し `text-stone-700`、説明 `text-sm text-stone-500`、アイコン 24px `text-stone-400`）。
+**使用トークン**: Skeleton は shadcn/ui 既定。エラーは `Alert` destructive variant。注意喚起（業務は止めない）は `Alert` warning variant（`bg-warning-soft` + `border-warning` + `text-warning-strong` + `AlertTriangle`）。空状態は `EmptyState` 既定（囲み `rounded-md border p-12 text-center`、見出し `text-stone-700`、説明 `text-sm text-stone-500`、アイコン 24px `text-stone-400`）。
 
 **状態**: 本パターン自体が loading / error / empty の 3 状態を表す。hover / focus / active / disabled は規定なし。
 
@@ -557,7 +585,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
   onSearchChange={(value) => updateSearch({ q: value })}
 />
 
-// 検索欄（live 型、商品一覧・在庫照会）: debounce + Enter 即時 flush（trim なし）。Label / id / ボタンなし、type="search"
+// 検索欄（live 型、商品一覧・在庫照会）: debounce + Enter 即時 flush（trim なし）。可視 Label + input id あり、ボタンなし、type="search"
 <SearchBar
   debounceMs={200}
   value={q}
@@ -575,7 +603,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 />
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は input 単体 `max-w-md`（wrapper / ラベルなし）。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は input 単体 `max-w-md`（wrapper なし、可視 Label は持つ）。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
@@ -586,7 +614,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **フィルタ候補のソース**: 部門候補は `listDepartments` の master 全件から作る。現在の絞込み結果（filtered result）から候補を作ると、選択値が候補から消えて他候補へ切り替えられなくなる縮退が起きるため、これを禁止する（DSR-10）。
 
-**アクセシビリティ**: 検索 `Input` は両モードとも `aria-label="商品検索"` で識別する。commit 型はさらに可視 `Label htmlFor` を併置し、`placeholder` は補助に留める。live 型は可視 Label を持たない設計（在庫照会の検索駆動レイアウト）のため、`aria-label` を省略しないことが必須要件 — `placeholder` だけに識別を頼らない。フィルタの未選択は「すべての部門」という日本語 default で示す。
+**アクセシビリティ**: commit 型は可視 `Label htmlFor` + `aria-label="商品検索"` の両方を持つ（accname 計算順で `aria-label` が native label に優先するため、accessible name は aria-label が優先）。live 型は可視 `<Label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。フィルタの未選択は「すべての部門」という日本語 default で示す。
 
 **Do**:
 - commit 型の検索は Enter 確定（スキャナ互換）+ ボタン確定の両経路を持つ
@@ -596,7 +624,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **Don't**:
 - フィルタ候補を絞込み結果から派生させない
 - IME 変換中の Enter を検索確定と取り違えない
-- live 型で `aria-label` を外さない（可視 Label がない分、これが唯一の識別子）
+- live 型に `aria-label` を追加しない（可視 Label が唯一の accessible name、commit 型と live 型で識別方式を混在させない）
 - native `<select>` を使わない（DSR-23）
 
 ---
@@ -605,7 +633,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **使いどころ**: 件数の多い一覧の前後送り。1 ページあたり表示件数（perPage）と前へ / 次へを提供する。一覧はすべて上部にも件数 + 現在位置を置く（DSR-22、Lane 4）。
 
-**canonical**: `src/components/patterns/Pagination.tsx`（`Pagination` = 前へ / 次へ + 件数表示の下部 pager、`totalPages <= 1` では何も描画しない。`PaginationSummary` = 上部 text-only variant、`totalCount > 0` のとき常時 opt-in。Lane 2 で旧 features/products 配下の `ProductPagination` から移設し 8 caller を一括更新、D-9。Lane 4 で上下切り分けを実装）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `LIST_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text のみ、pager ボタンは置かない）は DSR-22 の裁定に基づく追加方針で、一覧すべてに常時適用する。
+**canonical**: `src/components/patterns/Pagination.tsx`（`Pagination` = 前へ / 次へ + 件数表示の下部 pager、`totalPages <= 1` かつ `page <= totalPages` では何も描画しない（`page > totalPages`〈範囲外ページからの回復〉のときは描画する、PR #40 Codex P1 是正）。`PaginationSummary` = 上部 text-only variant、`totalCount > 0` のとき常時 opt-in。Lane 2 で旧 features/products 配下の `ProductPagination` から移設し 8 caller を一括更新、D-9。Lane 4 で上下切り分けを実装）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `LIST_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text のみ、pager ボタンは置かない）は DSR-22 の裁定に基づく追加方針で、一覧すべてに常時適用する。
 
 **構造**:
 
@@ -615,7 +643,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
   全 {totalCount.toLocaleString("ja-JP")} 件のうち {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件を表示（{page} / {totalPages} ページ）
 </div>
 
-// ページ送り（component 本体、下部。Pagination.tsx canonical。totalPages > 1 のときだけ描画）
+// ページ送り（component 本体、下部。Pagination.tsx canonical。totalPages > 1、または page > totalPages〈範囲外ページからの回復〉のときだけ描画）
 <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
   <div className="tabular-nums">
     全 {totalCount.toLocaleString("ja-JP")} 件のうち {from.toLocaleString("ja-JP")}〜{to.toLocaleString("ja-JP")} 件を表示（{page} / {totalPages} ページ）
@@ -642,17 +670,17 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Select>
 ```
 
-**件数文言**: 範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalPages <= 1`（`totalCount === 0` を含む）は下部 pager を描画しない（Lane 4）。
+**件数文言**: 範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalPages <= 1` かつ `page <= totalPages`（`totalCount === 0` を含む）は下部 pager を描画しない。`page > totalPages`（範囲外ページからの回復）のときは描画する（Lane 4、PR #40 Codex P1 是正）。
 
 **使用トークン**: 下部件数・ページ表示は `text-sm text-muted-foreground`（tabular-nums）。上部 `PaginationSummary` も同じ `text-sm text-muted-foreground tabular-nums`（Lane 4 で下部と統一）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium tabular-nums`。perPage 切替は `w-[7rem]`。
 
 **状態**:
-- **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする（`totalPages <= 1`（0 件含む）は下部 pager 自体を描画しない）
+- **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする（`totalPages <= 1` かつ `page <= totalPages`（0 件含む）は下部 pager 自体を描画しない。`page > totalPages` の回復時は描画する）
 - hover / focus / active / error: ボタン primitive の既定に従う
 
 **perPage 規約**: 表示件数の選択肢は `LIST_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。共有定数は 1 本のまま維持し、既定値だけを画面ごとに変える（裁定・owner 了承 2026-09-03: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100、Lane 2 実装済み）。40 刻み化（40/80/120 等）は既存の固定文言 test への影響と移行コストに見合わないため不採用の裁定案。
 
-**アクセシビリティ**: 前後ボタンに `aria-label`（"前のページ" / "次のページ"）を付け、方向アイコンには `aria-hidden`。現在地（page / totalPages）はテキストで常時可視にする。下部は複数ページ時のみ描画するため、上部 `PaginationSummary` と下部 `Pagination` の同時描画は `totalPages > 1` のときに限られる（Lane 4）。
+**アクセシビリティ**: 前後ボタンに `aria-label`（"前のページ" / "次のページ"）を付け、方向アイコンには `aria-hidden`。現在地（page / totalPages）はテキストで常時可視にする。下部は複数ページ時、または range 外ページからの回復時のみ描画するため、上部 `PaginationSummary` と下部 `Pagination` の同時描画は `totalPages > 1` または `page > totalPages` のときに限られる（Lane 4、PR #40 Codex P1 是正で回復例外を明記）。
 
 **Do**:
 - 端ページで前後ボタンを disabled にする
@@ -797,6 +825,29 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Badge>
 ```
 
+**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = `variant="default"` + `border-warning`（琥珀 pill、枠色は owner v3 決定で `--warning` に確定、ランキング・最新 等）。この 3 種以外を作らない。
+
+tone family は感情で分ける: 緑 = 終わったことを伝えるプラスの報告、琥珀 = 「ちょっと待って」の注意、赤 = 警告。状態の名前を伝えるだけの badge は無色（owner 決定、2026-09-06 Human Gate (1)）。
+
+**①状態の tone family マッピング表**（owner culling 列は Human Gate (1) の回答（原文 2、2026-09-06）を転記済み。全行 `rg -n "<Badge"` 実測、file:line 明記）:
+
+| tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
+|---|---|---|
+| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:34`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:79`「未反映」（`variant="secondary"`、runtime gap）/ `ResultStep.tsx:47`「部分成功」（`variant="outline"`、tone なし、runtime gap）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（`variant="destructive"` 塗り、warning tone への runtime gap） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| success（`border-success-border bg-success-soft text-success-strong` + icon） | `IntegrityCheckPage.tsx:387`「補正済み」（`bg-success` 直接塗り pill、runtime gap）/ `StocktakePage.tsx:404`（棚卸し全数完了時の同型 pill、runtime gap）/ `ProductTable.tsx:84`「反映済み」（`variant="default"`（橙）→ success tone の runtime gap）/ `ResultStep.tsx:47`「成功」（`variant="secondary"`、tone なし、runtime gap）/ `DailyReportImportPage.tsx:164,186`「確認済み」（`variant="secondary"`、tone なし、runtime gap） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:25`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（tone なし、runtime gap）・`:192`「明細取消済み」（tone なし、runtime gap） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:42`「通常」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+
+**表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 15「現在の行は 3 点で示す」の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:90,592`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
+
+**②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠が正しい形（`badge.tsx` の runtime gap は起票時実測を参照）。
+
+**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx:533`、`variant="secondary"` の種類取り違えも runtime gap）・1 位（`ProductRankingTable.tsx:80`、`bg-rank-top-badge-bg` custom class）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）+ `border-warning` 枠。対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1。3 site とも枠追加が runtime gap。
+
+**非Badge除外のクロスリファレンス**: 「入力中」（`PriceRevisionTable.tsx:104`）は [04-backbone.md](04-backbone.md) 原則 15「現在の行は 3 点で示す」の対象であり、tone family 表・②分類・③強調のいずれにも含めない。
+
+**関連**: DSR-08（semantic 色のみで意味を伝えない）/ 04-backbone 原則 15（現在行 3 点、`入力中` の帰属先）/ [01-decision-rules.md](01-decision-rules.md) DSR-22（枠の narrow 化、badge 枠線必須・非中立①状態 icon 必須）。
+
 標準パターン:
 
 - `Badge` + `lucide-react` アイコン + 日本語ラベルを第一候補にする。例: `CircleAlert` + `在庫切れ`、`TriangleAlert` + `在庫少`
@@ -820,6 +871,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **Don't**:
 - 状態を色（hue）だけで符号化しない（DSR-08）
 - 意味を tooltip だけに閉じ込めない
+- secondary（②分類）を①状態の soft tone 代わりに使わない
 
 ---
 
@@ -905,8 +957,8 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **必須構成（6 項目。適用条件は DSR-22 を正本とする）**:
 
 1. **toolbar 2 段**（検索条件 / 並び替え・件数を段で分け、`rounded-lg border bg-card p-4`（2 段時は段間 `space-y-3`）の 1 箱に入れる。検索欄を持たない画面は 1 段でよい。`toolbar` 省略時は枠なし）。node 構造の 2 段であり視覚行数ではない（PLU 一括操作 block は `basis-full` で独立行、125% 以上では視覚 3 行以上になりうる）。記録済み逸脱: mockup の `--card` は #fff、runtime は 00-foundations の #f5f5f4。toolbar 箱 #f5f5f4 / sticky 帯・th #e7e5e4 / ページ地 #fafaf9 の 3 段（1.04:1 / 1.15:1 / 1.20:1、Gated Amendment 2 S11 で分離）になる。`--card` の見直しは全画面波及のため Lane 3〜5 候補、L3 で owner が判定（Final Review round 1 P1-1）。操作面は `--control-surface` #fafaf9（Gated Amendment 7 S46）で箱 #f5f5f4 と区別する
-2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」の text 表示。下部は `Pagination`、同文言 + pager フル装備。上部は `totalCount > 0` のとき常に、下部は `totalPages > 1` のときだけ描画する、Lane 4）
-3. **sticky header**（`<table>` は単一（header を別 table に分けない）。件数行（`bg-background`、線なし）と `thead`（`--list-head` 面 + 2px 下線）を page 地を挟まず垂直に隣接させ、同一 inset で sticky にする。灰色面は列見出しのみ（owner L3 run 4、Gated Amendment 5 S39）。件数行の上端の線は owner run 6 で撤去（Gated Amendment 7 S47）。記録済み逸脱: mockup `.tbl` の外枠（border + radius + `overflow:hidden`）は runtime では付けない（`overflow-hidden` が sticky を殺す、Plan Review round 2）。inset 値は mockup 12px / runtime 8px で、揃えるのは帯と thead の相互一致であって絶対値ではない）。件数行と table の wrapper は `w-min min-w-full`（横 overflow 時に帯が table 幅へ追随、非 overflow 時は 100%）。帯文言の溢れは子 `PaginationSummary` で「…」にする（追補 S17）。列見出し面の左右上は `rounded-md`（owner run 5、Gated Amendment 6 S43）。列見出し面は th cell 背景 + tr 背景（最小幅で cell 間に出る subpixel seam を塞ぐ）+ corner mask（`list-shell-sticky` hook、角丸維持、owner run 6、Gated Amendment 7 S48）
+2. **上下の件数・現在位置**（上部は `PaginationSummary`、範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」の text 表示。下部は `Pagination`、同文言 + pager フル装備。上部は `totalCount > 0` のとき常に、下部は `totalPages > 1`、または `page > totalPages`（範囲外ページからの回復導線）のときに描画する、Lane 4）
+3. **sticky header**（`<table>` は単一（header を別 table に分けない）。件数行（`bg-background`、線なし）と `thead`（`--list-head` 面 + 2px 下線）を page 地を挟まず垂直に隣接させ、同一 inset（`px-2`）で隣接させる（sticky は `thead` のみ、帯は箱の外で構造的に固定）。灰色面は列見出しのみ（owner L3 run 4、Gated Amendment 5 S39）。件数行の上端の線は owner run 6 で撤去（Gated Amendment 7 S47）。記録済み逸脱: mockup `.tbl` の外枠（border + radius + `overflow:hidden`）は runtime では付けない（`overflow-hidden` が sticky を殺す、Plan Review round 2）。inset 値は mockup 12px / runtime 8px で、揃えるのは帯と thead の相互一致であって絶対値ではない）。table の wrapper は `w-min min-w-full`（横 overflow 時に table 幅へ追随、非 overflow 時は 100%）。件数行は箱の外・root 直下に置く（Lane 4 Gated Amendment 4）。帯文言の溢れは子 `PaginationSummary` で「…」にする（追補 S17）。列見出し面の左右上は `rounded-md`（owner run 5、Gated Amendment 6 S43）。列見出し面は th cell 背景 + tr 背景（最小幅で cell 間に出る subpixel seam を塞ぐ）+ corner mask（`list-shell-sticky` hook、角丸維持、owner run 6、Gated Amendment 7 S48）。商品一覧では帯は箱の縦横 scroll に対して固定（page scroll では追従、GA4a）。table の wrapper がさらに専用 scroll 箱（`max-h-[calc(100vh-6.75rem)] overflow-auto`）に包まれ、箱が横に常時・箱の高さを内容が超えたときのみ縦に scroll する（`<main>` は toolbar 分を縦に page scroll する、Lane 4 Gated Amendment 4）
 4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする。横スクロール時は固定列右端に影。Lane 2 では `identityColumns` prop を予約するのみで描画には影響しない、実装は Lane 3〜5）
 5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22。token は Lane 2 で提供、消費は Lane 3〜5）
 6. **読込みは `ListSkeleton`**（原則 11、既定 skeleton。`isLoading` のとき children の代わりに描画）
@@ -943,7 +995,9 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-06 | UI 磨き batch 3 design | ① にページ説明セクション使用パターンと `PageHeader` の `actions`/`subtitle` 排他 component gap（5画面）を追加。③ に備考列規則（必須列・空欄「—」統一・truncate+`title`）・「直近 {N} 件の」文言統一・`ManualSalePage.tsx` 二重囲み是正方針・共通 formatter（`formatStockDisplay`/`formatStockUnitLabel`）使用ルールを追加 |
 | 2026-09-05 | UI 一覧の背骨 D — Lane 4 | ⑩ 上部 `PaginationSummary` を `text-sm text-muted-foreground tabular-nums`（下部と統一）へ、`totalCount > 0` のとき常時表示・pager ボタンなしへ改訂。下部 `Pagination` は `totalPages <= 1`（0 件含む）で描画しない契約を追記。⑯ 必須構成 2 を「上部は totalCount > 0 で常時、下部は totalPages > 1 のときだけ」へ改訂（必須構成 3 の wrapper は無変更） |
+| 2026-09-05 | 本 PR | UI 規約補強 design batch。① Do bullet を 3 段 CTA 表現へ同期。⑥ に `Alert` `warning` variant（`bg-warning-soft`+`border-warning`+`AlertTriangle`+`text-warning-strong` の 4 点構造、owner v4 決定）を新設し適用先候補 `PriceRevisionPage.tsx:112-116` を記録。⑨ アクセシビリティ節を owner C1 決定へ書き換え（live 型は可視 Label のみを accessible name とし `aria-label` 廃止、WCAG 2.5.3）。⑬ に badge 3 種構成と①状態 tone family マッピング表（owner culling 列つき）・②分類/③強調 note・原則15 クロスリファレンスを追加、Don't に secondary 誤用禁止を追加。JSX コメント（`:158` 相当）の枠線 3:1 記述を `--border` 必須へ更新 + Human Gate 回答反映（2026-09-06）: tone family を感情で分ける規約文を追加、反映済み→success 行・取込み済み→warning 行へ移動し owner culling 列に原文 2 を転記、Alert 節に未取込み通知 3 箇所の適用先と success 本文色維持を追記 |
 | 2026-09-05 | ⑧ native select 統一 | ④ フォームセクション・⑨ 検索+フィルタの Don't に「native `<select>` を使わない（DSR-23）」を追記 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | ⑩ canonical を `src/components/patterns/Pagination.tsx`（`Pagination` + `PaginationSummary`）へ、件数文言を範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」へ実装。⑯ canonical を `src/components/patterns/ListShell.tsx` へ（商品一覧 pilot 採用）、必須構成 1 の枠を `rounded-lg border bg-card p-4` へ、必須構成 3 の固定列影の記載を必須構成 4 側へ移動 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を当時の canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は後続 lane での移行対象と明記。⑯ の canonical を「なし（後続 lane で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |

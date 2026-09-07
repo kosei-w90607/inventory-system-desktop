@@ -151,10 +151,15 @@ describe("useUnsavedChangesWarning (UI-12/UI-USW-D1/D2 / SPEC-UISN-2/3)", () => 
     expect(proceed).not.toHaveBeenCalled();
   });
 
+  // :133 の sibling test は Escape/pointer-down で閉じないことを観測するが、AlertDialog は
+  // open prop のみで制御され onOpenChange は未配線のため、preventDefault() を削除しても
+  // :133 の結果は変わらない（実測済み）。preventDefault() 欠落を kill するのは本 test の
+  // source assertion のみ（formatter 非依存、comment 挿入や型注釈変更では FAIL し得る）。
+  // sibling test の挙動 oracle 強化（preventDefault 除去まで検出させる改修）は本 PR の scope 外。
   it("DSR-20 D-E T10: Escape の preventDefault を明示 prop として保持する", () => {
     const source = readFileSync("src/components/patterns/UnsavedChangesDialog.tsx", "utf8");
+    const normalized = source.replace(/\s+/g, " ");
 
-    expect(source).toContain("onEscapeKeyDown={(event) => {");
-    expect(source).toContain("event.preventDefault();");
+    expect(normalized).toContain("onEscapeKeyDown={(event) => { event.preventDefault();");
   });
 });

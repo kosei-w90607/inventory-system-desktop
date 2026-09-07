@@ -123,6 +123,28 @@ describe("StockUnitField (UI-01b-D6)", () => {
     expect(onPosStockSyncChange).not.toHaveBeenCalled();
   });
 
+  it("Codex round3 P2-class: 数量単位selectで「個」を選ぶとonStockUnitChangeがpcsで呼ばれる（cmとの内部値独立検査）", async () => {
+    const user = userEvent.setup();
+    const onStockUnitChange = vi.fn();
+
+    render(
+      <StockUnitField
+        mode="edit"
+        stockUnit="cm"
+        posStockSync
+        posSyncTouched
+        onStockUnitChange={onStockUnitChange}
+        onPosStockSyncChange={vi.fn()}
+        onPosStockSyncSuggest={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "個" }));
+
+    expect(onStockUnitChange).toHaveBeenCalledWith("pcs");
+  });
+
   // REQ-101 / UI-01b-D6: checkbox を明示操作（touched=true）後は単位変更でも suggest が発火しない
   it("suggest: after checkbox interaction (touched=true), unit change does not fire suggest", async () => {
     const user = userEvent.setup();

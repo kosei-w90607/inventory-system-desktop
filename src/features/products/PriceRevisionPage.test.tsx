@@ -688,6 +688,27 @@ describe("PriceRevisionPage SC6 取引先 select（⑧、L8-D1, L8-D7, P2-2）",
       expect(supplierTrigger).not.toBeDisabled();
     });
   });
+
+  it("SC6: 取引先指定状態から「すべての取引先」へ戻すとsupplier_idがnullに写像される（round-trip、P2-1）", async () => {
+    const user = userEvent.setup();
+    // staleTime: 30_000 のキャッシュにより初期state自体をsentinelにすると
+    // 「戻す」操作が既存キャッシュキーへ戻るだけで再取得が起きない（queryFn 未呼び出し）。
+    // supplier 指定済みの状態から始め、sentinel へ戻す操作を新規キーの取得として検証する。
+    renderStateful({ supplier: 7 });
+    await screen.findByText("P-001");
+
+    const supplierTrigger = await screen.findByLabelText("取引先");
+    expect(supplierTrigger).toHaveTextContent("取引先A");
+
+    await user.click(supplierTrigger);
+    await user.click(await screen.findByRole("option", { name: "すべての取引先" }));
+
+    await waitFor(() => {
+      expect(mockSearchProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ supplier_id: null }),
+      );
+    });
+  });
 });
 
 describe("PriceRevisionPage perPage scroll（UI-14）", () => {
@@ -728,6 +749,13 @@ describe("PriceRevisionPage Lane 4 S1f/S3f/S4b: frame color, top summary, per-pa
       discontinuedCheckbox.compareDocumentPosition(perPageTrigger) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Codex review 5129977808 P2 是正: 文書順だけでは表示件数ブロックが filter-row の
+    // 外へ出ても検出できない。filter-row root への containment + lastElementChild を
+    // 追加で assert する。
+    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-center.gap-3");
+    expect(filterRow).not.toBeNull();
+    expect(filterRow).toContainElement(perPageTrigger);
+    expect(filterRow?.lastElementChild).toContainElement(perPageTrigger);
   });
 });
 
