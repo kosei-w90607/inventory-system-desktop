@@ -197,6 +197,24 @@ describe("StockMovementsPage (UI-06c)", () => {
         expect.objectContaining({ movement_type: "sale_manual", page: 1 }),
       );
     });
+
+    // P2-R2-1: 残る option も内部値を独立リテラルで検査する（round 1 は具体例3件で打ち切っていた）。
+    const REMAINING_MOVEMENT_TYPE_OPTIONS: [label: string, value: string][] = [
+      ["返品・交換", "return"],
+      ["POS売上", "sale_auto"],
+      ["廃棄・破損", "disposal"],
+      ["棚卸し", "stocktake"],
+    ];
+    for (const [label, expectedValue] of REMAINING_MOVEMENT_TYPE_OPTIONS) {
+      await user.click(movementType);
+      await user.click(await screen.findByRole("option", { name: label }));
+
+      await waitFor(() => {
+        expect(mockListMovements).toHaveBeenLastCalledWith(
+          expect.objectContaining({ movement_type: expectedValue, page: 1 }),
+        );
+      });
+    }
   });
 
   it("SC4c: 表示件数を200へ変更するとpage 1・per_page 200で再取得する", async () => {

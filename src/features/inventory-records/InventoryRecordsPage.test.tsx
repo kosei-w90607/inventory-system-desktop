@@ -429,6 +429,25 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       recordType: "receiving_record",
       page: 1,
     });
+
+    // P2-R2-1: 残る option も内部値を独立リテラルで検査する（round 1 は具体例2件で打ち切っていた）。
+    const REMAINING_RECORD_TYPE_OPTIONS: [label: string, value: string][] = [
+      ["返品・交換", "return_record"],
+      ["手動販売出庫", "manual_sale"],
+      ["CSV取込み", "csv_import"],
+      ["棚卸し", "stocktake"],
+    ];
+    for (const [label, expectedValue] of REMAINING_RECORD_TYPE_OPTIONS) {
+      await user.click(recordTypeTrigger);
+      await user.click(await screen.findByRole("option", { name: label }));
+      const lastCallRemaining = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+        (prev: { recordType?: string; page?: number }) => { recordType?: string; page?: number },
+      ];
+      expect(lastCallRemaining[0]({})).toEqual({
+        recordType: expectedValue,
+        page: 1,
+      });
+    }
   });
 
   it("⑧SC4b: 部門selectで実在部門を選ぶとtrigger表示が部門名になりdepartmentIdがnumberになる（round-trip、L8-D5）", async () => {

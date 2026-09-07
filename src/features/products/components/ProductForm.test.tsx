@@ -882,7 +882,9 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
     const afterEight = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
       prev: ProductFormValues,
     ) => ProductFormValues;
-    expect(afterEight(createProductFormDefaults)).toEqual(expect.objectContaining({ taxRate: "8" }));
+    expect(afterEight(createProductFormDefaults)).toEqual(
+      expect.objectContaining({ taxRate: "8" }),
+    );
 
     await user.click(trigger);
     await user.click(screen.getByRole("option", { name: "0%" }));
@@ -891,5 +893,14 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
       prev: ProductFormValues,
     ) => ProductFormValues;
     expect(afterZero(createProductFormDefaults)).toEqual(expect.objectContaining({ taxRate: "0" }));
+
+    // P2-R2-1: 8%→0%以外に10%も検査する（round 1 は8/0の2件で打ち切っていた）。
+    await user.click(trigger);
+    await user.click(screen.getByRole("option", { name: "10%" }));
+    expect(trigger).toHaveTextContent("10%");
+    const afterTen = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
+      prev: ProductFormValues,
+    ) => ProductFormValues;
+    expect(afterTen(createProductFormDefaults)).toEqual(expect.objectContaining({ taxRate: "10" }));
   });
 });

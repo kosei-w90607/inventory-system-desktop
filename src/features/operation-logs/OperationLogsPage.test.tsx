@@ -526,26 +526,36 @@ describe("UI-11c REQ-902", () => {
     ]);
 
     // P2-5: option の group 所属・順序を group ごとに独立して検査する。
-    expect(within(groups[0]).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "商品登録",
-      "商品修正",
-    ]);
-    expect(within(groups[1]).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "取引先の改名",
-      "取引先の統合",
-    ]);
-    expect(within(groups[2]).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "入庫記録",
-    ]);
-    expect(within(groups[3]).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "売上データ取込み",
-    ]);
-    expect(within(groups[4]).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "バックアップ作成",
-    ]);
-    expect(within(groups[5]).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "その他（future_type）",
-    ]);
+    expect(
+      within(groups[0])
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["商品登録", "商品修正"]);
+    expect(
+      within(groups[1])
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["取引先の改名", "取引先の統合"]);
+    expect(
+      within(groups[2])
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["入庫記録"]);
+    expect(
+      within(groups[3])
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["売上データ取込み"]);
+    expect(
+      within(groups[4])
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["バックアップ作成"]);
+    expect(
+      within(groups[5])
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["その他（future_type）"]);
 
     // P2-2: 表示文言だけでなく内部値も独立リテラルで検査する。
     await user.click(screen.getByRole("option", { name: "取引先の改名" }));
@@ -553,6 +563,25 @@ describe("UI-11c REQ-902", () => {
       (prev: OperationLogsSearch) => OperationLogsSearch,
     ];
     expect(lastCall[0]({})).toEqual({ operation_type: "supplier_rename", page: 1 });
+
+    // P2-R2-1: 残る option も内部値を独立リテラルで検査する（round 1 は具体例1件で打ち切っていた）。
+    const REMAINING_OPERATION_TYPE_OPTIONS: [label: string, value: string][] = [
+      ["商品登録", "product_create"],
+      ["商品修正", "product_update"],
+      ["取引先の統合", "supplier_merge"],
+      ["入庫記録", "receiving_create"],
+      ["売上データ取込み", "csv_import"],
+      ["バックアップ作成", "backup_create"],
+      ["その他（future_type）", "future_type"],
+    ];
+    for (const [label, expectedValue] of REMAINING_OPERATION_TYPE_OPTIONS) {
+      await user.click(await screen.findByLabelText("種別"));
+      await user.click(await screen.findByRole("option", { name: label }));
+      const lastCallRemaining = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+        (prev: OperationLogsSearch) => OperationLogsSearch,
+      ];
+      expect(lastCallRemaining[0]({})).toEqual({ operation_type: expectedValue, page: 1 });
+    }
   });
 
   it("UI-11c SC9c: 期間・種別のnative入力欄にcontrol tokenを適用する", async () => {
