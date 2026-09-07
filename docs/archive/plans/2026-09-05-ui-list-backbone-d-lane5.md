@@ -1,10 +1,10 @@
 # Plan Packet: UI 一覧の背骨 D — Lane 5（操作面 + 枠の sweep: native 入力欄の `--control-surface` token 化 + outline ボタン / Badge / SegmentedControl 枠の `--border-strong` 化）
 
-owner 決定（D8/E13/E15、2026-09-04〜05、[Plans.md ④](../Plans.md) owner 反応 ledger / 直回答）に基づき、runtime に残る native `<select>`/`<input>`（shadcn `Input`/`Select` を通らないもの）を `--control-surface` #fafaf9 へ、outline 系 `Button`/`Badge`/`SegmentedControl` の枠を `--border-strong` へ揃える。起票時実測で SegmentedControl は Lane 2（PR #32）で既に token 化済みであることが判明したため、本 lane では規約整合の確認のみを行う（下記参照）。
+owner 決定（D8/E13/E15、2026-09-04〜05、[Plans.md ④](../../Plans.md) owner 反応 ledger / 直回答）に基づき、runtime に残る native `<select>`/`<input>`（shadcn `Input`/`Select` を通らないもの）を `--control-surface` #fafaf9 へ、outline 系 `Button`/`Badge`/`SegmentedControl` の枠を `--border-strong` へ揃える。起票時実測で SegmentedControl は Lane 2（PR #32）で既に token 化済みであることが判明したため、本 lane では規約整合の確認のみを行う（下記参照）。
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 259155c
@@ -17,6 +17,8 @@ owner 決定（D8/E13/E15、2026-09-04〜05、[Plans.md ④](../Plans.md) owner 
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈入力欄の面と枠〉/ AC-L3-2〈outline ボタン・Badge の枠〉の 2 項目）
+
+2026-09-07: PR #35 closeout。hosted final = pull_request run 34134562049（head `e60ecce`、success）→ squash merge `1ad9aa7`。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ④ の完了表記）に同乗。実績: 介入 3/3（起票選定 → owner Windows native L3 PASS〈AC-L3-1〜2、HEAD `9b97849`〉→ 承認 + merge）、Codex ロジックレビュー 1 回 = review 5129321882（指摘 0）→ Findings Freeze（Reviewed Content HEAD `251ecde` 不変）、mutation 累計 31 体 survivor 0、Lane 3 squash merge 後の単段 merge 2 回（`fdcd2ed` / docs-only）で base 付け替え。Lane 4（識別列固定 + 出っ張り解消 probe 他）と ⑧（native `<select>` → shadcn `Select` 置換、R5-3 owner 決定）へ申し送り。
 
 ## Owner Effort Budget
 
