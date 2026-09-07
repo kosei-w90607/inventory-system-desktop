@@ -121,19 +121,23 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
 
   // 結果 1 件で詳細カードを自動展開（Q-3 補強）。
   // selected == null ガードに加え、同一検索条件（status/q/dept/page）内では 1 度しか発火しない
-  // guard を持つ（UI-06a-D5）。「消費済み」は自動展開・クリック・URL 復元のいずれの経路でも
-  // その条件 key に有効な selected が観測された時点で成立する（Codex P1-1/P1-2 是正: 復元済み
-  // selected を閉じられない／条件往復で再展開しない、を単一 root cause で修正）。条件 key が
-  // 変われば消費済みフラグをリセットし、再訪時に改めて 1 度だけ自動展開する。
+  // guard を持つ（UI-06a-D5）。「消費済み」は自動展開の発火時、または現一覧（listItems）に
+  // 実在する selected が観測された時点でのみ成立する（Codex round 2 P2 是正: 前ページの stale
+  // selected がページ送り後も維持され、非 null というだけで消費済みにしていたため新条件の単一
+  // 結果が自動展開されない回帰を修正。所属確認を追加し、現一覧に不在の selected は消費を
+  // 成立させない）。条件 key が変われば消費済みフラグをリセットし、再訪時に改めて 1 度だけ
+  // 自動展開する。
   const listItems = listQuery.data?.items;
   const conditionKey = `${args.status}|${args.q}|${String(args.dept)}|${String(args.page)}`;
+  const selectedBelongsToList =
+    args.selected !== null && (listItems ?? []).some((item) => item.product_code === args.selected);
   const autoExpandKeyRef = useRef(conditionKey);
-  const autoExpandConsumedRef = useRef(args.selected !== null);
+  const autoExpandConsumedRef = useRef(selectedBelongsToList);
   useEffect(() => {
     if (autoExpandKeyRef.current !== conditionKey) {
       autoExpandKeyRef.current = conditionKey;
-      autoExpandConsumedRef.current = args.selected !== null;
-    } else if (args.selected !== null) {
+      autoExpandConsumedRef.current = selectedBelongsToList;
+    } else if (selectedBelongsToList) {
       autoExpandConsumedRef.current = true;
     }
     if (listItems?.length === 1 && args.selected === null && !autoExpandConsumedRef.current) {
@@ -142,7 +146,7 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
     }
     // args / navigate は安定参照ではないが、依存は listItems・selected・conditionKey の変化に限定する。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listItems, args.selected, conditionKey]);
+  }, [listItems, args.selected, conditionKey, selectedBelongsToList]);
 
   // selected を「現 list 条件に対する状態」に保つための clear（§58.4）。2 ケース:
   // (a) 検索前（isAllEmpty）に selected が残る（手打ち/F5/bookmark URL）→ list は EmptySearchPlaceholder

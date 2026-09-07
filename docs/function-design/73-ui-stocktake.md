@@ -327,6 +327,7 @@ function useFindStocktakeItem(): UseMutationResult<StocktakeItemDetail | null, I
 | `update_count` 成功 | D-052-C16 の SSOT helper を適用。 |
 | `complete_stocktake` 成功 | D-052-C11 の SSOT helper を適用。 |
 | 商品登録・一括インポートによる自動追加 | D-052-C1/C3 が棚卸し consumer を対象に含めるため一覧が再取得される（UI-10-D9、棚卸し画面から専用通知は出さない）。 |
+| 商品更新・廃番／復帰成功 | D-052-C2 の SSOT helper により棚卸し一覧の状態を再取得する（棚卸し画面から専用通知は出さない）。 |
 
 成功時の具体的な query key 集合は `src/lib/invalidation-contract.ts` だけに置く。conflict / not-in-progress と validation error の防御 refresh は success-path 契約の対象外で、named helper に隔離する。
 

@@ -571,6 +571,95 @@ describe("useStockInquiry (REQ-301/302)", () => {
     expect(navigate).toHaveBeenNthCalledWith(2, { selected: "SOLO-1" });
   });
 
+  it("Codex round2 P2: ページ送りで前ページの selected が残ったままでも、新条件の単一結果が自動展開する", async () => {
+    mockSearch.mockImplementation((query: { page: number }) => {
+      if (query.page === 2) {
+        return Promise.resolve({
+          status: "ok",
+          data: {
+            items: [makeMockProductWithRelations({ product_code: "PAGE2-51" })],
+            total_count: 51,
+            page: 2,
+            per_page: 50,
+          },
+        });
+      }
+      return Promise.resolve({
+        status: "ok",
+        data: {
+          items: [
+            makeMockProductWithRelations({ product_code: "PAGE1-1" }),
+            makeMockProductWithRelations({ product_code: "PAGE1-2" }),
+          ],
+          total_count: 51,
+          page: 1,
+          per_page: 50,
+        },
+      });
+    });
+    mockDetail.mockResolvedValue({ status: "ok", data: makeMockStockDetail() });
+    const navigate = vi.fn();
+    const { result, rerender } = renderHook(
+      (args: Parameters<typeof useStockInquiry>[0]) => useStockInquiry(args),
+      {
+        wrapper: makeWrapper(),
+        initialProps: {
+          status: "all",
+          q: "X",
+          dept: null,
+          page: 1,
+          perPage: 50,
+          selected: null,
+          navigate,
+        },
+      },
+    );
+    await waitFor(() => {
+      expect(result.current.listQuery.isSuccess).toBe(true);
+    });
+    expect(navigate).not.toHaveBeenCalled();
+    // 1 ページ目の商品をクリックして詳細を開く（手動選択、複数件のため自動展開は発火していない）
+    rerender({
+      status: "all",
+      q: "X",
+      dept: null,
+      page: 1,
+      perPage: 50,
+      selected: "PAGE1-1",
+      navigate,
+    });
+    // 次のページへ。page 側の既存 onPageChange は selected を維持したまま渡す
+    // （新条件の結果には存在しない stale selected）。
+    rerender({
+      status: "all",
+      q: "X",
+      dept: null,
+      page: 2,
+      perPage: 50,
+      selected: "PAGE1-1",
+      navigate,
+    });
+    // 不在の selected を clear（C-P2-1 相当）
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: undefined });
+    });
+    // URL 反映を模擬（selected: null）
+    rerender({
+      status: "all",
+      q: "X",
+      dept: null,
+      page: 2,
+      perPage: 50,
+      selected: null,
+      navigate,
+    });
+    // 消費済み判定は現条件の結果に所属する selected にのみ限定されるべきで、
+    // 不在だった stale selected は消費を成立させていないため、新条件の単一結果は自動展開されるべき。
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ selected: "PAGE2-51" });
+    });
+  });
+
   it("REQ-301: selected 既存時は 1 件でも自動展開しない（重複発火回避）", async () => {
     mockSearch.mockResolvedValue({
       status: "ok",
