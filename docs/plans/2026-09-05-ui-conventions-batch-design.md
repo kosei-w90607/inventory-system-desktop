@@ -8,7 +8,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
@@ -545,3 +545,5 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 2026-09-06: lane 間の食い違いの裁定（原文は raw file「⑦ Badge outline 枠の上書き確認 原文」）: Lane 5（E13、2026-09-04 ledger 直回答起点、実機 L3 PASS）は Badge outline の枠を `--border-strong` へ、⑦（2026-09-05 v2 見本）は badge 枠を `--border` へ。owner「上書きでいい」= 後の ⑦ が勝つ。ただし前者は実機観察 + 実機 L3、後者は白地 card 上の見本 HTML の判断であるため、**⑦ の runtime lane の L3 を最終判定**とし、実機の表内で `--border` が薄すぎる場合は `--border-strong` へ戻す条件付き。runtime 申し送り: `badge.tsx` outline variant の枠を Lane 5 の `border-input`（= `--border-strong`）から `border-border` へ戻す（Lane 5 の SC 系 test で `border-input` を assert しているものがあれば同時に書き換え、Lane 5 packet の AC は merge 済み lane のものとして改変しない）。
 
 2026-09-07: Codex ロジック・整合面レビュー round 1 = review 5129505910（P1 1 / P2 5、全件 accept。P1 = Final Review 是正 `b90e494` が commit 型 SearchBar の Label + aria-label 併存契約を書き換えていた回帰）→ 是正 `02a5491`（契約復元 / live 型構造例 / checklist 中立例外 / 撤回 oracle 整理 + AC14 形 src oracle / AC7 の ⑨ 節内限定 / AC17 quoting）→ `3b15bd0` で `state-backtrack human-confirm->implementing`。round 2 = review 5131012992（P2 2 / P3 2）→ 是正 `679a1d5`（「反映済み」の GA2 前契約を撤去 / accessible name は aria-label 優先〈W3C accname + `SearchBar.tsx` 実読〉/ checklist :87 例外 / AC17 backtick）。round 3 = review 5132801693（**新規指摘なし、Findings Freeze 可**、round 2 の 4 件を独立閉鎖確認、既知 mutant 検出、gate 全通過）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = doc gate ERROR 0（full / `--target plan`）+ Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 ×2 + Codex round 1〜3（Findings Freeze）、human-confirm = Human Gate 完了（culling 回答 + PLU 書出し緑 Alert OK、2026-09-06）は design-only 是正のため有効。Reviewed Content HEAD = `679a1d5`。次: owner 承認 → Ready（docs-only のため hosted final は owner dispatch）→ merge。
+
+2026-09-07: owner が Ready → merge → closeout の代行を承認（「Ready から締めまで進めてしまっていい」）→ `human-confirm -> ready-hosted-final` を本 commit で記録。docs-only のため hosted final は `ci.yml` の workflow_dispatch（`--ref agent/ui-conventions-batch`）で実行し、run の success を merge 前に確認する。
