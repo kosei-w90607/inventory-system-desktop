@@ -20,13 +20,13 @@ R3（状態 Badge tone・CTA secondary・SearchBar live Label・Alert warning �
 - SC10: `IntegrityCheckPage.tsx:379-382`（**F14, Opus P2-4 是正**: 起票時 `:377-378` から訂正）の差異数値 span に同上 3 色が対で付く（隣接 `:383` の `differenceLabel` Badge は tone 対象外のまま無変更）
 - SC25（F2, Sonnet P1-2）: `daily-sales/components/SummaryCardsBar.tsx:139` と `monthly-sales/components/SummaryCardsBar.tsx:115` の `diff >= 0 ? "text-success-emphasis" : "text-destructive"` が同上 3 色（`diff === 0` は `text-muted-foreground`）へ置換され、`diff === 0` が緑にならない
 - SC26（F3, Sonnet P1-3, Coordinator adjudication A）: `daily-sales/components/ProductTable.tsx:133`「手動」badge が amber className（`bg-warning-soft text-warning-strong`）を失い `variant="secondary"` のみになる（`tone`/`data-tone` は持たない、②分類）
-- SC27（F4, Sonnet P2-1）: `ReturnExchangePage.tsx:603-607`「レジ未処理」が `tone="warning"` + icon へ機械的に移行し、`:580`「レジ戻し済み」（中立 stone class）は無変更のまま
+- SC27: 撤回（round 2、G1）。round 1（F4）は `ReturnExchangePage.tsx:603-607` を「レジ未処理」badge と誤認したが、実際の表示文言は `formatStockEffectBadge(false)` = 「この保存で反映」で catalog `:841` により owner 承認済み Non-scope。番号は欠番のまま保持し以降を再採番しない
 - SC11: `button.tsx` の `secondary` variant が `border border-border` を持つ
 - SC12: `ProductForm.tsx:322`「新しい取引先を追加」/`:352`「追加する」が `variant="secondary"` へ降格し、`data-variant="secondary"` を持つ
 - SC13: `PriceRevisionFilters.tsx:82`「新しい取引先を追加」が `variant="secondary"` へ降格する
 - SC14: `SupplierManagementPage.tsx:22`「新しい取引先を追加」button は primary のまま変更されない（negative oracle）
 - SC15: `SearchBar.tsx` の `LiveSearchBar` が可視 `<Label htmlFor>`（既定文言「商品を検索」）を持ち、`aria-label` を持たない。`CommitSearchBar` は Label + `aria-label` 併存のまま不変
-- SC16: `InventoryRecordsPage.test.tsx:744` の negative assertion（可視 label 不在）が、live 型 Label 追加後は反転した positive assertion（可視 label 存在）として成立する
+- SC16（**G4, Opus P2-3 是正**: `:744` に加え `:745` も対象）: `InventoryRecordsPage.test.tsx:744`（`queryByText("商品検索", { selector: "label" })` の negative、可視 label 不在）と `:745`（`expect(keywordInput).not.toHaveAttribute("id")` の negative、id 不在）の両方が、live 型 Label 追加後は反転した positive assertion（可視 label 存在・`id` 属性存在）として成立する
 - SC17: `StockInquiryPage.test.tsx:467` の `getByRole("searchbox")` query が `aria-label` 撤去後も解決し続ける（role ベース query は影響を受けないことの回帰確認）
 - SC18: `alert.tsx` に `warning` variant が catalog `:392` の exact class 文字列で追加される
 - SC19: `PriceRevisionPage.tsx:79` が `variant="warning"` + `AlertTriangle` + `AlertTitle`「ご注意」+ 既存本文を `AlertDescription` に持ち、`role="note"` を維持する
@@ -35,7 +35,8 @@ R3（状態 Badge tone・CTA secondary・SearchBar live Label・Alert warning �
 - SC22（**F1, Opus P1-4 是正、negative→positive に転換**）: `DailySalesPage.tsx:174-176`/`MonthlySalesPage.tsx:165-167` の plain `<p>`「レジ日報は未取込みです」が `<Alert variant="warning" role="status">` + `AlertTriangle` + `AlertTitle`（既存文をそのまま使用）へ変換される。`MonthlySalesPage.tsx:169-171`「公式部門集計の行はありません」（別文言）は `<p>` のまま
 - SC23: `01-decision-rules.md` の DSR-23 見出しが 1 個のみ（`:469-479` の重複ブロックが削除される）
 - SC24: catalog `:404` の `PriceRevisionPage.tsx:112-116` citation が `:79-83` へ訂正される（**F15**、DailySalesPage/MonthlySalesPage citation 自体は変更しない）
-- SC28（F16, Opus P2-6）: catalog `:836-839` の①状態 tone family マッピング表の success 行・warning 行に `CsvImportRecordDetailPage.tsx:140` の該当分岐（成功/部分成功）が追加される
+- SC28（F16, Opus P2-6 / **G7 で anchor 修正 3 件追加**）: catalog `:836-839` の①状態 tone family マッピング表の success 行・warning 行に `CsvImportRecordDetailPage.tsx:140` の該当分岐（成功/部分成功）が追加され、同時に旧 anchor（`ProductTable.tsx:79`→`:88`、`:84`→`:93`、`IntegrityCheckPage.tsx:387`→`:389`）が訂正される
+- SC29（**G5, Opus P2-4 追加**）: `DailyReportImportPage.tsx:322`（`<Badge>成功</Badge>`、variant 未指定=default、`SC6` の `:163-182` サイトとは別関数）が `variant="outline"` + `tone="success"` + icon へ移行する
 
 ## Failure Modes
 
@@ -50,7 +51,8 @@ R3（状態 Badge tone・CTA secondary・SearchBar live Label・Alert warning �
 - Alert warning 移行で `role` 属性や本文文言が失われる、または `PriceRevisionPage.tsx` の `AlertTitle` 追加で `role="note"` が壊れる
 - `DailySalesPage.tsx`/`MonthlySalesPage.tsx` の plain text が Alert 化されないまま放置される（**F1 是正後の failure mode**、owner 決定 2026-09-06 の未反映）、または `role="status"` を誤る、または別文言の `MonthlySalesPage.tsx:169-171`（行なし）まで巻き込まれる
 - `SummaryCardsBar.tsx` 2 サイト（F2）で `diff === 0` が緑（`text-success-strong`）または赤のまま残る 2 値分岐の名残
-- `daily-sales/components/ProductTable.tsx:133`「手動」badge（F3）の amber className 撤去漏れ、または `ReturnExchangePage.tsx:603-607`「レジ未処理」（F4）の tone/icon 移行漏れ
+- `daily-sales/components/ProductTable.tsx:133`「手動」badge（F3）の amber className 撤去漏れ
+- `DailyReportImportPage.tsx:322`「成功」badge（G5）が `variant="default"` のまま tone 移行されない、または icon が付かない
 - DSR-23 重複除去で本文の一部が欠落する、または `## 更新履歴` の位置がずれる
 
 ## Test Matrix
@@ -65,17 +67,17 @@ R3（状態 Badge tone・CTA secondary・SearchBar live Label・Alert warning �
 | SC6 DailyReportImportPage 3 分岐 | 分岐 tone 取り違え / 二重着色 | unit（`DailyReportImportPage.test.tsx` 拡張） | SC6: 3 分岐それぞれで期待 tone（warning/warning/success）+ 文言が対応する。`requiresAdditionalConfirm` 分岐が `className` 手書きでなく `tone` prop 由来であることも確認 | いずれかの分岐が誤った tone、または `requiresAdditionalConfirm` が二重に warning class を持つ |
 | SC7 solid pill 移行 | 直塗り残存 / icon 欠落 | unit（`IntegrityCheckPage.test.tsx`/`StocktakePage.test.tsx` 拡張） | SC7: 「補正済み」「未入力 0」相当の完了 pill が `bg-success` 直塗りでなく `variant="outline"`+`tone="success"`+icon を持つ | `bg-success text-primary-foreground` が残る、または icon が欠ける |
 | SC8 CsvImportRecordDetail 3 状態 tone | tone 取り違え / tone 欠落 | unit（`CsvImportRecordDetailPage.test.tsx` 拡張） | SC8: `status="completed"` は `tone="success"`+icon、`status="completed_partial"` は `tone="warning"`+icon、`status="rolled_back"` は `tone="destructive"`+icon の 3 ケースを個別に確認（非空集合オラクル、3 値とも独立 assert）。`:192`「明細取消済み」は常に destructive tone | 3 状態のいずれかで tone が欠ける、または他の状態の tone と入れ替わる（例: success↔warning の取り違え） |
-| SC9 StocktakePage DSR-08 | 色欠落 / 記号・文言破壊 | unit（`StocktakePage.test.tsx` 拡張） | SC9: `difference` が正/負/0 の 3 ケースで `text-success-strong`/`text-destructive-strong`/`text-muted-foreground` をそれぞれ持ち、`+N`/`N`/`—` の文言は不変 | 3 ケースのいずれかで色が欠ける、または文言が変わる |
+| SC9 StocktakePage DSR-08 | 色欠落 / 記号・文言破壊 | unit（`StocktakePage.test.tsx` 拡張） | SC9（**G8, Opus P3-1 是正**: `formatListDifference`〈`stocktake-formatters.ts:21-25`〉の実際の戻り値は 正=`+N` / 負=`-N`（`String()` の自動符号）/ 0=`"0"`、`—` は `difference === null` 専用で 3 ケースには含まれない）: `difference` が正/負/0 の 3 ケースで `text-success-strong`/`text-destructive-strong`/`text-muted-foreground` をそれぞれ持ち、`+N`/`-N`/`0` の文言は不変。`null`→`—` は本 lane で無変更（muted のまま、色付け対象外） | 3 ケースのいずれかで色が欠ける、または文言が変わる |
 | SC10 IntegrityCheckPage DSR-08 | 色欠落 / Badge 側への誤混入 | unit（`IntegrityCheckPage.test.tsx` 拡張） | SC10: `:379-382`（F14 是正）の span が 3 ケースで対応する色を持つ。隣接 `:383` の Badge は `tone` 属性を持たない（negative） | span の色が欠ける、または Badge 側に tone が付いてしまう |
 | SC25 SummaryCardsBar 3-way（F2） | `diff === 0` が緑/赤のまま残る | unit（`SummaryCardsBar.test.tsx` 拡張、なければ新設、daily-sales/monthly-sales 両方） | SC25: `diff` が正/負/0 の 3 ケースで `text-success-strong`/`text-destructive-strong`/`text-muted-foreground` をそれぞれ持つ（`diff >= 0` 境界の mutant を明示 kill） | `diff === 0` で `text-success-strong` が残る、または 3 ケースのいずれかで色が欠ける |
 | SC26 daily-sales ProductTable「手動」（F3） | amber className 残存 | unit（`daily-sales/components/ProductTable.test.tsx` 拡張） | SC26: 「手動」badge は `data-variant="secondary"` を持ち `data-tone` 属性を持たない（negative）、`bg-warning-soft`/`text-warning-strong` class を持たない（negative） | amber className が残る、または誤って `tone` が付く |
-| SC27 ReturnExchangePage レジ未処理（F4） | tone/icon 移行漏れ | unit（`ReturnExchangePage.test.tsx` 拡張） | SC27: 「レジ未処理」badge は `data-tone="warning"` + `svg` を持つ。「レジ戻し済み」badge は `data-tone` を持たない（negative、無変更確認） | tone/icon が付かない、または「レジ戻し済み」に誤って tone が付く |
+| SC27（撤回、round 2 G1） | — | — | 対象 Badge の表示文言は「この保存で反映」（`formatStockEffectBadge(false)`）で「レジ未処理」ではなく、catalog `:841` により owner 承認済み Non-scope。round 1（Sonnet P2-1）の要素誤認を Coordinator が round 2 で訂正、対象から除外 | — |
 | SC11 button secondary border | `border-border` 欠落 | unit（`button.test.tsx` 拡張） | SC11: `variant="secondary"` は `border` class を持つ | class が付かない |
 | SC12 ProductForm CTA 降格 | 降格漏れ / query 破壊 | unit（`ProductForm.test.tsx` 拡張、既存 `:648,650` の role+name query は無変更のまま維持） | SC12: 「新しい取引先を追加」「追加する」button が `data-variant="secondary"` を持つ。既存の role+name ベース test はそのまま pass する | variant が outline/default のまま残る、または既存 role+name query が解決できなくなる |
 | SC13 PriceRevisionFilters CTA 降格 | 降格漏れ | unit（`PriceRevisionPage.test.tsx` 拡張） | SC13: 「新しい取引先を追加」button が `data-variant="secondary"` を持つ | variant が outline のまま残る |
 | SC14 SupplierManagementPage primary 不変 | 誤って降格される | unit（`SupplierManagementPage.test.tsx` 拡張、negative） | SC14: 「新しい取引先を追加」button が `data-variant="default"`（primary）のまま | 誤って secondary へ降格される |
 | SC15 SearchBar live Label | Label 欠落 / aria-label 残存 | unit（`SearchBar.test.tsx` 拡張） | SC15: live 型は `getByLabelText("商品を検索")` で解決でき、`input.getAttribute("aria-label")` が `null`。commit 型は `getByLabelText("商品検索")` 解決 + `aria-label="商品検索"` の両方が残る（対照 case） | live 型に `aria-label` が残る、または Label が付かない。commit 型が誤って変更される |
-| SC16 InventoryRecordsPage negative→positive 反転 | 反転漏れ | unit（`InventoryRecordsPage.test.tsx:744` 拡張） | SC16: `queryByText("商品検索", { selector: "label" })` は「商品を検索」を new selector として `getByText` で解決できる（positive） | 反転されず negative のまま残り false-positive で pass する |
+| SC16 InventoryRecordsPage negative→positive 反転（**G4**: `:744`+`:745` 両方） | 反転漏れ | unit（`InventoryRecordsPage.test.tsx:744-745` 拡張） | SC16: `:744` は `getByText("商品を検索", { selector: "label" })` で解決できる（positive）。`:745` は `expect(keywordInput).toHaveAttribute("id")` が成立する（positive） | いずれかが反転されず negative のまま残り false-positive で pass する |
 | SC17 StockInquiryPage searchbox 回帰 | role query 破壊 | unit（`StockInquiryPage.test.tsx:467` 無変更で pass 確認） | SC17: `getByRole("searchbox")` が live Label 追加後も解決する | `aria-label` 撤去の副作用で role が変わり解決できなくなる |
 | SC18 alert.tsx warning variant | class 文字列の誤り | unit（新設 `alert.test.tsx`） | SC18: `variant="warning"` は catalog `:392` の exact class を独立 literal 表で持つ | class が catalog と異なる |
 | SC19 PriceRevisionPage warning Alert | role 破壊 / icon・title 欠落 | unit（`PriceRevisionPage.test.tsx` 拡張） | SC19: `getByRole("note")` で解決でき、`AlertTitle`「ご注意」+ `svg` を持ち、既存本文が `AlertDescription` に残る | `role="note"` が失われる、または title/icon が欠ける |
@@ -84,7 +86,8 @@ R3（状態 Badge tone・CTA secondary・SearchBar live Label・Alert warning �
 | SC22 DailySalesPage/MonthlySalesPage Alert 化（F1、positive に転換） | 未変換 / role・title 誤り | unit（両 file の既存 test 拡張） | SC22: 「レジ日報は未取込みです」が `role="status"` の `Alert`（`data-variant="warning"`）+ `AlertTitle`（既存文そのまま）+ `svg` を持つ。`MonthlySalesPage.tsx:169-171`「公式部門集計の行はありません」は引き続き `<p>` のまま（negative、別文言サイトの無変更確認） | `<p>` のまま残る、`role`/title が誤る、または別サイトまで Alert 化される |
 | SC23 DSR-23 重複除去 | 重複残存 / 本文欠落 | docs review（`rg -c`、非 vitest） | SC23: `rg -c "^## DSR-23" docs/design-system/01-decision-rules.md` = 1 | 2 個目のブロックが残る、または 1 個目が誤って消える |
 | SC24 catalog citation 行番号訂正（F15） | 訂正漏れ | docs review（`rg -Fn`、非 vitest） | SC24: catalog `:404` の `PriceRevisionPage.tsx:112-116` が `:79-83` へ訂正されている | 旧行番号が残ったまま |
-| SC28 catalog tone table 同期（F16） | 追加漏れ | docs review（`rg -Fn`、非 vitest） | SC28: catalog `:836-839` の success 行・warning 行に `CsvImportRecordDetailPage.tsx:140` の言及がそれぞれ追加されている | 片方または両方の行への追加が漏れる |
+| SC28 catalog tone table 同期（F16/G7） | 追加漏れ / 旧 anchor 残存 | docs review（`rg -Fn`、非 vitest） | SC28: catalog `:836-839` の success 行・warning 行に `CsvImportRecordDetailPage.tsx:140` の言及がそれぞれ追加されている。旧 anchor（`ProductTable.tsx:79,84`/`IntegrityCheckPage.tsx:387`）が 0 件、新 anchor（`:88,93`/`:389`）が反映されている | 追加漏れ、または旧 anchor が残ったまま |
+| SC29 DailyReportImportPage:322「成功」（G5） | tone 移行漏れ / icon 欠落 | unit（`DailyReportImportPage.test.tsx` 拡張） | SC29: 「成功」badge は `data-variant="outline"` + `data-tone="success"` + `svg` を持つ | `variant="default"` のまま残る、または icon が欠ける |
 
 Mandatory oracle rule（全 SC 共通、⑧ Plan Review round 1 P1-1 の教訓を継承）: tone/variant の存在確認は `className` の文字列一致だけでなく `data-variant`/`data-slot`/`data-tone` 属性（`badge.tsx:39` の `data-variant`/`data-slot` + 本 lane 新設 `data-tone`〈F12〉/ `button.tsx:54` / `alert.tsx` 新設 `data-variant`〈F11〉）も併記する。className 文字列だけの assertion は tailwind の class 順序変更（prettier-plugin-tailwindcss）で壊れやすいため、`toHaveClass` の個別トークン指定を優先する。
 
@@ -96,7 +99,7 @@ not applicable — 本 lane は静的な視覚表現（class/variant/icon/Label�
 
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
-| ①状態 badge tone（非中立 + icon 必須） | `rg -n "<Badge" src/features src/components --glob '!*.test.*'`（**F3 是正**: 本 packet 再実行で 45 件、⑦ 起票時実測の 44 件は `ReturnExchangePage.tsx:603` を含む前の値） | S2 起票時実測列挙の全サイト（`CsvImportRecordDetailPage.tsx:140` は 3 状態すべて／`ReturnExchangePage.tsx:603-607` を F4 で追加、Coordinator adjudication 2026-09-08） | `formatRecordStatus` 共有（中立）、`ReturnExchangePage.tsx:580`（中立）、`daily-sales/components/ProductTable.tsx:133`「手動」（F3 で②分類へ確定） | 各 page test 拡張 |
+| ①状態 badge tone（非中立 + icon 必須） | `rg -n "<Badge" src/features src/components --glob '!*.test.*'`（**F3 是正**: 本 packet 再実行で 45 件、⑦ 起票時実測の 44 件との差分は `ReturnExchangePage.tsx:603` の走査漏れ。この site 自体は G1〈round 2〉により Non-scope 確定、S2 対象には含まれない） | S2 起票時実測列挙の全サイト（`CsvImportRecordDetailPage.tsx:140` は 3 状態すべて、Coordinator adjudication 2026-09-08） | `formatRecordStatus` 共有（中立）、`ReturnExchangePage.tsx:580,603-607`（owner 承認済み現状維持、G1 で Non-scope 確定）、`daily-sales/components/ProductTable.tsx:133`「手動」（F3 で②分類へ確定） | 各 page test 拡張 |
 | 手書き warning Alert class（`border-warning bg-warning-soft text-warning-strong`） | `rg -n 'border-warning bg-warning-soft text-warning-strong' src --glob '!*.test.*'`（14 hit、完全一致） | 14 箇所すべて | なし（全数移行） | AC4 rg + 各 page test |
 | CTA outline→secondary 中間段 | `rg -n '<Button' src/features/products/components/ProductForm.tsx src/features/products/components/PriceRevisionFilters.tsx src/features/suppliers/SupplierManagementPage.tsx` | `ProductForm.tsx:322,352`、`PriceRevisionFilters.tsx:82` | `SupplierManagementPage.tsx:22`（画面唯一の primary、降格対象外） | `button.test.tsx` + 各 page test |
 | SearchBar 呼び出しサイト | `rg -n "<SearchBar" src/features --glob '!*.test.*'` | `InventoryRecordsPage.tsx:214`/`StockInquiryPage.tsx:103`/`PriceRevisionFilters.tsx:47`/`ProductListPage.tsx:110`（4 件、ラベル省略で既定文言適用） | commit 型呼び出しサイト（現状の採用箇所なし、機能残置のため変更なし） | 各 page test + `SearchBar.test.tsx` |
@@ -150,6 +153,7 @@ not applicable — 本 lane は静的な視覚表現（class/variant/icon/Label�
 ## Mutation-style Adequacy Questions
 
 - tone success の class 文字列を warning に差し替えたら、`badge.test.tsx` の独立 literal 表（cva オブジェクトから derive しない）が fail するか（SC1）
+- `DailyReportImportPage.tsx:322` の `tone="success"` を `tone="warning"` に差し替えたら、SC29 が fail するか（G5）
 - `ProductTable.tsx:88` の tone を `warning` から未指定へ戻したら、SC4 の (tone class + icon) 対アサーションが fail するか（icon だけを見る片側アサーションでは検出できない）
 - `DailyReportImportPage.tsx:163-182` の `requiresAdditionalConfirm` 分岐の tone を誤って `success` に変えたら、SC6 の分岐別アサーションが fail するか
 - `CsvImportRecordDetailPage.tsx:140` の `STATUS_TONE` で `success`↔`warning` を入れ替えたら（`completed`→warning、`completed_partial`→success の誤り）、SC8 の 3 ケース個別アサーションが fail するか
