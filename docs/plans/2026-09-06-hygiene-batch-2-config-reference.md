@@ -6,7 +6,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 3aa0e8a
@@ -15,7 +15,7 @@ Backlog（`docs/Plans.md:121,130,149`、`07302b5` 時点の行番号）記載の
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（§3.3 pending。Codex 枠状況に応じて実施タイミングは Coordinator が調整し、Codex 成分が pending の間は Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 109c1b3
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: none（runtime・operator 画面に非接触。script / config / lint / docs のみ）
@@ -284,7 +284,7 @@ Contract ID: SPEC-HYG2-D1
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen at 109c1b3（Codex round 3 issue comment 5572386239、2026-09-07、新規指摘なし）; post-freeze exceptions: none.
 
 2026-09-06: Plan Review round 1 = Sonnet approve-with-P2、Opus reject。P1 = (1) S2「2 block 分離」設計が ESLint flat config の rule merge（`node_modules/eslint/lib/config/flat-config-schema.js:450-506`）により `features/**`・`patterns/**` の色検出を消す（実測で再現、是正: 追加方式へ変更 + Matrix SC8 新設）(2) AC4 の `target: "solid"` probe が `src/routes/**` 35 file を破壊的に書き換え復旧不能（実測で再現、是正: `$TMPDIR` 使い捨てコピー限定化 + restore oracle）。P2 = (3) Matrix SC2「would fail if」に build 失敗を追記（Sonnet） (4) S1 の `.lazy.tsx` 乖離根拠が誤り、`autoCodeSplitting` は生成物に無関係でソースで確認（Opus、実測で再現） (5) S3 の優先順位が逆転、mockup（reference-only）より現行契約 doc 3 file を優先しScope へ統合（Opus）。P3 = (6) S3b Backlog 重複行（`:132`）は item 5 で自動的に不要化、削除（Sonnet）。Coordinator 裁定 = 9 項目全件採用 → 本 commit で是正（S2 を追加方式へ、Matrix SC8 新設、AC4 を使い捨てコピー限定化 + restore oracle 追加、S1 rationale を `target` 限定へ訂正、S3 を mockup + 3 file へ拡大、Backlog:132 削除、Plans.md ⑫ 同期）。新規発見の P1/P2/P3 はすべて実測で再現確認済み（segmented-control.tsx への `bg-red-500` 注入 probe、`$TMPDIR` throwaway copy での `target: "solid"` 破壊的挙動再現、`autoCodeSplitting` の唯一の consumer が `router-composed-plugin.js:16-17` であることのソース確認）。次 round は Plan Reviewer 再確認待ち。
 
@@ -295,3 +295,5 @@ Contract ID: SPEC-HYG2-D1
 2026-09-07: Plan Review round 2 = Sonnet approve-with-P2（`rg -F` pattern の `\[` が常に 0 hit）+ Opus reject（P1: AC4 の 1 copy 連続 probe は leg 2 が `createFileRoute` 重複で必ず壊れる → 2 copy 分離 + diff のみ oracle。P2: 新 block は barrel block より前）→ 是正 `f043e44`。round 3 = Sonnet approve + Opus approve（P1 0。P2: copy は `cp -a` / layout `ignores` oracle。P3: 非 0 exit の帰属 / restore oracle）→ 最終小口 `58b0118` → Coordinator 行検分（`-F` バックスラッシュ bug の残存 0 を sweep）で Plan Gate 閉鎖。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑫ 同期の本 commit に同乗。Plan Commit = `3aa0e8a`（plan-first commit）。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
 
 2026-09-07: Final Review round 1 = Sonnet fresh approve（AC1〜AC14 独立再実測、SC2 / SC6 / SC8 実注入 kill、SC4 / SC5 / SC7 / SC9 静的 oracle 一致、Non-scope 侵犯なし）+ Opus approve-with-P2（S2 の 2 block を node で文字列比較し selector 完全一致、`ignores` は `files` の部分集合として機能、barrel ban 維持、S1 は generator が `<root>/tsr.config.json` を読み 2 key とも schema 内で既定値と等価、`tanstackRouter` の option は省略可。P1 0。P2 = Implementation Results 未記入〈本 commit で記録〉。P3 = PR body の Scope 行が mockup 1 file 表記 / `50-ui-product-list.md:63` は更新履歴クラスだが packet 裁定で Scope 内〈非対称は記録のみ〉/ `src/components/common/**` と `src/components/FilePicker.tsx` は色 ban 非対象のまま → Backlog 起票）。Reviewed Content HEAD = `cf70277`、`implementing -> human-confirm`。Human Gate = なし。Codex ロジックレビュー 1 回は §3.3 pending（2026-09-07 夜）。
+
+2026-09-07: Codex ロジックレビュー round 1 = issue comment 5567792372（P2 2 / P3 2、全件 accept）→ 是正 `537eb85`（Matrix SC4 / SC5 を全配列一致 + block diff へ、AC4 に生成成功 + baseline 差の前提、⑫ 文言、D-038 件数転記）→ `4614c6d` で `state-backtrack human-confirm->implementing`。round 2 = issue comment 5569875600（P2 1 = packet AC4〜AC6 の旧 oracle 残存）→ 同期 `109c1b3`。round 3 = issue comment 5572386239（**新規指摘なし、Findings Freeze 可**、mutant 独立再実測 + gate 全 PASS）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = doc gate ERROR 0 + Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 + Codex round 1〜3（Findings Freeze）、human-confirm = Human Gate none（runtime 非接触）。Reviewed Content HEAD = `109c1b3`。次: owner 承認 → Ready（docs / config のみのため hosted final は workflow_dispatch）→ merge。
