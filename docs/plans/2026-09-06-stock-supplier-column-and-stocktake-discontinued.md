@@ -4,7 +4,7 @@ owner 決定（2026-09-05/06、店舗ヒアリング + 合意要約 + owner 決�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 95f33ac
@@ -13,7 +13,7 @@ owner 決定（2026-09-05/06、店舗ヒアリング + 合意要約 + owner 決�
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded によりCodex成分は pending のまま Phase を前進させない）
-- Reviewed Content HEAD: a78f265
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈在庫少・在庫切れ一覧が取引先名順に並ぶ〉/ AC-L3-2〈棚卸しリストの廃番行に badge が出る〉/ AC-L3-3〈在庫照会の展開行が再クリックで閉じる〉の 3 項目）
