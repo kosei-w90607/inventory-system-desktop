@@ -131,7 +131,7 @@
 - [x] ⑬ auto-memory 整理（`/memory-consolidate`、human-in-the-loop）: 完了（2026-09-08）。MEMORY.md 98 行 / 23.0KB → 28 行 / 6.4KB、memory file 84 → 25（同 topic 5 cluster へ原文移送統合 / repo docs 正本ありと失効の 21 件削除 / `project-ui-polish-turn-state.md` 84KB は履歴を非索引 archive へ分割し stub 化 / sd・fd・pipe 系の汎用 5 件は global skill `engineering-judgment-axioms` Rule 12・13 へ還元）。個人補助層の保守であり workflow gate にはしない（CLAUDE.md 記憶システム運用）。起票 2026-09-08
 - [ ] ⑭ UI 規約の runtime 反映（状態 Badge tone・CTA 中間段・検索欄 Label・Alert warning・DSR-08 増減色、⑦ design batch の runtime lane）: [UI 規約 runtime 反映](plans/2026-09-08-ui-conventions-runtime.md) 起票。branch `agent/ui-conventions-runtime`。Phase: implementing（Plan Commit `0481f1f`、Plan Review round 1〜3〈Opus + Sonnet 独立〉Findings Freeze 2026-09-08、Draft PR #45）
 - [ ] ⑮ UI 磨き batch 3 の runtime 反映（説明セクション・記録ID列撤去・備考「—」・PriceHistory表構造化・記録状態Badge・単位表示統合、⑩ design batch の runtime lane）: [UI 磨き batch 3 runtime 反映](plans/2026-09-08-ui-polish-batch3-runtime.md) 起票。branch `agent/ui-polish-batch3-runtime`。Phase: plan-draft、Plan Commit pending
-  - ⑭（`agent/ui-conventions-runtime`）に stack〈D-074〉、merge train ⑭ → ⑮
+  - ⑭（`agent/ui-conventions-runtime`）に stack（⑭ squash merge 後の base 付け替えは D-074）、merge train ⑭ → ⑮
   - origin = ⑩（PR #42 squash `ee8e294`）の Non-scope 申し送り（`src/**` 実装変更全て）
   - origin = ⑦（PR #39、[archived packet](archive/plans/2026-09-05-ui-conventions-batch-design.md)）の Non-scope「`src/**` の実装変更全て」申し送り
   - 起票時実測で `01-decision-rules.md` の DSR-23 verbatim 重複ブロック（`:457-467`/`:469-479`）と catalog `:404` の DailySalesPage/MonthlySalesPage citation drift を発見、S7 で同時是正
