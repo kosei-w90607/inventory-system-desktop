@@ -258,9 +258,17 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     await user.click(await screen.findByRole("option", { name: "テスト商事" }));
     expect(supplierTrigger).toHaveTextContent("テスト商事");
 
+    // P2-1: 実在取引先から「指定なし」へ解除する round-trip を保存前に確認する
+    // （保存後は isFormLocked で select が disabled になるため、保存は 1 回だけ行う）。
+    await user.click(supplierTrigger);
+    await user.click(await screen.findByRole("option", { name: "指定なし" }));
+    expect(supplierTrigger).toHaveTextContent("指定なし");
+
     await user.click(screen.getByRole("button", { name: "入庫を保存" }));
     await waitFor(() => {
-      expect(mockCreateReceiving).toHaveBeenCalledWith(expect.objectContaining({ supplier_id: 1 }));
+      expect(mockCreateReceiving).toHaveBeenCalledWith(
+        expect.objectContaining({ supplier_id: null }),
+      );
     });
   });
 

@@ -1,7 +1,7 @@
 // src/features/products/components/ProductForm.test.tsx
 
 import React from "react";
-import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -751,8 +751,10 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
     overrides: Partial<React.ComponentProps<typeof ProductForm>> = {},
   ) {
     const onValuesChange = vi.fn();
+    let externalSetValues!: React.Dispatch<React.SetStateAction<ProductFormValues>>;
     function Harness() {
       const [values, setValues] = React.useState<ProductFormValues>(initialValues);
+      externalSetValues = setValues;
       return (
         <ProductForm
           mode="create"
@@ -776,12 +778,13 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
       );
     }
     render(<Harness />);
-    return { onValuesChange };
+    // P2-4: 親からの外部 reset（setValues 直接呼び出し）を再現するための handle。
+    return { onValuesChange, setValues: externalSetValues };
   }
 
   it("SC8a: 部門selectは未選択時にplaceholderを表示し偽optionを持たず、実在部門選択でsuffix込み表示とnumber復元がround-tripする（L8-D2, L8-D5）", async () => {
     const user = userEvent.setup();
-    const { onValuesChange } = renderForm(createProductFormDefaults, {
+    const { onValuesChange, setValues } = renderForm(createProductFormDefaults, {
       errors: { departmentId: "部門を選択してください" },
     });
 
@@ -806,6 +809,13 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
     expect(lastCall(createProductFormDefaults)).toEqual(
       expect.objectContaining({ departmentId: 1 }),
     );
+
+    // P2-4: 部門選択後に親が departmentId を null へ reset した経路
+    // （ProductForm.tsx:282 の controlled value "" → undefined mutant を kill する）。
+    act(() => {
+      setValues((prev) => ({ ...prev, departmentId: null }));
+    });
+    expect(trigger).toHaveTextContent("選択してください");
   });
 
   it("SC8b: 取引先selectは「取引先なし」選択でsupplierIdがnullになる", async () => {
@@ -853,9 +863,9 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
     expect(screen.getByLabelText("取引先")).toBeDisabled();
   });
 
-  it("SC8c: 税率selectはtriggerを開くと3件（10/8/0%）のoptionを持つSelect comboboxである", async () => {
+  it("SC8c: 税率selectはtriggerを開くと3件（10/8/0%）のoptionを持ち選択でtaxRateが対応する値に更新される（P2-2）", async () => {
     const user = userEvent.setup();
-    renderForm();
+    const { onValuesChange } = renderForm();
 
     const trigger = screen.getByLabelText("税率");
     expect(trigger).toHaveAttribute("data-slot", "select-trigger");
@@ -866,5 +876,20 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
       "8%",
       "0%",
     ]);
+
+    await user.click(screen.getByRole("option", { name: "8%" }));
+    expect(trigger).toHaveTextContent("8%");
+    const afterEight = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
+      prev: ProductFormValues,
+    ) => ProductFormValues;
+    expect(afterEight(createProductFormDefaults)).toEqual(expect.objectContaining({ taxRate: "8" }));
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("option", { name: "0%" }));
+    expect(trigger).toHaveTextContent("0%");
+    const afterZero = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
+      prev: ProductFormValues,
+    ) => ProductFormValues;
+    expect(afterZero(createProductFormDefaults)).toEqual(expect.objectContaining({ taxRate: "0" }));
   });
 });

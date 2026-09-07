@@ -144,22 +144,20 @@ describe("StockMovementsPage (UI-06c)", () => {
     expect(screen.getByText("廃棄・破損 #7")).toBeInTheDocument();
   });
 
-  it("REQ-303: filter変更時はpageを1に戻す", async () => {
+  it("REQ-303: filter変更時はpageを1に戻す（sentinel round-trip、P2-1）", async () => {
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
     mockListMovements.mockResolvedValue({
       status: "ok",
-      data: { items: [], total_count: 0, page: 3, per_page: 50 },
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
     });
-    const onSearchChange = vi.fn();
     const user = userEvent.setup();
 
-    renderWithClient(
-      <StockMovementsPage
-        productCode="BT0002"
-        search={{ type: "all", page: 3 }}
-        onSearchChange={onSearchChange}
-      />,
-    );
+    function Harness() {
+      const [search, setSearch] = useState<StockMovementsSearch>({ type: "all", page: 3 });
+      return <StockMovementsPage productCode="BT0002" search={search} onSearchChange={setSearch} />;
+    }
+
+    renderWithClient(<Harness />);
 
     const movementType = await screen.findByLabelText("種別");
     expect(movementType).toHaveAttribute("data-slot", "select-trigger");
@@ -176,12 +174,29 @@ describe("StockMovementsPage (UI-06c)", () => {
     ]);
     await user.click(screen.getByRole("option", { name: "入庫" }));
 
-    const lastCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1];
-    const updater = lastCall[0] as (prev: { type?: string; page?: number }) => {
-      type?: string;
-      page?: number;
-    };
-    expect(updater({ type: "all", page: 3 })).toEqual({ type: "receiving", page: 1 });
+    await waitFor(() => {
+      expect(mockListMovements).toHaveBeenLastCalledWith(
+        expect.objectContaining({ movement_type: "receiving", page: 1 }),
+      );
+    });
+
+    await user.click(movementType);
+    await user.click(await screen.findByRole("option", { name: "すべて" }));
+
+    await waitFor(() => {
+      expect(mockListMovements).toHaveBeenLastCalledWith(
+        expect.objectContaining({ movement_type: null, page: 1 }),
+      );
+    });
+
+    await user.click(movementType);
+    await user.click(await screen.findByRole("option", { name: "手動販売" }));
+
+    await waitFor(() => {
+      expect(mockListMovements).toHaveBeenLastCalledWith(
+        expect.objectContaining({ movement_type: "sale_manual", page: 1 }),
+      );
+    });
   });
 
   it("SC4c: 表示件数を200へ変更するとpage 1・per_page 200で再取得する", async () => {

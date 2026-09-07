@@ -419,6 +419,16 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       recordType: "disposal_record",
       page: 1,
     });
+
+    await user.click(recordTypeTrigger);
+    await user.click(await screen.findByRole("option", { name: "入庫" }));
+    const lastCallReceiving = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+      (prev: { recordType?: string; page?: number }) => { recordType?: string; page?: number },
+    ];
+    expect(lastCallReceiving[0]({})).toEqual({
+      recordType: "receiving_record",
+      page: 1,
+    });
   });
 
   it("⑧SC4b: 部門selectで実在部門を選ぶとtrigger表示が部門名になりdepartmentIdがnumberになる（round-trip、L8-D5）", async () => {
@@ -444,6 +454,17 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     await waitFor(() => {
       expect(mockListInventoryRecords).toHaveBeenLastCalledWith(
         expect.objectContaining({ department_id: 2 }),
+      );
+    });
+
+    await user.click(departmentTrigger);
+    await user.click(await screen.findByRole("option", { name: "すべて" }));
+    await waitFor(() => {
+      expect(departmentTrigger).toHaveTextContent("すべて");
+    });
+    await waitFor(() => {
+      expect(mockListInventoryRecords).toHaveBeenLastCalledWith(
+        expect.objectContaining({ department_id: null }),
       );
     });
   });

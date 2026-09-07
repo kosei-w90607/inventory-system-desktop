@@ -626,6 +626,14 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
 
     expect(screen.getByLabelText("DP-001 の種別")).toHaveTextContent("廃棄");
     expect(screen.getByLabelText("DP-002 の種別")).toHaveTextContent("破損");
+
+    // row 2 自身の select を直接操作しても row 2 だけが変わること
+    // （updateDisposalRow が常に rows[0] を書き換える mutant を kill する）。
+    await user.click(screen.getByRole("combobox", { name: "DP-002 の種別" }));
+    await user.click(await screen.findByRole("option", { name: "その他" }));
+
+    expect(screen.getByLabelText("DP-002 の種別")).toHaveTextContent("その他");
+    expect(screen.getByLabelText("DP-001 の種別")).toHaveTextContent("廃棄");
   });
 });
 
