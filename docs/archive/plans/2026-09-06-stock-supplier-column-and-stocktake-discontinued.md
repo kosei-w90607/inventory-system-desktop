@@ -4,7 +4,7 @@ owner 決定（2026-09-05/06、店舗ヒアリング + 合意要約 + owner 決�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 95f33ac
@@ -310,3 +310,5 @@ Contract ID: SPEC-STKSUP-D1
 AC6 の主 gate `git diff --numstat -- src/lib/bindings.ts` = `1 0` と副 gate `rg -c 'is_discontinued: boolean,'` = 1 は起票時の誤前提。specta は `find_stocktake_item` command の戻り値 inline 型（Opus 実測 `bindings.ts:259`）にも struct field を複製するため、実測は numstat `2 0`・副 gate 2。Final Review は diff 全文で追加 2 行がいずれも `is_discontinued: boolean,` であり他の差分がないことを確認して PASS 判定。AC6 本文と Matrix Contract Coverage Cross-check の期待値を実測へ是正（Goal / 失敗定義 / 実装は不変）。
 
 2026-09-07: Codex ロジックレビュー round 1 = review 5130151400（P1 3 / P2 3、全件 accept）→ 是正 `e278586`（自動展開ガードを条件 key + 消費済み判定へ / `productUpdate` に `stocktake.itemsRoot()` / test 補強 / 58 疑似コード同期）→ `1b2ce90` で `state-backtrack human-confirm->implementing`。round 2 = review 5130875762（P2 回帰 1: 古い selected が新条件でも消費済み扱い → page 送り後の単一結果が開かない / P3 docs）→ 是正 `9cb7c35`（消費済みは現在条件の結果に属する selected の観測か自動展開の発火のみで立てる `selectedBelongsToList` + 回帰 test / 73 §11・58 §5・§9 同期）。round 3 = review 5132387364（**新規指摘なし、Findings Freeze 可**、旧ガード再注入で回帰 test の kill を独立確認、SC5a / SC5b とクローズ動線 PASS）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = Writer gate（format:check / lint / typecheck / full 1,343 test / doc gate）+ Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 ×2 + Codex round 1〜3（Findings Freeze）、human-confirm = owner L3 PASS 3/3（2026-09-06）は P1 是正が L3 script 外の経路（URL 復元 / 条件往復 / page 送り）と staleTime 0 で不可視の invalidation のため有効。Reviewed Content HEAD = `9cb7c35`。次: owner 承認 → Ready（`human-confirm->ready-hosted-final` は stacked train の STATECAP 計数範囲が先行 lane の merge で縮んでから記録）→ merge（train 末尾）。
+
+2026-09-07: PR #41 closeout。owner が Ready を承認し（2026-09-07）、hosted final = pull_request run 34152241267（head `14ea4fd` = Findings Freeze 後に origin/main を merge した branch tip、success）→ squash merge `4d1ce4c`。stacked train の STATECAP 計数範囲（`merge-base(origin/main, HEAD)..HEAD`）は本 lane が Lane 5 / Lane 4 からの stacking で継承した commit を含め既に上限相当（継承分は既知 Backlog「STATECAP 検査の stacked train 継承除外」が未実装のため計数上区別できない）。forward state-only の追加発行はこの計数上できないため、`human-confirm -> ready-hosted-final -> merge -> archive` の 4 遷移を本 closeout commit（state-only、他 lane と非同居）に圧縮記録する: human-confirm = 上記 2026-09-06 owner L3 PASS 3/3（既述、Human Gate 完了）+ 2026-09-07 Codex ロジックレビュー round 1〜3（round 3 で Findings Freeze）、ready-hosted-final = 本行の owner Ready 承認 + hosted final run 34152241267 success、merge = squash `4d1ce4c`、archive = 本 commit（packet + Test Matrix の archive 移動、Plans.md ⑨ の完了表記）。Reviewed Content HEAD `9cb7c35` は squash まで不変。runtime 反映は完了済み（本 lane 自体が runtime lane）。
