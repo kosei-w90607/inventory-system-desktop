@@ -5,6 +5,13 @@
 // onPosStockSyncChange（touched を立てる）を使い、2 つの経路を分離する。
 
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ProductStockUnit } from "../lib/product-form-request";
 
 export interface StockUnitFieldProps {
@@ -48,18 +55,21 @@ export function StockUnitField({
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">
         <Label htmlFor="stock-unit">数量単位</Label>
-        <select
-          id="stock-unit"
-          className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
+        <Select
           value={stockUnit}
           disabled={readOnly}
-          onChange={(event) => {
-            handleUnitChange(event.target.value === "cm" ? "cm" : "pcs");
+          onValueChange={(value) => {
+            handleUnitChange(value === "cm" ? "cm" : "pcs");
           }}
         >
-          <option value="pcs">個</option>
-          <option value="cm">cm</option>
-        </select>
+          <SelectTrigger id="stock-unit" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pcs">個</SelectItem>
+            <SelectItem value="cm">cm</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1">
         <Label htmlFor="pos-stock-sync">POS販売で在庫を減らす</Label>

@@ -233,6 +233,72 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     expect(await screen.findByText("入庫を保存しました")).toBeInTheDocument();
   });
 
+  it("SC3: 取引先selectはSelect comboboxでsentinelがnullに写像され実在選択でnumberになる", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 20,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+
+    const supplierTrigger = await screen.findByLabelText("取引先");
+    expect(supplierTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(supplierTrigger.tagName).toBe("BUTTON");
+    expect(supplierTrigger).toHaveTextContent("指定なし");
+
+    await user.click(supplierTrigger);
+    await user.click(await screen.findByRole("option", { name: "テスト商事" }));
+    expect(supplierTrigger).toHaveTextContent("テスト商事");
+
+    // P2-1: 実在取引先から「指定なし」へ解除する round-trip を保存前に確認する
+    // （保存後は isFormLocked で select が disabled になるため、保存は 1 回だけ行う）。
+    await user.click(supplierTrigger);
+    await user.click(await screen.findByRole("option", { name: "指定なし" }));
+    expect(supplierTrigger).toHaveTextContent("指定なし");
+
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReceiving).toHaveBeenCalledWith(
+        expect.objectContaining({ supplier_id: null }),
+      );
+    });
+  });
+
+  it("SC3b: 取引先selectで実在取引先を選んだまま保存すると対応するnumberで保存される（P2-R2-2）", async () => {
+    const user = userEvent.setup();
+    mockCreateReceiving.mockResolvedValue({
+      status: "ok",
+      data: {
+        record_id: 21,
+        created: true,
+        idempotent_replay: false,
+        stock_warnings: [],
+        cost_diffs: [],
+      },
+    });
+
+    renderWithClient(<ReceivingPage />);
+    await addSingleProduct(user);
+
+    const supplierTrigger = await screen.findByLabelText("取引先");
+    await user.click(supplierTrigger);
+    await user.click(await screen.findByRole("option", { name: "テスト商事" }));
+    expect(supplierTrigger).toHaveTextContent("テスト商事");
+
+    await user.click(screen.getByRole("button", { name: "入庫を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReceiving).toHaveBeenCalledWith(expect.objectContaining({ supplier_id: 1 }));
+    });
+  });
+
   it("successful submit shows result and invalidates receiving/product/inventory record queries", async () => {
     const user = userEvent.setup();
     mockCreateReceiving.mockResolvedValue({

@@ -14,6 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -521,13 +528,11 @@ export function ReturnExchangePage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="return-type">種別</Label>
-            <select
-              id="return-type"
+            <Select
               value={values.returnType}
               disabled={isFormLocked}
-              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
-              onChange={(event) => {
-                const nextReturnType = event.target.value === "exchange" ? "exchange" : "return";
+              onValueChange={(value) => {
+                const nextReturnType = value === "exchange" ? "exchange" : "return";
                 updateValues((prev) => {
                   let nextRows = prev.rows;
                   if (nextReturnType === "return") {
@@ -544,9 +549,14 @@ export function ReturnExchangePage() {
                 if (nextReturnType === "return") setAddDirection("in");
               }}
             >
-              <option value="return">返品</option>
-              <option value="exchange">交換</option>
-            </select>
+              <SelectTrigger id="return-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="return">返品</SelectItem>
+                <SelectItem value="exchange">交換</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -701,18 +711,21 @@ export function ReturnExchangePage() {
           </div>
           <div className="w-40 space-y-2">
             <Label htmlFor="return-add-direction">追加方向</Label>
-            <select
-              id="return-add-direction"
+            <Select
               value={effectiveAddDirection}
               disabled={isFormLocked || values.returnType === "return"}
-              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
-              onChange={(event) => {
-                setAddDirection(event.target.value === "out" ? "out" : "in");
+              onValueChange={(value) => {
+                setAddDirection(value === "out" ? "out" : "in");
               }}
             >
-              <option value="in">戻り</option>
-              {values.returnType === "exchange" ? <option value="out">渡し</option> : null}
-            </select>
+              <SelectTrigger id="return-add-direction" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="in">戻り</SelectItem>
+                <SelectItem value="out">渡し</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button
             type="button"
@@ -820,13 +833,11 @@ export function ReturnExchangePage() {
                     <TableCell>{row.departmentName}</TableCell>
                     <TableCell>{formatQuantity(row.currentStockQuantity, row.stockUnit)}</TableCell>
                     <TableCell>
-                      <select
+                      <Select
                         value={row.direction}
                         disabled={isFormLocked || values.returnType === "return"}
-                        aria-label={`${row.productCode} の方向`}
-                        className="h-9 rounded-md border border-input bg-control-surface px-2 text-sm"
-                        onChange={(event) => {
-                          const nextDirection = event.target.value === "out" ? "out" : "in";
+                        onValueChange={(value) => {
+                          const nextDirection = value === "out" ? "out" : "in";
                           updateValues((prev) => ({
                             ...prev,
                             rows: changeReturnRowDirection(
@@ -838,11 +849,14 @@ export function ReturnExchangePage() {
                           }));
                         }}
                       >
-                        <option value="in">戻り（在庫+）</option>
-                        {values.returnType === "exchange" ? (
-                          <option value="out">渡し（在庫-）</option>
-                        ) : null}
-                      </select>
+                        <SelectTrigger aria-label={`${row.productCode} の方向`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="in">戻り（在庫+）</SelectItem>
+                          <SelectItem value="out">渡し（在庫-）</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Input

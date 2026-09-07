@@ -255,6 +255,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 **Don't**:
 - 必須を色だけで示さない
 - read-only と disabled を混同しない
+- native `<select>` を使わない（DSR-23）
 
 ---
 
@@ -624,6 +625,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 - フィルタ候補を絞込み結果から派生させない
 - IME 変換中の Enter を検索確定と取り違えない
 - live 型に `aria-label` を追加しない（可視 Label が唯一の accessible name、commit 型と live 型で識別方式を混在させない）
+- native `<select>` を使わない（DSR-23）
 
 ---
 
@@ -994,6 +996,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 |---|---|---|
 | 2026-09-06 | UI 磨き batch 3 design | ① にページ説明セクション使用パターンと `PageHeader` の `actions`/`subtitle` 排他 component gap（5画面）を追加。③ に備考列規則（必須列・空欄「—」統一・truncate+`title`）・「直近 {N} 件の」文言統一・`ManualSalePage.tsx` 二重囲み是正方針・共通 formatter（`formatStockDisplay`/`formatStockUnitLabel`）使用ルールを追加 |
 | 2026-09-05 | 本 PR | UI 規約補強 design batch。① Do bullet を 3 段 CTA 表現へ同期。⑥ に `Alert` `warning` variant（`bg-warning-soft`+`border-warning`+`AlertTriangle`+`text-warning-strong` の 4 点構造、owner v4 決定）を新設し適用先候補 `PriceRevisionPage.tsx:112-116` を記録。⑨ アクセシビリティ節を owner C1 決定へ書き換え（live 型は可視 Label のみを accessible name とし `aria-label` 廃止、WCAG 2.5.3）。⑬ に badge 3 種構成と①状態 tone family マッピング表（owner culling 列つき）・②分類/③強調 note・原則15 クロスリファレンスを追加、Don't に secondary 誤用禁止を追加。JSX コメント（`:158` 相当）の枠線 3:1 記述を `--border` 必須へ更新 + Human Gate 回答反映（2026-09-06）: tone family を感情で分ける規約文を追加、反映済み→success 行・取込み済み→warning 行へ移動し owner culling 列に原文 2 を転記、Alert 節に未取込み通知 3 箇所の適用先と success 本文色維持を追記 |
+| 2026-09-05 | ⑧ native select 統一 | ④ フォームセクション・⑨ 検索+フィルタの Don't に「native `<select>` を使わない（DSR-23）」を追記 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 | ⑩ canonical を `src/components/patterns/Pagination.tsx`（`Pagination` + `PaginationSummary`）へ、件数文言を範囲付き統一形「{n} 件中 {from}〜{to} 件目 · {p} / {t} ページ」へ実装。⑯ canonical を `src/components/patterns/ListShell.tsx` へ（商品一覧 pilot 採用）、必須構成 1 の枠を `rounded-lg border bg-card p-4` へ、必須構成 3 の固定列影の記載を必須構成 4 側へ移動 |
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を当時の canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は後続 lane での移行対象と明記。⑯ の canonical を「なし（後続 lane で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |

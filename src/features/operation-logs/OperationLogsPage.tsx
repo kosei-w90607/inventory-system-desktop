@@ -14,7 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -375,25 +377,29 @@ export function OperationLogsPage({
             <label htmlFor="log-type" className="text-sm text-muted-foreground">
               種別
             </label>
-            <select
-              id="log-type"
-              value={normalized.operation_type ?? ""}
-              className="h-9 min-w-52 rounded-md border border-input bg-control-surface px-3"
-              onChange={(e) => {
-                update({ operation_type: e.currentTarget.value || undefined }, true);
+            <Select
+              value={normalized.operation_type ?? "all"}
+              onValueChange={(value) => {
+                update({ operation_type: value === "all" ? undefined : value }, true);
               }}
             >
-              <option value="">すべて</option>
-              {Array.from(grouped.entries()).map(([category, values]) => (
-                <optgroup key={category} label={category}>
-                  {values.map((value) => (
-                    <option key={value} value={value}>
-                      {operationTypeLabel(value)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              <SelectTrigger id="log-type" className="min-w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべて</SelectItem>
+                {Array.from(grouped.entries()).map(([category, values]) => (
+                  <SelectGroup key={category}>
+                    <SelectLabel>{category}</SelectLabel>
+                    {values.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {operationTypeLabel(value)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1">
             <label htmlFor="operation-logs-per-page" className="text-sm text-muted-foreground">

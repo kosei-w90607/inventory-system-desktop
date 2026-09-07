@@ -112,7 +112,8 @@ describe("ProductFormPage (UI-01b)", () => {
     renderWithClient(<ProductFormPage mode="create" onNavigateToList={vi.fn()} />);
 
     await user.type(await screen.findByLabelText(/^商品名/), "テスト商品");
-    await user.selectOptions(screen.getByLabelText(/^部門/), "2");
+    await user.click(screen.getByLabelText(/^部門/));
+    await user.click(await screen.findByRole("option", { name: "通常部門" }));
     await user.clear(screen.getByLabelText(/^売価/));
     await user.type(screen.getByLabelText(/^売価/), "500");
     await user.clear(screen.getByLabelText(/^原価/));
@@ -149,7 +150,8 @@ describe("ProductFormPage (UI-01b)", () => {
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     await user.type(await screen.findByLabelText(/^商品名/), "テスト商品");
-    await user.selectOptions(screen.getByLabelText(/^部門/), "1");
+    await user.click(screen.getByLabelText(/^部門/));
+    await user.click(await screen.findByRole("option", { name: "毛糸（独自コード可）" }));
     await user.clear(screen.getByLabelText(/^売価/));
     await user.type(screen.getByLabelText(/^売価/), "500");
     await user.clear(screen.getByLabelText(/^原価/));

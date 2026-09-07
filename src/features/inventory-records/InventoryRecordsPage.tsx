@@ -162,23 +162,26 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             <label className="text-sm text-muted-foreground" htmlFor="records-type">
               記録種別
             </label>
-            <select
-              id="records-type"
-              className="h-9 w-40 rounded-md border border-input bg-control-surface px-3 text-sm"
+            <Select
               value={normalized.recordType}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 const recordType = INVENTORY_RECORD_TYPE_OPTIONS.find(
-                  ({ value }) => value === event.currentTarget.value,
+                  (option) => option.value === value,
                 )?.value;
                 if (recordType !== undefined) updateSearch({ recordType }, true);
               }}
             >
-              {INVENTORY_RECORD_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="records-type" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INVENTORY_RECORD_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1">
             <label className="text-sm text-muted-foreground" htmlFor="records-date-from">
@@ -229,45 +232,50 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             <label className="text-sm text-muted-foreground" htmlFor="records-department">
               部門
             </label>
-            <select
-              id="records-department"
-              className="h-9 w-44 rounded-md border border-input bg-control-surface px-3 text-sm"
-              value={normalized.departmentId ?? "all"}
+            <Select
+              value={normalized.departmentId == null ? "all" : String(normalized.departmentId)}
               disabled={departmentsQuery.isLoading || departmentsQuery.isError}
-              onChange={(event) => {
-                const value = event.currentTarget.value;
+              onValueChange={(value) => {
                 updateSearch({ departmentId: value === "all" ? undefined : Number(value) }, true);
               }}
             >
-              <option value="all">すべて</option>
-              {(departmentsQuery.data ?? []).map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="records-department" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべて</SelectItem>
+                {(departmentsQuery.data ?? []).map((department) => (
+                  <SelectItem key={department.id} value={String(department.id)}>
+                    {department.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1">
             <label className="text-sm text-muted-foreground" htmlFor="records-status">
               状態
             </label>
-            <select
-              id="records-status"
-              className="h-9 w-32 rounded-md border border-input bg-control-surface px-3 text-sm"
+            <Select
               value={normalized.status}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 const status = INVENTORY_RECORD_STATUS_OPTIONS.find(
-                  ({ value }) => value === event.currentTarget.value,
+                  (option) => option.value === value,
                 )?.value;
                 if (status !== undefined) updateSearch({ status }, true);
               }}
             >
-              {INVENTORY_RECORD_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="records-status" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INVENTORY_RECORD_STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1">
             <label className="text-sm text-muted-foreground" htmlFor="inventory-records-per-page">
