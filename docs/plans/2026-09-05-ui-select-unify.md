@@ -1,6 +1,6 @@
 # Plan Packet: native `<select>` → shadcn `Select` 統一（⑧、R5-3 owner 決定）
 
-owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 3 承認 + Lane 5 L3 所感 原文」）に基づき、runtime に残る native `<select>` を shadcn `Select`（商品一覧・在庫照会等で既に使われている部門フィルタと同じ見た目）へアプリ全体で統一する。Lane 5（[packet](2026-09-05-ui-list-backbone-d-lane5.md)）が native `<select>`/`<input>`/`<textarea>` に当てた `--control-surface` token 化は暫定であり、本 lane が正本（native `<select>` を置換で解消する）。Plans.md ⑧（`rg -n "⑧" Plans.md`）が本 lane を記録する。
+owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 3 承認 + Lane 5 L3 所感 原文」）に基づき、runtime に残る native `<select>` を shadcn `Select`（商品一覧・在庫照会等で既に使われている部門フィルタと同じ見た目）へアプリ全体で統一する。Lane 5（[archived packet](../archive/plans/2026-09-05-ui-list-backbone-d-lane5.md)）が native `<select>`/`<input>`/`<textarea>` に当てた `--control-surface` token 化は暫定であり、本 lane が正本（native `<select>` を置換で解消する）。Plans.md ⑧（`rg -n "⑧" Plans.md`）が本 lane を記録する。
 
 ## Workflow State
 

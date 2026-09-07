@@ -687,3 +687,15 @@ describe("DisposalPage native input tokens（Lane 5 SC4c）", () => {
     expect(disposalType).not.toHaveClass("bg-background");
   });
 });
+
+describe("DisposalPage native input tokens（Lane 5 SC4c）", () => {
+  it("SC4c: 種別selectがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<DisposalPage />);
+    await addSingleProduct(user);
+
+    const disposalType = screen.getByLabelText("DP-001 の種別");
+    expect(disposalType).toHaveClass("bg-control-surface");
+    expect(disposalType).not.toHaveClass("bg-background");
+  });
+});
