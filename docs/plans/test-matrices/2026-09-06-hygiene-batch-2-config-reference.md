@@ -57,4 +57,4 @@ R3（S2 が `eslint.config.js` の `no-restricted-syntax`（`npm run lint` が�
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1-SC3 は `npm run generate:routes` + `npx vite build` + `diff`（S1、SC2 は独立 2 使い捨てコピー限定）、SC4-SC6・SC8-SC9 は `npx eslint .`（事前に `npm run generate:routes` が必要）+ `rg -Fc`/`rg -n`（S2、静的構造確認 + mutant）、SC7 は `rg -Fc`（S3、4 file 合算）。AC11（`doc-consistency-check.sh --target plan` / `check-workflow-git.sh` の exit code）と AC12（既存 frontend フル gate）は Plan Packet 側の完了条件として記載済みで、本 Matrix には独立行を立てない。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1-SC3 は `npm run generate:routes` + `npx vite build` + `diff`（S1、SC2 は独立 2 使い捨てコピー限定）、SC4-SC6・SC8-SC9 は `npx eslint .`（事前に `npm run generate:routes` が必要）に加え、SC4 は block diff、SC5 は `rg -Fx` 配列完全一致、SC6・SC8・SC9 は `rg -Fc`/`rg -n`（S2、静的構造確認 + mutant）、SC7 は `rg -Fc`（S3、4 file 合算）。AC11（`doc-consistency-check.sh --target plan` / `check-workflow-git.sh` の exit code）と AC12（既存 frontend フル gate）は Plan Packet 側の完了条件として記載済みで、本 Matrix には独立行を立てない。
