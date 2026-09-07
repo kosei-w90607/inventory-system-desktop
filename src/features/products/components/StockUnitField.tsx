@@ -50,7 +50,7 @@ export function StockUnitField({
         <Label htmlFor="stock-unit">数量単位</Label>
         <select
           id="stock-unit"
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
           value={stockUnit}
           disabled={readOnly}
           onChange={(event) => {

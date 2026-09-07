@@ -950,3 +950,13 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("ReceivingPage native input tokens（Lane 5 SC4b）", () => {
+  it("SC4b: 取引先selectがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    renderWithClient(<ReceivingPage />);
+
+    const supplier = await screen.findByLabelText("取引先");
+    expect(supplier).toHaveClass("bg-control-surface");
+    expect(supplier).not.toHaveClass("bg-background");
+  });
+});

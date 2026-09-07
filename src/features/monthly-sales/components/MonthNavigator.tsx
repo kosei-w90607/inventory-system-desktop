@@ -40,7 +40,7 @@ export function MonthNavigator({ month, onChange }: MonthNavigatorProps) {
             onChange(e.target.value);
           }
         }}
-        className="rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="rounded-md border border-input bg-control-surface px-3 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         aria-label="月を選択"
       />
       <Button
