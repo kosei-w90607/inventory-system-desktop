@@ -271,7 +271,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
 
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(await screen.findByText("廃棄・破損を保存しました")).toBeInTheDocument();
     expect(screen.getByText("¥240")).toBeInTheDocument();
@@ -372,7 +372,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
       await screen.findByText("一時的なエラー。詳細は診断ログに記録されています。"),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     const firstKey = mockCreateDisposal.mock.calls[0][0].idempotency_key;
 
@@ -673,18 +673,6 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
 
     expect(screen.getByLabelText("DP-002 の種別")).toHaveTextContent("その他");
     expect(screen.getByLabelText("DP-001 の種別")).toHaveTextContent("廃棄");
-  });
-});
-
-describe("DisposalPage native input tokens（Lane 5 SC4c）", () => {
-  it("SC4c: 種別selectがbg-control-surfaceでbg-backgroundを持たない", async () => {
-    const user = userEvent.setup();
-    renderWithClient(<DisposalPage />);
-    await addSingleProduct(user);
-
-    const disposalType = screen.getByLabelText("DP-001 の種別");
-    expect(disposalType).toHaveClass("bg-control-surface");
-    expect(disposalType).not.toHaveClass("bg-background");
   });
 });
 

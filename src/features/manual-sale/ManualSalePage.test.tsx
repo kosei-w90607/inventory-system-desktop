@@ -390,7 +390,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
       await screen.findByText("一時的なエラー。詳細は診断ログに記録されています。"),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
   });
 
@@ -496,7 +496,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     const warningItem = screen.getByText("MS-001: この商品はレジで打てます（PLU登録済み）");
     expect(warningItem.closest('[data-slot="alert-description"]')).not.toBeNull();
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(screen.queryByText("手動販売を保存しました")).not.toBeInTheDocument();
     expect(invalidateSpy).not.toHaveBeenCalled();
@@ -587,7 +587,7 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     const saleDate = mockCreateManualSale.mock.calls[0][0].sale_date;
 
     await waitFor(() => {
-      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "smooth" });
     });
     expect(await screen.findByText("手動販売を保存しました")).toBeInTheDocument();
     expect(screen.getByText("41")).toBeInTheDocument();

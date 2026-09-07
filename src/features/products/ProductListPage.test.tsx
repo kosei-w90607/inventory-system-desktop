@@ -628,10 +628,13 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
 
     // toolbar 枠（rounded-lg border bg-card p-4）
     expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
-    // 上部件数（PaginationSummary、text-base。下部 Pagination は text-sm）
-    const topSummaries = container.querySelectorAll("div.text-base");
+    // 上部件数（PaginationSummary、S2 で text-sm text-muted-foreground tabular-nums を
+    // 1 要素に同時に持つ。下部 Pagination は text-sm/text-muted-foreground と
+    // tabular-nums を別要素に分離するため、3 class 同時一致は上部のみ）
+    const topSummaries = container.querySelectorAll(
+      "div.text-sm.text-muted-foreground.tabular-nums",
+    );
     expect(topSummaries).toHaveLength(1);
-    expect(container.querySelector("div.text-sm.text-base")).toBeNull();
     const topSummary = topSummaries.item(0);
     expect(topSummary).not.toBeNull();
     expect(topSummary).toHaveTextContent("全 150 件のうち 1〜100 件を表示（1 / 2 ページ）");
@@ -641,6 +644,50 @@ describe("ProductListPage S5 pilot（ListShell 採用、D-6）", () => {
       prev: ProductListSearch,
     ) => ProductListSearch;
     expect(updater({}).page).toBe(2);
+  });
+
+  it("SC9d: rendered ListShell root carries identityColumns=2 class tokens (商品一覧のみ活性化)", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-210" })],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    const { container } = renderWithClient(
+      <ProductListPage search={{}} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByText("P-210");
+    // ListShell root は stickyHeader により list-shell-sticky を持つため一意に特定できる。
+    const rootClass = container.querySelector(".list-shell-sticky")?.className ?? "";
+    const tokens = rootClass.split(/\s+/);
+    expect(tokens).toContain("[&_thead_th:nth-child(1)]:sticky");
+    expect(tokens).toContain("[&_thead_th:nth-child(2)]:left-[9rem]");
+    expect(tokens).toContain("[&_tbody_td:nth-child(1)]:bg-background");
+  });
+
+  it("GA3b-1: PageShell root carries none of flex/h-full/min-h-0/flex-col (Lane 4 Gated Amendment 3, GA1a の逆転)", async () => {
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-GA3B1" })],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    const { container } = renderWithClient(
+      <ProductListPage search={{}} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByText("P-GA3B1");
+    const rootTokens = (container.firstElementChild?.className ?? "").split(/\s+/);
+    expect(rootTokens).not.toContain("flex");
+    expect(rootTokens).not.toContain("h-full");
+    expect(rootTokens).not.toContain("min-h-0");
+    expect(rootTokens).not.toContain("flex-col");
+    expect(rootTokens).not.toContain("overflow-hidden");
   });
 
   it("SC5b: isLoading 中は自前 Skeleton ではなく ListSkeleton を描画する", () => {

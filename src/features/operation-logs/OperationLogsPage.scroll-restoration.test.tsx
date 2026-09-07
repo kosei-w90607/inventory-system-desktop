@@ -104,9 +104,15 @@ describe("AC16 / SC10a: OperationLogsPage perPage 変更後の scroll 位置（G
 
     const main = document.querySelector<HTMLElement>(MAIN_SELECTOR);
     if (main === null) throw new Error("RootLayout main scroll container is required");
-    // happy-dom の smooth scroll 模擬は実 browser の割込み挙動を再現しないため no-op にする
-    // （scrollPageToTop() は常に {top:0, behavior:"smooth"} で呼ぶ）。
-    vi.spyOn(main, "scrollTo").mockImplementation(() => undefined);
+    // happy-dom の smooth scroll 模擬は実 browser の割込み挙動を再現しないため、非同期の
+    // smooth 挙動だけを避け top/left は同期的に反映する（round 2 是正: forced-top 経路が
+    // main.scrollTop = 0 から main.scrollTo({ top: 0, left: 0 }) へ変わったため、完全な
+    // no-op のままだと flag 適用そのものを検出できない）。
+    vi.spyOn(main, "scrollTo").mockImplementation((options) => {
+      const opts = options as ScrollToOptions;
+      if (typeof opts.top === "number") main.scrollTop = opts.top;
+      if (typeof opts.left === "number") main.scrollLeft = opts.left;
+    });
 
     await screen.findByText("合成ログ 1");
 

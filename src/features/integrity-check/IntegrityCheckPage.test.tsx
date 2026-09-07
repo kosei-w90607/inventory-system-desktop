@@ -411,7 +411,9 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     expect(await screen.findByText("合成商品 SYN-000")).toBeInTheDocument();
     expect(screen.getByText("合成商品 SYN-099")).toBeInTheDocument();
     expect(screen.queryByText("合成商品 SYN-100")).toBeNull();
-    expect(screen.getByText("全 101 件のうち 1〜100 件を表示（1 / 2 ページ）")).toBeInTheDocument();
+    // S3g（round 2/3 是正）: 上部 PaginationSummary + 下部 Pagination の両方に同じ件数
+    // 文言が現れるため、単数一致の getByText ではなく getAllByText の件数で確認する。
+    expect(screen.getAllByText("全 101 件のうち 1〜100 件を表示（1 / 2 ページ）")).toHaveLength(2);
     await userEvent.setup().click(screen.getByRole("button", { name: "次のページ" }));
     expect(await screen.findByText("合成商品 SYN-100")).toBeInTheDocument();
     expect(screen.queryByText("合成商品 SYN-000")).toBeNull();
@@ -483,6 +485,42 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     expect(await screen.findByText("補正済み")).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "再度チェック" }));
     expect(await screen.findByText("差異はありません")).toBeInTheDocument();
+  });
+});
+
+describe("IntegrityCheckPage Lane 4 S1g/S3g: table wrapper rounded-lg, top summary, Select wrapper excluded from frame", () => {
+  it("SC4g: table wrapper has overflow-x-auto rounded-lg border, no bg-card, no rounded-md leftover", async () => {
+    runIntegrityCheck.mockResolvedValue(checkResult([mismatch("SYN-001")]));
+    const { container } = renderPage();
+    await runCheck();
+    await screen.findByText("合成商品 SYN-001");
+    const wrapper = container.querySelector(".overflow-x-auto");
+    expect(wrapper).not.toBeNull();
+    const tokens = (wrapper?.className ?? "").split(/\s+/);
+    expect(tokens).toContain("rounded-lg");
+    expect(tokens).toContain("border");
+    expect(tokens).not.toContain("rounded-md");
+    expect(tokens).not.toContain("bg-card");
+  });
+
+  it("SC3g: renders the top PaginationSummary above the table", async () => {
+    runIntegrityCheck.mockResolvedValue(checkResult([mismatch("SYN-001")]));
+    renderPage();
+    await runCheck();
+    expect(
+      await screen.findByText("全 1 件のうち 1〜1 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+
+  it("round 2 是正回帰: the per-page select wrapper does not receive the bg-card frame", async () => {
+    runIntegrityCheck.mockResolvedValue(checkResult([mismatch("SYN-001")]));
+    const { container } = renderPage();
+    await runCheck();
+    const perPageTrigger = await screen.findByRole("combobox", { name: "表示件数" });
+    const selectWrapper = perPageTrigger.closest(".flex.items-center.gap-2");
+    expect(selectWrapper).not.toBeNull();
+    expect((selectWrapper?.className ?? "").split(/\s+/)).not.toContain("bg-card");
+    expect(container.querySelectorAll(".rounded-lg.border.bg-card.p-4")).toHaveLength(0);
   });
 });
 

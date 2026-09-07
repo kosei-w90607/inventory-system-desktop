@@ -237,6 +237,25 @@ describe("StocktakePage (UI-10)", () => {
     });
   });
 
+  it("SC8 (AC13): changing the department filter resets page to 1 even after totalCount shrinks below the current page (existing reset handler, page-reset oracle)", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    // 開始時は総件数が多く page 3 でも範囲内、フィルタ変更後は総件数が減る想定でも
+    // 既存 handler が page を 1 へリセットするため page > totalPages のまま描画されない。
+    mockGetItems
+      .mockResolvedValueOnce(listResponse({ total_count: 250, page: 3, per_page: 50 }))
+      .mockResolvedValue(listResponse({ total_count: 1, page: 1, per_page: 50 }));
+    await renderPage({ page: 3 });
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    await user.click(screen.getByRole("combobox", { name: "部門" }));
+    await user.click(screen.getByRole("option", { name: "毛糸" }));
+
+    await waitFor(() => {
+      expect(mockGetItems).toHaveBeenLastCalledWith(77, 1, null, 1, 50);
+    });
+  });
+
   it("T4 code/JAN resolve then quantity saves with found item id", async () => {
     const user = userEvent.setup();
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
@@ -1042,6 +1061,9 @@ describe("StocktakePage (UI-10)", () => {
   it("SC8c': list pagination uses the canonical ProductPagination component", async () => {
     const user = userEvent.setup();
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    // AC7（round 1/3 是正）: Pagination は totalPages<=1 で null を返す（S2）ため、
+    // ボタンの存在を確認するには total_count を per_page 超へ上げて totalPages>1 にする。
+    mockGetItems.mockResolvedValue(listResponse({ total_count: 250 }));
     await renderPage();
 
     expect(await screen.findByRole("button", { name: "前のページ" })).toBeInTheDocument();
@@ -1052,7 +1074,7 @@ describe("StocktakePage (UI-10)", () => {
     expect(screen.getByRole("option", { name: "200 件" })).toBeInTheDocument();
   });
 
-  it("SC10: filter row lists department filter, then per-page select, then uncounted-only checkbox in that DOM order", async () => {
+  it("SC10 (S4a rewrite): filter row lists department filter, then uncounted-only checkbox, then per-page select in that DOM order", async () => {
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
     await renderPage();
 
@@ -1060,13 +1082,98 @@ describe("StocktakePage (UI-10)", () => {
     const perPageTrigger = screen.getByRole("combobox", { name: "表示件数" });
     const uncountedCheckbox = screen.getByRole("checkbox", { name: "未入力のみ表示" });
 
-    // 部門 → 表示件数 → 未入力のみ表示 の順で DOM 上に並ぶことを compareDocumentPosition で assert する。
+    // S4a（round 1 是正）: 部門 → 未入力のみ表示 → 表示件数 の順で DOM 上に並ぶことを
+    // compareDocumentPosition で assert する（表示件数 Select を枠内の最後尾へ移動）。
     expect(
-      departmentTrigger.compareDocumentPosition(perPageTrigger) & Node.DOCUMENT_POSITION_FOLLOWING,
+      departmentTrigger.compareDocumentPosition(uncountedCheckbox) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      perPageTrigger.compareDocumentPosition(uncountedCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING,
+      uncountedCheckbox.compareDocumentPosition(perPageTrigger) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Codex review 5129977808 P2 是正: 文書順だけでは表示件数ブロックが filter-row の
+    // 外へ出ても検出できない。filter-row root への containment + lastElementChild を
+    // 追加で assert する。
+    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-center.gap-4");
+    expect(filterRow).not.toBeNull();
+    expect(filterRow).toContainElement(perPageTrigger);
+    expect(filterRow?.lastElementChild).toContainElement(perPageTrigger);
+  });
+
+  it("SC4a: filter row root has rounded-lg border bg-card p-4 (old borderless frame removed)", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse());
+    const { container } = await renderPage();
+    await screen.findByRole("combobox", { name: "部門" });
+    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    // 旧 frame（枠なし、`flex flex-wrap items-center gap-4` のみ）が残っていないこと。
+    const oldFrame = Array.from(container.querySelectorAll("div")).find(
+      (el) => el.className === "flex flex-wrap items-center gap-4",
+    );
+    expect(oldFrame).toBeUndefined();
+  });
+
+  it("SC3a: renders the top PaginationSummary above the results table when totalCount > 0", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse({ total_count: 2, per_page: 200 }));
+    await renderPage();
+    expect(
+      await screen.findByText("全 2 件のうち 1〜2 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+
+  it("SC6: the fieldset wrapping the bottom Pagination is absent when totalPages<=1", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse({ total_count: 2, per_page: 200 }));
+    const { container } = await renderPage();
+    await screen.findByText("全 2 件のうち 1〜2 件を表示（1 / 1 ページ）");
+    // 「カウント入力」の fieldset（disabled 制御、常設）以外に一覧側の fieldset が
+    // 残っていないこと（単一ページで空 <fieldset> を残さない、S5）。
+    expect(container.querySelectorAll("fieldset")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "前のページ" })).not.toBeInTheDocument();
+  });
+
+  it("SC11 (Codex review 5129977808 P1 是正): saving the last uncounted item on the last page keeps the previous-page recovery control", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    // 未入力のみ表示・51 件・50 件表示の 2 ページ目（残り 1 件）を初期表示。
+    mockGetItems.mockResolvedValueOnce(
+      listResponse({
+        items: [stocktakeItem({ id: 999, product_code: "P-051", name: "最後の糸" })],
+        progress: { total_items: 51, counted_items: 0, uncounted_items: 51 },
+        total_count: 51,
+        page: 2,
+        per_page: 50,
+      }),
+    );
+    // 保存 → invalidate 後の再取得: 未入力が 50 件に減り、2 ページ目は空になる
+    // （totalPages は 1 に縮むが page は 2 のまま残る）。
+    mockGetItems.mockResolvedValueOnce(
+      listResponse({
+        items: [],
+        progress: { total_items: 51, counted_items: 1, uncounted_items: 50 },
+        total_count: 50,
+        page: 2,
+        per_page: 50,
+      }),
+    );
+    mockFindItem.mockResolvedValueOnce(
+      ok(stocktakeItem({ id: 999, product_code: "P-051", name: "最後の糸" })),
+    );
+    await renderPage({ page: 2, counted_only: false });
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    await user.type(screen.getByLabelText("商品を検索・スキャン"), "P-051");
+    await user.click(screen.getByRole("button", { name: "対象を確認" }));
+    await user.clear(await screen.findByLabelText("実際の数"));
+    await user.type(screen.getByLabelText("実際の数"), "10");
+    await user.click(screen.getByRole("button", { name: "数を保存" }));
+
+    await waitFor(() => {
+      expect(mockGetItems).toHaveBeenLastCalledWith(77, null, false, 2, 50);
+    });
+    expect(await screen.findByRole("button", { name: "前のページ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
   });
 });
 

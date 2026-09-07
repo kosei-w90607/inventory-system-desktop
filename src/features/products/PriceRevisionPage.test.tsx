@@ -724,6 +724,41 @@ describe("PriceRevisionPage perPage scroll（UI-14）", () => {
   });
 });
 
+describe("PriceRevisionPage Lane 4 S1f/S3f/S4b: frame color, top summary, per-page position", () => {
+  it("SC4f: filter section root has rounded-lg border bg-card p-4 (bg-stone-50 撤去)", async () => {
+    const { container } = renderStateful({});
+    await screen.findByText("P-001");
+    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    expect(container.querySelector(".bg-stone-50")).toBeNull();
+  });
+
+  it("SC3f: renders the top PaginationSummary above the table when total_count > 0", async () => {
+    renderStateful({});
+    await screen.findByText("P-001");
+    expect(
+      await screen.findByText("全 2 件のうち 1〜2 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+
+  it("SC5b: per-page select renders inside PriceRevisionFilters as the last filter-row child", async () => {
+    renderStateful({});
+    await screen.findByText("P-001");
+    const discontinuedCheckbox = screen.getByRole("checkbox", { name: "廃番を含む" });
+    const perPageTrigger = screen.getByRole("combobox", { name: "表示件数" });
+    expect(
+      discontinuedCheckbox.compareDocumentPosition(perPageTrigger) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // Codex review 5129977808 P2 是正: 文書順だけでは表示件数ブロックが filter-row の
+    // 外へ出ても検出できない。filter-row root への containment + lastElementChild を
+    // 追加で assert する。
+    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-center.gap-3");
+    expect(filterRow).not.toBeNull();
+    expect(filterRow).toContainElement(perPageTrigger);
+    expect(filterRow?.lastElementChild).toContainElement(perPageTrigger);
+  });
+});
+
 describe("PriceRevisionPage native input tokens（Lane 5 SC4i）", () => {
   it("SC4i: 取引先selectがborder-inputとbg-control-surfaceの両方を持つ", async () => {
     renderStateful({});

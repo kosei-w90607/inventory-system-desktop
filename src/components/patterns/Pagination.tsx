@@ -45,11 +45,14 @@ function rangeText(
 
 export function Pagination({ page, perPage, totalCount, onPageChange }: PaginationProps) {
   const { totalPages, from, to } = computeRange(page, perPage, totalCount);
+  if (totalPages <= 1 && page <= totalPages) {
+    return null;
+  }
   const canPrev = totalCount > 0 && page > 1;
   const canNext = totalCount > 0 && page < totalPages;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
       <div className="tabular-nums">{rangeText(totalCount, from, to, page, totalPages)}</div>
       <div className="flex items-center gap-2">
         <Button
@@ -96,7 +99,7 @@ export function PaginationSummary({ page, perPage, totalCount }: PaginationSumma
   const { totalPages, from, to } = computeRange(page, perPage, totalCount);
 
   return (
-    <div className="text-base text-foreground tabular-nums">
+    <div className="text-sm text-muted-foreground tabular-nums">
       {rangeText(totalCount, from, to, page, totalPages)}
     </div>
   );

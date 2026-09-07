@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
+import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
 import { SearchBar } from "@/components/patterns/SearchBar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,18 +27,22 @@ export function PriceRevisionFilters({
   suppliersQuery,
   departmentsQuery,
   onPatch,
+  perPage,
+  onPerPageChange,
 }: {
   search: PriceRevisionSearch;
   normalized: NormalizedPriceRevisionSearch;
   suppliersQuery: UseQueryResult<Supplier[]>;
   departmentsQuery: UseQueryResult<Department[]>;
   onPatch: (patch: PriceRevisionSearchPatch) => void;
+  perPage: (typeof LIST_PER_PAGE_OPTIONS)[number];
+  onPerPageChange: (value: (typeof LIST_PER_PAGE_OPTIONS)[number]) => void;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const departments = (departmentsQuery.data ?? []).map(({ id, name }) => ({ id, name }));
 
   return (
-    <div className="space-y-3 rounded-md border bg-stone-50 p-4">
+    <div className="space-y-3 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-center gap-3">
         <SearchBar
           value={search.q ?? ""}
@@ -47,37 +52,43 @@ export function PriceRevisionFilters({
             onPatch({ q: value === "" ? undefined : value });
           }}
         />
-        <label className="text-sm text-muted-foreground" htmlFor="price-revision-supplier">
-          取引先
-        </label>
-        <Select
-          disabled={suppliersQuery.isLoading}
-          value={normalized.supplier === undefined ? "all" : String(normalized.supplier)}
-          onValueChange={(value) => {
-            onPatch({ supplier: value === "all" ? null : Number(value) });
-          }}
-        >
-          <SelectTrigger id="price-revision-supplier" className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">すべての取引先</SelectItem>
-            {(suppliersQuery.data ?? []).map((supplier) => (
-              <SelectItem key={supplier.id} value={String(supplier.id)}>
-                {supplier.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setDialogOpen(true);
-          }}
-        >
-          新しい取引先を追加
-        </Button>
+        {/* Gated Amendment 2（owner L3 run 1 AC-L3-3）: 取引先の label/Select/追加ボタンは
+            DOM 順序自体は既に隣接していたが、他項目と同じ flex-wrap + 一様 gap-3 のため
+            群化されず離れて見えた。表示件数ブロック（下記）と同型の共通 wrapper で 1 unit にし、
+            flex-wrap でも 3 要素が常に同じ行に留まるようにする。 */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground" htmlFor="price-revision-supplier">
+            取引先
+          </label>
+          <Select
+            disabled={suppliersQuery.isLoading}
+            value={normalized.supplier === undefined ? "all" : String(normalized.supplier)}
+            onValueChange={(value) => {
+              onPatch({ supplier: value === "all" ? null : Number(value) });
+            }}
+          >
+            <SelectTrigger id="price-revision-supplier" className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">すべての取引先</SelectItem>
+              {(suppliersQuery.data ?? []).map((supplier) => (
+                <SelectItem key={supplier.id} value={String(supplier.id)}>
+                  {supplier.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setDialogOpen(true);
+            }}
+          >
+            新しい取引先を追加
+          </Button>
+        </div>
         <DepartmentFilter
           options={departments}
           selected={normalized.dept ?? null}
@@ -98,6 +109,35 @@ export function PriceRevisionFilters({
           />
           廃番を含む
         </label>
+        <div className="flex items-center gap-2">
+          <label
+            id="price-revision-per-page-label"
+            htmlFor="price-revision-per-page"
+            className="text-sm text-muted-foreground"
+          >
+            表示件数
+          </label>
+          <Select
+            value={String(perPage)}
+            onValueChange={(value) => {
+              const next = LIST_PER_PAGE_OPTIONS.find((option) => String(option) === value);
+              if (next !== undefined) {
+                onPerPageChange(next);
+              }
+            }}
+          >
+            <SelectTrigger id="price-revision-per-page" className="w-[7rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LIST_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option} 件
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       {normalized.supplier !== undefined ? (
         <label

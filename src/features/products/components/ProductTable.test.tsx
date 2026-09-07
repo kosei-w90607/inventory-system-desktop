@@ -2,12 +2,36 @@
 //
 // UI-01a-D6: 単位付き在庫表示と廃番状態の非色シグナル。
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { makeMockProductWithRelations } from "../lib/test-fixtures";
 import { ProductTable } from "./ProductTable";
+
+const REPO_ROOT = join(__dirname, "../../../..");
+const PRODUCT_TABLE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/products/components/ProductTable.tsx"),
+  "utf8",
+);
+const DISPOSAL_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/disposal/DisposalPage.tsx"),
+  "utf8",
+);
+const INVENTORY_RECORDS_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/inventory-records/InventoryRecordsPage.tsx"),
+  "utf8",
+);
+const RECEIVING_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/receiving/ReceivingPage.tsx"),
+  "utf8",
+);
+const INTEGRITY_CHECK_PAGE_SOURCE = readFileSync(
+  join(REPO_ROOT, "src/features/integrity-check/IntegrityCheckPage.tsx"),
+  "utf8",
+);
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -109,6 +133,40 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     expect(within(row).queryByText("廃番")).not.toBeInTheDocument();
     expect(within(row).queryByText("表示中")).not.toBeInTheDocument();
     expect(row.className).not.toContain("text-muted-foreground");
+  });
+
+  it("GA3a-1: product code td's inner div carries w-32/whitespace-normal/break-all; outer td carries min-w-36 (belt), no w-28", () => {
+    render(<ProductTable items={[makeMockProductWithRelations({ product_code: "P-090" })]} />);
+    const cell = screen.getByText("P-090").closest("td");
+    if (cell === null) throw new Error("cell not found");
+    const cellTokens = cell.className.split(/\s+/);
+    expect(cellTokens).toContain("min-w-36");
+    expect(cellTokens).not.toContain("w-28");
+    expect(cellTokens).not.toContain("max-w-36");
+    const wrapper = screen.getByText("P-090");
+    const wrapperTokens = wrapper.className.split(/\s+/);
+    expect(wrapperTokens).toContain("w-32");
+    expect(wrapperTokens).toContain("whitespace-normal");
+    expect(wrapperTokens).toContain("break-all");
+  });
+
+  it("GA3a-4: w-28 消滅チェックは ProductTable.tsx に限定され、他 4 file の正当な w-28 は残る（空集合 oracle 衝突の回避、対 oracle）", () => {
+    expect(PRODUCT_TABLE_SOURCE).not.toContain("w-28");
+    expect(DISPOSAL_PAGE_SOURCE).toContain("w-28");
+    expect(INVENTORY_RECORDS_PAGE_SOURCE).toContain("w-28");
+    expect(RECEIVING_PAGE_SOURCE).toContain("w-28");
+    expect(INTEGRITY_CHECK_PAGE_SOURCE).toContain("w-28");
+  });
+
+  it("GA3a-1: product code th's inner div carries w-32; outer th carries min-w-36 (belt), no max-w-36", () => {
+    render(<ProductTable items={[makeMockProductWithRelations({ product_code: "P-090" })]} />);
+    const headerCell = screen.getByText("商品コード").closest("th");
+    if (headerCell === null) throw new Error("header cell not found");
+    const headerCellTokens = headerCell.className.split(/\s+/);
+    expect(headerCellTokens).toContain("min-w-36");
+    expect(headerCellTokens).not.toContain("max-w-36");
+    const headerWrapperTokens = screen.getByText("商品コード").className.split(/\s+/);
+    expect(headerWrapperTokens).toContain("w-32");
   });
 
   it("REQ-105 UI-01a-D13 places cost immediately after selling price and renders the value", () => {
