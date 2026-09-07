@@ -4,7 +4,7 @@ Backlog（`docs/Plans.md:136,149,165`）記載の 3 件（I-G1 sweep test の gi
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: e67711e
@@ -17,6 +17,8 @@ Backlog（`docs/Plans.md:136,149,165`）記載の 3 件（I-G1 sweep test の gi
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: STATECAP 手動計上超過の例外承認（owner、Ready 前。非正規 subject の state commit 2 本〈`a890bfe` / `7fa3451`〉を手動計上すると human-confirm 再記録で 3/3・post 2/2、Ready 遷移で 4/3・post 3/2 となる。機械検査は非正規 2 本を数えないため PASS。詳細は 2026-09-07 narrative）。L3 対象なし（scripts / test checker のみで runtime・operator 画面に非接触）
+
+2026-09-07: PR #43 closeout。hosted final = pull_request run 34134566181 + workflow_dispatch run 34134570884（head `b1d6f3e`、いずれも success。docs-only のため `ci.yml` workflow_dispatch で明示実行し merge 前に確認済み）→ squash merge `e78d3c5`。`ready-hosted-final -> merge -> archive` を本 closeout commit（packet + Test Matrix の archive 移動、Plans.md ⑪ の完了表記）に同乗。実績: Codex ロジックレビュー round 1〜3（review 5133050497 で新規指摘なし）→ Findings Freeze（Reviewed Content HEAD `17fe9e9` 不変）。STATECAP 手動計上超過（非正規 subject の state commit 2 本〈`a890bfe`/`7fa3451`〉を含む手動計上で forward 3/2・post-impl 2/2）は owner が Ready 前に例外承認済み（2026-09-07、Human Gate 充足。機械計数は非正規 2 本を数えないため ERROR にはならない）。STATECAP 検査の stacked train 継承除外（`docs/Plans.md:137`）は設計非自明のため候補案 2 つを packet に残したまま Scope 外・owner / Coordinator 判断待ちで Backlog 残置。
 
 ## Owner Effort Budget
 
