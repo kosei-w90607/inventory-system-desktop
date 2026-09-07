@@ -4,10 +4,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 0481f1f
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（`model_reasoning_effort=medium`、難所と判断した箇所は Coordinator 判断で high へ昇格）
@@ -328,7 +328,7 @@ Contract ID: SPEC-UIRUNTIME-1
 
 ## Implementation Results
 
-未着手（Phase: plan-draft）。
+未着手（Phase: implementing、Plan Commit `0481f1f`、Writer = Codex medium。実装結果は Writer 報告を Coordinator が転記する）。
 
 ## Review Response
 
