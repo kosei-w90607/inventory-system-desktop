@@ -4,7 +4,7 @@ owner 決定（2026-09-05/06、店舗ヒアリング + 合意要約 + owner 決�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 95f33ac
@@ -13,7 +13,7 @@ owner 決定（2026-09-05/06、店舗ヒアリング + 合意要約 + owner 決�
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded によりCodex成分は pending のまま Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 9cb7c35
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈在庫少・在庫切れ一覧が取引先名順に並ぶ〉/ AC-L3-2〈棚卸しリストの廃番行に badge が出る〉/ AC-L3-3〈在庫照会の展開行が再クリックで閉じる〉の 3 項目）
@@ -297,7 +297,7 @@ Contract ID: SPEC-STKSUP-D1
 
 未着手（Phase: plan-draft、Plan Review 前）。
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen at 9cb7c35（Codex round 3 review 5132387364、2026-09-07、新規指摘なし）; post-freeze exceptions: none.
 
 2026-09-06: Plan Gate 収束（round 1 = Coordinator 直接〈owner 許可〉+ Opus 並走、round 2 = Sonnet fresh approve-with-P2 → AC6 是正 `34d6708`）。Lane 4 human-confirm tip `05ece3f` へ単段 merge `495e42b` + 行番号再検証 `733ceb6` で積み直し済み。`plan-draft -> plan-gate -> plan-approved -> implementing` を Plans.md ⑨ 同期の本 content commit に同乗させて遷移。Plan Commit = `95f33ac`（plan-first commit、Lane 4 旧 tip `1a8ba62` 直上、以後の是正・merge commit はその子孫）。Codex 1 回は §3.3 pending。
 
@@ -308,3 +308,5 @@ Contract ID: SPEC-STKSUP-D1
 ### Gated Amendment 1（AC6 oracle 是正、2026-09-06、Final Review 起源）
 
 AC6 の主 gate `git diff --numstat -- src/lib/bindings.ts` = `1 0` と副 gate `rg -c 'is_discontinued: boolean,'` = 1 は起票時の誤前提。specta は `find_stocktake_item` command の戻り値 inline 型（Opus 実測 `bindings.ts:259`）にも struct field を複製するため、実測は numstat `2 0`・副 gate 2。Final Review は diff 全文で追加 2 行がいずれも `is_discontinued: boolean,` であり他の差分がないことを確認して PASS 判定。AC6 本文と Matrix Contract Coverage Cross-check の期待値を実測へ是正（Goal / 失敗定義 / 実装は不変）。
+
+2026-09-07: Codex ロジックレビュー round 1 = review 5130151400（P1 3 / P2 3、全件 accept）→ 是正 `e278586`（自動展開ガードを条件 key + 消費済み判定へ / `productUpdate` に `stocktake.itemsRoot()` / test 補強 / 58 疑似コード同期）→ `1b2ce90` で `state-backtrack human-confirm->implementing`。round 2 = review 5130875762（P2 回帰 1: 古い selected が新条件でも消費済み扱い → page 送り後の単一結果が開かない / P3 docs）→ 是正 `9cb7c35`（消費済みは現在条件の結果に属する selected の観測か自動展開の発火のみで立てる `selectedBelongsToList` + 回帰 test / 73 §11・58 §5・§9 同期）。round 3 = review 5132387364（**新規指摘なし、Findings Freeze 可**、旧ガード再注入で回帰 test の kill を独立確認、SC5a / SC5b とクローズ動線 PASS）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = Writer gate（format:check / lint / typecheck / full 1,343 test / doc gate）+ Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 ×2 + Codex round 1〜3（Findings Freeze）、human-confirm = owner L3 PASS 3/3（2026-09-06）は P1 是正が L3 script 外の経路（URL 復元 / 条件往復 / page 送り）と staleTime 0 で不可視の invalidation のため有効。Reviewed Content HEAD = `9cb7c35`。次: owner 承認 → Ready（`human-confirm->ready-hosted-final` は stacked train の STATECAP 計数範囲が先行 lane の merge で縮んでから記録）→ merge（train 末尾）。
