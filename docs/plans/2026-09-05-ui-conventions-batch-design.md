@@ -8,7 +8,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: fbbcf19
@@ -17,7 +17,7 @@ Plans.md ⑦（owner 所感 2026-09-05 起票、design-first 候補提示）の 
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5 デザイン面 + Codex ロジック・整合面 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。それまで §3.3 Capacity-degraded を適用し Codex 成分は pending、Phase は human-confirm で待機し前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 679a1d5
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
 - Human Gate: owner が design PR 上で ①状態 badge の tone family マッピング表の owner culling 列を埋める（原文回答、Coordinator が転記し原文を正とする）。Alert warning / ③強調 / CTA secondary / ①状態の枠強度は v2〜v4 mockup で owner 決定済み（下記参照、markers はすべて解消）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
@@ -501,7 +501,7 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 
 2026-09-06: Final Review round 1 = Sonnet fresh approve（AC 45 項目全通過、full doc gate ERROR 0、P3: Matrix の `差異あり` oracle が catalog:522 の無関係文に衝突）+ Opus approve-with-P2（P2: `@theme inline` alias 欠落で utility 未生成 → GA1 改訂 `e162af1` / accname は aria-label 優先 → commit 型も Label のみ / icon 規則の narrow 化を catalog ⑬・backbone へ / destructive 用途 repoint / DSR-01 に secondary の runtime gap 注記、P3: Alert 枠 token の差・tone 表 header・8.69→8.72）→ Writer 是正 `402fd4e`（alias）`b90e494`（docs）→ alias で prettier tailwind plugin が既存 3 file の class 順を並べ替え format gate fail → GA1 再改訂 `3098fbc` → 整形 `ce1b0ea`（各 file の追加 / 削除行数が一致、word-diff は既存 class の並べ替えのみ、format:check pass）、L1 full RESULT=PASS（evidence は PR body、Reviewed Content HEAD `ce1b0ea` と同一）。Coordinator が是正行を検分（alias 2 行 / `aria-label` は持たない / 中立 tone は任意 ×2 / 増減数値マイナス / DSR-01 runtime gap）し P1/P2 = 0 を確認、`implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ⑦ 同期の本 content commit に同乗させて遷移、Reviewed Content HEAD = `ce1b0ea`。次 = owner Human Gate（catalog ⑬ tone 表の culling 列記入 + alias 有効化で見た目が変わる既存 4 箇所〈HomePage:66 / BackupRestorePage:358 / PluExportPage:521,567〉の視認、介入 2/3）→ Codex ロジック・整合面 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final（src を含むため hosted は通常 run）。
 
-- Findings Freeze: not yet frozen（Codex レビュー待ち）; post-freeze exceptions: none.
+- Findings Freeze: frozen at 679a1d5（Codex round 3 review 5132801693、2026-09-07、新規指摘なし）; post-freeze exceptions: none.
 
 ### Gated Amendment 1（2026-09-05、Coordinator 起票、docs gate 起源）
 
@@ -543,3 +543,5 @@ Plan Review round 3（対象 `a90a872`）— Opus reject（oracle/citation mecha
 2026-09-06: Gated Amendment 2（Human Gate 回答の canonical 反映）= Writer `068c82c` → 独立 Final Review（Sonnet fresh、差分 `ce1b0ea..c3a0192`）= approve（AC17 / UICONV-D12 全通過、owner 決定との一致を実読確認、P3 = 本 packet の揮発 evidence 表記 → 本 entry と同時に是正）+ Codex 前 preflight = ready。Reviewed Content HEAD を `068c82c` へ更新（docs のみの delta、src は不変）。Phase は human-confirm のまま、残り = Codex 1 回（9/7 夜）→ Findings Freeze → ready-hosted-final。
 
 2026-09-06: lane 間の食い違いの裁定（原文は raw file「⑦ Badge outline 枠の上書き確認 原文」）: Lane 5（E13、2026-09-04 ledger 直回答起点、実機 L3 PASS）は Badge outline の枠を `--border-strong` へ、⑦（2026-09-05 v2 見本）は badge 枠を `--border` へ。owner「上書きでいい」= 後の ⑦ が勝つ。ただし前者は実機観察 + 実機 L3、後者は白地 card 上の見本 HTML の判断であるため、**⑦ の runtime lane の L3 を最終判定**とし、実機の表内で `--border` が薄すぎる場合は `--border-strong` へ戻す条件付き。runtime 申し送り: `badge.tsx` outline variant の枠を Lane 5 の `border-input`（= `--border-strong`）から `border-border` へ戻す（Lane 5 の SC 系 test で `border-input` を assert しているものがあれば同時に書き換え、Lane 5 packet の AC は merge 済み lane のものとして改変しない）。
+
+2026-09-07: Codex ロジック・整合面レビュー round 1 = review 5129505910（P1 1 / P2 5、全件 accept。P1 = Final Review 是正 `b90e494` が commit 型 SearchBar の Label + aria-label 併存契約を書き換えていた回帰）→ 是正 `02a5491`（契約復元 / live 型構造例 / checklist 中立例外 / 撤回 oracle 整理 + AC14 形 src oracle / AC7 の ⑨ 節内限定 / AC17 quoting）→ `3b15bd0` で `state-backtrack human-confirm->implementing`。round 2 = review 5131012992（P2 2 / P3 2）→ 是正 `679a1d5`（「反映済み」の GA2 前契約を撤去 / accessible name は aria-label 優先〈W3C accname + `SearchBar.tsx` 実読〉/ checklist :87 例外 / AC17 backtick）。round 3 = review 5132801693（**新規指摘なし、Findings Freeze 可**、round 2 の 4 件を独立閉鎖確認、既知 mutant 検出、gate 全通過）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = doc gate ERROR 0（full / `--target plan`）+ Codex round 3 の gate 再実行 PASS、independent-review = Sonnet 一次検証 ×2 + Codex round 1〜3（Findings Freeze）、human-confirm = Human Gate 完了（culling 回答 + PLU 書出し緑 Alert OK、2026-09-06）は design-only 是正のため有効。Reviewed Content HEAD = `679a1d5`。次: owner 承認 → Ready（docs-only のため hosted final は owner dispatch）→ merge。
