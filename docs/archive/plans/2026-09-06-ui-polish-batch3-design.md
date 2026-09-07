@@ -281,7 +281,7 @@ catalog ① には、この component 契約（`actions` の有無に関わら�
 - DB: 変更なし。
 - Screen / UI: `docs/design-system/01-decision-rules.md` DSR-12/DSR-16/DSR-22（既存規定の具体例追加）/ `02-component-catalog.md` ①/③（改訂対象）/ `docs/function-design/60-ui-product-import.md` / `65-inventory-record-traceability.md` / `67-ui-plu-export.md` / `68-ui-backup-restore.md`（改訂対象）。
 - Decision log / ADR: 新規 entry なし。D-079（UI 視覚系座組）を踏襲。
-- owner 一次情報: `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`「⑧ PR #38 L3 結果 原文」（2026-09-06）、`docs/plans/2026-09-05-ui-select-unify.md` Review Response 2026-09-06 エントリ（L8-1〜L8-9 の Coordinator 転記）、`docs/Plans.md` ④ L8 ledger（`origin/agent/ui-select-unify` branch 側で追加中）・A1 ledger（`:68`）。
+- owner 一次情報: `docs/design-system/reference/2026-09-04-owner-l3-feedback-raw.md`「⑧ PR #38 L3 結果 原文」（2026-09-06）、`docs/archive/plans/2026-09-05-ui-select-unify.md` Review Response 2026-09-06 エントリ（L8-1〜L8-9 の Coordinator 転記）、`docs/Plans.md` ④ L8 ledger（`origin/agent/ui-select-unify` branch 側で追加中）・A1 ledger（`:68`）。
 
 ## Required Design Artifacts
 
