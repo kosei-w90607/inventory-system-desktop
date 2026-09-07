@@ -1157,7 +1157,9 @@ describe("StocktakePage (UI-10)", () => {
         per_page: 50,
       }),
     );
-    mockFindItem.mockResolvedValueOnce(ok(stocktakeItem({ id: 999, product_code: "P-051", name: "最後の糸" })));
+    mockFindItem.mockResolvedValueOnce(
+      ok(stocktakeItem({ id: 999, product_code: "P-051", name: "最後の糸" })),
+    );
     await renderPage({ page: 2, counted_only: false });
     await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
 

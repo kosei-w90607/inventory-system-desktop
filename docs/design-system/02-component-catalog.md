@@ -605,7 +605,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **使いどころ**: 件数の多い一覧の前後送り。1 ページあたり表示件数（perPage）と前へ / 次へを提供する。一覧はすべて上部にも件数 + 現在位置を置く（DSR-22、Lane 4）。
 
-**canonical**: `src/components/patterns/Pagination.tsx`（`Pagination` = 前へ / 次へ + 件数表示の下部 pager、`totalPages <= 1` では何も描画しない。`PaginationSummary` = 上部 text-only variant、`totalCount > 0` のとき常時 opt-in。Lane 2 で旧 features/products 配下の `ProductPagination` から移設し 8 caller を一括更新、D-9。Lane 4 で上下切り分けを実装）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `LIST_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text のみ、pager ボタンは置かない）は DSR-22 の裁定に基づく追加方針で、一覧すべてに常時適用する。
+**canonical**: `src/components/patterns/Pagination.tsx`（`Pagination` = 前へ / 次へ + 件数表示の下部 pager、`totalPages <= 1` かつ `page <= totalPages` では何も描画しない（`page > totalPages`〈範囲外ページからの回復〉のときは描画する、PR #40 Codex P1 是正）。`PaginationSummary` = 上部 text-only variant、`totalCount > 0` のとき常時 opt-in。Lane 2 で旧 features/products 配下の `ProductPagination` から移設し 8 caller を一括更新、D-9。Lane 4 で上下切り分けを実装）。perPage 切替（50 / 100 / 200）は呼び出し側ページの `Select` が担う（`src/features/products/ProductListPage.tsx` + `LIST_PER_PAGE_OPTIONS`）。上部 variant（件数 + 現在位置 text のみ、pager ボタンは置かない）は DSR-22 の裁定に基づく追加方針で、一覧すべてに常時適用する。
 
 **構造**:
 
@@ -642,12 +642,12 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Select>
 ```
 
-**件数文言**: 範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalPages <= 1`（`totalCount === 0` を含む）は下部 pager を描画しない（Lane 4）。
+**件数文言**: 範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalPages <= 1` かつ `page <= totalPages`（`totalCount === 0` を含む）は下部 pager を描画しない。`page > totalPages`（範囲外ページからの回復）のときは描画する（Lane 4、PR #40 Codex P1 是正）。
 
 **使用トークン**: 下部件数・ページ表示は `text-sm text-muted-foreground`（tabular-nums）。上部 `PaginationSummary` も同じ `text-sm text-muted-foreground tabular-nums`（Lane 4 で下部と統一）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium tabular-nums`。perPage 切替は `w-[7rem]`。
 
 **状態**:
-- **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする（`totalPages <= 1`（0 件含む）は下部 pager 自体を描画しない）
+- **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする（`totalPages <= 1` かつ `page <= totalPages`（0 件含む）は下部 pager 自体を描画しない。`page > totalPages` の回復時は描画する）
 - hover / focus / active / error: ボタン primitive の既定に従う
 
 **perPage 規約**: 表示件数の選択肢は `LIST_PER_PAGE_OPTIONS = [50, 100, 200]`。リテラル直書きせず定数を参照する。共有定数は 1 本のまま維持し、既定値だけを画面ごとに変える（裁定・owner 了承 2026-09-03: 棚卸しは未入力を潰し切る全走査が主動線のため既定 50、商品一覧は 1 件探索が主動線のため既定 100、Lane 2 実装済み）。40 刻み化（40/80/120 等）は既存の固定文言 test への影響と移行コストに見合わないため不採用の裁定案。
