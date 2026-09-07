@@ -71,6 +71,7 @@ pub struct StocktakeItemDetail {
     pub actual_count: Option<i64>,
     pub counted_at: Option<String>,
     pub current_stock: i64,
+    pub is_discontinued: bool,
 }
 
 /// 棚卸し確定処理用明細（3フィールド。35-biz §20.5）
@@ -346,7 +347,8 @@ pub fn find_stocktake_item_by_code(
 ) -> Result<Option<StocktakeItemDetail>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT si.id, si.stocktake_id, si.product_code, p.name, d.name,
-                si.system_stock, si.actual_count, si.counted_at, p.stock_quantity
+                si.system_stock, si.actual_count, si.counted_at, p.stock_quantity,
+                p.is_discontinued
          FROM stocktake_items si
          JOIN products p ON si.product_code = p.product_code
          JOIN departments d ON p.department_id = d.id
@@ -367,6 +369,7 @@ pub fn find_stocktake_item_by_code(
             actual_count: row.get(6)?,
             counted_at: row.get(7)?,
             current_stock: row.get(8)?,
+            is_discontinued: row.get(9)?,
         })),
         None => Ok(None),
     }
@@ -536,7 +539,8 @@ pub fn list_stocktake_items(
     // DATA
     let data_sql = format!(
         "SELECT si.id, si.stocktake_id, si.product_code, p.name, d.name,
-                si.system_stock, si.actual_count, si.counted_at, p.stock_quantity
+                si.system_stock, si.actual_count, si.counted_at, p.stock_quantity,
+                p.is_discontinued
          FROM stocktake_items si
          JOIN products p ON si.product_code = p.product_code
          JOIN departments d ON p.department_id = d.id
@@ -555,6 +559,7 @@ pub fn list_stocktake_items(
             actual_count: row.get(6)?,
             counted_at: row.get(7)?,
             current_stock: row.get(8)?,
+            is_discontinued: row.get(9)?,
         })
     })?;
     let mut items = Vec::new();
@@ -939,6 +944,33 @@ mod tests {
         let item = result.expect("同一JAN候補のうち最小 si.id の明細が返るべき");
         assert_eq!(item.id, first_item_id);
         assert_eq!(item.product_code, "FD-002");
+    }
+
+    #[test]
+    fn test_find_stocktake_item_by_code_req205_includes_is_discontinued() {
+        // REQ-205 / UI-10-D13: is_discontinued が products.is_discontinued の実値を反映する
+        let (_dir, conn) = setup_test_db();
+        seed_product_custom(&conn, "DISC-001", true, 7, 300, 1);
+        seed_product_custom(&conn, "OK-001", false, 7, 300, 1);
+        let st_id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
+        seed_stocktake_item(&conn, st_id, "DISC-001", 7, None);
+        seed_stocktake_item(&conn, st_id, "OK-001", 7, None);
+
+        let discontinued = find_stocktake_item_by_code(&conn, st_id, "DISC-001")
+            .unwrap()
+            .expect("廃番商品の明細が返るべき");
+        assert!(
+            discontinued.is_discontinued,
+            "廃番商品は is_discontinued=true"
+        );
+
+        let normal = find_stocktake_item_by_code(&conn, st_id, "OK-001")
+            .unwrap()
+            .expect("非廃番商品の明細が返るべき");
+        assert!(
+            !normal.is_discontinued,
+            "非廃番商品は is_discontinued=false"
+        );
     }
 
     // ===== UI-10 T-R2: find_last_completed_stocktake =====
@@ -1350,6 +1382,37 @@ mod tests {
         assert_eq!(result.page, 1);
         // current_stock は products.stock_quantity から取得
         assert_eq!(result.items[0].current_stock, 0); // seed_productのデフォルトは0
+    }
+
+    #[test]
+    fn test_list_stocktake_items_req205_includes_is_discontinued() {
+        // REQ-205 / UI-10-D13: is_discontinued が products.is_discontinued の実値を反映する
+        let (_dir, conn) = setup_test_db();
+        seed_product_custom(&conn, "LDISC-001", true, 7, 300, 1);
+        seed_product_custom(&conn, "LOK-001", false, 7, 300, 1);
+        let st_id = create_stocktake(&conn, "in_progress", "2026-10-01T09:00:00");
+        seed_stocktake_item(&conn, st_id, "LDISC-001", 7, None);
+        seed_stocktake_item(&conn, st_id, "LOK-001", 7, None);
+
+        let result = list_stocktake_items(&conn, st_id, None, None, 1, 10).unwrap();
+        let discontinued = result
+            .items
+            .iter()
+            .find(|item| item.product_code == "LDISC-001")
+            .expect("廃番商品の明細が返るべき");
+        assert!(
+            discontinued.is_discontinued,
+            "廃番商品は is_discontinued=true"
+        );
+        let normal = result
+            .items
+            .iter()
+            .find(|item| item.product_code == "LOK-001")
+            .expect("非廃番商品の明細が返るべき");
+        assert!(
+            !normal.is_discontinued,
+            "非廃番商品は is_discontinued=false"
+        );
     }
 
     #[test]

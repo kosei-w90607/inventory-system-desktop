@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { StockDetail } from "@/lib/bindings";
 import { renderWithRouter } from "@/test/render-with-router";
 import { ProductListTable } from "./ProductListTable";
@@ -124,7 +125,7 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
     expect(await screen.findByText("最終入庫日")).toBeInTheDocument();
   });
 
-  it("REQ-301: 選択行の nextElementSibling が colSpan 展開行（td[colspan=6]、旧下部固定の混入 guard）", async () => {
+  it("REQ-301: 選択行の nextElementSibling が colSpan 展開行（td[colspan=7]、旧下部固定の混入 guard）", async () => {
     renderWithRouter(
       <ProductListTable
         items={items}
@@ -138,7 +139,7 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
     const selectedRow = codeCell.closest("tr");
     expect(selectedRow).not.toBeNull();
     const expansionRow = selectedRow?.nextElementSibling;
-    expect(expansionRow?.querySelector('td[colspan="6"]')).not.toBeNull();
+    expect(expansionRow?.querySelector('td[colspan="7"]')).not.toBeNull();
   });
 
   it("REQ-301: 非選択時は展開行を描画しない", async () => {
@@ -184,5 +185,78 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
       .closest("tr")
       ?.nextElementSibling?.querySelector("td");
     expect(expansionCell?.className).toContain("whitespace-normal");
+  });
+
+  it("SC2/SC10: 取引先列ヘッダが表示され、supplier_name の値/null がそれぞれ表示される（低在庫 view）", async () => {
+    renderWithRouter(
+      <ProductListTable
+        items={[
+          makeMockProductWithRelations({
+            product_code: "P-SUP",
+            name: "リボン",
+            supplier_name: "取引先A",
+          }),
+          makeMockProductWithRelations({
+            product_code: "P-NOSUP",
+            name: "レース",
+            supplier_name: null,
+          }),
+        ]}
+        source="low_stock"
+        selected={null}
+        detailQuery={makeDetailQuery()}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("取引先")).toBeInTheDocument();
+    expect(await screen.findByText("取引先A")).toBeInTheDocument();
+    expect(await screen.findByText("—")).toBeInTheDocument();
+  });
+
+  it("SC10: 「すべて」（source=search）でも取引先列ヘッダが表示される", async () => {
+    renderWithRouter(
+      <ProductListTable
+        items={items}
+        source="search"
+        selected={null}
+        detailQuery={makeDetailQuery()}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("取引先")).toBeInTheDocument();
+  });
+
+  it("SC4: 選択中の行を再クリックすると onSelect が null で呼ばれる（展開行トグルクローズ）", async () => {
+    const onSelect = vi.fn();
+    renderWithRouter(
+      <ProductListTable
+        items={items}
+        source="search"
+        selected="P-001"
+        detailQuery={makeDetailQuery()}
+        onSelect={onSelect}
+      />,
+    );
+    const row = (await screen.findByText("はさみ")).closest("tr");
+    expect(row).not.toBeNull();
+    await userEvent.setup().click(row as HTMLElement);
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it("SC4: 別の行をクリックすると onSelect がその行の product_code で呼ばれる（回帰）", async () => {
+    const onSelect = vi.fn();
+    renderWithRouter(
+      <ProductListTable
+        items={items}
+        source="search"
+        selected="P-001"
+        detailQuery={makeDetailQuery()}
+        onSelect={onSelect}
+      />,
+    );
+    const row = (await screen.findByText("ボタン")).closest("tr");
+    expect(row).not.toBeNull();
+    await userEvent.setup().click(row as HTMLElement);
+    expect(onSelect).toHaveBeenCalledWith("P-002");
   });
 });

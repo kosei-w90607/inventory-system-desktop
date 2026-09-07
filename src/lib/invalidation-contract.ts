@@ -23,6 +23,7 @@ export const invalidationContract = {
     queryKeys.pluDirty(),
     queryKeys.pluSlotSummary(),
     queryKeys.stockMovements.root(),
+    queryKeys.stocktake.itemsRoot(),
   ],
   productImport: () => [
     queryKeys.productList.root(),

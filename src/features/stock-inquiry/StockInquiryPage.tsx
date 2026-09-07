@@ -238,7 +238,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
             selected={selectedValue}
             detailQuery={detailQuery}
             onSelect={(code) => {
-              onSearchChange((prev) => ({ ...prev, selected: code }));
+              onSearchChange((prev) => ({ ...prev, selected: code ?? undefined }));
             }}
           />
           {/* status === "all" のときだけ表示（UI-06a-D1、02-component-catalog.md ⑩ canonical を結線） */}

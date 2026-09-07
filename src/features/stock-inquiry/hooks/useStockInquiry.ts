@@ -8,7 +8,7 @@
 //
 // 設計: docs/function-design/58-ui-stock-inquiry.md §58.5
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { commands } from "@/lib/bindings";
@@ -21,7 +21,7 @@ import type {
   StockInquiryListResult,
   StockInquirySearch,
 } from "../types";
-import { filterLowStockList } from "../lib/filter-low-stock-list";
+import { filterAndSortLowStockList } from "../lib/filter-low-stock-list";
 
 export interface UseStockInquiryArgs {
   status: ListChipFilter;
@@ -75,7 +75,7 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
         source: "commands",
         cmd: "list_low_stock",
       });
-      const filtered = filterLowStockList(rows, args.q, args.dept, args.status);
+      const filtered = filterAndSortLowStockList(rows, args.q, args.dept, args.status);
       return { items: filtered, totalCount: null, source: "low_stock" };
     },
     enabled: !isAllEmpty,
@@ -120,16 +120,33 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
   });
 
   // 結果 1 件で詳細カードを自動展開（Q-3 補強）。
-  // selected == null ガードで 1 度のみ発火。status 切替時は page 側で selected を clear するため
-  // 新 list 結果 1 件で再発火可能。
+  // selected == null ガードに加え、同一検索条件（status/q/dept/page）内では 1 度しか発火しない
+  // guard を持つ（UI-06a-D5）。「消費済み」は自動展開の発火時、または現一覧（listItems）に
+  // 実在する selected が観測された時点でのみ成立する（Codex round 2 P2 是正: 前ページの stale
+  // selected がページ送り後も維持され、非 null というだけで消費済みにしていたため新条件の単一
+  // 結果が自動展開されない回帰を修正。所属確認を追加し、現一覧に不在の selected は消費を
+  // 成立させない）。条件 key が変われば消費済みフラグをリセットし、再訪時に改めて 1 度だけ
+  // 自動展開する。
   const listItems = listQuery.data?.items;
+  const conditionKey = `${args.status}|${args.q}|${String(args.dept)}|${String(args.page)}`;
+  const selectedBelongsToList =
+    args.selected !== null && (listItems ?? []).some((item) => item.product_code === args.selected);
+  const autoExpandKeyRef = useRef(conditionKey);
+  const autoExpandConsumedRef = useRef(selectedBelongsToList);
   useEffect(() => {
-    if (listItems?.length === 1 && args.selected === null) {
+    if (autoExpandKeyRef.current !== conditionKey) {
+      autoExpandKeyRef.current = conditionKey;
+      autoExpandConsumedRef.current = selectedBelongsToList;
+    } else if (selectedBelongsToList) {
+      autoExpandConsumedRef.current = true;
+    }
+    if (listItems?.length === 1 && args.selected === null && !autoExpandConsumedRef.current) {
+      autoExpandConsumedRef.current = true;
       args.navigate({ selected: listItems[0].product_code });
     }
-    // args / navigate は安定参照ではないが、依存は listItems と selected の変化に限定する。
+    // args / navigate は安定参照ではないが、依存は listItems・selected・conditionKey の変化に限定する。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listItems, args.selected]);
+  }, [listItems, args.selected, conditionKey, selectedBelongsToList]);
 
   // selected を「現 list 条件に対する状態」に保つための clear（§58.4）。2 ケース:
   // (a) 検索前（isAllEmpty）に selected が残る（手打ち/F5/bookmark URL）→ list は EmptySearchPlaceholder
@@ -137,7 +154,8 @@ export function useStockInquiry(args: UseStockInquiryArgs): UseStockInquiryResul
   //     !isAllEmpty guard と二重防御）。
   // (b) list 成功時に selected が現 list に不在（stale URL、CSV 取込み invalidation 後の該当外化）→ 行
   //     インライン展開（§58.8）の描画先消失を防ぐ（C-P2-1）。isSuccess ガードで loading 中の誤判定を
-  //     避ける。list 1 件なら clear 後に上の自動展開が後続発火し、現 list の唯一商品へ収束する。
+  //     避ける。同一検索条件（conditionKey）で自動展開済みの場合は上の自動展開 guard が再発火を
+  //     止めるため再展開せず、収束しない（UI-06a-D5 の設計上の帰結）。
   useEffect(() => {
     if (isAllEmpty && args.selected !== null) {
       args.navigate({ selected: undefined });

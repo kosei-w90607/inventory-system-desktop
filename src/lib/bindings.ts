@@ -256,6 +256,7 @@ export const commands = {
 	actual_count: number | null,
 	counted_at: string | null,
 	current_stock: number,
+	is_discontinued: boolean,
 } | null, CmdError>(__TAURI_INVOKE("find_stocktake_item", { stocktakeId, code })),
 	/**
 	 *  最後に完了した棚卸しを取得する
@@ -1574,6 +1575,7 @@ export type StocktakeItemDetail = {
 	actual_count: number | null,
 	counted_at: string | null,
 	current_stock: number,
+	is_discontinued: boolean,
 };
 
 /**

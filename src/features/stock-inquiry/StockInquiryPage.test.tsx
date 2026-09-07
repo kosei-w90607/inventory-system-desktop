@@ -313,6 +313,50 @@ describe("StockInquiryPage (REQ-301 自動展開)", () => {
       expect(screen.getByText("最終入庫日")).toBeInTheDocument();
     });
   });
+
+  it("R2-3: 選択中行の再クリックで onSearchChange に selected: undefined を渡す（page 結線）", async () => {
+    mockSearch.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeMockProductWithRelations({ product_code: "P-001", name: "はさみ" }),
+          makeMockProductWithRelations({ product_code: "P-002", name: "ボタン" }),
+        ],
+        total_count: 2,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    mockDetail.mockResolvedValue({
+      status: "ok",
+      data: makeMockStockDetail({
+        product: makeMockProductWithRelations({ product_code: "P-002", name: "ボタン" }),
+      }),
+    });
+    const onSearchChange = vi.fn();
+    const search: StockInquirySearch = { q: "P", status: "all", selected: "P-002" };
+    const { container } = renderWithClient(
+      <StockInquiryPage search={search} onSearchChange={onSearchChange} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("最終入庫日")).toBeInTheDocument();
+    });
+    // 選択中（P-002）行を再クリック → ProductListTable の onSelect(null) 経由で
+    // StockInquiryPage.tsx の `code ?? undefined` 結線が selected: undefined を渡す
+    // （選択行は data-state="selected"、展開行と product 名テキストが重複するため row 要素を直接特定する）
+    const user = userEvent.setup();
+    const selectedRow = container.querySelector('tr[data-state="selected"]');
+    if (selectedRow === null) {
+      throw new Error("選択中行（data-state=selected）が見つからない");
+    }
+    await user.click(selectedRow);
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenCalled();
+    });
+    const updaters = onSearchChange.mock.calls.map((call) => call[0] as (p: object) => object);
+    const results = updaters.map((updater) => updater(search));
+    expect(results).toContainEqual(expect.objectContaining({ selected: undefined }));
+  });
 });
 
 describe("StockInquiryPage SPEC-UIBB-1/2（filter-empty reset action）", () => {

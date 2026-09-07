@@ -84,6 +84,7 @@ function baseStocktakeItem(): StocktakeItemDetail {
     actual_count: null,
     counted_at: null,
     current_stock: 10,
+    is_discontinued: false,
   };
 }
 
@@ -843,6 +844,62 @@ describe("StocktakePage (UI-10)", () => {
     expect(within(screen.getByRole("table")).getByText("青い糸")).toBeInTheDocument();
   });
 
+  it("SC7 (UI-10-D13): counted list shows 廃番 badge with border-border only for discontinued items", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(
+      listResponse({
+        items: [
+          stocktakeItem({
+            id: 601,
+            product_code: "D-101",
+            name: "廃番の毛糸",
+            is_discontinued: true,
+          }),
+          stocktakeItem({
+            id: 602,
+            product_code: "N-101",
+            name: "通常の毛糸",
+            is_discontinued: false,
+          }),
+        ],
+      }),
+    );
+    await renderPage();
+
+    const discontinuedRow = await screen.findByRole("row", { name: /廃番の毛糸/ });
+    const badge = within(discontinuedRow).getByText("廃番");
+    expect(badge).toHaveClass("border-border");
+    expect(badge.querySelector("svg")).toBeNull();
+
+    const normalRow = screen.getByRole("row", { name: /通常の毛糸/ });
+    expect(within(normalRow).queryByText("廃番")).not.toBeInTheDocument();
+  });
+
+  it("SC9 (UI-10-D13): candidate row badge is also corrected to border-border (no border-border-strong left in file)", async () => {
+    const user = userEvent.setup();
+    const discontinued = makeMockProductWithRelations({
+      product_code: "D-201",
+      name: "廃番候補の糸",
+      is_discontinued: true,
+    });
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockFindItem.mockResolvedValueOnce(ok(null));
+    mockSearchProducts.mockResolvedValueOnce(
+      ok({
+        items: [discontinued, makeMockProductWithRelations({ product_code: "P-202" })],
+        total_count: 2,
+        page: 1,
+        per_page: 10,
+      }),
+    );
+    await renderPage();
+    await user.type(await screen.findByLabelText("商品を検索・スキャン"), "廃番{Enter}");
+
+    const row = await screen.findByRole("row", { name: /廃番候補の糸/ });
+    const badge = within(row).getByText("廃番");
+    expect(badge).toHaveClass("border-border");
+  });
+
   it("SC1: counting screen has exactly one primary-styled button while a selected item and a candidate table coexist", async () => {
     const user = userEvent.setup();
     const candidates = [
@@ -1174,6 +1231,39 @@ describe("StocktakePage (UI-10)", () => {
     });
     expect(await screen.findByRole("button", { name: "前のページ" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "前のページ" })).toBeEnabled();
+  });
+
+  it("SC4a: filter row root has rounded-lg border bg-card p-4 (old borderless frame removed)", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse());
+    const { container } = await renderPage();
+    await screen.findByRole("combobox", { name: "部門" });
+    expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    // 旧 frame（枠なし、`flex flex-wrap items-center gap-4` のみ）が残っていないこと。
+    const oldFrame = Array.from(container.querySelectorAll("div")).find(
+      (el) => el.className === "flex flex-wrap items-center gap-4",
+    );
+    expect(oldFrame).toBeUndefined();
+  });
+
+  it("SC3a: renders the top PaginationSummary above the results table when totalCount > 0", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse({ total_count: 2, per_page: 200 }));
+    await renderPage();
+    expect(
+      await screen.findByText("全 2 件のうち 1〜2 件を表示（1 / 1 ページ）"),
+    ).toBeInTheDocument();
+  });
+
+  it("SC6: the fieldset wrapping the bottom Pagination is absent when totalPages<=1", async () => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse({ total_count: 2, per_page: 200 }));
+    const { container } = await renderPage();
+    await screen.findByText("全 2 件のうち 1〜2 件を表示（1 / 1 ページ）");
+    // 「カウント入力」の fieldset（disabled 制御、常設）以外に一覧側の fieldset が
+    // 残っていないこと（単一ページで空 <fieldset> を残さない、S5）。
+    expect(container.querySelectorAll("fieldset")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "前のページ" })).not.toBeInTheDocument();
   });
 });
 
