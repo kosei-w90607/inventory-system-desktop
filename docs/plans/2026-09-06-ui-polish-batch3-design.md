@@ -15,7 +15,7 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 1e758cf5
@@ -24,7 +24,7 @@ Plans.md ④ L8 ledger（owner「⑧ PR #38 L3 結果 原文」2026-09-06、`doc
 - Writer: Claude Sonnet 5 subagent（design docs、worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5 デザイン面（read-only claims-producer、D-056 / D-079）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5 デザイン面 + Codex 1 round（§3.3、実施タイミングは起票時点の Codex 枠状況に従う）
-- Reviewed Content HEAD: 0d75d3e
+- Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
 - Human Gate: owner が design PR 上で (1) 商品一括インポート / PLU 書出し / バックアップの説明文 3 案を culling する（本 packet「設計判断」節の draft、2〜3 文の日本語文案） (2) 記録 ID の表示方針（(a) 種別込み表示 / (b) 一覧から外す / (c) 現状維持）を選ぶ（Coordinator 推奨は (b)、下記「設計判断」節参照） (3) 備考欄が空のときの表示（「—」か薄字「備考なし」か）を選ぶ（Coordinator 推奨は既存 27 箇所の「—」パターンへの統一、下記参照）。実機（Windows native L3）確認はこの packet の対象外で、後続 runtime lane が担う
