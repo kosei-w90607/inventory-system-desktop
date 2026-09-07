@@ -576,7 +576,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
   onSearchChange={(value) => updateSearch({ q: value })}
 />
 
-// 検索欄（live 型、商品一覧・在庫照会）: debounce + Enter 即時 flush（trim なし）。Label / id / ボタンなし、type="search"
+// 検索欄（live 型、商品一覧・在庫照会）: debounce + Enter 即時 flush（trim なし）。可視 Label + input id あり、ボタンなし、type="search"
 <SearchBar
   debounceMs={200}
   value={q}
@@ -594,7 +594,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 />
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は input 単体 `max-w-md`（wrapper / ラベルなし）。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は input 単体 `max-w-md`（wrapper なし、可視 Label は持つ）。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
@@ -605,7 +605,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **フィルタ候補のソース**: 部門候補は `listDepartments` の master 全件から作る。現在の絞込み結果（filtered result）から候補を作ると、選択値が候補から消えて他候補へ切り替えられなくなる縮退が起きるため、これを禁止する（DSR-10）。
 
-**アクセシビリティ**: commit 型も可視 `Label htmlFor` のみを accessible name とし `aria-label` は持たない（識別方式を混在させない、:618 と整合）。live 型は可視 `<Label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。runtime 反映では commit 型相当の既存 4 箇所（`DisposalPage.tsx:382`「廃棄・破損商品検索」/ `ReturnExchangePage.tsx:688`「返品・交換商品検索」/ `ManualSalePage.tsx:477`「手動販売商品検索」/ `ReceivingPage.tsx:446`「入庫商品検索」）の `aria-label` を外す（runtime lane）。フィルタの未選択は「すべての部門」という日本語 default で示す。
+**アクセシビリティ**: commit 型は可視 `Label htmlFor` + `aria-label="商品検索"` の両方を持つ（accessible name は可視 Label が優先）。live 型は可視 `<Label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。フィルタの未選択は「すべての部門」という日本語 default で示す。
 
 **Do**:
 - commit 型の検索は Enter 確定（スキャナ互換）+ ボタン確定の両経路を持つ
