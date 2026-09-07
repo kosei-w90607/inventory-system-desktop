@@ -133,3 +133,23 @@ describe("SummaryCardsBar (monthly, REQ-502) B0 characterization (D-B1 Non-scope
     expect(screen.getByText("前月売上 0 円")).toBeInTheDocument();
   });
 });
+
+it.each([
+  [120, "+¥20", "text-success-strong"],
+  [80, "-¥20", "text-destructive-strong"],
+  [100, "+¥0", "text-muted-foreground"],
+] as const)(
+  "SC25 / DSR-08: amount %s retains sign and shows %s with its tone",
+  (current, label, color) => {
+    render(
+      <SummaryCardsBar
+        summary={{ ...mockSummary, totalAmount: current }}
+        periodLabel="2026/06"
+        prevComparison={[{ key: "P001", label: "商品A", quantity: 1, amount: 100, ranking: 1 }]}
+        isLoading={false}
+      />,
+    );
+    expect(screen.getByText(label)).toHaveClass(color);
+    expect(screen.getByText(label)).not.toHaveClass("text-success-emphasis");
+  },
+);

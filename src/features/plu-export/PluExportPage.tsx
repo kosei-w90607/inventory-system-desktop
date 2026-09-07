@@ -404,7 +404,7 @@ export function PluExportPage() {
               </dl>
             </>
           ) : (
-            <Alert className="border-warning bg-warning-soft text-warning-strong">
+            <Alert variant="warning">
               <AlertTriangle />
               <AlertTitle>レジ設定の読込みが必要です</AlertTitle>
               <AlertDescription>
@@ -431,7 +431,7 @@ export function PluExportPage() {
       {hasTopStatus ? (
         <section aria-label="PLU書出し状態" className="space-y-3">
           {displayOverLimitWarning ? (
-            <Alert className="border-warning bg-warning-soft text-warning-strong">
+            <Alert variant="warning">
               <AlertTriangle />
               <AlertTitle>スキャニングPLU上限の4,784件を超えています</AlertTitle>
               <AlertDescription>
@@ -441,7 +441,7 @@ export function PluExportPage() {
           ) : null}
 
           {showPendingRecovery ? (
-            <Alert className="border-warning bg-warning-soft text-warning-strong">
+            <Alert variant="warning">
               <AlertTriangle />
               <AlertTitle>保存済みで未確認のPLU書出しがあります</AlertTitle>
               <AlertDescription className="space-y-3">
@@ -531,7 +531,7 @@ export function PluExportPage() {
                   </Button>
                 </AlertDescription>
               </Alert>
-              <Alert className="border-warning bg-warning-soft text-warning-strong">
+              <Alert variant="warning">
                 <AlertTriangle />
                 <AlertTitle>PCツールに取り込めなかった場合の回復手順</AlertTitle>
                 <AlertDescription>
@@ -695,7 +695,7 @@ export function PluExportPage() {
               onValueChange={setMode}
             />
 
-            <Alert className="border-warning bg-warning-soft text-warning-strong">
+            <Alert variant="warning">
               <AlertTriangle />
               <AlertTitle>Diff / Full ともレジへ投入できます</AlertTitle>
               <AlertDescription>

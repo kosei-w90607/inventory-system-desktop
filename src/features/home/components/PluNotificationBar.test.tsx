@@ -24,6 +24,7 @@ describe("PluNotificationBar UI-00 / DSR-08 warning icon", () => {
     renderBar({ isSuccess: true, isLoading: false, isError: false }, 1);
 
     expect((await screen.findByRole("alert")).querySelectorAll("svg")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveAttribute("data-variant", "warning");
   });
 
   it.each([

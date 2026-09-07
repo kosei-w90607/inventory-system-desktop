@@ -81,7 +81,7 @@ export function PriceRevisionFilters({
           </Select>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => {
               setDialogOpen(true);
             }}

@@ -11,6 +11,9 @@ const alertVariants = cva(
         default: "bg-card text-card-foreground",
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
+        // catalog の文字列契約と手書き class の全数検査を区別する語順を維持する。
+        // prettier-ignore
+        warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90",
       },
     },
     defaultVariants: {
@@ -21,12 +24,13 @@ const alertVariants = cva(
 
 function Alert({
   className,
-  variant,
+  variant = "default",
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
       data-slot="alert"
+      data-variant={variant}
       role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}

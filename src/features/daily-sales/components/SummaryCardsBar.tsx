@@ -136,7 +136,13 @@ function computeCompareLabel(
   const pct = (diff / yAmount) * 100;
   const sign = diff >= 0 ? "+" : "-";
   const absDiff = Math.abs(diff).toLocaleString("ja-JP");
-  const valueClassName = diff >= 0 ? "text-success-emphasis" : "text-destructive";
+  // 変化なしは報告の緑に含めず、中立で示す（DSR-08）。
+  const valueClassName =
+    diff > 0
+      ? "text-success-strong"
+      : diff < 0
+        ? "text-destructive-strong"
+        : "text-muted-foreground";
   return {
     value: `${sign}¥${absDiff}`,
     sub: `${sign}${pct.toFixed(1)}%`,

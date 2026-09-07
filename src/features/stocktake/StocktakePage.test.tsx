@@ -498,6 +498,13 @@ describe("StocktakePage (UI-10)", () => {
     const { invalidateSpy } = await renderPage();
 
     await user.click(await screen.findByRole("button", { name: "棚卸しを確定する" }));
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("確定すると取り消せません").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("確定すると取り消せません").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "alert");
     expect(await screen.findByRole("heading", { name: "棚卸しの確定" })).toBeInTheDocument();
     const noUncountedAlert = screen.getByRole("alert");
     expect(within(noUncountedAlert).getByText("確定すると取り消せません")).toBeInTheDocument();
@@ -1044,6 +1051,7 @@ describe("StocktakePage (UI-10)", () => {
       />,
     );
     const warningBadge = screen.getByText("未入力 1").closest('[data-slot="badge"]');
+    expect(warningBadge).toHaveAttribute("data-tone", "warning");
     expect(warningBadge).toHaveClass(
       "border-warning-border",
       "bg-warning-soft",
@@ -1058,7 +1066,16 @@ describe("StocktakePage (UI-10)", () => {
       />,
     );
     const successBadge = screen.getByText("未入力 0").closest('[data-slot="badge"]');
-    expect(successBadge).toHaveClass("bg-success", "text-primary-foreground");
+    // SC7 / DSR-22: 完了をsoft toneとiconで伝え、旧直塗りは残さない。
+    expect(successBadge).toHaveAttribute("data-variant", "outline");
+    expect(successBadge).toHaveAttribute("data-tone", "success");
+    expect(successBadge).toHaveClass(
+      "border-success-border",
+      "bg-success-soft",
+      "text-success-strong",
+    );
+    expect(successBadge).not.toHaveClass("bg-success");
+    expect(successBadge).not.toHaveClass("text-primary-foreground");
     expect(successBadge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
   });
 
@@ -1322,3 +1339,56 @@ describe("StocktakePage perPage scroll（UI-10）", () => {
     expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });
+
+it.each([
+  [2, "+2", "text-success-strong"],
+  [-3, "-3", "text-destructive-strong"],
+  [0, "0", "text-muted-foreground"],
+] as const)(
+  "SC9 / REQ-205: active and completed difference %s retain sign and tone",
+  async (difference, label, color) => {
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(
+      listResponse({
+        items: [
+          stocktakeItem({
+            name: "SC9商品",
+            current_stock: 10,
+            actual_count: 10 - difference,
+            counted_at: "2026-10-01T09:05:00",
+          }),
+        ],
+        progress: { total_items: 1, counted_items: 1, uncounted_items: 0 },
+        total_count: 1,
+      }),
+    );
+    mockComplete.mockResolvedValue(
+      ok({
+        total_cost: 2500,
+        adjusted_items: [
+          {
+            product_code: "P-001",
+            product_name: "SC9商品",
+            system_stock: 10,
+            actual_count: 10 - difference,
+            difference,
+            stock_after: 10 - difference,
+          },
+        ],
+        total_items: 1,
+        integrity_result: { mismatches: [], mismatch_count: 0, checked_count: 1 },
+      }),
+    );
+    await renderPage();
+    const activeRow = (await screen.findByText("SC9商品")).closest("tr");
+    if (!activeRow) throw new Error("active row missing");
+    expect(within(activeRow).getByText(label).closest("td")).toHaveClass(color);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "棚卸しを確定する" }));
+    await user.click(screen.getByRole("button", { name: "確定する" }));
+    await screen.findByRole("heading", { name: "棚卸し結果" });
+    const resultRow = screen.getByText("SC9商品").closest("tr");
+    if (!resultRow) throw new Error("result row missing");
+    expect(within(resultRow).getByText(label).closest("td")).toHaveClass(color);
+  },
+);

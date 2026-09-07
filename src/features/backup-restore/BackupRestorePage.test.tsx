@@ -113,6 +113,13 @@ async function openRestoreDetail(user: ReturnType<typeof userEvent.setup>) {
   expect(row).not.toBeNull();
   if (!row) throw new Error("backup row not found");
   await user.click(within(row).getByRole("button", { name: "この控えに戻す" }));
+  // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+  expect(
+    screen.getByText("復元すると今の記録は戻せません").closest('[data-slot="alert"]'),
+  ).toHaveAttribute("data-variant", "warning");
+  expect(
+    screen.getByText("復元すると今の記録は戻せません").closest('[data-slot="alert"]'),
+  ).toHaveAttribute("role", "alert");
   expect(
     screen.getByText("この時点の状態に戻ります。この控えより後に記録した内容は消えます"),
   ).toBeInTheDocument();
@@ -445,4 +452,12 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
       expect(mockListBackups).toHaveBeenCalledTimes(2);
     });
   });
+});
+
+it("SC3 / QR-05: latest backup is an emphasis badge with warning border", async () => {
+  renderWithClient(<BackupRestorePage />);
+  const latest = await screen.findByText("最新");
+  expect(latest).toHaveAttribute("data-variant", "default");
+  expect(latest).toHaveClass("border-warning");
+  expect(latest).not.toHaveAttribute("data-tone");
 });

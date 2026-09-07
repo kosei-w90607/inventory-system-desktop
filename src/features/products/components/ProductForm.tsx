@@ -321,7 +321,7 @@ export function ProductForm({
             </Select>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => {
                 setShowSupplierInput((shown) => !shown);
@@ -351,6 +351,7 @@ export function ProductForm({
                 ) : null}
                 <Button
                   type="button"
+                  variant="secondary"
                   size="sm"
                   disabled={isCreatingSupplier}
                   onClick={() => {

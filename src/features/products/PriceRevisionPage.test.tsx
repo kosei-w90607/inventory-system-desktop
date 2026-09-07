@@ -532,6 +532,11 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     const user = userEvent.setup();
     renderStateful();
     await screen.findByText("P-001");
+    // SC12/SC13/SC14 / DSR-01: 補助操作と画面の主操作を区別する。
+    expect(screen.getByRole("button", { name: "新しい取引先を追加" })).toHaveAttribute(
+      "data-variant",
+      "secondary",
+    );
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "  新規取引先  ");
     await user.click(screen.getByRole("button", { name: "追加する" }));
@@ -769,4 +774,16 @@ describe("PriceRevisionPage native input tokens（Lane 5 SC4i）", () => {
     expect(supplier).toHaveClass("bg-control-surface");
     expect(supplier).not.toHaveClass("bg-background");
   });
+});
+
+it("SC19 / DSR-08: price-revision caution keeps note role, body, title and icon", async () => {
+  renderStateful();
+  await screen.findByText("P-001");
+  const note = screen.getByRole("note");
+  expect(note).toHaveAttribute("data-variant", "warning");
+  expect(note.querySelector('[data-slot="alert-title"]')).toHaveTextContent("ご注意");
+  expect(note.querySelector('[data-slot="alert-description"]')).toHaveTextContent(
+    "画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。",
+  );
+  expect(note.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
 });

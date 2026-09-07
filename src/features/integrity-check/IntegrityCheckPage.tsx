@@ -275,7 +275,7 @@ export function IntegrityCheckPage() {
           </Alert>
         ) : (
           <div className="space-y-5">
-            <Alert role="status" className="border-warning bg-warning-soft text-warning-strong">
+            <Alert role="status" variant="warning">
               <AlertTriangle aria-hidden="true" className="text-warning-foreground" />
               <AlertTitle>差異が見つかりました</AlertTitle>
               <AlertDescription>
@@ -314,7 +314,7 @@ export function IntegrityCheckPage() {
             ) : null}
 
             {fixResult && fixResult.skipped_count > 0 ? (
-              <Alert className="border-warning bg-warning-soft text-warning-strong">
+              <Alert variant="warning">
                 <AlertTriangle aria-hidden="true" />
                 <AlertTitle>一部の商品は補正されませんでした</AlertTitle>
                 <AlertDescription>
@@ -376,7 +376,15 @@ export function IntegrityCheckPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex flex-col items-end gap-1">
-                              <span className="font-semibold tabular-nums">
+                              <span
+                                className={
+                                  item.difference > 0
+                                    ? "font-semibold text-success-strong tabular-nums"
+                                    : item.difference < 0
+                                      ? "font-semibold text-destructive-strong tabular-nums"
+                                      : "font-semibold text-muted-foreground tabular-nums"
+                                }
+                              >
                                 {item.difference > 0 ? "+" : ""}
                                 {item.difference.toLocaleString("ja-JP")}
                               </span>
@@ -386,7 +394,7 @@ export function IntegrityCheckPage() {
                           <TableCell>
                             <div className="flex items-center justify-center gap-2">
                               {isFixed ? (
-                                <Badge className="bg-success text-primary-foreground">
+                                <Badge variant="outline" tone="success">
                                   <CheckCircle2 aria-hidden="true" />
                                   補正済み
                                 </Badge>
@@ -435,7 +443,7 @@ export function IntegrityCheckPage() {
               補正すると元に戻せません。選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Alert className="border-warning bg-warning-soft text-warning-strong">
+          <Alert variant="warning">
             <AlertTriangle aria-hidden="true" />
             <AlertTitle>補正すると元に戻せません</AlertTitle>
             <AlertDescription>

@@ -389,7 +389,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 ### Alert warning variant（画面上部の注意喚起、owner v4 決定で確定）
 
-業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` に次を追加する: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。枠は `--warning`（badge ①状態の `--warning-border` より一段濃い）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
+業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` の `warning` は次を持つ（`data-variant` にも出力）: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。枠は `--warning`（badge ①状態の `--warning-border` より一段濃い）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
 
 ```tsx
 <Alert variant="warning">
@@ -401,7 +401,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 </Alert>
 ```
 
-適用先候補: `PriceRevisionPage.tsx:112-116`（現状 `<Alert role="note">` で variant 指定なし、`AlertTitle` も無い 1 段構造。runtime lane で `warning` variant へ切替え、`AlertTitle`「ご注意」を追加し、既存の本文はそのまま `AlertDescription` に残す）。追加適用先（owner 決定、2026-09-06）: ホーム『前日分が未取込みです』（`HomePage.tsx:76-84`）は destructive のまま `AlertTriangle` icon を追加（警告）、日次 / 月次売上の『レジ日報は未取込みです』（`DailySalesPage.tsx:175`、`MonthlySalesPage.tsx:166`）は warning variant。success Alert の本文色は現状（`text-success-strong`）を維持する（owner 保留、2026-09-06）。
+適用先: `PriceRevisionPage.tsx:79-83`（移行前 anchor）。`<Alert variant="warning" role="note">` + icon + `AlertTitle`「ご注意」へ移行済みで、既存本文は `AlertDescription` に維持する。追加適用先（owner 決定、2026-09-06）: ホーム『前日分が未取込みです』（`HomePage.tsx:76-84`）は destructive のまま `AlertTriangle` icon を追加（警告）、日次 / 月次売上の『レジ日報は未取込みです』（`DailySalesPage.tsx:175`、`MonthlySalesPage.tsx:166`）は warning variant。success Alert の本文色は現状（`text-success-strong`）を維持する（owner 保留、2026-09-06）。
 
 **Alternatives considered**: (a) `bg-card` 据え置き + `text-warning-strong`（対 `bg-card` 8.32:1、AA 達成だが「薄い」という owner 指摘を soft 背景なしでは解消できず不採用）。(b) `bg-card` 据え置き + `text-foreground` 本文、枠と icon のみ amber（owner が「すっきり見えるが警告表示としての一貫性に欠ける」と評し不採用）。(d) タイトルのみ `text-warning-strong` bold、本文 `text-foreground`（見出しのみの強調では①状態 badge との視覚言語統一に届かず不採用）。
 
@@ -603,7 +603,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 />
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は input 単体 `max-w-md`（wrapper なし、可視 Label は持つ）。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は `div.flex.items-center.gap-2` 配下に可視 `Label` + `Input`（`max-w-md` 維持）を並べる。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
@@ -808,41 +808,43 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 ```tsx
 // status === "stockout"
-<Badge variant="outline" className={cn("font-medium", STATUS_STYLE.stockout)}>
+<Badge variant="outline" tone="destructive" className="font-medium">
   <CircleAlertIcon aria-hidden="true" />
   在庫切れ
 </Badge>
 
 // status === "low"
-<Badge variant="outline" className={cn("font-medium", STATUS_STYLE.low)}>
+<Badge variant="outline" tone="warning" className="font-medium">
   <TriangleAlertIcon aria-hidden="true" />
   在庫少
 </Badge>
 
 // status === "ok"
-<Badge variant="outline" className={cn("font-medium", STATUS_STYLE.ok)}>
+<Badge variant="outline" className="border-stone-200 bg-stone-50 font-medium text-stone-600">
   通常
 </Badge>
 ```
 
 **badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = `variant="default"` + `border-warning`（琥珀 pill、枠色は owner v3 決定で `--warning` に確定、ランキング・最新 等）。この 3 種以外を作らない。
 
+`Badge` の `tone` prop（warning / success / destructive）は `variant` と独立の軸。①状態は `variant="outline"` と組み合わせる。未指定時は `data-tone` と tone class を出さず、②分類・③強調・中立状態には付けない。
+
 tone family は感情で分ける: 緑 = 終わったことを伝えるプラスの報告、琥珀 = 「ちょっと待って」の注意、赤 = 警告。状態の名前を伝えるだけの badge は無色（owner 決定、2026-09-06 Human Gate (1)）。
 
-**①状態の tone family マッピング表**（owner culling 列は Human Gate (1) の回答（原文 2、2026-09-06）を転記済み。全行 `rg -n "<Badge"` 実測、file:line 明記）:
+**①状態の tone family マッピング表**（owner culling 列は Human Gate (1) の回答（原文 2、2026-09-06）を転記済み。file:line は2026-09-08起票時の移行前 anchor。runtime は tone prop へ移行済み）:
 
 | tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
 |---|---|---|
-| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:34`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:79`「未反映」（`variant="secondary"`、runtime gap）/ `ResultStep.tsx:47`「部分成功」（`variant="outline"`、tone なし、runtime gap）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（`variant="destructive"` 塗り、warning tone への runtime gap） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
-| success（`border-success-border bg-success-soft text-success-strong` + icon） | `IntegrityCheckPage.tsx:387`「補正済み」（`bg-success` 直接塗り pill、runtime gap）/ `StocktakePage.tsx:404`（棚卸し全数完了時の同型 pill、runtime gap）/ `ProductTable.tsx:84`「反映済み」（`variant="default"`（橙）→ success tone の runtime gap）/ `ResultStep.tsx:47`「成功」（`variant="secondary"`、tone なし、runtime gap）/ `DailyReportImportPage.tsx:164,186`「確認済み」（`variant="secondary"`、tone なし、runtime gap） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
-| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:25`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（tone なし、runtime gap）・`:192`「明細取消済み」（tone なし、runtime gap） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:34`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:88`「未反映」（tone propへ移行済み）/ `ResultStep.tsx:47`「部分成功」（tone propへ移行済み）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（warning toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「部分成功」（tone="warning"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| success（`border-success-border bg-success-soft text-success-strong` + icon） | `IntegrityCheckPage.tsx:389`「補正済み」（soft success toneへ移行済み）/ `StocktakePage.tsx:404`（棚卸し全数完了時のsoft success tone）/ `ProductTable.tsx:93`「反映済み」（success toneへ移行済み）/ `ResultStep.tsx:47`「成功」（success toneへ移行済み）/ `DailyReportImportPage.tsx:164,186`「確認済み」（success toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「成功」（tone="success"） / `DailyReportImportPage.tsx:322`「成功」（tone="success"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:25`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 | 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:42`「通常」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 
-**表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 15「現在の行は 3 点で示す」の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:90,592`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
+**表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 15「現在の行は 3 点で示す」の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:97`（formatter）/ `ReturnExchangePage.tsx:592`（aria-label）/ `ReturnExchangePage.tsx:602`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
 
-**②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠が正しい形（`badge.tsx` の runtime gap は起票時実測を参照）。
+**②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）・手動（`daily-sales/components/ProductTable.tsx:133`、出どころの分類）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠が正しい形（`badge.tsx` の `secondary` に枠を実装済み）。
 
-**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx:533`、`variant="secondary"` の種類取り違えも runtime gap）・1 位（`ProductRankingTable.tsx:80`、`bg-rank-top-badge-bg` custom class）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）+ `border-warning` 枠。対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1。3 site とも枠追加が runtime gap。
+**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx:533`、`variant="default"` へ移行済み）・1 位（`ProductRankingTable.tsx:80`、`bg-rank-top-badge-bg` custom class）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）+ `border-warning` 枠。対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1。3 site とも `border-warning` を追加済み。
 
 **非Badge除外のクロスリファレンス**: 「入力中」（`PriceRevisionTable.tsx:104`）は [04-backbone.md](04-backbone.md) 原則 15「現在の行は 3 点で示す」の対象であり、tone family 表・②分類・③強調のいずれにも含めない。
 
@@ -995,6 +997,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-08 | PR #45 | Badge tone prop / 分類・強調枠、live SearchBar の Label と wrapper、Alert warning の runtime 反映を同期。取込み3状態の tone と移行前 anchor を訂正。既存更新履歴は維持。 |
 | 2026-09-06 | UI 磨き batch 3 design | ① にページ説明セクション使用パターンと `PageHeader` の `actions`/`subtitle` 排他 component gap（5画面）を追加。③ に備考列規則（必須列・空欄「—」統一・truncate+`title`）・「直近 {N} 件の」文言統一・`ManualSalePage.tsx` 二重囲み是正方針・共通 formatter（`formatStockDisplay`/`formatStockUnitLabel`）使用ルールを追加 |
 | 2026-09-05 | UI 一覧の背骨 D — Lane 4 | ⑩ 上部 `PaginationSummary` を `text-sm text-muted-foreground tabular-nums`（下部と統一）へ、`totalCount > 0` のとき常時表示・pager ボタンなしへ改訂。下部 `Pagination` は `totalPages <= 1`（0 件含む）で描画しない契約を追記。⑯ 必須構成 2 を「上部は totalCount > 0 で常時、下部は totalPages > 1 のときだけ」へ改訂（必須構成 3 の wrapper は無変更） |
 | 2026-09-05 | 本 PR | UI 規約補強 design batch。① Do bullet を 3 段 CTA 表現へ同期。⑥ に `Alert` `warning` variant（`bg-warning-soft`+`border-warning`+`AlertTriangle`+`text-warning-strong` の 4 点構造、owner v4 決定）を新設し適用先候補 `PriceRevisionPage.tsx:112-116` を記録。⑨ アクセシビリティ節を owner C1 決定へ書き換え（live 型は可視 Label のみを accessible name とし `aria-label` 廃止、WCAG 2.5.3）。⑬ に badge 3 種構成と①状態 tone family マッピング表（owner culling 列つき）・②分類/③強調 note・原則15 クロスリファレンスを追加、Don't に secondary 誤用禁止を追加。JSX コメント（`:158` 相当）の枠線 3:1 記述を `--border` 必須へ更新 + Human Gate 回答反映（2026-09-06）: tone family を感情で分ける規約文を追加、反映済み→success 行・取込み済み→warning 行へ移動し owner culling 列に原文 2 を転記、Alert 節に未取込み通知 3 箇所の適用先と success 本文色維持を追記 |

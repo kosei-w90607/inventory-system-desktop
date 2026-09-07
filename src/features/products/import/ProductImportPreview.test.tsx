@@ -91,6 +91,9 @@ describe("ProductImportPreview", () => {
       />,
     );
 
+    // SC3 / DSR-22: 上書き件数は強調badge。
+    expect(screen.getByText("上書き 1 件")).toHaveAttribute("data-variant", "default");
+    expect(screen.getByText("上書き 1 件")).toHaveClass("border-warning");
     await user.click(screen.getByRole("button", { name: "インポート実行" }));
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByRole("button", { name: "キャンセル" })).toBeInTheDocument();

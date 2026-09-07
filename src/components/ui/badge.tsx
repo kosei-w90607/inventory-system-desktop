@@ -10,13 +10,21 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary: "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+        // S1 の exact-match oracle が検査する分類 variant の定義。
+        // prettier-ignore
+        secondary: "border-border bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
         destructive:
           "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
         outline:
           "border-border-strong text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
+      },
+      // 状態の意味を枠・背景・文字の一組で伝える。未指定なら既存の分類/強調を保つ。
+      tone: {
+        warning: "border-warning-border bg-warning-soft text-warning-strong",
+        success: "border-success-border bg-success-soft text-success-strong",
+        destructive: "border-destructive-border bg-destructive-soft text-destructive-strong",
       },
     },
     defaultVariants: {
@@ -28,6 +36,7 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant = "default",
+  tone,
   asChild = false,
   ...props
 }: React.ComponentProps<"span"> & VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
@@ -37,7 +46,8 @@ function Badge({
     <Comp
       data-slot="badge"
       data-variant={variant}
-      className={cn(badgeVariants({ variant }), className)}
+      data-tone={tone}
+      className={cn(badgeVariants({ variant, tone }), className)}
       {...props}
     />
   );
