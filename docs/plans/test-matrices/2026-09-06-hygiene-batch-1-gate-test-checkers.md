@@ -33,14 +33,14 @@ R3（S3 が `scripts/doc-consistency-check.sh` の Plan Gate 判定ロジック�
 | SC3 formatter 非依存（S2） | oracle が exact-literal のまま | unit（`useUnsavedChangesWarning.test.tsx` T10 の Writer probe、Implementation Results に記録） | Writer が実装直後に `UnsavedChangesDialog.tsx:22-24` を一時的に `onEscapeKeyDown={(event) => {\n          event.preventDefault();\n        }}` から改行位置・インデント幅を変えた同義の整形へ書き換え、T10 が PASS することを確認してから元に戻す（`git diff` で復元確認） | 整形変更後に T10 が FAIL する（is-fragile のまま） |
 | SC4 preventDefault 除去検出（S2） | oracle が緩すぎる | unit（T10、mutation probe） | `UnsavedChangesDialog.tsx` の `event.preventDefault();` を一時的に削除し、T10 が FAIL することを確認してから元に戻す | mutant 適用後も T10 が PASS する（検出力なし） |
 | SC5 Wave Registry 配下 link 検出（S3） | `###` 打ち切りが残る | unit（`doc-consistency-plan-packet.test.sh` 新規 fixture） | 新規 fixture `write_plans_md_linking_under_wave_registry` で `## 次の行動` → `### Wave Registry` → packet link の順に `docs/Plans.md` を構成し、`run_check` が active packet link を検出して PK4 PASS することを assert | `### Wave Registry` 配下の link が検出されず PK4 が「へのリンクが見つかりません」で ERROR になる |
-| SC6 他呼び出し元の非干渉（S3） | 切替が波及 | unit（既存 `doc-consistency-plan-packet.test.sh` 全体の無変更 pass 確認） | 既存の全 test ケース（Trace Matrix / Acceptance Criteria / Test Plan 等の抽出に依存する既存 assertion）が本変更後も無変更で PASS する | 他の `extract_markdown_section` 呼び出し元（実際の呼び出し 6 箇所中、対象 `:1366` 以外の 5 箇所）の抽出結果が変わり既存 test が壊れる |
+| SC6 他呼び出し元の非干渉（S3） | 切替が波及 | diff review（既存 test は波及を検出しない、Codex review 5129675720 P2-3 実測） | 対象 5 箇所の呼び出しが `extract_markdown_section` のまま変更されていないことを diff で確認する（既存 `doc-consistency-plan-packet.test.sh` 全体の無変更 PASS は現 fixture に対する回帰確認であり、5 箇所を `extract_markdown_h2_section` に切り替えても同じ test は PASS するため波及の検出力はない） | （mutation oracle なし。call-site 不変は diff review でのみ確認、Mutation Oracle Notes 参照） |
 
 ## Mutation Oracle Notes
 
 - SC1/SC2 は同一 test 内で「除外されるべき 2 パターン」と「除外されるべきでない 1 パターン」を対にする。SC1 単独（除外パターンのみ）だと `sweep_dir_for_tokens` を丸ごと no-op にする mutant（何も検出しない）を見逃す
 - SC3/SC4 は Writer probe として Implementation Results に記録する（Matrix 実行時に repo を一時的に mutant 化して元に戻す運用、CI に恒久 mutant を残さない）。SC3 単独だと oracle を「常に PASS」にする mutant（検出力ゼロ）を見逃すため SC4 と対で運用する
 - SC5 の fixture は既存 `write_plans_md_linking`（link が `## 次の行動` 直下、`###` を挟まない）との対比で設計する。SC5 単独で `write_plans_md_linking_under_wave_registry` のみを追加すると、`extract_markdown_h2_section` への切替を忘れて `extract_markdown_section` のまま残した mutant（旧関数のまま）を、新規 fixture が ERROR で kill する。既存 `write_plans_md_linking` 系ケース（SC6 側）が無変更で PASS することとの両立を確認する
-- SC6 は新規 test を追加せず、既存 `doc-consistency-plan-packet.test.sh` の全既存ケースが無変更で PASS することをもって確認する。もし `extract_markdown_h2_section` への切替が「次の行動」以外の呼び出し元（Trace Matrix 等）にまで誤って波及した場合、既存の該当 test ケースが壊れて検出される
+- SC6 は新規 test を追加せず、対象 5 呼び出し元が `extract_markdown_section` のまま変更されていないことを diff review で確認する。既存 `doc-consistency-plan-packet.test.sh` の全既存ケースが無変更で PASS することは現 fixture に対する回帰確認にすぎず、5 呼び出し元を `extract_markdown_h2_section` に切り替えても同じ test suite は PASS する（Codex review 5129675720 P2-3 で実測）ため、波及に対する mutation-killing の検出力はない
 
 ## Contract Coverage Cross-check
 
