@@ -44,4 +44,4 @@ R3（S3 が `scripts/doc-consistency-check.sh` の Plan Gate 判定ロジック�
 
 ## Contract Coverage Cross-check
 
-Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1/SC2 は `cargo test --test import_internal_contract_test`、SC3/SC4 は vitest + Writer probe（Implementation Results 記録）、SC5/SC6 は `bash scripts/tests/doc-consistency-plan-packet.test.sh`。AC7（`doc-consistency-check.sh --target plan` / `check-workflow-git.sh` の exit code）と AC8（既存 Rust/frontend フル gate）は Plan Packet 側の完了条件として記載済みで、本 Matrix には独立行を立てない。
+Plan Packet の Contract Coverage Ledger と 1:1 対応する。SC1/SC2 は `cargo test --test import_internal_contract_test`、SC3/SC4 は vitest + Writer probe（Implementation Results 記録）、SC5/SC6 は `bash scripts/tests/doc-consistency-plan-packet.test.sh`（SC6 の他 5 caller 非干渉は同 test では区別できず diff review で確認）。AC7（`doc-consistency-check.sh --target plan` / `check-workflow-git.sh` の exit code）と AC8（既存 Rust/frontend フル gate）は Plan Packet 側の完了条件として記載済みで、本 Matrix には独立行を立てない。
