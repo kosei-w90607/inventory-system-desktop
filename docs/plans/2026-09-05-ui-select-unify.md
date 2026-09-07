@@ -4,7 +4,7 @@ owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 5d94a72
@@ -13,7 +13,7 @@ owner 決定（R5-3、2026-09-05、[owner L3 原文](../design-system/reference/
 - Writer: Claude Sonnet 5 subagent（worktree isolation、D-079）
 - Plan Reviewer: 独立 Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer、D-056）
 - Final Reviewer: Sonnet subagent（fresh context）+ Opus 5（read-only claims-producer）+ Codex ロジックレビュー 1 回（Codex 枠切れ、2026-09-07 夜の週次リセット後に実施。§3.3 Capacity-degraded により Codex 成分は pending、human-confirm で待機し Phase を前進させない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: dbb6ef0
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〈プルダウン統一の見た目〉/ AC-L3-2〈開閉・選択・「すべて」・キーボード操作、owner 選定 2 画面〉の 2 項目）
@@ -352,7 +352,7 @@ Plan Review round 3（独立 Sonnet subagent、fresh context + 独立 Opus 5 rea
 
 2026-09-06: Final Review round 1 = Opus approve-with-P2（`select.tsx` echo guard を機序実証の上で採用 → Gated Amendment 2、P2: comment の `<select` literal / SC8a の値 assert、P3: L8-D6 は static oracle のみ / `disabled` は Root）+ Sonnet fresh reject（全 mutant 再注入で survivor: SC4a / SC4c / SC8a / SC8b、P3 SC10c）→ Writer 是正 `774eee5`（comment + DSR-23 の 1 文）/ `ce39c8f`（test 5 件）→ 独立 closure 再注入（fresh Sonnet、隔離 worktree）で survivor 0（全 mutant kill）、full suite pass、L1 full RESULT=PASS（evidence は PR body。**Preflight 是正**: D-038〈DEV_WORKFLOW.md:123〉により揮発 evidence をトラック文書から除去）。P1/P2 = 0 を確認し `implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ⑧ 同期（S12）の本 content commit に同乗させて遷移、Reviewed Content HEAD = `ce39c8f`。Writer 観察: full suite 1 回目で `app-router.test.tsx` の scroll-restoration が 1 度 fail（単独再実行 pass、closure の再実行でも再現せず）— Lane 3 由来の既知 race 系として記録のみ。次 = owner Windows native L3（AC-L3-1〈プルダウンの見た目統一〉/ AC-L3-2〈開閉・選択・「すべて」・キーボード: ↑↓ で開く / IME 頭文字検索なし / ラベル文字クリックで開かない、per-row 画面 1 つを含む〉、介入 2/3）→ Codex ロジックレビュー 1 回（§3.3 pending、9/7 夜）→ Findings Freeze → ready-hosted-final。
 
-- Findings Freeze: not yet frozen（Codex ロジックレビュー待ち）; post-freeze exceptions: none.
+- Findings Freeze: frozen at dbb6ef0（Codex round 5 review 5134170273、2026-09-07、新規指摘なし）; post-freeze exceptions: none.
 
 ### Gated Amendment 2（2026-09-06、Final Review 起源、Coordinator 記録）
 
@@ -366,3 +366,5 @@ Plan Review round 3（独立 Sonnet subagent、fresh context + 独立 Opus 5 rea
 2026-09-06: Preflight review（pre-Codex）は doc-only 3 件（D-038 揮発 evidence の除去、Select 消費者数の誤カウント訂正、行番号 pin のテスト名化）を是正、P3 1 件を記録: `InventoryRecordsPage.test.tsx:424` の `it("⑧SC4b: …")`（round-trip test、L8-D5）は同ファイル `:451` の pre-existing `it("SC4b: …")`（表示件数変更、Lane 3 由来、別契約）と SC-id が衝突するが、Writer が `⑧` prefix を付けて命名しており曖昧さは実質解消済み — 採用（accept）、コード変更なし。
 
 2026-09-06: Codex 前 preflight（Opus）= docs 側 fix first → drafter 是正 `0b98a81`（D-038 揮発 evidence 除去、消費者数の訂正、行 pin → test 名）+ Writer `c66c607`（`select.tsx:15` の `ponytail:` 印除去、comment のみ）。Coordinator が `c66c607` の diff を実読（comment 1 行、logic 不変）し Reviewed Content HEAD を `c66c607` へ更新。preflight verdict: code は Codex ready。残り = Codex 1 回（9/7 夜）。
+
+2026-09-07: Codex ロジックレビュー round 1 = review 5129419423（P2 6 = test 検出力、全件 accept）→ 是正 `39f2a06` → `8438a70` で `state-backtrack human-confirm->implementing`。round 2 = review 5130568320（P2 2 / P3 1）→ 是正 `b778ee9`。round 3 = review 5132220796（P2 1）→ 是正 `095805f`（Select 16 箇所 × 全 option の literal 表）。round 4 = review 5133986686（同型 3 経路 P2 1）→ 是正 `dbb6ef0`（対照 probe 形）。round 5 = review 5134170273（**新規指摘なし、Findings Freeze 可**、3 mutant 独立再注入で検出、frontend 1,312 / Rust 963 PASS）。production code は round 1 以降不変（test 補強のみ）。PR #35 squash merge 後に origin/main を単段 merge（`9b20575`、33 file、全 gate PASS、main で archive 済みの Lane 5 packet 重複を除去）。owner が L3 PASS 済み PR の Ready → merge → closeout の代行を承認（2026-09-07）→ **state-only 遷移 implementing->local-verified->independent-review->human-confirm->ready-hosted-final を本 commit で圧縮記録**: local-verified = Writer gate + merge 後 full gate（format / lint / typecheck / 1,314 test / doc gate ERROR 0）、independent-review = Sonnet 一次検証 + Codex round 1〜5（Findings Freeze）、human-confirm = owner Windows native L3 PASS（2026-09-06、production 不変のため有効）、ready-hosted-final = owner の Ready 承認。Reviewed Content HEAD = `dbb6ef0`。hosted final は Ready 化時の pull_request run で確認する。
