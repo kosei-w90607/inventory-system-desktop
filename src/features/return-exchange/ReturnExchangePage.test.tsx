@@ -584,6 +584,170 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     expect(screen.getByLabelText("RT-002 の方向")).toHaveTextContent("渡し（在庫-）");
     expect(screen.getByLabelText("RT-001 の方向")).toHaveTextContent("渡し（在庫-）");
   });
+
+  it("Codex round3 P2-class: 種別selectの初期値（返品）はreturn_typeとしてそのまま送信される", async () => {
+    const user = userEvent.setup();
+    mockCreateReturn.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 60, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    renderWithClient(<ReturnExchangePage />);
+    await addSingleProduct(user);
+    await user.click(screen.getByRole("button", { name: "返品・交換を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReturn).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateReturn.mock.calls[0][0].return_type).toBe("return");
+    expect(mockCreateReturn.mock.calls[0][0].items[0]?.direction).toBe("in");
+  });
+
+  it("Codex round3 P2-class: 種別selectで交換→返品へ明示的に戻すとreturn_typeがreturnとして送信される（初期値頼みではない検査）", async () => {
+    const user = userEvent.setup();
+    mockCreateReturn.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 63, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    renderWithClient(<ReturnExchangePage />);
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+    await addSingleProduct(user);
+
+    // 交換 → 返品へ明示的に戻す（渡し行が無いため hasOut ガードに抵触しない）。
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "返品" }));
+    await user.click(screen.getByRole("button", { name: "返品・交換を保存" }));
+
+    await waitFor(() => {
+      expect(mockCreateReturn).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateReturn.mock.calls[0][0].return_type).toBe("return");
+  });
+
+  it("Codex round3 P2-class: 種別selectで交換へ切り替えるとreturn_typeがexchangeとして、追加方向の戻り・渡しがどちらもitems.directionとして送信される", async () => {
+    const user = userEvent.setup();
+    mockCreateReturn.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 61, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    renderWithClient(<ReturnExchangePage />);
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "戻り" }));
+    await addSingleProduct(user);
+
+    mockSearchProducts.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "RT-002", name: "返品商品2" })],
+        total_count: 1,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し" }));
+    await user.type(screen.getByLabelText("返品・交換商品検索"), "RT-002{enter}");
+    expect(await screen.findByText("RT-002")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "返品・交換を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReturn).toHaveBeenCalledTimes(1);
+    });
+    const request = mockCreateReturn.mock.calls[0][0];
+    expect(request.return_type).toBe("exchange");
+    expect(request.items.find((item) => item.product_code === "RT-001")?.direction).toBe("in");
+    expect(request.items.find((item) => item.product_code === "RT-002")?.direction).toBe("out");
+  });
+
+  it("Codex round4 P2-class: 追加方向selectで渡しへ切り替えてから戻りへ戻すとRT-001のdirectionがinとして送信される（初期値頼みではない検査）", async () => {
+    const user = userEvent.setup();
+    mockCreateReturn.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 64, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    renderWithClient(<ReturnExchangePage />);
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+
+    // 初期値(戻り)のままでは Radix が onValueChange を発火しないため、
+    // 一度「渡し」へ切り替えてから「戻り」へ戻す実操作を経由させてから RT-001 を追加する。
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し" }));
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "戻り" }));
+    await addSingleProduct(user);
+
+    // 交換は戻り明細と渡し明細の両方が必要なため RT-002 を渡しで追加する。
+    mockSearchProducts.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "RT-002", name: "返品商品2" })],
+        total_count: 1,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    await user.click(screen.getByLabelText("追加方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し" }));
+    await user.type(screen.getByLabelText("返品・交換商品検索"), "RT-002{enter}");
+    expect(await screen.findByText("RT-002")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "返品・交換を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReturn).toHaveBeenCalledTimes(1);
+    });
+    const request = mockCreateReturn.mock.calls[0][0];
+    expect(request.items.find((item) => item.product_code === "RT-001")?.direction).toBe("in");
+  });
+
+  it("Codex round3 P2-class: per-row の方向selectの戻り・渡しがどちらもitems.directionとしてそのまま送信される", async () => {
+    const user = userEvent.setup();
+    mockCreateReturn.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 62, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    renderWithClient(<ReturnExchangePage />);
+    await user.click(screen.getByLabelText("種別"));
+    await user.click(await screen.findByRole("option", { name: "交換" }));
+    await addSingleProduct(user);
+
+    mockSearchProducts.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "RT-002", name: "返品商品2" })],
+        total_count: 1,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    await user.type(screen.getByLabelText("返品・交換商品検索"), "RT-002{enter}");
+    expect(await screen.findByLabelText("RT-002 の方向")).toBeInTheDocument();
+
+    // RT-001: 「渡し（在庫-）」を明示選択（最終状態 out）。
+    await user.click(screen.getByLabelText("RT-001 の方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し（在庫-）" }));
+
+    // RT-002: 「渡し（在庫-）」→「戻り（在庫+）」の順に明示選択（最終状態 in、両 option を経由）。
+    await user.click(screen.getByLabelText("RT-002 の方向"));
+    await user.click(await screen.findByRole("option", { name: "渡し（在庫-）" }));
+    await user.click(screen.getByLabelText("RT-002 の方向"));
+    await user.click(await screen.findByRole("option", { name: "戻り（在庫+）" }));
+
+    await user.click(screen.getByRole("button", { name: "返品・交換を保存" }));
+    await waitFor(() => {
+      expect(mockCreateReturn).toHaveBeenCalledTimes(1);
+    });
+    const items = mockCreateReturn.mock.calls[0][0].items;
+    expect(items.find((item) => item.product_code === "RT-001")?.direction).toBe("out");
+    expect(items.find((item) => item.product_code === "RT-002")?.direction).toBe("in");
+  });
 });
 
 describe("ReturnExchangePage native input tokens（Lane 5 SC4d）", () => {

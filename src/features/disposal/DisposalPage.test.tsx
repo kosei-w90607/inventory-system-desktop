@@ -291,6 +291,45 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     });
   });
 
+  it("Codex round4 P2-class: 種別selectで全option（廃棄・破損・その他）の内部値が独立リテラルで検査される（初期値damageもonValueChange経由で確認）", async () => {
+    const user = userEvent.setup();
+    mockCreateDisposal.mockResolvedValue({
+      status: "ok",
+      data: { record_id: 41, created: true, idempotent_replay: false, stock_warnings: [] },
+    });
+
+    const DISPOSAL_TYPE_OPTIONS: [label: string, value: string][] = [
+      ["廃棄", "disposal"],
+      ["破損", "damage"],
+      ["その他", "other"],
+    ];
+    for (const [label, expectedValue] of DISPOSAL_TYPE_OPTIONS) {
+      mockCreateDisposal.mockClear();
+      const { unmount } = renderWithClient(<DisposalPage />);
+      await addSingleProduct(user);
+      fireEvent.change(screen.getByLabelText("DP-001 の数量"), { target: { value: "2" } });
+      fireEvent.change(screen.getByLabelText("DP-001 の理由"), { target: { value: "棚卸差異" } });
+
+      await user.click(screen.getByLabelText("DP-001 の種別"));
+      if (expectedValue === "damage") {
+        // 初期値(破損)のままでは Radix が onValueChange を発火しないため、
+        // 一度別の値へ切り替えてから破損へ戻す実操作を経由させる。
+        await user.click(await screen.findByRole("option", { name: "廃棄" }));
+        await user.click(screen.getByLabelText("DP-001 の種別"));
+      }
+      await user.click(await screen.findByRole("option", { name: label }));
+      await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
+
+      await waitFor(() => {
+        expect(mockCreateDisposal).toHaveBeenCalled();
+      });
+      const createCalls = mockCreateDisposal.mock.calls as [DisposalCreateRequest][];
+      expect(createCalls[0][0].items[0]?.disposal_type).toBe(expectedValue);
+
+      unmount();
+    }
+  });
+
   it("T8 UI-05-D17: saved disposal result does not add a detail link", async () => {
     const user = userEvent.setup();
     mockCreateDisposal.mockResolvedValue({
@@ -626,6 +665,14 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
 
     expect(screen.getByLabelText("DP-001 の種別")).toHaveTextContent("廃棄");
     expect(screen.getByLabelText("DP-002 の種別")).toHaveTextContent("破損");
+
+    // row 2 自身の select を直接操作しても row 2 だけが変わること
+    // （updateDisposalRow が常に rows[0] を書き換える mutant を kill する）。
+    await user.click(screen.getByRole("combobox", { name: "DP-002 の種別" }));
+    await user.click(await screen.findByRole("option", { name: "その他" }));
+
+    expect(screen.getByLabelText("DP-002 の種別")).toHaveTextContent("その他");
+    expect(screen.getByLabelText("DP-001 の種別")).toHaveTextContent("廃棄");
   });
 });
 

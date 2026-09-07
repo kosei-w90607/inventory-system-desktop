@@ -398,6 +398,36 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     });
   });
 
+  it("⑧SC4c-2: 状態selectでall以外を選ぶとsearch stateがその値へ更新される（Codex round3 P2-R2-1、取消済み/進行中の内部値を含む）", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const user = userEvent.setup();
+    const onSearchChange = vi.fn();
+
+    renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={onSearchChange} />);
+
+    const statusTrigger = await screen.findByLabelText("状態");
+
+    const STATUS_OPTIONS: [label: string, value: string][] = [
+      ["有効", "active"],
+      ["取消済み", "canceled"],
+      ["進行中", "in_progress"],
+    ];
+    for (const [label, expectedValue] of STATUS_OPTIONS) {
+      await user.click(statusTrigger);
+      await user.click(await screen.findByRole("option", { name: label }));
+      const lastCall = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+        (prev: { status?: string; page?: number }) => { status?: string; page?: number },
+      ];
+      expect(lastCall[0]({})).toEqual({
+        status: expectedValue,
+        page: 1,
+      });
+    }
+  });
+
   it("⑧SC4a: 記録種別selectでall以外を選ぶとsearch stateがその値へ更新される", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
@@ -419,6 +449,35 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       recordType: "disposal_record",
       page: 1,
     });
+
+    await user.click(recordTypeTrigger);
+    await user.click(await screen.findByRole("option", { name: "入庫" }));
+    const lastCallReceiving = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+      (prev: { recordType?: string; page?: number }) => { recordType?: string; page?: number },
+    ];
+    expect(lastCallReceiving[0]({})).toEqual({
+      recordType: "receiving_record",
+      page: 1,
+    });
+
+    // P2-R2-1: 残る option も内部値を独立リテラルで検査する（round 1 は具体例2件で打ち切っていた）。
+    const REMAINING_RECORD_TYPE_OPTIONS: [label: string, value: string][] = [
+      ["返品・交換", "return_record"],
+      ["手動販売出庫", "manual_sale"],
+      ["CSV取込み", "csv_import"],
+      ["棚卸し", "stocktake"],
+    ];
+    for (const [label, expectedValue] of REMAINING_RECORD_TYPE_OPTIONS) {
+      await user.click(recordTypeTrigger);
+      await user.click(await screen.findByRole("option", { name: label }));
+      const lastCallRemaining = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1] as [
+        (prev: { recordType?: string; page?: number }) => { recordType?: string; page?: number },
+      ];
+      expect(lastCallRemaining[0]({})).toEqual({
+        recordType: expectedValue,
+        page: 1,
+      });
+    }
   });
 
   it("⑧SC4b: 部門selectで実在部門を選ぶとtrigger表示が部門名になりdepartmentIdがnumberになる（round-trip、L8-D5）", async () => {
@@ -444,6 +503,17 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     await waitFor(() => {
       expect(mockListInventoryRecords).toHaveBeenLastCalledWith(
         expect.objectContaining({ department_id: 2 }),
+      );
+    });
+
+    await user.click(departmentTrigger);
+    await user.click(await screen.findByRole("option", { name: "すべて" }));
+    await waitFor(() => {
+      expect(departmentTrigger).toHaveTextContent("すべて");
+    });
+    await waitFor(() => {
+      expect(mockListInventoryRecords).toHaveBeenLastCalledWith(
+        expect.objectContaining({ department_id: null }),
       );
     });
   });

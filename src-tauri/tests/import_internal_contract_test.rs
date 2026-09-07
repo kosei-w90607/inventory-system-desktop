@@ -262,6 +262,15 @@ fn sweep_dir_for_tokens(dir: &Path, tokens: &[String], hits: &mut Vec<String>) {
             sweep_dir_for_tokens(&path, tokens, hits);
             continue;
         }
+        // ponytail: 到達可能な既知 gitignore 対象 2 パターンのみ明示 skip。
+        // 汎用 .gitignore parser は新規依存になるため導入しない（Plan Packet S1 参照）。
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+        if file_name == "routeTree.gen.ts" || file_name.ends_with(".rs.bk") {
+            continue;
+        }
         let bytes =
             fs::read(&path).unwrap_or_else(|error| panic!("read failed for {path:?}: {error}"));
         let text = String::from_utf8_lossy(&bytes);
@@ -296,5 +305,47 @@ fn test_active_sales_import_vocabulary_sweep_i_g1() {
         hits.is_empty(),
         "active stale vocabulary:\n{}",
         hits.join("\n")
+    );
+}
+
+#[test]
+fn test_sweep_dir_for_tokens_skips_known_generated_paths() {
+    let tokens = ["FORBIDDEN_TOKEN".to_string()];
+    let dir = tempfile::tempdir().unwrap_or_else(|error| panic!("tempdir failed: {error}"));
+
+    fs::write(
+        dir.path().join("routeTree.gen.ts"),
+        "const x = 'FORBIDDEN_TOKEN';",
+    )
+    .unwrap_or_else(|error| panic!("write routeTree.gen.ts failed: {error}"));
+    fs::write(dir.path().join("foo.rs.bk"), "// FORBIDDEN_TOKEN")
+        .unwrap_or_else(|error| panic!("write foo.rs.bk failed: {error}"));
+    fs::write(dir.path().join("foo.rs"), "// FORBIDDEN_TOKEN")
+        .unwrap_or_else(|error| panic!("write foo.rs failed: {error}"));
+    // 保護対象 active surface（bindings.ts 等）の除外を見逃さないため、下位ディレクトリの
+    // 通常 .ts file も対にする（`.ts` 一括 skip mutant と再帰呼び出し削除 mutant の両方を kill）。
+    let lib_dir = dir.path().join("lib");
+    fs::create_dir(&lib_dir).unwrap_or_else(|error| panic!("mkdir lib failed: {error}"));
+    fs::write(lib_dir.join("bindings.ts"), "// FORBIDDEN_TOKEN")
+        .unwrap_or_else(|error| panic!("write lib/bindings.ts failed: {error}"));
+
+    let mut hits = Vec::new();
+    sweep_dir_for_tokens(dir.path(), &tokens, &mut hits);
+
+    assert!(
+        !hits.iter().any(|hit| hit.contains("routeTree.gen.ts")),
+        "routeTree.gen.ts must be skipped: {hits:?}"
+    );
+    assert!(
+        !hits.iter().any(|hit| hit.contains("foo.rs.bk")),
+        "*.rs.bk must be skipped: {hits:?}"
+    );
+    assert!(
+        hits.iter().any(|hit| hit.contains("foo.rs:")),
+        "normal files must still be swept: {hits:?}"
+    );
+    assert!(
+        hits.iter().any(|hit| hit.contains("bindings.ts:")),
+        "nested .ts files (e.g. bindings.ts) must still be swept: {hits:?}"
     );
 }
