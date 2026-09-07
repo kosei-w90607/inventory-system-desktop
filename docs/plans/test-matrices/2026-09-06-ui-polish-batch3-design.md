@@ -6,7 +6,7 @@ Risk: R2（Coordinator 判断で Test Design Matrix を必須化。理由は Pla
 
 ## Contracts Under Test
 
-- UIB3-D1: `02-component-catalog.md` ① に説明セクション使用パターン（`space-y-1` wrapper、`actions` と併存可能）を追加し、`docs/function-design/60,67,68` に説明文 3 案（owner culling）を追加する。
+- UIB3-D1: `02-component-catalog.md` ① に説明セクション使用パターン（`PageHeader` 内 `space-y-1` グループ、`actions` と併存可能）を追加し、`docs/function-design/60,67,68` に説明文 3 案（owner culling）を追加する。
 - UIB3-D2: `01-decision-rules.md` DSR-22 に記録 ID 表示方針（3 案、owner culling、推奨 (b)）を注記として追加する。
 - UIB3-D3: `02-component-catalog.md` ③「直近実績サマリテーブル」に備考列規則（必須列・空欄表示 owner culling〈推奨「—」〉・truncate+title、`MovementTable.tsx` 共有 7 画面を含む）と A1(a)(b)(c) 統合（文言統一・列見出し・囲み是正）を追記する。
 - UIB3-D4: `ManualSalePage.tsx:739` の記録状態を既存 5 箇所と揃える runtime gap を記録する（design 側の記述変更なし。tone は ⑦ 決定済み、枠色トークンは Lane 5→⑦ の間で移行中）。
@@ -35,9 +35,9 @@ Risk: R2（Coordinator 判断で Test Design Matrix を必須化。理由は Pla
 | UIB3-D2 | 記録ID方針が owner 確定後も未確定の「案」のまま、または owner culling を経た経緯が消えて書かれる | doc-oracle + reviewer 実読 | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/01-decision-rules.md \| rg -Fc "owner culling"` ≥ 1（更新履歴表の同一文言に釣られないよう本文範囲に限定）かつ reviewer が DSR-22 該当箇所（`:443`）を実読し、「(b) 一覧の表示列から外す、で確定した」という owner 確定済み decision の書き方になっており、かつ 3 案を経た owner culling の経緯が残っていることを確認 | 確定後も「案」のままの書き方、または owner culling の経緯記録が消えた場合に検出 |
 | UIB3-D2 | 新規 DSR-23 の誤起草 | doc-oracle | `rg -c "^## DSR-23" docs/design-system/01-decision-rules.md` = 0 | DSR-22 拡張ではなく独立 DSR を作った場合に検出 |
 | UIB3-D3 | 備考規則・A1統合の欠落 | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "備考は"` ≥ 1、同様に `rg -F "truncate + \`title\`"` の hit ≥ 1、同様に `rg -Fc "直近 {N} 件の"` ≥ 1（Plan Review round 1 是正 P2 — 素の「備考」「truncate」「直近」は catalog に既存 baseline 非 0〈`truncate`=2、`直近`=3〉の false oracle だったため、baseline 0 確認済みの複合文字列へ差替え。いずれも更新履歴表の同一文言に釣られないよう本文範囲に限定） | 備考列規則・A1 統合が catalog ③ に追加されていない場合に検出 |
-| UIB3-D3 | 空欄表示の owner culling 確定文言（「—」）が rejected 案「備考なし」へ無断で戻される | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "「—」"` ≥ 1（更新履歴表の同一文言に釣られないよう本文範囲に限定） | catalog:191 の空欄表示規則が「—」以外へ書き換えられた場合に検出 |
-| UIB3-D3 | `source` の無い movement の長い note に全文確認手段が無いまま書かれる | reviewer 実読 | catalog ③ 追記箇所が「`source` の無い行は元記録リンクが無く、`MovementTable` 自身が movement note の全文確認を担う」契約を明記していることを確認（UI-06c-D6、`MovementTable.tsx:82-91`） | movement note の全文確認を「記録詳細ページ任せ」のまま書いた場合に検出（automated では検出困難、Residual Test Gaps 参照） |
-| UIB3-D3 | 記録詳細ページが同じ `MovementTable` を再利用し truncate されたままになる gap の記録漏れ | reviewer 実読 | catalog ③ 追記箇所が `StocktakeRecordDetailPage.tsx:234` 等、記録詳細ページ自身が `MovementTable` を再利用する構成でも truncate が解消されないことを明記していることを確認 | 記録詳細ページを開けば movement note の全文が見える、という誤った前提のまま書かれた場合に検出 |
+| UIB3-D3 | 空欄表示の owner culling 確定文言（「—」）が rejected 案「備考なし」へ無断で戻される | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "空欄表示は「—」に統一する"` ≥ 1 かつ `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "空欄表示は「備考なし」に統一する"` = 0（更新履歴表の同一文言に釣られないよう本文範囲に限定。**Codex round 2 是正**: bare `「—」` は同段落内の採用経緯文言に一致し反転 mutant を見逃すため、確定文の positive + rejected 文の negative の対 oracle に変更） | catalog:191 の空欄表示規則が「備考なし」へ反転された場合に検出（bare `「—」` オラクルは同段落内の残存文言のため検出できなかった） |
+| UIB3-D3 | `source` の無い movement の長い note に全文確認手段が無いまま書かれる | reviewer 実読 | catalog ③ 追記箇所が「`source` の無い行は元記録リンクが無く、`MovementTable` 自身が movement note の全文確認を担う（`title` は一覧上の補足に留め、折り返し・展開等で全文を確認できること）」契約を明記していることを確認（UI-06c-D6、`MovementTable.tsx:82-91`） | movement note の全文確認を「記録詳細ページ任せ」のまま書いた場合、または `title` 属性のみで足りるとした場合に検出（automated では検出困難、Residual Test Gaps 参照） |
+| UIB3-D3 | 記録詳細ページが同じ `MovementTable` を再利用し truncate されたままになる gap の記録漏れ | reviewer 実読 | catalog ③ 追記箇所が `StocktakeRecordDetailPage.tsx:234` 等、記録詳細ページ自身が `MovementTable` を再利用する構成でも truncate が解消されず、`title` のみでは全文確認手段にならないことを明記していることを確認 | 記録詳細ページを開けば movement note の全文が見える、という誤った前提のまま書かれた場合に検出 |
 | UIB3-D3 | `MovementTable.tsx` 共有 7 画面の記録漏れ | reviewer 実読 | catalog ③ 追記箇所が `MovementTable.tsx:57,92-94`（`"—"` + truncate のみ、`title` 欠落）を現存 gap として引用していることを確認 | 7 画面共有の既存箇所が起票時実測から漏れていた場合に検出 |
 | UIB3-D3 | 囲み是正方向の誤り（他画面へ箱を追加する記述） | reviewer 実読 | catalog ③ 追記箇所を実読し、「`ManualSalePage.tsx` の内側の枠を外す」方向で書かれていること（「他 3 画面に箱を足す」になっていないこと）を確認 | DSR-16 の明文と矛盾する是正方向が書かれた場合に検出（automated では検出困難、Residual Test Gaps 参照） |
 | UIB3-D3 | 廃棄・破損が誤って備考規則の対象に含まれる | reviewer 実読 | catalog ③ 追記箇所に廃棄・破損が対象外（Non-scope）と明記されていることを確認 | 廃棄・破損が備考列必須の対象に誤って含まれた場合に検出 |
@@ -78,7 +78,7 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 
 ## Boundary Checks
 
-- threshold: 備考欄の truncate 文字数しきい値は本 packet では確定しない（`max-w-*` クラスの具体値は runtime lane、`title` 属性による全文確認を必須条件として明記するのみ）。
+- threshold: 備考欄の truncate 文字数しきい値は本 packet では確定しない（`max-w-*` クラスの具体値は runtime lane）。movement note の全文確認は `title` を一覧上の補足に留め、`MovementTable` 自身が折り返し・展開等で同じ note の全文を確認できることを必須条件として明記する（catalog:191 契約、**Codex round 2 是正**: 旧文言は `title` 属性のみで全文確認が足りるかのように読めた）。
 - null/default: 備考が `null`/空文字のときの表示が owner culling 対象（本 packet では 2 択のいずれかに確定しない）。
 - empty/non-empty: 記録 ID 一覧の「0 件表示」等は既存 EmptyState 契約のまま変更しない。
 - min/max: not applicable。
