@@ -296,3 +296,26 @@ describe("StockMovementsPage perPage scroll（UI-06c）", () => {
     expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("StockMovementsPage native input tokens（Lane 5 SC4h）", () => {
+  it("SC4h: 開始日/終了日/種別の3箇所すべてがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={{}} onSearchChange={vi.fn()} />,
+    );
+
+    const fields = [
+      await screen.findByLabelText("開始日"),
+      screen.getByLabelText("終了日"),
+      screen.getByLabelText("種別"),
+    ];
+    for (const field of fields) {
+      expect(field).toHaveClass("bg-control-surface");
+      expect(field).not.toHaveClass("bg-background");
+    }
+  });
+});

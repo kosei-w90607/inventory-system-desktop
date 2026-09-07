@@ -201,6 +201,22 @@ write_plans_md_linking() {
     } > "$repo/docs/Plans.md"
 }
 
+# SC5: '## 次の行動' 配下の '### Wave Registry' 小見出しの下に active packet link を置く。
+write_plans_md_linking_under_wave_registry() {
+    {
+        echo "# Plans"
+        echo ""
+        echo "## 次の行動"
+        echo ""
+        echo "### Wave Registry"
+        echo ""
+        local basename
+        for basename in "$@"; do
+            echo "1. fixture entry: [plans/${basename}](plans/${basename})"
+        done
+    } > "$repo/docs/Plans.md"
+}
+
 write_plans_md_no_link() {
     {
         echo "# Plans"
@@ -1037,6 +1053,17 @@ write_plans_md_linking "2026-01-27-complete-fields.md"
 if ! run_check "docs/plans/2026-01-27-complete-fields.md"; then
     cat "$out" >&2
     fail "complete 13-field Workflow State fixture was rejected"
+fi
+assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+
+# --- 28. SPEC-HYG1-D1 SC5: '### Wave Registry' 配下の active packet link を検出する ---
+setup_repo_dirs
+reset_packet_defaults
+write_packet "$repo/docs/plans/2026-01-28-wave-registry-fixture.md"
+write_plans_md_linking_under_wave_registry "2026-01-28-wave-registry-fixture.md"
+if ! run_check "docs/plans/2026-01-28-wave-registry-fixture.md"; then
+    cat "$out" >&2
+    fail "active packet link placed under '### Wave Registry' was not detected"
 fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 

@@ -569,3 +569,13 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     });
   });
 });
+
+describe("ManualSalePage native input tokens（Lane 5 SC4g）", () => {
+  it("SC4g: 理由selectがbg-control-surfaceでbg-backgroundを持たない", async () => {
+    renderWithClient(<ManualSalePage />);
+
+    const reason = await screen.findByLabelText("理由");
+    expect(reason).toHaveClass("bg-control-surface");
+    expect(reason).not.toHaveClass("bg-background");
+  });
+});

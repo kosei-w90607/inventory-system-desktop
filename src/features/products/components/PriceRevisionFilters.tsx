@@ -43,7 +43,7 @@ export function PriceRevisionFilters({
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           取引先
           <select
-            className="h-9 w-48 rounded-md border bg-background px-3 text-foreground"
+            className="h-9 w-48 rounded-md border border-input bg-control-surface px-3 text-foreground"
             aria-label="取引先"
             disabled={suppliersQuery.isLoading}
             value={normalized.supplier === undefined ? "" : String(normalized.supplier)}

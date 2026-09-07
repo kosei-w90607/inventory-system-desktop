@@ -520,3 +520,27 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
     expect(screen.queryByRole("option", { name: "渡し（在庫-）" })).not.toBeInTheDocument();
   });
 });
+
+describe("ReturnExchangePage native input tokens（Lane 5 SC4d）", () => {
+  it("SC4d: 種別/備考/追加方向/方向の4箇所すべてがbg-control-surfaceでbg-backgroundを持たない、registerOptionClassラベルは不変", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<ReturnExchangePage />);
+    await addSingleProduct(user);
+
+    const fields = [
+      screen.getByLabelText("種別"),
+      screen.getByLabelText("備考"),
+      screen.getByLabelText("追加方向"),
+      screen.getByLabelText("RT-001 の方向"),
+    ];
+    for (const field of fields) {
+      expect(field).toHaveClass("bg-control-surface");
+      expect(field).not.toHaveClass("bg-background");
+    }
+
+    // registerOptionClass のラジオ選択肢ラベル（:147）は対象外、bg-background のまま不変。
+    const registerLabel = screen.getByLabelText("レジ未処理").closest("label");
+    expect(registerLabel).not.toBeNull();
+    expect(registerLabel).toHaveClass("bg-background");
+  });
+});

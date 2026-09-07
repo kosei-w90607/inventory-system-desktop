@@ -394,7 +394,7 @@ export function ReceivingPage() {
               id="receiving-supplier"
               value={values.supplierId ?? ""}
               disabled={isFormLocked || supplierQuery.isLoading}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-control-surface px-3 text-sm"
               onChange={(event) => {
                 const value = event.target.value;
                 updateValues((prev) => ({
