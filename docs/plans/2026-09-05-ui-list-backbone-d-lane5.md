@@ -4,7 +4,7 @@ owner 決定（D8/E13/E15、2026-09-04〜05、[Plans.md ④](../Plans.md) owner 
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 259155c
@@ -372,3 +372,5 @@ Review-only skipped because: Final Review を独立 Sonnet subagent（fresh cont
 2026-09-05: `implementing -> local-verified -> independent-review -> human-confirm` を Plans.md ④ 同期の content commit に同乗させて遷移（Risk 節の stacked train 方針どおり forward state-only を温存）: local-verified の証跡 = Writer content commit の gate 群 + L1 full RESULT=PASS（PR body）、independent-review の証跡 = Final Review round 2 approve + mutation 全 kill（詳細は PR body）、Reviewed Content HEAD = `251ecde`。次 = Draft PR 作成（base = Lane 3 branch、Lane 3 merge 後に main へ retarget）→ Codex ロジックレビュー（リセット後）→ owner Windows native L3（AC-L3-1〜2、Lane 3 run 3 と同時実施可）。
 
 2026-09-05: 2 回目の単段 merge（D-074 stacked train、rebase しない）。旧 tip `431cd59`（前回 base 付け替え後の状態）に `origin/main` `07302b5` を単段 merge。main drift は docs-only（`git diff 8cd2c04..07302b5 -- src src-tauri` = 空）で、衝突は `docs/Plans.md` 1 file のみ（他の docs 変更 15 file は自動 merge）。衝突箇所は ④ Lane 5 bullet 1 箇所で、main 側の文言（Lane 4 probe に headless Chromium 要 → Playwright devDep pin の新規事実、`min-release-age=7` 明記）を採用しつつ、main が欠いていた Lane 5 側の事実（`active packet: [UI 一覧の背骨 D — Lane 5]` link）を再挿入して両立。main の ⑥ drift 同期 PR 完了記載・⑦ design-first 候補・⑧ Select 置換の 3 bullet、Backlog 追加、ブロッカー節はいずれも無衝突で維持。全 gate PASS（`doc-consistency-check.sh` ERROR 0 / WARN 6、`--target plan` ERROR 0 / WARN 1、いずれも既存の pre-existing warning で本 merge 由来ではない）、L1 full RESULT=PASS（`npm audit --audit-level=high` 0 vulnerabilities）。Reviewed Content HEAD は `251ecde` のまま（merge delta は docs のみで実装差分なし、`git diff 431cd59 -- src src-tauri` = 空で確認）。PR #35 の base は引き続き main。次 = Codex ロジックレビュー（リセット後）→ Findings Freeze → ready-hosted-final。
+
+2026-09-07: Codex ロジックレビュー 1 回 = review 5129321882（新規指摘なし P1/P2/P3 = 0、隔離 worktree で 31 変異すべて kill、gate 全 PASS）→ Findings Freeze（Reviewed Content HEAD `251ecde` 不変）。owner が Ready → merge → closeout の代行を承認（2026-09-07、「Ready から締めまで進めてしまっていい」）→ `human-confirm -> ready-hosted-final` を本 commit で記録。hosted final は Ready 化時の pull_request run で確認する。
