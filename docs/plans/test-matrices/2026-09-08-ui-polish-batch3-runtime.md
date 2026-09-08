@@ -8,7 +8,7 @@ R3（説明セクション・記録ID列撤去・備考「—」・PriceHistory�
 
 ## Contracts Under Test
 
-- SC1: `PageHeader.tsx` の `actions` 分岐が `subtitle`/`description` を描画する（catalog `:48` root-cause fix、RUNTIME2-D1）
+- SC1: `PageHeader.tsx` の `actions` 分岐が `subtitle`/`description` を描画する（catalog `:48` root-cause fix、RUNTIME2-D1）。Gated Amendment 2: (c) 分岐の `<header>` が `items-start` を持ち `items-center` を持たない、左 group が `min-w-0` と `flex-1` を持つ、actions wrapper が `shrink-0` を持つ
 - SC2: `PageHeader.tsx` の `subtitle`-only 分岐にも `description` が描画される
 - SC3: `ReceivingPage.tsx:295`/`ManualSalePage.tsx:310`/`ReturnExchangePage.tsx:418`/`DisposalPage.tsx:285` の既存 `subtitle` 文言が画面に表示される
 - SC4: `ProductImportPage.tsx`/`PluExportPage.tsx`/`BackupRestorePage.tsx` に function-design 60/67/68 の確定文言が `description` として表示される
@@ -23,10 +23,10 @@ R3（説明セクション・記録ID列撤去・備考「—」・PriceHistory�
 - SC13: `ReturnRecordDetailPage.tsx:57` の `formatNote` が「備考なし」ではなく「—」を返す
 - SC14: `ReceivingPage.tsx`/`ManualSalePage.tsx`/`ReturnExchangePage.tsx`/`DisposalPage.tsx` の「直近の○○」section に「直近 {N} 件の…」文言が付く（N=10/5/10/10）
 - SC15（**F5, Opus P2-3 / Sonnet P2-1, CHANGE**）: `PriceHistorySection.tsx:43` の説明文が `limit` state から動的に導出され、初期状態「直近 10 件の売価・原価の変更を新しい順に表示します。」、`:82-93`「すべて表示」button クリック後は「直近 100 件の売価・原価の変更を新しい順に表示します。」に切り替わる（固定文字列ではない）
-- SC16: `PriceHistorySection.tsx` が `<ul>/<li>` から `<Table>`+`TableHead`（変更日時/売価/原価）へ変わり、既存の売価/原価 old→new 情報が維持される
+- SC16: `PriceHistorySection.tsx` が `<ul>/<li>` から `<Table>`+`TableHead`（変更日時/売価/原価）へ変わり、既存の売価/原価 old→new 情報が維持される。Gated Amendment 2: 売価 / 原価 cell の text は `¥110 → ¥150` 形で始まり接頭語「売価 」「原価 」を含まない（negative）、変更日時 cell は `T` を含まず空白区切り
 - SC17: `ManualSalePage.tsx:725` の内側二重枠（`<div className="rounded-md border">`）が外れる
 - SC18: `ManualSalePage.tsx:749` が `<Badge variant="outline">{formatRecordStatus(...)}</Badge>` へ統一される
-- SC19（**F15, Opus P3-5, CHANGE**）: 9 箇所のローカル `formatQuantity`（+ `StocktakeRecordDetailPage.tsx` の signed/optional 変種）が削除される。単位列が別途ある 3 site（`ManualSalePage.tsx:610`/`DisposalPage.tsx:514`/`ReturnExchangePage.tsx:834`）は数値のみ（`toLocaleString("ja-JP")`）になり、それ以外の 9 site は `formatStockDisplay`/`formatStockUnitLabel` を使い unit code（`pcs`/`cm`）が日本語ラベルへ翻訳される
+- SC19（**F15, Opus P3-5, CHANGE**）: 9 箇所のローカル `formatQuantity`（+ `StocktakeRecordDetailPage.tsx` の signed/optional 変種）が削除される。Gated Amendment 2: 入力行テーブルの `columnheader` 配列で「単位」が「数量」の直後に来る（`ManualSalePage` = […,「現在庫」,「数量」,「単位」,「販売金額」,「操作」]、`DisposalPage` = […,「種別」,「数量」,「単位」,「原価」,「理由」,「操作」]、`ReturnExchangePage` は不変）。単位列が別途ある 3 site（`ManualSalePage.tsx:610`/`DisposalPage.tsx:514`/`ReturnExchangePage.tsx:834`）は数値のみ（`toLocaleString("ja-JP")`）になり、それ以外の 9 site は `formatStockDisplay`/`formatStockUnitLabel` を使い unit code（`pcs`/`cm`）が日本語ラベルへ翻訳される
 - SC20: `01-decision-rules.md:435` の「現状〈本 PR 時点〉は記録IDを含む 8 列…」という stale 注記が是正され、decision 本体 (b) は変更されない
 - SC21（**F1, Opus P1-1, CHANGE / G3, G4 追加**）: catalog `:48`/`:191` の現在形 gap 文（「現状排他である」「計 5 画面が影響」「現状 truncate のみで title を欠くため是正対象」）が「何を・どの PR で・どう解消したか」を述べる反映済み文へ書き換えられる（追記ではなく書き換え）。**F13 追加**: `:191` の `OperationLogsPage.tsx:522` 引用も `:533` へ訂正される。**G3 追加**: `:48` の 4 画面 anchor（`ReceivingPage.tsx:288-291`等）も実測行（`:295` 等、+7 drift）へ訂正される。**G4 追加**: `:46` の未来形「runtime lane で移行する」が「本 PR（⑮）で移行済み」へ書き換えられる
 - SC22（Coordinator adjudication 2026-09-08、Q1）: `formatStockDisplay` が `pcs`/`cm` 両分岐で `quantity.toLocaleString("ja-JP")` を使い、`(1234, "pcs")`=「1,234 個」・`(10, "pcs")`=「10 個」（既存契約不変）・`(300, "cm")`=「300 cm」（既存契約不変）の 3 ケースを独立 literal で持つ。既存 4 canonical 呼び出しサイト（`ProductTable.tsx:79`/`ProductListTable.tsx:88`/`StockMovementsPage.tsx:124-127`/`StockDetailContent.tsx:81-84`）にも桁区切りが反映される
