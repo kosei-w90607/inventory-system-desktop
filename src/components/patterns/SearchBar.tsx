@@ -176,7 +176,6 @@ function LiveSearchBar({
   return (
     <div className="grid gap-1">
       <Label htmlFor={inputId} className="text-muted-foreground">
-
         {inputLabel}
       </Label>
       <Input
