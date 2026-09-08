@@ -12,7 +12,7 @@ Backlog（`docs/Plans.md:152,155,167`、本 packet起票時点の行番号）記
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（`model_reasoning_effort=medium`、S2/S3 の bash/Rust 実装は難所と Coordinator が判断した箇所で high へ昇格）
 - Plan Reviewer: 独立 Opus 5（read-only claims-producer）+ 独立 Sonnet subagent（fresh context）
-- Final Reviewer: Sonnet subagent（fresh context）一次 + Codex ロジックレビュー、裁定は Fable
+- Final Reviewer: Sonnet subagent（fresh context）1 パス + Opus 5（read-only claims-producer）1 パス = Double Audit（S1〜S3 とも）+ Codex ロジックレビュー、裁定は Fable
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
@@ -41,7 +41,7 @@ Backlog（`docs/Plans.md:152,155,167`、本 packet起票時点の行番号）記
 Risk: R3
 
 Reason:
-3 件とも production runtime・DB・DTO・operator 画面に非接触だが、いずれも merge gate（enforcement surface）そのものを変更する: S1 は `npm run lint`（Verification Gates「Frontend」行）が直接実行する `eslint.config.js` に新規 block を追加する。S2 は `scripts/doc-consistency-check.sh`（Verification Gates「Docs/design」「Active plan packet」行、かつ `.github/workflows/ci.yml` の `Design doc consistency` job が直接実行する script）に新規 check を追加する。S3 は `src-tauri/tests/architecture_test.rs`（Verification Gates「Rust/backend」行の `cargo test` が実行する既存 layer-boundary test）に新規 test を追加する。DEV_WORKFLOW Risk Tiers の「uncertain between R2 and R3, choose R3 when the change touches ... a workflow gate」がそのまま適用される。**S1 も workflow gate 変更である**: ⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md:46`）は本 lane の S1 と全く同じ形（既存 block 無変更 + 新規 block 追加による `eslint.config.js` 変更）を「DEV_WORKFLOW Verification Gates『Frontend』行 `npm run lint` が直接実行する gate 定義そのもの」として R3 判定し、`docs/DEV_WORKFLOW.md:371`「Double audit: for R4 and workflow gate changes」を単独で適用した（同 packet `:241`）。よって本 lane の S1 も同型であり、Double Audit の対象外にする根拠はない。S1・S2・S3 のいずれも workflow gate 変更のため、Contract Audit 節の「Double audit: for R4 and workflow gate changes, run the Contract Audit twice in independent contexts」を 3 件全てに適用する。
+3 件とも production runtime・DB・DTO・operator 画面に非接触だが、いずれも merge gate（enforcement surface）そのものを変更する: S1 は `npm run lint`（Verification Gates「Frontend」行）が直接実行する `eslint.config.js` に新規 block を追加する。S2 は `scripts/doc-consistency-check.sh`（Verification Gates「Docs/design」「Active plan packet」行、かつ `.github/workflows/ci.yml` の `Design doc consistency` job が直接実行する script）に新規 check を追加する。S3 は `src-tauri/tests/architecture_test.rs`（Verification Gates「Rust/backend」行の `cargo test` が実行する既存 layer-boundary test）に新規 test を追加する。DEV_WORKFLOW Risk Tiers の「uncertain between R2 and R3, choose R3 when the change touches ... a workflow gate」がそのまま適用される。**S1 も workflow gate 変更である**: ⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md:46`）は本 lane の S1 と全く同じ形（既存 block 無変更 + 新規 block 追加による `eslint.config.js` 変更）を「DEV_WORKFLOW Verification Gates『Frontend』行 `npm run lint` が直接実行する gate 定義そのもの」として R3 判定し、`docs/DEV_WORKFLOW.md:371`「Double audit: for R4 and workflow gate changes」を単独で適用した（同 packet `:241`）。よって本 lane の S1 も同型であり、Double Audit の対象外にする根拠はない。S1・S2・S3 のいずれも workflow gate 変更のため、Contract Audit 節の「Double audit: for R4 and workflow gate changes, run the Contract Audit twice in independent contexts」を 3 件全てに適用する。Final Reviewer は Sonnet subagent（fresh context）1 パス + Opus 5（read-only claims-producer）1 パスの Double Audit に Codex ロジックレビューを加えた 3 者体制とし（Workflow State 参照）、裁定は Fable が行う（Plan Review round 2 J1）。
 
 ## Goal
 
@@ -91,7 +91,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **I-G1 型欠陥の予防**: `rg` は既定で `.gitignore` を尊重する（git repository 配下限定）。監査の mutation test 5（§2「最小の mutation 検証」）は gitignore 対象生成物（`.gitignore` へ追記した合成 `.rs` file）を混入させても D の走査結果が不変であること（exit 0、baseline と同一）を確認済み — batch 1 の I-G1 欠陥（`fs::read_dir` の素の walk が gitignore を無視した構造的欠陥）と同型の欠陥を、`rg` を唯一の走査手段にすることで構造的に予防する。
 - **mutation 検証済みの 5 mode**（§2、tracked tree 非変更・一時 clone 相当の fixture で実測）: baseline exit=0 / handler omission（`generate_handler!` から 1 entry 除去）exit=1 / handler duplicate（同 entry を重複追加）exit=1 / binding wire mismatch（`bindings.ts` の wire 文字列を差し替え）exit=1 / gitignored 生成物混入（結果不変）exit=0。全 5 assertion PASS（§2 出力）。
 - **CI 到達境界の既存実読**（§2「既存 CI の実読結果」）: `.github/workflows/ci.yml` の `rust_drift` job は `rust || rust_drift || workflow` 変更時のみ実行され常時ではない。bindings drift check は `cargo run --bin generate_bindings` → `git diff --exit-code` のみで、command 集合そのものの独立 oracle は無い。H だけ登録漏れで S/T が整合した状態、H に余分な runtime 登録があって S/T が整合した状態は既存 CI では見逃す（§2「見逃す」）。
-- **hook 位置の裁定**: `scripts/doc-consistency-check.sh` の設計モード（`TARGET_MODE="design"` 既定、`scripts/doc-consistency-check.sh:1983-2032`）は plan モード（`--target plan`）と異なり、`scripts/local-ci.sh:193`（`run_required docs "$REPO_ROOT" bash scripts/doc-consistency-check.sh`、classification 分岐の外で常時実行）、`scripts/pre-push.sh:217`、`.github/workflows/ci.yml:308-327`（job `docs` = 「Design doc consistency」、`needs.changes.result == 'success'` のみが条件で path filter 無し、全 PR で実行）の 3 経路すべてから引数無しで呼ばれることを実測確認済み（`rg -n "doc-consistency-check" scripts/pre-push.sh .github/workflows/ci.yml` = 2 件、`scripts/local-ci.sh:193`）。したがって新規 check を `doc-consistency-check.sh` の設計モード末尾（`check_new_wer_retired_rules` 呼出し `:2031` の直後、`fi` `:2032` の直前）へ 1 箇所追加するだけで、10c 報告 §2「gate 位置」列が推薦する「local-ci:193 と hosted docs job への到達、local-ci からの二重呼出しを避ける」を、`local-ci.sh` / `pre-push.sh` / `ci.yml` の**いずれも直接編集せずに**満たせる。plan モード（`--target plan`）はこの新規 check を呼ばない（Plan Packet 単体検査の対象外のまま）。
+- **hook 位置の裁定**: `scripts/doc-consistency-check.sh` の設計モード（`TARGET_MODE="design"` 既定、`scripts/doc-consistency-check.sh:1983-2032`）は plan モード（`--target plan`）と異なり、`scripts/local-ci.sh:193`（`run_required docs "$REPO_ROOT" bash scripts/doc-consistency-check.sh`、classification 分岐の外で常時実行）、`scripts/pre-push.sh:217`、`.github/workflows/ci.yml:308-327`（job `docs` = 「Design doc consistency」、`needs.changes.result == 'success'` のみが条件で path filter 無し、全 PR で実行）の 3 経路すべてから引数無しで呼ばれることを実測確認済み（`rg -n "doc-consistency-check" scripts/pre-push.sh .github/workflows/ci.yml` = 2 件、`scripts/local-ci.sh:193`）。したがって新規 check を `doc-consistency-check.sh` の設計モード末尾（`check_new_wer_retired_rules` 呼出し `:2031` の直後、`fi` `:2032` の直前）へ 1 箇所追加するだけで、10c 報告 §2「gate 位置」列が推薦する「local-ci:193 と hosted docs job への到達、local-ci からの二重呼出しを避ける」を、`local-ci.sh` / `pre-push.sh` / `ci.yml` の**いずれも直接編集せずに**満たせる。plan モード（`--target plan`）はこの新規 check を呼ばない（Plan Packet 単体検査の対象外のまま）。**3 経路の enforcement 強度は同一ではない**（Plan Review round 2 J5）: `scripts/pre-push.sh:214` の `if [[ "$(classification_value docs)" == "true" ]]; then` は `:217` の `bash "$REPO_ROOT/scripts/doc-consistency-check.sh"` 呼出しを docs-classified diff の場合のみに限定するため、pre-push は無条件では到達しない。一方 `scripts/local-ci.sh:193` は classification 分岐の外で常時実行され、`.github/workflows/ci.yml:311`（`if: always() && needs.changes.result == 'success'`）も path filter 無しで全 PR トリガーに対して無条件に実行される。したがって pre-push が条件付きであっても、local-ci full と hosted CI の 2 経路が merge gate 到達性を無条件に担保する（設計変更なし、記述の精緻化のみ）。
 - **classifier の扱い**: `scripts/doc-consistency-check.sh` 自体は既に `scripts/local-ci.sh:193` で classification に関係なく常時実行されるため、`scripts/ci/classify-changes.sh` の分類ルール変更は不要（10c 報告 §2「gate 位置」列の懸念どおり `rust_drift` 経由のルーティング補完は必要ない — docs job が既に全 PR で実行されるため）。
 
 ### S3 実測（`.local/codex-orders/reports/10c-command-drift-and-reexport.md` §3）
@@ -211,13 +211,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Acceptance Criteria
 
-- AC1（S1）: `eslint.config.js` の既存 block（`:1-117`、⑪/⑫ が確定させた全 block）が完全に無変更のまま残る — `diff <(git show 47f2163:eslint.config.js | bat --plain --line-range 1:117) <(bat --plain --line-range 1:117 eslint.config.js)` が空（exit 0。⑫ AC5 の逐語比較 oracle を踏襲、`rg -Fc` の出現数チェックは新規 block へ既存 glob を混入させても検出しないため不採用）
+- AC1（S1、Plan Review round 2 J3 是正: 旧稿は barrel block `:118-139` を比較対象に含めておらず、新規 block を挿入しつつ barrel selector を壊す mutant が AC1/AC2 を素通りしていた）: `eslint.config.js` の既存 block = `:1-117`（⑫ 等）+ barrel block `:118-139`（⑪、22 行、⑫ が追加した block の直後 = ファイル末尾）の**両区間**が完全に無変更のまま残る — (a) `diff <(git show 47f2163:eslint.config.js | bat --plain --line-range 1:117) <(bat --plain --line-range 1:117 eslint.config.js)` が空（exit 0）、(b) `diff <(git show 47f2163:eslint.config.js | tail -n 22) <(tail -n 22 eslint.config.js)` が空（exit 0、barrel block 22 行分の逐語比較。base `47f2163` 時点の `eslint.config.js` は 139 行、barrel block は末尾 22 行と一致することを起票時実測で確認済み）。⑫ AC5 の逐語比較 oracle を踏襲、`rg -Fc` の出現数チェックは新規 block へ既存 glob を混入させても検出しないため不採用
 - AC2（S1）: 新規 block が barrel block（`files: ["src/components/patterns/index.ts", "src/components/ui/index.ts"]`）より前に置かれる — `rg -n 'complexity: \["warn", 40\]' eslint.config.js`（新規 block 出現行）が `rg -n 'src/components/patterns/index.ts' eslint.config.js`（barrel block 出現行）より小さい
 - AC3（S1、前提: `npm run generate:routes` 実行済み、Plan Review H9 是正: スカラー oracle を明記）: `npx eslint .` 全体の exit code だけでなく、対象 4 rule の警告件数そのものを数値で確認する — `npx eslint "src/features/**/*.{ts,tsx}" "src/components/patterns/**/*.{ts,tsx}" -f json | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));const rules=new Set(['complexity','max-depth','max-lines-per-function','max-params']);let n=0;for(const f of d)for(const m of f.messages)if(rules.has(m.ruleId))n++;console.log(n);"` の出力が `0`（disposition 3 件を実施した状態、baseline 3）
 - AC4（S1、Writer probe、正の発火確認、mutant）: 新規 block の `complexity` max を一時的に `1` へ下げて `npx eslint src/components/patterns/Pagination.tsx` を実行すると warning が 1 件以上出ることを確認してから元の `40` へ復元する（rule が実際に発火することの確認 — 警告 0 件が「rule が正しく機能して 0」なのか「glob 誤りで対象外のため常に 0」なのかを区別する。ponytail: 専用 fixture file は新設せず、実在する低複雑度関数への一時的閾値操作で足りる）
 - AC5（S1）: `PluExportPage.tsx` / `ReturnExchangePage.tsx` に disable comment が exact 1 件ずつ存在する — `rg -Fc 'eslint-disable-next-line complexity --' src/features/plu-export/PluExportPage.tsx` = 1（baseline 0）、`rg -Fc 'eslint-disable-next-line max-lines-per-function --' src/features/return-exchange/ReturnExchangePage.tsx` = 1（baseline 0）
 - AC6（S1）: `Pagination.tsx` の `rangeText` が object 引数化される — `rg -Fc 'function rangeText({' src/components/patterns/Pagination.tsx` = 1（baseline 0）、`rg -Fc 'rangeText(totalCount, from, to, page, totalPages)' src/components/patterns/Pagination.tsx` = 0（baseline 2、旧 5 位置引数呼出しが残らない）、既存 `Pagination` 関連 test が無変更で PASS
-- AC7（S1）: `docs/Plans.md` Backlog に S1 disposition 由来の新規行 2 件（PluExportPage / ReturnExchangePage 分割候補）が存在する
+- AC7（S1、Plan Review round 2 J6 是正: 機械 oracle を明記）: `docs/Plans.md` Backlog に S1 disposition 由来の新規行 2 件（PluExportPage / ReturnExchangePage 分割候補）が存在する — `rg -Fc '`PluExportPage.tsx:188` の complexity 分割' docs/Plans.md` = 1（起票時実測 `docs/Plans.md:156`）、`rg -Fc '`ReturnExchangePage.tsx:185` の max-lines-per-function 分割' docs/Plans.md` = 1（起票時実測 `docs/Plans.md:157`）
 - AC8（S2）: `scripts/check-command-drift.sh` が Python を含む外部 interpreter を呼ばない — `rg -c 'python3?\b' scripts/check-command-drift.sh` = 0
 - AC9（S2）: 起票時実測の baseline（68/68/68/68、drift 0）で `bash scripts/check-command-drift.sh` が exit 0
 - AC10（S2、Matrix 参照）: `bash scripts/tests/check-command-drift.test.sh` が 5 mode（baseline PASS / handler 欠落 fail / 重複 fail / wire 不一致 fail / gitignored 生成物混入 結果不変）を全て期待どおりに実行し exit 0
@@ -236,9 +236,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC18（S3）: `docs/architecture/cmd-task-specs.md:128` 相当の記述に D-083 参照が追記される — `rg -Fc 'D-083' docs/architecture/cmd-task-specs.md` ≥ 1
 - AC19（全体）: `bash scripts/doc-consistency-check.sh --target plan` と `bash scripts/check-workflow-git.sh` がいずれも exit 0（ERROR 0）
 - AC20（全体）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` と `npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` がいずれも exit 0
-- AC21（全体）: `docs/Plans.md` の Backlog 3 件（`:152,155,167`、行番号は起票時点）に「⑯ で起票」注記が付与され、⑬ の直後に ⑯ 行が追加される
+- AC21（全体、Plan Review round 2 J6 是正: 機械 oracle を明記）: `docs/Plans.md` の Backlog 3 件（`:152,155,167`、行番号は起票時点）に「⑯ で起票」注記が付与され、⑬ の直後に ⑯ 行が追加される — `rg -Fc '⑯ で起票' docs/Plans.md` = 3（起票時実測 `docs/Plans.md:153,158,170`）、`rg -Fc -- '- [ ] ⑯ 衛生 batch 3' docs/Plans.md` = 1（起票時実測 `docs/Plans.md:132`、先頭 `-` が `rg` にフラグ解釈されないよう `--` を付ける）
 - AC22（S2、Plan Review H5）: `scripts/ci/classify-changes.sh:55` の `workflow` 判定 case pattern に `scripts/check-command-drift.sh` が追加される — `rg -Fc 'scripts/check-command-drift.sh' scripts/ci/classify-changes.sh` = 1（起票時実測 baseline 0）
-- AC23（S4、Plan Review H6）: `docs/Plans.md` の D-023 Backlog entry が 10b 監査の事実訂正を反映する — `rg -Fc '全件 \`#\[cfg\(test\)\]\` 内と判明' docs/Plans.md` ≥ 1（起票時実測、本 packet の plan-first commit で既に 1、Coordinator 指示による先行編集）
+- AC23（S4、Plan Review H6、Plan Review round 2 J4 是正: `-F` literal 内の `\`/`\[`/`\(` は不要なエスケープで、旧稿の値は測定していなかった）: `docs/Plans.md` の D-023 Backlog entry が 10b 監査の事実訂正を反映する — `rg -Fc '全件 `#[cfg(test)]` 内と判明' docs/Plans.md` = 1（起票時実測 `docs/Plans.md:165`、本 packet の plan-first commit で既に 1、Coordinator 指示による先行編集）
 
 ## Design Sources
 
@@ -346,11 +346,11 @@ N/A — JSON / CSV / DTO / bindings / DB 互換のいずれにも触れない。
 - S1: 新規 block が既存 3 block（色/button 2 個 + barrel 1 個）を一切変更していないこと（AC1 の逐語比較）。disable comment 2 件が理由付きで exact 1 件ずつであること（AC5）。`rangeText` の object 引数化が既存呼出し全 2 箇所を漏れなく更新していること（AC6）。閾値 4 値が report の A 案どおり（40/3/650・skipBlankLines/skipComments/IIFEs/4）であること
 - S2: `scripts/check-command-drift.sh` が Python を含む外部 interpreter を一切呼ばないこと（AC8）。`pre-push.sh` / `ci.yml` は無変更、`local-ci.sh` は self-test 登録の 1 行追加のみであること（AC11(a)(b)）。checker 本体への直接呼出しが `doc-consistency-check.sh` の設計モード以外に存在しないこと（AC11(b) の `rg -Fc` = 0、AC12-AC13）。5 mode self-test（AC10）が report 10c §2 の mutation と同型であること。`rg` の gitignore 既定尊重に依存し独自 fs walk を新設していないこと（I-G1 回帰の防止）。`scripts/ci/classify-changes.sh:55` の workflow glob に `scripts/check-command-drift.sh` が追加され、checker-only PR でも self-test が classify されること（AC22）
 - S3: allow list が起票時実測の 30 symbol/17 statement と過不足なく一致すること（AC14, AC16）。multi-line brace-grouped `pub use`（`biz/mod.rs:25-27` 型）を正しく 1 statement・複数 symbol として解析していること。negative fixture（AC15）が実 repo tree を汚さず復元されること。D-083 の Alternatives 節が A/C 不採用の理由（既存設計破壊）を正しく反映していること
-- S1・S2・S3 とも workflow gate change のため Contract Audit を独立 2 パス（Double Audit）で実施すること（Sonnet fresh 1 パス + Opus 1 パス、それぞれ diff と新規 test/fixture を独立に読む）。S1 は⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md:46,:241`）と同型の `eslint.config.js` 変更のため単独でも Double Audit 対象（Plan Review round 1 H3、Risk 節参照）
+- S1・S2・S3 とも workflow gate change のため Contract Audit を独立 2 パス（Double Audit: Sonnet subagent〈fresh context〉1 パス + Opus 5〈read-only claims-producer〉1 パス、それぞれ diff と新規 test/fixture を独立に読む）+ Codex ロジックレビューの 3 者体制で実施し、裁定は Fable が行うこと（Workflow State の Final Reviewer 欄と同一体制、Plan Review round 2 J1）。S1 は⑫（`docs/archive/plans/2026-09-06-hygiene-batch-2-config-reference.md:46,:241`）と同型の `eslint.config.js` 変更のため単独でも Double Audit 対象（Plan Review round 1 H3、Risk 節参照）
 
 ## Spec Contract
 
-Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..4, SPEC-HYG3-REX-1..3
+Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..5, SPEC-HYG3-REX-1..3
 
 - SPEC-HYG3-LINT-1: 新規 eslint 保守性 block が既存 block を変更せず barrel block より前に追加され、disposition 後の当該 4 rule 警告が 0 件になる
 - SPEC-HYG3-LINT-2: disposition 3 件（disable×2 + object 引数化×1）が理由付きで実施され、`rangeText` の挙動が不変であることを既存 test が保証する
@@ -358,6 +358,7 @@ Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..4, SPEC-HYG3-R
 - SPEC-HYG3-CMD-2: checker が `local-ci.sh`/`pre-push.sh`/`ci.yml` を直接改変せず `doc-consistency-check.sh` 経由の 1 箇所 hook で 3 経路へ到達する
 - SPEC-HYG3-CMD-3: 5 mode self-test が report と同型の mutation を再現する
 - SPEC-HYG3-CMD-4: checker が Python 依存を持たない
+- SPEC-HYG3-CMD-5（Plan Review round 2 J2）: `scripts/ci/classify-changes.sh:55` の `workflow` 判定 case pattern に `scripts/check-command-drift.sh` が含まれ、checker 本体のみを変更する PR でも self-test が classify される
 - SPEC-HYG3-REX-1: allow list（30 symbol/17 statement、`pub use` / `pub(crate) use` 双方を対象）が新規直接再公開の追加・既存例外の無断削除の両方向で厳密一致検査される
 - SPEC-HYG3-REX-2: negative fixture（`pub use crate::db::Row;`）が検出され、実 tree は汚染されない
 - SPEC-HYG3-REX-3: alias/type alias の残存境界が Non-scope として明記され、洗浄完了を主張しない
@@ -368,7 +369,8 @@ Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..4, SPEC-HYG3-R
 |---|---|---|---|---|
 | SPEC-HYG3-LINT-1 | S1 | `npx eslint .` | 既存 block 非破壊 + barrel 前挿入 | AC1-AC3 |
 | SPEC-HYG3-LINT-2 | S1 | disable comment 検査 + `rangeText` 契約 test + 発火 probe | disposition 3 件の妥当性 | AC4-AC7 |
-| SPEC-HYG3-CMD-1..4 | S2 | `check-command-drift.sh` + self-test 5 mode | Python 非依存 + hook 到達境界 | AC8-AC13, AC22 |
+| SPEC-HYG3-CMD-1..4 | S2 | `check-command-drift.sh` + self-test 5 mode | Python 非依存 + hook 到達境界 | AC8-AC13 |
+| SPEC-HYG3-CMD-5 | S2 | `rg -Fc` on `classify-changes.sh:55`（SC-CMD-5） | checker-only PR の classification 漏れ防止 | AC22 |
 | SPEC-HYG3-REX-1..3 | S3 | `cargo test --test architecture_test` + negative fixture | allow list 厳密一致 + 残存境界の明記 | AC14-AC18 |
 
 ## Data Safety

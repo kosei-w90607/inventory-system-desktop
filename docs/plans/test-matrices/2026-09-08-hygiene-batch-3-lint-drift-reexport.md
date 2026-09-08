@@ -12,7 +12,7 @@ R3（S1 が `eslint.config.js`〈`npm run lint` が直接実行する gate 定�
 - SC-LINT-2（S1）: 新規 block の 4 rule が実際に発火する（glob 誤りによる恒常的 0 件ではない）
 - SC-LINT-3（S1）: disposition 3 件（disable×2 + object 引数化×1）が理由コメント付き・挙動不変で実施される
 - SC-CMD-1（S2）: D/H/S/T 4 集合とその multiplicity が完全一致する（drift 0）
-- SC-CMD-2（S2、Plan Review H1 是正: 旧稿は Scope の `local-ci.sh` self-test 登録行と矛盾していた）: (a) `pre-push.sh`/`ci.yml` は無変更のまま、(b) `local-ci.sh` は self-test 登録の 1 行追加のみで、checker 本体（`bash scripts/check-command-drift.sh`）への直接呼出しは `doc-consistency-check.sh` の設計モード 1 箇所のみに存在し、3 経路（local-ci:193 / pre-push:217 / CI docs job）へその 1 箇所経由で到達する
+- SC-CMD-2（S2、Plan Review H1 是正: 旧稿は Scope の `local-ci.sh` self-test 登録行と矛盾していた。Plan Review round 2 J5: 3 経路の enforcement 強度差を明記）: (a) `pre-push.sh`/`ci.yml` は無変更のまま、(b) `local-ci.sh` は self-test 登録の 1 行追加のみで、checker 本体（`bash scripts/check-command-drift.sh`）への直接呼出しは `doc-consistency-check.sh` の設計モード 1 箇所のみに存在し、3 経路（local-ci:193 / pre-push:214,217 / CI docs job `:311`）へその 1 箇所経由で到達する。ただし `pre-push.sh:214` は `classification_value docs == true` の場合のみ `:217` の呼出しに達する条件付き経路であり、`local-ci.sh:193` と `ci.yml:311`（`if: always()`、path filter 無し）が無条件到達を担保する
 - SC-CMD-3（S2）: checker が Python を含む外部 interpreter に依存しない
 - SC-CMD-4（S2）: `rg` の既定 gitignore 尊重により生成物混入で誤検出しない（I-G1 型欠陥の非回帰）
 - SC-CMD-5（S2、Plan Review H5）: `scripts/ci/classify-changes.sh:55` の `workflow` glob に `scripts/check-command-drift.sh` が含まれ、checker 本体のみを変更する PR でも `workflow=true` に分類される
@@ -36,7 +36,7 @@ R3（S1 が `eslint.config.js`〈`npm run lint` が直接実行する gate 定�
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| SC-LINT-1 既存 block 非破壊（S1） | 新規 block が既存 block を書き換える / 挿入位置が逆 | regression（`eslint.config.js` 逐語比較） | AC1 の `diff <(git show 47f2163:eslint.config.js \| bat --plain --line-range 1:117) <(bat --plain --line-range 1:117 eslint.config.js)` + AC2 の行番号比較 | 既存 block の 1 文字でも変わる、または新規 block が barrel block より後ろにある |
+| SC-LINT-1 既存 block 非破壊（S1、Plan Review round 2 J3: barrel block も比較対象に追加） | 新規 block が既存 block を書き換える / 挿入位置が逆 / barrel block（`:118-139`）を壊す | regression（`eslint.config.js` 逐語比較、2 区間） | AC1(a) の `diff <(git show 47f2163:eslint.config.js \| bat --plain --line-range 1:117) <(bat --plain --line-range 1:117 eslint.config.js)` + AC1(b) の `diff <(git show 47f2163:eslint.config.js \| tail -n 22) <(tail -n 22 eslint.config.js)` + AC2 の行番号比較 | 既存 block（`:1-117`）または barrel block（末尾 22 行）の 1 文字でも変わる、または新規 block が barrel block より後ろにある |
 | SC-LINT-2 rule 発火の正証明（S1） | glob 誤りで常時 0 件 | unit（Writer probe、負例、AC4） | 新規 block の `complexity` max を一時的に `1` へ下げて `Pagination.tsx` を lint → warning ≥1 を確認して復元 | 閾値を下げても warning が増えない（block が対象ファイルに効いていない） |
 | SC-LINT-3 disposition の妥当性（S1） | disable 理由なし / `rangeText` の挙動変化 | unit（`rg` literal 検査 + 既存 test 回帰） | AC5（disable comment 存在）+ AC6（`rangeText` signature 変更 + 旧呼出し 0 件）+ 既存 `Pagination` test 無変更 PASS | disable comment が無い、または `rangeText` の呼出しで引数の値・順序が入れ替わり既存 test が壊れる |
 | SC-CMD-1 D/H/S/T 一致（S2） | 実際の drift を見逃す | unit（`scripts/tests/check-command-drift.test.sh`、mutation） | `handler 欠落`（`generate_handler!` から 1 entry 除去）→ exit 1 / `重複`（同 entry 重複追加）→ exit 1 / `wire 不一致`（bindings.ts の wire 文字列差し替え）→ exit 1 | いずれかの mutant で exit 0 のまま（drift を検出できない） |
