@@ -700,7 +700,7 @@ it.each([
   ["pcs", "1,234 個", "個"],
   ["cm", "1,234 cm", "cm"],
 ] as const)(
-  "⑮ SC19: %s は候補で単位付き、入力行で数値と単位列を分ける",
+  "⑮ SC19: %s は現在庫を単位付きで表示し、数量と単位を同じ cell に添える",
   async (unit, display, unitLabel) => {
     const user = userEvent.setup();
     mockSearchProducts.mockResolvedValue({
@@ -728,20 +728,23 @@ it.each([
     await user.click(within(candidate).getByRole("button", { name: "手動販売に追加" }));
     const inputRow = (await screen.findByLabelText("UNIT-001 の数量")).closest("tr");
     if (inputRow === null) throw new Error("expected table structure");
-    // SC19 Amendment 2: 候補・直近一覧から分離し、入力表の列と cell の対応を固定する。
+    // SC19 Amendment 3: 入力表の列順と、数量・単位が同じ cell にある契約を固定する。
     const inputTable = inputRow.closest("table");
     if (inputTable === null) throw new Error("expected table structure");
     expect(
       within(inputTable)
         .getAllByRole("columnheader")
         .map((cell) => cell.textContent),
-    ).toEqual(["商品コード", "商品名", "部門", "現在庫", "数量", "単位", "販売金額", "操作"]);
+    ).toEqual(["商品コード", "商品名", "部門", "現在庫", "数量", "販売金額", "操作"]);
     const cells = within(inputRow).getAllByRole("cell");
-    expect(within(cells[4]).getByLabelText("UNIT-001 の数量")).toBeInTheDocument();
-    expect(cells[5].textContent).toBe(unitLabel);
-    expect(within(cells[6]).getByLabelText("UNIT-001 の販売金額")).toBeInTheDocument();
-    expect(within(inputRow).getByText("1,234")).toBeInTheDocument();
-    expect(within(inputRow).getByText(unitLabel)).toBeInTheDocument();
-    expect(within(inputRow).queryByText(display)).not.toBeInTheDocument();
+    expect(cells[3].textContent).toBe(display);
+    expect(
+      within(cells[4]).getByRole("spinbutton", { name: "UNIT-001 の数量" }),
+    ).toBeInTheDocument();
+    expect(within(cells[4]).getByText(unitLabel)).toBeInTheDocument();
+    expect(
+      within(cells[5]).getByRole("spinbutton", { name: "UNIT-001 の販売金額" }),
+    ).toBeInTheDocument();
+    expect(within(cells[5]).getByText("円")).toBeInTheDocument();
   },
 );

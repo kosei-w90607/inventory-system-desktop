@@ -596,8 +596,6 @@ export function ManualSalePage() {
                   <TableHead>部門</TableHead>
                   <TableHead>現在庫</TableHead>
                   <TableHead>数量</TableHead>
-                  {/* 数量と単位は一つの値として読めるよう隣接させる。 */}
-                  <TableHead>単位</TableHead>
                   <TableHead>販売金額</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
@@ -608,47 +606,57 @@ export function ManualSalePage() {
                     <TableCell className="font-medium">{row.productCode}</TableCell>
                     <TableCell>{row.productName}</TableCell>
                     <TableCell>{row.departmentName}</TableCell>
-                    <TableCell>{row.currentStockQuantity.toLocaleString("ja-JP")}</TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        value={row.quantity}
-                        disabled={isFormLocked}
-                        aria-label={`${row.productCode} の数量`}
-                        aria-invalid={errors.rows?.[row.productCode] !== undefined}
-                        className="w-24"
-                        onChange={(event) => {
-                          updateValues((prev) => ({
-                            ...prev,
-                            rows: updateManualSaleRow(prev.rows, row.productCode, {
-                              quantity: event.target.value,
-                            }),
-                          }));
-                        }}
-                      />
+                      {formatStockDisplay(row.currentStockQuantity, row.stockUnit)}
                     </TableCell>
-                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        value={row.amount}
-                        disabled={isFormLocked}
-                        aria-label={`${row.productCode} の販売金額`}
-                        aria-invalid={errors.rows?.[row.productCode] !== undefined}
-                        className="w-32"
-                        onChange={(event) => {
-                          updateValues((prev) => ({
-                            ...prev,
-                            rows: updateManualSaleRow(prev.rows, row.productCode, {
-                              amount: event.target.value,
-                            }),
-                          }));
-                        }}
-                      />
+                      {/* 数量と単位を一つの値として読めるよう、同じ cell に添える。 */}
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          value={row.quantity}
+                          disabled={isFormLocked}
+                          aria-label={`${row.productCode} の数量`}
+                          aria-invalid={errors.rows?.[row.productCode] !== undefined}
+                          className="w-24"
+                          onChange={(event) => {
+                            updateValues((prev) => ({
+                              ...prev,
+                              rows: updateManualSaleRow(prev.rows, row.productCode, {
+                                quantity: event.target.value,
+                              }),
+                            }));
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {formatStockUnitLabel(row.stockUnit)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          value={row.amount}
+                          disabled={isFormLocked}
+                          aria-label={`${row.productCode} の販売金額`}
+                          aria-invalid={errors.rows?.[row.productCode] !== undefined}
+                          className="w-32"
+                          onChange={(event) => {
+                            updateValues((prev) => ({
+                              ...prev,
+                              rows: updateManualSaleRow(prev.rows, row.productCode, {
+                                amount: event.target.value,
+                              }),
+                            }));
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">円</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

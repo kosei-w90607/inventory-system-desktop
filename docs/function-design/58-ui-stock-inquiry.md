@@ -373,7 +373,7 @@ export function useStockInquiry(params: {
 
 #### formatStockUnitLabel（[unit] → string、Gated Amendment 6 S45）
 
-- 数量を伴わない単位列（入庫 / 廃棄 / 返品交換 / 手動販売の行データ等）の unit code を日本語ラベルへ変換する
+- 単位列（入庫等）や数量 input に添える単位（廃棄 / 返品交換 / 手動販売）の unit code を日本語ラベルへ変換する
 - `unit === "pcs"` → `"個"`、`unit === "cm"` → `"cm"`、上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
 
 #### format-last-date（[value: string | null] → string）

@@ -499,8 +499,6 @@ export function DisposalPage() {
                   <TableHead>現在庫</TableHead>
                   <TableHead>種別</TableHead>
                   <TableHead>数量</TableHead>
-                  {/* 数量と単位は一つの値として読めるよう隣接させる。 */}
-                  <TableHead>単位</TableHead>
                   <TableHead>原価</TableHead>
                   <TableHead>理由</TableHead>
                   <TableHead className="text-right">操作</TableHead>
@@ -512,7 +510,9 @@ export function DisposalPage() {
                     <TableCell className="font-medium">{row.productCode}</TableCell>
                     <TableCell>{row.productName}</TableCell>
                     <TableCell>{row.departmentName}</TableCell>
-                    <TableCell>{row.currentStockQuantity.toLocaleString("ja-JP")}</TableCell>
+                    <TableCell>
+                      {formatStockDisplay(row.currentStockQuantity, row.stockUnit)}
+                    </TableCell>
                     <TableCell>
                       <Select
                         value={row.disposalType}
@@ -537,45 +537,53 @@ export function DisposalPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        value={row.quantity}
-                        disabled={isFormLocked}
-                        aria-label={`${row.productCode} の数量`}
-                        aria-invalid={errors.rows?.[row.rowId] !== undefined}
-                        className="w-24"
-                        onChange={(event) => {
-                          updateValues((prev) => ({
-                            ...prev,
-                            rows: updateDisposalRow(prev.rows, row.rowId, {
-                              quantity: event.target.value,
-                            }),
-                          }));
-                        }}
-                      />
+                      {/* 数量と単位を一つの値として読めるよう、同じ cell に添える。 */}
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          value={row.quantity}
+                          disabled={isFormLocked}
+                          aria-label={`${row.productCode} の数量`}
+                          aria-invalid={errors.rows?.[row.rowId] !== undefined}
+                          className="w-24"
+                          onChange={(event) => {
+                            updateValues((prev) => ({
+                              ...prev,
+                              rows: updateDisposalRow(prev.rows, row.rowId, {
+                                quantity: event.target.value,
+                              }),
+                            }));
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {formatStockUnitLabel(row.stockUnit)}
+                        </span>
+                      </div>
                     </TableCell>
-                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        value={row.costPrice}
-                        disabled={isFormLocked}
-                        aria-label={`${row.productCode} の原価`}
-                        aria-invalid={errors.rows?.[row.rowId] !== undefined}
-                        className="w-28"
-                        onChange={(event) => {
-                          updateValues((prev) => ({
-                            ...prev,
-                            rows: updateDisposalRow(prev.rows, row.rowId, {
-                              costPrice: event.target.value,
-                            }),
-                          }));
-                        }}
-                      />
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          value={row.costPrice}
+                          disabled={isFormLocked}
+                          aria-label={`${row.productCode} の原価`}
+                          aria-invalid={errors.rows?.[row.rowId] !== undefined}
+                          className="w-28"
+                          onChange={(event) => {
+                            updateValues((prev) => ({
+                              ...prev,
+                              rows: updateDisposalRow(prev.rows, row.rowId, {
+                                costPrice: event.target.value,
+                              }),
+                            }));
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">円</span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Input

@@ -822,7 +822,6 @@ export function ReturnExchangePage() {
                   <TableHead>現在庫</TableHead>
                   <TableHead>方向</TableHead>
                   <TableHead>数量</TableHead>
-                  <TableHead>単位</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -832,7 +831,9 @@ export function ReturnExchangePage() {
                     <TableCell className="font-medium">{row.productCode}</TableCell>
                     <TableCell>{row.productName}</TableCell>
                     <TableCell>{row.departmentName}</TableCell>
-                    <TableCell>{row.currentStockQuantity.toLocaleString("ja-JP")}</TableCell>
+                    <TableCell>
+                      {formatStockDisplay(row.currentStockQuantity, row.stockUnit)}
+                    </TableCell>
                     <TableCell>
                       <Select
                         value={row.direction}
@@ -860,26 +861,31 @@ export function ReturnExchangePage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        value={row.quantity}
-                        disabled={isFormLocked}
-                        aria-label={`${row.productCode} の数量`}
-                        aria-invalid={errors.rows?.[rowKey(row)] !== undefined}
-                        className="w-24"
-                        onChange={(event) => {
-                          updateValues((prev) => ({
-                            ...prev,
-                            rows: updateReturnRow(prev.rows, row.productCode, row.direction, {
-                              quantity: event.target.value,
-                            }),
-                          }));
-                        }}
-                      />
+                      {/* 数量と単位を一つの値として読めるよう、同じ cell に添える。 */}
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          value={row.quantity}
+                          disabled={isFormLocked}
+                          aria-label={`${row.productCode} の数量`}
+                          aria-invalid={errors.rows?.[rowKey(row)] !== undefined}
+                          className="w-24"
+                          onChange={(event) => {
+                            updateValues((prev) => ({
+                              ...prev,
+                              rows: updateReturnRow(prev.rows, row.productCode, row.direction, {
+                                quantity: event.target.value,
+                              }),
+                            }));
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {formatStockUnitLabel(row.stockUnit)}
+                        </span>
+                      </div>
                     </TableCell>
-                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"
