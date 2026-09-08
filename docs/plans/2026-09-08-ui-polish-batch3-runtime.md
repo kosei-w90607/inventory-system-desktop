@@ -187,7 +187,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `docs/function-design/58-ui-stock-inquiry.md` §58.6（`:366-370` 付近の `format-stock-display` 記述）と §58.12（`:634-639` 付近の表記揺れ表）にそれぞれ 1 行、数量が `toLocaleString("ja-JP")` 桁区切りで表示される旨を追記する（Coordinator adjudication 2026-09-08、Q1）
   - `docs/Plans.md` ⑮ の状態更新は Coordinator が別途行う（本 lane の Writer 作業には含めない）
   - 設計意図: 実装完了後に catalog/DSR/58-doc を読む者が「未反映の gap」「桁区切りなし」「stale citation」という誤った状態を見ないようにする（F1: 状態注記の追記だけでは旧 gap 文言と新 status 文言が併存し矛盾するため、gap 文言自体を書き換える）
-  - 完了条件: **（G6, CHANGE）** 全 oracle は AC9 を正本とする（本節では重複転記しない、乖離防止）。58-doc の桁区切り追記のみ本節固有: `rg -Fo "toLocaleString" docs/function-design/58-ui-stock-inquiry.md | wc -l` ≥ 1（起票時 0）
+  - 完了条件: **（G6, CHANGE / K1, Opus P3-1 是正）** 全 oracle は AC9 を正本とする（本節では重複転記しない、乖離防止。例外なし — 58-doc の桁区切りオラクルも AC9 側に集約済み）
 
 ## Non-scope
 
@@ -219,6 +219,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - **F9/G2 是正（オラクル対象の訂正、実測値反映）**: `rg -Fo "InventoryRecordsPage.tsx:336-343" docs/design-system/01-decision-rules.md | wc -l` = 0（起票時 **1**〈`:443` のみ、file 名付きは `:435` には無い〉）。`rg -Fo ":336-343" docs/design-system/01-decision-rules.md | wc -l` = 0（起票時 **2**〈`:435`,`:443`〉）。`` rg -Fo ':339`' docs/design-system/01-decision-rules.md | wc -l `` = 0（起票時 **1**〈`:435`、代表商品 anchor〉）。`` rg -Fo ':342`' docs/design-system/01-decision-rules.md | wc -l `` = 0（起票時 **1**〈`:435`、記録日時 anchor〉）。新引用が実装後の実際の行番号と一致することは Final Review の `rg -n` 実読で確認（machine oracle 化不能、Residual Test Gap）
   - **G3 追加（catalog `:48` の 4 画面 anchor drift）**: catalog `:48` の `ReceivingPage.tsx:288-291`/`ManualSalePage.tsx:303-306`/`ReturnExchangePage.tsx:411-414`/`DisposalPage.tsx:278-281` は実際の `<PageHeader` 開始行（`:295`/`:310`/`:418`/`:285`、いずれも +7 drift）と一致していない。S8 の書き換えでこれら 4 anchor も実測行へ訂正する（S1 の component 修正で行番号がさらに動きうるため、Writer が実装完了後に再実測して確定する）。オラクル: `rg -Fo "ReceivingPage.tsx:288-291" docs/design-system/02-component-catalog.md | wc -l` = 0（起票時 1）かつ `rg -Fo "ManualSalePage.tsx:303-306" docs/design-system/02-component-catalog.md | wc -l` = 0（起票時 1）かつ `rg -Fo "ReturnExchangePage.tsx:411-414" docs/design-system/02-component-catalog.md | wc -l` = 0（起票時 1）かつ `rg -Fo "DisposalPage.tsx:278-281" docs/design-system/02-component-catalog.md | wc -l` = 0（起票時 1）
   - **G4 追加（catalog `:46` 未来形文の是正）**: `:46` の「既存の `PageHeader` 外側 sibling `<p>` 実装（例: `SupplierManagementPage.tsx:35-38`）は、この記法へ runtime lane で移行する。」は未来形で、S3 実装後は虚偽になる。「本 PR（⑮）で `subtitle` prop へ移行済み」へ書き換える。オラクル: `rg -Fo "runtime lane で移行する" docs/design-system/02-component-catalog.md | wc -l` = 0（起票時 1）
+  - **K1（Opus P3-1）是正、58-doc 桁区切りオラクルを本節へ集約**: `rg -Fo "toLocaleString" docs/function-design/58-ui-stock-inquiry.md | wc -l` ≥ 1（起票時 0）
   - `doc-consistency-check.sh` の ERROR 0
 - AC-L3-1（owner Windows native L3）: 説明セクション 3 画面（商品一括インポート/PLU書出し/バックアップ・復元）の説明文が読みやすく、他の説明のない画面と間隔が揃って見える
 - AC-L3-2（owner Windows native L3）: 業務入力 4 画面（入庫/返品交換/手動販売/廃棄）で消えていた副題が復活し、`SupplierManagementPage.tsx` と同じ見た目になっている
@@ -370,7 +371,7 @@ Contract ID: SPEC-UIRUNTIME2-1
 | SPEC-UIRUNTIME2-1 | S5 | `ReturnExchangePage.test.tsx`/`OtherRecordDetailPages.test.tsx`/`ReceivingPage.test.tsx` | 「—」統一 + title 属性 | vitest |
 | SPEC-UIRUNTIME2-1 | S6 | 各 page test + `ProductForm.test.tsx` | 文言統一 + Table 構造 | vitest |
 | SPEC-UIRUNTIME2-1 | S7 | `ManualSalePage.test.tsx` + 9 formatQuantity file の test | Badge化 + 単位翻訳 | vitest |
-| SPEC-UIRUNTIME2-1 | S8 | docs review（自動テストなし） | 状態注記の更新 | `rg` 完全一致 |
+| SPEC-UIRUNTIME2-1 | S8 | docs review（自動テストなし） | 状態注記の更新 | **（K4, Sonnet P3-2 是正）** AC9 の `rg -Fo … \| wc -l` scalar oracle 群 |
 
 ## Data Safety
 
