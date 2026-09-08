@@ -218,6 +218,26 @@ fn direct_reexport_fixtures() {
         }
     }
 
+    // SC-REX-1 変種 8: 同一行 block comment 後の直接再公開も検出する。
+    fs::write(
+        &file,
+        format!("{baseline}/* new public API */ pub use crate::db::open_database;\n"),
+    )
+    .unwrap();
+    assert!(reexport_differences(dir.path(), &allowed)
+        .iter()
+        .any(|diff| diff.contains("unexpected") && diff.contains("crate::db::open_database")));
+
+    fs::write(&file, format!("{baseline}/* comment only */\n")).unwrap();
+    assert!(reexport_differences(dir.path(), &allowed).is_empty());
+
+    fs::write(
+        &file,
+        format!("{baseline}/* multiline comment\n * pub use crate::db::x;\n */\n"),
+    )
+    .unwrap();
+    assert!(reexport_differences(dir.path(), &allowed).is_empty());
+
     fs::write(
         &file,
         baseline.replace("pub use crate::db::DbConnection;", ""),
@@ -390,8 +410,15 @@ fn direct_db_io_reexports(file: &Path) -> Vec<(String, String)> {
     let mut depth = 0_i32;
     let mut exports = Vec::new();
     for line in content.lines() {
-        let code = line.split("//").next().unwrap_or("").trim();
-        if code.starts_with("/*") || code.starts_with('*') {
+        let mut code = line.split("//").next().unwrap_or("").trim();
+        if code.starts_with("/*") {
+            let Some((_, rest)) = code.split_once("*/") else {
+                continue;
+            };
+            // D-083: 同一行の block comment で後続の直接再公開を隠させない。
+            code = rest.trim();
+        }
+        if code.starts_with('*') {
             continue;
         }
         if statement.is_empty() {
