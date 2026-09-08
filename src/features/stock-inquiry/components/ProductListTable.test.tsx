@@ -43,6 +43,15 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
       />,
     );
     expect(await screen.findByText("在庫切れ")).toBeInTheDocument();
+    // SC4 / DSR-22: 在庫の既存色とiconを維持してtoneを集約する。
+    const badge = screen.getByText("在庫切れ");
+    expect(badge).toHaveAttribute("data-tone", "destructive");
+    expect(badge).toHaveClass(
+      "border-destructive-border",
+      "bg-destructive-soft",
+      "text-destructive-strong",
+    );
+    expect(badge.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
   });
 
   it("REQ-302: low-stock row renders 在庫少 badge label", async () => {
@@ -56,6 +65,11 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
       />,
     );
     expect(await screen.findByText("在庫少")).toBeInTheDocument();
+    // SC4 / DSR-22: 在庫の既存色とiconを維持してtoneを集約する。
+    const badge = screen.getByText("在庫少");
+    expect(badge).toHaveAttribute("data-tone", "warning");
+    expect(badge).toHaveClass("border-warning-border", "bg-warning-soft", "text-warning-strong");
+    expect(badge.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
   });
 
   it("REQ-302: search positive stock renders 通常 status label", async () => {
@@ -69,6 +83,11 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
       />,
     );
     expect(await screen.findByText("通常")).toBeInTheDocument();
+    // SC1 / DSR-22 / catalog ⑬: 中立は tone 対象外。期待値は catalog の中立色契約。
+    const badge = screen.getByText("通常");
+    expect(badge).toHaveAttribute("data-variant", "outline");
+    expect(badge).not.toHaveAttribute("data-tone");
+    expect(badge).toHaveClass("border-stone-200", "bg-stone-50", "text-stone-600");
   });
 
   it("REQ-301: product code cell uses readable table text size", async () => {

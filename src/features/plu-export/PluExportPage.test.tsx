@@ -434,6 +434,13 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
     renderWithClient(<PluExportPage />);
 
     expect(await screen.findByText("保存済みで未確認のPLU書出しがあります")).toBeInTheDocument();
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("保存済みで未確認のPLU書出しがあります").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("保存済みで未確認のPLU書出しがあります").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "alert");
     const statusRegion = expectStatusRegionBeforeContent();
     expect(
       within(statusRegion).getByText("保存先: /home/kosei/PLU_20260701.txt"),
@@ -579,6 +586,13 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
 
     renderWithClient(<PluExportPage />);
     await user.click(await screen.findByRole("button", { name: "全件" }));
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("Diff / Full ともレジへ投入できます").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("Diff / Full ともレジへ投入できます").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "alert");
     expect(screen.getByText("Diff / Full ともレジへ投入できます")).toBeInTheDocument();
     expect(
       screen.getByText("メモリNo.を永続化する前に作成した全件ファイルは再投入しないでください。"),
@@ -722,6 +736,13 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
 
     await screen.findByText("PLUファイルを保存しました");
     expect(screen.getByText("PCツールに取り込めなかった場合の回復手順")).toBeInTheDocument();
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("PCツールに取り込めなかった場合の回復手順").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("PCツールに取り込めなかった場合の回復手順").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "alert");
     expect(
       screen.getByText(
         "PCツールに取り込めなかった場合は、保存済みファイルを再投入するか、差分または全件を書き出し直してください。",
@@ -790,6 +811,13 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
     const { queryClient } = renderWithClient(<PluExportPage />);
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     expect(await screen.findByText("レジ設定の読込みが必要です")).toBeInTheDocument();
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("レジ設定の読込みが必要です").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("レジ設定の読込みが必要です").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "alert");
     expect(screen.getByRole("button", { name: "差分を書き出す" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "レジ登録状況のZ004を選ぶ" }));
@@ -806,4 +834,27 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
     expect(screen.getByText("4,700 件")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "差分を書き出す" })).toBeEnabled();
   });
+});
+
+it("SC20 / REQ-402: over-limit export retains its warning alert", async () => {
+  mockPreparePluExport.mockResolvedValue({
+    status: "ok",
+    data: {
+      bytes_base64: "QUJD",
+      suggested_filename: "PLU_synthetic.txt",
+      content_type: "text/tab-separated-values",
+      encoding: "CP932",
+      count: 1,
+      target_product_codes: ["PLU-001"],
+      prepared_rows: [{ memory_no: 217, row_kind: "product", target_product_codes: ["PLU-001"] }],
+      excluded: [],
+      over_limit_warning: true,
+    },
+  });
+  mockSave.mockResolvedValue(null);
+  renderWithClient(<PluExportPage />);
+  await userEvent.setup().click(await screen.findByRole("button", { name: "差分を書き出す" }));
+  const title = await screen.findByText("スキャニングPLU上限の4,784件を超えています");
+  expect(title.closest('[data-slot="alert"]')).toHaveAttribute("data-variant", "warning");
+  expect(title.closest('[data-slot="alert"]')).toHaveAttribute("role", "alert");
 });

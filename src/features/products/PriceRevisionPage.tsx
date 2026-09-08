@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { PackageSearch } from "lucide-react";
+import { AlertTriangle, PackageSearch } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { EmptyState } from "@/components/patterns/EmptyState";
@@ -76,7 +76,9 @@ export function PriceRevisionPage({
           未設定の商品にこの取引先を設定する
         </label>
       ) : null}
-      <Alert role="note">
+      <Alert variant="warning" role="note">
+        <AlertTriangle aria-hidden="true" />
+        <AlertTitle>ご注意</AlertTitle>
         <AlertDescription>
           画面を再読み込みすると、確定前に入力した新売価・新原価は失われます。1行ずつ確定してください。
         </AlertDescription>

@@ -53,6 +53,7 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     // 紐付け結果カードより DOM 順で先行する（owner L3-lite round 2 裁定）。
     const alertBanner = screen.getByRole("alert");
     expect(alertBanner).toHaveTextContent("同じ日の取込みがあります");
+    expect(alertBanner).toHaveAttribute("data-variant", "warning");
     expect(alertBanner).toHaveTextContent(
       "既存分を残したまま今回分を追加します。内容を確認してください。",
     );
@@ -65,6 +66,8 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     // Badge は主情報を上部 Alert に譲り、補助的な状態表示へ改名（gated Amendment 4）。
     const badge = screen.getByText("同日データあり");
     expect(badge).toBeInTheDocument();
+    expect(badge).toHaveAttribute("data-tone", "warning");
+    expect(badge.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
     expect(screen.queryByText("追加確認")).not.toBeInTheDocument();
     // gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠でなく soft warning token。
     expect(badge.closest('[data-slot="badge"]')).toHaveClass(

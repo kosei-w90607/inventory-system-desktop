@@ -24,3 +24,18 @@ describe("Button (Lane 5 SC1)", () => {
     expect(defaultButton).not.toHaveClass("border-input");
   });
 });
+
+it("SC11 / DSR-01: secondary action has the middle-level fill and border", () => {
+  render(<Button variant="secondary">補助操作</Button>);
+  const button = screen.getByRole("button", { name: "補助操作" });
+  expect(button).toHaveAttribute("data-slot", "button");
+  expect(button).toHaveAttribute("data-variant", "secondary");
+  expect(button).toHaveClass(
+    "border",
+    "border-border-strong",
+    "bg-secondary",
+    "text-secondary-foreground",
+    "hover:bg-secondary/80",
+  );
+  expect(button).not.toHaveClass("border-border");
+});

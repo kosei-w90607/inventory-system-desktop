@@ -129,11 +129,7 @@ function ItemRow({ item }: { item: DailySaleItem }) {
       <TableCell>
         <div className="flex items-center gap-2">
           <span>{item.name}</span>
-          {item.source === "manual" && (
-            <Badge variant="secondary" className="bg-warning-soft text-warning-strong">
-              手動
-            </Badge>
-          )}
+          {item.source === "manual" && <Badge variant="secondary">手動</Badge>}
         </div>
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">{item.department_name}</TableCell>

@@ -113,10 +113,11 @@ function LiveSearchBar({
   onSearchChange,
   debounceMs,
   placeholder,
-  ariaLabel,
+  label,
+  id,
   type,
   inputClassName,
-}: Omit<SearchBarProps, "label" | "id" | "showSubmitButton" | "wrapperClassName"> & {
+}: Omit<SearchBarProps, "ariaLabel" | "showSubmitButton" | "wrapperClassName"> & {
   debounceMs: number;
 }) {
   const [text, setText] = React.useState(value);
@@ -139,7 +140,9 @@ function LiveSearchBar({
     };
   }, []);
 
-  const inputAriaLabel = ariaLabel ?? "商品検索";
+  const generatedId = React.useId();
+  const inputId = id ?? generatedId;
+  const inputLabel = label ?? "商品を検索";
   const inputPlaceholder = placeholder ?? "商品コード・商品名・JANで検索";
   const inputType = type ?? "search";
   const inputClass = inputClassName ?? "max-w-md";
@@ -171,16 +174,21 @@ function LiveSearchBar({
   }
 
   return (
-    <Input
-      ref={inputRef}
-      type={inputType}
-      value={text}
-      onChange={handleChange}
-      onKeyDown={handleKeyDown}
-      placeholder={inputPlaceholder}
-      aria-label={inputAriaLabel}
-      className={inputClass}
-    />
+    <div className="grid gap-1">
+      <Label htmlFor={inputId} className="text-muted-foreground">
+        {inputLabel}
+      </Label>
+      <Input
+        ref={inputRef}
+        id={inputId}
+        type={inputType}
+        value={text}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={inputPlaceholder}
+        className={inputClass}
+      />
+    </div>
   );
 }
 

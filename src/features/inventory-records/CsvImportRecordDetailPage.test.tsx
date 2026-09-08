@@ -263,3 +263,49 @@ describe("CsvImportRecordDetailPage (REQ-206 / REQ-207)", () => {
     );
   });
 });
+
+it.each([
+  [
+    "completed",
+    "成功",
+    "success",
+    ["border-success-border", "bg-success-soft", "text-success-strong"],
+  ],
+  [
+    "completed_partial",
+    "部分成功",
+    "warning",
+    ["border-warning-border", "bg-warning-soft", "text-warning-strong"],
+  ],
+  [
+    "rolled_back",
+    "取消済み",
+    "destructive",
+    ["border-destructive-border", "bg-destructive-soft", "text-destructive-strong"],
+  ],
+] as const)(
+  "SC8 / REQ-401: %s preserves the state meaning",
+  async (status, label, tone, classes) => {
+    const detail = makeDetail({ status });
+    detail.items[0].is_voided = status === "rolled_back";
+    mockGetCsvImportRecord.mockResolvedValue({ status: "ok", data: detail });
+    renderWithClient(<CsvImportRecordDetailPage importId={41} />);
+    const badge = (await screen.findByText(label)).closest('[data-slot="badge"]');
+    expect(badge).toHaveAttribute("data-variant", "outline");
+    expect(badge).toHaveAttribute("data-tone", tone);
+    expect(badge).toHaveClass(...classes);
+    expect(badge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+    if (status === "rolled_back") {
+      const itemBadge = screen.getByText("明細取消済み").closest('[data-slot="badge"]');
+      expect(itemBadge).toHaveAttribute("data-tone", "destructive");
+      expect(itemBadge).toHaveClass(
+        "border-destructive-border",
+        "bg-destructive-soft",
+        "text-destructive-strong",
+      );
+      expect(itemBadge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+    } else {
+      expect(screen.getByText("有効")).not.toHaveAttribute("data-tone");
+    }
+  },
+);

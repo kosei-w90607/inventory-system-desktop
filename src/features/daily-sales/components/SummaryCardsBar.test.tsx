@@ -155,3 +155,24 @@ describe("SummaryCardsBar (daily, REQ-501) B0 characterization (D-B1 Non-scope)"
     expect(screen.getByText("¥98,000")).toBeInTheDocument();
   });
 });
+
+it.each([
+  [120, "+¥20", "text-success-strong"],
+  [80, "-¥20", "text-destructive-strong"],
+  [100, "+¥0", "text-muted-foreground"],
+] as const)(
+  "SC25 / DSR-08: amount %s retains sign and shows %s with its tone",
+  (current, label, color) => {
+    render(
+      <SummaryCardsBar
+        today={{ ...mockToday, grand_total: { quantity: 42, amount: current } }}
+        yesterday={{ ...mockYesterday, grand_total: { quantity: 30, amount: 100 } }}
+        summary={mockSummary}
+        isLoading={false}
+        yesterdayError={false}
+      />,
+    );
+    expect(screen.getByText(label)).toHaveClass(color);
+    expect(screen.getByText(label)).not.toHaveClass("text-success-emphasis");
+  },
+);
