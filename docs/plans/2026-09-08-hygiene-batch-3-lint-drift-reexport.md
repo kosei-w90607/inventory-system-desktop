@@ -4,10 +4,10 @@ Backlog（`docs/Plans.md:152,155,167`、本 packet起票時点の行番号）記
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 8fb4124
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（`model_reasoning_effort=medium`、S2/S3 の bash/Rust 実装は難所と Coordinator が判断した箇所で high へ昇格）
@@ -403,7 +403,7 @@ Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..5, SPEC-HYG3-R
 
 ## Implementation Results
 
-未着手（Phase: plan-draft、Plan Commit pending）。
+未着手（Phase: implementing、Plan Commit `8fb4124`、Writer = Codex medium。実装結果は Writer 報告を Coordinator が転記する）。
 
 ## Review Response
 
