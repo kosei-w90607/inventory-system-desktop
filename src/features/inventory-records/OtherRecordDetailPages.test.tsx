@@ -49,7 +49,7 @@ function makeReceivingDetail(): ReceivingRecordDetail {
         product_code: "RCV-001",
         product_name: "入庫テスト商品 A",
         department_name: "毛糸",
-        stock_unit: "個",
+        stock_unit: "pcs",
         quantity: 2,
         cost_price: 111,
         line_cost: 222,
@@ -59,7 +59,7 @@ function makeReceivingDetail(): ReceivingRecordDetail {
         product_code: "RCV-002",
         product_name: "入庫テスト商品 B",
         department_name: "ボタン",
-        stock_unit: "個",
+        stock_unit: "pcs",
         quantity: 3,
         cost_price: 333,
         line_cost: 999,
@@ -98,7 +98,7 @@ function makeReturnDetail(): ReturnRecordDetail {
         product_code: "RTN-001",
         product_name: "返品テスト商品",
         department_name: "ボタン",
-        stock_unit: "個",
+        stock_unit: "pcs",
         direction: "in",
         quantity: 1,
       },
@@ -135,7 +135,7 @@ function makeManualSaleDetail(): ManualSaleRecordDetail {
         product_code: "MS-001",
         product_name: "手動販売テスト商品",
         department_name: "布",
-        stock_unit: "個",
+        stock_unit: "pcs",
         quantity: 1,
         amount: 980,
       },
@@ -250,7 +250,7 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
     },
   );
 
-  it("REQ-202/UI-03-D19: 返品・交換詳細は備考なしを独立表示する", async () => {
+  it("REQ-202/UI-03-D19: ⑮ SC13: 返品・交換詳細は空備考を「—」で独立表示する", async () => {
     mockGetReturnRecord.mockResolvedValue({
       status: "ok",
       data: { ...makeReturnDetail(), note: null },
@@ -260,7 +260,8 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
 
     expect(await screen.findByRole("heading", { name: "返品・交換 #22" })).toBeInTheDocument();
     const noteRegion = screen.getByRole("region", { name: "備考" });
-    expect(within(noteRegion).getByText("備考なし")).toBeInTheDocument();
+    expect(within(noteRegion).getByText("—")).toBeInTheDocument();
+    expect(within(noteRegion).queryByText("備考なし")).not.toBeInTheDocument();
   });
 
   it("REQ-203: 手動販売詳細に販売金額合計、日次売上リンク、関連movementを表示する", async () => {
@@ -300,4 +301,27 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
       );
     },
   );
+});
+
+it.each([
+  ["pcs", "1,234 個"],
+  ["cm", "1,234 cm"],
+])("⑮ SC19: 入庫・返品・手動販売詳細の %s を単位付き表示する", async (unit, expected) => {
+  const receiving = makeReceivingDetail();
+  receiving.items = [{ ...receiving.items[0], stock_unit: unit, quantity: 1234 }];
+  mockGetReceivingRecord.mockResolvedValue({ status: "ok", data: receiving });
+  const r = renderWithClient(<ReceivingRecordDetailPage recordId={12} />);
+  expect(await screen.findByText(expected)).toBeInTheDocument();
+  r.unmount();
+  const returns = makeReturnDetail();
+  returns.items = [{ ...returns.items[0], stock_unit: unit, quantity: 1234 }];
+  mockGetReturnRecord.mockResolvedValue({ status: "ok", data: returns });
+  const t = renderWithClient(<ReturnRecordDetailPage recordId={22} />);
+  expect(await screen.findByText(expected)).toBeInTheDocument();
+  t.unmount();
+  const sales = makeManualSaleDetail();
+  sales.items = [{ ...sales.items[0], stock_unit: unit, quantity: 1234 }];
+  mockGetManualSaleRecord.mockResolvedValue({ status: "ok", data: sales });
+  renderWithClient(<ManualSaleRecordDetailPage recordId={32} />);
+  expect(await screen.findByText(expected)).toBeInTheDocument();
 });

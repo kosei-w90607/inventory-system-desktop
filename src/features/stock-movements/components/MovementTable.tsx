@@ -90,7 +90,10 @@ export function MovementTable({ movements, returnTo }: MovementTableProps) {
                   <span className="text-muted-foreground">元記録なし</span>
                 )}
               </TableCell>
-              <TableCell className="max-w-80 truncate">
+              <TableCell
+                className="max-w-80 break-words whitespace-normal"
+                title={movement.note?.trim() ? movement.note : undefined}
+              >
                 {movement.note?.trim() ? movement.note : "—"}
               </TableCell>
             </TableRow>

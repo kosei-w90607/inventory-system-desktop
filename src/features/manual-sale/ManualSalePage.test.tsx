@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -149,6 +149,21 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     renderWithClient(<ManualSalePage />);
 
     expect(await screen.findByText("直近の手動販売出庫")).toBeInTheDocument();
+    // ⑮ SC8/SC11/SC17/SC18: 種別固定のID列・備考なし・一重枠・中立Badge。
+    const status = await screen.findByText("有効");
+    expect(status).toHaveAttribute("data-slot", "badge");
+    expect(status).toHaveClass("text-foreground");
+    expect(status).toHaveAttribute("data-variant", "outline");
+    expect(status).not.toHaveAttribute("data-tone");
+    const table = status.closest("table");
+    if (table === null) throw new Error("expected table structure");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual(["販売日", "記録ID", "代表商品", "明細数", "状態", "記録日時", "操作"]);
+    expect(table.parentElement).not.toHaveClass("border");
+    expect(table.parentElement?.parentElement?.tagName).toBe("SECTION");
     expect(mockListInventoryRecords).toHaveBeenCalledWith({
       record_type: "manual_sale",
       date_from: null,
@@ -672,3 +687,64 @@ describe("ManualSalePage native input tokens（Lane 5 SC4g）", () => {
     expect(reason).not.toHaveClass("bg-background");
   });
 });
+
+it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
+  renderWithClient(<ManualSalePage />);
+  expect(
+    screen.getByText("レジCSVに入らない販売を手入力し、在庫と売上へ反映します"),
+  ).toBeInTheDocument();
+  expect(screen.getByText("直近 5 件の手動販売出庫を新しい順に表示します。")).toBeInTheDocument();
+});
+
+it.each([
+  ["pcs", "1,234 個", "個"],
+  ["cm", "1,234 cm", "cm"],
+] as const)(
+  "⑮ SC19: %s は現在庫を単位付きで表示し、数量と単位を同じ cell に添える",
+  async (unit, display, unitLabel) => {
+    const user = userEvent.setup();
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeMockProductWithRelations({
+            product_code: "UNIT-001",
+            name: "単位確認A",
+            stock_quantity: 1234,
+            stock_unit: unit,
+          }),
+          makeMockProductWithRelations({ product_code: "UNIT-002", name: "単位確認B" }),
+        ],
+        total_count: 2,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    renderWithClient(<ManualSalePage />);
+    await user.type(await screen.findByLabelText("手動販売商品検索"), "単位{enter}");
+    const candidate = (await screen.findByText("UNIT-001")).closest("tr");
+    if (candidate === null) throw new Error("expected table structure");
+    expect(within(candidate).getByText(display)).toBeInTheDocument();
+    await user.click(within(candidate).getByRole("button", { name: "手動販売に追加" }));
+    const inputRow = (await screen.findByLabelText("UNIT-001 の数量")).closest("tr");
+    if (inputRow === null) throw new Error("expected table structure");
+    // SC19 Amendment 3: 入力表の列順と、数量・単位が同じ cell にある契約を固定する。
+    const inputTable = inputRow.closest("table");
+    if (inputTable === null) throw new Error("expected table structure");
+    expect(
+      within(inputTable)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual(["商品コード", "商品名", "部門", "現在庫", "数量", "販売金額", "操作"]);
+    const cells = within(inputRow).getAllByRole("cell");
+    expect(cells[3].textContent).toBe(display);
+    expect(
+      within(cells[4]).getByRole("spinbutton", { name: "UNIT-001 の数量" }),
+    ).toBeInTheDocument();
+    expect(within(cells[4]).getByText(unitLabel)).toBeInTheDocument();
+    expect(
+      within(cells[5]).getByRole("spinbutton", { name: "UNIT-001 の販売金額" }),
+    ).toBeInTheDocument();
+    expect(within(cells[5]).getByText("円")).toBeInTheDocument();
+  },
+);

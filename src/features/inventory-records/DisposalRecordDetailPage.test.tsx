@@ -140,3 +140,14 @@ describe("DisposalRecordDetailPage (REQ-204 / REQ-206)", () => {
     },
   );
 });
+
+it.each([
+  ["pcs", "1,234 個"],
+  ["cm", "1,234 cm"],
+])("⑮ SC19: 廃棄詳細の %s を単位付き表示する", async (unit, expected) => {
+  const detail = makeDetail();
+  detail.items = [{ ...detail.items[0], stock_unit: unit, quantity: 1234 }];
+  mockGetDisposalRecord.mockResolvedValue({ status: "ok", data: detail });
+  renderWithClient(<DisposalRecordDetailPage recordId={7} />);
+  expect(await screen.findByText(expected)).toBeInTheDocument();
+});

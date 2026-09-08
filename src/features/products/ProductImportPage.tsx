@@ -19,6 +19,7 @@ export function ProductImportPage() {
     <PageShell>
       <PageHeader
         title="商品一括インポート"
+        description="CSVファイルから複数の商品をまとめて登録・更新するページです。ファイルを選ぶと新規登録候補・既存商品との重複・エラー行の3つに分けて内容を確認でき、重複行は初期状態でスキップされるので上書きする行だけ個別に選んで取り込みます。取り込みを実行すると、新規登録・上書き更新・スキップの件数が画面に表示されます。"
         actions={
           isCommitting ? undefined : (
             <Button type="button" variant="outline" asChild>

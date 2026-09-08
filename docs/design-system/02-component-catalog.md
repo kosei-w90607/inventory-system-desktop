@@ -30,22 +30,26 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 **構造**:
 
 ```tsx
-<header className="flex flex-wrap items-center justify-between gap-3">
-  <h1 className="text-2xl font-semibold">商品検索・一覧</h1>
-  <Button type="button" asChild>
-    <Link to="/products/new" search={{ returnTo }}>
-      <PackagePlus aria-hidden="true" />
-      商品登録
-    </Link>
-  </Button>
+<header className="flex flex-wrap items-start justify-between gap-3">
+  <div className="min-w-0 flex-1 space-y-1">
+    <h1 className="text-2xl font-semibold">商品検索・一覧</h1>
+  </div>
+  <div className="shrink-0">
+    <Button type="button" asChild>
+      <Link to="/products/new" search={{ returnTo }}>
+        <PackagePlus aria-hidden="true" />
+        商品登録
+      </Link>
+    </Button>
+  </div>
 </header>
 ```
 
 主動線が無い画面（例: 商品登録・修正）は `<header className="space-y-1">` に h1 のみを置き、右側のアクションを省く。
 
-**バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を `PageHeader` 内の `space-y-1` グループ（h1 と同じまとまり、下記 component gap 参照）に描画する。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。既存の `PageHeader` 外側 sibling `<p>` 実装（例: `SupplierManagementPage.tsx:35-38`）は、この記法へ runtime lane で移行する。
+**バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を `PageHeader` 内の `space-y-1` グループ（h1 と同じまとまり、下記 component gap 参照）に描画する。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。`SupplierManagementPage.tsx:35-39` の説明文は、本 PR（⑮）で外側 sibling `<p>` から `subtitle` prop へ移行済み。
 
-**component gap（runtime lane 申し送り）**: `PageHeader.tsx:27-45` は `actions` が渡されると `flex` レイアウトを返し `subtitle` を描画しない分岐になっており、`actions` と `subtitle`（および説明セクション）は現状排他である。この gap により `SupplierManagementPage.tsx:35-38`（説明文がヘッダー外側の兄弟要素になり `PageShell` の `space-y-6` に流れ込み間隔が崩れる）、および `ReceivingPage.tsx:288-291` / `ManualSalePage.tsx:303-306` / `ReturnExchangePage.tsx:411-414` / `DisposalPage.tsx:278-281`（`subtitle` prop の値が render 結果から消え、説明文が画面に一切表示されない）の計 5 画面が影響を受けている。推奨は `PageHeader.tsx:29-36` の `actions` 分岐を「`<h1>` + 条件付き `<p>` を `<div className="space-y-1">` にまとめ、`actions` と並べる」形へ直す root-cause fix（外側 `<header>` の class は不変のため `PageHeader.test.tsx:61-73` は green のまま）。呼び出し側で wrapper を都度書く使用パターンは、この component 拡張が入るまでの代替であり Non-scope（runtime lane が実施）。
+**component gap の解消**: `actions` と `subtitle`/`description` の排他は本 PR（⑮）で解消済み。`PageHeader.tsx:31-43` の `actions` 分岐に `<h1>` + 条件付き `subtitle`/`description` を左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめる。Gated Amendment 2（owner L3 round 1）で外側 `<header>` を `flex flex-wrap items-start justify-between gap-3`、actions wrapper を `shrink-0` に変更した。長い description で actions が次行左へ折り返すため、説明を左列内で折り返し、actions を右上に留める。`ReceivingPage.tsx:295` / `ManualSalePage.tsx:310` / `ReturnExchangePage.tsx:419` / `DisposalPage.tsx:285` の副題と、`SupplierManagementPage.tsx:35-39` の `subtitle` への移行により、見出しと説明を同じグループで描画する。actions なしでも説明を描画する（`PageHeader.tsx:47-53`）。呼び出し側で wrapper を都度書く使用パターンは不要になった。
 
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
@@ -188,9 +192,9 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
 
 **バリエーション: 直近実績サマリテーブル**（PR #116）: 業務入力画面（入庫 / 返品・交換 / 手動販売 / 廃棄の 4 画面で確立）の下部に「直近の{業務名}」見出しと「すべての履歴を見る」（outline、`/inventory/records` へ recordType 付き遷移）を横並びで置き、直近 N 件テーブル（Skeleton / Error / Empty / データの 4 状態、パターン⑥）と各行の「詳細を見る」導線を付ける。直近リストの取得失敗時は「入力中の内容はそのままです。保存や商品追加は続けられます」のように業務継続を保証する文言を出し、フォーム入力を壊さない。新規の業務入力画面でも同じ構成を踏襲する。
 
-**備考列の規則**（UI 磨き batch 3 design、L8-6 + A1(a)(b)(c) 統合）: 備考は対象記録に note フィールドがある画面（入庫・返品交換・手動販売、および `MovementTable.tsx` を共有する在庫変動履歴・記録詳細 7 画面）で必須列とする。廃棄・破損は note フィールドを持たないため対象外（Non-scope、混同しない）。空欄表示は「—」に統一する（`MovementTable.tsx:93-94` の `"—"` 空値表示〈三項演算子〉が 7 画面共有かつアプリ全体でも主流。薄字「備考なし」（`ReturnExchangePage.tsx`）は不採用（owner culling 2026-09-06 で「—」に確定、runtime lane で「—」へ揃える））。一定文字数超過時は truncate + `title` 属性で省略表示する（`OperationLogsPage.tsx:522` 相当のパターンを再利用。`MovementTable.tsx:94` は現状 truncate のみで `title` を欠くため是正対象）。全文確認手段は note の種類で分かれる: 記録本体の note フィールド（例: `ManualSaleRecordDetailPage.tsx:149` の `detail.note`）は各記録詳細ページのヘッダー部が truncate なしで直接表示する。一方 `MovementTable.tsx` の行 note（`movement.note`）は、`source` が無い行に元記録リンクが無く（`docs/function-design/66-ui-stock-movements.md` UI-06c-D6、`MovementTable.tsx:82-91`）、`StocktakeRecordDetailPage.tsx:234` 等の記録詳細ページ自身も同じ `MovementTable` を再利用し truncate されたままのため、「記録詳細ページに任せれば全文が見える」という代替経路が無い。したがって movement note の全文確認手段は `MovementTable` 自身が担う（`title` 属性に加え、折り返し・展開等の手段を持つ）ことを contract とする（DSR-12）。
+**備考列の規則**（UI 磨き batch 3 design、L8-6 + A1(a)(b)(c) 統合）: 備考は対象記録に note フィールドがある画面（入庫・返品交換・手動販売、および `MovementTable.tsx` を共有する在庫変動履歴・記録詳細 7 画面）で必須列とする。廃棄・破損は note フィールドを持たないため対象外（Non-scope、混同しない）。空欄表示は「—」に統一する（`MovementTable.tsx:93-99` の `"—"` 空値表示〈三項演算子〉が 7 画面共有かつアプリ全体でも主流。薄字「備考なし」（`ReturnExchangePage.tsx`）は不採用（owner culling 2026-09-06 で「—」に確定、本 PR（⑮）で「—」へ統一済み））。一定文字数超過時は truncate + `title` 属性で省略表示する（`OperationLogsPage.tsx:533` 相当のパターンを再利用。`MovementTable.tsx:93-99` は本 PR（⑮）で折り返し（`whitespace-normal break-words`）+ `title` 属性へ是正済み。空備考（null・空文字・空白のみ）は「—」で表示し、本文が非空白のときだけ `title` を付与する）。全文確認手段は note の種類で分かれる: 記録本体の note フィールド（例: `ManualSaleRecordDetailPage.tsx:149` の `detail.note`）は各記録詳細ページのヘッダー部が truncate なしで直接表示する。一方 `MovementTable.tsx` の行 note（`movement.note`）は、`source` が無い行に元記録リンクが無く（`docs/function-design/66-ui-stock-movements.md` UI-06c-D6、`MovementTable.tsx:82-91`）、`StocktakeRecordDetailPage.tsx:234` 等の記録詳細ページ自身も同じ `MovementTable` を再利用し、修正前は truncate されていたため、「記録詳細ページに任せれば全文が見える」という代替経路が無い。したがって movement note の全文確認手段は `MovementTable` 自身が担う（`title` 属性に加え、折り返し・展開等の手段を持つ）ことを contract とする（DSR-12）。
 
-**「直近の○○」系4画面の統一**（A1a/b/c）: 見出し直下に「直近 {N} 件の{対象}を新しい順に表示します。」の文型を置く（例: 価格履歴 = 「直近 10 件の売価・原価の変更を新しい順に表示します。」）。価格履歴を表構造へ変更したうえで `TableHead` 列見出しを付ける（runtime lane）。囲み（`border`）は意味階層ごとに 1 つまでとし（DSR-16）、`ManualSalePage.tsx` の内側の追加枠を外して他 3 画面（入庫・返品交換・廃棄）と揃える（他 3 画面へ箱を追加する方向は DSR-16 に反するため不採用）。
+**「直近の○○」系4画面の統一**（A1a/b/c）: 見出し直下に「直近 {N} 件の{対象}を新しい順に表示します。」の文型を置く（例: 価格履歴 = 「直近 10 件の売価・原価の変更を新しい順に表示します。」）。価格履歴を表構造へ変更したうえで `TableHead` 列見出しを付ける（本 PR（⑮）で反映済み）。囲み（`border`）は意味階層ごとに 1 つまでとし（DSR-16）、本 PR（⑮）で `ManualSalePage.tsx` の内側の追加枠を外し、他 3 画面（入庫・返品交換・廃棄）と揃える（他 3 画面へ箱を追加する方向は DSR-16 に反するため不採用）。
 
 **opt-in（⑯ 一覧の器で使用）**: viewport を超える一覧では、`<thead>` を sticky にし（`position: sticky; top: 0`、z-index は header > 固定列 > 本文）、商品コード + 商品名等の識別列を `position: sticky; left: 0` で左固定できる（履歴系は日時 + 種別を固定）。2 列目以降の識別列は 1 列目の実測幅を `left` に反映し、固定 rem 直書きにしない。1 画面に収まる短い一覧には適用しない。適用条件・必須構成の全体は [⑯ 一覧の器（ListShell）](#⑯-一覧の器listshell) を参照（DSR-22）。
 
@@ -997,6 +1001,8 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-09 | PR #46 | ⑮ S5 備考「—」への同期。MovementTable の truncate 記述を修正前の理由説明へ更新。 |
+| 2026-09-09 | PR #46（本 PR） | owner L3 round 1 / Gated Amendment 2: PageHeader (c) を items-start + 左 group min-w-0 flex-1 + actions shrink-0 に変更し、長い description でも actions を右上に留める構造へ同期。 |
 | 2026-09-08 | PR #45 | owner L3 AC-L3-3 を受け live SearchBar を `grid gap-1` の Label 上置きへ変更し、呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。 |
 | 2026-09-08 | PR #45 | Badge tone prop / 分類・強調枠、live SearchBar の Label と wrapper、Alert warning の runtime 反映を同期。取込み3状態の tone と移行前 anchor を訂正。既存更新履歴は維持。 |
 | 2026-09-06 | UI 磨き batch 3 design | ① にページ説明セクション使用パターンと `PageHeader` の `actions`/`subtitle` 排他 component gap（5画面）を追加。③ に備考列規則（必須列・空欄「—」統一・truncate+`title`）・「直近 {N} 件の」文言統一・`ManualSalePage.tsx` 二重囲み是正方針・共通 formatter（`formatStockDisplay`/`formatStockUnitLabel`）使用ルールを追加 |
@@ -1007,3 +1013,4 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 | 2026-09-03 | 本 PR | Human Gate + Codex review 是正。⑩ 下部 skeleton を当時の canonical 文言（`{totalCount} 件中 {page} / {totalPages} ページ`、from/to 範囲なし）へ戻し、範囲付き統一形は後続 lane での移行対象と明記。⑯ の canonical を「なし（後続 lane で ListShell を新設予定）」へ、適用条件の記載を DSR-22 一本化に差替え |
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: パターン⑧を売上同日追加の高影響確認へ追随し、実装前の契約正本をUI-07へ接続。 |
+| 2026-09-08 | PR #46 | PageHeader の副題・説明の併存、取引先説明の移行、備考の空欄・全文表示、直近件数・価格履歴表の runtime 反映と参照行を同期。 |

@@ -183,7 +183,10 @@ describe("InventoryRecordsPage (REQ-206)", () => {
 
     renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
 
-    const row = (await screen.findByText("#51")).closest("tr");
+    // ⑮ SC6/SC7: 表示列から外したIDは詳細リンクで記録を特定する。
+    const link = await screen.findByRole("link", { name: "詳細を見る" });
+    expect(link.getAttribute("href")).toContain("/stocktake/records/51");
+    const row = link.closest("tr");
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getAllByText("-")).toHaveLength(2);
     expect(within(row as HTMLElement).getByText("進行中")).toBeInTheDocument();
@@ -213,7 +216,10 @@ describe("InventoryRecordsPage (REQ-206)", () => {
 
     renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
 
-    const row = (await screen.findByText("#52")).closest("tr");
+    // ⑮ SC6/SC7: 表示列から外したIDは詳細リンクで記録を特定する。
+    const link = await screen.findByRole("link", { name: "詳細を見る" });
+    expect(link.getAttribute("href")).toContain("/stocktake/records/52");
+    const row = link.closest("tr");
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText("差異なし")).toBeInTheDocument();
     expect(within(row as HTMLElement).getByText("0")).toBeInTheDocument();
@@ -530,7 +536,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     }
 
     renderWithClient(<Harness />);
-    await screen.findByText("#7");
+    await screen.findByRole("link", { name: "詳細を見る" });
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "表示件数" }));
     await user.click(await screen.findByRole("option", { name: "200 件" }));
@@ -867,7 +873,7 @@ describe("InventoryRecordsPage perPage scroll（REQ-206 / TRACE-D1）", () => {
       data: { items: [makeRecord()], total_count: 120, page: 2, per_page: 50 },
     });
     renderWithClient(<InventoryRecordsPage search={{ page: 2 }} onSearchChange={vi.fn()} />);
-    await screen.findByText("#7");
+    await screen.findByRole("link", { name: "詳細を見る" });
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "表示件数" }));
@@ -900,4 +906,26 @@ describe("InventoryRecordsPage native input tokens（Lane 5 SC4a）", () => {
       expect(field).not.toHaveClass("bg-background");
     }
   });
+});
+
+it("⑮ SC6: 一覧の見出しとデータ行は記録IDを除く7列", async () => {
+  mockListInventoryRecords.mockResolvedValue({
+    status: "ok",
+    data: { items: [makeRecord()], total_count: 1, page: 1, per_page: 50 },
+  });
+  renderWithClient(<InventoryRecordsPage search={{}} onSearchChange={vi.fn()} />);
+  await screen.findByText("ボタン #02");
+  expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
+    "種別",
+    "業務日付",
+    "代表商品",
+    "明細数",
+    "状態",
+    "記録日時",
+    "操作",
+  ]);
+  const row = screen.getByRole("link", { name: "詳細を見る" }).closest("tr");
+  if (row === null) throw new Error("expected table structure");
+  expect(within(row).getAllByRole("cell")).toHaveLength(7);
+  expect(within(row).queryByText("#7")).not.toBeInTheDocument();
 });

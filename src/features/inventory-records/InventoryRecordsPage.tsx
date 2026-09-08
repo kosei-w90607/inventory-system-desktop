@@ -349,7 +349,6 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
             <TableHeader>
               <TableRow>
                 <TableHead>種別</TableHead>
-                <TableHead>記録ID</TableHead>
                 <TableHead>業務日付</TableHead>
                 <TableHead>代表商品</TableHead>
                 <TableHead className="text-right">明細数</TableHead>
@@ -370,9 +369,6 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
                 return (
                   <TableRow key={`${record.record_type}-${String(record.record_id)}`}>
                     <TableCell>{formatRecordType(record.record_type)}</TableCell>
-                    <TableCell className="font-mono tabular-nums">
-                      #{String(record.record_id)}
-                    </TableCell>
                     <TableCell>{record.business_date}</TableCell>
                     <TableCell className="min-w-[12rem] whitespace-normal">
                       {representativeItem}

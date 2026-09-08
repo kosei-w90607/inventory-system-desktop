@@ -50,12 +50,12 @@ describe("PageHeader", () => {
       expect(screen.getByRole("link", { name: "商品登録" })).toBeInTheDocument();
     });
 
-    it("header 要素に flex flex-wrap items-center justify-between gap-3 class が付く", () => {
+    it("header 要素に flex flex-wrap items-start justify-between gap-3 class が付く", () => {
       const { container } = render(
         <PageHeader title="商品検索・一覧" actions={<button type="button">操作</button>} />,
       );
       const header = container.querySelector("header");
-      expect(header).toHaveClass("flex", "flex-wrap", "items-center", "justify-between", "gap-3");
+      expect(header).toHaveClass("flex", "flex-wrap", "items-start", "justify-between", "gap-3");
     });
 
     it("subtitle が指定されていても actions が優先されフレックスレイアウトになる", () => {
@@ -71,4 +71,27 @@ describe("PageHeader", () => {
       expect(header).toHaveClass("flex");
     });
   });
+});
+
+// ⑮ SC1/SC2: actions の有無で副題・操作説明を失わない。
+it("⑮ SC1: actions と副題と説明を同じ見出しグループに表示する", () => {
+  render(
+    <PageHeader
+      title="タイトル"
+      subtitle="副題"
+      description="操作説明"
+      actions={<button>操作</button>}
+    />,
+  );
+  const subtitle = screen.getByText("副題");
+  expect(subtitle.parentElement).toHaveClass("min-w-0", "flex-1", "space-y-1");
+  expect(screen.getByText("操作説明").parentElement).toBe(subtitle.parentElement);
+  expect(subtitle.closest("header")).toHaveClass("flex", "items-start");
+  expect(subtitle.closest("header")).not.toHaveClass("items-center");
+  expect(screen.getByRole("button", { name: "操作" }).parentElement).toHaveClass("shrink-0");
+});
+it.each([undefined, "副題"])("⑮ SC2: actions なしで説明を描画する（副題=%s）", (subtitle) => {
+  render(<PageHeader title="タイトル" subtitle={subtitle} description="操作説明" />);
+  expect(screen.getByText("操作説明").closest("header")).toHaveClass("space-y-1");
+  if (subtitle !== undefined) expect(screen.getByText("副題")).toBeInTheDocument();
 });

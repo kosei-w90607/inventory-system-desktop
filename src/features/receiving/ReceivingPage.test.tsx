@@ -1026,3 +1026,44 @@ describe("ReceivingPage native input tokens（Lane 5 SC4b）", () => {
     expect(supplier).not.toHaveClass("bg-background");
   });
 });
+
+it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
+  renderWithClient(<ReceivingPage />);
+  expect(screen.getByText("届いた商品をまとめて入庫し、在庫へ反映します")).toBeInTheDocument();
+  expect(screen.getByText("直近 10 件の入庫を新しい順に表示します。")).toBeInTheDocument();
+});
+
+it.each([
+  [null, "—", undefined],
+  ["", "—", undefined],
+  ["   ", "—", undefined],
+  [
+    "長い備考を省略しても全文を確認できます。",
+    "長い備考を省略しても全文を確認できます。",
+    "長い備考を省略しても全文を確認できます。",
+  ],
+])("⑮ SC9: 入庫備考=%s の表示とtitle", async (note, expected, title) => {
+  mockListReceivings.mockResolvedValue({
+    status: "ok",
+    data: {
+      items: [
+        {
+          id: 1,
+          receiving_date: "2026-09-08",
+          supplier_name: "取引先",
+          supplier_id: 1,
+          note,
+          created_at: "2026-09-08T10:00:00",
+        },
+      ],
+      total_count: 1,
+      page: 1,
+      per_page: 10,
+    },
+  });
+  renderWithClient(<ReceivingPage />);
+  const cell = await screen.findByText(expected);
+  expect(cell).toHaveClass("truncate");
+  if (title === undefined) expect(cell).not.toHaveAttribute("title");
+  else expect(cell).toHaveAttribute("title", title);
+});

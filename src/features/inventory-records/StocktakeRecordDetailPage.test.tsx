@@ -100,9 +100,9 @@ describe("StocktakeRecordDetailPage (REQ-206 / REQ-207)", () => {
     expect(screen.getByText("¥2,400")).toBeInTheDocument();
     const row = screen.getByRole("row", { name: /SRD-001 合成棚卸し商品/ });
     expect(within(row).getByText("テスト部門")).toBeInTheDocument();
-    expect(within(row).getByText("10 pcs")).toBeInTheDocument();
-    expect(within(row).getByText("8 pcs")).toBeInTheDocument();
-    expect(within(row).getByText("-2 pcs")).toBeInTheDocument();
+    expect(within(row).getByText("10 個")).toBeInTheDocument();
+    expect(within(row).getByText("8 個")).toBeInTheDocument();
+    expect(within(row).getByText("-2 個")).toBeInTheDocument();
     expect(within(row).getByText("¥300")).toBeInTheDocument();
     expect(within(row).getByText("¥600")).toBeInTheDocument();
     expect(within(row).getByRole("link", { name: "SRD-001 の在庫変動履歴" })).toHaveAttribute(
@@ -128,7 +128,7 @@ describe("StocktakeRecordDetailPage (REQ-206 / REQ-207)", () => {
     renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
 
     const row = await screen.findByRole("row", { name: /SRD-001 合成棚卸し商品/ });
-    expect(within(row).getByText("+2 pcs")).toBeInTheDocument();
+    expect(within(row).getByText("+2 個")).toBeInTheDocument();
   });
 
   it("REQ-207: movement の元記録をクリックすると棚卸し詳細 route を描画する", async () => {
@@ -209,4 +209,27 @@ describe("StocktakeRecordDetailPage (REQ-206 / REQ-207)", () => {
       expected,
     );
   });
+});
+
+it.each([
+  ["pcs", "1,234 個", "0 個"],
+  ["cm", "1,234 cm", "0 cm"],
+])("⑮ SC19: 棚卸し詳細の %s と未入力・補正ゼロを表示する", async (unit, expected, zero) => {
+  const detail = makeDetail();
+  detail.items = [
+    {
+      ...detail.items[0],
+      stock_unit: unit,
+      system_stock: 1234,
+      actual_count: null,
+      adjustment_quantity: 0,
+    },
+  ];
+  mockGetStocktakeRecord.mockResolvedValue({ status: "ok", data: detail });
+  renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
+  const row = (await screen.findByText(expected)).closest("tr");
+  if (row === null) throw new Error("expected table structure");
+  expect(within(row).getByText("—")).toBeInTheDocument();
+  expect(within(row).getByText(zero)).toBeInTheDocument();
+  expect(within(row).queryByText("+" + zero)).not.toBeInTheDocument();
 });
