@@ -85,6 +85,11 @@ describe("ProductListPage (UI-01a)", () => {
     );
 
     await screen.findByText("PLU-FILTER");
+    // SC15 / AC-L3-3: 上置き Label の検索欄と隣接 control の下辺を揃える。
+    const toolbar = screen.getByText("商品を検索", { selector: "label" }).parentElement
+      ?.parentElement;
+    expect(toolbar).toHaveClass("items-end");
+    expect(toolbar).not.toHaveClass("items-center");
     expect(screen.getByRole("button", { name: "未反映" })).toHaveAttribute("aria-pressed", "true");
     expect(mockSearchProducts).toHaveBeenCalledWith({
       keyword: null,

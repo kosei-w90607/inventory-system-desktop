@@ -147,6 +147,11 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     const user = userEvent.setup();
     renderStateful({ page: 3 });
     await screen.findByText("P-001");
+    // SC15 / AC-L3-3: 上置き Label の検索欄と隣接 control の下辺を揃える。
+    const toolbar = screen.getByText("商品を検索", { selector: "label" }).parentElement
+      ?.parentElement;
+    expect(toolbar).toHaveClass("items-end");
+    expect(toolbar).not.toHaveClass("items-center");
 
     await user.click(screen.getByRole("combobox", { name: "表示件数" }));
     await user.click(screen.getByRole("option", { name: "200 件" }));
@@ -757,7 +762,7 @@ describe("PriceRevisionPage Lane 4 S1f/S3f/S4b: frame color, top summary, per-pa
     // Codex review 5129977808 P2 是正: 文書順だけでは表示件数ブロックが filter-row の
     // 外へ出ても検出できない。filter-row root への containment + lastElementChild を
     // 追加で assert する。
-    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-center.gap-3");
+    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-end.gap-3");
     expect(filterRow).not.toBeNull();
     expect(filterRow).toContainElement(perPageTrigger);
     expect(filterRow?.lastElementChild).toContainElement(perPageTrigger);

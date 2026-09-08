@@ -32,8 +32,10 @@ it("SC11 / DSR-01: secondary action has the middle-level fill and border", () =>
   expect(button).toHaveAttribute("data-variant", "secondary");
   expect(button).toHaveClass(
     "border",
-    "border-border",
+    "border-border-strong",
     "bg-secondary",
     "text-secondary-foreground",
+    "hover:bg-secondary/80",
   );
+  expect(button).not.toHaveClass("border-border");
 });

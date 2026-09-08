@@ -101,8 +101,9 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         ? `絞り込みに一致する ${totalCount.toLocaleString("ja-JP")} 件すべてが対象です。他のページの商品も含みます。押すと確認画面が開きます。`
         : "絞り込みに一致する商品がないため実行できません。";
 
+  // items-end で上置き Label の検索欄と隣接 control の下辺を揃える。
   const toolbar = (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-end gap-3">
       {/* live 型（UI-01a-D9、owner L3 2026-08-03）。controlled value は raw search.q — trim 済みの
           normalizedSearch.q を結線すると live 反映のたびに trim 済み値が書き戻され「trim なし」契約が破れる。
           trim は CMD query 変換（buildProductSearchQuery）でのみ行う。page reset は updateSearch の

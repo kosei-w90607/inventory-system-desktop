@@ -105,6 +105,11 @@ describe("SearchBar live 型（debounceMs 指定、REQ-301 在庫照会の検索
     expect(input).toHaveAttribute("id");
     expect(screen.getByText("商品を検索", { selector: "label" })).toHaveAttribute("for", input.id);
     expect(input).toHaveClass("max-w-md");
+    // SC15 / AC-L3-3: live 型は他フィルタと同じ Label 上置き。
+    const label = screen.getByText("商品を検索", { selector: "label" });
+    expect(label.parentElement).toHaveClass("grid", "gap-1");
+    expect(label.parentElement).not.toHaveClass("items-center");
+    expect(label).not.toHaveClass("shrink-0");
   });
 
   it("SC15: live 型は inputClassName の指定で既定幅を上書きする", () => {

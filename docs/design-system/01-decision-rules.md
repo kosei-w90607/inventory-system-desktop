@@ -18,11 +18,11 @@
 
 ## DSR-01 主動線 CTA（1 画面 1 primary）
 
-**ルール**: 1 画面の主動線（Primary button）は 1 個に絞る。Primary は amber 系（`--primary`）1 個だけにし、それ以外の CTA は 3 段で降格する — 補助アクション（画面の主目的に付随し、別の入力面を開く等の二次操作）は `secondary`（`--secondary` stone-200 塗り + `--border` 枠、色相を付けない中間段）、それ以外（一覧へ戻る等の離脱系操作）は `outline` / `ghost` に降格する。
+**ルール**: 1 画面の主動線（Primary button）は 1 個に絞る。Primary は amber 系（`--primary`）1 個だけにし、それ以外の CTA は 3 段で降格する — 補助アクション（画面の主目的に付随し、別の入力面を開く等の二次操作）は `secondary`（`--secondary` stone-200 塗り + `--border-strong` 枠、色相を付けない中間段）、それ以外（一覧へ戻る等の離脱系操作）は `outline` / `ghost` に降格する。
 
 **Why**: refactoring-ui §1「Not everything can be important」のとおり、すべてを強調するとヒエラルキーが崩れる。非 IT の利用者は「いま何を押せばよいか」を即断したい。Primary が複数あると、どれが本筋の操作か判断に迷う。GOV.UK「Do less」の精神で、1 画面の本筋操作を 1 つに定める。
 
-**判定フロー / 具体例**: 商品一覧の主動線は「商品登録」1 個（Primary）。一覧へ戻る・修正などは outline。フォーム画面の主動線は「登録する / 保存する」1 個で、「一覧へ戻る」は outline に降格する。runtime 是正対象（2026-09-05 起票時実測）: `ProductForm.tsx:343`「追加する」（インライン取引先登録の確定ボタン）と `:481`「登録する / 保存する」が `showSupplierInput` true 時に同一画面へ同時存在し二重 primary の疑いがある — `:343` を `secondary` へ降格する（runtime lane）。`button.tsx:17` の `secondary` は現状 border なし（runtime lane で `border border-border` を追加）。
+**判定フロー / 具体例**: 商品一覧の主動線は「商品登録」1 個（Primary）。一覧へ戻る・修正などは outline。フォーム画面の主動線は「登録する / 保存する」1 個で、「一覧へ戻る」は outline に降格する。runtime 是正対象（2026-09-05 起票時実測）: `ProductForm.tsx:343`「追加する」（インライン取引先登録の確定ボタン）と `:481`「登録する / 保存する」が `showSupplierInput` true 時に同一画面へ同時存在し二重 primary の疑いがある — `:343` を `secondary` へ降格する（runtime lane）。`button.tsx` の `secondary` は `border border-border-strong` を持つ（owner L3 AC-L3-2 を受け、card 地から操作枠を識別できる強さへ是正）。
 
 **関連**: パターン①ページヘッダ / ④フォームセクション。review-checklist カテゴリ 9 対応（既存画面の共通レイアウト継承・別アプリ化防止）。
 
@@ -470,6 +470,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-08 | PR #45 | owner L3 AC-L3-2 で secondary の `--border` 枠が card 地に溶け込むと判定され、操作枠を `--border-strong` へ変更。塗り・文字色・hover は維持。 |
 | 2026-09-08 | PR #45 | UI 規約 runtime 反映に合わせ、verbatim 重複の DSR-23 第2ブロックを除去。第1ブロックの本文は維持。 |
 | 2026-09-06 | UI 一覧の背骨 D — Lane 4（Gated Amendment 1、実装済み） | DSR-17 の Why・(c)・(j) に、商品一覧限定で `<main>` の代わりに専用 scroll 箱が唯一の scroll container になる例外を注記（PR #40 owner L3 run 1 FAIL・案 X、Plan Review round 1 P1-2）。実装（app-router.ts 側の resolver 導入、Writer commit d6e545c）を含めて実装済み |
 | 2026-09-06 | UI 磨き batch 3 design | DSR-22 識別列マッピング表に記録ID表示方針の owner culling 結果（(b) 一覧の表示列から外す、確定 2026-09-06）を注記として追加 |
