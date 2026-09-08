@@ -1344,8 +1344,9 @@ it.each([
   [2, "+2", "text-success-strong"],
   [-3, "-3", "text-destructive-strong"],
   [0, "0", "text-muted-foreground"],
+  [null, "—", null],
 ] as const)(
-  "SC9 / REQ-205: active and completed difference %s retain sign and tone",
+  "SC9 / REQ-205: difference %s retains sign and tone; uncounted stays neutral",
   async (difference, label, color) => {
     mockGetActive.mockResolvedValue(ok(activeStocktake()));
     mockGetItems.mockResolvedValue(
@@ -1354,14 +1355,31 @@ it.each([
           stocktakeItem({
             name: "SC9商品",
             current_stock: 10,
-            actual_count: 10 - difference,
-            counted_at: "2026-10-01T09:05:00",
+            actual_count: difference === null ? null : 10 - difference,
+            counted_at: difference === null ? null : "2026-10-01T09:05:00",
           }),
         ],
-        progress: { total_items: 1, counted_items: 1, uncounted_items: 0 },
+        progress: {
+          total_items: 1,
+          counted_items: difference === null ? 0 : 1,
+          uncounted_items: difference === null ? 1 : 0,
+        },
         total_count: 1,
       }),
     );
+    if (difference === null) {
+      // SC9 / S3: 未入力は確定結果へ進めず、「—」と無着色を維持する。
+      await renderPage();
+      const row = (await screen.findByText("SC9商品")).closest("tr");
+      if (!row) throw new Error("uncounted row missing");
+      const cell = within(row).getAllByRole("cell")[5];
+      expect(cell).toHaveTextContent(/^—$/);
+      expect(cell).toHaveClass("text-right");
+      expect(cell).not.toHaveClass("text-muted-foreground");
+      expect(cell).not.toHaveClass("text-success-strong");
+      expect(cell).not.toHaveClass("text-destructive-strong");
+      return;
+    }
     mockComplete.mockResolvedValue(
       ok({
         total_cost: 2500,

@@ -83,6 +83,11 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
       />,
     );
     expect(await screen.findByText("通常")).toBeInTheDocument();
+    // SC1 / DSR-22 / catalog ⑬: 中立は tone 対象外。期待値は catalog の中立色契約。
+    const badge = screen.getByText("通常");
+    expect(badge).toHaveAttribute("data-variant", "outline");
+    expect(badge).not.toHaveAttribute("data-tone");
+    expect(badge).toHaveClass("border-stone-200", "bg-stone-50", "text-stone-600");
   });
 
   it("REQ-301: product code cell uses readable table text size", async () => {

@@ -25,6 +25,11 @@ describe("SearchBar commit 型（debounceMs 未指定、REQ-103 商品検索の�
   it("初期表示時に検索 input へ focus する", () => {
     render(<SearchBar value="" onSearchChange={vi.fn()} />);
     expect(screen.getByLabelText("商品検索")).toHaveFocus();
+    // SC15: aria-label とは別に、commit 型の可視 Label と input の結線を固定する。
+    const input = screen.getByRole("textbox", { name: "商品検索" });
+    const label = screen.getByText("検索", { selector: "label" });
+    expect(screen.getByLabelText("検索")).toBe(input);
+    expect(label.getAttribute("for")).toBe(input.id);
     expect(screen.getByRole("textbox", { name: "商品検索" })).toHaveAttribute(
       "aria-label",
       "商品検索",
@@ -100,6 +105,31 @@ describe("SearchBar live 型（debounceMs 指定、REQ-301 在庫照会の検索
     expect(input).toHaveAttribute("id");
     expect(screen.getByText("商品を検索", { selector: "label" })).toHaveAttribute("for", input.id);
     expect(input).toHaveClass("max-w-md");
+  });
+
+  it("SC15: live 型は inputClassName の指定で既定幅を上書きする", () => {
+    render(<SearchBar value="" onSearchChange={vi.fn()} debounceMs={200} inputClassName="w-40" />);
+    const input = screen.getByLabelText("商品を検索");
+    expect(input).toHaveClass("w-40");
+    expect(input).not.toHaveClass("max-w-md");
+  });
+
+  it("SC15: live 型は指定した可視 Label と id を結線する", () => {
+    render(
+      <SearchBar
+        value=""
+        onSearchChange={vi.fn()}
+        debounceMs={200}
+        label="コード検索"
+        id="code-search"
+      />,
+    );
+    const input = screen.getByRole("searchbox", { name: "コード検索" });
+    const label = screen.getByText("コード検索", { selector: "label" });
+    expect(screen.getByLabelText("コード検索")).toBe(input);
+    expect(input).toHaveAttribute("id", "code-search");
+    expect(label.getAttribute("for")).toBe(input.id);
+    expect(input).not.toHaveAttribute("aria-label");
   });
 
   it("DSR-17 T15: live 型の mount focus は native scroll を抑止する", () => {
