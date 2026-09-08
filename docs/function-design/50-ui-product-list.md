@@ -24,7 +24,7 @@
 | REQ-103 / SP-103-08 | UI-01a-D6 | 生地は在庫数を単位付きで表示する。cm / m 表示切替はこの画面の初回実装では必須にせず、商品登録・修正や横断表示設定と合わせて再評価する。 | 現行 backend DTO は在庫数量と単位情報を返せる。cm / m 切替 UI は初回実装の範囲から外し、REQ を trace したうえで誤った局所設定を作らない。 |
 | REQ-103 / UI-01a | UI-01a-D7 | 部門フィルタ候補は `list_departments` CMD で departments 全件を取得する。 | `search_products` の現在ページから候補を派生すると、検索条件・ページング・廃番状態で候補が欠ける。既存 IO `product_repo::list_departments` を BIZ/CMD 経由で公開する設計を採用する。 |
 | REQ-103 / UI-01a | UI-01a-D8 | 廃番状態は専用「状態」列を持たず、廃番商品のみ商品名セル内に `廃番` text badge を出し、行を `text-muted-foreground` にする。「表示中」badge は出さない。 | 表示中が大多数の一覧で全行に状態 badge を出すと密度が上がり、注目すべき廃番が埋もれる。色だけで符号化しない（[design-system/00-foundations.md §業務ステータスの視認性](../design-system/00-foundations.md)）ため text badge を併用する。部門列は維持し、L3 で密度過多なら次候補とする。 |
-| REQ-103 / UI-01a | UI-01a-D9 | 検索欄を在庫照会と同型の live 型へ統一する（`debounceMs=200` / `type="search"` + native clear / 外付け Label・検索ボタン非表示 / `aria-label="商品検索"` 維持）。 | Why = commit 型維持の業務理由が owner 調査で確認できず、共通化時の既存挙動温存だった。live 型でも HID スキャナの Enter 即時確定・IME 変換確定 Enter の誤発火防止・条件変更時の `page` reset は維持される。Rejected = commit 型の維持（画面間の操作一貫性を損なう理由が説明できない）（owner L3 判断 2026-08-03、gated amendment）。 |
+| REQ-103 / UI-01a | UI-01a-D9 | 検索欄を在庫照会と同型の live 型へ統一する（`debounceMs=200` / `type="search"` + native clear / 可視 Label「商品を検索」あり / 検索ボタン・`aria-label` なし）。 | Why = commit 型維持の業務理由が owner 調査で確認できず、共通化時の既存挙動温存だった。live 型でも HID スキャナの Enter 即時確定・IME 変換確定 Enter の誤発火防止・条件変更時の `page` reset は維持される。Rejected = commit 型の維持（画面間の操作一貫性を損なう理由が説明できない）（owner L3 判断 2026-08-03、gated amendment）。 |
 | REQ-907 / SPEC-PLS-D7 | UI-01a-D10 | PLU 移行状態を独立列「PLU」に置き、`plu_target=0 -> 対象外`、`plu_target=1 && plu_dirty=1 -> 未反映`、`plu_target=1 && plu_dirty=0 -> 反映済み` の 3 語彙で導出する。`plu=all|target|pending|synced|excluded` を URL search param に持つ。 | DSR-04: この画面では PLU 移行状態が filter / 一括操作の主情報であり、全行に値があるため商品名セル内へ詰め込まない。badge は text / icon を併用し、色だけで状態を符号化しない。PLU 状態による行減衰は行わない。 |
 | REQ-907 / SPEC-PLS-D6 | UI-01a-D11 | 現在の q / dept / discontinued / plu filter に一致する全件を「PLU 対象にする / 対象から外す」で更新する。実行前に件数付き dialog、実行後に更新 / JAN 不備 skip / 廃番 skip の結果を表示する。 | page 内だけ、または PLU filter を落とした更新は operator が見ている集合とずれる。BIZ-01 の 1 TX command に判断を集約する。 |
 | REQ-907 / D-052 | UI-01a-D12 | 一括操作成功後は D-052 C19（`productList.root / pluDirty / productForm.root / pluSlotSummary`）を invalidate する。 | 一覧 badge、ホーム未反映件数、商品詳細、slot 要約の stale を同じ production SSOT から解消する。 |
@@ -88,7 +88,7 @@ per_page: number  // 上限 200。UI は 50 / 100 / 200 のみ送信し、200 �
 
 ## 50.6 表示と操作
 
-- 検索欄は商品名 / 商品コード / JAN コード / メーカー品番（`maker_code`）を同じ入力で扱う（SPEC-PRV-D2）。placeholder は「商品コード・商品名・JAN・メーカー品番で検索」とする。live 型（[59-ui-shared-patterns.md](59-ui-shared-patterns.md) §59.1、`debounceMs=200`）で入力から 200ms 後に search params を更新し、Enter は debounce を待たず即時反映する（IME 変換確定中の Enter は無視）。`type="search"` のネイティブ clear を使い、外付け Label と検索ボタンは持たない。`aria-label="商品検索"` で識別する（UI-01a-D9）。
+- 検索欄は商品名 / 商品コード / JAN コード / メーカー品番（`maker_code`）を同じ入力で扱う（SPEC-PRV-D2）。placeholder は「商品コード・商品名・JAN・メーカー品番で検索」とする。live 型（[59-ui-shared-patterns.md](59-ui-shared-patterns.md) §59.1、`debounceMs=200`）で入力から 200ms 後に search params を更新し、Enter は debounce を待たず即時反映する（IME 変換確定中の Enter は無視）。`type="search"` のネイティブ clear を使い、検索ボタンは持たない。可視 `Label htmlFor`「商品を検索」のみを accessible name とし、`aria-label` は持たない（UI-01a-D9、[component catalog ⑨](../design-system/02-component-catalog.md)）。
 - 部門フィルタは `commands.listDepartments()` 由来の全 21 部門から選ぶ。検索結果の現在ページから候補を作らない。
 - 廃番モードは `表示中` / `すべて` / `廃番のみ` の意味が日本語で分かる segmented control にする。
 - テーブル列は 商品コード、商品名、部門、売価、原価、在庫数、操作導線を基本にする。原価は売価の右隣に置く（SPEC-PRV-D10）。廃番状態は専用列を持たず、商品名セル内に表す（UI-01a-D8）。
@@ -126,7 +126,7 @@ UI-01a 実装時は、以下を trace ID 付きで検証する。
 - UI-01a-D6: 生地在庫の単位付き表示を壊さず、cm / m 切替を実装済みとして見せない。
 - UI-01a-D7: 部門候補は `listDepartments` 由来で全件表示され、現在ページの検索結果から欠落しない。
 - UI-01a-D8: 専用「状態」列がなく、廃番商品のみ商品名セル内に `廃番` text badge が出て行が muted になる。「表示中」badge は出ない。
-- UI-01a-D9: 検索欄が live 型（`debounceMs=200`）で動作し、Enter は debounce を待たず即時反映、IME 変換確定中の Enter は発火しない。`q` の変更・クリアで `page` が既定へ戻る。外付け Label・検索ボタンは表示されない。
+- UI-01a-D9: 検索欄が live 型（`debounceMs=200`）で動作し、Enter は debounce を待たず即時反映、IME 変換確定中の Enter は発火しない。`q` の変更・クリアで `page` が既定へ戻る。可視 Label「商品を検索」が input と結線され、検索ボタン・`aria-label` は持たない。
 - UI-01a-D10: 3 語彙の導出式、`plu` URL 復元、色以外の符号が一致する。
 - UI-01a-D11: page 外も含む filter 全件の件数確認と、現在の絞り込みに一致しない商品は変更されない旨、更新 / JAN 不備 skip / 廃番 skip の結果を表示する。
 - SPEC-PRV-D10: 「原価」列ヘッダが「売価」の右隣に存在し、値が基本列として表示される。

@@ -174,8 +174,9 @@ function LiveSearchBar({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor={inputId} className="shrink-0 text-muted-foreground">
+    <div className="grid gap-1">
+      <Label htmlFor={inputId} className="text-muted-foreground">
+
         {inputLabel}
       </Label>
       <Input

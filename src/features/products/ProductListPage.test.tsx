@@ -85,6 +85,11 @@ describe("ProductListPage (UI-01a)", () => {
     );
 
     await screen.findByText("PLU-FILTER");
+    // SC15 / AC-L3-3: 上置き Label の検索欄と隣接 control の下辺を揃える。
+    const toolbar = screen.getByText("商品を検索", { selector: "label" }).parentElement
+      ?.parentElement;
+    expect(toolbar).toHaveClass("items-end");
+    expect(toolbar).not.toHaveClass("items-center");
     expect(screen.getByRole("button", { name: "未反映" })).toHaveAttribute("aria-pressed", "true");
     expect(mockSearchProducts).toHaveBeenCalledWith({
       keyword: null,
@@ -211,7 +216,7 @@ describe("ProductListPage (UI-01a)", () => {
     expect(await screen.findByText("P-001")).toBeInTheDocument();
     expect(screen.getByText("はさみ")).toBeInTheDocument();
     // UI-01a-D9（2026-08-03 gated amendment）: live 型化により明示 id 契約（旧 PR #98 Codex R2 P2）は
-    // 廃止。live 型は Label htmlFor 結線を持たず aria-label で識別する。
+    // 廃止。現在の live 型は可視 Label「商品を検索」を htmlFor で結線し、aria-label は持たない。
     expect(screen.getByLabelText("商品を検索")).toHaveAttribute("type", "search");
     expect(
       Array.from(
@@ -466,12 +471,14 @@ describe("ProductListPage SPEC-UIBB-10/11（live 型検索 + 複数ボタン中�
     expect(updater({ page: 2 }).page).toBe(1);
   });
 
-  it("SPEC-UIBB-10 検索ボタンとLabelを表示しない", () => {
+  it("SPEC-UIBB-10 可視Label「商品を検索」を表示し、検索ボタンとaria-labelは持たない", () => {
     renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
     const input = screen.getByLabelText("商品を検索");
     expect(input).toHaveAttribute("type", "search");
     expect(screen.queryByRole("button", { name: "検索" })).not.toBeInTheDocument();
     expect(screen.queryByText("検索", { selector: "label" })).not.toBeInTheDocument();
+    expect(screen.getByText("商品を検索", { selector: "label" })).toHaveAttribute("for", input.id);
+    expect(input).not.toHaveAttribute("aria-label");
   });
 
   it("SPEC-UIBB-10 Enterで即時flushしIME変換確定Enterでは発火しない", () => {

@@ -736,7 +736,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     ).not.toContain("  ボタン  ");
   });
 
-  it("REQ-206 / SPEC-UICB-6: live型既定の名前・placeholderを使い外付けlabelを持たない", async () => {
+  it("REQ-206 / SPEC-UICB-6: live型既定の可視Label「商品を検索」・placeholderを使い、検索ボタンとaria-labelは持たない", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
       data: { items: [], total_count: 0, page: 1, per_page: 50 },
@@ -749,6 +749,8 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     expect(keywordInput).toHaveAttribute("placeholder", "商品コード・商品名・JANで検索");
     expect(screen.getByText("商品を検索", { selector: "label" })).toBeInTheDocument();
     expect(keywordInput).toHaveAttribute("id");
+    expect(keywordInput).not.toHaveAttribute("aria-label");
+    expect(screen.queryByRole("button", { name: "検索" })).not.toBeInTheDocument();
   });
 });
 

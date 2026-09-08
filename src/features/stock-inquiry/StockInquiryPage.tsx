@@ -99,7 +99,8 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
     <PageShell>
       <PageHeader title="在庫照会" />
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4">
+      {/* items-end で上置き Label の検索欄と隣接 control の下辺を揃える。 */}
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
         <SearchBar
           value={qValue}
           debounceMs={200}

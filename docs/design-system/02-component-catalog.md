@@ -603,7 +603,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 />
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は `div.flex.items-center.gap-2` 配下に可視 `Label` + `Input`（`max-w-md` 維持）を並べる。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は `div.grid.gap-1` 配下に可視 `Label` を上置きし `Input`（`max-w-md` 維持）を続ける。呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
@@ -997,6 +997,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-08 | PR #45 | owner L3 AC-L3-3 を受け live SearchBar を `grid gap-1` の Label 上置きへ変更し、呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。 |
 | 2026-09-08 | PR #45 | Badge tone prop / 分類・強調枠、live SearchBar の Label と wrapper、Alert warning の runtime 反映を同期。取込み3状態の tone と移行前 anchor を訂正。既存更新履歴は維持。 |
 | 2026-09-06 | UI 磨き batch 3 design | ① にページ説明セクション使用パターンと `PageHeader` の `actions`/`subtitle` 排他 component gap（5画面）を追加。③ に備考列規則（必須列・空欄「—」統一・truncate+`title`）・「直近 {N} 件の」文言統一・`ManualSalePage.tsx` 二重囲み是正方針・共通 formatter（`formatStockDisplay`/`formatStockUnitLabel`）使用ルールを追加 |
 | 2026-09-05 | UI 一覧の背骨 D — Lane 4 | ⑩ 上部 `PaginationSummary` を `text-sm text-muted-foreground tabular-nums`（下部と統一）へ、`totalCount > 0` のとき常時表示・pager ボタンなしへ改訂。下部 `Pagination` は `totalPages <= 1`（0 件含む）で描画しない契約を追記。⑯ 必須構成 2 を「上部は totalCount > 0 で常時、下部は totalPages > 1 のときだけ」へ改訂（必須構成 3 の wrapper は無変更） |

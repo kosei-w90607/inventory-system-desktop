@@ -43,7 +43,8 @@ export function PriceRevisionFilters({
 
   return (
     <div className="space-y-3 rounded-lg border bg-card p-4">
-      <div className="flex flex-wrap items-center gap-3">
+      {/* items-end で上置き Label の検索欄と隣接 control の下辺を揃える。 */}
+      <div className="flex flex-wrap items-end gap-3">
         <SearchBar
           value={search.q ?? ""}
           debounceMs={200}
