@@ -4,16 +4,16 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 2264f1b
-- Amendments: none
+- Amendments: 036907b, ed916d5
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（`model_reasoning_effort=medium`、難所と判断した箇所は Coordinator 判断で high へ昇格）
 - Plan Reviewer: Opus（read-only claims-producer）+ 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（fresh context）一次 + Codex ロジックレビュー、裁定は Fable
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 59db36f
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（説明セクション 3 画面〈商品一括インポート/PLU書出し/バックアップ・復元〉の読みやすさ / 業務画面 4 画面〈入庫/返品交換/手動販売/廃棄〉の subtitle 復活と間隔 / 備考「—」と折り返し / 価格履歴の表 / 単位表示）
@@ -404,6 +404,8 @@ Contract ID: SPEC-UIRUNTIME2-1
 
 Codex Writer（medium、発注書 `12-ui-polish-batch3-runtime-impl.md`）が ⑭ tip `14ce63f` を単段 merge `795169a` した上で S1〜S8 を実装（content commit `ab4958d`、src 19 / test 17 / docs 3 file）。備考の `title` 属性は本文が非空白のときのみ付与する（Coordinator 裁定 2026-09-08、packet S5「備考『—』+ 折り返し + `title`」の契約内の細則。空備考に `title=""` を付けない）。⑭ の PR #45 squash merge `51b1f48` + closeout `43b69be` 後、D-074 に従い origin/main を単段 merge `913413f`（衝突 14 file、docs 3 は両側保持、src / test 11 は ⑭ の後続是正を main 側から採用、⑮ 自身の変更が載る `InventoryRecordsPage.test.tsx` は両側保持）→ format 追従 `7d0a456` → rename 検出漏れで残った ⑭ packet / Matrix の旧 path 複製を削除 `da371b1`。既存 test の削除・skip なし（返品詳細 test の改名 1 件は S5 裁定に伴う新契約への更新）。exact-HEAD evidence と件数は PR #46 body が唯一の authority（D-038）。
 
+owner L3 round 1（`8d58fda`）で AC-L3-4 / AC-L3-6 FAIL + AC-L3-1 派生 → Gated Amendment 2 `036907b` → 是正 round 1 `5401906`（PageHeader (c) `items-start` + 左 group `min-w-0 flex-1` + actions `shrink-0` / 価格履歴 cell の接頭語撤去 + 日時 `T`→空白 / 単位列を数量直後へ、catalog :33 / :52 同期）。owner L3 round 2 で単位列の隣接でも違和感が残り → Gated Amendment 3 `ed916d5` → 是正 round 2 `59db36f`（単位列を廃止し数量 cell に `[input] 個`、現在庫 `formatStockDisplay`、金額 input に「円」、3 入力行テーブル、function-design 62 / 63 / 64 + 58 同期）。本 commit で Codex P3-1 の docs 同期（備考「—」を 63 / 65 / SCREEN_DESIGN / catalog へ）。exact-HEAD evidence と件数は PR #46 body が唯一の authority（D-038）。
+
 ## Review Response
 
 - Findings Freeze: frozen at da371b1（Codex ロジックレビュー round 1 = review 5142885760、2026-09-08、P1 0 / P2 0 / P3 2、Freeze 可）; post-freeze exceptions: none.
@@ -411,3 +413,5 @@ Codex Writer（medium、発注書 `12-ui-polish-batch3-runtime-impl.md`）が �
 2026-09-08: Final Review 一次 = Sonnet fresh（隔離 worktree @ `da371b1`）**approve、P1 0 / P2 0 / P3 1**（P3 = 本 packet の Implementation Results / Review Response が未着手のまま → 本 commit で記入）。AC1〜AC9 独立再実行で全一致、Matrix 優先 mutant 6 本（SC1 / SC6 / SC12 / SC16 / SC19 / SC22）全 kill、D-074 merge delta の衝突 8 file は欠落なし（`InventoryRecordsPage.test.tsx` は ⑭・⑮ 双方の後継 assertion が残存）。Codex ロジックレビュー round 1（review 5142885760、medium、commands 58）= **P1 0 / P2 0 / P3 2、Findings Freeze 可**、mutant 53 本全 kill: P3-1 = 備考「—」化の docs 同期漏れ（catalog `:191` に「折り返しへ是正済み」と「truncate されたまま」が併存、`63-ui-return-exchange.md:40,133,135,184` / `65-inventory-record-traceability.md:110` / `SCREEN_DESIGN.md:286` が「備考なし」を現行仕様として保持）/ P3-2 = Plans.md で ⑭ の補足 2 行が ⑮ の子項目に見える配置。Coordinator 裁定: P3-2 は本 commit の Plans.md で是正（⑭ 行直下へ戻す）。P3-1 は accept、docs-only の是正を **Ready 遷移の content commit 同乗**で実施する（STATECAP: 本 branch は ⑭ の `7c12dab` を継承し、自前 `e19bee1` + 本 commit で forward 3 = aggregate 上限。DEV_WORKFLOW「継承で枠が尽きた場合、Ready 遷移は content commit 同乗で実体化」に従い、P3-1 docs 同期 commit を Ready 遷移の同乗先にする。docs-only 解消のため delta ack のみ〈D-074〉）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = Writer の `local-ci.sh full` PASS（`ab4958d`）+ base 付け替え後の typecheck / lint / format / vitest PASS（evidence は PR body）、independent-review = Sonnet 一次 approve + Codex round 1 Freeze、human-confirm = Human Gate（owner Windows native L3、AC-L3-1〜6）を実体化。Reviewed Content HEAD = `da371b1`。次: owner L3 → Ready 承認 → P3-1 docs 同期 content commit に `human-confirm->ready-hosted-final` を同乗（Sonnet delta ack）→ 当該 HEAD で L1 full → Ready → hosted final → squash merge → closeout。
 
 2026-09-09: owner Windows native L3 round 1（tip `8d58fda`）: AC-L3-1 / 2 / 3 / 5 PASS。**AC-L3-4 FAIL**（価格履歴の cell が「売価 ¥110 → ¥150」と列見出しを重複表示。加えて変更日時が ISO `2026-07-06T17:15:16` の生表示）/ **AC-L3-6 FAIL**（手動販売の入力行が 数量 | 販売金額 | 単位 の順で、単位が金額の後ろに来る。返品交換の 方向 | 数量 | 単位 は自然。廃棄も 数量 | 原価 | 理由 | 単位 で同型）/ **AC-L3-1 の派生**（商品一括インポートの「商品一覧へ戻る」ボタンが説明文の下・左へ落ちる。PageHeader (c) の `flex-wrap items-center` で長い description が左 group を全幅化し actions が折返す。owner「戻るボタンは右上では」）。是正は S1 / S6 / S7 の契約変更を伴うため Gated Amendment 2 として次 commit で packet を改訂し、`state-backtrack human-confirm->implementing` を本 commit で記録。Reviewed Content HEAD は pending へ戻す。次: Amendment 2 → Codex 是正 → Sonnet closure → owner L3 round 2（AC-L3-4 / 6 / 1 派生）→ Ready 承認 → P3-1 docs 同期 commit に `implementing->local-verified->independent-review->human-confirm->ready-hosted-final` を同乗（STATECAP: 継承 `7c12dab` + `e19bee1` + `8d58fda` = forward 3 で上限）。
+
+2026-09-09: 是正 round 1 `5401906` → Sonnet closure round 1 **可**（mutant 8 本全 kill、P3 1 = PriceHistorySection に理由 comment なし、no-action）→ owner L3 round 2: AC-L3-1 派生 / AC-L3-4 PASS、AC-L3-6 は隣接でも「別項目が並ぶ」違和感 → Gated Amendment 3 → 是正 round 2 `59db36f` → Sonnet closure round 2 **可**（mutant 7 本全 kill、cm fixture あり、P3 1 = `58-ui-stock-inquiry.md` 1 行を scope 外で同期〈内容は正確、accept〉）→ owner L3 round 3: AC-L3-6 PASS。owner Ready 承認 2026-09-09。**遷移 implementing->local-verified->independent-review->human-confirm->ready-hosted-final を本 content commit に同乗して記録**（DEV_WORKFLOW Stacked train: 本 branch は ⑭ の forward state-only `7c12dab` を継承し、自前 `e19bee1` + `8d58fda` で aggregate 3 = 上限のため、Ready 遷移は content commit 同乗で実体化）。local-verified = Writer の `local-ci.sh full` PASS（`59db36f`、evidence は PR body）、independent-review = Sonnet closure round 2 可 + Codex round 1 Freeze（5142885760）、human-confirm = owner L3 round 3 PASS、ready-hosted-final = owner Ready 承認。Amendments = `036907b`, `ed916d5`。Reviewed Content HEAD = `59db36f`。本 commit の docs 同期（Codex P3-1）は docs-only の解消のため独立 Reviewer の delta ack のみ（D-074）。次: 本 HEAD で L1 full → PR body → Ready → hosted final → squash merge → closeout。
