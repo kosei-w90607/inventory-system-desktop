@@ -596,8 +596,9 @@ export function ManualSalePage() {
                   <TableHead>部門</TableHead>
                   <TableHead>現在庫</TableHead>
                   <TableHead>数量</TableHead>
-                  <TableHead>販売金額</TableHead>
+                  {/* 数量と単位は一つの値として読めるよう隣接させる。 */}
                   <TableHead>単位</TableHead>
+                  <TableHead>販売金額</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -628,6 +629,7 @@ export function ManualSalePage() {
                         }}
                       />
                     </TableCell>
+                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -648,7 +650,6 @@ export function ManualSalePage() {
                         }}
                       />
                     </TableCell>
-                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"

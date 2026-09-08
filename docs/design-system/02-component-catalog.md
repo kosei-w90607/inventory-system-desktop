@@ -30,14 +30,18 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 **構造**:
 
 ```tsx
-<header className="flex flex-wrap items-center justify-between gap-3">
-  <h1 className="text-2xl font-semibold">商品検索・一覧</h1>
-  <Button type="button" asChild>
-    <Link to="/products/new" search={{ returnTo }}>
-      <PackagePlus aria-hidden="true" />
-      商品登録
-    </Link>
-  </Button>
+<header className="flex flex-wrap items-start justify-between gap-3">
+  <div className="min-w-0 flex-1 space-y-1">
+    <h1 className="text-2xl font-semibold">商品検索・一覧</h1>
+  </div>
+  <div className="shrink-0">
+    <Button type="button" asChild>
+      <Link to="/products/new" search={{ returnTo }}>
+        <PackagePlus aria-hidden="true" />
+        商品登録
+      </Link>
+    </Button>
+  </div>
 </header>
 ```
 
@@ -45,7 +49,7 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を `PageHeader` 内の `space-y-1` グループ（h1 と同じまとまり、下記 component gap 参照）に描画する。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。`SupplierManagementPage.tsx:35-39` の説明文は、本 PR（⑮）で外側 sibling `<p>` から `subtitle` prop へ移行済み。
 
-**component gap の解消**: `actions` と `subtitle`/`description` の排他は本 PR（⑮）で解消済み。`PageHeader.tsx:31-43` の `actions` 分岐に `<h1>` + 条件付き `subtitle`/`description` を `<div className="space-y-1">` にまとめる root-cause fix を適用し、外側 `<header>` の class は維持した。`ReceivingPage.tsx:295` / `ManualSalePage.tsx:310` / `ReturnExchangePage.tsx:419` / `DisposalPage.tsx:285` の副題と、`SupplierManagementPage.tsx:35-39` の `subtitle` への移行により、見出しと説明を同じグループで描画する。actions なしでも説明を描画する（`PageHeader.tsx:47-53`）。呼び出し側で wrapper を都度書く使用パターンは不要になった。
+**component gap の解消**: `actions` と `subtitle`/`description` の排他は本 PR（⑮）で解消済み。`PageHeader.tsx:31-43` の `actions` 分岐に `<h1>` + 条件付き `subtitle`/`description` を左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめる。Gated Amendment 2（owner L3 round 1）で外側 `<header>` を `flex flex-wrap items-start justify-between gap-3`、actions wrapper を `shrink-0` に変更した。長い description で actions が次行左へ折り返すため、説明を左列内で折り返し、actions を右上に留める。`ReceivingPage.tsx:295` / `ManualSalePage.tsx:310` / `ReturnExchangePage.tsx:419` / `DisposalPage.tsx:285` の副題と、`SupplierManagementPage.tsx:35-39` の `subtitle` への移行により、見出しと説明を同じグループで描画する。actions なしでも説明を描画する（`PageHeader.tsx:47-53`）。呼び出し側で wrapper を都度書く使用パターンは不要になった。
 
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
@@ -997,6 +1001,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-09 | PR #46（本 PR） | owner L3 round 1 / Gated Amendment 2: PageHeader (c) を items-start + 左 group min-w-0 flex-1 + actions shrink-0 に変更し、長い description でも actions を右上に留める構造へ同期。 |
 | 2026-09-08 | PR #45 | owner L3 AC-L3-3 を受け live SearchBar を `grid gap-1` の Label 上置きへ変更し、呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。 |
 | 2026-09-08 | PR #45 | Badge tone prop / 分類・強調枠、live SearchBar の Label と wrapper、Alert warning の runtime 反映を同期。取込み3状態の tone と移行前 anchor を訂正。既存更新履歴は維持。 |
 | 2026-09-06 | UI 磨き batch 3 design | ① にページ説明セクション使用パターンと `PageHeader` の `actions`/`subtitle` 排他 component gap（5画面）を追加。③ に備考列規則（必須列・空欄「—」統一・truncate+`title`）・「直近 {N} 件の」文言統一・`ManualSalePage.tsx` 二重囲み是正方針・共通 formatter（`formatStockDisplay`/`formatStockUnitLabel`）使用ルールを追加 |

@@ -735,6 +735,30 @@ it.each([
     await user.click(within(candidate).getByRole("button", { name: "廃棄・破損に追加" }));
     const inputRow = (await screen.findByLabelText("UNIT-001 の数量")).closest("tr");
     if (inputRow === null) throw new Error("expected table structure");
+    // SC19 Amendment 2: 候補・直近一覧から分離し、入力表の列と cell の対応を固定する。
+    const inputTable = inputRow.closest("table");
+    if (inputTable === null) throw new Error("expected table structure");
+    expect(
+      within(inputTable)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual([
+      "商品コード",
+      "商品名",
+      "部門",
+      "現在庫",
+      "種別",
+      "数量",
+      "単位",
+      "原価",
+      "理由",
+      "操作",
+    ]);
+    const cells = within(inputRow).getAllByRole("cell");
+    expect(within(cells[5]).getByLabelText("UNIT-001 の数量")).toBeInTheDocument();
+    expect(cells[6].textContent).toBe(unitLabel);
+    expect(within(cells[7]).getByLabelText("UNIT-001 の原価")).toBeInTheDocument();
+    expect(within(cells[8]).getByLabelText("UNIT-001 の理由")).toBeInTheDocument();
     expect(within(inputRow).getByText("1,234")).toBeInTheDocument();
     expect(within(inputRow).getByText(unitLabel)).toBeInTheDocument();
     expect(within(inputRow).queryByText(display)).not.toBeInTheDocument();

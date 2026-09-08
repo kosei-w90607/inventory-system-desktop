@@ -21,24 +21,24 @@ export interface PageHeaderProps {
  * ページヘッダーの 3 variant:
  *   (a) title のみ         → `<header className="space-y-1">` + `<h1>`
  *   (b) title + subtitle  → `<header className="space-y-1">` + `<h1>` + `<p>`
- *   (c) title + actions   → `<header className="flex flex-wrap items-center justify-between gap-3">` + `<h1>` + actions slot
+ *   (c) title + actions   → `<header className="flex flex-wrap items-start justify-between gap-3">` + `<h1>` + actions slot
  *
  * actions があっても副題・説明をタイトルと同じグループに保つ。
- * 外側 header のレイアウトは既存の 3 variant を維持する。
+ * actions は右上に置き、副題・説明は左グループ内で折り返す。
  */
 export function PageHeader({ title, subtitle, description, actions }: PageHeaderProps) {
-  // actions がある場合は flex レイアウト（ProductListPage の現構造と同値）
+  // items-start + min-w-0 flex-1 で長い説明を左列内で折り返し、actions を右上に留める。
   if (actions !== undefined) {
     return (
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
           <h1 className="text-2xl font-semibold">{title}</h1>
           {subtitle !== undefined && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           {description !== undefined && (
             <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </div>
-        {actions}
+        <div className="shrink-0">{actions}</div>
       </header>
     );
   }

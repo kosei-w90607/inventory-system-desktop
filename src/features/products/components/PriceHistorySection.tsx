@@ -85,13 +85,13 @@ export function PriceHistorySection({ productCode }: { productCode: string }) {
           <TableBody>
             {entries.map((entry) => (
               <TableRow key={entry.id}>
-                <TableCell>{entry.changed_at}</TableCell>
+                <TableCell>{entry.changed_at.replace("T", " ")}</TableCell>
                 <TableCell className="tabular-nums">
-                  売価 {yenFormatter.format(entry.old_selling_price)} →{" "}
+                  {yenFormatter.format(entry.old_selling_price)} →{" "}
                   {yenFormatter.format(entry.new_selling_price)}
                 </TableCell>
                 <TableCell className="tabular-nums">
-                  原価 {yenFormatter.format(entry.old_cost_price)} →{" "}
+                  {yenFormatter.format(entry.old_cost_price)} →{" "}
                   {yenFormatter.format(entry.new_cost_price)}
                 </TableCell>
               </TableRow>

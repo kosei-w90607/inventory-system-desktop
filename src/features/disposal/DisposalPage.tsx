@@ -499,9 +499,10 @@ export function DisposalPage() {
                   <TableHead>現在庫</TableHead>
                   <TableHead>種別</TableHead>
                   <TableHead>数量</TableHead>
+                  {/* 数量と単位は一つの値として読めるよう隣接させる。 */}
+                  <TableHead>単位</TableHead>
                   <TableHead>原価</TableHead>
                   <TableHead>理由</TableHead>
-                  <TableHead>単位</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -555,6 +556,7 @@ export function DisposalPage() {
                         }}
                       />
                     </TableCell>
+                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -592,7 +594,6 @@ export function DisposalPage() {
                         }}
                       />
                     </TableCell>
-                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"

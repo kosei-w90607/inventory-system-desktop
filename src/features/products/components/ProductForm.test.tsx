@@ -1,7 +1,15 @@
 // src/features/products/components/ProductForm.test.tsx
 
 import React from "react";
-import { act, createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -555,21 +563,31 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
       new_selling_price: 120,
       old_cost_price: 60,
       new_cost_price: 70,
-      changed_at: "2026-08-22T12:00:00",
+      changed_at: "2026-07-06T17:15:16",
     };
     mockListPriceHistory.mockResolvedValue({ status: "ok", data: [entry] });
     const edit = renderStateful("edit");
     expect(await screen.findByRole("heading", { name: "価格履歴" })).toBeInTheDocument();
     expect(mockListPriceHistory).toHaveBeenCalledWith("PRICE-001", 10);
-    expect(await screen.findByText("2026-08-22T12:00:00")).toBeInTheDocument();
+    expect(await screen.findByText("2026-07-06 17:15:16")).toBeInTheDocument();
     // ⑮ SC16: 列見出しとold→newを独立literalで固定。
     expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
       "変更日時",
       "売価",
       "原価",
     ]);
-    expect(screen.getByText("売価 ￥100 → ￥120")).toBeInTheDocument();
-    expect(screen.getByText("原価 ￥60 → ￥70")).toBeInTheDocument();
+    // SC16 Amendment 2: 既存 JPY formatter の円記号を維持し、接頭語と ISO の T を除く。
+    const cells = screen.getAllByRole("cell");
+    expect(cells.map((cell) => cell.textContent)).toEqual([
+      "2026-07-06 17:15:16",
+      "￥100 → ￥120",
+      "￥60 → ￥70",
+    ]);
+    expect(cells[0]).not.toHaveTextContent("T");
+    for (const cell of cells.slice(1)) {
+      expect(cell).toHaveTextContent(/^￥/);
+      expect(cell).not.toHaveTextContent(/売価|原価/);
+    }
     edit.unmount();
     mockListPriceHistory.mockClear();
     renderStateful("create");
@@ -587,7 +605,7 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
           new_selling_price: 210,
           old_cost_price: 100,
           new_cost_price: 105,
-          changed_at: "NEWEST",
+          changed_at: "2026-07-06T17:15:16",
         },
         {
           id: 8,
@@ -595,13 +613,26 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
           new_selling_price: 200,
           old_cost_price: 90,
           new_cost_price: 100,
-          changed_at: "OLDER",
+          changed_at: "2026-07-05T09:10:11",
         },
       ],
     });
     renderStateful();
-    const newest = await screen.findByText("NEWEST");
-    const older = screen.getByText("OLDER");
+    const newest = await screen.findByText("2026-07-06 17:15:16");
+    const older = screen.getByText("2026-07-05 09:10:11");
+    const newestRow = newest.closest("tr");
+    const olderRow = older.closest("tr");
+    if (newestRow === null || olderRow === null) throw new Error("expected table structure");
+    expect(
+      within(newestRow)
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent),
+    ).toEqual(["2026-07-06 17:15:16", "￥200 → ￥210", "￥100 → ￥105"]);
+    expect(
+      within(olderRow)
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent),
+    ).toEqual(["2026-07-05 09:10:11", "￥180 → ￥200", "￥90 → ￥100"]);
     expect(newest.compareDocumentPosition(older) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
