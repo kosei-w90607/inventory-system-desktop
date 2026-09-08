@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 0481f1f
@@ -13,7 +13,7 @@
 - Writer: Codex（`model_reasoning_effort=medium`、難所と判断した箇所は Coordinator 判断で high へ昇格）
 - Plan Reviewer: Opus 5（read-only claims-producer）+ 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（fresh context）一次 + Codex ロジックレビュー、裁定は Fable
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 4321485
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（状態 Badge tone 6 画面 / CTA secondary の見え方 / 検索欄 Label / 一括価格改定 warning Alert）
@@ -328,11 +328,11 @@ Contract ID: SPEC-UIRUNTIME-1
 
 ## Implementation Results
 
-未着手（Phase: implementing、Plan Commit `0481f1f`、Writer = Codex medium。実装結果は Writer 報告を Coordinator が転記する）。
+Codex Writer（medium）が S1〜S7 を実装（`38f9b09` feat(ui) / `070cf46` Alert 参照 ID と traceability 同期 / `14ce63f` origin/main 単段 merge〈main hotfix `2c125d1` = Plans.md reading order 再掲除去の取り込み〉）。Final Review round 1 の是正 `4321485`（中立「通常」の tone 不在 + 中立 class 独立期待値 / SearchBar の commit Label 結線・`inputClassName`・live `label` 上書きの assertion / 棚卸し差異 cell の null は class なし + null case test / test 名・comment・`50-ui-product-list.md` を現行契約へ）。既存 test の削除・skip なし。SC7 の旧直塗り assertion（`StocktakePage.test.tsx`）は発注書の実装原則で明示許可された更新（packet 改稿なし）。exact-HEAD evidence と件数は PR #45 body が唯一の authority（D-038）。
 
 ## Review Response
 
-未着手。
-
 - **G12（Sonnet P3-3、no action）記録**: `## 起票時実測` / `## Writer Instructions` は template（`docs/templates/plan-packet.md`）にない追加見出しだが、逸脱ではなく repo 慣行（`## 起票時実測` は archive 済み packet 19 件、`## Writer Instructions` は 4 件以上で使用実測確認済み）。
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen at 14ce63f（Codex ロジックレビュー round 1 = review 5136012583、2026-09-08、以後は closure 確認のみ）; closure verified at 4321485（Sonnet fresh、Codex closure は owner 判断で省略 2026-09-08）; post-freeze exceptions: none.
+
+2026-09-08: Final Review round 1 = Sonnet fresh 一次（隔離 worktree @ `14ce63f`、AC1〜AC8 oracle 全一致、独立再注入 mutant 全 kill、`it.skip` 増加 0、P1 0 / P2 1 = `StocktakePage.tsx` の差異色分けが `computeListDifference(item) ?? 0` で null〈未入力〉を 0 分岐へ落とし着色、S3 / SC9「null は無変更」に反し test 未被覆）+ Codex ロジックレビュー round 1（review 5136012583、medium、P1 0 / P2 3 = ① `StockStatusBadge` 中立「通常」への tone 混入が未検出 ② `SearchBar` の `inputClassName` / commit Label / live label 上書きの結線が未検出 ③ test 名・comment・function-design 50 `:91` が旧契約〈Label なし〉を説明、**Findings Freeze 可**）。Coordinator 裁定 = 4 件すべて accept → Codex Writer 是正 `4321485`（発注書 `13-fix-pr45-r1.md`、実装手戻り 0）。closure = Sonnet fresh（隔離 worktree @ `4321485`、4 件すべて closed、各 mutant と旧 `?? 0` を再注入し対象 test が FAIL、assertion の弱化なし、docs 旧文言の残存なし、post-freeze 例外なし）。Codex closure（`15-review-pr45-closure.md`）は owner 判断で省略（2026-09-08、Freeze 後の是正を Sonnet closure が独立確認済みのため）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = Writer の `local-ci.sh full` PASS（exact-HEAD evidence は PR body）、independent-review = Sonnet 一次 + Codex round 1（Findings Freeze）+ Sonnet closure、human-confirm = Human Gate（owner Windows native L3、AC-L3-1〜4）を実体化。Reviewed Content HEAD = `4321485`。次: owner L3 → Ready（`human-confirm->ready-hosted-final` state-only 1 本を Draft のまま作成し、その HEAD で L1 full 再走 + PR body 更新）→ hosted final（pull_request run）→ squash merge → closeout。
