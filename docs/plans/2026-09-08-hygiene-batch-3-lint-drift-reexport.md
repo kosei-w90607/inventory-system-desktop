@@ -4,16 +4,16 @@ Backlog（`docs/Plans.md:152,155,167`、本 packet起票時点の行番号）記
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 8fb4124
-- Amendments: none
+- Amendments: 4b6089d, 1c79cf8
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（`model_reasoning_effort=medium`、S2/S3 の bash/Rust 実装は難所と Coordinator が判断した箇所で high へ昇格）
 - Plan Reviewer: 独立 Opus 5（read-only claims-producer）+ 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（fresh context）1 パス + Opus 5（read-only claims-producer）1 パス = Double Audit（S1〜S3 とも）+ Codex ロジックレビュー、裁定は Fable
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 4ff881d
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: none（機械 gate のみ、L3 不要。UI/画面/operator workflow に非接触）
@@ -407,10 +407,10 @@ Contract ID: SPEC-HYG3-LINT-1, SPEC-HYG3-LINT-2, SPEC-HYG3-CMD-1..5, SPEC-HYG3-R
 
 ## Implementation Results
 
-未着手（Phase: implementing、Plan Commit `8fb4124`、Writer = Codex medium。実装結果は Writer 報告を Coordinator が転記する）。
+Codex Writer（medium、発注書 `14-hygiene-batch-3-impl.md`）が S1〜S4 を実装 `9e7afd9`（eslint 保守性 block A 案 + disposition 3 件 / `scripts/check-command-drift.sh` + self-test 5 mode + `doc-consistency-check.sh` hook / `architecture_test.rs` `DB_IO_REEXPORT_ALLOWLIST` 30 symbol + `direct_reexport_fixtures` / decision-log D-083 + cmd-task-specs）、Coordinator が main hotfix `2c125d1` を merge `e6bbe23`。Final Review 3 者の accept 8 件を是正 round 1 `5546423`（`#[cfg(test)]` 除外 awk を pending / block の状態機械へ、raw 属性数照合で収集漏れを明示 FAIL、self-test 3 mode 追加 = 8 mode、`crate::{…}` / outer group を展開後に判定 + fixture 変種 6・7、`check_command_registry_drift()` を定義節へ hoist、D と H/S の非対称 comment）、Codex closure round 1 の survivor 1 件を是正 round 2 `4ff881d`（同一行 block comment `*/` 後の code を解析対象に残す + fixture 3 本）。origin/main `43b69be` は単段 merge `124f376`（Plans.md 衝突のみ、Coordinator 解消）。既存 test の削除・skip・`#[ignore]` なし。exact-HEAD evidence と件数は PR #47 body が唯一の authority（D-038）。
 
 ## Review Response
 
-未着手。
+- Findings Freeze: frozen at 5546423（Codex closure round 1 = review 5144029855 で新規指摘なし〈既報 survivor 1 のみ〉、2026-09-09）; closure verified at 4ff881d（Codex closure round 2 = review 5144589042、Sonnet closure = 可）; post-freeze exceptions: none.
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+2026-09-08〜09: Final Review round 1（content `e6bbe23`）= Double Audit + Codex の 3 者。Sonnet 1 パス approve-with-P2（P2 1 = `doc-consistency-check.sh` の新 `check_*` だけ呼び出し位置で inline 定義、AC1〜AC23 全 ✅、mutant 7 本全 kill）/ Opus 1 パス reject（P1 1 = `check-command-drift.sh:19-27` の `#[cfg(test)]` 除外 awk が block を開かない item で後続 production 行を次の `}` まで飲み込む fail-open〈`lib.rs` raw 1035 → 1009 行、Coordinator 再現、現行 tree 影響 0〉、P2 1 = self-test に当該 case なし、P3 3 = inline 定義 / AC15 の fixture symbol `crate::db::Row` が架空で compile error / D と H・S の stream 非対称）/ Codex ロジックレビュー round 1（review 5142743441、medium、mutant 26 = kill 19 / survive 7）P2 3（#1 `#[tauri::command]` と `pub fn` の間のコメント行で宣言を取りこぼし exit 0 / #2 `pub use crate::{db::…, io::…}` group を prefix 判定で読み飛ばし / #3 nested `#[cfg(test)]` で除外深度を再初期化し偽陽性）、Freeze 不可。**Coordinator 裁定 = 8 件すべて accept（Opus P1-1 は現行 tree 影響 0 のため P2 扱い、Freeze 前に修正必須）**。Sonnet 単独では 4 件を検出できず、Double Audit + Codex の 3 者体制が機能した。origin/main `43b69be` 単段 merge `124f376` → **Gated Amendment 1 `4b6089d`**（AC15 実在 symbol + group 変種 6・7 / SC-CMD-1 追加 mode 3 / SC-CMD-3 正の対照 / SC-REX-1 変種 6・7 / Residual Test Gaps 訂正）→ 是正 round 1 `5546423`（F1〜F8）→ Sonnet closure 可（8 件 closed、P3 1 = 収集漏れ message に対処ヒントなし → no-action、Backlog）/ Codex closure round 1（review 5144029855）**不可**: 7 変種中 1 survive = `/* comment */ pub use crate::db::x;`（行頭 `/*` で行ごと continue、round 1 ledger 既報の `REX-inline-comment-bypass`、Coordinator が発注書 19 から落としていた）→ **Gated Amendment 2 `1c79cf8`**（AC15 変種 8）→ 是正 round 2 `4ff881d` → Codex closure round 2（review 5144589042）**可**（変種 8 + 既報 7 変種 + nested 2 条件 全 kill、compile error による kill 計上なし、fixture 独立性妥当）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm->ready-hosted-final を本 commit で圧縮記録**: local-verified = Writer の `local-ci.sh full` PASS（`4ff881d`、evidence は PR body）、independent-review = Sonnet closure 可 + Codex closure round 2 可、human-confirm = Human Gate none（機械 gate のみ、UI 非接触）、ready-hosted-final = owner の batch Ready 承認（2026-09-08「Ready から締めまで進めてしまっていい」系の委任 + 本日「どんどんやる」）。Amendments = `4b6089d`, `1c79cf8`。Reviewed Content HEAD = `4ff881d`。STATECAP: forward state-only は `af9d4ef` + 本 commit = 2（post-impl 1）。次: 本 HEAD で L1 full → PR body → Ready → hosted final（scripts / Rust 変更ありのため pull_request run）→ squash merge → closeout。
