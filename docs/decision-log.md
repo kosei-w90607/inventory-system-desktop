@@ -675,3 +675,12 @@ Use concise ADR-style entries.
 - Impact: `AGENTS.md` step 5 の routing 先は `shared.md` + `model-notes.md`。`.codex/README.md` は「自動降格防止」を保証としない旨へ修正。`scripts/tests/codex-safe-wrappers.test.sh` T10 を「既定は空 / 明示 pin は効く / CLI `-m` と競合しない」の 3 case へ拡張（T1〜T15 PASS）。cwd pin（public-writer clone 固定）と safe wrapper 構造は不変。Claude Code 側（`CLAUDE.md` / `.claude/`）への影響なし。4 規範は Codex セッションの振る舞い契約であり、Plan Packet / DEV_WORKFLOW の Human Gate 定義そのものは変えない（Gate の存在は packet が正、Skill 由来の推測を禁じるだけ）。
 - Alternatives considered: 改名だけにして 4 規範を別 PR にする案（規範は同じ公式 guidance の同一改訂に由来し、分けると `shared.md` の版が 2 段になるため却下）; model 名を repo 側 profile に残す案（D-057 の slot-neutral 方針に逆行）; 4 規範を `AGENT_OPERATING_MANUAL` §3 に置く案（Claude 側の運用と混在するため、Codex 専用の shared contract に留める）。
 - Revisit: 4 規範の運用で Human Gate の取りこぼし（packet が要求する L3 を Codex が省略する等）が実発生したとき。その場合は規範 (2) の文言を packet 優先へ絞る。
+
+## D-083: biz/mnt からの DB/IO 直接 re-export を allow list で増加禁止（C′、衛生 batch 3）（2026-09-08）
+
+- Decision: `src-tauri/src/biz/**` と `src-tauri/src/mnt/**` からの `crate::db::*` / `crate::io::*` の直接 `pub use` / `pub(crate) use` 再公開を、起票時点の 30 symbol（17 statement）を allow list として凍結し、`src-tauri/tests/architecture_test.rs` の機械検査で新規追加（および allow list からの無断削除）を禁止する。alias 経由・type alias 経由の再公開の検出、および既存 30 symbol の削減・型所有の再設計は本 decision の対象外とする（別設計判断、`docs/Plans.md` Backlog 残置）。
+- Status: accepted
+- Why: 衛生 batch 3 起票時の read-only 監査（`.local/codex-orders/reports/10c-command-drift-and-reexport.md` §3）で、cmd → biz/mnt 経由の DB 型共有は D-060 が正本化した意図的設計（CMD-11 backup/restore 経路、CSV/inventory 系 DTO 共有）であり、全面禁止（監査の「C」案）は既存設計を破壊すると判明した。一方で無制限の増加は既存 `architecture_test.rs` の layer check（`use crate::db` の直接 import のみ検出、re-export 経由は対象外）をすり抜ける経路であり、drift の監視が皆無だった。allow list による増分 guard（監査の「C′」案）は、既存の意図的公開面を壊さず新規の無審査な再公開だけを止める最小 gate として選ばれた。
+- Impact: `src-tauri/tests/architecture_test.rs` に allow list 定数と新規 test を追加する（衛生 batch 3、Plan Packet `docs/plans/2026-09-08-hygiene-batch-3-lint-drift-reexport.md`）。`docs/architecture/cmd-task-specs.md:128` の検査境界記述を同期する。allow list への今後の追加は architecture_test.rs の const 編集で行い、無審査の追加を防ぐことが目的のため追加自体を禁止しない。
+- Alternatives considered: 全面禁止（監査の A「全 direct import 到達禁止」または C「全 pub use 禁止」）— 既存 30 symbol の設計（D-060 の CMD-11 経路、AMD2 の MNT no-create 経路）を破壊するため却下。alias/type alias まで含む完全洗浄検出（監査の A 拡張）— 別設計判断として非採用、`docs/Plans.md` Backlog 参照。`cargo-modules`/`cargo-deps` 等の外部 tool 導入 — toolchain 版不一致・未実測のため不採用（10c 報告 §3 参照）。
+- Revisit: alias/type alias 経由の再公開が実害を伴って発見された場合、または既存 30 symbol の削減・型所有の再設計が必要になった場合。

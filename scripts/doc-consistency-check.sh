@@ -2029,6 +2029,15 @@ else
     check_plan_packet_workflow_state
     check_active_plan_goal_invariant
     check_new_wer_retired_rules
+
+    # SPEC-HYG3-CMD-2: design mode の一箇所から既存 docs gate 全経路へ届ける。
+    check_command_registry_drift() {
+        header "Command registry drift"
+        if ! bash scripts/check-command-drift.sh; then
+            error "Command registry drift を検出しました"
+        fi
+    }
+    check_command_registry_drift
 fi
 
 echo ""

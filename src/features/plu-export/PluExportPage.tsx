@@ -185,6 +185,7 @@ function formatExcludedReason(reason: string): string {
   }
 }
 
+// eslint-disable-next-line complexity -- 衛生 batch 3 起票時実測（10a §3 item #1）: 保存・未確認復帰・確認・snapshot 読込みの state/表示条件混在。flow hook / 状態 panel への分割は本 lane の scope 外、Backlog 参照
 export function PluExportPage() {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<ExportMode>("diff");

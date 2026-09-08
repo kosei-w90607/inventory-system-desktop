@@ -30,13 +30,19 @@ function computeRange(page: number, perPage: number, totalCount: number): Pagina
   return { totalPages, from, to };
 }
 
-function rangeText(
-  totalCount: number,
-  from: number,
-  to: number,
-  page: number,
-  totalPages: number,
-): string {
+function rangeText({
+  totalCount,
+  from,
+  to,
+  page,
+  totalPages,
+}: {
+  totalCount: number;
+  from: number;
+  to: number;
+  page: number;
+  totalPages: number;
+}): string {
   if (totalCount === 0) {
     return "0 件";
   }
@@ -53,7 +59,7 @@ export function Pagination({ page, perPage, totalCount, onPageChange }: Paginati
 
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-      <div className="tabular-nums">{rangeText(totalCount, from, to, page, totalPages)}</div>
+      <div className="tabular-nums">{rangeText({ totalCount, from, to, page, totalPages })}</div>
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -100,7 +106,7 @@ export function PaginationSummary({ page, perPage, totalCount }: PaginationSumma
 
   return (
     <div className="text-sm text-muted-foreground tabular-nums">
-      {rangeText(totalCount, from, to, page, totalPages)}
+      {rangeText({ totalCount, from, to, page, totalPages })}
     </div>
   );
 }

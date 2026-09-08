@@ -203,6 +203,7 @@ if [[ "$(classification_value workflow)" == "true" ]]; then
         run_required "shell-syntax:$shell_file_relative" "$REPO_ROOT" bash -n "$shell_file"
     done
     run_required classifier-tests "$REPO_ROOT" bash scripts/tests/classify-changes.test.sh
+    run_required check-command-drift-tests "$REPO_ROOT" bash scripts/tests/check-command-drift.test.sh
     run_required pre-push-tests "$REPO_ROOT" bash scripts/tests/pre-push.test.sh
     run_required local-ci-tests "$REPO_ROOT" bash scripts/tests/local-ci.test.sh
     run_required codex-safe-wrappers-tests "$REPO_ROOT" bash scripts/tests/codex-safe-wrappers.test.sh

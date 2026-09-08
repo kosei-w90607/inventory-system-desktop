@@ -182,6 +182,7 @@ function clearStaleRowErrors(
   return nextErrors;
 }
 
+// eslint-disable-next-line max-lines-per-function -- 衛生 batch 3 起票時実測（10a §3 item #2）: 画像保存・再送 key・返品方向変換・検索・結果表示が同居。画像/明細/保存 flow への分割は本 lane の scope 外、Backlog 参照
 export function ReturnExchangePage() {
   const queryClient = useQueryClient();
   const returnTo = useRouterState({ select: (state) => state.location.href });
