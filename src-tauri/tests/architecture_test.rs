@@ -201,11 +201,21 @@ fn direct_reexport_fixtures() {
         "pub use crate::db::product_repo::{Department, Row3};",
         "// comment\npub use crate::db::Row4;",
         "pub use crate::db::other_repo::PaginatedResult;",
+        // SC-REX-1 変種 6・7: group 展開前の prefix 判定で読み飛ばさない。
+        "pub use crate::{db::NewOperationLog, io::image_manager};",
+        "pub use {crate::db::NewOperationLog, crate::io::image_manager};",
     ] {
         fs::write(&file, format!("{baseline}{addition}\n")).unwrap();
         let differences = reexport_differences(dir.path(), &allowed);
         assert!(!differences.is_empty(), "missed addition: {addition}");
         assert!(differences.iter().any(|diff| diff.contains("unexpected")));
+        if addition.contains("image_manager") {
+            for path in ["crate::db::NewOperationLog", "crate::io::image_manager"] {
+                assert!(differences
+                    .iter()
+                    .any(|diff| diff.contains("unexpected") && diff.contains(path)));
+            }
+        }
     }
 
     fs::write(
@@ -391,7 +401,7 @@ fn direct_db_io_reexports(file: &Path) -> Vec<(String, String)> {
             else {
                 continue;
             };
-            if !path.starts_with("crate::db::") && !path.starts_with("crate::io::") {
+            if !path.starts_with("crate::") && !path.starts_with('{') {
                 continue;
             }
             statement.push_str(path);
@@ -404,6 +414,7 @@ fn direct_db_io_reexports(file: &Path) -> Vec<(String, String)> {
             continue;
         }
         let path = statement.trim_end_matches(';');
+        let mut paths = Vec::new();
         if let Some((prefix, group)) = path.split_once('{') {
             let group = group
                 .strip_suffix('}')
@@ -413,11 +424,18 @@ fn direct_db_io_reexports(file: &Path) -> Vec<(String, String)> {
                     !symbol.contains(['{', '}']),
                     "D-083: unsupported nested group"
                 );
-                exports.push((symbol.to_string(), format!("{}{symbol}", prefix.trim())));
+                paths.push(format!("{}{symbol}", prefix.trim()));
             }
         } else {
+            paths.push(path.to_string());
+        }
+        // crate 直下 / outer group も展開してから各 leaf の full path で判定する。
+        for path in paths {
+            if !path.starts_with("crate::db::") && !path.starts_with("crate::io::") {
+                continue;
+            }
             let symbol = path.rsplit("::").next().unwrap();
-            exports.push((symbol.to_string(), path.to_string()));
+            exports.push((symbol.to_string(), path));
         }
         statement.clear();
     }

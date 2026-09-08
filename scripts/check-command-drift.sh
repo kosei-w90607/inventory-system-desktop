@@ -14,22 +14,42 @@ trap 'rm -rf "$tmp"' EXIT
 # rg の既定 gitignore 尊重で Rust source だけ列挙する（独自 walk を持たない）。
 rg --files src-tauri/src | rg '\.rs$' > "$tmp/files"
 while IFS= read -r file; do
-    # 既存 architecture_test と同じ深度追跡で test 専用領域を除外する。
+    # production → pending（item 待ち）→ in_test（block 内）→ production の順に除外する。
     # ponytail: source の brace を数える近似。cfg 評価/macro 展開は別設計判断。
     awk '
-        /#\[cfg\(test\)\]/ { in_test=1; depth=0; next }
+        { sub(/\/\/.*/, "") }
+        # nested cfg(test) で深度を再初期化すると外側 scope を途中で抜けるため、先に追跡する。
         in_test {
             depth += gsub(/{/, "{") - gsub(/}/, "}")
-            if (depth <= 0 && /}/) in_test=0
+            if (depth <= 0) in_test=0
+            next
+        }
+        /^[[:space:]]*#\[cfg\(test\)\]/ {
+            pending=1
+            sub(/^[[:space:]]*#\[cfg\(test\)\][[:space:]]*/, "")
+        }
+        pending {
+            # 付随属性・空行は pending を維持し、同一行の item も処理する。
+            while (sub(/^[[:space:]]*#\[[^]]*\][[:space:]]*/, "")) {}
+            if ($0 ~ /^[[:space:]]*$/) next
+            if (/{/) {
+                depth=gsub(/{/, "{") - gsub(/}/, "}")
+                in_test=(depth > 0)
+                pending=0
+            } else if (/;[[:space:]]*$/) pending=0
             next
         }
         { print }
     ' "$file"
 done < "$tmp/files" > "$tmp/production.rs"
-# command 属性から、付随属性を挟んだ公開 fn 名までを拾う。
-rg -U -o '#\[tauri::command([^]\n]*)\][[:space:]]*(#\[[^]\n]*\][[:space:]]*)*pub[[:space:]]+(async[[:space:]]+)?fn[[:space:]]+[A-Za-z_][A-Za-z_0-9]*' "$tmp/production.rs" |
-    sed -nE 's/.*pub[[:space:]]+(async[[:space:]]+)?fn[[:space:]]+([A-Za-z_][A-Za-z_0-9]*).*/\2/p' > "$tmp/D" ||
-    fail "no supported command declarations"
+# command 属性から、付随属性・コメント・空行を挟んだ公開 fn 名までを拾う。
+rg -U -o '#\[tauri::command([^]\n]*)\][[:space:]]*((#\[[^]\n]*\]|//[^\n]*)[[:space:]]*)*pub[[:space:]]+(async[[:space:]]+)?fn[[:space:]]+[A-Za-z_][A-Za-z_0-9]*' "$tmp/production.rs" |
+    sed -nE 's/.*pub[[:space:]]+(async[[:space:]]+)?fn[[:space:]]+([A-Za-z_][A-Za-z_0-9]*).*/\2/p' > "$tmp/D" || true
+# raw 属性数と照合し、未対応宣言を黙って捨てて D/H/S/T が一致する fail-open を防ぐ。
+raw_count=$(awk '{ count += gsub(/#\[tauri::command/, "") } END { print count+0 }' "$tmp/production.rs")
+parsed_count=$(wc -l < "$tmp/D")
+[[ "$raw_count" -eq "$parsed_count" ]] || fail "D の収集漏れ $((raw_count - parsed_count)) 件"
+[[ "$parsed_count" -gt 0 ]] || fail "no supported command declarations"
 
 collect_registry() {
     local macro="$1"
@@ -64,6 +84,8 @@ collect_registry() {
         END { if (bad || inside || blocks != 1) exit 1 }
     ' src-tauri/src/lib.rs || fail "unsupported or missing $macro registry"
 }
+# D は test 除外後、H/S は raw lib.rs を走査する（generate_handler! は test 領域に置かない前提）。
+# test 側にも registry を置いた場合は blocks != 1 で fail-closed にする。
 collect_registry generate_handler > "$tmp/H"
 collect_registry collect_commands > "$tmp/S"
 # Specta が出力した invoke の第 1 引数（wire 名）だけを拾う。
