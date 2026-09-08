@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 2264f1b
@@ -13,7 +13,7 @@
 - Writer: Codex（`model_reasoning_effort=medium`、難所と判断した箇所は Coordinator 判断で high へ昇格）
 - Plan Reviewer: Opus（read-only claims-producer）+ 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（fresh context）一次 + Codex ロジックレビュー、裁定は Fable
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: da371b1
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（説明セクション 3 画面〈商品一括インポート/PLU書出し/バックアップ・復元〉の読みやすさ / 業務画面 4 画面〈入庫/返品交換/手動販売/廃棄〉の subtitle 復活と間隔 / 備考「—」と折り返し / 価格履歴の表 / 単位表示）
@@ -401,10 +401,10 @@ Contract ID: SPEC-UIRUNTIME2-1
 
 ## Implementation Results
 
-未着手。
+Codex Writer（medium、発注書 `12-ui-polish-batch3-runtime-impl.md`）が ⑭ tip `14ce63f` を単段 merge `795169a` した上で S1〜S8 を実装（content commit `ab4958d`、src 19 / test 17 / docs 3 file）。備考の `title` 属性は本文が非空白のときのみ付与する（Coordinator 裁定 2026-09-08、packet S5「備考『—』+ 折り返し + `title`」の契約内の細則。空備考に `title=""` を付けない）。⑭ の PR #45 squash merge `51b1f48` + closeout `43b69be` 後、D-074 に従い origin/main を単段 merge `913413f`（衝突 14 file、docs 3 は両側保持、src / test 11 は ⑭ の後続是正を main 側から採用、⑮ 自身の変更が載る `InventoryRecordsPage.test.tsx` は両側保持）→ format 追従 `7d0a456` → rename 検出漏れで残った ⑭ packet / Matrix の旧 path 複製を削除 `da371b1`。既存 test の削除・skip なし（返品詳細 test の改名 1 件は S5 裁定に伴う新契約への更新）。exact-HEAD evidence と件数は PR #46 body が唯一の authority（D-038）。
 
 ## Review Response
 
-未着手。
+- Findings Freeze: frozen at da371b1（Codex ロジックレビュー round 1 = review 5142885760、2026-09-08、P1 0 / P2 0 / P3 2、Freeze 可）; post-freeze exceptions: none.
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+2026-09-08: Final Review 一次 = Sonnet fresh（隔離 worktree @ `da371b1`）**approve、P1 0 / P2 0 / P3 1**（P3 = 本 packet の Implementation Results / Review Response が未着手のまま → 本 commit で記入）。AC1〜AC9 独立再実行で全一致、Matrix 優先 mutant 6 本（SC1 / SC6 / SC12 / SC16 / SC19 / SC22）全 kill、D-074 merge delta の衝突 8 file は欠落なし（`InventoryRecordsPage.test.tsx` は ⑭・⑮ 双方の後継 assertion が残存）。Codex ロジックレビュー round 1（review 5142885760、medium、commands 58）= **P1 0 / P2 0 / P3 2、Findings Freeze 可**、mutant 53 本全 kill: P3-1 = 備考「—」化の docs 同期漏れ（catalog `:191` に「折り返しへ是正済み」と「truncate されたまま」が併存、`63-ui-return-exchange.md:40,133,135,184` / `65-inventory-record-traceability.md:110` / `SCREEN_DESIGN.md:286` が「備考なし」を現行仕様として保持）/ P3-2 = Plans.md で ⑭ の補足 2 行が ⑮ の子項目に見える配置。Coordinator 裁定: P3-2 は本 commit の Plans.md で是正（⑭ 行直下へ戻す）。P3-1 は accept、docs-only の是正を **Ready 遷移の content commit 同乗**で実施する（STATECAP: 本 branch は ⑭ の `7c12dab` を継承し、自前 `e19bee1` + 本 commit で forward 3 = aggregate 上限。DEV_WORKFLOW「継承で枠が尽きた場合、Ready 遷移は content commit 同乗で実体化」に従い、P3-1 docs 同期 commit を Ready 遷移の同乗先にする。docs-only 解消のため delta ack のみ〈D-074〉）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = Writer の `local-ci.sh full` PASS（`ab4958d`）+ base 付け替え後の typecheck / lint / format / vitest PASS（evidence は PR body）、independent-review = Sonnet 一次 approve + Codex round 1 Freeze、human-confirm = Human Gate（owner Windows native L3、AC-L3-1〜6）を実体化。Reviewed Content HEAD = `da371b1`。次: owner L3 → Ready 承認 → P3-1 docs 同期 content commit に `human-confirm->ready-hosted-final` を同乗（Sonnet delta ack）→ 当該 HEAD で L1 full → Ready → hosted final → squash merge → closeout。
