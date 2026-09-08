@@ -233,6 +233,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   4. コメント付き（`// comment\npub use crate::db::Row4;` のような直前行コメントを伴う形）でも検出されることの確認
   6. **crate 直下 group**（Codex #2）: `pub use crate::{db::init_database, io::image_manager};` — path-prefix 判定で group を丸ごと読み飛ばさず、展開後に DB/IO path を判定して検出する（未対応 group は明示 FAIL でもよい）
   7. **outer group**（Codex #2）: `pub use {crate::db::init_database, crate::io::image_manager};` — 同上
+  8. **同一行 block comment**（Codex closure 5144029855、**Gated Amendment 2 2026-09-09**）: `/* new public API */ pub use crate::db::open_database;` — 行頭が `/*` でも同じ行に `*/` があれば、その後ろの code を解析対象に残す（現行は行ごと `continue` して見逃す）。閉じない `/*`（複数行 comment）の行だけを skip する
   5. **出所すげ替え**（Plan Review H2）: allow list 上に実在する symbol 名を、allow list に記載された再公開元とは異なる `crate::db::...` path から再公開する（例 `PaginatedResult` を `crate::db::PaginatedResult` ではなく合成の `crate::db::other_repo::PaginatedResult` から `pub use` する）— symbol 名の一致だけでなく再公開元 full path の一致も assertion key に含まれていることの確認（symbol 名のみを key にすると見逃す変種）
 - AC16（S3）: 新規 test は allow list に実在する 30 symbol を violation として検出しない — `cargo test --test architecture_test biz_mnt_direct_db_io_reexport_allowlist` が exit 0（AC14 の PASS がこれを含む）
 - AC17（S3）: `docs/decision-log.md` に `## D-083` が新設される — `rg -Fc '## D-083' docs/decision-log.md` = 1
