@@ -77,7 +77,7 @@ export function ProductRankingTable({
               <TableRow key={row.key} className={isTop ? "bg-rank-top-bg/40" : undefined}>
                 <TableCell>
                   {isTop ? (
-                    <Badge className="bg-rank-top-badge-bg text-rank-top-badge-text hover:bg-rank-top-badge-bg">
+                    <Badge className="border-warning bg-rank-top-badge-bg text-rank-top-badge-text hover:bg-rank-top-badge-bg">
                       {`${String(row.ranking)} 位`}
                     </Badge>
                   ) : (

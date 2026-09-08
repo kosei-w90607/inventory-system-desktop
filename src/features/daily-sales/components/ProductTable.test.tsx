@@ -121,3 +121,29 @@ describe("ProductTable (B0 empty-state characterization)", () => {
     expect(screen.getByText("日付や部門を変更してお試しください")).toBeInTheDocument();
   });
 });
+
+it("SC26 / REQ-501: manual is a neutral classification rather than a warning", () => {
+  const item = makeMockItem({ source: "manual" });
+  render(
+    <ProductTable
+      grouped={[
+        {
+          departmentId: 1,
+          departmentName: "布",
+          items: [item],
+          subtotal: { department_id: 1, department_name: "布", quantity: 1, amount: 100 },
+        },
+      ]}
+      sortBy={null}
+      sortDir="asc"
+      onSortChange={vi.fn()}
+      grandTotal={null}
+    />,
+  );
+  const badge = screen.getByText("手動");
+  expect(badge).toHaveAttribute("data-variant", "secondary");
+  expect(badge).toHaveClass("border-border");
+  expect(badge).not.toHaveAttribute("data-tone");
+  expect(badge).not.toHaveClass("bg-warning-soft");
+  expect(badge).not.toHaveClass("text-warning-strong");
+});

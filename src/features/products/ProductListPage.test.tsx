@@ -85,6 +85,11 @@ describe("ProductListPage (UI-01a)", () => {
     );
 
     await screen.findByText("PLU-FILTER");
+    // SC15 / AC-L3-3: 上置き Label の検索欄と隣接 control の下辺を揃える。
+    const toolbar = screen.getByText("商品を検索", { selector: "label" }).parentElement
+      ?.parentElement;
+    expect(toolbar).toHaveClass("items-end");
+    expect(toolbar).not.toHaveClass("items-center");
     expect(screen.getByRole("button", { name: "未反映" })).toHaveAttribute("aria-pressed", "true");
     expect(mockSearchProducts).toHaveBeenCalledWith({
       keyword: null,
@@ -211,8 +216,8 @@ describe("ProductListPage (UI-01a)", () => {
     expect(await screen.findByText("P-001")).toBeInTheDocument();
     expect(screen.getByText("はさみ")).toBeInTheDocument();
     // UI-01a-D9（2026-08-03 gated amendment）: live 型化により明示 id 契約（旧 PR #98 Codex R2 P2）は
-    // 廃止。live 型は Label htmlFor 結線を持たず aria-label で識別する。
-    expect(screen.getByLabelText("商品検索")).toHaveAttribute("type", "search");
+    // 廃止。現在の live 型は可視 Label「商品を検索」を htmlFor で結線し、aria-label は持たない。
+    expect(screen.getByLabelText("商品を検索")).toHaveAttribute("type", "search");
     expect(
       Array.from(
         screen.getByRole("group", { name: "廃番表示" }).querySelectorAll("button"),
@@ -241,7 +246,7 @@ describe("ProductListPage (UI-01a)", () => {
 
     renderWithClient(<ProductListPage search={{ q: "はさみ" }} onSearchChange={vi.fn()} />);
 
-    expect(screen.getByLabelText("商品検索")).toBeInTheDocument();
+    expect(screen.getByLabelText("商品を検索")).toBeInTheDocument();
     await waitFor(
       () => {
         expect(screen.getByText("商品一覧の取得に失敗しました")).toBeInTheDocument();
@@ -299,7 +304,7 @@ describe("ProductListPage (UI-01a)", () => {
 
     renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
 
-    expect(screen.getByLabelText("商品検索")).toBeInTheDocument();
+    expect(screen.getByLabelText("商品を検索")).toBeInTheDocument();
     expect(await screen.findByText("P-002")).toBeInTheDocument();
     // departmentsQuery は production 設計で retry: 1 を持つ（QueryClient default を上書き）ため、
     // 失敗確定まで retry delay 約 1s を要する。既定 timeout 1000ms は並列負荷で同着 flake する
@@ -322,7 +327,7 @@ describe("ProductListPage (UI-01a)", () => {
     mockListDepartments.mockResolvedValue({ status: "ok", data: [] });
     renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
     await screen.findByText("COST-001");
-    expect(screen.getByLabelText("商品検索")).toHaveAttribute(
+    expect(screen.getByLabelText("商品を検索")).toHaveAttribute(
       "placeholder",
       "商品コード・商品名・JAN・メーカー品番で検索",
     );
@@ -445,7 +450,7 @@ describe("ProductListPage SPEC-UIBB-10/11（live 型検索 + 複数ボタン中�
   it("SPEC-UIBB-10 検索入力が200msデバウンスでqに反映される", async () => {
     const onSearchChange = vi.fn();
     renderWithClient(<ProductListPage search={{ page: 2 }} onSearchChange={onSearchChange} />);
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
     await userEvent.setup().type(input, "はさみ");
     await waitFor(
       () => {
@@ -466,18 +471,20 @@ describe("ProductListPage SPEC-UIBB-10/11（live 型検索 + 複数ボタン中�
     expect(updater({ page: 2 }).page).toBe(1);
   });
 
-  it("SPEC-UIBB-10 検索ボタンとLabelを表示しない", () => {
+  it("SPEC-UIBB-10 可視Label「商品を検索」を表示し、検索ボタンとaria-labelは持たない", () => {
     renderWithClient(<ProductListPage search={{}} onSearchChange={vi.fn()} />);
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
     expect(input).toHaveAttribute("type", "search");
     expect(screen.queryByRole("button", { name: "検索" })).not.toBeInTheDocument();
     expect(screen.queryByText("検索", { selector: "label" })).not.toBeInTheDocument();
+    expect(screen.getByText("商品を検索", { selector: "label" })).toHaveAttribute("for", input.id);
+    expect(input).not.toHaveAttribute("aria-label");
   });
 
   it("SPEC-UIBB-10 Enterで即時flushしIME変換確定Enterでは発火しない", () => {
     const onSearchChange = vi.fn();
     renderWithClient(<ProductListPage search={{}} onSearchChange={onSearchChange} />);
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
 
     // IME 変換確定の Enter は発火しない
     fireEvent.change(input, { target: { value: "はさみ" } });
@@ -504,7 +511,7 @@ describe("ProductListPage SPEC-UIBB-10/11（live 型検索 + 複数ボタン中�
     renderWithClient(
       <ProductListPage search={{ q: "はさみ", page: 3 }} onSearchChange={onSearchChange} />,
     );
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
     await userEvent.setup().clear(input);
     await waitFor(
       () => {
@@ -539,7 +546,7 @@ describe("ProductListPage SPEC-UIBB-10/11（live 型検索 + 複数ボタン中�
       );
     }
     renderWithClient(<Harness />);
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
     fireEvent.change(input, { target: { value: "  はさみ  " } });
     fireEvent.keyDown(input, { key: "Enter" });
     // 再描画後も入力表示は空白込みのまま（normalizedSearch.q 結線なら trim 済みに書き戻される）

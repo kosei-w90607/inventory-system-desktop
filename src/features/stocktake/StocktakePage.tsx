@@ -393,15 +393,12 @@ export function StocktakeProgressHeader({ startedAt, progress }: StocktakeProgre
           </p>
         </div>
         {progress.uncounted_items > 0 ? (
-          <Badge
-            variant="outline"
-            className="border-warning-border bg-warning-soft text-warning-strong"
-          >
+          <Badge variant="outline" tone="warning">
             <AlertTriangle aria-hidden="true" />
             未入力 {progress.uncounted_items}
           </Badge>
         ) : (
-          <Badge className="bg-success text-primary-foreground">
+          <Badge variant="outline" tone="success">
             <CheckCircle2 aria-hidden="true" />
             未入力 {progress.uncounted_items}
           </Badge>
@@ -621,7 +618,7 @@ export function StocktakeCountEntry({
                     <TableCell>
                       {candidate.name}
                       {candidate.is_discontinued ? (
-                        <Badge variant="secondary" className="ml-2 border-border">
+                        <Badge variant="secondary" className="ml-2">
                           廃番
                         </Badge>
                       ) : null}
@@ -845,28 +842,41 @@ export function StocktakeItemList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.product_code}</TableCell>
-                  <TableCell>
-                    {item.name}
-                    {item.is_discontinued ? (
-                      <Badge variant="secondary" className="ml-2 border-border">
-                        廃番
-                      </Badge>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>{item.department_name}</TableCell>
-                  <TableCell className="text-right">{item.current_stock}</TableCell>
-                  <TableCell className="text-right">{item.actual_count ?? "未入力"}</TableCell>
-                  <TableCell className="text-right">
-                    {formatListDifference(computeListDifference(item))}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatCountedAt(item.counted_at)}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {items.map((item) => {
+                const diff = computeListDifference(item);
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.product_code}</TableCell>
+                    <TableCell>
+                      {item.name}
+                      {item.is_discontinued ? (
+                        <Badge variant="secondary" className="ml-2">
+                          廃番
+                        </Badge>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>{item.department_name}</TableCell>
+                    <TableCell className="text-right">{item.current_stock}</TableCell>
+                    <TableCell className="text-right">{item.actual_count ?? "未入力"}</TableCell>
+                    <TableCell
+                      className={
+                        diff === null
+                          ? "text-right"
+                          : diff > 0
+                            ? "text-right text-success-strong"
+                            : diff < 0
+                              ? "text-right text-destructive-strong"
+                              : "text-right text-muted-foreground"
+                      }
+                    >
+                      {formatListDifference(diff)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatCountedAt(item.counted_at)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </>
@@ -919,7 +929,7 @@ export function StocktakeCompleteDialog({
             {warningTitle}。{bodyText}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <Alert className="border-warning bg-warning-soft text-warning-strong">
+        <Alert variant="warning">
           <AlertTriangle />
           <AlertTitle>{warningTitle}</AlertTitle>
           <AlertDescription>{bodyText}</AlertDescription>
@@ -998,7 +1008,15 @@ export function StocktakeResultPage({ result, lastStocktake }: StocktakeResultPa
                   <TableCell>{item.product_name}</TableCell>
                   <TableCell className="text-right">{item.system_stock}</TableCell>
                   <TableCell className="text-right">{item.actual_count}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell
+                    className={
+                      item.difference > 0
+                        ? "text-right text-success-strong"
+                        : item.difference < 0
+                          ? "text-right text-destructive-strong"
+                          : "text-right text-muted-foreground"
+                    }
+                  >
                     {formatListDifference(item.difference)}
                   </TableCell>
                 </TableRow>

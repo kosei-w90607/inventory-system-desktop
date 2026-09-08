@@ -97,6 +97,9 @@ describe("ProductRankingTable (REQ-502 sort 結線)", () => {
     const badgeEl = rowEl ? screen.getAllByText("1 位").find((el) => rowEl.contains(el)) : null;
     expect(badgeEl).not.toBeUndefined();
     expect(badgeEl?.textContent).toContain("1 位");
+    // SC3 / DSR-22: 順位の強調には琥珀の枠を伴う。
+    expect(badgeEl).toHaveAttribute("data-variant", "default");
+    expect(badgeEl).toHaveClass("border-warning");
   });
 
   it("UI-09b: active indicator, ARIA, and numeric header alignment stay connected", () => {

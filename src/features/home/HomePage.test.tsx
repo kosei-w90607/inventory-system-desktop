@@ -177,6 +177,10 @@ describe("HomePage UI-00 orchestration wiring", () => {
     renderPage();
 
     expect(await screen.findByText("前日分が未取込みです")).toBeInTheDocument();
+    // SC21: 既存のdestructive警告へ非色シグナルを追加する。
+    const missingImport = screen.getByText("前日分が未取込みです").closest('[data-slot="alert"]');
+    expect(missingImport).toHaveAttribute("data-variant", "destructive");
+    expect(missingImport?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
     expect(screen.getByText("最後の取込み精算日: 2000-01-01")).toBeInTheDocument();
     expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
     expect(screen.getAllByText("1 件")).toHaveLength(2);

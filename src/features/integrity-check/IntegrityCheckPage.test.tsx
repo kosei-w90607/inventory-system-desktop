@@ -237,6 +237,7 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
       name: "在庫数を入出庫の合計に合わせて補正します",
     });
     const warningTitle = within(dialog).getByText("補正すると元に戻せません");
+    expect(warningTitle.closest('[data-slot="alert"]')).toHaveAttribute("data-variant", "warning");
     const warningDescription = within(dialog).getByText(
       "選択した商品のシステム在庫を入出庫の合計に合わせて更新し、操作ログに記録します。",
     );
@@ -301,6 +302,15 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
       ),
     );
     expect(await screen.findByText("差異が見つかりました")).toBeInTheDocument();
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(screen.getByText("差異が見つかりました").closest('[data-slot="alert"]')).toHaveAttribute(
+      "data-variant",
+      "warning",
+    );
+    expect(screen.getByText("差異が見つかりました").closest('[data-slot="alert"]')).toHaveAttribute(
+      "role",
+      "status",
+    );
     await selectForFix("SYN-001");
     await openFixDialog();
     await confirmFix();
@@ -336,6 +346,17 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     await openFixDialog();
     await confirmFix();
     expect(await screen.findByText("補正済み")).toBeInTheDocument();
+    // SC7 / DSR-22: 完了は直塗りでなくsoft success + icon。
+    const fixedBadge = screen.getByText("補正済み");
+    expect(fixedBadge).toHaveAttribute("data-variant", "outline");
+    expect(fixedBadge).toHaveAttribute("data-tone", "success");
+    expect(fixedBadge).toHaveClass(
+      "border-success-border",
+      "bg-success-soft",
+      "text-success-strong",
+    );
+    expect(fixedBadge).not.toHaveClass("bg-success");
+    expect(fixedBadge.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "再度チェック" })).toBeEnabled();
   });
 
@@ -349,6 +370,7 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     await confirmFix();
     const warning = await screen.findByRole("alert");
     expect(warning).toHaveTextContent("一部の商品は補正されませんでした");
+    expect(warning).toHaveAttribute("data-variant", "warning");
     expect(warning).toHaveTextContent("1件");
   });
 
@@ -540,3 +562,21 @@ describe("IntegrityCheckPage perPage scroll（UI-13）", () => {
     expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });
+
+it.each([
+  [3, "+3", "text-success-strong", "システム在庫が多い"],
+  [-3, "-3", "text-destructive-strong", "入出庫の合計が多い"],
+  [0, "0", "text-muted-foreground", "差異なし"],
+] as const)(
+  "SC10 / REQ-904: difference %s colors the number without coloring its neutral badge",
+  async (diff, label, color, state) => {
+    runIntegrityCheck.mockResolvedValue(checkResult([mismatch("SC10", 10 + diff, 10)]));
+    renderPage();
+    await runCheck();
+    const row = (await screen.findByText("合成商品 SC10")).closest("tr");
+    if (!row) throw new Error("difference row missing");
+    expect(within(row).getByText(label, { selector: "span" })).toHaveClass(color);
+    expect(within(row).getByText(state)).toHaveAttribute("data-variant", "outline");
+    expect(within(row).getByText(state)).not.toHaveAttribute("data-tone");
+  },
+);

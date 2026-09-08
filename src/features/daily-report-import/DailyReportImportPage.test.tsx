@@ -392,3 +392,62 @@ describe("DailyReportImportPage_req401", () => {
     expect(buttonRow).toContainElement(rollbackButton);
   });
 });
+
+it.each([
+  [
+    "AlreadyImported",
+    "取込み済み",
+    "warning",
+    ["border-warning-border", "bg-warning-soft", "text-warning-strong"],
+  ],
+  [
+    "AdditionalImportConfirmationRequired",
+    "同日データあり",
+    "warning",
+    ["border-warning-border", "bg-warning-soft", "text-warning-strong"],
+  ],
+  [
+    "NoDuplicate",
+    "確認済み",
+    "success",
+    ["border-success-border", "bg-success-soft", "text-success-strong"],
+  ],
+] as const)(
+  "SC6 / REQ-401: %s has exactly one matching tone",
+  async (status, label, tone, classes) => {
+    setFlow({
+      status: "preview",
+      preview: makePreview(status),
+      previewToken: "preview-token-req401",
+      filenames: ["Z001.csv", "Z002.csv", "Z005.csv"],
+    });
+    renderWithRouter(<DailyReportImportPage />);
+    const badge = (await screen.findByText(label)).closest('[data-slot="badge"]');
+    expect(badge).toHaveAttribute("data-variant", "outline");
+    expect(badge).toHaveAttribute("data-tone", tone);
+    expect(badge).toHaveClass(...classes);
+    for (const expected of classes)
+      expect(badge?.className.split(/\s+/).filter((token) => token === expected)).toHaveLength(1);
+    expect(badge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+    if (status === "AdditionalImportConfirmationRequired") {
+      const alert = screen.getByText("同じ日の取込みがあります").closest('[data-slot="alert"]');
+      expect(alert).toHaveAttribute("data-variant", "warning");
+      expect(alert).toHaveAttribute("role", "alert");
+    }
+  },
+);
+
+it("SC29 / REQ-401: successful daily import is a success status badge", async () => {
+  setFlow({
+    status: "result",
+    result: makeResult(),
+    reportDate: "2026-03-21",
+    filenames: ["Z001.csv", "Z002.csv", "Z005.csv"],
+  });
+  renderWithRouter(<DailyReportImportPage />);
+  const badge = (await screen.findByText("成功")).closest('[data-slot="badge"]');
+  expect(badge).toHaveAttribute("data-variant", "outline");
+  expect(badge).toHaveAttribute("data-tone", "success");
+  expect(badge).toHaveClass("border-success-border", "bg-success-soft", "text-success-strong");
+  expect(badge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+});

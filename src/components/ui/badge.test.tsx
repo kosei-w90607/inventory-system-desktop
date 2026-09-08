@@ -25,3 +25,43 @@ describe("Badge (Lane 5 SC2)", () => {
     expect(defaultBadge).not.toHaveClass("border-border-strong");
   });
 });
+
+describe("UI conventions runtime: Badge", () => {
+  it.each([
+    ["warning", "border-warning-border", "bg-warning-soft", "text-warning-strong"],
+    ["success", "border-success-border", "bg-success-soft", "text-success-strong"],
+    ["destructive", "border-destructive-border", "bg-destructive-soft", "text-destructive-strong"],
+  ] as const)(
+    "SC1 / DSR-22: %s tone has its independent three-class contract",
+    (tone, border, background, foreground) => {
+      render(
+        <Badge variant="outline" tone={tone}>
+          状態
+        </Badge>,
+      );
+      const badge = screen.getByText("状態");
+      expect(badge).toHaveAttribute("data-slot", "badge");
+      expect(badge).toHaveAttribute("data-variant", "outline");
+      expect(badge).toHaveAttribute("data-tone", tone);
+      expect(badge).toHaveClass(border, background, foreground);
+      expect(badge).not.toHaveClass("border-border-strong");
+    },
+  );
+
+  it("SC2 / DSR-22: classification has a border and no state tone", () => {
+    render(<Badge variant="secondary">分類</Badge>);
+    expect(screen.getByText("分類")).toHaveAttribute("data-variant", "secondary");
+    expect(screen.getByText("分類")).toHaveClass(
+      "border-border",
+      "bg-secondary",
+      "text-secondary-foreground",
+    );
+    expect(screen.getByText("分類")).not.toHaveAttribute("data-tone");
+  });
+
+  it("SC1 / DSR-22: the untoned default retains the emphasis appearance", () => {
+    render(<Badge>強調</Badge>);
+    expect(screen.getByText("強調")).toHaveClass("bg-primary", "text-primary-foreground");
+    expect(screen.getByText("強調")).not.toHaveAttribute("data-tone");
+  });
+});

@@ -166,6 +166,11 @@ describe("StockInquiryPage (REQ-301 自動展開)", () => {
     );
     await screen.findByText("P-001");
     expect(container.querySelector(".rounded-lg.border.bg-card.p-4")).not.toBeNull();
+    // SC15 / AC-L3-3: 上置き Label の検索欄と隣接 control の下辺を揃える。
+    const toolbar = screen.getByText("商品を検索", { selector: "label" }).parentElement
+      ?.parentElement;
+    expect(toolbar).toHaveClass("items-end");
+    expect(toolbar).not.toHaveClass("items-center");
     const oldFrame = Array.from(container.querySelectorAll("div")).find(
       (el) => el.className === "flex flex-wrap items-center gap-3",
     );

@@ -57,7 +57,7 @@ export function PreviewStep({
           と対称に統一する（gated Amendment 5、owner L3-lite round 3 裁定②: 是正前は
           neutral で日報側と非対称だった）。 */}
       {requiresAdditionalConfirm && (
-        <Alert className="border-warning bg-warning-soft text-warning-strong">
+        <Alert variant="warning">
           <AlertTitle>同じ日の取込みがあります</AlertTitle>
           <AlertDescription className="text-warning-strong">
             既存分を残したまま今回分を追加します。内容を確認してください。
@@ -72,10 +72,7 @@ export function PreviewStep({
             // gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠（既定 outline）は
             // 補助状態を主警告（上部 Alert）より強く見せ、情報階層が逆転するため不採用。
             // soft warning token（StockStatusBadge.tsx の低在庫バッジと同型）へ統一する。
-            <Badge
-              variant="outline"
-              className="border-warning-border bg-warning-soft text-warning-strong"
-            >
+            <Badge variant="outline" tone="warning">
               <TriangleAlertIcon aria-hidden="true" />
               同日データあり
             </Badge>

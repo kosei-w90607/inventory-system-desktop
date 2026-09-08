@@ -215,3 +215,23 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     expect(within(row).queryByText(/pcs/)).not.toBeInTheDocument();
   });
 });
+
+// SC4 / DSR-22: PLU状態は色・文言・iconを対にして検証する。
+it.each([
+  [true, "未反映", "warning", ["border-warning-border", "bg-warning-soft", "text-warning-strong"]],
+  [
+    false,
+    "反映済み",
+    "success",
+    ["border-success-border", "bg-success-soft", "text-success-strong"],
+  ],
+] as const)("SC4: PLU dirty=%s shows %s", (dirty, label, tone, classes) => {
+  render(
+    <ProductTable items={[makeMockProductWithRelations({ plu_target: true, plu_dirty: dirty })]} />,
+  );
+  const badge = screen.getByText(label).closest('[data-slot="badge"]');
+  expect(badge).toHaveAttribute("data-variant", "outline");
+  expect(badge).toHaveAttribute("data-tone", tone);
+  expect(badge).toHaveClass(...classes);
+  expect(badge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+});

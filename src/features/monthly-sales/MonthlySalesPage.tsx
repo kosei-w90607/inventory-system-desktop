@@ -5,6 +5,7 @@
 // route 結線は src/routes/reports/monthly.tsx で実施、本コンポーネントは props 経由で受け取り testable に保つ。
 // 設計: docs/function-design/57-ui-monthly-sales.md §57.1 / §57.4 / §57.7 / §57.8
 
+import { AlertTriangle } from "lucide-react";
 import { useMemo } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -162,9 +163,10 @@ function OfficialDepartmentTotalsSection({
       </div>
 
       {rows === null ? (
-        <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          この月のレジ日報は未取込みです。
-        </p>
+        <Alert variant="warning" role="status">
+          <AlertTriangle aria-hidden="true" />
+          <AlertTitle>この月のレジ日報は未取込みです。</AlertTitle>
+        </Alert>
       ) : rows.length === 0 ? (
         <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
           公式部門集計の行はありません。

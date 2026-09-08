@@ -118,6 +118,24 @@ describe("MonthlySalesPage_req502 official department totals", () => {
     renderPage({ month: "2026-05", mode: "by_product" });
 
     expect(await screen.findByText("この月のレジ日報は未取込みです。")).toBeInTheDocument();
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("この月のレジ日報は未取込みです。").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("この月のレジ日報は未取込みです。").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "status");
+    // SC22: 元の文をAlertTitleとして保持する。
+    expect(screen.getByText("この月のレジ日報は未取込みです。")).toHaveAttribute(
+      "data-slot",
+      "alert-title",
+    );
+    expect(
+      screen
+        .getByText("この月のレジ日報は未取込みです。")
+        .closest('[data-slot="alert"]')
+        ?.querySelector('svg[aria-hidden="true"]'),
+    ).toBeInTheDocument();
     expect(screen.getByText("商品A")).toBeInTheDocument();
   });
 });
@@ -224,4 +242,15 @@ describe("MonthlySalesPage native input tokens（Lane 5 SC4j）", () => {
     expect(monthInput).toHaveClass("bg-control-surface");
     expect(monthInput).not.toHaveClass("bg-background");
   });
+});
+
+it("SC22 / REQ-502: empty official department rows retain their plain paragraph", async () => {
+  mockGetMonthlySales.mockResolvedValue({
+    status: "ok",
+    data: { ...buildReport(), official_department_totals: [] },
+  });
+  renderPage({ month: "2026-05", mode: "by_product" });
+  const empty = await screen.findByText("公式部門集計の行はありません。");
+  expect(empty.tagName).toBe("P");
+  expect(empty.closest('[data-slot="alert"]')).toBeNull();
 });

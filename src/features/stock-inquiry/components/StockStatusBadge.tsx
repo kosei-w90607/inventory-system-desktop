@@ -6,23 +6,16 @@
 
 import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import type { StockStatus } from "../types";
 
 export interface StockStatusBadgeProps {
   status: StockStatus;
 }
 
-const STATUS_STYLE: Record<StockStatus, string> = {
-  ok: "border-stone-200 bg-stone-50 text-stone-600",
-  low: "border-warning-border bg-warning-soft text-warning-strong",
-  stockout: "border-destructive-border bg-destructive-soft text-destructive-strong",
-};
-
 export function StockStatusBadge({ status }: StockStatusBadgeProps) {
   if (status === "stockout") {
     return (
-      <Badge variant="outline" className={cn("font-medium", STATUS_STYLE.stockout)}>
+      <Badge variant="outline" tone="destructive" className="font-medium">
         <CircleAlertIcon aria-hidden="true" />
         在庫切れ
       </Badge>
@@ -31,7 +24,7 @@ export function StockStatusBadge({ status }: StockStatusBadgeProps) {
 
   if (status === "low") {
     return (
-      <Badge variant="outline" className={cn("font-medium", STATUS_STYLE.low)}>
+      <Badge variant="outline" tone="warning" className="font-medium">
         <TriangleAlertIcon aria-hidden="true" />
         在庫少
       </Badge>
@@ -39,7 +32,7 @@ export function StockStatusBadge({ status }: StockStatusBadgeProps) {
   }
 
   return (
-    <Badge variant="outline" className={cn("font-medium", STATUS_STYLE.ok)}>
+    <Badge variant="outline" className="border-stone-200 bg-stone-50 font-medium text-stone-600">
       通常
     </Badge>
   );

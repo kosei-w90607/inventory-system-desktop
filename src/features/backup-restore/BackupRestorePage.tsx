@@ -530,7 +530,11 @@ export function BackupRestorePage() {
                           <TableCell>
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium">{displayDate}</span>
-                              {isLatest ? <Badge variant="secondary">最新</Badge> : null}
+                              {isLatest ? (
+                                <Badge variant="default" className="border-warning">
+                                  最新
+                                </Badge>
+                              ) : null}
                             </div>
                           </TableCell>
                           <TableCell className="tabular-nums">{displaySize}</TableCell>
@@ -575,7 +579,7 @@ export function BackupRestorePage() {
                       {restoreState.selected.file_path}
                     </p>
                   </div>
-                  <Alert className="border-warning bg-warning-soft text-warning-strong">
+                  <Alert variant="warning">
                     <AlertTriangle />
                     <AlertTitle>復元すると今の記録は戻せません</AlertTitle>
                     <AlertDescription>

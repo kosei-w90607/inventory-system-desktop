@@ -1,4 +1,4 @@
-import { AlertCircle, Loader2, TriangleAlertIcon } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -149,7 +149,7 @@ function DailyReportPreviewStep({
       )}
 
       {requiresAdditionalConfirm && (
-        <Alert className="border-warning bg-warning-soft text-warning-strong">
+        <Alert variant="warning">
           <AlertTitle>同じ日の取込みがあります</AlertTitle>
           <AlertDescription className="text-warning-strong">
             既存分を残したまま今回分を追加します。内容を確認してください。
@@ -161,14 +161,8 @@ function DailyReportPreviewStep({
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>取込み内容</CardTitle>
           <Badge
-            variant={
-              alreadyImported ? "destructive" : requiresAdditionalConfirm ? "outline" : "secondary"
-            }
-            className={
-              requiresAdditionalConfirm
-                ? "border-warning-border bg-warning-soft text-warning-strong"
-                : undefined
-            }
+            variant="outline"
+            tone={alreadyImported || requiresAdditionalConfirm ? "warning" : "success"}
           >
             {/* DSR-03: 同日追加確認の主情報は上部 Alert 帯が担うため、Badge は補助的な
                 状態表示に留める（gated Amendment 4、PreviewStep.tsx と対称の改名。
@@ -176,14 +170,20 @@ function DailyReportPreviewStep({
                 gated Amendment 5（owner L3-lite round 3 裁定③）: 黒枠（既定 outline）は
                 補助状態を主警告より強く見せるため、soft warning token へ統一する。 */}
             {alreadyImported ? (
-              "取込み済み"
+              <>
+                <TriangleAlertIcon aria-hidden="true" />
+                取込み済み
+              </>
             ) : requiresAdditionalConfirm ? (
               <>
                 <TriangleAlertIcon aria-hidden="true" />
                 同日データあり
               </>
             ) : (
-              "確認済み"
+              <>
+                <CheckCircle2 aria-hidden="true" />
+                確認済み
+              </>
             )}
           </Badge>
         </CardHeader>
@@ -319,7 +319,10 @@ function DailyReportResultStep({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>日報取込み完了</CardTitle>
-        <Badge>成功</Badge>
+        <Badge variant="outline" tone="success">
+          <CheckCircle2 aria-hidden="true" />
+          成功
+        </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">

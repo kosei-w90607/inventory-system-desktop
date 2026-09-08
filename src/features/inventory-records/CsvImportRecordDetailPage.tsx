@@ -4,7 +4,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, FileWarning, PackageSearch } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  CircleAlert,
+  FileWarning,
+  PackageSearch,
+} from "lucide-react";
 
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
@@ -39,6 +46,18 @@ const STATUS_LABELS: Record<CsvImportStatus, string> = {
   completed: "成功",
   completed_partial: "部分成功",
   rolled_back: "取消済み",
+};
+
+// 完了=報告、部分成功=注意、取消=警告。他の取込み画面と同じ意味にそろえる。
+const STATUS_TONE: Record<CsvImportStatus, "success" | "warning" | "destructive"> = {
+  completed: "success",
+  completed_partial: "warning",
+  rolled_back: "destructive",
+};
+const STATUS_ICON = {
+  completed: CheckCircle2,
+  completed_partial: AlertTriangle,
+  rolled_back: CircleAlert,
 };
 
 const ERROR_TYPE_LABELS = {
@@ -100,6 +119,7 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
 
   const detail = detailQuery.data;
   if (!detail) return null;
+  const StatusIcon = STATUS_ICON[detail.status];
 
   return (
     <PageShell>
@@ -137,7 +157,10 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
           <div>
             <span className="text-muted-foreground">状態</span>
             <div>
-              <Badge variant="outline">{STATUS_LABELS[detail.status]}</Badge>
+              <Badge variant="outline" tone={STATUS_TONE[detail.status]}>
+                <StatusIcon aria-hidden="true" />
+                {STATUS_LABELS[detail.status]}
+              </Badge>
             </div>
           </div>
           <div>
@@ -189,7 +212,10 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
                 <TableCell className="text-right tabular-nums">{formatYen(item.amount)}</TableCell>
                 <TableCell>
                   {item.is_voided ? (
-                    <Badge variant="outline">明細取消済み</Badge>
+                    <Badge variant="outline" tone="destructive">
+                      <CircleAlert aria-hidden="true" />
+                      明細取消済み
+                    </Badge>
                   ) : (
                     <span className="text-muted-foreground">有効</span>
                   )}
