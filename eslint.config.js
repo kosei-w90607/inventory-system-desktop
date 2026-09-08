@@ -115,6 +115,24 @@ export default tseslint.config(
       ],
     },
   },
+  // 衛生 batch 3 S1: eslint 保守性 rule（complexity/max-depth/max-lines-per-function/max-params）。
+  // phase 1 は features/ patterns/（test 除外）へ warn のみで導入し、既存 3 rule block とは
+  // 異なる rule id のため files が既存 block（:79）と重複しても rule merge の完全置換に抵触しない
+  // （10a 起票時実測 §1・§7 で実効設定差分 0 を確認）。閾値は既存負債を一度に押し付けない暫定開始値
+  // であり、良い設計の目標値ではない（段階強化は Backlog）。
+  {
+    files: ["src/features/**/*.{ts,tsx}", "src/components/patterns/**/*.{ts,tsx}"],
+    ignores: ["src/features/**/*.test.{ts,tsx}", "src/components/patterns/**/*.test.{ts,tsx}"],
+    rules: {
+      complexity: ["warn", 40],
+      "max-depth": ["warn", 3],
+      "max-lines-per-function": [
+        "warn",
+        { max: 650, skipBlankLines: true, skipComments: true, IIFEs: true },
+      ],
+      "max-params": ["warn", 4],
+    },
+  },
   // PR-C C3 (ii): patterns/ ui/ の barrel index.ts 作成を禁止（直接 path import 統一の恒久化、
   // prior art PR #48 c5f3786 の invoke-fallback 限定形を任意 source 形へ一般化）。
   // 両 index.ts は現在不在 → 作成された瞬間に lint error になる予防 gate。

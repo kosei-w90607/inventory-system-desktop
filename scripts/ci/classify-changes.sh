@@ -52,7 +52,7 @@ classify_files() {
         local matched=false
 
         case "$file" in
-            .github/workflows/*|.github/actions/*|.github/pull_request_template.md|scripts/ci/*|scripts/tests/*|scripts/local-ci.sh|scripts/pre-push.sh|scripts/doc-consistency-check.sh|scripts/check-env-safety.sh|scripts/check-workflow-git.sh)
+            .github/workflows/*|.github/actions/*|.github/pull_request_template.md|scripts/ci/*|scripts/tests/*|scripts/local-ci.sh|scripts/pre-push.sh|scripts/doc-consistency-check.sh|scripts/check-env-safety.sh|scripts/check-workflow-git.sh|scripts/check-command-drift.sh)
                 workflow=true
                 matched=true
                 ;;
