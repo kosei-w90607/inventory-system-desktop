@@ -25,6 +25,10 @@ describe("SearchBar commit 型（debounceMs 未指定、REQ-103 商品検索の�
   it("初期表示時に検索 input へ focus する", () => {
     render(<SearchBar value="" onSearchChange={vi.fn()} />);
     expect(screen.getByLabelText("商品検索")).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: "商品検索" })).toHaveAttribute(
+      "aria-label",
+      "商品検索",
+    );
   });
 
   it("DSR-17 T15: commit 型の mount focus は native scroll を抑止する", () => {
@@ -89,7 +93,13 @@ describe("SearchBar commit 型（debounceMs 未指定、REQ-103 商品検索の�
 describe("SearchBar live 型（debounceMs 指定、REQ-301 在庫照会の検索欄）", () => {
   it("初期表示時に検索 input へ focus する", () => {
     render(<SearchBar value="" onSearchChange={vi.fn()} debounceMs={200} />);
-    expect(screen.getByLabelText("商品検索")).toHaveFocus();
+    expect(screen.getByLabelText("商品を検索")).toHaveFocus();
+    // SC15 / DSR-08: 可視ラベルを唯一の名前にし、既存の検索roleとfocusを維持する。
+    const input = screen.getByRole("searchbox", { name: "商品を検索" });
+    expect(input).not.toHaveAttribute("aria-label");
+    expect(input).toHaveAttribute("id");
+    expect(screen.getByText("商品を検索", { selector: "label" })).toHaveAttribute("for", input.id);
+    expect(input).toHaveClass("max-w-md");
   });
 
   it("DSR-17 T15: live 型の mount focus は native scroll を抑止する", () => {
@@ -105,7 +115,7 @@ describe("SearchBar live 型（debounceMs 指定、REQ-301 在庫照会の検索
     const user = userEvent.setup();
     render(<SearchBar value="" onSearchChange={onSearchChange} debounceMs={200} />);
 
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
     await user.type(input, "はさみ");
     await user.keyboard("{Enter}");
 
@@ -118,7 +128,7 @@ describe("SearchBar live 型（debounceMs 指定、REQ-301 在庫照会の検索
     const user = userEvent.setup();
     render(<SearchBar value="" onSearchChange={onSearchChange} debounceMs={200} />);
 
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
     await user.type(input, "  はさみ  ");
     await user.keyboard("{Enter}");
 
@@ -130,7 +140,7 @@ describe("SearchBar live 型（debounceMs 指定、REQ-301 在庫照会の検索
     const onSearchChange = vi.fn();
     render(<SearchBar value="" onSearchChange={onSearchChange} debounceMs={200} />);
 
-    const input = screen.getByLabelText("商品検索");
+    const input = screen.getByLabelText("商品を検索");
     input.focus();
 
     // IME 変換中（isComposing: true）の KeyboardEvent を dispatch

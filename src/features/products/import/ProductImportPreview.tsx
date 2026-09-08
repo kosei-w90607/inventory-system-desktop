@@ -73,7 +73,9 @@ export function ProductImportPreview({
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant="secondary">ファイル: {filename}</Badge>
         {overwriteCount > 0 ? (
-          <Badge variant="default">上書き {overwriteCount.toLocaleString()} 件</Badge>
+          <Badge variant="default" className="border-warning">
+            上書き {overwriteCount.toLocaleString()} 件
+          </Badge>
         ) : null}
       </div>
 

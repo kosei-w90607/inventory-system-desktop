@@ -119,6 +119,11 @@ describe("SupplierManagementPage UI-15 / REQ-107", () => {
     const { client } = renderPage();
     const invalidate = vi.spyOn(client, "invalidateQueries");
     await screen.findByText("あ取引先");
+    // SC12/SC13/SC14 / DSR-01: 補助操作と画面の主操作を区別する。
+    expect(screen.getByRole("button", { name: "新しい取引先を追加" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "  新取引先  ");
     await user.click(screen.getByRole("button", { name: "追加する" }));

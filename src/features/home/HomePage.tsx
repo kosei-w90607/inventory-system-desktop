@@ -3,7 +3,7 @@
 // UI-00 ホーム画面の最上位コンポーネント。
 // 設計: docs/function-design/53-ui-home.md §53.1 / §53.4 / §53.5
 
-import { CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -76,6 +76,7 @@ export function HomePage() {
 
       {summary.csvImports.isSuccess && summary.derived.needsImportWarning && (
         <Alert variant="destructive">
+          <AlertTriangle aria-hidden="true" />
           <AlertTitle>前日分が未取込みです</AlertTitle>
           <AlertDescription>
             最後の取込み精算日: {summary.derived.lastImportSettlementDate ?? "—"}

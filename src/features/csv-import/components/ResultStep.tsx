@@ -4,7 +4,7 @@
 // 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4 step 15-19 / §55.6 rollback spinner
 
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,7 @@ export function ResultStep({
   isRollingBack,
 }: ResultStepProps) {
   const navigate = useNavigate();
+  // 部分成功は確認が残る注意、全件成功は完了報告。
   const isPartial = result.status === "completed_partial";
 
   return (
@@ -44,7 +45,8 @@ export function ResultStep({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>取込み完了</CardTitle>
-          <Badge variant={isPartial ? "outline" : "secondary"}>
+          <Badge variant="outline" tone={isPartial ? "warning" : "success"}>
+            {isPartial ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
             {isPartial ? "部分成功" : "成功"}
           </Badge>
         </CardHeader>

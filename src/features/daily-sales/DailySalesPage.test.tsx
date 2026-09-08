@@ -112,6 +112,24 @@ describe("DailySalesPage REQ-501 official daily report", () => {
     renderPage();
 
     expect(await screen.findByText("この日付のレジ日報は未取込みです。")).toBeInTheDocument();
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("この日付のレジ日報は未取込みです。").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("この日付のレジ日報は未取込みです。").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "status");
+    // SC22: 元の文をAlertTitleとして保持する。
+    expect(screen.getByText("この日付のレジ日報は未取込みです。")).toHaveAttribute(
+      "data-slot",
+      "alert-title",
+    );
+    expect(
+      screen
+        .getByText("この日付のレジ日報は未取込みです。")
+        .closest('[data-slot="alert"]')
+        ?.querySelector('svg[aria-hidden="true"]'),
+    ).toBeInTheDocument();
     expect(screen.getByText("該当する売上明細がありません")).toBeInTheDocument();
   });
 
@@ -134,6 +152,13 @@ describe("DailySalesPage REQ-501 official daily report", () => {
     renderPage();
 
     expect(await screen.findByText("日報の部門確認が必要です")).toBeInTheDocument();
+    // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
+    expect(
+      screen.getByText("日報の部門確認が必要です").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("data-variant", "warning");
+    expect(
+      screen.getByText("日報の部門確認が必要です").closest('[data-slot="alert"]'),
+    ).toHaveAttribute("role", "alert");
     expect(
       screen.getByText(
         "部門マスタと対応していない部門が 1 件あります（部門名のまま表示しています）",

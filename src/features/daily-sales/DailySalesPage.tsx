@@ -5,7 +5,7 @@
 // search + onSearchChange を props として受け取り testable に保つ。
 // 設計: docs/function-design/56-ui-daily-sales.md §56.1 + §56.3 + §56.8
 
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -171,16 +171,17 @@ function OfficialDailyReportSection({ report }: { report: OfficialDailyReportSum
       </div>
 
       {report === null ? (
-        <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          この日付のレジ日報は未取込みです。
-        </p>
+        <Alert variant="warning" role="status">
+          <AlertTriangle aria-hidden="true" />
+          <AlertTitle>この日付のレジ日報は未取込みです。</AlertTitle>
+        </Alert>
       ) : (
         <div className="space-y-4 rounded-md border p-4">
           <p className="text-sm font-medium">
             {report.source_import_count.toLocaleString("ja-JP")}回の取込みを合算
           </p>
           {report.warnings.length > 0 && (
-            <Alert className="border-warning bg-warning-soft text-warning-strong">
+            <Alert variant="warning">
               <AlertCircle className="size-4" aria-hidden="true" />
               <AlertTitle>日報の部門確認が必要です</AlertTitle>
               <AlertDescription>

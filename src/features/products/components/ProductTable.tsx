@@ -85,12 +85,13 @@ export function ProductTable({ items, returnTo = "/products" }: ProductTableProp
                   対象外
                 </Badge>
               ) : item.plu_dirty ? (
-                <Badge variant="secondary" className="gap-1 whitespace-nowrap">
+                // 未反映は注意、反映済みは完了報告。既存の時計/check iconと対にする。
+                <Badge variant="outline" tone="warning" className="gap-1 whitespace-nowrap">
                   <Clock3 className="size-3" aria-hidden="true" />
                   未反映
                 </Badge>
               ) : (
-                <Badge variant="default" className="gap-1 whitespace-nowrap">
+                <Badge variant="outline" tone="success" className="gap-1 whitespace-nowrap">
                   <CircleCheck className="size-3" aria-hidden="true" />
                   反映済み
                 </Badge>

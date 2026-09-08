@@ -466,22 +466,11 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 ---
 
-## DSR-23 プルダウンは shadcn `Select` に統一する
-
-**ルール**: 業務選択肢を表す native `<select>` を使わない。プルダウンは shadcn `Select`（`SelectTrigger`/`SelectContent`/`SelectItem`）に統一する。`SelectItem value=""` は Radix の禁止制約に当たるため、空値 sentinel は非空文字列（`"all"`/`"none"` 等、業務意味に応じて既存ファイル慣習に合わせる）へ変換するか、`SelectValue placeholder` による無 sentinel 方式を使う。
-
-**Why**: owner 決定（R5-3、2026-09-05）。同一画面内に見た目が異なる 2 種類のプルダウン（native と shadcn）が混在していたため統一する。shadcn `Select` は開閉・キーボード操作が一貫し、部門フィルタ等の既存 canonical 実装と揃う。
-
-**具体例**: 空値 sentinel は `SelectItem value="all"`（「すべて」の意味）または `SelectItem value="none"`（「指定なし」「取引先なし」等、明示的な無選択の意味）へ変換する。数値 ID を値に持つ場合は `SelectItem value={String(id)}` へ文字列化し、`onValueChange` で `Number(value)` に復元する。共有 `Select` は空文字の `onValueChange` を無視する（Radix bubble select の echo 対策、`SelectItem value=""` 禁止と対）。
-
-**関連**: パターン⑨検索 + フィルタ。`DepartmentFilter.tsx` が canonical 実装例。review-checklist カテゴリ 9 対応。
-
----
-
 ## 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-08 | PR #45 | UI 規約 runtime 反映に合わせ、verbatim 重複の DSR-23 第2ブロックを除去。第1ブロックの本文は維持。 |
 | 2026-09-06 | UI 一覧の背骨 D — Lane 4（Gated Amendment 1、実装済み） | DSR-17 の Why・(c)・(j) に、商品一覧限定で `<main>` の代わりに専用 scroll 箱が唯一の scroll container になる例外を注記（PR #40 owner L3 run 1 FAIL・案 X、Plan Review round 1 P1-2）。実装（app-router.ts 側の resolver 導入、Writer commit d6e545c）を含めて実装済み |
 | 2026-09-06 | UI 磨き batch 3 design | DSR-22 識別列マッピング表に記録ID表示方針の owner culling 結果（(b) 一覧の表示列から外す、確定 2026-09-06）を注記として追加 |
 | 2026-09-05 | UI 一覧の背骨 D — Lane 4 | DSR-22 の上部/下部 pagination 発動条件を改訂: `topSummary`/直接描画による明示 opt-in + `totalCount > 0` で上部常時表示、下部は `totalPages > 1` のときだけ描画（pager ボタンは下部のみ）。識別列固定は商品一覧のみ `identityColumns` prop 活性化で実装済みと明記（他画面は opt-in 未実施のまま） |

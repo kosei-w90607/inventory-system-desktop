@@ -47,3 +47,39 @@ it("test_import_result_req401_rollback_dialog_identifies_exact_import_and_siblin
   await user.click(screen.getByRole("button", { name: "取り消す" }));
   expect(onRollback).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  [
+    "completed",
+    "成功",
+    "success",
+    ["border-success-border", "bg-success-soft", "text-success-strong"],
+  ],
+  [
+    "completed_partial",
+    "部分成功",
+    "warning",
+    ["border-warning-border", "bg-warning-soft", "text-warning-strong"],
+  ],
+] as const)("SC5 / REQ-401: %s has its own tone and icon", async (status, label, tone, classes) => {
+  renderWithRouter(
+    <ResultStep
+      result={{
+        csv_import_id: 42,
+        status,
+        total_items: 1,
+        total_amount: 500,
+        skipped_count: status === "completed_partial" ? 1 : 0,
+      }}
+      settlementDate="2026-03-21"
+      filename="synthetic.csv"
+      onRollback={vi.fn()}
+      isRollingBack={false}
+    />,
+  );
+  const badge = (await screen.findByText(label)).closest('[data-slot="badge"]');
+  expect(badge).toHaveAttribute("data-variant", "outline");
+  expect(badge).toHaveAttribute("data-tone", tone);
+  expect(badge).toHaveClass(...classes);
+  expect(badge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+});

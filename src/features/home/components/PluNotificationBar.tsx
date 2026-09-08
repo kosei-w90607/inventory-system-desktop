@@ -21,7 +21,7 @@ export function PluNotificationBar({ pluDirty, pluDirtyCount }: PluNotificationB
   if (!pluDirty.isSuccess || pluDirtyCount < 1) return null;
 
   return (
-    <Alert className="border-warning bg-warning-soft text-warning-strong">
+    <Alert variant="warning">
       <AlertTriangle />
       <AlertTitle>PLU 未反映商品があります</AlertTitle>
       <AlertDescription className="flex items-center justify-between gap-2">

@@ -645,8 +645,18 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
   it("rejects whitespace supplier names without calling createSupplier", async () => {
     const user = userEvent.setup();
     renderStateful("create");
+    // SC12/SC13/SC14 / DSR-01: 補助操作と画面の主操作を区別する。
+    expect(screen.getByRole("button", { name: "新しい取引先を追加" })).toHaveAttribute(
+      "data-variant",
+      "secondary",
+    );
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "   ");
+    // SC12/SC13/SC14 / DSR-01: 補助操作と画面の主操作を区別する。
+    expect(screen.getByRole("button", { name: "追加する" })).toHaveAttribute(
+      "data-variant",
+      "secondary",
+    );
     await user.click(screen.getByRole("button", { name: "追加する" }));
     expect(screen.getByRole("alert")).toHaveTextContent("取引先名を入力してください");
     expect(mockCreateSupplier).not.toHaveBeenCalled();
