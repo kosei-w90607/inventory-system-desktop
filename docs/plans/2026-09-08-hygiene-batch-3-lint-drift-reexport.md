@@ -226,10 +226,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC13（S2）: `bash scripts/doc-consistency-check.sh --target plan` は新規 check を実行しない（AC12 の分岐確認と対）
 - AC14（S3）: `cargo test --test architecture_test` が既存 `layer_dependency_rules` + 新規 `biz_mnt_direct_db_io_reexport_allowlist` の両方で PASS（clean tree、allow list = 起票時実測どおり）
 - AC15（S3、Writer probe、負例、Matrix SC-REX-1 参照、Plan Review H2/H4/H10 反映）: 以下の負例を `src-tauri/src/biz/mod.rs` への一時的な追加として個別に確認し、各回 `cargo test --test architecture_test biz_mnt_direct_db_io_reexport_allowlist` が FAIL することを確かめてから復元する（`git diff --quiet -- src-tauri/src/biz/mod.rs` で復元確認、10c 報告 `:697` の推奨〈`pub(crate)`、group/multiline、コメントも fixture 化〉に従う）:
-  1. `pub use crate::db::Row;`（allow list 外、架空 symbol、単純 `pub use`）
+  **Gated Amendment 1（Final Review Opus P3-2 / Codex #2、2026-09-08）**: 以下 5 変種は Writer 実装の `direct_reexport_fixtures`（`tempfile::tempdir()` 上の合成 source、compile 不要）で自動化されており、AC15 の正本はその test の PASS とする。実 tree（`biz/mod.rs`）へ一時追加して確認する場合は **実在 symbol** を使う（例: `pub use crate::db::NewOperationLog;` / `pub use crate::io::image_manager;`）— 架空 symbol（旧稿の `Row` / `Row2` / `Row3` / `Row4`）は `error[E0432]` の compile error になり test FAIL と区別できないため、kill 証拠にしない。加えて Codex #2 の変種 6・7 を追加する。
+  1. `pub use crate::db::Row;`（allow list 外、fixture 上の架空 symbol、単純 `pub use`）
   2. `pub(crate) use crate::db::Row2;`（allow list 外、`pub(crate) use` 形式 — allow list は `pub use`/`pub(crate) use` 双方を検出対象にすることの確認）
   3. `pub use crate::db::product_repo::{Department, Row3};`（既存 allow-listed symbol `Department` と架空 symbol `Row3` を同一 grouped import に混在させ、group 内の 1 symbol だけが未許可でも検出できることを確認 — 「出所すげ替え」変種の group 版）
   4. コメント付き（`// comment\npub use crate::db::Row4;` のような直前行コメントを伴う形）でも検出されることの確認
+  6. **crate 直下 group**（Codex #2）: `pub use crate::{db::init_database, io::image_manager};` — path-prefix 判定で group を丸ごと読み飛ばさず、展開後に DB/IO path を判定して検出する（未対応 group は明示 FAIL でもよい）
+  7. **outer group**（Codex #2）: `pub use {crate::db::init_database, crate::io::image_manager};` — 同上
   5. **出所すげ替え**（Plan Review H2）: allow list 上に実在する symbol 名を、allow list に記載された再公開元とは異なる `crate::db::...` path から再公開する（例 `PaginatedResult` を `crate::db::PaginatedResult` ではなく合成の `crate::db::other_repo::PaginatedResult` から `pub use` する）— symbol 名の一致だけでなく再公開元 full path の一致も assertion key に含まれていることの確認（symbol 名のみを key にすると見逃す変種）
 - AC16（S3）: 新規 test は allow list に実在する 30 symbol を violation として検出しない — `cargo test --test architecture_test biz_mnt_direct_db_io_reexport_allowlist` が exit 0（AC14 の PASS がこれを含む）
 - AC17（S3）: `docs/decision-log.md` に `## D-083` が新設される — `rg -Fc '## D-083' docs/decision-log.md` = 1
