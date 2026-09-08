@@ -4,16 +4,16 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 0481f1f
-- Amendments: none
+- Amendments: 1ea2af6
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（`model_reasoning_effort=medium`、難所と判断した箇所は Coordinator 判断で high へ昇格）
 - Plan Reviewer: Opus 5（read-only claims-producer）+ 独立 Sonnet subagent（fresh context）
 - Final Reviewer: Sonnet subagent（fresh context）一次 + Codex ロジックレビュー、裁定は Fable
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 493740d
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（状態 Badge tone 6 画面 / CTA secondary の見え方 / 検索欄 Label / 一括価格改定 warning Alert）
@@ -329,7 +329,7 @@ Contract ID: SPEC-UIRUNTIME-1
 
 ## Implementation Results
 
-Codex Writer（medium）が S1〜S7 を実装（`38f9b09` feat(ui) / `070cf46` Alert 参照 ID と traceability 同期 / `14ce63f` origin/main 単段 merge〈main hotfix `2c125d1` = Plans.md reading order 再掲除去の取り込み〉）。Final Review round 1 の是正 `4321485`（中立「通常」の tone 不在 + 中立 class 独立期待値 / SearchBar の commit Label 結線・`inputClassName`・live `label` 上書きの assertion / 棚卸し差異 cell の null は class なし + null case test / test 名・comment・`50-ui-product-list.md` を現行契約へ）。既存 test の削除・skip なし。SC7 の旧直塗り assertion（`StocktakePage.test.tsx`）は発注書の実装原則で明示許可された更新（packet 改稿なし）。exact-HEAD evidence と件数は PR #45 body が唯一の authority（D-038）。
+Codex Writer（medium）が S1〜S7 を実装（`38f9b09` feat(ui) / `070cf46` Alert 参照 ID と traceability 同期 / `14ce63f` origin/main 単段 merge〈main hotfix `2c125d1` = Plans.md reading order 再掲除去の取り込み〉）。Final Review round 1 の是正 `4321485`（中立「通常」の tone 不在 + 中立 class 独立期待値 / SearchBar の commit Label 結線・`inputClassName`・live `label` 上書きの assertion / 棚卸し差異 cell の null は class なし + null case test / test 名・comment・`50-ui-product-list.md` を現行契約へ）。既存 test の削除・skip なし。SC7 の旧直塗り assertion（`StocktakePage.test.tsx`）は発注書の実装原則で明示許可された更新（packet 改稿なし）。exact-HEAD evidence と件数は PR #45 body が唯一の authority（D-038）。是正 round 2 `493740d`（Gated Amendment 1 の反映: secondary 枠 `border-border-strong` / SearchBar live Label 上置き `grid gap-1` + 3 toolbar `items-end` / DSR-01 `:21` `:25` + catalog `:606` 同期 + 両 doc 更新履歴 1 行、test 5 file は assertion 追加のみ）。
 
 ## Review Response
 
@@ -339,3 +339,5 @@ Codex Writer（medium）が S1〜S7 を実装（`38f9b09` feat(ui) / `070cf46` A
 2026-09-08: Final Review round 1 = Sonnet fresh 一次（隔離 worktree @ `14ce63f`、AC1〜AC8 oracle 全一致、独立再注入 mutant 全 kill、`it.skip` 増加 0、P1 0 / P2 1 = `StocktakePage.tsx` の差異色分けが `computeListDifference(item) ?? 0` で null〈未入力〉を 0 分岐へ落とし着色、S3 / SC9「null は無変更」に反し test 未被覆）+ Codex ロジックレビュー round 1（review 5136012583、medium、P1 0 / P2 3 = ① `StockStatusBadge` 中立「通常」への tone 混入が未検出 ② `SearchBar` の `inputClassName` / commit Label / live label 上書きの結線が未検出 ③ test 名・comment・function-design 50 `:91` が旧契約〈Label なし〉を説明、**Findings Freeze 可**）。Coordinator 裁定 = 4 件すべて accept → Codex Writer 是正 `4321485`（発注書 `13-fix-pr45-r1.md`、実装手戻り 0）。closure = Sonnet fresh（隔離 worktree @ `4321485`、4 件すべて closed、各 mutant と旧 `?? 0` を再注入し対象 test が FAIL、assertion の弱化なし、docs 旧文言の残存なし、post-freeze 例外なし）。Codex closure（`15-review-pr45-closure.md`）は owner 判断で省略（2026-09-08、Freeze 後の是正を Sonnet closure が独立確認済みのため）。**state-only 遷移 implementing->local-verified->independent-review->human-confirm を本 commit で圧縮記録**: local-verified = Writer の `local-ci.sh full` PASS（exact-HEAD evidence は PR body）、independent-review = Sonnet 一次 + Codex round 1（Findings Freeze）+ Sonnet closure、human-confirm = Human Gate（owner Windows native L3、AC-L3-1〜4）を実体化。Reviewed Content HEAD = `4321485`。次: owner L3 → Ready（`human-confirm->ready-hosted-final` state-only 1 本を Draft のまま作成し、その HEAD で L1 full 再走 + PR body 更新）→ hosted final（pull_request run）→ squash merge → closeout。
 
 2026-09-08: owner Windows native L3（branch tip `fd889be` = content `4321485`）: AC-L3-1 PASS（「有効 / 進行中」等の記録状態 Badge に tone が無い点は owner 疑問 → catalog `:841` が `formatRecordStatus` を「中立、owner culling で個別確認」と保留したままの未決事項であり本 lane の欠陥ではない、別 lane 候補として記録）/ AC-L3-4 PASS / **AC-L3-2 FAIL**（secondary「新しい取引先を追加」が stone-200 塗り + `--border` 枠では card 地と同系統で溶け込む。owner「濃い薄いでしかない」）/ **AC-L3-3 FAIL**（入出庫履歴の他フィルタは Label 上置き〈`grid gap-1`〉で、横並び Label の SearchBar だけ揃わない。owner は全画面 Label 上置きを採用）。是正は catalog `:606` / DSR-01 `:21` の契約変更を伴うため Gated Amendment 1 として次 commit で packet を改訂し、`state-backtrack human-confirm->implementing` を本 commit で記録。Reviewed Content HEAD は pending へ戻す。次: Amendment → Codex 是正 → Sonnet 一次 → owner L3 再確認（AC-L3-2 / 3）→ Ready 承認 → state-only 1 本で `implementing->local-verified->independent-review->human-confirm->ready-hosted-final`（STATECAP forward 3 / post-impl 2 で上限内）。L3 中に見つかった ⑭ 外の事項（前月比 `--80.1%` 二重符号 / 操作ログ詳細の `dd` が `TableCell` の `whitespace-nowrap` を継承し表が横に伸びる / 在庫照会展開行の余白 / 未取込み文言の種類明記）は Backlog へ。
+
+2026-09-08: 是正 round 2 = Codex Writer（medium、発注書 `16-fix-pr45-l3.md`）`493740d`、実装手戻り 2（整形 / 旧 selector 更新）。Final Review 一次 = Sonnet fresh（隔離 worktree @ `493740d`）**approve、P1 0 / P2 0 / P3 0**: Gated Amendment 1 の literal 全項目一致、mutant 6 本（枠 token 戻し / wrapper 横並び戻し / 3 toolbar `items-center` 戻し / `shrink-0` 再付与）全 kill、assertion 追加のみで削除・skip なし、docs 更新履歴は append-only、Non-scope 無変更。Coordinator 裁定 = approve + P3 1 no-action（`SearchBar.test.tsx` の「初期表示時に検索 input へ focus する」test に SC15 assertion が同居。round 1 からの既存 pattern、test hygiene Backlog へ）。owner L3 round 2（Windows native、`493740d`）: **AC-L3-2 PASS**（secondary 強枠で「こんな感じ」。「追加はオレンジでは」「一括価格改定に追加ボタンがあること自体」の疑問は DSR-01 の主動線規律を維持したまま、取引先 Select + 追加を検索付き picker dialog へ統合する design-first lane で扱う、owner 合意）/ **AC-L3-3 PASS**（Label 上置きで揃った。他フィルタの Label 上置き統一は別 design lane）。owner Ready 承認 2026-09-08。**state-only 遷移 implementing->local-verified->independent-review->human-confirm->ready-hosted-final を本 commit で圧縮記録**: local-verified = Writer の `local-ci.sh full` PASS（`493740d`、evidence は PR body）、independent-review = Sonnet 一次 approve + Coordinator 裁定、human-confirm = owner L3 round 2 AC-L3-1〜4 PASS、ready-hosted-final = owner Ready 承認。Amendments = `1ea2af6`、Reviewed Content HEAD = `493740d`。次: 本 HEAD で L1 full → PR body 更新 → Ready → hosted final（pull_request run）→ squash merge → closeout（Backlog 起票 13 件を同乗）。
