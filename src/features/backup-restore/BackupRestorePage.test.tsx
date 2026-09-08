@@ -461,3 +461,12 @@ it("SC3 / QR-05: latest backup is an emphasis badge with warning border", async 
   expect(latest).toHaveClass("border-warning");
   expect(latest).not.toHaveAttribute("data-tone");
 });
+
+it("⑮ SC4: 確定済みの操作説明を全文表示する", () => {
+  renderWithClient(<BackupRestorePage />);
+  expect(
+    screen.getByText(
+      "アプリのデータ全体をまとめて保存し、必要なときに元に戻すためのページです。自動バックアップの時刻を設定したり、今すぐ手動でバックアップを作成したり、保存先を選んだりできます。過去のバックアップから復元すると現在の記録は元に戻せませんが、復元の前には自動で今の状態のバックアップが作られます。",
+    ),
+  ).toBeInTheDocument();
+});

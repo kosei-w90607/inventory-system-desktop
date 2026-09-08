@@ -365,13 +365,15 @@ export function useStockInquiry(params: {
 
 #### format-stock-display（[quantity, unit] → string）
 
+- 数量は `toLocaleString("ja-JP")` で桁区切り表示する（例: `1,234 個` / `1,234 cm`）。
+
 - `unit === "pcs"` → `"10 個"`（数量 + 「個」）
 - `unit === "cm"` → `"300 cm"`（数量 + 「cm」、生地、SCREEN_DESIGN.md L131）
 - 上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
 
 #### formatStockUnitLabel（[unit] → string、Gated Amendment 6 S45）
 
-- 数量を伴わない単位列（入庫 / 廃棄 / 返品交換 / 手動販売の行データ等）の unit code を日本語ラベルへ変換する
+- 単位列（入庫等）や数量 input に添える単位（廃棄 / 返品交換 / 手動販売）の unit code を日本語ラベルへ変換する
 - `unit === "pcs"` → `"個"`、`unit === "cm"` → `"cm"`、上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
 
 #### format-last-date（[value: string | null] → string）
@@ -630,6 +632,8 @@ function StockInquiryPage() {
 - 画面固有ショートカット: 検索欄 `autoFocus` + Enter 検索（Q-3 補強）。それ以外は本 Phase では未定義
 
 ### 58.12 表記揺れ + UI 表示フォーマット
+
+数量は `toLocaleString("ja-JP")` による桁区切りで表示する（例: `1,234 個`）。
 
 | 系統 | 表示 | 内部 |
 |---|---|---|

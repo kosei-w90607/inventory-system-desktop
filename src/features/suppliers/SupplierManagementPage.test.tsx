@@ -415,3 +415,12 @@ describe("SupplierManagementPage UI-15 / REQ-107", () => {
     });
   });
 });
+
+it("⑮ SC5: 取引先の説明をヘッダー内へまとめる", () => {
+  renderPage();
+  expect(
+    screen
+      .getByText("メーカー・ブランドの追加、名称変更、重複した取引先の統合を行います。")
+      .closest("header"),
+  ).not.toBeNull();
+});

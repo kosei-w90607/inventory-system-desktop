@@ -36,7 +36,11 @@ import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
 import { PageShell } from "@/components/patterns/PageShell";
-import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
+// 数量と単位の表記は共通formatterに揃え、単位列のある行は数値だけ描く。
+import {
+  formatStockDisplay,
+  formatStockUnitLabel,
+} from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReturnCreateResult } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -107,17 +111,14 @@ function formatStockEffectBadge(value: boolean): string {
   return value ? "CSV取込みで反映" : "この保存で反映";
 }
 
+// 空備考は他の記録画面と同じ「—」で示す。空白だけの値も空として扱う。
 function formatNote(value: string | null | undefined): string {
   const trimmed = value?.trim() ?? "";
-  return trimmed === "" ? "備考なし" : trimmed;
+  return trimmed === "" ? "—" : trimmed;
 }
 
 function hasNote(value: string | null | undefined): boolean {
   return (value?.trim() ?? "") !== "";
-}
-
-function formatQuantity(value: number, unit: string): string {
-  return `${value.toLocaleString()} ${unit}`;
 }
 
 function rowKey(row: { productCode: string; direction: ReturnDirection }): string {
@@ -781,7 +782,7 @@ export function ReturnExchangePage() {
                     <TableCell>{candidate.name}</TableCell>
                     <TableCell>{candidate.department_name}</TableCell>
                     <TableCell>
-                      {formatQuantity(candidate.stock_quantity, candidate.stock_unit)}
+                      {formatStockDisplay(candidate.stock_quantity, candidate.stock_unit)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -822,7 +823,6 @@ export function ReturnExchangePage() {
                   <TableHead>現在庫</TableHead>
                   <TableHead>方向</TableHead>
                   <TableHead>数量</TableHead>
-                  <TableHead>単位</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -832,7 +832,9 @@ export function ReturnExchangePage() {
                     <TableCell className="font-medium">{row.productCode}</TableCell>
                     <TableCell>{row.productName}</TableCell>
                     <TableCell>{row.departmentName}</TableCell>
-                    <TableCell>{formatQuantity(row.currentStockQuantity, row.stockUnit)}</TableCell>
+                    <TableCell>
+                      {formatStockDisplay(row.currentStockQuantity, row.stockUnit)}
+                    </TableCell>
                     <TableCell>
                       <Select
                         value={row.direction}
@@ -860,26 +862,31 @@ export function ReturnExchangePage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min="1"
-                        value={row.quantity}
-                        disabled={isFormLocked}
-                        aria-label={`${row.productCode} の数量`}
-                        aria-invalid={errors.rows?.[rowKey(row)] !== undefined}
-                        className="w-24"
-                        onChange={(event) => {
-                          updateValues((prev) => ({
-                            ...prev,
-                            rows: updateReturnRow(prev.rows, row.productCode, row.direction, {
-                              quantity: event.target.value,
-                            }),
-                          }));
-                        }}
-                      />
+                      {/* 数量と単位を一つの値として読めるよう、同じ cell に添える。 */}
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          value={row.quantity}
+                          disabled={isFormLocked}
+                          aria-label={`${row.productCode} の数量`}
+                          aria-invalid={errors.rows?.[rowKey(row)] !== undefined}
+                          className="w-24"
+                          onChange={(event) => {
+                            updateValues((prev) => ({
+                              ...prev,
+                              rows: updateReturnRow(prev.rows, row.productCode, row.direction, {
+                                quantity: event.target.value,
+                              }),
+                            }));
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {formatStockUnitLabel(row.stockUnit)}
+                        </span>
+                      </div>
                     </TableCell>
-                    <TableCell>{formatStockUnitLabel(row.stockUnit)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         type="button"
@@ -942,6 +949,9 @@ export function ReturnExchangePage() {
             </Link>
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          直近 10 件の返品・交換を新しい順に表示します。
+        </p>
         {recentQuery.isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />

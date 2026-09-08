@@ -28,6 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+// 数量の桁区切りと単位名は共通formatterに揃える。
+import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { MovementTable } from "@/features/stock-movements/components/MovementTable";
 import type { CsvImportStatus } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
@@ -66,10 +68,6 @@ const ERROR_TYPE_LABELS = {
   invalid_jan: "JANエラー",
   invalid_number: "数値エラー",
 } as const;
-
-function formatQuantity(value: number, unit: string): string {
-  return `${value.toLocaleString("ja-JP")} ${unit}`;
-}
 
 export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecordDetailPageProps) {
   const backHref = normalizeReturnTo(returnTo, "/inventory/records");
@@ -207,7 +205,7 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
                 </TableCell>
                 <TableCell>{item.department_name}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatQuantity(item.quantity, item.stock_unit)}
+                  {formatStockDisplay(item.quantity, item.stock_unit)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatYen(item.amount)}</TableCell>
                 <TableCell>

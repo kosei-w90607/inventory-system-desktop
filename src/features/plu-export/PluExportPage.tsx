@@ -358,7 +358,10 @@ export function PluExportPage() {
 
   return (
     <PageShell>
-      <PageHeader title="PLU書出し" />
+      <PageHeader
+        title="PLU書出し"
+        description="レジのPLU登録状況を書き出すページです。『レジ登録状況を読み込む』でレジのCSV（Z004）を読み込み、空き・外部登録・アプリ管理・競合の件数を確認します。『差分を書き出す』（未反映の商品だけ）か『全件を書き出す』を選んで保存し、『この書出しを未反映から外す』を押して確定します。"
+      />
 
       <Alert className="border-info bg-info-soft text-info-strong">
         <AlertTitle>PLUファイル保存後に手動確認が必要です</AlertTitle>

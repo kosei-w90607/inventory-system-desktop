@@ -82,3 +82,13 @@ describe("SC16 fs literal: no raw {row.stockUnit} interpolation remains in src",
     expect(hits).toEqual([]);
   });
 });
+
+it.each([
+  [1234, "pcs", "1,234 個"],
+  [1234, "cm", "1,234 cm"],
+  [10, "pcs", "10 個"],
+  [300, "cm", "300 cm"],
+  [-1234, "pcs", "-1,234 個"],
+] as const)("⑮ SC22: 数量 %s %s の桁区切り表示", (quantity, unit, expected) => {
+  expect(formatStockDisplay(quantity, unit)).toBe(expected);
+});

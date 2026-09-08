@@ -92,3 +92,24 @@ describe("MovementTable (REQ-303 / REQ-207)", () => {
     });
   });
 });
+
+it.each([
+  [null, "—", undefined],
+  ["", "—", undefined],
+  ["   ", "—", undefined],
+  [
+    "長い備考を折り返して全文確認できることを確認します。",
+    "長い備考を折り返して全文確認できることを確認します。",
+    "長い備考を折り返して全文確認できることを確認します。",
+  ],
+])(
+  "⑮ SC12: movement備考=%s を折り返し本文がある時だけtitleを持つ",
+  async (note, expected, title) => {
+    renderWithRouter(<MovementTable movements={[makeMovement({ note })]} />);
+    const cell = await screen.findByText(expected);
+    expect(cell).toHaveClass("whitespace-normal", "break-words");
+    expect(cell).not.toHaveClass("truncate");
+    if (title === undefined) expect(cell).not.toHaveAttribute("title");
+    else expect(cell).toHaveAttribute("title", title);
+  },
+);

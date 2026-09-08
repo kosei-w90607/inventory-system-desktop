@@ -332,7 +332,10 @@ export function BackupRestorePage() {
 
   return (
     <PageShell>
-      <PageHeader title="バックアップ・復元" />
+      <PageHeader
+        title="バックアップ・復元"
+        description="アプリのデータ全体をまとめて保存し、必要なときに元に戻すためのページです。自動バックアップの時刻を設定したり、今すぐ手動でバックアップを作成したり、保存先を選んだりできます。過去のバックアップから復元すると現在の記録は元に戻せませんが、復元の前には自動で今の状態のバックアップが作られます。"
+      />
 
       {fatalRestoreKind ? (
         <Alert variant="destructive">

@@ -21,6 +21,8 @@ import {
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
+// 数量の桁区切りと単位名は共通formatterに揃える。
+import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { MovementTable } from "@/features/stock-movements/components/MovementTable";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -44,17 +46,14 @@ const DIRECTION_LABELS: Record<string, string> = {
   out: "渡し（在庫-）",
 };
 
-function formatQuantity(value: number, unit: string): string {
-  return `${value.toLocaleString("ja-JP")} ${unit}`;
-}
-
 function formatRegisterProcessed(value: boolean): string {
   return value ? "レジ戻し済み（CSV取込みで反映）" : "レジ未処理（この保存で反映）";
 }
 
+// 空備考は他の記録画面と同じ「—」で示す。空白だけの値も空として扱う。
 function formatNote(value: string | null | undefined): string {
   const trimmed = value?.trim() ?? "";
-  return trimmed === "" ? "備考なし" : trimmed;
+  return trimmed === "" ? "—" : trimmed;
 }
 
 function hasNote(value: string | null | undefined): boolean {
@@ -205,7 +204,7 @@ export function ReturnRecordDetailPage({ recordId, returnTo }: ReturnRecordDetai
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatQuantity(item.quantity, item.stock_unit)}
+                  {formatStockDisplay(item.quantity, item.stock_unit)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Link

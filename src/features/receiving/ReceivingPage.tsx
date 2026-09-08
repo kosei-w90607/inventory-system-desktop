@@ -667,6 +667,7 @@ export function ReceivingPage() {
             </Link>
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">直近 10 件の入庫を新しい順に表示します。</p>
         {recentQuery.isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
@@ -695,7 +696,12 @@ export function ReceivingPage() {
                 <TableRow key={record.id}>
                   <TableCell className="font-medium">{record.receiving_date}</TableCell>
                   <TableCell>{formatSupplierName(record.supplier_name)}</TableCell>
-                  <TableCell>{record.note ?? ""}</TableCell>
+                  <TableCell
+                    className="max-w-80 truncate"
+                    title={record.note?.trim() ? record.note : undefined}
+                  >
+                    {record.note?.trim() ? record.note : "—"}
+                  </TableCell>
                   <TableCell>{formatDateTime(record.created_at)}</TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="outline" size="sm">

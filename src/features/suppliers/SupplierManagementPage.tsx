@@ -32,10 +32,11 @@ export function SupplierManagementPage() {
 
   return (
     <PageShell>
-      <PageHeader title="取引先管理" actions={addButton} />
-      <p className="text-sm text-muted-foreground">
-        メーカー・ブランドの追加、名称変更、重複した取引先の統合を行います。
-      </p>
+      <PageHeader
+        title="取引先管理"
+        actions={addButton}
+        subtitle="メーカー・ブランドの追加、名称変更、重複した取引先の統合を行います。"
+      />
 
       {suppliersQuery.isLoading ? (
         <ListSkeleton rows={6} columns={4} />
