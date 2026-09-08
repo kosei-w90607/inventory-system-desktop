@@ -15,9 +15,9 @@
 export function formatStockDisplay(quantity: number, unit: string): string {
   switch (unit) {
     case "pcs":
-      return `${String(quantity)} 個`;
+      return `${quantity.toLocaleString("ja-JP")} 個`;
     case "cm":
-      return `${String(quantity)} cm`;
+      return `${quantity.toLocaleString("ja-JP")} cm`;
     default:
       return "—";
   }

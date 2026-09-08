@@ -11,6 +11,8 @@ export interface PageHeaderProps {
   title: string;
   /** 副題。text-sm text-muted-foreground で h1 直下に描画される（省略可） */
   subtitle?: string;
+  /** このページで行う操作の説明。副題の下に描画する（省略可） */
+  description?: string;
   /** ヘッダー右端に配置するアクション要素（省略可）。存在時は flex justify-between レイアウトになる */
   actions?: ReactNode;
 }
@@ -21,15 +23,21 @@ export interface PageHeaderProps {
  *   (b) title + subtitle  → `<header className="space-y-1">` + `<h1>` + `<p>`
  *   (c) title + actions   → `<header className="flex flex-wrap items-center justify-between gap-3">` + `<h1>` + actions slot
  *
- * DOM 互換性: 8 画面の既存インライン header を置換した際に DOM 出力が変わらないよう設計
- * （D-B2: subtitle? 追加で 8 画面統合、PageHeader props 契約）。
+ * actions があっても副題・説明をタイトルと同じグループに保つ。
+ * 外側 header のレイアウトは既存の 3 variant を維持する。
  */
-export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, description, actions }: PageHeaderProps) {
   // actions がある場合は flex レイアウト（ProductListPage の現構造と同値）
   if (actions !== undefined) {
     return (
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">{title}</h1>
+          {subtitle !== undefined && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          {description !== undefined && (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          )}
+        </div>
         {actions}
       </header>
     );
@@ -40,6 +48,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
     <header className="space-y-1">
       <h1 className="text-2xl font-semibold">{title}</h1>
       {subtitle !== undefined && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+      {description !== undefined && <p className="text-sm text-muted-foreground">{description}</p>}
     </header>
   );
 }

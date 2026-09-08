@@ -37,7 +37,11 @@ import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest
 import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { formatDateTime, formatRecordStatus } from "@/features/inventory-records/types";
-import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
+// 数量と単位の表記は共通formatterに揃え、単位列のある行は数値だけ描く。
+import {
+  formatStockDisplay,
+  formatStockUnitLabel,
+} from "@/features/stock-inquiry/lib/format-stock-display";
 import { commands, type ManualSaleCreateResult, type ProductWithRelations } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
@@ -96,10 +100,6 @@ function createEmptyForm(): ManualSaleFormValues {
     note: "",
     rows: [],
   };
-}
-
-function formatQuantity(value: number, unit: string): string {
-  return `${value.toLocaleString()} ${unit}`;
 }
 
 function rowErrorSignature(row: ManualSaleFormValues["rows"][number]): string {
@@ -554,7 +554,7 @@ export function ManualSalePage() {
                     <TableCell>{candidate.name}</TableCell>
                     <TableCell>{candidate.department_name}</TableCell>
                     <TableCell>
-                      {formatQuantity(candidate.stock_quantity, candidate.stock_unit)}
+                      {formatStockDisplay(candidate.stock_quantity, candidate.stock_unit)}
                     </TableCell>
                     <TableCell>¥{candidate.selling_price.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
@@ -607,7 +607,7 @@ export function ManualSalePage() {
                     <TableCell className="font-medium">{row.productCode}</TableCell>
                     <TableCell>{row.productName}</TableCell>
                     <TableCell>{row.departmentName}</TableCell>
-                    <TableCell>{formatQuantity(row.currentStockQuantity, row.stockUnit)}</TableCell>
+                    <TableCell>{row.currentStockQuantity.toLocaleString("ja-JP")}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -703,6 +703,9 @@ export function ManualSalePage() {
             </Link>
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          直近 5 件の手動販売出庫を新しい順に表示します。
+        </p>
 
         {recentQuery.isLoading ? (
           <div className="space-y-2">
@@ -722,51 +725,51 @@ export function ManualSalePage() {
             description="保存するとここに表示されます"
           />
         ) : recentQuery.data ? (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>販売日</TableHead>
-                  <TableHead>記録ID</TableHead>
-                  <TableHead>代表商品</TableHead>
-                  <TableHead className="text-right">明細数</TableHead>
-                  <TableHead>状態</TableHead>
-                  <TableHead>記録日時</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>販売日</TableHead>
+                <TableHead>記録ID</TableHead>
+                <TableHead>代表商品</TableHead>
+                <TableHead className="text-right">明細数</TableHead>
+                <TableHead>状態</TableHead>
+                <TableHead>記録日時</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentQuery.data.items.map((record) => (
+                <TableRow key={record.record_id}>
+                  <TableCell>{record.business_date}</TableCell>
+                  <TableCell className="font-mono tabular-nums">
+                    #{String(record.record_id)}
+                  </TableCell>
+                  <TableCell className="min-w-[12rem] whitespace-normal">
+                    {record.representative_item}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{record.item_count}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{formatRecordStatus(record.status)}</Badge>
+                  </TableCell>
+                  <TableCell className="font-mono tabular-nums">
+                    {formatDateTime(record.created_at)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        to="/inventory/manual-sale/records/$recordId"
+                        params={{ recordId: String(record.record_id) }}
+                        search={{ returnTo }}
+                      >
+                        <Eye aria-hidden="true" />
+                        詳細を見る
+                      </Link>
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentQuery.data.items.map((record) => (
-                  <TableRow key={record.record_id}>
-                    <TableCell>{record.business_date}</TableCell>
-                    <TableCell className="font-mono tabular-nums">
-                      #{String(record.record_id)}
-                    </TableCell>
-                    <TableCell className="min-w-[12rem] whitespace-normal">
-                      {record.representative_item}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{record.item_count}</TableCell>
-                    <TableCell>{formatRecordStatus(record.status)}</TableCell>
-                    <TableCell className="font-mono tabular-nums">
-                      {formatDateTime(record.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="outline" size="sm">
-                        <Link
-                          to="/inventory/manual-sale/records/$recordId"
-                          params={{ recordId: String(record.record_id) }}
-                          search={{ returnTo }}
-                        >
-                          <Eye aria-hidden="true" />
-                          詳細を見る
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         ) : null}
       </section>
     </PageShell>

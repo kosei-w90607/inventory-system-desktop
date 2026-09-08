@@ -562,6 +562,14 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
     expect(await screen.findByRole("heading", { name: "価格履歴" })).toBeInTheDocument();
     expect(mockListPriceHistory).toHaveBeenCalledWith("PRICE-001", 10);
     expect(await screen.findByText("2026-08-22T12:00:00")).toBeInTheDocument();
+    // ⑮ SC16: 列見出しとold→newを独立literalで固定。
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
+      "変更日時",
+      "売価",
+      "原価",
+    ]);
+    expect(screen.getByText("売価 ￥100 → ￥120")).toBeInTheDocument();
+    expect(screen.getByText("原価 ￥60 → ￥70")).toBeInTheDocument();
     edit.unmount();
     mockListPriceHistory.mockClear();
     renderStateful("create");
@@ -613,7 +621,14 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
     });
     const user = userEvent.setup();
     renderStateful();
+    // ⑮ SC15: 取得limitと説明の件数を一緒に更新する。
+    expect(
+      screen.getByText("直近 10 件の売価・原価の変更を新しい順に表示します。"),
+    ).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "すべて表示" }));
+    expect(
+      screen.getByText("直近 100 件の売価・原価の変更を新しい順に表示します。"),
+    ).toBeInTheDocument();
     expect(mockListPriceHistory).toHaveBeenCalledWith("PRICE-001", 100);
   });
 

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { FormSection } from "@/components/patterns/FormSection";
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { commands, type PriceHistoryEntry } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -40,7 +48,10 @@ export function PriceHistorySection({ productCode }: { productCode: string }) {
   }, [load, retryKey]);
 
   return (
-    <FormSection title="価格履歴" description="直近の売価・原価の変更を新しい順に表示します。">
+    <FormSection
+      title="価格履歴"
+      description={`直近 ${String(limit)} 件の売価・原価の変更を新しい順に表示します。`}
+    >
       {isLoading ? <p>読み込み中…</p> : null}
       {!isLoading && error !== null ? (
         <div className="space-y-2">
@@ -63,21 +74,30 @@ export function PriceHistorySection({ productCode }: { productCode: string }) {
         <p className="text-sm text-muted-foreground">価格履歴はまだありません</p>
       ) : null}
       {!isLoading && error === null && entries.length > 0 ? (
-        <ul className="divide-y rounded-md border">
-          {entries.map((entry) => (
-            <li key={entry.id} className="grid gap-1 px-3 py-2 text-sm md:grid-cols-3">
-              <span>{entry.changed_at}</span>
-              <span className="tabular-nums">
-                売価 {yenFormatter.format(entry.old_selling_price)} →{" "}
-                {yenFormatter.format(entry.new_selling_price)}
-              </span>
-              <span className="tabular-nums">
-                原価 {yenFormatter.format(entry.old_cost_price)} →{" "}
-                {yenFormatter.format(entry.new_cost_price)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>変更日時</TableHead>
+              <TableHead>売価</TableHead>
+              <TableHead>原価</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entries.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell>{entry.changed_at}</TableCell>
+                <TableCell className="tabular-nums">
+                  売価 {yenFormatter.format(entry.old_selling_price)} →{" "}
+                  {yenFormatter.format(entry.new_selling_price)}
+                </TableCell>
+                <TableCell className="tabular-nums">
+                  原価 {yenFormatter.format(entry.old_cost_price)} →{" "}
+                  {yenFormatter.format(entry.new_cost_price)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       ) : null}
       {limit === 10 && !isLoading && error === null ? (
         <Button

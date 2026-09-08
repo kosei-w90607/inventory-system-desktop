@@ -258,7 +258,8 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
 
     const recentRegion = await screen.findByRole("region", { name: "直近の返品・交換" });
     expect(await within(recentRegion).findByText("袋破れ")).toBeInTheDocument();
-    expect(within(recentRegion).getByText("備考なし")).toBeInTheDocument();
+    expect(within(recentRegion).getByText("—")).toBeInTheDocument();
+    expect(within(recentRegion).queryByText("備考なし")).not.toBeInTheDocument();
   });
 
   it("successful register-processed submit invalidates returns without stock keys", async () => {
@@ -275,7 +276,8 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
 
     expect(await screen.findByText("返品・交換を保存しました")).toBeInTheDocument();
     const resultRegion = screen.getByRole("region", { name: "保存結果" });
-    expect(within(resultRegion).getByText("備考なし")).toBeInTheDocument();
+    expect(within(resultRegion).getByText("—")).toBeInTheDocument();
+    expect(within(resultRegion).queryByText("備考なし")).not.toBeInTheDocument();
     expect(screen.getAllByText(registerProcessedStockDescription).length).toBeGreaterThan(0);
     await waitFor(() => {
       expectExactInvalidations(
@@ -773,3 +775,49 @@ describe("ReturnExchangePage native input tokens（Lane 5 SC4d）", () => {
     expect(registerLabel).toHaveClass("bg-background");
   });
 });
+
+it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
+  renderWithClient(<ReturnExchangePage />);
+  expect(
+    screen.getByText("レジ戻し済みなら帳面記録だけ、未処理ならこの保存で在庫を反映します"),
+  ).toBeInTheDocument();
+  expect(screen.getByText("直近 10 件の返品・交換を新しい順に表示します。")).toBeInTheDocument();
+});
+
+it.each([
+  ["pcs", "1,234 個", "個"],
+  ["cm", "1,234 cm", "cm"],
+] as const)(
+  "⑮ SC19: %s は候補で単位付き、入力行で数値と単位列を分ける",
+  async (unit, display, unitLabel) => {
+    const user = userEvent.setup();
+    mockSearchProducts.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          makeMockProductWithRelations({
+            product_code: "UNIT-001",
+            name: "単位確認A",
+            stock_quantity: 1234,
+            stock_unit: unit,
+          }),
+          makeMockProductWithRelations({ product_code: "UNIT-002", name: "単位確認B" }),
+        ],
+        total_count: 2,
+        page: 1,
+        per_page: 10,
+      },
+    });
+    renderWithClient(<ReturnExchangePage />);
+    await user.type(await screen.findByLabelText("返品・交換商品検索"), "単位{enter}");
+    const candidate = (await screen.findByText("UNIT-001")).closest("tr");
+    if (candidate === null) throw new Error("expected table structure");
+    expect(within(candidate).getByText(display)).toBeInTheDocument();
+    await user.click(within(candidate).getByRole("button", { name: "戻りに追加" }));
+    const inputRow = (await screen.findByLabelText("UNIT-001 の数量")).closest("tr");
+    if (inputRow === null) throw new Error("expected table structure");
+    expect(within(inputRow).getByText("1,234")).toBeInTheDocument();
+    expect(within(inputRow).getByText(unitLabel)).toBeInTheDocument();
+    expect(within(inputRow).queryByText(display)).not.toBeInTheDocument();
+  },
+);

@@ -72,3 +72,24 @@ describe("PageHeader", () => {
     });
   });
 });
+
+// ⑮ SC1/SC2: actions の有無で副題・操作説明を失わない。
+it("⑮ SC1: actions と副題と説明を同じ見出しグループに表示する", () => {
+  render(
+    <PageHeader
+      title="タイトル"
+      subtitle="副題"
+      description="操作説明"
+      actions={<button>操作</button>}
+    />,
+  );
+  const subtitle = screen.getByText("副題");
+  expect(subtitle.parentElement).toHaveClass("space-y-1");
+  expect(screen.getByText("操作説明").parentElement).toBe(subtitle.parentElement);
+  expect(subtitle.closest("header")).toHaveClass("flex");
+});
+it.each([undefined, "副題"])("⑮ SC2: actions なしで説明を描画する（副題=%s）", (subtitle) => {
+  render(<PageHeader title="タイトル" subtitle={subtitle} description="操作説明" />);
+  expect(screen.getByText("操作説明").closest("header")).toHaveClass("space-y-1");
+  if (subtitle !== undefined) expect(screen.getByText("副題")).toBeInTheDocument();
+});

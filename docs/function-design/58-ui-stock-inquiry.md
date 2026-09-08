@@ -365,6 +365,8 @@ export function useStockInquiry(params: {
 
 #### format-stock-display（[quantity, unit] → string）
 
+- 数量は `toLocaleString("ja-JP")` で桁区切り表示する（例: `1,234 個` / `1,234 cm`）。
+
 - `unit === "pcs"` → `"10 個"`（数量 + 「個」）
 - `unit === "cm"` → `"300 cm"`（数量 + 「cm」、生地、SCREEN_DESIGN.md L131）
 - 上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
@@ -630,6 +632,8 @@ function StockInquiryPage() {
 - 画面固有ショートカット: 検索欄 `autoFocus` + Enter 検索（Q-3 補強）。それ以外は本 Phase では未定義
 
 ### 58.12 表記揺れ + UI 表示フォーマット
+
+数量は `toLocaleString("ja-JP")` による桁区切りで表示する（例: `1,234 個`）。
 
 | 系統 | 表示 | 内部 |
 |---|---|---|

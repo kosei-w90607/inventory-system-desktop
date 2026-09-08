@@ -19,6 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+// 数量の桁区切りと単位名は共通formatterに揃える。
+import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { MovementTable } from "@/features/stock-movements/components/MovementTable";
 import type { StocktakeStatus } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
@@ -38,17 +40,13 @@ const STATUS_LABELS: Record<StocktakeStatus, string> = {
   completed: "完了",
 };
 
-function formatQuantity(value: number, unit: string): string {
-  return `${value.toLocaleString("ja-JP")} ${unit}`;
-}
-
 function formatSignedQuantity(value: number, unit: string): string {
   const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toLocaleString("ja-JP")} ${unit}`;
+  return `${sign}${formatStockDisplay(value, unit)}`;
 }
 
 function formatOptionalQuantity(value: number | null, unit: string): string {
-  return value === null ? "—" : formatQuantity(value, unit);
+  return value === null ? "—" : formatStockDisplay(value, unit);
 }
 
 export function StocktakeRecordDetailPage({
@@ -191,7 +189,7 @@ export function StocktakeRecordDetailPage({
                     </TableCell>
                     <TableCell>{item.department_name}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatQuantity(item.system_stock, item.stock_unit)}
+                      {formatStockDisplay(item.system_stock, item.stock_unit)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatOptionalQuantity(item.actual_count, item.stock_unit)}

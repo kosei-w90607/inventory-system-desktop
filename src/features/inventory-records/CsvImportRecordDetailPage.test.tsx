@@ -143,7 +143,7 @@ describe("CsvImportRecordDetailPage (REQ-206 / REQ-207)", () => {
 
     const itemRow = screen.getByRole("row", { name: /Z004 合成テスト商品/ });
     expect(within(itemRow).getByText("テスト部門")).toBeInTheDocument();
-    expect(within(itemRow).getByText("2 pcs")).toBeInTheDocument();
+    expect(within(itemRow).getByText("2 個")).toBeInTheDocument();
     expect(within(itemRow).getByText("有効")).toBeInTheDocument();
     expect(within(itemRow).getByRole("link", { name: "Z004 の在庫変動履歴" })).toHaveAttribute(
       "href",
@@ -309,3 +309,14 @@ it.each([
     }
   },
 );
+
+it.each([
+  ["pcs", "1,234 個"],
+  ["cm", "1,234 cm"],
+])("⑮ SC19: CSV詳細の %s を単位付き表示する", async (unit, expected) => {
+  const detail = makeDetail();
+  detail.items = [{ ...detail.items[0], stock_unit: unit, quantity: 1234 }];
+  mockGetCsvImportRecord.mockResolvedValue({ status: "ok", data: detail });
+  renderWithClient(<CsvImportRecordDetailPage importId={41} />);
+  expect(await screen.findByText(expected)).toBeInTheDocument();
+});

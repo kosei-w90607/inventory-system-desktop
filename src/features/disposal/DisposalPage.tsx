@@ -35,7 +35,11 @@ import { ProductAddSuggest } from "@/components/patterns/ProductAddSuggest";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
 import { PageShell } from "@/components/patterns/PageShell";
-import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
+// 数量と単位の表記は共通formatterに揃え、単位列のある行は数値だけ描く。
+import {
+  formatStockDisplay,
+  formatStockUnitLabel,
+} from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type DisposalCreateResult, type ProductWithRelations } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -86,10 +90,6 @@ function createEmptyForm(): DisposalFormValues {
 
 function formatDateTime(value: string): string {
   return value.replace("T", " ");
-}
-
-function formatQuantity(value: number, unit: string): string {
-  return `${value.toLocaleString()} ${unit}`;
 }
 
 function formatYen(value: number): string {
@@ -456,7 +456,7 @@ export function DisposalPage() {
                     <TableCell>{candidate.name}</TableCell>
                     <TableCell>{candidate.department_name}</TableCell>
                     <TableCell>
-                      {formatQuantity(candidate.stock_quantity, candidate.stock_unit)}
+                      {formatStockDisplay(candidate.stock_quantity, candidate.stock_unit)}
                     </TableCell>
                     <TableCell>{formatYen(candidate.cost_price)}</TableCell>
                     <TableCell className="text-right">
@@ -511,7 +511,7 @@ export function DisposalPage() {
                     <TableCell className="font-medium">{row.productCode}</TableCell>
                     <TableCell>{row.productName}</TableCell>
                     <TableCell>{row.departmentName}</TableCell>
-                    <TableCell>{formatQuantity(row.currentStockQuantity, row.stockUnit)}</TableCell>
+                    <TableCell>{row.currentStockQuantity.toLocaleString("ja-JP")}</TableCell>
                     <TableCell>
                       <Select
                         value={row.disposalType}
@@ -659,6 +659,9 @@ export function DisposalPage() {
             </Link>
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          直近 10 件の廃棄・破損を新しい順に表示します。
+        </p>
         {recentQuery.isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-9 w-full" />

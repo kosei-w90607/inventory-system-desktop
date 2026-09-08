@@ -21,6 +21,8 @@ import {
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
+// 数量の桁区切りと単位名は共通formatterに揃える。
+import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { MovementTable } from "@/features/stock-movements/components/MovementTable";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
@@ -32,10 +34,6 @@ import { formatDateTime, formatRecordStatus, formatYen } from "./types";
 export interface ReceivingRecordDetailPageProps {
   recordId: number;
   returnTo?: string;
-}
-
-function formatQuantity(value: number, unit: string): string {
-  return `${value.toLocaleString("ja-JP")} ${unit}`;
 }
 
 export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecordDetailPageProps) {
@@ -156,7 +154,7 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
                 </TableCell>
                 <TableCell>{item.department_name}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatQuantity(item.quantity, item.stock_unit)}
+                  {formatStockDisplay(item.quantity, item.stock_unit)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatYen(item.cost_price)}
