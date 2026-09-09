@@ -7,7 +7,7 @@
 // 設計: docs/plans/2026-05-19-pr-66-codex-r1-p2-fixes.md §2 commit 2
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { commands } from "@/lib/bindings";
@@ -118,6 +118,13 @@ describe("MonthlySalesPage_req502 official department totals", () => {
     renderPage({ month: "2026-05", mode: "by_product" });
 
     expect(await screen.findByText("この月のレジ日報は未取込みです。")).toBeInTheDocument();
+    // ⑰ SC3 / UIDISP-D3: 対象 warning 内だけで Z004 との対比を検証する。
+    const warning = screen.getByRole("status");
+    expect(within(warning).getByText("この月のレジ日報は未取込みです。")).toBeInTheDocument();
+    expect(within(warning).getByText("商品別売上 CSV（Z004）の取込みとは別です。")).toHaveAttribute(
+      "data-slot",
+      "alert-description",
+    );
     // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
     expect(
       screen.getByText("この月のレジ日報は未取込みです。").closest('[data-slot="alert"]'),

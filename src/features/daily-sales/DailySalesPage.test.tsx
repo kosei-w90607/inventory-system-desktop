@@ -1,6 +1,6 @@
 // src/features/daily-sales/DailySalesPage.test.tsx
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -112,6 +112,13 @@ describe("DailySalesPage REQ-501 official daily report", () => {
     renderPage();
 
     expect(await screen.findByText("この日付のレジ日報は未取込みです。")).toBeInTheDocument();
+    // ⑰ SC3 / UIDISP-D3: 対象 warning 内だけで Z004 との対比を検証する。
+    const warning = screen.getByRole("status");
+    expect(within(warning).getByText("この日付のレジ日報は未取込みです。")).toBeInTheDocument();
+    expect(within(warning).getByText("商品別売上 CSV（Z004）の取込みとは別です。")).toHaveAttribute(
+      "data-slot",
+      "alert-description",
+    );
     // SC20 / DSR-08: 既存文言・roleを保ってwarning variantへ移行する。
     expect(
       screen.getByText("この日付のレジ日報は未取込みです。").closest('[data-slot="alert"]'),

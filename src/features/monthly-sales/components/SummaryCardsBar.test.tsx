@@ -153,3 +153,21 @@ it.each([
     expect(screen.getByText(label)).not.toHaveClass("text-success-emphasis");
   },
 );
+
+it.each([
+  [19900, "-80.1%", "-¥80,100"],
+  [100000, "+0.0%", "+¥0"],
+  [120000, "+20.0%", "+¥20,000"],
+  [99950, "-0.1%", "-¥50"],
+] as const)("⑰ SC1 / UIDISP-D1: amount %s has a single percentage sign", (amount, sub, value) => {
+  render(
+    <SummaryCardsBar
+      summary={{ ...mockSummary, totalAmount: amount }}
+      periodLabel="2026/06"
+      prevComparison={mockPrevComparison}
+      isLoading={false}
+    />,
+  );
+  expect(screen.getByText(sub, { exact: true }).textContent).toBe(sub);
+  expect(screen.getByText(value, { exact: true }).textContent).toBe(value);
+});

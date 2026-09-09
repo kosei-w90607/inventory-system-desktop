@@ -42,6 +42,7 @@ import {
 } from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type DisposalCreateResult, type ProductWithRelations } from "@/lib/bindings";
+import { formatDateTime } from "@/features/inventory-records/types";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";
@@ -86,10 +87,6 @@ function createEmptyForm(): DisposalFormValues {
     disposalDate: getLocalDateString(),
     rows: [],
   };
-}
-
-function formatDateTime(value: string): string {
-  return value.replace("T", " ");
 }
 
 function formatYen(value: number): string {
@@ -703,7 +700,9 @@ export function DisposalPage() {
                 <TableRow key={item.id}>
                   <TableCell>{item.disposal_date}</TableCell>
                   <TableCell>{item.id}</TableCell>
-                  <TableCell>{formatDateTime(item.created_at)}</TableCell>
+                  <TableCell className="font-mono tabular-nums">
+                    {formatDateTime(item.created_at)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="outline" size="sm">
                       <Link

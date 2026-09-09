@@ -66,7 +66,7 @@ export function StockDetailContent({ query }: StockDetailContentProps) {
   if (query.data) {
     return (
       <>
-        <CardHeader>
+        <CardHeader className="pt-4">
           <CardTitle className="text-base">
             {query.data.product.name}
             <span className="ml-2 font-mono text-sm font-medium text-muted-foreground">
@@ -91,7 +91,7 @@ export function StockDetailContent({ query }: StockDetailContentProps) {
             <DetailRow label="最終入庫日" value={formatLastDate(query.data.last_receiving_date)} />
             <DetailRow label="最終販売日" value={formatLastDate(query.data.last_sale_date)} />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pb-4">
             <Button type="button" asChild variant="outline" size="sm">
               <Link to="/products/$code/edit" params={{ code: query.data.product.product_code }}>
                 商品修正

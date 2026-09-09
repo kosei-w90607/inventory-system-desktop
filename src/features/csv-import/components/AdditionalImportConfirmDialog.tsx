@@ -9,6 +9,7 @@
 // （gated Amendment 4、共通 src/components/ui/table.tsx は変更せず利用側 className で
 // whitespace-nowrap 既定を override）。docs/design-system/01-decision-rules.md DSR-16 参照。
 
+import { formatDateTime } from "@/features/inventory-records/types";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -56,12 +57,6 @@ function FilenameList({ filenames }: { filenames: string[] }) {
       ))}
     </ul>
   );
-}
-
-/// 既存 formatter 慣行（`src/features/inventory-records/types.ts` 他、各 feature で
-/// ローカル複製されている established pattern）に従い、ISO の "T" 区切りを空白へ置換する。
-function formatDateTime(value: string): string {
-  return value.replace("T", " ");
 }
 
 /// open は parent state、open=false にする経路は (1) onConfirm (2) onCancel (Esc / 外側クリック / キャンセルボタン)。
@@ -117,7 +112,7 @@ export function AdditionalImportConfirmDialog({
                       <FilenameList filenames={item.filenames} />
                     </TableCell>
                     <TableCell className="whitespace-normal">{item.amount}</TableCell>
-                    <TableCell className="whitespace-normal">
+                    <TableCell className="font-mono whitespace-normal tabular-nums">
                       {formatDateTime(item.importedAt)}
                     </TableCell>
                   </TableRow>
@@ -135,7 +130,7 @@ export function AdditionalImportConfirmDialog({
                     <FilenameList filenames={incomingImport.filenames} />
                   </TableCell>
                   <TableCell className="whitespace-normal">{incomingImport.amount}</TableCell>
-                  <TableCell className="whitespace-normal">
+                  <TableCell className="font-mono whitespace-normal tabular-nums">
                     {formatDateTime(incomingImport.importedAt)}
                   </TableCell>
                 </TableRow>

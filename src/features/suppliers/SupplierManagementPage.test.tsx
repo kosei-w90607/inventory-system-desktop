@@ -85,6 +85,27 @@ beforeEach(() => {
 });
 
 describe("SupplierManagementPage UI-15 / REQ-107", () => {
+  it("⑰ SC4 / UIDISP-D4: 改名の保存・再試行はキャンセルの後に並ぶ", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const row = await screen.findByTestId("supplier-row-1");
+    await user.click(within(row).getByRole("button", { name: "名前を変更" }));
+    expect(
+      within(row)
+        .getAllByRole("button")
+        .slice(0, 2)
+        .map((button) => button.textContent),
+    ).toEqual(["キャンセル", "保存"]);
+    await user.clear(within(row).getByLabelText("あ取引先の新しい取引先名"));
+    await user.click(within(row).getByRole("button", { name: "保存" }));
+    expect(
+      within(row)
+        .getAllByRole("button")
+        .slice(0, 2)
+        .map((button) => button.textContent),
+    ).toEqual(["キャンセル", "再試行"]);
+  });
+
   it("REQ-107 一覧は name 昇順で取引先名・関連商品数・入庫記録数を N件 表示し 0 件も 0件 と明示する", async () => {
     renderPage();
     const rows = await screen.findAllByTestId(/supplier-row-/);

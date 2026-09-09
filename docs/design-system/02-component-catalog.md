@@ -545,6 +545,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 **状態**:
 - **open**: parent state で制御。`open=false` への経路は (1) onConfirm (2) onCancel（Esc / 外側クリック / キャンセルボタン）の 2 つ
 - **配置**: 2 ボタンの DOM 順は Cancel → Action。`sm` 以上は Cancel 左 / Action 右、narrow 幅は footer の `flex-col-reverse` により Action 上 / Cancel 下とする。3 ボタンは取引先統合 stage 2 の secondary → Cancel → Action を先例とする
+  inline 行操作（例: 取引先管理の名前変更）の 2 ボタンも同じ DOM 順（Cancel → Action）に揃える
 - **硬化**: Esc / 外側クリックは cancel ブリッジが本則。選択前 dismiss が実害へ直結する保存結果、または未保存破棄の明示選択を求める場合だけ、DSR-20 の明示 prop（`onEscapeKeyDown` / `onPointerDownOutside`、close button を持つ場合は `showCloseButton={false}`）で硬化する
 - hover / focus / active / disabled / error: ボタン primitive の既定に従う
 
