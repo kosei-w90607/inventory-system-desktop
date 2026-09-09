@@ -240,7 +240,7 @@ Human Gate (2) で (a) が選ばれた場合、UI-02-D3 の defer を明示的�
 - AC10: `git diff --name-only c8e1409..8eff442 -- src docs/decision-log.md docs/design-system docs/function-design` の出力が空（baseline 実測: 空、確認済み）。評価時点は plan-first commit `8eff442` のみとし、Writer 実装 commit 後は本 AC を評価しない。Plan Commit 確定時は Plan Review 是正 commit をすべて含む最終 SHA へ差し替える（`8eff442` のまま凍結しない。SHA 自体は今は変えず、Coordinator が遷移 commit で差し替える）。
 - AC11: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-09-supplier-picker-dialog-design.md` および `bash scripts/doc-consistency-check.sh` が ERROR 0 で通過。
 - AC12: `docs/Plans.md` の「次の行動」に本 packet（basename `2026-09-09-supplier-picker-dialog-design.md`）への active link を持つ ⑱ 行があり、Backlog の「取引先ピッカー統合 dialog」「取引先一覧の操作性（78 §78.12）」の両 entry に起票済み注記が付いている。
-- AC13（F1 negative oracle）: `awk '/^## 更新履歴/{exit}{print}' docs/design-system/01-decision-rules.md | rg -Uc "取引先管理.*SupplierPickerDialog"` = 0（baseline 0 確認済み、`-U` で行跨ぎの共起も検出対象にする）。`rg -c` は 0 件時に出力なし・exit 1 となるため、出力が空の場合は 0 件として扱う（`--include-zero` 相当の解釈を明記）。取引先管理へ DSR-24 の canonical 実装〈`SupplierPickerDialog`〉を誤って適用していないことの negative oracle。
+- AC13（F1 negative oracle）: `awk '/^## DSR-24/,/^## DSR-25|^## 更新履歴/' docs/design-system/01-decision-rules.md | rg -Uc --multiline-dotall "取引先管理.*SupplierPickerDialog"` = 0（baseline 0 確認済み。DSR-24 節に範囲限定した上で `--multiline-dotall` を付けて行跨ぎの共起も検出する。`-U` 単独では `.` が改行に一致しないため行跨ぎを検出できない〈round 3 実証〉。本文全体に dotall を掛けると DSR-24 本文の「取引先管理」と file 内の他所の `SupplierPickerDialog` が偽陽性を生むため節限定にする）。`rg -c` は 0 件時に出力なし・exit 1 となるため、出力が空の場合は 0 件として扱う（`--include-zero` 相当の解釈を明記）。取引先管理へ DSR-24 の canonical 実装〈`SupplierPickerDialog`〉を誤って適用していないことの negative oracle。
 - AC14: `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md | rg -Fc "shadcn/ui \`Dialog\`"` ≥ 1（baseline 0 確認済み、本文範囲に限定）。形式表に picker dialog 用の非確認 Dialog 行が追加されている。
 - AC15: `awk '/^## DSR-23/,/^## 更新履歴/' docs/design-system/01-decision-rules.md | rg -Fc "DSR-24"` ≥ 1（baseline 0 確認済み）。DSR-23 の関連行に DSR-24 の相互参照が追記されている。
 - AC16（更新履歴表の日付行、F6c）: `rg -c "^\| 2026-09-" docs/design-system/01-decision-rules.md` ≥ 15（baseline 14 確認済み）かつ `rg -c "^\| 2026-09-" docs/design-system/02-component-catalog.md` ≥ 13（baseline 12 確認済み）。DSR-24 新設 / picker dialog 小節追加を記録する更新履歴行がそれぞれ 1 行以上増えている。
@@ -418,4 +418,4 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-起票（2026-09-09）。Plan Review 未実施（plan-draft、Plan Gate 前）。
+- Findings Freeze: 2026-09-09（Plan Review round 1〈Opus reject P1 2 / P2 7 / P3 4、Sonnet approve-with-P2 P2 2 / P3 2〉→ 是正 `ebb7945`、round 2〈Opus reject P1 2 / P2 3 / P3 3、Sonnet approve-with-P2 P1 1 / P3 1、いずれも round 1 是正が持ち込んだ新規欠陥〉→ 是正 `4b6ce65`、round 3 closure〈Opus approve、AC13 oracle の `-U` 誤記を本 commit で訂正〉）; post-freeze exceptions: none。
