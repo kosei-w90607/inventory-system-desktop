@@ -16,7 +16,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
-- Human Gate: owner mockup 確認（culling 3 項目: 追加後の自動選択 A/B / 入庫記録への適用 / 取引先管理の検索一覧）。mockup を実機（Windows native、対象 3 画面: 一括価格改定 filter / 商品登録・修正 form / 取引先管理）と並べて提示する。
+- Human Gate: owner mockup 確認（culling 3 項目: 追加後の自動選択 A/B / 入庫記録への適用 / 取引先管理の検索一覧）。mockup を実機（Windows native、対象 3 画面: 一括価格改定 filter / 商品登録・修正 form / 取引先管理）と並べて提示する。口頭確認として「footer 右『閉じる』の位置感、『すべての取引先』行が scroll で消えること」も観測項目に含める。
 
 ## Owner Effort Budget
 
@@ -145,9 +145,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 >
 > **適用条件**: (1) 呼び出し画面が候補から 1 件を選ぶ操作を持つこと、(2) その候補データが「漸進的に増える complete master data」であること（例: 取引先 = `listSuppliers()` / `createSupplier()` の組）、(3) その画面が候補への追加導線（inline パネル・別 Select 横のボタン等）を持つこと。3 条件のいずれかを満たさない候補は対象外（例: `DepartmentFilter` の部門は追加導線を持たない固定 master のため (3) を満たさず対象外）。追加導線を持たない画面への適用可否は本 DSR の対象外とし、個別の design 判断に委ねる。
 >
-> **Why**: DSR-23 は見た目の統一を目的にプルダウンを Select へ統一したが、追加導線が伴う候補では Select 自体に行を増やす手段が無く、画面ごとに inline パネル（`ProductForm.tsx`）・Select 横のボタン（`PriceRevisionFilters.tsx`）とバラバラな実装が並立してきた（起票時実測「`CreateSupplierDialog` 2 file の契約差分」参照）。owner L3 所感（2026-09-08、`docs/Plans.md` Backlog entry）「追加である以上オレンジでは」「絞り込み列に登録操作が混ざる」は、Select 横に primary 色のボタンを並べる現行実装が、絞り込みの主動線と登録操作を同一視覚面で混同させていることを指す。dialog に閉じ込めることで、画面本体は選択操作だけに単純化され、追加操作は dialog を開いた後だけに現れる別の文脈になる。
+> **Why**: DSR-23 は見た目の統一を目的にプルダウンを Select へ統一したが、追加導線が伴う候補では Select 自体に行を増やす手段が無く、画面ごとに inline パネル（`ProductForm.tsx`）・Select 横のボタン（`PriceRevisionFilters.tsx`）とバラバラな実装が並立してきた（`onCreated` の戻り値契約が file ごとに異なる — Supplier を返す / 返さない）。owner L3 所感（2026-09-08、`docs/Plans.md` Backlog entry）「追加である以上オレンジでは」「絞り込み列に登録操作が混ざる」は、Select 横に primary 色のボタンを並べる現行実装が、絞り込みの主動線と登録操作を同一視覚面で混同させていることを指す。dialog に閉じ込めることで、画面本体は選択操作だけに単純化され、追加操作は dialog を開いた後だけに現れる別の文脈になる。
 >
-> **判定フロー / 具体例**: DSR-01（1 画面 1 primary）は画面本体の主動線を変えず、dialog を開いている間だけ dialog 内の「追加の確定」ボタン 1 個を primary（amber）にすることで維持する（dialog を閉じれば画面には primary が戻らない）。適用例: 一括価格改定 filter・商品登録/修正 form（いずれも候補から 1 件を選ぶ操作を持つ）。非適用例: 部門フィルタ（`DepartmentFilter`、追加導線なし、Select のまま）。取引先管理は選択操作を持たないため DSR-24 非適用。一覧の見た目（検索 input + scroll 箱）だけ picker dialog と揃える（78 SPEC-SUP-D2、SPD-D6）。入庫記録は現状 UI-02-D3 により追加導線を持たないため非適用（Human Gate (2) で覆されない限り）。
+> **判定フロー / 具体例**: DSR-01（1 画面 1 primary）は画面本体の主動線を変えず、dialog を開いている間だけ dialog 内の「追加の確定」ボタン 1 個を primary（amber）にすることで維持する（dialog を閉じれば画面には primary が戻らない）。適用例: 一括価格改定 filter・商品登録/修正 form（いずれも候補から 1 件を選ぶ操作を持つ）。非適用例: 部門フィルタ（`DepartmentFilter`、追加導線なし、Select のまま）。取引先管理は選択操作を持たないため DSR-24 非適用。一覧の見た目（検索 input + scroll 箱）だけ picker dialog と揃える（78 SPEC-SUP-D2、SPD-D6）。入庫記録は UI-02-D3 で追加導線を defer しているため非適用（owner 判断で覆る場合は別途改訂）。
 >
 > **関連**: パターン⑧ Dialog / 確認（picker dialog 小節）、DSR-23（プルダウンは Select 統一、本 DSR はその例外条項）、DSR-01（1 画面 1 primary）。
 
@@ -159,15 +159,19 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 >
 > **使いどころ**: 取引先等、追加導線を伴う complete master data から 1 件を選ぶ場面（DSR-24 適用条件）。
 >
-> **canonical**: `SupplierPickerDialog`（後続実装、`src/features/suppliers/components/` 配下を想定）。
+> **canonical**: `SupplierPickerDialog`（後続実装、`src/features/suppliers/components/**` 配下を想定）。
 >
-> **構成**: ヘッダ（title、例:「取引先を選択」）+ 本体（名前検索 input、live・client-side filter — `list_suppliers` は無引数のため取得済み一覧をここで絞り込む — + scroll 一覧、箱の見た目は商品一覧の表を流用、行に現在選択 ✓、フィルタ文脈では先頭に「すべての取引先」行、入力文脈では先頭に既存 sentinel 相当の行〈「取引先なし」/「指定なし」〉を維持）+ footer（枠外固定、左「新しい取引先を追加」secondary・右「閉じる」outline）。一覧行クリック = 選択確定 + dialog を閉じる。footer は一覧の scroll と独立して常時固定表示する。
+> **構成**: ヘッダ（title、例:「取引先を選択」）+ 本体（名前検索 input、live・client-side filter — `list_suppliers` は無引数のため取得済み一覧をここで絞り込む — + scroll 一覧、箱の見た目は商品一覧の表を流用、行に現在選択（DSR-22 の現在行 3 点: 左 4px primary バー + `--row-current` 背景 + ✓ と「選択中」badge / 文言。色だけに頼らない）、フィルタ文脈では先頭に「すべての取引先」行、入力文脈では先頭に既存 sentinel 相当の行〈「取引先なし」/「指定なし」〉を維持）+ footer（枠外固定、左「新しい取引先を追加」secondary・右「閉じる」outline）。一覧行クリック = 選択確定 + dialog を閉じる。footer は一覧の scroll と独立して常時固定表示する。
 >
-> **動作**: 外クリック / Esc = 「閉じる」と同じ（選択は変更しない、DSR-20 の硬化対象ではない通常 Dialog）。「新しい取引先を追加」→ 既存 `CreateSupplierDialog` をそのまま開く（owner 仕様）。追加成功後は一覧を再取得する。新規取引先を自動選択するか（A: 自動選択 + 両 dialog を閉じる / B: 一覧へ反映のみ、picker は開いたまま）は Human Gate (1) 未確定。確定まで catalog には A/B 両論を併記する。picker は確認 Action を持たず（一覧行クリックが確定）、footer 左は別 surface を開く secondary、右が dismiss。⑧ の **配置** bullet が定める Cancel 左 / Action 右 は確認 dialog の 2 ボタン規則であり、picker footer には適用しない。
+> **動作**: 外クリック / Esc = 「閉じる」と同じ（選択は変更しない、DSR-20 の硬化対象ではない通常 Dialog）。「新しい取引先を追加」→ 既存 `CreateSupplierDialog` をそのまま開く（owner 仕様）。追加成功後は一覧を再取得する。新規取引先を自動選択するか（A: 自動選択 + 両 dialog を閉じる / B: 一覧へ反映のみ、picker は開いたまま）は Human Gate (1) 未確定。確定まで A/B 両論を併記する。picker は確認 Action を持たず（一覧行クリックが確定）、footer 左は別 surface を開く secondary、右が dismiss。⑧ の **配置** bullet が定める Cancel 左 / Action 右 は確認 dialog の 2 ボタン規則であり、picker footer には適用しない。
 >
 > **dialog 重ね契約**（`CreateSupplierDialog` を picker dialog の上に開く）:
-> - **(A) 推奨**: Radix `Dialog.Root` を picker dialog の内側でネストする。owner 仕様「既存 CreateSupplierDialog をそのまま開く」に文字面で忠実。両 dialog とも `z-50` の overlay を持ち、後着 dialog が DOM 順で後にマウントされ視覚的に手前へ来る。ESC は Radix `DismissableLayer` のスタック管理により最前面の dialog のみを閉じる想定、フォーカスは `CreateSupplierDialog` を閉じたあと picker dialog へ戻る想定。**本アプリに dialog-in-dialog の先例が無いため、これらは実機未検証の期待値であり、Windows WebView2 で ESC・外クリック伝播・focus trap を確認する（runtime lane AC-L3、下記 Contract Probe 参照）**。内側 dialog の overlay は透過（`bg-transparent`）とするか二重 scrim（`bg-black/50` × 2 ≈ 75% 暗転）を許容するかを mockup で owner に示す（根拠: `src/components/ui/dialog.tsx` の `DialogOverlay` `bg-black/50` + `z-50`）。
-> - **(B) fallback**: `MergeSupplierDialog`（起票時実測参照）型の単一 dialog 内 2-stage（stage 1 = 一覧、stage 2 = 追加フォーム）。dialog を重ねないため WebView2 リスクを避けられるが、`CreateSupplierDialog` の実装（validation・toast・エラー表示）を picker dialog 内に複製することになり、owner 仕様「既存 CreateSupplierDialog をそのまま開く」との文字面が一致しない。(A) の実機確認で問題が出た場合のみ (B) に切替える。
+> - **(A) 推奨**: Radix `Dialog.Root` を picker dialog の内側でネストする。owner 仕様「既存 CreateSupplierDialog をそのまま開く」に文字面で忠実。両 dialog とも `z-50` の overlay を持ち、後着 dialog が DOM 順で後にマウントされ視覚的に手前へ来る。ESC は Radix `DismissableLayer` のスタック管理により最前面の dialog のみを閉じる想定、フォーカスは `CreateSupplierDialog` を閉じたあと picker dialog へ戻る想定。**本アプリに dialog-in-dialog の先例が無いため、これらは実機未検証の期待値であり、Windows WebView2 で ESC・外クリック伝播・focus trap を確認する（runtime lane の Windows WebView2 実機確認で検証する）**。内側 dialog の overlay は透過（`bg-transparent`）とするか二重 scrim（`bg-black/50` × 2 ≈ 75% 暗転）を許容するかを mockup で owner に示す（根拠: `src/components/ui/dialog.tsx` の `DialogOverlay` `bg-black/50` + `z-50`）。
+> - **(B) fallback**: `MergeSupplierDialog`（単一 dialog 内 2-stage の既存先例）型の単一 dialog 内 2-stage（stage 1 = 一覧、stage 2 = 追加フォーム）。dialog を重ねないため WebView2 リスクを避けられるが、`CreateSupplierDialog` の実装（validation・toast・エラー表示）を picker dialog 内に複製することになり、owner 仕様「既存 CreateSupplierDialog をそのまま開く」との文字面が一致しない。(A) の実機確認で問題が出た場合のみ (B) に切替える。
+>
+> **状態**: 取得中 = Skeleton、取得失敗 = dialog 内 Alert（UI-01b-D8 の「取引先未指定なら保存可能」契約は不変）、検索 0 件 = `EmptyState`（⑥ の 0 件成功系統）。
+>
+> **a11y**: `DialogTitle` + `DialogDescription` を置く（⑧ アクセシビリティ節）、open 時の初期 focus は検索 input（⑨ live 型と同じ、スキャナ入力を即受け付ける）、一覧選択または「閉じる」で閉じたら起動ボタンへ focus を戻す。`CreateSupplierDialog` を閉じたら picker の検索 input へ戻す。
 >
 > **Do**: 追加導線を伴う候補は本パターンに統一する（DSR-24）。footer の 2 ボタンを枠外固定にし、一覧の scroll と独立させる。
 >
@@ -177,12 +181,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 1 file に次の状態を並べる（`mockup-d-lists.html` の商品一覧の表の箱を流用）:
 
-1. 一括価格改定 filter から開いた picker dialog（「すべての取引先」行あり）
-2. 商品登録・修正 form から開いた picker dialog（先頭行「取引先なし」、「すべて」行は無し）
+1. 一括価格改定 filter から開いた picker dialog（「すべての取引先」行あり、選択行に「選択中」badge）
+2. 商品登録・修正 form から開いた picker dialog（先頭行「取引先なし」、「すべて」行は無し、選択行に「選択中」badge）
 3. 取引先管理画面の検索 + scroll 一覧（picker dialog ではなくページ本体への埋め込み。既存 `SupplierUsageTable` に検索 input を追加し、箱を scroll 化した形。footer ボタンは無し — 選択して閉じる、という picker の用途ではないため）
-4. 追加後の自動選択「あり」（新規取引先が一覧に反映され ✓ が付いた状態、Human Gate (1) の A 案）
+4. 追加後の自動選択「あり」（新規取引先が一覧に反映され ✓ と「選択中」badge が付いた状態、Human Gate (1) の A 案）
 5. 追加後の自動選択「なし」（新規取引先が一覧の末尾/該当位置に現れるが ✓ は付かず、利用者が改めてクリックする状態、Human Gate (1) の B 案）
 6. picker dialog を開いたまま `CreateSupplierDialog` を重ねて開いた状態（二重 overlay の見え方。内側 dialog の overlay を透過 `bg-transparent` とするか二重 scrim `bg-black/50` × 2 ≈ 75% 暗転を許容するかを owner に示す）
+
+検索 input の placeholder は入力例（例: `例: かえで糸店`）にする（⑨ アクセシビリティ節: placeholder は識別手段にしない）。`.badge` は A2 の「選択中」に使う（未使用 CSS を残さない）。
 
 ### function-design 改訂方針（draft、後続 Writer が反映）
 
@@ -190,7 +196,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 **`51-ui-product-form.md`（UI-01b-D21）**: 「取引先の選択は取引先ピッカー dialog（DSR-24）を経由し、『新しい取引先を追加』は picker dialog 内から既存 `CreateSupplierDialog`（`src/features/products/components/CreateSupplierDialog.tsx` を正、`onCreated: (supplier) => Promise<void>` 契約へ統合）を開く。現行の inline 常設パネル（`showSupplierInput` state、独立した 3 つ目の実装、起票時実測参照）は撤去し、trim・空文字拒否・同名衝突・失敗時入力保持の validation は `CreateSupplierDialog` に委譲する。」を追記する。
 
-**`78-ui-supplier-management.md`（SPEC-SUP-D2 / §78.12）**: SPEC-SUP-D2 に「`/settings/suppliers` に名前検索 input + scroll 一覧（picker dialog と同じ箱の見た目、DSR-24）を追加する。」を追記し、§78.12 Deferred の「検索、任意並び替え、paging、bulk rename」から「検索、」を外し「任意並び替え、paging、bulk rename」を残す。
+**`78-ui-supplier-management.md`（SPEC-SUP-D2 / §78.12）**: SPEC-SUP-D2 を「`/settings/suppliers` のシステム管理画面に、name 昇順一覧・usage 件数・「新しい取引先を追加」を置く。同画面に名前検索 input + scroll 一覧（取得済み一覧の client-side filter、箱の見た目は picker dialog と同じ）を併設する。」型へ縮めて改訂する（`/settings/suppliers` の 2 回目を削除、canonical の既存重複記載を是正）。あわせて §78.12 Deferred の「検索、任意並び替え、paging、bulk rename」から「検索、」を外し「任意並び替え、paging、bulk rename」を残す。
 
 **`61-ui-receiving.md`（UI-02-D3、Human Gate (2) 待ち）**: 3 案を owner culling とする（Coordinator 推奨は「不要」）。
 
@@ -206,10 +212,10 @@ Human Gate (2) で (a) が選ばれた場合、UI-02-D3 の defer を明示的�
 
 ## Scope
 
-- **S1 DSR-24 新設**: `01-decision-rules.md` に DSR-24（上記「設計判断」draft）を追加し、title を「DSR-01〜24」へ更新する。新規 DSR-25 は起草しない。DSR-23 の「関連」行末へ `DSR-24（追加導線 + 選択を伴う候補は picker dialog、本 DSR の例外）` を追記する（DSR-23 本文のルール / Why / 具体例は無変更）。`docs/design-system/README.md:13`（範囲表記 `DSR-01〜23`→`24` + トピック一覧に「DSR-24」を追記）と `docs/UI_TECH_STACK.md:403`（範囲表記 `DSR-01〜23`→`24`）を同期する。あわせて `docs/quality/review-checklist.md` カテゴリ 9 に DSR-24 対応のチェック行を 1 行追加する（先例 = DSR-23、AC11 に倣う登録）。
+- **S1 DSR-24 新設**: `01-decision-rules.md` に DSR-24（上記「設計判断」draft）を追加し、title を「DSR-01〜24」へ更新する。新規 DSR-25 は起草しない。DSR-23 の「関連」行末へ `DSR-24（追加導線 + 選択を伴う候補は picker dialog、本 DSR の例外）` を追記する（DSR-23 本文のルール / Why / 具体例は無変更）。`docs/design-system/README.md:13`（範囲表記 `DSR-01〜23`→`24` + トピック一覧に「DSR-24」を追記）と `docs/UI_TECH_STACK.md:403`（範囲表記 `DSR-01〜23`→`24`）を同期する。あわせて `docs/quality/review-checklist.md` カテゴリ 9 に DSR-24 対応のチェック行を 1 行追加する（先例 = DSR-23、AC11 に倣う登録）。`docs/UI_TECH_STACK.md` §7.4 更新履歴（`:823-830`）にも DSR-24 反映を記録する 1 行を追加する。
 - **S2 catalog ⑧ picker dialog 小節**: `02-component-catalog.md` ⑧ Dialog / 確認に「picker dialog」小節（上記 draft）を追加する。Human Gate (1) 回答後、A/B いずれかへの確定・置換は本 commit の Scope に含めず Gated Amendment として扱う。あわせて既存 ⑧ の使いどころ（`:510`）へ 1 行拡張「加えて、選択・入力を画面から切り離して dialog に閉じる非確認 dialog も本節が扱う（picker dialog、DSR-24）」と、形式表（`:533-536`、形式 / 割込み度 / 用途 / 実装の 4 列）へ 1 行追加（`| **Dialog（非確認）** | 中（明示ボタンで開閉、確認は挟まない） | 候補選択・追加導線の集約。「取引先を選択」 | shadcn/ui \`Dialog\` |`）を行う。
 - **S3 mockup**: `docs/design-system/reference/mockup-f-supplier-picker.html`（上記内容仕様、6 状態）を新規追加し、`reference/README.md` の一覧表に 1 行追加する。あわせて `reference/README.md` に欠落している `mockup-e-badge-cta-samples.html` の 1 行を補完し、末尾の系統説明（`:23` 「3 つの mockup-c と 7 つの mockup-d は…」）を mockup-e・mockup-f を含む文言へ更新する。
-- **S4 function-design 改訂**: `77-ui-bulk-price-revision.md`（REQ-105）/ `51-ui-product-form.md`（UI-01b-D21）を上記 draft のとおり改訂し、`78-ui-supplier-management.md`（SPEC-SUP-D2 / §78.12）を上記 draft のとおり改訂する。`61-ui-receiving.md` は Human Gate (2) の回答後に対応する（本 commit / 次の実装 commit いずれも対象外、回答が出るまで pending）。改訂対象の本文節は file:line で以下のとおり: 77 `:89-95`（SPEC-PRV-D3 / D6 節の「取引先 filter に『新しい取引先を追加』を置き…」）/ 51 `:21`（UI-01b-D7）、`:149-156`（取引先 inline 追加節）、`:210`（テスト観点）/ 78 `:28`（SPEC-SUP-D2）、`:149`（78.11 テスト観点に検索を追加）、`:161`（§78.12 から検索を外す）。Human Gate (2) で (a) が選ばれた場合、入庫記録の picker 状態を mockup に追加する Gated Amendment が必要（状態 7 は本 packet では作らない）。
+- **S4 function-design 改訂**: `77-ui-bulk-price-revision.md`（REQ-105）/ `51-ui-product-form.md`（UI-01b-D21）を上記 draft のとおり改訂し、`78-ui-supplier-management.md`（SPEC-SUP-D2 / §78.12）を上記 draft のとおり改訂する。`61-ui-receiving.md` は Human Gate (2) の回答後に対応する（本 commit / 次の実装 commit いずれも対象外、回答が出るまで pending）。改訂対象の本文節は file:line で以下のとおり: 77 `:89-95`（SPEC-PRV-D3 / D6 節の「取引先 filter に『新しい取引先を追加』を置き…」）、`:81`（command 表の「filter 内の『新しい取引先を追加』」→ picker dialog 経由の表現へ）/ 51 `:21`（UI-01b-D7）、`:149-156`（取引先 inline 追加節）、`:210`（テスト観点）/ 78 `:28`（SPEC-SUP-D2）、`:60`（§78.3 画面構成の「URL search state、paging は持たない」文へ「名前検索は取得済み一覧の client-side filter、全件取得維持」を追記。Coordinator 裁定は §78.6 と記載していたが実測では §78.3 画面構成、rg で実証済み）、`:149`（78.11 テスト観点に検索を追加）、`:161`（§78.12 から検索を外す）。Human Gate (2) で (a) が選ばれた場合、入庫記録の picker 状態を mockup に追加する Gated Amendment が必要（状態 7 は本 packet では作らない）。
 - **S5 runtime lane への申し送り**（本 packet 内、Non-scope の直後の節に記載、次の Writer 実装 commit の Scope 外だが再利用対象）: `CreateSupplierDialog` 3 実装の統合契約 / 4 呼び出し元の置換順（一括価格改定 filter・商品登録/修正 form・取引先管理を先に、入庫記録は Human Gate (2) 次第）/ front 側 filter の実装方針（`list_suppliers` 無引数のまま、client-side filter）/ dialog 重ね (A) の WebView2 実測義務（AC-L3）/ DSR-01 の stale citation は 2 箇所（`ProductForm.tsx:343` → 実測 `:387`〈「追加する」〉、トグル「新しい取引先を追加」の実体は `:331`／`ProductForm.tsx:481` → 実測 `:496`〈「登録する / 保存する」〉）、いずれも inline パネル撤去時に自然解消 / ⑰ merge 後、catalog `:544` 側へ『（確認 dialog の 2 ボタン）』の限定語を足す。
 - **S6 Plans.md 同期**: 「次の行動」に ⑱ 行を追加し、Backlog の関連 2 entry に起票済み注記を付ける（本 commit で直接実施）。
 
@@ -225,7 +231,7 @@ Human Gate (2) で (a) が選ばれた場合、UI-02-D3 の defer を明示的�
 
 ## Acceptance Criteria
 
-以下は**次の Writer 実装 commit**（design-system / function-design canonical docs 本体の改訂）が満たすべき AC であり、本 plan-first commit では baseline（現状 0 件、個別に注記したものを除く）を確認済みの anchor として記録する。本 plan-first commit 自体の AC は AC10〜AC12。AC13〜AC19（round 1/round 2 是正で追加）も次の Writer 実装 commit が満たすべき forward AC であり、本 plan-first commit ではやはり baseline のみを確認する。
+以下は**次の Writer 実装 commit**（design-system / function-design canonical docs 本体の改訂）が満たすべき AC であり、本 plan-first commit では baseline（現状 0 件、個別に注記したものを除く）を確認済みの anchor として記録する。本 plan-first commit 自体の AC は AC10〜AC12。AC13〜AC24（round 1/round 2/Gated Amendment 1 是正で追加）も次の Writer 実装 commit が満たすべき forward AC であり、本 plan-first commit ではやはり baseline のみを確認する。
 
 - AC1: `rg -c "^## DSR-24" docs/design-system/01-decision-rules.md` ≥ 1（baseline 0 確認済み）。DSR-24 が新設されている。
 - AC2: `rg -c "^# 判断ルール集（DSR-01〜24）" docs/design-system/01-decision-rules.md` = 1（baseline 0 確認済み、`〜` は U+301C wave dash。見出し行 anchor に限定し更新履歴表等の本文中の同一文言に釣られない）。title が更新されている。
@@ -250,6 +256,13 @@ Human Gate (2) で (a) が選ばれた場合、UI-02-D3 の defer を明示的�
   - AC18b: `rg -Fc "「分類と取引先」セクションの complete master data 選択に「新しい取引先を追加」を併設する" docs/function-design/51-ui-product-form.md` = 0（baseline 1 確認済み、`:151`）。
   - AC18c: `rg -Fc "システム管理 navigation から UI-15 に到達し、name 昇順・商品件数・入庫記録件数・追加導線が表示される" docs/function-design/78-ui-supplier-management.md` = 0（baseline 1 確認済み、`:149`。改訂後は同テスト観点行に「検索」が加わり文言が変わる想定の negative oracle）。
 - AC19（review-checklist カテゴリ 9 同期、Sonnet P3）: `rg -Fc 'DSR-24' docs/quality/review-checklist.md` ≥ 1（baseline 0 確認済み）。カテゴリ 9 に DSR-24 対応のチェック行が追加されている（先例 = DSR-23、AC11）。
+- AC18d（A4、77 command 表の旧配置）: `rg -Fc "filter 内の「新しい取引先を追加」" docs/function-design/77-ui-bulk-price-revision.md` = 0（baseline 1 確認済み、`:81`）。
+- AC20（A1、canonical の packet 内部参照の自立化）: `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md | rg -c "Contract Probe|起票時実測参照|catalog には"` = 0（baseline 3 実測確認済み — 現行 canonical `02-component-catalog.md` に (A)推奨の「Contract Probe 参照」1 件、(B)fallback の「起票時実測参照」1 件、動作節の「catalog には」1 件が残存）。canonical が本 packet の内部節構造・archive 後に壊れる語へ依存していないことの negative oracle。
+- AC21（A2、DSR-22 現在行 3 点）: `awk '/^\*\*picker dialog/{f=1} f{print} f&&/^---$/{exit}' docs/design-system/02-component-catalog.md | rg -Fc "DSR-22"` ≥ 1（baseline 0 確認済み、picker dialog 小節を `**picker dialog` 開始 〜 直後の `---` 区切りで限定）。
+- AC22（A2、mockup「選択中」badge）: `rg -Fc "選択中" docs/design-system/reference/mockup-f-supplier-picker.html` ≥ 3（baseline 5 実測。ただし既存 5 件はいずれも `aria-label="選択中"` の属性値のみで、可視 badge 要素としての「選択中」表示ではない。本 oracle は数だけでは可視 badge の有無を保証できないため、reviewer 実読で `.badge` 等の可視要素を伴うか確認する必要がある）。
+- AC23（A3、状態と a11y）: `awk '/^\*\*picker dialog/{f=1} f{print} f&&/^---$/{exit}' docs/design-system/02-component-catalog.md | rg -c "DialogDescription"` ≥ 1（baseline 0 確認済み）かつ同範囲で `rg -c "EmptyState"` ≥ 1（baseline 0 確認済み）。
+- AC24（A8、78 §78.3 client-side filter）: `rg -Fc "client-side filter" docs/function-design/78-ui-supplier-management.md` ≥ 1（baseline 1 確認済み、`:60`。既に Writer が正しく編集済みのため forward AC としては既に充足しているが、次回改訂で誤って消されないための回帰防止 oracle として記録する）。
+- AC16c（A9、UI_TECH_STACK 更新履歴）: `rg -c "^\| 2026-09-" docs/UI_TECH_STACK.md` ≥ 1（baseline 0 確認済み。§7.4 更新履歴表は現状 `2026-08-03`/`2026-07-23`/`2026-04-16` の 3 行のみで `2026-09-` 行が無い）。
 - AC-HumanGate: owner が (1) 追加後の自動選択 A/B (2) 入庫記録への適用 要/不要（Coordinator 推奨は不要） (3) 取引先管理の検索+scroll 一覧の見た目 を mockup 上で culling する（原文回答、Coordinator が転記し原文を正とする）。mockup を実機（Windows native、対象 3 画面: 一括価格改定 filter / 商品登録・修正 form / 取引先管理）と並べて提示する。
 
 ## Design Sources
@@ -289,12 +302,12 @@ Human Gate (2) で (a) が選ばれた場合、UI-02-D3 の defer を明示的�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| owner Backlog entry | `01-decision-rules.md`（新設） | SPD-D1 | DSR-23 の Select 統一を全面撤回せず、追加導線の有無で例外条項として切り出す（DSR-23 の ルール / Why / 具体例 は無変更、「関連」行末へ DSR-24 への相互参照のみ追記）。適用条件を明文化し、部門等の非対象を明示 | `01-decision-rules.md` | AC1/AC2/AC3/AC13/AC15/AC16/AC17/AC19 |
-| owner Backlog entry | `02-component-catalog.md` ⑧（既存 Dialog 節の拡張） | SPD-D2 | 独立した新セクションを作る代替は⑧ Dialog / 確認との重複が大きいため、既存⑧の比較用 variant と並ぶ小節として追加する | `02-component-catalog.md` | AC4/AC5/AC14/AC16 + reviewer 実読 |
-| owner Backlog entry | mockup（新設） | SPD-D3 | 既存 mockup-d-lists.html の商品一覧の箱を流用し、新規 CSS 系統を増やさない | `reference/mockup-f-supplier-picker.html`、`reference/README.md` | AC6 |
-| REQ-105 | `77-ui-bulk-price-revision.md` | SPD-D4 | 「取引先未設定の商品も含める」toggle を dialog 内へ移動する代替は owner 確定仕様（filter 列に残す）と矛盾するため不採用 | `77-ui-bulk-price-revision.md` | AC7/AC18a |
+| owner Backlog entry | `01-decision-rules.md`（新設） | SPD-D1 | DSR-23 の Select 統一を全面撤回せず、追加導線の有無で例外条項として切り出す（DSR-23 の ルール / Why / 具体例 は無変更、「関連」行末へ DSR-24 への相互参照のみ追記）。適用条件を明文化し、部門等の非対象を明示 | `01-decision-rules.md` | AC1/AC2/AC3/AC13/AC15/AC16/AC16c/AC17/AC19 |
+| owner Backlog entry | `02-component-catalog.md` ⑧（既存 Dialog 節の拡張） | SPD-D2 | 独立した新セクションを作る代替は⑧ Dialog / 確認との重複が大きいため、既存⑧の比較用 variant と並ぶ小節として追加する | `02-component-catalog.md` | AC4/AC5/AC14/AC16/AC20/AC21/AC23 + reviewer 実読 |
+| owner Backlog entry | mockup（新設） | SPD-D3 | 既存 mockup-d-lists.html の商品一覧の箱を流用し、新規 CSS 系統を増やさない | `reference/mockup-f-supplier-picker.html`、`reference/README.md` | AC6/AC22 |
+| REQ-105 | `77-ui-bulk-price-revision.md` | SPD-D4 | 「取引先未設定の商品も含める」toggle を dialog 内へ移動する代替は owner 確定仕様（filter 列に残す）と矛盾するため不採用 | `77-ui-bulk-price-revision.md` | AC7/AC18a/AC18d |
 | REQ-106 / UI-01b-D21 | `51-ui-product-form.md` | SPD-D5 | `ProductForm.tsx` の独立 3 つ目の inline 実装をそのまま残す代替は DSR-24 の目的（実装の乱立解消）に反するため、既存 `CreateSupplierDialog`（`products/` 版）契約への統合を明記 | `51-ui-product-form.md` | AC8/AC18b |
-| SPEC-SUP-D2 | `78-ui-supplier-management.md` | SPD-D6 | 検索を別画面（専用一覧 route）に切り出す代替は SPEC-SUP-D2 が単一画面運用を前提にしているため不採用、既存画面内への検索追加を選ぶ | `78-ui-supplier-management.md` | AC9a/AC9b/AC18c |
+| SPEC-SUP-D2 | `78-ui-supplier-management.md` | SPD-D6 | 検索を別画面（専用一覧 route）に切り出す代替は SPEC-SUP-D2 が単一画面運用を前提にしているため不採用、既存画面内への検索追加を選ぶ | `78-ui-supplier-management.md` | AC9a/AC9b/AC18c/AC24 |
 | UI-02-D3 | `61-ui-receiving.md`（pending） | SPD-D7 | UI-02-D3 の defer を本 packet の範囲で無断で覆さない。owner culling 3 案を提示し (b) 不要を推奨 | pending（Human Gate (2) 後） | AC-HumanGate |
 | owner Backlog entry | 本 packet「設計判断」節 | SPD-D8 | `CreateSupplierDialog` 3 実装の統合契約を先に決めておくことで、次の Writer 実装 commit が呼び出し元置換のたびに個別判断しなくて済む | runtime lane（別 packet） | 該当なし（review-only） |
 
@@ -348,12 +361,12 @@ Minimum design checks for business-app work:
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
-| SPD-D1 DSR-24 新設 | `01-decision-rules.md` | AC1/AC2/AC3/AC13/AC15/AC16/AC17/AC19 rg | non-scope（runtime 反映は別 lane） |
-| SPD-D2 catalog picker dialog 小節 | `02-component-catalog.md` | AC4/AC5/AC14/AC16 rg + reviewer 実読 | non-scope |
-| SPD-D3 mockup-f | `reference/mockup-f-supplier-picker.html`、`reference/README.md` | AC6 rg | non-scope（mockup 視認は Human Gate、実機 L3 対象外） |
-| SPD-D4 REQ-105 改訂 | `77-ui-bulk-price-revision.md` | AC7/AC18a rg | non-scope |
+| SPD-D1 DSR-24 新設 | `01-decision-rules.md` | AC1/AC2/AC3/AC13/AC15/AC16/AC16c/AC17/AC19 rg | non-scope（runtime 反映は別 lane） |
+| SPD-D2 catalog picker dialog 小節 | `02-component-catalog.md` | AC4/AC5/AC14/AC16/AC20/AC21/AC23 rg + reviewer 実読 | non-scope |
+| SPD-D3 mockup-f | `reference/mockup-f-supplier-picker.html`、`reference/README.md` | AC6/AC22 rg | non-scope（mockup 視認は Human Gate、実機 L3 対象外） |
+| SPD-D4 REQ-105 改訂 | `77-ui-bulk-price-revision.md` | AC7/AC18a/AC18d rg | non-scope |
 | SPD-D5 UI-01b-D21 改訂 + 3 実装事実訂正 | `51-ui-product-form.md` | AC8/AC18b rg + reviewer 実読 | non-scope |
-| SPD-D6 SPEC-SUP-D2 改訂 | `78-ui-supplier-management.md` | AC9a/AC9b/AC18c rg | non-scope |
+| SPD-D6 SPEC-SUP-D2 改訂 | `78-ui-supplier-management.md` | AC9a/AC9b/AC18c/AC24 rg | non-scope |
 | SPD-D7 UI-02-D3（pending） | `61-ui-receiving.md` | AC-HumanGate | non-scope（Human Gate 回答待ち） |
 | SPD-D8 CreateSupplierDialog 統合契約 | 本 packet「設計判断」節（runtime lane 申し送り） | reviewer 実読 | non-scope |
 | S6 Plans.md 同期 | `Plans.md` | AC12 rg | — |
@@ -365,7 +378,7 @@ Minimum design checks for business-app work:
 Test Design Matrix: [test-matrices/2026-09-09-supplier-picker-dialog-design.md](test-matrices/2026-09-09-supplier-picker-dialog-design.md)（R2 だが Coordinator 判断で必須化、上記「Risk」節参照）。
 - Human Gate に L3 は含まない（docs-only、mockup 確認のみ）。
 
-- targeted tests: 各 Scope 項目の rg exact-match presence oracle（AC1〜AC9b、AC13〜AC19）。
+- targeted tests: 各 Scope 項目の rg exact-match presence oracle（AC1〜AC9b、AC13〜AC24）。
 - negative tests: 新規 DSR-25 起草 0 件（AC3）、§78.12 の「検索、」除去（AC9a）、取引先管理への SupplierPickerDialog 誤適用 0 件（AC13）、旧記述の残置 0 件（AC18a/AC18b/AC18c）。
 - compatibility checks: DSR-23 の ルール / Why / 具体例 が無変更（S1 で追記するのは「関連」行のみ）、`list_suppliers`/`createSupplier` の wire、UI-02-D3 本文（Human Gate (2) が (a) を選ばない限り）— いずれも本 commit の diff hunk に含まれないこと。
 - data safety checks: 該当なし（DB 書込みなし）。
@@ -396,10 +409,10 @@ Contract ID: SPEC-SPD-1
 
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
-| SPEC-SPD-1 | S1 | AC1/AC2/AC3/AC13/AC15/AC16/AC17/AC19 rg | DSR-24 と DSR-01/DSR-23 の整合 | rg |
-| SPEC-SPD-1 | S2 | AC4/AC5/AC14/AC16 rg + reviewer 実読 | picker dialog 小節・dialog 重ね契約 | rg / reviewer 実読 |
-| SPEC-SPD-1 | S3 | AC6 rg | mockup-f 仕様・README 同期 | rg |
-| SPEC-SPD-1 | S4 | AC7/AC8/AC9a/AC9b/AC18a/AC18b/AC18c rg | REQ-105 / UI-01b-D21 / SPEC-SUP-D2 改訂、3 実装事実訂正 | rg / reviewer 実読 |
+| SPEC-SPD-1 | S1 | AC1/AC2/AC3/AC13/AC15/AC16/AC16c/AC17/AC19 rg | DSR-24 と DSR-01/DSR-23 の整合 | rg |
+| SPEC-SPD-1 | S2 | AC4/AC5/AC14/AC16/AC20/AC21/AC23 rg + reviewer 実読 | picker dialog 小節・dialog 重ね契約 | rg / reviewer 実読 |
+| SPEC-SPD-1 | S3 | AC6/AC22 rg | mockup-f 仕様・README 同期 | rg |
+| SPEC-SPD-1 | S4 | AC7/AC8/AC9a/AC9b/AC18a/AC18b/AC18c/AC18d/AC24 rg | REQ-105 / UI-01b-D21 / SPEC-SUP-D2 改訂、3 実装事実訂正 | rg / reviewer 実読 |
 | SPEC-SPD-1 | S5 | reviewer 実読 | runtime 申し送りの網羅性 | reviewer 実読 |
 | SPEC-SPD-1 | S6 | AC12 rg | Plans.md 同期 | rg |
 | SPEC-SPD-1 | 全体 | AC10/AC11 | Non-scope 遵守・doc gate | git diff / doc-consistency-check.sh |
@@ -419,3 +432,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 ## Review Response
 
 - Findings Freeze: 2026-09-09（Plan Review round 1〈Opus reject P1 2 / P2 7 / P3 4、Sonnet approve-with-P2 P2 2 / P3 2〉→ 是正 `ebb7945`、round 2〈Opus reject P1 2 / P2 3 / P3 3、Sonnet approve-with-P2 P1 1 / P3 1、いずれも round 1 是正が持ち込んだ新規欠陥〉→ 是正 `4b6ce65`、round 3 closure〈Opus approve、AC13 oracle の `-U` 誤記を本 commit で訂正〉）; post-freeze exceptions: none。
+- Final Review round 1（Reviewed Content `f7bf903`、2026-09-10）: Sonnet approve（P3 1）/ Opus design approve-with-P2（P2 3 / P3 5、転記は byte 一致）/ Codex review 5157577845 Freeze 可（P1 1〈統合〉/ P2 2 / P3 1、commands 30）→ Coordinator 裁定 accept 9（A1〜A9）/ no-action 3 → Gated Amendment 1 → Codex 是正発注 30 → closure。
+- no-action（記録のみ）: Codex #1 Plans.md 衝突 = 統合ラベル（merge 順 ⑰ 先で両側保持、catalog は clean auto-merge を Sonnet / Opus / Codex 3 者が実測）/ Opus P3-5 footer 右「閉じる」の意味反転と「すべての取引先」行が非 sticky は owner 確定仕様どおり、Human Gate の口頭観測項目に追加済み / Sonnet P3 発注書の衝突予測精度は Coordinator 側の教訓として記録。
