@@ -136,7 +136,7 @@
   - ⑭（`agent/ui-conventions-runtime`）に stack（⑭ squash merge 後の base 付け替えは D-074）、merge train ⑭ → ⑮
   - origin = ⑩（PR #42 squash `ee8e294`）の Non-scope 申し送り（`src/**` 実装変更全て）
 - [x] ⑯ 衛生 batch 3（lint 保守性 rule / command drift 検出 / re-export 増加禁止）: 完了（PR #47 squash `909fe09`、2026-09-09）。S1 eslint 保守性 block（A 案 warn、既存 block 不変、disposition 3 件）/ S2 `scripts/check-command-drift.sh`（bash + rg、D/H/S/T 4 集合一致、`#[cfg(test)]` 除外の状態機械、raw 属性数照合、self-test 8 mode）+ `doc-consistency-check.sh` hook / S3 `architecture_test.rs` の `DB_IO_REEXPORT_ALLOWLIST`（30 symbol、group・同一行 block comment まで検出、fixture 10 本）/ S4 D-083 + cmd-task-specs、[archived packet](archive/plans/2026-09-08-hygiene-batch-3-lint-drift-reexport.md) / [Matrix](archive/plans/test-matrices/2026-09-08-hygiene-batch-3-lint-drift-reexport.md)。Final Review = Sonnet + Opus Double Audit + Codex round 1（accept 8: Opus が cfg(test) 除外の fail-open を、Codex がコメント付き宣言・group 再公開・nested cfg(test) を検出。Sonnet 単独では 4 件素通り）→ 是正 `5546423` → Codex closure survivor 1（同一行 block comment）→ 是正 `4ff881d` → Sonnet / Codex closure 可。Gated Amendment 1 `4b6089d` / 2 `1c79cf8`。Human Gate なし。⑮ との Plans.md 衝突で origin/main を 2 回 merge（1 回目は ⑮ packet の Amendments が祖先外で PK5 ERROR → ⑮ closeout 後に再 merge）
-- [ ] ⑱ 取引先ピッカー統合 dialog（design-first）: [Plan Packet](plans/2026-09-09-supplier-picker-dialog-design.md) 起票。branch `agent/supplier-picker-dialog-design`。Phase: plan-draft（Plan Commit pending）
+- [ ] ⑱ 取引先ピッカー統合 dialog（design-first）: [Plan Packet](plans/2026-09-09-supplier-picker-dialog-design.md) 起票。branch `agent/supplier-picker-dialog-design`。Phase: implementing（Plan Commit `47b3a69`、Plan Review round 1〜3〈Opus + Sonnet 独立〉Findings Freeze 2026-09-09、Draft PR #49）
 
 ### Wave Registry
 

@@ -4,10 +4,10 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 47b3a69
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Codex
@@ -237,7 +237,7 @@ Human Gate (2) で (a) が選ばれた場合、UI-02-D3 の defer を明示的�
 - AC8: `awk '/^## 7\.9 変更履歴/{exit}{print}' docs/function-design/51-ui-product-form.md | rg -Fc "取引先ピッカー"` ≥ 1（baseline 0 確認済み、本文範囲に限定）かつ reviewer 実読で「独立した 3 つ目の実装」の撤去が明記されていることを確認（発注前提の「2 実装」誤りを引き継いでいないか）。
 - AC9a: `rg -Fc "検索、任意並び替え、paging、bulk rename" docs/function-design/78-ui-supplier-management.md` = 0（現状 baseline 1、改訂後は「検索、」が外れているはずの negative oracle）。
 - AC9b: `awk '/^## 78\.13 変更履歴/{exit}{print}' docs/function-design/78-ui-supplier-management.md | rg -Fc "名前検索"` ≥ 1（baseline 0 確認済み、本文範囲に限定）。SPEC-SUP-D2 に名前検索が追記されている。
-- AC10: `git diff --name-only c8e1409..8eff442 -- src docs/decision-log.md docs/design-system docs/function-design` の出力が空（baseline 実測: 空、確認済み）。評価時点は plan-first commit `8eff442` のみとし、Writer 実装 commit 後は本 AC を評価しない。Plan Commit 確定時は Plan Review 是正 commit をすべて含む最終 SHA へ差し替える（`8eff442` のまま凍結しない。SHA 自体は今は変えず、Coordinator が遷移 commit で差し替える）。
+- AC10: `git diff --name-only c8e1409..47b3a69 -- src docs/decision-log.md docs/design-system docs/function-design` の出力が空（baseline 実測: 空、確認済み）。評価時点は plan-first commit `8eff442` のみとし、Writer 実装 commit 後は本 AC を評価しない。Plan Commit 確定時は Plan Review 是正 commit をすべて含む最終 SHA へ差し替える（`8eff442` のまま凍結しない。SHA 自体は今は変えず、Coordinator が遷移 commit で差し替える）。
 - AC11: `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-09-supplier-picker-dialog-design.md` および `bash scripts/doc-consistency-check.sh` が ERROR 0 で通過。
 - AC12: `docs/Plans.md` の「次の行動」に本 packet（basename `2026-09-09-supplier-picker-dialog-design.md`）への active link を持つ ⑱ 行があり、Backlog の「取引先ピッカー統合 dialog」「取引先一覧の操作性（78 §78.12）」の両 entry に起票済み注記が付いている。
 - AC13（F1 negative oracle）: `awk '/^## DSR-24/,/^## DSR-25|^## 更新履歴/' docs/design-system/01-decision-rules.md | rg -Uc --multiline-dotall "取引先管理.*SupplierPickerDialog"` = 0（baseline 0 確認済み。DSR-24 節に範囲限定した上で `--multiline-dotall` を付けて行跨ぎの共起も検出する。`-U` 単独では `.` が改行に一致しないため行跨ぎを検出できない〈round 3 実証〉。本文全体に dotall を掛けると DSR-24 本文の「取引先管理」と file 内の他所の `SupplierPickerDialog` が偽陽性を生むため節限定にする）。`rg -c` は 0 件時に出力なし・exit 1 となるため、出力が空の場合は 0 件として扱う（`--include-zero` 相当の解釈を明記）。取引先管理へ DSR-24 の canonical 実装〈`SupplierPickerDialog`〉を誤って適用していないことの negative oracle。
@@ -412,7 +412,7 @@ Contract ID: SPEC-SPD-1
 
 ## Implementation Results
 
-Fill after implementation.
+未着手（Phase: implementing、Plan Commit `47b3a69`、Writer = Codex medium。docs + mockup の実装結果は Writer 報告を Coordinator が転記する）。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
