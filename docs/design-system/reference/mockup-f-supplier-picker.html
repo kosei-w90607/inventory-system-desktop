@@ -26,7 +26,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:now
 tr.row:hover td{background:var(--accent)}
 thead tr{background:var(--d-head)}
 .badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:9999px;white-space:nowrap;vertical-align:middle}
-.b-class{background:var(--accent);color:var(--muted);border:1px solid var(--d-ctl)}
+.b-state{border:1px solid var(--d-ctl);background:#fff;color:var(--fg)}
 tr.cur td{background:var(--d-row-cur)}
 tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--d-row-cur-bar)}
 .note{font-size:14px;color:var(--muted);margin:6px 0 0}
@@ -42,7 +42,7 @@ p{margin:0}
 .field{display:grid;gap:4px;font-size:16px}
 .field input{width:100%;min-height:40px;border:1px solid var(--d-ctl);border-radius:6px;padding:8px 12px;background:var(--bg);color:var(--fg);font:inherit}
 .choices{max-height:240px}
-.mark{width:64px;text-align:center}
+.mark{width:1%;white-space:nowrap;text-align:center}
 .picker-footer,.create-footer{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .picker-footer{justify-content:space-between}
 .create-footer{justify-content:flex-end}
@@ -71,7 +71,7 @@ p{margin:0}
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
 <tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
-<tr class="row cur"><td>かえで糸店</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge">選択中</span></td></tr>
+<tr class="row cur"><td>かえで糸店</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
 <tr class="row"><td>こはるボタン</td><td class="mark"></td></tr>
 <tr class="row"><td>さくらリボン</td><td class="mark"></td></tr>
 <tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>
@@ -83,7 +83,7 @@ p{margin:0}
 <h2 id="product-title">取引先を選択</h2>
 <label class="field" for="product-search">取引先名で検索<input id="product-search" type="search" placeholder="例: かえで糸店" readonly></label>
 <div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark">選択</th></tr></thead><tbody>
-<tr class="row cur"><td>取引先なし</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge">選択中</span></td></tr>
+<tr class="row cur"><td>取引先なし</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
 <tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
@@ -111,7 +111,7 @@ p{margin:0}
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
 <tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
-<tr class="row cur"><td>わかば手芸（新規）</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge">選択中</span></td></tr>
+<tr class="row cur"><td>わかば手芸（新規）</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
 </tbody></table></div></div>
 <div class="picker-footer"><button type="button" class="btn secondary">新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
 </div></div><p class="note">比較用に候補を抜粋。新規取引先「わかば手芸」の ✓ を確認できます。</p></section>
@@ -135,7 +135,7 @@ p{margin:0}
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
 <tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
-<tr class="row cur"><td>かえで糸店</td><td class="mark"><span aria-label="選択中">✓</span></td></tr>
+<tr class="row cur"><td>かえで糸店</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
 <tr class="row"><td>こはるボタン</td><td class="mark"></td></tr>
 <tr class="row"><td>さくらリボン</td><td class="mark"></td></tr>
 <tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>
@@ -150,7 +150,7 @@ p{margin:0}
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
 <tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
-<tr class="row cur"><td>かえで糸店</td><td class="mark"><span aria-label="選択中">✓</span></td></tr>
+<tr class="row cur"><td>かえで糸店</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
 <tr class="row"><td>こはるボタン</td><td class="mark"></td></tr>
 <tr class="row"><td>さくらリボン</td><td class="mark"></td></tr>
 <tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>

@@ -588,9 +588,9 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 - **(A) 推奨**: Radix `Dialog.Root` を picker dialog の内側でネストする。owner 仕様「既存 CreateSupplierDialog をそのまま開く」に文字面で忠実。両 dialog とも `z-50` の overlay を持ち、後着 dialog が DOM 順で後にマウントされ視覚的に手前へ来る。ESC は Radix `DismissableLayer` のスタック管理により最前面の dialog のみを閉じる想定、フォーカスは `CreateSupplierDialog` を閉じたあと picker dialog へ戻る想定。**本アプリに dialog-in-dialog の先例が無いため、これらは実機未検証の期待値であり、Windows WebView2 で ESC・外クリック伝播・focus trap を確認する（runtime lane の Windows WebView2 実機確認で検証する）**。内側 dialog の overlay は透過（`bg-transparent`）とするか二重 scrim（`bg-black/50` × 2 ≈ 75% 暗転）を許容するかを mockup で owner に示す（根拠: `src/components/ui/dialog.tsx` の `DialogOverlay` `bg-black/50` + `z-50`）。
 - **(B) fallback**: `MergeSupplierDialog`（単一 dialog 内 2-stage の既存先例）型の単一 dialog 内 2-stage（stage 1 = 一覧、stage 2 = 追加フォーム）。dialog を重ねないため WebView2 リスクを避けられるが、`CreateSupplierDialog` の実装（validation・toast・エラー表示）を picker dialog 内に複製することになり、owner 仕様「既存 CreateSupplierDialog をそのまま開く」との文字面が一致しない。(A) の実機確認で問題が出た場合のみ (B) に切替える。
 
-**状態**: 取得中 = Skeleton、取得失敗 = dialog 内 Alert（UI-01b-D8 の「取引先未指定なら保存可能」契約は不変）、検索 0 件 = `EmptyState`（⑥ の 0 件成功系統）。
+**状態**: 取得中 = Skeleton、取得失敗 = dialog 内 Alert（UI-01b-D8 の「取引先未指定なら保存可能」契約は不変）、検索 0 件 = `EmptyState`（⑥ の 0 件成功系統。⑥ の「絞り込み解除 action」は置かず、検索 input のクリアで代替する）。
 
-**a11y**: `DialogTitle` + `DialogDescription` を置く（⑧ アクセシビリティ節）、open 時の初期 focus は検索 input（⑨ live 型と同じ、スキャナ入力を即受け付ける）、一覧選択または「閉じる」で閉じたら起動ボタンへ focus を戻す。`CreateSupplierDialog` を閉じたら picker の検索 input へ戻す。
+**a11y**: `DialogTitle` + `DialogDescription` を置く（⑧ アクセシビリティ節の `AlertDialogTitle` / `AlertDialogDescription` 規定を素の `Dialog` に拡張して適用）、open 時の初期 focus は検索 input（⑨ live 型と同じ、スキャナ入力を即受け付ける）、一覧選択または「閉じる」で閉じたら起動ボタンへ focus を戻す。`CreateSupplierDialog` を閉じたら picker の検索 input へ戻す。
 
 **Do**: 追加導線を伴う候補は本パターンに統一する（DSR-24）。footer の 2 ボタンを枠外固定にし、一覧の scroll と独立させる。
 
@@ -1026,7 +1026,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-10 | PR #49 | ⑧ に非確認 Dialog の使いどころ・形式行と picker dialog 小節を追加。自動選択 A/B は未確定のまま併記し、dialog 重ねの推奨・fallback と runtime lane の WebView2 実機確認義務を記録。 |
+| 2026-09-10 | PR #49 | ⑧ に非確認 Dialog の使いどころ・形式行と picker dialog 小節を追加。自動選択 A/B は未確定のまま併記し、dialog 重ねの推奨・fallback と runtime lane の WebView2 実機確認義務を記録。closure 是正で a11y 規定の引用射程と検索 0 件時のクリア操作を明記。 |
 | 2026-09-09 | PR #46 | ⑮ S5 備考「—」への同期。MovementTable の truncate 記述を修正前の理由説明へ更新。 |
 | 2026-09-09 | PR #46（本 PR） | owner L3 round 1 / Gated Amendment 2: PageHeader (c) を items-start + 左 group min-w-0 flex-1 + actions shrink-0 に変更し、長い description でも actions を右上に留める構造へ同期。 |
 | 2026-09-08 | PR #45 | owner L3 AC-L3-3 を受け live SearchBar を `grid gap-1` の Label 上置きへ変更し、呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。 |
