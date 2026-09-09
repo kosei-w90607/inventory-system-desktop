@@ -111,3 +111,4 @@ not applicable — 本 lane は静的な表示（文言・class・DOM 順・impo
 - S5 の余白量（候補 A/B のどちらが「窮屈でない」と感じられるか）は happy-dom で検証不能、owner Windows native L3 が唯一の oracle（AC-L3-5）
 - S6 の「他画面と同じ書体・詰めに見える」（AC-L3-6）は class の存在確認まではできるが、実際の視覚比較は owner L3 に依存する
 - S3 の文言が owner にとって実際に分かりやすいかは L3 の所感に依存する（AC-L3-3）。文言確定は Plan Review で一度固めるが、L3 で追加調整が入る可能性がある
+- SC6 の共有 import oracle（`?raw` source test）は呼び出し元の inline 復帰（import を残したまま `.replace("T"," ")` 直書き）を vitest では検出しない。実質の検出機構は `noUnusedLocals`（`tsc --noEmit` TS6133）で、L1 full の typecheck に含まれる（Final Review Sonnet 一次 M10 / M10b、2026-09-10）。

@@ -4,7 +4,7 @@ owner Windows native L3（2026-09-08、⑭ 非接触の既存不具合として�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: bd54631
@@ -13,8 +13,8 @@ owner Windows native L3（2026-09-08、⑭ 非接触の既存不具合として�
 - Writer: Codex（`model_reasoning_effort=medium`）
 - Plan Reviewer: Sonnet + Opus
 - Final Reviewer: Sonnet 一次 + Codex ロジックレビュー
-- Reviewed Content HEAD: pending
-- Final Exact-HEAD Evidence: PR body
+- Reviewed Content HEAD: b27938e
+- Final Exact-HEAD Evidence: L1 full RESULT=PASS、END_HEAD_SHA=b27938e、END_TREE_STATE=CLEAN、MERGE_EVIDENCE_VALID=true（Writer 報告、2026-09-10）
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〜6）
 
@@ -273,7 +273,7 @@ Test Design Matrix: [test-matrices/2026-09-09-ui-display-fixes-batch.md](test-ma
 
 ## Implementation Results
 
-未着手（Phase: implementing、Plan Commit `bd54631`、Writer = Codex medium。実装結果は Writer 報告を Coordinator が転記する）。
+Codex Writer（medium、2026-09-09〜10）: 実装 commit `f4ec5ba` fix(ui): 表示小修正 S1〜S6 と回帰テストを反映する + `b27938e` test(ui): 表示回帰テストの設計ID参照を整理する（初回 L1 が traceability T1 で FAIL → 追加 test の設計 ID を `UIDISP-D1` / `UIDISP-D6` 等へ是正、`PriceHistorySection` の画面 ID を UI-01c → UI-01b に訂正）。変更 28 file、見送りなし。AC1〜AC6 oracle 全 PASS（AC1 旧符号式 0 / AC2 `whitespace-normal` 1 / AC3 Z004 文言 各 1 / AC4 DOM 順 / AC5 `pt-4` `pb-4` 各 1 / AC6 定義 1 + 共有 import 7 file + `formatCheckedAt` 0）。L1 full PASS（END_HEAD_SHA `b27938e`、CLEAN、MERGE_EVIDENCE_VALID=true）、vitest 対象 821 / 全体 1483 PASS、lint / typecheck / format / build / release check PASS。commands 57 / 手戻り 2（発注書の「L1 1 worktree 1 run」を回数上限と誤読して再実行許可待ちで停止 1 回、発注書側を是正済み）。mutation 自己注入なし。AC-L3-1〜6 は owner Windows native L3 待ち。
 
 Backlog 申し送り（本 lane では対応しない）:
 - `src/features/plu-export/PluExportPage.tsx:159`（`formatPendingSavedAt`、`toLocaleString("ja-JP")`、`:381`/`:463` で prose 文脈に描画）にも S6 と同型の日時表記書式の不統一があるが本 lane 非対象（起票時実測「(f)」節・Adjacent Pattern Audit 参照）。書式統一は別 lane の Backlog 候補とする
@@ -282,3 +282,4 @@ Backlog 申し送り（本 lane では対応しない）:
 ## Review Response
 
 - Findings Freeze: 2026-09-09（Plan Review round 1〈Opus reject P1 2 / P2 5 / P3 5、Sonnet approve-with-P2 P2 1 / P3 2〉→ 是正 `a34a1f8`、round 2〈Opus approve-with-P2 P2 1 / P3 4、Sonnet approve-with-P2 P2 1 / P3 3〉→ 是正 `bd54631`、round 2 で残 P1 / P2 0 を両 reviewer が確認）; post-freeze exceptions: none。
+- Final Review round 1（Reviewed Content `b27938e`、2026-09-10）: Sonnet 一次 = approve（P1 0 / P2 0 / P3 1、mutant M1〜M10 実注入 kill 9 / survive 1）。P3 = SC6 の import oracle は呼び出し元だけを inline `.replace("T"," ")` に戻す変種（M10 `PriceHistorySection` / M10b `DisposalPage`）を vitest 単独では検出せず、`tsconfig` `noUnusedLocals` の `TS6133` が実質の検出機構 → Coordinator 裁定 no-action（typecheck は L1 full に含まれ PASS 済み、Matrix Residual Test Gaps に記録）。Codex ロジックレビュー（review 5157327752、medium、commands 34）= P1 0 / P2 0 / P3 0、mutant 24 注入 24 kill、1483 test PASS、docs ERROR 0 → Findings Freeze 可。Coordinator 裁定: Final Review 通過、post-freeze exceptions none。
