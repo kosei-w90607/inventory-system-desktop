@@ -4,7 +4,7 @@ owner Windows native L3（2026-09-08、⑭ 非接触の既存不具合として�
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: bd54631
