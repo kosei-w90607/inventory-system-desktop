@@ -4,10 +4,10 @@ owner Windows native L3（2026-09-08、⑭ 非接触の既存不具合として�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: bd54631
 - Amendments: none
 - Coordinator: Fable 5.1（main session、conductor）
 - Writer: Codex（`model_reasoning_effort=medium`）
@@ -273,7 +273,7 @@ Test Design Matrix: [test-matrices/2026-09-09-ui-display-fixes-batch.md](test-ma
 
 ## Implementation Results
 
-pending（本 commit は plan-first のみ。Codex Writer 実装後に記録する）。
+未着手（Phase: implementing、Plan Commit `bd54631`、Writer = Codex medium。実装結果は Writer 報告を Coordinator が転記する）。
 
 Backlog 申し送り（本 lane では対応しない）:
 - `src/features/plu-export/PluExportPage.tsx:159`（`formatPendingSavedAt`、`toLocaleString("ja-JP")`、`:381`/`:463` で prose 文脈に描画）にも S6 と同型の日時表記書式の不統一があるが本 lane 非対象（起票時実測「(f)」節・Adjacent Pattern Audit 参照）。書式統一は別 lane の Backlog 候補とする
@@ -281,4 +281,4 @@ Backlog 申し送り（本 lane では対応しない）:
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none。
+- Findings Freeze: 2026-09-09（Plan Review round 1〈Opus reject P1 2 / P2 5 / P3 5、Sonnet approve-with-P2 P2 1 / P3 2〉→ 是正 `a34a1f8`、round 2〈Opus approve-with-P2 P2 1 / P3 4、Sonnet approve-with-P2 P2 1 / P3 3〉→ 是正 `bd54631`、round 2 で残 P1 / P2 0 を両 reviewer が確認）; post-freeze exceptions: none。
