@@ -152,7 +152,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 
 - UI-02-D1: `/inventory/receiving` route で page title と navigation active が一致する。
 - UI-02-D2: `createReceiving` / `listReceivings` が generated binding に存在し、ad hoc invoke を使わない。
-- UI-02-D3: `listSuppliers` 失敗時も取引先未指定保存が可能。
+- UI-02-D3: `listSuppliers` 失敗時も取引先未指定保存が可能。取引先欄は picker dialog 経由で選択・追加できる（検索 / 追加 / 自動選択で閉じる）。
 - UI-02-D4/D5: 商品追加欄 Enter で検索し、1件なら行追加、複数件なら候補選択、0件なら商品登録導線を出す。
 - UI-02-D6: 同一 `product_code` の再追加で数量が +1 され、重複行を増やさない。
 - UI-02-D7: 数量/原価 validation と `cm` 単位表示。
@@ -169,7 +169,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 
 | 日付 | 版 | 内容 |
 |---|---|---|
-| 2026-09-10 | PR #49 / DSR-24 | owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除し、取引先欄へ picker dialog と追加導線を適用。 |
+| 2026-09-10 | PR #49 / DSR-24 | owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除し、取引先欄へ picker dialog と追加導線を適用。 §61.9 に picker dialog の検索・追加・自動選択で閉じるテスト観点を追加。 |
 | 2026-08-30 | PR #20 / DSR-18 | UI-02-D16 を追加し、保存結果 / recent list の詳細導線に入庫画面への `returnTo` 送信契約を設定。 |
 | 2026-08-30 | UI 表示磨き batch 第 2 弾 design sync | UI-02-D15 の説明文 3 点と、複数商品の一意見出し契約を明記。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D8 / REQ-209 の保存後原価差分ダイアログ（UI-02-D15）を追加。 |
