@@ -509,6 +509,8 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **使いどころ**: 破壊的・不可逆な操作、または誤実行が会計・在庫の重複計上を生む高影響操作の直前に明示確認を挟む（例: 廃番化、売上の同日別ファイル追加）。復帰・再表示など影響の小さい可逆操作には確認を挟まず直接実行する。
 
+加えて、選択・入力を画面から切り離して dialog に閉じる非確認 dialog も本節が扱う（picker dialog、DSR-24）。
+
 **canonical**: `src/features/products/components/DiscontinueConfirmDialog.tsx`（廃番化の確認）。売上の同日追加確認は [55-ui-csv-import.md UI-07-D13](../function-design/55-ui-csv-import.md) を契約正本とし、後続実装で両タブ共通componentへ移行する。
 
 **構造**:
@@ -533,6 +535,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 | 形式 | 割込み度 | 用途 | 実装 |
 |------|---------|------|------|
 | **Dialog** | 高（明示ボタン必須） | 確認・警告。「廃番にしますか」「整合性チェック差異あり」 | shadcn/ui `AlertDialog` |
+| **Dialog（非確認）** | 中（明示ボタンで開閉、確認は挟まない） | 候補選択・追加導線の集約。「取引先を選択」 | shadcn/ui `Dialog` |
 | **Banner** | 中（常時表示、手動閉鎖可） | 画面上部の持続的通知。「PLU未反映が3件」「バックアップ実行中」 | shadcn/ui `Alert` |
 
 **確認境界**: 破壊的・不可逆操作のみ確認を通す。可逆操作（「表示に戻す」等）は直接実行する。廃番化 = 確認あり / 表示に戻す = 直接実行が実例（DSR-07）。
@@ -570,6 +573,24 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **Don't**:
 - 比較目的の複数件を、囲み（border/カード）だけを識別信号にした per-card 反復で並べない（DSR-16）
+
+**picker dialog（複数候補から 1 件選ぶ + 追加導線、DSR-24）**
+
+**使いどころ**: 取引先等、追加導線を伴う complete master data から 1 件を選ぶ場面（DSR-24 適用条件）。
+
+**canonical**: `SupplierPickerDialog`（後続実装、src/features/suppliers/components/ 配下を想定）。
+
+**構成**: ヘッダ（title、例:「取引先を選択」）+ 本体（名前検索 input、live・client-side filter — `list_suppliers` は無引数のため取得済み一覧をここで絞り込む — + scroll 一覧、箱の見た目は商品一覧の表を流用、行に現在選択 ✓、フィルタ文脈では先頭に「すべての取引先」行、入力文脈では先頭に既存 sentinel 相当の行〈「取引先なし」/「指定なし」〉を維持）+ footer（枠外固定、左「新しい取引先を追加」secondary・右「閉じる」outline）。一覧行クリック = 選択確定 + dialog を閉じる。footer は一覧の scroll と独立して常時固定表示する。
+
+**動作**: 外クリック / Esc = 「閉じる」と同じ（選択は変更しない、DSR-20 の硬化対象ではない通常 Dialog）。「新しい取引先を追加」→ 既存 `CreateSupplierDialog` をそのまま開く（owner 仕様）。追加成功後は一覧を再取得する。新規取引先を自動選択するか（A: 自動選択 + 両 dialog を閉じる / B: 一覧へ反映のみ、picker は開いたまま）は Human Gate (1) 未確定。確定まで catalog には A/B 両論を併記する。picker は確認 Action を持たず（一覧行クリックが確定）、footer 左は別 surface を開く secondary、右が dismiss。⑧ の **配置** bullet が定める Cancel 左 / Action 右 は確認 dialog の 2 ボタン規則であり、picker footer には適用しない。
+
+**dialog 重ね契約**（`CreateSupplierDialog` を picker dialog の上に開く）:
+- **(A) 推奨**: Radix `Dialog.Root` を picker dialog の内側でネストする。owner 仕様「既存 CreateSupplierDialog をそのまま開く」に文字面で忠実。両 dialog とも `z-50` の overlay を持ち、後着 dialog が DOM 順で後にマウントされ視覚的に手前へ来る。ESC は Radix `DismissableLayer` のスタック管理により最前面の dialog のみを閉じる想定、フォーカスは `CreateSupplierDialog` を閉じたあと picker dialog へ戻る想定。**本アプリに dialog-in-dialog の先例が無いため、これらは実機未検証の期待値であり、Windows WebView2 で ESC・外クリック伝播・focus trap を確認する（runtime lane AC-L3、下記 Contract Probe 参照）**。内側 dialog の overlay は透過（`bg-transparent`）とするか二重 scrim（`bg-black/50` × 2 ≈ 75% 暗転）を許容するかを mockup で owner に示す（根拠: `src/components/ui/dialog.tsx` の `DialogOverlay` `bg-black/50` + `z-50`）。
+- **(B) fallback**: `MergeSupplierDialog`（起票時実測参照）型の単一 dialog 内 2-stage（stage 1 = 一覧、stage 2 = 追加フォーム）。dialog を重ねないため WebView2 リスクを避けられるが、`CreateSupplierDialog` の実装（validation・toast・エラー表示）を picker dialog 内に複製することになり、owner 仕様「既存 CreateSupplierDialog をそのまま開く」との文字面が一致しない。(A) の実機確認で問題が出た場合のみ (B) に切替える。
+
+**Do**: 追加導線を伴う候補は本パターンに統一する（DSR-24）。footer の 2 ボタンを枠外固定にし、一覧の scroll と独立させる。
+
+**Don't**: Select 横に primary 色の追加ボタンを並べない（DSR-24 Why 参照）。追加導線を持たない候補（部門等）にまで本パターンを広げない。
 
 ---
 
@@ -1001,6 +1022,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #49 | ⑧ に非確認 Dialog の使いどころ・形式行と picker dialog 小節を追加。自動選択 A/B は未確定のまま併記し、dialog 重ねの推奨・fallback と runtime lane の WebView2 実機確認義務を記録。 |
 | 2026-09-09 | PR #46 | ⑮ S5 備考「—」への同期。MovementTable の truncate 記述を修正前の理由説明へ更新。 |
 | 2026-09-09 | PR #46（本 PR） | owner L3 round 1 / Gated Amendment 2: PageHeader (c) を items-start + 左 group min-w-0 flex-1 + actions shrink-0 に変更し、長い description でも actions を右上に留める構造へ同期。 |
 | 2026-09-08 | PR #45 | owner L3 AC-L3-3 を受け live SearchBar を `grid gap-1` の Label 上置きへ変更し、呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。 |
