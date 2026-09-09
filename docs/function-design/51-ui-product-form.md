@@ -18,7 +18,7 @@
 | REQ-101 | UI-01b-D4 | create mode の商品コード入力は「JANコードあり」と「JANなし独自コード自動発番」に分ける。JAN blank + 選択部門に `code_prefix` がある場合だけサーバー発番を使い、`code_prefix` がない部門では保存前 validation で止める。 | 現行 `ProductCreateRequest` は任意 `product_code` 手入力を受けない。UI が手入力欄を出しても backend に送れないため不採用。JANなし商品は独自コード発番対象部門を選ぶ。 |
 | REQ-102 / SP-102-04 | UI-01b-D5 | edit mode では `product_code` と `jan_code` を読取専用、`stock_quantity` と `stock_unit` も初回 UI-01b 実装では読取専用にする。 | `product_code` 変更不可は DB 設計と仕様で確定済み。`ProductUpdateRequest` は `stock_unit` / `stock_quantity` を更新しない。単位変更は在庫履歴・閾値・POS 連動への影響が大きいため別 Design Phase。 |
 | REQ-101 / pos_stock_sync | UI-01b-D6 | create mode で `stock_unit='cm'` にした場合は `pos_stock_sync=false` を提案し、利用者は toggle で true に戻せる。BIZ は UI から受け取った値を尊重する。 | `stock_unit='cm'` だけで POS 在庫同期を決める案は、DB_DESIGN の `pos_stock_sync` 明示フラグ方針に反する。 |
-| REQ-101 / REQ-106 / suppliers | UI-01b-D7 | 取引先候補は `commands.listSuppliers()` 由来の complete master data とし、「新しい取引先を追加」から `commands.createSupplier(name)` を呼べる。 | SPEC-PRV-D6 / UI-01b-D21 で漸進追加を scope 化した。約 80 社の事前投入はせず、必要なメーカー/ブランドだけを form の文脈で追加する。 |
+| REQ-101 / REQ-106 / suppliers | UI-01b-D7 | 取引先候補は `commands.listSuppliers()` 由来の complete master data とし、取引先ピッカー dialog（DSR-24）内の「新しい取引先を追加」から `CreateSupplierDialog` を経由して `commands.createSupplier(name)` を呼べる。 | SPEC-PRV-D6 / UI-01b-D21 で漸進追加を scope 化した。約 80 社の事前投入はせず、必要なメーカー/ブランドだけを form の文脈で追加する。 |
 | REQ-101 / REQ-102 | UI-01b-D8 | form は部分障害を分ける。部門候補取得失敗は保存不可、取引先候補取得失敗は取引先未指定なら保存可能、edit の `getProduct` 失敗は form 本体を出さず一覧へ戻る導線を出す。 | 商品登録で部門は必須、取引先は任意。全取得が成功するまで画面全体を空にする案は、復旧操作を阻害するため不採用。 |
 | REQ-101 / REQ-102 | UI-01b-D9 | 日本語入力を伴う form のため、実装 PR では Windows native L3 を計画する。 | Tauri 2 Linux WebView には IME 制約があり、商品名・メーカー品番・取引先名の入力品質は Linux だけでは判断できない。 |
 | REQ-102 | PRODUCT-PATCH-D1 | edit保存はgenerated `ProductUpdateRequest_Deserialize`を直接使う。通常fieldはomitted/null=no update・value=set、`supplier_id` / `maker_code`はomitted=no update・null=clear・value=setとする。 | `Partial<ProductUpdateRequest_Deserialize>` と保存時castはgenerated wire契約の誤りを隠すため不採用。 |
@@ -33,7 +33,7 @@
 | REQ-402 | UI-01b-D18 | `suggestPluTarget` は trim と UI-01b-D16 写像を適用した candidate、すなわち正規化適用後の値で評価し、ASCII 数字 13 桁のみ true とする（JAN-8 は false 維持 = PLU 書出し 13 桁前提との整合）。BIZ `should_default_plu_target`（BIZ-01-D2）と同一意味論の意図的二重実装とし、実装統合はせず、両側に同一ケース表の独立転記 oracle drift-guard test を置く。composition 中の評価は transient で onCompositionEnd の正規化で収束し、追加の抑制はしない。 | 全角 13 桁入力で PLU 提案が false になる既知問題を入力正規化で根治する。wire 越えの SSOT 化は bindings 定数 export の重さに見合わず不採用（判定は 1 行規模）。 |
 | REQ-907 / SPEC-PLS-D7 | UI-01b-D19 | edit mode は `plu_memory_no` を「レジメモリNo.」として読取り専用表示する。未割当は `未割当`。廃番解除は `plu_target` を自動復帰させず、必要なら利用者が明示して再対象化する。 | slot identity と商品状態を operator が確認でき、廃番解除だけで意図せずレジ再登録されることを防ぐ。 |
 | REQ-102 / SPEC-PRV-D9 | UI-01b-D20 | edit mode に第 5 セクション「価格履歴」を置き、直近 10 件を表示する。「すべて表示」は limit 100 で再取得し、create mode ではセクション自体を出さない。空は「価格履歴はまだありません」、取得中は「読み込み中…」、取得失敗は inline error と「再試行」を表示する。 | 過去の価格を商品修正の文脈で確認し、紙の前年リスト参照を置き換える。price_history に契機カラムがないため変更契機の列は表示しない。 |
-| REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションに「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない。 |
+| REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションの取引先ピッカー dialog（DSR-24）内に「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない。 |
 
 ## 7.2 Component / Route 構成
 
@@ -146,9 +146,9 @@ UI-01b は以下の generated binding を使用する。
 5. 廃番 / 復帰は edit mode だけに出す。状態は色だけでなく「廃番」「表示中」の日本語 badge と button label で示す。「廃番にする」は確認ダイアログ（`DiscontinueConfirmDialog`）を通し、「表示に戻す」は確認なしで直接実行する（UI-01b-D13）。
 6. 第 5 セクション「価格履歴」で `commands.listPriceHistory(productCode, 10)` の結果を新しい順に表示する。「すべて表示」で limit 100 を再取得する。create mode では表示しない（UI-01b-D20）。
 
-### 取引先 inline 追加（Create / Edit 共通、UI-01b-D21）
+### 取引先ピッカーからの追加（Create / Edit 共通、UI-01b-D21）
 
-- 「分類と取引先」セクションの complete master data 選択に「新しい取引先を追加」を併設する
+- 取引先の選択は取引先ピッカー dialog（DSR-24）を経由し、『新しい取引先を追加』は picker dialog 内から既存 `CreateSupplierDialog`（`src/features/products/components/CreateSupplierDialog.tsx` を正、`onCreated: (supplier) => Promise<void>` 契約へ統合）を開く。現行の inline 常設パネル（`showSupplierInput` state、独立した 3 つ目の実装）は撤去し、trim・空文字拒否・同名衝突・失敗時入力保持の validation は `CreateSupplierDialog` に委譲する。
 - 入力 name は trim し、空文字は field error として CMD を呼ばない
 - `commands.createSupplier(name)` 成功後は `listSuppliers` を再取得し、返された supplier を選択状態にできる
 - 追加失敗時は入力を保持して再試行できる。既存の商品 form 保存値を失わない
@@ -207,13 +207,14 @@ Error recovery:
 - 「廃番にする」は確認ダイアログを出し、キャンセルで状態が変わらない。「表示に戻す」は確認なしで直接実行する（UI-01b-D13）。
 - 保存成功時に `toast.success`（`id: "product-save-success"`）が navigate より前に発火する（UI-01b-D14）。
 - UI-01b-D20: edit mode のみ第 5 セクション「価格履歴」が表示され、直近 10 件と「すべて表示」100 件を新しい順に取得する。create mode では表示しない。
-- UI-01b-D21: 「新しい取引先を追加」で trim・空文字拒否・同名既存行返却・候補再取得・失敗時入力保持が成立する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱い、約 80 社の事前一括投入は扱わない。
+- UI-01b-D21: 取引先ピッカー dialog 内の「新しい取引先を追加」から `CreateSupplierDialog` を開き、trim・空文字拒否・同名既存行返却・候補再取得・失敗時入力保持が成立する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱い、約 80 社の事前一括投入は扱わない。
 - Windows native L3: 日本語入力、Tab 移動、保存後遷移、廃番 / 復帰の視認性。
 
 ## 7.9 変更履歴
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #49 取引先ピッカー design | 取引先選択を DSR-24 経由へ改訂。独立した 3 つ目の inline 実装の撤去と CreateSupplierDialog への validation 委譲を明記。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D6 / D9 を昇格。UI-01b-D7 を inline 追加対応へ改訂し、UI-01b-D20（価格履歴）/ D21（取引先追加）を追加。 |
 | 2026-08-11 | JAN 専用欄正規化 design | UI-01b-D16〜D18 を追加（JAN 欄の全角→半角正規化 / 保存時 JAN-8/13 + チェックディジット validation / PLU 提案の正規化後評価と BIZ 二重実装契約）。§7.5 / §7.6 / §7.7 を整合。実装は後続 PR。 |
 | 2026-08-03 | UI safety net implementation | 商品 form の dirty 判定を共通離脱ガードへ接続し、保存成功時の baseline 同期を実装。 |

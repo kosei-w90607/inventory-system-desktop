@@ -25,7 +25,7 @@ UI-15 は、漸進追加で生じた表記揺れや同一メーカー/ブラン�
 | Spec / requirement ID | 設計判断 | 理由 / 捨てた案 |
 |---|---|---|
 | SPEC-SUP-D1 / SPEC-SUP-D10 | 改名・統合・専用管理画面だけを Deferred から解除し、単独削除・問屋チャネル・事前一括投入は解除しない。 | typo と重複は日常運用で回復手段が必要だが、単独削除は参照の扱いが危険で統合により主要場面を代替できる。 |
-| SPEC-SUP-D2 | `/settings/suppliers` のシステム管理画面に、name 昇順一覧・usage 件数・「新しい取引先を追加」を置く。 | 改名・統合は保守作業で、日常の商品管理操作と分ける。追加は既存の漸進補完を同じ画面からも行えるようにする。 |
+| SPEC-SUP-D2 | `/settings/suppliers` のシステム管理画面に、name 昇順一覧・usage 件数・「新しい取引先を追加」を置く。同画面に名前検索 input + scroll 一覧（取得済み一覧の client-side filter、箱の見た目は picker dialog と同じ、DSR-24）を併設する。 | 改名・統合は保守作業で、日常の商品管理操作と分ける。追加は既存の漸進補完を同じ画面からも行えるようにする。 |
 | SPEC-SUP-D3 | 改名は trim、空文字拒否、同値 no-op、他行との同名衝突は統合案内付き validation とする。 | UNIQUE error の技術文言を見せず、重複解消の正しい次操作を示す。 |
 | SPEC-SUP-D4 | 統合は products と receiving_records を残す側へ付け替えた後に消す側を削除する 1 transaction とする。 | 片側だけの付替えは FK 違反または過去記録の表示欠落を生む。 |
 | SPEC-SUP-D5 | 改名時だけ `suppliers.updated_at` を更新する。 | 作成日時と名称変更日時を区別し、用途のない追加列は持たない。 |
@@ -57,7 +57,7 @@ src/
 - 一覧上部: primary action `新しい取引先を追加`
 - 一覧: `取引先名` / `関連商品数` / `入庫記録数` / `操作`。name 昇順で全件表示する
 - 操作: 各行に `名前を変更` と `統合`。状態や失敗は日本語 text、role、icon、ボタン label で示し、色だけに依存しない
-- URL search state、filter、paging は持たない。利用規模は漸進補完された数十件を想定し、全件一覧を正とする
+- URL search state、paging は持たない。名前検索は取得済み一覧を client-side filter する。利用規模は漸進補完された数十件を想定し、全件取得を維持する
 
 usage 件数は `N件` と単位を付けて表示する。0 件も `0件` と明示し、空欄や色だけで意味を表さない。横幅が不足する場合も取引先名・2 件数・操作を隠さず、table の横スクロールで到達できるようにする。
 
@@ -146,7 +146,7 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 ## 78.11 テスト観点
 
 - SPEC-SUP-D1 / SPEC-SUP-D10: 単独削除 action がなく、Deferred 境界が維持される
-- SPEC-SUP-D2 / D9: システム管理 navigation から UI-15 に到達し、name 昇順・商品件数・入庫記録件数・追加導線が表示される
+- SPEC-SUP-D2 / D9: システム管理 navigation から UI-15 に到達し、名前検索 input・scroll 一覧・name 昇順・商品件数・入庫記録件数・追加導線が表示される。名前検索で取得済み一覧を絞り込める
 - SPEC-SUP-D3 / D5: trim、空文字、同値 no-op、他行との同名衝突、updated_at / operation_log の契約が成立する
 - SPEC-SUP-D4: products と receiving_records の両参照を付け替えて source を削除し、途中失敗は transaction 全体を rollback する
 - SPEC-SUP-D6: 統合が 2 段階で、影響件数、source が一覧から削除されること、商品・入庫記録が target へ引き継がれること、不可逆性の各文言を省略できない
@@ -158,13 +158,14 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 ## 78.12 Deferred
 
 - 取引先の単独削除、問屋チャネル、約 80 社の事前一括投入
-- 検索、任意並び替え、paging、bulk rename
+- 任意並び替え、paging、bulk rename
 - 統合の自動 undo。誤統合時はバックアップ復元を含む別の owner 判断が必要であり、本画面に簡易 undo を設けない
 
 ## 78.13 変更履歴
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #49 取引先ピッカー design | SPEC-SUP-D2 に名前検索 input + scroll 一覧を追加し、テスト観点・画面構成を同期。Deferred から検索を解除。closure 是正で SPEC-SUP-D2 の DSR-24 参照を復元。 |
 | 2026-08-30 | PR #22 DSR-19 design sync | SPEC-SUP-D11 を追加し、取引先追加成功の完了 toast 契約を正本化（runtime は後続 R3）。 |
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §78.4 の `SupplierWithUsage` field 表記を実 wire（snake_case、`product_count` / `receiving_record_count`）に是正。 |
 | 2026-08-30 | UI 表示磨き batch 第 2 弾 design sync | 統合 stage 2 に source の一覧削除と商品・入庫記録の引き継ぎ文言を明記。 |
