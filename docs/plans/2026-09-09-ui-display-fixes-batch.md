@@ -4,7 +4,7 @@ owner Windows native L3（2026-09-08、⑭ 非接触の既存不具合として�
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: bd54631
@@ -16,7 +16,7 @@ owner Windows native L3（2026-09-08、⑭ 非接触の既存不具合として�
 - Reviewed Content HEAD: b27938e
 - Final Exact-HEAD Evidence: L1 full RESULT=PASS、END_HEAD_SHA=b27938e、END_TREE_STATE=CLEAN、MERGE_EVIDENCE_VALID=true（Writer 報告、2026-09-10）
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3（AC-L3-1〜6）
+- Human Gate: owner Windows native L3（AC-L3-1〜6）: **全 PASS 2026-09-10**（AC-L3-5 は候補 A で確定、B 不要 / AC-L3-6 は owner が他画面と見比べて等幅統一を確認）。owner Ready 承認 2026-09-10
 
 ## Owner Effort Budget
 
@@ -283,3 +283,4 @@ Backlog 申し送り（本 lane では対応しない）:
 
 - Findings Freeze: 2026-09-09（Plan Review round 1〈Opus reject P1 2 / P2 5 / P3 5、Sonnet approve-with-P2 P2 1 / P3 2〉→ 是正 `a34a1f8`、round 2〈Opus approve-with-P2 P2 1 / P3 4、Sonnet approve-with-P2 P2 1 / P3 3〉→ 是正 `bd54631`、round 2 で残 P1 / P2 0 を両 reviewer が確認）; post-freeze exceptions: none。
 - Final Review round 1（Reviewed Content `b27938e`、2026-09-10）: Sonnet 一次 = approve（P1 0 / P2 0 / P3 1、mutant M1〜M10 実注入 kill 9 / survive 1）。P3 = SC6 の import oracle は呼び出し元だけを inline `.replace("T"," ")` に戻す変種（M10 `PriceHistorySection` / M10b `DisposalPage`）を vitest 単独では検出せず、`tsconfig` `noUnusedLocals` の `TS6133` が実質の検出機構 → Coordinator 裁定 no-action（typecheck は L1 full に含まれ PASS 済み、Matrix Residual Test Gaps に記録）。Codex ロジックレビュー（review 5157327752、medium、commands 34）= P1 0 / P2 0 / P3 0、mutant 24 注入 24 kill、1483 test PASS、docs ERROR 0 → Findings Freeze 可。Coordinator 裁定: Final Review 通過、post-freeze exceptions none。
+- owner L3 所感（⑰ 範囲外、Backlog 起票 = closeout commit）: 操作ログの「商品修正」で「詳細情報はありません」になる。原因 = `src-tauri/src/biz/product_service.rs:360-374` `update_product` が売価 / 原価変更時のみ `detail_json` を書く（`30-biz-product-service.md:164` は「変更前後の値を JSON 化」で価格限定なし、`74-ui-operation-logs.md:609` Ledger に既知ギャップとして記録済み）。非価格 field の変更前後を含める runtime lane 候補。
