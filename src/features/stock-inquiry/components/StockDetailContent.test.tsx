@@ -5,9 +5,30 @@ import type { StockDetail } from "@/lib/bindings";
 
 import { renderWithRouter } from "@/test/render-with-router";
 import { StockDetailContent } from "./StockDetailContent";
+import { StockDetailCard } from "./StockDetailCard";
 import { makeMockProductWithRelations, makeMockStockDetail } from "../lib/test-fixtures";
 
 describe("StockDetailContent (REQ-301 -> REQ-303)", () => {
+  it.each([StockDetailContent, StockDetailCard])(
+    "⑰ SC5 / UIDISP-D5: %s preserves detail padding",
+    async (Component) => {
+      const data = makeMockStockDetail({
+        product: makeMockProductWithRelations({ product_code: "BT0002", name: "ボタン #02" }),
+      });
+      renderWithRouter(
+        <Component
+          query={{ isLoading: false, isError: false, data } as UseQueryResult<StockDetail>}
+        />,
+      );
+      const cta = await screen.findByRole("link", { name: "商品修正" });
+      expect(screen.getByText("ボタン #02").closest('[data-slot="card-header"]')).toHaveClass(
+        "pt-4",
+      );
+      expect(cta.parentElement).toHaveClass("pb-4");
+      expect(screen.getByRole("link", { name: "入庫記録" })).toBeVisible();
+    },
+  );
+
   it("REQ-301: StockDetailContent shows active movement history link", async () => {
     const data = makeMockStockDetail({
       product: makeMockProductWithRelations({ product_code: "BT0002", name: "ボタン #02" }),

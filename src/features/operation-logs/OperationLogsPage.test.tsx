@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { startTransition, Suspense, use, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import dateTimeSource from "./OperationLogsPage.tsx?raw";
 
 import { commands } from "@/lib/bindings";
 import { scrollPageToTop } from "@/lib/page-scroll";
@@ -79,6 +80,32 @@ afterEach(() => {
 });
 
 describe("UI-11c REQ-902", () => {
+  it("⑰ SC2/SC6 / UIDISP-D2/D6: 長い JSON 要約の祖先で折り返し、日時は等幅にする", async () => {
+    const values = [{ product_code: "SYN-LONG-".repeat(40) }];
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [log(JSON.stringify({ mismatches: values }))],
+        total_count: 1,
+        page: 1,
+        per_page: 20,
+      },
+    });
+    renderPage();
+    await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
+    const summary = screen.getByRole("group", { name: "ログ詳細の要約" });
+    const value = within(summary).getByText(JSON.stringify(values));
+    expect(value.tagName).toBe("DD");
+    expect(value).toHaveClass("break-all");
+    expect(value).not.toHaveClass("whitespace-pre-wrap");
+    expect(value.closest("td")).toHaveAttribute("colspan", "4");
+    expect(value.closest("td")).toHaveClass("whitespace-normal");
+    expect(screen.getByRole("cell", { name: "2026-07-10 12:34:56" })).toHaveClass(
+      "font-mono",
+      "tabular-nums",
+    );
+  });
+
   it("normalizes the initial search to a JST calendar 30-day default", () => {
     expect(normalizeOperationLogsSearch({}, new Date("2026-07-11T12:00:00+09:00"))).toMatchObject({
       start_date: "2026-06-12",
@@ -1285,4 +1312,12 @@ describe("OperationLogsPage perPage scroll（UI-11c）", () => {
 
     expect(mockScrollPageToTop).not.toHaveBeenCalled();
   });
+});
+
+it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {
+  expect(dateTimeSource).toMatch(
+    /import\s*\{[^}]*\bformatDateTime\b[^}]*\}\s*from\s*"@\/features\/inventory-records\/types"/,
+  );
+  expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
+  expect(dateTimeSource).not.toContain("formatCheckedAt");
 });

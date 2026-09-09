@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import dateTimeSource from "./ReturnExchangePage.tsx?raw";
 
 import { makeMockProductWithRelations } from "@/features/products/lib/test-fixtures";
 import { commands } from "@/lib/bindings";
@@ -258,6 +259,11 @@ describe("ReturnExchangePage (UI-03 / REQ-202)", () => {
 
     const recentRegion = await screen.findByRole("region", { name: "直近の返品・交換" });
     expect(await within(recentRegion).findByText("袋破れ")).toBeInTheDocument();
+    // ⑰ SC6 / UIDISP-D6: 記録日時セルの書体契約。
+    expect(within(recentRegion).getByRole("cell", { name: "2026-06-27 10:00:00" })).toHaveClass(
+      "font-mono",
+      "tabular-nums",
+    );
     expect(within(recentRegion).getByText("—")).toBeInTheDocument();
     expect(within(recentRegion).queryByText("備考なし")).not.toBeInTheDocument();
   });
@@ -832,3 +838,11 @@ it.each([
     expect(within(cells[5]).getByText(unitLabel)).toBeInTheDocument();
   },
 );
+
+it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {
+  expect(dateTimeSource).toMatch(
+    /import\s*\{[^}]*\bformatDateTime\b[^}]*\}\s*from\s*"@\/features\/inventory-records\/types"/,
+  );
+  expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
+  expect(dateTimeSource).not.toContain("formatCheckedAt");
+});

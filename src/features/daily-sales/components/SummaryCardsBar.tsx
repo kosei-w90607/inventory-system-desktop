@@ -131,7 +131,8 @@ function computeCompareLabel(
   if (yesterdayError) return { value: "比較データなし", sub: null };
   if (yesterday === undefined) return { value: "—", sub: null };
   const yAmount = yesterday.grand_total.amount;
-  if (yAmount === 0) return { value: "比較不可", sub: "前日売上 0 円" };
+  if (yAmount <= 0)
+    return { value: "比較不可", sub: yAmount === 0 ? "前日売上 0 円" : "前日返品超過" };
   const diff = today.grand_total.amount - yAmount;
   const pct = (diff / yAmount) * 100;
   const sign = diff >= 0 ? "+" : "-";
@@ -145,7 +146,7 @@ function computeCompareLabel(
         : "text-muted-foreground";
   return {
     value: `${sign}¥${absDiff}`,
-    sub: `${sign}${pct.toFixed(1)}%`,
+    sub: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`,
     valueClassName,
   };
 }

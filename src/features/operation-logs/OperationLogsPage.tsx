@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { commands, type OperationLog } from "@/lib/bindings";
+import { formatDateTime } from "@/features/inventory-records/types";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { scrollPageToTop } from "@/lib/page-scroll";
@@ -518,7 +519,9 @@ export function OperationLogsPage({
                 {logsQuery.data.items.map((item) => (
                   <Fragment key={item.id}>
                     <TableRow>
-                      <TableCell>{item.created_at.replace("T", " ")}</TableCell>
+                      <TableCell className="font-mono tabular-nums">
+                        {formatDateTime(item.created_at)}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -556,7 +559,7 @@ export function OperationLogsPage({
                     </TableRow>
                     {expanded === item.id && (
                       <TableRow id={`log-detail-${String(item.id)}`}>
-                        <TableCell colSpan={4}>
+                        <TableCell colSpan={4} className="whitespace-normal">
                           <Detail log={item} returnTo={returnTo} />
                         </TableCell>
                       </TableRow>

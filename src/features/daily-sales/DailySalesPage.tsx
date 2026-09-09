@@ -174,6 +174,8 @@ function OfficialDailyReportSection({ report }: { report: OfficialDailyReportSum
         <Alert variant="warning" role="status">
           <AlertTriangle aria-hidden="true" />
           <AlertTitle>この日付のレジ日報は未取込みです。</AlertTitle>
+          {/* 日報種別は見出し下で説明済みなので、混同しやすい Z004 との違いだけを補う。 */}
+          <AlertDescription>商品別売上 CSV（Z004）の取込みとは別です。</AlertDescription>
         </Alert>
       ) : (
         <div className="space-y-4 rounded-md border p-4">
