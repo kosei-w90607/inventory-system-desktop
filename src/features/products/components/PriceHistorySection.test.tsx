@@ -6,7 +6,7 @@ import { PriceHistorySection } from "./PriceHistorySection";
 
 vi.mock("@/lib/bindings", () => ({ commands: { listPriceHistory: vi.fn() } }));
 
-describe("PriceHistorySection UI-01c / REQ-102", () => {
+describe("PriceHistorySection UI-01b / UIDISP-D6", () => {
   it("⑰ SC6 / UIDISP-D6: 変更日時は時差変換せず等幅の表セルに表示する", async () => {
     vi.mocked(commands.listPriceHistory).mockResolvedValue({
       status: "ok",

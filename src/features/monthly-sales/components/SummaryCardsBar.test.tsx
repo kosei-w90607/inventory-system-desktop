@@ -159,7 +159,7 @@ it.each([
   [100000, "+0.0%", "+¥0"],
   [120000, "+20.0%", "+¥20,000"],
   [99950, "-0.1%", "-¥50"],
-] as const)("⑰ SC1 / REQ-502: amount %s has a single percentage sign", (amount, sub, value) => {
+] as const)("⑰ SC1 / UIDISP-D1: amount %s has a single percentage sign", (amount, sub, value) => {
   render(
     <SummaryCardsBar
       summary={{ ...mockSummary, totalAmount: amount }}

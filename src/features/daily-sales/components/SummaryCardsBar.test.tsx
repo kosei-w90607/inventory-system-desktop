@@ -182,7 +182,7 @@ it.each([
   [100000, "+0.0%", "+¥0"],
   [120000, "+20.0%", "+¥20,000"],
   [99950, "-0.1%", "-¥50"],
-] as const)("⑰ SC1 / REQ-501: amount %s has a single percentage sign", (amount, sub, value) => {
+] as const)("⑰ SC1 / UIDISP-D1: amount %s has a single percentage sign", (amount, sub, value) => {
   render(
     <SummaryCardsBar
       today={{ ...mockToday, grand_total: { quantity: 42, amount } }}
@@ -199,7 +199,7 @@ it.each([
 it.each([
   [0, "前日売上 0 円"],
   [-100, "前日返品超過"],
-] as const)("⑰ SC1 / REQ-501: non-positive denominator %s is incomparable", (amount, sub) => {
+] as const)("⑰ SC1 / UIDISP-D1: non-positive denominator %s is incomparable", (amount, sub) => {
   render(
     <SummaryCardsBar
       today={mockToday}
