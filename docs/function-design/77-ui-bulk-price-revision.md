@@ -91,7 +91,7 @@ CMD の署名と wire DTO の正本は [40-cmd-product.md](40-cmd-product.md) �
 - 取引先（単一選択・任意）、部門（単一選択・任意）、keyword、`廃番を含む`（既定 off）を置く
 - 取引先を選ぶと `取引先未設定の商品も含める` を既定 on で表示する。抽出条件は `supplier_id = X OR supplier_id IS NULL`。off なら選択した取引先だけにする
 - `未設定の商品にこの取引先を設定する` は取引先選択中だけ表示し、既定 on とする。行確定時に商品の supplier_id が NULL の場合だけ設定し、既存値は上書きしない
-- 取引先 filter に `新しい取引先を追加` を置き、追加成功後は complete master data を再取得して選択できる
+- 取引先の選択は取引先ピッカー dialog（`01-decision-rules.md` DSR-24）を経由する。『すべての取引先』行は一覧先頭に残し、『取引先未設定の商品も含める』toggle はフィルタ列に残置する（dialog 内へは移動しない）。追加成功後は complete master data を再取得して選択できる
 - 在庫ゼロ商品は常に対象とし、在庫数 filter は追加しない
 
 ### 一覧列と価格入力（SPEC-PRV-D4）
@@ -146,6 +146,7 @@ CMD の署名と wire DTO の正本は [40-cmd-product.md](40-cmd-product.md) �
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #49 取引先ピッカー design | 取引先選択を DSR-24 の取引先ピッカー dialog 経由へ改訂し、すべての取引先行とフィルタ列の toggle 残置を明記。 |
 | 2026-08-30 | PR #22 DSR-19 design sync | SPEC-PRV-D8 を追加し、行確定成功の完了 toast 契約を正本化（runtime は後続 R3）。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D3〜D7 / REQ-105 / REQ-106 の UI-14 契約を新設。 |
 | 2026-08-23 | 価格改定支援 実装 B | UI-14 一括価格改定画面、取引先 filter、行単位確定、最近改定表示を実装。 |
