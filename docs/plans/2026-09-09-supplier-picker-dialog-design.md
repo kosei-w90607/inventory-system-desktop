@@ -4,16 +4,16 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 47b3a69
-- Amendments: none
+- Amendments: ed4b058 6393def 8daaaa0 2104f2a
 - Coordinator: Fable 5.1
 - Writer: Codex
 - Plan Reviewer: Sonnet + Opus
 - Final Reviewer: Sonnet + Opus + Codex
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: f4d8ad1
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only だが Ready 後の hosted final は owner `workflow_dispatch` が必要。Ready 案内に明記する）
 - Human Gate: owner mockup 確認 round 1 2026-09-10: culling (1) A / (2) 入庫記録 要（追加ボタン込み、オレンジ + ＋）/ (3) OK、(5) 二重 scrim、(6) footer OK + 現在の選択の固定帯（差別化条件付き）。→ Gated Amendment 3 + Codex 是正 33 → closure 3 → owner round 2 2026-09-10: 1 固定帯「見分けられる」OK / 2 追加ボタン「基本は良い、＋は寂しい」→ Plus icon SVG 化 / 3 選択列「浮かなくなった」OK / 4 状態 7「よさそう」OK / 5 採否注記「意図通り」OK。**round 3 は不要**（残変更は icon / 帯の小見出し / 6b の帯のみ、owner 希望があれば写しで確認）。→ Gated Amendment 4 → Codex 是正 34 → closure 4 → state-only → Ready。介入回数 = 2 / 5。
@@ -441,7 +441,7 @@ Contract ID: SPEC-SPD-1
 
 ## Implementation Results
 
-未着手（Phase: implementing、Plan Commit `47b3a69`、Writer = Codex medium。docs + mockup の実装結果は Writer 報告を Coordinator が転記する）。
+Codex Writer（medium）: 実装 `a67df7b` `1056306` `f7bf903`（S1〜S4、10 file、commands 55 / 手戻り 2、fail-closed 停止 2 = 発注書側欠陥）→ Final Review round 1（Sonnet approve / Opus approve-with-P2 3 / Codex 5157577845 Freeze 可）→ Gated Amendment 1 `ed4b058` → 是正 `a797f6e` `d9ff5e6` `014367c`（F1〜F8、commands 20）→ closure（Sonnet approve / Opus approve-with-P2〈裸 badge〉/ Codex 5157960119 closure 可）→ Gated Amendment 2 `6393def` → 是正 `e42f27d`（badge `b-state` / 6a・6b / 列幅 / 78 DSR-24 / ⑧⑥ 射程、commands 31）→ closure 2 approve ×2 → origin/main `344e222` 単段 merge `a0055f5`（Plans.md 両側保持）→ owner Human Gate round 1（A 案 / 二重 scrim / 入庫記録に適用〈61 defer 解除〉/ 選択見出し / 追加ボタン primary / 固定帯）→ Gated Amendment 3 `8daaaa0` → 是正 `e4c815b`（commands 27）→ closure 3（Sonnet approve-with-P2 / Opus reject P2 1 = `secondary` 旧語）+ owner round 2（全 OK、icon 化）→ Gated Amendment 4 `2104f2a` → 是正 `f4d8ad1`（`Plus` SVG / 6b 固定帯 / 帯の小見出し / 61 §61.9、commands 32）→ closure 4 approve ×2（P2 0、P3 3 = stale 注記 + 空白）→ 本 commit で docs 同期 + Ready 遷移。AC1〜AC33 全 PASS（AC10 対象外）。Reviewed Content HEAD `f4d8ad1`、Amendments 4 本、Human Gate 介入 2 / 5。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
@@ -469,3 +469,4 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
   - 介入 2 / 5。
   - 裁定 J1〜J7（footer 左ボタンを primary へ訂正 / 全角「＋」を廃し inline SVG `Plus` icon 化〈`mockup-d-home-sales-admin.html:238` の primary button + svg 先例に合わせる〉/ 状態 6b にも固定帯 / 固定帯に小見出しラベル / AC20 を DSR-24 節限定・個別 2 回実行に訂正 / 61 §61.9 Test Focus に観点追加 / round 1 の (1)(3)(4)(5) は owner 確認済みとして記録、**round 3 は不要**）→ Gated Amendment 4 = 本 commit → Codex 是正発注 34 → closure 4（Sonnet + Opus、差分が小さいので Codex closure は省略）→ state-only → Ready。
   - no-action（記録のみ）: Opus P3-N10 sr-only の `clip-path` 併記提案（mockup のみの静的見本向け強化、runtime 実装は Tailwind `sr-only` ユーティリティをそのまま使うため対応不要）。
+- closure 4（Reviewed Content `f4d8ad1`、2026-09-10）: Sonnet approve（J1〜J6 closed、AC1〜AC33 PASS）/ Opus approve（P2 0、P3 3 = mockup `:68` / README `:20` の stale 注記、全角句点後の空白 2）→ Coordinator 裁定 accept 3 → 本 commit（docs 同期、Ready 遷移同乗、`implementing->local-verified->independent-review->human-confirm->ready-hosted-final` を圧縮記録。STATECAP: forward state-only は `1310c77` の 1 本のみ、本 commit は content commit）。Sonnet delta ack は Coordinator が実施。

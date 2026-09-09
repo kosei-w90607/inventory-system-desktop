@@ -1027,7 +1027,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-10 | PR #49 | ⑧ に非確認 Dialog の使いどころ・形式行と picker dialog 小節を追加。自動選択 A/B を比較し、dialog 重ねの推奨・fallback と runtime lane の WebView2 実機確認義務を記録。closure 是正で a11y 規定の引用射程と検索 0 件時のクリア操作を明記。owner Human Gate round 1（2026-09-10）を反映し、A 案・二重 scrim・選択見出し sr-only・追加ボタン primary + Plus・現在の選択の固定帯を確定。 closure 3・owner round 2 を反映し、footer 左の動作記述を primary に統一、Plus を inline SVG と指定し、固定帯の小見出しを明記。 |
+| 2026-09-10 | PR #49 | ⑧ に非確認 Dialog の使いどころ・形式行と picker dialog 小節を追加。自動選択 A/B を比較し、dialog 重ねの推奨・fallback と runtime lane の WebView2 実機確認義務を記録。closure 是正で a11y 規定の引用射程と検索 0 件時のクリア操作を明記。owner Human Gate round 1（2026-09-10）を反映し、A 案・二重 scrim・選択見出し sr-only・追加ボタン primary + Plus・現在の選択の固定帯を確定。closure 3・owner round 2 を反映し、footer 左の動作記述を primary に統一、Plus を inline SVG と指定し、固定帯の小見出しを明記。 |
 | 2026-09-09 | PR #46 | ⑮ S5 備考「—」への同期。MovementTable の truncate 記述を修正前の理由説明へ更新。 |
 | 2026-09-09 | PR #46（本 PR） | owner L3 round 1 / Gated Amendment 2: PageHeader (c) を items-start + 左 group min-w-0 flex-1 + actions shrink-0 に変更し、長い description でも actions を右上に留める構造へ同期。 |
 | 2026-09-08 | PR #45 | owner L3 AC-L3-3 を受け live SearchBar を `grid gap-1` の Label 上置きへ変更し、呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。 |

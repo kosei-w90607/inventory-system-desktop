@@ -169,7 +169,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 
 | 日付 | 版 | 内容 |
 |---|---|---|
-| 2026-09-10 | PR #49 / DSR-24 | owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除し、取引先欄へ picker dialog と追加導線を適用。 §61.9 に picker dialog の検索・追加・自動選択で閉じるテスト観点を追加。 |
+| 2026-09-10 | PR #49 / DSR-24 | owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除し、取引先欄へ picker dialog と追加導線を適用。§61.9 に picker dialog の検索・追加・自動選択で閉じるテスト観点を追加。 |
 | 2026-08-30 | PR #20 / DSR-18 | UI-02-D16 を追加し、保存結果 / recent list の詳細導線に入庫画面への `returnTo` 送信契約を設定。 |
 | 2026-08-30 | UI 表示磨き batch 第 2 弾 design sync | UI-02-D15 の説明文 3 点と、複数商品の一意見出し契約を明記。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D8 / REQ-209 の保存後原価差分ダイアログ（UI-02-D15）を追加。 |

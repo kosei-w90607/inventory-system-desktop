@@ -65,7 +65,7 @@ p{margin:0}
 @media(max-width:900px){.pair{grid-template-columns:1fr}}
 @media(max-width:500px){.page{padding:12px}.stage{padding-left:12px;padding-right:12px}.picker,.create,.management{padding:16px}.btn{padding:0 10px}.picker-footer{gap:8px}}
 </style></head><body><main class="page">
-<header><h1>取引先ピッカー — 7状態の比較</h1><p class="lead">設計確認用の静的見本。検索・選択・ボタンは動作しません。表はスクロールして確認できます。取引先名・件数は合成データです。</p><p class="note">正本：DSR-24 / コンポーネントカタログ⑧ / function-design 77・51・78・61。owner 確定（2026-09-10）：自動選択 A 案、二重 scrim、入庫記録への適用。状態 7・固定帯・追加ボタン・選択見出しの見た目は owner 再確認待ち。</p></header>
+<header><h1>取引先ピッカー — 7状態の比較</h1><p class="lead">設計確認用の静的見本。検索・選択・ボタンは動作しません。表はスクロールして確認できます。取引先名・件数は合成データです。</p><p class="note">正本：DSR-24 / コンポーネントカタログ⑧ / function-design 77・51・78・61。owner 確定（2026-09-10）：自動選択 A 案、二重 scrim、入庫記録への適用。状態 7・固定帯・追加ボタン（inline SVG icon）・選択見出しは owner round 2（2026-09-10）で確認済み。</p></header>
 <section id="state-1"><h2>1. 一括価格改定から選ぶ</h2><p class="lead">一覧先頭に「すべての取引先」。現在選択は ✓ で示します。「取引先未設定の商品も含める」は背景のフィルタ列に残します。</p><div class="stage"><div class="context"><b>一括価格改定 — 絞り込み</b><div class="context-controls"><span class="btn outline">取引先を選択</span><label><input type="checkbox" checked disabled> 取引先未設定の商品も含める</label></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="price-title">
 <h2 id="price-title">取引先を選択</h2>
 <label class="field" for="price-search">取引先名で検索<input id="price-search" type="search" placeholder="例: かえで糸店" readonly></label>
