@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>取引先ピッカー — 6状態の比較</title><style>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>取引先ピッカー — 7状態の比較</title><style>
 /* mockup-d-lists.html の token・表・行・badge 系統をそのまま流用。合成データのみ。 */
 :root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#e7e5e4;--accent:#f5f5f4;
 --primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
@@ -42,6 +42,9 @@ p{margin:0}
 .field{display:grid;gap:4px;font-size:16px}
 .field input{width:100%;min-height:40px;border:1px solid var(--d-ctl);border-radius:6px;padding:8px 12px;background:var(--bg);color:var(--fg);font:inherit}
 .choices{max-height:240px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.current-band{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 16px;background:var(--d-row-cur);border-bottom:2px solid var(--d-ctl);font-weight:600;flex-wrap:wrap}
+.current-band-label{font-size:14px;color:var(--muted)}
 .mark{width:1%;white-space:nowrap;text-align:center}
 .picker-footer,.create-footer{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .picker-footer{justify-content:space-between}
@@ -62,11 +65,11 @@ p{margin:0}
 @media(max-width:900px){.pair{grid-template-columns:1fr}}
 @media(max-width:500px){.page{padding:12px}.stage{padding-left:12px;padding-right:12px}.picker,.create,.management{padding:16px}.btn{padding:0 10px}.picker-footer{gap:8px}}
 </style></head><body><main class="page">
-<header><h1>取引先ピッカー — 6状態の比較</h1><p class="lead">設計確認用の静的見本。検索・選択・ボタンは動作しません。表はスクロールして確認できます。取引先名・件数は合成データです。</p><p class="note">正本：DSR-24 / コンポーネントカタログ⑧ / function-design 77・51・78。自動選択 A/B、入庫記録への適用、取引先管理の見た目は owner 確認待ち。入庫記録の状態は描きません。</p></header>
+<header><h1>取引先ピッカー — 7状態の比較</h1><p class="lead">設計確認用の静的見本。検索・選択・ボタンは動作しません。表はスクロールして確認できます。取引先名・件数は合成データです。</p><p class="note">正本：DSR-24 / コンポーネントカタログ⑧ / function-design 77・51・78・61。owner 確定（2026-09-10）：自動選択 A 案、二重 scrim、入庫記録への適用。状態 7・固定帯・追加ボタン・選択見出しの見た目は owner 再確認待ち。</p></header>
 <section id="state-1"><h2>1. 一括価格改定から選ぶ</h2><p class="lead">一覧先頭に「すべての取引先」。現在選択は ✓ で示します。「取引先未設定の商品も含める」は背景のフィルタ列に残します。</p><div class="stage"><div class="context"><b>一括価格改定 — 絞り込み</b><div class="context-controls"><span class="btn outline">取引先を選択</span><label><input type="checkbox" checked disabled> 取引先未設定の商品も含める</label></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="price-title">
 <h2 id="price-title">取引先を選択</h2>
 <label class="field" for="price-search">取引先名で検索<input id="price-search" type="search" placeholder="例: かえで糸店" readonly></label>
-<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark">選択</th></tr></thead><tbody>
+<div class="tbl"><div class="current-band"><span class="current-band-label">現在の選択</span><span>かえで糸店</span><span class="badge b-state">選択中</span></div><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark"><span class="sr-only">選択</span></th></tr></thead><tbody>
 <tr class="row"><td>すべての取引先</td><td class="mark"></td></tr>
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
@@ -77,12 +80,12 @@ p{margin:0}
 <tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>
 <tr class="row"><td>はなびら工芸</td><td class="mark"></td></tr>
 </tbody></table></div></div>
-<div class="picker-footer"><button type="button" class="btn secondary">新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
+<div class="picker-footer"><button type="button" class="btn primary">＋ 新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
 </div></div><p class="note">一覧行のクリックで選択して閉じる。外クリック・Esc・「閉じる」は選択を変更しない。追加・閉じるは一覧枠の外に固定。</p></section>
 <section id="state-2"><h2>2. 商品登録・修正から選ぶ</h2><p class="lead">先頭行は「取引先なし」。「すべての取引先」は置きません。</p><div class="stage"><div class="context"><b>商品登録・修正 — 分類と取引先</b><div class="context-controls"><span class="btn outline">取引先を選択</span></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="product-title">
 <h2 id="product-title">取引先を選択</h2>
 <label class="field" for="product-search">取引先名で検索<input id="product-search" type="search" placeholder="例: かえで糸店" readonly></label>
-<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark">選択</th></tr></thead><tbody>
+<div class="tbl"><div class="current-band"><span class="current-band-label">現在の選択</span><span>取引先なし</span><span class="badge b-state">選択中</span></div><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark"><span class="sr-only">選択</span></th></tr></thead><tbody>
 <tr class="row cur"><td>取引先なし</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
@@ -93,7 +96,7 @@ p{margin:0}
 <tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>
 <tr class="row"><td>はなびら工芸</td><td class="mark"></td></tr>
 </tbody></table></div></div>
-<div class="picker-footer"><button type="button" class="btn secondary">新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
+<div class="picker-footer"><button type="button" class="btn primary">＋ 新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
 </div></div></section>
 <section id="state-3"><h2>3. 取引先管理 — ページ内の検索と一覧</h2><p class="lead">選択用 dialog ではなく、ページ本体に同じ検索欄と scroll 一覧の箱を置きます。picker の footer はありません。</p><div class="management"><div class="management-head"><h2>取引先管理</h2><button type="button" class="btn primary">新しい取引先を追加</button></div><p>メーカー・ブランドの追加、名称変更、重複の統合を行います。</p><label class="field" for="management-search">取引先名で検索<input id="management-search" type="search" placeholder="例: かえで糸店" readonly></label><div class="tbl"><div class="scroll" tabindex="0" aria-label="取引先管理一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="num">関連商品数</th><th scope="col" class="num">入庫記録数</th><th scope="col">操作</th></tr></thead><tbody><tr class="row"><td>あおば手芸</td><td class="num">0件</td><td class="num">0件</td><td><button type="button" class="btn sm outline">名前を変更</button> <button type="button" class="btn sm outline">統合</button></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="num">3件</td><td class="num">1件</td><td><button type="button" class="btn sm outline">名前を変更</button> <button type="button" class="btn sm outline">統合</button></td></tr>
@@ -103,34 +106,34 @@ p{margin:0}
 <tr class="row"><td>さくらリボン</td><td class="num">15件</td><td class="num">5件</td><td><button type="button" class="btn sm outline">名前を変更</button> <button type="button" class="btn sm outline">統合</button></td></tr>
 <tr class="row"><td>つばめ生地</td><td class="num">18件</td><td class="num">6件</td><td><button type="button" class="btn sm outline">名前を変更</button> <button type="button" class="btn sm outline">統合</button></td></tr>
 <tr class="row"><td>はなびら工芸</td><td class="num">21件</td><td class="num">7件</td><td><button type="button" class="btn sm outline">名前を変更</button> <button type="button" class="btn sm outline">統合</button></td></tr></tbody></table></div></div></div></section>
-<section id="state-4"><h2>4. A案 — 追加後に自動選択する（未確定）</h2><p class="lead">新規取引先に ✓ が付く選択直後の比較用表示。A案ではこの後、追加 dialog と picker dialog の両方を閉じます。</p><div class="stage"><div class="context"><b>一括価格改定 — 絞り込み</b><div class="context-controls"><span class="btn outline">取引先を選択</span><label><input type="checkbox" checked disabled> 取引先未設定の商品も含める</label></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="auto-title">
+<section id="state-4"><h2>4. A 案（採用）— 追加後に自動選択する</h2><p class="lead">新規取引先に ✓ が付く選択直後の比較用表示。A案ではこの後、追加 dialog と picker dialog の両方を閉じます。</p><div class="stage"><div class="context"><b>一括価格改定 — 絞り込み</b><div class="context-controls"><span class="btn outline">取引先を選択</span><label><input type="checkbox" checked disabled> 取引先未設定の商品も含める</label></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="auto-title">
 <h2 id="auto-title">取引先を選択</h2>
 <label class="field" for="auto-search">取引先名で検索<input id="auto-search" type="search" placeholder="例: かえで糸店" readonly></label>
-<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark">選択</th></tr></thead><tbody>
+<div class="tbl"><div class="current-band"><span class="current-band-label">現在の選択</span><span>わかば手芸（新規）</span><span class="badge b-state">選択中</span></div><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark"><span class="sr-only">選択</span></th></tr></thead><tbody>
 <tr class="row"><td>すべての取引先</td><td class="mark"></td></tr>
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
 <tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
 <tr class="row cur"><td>わかば手芸（新規）</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
 </tbody></table></div></div>
-<div class="picker-footer"><button type="button" class="btn secondary">新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
+<div class="picker-footer"><button type="button" class="btn primary">＋ 新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
 </div></div><p class="note">比較用に候補を抜粋。新規取引先「わかば手芸」の ✓ を確認できます。</p></section>
-<section id="state-5"><h2>5. B案 — 追加後に自動選択しない（未確定）</h2><p class="lead">追加 dialog だけを閉じ、picker は開いたまま。新規取引先は一覧に反映されますが ✓ は付かず、利用者が改めてクリックします。</p><div class="stage"><div class="context"><b>一括価格改定 — 絞り込み</b><div class="context-controls"><span class="btn outline">取引先を選択</span><label><input type="checkbox" checked disabled> 取引先未設定の商品も含める</label></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="manual-title">
+<section id="state-5"><h2>5. B 案（不採用、比較用に残す）— 追加後に自動選択しない</h2><p class="lead">追加 dialog だけを閉じ、picker は開いたまま。新規取引先は一覧に反映されますが ✓ は付かず、利用者が改めてクリックします。</p><div class="stage"><div class="context"><b>一括価格改定 — 絞り込み</b><div class="context-controls"><span class="btn outline">取引先を選択</span><label><input type="checkbox" checked disabled> 取引先未設定の商品も含める</label></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="manual-title">
 <h2 id="manual-title">取引先を選択</h2>
 <label class="field" for="manual-search">取引先名で検索<input id="manual-search" type="search" placeholder="例: かえで糸店" readonly></label>
-<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark">選択</th></tr></thead><tbody>
+<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark"><span class="sr-only">選択</span></th></tr></thead><tbody>
 <tr class="row"><td>すべての取引先</td><td class="mark"></td></tr>
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
 <tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
 <tr class="row"><td>わかば手芸（新規）</td><td class="mark"></td></tr>
 </tbody></table></div></div>
-<div class="picker-footer"><button type="button" class="btn secondary">新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
-</div></div><p class="note">一覧末尾の「わかば手芸」が新規取引先。Human Gate (1) の A/B 比較であり、採用案は未確定です。</p></section>
-<section id="state-6"><h2>6. picker の上に追加 dialog を重ねる</h2><p class="lead">既存 CreateSupplierDialog を開く案の overlay 比較。いずれも未確定の候補です。</p><div class="pair"><div><h3>内側 overlay：透過（bg-transparent）</h3><div class="stage nested"><div class="context"><b>一括価格改定</b></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="clear-title">
+<div class="picker-footer"><button type="button" class="btn primary">＋ 新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
+</div></div><p class="note">一覧末尾の「わかば手芸」が新規取引先。B 案は不採用（owner 確定 2026-09-10）、比較用に残しています。</p></section>
+<section id="state-6"><h2>6. picker の上に追加 dialog を重ねる</h2><p class="lead">既存 CreateSupplierDialog を開く案の overlay 比較。二重 scrim を採用（owner 確定 2026-09-10）。透過案は比較用に残しています。</p><div class="pair"><div><h3>6a. 内側 overlay：透過（bg-transparent、不採用、比較用）</h3><div class="stage nested"><div class="context"><b>一括価格改定</b></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="clear-title">
 <h2 id="clear-title">取引先を選択</h2>
 <label class="field" for="clear-search">取引先名で検索<input id="clear-search" type="search" placeholder="例: かえで糸店" readonly></label>
-<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark">選択</th></tr></thead><tbody>
+<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark"><span class="sr-only">選択</span></th></tr></thead><tbody>
 <tr class="row"><td>すべての取引先</td><td class="mark"></td></tr>
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
@@ -141,11 +144,11 @@ p{margin:0}
 <tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>
 <tr class="row"><td>はなびら工芸</td><td class="mark"></td></tr>
 </tbody></table></div></div>
-<div class="picker-footer"><button type="button" class="btn secondary">新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
-</div><div class="second-scrim transparent"></div><div class="create" role="group" aria-labelledby="clear-create"><h2 id="clear-create">新しい取引先を追加</h2><label class="field" for="clear-name">取引先名<input id="clear-name" value="わかば手芸" readonly></label><div class="create-footer"><button type="button" class="btn outline">キャンセル</button><button type="button" class="btn primary">追加する</button></div></div></div><p class="note">ページの暗転は外側の1枚分。picker の面は暗転しない。</p></div><div><h3>内側 overlay：二重 scrim</h3><div class="stage nested"><div class="context"><b>一括価格改定</b></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="double-title">
+<div class="picker-footer"><button type="button" class="btn primary">＋ 新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
+</div><div class="second-scrim transparent"></div><div class="create" role="group" aria-labelledby="clear-create"><h2 id="clear-create">新しい取引先を追加</h2><label class="field" for="clear-name">取引先名<input id="clear-name" value="わかば手芸" readonly></label><div class="create-footer"><button type="button" class="btn outline">キャンセル</button><button type="button" class="btn primary">追加する</button></div></div></div><p class="note">ページの暗転は外側の1枚分。picker の面は暗転しない。</p></div><div><h3>6b. 内側 overlay：二重 scrim（採用）</h3><div class="stage nested"><div class="context"><b>一括価格改定</b></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="double-title">
 <h2 id="double-title">取引先を選択</h2>
 <label class="field" for="double-search">取引先名で検索<input id="double-search" type="search" placeholder="例: かえで糸店" readonly></label>
-<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark">選択</th></tr></thead><tbody>
+<div class="tbl"><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark"><span class="sr-only">選択</span></th></tr></thead><tbody>
 <tr class="row"><td>すべての取引先</td><td class="mark"></td></tr>
 <tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
 <tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
@@ -156,6 +159,22 @@ p{margin:0}
 <tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>
 <tr class="row"><td>はなびら工芸</td><td class="mark"></td></tr>
 </tbody></table></div></div>
-<div class="picker-footer"><button type="button" class="btn secondary">新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
+<div class="picker-footer"><button type="button" class="btn primary">＋ 新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
 </div><div class="second-scrim "></div><div class="create" role="group" aria-labelledby="double-create"><h2 id="double-create">新しい取引先を追加</h2><label class="field" for="double-name">取引先名<input id="double-name" value="わかば手芸" readonly></label><div class="create-footer"><button type="button" class="btn outline">キャンセル</button><button type="button" class="btn primary">追加する</button></div></div></div><p class="note">ページは約75%暗転。picker の面にも内側の50%暗転が重なる。</p></div></div><p class="note">この静的見本は focus trap・Esc・外クリック伝播を再現しません。(A) 推奨の重ね方式は runtime lane AC-L3 で Windows WebView2 実機確認が必要です。問題が出た場合のみ (B) fallback（単一 dialog 内2段階）へ切替えます。</p></section>
+<section id="state-7"><h2>7. 入庫記録から開いた picker</h2><p class="lead">先頭行は「取引先なし」。追加ボタンと現在の選択の固定帯を表示します（owner 判断 2026-09-10）。</p><div class="stage"><div class="context"><b>入庫記録 — 取引先</b><div class="context-controls"><span class="btn outline">取引先を選択</span></div></div><div class="scrim"></div><div class="picker" role="group" aria-labelledby="receiving-title">
+<h2 id="receiving-title">取引先を選択</h2>
+<label class="field" for="receiving-search">取引先名で検索<input id="receiving-search" type="search" placeholder="例: かえで糸店" readonly></label>
+<div class="tbl"><div class="current-band"><span class="current-band-label">現在の選択</span><span>取引先なし</span><span class="badge b-state">選択中</span></div><div class="scroll choices" tabindex="0" aria-label="取引先候補一覧"><table><thead><tr><th scope="col">取引先名</th><th scope="col" class="mark"><span class="sr-only">選択</span></th></tr></thead><tbody>
+<tr class="row cur"><td>取引先なし</td><td class="mark"><span aria-label="選択中">✓</span> <span class="badge b-state">選択中</span></td></tr>
+<tr class="row"><td>あおば手芸</td><td class="mark"></td></tr>
+<tr class="row"><td>いといろ工房</td><td class="mark"></td></tr>
+<tr class="row"><td>うぐいす織物</td><td class="mark"></td></tr>
+<tr class="row"><td>かえで糸店</td><td class="mark"></td></tr>
+<tr class="row"><td>こはるボタン</td><td class="mark"></td></tr>
+<tr class="row"><td>さくらリボン</td><td class="mark"></td></tr>
+<tr class="row"><td>つばめ生地</td><td class="mark"></td></tr>
+<tr class="row"><td>はなびら工芸</td><td class="mark"></td></tr>
+</tbody></table></div></div>
+<div class="picker-footer"><button type="button" class="btn primary">＋ 新しい取引先を追加</button><button type="button" class="btn outline">閉じる</button></div>
+</div></div></section>
 </main></body></html>

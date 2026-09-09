@@ -20,7 +20,7 @@
 |---|---|---|---|
 | REQ-201 / UI-02 | UI-02-D1 | route は `/inventory/receiving` とし、file route は `src/routes/inventory/receiving.tsx`、画面本体は `src/features/receiving/ReceivingPage.tsx` に置く。 | 入出庫エリアの独立作業であり、商品一覧や在庫照会の query param で mode を切り替えない。将来の UI-03〜05 と route prefix をそろえる。 |
 | REQ-201 / CMD-02 | UI-02-D2 | UI は generated `commands.createReceiving(req)` / `commands.listReceivings(page, perPage, dateFrom, dateTo)` のみを使う。実装 PR では既存 Rust command に `#[specta::specta]` を付け、`ReceivingCreateRequest` / `ReceivingItemInput` / `ReceivingCreateResult` / `ReceivingRecordWithSupplier` を generated binding に出す。 | `receiving_cmd` は runtime `generate_handler!` には存在するが、現状 `collect_commands!` / `bindings.ts` にはない。`typedInvoke` fallback は退役済みなので ad hoc invoke は採用しない。 |
-| REQ-201 / suppliers | UI-02-D3 | 取引先候補は `commands.listSuppliers()` 由来の complete master data とする。inline 新規取引先作成は初回 UI-02 実装では扱わない。 | 取引先は任意項目だが、誤った master 追加は後から直しづらい。UI-01b と同じ候補取得方針にそろえる。 |
+| REQ-201 / suppliers | UI-02-D3 | 取引先候補は `commands.listSuppliers()` 由来の complete master data とする。取引先欄は picker dialog + 『新しい取引先を追加』を経由する（DSR-24）。初回実装の defer は本 packet（⑱）で解除する。 | 取引先は任意項目だが、誤った master 追加は後から直しづらい。UI-01b と同じ候補取得方針にそろえる。 |
 | REQ-201 / product add | UI-02-D4 | 商品追加欄は商品コード / JAN / 商品名を同じ入力で扱い、Enter で `commands.searchProducts` を実行する。1件なら明細へ追加、複数件なら候補リストから選ぶ、0件なら商品登録への導線を出す。 | 未登録商品の作成を入庫画面内に持ち込むと UI-01b の validation と重複する。REQ-201 の「未登録商品」は `/products/new` へ逃がす。 |
 | REQ-201 / scanner | UI-02-D5 | バーコードスキャナは HID キーボードとして商品追加欄へ入力される前提にする。初回実装はグローバルスキャン検知を置かず、フォーカス中の入力欄 + Enter で追加し、追加後は商品追加欄へフォーカスを戻す。 | 20ms 間隔などのグローバル検知は入力中の誤検知やフォーカス奪取リスクがある。実店舗確認前に全画面へ広げない。 |
 | REQ-201 / rows | UI-02-D6 | 同じ `product_code` を再追加した場合は既存行の数量を +1 し、重複行を増やさない。原価は既存行の値を維持し、必要なら利用者が編集する。 | 連続スキャンでは同一商品の数量増加が自然。重複明細を許すと確認負荷が上がる。原価差のある入庫は手入力で調整できる。 |
@@ -169,6 +169,7 @@ UI-02 実装 PR では以下を generated binding に出す。
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #49 / DSR-24 | owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除し、取引先欄へ picker dialog と追加導線を適用。 |
 | 2026-08-30 | PR #20 / DSR-18 | UI-02-D16 を追加し、保存結果 / recent list の詳細導線に入庫画面への `returnTo` 送信契約を設定。 |
 | 2026-08-30 | UI 表示磨き batch 第 2 弾 design sync | UI-02-D15 の説明文 3 点と、複数商品の一意見出し契約を明記。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D8 / REQ-209 の保存後原価差分ダイアログ（UI-02-D15）を追加。 |

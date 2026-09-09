@@ -474,7 +474,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 **Why**: DSR-23 は見た目の統一を目的にプルダウンを Select へ統一したが、追加導線が伴う候補では Select 自体に行を増やす手段が無く、画面ごとに inline パネル（`ProductForm.tsx`）・Select 横のボタン（`PriceRevisionFilters.tsx`）とバラバラな実装が並立してきた（`onCreated` の戻り値契約が file ごとに異なる — Supplier を返す / 返さない）。owner L3 所感（2026-09-08、`docs/Plans.md` Backlog entry）「追加である以上オレンジでは」「絞り込み列に登録操作が混ざる」は、Select 横に primary 色のボタンを並べる現行実装が、絞り込みの主動線と登録操作を同一視覚面で混同させていることを指す。dialog に閉じ込めることで、画面本体は選択操作だけに単純化され、追加操作は dialog を開いた後だけに現れる別の文脈になる。
 
-**判定フロー / 具体例**: DSR-01（1 画面 1 primary）は画面本体の主動線を変えず、dialog を開いている間だけ dialog 内の「追加の確定」ボタン 1 個を primary（amber）にすることで維持する（dialog を閉じれば画面には primary が戻らない）。適用例: 一括価格改定 filter・商品登録/修正 form（いずれも候補から 1 件を選ぶ操作を持つ）。非適用例: 部門フィルタ（`DepartmentFilter`、追加導線なし、Select のまま）。取引先管理は選択操作を持たないため DSR-24 非適用。一覧の見た目（検索 input + scroll 箱）だけ picker dialog と揃える（78 SPEC-SUP-D2、SPD-D6）。入庫記録は UI-02-D3 で追加導線を defer しているため非適用（owner 判断で覆る場合は別途改訂）。
+**判定フロー / 具体例**: DSR-01（1 画面 1 primary）は画面本体の主動線を変えず、dialog を開いている間だけ dialog 内の「追加の確定」ボタン 1 個を primary（amber）にすることで維持する（dialog を閉じれば画面には primary が戻らない）。適用例: 一括価格改定 filter・商品登録/修正 form・入庫記録（UI-02）（いずれも候補から 1 件を選ぶ操作を持つ）。非適用例: 部門フィルタ（`DepartmentFilter`、追加導線なし、Select のまま）。取引先管理は選択操作を持たないため DSR-24 非適用。一覧の見た目（検索 input + scroll 箱）だけ picker dialog と揃える（78 SPEC-SUP-D2、SPD-D6）。入庫記録は UI-02-D3 の defer を解除して適用（owner 判断 2026-09-10、取引先 80 件規模で Select からの選択負荷が高い）。
 
 **関連**: パターン⑧ Dialog / 確認（picker dialog 小節）、DSR-23（プルダウンは Select 統一、本 DSR はその例外条項）、DSR-01（1 画面 1 primary）。
 
@@ -484,7 +484,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-10 | PR #49 | DSR-24 を新設し、DSR-23 から例外条項への相互参照を追加。title を「DSR-01〜24」へ同期。 |
+| 2026-09-10 | PR #49 | DSR-24 を新設し、DSR-23 から例外条項への相互参照を追加。title を「DSR-01〜24」へ同期。owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除して入庫記録を適用例へ追加。 |
 | 2026-09-08 | PR #45 | owner L3 AC-L3-2 で secondary の `--border` 枠が card 地に溶け込むと判定され、操作枠を `--border-strong` へ変更。塗り・文字色・hover は維持。 |
 | 2026-09-08 | PR #45 | UI 規約 runtime 反映に合わせ、verbatim 重複の DSR-23 第2ブロックを除去。第1ブロックの本文は維持。 |
 | 2026-09-06 | UI 一覧の背骨 D — Lane 4（Gated Amendment 1、実装済み） | DSR-17 の Why・(c)・(j) に、商品一覧限定で `<main>` の代わりに専用 scroll 箱が唯一の scroll container になる例外を注記（PR #40 owner L3 run 1 FAIL・案 X、Plan Review round 1 P1-2）。実装（app-router.ts 側の resolver 導入、Writer commit d6e545c）を含めて実装済み |
