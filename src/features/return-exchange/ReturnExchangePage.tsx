@@ -43,6 +43,7 @@ import {
 } from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReturnCreateResult } from "@/lib/bindings";
+import { formatDateTime } from "@/features/inventory-records/types";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";
@@ -87,10 +88,6 @@ function createEmptyForm(): ReturnExchangeFormValues {
     note: "",
     rows: [],
   };
-}
-
-function formatDateTime(value: string): string {
-  return value.replace("T", " ");
 }
 
 function formatReturnType(value: string): string {
@@ -992,7 +989,9 @@ export function ReturnExchangePage() {
                       {formatNote(record.note)}
                     </span>
                   </TableCell>
-                  <TableCell>{formatDateTime(record.created_at)}</TableCell>
+                  <TableCell className="font-mono tabular-nums">
+                    {formatDateTime(record.created_at)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="outline" size="sm">
                       <Link

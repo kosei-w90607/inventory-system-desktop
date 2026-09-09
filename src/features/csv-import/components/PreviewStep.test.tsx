@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import dateTimeSource from "./AdditionalImportConfirmDialog.tsx?raw";
 import type { PreviewData } from "@/lib/bindings";
 import { PreviewStep } from "./PreviewStep";
 
@@ -106,6 +107,14 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     expect(table).toHaveTextContent("Z004_0002.CSV");
     expect(table).toHaveTextContent("¥900 / 2件");
     expect(table).toHaveTextContent("2026-03-21 10:00:00");
+    // ⑰ SC6 / UIDISP-D6: 既存分と今回分の両 JSX site で折り返しを保ち書体を統一。
+    for (const name of ["2026-03-21 09:00:00", "2026-03-21 08:00:00", "2026-03-21 10:00:00"]) {
+      expect(within(table).getByRole("cell", { name })).toHaveClass(
+        "font-mono",
+        "tabular-nums",
+        "whitespace-normal",
+      );
+    }
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByText("精算日:")).toBeInTheDocument();
@@ -145,4 +154,12 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     expect(onConfirm).not.toHaveBeenCalled();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
+});
+
+it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {
+  expect(dateTimeSource).toMatch(
+    /import\s*\{[^}]*\bformatDateTime\b[^}]*\}\s*from\s*"@\/features\/inventory-records\/types"/,
+  );
+  expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
+  expect(dateTimeSource).not.toContain("formatCheckedAt");
 });

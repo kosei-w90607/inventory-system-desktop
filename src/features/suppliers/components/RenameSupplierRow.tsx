@@ -101,19 +101,19 @@ export function RenameSupplierRow({
             <Button
               type="button"
               size="sm"
-              disabled={mutation.isPending}
-              onClick={() => void submit()}
-            >
-              {mutation.isPending ? "保存中" : error === null ? "保存" : "再試行"}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
               variant="outline"
               disabled={mutation.isPending}
               onClick={cancel}
             >
               キャンセル
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={mutation.isPending}
+              onClick={() => void submit()}
+            >
+              {mutation.isPending ? "保存中" : error === null ? "保存" : "再試行"}
             </Button>
           </div>
         ) : (

@@ -38,6 +38,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 import { formatStockUnitLabel } from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type ProductWithRelations, type ReceivingCreateResult } from "@/lib/bindings";
+import { formatDateTime } from "@/features/inventory-records/types";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";
@@ -73,10 +74,6 @@ function createEmptyForm(): ReceivingFormValues {
     note: "",
     rows: [],
   };
-}
-
-function formatDateTime(value: string): string {
-  return value.replace("T", " ");
 }
 
 function formatSupplierName(name: string | null): string {
@@ -702,7 +699,9 @@ export function ReceivingPage() {
                   >
                     {record.note?.trim() ? record.note : "—"}
                   </TableCell>
-                  <TableCell>{formatDateTime(record.created_at)}</TableCell>
+                  <TableCell className="font-mono tabular-nums">
+                    {formatDateTime(record.created_at)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="outline" size="sm">
                       <Link

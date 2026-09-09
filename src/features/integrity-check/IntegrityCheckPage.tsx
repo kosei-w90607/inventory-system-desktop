@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/table";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { commands, type IntegrityFixResult, type IntegrityResult } from "@/lib/bindings";
+import { formatDateTime } from "@/features/inventory-records/types";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";
@@ -56,10 +57,6 @@ type PendingOperation = "check" | "fix" | null;
 interface OperationError {
   operation: "check" | "fix";
   message: string;
-}
-
-function formatCheckedAt(value: string): string {
-  return value.replace("T", " ");
 }
 
 function differenceLabel(difference: number): string {
@@ -185,7 +182,7 @@ export function IntegrityCheckPage() {
   if (latestCheckQuery.isError) latestCheckText = "取得できませんでした";
   else if (latestCheckQuery.data)
     latestCheckText = latestCheckQuery.data.items[0]
-      ? formatCheckedAt(latestCheckQuery.data.items[0].created_at)
+      ? formatDateTime(latestCheckQuery.data.items[0].created_at)
       : "まだ実行されていません";
 
   return (

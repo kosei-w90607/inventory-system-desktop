@@ -121,7 +121,7 @@ function computeSummaryCompareLabel(
         : "text-muted-foreground";
   return {
     value: `${sign}¥${absDiff}`,
-    sub: `${sign}${pct.toFixed(1)}%`,
+    sub: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`,
     valueClassName,
   };
 }

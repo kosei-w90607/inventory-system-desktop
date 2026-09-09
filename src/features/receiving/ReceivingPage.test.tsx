@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import dateTimeSource from "./ReceivingPage.tsx?raw";
 
 import {
   makeMockProductWithRelations,
@@ -359,6 +360,11 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     renderWithClient(<ReceivingPage />);
 
     expect((await screen.findAllByText("テスト商事")).length).toBeGreaterThan(0);
+    // ⑰ SC6 / UIDISP-D6: 記録日時セルの書体契約。
+    expect(screen.getByRole("cell", { name: "2026-06-27 09:00:00" })).toHaveClass(
+      "font-mono",
+      "tabular-nums",
+    );
     expect(screen.getByRole("link", { name: "すべての履歴を見る" })).toHaveAttribute(
       "href",
       "/inventory/records?recordType=receiving_record",
@@ -1066,4 +1072,12 @@ it.each([
   expect(cell).toHaveClass("truncate");
   if (title === undefined) expect(cell).not.toHaveAttribute("title");
   else expect(cell).toHaveAttribute("title", title);
+});
+
+it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {
+  expect(dateTimeSource).toMatch(
+    /import\s*\{[^}]*\bformatDateTime\b[^}]*\}\s*from\s*"@\/features\/inventory-records\/types"/,
+  );
+  expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
+  expect(dateTimeSource).not.toContain("formatCheckedAt");
 });

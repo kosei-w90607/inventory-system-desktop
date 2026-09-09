@@ -176,3 +176,39 @@ it.each([
     expect(screen.getByText(label)).not.toHaveClass("text-success-emphasis");
   },
 );
+
+it.each([
+  [19900, "-80.1%", "-¥80,100"],
+  [100000, "+0.0%", "+¥0"],
+  [120000, "+20.0%", "+¥20,000"],
+  [99950, "-0.1%", "-¥50"],
+] as const)("⑰ SC1 / REQ-501: amount %s has a single percentage sign", (amount, sub, value) => {
+  render(
+    <SummaryCardsBar
+      today={{ ...mockToday, grand_total: { quantity: 42, amount } }}
+      yesterday={{ ...mockYesterday, grand_total: { quantity: 30, amount: 100000 } }}
+      summary={mockSummary}
+      isLoading={false}
+      yesterdayError={false}
+    />,
+  );
+  expect(screen.getByText(sub, { exact: true }).textContent).toBe(sub);
+  expect(screen.getByText(value, { exact: true }).textContent).toBe(value);
+});
+
+it.each([
+  [0, "前日売上 0 円"],
+  [-100, "前日返品超過"],
+] as const)("⑰ SC1 / REQ-501: non-positive denominator %s is incomparable", (amount, sub) => {
+  render(
+    <SummaryCardsBar
+      today={mockToday}
+      yesterday={{ ...mockYesterday, grand_total: { quantity: 30, amount } }}
+      summary={mockSummary}
+      isLoading={false}
+      yesterdayError={false}
+    />,
+  );
+  expect(screen.getByText(sub, { exact: true })).toBeInTheDocument();
+  expect(screen.getByText("比較不可")).toBeInTheDocument();
+});

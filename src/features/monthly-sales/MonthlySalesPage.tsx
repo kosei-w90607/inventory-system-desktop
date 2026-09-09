@@ -166,6 +166,8 @@ function OfficialDepartmentTotalsSection({
         <Alert variant="warning" role="status">
           <AlertTriangle aria-hidden="true" />
           <AlertTitle>この月のレジ日報は未取込みです。</AlertTitle>
+          {/* 日報種別は見出し下で説明済みなので、混同しやすい Z004 との違いだけを補う。 */}
+          <AlertDescription>商品別売上 CSV（Z004）の取込みとは別です。</AlertDescription>
         </Alert>
       ) : rows.length === 0 ? (
         <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">

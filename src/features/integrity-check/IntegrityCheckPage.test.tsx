@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import dateTimeSource from "./IntegrityCheckPage.tsx?raw";
 
 import { commands, type IntegrityMismatch } from "@/lib/bindings";
 import { scrollPageToTop } from "@/lib/page-scroll";
@@ -162,6 +163,12 @@ describe("UI-13 REQ-904 在庫整合性検証", () => {
     });
     const first = renderPage();
     expect(await screen.findByText("直近の確認日時: 2026-07-15 09:08:07")).toBeInTheDocument();
+    // ⑰ SC6 / UIDISP-D6: prose は等幅の表セル書体にしない。祖先の継承も検査する。
+    const checkedAt = screen.getByText("直近の確認日時: 2026-07-15 09:08:07");
+    for (let element: HTMLElement | null = checkedAt; element; element = element.parentElement) {
+      expect(element).not.toHaveClass("font-mono");
+      expect(element).not.toHaveClass("tabular-nums");
+    }
     expect(listLogs).toHaveBeenCalledWith({
       page: 1,
       per_page: 1,
@@ -580,3 +587,11 @@ it.each([
     expect(within(row).getByText(state)).not.toHaveAttribute("data-tone");
   },
 );
+
+it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {
+  expect(dateTimeSource).toMatch(
+    /import\s*\{[^}]*\bformatDateTime\b[^}]*\}\s*from\s*"@\/features\/inventory-records\/types"/,
+  );
+  expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
+  expect(dateTimeSource).not.toContain("formatCheckedAt");
+});

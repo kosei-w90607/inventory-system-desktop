@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { commands, type PriceHistoryEntry } from "@/lib/bindings";
+import { formatDateTime } from "@/features/inventory-records/types";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 
@@ -85,7 +86,9 @@ export function PriceHistorySection({ productCode }: { productCode: string }) {
           <TableBody>
             {entries.map((entry) => (
               <TableRow key={entry.id}>
-                <TableCell>{entry.changed_at.replace("T", " ")}</TableCell>
+                <TableCell className="font-mono tabular-nums">
+                  {formatDateTime(entry.changed_at)}
+                </TableCell>
                 <TableCell className="tabular-nums">
                   {yenFormatter.format(entry.old_selling_price)} →{" "}
                   {yenFormatter.format(entry.new_selling_price)}
