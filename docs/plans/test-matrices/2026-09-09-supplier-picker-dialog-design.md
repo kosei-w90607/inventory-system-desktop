@@ -8,7 +8,7 @@ Risk: R2（Coordinator 判断で Test Design Matrix を必須化。理由は Pla
 
 - SPD-D1: `01-decision-rules.md` に DSR-24（追加導線を伴う master 参照は picker dialog に統一、DSR-23 の例外条項）を新設し、title を「DSR-01〜24」へ更新する。
 - SPD-D2: `02-component-catalog.md` ⑧ Dialog / 確認に「picker dialog」小節（構成・動作・dialog 重ね契約 (A) 推奨 / (B) fallback）を追加する。
-- SPD-D3: `docs/design-system/reference/mockup-f-supplier-picker.html`（6 状態）を新規追加し、`reference/README.md` に 1 行追加する（欠落している mockup-e の 1 行補完を含む）。
+- SPD-D3: `docs/design-system/reference/mockup-f-supplier-picker.html`（7 状態）を新規追加し、`reference/README.md` に 1 行追加する（欠落している mockup-e の 1 行補完を含む）。
 - SPD-D4: `77-ui-bulk-price-revision.md`（REQ-105）に取引先ピッカー dialog 経由の記述を追記する。
 - SPD-D5: `51-ui-product-form.md`（UI-01b-D21）に取引先ピッカー dialog + `CreateSupplierDialog` 統合の記述を追記し、`ProductForm.tsx` の独立 3 つ目の inline 実装の撤去を明記する。
 - SPD-D6: `78-ui-supplier-management.md`（SPEC-SUP-D2）に名前検索 + scroll 一覧の追加を明記し、§78.12 Deferred から「検索」を外す。
@@ -17,11 +17,11 @@ Risk: R2（Coordinator 判断で Test Design Matrix を必須化。理由は Pla
 
 ## Failure Modes
 
-- owner 確定仕様（`docs/Plans.md` Backlog entry）の内容が変えて書かれる、または未確定の owner culling 対象（自動選択 A/B・入庫記録適用・取引先管理見た目）が owner 回答なしに確定事項として書かれる。
+- owner 確定仕様（`docs/Plans.md` Backlog entry）の内容が変えて書かれる、または未確定の round 2 対象（取引先管理の実機の見た目・状態 7・固定帯・ボタン・sr-only 見出しの実際の見え方）が owner 再確認なしに確定事項として書かれる。
 - `CreateSupplierDialog` の並存が「2 実装」のまま記録され、`ProductForm.tsx` の独立 3 つ目の inline 実装が見落とされる。
 - dialog 重ねの (A)/(B) tradeoff が書かれず、(A) のみが未検証のまま既定として断定される。WebView2 実機確認義務が runtime lane へ申し送られない。
 - DSR-24 の適用条件が曖昧で、部門フィルタ等の非対象候補にまで誤って拡大解釈される、または DSR-01/DSR-23 と矛盾する。
-- 入庫記録（61）が Human Gate (2) 未回答のまま「適用する」「適用しない」のどちらかに確定して書かれる。
+- 自動選択 A/B・入庫記録（61）適用の owner Human Gate round 1 確定内容（A 案 / 適用）が正確に転記されず、旧未確定文が残置される。
 - `src/**` / `docs/decision-log.md` / `docs/design-system/**` / `docs/function-design/**` の file が本 commit に混入する。
 - `docs/Plans.md` の active link が本 packet の basename と一致しない。
 
@@ -37,7 +37,7 @@ Risk: R2（Coordinator 判断で Test Design Matrix を必須化。理由は Pla
 | SPD-D2 | picker dialog 小節の欠落 | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "picker dialog"` ≥ 1（baseline 0 確認済み、更新履歴表の同一文言に釣られないよう本文範囲に限定） | picker dialog 小節が catalog ⑧ に追加されていない場合に検出 |
 | SPD-D2 | dialog 重ね契約の (A)/(B) 両論併記漏れ、または WebView2 実機確認義務の申し送り漏れ | doc-oracle + reviewer 実読 | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -Fc "focus trap"` ≥ 1（baseline 0 確認済み）かつ reviewer が (A) 推奨・(B) fallback の両方と、(A) の WebView2 実機確認義務（runtime lane AC-L3）が明記されていることを確認 | (A) のみが断定的に書かれ (B) が欠落した場合、または実機未検証である旨が消えた場合に検出（automated では断定/両論の区別まで検出困難、Residual Test Gaps 参照） |
 | SPD-D3 | mockup-f 追加・README 同期の欠落 | doc-oracle | `rg -Fc "mockup-f-supplier-picker.html" docs/design-system/reference/README.md` ≥ 1 かつ `rg -Fc "mockup-e-badge-cta-samples.html" docs/design-system/reference/README.md` ≥ 1（baseline とも 0 確認済み） | mockup file が追加されない、または README の一覧表に mockup-f・mockup-e のいずれかが追記されない場合に検出 |
-| SPD-D3 | mockup 内容仕様（6 状態）の記述漏れ | reviewer 実読 | 本 packet「設計判断」節の mockup 内容仕様（一括価格改定・商品登録/修正・取引先管理・自動選択あり・自動選択なし・dialog 重ね〈二重 overlay〉の 6 状態）が次の実装 commit の diff（mockup HTML 本体）と対応していることを確認 | mockup HTML が 6 状態の一部を欠いたまま作られた場合に検出（automated では検出困難、Residual Test Gaps 参照） |
+| SPD-D3 | mockup 内容仕様（7 状態）の記述漏れ | reviewer 実読 | 本 packet「設計判断」節の mockup 内容仕様（一括価格改定・商品登録/修正・取引先管理・自動選択あり・自動選択なし・dialog 重ね〈二重 overlay〉・入庫記録の 7 状態）が次の実装 commit の diff（mockup HTML 本体）と対応していることを確認 | mockup HTML が 7 状態の一部を欠いたまま作られた場合に検出（automated では検出困難、Residual Test Gaps 参照） |
 | SPD-D4 | REQ-105 改訂の欠落 | doc-oracle | `awk '/^## 77\.10 変更履歴/{exit}{print}' docs/function-design/77-ui-bulk-price-revision.md \| rg -Fc "取引先ピッカー"` ≥ 1（baseline 0 確認済み、本文範囲に限定） | 一括価格改定 filter の取引先選択が picker dialog 経由と明記されていない場合に検出 |
 | SPD-D4 | 「取引先未設定の商品も含める」toggle の誤移動 | reviewer 実読 | `77-ui-bulk-price-revision.md` 追記箇所が toggle をフィルタ列に残置する（dialog 内へ移動しない）と明記していることを確認 | toggle が dialog 内へ移動する記述に変わった場合に検出（owner 確定仕様からの逸脱） |
 | SPD-D4 | 「取引先 filter に『新しい取引先を追加』を置き」の旧記述が残置される | doc-oracle | `rg -Fc "取引先 filter に \`新しい取引先を追加\` を置き" docs/function-design/77-ui-bulk-price-revision.md` = 0（baseline 1 確認済み、`:94`） | 旧 Select 横ボタン方式の記述が picker dialog 経由の記述に置き換わっていない場合に検出 |
@@ -47,21 +47,26 @@ Risk: R2（Coordinator 判断で Test Design Matrix を必須化。理由は Pla
 | SPD-D6 | SPEC-SUP-D2 改訂の欠落 | doc-oracle | `awk '/^## 78\.13 変更履歴/{exit}{print}' docs/function-design/78-ui-supplier-management.md \| rg -Fc "名前検索"` ≥ 1（baseline 0 確認済み、本文範囲に限定） | 取引先管理への名前検索追加が明記されていない場合に検出 |
 | SPD-D6 | §78.12 Deferred の「検索」除去漏れ | doc-oracle | `rg -Fc "検索、任意並び替え、paging、bulk rename" docs/function-design/78-ui-supplier-management.md` = 0（現状 baseline 1、改訂後は消えているはずの negative oracle） | 「検索」が Deferred のまま残された場合に検出 |
 | SPD-D6 | 78.11 テスト観点への検索追加漏れ | doc-oracle | `rg -Fc "システム管理 navigation から UI-15 に到達し、name 昇順・商品件数・入庫記録件数・追加導線が表示される" docs/function-design/78-ui-supplier-management.md` = 0（baseline 1 確認済み、`:149`） | 78.11 テスト観点（SPEC-SUP-D2 / D9 行）に検索の観点が追加されていない場合に検出 |
-| SPD-D7 | 入庫記録（61）の owner culling 未回答のまま確定される | reviewer 実読 | `61-ui-receiving.md` が本 commit・次の実装 commit いずれでも変更されておらず（`rg -Fc "取引先ピッカー" docs/function-design/61-ui-receiving.md` = 0）、UI-02-D3 の defer 文言が本 commit の diff hunk に含まれないことを確認 | Human Gate (2) 未回答のまま 61 が改訂された場合に検出 |
+| SPD-D7 | 61 の UI-02-D3 defer 解除が未反映、または旧 defer 文言が残置（owner Human Gate (2) 確定 2026-09-10、Gated Amendment 3 H3） | doc-oracle | `rg -Fc "picker dialog" docs/function-design/61-ui-receiving.md` ≥ 1（baseline 0）かつ `rg -Fc "初回 UI-02 実装では扱わない" docs/function-design/61-ui-receiving.md` = 0（baseline 1 確認済み、`:23`） | 61 が picker dialog 経由に改訂されていない、または旧 defer 文言が残った場合に検出（AC26） |
 | SPD-D8 | `CreateSupplierDialog` 統合契約の記述漏れ | doc-oracle + reviewer 実読 | `rg -Fc "(supplier: Supplier) => Promise<void>" docs/plans/2026-09-09-supplier-picker-dialog-design.md` ≥ 1 かつ reviewer が「3 実装」（`products/`・`suppliers/`・`ProductForm.tsx` inline）を明示的に列挙していることを確認 | 統合契約の宛先が曖昧なまま runtime lane へ渡された場合に検出 |
 | SPD-D1/SPD-D2 | canonical が本 packet 内部の節参照・archive 後に壊れる語（Gated Amendment 1 A1） | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md docs/design-system/01-decision-rules.md \| rg -c "Contract Probe\|起票時実測参照\|catalog には"` = 0（baseline 3 実測） | canonical に packet 内部参照（archive 後に壊れる語）が残った場合に検出（AC20） |
 | SPD-D2 | picker 小節に DSR-22 現在行 3 点の記述漏れ（Gated Amendment 1 A2） | doc-oracle | `awk '/^\*\*picker dialog/{f=1} f{print} f&&/^---$/{exit}' docs/design-system/02-component-catalog.md \| rg -Fc "DSR-22"` ≥ 1（baseline 0） | picker 小節の現在選択表現が ✓ のみで DSR-22 の 3 点（バー・背景・badge）に言及していない場合に検出（AC21） |
+| SPD-D2 | 自動選択の未確定文が owner 確定後も残置される（Gated Amendment 3 H1、owner Human Gate (1) 確定 2026-09-10「A案」） | doc-oracle | `awk '/^## 更新履歴/{exit}{print}' docs/design-system/02-component-catalog.md \| rg -c '自動選択.*Human Gate \(1\)'` = 0（baseline 1、旧「≥ 1」から反転）かつ `rg -Fc "自動選択して両方の dialog を閉じる（owner 確定" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0） | 「Human Gate (1) 未確定」の A/B 併記文が消えていない、または A 案確定の記述が無い場合に検出（AC5 flip） |
 | SPD-D3 | mockup の「選択中」badge が可視要素でなく tone class 欠落（Gated Amendment 2 A10/A11 で doc-oracle 化、旧 reviewer 実読オラクルを置換） | doc-oracle | `rg -c 'class="badge b-state">選択中' docs/design-system/reference/mockup-f-supplier-picker.html` ≥ 5（baseline 0、状態 1/2/4/6a/6b）かつ `rg -c '\.b-class' docs/design-system/reference/mockup-f-supplier-picker.html` = 0（baseline 1） | 可視 badge（枠線 + 白背景の `.b-state`）が実装されず裸 `.badge` や `aria-label` のみで済まされた場合に検出（AC22） |
 | SPD-D6 | 78 SPEC-SUP-D2 改訂文から DSR-24 引用が脱落（Gated Amendment 2 A13） | doc-oracle | `rg -Fc "DSR-24" docs/function-design/78-ui-supplier-management.md` ≥ 1（baseline 0） | picker dialog と箱の見た目が同じである根拠（DSR-24）が SPEC-SUP-D2 の改訂文から消えた場合に検出（AC25） |
 | SPD-D2 | picker 小節に状態（Skeleton/Alert/EmptyState）・a11y（DialogDescription・初期 focus）の記述漏れ（Gated Amendment 1 A3） | doc-oracle | `awk '/^\*\*picker dialog/{f=1} f{print} f&&/^---$/{exit}' docs/design-system/02-component-catalog.md \| rg -c "DialogDescription"` ≥ 1（baseline 0）かつ同範囲で `rg -c "EmptyState"` ≥ 1（baseline 0） | 状態・a11y 節が picker 小節に追加されていない場合に検出（AC23） |
 | SPD-D4 | 77 command 表の旧「filter 内の『新しい取引先を追加』」記述が残置（Gated Amendment 1 A4） | doc-oracle | `rg -Fc "filter 内の「新しい取引先を追加」" docs/function-design/77-ui-bulk-price-revision.md` = 0（baseline 1 確認済み、`:81`） | command 表が picker dialog 経由の表現へ更新されていない場合に検出（AC18d） |
 | SPD-D6 | 78 §78.3 の client-side filter 明記の回帰（Gated Amendment 1 A8） | doc-oracle | `rg -Fc "client-side filter" docs/function-design/78-ui-supplier-management.md` ≥ 1（baseline 1 確認済み、`:60`。Writer 実装済みの回帰防止 oracle） | 既存の client-side filter 明記が次回改訂で誤って消えた場合に検出（AC24） |
 | SPD-D1 | `docs/UI_TECH_STACK.md` §7.4 更新履歴への DSR-24 反映漏れ（Gated Amendment 1 A9） | doc-oracle | `rg -c "^\| 2026-09-" docs/UI_TECH_STACK.md` ≥ 1（baseline 0 確認済み） | UI_TECH_STACK.md の更新履歴に DSR-24 反映行が追加されていない場合に検出（AC16c） |
+| SPD-D3 | mockup の状態数が 7 に増えていない（Gated Amendment 3 H3、入庫記録の状態追加） | doc-oracle | `rg -c '<section id="state-' docs/design-system/reference/mockup-f-supplier-picker.html` ≥ 7（baseline 6 確認済み） | 入庫記録の状態 7 が mockup に追加されていない場合に検出（AC27） |
+| SPD-D2/SPD-D3 | 列見出し「選択」が視覚表示されたまま sr-only 化されていない（Gated Amendment 3 H4、owner「列タイトルが取引先名と比べて浮いてる」所感） | doc-oracle | `rg -c 'class="sr-only">選択' docs/design-system/reference/mockup-f-supplier-picker.html` ≥ 6（baseline 0、状態 1/2/4/5/6b/7） | 列見出しの「選択」が視覚要素のまま残っている場合に検出（AC28） |
+| SPD-D2/SPD-D3 | 追加ボタンが secondary のまま、または primary + Plus icon 化されていない（Gated Amendment 3 H5、owner「オレンジボタンで＋マーク」所感） | doc-oracle | `awk '/^\*\*picker dialog/{f=1} f{print} f&&/^---$/{exit}' docs/design-system/02-component-catalog.md \| rg -Fc "＋ 新しい取引先を追加"` ≥ 1（baseline 0）かつ `rg -c "＋ 新しい取引先を追加" docs/design-system/reference/mockup-f-supplier-picker.html` ≥ 6（baseline 0、状態 1/2/4/5/6b/7） | 追加ボタンが secondary のまま、または「＋」表記が付かない場合に検出（AC29） |
+| SPD-D2/SPD-D3 | 「現在の選択」固定帯が scroll 箱の外に実装されていない（Gated Amendment 3 H6、owner「枠の上に固定しとくと流れずに済む」所感） | doc-oracle | `rg -c 'class="current-band"' docs/design-system/reference/mockup-f-supplier-picker.html` ≥ 4（baseline 0、状態 1/2/4/7） | 固定帯が実装されず一覧側の選択行表示だけで済まされた場合に検出（AC30） |
 | 全体 | `src/**` / docs-only 除外領域の混入 | repo-oracle | `git diff --name-only c8e1409..47b3a69 -- src docs/decision-log.md docs/design-system docs/function-design` の出力が空（baseline 実測: 空、確認済み）。評価時点は plan-first commit `8eff442` のみとし、Writer 実装 commit 後は評価しない。Plan Commit 確定時は Plan Review 是正 commit をすべて含む最終 SHA へ差し替える（`8eff442` のまま凍結しない。SHA 自体は今は変えず、Coordinator が遷移 commit で差し替える） | runtime file または編集禁止 docs file が 1 件でも混入した場合に検出 |
 | 全体 | doc gate 未通過 | CLI | `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-09-supplier-picker-dialog-design.md` および `bash scripts/doc-consistency-check.sh` | ERROR が 1 件でもあれば検出 |
 | 全体 | ⑰ との merge 順序記録漏れ | doc-oracle | `rg -Fc "merge 順は ⑰ 先を前提に書く" docs/plans/2026-09-09-supplier-picker-dialog-design.md` ≥ 1 | ⑰ と同じ catalog ⑧ Dialog 節を編集する旨と merge 順の申し送りが Non-scope に記録されていない場合に検出 |
 | Plans.md 同期 | active link 欠落・basename 不一致 | doc-oracle | `rg -Fc "2026-09-09-supplier-picker-dialog-design.md" docs/Plans.md` ≥ 1 | リンクが無い、または basename が違う場合に検出 |
-| Non-scope 遵守 | 入庫記録・自動選択・取引先管理見た目の owner culling 対象が Scope へ確定混入 | reviewer 実読 | 本 packet の Scope/Acceptance Criteria 節で、上記 3 項目が「owner culling」「Human Gate」の語を伴う未確定表現になっていることを確認 | owner culling 対象が確定事項として Scope へ混入した場合に検出 |
+| Non-scope 遵守 | 未確定の round 2 対象（取引先管理の実機の見た目・状態 7・固定帯・ボタン・sr-only 見出しの実際の見え方）が確定事項として書かれる | reviewer 実読 | 本 packet の AC-HumanGate / Human Gate 欄で、round 2 対象が「owner 再確認」「round 2」の語を伴う未確定表現になっていることを確認（round 1 で確定済みの自動選択 A/B・入庫記録適用・overlay・footer は確定事項として書いてよい） | round 2 の未確認事項が確定事項として Scope へ混入した場合に検出 |
 
 ## State Lifecycle Matrix
 
@@ -100,8 +105,8 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 
 ## Compatibility Checks
 
-- old schema/input: DSR-23 の ルール / Why / 具体例 が無変更（S1 で追記するのは「関連」行のみ）、`list_suppliers`/`createSupplier` の wire、UI-02-D3 本文（Human Gate (2) が (a) を選ばない限り）— いずれも本 PR の diff hunk に含まれないこと。
-- new schema/input: 新規追加は DSR-24・catalog picker dialog 小節・mockup-f・function-design 3 doc（77/51/78）の draft のみ（本 commit では packet 内記述のみ、canonical docs 本体は次の実装 commit）。
+- old schema/input: DSR-23 の ルール / Why / 具体例 が無変更（S1 で追記するのは「関連」行のみ）、`list_suppliers`/`createSupplier` の wire — いずれも本 PR の diff hunk に含まれないこと。61 UI-02-D3 の defer 解除は owner 判断（Human Gate (2)、2026-09-10）に基づく契約変更であり、runtime lane で入庫記録の取引先欄が picker dialog に変わる旨を申し送る。
+- new schema/input: 新規追加は DSR-24・catalog picker dialog 小節・mockup-f・function-design 4 doc（77/51/78/61）の draft のみ（本 commit では packet 内記述のみ、canonical docs 本体は次の実装 commit）。
 - output order: not applicable。
 - optional field behavior: not applicable。
 
@@ -139,7 +144,7 @@ not applicable — 本 change に UI 状態遷移・data lifecycle・cache・rou
 ## Residual Test Gaps
 
 - dialog 重ね契約が DSR-01/DSR-23 と矛盾していないか、(A) 推奨・(B) fallback の順序が正しいか、DSR-24 の適用条件が過不足なく書かれているかは rg presence oracle だけでは保証できない — Plan Review / Final Review の reviewer 実読に依存する。
-- mockup-f の 6 状態がすべて実装されているか（README への 1 行追加のみでは内容の網羅性は検証できない）は reviewer 実読に依存する。
+- mockup-f の 7 状態がすべて実装されているか（README への 1 行追加のみでは内容の網羅性は検証できない）は reviewer 実読に依存する。
 - `CreateSupplierDialog` の「3 実装」という事実訂正が function-design doc（51）へ正確に転記されるかは reviewer 実読に依存する（automated では「言及がある」ことの内容までは検証できない）。
 - 入庫記録（61）の owner culling は Human Gate (2) の回答を待つ必要があり、本 packet の docs-only lane では機械 oracle 化できない（回答後、別 commit または gated amendment で反映）。
 - dialog-in-dialog の実機挙動（focus trap / ESC / 外クリック伝播）は本 packet の範囲外（runtime lane 実装後の Windows native L3、AC-L3）。
