@@ -78,7 +78,7 @@ CMD の署名と wire DTO の正本は [40-cmd-product.md](40-cmd-product.md) �
 |---|---|
 | `commands.searchProducts(query)` / `ProductSearchQuery` | filter・sort・paging に一致する商品一覧。keyword は maker_code を含む |
 | `commands.listSuppliers()` / `Supplier` | 取引先（メーカー/ブランド）の complete master data |
-| `commands.createSupplier(name)` / `Supplier` | filter 内の「新しい取引先を追加」 |
+| `commands.createSupplier(name)` / `Supplier` | 取引先ピッカー dialog 内の「新しい取引先を追加」 |
 | `commands.reviseProductPrice(input)` / `PriceRevisionInput` / `PriceRevisionResult` | 行単位確定。選択中の取引先を未設定商品へ渡す |
 | `commands.listPriceHistory(productCode, limit)` / `PriceHistoryEntry` | 直近 changed_at から「最近改定」を導出する |
 

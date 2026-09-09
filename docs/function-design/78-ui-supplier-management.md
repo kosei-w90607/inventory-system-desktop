@@ -25,7 +25,7 @@ UI-15 は、漸進追加で生じた表記揺れや同一メーカー/ブラン�
 | Spec / requirement ID | 設計判断 | 理由 / 捨てた案 |
 |---|---|---|
 | SPEC-SUP-D1 / SPEC-SUP-D10 | 改名・統合・専用管理画面だけを Deferred から解除し、単独削除・問屋チャネル・事前一括投入は解除しない。 | typo と重複は日常運用で回復手段が必要だが、単独削除は参照の扱いが危険で統合により主要場面を代替できる。 |
-| SPEC-SUP-D2 | `/settings/suppliers` のシステム管理画面に、name 昇順一覧・usage 件数・「新しい取引先を追加」を置く。 `/settings/suppliers` に名前検索 input + scroll 一覧（picker dialog と同じ箱の見た目、DSR-24）を追加する。 | 改名・統合は保守作業で、日常の商品管理操作と分ける。追加は既存の漸進補完を同じ画面からも行えるようにする。 |
+| SPEC-SUP-D2 | `/settings/suppliers` のシステム管理画面に、name 昇順一覧・usage 件数・「新しい取引先を追加」を置く。同画面に名前検索 input + scroll 一覧（取得済み一覧の client-side filter、箱の見た目は picker dialog と同じ）を併設する。 | 改名・統合は保守作業で、日常の商品管理操作と分ける。追加は既存の漸進補完を同じ画面からも行えるようにする。 |
 | SPEC-SUP-D3 | 改名は trim、空文字拒否、同値 no-op、他行との同名衝突は統合案内付き validation とする。 | UNIQUE error の技術文言を見せず、重複解消の正しい次操作を示す。 |
 | SPEC-SUP-D4 | 統合は products と receiving_records を残す側へ付け替えた後に消す側を削除する 1 transaction とする。 | 片側だけの付替えは FK 違反または過去記録の表示欠落を生む。 |
 | SPEC-SUP-D5 | 改名時だけ `suppliers.updated_at` を更新する。 | 作成日時と名称変更日時を区別し、用途のない追加列は持たない。 |
