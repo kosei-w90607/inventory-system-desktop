@@ -102,7 +102,7 @@ Risk: R3
 - missing input: 空白の取引先名 → `CreateSupplierDialog` 既存 test `SupplierManagementPage.test.tsx:163`「取引先名が空白のみなら createSupplier を呼ばず field error を出す」（実在確認済み）
 - invalid input: 該当なし（検索 text に制約なし）
 - duplicate/ambiguous input: 同名追加 → backend が既存行を返す（UI-01b-D21、既存、不変）
-- unknown reference: `selected` が一覧に無い id（削除 / 統合後）→ 固定帯は `leadingLabel` にフォールバック（Writer: 1 行、test 1 本）
+- unknown reference: `selected` が一覧に無い id（削除 / 統合後 / 取得失敗で一覧が無い）→ 固定帯と trigger は「取引先を確認できません」（Gated Amendment 3 C14。旧記述「`leadingLabel` にフォールバック」は round 1 Opus P1 で撤回。Writer: `supplierCurrentLabel` 1 関数、test 2 本）
 - dependency missing: `listSuppliers` 失敗 → Alert + 再試行、保存は可能（UI-01b-D8）
 - permission/write failure: `createSupplier` 失敗 → 内側 dialog の既存エラー表示、picker は開いたまま
 - dry-run side effect: 該当なし

@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: b49c7b5b
@@ -15,8 +15,8 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Codex
 - Plan Reviewer: Sonnet + Opus
 - Final Reviewer: Sonnet + Opus + Codex
-- Reviewed Content HEAD: pending
-- Final Exact-HEAD Evidence: PR body
+- Reviewed Content HEAD: 0769d9ee
+- Final Exact-HEAD Evidence: L1 full RESULT=PASS、END_HEAD_SHA=0769d9ee、END_TREE_STATE=CLEAN、MERGE_EVIDENCE_VALID=true（Writer Codex 42 報告、2026-09-11。log は `.local/codex-orders/reports/l1-full-pr50-0769d9ee.log`）
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〜6、dialog 重ね (A) の実機確認を含む）+ Ready 承認
 
@@ -366,7 +366,7 @@ Contract ID: SPEC-SUPPICK-RT-1
 
 ## Implementation Results
 
-Fill after implementation.
+Codex Writer（medium、2026-09-10〜11、発注書 36 → 36b → 36c で完走、是正 42）: 取引先の選択と追加を `SupplierPickerDialog` に統合し、`CreateSupplierDialog` を suppliers 配下の 1 本に集約、3 host（一括価格改定 filter / 商品登録 form / 入庫記録）を trigger + picker 経由に置換、取引先管理に検索 input と scroll 箱を追加。Final Review round 1 の是正で現在値の解決を `supplierCurrentLabel` 1 関数に集約（未解決時は「取引先を確認できません」）、picker の submit 防壁に理由 comment と test、取引先管理の外枠撤去、filter 行の trigger 幅固定。S7 で catalog ⑧ 小節 / DSR-01 / 4 function-design を同期。PR: https://github.com/kosei-w90607/inventory-system-desktop/pull/50
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
@@ -420,3 +420,11 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 - 是正（本 commit）: D5 に (a) 現在値解決の 1 関数化 `supplierCurrentLabel` + 未解決時「取引先を確認できません」〈trigger は isError でも有効、host alert は戻さない〉(b) filter host のみ `w-48` / D6 に取引先管理の外枠撤去 / **AC13**（oracle 15 本）/ Matrix C14・C15 + mutant 13・14。Writer は packet を編集しない
 - 再発注: 発注書 42（起点 = 本 Amendment 記録後の tip）。Freeze 後のため closure round 2 は AC13 + mutant 13・14 + P2〜P3 の closure 確認に限定
+
+### Final Review round 2 closure（2026-09-11、content `0769d9ee`、Sonnet + Opus 独立）
+
+- Codex 42（是正、起点 `95dbcbfe`、`d929028c` + `0769d9ee`、commands 57 / 手戻り 1、AC13 15 oracle 全 PASS、mutant 13・14 kill、L1 full PASS〈END_HEAD_SHA 一致〉）。申し送り = Matrix Negative Paths の旧 `leadingLabel` fallback 文言 → 本 commit で訂正
+- Sonnet: approve（新規 findings なし。AC13 15/15、mutant 13・14 kill を独立再現、accept 済み #1〜#9・#11 すべて解消、no-action #10・#12 は無変更、vitest 171 file / 1,500 test green、[T4] 26 維持、footprint 11 file = 発注書 42 の許可範囲）
+- Opus: approve（新規 P3 3 + 観察 1、いずれも Freeze 後の follow-up）。#13 = filter host の `w-48` trigger は `Button` に `truncate` が無く長い取引先名が枠外へはみ出す（旧 `SelectTrigger` は `line-clamp-1`。GA3 (b) の literal 側の穴）/ #14 = `PriceRevisionFilters.tsx` の `@/features` import だけ相対 import の後ろのまま（#9 の名指し外）/ #15 = catalog `:584` の追記は起動ボタンのみで、固定帯の未解決時表示（「取引先を確認できません」+「選択中」badge）が canonical 未規定 / 観察 = 商品修正で取引先設定済みの商品を開くと suppliers 取得中に trigger が「取引先を確認できません」を一瞬表示しうる（`useProductFormOptions` が `data ?? []`、`ProductForm` は `isLoading={false}` 固定）。#1 (iii) は 3 host 中 2（`ProductForm` は取得失敗時 trigger disabled + host Alert で代替、GA3 (a) の「disabled 条件は不変」に準拠）
+- Coordinator 裁定: #1 (iii) = closure 済み（`ProductForm` の host Alert が error 表示を担う設計、GA3 literal 準拠）/ **#13・#14・#15 = accept、owner L3 後の是正 round に同乗**（L3 で見える差分と 1 往復にまとめる。#13 = 3 host の trigger 中身を `<span className="truncate">` で包む / #14 = 1 行移動 / #15 = catalog `:584` に「固定帯も同じ」1 句）/ **観察 = owner L3 AC-L3-6 で「商品修正を取引先設定済みの商品で開いた瞬間」を観測項目に追加**、見えたら同 round で `ProductForm` に `isLoading` を配線
+- state-only（本 commit）: `implementing->local-verified->independent-review->human-confirm`、Reviewed Content HEAD `0769d9ee`。local-verified の証拠 = Codex 42 の L1 full（Writer 報告）、independent-review = Sonnet + Opus round 1〜2 + Codex 40（Freeze 可）。次 = owner L3（AC-L3-1〜6 + 追加観測 3 点）
