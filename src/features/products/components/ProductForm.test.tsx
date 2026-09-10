@@ -15,6 +15,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type PriceHistoryEntry } from "@/lib/bindings";
 
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
 vi.mock("@/lib/bindings", () => ({
   commands: {
     listPriceHistory: vi.fn().mockResolvedValue({ status: "ok", data: [] }),
@@ -508,7 +510,7 @@ describe("ProductForm (UI-01b)", () => {
   });
 });
 
-describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", () => {
+describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", () => {
   const mockListPriceHistory = vi.mocked(commands.listPriceHistory);
   const mockCreateSupplier = vi.mocked(commands.createSupplier);
   const mockListSuppliers = vi.mocked(commands.listSuppliers);
@@ -526,6 +528,7 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
     // vi.fn(setValues) を inline 生成すると test scope から参照できないため、
     // 実 state 更新（setValues）と spy 呼び出し（onValuesChange）を両立させる。
     const onValuesChange = vi.fn();
+    const onSubmit = vi.fn();
     function Harness() {
       const [values, setValues] = React.useState<ProductFormValues>({
         ...createProductFormDefaults,
@@ -548,12 +551,12 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
             setValues(next);
           }}
           onPosSyncTouchedChange={vi.fn()}
-          onSubmit={vi.fn()}
+          onSubmit={onSubmit}
           onCancel={vi.fn()}
         />
       );
     }
-    return { ...render(<Harness />), onValuesChange };
+    return { ...render(<Harness />), onValuesChange, onSubmit };
   }
 
   it("shows history only in edit mode and calls listPriceHistory with 10", async () => {
@@ -688,27 +691,22 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
     expect(mockListPriceHistory).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects whitespace supplier names without calling createSupplier", async () => {
+  it("UI-01b-D21: rejects whitespace supplier names inside the picker without calling createSupplier", async () => {
     const user = userEvent.setup();
     renderStateful("create");
-    // SC12/SC13/SC14 / DSR-01: 補助操作と画面の主操作を区別する。
-    expect(screen.getByRole("button", { name: "新しい取引先を追加" })).toHaveAttribute(
-      "data-variant",
-      "secondary",
-    );
+    await user.click(screen.getByLabelText("取引先"));
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "   ");
-    // SC12/SC13/SC14 / DSR-01: 補助操作と画面の主操作を区別する。
     expect(screen.getByRole("button", { name: "追加する" })).toHaveAttribute(
       "data-variant",
-      "secondary",
+      "default",
     );
     await user.click(screen.getByRole("button", { name: "追加する" }));
     expect(screen.getByRole("alert")).toHaveTextContent("取引先名を入力してください");
     expect(mockCreateSupplier).not.toHaveBeenCalled();
   });
 
-  it("trims, creates, refreshes suppliers, and selects the returned id", async () => {
+  it("UI-01b-D21: creates a supplier from the picker, refreshes options and auto-selects it", async () => {
     mockCreateSupplier.mockResolvedValue({
       status: "ok",
       data: { id: 44, name: "新規取引先", created_at: "2026-08-22T00:00:00" },
@@ -718,9 +716,14 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
       data: [{ id: 44, name: "新規取引先", created_at: "2026-08-22T00:00:00" }],
     });
     const user = userEvent.setup();
-    const { onValuesChange } = renderStateful("create");
+    const { onValuesChange, onSubmit } = renderStateful("create");
+    await user.click(screen.getByLabelText("取引先"));
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "  新規取引先  ");
+    expect(screen.getByRole("button", { name: "追加する" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
     await user.click(screen.getByRole("button", { name: "追加する" }));
     expect(mockCreateSupplier).toHaveBeenCalledWith("新規取引先");
     expect(mockListSuppliers).toHaveBeenCalledTimes(1);
@@ -737,9 +740,11 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
       expect(resolved).toEqual(expect.objectContaining({ supplierId: 44 }));
     });
     expect(screen.getByLabelText("取引先")).toHaveTextContent("新規取引先");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("preserves supplier input and other form values after create failure", async () => {
+  it("UI-01b-D21: preserves nested supplier input and other form values after create failure", async () => {
     mockCreateSupplier.mockResolvedValue({
       status: "error",
       error: {
@@ -751,6 +756,7 @@ describe("ProductForm price history and inline supplier (REQ-102 / REQ-106)", ()
     });
     const user = userEvent.setup();
     renderStateful("create");
+    await user.click(screen.getByLabelText("取引先"));
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "保持する取引先名");
     await user.click(screen.getByRole("button", { name: "追加する" }));
@@ -801,7 +807,7 @@ describe("ProductForm native input tokens（Lane 5 SC4e）", () => {
   });
 });
 
-describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、L8-D2, L8-D5）", () => {
+describe("ProductForm SC8a/SC8b/SC8c 部門・税率 select と取引先 picker（⑧、L8-D2, L8-D5）", () => {
   function renderForm(
     initialValues: ProductFormValues = createProductFormDefaults,
     overrides: Partial<React.ComponentProps<typeof ProductForm>> = {},
@@ -874,22 +880,26 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
     expect(trigger).toHaveTextContent("選択してください");
   });
 
-  it("SC8b: 取引先selectは「取引先なし」選択でsupplierIdがnullになる", async () => {
+  it("UI-01b-D7: selects a supplier through the picker and keeps 取引先なし as null", async () => {
     const user = userEvent.setup();
-    renderForm({ ...createProductFormDefaults, supplierId: 1 });
+    const { onValuesChange } = renderForm({ ...createProductFormDefaults, supplierId: 1 });
 
     const trigger = screen.getByLabelText("取引先");
-    expect(trigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
     expect(trigger.tagName).toBe("BUTTON");
     expect(trigger).toHaveTextContent("既存取引先");
 
     await user.click(trigger);
-    await user.click(screen.getByRole("option", { name: "取引先なし" }));
+    await user.click(screen.getByRole("button", { name: "取引先なし" }));
 
     expect(trigger).toHaveTextContent("取引先なし");
+    const update = onValuesChange.mock.lastCall?.[0] as
+      | ((prev: ProductFormValues) => ProductFormValues)
+      | undefined;
+    expect(update?.(createProductFormDefaults).supplierId).toBeNull();
   });
 
-  it("SC8b: 取引先selectで実在取引先を手動選択するとsupplierIdがnumberになる（round-trip、L8-D5）", async () => {
+  it("SC8b: 取引先pickerで実在取引先を手動選択するとsupplierIdがnumberになる（round-trip、L8-D5）", async () => {
     const user = userEvent.setup();
     const { onValuesChange } = renderForm(createProductFormDefaults, {
       suppliers: [
@@ -900,12 +910,10 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・取引先・税率 select（⑧、
 
     const trigger = screen.getByLabelText("取引先");
     await user.click(trigger);
-    await user.click(await screen.findByRole("option", { name: "新取引先" }));
+    await user.click(await screen.findByRole("button", { name: "新取引先" }));
 
     expect(trigger).toHaveTextContent("新取引先");
-    // auto-select 経路（:665-681）は Number(value) を経由しないため、手動選択経路
-    // （ProductForm.tsx:307 の update("supplierId", value === "none" ? null : Number(value))）
-    // の Number() 欠落 mutant はこの test でのみ kill できる。
+    // picker の手動選択も数値 ID をそのまま渡す。
     const lastCall = onValuesChange.mock.calls[onValuesChange.mock.calls.length - 1][0] as (
       prev: ProductFormValues,
     ) => ProductFormValues;

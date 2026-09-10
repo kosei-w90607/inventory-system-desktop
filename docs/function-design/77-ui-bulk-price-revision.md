@@ -146,6 +146,7 @@ CMD の署名と wire DTO の正本は [40-cmd-product.md](40-cmd-product.md) �
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #50 | 取引先ピッカー runtime を反映。選択・追加を dialog へ統合し、未設定商品を含める toggle はフィルタ列に維持。 |
 | 2026-09-10 | PR #49 取引先ピッカー design | 取引先選択を DSR-24 の取引先ピッカー dialog 経由へ改訂し、すべての取引先行とフィルタ列の toggle 残置を明記。 |
 | 2026-08-30 | PR #22 DSR-19 design sync | SPEC-PRV-D8 を追加し、行確定成功の完了 toast 契約を正本化（runtime は後続 R3）。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D3〜D7 / REQ-105 / REQ-106 の UI-14 契約を新設。 |

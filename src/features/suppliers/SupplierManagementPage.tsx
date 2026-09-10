@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { SupplierWithUsage } from "@/lib/bindings";
 import { CreateSupplierDialog } from "./components/CreateSupplierDialog";
 import { MergeSupplierDialog } from "./components/MergeSupplierDialog";
@@ -15,6 +17,8 @@ import { useSuppliersWithUsage } from "./hooks/useSuppliersWithUsage";
 
 export function SupplierManagementPage() {
   const suppliersQuery = useSuppliersWithUsage();
+  const [query, setQuery] = useState("");
+  const filtered = (suppliersQuery.data ?? []).filter((s) => s.name.includes(query.trim()));
   const [createOpen, setCreateOpen] = useState(false);
   const [mergeSource, setMergeSource] = useState<SupplierWithUsage | null>(null);
 
@@ -58,11 +62,30 @@ export function SupplierManagementPage() {
           action={addButton}
         />
       ) : suppliersQuery.data ? (
-        <SupplierUsageTable
-          suppliers={suppliersQuery.data}
-          onMerge={setMergeSource}
-          onStale={() => void suppliersQuery.refetch()}
-        />
+        <>
+          <div className="grid gap-1">
+            <Label htmlFor="supplier-management-search">取引先名で検索</Label>
+            <Input
+              id="supplier-management-search"
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <EmptyState title="該当する取引先はありません" />
+          ) : (
+            <div className="max-h-[50vh] overflow-auto">
+              <SupplierUsageTable
+                suppliers={filtered}
+                onMerge={setMergeSource}
+                onStale={() => void suppliersQuery.refetch()}
+              />
+            </div>
+          )}
+        </>
       ) : null}
 
       <CreateSupplierDialog

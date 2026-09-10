@@ -165,6 +165,7 @@ UI-15 の追加成功は自画面一覧の再取得だけを行い、既存 crea
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #50 | 取引先ピッカーと同型の名前検索・scroll 一覧を反映し、追加 dialog を canonical 実装へ統合。 |
 | 2026-09-10 | PR #49 取引先ピッカー design | SPEC-SUP-D2 に名前検索 input + scroll 一覧を追加し、テスト観点・画面構成を同期。Deferred から検索を解除。closure 是正で SPEC-SUP-D2 の DSR-24 参照を復元。 |
 | 2026-08-30 | PR #22 DSR-19 design sync | SPEC-SUP-D11 を追加し、取引先追加成功の完了 toast 契約を正本化（runtime は後続 R3）。 |
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §78.4 の `SupplierWithUsage` field 表記を実 wire（snake_case、`product_count` / `receiving_record_count`）に是正。 |

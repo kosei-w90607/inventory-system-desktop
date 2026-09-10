@@ -148,7 +148,7 @@ UI-01b は以下の generated binding を使用する。
 
 ### 取引先ピッカーからの追加（Create / Edit 共通、UI-01b-D21）
 
-- 取引先の選択は取引先ピッカー dialog（DSR-24）を経由し、『新しい取引先を追加』は picker dialog 内から既存 `CreateSupplierDialog`（`src/features/products/components/CreateSupplierDialog.tsx` を正、`onCreated: (supplier) => Promise<void>` 契約へ統合）を開く。現行の inline 常設パネル（`showSupplierInput` state、独立した 3 つ目の実装）は撤去し、trim・空文字拒否・同名衝突・失敗時入力保持の validation は `CreateSupplierDialog` に委譲する。
+- 取引先の選択は取引先ピッカー dialog（DSR-24）を経由し、『新しい取引先を追加』は picker dialog 内から既存 `CreateSupplierDialog`（`src/features/suppliers/components/CreateSupplierDialog.tsx` を正、`onCreated: (supplier) => Promise<void>` 契約へ統合）を開く。現行の inline 常設パネル（`showSupplierInput` state、独立した 3 つ目の実装）は撤去し、trim・空文字拒否・同名衝突・失敗時入力保持の validation は `CreateSupplierDialog` に委譲する。
 - 入力 name は trim し、空文字は field error として CMD を呼ばない
 - `commands.createSupplier(name)` 成功後は `listSuppliers` を再取得し、返された supplier を選択状態にできる
 - 追加失敗時は入力を保持して再試行できる。既存の商品 form 保存値を失わない
@@ -214,6 +214,7 @@ Error recovery:
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #50 | 取引先ピッカー runtime を反映し、CreateSupplierDialog の canonical path を suppliers 配下へ統合。 |
 | 2026-09-10 | PR #49 取引先ピッカー design | 取引先選択を DSR-24 経由へ改訂。独立した 3 つ目の inline 実装の撤去と CreateSupplierDialog への validation 委譲を明記。 |
 | 2026-08-22 | 価格改定支援 design-first | SPEC-PRV-D6 / D9 を昇格。UI-01b-D7 を inline 追加対応へ改訂し、UI-01b-D20（価格履歴）/ D21（取引先追加）を追加。 |
 | 2026-08-11 | JAN 専用欄正規化 design | UI-01b-D16〜D18 を追加（JAN 欄の全角→半角正規化 / 保存時 JAN-8/13 + チェックディジット validation / PLU 提案の正規化後評価と BIZ 二重実装契約）。§7.5 / §7.6 / §7.7 を整合。実装は後続 PR。 |
