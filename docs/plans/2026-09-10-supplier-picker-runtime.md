@@ -383,7 +383,7 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 ### Plan Review round 2（2026-09-10、`36ab65f`、Sonnet + Opus 独立）
 
-- Opus: reject（P1 1 / P2 3 / P3 4）。Sonnet: approve-with-P2（P2 3 / P3 1）。closure 13 件中 12 件 closed、#2（[T4]）のみ not closed
+- Opus: reject（P1 1 / P2 3 / P3 4）。Sonnet: approve-with-P2（P2 3 / P3 1）。closure 13 件中 12 件 closed、#2（[T4]）のみ not closed。両報告の全文は PR #50 body「Plan Review round 2」節に転記（`gh pr view 50 --json body`）
 - Coordinator 実証: [T4] の regex は `generate_traceability.rs:557` `\b(REQ-[0-9]{3}\b|UI-[0-9]{2}[a-z]?\b)` の file 単位 presence → `DSR-24` / `SPEC-*` は無効、`PriceRevisionFilters.test.tsx` は unreferenced として baseline 26 に計上 / 3 host の Label は `htmlFor` のみで `id` なし / SC4b の assertion は `ReceivingPage.test.tsx:1031-1032` / Impact lens「Writer 判断」が S3 の決定と矛盾（rg sweep 漏れ）
 - 裁定: **accept 12**（Opus P1-1 / P2-1〜3 / P3-1〜4、Sonnet P2-1〜3 / P3-1）/ no-action 0
 - 是正 = 本 commit（Writer Instructions の [T4] 機構訂正 + act 警告注記 / AC11 に [T4] oracle 2 行 / D5 に Label id 新規付与 + Contract Probe P3 / S5 `:1027-1032` + `async` 形 / Ledger footer 配分行 / Impact lens / Non-scope 衝突範囲 / Review Focus 3 項 / `:158-170` `:171-183` / Matrix〈C1 `data-variant`、C8/F5 host alert 行、SC4b 範囲〉/ round 1 記録の重複 ID と「3 項」）。round 3 = closure（Sonnet + Opus、diff 限定）
