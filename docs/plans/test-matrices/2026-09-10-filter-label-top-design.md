@@ -38,7 +38,7 @@ Risk: R2
 | C3 | F3 | awk + rg（負） | AC5 `awk ⑨ \| rg -c "\.tsx:[0-9]+"` = 0 | file:line が混入 |
 | C4 | F4 | rg | AC4 `バリエーション: セクション見出し` = 1 / `SectionHeader` ≥ 1 / `awk ① \| rg -c "min-w-0 flex-1"` ≥ 3（baseline 2） / AC6 `1 ページ 1 個の h1` = 1 + `PageHeader で描かない` ≥ 1 | variation 欠落、契約 class 欠落、1 h1 の文言が変わる |
 | C4 | F4（token） | awk + rg（負） | AC11 `awk ① \| rg -c "text-lg"` = 0 / `text-xl font-semibold` ≥ 1 / `説明を見出し行の下に置く形` ≥ 1 | h2 に h3 token（18px）を書く / 形態 A の除外が抜ける |
-| C1 | F1（D5） | rg | AC3 `3 択以上の SegmentedControl` ≥ 1 / `text-sm text-muted-foreground" htmlFor` ≥ 1 | SegmentedControl の 2 択 / 3 択以上の区別が無い / label の canonical class が無い |
+| C1 | F1（D5） | rg | AC3 `フィルタ toolbar 内の SegmentedControl` ≥ 1 / `font-normal` ≥ 1 / `commit 型は wrapper` = 1 / `text-sm text-muted-foreground" htmlFor` ≥ 1 | SegmentedControl の 2 択 / 3 択以上の区別が無い / label の canonical class が無い |
 | C5 | F5 | rg | AC3 後半（⑤ 節内 `awk '/^## ⑤/,/^## ⑥/' \| rg -c "可視 Label を持たない"` = 1） | ⑤ に記述なし |
 | C6 | F6 | fd + rg | AC7 | file 無し / README 未登録 / `<script` or `http` 混入 |
 | C7 | F7 | git + awk | AC8 更新履歴 1 行 / AC9 `git diff --name-only origin/main..HEAD -- src src-tauri docs/design-system/01-decision-rules.md docs/function-design` = 0 | 範囲外 diff |
