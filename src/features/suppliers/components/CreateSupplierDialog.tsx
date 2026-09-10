@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { commands } from "@/lib/bindings";
+import { commands, type Supplier } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 
@@ -21,10 +21,12 @@ export function CreateSupplierDialog({
   open,
   onOpenChange,
   onCreated,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: () => Promise<void>;
+  onCreated: (supplier: Supplier) => Promise<void>;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -39,11 +41,11 @@ export function CreateSupplierDialog({
     setPending(true);
     setError(null);
     try {
-      await unwrapResult(commands.createSupplier(trimmed), {
+      const supplier = await unwrapResult(commands.createSupplier(trimmed), {
         source: "commands",
         cmd: "create_supplier",
       });
-      await onCreated();
+      await onCreated(supplier);
       toast.success(`取引先「${trimmed}」を追加しました`);
       setName("");
       onOpenChange(false);
@@ -61,7 +63,7 @@ export function CreateSupplierDialog({
         if (!pending) onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <DialogHeader>
           <DialogTitle>新しい取引先を追加</DialogTitle>
           <DialogDescription>メーカー名またはブランド名を入力してください。</DialogDescription>
@@ -74,9 +76,9 @@ export function CreateSupplierDialog({
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="supplier-management-new-name">取引先名</Label>
+            <Label htmlFor="create-supplier-name">取引先名</Label>
             <Input
-              id="supplier-management-new-name"
+              id="create-supplier-name"
               value={name}
               disabled={pending}
               onChange={(event) => {

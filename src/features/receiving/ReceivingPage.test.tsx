@@ -54,6 +54,7 @@ vi.mock("sonner", () => ({
 vi.mock("@/lib/bindings", () => ({
   commands: {
     listSuppliers: vi.fn(),
+    createSupplier: vi.fn(),
     listReceivings: vi.fn(),
     searchProducts: vi.fn(),
     createReceiving: vi.fn(),
@@ -234,7 +235,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     expect(await screen.findByText("入庫を保存しました")).toBeInTheDocument();
   });
 
-  it("SC3: 取引先selectはSelect comboboxでsentinelがnullに写像され実在選択でnumberになる", async () => {
+  it("UI-02-D3: selects supplier via picker and allows 指定なし", async () => {
     const user = userEvent.setup();
     mockCreateReceiving.mockResolvedValue({
       status: "ok",
@@ -251,18 +252,18 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     await addSingleProduct(user);
 
     const supplierTrigger = await screen.findByLabelText("取引先");
-    expect(supplierTrigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(supplierTrigger).toHaveAttribute("aria-haspopup", "dialog");
     expect(supplierTrigger.tagName).toBe("BUTTON");
     expect(supplierTrigger).toHaveTextContent("指定なし");
 
     await user.click(supplierTrigger);
-    await user.click(await screen.findByRole("option", { name: "テスト商事" }));
+    await user.click(await screen.findByRole("button", { name: "テスト商事" }));
     expect(supplierTrigger).toHaveTextContent("テスト商事");
 
     // P2-1: 実在取引先から「指定なし」へ解除する round-trip を保存前に確認する
-    // （保存後は isFormLocked で select が disabled になるため、保存は 1 回だけ行う）。
+    // （保存後は isFormLocked で trigger が disabled になるため、保存は 1 回だけ行う）。
     await user.click(supplierTrigger);
-    await user.click(await screen.findByRole("option", { name: "指定なし" }));
+    await user.click(await screen.findByRole("button", { name: "指定なし" }));
     expect(supplierTrigger).toHaveTextContent("指定なし");
 
     await user.click(screen.getByRole("button", { name: "入庫を保存" }));
@@ -273,7 +274,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
     });
   });
 
-  it("SC3b: 取引先selectで実在取引先を選んだまま保存すると対応するnumberで保存される（P2-R2-2）", async () => {
+  it("SC3b: 取引先pickerで実在取引先を選んだまま保存すると対応するnumberで保存される（P2-R2-2）", async () => {
     const user = userEvent.setup();
     mockCreateReceiving.mockResolvedValue({
       status: "ok",
@@ -291,7 +292,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
 
     const supplierTrigger = await screen.findByLabelText("取引先");
     await user.click(supplierTrigger);
-    await user.click(await screen.findByRole("option", { name: "テスト商事" }));
+    await user.click(await screen.findByRole("button", { name: "テスト商事" }));
     expect(supplierTrigger).toHaveTextContent("テスト商事");
 
     await user.click(screen.getByRole("button", { name: "入庫を保存" }));
@@ -1024,7 +1025,7 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
 });
 
 describe("ReceivingPage native input tokens（Lane 5 SC4b）", () => {
-  it("SC4b: 取引先selectがbg-control-surfaceでbg-backgroundを持たない", async () => {
+  it("SC4b: 取引先triggerがbg-control-surfaceでbg-backgroundを持たない", async () => {
     renderWithClient(<ReceivingPage />);
 
     const supplier = await screen.findByLabelText("取引先");
@@ -1080,4 +1081,28 @@ it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義�
   );
   expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
   expect(dateTimeSource).not.toContain("formatCheckedAt");
+});
+
+it("UI-02-D3: refetches suppliers after creating one from the picker", async () => {
+  const created = makeMockSupplier({ id: 44, name: "追加取引先" });
+  vi.mocked(commands.createSupplier).mockResolvedValue({ status: "ok", data: created });
+  mockListSuppliers
+    .mockResolvedValueOnce({ status: "ok", data: [] })
+    .mockResolvedValue({ status: "ok", data: [created] });
+  const user = userEvent.setup();
+  renderWithClient(<ReceivingPage />);
+  const trigger = screen.getByLabelText("取引先");
+  await waitFor(() => {
+    expect(trigger).toBeEnabled();
+  });
+  await user.click(trigger);
+  await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
+  await user.type(screen.getByLabelText("取引先名"), created.name);
+  await user.click(screen.getByRole("button", { name: "追加する" }));
+  await waitFor(() => {
+    expect(trigger).toHaveTextContent(created.name);
+  });
+  expect(mockListSuppliers).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(mockCreateReceiving).not.toHaveBeenCalled();
 });

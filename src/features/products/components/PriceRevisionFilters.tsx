@@ -19,7 +19,7 @@ import type {
   PriceRevisionSearch,
   PriceRevisionSearchPatch,
 } from "../priceRevisionSearch";
-import { CreateSupplierDialog } from "./CreateSupplierDialog";
+import { SupplierPickerDialog } from "@/features/suppliers/components/SupplierPickerDialog";
 
 export function PriceRevisionFilters({
   search,
@@ -53,41 +53,29 @@ export function PriceRevisionFilters({
             onPatch({ q: value === "" ? undefined : value });
           }}
         />
-        {/* Gated Amendment 2（owner L3 run 1 AC-L3-3）: 取引先の label/Select/追加ボタンは
-            DOM 順序自体は既に隣接していたが、他項目と同じ flex-wrap + 一様 gap-3 のため
-            群化されず離れて見えた。表示件数ブロック（下記）と同型の共通 wrapper で 1 unit にし、
-            flex-wrap でも 3 要素が常に同じ行に留まるようにする。 */}
+        {/* GA2: Label と trigger を同じ wrapper に置き、折り返しでも群化を維持する。 */}
         <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground" htmlFor="price-revision-supplier">
+          <label
+            id="price-revision-supplier-label"
+            className="text-sm text-muted-foreground"
+            htmlFor="price-revision-supplier"
+          >
             取引先
           </label>
-          <Select
-            disabled={suppliersQuery.isLoading}
-            value={normalized.supplier === undefined ? "all" : String(normalized.supplier)}
-            onValueChange={(value) => {
-              onPatch({ supplier: value === "all" ? null : Number(value) });
-            }}
-          >
-            <SelectTrigger id="price-revision-supplier" className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">すべての取引先</SelectItem>
-              {(suppliersQuery.data ?? []).map((supplier) => (
-                <SelectItem key={supplier.id} value={String(supplier.id)}>
-                  {supplier.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
+            id="price-revision-supplier"
+            className="w-full justify-between bg-control-surface"
+            aria-haspopup="dialog"
+            aria-labelledby="price-revision-supplier-label price-revision-supplier"
+            disabled={suppliersQuery.isLoading}
             onClick={() => {
               setDialogOpen(true);
             }}
           >
-            新しい取引先を追加
+            {(suppliersQuery.data ?? []).find((s) => s.id === normalized.supplier)?.name ??
+              "すべての取引先"}
           </Button>
         </div>
         <DepartmentFilter
@@ -155,19 +143,7 @@ export function PriceRevisionFilters({
           取引先未設定の商品も含める
         </label>
       ) : null}
-      {suppliersQuery.isError ? (
-        <p role="alert" className="text-sm text-destructive">
-          取引先一覧を取得できませんでした。{" "}
-          <Button
-            type="button"
-            variant="link"
-            className="h-auto p-0"
-            onClick={() => void suppliersQuery.refetch()}
-          >
-            再試行
-          </Button>
-        </p>
-      ) : null}
+      {/* 取引先の取得失敗と再試行は picker 内へ集約する。 */}
       {departmentsQuery.isError ? (
         <p role="alert" className="text-sm text-destructive">
           部門一覧を取得できませんでした。{" "}
@@ -181,12 +157,20 @@ export function PriceRevisionFilters({
           </Button>
         </p>
       ) : null}
-      <CreateSupplierDialog
+      <SupplierPickerDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onCreated={async (supplier) => {
+        suppliers={suppliersQuery.data ?? []}
+        isLoading={suppliersQuery.isLoading}
+        isError={suppliersQuery.isError}
+        onRetry={() => void suppliersQuery.refetch()}
+        leadingLabel="すべての取引先"
+        selected={normalized.supplier ?? null}
+        onSelect={(id) => {
+          onPatch({ supplier: id });
+        }}
+        onCreated={async () => {
           await suppliersQuery.refetch();
-          onPatch({ supplier: supplier.id });
         }}
       />
     </div>

@@ -1,22 +1,16 @@
-// src/features/products/components/PriceRevisionFilters.test.tsx
-//
-// Gated Amendment 2（owner L3 run 1 AC-L3-3）: 一括価格改定で「新しい取引先を追加」ボタンが
-// 取引先 Select の隣から離れて見えた。DOM 順序自体は既に隣接していた（起票時実測）ため、
-// 原因は flex-wrap による折り返し分離および一様 gap-3 による群化の欠如。取引先の
-// label/Select/追加ボタンを表示件数ブロックと同型の共通 wrapper（flex items-center gap-2）
-// で 1 unit にすることで検証する。
-//
-// 画面非依存の shared UI primitive の class 契約 test（Lane 5 L5-D6 先例）につき REQ/UI ID は
-// 付けない。新規 test file 追加に伴い generate_traceability.rs の FE_UNREFERENCED_BASELINE を
-// 更新した（packet Registration/Generation Obligations 参照）。
-
+// GA2: 取引先 Label と picker trigger の群化・DOM 順序を維持する。
+// traceability の ID 未参照 file 分類は維持し、仕様は SPEC 接頭辞で示す。
 import type { UseQueryResult } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Department, Supplier } from "@/lib/bindings";
+import { commands, type Department, type Supplier } from "@/lib/bindings";
 import { PriceRevisionFilters } from "./PriceRevisionFilters";
 import type { NormalizedPriceRevisionSearch, PriceRevisionSearch } from "../priceRevisionSearch";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/bindings", () => ({ commands: { createSupplier: vi.fn() } }));
 
 function fakeQuery<T>(data: T): UseQueryResult<T> {
   return {
@@ -53,8 +47,8 @@ function renderFilters() {
   );
 }
 
-describe("GA2: 取引先 label/Select/追加ボタンの群化（Gated Amendment 2）", () => {
-  it("取引先の label・Select・追加ボタンが共通の flex wrapper 1 つを共有する", () => {
+describe("GA2: 取引先 label/triggerの群化（Gated Amendment 2）", () => {
+  it("取引先の label・triggerが共通の flex wrapper 1 つを共有する", () => {
     render(
       <PriceRevisionFilters
         search={search}
@@ -68,25 +62,87 @@ describe("GA2: 取引先 label/Select/追加ボタンの群化（Gated Amendment
     );
 
     const label = screen.getByText("取引先");
-    const select = screen.getByRole("combobox", { name: "取引先" });
-    const button = screen.getByRole("button", { name: "新しい取引先を追加" });
+    const button = screen.getByRole("button", { name: /取引先/ });
 
     const wrapper = label.closest(".flex.items-center.gap-2");
     expect(wrapper).not.toBeNull();
-    expect(wrapper).toContainElement(select);
     expect(wrapper).toContainElement(button);
   });
 
-  it("DOM 順序（取引先 Select → 追加ボタン → … → 表示件数 Select）は不変（回帰ガード）", () => {
+  it("DOM 順序（取引先 Label → trigger → 部門 → … → 表示件数 Select）は不変（回帰ガード）", () => {
     renderFilters();
 
-    const select = screen.getByRole("combobox", { name: "取引先" });
-    const button = screen.getByRole("button", { name: "新しい取引先を追加" });
+    const button = screen.getByRole("button", { name: /取引先/ });
     const perPageSelect = screen.getByRole("combobox", { name: "表示件数" });
 
-    expect(select.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const label = screen.getByText("取引先");
+    const department = screen.getByRole("combobox", { name: "部門" });
+    expect(label.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      button.compareDocumentPosition(department) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       button.compareDocumentPosition(perPageSelect) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+});
+
+function pickerFilters(isError = false) {
+  const onPatch = vi.fn();
+  const suppliersQuery = fakeQuery<Supplier[]>([
+    { id: 1, name: "テスト取引先", created_at: "2026-09-10" },
+  ]);
+  suppliersQuery.isError = isError;
+  render(
+    <PriceRevisionFilters
+      search={{ supplier: 1 }}
+      normalized={{ ...normalized, supplier: 1, includeUnassigned: true }}
+      suppliersQuery={suppliersQuery}
+      departmentsQuery={fakeQuery<Department[]>([])}
+      onPatch={onPatch}
+      perPage={50}
+      onPerPageChange={vi.fn()}
+    />,
+  );
+  return { onPatch, suppliersQuery, user: userEvent.setup() };
+}
+it("SPEC-PRV-D6: opens supplier picker from trigger and patches supplier on select", async () => {
+  const { user, onPatch, suppliersQuery } = pickerFilters();
+  const trigger = screen.getByRole("button", { name: /取引先/ });
+  expect(trigger).toHaveTextContent("テスト取引先");
+  await user.click(trigger);
+  await user.click(screen.getByRole("button", { name: "すべての取引先" }));
+  expect(onPatch).toHaveBeenCalledExactlyOnceWith({ supplier: null });
+  onPatch.mockClear();
+  await user.click(trigger);
+  await user.click(screen.getByRole("button", { name: "テスト取引先" }));
+  expect(onPatch).toHaveBeenCalledExactlyOnceWith({ supplier: 1 });
+  onPatch.mockClear();
+  vi.mocked(commands.createSupplier).mockResolvedValue({
+    status: "ok",
+    data: { id: 2, name: "新規", created_at: "2026-09-10" },
+  });
+  await user.click(trigger);
+  await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
+  await user.type(screen.getByLabelText("取引先名"), "新規");
+  await user.click(screen.getByRole("button", { name: "追加する" }));
+  await waitFor(() => {
+    expect(onPatch).toHaveBeenCalledExactlyOnceWith({ supplier: 2 });
+  });
+  expect(suppliersQuery.refetch).toHaveBeenCalledTimes(1);
+});
+it("SPEC-PRV-D3: shows 取引先未設定の商品も含める in the filter row, checked by default, when a supplier is selected", async () => {
+  const { user } = pickerFilters();
+  const toggle = screen.getByRole("checkbox", { name: "取引先未設定の商品も含める" });
+  expect(toggle).toBeChecked();
+  await user.click(screen.getByRole("button", { name: /取引先/ }));
+  expect(screen.getByRole("dialog")).not.toContainElement(toggle);
+});
+it("SPEC-PRV-D6: surfaces the fetch error inside the picker and retries through suppliersQuery.refetch", async () => {
+  const { user, suppliersQuery } = pickerFilters(true);
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: /取引先/ }));
+  expect(screen.getByRole("alert")).toHaveTextContent("取引先一覧を取得できませんでした");
+  await user.click(screen.getByRole("button", { name: "再試行" }));
+  expect(suppliersQuery.refetch).toHaveBeenCalledTimes(1);
 });

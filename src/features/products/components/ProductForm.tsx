@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { commands, type Department, type Supplier } from "@/lib/bindings";
-import { describeError } from "@/lib/describe-error";
+import { SupplierPickerDialog } from "@/features/suppliers/components/SupplierPickerDialog";
 import { unwrapResult } from "@/lib/invoke";
 import { suggestPluTarget } from "../lib/jan-code";
 import type { ProductFormValues, ProductTaxRate } from "../lib/product-form-request";
@@ -95,10 +95,7 @@ export function ProductForm({
 }: ProductFormProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [supplierOptions, setSupplierOptions] = useState(suppliers);
-  const [showSupplierInput, setShowSupplierInput] = useState(false);
-  const [supplierName, setSupplierName] = useState("");
-  const [supplierCreateError, setSupplierCreateError] = useState<string | null>(null);
-  const [isCreatingSupplier, setIsCreatingSupplier] = useState(false);
+  const [supplierPickerOpen, setSupplierPickerOpen] = useState(false);
 
   useEffect(() => {
     setSupplierOptions((current) => {
@@ -299,95 +296,46 @@ export function ProductForm({
             <FieldError message={errors.departmentId} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="supplier-id">取引先</Label>
-            <Select
-              value={values.supplierId == null ? "none" : String(values.supplierId)}
-              disabled={supplierWarning !== null}
-              onValueChange={(value) => {
-                update("supplierId", value === "none" ? null : Number(value));
-              }}
-            >
-              <SelectTrigger id="supplier-id" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">取引先なし</SelectItem>
-                {supplierOptions.map((supplier) => (
-                  <SelectItem key={supplier.id} value={String(supplier.id)}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label id="supplier-label" htmlFor="supplier-id">
+              取引先
+            </Label>
             <Button
               type="button"
-              variant="secondary"
-              size="sm"
+              variant="outline"
+              id="supplier-id"
+              className="w-full justify-between bg-control-surface"
+              aria-haspopup="dialog"
+              aria-labelledby="supplier-label supplier-id"
+              disabled={supplierWarning !== null}
               onClick={() => {
-                setShowSupplierInput((shown) => !shown);
-                setSupplierCreateError(null);
+                setSupplierPickerOpen(true);
               }}
             >
-              新しい取引先を追加
+              {supplierOptions.find((s) => s.id === values.supplierId)?.name ?? "取引先なし"}
             </Button>
-            {showSupplierInput ? (
-              <div className="space-y-2 rounded-md border border-input p-3">
-                <Label htmlFor="new-supplier-name">取引先名</Label>
-                <Input
-                  id="new-supplier-name"
-                  value={supplierName}
-                  onChange={(event) => {
-                    setSupplierName(event.target.value);
-                    setSupplierCreateError(null);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.preventDefault();
-                  }}
-                />
-                {supplierCreateError !== null ? (
-                  <p className="text-sm text-destructive" role="alert">
-                    {supplierCreateError}
-                  </p>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={isCreatingSupplier}
-                  onClick={() => {
-                    const trimmed = supplierName.trim();
-                    if (trimmed === "") {
-                      setSupplierCreateError("取引先名を入力してください");
-                      return;
-                    }
-                    setIsCreatingSupplier(true);
-                    setSupplierCreateError(null);
-                    void (async () => {
-                      try {
-                        const created = await unwrapResult(commands.createSupplier(trimmed), {
-                          source: "commands",
-                          cmd: "create_supplier",
-                        });
-                        const refreshed = await unwrapResult(commands.listSuppliers(), {
-                          source: "commands",
-                          cmd: "list_suppliers",
-                        });
-                        setSupplierOptions(refreshed);
-                        update("supplierId", created.id);
-                        setSupplierName("");
-                        setShowSupplierInput(false);
-                      } catch (createError) {
-                        setSupplierCreateError(describeError(createError));
-                      } finally {
-                        setIsCreatingSupplier(false);
-                      }
-                    })();
-                  }}
-                >
-                  追加する
-                </Button>
-              </div>
-            ) : null}
+            <SupplierPickerDialog
+              open={supplierPickerOpen}
+              onOpenChange={setSupplierPickerOpen}
+              suppliers={supplierOptions}
+              isLoading={false}
+              isError={supplierWarning !== null}
+              leadingLabel="取引先なし"
+              selected={values.supplierId ?? null}
+              onRetry={() => {
+                /* 取得失敗中は host の trigger が disabled のため到達しない。 */
+              }}
+              onSelect={(id) => {
+                update("supplierId", id);
+              }}
+              onCreated={async () => {
+                // QueryClient を持たない form のため、既存の local 候補一覧を再取得する。
+                const refreshed = await unwrapResult(commands.listSuppliers(), {
+                  source: "commands",
+                  cmd: "list_suppliers",
+                });
+                setSupplierOptions(refreshed);
+              }}
+            />
           </div>
         </div>
       </FormSection>

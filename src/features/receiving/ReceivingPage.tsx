@@ -13,13 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SupplierPickerDialog } from "@/features/suppliers/components/SupplierPickerDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -128,6 +122,7 @@ export function ReceivingPage() {
   const [idempotencyKey, setIdempotencyKey] = useState(createReceivingIdempotencyKey);
   const [failedSignature, setFailedSignature] = useState<string | null>(null);
   const [result, setResult] = useState<ReceivingCreateResult | null>(null);
+  const [supplierPickerOpen, setSupplierPickerOpen] = useState(false);
   const [isCostDiffDialogOpen, setIsCostDiffDialogOpen] = useState(false);
 
   const supplierQuery = useQuery({
@@ -393,29 +388,39 @@ export function ReceivingPage() {
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="receiving-supplier">取引先</Label>
-            <Select
-              value={values.supplierId === null ? "none" : String(values.supplierId)}
+            <Label id="receiving-supplier-label" htmlFor="receiving-supplier">
+              取引先
+            </Label>
+            <Button
+              type="button"
+              variant="outline"
+              id="receiving-supplier"
+              className="w-full justify-between bg-control-surface"
+              aria-haspopup="dialog"
+              aria-labelledby="receiving-supplier-label receiving-supplier"
               disabled={isFormLocked || supplierQuery.isLoading}
-              onValueChange={(value) => {
-                updateValues((prev) => ({
-                  ...prev,
-                  supplierId: value === "none" ? null : Number(value),
-                }));
+              onClick={() => {
+                setSupplierPickerOpen(true);
               }}
             >
-              <SelectTrigger id="receiving-supplier" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">指定なし</SelectItem>
-                {supplierOptions.map((supplier) => (
-                  <SelectItem key={supplier.id} value={String(supplier.id)}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {supplierOptions.find((s) => s.id === values.supplierId)?.name ?? "指定なし"}
+            </Button>
+            <SupplierPickerDialog
+              open={supplierPickerOpen}
+              onOpenChange={setSupplierPickerOpen}
+              suppliers={supplierOptions}
+              isLoading={supplierQuery.isLoading}
+              isError={supplierQuery.isError}
+              onRetry={() => void supplierQuery.refetch()}
+              leadingLabel="指定なし"
+              selected={values.supplierId}
+              onSelect={(id) => {
+                updateValues((prev) => ({ ...prev, supplierId: id }));
+              }}
+              onCreated={async () => {
+                await supplierQuery.refetch();
+              }}
+            />
           </div>
         </div>
 

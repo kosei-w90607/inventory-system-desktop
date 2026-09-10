@@ -445,3 +445,23 @@ it("⑮ SC5: 取引先の説明をヘッダー内へまとめる", () => {
       .closest("header"),
   ).not.toBeNull();
 });
+
+it("SPEC-SUP-D2: filters suppliers by name and shows no-match message", async () => {
+  const user = userEvent.setup();
+  renderPage();
+  const search = await screen.findByRole("searchbox", { name: "取引先名で検索" });
+  await user.type(search, " あ ");
+  expect(screen.getByTestId("supplier-row-1")).toBeInTheDocument();
+  expect(screen.queryByTestId("supplier-row-2")).not.toBeInTheDocument();
+  await user.clear(search);
+  await user.type(search, "不一致");
+  expect(screen.getByText("該当する取引先はありません")).toBeInTheDocument();
+  expect(screen.queryByText("取引先はまだ登録されていません")).not.toBeInTheDocument();
+  await user.clear(search);
+  expect(screen.getByTestId("supplier-row-2")).toBeInTheDocument();
+  expect(screen.getByRole("table").parentElement?.parentElement?.parentElement).toHaveClass(
+    "max-h-[50vh]",
+    "overflow-auto",
+  );
+  expect(mockList).toHaveBeenCalledTimes(1);
+});
