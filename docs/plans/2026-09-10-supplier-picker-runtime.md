@@ -10,7 +10,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: b49c7b5b
-- Amendments: 5aaed903
+- Amendments: 5aaed903 2d00ba8e
 - Coordinator: Fable 5.1
 - Writer: Codex
 - Plan Reviewer: Sonnet + Opus
