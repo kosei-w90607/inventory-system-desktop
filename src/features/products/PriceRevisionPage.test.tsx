@@ -788,7 +788,7 @@ describe("PriceRevisionPage Lane 4 S1f/S3f/S4b: frame color, top summary, per-pa
 });
 
 describe("PriceRevisionPage native input tokens（Lane 5 SC4i）", () => {
-  it("SC4i: 取引先selectがborder-inputとbg-control-surfaceの両方を持つ", async () => {
+  it("SC4i: 取引先triggerがborder-inputとbg-control-surfaceの両方を持つ", async () => {
     renderStateful({});
     await screen.findByText("P-001");
 

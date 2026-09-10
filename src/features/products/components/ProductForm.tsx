@@ -28,8 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { commands, type Department, type Supplier } from "@/lib/bindings";
-import { SupplierPickerDialog } from "@/features/suppliers/components/SupplierPickerDialog";
 import { unwrapResult } from "@/lib/invoke";
+import {
+  SupplierPickerDialog,
+  supplierCurrentLabel,
+} from "@/features/suppliers/components/SupplierPickerDialog";
 import { suggestPluTarget } from "../lib/jan-code";
 import type { ProductFormValues, ProductTaxRate } from "../lib/product-form-request";
 import { DiscontinueConfirmDialog } from "./DiscontinueConfirmDialog";
@@ -311,7 +314,7 @@ export function ProductForm({
                 setSupplierPickerOpen(true);
               }}
             >
-              {supplierOptions.find((s) => s.id === values.supplierId)?.name ?? "取引先なし"}
+              {supplierCurrentLabel(supplierOptions, values.supplierId ?? null, "取引先なし")}
             </Button>
             <SupplierPickerDialog
               open={supplierPickerOpen}

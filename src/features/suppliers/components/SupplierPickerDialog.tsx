@@ -18,6 +18,16 @@ import { Label } from "@/components/ui/label";
 import type { Supplier } from "@/lib/bindings";
 import { CreateSupplierDialog } from "./CreateSupplierDialog";
 
+export function supplierCurrentLabel(
+  suppliers: Supplier[],
+  selected: number | null,
+  leadingLabel: string,
+): string {
+  return selected === null
+    ? leadingLabel
+    : (suppliers.find((s) => s.id === selected)?.name ?? "取引先を確認できません");
+}
+
 export function SupplierPickerDialog({
   open,
   onOpenChange,
@@ -49,7 +59,7 @@ export function SupplierPickerDialog({
   const filtered = [...suppliers]
     .sort((a, b) => a.name.localeCompare(b.name, "ja"))
     .filter((s) => s.name.includes(query.trim()));
-  const currentName = suppliers.find((s) => s.id === selected)?.name ?? leadingLabel;
+  const currentName = supplierCurrentLabel(suppliers, selected, leadingLabel);
   const select = (id: number | null) => {
     onSelect(id);
     onOpenChange(false);
@@ -59,6 +69,8 @@ export function SupplierPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="flex max-h-[90vh] flex-col"
+        // 内側 CreateSupplierDialog の submit が React portal 経由で host の <form>
+        // (ProductForm) へ bubble し、商品保存を誤発火するのを止める。
         onSubmit={(event) => {
           event.stopPropagation();
         }}

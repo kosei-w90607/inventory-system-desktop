@@ -19,7 +19,10 @@ import type {
   PriceRevisionSearch,
   PriceRevisionSearchPatch,
 } from "../priceRevisionSearch";
-import { SupplierPickerDialog } from "@/features/suppliers/components/SupplierPickerDialog";
+import {
+  SupplierPickerDialog,
+  supplierCurrentLabel,
+} from "@/features/suppliers/components/SupplierPickerDialog";
 
 export function PriceRevisionFilters({
   search,
@@ -53,7 +56,8 @@ export function PriceRevisionFilters({
             onPatch({ q: value === "" ? undefined : value });
           }}
         />
-        {/* GA2: Label と trigger を同じ wrapper に置き、折り返しでも群化を維持する。 */}
+        {/* GA2: owner L3 run 1 AC-L3-3 で flex-wrap の折り返しにより Label と trigger が分離し、
+            一様 gap-3 では群化が欠けたため、同じ wrapper に置いて群化を維持する。 */}
         <div className="flex items-center gap-2">
           <label
             id="price-revision-supplier-label"
@@ -66,7 +70,7 @@ export function PriceRevisionFilters({
             type="button"
             variant="outline"
             id="price-revision-supplier"
-            className="w-full justify-between bg-control-surface"
+            className="w-48 justify-between bg-control-surface"
             aria-haspopup="dialog"
             aria-labelledby="price-revision-supplier-label price-revision-supplier"
             disabled={suppliersQuery.isLoading}
@@ -74,8 +78,11 @@ export function PriceRevisionFilters({
               setDialogOpen(true);
             }}
           >
-            {(suppliersQuery.data ?? []).find((s) => s.id === normalized.supplier)?.name ??
-              "すべての取引先"}
+            {supplierCurrentLabel(
+              suppliersQuery.data ?? [],
+              normalized.supplier ?? null,
+              "すべての取引先",
+            )}
           </Button>
         </div>
         <DepartmentFilter

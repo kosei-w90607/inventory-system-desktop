@@ -459,7 +459,7 @@ it("SPEC-SUP-D2: filters suppliers by name and shows no-match message", async ()
   expect(screen.queryByText("取引先はまだ登録されていません")).not.toBeInTheDocument();
   await user.clear(search);
   expect(screen.getByTestId("supplier-row-2")).toBeInTheDocument();
-  expect(screen.getByRole("table").parentElement?.parentElement?.parentElement).toHaveClass(
+  expect(screen.getByRole("table").closest(".overflow-auto")).toHaveClass(
     "max-h-[50vh]",
     "overflow-auto",
   );

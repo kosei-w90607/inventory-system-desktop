@@ -77,7 +77,7 @@ export function SupplierManagementPage() {
           {filtered.length === 0 ? (
             <EmptyState title="該当する取引先はありません" />
           ) : (
-            <div className="max-h-[50vh] overflow-auto rounded-md border">
+            <div className="max-h-[50vh] overflow-auto">
               <SupplierUsageTable
                 suppliers={filtered}
                 onMerge={setMergeSource}

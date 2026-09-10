@@ -528,6 +528,7 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
     // vi.fn(setValues) を inline 生成すると test scope から参照できないため、
     // 実 state 更新（setValues）と spy 呼び出し（onValuesChange）を両立させる。
     const onValuesChange = vi.fn();
+    const onSubmit = vi.fn();
     function Harness() {
       const [values, setValues] = React.useState<ProductFormValues>({
         ...createProductFormDefaults,
@@ -550,12 +551,12 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
             setValues(next);
           }}
           onPosSyncTouchedChange={vi.fn()}
-          onSubmit={vi.fn()}
+          onSubmit={onSubmit}
           onCancel={vi.fn()}
         />
       );
     }
-    return { ...render(<Harness />), onValuesChange };
+    return { ...render(<Harness />), onValuesChange, onSubmit };
   }
 
   it("shows history only in edit mode and calls listPriceHistory with 10", async () => {
@@ -696,6 +697,10 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
     await user.click(screen.getByLabelText("取引先"));
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "   ");
+    expect(screen.getByRole("button", { name: "追加する" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
     await user.click(screen.getByRole("button", { name: "追加する" }));
     expect(screen.getByRole("alert")).toHaveTextContent("取引先名を入力してください");
     expect(mockCreateSupplier).not.toHaveBeenCalled();
@@ -711,10 +716,14 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
       data: [{ id: 44, name: "新規取引先", created_at: "2026-08-22T00:00:00" }],
     });
     const user = userEvent.setup();
-    const { onValuesChange } = renderStateful("create");
+    const { onValuesChange, onSubmit } = renderStateful("create");
     await user.click(screen.getByLabelText("取引先"));
     await user.click(screen.getByRole("button", { name: "新しい取引先を追加" }));
     await user.type(screen.getByLabelText("取引先名"), "  新規取引先  ");
+    expect(screen.getByRole("button", { name: "追加する" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
     await user.click(screen.getByRole("button", { name: "追加する" }));
     expect(mockCreateSupplier).toHaveBeenCalledWith("新規取引先");
     expect(mockListSuppliers).toHaveBeenCalledTimes(1);
@@ -732,6 +741,7 @@ describe("ProductForm price history and supplier picker (REQ-102 / REQ-106)", ()
     });
     expect(screen.getByLabelText("取引先")).toHaveTextContent("新規取引先");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("UI-01b-D21: preserves nested supplier input and other form values after create failure", async () => {

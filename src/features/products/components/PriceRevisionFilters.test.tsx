@@ -1,5 +1,6 @@
 // GA2: 取引先 Label と picker trigger の群化・DOM 順序を維持する。
-// traceability の ID 未参照 file 分類は維持し、仕様は SPEC 接頭辞で示す。
+// REQ/UI ID を付けない既存 test file として FE_UNREFERENCED_BASELINE に計上済み。
+// この分類を維持し、仕様は SPEC 接頭辞で示す。
 import type { UseQueryResult } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -142,6 +143,34 @@ it("SPEC-PRV-D6: surfaces the fetch error inside the picker and retries through 
   const { user, suppliersQuery } = pickerFilters(true);
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: /取引先/ }));
+  expect(screen.getByRole("alert")).toHaveTextContent("取引先一覧を取得できませんでした");
+  await user.click(screen.getByRole("button", { name: "再試行" }));
+  expect(suppliersQuery.refetch).toHaveBeenCalledTimes(1);
+});
+
+it("SPEC-PRV-D6: shows an unresolved trigger for a selected supplier when fetching fails without data and opens retry", async () => {
+  const user = userEvent.setup();
+  const suppliersQuery = {
+    ...fakeQuery<Supplier[]>([]),
+    data: undefined,
+    isError: true,
+  } as UseQueryResult<Supplier[]>;
+  render(
+    <PriceRevisionFilters
+      search={{ supplier: 1 }}
+      normalized={{ ...normalized, supplier: 1, includeUnassigned: true }}
+      suppliersQuery={suppliersQuery}
+      departmentsQuery={fakeQuery<Department[]>([])}
+      onPatch={vi.fn()}
+      perPage={50}
+      onPerPageChange={vi.fn()}
+    />,
+  );
+  const trigger = screen.getByRole("button", { name: /取引先/ });
+  expect(trigger).toHaveTextContent("取引先を確認できません");
+  expect(trigger).toBeEnabled();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  await user.click(trigger);
   expect(screen.getByRole("alert")).toHaveTextContent("取引先一覧を取得できませんでした");
   await user.click(screen.getByRole("button", { name: "再試行" }));
   expect(suppliersQuery.refetch).toHaveBeenCalledTimes(1);

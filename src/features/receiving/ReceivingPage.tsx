@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SupplierPickerDialog } from "@/features/suppliers/components/SupplierPickerDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -38,6 +37,10 @@ import { invalidateByContract, invalidationContract } from "@/lib/invalidation-c
 import { unwrapResult } from "@/lib/invoke";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
+import {
+  SupplierPickerDialog,
+  supplierCurrentLabel,
+} from "@/features/suppliers/components/SupplierPickerDialog";
 import {
   addProductToRows,
   removeReceivingRow,
@@ -403,7 +406,7 @@ export function ReceivingPage() {
                 setSupplierPickerOpen(true);
               }}
             >
-              {supplierOptions.find((s) => s.id === values.supplierId)?.name ?? "指定なし"}
+              {supplierCurrentLabel(supplierOptions, values.supplierId ?? null, "指定なし")}
             </Button>
             <SupplierPickerDialog
               open={supplierPickerOpen}
