@@ -94,7 +94,7 @@ not applicable（docs-only）。
 
 ## Mutation-style Adequacy Questions
 
-docs-only のため runtime mutant なし。closure（Sonnet + Opus）は AC1〜AC9 の oracle を再実行し、加えて「D1 の段落から例外 1 種を消した draft」を仮想 mutant として AC3 が落ちることを確認する。
+docs-only のため runtime mutant なし。closure（Sonnet + Opus）は AC1〜AC11 の oracle を再実行し、加えて「D1 の段落から例外 1 種を消した draft」を仮想 mutant として AC3 が落ちることを確認する。
 
 ## Residual Test Gaps
 
