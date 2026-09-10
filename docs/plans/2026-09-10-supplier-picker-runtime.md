@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: b49c7b5b
@@ -15,8 +15,8 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Codex
 - Plan Reviewer: Sonnet + Opus
 - Final Reviewer: Sonnet + Opus + Codex
-- Reviewed Content HEAD: pending
-- Final Exact-HEAD Evidence: PR body
+- Reviewed Content HEAD: be71a857
+- Final Exact-HEAD Evidence: L1 full RESULT=PASS、END_HEAD_SHA=be71a857、END_TREE_STATE=CLEAN、MERGE_EVIDENCE_VALID=true（Writer Codex 44 報告、2026-09-11。log は `.local/codex-orders/reports/l1-full-pr50-be71a857.log`）
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〜6、dialog 重ね (A) の実機確認を含む）+ Ready 承認 → **L3 run 1（2026-09-11、content `0769d9ee`）**: AC-L3-1 / 2 / 3 / 5 PASS（5 の「Tab が内側から漏れない」は owner に不明瞭だったが PASS）、AC-L3-4 = 検索 PASS、0 件文言と箱内 scroll は件数準備の負担から**自動 test で担保する選択**（owner 提示の二択、Coordinator 推奨 = `SPEC-SUP-D2` test と `closest(".overflow-auto")` assertion が正本）、AC-L3-6 = 是正要（trigger に dialog を想起させる icon が無く「ボタンなのか何なのか分からない」/ 固定帯は下線のみで見やすさに欠ける・左端に帯・「選択中」badge はしつこい）。追加観測: 長い取引先名は「めちゃはみ出してる」（#13 実証）/ 商品修正の取得中フラッシュは見えない（no-action）/ 削除済み id の帯は再現不要（自動 test C14 が正本）。→ Gated Amendment 4 → 是正 → L3 run 2 は AC-L3-1（はみ出し）/ AC-L3-6（icon・帯）のみ
 
@@ -435,3 +435,11 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - owner L3 run 1（content `0769d9ee`）: AC-L3-1 / 2 / 3 / 5 PASS、AC-L3-4 は検索 PASS + 0 件文言・箱内 scroll を自動 test 担保に切替（owner 選択）、AC-L3-6 は是正要。原文要旨: 「現在の選択セクションが微妙に見える。左端に帯を付けるか？選択中バッジを帯にも付けるのはしつこくないか？下線だけで上左右はクリーム色の枠だけなのは見やすさに欠ける」「取引先のやつパッと見『指定なし』としか書いてなくてボタンなのか何なのか分からない、dialog が開くことを想起させるアイコンを用意すべき」「（長い取引先名は）めちゃはみ出してる」「（取得中フラッシュは）見えない」
 - 是正（本 commit）: D5 に (c) `ChevronDown` + (d) `truncate` / D7 に帯の全周枠 + 左バー + badge 撤去 / Human Gate 欄に run 1 記録 / AC-L3-4・6 追記 / **AC15**（oracle 9 本）/ Matrix C16 + mutant 15・16。Final Review round 2 Opus #13（truncate）/ #14（import 順）/ #15（帯の未解決時 = badge 撤去で解消）を同乗。取得中フラッシュ（Opus 観察）は owner が見えず no-action
 - 再発注: 発注書 44（起点 = state-backtrack 後の tip）→ closure round 3（Sonnet + Opus、AC15 + mutant 15・16 + 回帰に限定）→ state-only → owner L3 run 2（AC-L3-1 はみ出し / AC-L3-6 icon・帯のみ）→ Ready
+
+### Final Review round 3 closure（2026-09-11、content `be71a857`、Sonnet + Opus 独立）
+
+- Codex 44（是正 r2、起点 `ccedd98c`、`ded1a787` + origin/main 単段 merge `be71a857`〈⑳ 完了分、runtime 差分 0〉、commands 74 / 手戻り 2。AC15 9/9、mutant 15・16 kill、L1 full PASS〈END_HEAD_SHA 一致〉。申し送り = 帯の class 順で `prettier-ignore` / merge 直後の初回 full が CI 自己テストの時刻逆行で FAIL → 別 worktree で PASS）
+- Sonnet: approve（新規なし。AC15 9/9 独立再現、mutant 15・16 kill〈16 は帯 test 3 本〉、owner 所感の反映 7 項目 PASS、vitest 171 file / 1,501 test green、[T4] 維持、footprint 7 file、merge 混入なし）
+- Opus: approve（新規 P3 5、Freeze 後の follow-up）。#17 = catalog `:584` 帯の句「高さ・背景・境界で差別化」が背景・左バー共有と矛盾 / #18 = `prettier-ignore` の理由 comment が実態（AC15 oracle の class 隣接）とずれ、repo 初の ignore / #19 = chevron の色が `SelectTrigger`（`text-muted-foreground`）と違い `currentColor` / #20 = 帯の未解決時表示が catalog 未規定（#15 残余）/ #21 = filter 既定状態（未選択）で帯と先頭行「すべての取引先」が同じ背景 + 左バーで 2 段続く。A(i) `ChevronDown` は妥当（代案 `Search` / `Ellipsis` は劣る）、(ii) `truncate` で `min-w-0` 不要、(iv) badge 撤去後の accessible な意味は十分。mockup-f との差分 8 点を列挙（Backlog 用）
+- Coordinator 裁定: #17 / #18 / #20 = accept、**owner L3 run 2 の是正 round に同乗**（#18 = AC15 oracle を順序非依存〈`border-l-4` / `border-l-primary` 各 rg〉に改め `prettier-ignore` を外す）/ #19・#21 = **run 2 で owner が判定**（#21 の事前案 = 帯の背景を外す / 帯の左バーを外す / 先頭行が現在行のとき帯を出さない、の 3 択）/ C16 test が filter host のみなのは AC15 の `rg -l` oracle で足りると判断 / mockup-f 差分 8 点は closeout の Backlog へ
+- state-only（本 commit）: `implementing->local-verified->independent-review->human-confirm`、Reviewed Content HEAD `be71a857`。local-verified = Codex 44 の L1 full、independent-review = round 3 closure。次 = owner L3 run 2（AC-L3-1 はみ出し / AC-L3-6 icon・帯 + 観察 = 既定状態の帯と先頭行、chevron の濃さ、badge 撤去で現在の選択が分かりにくくないか）
