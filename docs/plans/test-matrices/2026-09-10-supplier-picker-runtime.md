@@ -21,6 +21,8 @@ Risk: R3
 - C11 ReceivingPage: 「指定なし」、未指定保存可（UI-02-D3）、追加後 `refetch`
 - C12 SupplierManagementPage: 検索で絞る / data 非空 & 0 件 → 「該当する取引先はありません」/ data 空 → 既存文言 / 追加 flow 不変（SPEC-SUP-D2 / D9）
 - C13 docs 同期 literal（AC10）
+- C14 現在値の未解決時文言（Gated Amendment 3、AC13）: `selected !== null` で一覧に無い id は「取引先を確認できません」、未指定文言で断定しない
+- C15 内側 dialog の form submit が host form へ伝播しない（Gated Amendment 3、AC13）: picker の `onSubmit` stopPropagation が防壁
 
 ## Failure Modes
 
@@ -150,6 +152,8 @@ closure（Sonnet + Opus）で最低限注入する mutant。**各 mutant は `Su
 10. 固定帯の小見出し「現在の選択」を消す → C1 test が落ちるか
 11. `ProductForm` の `onCreated` から `commands.listSuppliers()` 再取得を削る → C10 test（`listSuppliers` 再呼出 assertion）が落ちるか
 12. 固定帯を scroll 箱の内側へ移す → C1 test の `not.toContainElement` が落ちるか
+13. （Gated Amendment 3）picker `DialogContent` の `onSubmit` stopPropagation を削る → C15 test（`ProductForm.test` の追加成功 flow で `onSubmit` 不呼出 assertion）が落ちるか
+14. （Gated Amendment 3）`supplierCurrentLabel` の未解決分岐を `?? leadingLabel` に戻す → C14 test（picker test + `PriceRevisionFilters.test` の isError × 選択済み）が落ちるか
 
 ## Residual Test Gaps
 
