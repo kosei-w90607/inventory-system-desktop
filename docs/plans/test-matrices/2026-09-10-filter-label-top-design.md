@@ -26,7 +26,7 @@ Risk: R2
 - F5 SegmentedControl の扱いが無記載で runtime lane が Label を足す / 足さないを再導出する
 - F6 mockup-g が JS / CDN を含む、README 未登録
 - F7 DSR-01 や 04-backbone を巻き込んで書き換える / src に diff
-- F8 Human Gate 前に「component 化する」と確定文で書く
+- F8 Human Gate (1)(3) の回答前に確定文で書く / 不採用の component 化を「採用する」「新設する」と書く（oracle は `component 化を採用|SectionHeader を新設する` = 0）
 
 ## Test Matrix
 
