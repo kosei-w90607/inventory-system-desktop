@@ -100,7 +100,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ### 規範の現在地
 
-- catalog ⑨ `:636`「live 型は `div.grid.gap-1` 配下に可視 `Label` を上置きし `Input` を続ける。呼び出し側 toolbar は `items-end`」— **live SearchBar 限定**。`DepartmentFilter` の構造 block（`:620-630`）は横並びのまま。⑨ に page の file:line 引用は 0（`awk '/^## ⑨/,/^## ⑩/' | rg -c "\.tsx:[0-9]+"` = 0、この状態を維持する）
+- catalog ⑨ `:636`「live 型は `div.grid.gap-1` 配下に可視 `Label` を上置きし `Input` を続ける。呼び出し側 toolbar は `items-end`」— **live SearchBar 限定**。`DepartmentFilter` の call-site block（`:625-633`、`:618-623` は live SearchBar）は横並びのまま。⑨ に page の file:line 引用は 0（`awk '/^## ⑨/,/^## ⑩/' | rg -c "\.tsx:[0-9]+"` = 0、この状態を維持する）
 - catalog ⑤ SegmentedControl `:266-` に Label 規定なし
 - memory / Backlog の「DSR-01 `:21`」は誤引用（DSR-01 は 1 画面 1 primary の規則で Label 配置の規定なし）
 - 04-backbone 原則 7 `:23`「live + 検索ボタン併記」は catalog ⑨「ボタンなし」と drift（backbone 自身が「batch 1〜2 で改める」と記述、本 lane 非目的）
