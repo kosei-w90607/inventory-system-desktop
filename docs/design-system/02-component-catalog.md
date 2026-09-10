@@ -267,7 +267,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 ## ⑤ SegmentedControl / 二択切替
 
-**使いどころ**: アプリ内の二択・少数選択肢（3〜5）の切替（例: sales TabsHeader の日次/月次、monthly ModeTabs の商品別ランキング/部門別構成比）。これはこのアプリの「二択切替ボタン」の標準仕様であり、各画面で独自に padding / border / active tone を組まない。
+**使いどころ**: アプリ内の二択切替（例: sales TabsHeader の日次/月次、monthly ModeTabs の商品別ランキング/部門別構成比）。これはこのアプリの「二択切替ボタン」の標準仕様であり、各画面で独自に padding / border / active tone を組まない。
 
 **canonical**: `src/components/ui/segmented-control.tsx`
 
@@ -311,7 +311,6 @@ function FormSection({ title, description, children }: FormSectionProps) {
 - **focus**: `border-border-strong` + soft ring。mouse click 後に濃い押しボタン状 outline が残らないこと
 - disabled: item primitive の `disabled:opacity-50` に従う
 - error: 規定なし
-- tab / mode 切替として使う場合は可視 Label を持たない、フィルタ toolbar 内で使う場合は ⑨ の上置き Label 規範に従う（`ariaLabel` は常に必須）
 
 **実装ルール**:
 - route-driven navigation（例: 日次/月次）は `<Link>` に `segmentedControlListClass` / `segmentedControlItemClass` / active / inactive class を適用する
@@ -319,7 +318,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 - SidebarLink の現在地は stone 系 selection tone に DSR-21 の Primary アクセントを重ねる。StatusChips / SegmentedControl は選択状態のため stone のままとし、状態 chip は `border-stone-400`、二択切替は押しボタン状の濃い外枠を避けて `border-stone-300` にする
 - amber は在庫少や通知などの業務セマンティック色、または主要アクションと DSR-21 の現在地アクセントに残し、選択状態の背景色とは分離する
 
-**アクセシビリティ**: `role="group"` + `aria-label` で群を識別。button group は `aria-pressed` で選択状態を伝える。Windows native L3 では active / inactive / hover / クリック後 focus の 4 状態を比較し、同じ二択切替パターンに見えることを確認する。
+**アクセシビリティ**: `role="group"` + `aria-label` で群を識別。button group は `aria-pressed` で選択状態を伝える。Windows native L3 では active / inactive / hover / クリック後 focus の 4 状態を比較し、同じ二択切替パターンに見えることを確認する。tab / mode 切替として使う場合は可視 Label を持たない、フィルタ toolbar 内で使う場合は ⑨ の上置き Label 規範に従う（`ariaLabel` は常に必須）
 
 **Do**:
 - 二択は共有 visual primitive を使う
@@ -646,7 +645,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 // component 1 箇所の改修で 4 サイトが揃う。
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。**すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数 / フィルタ toolbar 内の SegmentedControl）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400、既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。`Label` component を使う場合は `className="text-sm font-normal text-muted-foreground"` を渡して component 既定の `font-medium` を打ち消す（`cn()` の twMerge は同じ font-weight group の後勝ちで置換する。class を足すだけでは消えない）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持する。**tab / mode 切替として使う SegmentedControl（sales TabsHeader の日次/月次、monthly ModeTabs 等、⑤ 参照）は可視 Label を持たない**（`ariaLabel` 必須）。判定軸は選択肢の数ではなく文脈であり、フィルタ toolbar 内の SegmentedControl（廃番表示 / PLU表示 / 並び順）は `ariaLabel` の文言を上置き label として可視化する（廃番表示と PLU表示は隣接してどちらも「すべて」を持ち、label なしでは識別できない。並び順も同じ列にあるため揃える。Human Gate (1) で確認）。live 型 SearchBar は `Input`（`max-w-md` 維持）を続ける。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。**すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数 / フィルタ toolbar 内の SegmentedControl）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400、既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。`Label` component を使う場合は `className="text-sm font-normal text-muted-foreground"` を渡して component 既定の `font-medium` を打ち消す（`cn()` の twMerge は同じ font-weight group の後勝ちで置換する。class を足すだけでは消えない）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持する（Human Gate (3) で確認）。**tab / mode 切替として使う SegmentedControl（sales TabsHeader の日次/月次、monthly ModeTabs 等、⑤ 参照）は可視 Label を持たない**（`ariaLabel` 必須）。判定軸は選択肢の数ではなく文脈であり、フィルタ toolbar 内の SegmentedControl（廃番表示 / PLU表示 / 並び順）は `ariaLabel` の文言を上置き label として可視化する（廃番表示と PLU表示は隣接してどちらも「すべて」を持ち、label なしでは識別できない。並び順も同じ列にあるため揃える。Human Gate (1) で確認）。SegmentedControl は `role="group"` の button 群で labelable 要素を持たないため、この label は `<span id={…} className="text-sm text-muted-foreground">` + `aria-labelledby` で紐付け、`htmlFor` は使わない。live 型 SearchBar は `Input`（`max-w-md` 維持）を続ける。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
