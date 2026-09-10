@@ -102,10 +102,11 @@ export function SupplierPickerDialog({
             }}
           />
         </div>
-        <div className="flex shrink-0 items-center gap-3 border-b border-border-strong bg-row-current px-4 py-3">
+        {/* GA4 AC15 の class 順序を保持する（Tailwind formatter の並べ替え対象外）。 */}
+        {/* prettier-ignore */}
+        <div className="flex shrink-0 items-center gap-3 rounded-md border border-border-strong border-l-4 border-l-primary bg-row-current px-4 py-3">
           <span className="text-xs text-muted-foreground">現在の選択</span>
           <span>{currentName}</span>
-          <Badge variant="outline">選択中</Badge>
         </div>
         {isLoading ? (
           <ListSkeleton rows={5} columns={2} />

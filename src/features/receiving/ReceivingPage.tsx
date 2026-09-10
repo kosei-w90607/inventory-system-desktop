@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Eye, PackagePlus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Eye, PackagePlus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -406,7 +406,10 @@ export function ReceivingPage() {
                 setSupplierPickerOpen(true);
               }}
             >
-              {supplierCurrentLabel(supplierOptions, values.supplierId ?? null, "指定なし")}
+              <span className="truncate">
+                {supplierCurrentLabel(supplierOptions, values.supplierId ?? null, "指定なし")}
+              </span>
+              <ChevronDown className="size-4 opacity-50" aria-hidden="true" />
             </Button>
             <SupplierPickerDialog
               open={supplierPickerOpen}

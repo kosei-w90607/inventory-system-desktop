@@ -7,7 +7,7 @@
 // UI-01b-D13: 「廃番にする」は確認ダイアログを通す（「表示に戻す」は直接実行）。
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, ChevronDown, Save } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -314,7 +314,10 @@ export function ProductForm({
                 setSupplierPickerOpen(true);
               }}
             >
-              {supplierCurrentLabel(supplierOptions, values.supplierId ?? null, "取引先なし")}
+              <span className="truncate">
+                {supplierCurrentLabel(supplierOptions, values.supplierId ?? null, "取引先なし")}
+              </span>
+              <ChevronDown className="size-4 opacity-50" aria-hidden="true" />
             </Button>
             <SupplierPickerDialog
               open={supplierPickerOpen}

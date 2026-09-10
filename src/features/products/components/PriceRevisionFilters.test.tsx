@@ -175,3 +175,9 @@ it("SPEC-PRV-D6: shows an unresolved trigger for a selected supplier when fetchi
   await user.click(screen.getByRole("button", { name: "再試行" }));
   expect(suppliersQuery.refetch).toHaveBeenCalledTimes(1);
 });
+
+it("C16: trigger が lucide-chevron-down の svg を含む", () => {
+  renderFilters();
+  const button = screen.getByRole("button", { name: /取引先/ });
+  expect(button.querySelector("svg.lucide-chevron-down")).toBeInTheDocument();
+});

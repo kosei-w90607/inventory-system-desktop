@@ -57,6 +57,7 @@ it("DSR-24: renders title, description, search, current-selection band and fixed
   const scrollBox = table.parentElement;
   expect(scrollBox).toHaveClass("max-h-[50vh]", "overflow-auto");
   expect(scrollBox).not.toContainElement(screen.getByText("現在の選択"));
+  expect(screen.getByText("現在の選択").parentElement).not.toHaveTextContent("選択中");
   expect(screen.getByRole("columnheader", { name: "選択" })).toHaveClass("sr-only");
   const current = screen.getByRole("row", { name: /選択中.*か商店/ });
   expect(current).toHaveClass("bg-row-current");
@@ -191,6 +192,7 @@ it("DSR-24: shows the leading label when selected is null and permits an empty m
   const { user } = setup({ suppliers: [], selected: null });
   await user.click(screen.getByText("起動"));
   expect(screen.getByText("現在の選択").parentElement).toHaveTextContent("取引先なし");
+  expect(screen.getByText("現在の選択").parentElement).not.toHaveTextContent("選択中");
   expect(within(screen.getByRole("table")).getAllByRole("button")).toHaveLength(1);
 });
 
@@ -198,4 +200,5 @@ it("DSR-24: shows an unresolved current-selection label for a missing selected i
   const { user } = setup({ selected: 999 });
   await user.click(screen.getByText("起動"));
   expect(screen.getByText("現在の選択").parentElement).toHaveTextContent("取引先を確認できません");
+  expect(screen.getByText("現在の選択").parentElement).not.toHaveTextContent("選択中");
 });

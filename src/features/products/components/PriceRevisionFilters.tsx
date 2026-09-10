@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { DepartmentFilter } from "@/components/patterns/DepartmentFilter";
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
@@ -12,6 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  SupplierPickerDialog,
+  supplierCurrentLabel,
+} from "@/features/suppliers/components/SupplierPickerDialog";
 import type { Department, Supplier } from "@/lib/bindings";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type {
@@ -19,10 +24,6 @@ import type {
   PriceRevisionSearch,
   PriceRevisionSearchPatch,
 } from "../priceRevisionSearch";
-import {
-  SupplierPickerDialog,
-  supplierCurrentLabel,
-} from "@/features/suppliers/components/SupplierPickerDialog";
 
 export function PriceRevisionFilters({
   search,
@@ -78,11 +79,14 @@ export function PriceRevisionFilters({
               setDialogOpen(true);
             }}
           >
-            {supplierCurrentLabel(
-              suppliersQuery.data ?? [],
-              normalized.supplier ?? null,
-              "すべての取引先",
-            )}
+            <span className="truncate">
+              {supplierCurrentLabel(
+                suppliersQuery.data ?? [],
+                normalized.supplier ?? null,
+                "すべての取引先",
+              )}
+            </span>
+            <ChevronDown className="size-4 opacity-50" aria-hidden="true" />
           </Button>
         </div>
         <DepartmentFilter
