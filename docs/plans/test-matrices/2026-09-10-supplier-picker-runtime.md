@@ -24,6 +24,7 @@ Risk: R3
 - C14 現在値の未解決時文言（Gated Amendment 3、AC13）: `selected !== null` で一覧に無い id は「取引先を確認できません」、未指定文言で断定しない
 - C15 内側 dialog の form submit が host form へ伝播しない（Gated Amendment 3、AC13）: picker の `onSubmit` stopPropagation が防壁
 - C16 trigger の開く控え（Gated Amendment 4、AC15）: 3 host の trigger が `ChevronDown` を持ち、文言は `truncate` で枠内に収まる。固定帯は全周枠 + 左バー、badge は一覧側の現在行のみ
+- C17 固定帯は白地の箱（Gated Amendment 5、AC16）: 帯に `bg-row-current` / 左バーを使わず（現在行の語彙と分離）、chevron は `text-muted-foreground`
 
 ## Failure Modes
 
@@ -157,6 +158,7 @@ closure（Sonnet + Opus）で最低限注入する mutant。**各 mutant は `Su
 14. （Gated Amendment 3）`supplierCurrentLabel` の未解決分岐を `?? leadingLabel` に戻す → C14 test（picker test + `PriceRevisionFilters.test` の isError × 選択済み）が落ちるか
 15. （Gated Amendment 4）`PriceRevisionFilters` の trigger から `ChevronDown` を削る → C16 test（`lucide-chevron-down` の存在 assertion）が落ちるか
 16. （Gated Amendment 4）固定帯に `Badge`「選択中」を戻す → C1 test（帯の `Badge` 不在 assertion）が落ちるか
+17. （Gated Amendment 5）固定帯に `bg-row-current` を戻す → C17 test（帯の `not.toHaveClass("bg-row-current")`）が落ちるか
 
 ## Residual Test Gaps
 
