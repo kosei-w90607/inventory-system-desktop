@@ -684,3 +684,12 @@ Use concise ADR-style entries.
 - Impact: `src-tauri/tests/architecture_test.rs` に allow list 定数と新規 test を追加する（衛生 batch 3、Plan Packet `docs/plans/2026-09-08-hygiene-batch-3-lint-drift-reexport.md`）。`docs/architecture/cmd-task-specs.md:128` の検査境界記述を同期する。allow list への今後の追加は architecture_test.rs の const 編集で行い、無審査の追加を防ぐことが目的のため追加自体を禁止しない。
 - Alternatives considered: 全面禁止（監査の A「全 direct import 到達禁止」または C「全 pub use 禁止」）— 既存 30 symbol の設計（D-060 の CMD-11 経路、AMD2 の MNT no-create 経路）を破壊するため却下。alias/type alias まで含む完全洗浄検出（監査の A 拡張）— 別設計判断として非採用、`docs/Plans.md` Backlog 参照。`cargo-modules`/`cargo-deps` 等の外部 tool 導入 — toolchain 版不一致・未実測のため不採用（10c 報告 §3 参照）。
 - Revisit: alias/type alias 経由の再公開が実害を伴って発見された場合、または既存 30 symbol の削減・型所有の再設計が必要になった場合。
+
+## D-084: `codex-only` Execution Mode の運用形（Codex が起草・owner が裁定、非 Codex reviewer を最低条件に）（2026-09-11）
+
+- Decision: Claude 側の利用枠が尽きている期間の `codex-only`（AGENT_OPERATING_MANUAL §3.2）を「Codex 単体」ではなく「Codex = Writer + Coordinator 起草役 / owner = 承認・裁定・Human Gate / 非 Codex vendor = Plan Reviewer と Final Reviewer（Sonnet 1 run を最低条件、R3 の UI 契約変更は Opus 1 run 追加）」の座組で運用する。Codex の自己裁定（findings の rebut / no-action）は禁止し、P1 は owner 承認必須、P2 / P3 も裁定候補を列挙して owner が決める。適性は R1〜R2 docs lane と機械 oracle で閉じる小 runtime lane に限り、design-first lane は `fable-window` / `dual-vendor-no-fable` へ戻るまで着手しない。
+- Status: accepted（owner 2026-09-11「Codex Astra 単体で要所に Sonnet か Opus のレビューもらって作業させるのはリスキーすぎるか」→ 条件付きで可と裁定、§3.2 に追記）
+- Why: §3 の独立性制約（Writer ≠ Plan Reviewer / Final Reviewer、D-062 の vendor 分離）は `codex-only` でも免除されないため、非 Codex reviewer は贅沢ではなく最低条件。2026-09-11 の ⑲ / ⑳ 実測（6 発注、fail-closed 3 回はすべて packet 側の不備、oracle 不一致で push 保留）で Codex の実行信頼度は高く、弱点は判断層に集中していた。判断層を owner と非 Codex reviewer で埋めれば、Claude 消費を review run 2〜3 本（lane あたり）に抑えつつ規則内で回せる。
+- Impact: AGENT_OPERATING_MANUAL §3.2 `codex-only` に運用形 5 項目を追記。発注書は「起草 run / 実装 run」の分離と自己裁定禁止の 1 行を必須化。Plans.md / packet の Execution Mode 記録は既存フィールドのまま。
+- Alternatives considered: Codex に Final Reviewer まで担わせる self-closure（却下: 独立性制約違反、`project-execution-mode-collapses-review-gate` の実測どおり review gate が消える）/ Claude 枠回復まで全面停止（却下: 機械的 lane まで止める理由がない）。
+- Revisit: Codex 主体 lane で P1 の見落としが Final Review で 2 回続いた場合、または owner の裁定負荷が Owner Effort Budget を超えた場合に座組を見直す。

@@ -56,6 +56,11 @@ Execution Mode は Plan Packet `Workflow State` に記録する、その時点�
 - `fable-window`: 希少・最高能力 slot（§3.4 参照）が利用可能な期間
 - `dual-vendor-no-fable`: Claude 側 slot はあるが希少・最高能力 slot（§3.4 参照）はない期間
 - `codex-only`: Codex/OpenAI 側の slot のみで構成する期間
+  - 運用形（D-084、owner 2026-09-11「Claude 側に作業できる枠がない間、Codex 単体で要所に Sonnet / Opus のレビューをもらって作業させる」）: Codex は Writer に加え **Coordinator の起草役**（Plan Packet / Gated Amendment / state-only 遷移 / PR body の文案）を担い、**承認と裁定は owner** が行う。Plan Reviewer は D-062 どおり非 Codex vendor（通常 Sonnet 1 run）、Final Reviewer は Sonnet 1 run を最低条件とし、R3 の UI 契約変更は Opus 1 run を足す。Human Gate（L3 / Ready 承認）は owner。
+  - 自己裁定の禁止: Codex はレビュー findings を自分で rebut / no-action にしない。P1 は owner 承認なしに rebut できず、P2 / P3 も裁定候補を報告に列挙して owner が決める（fable-window では Coordinator が担う裁定を owner に移す。Gated Amendment の文案は Codex が書いてよいが commit は owner 承認後）。
+  - 適性: R1〜R2 の docs lane、AC が機械 oracle で閉じる小 runtime lane（衛生 batch、表示小修正 batch、⑰ 型の小 runtime）。design-first の lane（mockup 採用、DTO 公開を伴う表示設計、単位拡張）は判断が多く、`fable-window` または `dual-vendor-no-fable` へ戻るまで着手しない。
+  - 発注書の必須 1 行: 「packet を起草する run」と「実装する run」を分け、起草 run は編集禁止 file を持たず docs/plans のみ、実装 run は packet 編集禁止（fable-window と同じ fail-closed 契約）。Plan Reviewer / Final Reviewer の発注書は Coordinator（= owner）が relay する。
+  - 根拠実測: 2026-09-11 の ⑲ / ⑳（6 発注、fail-closed 停止 3 回はすべて packet 側の不備で Codex の判断は正しかった、oracle 不一致では push を保留）。弱点は判断層（GA の裁定・owner 所感の設計への翻訳・運用 gate の扱い）であり、それを owner + 非 Codex reviewer で埋める。
 
 いずれの Execution Mode でも本節冒頭の独立性制約を維持する。
 
