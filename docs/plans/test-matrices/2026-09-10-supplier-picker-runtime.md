@@ -14,7 +14,7 @@ Risk: R3
 - C4 追加 flow（A 案）: footer → `CreateSupplierDialog` が内側に open → 成功 → `onCreated(supplier)` 1 回 → `onSelect(supplier.id)` 1 回 → 両 dialog close
 - C5 状態: `isLoading` → Skeleton（一覧なし）/ `isError` → Alert + 再試行 → `onRetry` 1 回 / 検索 0 件 → EmptyState、クリアで復帰
 - C6 a11y: open 時 `document.activeElement` = 検索 input / 内側 close 後 = 検索 input / Esc は内側 open 中に内側だけ閉じる（P1、jsdom 再現不能なら L3 のみ）
-- C7 `CreateSupplierDialog` 1 実装、`onCreated(supplier)`、products 版削除、4 呼び出し元が suppliers 版を import
+- C7 `CreateSupplierDialog` 1 実装、`onCreated(supplier)`、products 版削除、直接 import は `SupplierPickerDialog.tsx`（nest）と `SupplierManagementPage.tsx` の 2 箇所、host 3 file からは参照撤去（GA1）
 - C8 3 host の trigger = outline button に現在値 + `aria-haspopup="dialog"`、既存 disabled 条件継承（D5）
 - C9 PriceRevisionFilters: 先頭「すべての取引先」、`onSelect(null)` → `onPatch({ supplier: null })`、toggle は filter 列で既定 on（SPEC-PRV-D3）
 - C10 ProductForm: inline パネル撤去、「取引先なし」で保存可（UI-01b-D8）、追加後 local 一覧再取得 + 自動選択（D8）
@@ -55,6 +55,9 @@ Risk: R3
 | C6 | F6 | unit（P1） | 同 `DSR-24: escape closes only the inner create dialog` | Esc で picker も閉じる。**jsdom で Radix stack が再現しない場合は L3 へ降格し理由を記録** |
 | C7 | F7 | schema（typecheck）+ rg | AC2 oracle + `npm run typecheck` | products 版が残る、`onCreated` 引数なしで compile が通る |
 | C7 | F7 | regression | `SupplierManagementPage.test.tsx` 既存の追加 flow test（`rg -n "新しい取引先を追加" src/features/suppliers/SupplierManagementPage.test.tsx` で実在確認） | 引数変更で追加後の再取得が壊れる |
+| C8 / C9 | F8 / F9 | unit（page 側書き換え、GA2） | `PriceRevisionPage.test.tsx:166-204`（取引先選択 → toggle 既定 on / `include_unassigned` / browser 履歴）を trigger → picker 行 click へ | page 側で取引先を選べない / toggle 契約（REQ-105）が page 統合で失われる |
+| C4 / C9 | F4 | unit（page 側書き換え、GA2） | `PriceRevisionPage.test.tsx:523-575`（追加 → `createSupplier` → `listSuppliers` 再取得 → filter 選択状態 / 空白名拒否 + 入力保持）を picker footer → 内側 dialog へ | page 統合で A 案（自動選択）が成立しない / 空白名の field error が出ない |
+| C8 | F8 | regression（in-place、GA2） | `PriceRevisionPage.test.tsx:677-690` SC6（Lane 5: `suppliersQuery` loading 中 disabled。`data-slot="select-trigger"` assertion は撤去） | loading 中に trigger が押せる |
 | C8 / C9 | F8 / F9 | unit | `PriceRevisionFilters.test.tsx` `SPEC-PRV-D6: opens supplier picker from trigger and patches supplier on select` | trigger 文言（`toHaveTextContent`）が現在値でない、`onPatch({ supplier })` が呼ばれない、追加成功時に `onPatch` が 2 回呼ばれる（S3 の `onCreated` = refetch のみ） |
 | C9 | F9 | unit（新規） | `PriceRevisionFilters.test.tsx` `SPEC-PRV-D3: shows 取引先未設定の商品も含める in the filter row, checked by default, when a supplier is selected` | toggle が消える / 既定 on でない / dialog 内へ移動。**既存 test には無い**（round 1 で不在を確認、`includeUnassigned` は fixture `:36` のみ） |
 | C9 | F8 | unit（GA2 書き換え） | `PriceRevisionFilters.test.tsx` `:57` / `:80` を trigger 版へ（Label + trigger が 1 wrapper / DOM 順序 Label → trigger → 部門 → … → 表示件数） | ⑭ GA2 の群化契約が trigger 化で失われる |
