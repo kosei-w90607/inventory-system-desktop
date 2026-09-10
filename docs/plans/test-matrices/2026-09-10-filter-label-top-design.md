@@ -22,11 +22,12 @@ Risk: R2
 - F1 規範が live SearchBar 限定のまま / 例外が書かれず Checkbox まで上置きになる
 - F2 DepartmentFilter block が横並びのまま（runtime lane が旧形を転記する）
 - F3 catalog に `Page.tsx:NN` が入り、runtime 後に stale
-- F4 variation が `PageHeader` を使う指示になり 1 h1 が崩れる / 折返し契約の class が 1 つ欠ける
+- F4 variation が `PageHeader` を使う指示になり 1 h1 が崩れる / 見出し行 + 説明行の 2 段配置が ① (c) 構造と variation で食い違う（Gated Amendment 2 で折返し契約から置換）
 - F5 SegmentedControl の扱いが無記載で runtime lane が Label を足す / 足さないを再導出する
 - F6 mockup-g が JS / CDN を含む、README 未登録
 - F7 DSR-01 や 04-backbone を巻き込んで書き換える / src に diff
-- F8 Human Gate (1)(3) の回答前に確定文で書く / 不採用の component 化を「採用する」「新設する」と書く（oracle は `component 化を採用|SectionHeader を新設する` = 0）
+- F8 Human Gate (1)(3) の回答前に確定文で書く / 不採用の component 化を「採用する」「新設する」と書く（oracle は `component 化を採用|SectionHeader を新設する` = 0）。Gated Amendment 2 以降は反転: 回答済みなのに draft マーカーが残る（oracle は ⑨ 節の `Human Gate` = 0、AC13）
+- F9 `PageHeader` (c) の 2 段配置化で actions 持ち page の見た目が変わる（描画差は商品 CSV 取込み 1 page のみが設計前提。canonical path / props / `items-start` の不変を catalog に明記、runtime lane の L3 で短い説明の page 2 つを抜き取り確認）
 
 ## Test Matrix
 
@@ -94,7 +95,7 @@ not applicable（docs-only）。
 
 ## Mutation-style Adequacy Questions
 
-docs-only のため runtime mutant なし。closure（Sonnet + Opus）は AC1〜AC11 の oracle を再実行し、加えて「D1 の段落から例外 1 種を消した draft」を仮想 mutant として AC3 が落ちることを確認する。
+docs-only のため runtime mutant なし。closure（Sonnet + Opus）は AC1〜AC11 の oracle を再実行し、加えて「D1 の段落から例外 1 種を消した draft」を仮想 mutant として AC3 が落ちることを確認する。Gated Amendment 2 後の closure は AC12 / AC13 を再実行し、仮想 mutant「⑨ に『Human Gate (1) で確認』を戻す」で AC13 が落ちること、「① variation に『折返し契約』を戻す」で AC13 が落ちることを確認する。
 
 ## Residual Test Gaps
 
