@@ -18,7 +18,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only のため Ready 後の hosted final は owner `workflow_dispatch`。Ready 案内に明記する）
-- Human Gate: owner mockup-g 確認（culling 3 件: (1) SegmentedControl の可視 Label 要否 (2) セクション見出しを component 化するか class 統一のみか (3) Checkbox は label 内包の横並び維持でよいか）+ Ready 承認
+- Human Gate: owner mockup-g 確認（culling 3 件、Coordinator 既定を mockup で確認する形: (1) 3 択以上の SegmentedControl〈廃番表示 / PLU表示〉に上置き Label を付ける〈既定 = 付ける、2 択の並び順は付けない〉(2) セクション見出しは class / 文型 / token 統一のみ〈既定〉か `SectionHeader` component 化まで進めるか (3) Checkbox は label 内包の横並び維持〈既定〉）+ Ready 承認
 
 ## Owner Effort Budget
 
@@ -82,19 +82,20 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | page | input | component | Label | 配置 | file:line |
 |---|---|---|---|---|---|
-| 商品一覧（toolbar `flex flex-wrap items-end gap-3` `:105`） | 検索 | SearchBar live | 商品を検索 | 上置き | `ProductListPage.tsx:111-118` |
+| 商品一覧（toolbar `flex flex-wrap items-end gap-3` `:106`） | 検索 | SearchBar live | 商品を検索 | 上置き | `ProductListPage.tsx:111-118` |
 | 〃 | 部門 | DepartmentFilter | 部門 | 横並び | `:119-129` |
-| 〃（2 段目 `flex flex-wrap items-center gap-3` `:155`） | 廃番表示 / PLU表示 / 並び順 | SegmentedControl | `ariaLabel` のみ | 可視 Label なし | `:136-149,177-183` |
-| 〃 | 並び替え | `<label>`+Select | 並び替え | 横並び | `:156-159` |
-| 〃 | 表示件数 | `<label>`+Select | 表示件数 | 横並び | `:185-188` |
-| 在庫照会（`items-end` `:102`） | 検索 / 部門 / 表示件数 | SearchBar live / DepartmentFilter / `<label>`+Select | — | 上置き / 横並び / 横並び | `StockInquiryPage.tsx:104-131` |
+| 〃（同 1 段目） | 廃番表示 / PLU表示 | SegmentedControl（3 択 / 5 択、**両方に「すべて」が隣接**） | `ariaLabel` のみ | 可視 Label なし | `:135-142` / `:143-150` |
+| 〃（2 段目 `flex flex-wrap items-center gap-3` `:155`） | 並び替え | `<label>`+Select | 並び替え | 横並び | `:156-159` |
+| 〃 | 並び順 | SegmentedControl（2 択） | `ariaLabel` のみ | 可視 Label なし | `:179-186` |
+| 〃 | 表示件数 | `<label>`+Select | 表示件数 | 横並び | `:187-190` |
+| 在庫照会（`items-end` `:103`） | 検索 / 部門 / 表示件数 | SearchBar live / DepartmentFilter / `<label>`+Select | — | 上置き / 横並び / 横並び | `StockInquiryPage.tsx:104-131` |
 | 一括価格改定（`items-end` `:47`） | 検索 / 取引先 / 部門 / 廃番を含む / 表示件数 / 取引先未設定を含める | SearchBar live / `<label>`+Select〈⑲ で trigger 化〉/ DepartmentFilter / Checkbox / `<label>`+Select / Checkbox | — | 上置き / 横並び / 横並び / 横並び(checkbox) / 横並び / 横並び(checkbox) | `PriceRevisionFilters.tsx:48-153` |
 | 入出庫履歴 | 記録種別 / 期間 / 検索 / 記録ID / 部門 / 状態 / 表示件数 | Select / date / SearchBar / number / Select / Select / Select | — | **全部上置き** | `InventoryRecordsPage.tsx:161-296` |
 | 操作ログ | 期間 / 種別 / 表示件数 | date / Select / Select | — | **全部上置き** | `OperationLogsPage.tsx:349-425` |
 | 在庫変動 | 期間 / 種別 / 表示件数 | date / Select / Select | — | **全部上置き** | `StockMovementsPage.tsx:135-207` |
 | 棚卸し（`items-center gap-4` `:746`） | 部門 / 未入力のみ表示 / 表示件数 | DepartmentFilter / Checkbox+Label / Label+Select | — | 横並び / 横並び(checkbox) / 横並び | `StocktakePage.tsx:747-789` |
 | 整合性検証 | 表示件数 | `<label>`+Select（`flex items-center gap-2`） | 表示件数 | 横並び | `IntegrityCheckPage.tsx:232-251` |
-| 入庫 / 手動販売 / 返品交換 / 廃棄 | 商品追加の検索（⑮ `ProductAddSuggest`、フィルタではない） | Label + Input | 商品を検索・スキャン | 上置き（`space-y-2`） | `ReceivingPage.tsx:437-452` / `ManualSalePage.tsx:472-487` / `ReturnExchangePage.tsx:682-697` / `DisposalPage.tsx:371-386` |
+| 入庫 / 手動販売 / 返品交換 / 廃棄 | 商品追加の検索（⑮ `ProductAddSuggest`、フィルタではない） | Label + Input | 商品追加 | 上置き（`space-y-2`） | `ReceivingPage.tsx:437-452` / `ManualSalePage.tsx:472-487` / `ReturnExchangePage.tsx:682-697` / `DisposalPage.tsx:371-386` |
 | 棚卸し | 商品を検索・スキャン（カウント入力、フィルタではない） | Label + Input | — | 上置き（`space-y-2`） | `StocktakePage.tsx:561-568` |
 
 ### 規範の現在地
@@ -108,41 +109,54 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 Backlog `Plans.md:163` の行番号は drift 済み（内容で再特定）。**いずれも sub-section の h2 であり page title ではない**（各 page は別途 `PageHeader` の h1 を持つ）。`PageHeader` は h1 を描くため、これらを `PageHeader` に寄せる案は「1 ページ 1 h1」（catalog `:60`）に反する → 却下。
 
-| site | 現行 | 形 |
+| site | 現行 | 形態 |
 |---|---|---|
-| `StocktakeProgressHeader.tsx:384-395`（Backlog「StocktakePage:386」） | `flex flex-wrap items-center justify-between gap-3` + h2「棚卸し中…」+ p 進捗 + action | 進捗 banner |
-| `MonthlySalesPage.tsx:155-163`（旧 `:82`） | `<section aria-labelledby>` + h2 `text-lg font-semibold` + p | 説明付き、action なし |
-| `DailySalesPage.tsx:163-171`（旧 `:82`） | 同上 | 同上 |
-| `DisposalPage.tsx:653-660` | `flex flex-wrap items-center justify-between gap-2` + h2「直近の廃棄・破損」+ Button「すべての履歴を見る」 | 直近テーブル見出し |
-| `ReturnExchangePage.tsx:935-941` | 同型「直近の返品・交換」 | 〃 |
-| `ManualSalePage.tsx:713-716`（旧 `:699`） | 同型「直近の手動販売出庫」 | 〃 |
-| `ReceivingPage.tsx:661-667` | 同型「直近の入庫」 | 〃 |
-| `IntegrityCheckPage.tsx:325-334`（旧 `:300`） | `flex flex-wrap items-end justify-between gap-3` + h2「差異のある商品」+ p + Button | 説明 + action（PageHeader (c) に最も近い、`items-end`） |
+| `StocktakePage.tsx:385-407`（`StocktakeProgressHeader` 関数、Backlog「StocktakePage:386」） | `flex flex-wrap items-center justify-between gap-3` + 左 div〈h2 `text-xl`「棚卸し中…」+ p 進捗〉+ 右 Badge / action | **C**（説明が行の内側 + 右要素） |
+| `MonthlySalesPage.tsx:155-163`（旧 `:82`） | `<section aria-labelledby>` + div〈h2 `text-lg` + p〉、flex 行なし | **B**（action なし） |
+| `DailySalesPage.tsx:163-171`（旧 `:82`） | 同上 | **B** |
+| `DisposalPage.tsx:659-667` | `flex flex-wrap items-center justify-between gap-2`〈h2 `text-lg`「直近の廃棄・破損」+ Button「すべての履歴を見る」〉、**p は行の外（下の sibling）** | **A**（説明が行の外） |
+| `ReturnExchangePage.tsx:940-946` | 同型「直近の返品・交換」 | **A** |
+| `ManualSalePage.tsx:706-714`（旧 `:699`） | 同型「直近の手動販売出庫」 | **A** |
+| `ReceivingPage.tsx:658-667` | 同型「直近の入庫」 | **A** |
+| `IntegrityCheckPage.tsx:325-334`（旧 `:300`） | `flex flex-wrap items-end justify-between gap-3` + 左 div〈h2 `text-xl`「差異のある商品」+ p〉+ Button | **C** |
 | `IntegrityCheckPage.tsx:438`（旧 `:461`） | `AlertDialogTitle` | **見出しではない → 対象外** |
 
-共通形 = h2（`text-lg` または `text-xl` `font-semibold`）+ 任意 `<p className="text-sm text-muted-foreground">` + 任意右 action、wrapper は `flex flex-wrap items-center|items-end justify-between gap-2|gap-3`。⑮ で `PageHeader` (c) に入れた折返し契約（`items-start` / 左 `min-w-0 flex-1` / 右 `shrink-0`）が無いため、長い説明で action が次行左へ落ちる同型バグを 8 箇所が潜在的に持つ。catalog `:197`「直近の○○」系 4 画面の統一は文型のみで見出し構造の規定なし。catalog `:243`（④ フォームセクション）は h2 token のみ。
+**3 形態の census（Plan Review round 1 Opus P1-2 で訂正）**: A 4 / B 2 / C 2。長い説明で右要素が次行左へ落ちる折返しバグ（⑮ Gated Amendment 2 と同型）を持ちうるのは **C の 2 箇所のみ**（説明が左 group の内側にあり右要素と同じ flex 行にいる）。A は説明が行の外にあるため折返し問題は無く、その配置は catalog `:197`「直近の○○」系 4 画面の統一（⑮ で反映済み）で固定されている。B は flex 行を持たない。よって「8 箇所同型」は誤りで、component 化の根拠（rule of three）は C 2 箇所には成立しない。残る統一対象は **文型（h2 + 任意 p + 任意右要素）と token**: h2 token は `00-foundations.md:81` / catalog `:243` / `04-backbone.md:17` で **20px = `text-xl`** であり、A 4 箇所 + B 2 箇所の `text-lg`（18px = h3 token）は off-token、C 2 箇所の `text-xl` が正。catalog `:243`（④ フォームセクション）は h2 token のみで構造規定なし。
+
+このほか `<h2` を手書きする箇所は 16 あり（`HomePage.tsx:90,95,100`、記録詳細 6 page の 13 箇所、`PluExportPage.tsx:584`）、いずれも右要素を持たない見出しのみで折返し問題の対象外（Sonnet P3）。文型・token 統一の対象には含まれるため、runtime lane 申し送りで「h2 token の sweep 候補」として列挙するに留める。
 
 ## 設計判断（Coordinator adjudication、Plan Review / Human Gate で覆せる）
 
 - **D1 規範の置き場 = catalog ⑨ の使用トークン段落を「すべてのフィルタ入力」に拡張**（DSR 新設なし）。draft literal:
-  > **使用トークン**: **すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数）は `div.grid.gap-1` 配下に可視 `Label`（`text-sm text-muted-foreground`）を上置きし、入力要素を続ける。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外: **Checkbox は label 内包の横並び**（`<label class="flex items-center gap-2">` に `Checkbox` + 文言、checkbox の慣行）を維持し、**SegmentedControl は可視 Label を持たない**（選択肢文言が自己記述、`ariaLabel` 必須。⑤ 参照）。live 型 SearchBar は `Input` の `max-w-md` 維持。`id` 未指定時は `useId()`…（以下既存文を維持）
-- **D2 `DepartmentFilter` の構造 block（⑨ `:620-630`）と canonical 説明を上置き形へ改める**（`<div className="grid gap-1"><Label htmlFor>部門</Label><Select …/></div>`）。component 1 箇所の改修で 4 サイトが揃うことを「runtime 反映」注記に書く（file:line は書かない）
+  > **使用トークン**: **すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400。`Label` component を使う場合も同じ class を渡し、component 既定の `font-medium` を出さない — 既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持する。**2 択の SegmentedControl は可視 Label を持たない**（並び順のような 2 択は選択肢文言が自己記述、`ariaLabel` 必須。⑤ 参照）が、**3 択以上の SegmentedControl（廃番表示 / PLU表示）は他のフィルタ入力と同じ上置き Label を付ける**（両者が同じ toolbar に隣接し、どちらも「すべて」を持つため label なしでは識別できない。Human Gate (1) で確認）。live 型 SearchBar は `Input` の `max-w-md` 維持。`id` 未指定時は `useId()`…（以下既存文を維持）
+- **D2 `DepartmentFilter` の構造 block（⑨ `:625-633`、call-site の props 説明 `:625-626` と `<DepartmentFilter …/>` 呼び出し例）は維持し、その直後に internal 構造 block を追加する**（置換しない。`:618-623` は live 型 SearchBar の block で触らない）。追加 block の draft:
+  ```tsx
+  // DepartmentFilter 内部（上置き Label、runtime 反映は後続 lane）: label は raw <label> で htmlFor → SelectTrigger の id
+  <div className="grid gap-1">
+    <label className="text-sm text-muted-foreground" htmlFor={triggerId}>部門</label>
+    <Select …>
+      <SelectTrigger id={triggerId} className={widthClass}>…</SelectTrigger>
+      …
+    </Select>
+  </div>
+  ```
+  `id` は `SelectTrigger`（`<button>`、labelable）に付ける（現行 `DepartmentFilter.tsx:57-64` と同じ配線、`labelId` は未参照のため削除可）。component 1 箇所の改修で 4 サイトが揃うことを注記に書く（file:line は書かない）
 - **D3 catalog ⑨ に page の file:line を書かない**（stale 化防止）。適用範囲の実測表は本 packet に置き、runtime lane packet が引き継ぐ。catalog には「一覧 / 記録画面の toolbar 全部」と書く
-- **D4 セクション見出し = catalog ① の variation として新設**（「**バリエーション: セクション見出し（h2）**」、`:56` 使用トークン段落の直前）。draft literal:
-  > **バリエーション: セクション見出し（h2）**: page 内の sub-section（「直近の○○」テーブル / 公式部門集計 / 差異のある商品 / 棚卸し進捗 等）の見出しは h2（`text-lg font-semibold`）+ 任意の説明 `<p className="text-sm text-muted-foreground">` + 任意の右 action で構成し、wrapper は `PageHeader` (c) と同じ折返し契約（外側 `flex flex-wrap items-start justify-between gap-3`、左 group `min-w-0 flex-1 space-y-1`、右 `shrink-0`）に従う。長い説明で action が次行左へ落ちるのを防ぐ（⑮ Gated Amendment 2 と同じ根拠）。**1 ページ 1 h1 は不変**であり、sub-section を `PageHeader` で描かない。canonical: `SectionHeader{title, description?, actions?}`（後続実装、`src/components/patterns/SectionHeader.tsx` 想定。**Human Gate (2)** で component 化 / class 統一のみ を確定）。Dialog の `AlertDialogTitle` は対象外
-  - Coordinator 推奨 = **component 化**。理由: 同型 8 箇所（rule of three の 2.6 倍）、折返し契約は class 4 組の同時適用で「1 つ落とすと再発」する種類のもの。却下案 = class 統一のみ（diff は小さいが 8 箇所の手書き維持）
-- **D5 SegmentedControl は可視 Label なし（D1 例外）を Coordinator 既定とし Human Gate (1) で確認**。理由: 「廃番表示」「PLU表示」の選択肢文言（`PRODUCT_DISCONTINUED_OPTIONS` 等）が自己記述で、Label を足すと toolbar が縦に膨らむ。owner が「揃えたい」を優先するなら上置き Label を足す（runtime lane で `SegmentedControl` に `label?` prop）
-- **D6 mockup-g（`docs/design-system/reference/mockup-g-filter-toolbar.html`）を新設**、state-1 商品一覧 toolbar 現行 / 提案（SegmentedControl 両案）、state-2 棚卸し toolbar（Checkbox 横並び維持）、state-3 セクション見出し（「直近の入庫」に長い説明 + action、現行の折返し崩れ / 提案）。CSS token は `mockup-d-lists.html` を流用、外部 CDN / JS なし
-- **D7 ⑲ との境界**: ⑲ は `PriceRevisionFilters` の取引先を trigger 化するが Label 配置は現行維持（⑲ Non-scope）。本規範の runtime lane が trigger の wrapper も `grid gap-1` へ揃える。catalog 更新履歴表の末尾で ⑲ と textual conflict が出る想定 → 後続 merge 側が両側保持
+- **D4 セクション見出し = catalog ① の variation として新設**（「**バリエーション: セクション見出し（h2）**」、`:56` 使用トークン段落の直前）。draft literal（Plan Review round 1 Opus P1-1 / P1-2 で訂正）:
+  > **バリエーション: セクション見出し（h2）**: page 内の sub-section（「直近の○○」テーブル / 公式部門集計 / 差異のある商品 / 棚卸し進捗 等）の見出しは h2（**`text-xl font-semibold`、④ / 00-foundations の h2 20px と同一 token**）+ 任意の説明 `<p className="text-sm text-muted-foreground">` + 任意の右要素（Button / Badge）で構成する。**説明を見出しと同じ flex 行の左 group に置く形**（差異のある商品 / 棚卸し進捗）は、`PageHeader` (c) と同じ折返し契約（外側 `flex flex-wrap items-start justify-between gap-3`、左 group `min-w-0 flex-1 space-y-1`、右 `shrink-0`）に従い、長い説明で右要素が次行左へ落ちるのを防ぐ（⑮ Gated Amendment 2 と同じ根拠）。**説明を見出し行の下に置く形**（「直近の○○」系 4 画面、`:197` の統一文型）はそのまま維持し、折返し契約の対象外。**1 ページ 1 h1 は不変**であり、sub-section を `PageHeader` で描かない。Dialog の `AlertDialogTitle` は対象外。適用は class / 文型 / token の統一を既定とし、component 化（`SectionHeader{title, description?, actions?}`、`src/components/patterns/` 想定）は owner が採用した場合のみ（**Human Gate (2)**）
+  - Coordinator 既定 = **class / 文型 / token 統一のみ**。理由: 折返し契約が要るのは形態 C の 2 箇所で rule of three 未達、A 4 箇所へ component を当てると説明が行内へ移り `:197` で固定した 4 画面の見た目を変える（owner「壊さない優先」）。component 化は Human Gate (2) で owner が望んだ場合の escalation（その場合も A は `description` を行外に描く variant が要る）
+- **D5 SegmentedControl の可視 Label: 2 択（並び順）は無し、3 択以上（廃番表示 3 択 / PLU表示 5 択）は上置き Label 付き、を Coordinator 既定とし Human Gate (1) で確認**（round 1 Opus P2 で反転）。理由: `src/features/products/search.ts:15-26` の両 option set が「すべて」を持ち、`ProductListPage.tsx:135-150` で隣接描画されるため、label なしではどちらの「すべて」か識別できない（「自己記述」は 2 択にしか成立しない）。runtime lane で `SegmentedControl` に `label?` prop（`grid gap-1` + raw label）
+- **D6 mockup-g（`docs/design-system/reference/mockup-g-filter-toolbar.html`）を新設**: state-1 = 商品一覧の **2 段 toolbar 全体**（原則 6 の枠 + 段間 `space-y-3`。1 段目 検索 / 部門 / 廃番表示 / PLU表示〈両 SegmentedControl を隣接させ「すべて」の重複を見せる〉、2 段目 並び替え / 並び順 / 表示件数）の現行〈横並び・Label なし〉/ 提案〈上置き、3 択以上に Label〉並置、state-2 = 棚卸し toolbar（部門 / 未入力のみ表示〈label 内包へ揃えた形〉/ 表示件数）現行 / 提案、state-3 = 形態 C「差異のある商品」に長い説明 + Button で現行（`items-end`、右要素が落ちる）/ 提案（折返し契約）並置 + 形態 A「直近の入庫」は不変の注記。CSS token は `mockup-d-lists.html` を流用、外部 CDN / JS なし
+- **D7 ⑲ との境界と wave 登録**: ⑲ は `PriceRevisionFilters` の取引先を trigger 化するが Label 配置は現行維持（⑲ Non-scope）。本規範の runtime lane が trigger の wrapper も `grid gap-1` へ揃える。両 lane が `02-component-catalog.md` を編集する（行範囲は互いに素、更新履歴表末尾のみ textual conflict）ため、DEV_WORKFLOW「同じ source document を編集する lane は同居させず」の例外を owner 2026-09-10「2 本まで並走可」を根拠に適用し、`Plans.md` Wave Registry に **wave 9** として両 lane を登録した（round 1 Opus P2）。merge train = 先に Ready になった方、後続が origin/main 単段 merge で両側保持
 
 ## Scope
 
-- **S1 catalog ⑨ 改訂**（`02-component-catalog.md:602-660`）: 使用トークン段落を D1 literal へ / `DepartmentFilter` 構造 block を D2 へ / 使いどころに「toolbar の全フィルタ入力」を 1 句 / **状態** bullet に「Checkbox / SegmentedControl の例外」を残さず D1 の 1 段落に集約（重複記述しない）
-- **S2 catalog ① 改訂**（`:24-56`）: D4 variation 新設（`:56` 使用トークンの直前）/ `:197`「直近の○○」系 4 画面の統一 段落末尾に「見出し構造は ① セクション見出し variation に従う」1 句
-- **S3 catalog ⑤ SegmentedControl**（`:266-`）: 「可視 Label を持たない（⑨ D1 例外）、`ariaLabel` 必須」を状態 / a11y bullet に 1 行（Human Gate (1) の結果で確定文にする。回答前は draft literal のまま）
-- **S4 mockup-g 新設 + `reference/README.md` 一覧表に 1 行登録**（D6）
+- **S1 catalog ⑨ 改訂**（`02-component-catalog.md:602-660`）: 使用トークン段落を D1 literal へ / `DepartmentFilter` の call-site block `:625-633` の直後に D2 の internal 構造 block を**追加** / 使いどころに「toolbar の全フィルタ入力」を 1 句 / **状態** bullet に「Checkbox / SegmentedControl の例外」を残さず D1 の 1 段落に集約（重複記述しない）
+- **S2 catalog ① 改訂**（`:24-56`）: D4 variation 新設（`:56` 使用トークンの直前）/ `:197`「直近の○○」系 4 画面の統一 段落末尾に「見出しの token と右要素の扱いは ① セクション見出し variation に従う（説明は行の下のまま）」1 句
+- **S3 catalog ⑤ SegmentedControl**（`:266-`）: 使いどころ「アプリ内の二択切替」を「アプリ内の二択・少数選択肢（3〜5）の切替」へ 1 句広げ（現行 3 択 / 5 択の採用実態に合わせる）、状態 / a11y bullet に「2 択は可視 Label を持たない、3 択以上は ⑨ の上置き Label 規範に従う（`ariaLabel` は常に必須）」1 行（Human Gate (1) の結果で確定文にする。回答前は draft literal のまま）
+- **S4 mockup-g 新設 + `reference/README.md` 一覧表に 1 行登録 + `:25`「mockup-c / mockup-d / mockup-e / mockup-f は同じ CSS（token）系統」の列挙に mockup-g を追加**（D6）
 - **S5 更新履歴**: `02-component-catalog.md` 更新履歴表に 1 行（PR 番号は Draft PR 作成後に Writer が埋める、無ければ「本 PR」）
-- **S6 runtime lane 申し送り（本 packet に記録、Writer は書かない）**: `DepartmentFilter.tsx:61-64` → `grid gap-1`（4 サイト一括）/ `ProductListPage.tsx:156-159,185-188` / `StockInquiryPage.tsx:129-131` / `PriceRevisionFilters.tsx`（表示件数 `:115-119`、取引先 trigger〈⑲ 後〉）/ `StocktakePage.tsx:746-789`（toolbar `items-center gap-4` → `items-end gap-3`、表示件数上置き、Checkbox 維持）/ `IntegrityCheckPage.tsx:232-251` / 商品追加検索 5 箇所の `space-y-2` → `grid gap-1`（任意、⑮ ProductAddSuggest wrapper）/ `SectionHeader` 新設 + 8 箇所置換（Human Gate (2) 次第）/ SegmentedControl `label?`（Human Gate (1) 次第）
+- **S6 runtime lane 申し送り（本 packet に記録、Writer は書かない）**: `src/components/patterns/DepartmentFilter.tsx:61-64` → `grid gap-1`（4 サイト一括、`labelId` 削除可）/ `src/features/products/ProductListPage.tsx:156-159`（並び替え）`:187-190`（表示件数）+ 2 段目 wrapper `:155` を `items-end` / `src/features/stock-inquiry/StockInquiryPage.tsx:129-131` / `src/features/products/components/PriceRevisionFilters.tsx`（表示件数 `:115-119`、取引先 trigger〈⑲ 後〉）/ `src/features/stocktake/StocktakePage.tsx:746-789`（toolbar `items-center gap-4` → `items-end gap-3`、表示件数上置き、**Checkbox `:756-770` は div + sibling Label から label 内包へ揃える**〈4 conforming サイトと同型〉）/ `src/features/integrity-check/IntegrityCheckPage.tsx:232-251` / SegmentedControl に `label?` prop、`ProductListPage.tsx:135-150` の 2 箇所に付与（Human Gate (1) 既定 = 付ける）/ 商品追加検索 5 箇所の `space-y-2` → `grid gap-1`（任意、⑮ ProductAddSuggest wrapper）/ セクション見出し: 形態 C 2 箇所（`IntegrityCheckPage.tsx:325-334` `items-end` → `items-start` + `min-w-0 flex-1` + `shrink-0`、`StocktakePage.tsx:385-407` 同）+ 形態 A / B 6 箇所の h2 `text-lg` → `text-xl`（+ 右要素なしの h2 16 箇所の token sweep 候補）。component 化は Human Gate (2) で owner が採用した場合のみ
 
 ## Non-scope
 
@@ -160,8 +174,9 @@ docs-only のため rg oracle（出力空 = 0 件）。baseline は起票時実�
 
 - **AC1** `rg -c "すべてのフィルタ入力" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0）
 - **AC2** `awk '/^## ⑨/,/^## ⑩/' docs/design-system/02-component-catalog.md | rg -c 'className="grid gap-1"'` ≥ 1（baseline 0、D2 の DepartmentFilter block）
-- **AC3** `rg -c "label 内包の横並び" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0）/ `rg -c "可視 Label を持たない" docs/design-system/02-component-catalog.md` ≥ 2（baseline 0、⑨ D1 + ⑤ S3）
-- **AC4** `rg -c "バリエーション: セクション見出し" docs/design-system/02-component-catalog.md` = 1（baseline 0）/ `rg -c "SectionHeader" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0）/ `awk '/^## ①/,/^## ②/' … | rg -c "min-w-0 flex-1"` ≥ 2（baseline 1）
+- **AC3** `rg -c "label 内包の横並び" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0）/ `rg -c "可視 Label を持たない" docs/design-system/02-component-catalog.md` ≥ 2（baseline 0、⑨ D1 + ⑤ S3）/ `rg -c "3 択以上の SegmentedControl" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0、D5）/ `rg -c 'text-sm text-muted-foreground" htmlFor' docs/design-system/02-component-catalog.md` ≥ 1（baseline 0、D1 の label canonical class + D2 block）
+- **AC4** `rg -c "バリエーション: セクション見出し" docs/design-system/02-component-catalog.md` = 1（baseline 0）/ `rg -c "SectionHeader" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0）/ `awk '/^## ①/,/^## ②/' docs/design-system/02-component-catalog.md | rg -c "min-w-0 flex-1"` ≥ 3（baseline 2 = `:34` code block + `:52` 本文。round 1 で訂正）
+- **AC11**（token、負の oracle）`awk '/^## ①/,/^## ②/' docs/design-system/02-component-catalog.md | rg -c "text-lg"` = 0（baseline 0、維持）/ 同 `rg -c "text-xl font-semibold"` ≥ 1（baseline 0）/ `rg -c "説明を見出し行の下に置く形" docs/design-system/02-component-catalog.md` ≥ 1（baseline 0、形態 A の除外が書かれている）
 - **AC5**（負の oracle、D3）`awk '/^## ⑨/,/^## ⑩/' docs/design-system/02-component-catalog.md | rg -c "\.tsx:[0-9]+"` = 0（baseline 0、維持）
 - **AC6**（負の oracle）`rg -c "1 ページ 1 個の h1" docs/design-system/02-component-catalog.md` = 1（baseline 1、不変）/ `rg -n "sub-section を .PageHeader. で描かない|PageHeader で描かない" docs/design-system/02-component-catalog.md | wc -l` ≥ 1
 - **AC7** `fd -g "mockup-g-filter-toolbar.html" docs/design-system/reference | wc -l` = 1（baseline 0）/ `rg -c "mockup-g" docs/design-system/reference/README.md` ≥ 1（baseline 0）/ `rg -c "<script|https?://" docs/design-system/reference/mockup-g-filter-toolbar.html` = 0
@@ -333,3 +348,10 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-10、plan-first `bde0478`、Sonnet + Opus 独立）
+
+- Opus: reject（P1 2 / P2 7 / P3 4）。Sonnet: reject（P1 2 / P2 3 / P3 3、うち AC4 baseline と `StocktakeProgressHeader` は Opus と重複）
+- Coordinator 実証: h2 token = 20px（`00-foundations.md:81` / catalog `:243`）→ `text-xl` / 「直近の○○」4 箇所は `<p>` が flex 行の外（`ReceivingPage.tsx:658-667` 等）→ 折返しバグ非該当、3 形態 A4 / B2 / C2 / `search.ts:15-26` で廃番表示・PLU表示とも「すべて」を持ち `ProductListPage.tsx:135-150` で隣接 → D5 反転 / AC4 baseline 2 / `DepartmentFilter` block は `:625-633` / `label.tsx:11` `font-medium`
+- 裁定: **accept 19**（Opus P1-1 / P1-2 / P2 全 7 / P3 全 4、Sonnet P1-2〈4 箇所の h2 行番号〉/ P2-1 商品追加 / P2-3 ProductListPage 行番号 / P3 全 3）/ no-action 0。Opus P2「⑲ が存在しない」は branch 視点の artifact（⑲ は PR #50、別 branch）だが Wave Registry 未登録の指摘は正当 → wave 9 を両 branch に登録
+- 是正 = 本 commit（Human Gate 文言 / 実測表 2 つ / 3 形態 census / D1 / D2 / D4 / D5 / D6 / D7 / S1〜S4 / S6 / AC3 / AC4 / AC11 / Matrix / Plans.md wave 9）。PR body の `:461` は `:438` へ更新。round 2 = Sonnet + Opus 再注入
