@@ -44,25 +44,27 @@ Risk: R3
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| C1 | F1 | unit | `SupplierPickerDialog.test.tsx` `renders title, description, search, current-selection band and fixed footer` | Title / Description / 「現在の選択」/ 「新しい取引先を追加」/ 「閉じる」のいずれかが欠ける、sr-only 列見出しが可視 |
-| C2 | F2 | unit | 同 `lists leading row first and suppliers sorted by name` | 先頭行が `leadingLabel` でない、または row 順が name 昇順でない |
-| C2 / C5 | — | unit | 同 `filters rows by search text and shows EmptyState when nothing matches` | 検索で行数が減らない、0 件で EmptyState が出ない、クリアで戻らない |
-| C3 | F3 | unit | 同 `selecting a row calls onSelect once and closes` | `onSelect` 呼出回数 ≠ 1、または close されない |
-| C3 | F3 | unit | 同 `escape and close button do not change selection` | Esc / 「閉じる」で `onSelect` が呼ばれる |
-| C4 | F4 | unit | 同 `auto-selects the created supplier and closes both dialogs` | `onCreated` → `onSelect(newId)` の順でない、片方の dialog が残る |
-| C5 | F5 | unit | 同 `shows skeleton while loading and alert with retry on error` | loading 中に行が出る、error で Alert なし、再試行が `onRetry` を呼ばない |
-| C6 | F6 | unit（P1） | 同 `focuses search input on open and returns focus after inner dialog closes` | `document.activeElement` が検索 input でない |
-| C6 | F6 | unit（P1） | 同 `escape closes only the inner create dialog` | Esc で picker も閉じる。**jsdom で Radix stack が再現しない場合は L3 へ降格し理由を記録** |
+| C1 | F1 | unit | `SupplierPickerDialog.test.tsx` `DSR-24: renders title, description, search, current-selection band and fixed footer outside the scroll box` | Title / Description / 「現在の選択」/ 「新しい取引先を追加」/ 「閉じる」のいずれかが欠ける、sr-only 列見出しが可視、**`scrollBox` が帯または footer を `toContainElement` する**（F1 の直接 oracle） |
+| C2 | F2 | unit | 同 `DSR-24: lists leading row first and suppliers sorted by name` | 先頭行が `leadingLabel` でない、または row 順が name 昇順でない |
+| C2 / C5 | — | unit | 同 `DSR-24: filters rows by search text and shows EmptyState when nothing matches` | 検索で行数が減らない、0 件で EmptyState が出ない、クリアで戻らない |
+| C3 | F3 | unit | 同 `DSR-24: selecting a row calls onSelect once and closes` | `onSelect` 呼出回数 ≠ 1、または close されない |
+| C3 | F3 | unit | 同 `DSR-24: escape and close button do not change selection` | Esc / 「閉じる」で `onSelect` が呼ばれる |
+| C4 | F4 | unit | 同 `UI-01b-D21: auto-selects the created supplier and closes both dialogs` | `onCreated` → `onSelect(newId)` の順でない、片方の dialog が残る |
+| C5 | F5 | unit | 同 `DSR-24: shows skeleton while loading and alert with retry on error` | loading 中に行が出る、error で Alert なし、再試行が `onRetry` を呼ばない |
+| C6 | F6 | unit（P1） | 同 `DSR-24: focuses search input on open, returns focus to search after inner dialog closes, and to the trigger after picker closes` | `document.activeElement` が検索 input / trigger でない |
+| C6 | F6 | unit（P1） | 同 `DSR-24: escape closes only the inner create dialog` | Esc で picker も閉じる。**jsdom で Radix stack が再現しない場合は L3 へ降格し理由を記録** |
 | C7 | F7 | schema（typecheck）+ rg | AC2 oracle + `npm run typecheck` | products 版が残る、`onCreated` 引数なしで compile が通る |
 | C7 | F7 | regression | `SupplierManagementPage.test.tsx` 既存の追加 flow test（`rg -n "新しい取引先を追加" src/features/suppliers/SupplierManagementPage.test.tsx` で実在確認） | 引数変更で追加後の再取得が壊れる |
-| C8 / C9 | F8 / F9 | unit | `PriceRevisionFilters.test.tsx` `opens supplier picker from trigger and patches supplier on select` | trigger 文言が現在値でない、`onPatch({ supplier })` が呼ばれない |
-| C9 | F9 | regression | `PriceRevisionFilters.test.tsx` 既存 toggle test（`rg -n "取引先未設定の商品も含める" src/features/products/components/PriceRevisionFilters.test.tsx`） | toggle が消える / 既定 on でない |
-| C8 / C10 | F8 / F10 | unit | `ProductForm.test.tsx` `selects a supplier through the picker and keeps 取引先なし as null` | 「取引先なし」選択で `supplierId !== null`、trigger が `supplierWarning` 中に enabled |
-| C10 | F4 / F10 | unit | `ProductForm.test.tsx` `creates a supplier from the picker, refreshes options and auto-selects it` | 追加後に trigger が新規名にならない、`listSuppliers` が再呼出されない |
+| C8 / C9 | F8 / F9 | unit | `PriceRevisionFilters.test.tsx` `SPEC-PRV-D6: opens supplier picker from trigger and patches supplier on select` | trigger 文言（`toHaveTextContent`）が現在値でない、`onPatch({ supplier })` が呼ばれない、追加成功時に `onPatch` が 2 回呼ばれる（S3 の `onCreated` = refetch のみ） |
+| C9 | F9 | unit（新規） | `PriceRevisionFilters.test.tsx` `SPEC-PRV-D3: shows 取引先未設定の商品も含める in the filter row, checked by default, when a supplier is selected` | toggle が消える / 既定 on でない / dialog 内へ移動。**既存 test には無い**（round 1 で不在を確認、`includeUnassigned` は fixture `:36` のみ） |
+| C9 | F8 | unit（GA2 書き換え） | `PriceRevisionFilters.test.tsx` `:57` / `:80` を trigger 版へ（Label + trigger が 1 wrapper / DOM 順序 Label → trigger → 部門 → … → 表示件数） | ⑭ GA2 の群化契約が trigger 化で失われる |
+| C8 / C10 | F8 / F10 | unit | `ProductForm.test.tsx` `UI-01b-D7: selects a supplier through the picker and keeps 取引先なし as null` | 「取引先なし」選択で `supplierId !== null`、trigger が `supplierWarning` 中に enabled |
+| C10 | F4 / F10 | unit | `ProductForm.test.tsx` `UI-01b-D21: creates a supplier from the picker, refreshes options and auto-selects it` | 追加後に trigger が新規名にならない、`listSuppliers` が再呼出されない |
+| C8 | F8 | regression（in-place） | `ProductForm.test.tsx:763-800` SC4e / `ReceivingPage.test.tsx:1026-1030` SC4b（Lane 5、`bg-control-surface` / not `bg-background`） | trigger が `outline` 素のまま `bg-background` を持つ |
 | C10 | F10 | rg | AC3 oracle | inline パネル state が残る |
-| C8 / C11 | F8 / F11 | unit | `ReceivingPage.test.tsx` `selects supplier via picker and allows 指定なし` | 「指定なし」に戻せない、未指定で submit が拒否される |
-| C11 | F11 | unit | `ReceivingPage.test.tsx` `refetches suppliers after creating one from the picker` | `refetch` 未呼出 |
-| C12 | F12 | unit | `SupplierManagementPage.test.tsx` `filters suppliers by name and shows no-match message` | 検索で絞られない、0 件文言が data 空文言と入れ替わる |
+| C8 / C11 | F8 / F11 | unit | `ReceivingPage.test.tsx` `UI-02-D3: selects supplier via picker and allows 指定なし` | 「指定なし」に戻せない、未指定で submit が拒否される |
+| C11 | F11 | unit | `ReceivingPage.test.tsx` `UI-02-D3: refetches suppliers after creating one from the picker` | `refetch` 未呼出 |
+| C12 | F12 | unit | `SupplierManagementPage.test.tsx` `SPEC-SUP-D2: filters suppliers by name and shows no-match message` | 検索で絞られない、0 件文言が data 空文言と入れ替わる |
 | C12 | F12 | regression | `SupplierManagementPage.test.tsx` 既存 EmptyState test | data 空文言が変わる |
 | C13 | F13 | rg | AC10 oracle 群 | 「後続実装」/ stale citation / 旧 path が残る |
 | 全体 | — | L1 full | `bash scripts/local-ci.sh full`（1 worktree 1 run） | lint / typecheck / vitest / doc check のいずれか FAIL |
@@ -91,7 +93,7 @@ Risk: R3
 
 ## Negative Paths
 
-- missing input: 空白の取引先名 → `CreateSupplierDialog` 既存 test（`rg -n "whitespace" src/features/suppliers/components` / `SupplierManagementPage.test.tsx` で実在確認）
+- missing input: 空白の取引先名 → `CreateSupplierDialog` 既存 test `SupplierManagementPage.test.tsx:163`「取引先名が空白のみなら createSupplier を呼ばず field error を出す」（実在確認済み）
 - invalid input: 該当なし（検索 text に制約なし）
 - duplicate/ambiguous input: 同名追加 → backend が既存行を返す（UI-01b-D21、既存、不変）
 - unknown reference: `selected` が一覧に無い id（削除 / 統合後）→ 固定帯は `leadingLabel` にフォールバック（Writer: 1 行、test 1 本）
@@ -118,7 +120,10 @@ Risk: R3
 ## Data Safety Checks
 
 - source-derived data: 該当なし
-- generated outputs: 該当なし（bindings / routes / traceability 差分なし）
+- generated outputs: 該当なし（bindings / routes / traceability 差分なし。[T4] baseline 26 は test 名の ID 付与で不変）
+- secrets: 該当なし
+- local-only files: `.local/codex-orders/**`（commit しない）
+- synthetic sample boundaries: 該当なし（test fixture は架空の取引先名のみ）
 
 ## Main Wiring / Integration Checks
 
@@ -139,6 +144,8 @@ closure（Sonnet + Opus）で最低限注入する mutant。**各 mutant は `Su
 8. `ProductForm` で「取引先なし」を `0` にマップ → C10 test が落ちるか
 9. `SupplierManagementPage` の 0 件文言を入れ替える → C12 test が落ちるか
 10. 固定帯の小見出し「現在の選択」を消す → C1 test が落ちるか
+11. `ProductForm` の `onCreated` から `commands.listSuppliers()` 再取得を削る → C10 test（`listSuppliers` 再呼出 assertion）が落ちるか
+12. 固定帯を scroll 箱の内側へ移す → C1 test の `not.toContainElement` が落ちるか
 
 ## Residual Test Gaps
 

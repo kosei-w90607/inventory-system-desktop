@@ -88,8 +88,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ### runtime 現状
 
 - `CreateSupplierDialog` 3 実装:
-  - `src/features/products/components/CreateSupplierDialog.tsx`（105 行、`onCreated: (supplier: Supplier) => Promise<void>` `:20-28`、`commands.createSupplier` `:42`、呼び出し = `PriceRevisionFilters.tsx:184-191`）
-  - `src/features/suppliers/components/CreateSupplierDialog.tsx`（116 行、`onCreated: () => Promise<void>` `:20-28`、`<form>` 包み `:69-114`、`describeError` 使用、呼び出し = `SupplierManagementPage.tsx:68-74`）
+  - `src/features/products/components/CreateSupplierDialog.tsx`（104 行、`onCreated: (supplier: Supplier) => Promise<void>` `:20-28`、`commands.createSupplier` `:42`、呼び出し = `PriceRevisionFilters.tsx:184-191`、import は相対 `./CreateSupplierDialog` `:22`）
+  - `src/features/suppliers/components/CreateSupplierDialog.tsx`（115 行、`onCreated: () => Promise<void>` `:20-28`、`<form>` 包み `:69-111`〈Enter 確定 + IME `isComposing` guard `:86-88`〉、`describeError` 使用、input id `supplier-management-new-name` `:77-79`、呼び出し = `SupplierManagementPage.tsx:68-74`。products 版の strict superset）
   - `src/features/products/components/ProductForm.tsx:301-391` inline パネル（`showSupplierInput` state `:98`、toggle button `:322-332`〈`variant="secondary"`〉、`createSupplier` + `listSuppliers` を直接呼び `setSupplierOptions` `:357-386`、確定ボタン「追加する」`:387`）
 - 取引先を選ぶ 3 サイト（すべて shadcn `Select`）:
   - `PriceRevisionFilters.tsx:60-83`（`value="all"` sentinel、`suppliersQuery` prop、key `queryKeys.priceRevision.suppliers()`、隣に「新しい取引先を追加」button）。toggle `:143-156`、取得失敗 `:157-168`（`<p role="alert">` + 再試行 link）
@@ -100,7 +100,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `src/components/ui/dialog.tsx`: `radix-ui` 統合 package、`DialogContent` は `...props` 透過（`onOpenAutoFocus` / `onInteractOutside` / `onEscapeKeyDown` を呼び出し側から渡せる）、`DialogOverlay` = `bg-black/50 z-50` `:34`
 - dialog-in-dialog の先例・test 先例なし（`rg` 0 件）。`MergeSupplierDialog.tsx` が単一 dialog 2-stage の先例（(B) fallback の型）
 - `ListShell.tsx:51` `STICKY_TABLE_CLASSES` / `:223` `max-h-[calc(100vh-6.75rem)] overflow-auto` が商品一覧の scroll 箱
-- `ProductForm.test.tsx:691-758` が inline パネルの test（`data-variant="secondary"` assertion `:695-698` を含む）。`ProductForm.test.tsx` に `QueryClientProvider` なし（0 件）→ ProductForm は queryClient を持たない
+- `ProductForm.test.tsx:691-758` が inline パネルの test（`data-variant="secondary"` assertion `:695-698` を含む）。`ProductForm.test.tsx` に `QueryClientProvider` なし（0 件）→ ProductForm は queryClient を持たない。`ProductForm.tsx:97,104` の `setSupplierOptions` は `suppliers` prop を local state に**加算 merge** する effect（親の stale prop が local 追加分を消さない）
+- Lane 5 の control 面 token test: `ProductForm.test.tsx:763-800`（SC4e: 部門 / 取引先 / 税率が `bg-control-surface`、not `bg-background`）、`ReceivingPage.test.tsx:1026-1030`（SC4b: 取引先 select 同様）。`Button` `outline` variant は `bg-background`（`button.tsx:16`）、`Input` / `SelectTrigger` は `bg-control-surface`（`input.tsx:11` / `select.tsx:53`）
+- `PriceRevisionFilters.test.tsx`（92 行）は全体が ⑭ GA2 の群化 test 2 本（`:57` / `:80`）、header comment `:3-11` に「REQ/UI ID を付けない代わりに `FE_UNREFERENCED_BASELINE` を更新した」経緯。toggle「取引先未設定の商品も含める」の test は無い（`includeUnassigned` は fixture `:36` のみ）
+- `src-tauri/src/bin/generate_traceability.rs:54` `FE_UNREFERENCED_BASELINE = 26`（[T4]、ID 未参照の FE test file 数を増減両方向で ERROR）
 - bindings: `Supplier { id, name, created_at }`（`bindings.ts:1645-1649`）、`createSupplier(name) => Supplier` `:28`、`listSuppliers() => Supplier[]` `:26`
 - test file 数 170（`fd -e test.tsx -e test.ts . src`）
 
@@ -117,8 +120,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - `triggerLabel` は持たない。trigger は host 側（D5）
 - **D3 一覧の並び = picker 内で `name.localeCompare(other, "ja")` 昇順**（backend 不変）。理由: 80 件の目視走査は名前順が前提、取引先管理（name ASC）と揃える。1 行で済む
 - **D4 検索 input = `Label` + `Input type="search"`（`grid gap-1`）を picker 内に直接置く。`SearchBar` は使わない**。理由: `SearchBar` の debounce / Enter flush / IME guard は URL state・server 再取得のための機構で、取得済み 80 件の in-memory filter には不要。test も同期で書ける。filter = `name.includes(query.trim())`（大小文字正規化なし、日本語名主体）。0 件 = `EmptyState`（絞り込み解除 action なし、catalog `:592`）
-- **D5 host 側 trigger = `Button variant="outline"`、文言 = 現在の選択（取引先名 / `leadingLabel`）、`aria-haspopup="dialog"`、host の `<Label htmlFor>` で「取引先」と紐付ける**。mockup の `取引先を選択` は placeholder 文言であり、閉じた状態で現在値が見えないのは `Select` からの後退になるため現在値を出す。icon は付けない（owner「飾りより情報」）。disabled 条件は各 host の現行 `Select` の条件を引き継ぐ（`supplierWarning !== null` / `isFormLocked || isLoading`）。**owner L3 で見た目を確認する（AC-L3-6）**
-- **D6 scroll 箱 = `ListShell.tsx` の `STICKY_TABLE_CLASSES` 系を流用**（export して picker と取引先管理で共用、または同 class 文字列を 1 定数として共有）。dialog 内は viewport 基準 `max-h` が不適のため `max-h-[50vh]` 相当を picker 側で上書き。新規 class 系統を作らない
+- **D5 host 側 trigger = `Button variant="outline"` + `className="w-full justify-between bg-control-surface"`、文言 = 現在の選択（取引先名 / `leadingLabel`）、`aria-haspopup="dialog"`、accessible name は `aria-labelledby="<label id> <trigger id>"`（host の「取引先」`<Label id>` + trigger 自身の id）で「取引先 + 現在値」にする**。mockup の `取引先を選択` は placeholder 文言（背景の非対話 `<span>`、`mockup-f:69,85,109`）であり、閉じた状態で現在値が見えないのは `Select` からの後退になるため現在値を出す。icon は付けない（owner「飾りより情報」）。`bg-control-surface` は Lane 5 SC4e / SC4b（`ProductForm.test.tsx:792-800` / `ReceivingPage.test.tsx:1027-1030`）が取引先欄に要求する control 面 token で、`cn()` の twMerge が `outline` の `bg-background` を置換する。`<Label htmlFor>` + `<button>` の名前計算は HTML-AAM で非標準のため `aria-labelledby` を使い、現在値の assertion は role name でなく `toHaveTextContent` で行う（Plan Review round 1 Opus P1-3 / P2-4）。disabled 条件は各 host の現行 `Select` の条件を引き継ぐ（`supplierWarning !== null` / `isFormLocked || isLoading`）。**owner L3 で見た目を確認する（AC-L3-6）**。本項は catalog `:584` への規範追加（literal 同期ではない）として S7 で source 化する
+- **D6 scroll 箱 = `<div className="max-h-[50vh] overflow-auto rounded-md border">` で `<table>` を包むだけ**（picker / 取引先管理とも同じ class 文字列。取引先管理は viewport 基準の `max-h-[calc(100vh-…)]` でも可、Writer が実画面で選ぶ）。`ListShell.tsx:51` `STICKY_TABLE_CLASSES` は `stickyHeader` 時のみ適用される thead 固定用（`:199`）で、列見出しが `sr-only` の picker には効かないため **export も流用もしない**（Plan Review round 1 Opus P2-5）。`ListShell.tsx:223` の viewport `max-h` も別 div のもの。新規 class 系統を作らない
 - **D7 「現在の選択」固定帯 = scroll 箱の外、検索 input の下**（catalog `:584` literal）。小見出し「現在の選択」（`text-xs text-muted-foreground`）+ 名前 + `Badge`「選択中」、背景 `bg-row-current`（token 名は `00-foundations` / 既存 DSR-22 実装の `--row-current` 利用箇所を Writer が `rg` で確認して同じ class を使う）、下辺 `border-b border-border-strong`
 - **D8 ProductForm の追加後再取得 = 既存 `:371-376` の `commands.listSuppliers()` → `setSupplierOptions` を `onCreated` に移す**（ProductForm は queryClient を持たず test にも Provider が無い。invalidate 化は非目的）。ReceivingPage = `supplierQuery.refetch()`、PriceRevisionFilters = 既存 `:187-190` と同じ、取引先管理 = `suppliersQuery.refetch()`（引数は無視）
 - **D9 DSR-01 `:25` の「runtime 是正対象（2026-09-05 起票時実測）: `ProductForm.tsx:343`…」文は、inline パネル撤去で対象が消えるため、citation 訂正ではなく「解消済み（本 PR、DSR-24 の picker 化で inline パネル撤去）」に書き換える**（Backlog の「`:343`→`:387`・`:481`→`:496` 同乗」は訂正でなく解消として消化）
@@ -127,11 +130,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Scope
 
 - **S1 `SupplierPickerDialog` 新設**（`src/features/suppliers/components/SupplierPickerDialog.tsx` + `SupplierPickerDialog.test.tsx`）: D2 props、構成 = `DialogTitle`「取引先を選択」+ `DialogDescription`（1 文、例「名前で検索して選ぶか、新しい取引先を追加します。」）+ 検索（D4）+ 固定帯（D7）+ scroll 一覧（D6、`<table>` で列見出し「選択」は `sr-only`、行 = ✓〈lucide `Check`〉+ `Badge`「選択中」+ 名前、現在行に DSR-22 の 3 点〈左 4px primary バー + `bg-row-current` + ✓ / badge〉、先頭行 `leadingLabel`、以降 D3 順）+ footer（`shrink-0`、左 `Button` primary〈lucide `Plus` + 「新しい取引先を追加」〉、右 `Button variant="outline"`「閉じる」）。状態 = `isLoading` → `ListSkeleton`、`isError` → `Alert variant="destructive"` + 再試行（`onRetry`）、検索 0 件 → `EmptyState`。動作 = 行クリック → `onSelect` + 閉じる / 外クリック・Esc → 閉じる（選択不変）/ 追加 → 内側に `CreateSupplierDialog`（S2）を開く、成功 → `onCreated` → `onSelect(id)` → 両方閉じる。a11y = open 時 focus は検索 input（Radix 既定の最初の focusable で足りなければ `onOpenAutoFocus` で明示）、内側 close 後の focus は検索 input（`CreateSupplierDialog` の `onCloseAutoFocus` で指定）、閉じたら trigger へ戻る（Radix 既定）
-- **S2 `CreateSupplierDialog` 統合**（D1）: `src/features/suppliers/components/CreateSupplierDialog.tsx` の `onCreated` を `(supplier: Supplier) => Promise<void>` に変更し `:46` で `await onCreated(supplier)`。`src/features/products/components/CreateSupplierDialog.tsx` を削除し、`PriceRevisionFilters.tsx` の import を suppliers 版へ。`SupplierManagementPage.tsx:68-74` は callback 引数を無視するだけで動作不変
-- **S3 `PriceRevisionFilters.tsx` の取引先 `Select` → trigger + picker**（`:60-83` の `Select` と隣接「新しい取引先を追加」button を撤去、D5 trigger に置換、`leadingLabel="すべての取引先"`、`selected = normalized.supplier ?? null`、`onSelect(id) → onPatch({ supplier: id })`〈`null` は既存どおり `all` 意味〉、`onCreated` は既存 `:187-190` の内容を picker へ移す。`:143-156` toggle は不変（filter 列に残す、SPEC-PRV-D3）。`:157-168` の取得失敗 `<p role="alert">` は picker 内 Alert と重複するため撤去し picker の `isError` / `onRetry` に一本化するか残すかは Writer 判断〈残す場合は理由を comment〉）。`PriceRevisionFilters.test.tsx` の Select 依存 assertion を picker 経由に書き換え
-- **S4 `ProductForm.tsx` の取引先 `Select` + inline パネル → trigger + picker**（`:303-391` を D5 trigger + `SupplierPickerDialog`〈`leadingLabel="取引先なし"`〉に置換、`showSupplierInput` / `supplierName` / `supplierCreateError` / `isCreatingSupplier` state と `:322-332` toggle button を撤去、`onCreated` = D8。`supplierWarning !== null` の disabled は trigger に引き継ぐ）。`ProductForm.test.tsx:691-758` の inline パネル test を picker 経由の flow（空白名拒否は `CreateSupplierDialog` 側の既存 test に委ね、ProductForm 側は「追加成功 → 自動選択 → 両 dialog close」を検証）に書き換え、`data-variant="secondary"` assertion `:695-698` を撤去
-- **S5 `ReceivingPage.tsx` の取引先 `Select` → trigger + picker**（`:396-415`、`leadingLabel="指定なし"`、`selected = values.supplierId`、`onSelect(id) → updateValues(supplierId: id)`、`onCreated → supplierQuery.refetch()`、disabled = `isFormLocked || supplierQuery.isLoading`）。`ReceivingPage.test.tsx:237,254,276,1027` の Select 依存 assertion を書き換え
-- **S6 取引先管理の名前検索 + scroll 箱**（`SupplierManagementPage.tsx`）: `PageHeader` の下に `Label`「取引先名で検索」+ `Input type="search"`（`grid gap-1`、D4 と同じ filter）、`SupplierUsageTable` を D6 の scroll 箱で包む。data が非空で filter 結果 0 件 → `EmptyState`「該当する取引先はありません」（既存の「取引先はまだ登録されていません」は data 空のときのみ）。`SupplierManagementPage.test.tsx` に「検索で一覧が絞られる / 0 件文言」test 追加
+- **S2 `CreateSupplierDialog` 統合**（D1）: `src/features/suppliers/components/CreateSupplierDialog.tsx` の `onCreated` を `(supplier: Supplier) => Promise<void>` に変更し `:46` で `await onCreated(supplier)`。`src/features/products/components/CreateSupplierDialog.tsx` を削除し、`PriceRevisionFilters.tsx:22` の import を `@/features/suppliers/components/CreateSupplierDialog` へ。`SupplierManagementPage.tsx:68-74` は callback 引数を無視するだけで動作不変。suppliers 版の input id `supplier-management-new-name`（`:77-79`）は 4 host で使われるため `create-supplier-name` に改名（同時 mount は無いので重複 id ではないが命名の実態合わせ）
+- **S3 `PriceRevisionFilters.tsx` の取引先 `Select` → trigger + picker**（`:60-83` の `Select` と隣接「新しい取引先を追加」button を撤去、D5 trigger に置換、`leadingLabel="すべての取引先"`、`selected = normalized.supplier ?? null`、`onSelect(id) → onPatch({ supplier: id })`〈`null` は既存どおり `all` 意味〉、`onCreated` = `await suppliersQuery.refetch()` **のみ**（既存 `:187-190` の `onPatch({ supplier: supplier.id })` は移さない。選択は picker の `onSelect(s.id)` が行うため、移すと二重発火し Mutation #3 が kill できない。Opus P2-3）。`:143-156` toggle は不変（filter 列に残す、SPEC-PRV-D3）。`:157-168` の取得失敗 `<p role="alert">` は **撤去**し picker の `isError` / `onRetry` に一本化する（Coordinator 決定、Opus P2-5。部門の alert `:169-180` は不変）。**`PriceRevisionFilters.test.tsx` は全体が GA2（⑭ Gated Amendment 2、owner L3 起源）の「取引先 label / Select / 追加ボタンの群化」test 2 本（`:57` wrapper 共有 / `:80` DOM 順序）で、両方の subject が消える → trigger 版に書き換える（Label + trigger が 1 wrapper、DOM 順序 = Label → trigger → 部門 → … → 表示件数）+ header comment `:3-11` を同 commit で更新**。加えて新規 test「取引先選択時に『取引先未設定の商品も含める』が filter 列に既定 on で現れる」を追加（SPEC-PRV-D3 の regression、既存 test には無い。Sonnet P1-2）。GA2 の群化契約は Ledger に行を立てる）
+- **S4 `ProductForm.tsx` の取引先 `Select` + inline パネル → trigger + picker**（`:303-391` を D5 trigger + `SupplierPickerDialog`〈`leadingLabel="取引先なし"`〉に置換、`showSupplierInput` / `supplierName` / `supplierCreateError` / `isCreatingSupplier` state と `:322-332` toggle button を撤去、`onCreated` = D8。`supplierWarning !== null` の disabled は trigger に引き継ぐ）。`ProductForm.test.tsx:691-758` の inline パネル test を picker 経由の flow（空白名拒否は `CreateSupplierDialog` 側の既存 test に委ね、ProductForm 側は「追加成功 → 自動選択 → 両 dialog close」を検証）に書き換え、`data-variant="secondary"` assertion `:695-698` を撤去。**`ProductForm.test.tsx:763-800`（Lane 5 SC4e: `getByLabelText("取引先")` が `bg-control-surface` を持ち `bg-background` を持たない）は trigger に対して in-place で成立させる**（D5、`getByLabelText` は `aria-labelledby` でも解決する）。`ProductForm.test.tsx:18-24` は `@/lib/bindings` のみ mock のため、統合後の dialog から `sonner` の `toast.success` が届く（既存 SupplierManagementPage.test と同じ扱い、必要なら mock）
+- **S5 `ReceivingPage.tsx` の取引先 `Select` → trigger + picker**（`:396-415`、`leadingLabel="指定なし"`、`selected = values.supplierId`、`onSelect(id) → updateValues(supplierId: id)`、`onCreated → supplierQuery.refetch()`、disabled = `isFormLocked || supplierQuery.isLoading`）。`ReceivingPage.test.tsx:237,254,276` の Select 依存 assertion を trigger + picker 経由に書き換え。**`:1026-1030`（Lane 5 SC4b: 取引先欄の `bg-control-surface` / not `bg-background`）は trigger に対して in-place で成立させる**（D5）
+- **S6 取引先管理の名前検索 + scroll 箱**（`SupplierManagementPage.tsx`）: `PageHeader` の下に `Label`「取引先名で検索」+ `Input type="search"`（`grid gap-1`、D4 と同じ filter）、`SupplierUsageTable` を D6 の scroll 箱で包む。data が非空で filter 結果 0 件 → `EmptyState`「該当する取引先はありません」（既存の「取引先はまだ登録されていません」は data 空のときのみ）。検索 input は data が非空のときだけ描画し、`isLoading` / `isError` / data 空の 3 分岐（`:41-59`）は不変。`SupplierManagementPage.test.tsx` に「検索で一覧が絞られる / 0 件文言」test 追加
 - **S7 docs 同期**: `02-component-catalog.md:582` canonical 行を実装済み path へ（「後続実装、…想定」を消す）/ `01-decision-rules.md:25` D9 / `51-ui-product-form.md:151` canonical path を D1 へ + 変更履歴 / `61` `77` `78` の変更履歴に runtime 反映 1 行 / `docs/design-system/README.md`・`UI_TECH_STACK.md` に picker の「後続実装」文言があれば同期（Writer が `rg -n "後続実装|runtime lane" docs/design-system docs/UI_TECH_STACK.md` で実測、無ければ変更なしと報告）
 
 ## Non-scope
@@ -152,19 +155,19 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 R3 のため各 AC に機械 oracle を付す。`rg` の出力空 = 0 件。
 
 - **AC1** `fd -g "SupplierPickerDialog.tsx" src/features/suppliers/components | wc -l` = 1、`fd -g "SupplierPickerDialog.test.tsx" src/features/suppliers/components | wc -l` = 1（baseline 0 / 0）
-- **AC2** `test ! -e src/features/products/components/CreateSupplierDialog.tsx`（exit 0、baseline 存在）/ `rg -c "onCreated: \(supplier: Supplier\) => Promise<void>" src/features/suppliers/components/CreateSupplierDialog.tsx` = 1（baseline 0）/ `rg -n "products/components/CreateSupplierDialog" src | wc -l` = 0（baseline 1 = PriceRevisionFilters import）
-- **AC3** `rg -n "showSupplierInput|setSupplierOptions|new-supplier-name|isCreatingSupplier" src/features/products/components/ProductForm.tsx | wc -l` = 0（baseline ≥ 8）/ `rg -c "SupplierPickerDialog" src/features/products/components/ProductForm.tsx` ≥ 2（import + JSX、baseline 0）
+- **AC2** `fd -g "CreateSupplierDialog.tsx" src/features/products | wc -l` = 0（baseline 1）/ `rg -c "onCreated: \(supplier: Supplier\) => Promise<void>" src/features/suppliers/components/CreateSupplierDialog.tsx` = 1（baseline 0）/ `rg -c "features/suppliers/components/CreateSupplierDialog" src/features/products/components/PriceRevisionFilters.tsx` = 1（baseline 0。現行 import は相対 `./CreateSupplierDialog` `:22`）/ `rg -c 'id="create-supplier-name"' src/features/suppliers/components/CreateSupplierDialog.tsx` = 1（baseline 0）
+- **AC3** `rg -n "showSupplierInput|new-supplier-name|isCreatingSupplier|supplierCreateError" src/features/products/components/ProductForm.tsx | wc -l` = 0（baseline 9。`setSupplierOptions` は D8 の再取得と `:97,104` の prop merge で残るため pattern に含めない〈Opus P1-1〉）/ `rg -c "commands.listSuppliers" src/features/products/components/ProductForm.tsx` ≥ 1（D8、baseline 1）/ `rg -c "SupplierPickerDialog" src/features/products/components/ProductForm.tsx` ≥ 2（import + JSX、baseline 0）
 - **AC4** `rg -n 'SelectItem value="all"' src/features/products/components/PriceRevisionFilters.tsx | wc -l` = 0（baseline 1）/ `rg -c "SupplierPickerDialog" src/features/products/components/PriceRevisionFilters.tsx` ≥ 2 / `rg -n "取引先未設定の商品も含める" src/features/products/components/PriceRevisionFilters.tsx | wc -l` = 1（不変、toggle 残置）
 - **AC5** `rg -n 'SelectItem value="none">指定なし' src/features/receiving/ReceivingPage.tsx | wc -l` = 0（baseline 1）/ `rg -c "SupplierPickerDialog" src/features/receiving/ReceivingPage.tsx` ≥ 2
 - **AC6** `rg -n "取引先名で検索" src/features/suppliers/SupplierManagementPage.tsx | wc -l` ≥ 1（baseline 0）/ `rg -n "該当する取引先はありません" src/features/suppliers/SupplierManagementPage.tsx | wc -l` = 1
 - **AC7** picker 構成の literal: `rg -c "DialogTitle" src/features/suppliers/components/SupplierPickerDialog.tsx` ≥ 1、同 `DialogDescription` ≥ 1、`sr-only` ≥ 1、`現在の選択` ≥ 1、`選択中` ≥ 1、`新しい取引先を追加` = 1、`閉じる` ≥ 1、`localeCompare` = 1、`rg -n "＋" src/features/suppliers/components/SupplierPickerDialog.tsx | wc -l` = 0、`rg -c "Plus" …SupplierPickerDialog.tsx` ≥ 1、`rg -c "SearchBar" …SupplierPickerDialog.tsx` = 0（D4）
 - **AC8** A 案の自動 test: `rg -n "auto-selects the created supplier and closes both dialogs" src/features/suppliers/components/SupplierPickerDialog.test.tsx | wc -l` = 1、`npx vitest run src/features/suppliers` green
 - **AC9** trigger（D5）: `rg -n 'aria-haspopup="dialog"' src/features/products/components/PriceRevisionFilters.tsx src/features/products/components/ProductForm.tsx src/features/receiving/ReceivingPage.tsx | wc -l` = 3（baseline 0）
-- **AC10** docs 同期: `rg -n "後続実装" docs/design-system/02-component-catalog.md | wc -l` = 0（baseline 1、`:582`）/ `rg -n "ProductForm.tsx:343|ProductForm.tsx:481" docs/design-system/01-decision-rules.md | wc -l` = 0（baseline 2 hit in 1 行）/ `rg -n "src/features/suppliers/components/CreateSupplierDialog.tsx" docs/function-design/51-ui-product-form.md | wc -l` ≥ 1（baseline 0）/ `rg -n "products/components/CreateSupplierDialog" docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l` = 0（baseline 1）/ 61・77・78・01・02・51 の変更履歴表に本 PR 行が各 1（`rg -c "取引先ピッカー" <doc>` が baseline + 1）
+- **AC10** docs 同期: `rg -n "SupplierPickerDialog.*後続実装" docs/design-system/02-component-catalog.md | wc -l` = 0（baseline 1 = `:582`。無関係な `:514` `DiscontinueConfirmDialog` の「後続実装」は触らない）/ `rg -n "ProductForm.tsx:343|ProductForm.tsx:481" docs/design-system/01-decision-rules.md | wc -l` = 0（baseline 1 行）/ `rg -n "src/features/suppliers/components/CreateSupplierDialog.tsx" docs/function-design/51-ui-product-form.md | wc -l` ≥ 1（baseline 0）/ `rg -n "products/components/CreateSupplierDialog" docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l` = 0（baseline 1）/ 変更履歴表に本 PR 行が各 1: `awk '/^## .*変更履歴|^## 更新履歴/,0' <doc> | rg -c "取引先ピッカー"` が **01 = 1（baseline 0）/ 02 = 1（0）/ 51 = 2（1）/ 61 = 1（0）/ 77 = 2（1）/ 78 = 2（1）**（見出しは 01・02 `## 更新履歴`、51 `## 7.9 変更履歴`、61 `## 61.10 変更履歴`、77 `## 77.10 変更履歴`、78 `## 78.13 変更履歴`）
 - **AC11** 品質 gate: `npm run lint` / `npm run typecheck`（package.json の該当 script 名で）/ `npx vitest run` 全 green / `bash scripts/local-ci.sh full` `RESULT=PASS`（1 worktree 1 run）/ `bash scripts/doc-consistency-check.sh` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
 - **AC12** plan-first commit は docs のみ: `git diff --name-only origin/main..<Plan Commit> -- src src-tauri | wc -l` = 0
 - **AC-L3-1**（一括価格改定 `PriceRevisionFilters.tsx`、WebView2）: trigger に現在値「すべての取引先」→ 開く → 検索で絞る → 行クリックで閉じ trigger に取引先名、toggle が既定 on で現れ位置は filter 列
-- **AC-L3-2**（商品登録 form `ProductForm.tsx`）: trigger「取引先なし」→ 開く → 「新しい取引先を追加」→ 内側 dialog が**手前に重なって**開く（二重 scrim）→ 名前入力 → 追加 → 両 dialog が閉じ trigger に新規名。inline パネルが無い
+- **AC-L3-2**（商品登録 form `ProductForm.tsx`）: trigger「取引先なし」→ 開く → 「新しい取引先を追加」→ 内側 dialog が**手前に重なって**開く（二重 scrim）→ 名前入力 → 追加 → 両 dialog が閉じ trigger に新規名。inline パネルが無い。picker 内の「現在の選択」固定帯が一覧の行と高さ・背景・境界で区別でき「流れない帯」と分かる（catalog `:584`、Opus P2-6）
 - **AC-L3-3**（入庫記録 `ReceivingPage.tsx`）: AC-L3-2 と同じ flow、「指定なし」に戻せる、取引先未指定で保存できる
 - **AC-L3-4**（取引先管理 `SupplierManagementPage.tsx`）: 検索 input で一覧が絞られる、0 件文言、scroll 箱内で一覧が縦 scroll、追加ボタン・名前変更・統合は従来どおり
 - **AC-L3-5**（dialog 重ね (A) の実機契約、catalog `:589`）: 内側 open 中の **ESC は内側だけ**閉じる / 内側の**外クリックは内側だけ**閉じる / Tab が内側から漏れない / 内側 close 後の focus は picker の検索 input / picker close 後の focus は trigger。1 つでも破綻 → state-backtrack + Gated Amendment で (B) へ
@@ -186,7 +189,7 @@ R3 のため各 AC に機械 oracle を付す。`rg` の出力空 = 0 件。
 | Backend function / command / repository / validation / error | 変更なし | existing sufficient |
 | Command / DTO / generated binding / wire shape | 変更なし | existing sufficient |
 | DB / transaction / audit / rollback / migration | 変更なし | existing sufficient |
-| Screen / UI / route state / Japanese wording | DSR-24 / catalog picker 小節 / mockup-f / 51 / 61 / 77 / 78 | existing sufficient（S7 で canonical 行・stale citation・変更履歴のみ updated in this PR） |
+| Screen / UI / route state / Japanese wording | DSR-24 / catalog picker 小節 / mockup-f / 51 / 61 / 77 / 78 | updated in this PR（D1 = 51 `:151` の canonical path 規範を書き換え、D5 = catalog `:584` に trigger 現在値表示の規範を追加。他は canonical 行・stale citation・変更履歴の同期） |
 | CSV / TSV / report / import / export format | 該当なし | existing sufficient |
 | Durable decision / ADR | 該当なし（D1 は 51 の path 記述更新） | existing sufficient |
 
@@ -273,7 +276,11 @@ Minimum design checks for business-app work:
 | SPEC-PRV-D3 / D6（toggle 残置 / 先頭行） | S3 | AC4 + `PriceRevisionFilters.test.tsx` | AC-L3-1 |
 | SPEC-SUP-D2 / D9（検索 + scroll 箱） | S6 | AC6 + `SupplierManagementPage.test.tsx` | AC-L3-4 |
 | D3 name 昇順 | S1 | test（順序 assertion） | non-scope |
-| D5 trigger 現在値 | S3 / S4 / S5 | AC9 + host test（button 文言） | AC-L3-6 |
+| D5 trigger 現在値 + `aria-labelledby` | S3 / S4 / S5 | AC9 + host test（`toHaveTextContent`） | AC-L3-6 |
+| Lane 5 SC4e / SC4b control 面 token（取引先欄 = `bg-control-surface`、not `bg-background`） | S4 / S5（trigger className） | `ProductForm.test.tsx:763-800` / `ReceivingPage.test.tsx:1026-1030` in-place | non-scope |
+| ⑭ GA2 取引先 label / 操作の群化（1 wrapper + DOM 順序） | S3 | `PriceRevisionFilters.test.tsx` 2 本を trigger 版へ書き換え | AC-L3-1 |
+| 取得失敗の再試行を picker に一本化 | S3 | `PriceRevisionFilters.test.tsx`（host alert 不在 + picker Alert） | non-scope |
+| D6 scroll 箱（plain div、STICKY 不使用） | S1 / S6 | C1 test（帯・footer が scroll 箱の外） | AC-L3-2 / 4 |
 | D9 DSR-01 解消 / S7 docs | S7 | AC10 | non-scope |
 
 ## Test Plan
@@ -281,7 +288,7 @@ Minimum design checks for business-app work:
 Test Design Matrix: [test-matrices/2026-09-10-supplier-picker-runtime.md](test-matrices/2026-09-10-supplier-picker-runtime.md)
 - If the Human Gate includes L3, Writer completion includes `cargo check --release` before the owner native build; this is not a CI gate（frontend のみだが慣行維持）
 
-- targeted tests: `SupplierPickerDialog.test.tsx`（新設、契約 10 項目）/ `PriceRevisionFilters.test.tsx` / `ProductForm.test.tsx` / `ReceivingPage.test.tsx` / `SupplierManagementPage.test.tsx`
+- targeted tests: `SupplierPickerDialog.test.tsx`（新設、契約 10 項目、test 名に governing ID）/ `PriceRevisionFilters.test.tsx`（GA2 2 本の trigger 版 + 新規「toggle が filter 列に既定 on」）/ `ProductForm.test.tsx`（inline → picker flow、SC4e in-place）/ `ReceivingPage.test.tsx`（Select → picker、SC4b in-place）/ `SupplierManagementPage.test.tsx`（検索 + 0 件）
 - negative tests: 空白名は `CreateSupplierDialog` 側で拒否（既存）/ 取得失敗時に picker の一覧が出ず Alert + 再試行 / 検索 0 件で EmptyState、検索クリアで復帰 / Esc・外クリックで `onSelect` が呼ばれない
 - compatibility checks: 取引先未指定のまま保存できる（ProductForm / Receiving の既存 test）/ toggle 既定 on（PriceRevisionFilters 既存 test）/ `SupplierManagementPage` の追加 flow が引数変更後も動く
 - data safety checks: 該当なし
@@ -300,7 +307,9 @@ Test Design Matrix: [test-matrices/2026-09-10-supplier-picker-runtime.md](test-m
 - 内側 dialog の overlay が既定のまま（二重 scrim、`bg-black/50` を消していない）
 - `＋` 全角文字が無く lucide `Plus` を使っていること
 - 各 host test で `Select` 依存の assertion（`getByRole("combobox")` 等）が picker 経由（`getByRole("button", { name: /取引先/ })` → dialog 内 `getByRole("row"|"button")`）へ置換され、旧挙動を語る test 名 / comment が残っていないこと
-- S7 の docs 変更が literal 同期（canonical 行 / stale citation / 変更履歴）に限られ、DSR-24 本文や picker 小節の設計文を書き換えていないこと（D5 の 1 句追記を除く）
+- S7 の docs 変更が canonical 行 / stale citation / 変更履歴の同期と、規範追加 2 点（D1 = 51 `:151` canonical path、D5 = catalog `:584` trigger 現在値 1 句）に限られ、DSR-24 本文や picker 小節の他の設計文を書き換えていないこと
+- `PriceRevisionFilters.tsx` の host 側 alert 撤去後も部門 alert `:169-180` が残り、picker の `isError` 分岐で再試行が `suppliersQuery.refetch` を呼ぶこと
+- test 名の ID 付与（Writer Instructions）が全 `describe` / `it` に及び、`generate_traceability` [T4] の `FE_UNREFERENCED_BASELINE = 26` が不変であること
 
 ## Spec Contract
 
@@ -334,6 +343,9 @@ Contract ID: SPEC-SUPPICK-RT-1
 - worktree: `npm ci --ignore-scripts` → `npm run generate:routes`。push 前に `npm run format:check` + lint + typecheck + targeted tests。`bash scripts/local-ci.sh full` は **1 worktree 1 run（同時走行禁止。回数上限ではない）**。`git add` は明示パスのみ（`-A` / `.` 禁止）。`HEAD:branch` 形式の push 禁止。完了後に worktree を自分で detach する。commit subject は conventional prefix、body は日本語可
 - 各 S の設計意図（WHY）は Scope / 設計判断 D1〜D10 に書き込み済み。Writer は再導出せずそのまま従う。canonical の文言（catalog `:584-594`）を UI literal の正本とする
 - 既存 test の assertion を書き換えるときは、旧挙動を語る test 名 / comment も同じ commit で直す（⑮ Q3 の一般規則）。既存 test の削除・skip は不可。inline パネル固有の test は picker flow の test に**置換**する（削除ではない）
+- **新規 test file `SupplierPickerDialog.test.tsx` の全 `describe` / `it` 名に governing ID（`DSR-24` / `UI-01b-D21` / `SPEC-SUP-D2` / `UI-02-D3` / `SPEC-PRV-D6` のいずれか）を含める**。`src-tauri/src/bin/generate_traceability.rs:54` の `FE_UNREFERENCED_BASELINE = 26`（[T4]、ID 未参照 FE test file 数の増減両方向 ERROR）を変えない（`src-tauri/**` は Non-scope）。既存 file に test を追加する場合も同様に ID を付ける（Opus P1-2）
+- `rg -c <pattern> <file>` は 0 件のとき **出力なし・exit 1** になる（literal `0` は出ない）。oracle 表では空出力を 0 として記録する。scripted に使うなら `|| echo 0`
+- 統合後の `CreateSupplierDialog` は `sonner` の `toast.success` を呼ぶ。`ProductForm.test.tsx` / `ReceivingPage.test.tsx` で toast 由来の警告や act 警告が出たら既存 `SupplierManagementPage.test.tsx` と同じ mock 方針に揃える
 - ponytail block（実装原則、以下を verbatim で発注書に注入）:
 
 ```
@@ -357,3 +369,10 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-10、plan-first `808d8d6`、Sonnet + Opus 独立）
+
+- Opus: reject（P1 4 / P2 8 / P3 7）。Sonnet: approve-with-P2（P1 2 / P2 1 / P3 3、うち 2 件は Opus と重複）
+- Coordinator 実証: P1-1 `setSupplierOptions` は `ProductForm.tsx:97,104` の prop merge でも使用 → AC3 pattern から除外 / P1-2 `generate_traceability.rs:54` `FE_UNREFERENCED_BASELINE = 26` [T4] → test 名に ID 付与で baseline 不変 / P1-3 `ProductForm.test.tsx:792-800` SC4e・`ReceivingPage.test.tsx:1027-1030` SC4b が `bg-control-surface` を assert → D5 に token を組み込み in-place 成立 / P1-4 = Sonnet P1-1 `:514` の無関係「後続実装」→ AC10 oracle を scope
+- 裁定: **accept 13**（Opus P1-1〜4 / P2-1〜8、Sonnet P1-2〈Matrix C9 の不在 test〉、P3 全件）/ no-action 0。Opus P2-8 の「D5 は Human Gate 不要」に同意（mockup-f の trigger は背景の非対話 placeholder）
+- 是正 = 本 commit（D5 / D6 / S2 / S3 / S4 / S5 / S6 / AC2 / AC3 / AC10 / AC-L3-2 / Required Design Artifacts / Review Focus / Ledger 5 行 / Writer Instructions 4 項 / 起票時実測 / Test Plan / Matrix）。round 2 = Sonnet + Opus 再注入（round 1 是正の巻き込み確認）
