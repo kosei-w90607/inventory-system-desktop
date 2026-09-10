@@ -372,7 +372,7 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 ### Plan Review round 1（2026-09-10、plan-first `808d8d6`、Sonnet + Opus 独立）
 
-- Opus: reject（P1 4 / P2 8 / P3 7）。Sonnet: approve-with-P2（P1 2 / P2 1 / P3 3、うち 2 件は Opus と重複）
+- Opus: reject（P1 4 / P2 8 / P3 7）。Sonnet: approve-with-P2（P1 2 / P2 1 / P3 3、うち 2 件は Opus と重複）。両報告の全文は PR #50 body「Plan Review round 1」節に転記（`gh pr view 50 --json body`）
 - Coordinator 実証: P1-1 `setSupplierOptions` は `ProductForm.tsx:97,104` の prop merge でも使用 → AC3 pattern から除外 / P1-2 `generate_traceability.rs:54` `FE_UNREFERENCED_BASELINE = 26` [T4] → test 名に ID 付与で baseline 不変 / P1-3 `ProductForm.test.tsx:792-800` SC4e・`ReceivingPage.test.tsx:1027-1030` SC4b が `bg-control-surface` を assert → D5 に token を組み込み in-place 成立 / P1-4 = Sonnet P1-1 `:514` の無関係「後続実装」→ AC10 oracle を scope
 - 裁定: **accept 13**（Opus P1-1〜4 / P2-1〜8、Sonnet P1-2〈Matrix C9 の不在 test〉、P3 全件）/ no-action 0。Opus P2-8 の「D5 は Human Gate 不要」に同意（mockup-f の trigger は背景の非対話 placeholder）
 - 是正 = 本 commit（D5 / D6 / S2 / S3 / S4 / S5 / S6 / AC2 / AC3 / AC10 / AC-L3-2 / Required Design Artifacts / Review Focus / Ledger 5 行 / Writer Instructions 4 項 / 起票時実測 / Test Plan / Matrix）。round 2 = Sonnet + Opus 再注入（round 1 是正の巻き込み確認）
