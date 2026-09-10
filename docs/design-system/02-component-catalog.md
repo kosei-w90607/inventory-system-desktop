@@ -581,7 +581,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **canonical**: `SupplierPickerDialog`（`src/features/suppliers/components/SupplierPickerDialog.tsx`）。
 
-**構成**: 起動ボタンは現在値（取引先名、未指定時は文脈に応じた先頭行の文言）を表示する。ヘッダ（title、例:「取引先を選択」）+ 本体（名前検索 input、live・client-side filter — `list_suppliers` は無引数のため取得済み一覧をここで絞り込む — + 検索 input の下・scroll 箱の**外**に「現在の選択」の固定帯（内容 = 左に小見出し文字「現在の選択」〈`--muted`、帯内の他要素より小さいフォント〉+ 取引先名 + 「選択中」badge、背景 `--row-current`、下辺 `--border-strong`、一覧の行とは高さ・背景・境界で差別化し「流れない帯」と分かる見た目にする。小見出しがあることで現在行〈同じ `--row-current` 背景〉と役割の違いが伝わる。「すべての取引先」/「取引先なし」を選んでいればそれが帯に出る。一覧側の選択行にも ✓ + badge は残す）+ scroll 一覧（箱の見た目は商品一覧の表を流用、列見出しの「選択」文字は表示せず sr-only（読み上げ専用）にし列は ✓ + 「選択中」badge のみ、行に現在選択（DSR-22 の現在行 3 点: 左 4px primary バー + `--row-current` 背景 + ✓ と「選択中」badge / 文言。色だけに頼らない）、フィルタ文脈では先頭に「すべての取引先」行、入力文脈では先頭に既存 sentinel 相当の行〈「取引先なし」/「指定なし」〉を維持）+ footer（枠外固定、左「新しい取引先を追加（`Plus` icon 付き）」**primary（amber、inline SVG icon。全角「＋」文字は使わない）**・右「閉じる」outline）。一覧行クリック = 選択確定 + dialog を閉じる。footer は一覧の scroll と独立して常時固定表示する。picker dialog は独立した surface であり、その内部の主動線は追加ボタン 1 個。画面本体の主動線とは surface が異なるため 1 画面 1 主動線は維持される。`CreateSupplierDialog` 側の確定ボタンも同様に自 surface の主動線。
+**構成**: 起動ボタンは現在値（取引先名、未指定時は文脈に応じた先頭行の文言）を表示する。一覧から名前を解決できない場合（取得失敗 / 削除済み id）は「取引先を確認できません」と表示し、未指定の文言で断定しない。ヘッダ（title、例:「取引先を選択」）+ 本体（名前検索 input、live・client-side filter — `list_suppliers` は無引数のため取得済み一覧をここで絞り込む — + 検索 input の下・scroll 箱の**外**に「現在の選択」の固定帯（内容 = 左に小見出し文字「現在の選択」〈`--muted`、帯内の他要素より小さいフォント〉+ 取引先名 + 「選択中」badge、背景 `--row-current`、下辺 `--border-strong`、一覧の行とは高さ・背景・境界で差別化し「流れない帯」と分かる見た目にする。小見出しがあることで現在行〈同じ `--row-current` 背景〉と役割の違いが伝わる。「すべての取引先」/「取引先なし」を選んでいればそれが帯に出る。一覧側の選択行にも ✓ + badge は残す）+ scroll 一覧（箱の見た目は商品一覧の表を流用、列見出しの「選択」文字は表示せず sr-only（読み上げ専用）にし列は ✓ + 「選択中」badge のみ、行に現在選択（DSR-22 の現在行 3 点: 左 4px primary バー + `--row-current` 背景 + ✓ と「選択中」badge / 文言。色だけに頼らない）、フィルタ文脈では先頭に「すべての取引先」行、入力文脈では先頭に既存 sentinel 相当の行〈「取引先なし」/「指定なし」〉を維持）+ footer（枠外固定、左「新しい取引先を追加（`Plus` icon 付き）」**primary（amber、inline SVG icon。全角「＋」文字は使わない）**・右「閉じる」outline）。一覧行クリック = 選択確定 + dialog を閉じる。footer は一覧の scroll と独立して常時固定表示する。picker dialog は独立した surface であり、その内部の主動線は追加ボタン 1 個。画面本体の主動線とは surface が異なるため 1 画面 1 主動線は維持される。`CreateSupplierDialog` 側の確定ボタンも同様に自 surface の主動線。
 
 **動作**: 外クリック / Esc = 「閉じる」と同じ（選択は変更しない、DSR-20 の硬化対象ではない通常 Dialog）。「新しい取引先を追加」→ 既存 `CreateSupplierDialog` をそのまま開く（owner 仕様）。追加成功後は一覧を再取得し、新規取引先を自動選択して両方の dialog を閉じる（owner 確定 2026-09-10、A 案）。picker は確認 Action を持たず（一覧行クリックが確定）、footer 左は別 surface を開く primary（追加の確定へ進む導線、amber）、右が dismiss。⑧ の **配置** bullet が定める Cancel 左 / Action 右 は確認 dialog の 2 ボタン規則であり、picker footer には適用しない。
 
@@ -1027,6 +1027,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-11 | PR #50 | ⑲ Gated Amendment 3: 未解決時文言。 |
 | 2026-09-10 | PR #50 | 取引先ピッカーの canonical 実装 path と起動ボタンの現在値表示を反映。 |
 | 2026-09-10 | PR #49 | ⑧ に非確認 Dialog の使いどころ・形式行と picker dialog 小節を追加。自動選択 A/B を比較し、dialog 重ねの推奨・fallback と runtime lane の WebView2 実機確認義務を記録。closure 是正で a11y 規定の引用射程と検索 0 件時のクリア操作を明記。owner Human Gate round 1（2026-09-10）を反映し、A 案・二重 scrim・選択見出し sr-only・追加ボタン primary + Plus・現在の選択の固定帯を確定。closure 3・owner round 2 を反映し、footer 左の動作記述を primary に統一、Plus を inline SVG と指定し、固定帯の小見出しを明記。 |
 | 2026-09-09 | PR #46 | ⑮ S5 備考「—」への同期。MovementTable の truncate 記述を修正前の理由説明へ更新。 |
