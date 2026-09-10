@@ -53,6 +53,8 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
+**バリエーション: セクション見出し（h2）**: page 内の sub-section（「直近の○○」テーブル / 公式部門集計 / 差異のある商品 / 棚卸し進捗 等）の見出しは h2（**`text-xl font-semibold`、④ / 00-foundations の h2 20px と同一 token**）+ 任意の説明 `<p className="text-sm text-muted-foreground">` + 任意の右要素（Button / Badge）で構成する。**説明を見出しと同じ flex 行の左 group に置く形**（差異のある商品 / 棚卸し進捗）は、`PageHeader` (c) と同じ折返し契約（外側 `flex flex-wrap items-start justify-between gap-3`、左 group `min-w-0 flex-1 space-y-1`、右 `shrink-0`）に従い、長い説明で右要素が次行左へ落ちるのを防ぐ（⑮ Gated Amendment 2 と同じ根拠）。**説明を見出し行の下に置く形**（「直近の○○」系 4 画面、③ テーブルの **「直近の○○」系4画面の統一** 段落の文型）はそのまま維持し、折返し契約の対象外。**1 ページ 1 h1 は不変**であり、sub-section を `PageHeader` で描かない。Dialog の `AlertDialogTitle` は対象外。適用は class / 文型 / token の統一とし、component 化（`SectionHeader{title, description?, actions?}`）は現時点で採用しない（折返し契約を要する形が 2 箇所で rule of three 未達。3 箇所目が出た時点で再検討）
+
 **使用トークン**: h1 = タイポ `h1`（24px / weight 600）。アクションボタンは Primary（`amber-700`）。要素間ギャップは `space-3`（12px）。
 
 **状態**: h1 自体に状態変化は規定なし。主動線ボタンは hover / focus / disabled をボタン primitive の既定に従う。
@@ -194,7 +196,7 @@ consumerは日次`ProductTable`、月次`DepartmentTable`、
 
 **備考列の規則**（UI 磨き batch 3 design、L8-6 + A1(a)(b)(c) 統合）: 備考は対象記録に note フィールドがある画面（入庫・返品交換・手動販売、および `MovementTable.tsx` を共有する在庫変動履歴・記録詳細 7 画面）で必須列とする。廃棄・破損は note フィールドを持たないため対象外（Non-scope、混同しない）。空欄表示は「—」に統一する（`MovementTable.tsx:93-99` の `"—"` 空値表示〈三項演算子〉が 7 画面共有かつアプリ全体でも主流。薄字「備考なし」（`ReturnExchangePage.tsx`）は不採用（owner culling 2026-09-06 で「—」に確定、本 PR（⑮）で「—」へ統一済み））。一定文字数超過時は truncate + `title` 属性で省略表示する（`OperationLogsPage.tsx:533` 相当のパターンを再利用。`MovementTable.tsx:93-99` は本 PR（⑮）で折り返し（`whitespace-normal break-words`）+ `title` 属性へ是正済み。空備考（null・空文字・空白のみ）は「—」で表示し、本文が非空白のときだけ `title` を付与する）。全文確認手段は note の種類で分かれる: 記録本体の note フィールド（例: `ManualSaleRecordDetailPage.tsx:149` の `detail.note`）は各記録詳細ページのヘッダー部が truncate なしで直接表示する。一方 `MovementTable.tsx` の行 note（`movement.note`）は、`source` が無い行に元記録リンクが無く（`docs/function-design/66-ui-stock-movements.md` UI-06c-D6、`MovementTable.tsx:82-91`）、`StocktakeRecordDetailPage.tsx:234` 等の記録詳細ページ自身も同じ `MovementTable` を再利用し、修正前は truncate されていたため、「記録詳細ページに任せれば全文が見える」という代替経路が無い。したがって movement note の全文確認手段は `MovementTable` 自身が担う（`title` 属性に加え、折り返し・展開等の手段を持つ）ことを contract とする（DSR-12）。
 
-**「直近の○○」系4画面の統一**（A1a/b/c）: 見出し直下に「直近 {N} 件の{対象}を新しい順に表示します。」の文型を置く（例: 価格履歴 = 「直近 10 件の売価・原価の変更を新しい順に表示します。」）。価格履歴を表構造へ変更したうえで `TableHead` 列見出しを付ける（本 PR（⑮）で反映済み）。囲み（`border`）は意味階層ごとに 1 つまでとし（DSR-16）、本 PR（⑮）で `ManualSalePage.tsx` の内側の追加枠を外し、他 3 画面（入庫・返品交換・廃棄）と揃える（他 3 画面へ箱を追加する方向は DSR-16 に反するため不採用）。
+**「直近の○○」系4画面の統一**（A1a/b/c）: 見出し直下に「直近 {N} 件の{対象}を新しい順に表示します。」の文型を置く（例: 価格履歴 = 「直近 10 件の売価・原価の変更を新しい順に表示します。」）。価格履歴を表構造へ変更したうえで `TableHead` 列見出しを付ける（本 PR（⑮）で反映済み）。囲み（`border`）は意味階層ごとに 1 つまでとし（DSR-16）、本 PR（⑮）で `ManualSalePage.tsx` の内側の追加枠を外し、他 3 画面（入庫・返品交換・廃棄）と揃える（他 3 画面へ箱を追加する方向は DSR-16 に反するため不採用）。見出しの token と右要素の扱いは ① セクション見出し variation に従う（説明は行の下のまま）
 
 **opt-in（⑯ 一覧の器で使用）**: viewport を超える一覧では、`<thead>` を sticky にし（`position: sticky; top: 0`、z-index は header > 固定列 > 本文）、商品コード + 商品名等の識別列を `position: sticky; left: 0` で左固定できる（履歴系は日時 + 種別を固定）。2 列目以降の識別列は 1 列目の実測幅を `left` に反映し、固定 rem 直書きにしない。1 画面に収まる短い一覧には適用しない。適用条件・必須構成の全体は [⑯ 一覧の器（ListShell）](#⑯-一覧の器listshell) を参照（DSR-22）。
 
@@ -265,7 +267,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 ## ⑤ SegmentedControl / 二択切替
 
-**使いどころ**: アプリ内の二択切替（例: sales TabsHeader の日次/月次、monthly ModeTabs の商品別ランキング/部門別構成比）。これはこのアプリの「二択切替ボタン」の標準仕様であり、各画面で独自に padding / border / active tone を組まない。
+**使いどころ**: アプリ内の二択・少数選択肢（3〜5）の切替（例: sales TabsHeader の日次/月次、monthly ModeTabs の商品別ランキング/部門別構成比）。これはこのアプリの「二択切替ボタン」の標準仕様であり、各画面で独自に padding / border / active tone を組まない。
 
 **canonical**: `src/components/ui/segmented-control.tsx`
 
@@ -309,6 +311,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 - **focus**: `border-border-strong` + soft ring。mouse click 後に濃い押しボタン状 outline が残らないこと
 - disabled: item primitive の `disabled:opacity-50` に従う
 - error: 規定なし
+- tab / mode 切替として使う場合は可視 Label を持たない、フィルタ toolbar 内で使う場合は ⑨ の上置き Label 規範に従う（`ariaLabel` は常に必須）
 
 **実装ルール**:
 - route-driven navigation（例: 日次/月次）は `<Link>` に `segmentedControlListClass` / `segmentedControlItemClass` / active / inactive class を適用する
@@ -601,7 +604,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 ## ⑨ 検索 + フィルタ
 
-**使いどころ**: 一覧画面上部の検索欄 + 部門フィルタ。HID バーコードスキャナの Enter 確定に対応し、選択状態を URL state に連動させる。
+**使いどころ**: 一覧 / 記録画面の toolbar 全部、toolbar の全フィルタ入力。HID バーコードスキャナの Enter 確定に対応し、選択状態を URL state に連動させる。
 
 **canonical**: `src/components/patterns/SearchBar.tsx`（検索欄。`debounceMs` 未指定 = commit 型（Enter/ボタン確定 + trim、現在の採用箇所なし・機能残置）/ 指定 = live 型（debounce + Enter flush、商品一覧・在庫照会、`debounceMs=200`）。両モードとも `event.isComposing` ガードで IME 変換確定 Enter の誤発火を防止。商品一覧は 2026-08-03 owner L3 是正で commit 型から live 型へ統一）、`src/components/patterns/DepartmentFilter.tsx`（部門フィルタ。allLabel 既定「すべての部門」）
 
@@ -631,9 +634,19 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
   widthClass="w-[11rem]"
   idPrefix="product-dept-filter"
 />
+
+// DepartmentFilter 内部（上置き Label、runtime 反映は後続 lane）: label は raw label 要素、htmlFor は SelectTrigger の id を指す
+<div className="grid gap-1">
+  <label className="text-sm text-muted-foreground" htmlFor={triggerId}>部門</label>
+  <Select …>
+    <SelectTrigger id={triggerId} className={widthClass}>…</SelectTrigger>
+    …
+  </Select>
+</div>
+// component 1 箇所の改修で 4 サイトが揃う。
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。live 型は `div.grid.gap-1` 配下に可視 `Label` を上置きし `Input`（`max-w-md` 維持）を続ける。呼び出し側 toolbar は `items-end` で入力欄の下辺を揃える。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。**すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数 / フィルタ toolbar 内の SegmentedControl）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400、既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。`Label` component を使う場合は `className="text-sm font-normal text-muted-foreground"` を渡して component 既定の `font-medium` を打ち消す（`cn()` の twMerge は同じ font-weight group の後勝ちで置換する。class を足すだけでは消えない）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持する。**tab / mode 切替として使う SegmentedControl（sales TabsHeader の日次/月次、monthly ModeTabs 等、⑤ 参照）は可視 Label を持たない**（`ariaLabel` 必須）。判定軸は選択肢の数ではなく文脈であり、フィルタ toolbar 内の SegmentedControl（廃番表示 / PLU表示 / 並び順）は `ariaLabel` の文言を上置き label として可視化する（廃番表示と PLU表示は隣接してどちらも「すべて」を持ち、label なしでは識別できない。並び順も同じ列にあるため揃える。Human Gate (1) で確認）。live 型 SearchBar は `Input`（`max-w-md` 維持）を続ける。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
@@ -644,7 +657,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **フィルタ候補のソース**: 部門候補は `listDepartments` の master 全件から作る。現在の絞込み結果（filtered result）から候補を作ると、選択値が候補から消えて他候補へ切り替えられなくなる縮退が起きるため、これを禁止する（DSR-10）。
 
-**アクセシビリティ**: commit 型は可視 `Label htmlFor` + `aria-label="商品検索"` の両方を持つ（accname 計算順で `aria-label` が native label に優先するため、accessible name は aria-label が優先）。live 型は可視 `<Label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。フィルタの未選択は「すべての部門」という日本語 default で示す。
+**アクセシビリティ**: commit 型は可視 `Label htmlFor` + `aria-label="商品検索"` の両方を持つ（accname 計算順で `aria-label` が native label に優先するため、accessible name は aria-label が優先）。live 型は可視 `<label>`（既定文言『商品を検索』、画面ごとに上書き可）のみを accessible name とし、aria-label は持たない（WCAG 2.5.3 Label in Name）。`placeholder` はいずれのモードも入力例の補助に留め、識別の手段にしない。フィルタの未選択は「すべての部門」という日本語 default で示す。
 
 **Do**:
 - commit 型の検索は Enter 確定（スキャナ互換）+ ボタン確定の両経路を持つ
@@ -1041,3 +1054,4 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 | 2026-09-03 | 本 PR | ⑯「一覧の器（ListShell）」を新設（必須構成 6 項目）。title・責務を「16 パターン」に改訂。⑩ ページネーションへ上部 variant（件数 + 現在位置テキスト必須・pager 任意、viewport 超過一覧のみ opt-in）と perPage 既定値の画面別裁定注記を追記 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5: パターン⑧を売上同日追加の高影響確認へ追随し、実装前の契約正本をUI-07へ接続。 |
 | 2026-09-08 | PR #46 | PageHeader の副題・説明の併存、取引先説明の移行、備考の空欄・全文表示、直近件数・価格履歴表の runtime 反映と参照行を同期。 |
+| 2026-09-10 | PR #51 | ⑨ に全フィルタ入力の Label 上置き規範と例外・DepartmentFilter 内部構造、① にセクション見出し variation、③ に参照句、⑤ に Label 規範参照を追加。Human Gate 確認用の draft と mockup-g を登録。 |

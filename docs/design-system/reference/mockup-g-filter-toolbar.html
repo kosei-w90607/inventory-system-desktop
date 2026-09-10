@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>フィルタ入力・セクション見出し — 3状態の比較</title><style>
+/* token・表は mockup-d-lists.html を複製。D に .field 定義はないため、同系統の mockup-f-supplier-picker.html の .field を流用。合成データのみ。 */
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#57534e;--card:#fff;--border:#e7e5e4;--accent:#f5f5f4;
+--primary:#b45309;--primary-fg:#fff;--primary-soft:#fef3c7;
+--warn-soft:#fffbeb;--warn-border:#fde68a;--warn-strong:#78350f;--warn:#d97706;
+--bad-soft:#fef2f2;--bad-border:#fecaca;--bad-strong:#991b1b;--bad:#dc2626;
+--ok-soft:#f0fdf4;--ok-border:#bbf7d0;--ok-strong:#14532d;--ok:#16a34a;
+--ring:#b45309;
+/* D: 構造線 / 操作枠 / 現在行 / 固定列の影（04-backbone 原則 13/14/15 の提案値） */
+--d-line:#cdc8c4;--d-ctl:#8a8480;--d-head:#e7e5e4;--d-row-cur:#fff8e6;--d-row-cur-bar:#b45309;--d-shadow:rgba(28,25,23,.10)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Yu Gothic UI","Meiryo UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+h1{font-size:24px;line-height:1.3;font-weight:600;margin:0}
+h2{font-size:20px;line-height:1.35;font-weight:600;margin:0}
+.lead{color:var(--muted);font-size:14px;margin:0;max-width:920px}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.btn.sm{min-height:36px;font-size:14px;padding:0 12px}
+.btn:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.tbl{background:var(--card);border:1px solid var(--d-line);border-radius:8px;overflow:hidden}
+.scroll{overflow:auto}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:16px}
+th{position:sticky;top:0;z-index:3;font-size:14px;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:2px solid var(--d-line);background:var(--d-head);white-space:nowrap;box-shadow:0 1px 0 var(--d-line)}
+td{padding:8px 12px;border-bottom:1px solid var(--d-line);vertical-align:middle;height:40px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+thead tr{background:var(--d-head)}
+.field{display:grid;gap:4px;font-size:16px}
+.field input{width:100%;min-height:40px;border:1px solid var(--d-ctl);border-radius:6px;padding:8px 12px;background:var(--bg);color:var(--fg);font:inherit}
+
+.page{padding:24px;display:grid;gap:32px;max-width:1600px;margin:auto}
+section{display:grid;gap:12px}
+h3{font-size:16px;margin:0 0 12px}p{margin:0}
+.note{font-size:14px;color:var(--muted)}
+.comparison{overflow-x:auto;padding-bottom:12px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(720px,1fr));gap:24px}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(560px,1fr));gap:24px;min-width:1144px}
+.panel{min-width:0}
+.toolbar{padding:16px;background:var(--accent);border:1px solid var(--d-line);border-radius:8px}
+.toolbar-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+.toolbar-row+.toolbar-row{margin-top:12px}
+.current .secondary-row{align-items:center}
+.field>label,.field>.caption,.inline>label{font-size:14px;font-weight:400;color:var(--muted)}
+.field.search-field{flex:1;min-width:288px;max-width:448px}
+.current .search-field>label{font-weight:500}
+.inline{display:flex;align-items:center;gap:8px}
+.select{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;width:176px;padding:0 12px;border:1px solid var(--d-ctl);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
+.select.sort{width:160px}.select.count{width:112px}
+.select::after{content:'⌄';color:var(--muted)}
+.segments{display:inline-flex;height:36px;width:max-content;border-radius:8px;background:var(--accent);padding:3px}
+.segments button{height:29px;flex:none;border:1px solid transparent;border-radius:6px;padding:4px 12px;font:inherit;font-size:14px;font-weight:500;color:var(--muted);background:transparent;white-space:nowrap}
+.segments button[aria-pressed="true"]{background:var(--d-line);border-color:var(--d-line);color:var(--fg);font-weight:600}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg)}
+.check input{width:16px;height:16px;margin:0;accent-color:var(--primary)}
+.current .check label,.current .inline.stock-count>label{font-weight:500}
+.current.stock .toolbar-row{align-items:center;gap:16px}
+.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-fg);white-space:nowrap}
+.heading-stage{padding:16px;border:1px solid var(--d-line);border-radius:8px;display:grid;gap:16px}
+.section-heading{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.section-heading p{font-size:14px;color:var(--muted)}
+.proposed .section-heading{align-items:flex-start}
+.proposed .heading-copy{min-width:0;flex:1}
+.proposed .heading-copy p{margin-top:4px}
+.proposed .section-heading>.btn{flex-shrink:0}
+.tbl{margin-top:12px}
+@media(max-width:600px){.page{padding:16px}}
+</style></head><body><main class="page">
+<header><h1>フィルタ入力・セクション見出し — 3状態の比較</h1><p class="lead">設計確認用の静的見本。検索・選択・補正は動作しません。比較枠は横にスクロールできます。商品名・数値は合成データです。</p><p class="note">提案は確認前の draft。既定案は「toolbar 内の SegmentedControl 全部に上置き Label」「Checkbox は label 内包の横並び」。Human Gate (1)(3) で確認します。正本：コンポーネントカタログ①・⑤・⑨。</p></header>
+<section id="state-1"><h2>1. 商品一覧 — 2 段 toolbar 全体</h2><p class="lead">左から現行・提案 a（既定）・提案 b。同じ幅で比較します。1 段目の廃番表示と PLU表示は、どちらも「すべて」を持ちます。提案 b は並び順だけ Label を付けない案です。</p><div class="comparison" tabindex="0" role="region" aria-label="商品一覧の3列比較（横スクロール）"><div class="three">
+<article class="panel current"><h3>現行 — 横並び・Label なし</h3><div class="toolbar"><div class="toolbar-row"><div class="field search-field"><label for="current-q">商品を検索</label><input id="current-q" type="search" placeholder="商品コード・商品名・JAN・メーカー品番で検索" readonly></div><div class="inline "><label for="current-dept">部門</label><button type="button" id="current-dept" class="select " aria-haspopup="listbox">すべての部門</button></div><div class="field"><div class="segments" role="group" aria-label="廃番表示"><button type="button" aria-pressed="true">表示中</button><button type="button" aria-pressed="false">すべて</button><button type="button" aria-pressed="false">廃番のみ</button></div></div><div class="field"><div class="segments" role="group" aria-label="PLU表示"><button type="button" aria-pressed="true">すべて</button><button type="button" aria-pressed="false">対象</button><button type="button" aria-pressed="false">未反映</button><button type="button" aria-pressed="false">反映済み</button><button type="button" aria-pressed="false">対象外</button></div></div></div><div class="toolbar-row secondary-row"><div class="inline "><label for="current-sort">並び替え</label><button type="button" id="current-sort" class="select sort" aria-haspopup="listbox">商品コード</button></div><div class="field"><div class="segments" role="group" aria-label="並び順"><button type="button" aria-pressed="true">昇順</button><button type="button" aria-pressed="false">降順</button></div></div><div class="inline "><label for="current-count">表示件数</label><button type="button" id="current-count" class="select count" aria-haspopup="listbox">100 件</button></div></div></div></article>
+<article class="panel proposed"><h3>提案 a（既定）— 全部に上置き Label</h3><div class="toolbar"><div class="toolbar-row"><div class="field search-field"><label for="a-q">商品を検索</label><input id="a-q" type="search" placeholder="商品コード・商品名・JAN・メーカー品番で検索" readonly></div><div class="field "><label for="a-dept">部門</label><button type="button" id="a-dept" class="select " aria-haspopup="listbox">すべての部門</button></div><div class="field"><span class="caption" id="a-discontinued-label">廃番表示</span><div class="segments" role="group" aria-labelledby="a-discontinued-label"><button type="button" aria-pressed="true">表示中</button><button type="button" aria-pressed="false">すべて</button><button type="button" aria-pressed="false">廃番のみ</button></div></div><div class="field"><span class="caption" id="a-plu-label">PLU表示</span><div class="segments" role="group" aria-labelledby="a-plu-label"><button type="button" aria-pressed="true">すべて</button><button type="button" aria-pressed="false">対象</button><button type="button" aria-pressed="false">未反映</button><button type="button" aria-pressed="false">反映済み</button><button type="button" aria-pressed="false">対象外</button></div></div></div><div class="toolbar-row secondary-row"><div class="field "><label for="a-sort">並び替え</label><button type="button" id="a-sort" class="select sort" aria-haspopup="listbox">商品コード</button></div><div class="field"><span class="caption" id="a-dir-label">並び順</span><div class="segments" role="group" aria-labelledby="a-dir-label"><button type="button" aria-pressed="true">昇順</button><button type="button" aria-pressed="false">降順</button></div></div><div class="field "><label for="a-count">表示件数</label><button type="button" id="a-count" class="select count" aria-haspopup="listbox">100 件</button></div></div></div></article>
+<article class="panel proposed"><h3>提案 b — 並び順のみ Label なし</h3><div class="toolbar"><div class="toolbar-row"><div class="field search-field"><label for="b-q">商品を検索</label><input id="b-q" type="search" placeholder="商品コード・商品名・JAN・メーカー品番で検索" readonly></div><div class="field "><label for="b-dept">部門</label><button type="button" id="b-dept" class="select " aria-haspopup="listbox">すべての部門</button></div><div class="field"><span class="caption" id="b-discontinued-label">廃番表示</span><div class="segments" role="group" aria-labelledby="b-discontinued-label"><button type="button" aria-pressed="true">表示中</button><button type="button" aria-pressed="false">すべて</button><button type="button" aria-pressed="false">廃番のみ</button></div></div><div class="field"><span class="caption" id="b-plu-label">PLU表示</span><div class="segments" role="group" aria-labelledby="b-plu-label"><button type="button" aria-pressed="true">すべて</button><button type="button" aria-pressed="false">対象</button><button type="button" aria-pressed="false">未反映</button><button type="button" aria-pressed="false">反映済み</button><button type="button" aria-pressed="false">対象外</button></div></div></div><div class="toolbar-row secondary-row"><div class="field "><label for="b-sort">並び替え</label><button type="button" id="b-sort" class="select sort" aria-haspopup="listbox">商品コード</button></div><div class="field"><div class="segments" role="group" aria-label="並び順"><button type="button" aria-pressed="true">昇順</button><button type="button" aria-pressed="false">降順</button></div></div><div class="field "><label for="b-count">表示件数</label><button type="button" id="b-count" class="select count" aria-haspopup="listbox">100 件</button></div></div></div></article>
+</div></div><p class="note">枠内の 1 段目は検索・部門・廃番表示・PLU表示、2 段目は並び替え・並び順・表示件数。段間 12px、各段内は幅に応じて折り返します。</p></section>
+<section id="state-2"><h2>2. 棚卸し — Checkbox の横並びを維持</h2><p class="lead">提案は部門・表示件数を上置きにして下辺を揃えます。「未入力のみ表示」は Checkbox と文言を一つの label にまとめ、横並びを維持する既定案です（Human Gate (3)）。</p><div class="comparison" tabindex="0" role="region" aria-label="棚卸しの現行と提案（横スクロール）"><div class="pair">
+<article class="panel stock current"><h3>現行 — 中央揃え・横並び</h3><div class="toolbar"><div class="toolbar-row"><div class="inline "><label for="stock-current-dept">部門</label><button type="button" id="stock-current-dept" class="select " aria-haspopup="listbox">すべての部門</button></div><div class="check"><input id="stock-current-check" type="checkbox"><label for="stock-current-check">未入力のみ表示</label></div><div class="inline stock-count"><label for="stock-current-count">表示件数</label><button type="button" id="stock-current-count" class="select count" aria-haspopup="listbox">50 件</button></div></div></div></article><article class="panel stock proposed"><h3>提案（既定）— 上置き・下辺揃え</h3><div class="toolbar"><div class="toolbar-row"><div class="field "><label for="stock-proposed-dept">部門</label><button type="button" id="stock-proposed-dept" class="select " aria-haspopup="listbox">すべての部門</button></div><label class="check"><input id="stock-proposed-check" type="checkbox">未入力のみ表示</label><div class="field stock-count"><label for="stock-proposed-count">表示件数</label><button type="button" id="stock-proposed-count" class="select count" aria-haspopup="listbox">50 件</button></div></div></div></article>
+</div></div></section>
+<section id="state-3"><h2>3. セクション見出し — 形態 C の折返し</h2><p class="lead">「差異のある商品」の説明を長くした比較用の合成例。現行は右ボタンが次行左へ落ち、提案は左列の中で説明を折り返してボタンを右上に保ちます。表は見出しとの位置関係を示す抜粋です。</p><div class="comparison" tabindex="0" role="region" aria-label="形態Cの現行と提案（横スクロール）"><div class="pair">
+<article class="panel current"><h3>現行 — 説明とボタンが同じ flex 行</h3><div class="heading-stage"><div class="section-heading"><div class="heading-copy"><h2>差異のある商品</h2><p>補正する商品を行ごとに選び、内容を確認して確定してください。商品名と差異を照らし合わせ、確認できた商品から選んでください。</p></div><button type="button" class="btn primary">補正を確定</button></div><div class="tbl"><div class="scroll"><table><thead><tr><th scope="col">商品コード</th><th scope="col">名前</th><th scope="col" class="num">差異</th></tr></thead><tbody><tr><td>DEMO-001</td><td>見本の糸</td><td class="num">+2（システム在庫が多い）</td></tr></tbody></table></div></div></div></article><article class="panel proposed"><h3>提案 — 左列で折返し・ボタンは右上</h3><div class="heading-stage"><div class="section-heading"><div class="heading-copy"><h2>差異のある商品</h2><p>補正する商品を行ごとに選び、内容を確認して確定してください。商品名と差異を照らし合わせ、確認できた商品から選んでください。</p></div><button type="button" class="btn primary">補正を確定</button></div><div class="tbl"><div class="scroll"><table><thead><tr><th scope="col">商品コード</th><th scope="col">名前</th><th scope="col" class="num">差異</th></tr></thead><tbody><tr><td>DEMO-001</td><td>見本の糸</td><td class="num">+2（システム在庫が多い）</td></tr></tbody></table></div></div></div></article>
+</div></div><p class="note">形態 A「直近の入庫」は説明が見出し行の下にある配置を維持し、折返し契約の対象外です（h2 token は 20px に統一）。形態 B は右要素を持たず、折返し契約の対象外。1 ページ 1 h1 は不変。component 化は採用せず、class / 文型 / token を統一します。</p></section>
+</main></body></html>
