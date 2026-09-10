@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: b49c7b5b
@@ -15,10 +15,10 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Writer: Codex
 - Plan Reviewer: Sonnet + Opus
 - Final Reviewer: Sonnet + Opus + Codex
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 5db76334
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: owner Windows native L3（AC-L3-1〜6、dialog 重ね (A) の実機確認を含む）+ Ready 承認 → **L3 run 1（2026-09-11、content `0769d9ee`）**: AC-L3-1 / 2 / 3 / 5 PASS（5 の「Tab が内側から漏れない」は owner に不明瞭だったが PASS）、AC-L3-4 = 検索 PASS、0 件文言と箱内 scroll は件数準備の負担から**自動 test で担保する選択**（owner 提示の二択、Coordinator 推奨 = `SPEC-SUP-D2` test と `closest(".overflow-auto")` assertion が正本）、AC-L3-6 = 是正要（trigger に dialog を想起させる icon が無く「ボタンなのか何なのか分からない」/ 固定帯は下線のみで見やすさに欠ける・左端に帯・「選択中」badge はしつこい）。追加観測: 長い取引先名は「めちゃはみ出してる」（#13 実証）/ 商品修正の取得中フラッシュは見えない（no-action）/ 削除済み id の帯は再現不要（自動 test C14 が正本）。→ Gated Amendment 4 → 是正 → L3 run 2 は AC-L3-1（はみ出し）/ AC-L3-6（icon・帯）のみ → **L3 run 2（2026-09-11、content `be71a857`）: AC-L3-1 / AC-L3-6 PASS「良くなったね」**。観察 3 点 = (1) 帯と先頭行のクリーム色が同じ「変えるなら色」→ Coordinator 案〈帯は白地の箱、クリーム + 左バーを外す〉を owner 承認 / (2) ▼ が Select より濃い「揃えられるなら揃えて」→ `text-muted-foreground` / (3) badge 撤去は「大丈夫に見える」→ no-action。→ Gated Amendment 5 → 是正 → L3 run 3 は AC-L3-6（帯が行と区別できるか、▼ の濃さ）のみ
+- Human Gate: owner Windows native L3（AC-L3-1〜6、dialog 重ね (A) の実機確認を含む）+ Ready 承認 → **L3 run 1（2026-09-11、content `0769d9ee`）**: AC-L3-1 / 2 / 3 / 5 PASS（5 の「Tab が内側から漏れない」は owner に不明瞭だったが PASS）、AC-L3-4 = 検索 PASS、0 件文言と箱内 scroll は件数準備の負担から**自動 test で担保する選択**（owner 提示の二択、Coordinator 推奨 = `SPEC-SUP-D2` test と `closest(".overflow-auto")` assertion が正本）、AC-L3-6 = 是正要（trigger に dialog を想起させる icon が無く「ボタンなのか何なのか分からない」/ 固定帯は下線のみで見やすさに欠ける・左端に帯・「選択中」badge はしつこい）。追加観測: 長い取引先名は「めちゃはみ出してる」（#13 実証）/ 商品修正の取得中フラッシュは見えない（no-action）/ 削除済み id の帯は再現不要（自動 test C14 が正本）。→ Gated Amendment 4 → 是正 → L3 run 2 は AC-L3-1（はみ出し）/ AC-L3-6（icon・帯）のみ → **L3 run 2（2026-09-11、content `be71a857`）: AC-L3-1 / AC-L3-6 PASS「良くなったね」**。観察 3 点 = (1) 帯と先頭行のクリーム色が同じ「変えるなら色」→ Coordinator 案〈帯は白地の箱、クリーム + 左バーを外す〉を owner 承認 / (2) ▼ が Select より濃い「揃えられるなら揃えて」→ `text-muted-foreground` / (3) badge 撤去は「大丈夫に見える」→ no-action。→ Gated Amendment 5 → 是正 → L3 run 3 は AC-L3-6（帯が行と区別できるか、▼ の濃さ）のみ → **L3 run 3（2026-09-11、content `5db76334`）: AC-L3-6 PASS**「L3 PASS かな、気になったら言うわ、バックログはしなくていい」。**owner Ready 承認 2026-09-11**「Ready していいよ」
 
 ## Owner Effort Budget
 
@@ -450,3 +450,9 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - owner L3 run 2（content `be71a857`）: AC-L3-1 / AC-L3-6 PASS「良くなったね」。観察 (1) 帯と先頭行のクリーム色が同じ「その質問か。変えるなら色かな。どう調べれば解決法が出るかも分からん」→ Coordinator: クリーム + 左バーは DSR-22 の現在行の語彙で帯が借りると 2 段に見える、帯は白地の箱 + 名前 `font-medium` に → owner 画像付きで承認 / (2)「ちょっと濃くは見える、揃えられるなら揃えてもいい」→ `text-muted-foreground` / (3)「大丈夫に見える、現在の選択と書いてあってリストにチェックと badge まである」→ no-action
 - 是正（`083c61b6` + 本 commit）: D7 に白地の箱 / D5 に chevron 色 / Human Gate 欄に run 2 記録 / AC15 第 3 oracle 反転 + **AC16**（oracle 12 本）/ Matrix C17 + mutant 17（本 commit）。Final Review round 3 Opus #17（catalog 帯の句の矛盾）/ #18（`prettier-ignore` 撤去）/ #19 / #20（帯の未解決時 1 句）/ #21 を同乗
 - 再発注: 発注書 45（起点 = 本 commit 後の tip）→ closure round 4（Sonnet + Opus、AC16 + mutant 17 + 回帰に限定）→ state-only → owner L3 run 3（AC-L3-6 帯と ▼ のみ）→ Ready
+
+### closeout 圧縮記録（2026-09-11、STATECAP 上限のため branch で記録できなかった遷移）
+
+- branch の forward state-only は `0b8377ec`（plan-draft→implementing）/ `01306c0b` / `86e94596`（各 →human-confirm、backtrack `63ebd94d` / `0fecd48d` を挟む）で上限（全体 3 / post-implementation 2）に達し、round 4 後の `implementing->local-verified->independent-review->human-confirm` を記録した `16354ef3` は STATECAP 超過で branch から下ろした（tip を `5db76334` に戻す、他 SHA 不変）。先例 PR #40 / #41 と同じく、以降の遷移を本 closeout commit で圧縮記録する
+- **`implementing->local-verified->independent-review->human-confirm->ready-hosted-final->merge->archive`**（Reviewed Content HEAD `5db76334`）。中間遷移の証拠: local-verified = L1 full RESULT=PASS、END_HEAD_SHA=`5db76334`、CLEAN、MERGE_EVIDENCE_VALID=true（Coordinator、`.local/codex-orders/reports/l1-full-pr50-5db76334.log`。Writer Codex 45 の L1 は `83fa4a23` で PASS）/ independent-review = Final Review round 4 closure Sonnet approve + Opus approve（P2 1 = 帯の枠と背景が Input と同 token → owner L3 run 3 で判定、P3 2 no-action）/ human-confirm = owner L3 run 3 AC-L3-6 PASS（2026-09-11）+ Ready 承認「Ready していいよ」/ ready-hosted-final = hosted final `pull_request` run `34524148605` success（`5db76334`）/ merge = PR #50 squash `2a36b086`（2026-09-11、subject は Coordinator が日本語で付け直し）/ archive = 本 commit（packet / Matrix を `docs/archive/plans/` へ）
+- 申し送り: mockup-f を運用後の確定形（▼ trigger / 白地の帯 / badge なし）に同期する件は owner 判断で Backlog に載せない（必要になった lane で拾う）。一括価格改定 toolbar の Checkbox 縦中央は「フィルタ Label 上置き + 見出し 2 段の runtime lane」の申し送りへ
