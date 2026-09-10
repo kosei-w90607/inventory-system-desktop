@@ -158,7 +158,7 @@
 
 ## Backlog（未了）
 
-区分ごとに小節分け（2026-09-11 owner 依頼）。「次に動く lane」は上から順に着手する固定順。2026-09-11 に棚卸し（Fable が code / docs / git log に当てて実測）: 済み 6 件（mockup-d-lists 定数名同期 / command drift 検出〈⑯〉/ bindings trailing whitespace〈再生成後 0 件〉/ eslint 保守性 rule〈⑯〉/ palette ban の ui・layout glob〈⑫〉/ drift 同期 PR #37 の P3〈65 §65.3 注記 + 52 route 列挙〉）とポインタ 5 行を除去。
+区分ごとに小節分け（2026-09-11 owner 依頼）。「次に動く lane」は上から順に着手する固定順。2026-09-11 に棚卸し（Fable が code / docs / git log に当てて実測）: 済み 6 件（mockup-d-lists 定数名同期 / command drift 検出〈⑯〉/ bindings trailing whitespace〈再生成後 0 件〉/ eslint 保守性 rule〈⑯〉/ palette ban の ui・layout glob〈⑫〉/ drift 同期 PR #37 の P3〈65 §65.3 注記 + 52 route 列挙〉）とポインタ 5 行を除去。UI-15 改名の double-click は `RenameSupplierRow.tsx` の `mutation.isPending` disabled で対処済みのため除去（owner 2026-09-11「もう直したやつ」）。
 
 ### 次に動く lane（順番固定）
 
@@ -167,9 +167,14 @@
 - **表示小修正 batch 2 候補**（owner 2026-09-11 所感、次の小 lane でまとめる）: 在庫少の基準画面で page 見出し h1「在庫少の基準」と `FormSection` の title「在庫少の基準」が同文言で二重に大きく出る（`ThresholdSettingsPage.tsx:187` / `:228`。区画見出しを「基準値」等の別語にするか、区画見出しを外して説明文だけ残す）/ **Alert の title（icon の真横の文言）を太字に**（owner 2026-09-11「アラートはアイコンの真横の文言は太字にしようぜ」。`src/components/ui/alert.tsx` の `AlertTitle` 1 箇所で app 全体に効く共通 component の変更。現行は `font-medium`（500）で、`font-semibold`（600）へ。catalog の Alert 節に weight を明記）/ **在庫照会に page 説明（副題）1 行**（mockup-d-history の文、owner 2026-09-11）/ **在庫状態 Badge の「通常」→「正常」**（owner「状態なら正常のほうが文言として正しい」。canonical = catalog ⑫ Badge 見本 `:868` `:905` + function-design 74 + `StockStatusBadge.tsx:36` + test を同時に更新）/ **在庫切れ・在庫少 filter 時の件数行「全 N 件のうち a〜b 件を表示」**（現行は `StockInquiryPage.tsx:225-227` で status = all のみ描画。`low_stock` source は backend が totalCount を返さない〈null〉ため。client 側で全件数を数えられるなら client で、無理なら backend に count を足す、を lane で判断）。**在庫少の基準の inline エラー文言を mockup の形（範囲が一目で分かる 1 本）へ**（owner 2026-09-11「モックのほうが情報量的に好き」。現行は `THRESHOLD_ERROR_MESSAGES` の 3 種〈入力してください / 1以上の整数を入力してください / 99999以下で入力してください〉→ 「1〜99999 の整数を入力してください」系に統一、function-design 69 §69.7 の文言表 + test を同時に更新）。上部の「保存できませんでした」Alert は現行にも実装済み（backend の保存失敗〈片方だけ保存済み〉の場面のみ、入力エラーでは出ない）で mockup と一致、入力エラー用の上部 Alert は作らない（owner 2026-09-11 合意）
 - **ホーム画面を mockup-c 案へ寄せる**（owner 2026-09-11「これ好き、採用したい」。canonical = `reference/mockup-c-home.html`〈お手本〉、現行ホームは骨格〈上段 4 card + 3 区画〉が既に同型なので runtime 直行で可）: 差分 = (1) 各 action card に icon + 1 行説明〈既存の後続候補「ホーム action への説明文追加」〉/ (2)「売上データ取込み」card の primary 強調〈warning トーンの枠 + 背景〉/ (3) 上段 card の補助文言〈「基準を下回る商品」「レジ反映待ち」はそのまま。**在庫切れ card の「すぐ確認」だけは導線に見えるため状態説明の別文言へ**（例「在庫 0 の商品」、Writer が候補を出し owner 確認）〉。owner 2026-09-11 確定: 「補助文言は状態の説明であって導線ではない」を決定として更新し、「すぐ確認」以外は mockup-c をそのまま採用。**前日分未取込みの alert は現行（`HomePage.tsx:80`、danger トーン + 「最後の取込み精算日」）を変更しない**（owner「これこのまま使おうぜ」）。他画面の mockup（c / d 系）は owner が改めて見直し中、追加要望があれば本 lane に同乗
 
+### やると決めたもの（順番未定、次に動く lane の後）
+
+（**owner 2026-09-11 再確認「やるべきこと」**）
+
+
+
 ### design-first 候補・owner 所感の保留（見た目・UX）
 
-- **単位の拡張（design-first、owner 2026-09-09「やっておきたい」）**: 現状 = DB `CHECK(stock_unit IN ('pcs','cm'))`、bindings `ProductStockUnit = "pcs" | "cm"`、UI は `formatStockDisplay` / `formatStockUnitLabel`（switch 2 arm、default「—」、param は `string`）。⑮ で UI 側の単位表示は formatter 1 箇所に集約済み。owner 提示の候補 13 種 = 個・枚・本・袋・箱・巻・組・セット・m・cm・g・kg・丁（g は店に要否確認中）。設計論点（Codex 助言 2026-09-09、Fable 賛同）: 長さ商品は基準単位 cm で在庫を記録し m は入力・表示の固定換算（整数契約 `31-biz:66` を維持しつつ 0.5m を扱える）/ 巻↔m は商品依存で換算しない / 単価の基準（1m か 1cm か、POS 数量 1 の意味）を在庫単位と別に明示 / 在庫少閾値は「連続量」で一括りにせず既存の通常・生地の適合を確認して必要な区分だけ追加 / 組とセットの code 衝突 / code を英字で続けるか日本語 label を code にするか。起点 = owner の質問シート回答（長さ商品は最小何 cm で売る・数えるか、同じ商品を m で仕入れて cm で売るか）。衛生同乗: formatter の param を `ProductStockUnit` にして exhaustive switch（未知単位を compile error に）。R4 相当（DB migration + Rust enum + bindings + CSV validation）
 - 記録状態 Badge の tone（`formatRecordStatus`: 有効・訂正済み = 中立 / 進行中 = warning / 取消済み = destructive、owner 決定 2026-09-08。catalog `:841` の「owner culling で個別確認」保留を解消）: 中立 Badge の見栄えを `StockStatusBadge`「通常」と同じ無彩色 soft（`border-stone-200 bg-stone-50 text-stone-600`）へ揃える案を併記。⑮ S7 が同 Badge 群を触るため ⑮ merge 後の小 lane（catalog culling 欄へ決定を記録 → runtime）。方向 badge（入庫 / 出庫）は owner 撤回済み（`:70`）、分類なので無色維持
 - 在庫整合性検証の差異 Badge（`differenceLabel`、outline 中立）に tone を付けるかの owner 所感（2026-09-08）: ⑭ plan は中立維持を明示決定。数値側が DSR-08 で着色済みのため Badge にも付けると同 cell 内の二重符号化。付けるなら数値 / Badge のどちらか一方、DSR 側判断として design lane で扱う
 - UX 磨き 3 観察（PLU 警告の視認性 / 処理中フィードバック不足 / 薄いグレーの多用 — PR #26 L3 owner 所感 2026-09-01 起源、機能契約非影響。design-first で要望が続けば起票、参考候補に Refero サイトを含める〈owner 提示〉）。**2026-09-02 更新**: 『UIデザインの教科書』突合で 3 観察とも根拠付き（薄いグレー ↔ 現在地色 drift、PLU 警告 ↔ DSR-08 icon 欠落、処理中 ↔ リアルタイム検証 / feedback）。PLU 警告の視認性は wave 8 lane 1（PluNotificationBar icon 同乗）で消化中、残 2 観察は UI ターンの画面単位 design packet 群へ編入。
@@ -180,7 +185,6 @@
 - 整合性補正結果への商品名併記（現行は商品コードのみ。PR #17 の divide-y 化とは独立の情報追加 — owner L3 2026-08-30 所感起源）。
 - 廃棄・破損画面にヘッダ備考（任意）がない（入庫 / 返品交換には備考あり、`64-ui-disposal.md` は明細の理由のみ。owner 所感 2026-09-03。DB 列追加を伴う R3 のため Lane 3〜5 で廃棄・破損画面を触る際に同乗候補、母集団は 35-biz と DB_DESIGN で裁定）
 - UI-08 prepare failure Alert の読みやすさ改善（PR #128 L3 P3-2 起源、operator UI）: 「PLUファイルに書き出せる商品がありません」の Alert が対象商品コードを横並びで列挙しており読みにくい。要約表示 + 要修正一覧と同じ構造化テーブルへの改善が必要だが、現在の prepare failure 経路（`BizError::ValidationFailed` の message 文字列埋め込み、`plu_export_service.rs` `build_all_excluded_message`）は CMD/BIZ 契約拡張を要する。UI-08-D10 の scope 外として切り出し。
-- 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` を追加するか（現行 UI-05-D17 は「保存結果に link なし」を契約化済み。追加には UI-05-D17 改訂の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源。歴史的非対称であり表示すべきでない業務理由は source docs に見当たらない、が owner 観察）。
 - 4 作業画面の保存結果 panel を詳細往復時だけ one-shot 復元する案（現行は詳細 → 戻りで panel が消える。復元条件・サイドバー再訪との区別は DSR-03/DSR-19 系の design 判断が先行 — PR #23 owner L3 所感 2026-08-31 起源）。
 - 在庫詳細→取引画面の prefill（61/63/64: productCode/direction 事前入力、現行は商品再検索が必要）。
 - SidebarLink の focus 中は `focus-visible:border-ring`（詳細度 0-2-0）が DSR-21 の左辺 Primary を上書きする（at rest は無関係、一過性。PR #28 Final Review round 2〜3 観察、意図的な a11y 挙動のため要望があれば DSR-21 に focus 時の扱いを追記）。
@@ -203,12 +207,10 @@
 - PLU slot 後続 follow-up（PR #84 packet Non-scope 起源）: Z004 売上取込み〈BIZ-03〉内でのスロット占有自動更新（要望が出たら別 packet）/ CV17「レジスターの設定」書出し .txt の読込み対応（owner 裁定 Q2 = A で不採用、レジ側単価とアプリ売価の突合等の別要求が出た時のみ再検討）。
 - Z004 layout B 対応 + 混在期間の非 PLU 商品 end-to-end 再検証（layout A は PR #81 で消化済み、PLU スロット永続割当 design-first は PR #84 で正本化済み。残 = layout B 対応、混在期間の非 PLU 商品 end-to-end 検証）。
 - CSV 出力・印刷の実挙動確認（owner run 3 原文「まともにテストしたことがない」「印刷は中身を作っていない」）: end-to-end で叩いて紙面 / 出力 file の実態を証跡化してから要否を裁定
-- Z001 / Z002 / Z005 の取り込み情報を画面で見られるようにする（owner run 3 原文「無いのはまずい」= 要望、後続候補ではない）: DTO 公開 + 表示設計、design-first
 - UI-09a・09b 将来設計（UI-09b の日報 coverage 表示「一部日だけ日報がある月」の取込み済み日数、SALES2-D3 で自覚的 defer〈batch A から移管〉、34-biz §19.4 参照。`get_monthly_sales` DTO 拡張を伴う R3）。
 - 在庫状態表示の filter 依存不整合（在庫 2・基準 3 の同一商品が「すべて」filter では状態「通常」、「在庫少」filter では「在庫少」と表示される。query source 依存の pre-existing 仕様で受入台本 L3 2026-08-13 の owner 観察起源〈PR #74 comment〉。operator には矛盾に見えるため follow-up 要否を検討、優先度は owner 判断）。
 - 部門 17「本」のバーコードなし本・ISBN-10 本の登録経路（JAN 専用欄正規化 change の owner 裁定 2026-08-11 起源 = 本は 13 桁 JAN〈EAN-13/ISBN-13〉登録・ISBN-10 特例なし。部門 17 は code_prefix NULL のため JAN 欄空白の escape hatch が使えず、ISBN-10 のみの古書・バーコードなし本は登録不能のまま。要望発生時に code_prefix 付与 or ISBN-10 対応を再裁定）。
 - UI-01a 商品検索への取引先 filter 露出（backend `ProductSearchQuery` の `supplier_id` / `include_unassigned` は PR #95 で実装済み・UI 露出は UI-14 のみ。50-ui 画面契約の改訂が必要。UI-15 は PR #4 で完了済みのため着手可、UI 一覧の背骨 D 系の画面見直しとの前後関係は着手時に owner 判断）。
-- UI-15 改名ボタンの double-click 貫通リスク（保存確定の連打で二重送信し得る懸念。pending 中の行単位 disabled は実装・RTL 検証済みのため顕在化時に再評価、L3 owner 所感 2026-08-26 起源の P3）。
 - CsvImport / Stocktake detail page の静的入口未整備（PR #20 packet 起票時実測起源）: `/csv-import/records/$importId` / `/stocktake/records/$stocktakeId` は横断 hub 経由のみ到達可能で、専用一覧などの静的入口は未整備。入口設計は実需発生時の別 change とする。
 - csv_import / stocktake の関連記録 link 実効化（詳細 route は実装済み。record_type producer 採用 + §74.9 許可リスト追加を併せて行う別 follow-up — 2026-09-01 の producer 実効化 R3〈PR #26〉では owner 裁定で据置、74 §74.9 / §74.16 に据置判断明記済み。実需発生時に起票）。
 - 入出庫履歴の完成形 runway 残余（横断 hub 検索の 6 種対称化・棚卸し合流・検索母集団差の利用者説明は PR #14〈2026-08-29〉で完了。残余 = 専用一覧 `/csv-import/records`・`/stocktake/records` と `listCsvImportRecords` / `listStocktakeRecords`〈完成形契約のまま実需発生まで残置〉+ slice 6 の CSV 出力・印刷/控え + slice 5 の取消/訂正・`corrected` status）。
