@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 If a state-only commit materializes multiple phases, list the complete adjacent forward sequence and the pre-existing evidence for every intermediate transition in an append-only review/evidence record. Recording compression never permits a gate skip.
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: d869b123
@@ -16,7 +16,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Plan Reviewer: Sonnet + Opus
 - Final Reviewer: Sonnet + Opus + Codex
 - Reviewed Content HEAD: 17fc8b66
-- Final Exact-HEAD Evidence: L1 full RESULT=PASS、END_HEAD_SHA=17fc8b66、END_TREE_STATE=CLEAN、MERGE_EVIDENCE_VALID=true（Coordinator run、worktree `/tmp/rev-20`、2026-09-11。log は `.local/codex-orders/reports/l1-full-pr51-17fc8b66.log`）
+- Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required（docs-only のため Ready 後の hosted final は owner `workflow_dispatch`。Ready 案内に明記する）
 - Human Gate: owner mockup-g 確認（culling 2 件、Coordinator 既定を mockup の両案で確認する形: (1) フィルタ toolbar 内の SegmentedControl〈廃番表示 / PLU表示 / 並び順〉に上置き Label を付ける〈既定 = 全部付ける。state-1 で並び順の Label あり / なしを両方提示〉(3) Checkbox は label 内包の横並び維持〈既定〉。旧 (2) セクション見出しの component 化は class 統一と描画結果が同じで mockup では見分けられないため Coordinator 決定〈class / 文型 / token 統一のみ〉へ格下げ、D4 に記録）+ Ready 承認 → **回答（owner 2026-09-11、設問番号と衝突しないよう (a)(b)(c) で表記）**: (a) state-1 = 提案 a〈toolbar 内 SegmentedControl 全部に上置き Label、設問 (1)〉/ (b) state-2 = 提案を採り、「未入力のみ表示」Checkbox は行の縦中央〈`self-center`、設問 (3)〉/ (c) state-3・4 = 形態 C は見出し行 + 説明行の 2 段（説明をボタンの横で折り返さない）、`PageHeader` (c) にも同じ配置を適用〈owner 選択。実測: `PageHeader` 28 page 中 actions 持ち 15、うちボタンで説明が折り返すのは商品 CSV 取込み 1 page のみ〉。Gated Amendment 2 / 3 で確定文化。**owner Ready 承認 2026-09-11**（「Ready しよか」、merge まで Coordinator 代行）
 
