@@ -16,7 +16,7 @@ If a state-only commit materializes multiple phases, list the complete adjacent 
 - Plan Reviewer: Sonnet + Opus
 - Final Reviewer: Sonnet + Opus + Codex
 - Reviewed Content HEAD: pending
-- Final Exact-HEAD Evidence: L1 full RESULT=PASS、END_HEAD_SHA=0769d9ee、END_TREE_STATE=CLEAN、MERGE_EVIDENCE_VALID=true（Writer Codex 42 報告、2026-09-11。log は `.local/codex-orders/reports/l1-full-pr50-0769d9ee.log`）
+- Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: owner Windows native L3（AC-L3-1〜6、dialog 重ね (A) の実機確認を含む）+ Ready 承認 → **L3 run 1（2026-09-11、content `0769d9ee`）**: AC-L3-1 / 2 / 3 / 5 PASS（5 の「Tab が内側から漏れない」は owner に不明瞭だったが PASS）、AC-L3-4 = 検索 PASS、0 件文言と箱内 scroll は件数準備の負担から**自動 test で担保する選択**（owner 提示の二択、Coordinator 推奨 = `SPEC-SUP-D2` test と `closest(".overflow-auto")` assertion が正本）、AC-L3-6 = 是正要（trigger に dialog を想起させる icon が無く「ボタンなのか何なのか分からない」/ 固定帯は下線のみで見やすさに欠ける・左端に帯・「選択中」badge はしつこい）。追加観測: 長い取引先名は「めちゃはみ出してる」（#13 実証）/ 商品修正の取得中フラッシュは見えない（no-action）/ 削除済み id の帯は再現不要（自動 test C14 が正本）。→ Gated Amendment 4 → 是正 → L3 run 2 は AC-L3-1（はみ出し）/ AC-L3-6（icon・帯）のみ
 
