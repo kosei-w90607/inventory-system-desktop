@@ -11,7 +11,7 @@ Risk: R2
 - C1 catalog ⑨ 使用トークンが commit 型文を残したまま「すべてのフィルタ入力」の上置き規範 + 例外 2 種（Checkbox 横並び / tab・mode 切替の SegmentedControl は可視 Label なし。フィルタ toolbar 内の SegmentedControl は上置き Label）+ label canonical class（`font-normal` 打ち消し）を持つ（D1 / D5）
 - C2 catalog ⑨ の `DepartmentFilter` 構造 block が `grid gap-1` 上置き形（D2）
 - C3 catalog ⑨ に page の file:line が無い（D3）
-- C4 catalog ① にセクション見出し variation（h2 / 説明 / action、PageHeader (c) 折返し契約、1 h1 不変、`SectionHeader` canonical 想定）（D4）
+- C4 catalog ① にセクション見出し variation（h2 / 説明 / action、PageHeader (c) 折返し契約、1 h1 不変、component 化は不採用〈Coordinator 決定〉）（D4）
 - C5 catalog ⑤ に SegmentedControl の Label 例外（D5、draft literal）
 - C6 mockup-g が存在し reference/README に登録、外部依存なし（D6）
 - C7 更新履歴 1 行、他 section 不変、`src/**` / DSR / function-design に diff なし
@@ -38,7 +38,7 @@ Risk: R2
 | C3 | F3 | awk + rg（負） | AC5 `awk ⑨ \| rg -c "\.tsx:[0-9]+"` = 0 | file:line が混入 |
 | C4 | F4 | rg | AC4 `バリエーション: セクション見出し` = 1 / `SectionHeader` ≥ 1 / `awk ① \| rg -c "min-w-0 flex-1"` ≥ 3（baseline 2） / AC6 `1 ページ 1 個の h1` = 1 + `PageHeader で描かない` ≥ 1 | variation 欠落、契約 class 欠落、1 h1 の文言が変わる |
 | C4 | F4（token） | awk + rg（負） | AC11 `awk ① \| rg -c "text-lg"` = 0 / `text-xl font-semibold` ≥ 1 / `説明を見出し行の下に置く形` ≥ 1 | h2 に h3 token（18px）を書く / 形態 A の除外が抜ける |
-| C1 | F1（D5） | rg | AC3 `フィルタ toolbar 内の SegmentedControl` ≥ 1 / `font-normal` ≥ 1 / `commit 型は wrapper` = 1 / `text-sm text-muted-foreground" htmlFor` ≥ 1 | SegmentedControl の 2 択 / 3 択以上の区別が無い / label の canonical class が無い |
+| C1 | F1（D5） | rg | AC3 `フィルタ toolbar 内の SegmentedControl` ≥ 1 / `font-normal` ≥ 1 / `commit 型は wrapper` = 1 / `text-sm text-muted-foreground" htmlFor` ≥ 1 | SegmentedControl の文脈軸（toolbar 内 / tab・mode 切替）が無い / label の canonical class が無い / commit 型文が消える |
 | C5 | F5 | rg | AC3 後半（⑤ 節内 `awk '/^## ⑤/,/^## ⑥/' \| rg -c "可視 Label を持たない"` = 1） | ⑤ に記述なし |
 | C6 | F6 | fd + rg | AC7 | file 無し / README 未登録 / `<script` or `http` 混入 |
 | C7 | F7 | git + awk | AC8 更新履歴 1 行 / AC9 `git diff --name-only origin/main..HEAD -- src src-tauri docs/design-system/01-decision-rules.md docs/function-design` = 0 | 範囲外 diff |
@@ -67,7 +67,7 @@ not applicable — docs-only、UI / data / route / persisted state の変更な�
 - missing input: 該当なし
 - invalid input: 該当なし
 - duplicate/ambiguous input: 例外の記述を ⑨ と ⑤ の 2 箇所に分けるが、規範本体は ⑨ のみ（⑤ は参照 1 行）— 重複定義にならないこと（Review Focus）
-- unknown reference: `SectionHeader` は後続実装（「想定」明記）
+- unknown reference: `SectionHeader` は不採用（D4）。literal に登場する名前は「採用しない」文脈のみ
 - dependency missing: 該当なし
 - permission/write failure: 該当なし
 - dry-run side effect: 該当なし
