@@ -8,14 +8,14 @@ Risk: R2
 
 ## Contracts Under Test
 
-- C1 catalog ⑨ 使用トークンが「すべてのフィルタ入力」の上置き規範 + 例外 2 種（Checkbox 横並び / SegmentedControl 可視 Label なし）を持つ（D1）
+- C1 catalog ⑨ 使用トークンが commit 型文を残したまま「すべてのフィルタ入力」の上置き規範 + 例外 2 種（Checkbox 横並び / tab・mode 切替の SegmentedControl は可視 Label なし。フィルタ toolbar 内の SegmentedControl は上置き Label）+ label canonical class（`font-normal` 打ち消し）を持つ（D1 / D5）
 - C2 catalog ⑨ の `DepartmentFilter` 構造 block が `grid gap-1` 上置き形（D2）
 - C3 catalog ⑨ に page の file:line が無い（D3）
 - C4 catalog ① にセクション見出し variation（h2 / 説明 / action、PageHeader (c) 折返し契約、1 h1 不変、`SectionHeader` canonical 想定）（D4）
 - C5 catalog ⑤ に SegmentedControl の Label 例外（D5、draft literal）
 - C6 mockup-g が存在し reference/README に登録、外部依存なし（D6）
 - C7 更新履歴 1 行、他 section 不変、`src/**` / DSR / function-design に diff なし
-- C8 Human Gate 3 件が確定文になっていない（両論併記）
+- C8 Human Gate 2 件（(1) toolbar 内 SegmentedControl の Label / (3) Checkbox 横並び）が確定文になっていない（既定案 + 確認、の書き方のまま）
 
 ## Failure Modes
 
@@ -58,7 +58,7 @@ not applicable — docs-only、UI / data / route / persisted state の変更な�
 
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
-| live SearchBar 上置き（⑭） | `ProductListPage` / `StockInquiryPage` / `PriceRevisionFilters` / `InventoryRecordsPage` の 4 サイト + 既に上置きの 3 page（操作ログ / 入出庫履歴 / 在庫変動） | 規範として全入力へ（docs） | Checkbox（慣行）/ SegmentedControl（自己記述、Human Gate (1)） | packet 実測表 |
+| live SearchBar 上置き（⑭） | `ProductListPage` / `StockInquiryPage` / `PriceRevisionFilters` / `InventoryRecordsPage` の 4 サイト + 既に上置きの 3 page（操作ログ / 入出庫履歴 / 在庫変動） | 規範として全入力へ（docs）。フィルタ toolbar 内の SegmentedControl 3 箇所（`ProductListPage.tsx:135-150,179-186`）も ported（Human Gate (1)） | Checkbox（label 内包の慣行）/ tab・mode 切替の SegmentedControl（TabsHeader / ModeTabs、Label 不適） | packet 実測表 |
 | PageHeader (c) 折返し契約（⑮） | `PageHeader.tsx:31-43` | ① variation（docs） | `AlertDialogTitle`（`IntegrityCheckPage.tsx:438`、見出しでない） | packet 実測表 |
 | mockup 運用 | `mockup-d-lists.html` / `mockup-f-supplier-picker.html` | mockup-g | — | AC7 |
 
