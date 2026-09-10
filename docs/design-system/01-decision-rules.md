@@ -22,7 +22,7 @@
 
 **Why**: refactoring-ui §1「Not everything can be important」のとおり、すべてを強調するとヒエラルキーが崩れる。非 IT の利用者は「いま何を押せばよいか」を即断したい。Primary が複数あると、どれが本筋の操作か判断に迷う。GOV.UK「Do less」の精神で、1 画面の本筋操作を 1 つに定める。
 
-**判定フロー / 具体例**: 商品一覧の主動線は「商品登録」1 個（Primary）。一覧へ戻る・修正などは outline。フォーム画面の主動線は「登録する / 保存する」1 個で、「一覧へ戻る」は outline に降格する。runtime 是正対象（2026-09-05 起票時実測）: `ProductForm.tsx:343`「追加する」（インライン取引先登録の確定ボタン）と `:481`「登録する / 保存する」が `showSupplierInput` true 時に同一画面へ同時存在し二重 primary の疑いがある — `:343` を `secondary` へ降格する（runtime lane）。`button.tsx` の `secondary` は `border border-border-strong` を持つ（owner L3 AC-L3-2 を受け、card 地から操作枠を識別できる強さへ是正）。
+**判定フロー / 具体例**: 商品一覧の主動線は「商品登録」1 個（Primary）。一覧へ戻る・修正などは outline。フォーム画面の主動線は「登録する / 保存する」1 個で、「一覧へ戻る」は outline に降格する。取引先 inline パネルの runtime 是正対象は解消済み（PR #50、DSR-24 の picker 化で inline パネルを撤去）。`button.tsx` の `secondary` は `border border-border-strong` を持つ（owner L3 AC-L3-2 を受け、card 地から操作枠を識別できる強さへ是正）。
 
 **関連**: パターン①ページヘッダ / ④フォームセクション。review-checklist カテゴリ 9 対応（既存画面の共通レイアウト継承・別アプリ化防止）。
 
@@ -484,6 +484,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-10 | PR #50 | DSR-24 の取引先ピッカー runtime 反映により、DSR-01 の inline パネル是正対象を解消。 |
 | 2026-09-10 | PR #49 | DSR-24 を新設し、DSR-23 から例外条項への相互参照を追加。title を「DSR-01〜24」へ同期。owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除して入庫記録を適用例へ追加。 |
 | 2026-09-08 | PR #45 | owner L3 AC-L3-2 で secondary の `--border` 枠が card 地に溶け込むと判定され、操作枠を `--border-strong` へ変更。塗り・文字色・hover は維持。 |
 | 2026-09-08 | PR #45 | UI 規約 runtime 反映に合わせ、verbatim 重複の DSR-23 第2ブロックを除去。第1ブロックの本文は維持。 |
