@@ -11,11 +11,11 @@ Risk: R2
 - C1 catalog ⑨ 使用トークンが commit 型文を残したまま「すべてのフィルタ入力」の上置き規範 + 例外 2 種（Checkbox 横並び / tab・mode 切替の SegmentedControl は可視 Label なし。フィルタ toolbar 内の SegmentedControl は上置き Label）+ label canonical class（`font-normal` 打ち消し）を持つ（D1 / D5）
 - C2 catalog ⑨ の `DepartmentFilter` 構造 block が `grid gap-1` 上置き形（D2）
 - C3 catalog ⑨ に page の file:line が無い（D3）
-- C4 catalog ① にセクション見出し variation（h2 / 説明 / action、PageHeader (c) 折返し契約、1 h1 不変、component 化は不採用〈Coordinator 決定〉）（D4）
+- C4 catalog ① にセクション見出し variation（h2 / 右要素 / 説明、見出し行 + 説明行の 2 段で `PageHeader` (c) と同型〈Gated Amendment 2 / 3、折返し契約は撤回〉、1 h1 不変、component 化は不採用〈Coordinator 決定〉）（D4 / D8）
 - C5 catalog ⑤ に SegmentedControl の Label 例外（D5、draft literal）
 - C6 mockup-g が存在し reference/README に登録、外部依存なし（D6）
 - C7 更新履歴 1 行、他 section 不変、`src/**` / DSR / function-design に diff なし
-- C8 Human Gate 2 件（(1) toolbar 内 SegmentedControl の Label / (3) Checkbox 横並び）が確定文になっていない（既定案 + 確認、の書き方のまま）
+- C8 Human Gate 2 件（(1) toolbar 内 SegmentedControl の Label / (3) Checkbox 横並び）が確定文になっていない（既定案 + 確認、の書き方のまま）。Gated Amendment 2 以降は反転: 回答 (a)(b)(c) が確定文化され draft マーカーが残らない（AC13）
 
 ## Failure Modes
 
@@ -43,7 +43,7 @@ Risk: R2
 | C5 | F5 | rg | AC3 後半（⑤ 節内 `awk '/^## ⑤/,/^## ⑥/' \| rg -c "可視 Label を持たない"` = 1） | ⑤ に記述なし |
 | C6 | F6 | fd + rg | AC7 | file 無し / README 未登録 / `<script` or `http` 混入 |
 | C7 | F7 | git + awk | AC8 更新履歴 1 行 / AC9 `git diff --name-only origin/main..HEAD -- src src-tauri docs/design-system/01-decision-rules.md docs/function-design` = 0 | 範囲外 diff |
-| C8 | F8 | rg（負） | `rg -n "component 化を採用|SectionHeader を新設する" 02-component-catalog.md \| wc -l` = 0（Human Gate 回答前） | 確定文が混入 |
+| C8 | F8 | rg（負） | `rg -n "component 化を採用|SectionHeader を新設する" 02-component-catalog.md \| wc -l` = 0（Human Gate 回答前。回答後は AC13 の ⑨ / ① `Human Gate` = 0 が正本） | 確定文が混入 / 回答後に draft マーカーが残る |
 | 全体 | — | gate | AC10（doc-consistency / check-workflow-git / reading-order-drift / format:check） | いずれか FAIL |
 
 ## State Lifecycle Matrix
@@ -60,7 +60,7 @@ not applicable — docs-only、UI / data / route / persisted state の変更な�
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
 | live SearchBar 上置き（⑭） | `ProductListPage` / `StockInquiryPage` / `PriceRevisionFilters` / `InventoryRecordsPage` の 4 サイト + 既に上置きの 3 page（操作ログ / 入出庫履歴 / 在庫変動） | 規範として全入力へ（docs）。フィルタ toolbar 内の SegmentedControl 3 箇所（`ProductListPage.tsx:135-150,179-186`）も ported（Human Gate (1)） | Checkbox（label 内包の慣行）/ tab・mode 切替の SegmentedControl（TabsHeader / ModeTabs、Label 不適） | packet 実測表 |
-| PageHeader (c) 折返し契約（⑮） | `PageHeader.tsx:31-43` | ① variation（docs） | `AlertDialogTitle`（`IntegrityCheckPage.tsx:438`、見出しでない） | packet 実測表 |
+| PageHeader (c) 折返し契約（⑮、Gated Amendment 2 / 3 で見出し行 + 説明行の 2 段へ撤回） | `PageHeader.tsx:31-43` | ① variation + (c) 構造（docs） | `AlertDialogTitle`（`IntegrityCheckPage.tsx:438`、見出しでない） | packet 実測表 |
 | mockup 運用 | `mockup-d-lists.html` / `mockup-f-supplier-picker.html` | mockup-g | — | AC7 |
 
 ## Negative Paths
