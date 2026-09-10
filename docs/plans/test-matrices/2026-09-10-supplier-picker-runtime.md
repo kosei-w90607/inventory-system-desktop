@@ -44,7 +44,7 @@ Risk: R3
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| C1 | F1 | unit | `SupplierPickerDialog.test.tsx` `DSR-24: renders title, description, search, current-selection band and fixed footer outside the scroll box` | Title / Description / 「現在の選択」/ 「新しい取引先を追加」/ 「閉じる」のいずれかが欠ける、sr-only 列見出しが可視、**`scrollBox` が帯または footer を `toContainElement` する**（F1 の直接 oracle） |
+| C1 | F1 | unit | `SupplierPickerDialog.test.tsx` `DSR-24: renders title, description, search, current-selection band and fixed footer outside the scroll box` | Title / Description / 「現在の選択」/ 「新しい取引先を追加」/ 「閉じる」のいずれかが欠ける、sr-only 列見出しが可視、**`scrollBox` が帯または footer を `toContainElement` する**（F1 の直接 oracle）、「新しい取引先を追加」の `data-variant` が `default`（primary）でない / 「閉じる」が `outline` でない（catalog `:584` の配分、`button.tsx:56`） |
 | C2 | F2 | unit | 同 `DSR-24: lists leading row first and suppliers sorted by name` | 先頭行が `leadingLabel` でない、または row 順が name 昇順でない |
 | C2 / C5 | — | unit | 同 `DSR-24: filters rows by search text and shows EmptyState when nothing matches` | 検索で行数が減らない、0 件で EmptyState が出ない、クリアで戻らない |
 | C3 | F3 | unit | 同 `DSR-24: selecting a row calls onSelect once and closes` | `onSelect` 呼出回数 ≠ 1、または close されない |
@@ -58,9 +58,10 @@ Risk: R3
 | C8 / C9 | F8 / F9 | unit | `PriceRevisionFilters.test.tsx` `SPEC-PRV-D6: opens supplier picker from trigger and patches supplier on select` | trigger 文言（`toHaveTextContent`）が現在値でない、`onPatch({ supplier })` が呼ばれない、追加成功時に `onPatch` が 2 回呼ばれる（S3 の `onCreated` = refetch のみ） |
 | C9 | F9 | unit（新規） | `PriceRevisionFilters.test.tsx` `SPEC-PRV-D3: shows 取引先未設定の商品も含める in the filter row, checked by default, when a supplier is selected` | toggle が消える / 既定 on でない / dialog 内へ移動。**既存 test には無い**（round 1 で不在を確認、`includeUnassigned` は fixture `:36` のみ） |
 | C9 | F8 | unit（GA2 書き換え） | `PriceRevisionFilters.test.tsx` `:57` / `:80` を trigger 版へ（Label + trigger が 1 wrapper / DOM 順序 Label → trigger → 部門 → … → 表示件数） | ⑭ GA2 の群化契約が trigger 化で失われる |
+| C8 | F5 | unit（新規） | `PriceRevisionFilters.test.tsx` `SPEC-PRV-D6: surfaces the fetch error inside the picker and retries through suppliersQuery.refetch` | host に `role="alert"`「取引先一覧を取得できませんでした」が残る / picker の再試行が `suppliersQuery.refetch` を呼ばない |
 | C8 / C10 | F8 / F10 | unit | `ProductForm.test.tsx` `UI-01b-D7: selects a supplier through the picker and keeps 取引先なし as null` | 「取引先なし」選択で `supplierId !== null`、trigger が `supplierWarning` 中に enabled |
 | C10 | F4 / F10 | unit | `ProductForm.test.tsx` `UI-01b-D21: creates a supplier from the picker, refreshes options and auto-selects it` | 追加後に trigger が新規名にならない、`listSuppliers` が再呼出されない |
-| C8 | F8 | regression（in-place） | `ProductForm.test.tsx:763-800` SC4e / `ReceivingPage.test.tsx:1026-1030` SC4b（Lane 5、`bg-control-surface` / not `bg-background`） | trigger が `outline` 素のまま `bg-background` を持つ |
+| C8 | F8 | regression（in-place） | `ProductForm.test.tsx:763-800` SC4e / `ReceivingPage.test.tsx:1027-1032` SC4b（Lane 5、`bg-control-surface` / not `bg-background`、assertion `:1031-1032`） | trigger が `outline` 素のまま `bg-background` を持つ / host Label に `id` が無く `getByLabelText("取引先")` が解決しない |
 | C10 | F10 | rg | AC3 oracle | inline パネル state が残る |
 | C8 / C11 | F8 / F11 | unit | `ReceivingPage.test.tsx` `UI-02-D3: selects supplier via picker and allows 指定なし` | 「指定なし」に戻せない、未指定で submit が拒否される |
 | C11 | F11 | unit | `ReceivingPage.test.tsx` `UI-02-D3: refetches suppliers after creating one from the picker` | `refetch` 未呼出 |
