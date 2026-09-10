@@ -57,6 +57,8 @@ it("DSR-24: renders title, description, search, current-selection band and fixed
   const scrollBox = table.parentElement;
   expect(scrollBox).toHaveClass("max-h-[50vh]", "overflow-auto");
   expect(scrollBox).not.toContainElement(screen.getByText("現在の選択"));
+  const band = screen.getByText("現在の選択").parentElement;
+  expect(band).not.toHaveClass("bg-row-current");
   expect(screen.getByText("現在の選択").parentElement).not.toHaveTextContent("選択中");
   expect(screen.getByRole("columnheader", { name: "選択" })).toHaveClass("sr-only");
   const current = screen.getByRole("row", { name: /選択中.*か商店/ });

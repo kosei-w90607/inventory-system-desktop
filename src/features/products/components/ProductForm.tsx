@@ -317,7 +317,7 @@ export function ProductForm({
               <span className="truncate">
                 {supplierCurrentLabel(supplierOptions, values.supplierId ?? null, "取引先なし")}
               </span>
-              <ChevronDown className="size-4 opacity-50" aria-hidden="true" />
+              <ChevronDown className="size-4 text-muted-foreground opacity-50" aria-hidden="true" />
             </Button>
             <SupplierPickerDialog
               open={supplierPickerOpen}

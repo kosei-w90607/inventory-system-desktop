@@ -86,7 +86,7 @@ export function PriceRevisionFilters({
                 "すべての取引先",
               )}
             </span>
-            <ChevronDown className="size-4 opacity-50" aria-hidden="true" />
+            <ChevronDown className="size-4 text-muted-foreground opacity-50" aria-hidden="true" />
           </Button>
         </div>
         <DepartmentFilter
