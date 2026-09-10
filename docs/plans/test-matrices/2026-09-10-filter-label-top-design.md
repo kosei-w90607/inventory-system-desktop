@@ -37,8 +37,8 @@ Risk: R2
 | C1 | F1 | rg（互換） | `rg -c "useId" 02-component-catalog.md` = baseline / `rg -c "max-w-md" …` = baseline | 既存 live 型記述が置換で消える |
 | C2 | F2 | awk + rg | AC2 `awk ⑨ \| rg -c 'className="grid gap-1"'` ≥ 1 | DepartmentFilter block が旧形 |
 | C3 | F3 | awk + rg（負） | AC5 `awk ⑨ \| rg -c "\.tsx:[0-9]+"` = 0 | file:line が混入 |
-| C4 | F4 | rg | AC4 `バリエーション: セクション見出し` = 1 / `SectionHeader` ≥ 1 / `awk ① \| rg -c "min-w-0 flex-1"` ≥ 3（baseline 2） / AC6 `1 ページ 1 個の h1` = 1 + `PageHeader で描かない` ≥ 1 | variation 欠落、契約 class 欠落、1 h1 の文言が変わる |
-| C4 | F4（token） | awk + rg（負） | AC11 `awk ① \| rg -c "text-lg"` = 0 / `text-xl font-semibold` ≥ 1 / `説明を見出し行の下に置く形` ≥ 1 | h2 に h3 token（18px）を書く / 形態 A の除外が抜ける |
+| C4 | F4 | rg | AC4 `バリエーション: セクション見出し` = 1 / `SectionHeader` ≥ 1 / `awk ① \| rg -c "min-w-0 flex-1"` = 3（baseline 2。GA2 で ≤ 1、GA3 で = 3 = 構造 block h1 + variation h2 + ⑮ 経緯） / AC6 `1 ページ 1 個の h1` = 1 + `PageHeader で描かない` ≥ 1 / AC13 ① `折返し契約` = 0 + `説明行` ≥ 2 / AC14 ① `runtime 反映は後続 lane` ≥ 1 + `subtitle !== undefined` ≥ 1 | variation 欠落、見出しの shrink 保証欠落、2 段配置が (c) と variation で食い違う、1 h1 の文言が変わる |
+| C4 | F4（token） | awk + rg（負） | AC11 `awk ① \| rg -c "text-lg"` = 0 / `text-xl font-semibold` ≥ 1 / `見出し行 \+ 説明行` ≥ 2（GA2 で「説明を見出し行の下に置く形」から置換） | h2 に h3 token（18px）を書く / 2 段配置の文言が (c) と variation のどちらかに欠ける |
 | C1 | F1（D5） | rg | AC3 `フィルタ toolbar 内の SegmentedControl` ≥ 1 / `font-normal` ≥ 1 / `commit 型は wrapper` = 1 / `text-sm text-muted-foreground" htmlFor` ≥ 1 | SegmentedControl の文脈軸（toolbar 内 / tab・mode 切替）が無い / label の canonical class が無い / commit 型文が消える |
 | C5 | F5 | rg | AC3 後半（⑤ 節内 `awk '/^## ⑤/,/^## ⑥/' \| rg -c "可視 Label を持たない"` = 1） | ⑤ に記述なし |
 | C6 | F6 | fd + rg | AC7 | file 無し / README 未登録 / `<script` or `http` 混入 |
