@@ -23,6 +23,7 @@ Risk: R3
 - C13 docs 同期 literal（AC10）
 - C14 現在値の未解決時文言（Gated Amendment 3、AC13）: `selected !== null` で一覧に無い id は「取引先を確認できません」、未指定文言で断定しない
 - C15 内側 dialog の form submit が host form へ伝播しない（Gated Amendment 3、AC13）: picker の `onSubmit` stopPropagation が防壁
+- C16 trigger の開く控え（Gated Amendment 4、AC15）: 3 host の trigger が `ChevronDown` を持ち、文言は `truncate` で枠内に収まる。固定帯は全周枠 + 左バー、badge は一覧側の現在行のみ
 
 ## Failure Modes
 
@@ -154,6 +155,8 @@ closure（Sonnet + Opus）で最低限注入する mutant。**各 mutant は `Su
 12. 固定帯を scroll 箱の内側へ移す → C1 test の `not.toContainElement` が落ちるか
 13. （Gated Amendment 3）picker `DialogContent` の `onSubmit` stopPropagation を削る → C15 test（`ProductForm.test` の追加成功 flow で `onSubmit` 不呼出 assertion）が落ちるか
 14. （Gated Amendment 3）`supplierCurrentLabel` の未解決分岐を `?? leadingLabel` に戻す → C14 test（picker test + `PriceRevisionFilters.test` の isError × 選択済み）が落ちるか
+15. （Gated Amendment 4）`PriceRevisionFilters` の trigger から `ChevronDown` を削る → C16 test（`lucide-chevron-down` の存在 assertion）が落ちるか
+16. （Gated Amendment 4）固定帯に `Badge`「選択中」を戻す → C1 test（帯の `Badge` 不在 assertion）が落ちるか
 
 ## Residual Test Gaps
 
