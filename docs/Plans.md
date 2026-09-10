@@ -158,7 +158,7 @@
 
 ## Backlog（未了）
 
-区分ごとに小節分け（2026-09-11 owner 依頼、行の文面は不変）。「次に動く lane」は上から順に着手する固定順。完了・設計済みのポインタ行は次の closeout で除去する。
+区分ごとに小節分け（2026-09-11 owner 依頼）。「次に動く lane」は上から順に着手する固定順。2026-09-11 に棚卸し（Fable が code / docs / git log に当てて実測）: 済み 6 件（mockup-d-lists 定数名同期 / command drift 検出〈⑯〉/ bindings trailing whitespace〈再生成後 0 件〉/ eslint 保守性 rule〈⑯〉/ palette ban の ui・layout glob〈⑫〉/ drift 同期 PR #37 の P3〈65 §65.3 注記 + 52 route 列挙〉）とポインタ 5 行を除去。
 
 ### 次に動く lane（順番固定）
 
@@ -186,7 +186,6 @@
 - SidebarLink の focus 中は `focus-visible:border-ring`（詳細度 0-2-0）が DSR-21 の左辺 Primary を上書きする（at rest は無関係、一過性。PR #28 Final Review round 2〜3 観察、意図的な a11y 挙動のため要望があれば DSR-21 に focus 時の扱いを追記）。
 - dialog/AlertDialog 内の dl・table が aria-describedby に含まれない既存同型制約（3 site 共通、スクリーンリーダー初期読み上げ対象外 — Opus round 指摘起源のアクセシビリティ磨き候補）。
 - Lane 4 GA4 の残余（Final Review Opus P3、2026-09-07）: 件数帯の `z-20` は箱の外では dead CSS（撤去 + selector を `data-list-summary-band` へ、test 5 箇所の churn あり）/ `docs/design-system/reference/mockup-d-lists.html:112` の「箱内スクロール `max-height:56vh` は不採用」記述が GA4b で stale。次に ListShell / mockup を触る lane で同期、S
-- `docs/design-system/reference/mockup-d-lists.html:110` の旧定数名 `PRODUCT_PER_PAGE_OPTIONS`（Lane 3 Final Review P3、mockup は D-080 で reference-only）: 次に mockup を触る lane で同期。⑫ で起票（実測で行番号は `:96` へ drift 済み、現行定数名 `LIST_PER_PAGE_OPTIONS` へ同期。Plan Review round 1 Opus P2-5 で `01-decision-rules.md:447` / `50-ui-product-list.md:63` / `73-ui-stocktake.md:220` の同名 stale 参照 3 件も Scope へ統合済み — mockup は D-080 reference-only だが 3 file は現行契約を説明する現役 doc で優先度が高いため）
 - 在庫少閾値の非数値 fallback 可視化（UI-11a 実装時の事実確認起源）: BIZ `list_low_stock` が `stock_low_threshold` / `stock_low_threshold_fabric` の非数値値を無警告で fallback する（ログ・operation_logs 記録なし）。DB 直接操作以外で非数値が入る経路が現状ないため優先度低。
 - 商品取込み上書き確認の実機 visual 未観測（PR #25 L3 で fixture 不足〈上書き確認へ到達する import file 不在〉の残余リスク受容済み、T7/T9 自動被覆あり。import file fixture が整った機会の随時確認で足りる、義務ではない）。
 
@@ -238,33 +237,20 @@
 - Workflow 自走化 mechanical slice 2（PK4/PK5、drift grep test、hook 評価。design + implementation slice 1 は PR #162/#163 で完了、slice 2 は Appendix C として別 Plan Packet へ deferred）。
 - Workflow 自走化 第 3 層（自走ドライバ）: 単一エントリポイントが状態ファイル群から次の dependency-ready フェーズを決定 → 実行 → gate 通過で状態更新、を人間ゲートに当たるまでループする構想。前提 = 第 2 層完了、3 層構想の経緯は第 2 層着手時の Design Phase で decision-log / 設計書へ昇格予定。
 - `scripts/check-command-drift.sh` の「D の収集漏れ N 件」message に対処ヒント（`#[tauri::command]` と `pub fn` の間の未対応区切りを疑う旨）を添える（⑯ Sonnet closure P3、no-action 記録）
-- command drift detection（`collect_commands!` / `generate_handler!` の drift detection 未導入）。※退役 Docker 資材の削除は wave 7 lane 2（PR #19、2026-08-30）で完了済み。⑯ で起票（bash + `rg` 再実装、Python 不使用、`doc-consistency-check.sh` 経由で local-ci / pre-push / CI docs job へ到達）
-- TanStack Router generation settings の統一（起草時実査 2026-08-30: vite plugin `tanstackRouter({ autoCodeSplitting: true })` と `tsr generate` CLI の 2 系統併存・tsr.config.json なし。統一方針〈CLI script 撤去 or tsr.config 明示化〉の小裁定 + 生成物同一性検証を伴う単独小 change として着手）。⑫ で起票（tsr.config.json 明示化を採用、生成物 byte-identical 実測済み）。
-- bindings trailing-whitespace generation の扱い（2026-08-30 実測: commit 済み `src/lib/bindings.ts` に trailing whitespace 0 件。生成時のみ発生する可能性が残るため、次回 bindings 再生成を伴う change で実測して要否判定）。
+- TanStack Router generation settings の統一（起草時実査 2026-08-30: vite plugin `tanstackRouter({ autoCodeSplitting: true })` と `tsr generate` CLI の 2 系統併存・tsr.config.json なし。統一方針〈CLI script 撤去 or tsr.config 明示化〉の小裁定 + 生成物同一性検証を伴う単独小 change として着手）。⑫ で起票（tsr.config.json 明示化を採用、生成物 byte-identical 実測済み）。（**2026-09-11 棚卸し**: `tsr.config.json` は現存、vite plugin `tanstackRouter` と `tsr generate` CLI の併存は継続。前提の「tsr.config.json なし」は失効、統一裁定は未了）
 - architecture_test の re-export 洗浄検出強化（cmd が biz/mnt の re-export 経由で db symbol を消費する間接依存は現行の use 行 literal match で検出不能 — 順12 実装 AMD2 で実証。cmd-task-specs に検出境界を明記済み、検出強化は将来判断）。⑯ で起票（C′ = allow list による直接再公開の増加禁止のみ、D-083。alias/type alias 洗浄の A 拡張は Non-scope のまま Backlog 残置）
 - I-G1 sweep test の gitignore 非尊重（pure Rust walk 化〈PR #80 是正 `980a211`〉は gitignored file も走査するため、将来 `src/routeTree.gen.ts` 等の生成物が旧 token を偶然含むと偽陽性 fail し得る。安全側にしか倒れない構造差で現時点 hit 0 を実測済み、顕在化時に走査除外 or 生成物パターン skip を判断）。⑪ で起票（Scope）。
 - `app-router.ts` top-level の router singleton 副作用（test が named export だけ import しても実 router が構築されグローバル scroll/pagehide listener が登録される。現状は test 側の一意 query で cache 衝突を回避済みで実害なし。router 関連改修時に遅延生成 or test util 分離を検討 — PR #24 Final Review P3-2、2026-08-31）。
 - T10 source 文字列 test の formatter 脆弱性（`useUnsavedChangesWarning.test.tsx` の `readFileSync` + `toContain` による明示 prop 存在検査は formatter 変更で false-fail し得る実装詳細 test — PR #25 Final Review 非ブロッカー所見 2026-09-01 起源。顕在化時に検査形の置換を判断）。⑪ で起票（Scope）。
 - test hygiene: `SearchBar.test.tsx` の「初期表示時に検索 input へ focus する」test に SC15 の Label / wrapper assertion が同居（⑭ round 1 由来、round 2 で踏襲。Sonnet 一次は P3 0、Coordinator が P3 no-action で記録）→ 次に SearchBar test を触る lane で test 名どおりに分離
 - shortcuts の retroactive unit test（54 §54.9、延期理由「Vitest 未導入」は失効済み・test file 0 件）。
-- eslint の保守性 rule（`complexity` / `max-depth` / `max-lines-per-function` / `max-params`）導入: 既存違反の棚卸し先行、⑫ の追加 block 方式（既存 block 不変・glob 非重複・barrel block より前）。衛生 batch 3 候補、S。⑯ で起票（A 案採用、3 件棚卸し済み: `PluExportPage.tsx` complexity 69 / `ReturnExchangePage.tsx` max-lines-per-function 793 は disable + Backlog、`Pagination.tsx` rangeText max-params 5 は object 引数化で是正）
 - eslint palette 外色 ban の残り非対象 dir（`src/components/common/**` / `src/components/FilePicker.tsx`。⑫ Final Review Opus P3 2026-09-07、probe では現状 CLEAN）: 次に `eslint.config.js` を触る衛生 batch で `ui/**` `layout/**` と同じ追加 block 方式（既存 block 不変・glob 非重複・barrel block より前）で拡張、S
 - `PluExportPage.tsx:188` の complexity 分割（⑯ 起票時実測 10a §3 item #1 起源、complexity 69。保存・未確認復帰・確認・snapshot 読込みの state/表示条件混在を flow hook / 状態 panel へ分割する候補、本 lane では disable + 見送り）、M
 - `ReturnExchangePage.tsx:185` の max-lines-per-function 分割（⑯ 起票時実測 10a §3 item #2 起源、793 行。画像保存・再送 key・返品方向変換・検索・結果表示を画像/明細/保存 flow の責務単位で分割する候補、本 lane では disable + 見送り）、M
-- eslint palette 外色 ban（`eslint.config.js` `no-restricted-syntax`）の `files` glob 拡張（現行は `src/features/**` + `src/components/patterns/**` のみで `src/components/ui/**` / `src/components/layout/**` は非対象。wave 8 lane 1 Plan Review P2 起源 2026-09-02、当該 PR は `rg` を唯一の機械 oracle として運用、glob 拡張は既存違反の棚卸しが先行）。⑫ で起票（仮拡張実測で違反 1 件〈`segmented-control.tsx` の生 `<button>`、色 literal は 0 件〉、色 selector 専用 block の追加、raw button は正当な primitive として維持）。
 - inventory-operator-ui SKILL.md への DSR-16 判断手順追加（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex 発注 or owner 手動の小 change、PR #15 起源）。
-- drift 同期 PR #37 のレビュー P3（2026-09-05）: `65-inventory-record-traceability.md` §65.3 は「完成形」節で、詳細 route 6 件は実装済み・一覧 route は未実装の注記を足す / `52-ui-shared-layout.md:90-93` の「ナビに出さない route」列挙（2 件のみ）を現状へ更新。次に該当 doc を触る PR で同乗
 - cargo 側の advisory 2 件（rand low `GHSA-cq8v-f236-94qc` / glib medium `GHSA-wrw7-89jp-8q8g`）: D-067 で tolerable_risk として dismiss 済み（upstream-blocked）、revisit = Tauri 更新時。
 - npm dependency-security 常設 monitoring の運用（週次〈月曜 06:00 JST〉+ manual dispatch で `npm audit` high+ と監視 advisory の state 変化を check し issue 通知。監視対象 advisory の追加・整理は `scripts/npm-security-monitor.sh` の `WATCHED_ADVISORIES` を編集）。
 - smoke E2E / visual regression の再評価トリガー（全画面横断 typography / density 変更時、Phase 3 の最初の画面横断 workflow 計画時、Phase 4 完了後の `v1.0.0` 候補前に再評価する契約。UI_TECH_STACK §7.2）。
-
-### 完了・設計済みのポインタ（次の closeout で除去）
-
-- 取引先ピッカー統合 dialog の runtime lane → **⑲ で完了（PR #50、2026-09-11）**
-- PageHeader を通らない手書き header 9 箇所の sweep → **⑳ で設計済み（PR #51、2026-09-11）、実装は「フィルタ Label 上置き + 見出し 2 段の runtime lane」**。⑳ 起票時実測で行番号を再特定（8 箇所は sub-section h2、`IntegrityCheckPage.tsx:438〈旧 :461〉` は `AlertDialogTitle` で対象外）。PageHeader 経由は 1 ページ 1 h1 に反するため却下、① セクション見出し variation として規範化 → runtime lane
-- フィルタ入力の Label 上置きを全画面で統一 → **⑳ で設計済み（PR #51、2026-09-11）、実装は「フィルタ Label 上置き + 見出し 2 段の runtime lane」**。前提訂正は ⑳ 行に記載（commit 型 SearchBar は採用 0、操作ログ等は既に上置き、取引先管理はフィルタなし）
-- ~~`docs/UI_TECH_STACK.md` L403 の「DSR-01〜13」列挙が stale（DSR-14〜21 未反映。PR #28 Final Review round 1 観察、design-system README は同 PR で「DSR-01〜21」へ是正済み）。~~ 消化済み（UI 一覧の背骨 D — Lane 2、2026-09-03、「DSR-01〜22」へ更新）
-- ~~linuxbrew ripgrep 15.1.0 のネガティブ glob 誤解釈~~ **close（2026-08-30 実測是正）**: doc-consistency-check.sh 側の負 glob 除去は PR #39（`669dfee`）で対応済み。残存を疑った `check-phase1-probe-removed.sh` の同型は wave 7 lane 2 の三重実測（rg 15.2.0 / linuxbrew 15.1.0、literal・wildcard・明示 file 引数の全形で正常動作）で**非欠陥と確定**し descope。当時の「リテラル解釈で全マッチ 0 件」診断は現行 binary では再現せず、一般化しない（経緯は [lane 2 archived packet](archive/plans/2026-08-30-repo-scripts-hygiene.md) の amendment 記録参照）。
 
 ## ブロッカー
 
