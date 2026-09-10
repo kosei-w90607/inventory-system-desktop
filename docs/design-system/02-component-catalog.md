@@ -32,7 +32,7 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 ```tsx
 <header className="space-y-1">
   <div className="flex flex-wrap items-start justify-between gap-3">
-    <h1 className="text-2xl font-semibold">商品検索・一覧</h1>
+    <h1 className="min-w-0 flex-1 text-2xl font-semibold">商品検索・一覧</h1>
     <div className="shrink-0">
       <Button type="button" asChild>
         <Link to="/products/new" search={{ returnTo }}>
@@ -42,8 +42,8 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
       </Button>
     </div>
   </div>
-  {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-  {description && <p className="text-sm text-muted-foreground">{description}</p>}
+  {subtitle !== undefined && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+  {description !== undefined && <p className="text-sm text-muted-foreground">{description}</p>}
 </header>
 ```
 
@@ -51,11 +51,11 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を見出し行の下に**説明行**として全幅で描画する（**見出し行 + 説明行** の 2 段）。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。`SupplierManagementPage.tsx:35-39` の説明文は、本 PR（⑮）で外側 sibling `<p>` から `subtitle` prop へ移行済み。
 
-**component gap の解消**: `actions` と `subtitle`/`description` の排他は本 PR（⑮）で解消済み。`PageHeader.tsx:31-43` の `actions` 分岐に `<h1>` + 条件付き `subtitle`/`description` を左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめた。⑮ Gated Amendment 2（owner L3 round 1）で外側 `<header>` を `flex flex-wrap items-start justify-between gap-3`、actions wrapper を `shrink-0` に変更した。長い description で actions が次行左へ折り返すため、説明を左列内で折り返し、actions を右上に留めた。`ReceivingPage.tsx:295` / `ManualSalePage.tsx:310` / `ReturnExchangePage.tsx:419` / `DisposalPage.tsx:285` の副題と、`SupplierManagementPage.tsx:35-39` の `subtitle` への移行により、見出しと説明を同じグループで描画した。actions なしでも説明を描画する（`PageHeader.tsx:47-53`）。呼び出し側で wrapper を都度書く使用パターンは不要になった。 **本 PR（⑳ Gated Amendment 2）で見出し行 + 説明行の 2 段配置へ改め、`items-start`（h1 と actions の上端揃え）/ canonical path / props は不変**。
+**component gap の解消**: `actions` と `subtitle`/`description` の排他は本 PR（⑮）で解消済み。`PageHeader.tsx:31-43` の `actions` 分岐に `<h1>` + 条件付き `subtitle`/`description` を左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめた。⑮ Gated Amendment 2（owner L3 round 1）で外側 `<header>` を `flex flex-wrap items-start justify-between gap-3`、actions wrapper を `shrink-0` に変更した。長い description で actions が次行左へ折り返すため、説明を左列内で折り返し、actions を右上に留めた。`ReceivingPage.tsx:295` / `ManualSalePage.tsx:310` / `ReturnExchangePage.tsx:419` / `DisposalPage.tsx:285` の副題と、`SupplierManagementPage.tsx:35-39` の `subtitle` への移行により、見出しと説明を同じグループで描画した。actions なしでも説明を描画する（`PageHeader.tsx:47-53`）。呼び出し側で wrapper を都度書く使用パターンは不要になった。 **本 PR（⑳ Gated Amendment 2）で見出し行 + 説明行の 2 段配置へ改め、`items-start`（h1 と actions の上端揃え）/ canonical path / props は不変**。**runtime 反映は後続 lane**（現行 `PageHeader.tsx` は左 group 内折返しのまま）。
 
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
-**バリエーション: セクション見出し（h2）**: page 内の sub-section（「直近の○○」テーブル / 公式部門集計 / 差異のある商品 / 棚卸し進捗 等）の見出しは h2（**`text-xl font-semibold`、④ / 00-foundations の h2 20px と同一 token**）+ 任意の右要素（Button / Badge）+ 任意の説明 `<p className="text-sm text-muted-foreground">` で構成する。配置は **見出し行 + 説明行** の 2 段: 見出し行は `flex flex-wrap items-start justify-between gap-3` に h2 と右要素（`shrink-0`）を置き、説明は見出し行の**下**に全幅で置く（外側 `space-y-1`）。説明を見出しと同じ flex 行の左 group に置いて右要素の横で折り返す形（旧 差異のある商品 / 棚卸し進捗）は採らない。`PageHeader` (c) も同じ 2 段配置（① 構造）であり、page 見出しと sub-section 見出しの規範は 1 本。「直近の○○」系 4 画面（③ テーブルの **「直近の○○」系4画面の統一** 段落の文型）は既にこの配置であり不変。**1 ページ 1 h1 は不変**であり、sub-section を `PageHeader` で描かない。Dialog の `AlertDialogTitle` は対象外。適用は class / 文型 / token の統一とし、component 化（`SectionHeader{title, description?, actions?}`）は現時点で採用しない（3 箇所目の独自要件が出た時点で再検討）
+**バリエーション: セクション見出し（h2）**: page 内の sub-section（「直近の○○」テーブル / 公式部門集計 / 差異のある商品 / 棚卸し進捗 等）の見出しは h2（**`text-xl font-semibold`、④ / 00-foundations の h2 20px と同一 token**）+ 任意の右要素（Button / Badge）+ 任意の説明 `<p className="text-sm text-muted-foreground">` で構成する。配置は **見出し行 + 説明行** の 2 段: 見出し行は `flex flex-wrap items-start justify-between gap-3` に h2（`min-w-0 flex-1`。長い見出しは行内で折り返し、右要素を次行へ落とさない）と右要素（`shrink-0`）を置き、説明は見出し行の**下**に全幅で置く（外側 `space-y-1`）。説明を見出しと同じ flex 行の左 group に置いて右要素の横で折り返す形（旧 差異のある商品 / 棚卸し進捗）は採らない。`PageHeader` (c) も同じ 2 段配置（① 構造）であり、page 見出しと sub-section 見出しの規範は 1 本。「直近の○○」系 4 画面（③ テーブルの **「直近の○○」系4画面の統一** 段落の文型）は既にこの配置であり不変。**1 ページ 1 h1 は不変**であり、sub-section を `PageHeader` で描かない。Dialog の `AlertDialogTitle` は対象外。適用は class / 文型 / token の統一とし、component 化（`SectionHeader{title, description?, actions?}`）は現時点で採用しない（3 箇所目の独自要件が出た時点で再検討）
 
 **使用トークン**: h1 = タイポ `h1`（24px / weight 600）。アクションボタンは Primary（`amber-700`）。要素間ギャップは `space-3`（12px）。
 
@@ -1057,3 +1057,4 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 | 2026-09-08 | PR #46 | PageHeader の副題・説明の併存、取引先説明の移行、備考の空欄・全文表示、直近件数・価格履歴表の runtime 反映と参照行を同期。 |
 | 2026-09-10 | PR #51 | ⑨ に全フィルタ入力の Label 上置き規範と例外・DepartmentFilter 内部構造、① にセクション見出し variation、③ に参照句、⑤ に Label 規範参照を追加。Human Gate 確認用の draft と mockup-g を登録。 |
 | 2026-09-11 | PR #51 | ⑳ Gated Amendment 2: Human Gate 回答の確定文化〈全フィルタの上置き Label・Checkbox の縦中央・セクション見出しと PageHeader (c) の見出し行 + 説明行〉。mockup-g を 4 状態へ更新。 |
+| 2026-09-11 | PR #51 | ⑳ Gated Amendment 3: 見出しの shrink 保証 / runtime 未反映の明示。 |
