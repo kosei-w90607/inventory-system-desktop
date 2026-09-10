@@ -131,7 +131,7 @@ Backlog `Plans.md:163` の行番号は drift 済み（内容で再特定）。**
   > **使用トークン**: **すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400。`Label` component を使う場合も同じ class を渡し、component 既定の `font-medium` を出さない — 既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持する。**2 択の SegmentedControl は可視 Label を持たない**（並び順のような 2 択は選択肢文言が自己記述、`ariaLabel` 必須。⑤ 参照）が、**3 択以上の SegmentedControl（廃番表示 / PLU表示）は他のフィルタ入力と同じ上置き Label を付ける**（両者が同じ toolbar に隣接し、どちらも「すべて」を持つため label なしでは識別できない。Human Gate (1) で確認）。live 型 SearchBar は `Input` の `max-w-md` 維持。`id` 未指定時は `useId()`…（以下既存文を維持）
 - **D2 `DepartmentFilter` の構造 block（⑨ `:625-633`、call-site の props 説明 `:625-626` と `<DepartmentFilter …/>` 呼び出し例）は維持し、その直後に internal 構造 block を追加する**（置換しない。`:618-623` は live 型 SearchBar の block で触らない）。追加 block の draft:
   ```tsx
-  // DepartmentFilter 内部（上置き Label、runtime 反映は後続 lane）: label は raw <label> で htmlFor → SelectTrigger の id
+  // DepartmentFilter 内部（上置き Label、runtime 反映は後続 lane）: label は raw label 要素、htmlFor は SelectTrigger の id を指す
   <div className="grid gap-1">
     <label className="text-sm text-muted-foreground" htmlFor={triggerId}>部門</label>
     <Select …>
