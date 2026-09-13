@@ -9,7 +9,7 @@
 - Amendments: none
 - Coordinator: owner（起草は Codex、D-084。未解決 findings の採否は owner）
 - Writer: Codex（Plan Gate 後の別 run。packet 編集権限なし）
-- Plan Reviewer: 非 Codex vendor の Sonnet（これから実行）
+- Plan Reviewer: Sonnet（round 1 完了。owner 採用の具体化を反映し round 2 待ち）
 - Final Reviewer: Sonnet と Opus の独立した Double Audit（未実行）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -71,7 +71,7 @@ Astra / Sol / Claude の関係する入口から、依頼と phase に必要な�
 
 - AC1: `AGENTS.md` のルートが質問/小変更/初回review/closure/R2+resumeを区別し、HC-D1〜D3 の代表ケースで必要な正本とstop条件を保持する（`docs/agent-guidance/evals/` のケース結果）。
 - AC2: 対象 Skill/Claude rule の重複したphase表、human-confirm直後だけの追加L1 full、一律のコード削除指示を撤去し、必須gateの正本リンクを保持する（`git diff -- .agents/skills .claude` の review）。
-- AC3: `docs/backlog.md` とarchiveを旧Plans/memory/handoffと対照し、未了項目・未解決判断・参照先の保存を確認する（移送記録）。
+- AC3: `docs/backlog.md` とarchiveを旧Plans/memory/handoffと対照し、移送前の原文を archive に保存し、未了項目の本文・未解決判断・参照先を全件対応づけて保存を確認する。件数一致だけでは合格としない（移送記録）。
 - AC4: `bash scripts/tests/codex-safe-wrappers.test.sh` が全読/部分読/不正範囲/path安全/外部symlinkの正負ケースを検出する。既存の安全テストは維持。
 - AC5: `bash scripts/tests/reading-order-drift.test.sh` と `bash scripts/doc-consistency-check.sh`、必要なplan/script testsが通り、旧gateのfixture期待値を緩めない。
 - AC6: baselineとcandidateで代表ケースの読書量/取得可能なusage/判断を比較し、未取得tokenは未実測と記載。未許可mutation、必要契約の脱落、無関係な旧blockerによる停止がない（`docs/agent-guidance/evals/` のケース結果）。
@@ -136,7 +136,7 @@ workflow設計はcontext-efficiency.mdに置く。DB/function/UIの振舞いは�
 
 ## Boundary / Wire Contract
 
-producer = read-safe-file.sh CLI caller、consumer = same wrapper。追加形は `--lines START:END <path>`。正の整数inclusive範囲、単一fileのみ。旧複数path引数は互換。invalid/逆順/空/外部path/secret-looking pathは非0。stdoutは指定範囲の元本文のみ、診断はstderr。機密拒否は部分読みにも適用。
+producer = read-safe-file.sh CLI caller、consumer = same wrapper。追加形は先頭引数でのみ認識する `--lines START:END <path>`。それ以外の option 風引数は既存どおり拒否し、read のフラグ位置違い/未知の flag と list/search の既存拒否を負例で検証する。正の整数inclusive範囲、単一fileのみ。旧複数path引数は互換。invalid/逆順/空/外部path/secret-looking pathは非0。stdoutは指定範囲の元本文のみ、診断はstderr。機密拒否は部分読みにも適用。
 
 ## Review Focus
 
@@ -167,6 +167,10 @@ synthetic fixtureと公開可能なworkflow文書だけを使う。実データ�
 ## Review Response
 
 - Findings Freeze: not yet frozen
+
+2026-09-14: Sonnet round 1 は正常終了したが、P2/P3 と pass を併記し、対象 source の未読を残したため Plan Gate 未通過。owner は未了 backlog の本文・未決判断・参照先の全件照合と、`--lines` 以外の option 拒否の維持を計画へ反映し、レビュー通過まで進めることを承認した。source design、AC、Boundary / Wire Contract、Matrix の同じ前提を同期した。round 2 は修正の確認と初回 Broad Audit の未読分を完了し、P1/P2 が残る場合は pass にしない。
+
+owner 介入は scope 承認とこの裁定を消費。次の裁定が範囲や既存 gate を変える場合は owner に返す。
 
 ## Follow-up Disposition
 

@@ -18,7 +18,7 @@ Risk: R3
 |---|---|---|---|---|
 | HC-D1〜D3 | 読書route再掲/必要gate欠落 | contract + review | scripts/tests/reading-order-drift.test.sh + behavioral cases | 別文書が独立順序を強制、または必要な正本を読まない |
 | HC-D4〜D5/HC-D7 | Skill独自gate/他モデル特性混入 | review | independent source/diff audit | human-confirm後だけの追加full/コード一律削除が残る |
-| HC-D6 | 未了backlog消失 | data preservation | relocation audit | 旧未了項目がlive backlog/明示引継ぎ先に存在しない |
+| HC-D6 | 未了backlog消失 | data preservation | relocation audit | 移送前archiveの未了項目の本文・未決判断・参照先がlive backlog/明示引継ぎ先に対応せず、全件照合が不一致になる |
 | HC-D8 | 範囲指定が本文全部/別pathを返す | CLI integration | scripts/tests/codex-safe-wrappers.test.sh | 選択区間とstdoutが一致しない/拒否すべきpathが読める |
 | HC-D8 | 不正入力が通る | negative | same wrapper suite | 空/ゼロ/負数/逆順/非数値/複数file/CRLFを受理する |
 | HC-D9〜D11 | 効果/品質の誤判定 | behavioral | read-only question/closure/resume observations | 無許可mutation/未確認gate通過/usage未取得を実測とする |
@@ -41,7 +41,7 @@ Risk: R3
 ## Negative Paths
 
 - missing input: wrapper用法error。
-- invalid input: 不正rangeは非0。
+- invalid input: 不正rangeは非0。readの先頭以外の `--lines`、未知の `--flag`、list/searchのoption風pathは既存どおり拒否する（codex-safe-wrappers.test.shの負例）。
 - ambiguous input: range指定時の複数path拒否。packet曖昧性は現行停止。
 - unknown reference: file不存在とsource不明を推測で補わない。
 - permission failure: external/sensitive/symlink逃避拒否。
