@@ -10,7 +10,7 @@
 - Coordinator: owner（起草は Codex、D-084。未解決 findings の採否は owner）
 - Writer: Codex（現在のセッション。owner の明示指名により別 run の指定を置換）
 - Plan Reviewer: Sonnet（round 3の当時passはmedium。下記のeffort是正で保証を再確認する）
-- Final Reviewer: Sonnet と Opus の独立した Double Audit（mediumでの結果は通過根拠を保留、xhighで是正検証予定）
+- Final Reviewer: Sonnet と Opus の独立した Double Audit（xhigh是正監査完了。owner承認の一括是正後、Opus highで修正箇所のclosureを行う）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
@@ -24,6 +24,8 @@ Execution Mode は D-084 の起草・実装・裁定分離を使う。既存 Fab
 - 実働時間上限: 30分（規範の既定値、実績は未実測）
 - relay 往復上限: 2（規範の既定値）
 - Plan Review round 天井: 3（規範の既定値）
+
+このchange限りのowner承認例外（2026-09-14）: 過去介入の厳密な回数・実働時間は未実測、既定の介入予算超過を隠さず記録する表記を受容。今回の一括是正裁定を以後の計数起点とし、Ready/mergeは別に記録する。Final Reviewは今回のxhigh Double Auditで集合を確定し、一括是正後に修正箇所だけの独立high closureを1回許可する。新しいPlan rally、追加の全面監査、他changeの予算変更は許可しない。
 
 ## Consultation Relay
 
@@ -60,6 +62,8 @@ Astra / Sol / Claude の関係する入口から、依頼と phase に必要な�
 - S4: `.codex/bin/read-safe-file.sh` の範囲指定と `scripts/tests/codex-safe-wrappers.test.sh` の境界検証。
 - S5: `scripts/tests/reading-order-drift.test.sh`、必要な `scripts/doc-consistency-check.sh`/plan fixture の入口整合、`docs/agent-guidance/evals/` の新しい代表ケース。旧 gate/state/enums の受入条件は変更しない。
 - S6: `docs/DEV_WORKFLOW.md`、`docs/AGENT_OPERATING_MANUAL.md`、`docs/project-profile.md`、`docs/ci.md`、`docs/code_review.md`、`docs/templates/{pr-review-prompt,subagent-review-packet,workflow-effectiveness-review}.md`、`.github/pull_request_template.md`、`.codex/README.md` の関係する読込み/重複検証/引継ぎ文言だけを同期。該当差分がないfileは変更しない。
+
+owner承認の狭いScope補正（2026-09-14）: `docs/decision-log.md` のD-082へ、HC-D1/D7がD-034/D-057/D-082の入口・規範配置を部分改訂する同期注記だけを追加する。旧決定本文と製品仕様は書き換えない。この承認をgated amendmentとして保存し、後続commitでそのSHAをAmendmentsへ追記する。
 
 ## Non-scope
 
@@ -166,7 +170,7 @@ S1〜S6の実装を現在のCodexが実施。条件付き入口、Skill/Claude�
 
 ## Review Response
 
-- Findings Freeze: not yet frozen
+- Findings Freeze: 2026-09-14のSonnet/Opus xhigh是正Double Auditを初回Broad Auditとしてownerが採用し、既知finding集合を確定。以後は承認された一括是正とclosureのみ。
 
 2026-09-14: Sonnet round 1 は正常終了したが、P2/P3 と pass を併記し、対象 source の未読を残したため Plan Gate 未通過。owner は未了 backlog の本文・未決判断・参照先の全件照合と、`--lines` 以外の option 拒否の維持を計画へ反映し、レビュー通過まで進めることを承認した。source design、AC、Boundary / Wire Contract、Matrix の同じ前提を同期した。round 2 は修正の確認と初回 Broad Audit の未読分を完了し、P1/P2 が残る場合は pass にしない。
 
@@ -191,3 +195,9 @@ owner 介入は scope 承認とこの裁定を消費。次の裁定が範囲や�
 2026-09-14: ownerはSonnet/Opusの基本をhigh、難問ではxhighと指定した。判断基準は見落とし防止と、手戻りを含む総token効率。既存project設定もhighだったが、Codexがreview用CLIでmediumを明示したため引下げが生じた。Plan/Finalの旧結果・指摘・実行ログは履歴として残すが、mediumのpassだけを通過根拠にしない。
 
 現在のimplementingからphaseを前進させず、Final Reviewの是正検証で承認済みPlanの契約・Matrixも独立に再確認する。新しいPlan rallyやScope/合格条件の変更ではない。入口・承認境界・移送保存が交差する今回の監査はSonnet/Opusともxhighを指定する。起動指定と取得できた実行metadataを保存し、実効effortが応答で確認できない場合はその限界を明記する。残るowner裁定、Ready/mergeは代行しない。
+
+## 一括是正と運用例外の owner 裁定
+
+2026-09-14: ownerは、一括是正差分・修正箇所だけのhigh確認・今回限りの運用例外案への確認に「続けていいよ」と回答した。共有reviewの検出範囲と確信度、既存テストの保護、Human Gateの前提と同一scope内の承認引継ぎ、棚卸しの原申し送り保存を復元する。Ready後の必須full、read引数の位置、runtime依存申告、成果物保存先、L8申し送りの文脈も同じ正本で明確にする。Sonnetのtest-first消失候補は、Skill descriptionのbefore implementingと本文の失敗テスト→修正が存在する根拠で現状維持とする裁定案が承認された。
+
+既存Decision Gate FixtureのS1/S4/S5を是正後に公開合成状態で実行する。個人extensionの比較は行わない。Claude Q、Skill自動発火、Cの入口tool trace等の未実測は明示する。追加Skill・全guardの拡張はこのclosureの必須作業に増やさず、既知P3として次のdogfoodで採否を確認する。D-084の通常適性範囲と別run Writer規定に対して、この承認済みR3ハーネス作業は現在CodexがWriter・ownerが裁定・非Codexが独立reviewを担う個別指示を適用する。過去の修正採用も今回の一括裁定で確認した。一般の役割制約やReady/mergeは変更しない。
