@@ -37,6 +37,8 @@ Non-scope:
 
 ## Critical Contracts
 
+Evidence Modeと[merge-evidence](../agent-guidance/merge-evidence.md)を確認する。github modeのrecordはsingle-writerが所有し、reviewerは変更しない。legacyだけが実装後state-onlyと三点一致を使う。
+
 - ...
 
 ## Claimed Validation

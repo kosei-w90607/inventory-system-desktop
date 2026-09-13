@@ -59,18 +59,25 @@ if [[ "${FAKE_GH_EXIT:-0}" != "0" ]]; then
     exit "$FAKE_GH_EXIT"
 fi
 head_branch=""
+query=""
 while [[ $# -gt 0 ]]; do
     if [[ "$1" == "--head" && $# -ge 2 ]]; then
         head_branch="$2"
+        shift 2
+    elif [[ "$1" == "--jq" ]]; then
+        query="$2"
         shift 2
     else
         shift
     fi
 done
+# Run gh's jq expression against synthetic API data instead of pre-filtering the result.
 if [[ -n "${FAKE_READY_HEAD:-}" && "$head_branch" == "$FAKE_READY_HEAD" ]]; then
-    echo false
+    printf '[{"isDraft":false}]' | jq -r "$query"
+elif [[ -n "${FAKE_GH_DRAFT:-}" ]]; then
+    printf '[{"isDraft":%s}]' "$FAKE_GH_DRAFT" | jq -r "$query"
 else
-    printf '%s\n' "${FAKE_GH_DRAFT:-}"
+    printf '[]' | jq -r "$query"
 fi
 EOF
 

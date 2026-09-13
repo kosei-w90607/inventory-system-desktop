@@ -13,3 +13,5 @@ paths:
 - `Result` を握りつぶさない。継続可能な補助ファイル操作の失敗も `tracing::warn!` 等で記録する。
 - filesystem の `NotFound`（未作成）とpermission/IO errorを区別し、後者を空結果の成功へ変換しない。
 - エラー型と利用者向け文言は対象のfunction designに従い、ここに型定義を複写しない。
+
+証跡の保存先とhelperは `docs/agent-guidance/merge-evidence.md` のEvidence Modeに従う。実装後state-only/三点一致はlegacyだけで、github modeのreview/manual/R4は専用recordをsingle-writerが更新する。

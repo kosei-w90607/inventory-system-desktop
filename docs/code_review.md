@@ -33,6 +33,8 @@ Risk tier describes the change. Severity describes each finding.
 
 ## Verification Rules
 
+Evidence Modeを先に確認する。github modeは[MG-D5〜D8](agent-guidance/merge-evidence.md)のserver recordと対象head/base、broad/closure、manual/R4、実効rulesを検査する。reviewerは専用recordを編集しない。実装後state-onlyとPR本文L1の三点一致はlegacyだけ。
+
 Review entry follows `AGENTS.md` `Session Start`. Initial review reads the touched source contracts directly. Closure starts from prior findings, correction diff, and affected contracts/tests; expand for newly affected behavior or concrete defect evidence. Do not impose a second full startup reading route. Existing Contract Audit / Double Audit, Findings Freeze, and gate evidence remain required.
 
 - P1 must include direct evidence: file/line, command output, schema contract, or reproducible path.

@@ -999,7 +999,11 @@ extract_workflow_field() {
     local raw
     raw=$(printf '%s\n' "$section" | grep -E "^- ${field}:" | head -1 || true)
     [ -z "$raw" ] && return 0
-    printf '%s\n' "$raw" | sed -E "s/^- ${field}:[[:space:]]*//" | grep -oE '^[A-Za-z0-9_-]+' || true
+    if [ "${3:-}" = "full" ]; then
+        printf '%s\n' "$raw" | sed -E "s/^- ${field}:[[:space:]]*//; s/[[:space:]]+$//"
+    else
+        printf '%s\n' "$raw" | sed -E "s/^- ${field}:[[:space:]]*//" | grep -oE '^[A-Za-z0-9_-]+' || true
+    fi
 }
 
 is_in_word_list() {
@@ -1289,7 +1293,13 @@ check_plan_packet_workflow_state() {
             continue
         fi
 
+        local evidence_mode
+        evidence_mode=$(extract_workflow_field "$ws_section" "Evidence Mode" full)
+        if ! is_in_word_list "$evidence_mode" "legacy github"; then
+            error "PK4: $file の Evidence Mode は明示 legacy/github が必須です"
+        fi
         local -a required_fields=(
+            "Evidence Mode"
             "Risk"
             "Plan Commit"
             "Amendments"
@@ -1297,11 +1307,29 @@ check_plan_packet_workflow_state() {
             "Writer"
             "Plan Reviewer"
             "Final Reviewer"
-            "Reviewed Content HEAD"
-            "Final Exact-HEAD Evidence"
-            "Hosted CI Requirement"
             "Human Gate"
         )
+        if [ "$evidence_mode" = "github" ]; then
+            required_fields+=("Final Review Minimum")
+            local minimum human_gate
+            minimum=$(extract_workflow_field "$ws_section" "Final Review Minimum" full)
+            human_gate=$(extract_workflow_field "$ws_section" "Human Gate" full)
+            if ! is_in_word_list "$minimum" "1 2" || { [ "$level" -eq 4 ] && [ "$minimum" != "2" ]; }; then
+                error "PK4: $file の Final Review Minimum は1/2（R4は2）が必須です"
+            fi
+            if [[ ! "$human_gate" =~ ^(ready|merge|manual|r4)(,(ready|merge|manual|r4))*$ ]] ||
+                [[ ",$human_gate," != *,ready,* || ",$human_gate," != *,merge,* ]] ||
+                { [ "$level" -eq 4 ] && [[ ",$human_gate," != *,r4,* ]]; }; then
+                error "PK4: $file の Human Gate は ready,merge と必要な manual/r4 を明示してください"
+            fi
+            for field in "Reviewed Content HEAD" "Final Exact-HEAD Evidence" "Hosted CI Requirement"; do
+                if printf '%s\n' "$ws_section" | grep -qE "^- ${field}:"; then
+                    error "PK4: $file の github mode に legacy field '$field' は保存できません"
+                fi
+            done
+        else
+            required_fields+=("Reviewed Content HEAD" "Final Exact-HEAD Evidence" "Hosted CI Requirement")
+        fi
         local field
         for field in "${required_fields[@]}"; do
             if ! printf '%s\n' "$ws_section" | grep -qE "^- ${field}:[[:space:]]*[^[:space:]]"; then
@@ -1317,6 +1345,9 @@ check_plan_packet_workflow_state() {
 
         local phase_value
         phase_value=$(extract_workflow_field "$ws_section" "Phase")
+        if [ "$evidence_mode" = "github" ] && ! is_in_word_list "$phase_value" "kickoff spec-check design plan-draft plan-gate plan-approved implementing archive"; then
+            error "PK4: $file の github mode は実装後の Phase を tracked に保存できません"
+        fi
         if [ -z "$phase_value" ]; then
             error "PK4: $file (R${level}) の Workflow State に '- Phase:' 行がありません"
         elif ! is_in_word_list "$phase_value" "$WORKFLOW_STATE_PHASES"; then

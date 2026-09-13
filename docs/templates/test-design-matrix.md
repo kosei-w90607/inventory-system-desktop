@@ -28,7 +28,7 @@ Required when the change has UI, data, cache, route/search, import/export, retry
 |---|---|---|---|---|---|---|---|---|---|---|
 |  |  |  |  |  |  |  |  |  |  |  |
 
-For workflow-state changes, add explicit rows for:
+For workflow-state changes, select rows by Evidence Mode. github mode covers capture/server races, stale head/base, broad/closure, manual/R4 and hosted gate. The following state-only/three-point rows apply only to legacy:
 
 - content candidate -> L1 / independent review -> state-only human-confirm commit
 - owner authorization -> Draft state-only Ready commit -> exact-HEAD L1 -> PR body -> Ready/dispatch -> merge with no later tracked commit
@@ -98,8 +98,8 @@ Enumerate every site of each borrowed pattern; do not sample only the nearest fi
 - If a guard is removed, which test fails?
 - If an output field is omitted, which test fails?
 - If tracked Workflow State stores the current PR HEAD, does a state commit make it stale immediately? The accepted design must keep current exact-HEAD evidence in PR metadata.
-- If a hosted URL/headSha is committed after the run, does the merge three-point check fail because PR HEAD changed?
-- If a state-only commit edits Scope/AC in the same packet file, does hunk-level review reject it even though the filename is allowlisted?
+- Legacy: If a hosted URL/headSha is committed after the run, does the merge three-point check fail because PR HEAD changed?
+- Legacy: If a state-only commit edits Scope/AC in the same packet file, does hunk-level review reject it even though the filename is allowlisted?
 - If output order changes, which test fails?
 - If dry-run performs a side effect, which test fails?
 - If a JSON number crosses JavaScript safe integer range, which test fails?

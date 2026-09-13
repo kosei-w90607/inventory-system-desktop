@@ -6,7 +6,7 @@
 - profile は用途別: [frontier](profiles/frontier.md)、[balanced](profiles/balanced.md)、[high-throughput](profiles/high-throughput.md)。未指定は frontier。model や承認権限の指定ではない。
 - [モデル差分メモ](model-notes.md): 明示された実モデルに合う補助だけを使う。未知モデルへ別世代の性質を転記しない。
 - [文脈効率の設計](context-efficiency.md): 条件付き参照の理由と検証境界。
-- [マージ検証整理の設計案](merge-evidence.md): SHA手作業、実装後の状態保存、GitHub保護とdocs経路。採用・有効化前は現行規定を維持。
+- [マージ検証とhelper](merge-evidence.md): SHA手作業、実装後の状態保存、GitHub保護とdocs経路。適用条件が成立してからgithub modeを使い、bootstrapはlegacy規定を維持。
 
 ## Model updates
 

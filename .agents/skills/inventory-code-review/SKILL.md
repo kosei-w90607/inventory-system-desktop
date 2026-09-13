@@ -58,7 +58,7 @@ When the review is the independent review for R3/R4, run `docs/DEV_WORKFLOW.md` 
 5. Apply mutation/anti-tautology checks: inject a real mutation and confirm the relevant test fails; mock values must differ from design expectations, and tests must fail when mock values or invalidate/refetch order changes.
 6. Confirm every non-automatable assertion has an L3 item with screen, reachability steps, and observable pass criteria.
 7. Before Ready, compare the complete PR body with the final diff, current Workflow State, exact-HEAD evidence, manual gates, and residual risks; report stale text as a finding.
-8. For D-035, distinguish `Reviewed Content HEAD` from merge evidence. Verify state-only commits with both a file allowlist and `git diff --unified=0 <parent>..<state-commit>`; packet Scope/AC/Design/contracts/instructions are forbidden hunks. When one commit materializes multiple phases, require adjacent forward transitions only, pre-existing evidence for each transition, and an append-only narrative that reconstructs every intermediate phase; otherwise report a gate bypass. Before merge, compare only live PR HEAD, PR-body L1 SHA, and required hosted headSha. Report any later tracked commit or unresolved product/gate failure.
+8. For legacy D-035, distinguish `Reviewed Content HEAD` from merge evidence. Verify state-only commits with both a file allowlist and `git diff --unified=0 <parent>..<state-commit>`; packet Scope/AC/Design/contracts/instructions are forbidden hunks. When one commit materializes multiple phases, require adjacent forward transitions only, pre-existing evidence for each transition, and an append-only narrative that reconstructs every intermediate phase; otherwise report a gate bypass. Before merge, compare only live PR HEAD, PR-body L1 SHA, and required hosted headSha. Report any later tracked commit or unresolved product/gate failure.
 
 For workflow gate changes and R4, require the independent double-audit defined by `docs/DEV_WORKFLOW.md`. Review-only results remain claims until the coordinator verifies each finding in the repository.
 
@@ -95,3 +95,5 @@ When posting review results to GitHub in this repository, use the following stab
    - `gh api repos/{owner}/{repo}/issues/comments/{comment_id} --jq ".body"`
 5. If test comments were created during troubleshooting, delete them before finalizing:
    - `DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}`
+
+Evidence Modeを確認し、[merge-evidence](../../../docs/agent-guidance/merge-evidence.md)へ接続する。github modeはhelper statusと専用record/CIで実装後状態を確認し、reviewerはrecordを編集しない。legacyのstate-only/三点一致を新modeへ持ち込まない。

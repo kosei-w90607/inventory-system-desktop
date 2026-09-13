@@ -241,3 +241,7 @@ codex execpolicy check --pretty --rules .codex\rules\default.rules -- wsl.exe -d
 ```
 
 If Codex Desktop does not auto-load project rules in a given version, copy or import the reviewed rules through the active Codex rules mechanism instead of broadening the global sandbox.
+
+## PR evidence helper
+
+[merge-evidence](../docs/agent-guidance/merge-evidence.md)の適用条件を満たしたgithub modeは`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。statusはread-only、captureはignored `.local/pr-gate/`、record/Ready/mergeは既存の明示承認範囲だけで実行する。helperは設定・権限を変更せず、個人recipeからlegacyのstate-only/三点一致を新modeへ追加しない。

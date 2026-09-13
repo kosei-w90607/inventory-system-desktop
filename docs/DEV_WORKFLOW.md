@@ -71,6 +71,22 @@ If uncertain between R2 and R3, choose R3 when the change touches a stable contr
 
 ## Workflow State
 
+Evidence Modeが保存先を選ぶ。active packetは明示`legacy`/`github`が必須、未知値・marker欠落はfail-closed。archiveは非遡及。[MG-D5〜D11](agent-guidance/merge-evidence.md)の移行条件が成立してから新modeのReady/mergeを使う。bootstrapはlegacyを維持する。
+
+### GitHub evidence mode
+
+新packetは`Evidence Mode: github`。tracked fieldsはPhase/Risk/Execution Mode/Plan Commit/Amendments/Coordinator/Writer/Plan Reviewer/Final Reviewer/Final Review Minimum/Human Gateとmarker。Phaseはkickoff〜implementing（完了後archive）だけを保存し、Plan Gateまでの遷移条件は下の共通表を維持する。元Plan Commitとappend-only AmendmentsのPK5を維持する。
+
+実装後はGitHubのnative state、専用RecordV1、CIから状態を導く。local-verified/independent-review/human-confirm/ready-hosted-final/mergeをtrackedに保存せず、そのためのstate-only commit・一律local full・SHA三点一致を要求しない。Final Review Minimumは1/2、R4/workflow gateおよびcodex-only R3 UI契約変更は2。Human Gateは`ready,merge`に必要な`manual,r4`を追加し、R4にはr4が必須。
+
+正規経路は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+は対象packetを指定する。専用commentのsingle-writerが記録を更新し、reviewerは編集しない。GitHubはPR/CIを強制、helperはreview/manual/R4を確認する。直接UI mergeと確認を飛ばす直接gh mergeは禁止。UIがCI成功だけでmerge可能と示し得る残存リスクは保持する。
+
+計画未承認はtracked phaseに従う。実装後はDraftで対象検証とcapture、必要数のbroad audit、finding裁定、manual/R4を完了し、owner Ready判断→helper Ready→hosted成功→owner merge指示→helper mergeへ進む。変更時はDraftへ戻し、現在版closure/manual/R4を確認する。base同期の限定manual再利用・記録順序・Actions停止時の扱いはMG-D6〜D11。オフラインcacheをmerge根拠にしない。
+
+### Legacy evidence mode
+
+以下の13-field、実装後の遷移記録、state-only/STATECAPと三点一致は明示legacy packetだけに適用する。Plan Gate、役割独立性、Plan Commit/Amendments保護、packet選択のfail-closedは両mode共通。
+
 Every R2+ Plan Packet carries a fixed-format `## Workflow State` section as the machine-checkable per-change state (D-034). The format is a fixed Markdown section, not YAML frontmatter: the existing doc checker (`scripts/doc-consistency-check.sh` PK4) validates all 13 non-empty field lines, the defined enum checks, and the existing cross-field consistency rules with Markdown line matching instead of adding a YAML parser.
 
 Fields, one `- Key: value` line each:
@@ -124,7 +140,7 @@ State / evidence separation (D-035):
 
 **Plan Commit ancestry (D-039, PK5)**: `Plan Commit`'s SHA must be an ancestor of the first implementation commit; the check runs at the pre-merge gate (pre-push / local-ci), since squash merge breaks ancestry afterward. The original `Plan Commit` is immutable once set. A **gated amendment** is a packet modification that happens after Plan Gate (plan-approved): it never rewrites the original `Plan Commit`, only appends its SHA to the `Amendments` line; rewriting the original is a PK5 violation. The canonical state-only commit subject is `docs(plans): state-only遷移 <from>-><to>[->…]`, because the post-implementation state-only cap (Evidence Ownership above) is judged from the transition-name tokens in that subject. Vocabulary: "checker" is `scripts/doc-consistency-check.sh` (the PK checks); "drift test" is a bash test under `scripts/tests/`.
 
-The Writer updates this section at each materialized tracked transition. Keep it state-only, apply the state-only transition rules above, and put volatile exact-HEAD evidence in the PR body.
+For legacy packets, the Writer updates this section at each materialized tracked transition. Keep it state-only, apply the state-only transition rules above, and put volatile exact-HEAD evidence in the PR body.
 
 ## Design Phase Rules
 
@@ -239,6 +255,8 @@ Design completion criteria:
 
 ## Wave Operation
 
+github modeはlane登録と独立性を維持し、実装後の状態はPRから導く。以下のstate-only/STATECAP、rebase後L1再実行、旧manual継承はlegacyだけ。新modeのbase同期はMG-D6の単一merge・現在版closureとmanual再利用条件に従う。
+
 Wave Operation は、互いに干渉しない複数 change を Draft PR まで並列化し、owner gate と merge をまとめて運用するための D-055 契約である。
 
 - lane は `1 是正単位 = 1 Plan Packet = 1 branch = 1 Draft PR` であり、既存の change の別名とする。plan-first、Test Design Matrix、mutation 独立再実測、oracle 独立性、Contract Audit、L3 fixture 準備、Workflow State と hosted evidence はすべて per-lane で維持する。複数単位を 1 packet に統合しない。
@@ -299,7 +317,7 @@ CI / merge evidence is a three-layer ladder:
 - L1 local full: `bash scripts/local-ci.sh full` runs the complete local gate set and writes HEAD-SHA evidence under `.local/ci-evidence/`.
 - L2 hosted final: GitHub Actions runs only for a completed HEAD at Ready creation/transition or explicit dispatch.
 
-For implementation iteration, use `bash scripts/local-ci.sh changed`. It classifies the PR-wide diff from `git merge-base origin/main HEAD`; it is not the same as the pre-push push increment. Before merge, L1 evidence must be `full`, start and end `CLEAN`, and match the current PR HEAD at both boundaries. Record this final SHA in the PR body, not in a tracked Workflow State field. A gate-created HEAD/tree change fails the run; `DIRTY` evidence is diagnostic only.
+For implementation iteration, use `bash scripts/local-ci.sh changed`. It classifies the PR-wide diff from `git merge-base origin/main HEAD`; it is not the same as the pre-push push increment. For legacy merge, L1 evidence must be `full`, start and end `CLEAN`, and match the current PR HEAD at both boundaries. Record this final SHA in the PR body, not in a tracked Workflow State field. A gate-created HEAD/tree change fails the run; `DIRTY` evidence is diagnostic only.
 
 | Change area | Commands |
 |---|---|
@@ -320,20 +338,10 @@ Use targeted gates first while iterating, then run the relevant full gate set be
 
 CI routing:
 
-- CI routing details live in [ci.md](ci.md). Keep this section as the workflow-facing summary only.
-- GitHub Actions does not run on `push: main`. It is triggered by a PR's `opened` / `ready_for_review` / `synchronize` event or explicit `workflow_dispatch`; Draft events start no runner jobs because the job-level guard skips them.
-- Pure docs-only R0/R1 changes are excluded at event level. Eligible non-doc R0/R1 may use the PR-body `Hosted CI: skip` token together with `Risk: R0` / `Risk: R1`; it is honored only when the repository owner triggers Ready. R2+ and workflow/release changes must not use it. A workflow/release contract change that is docs-only still receives its required final through owner-directed `workflow_dispatch` unless `ci.md` classifies the exact change under a closed Actions-unavailable `not-required` route.
-- A manual dispatch always runs the full gate set, including a zero-diff dispatch on `main`.
-- Draft / `Hosted CI: skip` guards must skip every runner job, including jobs that otherwise use `if: always()` such as the Rust aggregate.
-- Ready PR pushes are blocked by pre-push using each actual pushed remote ref from hook stdin, not only the checkout branch. Return the PR to Draft before a correction, then rerun local full and Ready final on the new HEAD.
-- GitHub Actions starts with `Detect changed areas`, then uses job-level routing. Unknown paths and classification failures route to all gates.
-- `Design doc consistency` runs for every non-skipped CI trigger because it protects source-of-truth docs. The same job runs the repo-owned Claude hook inventory audit; D-059 fixes project hooks at zero and disables the unreviewed harness plugin.
-- Rust-heavy work is split into `Rust fmt/clippy`, `Rust tests`, and `Rust generated drift`. Frontend test files and traceability source docs can run only the drift job when Rust source is unchanged. The existing `Rust (fmt + clippy + test)` check name is an aggregate status that fails if any required Rust sub-job fails.
-- `Env safety` is an independent lightweight job for `.env*` / `.gitignore` changes.
-- Classifier outputs distinguish frontend, Rust, docs, env, generated, traceability, workflow, and unknown paths; `rust_drift` remains the generated/traceability compatibility aggregate. `.claude/settings.json`, `.claude/hooks/**`, and `.claude/commands/**` route to workflow, while `.claude/skills/**` remains docs.
-- Rust jobs print disk and target directory usage before and after the expensive command group so hosted-runner capacity failures can be diagnosed from CI logs.
-- actions/cache stores Cargo dependency download data only. `src-tauri/target/` and `~/.cargo/bin/` are not cached; npm remains on setup-node's package-manager cache.
-- Hosted policy is 1 completed HEAD 1 successful final run for routes that require hosted evidence, and 0 run for pure docs-only R0/R1. This public repository currently uses only standard GitHub-hosted runners, so private-repository billed-minute thresholds are not a gate input. Workflow/release contract changes remain hosted-required even when docs-only except for the two closed Actions-unavailable routes in `ci.md`; matching those routes requires their exact compensating evidence, PR-body disclosure, and owner disposition. Ready / `synchronize` and `workflow_dispatch` の選択は `ci.md` CI-TRIGGER-D1 に従い、successful または in-progress の同一 HEAD run に予防的 dispatch を重ねない。
+- [ci.md](ci.md) CI-TRIGGER-D1とMG-D1〜D4が正本。全PRにdocs/実PR PK5/aggregate、policyにはshared workflow suite、実行コード・未知pathにはfullを要求する。
+- Draftはrunnerを止め、required名とは別のcheck名にする。分類失敗でもReady aggregateは起動して失敗する。
+- workflow=trueは回帰suiteの意味で、Rust/frontendへ再昇格しない。bindings/traceability、Node pin、env、warn-only npm auditとdependency-only cacheを維持する。
+- github modeはhosted finalをCIの最終根拠にする。localの対象検証・失敗修正・Windows/manual/R4は保持し、通常Ready/mergeのためだけにfullを反復しない。legacyは旧exact-HEAD L1を維持する。
 
 ### Human Visual Confirmation For Screen Changes
 
@@ -398,10 +406,9 @@ Default behavior:
 - The PR body includes a `Human Gate` field for each pending owner approval: `この change での介入 N 回目 / 予算 M 回` plus one user-visible completion sentence. This field is the approval interface; do not hide the counter in review logs or tracked evidence.
 - Keep the PR Draft while required Windows native L3, human visual confirmation, or owner manual checks are still pending.
 - Record pending manual checks in the PR body and `Plans.md`.
-- Keep the Plan Packet `Workflow State` Phase in sync with the PR state: a Draft PR opens during implementing / local-verified, Ready happens only at ready-hosted-final, and a Draft return moves the Phase back to implementing.
+- For legacy, keep the Plan Packet `Workflow State` Phase in sync with the PR state: a Draft PR opens during implementing / local-verified, Ready happens only at ready-hosted-final, and a Draft return moves the Phase back to implementing.
 - Do not mark the PR Ready until required manual checks are done and the project owner explicitly asks to ready it.
-- Ready 化 authorizes the hosted final for hosted-required R3/R4 and workflow/release changes. It requests the run through the Ready event when that event is eligible; a hosted-required docs-only workflow/release change is event-filtered and therefore needs the owner-directed explicit dispatch after Ready. A change on one of `ci.md`'s closed Actions-unavailable `not-required` routes does not dispatch an unavailable run and instead closes the route's compensating evidence plus owner disposition. Run `bash scripts/local-ci.sh full` at the completed HEAD before this transition.
-- PRs created directly as Ready are covered by the `opened` event. Eligible non-doc R0/R1 that do not need hosted CI must say `Hosted CI: skip` in the PR body; pure docs-only R0/R1 changes are event-filtered. Hosted-required workflow/release docs-only changes use the explicit-dispatch rule in [ci.md](ci.md); matching closed Actions-unavailable routes use their documented compensation instead.
+- owner Ready指示の後、新modeはhelper、legacyはstate-only Ready commitとexact-HEAD L1を経てReadyへ進む。docsを含むReadyは自動CI対象。recovery dispatchはCI-TRIGGER-D1の同一HEAD run確認後だけ。
 - If a Ready PR needs another push, return it to Draft first. The pre-push hook blocks the normal Ready-push path so an old green cannot be mistaken for the new HEAD.
 - If the user explicitly asks for an earlier PR, a Draft PR may be opened before full validation only when the known missing gates and residual risk are written in the PR body.
 - If the user explicitly asks not to create a PR, leave the branch local and record the next publish step in `Plans.md`.
@@ -416,8 +423,10 @@ Use this when the owner says the PR is OK and asks for post-merge cleanup. Keep 
 
 Before merge:
 
+- github modeはhelperでPR/head/base・実効rules・CI・review/manual/R4をfreshに確認する。直接UI mergeは禁止。以下のPR本文L1照合はlegacyだけ。
+
 - Confirm the PR is Ready or explicitly approved to become Ready.
-- Confirm the PR body's local full evidence SHA equals the PR HEAD; `Reviewed Content HEAD` is not part of this merge comparison.
+- For legacy, confirm the PR body's local full evidence SHA equals the PR HEAD; `Reviewed Content HEAD` is not part of this merge comparison.
 - For hosted-required changes, confirm a successful `CI` run exists for the exact PR HEAD and record its URL/headSha in the PR body. A green run from an older HEAD is stale and must not be reused.
 - Confirm CI/checks are green and the PR is merge-clean. When Actions are disabled or the monthly budget exception is active, record the missing hosted evidence and owner acceptance explicitly.
 - If manual checks, Windows native L3, or residual risks were accepted instead of evidenced, record that in the PR body before merging.
@@ -439,7 +448,7 @@ Repository evidence:
 Verification and publish:
 
 - Run `bash scripts/doc-consistency-check.sh`; if active plans remain, also run `bash scripts/doc-consistency-check.sh --target plan`.
-- Commit docs-only closeout separately, normally as `docs(plans): ...`, and push to `main` for this single-developer repository.
+- docs-only closeoutを別branchのR0 PRにし、docs＋Merge gateでmergeする。mainへ直接pushしない。親の許可済み後処理は承認を引き継ぎ、自身のPlanを持たないcloseout PRに次のcloseoutを要求しない。bootstrap直後の移行closeoutはMG-D11の旧manual gateで扱い、先行closeoutを後続PRのbase同期より先に完了する。
 - Finish by checking `git status --short --branch`.
 - After D-033 migration, a normal `push: main` does not start CI. Use `workflow_dispatch` only when main itself needs an explicit clean-room recheck.
 

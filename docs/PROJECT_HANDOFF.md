@@ -13,6 +13,7 @@
 | 表示・操作・日本語文言 | [SCREEN_DESIGN.md](SCREEN_DESIGN.md)、[design-system](design-system/README.md) |
 | 環境構築 | [DEV_SETUP_CHECKLIST.md](DEV_SETUP_CHECKLIST.md) |
 | 計画・実装・レビュー・完了手続き | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)、[CI](ci.md) |
+| 実装後のPR状態・review/manual記録・merge保護 | [merge evidence](agent-guidance/merge-evidence.md) とhelper status（legacyは旧PR本文） |
 | 決定理由 | [decision-log.md](decision-log.md)、[ADR](adr/README.md) |
 
 再開時は対象の現物と必要な状態を確認し、既に完了した工程を繰り返さない。未解決判断と未実施検証を引き継ぐ。

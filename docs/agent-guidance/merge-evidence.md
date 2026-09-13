@@ -1,6 +1,6 @@
 # マージ検証と証跡作業の整理
 
-Status: proposed。実装・移行確認・ownerの有効化承認が完了するまで現行規定を置き換えない。
+Status: accepted design / conditional activation。実装はこの契約に従い、移行確認・ownerの有効化承認と実効rulesのread-backが完了してからgithub modeのReady/mergeを利用する。bootstrapはlegacyのまま。
 Contract ID: SPEC-MERGE-EVIDENCE
 
 ## 動機と目的
@@ -132,7 +132,7 @@ merge時はGitHubのPR head/base・実効rules・必要checkをfreshに取得し
 
 ## 移行・運用・復旧
 
-1. この整備は明示legacy markerと現行13-field/三点一致/Double Auditを使う。planning-onlyの今は実行code、CI、rulesetを変更しない。
+1. この整備は明示legacy markerと現行13-field/三点一致/Double Auditを使う。実装と検証を完了するまで旧gateを外さず、外部設定は有効化承認後にだけ変更する。
 2. classifier・aggregate・hosted PK5/suite・helper・新旧packet検査を実装する。markerなしactive packetを新運用へ持ち込まず、archiveは一括変換しない。
 3. bootstrap PR上でDraftの名前とReady full経路を確認する。分類job failureでaggregateがskippedでなくfailureになる負例は、候補CI定義を持つbase=main、head=bootstrap候補から分けた合成fixture branchのPR（mainへmergeせずclose）で確認する。このPRの作成・closeはbootstrap Ready時に具体的対象を提示してowner承認を得る操作範囲に含め、実装開始承認では実行しない。この時点ではdocs-only経路を実証したとしない。
 4. bootstrap PRを旧gateでmergeする。続いてmain向けdocs-onlyのcloseout/fixture PRを作り、新CIでdocs（PK5含む）＋aggregateが通り、Rust/frontendが走らないことを確認してbootstrapをarchiveする。この移行PRだけはまだ旧manual gateで扱う。CI変更の差分が混じるPRをdocs-only証拠にしない。
@@ -163,3 +163,46 @@ Actions利用不能時は新modeのmergeを停止し、許可済みのlocal作�
 dynamic check名が期待と違う場合の予備案は、Draftでもaggregateを起動し、同じrequired名では必ずfailureを返す形（軽いrunnerが必要になる）とする。Draftでrequired成功/skipを返す案は採らず、予備案の採用と運用コストはownerへ示してから有効化する。
 
 dynamic check名・rulesetの実効拒否・通信競合は実装後の有効化前dogfoodが必要で、現在のread-only調査で実証済みとはしない。GitHub公式契約とlocal fixtureで設計を検証し、live確認を有効化の前提にする。
+
+
+## 実行手順と有効化payload
+
+R2+の例（`PR`は対象PR番号、`PACKET`は登録された単一packet）。以下のrecord/Ready/mergeはその操作のowner指示を得てから実行する。captureの返すpathを使い、SHAを手転記しない。
+
+```bash
+python3 scripts/pr-gate.py status --pr "$PR" --packet "$PACKET"
+python3 scripts/pr-gate.py capture --pr "$PR" --packet "$PACKET"
+python3 scripts/pr-gate.py record --pr "$PR" --packet "$PACKET" \
+  --capture "$CAPTURE" --kind review --review-stage broad \
+  --pass-model "$MODEL" --run-ref "$PUBLIC_REVIEW_REF" \
+  --outcome pending --evidence "$EVIDENCE"
+```
+
+Double Auditは最初のauditをpendingで記録し、fresh captureから次のauditを追加する。必要数とfinding裁定が揃ったときだけpassにする。改版後のclosureはserverに残るbroadを使い、manual再利用時は前節のmanual→fresh capture→closureの順序を守る。モデル名/run_refは公開可能な実施記録であり独立性の機械的証明ではない。
+
+有効化のレビュー対象は [desired payload](../../.github/merge-gate-ruleset.json)。helperは適用コマンドを内包しない。次のread-only snapshotをignored evidenceへ保存し、既存設定が増えていたら無条件上書きせず差分をownerへ返す。
+
+```bash
+mkdir -p .local/merge-evidence/activation
+REPO=kosei-w90607/inventory-system-desktop
+gh api "repos/$REPO/rulesets?includes_parents=true" \
+  > .local/merge-evidence/activation/rulesets-before.json
+gh api "repos/$REPO/rules/branches/main" \
+  > .local/merge-evidence/activation/main-before.json
+```
+
+Snapshotに既存rulesetがある場合は各IDのdetailも保存する。設定直前にsuccessful CI checkのappがgithub-actions/15368であることを再照合する。対象が明示されたowner承認後のproduction操作は次のpayload作成だけ（既存settingの削除・PUT・bypass追加を含まない）。
+
+```bash
+gh api --method POST "repos/$REPO/rulesets" \
+  --input .github/merge-gate-ruleset.json \
+  > .local/merge-evidence/activation/ruleset-created.json
+gh api "repos/$REPO/rules/branches/main" \
+  > .local/merge-evidence/activation/main-after.json
+```
+
+返されたIDで`repos/$REPO/rulesets/ID`をread-backし、payloadのname/target/enforcement/conditions/rules/bypass_actorsを比較する。main-afterでもPR必須・Merge gate/15368/strict・削除/force禁止を確認する。`pr-gate status`はcurrent mainのdesired policyと実効detailを照合し、不足/driftならReady/mergeを止める。
+
+先に行うprobeは`ci-probe/merge-gate-<candidate>`だけをtargetにしたpayload写しと、`ci-probe/merge-gate-<candidate>-head`の合成資料だけを使用する。元payloadのrulesとbypass_actorsを維持し、nameとinclude refだけ変える。ownerにこの2ref、一時ruleset名、検証PRの作成/merge/close、終了時の正確なID/ref削除をまとめて提示する。負例はPRなしの合成commit、checkなしPR、別appの同名status。positive controlはdocs-only成功head/baseを使う。mainへ負例をpushせず、probe対象でCIが新規起動するとも仮定しない。
+
+probeで拒否/成功が期待と違う場合、本番適用を停止してCI/helperの修正PRへ戻る。適用後の問題では保護を残す。rollbackが必要ならbefore snapshot、作成されたruleset ID、変更対象をownerへ提示して別承認を得る。read-back失敗やActions障害を理由に自動DELETE/disable/admin mergeへ移らない。

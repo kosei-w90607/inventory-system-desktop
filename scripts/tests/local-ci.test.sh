@@ -11,12 +11,10 @@ fail() {
 
 [[ -x "$LOCAL_CI" ]] || fail "local-ci.sh is missing or not executable"
 grep -Fq 'run_required frontend-install "$REPO_ROOT" npm ci' "$LOCAL_CI" || fail "full mode does not run npm ci"
-grep -Fq 'run_required claude-hook-audit "$REPO_ROOT" bash scripts/tests/claude-hooks.test.sh' "$LOCAL_CI" ||
-    fail "workflow mode does not run Claude hook inventory audit"
-if grep -Fq 'bash -n "${shell_files[@]}"' "$LOCAL_CI"; then
-    fail "shell syntax gate passes multiple files as bash positional arguments"
-fi
-grep -Fq 'for shell_file in "${shell_files[@]}"' "$LOCAL_CI" || fail "shell syntax gate does not inspect each file"
+SUITE="$SOURCE_ROOT/scripts/tests/run-workflow-tests.sh"
+grep -Fq 'bash scripts/tests/run-workflow-tests.sh' "$LOCAL_CI" || fail "local does not call shared suite"
+grep -Fq 'bash scripts/tests/claude-hooks.test.sh' "$SUITE" || fail "shared hook audit missing"
+grep -Fq 'bash -n "$shell_file"' "$SUITE" || fail "per-file shell syntax missing"
 
 if "$LOCAL_CI" invalid > /tmp/local-ci-invalid.out 2>&1; then
     fail "invalid mode exited zero"

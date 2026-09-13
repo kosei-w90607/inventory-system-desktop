@@ -8,6 +8,8 @@
 
 `$inventory-workflow-start`（[Skill doc](../.agents/skills/inventory-workflow-start/SKILL.md)）が start / resume 共通の入口。resume 時は active Plan Packet の `Workflow State` を読んで、現在 Phase から dependency-ready な次の一手を選ぶ。
 
+Evidence Modeによる保存先は[merge-evidence](agent-guidance/merge-evidence.md)。github modeの実装後状態はPRから導き、owner名義の専用recordはsingle-writerが更新する。reviewerはrecordを編集せず、役割独立性とowner裁定は維持する。
+
 ## 2. 役割定義（model-neutral）
 
 役割はモデル名から独立して定義する。モデル名は Plan Packet `Workflow State` の値としてのみ現れる。
@@ -202,7 +204,7 @@ docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠す�
 
 本節は、§5.4 の read-only Reviewer / Explorer 専用の低制約 profile ではなく、手順を含む従来型発注書で Writer に実装を発注する場合を対象とする。
 
-発注書には、state-only 遷移 commit が [DEV_WORKFLOW.md](DEV_WORKFLOW.md) `Workflow State` の canonical subject、すなわち forward 遷移では `docs(plans): state-only遷移 <from>-><to>[->…]`、backtrack では `docs(plans): state-backtrack <from>-><to>` に従うことを明記する。また、遷移は同節の契約を満たす正規の state-only commit で実体化し、`narrative 記述のみで遷移を主張しない`ことも出力契約に含める。
+legacyの発注書には、state-only 遷移 commit が [DEV_WORKFLOW.md](DEV_WORKFLOW.md) `Workflow State` の canonical subject、すなわち forward 遷移では `docs(plans): state-only遷移 <from>-><to>[->…]`、backtrack では `docs(plans): state-backtrack <from>-><to>` に従うことを明記する。また、遷移は同節の契約を満たす正規の state-only commit で実体化し、`narrative 記述のみで遷移を主張しない`ことも出力契約に含める。
 
 遷移 commit の作成主体や Writer / Coordinator の分担は、本節で再配分しない。[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の現行規範と per-change Plan Packet の定めに従う。
 
@@ -223,7 +225,7 @@ docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠す�
 8. commit 体裁
 9. 事実主張の幻覚検査（引用 `file:line` の実在）
 
-採用条件は P1 相当 0 件かつ監査指摘の是正完了とする。採用時は、固定 13 field を増減せず、`Workflow State` 直下の append-only narrative に `Draft Provenance` を記録する。監査がこの条件を満たさない場合は再起草へ fallback する。
+採用条件は P1 相当 0 件かつ監査指摘の是正完了とする。採用時は、Evidence Modeごとの規定fieldを維持し、`Workflow State` 直下の append-only narrative に `Draft Provenance` を記録する。監査がこの条件を満たさない場合は再起草へ fallback する。
 
 ## 6. ハーネス間の既知の非対称（重要な注意）
 

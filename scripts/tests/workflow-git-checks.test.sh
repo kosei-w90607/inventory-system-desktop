@@ -62,6 +62,7 @@ write_packet() {
 
 ## Workflow State
 
+- Evidence Mode: legacy
 - Plan Commit: ${plan_commit}
 - Amendments: ${amendments}
 EOF
@@ -569,7 +570,7 @@ base_sha="$(commit_all "$repo" "base")"
 git -C "$repo" update-ref refs/remotes/origin/main "$base_sha"
 
 # prefix なしの plans-only commit（ラベル逃れ）-> WARN
-printf 'update\n' > "$repo/docs/plans/other-packet.md"
+printf '%s\n' '- Evidence Mode: legacy' > "$repo/docs/plans/other-packet.md"
 commit_all "$repo" "docs(plans): 提案を更新" > /dev/null
 
 capture_check "$repo" output
@@ -666,3 +667,41 @@ assert_invalid_backtrack "zero" "docs(plans): state-backtrack"
 assert_invalid_backtrack "same" "docs(plans): state-backtrack implementing->implementing"
 
 echo "PASS: workflow-git-checks"
+
+# SPEC-MERGE-EVIDENCE / MG-D5/D10: explicit marker, new phase limits, unchanged PK5.
+repo="$tmp/github-mode"
+init_repo "$repo"
+printf 'base\n' > "$repo/README.md"
+base_sha="$(commit_all "$repo" base)"
+git -C "$repo" update-ref refs/remotes/origin/main "$base_sha"
+write_packet "$repo" packet.md pending none
+plan_sha="$(commit_all "$repo" plan-first)"
+sed -i "s/Evidence Mode: legacy/Evidence Mode: github/; s/Plan Commit: pending/Plan Commit: $plan_sha/; /Evidence Mode:/a\- Phase: implementing" "$repo/docs/plans/packet.md"
+commit_all "$repo" implementation > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" == 0 ]] || fail "valid github Plan Commit rejected: $output"
+sed -i 's/Phase: implementing/Phase: local-verified/' "$repo/docs/plans/packet.md"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "github late tracked Phase accepted"
+sed -i 's/Phase: local-verified/Phase: implementing/; /Evidence Mode:/d' "$repo/docs/plans/packet.md"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "markerless active packet accepted"
+echo "PASS: github workflow git"
+
+# MG-D4: a real shallow clone must fail, even if its visible tip looks consistent.
+shallow="$tmp/shallow"
+git clone -q --depth 1 "file://$repo" "$shallow"
+capture_check "$shallow" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "shallow history became successful evidence"
+assert_contains "$output" "full history required" "shallow failure reason missing"
+echo "PASS: shallow history rejected"
+
+# An unrelated shallow ref does not make this separate parentless target incomplete.
+git -C "$shallow" config user.name test
+git -C "$shallow" config user.email test@example.invalid
+empty_tree="$(git -C "$shallow" mktree < /dev/null)"
+complete_root="$(printf 'complete root\n' | git -C "$shallow" commit-tree "$empty_tree")"
+git -C "$shallow" switch -q --detach "$complete_root"
+capture_check "$shallow" output
+[[ "$CHECK_STATUS" == 0 ]] || fail "unrelated shallow marker rejected complete target: $output"
+echo "PASS: unrelated shallow boundary excluded"

@@ -160,7 +160,7 @@ Canonical gate selection and change-area mapping live in `docs/DEV_WORKFLOW.md`;
 | phase1 probe removal | `bash scripts/check-phase1-probe-removed.sh` |
 | pre-push bundle | `bash scripts/pre-push.sh` |
 | PR-wide local gate | `bash scripts/local-ci.sh changed` |
-| Merge-candidate local gate | `bash scripts/local-ci.sh full` |
+| Full local verification (legacy merge evidence) | `bash scripts/local-ci.sh full` |
 
 Notes:
 
@@ -234,7 +234,7 @@ Project-specific failure modes to test:
 - Behavior changes must update the relevant source document in the same change: architecture, DB design, function design, screen design, or UI tech stack.
 - Task-local evidence belongs in active/archive plans. Long PR histories should not make `Plans.md` the product truth.
 - `docs/PROJECT_HANDOFF.md` is navigation only. Current state is in `Plans.md`; long candidates are in `docs/backlog.md`, and archived handoffs are historical.
-- CI merge evidence uses L0 pre-push, L1 local-ci full, and L2 hosted final. Docs-only is 0 hosted runs; workflow/script and unknown paths route to full gates. Treat local evidence as valid only when its HEAD SHA matches the PR HEAD.
+- Evidence Modeと適用条件は[merge-evidence](agent-guidance/merge-evidence.md)。github modeはhosted Merge gateとhelperのreview/manual/R4を使い、docs/closeoutも軽いPRを通す。実行コード/未知pathはfull、policyはdocs＋workflow回帰。legacyだけはCLEAN exact-HEAD L1と三点一致を維持する。
 - Claude Codeのtracked project hook inventoryはD-059採用時点で0本、`claude-code-harness`はproject scopeで無効。repo-owned inventory testをlocal fullとhosted finalで実行し、Plan Gateは既存workflow正本が所有する。
 - Keep CMD thin and BIZ authoritative. UI and CMD should not duplicate business rules that belong in BIZ.
 - Prefer Windows native verification for Japanese input and operator-facing Phase 2+ UI flows.

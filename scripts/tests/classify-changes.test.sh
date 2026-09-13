@@ -42,6 +42,15 @@ classify_paths() {
 
 [[ -x "$CLASSIFIER" ]] || fail "shared classifier is missing or not executable"
 
+# SPEC-MERGE-EVIDENCE / MG-D3/D4: policy needs regressions without Rust/frontend.
+for path in AGENTS.md CLAUDE.md docs/ci.md docs/DEV_WORKFLOW.md docs/agent-guidance/shared.md docs/templates/plan-packet.md .agents/skills/example/SKILL.md .claude/rules/commands.md .claude/commands/check.md .github/pull_request_template.md; do
+    output="$(classify_paths "$path")"
+    assert_value "$output" docs true
+    assert_value "$output" workflow true
+    assert_value "$output" rust false
+    assert_value "$output" frontend false
+done
+
 output="$(classify_paths docs/ci.md)"
 assert_contract "$output"
 assert_value "$output" docs true
@@ -102,7 +111,7 @@ done
 output="$(classify_paths .claude/skills/example/SKILL.md)"
 assert_contract "$output"
 assert_value "$output" docs true
-assert_value "$output" workflow false
+assert_value "$output" workflow true
 assert_value "$output" unknown false
 
 for path in mystery.xyz unknown/deep/file.bin; do

@@ -68,12 +68,17 @@ validate_canonical_gates() {
 validate_audit_wiring() {
     local root="$1"
 
-    grep -Fq 'run_required claude-hook-audit "$REPO_ROOT" bash scripts/tests/claude-hooks.test.sh' \
+    grep -Fq 'bash scripts/tests/run-workflow-tests.sh' \
         "$root/scripts/local-ci.sh" || return 1
+    grep -Fq 'bash scripts/tests/claude-hooks.test.sh' \
+        "$root/scripts/tests/run-workflow-tests.sh" || return 1
     grep -Fq 'run: bash scripts/tests/claude-hooks.test.sh' \
         "$root/.github/workflows/ci.yml" || return 1
-    grep -Fq '.claude/settings.json|.claude/hooks/*|.claude/commands/*)' \
-        "$root/scripts/ci/classify-changes.sh" || return 1
+    local path output
+    for path in .claude/settings.json .claude/hooks/probe.sh .claude/commands/plan-rally.md; do
+        output="$(printf '%s\n' "$path" | bash "$root/scripts/ci/classify-changes.sh" --files-from-stdin)" || return 1
+        grep -Fxq 'workflow=true' <<< "$output" || return 1
+    done
 }
 
 validate_repo_ignore() {
@@ -131,7 +136,8 @@ make_fixture() {
         "$fixture/.claude/hooks" \
         "$fixture/.github/workflows" \
         "$fixture/docs" \
-        "$fixture/scripts/ci"
+        "$fixture/scripts/ci" \
+        "$fixture/scripts/tests"
     cp "$source/.claude/settings.json" "$fixture/.claude/settings.json"
     cp "$source/.claude/commands/plan-rally.md" "$fixture/.claude/commands/plan-rally.md"
     cp "$source/.github/workflows/ci.yml" "$fixture/.github/workflows/ci.yml"
@@ -141,6 +147,7 @@ make_fixture() {
     cp "$source/docs/Plans.md" "$fixture/docs/Plans.md"
     cp "$source/scripts/ci/classify-changes.sh" "$fixture/scripts/ci/classify-changes.sh"
     cp "$source/scripts/local-ci.sh" "$fixture/scripts/local-ci.sh"
+    cp "$source/scripts/tests/run-workflow-tests.sh" "$fixture/scripts/tests/run-workflow-tests.sh"
     cp "$source/scripts/pre-push.sh" "$fixture/scripts/pre-push.sh"
     cp "$source/CLAUDE.md" "$fixture/CLAUDE.md"
     cp "$source/.gitignore" "$fixture/.gitignore"
@@ -198,8 +205,13 @@ expect_rejected "CH5 canonical gate wiring" "$gate_mutant"
 
 audit_mutant="$tmp/audit-mutant"
 cp -a "$fixture" "$audit_mutant"
-sed -i '/run_required claude-hook-audit/d' "$audit_mutant/scripts/local-ci.sh"
+sed -i '/run_required workflow-suite/d' "$audit_mutant/scripts/local-ci.sh"
 expect_rejected "CH7 local audit wiring" "$audit_mutant"
+
+suite_mutant="$tmp/suite-mutant"
+cp -a "$fixture" "$suite_mutant"
+sed -i '\|bash scripts/tests/claude-hooks.test.sh|d' "$suite_mutant/scripts/tests/run-workflow-tests.sh"
+expect_rejected "CH7 shared audit wiring" "$suite_mutant"
 
 ignore_mutant="$tmp/ignore-mutant"
 cp -a "$fixture" "$ignore_mutant"

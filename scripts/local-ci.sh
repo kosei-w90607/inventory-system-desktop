@@ -197,23 +197,7 @@ run_required docs "$REPO_ROOT" bash scripts/doc-consistency-check.sh
 run_required workflow-git "$REPO_ROOT" bash scripts/check-workflow-git.sh
 
 if [[ "$(classification_value workflow)" == "true" ]]; then
-    mapfile -t shell_files < <(find "$REPO_ROOT/scripts" -type f -name '*.sh' -print | sort)
-    for shell_file in "${shell_files[@]}"; do
-        shell_file_relative="${shell_file#"$REPO_ROOT"/}"
-        run_required "shell-syntax:$shell_file_relative" "$REPO_ROOT" bash -n "$shell_file"
-    done
-    run_required classifier-tests "$REPO_ROOT" bash scripts/tests/classify-changes.test.sh
-    run_required check-command-drift-tests "$REPO_ROOT" bash scripts/tests/check-command-drift.test.sh
-    run_required pre-push-tests "$REPO_ROOT" bash scripts/tests/pre-push.test.sh
-    run_required local-ci-tests "$REPO_ROOT" bash scripts/tests/local-ci.test.sh
-    run_required codex-safe-wrappers-tests "$REPO_ROOT" bash scripts/tests/codex-safe-wrappers.test.sh
-    run_required claude-hook-audit "$REPO_ROOT" bash scripts/tests/claude-hooks.test.sh
-    run_required public-sanitization-tests "$REPO_ROOT" bash scripts/tests/public-sanitization.test.sh
-    run_required doc-consistency-plan-packet-tests "$REPO_ROOT" bash scripts/tests/doc-consistency-plan-packet.test.sh
-    run_required workflow-git-checks-tests "$REPO_ROOT" bash scripts/tests/workflow-git-checks.test.sh
-    run_required reading-order-drift-tests "$REPO_ROOT" bash scripts/tests/reading-order-drift.test.sh
-    run_required workflow-tests "$REPO_ROOT" bash scripts/tests/ci-workflow.test.sh
-    run_required workflow-yaml "$REPO_ROOT" ruby -e "require 'yaml'; ARGV.each { |path| YAML.parse_file(path) }" .github/workflows/ci.yml .github/workflows/npm-security-monitor.yml
+    run_required workflow-suite "$REPO_ROOT" bash scripts/tests/run-workflow-tests.sh
 fi
 
 if [[ "$(classification_value env)" == "true" ]]; then

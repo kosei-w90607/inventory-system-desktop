@@ -153,3 +153,13 @@ if violations="$(rg -U --multiline-dotall -n "$DRIFT_PATTERN" "${absolute_target
 fi
 
 echo "PASS: reading-order-drift"
+
+# SPEC-MERGE-EVIDENCE / MG-D5/D8: entrypoints route to the explicit evidence owner.
+for path in AGENTS.md CLAUDE.md .github/pull_request_template.md docs/DEV_WORKFLOW.md; do
+    rg -q '直接UI merge' "$SOURCE_ROOT/$path" || fail "helper-only merge boundary missing: $path"
+    rg -q '残存リスク' "$SOURCE_ROOT/$path" || fail "server enforcement limitation missing: $path"
+done
+for name in inventory-workflow-start inventory-implementation inventory-code-review pr-review review-only-subagent; do
+    rg -q 'Evidence Mode' "$SOURCE_ROOT/.agents/skills/$name/SKILL.md" || fail "mode routing missing: $name"
+done
+echo "PASS: merge evidence entry routing"

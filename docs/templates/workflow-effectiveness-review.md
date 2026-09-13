@@ -75,7 +75,7 @@ Mutation-style observations:
 - repeated reading / redundant tool output / unnecessary stops:
 - model usage when measured (parent + child + retries; cached and noncached inputs separated; unmeasured fields marked):
 - review rounds (broad audit / closure確認の内訳):
-- state-only commits / 総commit数:
+- Evidence Mode / legacy state-only commits（新modeは実装後0件が目標、実績は別途測定）:
 
 ## Recommended Workflow Adjustment
 

@@ -45,3 +45,5 @@ description: "Prepare or perform an external-style PR review using findings-firs
 - Treat validation as claim.
 - P1/P2 require concrete evidence.
 - Do not block on style or explicit non-scope.
+
+Evidence Modeを確認し、[merge-evidence](../../../docs/agent-guidance/merge-evidence.md)へ接続する。github modeはhelper statusと専用record/CIで実装後状態を確認し、reviewerはrecordを編集しない。legacyのstate-only/三点一致を新modeへ持ち込まない。
