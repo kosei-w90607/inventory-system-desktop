@@ -9,13 +9,13 @@ Contract ID: SPEC-MERGE-EVIDENCE
 
 [PR #52](https://github.com/kosei-w90607/inventory-system-desktop/pull/52)では、実装・独立reviewを終えた内容に対してhuman-confirmとReadyのstate-only commitを追加し、Ready HEADでRust/frontendを含むfullを再実行した。これは当時の規定に従った処理である。D-033はprivate Freeでrequired checksを利用できなかった事情、D-035は自分のSHAを書き込む自己参照問題への対応だった。現在はpublicで、GitHubによる強制を選べる。2026-09-14にownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択した。
 
-成功は、通常のReady/mergeでSHAの手転記と実装後の状態記録commitを不要にし、必要な検証結果を短い機械判定で確認できること。Plan Gate、非Writerによる独立review、ownerのReady/merge判断、Windows L3・R4の保護は維持する。未検証版のmerge、必要jobのskipを成功扱いすること、記録を作ること自体が目的になることを失敗とする。token削減量は未実測で、異なるreview roundを比較して効率改善を主張しない。
+成功は、通常のReady/mergeでSHAの手転記と実装後の状態記録commitを不要にし、必要な検証結果を短い機械判定で確認できること。Plan Gate、非Writerによる独立review、ownerのReady/merge判断、Windows L3・R4の保護は維持する。CI未検証版をGitHubが通すこと、helper経由の正規mergeで未了review/manual/R4を通すこと、必要jobのskipを成功扱いすること、記録を作ること自体が目的になることを失敗とする。token削減量は未実測で、異なるreview roundを比較して効率改善を主張しない。
 
 ## 設計判断
 
 | ID | 決定 | 理由・棄却案 |
 |---|---|---|
-| MG-D1 | mainへPRを必須化し、GitHub Actions由来の`Merge gate`をrequired checkにする。strict（最新mainとの整合）を使う | CLIを通らないmergeも止める。CLIのみの自主運用はownerが選ばなかった。別GitHubアカウントのreview承認を追加要求する案は、モデル間reviewとアカウントの独立性を混同するため採らない |
+| MG-D1 | mainへPRを必須化し、GitHub Actions由来の`Merge gate`をrequired checkにする。strict（最新mainとの整合）を使う | CLIを通らない操作でもCI/PR要件をGitHubで強制する。review/manual/R4の強制はhelperの正規経路が担う。CLIのみの自主運用はownerが選ばなかった。別GitHubアカウントのreview承認を追加要求する案は、モデル間reviewとアカウントの独立性を混同するため採らない |
 | MG-D2 | `Merge gate`は変更分類と必要jobの実成功を集約する。必要jobのfailure/cancelled/skipped/欠落/未知値は非0 | 単に「CIが緑」、Rust aggregateだけ、PR本文のpass宣言だけを根拠にしない |
 | MG-D3 | docs-onlyにも軽いCIを実行する。Draftはマージ根拠となるcheckを発行しない | paths-ignoreと`Hosted CI: skip`によるmerge根拠の欠落をなくす。全docsにRust/frontend全量検証を課す案も採らない |
 | MG-D4 | 既存classifierとlocalのworkflow回帰suiteを再利用し、hostedとの検証範囲を揃える | local fullの証拠だけを外して検出力を落とさない。新しい分類体系やテスト一覧の複製を避ける |
@@ -28,6 +28,12 @@ Contract ID: SPEC-MERGE-EVIDENCE
 | MG-D11 | CIとhelperを旧gate下で完成・dogfoodしてからmain保護を有効化する | 保護だけ先に入れて正規のmerge/closeoutを閉塞させない。失敗時の自動bypassは禁止 |
 | MG-D12 | 人とモデルへの出力は状態・次の行動・阻害理由を中心にし、実行ログと集計を分ける | 成功時のログ全文再読や証跡の再証明を常設しない。レビュー要約だけで検証を済ませる案も採らない |
 
+## 強制範囲（owner選択）
+
+2026-09-14にownerは「CIはGitHub、review等はhelperで確認。直接UI mergeは運用上禁止」を選択した。GitHubが強制するのはPRとCIの条件であり、review/manual/R4のrecordはCI evaluatorへ入れない。これらはhelperとownerの規律で確認する。新modeの正規Ready/mergeはhelper経由とし、直接UI mergeや確認を飛ばす直接gh mergeを行わない。
+
+GitHub UIがCI成功だけでmerge可能と表示する場合があることは既知の残存リスクで、未実装のserver保護があるとは主張しない。helperはその状態でも古い/不足したreview/manual/R4を拒否する。CI以外もserver側に追加の必須checkで強制する案は、同期処理と再実行を増やすため今回は採らない。既存のモデルreview・owner承認を省略する許可ではない。
+
 ## CIとmain保護
 
 現在のRust集約jobを全体の`merge_gate`へ置き換える。既存のRust lint/test/drift、frontend、docs、env jobを保持し、workflow回帰suiteのjobを追加する。aggregateは全jobを`needs`に持ち、jobのifは`always()`とname式と同じDraft判定だけにする。`needs.changes.result == success`をjobのifへ入れてはならず、分類失敗は実際に起動したevaluatorが非0で処理する。既存ci-workflow.test.shの全always jobへのsuccess前提をaggregateについて置換し、前提を付け足すmutantを拒否する。分類成功が必須で、選択されたjobは`success`だけを受理し、非対象jobの`skipped`だけを許す。未知pathはfull fallbackとして受理するが、分類key/値の不備や未知のjob結果は拒否する。npm auditのwarn-onlyという現行契約はこの変更で改変しない。
@@ -36,7 +42,7 @@ Contract ID: SPEC-MERGE-EVIDENCE
 
 Draft時はaggregateのcheck名を`Draft (no merge evidence)`、Ready/dispatch時だけ`Merge gate`とする（`jobs.<job_id>.name`のgithub expression）。Draft guardによりrunnerは起動しない。**required名のskipped checkをDraftで発行してはならない**。GitHubはskipped/neutralもrequired checkの成功条件に含めるためである。実際のcheck-run名とDraft→Ready境界の挙動は、有効化前のlive dogfoodで確認する。期待どおりでなければmain保護を有効化しない。
 
-hostedには実PR headに対するPK5（Plan Commit/Amendmentsの祖先・不変確認）も必須接続する。該当jobはfetch-depth: 0とPR head/baseを取得し、履歴不足をskip成功にしない。parityの対象はlocal-ci.sh fullの全gate（workflow-git、shell-syntax、workflow-yamlも含む）。回帰suiteの実行と、実PRのPK5検査を別の義務として扱う。必要なRuby/ripgrep/PythonとNode pinをhostedに用意し、CI tokenはcontents:readに固定してownerの運用commentを書き換える権限を渡さない。
+docs-onlyを含むhostedの全正規経路には実PR headに対するPK5（Plan Commit/Amendmentsの祖先・不変確認）も必須接続する。該当jobはfetch-depth: 0とPR head/baseを取得し、履歴不足をskip成功にしない。parityの対象はlocal-ci.sh fullの全gate（workflow-git、shell-syntax、workflow-yamlも含む）。回帰suiteの実行と、実PRのPK5検査を別の義務として扱う。必要なRuby/ripgrep/PythonとNode pinをhostedに用意し、CI tokenはcontents:readに固定してownerの運用commentを書き換える権限を渡さない。
 
 分類は既存の出力keyを保つ。CI/ゲート実行コード、tests、未知pathは全gate。AGENTS/CLAUDE、agent-guidance、workflow/CI/review正本、workflow templates、Skills、Claude rules/commandsはdocs＋workflow回帰を要求する。一般のPlans/backlog/archive/説明文書はdocs経路。function-design/REQ/bindings等の既存traceability/drift分類は維持する。consumerは明示されたarea flagを使い、`workflow=true`だけで無条件にRust/frontendへ再昇格させない。rename/copyの両pathと削除も分類する。
 
@@ -59,19 +65,36 @@ native拒否のprobeは、ownerに具体的対象を示したうえで`ci-probe/
 
 ## 状態と非CI記録
 
-新packetのmarkerは`Evidence Mode: github`。bootstrapは`Evidence Mode: legacy`を明示して旧13-fieldを維持する。新checker導入後のactive packetはmarker必須で、欠落や未知値をlegacyへ推測fallbackしない。archiveは非遡及。markerのない旧active作業はbootstrap導入前に完了するか、ownerが移行を指示する。Gitで管理するWorkflow StateはPhase、Risk、Execution Mode、Plan Commit、Amendments、Coordinator、Writer、Plan Reviewer、Final Reviewer、Human Gate、およびmarker。Phaseはkickoff〜implementingとarchiveの計画上の地点を表す。local-verified以後をGitへ書く必要はない。Human Gateは要件であり、`ready,merge`を必須に、必要な場合`manual,r4`を加える。R4にはr4が必須。自由文の条件を推測して免除しない。
+新packetのmarkerは`Evidence Mode: github`。bootstrapは`Evidence Mode: legacy`を明示して旧13-fieldを維持する。新checker導入後のactive packetはmarker必須で、欠落や未知値をlegacyへ推測fallbackしない。archiveは非遡及。markerのない旧active作業はbootstrap導入前に完了するか、ownerが移行を指示する。Gitで管理するWorkflow StateはPhase、Risk、Execution Mode、Plan Commit、Amendments、Coordinator、Writer、Plan Reviewer、Final Reviewer、Final Review Minimum、Human Gate、およびmarker。Phaseはkickoff〜implementingとarchiveの計画上の地点を表す。local-verified以後をGitへ書く必要はない。Human Gateは要件であり、`ready,merge`を必須に、必要な場合`manual,r4`を加える。R4にはr4が必須。自由文の条件を推測して免除しない。Final Review Minimumは承認された初回監査の必要数（1または2）を明記し、R4/workflow gateとD-084のcodex-only R3 UI契約変更では2を下回らない。既存のRisk/mode別review要件を減らさず、helperはこの明示値を下限にする。
 
 Reviewed Content HEAD / Final Exact-HEAD Evidence / Hosted CI Requirementは新packetから外す。元のPlan CommitとAmendmentsの不変性・祖先確認は残す。実装開始後に計画の契約が変わる場合の再設計・再reviewも維持する。
 
-非CI結果は、owner名義の専用PR comment（marker=`inventory-workflow-v1`）にJSONと短い表示を保存する。PR本文や他commentを編集しない。正当なauthorの記録が複数あれば曖昧として止め、任意の最新コメントを採らない。記録はrepo/PR、head/base SHA、review/manual/r4のoutcomeとevidence pointerを持つ。outcomeはpending/pass/fail/not-required。R2+のreviewはnot-required不可、manual/r4はpacketの要件と一致しなければ不可。CIのSHAや成功フラグはここへ複製せず、GitHub APIから取得する。
+非CI結果はowner名義の専用PR comment（marker=`inventory-workflow-v1`）に保存する。PR本文や他commentを編集しない。正当なauthorの記録が複数あれば曖昧として止める。CIのSHAや成功フラグは複製せずGitHub APIから取得する。
 
-captureはPRのrepo/head/baseとcleanなlocal HEADを取得して、一意のlocalファイルへ保存する。review中の変更を見落とさないためcaptureを上書きしない。record時に再照合し、head/baseが変わっていれば古いpassを結び付けない。新しい版のrecordに前のmanual/R4のpassを自動継承しない。base同期だけの更新は下の限定手順で扱う。reviewの独立性とP1/P2裁定は人・モデルの役割であり、JSONで証明できるとは扱わない。commentへの書込みは当該PRの記録更新の明示承認範囲で行う。
+wireの正本は次のRecordV1だけとする。SHAはこのrepoのfull SHA、Evidenceは公開可能な証拠pointer（会話全文・vendor session ID・実データは含めない）。Risk/modeの意味やreviewの独立性は人とモデルが確認し、metadataだけで証明しない。
 
-recordのreviewは`passes`配列（各要素はmodel/run_ref/evidence）を持ち、R4、CI制御の実行code変更、または承認されたR3 workflow gate変更では独立2pass、その他R2+では必要な1pass以上を要求する。実際の独立性と採否はowner/modelが確認し、名前の個数だけで証明しない。run_refは公開可能なレビュー用識別子であり、vendor session IDや会話全文を公開recordへ入れない。
+```text
+RecordV1 = {
+  version: 1, repo: owner/name, pr: positive_integer, head: SHA, base: SHA,
+  review: {outcome: Outcome, broad: Broad|null, closure: Closure|null},
+  manual: {outcome: Outcome, evidence: [Evidence], source_head?: SHA, reuse_approval?: Evidence},
+  r4: {outcome: Outcome, evidence: [Evidence]}
+}
+Outcome = pending | pass | fail | not-required
+Audit = {model: string, run_ref: string, evidence: [Evidence]}
+Broad = {head: SHA, base: SHA, plan_commit: SHA|null, amendments: [SHA], audits: [Audit]}
+Closure = {head: SHA, base: SHA, audit: Audit}
+```
 
-recordのwireは`version:1`、`repo`（owner/name）、`pr`（正整数）、`head`/`base`（full SHA）、`review`/`manual`/`r4`（それぞれoutcomeとevidence文字列配列）。head/baseはrecord全体に適用する。reviewのpassと必須manual/r4のpassには非空evidenceが必要。manualはL3等の追加検証・承認をまとめた結果で、内容は承認済みpacketの該当手順が所有する。r4のrecordは操作前のowner承認を後から代用するものではない。
+初回のbroad監査はpacketのFinal Review Minimum以上の独立auditを必要とする。auditsは監査の実施記録で、各監査でfindingが出たことを隠さない。現在版の全findingが裁定・解消された場合だけreview.outcomeをpassにする。run_refは重複不可の公開可能な識別子であり、モデルのsession識別子ではない。R2+のreviewをnot-requiredにはできない。R0/R1の不要reviewはbroad/closureともnull。
 
-書込みはsingle-writerが担当し、reviewerは専用commentを編集しない。commentのauthorはrepo ownerと照合する。recordの新設/更新前後にPRのhead/baseを確認し、途中で変わった記録は有効扱いしない。既存commentのIDを指定して更新し、人のPR本文や他のcommentを上書きしない。削除/複数marker/不正versionは再確認が必要な状態として扱い、cacheから再作成して通過させない。
+broadと現在のhead/baseが同じならclosureはnull。異なる場合は、同じPlan Commit/Amendmentsの範囲で、必要数を満たすbroadを保持し、現在head/baseに一致する独立closureを1回以上必要とする。closureのauditは過去の監査・既存finding・累積修正を踏まえた現在候補の完了判定を含む。単に最新の1行だけ見た結果を完了判定にしない。Plan契約が変わった場合やbroadの同一scope適用を確認できない場合は、新しいbroadを必要とする。base同期にもこのclosure数を適用し、初回Double Auditを無条件にやり直さない。
+
+manual/r4のpassは非空evidenceが必要。manual.source_head/reuse_approvalは両方を同時に指定し、後述するbase同期の限定再利用でだけ受理する。それ以外のmanual結果はrecord.headでの実施/確認を表す。r4に再利用fieldはなく、当該head/操作条件の明示承認を必要とする。manualはL3等の追加検証・承認をまとめた結果で、内容はpacketの該当手順が所有する。
+
+captureはrepo/PR/head/base、Plan Commit/Amendmentsと現在の正当なrecordを取得し、cleanなlocal HEADとの一致を確認して一意のlocalファイルへ保存する。captureは上書きしない。record時にPRと既存commentを再取得し、対象版または取り込む元recordが変わっていれば停止する。新しい版にmanual/R4のpassを自動継承しない。旧broadを使うclosureは、serverに現在も存在する正当なrecordを基に作り、消失したcommentをcacheだけから復元しない。
+
+書込みはsingle-writerが担当し、reviewerはcommentを編集しない。IDを指定して専用commentだけを更新し、前後のhead/baseを確認する。途中で版が変わった記録は有効扱いせず、任意の最新commentで補完しない。commentへの書込みは当該PRの記録更新の明示承認範囲で行う。
 
 | 観測状態 | 有効な現在地 / 次の行動 |
 |---|---|
@@ -87,7 +110,7 @@ recordのwireは`version:1`、`repo`（owner/name）、`pr`（正整数）、`he
 
 ## base同期だけでheadが変わる場合
 
-strictによりmainの取込みが必要な場合、まず先行PRのcloseoutを完了し、対象をDraftへ戻してからorigin/mainを取り込む。GitHubのUpdate branchも同じ扱いで、hookを通らない更新を信頼しない。新headではCIを実行し、独立reviewは新たなdelta/相互作用のclosureに限定する。全面監査を最初から繰り返す義務はない。
+strictによりmainの取込みが必要な場合、まず先行PRのcloseoutを完了し、対象をDraftへ戻してからorigin/mainを取り込む。GitHubのUpdate branchも同じ扱いで、hookを通らない更新を信頼しない。新headではCIを実行し、独立reviewは新たなdelta/相互作用のclosureに限定する。全面監査を最初から繰り返す義務はない。並行PRではmain更新に伴う再Ready判断とCIが追加され得る。これはstrictを選ぶ運用コストとして各作業の予算に含め、今回のrollout予算だけで将来分も賄えるとはしない。
 
 manualの再実施が不要とownerが判断できる候補は、new headが旧headをfirst parent、取得したmainをsecond parentに持つ単一のmergeで、旧base→旧headと新base→新headのPR差分が`git diff --binary --full-index --no-ext-diff --no-textconv BASE...HEAD --`のbyte比較で同一の場合に限る。patch-idだけの同値は根拠にしない。競合解消・別の編集があった場合、またはmanual対象への影響が否定できない場合は再利用しない。判定不能も同じ。merge-baseが複数ある等で差分が一意に定まらない場合も再利用しない。機械条件は必要条件で、manual対象への無影響を証明しない。
 
@@ -99,7 +122,7 @@ manual失敗の修正や対象挙動を変える修正は、既存L3の復旧・
 
 追加候補は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+では`--packet docs/plans/FILE.md`を指定し、当該PR headのpacket・Plansの登録と照合する。対象を複数packetへ曖昧に結び付ける入力は拒否する。R0/R1は明示Riskとdiff分類、および`--manual required|not-required`を必須とし、CI制御の実行code変更をR0/R1へ下げる入力を拒否する。Risk値でCIの実行範囲を縮めず、policy文書の意味変更のRisk判定はowner/modelが行う。packet不在をmanual免除とみなさない。業務的Riskの分類自体はowner/モデルが担う。PR作成前はtrackedの計画phaseを使い、helperで架空のPR状態を作らない。
 
-statusはread-only、結果は短い状態と阻害理由（`--json`で構造化）。captureはignored `.local/pr-gate/`だけへ書く。recordは`--capture FILE --kind review|manual|r4 --outcome VALUE --evidence POINTER`を受け、対象commentだけを作成/更新する。対象版が変わったrecordでは他kindもpendingへ戻し、必須でないものだけnot-requiredを設定する。Ready/mergeはownerの明示指示を前提にする。
+statusはread-only、結果は短い状態と阻害理由（`--json`で構造化）。captureはignored `.local/pr-gate/`だけへ書く。recordは`--capture FILE --kind review|manual|r4 --outcome VALUE --evidence POINTER`を受ける。reviewでは`--review-stage broad|closure --pass-model MODEL --run-ref REF`を指定し、Auditを追加/更新する。同じrun_refを別監査として数えない。manualの再利用には`--reuse-from SHA --reuse-approval POINTER`を両方指定する。helperがcapture/serverの正当なbroadを保持し、CLI入力から架空のbroadを作らない。対象commentだけを作成/更新する。対象版が変わったrecordでは他kindもpendingへ戻し、必須でないものだけnot-requiredを設定する。Ready/mergeはownerの明示指示を前提にする。
 
 merge時はGitHubのPR head/base・実効rules・必要checkをfreshに取得し、対象CI workflow、GitHub Actions app、必要job成功、review/manualの対応版、Ready、merge可能状態を確認する。`gh pr merge --match-head-commit`で確認後のhead変更を拒否し、strict ruleでbase更新も防ぐ。helperはsettingsを変更せず、`--admin`やbypass fallbackを持たない。未知/不足/HTTP失敗/permission failureは非0で終了する。
 
@@ -109,8 +132,8 @@ merge時はGitHubのPR head/base・実効rules・必要checkをfreshに取得し
 
 1. この整備は明示legacy markerと現行13-field/三点一致/Double Auditを使う。planning-onlyの今は実行code、CI、rulesetを変更しない。
 2. classifier・aggregate・hosted PK5/suite・helper・新旧packet検査を実装する。markerなしactive packetを新運用へ持ち込まず、archiveは一括変換しない。
-3. bootstrap PR上でDraftの名前とReady full経路を確認する。分類job failureでaggregateがskippedでなくfailureになる負例は、候補CI定義を持つ合成fixture ref/PR（mainへmergeしない）で確認する。この時点ではdocs-only経路を実証したとしない。
-4. bootstrap PRを旧gateでmergeする。続いてmain向けdocs-onlyのcloseout/fixture PRを作り、新CIでdocs＋aggregateだけが通ることを確認してbootstrapをarchiveする。この移行PRだけはまだ旧manual gateで扱う。CI変更の差分が混じるPRをdocs-only証拠にしない。
+3. bootstrap PR上でDraftの名前とReady full経路を確認する。分類job failureでaggregateがskippedでなくfailureになる負例は、候補CI定義を持つbase=main、head=bootstrap候補から分けた合成fixture branchのPR（mainへmergeせずclose）で確認する。この時点ではdocs-only経路を実証したとしない。
+4. bootstrap PRを旧gateでmergeする。続いてmain向けdocs-onlyのcloseout/fixture PRを作り、新CIでdocs（PK5含む）＋aggregateが通り、Rust/frontendが走らないことを確認してbootstrapをarchiveする。この移行PRだけはまだ旧manual gateで扱う。CI変更の差分が混じるPRをdocs-only証拠にしない。
 5. 完成したpayloadと検証用ref/ruleset（作成・テストPRのmerge/close・削除を含む）およびproduction適用の範囲をownerへ提示する。承認後に同一rulesの検証用refで拒否を確認する。docsのpositive controlはstep 4の成功headとその検証時baseを使う。probe targetへのPR eventはbranches filterで起動しないため、そこから新CIが走ると仮定しない。
 6. mainとopen PRに未完了legacy作業がないことを確認し、production rulesを有効化してread-backする。新templateはbootstrapで配布するが、新modeのReady/mergeは保護確認まで利用不可。sourceは「条件成立時に新modeを適用」という文面でbootstrapに含め、有効化事実は専用comment/ignored evidence/helper statusへ置く。有効化後にpolicy正本をR0で変更する必要を作らない。
 7. 以後のdocs/closeoutは軽いPR経路。先行closeoutのmergeを後続PRのbase同期より先に行い、squash後の古いpacketがPK5を止める期間を持ち越さない。旧無条件state-only/三点一致/direct-main-closeoutの説明はlegacy/移行の範囲に限定する。

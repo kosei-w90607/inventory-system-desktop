@@ -15,7 +15,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: 実装開始（rollout予算の採用を含む） / ruleset probe・有効化 / Ready / merge
+- Human Gate: 実装開始（rollout予算の採用を含む） / ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / Ready / merge
 
 現行のlegacy workflowで設計・Plan Gateを通す。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択した。現在Codexが起草し、別モデルがPlan Review、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。
 
@@ -26,7 +26,7 @@
 - relay 往復上限: 2（規範の既定値）
 - Plan Review round 天井: 3（規範の既定値）
 
-今回の計画準備は既定3回以内で行い、設計方式の選択を介入1回目として記録する。実装rolloutの予算案は8回（規範値、実績ではない）とし、実装開始時にownerが採否を決める。既知の判断は方式選択、実装採用、bootstrap Ready、bootstrap merge/closeout、検証用設定の実験、本番有効化であり、残りはreview裁定の余地。まとめて承認できる手順はまとめるが、decision pointの計数を隠さない。未採用の8回を現在の予算として使わない。過去PRの例外は継承しない。外部モデルへのrepoの公開可能な指示・設計・差分のread-only送信許可は既存の明示承認を引き継ぐ。
+今回の計画準備は既定3回以内で行い、設計方式の選択を介入1回目、CIのみをGitHubで強制する境界の選択を2回目として記録する。実装rolloutの予算案は8回（規範値、実績ではない）とし、実装開始時にownerが採否を決める。採用された場合は実装前のgated amendmentで予算を反映し、元Plan Commitを保持する。既知の判断は方式選択、強制範囲の選択、実装採用、bootstrap Ready、bootstrap merge/closeout、検証用設定の実験、本番有効化であり、残りはreview裁定の余地。まとめて承認できる手順はまとめるが、decision pointの計数を隠さない。未採用の8回を現在の予算として使わない。過去PRの例外は継承しない。外部モデルへのrepoの公開可能な指示・設計・差分のread-only送信許可は既存の明示承認を引き継ぐ。
 
 ## Consultation Relay
 
@@ -45,11 +45,11 @@ Goal Invariant:
 
 ### 最小完了条件
 
-必要な検証・独立review・owner承認を維持し、通常のReady/mergeでAIがSHAを手集めせず、状態記録だけのcommit/full再実行を増やさない。GitHubがmainへの条件を強制し、docs/closeoutは軽いPR経路で完了する。
+必要な検証・独立review・owner承認を維持し、通常のReady/mergeでAIがSHAを手集めせず、状態記録だけのcommit/full再実行を増やさない。GitHubがmainへのPR/CI条件を強制し、review/manual/R4はhelperの正規経路で確認する。直接UI mergeは禁止し、docs/closeoutは軽いPR経路で完了する。
 
 ### 失敗定義
 
-古いhead/base、必要jobのskip/欠落、偽の成功、未了review/manual/R4でmergeできること。保護を有効にして正規のdocs/closeoutを閉塞させること。証跡管理を別の巨大な状態管理基盤へ移しただけになること。
+GitHubが古い/未検証のCI、必要jobのskip/欠落を通すこと。helper経由の正規mergeが古いhead/baseや未了review/manual/R4を通すこと。CI以外をGitHub自体が強制するとの誤説明も失敗とする。保護を有効にして正規のdocs/closeoutを閉塞させること。証跡管理を別の巨大な状態管理基盤へ移しただけになること。
 
 ### 非目的
 
@@ -76,7 +76,7 @@ Plan Gateや独立性の撤廃、アプリ/DB/POS変更、依存更新、global 
 
 ## Acceptance Criteria
 
-- AC1: `merge-gate.test.sh`で必要jobのfailure/cancelled/skipped/欠落/未知値、分類失敗が非0。docsのみではdocs/aggregateが成功し、Rust/frontendを必要扱いしない。
+- AC1: `merge-gate.test.sh`で必要jobのfailure/cancelled/skipped/欠落/未知値、分類失敗が非0。docsのみではdocs（実PRのPK5含む）/aggregateが成功し、Rust/frontendを必要扱いしない。
 - AC2: `ci-workflow.test.sh`とlive dogfoodで、Ready時の分類job failure/cancelledをaggregateのifでskipせずfailureにする。`needs.changes.result == success`をaggregateのifへ足すmutantを検出し、Draft runがrequired名`Merge gate`のsuccess/skippedを作らず、Readyの対象job成功後だけ同名gateがsuccessになる。paths-ignore/本文skip tokenによる抜け道がない。
 - AC3: `doc-consistency-plan-packet.test.sh` / `workflow-git-checks.test.sh`の新旧fixtureで、legacyの拒否条件とPlan Gate/Plan Commit/Amendmentsを維持し、新modeは実装後のphase保存のためにtracked変更を要求しない。markerなしactive packet、未知mode、github modeのlocal-verified以後のtracked Phase、必要field不足は非0。legacy archiveは非遡及。
 - AC4: `pr-gate.test.py`でstale head/base、複数/不正author記録、必要review/manual/R4欠落、API失敗、誤repo、shell特殊文字、確認後head更新を拒否。正常系では必要APIだけで結果を返し、無関係なPR本文を変更しない。
@@ -125,9 +125,10 @@ GitHub強制と軽いdocs PR経路はowner選択済み。変更対象・各契�
 
 - `gh api repos/kosei-w90607/inventory-system-desktop --jq '{visibility,permissions}'` → public、admin/maintain/push/pull可（2026-09-14 read-only）。
 - `gh api repos/kosei-w90607/inventory-system-desktop/branches/main --jq '{name,protected}'` → main / false。`gh api .../rules/branches/main` → []。
-- `gh api repos/.../commits/fda74d083c7b3d0a1f531eaaa3e29693dae094d1/check-runs` →既存CIのappはgithub-actions、id=15368。これはtokenやcredentialではなく公開app識別子。
+- `gh api repos/.../commits/fda74d083c7b3d0a1f531eaaa3e29693dae094d1/check-runs` →既存CIのappはgithub-actions、id=15368。これはtokenやcredentialではなく公開app識別子。merge方式のallow_squash_merge/allow_merge_commit/allow_rebase_mergeはtrue、全rulesets（無効/評価中含む）の一覧も[]。
 - 現物`ci.yml`と`local-ci.sh`を対照し、Rust aggregateがfrontend/docs/envを覆わず、localのworkflow回帰suiteがhostedには未接続と確認。これを直す前にlocal final要件を外さない。
 - 公式Contexts表はjobs.nameでgithub contextを許可。dynamic名のDraft/Ready実挙動と設定後の拒否は未実測で、有効化前の必須確認へ置く。
+- 一時的な合成Git repoでsource記載の`git diff --binary --full-index --no-ext-diff --no-textconv BASE...HEAD --`を比較した。metadataのみのmain取込みは同一PR差分と親関係を満たし、競合をfeature側へ解消したcaseは差分不一致で再利用対象外となった。出力はlocal-onlyの`base-sync-probe.json`。代表caseの確認であり、manual対象への無影響の証明ではない。
 
 ## Contract Coverage Ledger
 
@@ -152,7 +153,7 @@ GitHub強制と軽いdocs PR経路はowner選択済み。変更対象・各契�
 
 ## Boundary / Wire Contract
 
-producerはGitHub REST/GraphQLとreview capture、consumerはhelper/CI evaluator。repo/PRとhead/base（現repoのfull SHA）を検証し、未知status・不正JSON・重複marker・不正author・欠落gateは拒否する。comment JSONはversion=1、review/manual/r4のoutcomeとevidence pointerのみでCI結果を複製しない。branch名等をshellへ展開しない。active packetは明示legacy/github markerを使い、legacyは旧13-fieldを維持する。markerのないarchiveは非遡及。未知modeや新activeでのmarker欠落は拒否する。
+producerはGitHub REST/GraphQLとreview capture、consumerはhelper/CI evaluator。repo/PRとhead/base（現repoのfull SHA）を検証し、未知status・不正JSON・重複marker・不正author・欠落gateは拒否する。comment JSONはsource designのRecordV1を唯一のwire契約とし、Broad/Closureとmanual再利用fieldを含む。CI結果は複製しない。branch名等をshellへ展開しない。active packetは明示legacy/github markerを使い、legacyは旧13-fieldを維持する。markerのないarchiveは非遡及。未知modeや新activeでのmarker欠落は拒否する。
 
 ## Review Focus
 
@@ -186,4 +187,4 @@ MG-D1〜D12を実装する。Plan Gate/独立review/owner権限/Windows・R4保�
 
 - Findings Freeze: not yet frozen
 
-Opus初回reviewのP2を修正する案として、aggregate ifの負例、hosted PK5/parity、base同期時のclosure/manual適用判断、docs probeの実施順序、条件付きsource、rollout予算案を具体化した。方向性の変更や稼働設定の適用は行っていない。追加Plan Reviewで確認し、必要なowner裁定は実装開始の判断に提示する。現行コードや設定を変更せずに、すぐ実装へ移れるところまで具体化する。
+Opus初回reviewのP2を修正する案として、aggregate ifの負例、hosted PK5/parity、base同期時のclosure/manual適用判断、docs probeの実施順序、条件付きsource、rollout予算案を具体化した。方向性の変更や稼働設定の適用は行っていない。追加Plan Reviewで確認し、必要なowner裁定は実装開始の判断に提示する。R2の強制範囲指摘についてはownerがCIのみをGitHub、その他をhelperと運用規律で確認する案を採用した。schemaはsourceのRecordV1へ統一する。現行コードや設定を変更せずに、すぐ実装へ移れるところまで具体化する。

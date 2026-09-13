@@ -10,6 +10,8 @@ Risk: R3
 
 ## Failure Modes
 
+GitHub側はCI/PRの条件、helper側はreview/manual/R4の条件を検証する。UIがCI成功だけでmerge可能になる残存リスクはowner選択済みで、serverがCI以外も拒否するというテストを捏造しない。
+
 古いgreen、Draftのskip、必要job欠落、別app/別workflowの成功、分類欠落、review後のhead/base変更、古いmanual承認、PR記録の衝突、offline cacheの誤用、保護先行の閉塞、legacyの無断読み替え、docs closeoutの再帰。
 
 ## Test Matrix
@@ -20,7 +22,7 @@ Risk: R3
 | MG-D2 | false green | shell unit | merge-gate.test.sh（新規） | 必要jobのfailed/cancelled/skipped/missing/unknownが0になる |
 | MG-D3 | Draft/分類失敗の穴 | YAML + live | ci-workflow.test.sh | Draftがrequired名を発行、またはReadyのchanges failureでaggregateがskipする |
 | MG-D3/D4 | docsだけで全量/必要policy検証抜け | classification | classify-changes.test.sh | docsとpolicy/実行codeを同じ免除にする |
-| MG-D4/D7 | localから移した検証が消える | integration | run-workflow-tests.sh / ci-workflow.test.sh / local-ci.test.sh | 実PRのPK5・shell/YAML・suite等の必要gateがhostedから呼ばれず、浅い履歴を成功扱いする |
+| MG-D4/D7 | localから移した検証が消える | integration | run-workflow-tests.sh / ci-workflow.test.sh / local-ci.test.sh | docs-onlyでも実PRのPK5・shell/YAML・suite等の必要gateが該当経路から呼ばれず、浅い履歴を成功扱いする |
 | MG-D5/D10 | 旧/新schema混同 | contract | doc-consistency-plan-packet.test.sh / workflow-git-checks.test.sh | 未知modeをlegacy扱い、不足fieldを許す、Plan Commitを変更する |
 | MG-D6 | 記録の誤結合 | HTTP fixture | pr-gate.test.py（新規） | author違い/複数record/古いhead/base/改版時manual継承を許す |
 | MG-D8 | merge時race/通信失敗 | CLI integration | pr-gate.test.py | 確認後pushで別HEADをmerge、API失敗からsuccessを作る |
@@ -79,8 +81,9 @@ aggregateが全必要jobをneedsに持つこと、workflow suiteをlocal/hosted�
 - classifierのpolicy経路をdocsへ落とすと必要suiteの欠落を検出するか。
 - local suiteから1つ取り落とすとparity検査が失敗するか。
 - head/base比較、author確認、複数record拒否、manual改版無効化を外すとREDになるか。
+- CI成功・GitHub merge可能でも、review/manual/R4が不足したfixtureをhelperが拒否するか。
 - base同期候補で、first/second parent不一致、PR差分のbyte不一致、競合・影響あり、owner再利用判断なしをそれぞれ拒否するか。patch-id同値だけを通過根拠にしない。
-- packet不在でもmanual明示を要求し、Double Audit必要時のpass不足、複数packet指定を拒否するか。
+- packet不在でもmanual明示を要求し、Final Review Minimum不足（R4/workflow、codex-only R3 UIを含む）、broad不足、現在版closure欠落、Plan契約変更後の旧broad流用、複数packet指定を拒否するか。
 - merge直前にheadを更新したHTTP/git fixtureで、別の版がmergeされないか。
 - cacheだけでpassを返す、statusで書く、通常のPR本文を書き換えるmutantを検出するか。
 
@@ -88,4 +91,4 @@ aggregateが全必要jobをneedsに持つこと、workflow suiteをlocal/hosted�
 
 ## Residual Test Gaps
 
-live dynamic check名と分類失敗はbootstrap候補で、docs PR経路はbootstrap merge後・production有効化前に確認する。検証用refのPR eventにCIが走るとは仮定せず、成功済みdocs候補をpositive controlへ使う。ruleset拒否は承認された検証用refで確認する。1回の成功で全変更のtoken効果を保証しない。native checkはモデルreviewの独立性や人の承認内容を証明しないため、役割のreviewを維持する。GitHub障害時は新modeのmergeを停止し、旧例外へ自動fallbackしない。
+live dynamic check名と分類失敗はbootstrap候補で、docs PR経路はbootstrap merge後・production有効化前に確認する。failure fixtureのPRはbase=mainでmergeせずcloseする。検証用refのPR eventにCIが走るとは仮定せず、成功済みdocs候補をpositive controlへ使う。ruleset拒否は承認された検証用refで確認する。1回の成功で全変更のtoken効果を保証しない。native checkはモデルreviewの独立性や人の承認内容を証明しないため、役割のreviewを維持する。GitHub障害時は新modeのmergeを停止し、旧例外へ自動fallbackしない。
