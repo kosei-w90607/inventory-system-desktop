@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: ece0977c
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: e7bf3aeef34a352a3aaa0dcaa4cd98d8981d2379
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Ready / merge
+- Human Gate: none（ownerがReady・merge・後処理を承認済み。実行は必須のexact-HEAD検証完了後）
 
 Execution Mode は D-084 の起草・実装・裁定分離を使う。既存 Fable セッションへ新しい権限や作業を送信していない。CLI による非 Codex reviewer の実行可否はレビュー開始時に確認し、不能なら pending のまま gate を前進させない。
 
@@ -211,3 +211,9 @@ owner 介入は scope 承認とこの裁定を消費。次の裁定が範囲や�
 このstate-only記録は `implementing -> local-verified -> independent-review -> human-confirm` の隣接遷移を実体化する。各条件は内容候補のlocal full、独立closure、ownerの一括裁定により充足済み。Ready/mergeの承認は含まず、Ready後のexact-HEAD L1/hosted要件も維持する。
 
 Freeze後の新規P3は現行規定により後続候補として記録する: sharedの完了/blocked報告規定の通常ルートへの配置、棚卸し申し送りのarchiveにある下位文脈への案内、Ready時のowner例外表記の明確化。ignored evidenceの英語誤字は修正済み。これらを新しいblockerや追加のreview発注理由にしない。
+
+## Ready・merge・後処理の owner 承認
+
+2026-09-14: ownerは「Readyからマージ、後処理まで済ませていい」と明示承認した。今回の個別計数起点以後の承認は2回目で、過去累計未実測・旧既定超過を明示する承認済みの表記例外を維持する。未pushの既存docsコミットの統合・pushも承認されたが、本PRの監査対象へ混ぜず、merge後のcloseoutで移送済みBacklogへ内容を引き継ぐ。
+
+このstate-only commitで `human-confirm -> ready-hosted-final` を記録する。結果のexact HEADでL1 fullを実行してPR本文を更新し、Ready eventで必要なhosted finalを取得する。PR HEAD・L1 SHA・successful hosted headShaの一致とmerge可能状態を確認してからsquash mergeする。承認は検証失敗の受容や必須gateの省略を含まない。
