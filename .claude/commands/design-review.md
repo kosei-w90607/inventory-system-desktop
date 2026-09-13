@@ -1,9 +1,5 @@
-Before implementing, review the relevant design documents.
+対象: $ARGUMENTS
 
-1. Read the task specification from docs/ARCHITECTURE.md for the target module
-2. Read the function design from docs/FUNCTION_DESIGN.md if available for this module
-3. Read the relevant table definitions from docs/DB_DESIGN.md
-4. Summarize what needs to be implemented: functions, data structures, error handling
-5. Ask for confirmation before starting implementation
+`AGENTS.md` `Session Start` と `docs/DEV_WORKFLOW.md` `Design Phase Rules` に従い、対象の設計正本を直接確認する。境界・振舞い・永続化・画面のうち影響する資料を選び、未解決の仕様、矛盾、検証不能な合格条件を報告する。
 
-Target module: $ARGUMENTS
+設計レビューだけの依頼では実装しない。実装まで許可されている依頼では、既存Plan GateとHuman Gateの条件を確認して次の許可済み作業へ進む。このcommand独自の再承認は追加しない。

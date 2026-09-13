@@ -1,34 +1,18 @@
 # Codex / OpenAI Agent Guidance
 
-This directory adapts current OpenAI guidance to this repository without changing the workflow contracts in [DEV_WORKFLOW.md](../DEV_WORKFLOW.md).
+仕事の入口と権限は [AGENTS.md](../../AGENTS.md#session-start)。このディレクトリはモデル補助を確認・調整するときに読む。通常の質問や既知の作業で毎回全ファイルを読み直す必要はない。
 
-## Reading route
-
-1. Read the [Shared Contract](shared.md), which applies to Codex/OpenAI sessions across model generations.
-2. Read the slot-neutral profile assigned through [AGENT_OPERATING_MANUAL.md §3.4](../AGENT_OPERATING_MANUAL.md#34-model-slot-対応表):
-   - [frontier](profiles/frontier.md)
-   - [balanced](profiles/balanced.md)
-   - [high-throughput](profiles/high-throughput.md)
-3. If runtime identity or assignment is unavailable, use `frontier`.
-4. Read [model notes](model-notes.md) when they match the explicitly identified runtime model. Unknown or unmatched models use the shared contract and task-fit profile without importing another generation's assumptions.
-5. Continue to the task-specific design document selected by root [AGENTS.md](../../AGENTS.md) `Session Start`.
-
-Profiles describe task fit and response economy only. They must not change approval boundaries, autonomy, validation, workflow phases, Human Gates, or stop conditions from the shared contract and repository source docs.
-
-Personal response style belongs in an ignored root `AGENTS.override.md`, not in tracked guidance. Because a root override replaces the root instruction file during discovery, it must load `./AGENTS.md` before applying any local extension.
-
-The public, extension-neutral regression fixture is [Decision Gate Fixture](evals/decision-gate-fixture.md). Prompts, outputs, scores, and local extensions used in an actual comparison remain local-only.
+- [Shared Contract](shared.md): 共通契約との接続と指示競合の扱い。
+- profile は用途別: [frontier](profiles/frontier.md)、[balanced](profiles/balanced.md)、[high-throughput](profiles/high-throughput.md)。未指定は frontier。model や承認権限の指定ではない。
+- [モデル差分メモ](model-notes.md): 明示された実モデルに合う補助だけを使う。未知モデルへ別世代の性質を転記しない。
+- [文脈効率の設計](context-efficiency.md): 条件付き参照の理由と検証境界。
 
 ## Model updates
 
-モデル名は起動設定、仕事の契約は `shared.md`、世代固有の調整根拠は `model-notes.md` が所有する。モデル選択の正本と一時 override は [.codex/README.md](../../.codex/README.md) を参照。
+モデル選択は [.codex/README.md](../../.codex/README.md) の config / 一時指定が所有する。モデル更新時は対象・確認日・公式根拠を確認し、観測された不足にだけ補助を追加する。Astra の助言を Sol や Claude の実測済み特性として扱わない。
 
-更新時は公式の移行・prompting guidance を確認し、モデル差分メモの対象・確認日・根拠を更新する。共通契約は実際の矛盾や作業上の問題が見つかった場合だけ変更する。既存の [Decision Gate Fixture](evals/decision-gate-fixture.md) と次の実作業で、承認済み作業の継続・未承認 gate の停止・検証範囲を確認する。未知のモデルを自動で「最新」に読み替えない。
+個人の応答スタイルは ignored `AGENTS.override.md`。override は tracked AGENTS をロードしてから適用し、共通の権限や gate を上書きしない。
 
-## Sources
+比較は [Decision Gate Fixture](evals/decision-gate-fixture.md) と [Context Routing Fixture](evals/context-routing-fixture.md) を使う。個人拡張・会話全文・実測ログはlocal-only。文字数の削減と実モデルのtoken・判断結果を区別する。
 
-- OpenAI: [Custom instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
-
-## Proposed context efficiency
-
-[文脈効率の設計](context-efficiency.md) は独立レビュー前の提案。merge 前の読書順序や gate は現行 AGENTS / DEV_WORKFLOW のまま扱う。
+出典: [OpenAI AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)、[Skills and prompts](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)。

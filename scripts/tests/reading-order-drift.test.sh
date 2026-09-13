@@ -14,8 +14,7 @@ fail() {
     exit 1
 }
 
-# canonical reading order（AGENTS.md Session Start: AGENTS -> DEV_WORKFLOW -> Plans ->
-# project-memory -> task docs）の再掲を検出する正規表現。矢印列挙・番号列挙のいずれも
+# 退役した無条件の全文読書列の再掲を検出する正規表現。矢印列挙・番号列挙のいずれも
 # 実体は「4 つのランドマークがこの順序で近接して出現する」ことなので、単一パターンで
 # 両形式を捕捉する。近接判定の window（80 文字）は実 repo で検証済み（無関係な言及が
 # 数百文字離れて出現する程度では誤検出しないことを負例で確認する）。
@@ -59,10 +58,9 @@ if ! rg -U --multiline-dotall -q "$DRIFT_PATTERN" "$SOURCE_ROOT/docs/decision-lo
     fail "docs/decision-log.md の既知の再掲（D-034）が検出できません。パターンが壊れています"
 fi
 
-# --- 正例: AGENTS.md 自身は canonical reading order の定義元であり、
-#     パターンに一致すること自体は問題ない（対象リストから除外済みであることが誤検出防止の実体）---
-rg -U --multiline-dotall -q "$DRIFT_PATTERN" "$SOURCE_ROOT/AGENTS.md" ||
-    fail "AGENTS.md 自身の Session Start がパターンと一致しません（パターンの前提が崩れている可能性）"
+# HC-D1/HC-D9: AGENTS now owns conditional routes. Its absence from the
+# retired full-reading chain is valid; entry behavior is checked by the
+# context-routing fixture rather than an exact wording assertion.
 
 # --- 合成 fixture: 一般的な再掲を検出できることを確認 ---
 tmp="$(mktemp -d)"

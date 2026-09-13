@@ -1,5 +1,7 @@
 # Workflow Effectiveness Review
 
+Use existing evidence and fill the sections relevant to this change. Do not rerun all checks or transcribe raw logs merely to fill this report. Retired / Consolidated Rules and Applied / Deferred Workflow Changes retain their existing required purpose.
+
 ## Workflow Used
 
 - Project Profile:
@@ -70,6 +72,8 @@ Mutation-style observations:
 - useful cost:
 - excessive friction:
 - confusing steps:
+- repeated reading / redundant tool output / unnecessary stops:
+- model usage when measured (parent + child + retries; cached and noncached inputs separated; unmeasured fields marked):
 - review rounds (broad audit / closure確認の内訳):
 - state-only commits / 総commit数:
 

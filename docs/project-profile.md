@@ -30,7 +30,7 @@ AI Quality Workflow を inventory-system に適用するための project-local 
 | Spec index | `docs/spec/README.md` | workflow-facing map to current source documents |
 | Archived plans | `docs/archive/plans/` | task-local evidence, review rounds, validation records |
 | Dashboard | `Plans.md` | current status, next actions, lightweight task links |
-| Handoff | `docs/PROJECT_HANDOFF.md` | broad project context; may lag live status, so prefer `Plans.md` for current work |
+| Handoff | `docs/PROJECT_HANDOFF.md` | navigation to current sources; live state belongs in `Plans.md` |
 | Workflow adaptation | `docs/project-profile.md` | repo-specific mapping for AI Quality Workflow |
 | Workflow index | `docs/DEV_WORKFLOW.md` | repo-local workflow routing, artifact map, risk gates |
 | CI routing | `docs/ci.md` | local changed / local full / hosted final、budget、cache、Disabled migration |
@@ -225,7 +225,7 @@ Project-specific failure modes to test:
 
 ## Workflow Notes
 
-- Plan Packet is expected for R2+ active plans.
+- Read this profile when project-specific risk or verification boundaries are needed; it is not a mandatory full read for a standalone question. Plan Packet is expected for R2+ active plans.
 - Design Phase happens before Plan Packet for R2+ work when source design docs may be affected.
 - Plan Packets are implementation planning evidence, not durable design source of truth. Durable design belongs in architecture, DB design, function design, screen/UI design, decision-log, or ADR docs.
 - R3/R4 should use a Test Design Matrix and explicit Boundary / Wire Contract.
@@ -233,7 +233,7 @@ Project-specific failure modes to test:
 - Requirement/spec IDs should be attached to tests or test comments when the touched area has traceability.
 - Behavior changes must update the relevant source document in the same change: architecture, DB design, function design, screen design, or UI tech stack.
 - Task-local evidence belongs in active/archive plans. Long PR histories should not make `Plans.md` the product truth.
-- `docs/PROJECT_HANDOFF.md` may lag live implementation status. Use it for broad context, not current branch truth.
+- `docs/PROJECT_HANDOFF.md` is navigation only. Current state is in `Plans.md`; long candidates are in `docs/backlog.md`, and archived handoffs are historical.
 - CI merge evidence uses L0 pre-push, L1 local-ci full, and L2 hosted final. Docs-only is 0 hosted runs; workflow/script and unknown paths route to full gates. Treat local evidence as valid only when its HEAD SHA matches the PR HEAD.
 - Claude Codeのtracked project hook inventoryはD-059採用時点で0本、`claude-code-harness`はproject scopeで無効。repo-owned inventory testをlocal fullとhosted finalで実行し、Plan Gateは既存workflow正本が所有する。
 - Keep CMD thin and BIZ authoritative. UI and CMD should not duplicate business rules that belong in BIZ.
@@ -255,11 +255,11 @@ Project-specific failure modes to test:
 ## Open Questions
 
 - Should existing research ADRs be physically promoted to `docs/adr/` later, or remain linked from the ADR index indefinitely?
-- Should `docs/PROJECT_HANDOFF.md` be demoted to broad handoff only and stripped of live progress sections in a follow-up?
+- `docs/PROJECT_HANDOFF.md` is navigation-only; keep its source links current instead of copying live progress.
 - Is the existing tracked POS sample/reference data intentionally still tracked, or should new policy require synthetic-only tracked fixtures for future samples?
 
 ## Suggested Follow-up
 
 - Add Plan Packet/Test Design Matrix examples for one real R3 inventory change.
 - Dogfood `$inventory-workflow-start` on the next R2/R3 inventory change and run Workflow Effectiveness Review when enough evidence exists.
-- Later, decide whether `docs/PROJECT_HANDOFF.md` should stop carrying live progress sections.
+- Keep future progress in `Plans.md` and preserve historical evidence in archive.

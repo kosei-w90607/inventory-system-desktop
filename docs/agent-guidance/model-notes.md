@@ -1,16 +1,19 @@
 # モデル差分メモ
 
-- 対象: GPT-6 Astra (`gpt-6-astra`)
-- 公式情報確認日: 2026-09-05
-- 適用条件: セッションで対象モデルが明示されている場合だけ。モデルを選択・変更する設定ではない。
+公式確認日: 2026-09-13。実モデルが明示された場合だけ該当する補助を使う。設定によるモデル選択や、repositoryでの性能改善の実測結果ではない。
 
-公式が挙げる傾向と、この repository での調整:
+## GPT-6 Astra
 
-- 確認質問で止まりやすい: [共通契約](shared.md) の既存承認の継承・現在 phase 内の準備完了を適用する。新しい承認免除は作らない。
-- Skill / AGENTS の指示に敏感: 矛盾した指示を修正し、追加の停止条件を推測しない。
-- 応答と検証が膨らみやすい: 必要な証拠を残しつつ簡潔に報告し、必須チェック後の再検証には具体的な理由を求める。
-- 委譲が少なくなりやすい: repository が要求する独立レビューを実施する。汎用的な委譲推奨で budget・役割独立性を変更しない。
+`gpt-6-astra` は指示競合による停止や検証の膨張に注意する。新しい一律の注意書きを増やす前に、重複するSkill・曖昧な承認境界・不要な反復指示を整理する。目的と完了条件を明確にし、許可済み作業を完遂する。必要な独立レビューは維持する。
 
-これらは公式記載の傾向であり、repository 固有の性能改善を実測したという意味ではない。未知のモデルには引き継がず、次の採用時に公式情報と実作業で再評価する。
+根拠: [Skills and prompts](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)、[Prompting best practices](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices)。
 
-出典: [OpenAI prompting best practices](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices)。この URL の内容は更新されるため、将来の確認では対象モデル名も照合する。
+## GPT-5.6 Sol と未知のモデル
+
+共通契約と用途別profileを使う。今回の整理では、Solだけに長い旧手順を残す根拠は未実測。共通の短い依頼で不足が観測された箇所にだけ補助を追加する。Astra向けの傾向を自動継承しない。
+
+## Claude Code との共有境界
+
+共有workflowの契約は同じ。Claudeのモデル補助は `CLAUDE.md` とAnthropicの当該モデル向けガイドを参照する。CLIの設定とAPI専用パラメータを混同しない。
+
+根拠: [Claude Code best practices](https://code.claude.com/docs/en/best-practices)、[Claude model-specific prompting](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)。

@@ -23,13 +23,9 @@ Review critically for contract violations, compatibility, tests, docs drift, and
 
 ## Repository Context To Inspect
 
-Must inspect:
-- PR diff
-- Plan Packet
-- Relevant specs
-- Changed source files
-- Changed tests
-- Data safety boundaries
+Use AGENTS.md Session Start for the applicable route. First review: inspect the PR diff, related source specs, changed code/tests, data safety boundaries, and the Plan Packet/Matrix when required by Risk. A standalone R0/R1 review does not gain a Plan Packet requirement.
+
+Closure: start from previous findings, the correction diff, and affected contracts/tests. Broaden only for newly affected behavior or concrete defect evidence. Preserve mandatory Contract Audit/Double Audit and Findings Freeze from DEV_WORKFLOW.md.
 
 ## Scope
 
@@ -55,8 +51,4 @@ Treat as claims:
 - `severity - file:line - issue / impact / smallest safe fix`
 - If no P1/P2, say so explicitly.
 
-## Open Questions
-## Merge / Split Judgment
-## Verification Gaps
-## Review Notes
-## Review Summary
+Include unresolved questions, verification gaps, and a merge/split judgment only when relevant. Do not repeat the findings in several summary sections.

@@ -28,7 +28,7 @@ This is the inventory-system workflow index. Keep the detailed product truth in 
 
 | Artifact | Location | Rule |
 |---|---|---|
-| Live dashboard | [Plans.md](../Plans.md) | Current phase, active work, blockers, next actions only. |
+| Live dashboard | [Plans.md](../Plans.md) | Current phase, active work, blockers, next actions only; the long candidate list is [backlog.md](backlog.md). |
 | Active plan packets | `docs/plans/` | Dated `YYYY-MM-DD-*.md` files. R2+ should use [templates/plan-packet.md](templates/plan-packet.md). |
 | Test design matrices | `docs/plans/test-matrices/` | Required for R3/R4, optional for tricky R2. |
 | Archived plans | `docs/archive/plans/` | Completed or superseded task evidence. |
@@ -223,7 +223,7 @@ Design completion criteria:
 
 ## Implementation Rules
 
-- Start from the canonical reading order in [../AGENTS.md](../AGENTS.md) `Session Start`. Do not restate that order anywhere, including this file; link to it.
+- Start from the applicable route in [../AGENTS.md](../AGENTS.md) `Session Start`. Read the sections needed for the current task/phase; do not duplicate the route or reload unrelated history.
 - Use `$inventory-workflow-start` ([Skill doc](../.agents/skills/inventory-workflow-start/SKILL.md)) for kickoff and `$inventory-implementation` ([Skill doc](../.agents/skills/inventory-implementation/SKILL.md)) for scoped implementation work.
 - `$...` workflow skills are Codex/OpenAI harness entrypoints under `.agents/skills/`. Claude Code sessions that do not load those skills should follow `AGENTS.md`, this document, and the linked Skill files as plain procedure docs.
 - Keep `UI -> CMD -> BIZ -> IO/MNT` intact. UI must not call IO. CMD must stay thin.
@@ -433,7 +433,7 @@ Repository evidence:
 - Move completed active Plan Packets and Test Matrices from `docs/plans/` to `docs/archive/plans/`, preserving evidence and fixing links.
 - Update `Plans.md` so it reflects current live state, completed work, archived evidence, and next action.
 - Wave Operation では merge 済み lane を個別に archive し、`Wave Registry` の lane 状態を同期してから train の次 lane を進める。全 lane の closeout 後に wave 1 の WER を完了し、3 lane 化の判断材料とする。
-- Update `docs/PROJECT_HANDOFF.md` after meaningful project progress.
+- Update `docs/PROJECT_HANDOFF.md` when its navigation targets change; live progress belongs only in `Plans.md`.
 - For R3/R4 or workflow changes, complete Workflow Effectiveness Review or name the next dogfood target.
 
 Verification and publish:

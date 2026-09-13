@@ -1,3 +1,5 @@
+<!-- 移送前の記録。現在の状態は docs/Plans.md を参照。本文を保存し、相対リンクだけ移送先に合わせて補正。 -->
+
 # Project Memory
 
 ## Purpose
@@ -78,10 +80,51 @@ Keep it factual and stable.
 - The operator PC screen is not customer-visible during normal operation
 - Price revisions are applied promptly without waiting for any notice-listed effective date; large lists (up to ~400 lines, including non-stocked items) can take several days to work through
 
-## Current Work and History
+## Progress Snapshot
 
-現在のphase・blocker・次の行動は [Plans.md](Plans.md)、未了候補は [Backlog](backlog.md)。この文書には進行状態を複製しない。
+- Completed: A, B, C, D task groups
+- Completed: backend layers through v0.6.0 (`UI / CMD / BIZ / IO / MNT` backend contracts implemented)
+- Completed: Phase 1 UI foundation essentials and Phase 2 daily 5 UI screens
+- Completed: Phase 2 H-6 Windows native 5-screen walkthrough
+- Completed: Phase 2 8-9 decision; E2E and visual regression are not `v0.8.0-ui-daily` tag gates
+- Completed: temporary `typedInvoke` fallback path retirement for Phase 2 closeout
+- Completed: `v0.8.0-ui-daily` tag on PR #75 closeout merge `f44f99a`
+- Completed: post-Phase 2 product-code readability and display-scale follow-up on PR #77 merge `62b851b`
+- Completed: Phase 3 product master UI-01a / UI-01b / UI-01c through PR #100 merge `6bef4b1`
+- Completed: UI-02 receiving stock Design Readiness through PR #102 merge `4f25cde`
+- Completed: UI-02 receiving stock implementation through PR #103 merge `fa34a8e`
+- Completed: UI-04 manual sale implementation through PR #104 merge `32c98e0`
+- Completed: npm/tooling first thaw through PR #105 merge `8184097`
+- Completed: tooling / parallelization map and dialog plugin foundation through PR #106 merge `a2dceff`
+- Completed: UI-03 return/exchange implementation through PR #107 merge `1c8ff66`
+- Completed: post-UI-03 warning cleanup through PR #108 merge `a3e775a`
+- Completed: UI-05 waste/breakage implementation through PR #110 merge `0794342`
+- Completed: completed-capability Design Phase for inbound/outbound business records and inventory-movement traceability through PR #111 merge `5fee926`
+- Completed: DB/BIZ/CMD traceability foundation through PR #112 merge `3f9c4b1`
+- Completed: UI-06c stock movement history through PR #113 merge `f175e74`
+- Completed: inventory records hub and disposal detail route through PR #114 merge `97811b7`
+- Completed: receiving / return-exchange / manual-sale record detail expansion through PR #115 merge `c3a4e9d`
+- Completed: manual sale recent list follow-up through PR #116 merge `145330b`
+- Completed: UI-03 note visibility follow-up through PR #117 merge `06bcc37`
+- Completed: UI-08 pre-check field impact / POS adapter boundary / Impact Review Lenses through PR #118 merge `7fd888c`
+- Completed: REQ-401 SALES daily report design through PR #119 merge `92e4592`
+- Completed: UI-08 PLU design readiness through PR #121 merge `49ca55b`
+- Completed: UI-08 PLU implementation through PR #122 merge `a0e11d6`
+- Current phase: Phase 3 operator UI follow-up. UI-08 PLU implementation is merged against CV17 1.1.1, using the two-step `prepare_plu_export` / `confirm_plu_export_saved` contract. Next scheduled work is REQ-401 SALES implementation based on the PR #119 design.
+- Current live status is in `Plans.md`
+- Workflow convention: after the first implementation pass has passed automated gates and R3/R4 review-only, create a Draft PR for external review / Windows native L3 / owner handoff unless the user explicitly keeps the work local. Keep it Draft until manual checks are complete and the owner asks to mark Ready.
 
-旧Progress SnapshotとOpen Itemsは [移送前のmemory](archive/harness-context/2026-09-14-project-memory.md) に保存した。未決記録の本文は [過去memoryの未決記録](backlog.md#過去memoryの未決記録) に残し、関係する作業で成立・解消状況を確認する。
+## Open Items
 
-重要な判断と理由は [decision-log](decision-log.md) と該当design docを参照する。
+- Whether `宅急便` is in inventory scope
+- `Q40` failure-handling detail
+- SR-S4000 scanning PLU reflection path is confirmed at the procedure/profile level, and PR #122 external gate is accepted by structural equivalence to the confirmed CV17 1.1.1 11-column shape. Use `docs/plu-export-and-real-csv-verification.md` for the Post-UI-08 app-generated `.txt` recheck; do not treat app-side `plu_exported_at` as proof of PC-tool/register reflection.
+- REQ-401 implementation: implement IO-07/BIZ-08/CMD-12 and daily_report_* migration from the archived SALES design, then update UI-07/daily/monthly reports; keep Z004 product-sales track separate until post-PLU verification proves item-level sales import semantics
+- Optional future UI quality follow-up: reassess smoke E2E / visual regression at the timing recorded in `docs/UI_TECH_STACK.md` §7.2: future cross-screen typography/density changes, first Phase 3 cross-screen workflow planning, and before the `v1.0.0` candidate after Phase 4
+- Price-revision support design (issue #90): owner hearing settled the open premises (filter axes, supplier registration path, no provisional-cost flag, cost-column recommendation); Plan Packet drafting is pending. See `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md` and decision-log D-075
+- Stock-take exclusion of long-dormant items (issue #91): merged into the UI-10 stock-take semantics follow-up as a one-line population definition (no system feature); close candidate. See decision-log D-076
+
+## Companion Docs
+
+- rationale: `docs/decision-log.md`
+- live status: `Plans.md`

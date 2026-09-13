@@ -4,13 +4,9 @@ Use this alongside [quality/review-checklist.md](quality/review-checklist.md). T
 
 ## Source Order
 
-1. Live code, diff, tests, and generated files.
-2. [ARCHITECTURE.md](ARCHITECTURE.md), [FUNCTION_DESIGN.md](FUNCTION_DESIGN.md), [DB_DESIGN.md](DB_DESIGN.md), [SCREEN_DESIGN.md](SCREEN_DESIGN.md), [UI_TECH_STACK.md](UI_TECH_STACK.md).
-3. [project-profile.md](project-profile.md), [DEV_WORKFLOW.md](DEV_WORKFLOW.md), and the active Plan Packet's `Design Sources` / `Design Readiness`.
-4. Author summaries, validation logs, and AI comments.
+関係する設計正本から契約を確認し、live code・diff・tests・生成物と照合する。対象に応じて ARCHITECTURE / FUNCTION_DESIGN / DB_DESIGN / SCREEN_DESIGN / UI_TECH_STACK の該当節を選び、無関係な設計書の全文を読む順序にはしない。
 
-Treat summaries as claims until checked against source files or commands.
-If the Plan Packet contains durable design decisions that are absent from source design docs, treat that as design drift unless the PR explicitly keeps the work in design-only scope or names a concrete follow-up.
+Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ は対象packetの Design Sources / Design Readiness を確認する。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
 
 ## Blocking Review Focus
 
@@ -36,6 +32,8 @@ If the Plan Packet contains durable design decisions that are absent from source
 Risk tier describes the change. Severity describes each finding.
 
 ## Verification Rules
+
+Review entry follows `AGENTS.md` `Session Start`. Initial review reads the touched source contracts directly. Closure starts from prior findings, correction diff, and affected contracts/tests; expand for newly affected behavior or concrete defect evidence. Do not impose a second full startup reading route. Existing Contract Audit / Double Audit, Findings Freeze, and gate evidence remain required.
 
 - P1 must include direct evidence: file/line, command output, schema contract, or reproducible path.
 - Split the problem claim from the suggested fix. A weak fix idea does not weaken a real finding.
