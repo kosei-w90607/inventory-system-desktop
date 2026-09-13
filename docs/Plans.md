@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **マージ検証整理（R3、計画準備）**: [Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。このbranchでGitHub強制・軽いdocs経路・SHA手作業削減を設計し、独立Plan Reviewを通す。実装・設定有効化はまだ行わない。
+- **マージ検証整理（R3、plan-approved / 実装採用待ち）**: [Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。動機・GitHubとhelperの強制範囲・軽いdocs経路・SHA手作業削減を設計し、独立Plan ReviewはP1/P2=0。次はownerの実装採用判断後、予算案と補足P3をamendmentへ反映して実装へ進む。設定有効化は具体的payloadの完成・検証後。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 

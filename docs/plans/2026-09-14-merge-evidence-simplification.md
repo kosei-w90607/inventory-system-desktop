@@ -2,15 +2,15 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
-- Plan Commit: pending
+- Plan Commit: 64cedd7e6b1a459ae5d780920b5aab21123baf3c
 - Amendments: none
 - Coordinator: owner（起草・調査は現在のCodex）
 - Writer: Codex（ownerがこのセッションで設計を詰めるよう依頼。実装は本依頼の範囲外）
-- Plan Reviewer: Opus（独立fresh context、xhigh。GitHub/CI/状態移行が交差する計画のため）
+- Plan Reviewer: Opus（独立fresh context。初回xhigh、修正確認high）
 - Final Reviewer: 非Codexの独立Double Audit（実装後。担当は実装開始時に可用性で確定）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -188,3 +188,17 @@ MG-D1〜D12を実装する。Plan Gate/独立review/owner権限/Windows・R4保�
 - Findings Freeze: not yet frozen
 
 Opus初回reviewのP2を修正する案として、aggregate ifの負例、hosted PK5/parity、base同期時のclosure/manual適用判断、docs probeの実施順序、条件付きsource、rollout予算案を具体化した。方向性の変更や稼働設定の適用は行っていない。追加Plan Reviewで確認し、必要なowner裁定は実装開始の判断に提示する。R2の強制範囲指摘についてはownerがCIのみをGitHub、その他をhelperと運用規律で確認する案を採用した。schemaはsourceのRecordV1へ統一する。現行コードや設定を変更せずに、すぐ実装へ移れるところまで具体化する。
+
+### Plan Review closure（2026-09-14）
+
+独立Opus Highが候補`f378da4d`をround 3で確認し、P1/P2=0、技術的Plan Gate通過と報告した。R2 N-1（強制範囲）とN-2（wire契約）はclosed。初回plan-first commitとMatrixが実装に先行し、production codeは未変更。この結果を根拠に`plan-gate -> plan-approved`をmaterializeする。実装開始、rollout予算案、本番設定の承認は未取得のまま保持する。
+
+レビューの補足P3は追加reviewを回さず、実装開始時の予算amendmentと合わせて扱う確認事項として保存する。現候補の契約を変更済みとは扱わない。
+
+- P3-1: manual再利用の元server recordが実際にpassだったこととevidenceの出所を確認する負例、版変更後の記録順序を具体化する。closureを先に記録して旧manualを失う費用と、未passの結果を再利用する危険を防ぐ。
+- P3-2: PacketのBoundaryに、RecordV1のconsumerはhelperだけであることを明示する。CI evaluatorが扱うjob結果との記述を分ける。
+- P3-3: main向け合成failure PRの作成・closeを、bootstrap Ready時に提示する具体的な操作範囲へ含める案とする。ruleset probeの後の承認を先取りしない。
+- P3-4: 運用正本・入口・PR templateへの同期確認に、helperの強制範囲、直接UI merge禁止、server側の残存リスクを含める。
+- 補足: R2+のBroad.plan_commitにnullを許さない扱いを明文化する。契約を変えないamendmentでも同一性の機械照合は新しいbroadを要求し得るため、当面は安全側の費用として扱い、証明形式を追加して回避しない。
+
+詳細reviewと検証ログはlocal-onlyの`.local/merge-evidence/plan-review-r3.json` / `plan-doc-check-r3.log`。GitHub上のdynamic check名・実効拒否・docs経路は未実測で、source記載の有効化前検証を維持する。
