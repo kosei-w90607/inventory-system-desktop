@@ -412,4 +412,47 @@ assert_rejected "T15 launcher root resolution failure" "cannot resolve repositor
 assert_rejected "T15 bar root resolution failure" "cannot resolve repository root" \
     env -u CODEX_INVENTORY_REPO "$non_git_dir/.codex/bin/codex-inventory-bar" --debug
 
-echo "PASS: codex-safe-wrappers (T1-T15)"
+# SPEC-HARNESS-CONTEXT HC-D8: partial reads preserve exact output and the
+# existing path boundary. These go through the real fixture wrapper.
+printf 'first\n二行目\nthird\nlast\n' > "$fixture_repo/docs/lines.md"
+: > "$fixture_repo/docs/empty.md"
+assert_success "HC-D8 inclusive range" "$read_wrapper" --lines 2:3 docs/lines.md
+printf '二行目\nthird\n' > "$tmp/expected"
+cmp "$tmp/expected" "$out" || fail "HC-D8 range output differs"
+assert_success "HC-D8 single line" "$read_wrapper" --lines 1:1 docs/lines.md
+printf 'first\n' > "$tmp/expected"
+cmp "$tmp/expected" "$out" || fail "HC-D8 single line differs"
+assert_success "HC-D8 range past EOF" "$read_wrapper" --lines 4:99 docs/lines.md
+printf 'last\n' > "$tmp/expected"
+cmp "$tmp/expected" "$out" || fail "HC-D8 EOF clipping differs"
+assert_success "HC-D8 starts past EOF" "$read_wrapper" --lines 8:9 docs/lines.md
+[[ ! -s "$out" ]] || fail "HC-D8 expected empty output past EOF"
+assert_success "HC-D8 empty file" "$read_wrapper" --lines 1:2 docs/empty.md
+[[ ! -s "$out" ]] || fail "HC-D8 expected empty output for empty file"
+assert_success "HC-D8 legacy multi-file" "$read_wrapper" docs/lines.md docs/guide.md
+cat "$fixture_repo/docs/lines.md" "$fixture_repo/docs/guide.md" > "$tmp/expected"
+cmp "$tmp/expected" "$out" || fail "HC-D8 legacy multi-file output changed"
+
+for range in '' '0:1' '-1:2' '2:1' '1' '1:2:3' '01:2' '+1:2' '1:x' \
+    '1:2p' '1:2;true' $'1:2\n' $'1:2\r' '1:999999999999999999999999999'; do
+    assert_rejected "HC-D8 invalid range ($range)" "invalid line range" \
+        "$read_wrapper" --lines "$range" docs/lines.md
+done
+assert_rejected "HC-D8 missing range" "usage:" "$read_wrapper" --lines
+assert_rejected "HC-D8 missing file" "usage:" "$read_wrapper" --lines 1:2
+assert_rejected "HC-D8 multiple range files" "usage:" \
+    "$read_wrapper" --lines 1:2 docs/lines.md docs/guide.md
+assert_rejected "HC-D8 misplaced flag" "refusing option-like path" \
+    "$read_wrapper" docs/lines.md --lines 1:2
+assert_rejected "HC-D8 unknown flag" "refusing option-like path" \
+    "$read_wrapper" --unknown docs/lines.md
+for unsafe_path in docs/outside.md docs/README.md docs/.env docs/loop-a \
+    .github/not-allowlisted.md "${outside_dir}/outside.md" 'docs/../../../outside.md' \
+    "$lf_path" "$cr_path"; do
+    assert_rejected "HC-D8 unsafe partial path ($unsafe_path)" "" \
+        "$read_wrapper" --lines 1:2 "$unsafe_path"
+done
+assert_rejected "HC-D8 option-like range file" "refusing option-like path" \
+    "$read_wrapper" --lines 1:2 --foo
+
+echo "PASS: codex-safe-wrappers (T1-T15, HC-D8)"

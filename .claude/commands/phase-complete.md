@@ -1,9 +1,5 @@
-Run phase completion checks as defined in docs/DEV_SETUP_CHECKLIST.md.
+対象phase: $ARGUMENTS
 
-1. Run `cargo test` - all tests must pass
-2. Run `cargo clippy -- -D warnings` - zero warnings
-3. Run `cargo fmt --check` - no formatting issues
-4. List all test functions and their REQ-xxx mappings
-5. Report which checklist items from DEV_SETUP_CHECKLIST.md are done vs remaining
+`AGENTS.md` `Session Start` から現在の対象を確認し、`docs/DEV_WORKFLOW.md` の現在phaseの完了条件と `docs/ci.md` の必須検証を照合する。
 
-Current phase: $ARGUMENTS
+完了根拠、残る失敗、未実施gate、次の行動を報告する。既存の検証根拠を確認し、同じ全量チェックや全テスト/REQ一覧の再出力を追加しない。phase前進・Ready・mergeは既存の権限と証拠の条件に従う。

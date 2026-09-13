@@ -1,5 +1,5 @@
 ---
-description: プロジェクトでよく使うコマンド一覧（cargo / npm）
+description: inventory-systemのビルド・検証コマンドの参照先
 paths:
   - "src-tauri/**/*.rs"
   - "src/**/*.{ts,tsx,js,jsx}"
@@ -7,23 +7,8 @@ paths:
   - "Cargo.toml"
 ---
 
-# プロジェクトコマンド
+# コマンド
 
-## ビルド・チェック（Rust）
+ビルド・検証は [DEV_WORKFLOW.md](../../docs/DEV_WORKFLOW.md) `Verification Gates` と [ci.md](../../docs/ci.md) の対象範囲に従う。Rustコマンドは `src-tauri/`、frontendはrepo rootで実行する。
 
-```bash
-cargo check                    # コンパイルチェック
-cargo test                     # テスト実行
-cargo clippy -- -D warnings    # リント（警告ゼロを維持）
-cargo fmt                      # フォーマット
-```
-
-## フロントエンド
-
-```bash
-npm install                    # 依存インストール
-npm run build                  # ビルド
-npm run dev                    # 開発サーバー
-```
-
-> Docker は退役済み。詳細経緯は [docs/DEV_SETUP_CHECKLIST.md §A.1](../../docs/DEV_SETUP_CHECKLIST.md) 退役記録を参照（2026-04-03 退役、WSL2 直接運用に切替済）。
+依存導入は `CLAUDE.md` の供給網ガードを維持する。環境の前提は [DEV_SETUP_CHECKLIST.md](../../docs/DEV_SETUP_CHECKLIST.md)。ここに別の全量チェック手順を置かない。

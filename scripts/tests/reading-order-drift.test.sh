@@ -14,8 +14,7 @@ fail() {
     exit 1
 }
 
-# canonical reading order（AGENTS.md Session Start: AGENTS -> DEV_WORKFLOW -> Plans ->
-# project-memory -> task docs）の再掲を検出する正規表現。矢印列挙・番号列挙のいずれも
+# 退役した無条件の全文読書列の再掲を検出する正規表現。矢印列挙・番号列挙のいずれも
 # 実体は「4 つのランドマークがこの順序で近接して出現する」ことなので、単一パターンで
 # 両形式を捕捉する。近接判定の window（80 文字）は実 repo で検証済み（無関係な言及が
 # 数百文字離れて出現する程度では誤検出しないことを負例で確認する）。
@@ -59,14 +58,39 @@ if ! rg -U --multiline-dotall -q "$DRIFT_PATTERN" "$SOURCE_ROOT/docs/decision-lo
     fail "docs/decision-log.md の既知の再掲（D-034）が検出できません。パターンが壊れています"
 fi
 
-# --- 正例: AGENTS.md 自身は canonical reading order の定義元であり、
-#     パターンに一致すること自体は問題ない（対象リストから除外済みであることが誤検出防止の実体）---
-rg -U --multiline-dotall -q "$DRIFT_PATTERN" "$SOURCE_ROOT/AGENTS.md" ||
-    fail "AGENTS.md 自身の Session Start がパターンと一致しません（パターンの前提が崩れている可能性）"
+# HC-D2/HC-D9: structural contract lint, not proof of model behavior.
+# Keep the R2+ route, complete state input, and fail-closed marker discoverable;
+# the routing fixture separately checks what models actually do with them.
+check_entry_contract() {
+    local entry
+    entry="$(awk '/^## Session Start[[:space:]]*$/ { active=1; next }
+        active && /^## / { exit } active { print }' "$1")"
+    if ! printf '%s\n' "$entry" | rg '^\|' | rg 'R2\+' |
+        rg -i '(実装|再開|implement|resume)' | rg 'Workflow State' |
+        rg -qi '(完全|complete|full)'; then
+        echo "missing R2+ complete Workflow State route: $1" >&2
+        return 1
+    fi
+    if ! printf '%s\n' "$entry" | rg -q 'fail-closed'; then
+        echo "missing fail-closed boundary in Session Start: $1" >&2
+        return 1
+    fi
+}
+check_entry_contract "$SOURCE_ROOT/AGENTS.md" || fail "entry contract is incomplete"
 
 # --- 合成 fixture: 一般的な再掲を検出できることを確認 ---
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+
+# Real policy mutations: a missing route and a missing stop boundary must fail.
+awk '!/^\| R2\+ /' "$SOURCE_ROOT/AGENTS.md" > "$tmp/no-r2.md"
+if check_entry_contract "$tmp/no-r2.md" >/dev/null 2>&1; then
+    fail "missing R2+ route was accepted"
+fi
+sed '/fail-closed/d' "$SOURCE_ROOT/AGENTS.md" > "$tmp/no-stop.md"
+if check_entry_contract "$tmp/no-stop.md" >/dev/null 2>&1; then
+    fail "missing fail-closed boundary was accepted"
+fi
 
 cat > "$tmp/onboarding.md" <<'FIXTURE'
 # Onboarding

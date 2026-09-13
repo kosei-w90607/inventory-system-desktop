@@ -1,195 +1,32 @@
-# Review-only Sub-agent Packet Template
-
-## Usage
-
-Use before PR/external review, especially for R3/R4.
-
-The sub-agent is review-only:
-- no edits
-- no patches
-- no broad cleanup
-- findings only
-
-All findings must be verified by the implementer.
-
-## Review Packet
-
-```md
 # Review-only Sub-agent Packet
+
+R3/R4 の独立レビューへ、下の対象情報を埋めて渡す。手順・Risk・承認は [DEV_WORKFLOW.md](../DEV_WORKFLOW.md)、重大度と裁定は [code_review.md](../code_review.md) を正本とし、ここに複製しない。
 
 ## Role
 
-You are a review-only sub-agent.
-Do not edit files.
-Do not apply patches.
-Do not run broad cleanup.
-Do not make style-only findings unless style hides a correctness issue.
+read-only の独立 reviewer。tracked file の編集、patch適用、git/PRの変更、範囲外の清掃は禁止。作者の説明とvalidationはclaimとして、対象の正本・差分・実行結果で確認する。初回監査か既存findingのclosureかを区別する。まず検出範囲を確保し、correctness・契約・テスト・文書drift・互換性・データ安全の問題を軽微さや不確実さだけで黙って落とさない。根拠、推定severity、確信度を示し、採否は既存の裁定へ渡す。
 
-Treat implementation notes, validation logs, and author summaries as claims.
-Verify against live files, diff, tests, specs, and the Plan Packet where possible.
-Optimize for coverage first, then ranking. Do not silently drop a correctness, contract, test, docs-drift, compatibility, or data-safety issue only because it may be low severity or uncertain. Report it with confidence and estimated severity so the implementer can filter.
+## Target
 
-## Task
+- Risk / stage:
+- Plan Packet（R0/R1でない場合）:
+- Source design / critical contracts:
+- Contract Coverage Ledger / Test Design Matrix:
+- 対象差分と内容commit:
+- 初回監査 / closure、既存findings:
+- Scope / Non-scope / accepted residual risks:
+- Claimed validationと必要な証拠の場所:
 
-Risk: <R2|R3|R4>
-Contract ID: <SPEC-... or none>
+## Contract Audit
 
-Primary goal:
-<one paragraph>
+R3/R4 は [Contract Audit](../DEV_WORKFLOW.md#contract-audit-r3r4) をsource docsから実施する。Ledgerの行が存在するだけでなく、実装とテストが契約に合うこと、未記載の契約、状態遷移、隣接patternの移植漏れ、test oracleの検出力を確認する。実mutationによるred確認は隔離fixtureで行い、tracked成果物を変更しない。
 
-## Plan Packet Source
+Planに適用されたImpact Review Lensesは、対象・期待する根拠とともに引き継ぐ。非該当lensの欄を埋めること自体をfindingにしない。自動化できない確認は既存のL3条件に従い、対象画面・到達手順・観測可能な合格基準を示す。
 
-Plan:
-<path>
+状態遷移・証跡・Readyの変更を扱う場合は、[Workflow State](../DEV_WORKFLOW.md#workflow-state) と [ci.md](../ci.md) の該当契約を直接確認する。state-onlyはfile名とzero-context hunkの両方を確認し、必要なfinal HEAD一致を維持する。
 
-Reuse:
-- Risk
-- Goal
-- Scope
-- Non-scope
-- Acceptance Criteria
-- Test Plan
-- Review Focus
-- Impact Review Lenses, when present or applicable
-- Spec Contract, for R3/R4
-- Trace Matrix, for R3/R4
-- Data Safety, for R3/R4
-- Design Sources and Design Readiness
-- Design Intent Trace and Design Intent Audit, for R3/R4
+closureは前回指摘と修正差分、影響する契約から確認する。新しい影響や重大欠陥の根拠があれば拡張し、その理由を示す。既読で変更のない全資料の再読を独自に要求しない。Double Audit、Findings Freeze、review round上限は正本に従う。
 
-## Design Sources
+## Output
 
-Source docs to verify against:
-- <docs/ARCHITECTURE.md or related architecture doc>
-- <docs/function-design/...>
-- <docs/SCREEN_DESIGN.md or docs/UI_TECH_STACK.md>
-- <docs/DB_DESIGN.md or docs/db-design/...>
-- <decision-log / ADR if relevant>
-
-## Design Intent Trace
-
-Verify:
-- spec / requirement IDs connect to source design sections
-- design decision IDs carry why / rejected alternatives in source docs, decision-log, or ADR
-- implementation and test targets can be derived from the source design docs
-- no durable design rationale exists only in the Plan Packet or author summary
-
-## Test Design Matrix
-
-<path or inline summary if available>
-
-Review test adequacy:
-- Which contract does each test protect?
-- Which failure mode does it catch?
-- Would it fail for a broken implementation?
-- Are negative paths covered?
-- Are schema/data safety/main wiring checks covered?
-
-## Impact Review Lenses
-
-Include this section when the Plan Packet has `Impact Review Lenses`, or when the task involves field investigation, real-device confirmation, external tool behavior, POS/register integration, CSV/TSV/report format changes, operator workflow discoveries, or a finding that may change source design assumptions.
-
-Use `docs/DEV_WORKFLOW.md` as the canonical lens list. Do not invent product facts from the lenses; use them to check for missing design, evidence, tests, or follow-up.
-
-| Lens | What to review in this change | Expected evidence |
-|---|---|---|
-| Adapter / core boundary | <adapter/core leakage or not applicable> | <source doc / diff / plan evidence> |
-| Fact check / design decision split | <observed facts vs app decisions> | <investigation doc / decision-log / design doc> |
-| Lifecycle / retry | <before/during/after/failure paths> | <function/DB/UI design / tests> |
-| Operator workflow | <real operator sequence and recovery> | <screen/function design / manual checks> |
-| Replacement path | <replaceable external-system parts vs stable app contracts> | <architecture/function design> |
-| Data safety / evidence | <real-data exposure and anonymized evidence> | <Data Safety / git status / changed files> |
-| Reporting / accounting semantics | <totals/summaries/items/returns/inventory meaning> | <DB/function/report design / tests> |
-| Manual verification | <claims requiring Windows native, external tool, or real device> | <Test Matrix / PR body / manual checklist> |
-
-Ask the sub-agent to report missing or incorrectly applied lenses as findings when they can hide a contract, data-safety, test, manual-verification, or future replacement risk. Do not make a finding merely because a non-applicable lens is marked not applicable with a coherent reason.
-
-## Critical Contracts
-
-- <contract>
-- <design doc contract>
-
-## Non-scope
-
-Do not require:
-- <non-scope>
-
-## Changed Files
-
-- <path>
-
-## Claimed Validation
-
-Treat as claims:
-- <command> -> <result>
-
-## Known Accepted Risks
-
-- <risk>
-
-## Contract Audit Required
-
-For R3/R4, execute `docs/DEV_WORKFLOW.md` `Contract Audit (R3/R4)` from source design docs:
-
-- re-verify every Contract Coverage Ledger row against actual implementation, tests, and L3/non-scope disposition; row presence alone is insufficient
-- report negative space: every touched source-doc contract absent from the ledger, implementation, or tests
-- verify State Lifecycle Matrix transitions and Adjacent Pattern Audit coverage
-- challenge mutation/anti-tautology adequacy by requiring the reviewer to inject a real mutation and confirm the relevant test fails, including distinguishable mock/design values and invalidate/refetch ordering
-- move non-automatable assertions to explicit L3 items with screen, reachability steps, and observable pass criteria
-- check the complete PR body for freshness against the final diff, Workflow State, evidence SHA, manual gates, and residual risks
-- for D-035 state/evidence separation, verify `Reviewed Content HEAD` is only audit traceability; final L1 / hosted evidence lives only in the PR body
-- inspect every claimed state-only commit with both file names and `git diff --unified=0` hunks; reject packet Scope/AC/Design/contract/instruction changes or any implementation/test/config change
-- when one state-only commit claims multiple phases, verify that they are adjacent forward transitions, every required evidence item predates the commit, and the append-only narrative reconstructs all intermediate phases; report any gap as a gate bypass
-- before merge, require live PR HEAD = PR-body L1 SHA = hosted headSha when hosted is required, with no later tracked commit; classify any incidental not-required failure per `docs/ci.md`
-
-## Output Required
-
-Findings first.
-Use P1/P2/P3.
-Include evidence with file:line, command, spec, or contract reference.
-Each finding must include a concrete proposed correction (`smallest safe fix`). The Coordinator will `受理せず差し戻す` any finding without one, in accordance with `docs/DEV_WORKFLOW.md` Review Rules.
-```
-
-## Sub-agent Prompt
-
-```md
-You are a review-only sub-agent.
-
-Do not edit files.
-Do not apply patches.
-Do not run broad cleanup.
-If you find a needed change, report it as a finding.
-
-Risk tier describes the change, not finding severity.
-Use P1/P2/P3 only for individual findings.
-
-P1:
-- data loss, destructive behavior, committed secret/source-derived data, broken default runtime, unsafe schema/runtime break
-
-P2:
-- contract violation, missing critical negative test, misleading output/manifest/eval, data safety gap, runtime/config drift
-
-P3:
-- non-blocking robustness, docs/status drift, maintainability, small test clarity issue
-
-Do not make P1/P2 findings for:
-- style preferences
-- naming only
-- future roadmap
-- explicit non-scope
-- accepted residual risks
-
-If the packet includes Impact Review Lenses, use them as review prompts. Report a missing lens only when it creates a concrete contract, data-safety, test, evidence, manual-verification, or replacement-path risk.
-
-Output:
-
-## Findings
-- P1/P2/P3 order
-- `P2 - confidence: medium - path:line - issue / impact / smallest safe fix`
-- 各 finding に具体的修正案（`smallest safe fix`）を必ず添付する。修正案のない finding は Coordinator が `受理せず差し戻す`（`docs/DEV_WORKFLOW.md` Review Rules 準拠）。
-- If no P1/P2, say `No blocking findings.`
-
-## Verification Performed
-## Residual Risks
-## Recommendation
-```
+findings-first、日本語。各findingは `P1/P2/P3 - 確信度 - path:line - 問題 / 影響 / 最小修正案`。P1/P2の有無、実際に確認した対象と検証、残る不確実性を明示する。好みや非対象の将来改善をblockerにしない。合格条件がP1/P2なしのgateで、P2を残したままpassにしない。

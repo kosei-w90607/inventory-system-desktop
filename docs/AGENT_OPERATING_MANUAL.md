@@ -4,7 +4,7 @@
 
 ## 1. 入口
 
-セッション開始の読み順の正本は [AGENTS.md](../AGENTS.md) `Session Start`。本書を含む他文書・skill はそのリストを複製せず参照する。作業中の live 状態は [Plans.md](../Plans.md) を確認する。
+セッション開始の条件付き参照ルートは [AGENTS.md](../AGENTS.md) `Session Start`。本書は役割・可用性・発注方法を判断する場合に関係する節を読み、入口のルートを複製しない。作業中の live 状態は [Plans.md](../Plans.md) を確認する。
 
 `$inventory-workflow-start`（[Skill doc](../.agents/skills/inventory-workflow-start/SKILL.md)）が start / resume 共通の入口。resume 時は active Plan Packet の `Workflow State` を読んで、現在 Phase から dependency-ready な次の一手を選ぶ。
 

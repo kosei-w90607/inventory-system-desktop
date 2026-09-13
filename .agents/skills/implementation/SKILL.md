@@ -1,37 +1,12 @@
 ---
 name: implementation
-description: "Generic implementation workflow for AI-assisted projects using Project Profile, Plan Packet, Test Design Matrix, and review-only sub-agent gates."
+description: Implement a scoped change using the generic AI Quality Workflow Pack when the repository has no dedicated implementation workflow.
 ---
 
-# Implementation Skill
+# Implementation
 
-## Required Reading
+repo 固有の入口・実装 Skill がある場合はそちらを使う。inventory-system では `inventory-workflow-start` / `inventory-implementation` に渡し、この汎用手順を重ねない。
 
-- `docs/project-profile.md`
-- `docs/ai-workflow/core.md`
-- relevant Plan Packet
-- relevant specs / ADRs
-- relevant tests
+汎用 pack を採用する repo では `docs/project-profile.md` と必要な `docs/ai-workflow/` の概念、該当仕様を確認する。Risk に応じた計画・検証・独立レビューを選び、承認された範囲を実装する。
 
-## Workflow
-
-1. Confirm scope and Risk Level.
-2. For R2+, use Plan Packet.
-3. For R3/R4, create or read Test Design Matrix before implementation.
-4. Write Red tests where practical.
-5. Implement.
-6. Run targeted gates.
-7. Run full gates as required by Risk Level.
-8. For R3/R4, run review-only sub-agent by default/requirement.
-9. Verify findings.
-10. Fix accepted findings.
-11. Re-run relevant gates.
-12. Prepare PR review packet.
-13. For R3/R4 or workflow changes, run Workflow Effectiveness Review after review/merge.
-
-## Rules
-
-- Do not rely on self-review alone for R3/R4.
-- Do not treat AI validation as fact.
-- Do not commit source-derived data or secrets.
-- Do not silently widen scope.
+対象テストで失敗を確認し、修正後に必要な gate を通す。レビュー指摘は現物で検証する。実データや秘密をcommitせず、仕様判断と次の行動をrepoの正本へ残す。適用条件・成果物・停止条件はproject側が所有する。
