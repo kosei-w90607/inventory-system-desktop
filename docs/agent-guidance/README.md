@@ -28,3 +28,7 @@ The public, extension-neutral regression fixture is [Decision Gate Fixture](eval
 ## Sources
 
 - OpenAI: [Custom instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+
+## Proposed context efficiency
+
+[文脈効率の設計](context-efficiency.md) は独立レビュー前の提案。merge 前の読書順序や gate は現行 AGENTS / DEV_WORKFLOW のまま扱う。
