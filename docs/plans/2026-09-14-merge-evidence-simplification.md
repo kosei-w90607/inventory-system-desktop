@@ -3,6 +3,7 @@
 ## Workflow State
 
 - Phase: plan-gate
+- Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: pending
@@ -14,7 +15,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: 実装開始 / ruleset有効化 / Ready / merge
+- Human Gate: 実装開始（rollout予算の採用を含む） / ruleset probe・有効化 / Ready / merge
 
 現行のlegacy workflowで設計・Plan Gateを通す。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択した。現在Codexが起草し、別モデルがPlan Review、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。
 
@@ -25,7 +26,7 @@
 - relay 往復上限: 2（規範の既定値）
 - Plan Review round 天井: 3（規範の既定値）
 
-今回の設計方式の選択を介入1回目として記録。残りは実装の採否と、有効化/Ready/mergeの具体的な確認にまとめる。過去PRの例外は継承しない。外部モデルへのrepoの公開可能な指示・設計・差分のread-only送信許可は既存の明示承認を引き継ぐ。
+今回の計画準備は既定3回以内で行い、設計方式の選択を介入1回目として記録する。実装rolloutの予算案は8回（規範値、実績ではない）とし、実装開始時にownerが採否を決める。既知の判断は方式選択、実装採用、bootstrap Ready、bootstrap merge/closeout、検証用設定の実験、本番有効化であり、残りはreview裁定の余地。まとめて承認できる手順はまとめるが、decision pointの計数を隠さない。未採用の8回を現在の予算として使わない。過去PRの例外は継承しない。外部モデルへのrepoの公開可能な指示・設計・差分のread-only送信許可は既存の明示承認を引き継ぐ。
 
 ## Consultation Relay
 
@@ -60,7 +61,7 @@ Plan Gateや独立性の撤廃、アプリ/DB/POS変更、依存更新、global 
 - S2 helper: `scripts/pr-gate.py`（新規）。status/capture/record/ready/mergeと、PR内の非CI記録、表示用local cache。既存gh/Python/Bashを使い、新規packageを導入しない。
 - S3 state: `scripts/doc-consistency-check.sh`、`scripts/check-workflow-git.sh`、`scripts/pre-push.sh`、`scripts/local-ci.sh`。github markerの新packetとlegacyを区別し、新modeの実装後state-only/三点一致を撤去。Plan Commit/Amendmentsの保護は残す。
 - S4 tests: 既存`classify-changes.test.sh`、`ci-workflow.test.sh`、`local-ci.test.sh`、`pre-push.test.sh`、`workflow-git-checks.test.sh`、`doc-consistency-plan-packet.test.sh`、`reading-order-drift.test.sh`。新規`merge-gate.test.sh`、`pr-gate.test.py`。synthetic fixtureで失敗を検出し、helperを実際の呼出経路へ接続する。
-- S5 docs: `AGENTS.md`、`CLAUDE.md`、`docs/{DEV_WORKFLOW,ci,AGENT_OPERATING_MANUAL,project-profile,code_review,decision-log,Plans,PROJECT_HANDOFF}.md`、`docs/agent-guidance/{README,shared,merge-evidence}.md`、`docs/templates/{plan-packet,test-design-matrix,subagent-review-packet,pr-review-prompt,workflow-effectiveness-review}.md`、`.github/pull_request_template.md`、`.codex/README.md`。
+- S5 docs: `AGENTS.md`、`CLAUDE.md`、`docs/{DEV_WORKFLOW,ci,AGENT_OPERATING_MANUAL,project-profile,code_review,decision-log,Plans,PROJECT_HANDOFF}.md`、`docs/agent-guidance/{README,shared,context-efficiency,merge-evidence}.md`、`docs/templates/{plan-packet,test-design-matrix,subagent-review-packet,pr-review-prompt,workflow-effectiveness-review}.md`、`.github/pull_request_template.md`、`.codex/README.md`。
 - S6 Skills: `.agents/skills/{inventory-workflow-start,inventory-implementation,inventory-code-review,pr-review,review-only-subagent}/SKILL.md`、`.claude/rules/{commands,review-workflow,implementation-quality}.md`、`.claude/commands/{check,test,phase-complete,plan-rally,design-review}.md` の今回の契約参照だけを同期。無関係な本文は編集しない。
 - S7 activation: 現repoのmain rulesetの具体的payload・snapshot・read-back手順を用意し、ownerが有効化を承認した後にだけ適用する。検証用GitHub fixtureは合成資料だけとし、mainを変更する負例を実運用のmainへ投げない。
 
@@ -76,11 +77,11 @@ Plan Gateや独立性の撤廃、アプリ/DB/POS変更、依存更新、global 
 ## Acceptance Criteria
 
 - AC1: `merge-gate.test.sh`で必要jobのfailure/cancelled/skipped/欠落/未知値、分類失敗が非0。docsのみではdocs/aggregateが成功し、Rust/frontendを必要扱いしない。
-- AC2: `ci-workflow.test.sh`とlive dogfoodで、Draft runがrequired名`Merge gate`のsuccess/skippedを作らず、Readyの対象job成功後だけ同名gateがsuccessになる。paths-ignore/本文skip tokenによる抜け道がない。
-- AC3: `doc-consistency-plan-packet.test.sh` / `workflow-git-checks.test.sh`の新旧fixtureで、legacyの拒否条件とPlan Gate/Plan Commit/Amendmentsを維持し、新modeは実装後のphase保存のためにtracked変更を要求しない。未知modeや必要field不足は非0。
+- AC2: `ci-workflow.test.sh`とlive dogfoodで、Ready時の分類job failure/cancelledをaggregateのifでskipせずfailureにする。`needs.changes.result == success`をaggregateのifへ足すmutantを検出し、Draft runがrequired名`Merge gate`のsuccess/skippedを作らず、Readyの対象job成功後だけ同名gateがsuccessになる。paths-ignore/本文skip tokenによる抜け道がない。
+- AC3: `doc-consistency-plan-packet.test.sh` / `workflow-git-checks.test.sh`の新旧fixtureで、legacyの拒否条件とPlan Gate/Plan Commit/Amendmentsを維持し、新modeは実装後のphase保存のためにtracked変更を要求しない。markerなしactive packet、未知mode、github modeのlocal-verified以後のtracked Phase、必要field不足は非0。legacy archiveは非遡及。
 - AC4: `pr-gate.test.py`でstale head/base、複数/不正author記録、必要review/manual/R4欠落、API失敗、誤repo、shell特殊文字、確認後head更新を拒否。正常系では必要APIだけで結果を返し、無関係なPR本文を変更しない。
 - AC5: 新modeの通常caseで、Ready/merge前後の`git status`が不変、capture/recordは自動取得した対象版に結び付き、SHA手転記と実装後state-only commitを要求しない（規範の目標。token削減量は未実測）。
-- AC6: localとhostedの必要検証集合を比較し、現行local fullにあるworkflow回帰、bindings、traceability、frontend tests/build、env、docsが失われない。`local-ci.sh full`自体は保持する。
+- AC6: localとhostedの必要検証集合を比較し、現行local fullにある実PRのPK5、workflow回帰、shell-syntax、workflow-yaml、bindings、traceability、frontend tests/build、env、docsが失われない。hosted PK5はfetch-depth: 0を使い、履歴不足を成功にしない。`local-ci.sh full`自体は保持する。
 - AC7: owner承認後に`gh api repos/kosei-w90607/inventory-system-desktop/rules/branches/main`でPR必須・GitHub Actions/15368のMerge gate・strict・bypassなし・削除/force禁止を確認する。sourceの検証用ref手順で拒否とdocs-only PR成功を残す。成功前は旧gateを外さない。
 - AC8: repo-wideのlive参照を更新し、旧の無条件三点照合・state-only強制・main直接closeoutはlegacy/migration説明だけに残る。archiveは書き換えない。`doc-consistency-check.sh`と必要testsが通る。
 - AC9: bootstrapは旧契約の`local-ci.sh full`がCLEAN/PASS、独立Double Audit、owner Ready/merge、hosted証拠を満たす。新modeの有効化後のcloseoutはdocs-only PRで完了し、自身のcloseoutを再帰要求しない。
@@ -151,7 +152,7 @@ GitHub強制と軽いdocs PR経路はowner選択済み。変更対象・各契�
 
 ## Boundary / Wire Contract
 
-producerはGitHub REST/GraphQLとreview capture、consumerはhelper/CI evaluator。repo/PRとhead/base（現repoのfull SHA）を検証し、未知status・不正JSON・重複marker・不正author・欠落gateは拒否する。comment JSONはversion=1、review/manual/r4のoutcomeとevidence pointerのみでCI結果を複製しない。branch名等をshellへ展開しない。旧13-fieldはmarkerなしのlegacy、新mode未知値はlegacyへfallbackしない。
+producerはGitHub REST/GraphQLとreview capture、consumerはhelper/CI evaluator。repo/PRとhead/base（現repoのfull SHA）を検証し、未知status・不正JSON・重複marker・不正author・欠落gateは拒否する。comment JSONはversion=1、review/manual/r4のoutcomeとevidence pointerのみでCI結果を複製しない。branch名等をshellへ展開しない。active packetは明示legacy/github markerを使い、legacyは旧13-fieldを維持する。markerのないarchiveは非遡及。未知modeや新activeでのmarker欠落は拒否する。
 
 ## Review Focus
 
@@ -185,4 +186,4 @@ MG-D1〜D12を実装する。Plan Gate/独立review/owner権限/Windows・R4保�
 
 - Findings Freeze: not yet frozen
 
-Plan Reviewの指摘と採否、到達したgateを追記する。現行コードや設定を変更せずに、すぐ実装へ移れるところまで具体化する。
+Opus初回reviewのP2を修正する案として、aggregate ifの負例、hosted PK5/parity、base同期時のclosure/manual適用判断、docs probeの実施順序、条件付きsource、rollout予算案を具体化した。方向性の変更や稼働設定の適用は行っていない。追加Plan Reviewで確認し、必要なowner裁定は実装開始の判断に提示する。現行コードや設定を変更せずに、すぐ実装へ移れるところまで具体化する。

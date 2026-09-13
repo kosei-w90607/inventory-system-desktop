@@ -18,9 +18,9 @@ Risk: R3
 |---|---|---|---|---|
 | MG-D1/D11 | native保護不足 | fixture + live | pr-gate.test.py / activation probe | context/app/strict/PR要件不足を通す |
 | MG-D2 | false green | shell unit | merge-gate.test.sh（新規） | 必要jobのfailed/cancelled/skipped/missing/unknownが0になる |
-| MG-D3 | Draft→Readyの穴 | YAML + live | ci-workflow.test.sh | Draftがrequired名を成功/skipで発行する |
+| MG-D3 | Draft/分類失敗の穴 | YAML + live | ci-workflow.test.sh | Draftがrequired名を発行、またはReadyのchanges failureでaggregateがskipする |
 | MG-D3/D4 | docsだけで全量/必要policy検証抜け | classification | classify-changes.test.sh | docsとpolicy/実行codeを同じ免除にする |
-| MG-D4/D7 | localから移した検証が消える | integration | run-workflow-tests.sh / ci-workflow.test.sh / local-ci.test.sh | registryにある必要testがhostedから呼ばれない |
+| MG-D4/D7 | localから移した検証が消える | integration | run-workflow-tests.sh / ci-workflow.test.sh / local-ci.test.sh | 実PRのPK5・shell/YAML・suite等の必要gateがhostedから呼ばれず、浅い履歴を成功扱いする |
 | MG-D5/D10 | 旧/新schema混同 | contract | doc-consistency-plan-packet.test.sh / workflow-git-checks.test.sh | 未知modeをlegacy扱い、不足fieldを許す、Plan Commitを変更する |
 | MG-D6 | 記録の誤結合 | HTTP fixture | pr-gate.test.py（新規） | author違い/複数record/古いhead/base/改版時manual継承を許す |
 | MG-D8 | merge時race/通信失敗 | CLI integration | pr-gate.test.py | 確認後pushで別HEADをmerge、API失敗からsuccessを作る |
@@ -36,7 +36,7 @@ Risk: R3
 |---|---|---|---|---|---|
 | legacy bootstrap | 旧Plan Gate/実装 | 旧L1/review/Ready/三点一致でmerge | 内容変更は旧backtrack | 旧gateを維持して是正 | 現行fixture + bootstrap PR |
 | new plan | markerとpre-implementation phase | 独立Plan Review→実装 | 契約変更は再設計/再review | 不備はfail-closed | PK4/PK5 |
-| review capture | clean local=PR head/base | 不変ならrecord可能 | head/base/local変更でstale | 再capture・影響範囲closure | API fixture |
+| review capture | clean local=PR head/base | 不変ならrecord可能 | head/base/local変更でstale | base同期はdelta closure、manual再利用は機械条件＋owner適用判断。R4は新承認 | API/git fixture |
 | new Draft | review未了 | review/manual充足→human-confirm | 新版で古い結果は無効 | ownerの必要判断へ | CLI/record |
 | Ready | owner指示、必要結果充足 | 現版CI成功→merge候補 | 新pushは新gate必要 | failure/skip欠落はmerge拒否 | CI/API |
 | merge | fresh head/base/rules/checks | match-head merge成功 | head/baseが動けば拒否 | 勝手に再実行やadminへfallbackしない | race fixture |
@@ -62,7 +62,7 @@ CI/分類の全consumer、PK4/PK5、local/pre-push、AGENTS/CLAUDE、workflow-st
 
 ## Compatibility Checks
 
-markerなしlegacyは旧13-field/STATECAPを維持。github modeは新static fieldsとPR状態を使い、未知値は拒否。Plan Commit/Amendmentsは両modeで維持。archiveの古いpacketは変換しない。旧globalレシピと食い違う場合はrepoの正本で判定する。現在のNode pin・npm guard・生成義務・L3/R4手順は不変更。
+activeのlegacy markerは旧13-field/STATECAPを維持。github modeは新static fieldsとPR状態を使い、未知値・marker欠落・後期tracked Phaseを拒否。markerなしarchiveは非遡及。Plan Commit/Amendmentsは両modeで維持。archiveの古いpacketは変換しない。旧globalレシピと食い違う場合はrepoの正本で判定する。現在のNode pin・npm guard・生成義務・L3/R4手順は不変更。
 
 ## Data Safety Checks
 
@@ -75,10 +75,12 @@ aggregateが全必要jobをneedsに持つこと、workflow suiteをlocal/hosted�
 ## Mutation-style Adequacy Questions
 
 - required jobのsuccess比較を外すとnegativeがREDになるか。
-- Draftの名前をMerge gateへ固定するとYAML/live検査が失敗するか。
+- Draftの名前をMerge gateへ固定、またはReady aggregateのifへchanges success条件を追加するとYAML/live検査が失敗するか。
 - classifierのpolicy経路をdocsへ落とすと必要suiteの欠落を検出するか。
 - local suiteから1つ取り落とすとparity検査が失敗するか。
 - head/base比較、author確認、複数record拒否、manual改版無効化を外すとREDになるか。
+- base同期候補で、first/second parent不一致、PR差分のbyte不一致、競合・影響あり、owner再利用判断なしをそれぞれ拒否するか。patch-id同値だけを通過根拠にしない。
+- packet不在でもmanual明示を要求し、Double Audit必要時のpass不足、複数packet指定を拒否するか。
 - merge直前にheadを更新したHTTP/git fixtureで、別の版がmergeされないか。
 - cacheだけでpassを返す、statusで書く、通常のPR本文を書き換えるmutantを検出するか。
 
@@ -86,4 +88,4 @@ aggregateが全必要jobをneedsに持つこと、workflow suiteをlocal/hosted�
 
 ## Residual Test Gaps
 
-live dynamic check名、ruleset拒否、docs PR経路は実装後の有効化前に確認する。1回の成功で全変更のtoken効果を保証しない。native checkはモデルreviewの独立性や人の承認内容を証明しないため、役割のreviewを維持する。GitHub障害時は新modeのmergeを停止し、旧例外へ自動fallbackしない。
+live dynamic check名と分類失敗はbootstrap候補で、docs PR経路はbootstrap merge後・production有効化前に確認する。検証用refのPR eventにCIが走るとは仮定せず、成功済みdocs候補をpositive controlへ使う。ruleset拒否は承認された検証用refで確認する。1回の成功で全変更のtoken効果を保証しない。native checkはモデルreviewの独立性や人の承認内容を証明しないため、役割のreviewを維持する。GitHub障害時は新modeのmergeを停止し、旧例外へ自動fallbackしない。
