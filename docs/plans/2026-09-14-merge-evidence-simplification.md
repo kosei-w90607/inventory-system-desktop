@@ -7,7 +7,7 @@
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: 64cedd7e6b1a459ae5d780920b5aab21123baf3c
-- Amendments: none
+- Amendments: 84c9f414b7a55ca73d88f70791132a8495aeb83d
 - Coordinator: owner（起草・調査は現在のCodex）
 - Writer: Codex / Astra xhigh（owner 2026-09-14指定、単独実装。要求モデル・effortであり、実装runの実効metadataは未確認）
 - Plan Reviewer: Opus（独立fresh context。初回xhigh、修正確認high）
