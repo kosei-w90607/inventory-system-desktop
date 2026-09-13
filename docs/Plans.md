@@ -8,8 +8,12 @@
 
 ## 次の行動
 
-- **ハーネス文脈効率（R3、ready-hosted-final）**: [PR #52](https://github.com/kosei-w90607/inventory-system-desktop/pull/52) / [Plan Packet](plans/2026-09-13-harness-context-efficiency.md) / [Matrix](plans/test-matrices/2026-09-13-harness-context-efficiency.md)。実装・独立closureは通過、P1/P2なし。ownerがReady・merge・後処理を承認済み。最終HEADのL1/hosted確認後にmergeする。
-- 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。ハーネス変更へ便乗して製品の採否を変えない。
+- **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
+- 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
+
+## 直近の完了
+
+- **ハーネス文脈効率**: [PR #52](https://github.com/kosei-w90607/inventory-system-desktop/pull/52) をmergeし、[Plan Packet](archive/plans/2026-09-13-harness-context-efficiency.md) / [Matrix](archive/plans/test-matrices/2026-09-13-harness-context-efficiency.md) をarchiveへ移した。必要な読書と保護規定を両立させ、L1/hosted/独立reviewを完了。後続P3と未実測はPRに保持し、次のR2+作業でdogfoodする。
 
 ### Wave Registry
 
@@ -17,9 +21,7 @@
 
 ## ブロッカー
 
-ハーネス整備はowner承認済み。最終HEADのL1/hosted成功と一致を満たすまでmergeしない。後続P3と未実測の範囲はPR本文に保持し、今回のblockerや無関係な製品作業へ置き換えない。
-
-旧「Codex枠切れ」の待機記録に対応するPRは旧dashboardの完了欄にmerge済みと記録されているためarchiveへ移送した。将来の可用性はその時点で確認し、過去の待機記録を新しい作業へ適用しない。
+衛生batch 4を止める製品側のblockerはない。単位の拡張は、店へ送付したPOS数量の打ち方の返答待ち（2026-09-14）。返答前に当該design laneへ着手しない。聞き取り記録と最新状態はBacklogへ引き継いだ。
 
 ## 製品の未決判断
 

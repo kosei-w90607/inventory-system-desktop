@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: ece0977c
@@ -14,7 +14,7 @@
 - Reviewed Content HEAD: e7bf3aeef34a352a3aaa0dcaa4cd98d8981d2379
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: none（ownerがReady・merge・後処理を承認済み。実行は必須のexact-HEAD検証完了後）
+- Human Gate: none（承認済みのmerge・closeoutを完了）
 
 Execution Mode は D-084 の起草・実装・裁定分離を使う。既存 Fable セッションへ新しい権限や作業を送信していない。CLI による非 Codex reviewer の実行可否はレビュー開始時に確認し、不能なら pending のまま gate を前進させない。
 
@@ -83,9 +83,9 @@ owner承認の狭いScope補正（2026-09-14）: `docs/decision-log.md` のD-082
 
 ## Design Sources
 
-- [提案する設計とHC-D1〜D11](../agent-guidance/context-efficiency.md)
-- [workflow](../DEV_WORKFLOW.md)、[役割](../AGENT_OPERATING_MANUAL.md)、[CI](../ci.md)、[profile](../project-profile.md)
-- [AGENTS](../../AGENTS.md)、[Codex共有契約](../agent-guidance/shared.md)、`CLAUDE.md`、既存safe wrapper/tests
+- [提案する設計とHC-D1〜D11](../../agent-guidance/context-efficiency.md)
+- [workflow](../../DEV_WORKFLOW.md)、[役割](../../AGENT_OPERATING_MANUAL.md)、[CI](../../ci.md)、[profile](../../project-profile.md)
+- [AGENTS](../../../AGENTS.md)、[Codex共有契約](../../agent-guidance/shared.md)、`CLAUDE.md`、既存safe wrapper/tests
 
 ## Required Design Artifacts
 
@@ -217,3 +217,7 @@ Freeze後の新規P3は現行規定により後続候補として記録する: s
 2026-09-14: ownerは「Readyからマージ、後処理まで済ませていい」と明示承認した。今回の個別計数起点以後の承認は2回目で、過去累計未実測・旧既定超過を明示する承認済みの表記例外を維持する。未pushの既存docsコミットの統合・pushも承認されたが、本PRの監査対象へ混ぜず、merge後のcloseoutで移送済みBacklogへ内容を引き継ぐ。
 
 このstate-only commitで `human-confirm -> ready-hosted-final` を記録する。結果のexact HEADでL1 fullを実行してPR本文を更新し、Ready eventで必要なhosted finalを取得する。PR HEAD・L1 SHA・successful hosted headShaの一致とmerge可能状態を確認してからsquash mergeする。承認は検証失敗の受容や必須gateの省略を含まない。
+
+## Post-Merge Closeout
+
+2026-09-14: owner承認に基づきPR #52をsquash mergeした。merge時のPR HEAD・最終L1・successful hosted headShaの一致とmerge可能状態を確認済み。最終evidenceはPR本文に保持する。Plan/Matrixをarchiveへ移し、単位の聞き取りと衛生laneの既存docsコミットを履歴ごとmainへ統合した。本文の移送先をBacklogへ合わせ、商品の新しい設計判断は加えていない。次のdogfood対象は衛生batch 4の計画起草とそのR2+ workflow。発注書46は未実行で、起点・参照先・起動指定・条件に応じたRiskの更新が先行する。

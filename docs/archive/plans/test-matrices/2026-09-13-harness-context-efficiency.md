@@ -6,7 +6,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-[source design HC-D1〜D11](../../agent-guidance/context-efficiency.md)。既存の承認/phase/evidence契約とsafe wrapperの拒否境界を維持する。
+[source design HC-D1〜D11](../../../agent-guidance/context-efficiency.md)。既存の承認/phase/evidence契約とsafe wrapperの拒否境界を維持する。
 
 ## Failure Modes
 
