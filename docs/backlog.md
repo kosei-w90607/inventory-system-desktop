@@ -2,7 +2,7 @@
 
 未了作業・保留・受容済みリスクの参照先。作業を選ぶときに読む。現在の進行状態と active packet は [Plans.md](Plans.md) が所有する。
 
-元の本文・未決判断・参照先を移送した。古い記載だけで現在の未実装や blocker と断定せず、着手時に関係する正本と実装を照合する。履歴は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md) を参照。
+元の本文・未決判断・参照先を移送した。L8-4等の製品の未決判断は [Plansの該当節](Plans.md#製品の未決判断) に保持する。古い記載だけで現在の未実装や blocker と断定せず、着手時に関係する正本と実装を照合する。履歴は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md) を参照。
 
 ## Backlog（未了）
 
@@ -236,3 +236,13 @@ A〜D 群（A: DB / B: CSV取込み / C: 独自コード・マスタ / D: 設計
 ### 旧Plansの確認記録
 
 - 上記以外のブロッカーなし。Fable exit runway は完了済み（archive 参照）。Phase 4 第1スライス（UI-11b）は PR #144 の Fable 裁定 P2/P3 修正後に再確認。
+
+## 移送照合で補足した経緯
+
+以下も元の申し送りとして保持する。現在の進行状態や新規の実装義務を表さず、採否や完了は該当する正本と照合する。その他の判断・経緯は [移送前の次の行動](archive/harness-context/2026-09-14-Plans.md#次の行動) に保存している。
+
+- 明示不採用: 架空の操作ログ `実行者`、非 link 「すぐ確認」card、平均単価 / 部門数への summary card 置換、画面固有の意味を壊す共通化、未実装機能を有効 button として描くこと（理由: 架空 field・誤誘導・DB / DTO に無い情報の先行表示のため）
+- residual risk（Gated Amendment 6 S44）: 入力欄・Select の `--control-surface` #fafaf9 化（Gated Amendment 7 S46 で #fff から変更）は L3 で商品一覧のみ確認。他画面の入力欄の白面は Lane 3〜5 の実機で確認する → owner 直回答（下記 E15）で「他画面はもうなっている、違うのは外側の枠内の色」と確認済み
+- B2 入庫の商品追加 list 列順: 「ほんとにやるならの条件付き」のまま（単位が数量の先に来るのは確かにおかしい）。実装前 owner 確認は据え置き
+- E13 `--border-strong` sweep: 対象は (a) outline 系 button = 白地に枠のボタン全般（例: 商品一覧の 「PLU 対象にする」「商品を登録する」・絞り込みのクリア等 `variant="outline"`、`button.tsx:15-16` の枠は `--border` のまま）(b) Badge outline variant (c) 日次 / 月次切替の SegmentedControl（`components/ui/segmented-control` の枠）。いずれも枠が `--border`（薄い）で、入力欄の枠 `--input` = `--border-strong` と濃さが揃っていないのを揃える話。owner 再回答「まぁこれはやってみよう」= 採用（Lane 3〜5 で sweep 実施、実機 before / after で最終確認）
+- L8-7 ページ説明セクション（商品一括インポート / PLU 書出し / バックアップに説明文 3 案、owner culling。PLU 書出しは Z004 読込み→占有確認→書出し→保存→未反映から外す の流れを明示）

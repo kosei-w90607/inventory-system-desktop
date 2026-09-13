@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **ハーネス文脈効率（R3、implementing）**: [Plan Packet](plans/2026-09-13-harness-context-efficiency.md) / [Matrix](plans/test-matrices/2026-09-13-harness-context-efficiency.md)。専用 branch `codex/harness-context-efficiency`、Codex 起草・owner裁定。条件付き読書と重複手順の整理を先行し、既存gateは維持。非Codex Plan Review通過。owner指名により現在のCodexが実装中。
+- **ハーネス文脈効率（R3、implementing）**: [Plan Packet](plans/2026-09-13-harness-context-efficiency.md) / [Matrix](plans/test-matrices/2026-09-13-harness-context-efficiency.md)。専用 branch `codex/harness-context-efficiency`、Codex 起草・owner裁定。条件付き読書と重複手順を実装し、既存gateは維持。reviewのeffort引下げを是正し、Plan契約も含め独立Final Reviewで再確認する。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。ハーネス変更へ便乗して製品の採否を変えない。
 
 ### Wave Registry
@@ -17,7 +17,7 @@
 
 ## ブロッカー
 
-ハーネス整備のPlan Gateは通過済み。実装・検証・独立Final Reviewは進行中で、Ready/mergeはowner判断が残る。
+ハーネス整備は実装済み。旧Plan/Final Reviewのmediumによるpassは通過根拠を保留し、適切なeffortでの是正検証までphaseを前進させない。Ready/mergeはowner判断が残る。
 
 旧「Codex枠切れ」の待機記録に対応するPRは旧dashboardの完了欄にmerge済みと記録されているためarchiveへ移送した。将来の可用性はその時点で確認し、過去の待機記録を新しい作業へ適用しない。
 

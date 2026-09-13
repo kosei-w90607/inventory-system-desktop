@@ -9,8 +9,8 @@
 - Amendments: none
 - Coordinator: owner（起草は Codex、D-084。未解決 findings の採否は owner）
 - Writer: Codex（現在のセッション。owner の明示指名により別 run の指定を置換）
-- Plan Reviewer: Sonnet（round 3 で Plan Gate pass。P1/P2/P3 なし、未確認事項なし）
-- Final Reviewer: Sonnet と Opus の独立した Double Audit（未実行）
+- Plan Reviewer: Sonnet（round 3の当時passはmedium。下記のeffort是正で保証を再確認する）
+- Final Reviewer: Sonnet と Opus の独立した Double Audit（mediumでの結果は通過根拠を保留、xhighで是正検証予定）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
@@ -162,7 +162,7 @@ synthetic fixtureと公開可能なworkflow文書だけを使う。実データ�
 
 ## Implementation Results
 
-S1〜S6の実装を現在のCodexが実施。条件付き入口、Skill/Claude手順の整理、原文archiveとbacklog分離、安全な部分読込みと境界テストを反映した。先行candidateのlocal fullはCLEAN/PASS。独立Final Reviewで見つかったネストした申し送りの保存、再開/closureのケース、節参照と証拠metadataを補正中。現時点ではFinal Review通過を主張しない。
+S1〜S6の実装を現在のCodexが実施。条件付き入口、Skill/Claude手順の整理、原文archiveとbacklog分離、安全な部分読込みと境界テストを反映した。先行candidateのlocal fullはCLEAN/PASS。独立Final Reviewで見つかった申し送り保存、再開/closureケース、節参照と証拠metadataを補正した。ownerのモデル別effort方針と起動指定を同期し、適切なeffortでの是正検証を完了するまでFinal Review通過を主張しない。
 
 ## Review Response
 
@@ -185,3 +185,9 @@ owner 介入は scope 承認とこの裁定を消費。次の裁定が範囲や�
 ## 実装着手の owner 指示
 
 2026-09-14: owner は、Windows側での過去の検証を理由に、別runへWriterを委譲せず現在のCodex自身が実装するよう明示した。このchangeのWriter割当とrun分離だけを置き換える。Scope、設計契約、合格条件、Final Reviewerの独立性は維持する。`plan-approved -> implementing` は最初の実装内容commitに同乗して実体化する。
+
+## Reviewer effort の是正
+
+2026-09-14: ownerはSonnet/Opusの基本をhigh、難問ではxhighと指定した。判断基準は見落とし防止と、手戻りを含む総token効率。既存project設定もhighだったが、Codexがreview用CLIでmediumを明示したため引下げが生じた。Plan/Finalの旧結果・指摘・実行ログは履歴として残すが、mediumのpassだけを通過根拠にしない。
+
+現在のimplementingからphaseを前進させず、Final Reviewの是正検証で承認済みPlanの契約・Matrixも独立に再確認する。新しいPlan rallyやScope/合格条件の変更ではない。入口・承認境界・移送保存が交差する今回の監査はSonnet/Opusともxhighを指定する。起動指定と取得できた実行metadataを保存し、実効effortが応答で確認できない場合はその限界を明記する。残るowner裁定、Ready/mergeは代行しない。

@@ -16,6 +16,14 @@ tracked project hook inventoryは空で、`claude-code-harness`はproject scope�
 
 モデル固有補助は [Anthropicの当該モデル向けガイド](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) と実際の観測で選ぶ。Astraの特性をClaudeへ転記しない。
 
+## Sonnet / Opus の effort
+
+基本は既存の `.claude/settings.json` の `high`。難問では `xhigh` を選ぶ。見落としを防ぐことを優先し、修正・再試行・再レビューまで含む総tokenで効率を判断する。短い出力や一回の消費だけを理由に `medium` へ下げない。
+
+別セッションの `--effort` もこの方針に合わせる。project設定を読まない `--safe-mode` 等では明示指定し、要求値と取得できた実行metadataを記録する。モデル間で同名effortを同じ思考深度と見なさない。Sonnetのfinding収集では確信度や軽微さだけで候補を黙って落とさず、根拠と不確実性を付けて報告し、採否は既存のreview裁定に従う。
+
+根拠: owner方針（2026-09-14）、[Sonnet 5 guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5#calibrating-effort-and-thinking-depth)、[Opus 5 guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)。公式の低effort活用案を、このrepoの既定引下げの許可とは扱わない。
+
 ## 再開とmemory
 
 停止時は `Ctrl+C`、別terminalから `claude --resume <session-id>`、再発時は `--fork-session` を検討する。transcript破損が疑われるAPI 400等では新規sessionでAGENTSの該当ルート、対象の現物、直近の引継ぎから再開する。
