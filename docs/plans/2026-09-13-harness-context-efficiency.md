@@ -2,16 +2,16 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: ece0977c
 - Amendments: 53601661b1d4963b1c322e216a91861bc34abaab
 - Coordinator: owner（起草は Codex、D-084。未解決 findings の採否は owner）
 - Writer: Codex（現在のセッション。owner の明示指名により別 run の指定を置換）
-- Plan Reviewer: Sonnet（round 3の当時passはmedium。下記のeffort是正で保証を再確認する）
-- Final Reviewer: Sonnet と Opus の独立した Double Audit（xhigh是正監査完了。owner承認の一括是正後、Opus highで修正箇所のclosureを行う）
-- Reviewed Content HEAD: pending
+- Plan Reviewer: Sonnet（round 3の当時passはmedium。単独の保証には使わず、xhigh是正監査とhigh closureで承認済み契約を再確認済み）
+- Final Reviewer: Sonnet と Opus の独立xhigh Double Audit、およびowner承認のOpus high closure（pass、P1/P2なし）
+- Reviewed Content HEAD: e7bf3aeef34a352a3aaa0dcaa4cd98d8981d2379
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
 - Human Gate: Ready / merge
@@ -201,3 +201,13 @@ owner 介入は scope 承認とこの裁定を消費。次の裁定が範囲や�
 2026-09-14: ownerは、一括是正差分・修正箇所だけのhigh確認・今回限りの運用例外案への確認に「続けていいよ」と回答した。共有reviewの検出範囲と確信度、既存テストの保護、Human Gateの前提と同一scope内の承認引継ぎ、棚卸しの原申し送り保存を復元する。Ready後の必須full、read引数の位置、runtime依存申告、成果物保存先、L8申し送りの文脈も同じ正本で明確にする。Sonnetのtest-first消失候補は、Skill descriptionのbefore implementingと本文の失敗テスト→修正が存在する根拠で現状維持とする裁定案が承認された。
 
 既存Decision Gate FixtureのS1/S4/S5を是正後に公開合成状態で実行する。個人extensionの比較は行わない。Claude Q、Skill自動発火、Cの入口tool trace等の未実測は明示する。追加Skill・全guardの拡張はこのclosureの必須作業に増やさず、既知P3として次のdogfoodで採否を確認する。D-084の通常適性範囲と別run Writer規定に対して、この承認済みR3ハーネス作業は現在CodexがWriter・ownerが裁定・非Codexが独立reviewを担う個別指示を適用する。過去の修正採用も今回の一括裁定で確認した。一般の役割制約やReady/mergeは変更しない。
+
+## 是正後の検証と独立closure
+
+2026-09-14: 内容候補 `e7bf3aeef34a352a3aaa0dcaa4cd98d8981d2379` のlocal fullは開始・終了CLEAN、PASS、MERGE_EVIDENCE_VALID=true。gated amendment `53601661` の祖先関係とPK5/STATECAPも確認した。Astra medium / Sol highで公開S1/S4/S5を実行し、未決判断の保持、未確認laneの条件付け、解消済み承認の非再要求を確認した。これはAGENTS読取りを試験条件で指定した限定観測であり、自動discoveryやprivate extension比較の合格を主張しない。
+
+独立したOpus high closureは同じ内容候補の差分・契約・owner裁定・実行結果を確認し、pass、P1/P2なしと報告した。既知指摘は修正でclosed、owner裁定の現状維持、または既知P3として後続へ移送された。原文とmodel usage、tool traceはignored evidenceに保持し、必要な結果をPR本文へ反映する。
+
+このstate-only記録は `implementing -> local-verified -> independent-review -> human-confirm` の隣接遷移を実体化する。各条件は内容候補のlocal full、独立closure、ownerの一括裁定により充足済み。Ready/mergeの承認は含まず、Ready後のexact-HEAD L1/hosted要件も維持する。
+
+Freeze後の新規P3は現行規定により後続候補として記録する: sharedの完了/blocked報告規定の通常ルートへの配置、棚卸し申し送りのarchiveにある下位文脈への案内、Ready時のowner例外表記の明確化。ignored evidenceの英語誤字は修正済み。これらを新しいblockerや追加のreview発注理由にしない。

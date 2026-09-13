@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **ハーネス文脈効率（R3、implementing）**: [Plan Packet](plans/2026-09-13-harness-context-efficiency.md) / [Matrix](plans/test-matrices/2026-09-13-harness-context-efficiency.md)。専用 branch `codex/harness-context-efficiency`、Codex 起草・owner裁定。条件付き読書と重複手順を実装し、既存gateは維持。xhigh独立監査の指摘をownerが一括裁定。共通規定と申し送りを是正し、修正箇所をhighで確認する。
+- **ハーネス文脈効率（R3、human-confirm）**: [Draft PR #52](https://github.com/kosei-w90607/inventory-system-desktop/pull/52) / [Plan Packet](plans/2026-09-13-harness-context-efficiency.md) / [Matrix](plans/test-matrices/2026-09-13-harness-context-efficiency.md)。条件付き読書・重複手順整理とowner採用の一括是正を完了。local fullと独立Opus high closureは通過、P1/P2なし。次はownerのReady判断。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。ハーネス変更へ便乗して製品の採否を変えない。
 
 ### Wave Registry
@@ -17,7 +17,7 @@
 
 ## ブロッカー
 
-ハーネス整備は実装済み。mediumのpassは通過根拠にせず、xhigh是正監査に基づく修正とhigh closureを完了するまでphaseを前進させない。Ready/mergeはowner判断が残る。
+ハーネス整備の実装・必須検証・独立レビューは完了。Ready/mergeはowner判断が残る。後続P3と未実測の範囲はPR本文に保持し、今回のblockerや無関係な製品作業へ置き換えない。
 
 旧「Codex枠切れ」の待機記録に対応するPRは旧dashboardの完了欄にmerge済みと記録されているためarchiveへ移送した。将来の可用性はその時点で確認し、過去の待機記録を新しい作業へ適用しない。
 
