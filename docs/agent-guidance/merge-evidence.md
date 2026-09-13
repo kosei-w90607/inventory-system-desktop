@@ -86,7 +86,7 @@ Broad = {head: SHA, base: SHA, plan_commit: SHA|null, amendments: [SHA], audits:
 Closure = {head: SHA, base: SHA, audit: Audit}
 ```
 
-初回のbroad監査はpacketのFinal Review Minimum以上の独立auditを必要とする。auditsは監査の実施記録で、各監査でfindingが出たことを隠さない。現在版の全findingが裁定・解消された場合だけreview.outcomeをpassにする。run_refは重複不可の公開可能な識別子であり、モデルのsession識別子ではない。R2+のreviewをnot-requiredにはできない。R0/R1の不要reviewはbroad/closureともnull。
+初回のbroad監査はpacketのFinal Review Minimum以上の独立auditを必要とする。auditsは監査の実施記録で、各監査でfindingが出たことを隠さない。現在版の全findingが裁定・解消された場合だけreview.outcomeをpassにする。run_refは重複不可の公開可能な識別子であり、モデルのsession識別子ではない。R2+のreviewをnot-requiredにはできず、Broad.plan_commitは承認されたPlan Commitと一致するfull SHAを必須としnullを拒否する。schemaのplan_commit=nullはR0/R1だけに許す。R0/R1の不要reviewはbroad/closureともnull。
 
 broadと現在のhead/baseが同じならclosureはnull。異なる場合は、同じPlan Commit/Amendmentsの範囲で、必要数を満たすbroadを保持し、現在head/baseに一致する独立closureを1回以上必要とする。closureのauditは過去の監査・既存finding・累積修正を踏まえた現在候補の完了判定を含む。単に最新の1行だけ見た結果を完了判定にしない。Plan契約が変わった場合やbroadの同一scope適用を確認できない場合は、新しいbroadを必要とする。base同期にもこのclosure数を適用し、初回Double Auditを無条件にやり直さない。
 
@@ -116,6 +116,8 @@ manualの再実施が不要とownerが判断できる候補は、new headが旧h
 
 許可された再利用ではmanualに元の`source_head`と既存evidence、ownerの適用判断を示す`reuse_approval`を残し、新headで実施し直したとは記録しない。source_headがrecordのheadと異なるpassは、機械条件と非空reuse_approvalを満たす場合だけ受理する。旧記録の検証結果はcaptureへ保持し、無条件に書き換えない。reviewは新headに対するclosureが必要。R4承認は新head/操作条件に対する明示承認を必要とし、このmanual再利用では代用しない。
 
+再利用元は現在serverに存在する正当なrecordのmanual.passに限り、source_headはその確認対象版、evidenceは元記録と一致しなければ拒否する。元recordの欠落・pending/fail・evidenceの差替えや、capture後の元record変更をcacheやCLIのpass宣言で補完しない。版変更時は旧passを含むfresh captureから再利用manualを先に記録し、保持されたbroadと現在版manualをfresh captureしてからclosureを記録する。closureを先に記録して旧manualがpendingへ戻った場合、消えたpassをlocal captureだけで復元せず、manualを再確認する。
+
 manual失敗の修正や対象挙動を変える修正は、既存L3の復旧・改版・canonical先頭からの再実施に従う。旧Waveの証拠維持はlegacyだけの契約とし、新modeではこの規則に一本化する。
 
 ## Helperの境界
@@ -132,7 +134,7 @@ merge時はGitHubのPR head/base・実効rules・必要checkをfreshに取得し
 
 1. この整備は明示legacy markerと現行13-field/三点一致/Double Auditを使う。planning-onlyの今は実行code、CI、rulesetを変更しない。
 2. classifier・aggregate・hosted PK5/suite・helper・新旧packet検査を実装する。markerなしactive packetを新運用へ持ち込まず、archiveは一括変換しない。
-3. bootstrap PR上でDraftの名前とReady full経路を確認する。分類job failureでaggregateがskippedでなくfailureになる負例は、候補CI定義を持つbase=main、head=bootstrap候補から分けた合成fixture branchのPR（mainへmergeせずclose）で確認する。この時点ではdocs-only経路を実証したとしない。
+3. bootstrap PR上でDraftの名前とReady full経路を確認する。分類job failureでaggregateがskippedでなくfailureになる負例は、候補CI定義を持つbase=main、head=bootstrap候補から分けた合成fixture branchのPR（mainへmergeせずclose）で確認する。このPRの作成・closeはbootstrap Ready時に具体的対象を提示してowner承認を得る操作範囲に含め、実装開始承認では実行しない。この時点ではdocs-only経路を実証したとしない。
 4. bootstrap PRを旧gateでmergeする。続いてmain向けdocs-onlyのcloseout/fixture PRを作り、新CIでdocs（PK5含む）＋aggregateが通り、Rust/frontendが走らないことを確認してbootstrapをarchiveする。この移行PRだけはまだ旧manual gateで扱う。CI変更の差分が混じるPRをdocs-only証拠にしない。
 5. 完成したpayloadと検証用ref/ruleset（作成・テストPRのmerge/close・削除を含む）およびproduction適用の範囲をownerへ提示する。承認後に同一rulesの検証用refで拒否を確認する。docsのpositive controlはstep 4の成功headとその検証時baseを使う。probe targetへのPR eventはbranches filterで起動しないため、そこから新CIが走ると仮定しない。
 6. mainとopen PRに未完了legacy作業がないことを確認し、production rulesを有効化してread-backする。新templateはbootstrapで配布するが、新modeのReady/mergeは保護確認まで利用不可。sourceは「条件成立時に新modeを適用」という文面でbootstrapに含め、有効化事実は専用comment/ignored evidence/helper statusへ置く。有効化後にpolicy正本をR0で変更する必要を作らない。

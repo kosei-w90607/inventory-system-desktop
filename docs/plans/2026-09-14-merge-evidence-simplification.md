@@ -2,31 +2,33 @@
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: 64cedd7e6b1a459ae5d780920b5aab21123baf3c
 - Amendments: none
 - Coordinator: owner（起草・調査は現在のCodex）
-- Writer: Codex（ownerがこのセッションで設計を詰めるよう依頼。実装は本依頼の範囲外）
+- Writer: Codex / Astra xhigh（owner 2026-09-14指定、単独実装。要求モデル・effortであり、実装runの実効metadataは未確認）
 - Plan Reviewer: Opus（独立fresh context。初回xhigh、修正確認high）
-- Final Reviewer: 非Codexの独立Double Audit（実装後。担当は実装開始時に可用性で確定）
+- Final Reviewer: Sonnet high + Opus xhigh（各fresh contextで独立Contract Audit。workflow gate変更の難度に応じた割当。修正確認のeffortは難度で選び、P3のみの再依頼はしない）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: 実装開始（rollout予算の採用を含む） / ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / Ready / merge
+- Human Gate: ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / Ready / merge
 
-現行のlegacy workflowで設計・Plan Gateを通す。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択した。現在Codexが起草し、別モデルがPlan Review、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。
+現行のlegacy workflowで設計・Plan Gateを通過済み。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択し、2026-09-14にAstra xhighの単独実装と難度に応じたSonnet / Opusレビューを指定して実装開始を承認した。Codexが計画・amendmentを起草し、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。計画を更新するrunと実装runを分け、実装runはpacketを編集しない。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 3（規範の既定値）
+- 介入回数上限: 8（change全体の規範値、owner 2026-09-14承認）
 - 実働時間上限: 30分（規範の既定値、実績は未実測）
 - relay 往復上限: 2（規範の既定値）
 - Plan Review round 天井: 3（規範の既定値）
 
-今回の計画準備は既定3回以内で行い、設計方式の選択を介入1回目、CIのみをGitHubで強制する境界の選択を2回目として記録する。実装rolloutの予算案は8回（規範値、実績ではない）とし、実装開始時にownerが採否を決める。採用された場合は実装前のgated amendmentで予算を反映し、元Plan Commitを保持する。既知の判断は方式選択、強制範囲の選択、実装採用、bootstrap Ready、bootstrap merge/closeout、検証用設定の実験、本番有効化であり、残りはreview裁定の余地。まとめて承認できる手順はまとめるが、decision pointの計数を隠さない。未採用の8回を現在の予算として使わない。過去PRの例外は継承しない。外部モデルへのrepoの公開可能な指示・設計・差分のread-only送信許可は既存の明示承認を引き継ぐ。
+今回の計画準備は既定3回以内で行い、設計方式の選択を介入1回目、CIのみをGitHubで強制する境界の選択を2回目として記録した。介入3回目の実装採用に付随して、ownerが準備済みGA1とchange全体の介入上限8回（規範値、実績ではない）を承認した。段階的なCI移行・検証用設定・本番有効化に判断が必要なため上限を調整し、元Plan Commitを保持する。既知の判断は方式選択、強制範囲の選択、実装採用、bootstrap Ready、bootstrap merge/closeout、検証用設定の実験、本番有効化であり、残りはreview裁定の余地。まとめて承認できる手順はまとめるが、decision pointの計数を隠さない。過去PRの例外は継承しない。外部モデルへのrepoの公開可能な指示・設計・差分のread-only送信許可は既存の明示承認を引き継ぐ。
+
+現在は介入3回目まで承認済み。8回はこのchange全体の上限で、残り8回の追加ではない。実働時間・relay・Plan Review roundの上限は変更しない。実働時間の累計は未実測。実装開始・GA1・予算の承認を再要求せず、未了の外部操作gateは具体的な成果物の完成・検証後に提示する。
 
 ## Consultation Relay
 
@@ -153,7 +155,7 @@ GitHub強制と軽いdocs PR経路はowner選択済み。変更対象・各契�
 
 ## Boundary / Wire Contract
 
-producerはGitHub REST/GraphQLとreview capture、consumerはhelper/CI evaluator。repo/PRとhead/base（現repoのfull SHA）を検証し、未知status・不正JSON・重複marker・不正author・欠落gateは拒否する。comment JSONはsource designのRecordV1を唯一のwire契約とし、Broad/Closureとmanual再利用fieldを含む。CI結果は複製しない。branch名等をshellへ展開しない。active packetは明示legacy/github markerを使い、legacyは旧13-fieldを維持する。markerのないarchiveは非遡及。未知modeや新activeでのmarker欠落は拒否する。
+producerはGitHub REST/GraphQLとreview capture。RecordV1のconsumerはhelperだけで、CI evaluatorは分類flagとjob結果だけを扱う。repo/PRとhead/base（現repoのfull SHA）を検証し、未知status・不正JSON・重複marker・不正author・欠落gateは拒否する。comment JSONはsource designのRecordV1を唯一のwire契約とし、Broad/Closureとmanual再利用fieldを含む。R2+のBroad.plan_commitは承認されたPlan Commitと一致するfull SHAを必須とし、nullを拒否する。CI結果は複製しない。branch名等をshellへ展開しない。active packetは明示legacy/github markerを使い、legacyは旧13-fieldを維持する。markerのないarchiveは非遡及。未知modeや新activeでのmarker欠落は拒否する。
 
 ## Review Focus
 
@@ -181,7 +183,7 @@ MG-D1〜D12を実装する。Plan Gate/独立review/owner権限/Windows・R4保�
 
 ## Implementation Results
 
-未着手。設計・計画・Matrixの準備とPlan Reviewがこの依頼の完了範囲。
+設計・計画・MatrixとPlan Reviewは完了済み。2026-09-14にownerが実装開始、座組、準備済みGA1とrollout予算を承認した。GA1のcontent commitに`plan-approved -> implementing`を同乗させる。元Plan Commitを保持し、amendment SHAを記録して別runのAstra xhigh単独実装へ渡す。実装の検証結果は取得後に記録する。
 
 ## Review Response
 
@@ -191,7 +193,7 @@ Opus初回reviewのP2を修正する案として、aggregate ifの負例、hoste
 
 ### Plan Review closure（2026-09-14）
 
-独立Opus Highが候補`f378da4d`をround 3で確認し、P1/P2=0、技術的Plan Gate通過と報告した。R2 N-1（強制範囲）とN-2（wire契約）はclosed。初回plan-first commitとMatrixが実装に先行し、production codeは未変更。この結果を根拠に`plan-gate -> plan-approved`をmaterializeする。実装開始、rollout予算案、本番設定の承認は未取得のまま保持する。
+独立Opus Highが候補`f378da4d`をround 3で確認し、P1/P2=0、技術的Plan Gate通過と報告した。R2 N-1（強制範囲）とN-2（wire契約）はclosed。初回plan-first commitとMatrixが実装に先行し、production codeは未変更。この結果を根拠に`plan-gate -> plan-approved`をmaterializeした。この時点では実装開始、rollout予算案、本番設定の承認は未取得だった。現在の承認状態はWorkflow Stateと次のGA1候補に記録する。
 
 レビューの補足P3は追加reviewを回さず、実装開始時の予算amendmentと合わせて扱う確認事項として保存する。現候補の契約を変更済みとは扱わない。
 
@@ -202,3 +204,14 @@ Opus初回reviewのP2を修正する案として、aggregate ifの負例、hoste
 - 補足: R2+のBroad.plan_commitにnullを許さない扱いを明文化する。契約を変えないamendmentでも同一性の機械照合は新しいbroadを要求し得るため、当面は安全側の費用として扱い、証明形式を追加して回避しない。
 
 詳細reviewと検証ログはlocal-onlyの`.local/merge-evidence/plan-review-r3.json` / `plan-doc-check-r3.log`。GitHub上のdynamic check名・実効拒否・docs経路は未実測で、source記載の有効化前検証を維持する。
+
+### Gated Amendment 1（2026-09-14、owner採用済み）
+
+ownerは実装開始とWriterのAstra xhigh単独指定に続き、提示済みの予算案と以下の補足を「いいよ」と承認した。元Plan Commitを保持し、GA1のcontent commitで`plan-approved -> implementing`へ遷移する。根拠は独立Plan ReviewのP1/P2=0、実装開始承認、GA1の採用。amendment SHAは後続commitでAmendmentsへ追記する。
+
+- rolloutの介入上限はchange全体で8回へ変更した（規範値、実績は未実測）。
+- P3-1: manual再利用は元server recordのpass・source_head・元evidenceとの一致を検証し、再利用manualを先に記録してからfresh captureで現在版closureを記録する。元記録の欠落・fail/pending・改変と、closureを先に記録して旧manualを失った場合を拒否する負例をMatrixへ追加した。
+- P3-2 / 補足: RecordV1はhelper専用、CI evaluatorはjob結果専用と明記し、R2+のBroad.plan_commit=nullを拒否する条件をsource / Boundary / Matrixへ同期した。
+- P3-3: main向け合成failure PRの作成・closeは、bootstrap Ready時に提示する具体的操作範囲へ含める。今回の実装開始承認をその操作やruleset probeの承認へ読み替えない。
+- P3-4: 運用正本・入口・PR templateへの同期確認に、helperの強制範囲、直接UI merge禁止、server側の残存リスクを明記した。
+- レビューはSonnet highとOpus xhighの独立Double Audit。両方が同じsource contracts全体を監査する。修正確認は難度でeffortを選び、P3だけで追加reviewを発注しない。要求値と取得可能な実効metadataを区別して実装・reviewのevidenceへ残す。

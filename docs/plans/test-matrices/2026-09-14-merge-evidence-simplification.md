@@ -25,6 +25,7 @@ GitHub側はCI/PRの条件、helper側はreview/manual/R4の条件を検証す�
 | MG-D4/D7 | localから移した検証が消える | integration | run-workflow-tests.sh / ci-workflow.test.sh / local-ci.test.sh | docs-onlyでも実PRのPK5・shell/YAML・suite等の必要gateが該当経路から呼ばれず、浅い履歴を成功扱いする |
 | MG-D5/D10 | 旧/新schema混同 | contract | doc-consistency-plan-packet.test.sh / workflow-git-checks.test.sh | 未知modeをlegacy扱い、不足fieldを許す、Plan Commitを変更する |
 | MG-D6 | 記録の誤結合 | HTTP fixture | pr-gate.test.py（新規） | author違い/複数record/古いhead/base/改版時manual継承を許す |
+| MG-D6 | 未passのmanual再利用・記録順序での証拠消失 | HTTP/git fixture | pr-gate.test.py（新規） | 元server recordの欠落・pending/fail・異なるsource_head/evidence・capture後改変や、closure先行で失われたpassをlocal cacheから復元できる |
 | MG-D8 | merge時race/通信失敗 | CLI integration | pr-gate.test.py | 確認後pushで別HEADをmerge、API失敗からsuccessを作る |
 | MG-D7/D8 | owner/manualの省略 | state | pr-gate.test.py | review/required manual/R4が未了でReadyできる |
 | MG-D9 | docs closeout閉塞/再帰 | integration + live | docs-only fixture PR | docs check成功後も必須checkが永続pending、次のcloseoutを要求する |
@@ -48,7 +49,7 @@ GitHub側はCI/PRの条件、helper側はreview/manual/R4の条件を検証す�
 
 ## Adjacent Pattern Audit
 
-CI/分類の全consumer、PK4/PK5、local/pre-push、AGENTS/CLAUDE、workflow-start/implementation/code-review/pr-review、各template、CI/Workflow/AOM/profile、Windows/manual引継ぎを検索する。legacyとarchiveの説明を残す理由を明示し、通常新modeへ旧三点一致/state-onlyを漏らさない。global Skillsはこの変更で編集せず、repoの正本参照を優先させる。
+CI/分類の全consumer、PK4/PK5、local/pre-push、AGENTS/CLAUDE、workflow-start/implementation/code-review/pr-review、各template、CI/Workflow/AOM/profile、Windows/manual引継ぎを検索する。legacyとarchiveの説明を残す理由を明示し、通常新modeへ旧三点一致/state-onlyを漏らさない。運用正本・入口・PR templateで、CI以外の強制はhelperが担うこと、直接UI merge禁止、serverがCI成功だけでmergeを許し得る残存リスクを確認する。global Skillsはこの変更で編集せず、repoの正本参照を優先させる。
 
 ## Negative Paths
 
@@ -83,6 +84,8 @@ aggregateが全必要jobをneedsに持つこと、workflow suiteをlocal/hosted�
 - head/base比較、author確認、複数record拒否、manual改版無効化を外すとREDになるか。
 - CI成功・GitHub merge可能でも、review/manual/R4が不足したfixtureをhelperが拒否するか。
 - base同期候補で、first/second parent不一致、PR差分のbyte不一致、競合・影響あり、owner再利用判断なしをそれぞれ拒否するか。patch-id同値だけを通過根拠にしない。
+- 元serverのmanual.passとsource_head/evidenceの照合を外すと負例がREDになるか。再利用manual→fresh capture→closureの正常系と、closure先行で消失した旧passをcacheから復元できない負例を検証する。
+- R2+のBroad.plan_commitをnullへ置換したfixtureを拒否するか。RecordV1をCI evaluatorが読まなくてもCI判定が完結し、helperだけが非CI記録を検証するか。
 - packet不在でもmanual明示を要求し、Final Review Minimum不足（R4/workflow、codex-only R3 UIを含む）、broad不足、現在版closure欠落、Plan契約変更後の旧broad流用、複数packet指定を拒否するか。
 - merge直前にheadを更新したHTTP/git fixtureで、別の版がmergeされないか。
 - cacheだけでpassを返す、statusで書く、通常のPR本文を書き換えるmutantを検出するか。
