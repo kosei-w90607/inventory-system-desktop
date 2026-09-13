@@ -162,9 +162,7 @@ synthetic fixtureと公開可能なworkflow文書だけを使う。実データ�
 
 ## Implementation Results
 
-未着手。plan-firstと非Codex Plan Review待ち。
-
-2026-09-14: 上記は起票時の記録。現在はPlan Gate通過・実装未着手。現在の状態はWorkflow Stateと下記の通過記録を参照。
+S1〜S6の実装を現在のCodexが実施。条件付き入口、Skill/Claude手順の整理、原文archiveとbacklog分離、安全な部分読込みと境界テストを反映した。先行candidateのlocal fullはCLEAN/PASS。独立Final Reviewで見つかったネストした申し送りの保存、再開/closureのケース、節参照と証拠metadataを補正中。現時点ではFinal Review通過を主張しない。
 
 ## Review Response
 

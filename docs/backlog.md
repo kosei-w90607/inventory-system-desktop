@@ -127,3 +127,112 @@
 - Price-revision support design (issue #90): owner hearing settled the open premises (filter axes, supplier registration path, no provisional-cost flag, cost-column recommendation); Plan Packet drafting is pending. See `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md` and decision-log D-075
 - Stock-take exclusion of long-dormant items (issue #91): merged into the UI-10 stock-take semantics follow-up as a one-line population definition (no system feature); close candidate. See decision-log D-076
 
+
+## 完了項目に付随していた申し送り
+
+旧Plansの完了済み親項目にも未決・保留・後続候補が残っていたため、子項目を原文で保持する。これは当時の候補・裁定記録であり、新しい実装義務や優先順位ではない。撤回・統合・後日の解消を含むため、関連作業の着手時にはその項目の正本・実装と照合する。親の完了チェックだけを理由に子の判断を解消しない。
+
+- 後続候補: ホーム action への説明文追加、操作ログの `開始日` / `終了日` を `期間` group 化、日次売上 Z001 summary の全項目公開（現 `OfficialDailyReportSummary` は gross/net/payment/department のみ）、Z004・手動販売の部門小計分離、Backup 日時書式 `YYYY-MM-DD HH:mm` と page subtitle、CSV native 出力の owner 確認、日次 / 月次の印刷要否・紙面設計（Phase 4 disabled placeholder）、入出庫履歴の識別列並べ替え（記録日時 + 代表商品を先頭 2 列へ、header 配列一致 test 更新を含む）、`FormSection` shared pattern 化の可否・命名（理由: DTO 未公開・native 出力未確認・紙面設計未着手など実装コストが本 Lane を超える）
+
+- run 3 原文による訂正（2026-09-04、owner がチャットへ直接貼り直し。原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「run 3 原文」、上の 4 区分は Codex 要約起源なので食い違いは本 sub-bullet を正とする）: (a) 「日次 Z001 summary の全項目公開」は owner 原文では Z001 / Z002 / Z005 の取り込み情報全般で、「機能追加でコスト高いとはいえ無いのはまずい」= 後続候補ではなく要望（優先度は owner と選定） (b) 前日比を出すなら + は緑 / − は赤の符号色が要る（runtime `SummaryCardsBar.tsx` の `valueClassName` 適用状況は実機で確認） (c) 日次 / 月次の CSV 出力 / 印刷 button は page 右下または器の右下、印刷はオレンジ可。印刷は中身未整備・CSV は未テストという owner 認識（後続候補「印刷要否・紙面」「CSV 確認」の前提） (d) 日次 / 月次切替 button を TabsHeader の中へ納める案はしっくりこない = 現状維持（既記載）。日次売上に列見出しは合わない = 現状維持 (e) 月次の「公式部門集計（レジ日報由来）」説明書きは維持。mockup の 部門 → 構成比 → 売上金額 は「金額が右端が基本」と疑問、runtime（`MonthlySalesPage.tsx:177-180` 部門 / 数量 / 件数 / 金額）は金額右端のままで変更不要 (f) Backup: 復元 dialog 本文に控えの日時を入れたい（runtime は `{label} の控えに戻します` で既に日時入り、実機で owner 確認）。最新 badge / page subtitle / `yyyy-mm-dd HH:mm` 表記は owner 支持。復元 button は変更不要。mockup の一覧列見出し / 「現在の保存先: D:\\…」表示 / 「今すぐバックアップ」button は「看過できない」= runtime へ持ち込まない (g) Home: mockup に入庫 / 出庫の quick action が無い理由を owner が問うている（runtime の quick action 構成を実機で見せて判断） (h) 入出庫の明細数 summary は削ってよい (i) 商品検索一覧の列見出し角丸は run 5 / 6（PR #32）で消化済み (j) 操作ログ `実行者` は「データ構造に無い」= 明示不採用で一致、開始日 / 終了日 → 期間 group 化は後続候補で一致、在庫少一覧の列順 状態 → 在庫数 → 売価 は現状維持で一致
+
+- runtime backlog: 価格履歴の説明文を「直近 10 件の売価・原価の変更を新しい順に表示します。」へ（`PriceHistorySection.tsx:43`、default limit 10 と整合）、S
+
+- 候補（owner 条件付き「やるなら」）: 入庫の商品追加 list を 商品コード / 商品名 / 現在庫 / 入庫数量 / 単位 / 原価 / 操作 へ（現在庫列の追加、単位は入庫数量の隣、原価を数量と単位の間に置かない。owner の一次判断は「商品を追加 section も現行実装のほうがいい」なので実装前に owner 確認、`ReceivingPage.tsx:543-549`）、M
+
+- runtime backlog: 入庫画面の「直近の入庫」は既に `per_page: 10`（`ReceivingPage.tsx:58`）なので見出し・説明に「直近 10 件」であることを明示する、S
+
+- runtime backlog: 返品・交換の「交換は戻り・渡しの明細が両方必要です」注釈がポツンと置かれている（`ReturnExchangePage.tsx:790-791`）。置き場所は未定（owner「どうにかいい表示の仕方ないものか」）。実装前に候補 2〜3 案を実機で見て owner が決める、S
+
+- runtime backlog: 返品・交換の方向 badge（戻り（在庫+）/ 渡し（在庫-））の色遣いを再検討。DSR-08 どおり文言 + 記号を主、色は補助に、S
+
+- runtime backlog: 返品・交換のレシート画像 label に「（任意）」を付ける（`ReturnExchangePage.tsx:624`）、S
+
+- 維持（肯定）: 保存結果の緑 icon toast / 原価差分 dialog の「マスタ原価 → 実原価」表示 / 返品・交換のレジ戻し badge と CSV 取込み反映 badge の色 / 検索欄と toolbar の明度差は問題視せず。後続 sweep で消さない
+
+- A1 価格履歴の説明文: 採用。加えて (a) 他の「直近 10 件」系 section も同じ文言で揃える (b) 価格履歴に列タイトルを付ける (c) 「直近の○○」系 section は手動販売出庫だけ囲みがあり他に無いので、囲みありで統一する → runtime backlog S（対象 section の棚卸しを含む）
+
+- C5 / C6: owner は mockup 前提で言った指摘。C6 方向 badge は「方向バッジは成立しえない」= runtime backlog から撤回。C7 レシート画像「（任意）」は採用。追加の owner 案: 現実装の「直近の返品・交換」の列を 返品日 or 日付 / 種別 / レジ戻し（mockup の 済み・未処理 badge は良かった、色付け可）/ 備考 / 記録日時（秒は省いても省かなくても可）へ再編（共通化する意味があるかは owner 自身も未確定、実機で候補提示）。記録日時の文字が時々別 font に見える（`ReturnExchangePage.tsx` の cell は `formatDateTime` を素の `TableCell` で描画、隣接 cell の `tabular-nums` 有無の差が仮説、機序は実機観測で確定）。返品交換の商品追加 section は触らない
+
+- D8 検索欄 / ドロップダウンの面: 商品一覧でやった `--control-surface` #fafaf9 に揃える。runtime には shadcn `Input` / `Select` を通らない native `<select>` / `<input>` 直書き（`bg-background` のまま）が残る: `InventoryRecordsPage.tsx:156-245`（select 3 / input 3）、`ReceivingPage.tsx:393`（仕入先 select）、`DisposalPage.tsx:509`、`OperationLogsPage.tsx:338-352`（date input 2）→ runtime backlog S（token 化 sweep）
+
+- E9 件数文言の自然文化: 採用。上下の font 差は実装上の事実: 上の帯 `PaginationSummary` は `text-base font-semibold text-foreground`、下の `Pagination` 範囲文言は `text-sm text-muted-foreground`（`Pagination.tsx:52-53,99`）。下は据え置き（他画面共通でよい）。owner 再回答: 文字の種類（font family）は同じと確認、上の帯は「特別太くしなくてもよさそう」= `font-semibold` を外す方向、文言は自然文型で確定、あとは list 系画面へ持ち込むだけ → runtime backlog S（`PaginationSummary` の weight 変更 + 全 list 画面の文言統一）
+
+- E14 囲みを一階層減らす: Lane 2 packet S8 (viii) が owner L3 所感として記録した item だが、owner 直回答で「どういう話？」= owner 認識なし。PageShell → toolbar 枠（`rounded-lg border bg-card`）→ 表の外枠 → 行罫、の 4 段の線が 100% 表示で重い、という Coordinator 側の整理。owner 再回答「線系が太いって話？」= 太さの話ではなく「入れ子の枠の段数」の話（page → toolbar 枠 → 表の外枠 → 行罫）。owner が実機で重さを感じていないので drop 候補のまま、E12 の表の外枠再検討（D-2）に吸収して単独 item は立てない
+
+- H22: owner「何とも言えない、わからん」= 保留のまま（要望が続けば起票）
+
+- owner L3 run 2 所感（Lane 3、2026-09-05、原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 3 L3 run 2 原文」。Coordinator 転記、裁定は原文を正とする。いずれも Lane 3 の scope 外で、Lane 4 / 5 または別 lane の候補）:
+
+- R2-1 ページ送りの上下切り分け（一覧 8 画面共通）: 上部 summary は件数が perPage 未満でも常に出す（現 `totalCount > 0` gating + 単一ページ時は下部行ごと非表示、在庫照会で観測）。下部は summary + 前へ / 次へを複数ページ時のみ。上部に button は置かない。上部の見た目は owner 決定（2026-09-05「下部と同じ小さい表示に揃えるよ」）で下部の summary と同じ `text-sm text-muted-foreground`（Lane 3 で太字を外した `PaginationSummary` の `text-base` も下部と同サイズへ、DSR-22 / catalog ⑩ の上部 variant 記述を改訂）。edge: 51 件で 2 ページ目に行った時に「前へ」が無い、を test で必ず塞ぐ → Lane 4 候補（ページ送り契約の改訂、catalog ⑩ 改訂を伴う）
+
+- R2-2 次へ button が薄い: 有効状態を濃くし、hover で色変化 or さらに濃く → Lane 5（E13 `--border-strong` sweep）に同乗候補（outline button の枠 + 文字色 + hover）
+
+- R2-4 在庫照会の検索条件を増やす（どの条件かは未回答、owner に候補提示）→ 別 item、design-first
+
+- R2-5 入出庫履歴の状態 badge に色を付ける（状態 badge 系は色付けが優しい。DSR-08 どおり文言は残し色は補助）→ Lane 5 候補（mapping は owner と決める）
+
+- R3-1 状態 badge と差異の数値（+3 / −2 等）に色: 棚卸し / 一括価格改定 / 整合性チェックで「目が滑る」。R2-5（入出庫履歴の状態 badge）と統合し「全画面の状態 badge・増減数値の色付け」1 item へ（DSR-08 どおり文言 / 記号は残し色は補助、mapping は owner と決める）→ Lane 5 後続 or 別 lane
+
+- R3-2 前へ / 次へ button の有効状態が薄い: 一括価格改定の 1 ページ目で「前へ（無効）」と「次へ（有効）」の見た目が同じ。R2-2 と統合（有効を濃く + hover 反応、無効との区別を明確に）→ Lane 5 の E13 sweep に同乗候補（`Pagination.tsx` の button variant）
+
+- R3-4 取引先プルダウンの枠と「取引先追加」button の枠が他と揃っていない（全画面共通の指摘）: プルダウンは Lane 5 の `PriceRevisionFilters.tsx` / `ProductForm.tsx` の native select 対象に含まれ是正済み（run 3 の HEAD は Lane 3 branch のため未反映）。「追加」系 button を primary（オレンジ）にする案は CTA hierarchy の設計判断 → design-first で owner と決める（DSR-03 / catalog Button 節の改訂候補）
+
+- R5-1 検索欄に欄のタイトルが無いのが寂しい（案は owner も未定）→ design-first の候補提示（placeholder のみ vs label 併記、Laws of UX / DSR-22 の可読性で裁定）
+
+- R5-2 表示件数 Select の配置が「画面上部の枠の中」と「枠の外」で画面ごとにばらつく → 一覧 8 画面で位置を統一する契約を catalog ⑯ / ⑩ に追加（ListShell の toolbar 内に置くか、件数行の右端に置くか、owner と実機候補で決める）→ Lane 4 候補（ListShell 横展開と同時が自然）
+
+- R5-4 **owner 決定**: 検索欄・取引先・部門などを囲む外枠の中の地色を `#F5F5F4` に統一（参考 = 商品一覧の toolbar 枠）→ E15 / Lane 2 申し送り (v) card-on-card の裁定として確定。`--list-toolbar`（仮）token を 00-foundations に登録し、ListShell の toolbar 枠と非 ListShell 画面の filter 枠へ適用 → Lane 4 候補
+
+- owner Lane 4 L3 run 1 所感（2026-09-06、原文 = [owner L3 原文](design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「Lane 4 PR #40 L3 run 1 原文」。Coordinator 転記、裁定は原文を正とする）: (1) 識別列固定は Excel 型（検索ツールも 2 列も留まり右だけ滑る）を期待 → Gated Amendment 1 (2) 一括価格改定の取引先追加ボタンが Select の隣から離れた → Gated Amendment 2 (3) 在庫照会 検索ツール充実: 並び替え + 昇順降順、すべて / 在庫切れ / 在庫少 の chip を `--card` 枠の中へ → 後続 design-first lane（(d) の取引先順 sort の上に選べる並び替えを重ねる）(4) owner 環境は 2560×1440 / 125% のため 特大 × 125% は日常で充足
+
+- L8-1 単位 code `pcs` の生表示が入出庫履歴・在庫変動履歴・記録詳細のあたりに残っている（PR #32 Gated Amendment 6 S45 で商品一覧 / 入庫 / 廃棄 / 返品交換 / 手動販売の主要画面は `formatStockDisplay`/`formatStockUnitLabel`（`format-stock-display.ts`）へ是正済みだが、同じ file 内でも別 render 箇所が未然のまま残る例あり: `DisposalPage.tsx:459,514` は候補一覧・行内現在庫を local `formatQuantity`（unit 生結合）で描画、`:595` のみ `formatStockUnitLabel` 適用済み）→ 残箇所の sweep、S
+
+- L8-2 badge が無色（見た目未着手）は ⑦ design-first 候補（Badge の色と枠の規約）の runtime lane 待ちで想定どおり → 起票不要、記録のみ
+
+- L8-5 記録日時の font 差は既起票（Plans ④ C5、`ReturnExchangePage.tsx` の `formatDateTime` cell と隣接 cell の `tabular-nums` 有無差が仮説、実機観測で機序確定待ち）→ 重複起票せず参照のみ
+
+- L8-9 記録 ID が種別ごとの連番で全体一意でないため単独の識別子として機能しない（種別とセットでないと検索に使えない）→ 種別込みの表示（prefix 等）にするか一覧から外すかの design 判断、DSR-22 の識別列並べ替え候補と統合、design-first、M
+
+- owner 回答（2026-09-05）: (b) B2 secondary 中間段・色相なし / (c) C1 可視 Label / (a) は backbone 原則 2/4 の具体化（catalog ⑬ tone family 表 + `--success-border`/`--success-strong` の token 登録 gap + badge.tsx 側の runtime gap、新規 DSR は起草しない）(e) は推奨案で起草し culling は design PR 上 / (d) R2-3 は runtime batch へ、R2-4 は店舗ヒアリングで確認（[店舗ヒアリング回答](evidence/hearing-2026-09-05-stock-inquiry.sanitized.md)）→ (d-1) 在庫少・在庫切れ一覧に取引先列 + (d-2) 棚卸しリストの廃番 badge は 1 lane として起票待ち（次枠）、(d-3) 取引先消滅は運用代替（起票なし）
+
+- owner 回答（2026-09-05、v2 見本）: 「`--border-strong` の枠はくどい。バッジは改める案だとすっきりする」→ DSR-22 の枠 3:1 要件を interactive な操作枠（入力・outline ボタン・select・segmented・focus ring）へ限定し、badge（状態/分類/強調）は 3:1 対象外へ narrow 化（`04-backbone.md` 原則4②・review-checklist カテゴリ9 も同期）。①状態 badge = 案A（tone border + soft bg + strong text + icon、既存 `StockStatusBadge` 形）に確定、`--success-border`（`#bbf7d0`）は無条件登録へ復帰（conditional 化を撤回）。②分類 badge（廃番/対象外/最近改定/件数 pill）= secondary pill + `--border` 枠のまま（badge.tsx の runtime gap は `border-border` 追加）。CTA「追加」系 = B2 secondary + `--border` 枠（`--border-strong` ではなく owner が `--border` を選択、DSR-01 3 段階層に反映。runtime 影響 = `button.tsx` の `secondary` variant がアプリ全体で `border-border` を持つ。現状 `Button variant="secondary"` の既存使用は 0 件と実測済みのため既存画面への影響なし）。Alert warning = border `--warning` + `AlertTriangle` で確定（owner「icon 付きで分かりやすい」）、text 色は v3 mockup 待ちの 2 候補（(a) `--warning-strong` テキスト・既定候補 / (b) 本文 `--foreground`、枠と icon のみ amber）を両論併記。③強調（琥珀 pill）の枠（`--warning-border` か `--warning` か）も v3 で owner が決定、既定なし。
+
+- owner 回答（2026-09-05、v3 見本）: ③強調（琥珀 pill）の枠 = `--warning`（`#d97706`、対 fill #fef3c7 = 2.86:1・対 background = 3.05:1）に確定。適用 3 site（`ProductImportPreview.tsx:76`「上書き N件」/ `ProductRankingTable.tsx:80`「1位」/ `BackupRestorePage.tsx:533`「最新」、後者は variant 取り違えも合わせて是正）が `border-warning` を得る runtime gap として記録。Alert warning の text 色は再オープン — owner は (b) を「すっきりするが warning らしさに欠ける」と評したため、Coordinator が新候補を追加: (c)（既定候補）soft 塗り `bg-warning-soft` + border/icon `--warning` + text `--warning-strong`（①状態 badge と同じ 4 点構造）/ (d) タイトル「ご注意」を `--warning-strong` bold、本文は `--foreground`。v4 mockup で (a)/(b)/(c)/(d) を owner が決定する。
+
+- owner 回答（2026-09-05、v4 見本、最終）: Alert `warning` variant = 候補 (c) に確定 — `bg-warning-soft` + `border-warning` + `AlertTriangle`（icon `text-warning`）+ 本文 `text-warning-strong`（対 `bg-warning-soft` = 8.75:1、①状態 badge と同じ 4 点構造）。候補 (a)/(b)/(d) は不採用（(b) の理由 = owner「すっきり見えるが警告表示としての一貫性に欠ける」）。destructive Alert（`bg-card` + red 系）は現状維持、soft-fill 化は対称性の後続候補として Non-scope に記録。これで (a) Badge tone・(b) CTA secondary 枠・(c) 検索欄 Label・(e) Alert warning・③強調枠のすべての owner 決定が完結し、未決 marker は残らない。次は Plan Review round 2。
+
+- Plan Review round 2（Sonnet approve-with-P2、Opus reject → 全件 accept、2026-09-05）: DSR-22 の badge 枠を「使ってよい」から「必ず持つ（tone 固有色または `--border`、soft 背景単独・枠なし不可）」へ必須化し、非中立の①状態のみ icon 必須（中立は icon 任意、`StockStatusBadge.tsx:42`「通常」が先例）。3:1 の残存 4 箇所（`01-decision-rules.md:445,451`／`04-backbone.md:44`／`02-component-catalog.md:158`）を追加是正し `rg -n "3:1" docs/design-system docs/quality` で全 hit を操作枠=keep/badge=fix に判定済み。`catalog:588` の冒頭「両モードとも aria-label」矛盾文を段落全体で是正。`--success-emphasis` の用途 repoint は実態が AA 是正（3.16:1→8.69:1、`SummaryCardsBar.tsx` 2 site）であることを明記し repoint ではなく用途撤去として記録。Badge 44 件の分類を完了（未分類だった `ErrorRowsTable.tsx`/`StocktakeRecordDetailPage.tsx`/`DailyReportImportPage.tsx:322`/`daily-sales ProductTable.tsx:133`「手動」〈owner culling〉等）。AC3 の壊れた正規表現（`^| Success Soft ` が全行一致）を `-F` へ修正。`PriceRevisionPage.tsx` に `AlertTitle` が無い実態を記録し runtime 申し送り（候補「ご注意」）。評価用ヒアリング証跡（`docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`）も要約の断定調を原文準拠へ整えた。
+
+- L8-1 単位表示 sweep（入出庫記録詳細 6 画面 + 商品追加候補一覧 3 箇所の raw `pcs` 表示、9 箇所の重複 local `formatQuantity` を実測。在庫変動履歴自体は raw 表示ではないと訂正）
+
+## 旧handoffの未完了・確認事項
+
+以下も過去記録の保持であり、新しい全作業共通のblockerにはしない。元の採否と除外条件を保持し、関連する作業で現在の解消根拠を確認する。
+
+- [ ] E-4. PLU書出しフォーマット/実機反映確認（オンライン調査で CV17 Ver.2.0.1 仕様を確認 2026-04-08。2026-07-02 field gate で CV17 1.1.1 import profile は `.txt` / 11列 / PLU総枠5000共有へ修正済み。2026-07-03 field gate で承認済み CV17 `.txt` の CV17取込み、SD書出し、SR-S4000設定読み、代表商品呼出しは通過。PR #122 は構造一致で gate 受容し merge 済み。最新アプリ生成 `.txt` の同手順再確認は Post-UI-08 follow-up）
+
+- [ ] G-6. Phase 1 残 follow-up: 7-7b axe or hooks coverage / 7-8b 横断UI（Phase 2 completion gate ではない。7-6 Storybook は不採用で確定 = D-068 2026-08-12、7-8a Error Boundary / 7-8c unsaved changes は PR #60 で完了 2026-08-04）。`plugin-dialog` foundation は UI-08 前提として PR #106 で導入済み。
+
+
+
+### ~~利用者への確認事項~~ → 回収済み
+- ~~**C65**: 日次CSV取込みの運用フロー~~ → OK（確認済み）
+- ~~**Q13**: 生地の在庫管理単位~~ → cm整数管理でOK（確認済み）
+
+### システム設計後に再確認
+- **Q40**: 障害時の対応。システム具体像が見えてから
+
+### 開発環境の既知事項
+- **WSL2 直接開発に移行済み（2026-04 以降）**: 当初 Docker 完結（案 C）で開始したが、UI 実装フェーズで GUI 確認頻度が上がり WSL2 直接開発（案 A）に切替済み。Docker は退役（`memory/dev-environment-policy.md`）。詳細経緯は `docs/DOCKER_REPAIR_LOG.md` 参照。PR-B #54 (private archive) で `docs/DEV_SETUP_CHECKLIST.md` に WSL2 ベース転換を正式反映済み（§A.1 退役記録に Docker 完結方針を移動）
+- **Tauri 2 on Linux 日本語 IME 制約**: tauri#11412 OPEN（WSL2 固有でなく Ubuntu ネイティブでも再現）。Phase 1 P0 IPC 疎通は英字入力で検証完了。Phase 2 以降の operator-facing L3 は Windows native ビルドで実施する（`memory/tauri2-linux-ime-limitation.md`）
+
+### 設計フェーズの懸案 → 全解消
+A〜D 群（A: DB / B: CSV取込み / C: 独自コード・マスタ / D: 設計送り 5 項目）は全て確定済み。要求仕様 130 本 / 18 テーブル / 5 層 37 タスク / 関数設計（第 1〜4 + 第 7 段階 UI 基盤）は実装に反映済。Q40（障害時対応）は UI-13 実装（画面固有 CmdError/retry）と共通 Error Boundary（UI 安全網 batch PR #60、2026-08-04）まで消化済み。包括的な障害時対応方針としての残余は `docs/ARCHITECTURE.md` 未確定事項と `Plans.md` Backlog を参照（PR #6 棚卸し delta 検証 P3 起源の表記同期、2026-08-26）
+
+---
+
+
+### 旧Plansの確認記録
+
+- 上記以外のブロッカーなし。Fable exit runway は完了済み（archive 参照）。Phase 4 第1スライス（UI-11b）は PR #144 の Fable 裁定 P2/P3 修正後に再確認。

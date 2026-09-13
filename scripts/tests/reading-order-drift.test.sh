@@ -58,13 +58,39 @@ if ! rg -U --multiline-dotall -q "$DRIFT_PATTERN" "$SOURCE_ROOT/docs/decision-lo
     fail "docs/decision-log.md の既知の再掲（D-034）が検出できません。パターンが壊れています"
 fi
 
-# HC-D1/HC-D9: AGENTS now owns conditional routes. Its absence from the
-# retired full-reading chain is valid; entry behavior is checked by the
-# context-routing fixture rather than an exact wording assertion.
+# HC-D2/HC-D9: structural contract lint, not proof of model behavior.
+# Keep the R2+ route, complete state input, and fail-closed marker discoverable;
+# the routing fixture separately checks what models actually do with them.
+check_entry_contract() {
+    local entry
+    entry="$(awk '/^## Session Start[[:space:]]*$/ { active=1; next }
+        active && /^## / { exit } active { print }' "$1")"
+    if ! printf '%s\n' "$entry" | rg '^\|' | rg 'R2\+' |
+        rg -i '(実装|再開|implement|resume)' | rg 'Workflow State' |
+        rg -qi '(完全|complete|full)'; then
+        echo "missing R2+ complete Workflow State route: $1" >&2
+        return 1
+    fi
+    if ! printf '%s\n' "$entry" | rg -q 'fail-closed'; then
+        echo "missing fail-closed boundary in Session Start: $1" >&2
+        return 1
+    fi
+}
+check_entry_contract "$SOURCE_ROOT/AGENTS.md" || fail "entry contract is incomplete"
 
 # --- 合成 fixture: 一般的な再掲を検出できることを確認 ---
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+
+# Real policy mutations: a missing route and a missing stop boundary must fail.
+awk '!/^\| R2\+ /' "$SOURCE_ROOT/AGENTS.md" > "$tmp/no-r2.md"
+if check_entry_contract "$tmp/no-r2.md" >/dev/null 2>&1; then
+    fail "missing R2+ route was accepted"
+fi
+sed '/fail-closed/d' "$SOURCE_ROOT/AGENTS.md" > "$tmp/no-stop.md"
+if check_entry_contract "$tmp/no-stop.md" >/dev/null 2>&1; then
+    fail "missing fail-closed boundary was accepted"
+fi
 
 cat > "$tmp/onboarding.md" <<'FIXTURE'
 # Onboarding

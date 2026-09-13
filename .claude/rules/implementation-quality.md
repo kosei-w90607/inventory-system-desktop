@@ -7,7 +7,7 @@ paths:
 
 # 実装品質
 
-対象の設計正本と既存コードを読み、`UI -> CMD -> BIZ -> IO/MNT` を維持する。読書範囲は [AGENTS.md](../../AGENTS.md) `Session Start`、検証は [DEV_WORKFLOW.md](../../docs/DEV_WORKFLOW.md) `Verification` と [ci.md](../../docs/ci.md) に従う。TypeScriptの変更に一律のRust検証を追加しない。
+対象の設計正本と既存コードを読み、`UI -> CMD -> BIZ -> IO/MNT` を維持する。読書範囲は [AGENTS.md](../../AGENTS.md) `Session Start`、検証は [DEV_WORKFLOW.md](../../docs/DEV_WORKFLOW.md) `Verification Gates` と [ci.md](../../docs/ci.md) に従う。TypeScriptの変更に一律のRust検証を追加しない。
 
 - 本番に `todo!()` / `unimplemented!()` や `unwrap()` を残さない（テストは例外）。
 - `Result` を握りつぶさない。継続可能な補助ファイル操作の失敗も `tracing::warn!` 等で記録する。

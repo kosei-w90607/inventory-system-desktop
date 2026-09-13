@@ -43,6 +43,7 @@ canonicalize_path() {
 
 if [ "$#" -eq 0 ]; then
   echo "usage: .codex/bin/read-safe-file.sh <path> [path...]" >&2
+  echo "       .codex/bin/read-safe-file.sh --lines START:END <path>" >&2
   exit 2
 fi
 

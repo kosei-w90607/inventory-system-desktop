@@ -9,7 +9,7 @@ Inventory-system は Tauri / React / SQLite の単店舗向け在庫管理アプ
 | 作業 | 読む対象 |
 |---|---|
 | 質問・調査 | 問われたファイルと関係する仕様。作業の選定や現状確認なら `Plans.md`。無関係な Plan Packet は選ばない |
-| R0/R1 の小変更 | `docs/DEV_WORKFLOW.md` の Risk Tiers / Verification と、対象の仕様・コード・テスト。`Plans.md` で現在の作業と関係する blocker を確認。Plan Packet は不要 |
+| R0/R1 の小変更 | `docs/DEV_WORKFLOW.md` の Risk Tiers / Verification Gates と、対象の仕様・コード・テスト。`Plans.md` で現在の作業と関係する blocker を確認。Plan Packet は不要 |
 | 新しい R2+ 計画 | `Plans.md`、`docs/DEV_WORKFLOW.md` の Risk Tiers / Plan Packet Rules / Design Phase Rules / Workflow State、`docs/AGENT_OPERATING_MANUAL.md` の役割・可用性、関係する設計正本 |
 | R2+ 実装・再開 | `Plans.md` から対象 packet を特定し、その完全な Workflow State、Scope、AC、Matrix、必要な設計正本を読む。現在 phase に関係する workflow / CI / review 条件を確認する |
 | 初回レビュー | 対象差分、関係する設計正本、packet/Matrix（ある場合）、`docs/code_review.md` と `docs/quality/review-checklist.md` の該当観点。R3/R4 は Contract Audit |
