@@ -246,3 +246,10 @@ A〜D 群（A: DB / B: CSV取込み / C: 独自コード・マスタ / D: 設計
 - B2 入庫の商品追加 list 列順: 「ほんとにやるならの条件付き」のまま（単位が数量の先に来るのは確かにおかしい）。実装前 owner 確認は据え置き
 - E13 `--border-strong` sweep: 対象は (a) outline 系 button = 白地に枠のボタン全般（例: 商品一覧の 「PLU 対象にする」「商品を登録する」・絞り込みのクリア等 `variant="outline"`、`button.tsx:15-16` の枠は `--border` のまま）(b) Badge outline variant (c) 日次 / 月次切替の SegmentedControl（`components/ui/segmented-control` の枠）。いずれも枠が `--border`（薄い）で、入力欄の枠 `--input` = `--border-strong` と濃さが揃っていないのを揃える話。owner 再回答「まぁこれはやってみよう」= 採用（Lane 3〜5 で sweep 実施、実機 before / after で最終確認）
 - L8-7 ページ説明セクション（商品一括インポート / PLU 書出し / バックアップに説明文 3 案、owner culling。PLU 書出しは Z004 読込み→占有確認→書出し→保存→未反映から外す の流れを明示）
+
+## 棚卸しlaneの旧申し送り
+
+移送時にarchiveだけへ分類した元の申し送りを保持する。現在の完了や撤回をこの整備で推測せず、次の棚卸し作業で関係する正本とowner判断を照合する。新しい製品作業の採用や優先順位変更ではない。
+
+- Lane 2 実装中の Lane 3〜5 申し送り（2026-09-03、[archived packet](archive/plans/2026-09-03-ui-list-backbone-d-lane2.md) S8）: (i) 入出庫履歴 / 在庫変動履歴の perPage 200 は backend `inventory_service::list.rs:21` `MAX_PER_PAGE` 100 → 200 の契約変更（docs 21 + tests、`MAX_PER_PAGE` 引き上げ、Codex 適性）を伴う (ii) sticky 帯 × 識別列固定 × DSR-17 `<main>` 単一 scroll の両立 probe は横 overflow が実発生する画面で行う（D-2） (iii) 棚卸し A' 帯ラベルの contrast 是正（Lane 1a 申し送り、`--muted-foreground` 対 `--card` 4.40:1）は棚卸し lane で (iv) outline ボタン / Badge / chip / SegmentedControl 枠の `--border-strong` sweep（SegmentedControl は `border-stone-300` 直書き〈1.43:1〉の token 化を含む、D-7、Non-scope） (v) Card 内に一覧を持つ画面を `ListShell` 化する際は toolbar 枠の `bg-card` が card-on-card で沈むため枠の地色を再判断する（pilot の商品一覧は Card 非使用のため未検証） (vi) Gated Amendment 4（2026-09-04、owner L3 run 3 = FAIL、mockup 5 file を現実装 + Lane 2 差分へ限定、evidence: [archived packet](archive/plans/2026-09-03-ui-list-backbone-d-lane2.md):642-648 owner run 3 所感）の owner disposition を 4 区分で記録する:
+- G20 / G21: 20 は PR #31 で最終裁定済みの「A'+器（帯の枠あり）」を棚卸し lane で実装する時に、帯ラベルの contrast も是正するという item（別の案ではない）。「リストを囲む」= 器の一部として同 lane

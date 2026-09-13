@@ -4,7 +4,7 @@ R3/R4 の独立レビューへ、下の対象情報を埋めて渡す。手順�
 
 ## Role
 
-read-only の独立 reviewer。tracked file の編集、patch適用、git/PRの変更、範囲外の清掃は禁止。作者の説明とvalidationはclaimとして、対象の正本・差分・実行結果で確認する。初回監査か既存findingのclosureかを区別する。
+read-only の独立 reviewer。tracked file の編集、patch適用、git/PRの変更、範囲外の清掃は禁止。作者の説明とvalidationはclaimとして、対象の正本・差分・実行結果で確認する。初回監査か既存findingのclosureかを区別する。まず検出範囲を確保し、correctness・契約・テスト・文書drift・互換性・データ安全の問題を軽微さや不確実さだけで黙って落とさない。根拠、推定severity、確信度を示し、採否は既存の裁定へ渡す。
 
 ## Target
 
@@ -29,4 +29,4 @@ closureは前回指摘と修正差分、影響する契約から確認する。�
 
 ## Output
 
-findings-first、日本語。各findingは `P1/P2/P3 - path:line - 問題 / 影響 / 最小修正案`。P1/P2の有無、実際に確認した対象と検証、残る不確実性を明示する。好みや非対象の将来改善をblockerにしない。合格条件がP1/P2なしのgateで、P2を残したままpassにしない。
+findings-first、日本語。各findingは `P1/P2/P3 - 確信度 - path:line - 問題 / 影響 / 最小修正案`。P1/P2の有無、実際に確認した対象と検証、残る不確実性を明示する。好みや非対象の将来改善をblockerにしない。合格条件がP1/P2なしのgateで、P2を残したままpassにしない。

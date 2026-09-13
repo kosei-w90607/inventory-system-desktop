@@ -20,7 +20,7 @@ tracked project hook inventoryは空で、`claude-code-harness`はproject scope�
 
 基本は既存の `.claude/settings.json` の `high`。難問では `xhigh` を選ぶ。見落としを防ぐことを優先し、修正・再試行・再レビューまで含む総tokenで効率を判断する。短い出力や一回の消費だけを理由に `medium` へ下げない。
 
-別セッションの `--effort` もこの方針に合わせる。project設定を読まない `--safe-mode` 等では明示指定し、要求値と取得できた実行metadataを記録する。モデル間で同名effortを同じ思考深度と見なさない。Sonnetのfinding収集では確信度や軽微さだけで候補を黙って落とさず、根拠と不確実性を付けて報告し、採否は既存のreview裁定に従う。
+別セッションの `--effort` もこの方針に合わせる。project設定を読まない `--safe-mode` 等では明示指定し、要求値と取得できた実行metadataを記録する。モデル間で同名effortを同じ思考深度と見なさない。findingの収集と裁定は共通の [review packet](docs/templates/subagent-review-packet.md) に従う。
 
 根拠: owner方針（2026-09-14）、[Sonnet 5 guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5#calibrating-effort-and-thinking-depth)、[Opus 5 guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)。公式の低effort活用案を、このrepoの既定引下げの許可とは扱わない。
 
@@ -28,12 +28,12 @@ tracked project hook inventoryは空で、`claude-code-harness`はproject scope�
 
 停止時は `Ctrl+C`、別terminalから `claude --resume <session-id>`、再発時は `--fork-session` を検討する。transcript破損が疑われるAPI 400等では新規sessionでAGENTSの該当ルート、対象の現物、直近の引継ぎから再開する。
 
-projectの現在地は `Plans.md`、安定した事実は `docs/project-memory.md`、判断は `docs/decision-log.md` とdesign doc。個人auto-memoryは補助であり、書込みや読取りをgateにしない。主checkoutの既存格納先は `/home/kosei/.claude/projects/-home-kosei-Projects-inventory-system-public/memory/`。repo固有の成果物をこの個人領域へ移さない。
+projectの現在地は `Plans.md`、安定した事実は `docs/project-memory.md`、判断は `docs/decision-log.md` とdesign doc。個人auto-memoryは補助であり、書込みや読取りをgateにしない。主checkoutの既存格納先は `/home/kosei/.claude/projects/-home-kosei-Projects-inventory-system-public/memory/`。repo固有の成果物は作業checkoutに保持し、`~/.claude/`等の個人領域へ移さない。
 
 ## npm供給網ガード（D-030）
 
 - `.npmrc` の `ignore-scripts=true` と `min-release-age=7` を維持する。CI/再構築は `npm ci --ignore-scripts`。
-- 依存追加・更新はpackage/versionを名指しし、`--save-exact`を使う。lockfile差分をレビューし、PR前に `npm audit --audit-level=high` を確認する。
+- 依存追加・更新はpackage/versionを名指しし、`--save-exact`を使う。新規runtime依存はPlan / PRで明示する。lockfile差分をレビューし、PR前に `npm audit --audit-level=high` を確認する。
 - `npm audit fix --force`、名指しでない `npm update` / `npm upgrade`、version pinなしの `npx <package>`、install-scriptガードの迂回は禁止。
 - `min-release-age-exclude[]` によるcooldown bypassはuserの明示承認が必要。
 
