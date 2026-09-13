@@ -2,19 +2,19 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
 - Execution Mode: codex-only
-- Plan Commit: pending
+- Plan Commit: ece0977c
 - Amendments: none
 - Coordinator: owner（起草は Codex、D-084。未解決 findings の採否は owner）
 - Writer: Codex（Plan Gate 後の別 run。packet 編集権限なし）
-- Plan Reviewer: Sonnet（round 1 完了。owner 採用の具体化を反映し round 2 待ち）
+- Plan Reviewer: Sonnet（round 3 で Plan Gate pass。P1/P2/P3 なし、未確認事項なし）
 - Final Reviewer: Sonnet と Opus の独立した Double Audit（未実行）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Plan Review findings の裁定が必要な場合の owner 判断 / Ready / merge
+- Human Gate: Ready / merge
 
 Execution Mode は D-084 の起草・実装・裁定分離を使う。既存 Fable セッションへ新しい権限や作業を送信していない。CLI による非 Codex reviewer の実行可否はレビュー開始時に確認し、不能なら pending のまま gate を前進させない。
 
@@ -164,6 +164,8 @@ synthetic fixtureと公開可能なworkflow文書だけを使う。実データ�
 
 未着手。plan-firstと非Codex Plan Review待ち。
 
+2026-09-14: 上記は起票時の記録。現在はPlan Gate通過・実装未着手。現在の状態はWorkflow Stateと下記の通過記録を参照。
+
 ## Review Response
 
 - Findings Freeze: not yet frozen
@@ -175,3 +177,9 @@ owner 介入は scope 承認とこの裁定を消費。次の裁定が範囲や�
 ## Follow-up Disposition
 
 最初のsliceで変更しない制度候補: R2計画/役割/owner裁定の軽量化、STATECAP/Plan Commit/SHA方式、global Skill/plugin公開と旧agmsg hook、起動ラッパーのworktree優先。今回のcontext比較結果と依存範囲を根拠に次の採否を決める。ユーザーの全体目的は継続し、このsliceだけで全ハーネス整備完了とはしない。
+
+## Plan Gate 通過記録
+
+2026-09-14: owner承認の具体化を反映した内容commit `48ceddca` をSonnetが再確認した。round 2で初回のP2/P3をclosedとし、残したPROJECT_HANDOFFの経緯ログもround 3で確認した。最終verdictはpass、P1/P2/P3なし、未確認事項なし。実装後の移送全件照合はAC3/Matrixで引き続き必須。
+
+このstate-only commitは `plan-gate -> plan-approved` を実体化する。根拠は元のplan-first commit `ece0977c`、ownerの指摘採用承認、Sonnetの最終pass。実装commitはまだ存在しない。元のPlan Commitを保持し、Scope/AC/Design/Matrixは変更しない。review原文とusageはignored `.local/harness-context-review/` に保持する。実装のFinal Review/Double Auditは未実施であり、Plan Gate通過を代用しない。
