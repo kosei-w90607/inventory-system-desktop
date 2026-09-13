@@ -213,6 +213,19 @@ wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec
 - Allow documented local verification commands without prompts from both WSL bridge and trusted direct WSL sessions, including `git status` / `git diff` / `git log` / `git show`, `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`, `npm run build`, doc consistency scripts, and Rust `cargo fmt --check` / `cargo clippy` / `cargo test` from `src-tauri/`.
 - Allow local Codex diagnostic commands such as `codex execpolicy check`, `codex doctor`, and `codex features list`.
 
+## 必要な範囲だけ読む
+
+`read-safe-file.sh` は全文のほか、先頭の `--lines START:END` で単一ファイルの閉区間を表示する。行番号は `search-safe-files.sh` で見出しを検索して確認する。
+
+```bash
+.codex/bin/search-safe-files.sh '^##' docs/DEV_WORKFLOW.md
+.codex/bin/read-safe-file.sh --lines 40:55 docs/DEV_WORKFLOW.md
+```
+
+範囲は先頭ゼロのない正整数で `START <= END`。EOFを越えた部分は空となる。範囲指定時は単一pathのみで、その他のoption風引数、絶対path、機密path、repo外へのsymlinkは従来どおり拒否する。外部Skillはこのwrapperに渡さず、指定されたSKILL.mdと必要な参照だけを直接読む。
+
+読書ルートの正本は [AGENTS.md](../AGENTS.md) `Session Start`。部分読込みを導入した理由は、同じ安全境界のまま必要な契約へ到達し、無関係な本文の出力を減らすため（HC-D8）。
+
 ## Validation
 
 Check a proposed rule match with:

@@ -2,13 +2,13 @@
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: ece0977c
 - Amendments: none
 - Coordinator: owner（起草は Codex、D-084。未解決 findings の採否は owner）
-- Writer: Codex（Plan Gate 後の別 run。packet 編集権限なし）
+- Writer: Codex（現在のセッション。owner の明示指名により別 run の指定を置換）
 - Plan Reviewer: Sonnet（round 3 で Plan Gate pass。P1/P2/P3 なし、未確認事項なし）
 - Final Reviewer: Sonnet と Opus の独立した Double Audit（未実行）
 - Reviewed Content HEAD: pending
@@ -183,3 +183,7 @@ owner 介入は scope 承認とこの裁定を消費。次の裁定が範囲や�
 2026-09-14: owner承認の具体化を反映した内容commit `48ceddca` をSonnetが再確認した。round 2で初回のP2/P3をclosedとし、残したPROJECT_HANDOFFの経緯ログもround 3で確認した。最終verdictはpass、P1/P2/P3なし、未確認事項なし。実装後の移送全件照合はAC3/Matrixで引き続き必須。
 
 このstate-only commitは `plan-gate -> plan-approved` を実体化する。根拠は元のplan-first commit `ece0977c`、ownerの指摘採用承認、Sonnetの最終pass。実装commitはまだ存在しない。元のPlan Commitを保持し、Scope/AC/Design/Matrixは変更しない。review原文とusageはignored `.local/harness-context-review/` に保持する。実装のFinal Review/Double Auditは未実施であり、Plan Gate通過を代用しない。
+
+## 実装着手の owner 指示
+
+2026-09-14: owner は、Windows側での過去の検証を理由に、別runへWriterを委譲せず現在のCodex自身が実装するよう明示した。このchangeのWriter割当とrun分離だけを置き換える。Scope、設計契約、合格条件、Final Reviewerの独立性は維持する。`plan-approved -> implementing` は最初の実装内容commitに同乗して実体化する。

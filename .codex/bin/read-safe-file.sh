@@ -46,6 +46,26 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 
+line_start=""
+line_end=""
+if [[ "$1" == "--lines" ]]; then
+  if [[ "$#" -ne 3 ]]; then
+    echo "usage: .codex/bin/read-safe-file.sh --lines START:END <path>" >&2
+    exit 2
+  fi
+  if [[ ! "$2" =~ ^([1-9][0-9]*):([1-9][0-9]*)$ ]]; then
+    echo "invalid line range: expected positive START:END" >&2
+    exit 2
+  fi
+  line_start="${BASH_REMATCH[1]}"
+  line_end="${BASH_REMATCH[2]}"
+  if ! [ "$line_start" -le "$line_end" ] 2>/dev/null; then
+    echo "invalid line range: expected START <= END within integer range" >&2
+    exit 2
+  fi
+  shift 2
+fi
+
 is_allowed_path() {
   case "$1" in
     AGENTS.md|Plans.md|README.md|package.json|package-lock.json|tsconfig*.json|vite.config.ts|eslint.config.js|components.json|lefthook.yml|.gitignore|.editorconfig|.prettierignore|.prettierrc.json) return 0 ;;
@@ -71,7 +91,9 @@ for input_path in "$@"; do
       exit 1
       ;;
   esac
+done
 
+for input_path in "$@"; do
   if ! abs_path="$(canonicalize_path "$input_path" 2>/dev/null)"; then
     echo "cannot canonicalize path: $input_path" >&2
     exit 1
@@ -100,5 +122,9 @@ for input_path in "$@"; do
     exit 1
   fi
 
-  cat -- "$rel_path"
+  if [[ -n "$line_start" ]]; then
+    sed -n "${line_start},${line_end}p" -- "$rel_path"
+  else
+    cat -- "$rel_path"
+  fi
 done
