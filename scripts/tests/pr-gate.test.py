@@ -290,6 +290,45 @@ class CLI(unittest.TestCase):
                 self.assertIn('approved packet condition changed: '+key,result)
                 self.run_cli('ready','--packet',packet,expected=1)
 
+    def test_registered_amendment_order_cannot_roll_back_manual(self):
+        packet='docs/plans/2026-09-14-fixture.md'
+        path=self.repo/packet;path.parent.mkdir(parents=True)
+        fields={'Evidence Mode':'github','Phase':'plan-gate','Risk':'R3','Execution Mode':'fable-window',
+                'Plan Commit':'pending','Amendments':'none','Coordinator':'owner','Writer':'codex','Plan Reviewer':'opus',
+                'Final Reviewer':'sonnet','Final Review Minimum':'1','Human Gate':'ready,merge,manual'}
+        def commit(subject):
+            path.write_text(self.packet_text(fields));self.git('add',packet);self.git('commit','-qm',subject)
+            return self.git('rev-parse','HEAD')
+        plan=commit('plan-first')
+        fields.update({'Phase':'implementing','Plan Commit':plan})
+        commit('approve plan')
+        fields['Human Gate']='ready,merge'
+        a1=commit('A1 approved without manual')
+        fields['Amendments']=a1;commit('register A1')
+        fields['Human Gate']='ready,merge,manual'
+        a2=commit('A2 requires manual')
+        fields['Amendments']=a1+', '+a2
+        commit('register A2')
+        self.state['packets']=[dict(type='file',name=Path(packet).name,path=packet)]
+        self.state['snapshots']={ref:{packet:self.git('show',ref+':'+packet)} for ref in (plan,a1,a2)}
+        self.state['contents']['docs/Plans.md']=f'## 次の行動\n[packet](plans/{Path(packet).name})\n'
+        def observe():
+            self.state['pr']['head']['sha']=self.git('rev-parse','HEAD')
+            self.state['contents'][packet]=path.read_text();self.save()
+            capture=self.run_cli('capture','--packet',packet)['capture']
+            check=subprocess.run(['bash',str(ROOT/'scripts/check-workflow-git.sh')],cwd=self.repo,capture_output=True,text=True)
+            return json.loads(Path(capture).read_text())['requirements'],check
+        required,check=observe()
+        self.assertTrue(required['manual'])
+        self.assertEqual(check.returncode,0,check.stdout+check.stderr)
+        fields.update({'Amendments':a2+', '+a1,'Human Gate':'ready,merge'})
+        commit('invalid reorder restores older A1 conditions')
+        downgraded,check=observe()
+        # The helper selects the last entry; shared PK5 must make this candidate unmergeable.
+        self.assertFalse(downgraded['manual'])
+        self.assertNotEqual(check.returncode,0,'PK5 accepted A2,A1 and helper captured manual=false: '+check.stdout)
+        self.assertIn('Amendments が削除・変更されています',check.stdout)
+
     def test_latest_amendment_snapshot_owns_gate_conditions(self):
         packet,fields=self.configure_packet(**{'Human Gate':'ready,merge,manual'})
         amended=fields | {'Final Review Minimum':'1','Human Gate':'ready,merge'}

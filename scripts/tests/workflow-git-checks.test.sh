@@ -200,6 +200,36 @@ capture_check "$repo" output
 [[ "$CHECK_STATUS" -eq 0 ]] || fail "Amendments 追記正例が ERROR 判定された:\n$output"
 assert_not_contains "$output" "PK5:" "Amendments 正例で PK5 出力が発生した"
 
+# MG-D5 / F1: two amendments retain their order; only token separators may differ.
+printf 'second amendment\n' >> "$repo/impl.txt"
+d_sha="$(commit_all "$repo" 'feat: second amendment')"
+write_packet "$repo" "packet.md" "$a_sha" "$c_sha, $d_sha"
+commit_all "$repo" 'docs(plans): append second amendment' > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -eq 0 ]] || fail "ordered amendment append rejected: $output"
+write_packet "$repo" "packet.md" "$a_sha" "  $c_sha  ,   $d_sha  "
+valid_amendments_head="$(commit_all "$repo" 'docs(plans): amendment separators only')"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -eq 0 ]] || fail "amendment formatting change rejected: $output"
+
+# Each invalid candidate branches from the same valid history; no destructive reset is needed.
+for variant in reorder replacement removal spelling; do
+    git -C "$repo" switch -qc "amendment-$variant" "$valid_amendments_head"
+    case "$variant" in
+        reorder) changed="$d_sha, $c_sha" ;;
+        replacement) changed="$a_sha, $d_sha" ;;
+        removal) changed="$c_sha" ;;
+        spelling) changed="${c_sha:0:12}, $d_sha" ;;
+    esac
+    write_packet "$repo" "packet.md" "$a_sha" "$changed"
+    commit_all "$repo" "docs(plans): invalid amendment $variant" > /dev/null
+    capture_check "$repo" output
+    [[ "$CHECK_STATUS" -ne 0 ]] || fail "amendment $variant was accepted"
+    assert_contains "$output" "Amendments が削除・変更されています" "amendment $variant reason missing"
+    assert_not_contains "$output" "祖先ではありません" "amendment $variant failed for unrelated ancestry"
+done
+git -C "$repo" switch -q --detach "$valid_amendments_head"
+
 # MG-D5 / S-P3-1: recorded amendment removal fails even though every remaining SHA is ancestral.
 write_packet "$repo" "packet.md" "$a_sha" "none"
 commit_all "$repo" "docs(plans): remove recorded amendment" > /dev/null

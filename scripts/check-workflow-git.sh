@@ -242,15 +242,20 @@ check_plan_commit_ancestry() {
         echo "❌ [workflow-git] PK5: $file の Plan Commit が書き換えられています（初回確定値 '$first_value' -> 現在値 '$plan_commit'）"
         FAIL=1
     fi
-    # MG-D5: every previously registered amendment remains present (append-only).
-    local prior_amendment
-    while IFS= read -r prior_amendment; do
-        [[ -n "$prior_amendment" ]] || continue
-        if ! printf '%s\n' "$amendments" | grep -qw "$prior_amendment"; then
-            echo "❌ [workflow-git] PK5: $file の Amendments が削除・変更されています: $prior_amendment"
-            FAIL=1
-        fi
-    done < <(git log --follow -p -- "$file" | grep -E '^[+]- Amendments:' | grep -oE '[0-9a-f]{7,40}' | sort -u)
+    # MG-D5: each registered sequence must remain a prefix, including original SHA spelling.
+    # Separators/whitespace may change; resolving aliases here would weaken SHA immutability.
+    local prior_amendments
+    local -a prior_shas=()
+    while IFS= read -r prior_amendments; do
+        mapfile -t prior_shas < <(printf '%s\n' "$prior_amendments" | grep -oE '[0-9a-f]{7,40}' || true)
+        for ((index = 0; index < ${#prior_shas[@]}; index++)); do
+            if [[ "${amendment_shas[$index]:-}" != "${prior_shas[$index]}" ]]; then
+                echo "❌ [workflow-git] PK5: $file の Amendments が削除・変更されています（登録順序を含む prefix が必要です）"
+                FAIL=1
+                break
+            fi
+        done
+    done < <(git log --follow -p -- "$file" | grep -E '^[+]- Amendments:')
 
 }
 

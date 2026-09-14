@@ -69,7 +69,7 @@ native拒否のprobeは、ownerに具体的対象を示したうえで`ci-probe/
 
 helperはRisk / Execution Mode / Final Review Minimum / Human Gateを、Plan Commit（Amendmentsがあれば最後の登録SHA）のpacket snapshotとheadで照合する。未追補の変更は拒否し、snapshot当時のPhaseや自己SHAがpre-gate/pendingでもこの4条件の照合には影響させない。これは登録された承認内容への結合であり、人の承認を署名やmetadataだけで証明する仕組みではない。
 
-Reviewed Content HEAD / Final Exact-HEAD Evidence / Hosted CI Requirementは新packetから外す。元のPlan CommitとAmendmentsの不変性・祖先確認は残す。実装開始後に計画の契約が変わる場合の再設計・再reviewも維持する。
+Reviewed Content HEAD / Final Exact-HEAD Evidence / Hosted CI Requirementは新packetから外す。元のPlan CommitとAmendmentsの不変性・祖先確認は残す。Amendmentsは過去の登録列が現在列のprefixになる追記だけを許す。区切りや空白は変更できるが、登録順序・SHAの差替え・削除・表記の置換は許さない。実装開始後に計画の契約が変わる場合の再設計・再reviewも維持する。
 
 非CI結果はowner名義の専用PR comment（marker=`inventory-workflow-v1`）に保存する。PR本文や他commentを編集しない。正当なauthorの記録が複数あれば曖昧として止める。CIのSHAや成功フラグは複製せずGitHub APIから取得する。
 
