@@ -200,14 +200,6 @@ if [[ "$(classification_value rust)" == "true" ]]; then
         echo "  cargo test"
         cargo test || exit "$?"
     ) || fail_gate rust
-
-    TEST_FNS="$(rg -n --pcre2 '^\s*fn\s+test_[a-z0-9_]*\s*\(' "$REPO_ROOT/src-tauri/src" "$REPO_ROOT/src-tauri/tests" 2>/dev/null || true)"
-    MISSING="$(printf '%s\n' "$TEST_FNS" | rg -v --pcre2 '_req[0-9]{3}([_(\s]|$)' 2>/dev/null || true)"
-    if [[ -n "$MISSING" ]]; then
-        echo "[pre-push] Tests without REQ IDs:" >&2
-        echo "$MISSING" >&2
-        fail_gate req-number
-    fi
 fi
 
 if [[ "$(classification_value docs)" == "true" ]]; then
@@ -222,7 +214,7 @@ if [[ "$(classification_value env)" == "true" ]]; then
     bash "$REPO_ROOT/scripts/check-env-safety.sh" || fail_gate env-safety
 fi
 
-if [[ "$(classification_value traceability)" == "true" ]]; then
+if [[ "$(classification_value rust)" == "true" || "$(classification_value traceability)" == "true" ]]; then
     echo "[pre-push] Traceability"
     append_check traceability
     (
