@@ -228,3 +228,11 @@ Sonnet highとOpus xhighが同じ候補を相互の結果を見ずに独立監�
 - S-P3-1（追補削除のnegative）とO-P3-5（full分類pathのnegative）は既存Matrixの負例補強に合わせて扱う。他のP3は原文と確認事実を保持し、ownerの裁定候補とする。P3だけを理由に追加Broad Auditを発注しない。
 
 `scripts/tests/claude-hooks.test.sh`のwiring同期は、S1のshared suite抽出・S4の実呼出経路接続・MatrixのCI/分類の全consumer監査に伴う従属作業として実施した。local→suiteとsuite→auditの切断mutantでD-059の保護を確認した。新しい契約やgateを追加・緩和するScope拡張ではない。
+
+### 限定closureと追補順序の再現（2026-09-14）
+
+候補`3997ee7e`でO-P2-1〜3を修正し、legacy local fullはCLEAN/PASS。Opus highが静的な実物・既存evidenceの照合で元のP2をclosedと判定した。独立実行を試す前の広域探索commandが拒否され、reviewerは許可済みtest/driverを実行していなかったため、独立再実行済みとは扱わない。拒否対象はrepo外を含む探索であり、Bash全体の利用不能ではない。
+
+同closureのF1（Amendmentsの並べ替え）はFreeze後の新規指摘だったため、まず合成git/CLI fixtureで再現した。正順ではmanual必須だった登録済み追補を逆順にして古い条件へ戻すと、PK5が成功し、helper captureもmanual不要の条件を保存することを確認した。期待拒否のassertionがREDになった実測は`.local/merge-evidence/amendment-order/red-f1.log`。runtime failureを根拠にP2として扱い、S3の共有PK5で順序も含むappend-onlyを守る最小修正を進める。helper用の別履歴サービスは追加しない。
+
+mutation用の一時copyには、同じ選択testが無変更時にGREENになるpositive controlも追加する。作業状態の古い記述は最終結果と合わせて更新する。その他のP3は引き続きownerの裁定候補として保持する。
