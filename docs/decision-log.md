@@ -703,3 +703,12 @@ Use concise ADR-style entries.
 - Why: SHA転記・状態commit・再検証の連鎖を減らし、必要jobのskipや古いgreenを拒否する。非CIをserver必須checkへ増設する案は採らず、直接UI mergeを運用上禁止する。UIがCI成功だけでmerge可能と示し得る残存リスクを保持する。
 - Compatibility: D-033/D-035/D-038の実装後state-only・三点一致はlegacyだけ。Plan Gate、Plan Commit/Amendments、独立review、owner Ready/merge、Windows/manual/R4は両modeで維持する。archiveは非遡及。docs/closeoutは軽いPRで完了し、自身のcloseoutを再帰要求しない。
 - Activation: bootstrap自身は旧gate。live CI/docs/probe確認とowner設定承認/read-backが揃ってから新modeを利用する。設定を適用済みとは記録しない。source: [merge-evidence](agent-guidance/merge-evidence.md)。
+
+## D-086: ruleset実応答の既知の既定項目だけを照合時に扱う（2026-09-14）
+
+- Status: proposed（互換性修正のPlan Gate待ち）。
+- Decision: [MG-D1a](agent-guidance/merge-evidence.md#実応答の既定項目との互換性mg-d1a)に従い、desiredが未指定の`required_reviewers=[]`と`require_extra_approval_for_unattributed_changes=true`だけを、値・型の検査後に応答の比較用コピーから除く。desiredで明示された項目、未知field、他のdriftは従来どおり比較・拒否する。
+- Why: native保護試験は成功したが、GitHubが返す既定項目によってhelperが有効な観測候補を拒否した。送信policyと保護要件を維持したまま、実応答との不整合だけを解消する。
+- Alternatives: 未確認fieldを送信payloadへ追加する案、未知fieldの一括無視・再帰的部分一致・配列の全面正規化は採らない。前者は未確認の入力契約と設定変更を持ち込み、後者は観測した原因を越えてdrift検出範囲を変える。
+- Verification: `scripts/tests/pr-gate.test.py`のCLI fixtureで、desiredとは独立した応答既定項目、値・型の負例、未知field、既存保護の改変を検証する。live read-backは有効化前提のまま。
+- Revisit / recovery: 応答の既定値・型・項目が変わったら拒否を維持して調査する。復旧は通常の修正PRで行い、保護解除・自動bypassは行わない。

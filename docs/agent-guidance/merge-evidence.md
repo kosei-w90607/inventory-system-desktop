@@ -63,6 +63,21 @@ desired payloadは実装時に`.github/merge-gate-ruleset.json`へ置く。helpe
 
 native拒否のprobeは、ownerに具体的対象を示したうえで`ci-probe/merge-gate-<candidate>`という検証用base refと、rules内容が同じで対象refだけ異なる一時rulesetを使う。PRを伴わない合成commit、必要checkのないPR、期待appでないstatusを拒否することを確認する。positive controlはbootstrapの実CIが成功したcandidateとその検証時baseを使い、検証用PRだけをmergeする。mainへ失敗実験を行わず、結果を保存して一時ref/rulesetを片付ける。最後にproduction rulesをread-backする。GitHubのPR要件は「PRに対応する検証済み変更」を要求するもので、正当なPRに対応したmanual mergeまで暗号学的に禁止する仕組みとは扱わない。
 
+### 実応答の既定項目との互換性（MG-D1a）
+
+GitHubのruleset detailは、送信payloadにない既定parameterを返す。[検証用PR #57](https://github.com/kosei-w90607/inventory-system-desktop/pull/57) / [#58](https://github.com/kosei-w90607/inventory-system-desktop/pull/58)の試験ではnativeの拒否・正常mergeが成立した一方、`pull_request.parameters`に追加された次の項目でhelperの全体比較が不一致になった。
+
+| 応答だけに存在する項目 | 許容する値・型 |
+|---|---|
+| `required_reviewers` | 空のJSON配列 `[]` |
+| `require_extra_approval_for_unattributed_changes` | JSON boolean `true`（数値 `1` は不可） |
+
+helperは取得したcurrent main側のdesired policyを基準とする。上の項目をdesired側が明示していない場合に限り、応答に存在すれば値・型を表どおり検査し、比較用のコピーから除いて既存の全体比較を行う。応答に存在しない従来形式も受け入れる。desired側が明示する項目は除外せず、desiredとの比較対象として残す。元のAPI応答・desired・保存証拠は変更しない。
+
+未知のparameter、表と異なる値・型、既存の保護項目の欠落・変更は拒否する。rulesの配列順序やallowed_merge_methodsの順序はこの修正で正規化せず、従来の比較を維持する。name/target/enforcement/conditions/bypass、実効PR必須・Merge gate/15368/strict・削除/force禁止の検査を維持し、status/Ready/mergeは同じ`Gate.rules`を通る。
+
+これは観測した応答形を扱う限定的な互換処理で、GitHub側の設定やreview要求を変更するものではない。`required_reviewers`は[公式Rules API](https://docs.github.com/en/rest/repos/rules)に記載がある。もう一方の項目の入力契約・全状況での意味は未確認で、今回のnative試験を越えて無害と一般化しない。送信payloadへの未確認項目の追加、未知fieldの一括無視、再帰的な部分一致、恒常bypassは採らない。実応答が許容形から変わった場合は利用を止め、実物確認と別の変更判断を行う（D-086）。
+
 ## 状態と非CI記録
 
 新packetのmarkerは`Evidence Mode: github`。bootstrapは`Evidence Mode: legacy`を明示して旧13-fieldを維持する。新checker導入後のactive packetはmarker必須で、欠落や未知値をlegacyへ推測fallbackしない。archiveは非遡及。markerのない旧active作業はbootstrap導入前に完了するか、ownerが移行を指示する。Gitで管理するWorkflow StateはPhase、Risk、Execution Mode、Plan Commit、Amendments、Coordinator、Writer、Plan Reviewer、Final Reviewer、Final Review Minimum、Human Gate、およびmarker。Phaseはkickoff〜implementingとarchiveの計画上の地点を表す。local-verified以後をGitへ書く必要はない。Human Gateは要件であり、`ready,merge`を必須に、必要な場合`manual,r4`を加える。R4にはr4が必須。自由文の条件を推測して免除しない。Final Review Minimumは承認された初回監査の必要数（1または2）を明記し、R4/workflow gateとD-084のcodex-only R3 UI契約変更では2を下回らない。既存のRisk/mode別review要件を減らさず、helperはこの明示値を下限にする。

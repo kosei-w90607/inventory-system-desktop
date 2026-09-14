@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **マージ検証整理（実装merge済み／有効化準備）**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)の実装と正常Ready CI・分類失敗fixtureを完了。[Packet](archive/plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](archive/plans/test-matrices/2026-09-14-merge-evidence-simplification.md)をarchiveへ移した。次は検証用ruleset/refの具体化とowner判断。本docs-only closeoutの実施状況は対応PR本文を参照し、成功head/baseを後段probeへ渡す。ownerの介入6/8で実装mergeとdocs-only closeoutまで承認済み。検証用ruleset/refの拒否試験・cleanupと本番有効化/read-backは未実施・別承認。P3はpacketの着手条件付き後続保持を維持する。
+- **マージ検証整理（互換性修正の計画確認）**: [修正Packet](plans/2026-09-14-merge-rules-compatibility.md) / [Matrix](plans/test-matrices/2026-09-14-merge-rules-compatibility.md)。GitHubの既定parameterによるhelperの不一致を、既知の値・型だけ受理する案で解消する。現在はplan-draft、実装・計画採用は未了。ownerがchange全体の介入上限を12回へ変更し、現在8/12回。次は独立Plan Reviewとownerの計画採用。SonnetレビューのCLI起動はOAuth期限切れで失敗し、Plan Reviewerは再ログイン待ち。実装PR #54 / docs closeout #56は完了し、[旧Packet](archive/plans/2026-09-14-merge-evidence-simplification.md)はarchive済み。[負例PR #57](https://github.com/kosei-w90607/inventory-system-desktop/pull/57) / [成功PR #58](https://github.com/kosei-w90607/inventory-system-desktop/pull/58)のnative試験と一時ruleset/refのcleanupはPASS。本番main/設定は不変で、本番有効化は修正後の別承認。証拠はlocal-only `.local/merge-evidence/activation-20260914/probe/`、本計画のreviewは`.local/merge-rules-compatibility/`。他のP3は既存の後続保持を維持する。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
