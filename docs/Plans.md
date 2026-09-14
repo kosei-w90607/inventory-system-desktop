@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **マージ検証整理（R3、P3裁定済み / 公開・Ready準備）**: [Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。Astra xhigh単独実装、候補4c5a241bのlegacy fullはCLEAN/PASS。Sonnet / Opusの独立監査と最終closureはP1/P2なし。ownerが残るP3を着手条件付きで後続保持と裁定。次はbootstrapの公開・Readyと分類失敗fixtureの具体的対象を提示する。未push・PR未作成なのでPhaseはimplementingを保持し、PR本文へevidenceを記録後に隣接遷移を実体化する。merge、docs-only dogfood、ruleset probe/有効化はMG-D11の順序と各承認を維持する。
+- **マージ検証整理（R3、human-confirm / Ready検証へ）**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)をDraftで公開。[Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。公開前L0の既存不整合を是正した候補f28e5891は実L0/legacy fullがCLEAN/PASS、限定Sonnet確認もP1/P2なし。元のSonnet/Opus監査とP3後続保持裁定を維持し、human-confirmへ遷移。owner承認済みのReadyと分類失敗fixtureの検証・closeまで進める。mergeと後段のruleset probe/有効化は別判断。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 

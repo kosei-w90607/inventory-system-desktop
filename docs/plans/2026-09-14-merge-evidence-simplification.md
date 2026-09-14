@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: human-confirm
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
@@ -12,10 +12,10 @@
 - Writer: Codex / Astra xhigh（owner 2026-09-14指定、単独実装。要求モデル・effortであり、実装runの実効metadataは未確認）
 - Plan Reviewer: Opus（独立fresh context。初回xhigh、修正確認high）
 - Final Reviewer: Sonnet high + Opus xhigh（各fresh contextで独立Contract Audit。workflow gate変更の難度に応じた割当。修正確認のeffortは難度で選び、P3のみの再依頼はしない）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: f28e5891ac42cc8c180de711c151c0aa2e102d3b
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: bootstrapの公開・Ready / ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / merge
+- Human Gate: ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / merge
 
 現行のlegacy workflowで設計・Plan Gateを通過済み。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択し、2026-09-14にAstra xhighの単独実装と難度に応じたSonnet / Opusレビューを指定して実装開始を承認した。Codexが計画・amendmentを起草し、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。計画を更新するrunと実装runを分け、実装runはpacketを編集しない。
 
@@ -266,3 +266,11 @@ ownerが「着手条件付きで後続保持する」と明示裁定した（介
 - 検証・承認をすり抜けるruntime failureが確認された場合は保留を解除して修正する。本番で問題が出るまで待つ裁定ではない。
 
 実装候補4c5a241bのCLEAN local full、Sonnet/Opusの初回Double Audit、修正後の独立Opus最終closure、P1/P2なし、今回のowner裁定は揃った。Draft PRを公開してその本文へevidenceを記録した後、`implementing -> local-verified -> independent-review -> human-confirm`を隣接遷移として実体化する。現在はPR未作成なのでPhaseとReviewed Content HEADを先取りしない。4c5a241b以降の差分はWorkflow State・Plans・append-onlyの進捗/証跡だけで、Scope/AC/Matrix/実装を変更していない。公開・Readyと後段の外部操作は具体的な操作範囲を提示する。
+
+### 公開前L0是正・PR公開とhuman-confirm（2026-09-14）
+
+ownerは提示済みの本branch公開・Ready・分類失敗fixture PRの作成/検証/closeを明示承認した（介入5回目、上限8回は規範値のまま。実働時間は未実測）。本PRのmerge、ruleset適用、試験branch削除はこの承認に含めない。
+
+公開前の実L0は、旧い全Rust関数名へのREQ番号述語が既存のSPEC技術テストを拒否してFAILした。S3/S4のpre-pushの不整合としてコード変更を状態記録と分離し、canonical traceabilityへ集約した候補`f28e5891ac42cc8c180de711c151c0aa2e102d3b`で実L0とlegacy fullがCLEAN/PASS。T1〜T4とsrc-tauriは変更していない。Sonnet highの限定closureは実物/evidenceを照合してP1/P2なし・契約維持と判定した。元のDouble Auditと後続保持裁定は維持する。
+
+[PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)をDraftで公開し、本文へ当該contentのfull、監査、P3裁定を記録した。公開時のPR head/base/本文を実物照合済み。これらの証拠とowner裁定を根拠に、`implementing -> local-verified -> independent-review -> human-confirm`を隣接遷移として実体化し、Reviewed Content HEADを当該監査contentへ設定する。この遷移にはScope/AC/Matrix/実装を同乗させない。既に承認されたReadyは次のstate-onlyとそのexact HEADのL1を完了してから実行する。
