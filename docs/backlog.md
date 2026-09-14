@@ -152,7 +152,7 @@
 
 - A1 価格履歴の説明文: 採用。加えて (a) 他の「直近 10 件」系 section も同じ文言で揃える (b) 価格履歴に列タイトルを付ける (c) 「直近の○○」系 section は手動販売出庫だけ囲みがあり他に無いので、囲みありで統一する → runtime backlog S（対象 section の棚卸しを含む）
 
-- C5 / C6: owner は mockup 前提で言った指摘。C6 方向 badge は「方向バッジは成立しえない」= runtime backlog から撤回。C7 レシート画像「（任意）」は採用。追加の owner 案: 現実装の「直近の返品・交換」の列を 返品日 or 日付 / 種別 / レジ戻し（mockup の 済み・未処理 badge は良かった、色付け可）/ 備考 / 記録日時（秒は省いても省かなくても可）へ再編（共通化する意味があるかは owner 自身も未確定、実機で候補提示）。記録日時の文字が時々別 font に見える（`ReturnExchangePage.tsx` の cell は `formatDateTime` を素の `TableCell` で描画、隣接 cell の `tabular-nums` 有無の差が仮説、機序は実機観測で確定）。返品交換の商品追加 section は触らない
+- C5 / C6: owner は mockup 前提で言った指摘。C6 方向 badge は「方向バッジは成立しえない」= runtime backlog から撤回。C7 レシート画像「（任意）」は採用。追加の owner 案: 現実装の「直近の返品・交換」の列を 返品日 or 日付 / 種別 / レジ戻し（mockup の 済み・未処理 badge は良かった、色付け可）/ 備考 / 記録日時（秒は省いても省かなくても可）へ再編（共通化する意味があるかは owner 自身も判断を保留、実機で候補提示）。記録日時の文字が時々別 font に見える（`ReturnExchangePage.tsx` の cell は `formatDateTime` を素の `TableCell` で描画、隣接 cell の `tabular-nums` 有無の差が仮説、機序は実機観測で確定）。返品交換の商品追加 section は触らない
 
 - D8 検索欄 / ドロップダウンの面: 商品一覧でやった `--control-surface` #fafaf9 に揃える。runtime には shadcn `Input` / `Select` を通らない native `<select>` / `<input>` 直書き（`bg-background` のまま）が残る: `InventoryRecordsPage.tsx:156-245`（select 3 / input 3）、`ReceivingPage.tsx:393`（仕入先 select）、`DisposalPage.tsx:509`、`OperationLogsPage.tsx:338-352`（date input 2）→ runtime backlog S（token 化 sweep）
 
@@ -228,7 +228,7 @@
 - **Tauri 2 on Linux 日本語 IME 制約**: tauri#11412 OPEN（WSL2 固有でなく Ubuntu ネイティブでも再現）。Phase 1 P0 IPC 疎通は英字入力で検証完了。Phase 2 以降の operator-facing L3 は Windows native ビルドで実施する（`memory/tauri2-linux-ime-limitation.md`）
 
 ### 設計フェーズの懸案 → 全解消
-A〜D 群（A: DB / B: CSV取込み / C: 独自コード・マスタ / D: 設計送り 5 項目）は全て確定済み。要求仕様 130 本 / 18 テーブル / 5 層 37 タスク / 関数設計（第 1〜4 + 第 7 段階 UI 基盤）は実装に反映済。Q40（障害時対応）は UI-13 実装（画面固有 CmdError/retry）と共通 Error Boundary（UI 安全網 batch PR #60、2026-08-04）まで消化済み。包括的な障害時対応方針としての残余は `docs/ARCHITECTURE.md` 未確定事項と `Plans.md` Backlog を参照（PR #6 棚卸し delta 検証 P3 起源の表記同期、2026-08-26）
+A〜D 群（A: DB / B: CSV取込み / C: 独自コード・マスタ / D: 設計送り 5 項目）は全て確定済み。要求仕様 130 本 / 18 テーブル / 5 層 37 タスク / 関数設計（第 1〜4 + 第 7 段階 UI 基盤）は実装に反映済。Q40（障害時対応）は UI-13 実装（画面固有 CmdError/retry）と共通 Error Boundary（UI 安全網 batch PR #60、2026-08-04）まで消化済み。包括的な障害時対応方針としての残余は `docs/ARCHITECTURE.md` §4と `Plans.md` Backlog を参照（PR #6 棚卸し delta 検証 P3 起源の表記同期、2026-08-26）
 
 ---
 
