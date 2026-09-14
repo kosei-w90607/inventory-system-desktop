@@ -18,7 +18,7 @@ owner追加指示のD-087: Astraの一貫担当、独立レビューと既存の
 
 ## Test Matrix
 
-新規test名は予定であり未実装。既存testは`search-safe-files.sh 'rules|policy|bypass' scripts/tests/pr-gate.test.py`で実在を確認した。数・実行時間は未実測。
+計画時に新規としたtestは実装済み。既存testは`search-safe-files.sh 'rules|policy|bypass' scripts/tests/pr-gate.test.py`で実在を確認した。実行結果はtest logとPR本文を参照する。
 
 | Contract | Failure mode | Type | Test Name | Would fail if... |
 |---|---|---|---|---|

@@ -718,4 +718,4 @@ Use concise ADR-style entries.
 - Status: accepted（ownerの明示指示）。
 - Decision: Astra主担当では調査・起草・調整・実装・検証・packet/状態記録を同じsessionで担当する。通常作業のサブエージェント分割と起草/実装の別runを既定にせず、独立レビューをSonnet / Opusへ依頼する。発注・回収もAstraが行う。
 - Why: Fableを指揮者に置く分業規定をAstraへ一律に当てはめず、ownerが望む一貫した作業と文脈の保持を実現する。速度差の実測を根拠にする決定ではない。
-- Compatibility: D-084の起草/実装run分離・実装runのpacket編集禁止を、Astra主担当に限り上記へ置き換える。Fableの分業、Plan Gate、計画先行commit、Gated Amendment、非Codex Plan Review、独立性、Double Audit、ownerの採用・裁定・Human Gateは維持する。正本は[Agent Operating Manual §3.2](AGENT_OPERATING_MANUAL.md#astraを主担当にする場合d-087)。
+- Compatibility: D-084の起草/実装run分離・実装runのpacket編集禁止・reviewer発注書のowner relayを、Astra主担当に限り上記へ置き換える。Fableの分業、Plan Gate、計画先行commit、Gated Amendment、非Codex Plan Review、独立性、Double Audit、ownerの採用・裁定・Human Gateは維持する。正本は[Agent Operating Manual §3.2](AGENT_OPERATING_MANUAL.md#astraを主担当にする場合d-087)。

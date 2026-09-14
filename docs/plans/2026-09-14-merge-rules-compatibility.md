@@ -172,11 +172,11 @@ raw API、vendor metadata、review出力、実行logはignored `.local/merge-rul
 
 ## Implementation Results
 
-MG-D1aの限定照合を共有`Gate.rules`へ実装した。既定項目を含む正常応答の回帰を現行実装でREDにした後、helperの全テストと保存実応答のreplayがPASS。無変更copyのpositive controlと、既定値・型・未知field・desired優先を壊すmutationで検出力を確認した。fullと独立Double Auditはこの候補で後続実施する。正確な候補版・test数・実行logはlocal evidenceと公開後のPR本文へ置く。
+MG-D1aの限定照合を共有`Gate.rules`へ実装した。既定項目を含む正常応答の回帰を現行実装でREDにした後、helperの全テストと保存実応答のreplayがPASS。無変更copyのpositive controlと、既定値・型・未知field・desired優先を壊すmutationで検出力を確認した。初回候補のCLEAN fullと独立Double Auditを完了し、P1/P2なし。下記のP3整理後の最終検証はlocal evidenceと公開後のPR本文へ記録する。正確な候補版・test数・実行logをtrackedに自己記録しない。
 
 ## Review Response
 
-- Findings Freeze: not yet frozen
+- Findings Freeze: frozen after Broad Audit
 
 最初のSonnet high CLI起動はOAuth期限切れ（HTTP 401）で認証に失敗し、review未実施としてpendingにした。ownerの再ログイン後、計画commit `1c89ab9a3f302133066e92e6f0e5f544ff16bdb5`への独立Plan Reviewを完了した。結果は「P1/P2のstopperはなし」、P3は以下の記録更新・文言明確化。要求モデル/effortはSonnet/high、実効primary modelはmetadataの`claude-sonnet-5`で確認し、実効effortは取得できていない。原文はlocal-only `.local/merge-rules-compatibility/plan-review-r1-retry.json`。
 
@@ -198,3 +198,11 @@ P3として「D-087がExecution Modeの追加に見えないための補足」�
 元の独立Plan Review、P3明確化、今回の限定確認、ownerの実施指示、および計画/Matrixと追加sourceの確定commitを根拠に`plan-gate -> plan-approved -> implementing`を隣接遷移として記録する。Plan Commitを設定し、現在のAstraが実装を担当する。公開・Ready・merge・本番有効化は後段のowner判断を維持する。
 
 D-087のP3については、現行enumを変更していない事実をAOMへ明記する案を反映した。codex-onlyへ新たに適用範囲を狭める変更は加えていない。ownerへの候補引渡しでこの反映案も示し、独立監査では元の指摘とsourceの整合を確認する。
+
+### 独立Double AuditとP3の整理
+
+Sonnet high / Opus highが同じ実装候補を独立にContract Auditし、両方がP1/P2なしと判定した。実効primary modelはmetadataの`claude-sonnet-5` / `claude-opus-5`で確認。両者はRead/Grepによる静的照合を実施し、Bashはreview環境の`.git/config.lock`書込み制限で起動できなかったため、独立テスト再実行・git差分取得・hash再計算済みとは扱わない。rootによる実検証と両者の静的な実物/evidence照合を区別する。原文はlocal-only `.local/merge-rules-compatibility/final-sonnet.json` / `final-opus.json`。
+
+OpusのP3は、pull_request以外のruleへの同名項目とallowed_merge_methods順序の負例補強、再現可能なreplayと正しいL1 log参照、owner relay文言、Matrix/現在地の同期。指摘に沿った反映案として整理し、実装本体と送信policyは変更していない。初回監査後の差分はnegative fixtureと文書・証跡の整理で、追加Broad Auditは発注しない。整理後の必要検証を行い、反映案をownerの公開・Ready判断へ提示する。
+
+SonnetのP3（内外の局所変数`params`の改名）は、挙動に影響しない後続候補としてownerへ保持案を提示する。採否を自己裁定しない。正確な監査対象とP3後の検証対象の差分・SHAはPR本文へ記録する。

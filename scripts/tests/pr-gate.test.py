@@ -435,6 +435,8 @@ class CLI(unittest.TestCase):
         original=copy.deepcopy(self.state);rules=original['policy']['rules']
         changes=[
             (('rules',2,'parameters','unknown_default'), []),
+            (('rules',3,'parameters','required_reviewers'), []),
+            (('rules',2,'parameters','allowed_merge_methods'), list(reversed(rules[2]['parameters']['allowed_merge_methods']))),
             (('rules',2,'parameters','required_review_thread_resolution'), True),
             (('rules',3,'parameters','strict_required_status_checks_policy'), False),
             (('rules',3,'parameters','required_status_checks'), [{'context':'Other','integration_id':15368}]),
