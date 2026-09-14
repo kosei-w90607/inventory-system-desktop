@@ -99,7 +99,7 @@ Coordinator の発注時測定: `npm audit --audit-level=high` → vulnerabiliti
 
 ### S2 mockup-g の selector
 
-案: `docs/design-system/reference/mockup-g-filter-toolbar.html:86` の h1 を持つ current パネルの section-heading と heading-copy に `legacy-page-heading` を追加し、64-67行の4 selector の `:has(h1)` を `.legacy-page-heading` に置換する。既存 class、CSS 宣言、specificity、対象要素を保持し、h2 の current パネルへ広げない。
+案: `docs/design-system/reference/mockup-g-filter-toolbar.html:86` の h1 を持つ current パネルの section-heading と heading-copy に `legacy-page-heading` を追加し、64-67行の4 selector の `:has(h1)` を `.legacy-page-heading` に置換する。既存 class、CSS 宣言、対象要素を保持し、h2 の current パネルへ広げない。詳細度は `:has(h1)` の (0,2,1) から class の (0,3,0) へ上がるが、同要素・同 property に競合する宣言は無く（`:59-69` 実測: `.section-heading` の align-items は (0,1,0)、`.heading-copy` は min-width、`.btn` は flex-shrink を持たず、`.heading-copy>p` は font-size / color で別 property）、計算値と描画は不変（Gated Amendment 1）。
 代替の current 全体指定は h2 にも作用し、現状維持は互換性依存を残すため採らない。他 mockup は編集しない。
 
 ### S3 npm 名指し更新と Cargo 記録
@@ -188,7 +188,7 @@ Test Matrix は R2 かつ AC 全件が機械 oracle のため省略する。
 
 ## Review Focus
 
-S1b が WARN だけを変え、一般の不正カラム検出と exit code を保持するか。S2 の specificity と適用対象が同じか。npm 差分が名指し範囲に閉じるか。smol-toml 候補と open alert 再走査の未達を合格扱いしていないか。Final Review は Workflow State の独立2パスとし自己裁定しない。
+S1b が WARN だけを変え、一般の不正カラム検出と exit code を保持するか。S2 の計算値と適用対象が同じか（詳細度の変化は Gated Amendment 1 で契約化済み。競合宣言が無いことを `:59-69` で再確認する）。npm 差分が名指し範囲に閉じるか。smol-toml 候補と open alert 再走査の未達を合格扱いしていないか。Final Review は Workflow State の独立2パスとし自己裁定しない。
 
 ## Spec Contract
 
@@ -231,6 +231,8 @@ R2 のため省略。Scope の各項と AC の対応を維持する。
 Plan Review は pending。Coordinator へ AC1 の実出力と AC3 の default branch 再走査依存を報告する。
 
 - 2026-09-15 Plan Review round 1（Sonnet、独立 fresh context、対象 `be43418e`）: P1/P2 = 0、P3 1 件。P3 = checker が hosted CI の docs job 経由で `Merge gate` の直接依存であるため、Risk 節に「Final Review Minimum 2 は workflow gate 該当を仮定した保守的選択」と明記する提案。Coordinator disposition = 記録のみ（Risk 節の根拠は WARN 経路のみで exit code 不変を実測済み、Final Review 2 パスで同観点を確認する）。plan-draft → plan-gate → plan-approved → implementing を本 commit で実体化し、Plan Commit を `be43418e13a2a382f79fd6d1f94667a7624b0b2b` に設定。
+
+- 2026-09-15 Gated Amendment 1（Coordinator）: 実装 run（発注書 47 改訂 2）が S2 の「specificity 保持」と class 置換の両立不能（`:has(h1)` = (0,2,1) / class = (0,3,0)）で停止。Coordinator が mockup-g `:59-69` を実測し、競合宣言が無く計算値不変であることを根拠に、S2 と Review Focus の契約を「計算値・描画不変」へ訂正。選択肢 `:where()` による詳細度維持は保守者に説明が要る selector になるため採らない。AC2 は不変。
 
 ## 後続
 
