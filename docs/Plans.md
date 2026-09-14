@@ -8,13 +8,12 @@
 
 ## 次の行動
 
-- **マージ検証整理（Ready・merge・有効化へ）**: [PR #59](https://github.com/kosei-w90607/inventory-system-desktop/pull/59) / [Packet](plans/2026-09-14-merge-rules-compatibility.md) / [Matrix](plans/test-matrices/2026-09-14-merge-rules-compatibility.md)。互換性修正とD-087のAstra一貫担当を実装し、CLEAN full・独立監査・P3整理を完了。現在はready-hosted-finalで、確定HEADのL1とhosted結果はPR本文を正本にする。ownerは締めまで（公開・Ready、merge/機械的closeout、準備済み本番rulesetの適用/read-back）を承認済み、累計12/12回。各必要gateを完了して順に実行する。native拒否/正常merge試験と一時資源cleanupは完了済み。本番設定の適用は修正mergeとcloseout後に行い、結果を専用記録/helper statusへ残す。局所変数名整理と旧packetのP3は着手条件付き後続保持。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
 
-- **マージ検証整理の実装**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)をmerge。旧legacy gate・独立監査・Ready正常CI・分類失敗fixtureを完了し、記録を[archive](archive/plans/2026-09-14-merge-evidence-simplification.md)へ移送。ruleset有効化は未完了。workflow effectivenessのdogfoodは新mode有効化後の最初のR2+ PR。
+- **マージ検証整理と互換性修正**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54) / [PR #59](https://github.com/kosei-w90607/inventory-system-desktop/pull/59)をmerge。GitHubの既定項目を扱うhelperとD-087のAstra一貫担当を導入し、[修正Packet](archive/plans/2026-09-14-merge-rules-compatibility.md) / [Matrix](archive/plans/test-matrices/2026-09-14-merge-rules-compatibility.md)をarchiveへ移した。CI・独立監査・native拒否/正常merge試験・一時資源cleanupを完了。本番保護の現在の有効化事実は、[PR #59](https://github.com/kosei-w90607/inventory-system-desktop/pull/59)の専用記録とhelper statusを参照する。ownerは締めまで承認済み、累計12/12回。局所変数名整理と旧packetのP3は着手条件付き後続保持。workflow effectivenessのdogfoodは新mode有効化後の最初のR2+ PR。
 
 - **ハーネス文脈効率**: [PR #52](https://github.com/kosei-w90607/inventory-system-desktop/pull/52) をmergeし、[Plan Packet](archive/plans/2026-09-13-harness-context-efficiency.md) / [Matrix](archive/plans/test-matrices/2026-09-13-harness-context-efficiency.md) をarchiveへ移した。必要な読書と保護規定を両立させ、L1/hosted/独立reviewを完了。後続P3と未実測はPRに保持し、次のR2+作業でdogfoodする。
 

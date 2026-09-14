@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
@@ -26,7 +26,7 @@ main保護は未有効のためlegacyで修正を完成させる。旧bootstrap�
 - relay 往復上限: 2（規範値）
 - Plan Review round 天井: 3（規範値）
 
-旧bootstrapからの累計をリセットしない。試験承認まで介入7回、上限変更が8回目、計画をAstra自身で進める指定と但し書き追加が9回目。残る判断はReady、mergeと機械的closeout、本番有効化。次の承認依頼は介入10回目 / 予算12回。詳細は旧[packet](../archive/plans/2026-09-14-merge-evidence-simplification.md)と現owner指示。elapsed hands-on timeは未実測。レビューの原文は機械経由で保存し、ownerの手作業relayを前提にしない。
+旧bootstrapからの累計をリセットしない。試験承認まで介入7回、上限変更が8回目、計画をAstra自身で進める指定と但し書き追加が9回目。残る判断はReady、mergeと機械的closeout、本番有効化。次の承認依頼は介入10回目 / 予算12回。詳細は旧[packet](2026-09-14-merge-evidence-simplification.md)と現owner指示。elapsed hands-on timeは未実測。レビューの原文は機械経由で保存し、ownerの手作業relayを前提にしない。
 
 ## Consultation Relay
 
@@ -79,8 +79,8 @@ Goal Invariant:
 
 ## Design Sources
 
-- [MG-D1a・D1/D8/D11](../agent-guidance/merge-evidence.md)、[D-085/D-086](../decision-log.md)。
-- [workflow](../DEV_WORKFLOW.md)、[CI](../ci.md)、[役割](../AGENT_OPERATING_MANUAL.md)、[profile](../project-profile.md)。
+- [MG-D1a・D1/D8/D11](../../agent-guidance/merge-evidence.md)、[D-085/D-086](../../decision-log.md)。
+- [workflow](../../DEV_WORKFLOW.md)、[CI](../../ci.md)、[役割](../../AGENT_OPERATING_MANUAL.md)、[profile](../../project-profile.md)。
 - D-087（owner指定のAstra一貫担当と既存gateの維持）。
 - 実物: `Gate.rules`、`Gate.status`、`Gate.mutate`、`CLI.setUp`、`CLI.assert_rules_blocked`。
 - 製品のARCHITECTURE/FUNCTION/DB/SCREEN契約は非接触。
@@ -214,3 +214,12 @@ ownerが「締めまで進めていい」と明示指示し、公開・Ready、m
 PRをDraftで公開し、候補`17ca1ad7d9a44a49117a1d4ba24c36e300498cf5`のCLEAN full・独立監査・P3整理・owner裁定を本文へ記録した。PR head/base/本文を実物照合済み。Reviewed Content HEADは実監査対象を保持し、P3後もhelper本体と送信policyが不変であることを確認した。
 
 これらの既存evidenceとReady承認を根拠に、`implementing -> local-verified -> independent-review -> human-confirm -> ready-hosted-final`を隣接遷移としてこのstate-only commitで実体化する。Scope/AC/Matrix/実装を変更しない。PRはDraftのまま、このcommitで確定するHEADに対してCLEAN L1を実施し、本文を更新してからReadyにする。成功したhosted headShaとPR head/L1を照合するまでmergeしない。承認済み本番操作も、修正merge・closeout・実効保護の確認順序を維持する。
+
+
+### 修正mergeと機械的closeout
+
+[PR #59](https://github.com/kosei-w90607/inventory-system-desktop/pull/59)をsquash mergeした。merge commitは`4e33153ccc10a42a1ea0adf7dd7f19632da96139`、実時刻はGitHubのmerge記録を参照する。Ready対象のCLEAN L1、PR head、successful hosted headShaの一致と、全必要job/GitHub ActionsのMerge gate成功はPR本文へ記録した。local mainはmerge結果と同じtreeへ同期済み。
+
+このcloseoutはpacket/Matrixの移送・相対link・Plansだけを同期するR0のdocs-only PR。製品、CI、helper、送信policyを変更しない。docs/実PK5とMerge gateの成功を同じHEADで確認してからmergeする。自身の追加closeoutは作らない。
+
+ownerは締めまでの操作を承認済み。本番main rulesetは修正とこのcloseoutの完了後に適用し、有効化/read-backの事実は[PR #59](https://github.com/kosei-w90607/inventory-system-desktop/pull/59)の専用記録・ignored evidence・helper statusを正本にする。現在のarchiveは修正計画の完了を表し、未取得の本番適用結果を先取りしない。残る局所変数名整理と旧bootstrapのP3は着手条件付き後続保持を維持する。workflow effectivenessのdogfoodは新mode有効化後の最初のR2+ PR。

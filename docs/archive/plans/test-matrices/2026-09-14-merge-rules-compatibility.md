@@ -4,7 +4,7 @@
 
 Risk: R3
 
-workflow gate。契約は[MG-D1a](../../agent-guidance/merge-evidence.md#実応答の既定項目との互換性mg-d1a)、範囲は[packet](../2026-09-14-merge-rules-compatibility.md)。
+workflow gate。契約は[MG-D1a](../../../agent-guidance/merge-evidence.md#実応答の既定項目との互換性mg-d1a)、範囲は[packet](../2026-09-14-merge-rules-compatibility.md)。
 
 ## Contracts Under Test
 
