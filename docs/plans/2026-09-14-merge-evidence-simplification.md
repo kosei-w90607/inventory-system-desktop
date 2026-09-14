@@ -187,7 +187,7 @@ MG-D1〜D12を実装する。Plan Gate/独立review/owner権限/Windows・R4保�
 
 ## Review Response
 
-- Findings Freeze: not yet frozen
+- Findings Freeze: initial Broad Audit completed on 8c35a79b（Sonnet / Opusの独立2監査完了、以後closure）
 
 Opus初回reviewのP2を修正する案として、aggregate ifの負例、hosted PK5/parity、base同期時のclosure/manual適用判断、docs probeの実施順序、条件付きsource、rollout予算案を具体化した。方向性の変更や稼働設定の適用は行っていない。追加Plan Reviewで確認し、必要なowner裁定は実装開始の判断に提示する。R2の強制範囲指摘についてはownerがCIのみをGitHub、その他をhelperと運用規律で確認する案を採用した。schemaはsourceのRecordV1へ統一する。現行コードや設定を変更せずに、すぐ実装へ移れるところまで具体化する。
 
@@ -215,3 +215,16 @@ ownerは実装開始とWriterのAstra xhigh単独指定に続き、提示済み�
 - P3-3: main向け合成failure PRの作成・closeは、bootstrap Ready時に提示する具体的操作範囲へ含める。今回の実装開始承認をその操作やruleset probeの承認へ読み替えない。
 - P3-4: 運用正本・入口・PR templateへの同期確認に、helperの強制範囲、直接UI merge禁止、server側の残存リスクを明記した。
 - レビューはSonnet highとOpus xhighの独立Double Audit。両方が同じsource contracts全体を監査する。修正確認は難度でeffortを選び、P3だけで追加reviewを発注しない。要求値と取得可能な実効metadataを区別して実装・reviewのevidenceへ残す。
+
+### 実装と初回Double Audit（2026-09-14）
+
+単独WriterがCI/helper・新旧gate・tests・正本/Skills同期・desired payloadと有効化手順を実装した。候補`8c35a79b`のlegacy local fullは開始/終了CLEANでPASS。固有evidenceと初回候補の失敗経緯はlocalのPR本文下書きに保持する。旧ignored snapshotの生成TSがlint対象へ混入したため、対象artifactだけhash一致で可逆退避し、復元情報をignored evidenceへ保存した。製品やlint設定は変更していない。
+
+Sonnet highとOpus xhighが同じ候補を相互の結果を見ずに独立監査した。実効primary modelは取得metadataでSonnet 5 / Opus 5を確認。SonnetはP1/P2なし、Opusは次のP2を報告し、rootもsource/実装/fixtureの該当箇所を照合した。sourceにある既存条件を満たす修正として同じWriterが再現・修正を進める。Phaseはimplementingを保持し、未解決のままhuman-confirmへ進めない。
+
+- O-P2-1: active packetのdirectoryがGit上にない正当なR0/R1を、APIの一般失敗と区別して処理する。親directoryで不在を確認し、他のHTTP失敗は拒否を維持する。
+- O-P2-2: headのRisk/mode/review下限/manual・R4要件を承認snapshotに結び付け、追補なしで必須条件を弱める変更を拒否する。業務Risk判断やowner承認そのものを機械が証明する仕組みは追加しない。
+- O-P2-3: review下限、R4要件、strict/bypass/enforcement/driftの負例を追加し、guardを外す実mutationで検出力を確認する。
+- S-P3-1（追補削除のnegative）とO-P3-5（full分類pathのnegative）は既存Matrixの負例補強に合わせて扱う。他のP3は原文と確認事実を保持し、ownerの裁定候補とする。P3だけを理由に追加Broad Auditを発注しない。
+
+`scripts/tests/claude-hooks.test.sh`のwiring同期は、S1のshared suite抽出・S4の実呼出経路接続・MatrixのCI/分類の全consumer監査に伴う従属作業として実施した。local→suiteとsuite→auditの切断mutantでD-059の保護を確認した。新しい契約やgateを追加・緩和するScope拡張ではない。
