@@ -56,7 +56,7 @@ Goal Invariant:
 ### 失敗定義
 
 - runtime 契約、gate の exit code、mockup の描画を変える、または `.npmrc` / `src-tauri/Cargo.lock` に diff を出す。
-- 一般の未定義カラムの検出を失う、名指し以外の依存更新を混ぜる、再走査前の GitHub 状態を解消済みと扱う。
+- 一般の未定義カラムの検出を失う、名指し以外の依存更新を混ぜる（名指し package の subtree で npm が再解決する semver 内 transitive は除く。Gated Amendment 2）、再走査前の GitHub 状態を解消済みと扱う。
 
 ### 非目的
 
@@ -124,7 +124,7 @@ Cargo 2 件は bump せず、経路・dismiss 理由候補を backlog「記録�
 - AC2: `rg -c ':has\(' docs/design-system/reference/mockup-g-filter-toolbar.html` がマッチ0（出力なし、exit 1）。`git diff --unified=0 origin/main..HEAD -- docs/design-system/reference/mockup-g-filter-toolbar.html` は起点64-67行の selector 置換と86行の class 追加だけ。CSS 宣言およびそれ以外のHTMLは byte 不変。
 - AC3: `npm audit --audit-level=high` exit 0。`gh api --paginate 'repos/kosei-w90607/inventory-system-desktop/dependabot/alerts?state=open' --jq '[.[] | select(.dependency.manifest_path == "package-lock.json" or .dependency.manifest_path == "package.json")] | length'` が0。push 後の GitHub 再走査には時差があり、default branch の検出が更新されるまでは pending と記録する。branch push だけで必ず消えるとは仮定せず、merge 後の再走査が必要なら Coordinator が closeout の確認対象として保持し、実装完了時点の未達を隠さない。
 - AC3 差替え候補（owner が S3 (2) を選んだ場合のみ）: `npm audit --json` の残存 high は smol-toml / markdownlint-cli2 経路だけを許容し、`npm audit --audit-level=high` の非0を記録する。上記 open alert 件数0に加え `gh api repos/kosei-w90607/inventory-system-desktop/dependabot/alerts/6` の state=dismissed / dismissed_reason=tolerable_risk / dismissed_comment に理由文ありで代える。Goal の例外も同時に裁定し、未承認のまま差し替えない。
-- AC4: `git diff --stat origin/main..HEAD -- package-lock.json package.json` と `git diff origin/main..HEAD -- package-lock.json package.json` で js-yaml / smol-toml / vitest / @vitest/* と overrides 追加（root vitest pin 同期を含む）だけ。stat 単独では package 範囲を証明できないため JSON 差分の package key / version / resolved / integrity / dependency metadata も確認する。`git diff --exit-code origin/main..HEAD -- .npmrc src-tauri/Cargo.lock` exit 0。他 package 更新が必要になったら Coordinator へ返す。
+- AC4: `git diff --stat origin/main..HEAD -- package-lock.json package.json` と `git diff origin/main..HEAD -- package-lock.json package.json` で js-yaml / smol-toml / vitest / @vitest/* / tinyrainbow（vitest 名指し更新で npm が同 subtree を再解決した transitive。実測 3.1.0 → 3.1.1、vitest 4.1.5 / 4.1.11 とも range `^3.1.0` 内、publish 2026-07-28 で cooldown 7 日超。Gated Amendment 2）と overrides 追加（root vitest pin 同期を含む）だけ。stat 単独では package 範囲を証明できないため JSON 差分の package key / version / resolved / integrity / dependency metadata も確認する。`git diff --exit-code origin/main..HEAD -- .npmrc src-tauri/Cargo.lock` exit 0。他 package 更新が必要になったら Coordinator へ返す。
 - AC5: `npm run lint` / `npm run typecheck` / `npm run format:check` / `node_modules/.bin/vitest run` がすべて exit 0（vitest 4.1.11 の全件）。
 - AC6: `bash scripts/tests/doc-consistency-plan-packet.test.sh` exit 0。S1b の route path 正例 / 未定義カラム負例の両方が PASS。現行 checker では正例が失敗し、修正後は両例が成功することを確認する。
 - AC7: `bash scripts/local-ci.sh full` が `RESULT=PASS`。1 worktree 1 run は同時走行禁止であり回数上限ではない。FAIL → 是正 → 再実行に再許可は不要。
@@ -233,6 +233,7 @@ Plan Review は pending。Coordinator へ AC1 の実出力と AC3 の default br
 - 2026-09-15 Plan Review round 1（Sonnet、独立 fresh context、対象 `be43418e`）: P1/P2 = 0、P3 1 件。P3 = checker が hosted CI の docs job 経由で `Merge gate` の直接依存であるため、Risk 節に「Final Review Minimum 2 は workflow gate 該当を仮定した保守的選択」と明記する提案。Coordinator disposition = 記録のみ（Risk 節の根拠は WARN 経路のみで exit code 不変を実測済み、Final Review 2 パスで同観点を確認する）。plan-draft → plan-gate → plan-approved → implementing を本 commit で実体化し、Plan Commit を `be43418e13a2a382f79fd6d1f94667a7624b0b2b` に設定。
 
 - 2026-09-15 Gated Amendment 1（Coordinator）: 実装 run（発注書 47 改訂 2）が S2 の「specificity 保持」と class 置換の両立不能（`:has(h1)` = (0,2,1) / class = (0,3,0)）で停止。Coordinator が mockup-g `:59-69` を実測し、競合宣言が無く計算値不変であることを根拠に、S2 と Review Focus の契約を「計算値・描画不変」へ訂正。選択肢 `:where()` による詳細度維持は保守者に説明が要る selector になるため採らない。AC2 は不変。
+- 2026-09-15 Gated Amendment 2（Coordinator）: 実装 run 3（発注書 47 改訂 3）が S3 で `npm install vitest@4.1.11 --save-exact` により transitive `tinyrainbow` 3.1.0 → 3.1.1 が再解決され、AC4 の許可 list 外として正しく停止（依存差分は退避、S1a / S1b / S1c / S2 の 3 commit は保持）。Coordinator が range と publish 日を実測し、AC4 と Goal 失敗定義に「名指し package の subtree で npm が再解決する semver 内 transitive」を明示許可。他の非許可 package が動いた場合の停止条件は不変。
 
 ## 後続
 
