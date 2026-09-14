@@ -241,6 +241,7 @@ Design completion criteria:
 
 - Start from the applicable route in [../AGENTS.md](../AGENTS.md) `Session Start`. Read the sections needed for the current task/phase; do not duplicate the route or reload unrelated history.
 - Use `$inventory-workflow-start` ([Skill doc](../.agents/skills/inventory-workflow-start/SKILL.md)) for kickoff and `$inventory-implementation` ([Skill doc](../.agents/skills/inventory-implementation/SKILL.md)) for scoped implementation work.
+- Astra主担当の作業は[Agent Operating Manual §3.2](AGENT_OPERATING_MANUAL.md#astraを主担当にする場合d-087)の一貫担当を既定とする。通常作業のサブエージェント分割や起草/実装の別runを要求せず、独立レビューとPlan Gateを維持する。
 - `$...` workflow skills are Codex/OpenAI harness entrypoints under `.agents/skills/`. Claude Code sessions that do not load those skills should follow `AGENTS.md`, this document, and the linked Skill files as plain procedure docs.
 - Keep `UI -> CMD -> BIZ -> IO/MNT` intact. UI must not call IO. CMD must stay thin.
 - Put product rules in BIZ or design docs, not in presentational UI wrappers.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SPEC-MERGE-EVIDENCE / MG-D5..D8: synthetic API/CLI/git fixtures, no GitHub mutation."""
+"""SPEC-MERGE-EVIDENCE / MG-D1a, MG-D5..D8: synthetic fixtures, no GitHub mutation."""
 import argparse
 import copy
 import importlib.util
@@ -399,6 +399,97 @@ class CLI(unittest.TestCase):
         self.load();self.state['pr']['draft']=False;self.save()
         self.run_cli('merge',expected=1)
         self.assertFalse(any(call[0]=='pr' for call in self.load()['calls']))
+
+    def add_rule_defaults(self, additions):
+        # API detail is separate from both the main contents and effective rules.
+        self.state['policy']=copy.deepcopy(self.state['policy'])
+        self.state['policy']['rules'][2]['parameters'].update(copy.deepcopy(additions))
+
+    def test_rules_accept_observed_defaults(self):
+        original=copy.deepcopy(self.state)
+        # MG-D1a: observed response literals, not copied from the desired policy.
+        for additions in ({}, {'required_reviewers': []},
+                          {'require_extra_approval_for_unattributed_changes': True},
+                          {'required_reviewers': [], 'require_extra_approval_for_unattributed_changes': True}):
+            with self.subTest(additions=additions):
+                self.state=copy.deepcopy(original);self.add_rule_defaults(additions);self.save()
+                self.assertEqual(self.run_cli('status')['blockers'],[])
+                self.run_cli('ready');self.run_cli('merge')
+                self.assertTrue(self.load()['pr']['merged'])
+
+    def test_rules_reject_default_value_or_type_drift(self):
+        original=copy.deepcopy(self.state)
+        for key,values in (
+            ('required_reviewers', [[{}], None, {}, '[]', False, 0]),
+            ('require_extra_approval_for_unattributed_changes', [False, None, 'true', 0, 1, [], {}]),
+        ):
+            for value in values:
+                with self.subTest(key=key,value=value):
+                    self.state=copy.deepcopy(original)
+                    self.add_rule_defaults({'required_reviewers': [], 'require_extra_approval_for_unattributed_changes': True})
+                    self.state['policy']['rules'][2]['parameters'][key]=value
+                    self.assert_rules_blocked()
+
+    def test_rules_defaults_preserve_drift_rejection(self):
+        self.add_rule_defaults({'required_reviewers': [], 'require_extra_approval_for_unattributed_changes': True})
+        original=copy.deepcopy(self.state);rules=original['policy']['rules']
+        changes=[
+            (('rules',2,'parameters','unknown_default'), []),
+            (('rules',3,'parameters','required_reviewers'), []),
+            (('rules',2,'parameters','allowed_merge_methods'), list(reversed(rules[2]['parameters']['allowed_merge_methods']))),
+            (('rules',2,'parameters','required_review_thread_resolution'), True),
+            (('rules',3,'parameters','strict_required_status_checks_policy'), False),
+            (('rules',3,'parameters','required_status_checks'), [{'context':'Other','integration_id':15368}]),
+            (('rules',3,'parameters','required_status_checks'), [{'context':'Merge gate','integration_id':1}]),
+            (('rules',), rules[1:]),
+            (('rules',), rules[:1]+rules[2:]),
+            (('rules',), rules[:2]+rules[3:]),
+            (('rules',), list(reversed(rules))),
+            (('name',), 'other-policy'),
+            (('target',), 'tag'),
+            (('enforcement',), 'evaluate'),
+            (('conditions','ref_name','include'), ['refs/heads/other']),
+            (('conditions','ref_name','exclude'), ['refs/heads/main']),
+            (('bypass_actors',), [{'actor_id':1,'actor_type':'RepositoryRole','bypass_mode':'always'}]),
+        ]
+        for path,value in changes:
+            with self.subTest(path=path,value=value):
+                self.state=copy.deepcopy(original);target=self.state['policy']
+                for key in path[:-1]:target=target[key]
+                target[path[-1]]=copy.deepcopy(value)
+                self.assert_rules_blocked()
+
+    def test_rules_keep_explicit_desired_defaults(self):
+        original=copy.deepcopy(self.state)
+        for key,expected,other in (
+            ('required_reviewers', [], [{}]),
+            ('require_extra_approval_for_unattributed_changes', False, True),
+        ):
+            for matches,value in ((True,expected),(False,other)):
+                with self.subTest(key=key,matches=matches):
+                    self.state=copy.deepcopy(original)
+                    desired=copy.deepcopy(original['policy']);desired['rules'][2]['parameters'][key]=expected
+                    self.state['pr']['base']['sha']=B
+                    self.state['snapshots']={B:{g.POLICY:json.dumps(desired)}}
+                    self.state['contents'][g.POLICY]='{}'  # Only the main snapshot is authoritative.
+                    self.state['policy']=copy.deepcopy(desired)
+                    self.state['policy']['rules'][2]['parameters'][key]=value
+                    if matches:
+                        self.save();self.assertEqual(self.run_cli('status')['blockers'],[])
+                        self.run_cli('ready');self.run_cli('merge')
+                    else:self.assert_rules_blocked()
+
+    def test_rules_leave_inputs_unchanged(self):
+        desired=json.loads(self.state['contents'][g.POLICY])
+        self.add_rule_defaults({'required_reviewers': [], 'require_extra_approval_for_unattributed_changes': True})
+        detail=self.state['policy'];effective=self.state['effective']
+        before=copy.deepcopy((desired,detail,effective))
+        gate=object.__new__(g.Gate);gate.endpoint='repos/'+g.REPO
+        with patch.object(gate,'contents',return_value='main policy'), \
+             patch.object(g,'decode_json',return_value=desired), \
+             patch.object(g,'api',side_effect=[[effective],detail]):
+            gate.rules(self.state['pr'])
+        self.assertEqual((desired,detail,effective),before)
 
     def test_rules_reject_strict_false(self):
         for rule in self.state['effective']:
