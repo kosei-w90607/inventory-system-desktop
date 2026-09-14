@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: ready-hosted-final
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
@@ -12,10 +12,10 @@
 - Writer: 現在のAstra（owner指定。D-087により起草・実装・検証・状態記録を一貫して担当）
 - Plan Reviewer: Sonnet high（独立Plan Review完了、実効primary modelはSonnet 5をmetadataで確認。highは要求effort）
 - Final Reviewer: Sonnet high + Opus high（独立fresh contextのDouble Audit）
-- Reviewed Content HEAD: pending
+- Reviewed Content HEAD: 577b09b4e4cef4e41ad323dfbd0a45ba1d88f190
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Ready / merge / 本番有効化
+- Human Gate: none
 
 main保護は未有効のためlegacyで修正を完成させる。旧bootstrapのarchiveは変更せず、このpacketを現在の修正範囲とする。ownerは計画採用の判断に対し、Astra自身で作業を進め、独立レビューだけSonnet / Opusへ依頼すること、およびworkflowに但し書きを残すことを指示した。D-087を適用し、同じsessionで起草・実装・必要なpacket/状態記録を担当する。追加したworkflow文言は限定Plan Reviewで確認してから実装へ進む。非Codex reviewer利用不能時は可用性規定に従いpendingとし、自己承認しない。
 
@@ -206,3 +206,11 @@ Sonnet high / Opus highが同じ実装候補を独立にContract Auditし、両�
 OpusのP3は、pull_request以外のruleへの同名項目とallowed_merge_methods順序の負例補強、再現可能なreplayと正しいL1 log参照、owner relay文言、Matrix/現在地の同期。指摘に沿った反映案として整理し、実装本体と送信policyは変更していない。初回監査後の差分はnegative fixtureと文書・証跡の整理で、追加Broad Auditは発注しない。整理後の必要検証を行い、反映案をownerの公開・Ready判断へ提示する。
 
 SonnetのP3（内外の局所変数`params`の改名）は、挙動に影響しない後続候補としてownerへ保持案を提示する。採否を自己裁定しない。正確な監査対象とP3後の検証対象の差分・SHAはPR本文へ記録する。
+
+### 公開と承認済みのReady準備
+
+ownerが「締めまで進めていい」と明示指示し、公開・Ready、mergeと機械的closeout、準備済み本番rulesetの有効化/read-backを承認した。介入は公開・Ready、merge/closeout、本番有効化の各判断を分けて予算内に記録し、同じ承認を再要求しない。P3反映案と局所変数名整理の後続保持も、この候補の採用として記録する。承認原文と範囲はlocal-only `.local/merge-rules-compatibility/finish-authorization.json`、公開可能な要約は[PR #59](https://github.com/kosei-w90607/inventory-system-desktop/pull/59)本文。
+
+PRをDraftで公開し、候補`17ca1ad7d9a44a49117a1d4ba24c36e300498cf5`のCLEAN full・独立監査・P3整理・owner裁定を本文へ記録した。PR head/base/本文を実物照合済み。Reviewed Content HEADは実監査対象を保持し、P3後もhelper本体と送信policyが不変であることを確認した。
+
+これらの既存evidenceとReady承認を根拠に、`implementing -> local-verified -> independent-review -> human-confirm -> ready-hosted-final`を隣接遷移としてこのstate-only commitで実体化する。Scope/AC/Matrix/実装を変更しない。PRはDraftのまま、このcommitで確定するHEADに対してCLEAN L1を実施し、本文を更新してからReadyにする。成功したhosted headShaとPR head/L1を照合するまでmergeしない。承認済み本番操作も、修正merge・closeout・実効保護の確認順序を維持する。
