@@ -88,7 +88,7 @@
 - [ ] 業務上の増減数値（±）が記号 + 文言に加えて色（+ = `text-success-strong` / − = `text-destructive-strong` / 0 = `text-muted-foreground`）で示されているか（DSR-08）
 - [ ] page root は `PageShell`（`src/components/patterns/PageShell.tsx`）、一覧の器は `ListShell`（`src/components/patterns/ListShell.tsx`）を経由しているか。`p-6` 直書き root や自前 pagination/skeleton の再実装になっていないか（04 原則 6、DSR-22、Lane 2）
 - [ ] プルダウンが native `<select>` でなく shadcn `Select` になっているか。空値 sentinel を `SelectItem value=""` にしていないか（DSR-23）
-- [ ] 選択・漸進的な complete master data・追加導線の 3 条件を満たす候補が picker dialog に統一され、対象外の候補へ適用を広げていないか。追加後の自動選択 A/B の未確定状態、枠外固定 footer、dialog 重ねの (A) 推奨 / (B) fallback と WebView2 実機確認義務が保持されているか（DSR-24）
+- [ ] 選択・漸進的な complete master data・追加導線の 3 条件を満たす候補が picker dialog に統一され、対象外の候補へ適用を広げていないか。追加後の自動選択 A/B の未決状態、枠外固定 footer、dialog 重ねの (A) 推奨 / (B) fallback と WebView2 実機確認義務が保持されているか（DSR-24）
 
 ## 設計判断レンズ（model-neutral 必須観点）
 

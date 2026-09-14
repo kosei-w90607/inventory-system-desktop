@@ -265,6 +265,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + Pagination
 ### 74.10 Pagination 契約
 
 - 既定 `per_page = 50`（`Select` で 50 / 100 / 200）。
+- `per_page` の上限は 200（`PAGINATION_MAX_PER_PAGE`、IO 層 `system_repo` で clamp、[43-cmd-settings-log.md](43-cmd-settings-log.md) §43.5）。
 - 文言: `全 {total_count.toLocaleString("ja-JP")} 件のうち {from}〜{to} 件を表示（{page} / {totalPages} ページ）`（範囲付き統一形、`Pagination` をそのまま再利用）。
 - **範囲外 page 回復**（UI-11c-D8）: `logsQuery.data.items.length === 0 && logsQuery.data.total_count > 0 && normalizedSearch.page > 1` の場合、通常の EmptyState ではなく専用メッセージ「このページには表示するログがありません」+ 「先頭ページに戻る」ボタン（`updateSearch({ page: 1 })`）を表示する。
 - IO層は`page` / clamp後の`per_page`を`i64`へ変換してからoffsetを計算する。URL/CMD wireで表現可能な最大positive page（`u32::MAX`）でもRust側でpanic/wrapせず、SQLiteの範囲外offsetによる空`items`と上記回復導線へ到達させる。

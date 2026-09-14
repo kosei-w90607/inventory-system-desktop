@@ -400,6 +400,7 @@ check_db_schema_references() {
             esac
 
             local col_part="${ref#*.}"
+            case "$col_part" in tsx|ts|rs|md|sh|json|css|html|js|toml|yml|yaml|py|lock) continue ;; esac
 
             # テーブル名がDBに存在するか
             if rg -q "^${table_part}$" "$DB_TABLES_FILE" 2>/dev/null; then

@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
+- **衛生batch 4（implementing、R2）**: [Plan Packet](plans/2026-09-14-hygiene-batch-4-doc-warn-deps.md)。doc WARN・mockup-g・npm 名指し更新を対象に起草済み。Coordinator 裁定と独立 Plan Review 後に別 run で実装する。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
