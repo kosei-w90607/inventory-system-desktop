@@ -1088,3 +1088,49 @@ done
 sed -i 's/^- Phase:.*/- Phase: plan-draft/; /^- Final Review Minimum:/d' "$repo/docs/plans/2026-01-01-fixture.md"
 if run_check; then fail "github missing minimum accepted"; fi
 echo "PASS: merge evidence schemas"
+
+# 衛生 batch 4 S1b / AC6: full checker の route 正例と未定義カラム負例。
+# ponytail: 拡張子と同名の不正カラムは除外される。区別が必要なら別途抽出方式を設計する。
+hygiene_repo="$tmp/hygiene"
+mkdir -p "$hygiene_repo/docs/function-design" "$hygiene_repo/scripts" \
+    "$hygiene_repo/src-tauri/src" "$hygiene_repo/src/lib"
+git init -q "$hygiene_repo"
+cp "$SOURCE_ROOT/scripts/doc-consistency-check.sh" "$hygiene_repo/scripts/"
+cp "$SOURCE_ROOT/scripts/check-command-drift.sh" "$hygiene_repo/scripts/"
+cat > "$hygiene_repo/docs/DB_DESIGN.md" <<'DB'
+## 1. suppliers
+### suppliers カラム定義
+| id | INTEGER |
+DB
+# full の C2 と command registry check に必要な最小の合成入力。
+printf 'fn dummy_fixture_fn(x: i32) -> i32\n' > "$hygiene_repo/docs/function-design/00-dummy.md"
+cat > "$hygiene_repo/src-tauri/src/lib.rs" <<'RS'
+#[tauri::command]
+pub fn fixture_command() {}
+generate_handler![cmd::fixture::fixture_command]
+collect_commands![cmd::fixture::fixture_command]
+RS
+printf '__TAURI_INVOKE("fixture_command")\n' > "$hygiene_repo/src/lib/bindings.ts"
+for hygiene_case in route missing_column; do
+    if [ "$hygiene_case" = route ]; then
+        printf 'src/routes/settings/%s.%s\n' suppliers tsx
+    else
+        printf '%s.%s\n' suppliers hygiene_missing_column
+    fi > "$hygiene_repo/docs/function-design/01-reference.md"
+    if ! (cd "$hygiene_repo" && bash scripts/doc-consistency-check.sh) > "$out" 2>&1; then
+        cat "$out" >&2
+        fail "S1b $hygiene_case fixture exited nonzero"
+    fi
+    assert_not_contains "$out" '[ERROR]'
+    assert_contains "$out" 'ERROR なし'
+    assert_contains "$out" 'DB_DESIGN.md: 1テーブル, 1カラムを検出'
+    if [ "$hygiene_case" = route ]; then
+        if grep -Fq 'カラムがDB_DESIGN.mdに未定義' "$out"; then
+            grep -E 'カラムがDB_DESIGN|結果:' "$out" >&2
+            fail 'S1b route path was misread as an undefined column (exit 0, ERRORなし)'
+        fi
+    else
+        assert_contains "$out" 'suppliers.hygiene_missing_column — カラムがDB_DESIGN.mdに未定義'
+    fi
+    echo "PASS: S1b $hygiene_case (exit 0, ERRORなし)"
+done
