@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **マージ検証整理（R3、implementing / 追補順序の修正）**: [Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。実装・GA1採用済み、Astra xhigh単独Writer。Sonnet / Opusの独立Double Audit後、初回P2は3997ee7eで修正しlegacy fullはCLEAN/PASS。限定closureで見つかった追補順序の変種を実git/CLIで再現し、同じWriterが共有PK5のappend-onlyを修正中。以後は当該closure、他のP3は裁定候補として保持。設定有効化は具体的payloadの完成・検証後。
+- **マージ検証整理（R3、ローカル実装・独立確認済み / P3裁定待ち）**: [Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。Astra xhigh単独実装、GA1採用済み。候補4c5a241bのlegacy fullはCLEAN/PASS。Sonnet / Opusの初回Double Auditと修正後のOpus最終closureを完了し、P1/P2なし。残るP3はpacket末尾に裁定候補として保持。記録済みPhaseはimplementingで、owner裁定後に証拠済みの隣接遷移を実体化する。未push。公開/Ready・live dogfood・設定有効化は具体的対象と検証を揃えてから判断する。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 

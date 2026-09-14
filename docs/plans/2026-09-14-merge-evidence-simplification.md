@@ -15,7 +15,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / Ready / merge
+- Human Gate: 残るP3のowner裁定 / ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / Ready / merge
 
 現行のlegacy workflowで設計・Plan Gateを通過済み。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択し、2026-09-14にAstra xhighの単独実装と難度に応じたSonnet / Opusレビューを指定して実装開始を承認した。Codexが計画・amendmentを起草し、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。計画を更新するrunと実装runを分け、実装runはpacketを編集しない。
 
@@ -185,6 +185,8 @@ MG-D1〜D12を実装する。Plan Gate/独立review/owner権限/Windows・R4保�
 
 設計・計画・MatrixとPlan Reviewは完了済み。2026-09-14にownerが実装開始、座組、準備済みGA1とrollout予算を承認した。GA1のcontent commitに`plan-approved -> implementing`を同乗させる。元Plan Commitを保持し、amendment SHAを記録して別runのAstra xhigh単独実装へ渡す。実装の検証結果は取得後に記録する。
 
+最新結果: 実装候補`4c5a241b`のlegacy fullと独立最終closureは完了し、P1/P2なし。詳細は末尾の「最終検証・引継ぎ」を参照。残るP3のowner裁定前なので、最後に実体化したPhaseはimplementingを保持する。裁定後、既に証拠が揃った隣接遷移をまとめて記録する。
+
 ## Review Response
 
 - Findings Freeze: initial Broad Audit completed on 8c35a79b（Sonnet / Opusの独立2監査完了、以後closure）
@@ -236,3 +238,20 @@ Sonnet highとOpus xhighが同じ候補を相互の結果を見ずに独立監�
 同closureのF1（Amendmentsの並べ替え）はFreeze後の新規指摘だったため、まず合成git/CLI fixtureで再現した。正順ではmanual必須だった登録済み追補を逆順にして古い条件へ戻すと、PK5が成功し、helper captureもmanual不要の条件を保存することを確認した。期待拒否のassertionがREDになった実測は`.local/merge-evidence/amendment-order/red-f1.log`。runtime failureを根拠にP2として扱い、S3の共有PK5で順序も含むappend-onlyを守る最小修正を進める。helper用の別履歴サービスは追加しない。
 
 mutation用の一時copyには、同じ選択testが無変更時にGREENになるpositive controlも追加する。作業状態の古い記述は最終結果と合わせて更新する。その他のP3は引き続きownerの裁定候補として保持する。
+
+### 最終検証・引継ぎ（2026-09-14）
+
+F1は共有PK5の順序付きprefix検査で修正した。候補`4c5a241b5f594a3fb6e0838c88e31b5d14b3756c`のlegacy local fullは開始/終了とも同じHEAD・CLEANでPASSし、MERGE_EVIDENCE_VALID=true。固有evidenceは`.local/ci-evidence/local-ci-full-4c5a241b5f594a3fb6e0838c88e31b5d14b3756c-20260914T102350502999470+0900.log`。既存docs/npm auditのWARNは元の扱いを維持している。
+
+同じ候補へのOpus highの独立最終closureはF1/F2と元のO-P2-1〜3をclosed、現在のP1/P2なしと判定した。実効primary modelはmetadataでOpus 5を確認。独立側がhelper test、PK5 fixture、positive control付きmutation driverを実行し、無変更GREEN→guard欠落RED、差分とdriverのbytes/hash一致を確認した。full自体の再実行を行ったとの主張ではなく、full evidenceの該当行も独立に照合した。初回Sonnet/Opus Double Audit、修正差分、各closureの原文と実行metadataは`.local/merge-evidence/`に保持し、公開用の要約はPR本文下書きへまとめた。
+
+P3のうち追補削除/full分類のnegative、F2のpositive control、F3の現在地同期は対応した。以下は未採用の裁定候補として保持し、勝手にrebut/no-action/受容へ変更しない。
+
+- native rulesetの配列順序/既定parameterによる安全側の誤拒否（S-P3-2 / O-P3-6）。有効化前のlive read-backで実物を照合する候補。
+- workflow回帰が必要な変更と、CI実行制御/Double Auditが必要な変更の判定を分ける改善（O-P3-4）。
+- 非owner markerとowner record重複の拒否理由の区別（O-P3-7）。
+- shell列挙失敗と文字列parity assertionの検出力補強（O-P3-8）。
+- PK5のWorkflow State節限定（O-P3-9）。元SHAの表記変更を許す提案は原識別子不変の契約と整合する裁定が必要。
+- merge commitのみの登録や履歴改変の検出範囲、古い未登録commitを追補として採用する場合の扱い（最終closureの追加P3）。実際のowner承認の機械的証明は非目的で、追加P3にruntime failureの根拠は提示されていない。
+
+GitHubへのpush/PR作成・Ready・merge・合成probe・ruleset有効化は未実行。実装開始・GA1・累計介入上限の承認を再要求せず、次は残るP3のowner裁定。以後の公開/Readyでは具体的なbootstrap操作範囲を提示し、MG-D11のdocs-only dogfood・probe・有効化順序を維持する。現在の保留は製品側の未決事項や衛生batch 4を採用する判断ではない。
