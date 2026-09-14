@@ -5,7 +5,7 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: be43418e13a2a382f79fd6d1f94667a7624b0b2b
@@ -222,18 +222,25 @@ R2 のため省略。Scope の各項と AC の対応を維持する。
 
 ## Implementation Results
 
-未実装。起草 run は source / script / manifest に触れない。
+[PR #61](https://github.com/kosei-w90607/inventory-system-desktop/pull/61) で実装し squash merge 済み（2026-09-15）。
+
+- S1a: `74-ui-operation-logs.md` §74.10 に per_page 上限の記述を追記し、`40-cmd-product.md:279` をページング引数を持たない表現へ言い換えた。
+- S1b: `scripts/doc-consistency-check.sh` の col_part 抽出直後に拡張子除外の `case` を追加し、route path のカラム誤読 WARN を解消した。`scripts/tests/doc-consistency-plan-packet.test.sh` に route path 正例 / 未定義カラム負例の fixture を追加した。
+- S1c: `docs/backlog.md` / `docs/quality/review-checklist.md` の M3 該当文言を実在節参照へ言い換えた。
+- S2: `docs/design-system/reference/mockup-g-filter-toolbar.html` の `:has(h1)` selector 4 箇所を `.legacy-page-heading` class へ置換した（Gated Amendment 1、計算値・描画は不変）。
+- S3: `npm update js-yaml` / `npm install vitest@4.1.11 --save-exact` を名指し実行し、smol-toml は package.json `overrides` 1.7.1 で解決した（Gated Amendment 2、vitest subtree の semver 内 transitive `tinyrainbow` 再解決を許容）。
+
+Final Review は Sonnet（pass、findings 0）+ Opus（pass、P3 4 件）の独立 2 パスで完了し、要約は PR #61 の comment（Sonnet: `#issuecomment-5667210488` / Opus: `#issuecomment-5667210788`）に記録済み。専用 record `inventory-workflow-v1` は review outcome pass、broad audits 2 件。Dependabot は merge 後の default branch 再走査で open alert 0 件（2026-09-15 確認）。hosted CI `Merge gate` は該当 HEAD で成功した。
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
-
-Plan Review は pending。Coordinator へ AC1 の実出力と AC3 の default branch 再走査依存を報告する。
+- Findings Freeze: frozen after Final Review 2 passes (2026-09-15); post-freeze exceptions: none.
 
 - 2026-09-15 Plan Review round 1（Sonnet、独立 fresh context、対象 `be43418e`）: P1/P2 = 0、P3 1 件。P3 = checker が hosted CI の docs job 経由で `Merge gate` の直接依存であるため、Risk 節に「Final Review Minimum 2 は workflow gate 該当を仮定した保守的選択」と明記する提案。Coordinator disposition = 記録のみ（Risk 節の根拠は WARN 経路のみで exit code 不変を実測済み、Final Review 2 パスで同観点を確認する）。plan-draft → plan-gate → plan-approved → implementing を本 commit で実体化し、Plan Commit を `be43418e13a2a382f79fd6d1f94667a7624b0b2b` に設定。
 
 - 2026-09-15 Gated Amendment 1（Coordinator）: 実装 run（発注書 47 改訂 2）が S2 の「specificity 保持」と class 置換の両立不能（`:has(h1)` = (0,2,1) / class = (0,3,0)）で停止。Coordinator が mockup-g `:59-69` を実測し、競合宣言が無く計算値不変であることを根拠に、S2 と Review Focus の契約を「計算値・描画不変」へ訂正。選択肢 `:where()` による詳細度維持は保守者に説明が要る selector になるため採らない。AC2 は不変。
 - 2026-09-15 Gated Amendment 2（Coordinator）: 実装 run 3（発注書 47 改訂 3）が S3 で `npm install vitest@4.1.11 --save-exact` により transitive `tinyrainbow` 3.1.0 → 3.1.1 が再解決され、AC4 の許可 list 外として正しく停止（依存差分は退避、S1a / S1b / S1c / S2 の 3 commit は保持）。Coordinator が range と publish 日を実測し、AC4 と Goal 失敗定義に「名指し package の subtree で npm が再解決する semver 内 transitive」を明示許可。他の非許可 package が動いた場合の停止条件は不変。
+- 2026-09-15 Post-Merge Closeout（Coordinator）: Final Review 2 パス（Sonnet pass、findings 0 / Opus pass、P3 4 件）の完了を受け、Opus P3 の disposition を記録する。P3-1（packet `Implementation Results` が「未実装」のまま）と P3-2（`Plans.md` 本文の陳腐化）は本 closeout で解消した。P3-3（`40-cmd-product.md:279` の言い換えで field 名の明示が落ちた。per_page check の否定文脈検出を直す際に元の精度へ戻す）と P3-4（`ponytail:` comment を test 側だけでなく checker の `case` 行の直上にも置く）は backlog「記録目的」へ記録し、行動を待たない。relay 往復は 5 / 上限 2 を超過した。原因は Coordinator の発注品質 3 回（実装 run の発注書に packet 編集を含めた run 分離契約との衝突 / `:has(h1)` の詳細度の誤記 / AC4 で名指し package の subtree transitive 再解決を未考慮）で、Writer は毎回 fail-closed で正しく停止した。
 
 ## 後続
 
