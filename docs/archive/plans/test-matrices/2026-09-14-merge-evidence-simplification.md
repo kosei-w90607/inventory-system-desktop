@@ -6,7 +6,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-[MG-D1〜D12](../../agent-guidance/merge-evidence.md)。同じ対象版の必要な検証と独立性を守り、手転記・実装後の状態commitをなくす。
+[MG-D1〜D12](../../../agent-guidance/merge-evidence.md)。同じ対象版の必要な検証と独立性を守り、手転記・実装後の状態commitをなくす。
 
 ## Failure Modes
 
@@ -95,3 +95,12 @@ aggregateが全必要jobをneedsに持つこと、workflow suiteをlocal/hosted�
 ## Residual Test Gaps
 
 live dynamic check名と分類失敗はbootstrap候補で、docs PR経路はbootstrap merge後・production有効化前に確認する。failure fixtureのPRはbase=mainでmergeせずcloseする。検証用refのPR eventにCIが走るとは仮定せず、成功済みdocs候補をpositive controlへ使う。ruleset拒否は承認された検証用refで確認する。1回の成功で全変更のtoken効果を保証しない。native checkはモデルreviewの独立性や人の承認内容を証明しないため、役割のreviewを維持する。GitHub障害時は新modeのmergeを停止し、旧例外へ自動fallbackしない。
+
+
+## 実装closeout時点の検証結果（2026-09-14）
+
+このMatrixの計画時点の本文は保存する。実装と必要なlocal gate、独立Double Audit/closureを完了し、[PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)をmerge済み。Readyの[正常run](https://github.com/kosei-w90607/inventory-system-desktop/actions/runs/34802569373)で必要jobと`Merge gate`のsuccess、[fixture run](https://github.com/kosei-w90607/inventory-system-desktop/actions/runs/34802715739)で分類step/changesと起動した評価器/`Merge gate`のfailureを確認した。[PR #55](https://github.com/kosei-w90607/inventory-system-desktop/pull/55)はmainへmergeせずclose済み。
+
+Draftはrunnerなし・required名なしを確認したが、表示は未展開の条件式だった。表示差異を保持し、短いDraft名を実測済みとはしない。docs-only成功のlive証拠は本R0 closeout PRで取得する予定であり、現時点では未取得。検証用ruleset/refの拒否・cleanupと本番有効化/read-backも未実施で、ownerの別承認を要する。
+
+P3の着手条件と残るgateは[packetの実装closeout](../2026-09-14-merge-evidence-simplification.md#実装mergeと機械的closeout2026-09-14)へ引き継ぐ。workflow effectivenessは新mode有効化後の最初のR2+ PRをdogfood対象とし、このR0 closeoutの追加fullや独立Broad Auditは要求しない。
