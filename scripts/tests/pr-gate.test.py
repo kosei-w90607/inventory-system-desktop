@@ -181,6 +181,7 @@ if a[0]=='pr':
     save();sys.exit(0)
 assert a[0]=='api' and a[1:3]==['--hostname','github.com']
 method=a[a.index('-X')+1];path=a[7]
+if s.get('http_error_path') and s['http_error_path'] in path:sys.exit(1)
 if method!='GET':
     assert '/issues/' in path and '/comments' in path
     payload=json.load(sys.stdin);assert list(payload)==['body']
@@ -196,8 +197,15 @@ elif '/issues/7/comments' in path:value=[s['comments']]
 elif '/contents/' in path:
     import base64
     name=path.split('/contents/')[1].split('?')[0]
-    if name=='docs/plans':value=s.get('packets',[])
-    else:value={'encoding':'base64','content':base64.b64encode(s['contents'][name].encode()).decode()}
+    if name=='docs':
+        value=[dict(type='dir',name='plans',path='docs/plans')] if s.get('plans_exists',True) else []
+    elif name=='docs/plans':
+        if not s.get('plans_exists',True):sys.exit(1)  # GitHub 404 for an absent directory.
+        value=s.get('packets',[])
+    else:
+        ref=path.split('?ref=')[1]
+        content=s.get('snapshots',{}).get(ref,{}).get(name,s['contents'][name])
+        value={'encoding':'base64','content':base64.b64encode(content.encode()).decode()}
 elif '/rules/branches/main' in path:value=[s['effective']]
 elif '/rulesets/1' in path:value=s['policy']
 elif '/actions/workflows/ci.yml/runs' in path:value=[{'workflow_runs':s['runs']}]
@@ -234,6 +242,66 @@ class CLI(unittest.TestCase):
         self.assertEqual(value.returncode,expected,value.stdout+value.stderr)
         self.assertEqual(self.git('status','--porcelain'),before)
         return json.loads(value.stdout) if value.returncode==0 else value.stderr
+    @staticmethod
+    def packet_text(fields):
+        return '## Workflow State\n'+''.join(f'- {k}: {v}\n' for k,v in fields.items())+'\n## Risk\nRisk: '+fields['Risk']+'\n'
+
+    def configure_packet(self, **overrides):
+        packet='docs/plans/2026-09-14-fixture.md'
+        self.plan_ref=self.head
+        self.git('commit','--allow-empty','-qm','candidate after plan')
+        self.head=self.git('rev-parse','HEAD')
+        self.state['pr']['head']['sha']=self.head
+        self.state['runs'][0]['head_sha']=self.head
+        self.state['packets']=[dict(type='file',name=Path(packet).name,path=packet)]
+        fields={'Evidence Mode':'github','Phase':'implementing','Risk':'R3','Execution Mode':'codex-only',
+                'Plan Commit':self.plan_ref,'Amendments':'none','Coordinator':'owner','Writer':'codex','Plan Reviewer':'opus',
+                'Final Reviewer':'sonnet+opus','Final Review Minimum':'2','Human Gate':'ready,merge'} | overrides
+        self.state['contents'][packet]=self.packet_text(fields)
+        self.state['contents']['docs/Plans.md']=f'## 次の行動\n[packet](plans/{Path(packet).name})\n'
+        # Approval snapshot predates its own SHA; phase/self-reference are not gate conditions.
+        approved=fields | {'Phase':'plan-gate','Plan Commit':'pending'}
+        self.state['snapshots']={self.plan_ref:{packet:self.packet_text(approved)}}
+        self.save()
+        return packet,fields
+
+    def test_absent_plans_directory_is_normal_r0(self):
+        self.state['plans_exists']=False;self.save()
+        for action in ('status','capture','ready','merge'):
+            self.run_cli(action)
+        self.assertFalse(any('/contents/docs/plans?' in ' '.join(call) for call in self.load()['calls']))
+
+    def test_parent_or_present_directory_http_failure_is_error(self):
+        for path in ('/contents/docs?', '/contents/docs/plans?'):
+            self.state['http_error_path']=path;self.save()
+            self.run_cli('status',expected=2)
+
+    def test_unamended_gate_condition_changes_are_rejected(self):
+        cases=[({'Risk':'R4','Human Gate':'ready,merge,manual,r4'},'Risk','R3'),
+               ({'Human Gate':'ready,merge,manual'},'Human Gate','ready,merge'),
+               ({},'Final Review Minimum','1'),
+               ({'Execution Mode':'fable-window'},'Execution Mode','dual-vendor-no-fable')]
+        for approved,key,value in cases:
+            with self.subTest(field=key):
+                packet,fields=self.configure_packet(**approved)
+                self.state['contents'][packet]=self.packet_text(fields | {key:value})
+                self.save()
+                result=self.run_cli('status','--packet',packet,expected=1)
+                self.assertIn('approved packet condition changed: '+key,result)
+                self.run_cli('ready','--packet',packet,expected=1)
+
+    def test_latest_amendment_snapshot_owns_gate_conditions(self):
+        packet,fields=self.configure_packet(**{'Human Gate':'ready,merge,manual'})
+        amended=fields | {'Final Review Minimum':'1','Human Gate':'ready,merge'}
+        self.state['snapshots'][P]={packet:self.packet_text(amended | {'Phase':'plan-gate','Plan Commit':'pending'})}
+        self.state['contents'][packet]=self.packet_text(amended | {'Amendments':P})
+        self.save()
+        self.assertEqual(self.run_cli('status','--packet',packet)['state'],'Draft')
+        # Merely pointing to the old Plan Commit cannot authorize the amendment's conditions.
+        self.state['contents'][packet]=self.packet_text(amended)
+        self.save()
+        self.run_cli('status','--packet',packet,expected=1)
+
     def test_status_capture_ready_merge(self):
         self.assertEqual(self.run_cli('status')['blockers'],[])
         self.assertTrue(all(c[0]=='api' and 'GET' in c for c in self.load()['calls']))
@@ -241,15 +309,8 @@ class CLI(unittest.TestCase):
         self.run_cli('ready');self.run_cli('merge')
         self.assertTrue(self.load()['pr']['merged'])
     def test_packet_double_audit_cli(self):
-        packet='docs/plans/2026-09-14-fixture.md'
-        self.state['packets']=[dict(type='file',name=Path(packet).name,path=packet)]
-        self.state['files']=[dict(filename='scripts/pr-gate.py')]
-        fields={'Evidence Mode':'github','Phase':'implementing','Risk':'R3','Execution Mode':'codex-only',
-                'Plan Commit':self.head,'Amendments':'none','Coordinator':'owner','Writer':'codex','Plan Reviewer':'opus',
-                'Final Reviewer':'sonnet+opus','Final Review Minimum':'2','Human Gate':'ready,merge'}
-        self.state['contents'][packet]='## Workflow State\n'+''.join(f'- {k}: {v}\n' for k,v in fields.items())+'\n## Risk\nRisk: R3\n'
-        self.state['contents']['docs/Plans.md']=f'## 次の行動\n[packet](plans/{Path(packet).name})\n'
-        self.save()
+        packet,fields=self.configure_packet()
+        self.state['files']=[dict(filename='scripts/pr-gate.py')];self.save()
         common=('--packet',packet)
         capture=self.run_cli('capture',*common)['capture']
         self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','sonnet','--run-ref','sonnet-audit','--evidence','https://example.invalid/sonnet','--outcome','pending')
@@ -259,7 +320,7 @@ class CLI(unittest.TestCase):
         self.run_cli('ready',*common)
         self.run_cli('status',*common,*common,expected=2)
         self.load()
-        self.state['contents'][packet]=self.state['contents'][packet].replace('Phase: implementing','Phase: plan-gate').replace('Plan Commit: '+self.head,'Plan Commit: pending')
+        self.state['contents'][packet]=self.state['contents'][packet].replace('Phase: implementing','Phase: plan-gate').replace('Plan Commit: '+fields['Plan Commit'],'Plan Commit: pending')
         self.state['comments']=[]
         self.state['pr']['draft']=True
         self.save()
@@ -269,6 +330,56 @@ class CLI(unittest.TestCase):
         self.run_cli('capture',*common,expected=1)
         self.run_cli('merge',*common,expected=1)
 
+
+    def test_workflow_minimum_one_rejected(self):
+        packet,_=self.configure_packet(**{'Execution Mode':'fable-window','Final Review Minimum':'1'})
+        self.state['files']=[dict(filename='scripts/pr-gate.py')];self.save()
+        self.run_cli('status','--packet',packet,expected=1)
+        self.run_cli('ready','--packet',packet,expected=1)
+
+    def test_r4_minimum_one_rejected(self):
+        packet,_=self.configure_packet(**{'Risk':'R4','Human Gate':'ready,merge,r4','Final Review Minimum':'1'})
+        self.run_cli('status','--packet',packet,expected=1)
+        self.run_cli('ready','--packet',packet,expected=1)
+
+    def test_r4_approval_gate_cannot_be_omitted(self):
+        packet,_=self.configure_packet(**{'Risk':'R4'})
+        self.run_cli('status','--packet',packet,expected=1)
+        self.run_cli('ready','--packet',packet,expected=1)
+
+    def test_codex_ui_minimum_one_rejected(self):
+        packet,_=self.configure_packet(**{'Final Review Minimum':'1'})
+        self.state['files']=[dict(filename='src/features/example/view.tsx')];self.save()
+        self.run_cli('status','--packet',packet,expected=1)
+        self.run_cli('ready','--packet',packet,expected=1)
+
+    def assert_rules_blocked(self):
+        self.save()
+        self.assertTrue(self.run_cli('status')['blockers'])
+        self.run_cli('ready',expected=1)
+        self.load();self.state['pr']['draft']=False;self.save()
+        self.run_cli('merge',expected=1)
+        self.assertFalse(any(call[0]=='pr' for call in self.load()['calls']))
+
+    def test_rules_reject_strict_false(self):
+        for rule in self.state['effective']:
+            if rule['type']=='required_status_checks':
+                rule['parameters']['strict_required_status_checks_policy']=False
+        # Desired/detail remain strong: each fresh response must independently be safe.
+        self.state['policy']=json.loads(self.state['contents'][g.POLICY])
+        self.assert_rules_blocked()
+
+    def test_rules_reject_bypass(self):
+        self.state['policy']['bypass_actors']=[{'actor_id':1,'actor_type':'RepositoryRole','bypass_mode':'always'}]
+        self.assert_rules_blocked()
+
+    def test_rules_reject_inactive_enforcement(self):
+        self.state['policy']['enforcement']='evaluate'
+        self.assert_rules_blocked()
+
+    def test_rules_reject_parameter_drift(self):
+        self.state['policy']['rules'][2]['parameters']['required_review_thread_resolution']=True
+        self.assert_rules_blocked()
 
     def test_bad_rules_checks_latest_run(self):
         for group,change in [('effective',[]),('checks',[]),('checks',[dict(name='Merge gate',app=dict(id=1),status='completed',conclusion='success')]),('checks',[dict(name='Merge gate',app=dict(id=15368),status='completed',conclusion='skipped')])]:

@@ -67,6 +67,8 @@ native拒否のprobeは、ownerに具体的対象を示したうえで`ci-probe/
 
 新packetのmarkerは`Evidence Mode: github`。bootstrapは`Evidence Mode: legacy`を明示して旧13-fieldを維持する。新checker導入後のactive packetはmarker必須で、欠落や未知値をlegacyへ推測fallbackしない。archiveは非遡及。markerのない旧active作業はbootstrap導入前に完了するか、ownerが移行を指示する。Gitで管理するWorkflow StateはPhase、Risk、Execution Mode、Plan Commit、Amendments、Coordinator、Writer、Plan Reviewer、Final Reviewer、Final Review Minimum、Human Gate、およびmarker。Phaseはkickoff〜implementingとarchiveの計画上の地点を表す。local-verified以後をGitへ書く必要はない。Human Gateは要件であり、`ready,merge`を必須に、必要な場合`manual,r4`を加える。R4にはr4が必須。自由文の条件を推測して免除しない。Final Review Minimumは承認された初回監査の必要数（1または2）を明記し、R4/workflow gateとD-084のcodex-only R3 UI契約変更では2を下回らない。既存のRisk/mode別review要件を減らさず、helperはこの明示値を下限にする。
 
+helperはRisk / Execution Mode / Final Review Minimum / Human Gateを、Plan Commit（Amendmentsがあれば最後の登録SHA）のpacket snapshotとheadで照合する。未追補の変更は拒否し、snapshot当時のPhaseや自己SHAがpre-gate/pendingでもこの4条件の照合には影響させない。これは登録された承認内容への結合であり、人の承認を署名やmetadataだけで証明する仕組みではない。
+
 Reviewed Content HEAD / Final Exact-HEAD Evidence / Hosted CI Requirementは新packetから外す。元のPlan CommitとAmendmentsの不変性・祖先確認は残す。実装開始後に計画の契約が変わる場合の再設計・再reviewも維持する。
 
 非CI結果はowner名義の専用PR comment（marker=`inventory-workflow-v1`）に保存する。PR本文や他commentを編集しない。正当なauthorの記録が複数あれば曖昧として止める。CIのSHAや成功フラグは複製せずGitHub APIから取得する。
@@ -121,6 +123,8 @@ manualの再実施が不要とownerが判断できる候補は、new headが旧h
 manual失敗の修正や対象挙動を変える修正は、既存L3の復旧・改版・canonical先頭からの再実施に従う。旧Waveの証拠維持はlegacyだけの契約とし、新modeではこの規則に一本化する。
 
 ## Helperの境界
+
+packet不在は親docs一覧で確認する。Git上にdocs/plansが無ければR0/R1のno-packet経路とし、親一覧の取得失敗や存在するdirectoryへのHTTP失敗は空結果に置き換えない。
 
 追加候補は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+では`--packet docs/plans/FILE.md`を指定し、当該PR headのpacket・Plansの登録と照合する。対象を複数packetへ曖昧に結び付ける入力は拒否する。R0/R1は明示Riskとdiff分類、および`--manual required|not-required`を必須とし、CI制御の実行code変更をR0/R1へ下げる入力を拒否する。Risk値でCIの実行範囲を縮めず、policy文書の意味変更のRisk判定はowner/modelが行う。packet不在をmanual免除とみなさない。業務的Riskの分類自体はowner/モデルが担う。PR作成前はtrackedの計画phaseを使い、helperで架空のPR状態を作らない。
 

@@ -200,6 +200,14 @@ capture_check "$repo" output
 [[ "$CHECK_STATUS" -eq 0 ]] || fail "Amendments 追記正例が ERROR 判定された:\n$output"
 assert_not_contains "$output" "PK5:" "Amendments 正例で PK5 出力が発生した"
 
+# MG-D5 / S-P3-1: recorded amendment removal fails even though every remaining SHA is ancestral.
+write_packet "$repo" "packet.md" "$a_sha" "none"
+commit_all "$repo" "docs(plans): remove recorded amendment" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "registered amendment removal was accepted"
+assert_contains "$output" "Amendments が削除・変更されています" "amendment removal reason missing"
+assert_not_contains "$output" "祖先ではありません" "amendment removal failed for unrelated ancestry"
+
 # ============================================================================
 # D-055 T-PK5: conflict-free rebase の Rebase Map 正例
 # ============================================================================

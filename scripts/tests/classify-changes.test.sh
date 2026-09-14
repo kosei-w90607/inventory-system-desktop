@@ -88,12 +88,15 @@ assert_contract "$output"
 assert_value "$output" generated true
 assert_value "$output" rust_drift true
 
-output="$(classify_paths scripts/local-ci.sh)"
-assert_contract "$output"
-for key in rust rust_drift frontend docs env generated traceability workflow; do
-    assert_value "$output" "$key" true
+# MG-D4 / O-P3-5: control paths stay full, not merely workflow=true.
+for path in scripts/local-ci.sh .github/merge-gate-ruleset.json .codex/bin/read-safe-file.sh .claude/settings.json .claude/hooks/check-plan-on-exit.sh; do
+    output="$(classify_paths "$path")"
+    assert_contract "$output"
+    for key in rust rust_drift frontend docs env generated traceability workflow; do
+        assert_value "$output" "$key" true
+    done
+    assert_value "$output" unknown false
 done
-assert_value "$output" unknown false
 
 output="$(classify_paths .github/pull_request_template.md)"
 assert_contract "$output"

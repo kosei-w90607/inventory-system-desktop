@@ -144,13 +144,20 @@ def markdown(text):
     return re.sub(r'(?m)^(```|~~~).*?^\1[^\n]*$', '', text, flags=re.S)
 
 
-def parse_packet(text):
+def workflow_fields(text):
     text = markdown(text)
     sections = re.findall(r'^## Workflow State\s*\n(.*?)(?=^## |\Z)', text, flags=re.M | re.S)
     require(len(sections) == 1, 'packet Workflow State missing/ambiguous')
     pairs = re.findall(r'^- ([^:\n]+):\s*([^\n]+)', sections[0], flags=re.M)
     fields = dict(pairs)
-    require(len(pairs) == len(fields) and FIELDS <= fields.keys(), 'packet fields missing/duplicate')
+    require(len(pairs) == len(fields), 'duplicate packet fields')
+    return fields
+
+
+def parse_packet(text):
+    fields = workflow_fields(text)
+    require(FIELDS <= fields.keys(), 'packet fields missing/duplicate')
+    text = markdown(text)
     require(fields['Evidence Mode'] == 'github', 'helper requires explicit github mode')
     require(not {'Reviewed Content HEAD', 'Final Exact-HEAD Evidence', 'Hosted CI Requirement'} & fields.keys(),
             'legacy fields in github packet')
@@ -212,7 +219,11 @@ class Gate:
         flags = dict(line.split('=', 1) for line in output.splitlines())
         expected = set('rust rust_drift frontend docs env generated traceability workflow unknown'.split())
         require(set(flags) == expected and all(v in ('true','false') for v in flags.values()), 'invalid main classifier', 2)
-        entries = api(f'{self.endpoint}/contents/docs/plans?ref={head}')
+        # Git has no empty directories: an archived last packet removes docs/plans.
+        docs = api(f'{self.endpoint}/contents/docs?ref={head}')
+        plans = [entry for entry in docs if entry['name'] == 'plans']
+        require(not plans or (len(plans) == 1 and plans[0]['type'] == 'dir'), 'invalid plans directory', 2)
+        entries = api(f'{self.endpoint}/contents/docs/plans?ref={head}') if plans else []
         packets = [entry['path'] for entry in entries if entry['type'] == 'file' and re.fullmatch(r'\d{4}-\d\d-\d\d-.*\.md', entry['name'])]
         if self.args.packet:
             require(re.fullmatch(r'docs/plans/\d{4}-\d\d-\d\d-[A-Za-z0-9_-]+\.md', self.args.packet), 'invalid packet path', 2)
@@ -220,7 +231,14 @@ class Gate:
             dashboard = markdown(self.contents('docs/Plans.md', head))
             section = re.search(r'^## 次の行動\s*\n(.*?)(?=^## |\Z)', dashboard, flags=re.M | re.S)
             require(section and f'](plans/{Path(self.args.packet).name})' in section[1], 'packet not registered in Plans')
-            result = parse_packet(self.contents(self.args.packet, head))
+            packet_text = self.contents(self.args.packet, head)
+            result = parse_packet(packet_text)
+            if result['plan_commit'] != 'pending':
+                approved_ref = result['amendments'][-1] if result['amendments'] else result['plan_commit']
+                approved = workflow_fields(self.contents(self.args.packet, approved_ref))
+                current = workflow_fields(packet_text)
+                for field in ('Risk', 'Execution Mode', 'Final Review Minimum', 'Human Gate'):
+                    require(approved.get(field) == current[field], f'approved packet condition changed: {field}')
         else:
             require(not packets, 'R2+ active packet requires --packet')
             require(self.args.risk in ('R0','R1') and self.args.manual in ('required','not-required'),
