@@ -23,7 +23,7 @@ R3/R4 は [Contract Audit](../DEV_WORKFLOW.md#contract-audit-r3r4) をsource doc
 
 Planに適用されたImpact Review Lensesは、対象・期待する根拠とともに引き継ぐ。非該当lensの欄を埋めること自体をfindingにしない。自動化できない確認は既存のL3条件に従い、対象画面・到達手順・観測可能な合格基準を示す。
 
-状態遷移・証跡・Readyの変更を扱う場合は、[Workflow State](../DEV_WORKFLOW.md#workflow-state) と [ci.md](../ci.md) の該当契約を直接確認する。state-onlyはfile名とzero-context hunkの両方を確認し、必要なfinal HEAD一致を維持する。
+状態遷移・証跡・Readyの変更を扱う場合は、[Workflow State](../DEV_WORKFLOW.md#workflow-state) と [ci.md](../ci.md) の該当契約を直接確認する。legacyのstate-onlyはfile名とzero-context hunkの両方を確認する。github modeは専用record/head/base・必要broad/closure/manual/R4・実効rules/CIを確認し、旧三点一致を要求しない。
 
 closureは前回指摘と修正差分、影響する契約から確認する。新しい影響や重大欠陥の根拠があれば拡張し、その理由を示す。既読で変更のない全資料の再読を独自に要求しない。Double Audit、Findings Freeze、review round上限は正本に従う。
 

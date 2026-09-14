@@ -47,3 +47,5 @@ Create and use a review-only packet so a separate context can review the change 
 - P1/P2 cannot be accepted or rejected without evidence.
 - Do not turn scope-out improvements into blockers.
 - Do not treat a missing or non-applicable Impact Review Lens as a finding unless it hides a concrete contract, data-safety, test, evidence, manual-verification, or replacement-path risk.
+
+Evidence Modeを確認し、[merge-evidence](../../../docs/agent-guidance/merge-evidence.md)へ接続する。github modeはhelper statusと専用record/CIで実装後状態を確認し、reviewerはrecordを編集しない。legacyのstate-only/三点一致を新modeへ持ち込まない。

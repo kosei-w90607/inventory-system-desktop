@@ -22,3 +22,5 @@ Planの独立レビューが必要なときだけ使うoptional helper。review�
 - workflow / phase / review: `docs/DEV_WORKFLOW.md`
 - role / consultation relay: `docs/AGENT_OPERATING_MANUAL.md`
 - task scope / budget / reviewer: 対象Plan Packet
+
+証跡の保存先とhelperは `docs/agent-guidance/merge-evidence.md` のEvidence Modeに従う。実装後state-only/三点一致はlegacyだけで、github modeのreview/manual/R4は専用recordをsingle-writerが更新する。

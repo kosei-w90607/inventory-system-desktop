@@ -62,6 +62,7 @@ write_packet() {
 
 ## Workflow State
 
+- Evidence Mode: legacy
 - Plan Commit: ${plan_commit}
 - Amendments: ${amendments}
 EOF
@@ -198,6 +199,44 @@ commit_all "$repo" "docs(plans): gated amendment を記録" > /dev/null
 capture_check "$repo" output
 [[ "$CHECK_STATUS" -eq 0 ]] || fail "Amendments 追記正例が ERROR 判定された:\n$output"
 assert_not_contains "$output" "PK5:" "Amendments 正例で PK5 出力が発生した"
+
+# MG-D5 / F1: two amendments retain their order; only token separators may differ.
+printf 'second amendment\n' >> "$repo/impl.txt"
+d_sha="$(commit_all "$repo" 'feat: second amendment')"
+write_packet "$repo" "packet.md" "$a_sha" "$c_sha, $d_sha"
+commit_all "$repo" 'docs(plans): append second amendment' > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -eq 0 ]] || fail "ordered amendment append rejected: $output"
+write_packet "$repo" "packet.md" "$a_sha" "  $c_sha  ,   $d_sha  "
+valid_amendments_head="$(commit_all "$repo" 'docs(plans): amendment separators only')"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -eq 0 ]] || fail "amendment formatting change rejected: $output"
+
+# Each invalid candidate branches from the same valid history; no destructive reset is needed.
+for variant in reorder replacement removal spelling; do
+    git -C "$repo" switch -qc "amendment-$variant" "$valid_amendments_head"
+    case "$variant" in
+        reorder) changed="$d_sha, $c_sha" ;;
+        replacement) changed="$a_sha, $d_sha" ;;
+        removal) changed="$c_sha" ;;
+        spelling) changed="${c_sha:0:12}, $d_sha" ;;
+    esac
+    write_packet "$repo" "packet.md" "$a_sha" "$changed"
+    commit_all "$repo" "docs(plans): invalid amendment $variant" > /dev/null
+    capture_check "$repo" output
+    [[ "$CHECK_STATUS" -ne 0 ]] || fail "amendment $variant was accepted"
+    assert_contains "$output" "Amendments が削除・変更されています" "amendment $variant reason missing"
+    assert_not_contains "$output" "祖先ではありません" "amendment $variant failed for unrelated ancestry"
+done
+git -C "$repo" switch -q --detach "$valid_amendments_head"
+
+# MG-D5 / S-P3-1: recorded amendment removal fails even though every remaining SHA is ancestral.
+write_packet "$repo" "packet.md" "$a_sha" "none"
+commit_all "$repo" "docs(plans): remove recorded amendment" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "registered amendment removal was accepted"
+assert_contains "$output" "Amendments が削除・変更されています" "amendment removal reason missing"
+assert_not_contains "$output" "祖先ではありません" "amendment removal failed for unrelated ancestry"
 
 # ============================================================================
 # D-055 T-PK5: conflict-free rebase の Rebase Map 正例
@@ -569,7 +608,7 @@ base_sha="$(commit_all "$repo" "base")"
 git -C "$repo" update-ref refs/remotes/origin/main "$base_sha"
 
 # prefix なしの plans-only commit（ラベル逃れ）-> WARN
-printf 'update\n' > "$repo/docs/plans/other-packet.md"
+printf '%s\n' '- Evidence Mode: legacy' > "$repo/docs/plans/other-packet.md"
 commit_all "$repo" "docs(plans): 提案を更新" > /dev/null
 
 capture_check "$repo" output
@@ -666,3 +705,41 @@ assert_invalid_backtrack "zero" "docs(plans): state-backtrack"
 assert_invalid_backtrack "same" "docs(plans): state-backtrack implementing->implementing"
 
 echo "PASS: workflow-git-checks"
+
+# SPEC-MERGE-EVIDENCE / MG-D5/D10: explicit marker, new phase limits, unchanged PK5.
+repo="$tmp/github-mode"
+init_repo "$repo"
+printf 'base\n' > "$repo/README.md"
+base_sha="$(commit_all "$repo" base)"
+git -C "$repo" update-ref refs/remotes/origin/main "$base_sha"
+write_packet "$repo" packet.md pending none
+plan_sha="$(commit_all "$repo" plan-first)"
+sed -i "s/Evidence Mode: legacy/Evidence Mode: github/; s/Plan Commit: pending/Plan Commit: $plan_sha/; /Evidence Mode:/a\- Phase: implementing" "$repo/docs/plans/packet.md"
+commit_all "$repo" implementation > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" == 0 ]] || fail "valid github Plan Commit rejected: $output"
+sed -i 's/Phase: implementing/Phase: local-verified/' "$repo/docs/plans/packet.md"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "github late tracked Phase accepted"
+sed -i 's/Phase: local-verified/Phase: implementing/; /Evidence Mode:/d' "$repo/docs/plans/packet.md"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "markerless active packet accepted"
+echo "PASS: github workflow git"
+
+# MG-D4: a real shallow clone must fail, even if its visible tip looks consistent.
+shallow="$tmp/shallow"
+git clone -q --depth 1 "file://$repo" "$shallow"
+capture_check "$shallow" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "shallow history became successful evidence"
+assert_contains "$output" "full history required" "shallow failure reason missing"
+echo "PASS: shallow history rejected"
+
+# An unrelated shallow ref does not make this separate parentless target incomplete.
+git -C "$shallow" config user.name test
+git -C "$shallow" config user.email test@example.invalid
+empty_tree="$(git -C "$shallow" mktree < /dev/null)"
+complete_root="$(printf 'complete root\n' | git -C "$shallow" commit-tree "$empty_tree")"
+git -C "$shallow" switch -q --detach "$complete_root"
+capture_check "$shallow" output
+[[ "$CHECK_STATUS" == 0 ]] || fail "unrelated shallow marker rejected complete target: $output"
+echo "PASS: unrelated shallow boundary excluded"

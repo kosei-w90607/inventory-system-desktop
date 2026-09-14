@@ -20,3 +20,5 @@ description: Route inventory-system development starts and resumes to the applic
 - review: `inventory-code-review` / `pr-review`。初回監査と既存指摘の closure を区別する。
 
 進捗は必要な現在地・次の行動・未解決判断を短く共有する。承認依頼は [Owner Effort Budget](../../../docs/DEV_WORKFLOW.md#owner-effort-budget)、完了は [Done Definition](../../../docs/DEV_WORKFLOW.md#done-definition) に従う。固定の kickoff/final テンプレートを全依頼に出力しない。
+
+Evidence Modeを確認し、[merge-evidence](../../../docs/agent-guidance/merge-evidence.md)へ接続する。github modeはhelper statusと専用record/CIで実装後状態を確認し、reviewerはrecordを編集しない。legacyのstate-only/三点一致を新modeへ持ち込まない。

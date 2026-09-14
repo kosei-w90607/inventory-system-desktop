@@ -17,8 +17,10 @@ description: Implement inventory-system code or documentation changes against it
 
 ## Verify and hand off
 
-検証の種類とタイミングは [Verification Gates](../../../docs/DEV_WORKFLOW.md#verification-gates) と [CI](../../../docs/ci.md) が所有する。実装中は対象テストと `local-ci.sh changed`、必要な最終候補では `local-ci.sh full`。human-confirm直後だけの追加fullは要求しない。ready-hosted-finalのstate-only後は、正本どおりそのexact HEADでL1 fullを行う。
+検証の種類とタイミングは [Verification Gates](../../../docs/DEV_WORKFLOW.md#verification-gates) と [CI](../../../docs/ci.md) が所有する。実装中は対象テストと `local-ci.sh changed`、必要な最終候補では `local-ci.sh full`。human-confirm直後だけの追加fullは要求しない。legacyのready-hosted-finalのstate-only後は、正本どおりそのexact HEADでL1 fullを行う。
 
 [Review Rules](../../../docs/DEV_WORKFLOW.md#review-rules) と risk-tier の独立レビューを完了する。R4 / workflow gate change の Double Audit を維持し、指摘は現物で確認する。[Draft PR Checkpoint](../../../docs/DEV_WORKFLOW.md#draft-pr-checkpoint) で成果物と検証、残る owner 確認を引き渡す。Ready / merge は明示承認に従う。
 
 最終報告には結果、必要な検証根拠、未完了事項を含める。正本にない工程や、無関係な清掃を完了条件に増やさない。
+
+Evidence Modeを確認し、[merge-evidence](../../../docs/agent-guidance/merge-evidence.md)へ接続する。github modeはhelper statusと専用record/CIで実装後状態を確認し、reviewerはrecordを編集しない。legacyのstate-only/三点一致を新modeへ持ち込まない。

@@ -6,7 +6,7 @@ Status: accepted（2026-09-14、[PR #52](https://github.com/kosei-w90607/invento
 
 SPEC-HARNESS-CONTEXT: Astra を主対象に、Sol と Claude Code でも、必要な契約を維持してタスク完了までの読み込みと重複作業を減らす。token 削減率は未実測。file bytes は入力負担の代理値であり、課金 token や cache hit の実測として扱わない。
 
-この設計では Risk、Plan Gate、vendor 独立性、Workflow State、R4 承認、L3、Ready/merge、最終 HEAD の証拠を変更しない。既存の規範を短い入口から必要時に参照する。R2 Plan Gate 廃止、STATECAP/Plan Commit 方式変更、reviewer 固定の撤廃は別の設計判断として残す。
+この設計では Risk、Plan Gate、vendor 独立性、Workflow State、R4 承認、L3、Ready/merge、最終 HEAD の証拠を変更しない。既存の規範を短い入口から必要時に参照する。R2 Plan Gate廃止とreviewer固定の撤廃は対象外。証跡保存・STATECAPの後継は[merge-evidence](merge-evidence.md)でEvidence Modeごとに定義し、Plan Commit保護を維持する。
 
 ## 契約
 

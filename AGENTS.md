@@ -11,7 +11,7 @@ Inventory-system は Tauri / React / SQLite の単店舗向け在庫管理アプ
 | 質問・調査 | 問われたファイルと関係する仕様。作業の選定や現状確認なら `Plans.md`。無関係な Plan Packet は選ばない |
 | R0/R1 の小変更 | `docs/DEV_WORKFLOW.md` の Risk Tiers / Verification Gates と、対象の仕様・コード・テスト。`Plans.md` で現在の作業と関係する blocker を確認。Plan Packet は不要 |
 | 新しい R2+ 計画 | `Plans.md`、`docs/DEV_WORKFLOW.md` の Risk Tiers / Plan Packet Rules / Design Phase Rules / Workflow State、`docs/AGENT_OPERATING_MANUAL.md` の役割・可用性、関係する設計正本 |
-| R2+ 実装・再開 | `Plans.md` から対象 packet を特定し、その完全な Workflow State、Scope、AC、Matrix、必要な設計正本を読む。現在 phase に関係する workflow / CI / review 条件を確認する。human-confirm以降はPR本文のevidenceとstate-only差分を照合し、不一致・禁止hunkがあれば停止する |
+| R2+ 実装・再開 | `Plans.md` から対象 packet を特定し、その完全な Workflow State、Scope、AC、Matrix、必要な設計正本を読む。現在 phase に関係する workflow / CI / review 条件を確認する。Evidence Modeを確認する。legacyのhuman-confirm以降はPR本文のevidenceとstate-only差分を照合し、不一致・禁止hunkがあれば停止する。github modeの実装後はhelper statusと専用record/CIで現在地を確認する |
 | 初回レビュー | 対象差分、関係する設計正本、packet/Matrix（ある場合）、`docs/code_review.md` と `docs/quality/review-checklist.md` の該当観点。R3/R4 は Contract Audit |
 | レビュー修正確認 | 前回 findings、修正差分、影響する契約とテスト。別領域への影響や新しい重大欠陥の根拠があれば範囲を拡張する |
 | Ready・merge・closeout | `docs/DEV_WORKFLOW.md` の Workflow State / Draft PR Checkpoint / Post-Merge Closeout、`docs/ci.md`、現在の PR evidence |
@@ -23,6 +23,8 @@ Codex/OpenAI のモデル補助や profile の確認・調整には `docs/agent-
 R2+ は必要な gate を満たすまで実装・phase 前進・Ready を行わない。packet 不在・曖昧・不正な Workflow State は現行の fail-closed に従う。古い日付だけを理由に blocker を解除せず、現在の対象への適用と解消根拠を確認する。
 
 ## Working Rules
+
+GitHub evidence modeの適用条件と専用recordは [merge-evidence](docs/agent-guidance/merge-evidence.md)。GitHubがPR/CIを強制し、helperがreview/manual/R4を確認する。直接UI mergeは禁止。CI成功だけでUIがmerge可能と示し得る残存リスクをserver保護済みと誤認しない。
 
 - `UI -> CMD -> BIZ -> IO/MNT` を維持し、CMD を薄く、業務規則を BIZ に置く。
 - 振舞いの変更には意味のあるテストを同時に用意し、使用している REQ / spec ID を付ける。source design も同期する。既存テストを不都合だから削除・skip・弱体化しない。誤ったテストは設計正本との不一致と理由を示して修正する。

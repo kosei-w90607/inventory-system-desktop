@@ -6,7 +6,7 @@
 # docs/plans/2026-07-12-mechanical-workflow-slice2.md Scope 3-4 参照
 #
 # 呼び出し元: scripts/pre-push.sh（push 前 gate）/ scripts/local-ci.sh（L1 gate）
-# CI `docs` job には追加しない（shallow clone のため、packet Contract Probe P1 参照）
+# hosted docs jobもfetch-depth: 0で実PR HEADを検査する（MG-D4）。
 #
 # 検査内容:
 #   PK5: docs/plans/ 直下の各 active packet について
@@ -242,6 +242,21 @@ check_plan_commit_ancestry() {
         echo "❌ [workflow-git] PK5: $file の Plan Commit が書き換えられています（初回確定値 '$first_value' -> 現在値 '$plan_commit'）"
         FAIL=1
     fi
+    # MG-D5: each registered sequence must remain a prefix, including original SHA spelling.
+    # Separators/whitespace may change; resolving aliases here would weaken SHA immutability.
+    local prior_amendments
+    local -a prior_shas=()
+    while IFS= read -r prior_amendments; do
+        mapfile -t prior_shas < <(printf '%s\n' "$prior_amendments" | grep -oE '[0-9a-f]{7,40}' || true)
+        for ((index = 0; index < ${#prior_shas[@]}; index++)); do
+            if [[ "${amendment_shas[$index]:-}" != "${prior_shas[$index]}" ]]; then
+                echo "❌ [workflow-git] PK5: $file の Amendments が削除・変更されています（登録順序を含む prefix が必要です）"
+                FAIL=1
+                break
+            fi
+        done
+    done < <(git log --follow -p -- "$file" | grep -E '^[+]- Amendments:')
+
 }
 
 # ----------------------------------------------------------------------------
@@ -249,6 +264,10 @@ check_plan_commit_ancestry() {
 # ----------------------------------------------------------------------------
 resolve_main_merge_base() {
     local base=""
+    if [[ -n "${WORKFLOW_BASE_SHA:-}" ]]; then
+        git merge-base "$WORKFLOW_BASE_SHA" HEAD
+        return $?
+    fi
     if git rev-parse --verify 'origin/main^{commit}' >/dev/null 2>&1; then
         base="$(git merge-base origin/main HEAD 2>/dev/null || true)"
     fi
@@ -337,14 +356,43 @@ check_state_only_commit_cap() {
 }
 
 main() {
-    local file
+    local file mode phase has_legacy=false has_packet=false
+    # Only the target ancestry matters: an unrelated ref can retain a shallow marker.
+    # rev-list treats a shallow boundary as a root; the raw commit still names its parents.
+    local history_root history_roots
+    history_roots="$(git rev-list --max-parents=0 HEAD ${WORKFLOW_BASE_SHA:+"$WORKFLOW_BASE_SHA"})" || exit 1
+    while IFS= read -r history_root; do
+        if git cat-file -p "$history_root" | sed -n '/^$/q; /^parent /p' | grep -q .; then
+            echo "❌ [workflow-git] PK5: full history required; shallow target ancestry is not evidence"
+            exit 1
+        fi
+    done <<< "$history_roots"
+    if [[ -n "${WORKFLOW_BASE_SHA:-}" ]] && ! git merge-base "$WORKFLOW_BASE_SHA" HEAD >/dev/null 2>&1; then
+        echo "❌ [workflow-git] PK5: hosted base history unavailable"
+        exit 1
+    fi
 
     while IFS= read -r file; do
         [[ -n "$file" ]] || continue
+        has_packet=true
+        mode="$(sed -n 's/^- Evidence Mode: *//p' "$file")"
+        phase="$(sed -n 's/^- Phase: *//p' "$file")"
+        case "$mode" in
+            legacy) has_legacy=true ;;
+            github)
+                case "$phase" in
+                    kickoff|spec-check|design|plan-draft|plan-gate|plan-approved|implementing|archive) ;;
+                    *) echo "❌ [workflow-git] github mode: invalid tracked Phase in $file"; FAIL=1 ;;
+                esac
+                ;;
+            *) echo "❌ [workflow-git] Evidence Mode must be explicit legacy/github in $file"; FAIL=1 ;;
+        esac
         check_plan_commit_ancestry "$file"
     done < <(find "$REPO_ROOT/$PLAN_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | sort)
 
-    check_state_only_commit_cap
+    if [[ "$has_legacy" == true || "$has_packet" == false ]]; then
+        check_state_only_commit_cap
+    fi
 
     if [[ "$FAIL" -eq 0 ]]; then
         echo "✅ [workflow-git] PK5/STATECAP 検査 OK"

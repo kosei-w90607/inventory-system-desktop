@@ -43,7 +43,11 @@ jobs.each do |name, job|
   abort "job #{name} does not depend on changes" unless needs.include?("changes")
   condition = job["if"].to_s
   expected_always_guard = "always() && needs.changes.result == 'success'"
-  if condition.include?("always()") && condition != expected_always_guard
+  if name == "merge_gate"
+    guard = "always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)"
+    abort "aggregate must run even when classification fails" unless condition == guard
+    abort "aggregate must depend on every job" unless needs.sort == (jobs.keys - ["merge_gate"]).sort
+  elsif condition.include?("always()") && condition != expected_always_guard
     abort "always job #{name} can run after changes is skipped: #{condition.inspect}"
   end
 end
@@ -69,7 +73,7 @@ types = pull_request.fetch("types")
 abort "pull_request.types is not an array" unless types.is_a?(Array)
 
 # D-043: Final-only CI must react to every non-Draft PR head update.
-expected = %w[opened ready_for_review synchronize]
+expected = %w[opened reopened ready_for_review synchronize]
 actual = types.map(&:to_s)
 unless actual.length == expected.length && actual.uniq.length == actual.length && actual.sort == expected.sort
   abort "pull_request.types must be exactly #{expected.inspect}; got #{actual.inspect}"
@@ -78,8 +82,8 @@ end
 expected_branches = ["main"]
 abort "pull_request.branches drifted" unless pull_request.fetch("branches") == expected_branches
 
-expected_paths_ignore = ["docs/**", "*.md", ".agents/**", ".claude/skills/**"]
-abort "pull_request.paths-ignore drifted" unless pull_request.fetch("paths-ignore") == expected_paths_ignore
+abort "PR filtering can suppress merge evidence" if pull_request.key?("paths-ignore") || pull_request.key?("paths")
+abort "CI token must be read-only" unless workflow["permissions"] == {"contents" => "read"}
 
 concurrency = workflow.fetch("concurrency")
 abort "concurrency is not a map" unless concurrency.is_a?(Hash)
@@ -87,14 +91,7 @@ abort "superseded-run cancellation is not enabled" unless concurrency.fetch("can
 
 jobs = workflow.fetch("jobs")
 changes = jobs.fetch("changes")
-expected_changes_condition = <<~'CONDITION'.split.join(" ")
-  github.event_name == 'workflow_dispatch' ||
-  (github.event.pull_request.draft == false &&
-  !(contains(github.event.pull_request.body, 'Hosted CI: skip') &&
-  github.actor == github.repository_owner &&
-  (contains(github.event.pull_request.body, 'Risk: R0') ||
-  contains(github.event.pull_request.body, 'Risk: R1'))))
-CONDITION
+expected_changes_condition = "github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false"
 actual_changes_condition = changes.fetch("if").to_s.split.join(" ")
 unless actual_changes_condition == expected_changes_condition
   abort "changes job guard drifted: #{actual_changes_condition.inspect}"
@@ -121,7 +118,8 @@ expected_job_names = {
   "rust_lint" => "Rust fmt/clippy",
   "rust_test" => "Rust tests",
   "rust_drift" => "Rust generated drift",
-  "rust" => "Rust (fmt + clippy + test)",
+  "merge_gate" => "${{ (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false) && 'Merge gate' || 'Draft (no merge evidence)' }}",
+  "workflow" => "Workflow regression",
   "docs" => "Design doc consistency",
   "env_safety" => "Env safety",
   "frontend" => "Frontend (typecheck + lint + format + build)",
@@ -200,16 +198,45 @@ validate_public_actions_doc_contract() {
 
     grep -Fq 'CI-PUBLIC-D1:' "$ci_doc" || return 1
     grep -Fq 'CI-TRIGGER-D1:' "$ci_doc" || return 1
-    grep -Fq '| non-doc を含む event-eligible change | owner が Draft から Ready にする。Ready のまま更新された例外経路は `synchronize` | dispatch しない |' "$ci_doc" || return 1
-    grep -Fq '| `paths-ignore` 対象だが hosted-required の workflow / release contract docs-only change | owner が Ready にした後、自動 run が作られていないことを確認して `workflow_dispatch` | 同一 HEAD の run が 0 件であること |' "$ci_doc" || return 1
-    grep -Fq '| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因を確認・是正した後の recovery として `workflow_dispatch` | 同一 HEAD に successful / in-progress run がないこと |' "$ci_doc" || return 1
-    grep -Fq '| 同一 HEAD に successful final が既にある | 既存 run を evidence に使う | Ready の再操作も dispatch も行わない |' "$ci_doc" || return 1
+    grep -Fq '| docsを含む全PR | owner Ready、Ready更新の例外はsynchronize、再開はreopened | dispatch しない |' "$ci_doc" || return 1
+    grep -Fq '同一 HEAD の run が 0 件であること' "$ci_doc" || return 1
+    grep -Fq '| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に successful / in-progress run がないこと |' "$ci_doc" || return 1
+    grep -Fq '| 同一 HEAD に successful final が既にある | 既存runを使う | Ready再操作もdispatchも不要 |' "$ci_doc" || return 1
     grep -Fq '**non-release R2/R3 Actions unavailable**' "$ci_doc" || return 1
     grep -Fq '**public repository Phase B bootstrap R4**' "$ci_doc" || return 1
     grep -Fq '`not-required` でも観測済み product/test/gate failure は blocker' "$ci_doc" || return 1
     grep -Fq 'CI-TRIGGER-D1' "$dev_workflow_doc" || return 1
     grep -Fxq '## D-063' "$decision_log"
 }
+
+# MG-D4: real PR PK5 and every former local workflow check remain wired on both routes.
+validate_parity() {
+    ruby - "$1" "$2" "$3" <<'RUBY'
+require "yaml"
+workflow = YAML.safe_load(File.read(ARGV[0]), aliases: true)
+local = File.read(ARGV[1]); suite = File.read(ARGV[2])
+jobs = workflow.fetch("jobs")
+call = "bash scripts/tests/run-workflow-tests.sh"
+abort "shared suite disconnected from local" unless local.include?(call)
+abort "shared suite disconnected from hosted" unless jobs.fetch("workflow").fetch("steps").any? { |step| step["run"] == call }
+%w[classify-changes check-command-drift pre-push local-ci codex-safe-wrappers claude-hooks public-sanitization doc-consistency-plan-packet workflow-git-checks reading-order-drift ci-workflow merge-gate].each do |name|
+  abort "lost workflow regression: #{name}" unless suite.include?("bash scripts/tests/#{name}.test.sh")
+end
+abort "helper tests disconnected" unless suite.include?("python3 scripts/tests/pr-gate.test.py")
+abort "shell syntax lost" unless suite.include?('bash -n "$shell_file"')
+abort "workflow YAML lost" unless suite.include?("YAML.parse_file")
+docs = jobs.fetch("docs").fetch("steps")
+checkout = docs.find { |step| step["uses"] == "actions/checkout@v6" }
+abort "PK5 needs complete history" unless checkout.dig("with", "fetch-depth") == 0
+abort "PK5 must check PR head" unless checkout.dig("with", "ref") == "${{ github.event.pull_request.head.sha || github.sha }}"
+check = docs.find { |step| step["run"] == "bash scripts/check-workflow-git.sh" }
+abort "actual PR PK5 disconnected" unless check && check.dig("env", "WORKFLOW_BASE_SHA") == "${{ github.event.pull_request.base.sha || github.sha }}"
+%w[rust_lint rust_test rust_drift frontend env_safety].each do |name|
+  abort "policy regression must not force product gates" if jobs.fetch(name).fetch("if").include?("outputs.workflow")
+end
+RUBY
+}
+validate_parity "$WORKFLOW" "$REPO_ROOT/scripts/local-ci.sh" "$REPO_ROOT/scripts/tests/run-workflow-tests.sh"
 
 validate_job_graph "$WORKFLOW"
 validate_workflow_contract "$WORKFLOW"
@@ -223,6 +250,17 @@ validate_public_actions_doc_contract "$CI_DOC" "$DEV_WORKFLOW_DOC" "$DECISION_LO
 
 mutation_dir="$(mktemp -d)"
 trap 'rm -rf "$mutation_dir"' EXIT
+
+parity_mutation="$mutation_dir/missing-suite-check.sh"
+sed '\|bash scripts/tests/pre-push.test.sh|d' "$REPO_ROOT/scripts/tests/run-workflow-tests.sh" > "$parity_mutation"
+if validate_parity "$WORKFLOW" "$REPO_ROOT/scripts/local-ci.sh" "$parity_mutation" >/dev/null 2>&1; then
+    fail "parity accepted a lost workflow regression"
+fi
+shallow_mutation="$mutation_dir/shallow-ci.yml"
+sed 's/fetch-depth: 0/fetch-depth: 1/g' "$WORKFLOW" > "$shallow_mutation"
+if validate_parity "$shallow_mutation" "$REPO_ROOT/scripts/local-ci.sh" "$REPO_ROOT/scripts/tests/run-workflow-tests.sh" >/dev/null 2>&1; then
+    fail "parity accepted shallow PK5"
+fi
 
 ci_doc_quota_mutation="$mutation_dir/ci-private-quota.md"
 cp "$CI_DOC" "$ci_doc_quota_mutation"
@@ -376,7 +414,7 @@ if validate_workflow_contract "$missing_event_mutation" >/dev/null 2>&1; then
 fi
 
 extra_event_mutation="$mutation_dir/extra-event.yml"
-sed 's/synchronize/synchronize, reopened/' "$WORKFLOW" > "$extra_event_mutation"
+sed 's/synchronize/synchronize, edited/' "$WORKFLOW" > "$extra_event_mutation"
 if validate_workflow_contract "$extra_event_mutation" >/dev/null 2>&1; then
     fail "pull_request event validator accepted an extra event"
 fi
@@ -387,10 +425,16 @@ if validate_workflow_contract "$draft_guard_mutation" >/dev/null 2>&1; then
     fail "workflow contract validator accepted a weakened Draft guard"
 fi
 
-owner_guard_mutation="$mutation_dir/weakened-owner-guard.yml"
-sed 's/github.actor == github.repository_owner/github.actor == github.repository_owner || true/' "$WORKFLOW" > "$owner_guard_mutation"
-if validate_workflow_contract "$owner_guard_mutation" >/dev/null 2>&1; then
-    fail "workflow contract validator accepted a weakened owner guard"
+# MG-D2/D3: a classification failure must fail, never skip the aggregate.
+aggregate_mutation="$mutation_dir/classification-success-guard.yml"
+sed "s/if: always() \&\& (github/if: always() \&\& needs.changes.result == 'success' \&\& (github/" "$WORKFLOW" > "$aggregate_mutation"
+if validate_job_graph "$aggregate_mutation" >/dev/null 2>&1; then
+    fail "aggregate accepted a changes-success precondition"
+fi
+name_mutation="$mutation_dir/draft-required-name.yml"
+sed "s/'Draft (no merge evidence)'/'Merge gate'/" "$WORKFLOW" > "$name_mutation"
+if validate_workflow_contract "$name_mutation" >/dev/null 2>&1; then
+    fail "Draft can publish required check name"
 fi
 
 concurrency_mutation="$mutation_dir/disabled-cancellation.yml"
@@ -426,13 +470,13 @@ fi
 reject_fixed "  push:"
 reject_fixed '      - "**/*.md"'
 require_fixed "  workflow_dispatch:"
-require_fixed "paths-ignore:"
-require_fixed '      - "*.md"'
+reject_fixed "paths-ignore:"
+
 require_fixed "github.event.pull_request.draft == false"
-require_fixed "Hosted CI: skip"
-require_fixed "github.actor == github.repository_owner"
-require_fixed "Risk: R0"
-require_fixed "Risk: R1"
+reject_fixed "Hosted CI: skip"
+
+
+
 require_fixed "github.event_name == 'workflow_dispatch'"
 require_fixed "scripts/ci/classify-changes.sh --all"
 require_fixed "scripts/ci/classify-changes.sh"
@@ -441,7 +485,7 @@ require_fixed '--head "${{ github.event.pull_request.head.sha }}"'
 require_fixed "concurrency:"
 require_fixed "cancel-in-progress: true"
 require_fixed "if: always() && needs.changes.result == 'success'"
-require_fixed "name: Rust (fmt + clippy + test)"
+require_fixed "bash scripts/ci/check-required-jobs.sh"
 require_fixed "cache: npm"
 require_fixed "bash scripts/tests/codex-safe-wrappers.test.sh"
 require_fixed "bash scripts/tests/claude-hooks.test.sh"
@@ -450,9 +494,6 @@ if grep -Fq 'Hosted CI: skip' "$PR_TEMPLATE"; then
     fail "PR template contains the opt-in skip token by default"
 fi
 
-always_count="$(grep -cE '^ {4}if: always\(\)' "$WORKFLOW")"
-guarded_count="$(grep -cE "^ {4}if: always\\(\\) && needs\\.changes\\.result == 'success'" "$WORKFLOW")"
-[[ "$always_count" == "$guarded_count" ]] || fail "an always() job can run after changes is skipped"
 
 cache_blocks="$(awk '
     /uses: actions\/cache@v5/ { in_cache=1; block=$0 ORS; next }

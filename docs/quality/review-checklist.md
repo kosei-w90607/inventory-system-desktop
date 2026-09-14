@@ -102,7 +102,7 @@
 8. Rollback 非対称: `csv_import` = 物理 void / `daily_report` = 論理取消。新しい取込みを作るならどちらの semantics か明示したか。
 9. Idempotency: 書き込み系に冪等キーはあるか（migration v2 契約）。
 10. Docs vs Plan Packet: durable な判断を Plan Packet に置き逃げしていないか。昇格先は decision-log / function-design / DB_DESIGN。
-11. REQ/test trace: REQ 番号がテスト名にあるか。traceability check が green か。
+11. REQ/test trace: REQ対象のRustテストは規約どおりREQ番号を関数名に含めているか。技術/workflowテストは適用するSPEC・設計IDとの対応を確認し、REQを捏造しない。canonical traceability check（T1/T2/T4はERROR、T3はWARN）がgreenか。
 12. Fixture 信頼: adapter 系は synthetic fixture green を信じず実サンプル local gate を AC に（PR #125 の教訓）。
 
 ## 観点外（次回以降の候補として蓄積）

@@ -356,6 +356,7 @@ write_packet() {
         if [ "$PKT_INCLUDE_WS" = "1" ]; then
             echo "## Workflow State"
             echo ""
+            write_workflow_field "Evidence Mode" "legacy"
             write_workflow_field "Phase" "$PKT_PHASE"
             write_workflow_field "Risk" "$PKT_WS_RISK"
             write_workflow_field "Execution Mode" "$PKT_EXEC_MODE"
@@ -1068,3 +1069,22 @@ fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 
 echo "PASS: doc-consistency-plan-packet"
+
+# SPEC-MERGE-EVIDENCE / MG-D5/D10: explicit new/legacy schemas, no phase guesses.
+setup_repo_dirs
+reset_packet_defaults
+write_packet "$repo/docs/plans/2026-01-01-fixture.md"
+write_plans_md_linking "2026-01-01-fixture.md"
+sed -i '/^- Evidence Mode:/d' "$repo/docs/plans/2026-01-01-fixture.md"
+if run_check; then fail "markerless active packet accepted"; fi
+sed -i '/^- Phase:/i\- Evidence Mode: mystery' "$repo/docs/plans/2026-01-01-fixture.md"
+if run_check; then fail "unknown evidence mode accepted"; fi
+sed -i 's/Evidence Mode: mystery/Evidence Mode: github/; /^- Reviewed Content HEAD:/d; /^- Final Exact-HEAD Evidence:/d; /^- Hosted CI Requirement:/d; s/^- Human Gate:.*/- Human Gate: ready,merge/; /^- Final Reviewer:/a\- Final Review Minimum: 2' "$repo/docs/plans/2026-01-01-fixture.md"
+if ! run_check; then cat "$out"; fail "github pre-implementation schema rejected"; fi
+for phase in local-verified independent-review human-confirm ready-hosted-final merge; do
+    sed -i "s/^- Phase:.*/- Phase: $phase/" "$repo/docs/plans/2026-01-01-fixture.md"
+    if run_check; then fail "github tracked late Phase accepted: $phase"; fi
+done
+sed -i 's/^- Phase:.*/- Phase: plan-draft/; /^- Final Review Minimum:/d' "$repo/docs/plans/2026-01-01-fixture.md"
+if run_check; then fail "github missing minimum accepted"; fi
+echo "PASS: merge evidence schemas"

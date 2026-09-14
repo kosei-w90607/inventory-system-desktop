@@ -8,6 +8,8 @@ Tauri / React / SQLite の単店舗向けアプリ。日本語で応答し、識
 
 役割・可用性・独立性は `docs/AGENT_OPERATING_MANUAL.md`、phase・検証・承認は `docs/DEV_WORKFLOW.md` が所有する。writerは自分を承認者にしない。並行編集にはworktree分離か非重複ownershipを使う。
 
+証跡の保存先はEvidence Modeで選ぶ。github modeは [merge-evidence](docs/agent-guidance/merge-evidence.md) のhelperがreview/manual/R4を確認し、GitHubがPR/CIを強制する。直接UI mergeは禁止、CI成功だけでUIがmerge可能と示し得る残存リスクは保持する。legacyの実装後state-only/三点一致を新modeへ持ち込まない。
+
 tracked project hook inventoryは空で、`claude-code-harness`はproject scopeで無効。Plan GateをClaude固有hookで再実装しない。
 
 ## Fable 5.1 補助

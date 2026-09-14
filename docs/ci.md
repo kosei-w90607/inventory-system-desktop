@@ -1,69 +1,52 @@
 # CI
 
-この文書は CI / merge evidence の source of truth。判断理由は `docs/decision-log.md` D-026 / D-033 / D-043 / D-063、PR ごとの証跡は Plan Packet と PR 本文に置く。
+CIとmerge evidenceの正本。設計理由とwire契約は [merge-evidence.md](agent-guidance/merge-evidence.md)（MG-D1〜D12）。
 
 ## 移行状態
 
-- 2026-07-10 に PR #160（merge SHA `25e945b9a32243d6cff6b49f6188d68f4b14c09e`）を merge 後、owner が GitHub Web UI 上の `CI` workflow を Enable 済み。
-- 初回の `main` manual dispatch は run 29091831468 (private archive Actions evidence 29091831468) として実行され、head SHA `25e945b9a32243d6cff6b49f6188d68f4b14c09e` で success になった。これにより Disable 状態からの workflow runtime 検証を完了した。
-- Public PR #2 以降で Draft `synchronize` の runner 0、Ready / `synchronize` の exact-HEAD final、local / hosted / PR HEAD の三点一致を dogfood 済み。
-- GitHub settings、branch protection、retention、cache 削除、支払方法は repository から変更しない。
+CI/helperはlegacy gate下で導入する。bootstrapのDraft/Ready・分類失敗、merge後のdocs-only、検証用rulesetの拒否を確認し、ownerの本番有効化承認とread-backが揃ってからgithub modeのReady/mergeを利用する。有効化事実はPR専用commentとhelper statusで確認し、この文書に未確認の設定完了を記録しない。
+
+GitHubが強制するのはmainへのPRとCI。review/manual/R4はhelperが確認し、直接UI merge・確認を飛ばす直接gh mergeは禁止。GitHub UIがCI成功だけでmerge可能と示し得る残存リスクを受容した契約であり、非CI結果をserverが強制するとは主張しない。
 
 ## Verification Ladder
 
-| 層 | 目的 | 対象範囲 | 証跡 |
-|---|---|---|---|
-| L0 local changed | push 前の高速 feedback | push 増分 | `.local/quality-check.log` |
-| L1 local full | merge 候補 HEAD の全 gate | `origin/main` との PR 全差分、`full` は全 gate | `.local/ci-evidence/` の HEAD SHA 付き log |
-| L2 hosted final | GitHub-hosted clean-room 最終確認 | completed HEAD、原則 1 change 1 run | Actions run URL + `headSha` |
+| 層 | 目的 | 証跡 |
+|---|---|---|
+| L0 pre-push | push増分のfeedback、Ready push拒否 | `.local/quality-check.log` |
+| L1 local full | 全gateとlocal固有確認。legacyでは必須merge証拠 | `.local/ci-evidence/` |
+| L2 hosted final | 必要jobの実成功をMerge gateへ集約 | GitHubの対象workflow/check |
 
-L0 green は PR 全差分 green を意味しない。merge evidence は L1 `full` と、hosted 対象 change では L2 final の組み合わせで判定する。
+github modeはhostedを最終CI根拠にし、一律のlocal/full/SHA三点一致を要求しない。localで観測した失敗、Windows L3・manual/R4の保護は維持する。legacyはCLEANなcompleted HEADで`local-ci.sh full`を実行し、PR HEAD・PR本文のL1 SHA・required hosted headShaの三点一致を維持する。
 
 ## Hosted Trigger Model
 
-`CI` workflow は次だけを trigger とする。
+`pull_request`のopened/reopened/ready_for_review/synchronize（base=main）と`workflow_dispatch`だけを使う。pushやbody編集では起動しない。全docsをevent対象とし、path filterと本文skip tokenは廃止した。Draftは全runnerを止め、aggregate名は`Draft (no merge evidence)`。Ready/dispatchだけ`Merge gate`を発行する。required名でDraftのskippedを発行しない。
 
-- `pull_request` の `opened`、`ready_for_review`、`synchronize`
-- `workflow_dispatch`
-
-`push: main` は使用しない。`synchronize` は public repository で Ready PR の更新後 HEAD に current check を作るために使用する。Draft PR の `synchronize` は event 対象だが、job-level guard により runner job を開始しない。通常の修正経路は引き続き `Draftへ戻す -> push -> local full -> Ready` とし、Ready のままの通常 push は pre-push が拒否する。
-
-`npm security monitor` は product/merge CI とは別の standing security workflow で、weekly schedule + manual dispatch を維持する。daily schedule には戻さない。
-
-`opened` は Ready 状態で直接作成された PR の取りこぼし防止に使う。Draft で開かれた場合は job-level guard で runner を起動しない。`docs/**` と root Markdown の docs-only change は `paths-ignore` で自動 event の対象外にする。ただし hosted-required の workflow / release contract docs-only PR は下表どおり owner Ready 後に `workflow_dispatch` で 1 run する。Actions 利用不能時に限り、後述の閉じた 2 経路へ完全一致する変更は dispatch の代わりに指定の compensating evidence と owner disposition を使う。`.github/pull_request_template.md` は merge gate契約なので除外せず、classifier で workflow change に昇格させる。
-
-PR 本文の `Hosted CI: skip` は R0/R1 で hosted runner を不要とする明示 token。workflow が skip を受理するのは、本文に `Risk: R0` または `Risk: R1` があり、repository owner 自身が Ready event を発生させた場合だけである。token 単独、owner 以外の Ready 化、R2+ の Risk 表記では CI を実行する。R2+、workflow、release、DB、CMD/wire、migration、backup/restore、operator workflow では使用しない。`workflow_dispatch` は分類結果に関係なく全 area を `true` として full gate を実行する。Risk の正当性は owner review の責務であり、path だけから業務 risk tier を推測しない。
+aggregateのifは`always()`とDraft判定だけ。changes成功条件をifへ追加すると分類失敗でaggregateがskipされるため禁止。`check-required-jobs.sh`が分類key/値と全jobを検査し、選択されたjobはsuccessだけ、非対象jobはsuccess/skippedを受理する。failure/cancelled/欠落/未知値は拒否する。CI tokenはcontents:read。
 
 ### Final Trigger Selection
 
-CI-TRIGGER-D1: completed HEAD ごとに normal path の successful final は 1 run とし、次の表から該当する 1 経路だけを選ぶ。Ready / `synchronize` の自動対象に対して予防的な `workflow_dispatch` を重ねない。
+CI-TRIGGER-D1: 同じHEADへ予防的なdispatchを重ねない。dispatchは常にfull。
 
-| HEAD の状態 | 選ぶ trigger | dispatch 前の確認 |
+| HEADの状態 | 選ぶtrigger | dispatch前の確認 |
 |---|---|---|
-| non-doc を含む event-eligible change | owner が Draft から Ready にする。Ready のまま更新された例外経路は `synchronize` | dispatch しない |
-| `paths-ignore` 対象だが hosted-required の workflow / release contract docs-only change | owner が Ready にした後、自動 run が作られていないことを確認して `workflow_dispatch` | 同一 HEAD の run が 0 件であること |
-| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因を確認・是正した後の recovery として `workflow_dispatch` | 同一 HEAD に successful / in-progress run がないこと |
-| 同一 HEAD に successful final が既にある | 既存 run を evidence に使う | Ready の再操作も dispatch も行わない |
+| docsを含む全PR | owner Ready、Ready更新の例外はsynchronize、再開はreopened | dispatch しない |
+| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に successful / in-progress run がないこと |
+| 同一 HEAD に successful final が既にある | 既存runを使う | Ready再操作もdispatchも不要 |
 
-確認例は [Stale Green Prevention](#stale-green-prevention) の exact-HEAD query を使う。別 event の run が同時進行中なら、完了または cancel を確認してから recovery の要否を判断する。
+base付替え等でrunが無い場合も、同一 HEAD の run が 0 件であること、または失敗/cancelを確認してからrecoveryを選ぶ。
 
 ## Risk Routing
 
-| Risk / change | Local gate | Hosted final |
-|---|---|---|
-| pure docs-only / R0/R1（workflow / release contract 非接触） | docs check | 0 run |
-| non-doc R1 | targeted + relevant local gate | 原則不要。PR 本文を `Hosted CI: skip` にする |
-| R2 | `local-ci.sh full` | merge evidenceとしてはsource contract、workflow、release影響がある場合だけ必須。`not-required`はReady eventを抑止しないため、non-doc R2のReadyでincidental finalが走る場合はその結果を記録する |
-| R3 / R4 | `local-ci.sh full` + review-only | 原則 1 run。Ready 化または明示 dispatch。後述の閉じた Actions-unavailable 経路だけ `not-required` |
-| workflow / release | `local-ci.sh full` + review-only | 原則 1 run。後述の閉じた Actions-unavailable 経路だけ `not-required` |
-
-`Hosted CI Requirement: not-required`は成功runをmerge evidenceとして要求しないだけで、Ready eventや失敗シグナルを無視するtokenではない。incidental runがproduct/test/gate failureを返した場合はDraftへ戻して原因を修正し、新HEADでlocal/full/reviewを再実行する。infrastructure failureまたはcancelだけは、routeが`not-required`ならL1 evidenceを維持したままownerが残存リスクとして受理できる。結果・分類・owner dispositionをPR bodyへ記録する。`required` routeは原因分類にかかわらずsuccessful exact-HEAD runがmerge条件である。
+一般docs/closeoutはdocs＋Merge gate。policy docsはdocs＋workflow回帰＋Merge gate。実行制御、tests、未知pathは全gate。Rust/frontend/env/generated/traceabilityの既存分類は保持する。RiskはCI範囲を縮めず、owner/modelが意味から判断する。R2+のPlan Gate、独立review、必要manual/R4はCI成功で代替しない。
 
 ## Public Standard-Runner Policy
 
 CI-PUBLIC-D1: この repository は public で、現行 workflow は standard GitHub-hosted runner のみを使う。[GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions) と [job execution time](https://docs.github.com/en/actions/how-tos/monitor-workflows/view-job-execution-time) の公式 contract 上、この組み合わせでは Actions の billable execution minutes は発生しないため、private repository 時代の月間 minute 使用率や reset 日を hosted gate の判断条件にしない。larger runner を将来導入する場合は public repository でも課金対象になるため、別の R3 change で費用・security boundary・routing を再設計する。
 
 free minutes と無関係に、runner / Actions service の障害、concurrency、cache、重複実行には運用コストがある。CI-TRIGGER-D1 の 1 HEAD 1 final、L1 での事前検証、失敗原因を直してからの recovery を維持する。
+
+以下は **legacyだけ** のActions利用不能時の例外。github modeはActions利用不能ならmergeを停止する。
 
 GitHub-hosted runner が利用不能な場合、pure docs-only（workflow / release contract 非接触）は従来どおり 0 hosted run とする。workflow / release contract の docs-only change は原則として owner Ready 後に explicit dispatch を 1 run するが、Actions 利用不能かつ次の閉じた経路へ完全一致する場合だけ `not-required` にできる。
 
@@ -79,67 +62,32 @@ Actions 利用不能時の `Hosted CI Requirement` 例外は次の閉じた 2 �
 ```bash
 bash scripts/local-ci.sh changed
 bash scripts/local-ci.sh full
+bash scripts/tests/run-workflow-tests.sh
 ```
 
-`changed` は `git merge-base origin/main HEAD` を基準に PR 全差分を分類する。`origin/main` が利用できない場合は local `main` を試し、それも判定不能なら全 gate へ倒す。push 増分だけを見る pre-push とは範囲が異なる。
+changedはorigin/main（なければmain）とのmerge-baseからPR全差分を分類する。push増分とは異なる。fullはdocs、実履歴PK5、shell syntax、workflow YAML、workflow回帰、Rust fmt/clippy/tests、bindings、traceability、frontend install/routes/typecheck/lint/format/tests/build、envを保持する。npm auditは従来どおりwarn-only。
 
-`full` は Rust、generated bindings、traceability、frontend、env safety、docs、workflow script test をすべて実行する。frontend gate は hosted と同じく `npm ci` で lockfile からの clean installability を先に確認する。実行 command と exit code を表示し、失敗は非 0 で返す。warn-only の `npm audit` は非 0 を明示記録するが hosted と同じく final result を失敗にしない。
+local fullとhosted workflow jobは同じ`run-workflow-tests.sh`を呼び、検証一覧を複製しない。hosted docs jobは全経路でfetch-depth: 0、実PR head/baseを用いてPK5を実行する。浅い履歴や解決不能baseは成功にしない。Node pinとRuby/ripgrep/Pythonを用意する。
 
-evidence は `.local/ci-evidence/` に保存し、ファイル名と本文へ full HEAD SHA を含める。開始時と全 gate 終了時の HEAD / working tree 状態を記録し、開始時 CLEAN から HEAD 変更または DIRTY 化した run は失敗させる。`DIRTY` evidence は診断用で merge evidence には使えない。merge evidence として使えるのは、開始・終了とも PR HEAD と同じ SHA かつ `full` + `CLEAN` の evidence だけである。`.local/` は gitignore 対象で、evidence を commit しない。
+local evidenceは開始/終了のHEADとtree状態を保存し、gate中のHEAD更新・CLEANからDIRTYへの変更を失敗にする。DIRTYは診断用、legacyのmerge証拠はfull/CLEAN/同一HEADだけ。github modeでもlocalでの失敗を無視しない。
 
 ## Classifier Contract
 
-`scripts/ci/classify-changes.sh` は CI、local CI、pre-push が共有する。出力は `key=true|false` のみで、次を分類する。
-
-- `rust`
-- `rust_drift`（generated または traceability の互換 aggregate）
-- `frontend`
-- `docs`
-- `env`
-- `generated`
-- `traceability`
-- `workflow`
-- `unknown`
-
-1 path が複数分類に属してよい。1 件でも unknown path がある場合、または base/head を判定できない場合は、全 area を `true` にして full gate へ倒す。workflow / CI script 自体の変更も全 gate を要求する。
-
-Claude project設定のうち`.claude/settings.json`、`.claude/hooks/**`、`.claude/commands/**`は`workflow`へ分類する。`.claude/skills/**`は既存どおり`docs`へ分類する。workflow gateでは`claude-hooks.test.sh`がproject hook inventory 0本と`claude-code-harness`無効化を検査し、hostedの`Design doc consistency` jobでも同じtestを実行する（D-059）。
-
-git diff は追加・変更・削除を含め、rename / copy では旧パスと新パスを両方分類する。copy は未変更のsourceも検出する。たとえば `src/**` から `docs/**` への rename / copy は frontend と docs の双方を実行対象にする。
+`classify-changes.sh`の既存9key（rust/rust_drift/frontend/docs/env/generated/traceability/workflow/unknown）を共有する。workflow=trueはworkflow回帰の意味だけで、consumerがRust/frontendへ再昇格させない。詳細path表はMG-D4。rename/copyの両pathと削除を分類し、未知path/比較不能はfull fallback。
 
 ## Pre-push Contract
 
-pre-push は push 増分に対する L0 gate で、Rust、設計書、env、traceability に加えて frontend の route tree生成 + typecheck + lint を実行する。`.npmrc` の `ignore-scripts=true` は `pretypecheck` / `prelint` lifecycleを抑止するため、route tree生成はtypecheckより前に明示実行する。frontend 対象は `src/**`、`public/**`、package/lock、TypeScript/Vite/Vitest/ESLint/Prettier/Tailwind 等の config を含む。
+pre-pushは実際のpush先remote_refのReady状態を確認し、Ready pushと照会失敗を拒否する。修正はDraftへ戻す。Rust、docs、env、traceability、frontend routes/typecheck/lintとPK5を維持する。legacyは修正HEADのlocal fullと旧遷移を、新modeは対象検証・改版record・hosted finalを使う。
 
-Ready 状態の PR への push は stale green を作るため pre-push が拒否する。hook は現在 checkout 中の branch ではなく、pre-push stdin で通知された実際の各 `remote_ref` を `gh` で確認する。修正時は PR を Draft に戻してから pushし、同じ HEAD で local full を再実行して Ready 化する。`gh` によるPR状態確認またはshared classifier実行が失敗した場合も安全側に block し、classifier failureをevidenceへ残す。
+Rustまたはtraceability分類では`cargo run --bin generate_traceability -- --check`を1回実行し、T1/T2/T4のERRORをpush拒否、T3を従来どおりWARNとして扱う。全Rust関数名へ`_reqNNN`だけを要求する重複検査は使わない。REQ対象の名前規約と、技術/workflowテストの適用SPEC・設計IDはreviewで確認し、機械検査の成功を全テストの仕様対応の証明にしない。
 
-緊急 bypass は raw `git push --no-verify` を使わず、許可された固定 reason token を環境変数で渡して hook 自体を実行する。hook は実際に push する local object SHA と remote ref とともに `BYPASS` を `.local/quality-check.log` に記録する。reason に自由文、secret、店舗情報を入れない。
-
-```bash
-INVENTORY_PRE_PUSH_BYPASS_REASON=owner-approved git push
-```
-
-許可 token は `owner-approved`、`tooling-unavailable`、`incident-response` のみ。
+緊急bypassは既存の固定token（owner-approved/tooling-unavailable/incident-response）でhookに記録する。raw no-verifyは使わない。これはGitHub rulesetのbypassやhelperを省略する許可ではない。
 
 ## Stale Green Prevention
 
-通常経路は次の順序に固定する。
+新modeは`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+は`--packet`、R0/R1は`--risk`と`--manual required|not-required`を明示する。capture/server/head/baseが変われば記録し直す。Ready/mergeはowner指示の後、helperがfreshなPR・record・rules・CIを確認する。mergeはmatch-headとstrictを使い、admin fallbackはない。
 
-1. Draft で実装・pushする。
-2. completed HEAD で `bash scripts/local-ci.sh full` を実行する。
-3. Ready 化し、hosted final を 1 回実行する。
-4. merge 前に PR HEAD、local full evidence SHA、successful hosted run `headSha` の一致を確認する。
-
-Ready 後に修正が必要なら Draft へ戻す。Ready のまま push する経路は pre-push が block する。bypass が使われた場合、旧 run は新 HEAD の evidence にならないため必ず再検証する。
-
-確認例:
-
-```bash
-HEAD_SHA="$(git rev-parse HEAD)"
-gh run list --workflow ci.yml --commit "$HEAD_SHA" --status success
-```
-
-Ready 直作成は `opened` event で、Draft からの Ready 化は `ready_for_review` event で検出する。Ready PR の head 更新は `synchronize` event で検出するが、通常経路では先に Draft へ戻す。Ready PRをclose後にreopenしても`reopened` eventでは自動実行しないため、HEADに対応するfinal runがなければ`workflow_dispatch`を使う。自動 run が存在しない、失敗した、cancel された場合も、CI-TRIGGER-D1 に従って同一 HEAD の successful / in-progress run を先に確認し、必要な場合だけ recovery dispatch を使う。
+旧legacyは従来のstate-only、exact-HEAD full、PR本文の三点一致を継続する。Ready後の修正はDraftへ戻し、旧greenを流用しない。base同期時のclosureとmanual限定再利用はMG-D6/D7、復旧はMG-D11に従う。
 
 ## Cache Policy
 
@@ -152,33 +100,8 @@ Ready 直作成は `opened` event で、Draft からの Ready 化は `ready_for_
 
 ## Required Check Impact
 
-job 名と aggregate `Rust (fmt + clippy + test)` は D-026 互換のため維持する。2026-07-10 の read-only 確認では Free private repository の branch protection / ruleset は利用できず、required check は設定されていない。
-
-public 化後も branch protection / ruleset は未設定である。required checks を導入する前に、pure docs-only R0/R1の0 run、`Hosted CI: skip`、hosted-required workflow/release docs-onlyのexplicit dispatch、Actions-unavailable closed route、final-only event と required context の整合を再設計する。GitHub公式仕様では path filter で workflow 自体が skip されると required check が Pending のままになるため、現行 `paths-ignore` を残したまま required context を有効化してはならない。本変更の `synchronize` 復旧はその前提整備だが、required-check設計の完了ではない。
-
-## Disabled Migration
-
-1. repository 実装を Draft PR で review し、local full、workflow YAML 静的検証、review-only を記録する。
-2. owner が PR を review し merge する。bootstrap PR は hosted evidence なしの例外である。
-3. owner が GitHub Web UI の Actions から `CI` workflow を Enable する。
-4. `main` を選んで `Run workflow` を 1 回実行する。dispatch は常に full routing なので zero-diff main でも全 gate を検証する。
-5. successful run の URL / headSha を記録する。失敗時は workflow を再び Disable せず、原因を local で直した Draft fix PR を作る。
-6. 次の R3 PR で `opened` / `ready_for_review` event を dogfood する。
-
-workflow syntax / event / job graph は Ruby YAML parser、Prettier、repo-owned `scripts/tests/ci-workflow.test.sh` で必須確認する。test は Draft/R0/R1 で aggregate を含む全 job が runner 0、dispatch full、shared classifier、cache、check 名を検査する。`actionlint` が既に利用可能な環境では追加実行するが repo dependency にはしない。
-
-## 2026-08-01 Re-evaluation
-
-- repository visibility は `PUBLIC`、`ci.yml` と `npm-security-monitor.yml` の runner は standard `ubuntu-latest` のみ。GitHub 公式 billing contract により、月間 billed-minute 閾値は現行運用から退役させた。
-- 同一 HEAD に `workflow_dispatch` と `pull_request` の successful full run が重複する実例を確認した。YAML の trigger / concurrency は維持し、CI-TRIGGER-D1 で trigger 選択を一意化する。
-- recent successful run と Rust test job の disk telemetry は、現時点で Rust job 再統合や self-hosted runner 導入を必要とする capacity failure を示していない。aggregate job は check 名互換のため維持する。
-- cache は repository 既定上限内。依存 download cache のみに限定する現行方針を維持し、容量や eviction が再び問題になった場合だけ key / entry を再調査する。
-- branch protection / ruleset は未設定。required checks は `paths-ignore` / skip route との互換設計が必要なため、この再評価では有効化しない。
-- weekly npm security monitor の manual dogfood は成功済み。scheduled dogfood は 2026-08-03 JST、cooldown 後の dependency change B は 2026-08-05 以降の別 change として扱う。
-- 実測 command / output / run URL は active Plan Packet の Contract Probe に置き、volatile evidence をこの source doc へ複製しない。
+requiredはGitHub Actions/15368由来の`Merge gate`。strict、PR必須、bypassなし、削除/force禁止を`.github/merge-gate-ruleset.json`に定義する。helperはcurrent main側のpolicyと実効rulesを照合し、PRが自分の必要reviewやpolicyを緩めない。設定はhelperから変更しない。
 
 ## Related Records
 
-- Workflow index: `docs/DEV_WORKFLOW.md`
-- Decisions: `docs/decision-log.md` D-026 / D-030 / D-033 / D-043 / D-063
-- Previous CI evidence: `docs/archive/plans/2026-07-01-ci-gate-optimization.md`
+[DEV_WORKFLOW](DEV_WORKFLOW.md)、[merge evidence設計とrollout](agent-guidance/merge-evidence.md)、[D-033/D-063と後継判断](decision-log.md)。初回Actions Enableと旧CIの実績はarchive/過去PRの記録を参照する。

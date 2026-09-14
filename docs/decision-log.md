@@ -695,3 +695,11 @@ Use concise ADR-style entries.
 - Impact: AGENT_OPERATING_MANUAL §3.2 `codex-only` に運用形 5 項目を追記。発注書は「起草 run / 実装 run」の分離と自己裁定禁止の 1 行を必須化。Plans.md / packet の Execution Mode 記録は既存フィールドのまま。
 - Alternatives considered: Codex に Final Reviewer まで担わせる self-closure（却下: 独立性制約違反、`project-execution-mode-collapses-review-gate` の実測どおり review gate が消える）/ Claude 枠回復まで全面停止（却下: 機械的 lane まで止める理由がない）。
 - Revisit: Codex 主体 lane で P1 の見落としが Final Review で 2 回続いた場合、または owner の裁定負荷が Owner Effort Budget を超えた場合に座組を見直す。
+
+
+## D-085: マージ検証をGitHubへ集約し、専用recordで非CI結果を確認する（2026-09-14）
+
+- Decision: MG-D1〜D12を採用。GitHubがmainへのPRとstrictなGitHub Actions Merge gateを強制し、helperがreview/manual/R4と現在head/baseを確認する。新packetはgithub markerで計画/実装開始だけをGitへ保存し、実装後state-only/一律full/三点一致を撤去する。
+- Why: SHA転記・状態commit・再検証の連鎖を減らし、必要jobのskipや古いgreenを拒否する。非CIをserver必須checkへ増設する案は採らず、直接UI mergeを運用上禁止する。UIがCI成功だけでmerge可能と示し得る残存リスクを保持する。
+- Compatibility: D-033/D-035/D-038の実装後state-only・三点一致はlegacyだけ。Plan Gate、Plan Commit/Amendments、独立review、owner Ready/merge、Windows/manual/R4は両modeで維持する。archiveは非遡及。docs/closeoutは軽いPRで完了し、自身のcloseoutを再帰要求しない。
+- Activation: bootstrap自身は旧gate。live CI/docs/probe確認とowner設定承認/read-backが揃ってから新modeを利用する。設定を適用済みとは記録しない。source: [merge-evidence](agent-guidance/merge-evidence.md)。

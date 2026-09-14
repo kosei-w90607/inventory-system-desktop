@@ -59,18 +59,25 @@ if [[ "${FAKE_GH_EXIT:-0}" != "0" ]]; then
     exit "$FAKE_GH_EXIT"
 fi
 head_branch=""
+query=""
 while [[ $# -gt 0 ]]; do
     if [[ "$1" == "--head" && $# -ge 2 ]]; then
         head_branch="$2"
+        shift 2
+    elif [[ "$1" == "--jq" ]]; then
+        query="$2"
         shift 2
     else
         shift
     fi
 done
+# Run gh's jq expression against synthetic API data instead of pre-filtering the result.
 if [[ -n "${FAKE_READY_HEAD:-}" && "$head_branch" == "$FAKE_READY_HEAD" ]]; then
-    echo false
+    printf '[{"isDraft":false}]' | jq -r "$query"
+elif [[ -n "${FAKE_GH_DRAFT:-}" ]]; then
+    printf '[{"isDraft":%s}]' "$FAKE_GH_DRAFT" | jq -r "$query"
 else
-    printf '%s\n' "${FAKE_GH_DRAFT:-}"
+    printf '[]' | jq -r "$query"
 fi
 EOF
 
@@ -237,6 +244,55 @@ for failed_command in "fmt --check" "clippy --all-targets --all-features -- -D w
             ;;
     esac
 done
+unset FAKE_CARGO_FAIL_ON
+
+# SPEC-MERGE-EVIDENCE / WF-TRACE-01..04: SPEC-tagged technical tests are valid.
+# The real L0 script must use the canonical traceability command, not a name-only regex.
+cat > "$repo/src-tauri/src/spec_contract.rs" <<'RUST'
+#[test]
+fn test_startup_spec_sfv_message_is_not_empty() {
+    // SPEC-SFV-D1: synthetic startup message contract, not a business REQ.
+    assert!(!"起動処理に失敗しました".is_empty());
+}
+RUST
+git -C "$repo" add src-tauri/src/spec_contract.rs
+git -C "$repo" commit -qm spec-contract-test
+head_sha="$(git -C "$repo" rev-parse HEAD)"
+
+for route in rust-and-traceability rust-without-traceability; do
+    if [[ "$route" == rust-without-traceability ]]; then
+        # Independent producer flags: Rust must still require the canonical check.
+        sed -i 's/traceability=true/traceability=false/g' "$repo/scripts/ci/classify-changes.sh"
+    fi
+    run_hook true "" rust-only
+    [[ "$(grep -Fc 'cargo run --bin generate_traceability -- --check' "$tmp/calls.log")" == 1 ]] ||
+        fail "$route did not run canonical traceability exactly once"
+    assert_last_contains "$repo/.local/quality-check.log" "PASS workflow-git+rust+traceability"
+    FAKE_CARGO_FAIL_ON="run --bin generate_traceability -- --check"
+    if run_hook true "" rust-only; then
+        fail "$route swallowed canonical traceability failure"
+    fi
+    assert_contains "$tmp/calls.log" "cargo run --bin generate_traceability -- --check"
+    assert_last_contains "$repo/.local/quality-check.log" "FAIL traceability"
+    unset FAKE_CARGO_FAIL_ON
+done
+cp "$SOURCE_ROOT/scripts/ci/classify-changes.sh" "$repo/scripts/ci/classify-changes.sh"
+
+git -C "$repo" switch -q main
+git -C "$repo" switch -qc traceability-only
+mkdir -p "$repo/docs/spec" "$repo/src-tauri"
+printf '# Synthetic requirements fixture\n' > "$repo/docs/spec/requirements.md"
+git -C "$repo" add docs/spec/requirements.md
+git -C "$repo" commit -qm traceability-source
+head_sha="$(git -C "$repo" rev-parse HEAD)"
+run_hook true "" traceability-only
+assert_contains "$tmp/calls.log" "cargo run --bin generate_traceability -- --check"
+assert_not_contains "$tmp/calls.log" "cargo fmt"
+FAKE_CARGO_FAIL_ON="run --bin generate_traceability -- --check"
+if run_hook true "" traceability-only; then
+    fail "non-Rust traceability failure was swallowed"
+fi
+assert_last_contains "$repo/.local/quality-check.log" "FAIL traceability"
 unset FAKE_CARGO_FAIL_ON
 
 git -C "$repo" switch -q main

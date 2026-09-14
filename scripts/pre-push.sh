@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# L0 pre-push gate for the push increment. Final merge evidence is local-ci full.
+# L0 pre-push gate. Legacy uses local full; github evidence uses pr-gate (MG-D7).
 
 set -euo pipefail
 
@@ -95,7 +95,7 @@ if [[ "$REMOTE_URL" == *github.com* ]]; then
         [[ "${PUSH_REMOTE_REFS[$index]}" == refs/heads/* ]] || continue
         branch="${PUSH_REMOTE_REFS[$index]#refs/heads/}"
 
-        if ! pr_draft="$(gh pr list --head "$branch" --state open --json isDraft --jq '.[0].isDraft // empty')"; then
+        if ! pr_draft="$(gh pr list --head "$branch" --state open --json isDraft --jq 'if length == 0 then empty else .[0].isDraft end')"; then
             echo "[pre-push] GitHub PR state lookup failed for $branch; blocking safely." >&2
             fail_gate ready-state-lookup
         fi
@@ -183,8 +183,7 @@ CHECKS_RUN=""
 # PK5 (Plan Commit ancestry) / STATECAP (state-only commit 上限) は変更ファイルの
 # classification に関係なく毎回実行する pre-merge gate（Plan Commit ancestry や
 # state-only commit の積み上がりは push 増分の変更ファイルではなくブランチ全体の
-# git 履歴状態そのものに対する検査のため）。CI docs job には追加しない
-# (docs/plans/2026-07-12-mechanical-workflow-slice2.md Contract Probe P1、shallow clone)。
+# git 履歴状態そのものに対する検査のため）。hosted docsもfull historyで同じPK5を実行する。
 echo "[pre-push] Workflow git checks (PK5/STATECAP)"
 append_check workflow-git
 bash "$REPO_ROOT/scripts/check-workflow-git.sh" || fail_gate workflow-git
@@ -201,14 +200,6 @@ if [[ "$(classification_value rust)" == "true" ]]; then
         echo "  cargo test"
         cargo test || exit "$?"
     ) || fail_gate rust
-
-    TEST_FNS="$(rg -n --pcre2 '^\s*fn\s+test_[a-z0-9_]*\s*\(' "$REPO_ROOT/src-tauri/src" "$REPO_ROOT/src-tauri/tests" 2>/dev/null || true)"
-    MISSING="$(printf '%s\n' "$TEST_FNS" | rg -v --pcre2 '_req[0-9]{3}([_(\s]|$)' 2>/dev/null || true)"
-    if [[ -n "$MISSING" ]]; then
-        echo "[pre-push] Tests without REQ IDs:" >&2
-        echo "$MISSING" >&2
-        fail_gate req-number
-    fi
 fi
 
 if [[ "$(classification_value docs)" == "true" ]]; then
@@ -223,7 +214,7 @@ if [[ "$(classification_value env)" == "true" ]]; then
     bash "$REPO_ROOT/scripts/check-env-safety.sh" || fail_gate env-safety
 fi
 
-if [[ "$(classification_value traceability)" == "true" ]]; then
+if [[ "$(classification_value rust)" == "true" || "$(classification_value traceability)" == "true" ]]; then
     echo "[pre-push] Traceability"
     append_check traceability
     (

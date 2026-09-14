@@ -42,6 +42,15 @@ classify_paths() {
 
 [[ -x "$CLASSIFIER" ]] || fail "shared classifier is missing or not executable"
 
+# SPEC-MERGE-EVIDENCE / MG-D3/D4: policy needs regressions without Rust/frontend.
+for path in AGENTS.md CLAUDE.md docs/ci.md docs/DEV_WORKFLOW.md docs/agent-guidance/shared.md docs/templates/plan-packet.md .agents/skills/example/SKILL.md .claude/rules/commands.md .claude/commands/check.md .github/pull_request_template.md; do
+    output="$(classify_paths "$path")"
+    assert_value "$output" docs true
+    assert_value "$output" workflow true
+    assert_value "$output" rust false
+    assert_value "$output" frontend false
+done
+
 output="$(classify_paths docs/ci.md)"
 assert_contract "$output"
 assert_value "$output" docs true
@@ -79,12 +88,15 @@ assert_contract "$output"
 assert_value "$output" generated true
 assert_value "$output" rust_drift true
 
-output="$(classify_paths scripts/local-ci.sh)"
-assert_contract "$output"
-for key in rust rust_drift frontend docs env generated traceability workflow; do
-    assert_value "$output" "$key" true
+# MG-D4 / O-P3-5: control paths stay full, not merely workflow=true.
+for path in scripts/local-ci.sh .github/merge-gate-ruleset.json .codex/bin/read-safe-file.sh .claude/settings.json .claude/hooks/check-plan-on-exit.sh; do
+    output="$(classify_paths "$path")"
+    assert_contract "$output"
+    for key in rust rust_drift frontend docs env generated traceability workflow; do
+        assert_value "$output" "$key" true
+    done
+    assert_value "$output" unknown false
 done
-assert_value "$output" unknown false
 
 output="$(classify_paths .github/pull_request_template.md)"
 assert_contract "$output"
@@ -102,7 +114,7 @@ done
 output="$(classify_paths .claude/skills/example/SKILL.md)"
 assert_contract "$output"
 assert_value "$output" docs true
-assert_value "$output" workflow false
+assert_value "$output" workflow true
 assert_value "$output" unknown false
 
 for path in mystery.xyz unknown/deep/file.bin; do
