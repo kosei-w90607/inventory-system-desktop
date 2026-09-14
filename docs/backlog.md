@@ -93,6 +93,8 @@
 
 ### 記録目的（受容済みリスク・revisit 条件付き）
 
+- smol-toml override（1.7.1）の撤去条件: markdownlint-cli2 が smol-toml ≥ 1.7.1 を pin する版を出したら override を外し、名指し通常更新へ戻して audit を再確認する。
+- 移植先の Cargo alert 2 件の dismiss 理由候補（実行は owner）: rand 0.7.3 は tauri-utils の build 時 hash 生成経路のみで runtime 露出なし → `tolerable_risk` 候補、glib 0.18.5 は Linux 用 gtk 経路で Windows 配布物に含まれない → `not_used` 候補。
 - SidebarLink の focus 中は `focus-visible:border-ring`（詳細度 0-2-0）が DSR-21 の左辺 Primary を上書きする（at rest は無関係、一過性。PR #28 Final Review round 2〜3 観察、意図的な a11y 挙動のため要望があれば DSR-21 に focus 時の扱いを追記）。
 - dialog/AlertDialog 内の dl・table が aria-describedby に含まれない既存同型制約（3 site 共通、スクリーンリーダー初期読み上げ対象外 — Opus round 指摘起源のアクセシビリティ磨き候補）。
 - 在庫少閾値の非数値 fallback 可視化（UI-11a 実装時の事実確認起源）: BIZ `list_low_stock` が `stock_low_threshold` / `stock_low_threshold_fabric` の非数値値を無警告で fallback する（ログ・operation_logs 記録なし）。DB 直接操作以外で非数値が入る経路が現状ないため優先度低。
