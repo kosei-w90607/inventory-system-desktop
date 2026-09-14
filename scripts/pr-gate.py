@@ -154,12 +154,17 @@ def parse_packet(text):
     require(fields['Evidence Mode'] == 'github', 'helper requires explicit github mode')
     require(not {'Reviewed Content HEAD', 'Final Exact-HEAD Evidence', 'Hosted CI Requirement'} & fields.keys(),
             'legacy fields in github packet')
-    require(fields['Phase'] == 'implementing', 'packet has not reached implementing')
+    require(fields['Phase'] in ('kickoff','spec-check','design','plan-draft','plan-gate','plan-approved','implementing','archive'),
+            'invalid tracked github Phase')
     require(fields['Risk'] in ('R2', 'R3', 'R4'), 'invalid packet Risk')
     risks = re.findall(r'^Risk: (R[0-4])\s*$', text, flags=re.M)
     require(risks == [fields['Risk']], 'packet Risk section mismatch')
     require(fields['Execution Mode'] in ('fable-window', 'dual-vendor-no-fable', 'codex-only'), 'unknown Execution Mode')
-    plan = sha(fields['Plan Commit'])
+    plan = fields['Plan Commit']
+    if plan == 'pending':
+        require(fields['Phase'] in ('kickoff','spec-check','design','plan-draft','plan-gate'), 'approved Plan Commit missing')
+    else:
+        sha(plan)
     amendments = [] if fields['Amendments'] == 'none' else re.split(r'[,\s]+', fields['Amendments'])
     for item in amendments:
         sha(item)
@@ -169,7 +174,7 @@ def parse_packet(text):
     require(len(gates) == len(set(gates)) and {'ready', 'merge'} <= set(gates) <= {'ready', 'merge', 'manual', 'r4'},
             'Human Gate must explicitly include ready,merge')
     require(fields['Risk'] != 'R4' or ('r4' in gates and fields['Final Review Minimum'] == '2'), 'R4 gates missing')
-    return dict(risk=fields['Risk'], mode=fields['Execution Mode'], plan_commit=plan, amendments=amendments,
+    return dict(phase=fields['Phase'], risk=fields['Risk'], mode=fields['Execution Mode'], plan_commit=plan, amendments=amendments,
                 minimum=int(fields['Final Review Minimum']), manual='manual' in gates, r4='r4' in gates)
 
 
@@ -221,7 +226,7 @@ class Gate:
             require(self.args.risk in ('R0','R1') and self.args.manual in ('required','not-required'),
                     'no-packet route needs --risk R0|R1 --manual required|not-required', 2)
             require(not (flags['workflow'] == 'true' and flags['rust'] == 'true'), 'CI execution change requires R3 packet')
-            result = dict(risk=self.args.risk, mode=None, plan_commit=None, amendments=[], minimum=0,
+            result = dict(phase='implementing', risk=self.args.risk, mode=None, plan_commit=None, amendments=[], minimum=0,
                           manual=self.args.manual == 'required', r4=False)
         if result['minimum']:
             double = result['risk'] == 'R4' or flags['workflow'] == 'true' or (
@@ -247,6 +252,7 @@ class Gate:
         requirements = self.requirements(pr)
         server = self.server_record()
         if clean:
+            require(requirements['phase'] == 'implementing', 'packet has not reached implementing')
             require(not git('status', '--porcelain', '--untracked-files=normal').strip(), 'capture requires clean checkout')
             require(git('rev-parse', 'HEAD').strip() == pr['head']['sha'], 'local HEAD differs from PR')
             for ref in (pr['base']['sha'], requirements['plan_commit'], *requirements['amendments']):
@@ -287,6 +293,7 @@ class Gate:
 
     def nonci(self, snap):
         server, req = snap['server'], snap['requirements']
+        require(req.get('phase','implementing') == 'implementing', 'Plan Gate incomplete')
         if not server and not req['minimum'] and not req['manual'] and not req['r4']:
             return
         require(server is not None, 'workflow record missing')
@@ -342,6 +349,8 @@ class Gate:
     def status(self):
         snap, pr = self.snapshot()
         blockers = []
+        if snap['requirements']['phase'] != 'implementing':
+            return dict(state=snap['requirements']['phase'], blockers=['Plan Gate incomplete'], next='follow tracked Plan Gate')
         for check in (lambda: self.nonci(snap), lambda: self.rules(pr), lambda: self.ci(pr)):
             try:
                 check()

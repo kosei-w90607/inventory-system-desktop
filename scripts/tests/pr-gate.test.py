@@ -258,6 +258,17 @@ class CLI(unittest.TestCase):
         self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','opus','--run-ref','opus-audit','--evidence','https://example.invalid/opus','--outcome','pass')
         self.run_cli('ready',*common)
         self.run_cli('status',*common,*common,expected=2)
+        self.load()
+        self.state['contents'][packet]=self.state['contents'][packet].replace('Phase: implementing','Phase: plan-gate').replace('Plan Commit: '+self.head,'Plan Commit: pending')
+        self.state['comments']=[]
+        self.state['pr']['draft']=True
+        self.save()
+        waiting=self.run_cli('status',*common)
+        self.assertIn('Plan Gate incomplete',waiting['blockers'])
+        self.run_cli('ready',*common,expected=1)
+        self.run_cli('capture',*common,expected=1)
+        self.run_cli('merge',*common,expected=1)
+
 
     def test_bad_rules_checks_latest_run(self):
         for group,change in [('effective',[]),('checks',[]),('checks',[dict(name='Merge gate',app=dict(id=1),status='completed',conclusion='success')]),('checks',[dict(name='Merge gate',app=dict(id=15368),status='completed',conclusion='skipped')])]:
