@@ -42,6 +42,7 @@ jobs:
         name: Classify changed paths
         shell: bash
         run: |
+          exit 1 # MG-D11: synthetic classification failure
           set -euo pipefail
 
           output="$RUNNER_TEMP/changed-areas.txt"
