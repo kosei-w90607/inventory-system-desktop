@@ -10,6 +10,8 @@ workflow gate。契約は[MG-D1a](../../agent-guidance/merge-evidence.md#実応�
 
 MG-D1aの限定した値/型・desired優先・copy、MG-D1/D8の既存保護と共有CLI経路、MG-D11のlegacy移行。
 
+owner追加指示のD-087: Astraの一貫担当、独立レビューと既存のPlan Gate/owner裁定の維持。
+
 ## Failure Modes
 
 正常な実応答を拒否する、既定値の名目で弱化/未知fieldを通す、desiredまで変える、statusだけ直してReady/mergeが止まる、dataを破壊する、自己充足fixtureでlive差分が消える。
@@ -26,6 +28,7 @@ MG-D1aの限定した値/型・desired優先・copy、MG-D1/D8の既存保護と
 | C4 / MG-D1a | desired明示値を無視、入力を破壊 | function + CLI | 新規 `test_rules_keep_explicit_desired_defaults` / `test_rules_leave_inputs_unchanged` | desiredに明示した値も除外、元objectをpopする |
 | C5 / MG-D8 | statusだけ直る、main policyを無視 | CLI integration | C1/C2/C3で `status` / `ready` / `merge`、既存 `assert_rules_blocked` | 許可/拒否が共有経路へ届かない、拒否後にgh prを呼ぶ |
 | C6 / MG-D11 | 移行契約を先取り | workflow / operation | 既存shared suite / PK5 / legacy full / hosted | 新modeで修正PRを通す、本番承認を先取り |
+| C7 / D-087 | 一貫担当を自己承認や無断計画変更へ拡張 | source contract review | 限定Plan Review / Final Double Audit / docと既存workflow suite | Fable分業や非Codex review・Plan Gate・Gated Amendment・owner裁定を緩める |
 
 ## State Lifecycle Matrix
 

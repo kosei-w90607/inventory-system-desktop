@@ -706,9 +706,16 @@ Use concise ADR-style entries.
 
 ## D-086: ruleset実応答の既知の既定項目だけを照合時に扱う（2026-09-14）
 
-- Status: proposed（互換性修正のPlan Gate待ち）。
+- Status: accepted（owner 2026-09-14、互換性修正計画をAstra自身で進める指示）。
 - Decision: [MG-D1a](agent-guidance/merge-evidence.md#実応答の既定項目との互換性mg-d1a)に従い、desiredが未指定の`required_reviewers=[]`と`require_extra_approval_for_unattributed_changes=true`だけを、値・型の検査後に応答の比較用コピーから除く。desiredで明示された項目、未知field、他のdriftは従来どおり比較・拒否する。
 - Why: native保護試験は成功したが、GitHubが返す既定項目によってhelperが有効な観測候補を拒否した。送信policyと保護要件を維持したまま、実応答との不整合だけを解消する。
 - Alternatives: 未確認fieldを送信payloadへ追加する案、未知fieldの一括無視・再帰的部分一致・配列の全面正規化は採らない。前者は未確認の入力契約と設定変更を持ち込み、後者は観測した原因を越えてdrift検出範囲を変える。
 - Verification: `scripts/tests/pr-gate.test.py`のCLI fixtureで、desiredとは独立した応答既定項目、値・型の負例、未知field、既存保護の改変を検証する。live read-backは有効化前提のまま。
 - Revisit / recovery: 応答の既定値・型・項目が変わったら拒否を維持して調査する。復旧は通常の修正PRで行い、保護解除・自動bypassは行わない。
+
+## D-087: Astra主担当は通常作業を一貫して担当し、独立レビューを外部へ依頼する（2026-09-14）
+
+- Status: accepted（ownerの明示指示）。
+- Decision: Astra主担当では調査・起草・調整・実装・検証・packet/状態記録を同じsessionで担当する。通常作業のサブエージェント分割と起草/実装の別runを既定にせず、独立レビューをSonnet / Opusへ依頼する。発注・回収もAstraが行う。
+- Why: Fableを指揮者に置く分業規定をAstraへ一律に当てはめず、ownerが望む一貫した作業と文脈の保持を実現する。速度差の実測を根拠にする決定ではない。
+- Compatibility: D-084の起草/実装run分離・実装runのpacket編集禁止を、Astra主担当に限り上記へ置き換える。Fableの分業、Plan Gate、計画先行commit、Gated Amendment、非Codex Plan Review、独立性、Double Audit、ownerの採用・裁定・Human Gateは維持する。正本は[Agent Operating Manual §3.2](AGENT_OPERATING_MANUAL.md#astraを主担当にする場合d-087)。

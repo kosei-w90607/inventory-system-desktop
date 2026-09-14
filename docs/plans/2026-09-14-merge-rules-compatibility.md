@@ -9,15 +9,15 @@
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: owner（起草は現在のCodex）
-- Writer: Codex（計画起草と別の実装run、packet編集禁止）
+- Writer: 現在のAstra（owner指定。D-087により起草・実装・検証・状態記録を一貫して担当）
 - Plan Reviewer: Sonnet high（独立Plan Review完了、実効primary modelはSonnet 5をmetadataで確認。highは要求effort）
 - Final Reviewer: Sonnet high + Opus high（独立fresh contextのDouble Audit）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: Plan Gate / Ready / merge / 本番有効化
+- Human Gate: Ready / merge / 本番有効化
 
-main保護は未有効のためlegacyで修正を完成させる。旧bootstrapのarchiveは変更せず、このpacketを現在の修正範囲とする。ownerの「順に進めよう」は計画準備の依頼であり、未完成計画の採用・Ready・merge・本番有効化を先取りしない。計画を起草するrunと実装するrunを分け、後者はpacketを編集しない。非Codex reviewer利用不能時は可用性規定に従いpendingとし、自己承認しない。
+main保護は未有効のためlegacyで修正を完成させる。旧bootstrapのarchiveは変更せず、このpacketを現在の修正範囲とする。ownerは計画採用の判断に対し、Astra自身で作業を進め、独立レビューだけSonnet / Opusへ依頼すること、およびworkflowに但し書きを残すことを指示した。D-087を適用し、同じsessionで起草・実装・必要なpacket/状態記録を担当する。追加したworkflow文言は限定Plan Reviewで確認してから実装へ進む。非Codex reviewer利用不能時は可用性規定に従いpendingとし、自己承認しない。
 
 ## Owner Effort Budget
 
@@ -26,7 +26,7 @@ main保護は未有効のためlegacyで修正を完成させる。旧bootstrap�
 - relay 往復上限: 2（規範値）
 - Plan Review round 天井: 3（規範値）
 
-旧bootstrapからの累計をリセットしない。試験承認まで介入7回、今回の上限変更が8回目。残る判断は計画採用、Ready、mergeと機械的closeout、本番有効化。次の承認依頼は介入9回目 / 予算12回。詳細は旧[packet](../archive/plans/2026-09-14-merge-evidence-simplification.md)と現owner指示。elapsed hands-on timeは未実測。レビューの原文は機械経由で保存し、ownerの手作業relayを前提にしない。
+旧bootstrapからの累計をリセットしない。試験承認まで介入7回、上限変更が8回目、計画をAstra自身で進める指定と但し書き追加が9回目。残る判断はReady、mergeと機械的closeout、本番有効化。次の承認依頼は介入10回目 / 予算12回。詳細は旧[packet](../archive/plans/2026-09-14-merge-evidence-simplification.md)と現owner指示。elapsed hands-on timeは未実測。レビューの原文は機械経由で保存し、ownerの手作業relayを前提にしない。
 
 ## Consultation Relay
 
@@ -61,6 +61,7 @@ Goal Invariant:
 - S2: `scripts/tests/pr-gate.test.py`の既存CLI fixtureを拡張する。API応答の既定項目をdesiredとは独立したliteralで与え、status/Ready/mergeの正負例へ接続する。raw live API全量はcommitしない。
 - S3: `docs/agent-guidance/merge-evidence.md`のMG-D1a、`docs/decision-log.md`のD-086、本packet/Matrix、`docs/Plans.md`を同期する。D-086の採用状態はowner Plan Gate後に記録する。
 - S4: legacyの検証・独立Double Auditを完了する。公開/Ready・mergeはそれぞれowner判断後。通常docs-only closeoutへ移送し、追加の再帰closeoutを作らない。
+- S5: owner指定のD-087を`docs/AGENT_OPERATING_MANUAL.md`へ記録し、`docs/DEV_WORKFLOW.md`から参照、`docs/decision-log.md`と本packet/Matrix/Plansを同期する。Astraの一貫担当だけを追加し、独立レビュー・Plan Gate・ownerの裁定を変更しない。
 
 ## Non-scope
 
@@ -74,11 +75,13 @@ Goal Invariant:
 - AC4: `scripts/tests/pr-gate.test.py`でdesired側が許容名の項目を明示するときは比較から除かず、一致は受理、不一致は拒否する。PR側policyで必要条件を減らす経路を増やさない。API応答とdesiredの元objectの呼出前後一致をassertする。
 - AC5: live応答から既知の追加項目の値・型だけを取り出し、`scripts/tests/pr-gate.test.py`の既存合成fixtureへdesiredと独立したliteralとして注入して、現行の不一致と修正後の通過を確認する。probe固有のID/name/日時/node_id/_links等はtracked fixtureへ移さない。保存応答全体のreplayは別のignored local検証として扱い、main用name/refへの置換を記録する。既定値検査を除く実mutationでAC2が非0、無変更positive controlはexit 0になることを確認する。
 - AC6: `python3 scripts/tests/pr-gate.test.py`、`bash scripts/tests/run-workflow-tests.sh`、必要なdoc/PK5、legacyのCLEANな`bash scripts/local-ci.sh full`、Sonnet/Opusの独立監査を通す。Readyのexact HEADで旧L1/PR/hosted CI一致を満たす。本番適用済みとは報告しない。
+- AC7: `docs/AGENT_OPERATING_MANUAL.md`のD-087とDEV_WORKFLOWの参照がowner指定の一貫担当を表し、Fableの分業、別vendor Plan Review、Double Audit、Plan Gate、Gated Amendment、ownerの裁定が維持されることを独立レビューとdoc/workflow検証で確認する。
 
 ## Design Sources
 
 - [MG-D1a・D1/D8/D11](../agent-guidance/merge-evidence.md)、[D-085/D-086](../decision-log.md)。
 - [workflow](../DEV_WORKFLOW.md)、[CI](../ci.md)、[役割](../AGENT_OPERATING_MANUAL.md)、[profile](../project-profile.md)。
+- D-087（owner指定のAstra一貫担当と既存gateの維持）。
 - 実物: `Gate.rules`、`Gate.status`、`Gate.mutate`、`CLI.setUp`、`CLI.assert_rules_blocked`。
 - 製品のARCHITECTURE/FUNCTION/DB/SCREEN契約は非接触。
 
@@ -97,6 +100,7 @@ Goal Invariant:
 | SPEC-MERGE-EVIDENCE | MG-D1a / D-086 | 既知の応答だけを扱いdrift検出を維持 | Gate.rules | AC1〜5 |
 | SPEC-MERGE-EVIDENCE | MG-D1 / D8 | current mainのpolicy、共有経路、freshな保護確認を維持 | Gate.rules/status/mutate | AC3〜4 / CLI |
 | SPEC-MERGE-EVIDENCE | MG-D11 | 有効化前のlegacy検証を維持 | 修正PR / closeout | AC6 |
+| D-087 | Agent Operating Manual §3.2 | owner指定の担当形と独立性を両立 | S5のworkflow docs | AC7 / 限定Plan Review / Double Audit |
 
 ## Design Intent Audit
 
@@ -125,6 +129,7 @@ MG-D1aで実装に必要な条件を定義済み、採用はPlan Gate待ち。PR
 | MG-D1 name/target/enforcement/conditions/bypass、PR/check/app/strict/deletion/force | Gate.rules | 既存rules負例＋互換応答との組合せ | native実績保持 |
 | MG-D8 status/Ready/merge同一経路、current main、通信失敗で停止 | Gate.status/mutate/rules | CLI / 既存offline/race | schema/record変更なし |
 | MG-D11 旧gateとowner判断、closeout/activation順序 | legacy PR運用 | full / PK5 / hosted | 本番は別承認 |
+| D-087 一貫担当と既存の独立性/承認条件 | AOM / DEV_WORKFLOW / D-087 | doc / 既存workflow suite | 限定Plan ReviewとFinal Double Audit |
 
 隣接監査はCIとmain保護/Helperの境界/移行・復旧のsource節を確認した。記録schema、manual再利用、CI分類・draftの実装は非接触で、既存suiteの回帰を維持する。
 
@@ -151,16 +156,19 @@ Contract ID: SPEC-MERGE-EVIDENCE
 
 MG-D1aの既知応答だけを受理し、MG-D1/D8の保護を維持する。新規test名はMatrixで予定と明記し、実装前のcoverageと主張しない。
 
+D-087の一貫担当は作業の割当だけを変え、既存の独立性・計画先行・owner裁定を維持する。
+
 ## Trace Matrix
 
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
 | SPEC-MERGE-EVIDENCE / MG-D1a | S1/S2 | Matrix C1〜C5 | 限定受理とdrift拒否 | CLI / replay / mutation |
 | SPEC-MERGE-EVIDENCE / MG-D1/D8/D11 | S3/S4 | Matrix C6 | 保護/独立性/移行順 | source / legacy PR evidence |
+| D-087 | S5 | Matrix C7 | 一貫担当と独立性/承認の維持 | 限定Plan Review / source / Final Double Audit |
 
 ## Data Safety
 
-raw API、vendor metadata、review出力、実行logはignored `.local/merge-rules-compatibility/`または既存probe directory。tracked testは合成値だけ。実データ・secret・個人設定を読まずcommitしない。runtimeとpolicy・GitHub設定を変更しない準備run。
+raw API、vendor metadata、review出力、実行logはignored `.local/merge-rules-compatibility/`または既存probe directory。tracked testは合成値だけ。実データ・secret・個人設定を読まずcommitしない。Plan Gate前のruntime変更と、未承認のGitHub設定変更は行わない。
 
 ## Implementation Results
 
@@ -176,3 +184,7 @@ raw API、vendor metadata、review出力、実行logはignored `.local/merge-rul
 - P3-2（owner裁定候補）: AC5の「name/ref置換だけ」とData Safetyの「合成値だけ」の曖昧さを確認し、tracked fixtureには追加項目の値・型だけを抽出する案を反映した。raw応答全体を読む既存`reproduce-rules.py`はlocal-onlyの別経路なので、reviewer修正案の「同方式」という補足は転載せず、両者の境界を明記した。S2とMG-D1aの範囲・許容値は変更していない。
 
 packet/Matrixの既存commitと文書検証を根拠に、AC5の明確化を含むcontent commitで`plan-draft -> plan-gate`を記録する。P3の反映案と計画採用はowner判断待ちで、採用済み・実装許可とは扱わない。P3-onlyの追加reviewは発注していない。Plan Commitは採用対象の確定content commitをowner Plan Gate後に設定する。次は介入9回目 / 予算12回。外部公開・Ready・merge・本番有効化も未承認のまま。
+
+### Ownerの実施指示と担当形の補足
+
+ownerは上の採用判断に対し、Astra自身で進め、レビューだけSonnet / Opusを呼ぶよう指定し、但し書きの保存も依頼した（介入9回目 / 予算12回）。P3反映案を含む互換性修正をこの担当形で進める。S5 / AC7とD-087はこの明示指示の同期であり、Ready/merge/本番有効化や自己承認の許可ではない。追加のworkflow文言と担当条件を独立Plan Reviewerへ限定確認する。これはP3-onlyの再reviewではなく、新しいowner指示で追加した契約範囲の確認。Phaseはその結果が揃うまでplan-gateを保持する。
