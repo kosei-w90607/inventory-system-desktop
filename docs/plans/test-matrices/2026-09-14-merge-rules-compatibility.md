@@ -45,7 +45,7 @@ JSON配列の空/非空、boolean/number/string/null/object、既知fieldの不�
 
 ## Compatibility Checks
 
-旧形式・実測新形式・片方だけの追加を受理する。任意の将来形式への互換性は約束しない。送信payloadを変更しないのでnative probeのpolicyは変わらない。実装後は保存応答のreplayが通ることを確認する。
+旧形式・実測新形式・片方だけの追加を受理する。tracked fixtureには追加項目の値・型だけを独立literalで注入し、raw応答のprobe固有metadataは移さない。任意の将来形式への互換性は約束しない。送信payloadを変更しないのでnative probeのpolicyは変わらない。保存応答全体のreplayはignored localの別経路で行い、実装後の通過を確認する。
 
 ## Data Safety Checks
 

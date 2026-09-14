@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
@@ -10,7 +10,7 @@
 - Amendments: none
 - Coordinator: owner（起草は現在のCodex）
 - Writer: Codex（計画起草と別の実装run、packet編集禁止）
-- Plan Reviewer: pending（Sonnet high予定、Claude CodeのOAuth期限切れで認証待ち）
+- Plan Reviewer: Sonnet high（独立Plan Review完了、実効primary modelはSonnet 5をmetadataで確認。highは要求effort）
 - Final Reviewer: Sonnet high + Opus high（独立fresh contextのDouble Audit）
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
@@ -72,7 +72,7 @@ Goal Invariant:
 - AC2: `required_reviewers`が非空・null・異なる型、追加approval項目がfalse/null/文字列/数値の場合は非0またはrules blockerを返し、Ready/mergeの実呼出がない。
 - AC3: `scripts/tests/pr-gate.test.py`で未知parameter、既存のparameter drift、rule欠落、app/context/strict不足、bypass/inactive/target/conditions/name不一致を拒否する。既存testを保持し、互換応答と同時に弱化を与えた場合もReady/mergeが非0となり、gh pr呼出がない。
 - AC4: `scripts/tests/pr-gate.test.py`でdesired側が許容名の項目を明示するときは比較から除かず、一致は受理、不一致は拒否する。PR側policyで必要条件を減らす経路を増やさない。API応答とdesiredの元objectの呼出前後一致をassertする。
-- AC5: 保存したlive応答を`scripts/tests/pr-gate.test.py`の合成fixtureへ移し、main用name/refへの置換だけで現行の不一致と修正後の通過を確認する。既定値検査を除く実mutationでAC2が非0、無変更positive controlはexit 0になることを確認する。
+- AC5: live応答から既知の追加項目の値・型だけを取り出し、`scripts/tests/pr-gate.test.py`の既存合成fixtureへdesiredと独立したliteralとして注入して、現行の不一致と修正後の通過を確認する。probe固有のID/name/日時/node_id/_links等はtracked fixtureへ移さない。保存応答全体のreplayは別のignored local検証として扱い、main用name/refへの置換を記録する。既定値検査を除く実mutationでAC2が非0、無変更positive controlはexit 0になることを確認する。
 - AC6: `python3 scripts/tests/pr-gate.test.py`、`bash scripts/tests/run-workflow-tests.sh`、必要なdoc/PK5、legacyのCLEANな`bash scripts/local-ci.sh full`、Sonnet/Opusの独立監査を通す。Readyのexact HEADで旧L1/PR/hosted CI一致を満たす。本番適用済みとは報告しない。
 
 ## Design Sources
@@ -170,4 +170,9 @@ raw API、vendor metadata、review出力、実行logはignored `.local/merge-rul
 
 - Findings Freeze: not yet frozen
 
-Plan Review未実施。Sonnet highの独立CLI起動はOAuth期限切れ（HTTP 401）で認証に失敗し、review結果を生成していない。AGENT_OPERATING_MANUAL §3.3に従いPlan Reviewerをpendingとし、Phaseを前進させない。要求モデル・effortはSonnet/high、実効モデルは未確認。ownerは上限変更を承認済み、計画採用・外部公開・Ready・merge・本番有効化は未承認。
+最初のSonnet high CLI起動はOAuth期限切れ（HTTP 401）で認証に失敗し、review未実施としてpendingにした。ownerの再ログイン後、計画commit `1c89ab9a3f302133066e92e6f0e5f544ff16bdb5`への独立Plan Reviewを完了した。結果は「P1/P2のstopperはなし」、P3は以下の記録更新・文言明確化。要求モデル/effortはSonnet/high、実効primary modelはmetadataの`claude-sonnet-5`で確認し、実効effortは取得できていない。原文はlocal-only `.local/merge-rules-compatibility/plan-review-r1-retry.json`。
+
+- P3-1（owner裁定候補）: 認証待ち表記を完了したreviewの事実へ更新する案を反映した。
+- P3-2（owner裁定候補）: AC5の「name/ref置換だけ」とData Safetyの「合成値だけ」の曖昧さを確認し、tracked fixtureには追加項目の値・型だけを抽出する案を反映した。raw応答全体を読む既存`reproduce-rules.py`はlocal-onlyの別経路なので、reviewer修正案の「同方式」という補足は転載せず、両者の境界を明記した。S2とMG-D1aの範囲・許容値は変更していない。
+
+packet/Matrixの既存commitと文書検証を根拠に、AC5の明確化を含むcontent commitで`plan-draft -> plan-gate`を記録する。P3の反映案と計画採用はowner判断待ちで、採用済み・実装許可とは扱わない。P3-onlyの追加reviewは発注していない。Plan Commitは採用対象の確定content commitをowner Plan Gate後に設定する。次は介入9回目 / 予算12回。外部公開・Ready・merge・本番有効化も未承認のまま。
