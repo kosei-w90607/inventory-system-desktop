@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: human-confirm
+- Phase: ready-hosted-final
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
@@ -274,3 +274,9 @@ ownerは提示済みの本branch公開・Ready・分類失敗fixture PRの作成
 公開前の実L0は、旧い全Rust関数名へのREQ番号述語が既存のSPEC技術テストを拒否してFAILした。S3/S4のpre-pushの不整合としてコード変更を状態記録と分離し、canonical traceabilityへ集約した候補`f28e5891ac42cc8c180de711c151c0aa2e102d3b`で実L0とlegacy fullがCLEAN/PASS。T1〜T4とsrc-tauriは変更していない。Sonnet highの限定closureは実物/evidenceを照合してP1/P2なし・契約維持と判定した。元のDouble Auditと後続保持裁定は維持する。
 
 [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)をDraftで公開し、本文へ当該contentのfull、監査、P3裁定を記録した。公開時のPR head/base/本文を実物照合済み。これらの証拠とowner裁定を根拠に、`implementing -> local-verified -> independent-review -> human-confirm`を隣接遷移として実体化し、Reviewed Content HEADを当該監査contentへ設定する。この遷移にはScope/AC/Matrix/実装を同乗させない。既に承認されたReadyは次のstate-onlyとそのexact HEADのL1を完了してから実行する。
+
+### Ready遷移とDraft観測（2026-09-14）
+
+ownerの公開・Ready承認に基づき、Draft中に`human-confirm -> ready-hosted-final`を記録する。Reviewed Content HEADはf28e5891を保持し、このstate-only後の確定HEADでCLEAN L1 fullを実行してPR本文へ記録してからReadyにする。現HEADのL1 SHAをこのtracked fieldへ自己記録しない。
+
+初回Draftの実GitHub runで全jobがskipped、runner割当なし、required名のMerge gateが存在しないことを確認した。ただしaggregateの表示名は設計の短いDraft名ではなく未展開の条件式だった。差異を`.local/merge-evidence/pr54-draft-observation.json`に保存し、Ready時の実check名・結果を続けて確認する。正規Readyの成功と分類失敗fixtureのfailureを実証するまではマージ証拠が揃ったとせず、この観測だけで本番保護を有効化しない。

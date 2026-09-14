@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **マージ検証整理（R3、human-confirm / Ready検証へ）**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)をDraftで公開。[Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。公開前L0の既存不整合を是正した候補f28e5891は実L0/legacy fullがCLEAN/PASS、限定Sonnet確認もP1/P2なし。元のSonnet/Opus監査とP3後続保持裁定を維持し、human-confirmへ遷移。owner承認済みのReadyと分類失敗fixtureの検証・closeまで進める。mergeと後段のruleset probe/有効化は別判断。
+- **マージ検証整理（R3、ready-hosted-final / exact HEAD検証）**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)はまだDraft。[Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。owner承認に基づくReady state-only後のHEADでL1を実行し、本文更新・Ready・hosted確認へ進む。監査contentはf28e5891、P1/P2なし、P3は条件付き後続保持。Draftはrunnerなし・required名なしを確認したが表示名は条件式だったため観測を保持。分類失敗fixtureの検証・closeまで承認済み。mergeと後段のruleset probe/有効化は別判断。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
