@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **衛生batch 4（plan-draft、R2）**: [Plan Packet](plans/2026-09-14-hygiene-batch-4-doc-warn-deps.md)。doc WARN・mockup-g・npm 名指し更新を対象に起草済み。Coordinator 裁定と独立 Plan Review 後に別 run で実装する。
+- **衛生batch 4（implementing、R2）**: [Plan Packet](plans/2026-09-14-hygiene-batch-4-doc-warn-deps.md)。doc WARN・mockup-g・npm 名指し更新を対象に起草済み。Coordinator 裁定と独立 Plan Review 後に別 run で実装する。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了

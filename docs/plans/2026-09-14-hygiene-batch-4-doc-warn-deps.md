@@ -5,14 +5,14 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: plan-draft
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: be43418e13a2a382f79fd6d1f94667a7624b0b2b
 - Amendments: none
 - Coordinator: Fable
 - Writer: Codex
-- Plan Reviewer: Sonnet（pending）
+- Plan Reviewer: Sonnet（round 1、P1/P2 = 0）
 - Final Reviewer: Sonnet + Opus（pending、独立 fresh context）
 - Final Review Minimum: 2
 - Human Gate: ready,merge
@@ -229,6 +229,8 @@ R2 のため省略。Scope の各項と AC の対応を維持する。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
 
 Plan Review は pending。Coordinator へ AC1 の実出力と AC3 の default branch 再走査依存を報告する。
+
+- 2026-09-15 Plan Review round 1（Sonnet、独立 fresh context、対象 `be43418e`）: P1/P2 = 0、P3 1 件。P3 = checker が hosted CI の docs job 経由で `Merge gate` の直接依存であるため、Risk 節に「Final Review Minimum 2 は workflow gate 該当を仮定した保守的選択」と明記する提案。Coordinator disposition = 記録のみ（Risk 節の根拠は WARN 経路のみで exit code 不変を実測済み、Final Review 2 パスで同観点を確認する）。plan-draft → plan-gate → plan-approved → implementing を本 commit で実体化し、Plan Commit を `be43418e13a2a382f79fd6d1f94667a7624b0b2b` に設定。
 
 ## 後続
 
