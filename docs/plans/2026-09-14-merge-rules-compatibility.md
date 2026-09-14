@@ -2,11 +2,11 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
-- Plan Commit: pending
+- Plan Commit: 8dd32dab7428862d093071c38cdb6189772bc02e
 - Amendments: none
 - Coordinator: owner（起草は現在のCodex）
 - Writer: 現在のAstra（owner指定。D-087により起草・実装・検証・状態記録を一貫して担当）
@@ -188,3 +188,11 @@ packet/Matrixの既存commitと文書検証を根拠に、AC5の明確化を含�
 ### Ownerの実施指示と担当形の補足
 
 ownerは上の採用判断に対し、Astra自身で進め、レビューだけSonnet / Opusを呼ぶよう指定し、但し書きの保存も依頼した（介入9回目 / 予算12回）。P3反映案を含む互換性修正をこの担当形で進める。S5 / AC7とD-087はこの明示指示の同期であり、Ready/merge/本番有効化や自己承認の許可ではない。追加のworkflow文言と担当条件を独立Plan Reviewerへ限定確認する。これはP3-onlyの再reviewではなく、新しいowner指示で追加した契約範囲の確認。Phaseはその結果が揃うまでplan-gateを保持する。
+
+### 限定Plan Review完了と実装開始
+
+Sonnet highの限定Plan Reviewは追加したD-087/S5/AC7を直接確認し、P1/P2なし、既存の独立性・Plan Gate・計画先行・Gated Amendment・owner裁定を維持と判定した。実効primary modelは`claude-sonnet-5`で確認、highは要求effort。原文はlocal-only `.local/merge-rules-compatibility/plan-review-d087.json`。
+
+P3として「D-087がExecution Modeの追加に見えないための補足」をowner裁定候補として保持する。reviewerのcodex-only限定案はまだ裁定しておらず、新しいmodeは追加していない。P3だけを理由に作業や追加reviewを増やさない。
+
+元の独立Plan Review、P3明確化、今回の限定確認、ownerの実施指示、および計画/Matrixと追加sourceの確定commitを根拠に`plan-gate -> plan-approved -> implementing`を隣接遷移として記録する。Plan Commitを設定し、現在のAstraが実装を担当する。公開・Ready・merge・本番有効化は後段のowner判断を維持する。
