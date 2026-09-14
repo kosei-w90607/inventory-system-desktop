@@ -2,7 +2,7 @@
 
 ## Workflow State
 
-- Phase: ready-hosted-final
+- Phase: archive
 - Evidence Mode: legacy
 - Risk: R3
 - Execution Mode: codex-only
@@ -15,7 +15,7 @@
 - Reviewed Content HEAD: f28e5891ac42cc8c180de711c151c0aa2e102d3b
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / merge
+- Human Gate: 未実施のruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化
 
 現行のlegacy workflowで設計・Plan Gateを通過済み。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択し、2026-09-14にAstra xhighの単独実装と難度に応じたSonnet / Opusレビューを指定して実装開始を承認した。Codexが計画・amendmentを起草し、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。計画を更新するrunと実装runを分け、実装runはpacketを編集しない。
 
@@ -90,9 +90,9 @@ Plan Gateや独立性の撤廃、アプリ/DB/POS変更、依存更新、global 
 
 ## Design Sources
 
-- [目的・動機とMG-D1〜D12](../agent-guidance/merge-evidence.md)
-- [workflow](../DEV_WORKFLOW.md)、[CI](../ci.md)、[役割](../AGENT_OPERATING_MANUAL.md)、[profile](../project-profile.md)
-- [D-033/D-035等](../decision-log.md)、[review](../code_review.md)
+- [目的・動機とMG-D1〜D12](../../agent-guidance/merge-evidence.md)
+- [workflow](../../DEV_WORKFLOW.md)、[CI](../../ci.md)、[役割](../../AGENT_OPERATING_MANUAL.md)、[profile](../../project-profile.md)
+- [D-033/D-035等](../../decision-log.md)、[review](../../code_review.md)
 - 実行の正本は`ci.yml`、classifier、local-ci、pre-push、PK4/PK5と既存tests。アプリ設計正本は非接触。
 
 ## Required Design Artifacts
@@ -280,3 +280,16 @@ ownerは提示済みの本branch公開・Ready・分類失敗fixture PRの作成
 ownerの公開・Ready承認に基づき、Draft中に`human-confirm -> ready-hosted-final`を記録する。Reviewed Content HEADはf28e5891を保持し、このstate-only後の確定HEADでCLEAN L1 fullを実行してPR本文へ記録してからReadyにする。現HEADのL1 SHAをこのtracked fieldへ自己記録しない。
 
 初回Draftの実GitHub runで全jobがskipped、runner割当なし、required名のMerge gateが存在しないことを確認した。ただしaggregateの表示名は設計の短いDraft名ではなく未展開の条件式だった。差異を`.local/merge-evidence/pr54-draft-observation.json`に保存し、Ready時の実check名・結果を続けて確認する。正規Readyの成功と分類失敗fixtureのfailureを実証するまではマージ証拠が揃ったとせず、この観測だけで本番保護を有効化しない。
+
+
+### 実装mergeと機械的closeout（2026-09-14）
+
+[PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)を2026-09-14T03:51:19Zにsquash mergeした。merge commitは`786824584778cca9c85596c749c8f1e3cb39f848`。ownerは介入6回目 / 予算8回で、実装PRのmergeと本R0 docs-only closeoutの公開・Ready・CI確認・mergeまでを承認済み。現在のPhase=archiveは実装PRの記録移送を表し、ruleset有効化の完了を表さない。上の「未実行」「修正中」等は各記録時点の履歴として保存する。
+
+実装PRのReady対象版は`d483ad5f4145e7e190ab254a8bf8dd4928f7f88d`。[正常run](https://github.com/kosei-w90607/inventory-system-desktop/actions/runs/34802569373)は全必要jobとGitHub Actions/15368の`Merge gate`がsuccess。legacyのCLEAN L1・PR head・successful hosted headShaの一致はPR #54本文に記録し、独立Double Auditと各修正closure、owner Ready/mergeを完了した。
+
+[Draft run](https://github.com/kosei-w90607/inventory-system-desktop/actions/runs/34801155403)ではrunner割当なし・required名なしを確認した。aggregateの表示は短いDraft名ではなく未展開の条件式だった差異を保持する。Ready時は実際の`Merge gate`名で成功を確認し、[分類失敗fixture PR #55](https://github.com/kosei-w90607/inventory-system-desktop/pull/55) / [run](https://github.com/kosei-w90607/inventory-system-desktop/actions/runs/34802715739)ではfilter/changesと、起動した評価器/`Merge gate`のfailureを確認した。fixtureはmainへmergeせずclose済み。試験branchの削除は今回の承認範囲に含めず保持する。
+
+このcloseoutはpacket/Matrixの移送とPlans更新だけを行うR0 PR。docs（実PK5を含む）と`Merge gate`の同一HEAD成功、Rust/frontend非実行は、このcloseout PRのhosted結果で確認してからmergeする。現時点でそのdocs-only経路を成功済みとは記録しない。成功head/baseは次のruleset probeのpositive controlへ渡し、このcloseout自身の後処理PRは再帰作成しない。
+
+未実施は検証用ruleset/refの作成・拒否試験・cleanupと、本番main rulesetの適用・read-back。いずれもownerの具体的な承認後に行い、成功前は新modeのReady/mergeを利用しない。「Owner裁定と公開準備」のP3着手条件をそのまま引き継ぐ。設定応答の互換性は利用開始前に実物確認し、不一致なら先に修正する。workflow effectivenessのdogfood対象は**新mode有効化後の最初のR2+ PR**とする。token削減量とowner実働時間は未実測のまま。

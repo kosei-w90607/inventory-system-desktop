@@ -8,11 +8,13 @@
 
 ## 次の行動
 
-- **マージ検証整理（R3、ready-hosted-final / exact HEAD検証）**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)はまだDraft。[Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。owner承認に基づくReady state-only後のHEADでL1を実行し、本文更新・Ready・hosted確認へ進む。監査contentはf28e5891、P1/P2なし、P3は条件付き後続保持。Draftはrunnerなし・required名なしを確認したが表示名は条件式だったため観測を保持。分類失敗fixtureの検証・closeまで承認済み。mergeと後段のruleset probe/有効化は別判断。
+- **マージ検証整理（実装merge済み／有効化準備）**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)の実装と正常Ready CI・分類失敗fixtureを完了。[Packet](archive/plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](archive/plans/test-matrices/2026-09-14-merge-evidence-simplification.md)をarchiveへ移した。次は検証用ruleset/refの具体化とowner判断。本docs-only closeoutの実施状況は対応PR本文を参照し、成功head/baseを後段probeへ渡す。ownerの介入6/8で実装mergeとdocs-only closeoutまで承認済み。検証用ruleset/refの拒否試験・cleanupと本番有効化/read-backは未実施・別承認。P3はpacketの着手条件付き後続保持を維持する。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
+
+- **マージ検証整理の実装**: [PR #54](https://github.com/kosei-w90607/inventory-system-desktop/pull/54)をmerge。旧legacy gate・独立監査・Ready正常CI・分類失敗fixtureを完了し、記録を[archive](archive/plans/2026-09-14-merge-evidence-simplification.md)へ移送。ruleset有効化は未完了。workflow effectivenessのdogfoodは新mode有効化後の最初のR2+ PR。
 
 - **ハーネス文脈効率**: [PR #52](https://github.com/kosei-w90607/inventory-system-desktop/pull/52) をmergeし、[Plan Packet](archive/plans/2026-09-13-harness-context-efficiency.md) / [Matrix](archive/plans/test-matrices/2026-09-13-harness-context-efficiency.md) をarchiveへ移した。必要な読書と保護規定を両立させ、L1/hosted/独立reviewを完了。後続P3と未実測はPRに保持し、次のR2+作業でdogfoodする。
 
