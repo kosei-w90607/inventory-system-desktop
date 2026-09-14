@@ -15,7 +15,7 @@
 - Reviewed Content HEAD: pending
 - Final Exact-HEAD Evidence: PR body
 - Hosted CI Requirement: required
-- Human Gate: 残るP3のowner裁定 / ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / Ready / merge
+- Human Gate: bootstrapの公開・Ready / ruleset probe（合成ref/PR作成・close・削除を含む） / 本番有効化 / merge
 
 現行のlegacy workflowで設計・Plan Gateを通過済み。新modeの保護をこの計画に先取り適用しない。ownerは「GitHubで強制し、docs・後処理は軽いPR経路」を選択し、2026-09-14にAstra xhighの単独実装と難度に応じたSonnet / Opusレビューを指定して実装開始を承認した。Codexが計画・amendmentを起草し、ownerが採否を決める個別依頼であり、D-084の一般の役割制限を書き換えない。計画を更新するrunと実装runを分け、実装runはpacketを編集しない。
 
@@ -255,3 +255,14 @@ P3のうち追補削除/full分類のnegative、F2のpositive control、F3の現
 - merge commitのみの登録や履歴改変の検出範囲、古い未登録commitを追補として採用する場合の扱い（最終closureの追加P3）。実際のowner承認の機械的証明は非目的で、追加P3にruntime failureの根拠は提示されていない。
 
 GitHubへのpush/PR作成・Ready・merge・合成probe・ruleset有効化は未実行。実装開始・GA1・累計介入上限の承認を再要求せず、次は残るP3のowner裁定。以後の公開/Readyでは具体的なbootstrap操作範囲を提示し、MG-D11のdocs-only dogfood・probe・有効化順序を維持する。現在の保留は製品側の未決事項や衛生batch 4を採用する判断ではない。
+
+### Owner裁定と公開準備（2026-09-14）
+
+ownerが「着手条件付きで後続保持する」と明示裁定した（介入4回目、累計上限8回という規範値は変更しない。実働時間は未実測）。上記の未採用P3はdeferredとして保持し、以下の条件で扱う。実装開始・GA1・予算・このP3裁定を再要求しない。
+
+- GitHub設定応答との互換性は新方式の利用開始前に実物を確認し、不一致なら先に修正する。
+- 誤拒否や過剰なreview要求は、試運用での再現または実際の負担が確認されたときに着手する。
+- test/履歴検査の補強は関連する改修や特殊な履歴操作を計画する時点で再評価する。
+- 検証・承認をすり抜けるruntime failureが確認された場合は保留を解除して修正する。本番で問題が出るまで待つ裁定ではない。
+
+実装候補4c5a241bのCLEAN local full、Sonnet/Opusの初回Double Audit、修正後の独立Opus最終closure、P1/P2なし、今回のowner裁定は揃った。Draft PRを公開してその本文へevidenceを記録した後、`implementing -> local-verified -> independent-review -> human-confirm`を隣接遷移として実体化する。現在はPR未作成なのでPhaseとReviewed Content HEADを先取りしない。4c5a241b以降の差分はWorkflow State・Plans・append-onlyの進捗/証跡だけで、Scope/AC/Matrix/実装を変更していない。公開・Readyと後段の外部操作は具体的な操作範囲を提示する。

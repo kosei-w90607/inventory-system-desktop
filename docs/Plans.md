@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **マージ検証整理（R3、ローカル実装・独立確認済み / P3裁定待ち）**: [Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。Astra xhigh単独実装、GA1採用済み。候補4c5a241bのlegacy fullはCLEAN/PASS。Sonnet / Opusの初回Double Auditと修正後のOpus最終closureを完了し、P1/P2なし。残るP3はpacket末尾に裁定候補として保持。記録済みPhaseはimplementingで、owner裁定後に証拠済みの隣接遷移を実体化する。未push。公開/Ready・live dogfood・設定有効化は具体的対象と検証を揃えてから判断する。
+- **マージ検証整理（R3、P3裁定済み / 公開・Ready準備）**: [Plan Packet](plans/2026-09-14-merge-evidence-simplification.md) / [Matrix](plans/test-matrices/2026-09-14-merge-evidence-simplification.md)。Astra xhigh単独実装、候補4c5a241bのlegacy fullはCLEAN/PASS。Sonnet / Opusの独立監査と最終closureはP1/P2なし。ownerが残るP3を着手条件付きで後続保持と裁定。次はbootstrapの公開・Readyと分類失敗fixtureの具体的対象を提示する。未push・PR未作成なのでPhaseはimplementingを保持し、PR本文へevidenceを記録後に隣接遷移を実体化する。merge、docs-only dogfood、ruleset probe/有効化はMG-D11の順序と各承認を維持する。
 - **衛生batch 4（計画起草待ち）**: [Backlogの先頭lane](backlog.md#次に動く-lane順番固定)。doc WARN、mockup-g、npm依存の名指し更新を対象にPlan Packetを起草する。発注書46（local-only）は未実行で、指定packet/branchはまだ存在しない。旧HEAD・移送前のPlans参照・起動指定を現行正本に合わせ、文書チェッカー本体に触る場合はRiskを再評価してから起草する。実装は計画の裁定とPlan Reviewの後。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
