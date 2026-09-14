@@ -172,7 +172,7 @@ raw API、vendor metadata、review出力、実行logはignored `.local/merge-rul
 
 ## Implementation Results
 
-未実装。Plan Gate前にruntime code/testを変更しない。
+MG-D1aの限定照合を共有`Gate.rules`へ実装した。既定項目を含む正常応答の回帰を現行実装でREDにした後、helperの全テストと保存実応答のreplayがPASS。無変更copyのpositive controlと、既定値・型・未知field・desired優先を壊すmutationで検出力を確認した。fullと独立Double Auditはこの候補で後続実施する。正確な候補版・test数・実行logはlocal evidenceと公開後のPR本文へ置く。
 
 ## Review Response
 
@@ -187,7 +187,7 @@ packet/Matrixの既存commitと文書検証を根拠に、AC5の明確化を含�
 
 ### Ownerの実施指示と担当形の補足
 
-ownerは上の採用判断に対し、Astra自身で進め、レビューだけSonnet / Opusを呼ぶよう指定し、但し書きの保存も依頼した（介入9回目 / 予算12回）。P3反映案を含む互換性修正をこの担当形で進める。S5 / AC7とD-087はこの明示指示の同期であり、Ready/merge/本番有効化や自己承認の許可ではない。追加のworkflow文言と担当条件を独立Plan Reviewerへ限定確認する。これはP3-onlyの再reviewではなく、新しいowner指示で追加した契約範囲の確認。Phaseはその結果が揃うまでplan-gateを保持する。
+ownerは上の採用判断に対し、Astra自身で進め、レビューだけSonnet / Opusを呼ぶよう指定し、但し書きの保存も依頼した（累計はOwner Effort Budgetを参照）。P3反映案を含む互換性修正をこの担当形で進める。S5 / AC7とD-087はこの明示指示の同期であり、Ready/merge/本番有効化や自己承認の許可ではない。追加のworkflow文言と担当条件を独立Plan Reviewerへ限定確認する。これはP3-onlyの再reviewではなく、新しいowner指示で追加した契約範囲の確認。Phaseはその結果が揃うまでplan-gateを保持する。
 
 ### 限定Plan Review完了と実装開始
 
@@ -196,3 +196,5 @@ Sonnet highの限定Plan Reviewは追加したD-087/S5/AC7を直接確認し、P
 P3として「D-087がExecution Modeの追加に見えないための補足」をowner裁定候補として保持する。reviewerのcodex-only限定案はまだ裁定しておらず、新しいmodeは追加していない。P3だけを理由に作業や追加reviewを増やさない。
 
 元の独立Plan Review、P3明確化、今回の限定確認、ownerの実施指示、および計画/Matrixと追加sourceの確定commitを根拠に`plan-gate -> plan-approved -> implementing`を隣接遷移として記録する。Plan Commitを設定し、現在のAstraが実装を担当する。公開・Ready・merge・本番有効化は後段のowner判断を維持する。
+
+D-087のP3については、現行enumを変更していない事実をAOMへ明記する案を反映した。codex-onlyへ新たに適用範囲を狭める変更は加えていない。ownerへの候補引渡しでこの反映案も示し、独立監査では元の指摘とsourceの整合を確認する。

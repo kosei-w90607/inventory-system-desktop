@@ -68,6 +68,8 @@ Execution Mode は Plan Packet `Workflow State` に記録する、その時点�
 
 #### Astraを主担当にする場合（D-087）
 
+Execution Modeのenumは変更せず、主担当の作業割当として適用する。
+
 ownerがAstraを主担当に選ぶ作業では、Astra自身が調査・計画起草・調整・実装・検証・状態記録を一貫して担当する。通常作業をサブエージェントへ分割したり、起草と実装を別runへ引き渡したりすることを既定にしない。同じsessionで計画から実装へ進んでよく、必要なpacket更新も担当する。Fableを指揮者に置く作業の分業方針は変更しない。
 
 独立レビューだけをSonnet / Opusのfresh contextへ依頼し、発注・結果の回収はAstraが行う。Plan Reviewerの別vendor条件、Writerとの独立性、Risk別の監査数、workflow gate/R4のDouble Audit、ownerの採用・裁定・Human Gateは維持する。計画の確定commitを実装より先に置き、Plan Gate前の実装は禁止。実装中の契約変更は通常のGated Amendmentを通し、同じ担当であることを無断の計画変更や自己承認の根拠にしない。

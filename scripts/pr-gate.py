@@ -345,8 +345,19 @@ class Gate:
                 detail = api(f"{self.endpoint}/rulesets/{rule['ruleset_id']}")
                 require(detail['bypass_actors'] == [], 'merge ruleset has bypass actors')
                 require(detail['enforcement'] == 'active' and detail['target'] == 'branch', 'ruleset inactive')
+                # MG-D1a: only observed, unmanaged defaults are removed from a copy.
+                actual_rules = copy.deepcopy(detail['rules'])
+                for actual, expected in zip(actual_rules, desired['rules']):
+                    if actual['type'] == expected['type'] == 'pull_request':
+                        params, configured = actual['parameters'], expected['parameters']
+                        if 'required_reviewers' not in configured:
+                            require(params.pop('required_reviewers', []) == [], 'unexpected default: required_reviewers')
+                        if 'require_extra_approval_for_unattributed_changes' not in configured:
+                            require(params.pop('require_extra_approval_for_unattributed_changes', True) is True,
+                                    'unexpected default: require_extra_approval_for_unattributed_changes')
                 for key in ('name','conditions','rules'):
-                    require(detail[key] == desired[key], f'main ruleset drift: {key}')
+                    actual = actual_rules if key == 'rules' else detail[key]
+                    require(actual == desired[key], f'main ruleset drift: {key}')
                 matched = True
         require(matched, 'strict GitHub Actions Merge gate missing')
 
