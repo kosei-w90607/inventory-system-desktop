@@ -1062,4 +1062,4 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 | 2026-09-11 | PR #51 | ⑳ Gated Amendment 2: Human Gate 回答の確定文化〈全フィルタの上置き Label・Checkbox の縦中央・セクション見出しと PageHeader (c) の見出し行 + 説明行〉。mockup-g を 4 状態へ更新。 |
 | 2026-09-11 | PR #51 | ⑳ Gated Amendment 3: 見出しの shrink 保証 / runtime 未反映の明示。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 5: 固定帯を白地の箱へ / chevron を muted。 |
-| 2026-09-15 | 本 PR | ㉑ フィルタ Label 上置き・PageHeader と section 見出しの2段配置・h2 token の runtime 反映。① props、⑤ 群名の紐付け、⑨ 適用サイトと mode 切替例を同期。 |
+| 2026-09-15 | PR #63 | ㉑ フィルタ Label 上置き・PageHeader と section 見出しの2段配置・h2 token の runtime 反映。① props、⑤ 群名の紐付け、⑨ 適用サイトと mode 切替例を同期。 |
