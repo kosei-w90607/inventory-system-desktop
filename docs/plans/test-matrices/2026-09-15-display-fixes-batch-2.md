@@ -52,7 +52,7 @@ not applicable: 文言・class・列の変更のみ。件数行は `data` 由来
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
 | 「通常」を在庫状態として描画 | `rg -n '通常' src --glob '*.tsx' --glob '!*.test.tsx'` → `StockStatusBadge.tsx:36` のみ（`ProductListTable.tsx:98` は CSS comment） | 1 site | 74-ui-operation-logs の「通常」（別文脈） | AC4 |
-| 「明細数」列 | `InventoryRecordsPage.tsx:354,377` / `ManualSalePage.tsx:360,743` | 1 page | ManualSalePage（65 の対象外、別画面） | AC7 |
+| 「明細数」列 / field | 一覧列 `InventoryRecordsPage.tsx:354,377` / `ManualSalePage.tsx:360,743` / 記録詳細 7 page の field（`rg -n '明細数' src`） | 1 page（一覧列） | ManualSalePage（65 の対象外、別画面）/ 記録詳細 7 page（65 §65.5 詳細表示表の別契約、L8-4 は一覧列のみ） | AC7 |
 | `AlertTitle` 使用 | 35 file 81 箇所 | component 1 箇所 | — | `alert.test.tsx` |
 | PageHeader subtitle 持ち page | 入庫 / 廃棄 / 手動販売 / 返品交換 / 取引先管理（⑳ D8 実測）+ 在庫少の基準 | 在庫照会 1 page 追加 | — | AC3 |
 | 件数表示 | `PaginationSummary`（status = all）/ mockup-d `.cnt-plain` | 在庫照会の絞り込み時 1 site | 他一覧（server pagination で PaginationSummary が担う） | AC5 |
