@@ -186,3 +186,14 @@ describe("DepartmentFilter (patterns) unit", () => {
     });
   });
 });
+
+it("SPEC-FILTER-LABEL-RT-1 D-RT1: 上置き label が部門の accessible name を保つ", () => {
+  render(<DepartmentFilter options={mockOptions} selected={null} onChange={vi.fn()} />);
+  const trigger = screen.getByRole("combobox", { name: "部門" });
+  const label = screen.getByText("部門");
+  expect(trigger.parentElement).toHaveClass("grid", "gap-1");
+  expect(label.parentElement).toBe(trigger.parentElement);
+  expect(label).toHaveAttribute("for", trigger.id);
+  expect(label).not.toHaveAttribute("id");
+  expect(trigger).not.toHaveAttribute("aria-labelledby");
+});
