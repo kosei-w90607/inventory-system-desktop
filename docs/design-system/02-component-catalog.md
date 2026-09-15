@@ -334,6 +334,8 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 ## ⑥ 空状態・エラー・ローディング
 
+`AlertTitle` は variant を問わず `font-semibold`（600）で icon の真横の 1 行を本文（`AlertDescription`）より強く出す。
+
 **使いどころ**: 一覧・カード・レポートの「取得中」「取得失敗」「該当 0 件」を一貫した形式で示す。
 
 **canonical**: `src/features/products/ProductListPage.tsx`（Skeleton → Alert → 空状態 → データの分岐構造）+ `src/components/patterns/EmptyState.tsx`（空状態の到達形）
@@ -396,8 +398,6 @@ function FormSection({ title, description, children }: FormSectionProps) {
 **バリエーション: インライン選択エラー 1 スロット**（PR #125、canonical: `src/features/daily-report-import/DailyReportImportPage.tsx` の `SelectionErrorMessage`）: ファイル選択（DSR-14 の path-based 方式）など非フォーム文脈の入力検証エラーは、発生源（選択ボタン）直下の 1 スロットに `role="alert"` + destructive テキスト + アイコンで表示する。エラー state は選択試行のたびに置換し、成功で `null` にクリアする。画面上部の Alert 帯（データ安全系専用）とは役割を混ぜない（DSR-03 の 3 階層）。フォーム文脈の入力検証はパターン④の `FieldError`（入力直下）が既定で、本バリエーションは非フォーム文脈専用。
 
 ### Alert warning variant（画面上部の注意喚起、owner v4 決定で確定）
-
-`AlertTitle` は variant を問わず `font-semibold`（600）で icon の真横の 1 行を本文（`AlertDescription`）より強く出す。
 
 業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` の `warning` は次を持つ（`data-variant` にも出力）: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。枠は `--warning`（badge ①状態の `--warning-border` より一段濃い）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
 

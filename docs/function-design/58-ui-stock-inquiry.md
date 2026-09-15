@@ -594,12 +594,14 @@ function StockInquiryPage() {
 
 #### UI-06a-D1: pagination 導入 + truncated alert 撤去（2026-08-03 batch B）
 
-- 在庫少 / 在庫切れの絞り込み時は検索・部門・状態の client filter 後の `items.length` を N とする「全 N 件」のみを表示し、pagination は追加しない（0 件は EmptyState のみ）。
-
 - **決定**: 在庫照会「すべて」（`status === "all"`）に `page` search param と `Pagination`（既存 canonical、02-component-catalog.md ⑩、旧 `ProductPagination`）を導入し、`total_count` から全ページへ到達できるようにする。これに伴い `TruncatedResultsAlert` component と `StockInquiryListResult.truncated` flag を撤去する。
 - **Why**: pagination により全件へページ送りで到達できるようになるため、「他にも検索結果があります」という打ち切り告知（旧 契約 I）はページ送りと二重表現になる。50 §50.4（商品一覧）の既存 page 慣行をそのまま踏襲し、在庫照会だけの新しい UX を発明しない。
 - **Rejected**: truncated alert を pagination と併存させる案（「打ち切り告知」+「ページ送り」が同じ問題を二重に説明することになり、利用者が両方を読む必要が生じる）。在庫少 / 在庫切れ（`list_low_stock` 経路）への pagination 拡張（既存 100 件以下想定の client filter で十分、対象外のまま据え置き）。
 - **Revisit trigger**: `list_low_stock` の返却件数が 100 件を恒常的に超える運用が確認された場合、client filter 経路への pagination 適用を再検討する。
+
+#### UI-06a-D6: 絞り込み時の件数表示（2026-09-15、SPEC-DISP-B2-1 / D-B5）
+
+- 在庫少 / 在庫切れの絞り込み時は検索・部門・状態の client filter 後の `items.length` を N とする「全 N 件」のみを表示し、pagination は追加しない（0 件は EmptyState のみ）。
 
 #### UI-06a-D2: 部門候補を listDepartments master 全件へ是正（DSR-10、round 1 P1-3、2026-08-03 batch B）
 
