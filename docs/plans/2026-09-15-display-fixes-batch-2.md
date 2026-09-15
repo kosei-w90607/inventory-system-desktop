@@ -113,7 +113,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - ㉑ の file 行（`StockInquiryPage.tsx:132-135`、catalog ① / ⑤ / ⑨、`PageHeader.tsx`）
 - `PaginationSummary` / `Pagination` component、58 UI-06a-D1 の Rejected 判断
 - 記録状態 Badge の tone、中立 Badge の見栄え統一（Backlog 保留）
-- 入出庫記録詳細 7 page の「明細数」field（`rg -n '明細数' src` の一覧列以外の hit。65 §65.5 詳細表示表の別契約で、L8-4 は一覧列のみ）
+- 一覧列以外の「明細数」表示（`rg -n '明細数' src --glob '!*.test.tsx'` から `InventoryRecordsPage` / `ManualSalePage` / `daily-sales`〈別語「売上明細数」〉を除いた 8 hit = 記録詳細 `*RecordDetailPage.tsx` 5 file〈CsvImport / ManualSale / Receiving / Disposal / Return。`StocktakeRecordDetailPage` には無く 65 §65.5〈6 種別 yes〉との既存差異、本 lane 対象外〉+ 入庫 / 廃棄 / 返品交換 の保存結果パネル 3 file〈`ReceivingPage.tsx:331` / `DisposalPage.tsx:316` / `ReturnExchangePage.tsx:451`〉。いずれも 65 §65.5 / 各画面 doc の別契約で、L8-4 は一覧列のみ）
 - mockup-d-history の変更（`:177` の「件数のみ太字表示」と一致するため不要）
 
 ## Acceptance Criteria
@@ -267,4 +267,10 @@ Fill after implementation.
 - 残る不確実性「DSR `:596` の参照ズレ」= accept → 正しくは 58 §58.10 UI-06a-D1 Rejected（`:596`）。packet / Matrix の参照を訂正
 - 残る不確実性「Adjacent Pattern Audit に記録詳細 7 page の明細数 field が無い」= accept → Non-scope と Matrix に 1 行（65 §65.5 の別契約）
 - 残る不確実性「D-B5 が Backlog 原文の字面から離れる根拠が本文に無い」= accept → D-B5 と Review Focus に 1 句
-- round 2 = closure（Sonnet、`3175c56f` と本 commit の diff 限定）
+- round 2 = closure（Sonnet、`3175c56f` + `0fad049e` の diff 限定）
+
+### Plan Review round 2（closure、Sonnet）
+
+- P2-1 / DSR 参照 / D-B5 = closed
+- 「記録詳細 7 page」= **not closed、新規 P2**: 「7」は round 1 reviewer の文言を Coordinator が現物で数えずに転記した（実測は record-detail 5 + 保存結果パネル 3 = 8 hit）→ accept、Non-scope と Matrix の該当行を実測の内訳へ訂正（本 commit）
+- round 3 = closure（Sonnet、本 commit の diff 限定。round 天井 3 の最終）
