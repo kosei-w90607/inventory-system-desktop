@@ -11,7 +11,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 68fa591531e2249e13578cdff70ae3785b66757a
-- Amendments: c35992b0f169c097319e9e4a75c41679bc5d3b0f, 479289cce653dcb4394e8e2756309fc61001c2db, fde49a358de2a36645de0f302cd30a050b5005d2
+- Amendments: c35992b0f169c097319e9e4a75c41679bc5d3b0f, 479289cce653dcb4394e8e2756309fc61001c2db, fde49a358de2a36645de0f302cd30a050b5005d2, e1296981cab7cf45b215ba187a4df36dbdcce098
 - Coordinator: Fable 5.1
 - Writer: Codex
 - Plan Reviewer: Sonnet（独立 fresh context）
