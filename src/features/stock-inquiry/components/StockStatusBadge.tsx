@@ -33,7 +33,7 @@ export function StockStatusBadge({ status }: StockStatusBadgeProps) {
 
   return (
     <Badge variant="outline" className="border-stone-200 bg-stone-50 font-medium text-stone-600">
-      正常
+      在庫あり
     </Badge>
   );
 }

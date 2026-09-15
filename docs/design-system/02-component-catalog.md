@@ -867,7 +867,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 // status === "ok"
 <Badge variant="outline" className="border-stone-200 bg-stone-50 font-medium text-stone-600">
-  正常
+  在庫あり
 </Badge>
 ```
 
@@ -881,10 +881,10 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
 |---|---|---|
-| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:34`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:88`「未反映」（tone propへ移行済み）/ `ResultStep.tsx:47`「部分成功」（tone propへ移行済み）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（warning toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「部分成功」（tone="warning"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:29`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:88`「未反映」（tone propへ移行済み）/ `ResultStep.tsx:47`「部分成功」（tone propへ移行済み）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（warning toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「部分成功」（tone="warning"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 | success（`border-success-border bg-success-soft text-success-strong` + icon） | `IntegrityCheckPage.tsx:389`「補正済み」（soft success toneへ移行済み）/ `StocktakePage.tsx:404`（棚卸し全数完了時のsoft success tone）/ `ProductTable.tsx:93`「反映済み」（success toneへ移行済み）/ `ResultStep.tsx:47`「成功」（success toneへ移行済み）/ `DailyReportImportPage.tsx:164,186`「確認済み」（success toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「成功」（tone="success"） / `DailyReportImportPage.tsx:322`「成功」（tone="success"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
-| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:25`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
-| 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:36`「正常」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:20`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:36`「在庫あり」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 
 **表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 15「現在の行は 3 点で示す」の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:97`（formatter）/ `ReturnExchangePage.tsx:592`（aria-label）/ `ReturnExchangePage.tsx:602`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
 
@@ -904,13 +904,13 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 - 新規 package は追加しない。現行の shadcn/Radix primitive、Tailwind、`lucide-react` で実装できる範囲を優先する
 - テストは色クラスだけを assert しない。`在庫切れ` / `在庫少` などの text、role、label、値の invariant を assert する
 
-**使用トークン**: 状態色は semantic shade token（`00-foundations.md`）で当てる。`正常` は `border-stone-200 bg-stone-50 text-stone-600`（stone は palette 内で直書き可）、`在庫少` は `border-warning-border bg-warning-soft text-warning-strong`、`在庫切れ` は `border-destructive-border bg-destructive-soft text-destructive-strong`。soft 背景 + border + 濃いめテキストの 3 点セットで Badge outline を構成する。
+**使用トークン**: 状態色は semantic shade token（`00-foundations.md`）で当てる。`在庫あり` は `border-stone-200 bg-stone-50 text-stone-600`（stone は palette 内で直書き可）、`在庫少` は `border-warning-border bg-warning-soft text-warning-strong`、`在庫切れ` は `border-destructive-border bg-destructive-soft text-destructive-strong`。soft 背景 + border + 濃いめテキストの 3 点セットで Badge outline を構成する。
 
 > **是正済み（PR-C）**: 旧逸脱（`StockStatusBadge.tsx` / `ProductListTable.tsx` / `StockDetailContent.tsx` の `rose-` / `amber-` 直書き）は上記 semantic shade token へ移行済み（rose→red は意図的色補正、L3 承認）。生 Tailwind 色の再混入は eslint palette 外色 ban が機械防止する。
 
 **状態**: バッジ自体は状態（stockout / low / ok）ごとに見た目を切り替える。hover / focus / active / disabled は規定なし。
 
-**アクセシビリティ**: 状態は日本語ラベル（`在庫切れ` / `在庫少` / `正常`）+ アイコン形状で示し、色だけに依存しない（WCAG 1.4.1）。アイコンには `aria-hidden`、意味はテキストが担う。実利用者が赤黄を識別できない場合でも意味が読める実装にする。
+**アクセシビリティ**: 状態は日本語ラベル（`在庫切れ` / `在庫少` / `在庫あり`）+ アイコン形状で示し、色だけに依存しない（WCAG 1.4.1）。アイコンには `aria-hidden`、意味はテキストが担う。実利用者が赤黄を識別できない場合でも意味が読める実装にする。
 
 **Do**:
 - Badge + アイコン + 日本語ラベルで状態を示す
@@ -1043,7 +1043,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-15 | 表示小修正 batch 2 | ⑥ AlertTitle の共通 weight を600、⑬ 在庫状態の中立 Badge を「正常」に同期。 |
+| 2026-09-15 | 表示小修正 batch 2 | ⑥ AlertTitle の共通 weight を600、⑬ 在庫状態の中立 Badge を「在庫あり」に同期。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 4: owner L3 run 1 の是正（trigger icon / 固定帯） |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 3: 未解決時文言。 |
 | 2026-09-10 | PR #50 | 取引先ピッカーの canonical 実装 path と起動ボタンの現在値表示を反映。 |

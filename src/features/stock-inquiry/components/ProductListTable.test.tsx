@@ -72,7 +72,7 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
     expect(badge.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
   });
 
-  it("REQ-302 / SPEC-DISP-B2-1 D-B4: search positive stock renders 正常 status label", async () => {
+  it("REQ-302 / SPEC-DISP-B2-1 D-B4: search positive stock renders 在庫あり status label", async () => {
     renderWithRouter(
       <ProductListTable
         items={[makeMockProductWithRelations({ product_code: "P-OK", stock_quantity: 10 })]}
@@ -82,9 +82,9 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(await screen.findByText("正常")).toBeInTheDocument();
+    expect(await screen.findByText("在庫あり")).toBeInTheDocument();
     // SC1 / DSR-22 / catalog ⑬: 中立は tone 対象外。期待値は catalog の中立色契約。
-    const badge = screen.getByText("正常");
+    const badge = screen.getByText("在庫あり");
     expect(badge).toHaveAttribute("data-variant", "outline");
     expect(badge).not.toHaveAttribute("data-tone");
     expect(badge).toHaveClass("border-stone-200", "bg-stone-50", "text-stone-600");
