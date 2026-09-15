@@ -209,8 +209,8 @@ UI-03 の既存 `return_records.receipt_image_path` は互換維持し、共通�
 
 - 上部: 日付範囲、種別、記録ID、商品検索、部門、状態（すべて / 有効 / 取消済み / 進行中）。商品検索は共有 `SearchBar` の live 型（`debounceMs=200`、TRACE-D12）とし、URL `q` の変更時は `page` を既定へ戻す。
 - 検索欄の近くに「商品・部門での絞り込みは、CSV取込みでは取込み明細、棚卸しでは差異のあった商品が対象です。」と常時表示する。
-- 結果: 記録種別、業務日付、代表商品、明細数、状態、記録日時、詳細ボタン。記録IDは一覧の表示列から外す（[UI 磨き batch 3 design](../archive/plans/2026-09-06-ui-polish-batch3-design.md) owner culling 確定、2026-09-06。§65.4.1 の記録ID exact match フィルタは維持）。状態列は「有効」「取消済み」に加えて「進行中」badge を表示し、色だけに依存しない。
-- 明細数は棚卸し以外の 5 種では明細行数、棚卸しでは `reference_type='stocktake' AND is_voided=0` の差異件数を表す。進行中の棚卸しは代表商品・明細数とも「-」を表示する。完了した棚卸しで差異 0 件の場合は、明細数を `0` のまま、代表商品を「差異なし」と表示し、汎用 fallback の「明細なし」は使わない。
+- 結果: 記録種別、業務日付、代表商品、状態、記録日時、詳細ボタン。記録IDは一覧の表示列から外す（[UI 磨き batch 3 design](../archive/plans/2026-09-06-ui-polish-batch3-design.md) owner culling 確定、2026-09-06。§65.4.1 の記録ID exact match フィルタは維持）。状態列は「有効」「取消済み」に加えて「進行中」badge を表示し、色だけに依存しない。
+- `item_count` は一覧に表示しない（L8-4、owner 2026-09-15）。算出仕様は DTO として維持し、棚卸し以外の 5 種では明細行数、棚卸しでは `reference_type='stocktake' AND is_voided=0` の差異件数を表す。進行中の棚卸しは代表商品を「-」と表示する。完了した棚卸しで `item_count === 0` の場合は代表商品を「差異なし」と表示し、汎用 fallback の「明細なし」は使わない。
 - 各行は詳細 route へ遷移する。行内に取消/訂正ボタンは置かず、詳細画面で確認してから行う。
 - 詳細 route へ遷移するリンクは DSR-18 / TRACE-D11 に従い、search state を含む遷移元 URL を `returnTo` に含める。この hub では現在の `/inventory/records` search state を送り、同じ送信義務を作業画面の recent list、保存結果、操作ログの関連記録 link にも適用する。詳細画面から戻ると各遷移元の状態を復元する。
 - **filter-empty reset action**（2026-08-03 batch B、[02-component-catalog.md](../design-system/02-component-catalog.md) ⑥）: §65.4.1 の検索条件（recordType / dateFrom / dateTo / q / recordId / departmentId / status）が既定値以外、かつ結果 0 件のときは EmptyState に「絞り込みを解除」ボタンを表示する。押下で上記検索条件と `page` をすべて既定値へ戻す。既定値のまま 0 件（記録が実在しない）のときは表示しない。
@@ -268,7 +268,7 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
 4d. `listInventoryRecords` 6 種対称化: 本 slice は step 4（「4種を業務日付 DESC、記録ID DESC で横断表示する」の記述）の `record_type` 母集団を 6 種へ拡張し、当該記述を supersede する。
    - `record_type` に `csv_import` / `stocktake` を加え、`all` は入庫 / 返品・交換 / 手動販売 / 廃棄・破損 / CSV取込み / 棚卸しの 6 種を横断する。
    - status は §65.6.1 の写像で `active` / `canceled` / `in_progress` に正規化する。filter は「すべて / 有効 / 取消済み / 進行中」の 4 値とし、条件を `UNION ALL` 後の外側 derived table へ 1 回だけ適用して WHERE に実反映する。
-   - CSV取込みの明細母集団は `sale_records` とし、TRACE-D6 の履歴保持方針により rollback 後の `is_voided=1` 行も `item_count` / 代表商品へ含める。棚卸しの `item_count` は差異件数であり、`inventory_movements.reference_type='stocktake' AND is_voided=0` に必ず絞る。進行中の棚卸しは UI 上の代表商品・明細数をともに「-」とする。
+   - CSV取込みの明細母集団は `sale_records` とし、TRACE-D6 の履歴保持方針により rollback 後の `is_voided=1` 行も `item_count` / 代表商品へ含める。棚卸しの `item_count` は差異件数であり、`inventory_movements.reference_type='stocktake' AND is_voided=0` に必ず絞る。進行中の棚卸しは UI 上の代表商品を「-」とする（明細数は一覧に表示しない、L8-4）。
      進行中の棚卸しは差異 movement が未発生のため、商品 / 部門 filter には構造的に hit しない（§65.4.1 の既知の制約と同旨）。
    - `business_date` は CSV取込みが `settlement_date`、棚卸しが `DATE(COALESCE(completed_at, started_at))`、記録日時は CSV取込みが `imported_at`、棚卸しが `started_at` を使う。
    - `/csv-import/records` / `/stocktake/records` の専用一覧 route と `listCsvImportRecords` / `listStocktakeRecords` は完成形契約のまま runway 残置とし、横断検索の充足を理由に削除しない。
@@ -293,6 +293,7 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-09-15 | 表示小修正 batch 2 | L8-4（owner 決定2026-09-15）により一覧の明細数列を撤去。DTO 算出仕様、代表商品分岐、詳細表示の明細数を維持。 |
 | 2026-09-09 | PR #46 | ⑮ S5 備考「—」への同期。 |
 | 2026-08-30 | PR #20 / DSR-18 | TRACE-D11 を一覧限定から、一覧 / recent list / 保存結果 / 操作ログの遷移元横断契約へ改訂。決定表、詳細表示、UI 実装方針、Test Focus を同期。 |
 | 2026-06-27 | Design Phase | 入出庫記録・在庫変動追跡の完成形、操作ログとの役割分担、取消/訂正、出力、実装スライスを定義。 |

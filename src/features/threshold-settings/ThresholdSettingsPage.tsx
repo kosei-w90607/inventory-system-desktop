@@ -21,9 +21,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/patterns/PageHeader";
-import { FormSection } from "@/components/patterns/FormSection";
 import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog";
 import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
@@ -224,10 +224,11 @@ export function ThresholdSettingsPage() {
           ) : null}
 
           <fieldset disabled={saveMutation.isPending} className="space-y-6 disabled:opacity-70">
-            <FormSection
-              title="在庫少の基準"
-              description="保存すると、ホームと在庫照会の在庫少の判定にすぐ反映されます"
-            >
+            <section className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                保存すると、ホームと在庫照会の在庫少の判定にすぐ反映されます
+              </p>
+              <Separator />
               <div className="grid gap-4 md:grid-cols-2">
                 {THRESHOLD_FIELD_DESCRIPTORS.map((descriptor) => (
                   <div key={descriptor.field} className="space-y-1">
@@ -249,7 +250,7 @@ export function ThresholdSettingsPage() {
                   </div>
                 ))}
               </div>
-            </FormSection>
+            </section>
 
             <div className="flex justify-end border-t pt-4">
               <Button type="submit" disabled={!isDirty || saveMutation.isPending}>

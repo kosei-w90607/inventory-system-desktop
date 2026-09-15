@@ -1,5 +1,6 @@
 // src/features/threshold-settings/ThresholdSettingsPage.test.tsx
 //
+// SPEC-DISP-B2-1 / D-B1・D-B6: 見出しと入力検証4系統の文言。
 // UI-11a Test Design Matrix T1〜T10, T12（docs/plans/2026-07-07-ui11a-threshold-settings-implementation.md）
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -93,7 +94,7 @@ describe("ThresholdSettingsPage (UI-11a / QR系 / D-4)", () => {
     await user.clear(generalInput);
     await user.click(screen.getByRole("button", { name: "保存する" }));
 
-    expect(await screen.findByText("入力してください")).toBeInTheDocument();
+    expect(await screen.findByText("1〜99999の整数を入力してください")).toBeInTheDocument();
     expect(mockUpdateSetting).not.toHaveBeenCalled();
   });
 
@@ -106,7 +107,7 @@ describe("ThresholdSettingsPage (UI-11a / QR系 / D-4)", () => {
     await user.type(generalInput, "1.5");
     await user.click(screen.getByRole("button", { name: "保存する" }));
 
-    expect(await screen.findByText("1以上の整数を入力してください")).toBeInTheDocument();
+    expect(await screen.findByText("1〜99999の整数を入力してください")).toBeInTheDocument();
     expect(mockUpdateSetting).not.toHaveBeenCalled();
   });
 
@@ -119,7 +120,7 @@ describe("ThresholdSettingsPage (UI-11a / QR系 / D-4)", () => {
     await user.type(generalInput, "0");
     await user.click(screen.getByRole("button", { name: "保存する" }));
 
-    expect(await screen.findByText("1以上の整数を入力してください")).toBeInTheDocument();
+    expect(await screen.findByText("1〜99999の整数を入力してください")).toBeInTheDocument();
     expect(mockUpdateSetting).not.toHaveBeenCalled();
   });
 
@@ -132,7 +133,7 @@ describe("ThresholdSettingsPage (UI-11a / QR系 / D-4)", () => {
     await user.type(generalInput, "100000");
     await user.click(screen.getByRole("button", { name: "保存する" }));
 
-    expect(await screen.findByText("99999以下で入力してください")).toBeInTheDocument();
+    expect(await screen.findByText("1〜99999の整数を入力してください")).toBeInTheDocument();
     expect(mockUpdateSetting).not.toHaveBeenCalled();
   });
 
@@ -301,7 +302,12 @@ describe("ThresholdSettingsPage (UI-11a / QR系 / D-4)", () => {
   it("ui11a wording shows the h1 and required field labels matching UI-11a-D6", async () => {
     await renderReady();
 
+    // SPEC-DISP-B2-1 / D-B1 GA3: h1 を残し、区画は説明文のみとする。
     expect(screen.getByRole("heading", { level: 1, name: "在庫少の基準" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("保存すると、ホームと在庫照会の在庫少の判定にすぐ反映されます"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("一般商品の基準（必須）")).toBeInTheDocument();
     expect(screen.getByLabelText("生地の基準（必須）")).toBeInTheDocument();
     expect(

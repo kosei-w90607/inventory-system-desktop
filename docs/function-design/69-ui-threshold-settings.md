@@ -128,10 +128,10 @@ function useSaveThresholds(): UseMutationResult<ThresholdSaveResult, InvokeError
 
 | ルール | エラー文言（FieldError、`role="alert"`） |
 |---|---|
-| 空欄 | 「入力してください」 |
-| 整数以外（小数・文字） | 「1以上の整数を入力してください」 |
-| 1 未満 | 「1以上の整数を入力してください」（D-4: 0 以下拒否） |
-| 99999 超 | 「99999以下で入力してください」（UI-11a-D3 sanity bound） |
+| 空欄 | 「1〜99999の整数を入力してください」 |
+| 整数以外（小数・文字） | 「1〜99999の整数を入力してください」 |
+| 1 未満 | 「1〜99999の整数を入力してください」（D-4: 0 以下拒否） |
+| 99999 超 | 「1〜99999の整数を入力してください」（UI-11a-D3 sanity bound） |
 
 - 検証エラーは発生源直近のインライン 1 スロット（DSR-03）。検証エラーがある間は保存を実行しない。
 - 保存済みの既存値が数値として読み取れない場合（DB 直接操作等の異常系）: 該当フィールドを空欄で表示し、FieldError「現在の設定値が読み取れません。正しい値を入力して保存してください」を出す。正しい値の保存で回復する。
@@ -149,7 +149,7 @@ function useSaveThresholds(): UseMutationResult<ThresholdSaveResult, InvokeError
 |---|---|
 | ナビ / タイトル / h1 | 在庫少の基準 |
 | PageHeader 説明 | 在庫がこの数以下になったら「在庫少」としてお知らせします |
-| FormSection 見出し | 在庫少の基準 |
+| FormSection 見出し | （なし、説明文のみ。owner 判断 2026-09-15） |
 | FormSection 説明 | 保存すると、ホームと在庫照会の在庫少の判定にすぐ反映されます |
 | フィールド 1 ラベル | 一般商品の基準（必須） |
 | フィールド 1 補足 | 在庫がこの個数以下になったら在庫少（初期値: 3個） |
@@ -200,6 +200,7 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 
 | 日付 | PR | 内容 |
 |------|-----|------|
+| 2026-09-15 | 表示小修正 batch 2 | owner 方針に基づき区画見出しを外し説明文のみ、入力エラーを「1〜99999の整数を入力してください」に統一。4種の保存拒否ルールは維持。 |
 | 2026-08-03 | UI safety net implementation | 既存 isDirty を共通離脱ガードへ接続し、保存成功後の非 block を test で固定 |
 | 2026-07-06 | - | UI-11a Design Phase 初版（UI-11a-D1〜D7） |
 | 2026-07-07 | - | 実装反映の drift 修正: 実配置は `features/threshold-settings/`（`features/settings/` は存在せず、UI-11b 実体は `backup-restore/`）、フォームは既存パターン（useState + zod safeParse、RHF 不使用）。保存は最初の失敗 key で停止し「保存済み」表示を事実に限定 |

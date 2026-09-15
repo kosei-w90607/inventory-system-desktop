@@ -351,7 +351,6 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
                 <TableHead>種別</TableHead>
                 <TableHead>業務日付</TableHead>
                 <TableHead>代表商品</TableHead>
-                <TableHead className="text-right">明細数</TableHead>
                 <TableHead>状態</TableHead>
                 <TableHead>記録日時</TableHead>
                 <TableHead className="text-right">操作</TableHead>
@@ -372,9 +371,6 @@ export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecord
                     <TableCell>{record.business_date}</TableCell>
                     <TableCell className="min-w-[12rem] whitespace-normal">
                       {representativeItem}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {isInProgressStocktake ? "-" : record.item_count}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{formatRecordStatus(record.status)}</Badge>

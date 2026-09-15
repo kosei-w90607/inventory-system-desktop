@@ -111,7 +111,7 @@ export type PaginatedResult<T> = {
 | 新規 | `src/features/stock-inquiry/components/StatusChips.tsx` | 3 チップ（shadcn `ToggleGroup`、件数バッジなし、Q-5） | 40-55 |
 | 新規 | `src/components/patterns/DepartmentFilter.tsx`（実装当時は UI-06a 用ローカル実装、PR-B で 3 feature を統合） | shadcn Select 単一選択（`DepartmentOption` 型は patterns/ が定義、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)） | 40-60 |
 | 新規 | `src/features/stock-inquiry/components/ProductListTable.tsx` | shadcn Table（`source` prop 受取 → derive-stock-state 引き渡し、状態列で Badge + icon + 日本語ラベル表示。stockout red / low yellow / ok default は在庫数セルの補助シグナル）+ 行クリックで選択 + 選択行直下に colSpan インライン展開（`detailQuery` props → StockDetailContent 共用） | 90-150 |
-| 新規 | `src/features/stock-inquiry/components/StockStatusBadge.tsx` | `StockStatus` を `Badge + lucide icon + 日本語ラベル` に変換（在庫切れ / 在庫少 / 通常）。閾値判定は持たない | 25-40 |
+| 新規 | `src/features/stock-inquiry/components/StockStatusBadge.tsx` | `StockStatus` を `Badge + lucide icon + 日本語ラベル` に変換（在庫切れ / 在庫少 / 在庫あり）。閾値判定は持たない | 25-40 |
 | 新規 | `src/features/stock-inquiry/components/EmptySearchPlaceholder.tsx` | status=all + q 空文字時の centered muted text（契約 I） | 20-30 |
 | ~~新規~~ 撤去 | ~~`src/features/stock-inquiry/components/TruncatedResultsAlert.tsx`~~ | `truncated` 時に shadcn Alert で絞り込み案内（契約 I）。**2026-08-03 batch B（UI-06a-D1）で撤去**: pagination 導入により全件へ到達可能になったため、打ち切り告知は不要（§58.10 契約 I 参照） | 25-35 |
 | 新規 | `src/features/stock-inquiry/components/StockDetailContent.tsx` | 詳細の内側描画（在庫数/売価/原価/最終入庫日/最終販売日 + 商品修正/入庫記録/在庫変動履歴 active link、isLoading/isError/data 全状態内包）。行インライン展開とフォールバックカードで共用。2026-08-26 に商品修正/入庫記録を active link 化 | 90-130 |
@@ -399,6 +399,9 @@ export function useStockInquiry(params: {
 
 #### StockInquiryPage（最上位、失敗 4 状態出し分け）
 
+- PageHeader: title「在庫照会」+ subtitle「商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます」。
+- 在庫少 / 在庫切れで `items.length > 0` のとき、一覧の直前（PaginationSummary の上）に「全 N 件」を `text-base font-semibold tabular-nums` で表示し、0 件では件数行を出さず EmptyState を表示する。
+
 ```tsx
 function StockInquiryPage() {
   const { q, dept, status, page, selected } = Route.useSearch();
@@ -513,7 +516,7 @@ function StockInquiryPage() {
 - `source` prop を `derive-stock-state(item, source)` に引き渡し、状態列で `StockStatusBadge` を表示する
   - `stockout` = `CircleAlertIcon` + 「在庫切れ」Badge
   - `low` = `TriangleAlertIcon` + 「在庫少」Badge
-  - `ok` = muted 「通常」Badge
+  - `ok` = muted 「在庫あり」Badge
 - 在庫数セルの stockout red / low yellow / ok default は二次シグナルとして残す。意味そのものは状態列の日本語ラベルで伝える
 - H-6 feedback 対応として、商品コードセルと詳細 header の商品コードは `font-mono text-sm font-medium` とする。旧 `text-xs` は最小級で、全体 WebView 表示スケール導入後も読みづらさが残るため使わない
 - 行クリックで `onSelect(isSelected ? null : product_code)` 発火（UI-06a-D5、R2-3 展開行トグルクローズ） → `selected` URL state 更新（`code ?? undefined`） → **選択行の直下**に colSpan 展開行で `StockDetailContent` をインライン描画（`detailQuery` props を受け取る、collapsible 不使用 = 条件描画）。選択中行を再クリックすると `onSelect(null)` が呼ばれ展開が閉じる。展開行は `bg-muted` を明示固定し選択行と視覚的に一体化（New-1）。list 失敗時の独立描画はフォールバック `StockDetailCard` が担う（§58.8）
@@ -562,7 +565,7 @@ function StockInquiryPage() {
 | `filter-low-stock-list.test.ts` | stockout 分岐 / low_stock 分岐 / q 部分一致 / dept 絞り込み / 複合 / 空配列 / `filterAndSortLowStockList`: 取引先名昇順（null 最後）→ 在庫数昇順 → 商品名昇順ソート（UI-06a-D4） |
 | `useStockInquiry.test.tsx` | search → PaginatedResult 正規化（source/totalCount、`truncated` は撤去済み） / low_stock → 配列正規化 / status=all+q空 で enabled=false / 1 件自動展開 / status 切替 → selected clear → 新 list 1 件で再展開 / detail 部分障害 / list 成功 + selected 不在 → clear（C-P2-1） / isAllEmpty + selected → clear + detail 非発火（Round 1 P2-2） / page が queryKey とクエリ引数に反映される（SPEC-UIBB-3/4） / SPEC-UIBB-9: `departmentOptionsQuery` が `listDepartments()` を呼び、page/q/dept/status 変更後も候補が不変で選択中部門から別部門へ直接切替できる（round 1 P1-3、DSR-10）。status 変更（all → low_stock → stockout）も候補不変であることを追加 assert（round 2 P2-3）。同一 `QueryClient` 上で page/q/dept/status を変えても `listDepartments` の call count = 1 に留まる（round 2 P2-3、query-key 安定性の mutant 検出）。`queryKeys.stockInquiry.departmentOptions()` が無引数で呼ぶたびに同一・一定の key を返す unit test（round 2 P1-1、無引数化の regression 防止） / 手動クローズ後、同一検索条件では自動展開が再発火しない・条件変化後は再度発火する対 test（UI-06a-D5） / ページ送りで前ページの stale selected が維持されたままでも新条件の単一結果が自動展開する（round 2 P2 是正、fix 前 FAIL） |
 | `SearchBar.test.tsx` + `StockInquiryPage.test.tsx` | `autoFocus` 検証 / Enter で debounce flush + 即時 search / 結果 1 件で自動展開 useEffect → URL state `selected` 更新 / list 成功 + selected でインライン展開 / 行クリックで selected 更新 → 展開（stateful harness、C-P2-3）/ list 失敗 + detail 成功でフォールバックカード独立描画（部分障害許容、Codex Round 1 P2-1）/ search flow の在庫切れ label / low_stock flow の在庫少 label（RTL + user-event）/ SPEC-UIBB-1/2: 絞り込み非既定+0件で reset action 表示・押下で全条件+page 既定復帰 / SPEC-UIBB-4: q・dept・status 変更で page=1、page 移動は条件維持 / SPEC-UIBB-5: 51 件 synthetic で page 2 に到達、`TruncatedResultsAlert` 残存 0（rg 静的 sweep） / SPEC-UIBB-8: `items` 空 + `total_count > 0` + `page > 1` で範囲外 page 専用メッセージ + 「先頭ページに戻る」を表示し、filter-empty reset action より優先判定される（UI-06a-D3、round 1 P1-2） / SPEC-UIBB-9: 候補 query pending 中は `DepartmentFilter` trigger が disabled（`departmentOptionsQuery.isLoading`、round 3 P2-3） / SPEC-UIBB-9: `listDepartments` reject + list query 成功で `role="alert"`「部門候補の取得に失敗しました」と商品一覧が**同時に**表示される（一覧独立の結合退行検出、round 3 P2-3）。test harness は QueryClient retry を無効化して失敗状態を一意に確定させる |
-| `ProductListTable.test.tsx` | 状態列の「在庫切れ」「在庫少」「通常」text / 商品コード cell `text-sm` readability guard / 選択行直下インライン展開 / nextElementSibling colSpan=7 guard（旧下部固定・旧 5/6 列混入検出）/ 非選択時展開なし / detail 失敗 inline（C-P2-3） / 展開行 whitespace-normal guard（Round 1 P2-1） / 取引先列ヘッダ・null 表示・両 view 共通表示（UI-06a-D4） / 選択中行の再クリックで `onSelect(null)` 発火（展開行トグルクローズ、UI-06a-D5） |
+| `ProductListTable.test.tsx` | 状態列の「在庫切れ」「在庫少」「在庫あり」text / 商品コード cell `text-sm` readability guard / 選択行直下インライン展開 / nextElementSibling colSpan=7 guard（旧下部固定・旧 5/6 列混入検出）/ 非選択時展開なし / detail 失敗 inline（C-P2-3） / 展開行 whitespace-normal guard（Round 1 P2-1） / 取引先列ヘッダ・null 表示・両 view 共通表示（UI-06a-D4） / 選択中行の再クリックで `onSelect(null)` 発火（展開行トグルクローズ、UI-06a-D5） |
 | `StatusChips.test.tsx` | selected chip の `data-state="on"` / chip click の filter value 発火 / deselect 空文字無視（常に 1 つ選択維持） |
 
 `vi.mock("@/lib/bindings")` で commands mock + TanStack Router test wrapper（memory `feedback-vitest-react19-setup-pattern.md` 踏襲）。状態表示のテストは Tailwind color class ではなく text / DOM state / table structure を assert する。
@@ -578,11 +581,11 @@ function StockInquiryPage() {
 
 #### 契約 H 在庫状態の高視認性表示（[design-system/00-foundations.md §業務ステータスの視認性](../design-system/00-foundations.md)）
 
-> status === "all" は search_products 由来のため、stock_quantity <= 0 の在庫切れのみを明示し、stock_quantity > 0 は「通常」と表示する。在庫少は BIZ 判定済み集合である list_low_stock 由来の status === "low_stock" 表示時に限定する。frontend は閾値を保持しない。意味は状態列の日本語ラベル + icon + Badge で伝え、赤 / amber は補助シグナルとして使う。
+> status === "all" は search_products 由来のため、stock_quantity <= 0 の在庫切れのみを明示し、stock_quantity > 0 は「在庫あり」と表示する。「在庫あり」は基準以上を保証しない（すべて表示では閾値判定を行わない）。在庫少は BIZ 判定済み集合である list_low_stock 由来の status === "low_stock" 表示時に限定する。frontend は閾値を保持しない。意味は状態列の日本語ラベル + icon + Badge で伝え、赤 / amber は補助シグナルとして使う。
 
 | List source | stock_quantity <= 0 | stock_quantity > 0 |
 |---|---|---|
-| search_products（`status === "all"`） | `CircleAlertIcon` + 「在庫切れ」Badge + 在庫数 red 補助 | 「通常」Badge + 在庫数 default |
+| search_products（`status === "all"`） | `CircleAlertIcon` + 「在庫切れ」Badge + 在庫数 red 補助 | 「在庫あり」Badge + 在庫数 default |
 | list_low_stock（`status === "stockout" \| "low_stock"`） | `CircleAlertIcon` + 「在庫切れ」Badge + 在庫数 red 補助 | `TriangleAlertIcon` + 「在庫少」Badge + 在庫数 amber 補助 |
 
 #### 契約 I 「すべて」チップの検索駆動表示（ラベルと実データの一致）
@@ -595,6 +598,10 @@ function StockInquiryPage() {
 - **Why**: pagination により全件へページ送りで到達できるようになるため、「他にも検索結果があります」という打ち切り告知（旧 契約 I）はページ送りと二重表現になる。50 §50.4（商品一覧）の既存 page 慣行をそのまま踏襲し、在庫照会だけの新しい UX を発明しない。
 - **Rejected**: truncated alert を pagination と併存させる案（「打ち切り告知」+「ページ送り」が同じ問題を二重に説明することになり、利用者が両方を読む必要が生じる）。在庫少 / 在庫切れ（`list_low_stock` 経路）への pagination 拡張（既存 100 件以下想定の client filter で十分、対象外のまま据え置き）。
 - **Revisit trigger**: `list_low_stock` の返却件数が 100 件を恒常的に超える運用が確認された場合、client filter 経路への pagination 適用を再検討する。
+
+#### UI-06a-D6: 絞り込み時の件数表示（2026-09-15、SPEC-DISP-B2-1 / D-B5）
+
+- 在庫少 / 在庫切れの絞り込み時は検索・部門・状態の client filter 後の `items.length` を N とする「全 N 件」のみを表示し、pagination は追加しない（0 件は EmptyState のみ）。
 
 #### UI-06a-D2: 部門候補を listDepartments master 全件へ是正（DSR-10、round 1 P1-3、2026-08-03 batch B）
 
@@ -643,7 +650,7 @@ function StockInquiryPage() {
 | 最終入庫日 / 最終販売日 None | 「—」（Q-2） | `string \| null`（null） |
 | 在庫状態（在庫切れ） | `CircleAlertIcon` + 「在庫切れ」Badge（在庫数 red は補助） | `StockStatus = "stockout"` |
 | 在庫状態（在庫少） | `TriangleAlertIcon` + 「在庫少」Badge（在庫数 amber は補助） | `StockStatus = "low"`（list_low_stock 由来時のみ） |
-| 在庫状態（通常） | 「通常」Badge | `StockStatus = "ok"` |
+| 在庫状態（在庫あり） | 「在庫あり」Badge | `StockStatus = "ok"` |
 | 金額（売価 / 原価） | 「¥1,234」 | `Intl.NumberFormat` |
 | 画面名「在庫照会」と CMD `get_stock_detail` / `list_low_stock` の命名差異 | 画面表示「在庫照会」 | CMD は実態（詳細取得 / 在庫少一覧）に即した命名（memory `feedback-naming-must-match-reality.md`） |
 
@@ -663,6 +670,7 @@ function StockInquiryPage() {
 
 | 日付 | PR | 内容 |
 |------|-----|------|
+| 2026-09-15 | 表示小修正 batch 2 | 在庫照会の副題、絞り込み後の「全 N 件」、在庫状態 Badge「在庫あり」を反映。 |
 | 2026-08-26 | stale 実装状況表記一括是正 | `StockDetailContent` の「商品修正」「入庫記録」を既存画面への active link に変更し、遷移先と `returnTo` 非付与の契約を現況化 |
 | 2026-05-20 | #67 | 新規作成（UI-06a 在庫照会、REQ-301/302 統合 1 画面、2 useQuery 部分障害許容 + URL state 4 key + 派生 4 純関数 + StockInquiryListResult 正規化型 + 色分け契約 H + 検索駆動表示契約 I + collapsible/toggle/toggle-group 新規 add + CSV 取込み invalidation / Plan rally 6 round converged） |
 | 2026-05-20 | #67 | Codex Round 1 反映: P2-1/P2-2 = StockDetailCard を一覧テーブル下部固定表示に変更（list query 分岐の外に独立描画、list 失敗時も詳細を表示 = 部分障害許容と整合）。P3-1 = q/dept 変更時も `selected` を clear（§58.4、新 list の非同期含有判定を避け race 回避）。RTL に list 失敗 + detail 成功ケース追加（§58.9） |
