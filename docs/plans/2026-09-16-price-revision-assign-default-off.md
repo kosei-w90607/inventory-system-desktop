@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: a129080ca3985723c162e5a86b476683eda61cca
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Codex
@@ -23,6 +23,7 @@ manual = owner Windows native L3 1 画面（一括価格改定: 取引先選択�
 
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（本 commit）: Risk R2、owner 決定 (a) 既定 off + (b) 文言明示を Goal Invariant へ確定。Design Readiness は既存 77 §77.2 REQ-106/SPEC-PRV-D6・§77.6・30-biz §4.4.1 手順 5（不変の前提）を十分と引用（既定値と文言の同期のみ、新 component / 新 token なし）。Test Design Matrix は R2 で AC が機械 oracle + 既存 test の反転で閉じるため付けない。
+- plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P1 2 / P2 1 / P3 1）→ in-place 是正 `cb8050fa`（3 本目 test の期待値反転を S2 へ、AC-L3-1 を目視 2 点へ〈L3 Eligibility〉、D-088 の書式、参照ラベル）→ round 2 closure（新規 P1 1 = Workflow State の manual 説明の伝播漏れ）→ 是正 `a129080c` → round 3 closure = 通過可（P1/P2 = 0、round 天井 3 で終了）。Plan Commit = `a129080c`（plan-first `ff0f3e25` → 補正 `99607d45` → 是正 2 本を含む確定版）。実装は Codex 発注書 57 で本 commit を HEAD_SHA として開始する。
 
 ## Owner Effort Budget
 
@@ -235,3 +236,21 @@ Fill after implementation.
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-16、plan-gate、Sonnet、裁定 Coordinator）
+
+- P1-1（`PriceRevisionPage.test.tsx:275` の 3 本目 test が既定 on 前提で `assign_supplier_id: 7` / `null` を期待し、Scope S2 に無い）= accept → S2 に期待値反転（mount 直後 = null、click 後 = 7。DTO 契約は不変）を追記、AC7 に red / green の報告を追記
+- P1-2（AC-L3-1 の「off のまま確定しても取引先が空のまま」は demo seed に supplier_id NULL の商品が無く fixture 準備が要る）= 裁定: DB 直接編集を要するため L3 Eligibility（DEV_WORKFLOW）により L3 から外し、unit test（`:275`、AC7）で閉じる。L3 は目視 2 点のみ
+- P2（D-PR4 の decision-log 書式「背景 / 決定 / 影響 / 代替案」が repo 慣行と不一致）= accept → D-087 と同じ `Status / Decision / Why / Compatibility` に訂正
+- P3（起票時実測の `:131` Review Focus という非実在ラベル）= accept → `:128`（§77.8 テスト観点 SPEC-PRV-D3 bullet）に訂正
+- 是正 `cb8050fa`。round 2 = closure
+
+### Plan Review round 2（closure、Sonnet）
+
+- round 1 の 4 件 = closed。P1-2 の裁定は DEV_WORKFLOW L3 Eligibility 条件 (3) と Human Visual Confirmation の規則に照らして妥当と確認
+- 新規 P1: Workflow State の `manual =` 説明文が旧 3 点のまま（AC-L3-1 だけ直して伝播漏れ）= accept → 目視 2 点に揃える `a129080c`
+- round 3 = closure（天井）
+
+### Plan Review round 3（closure、Sonnet）
+
+- `manual =` 行と AC-L3-1 の一致を確認、新規 finding なし。**Plan Gate 通過可**（P1/P2 = 0）
