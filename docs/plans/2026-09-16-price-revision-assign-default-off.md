@@ -111,7 +111,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `eabc
 - **AC2** `rg -c '確定した商品の取引先が未設定なら、この取引先を設定する' src/features/products/PriceRevisionPage.tsx` = 1（baseline 0）/ `rg -c '未設定の商品にこの取引先を設定する' src/features/products src/features/products/components` = 0（baseline 1 + test 7）
 - **AC3** `rg -c '紐付け toggle は既定 off' docs/function-design/77-ui-bulk-price-revision.md` = 1（baseline 0）/ `rg -c '既定 on' docs/function-design/77-ui-bulk-price-revision.md` = 3（baseline 5 = `:27` `:30` `:92` `:93` `:128`。残る 3 = `:27` `:92` `:128` の「取引先未設定の商品も含める」〈SPEC-PRV-D3〉の既定 on、本 lane 非対象）/ `rg -c 'D-088' docs/function-design/77-ui-bulk-price-revision.md` ≥ 1
 - **AC4** `rg -c '^## D-088' docs/decision-log.md` = 1（baseline 0）
-- **AC5** `PriceRevisionPage.test.tsx` の 2 本が新既定を固定（test 名に「既定 off」を含む）: `rg -c '既定 off' src/features/products/PriceRevisionPage.test.tsx` ≥ 2（baseline 0）。mutant: `useState(false)` → `true` で FAIL
+- **AC5** `PriceRevisionPage.test.tsx` の 2 本が新既定を固定（test 名に「既定 off」を含む）: `rg -c '既定 off' src/features/products/PriceRevisionPage.test.tsx` ≥ 2（baseline 0）。mutant: ~~`useState(false)` → `true` で FAIL~~（**GA2 で訂正**: mount 後の `useEffect` が `false` に戻すため初期値だけの mutant は検出できない〈Codex run 3 で実測、27 test 全 PASS〉。正しい mutant は (1) `useEffect` 内 `setAssignSupplier(false)` → `true`〈mount 後に on へ戻り `:186` の `not.toBeChecked()` が落ちる〉と (2) `patchSearch` 内 `setAssignSupplier(false)` → `true`〈取引先変更後に on へ戻り `:186` の末尾 assert が落ちる〉。各 1 本ずつ FAIL を確認して戻す）
 - **AC6**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri src/features/products/components docs/function-design/30-biz-product-service.md docs/function-design/40-cmd-product.md | wc -l` = 0
 - **AC7** 対象 test（`PriceRevisionPage`）PASS、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（`:275` の test の期待値反転を含む。反転前の test は既定 off で必ず FAIL するため、修正前後の red / green を報告する）
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
@@ -216,7 +216,7 @@ For R3/R4, include or link a Test Design Matrix.
 Test Design Matrix は付けない（R2、AC が機械 oracle〈rg count〉+ 既存 test の反転で閉じるため）。
 
 - targeted tests: S1 / S2 の test を実装と同 commit で更新（AC5）
-- negative tests: mutant `useState(false)` → `true` で AC5 が FAIL することを実装時に確認
+- negative tests: mutant（GA2: `useEffect` / `patchSearch` の戻し先 `false` → `true` の 2 本）で AC5 が FAIL することを実装時に確認
 - compatibility checks: `assign_supplier_id` 契約は不変（AC6 の負の oracle）
 - data safety checks: not applicable
 - main wiring/integration checks: not applicable（`useEffect` / `patchSearch` の分岐構造は不変）
@@ -261,3 +261,9 @@ Fill after implementation.
 - run 2（同 HEAD）: 改訂後の発注書が HEAD 照合先を worktree と明示せず、pin した cwd（本体 clone、main `f2ef9e52`）で照合して不一致停止（正しい挙動）。発注書に `cd /tmp/codex-23-impl && git rev-parse HEAD` を明示
 - Owner Effort Budget: relay 2 → 3（Coordinator 起因、Writer の作業 0）。packet の Scope / AC / 設計判断は不変
 - 教訓: 発注書の手順節は packet Test Plan と突き合わせる。worktree を使う run では照合 command に path を含める
+
+### Gated Amendment 2（2026-09-16、Codex 発注書 57 run 3 の AC5 停止）
+
+- run 3（HEAD `2e010e5e`）: Writer は S1 / S2（`462ebc87`、red 3 failed → green 27 passed）と S3 / S4（`612f5f9a`）を実装したが、AC5 の mutant「`useState(false)` → `true`」が 27 test 全 PASS で生存し、packet 条件を満たせず停止（正しい挙動）。原因は Coordinator の mutant 設計誤り: mount 後の `useEffect` が既定 off へ戻すため、初期値だけを変えても挙動が変わらない
+- 是正: AC5 / Test Plan の mutant を `useEffect` / `patchSearch` の戻し先 `false` → `true` の 2 本に訂正（本 commit）。実装 commit は不変
+- 残作業（検証と公開のみ、source 編集なし）: 訂正後 mutant 2 本、AC7 の lint / format:check / `local-ci.sh full`、AC8、push 済み commit の Draft PR 作成。relay 上限 3 を使い切った（3 run とも Coordinator 起因）ため、これらは Coordinator 側の Sonnet run で行う（Writer の実装成果物は変更しない。Codex は Final Review の是正が必要になった場合に owner 承認で再依頼）
