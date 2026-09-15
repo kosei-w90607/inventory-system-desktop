@@ -8,10 +8,11 @@
 
 ## 次の行動
 
-- **㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示（R2、implementing）**: [Plan Packet](plans/2026-09-16-price-revision-assign-default-off.md)。branch `agent/price-revision-assign-default-off`、Plan Commit `a129080c`、GA1〜GA3、Draft PR #67。owner 決定 2026-09-16。㉒ と file 互いに素、並走可。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
+
+- **一括価格改定の取引先紐付けを既定 off + 文言明示**: [PR #67](https://github.com/kosei-w90607/inventory-system-desktop/pull/67) を merge（2026-09-16）。owner 決定 2026-09-16（L3 round 3 所感「価格改定のついでに取引先が変わる」）起源。toggle 既定 off・供給者変更時も off のまま・label 文言変更を実装し、設計書 77 / `ui-task-specs.md` UI-14 を新既定へ同期、decision-log D-088。[archive の Plan Packet](archive/plans/2026-09-16-price-revision-assign-default-off.md)。Final Review round 1 = Sonnet pass / Opus P2 是正 → pass、owner L3 round 1 PASS。
 
 - **表示小修正 batch 2**: [PR #64](https://github.com/kosei-w90607/inventory-system-desktop/pull/64) を merge（2026-09-16）。在庫少の基準の区画見出し撤去（説明文のみ）/ Alert title 太字（600）/ 在庫照会の副題 + 絞り込み時「全 N 件」/ 在庫状態 Badge「在庫あり」/ 基準の入力 error 文言 1 本化 / 入出庫履歴の明細数列撤去を実装し、[archive の Plan Packet](archive/plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](archive/plans/test-matrices/2026-09-15-display-fixes-batch-2.md) に Final Review closure と GA1〜GA3 + GA3 補正を記録。
 
@@ -26,14 +27,14 @@
 ### Wave Registry
 
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。完了済み wave の記録は [archive](archive/harness-context/2026-09-14-Plans.md) に移送済み。
-- **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: lane 1 / 2 完了、lane 3 進行中** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
+- **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: 完了（lane 1〜3、2026-09-16）** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
   - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）
-  - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示（R2、`agent/price-revision-assign-default-off`、[Packet](plans/2026-09-16-price-revision-assign-default-off.md)、Draft PR #67、Phase implementing〈Plan Commit `a129080c`、GA1〜GA3〉、relay 3/3、介入 0/3）
+  - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示 = **完了**（PR #67 squash `ebbbef14`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-price-revision-assign-default-off.md)）
 
 ## ブロッカー
 
-㉒ / ㉓ を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。
+次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。
 
 ## 製品の未決判断
 

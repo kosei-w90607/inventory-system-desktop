@@ -7,7 +7,7 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: a129080ca3985723c162e5a86b476683eda61cca
@@ -111,7 +111,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `eabc
 - **AC2** `rg -c '確定した商品の取引先が未設定なら、この取引先を設定する' src/features/products/PriceRevisionPage.tsx` = 1（baseline 0）/ `rg -c '未設定の商品にこの取引先を設定する' src/features/products src/features/products/components` = 0（baseline 1 + test 7）
 - **AC3** `rg -c '紐付け toggle は既定 off' docs/function-design/77-ui-bulk-price-revision.md` = 1（baseline 0）/ `rg -c '既定 on' docs/function-design/77-ui-bulk-price-revision.md` = 3（baseline 5 = `:27` `:30` `:92` `:93` `:128`。残る 3 = `:27` `:92` `:128` の「取引先未設定の商品も含める」〈SPEC-PRV-D3〉の既定 on、本 lane 非対象）/ `rg -c 'D-088' docs/function-design/77-ui-bulk-price-revision.md` ≥ 1
 - **AC4** `rg -c '^## D-088' docs/decision-log.md` = 1（baseline 0）
-- **AC5** `PriceRevisionPage.test.tsx` の 2 本が新既定を固定（test 名に「既定 off」を含む）: `rg -c '既定 off' src/features/products/PriceRevisionPage.test.tsx` ≥ 2（baseline 0）。mutant: ~~`useState(false)` → `true` で FAIL~~（**GA2 で訂正**: mount 後の `useEffect` が `false` に戻すため初期値だけの mutant は検出できない〈Codex run 3 で実測、27 test 全 PASS〉。正しい mutant は (1) `useEffect` 内 `setAssignSupplier(false)` → `true`〈mount 後に on へ戻り `:186` の `not.toBeChecked()` が落ちる〉。~~(2) `patchSearch` 内 …~~（**GA3 で撤回**: 取引先変更は `normalizedSearch.supplier` の変化で `useEffect` も発火し `false` へ上書きするため、`patchSearch` 側だけの変異は観測不能〈検証 run で 27 PASS を実測〉。mutant は (1) の 1 本で AC5 を閉じる。`patchSearch` の戻し行は `useEffect` に包含される冗長行で、除去は Backlog〈挙動不変〉）
+- **AC5** `PriceRevisionPage.test.tsx` の 2 本が新既定を固定（test 名に「既定 off」を含む）: `rg -c '既定 off' src/features/products/PriceRevisionPage.test.tsx` ≥ 2（baseline 0）。mutant: ~~`useState(false)` → `true` で FAIL~~（**GA2 で訂正**: mount 後の `useEffect` が `false` に戻すため初期値だけの mutant は検出できない〈Codex run 3 で実測、27 test 全 PASS〉。正しい mutant は (1) `useEffect` 内 `setAssignSupplier(false)` → `true`〈mount 後に on へ戻り `:186` の `not.toBeChecked()` が落ちる〉。~~(2) `patchSearch` 内 …~~（**GA3 で撤回**: 取引先変更は `normalizedSearch.supplier` の変化で `useEffect` も発火し `false` へ上書きするため、`patchSearch` 側だけの変異は観測不能〈検証 run で 27 PASS を実測〉。mutant は (1) の 1 本で AC5 を閉じる。**Opus P2 の訂正（PR #67 pass B comment が正本）**: `patchSearch` の戻し行は同一取引先を選び直す経路（`normalizedSearch.supplier` が変わらず `useEffect` が発火しない）で単独に効く load-bearing 行。除去しない（Final Review pass B で反証: `renderStateful({ supplier: 7 })` → toggle on → ピッカーで同じ取引先を再選択 → `:37` あり = off に戻る / 除去 = on のまま）
 - **AC6**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri src/features/products/components docs/function-design/30-biz-product-service.md docs/function-design/40-cmd-product.md | wc -l` = 0
 - **AC7** 対象 test（`PriceRevisionPage`）PASS、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（`:275` の test の期待値反転を含む。反転前の test は既定 off で必ず FAIL するため、修正前後の red / green を報告する）
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
@@ -231,7 +231,7 @@ not applicable（DTO / wire 非接触。`assign_supplier_id` の契約は不変�
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #67](https://github.com/kosei-w90607/inventory-system-desktop/pull/67) で実装し squash merge 済み（`ebbbef14`、2026-09-16）。Writer = Codex 発注書 57（run 1 / 2 は Coordinator の発注書誤りで fail-closed、run 3 で実装 `462ebc87` `612f5f9a`）、検証・Draft PR = Sonnet run（source 編集なし）。GA1〜GA3、base 同期 `54e4c14f`。Final Review round 1 = Sonnet pass（P3 1）/ Opus P2 1 → 裁定合意で pass（`#issuecomment-5684502195`）。owner L3 round 1 PASS（`#issuecomment-5684432477`）。介入 1 / 予算 3、relay 3 / 上限 3
 
 ## Review Response
 
@@ -271,5 +271,16 @@ Fill after implementation.
 ### Gated Amendment 3（2026-09-16、検証 run の AC5 finding）
 
 - 検証 run（Sonnet、head `d25443df`）: AC1〜AC4 / AC6〜AC8 PASS、`local-ci.sh full` PASS。AC5 の GA2 mutant (1) `useEffect` は 3 test FAIL で kill、(2) `patchSearch` は 27 PASS で生存
-- 裁定: (2) は `useEffect` が同じ戻しを独立に行うため観測不能（mutant 設計の誤り、実装・test の欠陥ではない）。AC5 の mutant を (1) の 1 本に訂正（本 commit）。`patchSearch` の `setAssignSupplier(false)` は冗長行として Backlog（除去しても挙動不変。本 lane では S1「構造は残す」のまま）
+- 裁定: (2) は `useEffect` が同じ戻しを独立に行うため観測不能（mutant 設計の誤り、実装・test の欠陥ではない）。AC5 の mutant を (1) の 1 本に訂正（本 commit）。**Opus P2 の訂正（PR #67 pass B comment が正本）**: `patchSearch` の `setAssignSupplier(false)`（`PriceRevisionPage.tsx:37`）は同一取引先を選び直す経路で単独に効く load-bearing 行で、除去しない。本 lane では S1「構造は残す」のまま
 - Draft PR #67 作成済み。次: base 同期（main の #64 / #66 取込み）→ Final Review（Sonnet + Opus）→ owner L3 目視 2 点 → record → Ready
+
+### Final Review round 1（2026-09-16、head `54e4c14f`）
+
+- pass A（Sonnet）: P3 1 = PR body の GA3 反映漏れ → body 追記で対応
+- pass B（Opus）: P2 1 = GA3 記録の誤り（`patchSearch` の戻し行を除去可能と記録）→ 上記訂正（AC5 / GA3 節）。P3 = `docs/architecture/ui-task-specs.md:153` の旧「既定 on」記述 → 本 closeout（docs/design 同期 commit）で是正。P3 = `useState(false)` 単独 mutant は観測不能 → GA2 で記録済み、対応不要
+- 裁定: Opus の指摘を全件 accept、実装は不変（`:37` は load-bearing 行）。**Opus の合意条件 2 点**: (1) 反証の再現手順（`renderStateful({ supplier: 7 })` → toggle on → ピッカーで同じ取引先を再選択 → `:37` あり = off / 除去 = on）を packet に記録する。(2) 「同一取引先の再選択で off へ戻ることを固定する test を 1 本」を Backlog へ起票する際、現行挙動の固定であり owner が別を望めば test ごと変える旨の但し書きを付ける
+- review = pass（broad 2 audits @ `54e4c14f`、`#issuecomment-5684502195`）。manual = pass（owner L3 round 1、`#issuecomment-5684432477`）
+
+## 後続
+
+- Backlog「やると決めたもの（順番未定）」の同一取引先再選択 test 起票（Final Review pass B の合意条件 2、下記 3. 参照）
