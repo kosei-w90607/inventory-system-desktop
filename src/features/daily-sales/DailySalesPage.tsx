@@ -79,7 +79,7 @@ export function DailySalesPage({ search, onSearchChange }: DailySalesPageProps) 
 
       <TabsHeader />
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <DateNavigator date={date} onChange={handleDateChange} />
         <DepartmentFilter
           options={derived.departmentOptions}
