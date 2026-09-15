@@ -24,7 +24,7 @@
 
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。完了済み wave の記録は [archive](archive/harness-context/2026-09-14-Plans.md) に移送済み。
 - **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: 進行中** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
-  - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime（R3、`agent/filter-label-top-runtime`、[Packet](plans/2026-09-15-filter-label-top-runtime.md)、Draft PR 未作成、Phase implementing〈Plan Commit `c5b1ea2b`、Plan Review 3 round〉、介入 0/4）
+  - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime（R3、`agent/filter-label-top-runtime`、[Packet](plans/2026-09-15-filter-label-top-runtime.md)、Draft PR #63、Phase implementing〈Plan Commit `c5b1ea2b`、Plan Review 3 round、Gated Amendment 1〜4、owner L3 round 2 PASS〉、介入 3/4〈L3 ×2 + Ready 承認〉）
   - lane 2: ㉒ 表示小修正 batch 2（R2、`agent/display-fixes-batch-2`、lane 1 の plan-first commit を base に stack、packet 起草待ち、介入 0/3）
 
 ## ブロッカー
