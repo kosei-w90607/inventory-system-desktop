@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: c5b1ea2b275d74791fa0d6c76e1f7be0a52f4a65
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Codex
@@ -23,7 +23,8 @@ manual = owner Windows native L3 の抜き取り（AC-L3-1〜4）。github mode 
 
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（`a2e01334`）: Risk R3 を記録、Design Readiness が catalog ⑨ / ① / ⑤ + mockup-g を実装十分と引用（⑳ で design 完了済み、spec-check → plan-draft の許容 skip）、packet + Matrix を同 commit に置く。
-- plan-gate round 1（Sonnet: P1 3 / P2 2、Opus: P2 6 / P3 7、2026-09-15）→ in-place 是正（本 commit、Phase は plan-gate のまま）。設計判断の差し戻しなし。round 2 = closure（Sonnet + Opus、diff 限定）。
+- plan-gate round 1（Sonnet: P1 3 / P2 2、Opus: P2 6 / P3 7、2026-09-15）→ in-place 是正（`b771eb61`、Phase は plan-gate のまま）。設計判断の差し戻しなし。round 2 = closure（Sonnet 可 / Opus 新規 P2-A）→ 是正 `3ee233a8` + `41a9e7e7` → round 3 = closure（Opus 新規 P2-F）→ 天井到達の disposition `c5b1ea2b`（同型一括是正、Review Response 参照）。
+- plan-gate → plan-approved → implementing（本 commit、state-only）: 独立 Plan Reviewer（Sonnet + Opus）の round 1 findings は全 closed、round 2 / 3 の新規 P2 は Coordinator の同型一括是正で closed、P1/P2 = 0。Plan Commit = `c5b1ea2b`（plan-first `a2e01334` を先頭とする是正済みの確定版）。実装は Codex 発注書 49 で本 commit を HEAD_SHA として開始する。
 
 ## Owner Effort Budget
 
