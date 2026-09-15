@@ -288,5 +288,5 @@ Fill after implementation.
 
 - Writer が 6 commit + lint 是正 1 commit を作った後、58 `:114`（§58.2 file 構成表）に括弧なしの在庫状態「通常」が残ることを検出して push 前に停止。packet の S4 と AC4 は `「通常」`（括弧付き）だけを数えており、Goal（「通常」が docs に残らない）と oracle が一致していなかった
 - 是正: S4 / 実測表 B4 / AC4 に `:114` を追加（oracle は「在庫少 / 通常」→「在庫少 / 正常」）。`:192` `:447` `:607` の「通常の EmptyState」は一般語で対象外（`rg -n '通常' docs/function-design/58-ui-stock-inquiry.md` を Coordinator が実読）
-- Owner Effort Budget: relay 往復上限 2 → 3（理由は同欄）。Writer の停止 2 回はいずれも正しく、原因は Coordinator の起票品質
+- Owner Effort Budget: relay 往復上限 2 → 3（理由は同欄）。Writer の停止（発注書 51 の run 1 = 65 `:98`、run 2 = 58 `:114`。報告は `.local/codex-orders/last-51-display-fixes-batch-2-impl.md` と `report-51-…md`）はいずれも正しく、原因は Coordinator の起票品質
 - 教訓: 文言置換の oracle は括弧付き literal だけでなく、その語が別の区切りで現れる形（` / 通常`、`通常）` 等）を rg で全数確認してから固定する
