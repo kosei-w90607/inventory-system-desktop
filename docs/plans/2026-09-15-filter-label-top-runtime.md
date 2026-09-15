@@ -1,0 +1,317 @@
+# Plan Packet: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime 反映
+
+2026-09-15 起票。起点は `0414392338b7e7816803f13e379e69f689e21ef2`（origin/main）。design ⑳（[archive packet](../archive/plans/2026-09-10-filter-label-top-design.md)、PR #51 merge）が catalog ⑨ / ① / ⑤ と mockup-g で確定した規範を runtime へ反映する。Scope の正本は ⑳ packet の S6 申し送りで、本 packet は現行 main で file:line を再実測した（Sonnet Explore 2026-09-15、Coordinator が主要 site を直接読んで確認）。実装は別 run とし、Coordinator 裁定と独立 Plan Review 通過後に発注する。
+
+## Workflow State
+
+Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
+
+- Evidence Mode: github
+- Phase: plan-gate
+- Risk: R3
+- Execution Mode: fable-window
+- Plan Commit: pending
+- Amendments: none
+- Coordinator: Fable 5.1
+- Writer: Codex
+- Plan Reviewer: Sonnet + Opus（独立 fresh context、並列。裁定は Coordinator が直列）
+- Final Reviewer: Sonnet + Opus（独立 fresh context）+ Codex review 1 run
+- Final Review Minimum: 2
+- Human Gate: ready,merge,manual
+
+manual = owner Windows native L3 の抜き取り（AC-L3-1〜4）。github mode の有効化根拠は [PR #59 の専用記録](https://github.com/kosei-w90607/inventory-system-desktop/pull/59#issuecomment-5664736990)。本 lane は github mode で closure record と manual（L3）record を初めて使う dogfood target（Plans.md 2026-09-14 申し送り）。Fable 指揮の分業 lane であり D-087 の一貫担当例外は適用しない。
+
+遷移記録（append-only）:
+- kickoff → spec-check → plan-draft → plan-gate（本 commit）: Risk R3 を記録、Design Readiness が catalog ⑨ / ① / ⑤ + mockup-g を実装十分と引用（⑳ で design 完了済み、spec-check → plan-draft の許容 skip）、packet + Matrix を同 commit に置く。
+
+## Owner Effort Budget
+
+- 介入回数上限: 4（L3 抜き取り 1 round + Ready + merge + 予備 1。視覚系 lane の実績〈⑭ L3 2 round / ⑲ 2 round〉を踏まえ既定 3 から +1）
+- 実働時間上限: 40分
+- relay 往復上限: 2（Codex 実装 1 + 是正 1）
+- Plan Review round 天井: 3（既定 3）
+
+既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
+承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
+
+## Consultation Relay
+
+- Review Order Artifact: none
+- Review Order Ref: none
+
+## Risk
+
+Risk: R3
+
+Reason:
+operator workflow の UI 契約（一覧 / 記録画面の toolbar 配置、SegmentedControl の accessible name の出どころ、`PageHeader` の actions 持ち 15 page の配置）を変える。DB / Tauri command / DTO / route / search state は変更しないが、`PageHeader` と `DepartmentFilter` と `SegmentedControl` は共有 component で波及が page 横断（`PageHeader` 28 page、`DepartmentFilter` 5 site、SegmentedControl 3 site + tab 型 2 site 不変）になるため R2 に落とさない。
+
+## Goal
+
+Goal Invariant:
+
+### 最小完了条件
+
+- 一覧 / 記録画面の toolbar で、すべてのフィルタ入力（検索 / 部門 / 並び替え / 表示件数 / 廃番表示 / PLU表示 / 並び順 / 取引先 / 未入力のみ表示）の可視 label が入力の上に同じ見た目（`text-sm` weight 400 muted）で並び、Checkbox だけは行の縦中央に来る（catalog ⑨ 使用トークン、mockup-g state-1 提案 a / state-2 提案）。
+- `PageHeader` の actions 持ち page と、右要素を持つ section 見出し 2 箇所（差異のある商品 / 棚卸し進捗）が「見出し行 + 説明行」の 2 段になり、説明がボタンの横で折り返さない（catalog ① 構造 block / セクション見出し variation、mockup-g state-3 / state-4）。
+- section 見出し h2 の token が `text-xl font-semibold` に揃う（catalog ① variation）。
+
+### 失敗定義
+
+- accessible name が変わる、または消える（`getByRole("combobox", { name: "表示件数" })` 等の既存 query が解決しなくなる、SegmentedControl の group name が可視 label と一致しない）。
+- URL / search state、フィルタの候補ソース（DSR-10）、検索の確定経路（Enter / debounce / IME）に差が出る。
+- `PageHeader` の actions 無し page（13 page）の DOM が変わる。tab / mode 切替の SegmentedControl（sales TabsHeader、monthly ModeTabs）に可視 Label が付く。
+- `src-tauri/**`、`docs/function-design/**`、`01-decision-rules.md` に diff が出る。
+
+### 非目的
+
+- 廃番表示 3 択 / PLU表示 5 択の Tabs / Select 化（DSR-02 drift。本 packet の D-RT4 で「据え置き + Backlog 保留」を裁定）。
+- 商品追加検索（ProductAddSuggest wrapper）5 箇所の `space-y-2` → `grid gap-1`（toolbar 外、⑮ の wrapper。描画差は 4px で「壊さない優先」）。
+- ホーム画面の h2（`text-lg font-medium`、action group 見出し）の token 変更（後続の「ホーム mockup-c」lane の footprint）。
+- 04-backbone 原則 7 の drift（検索ボタン併記）。
+
+Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
+
+## 起票時実測（2026-09-15、origin/main `04143923`）
+
+⑳ S6 の file:line を現行で再実測した結果。差分は「S6 との差」列。
+
+| # | site | 現行 | S6 との差 |
+|---|---|---|---|
+| 1 | `src/components/patterns/DepartmentFilter.tsx:61-64` | `div.flex.items-center.gap-2` + `<label htmlFor={triggerId} id={labelId}>`、`labelId` は `:58,62` で未参照 | 一致 |
+| 1a | `DepartmentFilter` 呼び出し | `StocktakePage.tsx:747` / `DailySalesPage.tsx:84` / `ProductListPage.tsx:119` / `StockInquiryPage.tsx:116` / `PriceRevisionFilters.tsx:92` の **5 site**（全部 `@/components/patterns/DepartmentFilter`） | S6「4 サイト」は日次売上を数え落とし。component 1 箇所の改修で 5 site が揃う |
+| 2 | `src/features/products/ProductListPage.tsx:155` 2 段目 wrapper | `flex flex-wrap items-center gap-3`（1 段目 `:106` は既に `items-end gap-3`） | 一致 |
+| 2a | 同 `:156-159` 並び替え / `:187-190` 表示件数 | `div.flex.items-center.gap-2` + raw `<label className="text-sm text-muted-foreground">` | 一致 |
+| 2b | 同 SegmentedControl `:135-142`（`ariaLabel="廃番表示"`）/ `:143-150`（`"PLU表示"`）/ `:179-186`（`"並び順"`） | `label` prop なし | 一致 |
+| 3 | `src/features/stock-inquiry/StockInquiryPage.tsx:132-135` 表示件数 | `div.flex.items-center.gap-2` + raw label。wrapper `:103` は既に `items-end gap-3` | +3 行 |
+| 4 | `src/features/products/components/PriceRevisionFilters.tsx:62-91` 取引先 trigger | `div.flex.items-center.gap-2` + `<label id="price-revision-supplier-label">` + `<Button aria-haspopup="dialog" aria-labelledby>`（⑲ GA2 の群化 comment `:60-61`）。wrapper `:51` は既に `items-end gap-3` | ⑲ 後の形。`grid gap-1` 化は未反映 |
+| 4a | 同 `:102-111` 廃番を含む / `:143-155` 取引先未設定 Checkbox | `<label htmlFor><Checkbox/>文言</label>` の label 内包 | 2 件目の開始行は `:143`（S6 `:145`） |
+| 4b | 同 `:113-119` 表示件数 | `div.flex.items-center.gap-2` + raw label | 近似 |
+| 5 | `src/features/stocktake/StocktakePage.tsx:746` toolbar | `flex flex-wrap items-center gap-4 rounded-lg border bg-card p-4`、閉じは `:798` | 一致 |
+| 5a | 同 `:756-770` Checkbox | `div.flex.items-center.gap-2` + `<Checkbox id>` + sibling `<Label htmlFor>` | 一致（唯一の sibling 型） |
+| 5b | 同 `:771-774` 表示件数 | `div.flex.items-center.gap-2` + `<Label className="text-muted-foreground">`（`Label` component、既定 `font-medium`） | S6 未記載。D1 の `font-normal` 打ち消しが必要 |
+| 5c | 同 `:381-410` `StocktakeProgressHeader` | `div.space-y-2` > `div.flex.flex-wrap.items-center.justify-between.gap-3` > (`div` > h2 `text-xl font-semibold` + p) + Badge、`<Progress>` は `:407` | 範囲 -4/+3 行 |
+| 6 | `src/features/integrity-check/IntegrityCheckPage.tsx:232-260` 表示件数 | `div.flex.items-center.gap-2` + `<label id="integrity-check-per-page-label">` + Select | Select 閉じは `:260` |
+| 6a | 同 `:324-333` 差異のある商品 | `section.space-y-4` > `div.flex.flex-wrap.items-end.justify-between.gap-3` > (`div` > h2 `text-xl font-semibold` + p) + Button | -1 行 |
+| 7 | `src/components/ui/segmented-control.tsx:28-35` props / `:46` root | `ariaLabel` 必須、`label` なし。root は `div[role="group"][aria-label]`（labelable でない） | 一致 |
+| 8 | `src/components/patterns/SearchBar.tsx:72`（commit）/ `:178`（live） | `<Label className="shrink-0 text-muted-foreground">` / `<Label className="text-muted-foreground">`、`font-normal` なし | 一致 |
+| 9 | `src/components/patterns/PageHeader.tsx:20-28` JSDoc / `:30` inline / `:31-44` actions 分岐 | `header.flex.flex-wrap.items-start.justify-between.gap-3` > `div.min-w-0.flex-1.space-y-1`（h1 + subtitle + description）+ `div.shrink-0`。props は既に `description?` あり（`:15`） | 一致 |
+| 10 | section h2 `text-lg` | `<h2 className="text-lg font-semibold">` が `src/features` に 27 箇所（入出庫記録詳細 5 page × 2〜3 / 入庫・廃棄・返品交換・手動販売 各 3 / 月次・日次売上 各 1）+ `HomePage.tsx:90,95,100` の `text-lg font-medium` 3 箇所 | S6「A/B 6 + 右要素なし 24」と規模一致。内訳の 1:1 対応は Writer が実装時に rg で確定 |
+| 11 | `docs/design-system/02-component-catalog.md:28` ① canonical | `PageHeader{title, subtitle?, actions?}` の 3 variant（`description?` 欠落） | 一致 |
+| 11a | 同 `:640` ⑨ D2 block comment / ① 「runtime 反映は後続 lane」 | 「runtime 反映は後続 lane」の marker が ⑨ block comment と ① 段落末に残る | 本 lane で解消 |
+| 12 | 既存 test | `StocktakePage.test.tsx:1185,1261` が toolbar class `"flex flex-wrap items-center gap-4"` を完全一致 assert（旧 frame 不在の確認）、`:1159-1183` が DOM 順序を `compareDocumentPosition` で確認。各一覧 test は `getByRole("combobox", { name: "表示件数" })` で accessible name 依存 | 構造変更で更新が要るのは Stocktake の 2 assert のみ |
+
+## 設計判断（Coordinator adjudication、Plan Review で覆せる）
+
+- **D-RT1 label wrapper は raw `<label>` + `div.grid.gap-1` を canonical とし、`Label` component を使う既存 site（SearchBar 2 / Stocktake 表示件数 1）は component を残して `font-normal` を足す**（catalog ⑨ 使用トークンの両形を許す規範どおり。置換すると SearchBar の test / a11y 契約〈live 型は可視 label のみ〉に触るため最小差分を選ぶ）。
+- **D-RT2 `SegmentedControl` の `label?: string`**: 指定時は `div.grid.gap-1` で包み、`<span id={labelId} className="text-sm text-muted-foreground">{label}</span>` を上置きし、`div[role="group"]` に `aria-labelledby={labelId}` を付け **`aria-label` は出力しない**（accessible name の出どころを 1 つにする。⑨ live 型の「aria-label を追加しない」と同じ理由）。未指定時は現行どおり `aria-label={ariaLabel}`。`ariaLabel` prop は必須のまま（catalog ⑤「`ariaLabel` は常に必須」、tab / mode 切替の accessible name）。3 site は `label={ariaLabel と同文}` を渡す。`labelId` は `useId()`。
+- **D-RT3 `PageHeader` actions 分岐は 2 段に改め、actions 無し分岐は触らない**: `<header className="space-y-1">` > `<div className="flex flex-wrap items-start justify-between gap-3">` > `<h1 className="min-w-0 flex-1 text-2xl font-semibold">` + `<div className="shrink-0">{actions}</div>`、その下に `subtitle !== undefined` / `description !== undefined` の `<p className="text-sm text-muted-foreground">` を全幅で置く（catalog ① 構造 block と literal 一致）。actions 無しの 13 page は DOM 不変（失敗定義）。JSDoc `:20-28` の (c) 行と「副題・説明は左グループ内で折り返す」、inline `:30` を 2 段の記述へ更新する。描画差が出るのは商品 CSV 取込み（説明 154 字）のみ、subtitle 持ち 5 page は説明が 4px 下がる（⑳ D8 実測）。
+- **D-RT4 廃番表示 3 択 / PLU表示 5 択は SegmentedControl のまま**（DSR-02「3 つ以上は Tabs」の drift）。理由: 両者は「絞り込み条件」で tab（表示モード）ではなく、Select 化は 1 click 増で owner の「揃えたい」に反する。Tabs 化は route/search の view 切替と混同を招く。drift は catalog ⑨ D1 但し書きに既に記録済みで、Backlog「保留」へ 1 行起票（Coordinator、plan-first commit）し、DSR-02 側の例外明文化は design 判断として据え置く。
+- **D-RT5 section h2 token sweep は `src/features` の `<h2 className="text-lg font-semibold">` 全部**（右要素の有無を問わない。catalog ① variation は「page 内の sub-section 見出し」全体の token を `text-xl` と定義済みで、A/B だけ変えると同 page 内で h2 の大きさが混在する）。除外 = `HomePage.tsx` の `text-lg font-medium`（action group 見出しで、後続 home lane の footprint）。L3 は入出庫記録詳細 1 page を抜き取り（AC-L3-4）。
+- **D-RT6 形態 C 2 箇所の 2 段化は既存 `space-y-*` の内側に `div.space-y-1` を新設して見出し行 + 説明 `<p>` を包む**（⑳ Final Review Opus P3-9）: IntegrityCheck は `section.space-y-4` > `div.space-y-1` > (`div.flex.flex-wrap.items-start.justify-between.gap-3` > h2 `min-w-0 flex-1` + Button `shrink-0`) + p。Stocktake は `div.space-y-2` > `div.space-y-1` > (row > h2 + Badge) + p、`<Progress>` は `space-y-2` 直下のまま。
+- **D-RT7 棚卸し Checkbox は `PriceRevisionFilters` と同型の label 内包へ**: `<label htmlFor="stocktake-uncounted-only" className="flex items-center gap-2 self-center text-sm"><Checkbox id=… /> 未入力のみ表示</label>`（`PriceRevisionFilters.tsx:102-111` の class を写す。`self-center` は toolbar `items-end` 内で行の縦中央に置く ⑳ owner 回答 (b)）。`PriceRevisionFilters` の 2 Checkbox にも `self-center` を足す。
+- **D-RT8 toolbar wrapper の `items-end`**: 上置き label を持つ行は `flex flex-wrap items-end gap-3`（既存の上置き page と同じ）。対象 = `ProductListPage.tsx:155`（`items-center` → `items-end`）と `StocktakePage.tsx:746`（`items-center gap-4` → `items-end gap-3`）。他は既に `items-end`。
+
+## Scope
+
+- **S1 `DepartmentFilter.tsx`**: `:61-64` を `div.grid.gap-1` + `<label className="text-sm text-muted-foreground" htmlFor={triggerId}>` にし、未参照の `labelId`（`:58,62`）を削除。5 site 一括。
+- **S2 `ProductListPage.tsx`**: `:155` を `items-end`。`:156-159` 並び替え / `:187-190` 表示件数の wrapper を `grid gap-1`。SegmentedControl 3 site に `label`（`"廃番表示"` / `"PLU表示"` / `"並び順"`）。
+- **S3 `StockInquiryPage.tsx:132-135`**: 表示件数 wrapper を `grid gap-1`。
+- **S4 `PriceRevisionFilters.tsx`**: 取引先 trigger wrapper `:62`（GA2 comment `:60-61` は「同じ wrapper に置いて群化」の趣旨を保ち、`grid gap-1` に更新）/ 表示件数 `:113` を `grid gap-1`。Checkbox 2 site（`:102` / `:143`）に `self-center`。
+- **S5 `StocktakePage.tsx`**: toolbar `:746` を `items-end gap-3`。Checkbox `:756-770` を D-RT7 の label 内包 + `self-center`。表示件数 `:771-774` を `grid gap-1` + `Label` に `font-normal`。`StocktakeProgressHeader` `:385-410` を D-RT6 の 2 段（row は `items-start`、h2 に `min-w-0 flex-1`、Badge に `shrink-0`）。
+- **S6 `IntegrityCheckPage.tsx`**: 表示件数 `:232` を `grid gap-1`。差異のある商品 `:324-333` を D-RT6 の 2 段（`items-end` → `items-start`、h2 `min-w-0 flex-1`、Button `shrink-0`）。
+- **S7 `segmented-control.tsx`**: D-RT2 の `label?` prop。
+- **S8 `SearchBar.tsx:72` / `:178`**: `Label` に `font-normal`。
+- **S9 `PageHeader.tsx`**: D-RT3。JSDoc / inline comment も同時更新。
+- **S10 h2 token sweep**: D-RT5。`src/features` の `<h2 className="text-lg font-semibold">` を `text-xl font-semibold` に（HomePage 除外）。
+- **S11 test**: `DepartmentFilter.test.tsx`（wrapper 構造 + `labelId` 撤去後も `getByRole("combobox", { name: "部門" })` が解決）/ `segmented-control.test.tsx`（`label` あり = group name が span 由来 + `aria-label` 属性なし、`label` なし = 現行）/ `ProductListPage.test.tsx`（3 group が name で解決 + 可視 text）/ `StocktakePage.test.tsx:1185,1261` の完全一致 literal を新 class へ + Checkbox `getByLabelText("未入力のみ表示")` / `PageHeader.test.tsx`（actions + description で `<p>` が heading row の sibling、h1 が `min-w-0 flex-1`、actions 無しは DOM 不変）/ `IntegrityCheckPage.test.tsx` と `StocktakePage.test.tsx`（説明 `<p>` が row の外）。
+- **S12 docs**: catalog ① `:28` に `description?`（`PageHeader{title, subtitle?, description?, actions?}` の 4 variant）/ ⑨ `:640` block comment と ① の「runtime 反映は後続 lane」marker を撤去し「runtime 反映済み（本 PR）」へ / 更新履歴 1 行（PR 番号は Draft PR 作成後に Writer が埋める）。
+- **S13（Coordinator、plan-first commit）**: Plans.md「次の行動」+ Wave Registry（wave 10、stacked train）/ Backlog の本 lane 行を「着手中」へ + DSR-02 drift の保留行 / 単位の拡張の店回答（2026-09-15）と blocker 解除の記録。Writer は触らない。
+
+## Non-scope
+
+- `src-tauri/**`、`docs/function-design/**`、`docs/design-system/01-decision-rules.md`、`docs/SCREEN_DESIGN.md`
+- tab / mode 切替の SegmentedControl（`src/features/sales/**` TabsHeader、`monthly-sales/components/ModeTabs.tsx`）
+- `HomePage.tsx` の h2、ProductAddSuggest wrapper 5 箇所、`ProductForm.tsx:226` / `BackupRestorePage.tsx:415,594` / `ProductImportPreview.tsx:132` の toolbar 外 Checkbox
+- mockup-g の変更（確定済み参照。`:has()` は衛生 batch 4 で是正済み）
+- 表示小修正 batch 2（stacked 後続 lane）の file 行: `StockInquiryPage.tsx:100`（PageHeader）/ `:225-257`、catalog ⑥ / ⑬
+
+## Acceptance Criteria
+
+rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `04143923`）。
+
+- **AC1** `rg -c 'className="grid gap-1"' src/components/patterns/DepartmentFilter.tsx` = 1（baseline 0）/ `rg -c labelId src/components/patterns/DepartmentFilter.tsx` = 0（baseline 2）
+- **AC2** `rg -n -B3 '^\s*(表示件数|並び替え)\s*$' src/features/products/ProductListPage.tsx src/features/stock-inquiry/StockInquiryPage.tsx src/features/products/components/PriceRevisionFilters.tsx src/features/stocktake/StocktakePage.tsx src/features/integrity-check/IntegrityCheckPage.tsx | rg -c 'flex items-center gap-2'` = 0（baseline 6）/ `rg -n -B2 'id="price-revision-supplier-label"' src/features/products/components/PriceRevisionFilters.tsx | rg -c 'grid gap-1'` = 1（baseline 0）
+- **AC3** `rg -c 'aria-labelledby' src/components/ui/segmented-control.tsx` ≥ 1（baseline 0）/ `rg -c 'label="' src/features/products/ProductListPage.tsx` = 3（baseline 0）/ `rg -c ' label=' src/features/sales src/features/monthly-sales/components/ModeTabs.tsx` = 0（tab 型に付けない）
+- **AC4** `rg -c 'font-normal' src/components/patterns/SearchBar.tsx` = 2（baseline 0）/ `rg -n -B1 '^\s*表示件数\s*$' src/features/stocktake/StocktakePage.tsx | rg -c 'font-normal'` = 1（baseline 0）
+- **AC5** `rg -c '左グループ内で折り返す|左列内で折り返し' src/components/patterns/PageHeader.tsx` = 0（baseline 2）/ `rg -c 'min-w-0 flex-1 space-y-1' src/components/patterns/PageHeader.tsx` = 0（baseline 1）/ `rg -c 'min-w-0 flex-1 text-2xl' src/components/patterns/PageHeader.tsx` = 1（baseline 0）
+- **AC6** `rg -c 'items-center gap-4 rounded-lg' src/features/stocktake/StocktakePage.tsx` = 0（baseline 1）/ `rg -c 'items-end gap-3 rounded-lg' src/features/stocktake/StocktakePage.tsx` = 1（baseline 0）/ `rg -c 'self-center' src/features/stocktake/StocktakePage.tsx` = 1（baseline 0）/ `rg -c 'self-center' src/features/products/components/PriceRevisionFilters.tsx` = 2（baseline 0）/ `rg -c 'flex flex-wrap items-center gap-3' src/features/products/ProductListPage.tsx` = 0（baseline 1、2 段目 wrapper）
+- **AC7** `awk '/function StocktakeProgressHeader/,/^}/' src/features/stocktake/StocktakePage.tsx | rg -c 'items-start justify-between'` = 1（baseline 0）/ 同 awk で `rg -c 'space-y-1'` = 1（baseline 0）/ `rg -n -A1 'integrity-difference-heading" className' src/features/integrity-check/IntegrityCheckPage.tsx | rg -c 'min-w-0 flex-1'` ≥ 1（baseline 0）/ `rg -c 'items-end justify-between' src/features/integrity-check/IntegrityCheckPage.tsx` = 0（baseline 1）
+- **AC8** `rg -n '<h2 className="text-lg font-semibold">' src/features --glob '!*.test.tsx' | wc -l` = 0（baseline 27）/ `rg -c 'text-lg font-medium' src/features/home/HomePage.tsx` = 3（不変）
+- **AC9** `rg -c 'subtitle\?, description\?, actions\?' docs/design-system/02-component-catalog.md` = 1（baseline 0）/ `rg -c 'runtime 反映は後続 lane' docs/design-system/02-component-catalog.md` = 0（baseline 2）/ `awk '/^## 更新履歴/,0' docs/design-system/02-component-catalog.md | rg -c 'runtime 反映'` ≥ 1
+- **AC10**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri docs/function-design docs/design-system/01-decision-rules.md docs/SCREEN_DESIGN.md src/features/sales src/features/monthly-sales/components/ModeTabs.tsx src/features/home | wc -l` = 0
+- **AC11** 対象 test（`DepartmentFilter` / `segmented-control` / `ProductListPage` / `StocktakePage` / `PageHeader` / `IntegrityCheckPage` / `StockInquiryPage` / `PriceRevisionFilters` / `SearchBar`）が vitest で PASS、`npm run typecheck` / `npm run lint` / `npm run format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（fresh worktree では `npm run generate:routes` を先に実行）
+- **AC12** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
+- **AC-L3-1** 商品一覧: 1 段目・2 段目とも label が入力の上、廃番表示 / PLU表示 / 並び順の SegmentedControl に可視 label、行の下辺が揃う（mockup-g state-1 提案 a と同じ見え方）
+- **AC-L3-2** 棚卸し（`src/features/stocktake/StocktakePage.tsx` toolbar / `StocktakeProgressHeader`）: 「未入力のみ表示」Checkbox が行の縦中央（`self-center`）、表示件数の label が上置き。棚卸し進捗の見出し行（h2 + 未入力 Badge）の下に「入力済み a / 全 b」の説明行
+- **AC-L3-3** 商品 CSV 取込み: 説明文が「取込む」ボタンの下まで全幅で伸び、ボタンは右上に留まる。入庫（subtitle 持ち）は説明が見出し行の下、見た目は 4px 下がるのみ
+- **AC-L3-4** 入出庫記録詳細 1 page（`src/features/inventory-records/ReceivingRecordDetailPage.tsx`）: 「明細」等の h2 が 20px（`text-xl`、他 page の section 見出しと同じ大きさ）
+
+## Design Sources
+
+- Requirements / spec: owner 2026-09-08「検索ツールの場所の表記は揃えたい」/ 2026-09-11 Human Gate 回答 (a)(b)(c)（[⑳ packet](../archive/plans/2026-09-10-filter-label-top-design.md) Workflow State）
+- Architecture: 該当なし（UI 層のみ）
+- Function / command / DTO: 該当なし（各画面 doc は toolbar の label 配置と h2 token を規定しない、⑳ Non-scope 実測）
+- DB: 該当なし
+- Screen / UI: `docs/design-system/02-component-catalog.md` ①（構造 block / セクション見出し variation）/ ⑤（アクセシビリティ段落）/ ⑨（使用トークン / DepartmentFilter 内部 block / アクセシビリティ）、`docs/design-system/reference/mockup-g-filter-toolbar.html` state-1〜4
+- Decision log / ADR: DSR-01（主動線 1 個、不変）/ DSR-02（drift 記録、据え置き）/ DSR-10（候補ソース、不変）/ DSR-23（native select 禁止、不変）
+
+## Required Design Artifacts
+
+| Area touched by upcoming work | Required source doc / artifact | Status |
+|---|---|---|
+| Backend function / command / repository / validation / error | なし | not applicable |
+| Command / DTO / generated binding / wire shape | なし | not applicable |
+| DB / transaction / audit / rollback / migration | なし | not applicable |
+| Screen / UI / route state / Japanese wording | catalog ① / ⑤ / ⑨ + mockup-g | existing sufficient（⑳ で確定。本 PR は ① canonical 行の `description?` と「後続 lane」marker の撤去のみ） |
+| CSV / TSV / report / import / export format | なし | not applicable |
+| Durable decision / ADR | DSR-02 drift の据え置き | Backlog 保留行（plan-first commit）。DSR 改訂は intentionally deferred |
+
+## Registration / Generation Obligations
+
+新規 command / route / doc / REQ なし。`SegmentedControl` の `label?` prop は TypeScript の optional で bindings 非依存。generate 系の再実行義務なし（fresh worktree の `generate:routes` は vitest 前提であって成果物差分なし）。
+
+## Design Intent Trace
+
+| Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
+|---|---|---|---|---|---|
+| SPEC-FILTER-LABEL-RT-1 | catalog ⑨ 使用トークン / DepartmentFilter 内部 block | D-RT1 / D-RT8 | raw label + grid を canonical、`Label` 使用 site は `font-normal` 打ち消し。全置換は SearchBar 契約に触る | S1〜S6 / S8 | `DepartmentFilter.test.tsx` / 各 page test の accessible name |
+| SPEC-FILTER-LABEL-RT-1 | catalog ⑤ アクセシビリティ | D-RT2 | span + `aria-labelledby`（labelable でない）。`aria-label` 併記は name の出どころ二重化 | S7 / S2 | `segmented-control.test.tsx` / `ProductListPage.test.tsx` |
+| SPEC-FILTER-LABEL-RT-1 | catalog ⑨ D1 Checkbox 句 / mockup-g state-2 | D-RT7 | label 内包 + `self-center`。sibling 型は 1 site のみで揃える側 | S4 / S5 | `StocktakePage.test.tsx` `getByLabelText` |
+| SPEC-FILTER-LABEL-RT-1 | catalog ① 構造 block | D-RT3 | actions 分岐のみ 2 段、actions 無し 13 page は不変（壊さない優先） | S9 | `PageHeader.test.tsx` |
+| SPEC-FILTER-LABEL-RT-1 | catalog ① セクション見出し variation | D-RT5 / D-RT6 | 形態 C 2 箇所を 2 段、h2 token sweep（HomePage 除外） | S5 / S6 / S10 | `IntegrityCheckPage.test.tsx` / `StocktakePage.test.tsx` / AC8 |
+| SPEC-FILTER-LABEL-RT-1 | DSR-02 | D-RT4 | 3 択 / 5 択は据え置き + Backlog 保留 | S13 | AC3 の tab 型 0 件 |
+
+## Design Intent Audit
+
+- Source docs can answer what is being built and why without chat history or archived Plan Packets: yes。catalog ① / ⑤ / ⑨ と mockup-g が確定文で、本 packet は file:line と裁定のみ
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D-RT4（DSR-02 drift 据え置き）は Backlog 保留行へ。DSR 改訂は要らない（catalog ⑨ D1 但し書きが既に記録）
+- Assumptions and constraints: `aria-labelledby` が jsdom / WebView2 で group の accessible name を与える（Contract Probe）
+- Deferred design gaps, risk, and follow-up target: DSR-02 drift（Backlog 保留）/ ProductAddSuggest wrapper（Non-scope）/ HomePage h2（home lane）
+- Test Design Matrix can cite design decision IDs or source doc sections: yes（D-RT1〜8）
+- Absolute guarantee / escape hatch self-check completed: 「actions 無し page は DOM 不変」「tab 型に label を付けない」「accessible name 不変」を失敗定義と AC3 / AC10 / S11 で機械検査
+
+## Impact Review Lenses
+
+| Lens | Applicability / finding | Follow-up artifact |
+|---|---|---|
+| Adapter / core boundary | not applicable（UI 層のみ、CMD / BIZ 非接触） | — |
+| Fact check / design decision split | 事実 = 起票時実測表（S6 との差 4 件: 5 site / +3 行 / -1 行 / `:143`）。判断 = D-RT1〜8 | 本 packet |
+| Lifecycle / retry | not applicable（状態なし） | — |
+| Operator workflow | label の位置と Checkbox の高さが変わる。操作手順・URL・候補は不変 | AC-L3-1 / 2 |
+| Replacement path | not applicable | — |
+| Data safety / evidence | not applicable（データ非接触） | — |
+| Reporting / accounting semantics | not applicable | — |
+| Manual verification | 4 画面の抜き取り（商品一覧 / 棚卸し / 商品 CSV 取込み + 入庫 / 入庫記録詳細） | AC-L3-1〜4、github mode の manual record |
+| 環境・再現性 | 新設の環境依存なし。fresh worktree の `generate:routes` は既知 | — |
+
+## Design Readiness
+
+- Existing design docs are sufficient because: ⑳ が catalog ① / ⑤ / ⑨ を確定文にし、mockup-g state-1〜4 を owner が実機 3 画面と並べて確認済み（2026-09-11）。本 packet は runtime の file:line と実装形（D-RT1〜8）を決めるだけ
+- Source docs updated in this PR: catalog ① canonical 行の `description?`、①/⑨ の「後続 lane」marker 撤去、更新履歴
+- Design gaps intentionally deferred: DSR-02 drift の是正（Backlog 保留）
+- Durable decisions discovered in this plan and promoted to source docs: なし
+
+Minimum design checks:
+
+- Layer ownership: UI のみ
+- Backend function design: 非接触
+- Command / DTO / data contract: 非接触
+- Persistence / transaction / audit impact: なし
+- Operator workflow / Japanese UI wording: 文言不変（label 文字列は現行のまま）
+- Error, empty, retry, and recovery behavior: 不変
+- Testability and traceability IDs: SPEC-FILTER-LABEL-RT-1、REQ 追加なし
+
+## Contract Probe
+
+- `div[role="group"][aria-labelledby]` が testing-library の `getByRole("group", { name })` で span の text を name に採る: 前提は dom-accessibility-api の accname 実装（aria-labelledby は role を問わず最優先）。Writer が `segmented-control.test.tsx` に「`label` あり → `getByRole("group", { name: "廃番表示" })` 解決 + `aria-label` 属性なし」を最初に書き、RED → GREEN で確認する（実装 run の最初の test を probe とする。既存 `ProductListPage.test.tsx:769,827` の `aria-labelledby` 利用実績が傍証）
+- WebView2 の実描画: mockup-g で owner 確認済み。runtime 差は L3 で確認（AC-L3-1〜4）
+
+## Contract Coverage Ledger
+
+| Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
+|---|---|---|---|
+| ⑨ 使用トークン「すべてのフィルタ入力は `div.grid.gap-1` + 上置き label（weight 400）」 | S1〜S6 / S8 | AC1 / AC2 / AC4 + 各 page test の accessible name | AC-L3-1 / 2 |
+| ⑨ DepartmentFilter 内部 block（`htmlFor` → SelectTrigger id、`labelId` 不要） | S1 | `DepartmentFilter.test.tsx` | — |
+| ⑨ D1 Checkbox 句「label 内包 + `self-center`」 | S4 / S5 | `StocktakePage.test.tsx` `getByLabelText("未入力のみ表示")` + AC6 | AC-L3-2 |
+| ⑨ アクセシビリティ（live 型は可視 label のみ、aria-label なし） | S8（class のみ） | `SearchBar.test.tsx` 既存（不変） | — |
+| ⑤ アクセシビリティ「toolbar 内は上置き Label、tab / mode は Label なし、`ariaLabel` 常に必須」 | S7 / S2 | `segmented-control.test.tsx` + AC3 | AC-L3-1 |
+| ⑤ 使いどころ「二択」（3 択 / 5 択は DSR-02 drift） | D-RT4（据え置き） | — | non-scope、Backlog 保留 |
+| ① 構造 block（header `space-y-1` > 見出し行 > h1 `min-w-0 flex-1` + `shrink-0`、説明は全幅、`subtitle !== undefined`） | S9 | `PageHeader.test.tsx` + AC5 | AC-L3-3 |
+| ① 「主動線が無い画面は h1 のみ」（actions 無し分岐不変） | S9（非接触） | `PageHeader.test.tsx` 既存 | — |
+| ① セクション見出し variation（`text-xl font-semibold`、2 段、h2 `min-w-0 flex-1`、右要素 `shrink-0`） | S5 / S6 / S10 | AC7 / AC8 + `IntegrityCheckPage.test.tsx` / `StocktakePage.test.tsx` | AC-L3-2 / 4 |
+| ① canonical props（`description?` を含む） | S12 | AC9 | — |
+| DSR-01 主動線 1 個 | 非接触 | — | — |
+| DSR-10 候補は master 全件 | 非接触 | `DepartmentFilter.test.tsx` 既存 | — |
+| DSR-23 native select 禁止 | 非接触 | — | — |
+| 既存 test の accessible name 契約（`combobox` name「表示件数」等） | S1〜S6 | 既存 page test が無変更で PASS | — |
+
+隣接契約 sweep: catalog ⑨ の「入力の確定経路」「フィルタ候補のソース」「状態（disabled / focus）」は非接触、① の「詳細ルートの戻る導線」は actions 持ち page に含まれ D-RT3 の 2 段が当たる（説明なし page は DOM 不変の一部として AC5 / `PageHeader.test.tsx`）。
+
+## Test Plan
+
+Test Design Matrix: [2026-09-15-filter-label-top-runtime](test-matrices/2026-09-15-filter-label-top-runtime.md)。
+
+- targeted tests: S11 の test file を実装と同 commit で更新（RED → GREEN、`segmented-control.test.tsx` を最初に）
+- negative tests: tab 型に label なし（AC3）、actions 無し PageHeader の DOM 不変（`PageHeader.test.tsx`）、`aria-label` 属性が `label` 指定時に無い
+- compatibility checks: 既存 page test の `getByRole("combobox", { name })` が無変更で PASS
+- data safety checks: not applicable
+- main wiring/integration checks: `ProductListPage.test.tsx` で 3 group が name で解決（label prop が実際に渡っている）
+- Human Gate に L3 を含むため、Writer 完了時に `cargo check --release` を実行する（Rust 非接触だが手順どおり）
+
+## Boundary / Wire Contract
+
+not applicable（JSON / CSV / DTO / bindings / route state 非接触。`SegmentedControl` の `label?` は component props で wire ではない）。
+
+## Review Focus
+
+- D-RT2: `aria-label` を出力しない選択が ⑤「`ariaLabel` 常に必須」と両立するか（prop 必須・属性は label 有無で切替）
+- D-RT3: actions 無し 13 page の DOM 不変が test で担保されるか
+- D-RT5: h2 sweep 27 箇所の除外（HomePage）と、`text-lg` を持つ非 h2（`p`）を触らないこと
+- 既存 test の完全一致 literal（`StocktakePage.test.tsx:1185,1261`）の更新が「旧 frame 不在」の意図を保つか
+- ⑲ GA2 の群化 comment（`PriceRevisionFilters.tsx:60-61`）が `grid gap-1` 後も真か
+
+## Spec Contract
+
+Contract ID: SPEC-FILTER-LABEL-RT-1
+
+- ⑳ が確定した catalog ⑨ / ⑤ / ① の規範（上置き label、Checkbox 縦中央、SegmentedControl 可視 label、PageHeader / section 見出しの 2 段、h2 token）が runtime へ反映され、accessible name・search state・候補ソース・文言は不変で、catalog の「runtime 反映は後続 lane」marker が消える
+
+## Trace Matrix
+
+| Spec ID | Plan Step | Test | Review Focus | Evidence |
+|---|---|---|---|---|
+| SPEC-FILTER-LABEL-RT-1 | S1 | `DepartmentFilter.test.tsx` | 5 site 一括 | AC1 |
+| SPEC-FILTER-LABEL-RT-1 | S2 / S3 / S4 / S6 | 各 page test（accessible name） | wrapper / `items-end` | AC2 / AC6 |
+| SPEC-FILTER-LABEL-RT-1 | S7 + S2 | `segmented-control.test.tsx` / `ProductListPage.test.tsx` | D-RT2 | AC3 |
+| SPEC-FILTER-LABEL-RT-1 | S5 | `StocktakePage.test.tsx` | Checkbox 内包 / 進捗 2 段 | AC6 / AC7 |
+| SPEC-FILTER-LABEL-RT-1 | S8 | `SearchBar.test.tsx`（不変） | class のみ | AC4 |
+| SPEC-FILTER-LABEL-RT-1 | S9 | `PageHeader.test.tsx` | D-RT3 | AC5 |
+| SPEC-FILTER-LABEL-RT-1 | S10 | typecheck / rg | D-RT5 | AC8 |
+| SPEC-FILTER-LABEL-RT-1 | S12 | docs review | literal 同期 | AC9 / AC12 |
+| SPEC-FILTER-LABEL-RT-1 | 全体 | owner L3 | 実描画 | AC-L3-1〜4 |
+
+## Data Safety
+
+- 実データ・secret の混入なし（UI 層のみ、fixture は既存 test の合成データ）
+- local-only paths: `.local/codex-orders/**`、scratchpad の draft worktree
+- synthetic-only paths: `src/**/*.test.tsx` の fixture
+
+## Implementation Results
+
+Fill after implementation.
+
+## Review Response
+
+Fill after review.
+- Findings Freeze: not yet frozen; post-freeze exceptions: none.
