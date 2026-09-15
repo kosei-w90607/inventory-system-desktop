@@ -154,7 +154,7 @@ function OfficialDepartmentTotalsSection({
   return (
     <section className="space-y-3" aria-labelledby="official-monthly-department-title">
       <div>
-        <h2 id="official-monthly-department-title" className="text-lg font-semibold">
+        <h2 id="official-monthly-department-title" className="text-xl font-semibold">
           公式部門集計（レジ日報由来）
         </h2>
         <p className="text-sm text-muted-foreground">

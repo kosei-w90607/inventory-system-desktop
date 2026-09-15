@@ -55,11 +55,10 @@ export function DepartmentFilter({
 }: DepartmentFilterProps) {
   const value = selected === null ? ALL_VALUE : String(selected);
   const triggerId = idPrefix;
-  const labelId = `${idPrefix}-label`;
 
   return (
-    <div className="flex items-center gap-2">
-      <label className="text-sm text-muted-foreground" htmlFor={triggerId} id={labelId}>
+    <div className="grid gap-1">
+      <label className="text-sm text-muted-foreground" htmlFor={triggerId}>
         部門
       </label>
       <Select

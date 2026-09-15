@@ -85,6 +85,13 @@ describe("ProductListPage (UI-01a)", () => {
     );
 
     await screen.findByText("PLU-FILTER");
+    // SPEC-FILTER-LABEL-RT-1 D-RT2: toolbar の3群に可視ラベルが結線される。
+    for (const name of ["廃番表示", "PLU表示", "並び順"]) {
+      const group = screen.getByRole("group", { name });
+      const label = screen.getByText(name);
+      expect(label).toBeVisible();
+      expect(group).toHaveAttribute("aria-labelledby", label.id);
+    }
     // SC15 / AC-L3-3: 上置き Label の検索欄と隣接 control の下辺を揃える。
     const toolbar = screen.getByText("商品を検索", { selector: "label" }).parentElement
       ?.parentElement;

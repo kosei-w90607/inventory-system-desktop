@@ -129,7 +129,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
           idPrefix="stock-dept-filter"
           disabled={departmentOptionsQuery.isLoading}
         />
-        <div className="flex items-center gap-2">
+        <div className="grid gap-1">
           <label className="text-sm text-muted-foreground" htmlFor="stock-inquiry-per-page">
             表示件数
           </label>

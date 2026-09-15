@@ -52,6 +52,12 @@ beforeEach(() => {
   mockGetDailySales.mockResolvedValue({ status: "ok", data: buildReport() });
 });
 
+it("SPEC-FILTER-LABEL-RT-1 D-RT8: 日付と部門フィルタの下辺を揃える", () => {
+  renderPage();
+
+  expect(screen.getByRole("combobox", { name: "部門" }).closest(".items-end.gap-4")).not.toBeNull();
+});
+
 describe("DailySalesPage REQ-501 official daily report", () => {
   it("test_daily_sales_page_req501_shows_source_import_count_without_cross_series_sum", async () => {
     // REQ-501 / I-R5 / SPEC-SDI-D6: count、NULL、official/product分離を表示する。

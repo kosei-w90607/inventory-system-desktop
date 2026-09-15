@@ -50,16 +50,25 @@ describe("PageHeader", () => {
       expect(screen.getByRole("link", { name: "商品登録" })).toBeInTheDocument();
     });
 
-    it("header 要素に flex flex-wrap items-start justify-between gap-3 class が付く", () => {
+    it("SPEC-FILTER-LABEL-RT-1 D-RT3: 見出し行と header の配置を分ける", () => {
       const { container } = render(
         <PageHeader title="商品検索・一覧" actions={<button type="button">操作</button>} />,
       );
       const header = container.querySelector("header");
-      expect(header).toHaveClass("flex", "flex-wrap", "items-start", "justify-between", "gap-3");
+      expect(header).toHaveClass("space-y-1");
+      const heading = screen.getByRole("heading", { level: 1 });
+      expect(heading.parentElement).toHaveClass(
+        "flex",
+        "flex-wrap",
+        "items-start",
+        "justify-between",
+        "gap-3",
+      );
+      expect(heading).toHaveClass("min-w-0", "flex-1");
     });
 
-    it("subtitle が指定されていても actions が優先されフレックスレイアウトになる", () => {
-      // actions と subtitle 両方指定された場合は actions (flex) レイアウトを使う
+    it("SPEC-FILTER-LABEL-RT-1 D-RT3: subtitle は見出し行の下に置く", () => {
+      // actions と subtitle の両方を見出し行 + 説明行で描画する
       const { container } = render(
         <PageHeader
           title="タイトル"
@@ -68,13 +77,14 @@ describe("PageHeader", () => {
         />,
       );
       const header = container.querySelector("header");
-      expect(header).toHaveClass("flex");
+      expect(header).toHaveClass("space-y-1");
+      expect(screen.getByText("副題").parentElement).toBe(header);
     });
   });
 });
 
 // ⑮ SC1/SC2: actions の有無で副題・操作説明を失わない。
-it("⑮ SC1: actions と副題と説明を同じ見出しグループに表示する", () => {
+it("SPEC-FILTER-LABEL-RT-1 D-RT3 / ⑮ SC1: actions と副題と説明を2段で表示する", () => {
   render(
     <PageHeader
       title="タイトル"
@@ -84,9 +94,22 @@ it("⑮ SC1: actions と副題と説明を同じ見出しグループに表示�
     />,
   );
   const subtitle = screen.getByText("副題");
-  expect(subtitle.parentElement).toHaveClass("min-w-0", "flex-1", "space-y-1");
+  const header = subtitle.closest("header");
+  expect(subtitle.tagName).toBe("P");
+  expect(subtitle.parentElement).toBe(header);
+  expect(header).toHaveClass("space-y-1");
+  const heading = screen.getByRole("heading", { level: 1 });
+  expect(heading).toHaveClass("min-w-0", "flex-1");
+  expect(heading.parentElement?.parentElement).toBe(header);
+  expect(heading.parentElement).toHaveClass(
+    "flex",
+    "flex-wrap",
+    "items-start",
+    "justify-between",
+    "gap-3",
+  );
   expect(screen.getByText("操作説明").parentElement).toBe(subtitle.parentElement);
-  expect(subtitle.closest("header")).toHaveClass("flex", "items-start");
+  expect(screen.getByText("操作説明").tagName).toBe("P");
   expect(subtitle.closest("header")).not.toHaveClass("items-center");
   expect(screen.getByRole("button", { name: "操作" }).parentElement).toHaveClass("shrink-0");
 });
@@ -94,4 +117,28 @@ it.each([undefined, "副題"])("⑮ SC2: actions なしで説明を描画する�
   render(<PageHeader title="タイトル" subtitle={subtitle} description="操作説明" />);
   expect(screen.getByText("操作説明").closest("header")).toHaveClass("space-y-1");
   if (subtitle !== undefined) expect(screen.getByText("副題")).toBeInTheDocument();
+});
+
+// SPEC-FILTER-LABEL-RT-1 D-RT3: actions なしの既存 DOM を実装前に固定する。
+describe("actions なしの DOM 不変", () => {
+  it("title のみ", () => {
+    const { container } = render(<PageHeader title="タイトル" />);
+    expect(container.innerHTML).toMatchInlineSnapshot(
+      `"<header class="space-y-1"><h1 class="text-2xl font-semibold">タイトル</h1></header>"`,
+    );
+  });
+  it("title + subtitle", () => {
+    const { container } = render(<PageHeader title="タイトル" subtitle="副題" />);
+    expect(container.innerHTML).toMatchInlineSnapshot(
+      `"<header class="space-y-1"><h1 class="text-2xl font-semibold">タイトル</h1><p class="text-sm text-muted-foreground">副題</p></header>"`,
+    );
+  });
+  it("title + subtitle + description", () => {
+    const { container } = render(
+      <PageHeader title="タイトル" subtitle="副題" description="操作説明" />,
+    );
+    expect(container.innerHTML).toMatchInlineSnapshot(
+      `"<header class="space-y-1"><h1 class="text-2xl font-semibold">タイトル</h1><p class="text-sm text-muted-foreground">副題</p><p class="text-sm text-muted-foreground">操作説明</p></header>"`,
+    );
+  });
 });

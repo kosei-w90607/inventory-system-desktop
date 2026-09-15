@@ -1155,6 +1155,11 @@ describe("StocktakePage (UI-10)", () => {
     const departmentTrigger = await screen.findByRole("combobox", { name: "部門" });
     const perPageTrigger = screen.getByRole("combobox", { name: "表示件数" });
     const uncountedCheckbox = screen.getByRole("checkbox", { name: "未入力のみ表示" });
+    // SPEC-FILTER-LABEL-RT-1 D-RT7: Checkbox は label 内包で行の中央に置く。
+    expect(screen.getByLabelText("未入力のみ表示")).toBe(uncountedCheckbox);
+    const checkboxLabel = uncountedCheckbox.closest("label");
+    expect(checkboxLabel).toHaveClass("self-center");
+    expect(checkboxLabel).toHaveAttribute("for", uncountedCheckbox.id);
 
     // S4a（round 1 是正）: 部門 → 未入力のみ表示 → 表示件数 の順で DOM 上に並ぶことを
     // compareDocumentPosition で assert する（表示件数 Select を枠内の最後尾へ移動）。
@@ -1168,7 +1173,7 @@ describe("StocktakePage (UI-10)", () => {
     // Codex review 5129977808 P2 是正: 文書順だけでは表示件数ブロックが filter-row の
     // 外へ出ても検出できない。filter-row root への containment + lastElementChild を
     // 追加で assert する。
-    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-center.gap-4");
+    const filterRow = perPageTrigger.closest(".flex.flex-wrap.items-end.gap-3");
     expect(filterRow).not.toBeNull();
     expect(filterRow).toContainElement(perPageTrigger);
     expect(filterRow?.lastElementChild).toContainElement(perPageTrigger);
@@ -1408,5 +1413,29 @@ it.each([
     const resultRow = screen.getByText("SC9商品").closest("tr");
     if (!resultRow) throw new Error("result row missing");
     expect(within(resultRow).getByText(label).closest("td")).toHaveClass(color);
+  },
+);
+
+it.each([0, 1])(
+  "SPEC-FILTER-LABEL-RT-1 D-RT6: 進捗は見出し行・説明行・barの順（未入力=%s）",
+  (uncounted) => {
+    render(
+      <StocktakeProgressHeader
+        startedAt="2026-10-01T09:00:00"
+        progress={{ total_items: 2, counted_items: 2 - uncounted, uncounted_items: uncounted }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { level: 2 });
+    const row = heading.parentElement;
+    const description = screen.getByText(`入力済み ${String(2 - uncounted)} / 全 2`);
+    expect(heading).toHaveClass("min-w-0", "flex-1");
+    expect(row).toHaveClass("flex", "flex-wrap", "items-start", "justify-between", "gap-3");
+    expect(description.tagName).toBe("P");
+    expect(row?.nextElementSibling).toBe(description);
+    expect(row?.parentElement).toHaveClass("space-y-1");
+    expect(screen.getByText(`未入力 ${String(uncounted)}`)).toHaveClass("shrink-0");
+    const progress = screen.getByRole("progressbar", { name: "棚卸し進捗" });
+    expect(progress.parentElement).toHaveClass("space-y-2");
+    expect(progress.previousElementSibling).toBe(row?.parentElement);
   },
 );

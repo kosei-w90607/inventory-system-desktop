@@ -383,26 +383,27 @@ export function StocktakeProgressHeader({ startedAt, progress }: StocktakeProgre
     progress.total_items > 0 ? (progress.counted_items / progress.total_items) * 100 : 0;
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold">
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="min-w-0 flex-1 text-xl font-semibold">
             棚卸し中（開始日: {formatCountedAt(startedAt)}）
           </h2>
-          <p className="text-sm text-muted-foreground">
-            入力済み {progress.counted_items} / 全 {progress.total_items}
-          </p>
+          <Badge
+            variant="outline"
+            tone={progress.uncounted_items > 0 ? "warning" : "success"}
+            className="shrink-0"
+          >
+            {progress.uncounted_items > 0 ? (
+              <AlertTriangle aria-hidden="true" />
+            ) : (
+              <CheckCircle2 aria-hidden="true" />
+            )}
+            未入力 {progress.uncounted_items}
+          </Badge>
         </div>
-        {progress.uncounted_items > 0 ? (
-          <Badge variant="outline" tone="warning">
-            <AlertTriangle aria-hidden="true" />
-            未入力 {progress.uncounted_items}
-          </Badge>
-        ) : (
-          <Badge variant="outline" tone="success">
-            <CheckCircle2 aria-hidden="true" />
-            未入力 {progress.uncounted_items}
-          </Badge>
-        )}
+        <p className="text-sm text-muted-foreground">
+          入力済み {progress.counted_items} / 全 {progress.total_items}
+        </p>
       </div>
       <Progress value={percent} aria-label="棚卸し進捗" />
     </div>
@@ -743,7 +744,7 @@ export function StocktakeItemList({
       title="棚卸し一覧"
       description="一覧は進捗確認用です。カウント入力は上の入力欄で行います"
     >
-      <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
         <DepartmentFilter
           options={departments}
           selected={search.dept ?? null}
@@ -753,7 +754,10 @@ export function StocktakeItemList({
             onSearchChange((prev) => ({ ...prev, dept: dept ?? undefined, page: 1 }));
           }}
         />
-        <div className="flex items-center gap-2">
+        <label
+          htmlFor="stocktake-uncounted-only"
+          className="flex items-center gap-2 self-center text-sm"
+        >
           <Checkbox
             id="stocktake-uncounted-only"
             checked={search.counted_only === false}
@@ -766,10 +770,10 @@ export function StocktakeItemList({
               }));
             }}
           />
-          <Label htmlFor="stocktake-uncounted-only">未入力のみ表示</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Label className="text-muted-foreground" htmlFor="stocktake-per-page">
+          未入力のみ表示
+        </label>
+        <div className="grid gap-1">
+          <Label className="font-normal text-muted-foreground" htmlFor="stocktake-per-page">
             表示件数
           </Label>
           <Select
