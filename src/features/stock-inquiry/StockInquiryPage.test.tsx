@@ -742,3 +742,77 @@ describe("StockInquiryPage perPage scroll（UI-06a）", () => {
     expect(mockScrollPageToTop).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("StockInquiryPage SPEC-DISP-B2-1（D-B3 / D-B5）", () => {
+  it("在庫照会の副題を表示する", async () => {
+    renderWithClient(<StockInquiryPage search={{}} onSearchChange={vi.fn()} />);
+    expect(
+      await screen.findByText("商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます"),
+    ).toBeInTheDocument();
+  });
+
+  it("low_stock は検索・部門・状態で絞った後の3件を全3件と表示する", async () => {
+    mockLowStock.mockResolvedValue({
+      status: "ok",
+      data: [
+        ...[1, 2, 3].map((id) =>
+          makeMockProductWithRelations({
+            product_code: `LOW-${id}`,
+            name: `対象商品${id}`,
+            department_id: 1,
+            stock_quantity: 2,
+          }),
+        ),
+        makeMockProductWithRelations({ product_code: "OTHER-Q", name: "別商品" }),
+        makeMockProductWithRelations({
+          product_code: "OTHER-DEPT",
+          name: "対象商品別部門",
+          department_id: 2,
+        }),
+        makeMockProductWithRelations({
+          product_code: "ZERO",
+          name: "対象商品在庫切れ",
+          stock_quantity: 0,
+        }),
+      ],
+    });
+    renderWithClient(
+      <StockInquiryPage
+        search={{ status: "low_stock", q: "対象商品", dept: 1 }}
+        onSearchChange={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("LOW-3")).toBeInTheDocument();
+    expect(screen.getByText("全 3 件")).toBeInTheDocument();
+    expect(screen.queryByText(/件のうち/)).not.toBeInTheDocument();
+  });
+
+  it("all は件数のみの行を出さず現行PaginationSummaryを表示する", async () => {
+    mockSearch.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [makeMockProductWithRelations({ product_code: "P-051" })],
+        total_count: 51,
+        page: 2,
+        per_page: 50,
+      },
+    });
+    renderWithClient(
+      <StockInquiryPage search={{ q: "商品", status: "all", page: 2 }} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByText("P-051");
+    expect(screen.queryByText(/^全 \d+ 件$/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("全 51 件のうち 51〜51 件を表示（2 / 2 ページ）")).toHaveLength(2);
+  });
+
+  it("low_stock の0件は件数行なしでEmptyStateだけを表示する", async () => {
+    mockLowStock.mockResolvedValue({ status: "ok", data: [] });
+    renderWithClient(
+      <StockInquiryPage search={{ status: "low_stock" }} onSearchChange={vi.fn()} />,
+    );
+    await screen.findByRole("heading", { name: "該当する商品がありません" });
+    expect(screen.queryByText(/^全 \d+ 件$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/件のうち/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+});

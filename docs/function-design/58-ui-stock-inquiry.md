@@ -399,6 +399,9 @@ export function useStockInquiry(params: {
 
 #### StockInquiryPage（最上位、失敗 4 状態出し分け）
 
+- PageHeader: title「在庫照会」+ subtitle「商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます」。
+- 在庫少 / 在庫切れで `items.length > 0` のとき、一覧の直前（PaginationSummary の上）に「全 N 件」を `text-base font-semibold tabular-nums` で表示し、0 件では件数行を出さず EmptyState を表示する。
+
 ```tsx
 function StockInquiryPage() {
   const { q, dept, status, page, selected } = Route.useSearch();
@@ -590,6 +593,8 @@ function StockInquiryPage() {
 > status === "all" かつ q 空文字の場合、search_products は呼ばず「商品コード、商品名、または JAN コードで検索してください」を表示する。q 入力後のみ search_products(page, per_page: perPage) を呼ぶ。perPage はローカル state（既定 50）で、`Select` から 50 / 100 / 200 を選べる。per_page 上限は search_products 既存契約どおり 200 で、200 超は IO 層でクランプされる。全件へは pagination（§58.4 / UI-06a-D1）でページ送りして到達する。
 
 #### UI-06a-D1: pagination 導入 + truncated alert 撤去（2026-08-03 batch B）
+
+- 在庫少 / 在庫切れの絞り込み時は検索・部門・状態の client filter 後の `items.length` を N とする「全 N 件」のみを表示し、pagination は追加しない（0 件は EmptyState のみ）。
 
 - **決定**: 在庫照会「すべて」（`status === "all"`）に `page` search param と `Pagination`（既存 canonical、02-component-catalog.md ⑩、旧 `ProductPagination`）を導入し、`total_count` から全ページへ到達できるようにする。これに伴い `TruncatedResultsAlert` component と `StockInquiryListResult.truncated` flag を撤去する。
 - **Why**: pagination により全件へページ送りで到達できるようになるため、「他にも検索結果があります」という打ち切り告知（旧 契約 I）はページ送りと二重表現になる。50 §50.4（商品一覧）の既存 page 慣行をそのまま踏襲し、在庫照会だけの新しい UX を発明しない。
