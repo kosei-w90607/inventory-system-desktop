@@ -1,13 +1,13 @@
 # Plan Packet: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime 反映
 
-2026-09-15 起票。起点は `0414392338b7e7816803f13e379e69f689e21ef2`（origin/main）。design ⑳（[archive packet](../archive/plans/2026-09-10-filter-label-top-design.md)、PR #51 merge）が catalog ⑨ / ① / ⑤ と mockup-g で確定した規範を runtime へ反映する。Scope の正本は ⑳ packet の S6 申し送りで、本 packet は現行 main で file:line を再実測した（Sonnet Explore 2026-09-15、Coordinator が主要 site を直接読んで確認）。実装は別 run とし、Coordinator 裁定と独立 Plan Review 通過後に発注する。
+2026-09-15 起票。起点は `0414392338b7e7816803f13e379e69f689e21ef2`（origin/main）。design ⑳（[archive packet](2026-09-10-filter-label-top-design.md)、PR #51 merge）が catalog ⑨ / ① / ⑤ と mockup-g で確定した規範を runtime へ反映する。Scope の正本は ⑳ packet の S6 申し送りで、本 packet は現行 main で file:line を再実測した（Sonnet Explore 2026-09-15、Coordinator が主要 site を直接読んで確認）。実装は別 run とし、Coordinator 裁定と独立 Plan Review 通過後に発注する。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: c5b1ea2b275d74791fa0d6c76e1f7be0a52f4a65
@@ -135,7 +135,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
   - `IntegrityCheckPage.test.tsx:549`: `closest(".flex.items-center.gap-2")` → `closest(".grid.gap-1")`（bg-card 不在の round 2 回帰は維持）。追加: 差異のある商品の説明 `<p>` が row の sibling、`<h2 id="integrity-difference-heading">` に `min-w-0 flex-1`。
   - `PriceRevisionFilters.test.tsx:68`: `label.closest(".flex.items-center.gap-2")` → `closest(".grid.gap-1")`（⑲ GA2 群化回帰 = 同じ wrapper に label と trigger、の意図維持）。
   - `PageHeader.test.tsx:53-59,70-71,87-92`: ⑮ SC1「actions と副題と説明を同じ見出しグループに表示する」を D-RT3 の 2 段へ読み替え = header が `space-y-1`、見出し行（h1 の親）が `flex flex-wrap items-start justify-between gap-3`、h1 に `min-w-0 flex-1`、subtitle / description `<p>` の親が `header`（見出し行の sibling）、actions の親が `shrink-0`。追加: actions 無し 3 variant（title のみ / title + subtitle / title + subtitle + description。`BackupRestorePage.tsx:337` / `PluExportPage.tsx:363` が actions 無しで description を渡す実在形）の `container.innerHTML` を `toMatchInlineSnapshot` で固定（repo 初の inline snapshot。失敗定義「actions 無し 13 page の DOM 不変」の oracle。**inline snapshot は local の vitest で populate し、生成された literal を同 commit に含める**: `CI=true` の hosted では未 populate の inline snapshot は書き込まれず FAIL する）。
-- **S12 docs**: catalog ① `:28` に `description?`（`PageHeader{title, subtitle?, description?, actions?}` の 4 variant）/ ⑨ `:640` block comment と ① の「runtime 反映は後続 lane」marker を撤去し「runtime 反映済み（本 PR）」へ / ⑨ `:647`「4 サイトが揃う」→「5 サイトが揃う」（実測 #1a）/ ⑨ `:650` 使用トークン段落の「sales TabsHeader の日次/月次、monthly ModeTabs 等」→「monthly ModeTabs、PLU書出しの書出しモード 等」（TabsHeader は SegmentedControl 非使用、closure round 2 Opus P3-E）/ ~~Gated Amendment 2: ① variation に Badge の `self-center` 1 句~~（GA3 で撤回）/ **Gated Amendment 3: ⑨ 使用トークン段落の Checkbox 句「toolbar 内では `self-center` で行の縦中央に置く（上置き label を持たないため `items-end` の下辺揃えに加わらない。owner 確認 2026-09-11）」→「toolbar 内では `h-9 items-center self-end`（入力と同じ高さの箱を行の下端に揃え、その中で縦中央。上置き label を持たないため行の中央では浮く。owner L3 2026-09-15）」/ mockup-g state-2 の `.toolbar-row .check{align-self:center}` → `{align-self:flex-end;height:36px;display:flex;align-items:center}`**（**GA4（Opus P3-2）: selector を `.proposed .toolbar-row .check` に絞る〈現行 panel の `.check` に効かせない〉。state-2 提案 h3「Checkbox は縦中央」→「Checkbox は入力と同じ帯」**）/ ⑤ アクセシビリティ段落 `:323` の「`role="group"` + `aria-label` で群を識別」の直後に「（フィルタ toolbar 内で可視 Label を出す場合は `aria-labelledby` で span に紐付け、`aria-label` は出さない）」を 1 句 / 更新履歴 1 行（PR 番号は Draft PR 作成後に Writer が埋める）。**Gated Amendment 1（Opus P3-1 / P3-2）: `:54`（① component gap の解消）と `:639`（⑨ block comment）の裸「本 PR」→「PR #63」。`:54` の「左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめた」「説明を左列内で折り返し、actions を右上に留めた」は ⑮ 時点の経緯として過去形に改め、末尾に「PR #63 で見出し行 + 説明行の 2 段へ移行（`PageHeader.tsx:31-45`）」を 1 句。① 構造 block と variation は触らない。**
+- **S12 docs**: catalog ① `:28` に `description?`（`PageHeader{title, subtitle?, description?, actions?}` の 4 variant）/ ⑨ `:640` block comment と ① の「runtime 反映は後続 lane」marker を撤去し「runtime 反映済み（本 PR）」へ / ⑨ `:647`「4 サイトが揃う」→「5 サイトが揃う」（実測 #1a）/ ⑨ `:650` 使用トークン段落の「sales TabsHeader の日次/月次、monthly ModeTabs 等」→「monthly ModeTabs、PLU書出しの書出しモード 等」（TabsHeader は SegmentedControl 非使用、closure round 2 Opus P3-E）/ ~~Gated Amendment 2: ① variation に Badge の `self-center` 1 句~~（GA3 で撤回）/ **Gated Amendment 3: ⑨ 使用トークン段落の Checkbox 句「toolbar 内では `self-center` で行の縦中央に置く（上置き label を持たないため `items-end` の下辺揃えに加わらない。owner 確認 2026-09-11）」→「toolbar 内では `h-9 items-center self-end`（入力と同じ高さの箱を行の下端に揃え、その中で縦中央。上置き label を持たないため行の中央では浮く。owner L3 2026-09-15）」/ mockup-g state-2 の `.toolbar-row .check{align-self:center}` → `{align-self:flex-end;height:36px;display:flex;align-items:center}`**（**GA4（Opus P3-2）: selector を `.proposed .toolbar-row .check` に絞る〈現行 panel の `.check` に効かせない〉。state-2 提案 h3「Checkbox は縦中央」→「Checkbox は入力と同じ帯」**）/ ⑤ アクセシビリティ段落 `:323` の「`role="group"` + `aria-label` で群を識別」の直後に「（フィルタ toolbar 内で可視 Label を出す場合は `aria-labelledby` で span に紐付け、`aria-label` は出さない）」を 1 句 / 更新履歴 1 行（PR 番号は Draft PR 作成後に Writer が埋める）。**Gated Amendment 1（Opus P3-1 / P3-2）: `:54`（① component gap の解消）と `:639`（⑨ block comment）の裸「本 PR」→「PR #63」。`:54` の「左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめた」「説明を左列内で折り返し、actions を右上に留めた」は ⑮ 時点の経緯として過去形に改め、末尾に「PR #63 で見出し行 + 説明行の 2 段へ移行（`PageHeader.tsx:31-45`）」を 1 句。① 構造 block と variation は触らない。**（**GA4: 重複のため「runtime 反映済み（PR #63、`PageHeader.tsx:31-45`）」へ畳む**）
 - **S13（Coordinator、plan-first commit）**: Plans.md「次の行動」+ Wave Registry（wave 10、stacked train）/ Backlog の本 lane 行を「着手中」へ + DSR-02 drift の保留行 / 単位の拡張の店回答（2026-09-15）と blocker 解除の記録。Writer は触らない。
 
 ## Non-scope
@@ -169,7 +169,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 
 ## Design Sources
 
-- Requirements / spec: owner 2026-09-08「検索ツールの場所の表記は揃えたい」/ 2026-09-11 Human Gate 回答 (a)(b)(c)（[⑳ packet](../archive/plans/2026-09-10-filter-label-top-design.md) Workflow State）
+- Requirements / spec: owner 2026-09-08「検索ツールの場所の表記は揃えたい」/ 2026-09-11 Human Gate 回答 (a)(b)(c)（[⑳ packet](2026-09-10-filter-label-top-design.md) Workflow State）
 - Architecture: 該当なし（UI 層のみ）
 - Function / command / DTO: 該当なし（各画面 doc は toolbar の label 配置と h2 token を規定しない、⑳ Non-scope 実測）
 - DB: 該当なし
@@ -296,7 +296,7 @@ not applicable（JSON / CSV / DTO / bindings / route state 非接触。`Segmente
 
 Contract ID: SPEC-FILTER-LABEL-RT-1
 
-- ⑳ が確定した catalog ⑨ / ⑤ / ① の規範（上置き label、Checkbox 縦中央、SegmentedControl 可視 label、PageHeader / section 見出しの 2 段、h2 token）が runtime へ反映され、accessible name・search state・候補ソース・文言は不変で、catalog の「runtime 反映は後続 lane」marker が消える
+- ⑳ が確定した catalog ⑨ / ⑤ / ① の規範（上置き label、Checkbox は入力と同じ帯（`h-9 items-center self-end`、GA3）、SegmentedControl 可視 label、PageHeader / section 見出しの 2 段、h2 token）が runtime へ反映され、accessible name・search state・候補ソース・文言は不変で、catalog の「runtime 反映は後続 lane」marker が消える
 
 ## Trace Matrix
 
@@ -320,7 +320,7 @@ Contract ID: SPEC-FILTER-LABEL-RT-1
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #63](https://github.com/kosei-w90607/inventory-system-desktop/pull/63) で実装し squash merge 済み（`bb1862a5`、2026-09-16）。Draft PR head の遷移: `57d4d4b3`（初回 broad）→ GA1 是正 `2e6e1d7c` → owner L3 round 1 → GA3 是正 `eebab51b` → L3 round 2 → fresh broad → GA4 是正 `24f100b2` → L3 round 3 → Ready → hosted CI pass → merge。owner 介入 3 / 予算 4（L3 ×3。Ready / merge は 2026-09-16 の包括指示）。relay 4 / 上限 4（発注書 49 / 52 / 54 / 55）。専用 record（`inventory-workflow-v1`、PR #63 comment 5677564499）に review pass（broad: Sonnet `#issuecomment-5681732910` / Opus `#issuecomment-5681723093`）と manual pass（L3 round 1〜3、`#issuecomment-5682176786`）を記録。
 
 ## Review Response
 
@@ -403,3 +403,13 @@ GA3 で Amendments が変わったため helper 規則により Final Review を
 - Opus P3-7（`PageHeader.tsx` JSDoc の (d) 行だけ体裁が違い、直後の「actions があっても副題・説明をタイトルと同じグループに保つ」が 2 段化前の文）= accept → (d) を (a)〜(c) と同じ体裁に、直後の 1 文を「actions は見出し行の右上に置き、副題・説明はその下の全幅の説明行に置く。」だけにする。AC9 に oracle 2 本
 - Opus P3-8（catalog ① `:54` 末尾で「runtime 反映済み（PR #63）」と GA1 で足した「PR #63 で見出し行 + 説明行の 2 段へ移行（`PageHeader.tsx:31-45`）」が重複）= accept → 後者を畳み「**runtime 反映済み（PR #63、`PageHeader.tsx:31-45`）**。」の 1 文に。AC9 に oracle 1 本（`PageHeader.tsx:31-45` = 1 不変）
 - Owner Effort Budget: relay 3 → 4
+
+### Final Review closure（GA4 是正、head 24f100b2、2026-09-16）
+
+Sonnet closure = findings 0、GA4 oracle 11 本一致、mutant 2 本 kill（`#issuecomment-5681732910`）。Opus 完了判定 = P1 0 / P2 0 / P3 4（docs 文言同期のみ。P3-1 Spec Contract の「Checkbox 縦中央」/ P3-2 Matrix `:124` の同語 / P3-3 mockup-g `:73` `:79` の「行の縦中央」/ P3-4 S12 GA1 節の注記、`#issuecomment-5681723093`）。P3-1 / P3-2 / P3-4 は本 closeout で archive 側に同期、P3-3 は同 PR で mockup-g を修正、fresh broad Opus P3-3（`shrink-0` 恒真 assert）は Backlog へ。
+
+## 後続
+
+- `shrink-0` 恒真 assert（`Badge` / `Button` の base に既存、`StocktakeProgressHeader` の明示 class と test の `toHaveClass("shrink-0")` が恒真。fresh broad Opus P3-3、PR #63）は [Backlog「記録目的」](../../backlog.md#記録目的受容済みリスクrevisit-条件付き)を参照。
+- 一括価格改定の取引先紐付けを既定 off + 文言明示（owner 決定 2026-09-16）は [Backlog「次に動く lane」](../../backlog.md#次に動く-lane順番固定)を参照。
+- destructive Alert の soft 塗り + 三角 icon（owner 所感 2026-09-15、L3 で確定）は [Backlog「やると決めたもの」](../../backlog.md#やると決めたもの順番未定)を参照。
