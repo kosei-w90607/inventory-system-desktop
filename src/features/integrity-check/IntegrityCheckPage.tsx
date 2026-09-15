@@ -229,12 +229,8 @@ export function IntegrityCheckPage() {
       ) : null}
 
       {phase === "completed" && result !== null ? (
-        <div className="flex items-center gap-2">
-          <label
-            id="integrity-check-per-page-label"
-            htmlFor="integrity-check-per-page"
-            className="text-sm text-muted-foreground"
-          >
+        <div className="grid gap-1">
+          <label htmlFor="integrity-check-per-page" className="text-sm text-muted-foreground">
             表示件数
           </label>
           <Select
@@ -322,24 +318,28 @@ export function IntegrityCheckPage() {
             ) : null}
 
             <section aria-labelledby="integrity-difference-heading" className="space-y-4">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2 id="integrity-difference-heading" className="text-xl font-semibold">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h2
+                    id="integrity-difference-heading"
+                    className="min-w-0 flex-1 text-xl font-semibold"
+                  >
                     差異のある商品
                   </h2>
-                  <p className="text-sm text-muted-foreground">
-                    補正する商品を行ごとに選び、内容を確認して確定してください。
-                  </p>
+                  <Button
+                    type="button"
+                    className="shrink-0"
+                    disabled={isBusy || selectedCodes.size === 0}
+                    onClick={() => {
+                      setDialogOpen(true);
+                    }}
+                  >
+                    補正を確定
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  disabled={isBusy || selectedCodes.size === 0}
-                  onClick={() => {
-                    setDialogOpen(true);
-                  }}
-                >
-                  補正を確定
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  補正する商品を行ごとに選び、内容を確認して確定してください。
+                </p>
               </div>
 
               <PaginationSummary page={page} perPage={perPage} totalCount={mismatches.length} />

@@ -49,7 +49,7 @@ function renderFilters() {
 }
 
 describe("GA2: 取引先 label/triggerの群化（Gated Amendment 2）", () => {
-  it("取引先の label・triggerが共通の flex wrapper 1 つを共有する", () => {
+  it("取引先の label・triggerが共通の grid wrapper 1 つを共有する", () => {
     render(
       <PriceRevisionFilters
         search={search}
@@ -65,7 +65,7 @@ describe("GA2: 取引先 label/triggerの群化（Gated Amendment 2）", () => {
     const label = screen.getByText("取引先");
     const button = screen.getByRole("button", { name: /取引先/ });
 
-    const wrapper = label.closest(".flex.items-center.gap-2");
+    const wrapper = label.closest(".grid.gap-1");
     expect(wrapper).not.toBeNull();
     expect(wrapper).toContainElement(button);
   });
