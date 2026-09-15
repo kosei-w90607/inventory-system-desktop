@@ -121,5 +121,5 @@ not applicable: 本 lane は class / DOM 構造 / 可視 label の配置のみ�
 
 ## Residual Test Gaps
 
-- 実描画（下辺揃え、Checkbox の縦中央、説明行の折り返し、20px）は jsdom で検証できない → L3 AC-L3-1〜4
+- 実描画（下辺揃え、Checkbox が入力と同じ帯に並ぶこと、説明行の折り返し、20px）は jsdom で検証できない → L3 AC-L3-1〜4
 - h2 sweep 27 箇所の見た目差は L3 で 1 page のみ抜き取り（token 統一は rg + typecheck で担保）
