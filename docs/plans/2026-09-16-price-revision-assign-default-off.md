@@ -48,7 +48,7 @@ Reason:
 
 ## Goal
 
-Goal Invariant: 一括価格改定の行確定で、利用者が明示的に選ばない限り商品の取引先を変更しない。既存の「未設定の商品だけに設定し既存値を上書きしない」BIZ 規則（30-biz §4.7 手順 5）は不変。
+Goal Invariant: 一括価格改定の行確定で、利用者が明示的に選ばない限り商品の取引先を変更しない。既存の「未設定の商品だけに設定し既存値を上書きしない」BIZ 規則（30-biz §4.4.1 手順 5）は不変。
 
 ### 最小完了条件
 
@@ -108,7 +108,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `eabc
 
 - **AC1** `rg -c 'useState\(false\)' src/features/products/PriceRevisionPage.tsx` = 1（baseline 0）/ `rg -c 'setAssignSupplier\(true\)' 同` = 0（baseline 2）/ `rg -c 'setAssignSupplier\(false\)' 同` = 2（baseline 0）
 - **AC2** `rg -c '確定した商品の取引先が未設定なら、この取引先を設定する' src/features/products/PriceRevisionPage.tsx` = 1（baseline 0）/ `rg -c '未設定の商品にこの取引先を設定する' src/features/products src/features/products/components` = 0（baseline 1 + test 7）
-- **AC3** `rg -c '紐付け toggle は既定 off' docs/function-design/77-ui-bulk-price-revision.md` = 1（baseline 0）/ `rg -c '既定 on' docs/function-design/77-ui-bulk-price-revision.md` = 1（baseline 2。残る 1 = `取引先未設定の商品も含める` の既定 on）/ `rg -c 'D-088' docs/function-design/77-ui-bulk-price-revision.md` ≥ 1
+- **AC3** `rg -c '紐付け toggle は既定 off' docs/function-design/77-ui-bulk-price-revision.md` = 1（baseline 0）/ `rg -c '既定 on' docs/function-design/77-ui-bulk-price-revision.md` = 3（baseline 5 = `:27` `:30` `:92` `:93` `:128`。残る 3 = `:27` `:92` `:128` の「取引先未設定の商品も含める」〈SPEC-PRV-D3〉の既定 on、本 lane 非対象）/ `rg -c 'D-088' docs/function-design/77-ui-bulk-price-revision.md` ≥ 1
 - **AC4** `rg -c '^## D-088' docs/decision-log.md` = 1（baseline 0）
 - **AC5** `PriceRevisionPage.test.tsx` の 2 本が新既定を固定（test 名に「既定 off」を含む）: `rg -c '既定 off' src/features/products/PriceRevisionPage.test.tsx` ≥ 2（baseline 0）。mutant: `useState(false)` → `true` で FAIL
 - **AC6**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri src/features/products/components docs/function-design/30-biz-product-service.md docs/function-design/40-cmd-product.md | wc -l` = 0
@@ -122,7 +122,7 @@ List the source design docs this plan relies on. Plan Packets are not durable de
 
 - Requirements / spec: REQ-106（77 §77.2）
 - Architecture: 該当なし
-- Function / command / DTO: 77 §77.2 SPEC-PRV-D6、§77.6「絞り込みと取引先の漸進補完」（`:93`）。30-biz §4.7 手順 5（`assign_supplier_id` は supplier_id が NULL のときだけ設定、既存値は上書きしない。不変の前提）
+- Function / command / DTO: 77 §77.2 SPEC-PRV-D6、§77.6「絞り込みと取引先の漸進補完」（`:93`）。30-biz §4.4.1 手順 5（`assign_supplier_id` は supplier_id が NULL のときだけ設定、既存値は上書きしない。不変の前提）
 - DB: 該当なし
 - Screen / UI: 77 §77.6（同上）
 - Decision log / ADR: `docs/decision-log.md` の書式（D-088 を追加、S4）
@@ -133,7 +133,7 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 
 | Area touched by upcoming work | Required source doc / artifact | Status: existing sufficient / updated in this PR / intentionally deferred |
 |---|---|---|
-| Backend function / command / repository / validation / error | なし（30-biz §4.7 手順 5 は不変） | existing sufficient（not applicable） |
+| Backend function / command / repository / validation / error | なし（30-biz §4.4.1 手順 5 は不変） | existing sufficient（not applicable） |
 | Command / DTO / generated binding / wire shape | なし（`assign_supplier_id` 契約は不変） | existing sufficient（not applicable） |
 | DB / transaction / audit / rollback / migration | なし | not applicable |
 | Screen / UI / route state / Japanese wording | 77 §77.2 REQ-106/SPEC-PRV-D6 行、§77.6 | updated in this PR（S3） |
@@ -157,7 +157,7 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: yes（77 の該当行と decision-log D-088 を同 commit で更新）
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D-088（decision-log、S4）
-- Assumptions and constraints: 30-biz §4.7 手順 5「未設定の商品だけに設定し既存値を上書きしない」は不変（起票時実測で確認、変更しない）
+- Assumptions and constraints: 30-biz §4.4.1 手順 5「未設定の商品だけに設定し既存値を上書きしない」は不変（起票時実測で確認、変更しない）
 - Deferred design gaps, risk, and follow-up target: なし
 - Test Design Matrix can cite design decision IDs or source doc sections: yes（D-PR1〜D-PR4。R2 のため専用 Test Design Matrix は付けず、Test Plan に理由を記す）
 - Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: `assign_supplier_id` の BIZ 規則不変を AC6（負の oracle、`src-tauri` / `PriceRevisionTable` の隣接 component / 30-biz / 40-cmd の diff 0 件）で機械検査
@@ -171,7 +171,7 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 | Lifecycle / retry | not applicable | — |
 | Operator workflow | 業務: 未設定商品への紐付けが opt-in になる。初年度の漸進補完の速度は落ちるが owner 受容（PR #63 L3 round 3 所感） | AC-L3-1 |
 | Replacement path | not applicable | — |
-| Data safety / evidence | データ: 既存 supplier_id の上書きなし、不変（30-biz §4.7 手順 5） | AC6 |
+| Data safety / evidence | データ: 既存 supplier_id の上書きなし、不変（30-biz §4.4.1 手順 5） | AC6 |
 | Reporting / accounting semantics | not applicable | — |
 | Manual verification | 1 画面の抜き取り | AC-L3-1 |
 | 環境・再現性 | 互換: URL state 不変 | — |
@@ -180,7 +180,7 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 
 State whether the design is ready for implementation.
 
-- Existing design docs are sufficient because: 変更は既定値 1 箇所（`useState` 初期値と供給者変更時の戻し先）と label 文言 1 箇所の同期で、新しい振舞いはない。BIZ の「未設定の商品だけに設定」規則（30-biz §4.7 手順 5）は不変で、77 §77.2 REQ-106/SPEC-PRV-D6 行と §77.6 の bullet を新既定・新文言へ揃えれば十分。新 component / 新 token なし、mockup 不要
+- Existing design docs are sufficient because: 変更は既定値 1 箇所（`useState` 初期値と供給者変更時の戻し先）と label 文言 1 箇所の同期で、新しい振舞いはない。BIZ の「未設定の商品だけに設定」規則（30-biz §4.4.1 手順 5）は不変で、77 §77.2 REQ-106/SPEC-PRV-D6 行と §77.6 の bullet を新既定・新文言へ揃えれば十分。新 component / 新 token なし、mockup 不要
 - Source docs updated in this PR: 77（S3）、decision-log D-088（S4）（いずれも実装 run で更新。本 plan-first commit は packet / Plans.md / backlog.md のみ）
 - Design gaps intentionally deferred: なし
 - Durable decisions discovered in this plan and promoted to source docs: D-088（decision-log）
@@ -206,7 +206,7 @@ R2 のため任意だが、docs 同期の網羅性を独立 review で確認で�
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
 | REQ-106 / SPEC-PRV-D6（既定 off、文言） | S1 / S3 | `PriceRevisionPage.test.tsx` | AC-L3-1 |
-| 30-biz §4.7 手順 5（未設定の商品だけに設定、既存値を上書きしない） | 非接触 | AC6（負の oracle） | — |
+| 30-biz §4.4.1 手順 5（未設定の商品だけに設定、既存値を上書きしない） | 非接触 | AC6（負の oracle） | — |
 
 ## Test Plan
 
