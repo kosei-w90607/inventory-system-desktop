@@ -439,7 +439,7 @@ export function ReturnExchangePage() {
       {result !== null ? (
         <section aria-label="保存結果" className="space-y-3 rounded-md border bg-muted/30 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold">返品・交換を保存しました</h2>
+            <h2 className="text-xl font-semibold">返品・交換を保存しました</h2>
             {result.idempotent_replay ? <Badge variant="outline">再送結果</Badge> : null}
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-4">
@@ -507,7 +507,7 @@ export function ReturnExchangePage() {
       ) : null}
 
       <section className="space-y-4 rounded-md border p-4">
-        <h2 className="text-lg font-semibold">返品・交換内容</h2>
+        <h2 className="text-xl font-semibold">返品・交換内容</h2>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)]">
           <div className="space-y-2">
             <Label htmlFor="return-date">返品日</Label>
@@ -939,7 +939,7 @@ export function ReturnExchangePage() {
 
       <section aria-label="直近の返品・交換" className="space-y-3 rounded-md border p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">直近の返品・交換</h2>
+          <h2 className="text-xl font-semibold">直近の返品・交換</h2>
           <Button asChild variant="outline" size="sm">
             <Link to="/inventory/records" search={{ recordType: "return_record" }}>
               すべての履歴を見る

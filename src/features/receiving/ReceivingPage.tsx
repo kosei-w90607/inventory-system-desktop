@@ -319,7 +319,7 @@ export function ReceivingPage() {
       {result !== null ? (
         <section className="space-y-3 rounded-md border bg-muted/30 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold">入庫を保存しました</h2>
+            <h2 className="text-xl font-semibold">入庫を保存しました</h2>
             {result.idempotent_replay ? <Badge variant="outline">再送結果</Badge> : null}
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-3">
@@ -372,7 +372,7 @@ export function ReceivingPage() {
       ) : null}
 
       <section className="space-y-4 rounded-md border p-4">
-        <h2 className="text-lg font-semibold">入庫内容</h2>
+        <h2 className="text-xl font-semibold">入庫内容</h2>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)]">
           <div className="space-y-2">
             <Label htmlFor="receiving-date">入庫日</Label>
@@ -668,7 +668,7 @@ export function ReceivingPage() {
 
       <section className="space-y-3 rounded-md border p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">直近の入庫</h2>
+          <h2 className="text-xl font-semibold">直近の入庫</h2>
           <Button asChild variant="outline" size="sm">
             <Link to="/inventory/records" search={{ recordType: "receiving_record" }}>
               すべての履歴を見る

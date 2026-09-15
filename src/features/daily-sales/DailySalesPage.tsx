@@ -162,7 +162,7 @@ function OfficialDailyReportSection({ report }: { report: OfficialDailyReportSum
   return (
     <section className="space-y-3" aria-labelledby="official-daily-report-title">
       <div>
-        <h2 id="official-daily-report-title" className="text-lg font-semibold">
+        <h2 id="official-daily-report-title" className="text-xl font-semibold">
           レジ日報（公式）
         </h2>
         <p className="text-sm text-muted-foreground">

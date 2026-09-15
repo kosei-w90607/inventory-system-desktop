@@ -132,7 +132,7 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
       </section>
 
       <section className="space-y-3 rounded-md border p-4">
-        <h2 className="text-lg font-semibold">明細</h2>
+        <h2 className="text-xl font-semibold">明細</h2>
         <Table>
           <TableHeader>
             <TableRow>
@@ -178,7 +178,7 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
       </section>
 
       <section className="space-y-3 rounded-md border p-4">
-        <h2 className="text-lg font-semibold">関連する在庫変動</h2>
+        <h2 className="text-xl font-semibold">関連する在庫変動</h2>
         {detail.movements.length === 0 ? (
           <EmptyState
             icon={PackageSearch}

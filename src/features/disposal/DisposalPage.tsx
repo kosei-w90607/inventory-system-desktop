@@ -304,7 +304,7 @@ export function DisposalPage() {
       {result !== null ? (
         <section className="space-y-3 rounded-md border bg-muted/30 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold">廃棄・破損を保存しました</h2>
+            <h2 className="text-xl font-semibold">廃棄・破損を保存しました</h2>
             {result.idempotent_replay ? <Badge variant="outline">再送結果</Badge> : null}
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-4">
@@ -348,7 +348,7 @@ export function DisposalPage() {
       ) : null}
 
       <section className="space-y-4 rounded-md border p-4">
-        <h2 className="text-lg font-semibold">廃棄・破損内容</h2>
+        <h2 className="text-xl font-semibold">廃棄・破損内容</h2>
         <div className="space-y-2">
           <Label htmlFor="disposal-date">廃棄日</Label>
           <Input
@@ -658,7 +658,7 @@ export function DisposalPage() {
 
       <section className="space-y-3 rounded-md border p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">直近の廃棄・破損</h2>
+          <h2 className="text-xl font-semibold">直近の廃棄・破損</h2>
           <Button asChild variant="outline" size="sm">
             <Link to="/inventory/records" search={{ recordType: "disposal_record" }}>
               すべての履歴を見る
