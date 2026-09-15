@@ -141,7 +141,7 @@ export function PriceRevisionFilters({
       {normalized.supplier !== undefined ? (
         <label
           htmlFor="price-revision-include-unassigned"
-          className="flex h-9 items-center gap-2 self-end text-sm"
+          className="flex items-center gap-2 text-sm"
         >
           <Checkbox
             id="price-revision-include-unassigned"

@@ -1434,6 +1434,11 @@ it.each([0, 1])(
     expect(row?.nextElementSibling).toBe(description);
     expect(row?.parentElement).toHaveClass("space-y-1");
     expect(screen.getByText(`未入力 ${String(uncounted)}`)).toHaveClass("shrink-0");
+    expect(
+      screen
+        .getByText(`未入力 ${String(uncounted)}`)
+        .querySelector(uncounted ? "svg.lucide-triangle-alert" : "svg.lucide-circle-check"),
+    ).toBeInTheDocument();
     const progress = screen.getByRole("progressbar", { name: "棚卸し進捗" });
     expect(progress.parentElement).toHaveClass("space-y-2");
     expect(progress.previousElementSibling).toBe(row?.parentElement);

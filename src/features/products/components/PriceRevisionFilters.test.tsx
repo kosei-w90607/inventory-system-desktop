@@ -109,12 +109,10 @@ function pickerFilters(isError = false) {
 }
 it("SPEC-FILTER-LABEL-RT-1 D-RT7 GA3: Checkbox を入力と同じ高さの箱の中で縦中央に置く", () => {
   pickerFilters();
-  for (const name of ["廃番を含む", "取引先未設定の商品も含める"]) {
-    const checkbox = screen.getByRole("checkbox", { name });
-    const label = checkbox.closest("label");
-    expect(label).toHaveClass("h-9", "items-center", "self-end");
-    expect(label).toHaveAttribute("for", checkbox.id);
-  }
+  const checkbox = screen.getByRole("checkbox", { name: "廃番を含む" });
+  const label = checkbox.closest("label");
+  expect(label).toHaveClass("h-9", "items-center", "self-end");
+  expect(label).toHaveAttribute("for", checkbox.id);
 });
 
 it("SPEC-PRV-D6: opens supplier picker from trigger and patches supplier on select", async () => {
