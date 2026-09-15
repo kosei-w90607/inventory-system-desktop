@@ -8,11 +8,13 @@
 
 ## 次の行動
 
-- **㉑ フィルタ Label 上置き + 見出し 2 段の runtime lane（R3、implementing）**: [Plan Packet](plans/2026-09-15-filter-label-top-runtime.md) / [Matrix](plans/test-matrices/2026-09-15-filter-label-top-runtime.md)。branch `agent/filter-label-top-runtime`、Plan Commit `c5b1ea2b`（Plan Review 3 round、Sonnet + Opus）。次 = Codex 実装（発注書 49）→ Final Review → owner L3 抜き取り 4 画面 → Ready → merge。wave 10 の先頭 lane。
-- **㉒ 表示小修正 batch 2（R2、stacked、implementing）**: [Plan Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)。branch `agent/display-fixes-batch-2`（㉑ の plan-first commit `a2e01334` 起点）。Plan Review 3 round 通過（Plan Commit `68fa5915`）。㉑ の実装 HEAD `2e6e1d7c` へ単段 merge `c8087a1e` で stack 済み。次 = Codex 実装（発注書 51）→ Final Review → owner L3 抜き取り 3 画面 → ㉑ merge 後に base 付け替え → Ready → merge。㉑ merge 後に `origin/main` 単段 merge で base を付け替える（D-074）。
+- **㉒ 表示小修正 batch 2（R2、implementing）**: [Plan Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)（lane 2 branch にのみ存在、main 未到達のため markdown link 化は見送り。R3 リンク検証対象外）。branch `agent/display-fixes-batch-2`、Draft PR #64（base は ㉑ merge で main へ自動付け替え済み、head `1f5d6193`）。Plan Commit `68fa5915`、GA1〜GA3 + GA3 補正。Final Review round 1 → GA3 是正（発注書 56）→ closure pass（Findings Freeze）→ owner L3 round 1 PASS（`1f5d6193`）。次: ㉑ closeout merge 後に `origin/main` を取込み（squash のため競合解消あり）→ 新 head で独立監査 2 本 + owner L3 再確認 → record → Ready → merge。
+- **㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示（R2、起票待ち）**: owner 決定 2026-09-16（(a) 既定 off + (b) 文言「確定した商品の取引先が未設定なら、この取引先を設定する」）。対象 `PriceRevisionPage.tsx` の既定値 / 設計書 77 REQ-106・SPEC-PRV-D6 / test / decision-log。㉒ と file footprint が互いに素。packet は ㉑ closeout merge 後に起草。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
+
+- **フィルタ Label 上置き + 見出し 2 段の runtime**: [PR #63](https://github.com/kosei-w90607/inventory-system-desktop/pull/63) を merge（2026-09-16）。一覧 toolbar の label 上置き・SegmentedControl の可視 label・section 見出しの 2 段化を 5 site + 見出し群へ反映し、[archive の Plan Packet](archive/plans/2026-09-15-filter-label-top-runtime.md) / [Matrix](archive/plans/test-matrices/2026-09-15-filter-label-top-runtime.md) に GA1〜GA4 と L3 3 round を記録。
 
 - **衛生batch 4**: [PR #61](https://github.com/kosei-w90607/inventory-system-desktop/pull/61)をmerge。doc-consistency WARN 5件掃除・mockup-gの`:has()`是正・npm名指し更新（js-yaml/vitest実更新、smol-toml override）を実施し、[archive packet](archive/plans/2026-09-14-hygiene-batch-4-doc-warn-deps.md)へ移送した。Dependabotのopen alertは0件、Final ReviewはSonnet + Opusの独立2パスで完了（P3 4件はbacklog「記録目的」へ）。relay往復は5/上限2を超過、原因はCoordinator側の発注品質3回で、Writerは毎回fail-closedで正しく停止した。workflow effectivenessのdogfood所見: 実装後のstate-only commit 0件でDraft→record→Ready→mergeがhelperのみで完結／Gated AmendmentはCoordinatorのcontent commit + 登録commitの2 commit構成／fresh worktreeでvitestを回す前に`npm run generate:routes`が必要／`codex exec -o`の報告fileが未更新のケースがありlogから回収した。次のdogfood targetはフィルタLabel上置きruntime laneでのclosure recordとmanual（L3）record。
 
@@ -23,13 +25,13 @@
 ### Wave Registry
 
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。完了済み wave の記録は [archive](archive/harness-context/2026-09-14-Plans.md) に移送済み。
-- **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: 進行中** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
-  - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime（R3、`agent/filter-label-top-runtime`、[Packet](plans/2026-09-15-filter-label-top-runtime.md)、Draft PR 未作成、Phase implementing〈Plan Commit `c5b1ea2b`、Plan Review 3 round〉、介入 0/4）
-  - lane 2: ㉒ 表示小修正 batch 2（R2、`agent/display-fixes-batch-2`、lane 1 の plan-first commit `a2e01334` を base に stack、[Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)、stack base = ㉑ 実装 HEAD `2e6e1d7c`〈merge `c8087a1e`〉、Draft PR 未作成、Phase implementing〈Plan Commit `68fa5915`、Plan Review 3 round〉、介入 0/3）
+- **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: 進行中（lane 1 完了、lane 2 の base 同期待ち）** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
+  - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
+  - lane 2: ㉒ 表示小修正 batch 2（R2、`agent/display-fixes-batch-2`、[Packet](plans/2026-09-15-display-fixes-batch-2.md)、Draft PR #64〈base main〉、Phase implementing〈Plan Commit `68fa5915`、GA1〜GA3 + 補正〉、closure pass、L3 round 1 PASS、介入 1/3）
 
 ## ブロッカー
 
-wave 10 の 2 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。
+㉒ / ㉓ を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。
 
 ## 製品の未決判断
 

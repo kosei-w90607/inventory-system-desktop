@@ -1155,10 +1155,10 @@ describe("StocktakePage (UI-10)", () => {
     const departmentTrigger = await screen.findByRole("combobox", { name: "部門" });
     const perPageTrigger = screen.getByRole("combobox", { name: "表示件数" });
     const uncountedCheckbox = screen.getByRole("checkbox", { name: "未入力のみ表示" });
-    // SPEC-FILTER-LABEL-RT-1 D-RT7: Checkbox は label 内包で行の中央に置く。
+    // SPEC-FILTER-LABEL-RT-1 D-RT7 GA3: Checkbox は入力と同じ高さの箱の中で縦中央に置く。
     expect(screen.getByLabelText("未入力のみ表示")).toBe(uncountedCheckbox);
     const checkboxLabel = uncountedCheckbox.closest("label");
-    expect(checkboxLabel).toHaveClass("self-center");
+    expect(checkboxLabel).toHaveClass("h-9", "items-center", "self-end");
     expect(checkboxLabel).toHaveAttribute("for", uncountedCheckbox.id);
 
     // S4a（round 1 是正）: 部門 → 未入力のみ表示 → 表示件数 の順で DOM 上に並ぶことを
@@ -1434,6 +1434,11 @@ it.each([0, 1])(
     expect(row?.nextElementSibling).toBe(description);
     expect(row?.parentElement).toHaveClass("space-y-1");
     expect(screen.getByText(`未入力 ${String(uncounted)}`)).toHaveClass("shrink-0");
+    expect(
+      screen
+        .getByText(`未入力 ${String(uncounted)}`)
+        .querySelector(uncounted ? "svg.lucide-triangle-alert" : "svg.lucide-circle-check"),
+    ).toBeInTheDocument();
     const progress = screen.getByRole("progressbar", { name: "棚卸し進捗" });
     expect(progress.parentElement).toHaveClass("space-y-2");
     expect(progress.previousElementSibling).toBe(row?.parentElement);

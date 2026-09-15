@@ -101,7 +101,7 @@ export function PriceRevisionFilters({
         />
         <label
           htmlFor="price-revision-discontinued"
-          className="flex items-center gap-2 self-center text-sm"
+          className="flex h-9 items-center gap-2 self-end text-sm"
         >
           <Checkbox
             id="price-revision-discontinued"
@@ -141,7 +141,7 @@ export function PriceRevisionFilters({
       {normalized.supplier !== undefined ? (
         <label
           htmlFor="price-revision-include-unassigned"
-          className="flex items-center gap-2 self-center text-sm"
+          className="flex items-center gap-2 text-sm"
         >
           <Checkbox
             id="price-revision-include-unassigned"
