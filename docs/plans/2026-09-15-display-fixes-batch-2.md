@@ -7,7 +7,7 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 68fa591531e2249e13578cdff70ae3785b66757a
@@ -24,6 +24,7 @@ manual = owner Windows native L3 の抜き取り 3 画面（AC-L3-1〜3、10 分
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（`b21703ad`）: Risk R2、Design Readiness が既存 function-design 58 / 65 / 69 + catalog ⑥ / ⑬ + mockup-d を十分と引用（文言・token の同期のみ）。Test Matrix は R2 任意だが test 更新が 5 file に及ぶため付ける。
 - plan-gate → plan-approved（本 commit、state-only）: Plan Review round 1（Sonnet、P2 1）→ 是正 `3175c56f` + `0fad049e` → round 2 closure（新規 P2 1）→ 是正 `68fa5915` → round 3 closure = Findings Freeze 可（P1/P2 = 0、round 天井 3 で終了）。Plan Commit = `68fa5915`（plan-first `b21703ad` を含む是正済みの確定版）。implementing への遷移は ㉑ の実装 HEAD へ stack した時点で Coordinator が別 commit で記録する。
+- plan-approved → implementing（本 commit、state-only）: ㉑ の実装 HEAD `2e6e1d7c`（Final Review round 1 是正後、closure 進行中）を単段 merge `c8087a1e` で取り込み stack した（衝突は `docs/Plans.md` のみ、両 lane の行を保持して解消）。stack base = `2e6e1d7c`。実装は Codex 発注書 51 で本 commit を HEAD_SHA として開始する。㉑ が closure で更に変わった場合は同じ単段 merge で追随する。
 
 ## Owner Effort Budget
 

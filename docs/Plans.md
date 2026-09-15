@@ -9,8 +9,7 @@
 ## 次の行動
 
 - **㉑ フィルタ Label 上置き + 見出し 2 段の runtime lane（R3、implementing）**: [Plan Packet](plans/2026-09-15-filter-label-top-runtime.md) / [Matrix](plans/test-matrices/2026-09-15-filter-label-top-runtime.md)。branch `agent/filter-label-top-runtime`、Plan Commit `c5b1ea2b`（Plan Review 3 round、Sonnet + Opus）。次 = Codex 実装（発注書 49）→ Final Review → owner L3 抜き取り 4 画面 → Ready → merge。wave 10 の先頭 lane。
-- **㉒ 表示小修正 batch 2（R2、stacked）**: ㉑ の branch 上に stack する後続 lane（[Backlogの該当行](backlog.md#次に動く-lane順番固定)）。packet は ㉑ の plan-first commit の後に起草し、実装は ㉑ の Plan Gate 後。㉑ merge 後に `origin/main` 単段 merge で base を付け替える（D-074）。
-- **㉒ 表示小修正 batch 2（R2、stacked、plan-gate）**: [Plan Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)。branch `agent/display-fixes-batch-2`（㉑ の plan-first commit `a2e01334` 起点）。Plan Review 3 round 通過（Plan Commit `68fa5915`）。次 = ㉑ の実装 HEAD へ stack → implementing 遷移 → Codex 実装。㉑ merge 後に `origin/main` 単段 merge で base を付け替える（D-074）。
+- **㉒ 表示小修正 batch 2（R2、stacked、implementing）**: [Plan Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)。branch `agent/display-fixes-batch-2`（㉑ の plan-first commit `a2e01334` 起点）。Plan Review 3 round 通過（Plan Commit `68fa5915`）。㉑ の実装 HEAD `2e6e1d7c` へ単段 merge `c8087a1e` で stack 済み。次 = Codex 実装（発注書 51）→ Final Review → owner L3 抜き取り 3 画面 → ㉑ merge 後に base 付け替え → Ready → merge。㉑ merge 後に `origin/main` 単段 merge で base を付け替える（D-074）。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
@@ -26,7 +25,7 @@
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。完了済み wave の記録は [archive](archive/harness-context/2026-09-14-Plans.md) に移送済み。
 - **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: 進行中** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime（R3、`agent/filter-label-top-runtime`、[Packet](plans/2026-09-15-filter-label-top-runtime.md)、Draft PR 未作成、Phase implementing〈Plan Commit `c5b1ea2b`、Plan Review 3 round〉、介入 0/4）
-  - lane 2: ㉒ 表示小修正 batch 2（R2、`agent/display-fixes-batch-2`、lane 1 の plan-first commit `a2e01334` を base に stack、[Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)、Draft PR 未作成、Phase plan-approved〈Plan Commit `68fa5915`、Plan Review 3 round〉、介入 0/3）
+  - lane 2: ㉒ 表示小修正 batch 2（R2、`agent/display-fixes-batch-2`、lane 1 の plan-first commit `a2e01334` を base に stack、[Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)、stack base = ㉑ 実装 HEAD `2e6e1d7c`〈merge `c8087a1e`〉、Draft PR 未作成、Phase implementing〈Plan Commit `68fa5915`、Plan Review 3 round〉、介入 0/3）
 
 ## ブロッカー
 
