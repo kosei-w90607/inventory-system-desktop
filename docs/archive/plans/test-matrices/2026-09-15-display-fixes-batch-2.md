@@ -8,11 +8,11 @@ Risk: R2
 
 ## Contracts Under Test
 
-- C1 69 §69.9: 区画見出し「基準値」、h1「在庫少の基準」
+- C1 69 §69.9: 区画見出しなし（説明文のみ、GA3 owner 判断 (c)）、h1「在庫少の基準」
 - C2 69 §69.7: 空 / 非整数 / 1 未満 / 99999 超は保存拒否、文言は「1〜99999の整数を入力してください」1 本
 - C3 catalog ⑥: `AlertTitle` は `font-semibold`、構造不変
 - C4 catalog ① / 58 §58.7: 在庫照会 subtitle 1 行
-- C5 catalog ⑬ / 58 §58.10: 在庫状態 Badge「正常」（stone 無彩色不変）
+- C5 catalog ⑬ / 58 §58.10: 在庫状態 Badge「在庫あり」（GA3 owner 判断 (b)、stone 無彩色不変）
 - C6 58 §58.7 / mockup-d `:177`: `status !== "all"` で「全 N 件」（N = filter 後の `items.length`）、`status === "all"` は現行の PaginationSummary、0 件は EmptyState のみ
 - C7 65 §65.8.1: 一覧 6 列（明細数なし）、`item_count` は DTO に残り代表商品分岐が使う
 
@@ -30,12 +30,12 @@ Risk: R2
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| C1 | F1 | unit | `src/features/threshold-settings/ThresholdSettingsPage.test.tsx`（既存 `:304` h1 + 追加 `getByRole("heading", { level: 2, name: "基準値" })`） | 区画見出しが旧文言 / h1 が変わる |
+| C1 | F1 | unit | `src/features/threshold-settings/ThresholdSettingsPage.test.tsx`（既存 `:304` h1 + 追加「h2 なし + 説明文あり」の assert） | 区画見出しが残る / h1 が変わる |
 | C1 / C2 | F1 | rg oracle | AC1 / AC6 | 69 の同期漏れ |
 | C2 | F2 | unit | `ThresholdSettingsPage.test.tsx:96,109,122,135`（4 case の期待文言を同一文へ、`mockUpdateSetting` 未呼出の assert は維持） | 判定分岐が消える（保存が通る） |
 | C3 | F3 | unit | `src/components/ui/alert.test.tsx`（追加: `AlertTitle` が `font-semibold` を持ち `font-medium` を持たない） | class 差替え漏れ |
 | C4 | — | unit | `src/features/stock-inquiry/StockInquiryPage.test.tsx`（追加: `getByText("商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます")`） | subtitle 未設定 |
-| C5 | F4 | unit | `src/features/stock-inquiry/components/ProductListTable.test.tsx:85,87`（「正常」） | 旧文言 |
+| C5 | F4 | unit | `src/features/stock-inquiry/components/ProductListTable.test.tsx:85,87`（「在庫あり」） | 旧文言 |
 | C5 | F4 | rg oracle | AC4 | docs 残存 |
 | C6 | F5 | unit | `StockInquiryPage.test.tsx`（追加 3 本: low_stock 3 件 → 「全 3 件」/ all → 「全 」の text なし + PaginationSummary 現行 / low_stock 0 件 → EmptyState のみ） | gate 反転 / 0 件で描画 / N 誤り |
 | C6 | F5 | rg oracle | AC5（`statusValue === "all"` 2 件不変） | gate 改変 |

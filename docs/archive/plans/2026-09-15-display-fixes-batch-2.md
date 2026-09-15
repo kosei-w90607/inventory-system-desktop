@@ -1,4 +1,4 @@
-# Plan Packet: ㉒ 表示小修正 batch 2（在庫少の基準 見出し / Alert title 太字 / 在庫照会 副題 + 件数 / Badge「正常」/ 基準の error 文言 / 明細数列 撤去）
+# Plan Packet: ㉒ 表示小修正 batch 2（在庫少の基準 見出し / Alert title 太字 / 在庫照会 副題 + 件数 / Badge「在庫あり」/ 基準の error 文言 / 明細数列 撤去）
 
 2026-09-15 起票。wave 10 の lane 2（stacked train、D-074）。base は ㉑ の plan-first commit `a2e01334afed8535239644515a845359529a803e`（`agent/filter-label-top-runtime`）で、実装は ㉑ の実装 HEAD の上に stack し、㉑ merge 後に `origin/main` 単段 merge で base を付け替える。出典は Backlog「表示小修正 batch 2 候補」（owner 2026-09-11 所感 + L8-4 owner 決定 2026-09-15）。file:line は現行 main `04143923` で再実測（Sonnet Explore 2026-09-15、Coordinator が主要 site を直接確認）。実装は別 run とし、独立 Plan Review 通過後に発注する。
 
@@ -7,7 +7,7 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: 68fa591531e2249e13578cdff70ae3785b66757a
@@ -19,7 +19,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 1
 - Human Gate: ready,merge,manual
 
-manual = owner Windows native L3 の抜き取り 3 画面（AC-L3-1〜3、10 分以内）。文言・weight の変更は rg oracle で閉じるが、Alert title の太さと「全 N 件」の見え方は owner の目が oracle（[視覚系 UI change の運用教訓](../../.claude/rules/review-workflow.md) ではなく owner 方針 2026-09-05）。Fable 指揮の分業 lane で D-087 の一貫担当例外は適用しない。
+manual = owner Windows native L3 の抜き取り 3 画面（AC-L3-1〜3、10 分以内）。文言・weight の変更は rg oracle で閉じるが、Alert title の太さと「全 N 件」の見え方は owner の目が oracle（[視覚系 UI change の運用教訓](../../../.claude/rules/review-workflow.md) ではなく owner 方針 2026-09-05）。Fable 指揮の分業 lane で D-087 の一貫担当例外は適用しない。
 
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（`b21703ad`）: Risk R2、Design Readiness が既存 function-design 58 / 65 / 69 + catalog ⑥ / ⑬ + mockup-d を十分と引用（文言・token の同期のみ）。Test Matrix は R2 任意だが test 更新が 5 file に及ぶため付ける。
@@ -54,9 +54,9 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 在庫少の基準: 区画見出しが「基準値」になり h1「在庫少の基準」と二重に出ない。入力 error は「1〜99999の整数を入力してください」の 1 文に揃う。
+- 在庫少の基準: 区画見出しをなくし説明文のみにして h1「在庫少の基準」と二重に出ない（GA3、owner 判断 (c)）。入力 error は「1〜99999の整数を入力してください」の 1 文に揃う。
 - Alert: icon の真横の title（`AlertTitle`）が app 全体で太字（600）になる。
-- 在庫照会: 副題 1 行が付き、在庫状態 Badge が「正常」になり、在庫切れ / 在庫少の絞り込みで「全 N 件」が出る。
+- 在庫照会: 副題 1 行が付き、在庫状態 Badge が「在庫あり」になり（GA3、owner 判断 (b)）、在庫切れ / 在庫少の絞り込みで「全 N 件」が出る。
 - 入出庫履歴: 一覧から「明細数」列が消え、他の列と詳細導線は不変。
 
 ### 失敗定義
@@ -88,20 +88,20 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 
 ## 設計判断（Coordinator adjudication、Plan Review で覆せる）
 
-- **D-B1 区画見出しは「基準値」**（Backlog の 2 案のうち、`FormSection` の `title` 必須契約を保ち差分最小の側。見出しを外して説明だけ残す案は ④ FormSection の構造〈h2 必須〉に反する）。
+- **D-B1 区画見出しはなし、説明文のみ**（**GA3 是正**、owner 判断 (c)。理解しやすさのため見出しを外し、`FormSection` の DOM から h2 を除いた形〈説明 `<p>` + `Separator` + 入力〉を画面内に持つ。`FormSection` component と catalog ④ 本体は変更しない）。
 - **D-B2 `AlertTitle` は `font-medium` → `font-semibold`**（owner 2026-09-11 原文）。catalog ⑥ の Alert warning variant 節に「`AlertTitle` は `font-semibold`（600）で icon の真横の 1 行を本文（`AlertDescription`）より強く出す」を 1 文追記。variant を問わず共通。
 - **D-B3 副題は `subtitle` prop で mockup-d-history `:172` の文をそのまま**（`description` は複数文の操作説明用、catalog ①）。58 §58.7 に「PageHeader: title「在庫照会」+ subtitle『商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます』」を 1 行。
-- **D-B4 「正常」**（owner「状態なら正常のほうが文言として正しい」）。catalog ⑬ の 4 箇所と 58 の 5 箇所、test 2 箇所を同 commit で更新。catalog `:885` の stale anchor `StockStatusBadge.tsx:42` は現行行（`:35-37`）へ直す（file:line を書かない規範は ⑨ D3 の ⑨ 限定で、⑬ は既に anchor を持つため最小差分で更新）。
+- **D-B4 「在庫あり」**（**GA3 是正**、owner 判断 (b)。「正常」は `status === "all"` で閾値を見ずに `stock_quantity > 0` を ok とし、閾値割れ商品でも「正常」と断言してしまうため不採用、「在庫ありは基準以上を保証しない」と明記して採用）。catalog ⑬ の 4 箇所と 58 の 5 箇所、test 2 箇所を同 commit で更新。catalog `:885` の stale anchor `StockStatusBadge.tsx:42` は現行行（`:35-37`）へ直す（file:line を書かない規範は ⑨ D3 の ⑨ 限定で、⑬ は既に anchor を持つため最小差分で更新）。
 - **D-B5 件数は「全 N 件」1 本（Backlog 原文の「全 N 件のうち a〜b 件を表示」は client filter が slice しないため範囲が成立せず、mockup-d `:177`「件数のみ太字表示」の形に落とす）、`status !== "all"` かつ `items.length > 0` のときだけ**、`PaginationSummary` の上の位置（`:225` の直前）に `<p className="text-base font-semibold tabular-nums">全 {data.items.length} 件</p>`（mockup `.cnt-plain` の 16px / 600 / tabular-nums を token で写す。`small` の注記「ページ送りはこの絞り込みでは行いません」は付けない = 情報より説明が増える）。`PaginationSummary` / `Pagination` の gate は不変。`items.length === 0` は EmptyState が出るため件数を出さない。N は `filterAndSortLowStockList` 後の件数（検索 / 部門で絞った後）で、mockup の「在庫少 12 件・在庫切れ 3 件」の 2 値表示は status が片方ずつしか選べないため 1 値。
 - **D-B6 error 文言は 1 本「1〜99999の整数を入力してください」**（全角「〜」、半角数字。owner「範囲が一目で分かる 1 本」）。`THRESHOLD_ERROR_MESSAGES` の 3 key は残してよい（値を同一文にする）。判定分岐（空 / 非整数 / 1 未満 / 99999 超 → 保存拒否）は不変で、文言だけ揃える。上部「保存できませんでした」Alert は backend 失敗用で対象外（owner 2026-09-11 合意）。69 §69.7 表の文言列 4 行を同一文へ。
 - **D-B7 明細数列は撤去、`item_count` は DTO に残す**（owner 決定 2026-09-15 (a)。backend 非接触、代表商品分岐 `:366` が `item_count` を使う）。`:212` の列構成から「明細数」を外す（**`:98` の §65.5 詳細表示表は触らない**、Gated Amendment 1）、`:213` は「`item_count` は一覧に表示しない（L8-4、owner 2026-09-15）。算出仕様は DTO として維持」へ改める、`:271` は DTO 注記として残す。手動販売出庫で困れば『代表商品 ほか N 件』型で戻す（Backlog 記録目的）。
 
 ## Scope
 
-- **S1 `ThresholdSettingsPage.tsx:228`**: `title="基準値"`。69 `:152` を「基準値」に。test に h2「基準値」の assert を 1 本。
+- **S1 `ThresholdSettingsPage.tsx:228`**: `FormSection` を h2 なしの `<section>`（説明 `<p>` + `Separator` + 入力）へ置換（GA3、owner 判断 (c)）。69 `:152` を「（なし、説明文のみ）」に。test を「h2 なし + 説明文あり」の assert へ。
 - **S2 `alert.tsx:45`**: `font-medium` → `font-semibold`。catalog ⑥ に D-B2 の 1 文。`alert.test.tsx` に `AlertTitle` の class assert（`font-semibold` を持つ）。
 - **S3 `StockInquiryPage.tsx:100`**: `subtitle` 追加。58 §58.7 に 1 行。`StockInquiryPage.test.tsx` に `getByText` 1 本。
-- **S4 `StockStatusBadge.tsx:36`**: 「正常」。catalog ⑬ 4 箇所 + anchor、58 6 箇所（`:114` の「在庫切れ / 在庫少 / 通常」→「在庫切れ / 在庫少 / 正常」を含む。**Gated Amendment 2**）、`ProductListTable.test.tsx:85,87`。
+- **S4 `StockStatusBadge.tsx:36`**: 「在庫あり」（GA3、owner 判断 (b)）。catalog ⑬ 4 箇所 + anchor、58 6 箇所（`:114` の「在庫切れ / 在庫少 / 通常」→「在庫切れ / 在庫少 / 在庫あり」を含む。**Gated Amendment 2**）、`ProductListTable.test.tsx:85,87`。
 - **S5 `StockInquiryPage.tsx`**: D-B5 の件数行。58 §58.7（表示）と §58.10（業務ルール: 絞り込み時は件数のみ、pagination なし）に各 1 行。`StockInquiryPage.test.tsx` に「low_stock 3 件 → 『全 3 件』」「all → 件数行なし」「low_stock 0 件 → EmptyState のみ」の 3 本。
 - **S6 `extract-thresholds.ts:9-13`**: 3 値を同一文へ。69 `:131-134`。`ThresholdSettingsPage.test.tsx:96,109,122,135` の期待文言。
 - **S7 `InventoryRecordsPage.tsx:354,377`**: 列削除。65 `:212,213`（**Gated Amendment 1: `:98` は §65.5 詳細表示の表で対象外、削除しない**）。`InventoryRecordsPage.test.tsx:164`（明細数の assert を外し test 名を「代表商品を-で表示」へ）/ `:922`（配列から「明細数」除去）/ `:927` 付近（`toHaveLength(6)`）。
@@ -164,10 +164,10 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| SPEC-DISP-B2-1 | 69 §69.9 | D-B1 | 「基準値」。見出し撤去は ④ の h2 必須に反する | S1 | `ThresholdSettingsPage.test.tsx` |
+| SPEC-DISP-B2-1 | 69 §69.9 | D-B1 | 見出しなし、説明文のみ（GA3、owner 判断 (c)） | S1 | `ThresholdSettingsPage.test.tsx` |
 | SPEC-DISP-B2-1 | catalog ⑥ | D-B2 | class 1 語、app 全体 | S2 | `alert.test.tsx` |
 | SPEC-DISP-B2-1 | catalog ① subtitle / mockup-d `:172` | D-B3 | `subtitle`（1 行）、`description` は複数文用 | S3 | `StockInquiryPage.test.tsx` |
-| SPEC-DISP-B2-1 | catalog ⑬ / 58 §58.10 | D-B4 | 「正常」、描画元 1 箇所 | S4 | `ProductListTable.test.tsx` |
+| SPEC-DISP-B2-1 | catalog ⑬ / 58 §58.10 | D-B4 | 「在庫あり」（GA3、owner 判断 (b)）、描画元 1 箇所 | S4 | `ProductListTable.test.tsx` |
 | SPEC-DISP-B2-1 | mockup-d `:175-177` / 58 §58.10 UI-06a-D1 | D-B5 | 件数のみ、範囲・pagination なし | S5 | `StockInquiryPage.test.tsx` |
 | SPEC-DISP-B2-1 | 69 §69.7 | D-B6 | 文言 1 本、判定分岐不変 | S6 | `ThresholdSettingsPage.test.tsx` |
 | SPEC-DISP-B2-1 | 65 §65.8.1 | D-B7 | 列撤去、DTO 維持 | S7 | `InventoryRecordsPage.test.tsx` |
@@ -208,7 +208,7 @@ Minimum design checks:
 - Backend function design: 非接触
 - Command / DTO / data contract: 非接触（`item_count` 残置）
 - Persistence / transaction / audit impact: なし
-- Operator workflow / Japanese UI wording: 「基準値」「正常」「全 N 件」「1〜99999の整数を入力してください」の 4 文言を doc と同期
+- Operator workflow / Japanese UI wording: 区画見出しなし（説明文のみ）「在庫あり」「全 N 件」「1〜99999の整数を入力してください」の 4 文言を doc と同期
 - Error, empty, retry, and recovery behavior: error 文言 1 本化のみ、判定不変
 - Testability and traceability IDs: SPEC-DISP-B2-1、REQ 追加なし
 
@@ -258,7 +258,7 @@ not applicable（wire 非接触）。
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #64](https://github.com/kosei-w90607/inventory-system-desktop/pull/64) で実装し squash merge 済み（`f2ef9e52`、2026-09-16）。Draft PR head の遷移: `8d0ae264`（Final Review round 1）→ GA3 是正 `1f5d6193`（発注書 56）→ Sonnet closure（Findings Freeze）→ owner L3 round 1 → base 同期 `beb95bd2`（㉑ squash 後の main 取込み）→ 独立監査 2 本（Sonnet / Opus）→ owner L3 round 2 → Ready → hosted CI pass → merge。owner 介入 2 / 予算 3（L3 ×2）。relay 4 / 上限 4（発注書 51 ×2 run / 53 / 56）。専用 record に review pass（broad: Sonnet `#issuecomment-5683251444` / Opus `#issuecomment-5683311573`）と manual pass（L3 round 1 + 2、`#issuecomment-5683220516`）を記録。
 
 ## Review Response
 
@@ -309,3 +309,20 @@ Final Review round 1: pass A Sonnet = P1 0 / P2 0 / P3 2、pass B Opus = P1 0 / 
 - Opus P3（`DailyReportImportPage.tsx:146` の 2 文 title が `line-clamp-1` で切れ得る）= L3 観点へ（AC-L3-3 に日報取込みの Alert）+ Backlog（title 1 文化）
 - Owner Effort Budget: relay 3 → 4
 - **GA3 補正（Coordinator、Amendments 追加）**: 上記裁定を AC1 / AC2 / AC4 / AC-L3-1〜3 の行に同期し、是正発注番号を 56 へ（55 は ㉑ GA4 の是正に先着）。裁定の内容は変えない
+
+### Final Review（現在候補 beb95bd2 の完了判定、2026-09-16）
+
+- Sonnet: P1 0 / P2 0 / P3 0（findings 0、pass 可）
+- Opus: P1 0 / P2 1 / P3 8 → Coordinator 裁定で P2-1 を P3 へ格下げ（69 §69.4 の画面構成文が GA3 是正〈`FormSection` 撤去〉に追随せず「PageHeader + FormSection + 保存ボタン」のまま残る。挙動非影響の docs drift、runtime は既に h2 なしで実装済み）+ 新規 P3 3 件
+- closeout（本 PR）で是正した項目:
+  - P3-1（P2-1 格下げ分）: 69 `:75` / `:82` の画面構成文を GA3 是正後の実装（`<section>`、見出しなし）へ同期
+  - P3-2: 69 §69.9 の行名「FormSection 見出し」「FormSection 説明」が `FormSection` 不使用後も残存 → 「区画 見出し」「区画 説明」へ
+  - P3-3: catalog ⑩ 使用トークンに在庫照会の絞り込み時件数行（`text-base font-semibold`）が `PaginationSummary`（`text-sm muted`）と非対称である旨の記録がない → 例外 1 文を追記
+  - P3-4: packet / Matrix に GA3 で撤回された「基準値」「正常」の literal が Goal / 設計判断 / Scope / Design Intent Trace / Minimum design checks / タイトル行 / Matrix C1・C5 に残存 → GA3 裁定（区画見出しなし / 「在庫あり」）へ書き換え
+- Freeze 後の変更は本 closeout の docs 同期のみ、runtime / gate 契約は不変
+
+## 後続
+
+- 日報取込み「取込み済み」Alert の title を 1 文に（Final Review Opus P3、2 文が `line-clamp-1` で切れ得る）は [Backlog「保留」](../../backlog.md#見た目ux) を参照。
+- destructive Alert の soft 塗り + 三角 icon（owner 所感 2026-09-15、L3 で確定。既登録）は [Backlog「やると決めたもの」](../../backlog.md#やると決めたもの順番未定) を参照。
+- 在庫照会の絞り込み時の件数行の token 非対称（`text-base font-semibold` vs `PaginationSummary` の `text-sm muted`）は catalog ⑩ 使用トークンの例外注記と [Backlog「記録目的」](../../backlog.md#記録目的受容済みリスクrevisit-条件付き) を参照。

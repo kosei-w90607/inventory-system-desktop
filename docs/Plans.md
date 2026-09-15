@@ -8,11 +8,12 @@
 
 ## 次の行動
 
-- **㉒ 表示小修正 batch 2（R2、implementing）**: [Plan Packet](plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](plans/test-matrices/2026-09-15-display-fixes-batch-2.md)（lane 2 branch にのみ存在、main 未到達のため markdown link 化は見送り。R3 リンク検証対象外）。branch `agent/display-fixes-batch-2`、Draft PR #64（base は ㉑ merge で main へ自動付け替え済み、head `1f5d6193`）。Plan Commit `68fa5915`、GA1〜GA3 + GA3 補正。Final Review round 1 → GA3 是正（発注書 56）→ closure pass（Findings Freeze）→ owner L3 round 1 PASS（`1f5d6193`）。次: ㉑ closeout merge 後に `origin/main` を取込み（squash のため競合解消あり）→ 新 head で独立監査 2 本 + owner L3 再確認 → record → Ready → merge。
 - **㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示（R2、起票待ち）**: owner 決定 2026-09-16（(a) 既定 off + (b) 文言「確定した商品の取引先が未設定なら、この取引先を設定する」）。対象 `PriceRevisionPage.tsx` の既定値 / 設計書 77 REQ-106・SPEC-PRV-D6 / test / decision-log。㉒ と file footprint が互いに素。packet は ㉑ closeout merge 後に起草。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
+
+- **表示小修正 batch 2**: [PR #64](https://github.com/kosei-w90607/inventory-system-desktop/pull/64) を merge（2026-09-16）。在庫少の基準の区画見出し撤去（説明文のみ）/ Alert title 太字（600）/ 在庫照会の副題 + 絞り込み時「全 N 件」/ 在庫状態 Badge「在庫あり」/ 基準の入力 error 文言 1 本化 / 入出庫履歴の明細数列撤去を実装し、[archive の Plan Packet](archive/plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](archive/plans/test-matrices/2026-09-15-display-fixes-batch-2.md) に Final Review closure と GA1〜GA3 + GA3 補正を記録。
 
 - **フィルタ Label 上置き + 見出し 2 段の runtime**: [PR #63](https://github.com/kosei-w90607/inventory-system-desktop/pull/63) を merge（2026-09-16）。一覧 toolbar の label 上置き・SegmentedControl の可視 label・section 見出しの 2 段化を 5 site + 見出し群へ反映し、[archive の Plan Packet](archive/plans/2026-09-15-filter-label-top-runtime.md) / [Matrix](archive/plans/test-matrices/2026-09-15-filter-label-top-runtime.md) に GA1〜GA4 と L3 3 round を記録。
 
@@ -25,9 +26,9 @@
 ### Wave Registry
 
 - 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。完了済み wave の記録は [archive](archive/harness-context/2026-09-14-Plans.md) に移送済み。
-- **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: 進行中（lane 1 完了、lane 2 の base 同期待ち）** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
+- **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: lane 1 / 2 完了、lane 3 進行中** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
-  - lane 2: ㉒ 表示小修正 batch 2（R2、`agent/display-fixes-batch-2`、[Packet](plans/2026-09-15-display-fixes-batch-2.md)、Draft PR #64〈base main〉、Phase implementing〈Plan Commit `68fa5915`、GA1〜GA3 + 補正〉、closure pass、L3 round 1 PASS、介入 1/3）
+  - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）
 
 ## ブロッカー
 
