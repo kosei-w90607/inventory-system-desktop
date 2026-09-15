@@ -756,7 +756,7 @@ export function StocktakeItemList({
         />
         <label
           htmlFor="stocktake-uncounted-only"
-          className="flex items-center gap-2 self-center text-sm"
+          className="flex h-9 items-center gap-2 self-end text-sm"
         >
           <Checkbox
             id="stocktake-uncounted-only"
