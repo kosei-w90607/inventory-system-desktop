@@ -111,7 +111,7 @@ export type PaginatedResult<T> = {
 | 新規 | `src/features/stock-inquiry/components/StatusChips.tsx` | 3 チップ（shadcn `ToggleGroup`、件数バッジなし、Q-5） | 40-55 |
 | 新規 | `src/components/patterns/DepartmentFilter.tsx`（実装当時は UI-06a 用ローカル実装、PR-B で 3 feature を統合） | shadcn Select 単一選択（`DepartmentOption` 型は patterns/ が定義、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)） | 40-60 |
 | 新規 | `src/features/stock-inquiry/components/ProductListTable.tsx` | shadcn Table（`source` prop 受取 → derive-stock-state 引き渡し、状態列で Badge + icon + 日本語ラベル表示。stockout red / low yellow / ok default は在庫数セルの補助シグナル）+ 行クリックで選択 + 選択行直下に colSpan インライン展開（`detailQuery` props → StockDetailContent 共用） | 90-150 |
-| 新規 | `src/features/stock-inquiry/components/StockStatusBadge.tsx` | `StockStatus` を `Badge + lucide icon + 日本語ラベル` に変換（在庫切れ / 在庫少 / 通常）。閾値判定は持たない | 25-40 |
+| 新規 | `src/features/stock-inquiry/components/StockStatusBadge.tsx` | `StockStatus` を `Badge + lucide icon + 日本語ラベル` に変換（在庫切れ / 在庫少 / 正常）。閾値判定は持たない | 25-40 |
 | 新規 | `src/features/stock-inquiry/components/EmptySearchPlaceholder.tsx` | status=all + q 空文字時の centered muted text（契約 I） | 20-30 |
 | ~~新規~~ 撤去 | ~~`src/features/stock-inquiry/components/TruncatedResultsAlert.tsx`~~ | `truncated` 時に shadcn Alert で絞り込み案内（契約 I）。**2026-08-03 batch B（UI-06a-D1）で撤去**: pagination 導入により全件へ到達可能になったため、打ち切り告知は不要（§58.10 契約 I 参照） | 25-35 |
 | 新規 | `src/features/stock-inquiry/components/StockDetailContent.tsx` | 詳細の内側描画（在庫数/売価/原価/最終入庫日/最終販売日 + 商品修正/入庫記録/在庫変動履歴 active link、isLoading/isError/data 全状態内包）。行インライン展開とフォールバックカードで共用。2026-08-26 に商品修正/入庫記録を active link 化 | 90-130 |
