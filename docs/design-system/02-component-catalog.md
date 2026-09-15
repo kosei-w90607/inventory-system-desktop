@@ -25,7 +25,7 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **使いどころ**: 各ページ最上部のタイトル行。画面名（h1）と、その画面の主動線アクション（あれば 1 個）を横並びに置く。
 
-**canonical**: `src/components/patterns/PageHeader.tsx`（`PageHeader{title, subtitle?, actions?}` の 3 variant）。適用例: `src/features/products/ProductListPage.tsx`（h1 + 主動線 actions）、`src/features/home/HomePage.tsx`（h1 + subtitle）
+**canonical**: `src/components/patterns/PageHeader.tsx`（`PageHeader{title, subtitle?, description?, actions?}` の 4 variant）。適用例: `src/features/products/ProductListPage.tsx`（h1 + 主動線 actions）、`src/features/home/HomePage.tsx`（h1 + subtitle）
 
 **構造**:
 
@@ -51,7 +51,7 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **バリエーション: 説明セクション**（UI 磨き batch 3 design、L8-7/L8-8）: タイトル直下に 2〜3 文の操作説明が要る画面（商品一括インポート・PLU書出し・バックアップ復元等）は、`text-sm text-muted-foreground` の `<p>` を見出し行の下に**説明行**として全幅で描画する（**見出し行 + 説明行** の 2 段）。`subtitle` prop（1 行の短い副題、例: ホームの日付）とは用途を分け、説明セクションは複数文の操作説明に使う。`SupplierManagementPage.tsx:35-39` の説明文は、本 PR（⑮）で外側 sibling `<p>` から `subtitle` prop へ移行済み。
 
-**component gap の解消**: `actions` と `subtitle`/`description` の排他は本 PR（⑮）で解消済み。`PageHeader.tsx:31-43` の `actions` 分岐に `<h1>` + 条件付き `subtitle`/`description` を左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめた。⑮ Gated Amendment 2（owner L3 round 1）で外側 `<header>` を `flex flex-wrap items-start justify-between gap-3`、actions wrapper を `shrink-0` に変更した。長い description で actions が次行左へ折り返すため、説明を左列内で折り返し、actions を右上に留めた。`ReceivingPage.tsx:295` / `ManualSalePage.tsx:310` / `ReturnExchangePage.tsx:419` / `DisposalPage.tsx:285` の副題と、`SupplierManagementPage.tsx:35-39` の `subtitle` への移行により、見出しと説明を同じグループで描画した。actions なしでも説明を描画する（`PageHeader.tsx:47-53`）。呼び出し側で wrapper を都度書く使用パターンは不要になった。 **本 PR（⑳ Gated Amendment 2）で見出し行 + 説明行の 2 段配置へ改め、`items-start`（h1 と actions の上端揃え）/ canonical path / props は不変**。**runtime 反映は後続 lane**（現行 `PageHeader.tsx` は左 group 内折返しのまま）。
+**component gap の解消**: `actions` と `subtitle`/`description` の排他は本 PR（⑮）で解消済み。⑮ 時点では `PageHeader` の `actions` 分岐で `<h1>` + 条件付き `subtitle`/`description` を左 group の `<div className="min-w-0 flex-1 space-y-1">` にまとめた。⑮ Gated Amendment 2（owner L3 round 1）で外側 `<header>` を `flex flex-wrap items-start justify-between gap-3`、actions wrapper を `shrink-0` に変更した。⑮ 時点では長い description で actions が次行左へ折り返す問題に対し、説明を左列内で折り返し、actions を右上に留める構造を採っていた。`ReceivingPage.tsx:295` / `ManualSalePage.tsx:310` / `ReturnExchangePage.tsx:419` / `DisposalPage.tsx:285` の副題と、`SupplierManagementPage.tsx:35-39` の `subtitle` への移行により、見出しと説明を同じグループで描画した。actions なしでも説明を描画する（`PageHeader.tsx:47-53`）。呼び出し側で wrapper を都度書く使用パターンは不要になった。 **本 PR（⑳ Gated Amendment 2）で見出し行 + 説明行の 2 段配置へ改め、`items-start`（h1 と actions の上端揃え）/ canonical path / props は不変**。**runtime 反映済み（PR #63、`PageHeader.tsx:31-45`）**。
 
 **バリエーション: 詳細ルートの戻る導線**（PR #114-#115）: read-only の記録詳細ルート（`src/features/inventory-records/ReturnRecordDetailPage.tsx` ほか入出庫 4 詳細ページ）は、actions に「前の画面へ戻る」ボタン（outline）を置く。データ取得失敗時も PageHeader + 戻るボタンは表示したままにし、エラー Alert だけで終わらせない（利用者を行き止まりにしない）。戻り先の `returnTo` param は [01-decision-rules.md](01-decision-rules.md) DSR-15 の検証を通してから使う。
 
@@ -320,7 +320,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
 - SidebarLink の現在地は stone 系 selection tone に DSR-21 の Primary アクセントを重ねる。StatusChips / SegmentedControl は選択状態のため stone のままとし、状態 chip は `border-stone-400`、二択切替は押しボタン状の濃い外枠を避けて `border-stone-300` にする
 - amber は在庫少や通知などの業務セマンティック色、または主要アクションと DSR-21 の現在地アクセントに残し、選択状態の背景色とは分離する
 
-**アクセシビリティ**: `role="group"` + `aria-label` で群を識別。button group は `aria-pressed` で選択状態を伝える。Windows native L3 では active / inactive / hover / クリック後 focus の 4 状態を比較し、同じ二択切替パターンに見えることを確認する。tab / mode 切替として使う場合は可視 Label を持たない、フィルタ toolbar 内で使う場合は ⑨ の上置き Label 規範に従う（`ariaLabel` は常に必須）
+**アクセシビリティ**: `role="group"` + `aria-label` で群を識別（フィルタ toolbar 内で可視 Label を出す場合は `aria-labelledby` で span に紐付け、`aria-label` は出さない）。button group は `aria-pressed` で選択状態を伝える。Windows native L3 では active / inactive / hover / クリック後 focus の 4 状態を比較し、同じ二択切替パターンに見えることを確認する。tab / mode 切替として使う場合は可視 Label を持たない、フィルタ toolbar 内で使う場合は ⑨ の上置き Label 規範に従う（`ariaLabel` は常に必須）
 
 **Do**:
 - 二択は共有 visual primitive を使う
@@ -636,7 +636,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
   idPrefix="product-dept-filter"
 />
 
-// DepartmentFilter 内部（上置き Label、runtime 反映は後続 lane）: label は raw label 要素、htmlFor は SelectTrigger の id を指す
+// DepartmentFilter 内部（上置き Label、runtime 反映済み（PR #63））: label は raw label 要素、htmlFor は SelectTrigger の id を指す
 <div className="grid gap-1">
   <label className="text-sm text-muted-foreground" htmlFor={triggerId}>部門</label>
   <Select …>
@@ -644,10 +644,10 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
     …
   </Select>
 </div>
-// component 1 箇所の改修で 4 サイトが揃う。
+// component 1 箇所の改修で 5 サイトが揃う。
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。**すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数 / フィルタ toolbar 内の SegmentedControl）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400、既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。`Label` component を使う場合は `className="text-sm font-normal text-muted-foreground"` を渡して component 既定の `font-medium` を打ち消す（`cn()` の twMerge は同じ font-weight group の後勝ちで置換する。class を足すだけでは消えない）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持し、toolbar 内では `self-center` で行の縦中央に置く（上置き label を持たないため `items-end` の下辺揃えに加わらない。owner 確認 2026-09-11）。**tab / mode 切替として使う SegmentedControl（sales TabsHeader の日次/月次、monthly ModeTabs 等、⑤ 参照）は可視 Label を持たない**（`ariaLabel` 必須）。判定軸は選択肢の数ではなく文脈であり、フィルタ toolbar 内の SegmentedControl（廃番表示 / PLU表示 / 並び順）は `ariaLabel` の文言を上置き label として可視化する（廃番表示と PLU表示は隣接してどちらも「すべて」を持ち、label なしでは識別できない。並び順も同じ列にあるため揃える。owner 確認 2026-09-11 で確定。廃番表示 3 択 / PLU表示 5 択が SegmentedControl なのは DSR-02 drift〈2 択以外は Tabs〉であり、Tabs / Select 化しても同じ文脈軸を適用する）。SegmentedControl は `role="group"` の button 群で labelable 要素を持たないため、この label は `<span id={…} className="text-sm text-muted-foreground">` + `aria-labelledby` で紐付け、`htmlFor` は使わない。live 型 SearchBar は `Input`（`max-w-md` 維持）を続ける。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。**すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数 / フィルタ toolbar 内の SegmentedControl）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400、既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。`Label` component を使う場合は `className="text-sm font-normal text-muted-foreground"` を渡して component 既定の `font-medium` を打ち消す（`cn()` の twMerge は同じ font-weight group の後勝ちで置換する。class を足すだけでは消えない）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持し、toolbar 内では `h-9 items-center self-end`（入力と同じ高さの箱を行の下端に揃え、その中で縦中央。上置き label を持たないため行の中央では浮く。owner L3 2026-09-15）。**tab / mode 切替として使う SegmentedControl（monthly ModeTabs、PLU書出しの書出しモード 等、⑤ 参照）は可視 Label を持たない**（`ariaLabel` 必須）。判定軸は選択肢の数ではなく文脈であり、フィルタ toolbar 内の SegmentedControl（廃番表示 / PLU表示 / 並び順）は `ariaLabel` の文言を上置き label として可視化する（廃番表示と PLU表示は隣接してどちらも「すべて」を持ち、label なしでは識別できない。並び順も同じ列にあるため揃える。owner 確認 2026-09-11 で確定。廃番表示 3 択 / PLU表示 5 択が SegmentedControl なのは DSR-02 drift〈2 択以外は Tabs〉であり、Tabs / Select 化しても同じ文脈軸を適用する）。SegmentedControl は `role="group"` の button 群で labelable 要素を持たないため、この label は `<span id={…} className="text-sm text-muted-foreground">` + `aria-labelledby` で紐付け、`htmlFor` は使わない。live 型 SearchBar は `Input`（`max-w-md` 維持）を続ける。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
@@ -1062,3 +1062,4 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 | 2026-09-11 | PR #51 | ⑳ Gated Amendment 2: Human Gate 回答の確定文化〈全フィルタの上置き Label・Checkbox の縦中央・セクション見出しと PageHeader (c) の見出し行 + 説明行〉。mockup-g を 4 状態へ更新。 |
 | 2026-09-11 | PR #51 | ⑳ Gated Amendment 3: 見出しの shrink 保証 / runtime 未反映の明示。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 5: 固定帯を白地の箱へ / chevron を muted。 |
+| 2026-09-15 | PR #63 | ㉑ フィルタ Label 上置き・PageHeader と section 見出しの2段配置・h2 token の runtime 反映。① props、⑤ 群名の紐付け、⑨ 適用サイトと mode 切替例を同期。 toolbar Checkbox `h-9 self-end`（L3 round 1）。 |

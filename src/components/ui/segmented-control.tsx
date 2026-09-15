@@ -27,6 +27,7 @@ export type SegmentedControlOption<TValue extends string> = Readonly<{
 
 export interface SegmentedControlProps<TValue extends string> {
   ariaLabel: string;
+  showLabel?: boolean;
   value: TValue;
   options: readonly SegmentedControlOption<TValue>[];
   onValueChange: (value: TValue) => void;
@@ -36,14 +37,21 @@ export interface SegmentedControlProps<TValue extends string> {
 
 export function SegmentedControl<TValue extends string>({
   ariaLabel,
+  showLabel,
   value,
   options,
   onValueChange,
   className,
   itemClassName,
 }: SegmentedControlProps<TValue>) {
-  return (
-    <div role="group" aria-label={ariaLabel} className={cn(segmentedControlListClass, className)}>
+  const labelId = React.useId();
+  const group = (
+    <div
+      role="group"
+      aria-label={showLabel ? undefined : ariaLabel}
+      aria-labelledby={showLabel ? labelId : undefined}
+      className={cn(segmentedControlListClass, className)}
+    >
       {options.map((option) => {
         const isActive = option.value === value;
 
@@ -70,5 +78,16 @@ export function SegmentedControl<TValue extends string>({
         );
       })}
     </div>
+  );
+
+  return showLabel ? (
+    <div className="grid gap-1">
+      <span id={labelId} className="text-sm text-muted-foreground">
+        {ariaLabel}
+      </span>
+      {group}
+    </div>
+  ) : (
+    group
   );
 }

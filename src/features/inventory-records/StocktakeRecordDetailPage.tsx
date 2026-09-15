@@ -153,7 +153,7 @@ export function StocktakeRecordDetailPage({
       </section>
 
       <section className="space-y-3 rounded-md border p-4">
-        <h2 className="text-lg font-semibold">補正明細</h2>
+        <h2 className="text-xl font-semibold">補正明細</h2>
         {detail.items.length === 0 ? (
           <EmptyState
             icon={ClipboardList}
@@ -221,7 +221,7 @@ export function StocktakeRecordDetailPage({
       </section>
 
       <section className="space-y-3 rounded-md border p-4">
-        <h2 className="text-lg font-semibold">関連する在庫変動</h2>
+        <h2 className="text-xl font-semibold">関連する在庫変動</h2>
         {detail.movements.length === 0 ? (
           <EmptyState
             icon={PackageSearch}

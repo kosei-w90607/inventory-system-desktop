@@ -58,8 +58,8 @@ export function PriceRevisionFilters({
           }}
         />
         {/* GA2: owner L3 run 1 AC-L3-3 で flex-wrap の折り返しにより Label と trigger が分離し、
-            一様 gap-3 では群化が欠けたため、同じ wrapper に置いて群化を維持する。 */}
-        <div className="flex items-center gap-2">
+            一様 gap-3 では群化が欠けたため、同じ grid gap-1 wrapper に置いて上置きにしても群化を維持する。 */}
+        <div className="grid gap-1">
           <label
             id="price-revision-supplier-label"
             className="text-sm text-muted-foreground"
@@ -99,7 +99,10 @@ export function PriceRevisionFilters({
             onPatch({ dept });
           }}
         />
-        <label htmlFor="price-revision-discontinued" className="flex items-center gap-2 text-sm">
+        <label
+          htmlFor="price-revision-discontinued"
+          className="flex h-9 items-center gap-2 self-end text-sm"
+        >
           <Checkbox
             id="price-revision-discontinued"
             checked={normalized.discontinued}
@@ -109,12 +112,8 @@ export function PriceRevisionFilters({
           />
           廃番を含む
         </label>
-        <div className="flex items-center gap-2">
-          <label
-            id="price-revision-per-page-label"
-            htmlFor="price-revision-per-page"
-            className="text-sm text-muted-foreground"
-          >
+        <div className="grid gap-1">
+          <label htmlFor="price-revision-per-page" className="text-sm text-muted-foreground">
             表示件数
           </label>
           <Select

@@ -133,6 +133,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         </p>
       ) : null}
       <SegmentedControl
+        showLabel
         ariaLabel="廃番表示"
         value={normalizedSearch.discontinued}
         options={PRODUCT_DISCONTINUED_OPTIONS}
@@ -141,6 +142,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         }}
       />
       <SegmentedControl
+        showLabel
         ariaLabel="PLU表示"
         value={normalizedSearch.plu}
         options={PRODUCT_PLU_OPTIONS}
@@ -152,8 +154,8 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
   );
 
   const toolbarSecondary = (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="grid gap-1">
         <label className="text-sm text-muted-foreground" htmlFor="product-sort">
           並び替え
         </label>
@@ -177,6 +179,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
         </Select>
       </div>
       <SegmentedControl
+        showLabel
         ariaLabel="並び順"
         value={normalizedSearch.dir}
         options={PRODUCT_SORT_DIRECTION_OPTIONS}
@@ -184,7 +187,7 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           updateSearch({ dir: value });
         }}
       />
-      <div className="flex items-center gap-2">
+      <div className="grid gap-1">
         <label className="text-sm text-muted-foreground" htmlFor="product-per-page">
           表示件数
         </label>

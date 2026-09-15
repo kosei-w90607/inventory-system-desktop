@@ -546,7 +546,7 @@ describe("IntegrityCheckPage Lane 4 S1g/S3g: table wrapper rounded-lg, top summa
     const { container } = renderPage();
     await runCheck();
     const perPageTrigger = await screen.findByRole("combobox", { name: "表示件数" });
-    const selectWrapper = perPageTrigger.closest(".flex.items-center.gap-2");
+    const selectWrapper = perPageTrigger.closest(".grid.gap-1");
     expect(selectWrapper).not.toBeNull();
     expect((selectWrapper?.className ?? "").split(/\s+/)).not.toContain("bg-card");
     expect(container.querySelectorAll(".rounded-lg.border.bg-card.p-4")).toHaveLength(0);
@@ -594,4 +594,27 @@ it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義�
   );
   expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
   expect(dateTimeSource).not.toContain("formatCheckedAt");
+});
+
+it("SPEC-FILTER-LABEL-RT-1 D-RT6: 差異の見出し行の下に説明を全幅で置く", async () => {
+  runIntegrityCheck.mockResolvedValue(checkResult([mismatch("SYN-001")]));
+  renderPage();
+  await runCheck();
+  const heading = screen.getByRole("heading", { level: 2, name: "差異のある商品" });
+  const description = screen.getByText(
+    "補正する商品を行ごとに選び、内容を確認して確定してください。",
+  );
+  expect(heading).toHaveAttribute("id", "integrity-difference-heading");
+  expect(heading).toHaveClass("min-w-0", "flex-1");
+  expect(heading.parentElement).toHaveClass(
+    "flex",
+    "flex-wrap",
+    "items-start",
+    "justify-between",
+    "gap-3",
+  );
+  expect(description.tagName).toBe("P");
+  expect(heading.parentElement?.nextElementSibling).toBe(description);
+  expect(description.parentElement).toHaveClass("space-y-1");
+  expect(screen.getByRole("button", { name: "補正を確定" })).toHaveClass("shrink-0");
 });
