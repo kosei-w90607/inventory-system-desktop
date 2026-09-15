@@ -302,9 +302,12 @@ describe("ThresholdSettingsPage (UI-11a / QR系 / D-4)", () => {
   it("ui11a wording shows the h1 and required field labels matching UI-11a-D6", async () => {
     await renderReady();
 
-    // SPEC-DISP-B2-1 / D-B1: h1 と区画見出しを区別する。
+    // SPEC-DISP-B2-1 / D-B1 GA3: h1 を残し、区画は説明文のみとする。
     expect(screen.getByRole("heading", { level: 1, name: "在庫少の基準" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "基準値" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("保存すると、ホームと在庫照会の在庫少の判定にすぐ反映されます"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("一般商品の基準（必須）")).toBeInTheDocument();
     expect(screen.getByLabelText("生地の基準（必須）")).toBeInTheDocument();
     expect(

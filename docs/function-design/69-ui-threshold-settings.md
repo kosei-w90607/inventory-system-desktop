@@ -149,7 +149,7 @@ function useSaveThresholds(): UseMutationResult<ThresholdSaveResult, InvokeError
 |---|---|
 | ナビ / タイトル / h1 | 在庫少の基準 |
 | PageHeader 説明 | 在庫がこの数以下になったら「在庫少」としてお知らせします |
-| FormSection 見出し | 基準値 |
+| FormSection 見出し | （なし、説明文のみ。owner 判断 2026-09-15） |
 | FormSection 説明 | 保存すると、ホームと在庫照会の在庫少の判定にすぐ反映されます |
 | フィールド 1 ラベル | 一般商品の基準（必須） |
 | フィールド 1 補足 | 在庫がこの個数以下になったら在庫少（初期値: 3個） |
@@ -200,7 +200,7 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 
 | 日付 | PR | 内容 |
 |------|-----|------|
-| 2026-09-15 | 表示小修正 batch 2 | owner 方針に基づき区画見出しを「基準値」、入力エラーを「1〜99999の整数を入力してください」に統一。4種の保存拒否ルールは維持。 |
+| 2026-09-15 | 表示小修正 batch 2 | owner 方針に基づき区画見出しを外し説明文のみ、入力エラーを「1〜99999の整数を入力してください」に統一。4種の保存拒否ルールは維持。 |
 | 2026-08-03 | UI safety net implementation | 既存 isDirty を共通離脱ガードへ接続し、保存成功後の非 block を test で固定 |
 | 2026-07-06 | - | UI-11a Design Phase 初版（UI-11a-D1〜D7） |
 | 2026-07-07 | - | 実装反映の drift 修正: 実配置は `features/threshold-settings/`（`features/settings/` は存在せず、UI-11b 実体は `backup-restore/`）、フォームは既存パターン（useState + zod safeParse、RHF 不使用）。保存は最初の失敗 key で停止し「保存済み」表示を事実に限定 |
