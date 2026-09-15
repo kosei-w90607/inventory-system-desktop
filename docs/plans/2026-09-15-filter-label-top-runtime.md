@@ -61,7 +61,7 @@ Goal Invariant:
 
 - accessible name が変わる、または消える（`getByRole("combobox", { name: "表示件数" })` 等の既存 query が解決しなくなる、SegmentedControl の group name が可視 label と一致しない）。
 - URL / search state、フィルタの候補ソース（DSR-10）、検索の確定経路（Enter / debounce / IME）に差が出る。
-- `PageHeader` の actions 無し page（13 page）の DOM が変わる。tab / mode 切替の SegmentedControl（`src/components/sales/TabsHeader.tsx` は class 定数 + `<Link>` で component 非使用、`monthly-sales/components/ModeTabs.tsx`、`plu-export/PluExportPage.tsx` の書出しモード）に可視 Label が付く。
+- `PageHeader` の actions 無し page（13 page）の DOM が変わる。tab / mode 切替の SegmentedControl（`src/components/sales/TabsHeader.tsx` は class 定数 + `<Link>` で component 非使用、`monthly-sales/components/ModeTabs.tsx`、`plu-export/PluExportPage.tsx:695` の書出しモード）に可視 Label が付く。
 - `src-tauri/**`、`docs/function-design/**`、`01-decision-rules.md` に diff が出る。
 
 ### 非目的
@@ -83,7 +83,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 | 1a | `DepartmentFilter` 呼び出し | `StocktakePage.tsx:747` / `DailySalesPage.tsx:84` / `ProductListPage.tsx:119` / `StockInquiryPage.tsx:116` / `PriceRevisionFilters.tsx:92` の **5 site**（全部 `@/components/patterns/DepartmentFilter`） | S6「4 サイト」は日次売上を数え落とし。component 1 箇所の改修で 5 site が揃う |
 | 2 | `src/features/products/ProductListPage.tsx:155` 2 段目 wrapper | `flex flex-wrap items-center gap-3`（1 段目 `:106` は既に `items-end gap-3`） | 一致 |
 | 2a | 同 `:156-159` 並び替え / `:187-190` 表示件数 | `div.flex.items-center.gap-2` + raw `<label className="text-sm text-muted-foreground">` | 一致 |
-| 2b | 同 SegmentedControl `:135-142`（`ariaLabel="廃番表示"`）/ `:143-150`（`"PLU表示"`）/ `:179-186`（`"並び順"`） | `label` prop なし | 一致 |
+| 2b | 同 SegmentedControl `:135-142`（`ariaLabel="廃番表示"`）/ `:143-150`（`"PLU表示"`）/ `:179-186`（`"並び順"`） | 可視 label の prop なし | 一致 |
 | 3 | `src/features/stock-inquiry/StockInquiryPage.tsx:132-135` 表示件数 | `div.flex.items-center.gap-2` + raw label。wrapper `:103` は既に `items-end gap-3` | +3 行 |
 | 4 | `src/features/products/components/PriceRevisionFilters.tsx:62-91` 取引先 trigger | `div.flex.items-center.gap-2` + `<label id="price-revision-supplier-label">` + `<Button aria-haspopup="dialog" aria-labelledby>`（⑲ GA2 の群化 comment `:60-61`）。wrapper `:51` は既に `items-end gap-3` | ⑲ 後の形。`grid gap-1` 化は未反映 |
 | 4a | 同 `:102-111` 廃番を含む / `:143-155` 取引先未設定 Checkbox | `<label htmlFor><Checkbox/>文言</label>` の label 内包 | 2 件目の開始行は `:143`（S6 `:145`） |
@@ -94,7 +94,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 | 5c | 同 `:381-410` `StocktakeProgressHeader` | `div.space-y-2` > `div.flex.flex-wrap.items-center.justify-between.gap-3` > (`div` > h2 `text-xl font-semibold` + p) + Badge、`<Progress>` は `:407` | 範囲 -4/+3 行 |
 | 6 | `src/features/integrity-check/IntegrityCheckPage.tsx:232-260` 表示件数 | `div.flex.items-center.gap-2` + `<label id="integrity-check-per-page-label">`（id は未参照）+ Select | Select 閉じは `:260` |
 | 6a | 同 `:324-333` 差異のある商品 | `section.space-y-4` > `div.flex.flex-wrap.items-end.justify-between.gap-3` > (`div` > h2 `text-xl font-semibold` + p) + Button | -1 行 |
-| 7 | `src/components/ui/segmented-control.tsx:28-35` props / `:46` root | `ariaLabel` 必須、可視 label の prop なし。root は `div[role="group"][aria-label]`（labelable でない）。使用 site は `ProductListPage.tsx:136,144,180`（toolbar）/ `ModeTabs.tsx:20`（mode）/ `PluExportPage.tsx:696`「書出しモード」（Card 内の mode 切替、Plan Review round 1 で検出）の 5 site。`TabsHeader.tsx` は class 定数 + `<Link>` で component 非使用 | S6 は PluExport を数えていない |
+| 7 | `src/components/ui/segmented-control.tsx:28-35` props / `:46` root | `ariaLabel` 必須、可視 label の prop なし。root は `div[role="group"][aria-label]`（labelable でない）。使用 site は `rg -n '<SegmentedControl' src --glob '!*.test.tsx'` = `ProductListPage.tsx:135,143,179`（toolbar）/ `ModeTabs.tsx:19`（mode）/ `PluExportPage.tsx:695`「書出しモード」（Card 内の mode 切替、Plan Review round 1 で検出）の 5 site。`TabsHeader.tsx` は class 定数 + `<Link>` で component 非使用 | S6 は PluExport を数えていない |
 | 8 | `src/components/patterns/SearchBar.tsx:72`（commit）/ `:178`（live） | `<Label className="shrink-0 text-muted-foreground">` / `<Label className="text-muted-foreground">`、`font-normal` なし | 一致 |
 | 9 | `src/components/patterns/PageHeader.tsx:20-28` JSDoc / `:30` inline / `:31-44` actions 分岐 | `header.flex.flex-wrap.items-start.justify-between.gap-3` > `div.min-w-0.flex-1.space-y-1`（h1 + subtitle + description）+ `div.shrink-0`。props は既に `description?` あり（`:15`） | 一致 |
 | 10 | section h2 `text-lg` | `rg -n '<h2[^>]*text-lg' src --glob '!*.test.tsx' \| rg -v 'font-medium'` = 27 箇所（単一行 literal `<h2 className="text-lg font-semibold">` が 25 + `MonthlySalesPage.tsx:157` / `DailySalesPage.tsx:165` の `id` 付き 2）。`HomePage.tsx:90,95,100` は `text-lg font-medium` で除外 | S6「A/B 6 + 右要素なし 24」と規模一致（HomePage 3 を除く） |
@@ -132,14 +132,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
   - `StocktakePage.test.tsx:1171`: `closest(".flex.flex-wrap.items-center.gap-4")` → `closest(".flex.flex-wrap.items-end.gap-3")`（filter-row containment の意図維持）。**`:1185,1261` の `el.className === "flex flex-wrap items-center gap-4"` は触らない**（枠なし旧 frame の不在 negative assert。新 class へ書き換えると変更後の root と一致して自己矛盾）。追加: Checkbox が `label` 内包 + `self-center`、`getByLabelText("未入力のみ表示")` 解決、`StocktakeProgressHeader` の説明 `<p>` が h2 row の sibling + `<Progress>` の親が `space-y-2`。
   - `IntegrityCheckPage.test.tsx:549`: `closest(".flex.items-center.gap-2")` → `closest(".grid.gap-1")`（bg-card 不在の round 2 回帰は維持）。追加: 差異のある商品の説明 `<p>` が row の sibling、`<h2 id="integrity-difference-heading">` に `min-w-0 flex-1`。
   - `PriceRevisionFilters.test.tsx:68`: `label.closest(".flex.items-center.gap-2")` → `closest(".grid.gap-1")`（⑲ GA2 群化回帰 = 同じ wrapper に label と trigger、の意図維持）。
-  - `PageHeader.test.tsx:53-59,70-71,87-92`: ⑮ SC1「actions と副題と説明を同じ見出しグループに表示する」を D-RT3 の 2 段へ読み替え = header が `space-y-1`、見出し行（h1 の親）が `flex flex-wrap items-start justify-between gap-3`、h1 に `min-w-0 flex-1`、subtitle / description `<p>` の親が `header`（見出し行の sibling）、actions の親が `shrink-0`。追加: actions 無し 2 variant（title のみ / title + subtitle）の `container.innerHTML` を `toMatchInlineSnapshot` で固定（repo 初の inline snapshot。失敗定義「actions 無し 13 page の DOM 不変」の oracle）。
-- **S12 docs**: catalog ① `:28` に `description?`（`PageHeader{title, subtitle?, description?, actions?}` の 4 variant）/ ⑨ `:640` block comment と ① の「runtime 反映は後続 lane」marker を撤去し「runtime 反映済み（本 PR）」へ / ⑨ `:647`「4 サイトが揃う」→「5 サイトが揃う」（実測 #1a）/ ⑤ アクセシビリティ段落 `:323` の「`role="group"` + `aria-label` で群を識別」の直後に「（フィルタ toolbar 内で可視 Label を出す場合は `aria-labelledby` で span に紐付け、`aria-label` は出さない）」を 1 句 / 更新履歴 1 行（PR 番号は Draft PR 作成後に Writer が埋める）。
+  - `PageHeader.test.tsx:53-59,70-71,87-92`: ⑮ SC1「actions と副題と説明を同じ見出しグループに表示する」を D-RT3 の 2 段へ読み替え = header が `space-y-1`、見出し行（h1 の親）が `flex flex-wrap items-start justify-between gap-3`、h1 に `min-w-0 flex-1`、subtitle / description `<p>` の親が `header`（見出し行の sibling）、actions の親が `shrink-0`。追加: actions 無し 3 variant（title のみ / title + subtitle / title + subtitle + description。`BackupRestorePage.tsx:337` / `PluExportPage.tsx:363` が actions 無しで description を渡す実在形）の `container.innerHTML` を `toMatchInlineSnapshot` で固定（repo 初の inline snapshot。失敗定義「actions 無し 13 page の DOM 不変」の oracle。**inline snapshot は local の vitest で populate し、生成された literal を同 commit に含める**: `CI=true` の hosted では未 populate の inline snapshot は書き込まれず FAIL する）。
+- **S12 docs**: catalog ① `:28` に `description?`（`PageHeader{title, subtitle?, description?, actions?}` の 4 variant）/ ⑨ `:640` block comment と ① の「runtime 反映は後続 lane」marker を撤去し「runtime 反映済み（本 PR）」へ / ⑨ `:647`「4 サイトが揃う」→「5 サイトが揃う」（実測 #1a）/ ⑨ `:650` 使用トークン段落の「sales TabsHeader の日次/月次、monthly ModeTabs 等」→「monthly ModeTabs、PLU書出しの書出しモード 等」（TabsHeader は SegmentedControl 非使用、closure round 2 Opus P3-E）/ ⑤ アクセシビリティ段落 `:323` の「`role="group"` + `aria-label` で群を識別」の直後に「（フィルタ toolbar 内で可視 Label を出す場合は `aria-labelledby` で span に紐付け、`aria-label` は出さない）」を 1 句 / 更新履歴 1 行（PR 番号は Draft PR 作成後に Writer が埋める）。
 - **S13（Coordinator、plan-first commit）**: Plans.md「次の行動」+ Wave Registry（wave 10、stacked train）/ Backlog の本 lane 行を「着手中」へ + DSR-02 drift の保留行 / 単位の拡張の店回答（2026-09-15）と blocker 解除の記録。Writer は触らない。
 
 ## Non-scope
 
 - `src-tauri/**`、`docs/function-design/**`、`docs/design-system/01-decision-rules.md`、`docs/SCREEN_DESIGN.md`
-- tab / mode 切替: `src/components/sales/TabsHeader.tsx`（class 定数 + `<Link>`、component 非使用）、`src/features/monthly-sales/components/ModeTabs.tsx`、`src/features/plu-export/PluExportPage.tsx:696` の「書出しモード」（Card 内の Diff / Full 切替 = mode 切替で toolbar のフィルタではない。`showLabel` を付けない）
+- tab / mode 切替: `src/components/sales/TabsHeader.tsx`（class 定数 + `<Link>`、component 非使用）、`src/features/monthly-sales/components/ModeTabs.tsx`、`src/features/plu-export/PluExportPage.tsx:695` の「書出しモード」（Card 内の Diff / Full 切替 = mode 切替で toolbar のフィルタではない。`showLabel` を付けない）
 - `HomePage.tsx` の h2、ProductAddSuggest wrapper 5 箇所、`ProductForm.tsx:226` / `BackupRestorePage.tsx:415,594` / `ProductImportPreview.tsx:132` の toolbar 外 Checkbox
 - mockup-g の変更（確定済み参照。`:has()` は衛生 batch 4 で是正済み）
 - 表示小修正 batch 2（stacked 後続 lane）の file 行: `StockInquiryPage.tsx:100`（PageHeader）/ `:225-257`、catalog ⑥ / ⑬
@@ -154,9 +154,9 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 - **AC4** `rg -c 'font-normal' src/components/patterns/SearchBar.tsx` = 2（baseline 0）/ `rg -n -B1 '^\s*表示件数\s*$' src/features/stocktake/StocktakePage.tsx | rg -c 'font-normal'` = 1（baseline 0）
 - **AC5** `rg -c '左グループ内で折り返す|左列内で折り返し' src/components/patterns/PageHeader.tsx` = 0（baseline 2）/ `rg -c 'min-w-0 flex-1 space-y-1' src/components/patterns/PageHeader.tsx` = 0（baseline 1）/ `rg -c 'min-w-0 flex-1 text-2xl' src/components/patterns/PageHeader.tsx` = 1（baseline 0）
 - **AC6** `rg -c 'items-center gap-4 rounded-lg' src/features/stocktake/StocktakePage.tsx` = 0（baseline 1）/ `rg -c 'items-end gap-3 rounded-lg' src/features/stocktake/StocktakePage.tsx` = 1（baseline 0）/ `rg -c 'self-center' src/features/stocktake/StocktakePage.tsx` = 1（baseline 0）/ `rg -c 'self-center' src/features/products/components/PriceRevisionFilters.tsx` = 2（baseline 0）/ `rg -c 'flex flex-wrap items-center gap-3' src/features/products/ProductListPage.tsx` = 0（baseline 1、2 段目 wrapper）
-- **AC7** `awk '/function StocktakeProgressHeader/,/^}/' src/features/stocktake/StocktakePage.tsx | rg -c 'items-start justify-between'` = 1（baseline 0）/ 同 awk で `rg -c 'space-y-1'` = 1（baseline 0）/ `rg -n '<h2 id="integrity-difference-heading"' src/features/integrity-check/IntegrityCheckPage.tsx | rg -c 'min-w-0 flex-1'` = 1（baseline 0。section 側に付いても通らない）/ `rg -c 'items-end justify-between' src/features/integrity-check/IntegrityCheckPage.tsx` = 0（baseline 1）
+- **AC7** `awk '/function StocktakeProgressHeader/,/^}/' src/features/stocktake/StocktakePage.tsx | rg -c 'items-start justify-between'` = 1（baseline 0）/ 同 awk で `rg -c 'space-y-1'` = 1（baseline 0）/ `rg -U -o '<h2[^>]*id="integrity-difference-heading"[^>]*>' src/features/integrity-check/IntegrityCheckPage.tsx | rg -c 'min-w-0 flex-1'` = 1（baseline 0。section 側に付いても通らない。closure round 2 Opus P2-A: D-RT6 後の h2 行は 105 文字で prettier〈printWidth 100〉が属性を折り返すため、単一行前提の pattern は false red になる）/ `rg -c 'items-end justify-between' src/features/integrity-check/IntegrityCheckPage.tsx` = 0（baseline 1）
 - **AC8** `rg -n '<h2[^>]*text-lg' src --glob '!*.test.tsx' | rg -v 'font-medium' | wc -l` = 0（baseline 27。属性順に依存しない pattern、HomePage の `font-medium` 3 件は自動除外）/ `rg -c 'text-lg font-medium' src/features/home/HomePage.tsx` = 3（不変）
-- **AC9** `rg -c 'subtitle\?, description\?, actions\?' docs/design-system/02-component-catalog.md` = 1（baseline 0）/ `rg -c 'runtime 反映は後続 lane' docs/design-system/02-component-catalog.md` = 0（baseline 2）/ `rg -c '4 サイトが揃う' docs/design-system/02-component-catalog.md` = 0（baseline 1）/ `awk '/^## ⑤/,/^## ⑥/' docs/design-system/02-component-catalog.md | rg -c 'aria-labelledby'` ≥ 1（baseline 0）/ `awk '/^## 更新履歴/,0' docs/design-system/02-component-catalog.md | rg -c 'runtime 反映'` ≥ 1
+- **AC9** `rg -c 'subtitle\?, description\?, actions\?' docs/design-system/02-component-catalog.md` = 1（baseline 0）/ `rg -c 'runtime 反映は後続 lane' docs/design-system/02-component-catalog.md` = 0（baseline 2）/ `rg -c '4 サイトが揃う' docs/design-system/02-component-catalog.md` = 0（baseline 1）/ `rg -c 'sales TabsHeader の日次/月次' docs/design-system/02-component-catalog.md` = 0（baseline 1）/ `awk '/^## ⑤/,/^## ⑥/' docs/design-system/02-component-catalog.md | rg -c 'aria-labelledby'` ≥ 1（baseline 0）/ `awk '/^## 更新履歴/,0' docs/design-system/02-component-catalog.md | rg -c 'runtime 反映'` ≥ 1
 - **AC10**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri docs/function-design docs/design-system/01-decision-rules.md docs/SCREEN_DESIGN.md src/components/sales src/features/monthly-sales/components/ModeTabs.tsx src/features/plu-export src/features/home | wc -l` = 0
 - **AC11** 対象 test（`DepartmentFilter` / `segmented-control` / `ProductListPage` / `StocktakePage` / `PageHeader` / `IntegrityCheckPage` / `StockInquiryPage` / `PriceRevisionFilters` / `SearchBar`）が vitest で PASS、`npm run typecheck` / `npm run lint` / `npm run format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（fresh worktree では `npm run generate:routes` を先に実行）
 - **AC12** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
@@ -207,7 +207,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 - Assumptions and constraints: `aria-labelledby` が jsdom / WebView2 で group の accessible name を与える（Contract Probe）
 - Deferred design gaps, risk, and follow-up target: DSR-02 drift（Backlog 保留）/ ProductAddSuggest wrapper（Non-scope）/ HomePage h2（home lane）
 - Test Design Matrix can cite design decision IDs or source doc sections: yes（D-RT1〜8）
-- Absolute guarantee / escape hatch self-check completed: 「actions 無し page は DOM 不変」（inline snapshot 2 本）「mode 切替に `showLabel` を付けない」（AC3 / AC10）「accessible name 不変」（既存 page test）を失敗定義と S11 で機械検査
+- Absolute guarantee / escape hatch self-check completed: 「actions 無し page は DOM 不変」（inline snapshot 3 本）「mode 切替に `showLabel` を付けない」（AC3 / AC10）「accessible name 不変」（既存 page test）を失敗定義と S11 で機械検査
 
 ## Impact Review Lenses
 
@@ -256,7 +256,7 @@ Minimum design checks:
 | ⑤ アクセシビリティ「toolbar 内は上置き Label、tab / mode は Label なし、`ariaLabel` 常に必須」（site census: toolbar 3 / mode 2〈ModeTabs / PluExport〉/ TabsHeader は component 非使用） | S7 / S2 / S12 | `segmented-control.test.tsx` + AC3 | AC-L3-1 |
 | ⑤ 使いどころ「二択」（3 択 / 5 択は DSR-02 drift） | D-RT4（据え置き） | — | non-scope、Backlog 保留 |
 | ① 構造 block（header `space-y-1` > 見出し行 > h1 `min-w-0 flex-1` + `shrink-0`、説明は全幅、`subtitle !== undefined`） | S9 | `PageHeader.test.tsx` + AC5 | AC-L3-3 |
-| ① 「主動線が無い画面は h1 のみ」（actions 無し分岐不変） | S9（非接触） | `PageHeader.test.tsx` の inline snapshot 2 本（S11 新設） | — |
+| ① 「主動線が無い画面は h1 のみ」（actions 無し分岐不変） | S9（非接触） | `PageHeader.test.tsx` の inline snapshot 3 本（S11 新設） | — |
 | ① セクション見出し variation（`text-xl font-semibold`、2 段、h2 `min-w-0 flex-1`、右要素 `shrink-0`） | S5 / S6 / S10 | AC7 / AC8 + `IntegrityCheckPage.test.tsx` / `StocktakePage.test.tsx` | AC-L3-2 / 4 |
 | ① canonical props（`description?` を含む） | S12 | AC9 | — |
 | DSR-01 主動線 1 個 | 非接触 | — | — |
@@ -271,7 +271,7 @@ Minimum design checks:
 Test Design Matrix: [2026-09-15-filter-label-top-runtime](test-matrices/2026-09-15-filter-label-top-runtime.md)。
 
 - targeted tests: S11 の test file を実装と同 commit で更新（RED → GREEN、`segmented-control.test.tsx` を最初に）
-- negative tests: mode 切替に `showLabel` なし（AC3）、actions 無し PageHeader の DOM 不変（`PageHeader.test.tsx` inline snapshot 2 本）、`aria-label` 属性が `showLabel` 時に無い
+- negative tests: mode 切替に `showLabel` なし（AC3）、actions 無し PageHeader の DOM 不変（`PageHeader.test.tsx` inline snapshot 3 本）、`aria-label` 属性が `showLabel` 時に無い
 - compatibility checks: 既存 page test の `getByRole("combobox", { name })` が無変更で PASS
 - data safety checks: not applicable
 - main wiring/integration checks: `ProductListPage.test.tsx` で 3 group が name で解決 + 可視 text（`showLabel` が実際に渡っている）
@@ -341,4 +341,10 @@ Fill after implementation.
 - Opus P3-7（AC-L3-3 に入庫の h2 3 つ）= accept
 - Sonnet 残る不確実性「SC4a 重複 test」= 本 lane 非起因の既存重複、非対応（Backlog 起票もしない。実害なし）
 - Opus 残る不確実性「AC4 の `-B1` 窓と prettier 折返し」= S5 は `font-normal` 1 語追加のみで 1 行に収まる。Writer が 3 語書きにしたら AC4 が false red になるため、発注書に「`font-normal` のみ追加」を明記
-- round 2 = closure（Sonnet + Opus、本 commit の diff 限定）
+- round 2 = closure（Sonnet + Opus、`b771eb61` の diff 限定）
+
+### Plan Review round 2（closure、2026-09-15）
+
+- Sonnet: 18 件すべて closed、新規 P1/P2 なし → Findings Freeze 可
+- Opus: 18 件すべて closed、**新規 P2-A**（P3-6 の是正先 AC7 第 3 oracle が単一行前提で、D-RT6 後の h2 行 105 文字 > printWidth 100 の折返しで false red）= accept → `rg -U -o` のタグ抽出へ差し替え（baseline 0 を Coordinator が再実行で確認）/ P3-B（inline snapshot を description 付き 3 variant に）= accept / P3-C（実測 #7 の行番号が `ariaLabel` 行で +1）= accept → `135,143,179` / `19` / `695` に統一 / P3-D（`CI=true` で未 populate の inline snapshot が FAIL）= accept → S11 と発注書に populate の 1 句 / P3-E（catalog ⑨ `:650` の「sales TabsHeader」が census と矛盾）= accept → S12 / AC9 に追加
+- round 3 = closure（Opus、本 commit の diff 限定。round 天井 3 の最終）
