@@ -1043,6 +1043,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-15 | 表示小修正 batch 2 | ⑥ AlertTitle の共通 weight を600、⑬ 在庫状態の中立 Badge を「正常」に同期。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 4: owner L3 run 1 の是正（trigger icon / 固定帯） |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 3: 未解決時文言。 |
 | 2026-09-10 | PR #50 | 取引先ピッカーの canonical 実装 path と起動ボタンの現在値表示を反映。 |

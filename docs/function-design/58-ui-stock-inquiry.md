@@ -668,6 +668,7 @@ function StockInquiryPage() {
 
 | 日付 | PR | 内容 |
 |------|-----|------|
+| 2026-09-15 | 表示小修正 batch 2 | 在庫照会の副題、絞り込み後の「全 N 件」、在庫状態 Badge「正常」を反映。 |
 | 2026-08-26 | stale 実装状況表記一括是正 | `StockDetailContent` の「商品修正」「入庫記録」を既存画面への active link に変更し、遷移先と `returnTo` 非付与の契約を現況化 |
 | 2026-05-20 | #67 | 新規作成（UI-06a 在庫照会、REQ-301/302 統合 1 画面、2 useQuery 部分障害許容 + URL state 4 key + 派生 4 純関数 + StockInquiryListResult 正規化型 + 色分け契約 H + 検索駆動表示契約 I + collapsible/toggle/toggle-group 新規 add + CSV 取込み invalidation / Plan rally 6 round converged） |
 | 2026-05-20 | #67 | Codex Round 1 反映: P2-1/P2-2 = StockDetailCard を一覧テーブル下部固定表示に変更（list query 分岐の外に独立描画、list 失敗時も詳細を表示 = 部分障害許容と整合）。P3-1 = q/dept 変更時も `selected` を clear（§58.4、新 list の非同期含有判定を避け race 回避）。RTL に list 失敗 + detail 成功ケース追加（§58.9） |
