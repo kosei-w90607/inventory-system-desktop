@@ -161,7 +161,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     ).toBeInTheDocument();
   });
 
-  it("REQ-206 / 65 §65.8.1: 進行中棚卸しは代表商品と明細数を両方-で表示する", async () => {
+  it("REQ-206 / SPEC-DISP-B2-1 D-B7 / 65 §65.8.1: 進行中棚卸しは代表商品を-で表示する", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
       data: {
@@ -188,13 +188,13 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     expect(link.getAttribute("href")).toContain("/stocktake/records/51");
     const row = link.closest("tr");
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getAllByText("-")).toHaveLength(2);
+    expect(within(row as HTMLElement).getAllByText("-")).toHaveLength(1);
     expect(within(row as HTMLElement).getByText("進行中")).toBeInTheDocument();
     expect(within(row as HTMLElement).queryByText("算定前商品")).not.toBeInTheDocument();
     expect(within(row as HTMLElement).queryByText("9")).not.toBeInTheDocument();
   });
 
-  it("REQ-206 / 65 §65.8.1: 完了棚卸しの差異0件は差異なしと0を表示する", async () => {
+  it("REQ-206 / 65 §65.8.1: 完了棚卸しの差異0件は代表商品に差異なしを表示する", async () => {
     mockListInventoryRecords.mockResolvedValue({
       status: "ok",
       data: {
@@ -222,7 +222,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
     const row = link.closest("tr");
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText("差異なし")).toBeInTheDocument();
-    expect(within(row as HTMLElement).getByText("0")).toBeInTheDocument();
+    expect(within(row as HTMLElement).queryByText("0")).not.toBeInTheDocument();
     expect(within(row as HTMLElement).queryByText("明細なし")).not.toBeInTheDocument();
   });
 
@@ -908,7 +908,7 @@ describe("InventoryRecordsPage native input tokens（Lane 5 SC4a）", () => {
   });
 });
 
-it("⑮ SC6: 一覧の見出しとデータ行は記録IDを除く7列", async () => {
+it("⑮ SC6 / SPEC-DISP-B2-1 D-B7: 一覧の見出しとデータ行は記録ID・明細数を除く6列", async () => {
   mockListInventoryRecords.mockResolvedValue({
     status: "ok",
     data: { items: [makeRecord()], total_count: 1, page: 1, per_page: 50 },
@@ -919,13 +919,12 @@ it("⑮ SC6: 一覧の見出しとデータ行は記録IDを除く7列", async (
     "種別",
     "業務日付",
     "代表商品",
-    "明細数",
     "状態",
     "記録日時",
     "操作",
   ]);
   const row = screen.getByRole("link", { name: "詳細を見る" }).closest("tr");
   if (row === null) throw new Error("expected table structure");
-  expect(within(row).getAllByRole("cell")).toHaveLength(7);
+  expect(within(row).getAllByRole("cell")).toHaveLength(6);
   expect(within(row).queryByText("#7")).not.toBeInTheDocument();
 });

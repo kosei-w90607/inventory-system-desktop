@@ -97,7 +97,10 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
     // p-6: 売上レポート（daily/monthly）と全周余白を揃える（RootLayout main は padding を持たず
     // 各ページ root が自前で付ける設計、Codex 実装レビュー Round 1 後の L3 デモ発見）
     <PageShell>
-      <PageHeader title="在庫照会" />
+      <PageHeader
+        title="在庫照会"
+        subtitle="商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます"
+      />
 
       {/* items-end で上置き Label の検索欄と隣接 control の下辺を揃える。 */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
@@ -222,6 +225,9 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
         />
       ) : data ? (
         <div className="space-y-2">
+          {statusValue !== "all" && (
+            <p className="text-base font-semibold tabular-nums">全 {data.items.length} 件</p>
+          )}
           {/* S3b（round 2/3 是正）: 下部と同じ見え方（下部は Pagination が totalPages で
               self-gate する）になるよう、status === "all" かつ totalCount が 0 より
               大きいときだけ描画する。source: "low_stock" は totalCount が null のため
