@@ -345,6 +345,6 @@ Fill after implementation.
 
 ### Plan Review round 2（closure、2026-09-15）
 
-- Sonnet: 18 件すべて closed、新規 P1/P2 なし → Findings Freeze 可
-- Opus: 18 件すべて closed、**新規 P2-A**（P3-6 の是正先 AC7 第 3 oracle が単一行前提で、D-RT6 後の h2 行 105 文字 > printWidth 100 の折返しで false red）= accept → `rg -U -o` のタグ抽出へ差し替え（baseline 0 を Coordinator が再実行で確認）/ P3-B（inline snapshot を description 付き 3 variant に）= accept / P3-C（実測 #7 の行番号が `ariaLabel` 行で +1）= accept → `135,143,179` / `19` / `695` に統一 / P3-D（`CI=true` で未 populate の inline snapshot が FAIL）= accept → S11 と発注書に populate の 1 句 / P3-E（catalog ⑨ `:650` の「sales TabsHeader」が census と矛盾）= accept → S12 / AC9 に追加
+- Sonnet: round 1 の全 finding（上の裁定一覧と 1:1）closed、新規 P1/P2 なし → Findings Freeze 可
+- Opus: round 1 の全 finding closed、**新規 P2-A**（P3-6 の是正先 AC7 第 3 oracle が単一行前提で、D-RT6 後の h2 行 105 文字 > printWidth 100 の折返しで false red）= accept → `rg -U -o` のタグ抽出へ差し替え（baseline 0 を Coordinator が再実行で確認）/ P3-B（inline snapshot を description 付き 3 variant に）= accept / P3-C（実測 #7 の行番号が `ariaLabel` 行で +1）= accept → `135,143,179` / `19` / `695` に統一 / P3-D（`CI=true` で未 populate の inline snapshot が FAIL）= accept → S11 と発注書に populate の 1 句 / P3-E（catalog ⑨ `:650` の「sales TabsHeader」が census と矛盾）= accept → S12 / AC9 に追加
 - round 3 = closure（Opus、本 commit の diff 限定。round 天井 3 の最終）
