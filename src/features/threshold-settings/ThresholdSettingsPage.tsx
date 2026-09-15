@@ -225,7 +225,7 @@ export function ThresholdSettingsPage() {
 
           <fieldset disabled={saveMutation.isPending} className="space-y-6 disabled:opacity-70">
             <FormSection
-              title="在庫少の基準"
+              title="基準値"
               description="保存すると、ホームと在庫照会の在庫少の判定にすぐ反映されます"
             >
               <div className="grid gap-4 md:grid-cols-2">

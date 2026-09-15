@@ -7,9 +7,9 @@ import type { AppSetting } from "@/lib/bindings";
 import { z } from "zod";
 
 export const THRESHOLD_ERROR_MESSAGES = {
-  required: "入力してください",
-  integer: "1以上の整数を入力してください",
-  max: "99999以下で入力してください",
+  required: "1〜99999の整数を入力してください",
+  integer: "1〜99999の整数を入力してください",
+  max: "1〜99999の整数を入力してください",
 } as const;
 
 const thresholdValueSchema = z.string().superRefine((value, ctx) => {
