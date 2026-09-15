@@ -19,7 +19,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 2
 - Human Gate: ready,merge,manual
 
-manual = owner Windows native L3 1 画面（一括価格改定: 取引先選択後の toggle が off で表示され、文言が新文になっている。行確定で取引先が付かないこと）。
+manual = owner Windows native L3 1 画面（一括価格改定: 取引先選択後の toggle が off で表示され、文言が新文になっている。目視 2 点のみ。行確定時の挙動は unit test〈AC7〉で閉じる、Plan Review round 2）。
 
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（本 commit）: Risk R2、owner 決定 (a) 既定 off + (b) 文言明示を Goal Invariant へ確定。Design Readiness は既存 77 §77.2 REQ-106/SPEC-PRV-D6・§77.6・30-biz §4.4.1 手順 5（不変の前提）を十分と引用（既定値と文言の同期のみ、新 component / 新 token なし）。Test Design Matrix は R2 で AC が機械 oracle + 既存 test の反転で閉じるため付けない。
