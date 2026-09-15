@@ -11,7 +11,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: c5b1ea2b275d74791fa0d6c76e1f7be0a52f4a65
-- Amendments: none
+- Amendments: 69c6011cc410d14b16e2793c089f286cb960fd18
 - Coordinator: Fable 5.1
 - Writer: Codex
 - Plan Reviewer: Sonnet + Opus（独立 fresh context、並列。裁定は Coordinator が直列）
@@ -374,4 +374,4 @@ Fill after implementation.
   - Opus P3-5（「並び替え」「並び順」の隣接）= L3 観点へ → AC-L3-1
   - Opus P3-3（`59-ui-shared-patterns.md` §59.1 の PageHeader props / DepartmentFilter 採用画面が未同期）= Backlog 起票（closeout。function-design は AC10 の負 oracle で本 lane 非対象）
   - Opus P3-6（`StocktakePage.test.tsx` SC4a 重複 + 空集合化した negative assert）= Backlog 起票（closeout）
-- 是正後 = closure（Sonnet + Opus、diff 限定。Codex は review 50 の findings 0 のため closure 不要）→ manual（owner L3）→ Ready
+- Gated Amendment 1 = `69c6011c`（content）+ 登録 commit。是正後 = closure（Sonnet + Opus、diff 限定。Codex は review 50 の findings 0 のため closure 不要）→ manual（owner L3）→ Ready
