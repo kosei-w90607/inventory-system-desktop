@@ -719,3 +719,10 @@ Use concise ADR-style entries.
 - Decision: Astra主担当では調査・起草・調整・実装・検証・packet/状態記録を同じsessionで担当する。通常作業のサブエージェント分割と起草/実装の別runを既定にせず、独立レビューをSonnet / Opusへ依頼する。発注・回収もAstraが行う。
 - Why: Fableを指揮者に置く分業規定をAstraへ一律に当てはめず、ownerが望む一貫した作業と文脈の保持を実現する。速度差の実測を根拠にする決定ではない。
 - Compatibility: D-084の起草/実装run分離・実装runのpacket編集禁止・reviewer発注書のowner relayを、Astra主担当に限り上記へ置き換える。Fableの分業、Plan Gate、計画先行commit、Gated Amendment、非Codex Plan Review、独立性、Double Audit、ownerの採用・裁定・Human Gateは維持する。正本は[Agent Operating Manual §3.2](AGENT_OPERATING_MANUAL.md#astraを主担当にする場合d-087)。
+
+## D-088: 一括価格改定の取引先紐付けは既定 off で明示的に選ぶ（2026-09-16）
+
+- Status: accepted（owner の明示指示、PR #63 L3 round 3 の所感）。
+- Decision: 取引先紐付け toggle は既定 off とし、取引先変更時も off へ戻す。label は「確定した商品の取引先が未設定なら、この取引先を設定する」とする。
+- Why: 価格改定のついでに未設定の取引先が設定される副作用を避け、紐付けを opt-in にする。
+- Compatibility: BIZ `revise_product_price` 手順 5（supplier_id が NULL のときだけ設定し、既存値は上書きしない）と DTO `assign_supplier_id` は不変。URL state は不変で、既存データへの影響はない。
