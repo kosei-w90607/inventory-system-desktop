@@ -25,6 +25,9 @@ describe("UI-12 conventions runtime: Alert", () => {
     );
     expect(alert.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     expect(alert).toHaveTextContent("ご注意");
+    // SPEC-DISP-B2-1 / D-B2: 本文より強い共通タイトル。
+    expect(screen.getByText("ご注意")).toHaveClass("font-semibold");
+    expect(screen.getByText("ご注意")).not.toHaveClass("font-medium");
     expect(alert).toHaveTextContent("保存前に確認してください。");
   });
 

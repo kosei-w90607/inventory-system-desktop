@@ -397,6 +397,8 @@ function FormSection({ title, description, children }: FormSectionProps) {
 
 ### Alert warning variant（画面上部の注意喚起、owner v4 決定で確定）
 
+`AlertTitle` は variant を問わず `font-semibold`（600）で icon の真横の 1 行を本文（`AlertDescription`）より強く出す。
+
 業務を止めないが読み飛ばされては困る注意文言（destructive ほど致命的ではない）には `Alert` `warning` variant を使う。`alertVariants` の `warning` は次を持つ（`data-variant` にも出力）: `warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90"`。①状態 badge と同じ soft/border/strong/icon の 4 点構造（`bg-warning-soft` 塗り + `border-warning` 枠 + `AlertTriangle`〈icon `text-warning`〉+ 本文 `text-warning-strong`）。枠は `--warning`（badge ①状態の `--warning-border` より一段濃い）。子要素は `AlertTriangle` icon + `AlertTitle` + `AlertDescription` の 2 段（DSR-11 に準拠）。
 
 ```tsx
