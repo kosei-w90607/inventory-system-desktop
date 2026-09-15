@@ -757,8 +757,8 @@ describe("StockInquiryPage SPEC-DISP-B2-1（D-B3 / D-B5）", () => {
       data: [
         ...[1, 2, 3].map((id) =>
           makeMockProductWithRelations({
-            product_code: `LOW-${id}`,
-            name: `対象商品${id}`,
+            product_code: `LOW-${String(id)}`,
+            name: `対象商品${String(id)}`,
             department_id: 1,
             stock_quantity: 2,
           }),
