@@ -72,7 +72,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `rg -c 'useState\(true\)' src/features/products/PriceRevisionPage.tsx` = 1（`:32`）/ `rg -c 'setAssignSupplier\(true\)' 同` = 2（`:34` useEffect、`:37` patchSearch）
 - `rg -c '未設定の商品にこの取引先を設定する' src/features/products/PriceRevisionPage.tsx` = 1 / 同 `PriceRevisionPage.test.tsx` = 7
-- `docs/function-design/77-ui-bulk-price-revision.md`: `:30` REQ-106 / SPEC-PRV-D6 行「紐付け toggle は既定 on。」= 1、`:93`「`未設定の商品にこの取引先を設定する` は取引先選択中だけ表示し、既定 on とする。」= 1、`:131` Review Focus 相当の bullet は不変
+- `docs/function-design/77-ui-bulk-price-revision.md`: `:30` REQ-106 / SPEC-PRV-D6 行「紐付け toggle は既定 on。」= 1、`:93`「`未設定の商品にこの取引先を設定する` は取引先選択中だけ表示し、既定 on とする。」= 1、`:128`（§77.8 テスト観点の SPEC-PRV-D3 bullet、別 toggle）は不変
 - test: `:186`「…既定 on で supplier 変更時に on へ戻る」/ `:217` 付近「browser 履歴で supplier search が変わった場合も取引先設定 toggle を既定 on に戻す」の 2 本が既定 on を固定
 - `PriceRevisionTable.tsx:75` は `assignSupplier` を受けて `assign_supplier_id` を渡す（変更なし）
 - decision-log の最終は D-087（2026-09-14）
@@ -82,12 +82,12 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **D-PR1 既定 off**（owner (a)）: `useState(false)`。利用者が on にした後に取引先を変えた場合も off へ戻す（`useEffect` と `patchSearch` の `setAssignSupplier(true)` を `false` に。別の取引先へ意図が持ち越されない）。捨てた案: on のまま文言だけ（不意の紐付けが残る）/ `useEffect` の撤去（on が別取引先へ持ち越される）
 - **D-PR2 文言**（owner (b)）: 「確定した商品の取引先が未設定なら、この取引先を設定する」。checkbox の `id` / `htmlFor` は不変。捨てた案: 補足文の追加（1 行で読める文にする）
 - **D-PR3 設計書の改訂は 77 だけ**: REQ-106 / SPEC-PRV-D6 行の「紐付け toggle は既定 on」→「紐付け toggle は既定 off（owner 2026-09-16、D-088）」+ 理由列に「価格改定のついでに取引先が変わる副作用を避ける」を 1 句。§ bullet を新既定・新文言・「取引先を変えても off のまま」へ。更新履歴 1 行。30-biz / 40-cmd は不変（契約は UI の既定値のみ）
-- **D-PR4 decision-log D-088**: 「一括価格改定の取引先紐付けは既定 off で明示的に選ぶ（2026-09-16）」。背景 / 決定 / 影響 / 代替案 の既存書式
+- **D-PR4 decision-log D-088**: 「一括価格改定の取引先紐付けは既定 off で明示的に選ぶ（2026-09-16）」。書式は直近の D-087 と同じ（`## D-088: 一括価格改定の取引先紐付けは既定 off で明示的に選ぶ（2026-09-16）` の header + `- Status:` / `- Decision:` / `- Why:` / `- Compatibility:` の 4 field。日本語 field 名は使わない。Plan Review round 1 P2 で訂正）
 
 ## Scope
 
 - **S1 `src/features/products/PriceRevisionPage.tsx`**: `true` → `false` の 3 箇所（`:32` `useState(false)`、`:34` `useEffect` 内 `setAssignSupplier(false)`、`:37` `patchSearch` 内 `setAssignSupplier(false)`）。構造（`useEffect` / `patchSearch` の分岐）は残す = 取引先を変えたら off へ戻る。`:76` の label 文言を新文へ
-- **S2 `src/features/products/PriceRevisionPage.test.tsx`**: `:186` の test を「既定 off。on にしてから取引先を変えると off に戻る」へ反転（test 名に「既定 off」を含める）。`:217` 付近「browser 履歴で supplier search が変わった場合も…既定 on に戻す」を「既定 off に戻す」へ。文言参照 7 箇所を新文へ
+- **S2 `src/features/products/PriceRevisionPage.test.tsx`**: `:186` の test を「既定 off。on にしてから取引先を変えると off に戻る」へ反転（test 名に「既定 off」を含める）。`:217` 付近「browser 履歴で supplier search が変わった場合も…既定 on に戻す」を「既定 off に戻す」へ。文言参照 7 箇所を新文へ。**Plan Review round 1 P1-1: `:275` の test「確定は該当行 1 商品だけを reviseProductPrice に送り assign_supplier_id は取引先選択 + toggle on のとき supplier_id、それ以外 null」も対象。既定 off のため mount 直後（未クリック）の確定は `assign_supplier_id: null`、checkbox クリック後の確定は `assign_supplier_id: 7` へ期待値を入れ替える（DTO 契約 `assign_supplier_id` 自体は不変、test の期待値だけの反転。失敗定義の「DTO の変更」には当たらない）。**
 - **S3 `docs/function-design/77-ui-bulk-price-revision.md`**: `:30` / `:93` / 更新履歴
 - **S4 `docs/decision-log.md`**: D-088 を末尾に追加
 - **S5（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録
@@ -112,9 +112,9 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `eabc
 - **AC4** `rg -c '^## D-088' docs/decision-log.md` = 1（baseline 0）
 - **AC5** `PriceRevisionPage.test.tsx` の 2 本が新既定を固定（test 名に「既定 off」を含む）: `rg -c '既定 off' src/features/products/PriceRevisionPage.test.tsx` ≥ 2（baseline 0）。mutant: `useState(false)` → `true` で FAIL
 - **AC6**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri src/features/products/components docs/function-design/30-biz-product-service.md docs/function-design/40-cmd-product.md | wc -l` = 0
-- **AC7** 対象 test（`PriceRevisionPage`）PASS、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS
+- **AC7** 対象 test（`PriceRevisionPage`）PASS、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（`:275` の test の期待値反転を含む。反転前の test は既定 off で必ず FAIL するため、修正前後の red / green を報告する）
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
-- **AC-L3-1** 一括価格改定（Windows native）: 取引先を選ぶと toggle が **off** で表示され、文言が「確定した商品の取引先が未設定なら、この取引先を設定する」。off のまま未設定商品の行を確定しても、商品の取引先が空のまま（商品一覧で確認）
+- **AC-L3-1** 一括価格改定（Windows native）: 取引先を選ぶと toggle が **off** で表示され、文言が「確定した商品の取引先が未設定なら、この取引先を設定する」。**Plan Review round 1 P1-2: 「off のまま確定しても取引先が空のまま」は demo seed に supplier_id NULL の商品が無く、DB の直接編集（synthetic row / UPDATE）を要するため L3 Eligibility（DEV_WORKFLOW）により L3 から外し、unit test（`:275` の mount 直後の確定 = `assign_supplier_id: null`、AC7）で閉じる。L3 は目視 2 点（toggle が off で表示、文言が新文）のみ。**
 
 ## Design Sources
 
