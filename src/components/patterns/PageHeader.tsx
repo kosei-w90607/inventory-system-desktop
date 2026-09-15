@@ -1,6 +1,6 @@
 // src/components/patterns/PageHeader.tsx
 //
-// 全画面共通ページヘッダー。3 variant を props 組合せで統合する。
+// 全画面共通ページヘッダー。4 variant を props 組合せで統合する。
 // 設計: docs/function-design/59-ui-shared-patterns.md §59.1
 // catalog: docs/design-system/02-component-catalog.md ① ページヘッダ
 
@@ -18,10 +18,11 @@ export interface PageHeaderProps {
 }
 
 /**
- * ページヘッダーの 3 variant:
+ * ページヘッダーの 4 variant:
  *   (a) title のみ         → `<header className="space-y-1">` + `<h1>`
  *   (b) title + subtitle  → `<header className="space-y-1">` + `<h1>` + `<p>`
  *   (c) title + actions   → `<header className="space-y-1">` + 見出し行（h1 + actions）+ 説明行
+ *   (d) title + description → space-y-1 + h1 + p
  *
  * actions があっても副題・説明をタイトルと同じグループに保つ。
  * actions は見出し行の右上に置き、副題・説明はその下の全幅の説明行に置く。
