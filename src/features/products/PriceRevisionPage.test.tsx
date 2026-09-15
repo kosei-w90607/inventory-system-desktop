@@ -183,12 +183,14 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     });
   });
 
-  it("「未設定の商品にこの取引先を設定する」は取引先選択中だけ表示され既定 on で supplier 変更時に on へ戻る", async () => {
+  it("「確定した商品の取引先が未設定なら、この取引先を設定する」は取引先選択中だけ表示され既定 off で on にしてから supplier を変更すると off へ戻る", async () => {
     const user = userEvent.setup();
     renderStateful();
     await screen.findByText("P-001");
     expect(
-      screen.queryByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }),
+      screen.queryByRole("checkbox", {
+        name: "確定した商品の取引先が未設定なら、この取引先を設定する",
+      }),
     ).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("取引先"));
     await user.click(
@@ -197,11 +199,11 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       }),
     );
     const assign = await screen.findByRole("checkbox", {
-      name: "未設定の商品にこの取引先を設定する",
+      name: "確定した商品の取引先が未設定なら、この取引先を設定する",
     });
-    expect(assign).toBeChecked();
-    await user.click(assign);
     expect(assign).not.toBeChecked();
+    await user.click(assign);
+    expect(assign).toBeChecked();
     await user.click(screen.getByLabelText("取引先"));
     await user.click(
       await within(screen.getByRole("dialog", { name: "取引先を選択" })).findByRole("button", {
@@ -209,11 +211,13 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       }),
     );
     expect(
-      await screen.findByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }),
-    ).toBeChecked();
+      await screen.findByRole("checkbox", {
+        name: "確定した商品の取引先が未設定なら、この取引先を設定する",
+      }),
+    ).not.toBeChecked();
   });
 
-  it("browser 履歴で supplier search が変わった場合も取引先設定 toggle を既定 on に戻す", async () => {
+  it("browser 履歴で supplier search が変わった場合も取引先設定 toggle を既定 off に戻す", async () => {
     const user = userEvent.setup();
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
@@ -225,10 +229,10 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       </QueryClientProvider>,
     );
     const assign = await screen.findByRole("checkbox", {
-      name: "未設定の商品にこの取引先を設定する",
+      name: "確定した商品の取引先が未設定なら、この取引先を設定する",
     });
     await user.click(assign);
-    expect(assign).not.toBeChecked();
+    expect(assign).toBeChecked();
 
     view.rerender(
       <QueryClientProvider client={client}>
@@ -237,8 +241,10 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     );
 
     expect(
-      await screen.findByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }),
-    ).toBeChecked();
+      await screen.findByRole("checkbox", {
+        name: "確定した商品の取引先が未設定なら、この取引先を設定する",
+      }),
+    ).not.toBeChecked();
   });
 
   it("新売価入力で新原価（案）が導出され現売価 0 の行は掛率「—」と現原価 fallback になり新売価は空から始まる", async () => {
@@ -272,7 +278,7 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(cost).toHaveValue(800);
   });
 
-  it("確定は該当行 1 商品だけを reviseProductPrice に送り assign_supplier_id は取引先選択 + toggle on のとき supplier_id、それ以外 null", async () => {
+  it("確定は該当行 1 商品だけを reviseProductPrice に送り assign_supplier_id は既定 off では null、取引先選択 + toggle on のとき supplier_id", async () => {
     const user = userEvent.setup();
     renderStateful({ supplier: 7 });
     const row = await screen.findByTestId("price-row-P-001");
@@ -285,9 +291,13 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       product_code: "P-001",
       new_selling_price: 1200,
       new_cost_price: 840,
-      assign_supplier_id: 7,
+      assign_supplier_id: null,
     });
-    await user.click(screen.getByRole("checkbox", { name: "未設定の商品にこの取引先を設定する" }));
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "確定した商品の取引先が未設定なら、この取引先を設定する",
+      }),
+    );
     const secondRow = screen.getByTestId("price-row-P-002");
     await user.type(within(secondRow).getByLabelText("P-002 新売価"), "500");
     await user.click(within(secondRow).getByRole("button", { name: "P-002 を確定" }));
@@ -298,7 +308,7 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
       product_code: "P-002",
       new_selling_price: 500,
       new_cost_price: 300,
-      assign_supplier_id: null,
+      assign_supplier_id: 7,
     });
   });
 

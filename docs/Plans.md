@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示（R2、起票待ち）**: owner 決定 2026-09-16（(a) 既定 off + (b) 文言「確定した商品の取引先が未設定なら、この取引先を設定する」）。対象 `PriceRevisionPage.tsx` の既定値 / 設計書 77 REQ-106・SPEC-PRV-D6 / test / decision-log。㉒ と file footprint が互いに素。packet は ㉑ closeout merge 後に起草。
+- **㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示（R2、implementing）**: [Plan Packet](plans/2026-09-16-price-revision-assign-default-off.md)。branch `agent/price-revision-assign-default-off`、Plan Commit `a129080c`、GA1〜GA3、Draft PR #67。owner 決定 2026-09-16。㉒ と file 互いに素、並走可。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
@@ -29,6 +29,7 @@
 - **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: lane 1 / 2 完了、lane 3 進行中** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
   - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）
+  - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示（R2、`agent/price-revision-assign-default-off`、[Packet](plans/2026-09-16-price-revision-assign-default-off.md)、Draft PR #67、Phase implementing〈Plan Commit `a129080c`、GA1〜GA3〉、relay 3/3、介入 0/3）
 
 ## ブロッカー
 

@@ -29,12 +29,12 @@ export function PriceRevisionPage({
   onSearchChange: (updater: (current: PriceRevisionSearch) => PriceRevisionSearch) => void;
 }) {
   const list = usePriceRevisionList({ search });
-  const [assignSupplier, setAssignSupplier] = useState(true);
+  const [assignSupplier, setAssignSupplier] = useState(false);
   useEffect(() => {
-    setAssignSupplier(true);
+    setAssignSupplier(false);
   }, [list.normalizedSearch.supplier]);
   const patchSearch = (patch: PriceRevisionSearchPatch) => {
-    if ("supplier" in patch) setAssignSupplier(true);
+    if ("supplier" in patch) setAssignSupplier(false);
     onSearchChange((current) => updatePriceRevisionSearch(current, patch));
   };
   const hasFilters =
@@ -73,7 +73,7 @@ export function PriceRevisionPage({
               setAssignSupplier(checked === true);
             }}
           />
-          未設定の商品にこの取引先を設定する
+          確定した商品の取引先が未設定なら、この取引先を設定する
         </label>
       ) : null}
       <Alert variant="warning" role="note">
