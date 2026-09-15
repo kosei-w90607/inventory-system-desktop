@@ -388,17 +388,18 @@ export function StocktakeProgressHeader({ startedAt, progress }: StocktakeProgre
           <h2 className="min-w-0 flex-1 text-xl font-semibold">
             棚卸し中（開始日: {formatCountedAt(startedAt)}）
           </h2>
-          {progress.uncounted_items > 0 ? (
-            <Badge variant="outline" tone="warning" className="shrink-0">
+          <Badge
+            variant="outline"
+            tone={progress.uncounted_items > 0 ? "warning" : "success"}
+            className="shrink-0"
+          >
+            {progress.uncounted_items > 0 ? (
               <AlertTriangle aria-hidden="true" />
-              未入力 {progress.uncounted_items}
-            </Badge>
-          ) : (
-            <Badge variant="outline" tone="success" className="shrink-0">
+            ) : (
               <CheckCircle2 aria-hidden="true" />
-              未入力 {progress.uncounted_items}
-            </Badge>
-          )}
+            )}
+            未入力 {progress.uncounted_items}
+          </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
           入力済み {progress.counted_items} / 全 {progress.total_items}
