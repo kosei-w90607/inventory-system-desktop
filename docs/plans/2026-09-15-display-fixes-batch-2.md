@@ -30,7 +30,7 @@ manual = owner Windows native L3 の抜き取り 3 画面（AC-L3-1〜3、10 分
 
 - 介入回数上限: 3（L3 抜き取り 1 + Ready + merge）
 - 実働時間上限: 20分
-- relay 往復上限: 3（既定 2 から改訂、Gated Amendment 2。理由: 実装 run 2 回が Coordinator の packet 誤り〈65 `:98` の節取り違え / 58 `:114` の括弧なし「通常」見落とし〉で fail-closed 停止し、Writer の実装 7 commit は保持されているが push 前。3 往復目は是正 1 箇所 + push + Draft PR のみ。owner 承認 = 発注書 53 の起動）
+- relay 往復上限: 4（GA3 で 3 → 4。理由: Final Review round 1 の是正 1 往復。owner 承認 = 発注書 55 の起動。GA2 時点の改訂理由:理由: 実装 run 2 回が Coordinator の packet 誤り〈65 `:98` の節取り違え / 58 `:114` の括弧なし「通常」見落とし〉で fail-closed 停止し、Writer の実装 7 commit は保持されているが push 前。3 往復目は是正 1 箇所 + push + Draft PR のみ。owner 承認 = 発注書 53 の起動）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -290,3 +290,21 @@ Fill after implementation.
 - 是正: S4 / 実測表 B4 / AC4 に `:114` を追加（oracle は「在庫少 / 通常」→「在庫少 / 正常」）。`:192` `:447` `:607` の「通常の EmptyState」は一般語で対象外（`rg -n '通常' docs/function-design/58-ui-stock-inquiry.md` を Coordinator が実読）
 - Owner Effort Budget: relay 往復上限 2 → 3（理由は同欄）。Writer の停止（発注書 51 の run 1 = 65 `:98`、run 2 = 58 `:114`。報告は `.local/codex-orders/last-51-display-fixes-batch-2-impl.md` と `report-51-…md`）はいずれも正しく、原因は Coordinator の起票品質
 - 教訓: 文言置換の oracle は括弧付き literal だけでなく、その語が別の区切りで現れる形（` / 通常`、`通常）` 等）を rg で全数確認してから固定する
+
+### Gated Amendment 3（2026-09-15、Final Review round 1 の裁定。owner 判断 2 件を含む）
+
+Final Review round 1: pass A Sonnet = P1 0 / P2 0 / P3 2、pass B Opus = P1 0 / P2 1 / P3 10（mutant 9 本中 3 survive は挙動同値 or oracle 不在）。Findings Freeze 不可 → 本 GA3 で裁定し是正発注 55 → closure（Sonnet）→ Freeze。
+
+- **Opus P2-1（「正常」は `status === "all"` で閾値を見ずに `stock_quantity > 0` を ok にするため、閾値割れ商品でも「正常」と断言する）= owner 判断 (b)「在庫あり」**（2026-09-15「在庫ありは基準以上を保証しない」と明記）。D-B4 を「在庫あり」へ改訂。是正: `StockStatusBadge.tsx:36`「正常」→「在庫あり」、catalog ⑬ `:870` / `:887` / `:907` / `:913`、58 `:114` / `:519` / `:568` / `:584`（契約 H に「『在庫あり』は基準以上を保証しない〈すべて表示では閾値判定を行わない〉」を 1 文）/ `:588` / `:651`、`ProductListTable.test.tsx:85,87`。AC4 の「正常」を「在庫あり」に読み替え（`rg -c '正常' StockStatusBadge.tsx` = 0、`rg -c '在庫あり'` = 1、58 / catalog ⑬ / test の「正常」0、58 に「基準以上を保証しない」≥ 1）
+- **Opus P3「基準値」= owner 判断 (c) 区画見出しを外して説明文だけ残す**（理解しやすさ）。D-B1 を改訂。是正: `ThresholdSettingsPage.tsx:227-230` の `FormSection` を `<section className="space-y-3"><p className="text-sm text-muted-foreground">保存すると…</p><Separator />…</section>` 相当（FormSection の DOM から h2 を除いた形。`FormSection` component と catalog ④ は触らない）に置換、69 §69.9 `:152` を「FormSection 見出し | （なし、説明文のみ）」へ、test の h2「基準値」assert を「h2 なし + 説明文あり」へ。AC1 を `rg -c 'title="基準値"'` = 0 / `rg -c '<FormSection' ThresholdSettingsPage.tsx` = 0 / 69 `\| FormSection 見出し \| （なし` = 1 に反転
+- Opus P3（「全 N 件」の class に oracle なし、mutant survive）= accept → `StockInquiryPage.test.tsx` に `toHaveClass("text-base", "font-semibold", "tabular-nums")` 1 行
+- Sonnet P3-1 / Opus P3（恒真 guard `data.items.length > 0`）= accept → guard 削除、`{statusValue !== "all" && (…)}`（AC5 の `statusValue !== "all"` = 1 不変）
+- Opus P3（catalog `:884` `:886` の stale anchor `:34` / `:25`）= accept → `:29` / `:20`
+- Opus P3（65 `:271` の「代表商品・明細数をともに『-』」）= accept → 「代表商品を『-』とする（明細数は一覧に表示しない、L8-4）」
+- Opus P3（58 `:596` の新 bullet が UI-06a-D1 block 内で日付・ID なし）= accept → `#### UI-06a-D6: 絞り込み時の件数表示（2026-09-15、SPEC-DISP-B2-1 / D-B5）` として D1 block の後ろへ独立
+- Opus P3（catalog ⑥ の AlertTitle 文が warning 節の内側）= accept → `## ⑥` 直下（`:336` の使いどころ段落の前）へ移動。AC2 第 3 oracle を `awk '/^## ⑥/,/^## ⑦/' … | rg -c 'font-semibold'` ≥ 1 に変更
+- Sonnet P3-2 / Opus P3（`THRESHOLD_ERROR_MESSAGES` 3 key 同一文、空欄分岐が挙動同値）= accept → 定数に「3 key は 69 §69.7 の 4 rule 対応を保つ別名、値は同一（owner 2026-09-11）」の comment 1 行。分岐は残す
+- Opus P3（Matrix Boundary Checks の `out_of_stock`）= Coordinator 修正（本 commit、正しくは `stockout`）
+- Opus P3（PaginationSummary 14px muted と「全 N 件」16px 太字がチップ切替で跳ねる）= L3 観点へ（AC-L3-2 に「チップ切替時の件数行の見え方」）。揃えるなら別 lane（⑩ canonical 波及）
+- Opus P3（`DailyReportImportPage.tsx:146` の 2 文 title が `line-clamp-1` で切れ得る）= L3 観点へ（AC-L3-3 に日報取込みの Alert）+ Backlog（title 1 文化）
+- Owner Effort Budget: relay 3 → 4

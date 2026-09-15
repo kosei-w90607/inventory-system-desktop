@@ -73,7 +73,7 @@ not applicable: 文言・class・列の変更のみ。件数行は `data` 由来
 - null/default: `data.items.length === 0` → 件数行なし
 - empty/non-empty: status = all / low_stock の両 case
 - min/max: not applicable
-- status/policy enum: `status` の 3 値（all / low_stock / out_of_stock）で件数行の有無が 1 : 2
+- status/policy enum: `status` の 3 値（all / low_stock / stockout。GA3 で `out_of_stock` を訂正）で件数行の有無が 1 : 2
 - wire type / internal type / producer/consumer / round-trip token / precision/range / cross-language parse: not applicable
 
 ## Compatibility Checks
