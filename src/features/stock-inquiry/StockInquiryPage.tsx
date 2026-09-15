@@ -225,7 +225,7 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
         />
       ) : data ? (
         <div className="space-y-2">
-          {statusValue !== "all" && data.items.length > 0 && (
+          {statusValue !== "all" && (
             <p className="text-base font-semibold tabular-nums">全 {data.items.length} 件</p>
           )}
           {/* S3b（round 2/3 是正）: 下部と同じ見え方（下部は Pagination が totalPages で

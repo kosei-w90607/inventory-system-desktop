@@ -6,6 +6,7 @@
 import type { AppSetting } from "@/lib/bindings";
 import { z } from "zod";
 
+// 3 key は 69 §69.7 の 4 rule 対応を保つ別名。値は同一（owner 2026-09-11）
 export const THRESHOLD_ERROR_MESSAGES = {
   required: "1〜99999の整数を入力してください",
   integer: "1〜99999の整数を入力してください",

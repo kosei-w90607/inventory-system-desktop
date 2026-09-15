@@ -784,6 +784,7 @@ describe("StockInquiryPage SPEC-DISP-B2-1（D-B3 / D-B5）", () => {
     );
     expect(await screen.findByText("LOW-3")).toBeInTheDocument();
     expect(screen.getByText("全 3 件")).toBeInTheDocument();
+    expect(screen.getByText("全 3 件")).toHaveClass("text-base", "font-semibold", "tabular-nums");
     expect(screen.queryByText(/件のうち/)).not.toBeInTheDocument();
   });
 
