@@ -29,7 +29,7 @@ manual = owner Windows native L3 1 画面（一括価格改定: 取引先選択�
 
 - 介入回数上限: 3
 - 実働時間上限: 20分
-- relay 往復上限: 2
+- relay 往復上限: 3（既定 2 から改訂、Gated Amendment 1。理由: 実装 run 2 回が Coordinator の発注書誤り〈commit 構成が packet Test Plan と不一致 / HEAD 照合先を worktree と明示せず〉で実装前に fail-closed 停止し、Writer の作業は 0。3 往復目は発注書 57 改訂 3 の実装 run。owner 承認 = 起動）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -254,3 +254,10 @@ Fill after implementation.
 ### Plan Review round 3（closure、Sonnet）
 
 - `manual =` 行と AC-L3-1 の一致を確認、新規 finding なし。**Plan Gate 通過可**（P1/P2 = 0）
+
+### Gated Amendment 1（2026-09-16、Codex 発注書 57 の fail-closed 停止 ×2）
+
+- run 1（HEAD `64c155fa`）: 発注書が「test 先行を別 commit」と指示し、packet Test Plan「S1 / S2 の test を実装と同 commit で更新」と literal 衝突 → 実装前に停止（正しい挙動）。発注書を 2 commit 構成へ改訂
+- run 2（同 HEAD）: 改訂後の発注書が HEAD 照合先を worktree と明示せず、pin した cwd（本体 clone、main `f2ef9e52`）で照合して不一致停止（正しい挙動）。発注書に `cd /tmp/codex-23-impl && git rev-parse HEAD` を明示
+- Owner Effort Budget: relay 2 → 3（Coordinator 起因、Writer の作業 0）。packet の Scope / AC / 設計判断は不変
+- 教訓: 発注書の手順節は packet Test Plan と突き合わせる。worktree を使う run では照合 command に path を含める
