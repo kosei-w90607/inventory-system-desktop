@@ -1427,13 +1427,13 @@ it.each([0, 1])(
     );
     const heading = screen.getByRole("heading", { level: 2 });
     const row = heading.parentElement;
-    const description = screen.getByText(`入力済み ${2 - uncounted} / 全 2`);
+    const description = screen.getByText(`入力済み ${String(2 - uncounted)} / 全 2`);
     expect(heading).toHaveClass("min-w-0", "flex-1");
     expect(row).toHaveClass("flex", "flex-wrap", "items-start", "justify-between", "gap-3");
     expect(description.tagName).toBe("P");
     expect(row?.nextElementSibling).toBe(description);
     expect(row?.parentElement).toHaveClass("space-y-1");
-    expect(screen.getByText(`未入力 ${uncounted}`)).toHaveClass("shrink-0");
+    expect(screen.getByText(`未入力 ${String(uncounted)}`)).toHaveClass("shrink-0");
     const progress = screen.getByRole("progressbar", { name: "棚卸し進捗" });
     expect(progress.parentElement).toHaveClass("space-y-2");
     expect(progress.previousElementSibling).toBe(row?.parentElement);

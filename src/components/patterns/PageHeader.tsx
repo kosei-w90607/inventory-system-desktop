@@ -36,7 +36,9 @@ export function PageHeader({ title, subtitle, description, actions }: PageHeader
           <div className="shrink-0">{actions}</div>
         </div>
         {subtitle !== undefined && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-        {description !== undefined && <p className="text-sm text-muted-foreground">{description}</p>}
+        {description !== undefined && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
       </header>
     );
   }
