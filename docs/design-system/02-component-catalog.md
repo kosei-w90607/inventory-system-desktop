@@ -718,7 +718,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **件数文言**: 範囲付き統一形「全 {n} 件のうち {from}〜{to} 件を表示（{p} / {t} ページ）」（`n` / `from` / `to` は `ja-JP` locale、`tabular-nums`）。`from = (page-1)*perPage+1`、`to = min(page*perPage, totalCount)`。`totalPages <= 1` かつ `page <= totalPages`（`totalCount === 0` を含む）は下部 pager を描画しない。`page > totalPages`（範囲外ページからの回復）のときは描画する（Lane 4、PR #40 Codex P1 是正）。
 
-**使用トークン**: 下部件数・ページ表示は `text-sm text-muted-foreground`（tabular-nums）。上部 `PaginationSummary` も同じ `text-sm text-muted-foreground tabular-nums`（Lane 4 で下部と統一）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium tabular-nums`。perPage 切替は `w-[7rem]`。
+**使用トークン**: 下部件数・ページ表示は `text-sm text-muted-foreground`（tabular-nums）。上部 `PaginationSummary` も同じ `text-sm text-muted-foreground tabular-nums`（Lane 4 で下部と統一）。ページボタンは outline variant、`size="sm"`。現在ページ表示は `min-w-20 text-center font-medium tabular-nums`。perPage 切替は `w-[7rem]`。例外: 在庫照会の絞り込み時（`list_low_stock` 経路、`totalCount` なしで範囲文言が成立しない）は上部に件数のみを `text-base font-semibold tabular-nums` で出す（58 §UI-06a-D6、2026-09-15。下部との統一は別 lane）。
 
 **状態**:
 - **disabled**: 先頭ページで「前へ」、末尾ページで「次へ」を `disabled` にする（`totalPages <= 1` かつ `page <= totalPages`（0 件含む）は下部 pager 自体を描画しない。`page > totalPages` の回復時は描画する）
