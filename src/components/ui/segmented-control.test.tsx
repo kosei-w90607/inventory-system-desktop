@@ -23,6 +23,44 @@ describe("SegmentedControl (UI-WF-2026-05-22 shared two-choice control)", () => 
     { value: "monthly", label: "月次" },
   ] as const;
 
+  it("SPEC-FILTER-LABEL-RT-1 D-RT2: showLabel は可視 span だけで群を識別する", () => {
+    render(
+      <SegmentedControl
+        showLabel
+        ariaLabel="廃番表示"
+        value="daily"
+        options={options}
+        onValueChange={vi.fn()}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "廃番表示" });
+    const label = screen.getByText("廃番表示");
+    expect(label.tagName).toBe("SPAN");
+    expect(label).toBeVisible();
+    expect(label).toHaveClass("text-sm", "text-muted-foreground");
+    expect(group).toHaveAttribute("aria-labelledby", label.id);
+    expect(group).not.toHaveAttribute("aria-label");
+    expect(group.parentElement).toHaveClass("grid", "gap-1");
+    expect(group.previousElementSibling).toBe(label);
+  });
+
+  it("SPEC-FILTER-LABEL-RT-1 D-RT2: showLabel 省略時は従来の root と aria-label を維持する", () => {
+    const { container } = render(
+      <SegmentedControl
+        ariaLabel="廃番表示"
+        value="daily"
+        options={options}
+        onValueChange={vi.fn()}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "廃番表示" });
+    expect(container.firstElementChild).toBe(group);
+    expect(group).toHaveAttribute("aria-label", "廃番表示");
+    expect(group).not.toHaveAttribute("aria-labelledby");
+    expect(screen.queryByText("廃番表示")).not.toBeInTheDocument();
+    expect(Array.from(group.children).map((child) => child.tagName)).toEqual(["BUTTON", "BUTTON"]);
+  });
+
   it("exposes the selected option through aria-pressed, data-state, and shared active tone", () => {
     render(
       <SegmentedControl
