@@ -44,7 +44,7 @@ manual = owner Windows native L3 の抜き取り 3 画面（AC-L3-1〜3、10 分
 Risk: R2
 
 Reason:
-利用者可視の文言・weight・列の変更で保守性と見え方に影響するが、runtime 契約（DTO / route / search state / DB / command）は変えない。`AlertTitle` は共通 component で 81 箇所に効くが class 1 語の変更で構造不変。「全 N 件」は既存 `items.length` の表示で backend 非接触（`list_low_stock` は Vec 全件、client filter 経路、DSR `:596` の pagination 拡張 Rejected を維持）。`item_count` は DTO に残し列だけ外す。R3 に上げる契約変更はない。
+利用者可視の文言・weight・列の変更で保守性と見え方に影響するが、runtime 契約（DTO / route / search state / DB / command）は変えない。`AlertTitle` は共通 component で 81 箇所に効くが class 1 語の変更で構造不変。「全 N 件」は既存 `items.length` の表示で backend 非接触（`list_low_stock` は Vec 全件、client filter 経路、58 §58.10 UI-06a-D1 の Rejected〈`list_low_stock` 経路への pagination 拡張、`:596`〉を維持）。`item_count` は DTO に残し列だけ外す。R3 に上げる契約変更はない。
 
 ## Goal
 
@@ -65,7 +65,7 @@ Goal Invariant:
 
 ### 非目的
 
-- 在庫少 / 在庫切れ絞り込みへの pagination（DSR `:596` Rejected 維持）。「全 N 件のうち a〜b 件」の範囲表現は成立しない（client filter は slice しない）ため採らない。
+- 在庫少 / 在庫切れ絞り込みへの pagination（58 §58.10 UI-06a-D1 Rejected 維持）。「全 N 件のうち a〜b 件」の範囲表現は成立しない（client filter は slice しない）ため採らない。
 - 記録状態 Badge の tone / 中立 Badge の見栄え（Backlog 保留）。
 - `ManualSalePage.tsx:360,743` の「明細数」（別画面、65 の対象外）。
 - ホーム mockup-c 採用（後続 lane）。
@@ -90,7 +90,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - **D-B2 `AlertTitle` は `font-medium` → `font-semibold`**（owner 2026-09-11 原文）。catalog ⑥ の Alert warning variant 節に「`AlertTitle` は `font-semibold`（600）で icon の真横の 1 行を本文（`AlertDescription`）より強く出す」を 1 文追記。variant を問わず共通。
 - **D-B3 副題は `subtitle` prop で mockup-d-history `:172` の文をそのまま**（`description` は複数文の操作説明用、catalog ①）。58 §58.7 に「PageHeader: title「在庫照会」+ subtitle『商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます』」を 1 行。
 - **D-B4 「正常」**（owner「状態なら正常のほうが文言として正しい」）。catalog ⑬ の 4 箇所と 58 の 5 箇所、test 2 箇所を同 commit で更新。catalog `:885` の stale anchor `StockStatusBadge.tsx:42` は現行行（`:35-37`）へ直す（file:line を書かない規範は ⑨ D3 の ⑨ 限定で、⑬ は既に anchor を持つため最小差分で更新）。
-- **D-B5 件数は「全 N 件」1 本、`status !== "all"` かつ `items.length > 0` のときだけ**、`PaginationSummary` の上の位置（`:225` の直前）に `<p className="text-base font-semibold tabular-nums">全 {data.items.length} 件</p>`（mockup `.cnt-plain` の 16px / 600 / tabular-nums を token で写す。`small` の注記「ページ送りはこの絞り込みでは行いません」は付けない = 情報より説明が増える）。`PaginationSummary` / `Pagination` の gate は不変。`items.length === 0` は EmptyState が出るため件数を出さない。N は `filterAndSortLowStockList` 後の件数（検索 / 部門で絞った後）で、mockup の「在庫少 12 件・在庫切れ 3 件」の 2 値表示は status が片方ずつしか選べないため 1 値。
+- **D-B5 件数は「全 N 件」1 本（Backlog 原文の「全 N 件のうち a〜b 件を表示」は client filter が slice しないため範囲が成立せず、mockup-d `:177`「件数のみ太字表示」の形に落とす）、`status !== "all"` かつ `items.length > 0` のときだけ**、`PaginationSummary` の上の位置（`:225` の直前）に `<p className="text-base font-semibold tabular-nums">全 {data.items.length} 件</p>`（mockup `.cnt-plain` の 16px / 600 / tabular-nums を token で写す。`small` の注記「ページ送りはこの絞り込みでは行いません」は付けない = 情報より説明が増える）。`PaginationSummary` / `Pagination` の gate は不変。`items.length === 0` は EmptyState が出るため件数を出さない。N は `filterAndSortLowStockList` 後の件数（検索 / 部門で絞った後）で、mockup の「在庫少 12 件・在庫切れ 3 件」の 2 値表示は status が片方ずつしか選べないため 1 値。
 - **D-B6 error 文言は 1 本「1〜99999の整数を入力してください」**（全角「〜」、半角数字。owner「範囲が一目で分かる 1 本」）。`THRESHOLD_ERROR_MESSAGES` の 3 key は残してよい（値を同一文にする）。判定分岐（空 / 非整数 / 1 未満 / 99999 超 → 保存拒否）は不変で、文言だけ揃える。上部「保存できませんでした」Alert は backend 失敗用で対象外（owner 2026-09-11 合意）。69 §69.7 表の文言列 4 行を同一文へ。
 - **D-B7 明細数列は撤去、`item_count` は DTO に残す**（owner 決定 2026-09-15 (a)。backend 非接触、代表商品分岐 `:366` が `item_count` を使う）。65 `:98` の「明細数」行を削除、`:212` の列構成から「明細数」を外す、`:213` は「`item_count` は一覧に表示しない（L8-4、owner 2026-09-15）。算出仕様は DTO として維持」へ改める、`:271` は DTO 注記として残す。手動販売出庫で困れば『代表商品 ほか N 件』型で戻す（Backlog 記録目的）。
 
@@ -111,8 +111,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - `src-tauri/**`（`item_count` / `list_low_stock` 不変）
 - `src/features/manual-sale/**`、`src/features/home/**`
 - ㉑ の file 行（`StockInquiryPage.tsx:132-135`、catalog ① / ⑤ / ⑨、`PageHeader.tsx`）
-- `PaginationSummary` / `Pagination` component、DSR `:596` の Rejected 判断
+- `PaginationSummary` / `Pagination` component、58 UI-06a-D1 の Rejected 判断
 - 記録状態 Badge の tone、中立 Badge の見栄え統一（Backlog 保留）
+- 入出庫記録詳細 7 page の「明細数」field（`rg -n '明細数' src` の一覧列以外の hit。65 §65.5 詳細表示表の別契約で、L8-4 は一覧列のみ）
 - mockup-d-history の変更（`:177` の「件数のみ太字表示」と一致するため不要）
 
 ## Acceptance Criteria
@@ -123,7 +124,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 - **AC2** `rg -c 'font-semibold' src/components/ui/alert.tsx` = 1（baseline 0）/ `rg -c 'font-medium' src/components/ui/alert.tsx` = 0（baseline 1）/ `awk '/^### Alert warning variant/,/^## ⑦/' docs/design-system/02-component-catalog.md | rg -c 'font-semibold'` ≥ 1（baseline 0）
 - **AC3** `rg -c 'subtitle="商品ごとの在庫数と状態を確認し、その場で入出庫へ進みます"' src/features/stock-inquiry/StockInquiryPage.tsx` = 1（baseline 0）/ `rg -c '商品ごとの在庫数と状態を確認し' docs/function-design/58-ui-stock-inquiry.md` ≥ 1（baseline 0）
 - **AC4** `rg -c '通常' src/features/stock-inquiry/components/StockStatusBadge.tsx` = 0（baseline 1）/ `rg -c '正常' src/features/stock-inquiry/components/StockStatusBadge.tsx` = 1（baseline 0）/ `awk '/^## ⑬/,/^## ⑭/' docs/design-system/02-component-catalog.md | rg -c '通常'` = 0（baseline 4）/ `rg -c '「通常」' docs/function-design/58-ui-stock-inquiry.md` = 0（baseline 5）/ `rg -c '"通常"' src/features/stock-inquiry/components/ProductListTable.test.tsx` = 0（baseline 2）/ `rg -c 'StockStatusBadge.tsx:42' docs/design-system/02-component-catalog.md` = 0（baseline 1）
-- **AC5** `rg -c 'statusValue !== "all"' src/features/stock-inquiry/StockInquiryPage.tsx` = 1（baseline 0）/ `rg -c '全 \{data.items.length\} 件' src/features/stock-inquiry/StockInquiryPage.tsx` = 1（baseline 0）/ `rg -c 'statusValue === "all"' src/features/stock-inquiry/StockInquiryPage.tsx` = 2（baseline 2、gate 不変）
+- **AC5** `rg -c 'statusValue !== "all"' src/features/stock-inquiry/StockInquiryPage.tsx` = 1（baseline 0）/ `rg -c '全 \{data.items.length\} 件' src/features/stock-inquiry/StockInquiryPage.tsx` = 1（baseline 0）/ `rg -c '\{statusValue === "all" &&' src/features/stock-inquiry/StockInquiryPage.tsx` = 2（baseline 2 = `:229` / `:246` の gate。`:79` の `isFilterDefault` は pattern 外。Plan Review round 1 Sonnet P2: 旧 `rg -c 'statusValue === "all"'` は baseline 3 で「= 2」が必ず FAIL した）
 - **AC6** `rg -c '1〜99999の整数を入力してください' src/features/threshold-settings/lib/extract-thresholds.ts` ≥ 1（baseline 0）/ `rg -c '1以上の整数を入力してください|99999以下で入力してください' src/features/threshold-settings docs/function-design/69-ui-threshold-settings.md` = 0（baseline 8）/ `rg -c '^  required:|^  integer:|^  max:' src/features/threshold-settings/lib/extract-thresholds.ts` = 3 または `THRESHOLD_ERROR_MESSAGE` 単一定数（判定分岐は test 4 本で不変を確認）
 - **AC7** `rg -c '明細数' src/features/inventory-records/InventoryRecordsPage.tsx` = 0（baseline 1）/ `rg -c 'item_count' src/features/inventory-records/InventoryRecordsPage.tsx` ≥ 1（baseline 2、代表商品分岐が残る）/ `rg -c '明細数' src/features/manual-sale/ManualSalePage.tsx` = 2（不変）/ `rg -c '記録種別、業務日付、代表商品、明細数' docs/function-design/65-inventory-record-traceability.md` = 0（baseline 1）/ `rg -c '^\| 明細数 \|' docs/function-design/65-inventory-record-traceability.md` = 0（baseline 1）/ `rg -c '"明細数"' src/features/inventory-records/InventoryRecordsPage.test.tsx` = 0（baseline 1）
 - **AC8**（負の oracle）`git diff --name-only <stack base>..HEAD -- src-tauri src/features/manual-sale src/features/home src/components/patterns/PageHeader.tsx src/components/ui/segmented-control.tsx | wc -l` = 0
@@ -140,7 +141,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 - Function / command / DTO: `docs/function-design/58-ui-stock-inquiry.md` §58.7 / §58.10 / §58.12、`65-inventory-record-traceability.md` §65.8.1、`69-ui-threshold-settings.md` §69.7 / §69.9
 - DB: 該当なし
 - Screen / UI: catalog ⑥（Alert warning variant）/ ⑬（ステータスバッジ）/ ①（subtitle の用途）、`reference/mockup-d-history.html:172-177`
-- Decision log / ADR: DSR `:596`（低在庫 pagination Rejected、維持）、D-047（在庫少一覧 = 在庫照会の絞り込み）
+- Decision log / ADR: 58 §58.10 UI-06a-D1 Rejected（`list_low_stock` 経路への pagination 拡張、維持）、D-047（在庫少一覧 = 在庫照会の絞り込み）
 
 ## Required Design Artifacts
 
@@ -165,7 +166,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 | SPEC-DISP-B2-1 | catalog ⑥ | D-B2 | class 1 語、app 全体 | S2 | `alert.test.tsx` |
 | SPEC-DISP-B2-1 | catalog ① subtitle / mockup-d `:172` | D-B3 | `subtitle`（1 行）、`description` は複数文用 | S3 | `StockInquiryPage.test.tsx` |
 | SPEC-DISP-B2-1 | catalog ⑬ / 58 §58.10 | D-B4 | 「正常」、描画元 1 箇所 | S4 | `ProductListTable.test.tsx` |
-| SPEC-DISP-B2-1 | mockup-d `:175-177` / DSR `:596` | D-B5 | 件数のみ、範囲・pagination なし | S5 | `StockInquiryPage.test.tsx` |
+| SPEC-DISP-B2-1 | mockup-d `:175-177` / 58 §58.10 UI-06a-D1 | D-B5 | 件数のみ、範囲・pagination なし | S5 | `StockInquiryPage.test.tsx` |
 | SPEC-DISP-B2-1 | 69 §69.7 | D-B6 | 文言 1 本、判定分岐不変 | S6 | `ThresholdSettingsPage.test.tsx` |
 | SPEC-DISP-B2-1 | 65 §65.8.1 | D-B7 | 列撤去、DTO 維持 | S7 | `InventoryRecordsPage.test.tsx` |
 
@@ -194,7 +195,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 
 ## Design Readiness
 
-- Existing design docs are sufficient because: 変更はすべて既存 doc の文言・列・weight の同期で、新しい振舞いは「全 N 件」のみ。その形は mockup-d-history `:175-177` と DSR `:596` が既に定めている
+- Existing design docs are sufficient because: 変更はすべて既存 doc の文言・列・weight の同期で、新しい振舞いは「全 N 件」のみ。その形は mockup-d-history `:175-177` と 58 §58.10 UI-06a-D1（`:596`） が既に定めている
 - Source docs updated in this PR: 58 / 65 / 69 / catalog ⑥ ⑬
 - Design gaps intentionally deferred: なし
 - Durable decisions discovered: なし
@@ -226,7 +227,7 @@ R2 のため任意だが、docs 同期の網羅性を独立 review で確認で�
 | catalog ⑬ 中立 Badge（stone 無彩色、文言） | S4 | `ProductListTable.test.tsx` | AC-L3-2 |
 | 58 §58.10 status = all の「通常」表示契約 | S4（文言） | `ProductListTable.test.tsx` | — |
 | 58 §58.7 / mockup-d `:177` 絞り込み時は件数のみ、pagination なし | S5 | `StockInquiryPage.test.tsx` 3 本 | AC-L3-2 |
-| DSR `:596` 低在庫 pagination Rejected | S5（非接触） | AC5（gate 不変） | — |
+| 58 §58.10 UI-06a-D1 Rejected（`list_low_stock` 経路への pagination 拡張、`:596`、Revisit = 100 件超の運用） | S5（非接触） | AC5（gate 不変） | — |
 | 65 §65.8.1 一覧列構成 / `item_count` 算出 | S7 | `InventoryRecordsPage.test.tsx` | AC-L3-3 |
 | 65 TRACE-D6 母集団注記（`:271`） | 非接触 | — | — |
 
@@ -246,7 +247,7 @@ not applicable（wire 非接触）。
 
 ## Review Focus
 
-- D-B5: 「全 N 件」の N が検索 / 部門で絞った後の件数であることが 58 の記述と test で明確か。`items.length === 0` の扱い
+- D-B5: 「全 N 件」の N が検索 / 部門で絞った後の件数であることが 58 の記述と test で明確か。`items.length === 0` の扱い。Backlog 原文「全 N 件のうち a〜b 件」から件数 1 本へ落とした根拠（client filter は slice しない、mockup-d `:177`）
 - D-B6: 文言 1 本化で 69 §69.7 の 4 rule 表が「rule は 4 つ、文言は 1 つ」と読めるか
 - D-B7: 65 `:213` の改稿で `item_count` の算出仕様（DTO）が消えないか
 - ㉑ との境界: `StockInquiryPage.tsx` の表示件数 block（㉑）と `:100` / `:225` 付近（㉒）が別 hunk か
@@ -258,5 +259,12 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-15、plan-gate、Sonnet、裁定 Coordinator）
+
+- P2-1（AC5 第 3 oracle の baseline が 3、`:79` `isFilterDefault` を含む。`rg -n 'statusValue === "all"' src/features/stock-inquiry/StockInquiryPage.tsx` = `:79` / `:229` / `:246`）= accept → gate 文脈 `\{statusValue === "all" &&` に限定（baseline 2）
+- 残る不確実性「DSR `:596` の参照ズレ」= accept → 正しくは 58 §58.10 UI-06a-D1 Rejected（`:596`）。packet / Matrix の参照を訂正
+- 残る不確実性「Adjacent Pattern Audit に記録詳細 7 page の明細数 field が無い」= accept → Non-scope と Matrix に 1 行（65 §65.5 の別契約）
+- 残る不確実性「D-B5 が Backlog 原文の字面から離れる根拠が本文に無い」= accept → D-B5 と Review Focus に 1 句
+- round 2 = closure（Sonnet、`3175c56f` と本 commit の diff 限定）
