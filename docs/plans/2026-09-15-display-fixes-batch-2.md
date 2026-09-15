@@ -84,7 +84,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 | B4 | Badge「通常」→「正常」 | `src/features/stock-inquiry/components/StockStatusBadge.tsx:36`（唯一の描画元） | catalog ⑬ `:868`（code）/ `:885`（tone family 表、anchor `StockStatusBadge.tsx:42` は stale）/ `:905` / `:911`。58 `:516` / `:565` / `:581` / `:585` / `:646`。74 は別文脈で対象外 | `ProductListTable.test.tsx:85,87` |
 | B5 | 絞り込み時の件数 | `StockInquiryPage.tsx:225-231` PaginationSummary / `:249-257` Pagination とも `statusValue === "all"` gate。`useStockInquiry.ts:76-79` は `list_low_stock` 全件を `filterAndSortLowStockList` に通し `totalCount: null, source: "low_stock"`、slice なし | mockup-d-history `:175`「在庫少 12 件・在庫切れ 3 件」（`.cnt-plain` 16px / 600 / tabular-nums）+ `:177`「件数のみ上部に太字表示」。58 §58.7 / §58.10 に件数行の記述なし（新規） | `StockInquiryPage.test.tsx` に low_stock 表示の既存 case あり（件数 assert なし） |
 | B6 | 基準の error 文言 | `src/features/threshold-settings/lib/extract-thresholds.ts:9-13` `THRESHOLD_ERROR_MESSAGES`（required / integer / max）、判定 `:18,22,27,31`。`threshold-form-schema.ts:9,14` re-export | 69 §69.7 `:131-134` 表 4 行 | `ThresholdSettingsPage.test.tsx:96,109,122,135` |
-| B7 | 明細数列（L8-4） | `src/features/inventory-records/InventoryRecordsPage.tsx:354` TableHead / `:377` TableCell（`isInProgressStocktake ? "-" : record.item_count`）。`:366` の代表商品分岐は `item_count === 0` を使う（残す） | 65 `:98`（列 × 種別表）/ `:212`（列構成文）/ `:213`（算出仕様）/ `:271`（母集団注記、DTO 仕様として残す） | `InventoryRecordsPage.test.tsx:164`（進行中棚卸し「-」）/ `:922`（columnheader 7 列）/ `:927` 付近 `toHaveLength(7)` |
+| B7 | 明細数列（L8-4） | `src/features/inventory-records/InventoryRecordsPage.tsx:354` TableHead / `:377` TableCell（`isInProgressStocktake ? "-" : record.item_count`）。`:366` の代表商品分岐は `item_count === 0` を使う（残す） | 65 `:212`（§65.8.1 列構成文）/ `:213`（算出仕様）/ `:271`（母集団注記、DTO 仕様として残す）。**`:98` は §65.5 詳細表示の表（記録詳細 page の項目、別契約）で対象外**（Gated Amendment 1、Codex fail-closed 停止 2026-09-15） | `InventoryRecordsPage.test.tsx:164`（進行中棚卸し「-」）/ `:922`（columnheader 7 列）/ `:927` 付近 `toHaveLength(7)` |
 
 ## 設計判断（Coordinator adjudication、Plan Review で覆せる）
 
@@ -94,7 +94,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - **D-B4 「正常」**（owner「状態なら正常のほうが文言として正しい」）。catalog ⑬ の 4 箇所と 58 の 5 箇所、test 2 箇所を同 commit で更新。catalog `:885` の stale anchor `StockStatusBadge.tsx:42` は現行行（`:35-37`）へ直す（file:line を書かない規範は ⑨ D3 の ⑨ 限定で、⑬ は既に anchor を持つため最小差分で更新）。
 - **D-B5 件数は「全 N 件」1 本（Backlog 原文の「全 N 件のうち a〜b 件を表示」は client filter が slice しないため範囲が成立せず、mockup-d `:177`「件数のみ太字表示」の形に落とす）、`status !== "all"` かつ `items.length > 0` のときだけ**、`PaginationSummary` の上の位置（`:225` の直前）に `<p className="text-base font-semibold tabular-nums">全 {data.items.length} 件</p>`（mockup `.cnt-plain` の 16px / 600 / tabular-nums を token で写す。`small` の注記「ページ送りはこの絞り込みでは行いません」は付けない = 情報より説明が増える）。`PaginationSummary` / `Pagination` の gate は不変。`items.length === 0` は EmptyState が出るため件数を出さない。N は `filterAndSortLowStockList` 後の件数（検索 / 部門で絞った後）で、mockup の「在庫少 12 件・在庫切れ 3 件」の 2 値表示は status が片方ずつしか選べないため 1 値。
 - **D-B6 error 文言は 1 本「1〜99999の整数を入力してください」**（全角「〜」、半角数字。owner「範囲が一目で分かる 1 本」）。`THRESHOLD_ERROR_MESSAGES` の 3 key は残してよい（値を同一文にする）。判定分岐（空 / 非整数 / 1 未満 / 99999 超 → 保存拒否）は不変で、文言だけ揃える。上部「保存できませんでした」Alert は backend 失敗用で対象外（owner 2026-09-11 合意）。69 §69.7 表の文言列 4 行を同一文へ。
-- **D-B7 明細数列は撤去、`item_count` は DTO に残す**（owner 決定 2026-09-15 (a)。backend 非接触、代表商品分岐 `:366` が `item_count` を使う）。65 `:98` の「明細数」行を削除、`:212` の列構成から「明細数」を外す、`:213` は「`item_count` は一覧に表示しない（L8-4、owner 2026-09-15）。算出仕様は DTO として維持」へ改める、`:271` は DTO 注記として残す。手動販売出庫で困れば『代表商品 ほか N 件』型で戻す（Backlog 記録目的）。
+- **D-B7 明細数列は撤去、`item_count` は DTO に残す**（owner 決定 2026-09-15 (a)。backend 非接触、代表商品分岐 `:366` が `item_count` を使う）。`:212` の列構成から「明細数」を外す（**`:98` の §65.5 詳細表示表は触らない**、Gated Amendment 1）、`:213` は「`item_count` は一覧に表示しない（L8-4、owner 2026-09-15）。算出仕様は DTO として維持」へ改める、`:271` は DTO 注記として残す。手動販売出庫で困れば『代表商品 ほか N 件』型で戻す（Backlog 記録目的）。
 
 ## Scope
 
@@ -104,7 +104,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。
 - **S4 `StockStatusBadge.tsx:36`**: 「正常」。catalog ⑬ 4 箇所 + anchor、58 5 箇所、`ProductListTable.test.tsx:85,87`。
 - **S5 `StockInquiryPage.tsx`**: D-B5 の件数行。58 §58.7（表示）と §58.10（業務ルール: 絞り込み時は件数のみ、pagination なし）に各 1 行。`StockInquiryPage.test.tsx` に「low_stock 3 件 → 『全 3 件』」「all → 件数行なし」「low_stock 0 件 → EmptyState のみ」の 3 本。
 - **S6 `extract-thresholds.ts:9-13`**: 3 値を同一文へ。69 `:131-134`。`ThresholdSettingsPage.test.tsx:96,109,122,135` の期待文言。
-- **S7 `InventoryRecordsPage.tsx:354,377`**: 列削除。65 `:98,212,213`。`InventoryRecordsPage.test.tsx:164`（明細数の assert を外し test 名を「代表商品を-で表示」へ）/ `:922`（配列から「明細数」除去）/ `:927` 付近（`toHaveLength(6)`）。
+- **S7 `InventoryRecordsPage.tsx:354,377`**: 列削除。65 `:212,213`（**Gated Amendment 1: `:98` は §65.5 詳細表示の表で対象外、削除しない**）。`InventoryRecordsPage.test.tsx:164`（明細数の assert を外し test 名を「代表商品を-で表示」へ）/ `:922`（配列から「明細数」除去）/ `:927` 付近（`toHaveLength(6)`）。
 - **S8 docs**: catalog 更新履歴 1 行（⑥ / ⑬）。58 / 65 / 69 の更新履歴表に各 1 行。
 - **S9（Coordinator、plan-first commit）**: Plans.md Wave Registry lane 2 に packet link / Phase。Writer は触らない。
 
@@ -128,7 +128,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `0414
 - **AC4** `rg -c '通常' src/features/stock-inquiry/components/StockStatusBadge.tsx` = 0（baseline 1）/ `rg -c '正常' src/features/stock-inquiry/components/StockStatusBadge.tsx` = 1（baseline 0）/ `awk '/^## ⑬/,/^## ⑭/' docs/design-system/02-component-catalog.md | rg -c '通常'` = 0（baseline 4）/ `rg -c '「通常」' docs/function-design/58-ui-stock-inquiry.md` = 0（baseline 5）/ `rg -c '"通常"' src/features/stock-inquiry/components/ProductListTable.test.tsx` = 0（baseline 2）/ `rg -c 'StockStatusBadge.tsx:42' docs/design-system/02-component-catalog.md` = 0（baseline 1）
 - **AC5** `rg -c 'statusValue !== "all"' src/features/stock-inquiry/StockInquiryPage.tsx` = 1（baseline 0）/ `rg -c '全 \{data.items.length\} 件' src/features/stock-inquiry/StockInquiryPage.tsx` = 1（baseline 0）/ `rg -c '\{statusValue === "all" &&' src/features/stock-inquiry/StockInquiryPage.tsx` = 2（baseline 2 = `:229` / `:246` の gate。`:79` の `isFilterDefault` は pattern 外。Plan Review round 1 Sonnet P2: 旧 `rg -c 'statusValue === "all"'` は baseline 3 で「= 2」が必ず FAIL した）
 - **AC6** `rg -c '1〜99999の整数を入力してください' src/features/threshold-settings/lib/extract-thresholds.ts` ≥ 1（baseline 0）/ `rg -c '1以上の整数を入力してください|99999以下で入力してください' src/features/threshold-settings docs/function-design/69-ui-threshold-settings.md` = 0（baseline 8）/ `rg -c '^  required:|^  integer:|^  max:' src/features/threshold-settings/lib/extract-thresholds.ts` = 3 または `THRESHOLD_ERROR_MESSAGE` 単一定数（判定分岐は test 4 本で不変を確認）
-- **AC7** `rg -c '明細数' src/features/inventory-records/InventoryRecordsPage.tsx` = 0（baseline 1）/ `rg -c 'item_count' src/features/inventory-records/InventoryRecordsPage.tsx` ≥ 1（baseline 2、代表商品分岐が残る）/ `rg -c '明細数' src/features/manual-sale/ManualSalePage.tsx` = 2（不変）/ `rg -c '記録種別、業務日付、代表商品、明細数' docs/function-design/65-inventory-record-traceability.md` = 0（baseline 1）/ `rg -c '^\| 明細数 \|' docs/function-design/65-inventory-record-traceability.md` = 0（baseline 1）/ `rg -c '"明細数"' src/features/inventory-records/InventoryRecordsPage.test.tsx` = 0（baseline 1）
+- **AC7** `rg -c '明細数' src/features/inventory-records/InventoryRecordsPage.tsx` = 0（baseline 1）/ `rg -c 'item_count' src/features/inventory-records/InventoryRecordsPage.tsx` ≥ 1（baseline 2、代表商品分岐が残る）/ `rg -c '明細数' src/features/manual-sale/ManualSalePage.tsx` = 2（不変）/ `rg -c '記録種別、業務日付、代表商品、明細数' docs/function-design/65-inventory-record-traceability.md` = 0（baseline 1）/ `rg -c '^\| 明細数 \|' docs/function-design/65-inventory-record-traceability.md` = 1（baseline 1、**不変**。§65.5 詳細表示の行、Gated Amendment 1 で「= 0」から反転）/ `rg -c '"明細数"' src/features/inventory-records/InventoryRecordsPage.test.tsx` = 0（baseline 1）
 - **AC8**（負の oracle）`git diff --name-only <stack base>..HEAD -- src-tauri src/features/manual-sale src/features/home src/components/patterns/PageHeader.tsx src/components/ui/segmented-control.tsx | wc -l` = 0
 - **AC9** 対象 test（`ThresholdSettingsPage` / `alert` / `StockInquiryPage` / `ProductListTable` / `InventoryRecordsPage`）PASS、`npm run typecheck` / `npm run lint` / `npm run format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（fresh worktree は `npm run generate:routes` 先行）
 - **AC10** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
@@ -231,6 +231,7 @@ R2 のため任意だが、docs 同期の網羅性を独立 review で確認で�
 | 58 §58.7 / mockup-d `:177` 絞り込み時は件数のみ、pagination なし | S5 | `StockInquiryPage.test.tsx` 3 本 | AC-L3-2 |
 | 58 §58.10 UI-06a-D1 Rejected（`list_low_stock` 経路への pagination 拡張、`:596`、Revisit = 100 件超の運用） | S5（非接触） | AC5（gate 不変） | — |
 | 65 §65.8.1 一覧列構成 / `item_count` 算出 | S7 | `InventoryRecordsPage.test.tsx` | AC-L3-3 |
+| 65 §65.5 詳細表示「明細数 yes × 6」（記録詳細 page の項目） | 非接触（GA1） | AC7 の `^\| 明細数 \|` = 1 不変 | — |
 | 65 TRACE-D6 母集団注記（`:271`） | 非接触 | — | — |
 
 ## Test Plan
@@ -276,3 +277,9 @@ Fill after implementation.
 - P2-1 / DSR 参照 / D-B5 = closed
 - 「記録詳細 7 page」= **not closed、新規 P2**: 「7」は round 1 reviewer の文言を Coordinator が現物で数えずに転記した（実測は record-detail 5 + 保存結果パネル 3 = 8 hit）→ accept、Non-scope と Matrix の該当行を実測の内訳へ訂正（本 commit）
 - round 3 = closure（Sonnet、本 commit の diff 限定。round 天井 3 の最終）
+
+### Gated Amendment 1（2026-09-15、Codex 発注書 51 の fail-closed 停止）
+
+- Writer が実装前に停止: D-B7 / S7 / AC7 が 65 `:98` の「明細数」行の削除を指定していたが、`:98` は §65.5 詳細表示の表（記録詳細 page の項目）で、Non-scope / Matrix が「別契約として維持」と書く行と矛盾していた。Coordinator の起票時実測が Explore 報告の「`:98`（対応マトリクス）」を §65.8.1 の一覧列と取り違えた（一覧列の記述は `:212` / `:213`）
+- 是正: 実測表 B7 / D-B7 / S7 / AC7 / Ledger から `:98` の削除を外し、AC7 の oracle を「= 1 不変」へ反転。Scope の他項目・AC は不変
+- 教訓: 起票時実測の doc 行番号は「その行が属する節」まで自分で読む（[[feedback-verify-own-corrective-claims]] と同型）
