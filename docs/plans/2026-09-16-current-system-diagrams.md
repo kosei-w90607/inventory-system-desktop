@@ -3,14 +3,14 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: codex-only
 - Plan Commit: 6ad7576103abf9fd4d5057ca4d298c5acf21c0b7
-- Amendments: none
+- Amendments: ab03bacc3f2d4c36536ecb60cf4d7f4c34e91e83, ff64509a75b7cbdbfc8e7cd7a0ced19f7afb25a6
 - Coordinator: Astra（D-087、一貫担当。採用・裁定は owner）
 - Writer: Astra
-- Plan Reviewer: 当初Sonnet PASS / A-1はOpus指摘を採用、Sonnetで限定是正確認
+- Plan Reviewer: 当初Sonnet PASS / A-1はOpus指摘全採用 + Sonnet限定是正確認PASS
 - Final Reviewer: Sonnet + Opus（独立 fresh context、owner指定）
 - Final Review Minimum: 2
 - Human Gate: ready,merge
@@ -190,3 +190,5 @@ ownerの上記依頼を範囲拡張の承認として継承し、XFA-D1〜D5とM
 Opusの初回Plan Reviewは実行時間上限で終了し、判定未受領。同vendorのfresh contextで追加A-1の範囲だけを再確認する。Phaseはplan-gateのまま維持し、未受領を承認に読み替えない。
 
 Opusの再実行でCHANGES_REQUESTEDを受領（P1なし、是正後は追加の全面レビュー不要との条件付き判断）。P2の売上source別oracle、棚卸し確定のfixture前提、診断のcoverage扱いをすべて採用し、XFA-D1/D2/D4とMatrixへ反映した。P3の既存tests/配置とCachedPreview helper共用も採用した。Sonnetのfresh contextでこの是正に限ったPlan Gateの確認を行う。最終レビューのSonnet + Opus要件は維持する。
+
+A-1 Plan Gate: Sonnetの独立した限定是正確認で全指摘の解消と実装開始可のPASSを受領。`plan-gate → plan-approved → implementing` を順に記録し、原Plan Commitを保持したままA-1と是正commitをAmendmentsへ追記する。追加Rust実装はこの記録より後に開始する。

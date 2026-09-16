@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **現行図面の同期・設計点検（R2）**: [Draft PR #69](https://github.com/kosei-w90607/inventory-system-desktop/pull/69)、[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = plan-gate。図面更新の独立レビューは完了。ownerの追加依頼を受け、[モデルの設計](diagrams/cross-feature-verification.md) と [Matrix](plans/test-matrices/2026-09-16-cross-feature-model-audit.md) をOpusへ提出する。通常テストと既知問題の明示診断を分け、最終レビューはSonnet + Opus。[既存監査](research/2026-09-16-diagram-audit.md) のSTK-1 / NAV-1は未修正。
+- **現行図面の同期・設計点検（R2）**: [Draft PR #69](https://github.com/kosei-w90607/inventory-system-desktop/pull/69)、[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = implementing。追加計画はOpus指摘を全是正し、Sonnetの限定確認PASS。[モデルの設計](diagrams/cross-feature-verification.md) と [Matrix](plans/test-matrices/2026-09-16-cross-feature-model-audit.md) に従い実装する。通常テストと既知問題の明示診断を分け、最終レビューはSonnet + Opus。[既存監査](research/2026-09-16-diagram-audit.md) のSTK-1 / NAV-1は未修正。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
