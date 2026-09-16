@@ -1,6 +1,6 @@
 # Plan Packet: ㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する（NAV-1、R3）
 
-2026-09-16 起草。出典は [監査 NAV-1](../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)（P2 / confirmed）と Backlog「やると決めたもの（順番未定）」の NAV-1 行。owner 2026-09-16「次何やるかふたつとって早速始めよう」で Coordinator が wave 12 の lane 1 に選定（lane 2 = ㉗ `docs/plans/2026-09-16-stocktake-count-baseline.md`、file footprint 互いに素）。file:line は origin/main `c6167c4d` で実測（Coordinator 2026-09-16）。実装は別 run（Sonnet subagent、worktree 分離）とし、独立 Plan Review 通過後に発注する。Test Design Matrix: `docs/plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。
+2026-09-16 起草。出典は [監査 NAV-1](../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)（P2 / confirmed）と Backlog「やると決めたもの（順番未定）」の NAV-1 行。owner 2026-09-16「次何やるかふたつとって早速始めよう」で Coordinator が wave 12 の lane 1 に選定（lane 2 = ㉗ `docs/plans/2026-09-16-stocktake-count-baseline.md`、file footprint 互いに素）。file:line は origin/main `c6167c4d` で実測（Coordinator 2026-09-16）。実装は別 run（Codex 発注書 60）とし、独立 Plan Review 通過後に発注する。Test Design Matrix: `docs/plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。
 
 ## Workflow State
 
@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Plan Commit: bbec3bf518d834cbd03e594cfae05faf75cb5a45
 - Amendments: none
 - Coordinator: Fable 5.1
-- Writer: Sonnet（subagent、worktree 分離、Plan Reviewer とは別 fresh context。owner 不在で「早速始めよう」の指示のため Codex relay〈owner 起動〉を挟まず Coordinator が起動する。global 方針「実装を常に Codex だけへ渡す制約は置かない」）
+- Writer: Codex（発注書 60、owner 起動。GA1: owner 2026-09-16「Codex に回したほうが質良い」で Sonnet subagent から戻す。relay 上限到達時のみ Sonnet subagent、Plan Reviewer とは別 fresh context）
 - Plan Reviewer: Sonnet（独立 fresh context）
 - Final Reviewer: Sonnet + Opus（独立 fresh context）
 - Final Review Minimum: 2
@@ -286,3 +286,10 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - P3（Scope S4 の it.each 記述が Matrix の 4 ID 表記とずれる）= accept → 本 commit で `T2' / T2 / T3 / T4` の表記へ
 - 同 commit で Writer を Codex → Sonnet subagent へ変更（owner 不在の「早速始めよう」指示に合わせ Codex relay を挟まない。Plan Reviewer とは別 fresh context、独立性制約は維持）。P3 のみのため reviewer 再投入なし（Subagent Budget）
 - 判定: P1/P2 = 0、**Plan Gate 通過可**。Plan Commit = 本 commit（plan-first `93d2227c` → 是正を含む確定版）
+
+### Gated Amendment 1（2026-09-16、Writer を Codex へ戻す）
+
+- 経緯: Plan Review round 1 の是正 commit `bbec3bf5` で Writer を Codex → Sonnet subagent に変え、遷移 `907beb5f` の後に Sonnet subagent の実装 run を起動した。owner が「Codex に回したほうが質良い」と指示したため run を停止（commit 0、mutant (3) 注入中の作業 tree は `git stash`「sonnet-writer-partial-㉖-2026-09-16」へ退避、worktree は clean に戻した）
+- 是正: Writer field を Codex（発注書 60、owner 起動）へ。Scope / 設計判断 / AC / Matrix は不変。発注書 60 の HEAD_SHA は本 GA の登録 commit にする
+- Owner Effort Budget: relay 0/2（本 GA は Codex run 前）。介入 1/3（本指示を decision point として計上）
+- 教訓: owner 不在でも Writer の既定は Codex（発注書を用意して起動待ちにする）。Sonnet への切替は relay 上限到達か owner 指示のときだけ
