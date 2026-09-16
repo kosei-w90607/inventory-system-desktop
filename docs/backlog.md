@@ -20,11 +20,11 @@
 
 #### やると決めたもの（順番未定）
 
-- **STK-1（P1、設計上の問題）**: カウント後の入出庫を棚卸し確定が打ち消す（[根拠](research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す)、合成DBで実BIZ関数を再現済み）。棚卸し確定の基準時点と確定後 movement の扱いを設計する（design-first、R3 相当、対象は BIZ の stocktake_service）。
-- **STK-2（P1 候補）**: 棚卸し確定後に届く過去販売の日報取込みが二重に減算する（[根拠](research/2026-09-16-diagram-audit.md#stk-2-棚卸し確定後に届く過去販売を二重に減算する)）。カウント基準時点と取込み済み境界を設計する（design-first、R3、STK-1 と同じ lane か直後に並べる）。
-- **NAV-1（P2）**: 在庫変動履歴からの戻りで在庫照会の商品選択（`selected`）が解除される（[根拠](research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)）。route/search の修正候補を設計する（runtime、R3〈search state〉）。
+- **STK-1（P1、設計上の問題）**: カウント後の入出庫を棚卸し確定が打ち消す（[根拠](research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す)、合成DBで実BIZ関数を再現済み）。棚卸し確定の基準時点と確定後 movement の扱いを設計する（design-first、R3 相当、対象は BIZ の stocktake_service）。（**2026-09-16 起票 = ㉗、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)、wave 12 lane 2、docs-only R2。runtime は後続 ㉘（R3）。owner の設計判断待ち**）
+- **STK-2（P1 候補）**: 棚卸し確定後に届く過去販売の日報取込みが二重に減算する（[根拠](research/2026-09-16-diagram-audit.md#stk-2-棚卸し確定後に届く過去販売を二重に減算する)）。カウント基準時点と取込み済み境界を設計する（design-first、R3、STK-1 と同じ lane か直後に並べる）。（**2026-09-16 起票 = ㉗（STK-1 と同 lane）、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)、wave 12 lane 2**）
+- **NAV-1（P2）**: 在庫変動履歴からの戻りで在庫照会の商品選択（`selected`）が解除される（[根拠](research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)）。route/search の修正候補を設計する（runtime、R3〈search state〉）。（**2026-09-16 起票 = ㉖、`plans/2026-09-16-stock-movements-return-selected.md`、wave 12 lane 1**）
 - **DATA-2**: 共有 JAN の売上を先頭 SKU へ割り当てる現行仕様の限界（[根拠](research/2026-09-16-diagram-audit.md#data-2-共有janの売上は個別skuを識別できない)）。店舗で必要な粒度を再検討するかは owner 判断（design-first、owner 判断待ち）。
-- **DOC-2**: 棚卸し `system_stock` の時点と CSV 失敗時の説明が文書間で不一致（[根拠](research/2026-09-16-diagram-audit.md#doc-2-残る文書の意味の不一致)）。一方を追認せず正本を決める（docs、R2）。
+- **DOC-2**: 棚卸し `system_stock` の時点と CSV 失敗時の説明が文書間で不一致（[根拠](research/2026-09-16-diagram-audit.md#doc-2-残る文書の意味の不一致)）。一方を追認せず正本を決める（docs、R2）。（**`system_stock` の行は ㉗ で「DB 定義が正、BIZ / 実装を追従」として解消予定。CSV commit 失敗と PLU `activated_at` の 2 行は未着手**）
 - **card の面色を白へ寄せる（design-first、owner 2026-09-16 所感「summary の stone-100 が野暮ったい、入口 card は背景と別にしたい」）**: `--card`（stone-100）を白系へ動かし summary と入口 card を mockup-c どおり背景から浮かせる。同時に裁定: primary card の塗り `--warning-soft` 流用の是非（PLU 通知バーと同 token。mockup-c は `--primary-soft` amber-100 で別 token）/ `--accent` == `--card` のため hover の効きが変わる / `--control-surface` `--list-head` との相対関係 / `--warning-emphasis` と `--primary` が同 HEX で PLU バー表示中は amber が 3 役。foundations の判断更新 + 全 Card 影響の実機確認
 - **一括価格改定: 同一取引先の再選択で紐付け toggle が off へ戻ることを固定する test を 1 本**（Final Review pass B、PR #67。`PriceRevisionPage.tsx:37` の `patchSearch` 内 `setAssignSupplier(false)` は同一取引先再選択で単独に効く load-bearing 行で、除去 mutant を既存 27 test は検出しない。再現: `renderStateful({ supplier: 7 })` → toggle on → ピッカーで同じ取引先を再選択 → off に戻ること。**現行挙動の固定であり、owner が別〈on を維持〉を望めば test ごと変える**）
 - Z001 / Z002 / Z005 の取り込み情報を画面で見られるようにする（owner run 3 原文「無いのはまずい」= 要望、後続候補ではない）: DTO 公開 + 表示設計、design-first（**owner 2026-09-11 再確認「やるべきこと」**）
