@@ -20,7 +20,7 @@
 
 #### やると決めたもの（順番未定）
 
-- **STK-1（P1、設計上の問題）**: カウント後の入出庫を棚卸し確定が打ち消す（[根拠](research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す)、合成DBで実BIZ関数を再現済み）。棚卸し確定の基準時点と確定後 movement の扱いを設計する（design-first、R3 相当、対象は BIZ の stocktake_service）。（**2026-09-16 起票 = ㉗、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)、wave 12 lane 2、docs-only R2。runtime は後続 ㉘（R3）。owner の設計判断待ち**）
+- **STK-1（P1、設計上の問題）**: カウント後の入出庫を棚卸し確定が打ち消す（[根拠](research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す)、合成DBで実BIZ関数を再現済み）。棚卸し確定の基準時点と確定後 movement の扱いを設計する（design-first、R3 相当、対象は BIZ の stocktake_service）。（**2026-09-16 起票 = ㉗、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)、wave 12 lane 2、docs-only R2。runtime は後続 ㉘（R3）。owner 回答済み（snapshot 方式 / 同日販売はカウント前扱い / STK-2 境界を含める / 評価額は確定時点の数量）、Plan Review 中**）
 - **STK-2（P1 候補）**: 棚卸し確定後に届く過去販売の Z004 商品別売上取込み（日報 Z001/Z002/Z005 は在庫を動かさない、D-025）が二重に減算する（[根拠](research/2026-09-16-diagram-audit.md#stk-2-棚卸し確定後に届く過去販売を二重に減算する)）。カウント基準時点と取込み済み境界を設計する（design-first、R3、STK-1 と同じ lane か直後に並べる）。（**2026-09-16 起票 = ㉗（STK-1 と同 lane）、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)、wave 12 lane 2**）
 - **NAV-1（P2）**: 在庫変動履歴からの戻りで在庫照会の商品選択（`selected`）が解除される（[根拠](research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)）。route/search の修正候補を設計する（runtime、R3〈search state〉）。（**2026-09-16 起票 = ㉖、`plans/2026-09-16-stock-movements-return-selected.md`、wave 12 lane 1**）
 - **DATA-2**: 共有 JAN の売上を先頭 SKU へ割り当てる現行仕様の限界（[根拠](research/2026-09-16-diagram-audit.md#data-2-共有janの売上は個別skuを識別できない)）。店舗で必要な粒度を再検討するかは owner 判断（design-first、owner 判断待ち）。

@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Fable 5.1
-- Writer: Codex（発注書 61、owner 起動。owner 2026-09-16「Codex に回したほうが質良い」。設計判断は本 packet の D-D1〜D-D6 と owner 回答で確定済みのものを source docs へ書く役。relay 上限到達時のみ Sonnet subagent）
+- Writer: Codex（発注書 61、owner 起動。owner 2026-09-16「Codex に回したほうが質良い」。設計判断は本 packet の D-D1〜D-D7 と owner 回答で確定済みのものを source docs へ書く役。relay 上限到達時のみ Sonnet subagent）
 - Plan Reviewer: Sonnet + Opus（独立 fresh context。R2 だが BIZ の在庫補正契約を定める設計のため 2 pass）
 - Final Reviewer: Sonnet + Opus（独立 fresh context）
 - Final Review Minimum: 2
@@ -27,7 +27,7 @@ owner の設計判断 3 問（下記「owner への設問」Q1〜Q3）。これ�
 
 ## Owner Effort Budget
 
-- 介入回数上限: 3（設計判断 1 回 + Ready 1 回 + merge 1 回）
+- 介入回数上限: 4（設計判断 2 回 + Ready 1 回 + merge 1 回。既定 3 から改訂、理由: plan-gate 中の owner 追加指示〈Goal の言い直しと評価額方針〉を別 decision point として計上したため。Opus round 1 P2-6）。実績 2/4
 - 実働時間上限: 20分（設問 3 問の読了と回答を含む）
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3）
@@ -77,7 +77,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `schema_v1.rs:208-225` `stocktakes`（started_at / completed_at / status / total_cost）と `stocktake_items`（system_stock NOT NULL / actual_count NULL / valuation_cost_price NULL / counted_at NULL）
 - `src-tauri/src/biz/stocktake_service.rs:260-306` `update_count`: step 3 `:286-292` で `update_stocktake_item_count(conn, id, actual_count, &now)`（`system_stock` は書かない）/ step 4 `:295-301` `current_difference = product.stock_quantity - actual_count`（動的）。`:400` `complete_stocktake`: `:441` force_fill は `fill_value = stock_quantity.max(0)` を actual_count に / 明細 loop `:481` `difference = product.stock_quantity - item.actual_count`、`:483` `adjustment_quantity = actual_count - stock_quantity`、`:484` `update_stock_quantity(.., actual_count)`、`:491` `stock_after: actual_count`、`:503` `AdjustedItem.system_stock = product.stock_quantity`（確定時点の live 値、カウント時点ではない）
 - `src-tauri/src/db/stocktake_repo.rs:268-279` `update_stocktake_item_count` = `UPDATE stocktake_items SET actual_count = ?1, counted_at = ?2 WHERE id = ?3` / `:406-427` `get_stocktake_items_for_complete` = `SELECT id, product_code, actual_count ... WHERE actual_count IS NOT NULL`（`system_stock` / `counted_at` を返さない）。商品ごとの最新 `counted_at` を引く関数は無い
-- `src-tauri/src/biz/csv_import_service/commit.rs:136-147` step 6b: `pos_stock_sync` 行だけ `apply_stock_change(.., -(quantity), SaleAuto, CsvImport, import_id, None)`。CSV の `settlement_date` は `sale_records.sale_date` にのみ保存（`:122-133`）。`:229` `apply_void_stock_corrections`（`rollback.rs:51` から呼ばれ、void した movement を商品ごとに合算して在庫を戻す）
+- `src-tauri/src/biz/csv_import_service/commit.rs:136-147` step 6b: `pos_stock_sync` 行だけ `apply_stock_change(.., -(quantity), SaleAuto, CsvImport, import_id, None)`。CSV の `settlement_date` は `sale_records.sale_date` にのみ保存（`:124`）。`:229` `apply_void_stock_corrections`（`rollback.rs:51` から呼ばれ、void した movement を商品ごとに合算して在庫を戻す）
 - `src-tauri/src/biz/inventory_service/common.rs:41-90` `apply_stock_change(conn, product_code, quantity, movement_type, reference_type, reference_id, note)` = 商品取得 → `stock_after = stock_quantity + quantity`（INV-2）→ 負在庫 warning → `update_stock_quantity` → `insert_movement`
 - `src-tauri/src/biz/daily_report_import_service/commit.rs`（Z001/Z002/Z005）は在庫・movement を触らない（`tests.rs:444-460` が `inventory_movements` 0 件を固定、37 `:11-13`、D-025）。監査の STK-2 が言う「日報取込み」は Z004 商品別 CSV 取込み（BIZ-03）を指す
 - `src-tauri/src/biz/integrity_service.rs:58-79` は `stock_quantity` と `SUM(quantity) WHERE is_voided=0` の突合のみ（時点の問題は検出できない）
@@ -101,11 +101,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - **D-D1 基準時点 = 各明細の最終カウント時点（`counted_at`）**: `update_count` は `actual_count` / `counted_at` と同時に `system_stock = そのときの products.stock_quantity` を書く（再カウントは全部上書き）。force_fill の自動補完は `system_stock = actual_count = 現在庫`（差異 0）とし、**`counted_at` は NULL のまま**（実測ではないため基準時点を作らない。owner 反例 (a) / Opus F1。開始時の廃番 stock=0 自動入力〈`counted_at` NULL〉と同じ扱い）。これで DB 定義「カウント時点のシステム在庫」（tracking `:110`）に実装を合わせ、DOC-2 の 1 行目を「DB 定義が正、BIZ / 実装を追従」で解消する。棄却: 新列 `counted_system_stock` を足す（開始時点の値を使う設計が無く、列を増やす理由が無い）
 - **D-D2 確定の補正量 = `actual_count − system_stock`（カウント時点差異）、`stock_after = 現在庫 + 補正量`**: カウント後の入出庫は現在庫に含まれたまま残る（STK-1 解消。例: カウント 10 / snapshot 10 → 2 販売で現在庫 8 → 確定: 補正 0、在庫 8）。補正は `apply_stock_change(MovementType::Stocktake, ReferenceType::Stocktake, stocktake_id)` を使う（INV-2 の通常式に戻るため、35 `:317` の「`apply_stock_change` を使わない理由」は撤回。二重 lookup は 4000 件でも確定 1 回限りで問題にしない）。差異 0 の明細は movement を作らない（現行同様）。`AdjustedItem.system_stock` はカウント時点の snapshot、`stock_after` は補正後の現在庫にする。確定後の在庫はカウント後の入出庫分だけ「数えた数」と一致しなくなる（owner の例: 帳簿 10・実測 8、その後入庫 5・販売 2 → 確定 13 + (8 − 10) = 11）。補正後の在庫は負になり得る（例: snapshot 10 / 実測 3 → その後 5 販売 → 3 − 5 = −2）。処理は止めず（INV-3 と同じ方針）、`apply_stock_change` の負在庫 warning は別欄を作らず、結果一覧の既存 `stock_after` 列で負値をそのまま見せる（Opus F6）。`total_cost` の評価数量は D-D7 で確定時点の在庫にする（実測数のままにしない）。棄却: 確定時に `counted_at` 以降の movement を SUM して繰り越す（`inventory_repo` に期間 SUM が無く、snapshot 差分と数学的に同値〈P + (live − S) − live = P − S〉で snapshot の方が小さい）/ カウント後に動いた商品の再カウント必須（4000 件・3 か月の作業で毎日売れる商品が再カウント対象になり運用不能）/ 運用ルールだけで回避（長期棚卸しでは守れない）
-- **D-D3 差異表示 = `system_stock − actual_count`（カウント時点差異）**: `update_count` の `current_difference`、一覧の差異列（UI-10-D10、`computeListDifference`）、確定結果の `AdjustedItem.difference` を同じ式にする。「現在在庫」列は情報として残す（カウント後に動いた事実が見える）。動的差異（`current_stock − actual_count`）は D-D2 の下では「これから補正される量」を意味しなくなるため表示しない。棄却: 両方の差異を出す（非 IT operator に 2 種類の差異を説明できない、UI-10-D10 の「数値矛盾を防ぐ」趣旨に反する）
+- **D-D3 差異表示 = `system_stock − actual_count`（カウント時点差異）**: `update_count` の `current_difference`、一覧の差異列（UI-10-D10、`computeListDifference`）、確定結果の `AdjustedItem.difference` を同じ式にする。一覧とカウント入力欄の在庫列は「現在在庫」（`current_stock`）から**「カウント時在庫」（`system_stock`）**へ戻し、差異と同じソースにする（UI-10-D10 が「差異の根拠と表示在庫が別ソースだと『現在在庫 10 / 実際 9 / 差異 +3』の矛盾表示になる」と禁じた状態を、snapshot 基準でも作らない。UI-10-D10 の「現在在庫に揃える」判断は UI-10-D14 で supersede し、非遡及で残す）。現在在庫は在庫照会・記録詳細で見る。動的差異（`current_stock − actual_count`）は D-D2 の下では「これから補正される量」を意味しなくなるため表示しない。棄却: 両方の差異を出す / 「現在在庫」列を残したまま差異だけ snapshot 基準にする（UI-10-D10 が禁じた矛盾表示）
 - **D-D4 Z004 取込みの「カウント時点境界」（STK-2）**: BIZ-03 commit step 6b で `pos_stock_sync` 行の在庫減算の前に、その商品の最新 `counted_at`（進行中・完了済みを問わず `stocktake_items` の最新 1 件、未カウント = NULL）を引き、CSV 行の `settlement_date` が「カウント日以前」（`settlement_date <= substr(counted_at, 1, 10)`、同日を含む。Q2 = 店の運用「売れたらその場で訂正」により同日分はカウントに含まれている）なら在庫減算をスキップする。`sale_records` は作る（売上は正）。movement は作らない。境界判定は実測カウント（`counted_at` NOT NULL）だけを基準にし、force_fill / 廃番自動入力の明細（`counted_at` NULL）は基準にしない。判定形: 対象 product_code 群について `stocktake_items` から `MAX(counted_at)` を 1 回の query で map として引き、`settlement_date`（`YYYY-MM-DD`）と `substr(counted_at, 1, 10)` を比較する（Opus F14 / F17）。operator への通知は preview / parse 段階の既存 `warnings`（`mod.rs:83`）に「棚卸しで計上済みのため在庫を変更しない行 N 件」を載せ、commit 結果 `ImportResult` の wire 型は変えない（Opus F3。preview と commit の間にカウントが入れば件数は変わり得るが、在庫を守る規則は commit 時の判定が正）。不変条件（32 §15.8 / 35 §20.8 に置く）: 「カウント前に発生した販売の movement は、カウント後に作られない」。これにより D-D4（日付比較）と D-D5（時刻比較）が整合する（Opus F16）。棄却: 取込みを拒否（売上記録まで失う）/ movement を quantity 0 で残す（整合性チェックと履歴を汚す）/ Z004 運用開始まで境界を設計しない（UI-10-D2 の再訪条件がまさに Z004 運用開始で、設計は今しておく方が実装が 1 回で済む）
-- **D-D5 取込み取消（rollback）で、カウントが既に現物で確認済みの分を二重に戻さない**: `rollback_csv_import` が void する movement の商品について、その取込みの `csv_imports.imported_at`（1 取込みの movement は同一 TX で `created_at` が揃うため、この 1 点で比較する。`VoidedMovement` の拡張は不要、Opus F8）より後の実測カウント（`counted_at` NOT NULL）のうち最も早いものを探す。(i) それが進行中の棚卸しなら、その明細の `system_stock` から void した quantity 分を戻す（`system_stock -= movement.quantity`。販売 −2 を void → snapshot +2。例: 開始 10、誤 CSV −2 で 8、カウント 10 / snapshot 8 → 取消で現在庫 10、snapshot 10 → 確定で補正 0 → 10）。(ii) それが完了済みの棚卸しなら、在庫戻しと同額を打ち消す `stocktake` movement（quantity = void した movement の quantity、reference = その棚卸し、note「取込み取消 #id に伴う棚卸し補正の打ち消し」）を同 TX で追加する（owner 反例 (b) / Opus F2: 誤 CSV −2 で 8 → 実測 10 → 確定で +2 → 10 → 取消で +2 → 12 になるのを、打ち消し −2 で 10 に保つ。stock = SUM(movement) も保たれる）。より後のカウントが無ければ現行どおり在庫を戻すだけ。理由: 実測カウントはそれ以前の記録誤りを現物で上書きしており、取消による在庫戻しはその上書きと二重になる。日報取込み（Z001/Z002/Z005）は在庫を動かさないため対象外。手動記録の取消機能は現行に無い（DOC-1）ため対象外、将来追加時に同じ規則を適用する。BIZ-07 `fix_integrity`（movement を作らず在庫を直接書く、D-051 / BIZ-07-D2）は本 lane の対象外とし、35 §20.8 に「棚卸し進行中の fix_integrity は snapshot 前提を外れ得る（mismatch 0 が通常で発火しない）」を 1 行残す（Opus F18）。棄却: 棚卸し中の rollback を禁止（UI-10-D1 の「偽の状態を作らない」に反し、誤取込みの是正手段を 3 か月止める）/ 完了済みを対象外にする（二重戻しが残る）
-- **D-D7 評価額は年末（確定）時点の数量で合計する**: `total_cost = Σ max(確定時点の在庫〈補正後の stock_after、= 年末数量〉, 0) × valuation_cost_price`。現行の「`actual_count × valuation_cost_price`」は、10 月に数えた実測数で 12 月末の資産評価を出すことになり、繰り越し（D-D2）が正しくても年末時点の要求（SP-205-08、税理士報告）とは別物になる（owner 2026-09-16）。負在庫の行は評価 0 とし、結果一覧の `stock_after` 列で負値を見せる（D-D2）。明細ごとの確定時点在庫は新しい列に保存しない（`total_cost` は header に保存済み、記録詳細は差異と補正 movement の `stock_after` を既に持つ。明細単位の評価額一覧が要求されたら列を足す = D-090 Revisit）。運用ルール（73 UI-10-D14）: 「確定は年内最後の Z004 を取り込んだ後に行う」（確定後に届く年内販売は在庫には反映されるが `total_cost` には入らない）。棄却: 実測数 × 原価の据え置き（年末時点にならない）/ 明細に `closing_stock` 列を足す（現時点で読む画面が無い）
+- **D-D5 取込み取消（rollback）で、カウントが既に現物で確認済みの分を二重に戻さない**: `rollback_csv_import` が void する movement の商品について、その取込みの `csv_imports.imported_at`（1 取込みの movement は同一 TX で `created_at` が揃うため、この 1 点で比較する。`VoidedMovement` の拡張は不要、Opus F8）より後の実測カウント（`counted_at` NOT NULL）のうち最も早いものを探す。(i) それが進行中の棚卸しなら、その明細の `system_stock` から void した quantity 分（商品ごとの SUM）を戻す（`system_stock -= SUM(voided.quantity)`。販売 −2 を void → snapshot +2。例: 開始 10、誤 CSV −2 で 8、カウント 10 / snapshot 8 → 取消で現在庫 10、snapshot 10 → 確定で補正 0 → 10）。(ii) それが完了済みの棚卸しなら、在庫戻しと同額を打ち消す `stocktake` movement（商品ごとに void した quantity の SUM で 1 本、reference = その棚卸し、note「取込み取消 #id に伴う棚卸し補正の打ち消し」。`apply_void_stock_corrections` の商品ごと集約と同じ粒度）を同 TX で追加する。この movement は棚卸し記録詳細（65 slice 4c、20 §2.11a の JOIN）に確定時の補正とは別の行として note 付きで出る。「差異 = snapshot 差（符号違い）」の同値は確定時の補正 movement にだけ成り立ち、打ち消し movement は対象外（Opus round 1 P2-4）（owner 反例 (b) / Opus F2: 誤 CSV −2 で 8 → 実測 10 → 確定で +2 → 10 → 取消で +2 → 12 になるのを、打ち消し −2 で 10 に保つ。stock = SUM(movement) も保たれる）。より後のカウントが無ければ現行どおり在庫を戻すだけ。理由: 実測カウントはそれ以前の記録誤りを現物で上書きしており、取消による在庫戻しはその上書きと二重になる。日報取込み（Z001/Z002/Z005）は在庫を動かさないため対象外。手動記録の取消機能は現行に無い（DOC-1）ため対象外、将来追加時に同じ規則を適用する。BIZ-07 `fix_integrity`（movement を作らず在庫を直接書く、D-051 / BIZ-07-D2）は本 lane の対象外とし、35 §20.8 に「棚卸し進行中の fix_integrity は snapshot 前提を外れ得る（mismatch 0 が通常で発火しない）」を 1 行残す（Opus F18）。棄却: 棚卸し中の rollback を禁止（UI-10-D1 の「偽の状態を作らない」に反し、誤取込みの是正手段を 3 か月止める）/ 完了済みを対象外にする（二重戻しが残る）
 - **D-D6 決定の置き場**: durable な横断判断は decision-log D-090（D-025 / SP-205-09 / UI-10-D2 を引く）。BIZ 契約は 35（BIZ-06）と 32（BIZ-03）、repo 契約は 20 §2.11 / §2.11a、CMD は 42、DB 意味は tracking、UI は 73 UI-10-D14、記録詳細の差異定義は 65 slice 4c。UI-10-D2 の Rejected 本文は書き換えず、行末に「→ 2026-09-16 D-090 で再訪（UI-10-D14）」を追記する（非遡及）。biz-task-specs.md `:465` / `:482` は要約層として同期
+- **D-D7 評価額は年末（確定）時点の数量で合計する**: `total_cost = Σ max(確定時点の在庫〈補正後の stock_after、= 年末数量〉, 0) × valuation_cost_price`。現行の「`actual_count × valuation_cost_price`」は、10 月に数えた実測数で 12 月末の資産評価を出すことになり、繰り越し（D-D2）が正しくても年末時点の要求（SP-205-08、税理士報告）とは別物になる（owner 2026-09-16）。負在庫の行は評価 0 とし、結果一覧の `stock_after` 列で負値を見せる（D-D2）。明細ごとの確定時点在庫は新しい列に保存しない（`total_cost` は header に保存済み、記録詳細は差異と補正 movement の `stock_after` を既に持つ。明細単位の評価額一覧が要求されたら列を足す = D-090 Revisit）。運用ルール（73 UI-10-D14）: 「確定は年内最後の Z004 を取り込んだ後に行う」（確定後に届く年内販売は在庫には反映されるが `total_cost` には入らない）。棄却: 実測数 × 原価の据え置き（年末時点にならない）/ 明細に `closing_stock` 列を足す（現時点で読む画面が無い）
 
 ## owner への設問（design → plan-draft の遷移条件）と回答
 
@@ -113,8 +113,8 @@ owner 回答 2026-09-16（原文の要点）: **Q1 = (a) snapshot 方式を推�
 
 三つまとめて「既定でよい」とはしない。**Q2 は店の回答 2026-09-16（owner 伝聞）で確定**: 「棚卸しの時間帯は決まっていない（開店前・営業中・閉店後のどれでもある）。カウント済みの商品が売れたら、その場でカウントの数量を訂正する」。
 
-- **Q1 方式**: (a) **owner candidate 採用** = D-D1〜D-D3（カウント時に snapshot、確定はカウント時点差異で補正、差異表示もカウント時点差異）。確定後の在庫はカウント後の入出庫分だけ「数えた数」と一致しなくなり、`total_cost`（実測 × 原価）と確定直後の在庫数も一致しない（Opus F20、UI-10-D14 で operator 向けに説明）。(b) 再カウント必須方式 / (c) 現状維持 + 運用ルール は棄却
-- **Q2 同日の POS 販売の扱い（STK-2 の境界）= (b) カウント前扱い（`settlement_date <= カウント日` をスキップ）で確定**: 店は時間帯を決めずに数え、売れたらその場でカウントを訂正する（UI-10-D2 の上書き再入力がそのまま運用）。したがって「その商品の最終カウント」は、その日の販売を訂正時点まで既に含む実測値であり、同日の Z004 行を後から減算すると二重になる（例: カウント 10 → 1 個売れて 9 に訂正〈snapshot は DB の 10〉→ 翌日 Z004 が届く → skip → 確定で 9 − 10 = −1 → 9 = 現物）。(a) カウント後扱い（`<`）は棄却: 訂正済みの販売を再び引く。残る誤差 = 売れたのに訂正し忘れた同日分（在庫が現物より多く出る。次の訂正・次のカウントで消える）。翌日まとめて入力する場合も同じ規則で、訂正の遅れ分だけが誤差になる。運用ルール（73 UI-10-D14）: 「カウント済みの商品が売れたら、その場で数量を訂正する」= 現行の運用を明文化するだけで、新しい手順は足さない。前日分の Z004 を取り込んでからカウントすることは必要条件ではない（Opus F15）
+- **Q1 方式**: (a) **owner candidate 採用** = D-D1〜D-D3（カウント時に snapshot、確定はカウント時点差異で補正、差異表示もカウント時点差異）。確定後の在庫はカウント後の入出庫分だけ「数えた数」と一致しなくなる（Opus F20、UI-10-D14 で operator 向けに説明）。`total_cost` は確定時点の在庫で計算する（D-D7）。(b) 再カウント必須方式 / (c) 現状維持 + 運用ルール は棄却
+- **Q2 同日の POS 販売の扱い（STK-2 の境界）= (b) カウント前扱い（`settlement_date <= カウント日` をスキップ）で確定**: 店は時間帯を決めずに数え、売れたらその場でカウントを訂正する（UI-10-D2 の上書き再入力がそのまま運用）。したがって「その商品の最終カウント」は、その日の販売を訂正時点まで既に含む実測値であり、同日の Z004 行を後から減算すると二重になる（例: カウント 10 → 1 個売れて 9 に訂正〈snapshot は DB の 10〉→ 翌日 Z004 が届く → skip → 確定で 9 − 10 = −1 → 9 = 現物）。(a) カウント後扱い（`<`）は棄却: 訂正済みの販売を再び引く。残る誤差 = 売れたのに訂正し忘れた同日分（在庫が現物より多く出る。次の訂正・次のカウントで消える）。入力がカウント日を跨ぐと構造的にずれる: day D に数えて未入力のまま day D の販売が D+1 に取り込まれ（`counted_at` NULL で減算）、その後 D の実測を入力すると snapshot は減算後の値になり、確定で販売分が戻る（Opus round 1 P2-7）。したがって運用ルール（73 UI-10-D14）は「数えたその場で入力する（当日中）」と「カウント済みの商品が売れたら、その場で数量を訂正する」の 2 つで、いずれも現行の運用（店の回答）を明文化するだけで新しい手順は足さない。前日分の Z004 を取り込んでからカウントすることは必要条件ではない（Opus F15）
 
 - **Q3 STK-2 の境界（D-D4 / D-D5）を runtime lane ㉘ に含めるか**: (a) **owner candidate 採用** = 含める（境界判定は商品群の `MAX(counted_at)` map を 1 query で引いて日付比較、取消側は取込み時刻 1 点との比較 + 明細 1 UPDATE または打ち消し movement 1 本。Z004 運用開始時に再設計しなくて済む）。(b) 先送り は棄却
 
@@ -123,13 +123,13 @@ owner 回答 2026-09-16（原文の要点）: **Q1 = (a) snapshot 方式を推�
 docs-only。Writer は Codex（発注書 61）。
 
 - **S1 `docs/decision-log.md`**: D-090「棚卸しの基準時点は各商品の最終カウント時点とし、確定はカウント時点差異で年末時点へ繰り越す。評価額は確定時点の数量で合計する（2026-09-16）」。Decision に owner の言い方（いつ数えても年末時点へ繰り越せる / 記録できた入出庫は自動反映、記録できない分だけ店の訂正 / 二つを重ねて減算しない / 評価は年末数量）を置く= Decision / Status accepted / Why（STK-1 / STK-2 / DOC-2、UI-10-D2 の根拠が手動 movement に当てはまらない）/ Impact（BIZ-06 / BIZ-03 / UI-10 / IO stocktake_repo、runtime lane ㉘）/ Alternatives（D-D2 / D-D4 / D-D5 の棄却案）/ Revisit（`inventory_movements` に業務日付を持つ設計へ移る場合、POS が時刻付き明細を出せるようになった場合）。Q2 の回答（同日規則）を Decision 本文に含める
-- **S2 `docs/function-design/35-biz-stocktake-service.md`**: §20.4 step 3 に `system_stock = 現在の stock_quantity` の書込みを追加、step 4 を `current_difference = system_stock − actual_count` に、`:218-219` の設計判断を D-D1 / D-D3 へ書き換え / §20.5 step 3a（force_fill）を `system_stock = actual_count = 現在庫` に、step 4 の `StocktakeItemForComplete` に `system_stock` を追加、step 5e の `total_cost += valuation_cost_price × actual_count` を D-D7（`× max(確定時点の在庫, 0)`。補正後の在庫 = `stock_after`、補正なしの明細は現在庫）に、step 5 f/g を D-D2（`adjustment = actual_count − system_stock`、`apply_stock_change` 経由、`AdjustedItem` の意味）に、§20.5 の「total_cost のオーバーフロー対策」の例も評価数量で書き直し、`:317` の「`apply_stock_change` を使わない理由」を撤回し理由を残す / §20.6a `:425` 設計ノートを「詳細画面の差異 = 補正 movement の quantity = `actual_count − system_stock`（D-090 で snapshot 差と一致）」へ / §20.7 `:435` を「棚卸し中も CSV 取込みは許可。実測カウント済み商品はカウント時点境界で在庫減算をスキップ（BIZ-03 §15.4、D-090）」に / §20.8 INV-2 行を「`apply_stock_change` の通常式」に、INV-3 行 `:451`「棚卸し補正で stock_after < 0 にはならない」を「補正後の在庫は負になり得る（D-D2）、評価は 0 で扱う（D-D7）」に（Sonnet round 1 P3）、不変条件「カウント前に発生した販売の movement はカウント後に作られない」と「fix_integrity は対象外」を各 1 行追加、確定後在庫が負になり得る方針（D-D2）を明記 / 更新履歴 1 行。`BIZ-06-D1`〜`D3` の子 ID を D-D1〜D-D3 に対応させて置く
+- **S2 `docs/function-design/35-biz-stocktake-service.md`**: §20.2 の DTO 説明 `:36`（`current_difference` の「動的計算: products.stock_quantity - actual_count」）と `:45`（`total_cost` の「SUM(valuation_cost_price × actual_count)」）を D-D3 / D-D7 に / §20.4 step 3 に `system_stock = 現在の stock_quantity` の書込みを追加、step 4 を `current_difference = system_stock − actual_count` に、`:204` の見出し「動的差異の計算」と `:218-219` の設計判断を D-D1 / D-D3 へ書き換え / §20.5 step 3a（force_fill）を `system_stock = actual_count = 現在庫` に、step 4 の `StocktakeItemForComplete` に `system_stock` を追加、step 5e の `total_cost += valuation_cost_price × actual_count` を D-D7（`× max(確定時点の在庫, 0)`。補正後の在庫 = `stock_after`、補正なしの明細は現在庫）に、step 5 f/g を D-D2（`adjustment = actual_count − system_stock`、`apply_stock_change` 経由、`AdjustedItem` の意味）に、§20.5 の「total_cost のオーバーフロー対策」の例も評価数量で書き直し、`:317` の「`apply_stock_change` を使わない理由」を撤回し理由を残す / §20.6a `:425` 設計ノートを「詳細画面の差異 = 補正 movement の quantity = `actual_count − system_stock`（D-090 で snapshot 差と一致）」へ / §20.7 `:435` を「棚卸し中も CSV 取込みは許可。実測カウント済み商品はカウント時点境界で在庫減算をスキップ（BIZ-03 §15.4、D-090）」に / §20.8 INV-2 行を「`apply_stock_change` の通常式」に、INV-3 行 `:451`「棚卸し補正で stock_after < 0 にはならない」を「補正後の在庫は負になり得る（D-D2）、評価は 0 で扱う（D-D7）」に（Sonnet round 1 P3）、不変条件「カウント前に発生した販売の movement はカウント後に作られない」と「fix_integrity は対象外」を各 1 行追加、確定後在庫が負になり得る方針（D-D2）を明記 / §20.9 の signature 表 `:473`（`update_stocktake_item_count` に `system_stock`、force_fill 用は `counted_at` を書かない）`:477`（`get_stocktake_items_for_complete` が `system_stock` を返す）`:483`（`StocktakeItemForComplete` に `system_stock`）と新規 3 関数を追加 / 更新履歴 1 行。`BIZ-06-D1`〜`D4` の子 ID を D-D1〜D-D3、D-D7 に対応させて置く
 - **S3 `docs/function-design/32-biz-csv-import-service.md`**: §15.3 parse / preview に境界判定の warning（既存 `warnings` に「棚卸しで計上済みのため在庫を変更しない行 N 件」）/ §15.4 step 6b にカウント時点境界（D-D4、Q2 の規則、`ImportResult` は不変）/ §15.5 に取消時の二重戻し防止（D-D5 (i) / (ii)、`imported_at` との比較）/ §15.8 に不変条件 2 行（「実測カウント済み商品の在庫は、カウント日より前の販売を取り込んでも減らない」「カウント前に発生した販売の movement はカウント後に作られない」）/ 更新履歴 1 行。`BIZ-03-D` の子 ID を置く
-- **S4 `docs/function-design/73-ui-stocktake.md`**: `:41` UI-10-D2 Rejected 行末に再訪注記（D-D6）/ UI-10-D4 の「`total_cost`（税理士報告値）」に「確定時点の数量 × 評価原価（D-D7）」を添える / UI-10-D14 新設（差異列 = `system_stock − actual_count`、「現在在庫」列は維持、カウント入力欄の選択商品情報も同じ、確定結果の `adjusted_items` の意味と `total_cost` の評価数量、運用ルール 2 つ = 「カウント済みの商品が売れたらその場で数量を訂正する」「確定は年内最後の Z004 を取り込んだ後」、「商品単位で記録されない販売は自動補正できない」制約の維持、Why / Rejected / Revisit）/ `:378` §73.14 の out-of-scope 行を「D-090 で再訪、runtime lane ㉘」に / 変更履歴 1 行
+- **S4 `docs/function-design/73-ui-stocktake.md`**: `:41` UI-10-D2 Rejected 行末に再訪注記（D-D6）/ UI-10-D10 `:100` の差異式「`current_stock - actual_count`」と「現在在庫列に揃える」判断の行末に「→ 2026-09-16 UI-10-D14 で supersede」を非遡及で追記し、§73.10 `:224` の差異列と `:347` の在庫列の記述を D-D3（`system_stock − actual_count`、在庫列は「カウント時在庫」）へ / UI-10-D4 の「`total_cost`（税理士報告値）」に「確定時点の数量 × 評価原価（D-D7）」を添える / UI-10-D14 新設（差異列 = `system_stock − actual_count`、「現在在庫」列は維持、カウント入力欄の選択商品情報も同じ、確定結果の `adjusted_items` の意味と `total_cost` の評価数量、運用ルール 3 つ = 「数えたその場で入力する（当日中）」「カウント済みの商品が売れたらその場で数量を訂正する」「確定は年内最後の Z004 を取り込んだ後」、「商品単位で記録されない販売は自動補正できない」制約の維持、Why / Rejected / Revisit）/ `:378` §73.14 の out-of-scope 行を「D-090 で再訪、runtime lane ㉘」に / 変更履歴 1 行
 - **S5 `docs/db-design/tracking-system-tables.md`**: `:110` `system_stock` = 「最終カウント時点のシステム在庫（未カウント・廃番自動入力は開始時点の値、force_fill は確定時点の値。いずれも `counted_at` NULL）」/ `:112` `valuation_cost_price` の「total_costはこの値×actual_countの合計」と `:119` total_cost の理由を「× 確定時点の在庫（繰り越し後、負は 0）」に（D-D7）/ `:116` 設計意図を D-D1 / D-D2 / D-D5 に合わせて書き換え
-- **S6 `docs/architecture/biz-task-specs.md`**: `:465` / `:482` の「動的計算」を D-D2 / D-D3 の要約に
-- **S7 `docs/function-design/42-cmd-sales-stocktake.md`** `:224` `update_count` の `current_difference` の意味 / **`docs/function-design/20-io-product-repo.md`** §2.11 `update_stocktake_item_count`（`system_stock` 引数追加）、`get_stocktake_items_for_complete`（`system_stock` を返す）、新規 `find_latest_counted_at_by_products(conn, &[product_code]) -> HashMap<String, String>`（D-D4 用、`counted_at IS NOT NULL` の `MAX(counted_at)`、比較は `substr(counted_at, 1, 10)` と `YYYY-MM-DD`）、rollback 用 `find_first_count_after(conn, product_code, imported_at) -> Option<(stocktake_id, status, item_id)>` と `adjust_counted_system_stock(tx, item_id, delta)`（D-D5 用）の契約。`24-io-csv-import-repo.md` は `csv_imports.imported_at` を取消側が読むことを 1 行追記（`VoidedMovement` は不変）。**20 §2.11a `:878`** の「`system_stock`: 棚卸し開始時システム在庫の snapshot」を「最終カウント時点（D-090）」に、同節の「差異は補正 movement の quantity で定義し snapshot 差では定義しない」趣旨の文を「両者は D-090 で同値（符号違い）」に書き換え（Sonnet round 1 P2）
-- **S8a `docs/function-design/65-inventory-record-traceability.md` `:267`**（slice 4c 棚卸し詳細の差異定義）: 「補正 movement の quantity を正とし、`system_stock - actual_count` の snapshot 差では定義しない」を D-090 参照（同値）に書き換え（Sonnet round 1 P2）
+- **S6 `docs/architecture/biz-task-specs.md`**: `:465` / `:482` の「動的計算」を D-D2 / D-D3 の要約に、`:476` の「total_cost = SUM(valuation_cost_price × actual_count)」を D-D7 に
+- **S7 `docs/function-design/42-cmd-sales-stocktake.md`** `:224` `update_count` の `current_difference` の意味 / **`docs/function-design/20-io-product-repo.md`** §2.11 `update_stocktake_item_count`（`system_stock` 引数追加）、`get_stocktake_items_for_complete`（`system_stock` を返す）、新規 `find_latest_counted_at_by_products(conn, &[product_code]) -> HashMap<String, String>`（D-D4 用、`counted_at IS NOT NULL` の `MAX(counted_at)`、比較は `substr(counted_at, 1, 10)` と `YYYY-MM-DD`）、rollback 用 `find_first_count_after(conn, product_code, imported_at) -> Option<(stocktake_id, status, item_id)>` と `adjust_counted_system_stock(tx, item_id, delta)`（D-D5 用）の契約。`24-io-csv-import-repo.md` は `csv_imports.imported_at` を取消側が読むことを 1 行追記（`VoidedMovement` は不変）。**20 §2.11a `:878`** の「`system_stock`: 棚卸し開始時システム在庫の snapshot」を「最終カウント時点（D-090）」に、同節の「差異は補正 movement の quantity で定義し snapshot 差では定義しない」趣旨の文を「確定時の補正 movement については D-090 で同値（符号違い）。取消に伴う打ち消し movement（D-D5 (ii)）は別行・別 note で出る」に書き換え（Sonnet round 1 P2、Opus round 1 P2-4）
+- **S8a `docs/function-design/65-inventory-record-traceability.md` `:267`**（slice 4c 棚卸し詳細の差異定義）: 「補正 movement の quantity を正とし、`system_stock - actual_count` の snapshot 差では定義しない」を D-090 参照（確定時の補正については同値、打ち消し movement は別行）に書き換え（Sonnet round 1 P2、Opus round 1 P2-4）
 - **S8 `docs/diagrams/cross-feature-verification.md`**: XFA-T1 / XFA-T2 末尾と `:187` に「2026-09-16 D-090 で方式を採用。回帰 test 化は runtime lane ㉘」を 1 行ずつ（診断結果の記録は非遡及で残す）
 - **S9（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録、本 packet
 
@@ -141,13 +141,13 @@ docs-only。Writer は Codex（発注書 61）。
 
 ## Acceptance Criteria
 
-rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c6167c4d`）。
+rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c6167c4d`）。**撤回した旧表現（下の「= 0」oracle の語）は本文・Rejected・更新履歴のいずれにも再掲しない。撤回の事実は別の語（「旧: 現在庫基準」「D-090 で supersede」など）で記録する**（Opus round 1 P2-5）。
 
 - **AC1** `rg -c '^## D-090' docs/decision-log.md` = 1（baseline 0）/ `rg -c 'UI-10-D2' docs/decision-log.md` ≥ 1
-- **AC2** `rg -c '差異は動的計算' docs/function-design/35-biz-stocktake-service.md` = 0（baseline 1）/ `rg -c '開始時点の参考値' 同` = 0（baseline 1）/ `rg -c 'apply_stock_change を使わない理由' 同` = 0（baseline 1。撤回の記録は別の見出し語にする）/ `rg -c 'BIZ-06-D' 同` ≥ 3（baseline 0）/ `rg -c 'D-090' 同` ≥ 1
-- **AC2b** `rg -c 'stock_after < 0 にはならない' docs/function-design/35-biz-stocktake-service.md` = 0（baseline 1、`:451`）/ `rg -c '× actual_count|×actual_count' docs/db-design/tracking-system-tables.md` = 0（baseline 2、`:112` `:119`）/ `rg -c '開始時システム在庫' docs/function-design/20-io-product-repo.md` = 0（baseline 1、`:878`）/ `rg -c 'snapshot 差では定義しない|snapshot差では定義しない' docs/function-design/20-io-product-repo.md docs/function-design/65-inventory-record-traceability.md docs/function-design/35-biz-stocktake-service.md` = 各 file 0
+- **AC2** `rg -c '差異は動的計算' docs/function-design/35-biz-stocktake-service.md` = 0（baseline 1）/ `rg -c '開始時点の参考値' 同` = 0（baseline 1）/ `rg -c 'apply_stock_change を使わない理由' 同` = 0（baseline 1。撤回の記録は別の見出し語にする）/ `rg -c 'BIZ-06-D' 同` ≥ 4（baseline 0）/ `rg -c 'D-090' 同` ≥ 1
+- **AC2b** `rg -c 'stock_after < 0 にはならない' docs/function-design/35-biz-stocktake-service.md` = 0（baseline 1、`:451`）/ `rg -c '動的計算' 同` = 0（baseline 3 = `:36` `:218` `:435`）/ `rg -c '× actual_count|×actual_count' 同` = 0（baseline 1、`:45`）/ `rg -c '採用しない' 同` = 0（baseline 1、`:425`）/ `rg -c '× actual_count|×actual_count' docs/db-design/tracking-system-tables.md` = 0（baseline 2、`:112` `:119`）/ `rg -c '× actual_count|×actual_count' docs/architecture/biz-task-specs.md` = 0（baseline 1、`:476`）/ `rg -c '開始時システム在庫' docs/function-design/20-io-product-repo.md` = 0（baseline 1、`:878`）/ `rg -c 'snapshot 差では定義しない|snapshot差では定義しない' docs/function-design/20-io-product-repo.md docs/function-design/65-inventory-record-traceability.md` = 各 file 0（baseline 各 1）
 - **AC3** `rg -c '棚卸し' docs/function-design/32-biz-csv-import-service.md` ≥ 3（baseline 0: §15.4 / §15.5 / §15.8）/ `rg -c 'D-090' 同` ≥ 1
-- **AC4** `rg -c 'UI-10-D14' docs/function-design/73-ui-stocktake.md` ≥ 3（baseline 0: 見出し + §73.14 + 変更履歴）/ `rg -c 'D-090' 同` ≥ 2（baseline 0: UI-10-D2 の再訪注記 + UI-10-D14）/ `rg -c '実装不能' 同` = 1（baseline 1、UI-10-D2 本文は非遡及で残す）
+- **AC4** `rg -c 'UI-10-D14' docs/function-design/73-ui-stocktake.md` ≥ 3（baseline 0: 見出し + §73.14 + 変更履歴）/ `rg -c 'D-090' 同` ≥ 2（baseline 0: UI-10-D2 の再訪注記 + UI-10-D14）/ `rg -c '実装不能' 同` = 1（baseline 1、UI-10-D2 本文は非遡及で残す）/ `rg -c 'current_stock - actual_count' 同` = 0（baseline 3 = `:100` `:224` `:347`。UI-10-D10 の行は式を残さず「→ UI-10-D14 で supersede」の注記に置き換える）
 - **AC5** `rg -c '動的計算' docs/db-design/tracking-system-tables.md` = 0（baseline 1）/ `rg -c '動的計算' docs/architecture/biz-task-specs.md` = 0（baseline 2）
 - **AC6** `rg -c 'D-090' docs/function-design/42-cmd-sales-stocktake.md docs/function-design/20-io-product-repo.md docs/function-design/24-io-csv-import-repo.md docs/diagrams/cross-feature-verification.md` の各 file ≥ 1（baseline 0）
 - **AC7**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri src migrations docs/research docs/spec docs/function-design/37-biz-daily-report-import-service.md docs/function-design/90-traceability.md | wc -l` = 0
@@ -187,12 +187,13 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 | REQ-205 | 73 UI-10-D14、42 `update_count` | UI-10-D14（D-D3） | 差異表示を 1 種類に。棄却: 2 種類併記 | ㉘ `computeListDifference` / `current_difference` | ㉘ unit |
 | REQ-401 / REQ-205 | 32 §15.4 / §15.8 | BIZ-03-D（D-D4）、D-090 | カウント日より前の販売は在庫を減らさない。棄却: 拒否 / 0 movement / 先送り | ㉘ commit 6b + repo | ㉘ XFA-T2 の回帰化（期待 = 8） |
 | REQ-401 / REQ-205 | 32 §15.5、tracking | BIZ-03-D（D-D5）、D-090 | 取消で snapshot を戻す。棄却: 棚卸し中 rollback 禁止 | ㉘ rollback + repo | ㉘ unit（誤 CSV → カウント → 取消 → 確定 = 現物） |
-| — | 73 UI-10-D2 | D-D6 | Rejected を非遡及で残し再訪注記 | S4 | AC4 |
+| REQ-205 / SP-205-08 | 35 §20.5 step 5e、tracking、73 UI-10-D4 | BIZ-06-D4（D-D7）、D-090 | 評価数量 = 確定時点の在庫（年末）。棄却: 実測 × 原価 / 明細列の追加 | ㉘ `complete_stocktake` step 5e | ㉘ unit（カウント後の販売を含む total_cost） |
+| — | 73 UI-10-D2 / UI-10-D10 | D-D6 | Rejected / 現在在庫列の判断を非遡及で残し再訪注記 | S4 | AC4 |
 
 ## Design Intent Audit
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: yes（D-090 + 35 / 32 / 73 の決定 ID に理由・棄却案・数値例を置く）
-- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D-D1〜D-D5 → D-090 と各 source doc（S1〜S7）
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D-D1〜D-D7 → D-090 と各 source doc（S1〜S8a）。子 ID = BIZ-06-D1（D-D1）/ D2（D-D2）/ D3（D-D3）/ D4（D-D7）、BIZ-03-D1（D-D4）/ D2（D-D5）、UI-10-D14（D-D3 の UI 側 + 運用ルール）
 - Assumptions and constraints: Z004 は日付粒度（時刻なし）。`counted_at` はアプリ時計、`settlement_date` は POS の営業日で、時計のずれは日単位比較で吸収する。Z004 運用は未開始（D-025）だが手動 movement で STK-1 は今日起きる。snapshot 方式は「カウント後の入出庫は現在庫に正しく反映されている」ことを前提にし、その反映自体の誤りは本 lane の対象外
 - Deferred design gaps, risk, and follow-up target: 同日販売の誤差（Q2 で規則を決めても営業中カウントでは残る。運用ルールで縮める）/ 手動記録の取消機能が将来できたら D-D5 を適用 / `inventory_movements` の業務日付列は Revisit 条件に置く
 - Test Design Matrix can cite design decision IDs or source doc sections: runtime lane ㉘ の Matrix が D-090 / BIZ-06-D1〜D3 / BIZ-03-D / UI-10-D14 を引ける
@@ -208,7 +209,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 | Operator workflow | 開店前カウント + 前日分取込み（Q2 の運用ルール）。確定前に全件再カウントは要求しない | 73 UI-10-D14 |
 | Replacement path | POS が時刻付き明細を出せるようになれば `created_at` ではなく販売時刻で境界判定に移れる（D-090 Revisit） | S1 |
 | Data safety / evidence | docs-only。数値例は合成値 | — |
-| Reporting / accounting semantics | 売上（`sale_records`）と在庫（movement）を分けたまま、スキップ行は売上だけ記録する。`total_cost` は `actual_count × 原価` のまま（カウント時点評価） | 32 §15.4 / 35 §20.5 |
+| Reporting / accounting semantics | 売上（`sale_records`）と在庫（movement）を分けたまま、スキップ行は売上だけ記録する。`total_cost` は確定時点の在庫 × `valuation_cost_price`（D-D7、年末時点の評価） | 32 §15.4 / 35 §20.5 |
 | Manual verification | docs-only のため L3 なし。runtime lane ㉘ で「カウント → 販売 → 確定」の実機往復 | ㉘ |
 | 環境・再現性 | not applicable | — |
 
@@ -217,7 +218,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 - Existing design docs are sufficient because: 不十分。35 / 73 / tracking / biz-task-specs が「差異は動的計算」「確定は actual_count へ置換」を契約として固定しており、STK-1 / STK-2 を解消する設計が無い。本 lane がその設計出力
 - Source docs updated in this PR: S1〜S8
 - Design gaps intentionally deferred: 同日販売の時刻精度（POS の制約）、手動記録の取消機能
-- Durable decisions discovered in this plan and promoted to source docs: D-090、BIZ-06-D1〜D3、BIZ-03-D、UI-10-D14
+- Durable decisions discovered in this plan and promoted to source docs: D-090、BIZ-06-D1〜D4、BIZ-03-D1 / D2、UI-10-D14
 
 Minimum design checks for business-app work:
 
@@ -244,6 +245,7 @@ R2 のため任意。runtime lane ㉘ の Ledger の種として、契約 ID と
 | UI-10-D14（差異表示） | `current_difference` / `computeListDifference` | unit | ㉘ L3 |
 | BIZ-03-D（境界、Q2 の記号） | commit 6b + repo | XFA-T2 回帰、同日境界の両側 1 本ずつ、未カウント商品は通常減算 | — |
 | BIZ-03-D（rollback snapshot 補正） | rollback + repo | 誤 CSV → カウント → 取消 → 確定 = 現物 | — |
+| BIZ-06-D4（評価数量 = 確定時点在庫、負は 0） | `complete_stocktake` step 5e | unit: カウント後の入出庫を含む `total_cost` | — |
 | INV（integrity: stock = SUM(movement)） | 不変 | 既存 `integrity_service` test + 上記各 test で `run_integrity_check` 0 件 | — |
 
 ## Test Plan
@@ -268,12 +270,13 @@ not applicable（docs-only。runtime lane ㉘ で `UpdateCountResult.current_dif
 
 - `src-tauri/src/db/stocktake_repo.rs:268-279` `update_stocktake_item_count` に `system_stock` 引数（force_fill 用は `counted_at` を書かない別引数か別関数）/ `:406-427` `get_stocktake_items_for_complete` に `system_stock` 列 / 新規 `find_latest_counted_at_by_products` / `find_first_count_after` / `adjust_counted_system_stock`。IO 設計 20 §2.11 に契約（本 lane S7）。`stocktake_service.rs:441-447` の force_fill は `counted_at` を書かない経路へ
 - `src-tauri/src/biz/stocktake_service.rs:286-301` `update_count` step 3 / 4、`:441` force_fill、`:481-506` 確定 loop を `apply_stock_change` へ（`inventory_service/common.rs:41`、`pub(crate)`）
-- `src-tauri/src/biz/csv_import_service/commit.rs:136-147` step 6b に境界、`:229` `apply_void_stock_corrections` + `rollback.rs:51` に snapshot 補正
-- `src/features/stocktake/lib/stocktake-formatters.ts:13-16` `computeListDifference` を `system_stock - actual_count` に（`bindings.ts:255,258` の両 field は既存）、`StocktakePage.tsx:842-844` の列は維持、対応 test
+- `src-tauri/src/biz/csv_import_service/commit.rs:136-147` step 6b に境界、`:229` `apply_void_stock_corrections` + `rollback.rs:52` の呼び出し前後に snapshot 補正 / 打ち消し movement（商品ごと SUM で 1 本）
+- `src/features/stocktake/lib/stocktake-formatters.ts:13-16` `computeListDifference` を `system_stock - actual_count` に（`bindings.ts:255,258` の両 field は既存）、`StocktakePage.tsx:842` の在庫列を「カウント時在庫」（`system_stock`）に、`:652` の選択商品情報も同じ、対応 test
+- `complete_stocktake` step 5e: `total_cost` の評価数量を `max(補正後在庫, 0)`（補正あり = `apply_stock_change` の `stock_after`、補正なし = 現在庫）に
 - test: `cross_feature_tests.rs:581-618` の 2 診断を `#[ignore]` 解除して期待値を現物に反転（XFA-T1 5 入口 + XFA-T2）、`stocktake_service.rs` の unit（snapshot / 再カウント / force_fill / 差異 0）、`csv_import_service` の unit（境界両側 / 未カウント / rollback 補正）。REQ-205 / REQ-401 の test 追加で `cargo run --bin generate_traceability` を実行し `90-traceability.md` を再生成（生成 file の再生成は ㉘ だけ）
 - docs 同期: 35 / 32 の疑似コードを実装に合わせて最終化、`cross-feature-verification.md` の期待値、32 §15.3 の preview warning 文言（取込み結果の wire は不変）
 - 既存 test の反転（新規追加ではない）: `stocktake_service.rs:869-872`（`current_difference` 3 → −2 相当、snapshot 基準へ）/ `:1218`（`stock_quantity = actual_count` → `現在庫 + 補正`）/ `:1221` `test_complete_req205_force_fill_sets_actual_to_system_stock`（`counted_at` NULL のまま）/ `stocktake-formatters.test.ts`（`system_stock − actual_count`）
-- rollback: `rollback.rs:51` の前後で `csv_imports.imported_at` を読み、商品ごとに「それより後の最初の実測カウント」を引く。進行中なら snapshot 補正、完了済みなら打ち消し `stocktake` movement を同 TX で 1 本
+- rollback: `rollback.rs:52` の前後で `csv_imports.imported_at` を読み、商品ごとに「それより後の最初の実測カウント」を引く。進行中なら snapshot 補正、完了済みなら打ち消し `stocktake` movement を同 TX で 1 本
 - Risk R3（BIZ 在庫補正 + POS CSV 取込み + operator workflow）、Final Review 2 pass、owner L3 = カウント → 手動販売 → 確定 → 在庫が販売後の値のまま、の 1 往復
 
 ## Spec Contract
@@ -284,7 +287,8 @@ R2 のため簡略。Contract ID: SPEC-STK-BASELINE-R1
 - 確定の補正量は `actual_count − system_stock`、`stock_after` は現在庫 + 補正量（evidence: AC2）
 - カウント済み商品について、カウント日より前（Q2 の規則）の Z004 販売は在庫を減らさず売上だけ記録する（evidence: AC3）
 - 取込み取消で void した movement がカウント時点より前なら `system_stock` を戻す（evidence: AC3 / AC5）
-- 差異表示はカウント時点差異 1 種類（evidence: AC4）
+- 差異表示はカウント時点差異 1 種類、在庫列はカウント時在庫（evidence: AC4）
+- `total_cost` は確定時点の在庫（負は 0）× `valuation_cost_price` の合計（evidence: AC2b / AC5）
 
 ## Trace Matrix
 
@@ -335,3 +339,16 @@ Fill after review.
 - P2（20 §2.11a `:878` と 65 `:267` が「差異は補正 movement の quantity、snapshot 差では定義しない」「開始時システム在庫」の旧契約のままで Scope 外、AC も検出しない）= accept → S7 / S8a に追加、AC2b を新設
 - P3（35 §20.8 INV-3 行 `:451`「stock_after < 0 にはならない」が D-D2 と矛盾するのに S2 が名指ししていない）= accept → S2 に明記、AC2b に oracle
 - 判定: round 1 は通過不可（P2 1）。本 commit で是正し、Opus round 1 と Sonnet closure で確認する
+
+### Plan Review round 1 / 2 pass 目（2026-09-16、plan-gate、Opus、裁定 Coordinator）
+
+- reviewer 実施: 起票時実測と `rg -c` baseline を全数一致、AC7 = 0、AC8 の 3 gate を実行（plan / full ERROR 0、workflow-git PASS）、design_compliance_test が未実装関数を red にしないことを確認、D-D1〜D-D7 の 9 系列を独立追跡（整合性は D-D5 (ii) を含めて保たれる）、Scope 過不足（FUNCTION_DESIGN / DB_DESIGN / 41 / 44 / 55 / 90 / requirements-coverage は除外妥当）
+- P2-1（73 UI-10-D10 `:100` / §73.10 `:224` の `current_stock - actual_count` と D-D3 の衝突、UI-10-D10 の「同一ソース」根拠に未回答）= accept → D-D3 を「在庫列をカウント時在庫へ戻し差異と同一ソース、UI-10-D10 を UI-10-D14 で supersede」に、S4 に `:100` `:224` `:347`、AC4 に oracle
+- P2-2（旧記述 sweep 漏れ 5 箇所: 35 `:36` `:45` `:204` §20.9、biz-task-specs `:476`）= accept → S2 / S6 に追記、AC2b を拡張
+- P2-3（packet 内の `total_cost` 据え置き文 2 箇所）= accept → Lenses 行と Q1 を D-D7 準拠に
+- P2-4（D-D5 (ii) の打ち消し movement が記録詳細に別行で出て「同値」が普遍でない）= accept → D-D5 に記録詳細での見え方と同値の範囲を明記、S7 / S8a の文言を限定
+- P2-5（削除 oracle と撤回記録の書き方の衝突）= accept → AC 前文に 1 文
+- P2-6（owner 追加指示を decision point として未計上）= accept → 介入 2/4（上限 3 → 4、理由付き）、Plans.md 同期
+- P2-7（翌日入力の残差が過小）= accept → Q2 の残差記述を是正、運用ルールに「数えたその場で入力する」を追加
+- P3-1（D-D7 の子 ID 欠落）= accept → BIZ-06-D4 を採番し Trace / Ledger / Spec / Readiness / Writer 行へ / P3-2（D-D7 の位置）= accept → D-D6 の後ろへ / P3-3（打ち消し量の粒度）= accept → 商品ごと SUM で 1 本 / P3-4（AC2b の 35 向け oracle が空撃ち）= accept → `採用しない` = 0 へ / P3-5（backlog の STK-1 行が stale）= accept → 本 commit / P3-6（行番号 `:52` `:124`）= accept
+- 判定: round 1 は通過不可（P2 7）。本 commit で是正し、round 2 = Sonnet closure（両 pass の指摘の閉じ方を確認）
