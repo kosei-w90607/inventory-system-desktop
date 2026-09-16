@@ -3,16 +3,16 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: design
+- Phase: plan-gate
 - Risk: R2
 - Execution Mode: codex-only
 - Plan Commit: 6ad7576103abf9fd4d5057ca4d298c5acf21c0b7
 - Amendments: none
 - Coordinator: Astra（D-087、一貫担当。採用・裁定は owner）
 - Writer: Astra
-- Plan Reviewer: Sonnet（独立 fresh context、PASS）
-- Final Reviewer: Sonnet（独立 fresh context、依頼予定）
-- Final Review Minimum: 1
+- Plan Reviewer: 当初Sonnet PASS / 追加検証のGated AmendmentはOpus（独立 fresh context）
+- Final Reviewer: Sonnet + Opus（独立 fresh context、owner指定）
+- Final Review Minimum: 2
 - Human Gate: ready,merge
 
 2026-09-16: owner の「実情に合わせて図面を更新し、アプリの設計上の矛盾も見つける」という依頼により kickoff → spec-check。既存の仕様・schema・route を調査し、製品契約を変更しない現行構造の記述として Design Readiness を確認して plan-draft へ。計画を先に commit し、独立 Plan Review に提出する。
@@ -24,7 +24,7 @@
 - relay 往復上限: 2
 - Plan Review round 天井: 3
 
-レビューの発注・回収は D-087 により Astra が担当する。今回の図面更新と別の製品仕様判断が必要になった場合は、根拠付きの所見を残し、製品コードの変更へ進めない。
+レビューの発注・回収は D-087 により Astra が担当する。今回の図面・検証モデルと別の製品仕様判断が必要になった場合は、根拠付きの所見を残し、製品runtimeの変更へ進めない。
 
 ## Consultation Relay
 
@@ -35,7 +35,7 @@
 
 Risk: R2
 
-現行実装を説明する図面と設計本文の同期、図を使った調査の記録。保守性に影響するが、DB schema・migration・route/search・業務挙動・workflow gate の契約は変更しない。既存実装への疑義は所見として分離し、既存の製品要求を実装に合わせて弱めない。
+現行実装を説明する図面と設計本文の同期、合成データによるtest-onlyのモデルベース検証と調査記録。project-profileのR2 test helperに該当し、DB schema・migration・route/search・業務挙動・既存workflow gateの契約は変更しない。既存実装への疑義は所見として分離し、既存の製品要求を実装に合わせて弱めない。棚卸しの診断FAILは製品問題として保持し、通常suiteのPASSで解消済みとしない。
 
 ## Goal
 
@@ -45,15 +45,17 @@ Goal Invariant:
 
 - owner が現行のデータ構造、画面間の到達・戻り、在庫・売上・日報・PLU のつながりを図で確認できる。
 - 図から見つかった問題について、根拠・影響・確認済み範囲・残る検証・次の是正候補を追える。
+- 入庫・手動販売・返品・廃棄・商品別CSV・棚卸しをまたぐ操作列を、実BIZと独立モデルで実行・比較できる。発生日と取込み時点を分けた診断の成否を記録する。
 
 ### 失敗定義
 
 - 古い図を現行として案内する、現行にない FK・画面・取消機能を描く、または実装の欠陥を正しい設計として追認する。
 - 数値や図の形を揃えるだけで、任意参照・在庫を動かす条件・戻り経路・失敗時の状態を確認しない。
+- テストの期待値を実装の誤動作へ合わせる、または診断FAILを通常suiteのPASSで隠す。
 
 ### 非目的
 
-- 製品コード、DB、店舗データ、依存 package、CI・review gate の変更。
+- 製品のruntime挙動、DB schema、店舗データ、依存package、既存CI gateの変更。
 - 実店舗運用の安全性全般をこの静的調査だけで保証すること。
 - 全部の図を自動生成する汎用基盤の新設。
 
@@ -67,10 +69,14 @@ Goal Invariant:
 - `docs/screen_mockups.html`: 既存内容は初期提案資料として保持し、旧画面遷移図を現行と誤認しない可視注記と現行図へのリンクを加える。
 - `docs/function-design/55-ui-csv-import.md` / `56-ui-daily-sales.md` / `57-ui-monthly-sales.md`: 既存図の明白な転記不一致を本文・型定義・実装に照合して同期。競合する業務契約を一方的に変更しない。
 - 本 packet と `docs/Plans.md` の進捗を同期する。
+- `docs/diagrams/cross-feature-verification.md`: 標準的な図の用途、シーケンス図・ステートマシン図・簡略アクティビティ図、独立モデルの契約と実行結果を記録する。既存current-systemの入口から参照する。
+- `src-tauri/src/biz/csv_import_service/cross_feature_tests.rs` と同directoryの `mod.rs`: `#[cfg(test)]` だけのモデルベーステストを追加。既存のCSV fixture builderと一時DBを再利用し、実BIZと日次売上consumerまで検証する。新規診断の `#[ignore]` はXFA-D4どおり明示実行用に限定し、既存テストを変更しない。
+- `docs/plans/test-matrices/2026-09-16-cross-feature-model-audit.md`: oracle・失敗条件・範囲・既知FAILの扱いを先に定義する。
+- `docs/function-design/90-traceability.md`: 必要なgenerated更新をcanonical generatorで行う。
 
 ## Non-scope
 
-- runtime・schema・migration・DTO・navigation・テストの製品挙動変更。
+- runtime・schema・migration・DTO・navigationの製品挙動変更、既存テストの削除・弱体化。
 - 既存 mockup の全画面再デザインや提案資料の現行画面化。
 - CI への新しい必須 gate、汎用 generator、外部サービスの新設。
 - Ready / merge（owner の別指示が必要）。
@@ -83,6 +89,10 @@ Goal Invariant:
 - AC-4: 図から見つかった矛盾は、文書の更新漏れ・設計と実装の不一致・追加検証が必要な設計懸念に分類し、source と実装の位置、影響、再現または静的根拠、未検証範囲、是正候補を記録する。重大な欠陥は黙って実装追認せず owner へ返す。
 - AC-5: `bash scripts/doc-consistency-check.sh`、`git diff --check`、変更分類に応じた `bash scripts/local-ci.sh changed` が通る。Mermaid を render し、構文エラーがなく文字・線・図の範囲が読めることを確認する。新しい dependency を repository に追加しない。
 - AC-6: 独立 Final Review を通し、未解決 finding は owner に明示する。Windows native L3 はアプリ表示・挙動を変更しないため対象外。
+- AC-7: XFA-D1の通常suiteが実BIZ→DB→日次売上を独立期待値と比較し、再送・対象importの取消・POS非連動・拒否時の状態維持・DB再接続を含む有限の操作列を実行する。最初の失敗prefixと期待/実値を出す。
+- AC-8: XFA-D2のカウント後の移動、過去販売の遅い取込み、正常対照を実行する。診断の不一致は非0終了のまま結果へ記録し、既知P1の解決・運用安全性の証明とはしない。記録上のモデルと現物モデルを混同しない。
+- AC-9: モデル検査が、在庫とmovementを同時に誤らせた状態も検出できることを合成DBへのmutationで確認する。モデルがDBから期待値を逆算していないことをレビューする。
+- AC-10: Rust fmt/clippy、通常cargo test、design compliance、traceability生成/check、local changedを実行する。通常suiteの成功と明示診断の失敗は別の証拠とし、失敗を隠すscriptやgate変更を加えない。最終レビューはSonnetとOpusの独立パスを実施する。
 
 ## Design Sources
 
@@ -90,6 +100,7 @@ Goal Invariant:
 - [アーキテクチャ](../ARCHITECTURE.md)、[画面設計](../SCREEN_DESIGN.md)、`src/config/navigation.ts`、`src/routes/`、各画面の Link / navigate。
 - [共通規則](../function-design/10-common-rules.md)、[在庫処理](../function-design/31-biz-inventory-service.md)、[商品別 CSV](../function-design/32-biz-csv-import-service.md)、[PLU](../function-design/33-biz-plu-export-service.md)、[棚卸し](../function-design/35-biz-stocktake-service.md)、[日報](../function-design/37-biz-daily-report-import-service.md)、[記録追跡](../function-design/65-inventory-record-traceability.md)。
 - [図とコードの照合基準](../code_review.md)、[文書の書式](../DOC_STYLE_GUIDE.md)。
+- [横断検証モデル XFA-D1〜D5](../diagrams/cross-feature-verification.md)、[Test Design Matrix](test-matrices/2026-09-16-cross-feature-model-audit.md)。
 
 ## Required Design Artifacts
 
@@ -99,15 +110,17 @@ Goal Invariant:
 | 画面・業務フローの図示 | route / navigation / function-design | 既存 sufficient。不一致を調査所見に分離 |
 | 図面の位置付け・読み方 | current-system.md と親文書 | 同じ変更で追加 |
 | 新しい製品契約 | なし | 非対象 |
+| test-only oracleと診断の判定 | cross-feature-verification XFA-D1〜D5 / Matrix | 本Gated Amendmentで設計済み |
 
 ## Registration / Generation Obligations
 
 - 新設図面の入口を DB / SCREEN / ARCHITECTURE / PROJECT_HANDOFF から参照する。
-- 新しい Tauri command、page route、function-design 文書、REQ coverage はない。bindings / route tree の変更は不要。traceability は既存 checker の判定に従い検証し、生成物は手編集しない。
+- 新しいTauri command、page route、function-design文書はない。bindings / route treeの変更は不要。新しいREQ付きRust testによるtraceabilityはcanonical generatorで再生成・checkし、生成物は手編集しない。
+- `cross_feature_tests` を既存csv_import_serviceのtest-only moduleとして登録する。production visibility、feature flag、依存packageを増やさない。
 
 ## Design Readiness
 
-既存設計と source は現行構造を描くために十分。今回の成果物は観測した現在と採用済み仕様の関係を説明し、追加仕様は作らない。図化中に見つかった未解決の製品設計は audit へ根拠付きで残す。この docs-only scope の実装前に決める製品 Human Gate はない。
+既存設計とsourceは図示・通常の操作モデルを作るために十分。棚卸し時点の業務期待はXFA-D2で診断専用oracleとして定義し、既存実装の期待値へ合わせない。未解決の製品設計は所見として残し、修正方式を採用しない。test-only scopeの実装前に決める製品Human Gateはない。新しいmoduleの実装は本Gated AmendmentのPlan Gate通過後に開始する。
 
 ## Impact Review Lenses
 
@@ -119,7 +132,7 @@ Goal Invariant:
 
 ## Contract Probe
 
-R2 docs-only。外部環境の挙動を製品契約へ昇格させないため R3/R4 Contract Probe は非対象。図の render 可否は AC-5 で実際に検証する。
+R2の図面・test-only検証。外部環境の挙動を製品契約へ昇格させないためR3/R4 Contract Probeは非対象。図のrenderと明示診断の非0終了は実際に検証する。
 
 ## Test Plan
 
@@ -127,6 +140,8 @@ R2 docs-only。外部環境の挙動を製品契約へ昇格させないため R
 - navigation / concrete route と図面対応表を集合で比較し、主要矢印は実 source で確認する。
 - Mermaid render と可視確認、リンクの実在、doc checker、diff check、変更分類に従う local gate。
 - 製品の不具合が疑われた場合、既存テストと実経路を調査し、必要なら作業用の合成データによる再現検証を行う。製品テストや仕様を弱めない。
+- 追加の実行条件は [Test Design Matrix](test-matrices/2026-09-16-cross-feature-model-audit.md)。通常 `cargo test --lib cross_feature_tests` と、明示診断 `cargo test --lib cross_feature_tests -- --ignored --nocapture` を別々に実行する。
+- 既存テストが同じものを保護するか調査したうえで、主目的を複数機能・時点の組合せに限定する。件数・所要時間は未実測。
 
 ## Boundary / Wire Contract
 
@@ -166,3 +181,7 @@ ERの物理関係と全カラム、現行画面の到達・戻り、在庫・日
 ### 横断業務検証への拡張依頼
 
 2026-09-16: owner が「状態を持つ処理のテストを作って確かめる」「複数機能を跨ぐ実際の業務の検証」を依頼し、追加でOpusレビューを指定した。新しいテストのoracle・範囲・既知不具合の扱いを設計するため、`implementing → design` へ戻す。既存の図面更新と検証履歴は保持する。追加の実装はGated Amendmentの独立Plan Gate通過後に開始する。
+
+### Gated Amendment A-1: 横断業務モデル検証
+
+ownerの上記依頼を範囲拡張の承認として継承し、XFA-D1〜D5とMatrixを設計した。`design → plan-draft → plan-gate` としてOpusの独立レビューへ提出する。追加はtest-only moduleと図・監査結果、traceabilityに限定し、既存製品の修正やgate緩和は含めない。従来の図面成果は保持。原Plan Commitは書き換えず、本改訂commitをAmendmentsへ追記してから実装へ進む。最終レビューはowner指定によりSonnet + Opusとする。
