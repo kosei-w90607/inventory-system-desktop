@@ -338,6 +338,16 @@ export function DisposalPage() {
               続けて廃棄・破損
             </Button>
             <Button asChild type="button" variant="outline">
+              <Link
+                to="/inventory/disposal/records/$recordId"
+                params={{ recordId: String(result.record_id) }}
+                search={{ returnTo }}
+              >
+                <Eye aria-hidden="true" />
+                詳細を見る
+              </Link>
+            </Button>
+            <Button asChild type="button" variant="outline">
               <Link to="/stock">
                 <ArrowLeft aria-hidden="true" />
                 在庫照会へ戻る
