@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Plan Commit: d5ef2635a77054c2002e95585074a34cdd876f75
 - Amendments: none
 - Coordinator: Fable 5.1
-- Writer: Codex
+- Writer: Codex（実装 `807cc249` / docs `232c94da`）+ Sonnet（GA3 の隣接 test 是正・検証・Draft PR。subagent、worktree 分離、Plan Reviewer とは別 fresh context）
 - Plan Reviewer: Sonnet（独立 fresh context）
 - Final Reviewer: Sonnet + Opus（独立 fresh context。Opus はデザインレビュー観点を含む）
 - Final Review Minimum: 2
@@ -96,6 +96,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **S4 `src/features/home/components/SummaryCards.tsx`**: 在庫切れ・在庫少に補助文言（`text-sm text-muted-foreground`、昨日の売上の「N 点」と同構造）、PLU 未反映 card 追加（D-H3）、`md:grid-cols-3` → `md:grid-cols-4`。file header comment の「3 サマリカード束ね」も 4 へ
 - **S5 test**: `SummaryCards.test.tsx`（4 card、補助文言 3 種、pluDirty error 時の card 内「再試行」= 独立 query なので 1 本）/ `HomePage.test.tsx:181` の `getAllByText("1 件")` 件数を実 fixture に合わせて更新（PLU fixture 1 件なら 3）/ 新規 `ActionButton.test.tsx`（description 表示、`variant="primary"` の class、pending 時の Tooltip + `aria-disabled` 維持、`description` 未定義 item でも描画）
 - **S6 docs**: `docs/SCREEN_DESIGN.md` §ホーム画面 / `docs/function-design/53-ui-home.md` §53.1・§53.5・更新履歴 / `docs/function-design/52-ui-shared-layout.md` §52.3・更新履歴 / `docs/decision-log.md` D-089
+- **S5-b（GA3）** `src/features/backup-restore/BackupRestorePage.flow.test.tsx`: 単一要素検索 `getByText(/昨日の売上/)` 4 箇所（`:223` `:266` `:298` `:333`）を summary title に限定した `/^昨日の売上 \(/` へ。`:286` の `getAllByText` は不変。説明文「今日・昨日の売上明細と集計を確認します」（S1 の表）は変えない。theory: 復元 flow 後にホームへ戻る test が summary title を探す意図で、新しい入口 card の説明文が同じ語を含むため単一要素検索が複数一致した（regression ではなく test matcher の過広）
 - **S7（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録
 
 説明文（mockup-c-home.html から転記、S1 の正本）:
@@ -121,7 +122,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `src/features/home/hooks/**`、`src/features/home/lib/**`、`src/features/home/types.ts`
 - `src/components/patterns/SummaryCard.tsx`、`src/components/ui/**`、`src/components/layout/**`
 - `docs/design-system/**`（catalog / foundations / reference は不変）
-- 他画面の feature
+- 他画面の feature（GA3 の S5-b `BackupRestorePage.flow.test.tsx` の matcher 限定 4 箇所だけ例外）
 
 ## Acceptance Criteria
 
@@ -133,7 +134,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `9d67
 - **AC4**（負の oracle）`git diff --name-only origin/main..HEAD -- src/features/home/HomePage.tsx src/features/home/components/PluNotificationBar.tsx src/features/home/components/InventoryActionGrid.tsx src/features/home/hooks src/features/home/lib src/features/home/types.ts src/components docs/design-system | wc -l` = 0
 - **AC5** docs: `rg -c 'サマリ3枚' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '青枠' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '3 カード束ね' docs/function-design/53-ui-home.md` = 0（baseline 1）/ `rg -c 'description' docs/function-design/52-ui-shared-layout.md` ≥ 1（baseline 0）/ `rg -c '^## D-089' docs/decision-log.md` = 1（baseline 0）
 - **AC6** test: `SummaryCards.test.tsx` ≥ 10 本（baseline 8）/ `ActionButton.test.tsx` 新規 ≥ 3 本 / `HomePage.test.tsx` 5 本 PASS / `SidebarLink.test.tsx` 17 本 PASS（無変更）/ `src/config/navigation.test.ts` 7 本 PASS（無変更）。mutant: (1) `QuickActionGrid` の `variant="primary"` を外す → AC2 の rg oracle（`variant="primary"` count = 0）で kill。test-based kill は対象外（`ActionButton.test` は ActionButton に直接 `variant` を渡す単体 test で、呼び出し忘れは検出しない。Plan Review round 1 P3）。(2) `navigation.ts` の `ui-02` の `description` を消す → AC1 = 10 で FAIL。(3) `SummaryCards` の PLU card を消す → AC3 と `SummaryCards.test` が FAIL。3 本とも実装後に kill を実測して報告する
-- **AC7** `npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS
+- **AC7** `npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（GA3: run 1 の full は `BackupRestorePage.flow.test.tsx` 4 failed / 1518 passed。S5-b 後に full を再実行し PASS を報告。`rg -c 'getByText\(/昨日の売上/\)' src/features/backup-restore/BackupRestorePage.flow.test.tsx` = 0〈baseline 4〉/ `rg -c '\^昨日の売上 \\\(' 同` = 4〈baseline 0〉）
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
 - **AC-L3-1** ホーム（Windows native）目視: (a) 11 card が icon + 題名 + 説明で 2 列に並ぶ、(b) 売上データ取込みだけ枠と背景が強調、(c) summary 4 枚と補助文言（在庫切れ = D-H4 の文言、在庫少 = 基準を下回る商品、PLU 未反映 = レジ反映待ち）、(d) 前日分未取込み alert と PLU 通知バーが従来どおり。PASS/FAIL のみ。fixture 不要（demo seed の件数表示で足りる。件数 0 でも card は出る）
 
@@ -268,3 +269,11 @@ Fill after implementation.
 - P3-2（`src/config/navigation.test.ts` 7 本が test inventory に無い）= accept → 起票時実測と AC6 の PASS 対象に追加（`toMatchObject` の部分一致で `description` 追加に非感応）
 - reviewer 確認済み: D-H1（`SidebarLink` は `description` を読まない）、D-H2（`--warning-soft` の用途欄外流用は既存 pattern）、D-H3（catalog ② パターン 1 と整合、53 §53.4 の bar 条件不変）、`HomePage.test.tsx:181` は fixture 実測で 3 件に一意、`MiscActionRow` の 2 列折返しは mockup-c と同構造、L3 Eligibility 充足
 - 判定: Plan Gate 通過可（P3 のみ、reviewer 再投入なし）
+
+### Gated Amendment 3（2026-09-16、Codex 発注書 58 run 1 の AC7 停止）
+
+- run 1（HEAD `2cc4c331`）: Writer は S1〜S6 を実装（`807cc249` runtime + test、`232c94da` docs）、AC1〜AC6 / AC8 PASS、red 8 → green 71、mutant 3/3 kill。AC7 の `local-ci.sh full` で `src/features/backup-restore/BackupRestorePage.flow.test.tsx` 4 本が失敗（`getByText(/昨日の売上/)` が summary title と新説明文「今日・昨日の売上明細と集計を確認します」の 2 要素に一致）。他 feature は Non-scope のため停止（正しい挙動）。commit は local branch に保持、push / Draft PR 未実施、worktree 除去済み。Coordinator が 2 commit を push（`232c94da` = origin tip）
+- 原因: Coordinator の隣接 test の洗い出し不足（説明文の語が他 feature の正規表現 matcher と衝突する可能性を見ていなかった）
+- 是正: Scope に S5-b（matcher を `/^昨日の売上 \(/` に限定、4 箇所）を追加、Non-scope に例外を明記、AC7 に再実行と rg oracle を追記（本 commit）。説明文・runtime・docs は不変
+- 残作業（S5-b + AC7 の full 再実行 + AC1〜AC8 の再確認 + Draft PR）は Sonnet subagent の Writer run で行う（Codex relay は 1/2 のまま温存。Writer field に併記）。Codex の実装 commit は変更しない
+- 教訓: 新しい表示文言を入れる lane では、その語を `rg` で全 test に当てて regex matcher の衝突を起票時に洗う
