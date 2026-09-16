@@ -1,6 +1,6 @@
 // src/features/home/components/SummaryCards.test.tsx
 //
-// B0 characterization test: SummaryCards（home 4 カード）の現 DOM 固定。
+// B0 characterization test: SummaryCards（home 3 カード）の現 DOM 固定。
 // loading / error+retry / data の 3 状態を assert する。
 // D-B1: 在庫切れ・在庫少の 2 カードは同一 lowStock query 共有 = 同一 onRetry を使う現状を固定。
 // 設計: docs/function-design/53-ui-home.md §53.5 / §53.6
@@ -73,24 +73,25 @@ function makeBaseSummary(
 describe("SummaryCards B0 characterization (D-B1, REQ-301/302)", () => {
   // --- loading 状態 ---
 
-  it("B0-home-L1: loading 時、4 カードのタイトルは常時表示される（タイトル skeleton 化しない）", () => {
+  it("B0-home-L1: loading 時、3 カードのタイトルは常時表示される（タイトル skeleton 化しない）", () => {
     const summary = makeBaseSummary({ isLoading: true }, { isLoading: true }, { isLoading: true });
     render(<SummaryCards summary={summary} />);
 
-    // タイトルが 4 本表示される（loading 中もタイトル常時表示 = home SummaryCard の現構造）
+    // タイトルが 3 本表示される（loading 中もタイトル常時表示 = home SummaryCard の現構造。GA4: PLU 未反映 card 撤去）
     expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
     expect(screen.getByText("在庫切れ")).toBeInTheDocument();
     expect(screen.getByText("在庫少")).toBeInTheDocument();
-    expect(screen.getByText("PLU 未反映")).toBeInTheDocument();
   });
 
   it("B0-home-L2: loading 時、CardContent には Skeleton が表示される（data コンテンツは表示されない）", () => {
     const summary = makeBaseSummary({ isLoading: true }, { isLoading: true }, { isLoading: true });
     const { container } = render(<SummaryCards summary={summary} />);
 
+    // card 数は 3（GA4: PLU 未反映 card を撤去）
+    expect(container.querySelectorAll('[data-slot="card"]')).toHaveLength(3);
     // Skeleton 要素が存在すること（Skeleton コンポーネントは data-slot="skeleton" 属性を持つ）
     const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
-    expect(skeletons).toHaveLength(5);
+    expect(skeletons).toHaveLength(4);
     // data コンテンツの代表値は表示されない
     expect(screen.queryByText(/¥/)).not.toBeInTheDocument();
     expect(screen.queryByText(/件/)).not.toBeInTheDocument();
@@ -226,32 +227,26 @@ describe("SummaryCards B0 characterization (D-B1, REQ-301/302)", () => {
   });
 });
 
-describe("UI-00 D-H3 / D-H4: summary の状態説明と独立 PLU query", () => {
-  it("SP-102-07: PLU 件数と 3 種の状態説明を 4 枚の card に表示する", () => {
+describe("UI-00 D-H7: 在庫切れ・在庫少の件数色（GA4）", () => {
+  it("在庫切れ 2 件・在庫少 1 件のとき、件数に状態色が付く", () => {
     const summary = makeBaseSummary();
-    summary.derived.pluDirtyCount = 6;
-    const { container } = render(<SummaryCards summary={summary} />);
-    expect(container.querySelectorAll('[data-slot="card"]')).toHaveLength(4);
-    const card = screen.getByText("PLU 未反映").closest<HTMLElement>('[data-slot="card"]');
-    if (!card) throw new Error("PLU summary card is required");
-    expect(within(card).getByText("6 件")).toBeInTheDocument();
-    expect(within(card).getByText("レジ反映待ち")).toBeInTheDocument();
-    expect(screen.getByText("在庫 0 の商品")).toBeInTheDocument();
-    expect(screen.getByText("基準を下回る商品")).toBeInTheDocument();
+    summary.derived.outOfStockCount = 2;
+    summary.derived.lowStockCount = 1;
+    render(<SummaryCards summary={summary} />);
+    const outOfStockCard = screen.getByText("在庫切れ").closest<HTMLElement>('[data-slot="card"]');
+    const lowStockCard = screen.getByText("在庫少").closest<HTMLElement>('[data-slot="card"]');
+    if (!outOfStockCard || !lowStockCard) throw new Error("summary card is required");
+    expect(within(outOfStockCard).getByText("2 件")).toHaveClass("text-destructive");
+    expect(within(lowStockCard).getByText("1 件")).toHaveClass("text-warning-emphasis");
   });
 
-  it("SP-102-07: PLU error は card 内から PLU query だけを再試行する", async () => {
-    const refetch = vi.fn();
-    const summary = makeBaseSummary({}, {}, { isError: true, refetch });
+  it("在庫切れ・在庫少ともに 0 件のとき、件数は無色", () => {
+    const summary = makeBaseSummary();
     render(<SummaryCards summary={summary} />);
-    const card = screen.getByText("PLU 未反映").closest<HTMLElement>('[data-slot="card"]');
-    if (!card) throw new Error("PLU summary card is required");
-    expect(within(card).getByText("取得失敗")).toBeInTheDocument();
-    await userEvent.setup().click(within(card).getByRole("button", { name: "再試行" }));
-    expect(refetch).toHaveBeenCalledTimes(1);
-    expect(summary.sales.refetch).not.toHaveBeenCalled();
-    expect(summary.lowStock.refetch).not.toHaveBeenCalled();
-    expect(screen.getByText("在庫 0 の商品")).toBeInTheDocument();
-    expect(screen.getByText("基準を下回る商品")).toBeInTheDocument();
+    const outOfStockCard = screen.getByText("在庫切れ").closest<HTMLElement>('[data-slot="card"]');
+    const lowStockCard = screen.getByText("在庫少").closest<HTMLElement>('[data-slot="card"]');
+    if (!outOfStockCard || !lowStockCard) throw new Error("summary card is required");
+    expect(within(outOfStockCard).getByText("0 件")).not.toHaveClass("text-destructive");
+    expect(within(lowStockCard).getByText("0 件")).not.toHaveClass("text-warning-emphasis");
   });
 });

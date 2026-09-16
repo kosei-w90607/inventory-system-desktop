@@ -44,6 +44,13 @@ describe("UI-00 ActionButton", () => {
     expect(link.querySelector("svg")).toHaveClass("h-6", "w-6", "text-primary");
   });
 
+  it("D-H6: card の上下余白と icon の位置揃えを持つ（GA4）", async () => {
+    renderAction({ navItemId: "ui-07" });
+    const link = await screen.findByRole("link", { name: /売上データ取込み/ });
+    expect(link).toHaveClass("py-3.5");
+    expect(link.querySelector("svg")).toHaveClass("mt-0.5");
+  });
+
   it("D-2: pending は Tooltip trigger と aria-disabled を維持してクリックを抑止する", async () => {
     const item = navigation.flatMap((area) => area.items).find((item) => item.id === "ui-07");
     if (!item) throw new Error("ui-07 navigation item is required");

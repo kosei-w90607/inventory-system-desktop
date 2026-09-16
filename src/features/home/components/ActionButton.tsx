@@ -36,11 +36,11 @@ export function ActionButton({ navItemId, variant = "default" }: ActionButtonPro
   }
 
   const Icon = item.icon;
-  const baseClass = `w-full h-auto min-h-[4.5rem] grid grid-cols-[1.5rem_1fr] gap-3 items-start text-left text-base whitespace-normal ${variant === "primary" ? "border-primary bg-warning-soft" : ""}`;
+  const baseClass = `w-full h-auto min-h-[4.5rem] py-3.5 grid grid-cols-[1.5rem_1fr] gap-3 items-start text-left text-base whitespace-normal ${variant === "primary" ? "border-primary bg-warning-soft" : ""}`;
   const content = (
     <>
       <Icon
-        className={`size-6 h-6 w-6 ${variant === "primary" ? "text-primary" : "text-muted-foreground"}`}
+        className={`mt-0.5 size-6 h-6 w-6 ${variant === "primary" ? "text-primary" : "text-muted-foreground"}`}
         aria-hidden="true"
       />
       <span className="min-w-0">

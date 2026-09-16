@@ -1,9 +1,10 @@
 // src/features/home/components/SummaryCards.tsx
 //
-// 4 サマリカード束ね（昨日売上 / 在庫切れ / 在庫少 / PLU 未反映）。
+// 3 サマリカード束ね（昨日売上 / 在庫切れ / 在庫少）。
 // 設計: docs/function-design/53-ui-home.md §53.1 / §53.5 / §53.6 (per-card Skeleton 仕様)
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import type { HomeSummaryState } from "../types";
 import { SummaryCard } from "@/components/patterns/SummaryCard";
 
@@ -18,10 +19,10 @@ export interface SummaryCardsProps {
 }
 
 export function SummaryCards({ summary }: SummaryCardsProps) {
-  const { sales, lowStock, pluDirty, derived } = summary;
+  const { sales, lowStock, derived } = summary;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <SummaryCard
         title={`昨日の売上 (${derived.yesterdayLabel})`}
         isLoading={sales.isLoading}
@@ -52,7 +53,14 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
         onRetry={() => void lowStock.refetch()}
       >
         <div className="space-y-1">
-          <div className="text-2xl font-semibold">{derived.outOfStockCount} 件</div>
+          <div
+            className={cn(
+              "text-2xl font-semibold",
+              derived.outOfStockCount > 0 ? "text-destructive" : "",
+            )}
+          >
+            {derived.outOfStockCount} 件
+          </div>
           <div className="text-sm text-muted-foreground">在庫 0 の商品</div>
         </div>
       </SummaryCard>
@@ -65,20 +73,15 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
         onRetry={() => void lowStock.refetch()}
       >
         <div className="space-y-1">
-          <div className="text-2xl font-semibold">{derived.lowStockCount} 件</div>
+          <div
+            className={cn(
+              "text-2xl font-semibold",
+              derived.lowStockCount > 0 ? "text-warning-emphasis" : "",
+            )}
+          >
+            {derived.lowStockCount} 件
+          </div>
           <div className="text-sm text-muted-foreground">基準を下回る商品</div>
-        </div>
-      </SummaryCard>
-      <SummaryCard
-        title="PLU 未反映"
-        isLoading={pluDirty.isLoading}
-        isError={pluDirty.isError}
-        loadingSkeleton={<Skeleton className="h-8 w-12" />}
-        onRetry={() => void pluDirty.refetch()}
-      >
-        <div className="space-y-1">
-          <div className="text-2xl font-semibold">{derived.pluDirtyCount} 件</div>
-          <div className="text-sm text-muted-foreground">レジ反映待ち</div>
         </div>
       </SummaryCard>
     </div>
