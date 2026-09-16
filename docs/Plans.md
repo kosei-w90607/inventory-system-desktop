@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **現行図面の同期・設計点検（R2）**: owner 2026-09-16 依頼。[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = plan-gate、独立 Plan Review 待ち。現行 ER・画面遷移・業務データフローを更新し、製品側の矛盾は根拠付き所見として切り分ける。
+- **現行図面の同期・設計点検（R2）**: owner 2026-09-16 依頼。[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = implementing、独立 Plan Review PASS。現行 ER・画面遷移・業務データフローを更新し、製品側の矛盾は根拠付き所見として切り分ける。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了

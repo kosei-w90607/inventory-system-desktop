@@ -3,14 +3,14 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: codex-only
-- Plan Commit: pending
+- Plan Commit: 6ad7576103abf9fd4d5057ca4d298c5acf21c0b7
 - Amendments: none
 - Coordinator: Astra（D-087、一貫担当。採用・裁定は owner）
 - Writer: Astra
-- Plan Reviewer: Sonnet（独立 fresh context、依頼予定）
+- Plan Reviewer: Sonnet（独立 fresh context、PASS）
 - Final Reviewer: Sonnet（独立 fresh context、依頼予定）
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -144,9 +144,19 @@ R2 docs-only。外部環境の挙動を製品契約へ昇格させないため R
 
 ## Implementation Results
 
-Plan Gate 前。図面の編集は未着手。
+独立 Plan Review を完了し、図面の編集へ進む。
 
 ## Review Response
 
 - Findings Freeze: not yet frozen。
-- Plan Review: Sonnet に依頼予定。
+- Plan Review: Sonnet fresh context、PASS（P1/P2 なし）。軽微な補足提案は下記 narrative で採用した。再レビュー不要の任意補足で、契約・Scope の変更はない。
+
+### Plan Review の補足と実装への移行
+
+2026-09-16: Sonnet の独立 Plan Review PASS を受領。`plan-gate → plan-approved → implementing` をこの順で記録する。実装前の Plan Commit を保持し、通常作業は D-087 の一貫担当で行う。
+
+| reviewer の補足 | 採用した根拠・対応 | 検証の対応先 |
+|---|---|---|
+| 個別図の具体的な転記不一致 | 55 §55.8 は任意 state の reset が未図示。56 §56.3 の返却構造、57 §57.3 の派生値名は現行 hook と異なる | AC-2/4、図と reducer / hook を直接照合 |
+| task 一覧の欠落の特定 | ui-task-specs UI-12 の旧一覧は一括価格改定・入出庫履歴・取引先管理を欠く。ARCHITECTURE の UI 一覧も UI-14/15 を欠く | AC-2、navigation / route の対応表 |
+| Scope と検証の対応 | ER・DB本文 = AC-1、画面・task・個別図 = AC-2、業務フロー = AC-3、audit = AC-4、入口・旧図注記・表示 = AC-5、独立レビュー = AC-6 | Test Plan の一時検証・doc gate・render・Final Review |
