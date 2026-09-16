@@ -31,7 +31,7 @@ Risk: R2
 | XFA-D2 / REQ-205 | カウント後に動いた在庫が戻る | 明示実行の診断 | `diagnostic_cross_feature_req205_count_then_movement` | 確定在庫が現物と一致しない（既知FAILを予想、実測は実行時） |
 | XFA-D2 / REQ-205/401 | 遅いCSVが確定後に二重減算する | 明示実行の診断 | `diagnostic_cross_feature_req205_req401_late_import` | カウントより前の販売を反映した後に現物数と違う |
 | XFA-D2 / 対照 | 変動なし・再カウント・確定前取込み | 正常対照 | `test_cross_feature_req205_controls` | 正しい順序の結果まで不一致になる |
-| XFA-D1/3 / oracle | DB内の整合だけでpassする | mutation | `test_cross_feature_req205_model_detects_consistent_corruption` | 在庫とmovementを同時に誤らせてもモデルが検出しない |
+| XFA-D1/3 / oracle・REQ-904/203 | DB内の整合や売上総計だけでpassする | mutation | `test_cross_feature_req904_req203_model_detects_consistent_corruption` | 在庫とmovementの同時誤り、manual/autoの取り違えを検出しない。棚卸し実装の保護実績へは計上しない |
 
 ## State Lifecycle Matrix
 
@@ -60,7 +60,7 @@ Risk: R2
 
 - `pos_stock_sync` true/false、CSVの販売/負数返品、register_processed true/false。
 - 数量・金額は小さい合成整数。在庫単位変換、数値上限、共有JANは対象外。
-- 操作集合・生成深さは有限。探索件数・所要時間は未実測で、実行結果へ記録する。
+- 操作集合・生成深さは有限。測定コマンドは結果文書に、実測した探索件数・所要時間・テスト件数はEvidence Ownershipに従いPR本文/CI出力へ記録する。
 
 ## Compatibility Checks
 

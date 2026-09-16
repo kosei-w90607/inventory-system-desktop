@@ -41,6 +41,7 @@
 - 棚卸し確定後にカウントより前の販売データを取り込む場合も、同じ現物減少を二重に計上しないことを検査する。取込み日と発生日の一般的な解決方法は未採用であり、このモデルは具体的な順序の反例を提示するだけとする。
 - 再カウント、カウント後に変動がない場合、遅れたCSVを確定前に取り込んだ場合も対照として検証する。
 - `start_stocktake` は全商品の明細を作るため、診断対象の商品をカウントし、対象外の未カウント商品は `force_fill=true` で現在庫を充当する。合成の対象外商品は非負在庫とし、負在庫の0補正を診断に混ぜない。確定処理が成功した後の在庫と現物モデルの不一致だけを時点問題と判定し、ValidationFailedやfixture不備を既知問題の再現に数えない。
+- 時点診断・正常対照の判定は診断対象SKUの在庫数だけを比較する。対象外SKUのforce_fill充当結果、売上、台帳はこの時点判定の検査対象外。別の通常業務モデルで行う全商品・source別売上・台帳比較と区別する。
 
 既存の [棚卸し設計](../function-design/35-biz-stocktake-service.md) と [STK-1](../research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す) は、保存済みactual_countへ在庫を合わせる実装と業務期待の食い違いを示す。本書は特定の修正方式の採用を意味しない。
 
@@ -132,7 +133,9 @@ cargo test --offline --lib cross_feature_tests -- --nocapture
 cargo test --offline --lib cross_feature_tests -- --ignored --nocapture
 ```
 
-テスト本体は [cross_feature_tests.rs](../../src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs)。通常の操作集合は `OPERATIONS` を正本とし、全ての順序付きペアの後に入庫再送・内容不一致拒否・同日追加・active hash再取込み拒否・対象importの取消/再取消・取消後再取込み・DB再接続を続ける。各操作後に独立モデルと比較する。数量/金額/商品数を任意に生成する無限探索ではない。
+テスト本体は [cross_feature_tests.rs](../../src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs)。通常の操作集合は `OPERATIONS` を正本とする。各順序付きペアの後に入庫とDB再接続を固定で追加し、その入庫の再送・内容不一致拒否、同日売上/返品の追加、active hash再取込み拒否、対象importの取消/再取消、取消後再取込み、再取込み後の同hash拒否・旧IDの再取消、最後のDB再接続を続ける。各操作後に独立モデルと比較する。数量/金額/商品数を任意に生成する無限探索ではない。
+
+探索件数・所要時間は上記コマンドの `XFA_NORMAL traces=...` とRust testの `finished in ...` で測定する。測定値と出力は [PR #69のValidation](https://github.com/kosei-w90607/inventory-system-desktop/pull/69) に公開時に反映し、テスト件数の正本を文書へ複製しない。所要時間はその環境での実測であり、性能保証ではない。
 
 | 検証 | 結果 | 根拠 |
 |---|---|---|
@@ -173,7 +176,7 @@ prefix=[Start, PosSale, Count, Complete, ImportPending]
 expected physical=8, actual stock=6, internal mismatches=0
 ```
 
-棚卸し確定は8へ合わせる補正を記録し、その後のCSVは通常の販売減算を記録する。現物では一度だけ起きた販売が、記録上二度在庫を減らす。[棚卸しBIZ](../../src-tauri/src/biz/stocktake_service.rs) と [CSV commit](../../src-tauri/src/biz/csv_import_service/commit.rs) を横断すると成立する、時点整合問題の追加の再現経路である。解消するには、カウントの基準時点と、取込み済み/未取込みイベントの境界を業務として定義する必要がある。今回その方式は採用していない。
+棚卸し確定は8へ合わせる補正を記録し、その後のCSVは通常の販売減算を記録する。現物では一度だけ起きた販売が、記録上二度在庫を減らす。[棚卸しBIZ](../../src-tauri/src/biz/stocktake_service.rs) と [CSV commit](../../src-tauri/src/biz/csv_import_service/commit.rs) を横断すると成立する。監査では [STK-2](../research/2026-09-16-diagram-audit.md#stk-2-棚卸し確定後に届く過去販売を二重に減算する) としてSTK-1と別に追跡する。確定直前の再カウントだけではSTK-2を解消しないため、それぞれに是正の合格条件を持つ。解消するには、カウントの基準時点と、取込み済み/未取込みイベントの境界を業務として定義する必要がある。今回その方式は採用していない。
 
 ### 検査モデルの対照と残る範囲
 

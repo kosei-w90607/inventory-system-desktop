@@ -168,7 +168,7 @@ A-1ではtest-onlyのモデルと操作列を追加した。通常suiteと正常
 
 ## Review Response
 
-- Findings Freeze: not yet frozen。
+- Findings Freeze: frozen after A-1 initial Broad Audit（Sonnet / Opus）。以後は既存指摘の是正確認。
 - Plan Review: Sonnet fresh context、PASS（P1/P2 なし）。軽微な補足提案は下記 narrative で採用した。再レビュー不要の任意補足で、契約・Scope の変更はない。
 
 ### Plan Review の補足と実装への移行
@@ -194,3 +194,5 @@ Opusの初回Plan Reviewは実行時間上限で終了し、判定未受領。�
 Opusの再実行でCHANGES_REQUESTEDを受領（P1なし、是正後は追加の全面レビュー不要との条件付き判断）。P2の売上source別oracle、棚卸し確定のfixture前提、診断のcoverage扱いをすべて採用し、XFA-D1/D2/D4とMatrixへ反映した。P3の既存tests/配置とCachedPreview helper共用も採用した。Sonnetのfresh contextでこの是正に限ったPlan Gateの確認を行う。最終レビューのSonnet + Opus要件は維持する。
 
 A-1 Plan Gate: Sonnetの独立した限定是正確認で全指摘の解消と実装開始可のPASSを受領。`plan-gate → plan-approved → implementing` を順に記録し、原Plan Commitを保持したままA-1と是正commitをAmendmentsへ追記する。追加Rust実装はこの記録より後に開始する。
+
+A-1 Final Review: SonnetはPASS、Opusは索引とREQ帰属のP2および説明補足のP3を提示した。全て採用し、STK-2の独立追跡、mutationテストのREQ-904/203への改名とcanonical再生成、測定コマンドとPR/CI証拠への参照、固定tail・時点比較範囲の明記、システム管理ラベル同期を行う。検査条件・製品契約は変更しない。数値の正本はEvidence Ownershipに従ってPR本文/CIとし、最終の限定是正確認へ進む。

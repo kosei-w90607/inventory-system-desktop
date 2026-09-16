@@ -520,8 +520,8 @@ fn test_cross_feature_req205_controls() {
 }
 
 #[test]
-fn test_cross_feature_req205_model_detects_consistent_corruption() {
-    // REQ-205 / REQ-904 / REQ-203: XFA-D1,D3。台帳も同時に誤らせる実mutation。
+fn test_cross_feature_req904_req203_model_detects_consistent_corruption() {
+    // REQ-904 / REQ-203: XFA-D1,D3。棚卸し処理ではなく検査モデルの健全性を確認する。
     let world = World::new();
     world.check();
     world
