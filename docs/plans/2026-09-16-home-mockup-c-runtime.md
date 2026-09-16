@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: d5ef2635a77054c2002e95585074a34cdd876f75
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Codex
@@ -23,6 +23,7 @@ manual = owner Windows native L3 1 画面（ホーム: 11 の入口 card が ico
 
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（本 commit）: Risk R2。Design Readiness は SCREEN_DESIGN §ホーム画面「利用者配慮」（全ボタンにタイトル＋説明文 / 売上データ取込みの強調）と 53 §53.1 / §53.5、mockup-c-home.html を十分と引用し、本 lane で SCREEN_DESIGN / 53 / 52 §52.3 / decision-log を実装と同 PR で同期する（S6）。Test Design Matrix は R2 で AC が rg oracle + 既存 test の更新 + 小 test 1 file で閉じるため付けない。
+- plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P1/P2 = 0、P3 2）→ in-place 是正 `d5ef2635`（AC6 の mutant (1) kill 経路、`navigation.test.ts` の inventory 追加）。P3 のみのため reviewer 再投入なし（Subagent Budget）。Plan Commit = `d5ef2635`（plan-first `f4b19e21` → 是正を含む確定版）。実装は Codex 発注書 58 で本 commit を HEAD_SHA として開始する。
 
 ## Owner Effort Budget
 
