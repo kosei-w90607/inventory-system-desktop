@@ -29,7 +29,7 @@ manual = owner Windows native L3 1 往復（在庫照会で検索 → 商品行�
 
 - 介入回数上限: 3
 - 実働時間上限: 15分
-- relay 往復上限: 2（GA2 で 1 消費、Coordinator 起因）
+- relay 往復上限: 3（既定 2 から改訂。GA2 / GA3 で 2 消費、いずれも Coordinator 起因の起票誤りで Writer の実装は正しく完了・停止。3 往復目 = 発注書 60 改訂 3 の再生成 + Draft PR run。owner 承認 = 起動）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -99,7 +99,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **S4 tests**: `StockDetailContent.test.tsx:33-48` を `initialPath` 付き（例 `/stock?q=BT&selected=BT0002`）で render し、href = `/stock/BT0002/movements?returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002` を固定（Matrix T1）/ `StockMovementsPage.test.tsx` に「在庫照会へ戻る」の href を `it.each`（T2' 有効 `returnTo` / T2 欠落 / T3 外部 URL / T4 `//`）で固定、`detailReturnTo` に `returnTo` が入れ子で載る case（T5）、filter 変更後も `returnTo` が残る case（T6、`onSearchChange` の updater 結果で確認）
 - **S5 `docs/function-design/66-ui-stock-movements.md`**: §66.1 主動線 4 を「『在庫照会へ戻る』で `returnTo`（在庫照会からの遷移元 URL）へ戻る。欠落・不正時は `/stock?q=$code&selected=$code`」へ / §66.2 決定表に UI-06c-D9 行（決定 = D-D2 + D-D3、理由 / 棄却案 = 上記）/ §66.3 型と fallback 規則に `returnTo?: string`（`max(500)`、不正値は `undefined`）/ §66.4 Route search に `returnTo` / §66.5 Header actions の遷移先を書き換え / §66.7 Tests に「REQ-303 / UI-06c-D9: `returnTo` の正規化と fallback、`detailReturnTo` への入れ子」bullet
 - **S6 `docs/function-design/58-ui-stock-inquiry.md`**: `:538` の bullet を「『在庫変動履歴』は … へ遷移し、現在の `/stock` URL（search state 込み）を `returnTo` として送る（UI-06a-D7）」へ / §58.10 に `#### UI-06a-D7: 在庫変動履歴への `returnTo` 送信（2026-09-16、NAV-1）` block（決定 / Why / Rejected = D-D1）/ `:671` 変更履歴に 1 行
-- **S7（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録、Test Design Matrix
+- **S7 `docs/function-design/90-traceability.md`（GA3）**: `cargo run --bin generate_traceability` の再生成差分（手動編集なし、commit 3 として単独）
+- **S8（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録、Test Design Matrix
 
 ## Non-scope
 
@@ -118,7 +119,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 - **AC4** `rg -c '/stock\?selected=\$code' docs/function-design/66-ui-stock-movements.md` = 0（baseline 2 = §66.1 主動線 4 + §66.5 Header。**GA2 で旧 URL に限定**: 旧 regex `selected=\$code` は S5 の新 fallback `/stock?q=$code&selected=$code` にも一致し、S5 と両立しなかった）/ `rg -c 'UI-06c-D9' docs/function-design/66-ui-stock-movements.md` ≥ 3（baseline 0: 決定表 + §66.5 + §66.7）/ `rg -c 'returnTo' docs/function-design/66-ui-stock-movements.md` ≥ 4（baseline 0）/ `rg -c 'UI-06a-D7' docs/function-design/58-ui-stock-inquiry.md` ≥ 3（baseline 0: `:538` bullet + §58.10 見出し + 変更履歴）
 - **AC5**（負の oracle）`git diff --name-only origin/main..HEAD -- src/routes src/lib src/features/stock-inquiry/hooks src/features/stock-inquiry/StockInquiryPage.tsx src/features/inventory-records src-tauri docs/design-system docs/function-design/65-inventory-record-traceability.md docs/decision-log.md | wc -l` = 0
 - **AC6** mutant: (1) S3 の `search={{ returnTo }}` を外す → T1 FAIL（`?returnTo=` 不在）。(2) S2 の `normalizeReturnTo(...)` を `search.returnTo ?? fallback` に置換 → T3 / T4（外部 URL・`//`）FAIL。(3) S2 の fallback から `q=` を外す → T2（欠落 case）FAIL。(4) S2 の `returnToParams.set("returnTo", ...)` を外す → T5 FAIL。4 本とも実装後に kill を実測して報告する
-- **AC7** 対象 test 3 file（`StockMovementsPage` / `StockDetailContent` / `useStockInquiry`）全 PASS（本数は PR body / CI 出力を正とする）、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS。既存 `StockDetailContent.test.tsx:33-48` は S3 で href が変わるため必ず FAIL する。修正前後の red / green を報告する
+- **AC7** 対象 test 3 file（`StockMovementsPage` / `StockDetailContent` / `useStockInquiry`）全 PASS（本数は PR body / CI 出力を正とする）、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（traceability 検査は S7 の再生成後に通る、GA3）。既存 `StockDetailContent.test.tsx:33-48` は S3 で href が変わるため必ず FAIL する。修正前後の red / green を報告する
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
 - **AC-L3-1** Windows native: 在庫照会で任意の keyword を検索 → 商品行を展開 → 「在庫変動履歴」→ 「在庫照会へ戻る」→ 同じ keyword と展開行が戻る。続けて address bar に `/stock/<同じ商品コード>/movements` を直打ち → 「在庫照会へ戻る」→ その商品コードで検索され展開された在庫照会。PASS/FAIL のみ
 
@@ -144,7 +145,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 
 ## Registration / Generation Obligations
 
-該当なし（command / route / doc 新設なし、REQ 追加なし、bindings 非接触、`generate:routes` 不要〈route file 非接触、search schema は `types.ts` の import〉）。
+command / route / doc 新設なし、bindings 非接触、`generate:routes` 不要（route file 非接触、search schema は `types.ts` の import）。**該当あり（GA3）**: S4 で REQ 番号付き test（REQ-301 / REQ-303 / REQ-207）を追加・反転するため `docs/function-design/90-traceability.md`（AUTO-GENERATED）の coverage 行が変わる → 実装 run で `cargo run --bin generate_traceability` を実行し再生成差分を commit する（生成 file の再生成は本 wave では ㉖ だけ。㉗ は docs-only）。
 
 ## Design Intent Trace
 
@@ -301,3 +302,11 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - 是正: AC4 の regex を `/stock\?selected=\$code`（旧 URL 限定）へ。baseline は同じ 2。Scope / 設計判断 / 他の AC / Matrix は不変
 - Owner Effort Budget: relay 1/2 を消費（Coordinator 起因）。発注書 60 改訂 2 は本 GA の登録 commit を HEAD_SHA にする
 - 教訓: 削除 oracle は「消す文字列そのもの」ではなく「新しい記述に一致しない形」で書く。起票時に新記述の例文へ同じ regex を当てて 0 件になることを確認する
+
+### Gated Amendment 3（2026-09-16、Codex 発注書 60 run 2 の AC7 停止）
+
+- run 2（HEAD `078fbb00`）: Writer は S1〜S6 を実装（`3495e85e` 実装 + test、`081b1303` docs）、AC1〜AC6 / AC8 PASS、red → green、mutant 4/4 kill まで完了し、`local-ci.sh full` の traceability 検査（`90-traceability.md` の再生成差分）で停止。packet が「生成義務なし」で 90 を Scope 外にしていたため正本不一致として変更せず停止（正しい挙動）。2 commit は branch に保持、push / PR 未実施、worktree 除去済み、証跡 `.local/codex-orders/evidence-60-run2-081b1303/`
+- 原因: Coordinator の起票誤り。REQ 番号付き test の追加・反転は `90-traceability.md`（AUTO-GENERATED）の coverage 行を変える（feedback memory「REQ 追加時は 90 再生成を scope に」の同型。新規 REQ でなくても test の増減で変わる）
+- 是正: Registration / Generation Obligations を「該当あり」に、S7（90 の再生成 commit）を追加、AC7 に注記。Scope S1〜S6 / 設計判断 / AC oracle / Matrix は不変
+- Owner Effort Budget: relay 2/3（上限 2 → 3、Coordinator 起因）。発注書 60 改訂 3 は本 GA の登録 commit を HEAD_SHA にし、残作業 = 再生成 commit + full + Draft PR
+- 教訓: 起票時に「追加・反転する test に REQ 番号があるか」を確認し、あれば 90 の再生成を Scope と生成義務に置く
