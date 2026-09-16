@@ -11,7 +11,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: bbec3bf518d834cbd03e594cfae05faf75cb5a45
-- Amendments: b0f9fb50cfa45e62fd07412c181c2a6fee8f1f65, df865a4ebfeea8ad32f174c30ae9d6e03c0a9a37, f87702bcc7064a47e5fb944bfa62c2e90fb6e082, 1d1b6748dc0aad6ea2dd2ce411dcb90d297db97f
+- Amendments: b0f9fb50cfa45e62fd07412c181c2a6fee8f1f65, df865a4ebfeea8ad32f174c30ae9d6e03c0a9a37, f87702bcc7064a47e5fb944bfa62c2e90fb6e082, 1d1b6748dc0aad6ea2dd2ce411dcb90d297db97f, 7479a7ef6fc55bdd9b2e731ceb1d750ceccb8e7f
 - Coordinator: Fable 5.1
 - Writer: Codex（発注書 60 run 1〜3。実装 `3495e85e` / docs `081b1303` は Codex）+ Sonnet subagent（GA4: relay 3/3 到達後の残作業 = 90-traceability 再生成 / full / Draft PR のみ。worktree 分離、Plan Reviewer とは別 fresh context）
 - Plan Reviewer: Sonnet（独立 fresh context）
