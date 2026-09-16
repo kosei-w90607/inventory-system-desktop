@@ -29,12 +29,12 @@ UI 層関数設計書の 2 段階テンプレ（業務ロジック有無で使�
 | `src/routes/index.tsx` | 既存 search_products demo を撤去、`<HomePage />` mount のみに痩せる |
 | `src/features/home/HomePage.tsx` | 最上位レイアウト。ヘッダ（タイトル + 今日の日付）+ PLU 通知バー + サマリ + 大ボタン群 |
 | `src/features/home/components/PluNotificationBar.tsx` | 黄色バー。`pluDirtyCount >= 1` で表示、UI-08 へ遷移ボタン（pending: aria-disabled + cursor-not-allowed + onClick preventDefault、D-2） |
-| `src/features/home/components/SummaryCards.tsx` | 3 カード束ね（昨日売上 / 在庫切れ / 在庫少） |
+| `src/features/home/components/SummaryCards.tsx` | 4 カード束ね（昨日売上 / 在庫切れ / 在庫少 / PLU 未反映） |
 | `src/components/patterns/SummaryCard.tsx` | 単一カード。loading / error / data 3 状態（PR-B で `features/home/components/` から patterns/ へ移動、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)） |
 | `src/features/home/components/QuickActionGrid.tsx` | 「毎日の作業」2×2: CSV取込み / 売上レポート（日次）/ 在庫照会 / 商品管理（Q-1 採用、モックアップ準拠） |
 | `src/features/home/components/InventoryActionGrid.tsx` | 「入庫・出庫」2×2: 入庫記録 / 返品・交換 / 手動販売出庫 / 廃棄・破損 |
-| `src/features/home/components/MiscActionRow.tsx` | 「その他」3 ボタン: 棚卸し / バックアップ / 設定 |
-| `src/features/home/components/ActionButton.tsx` | 大/中/小共通。引数: `navItemId: NavItem["id"]` のみ。内部で `navigation.ts` を参照して `status / to / label` を取得。pending 時 Tooltip + `aria-disabled` + `onClick preventDefault` + `cursor-not-allowed`（D-2 採用、HTML disabled は pointer-events ブロックで Tooltip hover が起動しないため不採用、prop drilling 回避で navigation が SSOT） |
+| `src/features/home/components/MiscActionRow.tsx` | 「その他」3 card（2 列折返し）: 棚卸し / バックアップ / 設定 |
+| `src/features/home/components/ActionButton.tsx` | 引数: `navItemId: NavItem["id"]` と `variant?: "default" \| "primary"`。内部で `navigation.ts` を参照して `status / to / label / icon / description` を取得し、icon + 題名 + 1 行説明の card を描画。pending 時 Tooltip + `aria-disabled` + `onClick preventDefault` + `cursor-not-allowed`（D-2 採用、HTML disabled は pointer-events ブロックで Tooltip hover が起動しないため不採用、prop drilling 回避で navigation が SSOT） |
 | `src/features/home/hooks/useHomeSummary.ts` | 4 useQuery 束ね、`{ sales, lowStock, pluDirty, csvImports }` を返す（D-3） |
 | `src/features/home/hooks/useYesterdayDate.ts` | JST 昨日の `YYYY-MM-DD` + Visibility API listener（24:00 またぎで再計算 → setState → queryKey 変化で再 fetch、D-9 / P2-A 反映） |
 | `src/features/home/lib/count-stock-status.ts` | `ProductWithRelations[]` → `{ outOfStock, lowStock }` 純関数（D-1） |
@@ -205,7 +205,7 @@ D-3「独立 useQuery × 4」の直接の含意。1 クエリの失敗が他 3 �
 |---|---|
 | sales クエリ失敗 | 「昨日売上カード: 取得失敗 / 再試行」のみ。他 3 カード + 大ボタン群 + PLU バーは正常 |
 | lowStock クエリ失敗 | 在庫切れカード + 在庫少カード両方が「取得失敗」（同一 query 由来）。他は正常 |
-| pluDirty クエリ失敗 | PLU バー非表示（誤検知より沈黙を選ぶ）+ Sonner トースト「PLU 通知の取得に失敗しました」 |
+| pluDirty クエリ失敗 | PLU バー非表示（誤検知より沈黙を選ぶ）+ Sonner トースト「PLU 通知の取得に失敗しました」（既存）に加え、PLU 未反映カードが「取得失敗 / 再試行」 |
 | csvImports クエリ失敗 | 前日未取込み警告 UI 非表示（誤検知より沈黙を選ぶ）+ Sonner トースト「取込み履歴の取得に失敗しました」 |
 
 **retry 戦略**:
@@ -236,6 +236,7 @@ D-3「独立 useQuery × 4」の直接の含意。1 クエリの失敗が他 3 �
 | 昨日売上カード | `<Skeleton className="h-8 w-32" />`（金額）+ `<Skeleton className="h-4 w-16" />`（点数） |
 | 在庫切れカード | `<Skeleton className="h-8 w-12" />` |
 | 在庫少カード | `<Skeleton className="h-8 w-12" />` |
+| PLU 未反映カード | `<Skeleton className="h-8 w-12" />` |
 | PLU 通知バー | **非表示**（`isLoading` 中はバー判定不可） |
 | 前日未取込み警告 | **非表示**（`isLoading` 中は判定不可） |
 
@@ -311,3 +312,4 @@ UI-00 の回帰 test は、表示 component 用の手組み `UseQueryResult` fix
 | 2026-05-09 | 8-1 UI-00（commit 4-5 plan レビュー反映） | レビュー指摘 11 件反映: §53.2 派生値表に「計算箇所」列追加 + `count-stock-status.ts` 純関数仕様明記（P2-B）/ §53.3 sales クエリ `enabled` を `yesterday !== null` から `true` に変更 + 根拠注釈追記（P2-C）/ §53.3 `useYesterdayDate` 再評価メカニズムを Visibility API listener 版に明確化（P2-A）/ §53.9 非目的に Vitest unit test 行追加（P3-F）|
 | 2026-05-09 | 8-1 UI-00（commit 4-5 実装完了） | `41929f5` features/home 11 ファイル新規 (types / lib/count-stock-status / hooks 2 / components 7) + commit 5 (本 commit) HomePage + `src/routes/index.tsx` 差替 (search_products demo 93 行 → `<HomePage />` mount 5 行)。LSP/Skills Policy hook 全 13 ファイル URI diagnostics 空 + npm run typecheck / lint (初回 6 errors → 修正後 0) / format (prettier --write 統一) 全 pass。詳細は Plans.md L23 trace |
 | 2026-07-29 | 監査是正 順10 / P8b-2 | §53.10 `UI-00-D11` を追加し、実hook / QueryClientを通る4 query・派生値・部分障害、visibility日付またぎ、HomePage warning / toastのtest ownerとmock境界を確定。Vitest未着手の旧非目的を削除 |
+| 2026-09-16 | ㉔ mockup-c 採用 | 入口 card を icon + 題名 + 1 行説明（`NavItem.description`）にし、売上データ取込みを primary 強調。summary に PLU 未反映 card を追加（4 枚）。補助文言は状態の説明（D-089） |

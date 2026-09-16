@@ -114,6 +114,7 @@ export type NavItem = {
   to: string | null;     // Phase 1 は `/` のみ実 path、他 18 項目は null
   search?: Record<string, string>; // 同一 to を複数 nav 項目が共有する場合の deep-link search params（UI-12-D1、2026-07-16 追加。例: 在庫少一覧の { status: "low_stock" }）
   activeMatch?: { searchKey: string; is?: string; isNot?: string }; // 排他 active 判定用 predicate（UI-12-D1、2026-07-16 追加）。is=現在値との等値、isNot=非等値（現在値 undefined も isNot 成立）。持たない項目は既存 <Link activeOptions> 経路を無変更維持
+  description?: string; // ホーム入口 card の 1 行説明（UI-00、2026-09-16 追加）。sidebar は読まない
   icon: LucideIcon;
   status: NavStatus;
 };
@@ -258,3 +259,4 @@ UI-12 内で唯一「処理 + エラーハンドリング + 書式規約」を�
 | 2026-06-07 | display-scale follow-up | Sidebar footer に表示サイズ Select を追加。`localStorage` token + Tauri WebView zoom (`core:webview:allow-set-webview-zoom`) で全画面表示を 3 段階にする。拡大後も control に戻れるよう Sidebar navigation を `min-h-0` ScrollArea 化。DB/settings 画面統合は Phase 4 UI-11 系へ defer |
 | 2026-06-08 | selection-tone follow-up | SidebarLink active tone を amber 系から shared stone selection tone へ統一。amber は在庫少などの業務セマンティック色に残し、navigation selection とは分離 |
 | 2026-07-16 | sidebar pending links follow-up | サイドバー最後の pending 2 項目を解消。「商品登録」（UI-01b）を既存 `/products/new` route へ active化。「在庫少一覧」（UI-06b）の独立画面 `/stock/low` 予約を廃止し、UI-06a `/stock` の `status=low_stock` フィルタへの deep-link に統合（D-047）。`NavItem` に optional `search` field を追加し、`/stock` を指す 2 nav 項目の排他 active 判定を新設（UI-12-D1） |
+| 2026-09-16 | ㉔ mockup-c 採用 | `NavItem.description` をホーム入口 card の 1 行説明として追加。sidebar は参照せず、既存の navigation 契約を維持 |
