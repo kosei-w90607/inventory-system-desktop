@@ -9,7 +9,7 @@
 ## 次の行動
 
 - **㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する（NAV-1、R3、plan-gate）**: `plans/2026-09-16-stock-movements-return-selected.md` / `plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。branch `agent/stock-movements-return-selected`、Plan Commit pending。監査 NAV-1（P2）起源。wave 12 lane 1、㉗ と file 互いに素。
-- **㉗ 棚卸しの基準時点を「各商品の最終カウント時点」にする（STK-1 / STK-2、design-first、R2、design）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。監査 STK-1（P1）/ STK-2 / DOC-2 起源。owner の設計判断 3 問（方式 / 同日販売の扱い / STK-2 境界の実装時期）を design → plan-draft の遷移条件として packet に置く。owner 回答 2026-09-16: 方式 = snapshot（candidate）/ STK-2 境界 = 含める（candidate）/ 同日販売 = 店の聞き取り待ち（開店前・営業中・閉店後、その場で保存するか）。Opus 設計レビュー round 0（P1 1 / P2 8）を反映済み。runtime は後続 ㉘（R3）。wave 12 lane 2、㉖ と file 互いに素。
+- **㉗ 棚卸しの基準時点を「各商品の最終カウント時点」にする（STK-1 / STK-2、design-first、R2、plan-gate）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。監査 STK-1（P1）/ STK-2 / DOC-2 起源。owner の設計判断 3 問（方式 / 同日販売の扱い / STK-2 境界の実装時期）を design → plan-draft の遷移条件として packet に置く。owner 回答 2026-09-16: 方式 = snapshot（candidate）/ STK-2 境界 = 含める（candidate）/ 同日販売 = 店の回答「時間帯関係なし、売れたらその場で訂正」で「カウント前扱い（`<=` スキップ）」に確定。Opus 設計レビュー round 0（P1 1 / P2 8）を反映済み。Plan Review（Sonnet + Opus）待ち。runtime は後続 ㉘（R3）。wave 12 lane 2、㉖ と file 互いに素。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
@@ -39,9 +39,9 @@
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
   - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）
   - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示 = **完了**（PR #67 squash `ebbbef14`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-price-revision-assign-default-off.md)）
-- **wave 12（非干渉並走 2 lane、owner 2026-09-16「次何やるかふたつとって早速始めよう」、lane 選定は Coordinator）: 進行中（lane 1 plan-gate / lane 2 design）** — file footprint 互いに素（lane 1 = `src/features/stock-movements/**` + `src/features/stock-inquiry/components/StockDetailContent*` + 58 / 66、lane 2 = docs-only: 35 / 32 / 42 / 20 / 73 / `db-design/tracking-system-tables.md` / `architecture/biz-task-specs.md` / decision-log / `diagrams/cross-feature-verification.md`）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
+- **wave 12（非干渉並走 2 lane、owner 2026-09-16「次何やるかふたつとって早速始めよう」、lane 選定は Coordinator）: 進行中（lane 1 implementing / lane 2 plan-gate）** — file footprint 互いに素（lane 1 = `src/features/stock-movements/**` + `src/features/stock-inquiry/components/StockDetailContent*` + 58 / 66、lane 2 = docs-only: 35 / 32 / 42 / 20 / 73 / `db-design/tracking-system-tables.md` / `architecture/biz-task-specs.md` / decision-log / `diagrams/cross-feature-verification.md`）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
   - lane 1: ㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する（R3、`agent/stock-movements-return-selected`、`plans/2026-09-16-stock-movements-return-selected.md`、Draft PR 未作成、Phase plan-gate、介入 0/3）
-  - lane 2: ㉗ 棚卸しの基準時点を「各商品の最終カウント時点」にする（R2 design-first、`agent/stocktake-count-baseline-design`、[Packet](plans/2026-09-16-stocktake-count-baseline.md)、Draft PR 未作成、Phase design〈owner の設計判断待ち〉、介入 0/3）
+  - lane 2: ㉗ 棚卸しの基準時点を「各商品の最終カウント時点」にする（R2 design-first、`agent/stocktake-count-baseline-design`、[Packet](plans/2026-09-16-stocktake-count-baseline.md)、Draft PR 未作成、Phase plan-gate、介入 1/3〈設計判断 3 問 + Q2 の店回答〉）
 - **wave 11（非干渉並走 2 lane、owner 2026-09-16「ホーム画面 + 廃棄の詳細 link」）: 完了（lane 1〜2、2026-09-16）** — file footprint 互いに素（lane 1 = `src/features/home/**` + `src/config/navigation.ts` + SCREEN_DESIGN / 53 / 52 / decision-log、lane 2 = `src/features/disposal/**` + 64）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
   - lane 1: ㉔ ホーム画面を mockup-c 案へ寄せる = **完了**（PR #70 squash `41c2e3e2`、介入 2/3、relay 1/2、[archive](archive/plans/2026-09-16-home-mockup-c-runtime.md)）
   - lane 2: ㉕ 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` = **完了**（PR #71 squash `949a5c4c`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-disposal-result-detail-link.md)）
@@ -56,7 +56,7 @@ L8-4は owner 決定済み（下記参照）。L8-2/L8-5は旧⑩laneからの�
 
 - L8-4 明細数列は owner 決定 2026-09-15 で (a) 撤去。runtime 反映は Backlog の表示小修正 batch 2 に同乗。
 - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数列 撤去決定）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
-- STK-1 / STK-2（[監査](research/2026-09-16-diagram-audit.md) 由来、棚卸し確定が入出庫を打ち消す設計問題と二重減算）は是正方式が owner 判断待ち。2026-09-16 に ㉗（wave 12 lane 2、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)）として起票。owner 回答 2026-09-16 で方式（snapshot）と STK-2 境界（含める）は candidate 採用、残るのは同日販売の扱い = 店の聞き取り（開店前に数えてその場で保存する運用か）。設問と回答は packet の「owner への設問と回答」節
+- STK-1 / STK-2（[監査](research/2026-09-16-diagram-audit.md) 由来、棚卸し確定が入出庫を打ち消す設計問題と二重減算）は是正方式が owner 判断待ち。2026-09-16 に ㉗（wave 12 lane 2、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)）として起票。owner 回答 2026-09-16 で方式（snapshot）と STK-2 境界（含める）は candidate 採用、同日販売は店の回答「時間帯関係なし、売れたらその場で訂正」でカウント前扱い（`<=`）に確定。設問と回答は packet の「owner への設問と回答」節
 
 元の文脈は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md)。関連する製品作業でownerの判断を得る。
 
