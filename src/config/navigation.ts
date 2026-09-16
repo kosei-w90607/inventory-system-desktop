@@ -40,6 +40,7 @@ export interface NavItem {
   to: string | null;
   search?: Record<string, string>;
   activeMatch?: { searchKey: string; is?: string; isNot?: string };
+  description?: string; // ホーム入口 card の 1 行説明（UI-00）。sidebar は読まない
   icon: LucideIcon;
   status: NavStatus;
 }
@@ -68,6 +69,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-07",
+        description: "レジの日報CSVを読み込み、当日の売上を記録します",
         label: "売上データ取込み",
         title: "売上データ取込み",
         to: "/csv-import",
@@ -76,6 +78,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-09a",
+        description: "今日・昨日の売上明細と集計を確認します",
         label: "日次売上",
         title: "日次売上",
         to: "/reports/daily",
@@ -84,6 +87,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-06a",
+        description: "商品の在庫数・在庫切れ / 在庫少を調べます",
         label: "在庫照会",
         title: "在庫照会",
         to: "/stock",
@@ -108,6 +112,7 @@ export const navigation: readonly NavArea[] = [
     items: [
       {
         id: "ui-01a",
+        description: "登録済み商品を探す・売価や在庫を確認します",
         label: "商品検索・一覧",
         title: "商品検索・一覧",
         to: "/products",
@@ -155,6 +160,7 @@ export const navigation: readonly NavArea[] = [
     items: [
       {
         id: "ui-02",
+        description: "仕入れた商品が届いたときに記録します",
         label: "入庫記録",
         title: "入庫記録",
         to: "/inventory/receiving",
@@ -163,6 +169,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-03",
+        description: "お客様からの返品・交換を記録します",
         label: "返品・交換",
         title: "返品・交換",
         to: "/inventory/return",
@@ -171,6 +178,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-04",
+        description: "レジを通さず売った商品の在庫を減らします",
         label: "手動販売出庫",
         title: "手動販売出庫",
         to: "/inventory/manual-sale",
@@ -179,6 +187,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-05",
+        description: "傷んだ・破損した商品を在庫から除きます",
         label: "廃棄・破損",
         title: "廃棄・破損",
         to: "/inventory/disposal",
@@ -205,6 +214,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-10",
+        description: "実在庫を数えてシステム在庫と突き合わせます",
         label: "棚卸し",
         title: "棚卸し",
         to: "/stocktake",
@@ -220,6 +230,7 @@ export const navigation: readonly NavArea[] = [
     items: [
       {
         id: "ui-11b",
+        description: "データの控えを取る・控えから戻します",
         label: "バックアップ・復元",
         title: "バックアップ・復元",
         to: "/settings/backup",
@@ -236,6 +247,7 @@ export const navigation: readonly NavArea[] = [
       },
       {
         id: "ui-11a",
+        description: "「在庫少」と判定する数量の基準を設定します",
         label: "在庫少の基準",
         title: "在庫少の基準",
         to: "/settings/thresholds",

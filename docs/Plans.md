@@ -13,6 +13,10 @@
 
 ## 直近の完了
 
+- **ホーム画面を mockup-c 案へ寄せる**: [PR #70](https://github.com/kosei-w90607/inventory-system-desktop/pull/70) を merge（2026-09-16）。owner 決定 2026-09-11（mockup-c 採用、補助文言は状態の説明、前日分未取込み alert は不変）起源。入口 card に icon + 題名 + 1 行説明（`NavItem.description`）/ 「売上データ取込み」の primary 強調 / 補助文言は状態の説明（D-089）/ 在庫切れ・在庫少の件数は 1 件以上で状態色を実装。PLU 未反映 card は owner L3 round 1 所感で撤去（3 枚のまま）。[archive の Plan Packet](archive/plans/2026-09-16-home-mockup-c-runtime.md)。Final Review round 1 = Sonnet pass A（P3 3）/ Opus pass B（P2 2 → SCREEN_DESIGN 同期）/ closure、GA4 是正後に broad 2 本取り直し（Opus + Sonnet、pass）。owner L3 2 round PASS（round 1 所感 → GA4、round 2 PASS）。介入 2/3、Codex relay 1/2 + Sonnet Writer。dogfood 所見: Codex 発注書 58 / 59 の fail-closed 停止 4 回はすべて Coordinator の packet 記述誤り（AC の count・mock 境界・test 本数・隣接 test の regex 衝突）。broad 監査後に GA を積むと helper が closure を拒否し broad 取り直しになる。
+
+- **廃棄・破損の保存結果に「詳細を見る」+ `returnTo`**: [PR #71](https://github.com/kosei-w90607/inventory-system-desktop/pull/71) を merge（2026-09-16）。owner 2026-09-11「やったほうがいい」（PR #23 owner L3 所感 2026-08-31 起源）。UI-05-D17 を改訂し、保存結果にも詳細 link（`returnTo` 送信）を追加、入庫・返品交換と対称化。[archive の Plan Packet](archive/plans/2026-09-16-disposal-result-detail-link.md) / [Matrix](archive/plans/test-matrices/2026-09-16-disposal-result-detail-link.md)。Final Review round 1 = Sonnet pass A / Opus pass B P3 3 → 本 closeout で是正。owner L3 round 1 PASS。介入 1/3、Codex relay 3/3（3 回とも Coordinator の packet 記述誤り、Writer は正しく fail-closed）+ Sonnet Writer で実装。
+
 - **一括価格改定の取引先紐付けを既定 off + 文言明示**: [PR #67](https://github.com/kosei-w90607/inventory-system-desktop/pull/67) を merge（2026-09-16）。owner 決定 2026-09-16（L3 round 3 所感「価格改定のついでに取引先が変わる」）起源。toggle 既定 off・供給者変更時も off のまま・label 文言変更を実装し、設計書 77 / `ui-task-specs.md` UI-14 を新既定へ同期、decision-log D-088。[archive の Plan Packet](archive/plans/2026-09-16-price-revision-assign-default-off.md)。Final Review round 1 = Sonnet pass / Opus P2 是正 → pass、owner L3 round 1 PASS。
 
 - **表示小修正 batch 2**: [PR #64](https://github.com/kosei-w90607/inventory-system-desktop/pull/64) を merge（2026-09-16）。在庫少の基準の区画見出し撤去（説明文のみ）/ Alert title 太字（600）/ 在庫照会の副題 + 絞り込み時「全 N 件」/ 在庫状態 Badge「在庫あり」/ 基準の入力 error 文言 1 本化 / 入出庫履歴の明細数列撤去を実装し、[archive の Plan Packet](archive/plans/2026-09-15-display-fixes-batch-2.md) / [Matrix](archive/plans/test-matrices/2026-09-15-display-fixes-batch-2.md) に Final Review closure と GA1〜GA3 + GA3 補正を記録。
@@ -32,6 +36,9 @@
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
   - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）
   - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示 = **完了**（PR #67 squash `ebbbef14`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-price-revision-assign-default-off.md)）
+- **wave 11（非干渉並走 2 lane、owner 2026-09-16「ホーム画面 + 廃棄の詳細 link」）: 完了（lane 1〜2、2026-09-16）** — file footprint 互いに素（lane 1 = `src/features/home/**` + `src/config/navigation.ts` + SCREEN_DESIGN / 53 / 52 / decision-log、lane 2 = `src/features/disposal/**` + 64）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
+  - lane 1: ㉔ ホーム画面を mockup-c 案へ寄せる = **完了**（PR #70 squash `41c2e3e2`、介入 2/3、relay 1/2、[archive](archive/plans/2026-09-16-home-mockup-c-runtime.md)）
+  - lane 2: ㉕ 廃棄・破損の保存結果に「詳細を見る」+ `returnTo` = **完了**（PR #71 squash `949a5c4c`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-disposal-result-detail-link.md)）
 
 ## ブロッカー
 

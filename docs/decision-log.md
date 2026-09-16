@@ -726,3 +726,10 @@ Use concise ADR-style entries.
 - Decision: 取引先紐付け toggle は既定 off とし、取引先変更時も off へ戻す。label は「確定した商品の取引先が未設定なら、この取引先を設定する」とする。
 - Why: 価格改定のついでに未設定の取引先が設定される副作用を避け、紐付けを opt-in にする。
 - Compatibility: BIZ `revise_product_price` 手順 5（supplier_id が NULL のときだけ設定し、既存値は上書きしない）と DTO `assign_supplier_id` は不変。URL state は不変で、既存データへの影響はない。
+
+## D-089: ホームの summary card の補助文言は状態の説明であって導線ではない（2026-09-16）
+
+- Status: accepted（owner 2026-09-11、mockup-c 採用時の確定）
+- Decision: 補助文言は「基準を下回る商品」「在庫 0 の商品」「レジ反映待ち」のように状態を説明する文にし、「すぐ確認」のような行動を促す文は使わない。導線は入口 card と通知バーが担う。
+- Why: 件数 card を押しても遷移しないため、導線に見える文言は期待と挙動のずれを生む。
+- Compatibility: 表示文言のみ、query / route / DTO 不変。
