@@ -29,7 +29,7 @@ manual = owner Windows native L3 1 往復（在庫照会で検索 → 商品行�
 
 - 介入回数上限: 3
 - 実働時間上限: 15分
-- relay 往復上限: 3（既定 2 から改訂。GA2 / GA3 / 改訂 3 で 3 消費、いずれも Coordinator 起因の発注誤りで Writer は正しく fail-closed。3/3 到達につき残作業は Sonnet subagent、GA4）
+- relay 往復上限: 4（既定 2 から改訂。GA2 / GA3 / 改訂 3 で 3 消費〈Coordinator 起因〉。GA5: L3 round 1 で見つかった実装欠陥の修正 run を Codex 発注書 61 として 4 往復目に置く、理由 = owner「Codex に回したほうが質良い」と、欠陥が Coordinator の設計指示〈文字列 fallback〉起因であること）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -94,7 +94,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Scope
 
 - **S1 `src/features/stock-movements/types.ts`**: `stockMovementsSearchSchema` に `returnTo: z.string().max(500).optional().catch(undefined)` を追加（D-D4）。`StockMovementsSearch` 型は `z.output` 由来で自動追従
-- **S2 `src/features/stock-movements/StockMovementsPage.tsx`**: `:90` の `Link` を `normalizeReturnTo(search.returnTo, fallback)` の `to={backHref}` へ（D-D2、`DisposalRecordDetailPage.tsx:46,80` と同型。`import { normalizeReturnTo } from "@/lib/return-to"`）/ `:73-82` `returnToParams` に `returnTo` を追加（D-D3）
+- **S2 `src/features/stock-movements/StockMovementsPage.tsx`**: `:90` の `Link` を、`returnTo` が有効（`normalizeReturnTo` を通る）なら `<Link to={returnTo}>`、欠落・不正なら **`<Link to="/stock" search={{ q: productCode, selected: productCode }}>`** へ（D-D2。**GA5**: fallback を文字列 `/stock?q=…&selected=…` で組むと TanStack Router の `parseSearch` が値を `JSON.parse` するため、数字だけの商品コードが number になり `z.string()` で落ちて検索前に戻る〈L3 round 1 (b) FAIL〉。`search` props なら `stringifySearch` が JSON に見える文字列を引用符付きで書き、round trip で string に戻る）/ `:73-82` `returnToParams` に `returnTo` を追加（D-D3）
 - **S3 `src/features/stock-inquiry/components/StockDetailContent.tsx`**: `ActiveCta` の `Link` に `search={{ returnTo }}` を追加。`returnTo` は `useRouterState({ select: (state) => state.location.href })`（D-D1）
 - **S4 tests**: `StockDetailContent.test.tsx:33-48` を `initialPath` 付き（例 `/stock?q=BT&selected=BT0002`）で render し、href = `/stock/BT0002/movements?returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002` を固定（Matrix T1）/ `StockMovementsPage.test.tsx` に「在庫照会へ戻る」の href を `it.each`（T2' 有効 `returnTo` / T2 欠落 / T3 外部 URL / T4 `//`）で固定、`detailReturnTo` に `returnTo` が入れ子で載る case（T5）、filter 変更後も `returnTo` が残る case（T6、`onSearchChange` の updater 結果で確認）
 - **S5 `docs/function-design/66-ui-stock-movements.md`**: §66.1 主動線 4 を「『在庫照会へ戻る』で `returnTo`（在庫照会からの遷移元 URL）へ戻る。欠落・不正時は `/stock?q=$code&selected=$code`」へ / §66.2 決定表に UI-06c-D9 行（決定 = D-D2 + D-D3、理由 / 棄却案 = 上記）/ §66.3 型と fallback 規則に `returnTo?: string`（`max(500)`、不正値は `undefined`）/ §66.4 Route search に `returnTo` / §66.5 Header actions の遷移先を書き換え / §66.7 Tests に「REQ-303 / UI-06c-D9: `returnTo` の正規化と fallback、`detailReturnTo` への入れ子」bullet
@@ -118,10 +118,10 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 - **AC3** `rg -c '"/stock/BT0002/movements"' src/features/stock-inquiry/components/StockDetailContent.test.tsx` = 0（baseline 1）/ `rg -c 'returnTo' src/features/stock-inquiry/components/StockDetailContent.test.tsx` ≥ 1（baseline 0）/ `rg -c '在庫照会へ戻る' src/features/stock-movements/StockMovementsPage.test.tsx` ≥ 1（baseline 0）/ `rg -c 'returnTo' src/features/stock-movements/StockMovementsPage.test.tsx` ≥ 4（baseline 1）
 - **AC4** `rg -c '/stock\?selected=\$code' docs/function-design/66-ui-stock-movements.md` = 0（baseline 2 = §66.1 主動線 4 + §66.5 Header。**GA2 で旧 URL に限定**: 旧 regex `selected=\$code` は S5 の新 fallback `/stock?q=$code&selected=$code` にも一致し、S5 と両立しなかった）/ `rg -c 'UI-06c-D9' docs/function-design/66-ui-stock-movements.md` ≥ 3（baseline 0: 決定表 + §66.5 + §66.7）/ `rg -c 'returnTo' docs/function-design/66-ui-stock-movements.md` ≥ 4（baseline 0）/ `rg -c 'UI-06a-D7' docs/function-design/58-ui-stock-inquiry.md` ≥ 3（baseline 0: `:538` bullet + §58.10 見出し + 変更履歴）
 - **AC5**（負の oracle）`git diff --name-only origin/main..HEAD -- src/routes src/lib src/features/stock-inquiry/hooks src/features/stock-inquiry/StockInquiryPage.tsx src/features/inventory-records src-tauri docs/design-system docs/function-design/65-inventory-record-traceability.md docs/decision-log.md | wc -l` = 0
-- **AC6** mutant: (1) S3 の `search={{ returnTo }}` を外す → T1 FAIL（`?returnTo=` 不在）。(2) S2 の `normalizeReturnTo(...)` を `search.returnTo ?? fallback` に置換 → T3 / T4（外部 URL・`//`）FAIL。(3) S2 の fallback から `q=` を外す → T2（欠落 case）FAIL。(4) S2 の `returnToParams.set("returnTo", ...)` を外す → T5 FAIL。4 本とも実装後に kill を実測して報告する
+- **AC6** mutant: (1) S3 の `search={{ returnTo }}` を外す → T1 FAIL（`?returnTo=` 不在）。(2) S2 の `normalizeReturnTo(...)` を `search.returnTo ?? fallback` に置換 → T3 / T4（外部 URL・`//`）FAIL。(3) S2 の fallback の `search` から `q` を外す → T2（欠落 case）FAIL。(5)（GA5）fallback を文字列 `/stock?q=${code}&selected=${code}` に戻す → T2-num（数字だけの商品コード）FAIL。(4) S2 の `returnToParams.set("returnTo", ...)` を外す → T5 FAIL。5 本とも実装後に kill を実測して報告する（(1)〜(4) は run 2 で kill 済み、修正 run では (3) と (5) を再実測）
 - **AC7** 対象 test 3 file（`StockMovementsPage` / `StockDetailContent` / `useStockInquiry`）全 PASS（本数は PR body / CI 出力を正とする）、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（traceability 検査は S7 の再生成後に通る、GA3）。既存 `StockDetailContent.test.tsx:33-48` は S3 で href が変わるため必ず FAIL する。修正前後の red / green を報告する
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
-- **AC-L3-1** Windows native: 在庫照会で任意の keyword を検索 → 商品行を展開 → 「在庫変動履歴」→ 「在庫照会へ戻る」→ 同じ keyword と展開行が戻る。続けて address bar に `/stock/<同じ商品コード>/movements` を直打ち → 「在庫照会へ戻る」→ その商品コードで検索され展開された在庫照会。PASS/FAIL のみ
+- **AC-L3-1** Windows native: 在庫照会で任意の keyword を検索 → 商品行を展開 → 「在庫変動履歴」→ 「在庫照会へ戻る」→ 同じ keyword と展開行が戻る。続けて **入出庫履歴 → 任意の記録の「詳細を見る」→ 詳細の「在庫変動履歴」**（`returnTo` なしの入口。Tauri には address bar が無いため「直打ち」は不可、GA5 で訂正）→ 「在庫照会へ戻る」→ その商品コードで検索され展開された在庫照会。**数字だけの商品コード**で行う。PASS/FAIL のみ
 
 ## Design Sources
 
@@ -318,3 +318,12 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - 是正: relay 3/3 到達につき、残作業（S7 = `cargo run --bin generate_traceability` の再生成 commit / `local-ci.sh full` / doc check / Draft PR）を Sonnet subagent に移し Writer field へ併記（㉕ GA3 と同経路）。Codex の実装 2 commit は不変。Scope / AC / Matrix は不変
 - Owner Effort Budget: relay 3/3。介入は増えない（Draft PR 後の L3 が 2 回目）
 - 教訓: 発注書を「再開版」に改訂するときは、着手条件・手順・検証の各節を実装後の状態に合わせて全部書き直す（前提の一文を残さない）
+
+### Gated Amendment 5（2026-09-17、owner L3 round 1 の (b) FAIL）
+
+- L3 round 1（PR #75 head `9e8d02be`、介入 2/3）: (a) 検索 → 展開 → 履歴 → 戻る = **PASS**。(b) 入出庫履歴 → 廃棄・破損詳細 → 在庫変動履歴 → 「在庫照会へ戻る」= **FAIL**（在庫照会が検索前の空状態。商品コード `2099000000019`〈数字のみ〉）
+- 原因: S2 の Coordinator 指示どおり fallback を文字列 `/stock?q=${code}&selected=${code}` で組んだため、TanStack Router の `parseSearch`（`@tanstack/router-core` `searchParams.js`、各値を `JSON.parse`）が数字だけの商品コードを number にし、route の `z.string().catch(undefined)` で `q` / `selected` とも `undefined` → 受け側の検索前ガードで空状態。アプリ自身の navigate は `stringifySearch` が JSON に見える文字列を引用符付きで書くため無事。unit test（T2〜T4）は `BT0002` のみで検出できず、Opus pass B の probe も英字コードだった
+- 是正: S2 を `search` props で組む形へ、AC6 に mutant (5)、Matrix に T2-num（数字だけの商品コードで href が引用符付き〈`%22…%22`〉になり、`parseSearch` で string に戻る）を追加、AC-L3-1 (b) を記録詳細経由に訂正（Tauri に address bar は無い）。Scope の file 集合と Spec Contract は不変
+- Owner Effort Budget: relay 上限 3 → 4（修正 run = Codex 発注書 61）。介入 2/3（L3 round 2 で 3/3）
+- broad 2 本（Sonnet / Opus、head `9e8d02be`）は本 GA で Amendments が変わるため、修正後 head で取り直す（㉔ の教訓）
+- 教訓: route/search state を文字列で組まない（`Link` の `search` props か `stringifySearch` を通す）。fallback の test は数字だけの商品コードを含める

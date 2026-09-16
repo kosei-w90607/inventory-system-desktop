@@ -22,6 +22,7 @@ Risk: R3
 - FM5: filter 変更・reset・page 送りで `returnTo` が消える
 - FM6: 受け側 hook / route file / helper / 業務記録詳細画面に副作用が及ぶ
 - FM7: `returnTo` が `max(500)` を超えて `undefined` に落ち、意図せず fallback になる
+- FM8（GA5、L3 round 1 で実発生）: fallback の `q` / `selected` が数字だけの商品コードで `parseSearch` により number になり、route の `z.string()` で `undefined` に落ちて検索前状態へ戻る
 
 ## Test Matrix
 
@@ -32,6 +33,7 @@ Risk: R3
 | SPEC-UI06C-D9-R1（producer） | FM1 | unit（RTL + `renderWithRouter` 実 router、`initialPath` 指定） | T1 `StockDetailContent.test.tsx` 「REQ-301 / UI-06a-D7: 在庫変動履歴 link が現在の /stock URL を returnTo で送る」（`:33-48` の書き換え。`initialPath = "/stock?q=BT&selected=BT0002"` で render し、href = `/stock/BT0002/movements?returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002`） | `?returnTo=` 欠落（FM1）、直列化形の不一致 |
 | SPEC-UI06C-D9-R1（正規化） | FM2 | unit（`it.each`、`renderWithClient` = 実 router） | T2' `StockMovementsPage.test.tsx` 「REQ-303 / UI-06c-D9: 在庫照会へ戻る の returnTo %s を %s へ正規化する」有効 case: `search={{ returnTo: "/stock?q=BT&status=all&selected=BT0002" }}` → href = 同値（実 router の再直列化で query の順序 / encoding が変わる場合は `new URL(href, "http://x")` で `pathname` と `searchParams` を比較する） | helper を通さず別値へ戻る |
 | SPEC-UI06C-D9-R1（fallback 欠落） | FM3 | unit（同 `it.each`） | T2 欠落 case: `search={{}}` → href = `/stock?q=BT0002&selected=BT0002` | `q=` 欠落、`selected` 欠落 |
+| SPEC-UI06C-D9-R1（fallback、数字だけの商品コード、GA5） | FM8 | unit（実 router） | T2-num `StockMovementsPage.test.tsx`: `productCode="2099000000019"`、`search={{}}` → 「在庫照会へ戻る」の href を `new URL(href, "http://x")` で parse し、`searchParams.get("q")` と `get("selected")` が `"\"2099000000019\""`（TanStack の引用符付き）であること、または `defaultParseSearch` 相当で string `"2099000000019"` に戻ること | 文字列で組んだ fallback（number に化ける、FM8） |
 | SPEC-UI06C-D9-R1（fallback 外部 URL） | FM2 | unit（同 `it.each`） | T3 `returnTo: "https://example.invalid/escape"` → fallback | 検証なし（FM2） |
 | SPEC-UI06C-D9-R1（fallback `//`） | FM2 | unit（同 `it.each`） | T4 `returnTo: "//example.invalid/escape"` → fallback | 検証なし（FM2） |
 | UI-06c-D9（入れ子） | FM4 | unit | T5 `StockMovementsPage.test.tsx` 「REQ-207 / UI-06c-D9: 元記録 link の returnTo に在庫変動履歴の returnTo を入れ子で含める」（`:87-123` と同じ fixture に `returnTo` を足し、`廃棄・破損 #7` の href に `%26returnTo%3D` が含まれること。`returnTo` なしの既存 `:87-123` は不変） | `returnToParams.set("returnTo", ...)` 欠落（FM4） |
