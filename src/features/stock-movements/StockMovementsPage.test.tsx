@@ -416,6 +416,22 @@ describe("StockMovementsPage SPEC-UI06C-D9-R1（在庫照会への戻り導線�
     },
   );
 
+  it("REQ-303 / UI-06c-D9 (GA5): 数字だけの商品コードでも fallback の q / selected が string で往復する", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    renderWithClient(
+      <StockMovementsPage productCode="2099000000019" search={{}} onSearchChange={vi.fn()} />,
+    );
+
+    const link = await screen.findByRole("link", { name: "在庫照会へ戻る" });
+    const url = new URL(link.getAttribute("href") ?? "", "http://x");
+    expect(JSON.parse(url.searchParams.get("q") ?? "null")).toBe("2099000000019");
+    expect(JSON.parse(url.searchParams.get("selected") ?? "null")).toBe("2099000000019");
+  });
+
   it("REQ-207 / UI-06c-D9: 元記録 link の returnTo に在庫変動履歴の returnTo を入れ子で含める", async () => {
     mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
     mockListMovements.mockResolvedValue({

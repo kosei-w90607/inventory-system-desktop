@@ -71,10 +71,7 @@ export function StockMovementsPage({
       page: undefined,
     }));
   };
-  const backHref = normalizeReturnTo(
-    search.returnTo,
-    `/stock?q=${encodeURIComponent(productCode)}&selected=${encodeURIComponent(productCode)}`,
-  );
+  const safeReturnTo = normalizeReturnTo(search.returnTo, "");
   const returnToParams = new URLSearchParams();
   if (normalizedSearch.dateFrom !== undefined)
     returnToParams.set("dateFrom", normalizedSearch.dateFrom);
@@ -93,10 +90,17 @@ export function StockMovementsPage({
         title="在庫変動履歴"
         actions={
           <Button type="button" asChild variant="outline">
-            <Link to={backHref}>
-              <ArrowLeft aria-hidden="true" />
-              在庫照会へ戻る
-            </Link>
+            {safeReturnTo ? (
+              <Link to={safeReturnTo}>
+                <ArrowLeft aria-hidden="true" />
+                在庫照会へ戻る
+              </Link>
+            ) : (
+              <Link to="/stock" search={{ q: productCode, selected: productCode }}>
+                <ArrowLeft aria-hidden="true" />
+                在庫照会へ戻る
+              </Link>
+            )}
           </Button>
         }
       />
