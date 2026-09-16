@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: fe8ff219bc8d46af64d9d9d74c461c28347c0549
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Codex
@@ -23,6 +23,7 @@ manual = owner Windows native L3 1 往復（廃棄・破損を 1 件保存 → �
 
 遷移記録（append-only）:
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit）: Risk R3（route/search state の producer を 1 site 追加。R2/R3 で迷う場合は R3 の規則）。Design Phase = UI-05-D17 の改訂を design 判断 D-D1 として 64 の決定表で先行し（実装 run で S3 として更新）、DSR-18 / 65 TRACE-D11（「保存結果」を producer に含む横断契約）は不変。Test Design Matrix を同 commit で置く。
+- plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P2 1 / P3 1）→ in-place 是正 `fe8ff219`（64 の節番号 §64.8 → §64.9、T8 の行番号）→ round 2 closure（Sonnet、新規 P1/P2 なし、`rg '64\.8'` = 0 / `':335'` = 0 を確認）= 通過可。Plan Commit = `fe8ff219`（plan-first `31d9643d` → 是正を含む確定版）。実装は Codex 発注書 59 で本 commit を HEAD_SHA として開始する。
 
 ## Owner Effort Budget
 
@@ -275,3 +276,7 @@ Fill after implementation.
 - P3（T8 の `it(` 開始行は `:334`、packet は `:335`）= accept → packet / Matrix の `:335` を `:334` へ
 - reviewer 確認済み: D-D1〜D-D3 の整合、Risk R3 判定、Adjacent Pattern Audit の網羅（保存結果 + 業務記録 detail route を持つ画面は 4 つのみ）、T8 単体では recent list が空 mock のため link は 1 本（S2 の scope 方針は安全側）
 - 判定: 通過可（P1/P2 = 0 は本是正の closure 確認後）。round 2 = closure
+
+### Plan Review round 2（closure、Sonnet）
+
+- round 1 の P2 / P3 = closed（packet / Matrix で `64.8` 0 件、`:335` 0 件、round 1 節の記録が指摘と一致）。契約整合に影響する変更なし（diff は節番号・行番号のラベル訂正と round 1 節の追記のみ）。新規 P1/P2 なし。**Plan Gate 通過可**

@@ -9,7 +9,7 @@
 ## 次の行動
 
 - **㉔ ホーム画面を mockup-c 案へ寄せる（R2、plan-gate）**: `plans/2026-09-16-home-mockup-c-runtime.md`。branch `agent/home-mockup-c-runtime`、Plan Commit pending。owner 決定 2026-09-11（mockup-c 採用、補助文言は状態の説明、前日分未取込み alert は不変）。wave 11 lane 1、㉕ と file 互いに素。
-- **㉕ 廃棄・破損の保存結果に「詳細を見る」+ `returnTo`（R3、plan-gate）**: [Plan Packet](plans/2026-09-16-disposal-result-detail-link.md) / [Matrix](plans/test-matrices/2026-09-16-disposal-result-detail-link.md)。branch `agent/disposal-result-detail-link`、Plan Commit pending。owner 2026-09-11「やったほうがいい」（UI-05-D17 改訂、入庫・返品交換と対称化）。wave 11 lane 2、㉔ と file 互いに素。
+- **㉕ 廃棄・破損の保存結果に「詳細を見る」+ `returnTo`（R3、implementing）**: [Plan Packet](plans/2026-09-16-disposal-result-detail-link.md) / [Matrix](plans/test-matrices/2026-09-16-disposal-result-detail-link.md)。branch `agent/disposal-result-detail-link`、Plan Commit `fe8ff219`（Plan Review round 1 P2 是正 → round 2 closure）。owner 2026-09-11「やったほうがいい」（UI-05-D17 改訂、入庫・返品交換と対称化）。wave 11 lane 2、㉔ と file 互いに素。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
@@ -35,7 +35,7 @@
   - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示 = **完了**（PR #67 squash `ebbbef14`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-price-revision-assign-default-off.md)）
 - **wave 11（非干渉並走 2 lane、owner 2026-09-16「ホーム画面 + 廃棄の詳細 link」）: 進行中（両 lane plan-gate）** — file footprint 互いに素（lane 1 = `src/features/home/**` + `src/config/navigation.ts` + SCREEN_DESIGN / 53 / 52 / decision-log、lane 2 = `src/features/disposal/**` + 64）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
   - lane 1: ㉔ ホーム画面を mockup-c 案へ寄せる（R2、`agent/home-mockup-c-runtime`、`plans/2026-09-16-home-mockup-c-runtime.md`、Draft PR 未作成、Phase plan-gate、介入 0/3）
-  - lane 2: ㉕ 廃棄・破損の保存結果に「詳細を見る」+ `returnTo`（R3、`agent/disposal-result-detail-link`、[Packet](plans/2026-09-16-disposal-result-detail-link.md)、Draft PR 未作成、Phase plan-gate、介入 0/3）
+  - lane 2: ㉕ 廃棄・破損の保存結果に「詳細を見る」+ `returnTo`（R3、`agent/disposal-result-detail-link`、[Packet](plans/2026-09-16-disposal-result-detail-link.md)、Draft PR 未作成、Phase implementing〈Plan Commit `fe8ff219`〉、介入 0/3）
 
 ## ブロッカー
 
