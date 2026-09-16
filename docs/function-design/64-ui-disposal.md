@@ -28,7 +28,7 @@
 | REQ-204 / validation | UI-05-D8 | 数量は整数 `> 0`、原価は整数 `>= 0`、廃棄日は必須、種別は `"disposal"` / `"damage"` / `"other"`、理由は空白不可として command 前に frontend で止める。BIZ-02 は同じ validation を最終防御として持つ。 | operator-facing form では保存前に日本語 field error を出す。generated command は UI 以外からも呼べるため、業務不変条件は BIZ に置く。 |
 | REQ-204 / idempotency | UI-05-D9 | `idempotency_key` は画面で1保存試行単位に生成し、保存失敗後の同内容再試行では同じ key を再利用する。保存成功、フォームリセット、別伝票開始、または保存失敗後に fingerprint 対象項目を編集して再送する場合は新しい key にする。 | UI-02/03/04 と同じ二重登録防止方針。同じ key のまま異なる fingerprint を送ると BIZ が conflict にするため、編集再送は新規保存試行として扱う。 |
 | REQ-204 / submit | UI-05-D10 | 保存中はヘッダ、明細、商品追加、戻る/リセット導線を disabled にし、中断可能に見せない。 | backend は単一 TX。UI だけで cancel 可能に見せると在庫反映状態を誤認させる。 |
-| REQ-204 / result | UI-05-D11 | 保存成功後は record_id、登録明細数、ロス原価合計、stock_warnings、`idempotent_replay` の有無を表示し、「続けて廃棄・破損」「在庫照会へ戻る」の導線を出す。 | 廃棄・破損は売上帳票ではなく在庫とロス把握が主目的。保存後にロス原価合計を読めるようにする。 |
+| REQ-204 / result | UI-05-D11 | 保存成功後は record_id、登録明細数、ロス原価合計、stock_warnings、`idempotent_replay` の有無を表示し、「続けて廃棄・破損」「詳細を見る」「在庫照会へ戻る」の導線を出す。 | 廃棄・破損は売上帳票ではなく在庫とロス把握が主目的。保存後にロス原価合計を読めるようにする。 |
 | REQ-204 / list | UI-05-D12 | 画面下部に最近の廃棄・破損記録を `listDisposals(1, 10, null, null)` で表示する。詳細表示・編集・取消は初回実装では扱わない。 | CMD-05 の一覧契約を UI から疎通確認でき、直近記録の保存結果も確認しやすい。詳細/取消は在庫復元が絡むため別設計にする。 |
 | REQ-204 / cache | UI-05-D13 | 保存成功時の invalidation は [D-052](../decision-log.md) C7 と `src/lib/invalidation-contract.ts` を正本とする。 | 廃棄で変わる在庫・履歴 consumer を一貫して stale 化し、画面側の key 列挙を廃止する。 |
 | REQ-204 / UI-05 | UI-05-D14 | Windows native L3 は owner 目視確認を必須にする。確認対象は navigation、商品検索/スキャン相当 Enter 追加、同一商品+種別+理由の数量加算、種別/理由/原価 validation、保存中 disable、保存結果、recent list、在庫照会へ戻る導線。 | 新規 operator-facing screen であり、ロス理由の入力、連続入力、フォーカス戻し、保存結果の可読性は CI だけでは判断しづらい。 |
@@ -61,7 +61,7 @@ src/
 | `editing` | 廃棄ヘッダ/明細を編集中 | header form、商品追加欄、明細表、最近の廃棄・破損一覧 | `add_product` / `update_row` / `submit` |
 | `searching_product` | 商品追加欄で検索中 | 商品追加欄 loading | `product_found` / `product_candidates` / `product_not_found` / `search_failed` |
 | `submitting` | `createDisposal` 実行中 | form disabled、spinner + 「廃棄・破損を記録しています」 | `submit_succeeded` / `submit_failed` |
-| `result` | 保存完了 | result panel、続けて廃棄・破損、在庫照会へ戻る | `reset_for_next` / navigation |
+| `result` | 保存完了 | result panel、続けて廃棄・破損、詳細を見る、在庫照会へ戻る | `reset_for_next` / navigation |
 | `submit_error` | 保存失敗 | Alert + 入力保持 + 再実行 | `submit_same_request` / `edit_as_new_attempt` |
 
 フォーム state は `disposalDate`, `rows`, `idempotencyKey` を持つ。`rows` は `productCode`, `productName`, `departmentName`, `stockUnit`, `currentStockQuantity`, `disposalType`, `quantity`, `costPrice`, `reason` を持つ UI 内部型とし、command payload には `product_code`, `disposal_type`, `quantity`, `cost_price`, `reason` を送る。
@@ -117,7 +117,7 @@ UI-05 実装 PR では以下を generated binding に出す。
 - 理由欄は明細ごとに入力し、空白なら保存前 validation で止める。
 - 明細が 0 件の場合、保存ボタンは disabled にし、理由を「商品が追加されていません」と表示する。
 - 保存ボタンは `廃棄・破損を保存`。保存成功後は result panel へ移り、フォーム本文は操作不可にする。保存結果や保存系エラーの Alert はページ先頭側に出るため、保存成功または command 失敗時はページ先頭へスクロールする。保存結果の「詳細を見る」は UI-05-D17 に従って現在の廃棄・破損画面 URL を `returnTo` として送る。
-- 最近の廃棄・破損一覧は日付、記録ID、記録日時を表示する。保存結果と最近の廃棄・破損一覧の「詳細を見る」は UI-05-D17 に従って現在の廃棄・破損画面 URL を `returnTo` として送る。作成画面内に詳細本文、編集、取消は出さない。
+- 最近の廃棄・破損一覧は日付、記録ID、記録日時を表示する。「詳細を見る」は UI-05-D17 に従って現在の廃棄・破損画面 URL を `returnTo` として送る。作成画面内に詳細本文、編集、取消は出さない。
 
 ## 64.6 Error / Recovery
 
@@ -169,6 +169,7 @@ UI-05 実装 PR では以下を generated binding に出す。
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-09-16 | ㉕ | UI-05-D17 を改訂し、保存結果にも詳細 link（`returnTo` 送信）を追加。入庫・返品・交換と対称化。 |
+| 2026-09-16 | ㉕ closeout | UI-05-D11 の導線列挙と state 表に「詳細を見る」を追加、§64.5 の二重記述を整理 |
 | 2026-08-30 | PR #20 / DSR-18 | UI-05-D17 を追加し、recent list の詳細導線に廃棄・破損画面への `returnTo` 送信契約を設定。保存結果は詳細 link なしの現行契約を維持。 |
 | 2026-08-05 | product add suggest design | UI-05-D16 新設: 商品追加欄の live 候補プレビュー（正本 = catalog ⑮ SPEC-SUGGEST-D1〜D10、lock は UI-05-D15 ref と単一 source）。Enter commit 経路・フォーカス戻しは不変。 |
 | 2026-08-03 | UI safety net implementation | 廃棄・破損 form の dirty 判定を共通離脱ガードへ接続し、保存中 / 保存結果の非 block を実装。 |
