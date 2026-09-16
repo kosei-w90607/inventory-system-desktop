@@ -1,13 +1,13 @@
 # Plan Packet: ㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する（NAV-1、R3）
 
-2026-09-16 起草。出典は [監査 NAV-1](../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)（P2 / confirmed）と Backlog「やると決めたもの（順番未定）」の NAV-1 行。owner 2026-09-16「次何やるかふたつとって早速始めよう」で Coordinator が wave 12 の lane 1 に選定（lane 2 = ㉗ `docs/plans/2026-09-16-stocktake-count-baseline.md`、file footprint 互いに素）。file:line は origin/main `c6167c4d` で実測（Coordinator 2026-09-16）。実装は別 run（Codex 発注書 60）とし、独立 Plan Review 通過後に発注する。Test Design Matrix: `docs/plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。
+2026-09-16 起草。出典は [監査 NAV-1](../../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)（P2 / confirmed）と Backlog「やると決めたもの（順番未定）」の NAV-1 行。owner 2026-09-16「次何やるかふたつとって早速始めよう」で Coordinator が wave 12 の lane 1 に選定（lane 2 = ㉗ `docs/plans/2026-09-16-stocktake-count-baseline.md`、file footprint 互いに素）。file:line は origin/main `c6167c4d` で実測（Coordinator 2026-09-16）。実装は別 run（Codex 発注書 60）とし、独立 Plan Review 通過後に発注する。Test Design Matrix: `docs/plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: bbec3bf518d834cbd03e594cfae05faf75cb5a45
@@ -19,7 +19,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 2
 - Human Gate: ready,merge,manual
 
-manual = owner Windows native L3 1 往復（在庫照会で検索 → 商品行を展開 → 「在庫変動履歴」→ 「在庫照会へ戻る」で同じ検索条件と選択行が戻る。続けて URL 直打ち `/stock/<商品コード>/movements` → 「在庫照会へ戻る」でその商品が検索・選択された在庫照会になる。目視と PASS/FAIL のみ。fixture 不要 = demo seed の任意の商品）。
+manual = owner Windows native L3 1 往復（在庫照会で検索 → 商品行を展開 → 「在庫変動履歴」→ 「在庫照会へ戻る」で同じ検索条件と選択行が戻る。続けて業務記録詳細の在庫変動履歴 link 経由（`returnTo` なしの入口）→ 「在庫照会へ戻る」でその商品が検索・選択された在庫照会になる。目視と PASS/FAIL のみ。fixture 不要 = demo seed の任意の商品）。
 
 遷移記録（append-only）:
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit）: Risk R3（route/search state。在庫変動履歴 route の search param を 1 つ追加し、在庫照会側に `returnTo` の producer を 1 site 追加する。R2/R3 で迷う場合は R3 の規則）。Design Phase = 66 に UI-06c-D9、58 に UI-06a-D7 を新設する design 判断を本 packet の D-D1〜D-D4 で先行し（実装 run で S5 / S6 として source docs へ書く）、DSR-18 本文と `src/lib/return-to.ts` は不変。Test Design Matrix を同 commit で置く。
@@ -49,7 +49,7 @@ Reason:
 
 ## Goal
 
-Goal Invariant: 在庫照会で検索して商品を選び、在庫変動履歴を見てから「在庫照会へ戻る」と、同じ検索条件（`q` / `dept` / `status` / `page`）と同じ商品の展開状態に戻る。在庫変動履歴へ直接（URL 直打ち・業務記録詳細の「在庫変動履歴」link）来た場合も、「在庫照会へ戻る」でその商品が検索・選択された在庫照会に着地する。
+Goal Invariant: 在庫照会で検索して商品を選び、在庫変動履歴を見てから「在庫照会へ戻る」と、同じ検索条件（`q` / `dept` / `status` / `page`）と同じ商品の展開状態に戻る。在庫変動履歴へ直接（業務記録詳細の在庫変動履歴 link 経由、`returnTo` なしの入口）来た場合も、「在庫照会へ戻る」でその商品が検索・選択された在庫照会に着地する。
 
 ### 最小完了条件
 
@@ -87,7 +87,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## 設計判断（Coordinator adjudication、Plan Review で覆せる）
 
 - **D-D1 在庫照会 → 在庫変動履歴の link を `returnTo` producer にする（UI-06a-D7）**: `StockDetailContent` の `ActiveCta` に `useRouterState({ select: (state) => state.location.href })` の現在 href を `search={{ returnTo }}` で渡す（`DisposalPage.tsx:134` と同型、新しい state を作らない）。決定: 「在庫変動履歴」link は現在の `/stock` URL（search state 込み）を `returnTo` として送る。理由: 監査 NAV-1 のとおり、`/stock?selected=<code>` だけでは受け側の検索前ガード（§58.4）が `selected` を解除し、利用者が検索と選択をやり直す。DSR-18 の判定フロー「業務記録詳細へ遷移する link か？ No → その導線固有の契約」に該当するため、DSR-18 本文は変えずに 58 / 66 の局所契約として置く。捨てた案: 受け側の検索前ガードを撤去（bookmark / F5 の detail 空振り防止〈Codex Round 1 P2-2〉を壊す）/ `/stock?q=<code>&selected=<code>` を常に送る（元の検索条件を捨てる）
-- **D-D2 「在庫照会へ戻る」は `normalizeReturnTo(search.returnTo, fallback)`（UI-06c-D9）**: `fallback = "/stock?q=" + encodeURIComponent(code) + "&selected=" + encodeURIComponent(code)`。label は「在庫照会へ戻る」のまま（`returnTo` も fallback も在庫照会に着地するため、DSR-18 の「前の画面へ戻る」label は使わない）。理由: 直接アクセス・業務記録詳細からの入口では在庫照会の元条件が存在しないため、商品コード検索（LIKE、`product_repo.rs:1845`）で対象商品を 1 件以上含む list を出し、`selected` で展開する。捨てた案: fallback を `/stock`（商品を見失う、現行と同じ不便）/ fallback を `/stock?selected=<code>`（現行のまま、NAV-1 未解消）
+- **D-D2 「在庫照会へ戻る」は `normalizeReturnTo(search.returnTo, fallback)`（UI-06c-D9）**: fallback は `<Link to="/stock" search={{ q: code, selected: code }}>`（`Link` の `search` props、GA5）で組む。label は「在庫照会へ戻る」のまま（`returnTo` も fallback も在庫照会に着地するため、DSR-18 の「前の画面へ戻る」label は使わない）。理由: 直接アクセス・業務記録詳細からの入口では在庫照会の元条件が存在しないため、商品コード検索（LIKE、`product_repo.rs:1845`）で対象商品を 1 件以上含む list を出し、`selected` で展開する。捨てた案: fallback を `/stock`（商品を見失う、現行と同じ不便）/ fallback を `/stock?selected=<code>`（現行のまま、NAV-1 未解消）
 - **D-D3 業務記録詳細 → 在庫変動履歴 → 「前の画面へ戻る」の往復で `returnTo` を保つ**: `StockMovementsPage.tsx:73-82` の `returnToParams` に `returnTo` があれば `set("returnTo", search.returnTo)` を加え、`detailReturnTo` に入れ子で載せる。理由: 在庫変動履歴の元記録 link から業務記録詳細へ行って戻ると在庫変動履歴の URL は `detailReturnTo` で再現されるため、そこに `returnTo` が無いと「在庫照会へ戻る」が fallback へ落ちる。`updateSearch` / `resetFilters` は `...prev` を spread 済みで追加変更なし。捨てた案: 入れ子を避けて sessionStorage に持つ（URL 以外の state を増やす、F5 で消える）
 - **D-D4 route file / hook / helper / DSR-18 は不変**: `stockMovementsSearchSchema`（types.ts が単一所有者）に `returnTo: z.string().max(500).optional().catch(undefined)` を足すだけで route file は変わらない（`stocktake.records.$stocktakeId.tsx:7` と同じ形）。`normalizeStockMovementsSearch` の返却型は不変（`returnTo` は page が `search.returnTo` を直接読む）。decision-log は追加しない（既存 DSR-18 / TRACE-D11 の考え方を局所契約へ適用するだけで durable な新判断ではない）
 
@@ -172,7 +172,7 @@ command / route / doc 新設なし、bindings 非接触、`generate:routes` 不�
 | Adapter / core boundary | not applicable（UI 内の route/search 契約のみ） | — |
 | Fact check / design decision split | 事実 = 起票時実測（producer 1 site、入口 7 site、受け側ガード、helper、実 router test の直列化形）。判断 = D-D1〜D-D4 | 本 packet |
 | Lifecycle / retry | `returnTo` は URL のみに持つ。F5 で保持、filter / page / reset で保持（`...prev` spread）、業務記録詳細往復で入れ子保持。欠落・不正は fallback | Matrix State Lifecycle |
-| Operator workflow | 検索 → 展開 → 履歴 → 戻る、の往復で条件と選択が残る。直打ち・記録詳細経由でも商品を見失わない | AC-L3-1 |
+| Operator workflow | 検索 → 展開 → 履歴 → 戻る、の往復で条件と選択が残る。業務記録詳細の在庫変動履歴 link 経由（`returnTo` なしの入口）でも商品を見失わない | AC-L3-1 |
 | Replacement path | not applicable | — |
 | Data safety / evidence | 表示・遷移のみ。L3 は demo seed | Data Safety |
 | Reporting / accounting semantics | not applicable | — |
@@ -207,7 +207,7 @@ Minimum design checks for business-app work:
 |---|---|---|---|
 | UI-06a-D7（在庫変動履歴 link の `returnTo` 送信、両描画経路） | S3 / S6 | T1（`StockDetailContent` 直接 render。`StockDetailCard` は同 component を包むだけで既存 `it.each` が両者を render） | AC-L3-1 |
 | UI-06c-D9（`returnTo` 正規化、有効値へ戻る） | S1 / S2 / S5 | T2' 有効 case | AC-L3-1 |
-| UI-06c-D9（欠落・不正は `/stock?q=<code>&selected=<code>` fallback） | S2 / S5 | T2 / T3 / T4 | AC-L3-1（直打ち） |
+| UI-06c-D9（欠落・不正は `/stock?q=<code>&selected=<code>` fallback） | S2 / S5 | T2 / T3 / T4 | AC-L3-1（業務記録詳細の在庫変動履歴 link 経由） |
 | UI-06c-D9（`detailReturnTo` への入れ子） | S2 / S5 | T5 | — |
 | UI-06c-D2（filter / reset で `returnTo` を落とさない） | 既存 `...prev` spread | T6 | — |
 | UI-06c-D1 / D2（既存 search params 4 key の挙動不変） | 非接触 | 既存 `StockMovementsPage.test.tsx:87` `:147` `:313` | — |
@@ -234,12 +234,12 @@ browser state（`returnTo` search param）を扱うため記入する。
 - internal type: `string | undefined`（`StockMovementsSearch.returnTo`）
 - precision/range: `max(500)` 超過・非 string は zod `.catch(undefined)` で `undefined` → fallback
 - round-trip path: `/stock?q=..&status=..&dept=..&page=..&selected=<code>` → `/stock/<code>/movements?returnTo=<encoded>` →（元記録 link）`/inventory/<kind>/records/<id>?returnTo=<encoded /stock/<code>/movements?...&returnTo=...>` → 「前の画面へ戻る」→ 在庫変動履歴（`returnTo` 保持）→ 「在庫照会へ戻る」→ 元の `/stock` URL
-- invalid input: 欠落・`/` 始まりでない・`//` 始まりは `/stock?q=<code>&selected=<code>`（`encodeURIComponent`）
+- invalid input: 欠落・`/` 始まりでない・`//` 始まりは `/stock?q=<code>&selected=<code>` へ、`Link` の `search` props（`{ q, selected }`）で組む（GA5）
 - compatibility: additive（`returnTo` なしの既存 deep link は fallback、既存 4 key は不変）
 
 ## Review Focus
 
-- T1 の `initialPath` と期待 href の直列化（`%3F` `%3D` `%26`）が実 router の出力と一致するか。D-D3 の入れ子 `returnTo` が `max(500)` に収まるか（典型 URL で 200 字弱、Matrix Boundary で概算）。fallback の `encodeURIComponent` 漏れ。`useRouterState` を `ActiveCta` の内側で呼ぶことで `StockDetailContent` が router context 外で描画されないか（現行の 2 経路とも `/stock` route 内、`renderWithRouter` の test も router 内）。66 / 58 の同期漏れ（AC4）
+- T1 の `initialPath` と期待 href の直列化（`%3F` `%3D` `%26`）が実 router の出力と一致するか。D-D3 の入れ子 `returnTo` が `max(500)` に収まるか（典型 URL で 200 字弱、Matrix Boundary で概算）。fallback を `Link` の `search` props（`{ q, selected }`、GA5）で組む変換の漏れ。`useRouterState` を `ActiveCta` の内側で呼ぶことで `StockDetailContent` が router context 外で描画されないか（現行の 2 経路とも `/stock` route 内、`renderWithRouter` の test も router 内）。66 / 58 の同期漏れ（AC4）
 
 ## Spec Contract
 
@@ -257,7 +257,7 @@ Contract ID: SPEC-UI06C-D9-R1
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
 | SPEC-UI06C-D9-R1（producer） | S3 / S6 | T1 | 直列化形、両描画経路 | AC2 / AC3 / AC4 |
-| SPEC-UI06C-D9-R1（正規化 / fallback） | S1 / S2 / S5 | T2 / T2' / T3 / T4 | `encodeURIComponent`、helper 経由 | AC1 / AC3 / AC4 |
+| SPEC-UI06C-D9-R1（正規化 / fallback） | S1 / S2 / S5 | T2 / T2' / T3 / T4 | `Link` の `search` props（GA5）、helper 経由 | AC1 / AC3 / AC4 |
 | SPEC-UI06C-D9-R1（入れ子） | S2 | T5 | `max(500)` | AC1 |
 | SPEC-UI06C-D9-R1（filter で保持） | 既存 spread | T6 | — | Matrix |
 | SPEC-UI06C-D9-R1（受け側不変） | — | 既存 hook test | 非接触 | AC5 |
@@ -270,15 +270,17 @@ Contract ID: SPEC-UI06C-D9-R1
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #75](https://github.com/kosei-w90607/inventory-system-desktop/pull/75) で実装し squash merge 済み（`6f7928ed`、2026-09-17）。Writer = Codex 発注書 60 run 1〜3（run 1 = AC4 の削除 oracle の regex が新記述にも一致して fail-closed、run 2 = 実装 `3495e85e` / docs `081b1303` 完了後に `local-ci.sh full` の traceability 検査で停止、run 3 = 発注書の再開版に残っていた着手条件で停止）+ Sonnet subagent（GA4、90-traceability 再生成 `9e8d02be`）。GA5 修正 = Codex 発注書 61（実装 `60865ddf` / 90 再生成 `8192c2db`）、66 の記述同期 = Sonnet（`4b48cd38`）。
 
-Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+Final Review round 1（head `9e8d02be`）= Sonnet pass A / Opus pass B とも P1/P2 0。owner L3 round 1 = (a) PASS / (b) FAIL（数字だけの商品コードで文字列 fallback が `parseSearch` により number 化し検索前状態へ戻る）→ Gated Amendment 5。Final Review round 2（head `8192c2db`）= Sonnet / Opus とも P2 1（66 の fallback 記述が GA5 前のまま drift）→ `4b48cd38` で是正 → closure pass。owner L3 round 2 = (a)(b) PASS、round 2 の結果を `4b48cd38` の確認として owner が承認。
+
+介入 3 / 予算 3、Codex relay 4 / 上限 4（GA5 で改訂）。証跡の所在: mutant 証跡 `.local/codex-orders/evidence-60-run2-081b1303/`（ignored、本体 checkout のみ）、full の log は各 run の報告に記録。test 本数・exact HEAD は転記しない（D-035/D-038 Evidence Ownership）。
 
 ## Review Response
 
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after round 2 broad（head `8192c2db`）; post-freeze exceptions: none.
 
 ### Plan Review round 1（2026-09-16、plan-gate、Sonnet、裁定 Coordinator）
 
@@ -327,3 +329,36 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - Owner Effort Budget: relay 上限 3 → 4（修正 run = Codex 発注書 61）。介入 2/3（L3 round 2 で 3/3）
 - broad 2 本（Sonnet / Opus、head `9e8d02be`）は本 GA で Amendments が変わるため、修正後 head で取り直す（㉔ の教訓）
 - 教訓: route/search state を文字列で組まない（`Link` の `search` props か `stringifySearch` を通す）。fallback の test は数字だけの商品コードを含める
+
+### Final Review round 1（2026-09-17、head `9e8d02be`）
+
+- pass A（Sonnet、Contract Audit）: P1/P2 = 0（P3 2、いずれも evidence quality）。AC1〜AC5 逐語再実行一致、mutant 4 本再注入で kill、Workflow State / Amendments 整合を確認（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5700325983)）
+- pass B（Opus）: P1/P2 = 0（P3 6、いずれも merge blocker ではない）。mutant 独立 6 本 kill、隔離 probe で `returnTo` 3 段往復・不正値拒否を実証。findings: diagrams 現況化・`return-to.ts` の `/\evil` 通過・入れ子長さ概算・PR body log 所在は closeout/backlog へ（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5700326393)）
+- 裁定: 両 pass とも P1/P2 = 0 のため review = pass 可。P3 は closeout（本 commit）と backlog（returnTo 衛生 lane）へ振り分け
+
+### owner L3 round 1（2026-09-17、head `9e8d02be`、介入 2/3）
+
+- (a) PASS / (b) FAIL（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5700876468)）。原因・是正は Gated Amendment 5 に記録
+
+### Final Review round 2（2026-09-17、head `8192c2db`、GA5 後の新しい broad）
+
+- pass A（Sonnet、Contract Audit）: P1 0 / P2 1（66 の fallback 記述が GA5 前のまま drift）/ P3 3。mutant (5) 再現で T2-num のみ FAIL を確認、`@tanstack/router-core` ソースで root cause を裏取り。裁定: P2 は 66 の docs-only 再同期 commit（`4b48cd38`）で解消、P3 は closeout へ（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5701266797)）
+- pass B（Opus）: P1 0 / P2 1（同件、docs SSOT drift）/ P3 5。実 routeTree probe で fallback 分岐 15 パターンを検証、Adjacent Pattern audit で他 site への波及なしを確認。P3 5 件はすべて backlog（returnTo 衛生 lane）へ（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5701297781)）
+- 裁定: P2（両 pass 共通、66 の記述 drift）を accept し `4b48cd38` で是正。実装・test は不変のため review = pass 見込み、closure で確認
+
+### owner L3 round 2（2026-09-17、head `8192c2db`、介入 3/3）
+
+- (a)(b) とも PASS（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5701173911)）。GA5 の修正で round 1 (b) FAIL が解消
+
+### Final Review closure（2026-09-17、head `4b48cd38`）
+
+- Sonnet、fresh context、read-only: `4b48cd38` は 66 のみ（+4/−3）、round 2 の P2 = closed。round 1 / round 2 / L3 round 1〜2 の全 finding を通しで確認し未解消の merge blocker なし。新規 P3（PR body の HEAD 表記 / packet 旧 prose / backlog 実ファイリング未確認）はすべて closeout へ（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5701397542)）
+- 判定: **closure pass 可**
+
+### manual（owner L3）の確認（2026-09-17）
+
+- L3 round 2 の結果を `4b48cd38` の確認として owner が承認。manual = pass として record（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/75#issuecomment-5701443037)）
+
+### Closeout（本 commit、Findings 解消）
+
+- Final Review round 1 pass B P3 3 件、round 2 pass A/B P3 合計 8 件（うち diagrams 現況化 / packet 旧 prose sweep / backlog 5 件起票は本 commit と後続 backlog entry で対応）、closure P3 3 件（PR body 表記は github 上の記録として現状保持、packet 旧 prose は本 commit で sweep、backlog 実ファイリングは本 commit で実施）を解消
