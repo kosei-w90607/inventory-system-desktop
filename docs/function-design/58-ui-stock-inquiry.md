@@ -535,7 +535,7 @@ function StockInquiryPage() {
 - `detailQuery.isError` → `StockDetailContent` 内 inline エラー表示（部分障害許容、一覧は維持。両描画経路で共通）
 - 「商品修正」は `/products/$code/edit` への active link とし、`params.code` に対象商品コードを渡す。`returnTo` は渡さない単純遷移とする。
 - 「入庫記録」は `/inventory/receiving` への active link とする。商品コードの事前入力は行わない。
-- 「在庫変動履歴」は UI-06c で active link 化し、`/stock/$productCode/movements` へ遷移する。UI-06c の画面本体、filter、pagination、`MovementRecord.source` 元記録リンクは [66-ui-stock-movements.md](66-ui-stock-movements.md) を正とする。
+- 「在庫変動履歴」は UI-06c で active link 化し、`/stock/$productCode/movements` へ遷移する。現在の `/stock` URL（search state 込み）を `returnTo` として送る（UI-06a-D7）。UI-06c の画面本体、filter、pagination、`MovementRecord.source` 元記録リンクは [66-ui-stock-movements.md](66-ui-stock-movements.md) を正とする。
 
 ### 58.8 エラー処理（失敗 4 状態の網羅）
 
@@ -602,6 +602,12 @@ function StockInquiryPage() {
 #### UI-06a-D6: 絞り込み時の件数表示（2026-09-15、SPEC-DISP-B2-1 / D-B5）
 
 - 在庫少 / 在庫切れの絞り込み時は検索・部門・状態の client filter 後の `items.length` を N とする「全 N 件」のみを表示し、pagination は追加しない（0 件は EmptyState のみ）。
+
+#### UI-06a-D7: 在庫変動履歴への `returnTo` 送信（2026-09-16、NAV-1）
+
+- **決定**: 「在庫変動履歴」link は現在の `/stock` URL（search state 込み）を `returnTo` として送る。`StockDetailContent` の `ActiveCta` に `useRouterState({ select: (state) => state.location.href })` の現在 href を `search={{ returnTo }}` で渡す（`DisposalPage.tsx:134` と同型、新しい state を作らない）。
+- **Why**: 監査 NAV-1 のとおり、`/stock?selected=<code>` だけでは受け側の検索前ガード（§58.4）が `selected` を解除し、利用者が検索と選択をやり直す。DSR-18 の判定フロー「業務記録詳細へ遷移する link か？ No → その導線固有の契約」に該当するため、DSR-18 本文は変えずに 58 / 66 の局所契約として置く。
+- **Rejected**: 受け側の検索前ガードを撤去（bookmark / F5 の detail 空振り防止〈Codex Round 1 P2-2〉を壊す）/ `/stock?q=<code>&selected=<code>` を常に送る（元の検索条件を捨てる）。
 
 #### UI-06a-D2: 部門候補を listDepartments master 全件へ是正（DSR-10、round 1 P1-3、2026-08-03 batch B）
 
@@ -670,6 +676,7 @@ function StockInquiryPage() {
 
 | 日付 | PR | 内容 |
 |------|-----|------|
+| 2026-09-16 | ㉖ | UI-06a-D7 追加: `StockDetailContent` の「在庫変動履歴」link が現在の `/stock` URL を `returnTo` として送る（監査 NAV-1、66 UI-06c-D9 と対） |
 | 2026-09-15 | 表示小修正 batch 2 | 在庫照会の副題、絞り込み後の「全 N 件」、在庫状態 Badge「在庫あり」を反映。 |
 | 2026-08-26 | stale 実装状況表記一括是正 | `StockDetailContent` の「商品修正」「入庫記録」を既存画面への active link に変更し、遷移先と `returnTo` 非付与の契約を現況化 |
 | 2026-05-20 | #67 | 新規作成（UI-06a 在庫照会、REQ-301/302 統合 1 画面、2 useQuery 部分障害許容 + URL state 4 key + 派生 4 純関数 + StockInquiryListResult 正規化型 + 色分け契約 H + 検索駆動表示契約 I + collapsible/toggle/toggle-group 新規 add + CSV 取込み invalidation / Plan rally 6 round converged） |

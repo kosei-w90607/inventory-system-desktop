@@ -24,6 +24,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { scrollPageToTop } from "@/lib/page-scroll";
+import { normalizeReturnTo } from "@/lib/return-to";
 import type { StockMovementsSearch } from "./types";
 import { MOVEMENT_TYPE_OPTIONS, normalizeStockMovementsSearch } from "./types";
 import { useStockMovements } from "./hooks/useStockMovements";
@@ -70,12 +71,14 @@ export function StockMovementsPage({
       page: undefined,
     }));
   };
+  const safeReturnTo = normalizeReturnTo(search.returnTo, "");
   const returnToParams = new URLSearchParams();
   if (normalizedSearch.dateFrom !== undefined)
     returnToParams.set("dateFrom", normalizedSearch.dateFrom);
   if (normalizedSearch.dateTo !== undefined) returnToParams.set("dateTo", normalizedSearch.dateTo);
   if (normalizedSearch.type !== "all") returnToParams.set("type", normalizedSearch.type);
   if (normalizedSearch.page > 1) returnToParams.set("page", String(normalizedSearch.page));
+  if (search.returnTo !== undefined) returnToParams.set("returnTo", search.returnTo);
   const returnToQuery = returnToParams.toString();
   const detailReturnTo = `/stock/${encodeURIComponent(productCode)}/movements${
     returnToQuery ? `?${returnToQuery}` : ""
@@ -87,10 +90,17 @@ export function StockMovementsPage({
         title="在庫変動履歴"
         actions={
           <Button type="button" asChild variant="outline">
-            <Link to="/stock" search={{ selected: productCode }}>
-              <ArrowLeft aria-hidden="true" />
-              在庫照会へ戻る
-            </Link>
+            {safeReturnTo ? (
+              <Link to={safeReturnTo}>
+                <ArrowLeft aria-hidden="true" />
+                在庫照会へ戻る
+              </Link>
+            ) : (
+              <Link to="/stock" search={{ q: productCode, selected: productCode }}>
+                <ArrowLeft aria-hidden="true" />
+                在庫照会へ戻る
+              </Link>
+            )}
           </Button>
         }
       />

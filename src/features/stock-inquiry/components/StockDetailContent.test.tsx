@@ -29,7 +29,7 @@ describe("StockDetailContent (REQ-301 -> REQ-303)", () => {
     },
   );
 
-  it("REQ-301: StockDetailContent shows active movement history link", async () => {
+  it("REQ-301 / UI-06a-D7: 在庫変動履歴 link が現在の /stock URL を returnTo で送る", async () => {
     const data = makeMockStockDetail({
       product: makeMockProductWithRelations({ product_code: "BT0002", name: "ボタン #02" }),
     });
@@ -38,11 +38,12 @@ describe("StockDetailContent (REQ-301 -> REQ-303)", () => {
       <StockDetailContent
         query={{ isLoading: false, isError: false, data } as UseQueryResult<StockDetail>}
       />,
+      "/stock?q=BT&selected=BT0002",
     );
 
     expect(await screen.findByRole("link", { name: "在庫変動履歴" })).toHaveAttribute(
       "href",
-      "/stock/BT0002/movements",
+      "/stock/BT0002/movements?returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002",
     );
   });
 
