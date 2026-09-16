@@ -7,7 +7,7 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: d5ef2635a77054c2002e95585074a34cdd876f75
@@ -19,7 +19,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 2
 - Human Gate: ready,merge,manual
 
-manual = owner Windows native L3 1 画面（ホーム: 11 の入口 card が icon + 題名 + 1 行説明で並び、「売上データ取込み」だけが強調され、上段 summary card 4 枚の補助文言が状態の説明になっている。前日分未取込みの alert は従来どおり。目視と PASS/FAIL のみ）。
+manual = owner Windows native L3 1 画面（ホーム: 11 の入口 card が icon + 題名 + 1 行説明で並び、「売上データ取込み」だけが強調され、上段 summary card 3 枚の補助文言が状態の説明になっている（GA4 で 4 枚 → 3 枚）。前日分未取込みの alert は従来どおり。目視と PASS/FAIL のみ）。
 
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（本 commit）: Risk R2。Design Readiness は SCREEN_DESIGN §ホーム画面「利用者配慮」（全ボタンにタイトル＋説明文 / 売上データ取込みの強調）と 53 §53.1 / §53.5、mockup-c-home.html を十分と引用し、本 lane で SCREEN_DESIGN / 53 / 52 §52.3 / decision-log を実装と同 PR で同期する（S6）。Test Design Matrix は R2 で AC が rg oracle + 既存 test の更新 + 小 test 1 file で閉じるため付けない。
@@ -140,11 +140,11 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `9d67
 - **AC3**（GA4 で改訂）`rg -c '<SummaryCard$|<SummaryCard ' src/features/home/components/SummaryCards.tsx` = 3（GA4 前 4）/ `rg -c 'レジ反映待ち' 同` = 0（GA4 前 1）/ `rg -c '基準を下回る商品' 同` = 1 / `rg -c 'text-destructive' 同` = 1（GA4 前 0）/ `rg -c 'text-warning-emphasis' 同` = 1（GA4 前 0）/ `rg -c 'md:grid-cols-3' 同` = 1 / D-H4 の確定文言 `rg -c '在庫 0 の商品' 同` = 1（baseline 0。owner が別文言を選んだ場合はその文言で読み替え、packet に記録）/ `rg -c 'すぐ確認' src/features/home` = 0（baseline 0、負）
 - **AC4**（負の oracle）`git diff --name-only origin/main..HEAD -- src/features/home/HomePage.tsx src/features/home/components/PluNotificationBar.tsx src/features/home/components/InventoryActionGrid.tsx src/features/home/hooks src/features/home/lib src/features/home/types.ts src/components docs/design-system | wc -l` = 0
 - **AC5** docs（GA4 で改訂、**GA5 で式を section / 本文に限定**）: `sed -n 86,100p docs/SCREEN_DESIGN.md | rg -c 'サマリ3枚'` = 1 / `sed -n 86,100p docs/SCREEN_DESIGN.md | rg -c 'サマリ4枚|PLU未反映件数'` = 0（§ホーム画面のみ。`:209` `:350` の他画面の「サマリ4枚」は無関係）/ `rg -c '0 件は無色' docs/SCREEN_DESIGN.md` = 1 / `awk '/^### 更新履歴/{exit} {print}' docs/function-design/53-ui-home.md | rg -c 'PLU 未反映'` = 0（本文のみ。更新履歴は append-only で残る）/ `rg -c '青枠' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '3 カード束ね' docs/function-design/53-ui-home.md` = 1（GA4 の S6-b で 3 枚へ戻したため。GA3 以前の「= 0」は撤回）/ `rg -c 'description' docs/function-design/52-ui-shared-layout.md` ≥ 1（baseline 0）/ `rg -c '^## D-089' docs/decision-log.md` = 1（baseline 0）
-- **AC6** test: `SummaryCards.test.tsx` ≥ 10 本（baseline 8）/ `ActionButton.test.tsx` 新規 ≥ 3 本 / `HomePage.test.tsx` 5 本 PASS / `SidebarLink.test.tsx` 17 本 PASS（無変更）/ `src/config/navigation.test.ts` 7 本 PASS（無変更）。mutant: (1) `QuickActionGrid` の `variant="primary"` を外す → AC2 の rg oracle（`variant="primary"` count = 0）で kill。test-based kill は対象外（`ActionButton.test` は ActionButton に直接 `variant` を渡す単体 test で、呼び出し忘れは検出しない。Plan Review round 1 P3）。(2) `navigation.ts` の `ui-02` の `description` を消す → AC1 = 10 で FAIL。(3) `SummaryCards` の PLU card を消す → AC3 と `SummaryCards.test` が FAIL。3 本とも実装後に kill を実測して報告する
+- **AC6** test: `SummaryCards.test.tsx` ≥ 10 本（baseline 8）/ `ActionButton.test.tsx` 新規 ≥ 3 本 / `HomePage.test.tsx` 5 本 PASS / `SidebarLink.test.tsx` 17 本 PASS（無変更）/ `src/config/navigation.test.ts` 7 本 PASS（無変更）。mutant: (1) `QuickActionGrid` の `variant="primary"` を外す → AC2 の rg oracle（`variant="primary"` count = 0）で kill。test-based kill は対象外（`ActionButton.test` は ActionButton に直接 `variant` を渡す単体 test で、呼び出し忘れは検出しない。Plan Review round 1 P3）。(2) `navigation.ts` の `ui-02` の `description` を消す → AC1 = 10 で FAIL。(3)（GA4 で撤回、後継は GA4 の mutant 2 本 = 在庫切れの色分岐を外す → 色 test FAIL / `py-3.5` を外す → ActionButton test FAIL、Sonnet run で kill 実測）。3 本とも実装後に kill を実測して報告する
 - **AC7** `npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（GA3: run 1 の full は `BackupRestorePage.flow.test.tsx` 4 failed / 1518 passed。S5-b 後に full を再実行し PASS を報告。`rg -c 'getByText\(/昨日の売上/\)' src/features/backup-restore/BackupRestorePage.flow.test.tsx` = 0〈baseline 4〉/ `rg -c '\^昨日の売上 \\\(' 同` = 4〈baseline 0〉）
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
 - **AC-L3-2**（GA4、round 2）ホーム目視: (e) 入口 card の icon と題名が揃って見え、文字が上に寄っていない (f) summary が 3 枚で PLU 未反映 card が無い (g) 在庫切れ・在庫少の件数が 1 以上なら数字に色、0 なら無色（在庫少の基準を上げ下げして両方を見る。DB 編集不要）。所感で「色がうるさい」なら D-H7 を撤回し無色へ戻す
-- **AC-L3-1** ホーム（Windows native）目視: (a) 11 card が icon + 題名 + 説明で 2 列に並ぶ、(b) 売上データ取込みだけ枠と背景が強調、(c) summary 4 枚と補助文言（在庫切れ = D-H4 の文言、在庫少 = 基準を下回る商品、PLU 未反映 = レジ反映待ち）、(d) 前日分未取込み alert と PLU 通知バーが従来どおり。PASS/FAIL のみ。fixture 不要（demo seed の件数表示で足りる。件数 0 でも card は出る）
+- **AC-L3-1** ホーム（Windows native）目視: (a) 11 card が icon + 題名 + 説明で 2 列に並ぶ、(b) 売上データ取込みだけ枠と背景が強調、(c) summary 4 枚と補助文言（在庫切れ = D-H4 の文言、在庫少 = 基準を下回る商品、PLU 未反映 = レジ反映待ち）（GA4 で撤回、後継は AC-L3-2 (f)）、(d) 前日分未取込み alert と PLU 通知バーが従来どおり。PASS/FAIL のみ。fixture 不要（demo seed の件数表示で足りる。件数 0 でも card は出る）
 
 ## Design Sources
 
@@ -264,7 +264,7 @@ not applicable（DTO / wire / route / search 非接触）。
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #70](https://github.com/kosei-w90607/inventory-system-desktop/pull/70) で実装し squash merge 済み（`41c2e3e2`、2026-09-16）。Writer = Codex 発注書 58（実装 `807cc249` / docs `232c94da`、full で他 feature の test matcher 衝突により停止 → GA3）+ Sonnet subagent（GA3 の test 是正 `61c558fb`、GA4 の是正 `12969410` / `26658963`）。Final Review round 1 @ `61c558fb` = Sonnet pass A（P3 3）/ Opus pass B（P2 2 → SCREEN_DESIGN 同期 `e52d0e0d` + L3 観察項目）/ Sonnet closure。owner L3 round 1 の所感 → GA4（icon / 題名の揃え、PLU 未反映 card 撤去、件数の状態色、card 面は token lane へ）→ GA5（AC5 の oracle）→ origin/main 単段 merge `4c5fa0bb` → Opus closure（P2 2 = docs 記述、本 closeout で是正）→ helper 要求で broad 2 本を現 head で取り直し（Opus + Sonnet、pass）。owner L3 round 2 PASS（「色も一旦これでいい」）。介入 2 / 予算 3、Codex relay 1 / 上限 2
 
 ## Review Response
 
@@ -298,3 +298,13 @@ Fill after implementation.
 - 原因: Coordinator の oracle 式が section を限定しておらず、GA4 で S6-b を改訂した際に AC5 の該当式を更新していなかった
 - 是正: AC5 の 3 式を section / 本文に限定し、期待値を GA4 の Scope に合わせる（本 commit）。実装・docs は不変
 - 教訓: docs の rg oracle は section 範囲（`sed -n` / `awk`）で限定し、GA で Scope を変えたら同 commit で AC の式を rg で sweep する
+
+### Final Review（2026-09-16）
+
+- **round 1 pass A**（Sonnet、broad、head `61c558fb`）: pass（P1/P2 = 0、P3 3）。対象 6 test file 全 PASS、typecheck PASS を実測。P3-1（59-ui-shared-patterns.md:21「HomePage 3 カード」が当時の 4 カード実装に未同期）= accept、closeout で同期（GA4 で 3 カードへ戻ったため本 closeout では変更不要と確認済み）。P3-2（`ActionButton.tsx` の `size-6 h-6 w-6` 重複）= 記録のみ。P3-3（`reference/mockup-d-home-sales-admin.html` の旧前提記述）= 記録のみ。D-H1〜D-H4 の確認済み事項を含む（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/70#issuecomment-5694384991)）
+- **round 1 pass B**（Opus、broad、デザイン / operator UI 観点、head `61c558fb`）: P2 2 / P3 9（P1 なし）。P2-1（SCREEN_DESIGN.md:91,93 の「大きなボタン」「小さく」が `size` 撤去後の実装と矛盾）= accept、同 PR で是正 → closure `e52d0e0d`。P2-2（`--warning-soft` が PLU 通知バーと主動線 card の両方の塗りで意味が紛れ得る）= accept、code 不変で L3 観察項目へ。P3 群（card 内文字の上寄り / 面の差 / 「当日」表記 / grid 幅 / PLU バー併存 / 色相 1 系統 / `size-6 h-6 w-6` 重複 / hover 塗り置換 / test の navigation 書換え）は L3 観察項目または記録のみ（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/70#issuecomment-5694448225)）
+- **closure**（Sonnet、head `e52d0e0d`）: closure pass（新規 P1/P2 = 0）。差分は SCREEN_DESIGN.md 2 行の docs 1 commit のみ。review = pass、manual は owner 待ち（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/70#issuecomment-5694480219)）
+- owner L3 round 1（head `e52d0e0d`）の所感 → GA4（本 packet 上記）→ GA5 → origin/main 単段 merge `4c5fa0bb`
+- **closure**（Opus、design lens、head `4c5fa0bb`）: closure pass。D-H6 / D-H7 / D-H3 撤回を実装で確認、AC oracle 全件と AC4 負 oracle を再実測して一致。**新規 P2 2 件**: P2-1（packet の `manual =` 行・AC6 mutant (3)・AC-L3-1 (c) に GA4 前の「summary 4 枚 / PLU card」が残存）= accept、**本 closeout で是正**（本 commit で上記の通り是正済み）。P2-2（Plans.md lane 1 行が「Draft PR 未作成、介入 0/3」のまま）= accept、**本 closeout で完了行へ**（下記 Plans.md 更新で対応）。**P3**: D-H8 の backlog 文言に「primary card の塗り = `--warning-soft` 流用の是非（mockup-c は `--primary-soft` amber-100 で別 token）」を追記 / `--warning-emphasis` と `--primary` が同 HEX で PLU バー表示中は amber が 3 役という観察条件 / `SummaryCards.test.tsx` の `pluDirty` override 引数が死に配線、次に触る lane で削除（3 件とも本 closeout の backlog.md「記録目的」で記録）。review = pass（broad 2 @ `61c558fb` + closure @ `e52d0e0d` + closure @ `4c5fa0bb`）、manual = pass（owner L3 round 2 @ `4c5fa0bb`）（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/70#issuecomment-5695336945)）
+- **broad 取り直し 2 本目**（Sonnet、head `4c5fa0bb`、GA4/GA5 反映後の再監査）: pass（P1/P2/P3 = 0）。helper の要求で Amendments 増加後の現 head で broad を取り直し。AC1/AC2/AC3/AC5（GA5 版）の oracle を逐語再実測して全件一致、vitest 16 file / 99 tests 全 PASS、typecheck PASS（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/70#issuecomment-5695391365)）
+- manual = owner L3 round 1（`e52d0e0d`、所感 → GA4）/ round 2（`4c5fa0bb`、PASS「色も一旦これでいい」）
