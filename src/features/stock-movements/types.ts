@@ -38,6 +38,7 @@ export const stockMovementsSearchSchema = z.object({
     .catch(undefined),
   type: z.enum(MOVEMENT_TYPES).optional().catch(undefined),
   page: z.coerce.number().int().positive().optional().catch(undefined),
+  returnTo: z.string().max(500).optional().catch(undefined),
 });
 
 export type StockMovementsSearch = z.output<typeof stockMovementsSearchSchema>;

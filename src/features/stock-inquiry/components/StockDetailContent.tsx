@@ -7,7 +7,7 @@
 
 import type { UseQueryResult } from "@tanstack/react-query";
 import { History } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import type { StockDetail } from "@/lib/bindings";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,9 +34,10 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 function ActiveCta({ label, productCode }: { label: string; productCode: string }) {
+  const returnTo = useRouterState({ select: (state) => state.location.href });
   return (
     <Button type="button" asChild variant="outline" size="sm">
-      <Link to="/stock/$code/movements" params={{ code: productCode }}>
+      <Link to="/stock/$code/movements" params={{ code: productCode }} search={{ returnTo }}>
         <History aria-hidden="true" />
         {label}
       </Link>
