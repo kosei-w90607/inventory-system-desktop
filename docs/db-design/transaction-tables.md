@@ -17,6 +17,8 @@
 | supplier_id | INTEGER | FK → suppliers.id, NULLABLE | 取引先 |
 | receiving_date | TEXT | NOT NULL | 入庫日 |
 | note | TEXT | NULLABLE | 備考 |
+| idempotency_key | TEXT | NOT NULL, 非空CHECK, UNIQUE INDEX | 再送を識別するキー（migration v2） |
+| request_fingerprint | TEXT | NOT NULL, 非空CHECK | 同じキーで異なる内容が送られた場合の検出用（migration v2） |
 | created_at | TEXT | NOT NULL | 作成日時 |
 
 ### receiving_items カラム定義
@@ -35,6 +37,8 @@
 - `receiving_records.supplier_id` は取引先統合（SPEC-SUP-D4）で残す側の取引先へ付け替わり得る。統合は同一実体の重複解消であり、入庫日・明細・原価の事実は変更しない
 
 ### 入出庫記録追跡の完成形（2026-06-27 追加）
+
+現行の冪等性列は入庫・返品交換・手動販売・廃棄破損の各ヘッダに実装済み。追加DDL・既存行のbackfillは [migration v2](../function-design/22-mnt-migration.md#9-mnt-03-追加-migration-v2冪等性カラム)、同一キーの再送と内容不一致の判定は [入出庫BIZ](../function-design/31-biz-inventory-service.md) を参照する。以下の取消・訂正用フィールドは将来設計であり、現行ERには含めない。
 
 入庫、返品・交換、手動販売、廃棄・破損の各ヘッダは、完成形では後から一覧・詳細で追える業務記録として扱う。詳細は [65-inventory-record-traceability.md](../function-design/65-inventory-record-traceability.md) §65.6 を正とする。
 
@@ -72,6 +76,8 @@
 | register_processed | BOOLEAN | NOT NULL, DEFAULT 1 | レジ戻し処理済みか。1=済み（在庫はCSVで自動反映）、0=未処理（システムで在庫増減） |
 | receipt_image_path | TEXT | NULLABLE | レシート画像のファイルパス |
 | note | TEXT | NULLABLE | 備考 |
+| idempotency_key | TEXT | NOT NULL, 非空CHECK, UNIQUE INDEX | 再送を識別するキー（migration v2） |
+| request_fingerprint | TEXT | NOT NULL, 非空CHECK | 同じキーでの内容不一致を検出（migration v2） |
 | created_at | TEXT | NOT NULL | 作成日時 |
 
 ### return_items カラム定義
@@ -131,6 +137,8 @@ CSV取込みで拾えない販売を補完記録する。PLU全商品登録後�
 | sale_date | TEXT | NOT NULL | 販売日 |
 | reason | TEXT | NOT NULL | 理由。'plu_unregistered'（PLU未登録の新商品）/ 'other'（その他） |
 | note | TEXT | NULLABLE | 備考（自由記述） |
+| idempotency_key | TEXT | NOT NULL, 非空CHECK, UNIQUE INDEX | 再送を識別するキー（migration v2） |
+| request_fingerprint | TEXT | NOT NULL, 非空CHECK | 同じキーでの内容不一致を検出（migration v2） |
 | created_at | TEXT | NOT NULL | 作成日時 |
 
 ### manual_sale_items カラム定義
@@ -169,6 +177,8 @@ CSV取込みで拾えない販売を補完記録する。PLU全商品登録後�
 |---------|---|----|------|
 | id | INTEGER | PK AUTOINCREMENT | 廃棄記録ID |
 | disposal_date | TEXT | NOT NULL | 廃棄日 |
+| idempotency_key | TEXT | NOT NULL, 非空CHECK, UNIQUE INDEX | 再送を識別するキー（migration v2） |
+| request_fingerprint | TEXT | NOT NULL, 非空CHECK | 同じキーでの内容不一致を検出（migration v2） |
 | created_at | TEXT | NOT NULL | 作成日時 |
 
 ### disposal_items カラム定義

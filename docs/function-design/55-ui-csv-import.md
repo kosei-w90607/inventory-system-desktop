@@ -413,6 +413,10 @@ stateDiagram-v2
     result --> idle: reset
     error_idle --> idle: dismiss_error
     error_preview --> preview: dismiss_error
+    note right of idle
+        reset は任意のstateから idle へ戻す
+        error_idle / error_preview は error variant の復帰先別表示
+    end note
 ```
 
 ASCII 版（mermaid 非対応環境用）:
@@ -430,9 +434,10 @@ ASCII 版（mermaid 非対応環境用）:
 [result] --reset--> [idle]
 [error(recoverTo=idle)] --dismiss_error--> [idle]
 [error(recoverTo=preview)] --dismiss_error--> [preview]
+[任意のstate] --reset--> [idle]
 ```
 
-network test（Phase 1 7-7 Vitest 着手後）で 9 action × 6 state = 54 組合せのうち、上記 13 個の valid 遷移 + 41 個の invalid 遷移（state 据え置き）を網羅する設計。
+遷移の実装と検証は `src/features/csv-import/reducer.ts` / `reducer.test.ts` を参照する。図のerror復帰先の分岐は実装上の別variantではない。`reset` の任意state受付と、それ以外のinvalid actionでstateを維持する規則を区別する。
 
 ---
 

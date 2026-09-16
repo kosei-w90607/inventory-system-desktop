@@ -8,6 +8,7 @@
 
 ## 次の行動
 
+- **現行図面の同期・設計点検（R2）**: [Draft PR #69](https://github.com/kosei-w90607/inventory-system-desktop/pull/69)、[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = implementing。追加計画はOpus指摘を全是正し、Sonnetの限定確認PASS。[横断モデルの結果](diagrams/cross-feature-verification.md) は通常suite PASS、棚卸し時点の明示診断 FAIL。カウント後の移動消失STK-1と、確定後の遅いCSVによる二重減算STK-2を別々に追跡する。Sonnet/Opusの初回最終レビューを完了し、指摘是正と限定確認へ。[監査](research/2026-09-16-diagram-audit.md) のSTK-1 / STK-2 / NAV-1を含めruntime修正は未実施。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了

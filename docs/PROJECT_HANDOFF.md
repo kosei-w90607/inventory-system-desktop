@@ -10,6 +10,7 @@
 | 層と依存関係 | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | 振舞い・command・エラー契約 | [FUNCTION_DESIGN.md](FUNCTION_DESIGN.md) の対象サブ文書 |
 | 永続化・migration | [DB_DESIGN.md](DB_DESIGN.md) |
+| 現行のER・画面遷移・業務フローと設計点検 | [図面の入口](diagrams/current-system.md)、[図面監査](research/2026-09-16-diagram-audit.md) |
 | 表示・操作・日本語文言 | [SCREEN_DESIGN.md](SCREEN_DESIGN.md)、[design-system](design-system/README.md) |
 | 環境構築 | [DEV_SETUP_CHECKLIST.md](DEV_SETUP_CHECKLIST.md) |
 | 計画・実装・レビュー・完了手続き | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)、[CI](ci.md) |

@@ -1,7 +1,7 @@
 # 在庫管理システム テーブル定義書
 
-> **最終更新**: 2026-08-18 / D-072 PLU slot 永続割当（plu_slots、migration v5）を追加
-> **テーブル数**: 25テーブル（マスタ3 + トランザクション8 + POS連携8 + 在庫追跡2 + 棚卸し2 + システム2）
+> **現行スキーマの入口**: [ER図](inventory_system_erd.html)、[業務データフロー](diagrams/current-system.md)。適用順序は `src-tauri/src/db/migration.rs` と `schema_v*.rs` を照合する。
+> **図と本文の位置付け**: 現行構造と完成形の将来設計を区別する。[図面監査](research/2026-09-16-diagram-audit.md) に、実装と設計の不一致・再検討事項を記録する。
 
 ---
 
@@ -58,7 +58,7 @@
 - **日時の格納**: TEXT型でISO 8601形式（例: 2026-03-21T19:45:00）。SQLiteにはDATETIME型がないが、TEXT型でISO 8601ならソート・比較が正しく動く
 - **BOOLEAN型**: SQLiteにはBOOLEAN型がないため、INTEGER型で0/1を使用
 - **トランザクション**: 入庫・CSV取込み等の「ヘッダ＋明細＋在庫更新＋変動履歴」はBEGIN〜COMMITで一括コミット。途中で失敗したらROLLBACK
-- **マイグレーション**: バージョン管理テーブル（schema_version）を作り、アプリ起動時にスキーマバージョンを確認→必要ならALTER TABLEで更新
+- **マイグレーション**: バージョン管理テーブル（schema_versions）で適用履歴を保持し、アプリ起動時に未適用migrationを順に実行する。業務テーブル一覧とは別の管理表で、[ER図](inventory_system_erd.html) には含める
 
 ### ポリモーフィック関連の整合性
 - inventory_movementsのreference_type + reference_idはアプリケーション側で整合性を担保

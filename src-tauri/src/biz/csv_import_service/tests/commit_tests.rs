@@ -3,25 +3,6 @@ use crate::biz::csv_import_service::*;
 use crate::biz::BizError;
 use crate::db::test_support::setup_test_db;
 use crate::db::{product_repo, sales_repo};
-use std::time::Instant;
-
-/// CachedPreview を構築するヘルパー
-fn build_cached(result: ParseValidateResult) -> CachedPreview {
-    let active_same_date_import_ids = result
-        .preview_data
-        .duplicate_check
-        .same_date_imports
-        .iter()
-        .map(|item| item.id)
-        .collect();
-    CachedPreview {
-        created_at: Instant::now(),
-        matched_rows: result.matched_rows,
-        error_rows: result.error_rows,
-        preview_data: result.preview_data,
-        active_same_date_import_ids,
-    }
-}
 
 fn write_surface(conn: &crate::db::DbConnection) -> [i64; 4] {
     [
