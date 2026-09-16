@@ -11,7 +11,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: bbec3bf518d834cbd03e594cfae05faf75cb5a45
-- Amendments: b0f9fb50cfa45e62fd07412c181c2a6fee8f1f65, df865a4ebfeea8ad32f174c30ae9d6e03c0a9a37
+- Amendments: b0f9fb50cfa45e62fd07412c181c2a6fee8f1f65, df865a4ebfeea8ad32f174c30ae9d6e03c0a9a37, f87702bcc7064a47e5fb944bfa62c2e90fb6e082
 - Coordinator: Fable 5.1
 - Writer: Codex（発注書 60、owner 起動。GA1: owner 2026-09-16「Codex に回したほうが質良い」で Sonnet subagent から戻す。relay 上限到達時のみ Sonnet subagent、Plan Reviewer とは別 fresh context）
 - Plan Reviewer: Sonnet（独立 fresh context）
