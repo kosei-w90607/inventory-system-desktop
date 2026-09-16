@@ -8,7 +8,7 @@ Risk: R2
 
 ## Contracts Under Test
 
-- XFA-D1: 操作の意味から作る独立した在庫・売上期待値。REQ-201/202/203/204/401、INV-5、SPEC-SDI-D1〜D4。
+- XFA-D1: 操作の意味から作る独立した在庫・売上期待値。売上は商品×sourceで比較し、手動販売=manual、CSV=auto、入庫/返品/廃棄は売上を作らない。REQ-201/202/203/204/401、INV-5、SPEC-SDI-D1〜D4。
 - XFA-D2: 現物移動・カウント・CSV反映時点の分離。REQ-205/401、既知STK-1の診断。
 - XFA-D3〜D5: 再現可能な有限操作列、最初の失敗prefix、通常PASSと診断FAILの分離。
 
@@ -39,7 +39,7 @@ Risk: R2
 |---|---|---|---|---|---|
 | 入出庫 | 合成商品の初期在庫 | 実BIZ保存とモデル更新 | 同じ冪等キーの再送 | 内容不一致拒否・業務snapshot維持 | CMD/UI pending、native操作 |
 | CSV | 実parserでpreview | 確定・同日追加 | 同じhash拒否、取消後再取込み、再取消 | 対象外importを巻き戻さない | CMD cacheの期限・再起動 |
-| 棚卸し | 開始・カウント | 確定 | 再カウント | 保存値と現物時点のずれ | 中断回復UI・バックアップ復元 |
+| 棚卸し | 全商品明細を作成、診断対象をカウント | `force_fill=true` で対象外の非負在庫だけ補完して確定 | 再カウント | 確定成功後の在庫と現物の不一致のみを時点FAILとする | 未入力拒否・負在庫補正・中断回復UI・バックアップ復元 |
 | POS現物 | 未反映の販売 | 後日のファイル反映 | 明示した同一イベントの遅い反映 | 二重反映 | 実機の採取・任意日付の一般解決 |
 
 ## Adjacent Pattern Audit
@@ -48,6 +48,7 @@ Risk: R2
 |---|---|---|---|---|
 | 合成DB | `db/test_support.rs` | 新規test moduleで再利用 | 実DB禁止 | TempDir |
 | Z004生成・parse | `csv_import_service/test_support.rs` / `tests/rollback_tests.rs` | 既存builderを再利用 | 新parser・独自encoding処理は作らない | 実parse→commit |
+| CachedPreview構築 | `tests/commit_tests.rs` / `tests/rollback_tests.rs` の同じ `build_cached` | `test_support.rs` へ挙動不変で移設して共用 | 既存テストのassert・ケース・実行条件は変更しない | 既存CSVテストと新規横断テスト |
 | 入出庫Request | inventory_service各BIZ | 実Request・実関数を使用 | UIの再実装なし | source contractとserde型 |
 
 ## Negative Paths
@@ -64,7 +65,8 @@ Risk: R2
 ## Compatibility Checks
 
 - schema/DTO/runtimeの変更なし。test moduleは `#[cfg(test)]` でのみ組み込む。
-- Rust標準の `#[ignore]` は新規診断だけに付け、明示診断コマンドを必ず実行する。既存テストには触れない。
+- Rust標準の `#[ignore]` は新規診断だけに付け、明示診断コマンドを必ず実行する。既存テストにignoreを追加したりassertを変えたりしない。
+- `diagnostic_` 接頭辞は既知FAILをREQ coverageに計上しないための意図的な抽出対象外。通常ケースは `test_` + REQ番号で計上し、診断の実行実績は結果文書とPRへ分離する。
 
 ## Data Safety Checks
 
@@ -73,7 +75,7 @@ Risk: R2
 
 ## Main Wiring / Integration Checks
 
-- 新規moduleをcsv_import_serviceのtest-only境界へ接続し、実BIZ→実parser/repository→SQLiteを通す。
+- 新規moduleを既存 `csv_import_service/tests/` と `tests/mod.rs` に接続し、実BIZ→実parser/repository→SQLiteを通す。production側mod.rsは変更しない。
 - 日次売上のconsumerまで照合し、DBの内部合計だけをoracleにしない。
 - traceabilityはcanonical generatorで再生成・checkし、生成物を手編集しない。
 

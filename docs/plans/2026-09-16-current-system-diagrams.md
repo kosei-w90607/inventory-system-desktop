@@ -10,7 +10,7 @@
 - Amendments: none
 - Coordinator: Astra（D-087、一貫担当。採用・裁定は owner）
 - Writer: Astra
-- Plan Reviewer: 当初Sonnet PASS / 追加検証のGated AmendmentはOpus（独立 fresh context）
+- Plan Reviewer: 当初Sonnet PASS / A-1はOpus指摘を採用、Sonnetで限定是正確認
 - Final Reviewer: Sonnet + Opus（独立 fresh context、owner指定）
 - Final Review Minimum: 2
 - Human Gate: ready,merge
@@ -70,7 +70,8 @@ Goal Invariant:
 - `docs/function-design/55-ui-csv-import.md` / `56-ui-daily-sales.md` / `57-ui-monthly-sales.md`: 既存図の明白な転記不一致を本文・型定義・実装に照合して同期。競合する業務契約を一方的に変更しない。
 - 本 packet と `docs/Plans.md` の進捗を同期する。
 - `docs/diagrams/cross-feature-verification.md`: 標準的な図の用途、シーケンス図・ステートマシン図・簡略アクティビティ図、独立モデルの契約と実行結果を記録する。既存current-systemの入口から参照する。
-- `src-tauri/src/biz/csv_import_service/cross_feature_tests.rs` と同directoryの `mod.rs`: `#[cfg(test)]` だけのモデルベーステストを追加。既存のCSV fixture builderと一時DBを再利用し、実BIZと日次売上consumerまで検証する。新規診断の `#[ignore]` はXFA-D4どおり明示実行用に限定し、既存テストを変更しない。
+- `src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs` と `tests/mod.rs`: 既存test-only境界内へモデルベーステストを追加。CSV fixture builderと一時DBを再利用し、実BIZと日次売上consumerまで検証する。新規診断の `#[ignore]` はXFA-D4どおり明示実行用に限定する。
+- `src-tauri/src/biz/csv_import_service/test_support.rs` と `tests/commit_tests.rs` / `tests/rollback_tests.rs`: 重複する `build_cached` をtest_supportへ挙動不変で移設する。既存testのassert、ケース、実行条件は変更しない。
 - `docs/plans/test-matrices/2026-09-16-cross-feature-model-audit.md`: oracle・失敗条件・範囲・既知FAILの扱いを先に定義する。
 - `docs/function-design/90-traceability.md`: 必要なgenerated更新をcanonical generatorで行う。
 
@@ -185,3 +186,7 @@ ERの物理関係と全カラム、現行画面の到達・戻り、在庫・日
 ### Gated Amendment A-1: 横断業務モデル検証
 
 ownerの上記依頼を範囲拡張の承認として継承し、XFA-D1〜D5とMatrixを設計した。`design → plan-draft → plan-gate` としてOpusの独立レビューへ提出する。追加はtest-only moduleと図・監査結果、traceabilityに限定し、既存製品の修正やgate緩和は含めない。従来の図面成果は保持。原Plan Commitは書き換えず、本改訂commitをAmendmentsへ追記してから実装へ進む。最終レビューはowner指定によりSonnet + Opusとする。
+
+Opusの初回Plan Reviewは実行時間上限で終了し、判定未受領。同vendorのfresh contextで追加A-1の範囲だけを再確認する。Phaseはplan-gateのまま維持し、未受領を承認に読み替えない。
+
+Opusの再実行でCHANGES_REQUESTEDを受領（P1なし、是正後は追加の全面レビュー不要との条件付き判断）。P2の売上source別oracle、棚卸し確定のfixture前提、診断のcoverage扱いをすべて採用し、XFA-D1/D2/D4とMatrixへ反映した。P3の既存tests/配置とCachedPreview helper共用も採用した。Sonnetのfresh contextでこの是正に限ったPlan Gateの確認を行う。最終レビューのSonnet + Opus要件は維持する。
