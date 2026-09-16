@@ -29,7 +29,7 @@ manual = owner Windows native L3 1 往復（在庫照会で検索 → 商品行�
 
 - 介入回数上限: 3
 - 実働時間上限: 15分
-- relay 往復上限: 2
+- relay 往復上限: 2（GA2 で 1 消費、Coordinator 起因）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -80,7 +80,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 商品コード検索: `src-tauri/src/db/product_repo.rs:780-781` `keyword` は LIKE `%kw%`、`:1845` `test_search_products_req103_keyword_product_code` が商品コード一致を固定。`searchProducts` は `is_discontinued: false`（`useStockInquiry.ts:58`）
 - 共通 helper `src/lib/return-to.ts` `normalizeReturnTo(value, fallback)`: `/` 始まりかつ `//` 始まりでない値だけ通す。consumer の同型 = `DisposalRecordDetailPage.tsx:46` `backHref = normalizeReturnTo(returnTo, "/inventory/records")` → `:80` `<Link to={backHref}>`、test `DisposalRecordDetailPage.test.tsx:120-141`（`it.each` で query 付き / 外部 URL / `//` の 3 ケース、実 router で href を固定）
 - 在庫変動履歴への入口: `StockDetailContent.tsx:39`（在庫照会、本 lane の producer）+ 業務記録詳細 6 画面（`CsvImportRecordDetailPage.tsx:224` / `ManualSaleRecordDetailPage.tsx:179` / `ReceivingRecordDetailPage.tsx:168` / `DisposalRecordDetailPage.tsx:175` / `StocktakeRecordDetailPage.tsx:209` / `ReturnRecordDetailPage.tsx:212`、いずれも `params` のみ、Non-scope）
-- docs: `66-ui-stock-movements.md` §66.1 主動線 4「『在庫照会へ戻る』で `/stock?selected=$code` に戻る」/ §66.2 決定表 UI-06c-D1〜D8 / §66.3 search state 4 key / §66.4 Route search 4 key / §66.5 Header actions「`在庫照会へ戻る` → `/stock?selected=$code`」/ §66.7 Tests。`rg -c 'selected=\$code'` = 2、`rg -c 'returnTo'` = 0、`rg -c 'UI-06c-D9'` = 0（docs / src 全体でも 0）。66 に変更履歴表はない
+- docs: `66-ui-stock-movements.md` §66.1 主動線 4「『在庫照会へ戻る』で `/stock?selected=$code` に戻る」/ §66.2 決定表 UI-06c-D1〜D8 / §66.3 search state 4 key / §66.4 Route search 4 key / §66.5 Header actions「`在庫照会へ戻る` → `/stock?selected=$code`」/ §66.7 Tests。`rg -c '/stock\?selected=\$code'` = 2（GA2 で regex を旧 URL に限定、値は同じ）、`rg -c 'returnTo'` = 0、`rg -c 'UI-06c-D9'` = 0（docs / src 全体でも 0）。66 に変更履歴表はない
 - docs: `58-ui-stock-inquiry.md:538` 「『在庫変動履歴』は UI-06c で active link 化し、`/stock/$productCode/movements` へ遷移する」/ `:536` 「商品修正」は `returnTo` を渡さない（不変）/ §58.10 業務ルールに `#### UI-06a-Dn:` block（D6 まで使用済み、`:602`）/ `:671` 変更履歴表。`rg -c 'UI-06a-D7'` = 0（docs / src 全体でも 0）
 - 対象 test 3 file（`StockMovementsPage` / `StockDetailContent` / `useStockInquiry`）は全 PASS（本数は PR body / CI 出力を正とする）
 
@@ -115,7 +115,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 - **AC1** `rg -c 'returnTo' src/features/stock-movements/types.ts` ≥ 1（baseline 0）/ `rg -c 'normalizeReturnTo' src/features/stock-movements/StockMovementsPage.tsx` ≥ 2（baseline 0、import + 呼び出し）/ `rg -c 'search=\{\{ selected: productCode \}\}' src/features/stock-movements/StockMovementsPage.tsx` = 0（baseline 1）/ `rg -c 'returnToParams.set\("returnTo"' src/features/stock-movements/StockMovementsPage.tsx` = 1（baseline 0）
 - **AC2** `rg -c 'useRouterState' src/features/stock-inquiry/components/StockDetailContent.tsx` ≥ 2（baseline 0、import + 呼び出し）/ `rg -c 'search=\{\{ returnTo \}\}' src/features/stock-inquiry/components/StockDetailContent.tsx` = 1（baseline 0）
 - **AC3** `rg -c '"/stock/BT0002/movements"' src/features/stock-inquiry/components/StockDetailContent.test.tsx` = 0（baseline 1）/ `rg -c 'returnTo' src/features/stock-inquiry/components/StockDetailContent.test.tsx` ≥ 1（baseline 0）/ `rg -c '在庫照会へ戻る' src/features/stock-movements/StockMovementsPage.test.tsx` ≥ 1（baseline 0）/ `rg -c 'returnTo' src/features/stock-movements/StockMovementsPage.test.tsx` ≥ 4（baseline 1）
-- **AC4** `rg -c 'selected=\$code' docs/function-design/66-ui-stock-movements.md` = 0（baseline 2）/ `rg -c 'UI-06c-D9' docs/function-design/66-ui-stock-movements.md` ≥ 3（baseline 0: 決定表 + §66.5 + §66.7）/ `rg -c 'returnTo' docs/function-design/66-ui-stock-movements.md` ≥ 4（baseline 0）/ `rg -c 'UI-06a-D7' docs/function-design/58-ui-stock-inquiry.md` ≥ 3（baseline 0: `:538` bullet + §58.10 見出し + 変更履歴）
+- **AC4** `rg -c '/stock\?selected=\$code' docs/function-design/66-ui-stock-movements.md` = 0（baseline 2 = §66.1 主動線 4 + §66.5 Header。**GA2 で旧 URL に限定**: 旧 regex `selected=\$code` は S5 の新 fallback `/stock?q=$code&selected=$code` にも一致し、S5 と両立しなかった）/ `rg -c 'UI-06c-D9' docs/function-design/66-ui-stock-movements.md` ≥ 3（baseline 0: 決定表 + §66.5 + §66.7）/ `rg -c 'returnTo' docs/function-design/66-ui-stock-movements.md` ≥ 4（baseline 0）/ `rg -c 'UI-06a-D7' docs/function-design/58-ui-stock-inquiry.md` ≥ 3（baseline 0: `:538` bullet + §58.10 見出し + 変更履歴）
 - **AC5**（負の oracle）`git diff --name-only origin/main..HEAD -- src/routes src/lib src/features/stock-inquiry/hooks src/features/stock-inquiry/StockInquiryPage.tsx src/features/inventory-records src-tauri docs/design-system docs/function-design/65-inventory-record-traceability.md docs/decision-log.md | wc -l` = 0
 - **AC6** mutant: (1) S3 の `search={{ returnTo }}` を外す → T1 FAIL（`?returnTo=` 不在）。(2) S2 の `normalizeReturnTo(...)` を `search.returnTo ?? fallback` に置換 → T3 / T4（外部 URL・`//`）FAIL。(3) S2 の fallback から `q=` を外す → T2（欠落 case）FAIL。(4) S2 の `returnToParams.set("returnTo", ...)` を外す → T5 FAIL。4 本とも実装後に kill を実測して報告する
 - **AC7** 対象 test 3 file（`StockMovementsPage` / `StockDetailContent` / `useStockInquiry`）全 PASS（本数は PR body / CI 出力を正とする）、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS。既存 `StockDetailContent.test.tsx:33-48` は S3 で href が変わるため必ず FAIL する。修正前後の red / green を報告する
@@ -293,3 +293,11 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - 是正: Writer field を Codex（発注書 60、owner 起動）へ。Scope / 設計判断 / AC / Matrix は不変。発注書 60 の HEAD_SHA は本 GA の登録 commit にする
 - Owner Effort Budget: relay 0/2（本 GA は Codex run 前）。介入 1/3（本指示を decision point として計上）
 - 教訓: owner 不在でも Writer の既定は Codex（発注書を用意して起動待ちにする）。Sonnet への切替は relay 上限到達か owner 指示のときだけ
+
+### Gated Amendment 2（2026-09-16、Codex 発注書 60 run 1 の fail-closed 停止）
+
+- run 1（HEAD `6edd7da6`）: Writer は AC1〜AC5 の baseline を逐語実行して全件一致を確認した上で、S5 の新 fallback 記述 `/stock?q=$code&selected=$code` が AC4 の regex `selected=\$code` に一致して「= 0」と両立しないことを検出し、file 編集前に停止（正しい挙動）。commit 0、worktree 除去済み、stash 非参照
+- 原因: Coordinator の AC 設計誤り（削除 oracle の regex を旧 URL 全体に限定していなかった）
+- 是正: AC4 の regex を `/stock\?selected=\$code`（旧 URL 限定）へ。baseline は同じ 2。Scope / 設計判断 / 他の AC / Matrix は不変
+- Owner Effort Budget: relay 1/2 を消費（Coordinator 起因）。発注書 60 改訂 2 は本 GA の登録 commit を HEAD_SHA にする
+- 教訓: 削除 oracle は「消す文字列そのもの」ではなく「新しい記述に一致しない形」で書く。起票時に新記述の例文へ同じ regex を当てて 0 件になることを確認する
