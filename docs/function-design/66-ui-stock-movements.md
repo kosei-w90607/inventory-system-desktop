@@ -14,7 +14,7 @@
   1. `/stock` の商品詳細カードから「在庫変動履歴」を開く
   2. 商品別に日時降順の movement を確認する
   3. movement 行の元記録ラベルから業務記録詳細へ遷移する
-  4. 「在庫照会へ戻る」で `/stock?selected=$code` に戻る
+  4. 「在庫照会へ戻る」で `returnTo`（在庫照会からの遷移元 URL）へ戻る。欠落・不正時は `/stock?q=$code&selected=$code`（UI-06c-D9）
 - **初回実装の非対象**: CSV出力、印刷、取消/訂正、元 movement 関係表示、横断 `/inventory/records`、業務記録詳細画面そのもの。
 
 **関数要求**: 商品コードごとの在庫変動履歴を URL search state 付きで表示し、各 movement の日時、種別、増減、変動後在庫、元業務記録リンク、備考を operator-facing な日本語 UI として確認できるようにする。
@@ -39,7 +39,7 @@ export function useStockMovements(args: {
 
 **処理ステップ**:
 
-1. Route が path param `code` と search params `dateFrom/dateTo/type/page` を zod で検証し、不正値を fallback する。
+1. Route が path param `code` と search params `dateFrom/dateTo/type/page/returnTo` を zod で検証し、不正値を fallback する。
 2. `StockMovementsPage` が search params を `NormalizedStockMovementsSearch` に正規化する。
 3. `useStockMovements` が `getStockDetail(code)` と `listMovements(MovementQuery)` を独立 query として呼ぶ。
 4. 商品 query 成功時は商品名、商品コード、部門、現在庫を表示する。失敗時は商品情報だけ inline warning にする。
@@ -59,13 +59,14 @@ export function useStockMovements(args: {
 | ID | 決定 | 理由 / 棄却案 |
 |---|---|---|
 | UI-06c-D1 | route は `/stock/$code/movements` とし、商品コードを path param に置く。 | 商品別台帳であり、F5 / bookmark / 共有時に対象商品が一意になる。query だけで `product_code` を持つ案は在庫照会本体の検索 state と衝突しやすいため棄却。 |
-| UI-06c-D2 | search params は `dateFrom` / `dateTo` / `type` / `page` に限定する。 | perPage は既定 50 + `Select`（50 / 100 / 200、owner 直回答 E10、2026-09-05）。search params は従来どおり `dateFrom` / `dateTo` / `type` / `page` に限定し perPage はローカル state（L3-D3）。 |
+| UI-06c-D2 | 検索条件の search params は `dateFrom` / `dateTo` / `type` / `page` とし、戻り先の `returnTo` を別途保持する（UI-06c-D9）。 | perPage は既定 50 + `Select`（50 / 100 / 200、owner 直回答 E10、2026-09-05）。perPage はローカル state（L3-D3）。`returnTo` は検索 query に渡さない。 |
 | UI-06c-D3 | product header と movement list は 2 useQuery とし、部分障害を許容する。 | movement が失敗しても商品名・現在庫を表示して対象商品を確認できる。商品詳細が失敗しても movement は商品コード単位で取得できる。 |
 | UI-06c-D4 | movement 種別は frontend で日本語ラベルへ変換し、未知種別は元文字列を表示する。 | backend contract は string。表示不能にせず調査可能性を優先する。未知値で落とす案は legacy/corrupt row の追跡を妨げるため棄却。 |
 | UI-06c-D5 | 増減数量は `+N` / `-N` と日本語の「増加」「減少」ラベルで示し、色だけに頼らない。 | DSR-08。業務上の意味を非IT利用者が判別できる必要がある。 |
 | UI-06c-D6 | `MovementRecord.source` がある行だけ「元記録」リンクを出し、ない行は「元記録なし」と表示する。 | PR #112 の source-link contract を使う。初期在庫や legacy 行は movement 自体を表示し、リンク欠落だけを明示する。 |
 | UI-06c-D7 | 元記録 route がまだ未実装でも link URL は `source.route` をそのまま表示対象にする。 | UI-06c の責務は movement から元記録へ戻るための contract 表示。未実装詳細 route の完成は後続スライスで扱う。 |
 | UI-06c-D8 | Windows native L3 は必要。 | 新規 operator-facing 調査画面であり、表の密度、数量符号、元記録リンク、戻り導線の視認性を確認する必要がある。 |
+| UI-06c-D9 | 「在庫照会へ戻る」は `normalizeReturnTo(search.returnTo, fallback)`。`fallback = "/stock?q=" + encodeURIComponent(code) + "&selected=" + encodeURIComponent(code)`。label は「在庫照会へ戻る」のまま（`returnTo` も fallback も在庫照会に着地するため、DSR-18 の「前の画面へ戻る」label は使わない）。`returnToParams` に `returnTo` があれば `set("returnTo", search.returnTo)` を加え、`detailReturnTo` に入れ子で載せる。`updateSearch` / `resetFilters` は `...prev` を spread 済みで追加変更なし。 | 監査 NAV-1 起源。直接アクセス・業務記録詳細からの入口では在庫照会の元条件が存在しないため、商品コード検索（LIKE、`product_repo.rs:1845`）で対象商品を 1 件以上含む list を出し、`selected` で展開する。在庫変動履歴の元記録 link から業務記録詳細へ行って戻ると在庫変動履歴の URL は `detailReturnTo` で再現されるため、そこに `returnTo` が無いと「在庫照会へ戻る」が fallback へ落ちる。棄却案: fallback を `/stock`（商品を見失う、現行と同じ不便）/ fallback を `/stock?selected=<code>`（現行のまま、NAV-1 未解消）/ 入れ子を避けて sessionStorage に持つ（URL 以外の state を増やす、F5 で消える）。 |
 
 ### 66.3 URL Search State
 
@@ -75,9 +76,12 @@ type StockMovementsSearch = {
   dateTo?: string;   // YYYY-MM-DD
   type?: "all" | "receiving" | "return" | "sale_auto" | "sale_manual" | "disposal" | "stocktake";
   page?: number;     // 1 始まり。未指定は 1
+  returnTo?: string; // 在庫照会からの遷移元 URL（max 500）
 };
 ```
 
+- 欠落・不正な `returnTo`（`/` 始まりでない、`//` 始まり、500 字超）は `/stock?q=$code&selected=$code` に fallback する。非 string / 500 字超は schema で `undefined` とし、prefix は `normalizeReturnTo` で検証する。
+- filter 変更・page 送り・reset でも `returnTo` は保持する。
 - 不正な `dateFrom` / `dateTo` は `undefined` に fallback する。
 - 不正な `type` は `"all"` に fallback する。
 - `page < 1` または数値化できない page は `1` に fallback する。
@@ -90,7 +94,7 @@ type StockMovementsSearch = {
 
 ```
 Route params: code
-Route search: dateFrom, dateTo, type, page
+Route search: dateFrom, dateTo, type, page, returnTo
   ↓
 StockMovementsPage
   ├ getStockDetail(code)
@@ -112,7 +116,7 @@ MovementSummary + MovementTable + Pagination
 
 - `PageHeader` title: `在庫変動履歴`
 - actions:
-  - `在庫照会へ戻る` → `/stock?selected=$code`
+  - `在庫照会へ戻る` → `normalizeReturnTo(returnTo, "/stock?q=$code&selected=$code")`（UI-06c-D9。商品コードは `encodeURIComponent` で符号化）
 
 #### 商品サマリ
 
@@ -167,6 +171,8 @@ MovementSummary + MovementTable + Pagination
 - product detail error: 商品サマリだけ inline warning。movement error と独立させる。
 
 ### 66.7 Tests
+
+- REQ-303 / UI-06c-D9: `returnTo` の正規化と fallback、`detailReturnTo` への入れ子。
 
 - REQ-303 / UI-06c-D1: route params の `code` を `listMovements.product_code` に渡す。
 - REQ-303 / UI-06c-D2: search params を `MovementQuery` に変換し、filter 変更時は page を 1 に戻す。
