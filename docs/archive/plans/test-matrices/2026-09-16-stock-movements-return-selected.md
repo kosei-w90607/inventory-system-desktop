@@ -124,3 +124,4 @@ Risk: R3
 - `max(500)` 超過の fallback は zod 契約の既存挙動として自動 test を置かない（概算で 250 字）
 - 在庫照会へ戻った後の展開復元（受け側 hook の既存挙動）は実 navigation を伴うため unit test では href まで。L3（AC-L3-1）で往復を確認する
 - 業務記録詳細から在庫変動履歴へ来た場合の「在庫照会へ戻る」は fallback を T2 で固定するが、その画面経由の実往復は L3 に含めない（Non-scope の scenario）
+- 入れ子 `returnTo` の長さ概算は ASCII 前提。日本語 keyword は再 encode で約 3 倍に膨らみ、`q` が概ね 30 文字超だと業務記録詳細側の `max(500)` で `/inventory/records` へ fallback する（round 1 pass B）

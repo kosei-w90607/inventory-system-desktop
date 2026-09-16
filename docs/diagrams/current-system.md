@@ -94,7 +94,7 @@ flowchart TD
   LOGS[操作ログ] -.->|明示的なrecord_typeとrecord_idがあるとき| RECORD
   RECORD -.->|検証済みreturnTo| LOGS
   RECORD -->|商品の変動履歴を見る| MOVES
-  MOVES -.->|在庫照会へ戻る / selectedのみ| EMPTY[検索前の在庫照会 / 選択を解除]
+  MOVES -.->|在庫照会へ戻る / returnTo| BACKSTOCK[returnToへ戻る。欠落時は商品コード検索の在庫照会へfallback]
 ```
 
 ### 戻り先・文脈の保持
@@ -106,7 +106,7 @@ flowchart TD
 | 作業画面の直近記録→詳細→戻る | 元の作業URLへ戻る。URLにない未保存フォームの復元までは保証しない |
 | 保存結果→詳細 | 入庫・返品交換・手動販売・廃棄のいずれも直接リンクあり（廃棄は PR #71〈2026-09-16〉で追加、UI-05-D17） |
 | 記録詳細→商品別在庫変動履歴 | 商品コードを渡す。来た記録の詳細へ戻る専用stackではない |
-| 在庫変動履歴→在庫照会 | `selected` のみ。検索条件がないため受け側が選択を解除する。[NAV-1](../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる) |
+| 在庫変動履歴→在庫照会 | 在庫照会へ戻る = `returnTo`（在庫照会からの遷移元 URL）へ戻る。欠落時は商品コードで検索した在庫照会へ fallback（PR #75 で NAV-1 解消） |
 | 商品一覧→登録/修正→戻る | 商品画面の `returnTo` を使用。業務記録詳細のfallbackとは別契約 |
 
 根拠: [StockDetailContent](../../src/features/stock-inquiry/components/StockDetailContent.tsx)、[StockMovementsPage](../../src/features/stock-movements/StockMovementsPage.tsx)、[InventoryRecordsPage](../../src/features/inventory-records/InventoryRecordsPage.tsx)、[各記録詳細](../../src/features/inventory-records/ReceivingRecordDetailPage.tsx)、[returnTo検証](../../src/lib/return-to.ts)。詳細から別画面に行けることと、元の操作状態まで復元できることは区別する。
