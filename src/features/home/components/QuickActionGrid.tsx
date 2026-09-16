@@ -8,7 +8,7 @@ import { ActionButton } from "./ActionButton";
 export function QuickActionGrid() {
   return (
     <div className="grid grid-cols-2 gap-4">
-      <ActionButton navItemId="ui-07" />
+      <ActionButton navItemId="ui-07" variant="primary" />
       <ActionButton navItemId="ui-09a" />
       <ActionButton navItemId="ui-06a" />
       <ActionButton navItemId="ui-01a" />

@@ -4,6 +4,7 @@
 // 設計: docs/function-design/53-ui-home.md §53.1 / §53.5 / §53.6 (per-card Skeleton 仕様)
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import type { HomeSummaryState } from "../types";
 import { SummaryCard } from "@/components/patterns/SummaryCard";
 
@@ -51,7 +52,17 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
         loadingSkeleton={<Skeleton className="h-8 w-12" />}
         onRetry={() => void lowStock.refetch()}
       >
-        <div className="text-2xl font-semibold">{derived.outOfStockCount} 件</div>
+        <div className="space-y-1">
+          <div
+            className={cn(
+              "text-2xl font-semibold",
+              derived.outOfStockCount > 0 ? "text-destructive" : "",
+            )}
+          >
+            {derived.outOfStockCount} 件
+          </div>
+          <div className="text-sm text-muted-foreground">在庫 0 の商品</div>
+        </div>
       </SummaryCard>
 
       <SummaryCard
@@ -61,7 +72,17 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
         loadingSkeleton={<Skeleton className="h-8 w-12" />}
         onRetry={() => void lowStock.refetch()}
       >
-        <div className="text-2xl font-semibold">{derived.lowStockCount} 件</div>
+        <div className="space-y-1">
+          <div
+            className={cn(
+              "text-2xl font-semibold",
+              derived.lowStockCount > 0 ? "text-warning-emphasis" : "",
+            )}
+          >
+            {derived.lowStockCount} 件
+          </div>
+          <div className="text-sm text-muted-foreground">基準を下回る商品</div>
+        </div>
       </SummaryCard>
     </div>
   );

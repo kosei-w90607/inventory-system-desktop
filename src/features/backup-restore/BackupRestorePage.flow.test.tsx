@@ -220,7 +220,7 @@ describe("復元成功 Alert 統合テスト (UI-11b-D11, Matrix C5/C6)", () => 
     await driveToRestoreSuccess(user);
 
     await waitFor(() => {
-      expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
+      expect(screen.getByText(/^昨日の売上 \(/)).toBeInTheDocument();
     });
     expect(screen.getAllByText("バックアップから復元しました")).toHaveLength(1);
   });
@@ -263,7 +263,7 @@ describe("復元成功 Alert 統合テスト (UI-11b-D11, Matrix C5/C6)", () => 
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
+      expect(screen.getByText(/^昨日の売上 \(/)).toBeInTheDocument();
     });
     expect(screen.queryByText("バックアップから復元しました")).not.toBeInTheDocument();
   });
@@ -295,7 +295,7 @@ describe("復元成功 Alert negative パス (UI-11b-D11, Matrix C7/C8)", () => 
     renderApp("/");
 
     await waitFor(() => {
-      expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
+      expect(screen.getByText(/^昨日の売上 \(/)).toBeInTheDocument();
     });
     expect(screen.queryByText("バックアップから復元しました")).not.toBeInTheDocument();
   });
@@ -330,7 +330,7 @@ describe("復元成功 Alert negative パス (UI-11b-D11, Matrix C7/C8)", () => 
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
+      expect(screen.getByText(/^昨日の売上 \(/)).toBeInTheDocument();
     });
     expect(screen.queryByText("バックアップから復元しました")).not.toBeInTheDocument();
   });
