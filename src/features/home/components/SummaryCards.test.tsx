@@ -1,11 +1,11 @@
 // src/features/home/components/SummaryCards.test.tsx
 //
-// B0 characterization test: SummaryCards（home 3 カード）の現 DOM 固定。
+// B0 characterization test: SummaryCards（home 4 カード）の現 DOM 固定。
 // loading / error+retry / data の 3 状態を assert する。
 // D-B1: 在庫切れ・在庫少の 2 カードは同一 lowStock query 共有 = 同一 onRetry を使う現状を固定。
 // 設計: docs/function-design/53-ui-home.md §53.5 / §53.6
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -52,11 +52,12 @@ function makeQueryResult<T>(overrides: Partial<UseQueryResult<T>> = {}): UseQuer
 function makeBaseSummary(
   salesOverrides: Partial<UseQueryResult<DailySalesReport>> = {},
   lowStockOverrides: Partial<UseQueryResult<ProductWithRelations[]>> = {},
+  pluDirtyOverrides: Partial<UseQueryResult<ProductResponse[]>> = {},
 ): HomeSummaryState {
   return {
     sales: makeQueryResult<DailySalesReport>(salesOverrides),
     lowStock: makeQueryResult<ProductWithRelations[]>(lowStockOverrides),
-    pluDirty: makeQueryResult<ProductResponse[]>(),
+    pluDirty: makeQueryResult<ProductResponse[]>(pluDirtyOverrides),
     csvImports: makeQueryResult<PaginatedResult<CsvImport>>(),
     derived: {
       yesterdayLabel: "6/11(水)",
@@ -72,23 +73,24 @@ function makeBaseSummary(
 describe("SummaryCards B0 characterization (D-B1, REQ-301/302)", () => {
   // --- loading 状態 ---
 
-  it("B0-home-L1: loading 時、3 カードのタイトルは常時表示される（タイトル skeleton 化しない）", () => {
-    const summary = makeBaseSummary({ isLoading: true }, { isLoading: true });
+  it("B0-home-L1: loading 時、4 カードのタイトルは常時表示される（タイトル skeleton 化しない）", () => {
+    const summary = makeBaseSummary({ isLoading: true }, { isLoading: true }, { isLoading: true });
     render(<SummaryCards summary={summary} />);
 
-    // タイトルが 3 本表示される（loading 中もタイトル常時表示 = home SummaryCard の現構造）
+    // タイトルが 4 本表示される（loading 中もタイトル常時表示 = home SummaryCard の現構造）
     expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
     expect(screen.getByText("在庫切れ")).toBeInTheDocument();
     expect(screen.getByText("在庫少")).toBeInTheDocument();
+    expect(screen.getByText("PLU 未反映")).toBeInTheDocument();
   });
 
   it("B0-home-L2: loading 時、CardContent には Skeleton が表示される（data コンテンツは表示されない）", () => {
-    const summary = makeBaseSummary({ isLoading: true }, { isLoading: true });
+    const summary = makeBaseSummary({ isLoading: true }, { isLoading: true }, { isLoading: true });
     const { container } = render(<SummaryCards summary={summary} />);
 
     // Skeleton 要素が存在すること（Skeleton コンポーネントは data-slot="skeleton" 属性を持つ）
     const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
-    expect(skeletons.length).toBeGreaterThan(0);
+    expect(skeletons).toHaveLength(5);
     // data コンテンツの代表値は表示されない
     expect(screen.queryByText(/¥/)).not.toBeInTheDocument();
     expect(screen.queryByText(/件/)).not.toBeInTheDocument();
@@ -221,5 +223,35 @@ describe("SummaryCards B0 characterization (D-B1, REQ-301/302)", () => {
     render(<SummaryCards summary={summary} />);
 
     expect(screen.queryByRole("button", { name: "再試行" })).not.toBeInTheDocument();
+  });
+});
+
+describe("UI-00 D-H3 / D-H4: summary の状態説明と独立 PLU query", () => {
+  it("SP-102-07: PLU 件数と 3 種の状態説明を 4 枚の card に表示する", () => {
+    const summary = makeBaseSummary();
+    summary.derived.pluDirtyCount = 6;
+    const { container } = render(<SummaryCards summary={summary} />);
+    expect(container.querySelectorAll('[data-slot="card"]')).toHaveLength(4);
+    const card = screen.getByText("PLU 未反映").closest<HTMLElement>('[data-slot="card"]');
+    if (!card) throw new Error("PLU summary card is required");
+    expect(within(card).getByText("6 件")).toBeInTheDocument();
+    expect(within(card).getByText("レジ反映待ち")).toBeInTheDocument();
+    expect(screen.getByText("在庫 0 の商品")).toBeInTheDocument();
+    expect(screen.getByText("基準を下回る商品")).toBeInTheDocument();
+  });
+
+  it("SP-102-07: PLU error は card 内から PLU query だけを再試行する", async () => {
+    const refetch = vi.fn();
+    const summary = makeBaseSummary({}, {}, { isError: true, refetch });
+    render(<SummaryCards summary={summary} />);
+    const card = screen.getByText("PLU 未反映").closest<HTMLElement>('[data-slot="card"]');
+    if (!card) throw new Error("PLU summary card is required");
+    expect(within(card).getByText("取得失敗")).toBeInTheDocument();
+    await userEvent.setup().click(within(card).getByRole("button", { name: "再試行" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(summary.sales.refetch).not.toHaveBeenCalled();
+    expect(summary.lowStock.refetch).not.toHaveBeenCalled();
+    expect(screen.getByText("在庫 0 の商品")).toBeInTheDocument();
+    expect(screen.getByText("基準を下回る商品")).toBeInTheDocument();
   });
 });

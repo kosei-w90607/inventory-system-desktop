@@ -183,7 +183,7 @@ describe("HomePage UI-00 orchestration wiring", () => {
     expect(missingImport?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
     expect(screen.getByText("最後の取込み精算日: 2000-01-01")).toBeInTheDocument();
     expect(screen.getByText(/昨日の売上/)).toBeInTheDocument();
-    expect(screen.getAllByText("1 件")).toHaveLength(2);
+    expect(screen.getAllByText("1 件")).toHaveLength(3);
     expect(screen.getByText(/12[,，]?000/)).toBeInTheDocument();
   });
 

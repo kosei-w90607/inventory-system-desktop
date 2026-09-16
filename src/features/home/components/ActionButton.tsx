@@ -1,6 +1,6 @@
 // src/features/home/components/ActionButton.tsx
 //
-// 大ボタン共通コンポーネント。引数 navItemId のみで navigation SSOT を参照。
+// 入口 card 共通コンポーネント。navItemId で navigation SSOT を参照。
 // 設計: docs/function-design/53-ui-home.md §53.1 / D-2 / B-10
 
 import { Link } from "@tanstack/react-router";
@@ -19,11 +19,10 @@ function findNavItem(id: NavItem["id"]): NavItem | undefined {
 
 export interface ActionButtonProps {
   navItemId: NavItem["id"];
-  /// "lg" = 大ボタン (毎日の作業 / 入出庫)、"md" = 中ボタン (その他 3 ボタン)
-  size?: "lg" | "md";
+  variant?: "default" | "primary";
 }
 
-export function ActionButton({ navItemId, size = "lg" }: ActionButtonProps) {
+export function ActionButton({ navItemId, variant = "default" }: ActionButtonProps) {
   const item = findNavItem(navItemId);
 
   if (!item) {
@@ -37,8 +36,21 @@ export function ActionButton({ navItemId, size = "lg" }: ActionButtonProps) {
   }
 
   const Icon = item.icon;
-  const sizeClass = size === "lg" ? "h-24 text-base" : "h-16 text-sm";
-  const baseClass = `w-full flex flex-col items-center justify-center gap-2 ${sizeClass}`;
+  const baseClass = `w-full h-auto min-h-[4.5rem] grid grid-cols-[1.5rem_1fr] gap-3 items-start text-left text-base whitespace-normal ${variant === "primary" ? "border-primary bg-warning-soft" : ""}`;
+  const content = (
+    <>
+      <Icon
+        className={`size-6 h-6 w-6 ${variant === "primary" ? "text-primary" : "text-muted-foreground"}`}
+        aria-hidden="true"
+      />
+      <span className="min-w-0">
+        <span className="block font-semibold">{item.label}</span>
+        {item.description && (
+          <span className="block text-sm text-muted-foreground">{item.description}</span>
+        )}
+      </span>
+    </>
+  );
 
   // pending: aria-disabled + Tooltip + cursor-not-allowed + onClick preventDefault の 3 層 (D-2 改訂)
   // shadcn 公式パターン: HTML `disabled` 属性は pointer-events を受けないため Tooltip が hover で起動しない。
@@ -56,8 +68,7 @@ export function ActionButton({ navItemId, size = "lg" }: ActionButtonProps) {
               e.preventDefault();
             }}
           >
-            <Icon className="h-6 w-6" aria-hidden="true" />
-            <span>{item.label}</span>
+            {content}
           </Button>
         </TooltipTrigger>
         <TooltipContent>後続フェーズで着手予定</TooltipContent>
@@ -68,10 +79,7 @@ export function ActionButton({ navItemId, size = "lg" }: ActionButtonProps) {
   // active: TanStack Router <Link> で遷移
   return (
     <Button asChild variant="outline" className={baseClass}>
-      <Link to={item.to}>
-        <Icon className="h-6 w-6" aria-hidden="true" />
-        <span>{item.label}</span>
-      </Link>
+      <Link to={item.to}>{content}</Link>
     </Button>
   );
 }
