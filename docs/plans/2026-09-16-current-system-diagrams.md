@@ -144,7 +144,9 @@ R2 docs-only。外部環境の挙動を製品契約へ昇格させないため R
 
 ## Implementation Results
 
-独立 Plan Review を完了し、図面の編集へ進む。
+ERの物理関係と全カラム、現行画面の到達・戻り、在庫・日報・PLU・棚卸しの図を更新した。本文の冪等性列・navigation一覧・個別図も同期し、初期mockupを歴史資料として明示した。
+
+実schemaのメモリ内DDL比較、page routeの集合照合、Mermaidのrenderで転記を確認。棚卸しの時点問題は合成DBで実BIZ関数を呼び再現し、在庫照会の戻りは既存hookテストで受け側動作を確認した。一時検証moduleは取り除き、製品sourceとの差分がないことを確認済み。所見・再現方法は `docs/research/2026-09-16-diagram-audit.md` に保持し、製品の修正・採用は別判断とする。最終検証・独立Final Reviewを進める。
 
 ## Review Response
 

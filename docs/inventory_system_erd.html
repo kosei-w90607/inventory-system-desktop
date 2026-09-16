@@ -1,254 +1,363 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>現行DBのER図 — 在庫管理</title>
 <style>
-#erd svg.erDiagram .divider path { stroke-opacity: 0.5; }
-#erd svg.erDiagram .row-rect-odd path,
-#erd svg.erDiagram .row-rect-odd rect,
-#erd svg.erDiagram .row-rect-even path,
-#erd svg.erDiagram .row-rect-even rect { stroke: none !important; }
-#erd { overflow-x: auto; }
+  :root { color-scheme: light; font-family: system-ui, sans-serif; color: #292524; background: #fafaf9; }
+  body { margin: 0; padding: 24px; }
+  main { max-width: 1400px; margin: auto; }
+  h1 { font-size: 28px; } h2 { margin-top: 32px; font-size: 22px; }
+  p, li { line-height: 1.7; } a { color: #164e63; }
+  .note { padding: 12px 16px; background: #fff; border: 1px solid #78716c; border-radius: 6px; }
+  .diagram { overflow: auto; max-height: 80vh; background: white; border: 1px solid #78716c; padding: 12px; }
+  .diagram svg { max-width: none !important; }
+  .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+  button { font: inherit; padding: 8px 14px; border: 1px solid #57534e; border-radius: 4px; background: white; cursor: pointer; }
+  button:focus-visible, summary:focus-visible, .diagram:focus-visible { outline: 3px solid #0e7490; outline-offset: 3px; }
+  pre { white-space: pre; overflow: auto; padding: 16px; background: white; border: 1px solid #78716c; font-size: 14px; }
+  summary { cursor: pointer; padding: 12px 0; }
 </style>
-<div id="erd"></div>
-<script type="module">
-import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
-const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-await document.fonts.ready;
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'base',
-  fontFamily: '"Anthropic Sans", sans-serif',
-  themeVariables: {
-    darkMode: dark,
-    fontSize: '13px',
-    fontFamily: '"Anthropic Sans", sans-serif',
-    lineColor: dark ? '#9c9a92' : '#73726c',
-    textColor: dark ? '#c2c0b6' : '#3d3d3a',
-  },
-});
-const { svg } = await mermaid.render('erd-svg', `erDiagram
-  products ||--o{ inventory_movements : has
-  products ||--o{ sale_records : has
-  products ||--o{ price_history : has
-  products ||--o{ stocktake_items : counted_in
-  products }o--|| departments : belongs_to
-  products }o--o| suppliers : supplied_by
-
-  departments ||--o{ products : contains
-
-  suppliers ||--o{ products : supplies
-  suppliers ||--o{ receiving_records : delivers
-
-  receiving_records ||--o{ receiving_items : contains
-  receiving_items }o--|| products : references
-
-  return_records ||--o{ return_items : contains
-  return_items }o--|| products : references
-
-  manual_sales ||--o{ manual_sale_items : contains
-  manual_sale_items }o--|| products : references
-
-  disposal_records ||--o{ disposal_items : contains
-  disposal_items }o--|| products : references
-
-  csv_imports ||--o{ sale_records : generates
-  sale_records }o--|| products : sold
-
-  stocktakes ||--o{ stocktake_items : contains
-
-  products {
-    TEXT product_code PK "JAN or custom code"
-    TEXT name "required"
-    INTEGER department_id FK
-    INTEGER supplier_id FK "nullable"
-    INTEGER selling_price "tax-incl yen"
-    INTEGER cost_price "yen"
-    TEXT tax_rate "10pct 8pct exempt"
-    TEXT maker_code "nullable"
-    INTEGER stock_quantity "pcs or cm"
-    TEXT stock_unit "pcs or cm"
-    BOOLEAN is_discontinued "soft delete"
-    BOOLEAN plu_dirty "needs export"
-    TEXT created_at
-    TEXT updated_at
-  }
+</head>
+<body><main>
+<h1>現行DBのER図</h1>
+<p><a href="diagrams/current-system.md">現行構造・画面遷移・業務フロー</a> · <a href="DB_DESIGN.md">テーブル定義</a> · <a href="research/2026-09-16-diagram-audit.md">図面からの設計点検</a></p>
+<p class="note">対象は <code>src-tauri/src/db/migration.rs</code> が登録する現行 schema（v1〜v6）。実店舗DBは参照していない。図は実装の説明であり、業務上の正しさの保証ではない。採用済み仕様と実装が食い違う点は設計点検に分けて記録する。</p>
+<ul>
+<li>線は<strong>物理FKのみ</strong>。点線は非識別関係（子の主キーに親キーを含まない）。端の丸は0を許容し、三つ又は複数を表す。親側が0..1の参照はNULL許容。</li>
+<li><code>inventory_movements.reference_type + reference_id</code> と <code>plu_slots.scanning_code = products.jan_code</code> はアプリ側の論理関連で、FKの線を引かない。</li>
+<li>数量の非負、JANの有効性、取込み元とsourceの組合せなど、業務条件の全てがDB制約にあるわけではない。通常業務記録の取消・訂正用カラムは未実装。</li>
+<li>カラムの型・PK/FK・NULL許容・既定値と主要CHECK値を記載。全INDEXのDDLはschema正本を参照。PLUコードのUNIQUEは external / reserved / active に限る部分INDEX。TEXT PRIMARY KEYのNOT NULL未指定もそのまま明記。</li>
+<li><code>schema_versions</code> はmigration管理。SQLite内部の <code>sqlite_sequence</code> は図から除く。画像の実体とバックアップファイルはDB外。</li>
+</ul>
+<h2>関連の全体像</h2>
+<p>独立して見える表も、業務処理による論理的なつながりを持つ。関連線がないことと、使われていないことは同義ではない。</p>
+<div class="toolbar"><button data-fit="overview">横幅に合わせる</button><button data-actual="overview">原寸に戻す</button></div>
+<div class="diagram" id="overview" tabindex="0" aria-label="物理FKの全体像"></div>
+<h2>全カラム</h2>
+<p>原寸表示を既定とする。枠内を縦横にスクロールして確認できる。NOT NULLは必須、NULL allowedは未設定を許容する。</p>
+<div class="toolbar"><button data-fit="columns">横幅に合わせる</button><button data-actual="columns">原寸に戻す</button></div>
+<div class="diagram" id="columns" tabindex="0" aria-label="全テーブルのカラム定義"></div>
+<p id="render-status" role="status">図を描画中。描画には外部のMermaidライブラリ読込みが必要。利用できない場合も下の図のソースを読める。</p>
+<details><summary>図のソース（更新対象はこの定義）</summary><pre id="schema-source">erDiagram
+  direction LR
+  products }o..o| suppliers : supplier_id
+  products }o..|| departments : department_id
+  receiving_records }o..o| suppliers : supplier_id
+  receiving_items }o..|| products : product_code
+  receiving_items }o..|| receiving_records : receiving_record_id
+  return_items }o..|| products : product_code
+  return_items }o..|| return_records : return_record_id
+  manual_sale_items }o..|| products : product_code
+  manual_sale_items }o..|| manual_sales : manual_sale_id
+  disposal_items }o..|| products : product_code
+  disposal_items }o..|| disposal_records : disposal_record_id
+  csv_import_errors }o..|| csv_imports : csv_import_id
+  sale_records }o..|| products : product_code
+  sale_records }o..o| csv_imports : csv_import_id
+  daily_report_summary_lines }o..|| daily_report_imports : daily_report_import_id
+  daily_report_payment_lines }o..|| daily_report_imports : daily_report_import_id
+  daily_report_department_lines }o..o| departments : department_id
+  daily_report_department_lines }o..|| daily_report_imports : daily_report_import_id
+  inventory_movements }o..|| products : product_code
+  price_history }o..|| products : product_code
+  stocktake_items }o..|| products : product_code
+  stocktake_items }o..|| stocktakes : stocktake_id
 
   departments {
     INTEGER id PK
-    TEXT name "unique"
-    TEXT code_prefix "nullable F H etc"
-    INTEGER next_seq "auto-numbering"
+    TEXT name "NOT NULL; UNIQUE"
+    TEXT z005_name "NULL allowed"
+    TEXT code_prefix "NULL allowed; custom-code prefix"
+    INTEGER next_seq "NOT NULL; default 1"
+    TEXT created_at "NOT NULL"
   }
 
   suppliers {
     INTEGER id PK
-    TEXT name "unique"
-    TEXT created_at
+    TEXT name "NOT NULL; UNIQUE"
+    TEXT created_at "NOT NULL"
+    TEXT updated_at "NULL allowed"
   }
 
-  price_history {
-    INTEGER id PK
-    TEXT product_code FK
-    INTEGER old_selling
-    INTEGER new_selling
-    INTEGER old_cost
-    INTEGER new_cost
-    TEXT changed_at
-  }
-
-  inventory_movements {
-    INTEGER id PK
-    TEXT product_code FK
-    TEXT movement_type "sale_auto sale_manual receiving return disposal stocktake"
-    INTEGER quantity "positive or negative"
-    INTEGER stock_after
-    TEXT reference_type "nullable"
-    INTEGER reference_id "nullable"
-    TEXT note "nullable"
-    TEXT created_at
-  }
-
-  csv_imports {
-    INTEGER id PK
-    TEXT filename
-    TEXT settlement_date
-    TEXT file_hash "duplicate check"
-    INTEGER total_items
-    INTEGER total_amount
-    TEXT status "completed rolled_back"
-    TEXT imported_at
-  }
-
-  sale_records {
-    INTEGER id PK
-    INTEGER csv_import_id FK "nullable for manual"
-    TEXT product_code FK
-    TEXT sale_date
-    INTEGER quantity "negative for returns"
-    INTEGER amount "negative for returns"
-    TEXT source "auto or manual"
-    TEXT reason "nullable"
-    TEXT note "nullable"
-    TEXT created_at
+  products {
+    TEXT product_code PK "TEXT PK; NOT NULL not declared"
+    TEXT jan_code "NULL allowed; JAN-8/13; non-unique"
+    TEXT name "NOT NULL"
+    INTEGER department_id FK "NOT NULL"
+    INTEGER supplier_id FK "NULL allowed"
+    INTEGER selling_price "NOT NULL"
+    INTEGER cost_price "NOT NULL"
+    TEXT tax_rate "NOT NULL; default '10'; 10 / 8 / 0"
+    TEXT maker_code "NULL allowed"
+    INTEGER stock_quantity "NOT NULL; default 0; stock-unit quantity"
+    TEXT stock_unit "NOT NULL; default 'pcs'; pcs / cm"
+    BOOLEAN is_discontinued "NOT NULL; default 0"
+    BOOLEAN plu_dirty "NOT NULL; default 1"
+    TEXT plu_exported_at "NULL allowed; app confirmation; not register proof"
+    BOOLEAN pos_stock_sync "NOT NULL; default 1; Z004 stock sync"
+    TEXT created_at "NOT NULL"
+    TEXT updated_at "NOT NULL"
+    BOOLEAN plu_target "NOT NULL; default 0; scanning PLU target"
   }
 
   receiving_records {
     INTEGER id PK
-    INTEGER supplier_id FK "nullable"
-    TEXT receiving_date
-    TEXT note "nullable"
-    TEXT created_at
+    INTEGER supplier_id FK "NULL allowed"
+    TEXT receiving_date "NOT NULL"
+    TEXT note "NULL allowed"
+    TEXT idempotency_key "NOT NULL; non-empty; UNIQUE"
+    TEXT request_fingerprint "NOT NULL; non-empty"
+    TEXT created_at "NOT NULL"
   }
 
   receiving_items {
     INTEGER id PK
-    INTEGER receiving_record_id FK
-    TEXT product_code FK
-    INTEGER quantity
-    INTEGER cost_price "at time"
+    INTEGER receiving_record_id FK "NOT NULL"
+    TEXT product_code FK "NOT NULL"
+    INTEGER quantity "NOT NULL"
+    INTEGER cost_price "NOT NULL"
   }
 
   return_records {
     INTEGER id PK
-    TEXT return_type "return or exchange"
-    TEXT return_date
-    BOOLEAN register_processed "csv handles stock"
-    TEXT receipt_image_path "nullable"
-    TEXT note "nullable"
-    TEXT created_at
+    TEXT return_type "NOT NULL; return / exchange"
+    TEXT return_date "NOT NULL"
+    BOOLEAN register_processed "NOT NULL; default 1"
+    TEXT receipt_image_path "NULL allowed"
+    TEXT note "NULL allowed"
+    TEXT idempotency_key "NOT NULL; non-empty; UNIQUE"
+    TEXT request_fingerprint "NOT NULL; non-empty"
+    TEXT created_at "NOT NULL"
   }
 
   return_items {
     INTEGER id PK
-    INTEGER return_record_id FK
-    TEXT product_code FK
-    TEXT direction "in or out"
-    INTEGER quantity
+    INTEGER return_record_id FK "NOT NULL"
+    TEXT product_code FK "NOT NULL"
+    TEXT direction "NOT NULL; in / out"
+    INTEGER quantity "NOT NULL"
   }
 
   manual_sales {
     INTEGER id PK
-    TEXT sale_date
-    TEXT reason "plu_unregistered offregister fabric other"
-    TEXT note "nullable"
-    TEXT created_at
+    TEXT sale_date "NOT NULL"
+    TEXT reason "NOT NULL; plu_unregistered / other"
+    TEXT note "NULL allowed"
+    TEXT idempotency_key "NOT NULL; non-empty; UNIQUE"
+    TEXT request_fingerprint "NOT NULL; non-empty"
+    TEXT created_at "NOT NULL"
   }
 
   manual_sale_items {
     INTEGER id PK
-    INTEGER manual_sale_id FK
-    TEXT product_code FK
-    INTEGER quantity
-    INTEGER amount
+    INTEGER manual_sale_id FK "NOT NULL"
+    TEXT product_code FK "NOT NULL"
+    INTEGER quantity "NOT NULL"
+    INTEGER amount "NOT NULL"
   }
 
   disposal_records {
     INTEGER id PK
-    TEXT disposal_date
-    TEXT created_at
+    TEXT disposal_date "NOT NULL"
+    TEXT idempotency_key "NOT NULL; non-empty; UNIQUE"
+    TEXT request_fingerprint "NOT NULL; non-empty"
+    TEXT created_at "NOT NULL"
   }
 
   disposal_items {
     INTEGER id PK
-    INTEGER disposal_record_id FK
-    TEXT product_code FK
-    TEXT disposal_type "disposal damage other"
-    INTEGER quantity
-    INTEGER cost_price "loss amount"
-    TEXT reason
+    INTEGER disposal_record_id FK "NOT NULL"
+    TEXT product_code FK "NOT NULL"
+    TEXT disposal_type "NOT NULL; disposal / damage / other"
+    INTEGER quantity "NOT NULL"
+    INTEGER cost_price "NOT NULL"
+    TEXT reason "NOT NULL"
+  }
+
+  csv_imports {
+    INTEGER id PK
+    TEXT filename "NOT NULL"
+    TEXT settlement_date "NOT NULL"
+    TEXT file_hash "NOT NULL"
+    INTEGER total_items "NOT NULL"
+    INTEGER total_amount "NOT NULL"
+    INTEGER skipped_count "NOT NULL; default 0"
+    TEXT status "NOT NULL; completed / completed_partial / rolled_back"
+    TEXT imported_at "NOT NULL"
+  }
+
+  csv_import_errors {
+    INTEGER id PK
+    INTEGER csv_import_id FK "NOT NULL"
+    INTEGER source_line_no "NOT NULL"
+    TEXT normalized_jan "NULL allowed"
+    TEXT raw_name "NOT NULL"
+    TEXT raw_quantity "NOT NULL"
+    TEXT raw_amount "NOT NULL"
+    TEXT error_type "NOT NULL; unmatched_product / invalid_format / invalid_jan / invalid_number"
+    TEXT error_message "NOT NULL"
+    TEXT created_at "NOT NULL"
+  }
+
+  sale_records {
+    INTEGER id PK
+    INTEGER csv_import_id FK "NULL allowed; NULL for manual"
+    TEXT product_code FK "NOT NULL"
+    TEXT sale_date "NOT NULL"
+    INTEGER quantity "NOT NULL"
+    INTEGER amount "NOT NULL"
+    TEXT source "NOT NULL; auto / manual"
+    INTEGER source_line_no "NULL allowed"
+    TEXT reason "NULL allowed"
+    TEXT note "NULL allowed"
+    BOOLEAN is_voided "NOT NULL; default 0"
+    TEXT created_at "NOT NULL"
+  }
+
+  daily_report_imports {
+    INTEGER id PK
+    TEXT report_date "NOT NULL"
+    TEXT source_adapter "NOT NULL; casio_sr_s4000"
+    TEXT bundle_hash "NOT NULL"
+    TEXT source_files_json "NOT NULL"
+    INTEGER gross_amount "NULL allowed"
+    INTEGER net_amount "NULL allowed"
+    TEXT status "NOT NULL; completed / rolled_back"
+    TEXT imported_at "NOT NULL"
+    TEXT rolled_back_at "NULL allowed"
+    TEXT note "NULL allowed"
+  }
+
+  daily_report_summary_lines {
+    INTEGER id PK
+    INTEGER daily_report_import_id FK "NOT NULL"
+    TEXT source_file "NOT NULL; Z001"
+    TEXT line_key "NOT NULL"
+    TEXT label "NOT NULL"
+    INTEGER amount "NULL allowed"
+    INTEGER quantity "NULL allowed"
+    INTEGER count "NULL allowed"
+    INTEGER sort_order "NOT NULL"
+  }
+
+  daily_report_payment_lines {
+    INTEGER id PK
+    INTEGER daily_report_import_id FK "NOT NULL"
+    TEXT source_file "NOT NULL; Z002"
+    TEXT payment_key "NOT NULL"
+    TEXT label "NOT NULL"
+    INTEGER amount "NULL allowed"
+    INTEGER count "NULL allowed"
+    INTEGER sort_order "NOT NULL"
+  }
+
+  daily_report_department_lines {
+    INTEGER id PK
+    INTEGER daily_report_import_id FK "NOT NULL"
+    TEXT source_file "NOT NULL; Z005"
+    INTEGER department_id FK "NULL allowed"
+    TEXT raw_department_name "NOT NULL"
+    TEXT normalized_department_name "NULL allowed"
+    INTEGER amount "NOT NULL"
+    INTEGER quantity "NULL allowed"
+    INTEGER count "NULL allowed"
+    INTEGER sort_order "NOT NULL"
+  }
+
+  inventory_movements {
+    INTEGER id PK
+    TEXT product_code FK "NOT NULL"
+    TEXT movement_type "NOT NULL; sale_auto / sale_manual / receiving / return / disposal / stocktake"
+    INTEGER quantity "NOT NULL"
+    INTEGER stock_after "NOT NULL"
+    TEXT reference_type "NULL allowed; csv_import / manual_sale / receiving_record / return_record / disposal_record / stocktake"
+    INTEGER reference_id "NULL allowed; logical reference; no FK"
+    TEXT note "NULL allowed"
+    BOOLEAN is_voided "NOT NULL; default 0"
+    TEXT created_at "NOT NULL"
+  }
+
+  price_history {
+    INTEGER id PK
+    TEXT product_code FK "NOT NULL"
+    INTEGER old_selling "NOT NULL"
+    INTEGER new_selling "NOT NULL"
+    INTEGER old_cost "NOT NULL"
+    INTEGER new_cost "NOT NULL"
+    TEXT changed_at "NOT NULL"
   }
 
   stocktakes {
     INTEGER id PK
-    TEXT started_at
-    TEXT completed_at "nullable"
-    TEXT status "in_progress completed"
-    INTEGER total_cost "tax report"
+    TEXT started_at "NOT NULL"
+    TEXT completed_at "NULL allowed"
+    TEXT status "NOT NULL; default 'in_progress'; in_progress / completed"
+    INTEGER total_cost "NULL allowed"
   }
 
   stocktake_items {
     INTEGER id PK
-    INTEGER stocktake_id FK
-    TEXT product_code FK
-    INTEGER system_stock "at count time"
-    INTEGER actual_count "nullable"
-    TEXT counted_at "nullable"
+    INTEGER stocktake_id FK "NOT NULL"
+    TEXT product_code FK "NOT NULL"
+    INTEGER system_stock "NOT NULL; at item creation; not count time"
+    INTEGER actual_count "NULL allowed"
+    INTEGER valuation_cost_price "NULL allowed; cost at completion"
+    TEXT counted_at "NULL allowed"
+  }
+
+  plu_slots {
+    INTEGER memory_no PK "217..5000"
+    TEXT scanning_code "NULL allowed; logical JAN join; no FK"
+    TEXT status "NOT NULL; free / external / reserved / active / release_pending"
+    TEXT reserved_at "NULL allowed"
+    TEXT activated_at "NULL allowed; app active; not register proof"
+    TEXT released_at "NULL allowed"
+    TEXT updated_at "NOT NULL"
   }
 
   operation_logs {
     INTEGER id PK
-    TEXT operation_type
-    TEXT summary
-    TEXT detail_json "nullable"
-    TEXT created_at
+    TEXT operation_type "NOT NULL"
+    TEXT summary "NOT NULL"
+    TEXT detail_json "NULL allowed"
+    TEXT created_at "NOT NULL"
   }
 
   app_settings {
-    TEXT key PK
-    TEXT value
-    TEXT updated_at
+    TEXT key PK "TEXT PK; NOT NULL not declared"
+    TEXT value "NOT NULL"
+    TEXT updated_at "NOT NULL"
   }
-`);
-document.getElementById('erd').innerHTML = svg;
 
-document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {
-  const firstPath = node.querySelector('path[d]');
-  if (!firstPath) return;
-  const d = firstPath.getAttribute('d');
-  const nums = d.match(/-?[\d.]+/g)?.map(Number);
-  if (!nums || nums.length < 8) return;
-  const xs = [nums[0], nums[2], nums[4], nums[6]];
-  const ys = [nums[1], nums[3], nums[5], nums[7]];
-  const x = Math.min(...xs), y = Math.min(...ys);
-  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
-  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  rect.setAttribute('x', x); rect.setAttribute('y', y);
-  rect.setAttribute('width', w); rect.setAttribute('height', h);
-  rect.setAttribute('rx', '8');
-  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
-    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  schema_versions {
+    INTEGER version PK
+    TEXT applied_at "NOT NULL"
+  }</pre></details>
+<script type="module">
+const status = document.getElementById('render-status');
+try {
+  const { default: mermaid } = await import('https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs');
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral', fontFamily: 'system-ui, sans-serif', er: { useMaxWidth: false }, maxTextSize: 100000 });
+  await document.fonts.ready;
+  const source = document.getElementById('schema-source').textContent;
+  const overview = source.replace(/^  (\w+) \{\n[\s\S]*?^  \}/gm, '  $1');
+  for (const [id, definition] of [['overview', overview], ['columns', source]]) {
+    const { svg } = await mermaid.render(id + '-svg', definition);
+    const container = document.getElementById(id);
+    container.innerHTML = svg;
+    const figure = container.querySelector('svg');
+    const actualWidth = figure.viewBox.baseVal.width;
+    figure.style.width = actualWidth + 'px';
+    document.querySelector('[data-fit="' + id + '"]').onclick = () => { figure.style.width = Math.max(300, container.clientWidth - 24) + 'px'; };
+    document.querySelector('[data-actual="' + id + '"]').onclick = () => { figure.style.width = actualWidth + 'px'; };
   }
-  firstPath.replaceWith(rect);
-});
-
-document.querySelectorAll('#erd svg.erDiagram .row-rect-odd path, #erd svg.erDiagram .row-rect-even path').forEach(p => {
-  p.setAttribute('stroke', 'none');
-});
+  status.textContent = '描画完了。図のソースと設計点検も併せて確認してください。';
+} catch (error) {
+  status.textContent = '図を描画できませんでした。下の図のソースを確認してください。';
+  document.querySelector('details').open = true;
+  console.error(error);
+}
 </script>
+</main></body></html>

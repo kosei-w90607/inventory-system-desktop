@@ -115,7 +115,8 @@ DailySalesPage
       ├ computeSalesLineSummary(items)
       └ derived.departmentOptions = unique by department_id, sort by id
   ↓ 戻り値:
-    { todaySales, yesterdaySales, grouped, summary, departmentOptions, isLoading, error, partialError }
+    { today, yesterday, derived: { grouped, summary, departmentOptions, yesterdayDate } }
+    today / yesterday は独立した UseQueryResult。loading / error / 部分失敗はpageで判定
 SummaryCardsBar / ProductTable / DepartmentFilter / DateNavigator / TabsHeader / ExportBar
   ↓ useExportDailySalesCsv() → commands.exportSalesCsv("daily", date) → Blob ダウンロード
 ```

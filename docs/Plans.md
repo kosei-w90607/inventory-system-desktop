@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **現行図面の同期・設計点検（R2）**: owner 2026-09-16 依頼。[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = implementing、独立 Plan Review PASS。現行 ER・画面遷移・業務データフローを更新し、製品側の矛盾は根拠付き所見として切り分ける。
+- **現行図面の同期・設計点検（R2）**: owner 2026-09-16 依頼。[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = implementing、独立 Plan Review PASS。[現行図](diagrams/current-system.md) を更新し、最終検証・独立Final Reviewへ。[図面監査](research/2026-09-16-diagram-audit.md) に、棚卸し確定がカウント後の販売を打ち消す再現（STK-1 / P1）、在庫照会への戻りの不整合（NAV-1 / P2）を記録。製品側の修正・優先順位は未採用のままownerへ報告する。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了

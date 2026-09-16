@@ -142,11 +142,11 @@ export type MonthlySalesReport = {
 ```
 URL search params (month, mode, sortBy, sortDir)
   ↓ validateSearch + zod 4 fallback
-useMonthlySalesReport({ month, mode })
-  ↓ useQuery(["monthly-sales", month, mode], () => commands.getMonthlySales(month, mode))
+useMonthlySalesReport({ month, mode, sortBy, sortDir })
+  ↓ useQuery(queryKeys.monthlySales(month, mode), () => commands.getMonthlySales(month, mode))
 MonthlySalesReport DTO (month / mode / items / prev_month_comparison: T[] | null)
   ↓ 派生 6 純関数 orchestration
-{ summary, periodLabel, productRankingRows, deptCompositionRows, comparisonMap }
+{ query, derived: { summary, periodLabel, ranking, composition, comparisonMap } | null }
   ↓
 MonthlySalesPage（Alert / EmptyState / Skeleton 出し分け）
   ↓ render
