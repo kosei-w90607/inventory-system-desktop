@@ -12,6 +12,7 @@
 | どの画面に到達できるか、どう戻るか | 本書「画面の構成」「調査・記録の往復」「route対応表」 |
 | 何が売上・在庫を変えるか | 本書「業務データの流れ」「棚卸し」「PLU」 |
 | 問題と未確認事項 | [図面監査](../research/2026-09-16-diagram-audit.md) |
+| 図から操作列を作って実行する検証 | [シーケンス図・ステートマシン図・モデルベーステスト](cross-feature-verification.md) |
 
 Mermaid対応のMarkdown viewerで図を表示できる。非対応viewerでは図のソースを読む。初期提案の [screen_mockups.html](../screen_mockups.html) と `design-system/reference/` の比較案は現在のrouteやDBの証拠にしない。
 

@@ -1,9 +1,12 @@
 //! BIZ-03 テスト共有ヘルパー
 
 use crate::biz::csv_import_service::parse::parse_and_validate;
-use crate::biz::csv_import_service::{CsvParseAndValidateRequest, ParseValidateResult};
+use crate::biz::csv_import_service::{
+    CachedPreview, CsvParseAndValidateRequest, ParseValidateResult,
+};
 use crate::db::DbConnection;
 use encoding_rs::SHIFT_JIS;
+use std::time::Instant;
 
 /// JAN付き商品を作成するテストヘルパー
 ///
@@ -69,4 +72,22 @@ pub(super) fn parse_and_build_cache(
         },
     )
     .expect("parse_and_validate がテスト中に失敗しました")
+}
+
+/// CachedPreview を構築するヘルパー
+pub(super) fn build_cached(result: ParseValidateResult) -> CachedPreview {
+    let active_same_date_import_ids = result
+        .preview_data
+        .duplicate_check
+        .same_date_imports
+        .iter()
+        .map(|item| item.id)
+        .collect();
+    CachedPreview {
+        created_at: Instant::now(),
+        matched_rows: result.matched_rows,
+        error_rows: result.error_rows,
+        preview_data: result.preview_data,
+        active_same_date_import_ids,
+    }
 }

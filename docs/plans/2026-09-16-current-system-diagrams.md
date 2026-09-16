@@ -162,7 +162,9 @@ R2の図面・test-only検証。外部環境の挙動を製品契約へ昇格さ
 
 ERの物理関係と全カラム、現行画面の到達・戻り、在庫・日報・PLU・棚卸しの図を更新した。本文の冪等性列・navigation一覧・個別図も同期し、初期mockupを歴史資料として明示した。
 
-実schemaのメモリ内DDL比較、page routeの集合照合、Mermaidのrenderで転記を確認。棚卸しの時点問題は合成DBで実BIZ関数を呼び再現し、在庫照会の戻りは既存hookテストで受け側動作を確認した。一時検証moduleは取り除き、製品sourceとの差分がないことを確認済み。所見・再現方法は `docs/research/2026-09-16-diagram-audit.md` に保持し、製品の修正・採用は別判断とする。最終検証・独立Final Reviewを進める。
+初回の図面更新では実schemaのメモリ内DDL比較、page routeの集合照合、Mermaidのrenderで転記を確認。棚卸しの時点問題は合成DBで実BIZ関数を呼び再現し、在庫照会の戻りは既存hookテストで受け側動作を確認した。初回の一時検証moduleは取り除き、所見・再現方法を `docs/research/2026-09-16-diagram-audit.md` に保持した。
+
+A-1ではtest-onlyのモデルと操作列を追加した。通常suiteと正常対照はPASS、明示診断は数量の不一致によりFAIL（非0）であり、入力不足・fixtureエラーではない。カウント後の移動が消える既知経路に加え、POS販売→カウント→確定→遅いCSVで二重減算する経路を確認した。独立モデルは、在庫と台帳の同時誤り、および総計が一致する売上sourceの取り違えも検出した。具体的な反例と実行方法は `docs/diagrams/cross-feature-verification.md` に記録。runtime修正は未実施で、通常のRust gateとSonnet / Opusの最終レビューを進める。
 
 ## Review Response
 
