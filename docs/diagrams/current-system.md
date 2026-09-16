@@ -104,7 +104,7 @@ flowchart TD
 | 入出庫履歴→記録詳細→戻る | `returnTo` にsearch/pageを保存。検証に失敗した場合は `/inventory/records` |
 | 在庫変動履歴→元記録詳細→戻る | `returnTo` に商品・日付・種別・pageを保存 |
 | 作業画面の直近記録→詳細→戻る | 元の作業URLへ戻る。URLにない未保存フォームの復元までは保証しない |
-| 保存結果→詳細 | 入庫・返品交換・手動販売は直接リンクあり。廃棄は直近記録経由（照合基準時点） |
+| 保存結果→詳細 | 入庫・返品交換・手動販売・廃棄のいずれも直接リンクあり（廃棄は PR #71〈2026-09-16〉で追加、UI-05-D17） |
 | 記録詳細→商品別在庫変動履歴 | 商品コードを渡す。来た記録の詳細へ戻る専用stackではない |
 | 在庫変動履歴→在庫照会 | `selected` のみ。検索条件がないため受け側が選択を解除する。[NAV-1](../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる) |
 | 商品一覧→登録/修正→戻る | 商品画面の `returnTo` を使用。業務記録詳細のfallbackとは別契約 |
@@ -137,7 +137,7 @@ routeの末尾 `/` は統一して省略（ルート `/` 自体を除く）。`$
 | 入庫詳細 | `/inventory/receiving/records/$recordId` | 入出庫履歴、直近記録、保存結果、元記録リンク |
 | 返品・交換詳細 | `/inventory/return/records/$recordId` | 同上 |
 | 手動販売詳細 | `/inventory/manual-sale/records/$recordId` | 同上 |
-| 廃棄・破損詳細 | `/inventory/disposal/records/$recordId` | 入出庫履歴、直近記録、元記録リンク |
+| 廃棄・破損詳細 | `/inventory/disposal/records/$recordId` | 同上 |
 | 商品別CSV詳細 | `/csv-import/records/$importId` | 入出庫履歴、元記録リンク。取込み結果に直接リンクはない |
 | 棚卸し詳細 | `/stocktake/records/$stocktakeId` | 入出庫履歴、元記録リンク。棚卸し結果に直接リンクはない |
 | 棚卸し | `/stocktake` | Sidebar。開始前/進行中/完了は画面内state |
