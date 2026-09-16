@@ -27,7 +27,7 @@ manual = owner Windows native L3 1 画面（ホーム: 11 の入口 card が ico
 
 ## Owner Effort Budget
 
-- 介入回数上限: 3
+- 介入回数上限: 3（L3 round 1 = 1 回目、2026-09-16。GA4 の是正後に round 2 = 2 回目）
 - 実働時間上限: 20分
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3）
@@ -82,6 +82,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## 設計判断（Coordinator adjudication、Plan Review で覆せる）
 
+- **GA4 追記（owner L3 round 1、2026-09-16）**: **D-H3 撤回** = PLU 未反映 card は PLU 通知バー（件数 + 「PLU 書出しへ」）と情報が重なるため外し、summary は 3 枚（owner「外しで決まり」）。**D-H6** = icon `mt-0.5` + card `py-3.5`（owner「題名が icon より上にずれて見える」、mockup と同値）。**D-H7** = 在庫切れ・在庫少の件数は 1 件以上のときだけ数字に色（在庫切れ `text-destructive` / 在庫少 `text-warning-emphasis`）、0 件は無色。SCREEN_DESIGN:98「赤 / 黄色は危険度を補助する強調」の実装で、label と補助文言が一次情報、色は二次（DSR-08）。owner「一旦見て判断」。**D-H8** = 入口 card の面は現状維持（白の token が無く、`--card` stone-100 は owner が「野暮ったい」と感じている。`--card` を白へ寄せる design lane を backlog 起票して summary と入口 card を一度に扱う）。「当日の売上を記録します」は mockup のまま。summary の icon は見送り（backlog）
+
 - **D-H1 説明文の置き場 = `NavItem.description?: string`**（`src/config/navigation.ts`）。ActionButton は `navItemId` だけを受ける現行（53 D-2「navigation が SSOT」）の延長で、文言の正本を 1 箇所に保つ。sidebar は `description` を読まない。捨てた案: home 内の id → 文言 map（SSOT が 2 つになる）/ ActionButton に `description` prop（呼び出し 11 箇所に散る）
 - **D-H2 card の layout と強調**: ActionButton を左 icon 24（`h-6 w-6`）+ 右「題名（`font-semibold`）+ 説明（`text-sm text-muted-foreground`）」の 2 列（`grid-cols-[1.5rem_1fr]` 相当）、`text-left`、`min-h-[4.5rem]`、`w-full` に変える。3 区画とも同じ card・同じ `grid-cols-2`（mockup-c 準拠、`size` prop は撤去し `MiscActionRow` の `grid-cols-3` → `grid-cols-2`）。強調は `variant?: "default" | "primary"` prop で、`primary` は `border-primary bg-warning-soft` + icon `text-primary`（mockup の primary-soft は amber-100 で同名 token が無いため、既存 `--warning-soft`（amber-50）を使い新 token を作らない。枠は mockup どおり primary）。pending 分岐も同 layout のまま Tooltip + `aria-disabled` を維持。捨てた案: 新 token `--primary-soft` の追加（1 用途のための token 追加）/ `Button variant` の新設（`button.tsx` を触る）
 - **D-H3 summary card 4 枚目「PLU 未反映」**: `pluDirty` query（独立 query、catalog ② パターン 1 = per-card retry）を `SummaryCard` で表示し、件数 = `derived.pluDirtyCount`、補助文言「レジ反映待ち」。`PluNotificationBar` は不変（bar + card の併存は mockup-c どおり。bar は「PLU 書出しへ」の導線、card は件数の状態表示で役割が違う）。grid は `md:grid-cols-4`。捨てた案: 3 枚のまま（mockup-c と骨格が違い、owner 確定の「レジ反映待ち」を置く場所がない）
@@ -96,6 +98,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **S4 `src/features/home/components/SummaryCards.tsx`**: 在庫切れ・在庫少に補助文言（`text-sm text-muted-foreground`、昨日の売上の「N 点」と同構造）、PLU 未反映 card 追加（D-H3）、`md:grid-cols-3` → `md:grid-cols-4`。file header comment の「3 サマリカード束ね」も 4 へ
 - **S5 test**: `SummaryCards.test.tsx`（4 card、補助文言 3 種、pluDirty error 時の card 内「再試行」= 独立 query なので 1 本）/ `HomePage.test.tsx:181` の `getAllByText("1 件")` 件数を実 fixture に合わせて更新（PLU fixture 1 件なら 3）/ 新規 `ActionButton.test.tsx`（description 表示、`variant="primary"` の class、pending 時の Tooltip + `aria-disabled` 維持、`description` 未定義 item でも描画）
 - **S6 docs**: `docs/SCREEN_DESIGN.md` §ホーム画面 / `docs/function-design/53-ui-home.md` §53.1・§53.5・更新履歴 / `docs/function-design/52-ui-shared-layout.md` §52.3・更新履歴 / `docs/decision-log.md` D-089
+- **GA4（owner L3 round 1 所感、2026-09-16）**:
+  - **S2-b `ActionButton.tsx`**: icon を 2px 下げ（`mt-0.5`、mockup の `margin-top:2px`）て題名の行と中心を揃える。card の上下余白を 14px（`py-3.5`、`buttonVariants` の `py-2` を上書き）にして 72px の箱の中で内容を上下均等にする（D-H6）
+  - **S4-b `SummaryCards.tsx`**: PLU 未反映 card を外し summary 3 枚に戻す（`md:grid-cols-3`、header comment も 3 枚へ。D-H3 撤回）。在庫切れ・在庫少の件数（`text-2xl font-semibold` の div）に、件数 ≥ 1 のときだけ色を付ける: 在庫切れ `text-destructive`、在庫少 `text-warning-emphasis`。0 件は無色（D-H7）
+  - **S5-b test**: `SummaryCards.test.tsx` を 3 枚に戻し（PLU card の test 2 本を削除、B0 の card 数 assert を 3 へ）、件数の色の test を追加（在庫切れ 2 件 → `text-destructive` あり / 在庫少 1 件 → `text-warning-emphasis` あり / 両方 0 件 → どちらの class も無し）。`HomePage.test.tsx:181` の `getAllByText("1 件")` を 2 へ戻す。`ActionButton.test.tsx` に `py-3.5` / icon `mt-0.5` の class assert を 1 本
+  - **S6-b docs**: `SCREEN_DESIGN.md` §ホーム画面「サマリ4枚（…PLU未反映件数）」→「サマリ3枚（昨日の売上、在庫切れ件数、在庫少件数）」、`:98` の「赤 / 黄色は危険度を補助する強調として使う」の末尾に「（件数が 1 以上のときだけ数字に色を付け、0 件は無色。2026-09-16 実装）」。`53-ui-home.md` §53.1 `SummaryCards.tsx` 行を「3 カード束ね（昨日売上 / 在庫切れ / 在庫少）」へ、§53.5 表の pluDirty 行を GA4 前（bar 非表示 + toast のみ）へ戻し、§53.6 の PLU 未反映カード行を削除、§53.1 か §53.5 に在庫切れ・在庫少の件数色（D-H7）を 1 行、更新履歴に GA4 の 1 行。D-089 / 52 は不変
 - **S5-b（GA3）** `src/features/backup-restore/BackupRestorePage.flow.test.tsx`: 単一要素検索 `getByText(/昨日の売上/)` 4 箇所（`:223` `:266` `:298` `:333`）を summary title に限定した `/^昨日の売上 \(/` へ。`:286` の `getAllByText` は不変。説明文「今日・昨日の売上明細と集計を確認します」（S1 の表）は変えない。theory: 復元 flow 後にホームへ戻る test が summary title を探す意図で、新しい入口 card の説明文が同じ語を含むため単一要素検索が複数一致した（regression ではなく test matcher の過広）
 - **S7（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録
 
@@ -129,13 +136,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `9d6799ff`）。
 
 - **AC1** `rg -c 'description:' src/config/navigation.ts` = 11（baseline 0）/ `git diff origin/main..HEAD -- src/config/navigation.ts | rg '^[-+]' | rg -v '^(\+\+\+|---)' | rg -v 'description' | wc -l` = 0（`description` 行以外の diff なし = label / to / icon / status 不変）
-- **AC2** `rg -c 'description' src/features/home/components/ActionButton.tsx` ≥ 1（baseline 0）/ `rg -c 'flex-col items-center' 同` = 0（baseline 1）/ `rg -c 'size="md"' src/features/home/components/MiscActionRow.tsx` = 0（baseline 3）/ `rg -c 'variant="primary"' src/features/home/components/QuickActionGrid.tsx` = 1（baseline 0）/ `rg -c '後続フェーズで着手予定' src/features/home/components/ActionButton.tsx` = 1（baseline 1、pending 機構維持）
-- **AC3** `rg -c '<SummaryCard$|<SummaryCard ' src/features/home/components/SummaryCards.tsx` = 4（baseline 3）/ `rg -c 'レジ反映待ち|基準を下回る商品' 同` = 2（baseline 0）/ D-H4 の確定文言 `rg -c '在庫 0 の商品' 同` = 1（baseline 0。owner が別文言を選んだ場合はその文言で読み替え、packet に記録）/ `rg -c 'すぐ確認' src/features/home` = 0（baseline 0、負）
+- **AC2** `rg -c 'description' src/features/home/components/ActionButton.tsx` ≥ 1（baseline 0）/ GA4: `rg -c 'py-3\.5' 同` = 1 / `rg -c 'mt-0\.5' 同` = 1 / `rg -c 'flex-col items-center' 同` = 0（baseline 1）/ `rg -c 'size="md"' src/features/home/components/MiscActionRow.tsx` = 0（baseline 3）/ `rg -c 'variant="primary"' src/features/home/components/QuickActionGrid.tsx` = 1（baseline 0）/ `rg -c '後続フェーズで着手予定' src/features/home/components/ActionButton.tsx` = 1（baseline 1、pending 機構維持）
+- **AC3**（GA4 で改訂）`rg -c '<SummaryCard$|<SummaryCard ' src/features/home/components/SummaryCards.tsx` = 3（GA4 前 4）/ `rg -c 'レジ反映待ち' 同` = 0（GA4 前 1）/ `rg -c '基準を下回る商品' 同` = 1 / `rg -c 'text-destructive' 同` = 1（GA4 前 0）/ `rg -c 'text-warning-emphasis' 同` = 1（GA4 前 0）/ `rg -c 'md:grid-cols-3' 同` = 1 / D-H4 の確定文言 `rg -c '在庫 0 の商品' 同` = 1（baseline 0。owner が別文言を選んだ場合はその文言で読み替え、packet に記録）/ `rg -c 'すぐ確認' src/features/home` = 0（baseline 0、負）
 - **AC4**（負の oracle）`git diff --name-only origin/main..HEAD -- src/features/home/HomePage.tsx src/features/home/components/PluNotificationBar.tsx src/features/home/components/InventoryActionGrid.tsx src/features/home/hooks src/features/home/lib src/features/home/types.ts src/components docs/design-system | wc -l` = 0
-- **AC5** docs: `rg -c 'サマリ3枚' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '青枠' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '3 カード束ね' docs/function-design/53-ui-home.md` = 0（baseline 1）/ `rg -c 'description' docs/function-design/52-ui-shared-layout.md` ≥ 1（baseline 0）/ `rg -c '^## D-089' docs/decision-log.md` = 1（baseline 0）
+- **AC5** docs（GA4 で改訂）: `rg -c 'サマリ3枚' docs/SCREEN_DESIGN.md` = 1 / `rg -c 'サマリ4枚|PLU未反映件数' docs/SCREEN_DESIGN.md` = 0 / `rg -c '0 件は無色' docs/SCREEN_DESIGN.md` = 1 / `rg -c 'PLU 未反映' docs/function-design/53-ui-home.md` = 0 / `rg -c '青枠' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '3 カード束ね' docs/function-design/53-ui-home.md` = 0（baseline 1）/ `rg -c 'description' docs/function-design/52-ui-shared-layout.md` ≥ 1（baseline 0）/ `rg -c '^## D-089' docs/decision-log.md` = 1（baseline 0）
 - **AC6** test: `SummaryCards.test.tsx` ≥ 10 本（baseline 8）/ `ActionButton.test.tsx` 新規 ≥ 3 本 / `HomePage.test.tsx` 5 本 PASS / `SidebarLink.test.tsx` 17 本 PASS（無変更）/ `src/config/navigation.test.ts` 7 本 PASS（無変更）。mutant: (1) `QuickActionGrid` の `variant="primary"` を外す → AC2 の rg oracle（`variant="primary"` count = 0）で kill。test-based kill は対象外（`ActionButton.test` は ActionButton に直接 `variant` を渡す単体 test で、呼び出し忘れは検出しない。Plan Review round 1 P3）。(2) `navigation.ts` の `ui-02` の `description` を消す → AC1 = 10 で FAIL。(3) `SummaryCards` の PLU card を消す → AC3 と `SummaryCards.test` が FAIL。3 本とも実装後に kill を実測して報告する
 - **AC7** `npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS（GA3: run 1 の full は `BackupRestorePage.flow.test.tsx` 4 failed / 1518 passed。S5-b 後に full を再実行し PASS を報告。`rg -c 'getByText\(/昨日の売上/\)' src/features/backup-restore/BackupRestorePage.flow.test.tsx` = 0〈baseline 4〉/ `rg -c '\^昨日の売上 \\\(' 同` = 4〈baseline 0〉）
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
+- **AC-L3-2**（GA4、round 2）ホーム目視: (e) 入口 card の icon と題名が揃って見え、文字が上に寄っていない (f) summary が 3 枚で PLU 未反映 card が無い (g) 在庫切れ・在庫少の件数が 1 以上なら数字に色、0 なら無色（在庫少の基準を上げ下げして両方を見る。DB 編集不要）。所感で「色がうるさい」なら D-H7 を撤回し無色へ戻す
 - **AC-L3-1** ホーム（Windows native）目視: (a) 11 card が icon + 題名 + 説明で 2 列に並ぶ、(b) 売上データ取込みだけ枠と背景が強調、(c) summary 4 枚と補助文言（在庫切れ = D-H4 の文言、在庫少 = 基準を下回る商品、PLU 未反映 = レジ反映待ち）、(d) 前日分未取込み alert と PLU 通知バーが従来どおり。PASS/FAIL のみ。fixture 不要（demo seed の件数表示で足りる。件数 0 でも card は出る）
 
 ## Design Sources
@@ -277,3 +285,9 @@ Fill after implementation.
 - 是正: Scope に S5-b（matcher を `/^昨日の売上 \(/` に限定、4 箇所）を追加、Non-scope に例外を明記、AC7 に再実行と rg oracle を追記（本 commit）。説明文・runtime・docs は不変
 - 残作業（S5-b + AC7 の full 再実行 + AC1〜AC8 の再確認 + Draft PR）は Sonnet subagent の Writer run で行う（Codex relay は 1/2 のまま温存。Writer field に併記）。Codex の実装 commit は変更しない
 - 教訓: 新しい表示文言を入れる lane では、その語を `rg` で全 test に当てて regex matcher の衝突を起票時に洗う
+
+### Gated Amendment 4（2026-09-16、owner L3 round 1 の所感）
+
+- round 1（head `e52d0e0d`）の所感: 題名が icon より上にずれて見える → 修正 / PLU 通知バーと PLU 未反映 card が重なる → card を外す（決定）/ 説明文は最小幅で 2 行になるが枠内 → 変更なし / 入口 card の面は背景と別にしたいが summary の色は野暮ったい → token の design lane へ（D-H8）/ 在庫切れ・在庫少は 1 件以上のとき数字に色 → 一旦入れて見る（D-H7）/ summary の icon → 見送り（backlog）
+- 是正: Scope に S2-b / S4-b / S5-b / S6-b、設計判断に D-H3 撤回・D-H6〜D-H8、AC2 / AC3 / AC5 の改訂と AC-L3-2 を追加（本 commit）。Writer = Sonnet subagent（GA3 と同じ）。是正後は closure audit（Opus、design lens）→ owner L3 round 2（介入 2/3）
+- backlog 起票（closeout で）: `--card` を白へ寄せる design lane（summary と入口 card の面を mockup どおり白に、foundations の判断更新）/ summary card の icon / 59:21・SCREEN_DESIGN:73 の旧記述 / `size-6 h-6 w-6` / mockup-d の旧前提
