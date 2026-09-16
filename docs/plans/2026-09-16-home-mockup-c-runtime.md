@@ -75,7 +75,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `QuickActionGrid.tsx` / `InventoryActionGrid.tsx`: `grid-cols-2`。`MiscActionRow.tsx`: `grid-cols-3` + `size="md"` × 3
 - `SummaryCards.tsx`: `<SummaryCard` × 3（昨日の売上 / 在庫切れ / 在庫少）、`md:grid-cols-3`。在庫切れ・在庫少に補助文言なし。`derived.pluDirtyCount` は `useHomeSummary.ts:62,76` / `types.ts:30` に既存
 - `HomePage.tsx:79-86` 前日分未取込み alert、`:88` `<SummaryCards>`、`:90-103` 3 区画（h2 `text-lg font-medium`）
-- test: `HomePage.test.tsx` 5 本（`:20-23` で 3 grid と `PluNotificationBar` を mock、`:181` `getAllByText("1 件")` = 2 を固定）/ `SummaryCards.test.tsx` 8 本（B0 characterization、`makeBaseSummary` に `pluDirty` fixture あり）/ `ActionButton` の専用 test なし / `SidebarLink.test.tsx` 17 本（navigation 型を共有）
+- test: `HomePage.test.tsx` 5 本（`:20-23` で 3 grid と `PluNotificationBar` を mock、`:181` `getAllByText("1 件")` = 2 を固定）/ `SummaryCards.test.tsx` 8 本（B0 characterization、`makeBaseSummary` に `pluDirty` fixture あり）/ `ActionButton` の専用 test なし / `SidebarLink.test.tsx` 17 本（navigation 型を共有） / `src/config/navigation.test.ts` 7 本（`toMatchObject` の部分一致で `description` 追加に非感応、無変更 PASS 対象）
 - docs: `SCREEN_DESIGN.md:90`「サマリ3枚」= 1、`:95`「青枠で強調」= 1、`:94`「全ボタンにタイトル＋説明文」（元意図、未実装）/ `53-ui-home.md:33`「3 カード束ね」= 1、§53.5 表に pluDirty の card 行なし / `52-ui-shared-layout.md:110-119` `NavItem` 型 table に `description` なし / catalog ②「ホームの在庫切れ・在庫少 2 カードは共有 lowStock query」（不変） / decision-log 最終 D-088
 - mockup-c-home.html: `.action` = `grid-template-columns:24px 1fr`、icon 24、題名 16px/600、説明 14px muted、`min-height:72px`、`.action.primary` = 枠 primary + 背景 primary-soft（amber-100、本 repo に同名 token なし）。summary `.card .sub` = 「37 点」「すぐ確認」「基準を下回る商品」「レジ反映待ち」
 
@@ -131,7 +131,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `9d67
 - **AC3** `rg -c '<SummaryCard$|<SummaryCard ' src/features/home/components/SummaryCards.tsx` = 4（baseline 3）/ `rg -c 'レジ反映待ち|基準を下回る商品' 同` = 2（baseline 0）/ D-H4 の確定文言 `rg -c '在庫 0 の商品' 同` = 1（baseline 0。owner が別文言を選んだ場合はその文言で読み替え、packet に記録）/ `rg -c 'すぐ確認' src/features/home` = 0（baseline 0、負）
 - **AC4**（負の oracle）`git diff --name-only origin/main..HEAD -- src/features/home/HomePage.tsx src/features/home/components/PluNotificationBar.tsx src/features/home/components/InventoryActionGrid.tsx src/features/home/hooks src/features/home/lib src/features/home/types.ts src/components docs/design-system | wc -l` = 0
 - **AC5** docs: `rg -c 'サマリ3枚' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '青枠' docs/SCREEN_DESIGN.md` = 0（baseline 1）/ `rg -c '3 カード束ね' docs/function-design/53-ui-home.md` = 0（baseline 1）/ `rg -c 'description' docs/function-design/52-ui-shared-layout.md` ≥ 1（baseline 0）/ `rg -c '^## D-089' docs/decision-log.md` = 1（baseline 0）
-- **AC6** test: `SummaryCards.test.tsx` ≥ 10 本（baseline 8）/ `ActionButton.test.tsx` 新規 ≥ 3 本 / `HomePage.test.tsx` 5 本 PASS / `SidebarLink.test.tsx` 17 本 PASS（無変更）。mutant: (1) `QuickActionGrid` の `variant="primary"` を外す → `ActionButton.test` または `QuickActionGrid` 描画 test が FAIL（class assert）。(2) `navigation.ts` の `ui-02` の `description` を消す → AC1 = 10 で FAIL。(3) `SummaryCards` の PLU card を消す → AC3 と `SummaryCards.test` が FAIL。3 本とも実装後に kill を実測して報告する
+- **AC6** test: `SummaryCards.test.tsx` ≥ 10 本（baseline 8）/ `ActionButton.test.tsx` 新規 ≥ 3 本 / `HomePage.test.tsx` 5 本 PASS / `SidebarLink.test.tsx` 17 本 PASS（無変更）/ `src/config/navigation.test.ts` 7 本 PASS（無変更）。mutant: (1) `QuickActionGrid` の `variant="primary"` を外す → AC2 の rg oracle（`variant="primary"` count = 0）で kill。test-based kill は対象外（`ActionButton.test` は ActionButton に直接 `variant` を渡す単体 test で、呼び出し忘れは検出しない。Plan Review round 1 P3）。(2) `navigation.ts` の `ui-02` の `description` を消す → AC1 = 10 で FAIL。(3) `SummaryCards` の PLU card を消す → AC3 と `SummaryCards.test` が FAIL。3 本とも実装後に kill を実測して報告する
 - **AC7** `npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS
 - **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
 - **AC-L3-1** ホーム（Windows native）目視: (a) 11 card が icon + 題名 + 説明で 2 列に並ぶ、(b) 売上データ取込みだけ枠と背景が強調、(c) summary 4 枚と補助文言（在庫切れ = D-H4 の文言、在庫少 = 基準を下回る商品、PLU 未反映 = レジ反映待ち）、(d) 前日分未取込み alert と PLU 通知バーが従来どおり。PASS/FAIL のみ。fixture 不要（demo seed の件数表示で足りる。件数 0 でも card は出る）
@@ -259,3 +259,11 @@ Fill after implementation.
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-16、plan-gate、Sonnet、裁定 Coordinator）
+
+- P1/P2 = 0。起票時実測は全件現物と一致（reviewer が rg で再計測）
+- P3-1（AC6 mutant (1) の kill 経路として挙げた test が S5 に無い）= accept → mutant (1) は AC2 の rg oracle で kill と明記、test-based は対象外
+- P3-2（`src/config/navigation.test.ts` 7 本が test inventory に無い）= accept → 起票時実測と AC6 の PASS 対象に追加（`toMatchObject` の部分一致で `description` 追加に非感応）
+- reviewer 確認済み: D-H1（`SidebarLink` は `description` を読まない）、D-H2（`--warning-soft` の用途欄外流用は既存 pattern）、D-H3（catalog ② パターン 1 と整合、53 §53.4 の bar 条件不変）、`HomePage.test.tsx:181` は fixture 実測で 3 件に一意、`MiscActionRow` の 2 列折返しは mockup-c と同構造、L3 Eligibility 充足
+- 判定: Plan Gate 通過可（P3 のみ、reviewer 再投入なし）
