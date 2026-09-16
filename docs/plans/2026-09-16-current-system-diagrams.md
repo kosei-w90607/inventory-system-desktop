@@ -3,7 +3,7 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: design
 - Risk: R2
 - Execution Mode: codex-only
 - Plan Commit: 6ad7576103abf9fd4d5057ca4d298c5acf21c0b7
@@ -162,3 +162,7 @@ ERの物理関係と全カラム、現行画面の到達・戻り、在庫・日
 | 個別図の具体的な転記不一致 | 55 §55.8 は任意 state の reset が未図示。56 §56.3 の返却構造、57 §57.3 の派生値名は現行 hook と異なる | AC-2/4、図と reducer / hook を直接照合 |
 | task 一覧の欠落の特定 | ui-task-specs UI-12 の旧一覧は一括価格改定・入出庫履歴・取引先管理を欠く。ARCHITECTURE の UI 一覧も UI-14/15 を欠く | AC-2、navigation / route の対応表 |
 | Scope と検証の対応 | ER・DB本文 = AC-1、画面・task・個別図 = AC-2、業務フロー = AC-3、audit = AC-4、入口・旧図注記・表示 = AC-5、独立レビュー = AC-6 | Test Plan の一時検証・doc gate・render・Final Review |
+
+### 横断業務検証への拡張依頼
+
+2026-09-16: owner が「状態を持つ処理のテストを作って確かめる」「複数機能を跨ぐ実際の業務の検証」を依頼し、追加でOpusレビューを指定した。新しいテストのoracle・範囲・既知不具合の扱いを設計するため、`implementing → design` へ戻す。既存の図面更新と検証履歴は保持する。追加の実装はGated Amendmentの独立Plan Gate通過後に開始する。

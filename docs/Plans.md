@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **現行図面の同期・設計点検（R2）**: owner 2026-09-16 依頼。[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = implementing、独立 Plan Review PASS。[現行図](diagrams/current-system.md) を更新し、最終検証・独立Final Reviewへ。[図面監査](research/2026-09-16-diagram-audit.md) に、棚卸し確定がカウント後の販売を打ち消す再現（STK-1 / P1）、在庫照会への戻りの不整合（NAV-1 / P2）を記録。製品側の修正・優先順位は未採用のままownerへ報告する。
+- **現行図面の同期・設計点検（R2）**: [Draft PR #69](https://github.com/kosei-w90607/inventory-system-desktop/pull/69)、[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = design。図面更新の独立レビューは完了。owner 2026-09-16 の追加依頼により、棚卸し・入出庫・CSV取込みをまたぐモデルベーステストと標準的な図による検証を設計する。Sonnetに加えてOpusの独立レビューを実施する。[既存監査](research/2026-09-16-diagram-audit.md) のSTK-1 / NAV-1は未修正。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
