@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Plan Commit: bbec3bf518d834cbd03e594cfae05faf75cb5a45
 - Amendments: b0f9fb50cfa45e62fd07412c181c2a6fee8f1f65, df865a4ebfeea8ad32f174c30ae9d6e03c0a9a37, f87702bcc7064a47e5fb944bfa62c2e90fb6e082
 - Coordinator: Fable 5.1
-- Writer: Codex（発注書 60、owner 起動。GA1: owner 2026-09-16「Codex に回したほうが質良い」で Sonnet subagent から戻す。relay 上限到達時のみ Sonnet subagent、Plan Reviewer とは別 fresh context）
+- Writer: Codex（発注書 60 run 1〜3。実装 `3495e85e` / docs `081b1303` は Codex）+ Sonnet subagent（GA4: relay 3/3 到達後の残作業 = 90-traceability 再生成 / full / Draft PR のみ。worktree 分離、Plan Reviewer とは別 fresh context）
 - Plan Reviewer: Sonnet（独立 fresh context）
 - Final Reviewer: Sonnet + Opus（独立 fresh context）
 - Final Review Minimum: 2
@@ -29,7 +29,7 @@ manual = owner Windows native L3 1 往復（在庫照会で検索 → 商品行�
 
 - 介入回数上限: 3
 - 実働時間上限: 15分
-- relay 往復上限: 3（既定 2 から改訂。GA2 / GA3 で 2 消費、いずれも Coordinator 起因の起票誤りで Writer の実装は正しく完了・停止。3 往復目 = 発注書 60 改訂 3 の再生成 + Draft PR run。owner 承認 = 起動）
+- relay 往復上限: 3（既定 2 から改訂。GA2 / GA3 / 改訂 3 で 3 消費、いずれも Coordinator 起因の発注誤りで Writer は正しく fail-closed。3/3 到達につき残作業は Sonnet subagent、GA4）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -310,3 +310,11 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 - 是正: Registration / Generation Obligations を「該当あり」に、S7（90 の再生成 commit）を追加、AC7 に注記。Scope S1〜S6 / 設計判断 / AC oracle / Matrix は不変
 - Owner Effort Budget: relay 2/3（上限 2 → 3、Coordinator 起因）。発注書 60 改訂 3 は本 GA の登録 commit を HEAD_SHA にし、残作業 = 再生成 commit + full + Draft PR
 - 教訓: 起票時に「追加・反転する test に REQ 番号があるか」を確認し、あれば 90 の再生成を Scope と生成義務に置く
+
+### Gated Amendment 4（2026-09-17、Codex 発注書 60 run 3 の着手条件停止、relay 3/3）
+
+- run 3（HEAD `e9e4e627`）: 発注書改訂 3 に「着手前に AC1〜AC5 の起票時 baseline と一致を確認、不一致なら停止」が残っており、実装済み HEAD では一致しないため Writer は編集前に停止（正しい挙動）。実装後の AC1〜AC5 は PASS を報告。commit 0、worktree 除去済み
+- 原因: Coordinator の発注書改訂誤り（実装前の着手条件を実装後の run に残した）。packet の記述誤りではない
+- 是正: relay 3/3 到達につき、残作業（S7 = `cargo run --bin generate_traceability` の再生成 commit / `local-ci.sh full` / doc check / Draft PR）を Sonnet subagent に移し Writer field へ併記（㉕ GA3 と同経路）。Codex の実装 2 commit は不変。Scope / AC / Matrix は不変
+- Owner Effort Budget: relay 3/3。介入は増えない（Draft PR 後の L3 が 2 回目）
+- 教訓: 発注書を「再開版」に改訂するときは、着手条件・手順・検証の各節を実装後の状態に合わせて全部書き直す（前提の一文を残さない）
