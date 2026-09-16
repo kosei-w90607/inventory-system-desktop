@@ -387,3 +387,97 @@ describe("StockMovementsPage native input tokens（Lane 5 SC4h）", () => {
     }
   });
 });
+
+describe("StockMovementsPage SPEC-UI06C-D9-R1（在庫照会への戻り導線）", () => {
+  it.each([
+    ["/stock?q=BT&status=all&selected=BT0002", "/stock?q=BT&status=all&selected=BT0002"],
+    [undefined, "/stock?q=BT0002&selected=BT0002"],
+    ["https://example.invalid/escape", "/stock?q=BT0002&selected=BT0002"],
+    ["//example.invalid/escape", "/stock?q=BT0002&selected=BT0002"],
+  ])(
+    "REQ-303 / UI-06c-D9: 在庫照会へ戻る の returnTo %s を %s へ正規化する",
+    async (returnTo, expected) => {
+      mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+      mockListMovements.mockResolvedValue({
+        status: "ok",
+        data: { items: [], total_count: 0, page: 1, per_page: 50 },
+      });
+      renderWithClient(
+        <StockMovementsPage
+          productCode="BT0002"
+          search={returnTo === undefined ? {} : { returnTo }}
+          onSearchChange={vi.fn()}
+        />,
+      );
+      expect(await screen.findByRole("link", { name: "在庫照会へ戻る" })).toHaveAttribute(
+        "href",
+        expected,
+      );
+    },
+  );
+
+  it("REQ-207 / UI-06c-D9: 元記録 link の returnTo に在庫変動履歴の returnTo を入れ子で含める", async () => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeMovement()], total_count: 1, page: 2, per_page: 50 },
+    });
+    renderWithClient(
+      <StockMovementsPage
+        productCode="BT0002"
+        search={{
+          dateFrom: "2026-06-01",
+          dateTo: "2026-06-30",
+          type: "disposal",
+          page: 2,
+          returnTo: "/stock?q=BT&selected=BT0002",
+        }}
+        onSearchChange={vi.fn()}
+      />,
+    );
+    expect(await screen.findByRole("link", { name: "廃棄・破損 #7" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("%26returnTo%3D"),
+    );
+  });
+
+  it.each(["filter 変更", "reset"])("UI-06c-D9: %s 後も returnTo が残る", async (action) => {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 3, per_page: 50 },
+    });
+    const prev = {
+      dateFrom: "2026-06-01",
+      dateTo: "2026-06-30",
+      type: "disposal" as const,
+      page: 3,
+      returnTo: "/stock?q=BT&selected=BT0002",
+    };
+    const onSearchChange = vi.fn();
+    renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={prev} onSearchChange={onSearchChange} />,
+    );
+    const user = userEvent.setup();
+    if (action === "filter 変更") {
+      await user.click(await screen.findByLabelText("種別"));
+      await user.click(await screen.findByRole("option", { name: "入庫" }));
+    } else {
+      await user.click(await screen.findByRole("button", { name: "絞り込みを解除" }));
+    }
+    const updater = onSearchChange.mock.calls[onSearchChange.mock.calls.length - 1]?.[0] as (
+      prev: StockMovementsSearch,
+    ) => StockMovementsSearch;
+    expect(updater(prev)).toEqual(
+      action === "filter 変更"
+        ? { ...prev, type: "receiving", page: 1 }
+        : {
+            dateFrom: undefined,
+            dateTo: undefined,
+            type: undefined,
+            page: undefined,
+            returnTo: prev.returnTo,
+          },
+    );
+  });
+});
