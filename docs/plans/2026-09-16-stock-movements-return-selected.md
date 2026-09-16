@@ -1,6 +1,6 @@
 # Plan Packet: ㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する（NAV-1、R3）
 
-2026-09-16 起草。出典は [監査 NAV-1](../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)（P2 / confirmed）と Backlog「やると決めたもの（順番未定）」の NAV-1 行。owner 2026-09-16「次何やるかふたつとって早速始めよう」で Coordinator が wave 12 の lane 1 に選定（lane 2 = ㉗ `docs/plans/2026-09-16-stocktake-count-baseline.md`、file footprint 互いに素）。file:line は origin/main `c6167c4d` で実測（Coordinator 2026-09-16）。実装は別 run（Codex 発注書、fail-closed 到達時は Sonnet subagent）とし、独立 Plan Review 通過後に発注する。Test Design Matrix: `docs/plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。
+2026-09-16 起草。出典は [監査 NAV-1](../research/2026-09-16-diagram-audit.md#nav-1-在庫変動履歴からの戻りで商品選択が失われる)（P2 / confirmed）と Backlog「やると決めたもの（順番未定）」の NAV-1 行。owner 2026-09-16「次何やるかふたつとって早速始めよう」で Coordinator が wave 12 の lane 1 に選定（lane 2 = ㉗ `docs/plans/2026-09-16-stocktake-count-baseline.md`、file footprint 互いに素）。file:line は origin/main `c6167c4d` で実測（Coordinator 2026-09-16）。実装は別 run（Sonnet subagent、worktree 分離）とし、独立 Plan Review 通過後に発注する。Test Design Matrix: `docs/plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。
 
 ## Workflow State
 
@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Fable 5.1
-- Writer: Codex（発注書駆動。relay 上限到達時は Sonnet subagent、worktree 分離、Plan Reviewer とは別 fresh context）
+- Writer: Sonnet（subagent、worktree 分離、Plan Reviewer とは別 fresh context。owner 不在で「早速始めよう」の指示のため Codex relay〈owner 起動〉を挟まず Coordinator が起動する。global 方針「実装を常に Codex だけへ渡す制約は置かない」）
 - Plan Reviewer: Sonnet（独立 fresh context）
 - Final Reviewer: Sonnet + Opus（独立 fresh context）
 - Final Review Minimum: 2
@@ -95,7 +95,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **S1 `src/features/stock-movements/types.ts`**: `stockMovementsSearchSchema` に `returnTo: z.string().max(500).optional().catch(undefined)` を追加（D-D4）。`StockMovementsSearch` 型は `z.output` 由来で自動追従
 - **S2 `src/features/stock-movements/StockMovementsPage.tsx`**: `:90` の `Link` を `normalizeReturnTo(search.returnTo, fallback)` の `to={backHref}` へ（D-D2、`DisposalRecordDetailPage.tsx:46,80` と同型。`import { normalizeReturnTo } from "@/lib/return-to"`）/ `:73-82` `returnToParams` に `returnTo` を追加（D-D3）
 - **S3 `src/features/stock-inquiry/components/StockDetailContent.tsx`**: `ActiveCta` の `Link` に `search={{ returnTo }}` を追加。`returnTo` は `useRouterState({ select: (state) => state.location.href })`（D-D1）
-- **S4 tests**: `StockDetailContent.test.tsx:33-48` を `initialPath` 付き（例 `/stock?q=BT&selected=BT0002`）で render し、href = `/stock/BT0002/movements?returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002` を固定（Matrix T1）/ `StockMovementsPage.test.tsx` に「在庫照会へ戻る」の href を `it.each`（有効 `returnTo` / 欠落 / 外部 URL / `//`）で固定（T2〜T4）、`detailReturnTo` に `returnTo` が入れ子で載る case（T5）、filter 変更後も `returnTo` が残る case（T6、`onSearchChange` の updater 結果で確認）
+- **S4 tests**: `StockDetailContent.test.tsx:33-48` を `initialPath` 付き（例 `/stock?q=BT&selected=BT0002`）で render し、href = `/stock/BT0002/movements?returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002` を固定（Matrix T1）/ `StockMovementsPage.test.tsx` に「在庫照会へ戻る」の href を `it.each`（T2' 有効 `returnTo` / T2 欠落 / T3 外部 URL / T4 `//`）で固定、`detailReturnTo` に `returnTo` が入れ子で載る case（T5）、filter 変更後も `returnTo` が残る case（T6、`onSearchChange` の updater 結果で確認）
 - **S5 `docs/function-design/66-ui-stock-movements.md`**: §66.1 主動線 4 を「『在庫照会へ戻る』で `returnTo`（在庫照会からの遷移元 URL）へ戻る。欠落・不正時は `/stock?q=$code&selected=$code`」へ / §66.2 決定表に UI-06c-D9 行（決定 = D-D2 + D-D3、理由 / 棄却案 = 上記）/ §66.3 型と fallback 規則に `returnTo?: string`（`max(500)`、不正値は `undefined`）/ §66.4 Route search に `returnTo` / §66.5 Header actions の遷移先を書き換え / §66.7 Tests に「REQ-303 / UI-06c-D9: `returnTo` の正規化と fallback、`detailReturnTo` への入れ子」bullet
 - **S6 `docs/function-design/58-ui-stock-inquiry.md`**: `:538` の bullet を「『在庫変動履歴』は … へ遷移し、現在の `/stock` URL（search state 込み）を `returnTo` として送る（UI-06a-D7）」へ / §58.10 に `#### UI-06a-D7: 在庫変動履歴への `returnTo` 送信（2026-09-16、NAV-1）` block（決定 / Why / Rejected = D-D1）/ `:671` 変更履歴に 1 行
 - **S7（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録、Test Design Matrix
@@ -150,7 +150,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c616
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | REQ-301 / REQ-303 | 58 §58.7 / §58.10 | UI-06a-D7（D-D1） | 在庫照会の元条件を `returnTo` で運ぶ。捨てた案: 受け側ガード撤去 / 商品コード検索固定 | S3 / S6 | T1 |
-| REQ-303 | 66 §66.2 / §66.5 | UI-06c-D9（D-D2） | `normalizeReturnTo` + 商品コード検索 fallback。捨てた案: `/stock` / 現行維持 | S1 / S2 / S5 | T2 / T3 / T4 |
+| REQ-303 | 66 §66.2 / §66.5 | UI-06c-D9（D-D2） | `normalizeReturnTo` + 商品コード検索 fallback。捨てた案: `/stock` / 現行維持 | S1 / S2 / S5 | T2' / T2 / T3 / T4 |
 | REQ-303 / REQ-207 | 66 §66.2 / §66.3 | UI-06c-D9（D-D3） | 業務記録詳細往復で `returnTo` を入れ子で保つ。捨てた案: sessionStorage | S2 | T5 / T6 |
 | — | DSR-15 / DSR-18 | D-D4 | route file / helper / DSR-18 本文は不変、decision-log 追加なし | — | AC5 |
 
@@ -277,3 +277,11 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-16、plan-gate、Sonnet、裁定 Coordinator）
+
+- reviewer 実施: plan-first commit `93d2227c` の差分が docs 4 file のみ / AC1〜AC5 の baseline command を逐語実行し全件一致 / file:line を実物と突合し一致 / D-D1〜D-D4 と DSR-18 の判定フロー（No 分岐）・§58.4 ガードの整合を hook 実物で確認 / 隔離 probe test（未追跡、検証後削除）で `renderWithRouter` + `useRouterState` が `initialPath` を返し、`search={{ returnTo }}` の href が packet の期待値 `/stock/BT0002/movements?returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002` と一致することを実測 / `routeTree.gen.ts` が search schema を複製しないことを確認（`generate:routes` 不要は正）/ 対象 3 test file 全 PASS
+- P3（Design Intent Trace の UI-06c-D9〈D-D2〉行の Test target に `T2'` が無い）= accept → 本 commit で `T2' / T2 / T3 / T4` へ
+- P3（Scope S4 の it.each 記述が Matrix の 4 ID 表記とずれる）= accept → 本 commit で `T2' / T2 / T3 / T4` の表記へ
+- 同 commit で Writer を Codex → Sonnet subagent へ変更（owner 不在の「早速始めよう」指示に合わせ Codex relay を挟まない。Plan Reviewer とは別 fresh context、独立性制約は維持）。P3 のみのため reviewer 再投入なし（Subagent Budget）
+- 判定: P1/P2 = 0、**Plan Gate 通過可**。Plan Commit = 本 commit（plan-first `93d2227c` → 是正を含む確定版）
