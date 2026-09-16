@@ -7,7 +7,7 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: fe8ff219bc8d46af64d9d9d74c461c28347c0549
@@ -71,7 +71,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `src/features/disposal/DisposalPage.tsx`: `:134` `const returnTo = useRouterState({ select: (state) => state.location.href })`（既存、recent list 用）/ `:333-345` 保存結果 panel の button 群 = 「続けて廃棄・破損」+「在庫照会へ戻る」の 2 つ / `:708-716` recent list の「詳細を見る」（`to="/inventory/disposal/records/$recordId"` + `search={{ returnTo }}`、`Eye` icon）/ `rg -c '詳細を見る'` = 1、`rg -c 'search=\{\{ returnTo \}\}'` = 1。`Eye` / `Link` は import 済み（`:6` `:8`）
 - `src/features/receiving/ReceivingPage.tsx:351-369`: 保存結果の button 順 = 続けて入庫 / 詳細を見る（`Eye`、`variant="outline"`、`asChild` Link + `search={{ returnTo }}`）/ 在庫照会へ戻る。本 lane の見本
-- `src/features/disposal/DisposalPage.test.tsx`: 25 本（`it` 23 + `it.each` `:712` 2 ケース。vitest 実測、**GA3 で 23 → 25 に訂正**）。`:334` T8「saved disposal result does not add a detail link」= `queryByRole("link", { name: "詳細を見る" })` が不在を固定（record_id 41）/ `:462-466` recent list の href `/inventory/disposal/records/12?returnTo=%2Finventory%2Fdisposal` を固定 / `rg -c '詳細を見る'` = 3
+- `src/features/disposal/DisposalPage.test.tsx`: 対象 test file 全 PASS（本数は PR body / CI 出力を正とする。GA1〜GA3 で本数の書き写し誤りが 3 回発生したため固定値として記録しない。closeout の是正、Final Review pass B P3-3）。`:334` T8「saved disposal result does not add a detail link」= `queryByRole("link", { name: "詳細を見る" })` が不在を固定（record_id 41）/ `:462-466` recent list の href `/inventory/disposal/records/12?returnTo=%2Finventory%2Fdisposal` を固定 / `rg -c '詳細を見る'` = 3
 - consumer: `src/features/inventory-records/DisposalRecordDetailPage.test.tsx:129` 「REQ-207 / T11 DSR-18: DisposalRecordDetailPage の returnTo %s を安全に %s へ正規化する」（欠落・不正・外部 URL の fallback を既に固定。本 lane 非接触）
 - route: `src/routes/inventory/disposal/records/$recordId.tsx` 実在（非接触）
 - docs: `64-ui-disposal.md:37` UI-05-D17 行「保存結果には詳細 link がないため、この送信契約の producer に含めない」/ `:120` §64.5 bullet「『詳細を見る』は UI-05-D17 に従って…」（recent list の文脈）/ `:165` §64.9 Test Focus「保存結果には詳細 link を追加しない」/ `:171` 変更履歴（2026-08-30、非遡及で残す）。`rg -c '保存結果には詳細 link がない|保存結果には詳細 link を追加しない|保存結果は詳細 link なし'` = 3（`:37` `:165` `:171`）/ `rg -c '保存結果と recent list'` = 0
@@ -108,7 +108,7 @@ rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `9d67
 - **AC3** `rg -c '保存結果には詳細 link がない|保存結果には詳細 link を追加しない' docs/function-design/64-ui-disposal.md` = 0（baseline 2 = `:37` `:165`。`:171` の変更履歴「保存結果は詳細 link なしの現行契約を維持」は非遡及で残す）/ `rg -c '保存結果と recent list' 同` ≥ 2（baseline 0）/ `rg -c 'UI-05-D17 を改訂' 同` = 1（baseline 0）
 - **AC4**（負の oracle）`git diff --name-only origin/main..HEAD -- src/routes src/lib src/features/inventory-records src/features/receiving src/features/return-exchange src/features/manual-sale src-tauri docs/design-system docs/function-design/65-inventory-record-traceability.md | wc -l` = 0
 - **AC5** mutant: (1) S1 の link から `search={{ returnTo }}` を外す → S2 の href assert が FAIL（`?returnTo=` 不在）。(2) S1 の link を消す → S2 が FAIL。(3) `params` の `record_id` を `item.id` 等の別値にすると `/records/41` 不一致で FAIL。3 本とも実装後に kill を実測して報告する
-- **AC6** 対象 test（`DisposalPage`）25 本 PASS（GA3 で訂正）、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS。反転前の T8 は link 追加で必ず FAIL するため、修正前後の red / green を報告する
+- **AC6** 対象 test file（`DisposalPage`）全 PASS（本数は PR body / CI 出力を正とする。closeout の是正、Final Review pass B P3-3）、`npm run typecheck` / `lint` / `format:check` PASS、最終 `bash scripts/local-ci.sh full` PASS。反転前の T8 は link 追加で必ず FAIL するため、修正前後の red / green を報告する
 - **AC7** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS
 - **AC-L3-1** 廃棄・破損（Windows native）: 商品を 1 件追加して保存 → 保存結果に「詳細を見る」が出る → click で廃棄・破損詳細 → 「前の画面へ戻る」で `/inventory/disposal` に戻る（1 往復）。PASS/FAIL のみ
 
@@ -264,7 +264,7 @@ Required for R3/R4.
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #71](https://github.com/kosei-w90607/inventory-system-desktop/pull/71) で実装し squash merge 済み（`949a5c4c`、2026-09-16）。Writer = Sonnet subagent（Codex 発注書 59 は run 1〜3 とも packet 記述誤りで実装前に fail-closed、GA1〜GA3）。実装 `e307b53a`、docs `0c49b5af`。Final Review = Sonnet pass A（Contract Audit、finding 0）/ Opus pass B（P3 3 → closeout で是正）。owner L3 round 1 PASS（Coordinator session で報告、helper manual record）。介入 1 / 予算 3、Codex relay 3 / 上限 3
 
 ## Review Response
 
@@ -304,3 +304,9 @@ Fill after implementation.
 - 是正: 起票時実測と AC6 を 25 本へ訂正（本 commit）。Scope / 設計判断 / 他の AC は不変
 - Owner Effort Budget: Codex relay 3/3 到達（3 回とも Coordinator 起因、Writer の作業 0）。残作業（S1〜S3 の実装 + 検証 + Draft PR）は ㉓ GA2 と同じく Coordinator 側の Sonnet subagent run で行い、Writer field を Sonnet に改める。Codex は Final Review の是正が必要になった場合に owner 承認で再依頼
 - 教訓: test 本数は `vitest run <file>` の出力から写す（`it(` の rg count は `it.each` を数えない）
+
+### Final Review round 1（2026-09-16、head `0c49b5af`）
+
+- pass A（Sonnet）: AC oracle 再実測一致、mutant 1 本を実注入して kill を確認、finding 0（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/71#issuecomment-5694394631)）
+- pass B（Opus）: P3 3 件 = (1) 64 `:31` `:64` の導線列挙に「詳細を見る」未追加、(2) `:120` の二重記述（「保存結果と最近の廃棄・破損一覧の」が `:119` と重複）、(3) packet の test 本数転記（Evidence Ownership、本数を固定値で書かず PR body / CI 出力を正とすべき）→ いずれも accept、本 closeout で是正（[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/71#issuecomment-5694443932)）
+- 裁定: pass B の指摘 3 件を全件 accept。64 の UI-05-D11 決定列 / state 表に「詳細を見る」を追加、§64.5 の二重記述を整理、本 packet の AC6 と起票時実測の test 本数を「対象 test file 全 PASS（本数は PR body / CI 出力を正とする）」へ改めた（いずれも本 closeout commit）。review = pass、manual = pass（owner L3 round 1）
