@@ -29,7 +29,7 @@ manual = owner Windows native L3 1 往復（廃棄・破損を 1 件保存 → �
 
 - 介入回数上限: 3
 - 実働時間上限: 20分
-- relay 往復上限: 2
+- relay 往復上限: 2（run 1 は Coordinator の AC1 誤記で実装前に fail-closed 停止、Writer の作業 0。Gated Amendment 1。2 往復目 = 発注書 59 改訂 2 の実装 run）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -103,7 +103,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `9d6799ff`）。
 
-- **AC1** `rg -c '詳細を見る' src/features/disposal/DisposalPage.tsx` = 2（baseline 1）/ `rg -c 'search=\{\{ returnTo \}\}' 同` = 2（baseline 1）/ `rg -c 'useRouterState' 同` = 1（baseline 1、新 state なし）
+- **AC1** `rg -c '詳細を見る' src/features/disposal/DisposalPage.tsx` = 2（baseline 1）/ `rg -c 'search=\{\{ returnTo \}\}' 同` = 2（baseline 1）/ `rg -c 'useRouterState' 同` = 2（baseline 2 = `:6` import + `:134` 呼び出し。**GA1 で 1 → 2 に訂正**、新 state なし）
 - **AC2** `rg -c 'does not add a detail link' src/features/disposal/DisposalPage.test.tsx` = 0（baseline 1）/ `rg -c 'records/41\?returnTo=%2Finventory%2Fdisposal' 同` = 1（baseline 0）/ `rg -c '詳細を見る' 同` ≥ 3（baseline 3）
 - **AC3** `rg -c '保存結果には詳細 link がない|保存結果には詳細 link を追加しない' docs/function-design/64-ui-disposal.md` = 0（baseline 2 = `:37` `:165`。`:171` の変更履歴「保存結果は詳細 link なしの現行契約を維持」は非遡及で残す）/ `rg -c '保存結果と recent list' 同` ≥ 2（baseline 0）/ `rg -c 'UI-05-D17 を改訂' 同` = 1（baseline 0）
 - **AC4**（負の oracle）`git diff --name-only origin/main..HEAD -- src/routes src/lib src/features/inventory-records src/features/receiving src/features/return-exchange src/features/manual-sale src-tauri docs/design-system docs/function-design/65-inventory-record-traceability.md | wc -l` = 0
@@ -280,3 +280,11 @@ Fill after implementation.
 ### Plan Review round 2（closure、Sonnet）
 
 - round 1 の P2 / P3 = closed（packet / Matrix で `64.8` 0 件、`:335` 0 件、round 1 節の記録が指摘と一致）。契約整合に影響する変更なし（diff は節番号・行番号のラベル訂正と round 1 節の追記のみ）。新規 P1/P2 なし。**Plan Gate 通過可**
+
+### Gated Amendment 1（2026-09-16、Codex 発注書 59 run 1 の fail-closed 停止）
+
+- run 1（HEAD `0ee89c14`）: Writer は AC1 の `rg -c 'useRouterState' src/features/disposal/DisposalPage.tsx` を実行し、実測 2（`:6` import + `:134` 呼び出し）が packet の期待値 1 と不一致のため実装前に停止（正しい挙動）。file 編集なし、worktree 除去済み
+- 原因: Coordinator の起票時実測の誤り（`rg -n 'returnTo'` の目視で呼び出し行だけを数え、`rg -c` を実行していなかった）
+- 是正: AC1 の期待値と baseline を 2 へ訂正（本 commit）。Scope / 設計判断 / 他の AC は不変
+- Owner Effort Budget: relay 1/2 を消費（Coordinator 起因）。発注書 59 改訂 2 は本 GA の登録 commit を HEAD_SHA にする
+- 教訓: AC の rg oracle は起票時に同じ command を実行して数値を写す（目視の行数で代用しない）
