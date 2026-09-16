@@ -29,7 +29,7 @@ manual = owner Windows native L3 1 往復（廃棄・破損を 1 件保存 → �
 
 - 介入回数上限: 3
 - 実働時間上限: 20分
-- relay 往復上限: 2（run 1 は Coordinator の AC1 誤記で実装前に fail-closed 停止、Writer の作業 0。Gated Amendment 1。2 往復目 = 発注書 59 改訂 2 の実装 run）
+- relay 往復上限: 3（既定 2 から改訂、Gated Amendment 2。理由: run 1 = AC1 の count 誤記、run 2 = Test Plan / Matrix の「実 router context」誤記で、いずれも Coordinator 起因の fail-closed 停止で Writer の作業は 0。3 往復目は発注書 59 改訂 3 の実装 run。owner 承認 = 起動）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -213,7 +213,7 @@ Matrix: `docs/plans/test-matrices/2026-09-16-disposal-result-detail-link.md`。
 - negative tests: mutant 3 本（AC5）。`returnTo` 欠落・不正の fallback は consumer 既存 test（本 lane 非接触）
 - compatibility checks: recent list の href 固定 test（`:462-466`）が無変更 PASS、AC4
 - data safety checks: Data Safety 参照
-- main wiring/integration checks: `DisposalPage.test.tsx` は実 router context（`renderWithClient`）で href を検証
+- main wiring/integration checks: `DisposalPage.test.tsx` は `@tanstack/react-router` を mock（`:22-45`。`Link` は `to` / `params` / `search` から `<a href>` を組み立て、`useRouterState` は `/inventory/disposal` を返す）した unit test で、`renderWithClient` は QueryClientProvider のみ。href の oracle は recent list の既存 test（`:462`）と同じ mock 上で成立する。実 router の配線（route 解決 + 詳細の「前の画面へ戻る」）は AC-L3-1 が担う（**GA2 で「実 router context」の誤記を訂正**）
 
 ## Boundary / Wire Contract
 
@@ -288,3 +288,11 @@ Fill after implementation.
 - 是正: AC1 の期待値と baseline を 2 へ訂正（本 commit）。Scope / 設計判断 / 他の AC は不変
 - Owner Effort Budget: relay 1/2 を消費（Coordinator 起因）。発注書 59 改訂 2 は本 GA の登録 commit を HEAD_SHA にする
 - 教訓: AC の rg oracle は起票時に同じ command を実行して数値を写す（目視の行数で代用しない）
+
+### Gated Amendment 2（2026-09-16、Codex 発注書 59 run 2 の fail-closed 停止）
+
+- run 2（HEAD `0e0e8df8`）: Writer は packet Test Plan `:216` と Matrix T8' 行の「実 router context（`renderWithClient`）」が現物（`DisposalPage.test.tsx:22-45` で `@tanstack/react-router` を mock、`renderWithClient` は QueryClientProvider のみ）と不一致のため実装前に停止（正しい挙動）。環境準備（`npm ci` / routes 生成差分なし）まで実施、file 編集なし、worktree 除去済み
+- 原因: Coordinator の未検証 claim（test の render helper 名から実 router と推定し、mock 節を読んでいなかった）
+- 是正: Test Plan と Matrix の検証方式を「既存 router mock による unit 検証 + 実 router 配線は L3」へ訂正（本 commit）。href の oracle（FM1〜FM3 の検出力）は mock の `Link` が `search` から query を組み立てるため不変。Scope / AC / 設計判断は不変
+- Owner Effort Budget: relay 上限 2 → 3（Coordinator 起因 2 回、Writer の作業 0）。発注書 59 改訂 3 は本 GA の登録 commit を HEAD_SHA にする。owner 承認 = 起動
+- 教訓: packet に書く test の前提（render helper / mock 境界）は test file の `vi.mock` 節を読んで写す
