@@ -53,8 +53,8 @@ Goal Invariant: 廃棄・破損を保存した直後に、その記録の詳細�
 ### 最小完了条件
 
 - (1) 保存結果 panel（`DisposalPage.tsx:333-345`）に「詳細を見る」link（`to="/inventory/disposal/records/$recordId"`、`params={{ recordId: String(result.record_id) }}`、`search={{ returnTo }}`）が出る。並び順 = 続けて廃棄・破損 / 詳細を見る / 在庫照会へ戻る（入庫 `ReceivingPage.tsx:351-369` と同順）。
-- (2) 64 の UI-05-D17 行・§64.5 bullet・§64.8 bullet が「保存結果と recent list」の producer 契約に改訂され、変更履歴に 1 行。
-- (3) test T8（`DisposalPage.test.tsx:335`）が「link あり + href に `returnTo`」へ反転して PASS。
+- (2) 64 の UI-05-D17 行・§64.5 bullet・§64.9 Test Focus bullet が「保存結果と recent list」の producer 契約に改訂され、変更履歴に 1 行。
+- (3) test T8（`DisposalPage.test.tsx:334`）が「link あり + href に `returnTo`」へ反転して PASS。
 
 ### 失敗定義
 
@@ -70,10 +70,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - `src/features/disposal/DisposalPage.tsx`: `:134` `const returnTo = useRouterState({ select: (state) => state.location.href })`（既存、recent list 用）/ `:333-345` 保存結果 panel の button 群 = 「続けて廃棄・破損」+「在庫照会へ戻る」の 2 つ / `:708-716` recent list の「詳細を見る」（`to="/inventory/disposal/records/$recordId"` + `search={{ returnTo }}`、`Eye` icon）/ `rg -c '詳細を見る'` = 1、`rg -c 'search=\{\{ returnTo \}\}'` = 1。`Eye` / `Link` は import 済み（`:6` `:8`）
 - `src/features/receiving/ReceivingPage.tsx:351-369`: 保存結果の button 順 = 続けて入庫 / 詳細を見る（`Eye`、`variant="outline"`、`asChild` Link + `search={{ returnTo }}`）/ 在庫照会へ戻る。本 lane の見本
-- `src/features/disposal/DisposalPage.test.tsx`: 23 本。`:335` T8「saved disposal result does not add a detail link」= `queryByRole("link", { name: "詳細を見る" })` が不在を固定（record_id 41）/ `:462-466` recent list の href `/inventory/disposal/records/12?returnTo=%2Finventory%2Fdisposal` を固定 / `rg -c '詳細を見る'` = 3
+- `src/features/disposal/DisposalPage.test.tsx`: 23 本。`:334` T8「saved disposal result does not add a detail link」= `queryByRole("link", { name: "詳細を見る" })` が不在を固定（record_id 41）/ `:462-466` recent list の href `/inventory/disposal/records/12?returnTo=%2Finventory%2Fdisposal` を固定 / `rg -c '詳細を見る'` = 3
 - consumer: `src/features/inventory-records/DisposalRecordDetailPage.test.tsx:129` 「REQ-207 / T11 DSR-18: DisposalRecordDetailPage の returnTo %s を安全に %s へ正規化する」（欠落・不正・外部 URL の fallback を既に固定。本 lane 非接触）
 - route: `src/routes/inventory/disposal/records/$recordId.tsx` 実在（非接触）
-- docs: `64-ui-disposal.md:37` UI-05-D17 行「保存結果には詳細 link がないため、この送信契約の producer に含めない」/ `:120` §64.5 bullet「『詳細を見る』は UI-05-D17 に従って…」（recent list の文脈）/ `:165` §64.8「保存結果には詳細 link を追加しない」/ `:171` 変更履歴（2026-08-30、非遡及で残す）。`rg -c '保存結果には詳細 link がない|保存結果には詳細 link を追加しない|保存結果は詳細 link なし'` = 3（`:37` `:165` `:171`）/ `rg -c '保存結果と recent list'` = 0
+- docs: `64-ui-disposal.md:37` UI-05-D17 行「保存結果には詳細 link がないため、この送信契約の producer に含めない」/ `:120` §64.5 bullet「『詳細を見る』は UI-05-D17 に従って…」（recent list の文脈）/ `:165` §64.9 Test Focus「保存結果には詳細 link を追加しない」/ `:171` 変更履歴（2026-08-30、非遡及で残す）。`rg -c '保存結果には詳細 link がない|保存結果には詳細 link を追加しない|保存結果は詳細 link なし'` = 3（`:37` `:165` `:171`）/ `rg -c '保存結果と recent list'` = 0
 - `65-inventory-record-traceability.md:43` TRACE-D11 は「一覧、作業画面の recent list、保存結果、操作ログ」を producer に含む横断契約（不変）。`61-ui-receiving.md:36` UI-02-D16「保存結果と recent list の『詳細を見る』は…送る」= 改訂文の同型
 - `ui-task-specs.md:197` UI-05 行に導線の記述なし（不変）
 
@@ -86,8 +86,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Scope
 
 - **S1 `src/features/disposal/DisposalPage.tsx`**: `:333-345` の button 群に「詳細を見る」を追加（D-D2、順序 = 続けて廃棄・破損 / 詳細を見る / 在庫照会へ戻る）
-- **S2 `src/features/disposal/DisposalPage.test.tsx`**: `:335` T8 を「T8 UI-05-D17: saved disposal result links to the detail with returnTo」へ反転し、`getByRole("link", { name: "詳細を見る" })` の `href` = `/inventory/disposal/records/41?returnTo=%2Finventory%2Fdisposal` を固定（recent list の `:462` と同型。recent list を同時に描画する test では link が 2 本になり得るため、保存結果 panel 内に scope して取る）
-- **S3 `docs/function-design/64-ui-disposal.md`**: `:37` UI-05-D17 行（D-D1）/ `:120` §64.5 bullet を「保存結果と recent list の『詳細を見る』は UI-05-D17 に従って…」へ / `:165` §64.8 bullet を「保存結果と recent list の『詳細を見る』が現在の廃棄・破損画面 URL を `returnTo` として送る」へ / 変更履歴に「2026-09-16 | ㉕ | UI-05-D17 を改訂し、保存結果にも詳細 link（`returnTo` 送信）を追加。入庫・返品・交換と対称化」
+- **S2 `src/features/disposal/DisposalPage.test.tsx`**: `:334` T8 を「T8 UI-05-D17: saved disposal result links to the detail with returnTo」へ反転し、`getByRole("link", { name: "詳細を見る" })` の `href` = `/inventory/disposal/records/41?returnTo=%2Finventory%2Fdisposal` を固定（recent list の `:462` と同型。recent list を同時に描画する test では link が 2 本になり得るため、保存結果 panel 内に scope して取る）
+- **S3 `docs/function-design/64-ui-disposal.md`**: `:37` UI-05-D17 行（D-D1）/ `:120` §64.5 bullet を「保存結果と recent list の『詳細を見る』は UI-05-D17 に従って…」へ / `:165` §64.9 Test Focus bullet を「保存結果と recent list の『詳細を見る』が現在の廃棄・破損画面 URL を `returnTo` として送る」へ / 変更履歴に「2026-09-16 | ㉕ | UI-05-D17 を改訂し、保存結果にも詳細 link（`returnTo` 送信）を追加。入庫・返品・交換と対称化」
 - **S4（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録、Test Design Matrix
 
 ## Non-scope
@@ -117,7 +117,7 @@ List the source design docs this plan relies on. Plan Packets are not durable de
 
 - Requirements / spec: REQ-204（廃棄・破損）、REQ-206（記録の追跡・戻り導線）
 - Architecture: 該当なし
-- Function / command / DTO: 64 §64.1 決定表 UI-05-D11（保存結果の内容）/ UI-05-D17（本 lane で改訂）、§64.5、§64.8。61 §UI-02-D16（同型の先例）。65 TRACE-D11（横断契約、不変）
+- Function / command / DTO: 64 §64.1 決定表 UI-05-D11（保存結果の内容）/ UI-05-D17（本 lane で改訂）、§64.5、§64.9 Test Focus。61 §UI-02-D16（同型の先例）。65 TRACE-D11（横断契約、不変）
 - DB: 該当なし
 - Screen / UI: `docs/design-system/01-decision-rules.md` DSR-18（送信・検証・fallback の規範、不変）、DSR-19（保存成功の feedback、result panel 方針）
 - Decision log / ADR: なし（D-D3）
@@ -131,7 +131,7 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 | Backend function / command / repository / validation / error | なし | not applicable |
 | Command / DTO / generated binding / wire shape | なし | not applicable |
 | DB / transaction / audit / rollback / migration | なし | not applicable |
-| Screen / UI / route state / Japanese wording | 64 §64.1 UI-05-D17 / §64.5 / §64.8 | updated in this PR（S3） |
+| Screen / UI / route state / Japanese wording | 64 §64.1 UI-05-D17 / §64.5 / §64.9 | updated in this PR（S3） |
 | CSV / TSV / report / import / export format | なし | not applicable |
 | Durable decision / ADR | DSR-18 / TRACE-D11（既存、保存結果を producer に含む） | existing sufficient |
 
@@ -175,7 +175,7 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 State whether the design is ready for implementation.
 
 - Existing design docs are sufficient because: DSR-18 と 65 TRACE-D11 が「保存結果」を producer に含む横断契約を既に定め、61 UI-02-D16 に同型の先例がある。64 UI-05-D17 だけが「保存結果は producer 外」と例外を固定しており、その 1 行の改訂（D-D1）が本 lane の design 出力
-- Source docs updated in this PR: 64 §64.1 / §64.5 / §64.8 / 変更履歴（S3。実装 run で更新。本 plan-first commit は packet / Matrix / Plans.md / backlog.md のみ）
+- Source docs updated in this PR: 64 §64.1 / §64.5 / §64.9 / 変更履歴（S3。実装 run で更新。本 plan-first commit は packet / Matrix / Plans.md / backlog.md のみ）
 - Design gaps intentionally deferred: result panel が詳細往復で消える件（Backlog）
 - Durable decisions discovered in this plan and promoted to source docs: D-D1（64）
 
@@ -268,3 +268,10 @@ Fill after implementation.
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-16、plan-gate、Sonnet、裁定 Coordinator）
+
+- P2（packet が 64 の `:165` を「§64.8」と記載、実際は §64.9 Test Focus。§64.8 は Non-scope / Follow-up `:140-149`）= accept → 起票時実測 / 最小完了条件 (2) / S3 / Design Sources / Required Design Artifacts / Design Readiness の「§64.8」を「§64.9」へ一括是正（本 commit）。line 番号 `:165` と AC3 の rg oracle は正しく、実装対象は不変
+- P3（T8 の `it(` 開始行は `:334`、packet は `:335`）= accept → packet / Matrix の `:335` を `:334` へ
+- reviewer 確認済み: D-D1〜D-D3 の整合、Risk R3 判定、Adjacent Pattern Audit の網羅（保存結果 + 業務記録 detail route を持つ画面は 4 つのみ）、T8 単体では recent list が空 mock のため link は 1 本（S2 の scope 方針は安全側）
+- 判定: 通過可（P1/P2 = 0 は本是正の closure 確認後）。round 2 = closure

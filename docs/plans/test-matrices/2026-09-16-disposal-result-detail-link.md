@@ -27,7 +27,7 @@ Risk: R3
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| SPEC-UI05-D17-R1 | FM1 / FM2 / FM3 | unit（RTL + 実 router context） | T8' `DisposalPage.test.tsx` 「T8 UI-05-D17: saved disposal result links to the detail with returnTo」（`:335` の反転。保存結果 panel に scope し `href` = `/inventory/disposal/records/41?returnTo=%2Finventory%2Fdisposal`） | link 不在（FM1）、`?returnTo=` 欠落（FM2）、`/records/41` 不一致（FM3） |
+| SPEC-UI05-D17-R1 | FM1 / FM2 / FM3 | unit（RTL + 実 router context） | T8' `DisposalPage.test.tsx` 「T8 UI-05-D17: saved disposal result links to the detail with returnTo」（`:334` の反転。保存結果 panel に scope し `href` = `/inventory/disposal/records/41?returnTo=%2Finventory%2Fdisposal`） | link 不在（FM1）、`?returnTo=` 欠落（FM2）、`/records/41` 不一致（FM3） |
 | SPEC-UI05-D17-R1 | FM4 | unit | T8'-replay（任意、Writer 判断）: `idempotent_replay: true` の result でも同じ link。Writer が実装 diff に分岐が無いことを示せば review evidence で代替可 | replay 分岐で link を隠す実装 |
 | SPEC-UI05-D17-R1 | FM5 | regression（既存） | `DisposalPage.test.tsx` の reset 系 test（`rg -n "続けて廃棄・破損" src/features/disposal/DisposalPage.test.tsx` で実在確認）: reset 後は `result === null` で panel ごと消える | panel 外に link を置いた実装 |
 | UI-05-D17（recent list） | FM6 | regression（既存） | `DisposalPage.test.tsx:462-466`（href `/inventory/disposal/records/12?returnTo=%2Finventory%2Fdisposal`） | recent list の link を触った場合 |
