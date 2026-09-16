@@ -331,7 +331,7 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     }
   });
 
-  it("T8 UI-05-D17: saved disposal result does not add a detail link", async () => {
+  it("T8 UI-05-D17: saved disposal result links to the detail with returnTo", async () => {
     const user = userEvent.setup();
     mockCreateDisposal.mockResolvedValue({
       status: "ok",
@@ -342,8 +342,13 @@ describe("DisposalPage (UI-05 / REQ-204)", () => {
     await addSingleProduct(user);
     await user.click(screen.getByRole("button", { name: "廃棄・破損を保存" }));
 
-    expect(await screen.findByText("廃棄・破損を保存しました")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "詳細を見る" })).not.toBeInTheDocument();
+    const heading = await screen.findByText("廃棄・破損を保存しました");
+    const section = heading.closest("section");
+    if (section === null) throw new Error("保存結果 section が見つかりません");
+    expect(within(section).getByRole("link", { name: "詳細を見る" })).toHaveAttribute(
+      "href",
+      "/inventory/disposal/records/41?returnTo=%2Finventory%2Fdisposal",
+    );
   });
 
   it("REQ-204 keeps the idempotency key for same-content retry and rotates it after edits or reset", async () => {
