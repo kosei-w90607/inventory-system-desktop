@@ -9,7 +9,7 @@
 ## 次の行動
 
 - **㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する（NAV-1、R3、plan-gate）**: `plans/2026-09-16-stock-movements-return-selected.md` / `plans/test-matrices/2026-09-16-stock-movements-return-selected.md`。branch `agent/stock-movements-return-selected`、Plan Commit pending。監査 NAV-1（P2）起源。wave 12 lane 1、㉗ と file 互いに素。
-- **㉗ 棚卸しの基準時点を「各商品の最終カウント時点」にする（STK-1 / STK-2、design-first、R2、design）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。監査 STK-1（P1）/ STK-2 / DOC-2 起源。owner の設計判断 3 問（方式 / 同日販売の扱い / STK-2 境界の実装時期）を Human Gate に置き、回答後に plan-gate へ。runtime は後続 ㉘（R3）。wave 12 lane 2、㉖ と file 互いに素。
+- **㉗ 棚卸しの基準時点を「各商品の最終カウント時点」にする（STK-1 / STK-2、design-first、R2、design）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。監査 STK-1（P1）/ STK-2 / DOC-2 起源。owner の設計判断 3 問（方式 / 同日販売の扱い / STK-2 境界の実装時期）を design → plan-draft の遷移条件として packet に置く。owner 回答 2026-09-16: 方式 = snapshot（candidate）/ STK-2 境界 = 含める（candidate）/ 同日販売 = 店の聞き取り待ち（開店前・営業中・閉店後、その場で保存するか）。Opus 設計レビュー round 0（P1 1 / P2 8）を反映済み。runtime は後続 ㉘（R3）。wave 12 lane 2、㉖ と file 互いに素。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
@@ -56,7 +56,7 @@ L8-4は owner 決定済み（下記参照）。L8-2/L8-5は旧⑩laneからの�
 
 - L8-4 明細数列は owner 決定 2026-09-15 で (a) 撤去。runtime 反映は Backlog の表示小修正 batch 2 に同乗。
 - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数列 撤去決定）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
-- STK-1 / STK-2（[監査](research/2026-09-16-diagram-audit.md) 由来、棚卸し確定が入出庫を打ち消す設計問題と二重減算）は是正方式が owner 判断待ち。2026-09-16 に ㉗（wave 12 lane 2、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)）として起票し、Coordinator 既定案（カウント時に `system_stock` を snapshot、確定はカウント時点差異で補正、Z004 はカウント日より前の販売を在庫減算から除外）と設問 3 つを packet の Human Gate に置く
+- STK-1 / STK-2（[監査](research/2026-09-16-diagram-audit.md) 由来、棚卸し確定が入出庫を打ち消す設計問題と二重減算）は是正方式が owner 判断待ち。2026-09-16 に ㉗（wave 12 lane 2、[Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)）として起票。owner 回答 2026-09-16 で方式（snapshot）と STK-2 境界（含める）は candidate 採用、残るのは同日販売の扱い = 店の聞き取り（開店前に数えてその場で保存する運用か）。設問と回答は packet の「owner への設問と回答」節
 
 元の文脈は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md)。関連する製品作業でownerの判断を得る。
 
