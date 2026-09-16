@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: bbec3bf518d834cbd03e594cfae05faf75cb5a45
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Sonnet（subagent、worktree 分離、Plan Reviewer とは別 fresh context。owner 不在で「早速始めよう」の指示のため Codex relay〈owner 起動〉を挟まず Coordinator が起動する。global 方針「実装を常に Codex だけへ渡す制約は置かない」）
@@ -23,6 +23,7 @@ manual = owner Windows native L3 1 往復（在庫照会で検索 → 商品行�
 
 遷移記録（append-only）:
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit）: Risk R3（route/search state。在庫変動履歴 route の search param を 1 つ追加し、在庫照会側に `returnTo` の producer を 1 site 追加する。R2/R3 で迷う場合は R3 の規則）。Design Phase = 66 に UI-06c-D9、58 に UI-06a-D7 を新設する design 判断を本 packet の D-D1〜D-D4 で先行し（実装 run で S5 / S6 として source docs へ書く）、DSR-18 本文と `src/lib/return-to.ts` は不変。Test Design Matrix を同 commit で置く。
+- plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P1/P2 = 0、P3 2）→ in-place 是正 `bbec3bf5`（T2' の表記、Writer を Sonnet subagent へ）。P3 のみのため reviewer 再投入なし（Subagent Budget）。Plan Commit = `bbec3bf5`（plan-first `93d2227c` → 是正を含む確定版）。実装は Sonnet subagent の worktree run で本 commit を HEAD_SHA として開始する。
 
 ## Owner Effort Budget
 
