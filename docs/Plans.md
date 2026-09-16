@@ -8,10 +8,11 @@
 
 ## 次の行動
 
-- **現行図面の同期・設計点検（R2）**: [Draft PR #69](https://github.com/kosei-w90607/inventory-system-desktop/pull/69)、[Plan Packet](plans/2026-09-16-current-system-diagrams.md)。`agent/current-system-diagrams`、Phase = implementing。追加計画はOpus指摘を全是正し、Sonnetの限定確認PASS。[横断モデルの結果](diagrams/cross-feature-verification.md) は通常suite PASS、棚卸し時点の明示診断 FAIL。カウント後の移動消失STK-1と、確定後の遅いCSVによる二重減算STK-2を別々に追跡する。Sonnet/Opusの初回最終レビューを完了し、指摘是正と限定確認へ。[監査](research/2026-09-16-diagram-audit.md) のSTK-1 / STK-2 / NAV-1を含めruntime修正は未実施。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
+
+- **現行図面の同期・設計点検**: [PR #69](https://github.com/kosei-w90607/inventory-system-desktop/pull/69) を merge（2026-09-16）。現行 ER / 画面遷移 / 業務フローの図面 3 file を新設し DB_DESIGN / SCREEN_DESIGN / ARCHITECTURE / PROJECT_HANDOFF / ui-task-specs 等の docs を同期、Rust の横断業務検証 test を追加（通常 3 本 PASS、診断 2 本 `XFA_TEMPORAL_FAIL` / `XFA_LATE_IMPORT_FAIL` は `#[ignore]` の意図的 FAIL で棚卸し確定と二重減算の設計問題を記録）。監査所見 STK-1 / STK-2 / NAV-1 / DATA-2 / DOC-2 を [backlog](backlog.md#やると決めたもの順番未定) へ起票。[archive の Plan Packet](archive/plans/2026-09-16-current-system-diagrams.md) / [Matrix](archive/plans/test-matrices/2026-09-16-cross-feature-model-audit.md)、[監査](research/2026-09-16-diagram-audit.md)。Final Review = Sonnet PASS / Opus P2 2・P3 4 → 全採用 / Sonnet closure PASS（`ee72ceea`）。merge phase は Fable が代行: origin/main（wave 11 #70〜#73）単段 merge `a3e44edc`、closure（Sonnet fresh）で P2 1 件〈図面の廃棄保存結果リンクが #71 と矛盾〉→ `6eba236f` で是正、Ready → CI pass → helper merge。
 
 - **ホーム画面を mockup-c 案へ寄せる**: [PR #70](https://github.com/kosei-w90607/inventory-system-desktop/pull/70) を merge（2026-09-16）。owner 決定 2026-09-11（mockup-c 採用、補助文言は状態の説明、前日分未取込み alert は不変）起源。入口 card に icon + 題名 + 1 行説明（`NavItem.description`）/ 「売上データ取込み」の primary 強調 / 補助文言は状態の説明（D-089）/ 在庫切れ・在庫少の件数は 1 件以上で状態色を実装。PLU 未反映 card は owner L3 round 1 所感で撤去（3 枚のまま）。[archive の Plan Packet](archive/plans/2026-09-16-home-mockup-c-runtime.md)。Final Review round 1 = Sonnet pass A（P3 3）/ Opus pass B（P2 2 → SCREEN_DESIGN 同期）/ closure、GA4 是正後に broad 2 本取り直し（Opus + Sonnet、pass）。owner L3 2 round PASS（round 1 所感 → GA4、round 2 PASS）。介入 2/3、Codex relay 1/2 + Sonnet Writer。dogfood 所見: Codex 発注書 58 / 59 の fail-closed 停止 4 回はすべて Coordinator の packet 記述誤り（AC の count・mock 境界・test 本数・隣接 test の regex 衝突）。broad 監査後に GA を積むと helper が closure を拒否し broad 取り直しになる。
 
@@ -50,6 +51,7 @@ L8-4は owner 決定済み（下記参照）。L8-2/L8-5は旧⑩laneからの�
 
 - L8-4 明細数列は owner 決定 2026-09-15 で (a) 撤去。runtime 反映は Backlog の表示小修正 batch 2 に同乗。
 - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数列 撤去決定）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
+- STK-1 / STK-2（[監査](research/2026-09-16-diagram-audit.md) 由来、棚卸し確定が入出庫を打ち消す設計問題と二重減算）は是正方式が owner 判断待ち、着手順は [backlog](backlog.md#やると決めたもの順番未定) を参照
 
 元の文脈は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md)。関連する製品作業でownerの判断を得る。
 

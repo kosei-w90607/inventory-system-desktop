@@ -4,7 +4,7 @@
 
 Risk: R2
 
-製品挙動は変更せず、test-only helperと合成データによる診断を追加する。業務oracleの根拠は [検証モデル](../../diagrams/cross-feature-verification.md)。既存の必須gateを変更しない。
+製品挙動は変更せず、test-only helperと合成データによる診断を追加する。業務oracleの根拠は [検証モデル](../../../diagrams/cross-feature-verification.md)。既存の必須gateを変更しない。
 
 ## Contracts Under Test
 
