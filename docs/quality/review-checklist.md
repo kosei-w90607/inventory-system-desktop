@@ -80,7 +80,7 @@
 - [ ] operator-facing UI flow / status の変更で Windows native L3 が必要か、必要なら Plan / PR evidence に記録されているか（DSR-08）
 - [ ] 同型情報（複数件の同じ形のレコード）の表示形式が DSR-16 の判断フロー（比較目的 = 列を揃えた表・structured list / レコード固有操作あり = 一意見出しの summary card / 単一レコード確認 = definition list）に適合するか。囲み（border/カード）を比較目的の反復で唯一のグループ信号にしていないか
 - [ ] 画面遷移 scroll が DSR-17 の 3+1 分類（同一画面内の状態遷移 = event-driven 先頭 scroll / 一覧→詳細→戻り = 位置復元が本則 / Home 帰着 one-shot = flag 消費時のみの条件付き先頭 scroll / 主ナビゲーション操作 = 復元 cache より優先して遷移先先頭）に沿っているか。主ナビの発火契機を route component の mount と混同せず、無条件の mount 一律 scroll を導入していないか。UI-11b-D12 の negative 契約を router の遷移時位置決めへ広げていないか
-- [ ] 「前の画面へ戻る」導線が DSR-18 に従い、業務記録詳細への link は search state を含む遷移元 URL を `returnTo` として送っているか。欠落・不正時は遷移先ごとの既定 hub へ fallback し、共通 helper は DSR-15 の prefix 検証を下回っていないか
+- [ ] 「前の画面へ戻る」導線が DSR-18 に従い、業務記録詳細への link は search state を含む遷移元 URL を `returnTo` として送っているか。欠落・不正時は遷移先ごとの既定 hub へ fallback し、共通 helper は DSR-15 の origin 一致・解決後の pathname 検証を下回っていないか
 - [ ] 作成・保存成功の feedback が DSR-19 に従い、同じ作業文脈へ戻る flow では toast を最低保証し、確認・継続操作がある場合は result panel、専用 result step / 結果画面では持続的結果表示を使い分けているか。duration の 3s / 5s / 8s 階層と、重複し得る通知だけに適用する toast id の範囲が適切か
 - [ ] destructive 確認 dialog が DSR-20 に従い、Action は `variant="destructive"`、DOM 順は Cancel → Action、`sm` 以上は Cancel 左 / Action 右、narrow は Action 上 / Cancel 下になっているか。Esc / 外側クリックは cancel ブリッジを本則とし、硬化時は適用条件を満たして明示 prop を使い、Cancel 文言から後状態を判別できるか
 - [ ] 一覧の器（toolbar 2 段・上下の件数と現在位置・sticky header・識別列 opt-in、識別列 mapping は DSR-22 の分類表に従う）と現在の行（左端バー + 淡い背景 + badge/文言の 3 点）、UI 部品の枠（操作枠 3:1 は interactive 部品限定 / 構造線を一段濃く / Badge は文字 4.5:1・枠線〈tone 固有色または `--border`〉必須・非中立の状態 badge は icon も必須（中立 tone は任意）・soft 背景単独は不可）、低視力 L3（forced-colors / DPI 125〜150% / 当たり判定 24×24）が DSR-22 に従っているか。同型情報のグループ化（DSR-16）・現在地の色分離（DSR-21）と主題を混同していないか

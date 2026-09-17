@@ -258,7 +258,7 @@ font-size を全体一律に底上げする再設計は本ルールの scope 外
 
 **Why**: 任意文字列を遷移先として使うと、外部 URL / protocol-relative URL への想定外遷移（open-redirect 型）が起きうる。デスクトップアプリでも業務動線が壊れ、利用者が迷子になる。PR #114-#115 の入出庫 4 詳細ページで `normalizeReturnTo` として確立した規約を全 returnTo 系 param に適用する。旧判定（prefix 文字列一致のみ）は `/\host`（バックスラッシュ）や tab 入り値（`/\t/evil.example`）を `/` 始まりのまま通し、ブラウザの URL 正規化がこれらを別 origin へ解決するため、origin 判定へ強化した（returnTo 衛生 R3、起票時実測、2026-09-17）。
 
-**判定フロー / 具体例**: `normalizeReturnTo(value, fallback)`（`src/lib/return-to.ts`）は `value` が `/` 始まりで、かつ `new URL(value, "http://inventory.local")` の `origin` が base と一致するときだけ `pathname + search` を返し、それ以外は `fallback` へフォールバックする。`/\evil.example` や `/\t/evil.example` は `/` 始まりだが origin が `http://evil.example` に解決されるため拒否する。`/ok#frag` は `/ok`（hash なし）を返す。新規に returnTo を受ける route を作るときは同じ検証を必ず入れる。
+**判定フロー / 具体例**: `normalizeReturnTo(value, fallback)`（`src/lib/return-to.ts`）は `value` が `/` 始まりで、かつ `new URL(value, "http://inventory.local")` の `origin` が base と一致し、解決後の pathname が `//` 始まりでないときだけ `pathname + search` を返し、それ以外は `fallback` へフォールバックする。`/\evil.example` や `/\t/evil.example` は `/` 始まりだが origin が `http://evil.example` に解決されるため拒否する。`/ok#frag` は `/ok`（hash なし）を返す。`/..//evil.example` のように解決後の pathname が `//` 始まりになる値も拒否し、検証済みの `pathname + search` を再解析しない。共通 helper は値ごとの URL 解析を 1 回にし、不正値でも throw せず、`returnToLinkProps` の fallback も同じ検証を通して不正なら `{ to: "", search: {} }` を返す。新規に returnTo を受ける route を作るときは同じ検証を必ず入れる。
 
 **関連**: パターン①ページヘッダ（詳細ルートの戻る導線）。review-checklist カテゴリ 9 対応（状態を変える control へ戻れるか / 導線が行き止まりにならないか）。
 
@@ -349,6 +349,9 @@ scroll を伴う遷移はどれか？
 ├─ Yes → 送信側は現在の pathname + search state を returnTo に直列化して送る
 │         （router の href、`useRouterState({ select: (s) => s.location.href })`。
 │          文字列を手組みしない — 数字だけの検索語が number 化して型が失われる、GA5 系）
+│         ただし自由入力の string 値を router の parseSearch に通さない既存 2 site
+│         （StockMovementsPage.tsx の detailReturnTo / products/lib/return-to.ts の
+│          buildProductListReturnTo）は手組みを存置する。
 │         └─ 詳細側の「前の画面へ戻る」で共通 helper `returnToLinkProps` を通す
 │              ├─ DSR-15 の origin 判定を通る → `to`(pathname) / `search`(object) へ
 │              │   分解して戻る（文字列 `to` に query を埋め込まない）
@@ -490,6 +493,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-17 | returnTo 衛生 GA2 | 解決後の pathname が `//` 始まりの値を拒否し、共通 helper の URL 解析を 1 回にして throw を防ぐ契約と、送信側の手組みを存置する 2 site の例外を明記。 |
 | 2026-09-17 | returnTo 衛生（R3） | DSR-15 の判定を prefix 一致から origin 一致へ強化（`/\host` / tab 入り値を拒否、hash を落とす）。DSR-18 の共通 helper を `returnToLinkProps`（`to`/`search` 分解、`options.pathname` pin）へ拡張し、送信側は router の href を直列化する本則を明記。 |
 | 2026-09-10 | PR #50 | DSR-24 の取引先ピッカー runtime 反映により、DSR-01 の inline パネル是正対象を解消。 |
 | 2026-09-10 | PR #49 | DSR-24 を新設し、DSR-23 から例外条項への相互参照を追加。title を「DSR-01〜24」へ同期。owner Human Gate round 1（2026-09-10）に基づき、UI-02-D3 の defer を解除して入庫記録を適用例へ追加。 |

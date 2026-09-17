@@ -80,7 +80,7 @@ type StockMovementsSearch = {
 };
 ```
 
-- 欠落・不正な `returnTo`（`/` 始まりでない、`//` 始まり、500 字超）は `search={{ q: code, selected: code }}` で `/stock` へ fallback する（着地先は `/stock?q=$code&selected=$code` と同じ意味だが、`Link` の `search` props で組み、文字列 URL では組まない）。非 string / 500 字超は schema で `undefined` とし、prefix は `normalizeReturnTo` で検証する。
+- 欠落・不正な `returnTo`（`/` 始まりでない、解析不能、base origin 不一致、解決後の pathname が `//` 始まり、`/stock` と pathname 不一致、500 字超）は `search={{ q: code, selected: code }}` で `/stock` へ fallback する（着地先は `/stock?q=$code&selected=$code` と同じ意味だが、`Link` の `search` props で組み、文字列 URL では組まない）。非 string / 500 字超は schema で `undefined` とし、URL は `returnToLinkProps` で DSR-15 の origin / pathname 検証を通し、解決した pathname を `/stock` に exact pin する（UI-06c-D9）。
 - filter 変更・page 送り・reset でも `returnTo` は保持する。
 - 不正な `dateFrom` / `dateTo` は `undefined` に fallback する。
 - 不正な `type` は `"all"` に fallback する。
