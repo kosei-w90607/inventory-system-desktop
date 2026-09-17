@@ -107,7 +107,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **AC1** `npx vitest run src/lib/return-to.test.ts` が pass し、T1 の新 case（`/\evil.example` / `/\t/evil.example` / `/ok#frag` → hash なし）と T2（`returnToLinkProps`）を含む
 - **AC2** `rg -c '<Link to=\{(backHref|safeReturnTo)\}>' src/features` の合計が 0（baseline 13、逐語実行で確認: `rg -n '<Link to=\{(backHref|safeReturnTo)\}>' src/features | wc -l` = 13）
 - **AC3** `rg -n 'buildInventoryRecordsReturnTo' src` = 0 hit（baseline: 2 hit、`InventoryRecordsPage.tsx:54,82`）
-- **AC4** `npx vitest run src/features/inventory-records src/features/stock-movements src/features/stock-inquiry src/lib` が pass。既存 test の期待 href を変える場合は、変更前後の href を `defaultParseSearch` した結果が deep-equal であることを PR body に 1 行ずつ示す（percent-encoding の差だけを許す）
+- **AC4** `npx vitest run src/features/inventory-records src/features/stock-movements src/features/stock-inquiry src/lib` が pass。既存 test の期待 href を変える場合は、変更前後の href を `defaultParseSearch` した結果が deep-equal であることを PR body に 1 行ずつ示す（percent-encoding の差だけを許す。router が作った href を入力にした case は文字列一致を要求する、T3 / T8）
 - **AC5** mutant（Writer が注入 → FAIL を確認 → 復元、Final Reviewer が独立に再注入）: (1) S1 の origin 判定を旧 `startsWith` に戻す → T1 の `/\` case が FAIL (2) S2 の `options.pathname` 判定を外す → T4 が FAIL (3) S5 を手組みへ戻す → T6 が FAIL (4) S4 を `max(20)` へ戻す → T7 が FAIL (5) S2 の `search` を `{}` 固定にする → T3（検索条件つき returnTo）が FAIL
 - **AC6** `bash scripts/local-ci.sh full` が pass（traceability 再生成を含む生成系検査が clean）
 - **AC7** `bash scripts/doc-consistency-check.sh` が ERROR 0
@@ -162,7 +162,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Impact Review Lenses
 
-not applicable: field 調査・実機・外部 tool 起点ではない。外部 library の挙動は Contract Probe に記録した。
+Fact check / design decision split lens のみ該当: 外部 library（TanStack Router 1.168.23）の search 直列化の挙動を Contract Probe 1〜3 で事実確認し、設計判断（S1〜S5）と分けて記録した。他の lens は not applicable（field 調査・実機・POS / CSV 起点ではない）。
 
 ## Design Readiness
 
@@ -196,9 +196,10 @@ Minimum design checks for business-app work:
 | DSR-18 遷移元の pathname + search へ戻る（業務記録詳細 6 画面） | S2 / S3 | T3 / T5、既存 T11 系（6 file の `returnTo %s を安全に %s へ正規化する`） | AC-L3-1 (a) |
 | DSR-18 送信側は現在の pathname + search state を直列化 | S5 | T6 | AC-L3-1 (a) |
 | DSR-18 products の exact-allowlist は存置 | 非接触 | 既存 `src/features/products/lib/return-to.test.ts` | non-scope |
+| DSR-17 (a) / (b) 戻り先の href が遷移元の href を再現する（href key の scroll 復元と相互補完） | S2 / S3（router が作った href を `returnTo` にした場合、戻り link の href は元の href と文字列一致） | T3 / T8（文字列一致の assertion） | AC-L3-1 (a) |
 | DSR-17 (a) 戻りは `<Link>` push のまま | S3（`history.back()` にしない） | 既存 `app-router.test.tsx` T10 | — |
 | UI-06c-D9 「在庫照会へ戻る」は `/stock` に着地、欠落・不正は `q` / `selected` fallback | S3 | T4、既存 `SPEC-UI06C-D9-R1` 4 case + T2-num | AC-L3-1 (b) |
-| UI-06c-D9 入れ子 `returnTo` の 3 段往復 | S1（入れ子を壊さない） | T8、既存 `StockMovementsPage.test.tsx:435` | AC-L3-1 (b) |
+| UI-06c-D9 入れ子 `returnTo` の 3 段往復 | S1（入れ子を壊さない） | T1（入れ子 `returnTo` つきの値が guard を通る case）、既存 `StockMovementsPage.test.tsx:435`（href に `%26returnTo%3D` を含む静的 assertion） | AC-L3-1 (b)（実クリックの 3 段往復） |
 | UI-06c-D2 `returnTo` は検索 query に渡さない | 非接触 | 既存 | — |
 | stock-inquiry `selected` は商品コードを落とさない | S4 | T7 | — |
 
@@ -210,7 +211,7 @@ Minimum design checks for business-app work:
 - negative tests: T1（拒否 case）/ T4（pathname 不一致）
 - compatibility checks: 既存の期待 href（AC4）、products 側 test 非接触
 - data safety checks: 該当なし（synthetic 値のみ）
-- main wiring/integration checks: T8（実 routeTree + memory history の 3 段往復。既存 `ReturnToFlow.test.tsx` の harness を再利用）
+- main wiring/integration checks: T8（実 routeTree + memory history。既存 `ReturnToFlow.test.tsx` の harness〈現状は T10 の 2 段往復 1 本〉を再利用して入出庫履歴の往復を足す。在庫照会起点の 3 段往復の実クリックは自動 test に無く、AC-L3-1 (b) が受け持つ）
 - commit 構成: test と実装は同 commit でよい。docs（S6）と `90-traceability.md` 再生成は別 commit でよい。packet / Matrix / `Plans.md` は Writer が編集しない
 
 ## Boundary / Wire Contract
@@ -229,6 +230,7 @@ Minimum design checks for business-app work:
 - guard を強めて正当な入れ子 `returnTo` を落としていないか（T8）
 - 既存 test の期待 href を書き換えた箇所が encoding 差だけか（AC4）
 - helper が 1 箇所に収まり、site ごとの分解ロジックの複製が無いか（保守者可読性）
+- 戻り link の href が元の一覧 href と文字列一致するか（DSR-17 (b) の scroll 復元 key は `location.href`。AC4 が許す percent-encoding 差は手組み形式の旧 `returnTo` に限り、router が作った href では差を許さない。差が出た場合の影響は scroll 位置が先頭へ落ちるだけで Goal Invariant 外）
 - S5 で href を使うことで `returnTo` に既定値の search（`recordType=all` 等）が乗る場合、戻り先の表示が変わらないか
 
 ## Spec Contract
@@ -266,5 +268,14 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-17、Sonnet、独立 fresh context、read-only、対象 `b5cc6b5e`）
+
+- P1 0 / P2 0 / P3 3 → Plan Gate 通過可。Contract Probe 1〜3 と AC2 / AC3 の baseline を逐語再実行で一致確認、router-core の source で `to` に埋めた query が path として echo されるだけで `search` props 側が状態遷移に使われることを確認、引用した既存 test の実在を確認
+- P3（DSR-17 (b) の scroll 復元 key = `location.href` との交差契約が Ledger に無い）= accept → Ledger に DSR-17 (a) / (b) 行、Review Focus、AC4、Matrix T3 / T8 に「router が作った href は文字列一致」を追加
+- P3（Matrix T8 / Test Plan の「既存の 3 段往復 case」が実態より強い表現。実在は T10 の 2 段往復 1 本と `StockMovementsPage.test.tsx:435` の静的 assertion）= accept → 表現を実態へ、T1 に入れ子 `returnTo` つきの通過 case を追加、3 段往復の実クリックは AC-L3-1 (b) が受け持つと明記
+- P3（Impact Review Lenses の not applicable が簡略）= accept → Fact check / design decision split lens を Contract Probe で実施と明記
+- P3 のみのため reviewer 再投入なし（Subagent Budget）
+
+Fill the rest after review.
