@@ -15,7 +15,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Coordinator: Fable 5.1
 - Writer: Sonnet subagent（worktree 分離、Plan Reviewer / Final Reviewer とは別 fresh context）
 - Plan Reviewer: Sonnet（独立 fresh context）
-- Final Reviewer: Sonnet + Opus（独立 fresh context）
+- Final Reviewer: Codex + Opus（独立 fresh context。GA1: Writer が Sonnet のため同系統の Sonnet pass を Codex へ替える）
 - Final Review Minimum: 2
 - Human Gate: ready,merge,manual
 
@@ -30,7 +30,7 @@ manual = owner Windows native L3 1 往復（AC-L3-1）。route/search state の�
 
 - 介入回数上限: 3
 - 実働時間上限: 10分
-- relay 往復上限: 0（Writer / Reviewer とも subagent、Codex relay なし）
+- relay 往復上限: 1（GA1: Final Review の Codex pass 1 往復。起票時は 0）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -266,6 +266,16 @@ Contract ID: SPEC-RETURNTO-HYGIENE-2026-09-17
 ## Implementation Results
 
 Fill after implementation.
+
+## Gated Amendments
+
+### Gated Amendment 1（2026-09-17、Final Reviewer を Codex + Opus へ）
+
+- 経緯: 起票時に Coordinator が relay 0 を優先し、Writer = Sonnet subagent / Final Reviewer = Sonnet + Opus と組んだ。owner 2026-09-17「実装も Sonnet に任せてるならレビューは外にお願いしないとまずくない？」「大事なのは成果物の質だよ。relay を 0 回にしてもその作業の質が担保できないと有効な修正とは言いにくい」
+- 判断: AGENT_OPERATING_MANUAL §3 の独立性制約（Writer ≠ Final Reviewer、fresh context）と D-062（vendor 分離は Writer = Codex の packet 限定）の文言には反しないが、同系統が自分の成果物を採点する盲点の重なりは D-062 の Why と同じ機序で Sonnet にも当てはまる。owner 既定の UI 座組（Sonnet Writer / Opus レビュー / Codex ロジックレビュー 1 回）にも合わせる
+- 是正: Final Reviewer を Codex（Contract Audit、pass A）+ Opus（pass B）へ。Final Review Minimum 2 は不変。relay 往復上限 0 → 1。Scope / 設計判断 / AC / Matrix / Spec Contract は不変
+- Owner Effort Budget: 介入 1/3（本指摘を decision point として計上）、relay 0/1
+- 時点: Writer の実装 run は完了済み（commit `1839de7d` / `bd56e4da` / `b4364544`）。Coordinator が mutant 5 本を clean tree で独立に再注入し、Writer 報告どおりの red / green を確認した後の登録
 
 ## Review Response
 
