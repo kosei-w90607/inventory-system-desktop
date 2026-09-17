@@ -13,9 +13,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Plan Commit: 5ceb30addb87dbb40e24a9332426f08946cb2b54
 - Amendments: de9182724484a01f327a61ccf0ac8ad1e9b3e057
 - Coordinator: Fable 5.1
-- Writer: Sonnet subagent（worktree 分離、Plan Reviewer / Final Reviewer とは別 fresh context）
+- Writer: Sonnet subagent（初回実装 `1839de7d` / `bd56e4da` / `b4364544`）+ Codex（GA2: Final Review round 1 の是正 run、発注書 63。round 2 の closure は Opus + Sonnet の独立 fresh context が担い、Codex は自分の是正を採点しない）
 - Plan Reviewer: Sonnet（独立 fresh context）
-- Final Reviewer: Codex + Opus（独立 fresh context。GA1: Writer が Sonnet のため同系統の Sonnet pass を Codex へ替える）
+- Final Reviewer: round 1 = Codex + Opus（独立 fresh context。GA1）/ round 2 = Opus + Sonnet（GA2: 是正の Writer が Codex のため、Codex を reviewer から外す）
 - Final Review Minimum: 2
 - Human Gate: ready,merge,manual
 
@@ -30,7 +30,7 @@ manual = owner Windows native L3 1 往復（AC-L3-1）。route/search state の�
 
 - 介入回数上限: 3
 - 実働時間上限: 10分
-- relay 往復上限: 1（GA1: Final Review の Codex pass 1 往復。起票時は 0）
+- relay 往復上限: 2（GA1: Final Review の Codex pass 1 往復 / GA2: 是正 run 1 往復。起票時は 0）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -87,13 +87,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Scope
 
-- **S1 guard を origin 判定へ**（`src/lib/return-to.ts`）: `normalizeReturnTo(value, fallback)` は `new URL(value, "http://inventory.local")` が throw せず、`value` が `/` 始まりで、origin が base と一致するときだけ通す。返す値は `pathname + search`（hash は落とす。app は hash を使わない）。先例 = `src/features/products/lib/return-to.ts:12-21`。署名と既存 8 case の期待値は不変
-- **S2 戻り link の props helper**（同 file）: `returnToLinkProps(value, fallback, options?)` を追加し `{ to: string; search: Record<string, unknown> }` を返す。`to` = pathname、`search` = `defaultParseSearch(url.search)`。fallback も同じ経路で分解する。`options.pathname` を渡した場合、解決した pathname がそれと一致しなければ不正値として扱う（S3 の pin）
+- **S1 guard を origin 判定へ**（`src/lib/return-to.ts`）: `normalizeReturnTo(value, fallback)` は `new URL(value, "http://inventory.local")` が throw せず、`value` が `/` 始まりで、origin が base と一致し、**解決後の pathname が `//` 始まりでない**（GA2）ときだけ通す。返す値は `pathname + search`（hash は落とす。app は hash を使わない）。先例 = `src/features/products/lib/return-to.ts:12-21`。署名と既存 8 case の期待値は不変
+- **S2 戻り link の props helper**（同 file）: `returnToLinkProps(value, fallback, options?)` を追加し `{ to: string; search: Record<string, unknown> }` を返す。`to` = pathname、`search` = `defaultParseSearch(url.search)`。fallback も同じ経路で分解する。**URL の解析は値 1 つにつき 1 回とし、検証済みの `pathname + search` を文字列に戻して再解析しない。helper はどの入力でも throw しない**（GA2）。`options.pathname` を渡した場合、解決した pathname がそれと一致しなければ不正値として扱う（S3 の pin）
 - **S3 consumer 7 file の置換**: 業務記録詳細 6 画面（`Receiving` / `Return` / `ManualSale` / `Disposal` / `CsvImport` / `Stocktake` `RecordDetailPage.tsx`）の `<Link to={backHref}>` 12 箇所を `<Link {...returnToLinkProps(returnTo, "/inventory/records")}>` 相当へ。`StockMovementsPage.tsx:74,93-103` は `options.pathname = "/stock"` で pin し、不一致・欠落・不正は現行の `<Link to="/stock" search={{ q, selected }}>` fallback へ
 - **S4 `selected` 上限を `q` と揃える**（`src/features/stock-inquiry/types.ts:37`）: `max(20)` → `max(100)`
 - **S5 入出庫履歴の returnTo を router の href から取る**（`InventoryRecordsPage.tsx`）: `buildInventoryRecordsReturnTo` の手組みをやめ、他の送信側 8 site と同じ `useRouterState({ select: (s) => s.location.href })` にする（DSR-18「現在の pathname + search state を returnTo に直列化」の本則どおり。手組み関数は削除）
 - **S6 設計正本の同期**（同 PR、docs commit は分けてよい）: `docs/design-system/01-decision-rules.md` DSR-15（判定を origin 一致へ、`/\` と制御文字の例）/ DSR-18（helper の最低基準、`to` は pathname・`search` は object、送信側は router の href）/ 改訂履歴 1 行。`docs/function-design/66-*.md` UI-06c-D9（pathname pin、`<Link to={safeReturnTo}>` の記述を置換）。入出庫履歴の function-design に returnTo の生成方法の記述があれば同期（Writer が `rg -n 'buildInventoryRecordsReturnTo|returnTo' docs/function-design` で特定し、無ければ追記しない）
-- **S7 test**: Test Design Matrix の T1〜T8。REQ 付き test 名を追加・変更するため `cargo run --bin generate_traceability` で `90-traceability.md` を再生成する
+- **S8 GA2 の docs 同期**: `docs/function-design/66-ui-stock-movements.md:83`（§66.3 の「`//` 始まり」「prefix」の旧記述を origin + pathname pin へ）/ `docs/quality/review-checklist.md:83`（「DSR-15 の prefix 検証」の旧表現）/ DSR-18 の送信側の記述に、手組みを存置する 2 site（`StockMovementsPage.tsx` `detailReturnTo` / `products/lib/return-to.ts` `buildProductListReturnTo`）の例外を 1 句
+- **S7 test**: Test Design Matrix の T1〜T8（GA2 で T1 / T2 / T4 に case を追加、T9 を新設）。REQ 付き test 名を追加・変更するため `cargo run --bin generate_traceability` で `90-traceability.md` を再生成する
 
 ## Non-scope
 
@@ -109,7 +110,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **AC2** `rg -c '<Link to=\{(backHref|safeReturnTo)\}>' src/features` の合計が 0（baseline 13、逐語実行で確認: `rg -n '<Link to=\{(backHref|safeReturnTo)\}>' src/features | wc -l` = 13）
 - **AC3** `rg -n 'buildInventoryRecordsReturnTo' src` = 0 hit（baseline: 2 hit、`InventoryRecordsPage.tsx:54,82`）
 - **AC4** `npx vitest run src/features/inventory-records src/features/stock-movements src/features/stock-inquiry src/lib` が pass。既存 test の期待 href を変える場合は、変更前後の href を `defaultParseSearch` した結果が deep-equal であることを PR body に 1 行ずつ示す（percent-encoding の差だけを許す。router が作った href を入力にした case は文字列一致を要求する、T3 / T8）
-- **AC5** mutant（Writer が注入 → FAIL を確認 → 復元、Final Reviewer が独立に再注入）: (1) S1 の origin 判定を旧 `startsWith` に戻す → T1 の `/\` case が FAIL (2) S2 の `options.pathname` 判定を外す → T4 が FAIL (3) S5 を手組みへ戻す → T6 が FAIL (4) S4 を `max(20)` へ戻す → T7 が FAIL (5) S2 の `search` を `{}` 固定にする → T3（検索条件つき returnTo）が FAIL
+- **AC5** mutant（Writer が注入 → FAIL を確認 → 復元、Final Reviewer が独立に再注入）: (1) S1 の origin 判定を旧 `startsWith` に戻す → T1 の `/\` case が FAIL (2) S2 の `options.pathname` 判定を外す → T4 が FAIL (3) S5 を手組みへ戻す → T6 が FAIL (4) S4 を `max(20)` へ戻す → T7 が FAIL (5) S2 の `search` を `{}` 固定にする → T3（検索条件つき returnTo）が FAIL (6)（GA2）pin の比較を `startsWith` に緩める → T4 の `/stocktake?page=2` case が FAIL (7)（GA2）fallback を分解せず `{ to: fallback, search: {} }` で返す → T2 の query 付き fallback case が FAIL (8)（GA2）pathname の `//` 判定を外す → T1 の `/..//evil.example` case が FAIL
 - **AC6** `bash scripts/local-ci.sh full` が pass（traceability 再生成を含む生成系検査が clean）
 - **AC7** `bash scripts/doc-consistency-check.sh` が ERROR 0
 - **AC-L3-1**（owner、Windows native）: 結果は `python3 scripts/pr-gate.py record` の manual record に残す。(a) 入出庫履歴で数字だけの語（13 桁 JAN か数字だけの商品コード）を検索 → 任意の行の詳細 → 「前の画面へ戻る」→ 検索語と結果が残っている (b) 在庫照会で検索 → 商品を選択 → 在庫変動履歴 → 元記録の詳細 → 「前の画面へ戻る」→ 「在庫照会へ戻る」で、検索条件と選択行が戻る（NAV-1 の 3 段往復が壊れていない）
@@ -238,8 +239,9 @@ Minimum design checks for business-app work:
 
 Contract ID: SPEC-RETURNTO-HYGIENE-2026-09-17
 
-- C1: `normalizeReturnTo` は base origin に解決される `/` 始まりの値だけを `pathname + search` で返し、それ以外は fallback を返す
+- C1: `normalizeReturnTo` は base origin に解決され、かつ解決後の pathname が `//` 始まりでない `/` 始まりの値だけを `pathname + search` で返し、それ以外は fallback を返す。返り値を再び `normalizeReturnTo` に通しても同じ値になる（GA2）
 - C2: `returnToLinkProps` は C1 を通った値を `to`（pathname）と `search`（`defaultParseSearch`）へ分解し、`options.pathname` 不一致は不正値として扱う
+- C7（GA2）: `normalizeReturnTo` / `returnToLinkProps` はどの string 入力でも throw せず、不正値で詳細画面を ErrorBoundary へ落とさない
 - C3: 業務記録詳細 6 画面と在庫変動履歴の戻り link は文字列 `to` に query を含めない
 - C4: 「在庫照会へ戻る」は常に `/stock` に着地する
 - C5: 入出庫履歴が送る `returnTo` は、数字だけの `q` を string のまま往復させる
@@ -276,6 +278,15 @@ Fill after implementation.
 - 是正: Final Reviewer を Codex（Contract Audit、pass A）+ Opus（pass B）へ。Final Review Minimum 2 は不変。relay 往復上限 0 → 1。Scope / 設計判断 / AC / Matrix / Spec Contract は不変
 - Owner Effort Budget: 介入 1/3（本指摘を decision point として計上）、relay 0/1
 - 時点: Writer の実装 run は完了済み（commit `1839de7d` / `bd56e4da` / `b4364544`）。Coordinator が mutant 5 本を clean tree で独立に再注入し、Writer 報告どおりの red / green を確認した後の登録
+
+### Gated Amendment 2（2026-09-17、Final Review round 1 の是正）
+
+- round 1 の結果: pass A = Codex（[review](https://github.com/kosei-w90607/inventory-system-desktop/pull/78#pullrequestreview-5233517717)）P1 0 / P2 2 / P3 2、pass B = Opus P1 0 / P2 1 / P3 2。両 pass とも AC1〜AC7 と mutant 5 本の Writer 報告を独立に再現し、実 routeTree の実クリックで 3 段往復（数字だけの商品コード、記号入りの検索語）が文字列一致で戻ることを確認した
+- **根は 1 つ、原因は packet の設計指示**: S1 を「origin 一致」だけで書き、S2 で「`normalizeReturnTo` の返り値を `decompose` が再解析する」2 段構えを許した。`/..//evil.example` は 1 回目の解析で base origin に解決されて guard を通り、dot-segment の畳み込みで返り値が `//evil.example` になる（Opus P2）。`/a/..//[` では 2 回目の `new URL` が throw し、実 route で詳細画面が ErrorBoundary へ落ちて戻り link を失う（Codex F1。baseline では描画できていたので本 PR の退行）。先例 `products/lib/return-to.ts` は pathname allowlist の 2 段目を持つため同じ入力で安全で、Coordinator が先例の 2 段目を S1 へ移植し損ねた
+- 裁定（全件 accept）: Codex F1 + Opus P2 → S1 / S2 / C1 / C7（解析は 1 回、`//` 始まりの pathname を拒否、throw しない）。Codex F2（pin の近傍負例が無く `startsWith` へ緩める mutant が 339 本 green のまま生存）→ T4 と AC5 (6)。Codex F3 + Opus P3（fallback の分解・検証に test が無い / fallback を無検証で `new URL` する）→ T2 と AC5 (7)、fallback も同じ 1 回解析の経路を通す。Codex F4 + Opus P3（66 §66.3 / review-checklist:83 の旧「prefix」「`//` 始まり」、DSR-18 の送信側の記述と手組み 2 site の食い違い）→ S8
+- Scope の増分: `docs/quality/review-checklist.md`（1 行）。実装 file の集合は不変（`src/lib/return-to.ts` と test）。consumer 7 file は helper の署名が変わらなければ触らない
+- Writer: 是正 run は Codex（発注書 63）。owner 2026-09-17「大事なのは成果物の質」。round 2 の closure は Codex を外し Opus + Sonnet
+- Owner Effort Budget: 介入 1/3、relay 1/2（発注書 62 の review で 1 消費）
 
 ## Review Response
 

@@ -21,6 +21,7 @@ Risk: R3
 - FM6: 入出庫履歴の数字だけの検索語が、詳細から戻ると消える（現行の実害、Probe 3）
 - FM7: 20 文字を超える商品コードで `selected` が落ち、戻った在庫照会で選択が外れる
 - FM8: S5 の href 化で、戻り先の一覧の表示（絞り込み・page）が変わる
+- FM9（GA2、Final Review round 1 で実発生）: 検証済みの値を再解析して authority に読み替わる / throw する（`/..//evil.example` → `//evil.example`、`/a/..//[` → `Invalid URL` で詳細画面が ErrorBoundary へ）
 
 ## Test Matrix
 
@@ -28,14 +29,15 @@ Risk: R3
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| C1 | FM1 / FM2 | unit（`it.each` 追加） | T1 `src/lib/return-to.test.ts` 「normalizeReturnTo (REQ-207 / DSR-15 / DSR-18 …)」に `"/\\evil.example"` → fallback、`"/\t/evil.example"` → fallback、`"/ok#frag"` → `/ok`、入れ子つき `"/stock/BT0002/movements?type=disposal&returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002"` → 同値、`"/inventory/records?q=%22123%22&page=2"` → 同値、を追加。既存 8 case は期待値不変 | origin 判定が無い（旧 `startsWith`）/ 正当な query を落とす / hash を残す |
-| C2 | FM3 | unit | T2 同 file 「returnToLinkProps (REQ-207 / DSR-18)」: `"/inventory/records?recordType=receiving_record&page=2&q=%222099000000019%22"` → `{ to: "/inventory/records", search: { recordType: "receiving_record", page: 2, q: "2099000000019" } }`。欠落 → fallback を同じ形に分解 | `search` が空 / 文字列のまま / `q` が number |
+| C1 | FM1 / FM2 | unit（`it.each` 追加） | T1 `src/lib/return-to.test.ts` 「normalizeReturnTo (REQ-207 / DSR-15 / DSR-18 …)」に `"/\\evil.example"` → fallback、`"/\t/evil.example"` → fallback、`"/ok#frag"` → `/ok`、（GA2）`"/..//evil.example"` / `"/./\\evil.example"` / `"/a/..//["` → fallback（throw しない）、入れ子つき `"/stock/BT0002/movements?type=disposal&returnTo=%2Fstock%3Fq%3DBT%26selected%3DBT0002"` → 同値、`"/inventory/records?q=%22123%22&page=2"` → 同値、を追加。既存 8 case は期待値不変 | origin 判定が無い（旧 `startsWith`）/ 正当な query を落とす / hash を残す |
+| C2 | FM3 | unit | T2 同 file 「returnToLinkProps (REQ-207 / DSR-18)」: `"/inventory/records?recordType=receiving_record&page=2&q=%222099000000019%22"` → `{ to: "/inventory/records", search: { recordType: "receiving_record", page: 2, q: "2099000000019" } }`。欠落 → fallback を同じ形に分解。（GA2）query 付き fallback `"/inventory/records?q=%22123%22&page=2"` → `{ to: "/inventory/records", search: { q: "123", page: 2 } }`、`returnToLinkProps("/a/..//[", "/inventory/records")` が throw せず fallback を返す | `search` が空 / 文字列のまま / `q` が number |
 | C2 / C3 | FM3 | unit（実 router、`renderWithClient`） | T3 `OtherRecordDetailPages.test.tsx` の既存 T11 系に、検索条件つき `returnTo` の case を 1 つ追加し、描画 href を `defaultParseSearch` した結果が元の search と deep-equal であることを確認。入力が router 形式（`defaultStringifySearch` で作った値）の case は描画 href が入力と文字列一致（DSR-17 (b)） | 分解で条件が欠ける / 再直列化で型が変わる |
-| C4 | FM4 | unit（実 router） | T4 `StockMovementsPage.test.tsx` の `SPEC-UI06C-D9-R1` `it.each` に `"/inventory/records?page=2"`（app 内だが `/stock` でない）→ `/stock?q=BT0002&selected=BT0002` を追加 | pathname pin が無い |
+| C4 | FM4 | unit（実 router） | T4 `StockMovementsPage.test.tsx` の `SPEC-UI06C-D9-R1` `it.each` に `"/inventory/records?page=2"`（app 内だが `/stock` でない）→ `/stock?q=BT0002&selected=BT0002` を追加。（GA2）近傍の `"/stocktake?page=2"` と `"/stock/BT0002/movements"` も同じ fallback へ | pathname pin が無い / pin が prefix 一致に緩む |
 | C3 | FM5 | static | T5 AC2 の `rg`（0 hit）。6 画面の既存「returnTo %s を安全に %s へ正規化する」test（`OtherRecordDetailPages.test.tsx:206,240,292` / `DisposalRecordDetailPage.test.tsx:129` / `CsvImportRecordDetailPage.test.tsx:255` / `StocktakeRecordDetailPage.test.tsx:202`）が引き続き pass | 1 画面の置換漏れ / 置換で fallback が壊れる |
 | C5 | FM6 | unit（実 router、`initialPath` に `?q=%222099000000019%22` を指定） | T6 `InventoryRecordsPage.test.tsx` 「REQ-207 / DSR-18: 数字だけの検索語が詳細 link の returnTo で string のまま往復する」: 詳細 link の href から `returnTo` を取り出し、`defaultParseSearch` → `inventoryRecordsSearchSchema`（route が使う schema）で parse して `q === "2099000000019"` | 手組み（引用符なし）へ戻す |
 | C6 | FM7 | unit | T7 `src/features/stock-inquiry/types.test.ts` 「REQ-301: selected は 21 文字以上の商品コードを落とさない」: 21 文字 → 保持、101 文字 → `undefined` | `max(20)` のまま |
 | C1〜C5 | FM2 / FM8 | integration（実 routeTree + memory history、`ReturnToFlow.test.tsx` の harness） | T8 `ReturnToFlow.test.tsx` 「REQ-207 / REQ-303: 入出庫履歴（数字だけの検索語）→ 詳細 → 前の画面へ戻る で検索語が残り、戻った先の `location.href` が出発時の href と文字列一致する」+ 既存 T10（`/settings/logs` の 2 段往復）が pass。T2-num（`StockMovementsPage.test.tsx:419`）は `stockInquirySearchSchema.parse(defaultParseSearch(url.search))` まで通す形へ強化 | 入れ子 `returnTo` を guard が落とす / 戻り先で schema に落ちる |
+| C7（GA2） | FM9 | integration（実 routeTree + memory history） | T9 `ReturnToFlow.test.tsx` 「REQ-207 / DSR-15: 解析不能になる returnTo でも業務記録詳細が描画され、前の画面へ戻る が既定 hub を指す」: `/inventory/receiving/records/12?returnTo=%2Fa%2F..%2F%2F%5B` で詳細見出しと戻り link（`/inventory/records`）が出る | helper が throw して ErrorBoundary へ落ちる |
 
 ## State Lifecycle Matrix
 
@@ -98,7 +100,8 @@ Risk: R3
 
 ## Mutation-style Adequacy Questions
 
-- If a guard is removed, which test fails? → AC5 (1): T1 の `/\` case
+- If a guard is removed, which test fails? → AC5 (1): T1 の `/\` case、AC5 (8): T1 の `/..//evil.example` case
+- If a comparison is loosened from exact to prefix, which test fails? → AC5 (6): T4 の `/stocktake?page=2` case
 - If a key branch is inverted, which test fails? → AC5 (2): T4（pathname pin）
 - If an output field is omitted, which test fails? → AC5 (5): T3（`search` を `{}` 固定）
 - If a threshold comparison changes, which test fails? → AC5 (4): T7
