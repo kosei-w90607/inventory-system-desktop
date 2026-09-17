@@ -66,7 +66,7 @@ export function useStockMovements(args: {
 | UI-06c-D6 | `MovementRecord.source` がある行だけ「元記録」リンクを出し、ない行は「元記録なし」と表示する。 | PR #112 の source-link contract を使う。初期在庫や legacy 行は movement 自体を表示し、リンク欠落だけを明示する。 |
 | UI-06c-D7 | 元記録 route がまだ未実装でも link URL は `source.route` をそのまま表示対象にする。 | UI-06c の責務は movement から元記録へ戻るための contract 表示。未実装詳細 route の完成は後続スライスで扱う。 |
 | UI-06c-D8 | Windows native L3 は必要。 | 新規 operator-facing 調査画面であり、表の密度、数量符号、元記録リンク、戻り導線の視認性を確認する必要がある。 |
-| UI-06c-D9 | 「在庫照会へ戻る」は `returnTo` が `normalizeReturnTo` を通れば `<Link to={safeReturnTo}>`、欠落・不正なら `<Link to="/stock" search={{ q: code, selected: code }}>` で在庫照会へ遷移する。文字列 URL では組まない（数字だけの商品コードが `parseSearch` の `JSON.parse` で number 化し、route の `z.string().catch(undefined)` で落ちるため、GA5）。label は「在庫照会へ戻る」のまま（`returnTo` も fallback も在庫照会に着地するため、DSR-18 の「前の画面へ戻る」label は使わない）。`returnToParams` に `returnTo` があれば `set("returnTo", search.returnTo)` を加え、`detailReturnTo` に入れ子で載せる。`updateSearch` / `resetFilters` は `...prev` を spread 済みで追加変更なし。 | 監査 NAV-1 起源。直接アクセス・業務記録詳細からの入口では在庫照会の元条件が存在しないため、商品コード検索（LIKE、`product_repo.rs:1845`）で対象商品を 1 件以上含む list を出し、`selected` で展開する。在庫変動履歴の元記録 link から業務記録詳細へ行って戻ると在庫変動履歴の URL は `detailReturnTo` で再現されるため、そこに `returnTo` が無いと「在庫照会へ戻る」が fallback へ落ちる。棄却案: fallback を `/stock`（商品を見失う、現行と同じ不便）/ fallback を `/stock?selected=<code>`（現行のまま、NAV-1 未解消）/ 文字列 `/stock?q=…&selected=…` を `to` に渡す（`parseSearch` が JSON.parse するため数字だけの商品コードが number 化し `z.string()` で落ちる、GA5）/ 入れ子を避けて sessionStorage に持つ（URL 以外の state を増やす、F5 で消える）。 |
+| UI-06c-D9 | 「在庫照会へ戻る」は `returnToLinkProps(search.returnTo, "", { pathname: "/stock" })`（`src/lib/return-to.ts`、DSR-18）で `/stock` へ pin する。pin が通れば `<Link {...backLinkProps}>`（`to` = pathname、`search` = router の search object）、欠落・不正・pin 不一致なら `<Link to="/stock" search={{ q: code, selected: code }}>` で在庫照会へ遷移する。文字列 URL では組まない（数字だけの商品コードが `parseSearch` の `JSON.parse` で number 化し、route の `z.string().catch(undefined)` で落ちるため、GA5）。label は「在庫照会へ戻る」のまま（`returnTo` も fallback も在庫照会に着地するため、DSR-18 の「前の画面へ戻る」label は使わない）。`returnToParams` に `returnTo` があれば `set("returnTo", search.returnTo)` を加え、`detailReturnTo` に入れ子で載せる。`stockInquirySearchSchema.selected` の上限は `q` と同じ 100 文字（旧 20、returnTo 衛生 R3、SPEC-RETURNTO-HYGIENE-2026-09-17 C6）。`updateSearch` / `resetFilters` は `...prev` を spread 済みで追加変更なし。 | 監査 NAV-1 起源。直接アクセス・業務記録詳細からの入口では在庫照会の元条件が存在しないため、商品コード検索（LIKE、`product_repo.rs:1845`）で対象商品を 1 件以上含む list を出し、`selected` で展開する。在庫変動履歴の元記録 link から業務記録詳細へ行って戻ると在庫変動履歴の URL は `detailReturnTo` で再現されるため、そこに `returnTo` が無いと「在庫照会へ戻る」が fallback へ落ちる。棄却案: fallback を `/stock`（商品を見失う、現行と同じ不便）/ fallback を `/stock?selected=<code>`（現行のまま、NAV-1 未解消）/ 文字列 `/stock?q=…&selected=…` を `to` に渡す（`parseSearch` が JSON.parse するため数字だけの商品コードが number 化し `z.string()` で落ちる、GA5）/ 入れ子を避けて sessionStorage に持つ（URL 以外の state を増やす、F5 で消える）。`selected` の上限を 20 のまま据え置く（商品コードに長さ上限が無いのに `q` より狭い、GA5 系の未解消 gap）。 |
 
 ### 66.3 URL Search State
 
@@ -80,7 +80,7 @@ type StockMovementsSearch = {
 };
 ```
 
-- 欠落・不正な `returnTo`（`/` 始まりでない、`//` 始まり、500 字超）は `search={{ q: code, selected: code }}` で `/stock` へ fallback する（着地先は `/stock?q=$code&selected=$code` と同じ意味だが、`Link` の `search` props で組み、文字列 URL では組まない）。非 string / 500 字超は schema で `undefined` とし、prefix は `normalizeReturnTo` で検証する。
+- 欠落・不正な `returnTo`（`/` 始まりでない、解析不能、base origin 不一致、解決後の pathname が `//` 始まり、`/stock` と pathname 不一致、500 字超）は `search={{ q: code, selected: code }}` で `/stock` へ fallback する（着地先は `/stock?q=$code&selected=$code` と同じ意味だが、`Link` の `search` props で組み、文字列 URL では組まない）。非 string / 500 字超は schema で `undefined` とし、URL は `returnToLinkProps` で DSR-15 の origin / pathname 検証を通し、解決した pathname を `/stock` に exact pin する（UI-06c-D9）。
 - filter 変更・page 送り・reset でも `returnTo` は保持する。
 - 不正な `dateFrom` / `dateTo` は `undefined` に fallback する。
 - 不正な `type` は `"all"` に fallback する。
@@ -116,7 +116,7 @@ MovementSummary + MovementTable + Pagination
 
 - `PageHeader` title: `在庫変動履歴`
 - actions:
-  - `在庫照会へ戻る` → `returnTo` が有効（`normalizeReturnTo` を通る）ならその URL、欠落・不正なら `/stock` に `search={{ q: code, selected: code }}`（UI-06c-D9、`normalizeReturnTo` で検証）
+  - `在庫照会へ戻る` → `returnTo` が `/stock` へ pin されて解決すればその `to`/`search`、欠落・不正・pin 不一致なら `/stock` に `search={{ q: code, selected: code }}`（UI-06c-D9、`returnToLinkProps` で検証）
 
 #### 商品サマリ
 
@@ -173,7 +173,8 @@ MovementSummary + MovementTable + Pagination
 ### 66.7 Tests
 
 - REQ-303 / UI-06c-D9: `returnTo` の正規化と fallback、`detailReturnTo` への入れ子。
-- UI-06c-D9（GA5）: 数字だけの商品コードでも fallback の `q` / `selected` が string で往復する（T2-num）。
+- UI-06c-D9（GA5）: 数字だけの商品コードでも fallback の `q` / `selected` が string で往復する（T2-num、`stockInquirySearchSchema` まで通す）。
+- UI-06c-D9（returnTo 衛生 R3、SPEC-RETURNTO-HYGIENE-2026-09-17）: `/stock` 以外の pathname は pin 不一致として fallback へ（T4）。`selected` は 100 文字まで受理する（T7、`src/features/stock-inquiry/types.test.ts`）。
 
 - REQ-303 / UI-06c-D1: route params の `code` を `listMovements.product_code` に渡す。
 - REQ-303 / UI-06c-D2: search params を `MovementQuery` に変換し、filter 変更時は page を 1 に戻す。
