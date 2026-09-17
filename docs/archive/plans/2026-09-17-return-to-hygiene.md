@@ -1,13 +1,13 @@
 # Plan Packet: ㉙ returnTo 衛生（guard の origin 判定 / 戻り link の search object 化 / 数字だけの検索語の往復、R3）
 
-2026-09-17 起草。出典は Backlog「やると決めたもの（順番未定）」の [returnTo 衛生](../backlog.md) 行（NAV-1〈PR #75〉Final Review round 1 pass B / round 2 pass B の P3 5 件）。owner 2026-09-17「returnTo 衛生やろうか」で着手。起票時の現物調査で同じ failure class の実害 1 件（S5、入出庫履歴の数字だけの検索語が戻りで消える）を見つけ、同 lane に含める。
+2026-09-17 起草。出典は Backlog「やると決めたもの（順番未定）」の [returnTo 衛生](../../backlog.md) 行（NAV-1〈PR #75〉Final Review round 1 pass B / round 2 pass B の P3 5 件）。owner 2026-09-17「returnTo 衛生やろうか」で着手。起票時の現物調査で同じ failure class の実害 1 件（S5、入出庫履歴の数字だけの検索語が戻りで消える）を見つけ、同 lane に含める。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 5ceb30addb87dbb40e24a9332426f08946cb2b54
@@ -25,6 +25,7 @@ manual = owner Windows native L3 1 往復（AC-L3-1）。route/search state の�
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 設計正本の改訂点（DSR-15 / DSR-18 / 66 UI-06c-D9 / 60 系の入出庫履歴 returnTo）は Scope S6 に列挙し、実装と同じ PR で同期する。owner の設計判断を要する論点なし（挙動は「戻り先が同じ画面・同じ条件のまま」で不変、不正値の拒否範囲が広がるだけ）
 - plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P1/P2 = 0、P3 3）→ in-place 是正 `5ceb30ad`。P3 のみのため reviewer 再投入なし。Plan Commit = `5ceb30ad`（plan-first `b5cc6b5e` → 是正を含む確定版）。実装は Sonnet subagent の worktree run で本 commit を起点にする
+- implementing → archive（closeout、本 commit）: PR #78 squash merge `a68ba291`（2026-09-17）。packet / Matrix を archive へ移送し、Implementation Results / Review Response を記録
 
 ## Owner Effort Budget
 
@@ -91,7 +92,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **S2 戻り link の props helper**（同 file）: `returnToLinkProps(value, fallback, options?)` を追加し `{ to: string; search: Record<string, unknown> }` を返す。`to` = pathname、`search` = `defaultParseSearch(url.search)`。fallback も同じ経路で分解する。**URL の解析は値 1 つにつき 1 回とし、検証済みの `pathname + search` を文字列に戻して再解析しない。helper はどの入力でも throw しない**（GA2）。`options.pathname` を渡した場合、解決した pathname がそれと一致しなければ不正値として扱う（S3 の pin）
 - **S3 consumer 7 file の置換**: 業務記録詳細 6 画面（`Receiving` / `Return` / `ManualSale` / `Disposal` / `CsvImport` / `Stocktake` `RecordDetailPage.tsx`）の `<Link to={backHref}>` 12 箇所を `<Link {...returnToLinkProps(returnTo, "/inventory/records")}>` 相当へ。`StockMovementsPage.tsx:74,93-103` は `options.pathname = "/stock"` で pin し、不一致・欠落・不正は現行の `<Link to="/stock" search={{ q, selected }}>` fallback へ
 - **S4 `selected` 上限を `q` と揃える**（`src/features/stock-inquiry/types.ts:37`）: `max(20)` → `max(100)`
-- **S5 入出庫履歴の returnTo を router の href から取る**（`InventoryRecordsPage.tsx`）: `buildInventoryRecordsReturnTo` の手組みをやめ、他の送信側 8 site と同じ `useRouterState({ select: (s) => s.location.href })` にする（DSR-18「現在の pathname + search state を returnTo に直列化」の本則どおり。手組み関数は削除）
+- **S5 入出庫履歴の returnTo を router の href から取る**（`InventoryRecordsPage.tsx`）: `buildInventoryRecordsReturnTo` の手組みをやめ、ほかの送信側と同じ `useRouterState({ select: (s) => s.location.href })` にする（closeout 実測: `rg -n 'useRouterState\(\{ select: \(state\) => state\.location\.href \}\)' src/features --glob '!*.test.*'` から本 file を除くと 6 file。DSR-18「現在の pathname + search state を returnTo に直列化」の本則どおり。手組み関数は削除）
 - **S6 設計正本の同期**（同 PR、docs commit は分けてよい）: `docs/design-system/01-decision-rules.md` DSR-15（判定を origin 一致へ、`/\` と制御文字の例）/ DSR-18（helper の最低基準、`to` は pathname・`search` は object、送信側は router の href）/ 改訂履歴 1 行。`docs/function-design/66-*.md` UI-06c-D9（pathname pin、`<Link to={safeReturnTo}>` の記述を置換）。入出庫履歴の function-design に returnTo の生成方法の記述があれば同期（Writer が `rg -n 'buildInventoryRecordsReturnTo|returnTo' docs/function-design` で特定し、無ければ追記しない）
 - **S8 GA2 の docs 同期**: `docs/function-design/66-ui-stock-movements.md:83`（§66.3 の「`//` 始まり」「prefix」の旧記述を origin + pathname pin へ）/ `docs/quality/review-checklist.md:83`（「DSR-15 の prefix 検証」の旧表現）/ DSR-18 の送信側の記述に、手組みを存置する 2 site（`StockMovementsPage.tsx` `detailReturnTo` / `products/lib/return-to.ts` `buildProductListReturnTo`）の例外を 1 句
 - **S7 test**: Test Design Matrix の T1〜T8（GA2 で T1 / T2 / T4 に case を追加、T9 を新設）。REQ 付き test 名を追加・変更するため `cargo run --bin generate_traceability` で `90-traceability.md` を再生成する
@@ -101,7 +102,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - `src/features/products/**` の returnTo（typed parse-back、DSR-18 で存置）
 - `StockMovementsPage.tsx` の `detailReturnTo` 手組み（起票時実測のとおり数字だけの string 値を持たない。S5 と同じ href 化は入れ子の形が変わるため別判断）
 - route schema の `returnTo: z.string().max(500)` の見直し、`src/routes/**` の変更
-- 送信側 8 site（`useRouterState` の href を送る既存 site）
+- 送信側の既存 site（`useRouterState` の href を送る既存 site。closeout 実測で本 lane が触った `InventoryRecordsPage.tsx` を除き 6 file）
 - Backlog 同行の closeout 以外の `Plans.md` / `backlog.md` 編集（closeout PR で行う）
 
 ## Acceptance Criteria
@@ -204,6 +205,7 @@ Minimum design checks for business-app work:
 | UI-06c-D9 入れ子 `returnTo` の 3 段往復 | S1（入れ子を壊さない） | T1（入れ子 `returnTo` つきの値が guard を通る case）、既存 `StockMovementsPage.test.tsx:435`（href に `%26returnTo%3D` を含む静的 assertion） | AC-L3-1 (b)（実クリックの 3 段往復） |
 | UI-06c-D2 `returnTo` は検索 query に渡さない | 非接触 | 既存 | — |
 | stock-inquiry `selected` は商品コードを落とさない | S4 | T7 | — |
+| SPEC-RETURNTO-HYGIENE-2026-09-17 C7 どの入力でも throw しない | S1 / S2 | T1・T2 の throw-safety case 群 / T9 | — |
 
 ## Test Plan
 
@@ -258,6 +260,7 @@ Contract ID: SPEC-RETURNTO-HYGIENE-2026-09-17
 | C5 | S5 | T6 | 既定値 search の混入 | AC3 / AC5 (3) / AC-L3-1 (a) |
 | C6 | S4 | T7 | — | AC5 (4) |
 | C1〜C5 | S1〜S5 | T8 | 3 段往復 | AC4 / AC-L3-1 (b) |
+| C7 | S1 / S2 | T9 / T2 | throw 安全性 | AC5 (7)(8) |
 
 ## Data Safety
 
@@ -267,7 +270,7 @@ Contract ID: SPEC-RETURNTO-HYGIENE-2026-09-17
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #78](https://github.com/kosei-w90607/inventory-system-desktop/pull/78) で実装し squash merge 済み（`a68ba291`、2026-09-17）。初回実装（S1〜S8）は Sonnet subagent（commit `1839de7d` / `bd56e4da` / `b4364544`）。Final Review round 1 の是正は Codex（GA2、発注書 63）が担当し、`normalizeReturnTo` / `returnToLinkProps` の URL 解析を 1 回へ集約、解決後 pathname の `//` 拒否、throw しない契約（C7）、pin の近傍負例、query 付き fallback の分解 test、66 / review-checklist の旧記述同期を実装した。Final Review round 2 の P3 3 件（コメントの site 数表現、DSR-15 の主語、pin 併用時 fallback の責務コメント）は Sonnet subagent が是正した。
 
 ## Gated Amendments
 
@@ -297,7 +300,7 @@ Fill after implementation.
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Broad Audit（round 2）; post-freeze exceptions: closure の P3 2 件を closeout で対応。
 
 ### Plan Review round 1（2026-09-17、Sonnet、独立 fresh context、read-only、対象 `b5cc6b5e`）
 
@@ -307,4 +310,36 @@ Fill after implementation.
 - P3（Impact Review Lenses の not applicable が簡略）= accept → Fact check / design decision split lens を Contract Probe で実施と明記
 - P3 のみのため reviewer 再投入なし（Subagent Budget）
 
-Fill the rest after review.
+### Final Review round 1（2026-09-17、head `1c01f0ce`）
+
+- pass A（Codex、Contract Audit、[review](https://github.com/kosei-w90607/inventory-system-desktop/pull/78#pullrequestreview-5233517717)）: P1 0 / P2 2 / P3 2。F1（`return-to.ts:25` 相当、正規化後の pathname を再度 `new URL` に通すと `/a/..//[` が throw し詳細画面が ErrorBoundary へ落ちる）/ F2（`/stock` の exact pin に近傍負例が無く、`!==` を `startsWith` へ緩める mutant が AC4 全 339 本 green のまま生存）/ F3（fallback を無検証で分解する test が無く、fallback 未分解 mutant が生存）/ F4（66 §66.3 / review-checklist:83 に旧「prefix」「`//` 始まり」表現が残存）
+- pass B（Opus）: P1 0 / P2 1 / P3 2。P2 は Codex F1 と同根（`/..//evil.example` が dot-segment 畳み込みで `//evil.example` に読み替わり guard を回避）。P3 2 件は F2 / F4 と同種の指摘
+- 裁定（GA2、全件 accept）: 根は 1 つ（S1 の origin 判定と S2 の再解析 2 段構えを packet が許していた）。F1 + Opus P2 → URL 解析を 1 回に集約し `//` 始まり pathname を拒否・throw しない契約（C7）へ。F2 → pin の近傍負例 test。F3 → fallback 分解 test。F4 → docs 3 file 同期。是正 Writer = Codex（発注書 63、GA3 で禁止行の衝突を是正し再実行）
+
+### Final Review round 2 — broad（2026-09-17、head `2d329aa5`）
+
+- pass A（Sonnet、Contract Audit、[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/78#issuecomment-5713123096)）: P1 0 / P2 0 / P3 2。round 1 の 7 件すべて closed を確認。新規 P3: Contract Coverage Ledger / Trace Matrix に C7（no-throw）の独立行が無い（本 commit で追加）/ `options.pathname` 指定時に fallback へ pin が再適用されない（コード変更不要、コメントで責務明示）
+- pass B（Opus、[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/78#issuecomment-5713123393)）: P1 0 / P2 0 / P3 4。round 1 の 7 件すべて closed を確認。新規 P3: `InventoryRecordsPage.tsx:67` のコメントの「8 site」が実数と合わない / `65-inventory-record-traceability.md:114` の TRACE-D11 が「`//` で始まる URL」のまま 66 との粒度不整合 / `normalizeReturnTo` の production caller が 0 件（削除は非推奨、DSR-15 の主語の寄せ先） / sentinel `{ to: "", search: {} }` を型で強制する案（署名変更）
+- 裁定: 両 pass とも P1/P2 0 のため review = pass 可。round 2 の P3 6 件は「この PR で直す（3 件）/ closeout・backlog へ（3 件）」に振り分け、closure で反映を確認
+
+### Closure review（2026-09-17、Opus、独立 fresh context、[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/78#issuecomment-5713358531)）
+
+- 判定: P1 0 / P2 0 / P3 2 — closure pass。delta = `2d329aa5..d71437bc`（6 file・30 行、src の実コード差分 0 行、コメントのみ）
+- round 2 の P3 6 件の裁定（Coordinator）: この PR で直す = Opus P3-1（コメントの「8 site」）/ Opus P3-3（DSR-15 の主語）/ Sonnet P3（pin 指定時の fallback の責務コメント）→ すべて closed（`2c9ffc9b` / `9beeb794` / コメント追記）。closeout・backlog へ = Opus P3-2（65 TRACE-D11、Scope 外）/ Sonnet P3（packet の Ledger に C7 行。packet 改訂は GA になり broad を無効化するため見送り）/ Opus P3-4（sentinel の型強制、署名変更を伴う）
+- 新規 P3 2 件（非 blocker、closeout へ）: `InventoryRecordsPage.tsx:67` の「送信側はほかの送信側と同じく」が同語反復 / packet `:94` `:104` に「送信側 8 site」が残存（archive 移送時に実測つきの数へ）
+
+### helper record（2026-09-17）
+
+- github mode の専用 record: review = pass（closure の裁定を反映）、manual = pass（下記 owner L3）で登録。R4 = not-required。GitHub PR #78 の Ready 化・hosted CI green・owner merge を経て `a68ba291` へ squash merge
+
+### owner L3（Windows native、AC-L3-1、2026-09-17、[comment](https://github.com/kosei-w90607/inventory-system-desktop/pull/78#issuecomment-5713473067)）
+
+- 対象 head `d71437bc`。owner 原文「(a) OK / (b) OK」= PASS。(a) 入出庫履歴で数字だけの語を検索 → 詳細 → 「前の画面へ戻る」で検索語と結果が残った一覧へ戻る。(b) 在庫照会で検索・商品選択 → 在庫変動履歴 → 元記録の詳細 → 「前の画面へ戻る」→「在庫照会へ戻る」で絞り込み・検索条件・選択行が残る（NAV-1 の 3 段往復）
+- 任意項目（scroll 位置の復元）は owner の言及なし = 未確認のまま
+
+### Closeout（本 commit、Findings 解消）
+
+- closure P3 2 件のうち「`InventoryRecordsPage.tsx:67` の同語反復コメント」は本 commit の src コメント修正で対応。「packet の『送信側 8 site』」は本 commit の archive 移送で実測つきの表現へ訂正
+- round 2 pass A P3（Ledger / Trace Matrix に C7 行が無い）は本 commit で追加
+- round 2 pass B P3-2（65 TRACE-D11 の「`//` で始まる URL」）は本 commit で docs 修正
+- round 2 pass B P3-4（sentinel `{ to: "", search: {} }` の型強制）は署名変更を伴う runtime のため backlog へ起票
