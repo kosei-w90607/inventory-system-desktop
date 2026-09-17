@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **Writer 発注文書の整理（R2、plan-gate）**: [Plan Packet](plans/2026-09-17-writer-dispatch-docs.md)。branch `codex/writer-dispatch-docs`。owner の発注漏れ改善依頼を受け、§5.6・既存 template・前提訂正 sweep を整理する。独立 Plan Review 後に編集。棚卸し lane の設計判断とは独立した docs 作業。
+- **Writer 発注文書の整理（R2、implementing）**: [Plan Packet](plans/2026-09-17-writer-dispatch-docs.md)。branch `codex/writer-dispatch-docs`。独立 Plan Review は P1/P2 なし。§5.6・既存 template・前提訂正 sweep を整理し、docs / workflow 検証と独立 Final Review を行う。棚卸し lane の設計判断とは独立した docs 作業。
 - **㉗ 棚卸しの基準時点（STK-1 / STK-2）（R3、design）**: `plans/2026-09-16-stocktake-count-baseline.md`。branch `agent/stocktake-count-baseline-design`。監査 STK-1（P1）/ STK-2 起源。是正方式の owner 判断を Human Gate に置き、回答後に plan-gate へ。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
