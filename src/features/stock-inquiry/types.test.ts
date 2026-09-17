@@ -25,3 +25,20 @@ describe("stockInquirySearchSchema (REQ-301 / SPEC-UIBB-3)", () => {
     expect(stockInquirySearchSchema.parse({ page: 3 }).page).toBe(3);
   });
 });
+
+describe("stockInquirySearchSchema.selected (REQ-301 / SPEC-RETURNTO-HYGIENE-2026-09-17 T7)", () => {
+  it("21文字以上の商品コードを落とさない", () => {
+    const code21 = "A".repeat(21);
+    expect(stockInquirySearchSchema.parse({ selected: code21 }).selected).toBe(code21);
+  });
+
+  it("101文字以上はundefinedへ落ちる", () => {
+    const code101 = "A".repeat(101);
+    expect(stockInquirySearchSchema.parse({ selected: code101 }).selected).toBeUndefined();
+  });
+
+  it("100文字はそのまま通す", () => {
+    const code100 = "A".repeat(100);
+    expect(stockInquirySearchSchema.parse({ selected: code100 }).selected).toBe(code100);
+  });
+});

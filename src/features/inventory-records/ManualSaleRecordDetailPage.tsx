@@ -28,7 +28,7 @@ import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
-import { normalizeReturnTo } from "@/lib/return-to";
+import { returnToLinkProps } from "@/lib/return-to";
 import { formatDateTime, formatRecordStatus, formatYen } from "./types";
 
 export interface ManualSaleRecordDetailPageProps {
@@ -45,7 +45,7 @@ export function ManualSaleRecordDetailPage({
   recordId,
   returnTo,
 }: ManualSaleRecordDetailPageProps) {
-  const backHref = normalizeReturnTo(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.manualSaleDetail(recordId),
     queryFn: () =>
@@ -79,7 +79,7 @@ export function ManualSaleRecordDetailPage({
           </AlertDescription>
         </Alert>
         <Button asChild variant="outline">
-          <Link to={backHref}>
+          <Link {...backLinkProps}>
             <ArrowLeft aria-hidden="true" />
             前の画面へ戻る
           </Link>
@@ -97,7 +97,7 @@ export function ManualSaleRecordDetailPage({
         title={`手動販売出庫 #${String(detail.id)}`}
         actions={
           <Button asChild variant="outline">
-            <Link to={backHref}>
+            <Link {...backLinkProps}>
               <ArrowLeft aria-hidden="true" />
               前の画面へ戻る
             </Link>

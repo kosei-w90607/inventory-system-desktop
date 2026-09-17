@@ -28,7 +28,7 @@ import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
-import { normalizeReturnTo } from "@/lib/return-to";
+import { returnToLinkProps } from "@/lib/return-to";
 import { formatDateTime, formatRecordStatus } from "./types";
 
 export interface ReturnRecordDetailPageProps {
@@ -61,7 +61,7 @@ function hasNote(value: string | null | undefined): boolean {
 }
 
 export function ReturnRecordDetailPage({ recordId, returnTo }: ReturnRecordDetailPageProps) {
-  const backHref = normalizeReturnTo(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.returnDetail(recordId),
     queryFn: () =>
@@ -95,7 +95,7 @@ export function ReturnRecordDetailPage({ recordId, returnTo }: ReturnRecordDetai
           </AlertDescription>
         </Alert>
         <Button asChild variant="outline">
-          <Link to={backHref}>
+          <Link {...backLinkProps}>
             <ArrowLeft aria-hidden="true" />
             前の画面へ戻る
           </Link>
@@ -113,7 +113,7 @@ export function ReturnRecordDetailPage({ recordId, returnTo }: ReturnRecordDetai
         title={`返品・交換 #${String(detail.id)}`}
         actions={
           <Button asChild variant="outline">
-            <Link to={backHref}>
+            <Link {...backLinkProps}>
               <ArrowLeft aria-hidden="true" />
               前の画面へ戻る
             </Link>

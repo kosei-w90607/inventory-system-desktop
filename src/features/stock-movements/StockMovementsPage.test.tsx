@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { defaultParseSearch } from "@tanstack/react-router";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +8,7 @@ import { useState, type ReactNode } from "react";
 import { commands } from "@/lib/bindings";
 import type { MovementRecord, StockDetail } from "@/lib/bindings";
 import { scrollPageToTop } from "@/lib/page-scroll";
+import { stockInquirySearchSchema } from "@/features/stock-inquiry/types";
 import { renderWithRouter } from "@/test/render-with-router";
 import { StockMovementsPage } from "./StockMovementsPage";
 import type { StockMovementsSearch } from "./types";
@@ -394,6 +396,10 @@ describe("StockMovementsPage SPEC-UI06C-D9-R1（在庫照会への戻り導線�
     [undefined, "/stock?q=BT0002&selected=BT0002"],
     ["https://example.invalid/escape", "/stock?q=BT0002&selected=BT0002"],
     ["//example.invalid/escape", "/stock?q=BT0002&selected=BT0002"],
+    // T4: app 内だが /stock でない pathname は pin 不一致として fallback へ。
+    ["/inventory/records?page=2", "/stock?q=BT0002&selected=BT0002"],
+    ["/stocktake?page=2", "/stock?q=BT0002&selected=BT0002"],
+    ["/stock/BT0002/movements", "/stock?q=BT0002&selected=BT0002"],
   ])(
     "REQ-303 / UI-06c-D9: 在庫照会へ戻る の returnTo %s を %s へ正規化する",
     async (returnTo, expected) => {
@@ -428,8 +434,10 @@ describe("StockMovementsPage SPEC-UI06C-D9-R1（在庫照会への戻り導線�
 
     const link = await screen.findByRole("link", { name: "在庫照会へ戻る" });
     const url = new URL(link.getAttribute("href") ?? "", "http://x");
-    expect(JSON.parse(url.searchParams.get("q") ?? "null")).toBe("2099000000019");
-    expect(JSON.parse(url.searchParams.get("selected") ?? "null")).toBe("2099000000019");
+    // T2-num: route が実際に使う schema まで通し、number 化で落ちないことを検証する。
+    const parsed = stockInquirySearchSchema.parse(defaultParseSearch(url.search));
+    expect(parsed.q).toBe("2099000000019");
+    expect(parsed.selected).toBe("2099000000019");
   });
 
   it("REQ-207 / UI-06c-D9: 元記録 link の returnTo に在庫変動履歴の returnTo を入れ子で含める", async () => {

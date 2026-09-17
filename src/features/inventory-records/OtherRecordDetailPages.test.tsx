@@ -202,6 +202,12 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
     ],
     ["https://example.invalid/escape", "/inventory/records"],
     ["//example.invalid/escape", "/inventory/records"],
+    // T3: router 形式（defaultStringifySearch で作った値、数字だけの q を JSON-quote 済み）は
+    // 描画 href が入力と文字列一致する（DSR-17 (b)）。
+    [
+      "/inventory/records?recordType=receiving_record&page=2&q=%222099000000019%22",
+      "/inventory/records?recordType=receiving_record&page=2&q=%222099000000019%22",
+    ],
   ])(
     "T11 DSR-18: ReceivingRecordDetailPage の returnTo %s を安全に %s へ正規化する",
     async (returnTo, expected) => {

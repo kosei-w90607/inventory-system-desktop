@@ -28,7 +28,7 @@ import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
-import { normalizeReturnTo } from "@/lib/return-to";
+import { returnToLinkProps } from "@/lib/return-to";
 import { formatDateTime, formatRecordStatus, formatYen } from "./types";
 
 export interface DisposalRecordDetailPageProps {
@@ -43,7 +43,7 @@ const DISPOSAL_TYPE_LABELS: Record<string, string> = {
 };
 
 export function DisposalRecordDetailPage({ recordId, returnTo }: DisposalRecordDetailPageProps) {
-  const backHref = normalizeReturnTo(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.disposalDetail(recordId),
     queryFn: () =>
@@ -77,7 +77,7 @@ export function DisposalRecordDetailPage({ recordId, returnTo }: DisposalRecordD
           </AlertDescription>
         </Alert>
         <Button asChild variant="outline">
-          <Link to={backHref}>
+          <Link {...backLinkProps}>
             <ArrowLeft aria-hidden="true" />
             前の画面へ戻る
           </Link>
@@ -95,7 +95,7 @@ export function DisposalRecordDetailPage({ recordId, returnTo }: DisposalRecordD
         title={`廃棄・破損 #${String(detail.id)}`}
         actions={
           <Button asChild variant="outline">
-            <Link to={backHref}>
+            <Link {...backLinkProps}>
               <ArrowLeft aria-hidden="true" />
               前の画面へ戻る
             </Link>
