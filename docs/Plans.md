@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **Writer 発注文書の整理（R2、ローカル編集完了）**: [Plan Packet](plans/2026-09-17-writer-dispatch-docs.md)。branch `codex/writer-dispatch-docs`。§5.6・既存 template・前提訂正 sweep を整理し、docs / workflow 検証と独立 Plan / Final Review を完了。次は公開判断後の push / Draft PR と github evidence の記録。local 検証・所見は `.local/reports/writer-dispatch-docs/verification.md`。棚卸し lane の設計判断とは独立した docs 作業。
+- **Writer 発注文書の整理（R2、ローカル編集完了）**: [Plan Packet](plans/2026-09-17-writer-dispatch-docs.md)。branch `codex/writer-dispatch-docs`。§5.6・既存 template・前提訂正 sweep の整理、docs / workflow 検証、独立 Plan / Final Review は完了。取り込み順は本変更の PR / CI / merge → closeout → ㉗再開時の main 同期。㉗の branch・packet・未決設計はこの作業で変更しない。local 検証は `.local/reports/writer-dispatch-docs/verification.md`、前後関係と競合解消の申し送りは同 directory の `integration-handoff.md`。
 - **㉗ 棚卸しの基準時点（STK-1 / STK-2）（R3、design）**: `plans/2026-09-16-stocktake-count-baseline.md`。branch `agent/stocktake-count-baseline-design`。監査 STK-1（P1）/ STK-2 起源。是正方式の owner 判断を Human Gate に置き、回答後に plan-gate へ。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
