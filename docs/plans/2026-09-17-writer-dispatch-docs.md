@@ -3,19 +3,21 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R2
 - Execution Mode: dual-vendor-no-fable
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Codex（主担当、owner の今回の変更依頼による）
 - Writer: Codex
-- Plan Reviewer: pending（Sonnet の独立 context に依頼予定）
+- Plan Reviewer: Sonnet（独立 read-only context）
 - Final Reviewer: pending（Sonnet の独立 context に依頼予定）
 - Final Review Minimum: 1
 - Human Gate: ready,merge
 
 2026-09-17 kickoff → spec-check → plan-draft。owner は発注漏れの調査を受け、既存文書で対処できるなら修正するよう依頼した。Skill 化は利点が上回る場合の選択肢であり必須ではない。既存の正本・権限・品質条件を具体化する docs change として設計充足を確認。Plan Gate 前の対象文書の編集は行わない。
+
+2026-09-17 plan-draft → plan-gate。計画を `7424877a` で先行 commit。docs check の Goal Invariant marker 警告を補正して独立 Plan Review へ提出する。
 
 ## Owner Effort Budget
 
@@ -38,6 +40,8 @@ Risk: R2
 既存の開発用文書とテンプレートの整理。製品 runtime、workflow phase、承認権限、Plan Gate / merge gate の通過条件、機械 checker は変更しない。Scope・AC・証跡所有の既存規則を発注作成時に適用する方法を具体化する。独立レビューで gate 変更に及ぶと判明した場合は範囲・Risk を再評価する。
 
 ## Goal
+
+Goal Invariant:
 
 ### 最小完了条件
 
