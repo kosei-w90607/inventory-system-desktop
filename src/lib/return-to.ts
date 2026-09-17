@@ -25,6 +25,9 @@ export function normalizeReturnTo(value: string | null | undefined, fallback: st
 // 分解する（先例: products/lib/return-to.ts、InventoryRecordsPage.tsx buildDetailLinkProps）。
 // options.pathname を渡すと、解決した pathname がそれと一致しない場合も不正値として扱う
 // （呼出側の fallback へ、例: StockMovementsPage の「在庫照会へ戻る」pin）。
+// fallback へ切り替わったとき、options.pathname の pin は fallback 側へ再適用しない
+// （test: does not reapply the pathname pin to the fallback）。pin を使う呼出側は、
+// pin と整合する fallback（または空 fallback で自前の分岐）を渡す責務を持つ。
 export function returnToLinkProps(
   value: string | null | undefined,
   fallback: string,

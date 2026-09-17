@@ -64,7 +64,7 @@ function buildDetailLinkProps(
 
 export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecordsPageProps) {
   const normalized = normalizeInventoryRecordsSearch(search);
-  // DSR-18: 送信側は他の 8 site と同じく router の現在地 href を returnTo にする（手組みは
+  // DSR-18: 送信側はほかの送信側と同じく router の現在地 href を returnTo にする（手組みは
   // 数字だけの検索語を number 化させる、S5 / Probe 3）。
   const returnTo = useRouterState({ select: (state) => state.location.href });
   const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
