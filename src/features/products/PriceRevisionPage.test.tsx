@@ -217,6 +217,28 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     ).not.toBeChecked();
   });
 
+  it("取引先 picker で同じ取引先を再選択すると「確定した商品の取引先が未設定なら、この取引先を設定する」toggle が off へ戻る", async () => {
+    const user = userEvent.setup();
+    renderStateful({ supplier: 7 });
+    await screen.findByText("P-001");
+    const assign = await screen.findByRole("checkbox", {
+      name: "確定した商品の取引先が未設定なら、この取引先を設定する",
+    });
+    await user.click(assign);
+    expect(assign).toBeChecked();
+    await user.click(screen.getByLabelText("取引先"));
+    await user.click(
+      await within(screen.getByRole("dialog", { name: "取引先を選択" })).findByRole("button", {
+        name: "取引先A",
+      }),
+    );
+    expect(
+      await screen.findByRole("checkbox", {
+        name: "確定した商品の取引先が未設定なら、この取引先を設定する",
+      }),
+    ).not.toBeChecked();
+  });
+
   it("browser 履歴で supplier search が変わった場合も取引先設定 toggle を既定 off に戻す", async () => {
     const user = userEvent.setup();
     const client = new QueryClient({
