@@ -398,6 +398,8 @@ describe("StockMovementsPage SPEC-UI06C-D9-R1（在庫照会への戻り導線�
     ["//example.invalid/escape", "/stock?q=BT0002&selected=BT0002"],
     // T4: app 内だが /stock でない pathname は pin 不一致として fallback へ。
     ["/inventory/records?page=2", "/stock?q=BT0002&selected=BT0002"],
+    ["/stocktake?page=2", "/stock?q=BT0002&selected=BT0002"],
+    ["/stock/BT0002/movements", "/stock?q=BT0002&selected=BT0002"],
   ])(
     "REQ-303 / UI-06c-D9: 在庫照会へ戻る の returnTo %s を %s へ正規化する",
     async (returnTo, expected) => {

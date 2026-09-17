@@ -106,6 +106,27 @@ beforeEach(() => {
 });
 
 describe("REQ-207 / UI-11c-D16 / DSR-18 returnTo route flow", () => {
+  it("T9 REQ-207 / DSR-15: 解析不能になる returnTo でも業務記録詳細が描画され、前の画面へ戻る が既定 hub を指す", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/inventory/receiving/records/12?returnTo=%2Fa%2F..%2F%2F%5B"],
+    });
+    const router = createRouter({ routeTree, history });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "入庫記録 #12" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "前の画面へ戻る" })).toHaveAttribute(
+      "href",
+      "/inventory/records",
+    );
+  });
+
   it("T10 TRACE-D11: pushes from filtered logs to detail and back to the exact source href", async () => {
     const sourceHref =
       "/settings/logs?start_date=2026-07-01&end_date=2026-07-31&operation_type=backup_create&page=4";
