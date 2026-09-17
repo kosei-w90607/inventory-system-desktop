@@ -30,7 +30,7 @@ manual = owner Windows native L3 1 往復（AC-L3-1）。route/search state の�
 
 - 介入回数上限: 3
 - 実働時間上限: 10分
-- relay 往復上限: 2（GA1: Final Review の Codex pass 1 往復 / GA2: 是正 run 1 往復。起票時は 0）
+- relay 往復上限: 3（GA1: Final Review の Codex pass 1 往復 / GA2: 是正 run 1 往復 / GA3: 是正 run の再実行 1 往復〈Coordinator 起因の空振り、既定 2 を超える理由は GA3〉。起票時は 0）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -209,7 +209,7 @@ Minimum design checks for business-app work:
 
 [Test Design Matrix](test-matrices/2026-09-17-return-to-hygiene.md)。
 
-- targeted tests: T1〜T8
+- targeted tests: T1〜T9
 - negative tests: T1（拒否 case）/ T4（pathname 不一致）
 - compatibility checks: 既存の期待 href（AC4）、products 側 test 非接触
 - data safety checks: 該当なし（synthetic 値のみ）
@@ -287,6 +287,13 @@ Fill after implementation.
 - Scope の増分: `docs/quality/review-checklist.md`（1 行）。実装 file の集合は不変（`src/lib/return-to.ts` と test）。consumer 7 file は helper の署名が変わらなければ触らない
 - Writer: 是正 run は Codex（発注書 63）。owner 2026-09-17「大事なのは成果物の質」。round 2 の closure は Codex を外し Opus + Sonnet
 - Owner Effort Budget: 介入 1/3、relay 1/2（発注書 62 の review で 1 消費）
+
+### Gated Amendment 3（2026-09-17、是正 run の再実行と relay 上限 2 → 3）
+
+- 経緯: Codex 発注書 63 run 1 が実装前に fail-closed 停止（commit 0、HEAD `2d6c3f78` のまま、作業 worktree は除去済み）。発注書の「`.local/**` を編集しない」と、必須手順の `bash scripts/local-ci.sh full`（`scripts/local-ci.sh:25` が `.local/ci-evidence/` へ log を書く）が literal に衝突した。Codex の停止判断は正しく、原因は Coordinator が発注書 61 から禁止行を写したこと
+- 是正: 発注書 63 の禁止を tracked の具体 path に絞り、「許容する書込み」節（指定 command が自動生成する untracked / gitignore 出力）を明示。Scope / 設計判断 / AC / Matrix / Spec Contract は不変。同 commit で Test Plan の `targeted tests` を `T1〜T9` へ（GA2 の sweep 漏れ）
+- Owner Effort Budget: relay 上限は hard stop のため owner に選択肢（上限を 3 にして Codex 再実行 / Sonnet Writer で relay を増やさない）を示し、owner 2026-09-17「1で」= 上限 3 で Codex 再実行。理由 = guard の核心の直しで質を優先（owner「大事なのは成果物の質」）。介入 2/3、relay 2/3（review 1 + 空振り 1）
+- 教訓: 発注書の禁止一覧は、検証節の各 command の出力先と 1 行ずつ突合してから出す
 
 ## Review Response
 
