@@ -4,7 +4,7 @@
 
 import { Eye, PackageSearch } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
@@ -51,21 +51,6 @@ export interface InventoryRecordsPageProps {
   onSearchChange: (updater: (prev: InventoryRecordsSearch) => InventoryRecordsSearch) => void;
 }
 
-function buildInventoryRecordsReturnTo(search: ReturnType<typeof normalizeInventoryRecordsSearch>) {
-  const params = new URLSearchParams();
-  if (search.recordType !== "all") params.set("recordType", search.recordType);
-  if (search.dateFrom) params.set("dateFrom", search.dateFrom);
-  if (search.dateTo) params.set("dateTo", search.dateTo);
-  if (search.q) params.set("q", search.q);
-  if (search.recordId !== undefined) params.set("recordId", String(search.recordId));
-  if (search.departmentId !== undefined) params.set("departmentId", String(search.departmentId));
-  if (search.status !== "all") params.set("status", search.status);
-  if (search.page > 1) params.set("page", String(search.page));
-
-  const query = params.toString();
-  return query ? `/inventory/records?${query}` : "/inventory/records";
-}
-
 // detail_route は DTO 由来の runtime 文字列 (compile-time に既知の route union ではない)。
 // batch A packet P2-2 の採用案どおり <Link to={string}> で SPA 遷移のみ保証し、
 // to は pathname のみ・returnTo は search object 経由で付与する
@@ -79,7 +64,9 @@ function buildDetailLinkProps(
 
 export function InventoryRecordsPage({ search, onSearchChange }: InventoryRecordsPageProps) {
   const normalized = normalizeInventoryRecordsSearch(search);
-  const returnTo = buildInventoryRecordsReturnTo(normalized);
+  // DSR-18: 送信側は他の 8 site と同じく router の現在地 href を returnTo にする（手組みは
+  // 数字だけの検索語を number 化させる、S5 / Probe 3）。
+  const returnTo = useRouterState({ select: (state) => state.location.href });
   const [perPage, setPerPage] = useState<(typeof LIST_PER_PAGE_OPTIONS)[number]>(50);
 
   const departmentsQuery = useQuery({

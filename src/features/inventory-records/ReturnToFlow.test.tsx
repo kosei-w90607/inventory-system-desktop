@@ -20,12 +20,16 @@ vi.mock("@/lib/bindings", () => ({
     listLogs: vi.fn(),
     listLogOperationTypes: vi.fn(),
     getReceivingRecord: vi.fn(),
+    listInventoryRecords: vi.fn(),
+    listDepartments: vi.fn(),
   },
 }));
 
 const listLogs = vi.mocked(commands.listLogs);
 const listLogOperationTypes = vi.mocked(commands.listLogOperationTypes);
 const getReceivingRecord = vi.mocked(commands.getReceivingRecord);
+const listInventoryRecords = vi.mocked(commands.listInventoryRecords);
+const listDepartments = vi.mocked(commands.listDepartments);
 
 function receivingDetail(): ReceivingRecordDetail {
   return {
@@ -57,6 +61,8 @@ beforeEach(() => {
   listLogs.mockReset();
   listLogOperationTypes.mockReset();
   getReceivingRecord.mockReset();
+  listInventoryRecords.mockReset();
+  listDepartments.mockReset();
   listLogOperationTypes.mockResolvedValue({ status: "ok", data: ["backup_create"] });
   listLogs.mockResolvedValue({
     status: "ok",
@@ -76,6 +82,27 @@ beforeEach(() => {
     },
   });
   getReceivingRecord.mockResolvedValue({ status: "ok", data: receivingDetail() });
+  listDepartments.mockResolvedValue({ status: "ok", data: [] });
+  listInventoryRecords.mockResolvedValue({
+    status: "ok",
+    data: {
+      items: [
+        {
+          record_type: "receiving_record",
+          record_id: 12,
+          business_date: "2026-07-15",
+          representative_item: "合成テスト商品",
+          item_count: 1,
+          status: "active",
+          created_at: "2026-07-15T10:00:00",
+          detail_route: "/inventory/receiving/records/12",
+        },
+      ],
+      total_count: 1,
+      page: 1,
+      per_page: 50,
+    },
+  });
 });
 
 describe("REQ-207 / UI-11c-D16 / DSR-18 returnTo route flow", () => {
@@ -112,5 +139,37 @@ describe("REQ-207 / UI-11c-D16 / DSR-18 returnTo route flow", () => {
     });
     expect(history.length).toBe(3);
     expect(await screen.findByText("合成調査ログ")).toBeInTheDocument();
+  });
+
+  it("T8 REQ-207 / REQ-303: 入出庫履歴（数字だけの検索語）→ 詳細 → 前の画面へ戻る で検索語が残り、戻った先の location.href が出発時の href と文字列一致する", async () => {
+    // S5: SearchBar → navigate({search}) が作る href を模す。数字だけの q は JSON-quote
+    // されるため url は q=%222099000000019%22 になる（起票時実測 Probe 2）。
+    const sourceHref = "/inventory/records?q=%222099000000019%22";
+    const history = createMemoryHistory({ initialEntries: [sourceHref] });
+    const router = createRouter({ routeTree, history });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("link", { name: "詳細を見る" }));
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/inventory/receiving/records/12");
+    });
+    expect(await screen.findByRole("heading", { name: "入庫記録 #12" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "前の画面へ戻る" }));
+
+    await waitFor(() => {
+      expect(router.state.location.href).toBe(sourceHref);
+    });
+    expect(router.state.location.search).toEqual({ q: "2099000000019" });
+    expect(await screen.findByText("合成テスト商品")).toBeInTheDocument();
   });
 });

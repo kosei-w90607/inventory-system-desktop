@@ -34,7 +34,7 @@ export const stockInquirySearchSchema = z.object({
   // UI-06a-D1（2026-08-03 batch B）: page search param。50 §50.4 と同型
   // （number >= 1、既定は呼び出し側で `page ?? 1`、invalid は catch で吸収）。
   page: z.coerce.number().int().positive().optional().catch(undefined),
-  selected: z.string().min(1).max(20).optional().catch(undefined),
+  selected: z.string().min(1).max(100).optional().catch(undefined),
 });
 
 /**

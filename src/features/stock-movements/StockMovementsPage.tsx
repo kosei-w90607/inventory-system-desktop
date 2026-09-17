@@ -24,7 +24,7 @@ import { PageShell } from "@/components/patterns/PageShell";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
 import { scrollPageToTop } from "@/lib/page-scroll";
-import { normalizeReturnTo } from "@/lib/return-to";
+import { returnToLinkProps } from "@/lib/return-to";
 import type { StockMovementsSearch } from "./types";
 import { MOVEMENT_TYPE_OPTIONS, normalizeStockMovementsSearch } from "./types";
 import { useStockMovements } from "./hooks/useStockMovements";
@@ -71,7 +71,9 @@ export function StockMovementsPage({
       page: undefined,
     }));
   };
-  const safeReturnTo = normalizeReturnTo(search.returnTo, "");
+  // UI-06c-D9: 「在庫照会へ戻る」は /stock 以外へ着地しない（pin）。欠落・不正・pin 不一致は
+  // 商品コードで在庫照会を再展開する既定 fallback へ。
+  const backLinkProps = returnToLinkProps(search.returnTo, "", { pathname: "/stock" });
   const returnToParams = new URLSearchParams();
   if (normalizedSearch.dateFrom !== undefined)
     returnToParams.set("dateFrom", normalizedSearch.dateFrom);
@@ -90,8 +92,8 @@ export function StockMovementsPage({
         title="在庫変動履歴"
         actions={
           <Button type="button" asChild variant="outline">
-            {safeReturnTo ? (
-              <Link to={safeReturnTo}>
+            {backLinkProps.to ? (
+              <Link to={backLinkProps.to} search={backLinkProps.search}>
                 <ArrowLeft aria-hidden="true" />
                 在庫照会へ戻る
               </Link>

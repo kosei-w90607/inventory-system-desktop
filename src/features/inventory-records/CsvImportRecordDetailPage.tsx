@@ -36,7 +36,7 @@ import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
-import { normalizeReturnTo } from "@/lib/return-to";
+import { returnToLinkProps } from "@/lib/return-to";
 import { formatDateTime, formatYen } from "./types";
 
 export interface CsvImportRecordDetailPageProps {
@@ -70,7 +70,7 @@ const ERROR_TYPE_LABELS = {
 } as const;
 
 export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecordDetailPageProps) {
-  const backHref = normalizeReturnTo(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.csvImportDetail(importId),
     queryFn: () =>
@@ -106,7 +106,7 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
           </AlertDescription>
         </Alert>
         <Button asChild variant="outline">
-          <Link to={backHref}>
+          <Link {...backLinkProps}>
             <ArrowLeft aria-hidden="true" />
             前の画面へ戻る
           </Link>
@@ -125,7 +125,7 @@ export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecor
         title={`CSV取込み #${String(detail.id)}`}
         actions={
           <Button asChild variant="outline">
-            <Link to={backHref}>
+            <Link {...backLinkProps}>
               <ArrowLeft aria-hidden="true" />
               前の画面へ戻る
             </Link>

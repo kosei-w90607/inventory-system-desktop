@@ -6,6 +6,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  defaultParseSearch,
 } from "@tanstack/react-router";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -17,7 +18,11 @@ import type { InventoryRecordSummary } from "@/lib/bindings";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import { renderWithRouter } from "@/test/render-with-router";
 import { InventoryRecordsPage } from "./InventoryRecordsPage";
-import { formatRecordStatus, type InventoryRecordsSearch } from "./types";
+import {
+  formatRecordStatus,
+  inventoryRecordsSearchSchema,
+  type InventoryRecordsSearch,
+} from "./types";
 
 vi.mock("@/lib/bindings", () => ({
   commands: {
@@ -31,11 +36,14 @@ const mockListDepartments = vi.mocked(commands.listDepartments);
 const mockListInventoryRecords = vi.mocked(commands.listInventoryRecords);
 const mockScrollPageToTop = vi.mocked(scrollPageToTop);
 
-function renderWithClient(ui: ReactNode) {
+function renderWithClient(ui: ReactNode, initialPath?: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
   });
-  return renderWithRouter(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  return renderWithRouter(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    initialPath,
+  );
 }
 
 function renderWithDetailRoutes() {
@@ -283,6 +291,19 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       data: { items: [makeRecord()], total_count: 1, page: 2, per_page: 50 },
     });
     const user = userEvent.setup();
+    // S5: returnTo は router の現在地 href（useRouterState）から取るため、直接 props で渡す
+    // search state と同じ URL に router を初期化する（DSR-18、本物の送信元 URL を模す）。
+    const initialSearchParams = new URLSearchParams({
+      recordType: "disposal_record",
+      dateFrom: "2026-06-01",
+      dateTo: "2026-06-30",
+      q: "ボタン",
+      recordId: "7",
+      departmentId: "2",
+      status: "active",
+      page: "2",
+    });
+    const initialPath = `/inventory/records?${initialSearchParams.toString()}`;
 
     const { router } = renderWithClient(
       <InventoryRecordsPage
@@ -298,6 +319,7 @@ describe("InventoryRecordsPage (REQ-206)", () => {
         }}
         onSearchChange={vi.fn()}
       />,
+      initialPath,
     );
 
     await waitFor(() => {
@@ -341,6 +363,32 @@ describe("InventoryRecordsPage (REQ-206)", () => {
       returnTo:
         "/inventory/records?recordType=disposal_record&dateFrom=2026-06-01&dateTo=2026-06-30&q=%E3%83%9C%E3%82%BF%E3%83%B3&recordId=7&departmentId=2&status=active&page=2",
     });
+  });
+
+  it("T6 REQ-207 / DSR-18: 数字だけの検索語が詳細 link の returnTo で string のまま往復する", async () => {
+    mockListInventoryRecords.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeRecord()], total_count: 1, page: 1, per_page: 50 },
+    });
+    // router 自身の navigate（SearchBar → onSearchChange）が作る href を模す。
+    // defaultStringifySearch({ q: "2099000000019" }) は数字だけの string を JSON-quote
+    // して保存するため、URL は q=%222099000000019%22 になる（起票時実測 Probe 2）。
+    const initialPath = "/inventory/records?q=%222099000000019%22";
+
+    renderWithClient(
+      <InventoryRecordsPage search={{ q: "2099000000019" }} onSearchChange={vi.fn()} />,
+      initialPath,
+    );
+
+    const detailLink = await screen.findByRole("link", { name: "詳細を見る" });
+    const href = detailLink.getAttribute("href") ?? "";
+    const outerSearch = defaultParseSearch(new URL(href, "http://inventory.local").search) as {
+      returnTo?: string;
+    };
+    const innerSearch = defaultParseSearch(
+      new URL(outerSearch.returnTo ?? "", "http://inventory.local").search,
+    );
+    expect(inventoryRecordsSearchSchema.parse(innerSearch).q).toBe("2099000000019");
   });
 
   it("REQ-206: filter変更時はpageを1に戻す", async () => {
