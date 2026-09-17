@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 5ceb30addb87dbb40e24a9332426f08946cb2b54
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Sonnet subagent（worktree 分離、Plan Reviewer / Final Reviewer とは別 fresh context）
@@ -24,6 +24,7 @@ manual = owner Windows native L3 1 往復（AC-L3-1）。route/search state の�
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 設計正本の改訂点（DSR-15 / DSR-18 / 66 UI-06c-D9 / 60 系の入出庫履歴 returnTo）は Scope S6 に列挙し、実装と同じ PR で同期する。owner の設計判断を要する論点なし（挙動は「戻り先が同じ画面・同じ条件のまま」で不変、不正値の拒否範囲が広がるだけ）
+- plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P1/P2 = 0、P3 3）→ in-place 是正 `5ceb30ad`。P3 のみのため reviewer 再投入なし。Plan Commit = `5ceb30ad`（plan-first `b5cc6b5e` → 是正を含む確定版）。実装は Sonnet subagent の worktree run で本 commit を起点にする
 
 ## Owner Effort Budget
 
