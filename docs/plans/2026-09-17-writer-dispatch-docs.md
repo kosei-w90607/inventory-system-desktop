@@ -148,7 +148,7 @@ N/A: executable / wire / schema / report format の変更なし。発注の例�
 
 ## Implementation Results
 
-未着手。Plan Gate 待ち。
+§5.6 に発注構成と作成・再開・訂正手順を集約し、既存の注意を統合した。Packet template は Scope の波及先と生成義務、可観測な AC を明確化し、Matrix は mock 境界と受信・復元の検証を具体化した。訂正 sweep は tracked / local-only の保存先を区別する。別保存の再開発注例と事例照合を local artifact に用意。検証と独立 Final Review の結果は local artifact、公開時は PR evidence に置く。
 
 ## Review Response
 

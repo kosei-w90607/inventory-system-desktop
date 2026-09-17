@@ -67,6 +67,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - <in scope>
 
+対象を使う呼出し側・隣接 test・helper / mock・生成物まで確認し、必要な file と変更目的を列挙する。依存更新では対象 package と許容する推移依存・lockfile 差分の範囲も確認する。予期しない拡張は既存の改訂経路へ戻し、「関連 file 全般」を許可範囲にしない。
+
 ## Non-scope
 
 - <explicitly out of scope>
@@ -76,6 +78,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - <observable success condition>
 
 For R3/R4, each bullet should include an observable evidence token such as a command, file path, test name, output field, exit code, or explicit `WARN` / `ERROR` expectation.
+
+- AC は必要な振舞いを定め、対象 test がある場合は全 PASS を要求する。test 総本数・import 数・文字列出現数を機能完成の代理にせず、test 本数は PR / runner 出力を参照する。業務上の固定閾値と既存 test の保護は維持する。
+- 数値の baseline は対象版・測定 command・出力を併記するか `未実測` とし、実装前の観測値と完了時の期待値を区別する。未実測の推定を固定の停止条件にしない。
+- 削除検査は現物の旧表現（表記差も含む）で一致、新しい許容表現で不一致となることを確認する。検査式の PASS に加え Goal Invariant の達成を確認し、Scope / 他の AC と同時に成立しない条件を発注前に訂正する。
 
 ## Design Sources
 
@@ -103,15 +109,15 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 
 ## Registration / Generation Obligations
 
-新規追加物に付随する登録・生成義務の checklist（UI-13 Amendment 1〜4 の failure class「plan 段階の列挙漏れ」対策）。該当する行の義務を Scope に明記し、R3/R4 では Contract Coverage Ledger にも契約行として反映してから Plan Gate に出す。該当なしなら `該当なし` と 1 行残す（節の削除はしない）。
+追加・変更・削除に付随する登録・生成義務の checklist（UI-13 Amendment 1〜4 の failure class「plan 段階の列挙漏れ」対策）。該当する行の義務を Scope に明記し、R3/R4 では Contract Coverage Ledger にも契約行として反映してから Plan Gate に出す。該当なしなら `該当なし` と 1 行残す（節の削除はしない）。
 
-| 新規追加物 | 登録・生成義務 |
+| 変更対象 | 登録・生成義務 |
 |---|---|
 | Tauri command（frontend から呼ぶ） | `lib.rs` の specta `collect_commands` 登録 / command 関数への `#[tauri::command]` + `#[specta::specta]` 属性の対 / `cargo run --bin generate_bindings` での `bindings.ts` 再生成 |
 | function-design doc 新設 | `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` へ entry 追加 / checker が要求する必須セクション（シグネチャ / 処理ステップ / エラーハンドリング）の充足 |
 | source / workflow doc 新設・改名 | 親文書の目次・索引を更新し、リンク先と登録位置を確認する |
 | AGENT_OPERATING_MANUAL §5.5 consultation relay 使用 | `Consultation Relay`欄のartifact path /専用remote order branch refを設定し、target branch / PRとorder branchを分離する |
-| REQ coverage 追加（設計書・テスト追加） | `cargo run --bin generate_traceability` で `90-traceability.md` 再生成（AUTO-GENERATED、手動編集は禁止のまま） |
+| REQ / coverage の追加・変更・削除（設計書・test 内の既存 REQ 参照の増減を含む） | `cargo run --bin generate_traceability` で `docs/function-design/90-traceability.md` 再生成。生成先を Scope と完了条件へ含める（AUTO-GENERATED、手動編集は禁止のまま） |
 | route 新設 | `npm run generate:routes`（routeTree 生成） |
 | operator 画面新設 | `src/config/navigation.ts` の entry 有効化（`to` + `status: "active"`）+ `navigation.test.ts` に REQ 番号入り到達テスト（ui-11c パターン）。「operator が画面に到達できる」到達導線契約を Contract Coverage Ledger の標準行として必ず立てる — route 直 render テストと doc 整合レビューは到達性を検証しない（UI-13 Amendment 4 の実例） |
 

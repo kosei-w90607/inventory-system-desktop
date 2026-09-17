@@ -212,12 +212,32 @@ docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠す�
 
 本節は、§5.4 の read-only Reviewer / Explorer 専用の低制約 profile ではなく、手順を含む従来型発注書で Writer に実装を発注する場合を対象とする。
 
+仕様は設計正本、R2+ の変更範囲・AC・commit 条件は承認済み Packet（適用済み Amendment を含む）を参照する。発注書は該当節・ID を指し、条件全文を転記しない。R0/R1 は合意済みの依頼範囲と設計正本を参照し、発注のために Packet を新設しない。食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない。
+
+発注には次の情報を置く。これは人が読む構成例であり、機械 parse 用の固定 schema や追加の承認 gate ではない。
+
+| 項目 | 記載内容 |
+|---|---|
+| 種別・対象 | 初回 / 再開、作業 worktree、branch、開始 HEAD。HEAD の照合はその worktree で行う |
+| 正本 | Packet / Matrix と適用済み Amendment の参照。R0/R1 は依頼範囲と設計正本 |
+| 現在地・残作業 | 完了済みの変更と残作業を Scope / AC の ID（R0/R1 は依頼項目）で示す。未 commit の作業があれば状態も明示する |
+| 固有の実行条件 | この run に必要な環境準備、既に許可された操作、編集禁止対象。権限を新たに広げない |
+| 検証・報告 | 必要な検証への参照、再利用候補の証跡と適用範囲、報告先。報告は開始 / 終了 HEAD、完了 / 残作業、実施・再利用・未実施の検証を区別する |
+
+**作成・訂正の手順**:
+
+1. 起票時に、対象を使う呼出し側・隣接 test・helper / mock・生成物・依存更新の波及を現物で確認し、必要な file と変更目的を Packet の Scope / Registration / Generation Obligations へ含める。既存 REQ を参照する test の追加・変更・削除も traceability 再生成の対象（template の該当行を参照）。「関連 file 全般」の包括許可に置き換えず、未承認の拡張は既存 Gated Amendment で扱う。
+2. 指定する doc 節は番号の存在だけでなく内容と対象の一致を確認する。数値は対象版で同じ command を実行した出力に基づき、未実測の期待値を停止条件にしない。helper 名から実 router 等を推定せず実装・mock 境界を読む。AC の可観測性と削除検査の旧例 / 新例は [Packet template](templates/plan-packet.md#acceptance-criteria)、経路と mutation の選び方は [Matrix](templates/test-design-matrix.md) に従う。
+3. 初回は承認済み計画の着手条件を対象 worktree で確認する。再開は現在の HEAD・変更状態・前回報告から「完了済み / 残作業 / 証跡」を書き直し、実装前 baseline を完成後の状態に要求しない。長い改訂履歴は過去報告への参照へ寄せる。証跡再利用と再検証は対象変更・Evidence Mode・正本の条件に従い、失敗した検証を再利用で PASS にしない。
+4. 発注直前に最終版を正本と対象 worktree の現在地へ照合し、Scope・AC・commit 条件が同時に成立するか確認する。訂正は停止した一文だけで終えず、[Plan Packet Rules](DEV_WORKFLOW.md#plan-packet-rules) の旧前提 sweep を最終発注書・再開指示にも適用する。Packet が不変で発注書だけを訂正するときも同じ照合を行う。
+
+既存の Plan Review では上記の現物根拠を確認し、Plan Gate 後に作る発注書の最終照合は Coordinator が引き取る。追加のレビュー段階は設けず、正本の変更が必要なら既存の改訂・承認経路を使う。
+
 legacyの発注書には、state-only 遷移 commit が [DEV_WORKFLOW.md](DEV_WORKFLOW.md) `Workflow State` の canonical subject、すなわち forward 遷移では `docs(plans): state-only遷移 <from>-><to>[->…]`、backtrack では `docs(plans): state-backtrack <from>-><to>` に従うことを明記する。また、遷移は同節の契約を満たす正規の state-only commit で実体化し、`narrative 記述のみで遷移を主張しない`ことも出力契約に含める。
 
 遷移 commit の作成主体や Writer / Coordinator の分担は、本節で再配分しない。[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の現行規範と per-change Plan Packet の定めに従う。
 
-- **doc 節番号は referent 一致まで検証する**: 発注書で `§n` などの doc 節番号を指定する場合、起草時に `rg` で節の実在を確認し、その節の既存内容が発注対象と一致するところまで確認する。番号が存在するだけでは足りない（出典実測: PR #84 の §12 occupancy 不一致）。
-- **REQ token 変更の発注は 90-traceability 再生成を完了条件にする**: test 追加を含め、REQ token に触れる変更を依頼する発注書は、generated `docs/function-design/90-traceability.md` の再生成を完了条件へ明記する（出典実測: PR #72 / #84 / #85）。
+節番号と REQ 再生成の注意は上記の作成手順へ統合した。出典: PR #72 / #84 / #85、および PR #61 / #64 / #67 / #70 / #71 / #75 の発注訂正記録。
 
 ### 5.7 変則 provenance packet の監査採用手順
 
