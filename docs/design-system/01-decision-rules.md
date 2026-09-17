@@ -258,7 +258,7 @@ font-size を全体一律に底上げする再設計は本ルールの scope 外
 
 **Why**: 任意文字列を遷移先として使うと、外部 URL / protocol-relative URL への想定外遷移（open-redirect 型）が起きうる。デスクトップアプリでも業務動線が壊れ、利用者が迷子になる。PR #114-#115 の入出庫 4 詳細ページで `normalizeReturnTo` として確立した規約を全 returnTo 系 param に適用する。旧判定（prefix 文字列一致のみ）は `/\host`（バックスラッシュ）や tab 入り値（`/\t/evil.example`）を `/` 始まりのまま通し、ブラウザの URL 正規化がこれらを別 origin へ解決するため、origin 判定へ強化した（returnTo 衛生 R3、起票時実測、2026-09-17）。
 
-**判定フロー / 具体例**: `normalizeReturnTo(value, fallback)`（`src/lib/return-to.ts`）は `value` が `/` 始まりで、かつ `new URL(value, "http://inventory.local")` の `origin` が base と一致し、解決後の pathname が `//` 始まりでないときだけ `pathname + search` を返し、それ以外は `fallback` へフォールバックする。`/\evil.example` や `/\t/evil.example` は `/` 始まりだが origin が `http://evil.example` に解決されるため拒否する。`/ok#frag` は `/ok`（hash なし）を返す。`/..//evil.example` のように解決後の pathname が `//` 始まりになる値も拒否し、検証済みの `pathname + search` を再解析しない。共通 helper は値ごとの URL 解析を 1 回にし、不正値でも throw せず、`returnToLinkProps` の fallback も同じ検証を通して不正なら `{ to: "", search: {} }` を返す。新規に returnTo を受ける route を作るときは同じ検証を必ず入れる。
+**判定フロー / 具体例**: 戻り link を描画する側は `returnToLinkProps(value, fallback, options?)`（`src/lib/return-to.ts`）を使い、`to`(pathname) / `search`(object) へ分解した結果を受け取る。内部の判定は共有 guard `parseReturnTo` が担い、`value` が `/` 始まりで、かつ `new URL(value, "http://inventory.local")` の `origin` が base と一致し、解決後の pathname が `//` 始まりでないときだけ合格とする。合格しない場合は `fallback` を同じ guard に通し、それも不合格なら `{ to: "", search: {} }` を返す。`/\evil.example` や `/\t/evil.example` は `/` 始まりだが origin が `http://evil.example` に解決されるため拒否する。`/ok#frag` は `/ok`（hash なし）として合格する。`/..//evil.example` のように解決後の pathname が `//` 始まりになる値も拒否し、検証済みの `pathname + search` を再解析しない。`normalizeReturnTo(value, fallback)` は同じ guard を共有する primitive で、文字列 1 本（`pathname + search`）が必要な呼出側のために残す。共通 guard は値ごとの URL 解析を 1 回にし、不正値でも throw しない。新規に returnTo を受ける route を作るときは同じ検証を必ず入れる。
 
 **関連**: パターン①ページヘッダ（詳細ルートの戻る導線）。review-checklist カテゴリ 9 対応（状態を変える control へ戻れるか / 導線が行き止まりにならないか）。
 
@@ -493,6 +493,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-17 | PR #78 | DSR-15「判定フロー / 具体例」の主語を、production caller が 0 になった `normalizeReturnTo` から、戻り link を描画する側が使う `returnToLinkProps` へ同期。`normalizeReturnTo` は共有 guard `parseReturnTo` を使う primitive として残す旨を明記。 |
 | 2026-09-17 | returnTo 衛生 GA2 | 解決後の pathname が `//` 始まりの値を拒否し、共通 helper の URL 解析を 1 回にして throw を防ぐ契約と、送信側の手組みを存置する 2 site の例外を明記。 |
 | 2026-09-17 | returnTo 衛生（R3） | DSR-15 の判定を prefix 一致から origin 一致へ強化（`/\host` / tab 入り値を拒否、hash を落とす）。DSR-18 の共通 helper を `returnToLinkProps`（`to`/`search` 分解、`options.pathname` pin）へ拡張し、送信側は router の href を直列化する本則を明記。 |
 | 2026-09-10 | PR #50 | DSR-24 の取引先ピッカー runtime 反映により、DSR-01 の inline パネル是正対象を解消。 |
