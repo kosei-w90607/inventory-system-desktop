@@ -8,6 +8,7 @@
 
 ## 次の行動
 
+- **Writer 発注文書の整理（R2、PR #82）**: [Plan Packet](plans/2026-09-17-writer-dispatch-docs.md)。branch `codex/writer-dispatch-docs`。§5.6・既存 template・前提訂正 sweep の整理、docs / workflow 検証、Plan Review は完了。Gated Amendment 1（Final Review Minimum 2、`25cf5cb2`）により、Final Review は PR #82 で Double Audit（Sonnet + Opus）の broad を取得し、是正の closure 待ち。取り込み順は本変更の PR / CI / merge → closeout → ㉗再開時の main 同期。㉗の branch・packet・未決設計はこの作業で変更しない。local 検証は `.local/reports/writer-dispatch-docs/verification.md`、前後関係と競合解消の申し送りは同 directory の `integration-handoff.md`。
 - **㉗ 棚卸しの基準時点（STK-1 / STK-2）（R3、design）**: `plans/2026-09-16-stocktake-count-baseline.md`。branch `agent/stocktake-count-baseline-design`。監査 STK-1（P1）/ STK-2 起源。是正方式の owner 判断を Human Gate に置き、回答後に plan-gate へ。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
