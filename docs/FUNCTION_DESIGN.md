@@ -1,5 +1,7 @@
 # 在庫管理システム 関数設計書
 
+進行中の設計: [棚卸しと後着売上の時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md)（proposed、㉗）。関係する機能文書に改訂候補への案内を置く。現行の関数・wireが変更済みであることを意味しない。
+
 > **最終更新**: 2026-07-29 / UI request builder shared primitives 追加
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、DB_DESIGN.md（テーブル定義書）
 > **対象範囲**: 実装第1〜第4段階 + 第7段階 UI 基盤 (UI-12 共通レイアウト) + 第8段階 Phase 2 8-1 (UI-00 ホーム画面) + 8-2 (UI-07 売上データ取込み画面) + 8-6 (UI-shortcuts ショートカット一覧ダイアログ) + Phase 4 UI-11b バックアップ・復元 / UI-11a 閾値設定 / UI-10 棚卸し / UI-11c 操作ログ画面 Design Phase。後続段階は実装進行に合わせて追記する

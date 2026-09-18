@@ -4,6 +4,8 @@ New durable architecture decisions should use [../templates/adr.md](../templates
 
 ## Existing Decision Records
 
+- [棚卸しと後着売上の時点証拠（proposed）](2026-09-18-stocktake-time-evidence.md): 計数窓、資料受領、判定不能からの再実測、取消と移行。㉗のdesign出力であり未実装。
+
 The project already has ADR-like records under `docs/research/`. They remain valid and are linked here instead of moved in this workflow retrofit.
 
 | Decision | Existing record |

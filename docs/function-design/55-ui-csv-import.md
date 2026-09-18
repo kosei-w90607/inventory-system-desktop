@@ -3,6 +3,8 @@
 
 ## 55. UI-07: 売上データ取込み画面
 
+計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D4 / D9（proposed）。保留からの商品単位の再実測と、資料受領・業務取込み・欠落の表示を定める。以下の本文は現行画面の契約であり、新しい操作の実装済み仕様ではない。
+
 > **2026-08-01 evidence sync（2026-08-17 実態同期）**: UI-07 は「売上データ取込み」画面として、current operation の主動線を Z001/Z002/Z005 日報取込みに置く。既存の Z004 CSV import UI はPLU登録後の商品別売上・`pos_stock_sync`在庫増減・rollbackを実装済みの別トラックとして残し、IO-02は従来shapeと2026-07-06店舗採取layout Aを受理する。日報取込みは [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) / [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) を呼び、`sale_records` / `inventory_movements` を作らない。
 
 ### 55.0 REQ-401再設計ターゲット

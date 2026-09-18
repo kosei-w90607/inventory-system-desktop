@@ -1,5 +1,7 @@
 # テーブル定義（POS連携）
 
+計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D5 / D8（proposed）。資料受領記録と売上取込み状態を分離する。以下は現行スキーマであり、新列・新表は未実装。
+
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
 ---

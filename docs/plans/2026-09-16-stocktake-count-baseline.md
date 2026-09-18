@@ -1,25 +1,23 @@
-# Plan Packet: ㉗ 棚卸しの基準時点を「各商品の最終カウント時点」にする（STK-1 / STK-2、design-first、docs-only、R2）
+# Plan Packet: ㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、design-only、R3）
 
-2026-09-16 起草。出典は [監査 STK-1](../research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す)（P1 / confirmed）、[STK-2](../research/2026-09-16-diagram-audit.md#stk-2-棚卸し確定後に届く過去販売を二重に減算する)、[DOC-2](../research/2026-09-16-diagram-audit.md#doc-2-残る文書の意味の不一致) の `system_stock` 行、[横断検証 XFA-T1 / XFA-T2](../diagrams/cross-feature-verification.md#xfa-t1-保存した実数が後続の現物移動を打ち消す)。Plans.md「製品の未決判断」の「是正方式が owner 判断待ち」を本 packet の Human Gate で回収する。owner 2026-09-16「次何やるかふたつとって早速始めよう」で Coordinator が wave 12 の lane 2 に選定（lane 1 = ㉖ `docs/plans/2026-09-16-stock-movements-return-selected.md`、file footprint 互いに素）。file:line は origin/main `c6167c4d` で実測（Coordinator 2026-09-16）。本 lane は source docs の設計確定だけを行い、runtime は後続 lane ㉘（R3）に分ける。
+2026-09-16起票、2026-09-18にownerがCodexへ設計を委任。起票時の資料と旧案は内容commit feeb3fe9、および本書末尾の非遡及なReview Responseで追跡できる。現在の設計案は [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) に一本化する。旧案の実装指示や数値oracleを現在の契約として使わない。
 
 ## Workflow State
 
-Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
-
 - Evidence Mode: github
 - Phase: design
-- Risk: R2
-- Execution Mode: fable-window
+- Risk: R3
+- Execution Mode: codex-only
 - Plan Commit: pending
 - Amendments: none
-- Coordinator: Fable 5.1
-- Writer: Codex（発注書 61、owner 起動。owner 2026-09-16「Codex に回したほうが質良い」。設計判断は本 packet の D-D1〜D-D7 と owner 回答で確定済みのものを source docs へ書く役。relay 上限到達時のみ Sonnet subagent）
-- Plan Reviewer: Sonnet + Opus（独立 fresh context。R2 だが BIZ の在庫補正契約を定める設計のため 2 pass）
-- Final Reviewer: Sonnet + Opus（独立 fresh context）
+- Coordinator: Codex（ownerの明示した設計委任による起草・統合。Human Gateと正式なreview承認は代行しない）
+- Writer: Codex（このturnは設計文書と合成モデルのみ。runtimeは未着手）
+- Plan Reviewer: Sonnet + Opus（非Codex vendorのfresh context。今回の統合案の正式Plan Gateは未実施）
+- Final Reviewer: Sonnet + Opus（Writerと独立したfresh context）
 - Final Review Minimum: 2
 - Human Gate: ready,merge
 
-owner の設計判断 3 問（下記「owner への設問」Q1〜Q3）。これは Phase `design → plan-draft` の遷移条件（未解決の設計質問なし）であり、tracked の Human Gate 欄には置かない。回答は 2026-09-16 に揃い、反映済み（「owner への設問と回答」節）。manual（L3）は docs-only のため不要。runtime lane ㉘ の L3 で実機確認する。
+ownerの今回の指示は設計の引継ぎを許可する。実装開始・Ready・mergeの許可には読み替えない。現在のsource docsは現行実装の契約を保持し、改訂候補はADRへ案内する。詳細シグネチャ・migration・UI契約の同期と独立Plan Gateが揃うまでPhaseを前進させない。設計の技術的選択は委任範囲で詰め、未確認の店舗運用・ハードウェア事実を受容済みにしない。
 
 遷移記録（append-only）:
 - kickoff → spec-check → design（`24294ec4`）: Risk R2（docs-only。BIZ-06 / BIZ-03 / UI-10 の設計正本と decision-log を更新し、runtime 契約はこの lane では変えない）。Design Phase = 本 packet で方式を比較し Coordinator 既定案を置く。owner 回答待ちのため plan-draft へは進めない（DEV_WORKFLOW「design → plan-draft: no unresolved design questions」）。
@@ -28,363 +26,248 @@ owner の設計判断 3 問（下記「owner への設問」Q1〜Q3）。これ�
 - design → plan-draft → plan-gate（本 commit、2026-09-18）: 未解決の設計質問を解消。Q2 = owner 回答 2026-09-18（決めること 3 点: ゼロ行を含む保守案 / 余裕幅 10 分・条件付き / 完了済みへの後着は判定不能なら取込み全体を保留）と保留の出口の方向指示（現物数の入力・保存を新しい基準にする。確認チェックだけ・既存導線前提は不可）を D-D4 同日規則 / D-D8 / D-D9 へ反映。D-D9 の解除方式は Coordinator 案で、Plan Review の検証対象に置く。子 ID の衝突（`BIZ-03-D1` は 32 で使用済み）を D2〜D5 へ振り直し。Plan Review は新しい rally（round 1 から、Sonnet + Opus の独立 fresh context）。
 - plan-gate → design（state-backtrack、2026-09-18）: owner は Plan Gate と介入上限 8 を承認したうえで、同じ発言で設計要求を追加した =「仕組みで守る = 人が間違えた場合に検知・停止・訂正できる設計。設計で防げるのに運用へ委ねている部分を先に塞ぎ、そのうえで残存リスクを提示する」「EJ は PLU 販売の本番開始の前提、欠落・不完全・判定不能は実行拒否まで」「保留解除後でも誤った再実測を訂正できる導線」。D-D4 の判定の土台（日付比較）が変わる案を含むため、未解決の設計質問ありとして design へ戻す。Plan Commit は pending のまま。案は「設計判断」節の D-D10 候補、owner 回答後に D-D4 / D-D8 / D-D9 / Scope / AC を同期して新しい rally で Plan Review。
 
+引継ぎ（phase変更なし、2026-09-18）: owner「普通に君に設計任せる」を受領。反例ごとの条件追加を止め、時点証拠・復旧・保存順序をADRへ統合する。新しいsource契約はDB/command/保存・訂正の操作を直接定めるため、影響基準でRiskをR3へ更新しMatrixを作成する。旧rallyの評価はその対象commitに対する履歴として保持し、新案の承認には流用しない。
+
 ## Owner Effort Budget
 
-- 介入回数上限: 8（owner 2026-09-18 承認で 7 から再改訂。設計判断 5 回 + Plan Gate 承認 1 回 + Ready 1 回 + merge 1 回。旧 7 の内訳 = 設計判断 5 回 + Ready 1 回 + merge 1 回。4 から再改訂 2026-09-18、理由: design への state-backtrack で decision point が 3 つ増えた = Q2 `<=` 一律適用の不承認〈2026-09-17〉/ 決めること 3 点の回答〈2026-09-18〉/ 保留の出口の方向指示〈2026-09-18〉。前回改訂の根拠は Opus round 1 P2-6）。実績 7/8（6 回目 = owner review と D-D9 の保存単位の決定、7 回目 = Plan Gate 承認と上限の再改訂、いずれも 2026-09-18）
-- 実働時間上限: 60分（20 分から再改訂 2026-09-18、理由は介入回数と同じ。設問と回答の読了を含む。未実測）
-- relay 往復上限: 2
-- Plan Review round 天井: 3（既定 3。2026-09-18 からの新 rally で再計上、前 rally は天井到達で owner escalation 済み）
+- 介入回数上限: 8（既存のowner承認を維持）
+- 介入実績: 旧packetの記録7/8に今回の設計委任を加え8/8として扱う。このturnでは追加の選択・承認質問を出さない。後段の新たなHuman Gate依頼前に予算を明示して調整する
+- 実働時間上限: 60分（既存承認。ownerの実測作業時間は未実測）
+- relay往復上限: 2（ownerを伝書鳩にせず、read-only reviewは担当が回収する）
+- Plan Review round 天井: 3。今回の統合案の正式rallyは未開始。早期の設計点検をPlan Gateの承認と呼ばない
 
-既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
-承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
+このturnの最小完了経路は、設計案・反例検証・残る外部検証条件をレビュー可能な形で渡すこと。追加の証跡儀式やruntime実装へ広げない。
 
 ## Consultation Relay
 
-- Review Order Artifact: none
-- Review Order Ref: none
+- Review Order Artifact: 設計点検はADR・Matrix・合成モデルを指定したread-only依頼。正式Plan Gate発注はplan-draft完成後
+- Review Order Ref: pending（正式Plan Gate未実施）
 
 ## Risk
 
-Risk: R2
+Risk: R3
 
-Reason:
-docs-only（function-design 35 / 32 / 42 / 20、db-design tracking、architecture biz-task-specs、UI 73、decision-log、diagrams）。runtime code・migration・bindings・test は変えない。2026-09-18 の同日規則確定で、本 lane の docs は新しい 2 表（`stocktake_recount_flags` / `stocktake_recounts`）、Z004 取込みの preview の wire 変更と再実測を保存する command、Z004 parser の精算時刻抽出を**設計として**定める（実体の変更は ㉘、R3）。R2 を維持する（新 rally round 1 で裁定）: Risk Tiers の tie-break（stable contract / wire shape に触れるなら R3）は変更対象の impact を見る規定で、本 lane の diff は docs だけ、表・DTO・migration・bindings の実体は ㉘ が R3（Test Design Matrix / Contract Audit 付き）で受ける。本 packet は R3 の節（Spec Contract / Trace Matrix / Data Safety / Design Sources / Design Readiness / Contract Probe / Ledger）を備え、Plan / Final Review とも 2 pass。条件 = Ledger の各行を ㉘ の independent review で再検証する。後続 runtime lane ㉘ の前提となる BIZ 契約を書くため Plan Packet は必要。Test Matrix は rg oracle 中心の軽量版（本 packet の AC）とし、別 file を置かない（Risk Tiers: R2 は optional）。
+Reason: 現在のdiffは設計文書と合成probeのみだが、定める契約はDBの永続化・POS取込み・command token・棚卸し保存・訂正・移行に及ぶ。Riskはfile種別でなく影響で判定する。runtime lane㉘もR3で、別のplan-first commitと必要な実装検証を持つ。
 
 ## Goal
 
-Goal Invariant（owner 2026-09-16 の言い方を正とする）: 棚卸しは「**いつ数えても、年末（確定）時点へ数量を繰り越せる**」ことを中心に設計する。商品別に記録できた入出庫は自動で反映し、記録できない部分（Z004 が届くまでの POS 販売など）だけ店の訂正を受ける。その二つを**重ねて減算しない**契約を source docs に置く。評価額（`total_cost`）は各商品の古い実測数ではなく、繰り越し後の年末時点の数量で合計する。具体的には (a) カウント後の入出庫を確定が打ち消さない（STK-1）、(b) 確定後に届く過去販売の Z004 取込みが在庫を二重に減らさない（STK-2）、(c) `stocktake_items.system_stock` の意味が DB / BIZ / UI の文書で一致する（DOC-2）、(d) `total_cost` が確定時点（年末）の数量で計算される、を実装者が chat や本 packet を読まずに source docs だけで実装・テストできる。日報（Z001/Z002/Z005）は既存の置換方針（D-071、37）を完成させる別系統で、本 lane では触らない。
+Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消さず、実測へ含まれた後着売上を二重に反映しない。アプリが検知できる状態変化は保存前に止め、前後を証明できない取込みは再確認へ回し、誤った実測は後から現在の現物で訂正できる。提供されていない事実を正しいと推測しない。
 
 ### 最小完了条件
 
-- (1) decision-log D-090 が「基準時点 = 各商品の最終カウント時点、確定の補正量 = `actual_count − system_stock`（カウント時点差異）」と、その理由・棄却案・再訪条件を持つ
-- (2) 35 §20.4 / §20.5 / §20.7 / §20.8 と 20 §2.11 / 42 `update_count` が新しい契約（カウント時の `system_stock` snapshot、確定式、`apply_stock_change` 経由の補正、`current_difference` の意味）で書き換わり、旧「差異は動的計算」の記述が残らない
-- (3) 32 §15.4 / §15.5 / §15.8 に Z004 取込みの「カウント時点境界」（STK-2）と、取消時の snapshot 補正（D-D5）が書かれている
-- (4) 73 で UI-10-D2 の Rejected「自動織り込み」が D-090 で再訪されたことが分かり、UI-10-D14 が差異列の式・「現在在庫」列の扱い・運用ルール（Q2 の回答）を持つ
-- (5) tracking-system-tables.md の `system_stock` 説明が BIZ と一致する（DOC-2 の 1 行目を解消）
-- (6) runtime lane ㉘ の Scope（file / test / 生成物）が本 packet の「後続 runtime lane への申し送り」に file:line で記録されている
-- (7) `total_cost` の評価数量が「確定時点の在庫（繰り越し後）」で定義され、35 / tracking / 73 / D-090 で一致している（D-D7）
-- (8) 同日の Z004 の扱い（段 0 / 1 / 3、要再確認 flag、完了済み棚卸しへの後着の保留と再実測）が 32 / 35 / 73 / 55 / tracking / D-090 に書かれ、EJ による分割（段 2）が別 lane の部品として位置づけられている（D-D4 / D-D8 / D-D9）
+- 実測・受領・精算区間・在庫ledgerの意味と前後判定が、ADRだけで追える。
+- 通常、初回、時計不明、EJ不完全、同秒、取消、途中再開、旧DBについて拒否と復旧が定義される。
+- 設計モデルが主要な数値反例を再現し、採用案のassertが通る。
+- Matrixがruntimeで必要な検証と、モデルでは証明できない境界を分ける。
+- 本書・Plans・source docの案内が、現行実装と提案を混同させない。
 
 ### 失敗定義
 
-runtime code（`src-tauri/**`、`src/**`）の変更、DB migration の追加、`inventory_movements` へ業務日付列を足す設計への拡張（Non-scope）、owner の設問に回答が無いまま既定案を確定扱いして plan-draft へ進むこと、旧記述（35 `:435` / biz-task-specs `:482` の「差異は動的計算」）の残存。
+未検証の時刻へ仮値を入れる、安全を任意の60分や確認チェックで保証する、同秒の順序をtimestampで決める、旧snapshotを新方式へ読み替える、Plan Gate前にruntimeを書く、未実施のレビュー・実機検証を完了と表現すること。
 
 ### 非目的
 
-`inventory_movements` に業務日付列を追加する schema 変更（created_at のまま、Z004 は `sale_records.sale_date` で日付を持つ）、棚卸しの中止・確定取消 API（UI-10-D1 / D4 の Rejected を維持）、DATA-2（共有 JAN）、単位の拡張（別 design lane。Z004 の小数数量は本 lane で扱わない）、電子ジャーナル（EJ）の parser と 16 バイト名称の一意検査（同日規則の段 2。別 lane、本 lane は位置づけと申し送りだけ）、日報（Z001/Z002/Z005）取込み（在庫を動かさない、D-025）、現場で既に誤差が生じているかの調査。
+棚卸し確定の取消、過去評価額の自動訂正、部門売りの商品配賦、DATA-2全体の解消、実POSデータのgit格納、実機への書込み、Ready/merge。
 
-Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
+## 設計判断と保持する合意
 
-## 起票時実測（origin/main `c6167c4d`、Coordinator 計測 2026-09-16。Sonnet subagent の事実収集を Coordinator が実物で再確認）
+現在の詳細はADRのSPEC-STK-TIME-D1〜D9を正とする。
 
-- `src-tauri/src/db/schema_v1.rs:179-190` `inventory_movements` = id / product_code / movement_type / quantity / stock_after / reference_type / reference_id / note / is_voided / created_at。業務日付列は無く、`created_at` は `inventory_repo.rs:123-141` `insert_movement` 内の `chrono::Local::now()`（アプリ時計）。後続 schema（v2〜v6）に `inventory_movements` の ALTER は無い
-- `schema_v1.rs:208-225` `stocktakes`（started_at / completed_at / status / total_cost）と `stocktake_items`（system_stock NOT NULL / actual_count NULL / valuation_cost_price NULL / counted_at NULL）
-- `src-tauri/src/biz/stocktake_service.rs:260-306` `update_count`: step 3 `:286-292` で `update_stocktake_item_count(conn, id, actual_count, &now)`（`system_stock` は書かない）/ step 4 `:295-301` `current_difference = product.stock_quantity - actual_count`（動的）。`:400` `complete_stocktake`: `:441` force_fill は `fill_value = stock_quantity.max(0)` を actual_count に / 明細 loop `:481` `difference = product.stock_quantity - item.actual_count`、`:483` `adjustment_quantity = actual_count - stock_quantity`、`:484` `update_stock_quantity(.., actual_count)`、`:491` `stock_after: actual_count`、`:503` `AdjustedItem.system_stock = product.stock_quantity`（確定時点の live 値、カウント時点ではない）
-- `src-tauri/src/db/stocktake_repo.rs:268-279` `update_stocktake_item_count` = `UPDATE stocktake_items SET actual_count = ?1, counted_at = ?2 WHERE id = ?3` / `:406-427` `get_stocktake_items_for_complete` = `SELECT id, product_code, actual_count ... WHERE actual_count IS NOT NULL`（`system_stock` / `counted_at` を返さない）。商品ごとの最新 `counted_at` を引く関数は無い
-- `src-tauri/src/biz/csv_import_service/commit.rs:136-147` step 6b: `pos_stock_sync` 行だけ `apply_stock_change(.., -(quantity), SaleAuto, CsvImport, import_id, None)`。CSV の `settlement_date` は `sale_records.sale_date` にのみ保存（`:124`）。`:229` `apply_void_stock_corrections`（`rollback.rs:51` から呼ばれ、void した movement を商品ごとに合算して在庫を戻す）
-- `src-tauri/src/biz/inventory_service/common.rs:41-90` `apply_stock_change(conn, product_code, quantity, movement_type, reference_type, reference_id, note)` = 商品取得 → `stock_after = stock_quantity + quantity`（INV-2）→ 負在庫 warning → `update_stock_quantity` → `insert_movement`
-- `src-tauri/src/biz/daily_report_import_service/commit.rs`（Z001/Z002/Z005）は在庫・movement を触らない（`tests.rs:444-460` が `inventory_movements` 0 件を固定、37 `:11-13`、D-025）。監査の STK-2 が言う「日報取込み」は Z004 商品別 CSV 取込み（BIZ-03）を指す
-- `src-tauri/src/biz/integrity_service.rs:58-79` は `stock_quantity` と `SUM(quantity) WHERE is_voided=0` の突合のみ（時点の問題は検出できない）
-- 診断 test: `src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs:581-582` `diagnostic_cross_feature_req205_count_then_movement`（`XFA_TEMPORAL_FAIL`）/ `:608-609` `diagnostic_cross_feature_req205_req401_late_import`（`XFA_LATE_IMPORT_FAIL`）、いずれも `#[ignore]`。実行 = `cargo test --offline --lib cross_feature_tests -- --ignored --nocapture`（`docs/diagrams/cross-feature-verification.md:133`）
-- frontend: `src/features/stocktake/lib/stocktake-formatters.ts:13-16` `computeListDifference = current_stock - actual_count` / `StocktakePage.tsx:842` 「現在在庫」列・`:844` 「差異」列 / `src/lib/bindings.ts:255,258` `StocktakeItemDetail` は `system_stock` と `current_stock` の両方を持つ（DTO 変更なしで式を差し替え可能）
-- docs: 35 `:203` 「counted_at = 現在日時」/ `:218-219` 設計判断「差異は `system_stock` ではなく現在の `stock_quantity`」「`system_stock` は『開始時点の参考値』」/ `:283` step 5f / `:315` 「`apply_stock_change` を使わない理由」/ `:425` §20.6a 設計ノート（詳細画面の「差異」は補正 movement の quantity を正とし、`system_stock - actual_count` の snapshot 差は採用しない）/ `:435` §20.7「差異は動的計算で吸収」/ `:450` §20.8 INV-2「stock_after = actual_count を直接使用」/ `:512` 更新履歴。`rg -c '差異は動的計算'` = 1、`rg -c '開始時点の参考値'` = 1、`rg -c 'apply_stock_change を使わない理由'` = 1、`rg -c 'BIZ-06-D'` = 0
-- docs: 73 `:41` UI-10-D2 Rejected「BIZ 確定ロジック側で `counted_at` 以降の在庫変動を自動織り込む（現運用では織り込むべき商品単位データ自体が存在しないため実装不能。将来 Z004/PLU 運用が始まったら再検討）」+ `:42` Revisit trigger / `:97` UI-10-D10（差異 = `current_stock - actual_count`、「システム在庫」列を「現在在庫」列へ改称）/ `:125` UI-10-D13（最終 ID）/ `:378` §73.14 の out-of-scope「BIZ-06 確定ロジックの変更（… UI-10-D2）」/ `:408-409` 変更履歴。`rg -c 'UI-10-D14'` = 0、`rg -c '実装不能'` = 1
-- docs: `db-design/tracking-system-tables.md:110` 「カウント時点のシステム在庫」/ `:116` 「差異の表示は『現在の products.stock_quantity - actual_count』で動的計算。system_stock は『カウントした時点のシステム在庫』を参考値として記録」（`rg -c '動的計算'` = 1）。`architecture/biz-task-specs.md:465` / `:482`（`rg -c '動的計算'` = 2）。`32-biz-csv-import-service.md` `:285` step 6b（INV-1 符号反転）/ `:336` §15.5 / `:471` §15.8（`rg -c '棚卸し'` = 0）。`42-cmd-sales-stocktake.md:224` `#### update_count`。`20-io-product-repo.md` §2.11（stocktake_repo、`stocktake_repo.rs:267,405` の doc comment が参照）
-- Z004 取込みの warning 経路: preview / parse 結果（`csv_import_service/mod.rs:83` `warnings: Vec<String>`、`parse.rs:89,122,212`）にだけあり、commit 結果 `ImportResult`（`mod.rs:173-180`: csv_import_id / status / total_items / total_amount / skipped_count）には無い。`skipped_count` は error 行数（`commit.rs:172`）。`csv_imports.imported_at`（`schema_v1.rs:141`）が取込みの commit 時刻で、1 取込みの movement は同一 TX のため `created_at` が揃う。`VoidedMovement`（`sales_repo.rs:168-171`）は product_code / quantity のみ
-- 既存 test で新契約と衝突するもの: `stocktake_service.rs:869-872`（`current_difference` = 3、「system_stock(10) ではなく現在値」）/ `:1218`（`stock_quantity = actual_count`）/ `:1221` `test_complete_req205_force_fill_sets_actual_to_system_stock` / `stocktake-formatters.test.ts`（`current_stock: 10, actual_count: 7 → 3`）。廃番 stock=0 の自動入力（`stocktake_service.rs:345-353`）は開始時に `actual_count = Some(0)` / `system_stock = 0` / `counted_at` NULL
-- レジ（Casio SR-S4000）の電子ジャーナル（field-check `approved-readable` の公式マニュアル、2026-09-17 確認）: PC ツール説明書 ECRCV17 §2.1.1 (2) が SD 上の EJ file `\CASIO\SR500_550_4000\XZ\Ejyymmdd.TXT` を対象にし、§4.3 で取込み・閲覧・期間指定の書出しができる。本体説明書 SRS4000 p.95「売上 /EJ 保存設定」= 精算時に売上データと EJ を SD へ保存する設定（既定では EJ は日計精算で消える）。ジャーナル印字例（p.27）は取引ごとに日付/時刻・担当/マシン/一連番号・PLU 行（`PLU0027 ¥880`、`10 点 @128`）を持つ。EJ の sample は 2026-09-17 に 1 日分を採取済み（形状は次項）。Z004 は返品を quantity < 0 で出し（23 `:266`）、数量・金額とも 0 の行は parse で除外される（`parse.rs:94`）。`sale_date` の元は精算日で、日を跨いだ精算では販売日と一致しない
-- **EJ 実物 1 日分の形状（2026-09-17、field-check `approved-readable/EJ_採取ファイルとおまけ`、値は記録しない）**:
-  - 確認済み: CP932 / CRLF / 全行 24 バイト固定幅（レシート印字の写し）。1 日 1 file で末尾が精算（日計明細）、冒頭に前日の精算後の操作が入り得る。ECRCV17 の取込みログは 911 件すべて `EJyymmdd.TXT → EJyymmdd_0001.TXT`（`_0002` は 2 件）
-  - 取引の単位: 「`[モード] YYYY-MM-DD HH:MM`」行 + 「`レジ番号-一連番号`」行で始まる。**時刻は分精度（秒なし）**。モード欄は空（通常登録）/ `PGM` / `精算` を実物で確認、`戻`（返品）も実物 2 件で確認（ヘッダのモード欄に出る。明細の金額は正のままで、負になるのは日計明細だけ = 返品の判定はモード欄）。出金・入金・両替も同じヘッダを持つ
-  - 明細行: 「名称 + `\金額`」、複数個は直前に「`n 点 @単価`」行。訂正は明細直後の「`訂正 -金額`」行（SRS4000 p.29 印字例）。合計・預り・釣りは全角 `￥` + 全角数字、明細は半角 `\` の混在
-  - **商品コードは載らない**: 明細行に PLU 番号・JAN は無く名称のみ（説明書 p.27 の `PLU0027` は名称未設定時の既定名）。Q2 (ii) の「PLU 番号 → 商品」は成立せず、商品の特定は PLU 名称の照合になる
-  - 名称の上限: app の PLU 出力は全角カナ → 半角カナ変換の後 CP932 16 バイトへ切り詰める（`plu_formatter.rs:98` `NAME_MAX_BYTES`、`:244-275`）。レジ側の 16 バイトは不変（owner 2026-09-17「その中で表現するしかない、半角カナとかで」）。**切り詰め後の名称の重複検査は現行に無い**。EJ は半角カナを印字する（実物で確認）
-  - 店は PLU 販売を未使用（owner 2026-09-17）。**PLU 明細行の実物（2026-09-17 夜、PLU テスト登録日の EJ 5 本 `EJ260814`〜`EJ260817`、値は記録しない）**: PLU 登録の販売 1 商品（販売 1 取引 + `戻` 1 取引）を確認。行の形は部門登録と同じ「名称 16 バイト + 金額 8 バイト」で、**PLU 番号・JAN・メモリ No.・部門リンク先の部門名はどれも出ない**。名称はレジの PLU 一覧（field-check `approved-readable/ｽｷｬﾆﾝｸﾞPLU(商品).txt`）の登録名称と一字も違わない。レジの名称欄は 16 バイトしか受け付けず（owner 2026-09-17。同一覧の実測でも最大 16 バイト、16 バイトちょうどが 9 行）、EJ の名称欄も 16 バイトなので印字で欠ける余地は無い。同じ商品を 2 個売った取引は「`n 点 @単価`」行でなく**同じ名称行が 2 回並ぶ**（スキャン 2 回）ため、parser は両方の形を数える。PLU 行と部門行を区別する印は無く、区別は名称と部門名の集合の照合による。同一覧では実登録 933 行のうち部門名と同じ名称の PLU が 3 行あり（残り 3851 行は空きスロット、ほかに名称の重複なし）、この形の PLU は EJ 上で部門売りと区別できない
-  - **`_0002` の意味 = 同じ日付の SD file の取込み 2 回目**: `ImportEJFile.log` で `EJ260815.TXT` が 08/15 に `_0001`、08/31 に `_0002` として取り込まれている。`_0001` は取込み前の精算 2 回分まで、`_0002` はその後の操作と精算だけを持ち、内容は重ならない（同日の精算は同じ file へ追記され、取込み後の精算は続きだけを持つ）。1 日分は `_0001` から順に連結して復元する
-  - **Z004 側の実測（2026-09-18、field-check `approved-readable/Z004_01 _0001.CSV`、値は記録しない）**: header 6 行に「精算回数」と「時刻」（分精度）がある。現行 `z004_parser.rs` が取り出すのは日付だけ（`settlement_date`）。EJ の精算行も同じ精算回数（`Z nnnn`）と時刻を持つため、Z004 の 1 file と EJ の 1 精算区間は精算回数で対応づけられる（同日複数精算でも可）。sample は登録 PLU 全件を並べ、data 5000 行すべてが個数・金額 0 = **「売って返して差引 0」と「動きなし」は Z004 だけでは区別できない**（owner 2026-09-17 の指摘を現物で確認）。`counted_at` は app のローカル時計・秒精度（`stocktake_service.rs` `chrono::Local::now()`）、EJ はレジ時計・分精度
-  - (ii) の成立条件: (a) PLU 明細行に登録名称がそのまま印字される = **成立（上記実物）** (b) 16 バイト名称が商品間で一意、かつ部門名と衝突しない（PLU 出力時に検査し、該当する商品だけ「判定不能 → (iii)」）。番号は併記されないため (b) は省けない。照合キーは `plu_formatter` の変換関数を共用する。一段目の早道 = `counted_at` がその日の最終取引より後なら全部反映済み / 最初の取引より前なら全部未反映（商品の特定が不要）。Q2 の店回答どおり営業中カウントがあるため、これだけでは足りない
-- decision-log の最終 ID = D-089（`:730`）。`rg -c 'D-090' docs/decision-log.md` = 0
-- diagrams `cross-feature-verification.md:150` XFA-T1 / `:164` XFA-T2 / `:187` 未検証範囲（棚卸しと CSV 取消の時点関係）。`rg -c '方式は採用していない'` = 1
+| 既存判断 | 現在の扱い |
+|---|---|
+| D-D1 / D-D2 | 実測時snapshot、補正N-Lを維持。計数contextと版・cursorを加える |
+| D-D3 | カウント時在庫・入力値・差を維持。古い入力を現在の実測として再送しない |
+| D-D4 | 日付/保存時刻だけの比較を廃止する案。受領順と証明済みの時間範囲で分類 |
+| D-D5 | 最初の有効な吸収先を補正する方針を維持。秒精度timestampでなくledger cursorと実測順序 |
+| D-D6 / D-D7 | durable判断はsourceへ。過去評価額は非遡及、現在庫復旧と区別 |
+| D-D8 | 要再確認は永続化し、force_fillで迂回不可。ゼロ行も検査 |
+| D-D9 | 商品ごとの独立再実測を維持。取消で消さず、過去の記録からも訂正可能 |
+| D-D10 | 仮始端・一律60分・大差閾値を安全条件にする案は不採用候補。ADRの証拠・拒否・復旧に統合 |
 
-## 問題の構造（設計の前提）
-
-- 棚卸しは 10 月〜大晦日の長期作業で、カウント後も入出庫が続く（35 §20.5 force_fill の設計判断、SP-205-09）。現行は「差異を動的に計算する」ことで棚卸し中の在庫変動を許容したが、確定時に `stock = actual_count` へ置換するため、カウント後の入出庫が全部打ち消される（STK-1、XFA-T1 は入庫 / 手動販売 / 廃棄 / 返品 / POS 販売の 5 入口すべてで再現）
-- 手動の入出庫（入庫・手動販売・廃棄・返品交換）は今日の運用で既に起きる。UI-10-D2 が「自動織り込みは実装不能」とした根拠（商品単位の販売データが無い、D-025）は POS 販売にだけ当てはまり、手動 movement には当てはまらない。したがって STK-1 は Z004 運用開始を待たずに現実の問題
-- movement の `created_at` はアプリ時計であり、Z004 の販売日（`sale_records.sale_date`）とは別。Z004 は 1 日分をまとめて翌日以降に取り込むため、「カウントより前に売れたが、カウントより後に取り込まれた」販売が必ず生じる（STK-2）。時刻は分からず日付だけが分かる
-
-## 設計判断（Coordinator adjudication、Plan Review と owner 回答で覆せる）
-
-- **D-D1 基準時点 = 各明細の最終カウント時点（`counted_at`）**: `update_count` は `actual_count` / `counted_at` と同時に `system_stock = そのときの products.stock_quantity` を書く（再カウントは全部上書き）。force_fill の自動補完は `system_stock = actual_count = 現在庫`（差異 0）とし、**`counted_at` は NULL のまま**（実測ではないため基準時点を作らない。owner 反例 (a) / Opus F1。開始時の廃番 stock=0 自動入力〈`counted_at` NULL〉と同じ扱い）。**カウントの保存値は常に保存時点の現物の実数**（実測の再入力）。「保存済みの数から売れた分を引く」訂正操作は提供せず、UI-10-D2 の上書き再入力は「実数の再入力」と定義し直す（owner 2026-09-17 の反例: 10 保存 → 入庫 5〈現物 15〉→ 2 売れて 8 と入力すると snapshot 15、確定 15 + (8 − 15) = 8 で現物 13 に対し入庫 5 が消える。13 を入力すれば 15 + (13 − 15) = 13）。これは既存運用の言い換えではなく「販売のたびに保存済み数量を減らす手作業を終える」変更であり、店にはその変更として説明する（owner 2026-09-17）。未実測（`counted_at` NULL、`actual_count` NULL）の `system_stock` は開始時点の参考値のままで「カウント時在庫」ではない（表示は D-D3）。これで DB 定義「カウント時点のシステム在庫」（tracking `:110`）に実装を合わせ、DOC-2 の 1 行目を「DB 定義が正、BIZ / 実装を追従」で解消する。棄却: 新列 `counted_system_stock` を足す（開始時点の値を使う設計が無く、列を増やす理由が無い）
-- **D-D2 確定の補正量 = `actual_count − system_stock`（カウント時点差異）、`stock_after = 現在庫 + 補正量`**: 自動で繰り越すのは「実測より後に発生し、実測数にまだ含まれていない増減」であり、「実測より前に発生して後から取り込まれた増減」とは区別する（後者は D-D4 の境界で除外。owner 2026-09-17 条件付き賛成）。「店の訂正が不要」と言えるのは商品別に記録できる範囲だけで、PLU 未移行の商品は自動追跡の対象外（UI-10-D2 の元の制約）。カウント後の入出庫は現在庫に含まれたまま残る（STK-1 解消。例: カウント 10 / snapshot 10 → 2 販売で現在庫 8 → 確定: 補正 0、在庫 8）。補正は `apply_stock_change(MovementType::Stocktake, ReferenceType::Stocktake, stocktake_id)` を使う（INV-2 の通常式に戻るため、35 `:317` の「`apply_stock_change` を使わない理由」は撤回。二重 lookup は 4000 件でも確定 1 回限りで問題にしない）。差異 0 の明細は movement を作らない（現行同様）。`AdjustedItem.system_stock` はカウント時点の snapshot、`stock_after` は補正後の現在庫にする。確定後の在庫はカウント後の入出庫分だけ「数えた数」と一致しなくなる（owner の例: 帳簿 10・実測 8、その後入庫 5・販売 2 → 確定 13 + (8 − 10) = 11）。補正後の在庫は負になり得る（例: snapshot 10 / 実測 3 → その後 5 販売 → 3 − 5 = −2）。処理は止めず（INV-3 と同じ方針）、`apply_stock_change` の負在庫 warning は別欄を作らず、結果一覧の既存 `stock_after` 列で負値をそのまま見せる（Opus F6）。`total_cost` の評価数量は D-D7 で確定時点の在庫にする（実測数のままにしない）。棄却: 確定時に `counted_at` 以降の movement を SUM して繰り越す（`inventory_repo` に期間 SUM が無く、snapshot 差分と数学的に同値〈P + (live − S) − live = P − S〉で snapshot の方が小さい）/ カウント後に動いた商品の再カウント必須（4000 件・3 か月の作業で毎日売れる商品が再カウント対象になり運用不能）/ 運用ルールだけで回避（長期棚卸しでは守れない）
-- **D-D3 差異表示 = `system_stock − actual_count`（カウント時点差異）**: `update_count` の `current_difference`、一覧の差異列（UI-10-D10、`computeListDifference`）、確定結果の `AdjustedItem.difference` を同じ式にする。一覧とカウント入力欄の在庫列は「現在在庫」（`current_stock`）から**「カウント時在庫」（`system_stock`）**へ戻し、差異と同じソースにする（UI-10-D10 が「差異の根拠と表示在庫が別ソースだと『現在在庫 10 / 実際 9 / 差異 +3』の矛盾表示になる」と禁じた状態を、snapshot 基準でも作らない。UI-10-D10 の「現在在庫に揃える」判断は UI-10-D14 で supersede し、非遡及で残す）。表示条件（owner 2026-09-16 指摘）: 未実測行（`actual_count` NULL）は在庫列も差異も「—」（開始時点の `system_stock` をカウント時在庫として出さない）。自動補完行（`actual_count` あり・`counted_at` NULL = force_fill / 廃番 stock=0）は値を出し「自動補完」注記で実測と区別する（差異は 0）。現在在庫は在庫照会で確認できる（記録詳細の `stock_after` は補正処理直後の在庫であって今の在庫ではない）。動的差異（`current_stock − actual_count`）は D-D2 の下では「これから補正される量」を意味しなくなるため表示しない。棄却: 両方の差異を出す / 「現在在庫」列を残したまま差異だけ snapshot 基準にする（UI-10-D10 が禁じた矛盾表示）
-- **D-D4 Z004 取込みの「カウント時点境界」（STK-2）**: BIZ-03 commit step 6b で `pos_stock_sync` 行の在庫減算の前に、その商品の最新 `counted_at`（進行中・完了済みを問わず `stocktake_items` の最新 1 件、未カウント = NULL）を引き、CSV 行の `settlement_date` が「カウント日より前」（`settlement_date < substr(counted_at, 1, 10)`）なら在庫変動をスキップする（販売も返品〈quantity < 0〉も同じ規則で、符号を問わない）。前提: `sale_date` は精算日で、対象期間が実測の前後どちらか確定できること（日を跨いだ精算は精算運用で確定させる、owner 2026-09-17）。**段 0 の健全性はこの前提に全面的に依存する**（反例: 日 X 22:00 に 2 販売 → 23:30 実測 8 → 精算が X+1 00:10 → D = X+1 > date(C) で通常適用 → 確定 6、現物 8。Opus round 1 P2-2）。source docs に落とす = D-090 Decision の前提 1 行「精算は当日中に行う」、73 UI-10-D14 の運用ルール、D-090 Revisit「日跨ぎ精算が常態化した場合」。**同日（`=`）の行は段で判定する（owner 2026-09-18 確定、Q2）**: 記号 = 商品の最新実測時刻 C、精算日 D、Z004 header の精算時刻 Tz（分精度、layout A の meta 行。時刻を持たない shape は Tz なし）、余裕幅 = 定数 10 分（1 か所の定数。precondition-dependent = 運用条件「レジの時計を PC に合わせる」が前提で、10 分は実測で保証された時計差ではない）。段 0: D < C の日付 → スキップ / D > C の日付 → 通常適用。段 1: 同日で `C ≥ Tz + 余裕幅` → その file の当該商品の販売は全部カウント前 → スキップ。**段 1 の前提 = 計数の開始が精算より後であること**。`C` は保存時刻で計数時刻の上界にすぎず、段 1 だけが「時刻が後ろへずれるほど多くスキップする」非保守的な分岐になる（反例: 19:50 に 10 を計数 → 2 販売 → 20:00 精算 → 20:15 に 10 を保存 → 段 1 成立で全スキップ → 確定 10、現物 8。flag も保留も立たない。Opus round 1 P2-5）。app は計数時刻を知り得ず、実測時刻の入力欄を足しても正しい時刻の自己申告に依存する点は残る（owner 2026-09-18）。**共通の前提 =「入力された数が保存時点の現物数である」= 実測から保存まで対象商品の数量を動かさない、動いたら再確認する**。現場で守れることを条件にした受容候補（precondition-dependent、owner 2026-09-18）。破れたときの誤差は**過大・過小の両方向**（数えた後の販売をスキップすれば過大、数えた後の返品をスキップすれば過小）。32 §15.8 と 73 UI-10-D14 に前提と両方向の帰結を明記する。**「精算後に数え始める」だけでは足りない**（owner 2026-09-18）: 精算後にも販売・返品は起こり、それは次の精算の Z004（翌日以降の日付）に入る。反例 = 20:00 精算 → 20:05 に 1 販売 → 20:30 実測 9（この販売を含む）→ 翌日の Z004 が 20:05 の販売を持ち、D > date(C) の段 0 で通常適用 → 8、現物 9（二重減算。返品なら逆向き）。段 0 のもう一つの前提 =「その日の最終精算から実測までの間に、当該商品の POS 販売・返品が無い」。Z004 だけでは検出できず、塞げるのは EJ（段 2、別 lane）。それまでは保存単位とは別の運用条件「精算後にレジで売った・戻した商品は、その日は数えず翌営業日の精算後に数える（数えてしまったら数え直す）」と両方向の帰結を明記する。**現場で守れることが条件で、現時点で受容済みではない**（owner 2026-09-18）。**対称の分岐（C が十分早ければ通常適用）は持たない**: Z004 が持つのは期間の終わり（精算時刻）だけで、その日の最初の販売時刻が分からないため、カウントより前の販売が無いと言えない。結果として営業中カウントは段 3 へ落ち、完了済みなら保留になる（安全側。運用負担は D-D7 の運用ルールと将来の段 2 で減らす。Sonnet round 1 P2-2 = 既知の受容済みトレードオフ）。段 2: EJ による前後分割（別 lane の部品。入るまでは常に判定不能）。段 3: 同日でそれ以外 = 判定不能 → 最新実測の持ち主が進行中の明細なら D-D8（通常適用 + 要再確認 flag）、そうでなければ D-D9（取込み全体を保留し、再実測で解除）。`<=` の一律適用は採らない（owner 2026-09-17 不承認）。`sale_records` は作る（売上は正）。movement は作らない。境界判定は実測カウント（`counted_at` NOT NULL）だけを基準にし、force_fill / 廃番自動入力の明細（`counted_at` NULL）は基準にしない。判定形: 対象 product_code 群について `stocktake_items` と `stocktake_recounts`（D-D9）の和集合から `MAX(counted_at)` と持ち主（進行中明細 / 完了済み明細 / 再実測）を 1 回の query で map として引き、`settlement_date`（`YYYY-MM-DD`）と `substr(counted_at, 1, 10)` を比較する（Opus F14 / F17）。operator への通知は preview / parse 段階の既存 `warnings`（`mod.rs:83`）に「棚卸しで計上済みのため在庫を変更しない行 N 件」を、**段 0 由来（前日以前）と段 1 由来（同日、精算より後のカウント）で件数を分けて**載せ（段 1 は保存時刻基準で非保守的なため、想定外に効いた日に operator が気づけるようにする。新 rally Opus round 2）、commit 結果 `ImportResult` の wire 型は変えない（Opus F3。preview の `PreviewData` は D-D8 / D-D9 で項目が増え、再実測の保存 command が増える = ㉘ の wire 変更。`CommitRequest` は変えない。preview と commit の間にカウントが入れば件数は変わり得るが、在庫を守る規則は commit 時の判定が正）。不変条件（32 §15.8 / 35 §20.8 に置く）: 「カウント前に発生した販売の movement は、カウント後に作られない」。これにより D-D4（日付比較）と D-D5（時刻比較）が整合する（Opus F16）。棄却: 取込みを拒否（売上記録まで失う）/ movement を quantity 0 で残す（整合性チェックと履歴を汚す）/ Z004 運用開始まで境界を設計しない（UI-10-D2 の再訪条件がまさに Z004 運用開始で、設計は今しておく方が実装が 1 回で済む）
-- **D-D5 取込み取消（rollback）で、カウントが既に現物で確認済みの分を二重に戻さない**: `rollback_csv_import` が void する movement の商品について、その取込みの `csv_imports.imported_at`（1 取込みの movement は同一 TX で `created_at` が揃うため、この 1 点で比較する。`VoidedMovement` の拡張は不要、Opus F8）より後の実測カウント（`counted_at` NOT NULL）のうち最も早いものを探す。(i) それが進行中の棚卸しなら、その明細の `system_stock` から void した quantity 分（商品ごとの SUM）を戻す（`system_stock -= SUM(voided.quantity)`。販売 −2 を void → snapshot +2。例: 開始 10、誤 CSV −2 で 8、カウント 10 / snapshot 8 → 取消で現在庫 10、snapshot 10 → 確定で補正 0 → 10）。(ii) それが完了済みの棚卸しなら、在庫戻しと同額を打ち消す `stocktake` movement（商品ごとに void した quantity の SUM で 1 本、reference = その棚卸し、note「取込み取消 #id に伴う棚卸し補正の打ち消し」。`apply_void_stock_corrections` の商品ごと集約と同じ粒度）を同 TX で追加する。この movement は棚卸し記録詳細（65 slice 4c、20 §2.11a の JOIN）に確定時の補正とは別の行として note 付きで出る。「差異 = snapshot 差（符号違い）」の同値は確定時の補正 movement にだけ成り立ち、打ち消し movement は対象外（Opus round 1 P2-4）（owner 反例 (b) / Opus F2: 誤 CSV −2 で 8 → 実測 10 → 確定で +2 → 10 → 取消で +2 → 12 になるのを、打ち消し −2 で 10 に保つ。stock = SUM(movement) も保たれる）。より後のカウントが無ければ現行どおり在庫を戻すだけ。理由: 実測カウントはそれ以前の記録誤りを現物で上書きしており、取消による在庫戻しはその上書きと二重になる。日報取込み（Z001/Z002/Z005）は在庫を動かさないため対象外。手動記録の取消機能は現行に無い（DOC-1）ため対象外、将来追加時に同じ規則を適用する。BIZ-07 `fix_integrity`（movement を作らず在庫を直接書く、D-051 / BIZ-07-D2）は本 lane の対象外とし、35 §20.8 に「棚卸し進行中の fix_integrity は snapshot 前提を外れ得る（mismatch 0 が通常で発火しない）」を 1 行残す（Opus F18）。棄却: 棚卸し中の rollback を禁止（UI-10-D1 の「偽の状態を作らない」に反し、誤取込みの是正手段を 3 か月止める）/ 完了済みを対象外にする（二重戻しが残る）
-- **D-D6 決定の置き場**: durable な横断判断は decision-log D-090（D-025 / SP-205-09 / UI-10-D2 を引く）。BIZ 契約は 35（BIZ-06）と 32（BIZ-03）、repo 契約は 20 §2.11 / §2.11a、CMD は 42、DB 意味は tracking、UI は 73 UI-10-D14、記録詳細の差異定義は 65 slice 4c。UI-10-D2 の Rejected 本文は書き換えず、行末に「→ 2026-09-16 D-090 で再訪（UI-10-D14）」を追記する（非遡及）。biz-task-specs.md `:465` / `:482` は要約層として同期
-- **D-D7 評価額は年末（確定）時点の数量で合計する**: `total_cost = Σ max(確定時点の在庫〈補正後の stock_after、= 年末数量〉, 0) × valuation_cost_price`。現行の「`actual_count × valuation_cost_price`」は、10 月に数えた実測数で 12 月末の資産評価を出すことになり、繰り越し（D-D2）が正しくても年末時点の要求（SP-205-08、税理士報告）とは別物になる（owner 2026-09-16）。負在庫の行は評価 0 とし、結果一覧の `stock_after` 列で負値を見せる（D-D2）。明細ごとの確定時点在庫は新しい列に保存しない（`total_cost` は header に保存済み、記録詳細は差異と補正 movement の `stock_after` を既に持つ。明細単位の評価額一覧が要求されたら列を足す = D-090 Revisit）。運用ルール（73 UI-10-D14）: 「確定は年内最後の Z004 を取り込んだ後に行う」（確定後に届く年内販売は在庫には反映されるが `total_cost` には入らない）。棄却: 実測数 × 原価の据え置き（年末時点にならない）/ 明細に `closing_stock` 列を足す（現時点で読む画面が無い）
-- **D-D8 同日・判定不能・進行中 = 通常適用 + 要再確認 flag（owner 2026-09-18 確定）**: 対象 = `pos_stock_sync=true`・最新実測が同日・段 1 で反映済みと判定できなかった商品のうち、スキャニングコードが Z004 file に載っているもの。**数量・金額とも 0 の行も対象**（カウント前 2 販売 → 実測 8 → カウント後 2 返品は日計 0 でも現物 10。現行 `parse.rs:94` はゼロ行を商品照合前に捨てるため、対象抽出ではゼロ行を残す。movement / `sale_records` へは従来どおり流さない。商品照合は `find_by_jan_code`。**複数商品に一致する JAN（共有 JAN）は、ゼロ行・非ゼロ行とも、候補の全商品を再確認対象の判定に掛ける**（非ゼロ行の movement は現行どおり先頭の商品へ流すが、実際に動いた商品は候補のどれか分からない。販売と返品が相殺したゼロ行でも実測後の増減はあり得るため「ゼロだから除外」にしない。owner 2026-09-18）。0 件一致のゼロ行は対象にする商品が無いため無視し、error 行へも昇格しない。**ゼロ行だけの file**: 現行 `parse.rs:156` の実質 0 件ガード（売上行もエラー行も空なら「取込み対象のデータがありません」で拒否）は、**棚卸しの境界判定に掛かった行**（`pos_stock_sync=true` で実測を持つ商品に一致し、段 0 のスキップ・段 1 のスキップ・要再確認・保留のどれかに判定された行。ゼロ行を含む）が 1 件でもあれば通す（売上 0 件の取込みとして `csv_imports` を作り、flag を保存する / 保留にする / 再実測後はスキップだけの取込みとして完了する）。判定に掛かった行も無ければ現行どおり拒否。同日分は Z004 どおり通常適用し、その明細に flag を立てる（新しい小さな表 `stocktake_recount_flags(stocktake_item_id, csv_import_id)`、再起動しても残る）。flag が 1 件でもある棚卸しは確定できず、force_fill でも通さず flag も消えない。flag を消せるのはその明細の実測の再保存だけ（D-D1 で snapshot を取り直すため通常適用分を含んで整合する。数値例: 帳簿 10 → 実測前に 2 販売して 8 をカウント → その後 3 販売で現物 5 → 一日分 5 を通常適用して現在庫 5、古い差異 8 − 10 を確定で足すと 3 になる → 再実測 5 / snapshot 5 で補正 0 → 5）。取込み取消はその取込みが立てた flag を消す（取消前に再カウント済みなら flag は既に無く D-D5 (i) が働く）。同日の追加取込みは file ごとに独立に判定し flag は取込み id ごとに積む。運用（73 UI-10-D14）: EJ が入るまでは「精算後に数え始め、余裕幅を空けて、その場で保存する。実測から保存まで対象商品を動かさない」が flag を立てない数え方（同時に段 1 の健全性の前提、D-D4）。ゼロ行を対象にするため、PLU 販売が 0 でも Z004 に載っていて在庫連動が有効なら flag は立つ。棄却: 非ゼロ行だけ（差引 0 の穴が残る）/ 同日カウントがある日は取込みを止める（進行中は flag で確定を止められるため、売上取込みを遅らせる理由が無い）/ 再入力を促すだけ（状態が残らず確定を止められない）
-- **D-D9 同日・判定不能・進行中でない = 取込み全体を保留し、商品ごとの再実測で解除（保留 = owner 2026-09-18 確定。解除の保存単位 = owner 2026-09-18 案 B 採用「商品ごとに実測と補正を保存し、取込み本体から分離する。保存値は保存時点の現物数という原則に合う」）**: 完了済みの棚卸しは再入力できない（35 §20.4 step 2 が `StocktakeNotInProgress` で拒否）ため、通常適用 + 警告では二重減算が直らない（10 → 2 販売 → 実測 8 で確定 → 後着を通常適用すると 6）。そこで判定不能が 1 商品でも残る file は書込み前に取込み全体を止める（売上取込みの遅延は受け入れる。保留そのものは状態を持たず、file を選び直せば同じ判定に戻る）。**解除 = 再実測の保存（BIZ-06 の新しい関数、取込みとは独立）**: 保留画面で 1 商品ずつ現在の現物数を保存し、保存 1 回が 1 TX で (a) 再実測行を INSERT（新しい表 `stocktake_recounts(id, stocktake_item_id, counted_at, system_stock, actual_count)`、append-only。`counted_at` = 保存時刻 C'、`system_stock` = そのときの現在庫。**`csv_import_id` は持たない** = 取込み前に保存するため未作成の取込みに依存させない）(b) 入力値 ≠ 現在庫なら `stocktake` movement（quantity = 入力値 − 現在庫、reference = 元の完了済み棚卸し、note「確定後の再実測」。D-D5 (ii) と同じ「完了済み棚卸しに note 付きの別行を足す」型、差 0 は movement なし）を行う。対象にできるのは、最新実測の持ち主が完了済み明細または先行する再実測である商品（持ち主が進行中明細なら `update_count` を使う）。D-D1 と同じ型 = 保存値は保存時点の現物の実数、基準在庫は保存時点の現在庫なので、一部を保存した後に入出庫があっても次の商品の保存はその時点の在庫を基準にする。保存済みの再実測と補正は committed で、中断・cache の期限切れ・アプリ再起動で失われない（再開すると、まだ有効な再実測が無い商品だけが保留対象に残る）。**保留が外れる仕組み**: 再実測は D-D4 の基準（`stocktake_items` との和集合）に入るため、再 preview で当該商品は C' を基準に段 0（`D < date(C')`）または段 1（`C' ≥ Tz + 余裕幅`）が成立してスキップに判定され、全保留対象がそうなれば保留対象が 0 になって通常の commit で通る（共有 JAN の行は D-D8 と同じ規則で、候補の全商品が保留対象になる）。取込み本体は再実測を運ばず、`CommitRequest` に再実測の項目は足さない。条件を満たさない再実測（余裕幅未満、Tz が無い file に対する同日の再実測）は保存されるが保留は外れない（安全側。UI-07-D15 が「精算から 10 分後以降」「時刻なし file は翌日以降」を案内する）= Opus round 1 P2-1 の反例（Tz なし・同日解除で 10 → 8 確定 → 6）は構造上起きない。**commit 時の確認は維持する**: commit は TX 内で段判定をやり直し（D-D4「commit 時の判定が正」）、保留対象が 1 商品でも残れば副作用なしで拒否する。file_hash の重複拒否と同日 active ID の再検証（32 §15.4 step 4）もそのまま。**ゼロ行だけの file**: 再実測後の再 preview では再確認対象も保留対象も 0 になるが、D-D8 の 0 件ガードの規則（棚卸しの境界判定に掛かった行がある file は通す）により売上 0 件の取込みとして完了でき、file_hash が登録されて再取込みは重複として止まる。owner 条件「取込みだけ成功して補正が未完になる経路を作らない」= 全保留対象に有効な再実測が揃うまで保留が外れない。逆向きの途中状態（再実測は済んだが取込みは未完）は現物確認の事実が先に入るだけで在庫は正しく、保存後に起きた販売は後続 file の段判定が C' 基準で受ける。完了済みの `stocktake_items` / header / `total_cost` は書き換えない。整合: 未取込みの別日分は入力値に含まれており、精算日が C' の日付より前の file は段 0 でスキップ、後は通常適用、同日は段 1、判定不能なら再び保留 / 取込みの取消は再実測に触れない（再実測は取込みを参照せず、保留対象だった商品に `csv_import` 参照の movement は無い）→ 再取込みは C' が基準に残るため保留なしで通る / 再実測より前の取込みの取消は D-D5 (ii) と同型（探索は和集合、再実測は完了済み扱い）。**評価額**: 据え置くことと正しいと確認できたことを区別する。後着した販売そのものはカウント前の出来事で確定時の `stock_after` と `total_cost` に既に含まれる。一方、再実測で入力値 ≠ 現在庫が出たとき、その差が確定前（数え違い = 評価額が誤っていた）か確定後（ロス等）かは判別できない → 棚卸し記録詳細に再実測を区分付きの別行で出し「確定後の再実測で差 n、評価額は確定時のまま」を明示する。報告値を直すかは owner / 税理士の判断で、app は補正しない（D-090 Revisit）。実物確認（2026-09-18）: BIZ-07 `fix_integrity` は `new_stock = movements_sum`（36 `:30` `:51`）で現物数の入力ではなく、現物数を入力できる既存導線は全商品対象・同時 1 件の棚卸しだけ（35 §20.3）。棄却: 通常適用 + 警告（上の二重減算）/ 在庫を動かさず整合性修正で直す（現物数へ合わない）/ 新しい全店棚卸しを解除に使う（数商品のために全明細を生成し、年次の記録一覧と `total_cost` を汚し、確定まで補正が未完で残る）/ 永続する未解決状態 + 補正導線で取込みを続ける（owner 2026-09-18 不採用）/ **全商品の入力を揃えて取込みと同じ 1 TX で保存する（案 A）**: commit 時刻・commit 時の現在庫へ古い入力を当てるため「その場で保存」と両立しない（owner 2026-09-18 の反例: A を 8 と入力 → 残りを数える間に A を 1 個廃棄して記録 → 現在庫 7 へ 8 を当てて戻す。保留対象集合は同じなので集合の再検証では防げない）。入力値の保持・cache の TTL・再起動・入力時在庫の照合という論点を新たに作る
-
-- **D-D10 候補 = 人の誤りを検知・停止・訂正する（Coordinator 案 2026-09-18、owner 要求 2026-09-18 に基づく。owner 未回答 = 未決。承認済みと読まない）**: app が持つ事実は「app の時計 / 取込みの順序 / app に記録された movement / Z004 のメタ行（マシン No.・精算回数・日付・時刻、23 `:117`）」で、POS の個々の取引時刻は EJ だけが持つ。この範囲で、運用に委ねている前提を (A) 設計で塞げるもの (B) EJ があれば塞げるもの (C) app には分からないもの、に分ける
-  - **(A-1) 日付比較を「精算区間」の判定に置き換える（D-D4 の土台の変更）**: Z004 の 1 file が覆うのは「前回の精算時刻 Ts（同じマシン No. で精算回数が直前の、取込み済みの file の Tz）から今回の Tz まで」の区間。`csv_imports` にマシン No.・精算回数・精算時刻を保存し（新しい列、現行は `settlement_date` だけ。`schema_v1.rs:132-142`）、商品の最新実測 C と比べる: `C ≥ Tz + 余裕幅` → 全部カウント前 → スキップ / `C ≤ Ts − 余裕幅` → 全部カウント後 → 通常適用 / それ以外（区間が C を含む、または Ts が分からない）→ 判定不能 → D-D8 / D-D9。これで塞がるもの: **精算後〜実測の POS 販売**（20:00 精算 → 20:05 販売 → 20:30 実測 → 翌日付の file の区間〈20:00, 翌 Tz〉が C を含む → 通常適用されず判定不能へ落ちる）/ **日跨ぎ精算**（日付を使わないので前提ごと不要）/ Sonnet round 1 P2-2 の対称の分岐（Ts が分かるので「全部カウント後」を言える）。Ts が分からない場合（直前の精算回数が未取込み）は、取込み済みで最も新しい、より小さい精算回数の Tz を Ts に使う（区間を広く取る = 安全側）。1 件も無い初回だけは「D の前日 0 時」を Ts とみなす（毎日精算する前提の bootstrap。残存リスクに明記）。運用条件「精算は当日中」「精算後に売った商品はその日数えない」は不要になる
-  - **(A-2) 精算の抜け・順序・時計の異常を取込み時に止める**: 精算回数が直前の取込み済みから連続していない → preview で「精算 n−1 が未取込み」を表示し、先に取り込むか、無いことを確認して進むかを選ばせる（進む場合 (A-1) の広い区間で判定）/ Tz が取込み時刻より未来、または同じマシン No. で精算回数が大きいのに Tz が前回以前 → レジの時計の異常として取込みを拒否（余裕幅の前提が崩れているため。復旧 = 説明書 p.79 の手順で時計を合わせ、その file は判定不能扱いで取り込む）
-  - **(A-3) 計数中の、app に記録された入出庫を保存時に止める**: `update_count` / 再実測の保存の時点で、その商品に「直近 G 分以内に記録された movement」があれば保存を止め、movement の種別・数量・時刻を見せて「この入出庫の後の現物数か」を確かめさせ、数え直した値の入力を求める（G は定数 1 か所、案 60 分。紙に数えてから入力する間に入庫・廃棄・手動販売が記録された場合を拾う）。app は数えた時刻を知り得ないので確定的な検出ではないが、無言で通る経路を無くす。保存後に同じ商品へ movement が記録されるのは D-D2 の繰り越しが正しく扱うため止めない
-  - **(A-4) 誤入力を保存時に止め、保存後も直せるようにする**: 保存値と基準在庫の差が閾値（定数、案: 差の絶対値が 10 以上かつ基準在庫の 50% 以上）を超える保存は、差を見せて確認を求める。訂正の導線: 進行中の明細 = 再保存（既存、D-D1）/ **完了済みの明細と保留解除後の再実測 = 棚卸し記録詳細（`/stocktake/records/$stocktakeId`）の各行から `record_stocktake_recount` を呼べるようにする**（保留画面が消えた後も訂正できる。再実測は append-only なので、訂正 = 正しい現物数でもう 1 回保存。基準は新しい C'' に移り、補正は「正しい値 − その時点の現在庫」。誤った再実測の値は判定に使われず時刻だけが基準になるため、値の誤りが取込みの判定を壊すことは無い。記録詳細に両方の行が区分付きで残る）。評価額は D-D9 と同じく据え置き + 注記
-  - **(A-5) 古い入力の再利用を構造で無くす**: 案 B で取込みは再実測を運ばなくなった（入力値を保持して後で当てる経路が無い）。棚卸しの実測も 1 明細 1 保存。残るのは「紙に書いた数を後で入力する」で、記録済み movement は (A-3)、POS 販売は (B) が拾う
-  - **(B) EJ を PLU 販売の本番開始の前提にし、欠落・不完全・判定不能は実行拒否（owner 2026-09-18 賛成、拒否まで含める）**: (A-1) で判定不能になった商品がある file は、EJ lane の導入後は **EJ が無ければ取込みを拒否**する（flag や保留に流さず、SD の同じ folder から EJ を取ってくるよう案内）。EJ の完全性の検査 = 精算回数で Z004 の区間と対応づく / 一連番号が連続している / `_0002` 以降の続きが揃っている / 区間の商品別の合計が Z004 の個数と一致する（必要条件。これだけを保証にしない）。どれかが欠ければ拒否。EJ が完全でも商品単位で決められない場合（16 バイト名称が一意でない・部門名と衝突 / 保存時刻の前 G 分〜後ろ余裕幅の窓に当該商品の取引がある = 紙に数えてから入力した間の販売かもしれない）は、その商品を判定不能として D-D8（確定を止める）/ D-D9（取込みを保留）へ。EJ の導入前は (A-1) の判定不能がすべて D-D8 / D-D9 に落ちるので、PLU 販売を EJ なしで始めても無言で壊れる経路は無い（再実測の手間が増えるだけ）。本 lane は D-090 に位置づけと拒否の契約を置き、EJ の parser と検査の詳細は EJ lane の設計に送る
-  - **(C) app には分からないもの（残存リスクとして提示する）**: 数え間違い・別の商品を数えた（どの棚卸しにもある）/ PLU を通さない部門売り（UI-10-D2 の元の制約）/ 紙に数えてから入力するまでの間の POS 販売のうち、EJ 導入前の全部と、導入後の G 分より前のもの / レジの時計の遅れ（進みは (A-2) で拾えるが、遅れは取込み時刻との比較では分からない。月差 ± 40 秒なので年 1 回の時計合わせで余裕幅に収まる）/ 初回取込みの Ts の仮定 / SD へ保存されなかった精算（(A-2) で抜けは分かるが、中身は戻らない）
-  - **止める場所と復旧のまとめ**: 保存時（(A-3) 直近の入出庫、(A-4) 大きな差）→ 数え直して保存 / 取込みの preview（(A-2) 精算の抜け・時計の異常、(B) EJ の欠落・不完全）→ file を揃える・時計を合わせる / 取込みの commit（段判定のやり直し、保留が残れば拒否）→ 再実測 / 棚卸しの確定（flag が残れば拒否）→ 再保存 / 確定・解除の後（誤った再実測、確定後に気づいた数え違い）→ 記録詳細から再実測
-  - 追加範囲の見込み（owner 回答後に Scope / AC へ同期）: `csv_imports` に 3 列、23 のマシン No.・精算回数・精算時刻の抽出、32 の区間判定と (A-2) の検査、35 の保存時検査 2 種と記録詳細からの再実測、73 / 55 の画面、D-090。D-D4 の段 0 / 段 1 と運用ルールのうち「精算は当日中」「精算後に売った商品はその日数えない」は削除、「レジの時計を PC に合わせる」「数えたらその場で保存する」は残す
-## owner への設問（design → plan-draft の遷移条件）と回答
-
-owner 回答 2026-09-16（原文の要点）: **Q1 = (a) snapshot 方式を推す（candidate）**「棚卸しで直したいのは数えた時点の帳簿と現物のずれ。その差だけ現在庫に加減するのが自然。帳簿 10・実測 8、その後入庫 5・販売 2 なら確定時は 13 + (8 − 10) = 11」/ **Q3 = (a) 含める（candidate）**「実測数に反映済みの販売を後着の Z004 で再び引かないことまで含めて①が成立する。対象は Z004 で、在庫を動かさない日報とは分けてよい」/ **Q2 = 店の運用を確認して決める（precondition-dependent）**「開店前に数えるなら同日 = カウント後、閉店後なら同日 = カウント前。営業中に数えるなら日付だけではどちらも正確にならない。確認すべきは『開店前に数え、その場で保存する運用を守れるか』。数えた翌日に入力する場合も、保存日時をカウント時点にする設計とはずれる。営業中なら誤差承知で既定案、を無言で採用できる前提にしない」。加えて反例 2 件（force_fill の自動補完は実測ではない / 確定後の CSV 取消で二重に戻る）→ D-D1 / D-D5 に反映済み。「商品単位で記録されていない販売まで自動補正できるわけではない」という UI-10-D2 の元の制約は残す（UI-10-D14 / D-090 に明記）。
-
-三つまとめて「既定でよい」とはしない。**Q2 は店の回答 2026-09-16（owner 伝聞）で確定**: 「棚卸しの時間帯は決まっていない（開店前・営業中・閉店後のどれでもある）。カウント済みの商品が売れたら、その場でカウントの数量を訂正する」。
-
-- **Q1 方式**: (a) **owner candidate 採用** = D-D1〜D-D3（カウント時に snapshot、確定はカウント時点差異で補正、差異表示もカウント時点差異）。確定後の在庫はカウント後の入出庫分だけ「数えた数」と一致しなくなる（Opus F20、UI-10-D14 で operator 向けに説明）。`total_cost` は確定時点の在庫で計算する（D-D7）。(b) 再カウント必須方式 / (c) 現状維持 + 運用ルール は棄却
-- **Q2 同日の POS 販売・返品の扱い（STK-2 の境界）= 確定（owner 2026-09-18 → D-D4 同日規則 / D-D8 / D-D9。以下は経緯の記録で、契約は D-D4 / D-D8 / D-D9 を正とする。owner 2026-09-17: `<=` の一律適用は承認しない）**: `<=` が成立するには「その日の POS 販売・返品が保存した数量へ漏れなく反映済み」という条件が要り、店の「売れたら訂正する」だけでは足りない。Z004 は返品も扱うため同日分を全部スキップすると返品の増加を落とす経路も残り、`<` に戻しても同日のカウント前販売が二重減算になる。**必要なのは、実測の再入力と販売に伴う数量訂正を区別し、記録済み入出庫・POS 販売・返品を混ぜても重複や欠落が起きない契約**（owner の文言）
-  - 方式（owner 評価 2026-09-17）: **(i) 保存時に手動で「本日の販売を含む」を選ぶ = 不採用**（現物数はその時点までの販売・返品を当然含む。チェックしても、その後の販売と一日分の集計を分割できない）/ **(ii) 時刻付き明細で app が判定 = 第一候補（前提条件付き）**: レジの電子ジャーナル（`Ejyymmdd.TXT`）から商品・数量・取引時刻・返品／取消を復元でき、`counted_at` との前後を判定できること。時計ずれや時刻精度で判定不能な取引は「判定不能」として残し (iii) へ回す。新しい IO adapter（EJ text parser、PLU 番号 → 商品、SD 採取運用）と別 lane が要る / **(iii) 同日分を通常適用して再確認 = 条件付きの代替経路**: 「再入力を促す」だけでは不足。数値例: 帳簿 10、実測前に 2 個販売して 8 をカウント、その後 3 個販売で現物 5。一日分 5 を通常減算した後に古い差異 8 − 10 も適用すると 3 になり、再実測で 5 を保存して初めて解消する。さらに数量 0 の行も「動きなし」ではない（実測前に 2 販売、実測後に 2 返品 → 日計 0 でも実測後の現物は 2 増。現行 parse は数量・金額 0 の行を除外するため、再確認対象を非ゼロ行だけから選べない）。したがって (iii) には最低限: 再確認状態を保存し再起動しても残す / 未解消の商品がある間は棚卸し確定を止め、force_fill でも通さない / 同日の追加取込み・取消で再確認が必要になる条件を定める、が要る
-  - **設計方針（owner 推奨 2026-09-17）: (ii) の実データでの成立確認を先に行い、判別できない部分だけ必須の再確認 (iii) へ回す**。「チェック一つで反映済みと推測する」より、店の人が何度も数え直さずに済む条件をデータ側で揃える
-  - 次の行動: (1) 店への確認 = レジの「売上 /EJ 保存設定」が有効で SD に `Ej*.TXT` が出ているか、精算の運用（EJ は既定で日計精算時に消える）(2) EJ を 1 日分 sanitized で採取して形状確認（商品・数量・時刻・返品／取消の復元可否、時計の基準）= field-check lane (3) 成立確認後に本 packet の D-D4 同日規則と (iii) の必須条件を確定し plan-draft へ
-  - 進捗 2026-09-17: (1) 済み（設定有効、SD に実在）/ (2) 1 日分の形状確認済み（起票時実測「EJ 実物 1 日分の形状」）。(3) PLU 明細行の印字も確認済み（名称のみ・登録どおり、(ii) の (a) 成立、(b) に部門名との衝突を追加）。**残り = D-D4 同日規則と (iii) の必須条件の確定 → plan-draft**。返品・訂正の表記は説明書の印字例で足り、実機で起こす必要は無い
-  - **D-D4 同日規則と (iii) 必須条件の案（Coordinator 2026-09-18、起案時点では owner 未回答。**2026-09-18 に回答済み = 下の「owner 回答」、契約は D-D4 / D-D8 / D-D9 を正とする**。以下は経緯の記録。当時の注記: 下の「決めること 3 点」の回答後に D-D4 / Scope / ㉘ 申し送りへ反映する。この案を承認済みと読まない）**:
-    - 記号: 商品 P の最新実測カウント時刻 = C、Z004 の精算日 = D、精算時刻 = Tz（header、分精度）。上から順に当てて最初に決まった段で確定する
-    - 段 0（既存）: D < C の日付 → 在庫変動をスキップ / D > C の日付 → 通常適用
-    - 段 1（EJ 不要）: 同日で C ≥ Tz + 余裕幅 → その Z004 の販売は全部カウント前 → 全部スキップ（閉店後・精算後のカウントは Z004 だけで片付く）。header に時刻が無い shape は段 2 へ
-    - 段 2（EJ）: 同日でそれ以外 → 精算回数で対応づけた EJ の精算区間から、名称照合で P の取引を C の前（純数量 b）と後（a）に分ける。「名称が一意（(ii) の (b)）/ C ± 余裕幅の中に P の取引が無い / a + b = Z004 の個数」をすべて満たすときだけ判定済みとし、b をスキップして a だけ movement にする。走査は EJ 側の商品から回す（Z004 で差引 0 の商品も拾う）。検算 a + b = Z004 個数が fail-safe で、訂正行の読み違い・`_0002` の入れ忘れ・部門名衝突は不一致として (iii) へ落ちる
-    - 段 3 = (iii): 段 2 で判定不能の商品、または EJ が渡されなかった場合
-    - (iii) の必須条件: 同日分は Z004 どおり通常適用し、対象の棚卸し明細に「要再確認」を立てる（新しい小さな表 `stocktake_recount_flags(stocktake_item_id, csv_import_id)`、再起動しても残る）/ flag が 1 件でもある棚卸しは確定できず、force_fill でも通さず flag も消えない / flag を消せるのはその明細の実測の再保存だけ（D-D1 で snapshot を取り直すため、通常適用分を含んで整合する。Q2 (iii) の数値例 10 → 8 カウント → 同日 5 販売 → 再実測 5 で検算済み）/ 取込み取消はその取込みが立てた flag を消す（取消前に再カウント済みなら flag は既に無く D-D5 (i) が働く）/ 同日の追加取込みは file ごとに独立に判定し flag は取込み id ごとに積む / EJ なしのとき flag を立てる範囲 = その日に実測した明細のうち、スキャニングコードが Z004 file に載っている商品（ゼロ行も含む。差引 0 の穴を塞ぐにはここまで広げるしかない）
-    - 段取りの案: runtime ㉘ は段 0 / 1 / 3（EJ なしで完結し保守的に正しい）。段 2 の EJ parser は別 lane で「再確認を減らす部品」として足す（owner 方針「判別できない部分だけ必須の再確認へ」に沿う）。店は PLU 販売未使用のため当面 flag は立たない。EJ なしで営業中・開店前に数えると、その日に数えた PLU 商品はほぼ全部「要再確認」になる = ㉘ だけの間は「精算後に数える」が実用の運用。EJ は Z004 と同じ SD folder にある
-    - **決めること 3 点（owner）**: (1) EJ なしの flag 範囲 = 推奨: 上の保守案 / 代案 A: 非ゼロ行だけ（差引 0 の穴が残る）/ 代案 B: 同日カウントがある日は EJ 必須にして取込みを止める（売上記録の取込みも遅れる）。(2) 余裕幅 = 推奨: 定数 10 分（レジ時計のずれ + EJ 分精度、1 か所の定数）+ 運用ルールに「レジの時計を PC に合わせる」1 行。(3) 完了済み棚卸しに同日 Z004 が後から届く場合（確定を止める先が無い）= 推奨: EJ で判定できた分は同じく分割、判定不能分は通常適用 + 取込み結果に「現物確認が必要な商品」を警告（状態は持たない）、D-D7 の運用ルール「確定は年内最後の Z004 取込み後」を外れた経路の残存リスクとして明記
-    - **owner 回答（2026-09-18）と Coordinator 裁定 = 3 点とも owner 案を採る。D-D4 / Scope / ㉘ 申し送りへの反映は plan-draft で行う**:
-      - (1) flag 範囲 = ゼロ行を含む保守案。対象は「`pos_stock_sync=true`・最新実測が同日・段 1（精算時刻）で反映済みと判定できなかった商品」。根拠例 = カウント前 2 販売 → 実測 8 → カウント後 2 返品は日計 0 でも現物 10。現行 `parse.rs:94` は `quantity == 0 && amount == 0` の行をマスタ照合前に捨てる（Coordinator 実物確認）ため、再確認対象の抽出ではゼロ行を残す経路が要る（movement / sale_records へは従来どおり流さない）。代案 A / B は不採用
-      - (2) 余裕幅 = 定数 10 分、precondition-dependent。10 分は実測で保証された時計差ではない → 運用条件「レジの時計を PC に合わせる」を前提として明記。EJ の分精度は 1 分の幅として保守的に扱い、境界にかかる取引は判定不能へ回す。`counted_at` は保存時刻なので、暫定運用の文言は「精算後、余裕幅を空けて数え、その場で保存する」
-      - (3) 完了済み棚卸しへの同日後着 = 判定できた分は案どおり分割。**判定不能が残る file は書込み前に取込み全体を保留する**（Coordinator 推奨の「通常適用 + 警告」は撤回）。根拠 = 10 → 2 販売 → 実測 8 で確定 → 後着を通常適用すると 6（二重減算）、完了済みは `update_count` が `StocktakeNotInProgress` で拒否する（35 `:199`）ため警告は修正に繋がらない。売上取込みの遅延は受け入れる。継続取込みを優先する代案（永続する未解決状態 + 補正導線）は不採用。保留後の復旧手順と保存済み評価額の扱いは下の「保留の出口」
-      - 撤回: 上の段取り案の「店は PLU 販売未使用のため当面 flag は立たない」。ゼロ行を対象にする以上、Z004 に掲載され `pos_stock_sync=true` なら販売 0 でも flag は立つ。運用負担はこの条件で見積もる
-      - EJ lane への申し送り: `a + b = Z004 個数` は必要条件にすぎない（販売 2 と返品 2 を両方読み落としても 0 で一致する）。合計一致だけを欠落検出の保証にしない
-    - **保留の出口 = 保留解除時の再実測（D-D9 の起案時の記録。**この block の「全商品入力 → commit の 1 TX」「再実測行に `csv_import_id`」「解除した取込み #id を note に書く」は案 A で、2026-09-18 に owner が案 B〈商品ごとにその場で保存、取込みと独立〉を採用して置換済み。契約は D-D9 を正とする**。当時は D-D8 候補と表記、Coordinator 案 2026-09-18。owner 方向指示 2026-09-18 に基づく。承認済みと読まず Plan Review で検証する）**:
-      - owner 方向指示: 出口は「対象商品の現在の現物数を入力・保存し、その実測を新しい基準にする」方式。確認チェックだけの出口は不可。実測時点・補正履歴・後続の追加取込み・取消・再取込みまで整合すること、取込みだけ成功して補正が未完になる経路を作らないこと。完了済み棚卸しの記録と保存済み評価額は自動で書き換えない。既存導線が使えるという未確認の前提で確定しない
-      - 実物確認（Coordinator 2026-09-18）: `fix_integrity` は `new_stock = movements_sum`（36 `:30` `:51`）= 履歴合計への補正で現物数の入力ではない。現物数を入力できる既存導線は棚卸しだけで、`start_stocktake` は全商品の明細を生成し同時 1 件（35 §20.3）。**棄却: 新しい全店棚卸しを出口に使う**（数商品の再確認に全明細生成、年次の記録一覧と `total_cost` を汚す、確定まで補正が未完で残る）/ **棄却: 在庫を動かさず整合性修正で直す**（現物数へ合わない）
-      - 方式: preview が「同日・判定不能・最新実測の持ち主が進行中明細でない（完了済み棚卸し、または先行する再実測）」商品を保留対象として返し、書込みをしない（保留は状態を持たない。file を選び直せば同じ保留に戻る）。operator は保留対象**全商品**の現物数を入力する（部分入力は不可）。commit は 1 TX で (a) 再実測行を INSERT（`counted_at` = 現在時刻 C'、`system_stock` = そのときの現在庫、`actual_count` = 入力値）(b) 差 ≠ 0 の商品に `stocktake` movement（quantity = 入力値 − 現在庫、reference = 元の完了済み棚卸し、note「取込み #id の保留解除に伴う再実測」。D-D5 (ii) と同じ「完了済み棚卸しに note 付きの別行を足す」型、差 0 は movement なし）(c) 取込み本体（保留対象商品は C' を基準に段 1 が成立するため movement スキップ、`sale_records` は作る）。前提 `C' ≥ Tz + 余裕幅` を満たさない commit は拒否する（精算直後は待つ）。TX 内で保留対象集合を cache と再検証し、不一致は副作用なしで ROLLBACK（既存 `active_same_date_import_ids` 再検証と同型、32 §15.4 step 4）
-      - 保存先: 新しい小さな表 `stocktake_recounts(id, stocktake_item_id, csv_import_id, counted_at, system_stock, actual_count)`、append-only。完了済みの `stocktake_items` / header は書き換えない。D-D4 の基準 = `stocktake_items` と `stocktake_recounts` の `MAX(counted_at)`。D-D5 の「`imported_at` より後の最も早い実測」探索も同じ和集合で、再実測は完了済み扱い（(ii) の打ち消し movement）
-      - 整合の trace: (基本) 10 → 2 販売 → 実測 8 で確定（在庫 8）→ 後着 Z004 保留 → 現物 8 入力 → 再実測行のみ、Z004 の −2 はスキップ → 8。現物 7 なら −1 の movement で 7 / (未取込みの別日分) 入力値は未取込みの販売も含んだ現物 → 精算日が C' の日付より前の file は段 0 でスキップ、後は通常適用、同日は段 1、判定不能なら再び保留 / (同日の追加取込み `_0002`) file ごとに独立判定、`C' ≥ Tz2 + 余裕幅` ならスキップ / (解除した取込みの取消) `sale_records` を void、保留対象商品に `csv_import` 参照の movement は無く、**再実測行と補正 movement は残す**（現物確認の事実は取込み取消で消さない）→ 在庫は入力値のまま / (再取込み) C' が基準に残るため段 0 / 1 で判定済みとなり保留なしで通る / (再実測より前の取込みの取消) D-D5 (ii) と同型の打ち消し
-      - 評価額: 自動で書き換えない。ただし「据え置く」と「正しいと確認できた」を区別する。後着した販売そのものはカウント前の出来事で、確定時の `stock_after` と `total_cost` に既に含まれている（この販売に関して評価額は正しい）。一方、再実測で入力値 ≠ 現在庫が出たとき、その差が確定前（数え違い = 評価額が誤っていた）か確定後（ロス等）かは判別できない。対処 = 棚卸し記録詳細に再実測を note 付きの別行で出し、「確定後の再実測で差 n、評価額は確定時のまま」を明示する。報告値を直すかは owner / 税理士の判断とし、app は補正しない（D-090 Revisit に記載）
-      - ㉘ への追加範囲: migration 1 表 / 20（insert と和集合 query）/ 32（preview の保留対象、`CommitRequest` の再実測入力、TX 再検証、ゼロ行を残す抽出経路）/ 35・D-D5（和集合）/ 55 UI-07（保留画面と現物数入力）/ 65・73（記録詳細の注記）/ tracking / Test Design Matrix
-      - Plan Review に問う未検証点: 別の進行中棚卸しがあり当該商品が未実測の場合の分岐（案: 最新実測の持ち主で決め、進行中明細は触らない）/ C'（app 時計）と Tz（レジ時計）の比較は (2) の運用条件に依存 / 営業中に多数を数えて同日に確定した場合、保留対象が多数になる入力負担（進行中なら同じ数の「要再確認」が立つので負担は同等。運用ルール D-D7「確定は年内最後の Z004 取込み後」が第一の回避策）
-  - 運用ルール（73 UI-10-D14、Q2 の方式によらず共通）: 「数えたら、その商品の入出庫が起きる前に保存する。保存前に数量が動いた場合は、保存時点の実数を確認して入力する」（owner の文言）/ 「売れた後に数え直すときは、引き算ではなく現物の実数を入力する（販売の反映は Z004 が行う）」
-
-- **Q3 STK-2 の境界（D-D4 / D-D5）を runtime lane ㉘ に含めるか**: (a) **owner candidate 採用** = 含める（境界判定は商品群の `MAX(counted_at)` map を 1 query で引いて日付比較、取消側は取込み時刻 1 点との比較 + 明細 1 UPDATE または打ち消し movement 1 本。Z004 運用開始時に再設計しなくて済む）。(b) 先送り は棄却
+共有JANは行単位で先に検査し、全在庫連動候補が実測前と証明できる場合だけ在庫を全スキップしてcommit可能とする案。未実測の候補へ先頭配賦してから他の商品だけ再確認する経路は採らない。参照できる棚卸し明細がない候補の手軽な解除は現行の限定APIでは未対応であり、DATA-2側との接続が残る制限。架空の明細や自動の全店棚卸しで隠さない。
 
 ## Scope
 
-docs-only。Writer は Codex（発注書 61）。
+本turnのwrite範囲:
 
-- **S1 `docs/decision-log.md`**: D-090「棚卸しの基準時点は各商品の最終カウント時点とし、確定はカウント時点差異で年末時点へ繰り越す。評価額は確定時点の数量で合計する（2026-09-16）」。Decision に owner の言い方（いつ数えても年末時点へ繰り越せる / 記録できた入出庫は自動反映、記録できない分だけ店の訂正 / 二つを重ねて減算しない / 評価は年末数量）を置く= Decision / Status accepted / Why（STK-1 / STK-2 / DOC-2、UI-10-D2 の根拠が手動 movement に当てはまらない）/ Impact（BIZ-06 / BIZ-03 / UI-10 / IO stocktake_repo、runtime lane ㉘）/ Alternatives（D-D2 / D-D4 / D-D5 の棄却案）/ Revisit（`inventory_movements` に業務日付を持つ設計へ移る場合、POS が時刻付き明細を出せるようになった場合）。Q2 の回答（同日規則 = D-D4 の段 0 / 1 / 3、余裕幅 10 分とその運用条件、D-D8 要再確認 flag、D-D9 保留と再実測、EJ 分割は別 lane）を Decision 本文に含める。Decision に前提「精算は当日中に行う（段 0 の前提）」「実測から保存まで対象商品の数量を動かさない、動いたら再確認する（共通の前提）」「計数の開始は精算より後（段 1 の前提）」「その日の最終精算から実測までに当該商品の POS 販売・返品が無い（段 0 の前提）」と、破れたときの誤差が過大・過小の両方向であることを置く。Revisit に「再実測で差が出た完了済み棚卸しの評価額を報告でどう扱うか」「EJ parser の導入」「日跨ぎ精算が常態化した場合」「保留解除と進行中棚卸しの二重入力を画面統合で減らすか」を足す
-- **S2 `docs/function-design/35-biz-stocktake-service.md`**: §20.2 の DTO 説明 `:36`（`current_difference` の「動的計算: products.stock_quantity - actual_count」）と `:45`（`total_cost` の「SUM(valuation_cost_price × actual_count)」）を D-D3 / D-D7 に / §20.4 step 3 に `system_stock = 現在の stock_quantity` の書込みを追加、step 4 を `current_difference = system_stock − actual_count` に、`:204` の見出し「動的差異の計算」、`:217` の設計判断見出し「差異の動的計算」、`:218-219` の設計判断本文を D-D1 / D-D3 へ書き換え / §20.5 step 3a（force_fill）を `system_stock = actual_count = 現在庫` に、step 4 の `StocktakeItemForComplete` に `system_stock` を追加、step 5e の `total_cost += valuation_cost_price × actual_count` を D-D7（`× max(確定時点の在庫, 0)`。補正後の在庫 = `stock_after`、補正なしの明細は現在庫）に、step 5 f/g を D-D2（`adjustment = actual_count − system_stock`、`apply_stock_change` 経由、`AdjustedItem` の意味）に、§20.5 の「total_cost のオーバーフロー対策」の例も評価数量で書き直し、`:317` の「`apply_stock_change` を使わない理由」を撤回し理由を残す / §20.6a `:425` 設計ノートを「詳細画面の差異 = 補正 movement の quantity = `actual_count − system_stock`（D-090 で snapshot 差と一致）」へ / §20.7 `:435` を「棚卸し中も CSV 取込みは許可。実測カウント済み商品はカウント時点境界で在庫減算をスキップ（BIZ-03 §15.4、D-090）」に / §20.8 INV-2 行を「`apply_stock_change` の通常式」に、INV-3 行 `:451`「棚卸し補正で stock_after < 0 にはならない」を「補正後の在庫は負になり得る（D-D2）、評価は 0 で扱う（D-D7）」に（Sonnet round 1 P3）、不変条件「カウント前に発生した販売の movement はカウント後に作られない」と「fix_integrity は対象外」を各 1 行追加、確定後在庫が負になり得る方針（D-D2）を明記 / §20.9 の signature 表 `:473`（`update_stocktake_item_count` に `system_stock`、force_fill 用は `counted_at` を書かない）`:477`（`get_stocktake_items_for_complete` が `system_stock` を返す）`:483`（`StocktakeItemForComplete` に `system_stock`）と新規 3 関数を追加 / 更新履歴 1 行。`BIZ-06-D1`〜`D4` の子 ID を D-D1〜D-D3、D-D7 に対応させて置く。**D-D8 の棚卸し側（`BIZ-06-D5`）**: §20.4 `update_count` に「保存でその明細の要再確認 flag を消す」を追加し、`:191` の前提条件「トランザクション不要…autocommit で実行する」を「UPDATE と flag 削除を 1 TX」へ改稿、§20.5 `complete_stocktake` の冒頭検査に「flag が 1 件でもあれば確定を拒否、force_fill でも通さない」、§20.8 に不変条件 1 行、§20.9 に repo 関数、§20.10 に BizError（flag 残存で確定不可）を追加。**D-D9 の棚卸し側（`BIZ-06-D6`）= 再実測の保存を新しい節で追加**（関数名は `record_stocktake_recount`、節は §20.4 の後ろに既存の小数点挿入の慣習〈§20.3.1〉に倣って §20.4.1。42 の command も同名。関数要求 / シグネチャ / 処理ステップ / エラー: 対象は最新実測の持ち主が完了済み明細または再実測の商品、1 商品 1 TX で再実測行 + 差があれば `apply_stock_change(Stocktake, Stocktake, 元の棚卸し id, note)`、進行中明細が持ち主なら拒否して `update_count` を案内、実測値 < 0 は拒否）。§20.6a 記録詳細に再実測（D-D9）の別行表示と区分を追加し、step 4 の `corrected_count`（現行「items の件数」）を「確定時の補正だけを数える」へ改稿（述語は S7）
-- **S3 `docs/function-design/32-biz-csv-import-service.md`**: §15.3 parse / preview に境界判定の warning（既存 `warnings` に「棚卸しで計上済みのため在庫を変更しない行 N 件」を段 0 由来と段 1 由来に分けて）/ §15.4 step 6b にカウント時点境界（D-D4 の段、`ImportResult` は不変）/ §15.5 に取消時の二重戻し防止（D-D5 (i) / (ii)、`imported_at` との比較）/ §15.2 の `PreviewData`（要再確認になる商品数、保留対象の商品一覧。`CommitRequest` は変えない）/ §15.3 にゼロ行を対象抽出用に残す経路（movement / `sale_records` へは流さない）、共有 JAN は候補の全商品を判定対象にする規則、実質 0 件ガードを「売上行なし・再確認対象あり」で通す規則、段判定 / §15.4 に D-D4 の段 0 / 1 / 3、D-D8 の flag 書込み、D-D9 の保留（保留対象が 1 商品でも残れば commit は TX 内の段判定のやり直しで副作用なしに拒否。file_hash の重複拒否と同日 active ID の再検証は現行のまま。再実測は 35 の関数が取込みと独立に保存し、取込み本体は再実測を運ばない）/ §15.5 に「取消はその取込みが立てた flag を消す」「取消は再実測に触れない（再実測は取込みを参照しない）」「探索は `stocktake_recounts` との和集合」/ §15.9 は変更なし（再実測は取込みと独立に保存されるため、preview cache の期限切れ・再起動は再 preview するだけで、保存済みの再実測は残る。新 rally Opus round 1 P2-3 は案 B で論点ごと解消）/ §15.10 に BizError（commit 時に保留対象が残っている）/ §15.8 に段 0 / 段 1 の前提と破れたときの向き / §15.8 に不変条件 2 行（「実測カウント済み商品の在庫は、カウント日より前の販売を取り込んでも減らない」「カウント前に発生した販売の movement はカウント後に作られない」）/ 更新履歴 1 行。子 ID は **`BIZ-03-D2`（D-D4）/ `D3`（D-D5）/ `D4`（D-D8）/ `D5`（D-D9）**（`BIZ-03-D1` は 32 `:110` の「commit最小内部契約」で使用済み。2026-09-18 実物確認）
-- **S4 `docs/function-design/73-ui-stocktake.md`**: `:41` UI-10-D2 Rejected 行末に再訪注記（D-D6）/ UI-10-D10 `:100` の差異式「`current_stock - actual_count`」と「現在在庫列に揃える」判断の行末に「→ 2026-09-16 UI-10-D14 で supersede」を非遡及で追記し、§73.10 `:224` の差異列と `:347` の在庫列の記述を D-D3（`system_stock − actual_count`、在庫列は「カウント時在庫」）へ / UI-10-D4 の「`total_cost`（税理士報告値）」に「確定時点の数量 × 評価原価（D-D7）」を添える / UI-10-D14 新設（差異列 = `system_stock − actual_count`、在庫列は「カウント時在庫」に一本化〈未実測は「—」、自動補完は「自動補完」注記付きで実測と区別、現在在庫は在庫照会で確認する、D-D3〉、カウント入力欄の選択商品情報も同じ、確定結果の `adjusted_items` の意味と `total_cost` の評価数量、運用ルール 7 つ = 「数えたら、その商品の入出庫が起きる前に保存する。保存前に数量が動いた場合は、保存時点の実数を確認して入力する」「売れた後に数え直すときは、引き算ではなく現物の実数を入力する（販売の反映は Z004 が行う）」「確定は年内最後の Z004 を取り込んだ後」、同日 POS 分の扱い（D-D4 の段、要再確認の表示と「flag がある間は確定できない」文言、解消は実測の再保存）、運用ルール 4 つの追加 =「精算後に数え始め、余裕幅（10 分）を空けて、その場で保存する。実測から保存まで対象商品を動かさず、動いたら数え直す（守れないと、販売なら在庫が過大、返品なら過小になる）」「精算後にレジで売った・戻した商品は、その日は数えず翌営業日の精算後に数える」「レジの時計を PC に合わせる」「精算は当日中に行う」、記録詳細の再実測の注記「確定後の再実測で差 n、評価額は確定時のまま」、「商品単位で記録されない販売は自動補正できない」制約の維持、Why / Rejected / Revisit）/ `:378` §73.14 の out-of-scope 行を「D-090 で再訪、runtime lane ㉘」に / 変更履歴 1 行
-- **S5 `docs/db-design/tracking-system-tables.md`**: `:110` `system_stock` = 「最終カウント時点のシステム在庫（未カウント・廃番自動入力は開始時点の値、force_fill は確定時点の値。いずれも `counted_at` NULL）」/ `:112` `valuation_cost_price` の「total_costはこの値×actual_countの合計」と `:119` total_cost の理由を「× 確定時点の在庫（繰り越し後、負は 0）」に（D-D7）/ `:116` 設計意図を D-D1 / D-D2 / D-D5 に合わせて書き換え / **新しい 2 表の定義**（`stocktake_recount_flags`: stocktake_item_id・csv_import_id・created_at、同じ組は 1 行 / `stocktake_recounts`: id・stocktake_item_id・counted_at・system_stock・actual_count、append-only。取込み前に保存するため `csv_import_id` は持たない）と設計意図（D-D8 / D-D9）。`docs/DB_DESIGN.md` の表一覧（`:33-34` の後）・分割案内（`:50`）・index 節に 2 表を追記。migration の実体は ㉘
-- **S6 `docs/architecture/biz-task-specs.md`**: `:465` / `:482` の「動的計算」を D-D2 / D-D3 の要約に、`:476` の「total_cost = SUM(valuation_cost_price × actual_count)」を D-D7 に
-- **S7 `docs/function-design/42-cmd-sales-stocktake.md`** `:224` `update_count` の `current_difference` の意味 / **`docs/function-design/20-io-product-repo.md`** §2.11 `update_stocktake_item_count`（`system_stock` 引数追加）、`get_stocktake_items_for_complete`（`system_stock` を返す）、新規 `find_latest_counted_at_by_products(conn, &[product_code]) -> HashMap<String, String>`（D-D4 用、`counted_at IS NOT NULL` の `MAX(counted_at)`、比較は `substr(counted_at, 1, 10)` と `YYYY-MM-DD`）、rollback 用 `find_first_count_after(conn, product_code, imported_at) -> Option<(stocktake_id, status, item_id)>` と `adjust_counted_system_stock(tx, item_id, delta)`（D-D5 用）の契約。D-D4 の最新実測と D-D5 の探索は `stocktake_recounts` との和集合で、持ち主（進行中明細 / 完了済み明細 / 再実測）を返す。D-D8 用の flag の insert / 明細単位の delete / 取込み単位の delete / 棚卸し単位の件数、D-D9 用の再実測 insert と記録詳細用の取得を追加。42 に再実測の保存 command を追加（引数 = 商品と現物数、戻り値 = 保存した再実測と補正の有無）。**20 §2.11a の `StocktakeRecordDetailItem` に区分（確定時の補正 / 取消の打ち消し / 再実測）を追加**し、JOIN が同一商品に複数 movement を返し得ること、区分の述語は「movement の `created_at <= stocktakes.completed_at` = 確定時の補正、それより後は note で打ち消し / 再実測を分ける」とする（進行中は補正 movement 自体が無い）。現行の item は note を持たず、区分が無いと同じ snapshot / 実測の行が並んで区別できない（新 rally Opus round 1 P2-4。DTO の再生成は ㉘）。`corrected_count` の改稿は S2。`24-io-csv-import-repo.md` は `csv_imports.imported_at` を取消側が読むことを 1 行追記（`VoidedMovement` は不変）。**20 §2.11a `:878`** の「`system_stock`: 棚卸し開始時システム在庫の snapshot」を「最終カウント時点（D-090）」に、同節の「差異は補正 movement の quantity で定義し snapshot 差では定義しない」趣旨の文を「確定時の補正 movement については D-090 で同値（符号違い）。取消に伴う打ち消し movement（D-D5 (ii)）は別行・別 note で出る」に書き換え（Sonnet round 1 P2、Opus round 1 P2-4）
-- **S8a `docs/function-design/65-inventory-record-traceability.md` `:267`**（slice 4c 棚卸し詳細の差異定義）: 「補正 movement の quantity を正とし、`system_stock - actual_count` の snapshot 差では定義しない」を D-090 参照（確定時の補正については同値、打ち消し movement は別行）に書き換え（Sonnet round 1 P2、Opus round 1 P2-4）。slice 4c に再実測・打ち消しの区分表示と注記「確定後の再実測で差 n、評価額は確定時のまま」、slice 4d の差異件数（`reference_type='stocktake'` の件数）は確定時の補正だけを母集団にすることを 1 行（新 rally Opus round 1 P2-4）。**売上 0 件の取込み**（D-D8 の 0 件ガードの新定義で初めて生まれる）は、取込み記録の一覧で明細数 0・代表商品「-」として出すことを slice 4b / 4d の写像に 1 行（新 rally Opus round 3 P3-2）
-- **S8 `docs/diagrams/cross-feature-verification.md`**: XFA-T1 / XFA-T2 末尾と `:187` に「2026-09-16 D-090 で方式を採用。回帰 test 化は runtime lane ㉘」を 1 行ずつ（診断結果の記録は非遡及で残す）
-- **S10 `docs/function-design/23-io-z004-parser.md`**: 出力型に精算回数と精算時刻（layout A の meta 行から抽出、分精度、どちらも無ければ None）を追加する契約。従来 shape は時刻なし = 段 1 を使えず段 3 へ落ちる、を明記。値の実例は書かない
-- **S11 `docs/function-design/55-ui-csv-import.md`**: `UI-07-D15` 新設（最終 ID は `UI-07-D14`、2026-09-18 実測）= preview の「要再確認になる商品 N 件」表示、保留画面（保留対象の一覧と各商品の現在庫、**1 商品ずつ現物数を入力してその場で保存**〈保存 1 回で確定し、取込みをやめても残ることを画面で伝える〉、保存のたびに再 preview して残りの保留対象を更新、0 になったら通常の取込み確認へ進む。案内 = 「精算から 10 分後以降に数える」「時刻なし file は翌日以降に数える」「数えてから保存まで対象商品を動かさない」「保留中の file は未取込みで記録に残らないため当日中に解除する」。中断・期限切れ・再起動後は file を選び直せば、保存済みの商品を除いた保留に戻る）、§55.2 state / §55.3 CMD 呼び出し / §55.4 操作フロー / §55.5 エラー / §55.8 状態遷移に保留の状態を追加 / 更新履歴 1 行
-- **S9（Coordinator、plan-first commit）**: Plans.md / backlog.md の登録、本 packet
+- S1: docs/adr/2026-09-18-stocktake-time-evidence.md とADR index。技術判断・拒否理由・復旧・データ意味を統合する。
+- S2: 本packet、docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md、Plans.md。現在地と検証契約を同期する。
+- S3: scripts/probes/stocktake_time_model.py。合成値だけの設計probe。production moduleとして利用しない。
+- S4: 関係するfunction-design 23 / 32 / 35 / 55 / 73、DB tracking / pos、親indexへproposed ADRの案内を付ける。本文の現行実装契約を新方式実装済みに書き換えない。
+
+次のdesign出力: ADRに沿って20 / 21 / 23 / 24 / 32 / 35 / 41 / 42 / 55 / 65 / 73、DB/architectureの詳細契約を同期し、EJ本番条件の外部probeを整理してplan-draftへ。現在のADRの命名をruntimeの既存関数が実装済みである証拠にしない。
 
 ## Non-scope
 
-- `src-tauri/**`、`src/**`、`migrations`、`bindings.ts`、`90-traceability.md`（runtime lane ㉘）
-- `docs/research/2026-09-16-diagram-audit.md`（監査記録、非遡及）、`docs/function-design/37-biz-daily-report-import-service.md`（日報は在庫を動かさない）、`docs/spec/**`（REQ 追加なし）
-- DATA-2、単位の拡張、棚卸しの中止・確定取消 API
-- EJ parser（IO adapter）、16 バイト名称の一意検査と部門名との衝突検査、EJ の SD 採取運用（同日規則の段 2 = 別 lane。申し送りだけ書く）
-- `docs/diagrams/` の現行 ER 図（実装済みの状態を写す図面のため、2 表の追記は ㉘）
+- src-tauri、src、migration、bindings、traceabilityの変更。
+- GitHub操作、実機操作、実データの読取り拡大・複製。
+- workflowそのものの変更、過去rallyの書換え、無関係なcleanup。
 
 ## Acceptance Criteria
 
-rg oracle は出力空 = 0 件。baseline は起票時実測（origin/main `c6167c4d`）。**撤回した旧表現（下の「= 0」oracle の語）は本文・Rejected・更新履歴のいずれにも再掲しない。撤回の事実は別の語（「旧: 現在庫基準」「D-090 で supersede」など）で記録する**（Opus round 1 P2-5）。
+このdesign引継ぎのAC。旧案の正規表現件数を新設計へ流用しない。
 
-- **AC1** `rg -c '^## D-090' docs/decision-log.md` = 1（baseline 0）/ `rg -c 'UI-10-D2' docs/decision-log.md` ≥ 1
-- **AC2** `rg -c '差異は動的計算' docs/function-design/35-biz-stocktake-service.md` = 0（baseline 1）/ `rg -c '開始時点の参考値' 同` = 0（baseline 1）/ `rg -c 'apply_stock_change を使わない理由' 同` = 0（baseline 1。撤回の記録は別の見出し語にする）/ `rg -c 'BIZ-06-D' 同` ≥ 4（baseline 0）/ `rg -c 'D-090' 同` ≥ 1
-- **AC2b** `rg -c 'stock_after < 0 にはならない' docs/function-design/35-biz-stocktake-service.md` = 0（baseline 1、`:451`）/ `rg -c '動的計算' 同` = 0（baseline 3 = `:36` `:217` `:435`）/ `rg -c '× actual_count|×actual_count' 同` = 0（baseline 1、`:45`）/ `rg -c '採用しない' 同` = 0（baseline 1、`:425`）/ `rg -c '× actual_count|×actual_count' docs/db-design/tracking-system-tables.md` = 0（baseline 2、`:112` `:119`）/ `rg -c '× actual_count|×actual_count' docs/architecture/biz-task-specs.md` = 0（baseline 1、`:476`）/ `rg -c '開始時システム在庫' docs/function-design/20-io-product-repo.md` = 0（baseline 1、`:878`）/ `rg -c 'snapshot 差では定義しない|snapshot差では定義しない' docs/function-design/20-io-product-repo.md docs/function-design/65-inventory-record-traceability.md` = 各 file 0（baseline 各 1）
-- **AC3** `rg -c '棚卸し' docs/function-design/32-biz-csv-import-service.md` ≥ 3（baseline 0: §15.4 / §15.5 / §15.8）/ `rg -c 'D-090' 同` ≥ 1 / `rg -o 'BIZ-03-D[0-9]+' 同 | sort -u | wc -l` = 5（baseline 1 = `BIZ-03-D1` のみ。D2〜D5 を追加し D1 を再利用しない）
-- **AC4** `rg -c 'UI-10-D14' docs/function-design/73-ui-stocktake.md` ≥ 3（baseline 0: 見出し + §73.14 + 変更履歴）/ `rg -c 'D-090' 同` ≥ 2（baseline 0: UI-10-D2 の再訪注記 + UI-10-D14）/ `rg -c '実装不能' 同` = 1（baseline 1、UI-10-D2 本文は非遡及で残す）/ `rg -c 'current_stock - actual_count' 同` = 0（baseline 3 = `:100` `:224` `:347`。UI-10-D10 の行は式を残さず「→ UI-10-D14 で supersede」の注記に置き換える）/ `rg -c '未実測' 同` ≥ 1（baseline 0）/ `rg -c '自動補完' 同` ≥ 2（baseline 1）（未実測行「—」と自動補完の注記、round 3 P2）
-- **AC5** `rg -c '動的計算' docs/db-design/tracking-system-tables.md` = 0（baseline 1）/ `rg -c '動的計算' docs/architecture/biz-task-specs.md` = 0（baseline 2）
-- **AC6** `rg -c 'D-090' docs/function-design/42-cmd-sales-stocktake.md docs/function-design/20-io-product-repo.md docs/function-design/24-io-csv-import-repo.md docs/diagrams/cross-feature-verification.md docs/function-design/23-io-z004-parser.md docs/function-design/55-ui-csv-import.md docs/function-design/65-inventory-record-traceability.md` の各 file ≥ 1（baseline は 2026-09-18 に再実測）
-- **AC7**（負の oracle）`git diff --name-only origin/main..HEAD -- src-tauri src migrations docs/research docs/spec docs/function-design/37-biz-daily-report-import-service.md docs/function-design/90-traceability.md | wc -l` = 0
-- **AC8** `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS / `bash scripts/doc-consistency-check.sh`（full、docs 変更のため）ERROR 0。35 / 32 の必須セクション（関数要求 / シグネチャ / 処理ステップ / エラー）は `doc-consistency-check.sh` full の `check_template_conformance` が要求する（`--target plan` では走らない）ため full を回す。`cargo test --offline --test design_compliance_test` は doc と `pub fn` の関数名突合で、新規関数名を 20 §2.11 に書く場合に PASS を確認する（Opus F4）
-- **AC9** 一貫性: packet の D-D1〜D-D5 / D-D8 / D-D9 の数値例（10 / 8 / 12、10 → 8 → 5、10 → 8 確定 → 6 の例）が 35 / 32 の本文に例として写されている。前日以前の比較記号は `<` だけ: `rg -c 'settlement_date <=' docs/decision-log.md docs/function-design/32-biz-csv-import-service.md docs/function-design/73-ui-stocktake.md` = 出力空（baseline 出力空、2026-09-18 実測）
-- **AC10**（同日規則、baseline はすべて出力空 = 0、2026-09-18 に下の command を逐語で実測）`rg -c 'stocktake_recount_flags' docs/db-design/tracking-system-tables.md docs/DB_DESIGN.md docs/function-design/32-biz-csv-import-service.md docs/function-design/35-biz-stocktake-service.md docs/function-design/20-io-product-repo.md` の各 file ≥ 1 / `rg -c 'stocktake_recounts' docs/db-design/tracking-system-tables.md docs/DB_DESIGN.md docs/function-design/32-biz-csv-import-service.md docs/function-design/20-io-product-repo.md` の各 file ≥ 1 / `rg -c '余裕幅' docs/decision-log.md docs/function-design/32-biz-csv-import-service.md docs/function-design/73-ui-stocktake.md docs/function-design/55-ui-csv-import.md` の各 file ≥ 1 / `rg -c '要再確認' docs/function-design/35-biz-stocktake-service.md docs/function-design/73-ui-stocktake.md docs/function-design/55-ui-csv-import.md` の各 file ≥ 1 / `rg -c '精算時刻' docs/function-design/23-io-z004-parser.md docs/function-design/32-biz-csv-import-service.md` の各 file ≥ 1 / `rg -c 'UI-07-D15' docs/function-design/55-ui-csv-import.md` ≥ 2（baseline 0）/ `rg -c 'BIZ-06-D5' docs/function-design/35-biz-stocktake-service.md` ≥ 1（baseline 0）/ `rg -c 'BIZ-06-D6' docs/function-design/35-biz-stocktake-service.md` ≥ 1（baseline 0）/ `rg -c '再実測' docs/function-design/35-biz-stocktake-service.md docs/function-design/42-cmd-sales-stocktake.md docs/function-design/55-ui-csv-import.md` の各 file ≥ 1（baseline 0、2026-09-18 実測）/ `rg -c '保留' docs/function-design/32-biz-csv-import-service.md docs/function-design/55-ui-csv-import.md` の各 file ≥ 1 / `rg -c '精算回数' docs/function-design/23-io-z004-parser.md` ≥ 2（baseline 1、2026-09-18 実測）/ `rg -c '当日中' docs/decision-log.md docs/function-design/73-ui-stocktake.md` の各 file ≥ 1 / `rg -c '最終精算' docs/decision-log.md docs/function-design/73-ui-stocktake.md` の各 file ≥ 1（baseline 0、2026-09-18 実測。段 0 の前提）/ `rg -c '過小' docs/decision-log.md` ≥ 2（baseline 1）と `rg -c '過小' docs/function-design/73-ui-stocktake.md` ≥ 1（baseline 0）（誤差が両方向であること。2026-09-18 実測）/ `rg -c '売上行なし' docs/function-design/32-biz-csv-import-service.md` ≥ 1（baseline 0）/ `rg -c '共有 JAN|共有JAN' docs/function-design/32-biz-csv-import-service.md` ≥ 1（baseline 0、2026-09-18 実測）
+- AC1: `rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` の出力にD1〜D9がある。実測窓、資料受領、未知の境界、保留と再確認、訂正、取消、legacyの意味は独立設計点検で確認する。
+- AC2: `python3 scripts/probes/stocktake_time_model.py` がexit 0でPASSを出力し、before/afterの断定が合成oracleに反しない。モデルのPASSは実装テストと別に扱う。
+- AC3: `rg '^## (Test Matrix|State Lifecycle Matrix|Residual Test Gaps)' docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md` が各見出しを出力する。契約・失敗とruntime/native/外部probeの境界は独立設計点検で確認する。
+- AC4: `git diff --name-only -- src src-tauri migrations` の出力が空。全変更がScopeの設計・案内・モデルに属することを確認する。
+- AC5: bash scripts/doc-consistency-check.sh --target plan とfullがERRORなし、git diff --checkが成功。
+- AC6: `rg '^### Codex設計引継ぎと早期点検' docs/plans/2026-09-16-stocktake-count-baseline.md` が記録見出しを出力する。指摘の反例と修正先を同節で追跡する。正式Plan Gateはsourceの詳細同期とplan-first commit後に別途行う。
 
 ## Design Sources
 
-- Requirements / spec: REQ-205（棚卸しによる在庫数の補正）、REQ-401（Z004 商品別売上取込み）、SP-205-09（棚卸し中の CSV 取込み許可）
-- Architecture: `docs/architecture/biz-task-specs.md` BIZ-06（`:434-486`）、D-025（日報と Z004 の分離）
-- Function / command / DTO: 35 §20.2 / §20.4 / §20.5 / §20.7 / §20.8、32 §15.4 / §15.5 / §15.8、31 INV-2（`apply_stock_change`）、42 `update_count`、20 §2.11
-- DB: `docs/db-design/tracking-system-tables.md` §16-17（stocktakes / stocktake_items）、`inventory_movements`（`:9-25`）
-- Screen / UI: 73 UI-10-D2 / UI-10-D4 / UI-10-D10、§73.7 確定フロー
-- Decision log / ADR: D-025、D-051（integrity の operation_log）、新設 D-090
+- 要求: REQ-205 / REQ-401、docs/spec/requirements.md / requirements-coverage.md。
+- 新案: ADR SPEC-STK-TIME-D1〜D9（proposed）。
+- 現行契約: 35 / 32 / 23 / 31 / 36、tracking / pos、73 / 55。変更予定との違いをADRとScopeで示す。
+- 境界: UI → CMD → BIZ → IO/MNT、INV-2、D-051、D-025。
+- 旧案の事実調査: feeb3fe9の起票時実測、承認済みEJサンプルの匿名化構造所見。raw値は持ち込まない。
 
 ## Required Design Artifacts
 
-| Area touched by upcoming work | Required source doc / artifact | Status: existing sufficient / updated in this PR / intentionally deferred |
+| Area | Artifact | Status |
 |---|---|---|
-| Backend function / command / repository / validation / error | 35 §20.4 / §20.5 / §20.7 / §20.8、32 §15.4 / §15.5 / §15.8、20 §2.11、42 `update_count` | updated in this PR（S2 / S3 / S7） |
-| Command / DTO / generated binding / wire shape | `UpdateCountResult.current_difference` の意味（型不変）、`AdjustedItem` の意味（型不変）、`StocktakeItemForComplete` は BIZ 内部型。`PreviewData` は項目追加（D-D8 / D-D9）、再実測の保存 command を新設、記録詳細 DTO に再実測の行と区分（`CommitRequest` は不変） | updated in this PR（S2 / S3 / S7。bindings の再生成は ㉘） |
-| DB / transaction / audit / rollback / migration | tracking §16-17（`system_stock` の意味）と新しい 2 表の定義、DB_DESIGN の表一覧、32 §15.5（rollback の snapshot 補正・flag 削除）。migration の実体は ㉘ | updated in this PR（S5 / S3） |
-| Screen / UI / route state / Japanese wording | 73 UI-10-D14（差異列の式、運用ルール、要再確認、再実測の注記）、55 UI-07-D15（保留画面） | updated in this PR（S4 / S11） |
-| CSV / TSV / report / import / export format | 32 §15.4（取込み結果 warning の 1 種類追加、CSV format は不変）、23（既にある meta 行から精算回数・精算時刻を読む。format は不変） | updated in this PR（S3 / S10） |
-| Durable decision / ADR | decision-log D-090 | updated in this PR（S1） |
+| 時点・順序・復旧 | ADR | proposed、新案 |
+| DB / TX / migration | ADR D8、tracking / posへの案内 | 詳細SQLとmigrationは次の設計同期、未実装 |
+| CMD / DTO / token | ADR D1 / D8 / D9、Matrix | begin / save / abandonとwireの意味を規定。型・登録のruntime実装は未着手 |
+| operator flow | ADR D9、55 / 73への案内 | native L3はruntimeで実施 |
+| POS / EJ / 時計 | ADR D2〜D5、Contract Probe | 未確認条件では時刻による自動分類を許可しない |
+| 検証 | Matrix、合成モデル | 設計probeとruntime検証を区別 |
 
 ## Registration / Generation Obligations
 
-本 lane は docs-only で function-design の新設・REQ 追加なし。DB_DESIGN の表一覧への 2 表の登録は本 lane（S5）。runtime lane ㉘ では `90-traceability.md` の再生成（REQ-205 / REQ-401 の test 追加）が該当するため申し送りに記す。
+このturnは新CMD・Rust関数・schemaの実装なし。bindings / route tree / traceabilityは生成しない。runtimeではcommand登録、生成binding、schema migration、REQ test traceability、record detailのkind伝播を必須とする。
 
 ## Design Intent Trace
 
-| Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
-|---|---|---|---|---|---|
-| REQ-205 / SP-205-09 | 35 §20.4、tracking §16-17 | BIZ-06-D1（D-D1）、D-090 | カウント時点の snapshot で基準時点を固定。棄却: 新列 | ㉘ `update_count` / repo | ㉘ unit（snapshot 値） |
-| REQ-205 | 35 §20.5 / §20.8 | BIZ-06-D2（D-D2）、D-090 | カウント時点差異で補正、`apply_stock_change` 経由。棄却: SUM 繰り越し / 再カウント必須 / 運用のみ | ㉘ `complete_stocktake` | ㉘ XFA-T1 の 5 入口を回帰化（期待 = 現物） |
-| REQ-205 | 73 UI-10-D14、42 `update_count` | UI-10-D14（D-D3） | 差異表示を 1 種類に。棄却: 2 種類併記 | ㉘ `computeListDifference` / `current_difference` | ㉘ unit |
-| REQ-401 / REQ-205 | 32 §15.4 / §15.8 | BIZ-03-D2（D-D4）、D-090 | カウント日より前の販売は在庫を減らさない。棄却: 拒否 / 0 movement / 先送り | ㉘ commit 6b + repo | ㉘ XFA-T2 の回帰化（期待 = 8） |
-| REQ-401 / REQ-205 | 32 §15.5、tracking | BIZ-03-D3（D-D5）、D-090 | 取消で snapshot を戻す。棄却: 棚卸し中 rollback 禁止 | ㉘ rollback + repo | ㉘ unit（誤 CSV → カウント → 取消 → 確定 = 現物） |
-| REQ-205 / SP-205-08 | 35 §20.5 step 5e、tracking、73 UI-10-D4 | BIZ-06-D4（D-D7）、D-090 | 評価数量 = 確定時点の在庫（年末）。棄却: 実測 × 原価 / 明細列の追加 | ㉘ `complete_stocktake` step 5e | ㉘ unit（カウント後の販売を含む total_cost） |
-| REQ-401 / REQ-205 | 32 §15.3 / §15.4、35 §20.4 / §20.5、tracking、23 | BIZ-03-D4 / BIZ-06-D5（D-D8）、D-090 | 同日・判定不能・進行中は通常適用 + flag、flag がある間は確定不可。棄却: 非ゼロ行だけ / 取込みを止める / 促すだけ | ㉘ parse / commit / `update_count` / `complete_stocktake` / repo / migration | ㉘ unit（ゼロ行で flag、再保存で解消、force_fill でも確定不可、取消で flag 削除、10 → 8 → 5 の例） |
-| REQ-401 / REQ-205 | 32 §15.2〜§15.5、35 再実測の保存、42、55 UI-07-D15、65 slice 4c、tracking | BIZ-03-D5 / BIZ-06-D6 / UI-07-D15（D-D9）、D-090 | 完了済みへの同日後着は取込み全体を保留し、商品ごとの再実測（取込みと独立に保存）で解除。棄却に案 A（一括 1 TX）。評価額は据え置きと正しさを区別。棄却: 通常適用 + 警告 / 整合性修正 / 全店棚卸し / 永続の未解決状態 | ㉘ preview / commit / rollback / repo / migration / UI-07 | ㉘ unit（10 → 8 確定 → 保留 → 8 を保存で 8、7 を保存で 7、余裕幅未満・Tz なし同日の再実測では保留が外れない、一部保存後の入出庫が次の保存の基準在庫に入る、中断・再起動後も保存済みの再実測と補正が残る、保留が残る commit は拒否、ゼロ行だけの file が再 preview から完了できる、取消後も再実測が残り再取込みが通る） |
-| — | 73 UI-10-D2 / UI-10-D10 | D-D6 | Rejected / 現在在庫列の判断を非遡及で残し再訪注記 | S4 | AC4 |
+| Spec | Source / decision | Why | Future implementation | Verification |
+|---|---|---|---|---|
+| REQ-205 | D1 / D7 / D8 | stale入力、同秒、旧snapshotを誤適用しない | BIZ-06 / IO / CMD-10 / UI-10 | Matrixの保存・訂正・migration |
+| REQ-401 | D2 / D3 / D4 | 知らない前後を推測しない | IO-02 / BIZ-03 / IO / UI-07 | Matrixの受領・区間・0行・共有JAN |
+| REQ-205 / REQ-401 | D6 | 実測へ吸収した数量を二重に戻さない | rollback / stocktake repo | 合成モデル、runtime TX検証 |
+| REQ-401 | D5 | 不完全なEJで自動分割しない | 別EJ lane | 合成fixture、sanitized sample、native gate |
 
 ## Design Intent Audit
 
-- Source docs can answer what is being built and why without chat history or archived Plan Packets: yes（D-090 + 35 / 32 / 73 の決定 ID に理由・棄却案・数値例を置く）
-- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D-D1〜D-D9 → D-090 と各 source doc（S1〜S8a / S10 / S11）。子 ID = BIZ-06-D1（D-D1）/ D2（D-D2）/ D3（D-D3）/ D4（D-D7）/ D5（D-D8 の棚卸し側）/ D6（D-D9 の再実測の保存）、BIZ-03-D2（D-D4）/ D3（D-D5）/ D4（D-D8）/ D5（D-D9）、UI-10-D14（D-D3 の UI 側 + 運用ルール）、UI-07-D15（D-D9 の保留画面）。`BIZ-03-D1` は 32 で使用済みのため再利用しない
-- Assumptions and constraints: Z004 の明細は日付粒度だが、layout A の meta 行に精算回数と精算時刻（分精度）がある（起票時実測 2026-09-18）。`counted_at` はアプリ時計、精算時刻はレジ時計で、ずれは余裕幅 10 分と運用条件「レジの時計を PC に合わせる」で扱う（precondition-dependent。10 分は実測で保証された時計差ではない）。前日以前は日単位比較で吸収する。Z004 運用は未開始（D-025）だが手動 movement で STK-1 は今日起きる。snapshot 方式は「カウント後の入出庫は現在庫に正しく反映されている」ことを前提にし、その反映自体の誤りは本 lane の対象外
-- Deferred design gaps, risk, and follow-up target: 同日・営業中カウントは EJ（段 2、別 lane）が入るまで全部が要再確認または保留になる（誤差は残さないが再実測の手間が出る。運用「精算後、余裕幅を空けて数える」で避ける）/ EJ 側の検算 `a + b = Z004 個数` は必要条件にすぎない（販売 2 と返品 2 を両方読み落としても 0 で一致する。合計一致だけを欠落検出の保証にしない = EJ lane への申し送り）/ 再実測で差が出た完了済み棚卸しの評価額の報告上の扱い（app は補正しない）/ 手動記録の取消機能が将来できたら D-D5 を適用 / `inventory_movements` の業務日付列は Revisit 条件に置く
-- Test Design Matrix can cite design decision IDs or source doc sections: runtime lane ㉘ の Matrix が D-090 / BIZ-06-D1〜D6 / BIZ-03-D2〜D5 / UI-10-D14 / UI-07-D15 を引ける
-- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 「カウント後の入出庫を打ち消さない」の例外 = 取消（rollback、D-D5 (i)/(ii) で補正）と force_fill / 廃番自動入力（snapshot = 現在庫で差異 0、`counted_at` NULL で境界にならない）と BIZ-07 fix_integrity（対象外、1 行で明記）。「過去販売を二重に減らさない」の例外 = 同日で判定不能の販売（進行中は D-D8 の flag で確定を止め、再保存で解消。進行中でなければ D-D9 の保留で書込み自体を止める。どちらも二重減算を在庫に残したまま確定・放置できる経路を作らない）と未カウント・force_fill 商品（境界なし、通常減算）。部門売り（非 PLU）の販売は商品単位で記録されないため、繰り越し対象は記録された movement だけで、現物との差はカウントで吸収する（UI-10-D2 の元の制約は残す、owner 2026-09-16）。整合性チェック（BIZ-07）は `stock_quantity = SUM(movement)` を維持する（補正は movement 経由、スキップは movement を作らない）
+- 現行実装とproposed設計を明示して区別する。
+- durableな新判断はADRに置く。packetはscopeと状態を所有する。
+- D-D1/D-D2の算術とD-D5の吸収先はモデルで検算し、任意の値へoracleを寄せない。
+- 実POSの時刻・完全性・計数そのものをアプリが直接観測したと主張しない。
 
 ## Impact Review Lenses
 
-| Lens | Applicability / finding | Follow-up artifact |
-|---|---|---|
-| Adapter / core boundary | Z004 parser（IO-02）は meta 行の精算回数・精算時刻を Option で返すだけで、段判定は BIZ-03 に置く。時刻を持たない shape は BIZ 側で段 3 へ落ちる | 23 / 32 §15.4 |
-| Fact check / design decision split | 事実 = 起票時実測（`created_at` はアプリ時計、`system_stock` は開始時点、`for_complete` は snapshot を返さない、日報は在庫を動かさない）。判断 = D-D1〜D-D6、owner Q1〜Q3 | 本 packet |
-| Lifecycle / retry | カウント → 再カウント（上書き）→ 取込み → 取消 → force_fill → 確定、の各段で snapshot がどう変わるかを 35 / 32 の数値例に置く | S2 / S3 |
-| Operator workflow | 時間帯を問わず数えられる（店回答）。同日・判定不能だけ再実測を求める（進行中 = 要再確認、完了済み = 保留画面）。確定前に全件再カウントは要求しない | 73 UI-10-D14 / 55 UI-07-D15 |
-| Replacement path | POS が時刻付き明細を出せるようになれば `created_at` ではなく販売時刻で境界判定に移れる（D-090 Revisit） | S1 |
-| Data safety / evidence | docs-only。数値例は合成値 | — |
-| Reporting / accounting semantics | 売上（`sale_records`）と在庫（movement）を分けたまま、スキップ行は売上だけ記録する。`total_cost` は確定時点の在庫 × `valuation_cost_price`（D-D7、年末時点の評価） | 32 §15.4 / 35 §20.5 |
-| Manual verification | docs-only のため L3 なし。runtime lane ㉘ で「カウント → 販売 → 確定」の実機往復 | ㉘ |
-| 環境・再現性 | not applicable | — |
+- Adapter/core: IOはraw metadata、BIZは証拠・時点分類。未知形式を正常扱いしない。
+- Fact/decision: sampleの形状は確認済み。精算reset系列と実時計の適用範囲は未確認。
+- Lifecycle/retry: 受領・preview・保留・計数・保存・中断・取消・再取込みをMatrixで追う。
+- Operator: 商品ごとの即保存と、失敗後の次の一手。色だけで状態を示さない。
+- Replacement: EJやレジが変わっても、受領証拠と実測窓のBIZ契約を維持。
+- Data safety: 合成モデルのみ。実データ・DB・backupを使わない。
+- Reporting: 現在庫の復旧、売上欠落、過去評価額を区別。
+- Manual: UI-07/UI-10/記録詳細のnative L3と、POS時刻・系列probeは未実施。
 
 ## Design Readiness
 
-- Existing design docs are sufficient because: 不十分。35 / 73 / tracking / biz-task-specs が「差異は動的計算」「確定は actual_count へ置換」を契約として固定しており、STK-1 / STK-2 を解消する設計が無い。本 lane がその設計出力
-- Source docs updated in this PR: S1〜S8 / S8a / S10 / S11
-- Design gaps intentionally deferred: EJ による同日の前後分割（段 2、別 lane）、手動記録の取消機能
-- Durable decisions discovered in this plan and promoted to source docs: D-090、BIZ-06-D1〜D6、BIZ-03-D2〜D5、UI-10-D14、UI-07-D15
+Status: design。レビュー可能な統合案を作成した段階で、実装readyではない。
 
-Minimum design checks for business-app work:
-
-- Layer ownership (`UI -> CMD -> BIZ -> IO/MNT`): 境界判定と補正式は BIZ（stocktake_service / csv_import_service）、snapshot 書込みと最新 `counted_at` 取得は IO（stocktake_repo）、UI は式の差し替えのみ、CMD は不変
-- Backend function design: `update_count` / `complete_stocktake` / `commit_csv_import` / `rollback_csv_import` の処理ステップを S2 / S3 で改稿
-- Command / DTO / data contract: `current_difference` / `AdjustedItem` は意味だけ変わる。`PreviewData` / 記録詳細 DTO は項目が増え、再実測の保存 command が増える（D-D8 / D-D9）。`CommitRequest` は不変。本 lane は docs で契約を定め、bindings 再生成は ㉘
-- Persistence / transaction / audit impact: 2 表を追加する設計（migration は ㉘）。flag の書込み・削除と再実測は取込み / 取消 / `update_count` と同 TX。`update_count` は列を 1 つ足し、要再確認 flag の削除と同 TX にする（35 `:191` の前提条件「トランザクション不要、autocommit」を改稿）。rollback の snapshot 補正は同 TX 内。operation_log は不変
-- Operator workflow / Japanese UI wording: 差異列の意味が「カウント時点差異」になる（label は「差異」のまま）。取込み結果 warning 文言は S3 で定める
-- Error, empty, retry, and recovery behavior: 未カウント商品は境界なし。再カウントで snapshot も更新。取消は D-D5
-- Testability and traceability IDs: REQ-205 / REQ-401 / SP-205-09、BIZ-06-D1〜D6 / BIZ-03-D2〜D5 / UI-10-D14 / UI-07-D15 / D-090
+必要な残作業は、独立設計点検の反映、sourceの詳細契約への展開、外部時刻を信用する条件のprobe、正式Plan Gate。参照明細のない共有JAN候補の復旧制限と、物理的な計数の真偽は隠さない。新しいownerの運用判断を受容済みにしない。
 
 ## Contract Probe
 
-外部前提 = Z004 layout A の meta 行に精算回数と精算時刻があること。probe 済み: field-check の実物で確認（起票時実測「Z004 側の実測」2026-09-18、値は記録しない）。時刻を持たない従来 shape は段 3 へ落ちる設計で前提から外す。レジ時計の精度は本体説明書 SRS4000 の仕様表「時計・日付機能 月差 ± 40 秒」、自動の時刻合わせは無く手動設定だけ（同「日時を設定する」p.79。field-check `approved-readable/SRS4000_JA3.pdf`、2026-09-18 確認）。PC は OS の時刻同期に従う。余裕幅 10 分は、時計を合わせてから放置しても `600 / 40 = 15` か月分のずれに相当するため、運用条件は「年 1 回、棚卸しの前にレジの時計を PC に合わせる」で足りる（店のレジの現在のずれは未実測）。それ以外は外部前提なし（docs-only。数値例は snapshot 差分の恒等式 `P + (live − S) − live = P − S` で検算済み。XFA-T1 / T2 の合成 DB 再現は監査で実施済み）。
+- 合成モデル: python3 scripts/probes/stocktake_time_model.py。実行結果はReview Responseに記録する。
+- 既存実装確認: movements.idはDBで採番、同秒timestampでは順序不能。snapshotとcursorの同TX保存が必要。
+- 外部: Z004のメタ項目、EJの分精度・取引番号・点数欄・精算境界を既存所見で確認。精算番号のreset系列・時計差の保証期間・EJ全形式は未検証。これらが証明されるまで対応する自動分類を有効にしない。
+- 安全なfallback: 資料を受領してからの新しい実測。仮時刻、任意の時間幅、EJ合計だけの安全宣言は使わない。
+
+## Test Design Matrix
+
+[Test Design Matrix](test-matrices/2026-09-18-stocktake-time-evidence.md)。対象契約、失敗条件、状態遷移、モデルとruntime検証の境界を記録する。
 
 ## Contract Coverage Ledger
 
-R2 のため任意。runtime lane ㉘ の Ledger の種として、契約 ID と行を置く。
+詳細は [Test Design Matrix](test-matrices/2026-09-18-stocktake-time-evidence.md)。
 
-| Design contract / decision ID | Implementation target（㉘） | Automated test（㉘） | L3 or non-scope |
+| Contract | Future target | Automated evidence | Native / external |
 |---|---|---|---|
-| BIZ-06-D1（カウント時 snapshot、再カウント上書き、force_fill） | `update_count` / `complete_stocktake` step 3a / repo | unit: snapshot 値、再カウント後の値 | — |
-| BIZ-06-D2（確定 = カウント時点差異、`apply_stock_change`） | `complete_stocktake` step 5 | XFA-T1 5 入口の回帰（期待 = 現物）、差異 0 で movement なし | ㉘ L3 |
-| UI-10-D14（差異表示） | `current_difference` / `computeListDifference` | unit | ㉘ L3 |
-| BIZ-03-D2（境界、段 0 / 1 / 3） | parser（精算時刻）/ parse / commit 6b + repo | XFA-T2 回帰、前日・翌日・同日で `C ≥ Tz + 余裕幅` の両側、時刻なし shape は段 3、未カウント商品は通常減算 | — |
-| BIZ-03-D3（rollback snapshot 補正） | rollback + repo | 誤 CSV → カウント → 取消 → 確定 = 現物 | — |
-| BIZ-06-D4（評価数量 = 確定時点在庫、負は 0） | `complete_stocktake` step 5e | unit: カウント後の入出庫を含む `total_cost` | — |
-| BIZ-03-D4 / BIZ-06-D5（要再確認 flag） | parse（ゼロ行、0 件ガード）/ commit / rollback / `update_count` / `complete_stocktake` / repo / migration | ゼロ行で flag が立つ、ゼロ行だけの file が拒否されず flag を保存できる（対象も無い file は現行どおり拒否）、共有 JAN は候補の全商品に flag、再保存で消える、flag 残存で確定不可（force_fill でも）、取消で当該取込みの flag だけ消える、同日の追加取込みで id ごとに積む、10 → 8 → 5 の例 | ㉘ L3 |
-| BIZ-03-D5 / BIZ-06-D6 / UI-07-D15（保留と再実測） | preview / commit / rollback / repo / migration / UI-07 | 判定不能 1 商品で file 全体が保留（書込み 0）、再実測は 1 商品 1 TX で取込みと独立に保存（`csv_import_id` に依存しない）、全商品に有効な再実測が揃うと再 preview で保留 0 → 通常 commit、共有 JAN は候補の全商品が保留対象になる、余裕幅未満・Tz なし同日の再実測では外れない、Tz なし file は翌日の再実測で外れる、commit 時の段判定やり直しで保留が残れば拒否、file_hash 重複と同日 active ID の再検証は現行のまま、一部保存後の入出庫・中断・再起動で保存済みの補正が失われない、ゼロ行だけの file が再 preview から完了し再取込みは重複で止まる、記録詳細の区分表示と `corrected_count` 不変、取消後も再実測が残り再取込みが保留なしで通る、`run_integrity_check` 0 件 | ㉘ L3 |
-| INV（integrity: stock = SUM(movement)） | 不変 | 既存 `integrity_service` test + 上記各 test で `run_integrity_check` 0 件 | — |
+| D1 | 計数context・保存・revision | ABA、失効、再送、snapshot | UI-10 / 保留 / 訂正 |
+| D2〜D4 | source受領・区間・commit | 受領順、未知境界、0行、共有JAN | 実ファイル系列 |
+| D5 | EJ adapter | 境界欠落・未知行・数量検算 | 本番有効化probe |
+| D6 | rollback | 同秒、反復実測、最初の吸収先 | 対象外 |
+| D7〜D9 | 訂正・詳細・旧DB | 所有者guard、kind、migration | 再開・再実測のL3 |
 
 ## Test Plan
 
-R2 docs-only。本 packet の AC1〜AC10（rg oracle + doc check + design_compliance_test）。runtime の test は ㉘ の Matrix で設計する。
-
-- targeted tests: AC8 の doc check / design_compliance_test
-- negative tests: AC7（runtime 非接触）、AC4 の「実装不能」= 1（非遡及）
-- compatibility checks: 35 / 32 の必須セクション見出しを維持（AC8）
-- data safety checks: 合成値のみ
-- main wiring/integration checks: not applicable
+- 設計probe: Python標準ライブラリのみ。外部入力なし。
+- docs: plan / full、diff --check。
+- runtime test: Matrixの予定名。未実施であり、本turnでRust/frontend全量を回して実装済みの証拠にしない。
+- read-only独立設計点検: 反例と最小修正を求める。正式Plan Gateと区別。
 
 ## Boundary / Wire Contract
 
-docs-only のため本 lane で wire は動かない。runtime lane ㉘ が記入するもの: `UpdateCountResult.current_difference` の意味変更（型不変）/ `PreviewData` の項目追加（要再確認の件数、保留対象の一覧）/ 再実測の保存 command（商品と現物数）/ 記録詳細 DTO の再実測行 / Z004 parser 出力の精算回数・精算時刻（IO 内部型）。
+- 現在のwireは変更しない。新案ではUIはopaque count tokenと数量だけを送る。
+- source/revision/cursor/日時の任意指定をUIから受け付けない。
+- previewは資料受領を保存し得るが、売上・在庫をcommitしない。
+- 保存と取消のtransaction、request重複、record kindのproducer/consumerをruntime packetで固定する。
 
 ## Review Focus
 
-- D-D2 の恒等式と数値例が正しいか（開始 10 → カウント 10 → 販売 2 → 確定で 8 / 誤 CSV −2 → カウント 10 → 取消 → 確定で 10 / POS 2 販売未取込み → カウント 8 → 確定 8 → 遅い取込みでスキップ → 8 / owner の例: 帳簿 10・実測 8・入庫 5・販売 2 → 11 / 反例 (a): 未カウント 10 を force_fill → 後着の販売 2 で 8 になるか〈`counted_at` NULL で境界にならない〉/ 反例 (b): 誤 CSV → 実測 10 → 確定 → 取消 → 10 のまま〈打ち消し movement〉）。D-D5 の補正方向（(i) `system_stock -= voided.quantity`、販売 −2 の void で +2 / (ii) 打ち消し movement の quantity = void した quantity）。D-D4 の段が上から順に当たって漏れ・重なりが無いか（時刻なし shape、同日の追加取込み、複数精算）。D-D8 の数値例（10 → 8 → 5）と D-D9 の trace（保留 → 再実測 → 取消 → 再取込み）で二重減算・欠落が起きないか。D-D9 の未検証点 = 別の進行中棚卸しがあり当該商品が未実測の場合の分岐（案: 最新実測の持ち主で決め、進行中明細は触らない）/ C'（app 時計）と Tz（レジ時計）の比較が運用条件に依存すること / 保留対象が多数になる入力負担。Risk を R2 のままにしてよいか（docs が新しい表と wire 変更を定める）。`BIZ-03-D1` を再利用していないか。UI-10-D2 の再訪を非遡及で書けているか。35 の必須セクション構造。runtime lane ㉘ への申し送りが file:line で足りるか
+- 受領IDを保存時に取り直していないか。
+- 保存時刻Eだけでbeforeを判定していないか。
+- 未知の始端、legacy、共有JANを通常適用へ落としていないか。
+- 取消で吸収先を二度補正しないか。同秒と0差の実測を区別できるか。
+- 現在庫の復旧を売上欠落・過去評価額の解決と言っていないか。
+- 新機能の対象・migration・UI復旧を既存のscopeと混同していないか。
 
-## 後続 runtime lane ㉘ への申し送り（本 lane の成果物の一部、file:line は `c6167c4d`）
+## 後続 runtime lane ㉘ への申し送り
 
-- `src-tauri/src/db/stocktake_repo.rs:268-279` `update_stocktake_item_count` に `system_stock` 引数（force_fill 用は `counted_at` を書かない別引数か別関数）/ `:406-427` `get_stocktake_items_for_complete` に `system_stock` 列 / 新規 `find_latest_counted_at_by_products` / `find_first_count_after` / `adjust_counted_system_stock`。IO 設計 20 §2.11 に契約（本 lane S7）。`stocktake_service.rs:441-447` の force_fill は `counted_at` を書かない経路へ
-- `src-tauri/src/biz/stocktake_service.rs:286-301` `update_count` step 3 / 4、`:441` force_fill、`:481-506` 確定 loop を `apply_stock_change` へ（`inventory_service/common.rs:41`、`pub(crate)`）
-- `src-tauri/src/biz/csv_import_service/commit.rs:136-147` step 6b に境界、`:229` `apply_void_stock_corrections` + `rollback.rs:52` の呼び出し前後に snapshot 補正 / 打ち消し movement（商品ごと SUM で 1 本）
-- `src/features/stocktake/lib/stocktake-formatters.ts:13-16` `computeListDifference` を `system_stock - actual_count` に（`bindings.ts:255,258` の両 field は既存）、`StocktakePage.tsx:842` の在庫列を「カウント時在庫」（`system_stock`）に、未実測行（`actual_count` NULL）は「—」、自動補完行（`actual_count` あり `counted_at` NULL）は「自動補完」注記、`:652` の選択商品情報も同じ、対応 test
-- `complete_stocktake` step 5e: `total_cost` の評価数量を `max(補正後在庫, 0)`（補正あり = `apply_stock_change` の `stock_after`、補正なし = 現在庫）に
-- test: `cross_feature_tests.rs:581-618` の 2 診断を `#[ignore]` 解除して期待値を現物に反転（XFA-T1 5 入口 + XFA-T2）、`stocktake_service.rs` の unit（snapshot / 再カウント / force_fill / 差異 0）、`csv_import_service` の unit（境界両側 / 未カウント / rollback 補正）。REQ-205 / REQ-401 の test 追加で `cargo run --bin generate_traceability` を実行し `90-traceability.md` を再生成（生成 file の再生成は ㉘ だけ）
-- docs 同期: 35 / 32 の疑似コードを実装に合わせて最終化、`cross-feature-verification.md` の期待値、32 §15.3 の preview warning 文言（取込み結果の wire は不変）
-- 既存 test の反転（新規追加ではない）: `stocktake_service.rs:869-872`（`current_difference` 3 → −2 相当、snapshot 基準へ）/ `:1218`（`stock_quantity = actual_count` → `現在庫 + 補正`）/ `:1221` `test_complete_req205_force_fill_sets_actual_to_system_stock`（`counted_at` NULL のまま）/ `stocktake-formatters.test.ts`（`system_stock − actual_count`）
-- rollback: `rollback.rs:52` の前後で `csv_imports.imported_at` を読み、商品ごとに「それより後の最初の実測カウント」を引く。進行中なら snapshot 補正、完了済みなら打ち消し `stocktake` movement を同 TX で 1 本
-- **同日規則（D-D4 / D-D8 / D-D9、2026-09-18 追加。file:line は `c6167c4d`）**: `io/z004_parser.rs` の出力型に精算回数・精算時刻（layout A の meta 行、Option）/ `csv_import_service/parse.rs:94` のゼロ行除外の前で「対象抽出用のゼロ行」を別に保持（movement / `sale_records` へは流さない）、`:120` の複数一致は候補の全商品を判定対象に、`:156` の実質 0 件ガードは再確認対象・保留対象があれば通す / parse で段判定し `PreviewData` に要再確認の件数と保留対象一覧（`CommitRequest` は不変）/ `commit.rs:136-147` step 6b に段 0 / 1 / 3 と flag 書込み、commit は TX 内で段判定をやり直し保留対象が残れば副作用なしで拒否（file_hash 重複・同日 active ID 再検証は現行のまま）/ 再実測の保存は `stocktake_service.rs` の新しい関数 + CMD（1 商品 1 TX、再実測行 + 差があれば補正 movement、`csv_import_id` に依存しない、持ち主が進行中明細なら拒否）。保留解除は「保存 → 再 preview → 保留 0 → 通常 commit」で、条件を満たさない再実測（余裕幅未満、Tz なし file の同日）は保存されても保留が外れない / ゼロ行だけの file は再実測後の再 preview から売上 0 件の取込みとして完了できる / preview の warning は段 0 / 段 1 由来で件数を分ける / `rollback.rs` で当該取込みの flag 削除、探索を `stocktake_recounts` との和集合に / `stocktake_service.rs` `update_count` で flag 削除（同 TX 化が要る。現行は autocommit の 1 UPDATE）、`complete_stocktake` 冒頭で flag 残存を拒否（force_fill でも）/ migration 1 本で 2 表 / `stocktake_repo` に flag・再実測の関数 / UI-07 に保留画面（`UI-07-D15`）、棚卸し画面に要再確認の表示、記録詳細の item に区分（確定時の補正 / 取消の打ち消し / 再実測、述語は `created_at <= completed_at`）と注記、`corrected_count` と slice 4d の差異件数は確定時の補正だけ / `bindings.ts` 再生成 / 現行 ER 図に 2 表。余裕幅は定数 1 か所
-- ㉘ の分割案（㉘ の plan で決める）: 段 3 を欠いたまま段 0 / 1 だけを出すと同日・判定不能の扱いが未定義になるため、D-D1〜D-D7 と同日規則は同じ lane に置くのが既定。分けるなら「同日・判定不能は取込み全体を保留（解除手段なし）」を先行 lane の暫定契約にする必要がある
-- EJ lane（別 lane）への申し送り: 段 2 は「再確認と保留を減らす部品」。成立条件 = 16 バイト名称が商品間で一意かつ部門名と衝突しない / C ± 余裕幅の中に当該商品の取引が無い / `a + b = Z004 個数`。**合計一致は必要条件にすぎない**（販売 2 と返品 2 を両方読み落としても 0 で一致する）ため、欠落検出は一連番号の連続性や精算区間の合計など別の検査を併せて設計する。`_0002` は同日 SD file の取込み 2 回目で、1 日分は連結して復元する。**判定の対象は同日分だけではない**: 翌日付の精算区間が実測時点をまたぐ場合（その日の最終精算より後・実測より前の販売は翌日付の Z004 に入り、段 0 では通常適用されて二重減算になる。D-D4 の段 0 の前提）も、EJ の取引時刻で実測の前後に分ける必要がある（owner 2026-09-18）
-- Risk R3（BIZ 在庫補正 + POS CSV 取込み + operator workflow）、Final Review 2 pass、owner L3 = カウント → 手動販売 → 確定 → 在庫が販売後の値のまま、の 1 往復
+旧案のfile:line指示はfeeb3fe9の履歴。新しいruntimeのscopeはADRとMatrixを元に起こし直す。
+
+- source受領の永続化、productsのrevision、count/recountの開始・終了・cursor・request識別子、明示的movement kind。
+- BIZ内の計数context検査、同一判定関数を使うpreview/commit、取消の吸収先探索。
+- UI-07/UI-10/記録詳細の即保存・再開・訂正、既存IME/Enter/focus/returnToを維持。
+- legacy migration、全行0、共有JAN、逆順資料、時計異常、EJ欠落を負の経路として実装前にfixture化。
+- EJはPLU本番前提。取得失敗で再実測の復旧まで閉ざさず、自動分割の許可と区別する。
+- 本packetのdesignはruntime実装許可ではない。
 
 ## Spec Contract
 
-R2 のため簡略。Contract ID: SPEC-STK-BASELINE-R1
+Contract ID: SPEC-STK-TIME-EVIDENCE
 
-- 棚卸しの基準時点は各商品の最終カウント時点で、`system_stock` はその時点の在庫を保持する（evidence: AC2 / AC5）
-- 確定の補正量は `actual_count − system_stock`、`stock_after` は現在庫 + 補正量（evidence: AC2）
-- カウント済み商品について、カウント日より前（同日は D-D4 の段で判定）の Z004 販売は在庫を減らさず売上だけ記録する（evidence: AC3）
-- 取込み取消で void した movement がカウント時点より前なら `system_stock` を戻す（evidence: AC3 / AC5）
-- 差異表示はカウント時点差異 1 種類、在庫列はカウント時在庫。未実測行は在庫列・差異とも「—」、自動補完行は注記で実測と区別する（evidence: AC4）
-- `total_cost` は確定時点の在庫（負は 0）× `valuation_cost_price` の合計（evidence: AC2b / AC5）
-- 同日の Z004 は段 0 / 1 / 3 で判定し、判定不能は進行中なら通常適用 + 要再確認 flag（flag がある間は確定不可）、進行中でなければ取込み全体を保留して再実測で解除する。完了済みの棚卸し記録と評価額は書き換えない（evidence: AC3 / AC9 / AC10）
+- 根拠を持つbefore/afterだけを確定し、unknownを推測で埋めない。
+- 実測は商品単位の即保存。任意の古い値の再送で新しい基準を作らない。
+- snapshot差分は後続movementを保存し、取消は吸収済み数量を二重に戻さない。
+- 復旧の新しい現物確認は過去の売上・評価額を自動で書き換えない。
 
 ## Trace Matrix
 
-| Spec ID | Plan Step | Test | Review Focus | Evidence |
-|---|---|---|---|---|
-| SPEC-STK-BASELINE-R1（snapshot） | S2 / S5 / S7 | AC2 / AC5 / AC6 | D-D1 | rg oracle |
-| SPEC-STK-BASELINE-R1（補正式） | S2 / S6 | AC2 / AC5 | 恒等式・数値例 | rg oracle |
-| SPEC-STK-BASELINE-R1（境界） | S3 / S1 / S4 | AC3 / AC9 | 前日以前の記号 `<` | rg oracle |
-| SPEC-STK-BASELINE-R1（取消補正） | S3 / S5 | AC3 | 補正方向 | rg oracle |
-| SPEC-STK-BASELINE-R1（差異表示） | S4 / S7 | AC4 / AC6 | 非遡及 | rg oracle |
-| SPEC-STK-BASELINE-R1（同日規則） | S1 / S2 / S3 / S4 / S5 / S7 / S10 / S11 | AC3 / AC9 / AC10 | 段の順序、flag と保留の分岐、評価額の区別 | rg oracle |
+| Spec | Scope | Evidence | Review |
+|---|---|---|---|
+| SPEC-STK-TIME-EVIDENCE | S1 / S2 / S3 | AC1〜AC3、Matrix | 時点・順序・復旧 |
+| REQ-205 | S1 / S4 | AC1 / AC4 / AC5 | snapshot・訂正・legacy |
+| REQ-401 | S1 / S4 | AC1 / AC4 / AC5 | 受領・区間・EJ・共有JAN |
 
 ## Data Safety
 
-- 実店舗データ・実商品名・実 JAN を packet / docs / PR に含めない（数値例は合成値）
-- local-only / synthetic-only path の追加なし
+このturnは合成値のみ。実POSファイル・DB・backup・secretを読み込むprobeは作らない。外部reviewへ渡すのは設計・合成モデルだけ。設計案はローカルのcontent commitに記録し、push・PR操作・実機の変更は行わない。
 
 ## Implementation Results
 
-Fill after implementation.
+未実装。設計モデルのPASSをruntime completionと呼ばない。
 
-Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
 ## Review Response
 
-Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Codex設計引継ぎと早期点検（2026-09-18〜19、design、正式Plan Gateではない）
+
+- ownerの設計委任を受け、旧案のprospectiveなScope/AC/実装指示をADR・Matrixへ置き換えた。以下の過去rallyは対象commit当時の履歴として変更しない。
+- read-onlyの独立計算点検で、同秒の取消順序、旧active snapshotの移行、補正区分の時刻推定を確認。cursor・商品単位の観測順序・legacy移行・明示的kindを新案へ採用した。
+- Sonnet早期点検: 時計変更/sleepの失効機構が未記載という指摘に、Windows通知generationとmonotonic/wall-clock差の検査、native gateを追記。legacyのUI案内と両cursorの明記も反映。レビューは読取りのみで、モデル実行はRootが担当した。
+- Opus早期点検とclosure: 共有JANは本番前の不適合設定検査とwhole-file holdの既存owner判断を前提に、P1としてはclosedと再評価された。kindの明示、legacy取消の停止と再確認、継続的な再確認負担、時計誤差を拡張した境界、観測順序、旧pendingの移行を順に反映した。行単位の部分commit案は採用していない。
+- 最終closureで、新しい再確認から派生するactive基準のS/E・source_cursor等の引継ぎ、旧DB移行直後の大量保留preflightについてclosedとの評価を得た。残った再有効化の再確認経路は、measured保存が必要・明細なしは既知の非対応範囲・checkbox代替不可と明記して一括是正した。request IDは公開tokenと同一、派生basisは内部専用IDとして確定した。round上限に従い追加のrallyは行わず、正式Plan Gateで文面を確認する。
+- 検証command: `python3 scripts/probes/stocktake_time_model.py` → `PASS: temporal bounds, causal receipt, zero-net split, revision, count/rollback lifecycle, legacy recovery`。合成モデルの結果であり、Rust/SQLite/nativeの実装済み証拠ではない。
+- 保存時刻だけでbeforeとする変異、および取消の吸収補正を除く変異をメモリ内で注入し、対応assertの失敗を確認。元の関数へ戻すと成功した。trackedモデルは改変した状態にしない。
+- Windows通知とRustの時計仕様はADRの一次資料で確認した。実機での登録・通知順序、レジ時計、精算系列、EJ全形状、migration故障注入、正式Plan Gateは未実施。
+- 未確認の店の運用や本番移行の件数を受容済みにせず、runtimeには着手していない。Ready・merge・GitHub mutationは行っていない。
 
 ### owner 回答（2026-09-16、design）
 
@@ -493,4 +376,3 @@ Fill after review.
 - owner が Plan Gate を承認、介入上限 8 への再改訂も承認。Plan Commit の確定と state 遷移は、下の「仕組みで守る」への回答を packet に入れてから行う（確定後の追記は Amendment になるため）
 - owner の懸念: 段 0 / 段 1 の前提は「仕組み的に守らざるを得ない形にしないとヒューマンエラーで容易に壊れる」。Coordinator の整理 = app が持つ事実は app の時計・取込みの順序・記録済み movement だけで、POS の取引時刻を持たない。前提を仕組みに変えられるのは取引時刻を持つ EJ（段 2）だけ。EJ の位置づけ（任意の部品か、PLU 販売の本番開始の前提条件か）は owner 回答待ち
 - 未確認 2 点の解消: レジ時計 = 説明書に月差 ± 40 秒・手動設定のみ（Contract Probe に記載）/ 従来 shape の Z004 = app が当初の仕様から想定した形（1 行目が日付だけ）で、実機から採った file では観測されていない。CV17 の SD 取込みで `EcrDatas` に残る実 file はメタ 6 行 + header の layout A で、6 行目に時刻を持つ（field-check `summaries/2026-07-06-z00x-shape-analysis.md`、23 `:5`）。PC ツールで取り込んだ Z004 をそのまま使えばよく、別の書出しは要らない。従来 shape が来ても段 3 へ落ちるため安全側
-

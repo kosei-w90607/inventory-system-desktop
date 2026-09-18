@@ -1,5 +1,7 @@
 # テーブル定義（在庫追跡・棚卸し・システム）
 
+計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D6〜D8（proposed）。実測の窓・cursor・版、独立再実測、明示的な補正区分、旧DBの再確認を定める。以下は現行スキーマであり、新列・新表は未実装。
+
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
 ---

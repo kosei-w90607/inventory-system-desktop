@@ -1,5 +1,7 @@
 ## 15. BIZ-03: Z004商品別CSV取込みパイプライン
 
+計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D6（proposed）。資料受領と売上commitの分離、区間の証拠、共有JANの保留、取消順序を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
+
 > **2026-08-01 evidence sync**: 本書は既存の Z004-only product-sales import pipeline の実装契約を記録する。current operation の日報主入力 `Z001`/`Z002`/`Z005` は [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) のBIZ-08で扱う。集計日報データは `daily_report_imports` / `daily_report_*_lines` に保存し、item-level `sale_records` / `inventory_movements` へ擬似展開しない。Z004側はsale_records作成、`pos_stock_sync`在庫増減、重複・rollbackまで実装済み。2026-07-06店舗採取layout AはIO-02が二形状対応済み（SPEC-Z4A-D1〜D7）。field readinessは実データend-to-end再検証（CSV-09/10）を待つ。
 
 ### 15.1 モジュール構成

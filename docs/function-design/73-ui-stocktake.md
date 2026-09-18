@@ -1,5 +1,7 @@
 # 73. UI-10: 棚卸し画面（StocktakePage）
 
+計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D7 / D9（proposed）。「今から数える」から保存までのcontext、再確認、保存後の訂正を定める。以下の本文は現行画面の契約であり、新しい操作の実装済み仕様ではない。
+
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
 > **入力ドキュメント**: [architecture/ui-task-specs.md](../architecture/ui-task-specs.md) UI-10、[DB_DESIGN.md](../DB_DESIGN.md)、[db-design/tracking-system-tables.md](../db-design/tracking-system-tables.md) §16-17（stocktakes / stocktake_items）、[35-biz-stocktake-service.md](35-biz-stocktake-service.md)、[42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5、[UI_TECH_STACK.md](../UI_TECH_STACK.md) §7.2（10-4a）、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)、[68-ui-backup-restore.md](68-ui-backup-restore.md) / [69-ui-threshold-settings.md](69-ui-threshold-settings.md)（構成の手本）
 > **対応タスク / 仕様**: UI-10（REQ-205、棚卸し）
