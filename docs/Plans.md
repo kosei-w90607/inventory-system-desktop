@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、plan-draft）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。発注65で [統合ADR](adr/2026-09-18-stocktake-time-evidence.md) をDB/IO/BIZ/CMD/UIのproposed詳細へ展開し、[Matrix](plans/test-matrices/2026-09-18-stocktake-time-evidence.md)・層別対応・外部probe条件を同期した。次はFable発注によるsource同期版の正式Plan Gate（Sonnet + Opus、新rally）。runtime未着手。EJ/時計/精算系列の実機成立とWindows native検証は未実施で、成立まで依存する自動処理を有効にしない。参照明細のない共有JAN候補は既知の制限として保持。wave 12 lane 2。
+- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、plan-gate）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。発注65で [統合ADR](adr/2026-09-18-stocktake-time-evidence.md) をDB/IO/BIZ/CMD/UIのproposed詳細へ展開し、[Matrix](plans/test-matrices/2026-09-18-stocktake-time-evidence.md)・層別対応・外部probe条件を同期した。source同期版（content commit `9bed4f57`）の正式Plan Gate（Sonnet + Opus、新rally round 1）をFableが発注済み、結果待ち。runtime未着手。EJ/時計/精算系列の実機成立とWindows native検証は未実施で、成立まで依存する自動処理を有効にしない。参照明細のない共有JAN候補は既知の制限として保持。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ㉗の統合案は是正 `68c3d0d3` でOpus closure pass、follow-up P3は `24087bad` で是正。main単段merge `36891af8` 後のsource同期はADRの判断を変えていない。sourceの事前点検で見つかったactive legacyの分岐と時計失効のTX境界も是正・解消確認済みだが、旧closureを新しいsource全体の正式承認には流用しない。
@@ -48,9 +48,9 @@
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
   - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）
   - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示 = **完了**（PR #67 squash `ebbbef14`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-price-revision-assign-default-off.md)）
-- **wave 12（起案時は非干渉並走、owner 2026-09-16「次何やるかふたつとって早速始めよう」、lane 選定は Coordinator）: 進行中（lane 2 plan-draft、lane 1/3 完了）** — 現在の作業対象はlane 2のみ。source同期の最新footprintはpacket Scope S1〜S7を正とし、起案時のruntime候補一覧を現在の編集許可にしない。生成fileの再生成なし。
+- **wave 12（起案時は非干渉並走、owner 2026-09-16「次何やるかふたつとって早速始めよう」、lane 選定は Coordinator）: 進行中（lane 2 plan-gate、lane 1/3 完了）** — 現在の作業対象はlane 2のみ。source同期の最新footprintはpacket Scope S1〜S7を正とし、起案時のruntime候補一覧を現在の編集許可にしない。生成fileの再生成なし。
   - lane 1: ㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する = **完了**（PR #75 squash `6f7928ed`、介入 3/3、relay 4/4、[archive](archive/plans/2026-09-16-stock-movements-return-selected.md)）
-  - lane 2: ㉗ 棚卸しと後着売上の時点証拠（R3 docs-only、`agent/stocktake-count-baseline-design`、[Packet](plans/2026-09-16-stocktake-count-baseline.md)、Draft PR未作成、Phase plan-draft、Codexがsource詳細を同期済み。次はFable発注の正式Plan Gate。介入8/8を維持し追加の判断質問なし。新たなHuman Gate依頼前に予算の調整が必要）
+  - lane 2: ㉗ 棚卸しと後着売上の時点証拠（R3 docs-only、`agent/stocktake-count-baseline-design`、[Packet](plans/2026-09-16-stocktake-count-baseline.md)、Draft PR未作成、Phase plan-gate、Codexがsource詳細を同期済み。次はFable発注の正式Plan Gate。介入8/8を維持し追加の判断質問なし。新たなHuman Gate依頼前に予算の調整が必要）
   - lane 3: ㉙ returnTo 衛生 = **完了**（PR #78 squash `a68ba291`、介入 3/3、relay 2/3、[archive](archive/plans/2026-09-17-return-to-hygiene.md)）
 - **wave 11（非干渉並走 2 lane、owner 2026-09-16「ホーム画面 + 廃棄の詳細 link」）: 完了（lane 1〜2、2026-09-16）** — file footprint 互いに素（lane 1 = `src/features/home/**` + `src/config/navigation.ts` + SCREEN_DESIGN / 53 / 52 / decision-log、lane 2 = `src/features/disposal/**` + 64）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
   - lane 1: ㉔ ホーム画面を mockup-c 案へ寄せる = **完了**（PR #70 squash `41c2e3e2`、介入 2/3、relay 1/2、[archive](archive/plans/2026-09-16-home-mockup-c-runtime.md)）
@@ -66,7 +66,7 @@ L8-4は owner 決定済み（下記参照）。L8-2/L8-5は旧⑩laneからの�
 
 - L8-4 明細数列は owner 決定 2026-09-15 で (a) 撤去。runtime 反映は Backlog の表示小修正 batch 2 に同乗。
 - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数列 撤去決定）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
-- STK-1 / STK-2は[統合ADR](adr/2026-09-18-stocktake-time-evidence.md)からsource詳細へ同期しplan-draft。snapshot補正・商品単位の再実測・過去評価額の非遡及は引き継ぐ。旧日付比較や未検証の時刻補完を実装指示に使わない。ownerの未確認の店舗運用を受容済みにせず、正式Plan Gateまではruntimeへ進めない。
+- STK-1 / STK-2は[統合ADR](adr/2026-09-18-stocktake-time-evidence.md)からsource詳細へ同期しplan-gate（正式Plan Review待ち）。snapshot補正・商品単位の再実測・過去評価額の非遡及は引き継ぐ。旧日付比較や未検証の時刻補完を実装指示に使わない。ownerの未確認の店舗運用を受容済みにせず、正式Plan Gateまではruntimeへ進めない。
 
 元の文脈は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md)。関連する製品作業でownerの判断を得る。
 

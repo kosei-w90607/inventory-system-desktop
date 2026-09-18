@@ -5,7 +5,7 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: pending
@@ -29,6 +29,7 @@ ownerの今回の指示はsource詳細同期とplan-draftの準備を許可す�
 引継ぎ（phase変更なし、2026-09-18）: owner「普通に君に設計任せる」を受領。反例ごとの条件追加を止め、時点証拠・復旧・保存順序をADRへ統合する。新しいsource契約はDB/command/保存・訂正の操作を直接定めるため、影響基準でRiskをR3へ更新しMatrixを作成する。旧rallyの評価はその対象commitに対する履歴として保持し、新案の承認には流用しない。
 
 - design → plan-draft（2026-09-19、発注65のsource同期content commitに同乗）: ADRの意味を変えずにS1〜S6の詳細契約とS7の対応表を同期。合成モデル・docs検査・禁止pathと要求token照合が成功し、新たな設計質問はない。実機依存は成立まで非有効化とする契約を明記。正式Plan GateはFableが新rallyで発注し、Plan Commitは承認までpendingを維持する。
+- plan-draft → plan-gate（2026-09-19、state-only）: packet と Test Design Matrix は content commit `9bed4f57` で commit 済み。同 commit で設計モデル・docs 検査（plan / full）・workflow-git が成功し、未解決の設計質問なし。正式 Plan Review の新しい rally（round 1、Sonnet + Opus の独立 fresh context、対象 `9bed4f57` の計画内容）を Fable が発注する。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
