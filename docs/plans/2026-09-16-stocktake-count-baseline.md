@@ -29,7 +29,7 @@ owner の設計判断 3 問（下記「owner への設問」Q1〜Q3）。これ�
 
 ## Owner Effort Budget
 
-- 介入回数上限: 7（設計判断 5 回 + Ready 1 回 + merge 1 回。4 から再改訂 2026-09-18、理由: design への state-backtrack で decision point が 3 つ増えた = Q2 `<=` 一律適用の不承認〈2026-09-17〉/ 決めること 3 点の回答〈2026-09-18〉/ 保留の出口の方向指示〈2026-09-18〉。前回改訂の根拠は Opus round 1 P2-6）。実績 6/7（6 回目 = owner review と D-D9 の保存単位の決定、2026-09-18。残りは Ready と merge で 8 になるため、Plan Gate の承認依頼時に上限の再改訂を諮る）
+- 介入回数上限: 8（owner 2026-09-18 承認で 7 から再改訂。設計判断 5 回 + Plan Gate 承認 1 回 + Ready 1 回 + merge 1 回。旧 7 の内訳 = 設計判断 5 回 + Ready 1 回 + merge 1 回。4 から再改訂 2026-09-18、理由: design への state-backtrack で decision point が 3 つ増えた = Q2 `<=` 一律適用の不承認〈2026-09-17〉/ 決めること 3 点の回答〈2026-09-18〉/ 保留の出口の方向指示〈2026-09-18〉。前回改訂の根拠は Opus round 1 P2-6）。実績 7/8（6 回目 = owner review と D-D9 の保存単位の決定、7 回目 = Plan Gate 承認と上限の再改訂、いずれも 2026-09-18）
 - 実働時間上限: 60分（20 分から再改訂 2026-09-18、理由は介入回数と同じ。設問と回答の読了を含む。未実測）
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3。2026-09-18 からの新 rally で再計上、前 rally は天井到達で owner escalation 済み）
@@ -284,7 +284,7 @@ Minimum design checks for business-app work:
 
 ## Contract Probe
 
-外部前提 = Z004 layout A の meta 行に精算回数と精算時刻があること。probe 済み: field-check の実物で確認（起票時実測「Z004 側の実測」2026-09-18、値は記録しない）。時刻を持たない従来 shape は段 3 へ落ちる設計で前提から外す。レジ時計と PC 時計の差は未実測（余裕幅 10 分は precondition-dependent）。それ以外は外部前提なし（docs-only。数値例は snapshot 差分の恒等式 `P + (live − S) − live = P − S` で検算済み。XFA-T1 / T2 の合成 DB 再現は監査で実施済み）。
+外部前提 = Z004 layout A の meta 行に精算回数と精算時刻があること。probe 済み: field-check の実物で確認（起票時実測「Z004 側の実測」2026-09-18、値は記録しない）。時刻を持たない従来 shape は段 3 へ落ちる設計で前提から外す。レジ時計の精度は本体説明書 SRS4000 の仕様表「時計・日付機能 月差 ± 40 秒」、自動の時刻合わせは無く手動設定だけ（同「日時を設定する」p.79。field-check `approved-readable/SRS4000_JA3.pdf`、2026-09-18 確認）。PC は OS の時刻同期に従う。余裕幅 10 分は、時計を合わせてから放置しても `600 / 40 = 15` か月分のずれに相当するため、運用条件は「年 1 回、棚卸しの前にレジの時計を PC に合わせる」で足りる（店のレジの現在のずれは未実測）。それ以外は外部前提なし（docs-only。数値例は snapshot 差分の恒等式 `P + (live − S) − live = P − S` で検算済み。XFA-T1 / T2 の合成 DB 再現は監査で実施済み）。
 
 ## Contract Coverage Ledger
 
@@ -476,4 +476,10 @@ Fill after review.
 - Sonnet = 通過可。round 2 の P2 / P3 は closed。案 A 由来の記述の残存は棄却理由・起案時の記録 block・履歴だけ。AC の baseline は全件一致、`BIZ-06-D6` の衝突なし。P3（新しい関数の名前と節番号が未指定）= accept、`record_stocktake_recount` / §20.4.1 を S2 に明記
 - 本 commit の修正は oracle・表示規則・命名の追記だけで、契約本体（D-D4 / D-D8 / D-D9）は `02ca6dec` から変えていない。rally は天井の round 3 で close。次 = owner の Plan Gate 承認
 - 残る不確実性（owner へ提示）: 段 0 / 段 1 の前提は現場で守れることが条件で、受容済みではない / レジ時計と PC 時計の実差は未実測 / 従来 shape（Tz なし）の Z004 が現運用で出るかは未確認
+
+### owner Plan Gate 承認（2026-09-18）
+
+- owner が Plan Gate を承認、介入上限 8 への再改訂も承認。Plan Commit の確定と state 遷移は、下の「仕組みで守る」への回答を packet に入れてから行う（確定後の追記は Amendment になるため）
+- owner の懸念: 段 0 / 段 1 の前提は「仕組み的に守らざるを得ない形にしないとヒューマンエラーで容易に壊れる」。Coordinator の整理 = app が持つ事実は app の時計・取込みの順序・記録済み movement だけで、POS の取引時刻を持たない。前提を仕組みに変えられるのは取引時刻を持つ EJ（段 2）だけ。EJ の位置づけ（任意の部品か、PLU 販売の本番開始の前提条件か）は owner 回答待ち
+- 未確認 2 点の解消: レジ時計 = 説明書に月差 ± 40 秒・手動設定のみ（Contract Probe に記載）/ 従来 shape の Z004 = app が当初の仕様から想定した形（1 行目が日付だけ）で、実機から採った file では観測されていない。CV17 の SD 取込みで `EcrDatas` に残る実 file はメタ 6 行 + header の layout A で、6 行目に時刻を持つ（field-check `summaries/2026-07-06-z00x-shape-analysis.md`、23 `:5`）。PC ツールで取り込んだ Z004 をそのまま使えばよく、別の書出しは要らない。従来 shape が来ても段 3 へ落ちるため安全側
 
