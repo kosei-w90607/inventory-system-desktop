@@ -8,11 +8,12 @@
 
 ## 次の行動
 
-- **Writer 発注文書の整理（R2、PR #82）**: [Plan Packet](plans/2026-09-17-writer-dispatch-docs.md)。branch `codex/writer-dispatch-docs`。§5.6・既存 template・前提訂正 sweep の整理、docs / workflow 検証、Plan Review は完了。Gated Amendment 1（Final Review Minimum 2、`25cf5cb2`）により、Final Review は PR #82 で Double Audit（Sonnet + Opus）の broad を取得し、是正の closure 待ち。取り込み順は本変更の PR / CI / merge → closeout → ㉗再開時の main 同期。㉗の branch・packet・未決設計はこの作業で変更しない。local 検証は `.local/reports/writer-dispatch-docs/verification.md`、前後関係と競合解消の申し送りは同 directory の `integration-handoff.md`。
 - **㉗ 棚卸しの基準時点（STK-1 / STK-2）（R3、design）**: `plans/2026-09-16-stocktake-count-baseline.md`。branch `agent/stocktake-count-baseline-design`。監査 STK-1（P1）/ STK-2 起源。是正方式の owner 判断を Human Gate に置き、回答後に plan-gate へ。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
+
+- **Writer 発注文書の整理**: [PR #82](https://github.com/kosei-w90607/inventory-system-desktop/pull/82) を merge（2026-09-19、main `8ae12595`）。owner の発注漏れ調査依頼を受け、`docs/AGENT_OPERATING_MANUAL.md` §5.6 に発注構成・起草時の現物確認・初回 / 再開の区別・訂正時の照合を集約し、`docs/DEV_WORKFLOW.md` 前提訂正 sweep の対象へ当該変更の最終 Writer 発注書・再開指示を追加、`docs/templates/plan-packet.md` / `test-design-matrix.md` の Scope / AC / Registration / Matrix 欄を明確化した。[archive の Plan Packet](archive/plans/2026-09-17-writer-dispatch-docs.md)。Gated Amendment 1（`25cf5cb2`、Final Review Minimum 2 へ引上げ）後、Final Review = broad 2 本（Sonnet P1/P2 なし、Opus P2 2 件）→ 是正 `a9faaccc` → Opus closure pass。helper record と CI（Merge gate / Design doc consistency / Workflow regression pass）で Ready → merge。報告は PR #82 の comment `#issuecomment-5732743285` / `#issuecomment-5732763646` / `#issuecomment-5732927180`。取り込み順の申し送り: ㉗ 棚卸しの基準時点は再開時に本 PR 反映後の最新 main を単段 merge してから続ける。次 dogfood 対象: ㉗ の次回 Writer 発注で §5.6 の手順を使い、発注前の fail-closed の有無を観測する。
 
 - **㉙ returnTo 衛生**: [PR #78](https://github.com/kosei-w90607/inventory-system-desktop/pull/78) を merge（2026-09-17）。NAV-1（PR #75）Final Review round 1 pass B / round 2 pass B の P3 5 件 + 起票時に見つけた同型の実害（入出庫履歴の数字だけの検索語が詳細からの戻りで消える）を修正。`returnTo` guard の検証を prefix 判定から origin 一致 + 解決後 pathname の `//` 拒否 + no-throw（C7）へ強化し、業務記録詳細 6 画面と在庫変動履歴の戻り link を文字列 `to` から `to`（pathname）+ `search`（object）へ統一（`returnToLinkProps`、「在庫照会へ戻る」は `/stock` に pin）。入出庫履歴の `returnTo` を手組みの `URLSearchParams` から router の href へ寄せ、数字だけの検索語が number 化せず往復するようにした。在庫照会 `selected` の上限も `q` と同じ 100 文字に揃えた（旧 20）。[archive の Plan Packet](archive/plans/2026-09-17-return-to-hygiene.md) / [Matrix](archive/plans/test-matrices/2026-09-17-return-to-hygiene.md)。
 

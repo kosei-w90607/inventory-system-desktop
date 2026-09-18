@@ -3,7 +3,7 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Execution Mode: dual-vendor-no-fable
 - Plan Commit: 36bbae61be2f29af5d36898f3015e4bf28a2cf2c
@@ -159,3 +159,5 @@ N/A: executable / wire / schema / report format の変更なし。発注の例�
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
 
 2026-09-19 Final Review broad（head `bb0b4608`）= Sonnet P1/P2 なし・P3 2 件、Opus P2 2 件・P3 5 件。P2 2 件（Plans.md の GA1 未同期、§5.6 最終照合への実行条件の追加）と P3 3 件（Registration 表の行、`rg` の手段、live / historical の区別）を採用して是正。AC5 / Scope の曖昧表現 WARN（M1、既知の 2 箇所）は AC 文言の変更が新しい Gated Amendment と broad の取り直しを要するため本 PR では変更せず、既知の WARN として保持。Coordinator field の指摘は上記の役割記録で対応。報告は PR #82 の comment（`#issuecomment-5732743285`、`#issuecomment-5732763646`）。
+
+2026-09-19 PR #82 で merge（main `8ae12595`）。Final Review = broad 2 本（Sonnet P1/P2 なし、Opus P2 2 件）→ 是正 `a9faaccc` → Opus closure pass。helper record と CI（Merge gate / Design doc consistency / Workflow regression pass）で Ready → merge。報告は PR #82 の comment `#issuecomment-5732743285` / `#issuecomment-5732763646` / `#issuecomment-5732927180`。Workflow Effectiveness Review の代わりに次の dogfood 対象を名指す: ㉗ 棚卸しの基準時点（`plans/2026-09-16-stocktake-count-baseline.md`）の次回 Writer 発注で §5.6 の手順を使い、発注前の fail-closed の有無を観測する。

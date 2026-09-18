@@ -103,6 +103,7 @@
 - `PluExportPage.tsx:188` の complexity 分割（⑯ 起票時実測 10a §3 item #1 起源、complexity 69。保存・未確認復帰・確認・snapshot 読込みの state/表示条件混在を flow hook / 状態 panel へ分割する候補、本 lane では disable + 見送り）、M
 - `ReturnExchangePage.tsx:185` の max-lines-per-function 分割（⑯ 起票時実測 10a §3 item #2 起源、793 行。画像保存・再送 key・返品方向変換・検索・結果表示を画像/明細/保存 flow の責務単位で分割する候補、本 lane では disable + 見送り）、M
 - inventory-operator-ui SKILL.md への DSR-16 判断手順追加（sandbox の `.claude/skills` write deny により Claude worker 経路不可 — Codex 発注 or owner 手動の小 change、PR #15 起源）。
+- Writer 発注書 template / 手順の follow-up 4 件（PR #82 closure comment 起源）: (1) `docs/templates/plan-packet.md` Registration 表の `operator 画面新設・改名・削除` 行は右列が `navigation.ts` entry 有効化のみで、削除・改名時の義務が読めない。`function-design doc 新設` 行だけが `build_doc_to_modules_map()` の拡張対象で、削除時の stale key は機械検出されない。(2) `docs/DEV_WORKFLOW.md` 訂正 sweep の live 定義（Workflow State fields, Scope, AC, Test Plan, Review Focus 等）に、`Plans.md` entry の現在地や gate 完了の主張のような status 記述を明示的に含める。(3) `docs/AGENT_OPERATING_MANUAL.md` §5.6 手順 2 の「指定する doc 節は `rg` で番号の実在と内容の一致を確認する」で、`rg` 手段を追加した際に旧文にあった対象との一致確認が脱落している。(4) archive 済み packet の AC5 / Scope の曖昧表現（既知 WARN M1）は archive のため対象外とし、追加是正は追わない。
 
 ### 記録目的（受容済みリスク・revisit 条件付き）
 
