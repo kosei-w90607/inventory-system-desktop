@@ -26,6 +26,9 @@ class Count:
     end: int
     sources: int
     legacy: bool = False
+    # Latest possible START, including timestamp precision and observation error.
+    # None means unknown; end is the latest SAVE and is not a substitute.
+    start_latest: int | None = None
 
 
 def bound_clock_interval(lower: int | None, upper: int | None, quantum: int, error: int):
@@ -42,7 +45,8 @@ def qualified_source(source: Source, count: Count | None) -> Source:
     reversed_bounds = source.lower is not None and source.upper is not None and source.lower > source.upper
     causal_conflict = (
         count is not None and not count.legacy and source.received <= count.sources
-        and source.lower is not None and source.lower > count.end
+        and count.start_latest is not None
+        and source.lower is not None and source.lower > count.start_latest
     )
     return replace(source, trusted=False) if reversed_bounds or causal_conflict else source
 
@@ -256,11 +260,24 @@ def check_counterexamples() -> None:
     assert classify(Source(1, 20, 0, True), Count(10, 11, 0)) == "unknown"
     # Causal proof still works, but MUST NOT carry contradictory clock trust forward.
     conflict = Source(1, 20, 30, True)
-    assert not qualified_source(conflict, Count(10, 11, 1)).trusted
-    assert classify(conflict, Count(10, 11, 1)) == "before"
-    invalidated = qualified_source(conflict, Count(10, 11, 1))
+    assert not qualified_source(conflict, Count(10, 11, 1, start_latest=10)).trusted
+    assert classify(conflict, Count(10, 11, 1, start_latest=10)) == "before"
+    invalidated = qualified_source(conflict, Count(10, 11, 1, start_latest=10))
     assert classify(invalidated, Count(10, 11, 0)) == "unknown"
     assert qualified_source(Source(1, 0, 5, True), Count(10, 11, 1)).trusted
+    # REQ-401 / D3: contradiction means after EVERY possible start, not after save.
+    start_earliest, start_latest = bound_clock_interval(100, 100, quantum=1, error=2)
+    uncertain_start = Count(start_earliest, 122, 1, start_latest=start_latest)
+    assert (start_earliest, start_latest) == (98, 103)
+    inside_window = Source(1, 104, 110, True)
+    assert not qualified_source(inside_window, uncertain_start).trusted
+    assert classify(inside_window, uncertain_start) == "before"  # receipt still proves this
+    assert qualified_source(Source(1, 99, 100, True), uncertain_start).trusted
+    assert qualified_source(Source(1, 103, 110, True), uncertain_start).trusted  # touching
+    # Sale at 99.5, receipt at 99.75, true start at 100 is consistent with these bounds.
+    assert qualified_source(inside_window, Count(98, 122, 1)).trusted  # unknown start bound
+    assert classify(Source(2, 104, 110, True), uncertain_start) == "unknown"
+    assert classify(Source(2, 123, 130, True), uncertain_start) == "after"  # AFTER still uses E
     # Expand the COUNT side too: exact ends would incorrectly classify both cases.
     s, e = bound_clock_interval(10, 11, quantum=1, error=1)
     assert (s, e) == (9, 13)
@@ -271,6 +288,25 @@ def check_counterexamples() -> None:
     assert classify_row(Source(1), [(True, Count(5, 6, 1)), (True, Count(7, 8, 1))]) == "before"
     assert classify_row(Source(1), [(False, None), (True, None)]) == "unknown"
     assert classify_row(Source(1), [(False, None), (False, None)]) == "no_stock"
+
+
+def check_diagnostic_order() -> None:
+    # REQ-401 / D3-D4: observe the diagnostic result, not just the unchanged stock decision.
+    global qualified_source
+    original = qualified_source
+    inspected_trust = []
+
+    def recording(source: Source, count: Count | None) -> Source:
+        checked = original(source, count)
+        inspected_trust.append(checked.trusted)
+        return checked
+
+    qualified_source = recording
+    try:
+        assert classify(Source(1, 20, 0, True), Count(10, 11, 0, legacy=True)) == "unknown"
+        assert inspected_trust == [False], "legacy early return bypassed clock diagnostics"
+    finally:
+        qualified_source = original
 
 
 def check_lifecycle() -> None:
@@ -340,6 +376,13 @@ def check_lifecycle() -> None:
     ledger.cancel(imported)
     assert ledger.stock == 9 and recount in ledger.observations and correction.active
     assert (recount.actual, recount.snapshot) == (9, 8)  # append-only fact is intact
+
+    # REQ-205 / D7: completion releases the active owner so the correction exit is usable.
+    ledger = Ledger()
+    ledger.observe(8)
+    ledger.complete()
+    corrected = ledger.observe(7, immediate=True)
+    assert ledger.stock == 7 and corrected.state == "applied"
 
     for measured in (False, True):
         ledger = Ledger()
@@ -416,7 +459,7 @@ def check_migration_and_fill() -> None:
     for actual, saved, snapshot, expected in (
         (None, None, 10, "uncounted"), (0, None, 0, "auto_filled"),
         (0, "old", 0, "legacy"), (8, "old", 10, "legacy"),
-        (None, "old", 10, "legacy"), (8, None, 10, "legacy"),
+        (None, "old", 10, "legacy"), (8, None, 10, "legacy"), (8, None, 0, "legacy"),
         (0, None, 10, "legacy"),
     ):
         assert migration_kind(actual, saved, snapshot) == expected
@@ -429,12 +472,14 @@ def check_migration_and_fill() -> None:
         ledger.complete()
         assert ledger.stock == opening and len(ledger.movements) == 1
 
-    ledger = Ledger()
+    ledger = Ledger(2)
     imported = ledger.move(-2)
-    ledger.force_fill()
+    filled = ledger.force_fill()  # zero/zero matches the old discontinued auto-input
     ledger.complete()
+    ledger.migrate_legacy()  # D8: auto-filled legacy rows do not become observations
+    assert not filled.legacy
     ledger.cancel(imported)  # auto_fill did not absorb it
-    assert ledger.stock == 10
+    assert ledger.stock == 2
     try:
         ledger.force_fill(needs_recheck=True)
     except ValueError:
@@ -464,6 +509,7 @@ def check_migration_and_fill() -> None:
 if __name__ == "__main__":
     check_bounds()
     check_counterexamples()
+    check_diagnostic_order()
     check_lifecycle()
     check_legacy_recovery()
     check_migration_and_fill()

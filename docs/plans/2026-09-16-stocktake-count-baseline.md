@@ -391,3 +391,16 @@ Contract ID: SPEC-STK-TIME-EVIDENCE
 - owner が Plan Gate を承認、介入上限 8 への再改訂も承認。Plan Commit の確定と state 遷移は、下の「仕組みで守る」への回答を packet に入れてから行う（確定後の追記は Amendment になるため）
 - owner の懸念: 段 0 / 段 1 の前提は「仕組み的に守らざるを得ない形にしないとヒューマンエラーで容易に壊れる」。Coordinator の整理 = app が持つ事実は app の時計・取込みの順序・記録済み movement だけで、POS の取引時刻を持たない。前提を仕組みに変えられるのは取引時刻を持つ EJ（段 2）だけ。EJ の位置づけ（任意の部品か、PLU 販売の本番開始の前提条件か）は owner 回答待ち
 - 未確認 2 点の解消: レジ時計 = 説明書に月差 ± 40 秒・手動設定のみ（Contract Probe に記載）/ 従来 shape の Z004 = app が当初の仕様から想定した形（1 行目が日付だけ）で、実機から採った file では観測されていない。CV17 の SD 取込みで `EcrDatas` に残る実 file はメタ 6 行 + header の layout A で、6 行目に時刻を持つ（field-check `summaries/2026-07-06-z00x-shape-analysis.md`、23 `:5`）。PC ツールで取り込んだ Z004 をそのまま使えばよく、別の書出しは要らない。従来 shape が来ても段 3 へ落ちるため安全側
+
+### 統合案のclosure passとfollow-up是正（2026-09-19、design、発注64）
+
+- 設計レビューbroad（対象 `4319fe36`、2026-09-19）: Sonnet + Opusの独立fresh context、裁定Coordinator = Fable。SonnetはP1/P2なし・P3 2件、OpusはP2 2件（版増分のchoke point、migrationのauto_filled欠落）・P3 6件。
+- 是正 `68c3d0d3` に対するOpus closure（2026-09-19）はpass、P1/P2の残存なし。P3-1は数値例の成立を追跡し不採用妥当、P3-6も不採用妥当、ほかはCLOSEDと確認された。
+- closureの新規指摘 `P3-A / P3-B / P3-C` はfollow-up。owner決定（2026-09-19）どおりclosure passを維持し、Codexが本commitでまとめて是正した。これはDesign Phaseの設計レビューであり、正式Plan Gateではない。Plan Commitはpending、Phaseはdesign、runtimeは未着手のまま。
+- P3-A: pendingの取消TX内昇格は算術上の不成立を理由にせず、取消が確定前の棚卸し差異を暗黙に在庫へ適用し、確定時補正・差異件数の意味を変えるため不採用とD6へ明記した。既存の明示的な再実測による復旧を維持する。
+- P3-B: D3と `qualified_source` を、取引下限が開始の最遅候補 `S_latest` を厳密に超えた場合だけ因果矛盾とする条件へ同期した。開始自身の粒度・観測誤差を含め、保存Eによる検出遅れと最早始端による誤検出を避ける。AFTER判定のE比較は不変。
+- P3-C: ledgerの自動補完→移行→取消、確定→独立再実測、`(8, None, 0) → legacy`、legacy早期return前の診断実行、開始と保存の間の因果矛盾をassertで固定した。開始の誤差範囲内・接触では時計を無効化しないことも追加し、Matrixを同期した。
+- 検証のred/green: 新しい開始境界のassertは変更前のE閾値で `AssertionError`、変更後にモデル全体PASS。temporary copyで自動補完のlegacy化・active解除除去・actual=0条件除去・診断のlegacy分岐後移動・閾値をEへ変更・閾値を最早始端へ変更・境界接触も矛盾扱い、の各変異を実行し、全てREDを確認した。trackedモデルは変異させず、copyの原本との `cmp` が一致し、モデル全体を再実行してGREENを確認した。
+- Review-only skipped because: 既存closureでpassした設計のfollow-upに限定し、採用済みの操作方式は変更しない。新規broad/rallyは起こさず、対応assert・実変異・文書検査で是正を確認し、詳細source同期後の正式Plan Gateへ引き継ぐ。
+- 検証command: `python3 scripts/probes/stocktake_time_model.py` → exit 0、`PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy recovery, migration kinds, force_fill`。`git diff --check` 成功、`git diff --name-only HEAD -- src src-tauri` → 空。`rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` → D1〜D9の9見出しを維持。`bash scripts/check-workflow-git.sh` → PK5/STATECAP OK。
+- 文書検証: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-16-stocktake-count-baseline.md` → ともにexit 0、ERRORなし、既存履歴のPK6 WARN 3件のみ。計画側で業務上の状態語を未決マーカーと誤検出した箇所は「確定前」へ言い換え、検査ルールは変更していない。
