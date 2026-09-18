@@ -129,7 +129,7 @@ above point to the same terminal/TUI surface area.
 Record each result here before changing code again.
 
 - Done: raw Codex with no wrapper did not reproduce:
-  `/home/kosei/.npm-global/bin/codex -C /home/kosei/Projects/inventory-system --sandbox workspace-write --ask-for-approval on-request`.
+  `/home/kosei/.npm-global/bin/codex -C /home/kosei/projects/inventory-system --sandbox workspace-write --ask-for-approval on-request`.
 - Done: raw Codex with `--no-alt-screen` did not reproduce.
 - Done: plain / no-tmux `codex-inventory` did not reproduce.
 - Done: `CODEX_INVENTORY_NO_BAR=1 codex-inventory` did not reproduce.

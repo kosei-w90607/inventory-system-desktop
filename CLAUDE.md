@@ -30,7 +30,7 @@ tracked project hook inventoryは空で、`claude-code-harness`はproject scope�
 
 停止時は `Ctrl+C`、別terminalから `claude --resume <session-id>`、再発時は `--fork-session` を検討する。transcript破損が疑われるAPI 400等では新規sessionでAGENTSの該当ルート、対象の現物、直近の引継ぎから再開する。
 
-projectの現在地は `Plans.md`、安定した事実は `docs/project-memory.md`、判断は `docs/decision-log.md` とdesign doc。個人auto-memoryは補助であり、書込みや読取りをgateにしない。主checkoutの既存格納先は `/home/kosei/.claude/projects/-home-kosei-Projects-inventory-system-public/memory/`。repo固有の成果物は作業checkoutに保持し、`~/.claude/`等の個人領域へ移さない。
+projectの現在地は `Plans.md`、安定した事実は `docs/project-memory.md`、判断は `docs/decision-log.md` とdesign doc。個人auto-memoryは補助であり、書込みや読取りをgateにしない。主checkoutの既存格納先は `/home/kosei/.claude/projects/-home-kosei-projects-inventory-system-public/memory/`。repo固有の成果物は作業checkoutに保持し、`~/.claude/`等の個人領域へ移さない。
 
 ## npm供給網ガード（D-030）
 

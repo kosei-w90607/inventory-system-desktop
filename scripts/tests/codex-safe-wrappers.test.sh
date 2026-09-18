@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-OLD_ROOT_PATTERN='Projects/inventory-system($|[^-])'
+OLD_ROOT_PATTERN='[Pp]rojects/inventory-system($|[^-])'
 
 fail() {
     echo "FAIL: $*" >&2
@@ -358,8 +358,8 @@ if sed -n '130,160p;236,244p' "$SOURCE_ROOT/docs/DEV_SETUP_CHECKLIST.md" |
     rg -n "$OLD_ROOT_PATTERN"; then
     fail "T12 live DEV_SETUP sections still reference the history-view clone"
 fi
-public_namespace='-home-kosei-Projects-inventory-system-public'
-old_namespace_pattern='-home-kosei-Projects-inventory-system($|[^-])'
+public_namespace='-home-kosei-projects-inventory-system-public'
+old_namespace_pattern='-home-kosei-[Pp]rojects-inventory-system($|[^-])'
 if rg -n -- "$old_namespace_pattern" "${live_files[@]}"; then
     fail "T12 live B-group file still contains the history-view encoded namespace"
 fi
