@@ -31,8 +31,8 @@
 
 ### ローカル field-check 参考資料
 
-- WSL path: `/home/kosei/Downloads/inventory-field-check`
-- Windows path: `\\wsl.localhost\Ubuntu-22.04\home\kosei\Downloads\inventory-field-check`
+- WSL path: `/home/kosei/downloads/inventory-field-check`
+- Windows path: `\\wsl.localhost\Ubuntu-22.04\home\kosei\downloads\inventory-field-check`
 - CV17 / レジスターツールのマニュアル参照: `approved-readable/ECRCV17.pdf`
 - PDF画面で確認できる主な根拠: `5.4` は `PLU(商品)` / `ｽｷｬﾆﾝｸﾞPLU(商品)` の一覧・サブ画面、`5.7.2` は `ｽｷｬﾆﾝｸﾞPLU 開始ﾒﾓﾘNo.`、`5.8` はデータのエクスポート/インポートとテキストファイル保存・取込み。
 - 調査結果の参照優先: `summaries/` 配下の匿名化・要約済みメモを優先する。CSV / XLSX / PLU export / register backup / screenshot 等の実データは repo にコピーしない。

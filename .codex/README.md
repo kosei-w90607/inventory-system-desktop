@@ -33,7 +33,7 @@ approval_policy = "on-request"
 This avoids repeated prompts for normal sandboxed shell commands and file edits while keeping explicit escalation, remote mutation, and destructive operations as review points. If the active Codex version does not load project `.codex/config.toml`, start Codex with equivalent CLI flags:
 
 ```bash
-codex -C /home/kosei/Projects/inventory-system-public --sandbox workspace-write --ask-for-approval on-request
+codex -C /home/kosei/projects/inventory-system-public --sandbox workspace-write --ask-for-approval on-request
 ```
 
 `approval_policy = "untrusted"` is useful for auditing but too noisy for normal implementation work in this repo. `approval_policy = "never"` and `--dangerously-bypass-approvals-and-sandbox` are not normal project defaults.
@@ -114,7 +114,7 @@ stable way to identify the active Codex thread.
 Current local wiring:
 
 - `~/.zshrc` maps `codex-inventory` to
-  `CODEX_INVENTORY_REPO=/home/kosei/Projects/inventory-system-public /home/kosei/Projects/inventory-system-public/.codex/bin/codex-inventory`.
+  `CODEX_INVENTORY_REPO=/home/kosei/projects/inventory-system-public /home/kosei/projects/inventory-system-public/.codex/bin/codex-inventory`.
 - `bin/codex-inventory` defaults to plain Codex with an expanded native footer.
 - `bin/codex-inventory` delegates model / effort defaults to Codex and forwards
   only explicit environment pins through `CODEX_INVENTORY_PINNED_*`.
@@ -172,7 +172,7 @@ Machine-specific overrides must stay untracked:
 Use WSL execution against the canonical repository path:
 
 ```powershell
-wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec <command>
+wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec <command>
 ```
 
 Avoid direct `\\wsl.localhost\...` access for project automation because it can fail at the Windows sandbox/UNC boundary.
@@ -186,12 +186,12 @@ Avoid direct `\\wsl.localhost\...` access for project automation because it can 
   The command policy allows both the canonical WSL absolute form and the shorter repo-relative form from a trusted project session:
 
 ```powershell
-wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec /home/kosei/Projects/inventory-system-public/.codex/bin/read-safe-file.sh
-wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec /home/kosei/Projects/inventory-system-public/.codex/bin/search-safe-files.sh
-wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec /home/kosei/Projects/inventory-system-public/.codex/bin/list-safe-files.sh
-wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec .codex/bin/read-safe-file.sh
-wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec .codex/bin/search-safe-files.sh
-wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec .codex/bin/list-safe-files.sh
+wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec /home/kosei/projects/inventory-system-public/.codex/bin/read-safe-file.sh
+wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec /home/kosei/projects/inventory-system-public/.codex/bin/search-safe-files.sh
+wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec /home/kosei/projects/inventory-system-public/.codex/bin/list-safe-files.sh
+wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec .codex/bin/read-safe-file.sh
+wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec .codex/bin/search-safe-files.sh
+wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec .codex/bin/list-safe-files.sh
 ```
 
 - Direct WSL sessions in the canonical repository root may also use:
@@ -237,7 +237,7 @@ codex execpolicy check --pretty --rules .codex\rules\default.rules -- <command t
 Example:
 
 ```powershell
-codex execpolicy check --pretty --rules .codex\rules\default.rules -- wsl.exe -d Ubuntu-22.04 --cd /home/kosei/Projects/inventory-system-public --exec /home/kosei/Projects/inventory-system-public/.codex/bin/read-safe-file.sh AGENTS.md
+codex execpolicy check --pretty --rules .codex\rules\default.rules -- wsl.exe -d Ubuntu-22.04 --cd /home/kosei/projects/inventory-system-public --exec /home/kosei/projects/inventory-system-public/.codex/bin/read-safe-file.sh AGENTS.md
 ```
 
 If Codex Desktop does not auto-load project rules in a given version, copy or import the reviewed rules through the active Codex rules mechanism instead of broadening the global sandbox.
