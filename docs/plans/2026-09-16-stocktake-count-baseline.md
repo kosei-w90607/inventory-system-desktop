@@ -602,5 +602,5 @@ ADR全文、packetの現在契約、S1〜S6のproposed節で旧DB/移行/legacy/
 - round 3 の残件（移行前 import が比較先になる場合の規則、費用記述）はいずれも CLOSED。P1/P2 = 0、Plan Gate 通過可。owner 決定は ADR D3 / D8・DB・IO / BIZ / CMD / UI・Matrix へ同じ意味で反映され、拒否は fail-closed 側で前提（本番にメタなし import が無い）が破れても二重計上は通らず preflight で見える。「初導入の申告で検査を省略しない」は ADR / 32 / 41 / 55 に明文。後追い取込みは日付で止まらず、D4 の保留・要再確認と整合する。
 - 発注 68 の点検 3 は妥当: legacy 観測の移行・legacy 取消の復旧・legacy_movement_ceiling は維持、費用記述だけを旧観測を持つ DB へ限定。機構の削除・弱体化なし。
 - Coordinator の追加確認（owner 2026-09-19「営業中も PC で作業する。登録も編集も廃番も、営業中はなんでもやる」）: 棚卸し中の商品登録で明細を足す writer（BIZ-01 create_product ステップ 6）は、Matrix の `req205_count_schema_writer_atomic_rollout` が kind 明示の対象として観測している。
-- follow-up P3（blocker ではない）: ADR Consequences の棚卸し側の移行費用の段落から「旧データを持つ環境の更新を追加作業なしとは説明しない」の literal が置換で消えた。実質要件は同段落に残る。後続の docs 同期で戻す。
+- follow-up P3（blocker ではない）: ADR Consequences の棚卸し側の移行費用の段落から「旧データを持つ環境の更新を追加作業なしとは説明しない」の literal が置換で消えた。実質要件は同段落に残る。owner 指示（2026-09-19「君が戻していいよ」）により Coordinator が同日に 1 文を戻した（設計の意味は不変、Plan Commit の後の docs 是正）。
 - owner 承認 2026-09-19:「9で承認」（介入上限 9）。
