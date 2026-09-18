@@ -11,8 +11,8 @@
 - Coordinator: Codex（主担当、owner の今回の変更依頼による）
 - Writer: Codex
 - Plan Reviewer: Sonnet（独立 read-only context）
-- Final Reviewer: Sonnet（Plan Reviewer と別の独立 read-only context）
-- Final Review Minimum: 1
+- Final Reviewer: Sonnet + Opus（Plan Reviewer と別の独立 read-only context、Double Audit）
+- Final Review Minimum: 2
 - Human Gate: ready,merge
 
 2026-09-17 kickoff → spec-check → plan-draft。owner は発注漏れの調査を受け、既存文書で対処できるなら修正するよう依頼した。Skill 化は利点が上回る場合の選択肢であり必須ではない。既存の正本・権限・品質条件を具体化する docs change として設計充足を確認。Plan Gate 前の対象文書の編集は行わない。
@@ -20,6 +20,8 @@
 2026-09-17 plan-draft → plan-gate。計画を `7424877a` で先行 commit。docs check の Goal Invariant marker 警告を補正して独立 Plan Review へ提出する。
 
 2026-09-17 plan-gate → plan-approved → implementing。Sonnet の fresh context が計画版を直接読み P1/P2 なしと判定し、R2 分類を確認。報告は local-only `plan-review.md` に保存。P3 の tracked / local-only 訂正タイミングの区別は採用し、本文へ反映する。Required Design Artifacts の全 N/A 表化は任意の形式提案として記録し、対象 source docs と充足根拠が明示済みのため今回の完了条件へ加えない。github mode を維持し、review 報告内の legacy local-verified / full の言及は新modeへ適用しない。
+
+2026-09-19 Gated Amendment 1。PR #82 の helper status が `required Double Audit minimum is 2` で fail-closed。本変更は `docs/DEV_WORKFLOW.md` / `docs/AGENT_OPERATING_MANUAL.md` / `docs/templates/*` に触れ、classifier が workflow 分類にするため、Final Review Minimum を 2 へ引き上げ Final Reviewer に Opus を加える。Scope・AC・対象本文は不変で、要件を緩める変更はない。2026-09-17 の Sonnet Final Review（対象 `602c751e`）は履歴として保持し、helper の broad 2 本は本 Amendment 後の head で fresh context により取り直す。owner の 2026-09-19 指示（main への取り込み許可）を受け、PR 作成以後の取り込み調整と本 Amendment の記録は Fable が担当する。
 
 ## Owner Effort Budget
 
