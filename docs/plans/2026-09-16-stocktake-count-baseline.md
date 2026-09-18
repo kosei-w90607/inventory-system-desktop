@@ -472,7 +472,7 @@ Fill after review.
 
 ### Plan Review 新 rally round 3（closure、天井、2026-09-18、対象 `02ca6dec`、裁定 Coordinator）
 
-- Opus = 通過可。新規 P1 / P2 なし。案 B の D-D9 を状態機械として下の系列を追跡し反例なし（余裕幅未満の再実測 / Tz なし file の同日再実測 / 同日の追加取込み / 再実測後〜commit の販売・入出庫 / 一部保存後の中断・再起動 / 保存後に取込みをやめる / 別の進行中棚卸しが後から始まる / preview → commit で持ち主が変わる / 同一商品の再実測 2 回 / 保留中に別日の file を取り込む）。owner 指定の各点は契約と Ledger の両方に所在を確認。0 件ガードの新定義は無関係な空 file を通さず、通すべき file を止めない。段 0 の前提の反例を合成値で独立に再現し（在庫が現物より過小になる向き）、現行の扱いを proportionate と判定。P3 は全件 accept、本 commit で反映（段 0 の前提と両方向の oracle / 売上 0 件の取込みの一覧表示 / 共有 JAN が保留側にも効くこと）
+- Opus = 通過可。新規 P1 / P2 なし。案 B の D-D9 を状態機械として下の系列を追跡し反例なし（余裕幅未満の再実測 / Tz なし file の同日再実測 / 同日の追加取込み / 再実測後〜commit の販売・入出庫 / 一部保存後の中断・再起動 / 保存後に取込みをやめる / 別の進行中棚卸しが後から始まる / preview → commit で持ち主が変わる / 同一商品の再実測 2 回 / 保留中に別日の file を取り込む）。owner 指定の各点は契約と Ledger の両方に所在を確認。実質ゼロ件ガード（`parse.rs:156`、reviewer が現物確認）の新定義は無関係な空 file を通さず、通すべき file を止めない。段 0 の前提の反例を合成値で独立に再現し（在庫が現物より過小になる向き）、現行の扱いを proportionate と判定。P3 は全件 accept、本 commit で反映（段 0 の前提と両方向の oracle / 売上 0 件の取込みの一覧表示 / 共有 JAN が保留側にも効くこと）
 - Sonnet = 通過可。round 2 の P2 / P3 は closed。案 A 由来の記述の残存は棄却理由・起案時の記録 block・履歴だけ。AC の baseline は全件一致、`BIZ-06-D6` の衝突なし。P3（新しい関数の名前と節番号が未指定）= accept、`record_stocktake_recount` / §20.4.1 を S2 に明記
 - 本 commit の修正は oracle・表示規則・命名の追記だけで、契約本体（D-D4 / D-D8 / D-D9）は `02ca6dec` から変えていない。rally は天井の round 3 で close。次 = owner の Plan Gate 承認
 - 残る不確実性（owner へ提示）: 段 0 / 段 1 の前提は現場で守れることが条件で、受容済みではない / レジ時計と PC 時計の実差は未実測 / 従来 shape（Tz なし）の Z004 が現運用で出るかは未確認
