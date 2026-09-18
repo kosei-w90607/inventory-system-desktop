@@ -8,7 +8,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 
 - REQ-205 / REQ-401、[時点証拠ADR](../../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9。
 - D-D1 / D-D2: snapshot差分でカウント後の移動を保存する。
-- INV-2 / D-051: 現在庫と有効movement合計を維持する。
+- D-051: 現在庫と有効movement合計の不変条件。INV-2はBIZ/IOの算出・永続化責任を定める。
 
 ## Failure Modes
 
@@ -25,6 +25,8 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | Contract | Failure Mode | Test Type | Test Name / oracle | Would fail if... |
 |---|---|---|---|---|
 | D1 | 計数中の移動、減算後加算で同じ数量 | state / TX | `req205_count_revision_aba` / 書込み0で拒否、新contextなら保存可 | 数量だけを比較する、60分を過ぎると許可する |
+| D1 / D8 | 数量書込みの一経路だけ版が進まない | repo / integration / static | `req205_stock_revision_all_writers` / 共通入出庫・取消戻し・確定補正・fix_integrityの各成功で旧context拒否。update_stock_quantityの同量更新も増分、overflowはTX全体write0。ProductUpdatesの在庫更新欄・SQLは撤去 | BIZの任意呼出しに増分責任を残す、別SQLで数量だけ更新する |
+| D1 / D8 | 数量不変の基準・flag・設定・状態変更が版を変えない | state / TX | `req205_stock_revision_non_quantity` / 差0実測、snapshot補正、flag更新、pos_stock_sync変更、純量0取消、差0確定で旧context拒否。故障時は状態と版が共に戻る | 数量更新関数だけで全状態を保護した扱いにする |
 | D1 | 画面切替・再起動・sleep・時刻変更・監視登録失敗 | UI / state / native | `count_context_invalidation` / generation不一致、時計経過差の許容差超過、通知登録失敗で保存不可 | 商品revisionだけで検出できると思う、Instantだけでsleepを検知する、stale値を新時刻で再送する |
 | D1 | 応答喪失と同じ保存の再送 | integration | `req205_count_save_idempotency` / 補正と実測は一度だけ | 同じ要求で新たな補正を作る |
 | D2 | 受領と計数開始の順序 | boundary | `req401_receipt_before_count_start` / 開始前だけスキップ証拠になる | source_cursorを保存時に取得する |
@@ -33,6 +35,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D3 | 逆順・欠番・reset・同じ分の精算 | compatibility | `req401_settlement_series_uncertainty` / 証拠のある境界だけ使用 | 受領順を精算順にする、同時刻を即正常/即異常と断定する |
 | D3 | 同じ精算の別hash | duplicate | `req401_settlement_identity_conflict` / 自動追加を拒否 | hashが違えば同じ精算を二重計上する |
 | D3 | 0売上・取消済み資料 | persistence | `req401_source_survives_zero_and_rollback` / 受領事実を維持 | 0件guard/取消で境界の事実を失う |
+| D3 / D4 | 受領順beforeと信頼済み時計afterが矛盾 | model / integration | `check_counterexamples`、runtime `req401_clock_causal_conflict` / 時計検証状態を無効化し後続判定へ伝播。受領証拠のbeforeは維持 | beforeの早期returnで矛盾検査を迂回する、同じ時計対応を別fileで信用する |
 | D4 | 実測窓と精算区間の接触・包含 | boundary / model | `check_bounds` / before・afterと断定した全組がoracleと一致 | SでなくEでbeforeを判定する、接触を確定扱いする |
 | D4 | 日跨ぎ・精算後販売 | regression | `req401_sale_after_settlement_before_count` / unknown→再実測 | 日付が翌日なので通常適用する |
 | D4 | 日計0、実測前販売・実測後返品 | regression | `req401_zero_net_nonzero_after_count` / 現物との差を残さない | ゼロ行を判定前に捨てる |
@@ -42,13 +45,15 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D4 | preview→commitで新実測・取消・資料追加 | TX | `req401_commit_rechecks_evidence` / 現在の証拠で再判定 | preview結果を確定値として使う |
 | D5 | EJの先頭・末尾・中間・続きの欠落 | parser / integration | `req401_ej_coverage_boundaries` / 不完全な自動分割は拒否 | 存在するfileだけで完全とする |
 | D5 | 相殺する読み落とし、未知形式、名称変更/衝突 | parser / negative | `req401_ej_per_receipt_validation` / 判定不能を残す | 日計純数量だけで検算する、未知行を無視する |
-| D6 | 同秒のimport→countとcount→import | sequence / model | `check_lifecycle`、runtime `req401_rollback_count_cursor` | timestampの不等号だけで先後を決める |
+| D6 | 同秒のimport→countとcount→import、pending→complete→cancel | sequence / model | `check_lifecycle`、runtime `req401_rollback_count_cursor` / 確定後の取消でも新しい実測と後続移動を維持 | timestampの不等号だけで先後を決める、確定後もpending補正をする |
 | D6 | 反復count、複数再実測、後続active | regression / model | `check_lifecycle`、runtime `req205_req401_rollback_first_absorber` | supersededなpendingを使う、複数の観測へ重ねて補償する |
-| D6 / D8 | legacyの吸収不明を通常取消へ落とす、旧pendingの証拠を残す | regression / model | `check_legacy_recovery` / migration時点でpendingだった場合も、取消前write0、再確認後の取消とactive確定で二重補正なし。後着fileは新しいRの時点窓で判定 | legacyを吸収なしと扱う、復旧時にactiveの古い差異やS/E/source_cursorを残す |
+| D6 / D8 | legacyの吸収不明を通常取消へ落とす、旧pendingの証拠を残す | regression / model | `check_legacy_recovery` / activeなし・未計数・measured、migration時点のpendingを検証。取消前write0、再確認後の取消とactive確定で二重補正なし。後着fileは新しいRの時点窓で判定 | pendingだけで旧確定済みの吸収不明を解除する、未計数activeのN/N更新を落とす、古い差異や時点証拠を残す |
+| D6 | 商品別取消純量0のlegacy例外、取消で独立再実測を消す | model / integration | `check_migration_and_fill` / 純量0取消の在庫不変・版更新・movement無効化。`check_lifecycle` / 独立再実測とその補正を保持。runtimeでflag処理と単一TXも検証 | 相殺する明細を個別にlegacy保留する、再実測補正をimportへ関連付ける |
 | D7 | 過去の記録詳細からactiveを迂回 | negative | `req205_recount_active_owner_guard` / active明細へ案内 | 現在庫だけ補正し古いpending差異を残す |
 | D7 | 同秒の確定・取消補償・再実測 | report | `req205_stocktake_movement_kind` / 確定差異件数は不変 | created_atで補正区分を推定する |
-| D8 | 旧active snapshot、旧completed、NULL証拠、自動補完との区別 | migration | `req205_legacy_count_requires_recount` / kindで分類、歴史保持・旧activeの確定拒否 | 開始時snapshotを計数時snapshotへ読み替える、NULLからautoとlegacyを同一視する |
-| D9 | 保留→一部保存→中断→再開 | native / integration | L3: 未保存だけ再確認、保存済み在庫を再適用しない | 全体commitまで値を寝かせる |
+| D8 | 旧active snapshot、旧completed、NULL証拠、自動補完との区別 | model / migration | `check_migration_and_fill`、runtime `req205_legacy_count_requires_recount` / 両NULL→uncounted、0/0で数量あり・時刻NULL→auto_filled、両あり→legacy。異常形はlegacyで警告。履歴・評価額保持、旧activeの確定拒否 | auto_filledをlegacyへ落とす、現在の廃番フラグで旧種別を推定する、旧force_fillを実測扱いする |
+| D1 / D4 | force_fillを実測と扱う、負在庫を0へ変える | model / integration | `check_migration_and_fill`、runtime `req205_force_fill_no_evidence` / N=L=max(book,0)、補正0、cursorなし、実測基準を上書きせずflag解消不可 | 補完で吸収先を作る、旧実測を隠す、負在庫を修正する |
+| D9 | 保留→一部保存→中断→再開 | native / integration | L3: 同じfileの再選択・再previewで残る集合を再生成。未保存だけ再確認、保存済み在庫を再適用しない | 保留集合がDBにあると仮定する、source metadataから商品明細を復元する |
 
 ## State Lifecycle Matrix
 
@@ -57,7 +62,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | 計数context | なし | 開始・数量未保存 | 1商品TX | 商品/画面/版/時計変化 | stale入力を戻さない | 新context | 未保存は失効 | 書込み0 | 再計数 | D1、runtime未実施 |
 | 独立再実測 | なし | 計数中 | 記録と補正が同時保存 | import取消で消えない | DBが正 | 記録詳細から新実測 | 保存済み保持 | TX rollback | 保存要求の重複防止 | D7、runtime未実施 |
 | 資料受領 | 未受領 | 構文検証 | hash一意の受領記録 | 時刻証拠だけ失効可 | 受領と売上を区別 | 同hashは同ID | 保持 | 不正形式は証拠にしない | 同hash冪等 | D2/D3、runtime未実施 |
-| import | 未取込み | preview/保留 | 売上と許可された在庫 | 新状態で再判定 | flag/保留を再取得 | 重複拒否 | preview再作成 | 業務write0 | 再実測後commit | D4、runtime未実施 |
+| import | 未取込み | preview/保留 | 売上と許可された在庫 | 新状態で再判定 | flagはDB、保留は再生成 | 重複拒否 | 同じfileを再選択しpreview再作成 | 業務write0 | 再実測後commit | D4、runtime未実施 |
 
 ## Adjacent Pattern Audit
 
@@ -65,6 +70,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 |---|---|---|---|---|
 | 商品単位のcount、IME、Enter | 73 UI-10-D2、stocktake_service/update_count | 通常計数・保留解除・記録詳細の訂正 | 新しい装飾/共有widgetは不要 | runtimeとnative L3は未実施 |
 | import TXと重複検査 | csv_import_service/commit.rs、rollback.rs、32 §15.4/15.5 | 時点判定の直前・TX内 | 日報bundleは在庫を動かさないため不変 | runtime未実施 |
+| 数量UPDATEと版の増分 | inventory_repo/update_stock_quantity、common.rs、commit.rs、stocktake_service.rs、integrity_service.rs、product_repo/ProductUpdates | 既存商品の数量更新は共通repo内で版を強制、汎用更新型の数量欄撤去 | 新商品INSERTは既存contextなし。DB復元は全context失効で別検証 | runtime未実施、modelは実際のSQL経路を検証しない |
 
 ## Negative Paths
 
@@ -86,7 +92,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 
 - 既存帳票の構文受理と正規化は維持。精算メタなしは時刻証拠なしとして復旧可能。共有JANの先頭商品へ在庫を自動配賦する動作は意図的に変わる。自動在庫連動の本番前preflightで検出し、未対応の解除を可能と表示しない。
 - 旧DBは履歴・評価額を保持。未検証metadataを補完して自動で有効化しない。
-- 本番移行preflightはlegacy基準の在庫連動商品を件数・一覧で示す。実際の対象件数は未実測。再実測の作業量を隠して自動連動を有効化しない。
+- 本番移行preflightはlegacy基準の在庫連動商品を件数・一覧で示す。auto_filled自体はlegacy件数へ加算しないが、別の有効なlegacy基準は隠さない。実際の対象件数は未実測。再実測の作業量を隠して自動連動を有効化しない。
 - 日報取込み、PLU書出し、商品単位でない売上の意味は変えない。
 
 ## Data Safety Checks
@@ -105,7 +111,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 ## Mutation-style Adequacy Questions
 
 - SをEへ置換、未知の始端へ仮値挿入、境界 `<` を `<=` に変更、受領cursorを保存時に更新するとモデルの対応assertが落ちるか。
-- snapshotの取消補正を削除、最初の吸収先を最後へ変更、全観測へ補償するとライフサイクル検証が落ちるか。
+- snapshotの取消補正を削除、最初の吸収先を最後へ変更、全観測へ補償するとライフサイクル検証が落ちるか。auto_filledをlegacyへ分類、新pendingでlegacy取消を許可、計数側の粒度拡張・時計矛盾検出を除去しても落ちるか。
 - 数量だけで版を比較、同秒で区分を推定、0行を除外、共有JANを先頭だけに縮退するとruntimeの該当検証が落ちるか。
 
 ## Residual Test Gaps

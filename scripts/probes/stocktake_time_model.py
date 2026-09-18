@@ -2,12 +2,12 @@
 """Synthetic design probe, not application code or a POS parser.
 
 Run: python3 scripts/probes/stocktake_time_model.py
-Contracts: REQ-205 / REQ-401, SPEC-STK-TIME-D1..D6.
+Contracts: REQ-205 / REQ-401, SPEC-STK-TIME-D1..D8.
 The oracle knows physical event times; the classifier sees only evidence bounds.
 No filesystem input, store data, dependencies, or writes.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import product
 
 
@@ -37,8 +37,19 @@ def bound_clock_interval(lower: int | None, upper: int | None, quantum: int, err
     )
 
 
+def qualified_source(source: Source, count: Count | None) -> Source:
+    """Clock diagnostics precede causal early returns; receipt evidence survives."""
+    reversed_bounds = source.lower is not None and source.upper is not None and source.lower > source.upper
+    causal_conflict = (
+        count is not None and not count.legacy and source.received <= count.sources
+        and source.lower is not None and source.lower > count.end
+    )
+    return replace(source, trusted=False) if reversed_bounds or causal_conflict else source
+
+
 def classify(source: Source, count: Count | None) -> str:
     assert source.received > 0
+    source = qualified_source(source, count)
     if count is None:
         return "after"  # genuinely never counted, not legacy evidence
     if count.legacy:
@@ -46,8 +57,6 @@ def classify(source: Source, count: Count | None) -> str:
     if source.received <= count.sources:
         return "before"
     if source.trusted:
-        if source.lower is not None and source.upper is not None and source.lower > source.upper:
-            return "unknown"
         if source.upper is not None and source.upper < count.start:
             return "before"
         if source.lower is not None and source.lower > count.end:
@@ -64,6 +73,14 @@ def classify_row(source: Source, candidates: list[tuple[bool, Count | None]]) ->
     return decisions[0]
 
 
+def migration_kind(actual: int | None, counted_at: str | None, snapshot: int) -> str:
+    if actual is None and counted_at is None:
+        return "uncounted"
+    if actual == 0 and counted_at is None and snapshot == 0:
+        return "auto_filled"
+    return "legacy"  # includes malformed legacy rows, never invent measured evidence
+
+
 @dataclass
 class Movement:
     id: int
@@ -74,13 +91,14 @@ class Movement:
 @dataclass
 class Observation:
     order: int
-    cursor: int
+    cursor: int | None
     actual: int
     snapshot: int
     state: str  # pending / applied / superseded
     legacy: bool = False
     time: Count | None = None
     rebased_from: int | None = None
+    auto_filled: bool = False
 
 
 class Ledger:
@@ -89,6 +107,7 @@ class Ledger:
         self.observations: list[Observation] = []
         self.revision = 0
         self.legacy_ceiling = 0
+        self.active_item = False  # an uncounted item owns the active flow too
 
     @property
     def stock(self) -> int:
@@ -103,7 +122,7 @@ class Ledger:
 
     def observe(self, actual: int, *, immediate: bool = False, time: Count | None = None) -> Observation:
         pending = [o for o in self.observations if o.state == "pending"]
-        if immediate and pending:
+        if immediate and self.active_item:
             raise ValueError("use the active stocktake count")
         for old in pending:
             old.state = "superseded"
@@ -118,7 +137,19 @@ class Ledger:
             time=time,
         )
         self.observations.append(observation)
+        if not immediate:
+            self.active_item = True
         return observation
+
+    def force_fill(self, *, needs_recheck: bool = False) -> Observation:
+        if needs_recheck or any(o.state == "pending" for o in self.observations):
+            raise ValueError("force_fill cannot bypass a count or its recheck")
+        quantity = max(self.stock, 0)
+        self.revision += 1
+        fill = Observation(self.revision, None, quantity, quantity, "pending", auto_filled=True)
+        self.observations.append(fill)
+        self.active_item = True
+        return fill
 
     def complete(self) -> None:
         for observation in self.observations:
@@ -129,47 +160,55 @@ class Ledger:
                 self.move(correction)
             observation.state = "applied"
         self.revision += 1
+        self.active_item = False
 
     def cancel(self, movement_id: int) -> None:
-        movement = self.movements[movement_id - 1]
-        if not movement.active:
-            return
-        if self.needs_legacy_recheck(movement_id):
+        self.cancel_import([movement_id])
+
+    def cancel_import(self, movement_ids: list[int]) -> None:
+        # One product's movements from ONE import TX: no count can split this batch.
+        movements = [self.movements[i - 1] for i in movement_ids if self.movements[i - 1].active]
+        net = sum(m.quantity for m in movements)
+        if net and any(self.needs_legacy_recheck(m.id) for m in movements):
             raise ValueError("legacy cancellation needs a fresh applied recount")
-        absorbed = [
-            o for o in self.observations
-            if not o.legacy and o.state != "superseded" and o.cursor >= movement_id
-        ]
-        first = min(absorbed, key=lambda o: o.order) if absorbed else None
-        movement.active = False
-        self.revision += 1
-        if first is None:
-            return
-        if first.state == "pending":
-            first.snapshot -= movement.quantity
-        else:
-            self.move(movement.quantity)
+        for movement in movements:
+            absorbed = [
+                o for o in self.observations
+                if not o.legacy and o.state != "superseded"
+                and o.cursor is not None and o.cursor >= movement.id
+            ]
+            first = min(absorbed, key=lambda o: o.order) if absorbed else None
+            movement.active = False
+            self.revision += 1
+            if first is not None:
+                if first.state == "pending":
+                    first.snapshot -= movement.quantity
+                else:
+                    self.move(movement.quantity)
 
     def migrate_legacy(self) -> None:
         self.legacy_ceiling = self.movements[-1].id
         for observation in self.observations:
-            observation.legacy = True
+            if not observation.auto_filled:
+                observation.legacy = True
 
     def needs_legacy_recheck(self, movement_id: int) -> bool:
         uncertain = any(o.legacy and o.state != "superseded" for o in self.observations)
         applied_proof = any(
-            not o.legacy and o.state == "applied" and o.cursor >= movement_id
+            not o.legacy and o.state == "applied" and o.cursor is not None and o.cursor >= movement_id
             for o in self.observations
         )
         return uncertain and movement_id <= self.legacy_ceiling and not applied_proof
 
     def recover_legacy_rollback(self, movement_id: int, actual: int, time: Count | None = None) -> None:
         assert self.needs_legacy_recheck(movement_id)
+        active = self.active_item
         pending = [o for o in self.observations if o.state == "pending"]
         for old in pending:
             old.state = "superseded"
+        self.active_item = False  # only the dedicated recovery TX may do this
         recount = self.observe(actual, immediate=True, time=time)
-        if pending:
+        if active:
             basis = self.observe(actual, time=time)  # derived N/N active basis
             basis.rebased_from = recount.order
 
@@ -215,6 +254,19 @@ def check_counterexamples() -> None:
     assert classify(Source(1, lo, hi, True), Count(13, 14, 0)) == "before"
     assert bound_clock_interval(None, 10, 1, 1) == (None, 12)
     assert classify(Source(1, 20, 0, True), Count(10, 11, 0)) == "unknown"
+    # Causal proof still works, but MUST NOT carry contradictory clock trust forward.
+    conflict = Source(1, 20, 30, True)
+    assert not qualified_source(conflict, Count(10, 11, 1)).trusted
+    assert classify(conflict, Count(10, 11, 1)) == "before"
+    invalidated = qualified_source(conflict, Count(10, 11, 1))
+    assert classify(invalidated, Count(10, 11, 0)) == "unknown"
+    assert qualified_source(Source(1, 0, 5, True), Count(10, 11, 1)).trusted
+    # Expand the COUNT side too: exact ends would incorrectly classify both cases.
+    s, e = bound_clock_interval(10, 11, quantum=1, error=1)
+    assert (s, e) == (9, 13)
+    assert classify(Source(1, 12, 12, True), Count(s, e, 0)) == "unknown"
+    assert classify(Source(1, 9, 9, True), Count(s, e, 0)) == "unknown"
+    assert classify(Source(1, 14, 14, True), Count(s, e, 0)) == "after"
     assert classify_row(Source(1), [(True, None), (True, Count(5, 6, 0))]) == "unknown"
     assert classify_row(Source(1), [(True, Count(5, 6, 1)), (True, Count(7, 8, 1))]) == "before"
     assert classify_row(Source(1), [(False, None), (True, None)]) == "unknown"
@@ -239,6 +291,14 @@ def check_lifecycle() -> None:
         ledger.cancel(imported)
         ledger.complete()
         assert ledger.stock == 10
+
+        ledger = Ledger()
+        imported = ledger.move(quantity)
+        observed = ledger.observe(8)
+        ledger.complete()  # pending -> applied BEFORE cancellation
+        ledger.move(4)
+        ledger.cancel(imported)
+        assert ledger.stock == 12 and observed.actual == 8
 
         ledger = Ledger()
         imported = ledger.move(quantity)
@@ -274,24 +334,37 @@ def check_lifecycle() -> None:
     assert ledger.stock == 7 and count.actual == 8  # no delayed overwrite at import
 
     ledger = Ledger()
-    ledger.observe(8)
-    try:
-        ledger.observe(6, immediate=True)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("independent recount must not bypass a pending count")
+    imported = ledger.move(-2)
+    recount = ledger.observe(9, immediate=True)
+    correction = ledger.movements[-1]
+    ledger.cancel(imported)
+    assert ledger.stock == 9 and recount in ledger.observations and correction.active
+    assert (recount.actual, recount.snapshot) == (9, 8)  # append-only fact is intact
+
+    for measured in (False, True):
+        ledger = Ledger()
+        ledger.active_item = True
+        if measured:
+            ledger.observe(8)
+        try:
+            ledger.observe(6, immediate=True)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("independent recount must not bypass an active item")
 
 
 def check_legacy_recovery() -> None:
-    for quantity, pending in product((-3, 3), (False, True)):
+    for quantity, active in product((-3, 3), ("none", "uncounted", "measured")):
         ledger = Ledger()
         imported = ledger.move(quantity)
         ledger.observe(10)
         ledger.complete()
         ledger.migrate_legacy()
-        if pending:
+        if active == "measured":
             ledger.observe(8)
+        elif active == "uncounted":
+            ledger.active_item = True
         stock_before = ledger.stock
         try:
             ledger.cancel(imported)
@@ -300,6 +373,10 @@ def check_legacy_recovery() -> None:
         else:
             raise AssertionError("unknown legacy absorption silently undone")
         ledger.recover_legacy_rollback(imported, 8)
+        if active != "none":
+            basis = ledger.observations[-1]
+            assert basis.state == "pending" and basis.actual == basis.snapshot == 8
+            assert basis.rebased_from is not None
         ledger.move(4)  # movement after the recovery must survive both cancel and completion
         ledger.cancel(imported)
         assert ledger.stock == 12
@@ -334,9 +411,60 @@ def check_legacy_recovery() -> None:
     assert ledger.stock == 8
 
 
+def check_migration_and_fill() -> None:
+    # D8: old manual AND force_fill set counted_at; only the zero/zero INSERT did not.
+    for actual, saved, snapshot, expected in (
+        (None, None, 10, "uncounted"), (0, None, 0, "auto_filled"),
+        (0, "old", 0, "legacy"), (8, "old", 10, "legacy"),
+        (None, "old", 10, "legacy"), (8, None, 10, "legacy"),
+        (0, None, 10, "legacy"),
+    ):
+        assert migration_kind(actual, saved, snapshot) == expected
+
+    for opening in (-3, 0, 5):
+        ledger = Ledger(opening)
+        filled = ledger.force_fill()
+        assert filled.actual == filled.snapshot == max(opening, 0)
+        assert filled.auto_filled and filled.cursor is None and filled.time is None
+        ledger.complete()
+        assert ledger.stock == opening and len(ledger.movements) == 1
+
+    ledger = Ledger()
+    imported = ledger.move(-2)
+    ledger.force_fill()
+    ledger.complete()
+    ledger.cancel(imported)  # auto_fill did not absorb it
+    assert ledger.stock == 10
+    try:
+        ledger.force_fill(needs_recheck=True)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("force_fill bypassed a recheck")
+
+    ledger = Ledger()
+    imported = ledger.move(-2)
+    measured = ledger.observe(9, immediate=True, time=Count(10, 11, 0))
+    ledger.force_fill()
+    ledger.complete()
+    ledger.cancel(imported)
+    assert ledger.stock == 9 and measured.time == Count(10, 11, 0)
+
+    ledger = Ledger()
+    imported = [ledger.move(-2), ledger.move(2)]  # same import TX, net zero
+    ledger.observe(8)
+    ledger.complete()
+    ledger.migrate_legacy()
+    version = ledger.revision
+    ledger.cancel_import(imported)  # no stock uncertainty despite unknown legacy cursor
+    assert ledger.stock == 8 and ledger.revision > version
+    assert all(not ledger.movements[i - 1].active for i in imported)
+
+
 if __name__ == "__main__":
     check_bounds()
     check_counterexamples()
     check_lifecycle()
     check_legacy_recovery()
-    print("PASS: temporal bounds, causal receipt, zero-net split, revision, count/rollback lifecycle, legacy recovery")
+    check_migration_and_fill()
+    print("PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy recovery, migration kinds, force_fill")

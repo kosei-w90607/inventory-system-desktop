@@ -11,6 +11,8 @@
 - **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、design）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。2026-09-18 ownerがCodexへ設計を委任。[統合ADR](adr/2026-09-18-stocktake-time-evidence.md) と [Matrix](plans/test-matrices/2026-09-18-stocktake-time-evidence.md) に、実測窓・資料受領の証拠・順序・取消・訂正・legacy移行を集約した。任意の60分や初回の仮始端は使わず、判定不能は受領後の新しい実測で復旧する案。合成モデルと反例変異の検証に成功し、Sonnet/Opusの早期設計点検を反映済み。現行sourceにはproposedの案内を置き、詳細展開と正式Plan Gateまではruntime未着手。EJはPLU本番前提。参照明細のない共有JAN候補の復旧制限、時刻証拠の実機確認は未解消。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
+㉗の2026-09-19統合案broad（対象4319fe36）はP2ありでpassせず。数量更新関数内で版を進める契約と旧自動入力の移行分類を是正し、P3の再開・時計矛盾・復旧導線・モデル未覆域を反映した。取消の再計数省略は確定前の誤在庫を残すため採らず、根拠をpacketへ記録。修正版のclosureは未確認、runtimeは未着手。
+
 ## 直近の完了
 
 - **㉙ returnTo 衛生**: [PR #78](https://github.com/kosei-w90607/inventory-system-desktop/pull/78) を merge（2026-09-17）。NAV-1（PR #75）Final Review round 1 pass B / round 2 pass B の P3 5 件 + 起票時に見つけた同型の実害（入出庫履歴の数字だけの検索語が詳細からの戻りで消える）を修正。`returnTo` guard の検証を prefix 判定から origin 一致 + 解決後 pathname の `//` 拒否 + no-throw（C7）へ強化し、業務記録詳細 6 画面と在庫変動履歴の戻り link を文字列 `to` から `to`（pathname）+ `search`（object）へ統一（`returnToLinkProps`、「在庫照会へ戻る」は `/stock` に pin）。入出庫履歴の `returnTo` を手組みの `URLSearchParams` から router の href へ寄せ、数字だけの検索語が number 化せず往復するようにした。在庫照会 `selected` の上限も `q` と同じ 100 文字に揃えた（旧 20）。[archive の Plan Packet](archive/plans/2026-09-17-return-to-hygiene.md) / [Matrix](archive/plans/test-matrices/2026-09-17-return-to-hygiene.md)。

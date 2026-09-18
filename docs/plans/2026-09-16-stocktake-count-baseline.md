@@ -95,7 +95,7 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 - S3: scripts/probes/stocktake_time_model.py。合成値だけの設計probe。production moduleとして利用しない。
 - S4: 関係するfunction-design 23 / 32 / 35 / 55 / 73、DB tracking / pos、親indexへproposed ADRの案内を付ける。本文の現行実装契約を新方式実装済みに書き換えない。
 
-次のdesign出力: ADRに沿って20 / 21 / 23 / 24 / 32 / 35 / 41 / 42 / 55 / 65 / 73、DB/architectureの詳細契約を同期し、EJ本番条件の外部probeを整理してplan-draftへ。現在のADRの命名をruntimeの既存関数が実装済みである証拠にしない。
+次のdesign出力: ADRに沿って20 / 21 / 23 / 24 / 32 / 35 / 36 / 41 / 42 / 55 / 65 / 73、DB/architectureの詳細契約を同期し、EJ本番条件の外部probeを整理してplan-draftへ。現在のADRの命名をruntimeの既存関数が実装済みである証拠にしない。
 
 ## Non-scope
 
@@ -142,7 +142,7 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 | Spec | Source / decision | Why | Future implementation | Verification |
 |---|---|---|---|---|
 | REQ-205 | D1 / D7 / D8 | stale入力、同秒、旧snapshotを誤適用しない | BIZ-06 / IO / CMD-10 / UI-10 | Matrixの保存・訂正・migration |
-| REQ-401 | D2 / D3 / D4 | 知らない前後を推測しない | IO-02 / BIZ-03 / IO / UI-07 | Matrixの受領・区間・0行・共有JAN |
+| REQ-401 | D2 / D3 / D4 | 知らない前後を推測しない | IO-02 / BIZ-03 / CMD-07 / UI-07 | Matrixの受領・区間・0行・共有JAN |
 | REQ-205 / REQ-401 | D6 | 実測へ吸収した数量を二重に戻さない | rollback / stocktake repo | 合成モデル、runtime TX検証 |
 | REQ-401 | D5 | 不完全なEJで自動分割しない | 別EJ lane | 合成fixture、sanitized sample、native gate |
 
@@ -221,6 +221,8 @@ Status: design。レビュー可能な統合案を作成した段階で、実装
 旧案のfile:line指示はfeeb3fe9の履歴。新しいruntimeのscopeはADRとMatrixを元に起こし直す。
 
 - source受領の永続化、productsのrevision、count/recountの開始・終了・cursor・request識別子、明示的movement kind。
+- 数量更新の版増分はinventory_repo::update_stock_quantity内部で強制する。既存caller = inventory_service/common.rs、csv_import_service/commit.rsの取消戻し、stocktake_service.rsの確定補正、integrity_service.rsのfix_integrity。未使用のProductUpdates.stock_quantity分岐も撤去し、数量以外の基準・flag・設定・純量0取消・差0確定は同TX内で共通の版更新処理を使う。Matrixで各経路・overflow・TX rollbackを確認する。
+- 旧明細はuncounted / auto_filled / legacyへ分類し、旧force_fillはlegacyのまま。0/0の廃番自動入力をlegacy件数へ加算しない。既知producerに一致しない形は保守的にlegacyとして表示する。
 - BIZ内の計数context検査、同一判定関数を使うpreview/commit、取消の吸収先探索。
 - UI-07/UI-10/記録詳細の即保存・再開・訂正、既存IME/Enter/focus/returnToを維持。
 - legacy migration、全行0、共有JAN、逆順資料、時計異常、EJ欠落を負の経路として実装前にfixture化。
@@ -255,7 +257,20 @@ Contract ID: SPEC-STK-TIME-EVIDENCE
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: 2026-09-19の統合案broad（対象4319fe36、Sonnet + Opus）で指摘集合を固定。以降は本指摘のclosure確認。post-freeze exceptions: none.
+
+### 統合案broadへの対応（2026-09-19、design、closure未確認）
+
+- ownerから受領したread-only結果: 対象4319fe36、SonnetはP1/P2なし・P3あり、OpusはP2ありのためpassでない。原文はcanonical checkoutのignored `.local/reports/stocktake-time-evidence/design-review-2026-09-19.md`。早期点検や今回の修正を正式Plan Gateの承認へ読み替えない。
+- Opus P2-1（bug / 契約不足）採用: D1/D8で数量更新と版増分をupdate_stock_quantityへ集約。現行callerを検索し、共通入出庫・取消戻し・確定補正・fix_integrityを確認。関連するProductUpdates.stock_quantityは業務callerで未使用だが迂回可能なので、runtimeで撤去する契約を追加。数量を変えない状態更新の版増分も明記し、Matrixで別に検証する。
+- Opus P2-2（migration drift）採用: start_stocktakeの0/0自動入力、insertでcounted_at省略、通常保存と旧force_fillでcounted_at設定を確認。`rg -n 'counted_at' src-tauri/src/db/schema_v{1,2,3,4,5,6}.rs` → schema_v1.rsの列定義だけ。登録済みmigrationでの後付けなし。通常形は3分類、矛盾形はlegacy + 表示。auto_filled自体は基準にもlegacy件数にも使わないが、別の旧実測は隠さない。
+- Opus P3-1（復旧負担）一部採用: 見え方は明記、pendingだけで旧取消を解除する案は不採用。10→販売-2→旧実測8確定→新pending8では、通常取消直後の現在庫が10になる。後の確定で8へ戻せても、その間の誤在庫を許可しない。再確認の差は再実測区分で残し、N/N明細を確定差異件数へ水増ししない。
+- Opus P3-2/3/4（lifecycle / drift）採用: 保留は同file再選択・再previewで再生成し、新tableを増やさない。受領順と時計の矛盾を早期return前に検査して時計対応を無効化し、受領による復旧は維持。復旧導線は未計数も含め進行中明細を優先する。
+- Opus P3-5（test gap）採用: pending→complete→cancel、force_fill、計数側の粒度拡張、純量0取消、独立再実測の取消耐性、migration種別、未計数activeのlegacy復旧を合成モデルへ追加。SQL/Tauri/UIやflag永続化はモデルの証明範囲外としてMatrixへ残す。
+- Opus P3-6（過剰設計候補）は削除不採用、理由追記: header世代は確定時の式・表示の意味を保持し、後から変わる明細kindでは代替しない。abandonはUIの切替・離脱をBIZへ伝える失効操作であり、timeoutと異なる。
+- Sonnet P3-1/2（表記drift）採用: MatrixのSUM不変条件はD-051、INV-2は層の責任と分離。REQ-401の経路はCMD-07を明記。
+- 検証: `python3 scripts/probes/stocktake_time_model.py` → `PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy recovery, migration kinds, force_fill`。`runpy.run_path`で読み込んだモデルの関数をメモリ内だけで置換し、auto分類喪失・時計検査除去・精度拡張除去・pendingによるlegacy取消解除でそれぞれRED、元の関数へ戻して全check GREENを確認。P3-1のガードを外した検算は「取消直後10、後の確定8（現物8）」を再現した。
+- `bash scripts/doc-consistency-check.sh` → ERRORなし、既存履歴のPK6 WARN 3件のみ。`bash scripts/doc-consistency-check.sh --target plan` → 同じ結果を確認。`git diff --check` 成功、`bash scripts/check-workflow-git.sh` → PK5/STATECAP OK。`git diff --name-only -- src src-tauri migrations` → 空。runtime・source詳細展開・正式Plan Gateは未実施、phaseはdesignを維持する。
 
 ### Codex設計引継ぎと早期点検（2026-09-18〜19、design、正式Plan Gateではない）
 
