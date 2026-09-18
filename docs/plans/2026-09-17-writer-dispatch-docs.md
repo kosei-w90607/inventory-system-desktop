@@ -23,6 +23,8 @@
 
 2026-09-19 Gated Amendment 1。PR #82 の helper status が `required Double Audit minimum is 2` で fail-closed。本変更は `docs/DEV_WORKFLOW.md` / `docs/AGENT_OPERATING_MANUAL.md` / `docs/templates/*` に触れ、classifier が workflow 分類にするため、Final Review Minimum を 2 へ引き上げ Final Reviewer に Opus を加える。Scope・AC・対象本文は不変で、要件を緩める変更はない。2026-09-17 の Sonnet Final Review（対象 `602c751e`）は履歴として保持し、helper の broad 2 本は本 Amendment 後の head で fresh context により取り直す。owner の 2026-09-19 指示（main への取り込み許可）を受け、PR 作成以後の取り込み調整と本 Amendment の記録は Fable が担当する。
 
+2026-09-19 役割の記録。owner の 2026-09-19 指示（main への取り込み許可）により、PR #82 作成以後の取り込み調整・Amendment の記録・review の発注と裁定を Fable が担当する（`docs/AGENT_OPERATING_MANUAL.md` §3.1 の例外適用。Plan Reviewer / Final Reviewer は非 Fable の独立 fresh context を維持）。`Execution Mode` / `Coordinator` の field は Plan Gate 承認時の lane 指定として変更せず、実担当の差はこの記録で示す。broad 指摘の是正は Sonnet（Final Reviewer とは別 context）が Writer として行い、closure は Opus が確認する。
+
 ## Owner Effort Budget
 
 - 介入回数上限: 3
@@ -155,3 +157,5 @@ N/A: executable / wire / schema / report format の変更なし。発注の例�
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+2026-09-19 Final Review broad（head `bb0b4608`）= Sonnet P1/P2 なし・P3 2 件、Opus P2 2 件・P3 5 件。P2 2 件（Plans.md の GA1 未同期、§5.6 最終照合への実行条件の追加）と P3 3 件（Registration 表の行、`rg` の手段、live / historical の区別）を採用して是正。AC5 / Scope の曖昧表現 WARN（M1、既知の 2 箇所）は AC 文言の変更が新しい Gated Amendment と broad の取り直しを要するため本 PR では変更せず、既知の WARN として保持。Coordinator field の指摘は上記の役割記録で対応。報告は PR #82 の comment（`#issuecomment-5732743285`、`#issuecomment-5732763646`）。
