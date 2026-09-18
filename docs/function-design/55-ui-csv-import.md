@@ -3,6 +3,27 @@
 
 ## 55. UI-07: 売上データ取込み画面
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D4 / D5 / D9。既存のfile選択→preview→結果を使い、新しい独立アプリ風画面や在庫スキップcheckboxは作らない。以下の現行フローのcommit可否へ、stock_reviewによる保留と回復を加える。
+
+| 状態 | 表示・操作 | 書込みと回復 |
+|---|---|---|
+| file選択前 | 本番準備の不足（共有JAN・旧実測・時計/EJ未検証）を日本語の理由と対象で示す | 準備完了の表示だけでレジ側の運用開始を証明しない。資料受領・再確認の入口は閉ざさない |
+| preview ready | 既存の集計・重複/同日追加確認 | 既存確認を維持してcommit。UIがBefore/Afterを再計算しない |
+| recount_after_import | 「取り込んだ後に数の再確認が必要です」、対象一覧 | 取込み成功後にactive明細の要再確認が残る。確定を急がせず、その明細の計数へ案内 |
+| held | 「販売の前後を確認できません。今の数を確認してください」、対象・理由・操作 | 業務commitを無効化し、サーバーでも拒否。active明細を優先、なければ独立再実測。明細なしは解除不可と説明 |
+| 商品ごとの保存済み | 入力した数と保存済み表示 | CMD-10で即保存。全商品分を画面へ溜めてcommitへ送らない。取込みを中止しても保存済みの現物確認は残る |
+| 再preview | 「確認結果を更新」 | 新しい実測を使ってBIZが集合を再生成。旧previewのskip集合を流用しない |
+| preview失効/再起動 | 「同じファイルを選び直してください」 | 同hashの受領へ再接続。保存済み実測は残り、未保存値は空で新しい計数から開始 |
+| 旧取込み取消の保留 | 「取り消す前に、対象商品の今の数を確認してください」 | 対象import付きの専用再確認→同IDの取消再試行。通常の独立再実測でactiveを迂回しない |
+
+準備状態はget_pos_stock_readinessのread-only結果を使い、fileの個別commit可否はstock_reviewを正とする。count_tokenは[73の共通計数フロー](73-ui-stocktake.md)で扱う。保存中・importing中の連打と離脱を防ぎ、商品切替で未保存contextを破棄する。errorは[40のkind/code/action](40-cmd-product.md)で分岐し、message内のIDや数値を解析しない。
+
+要再確認・保留・保存済みは日本語labelとicon/状態列を併用する。既存PageShell、Table、Alert、数量入力、IME/Enter防御とreturnToを維持し、長い商品名で数量や次の操作を隠さない。対象一覧のページを切り替えても保存済み結果を未保存へ戻さない。
+
+成功結果の売上0件は正常完了として表示し、要再確認対象は結果後も辿れる。現在庫が直っても精算欠落の警告を消さず、過去売上の復旧と混同しない。Windows L3は保留→一部保存→再起動→同file再選択→残り確認→取込み、保存した値が二重適用されないことを確認する。実装・native確認は未実施。
+
 計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D4 / D9（proposed）。保留からの商品単位の再実測と、資料受領・業務取込み・欠落の表示を定める。以下の本文は現行画面の契約であり、新しい操作の実装済み仕様ではない。
 
 > **2026-08-01 evidence sync（2026-08-17 実態同期）**: UI-07 は「売上データ取込み」画面として、current operation の主動線を Z001/Z002/Z005 日報取込みに置く。既存の Z004 CSV import UI はPLU登録後の商品別売上・`pos_stock_sync`在庫増減・rollbackを実装済みの別トラックとして残し、IO-02は従来shapeと2026-07-06店舗採取layout Aを受理する。日報取込みは [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) / [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) を呼び、`sale_records` / `inventory_movements` を作らない。

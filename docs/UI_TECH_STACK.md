@@ -1,5 +1,13 @@
 # UI技術スタック選定書
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D8 / D9。既存スタックを変えず、[42の生成wire](function-design/42-cmd-sales-stocktake.md)と[73の計数状態](function-design/73-ui-stocktake.md)へ接続する。未保存token/数量はfeature-local state、保存済み実測/flag/履歴はDBとQueryを正とし、永続化した画面draftから古い数量を復活させない。
+
+保存成功とreplayedでは保存先に応じたconsumerをD-052のSSOTで再取得する。snapshot保存、独立再実測、flag更新、確定/取消、受領・時計失効で変わる列をruntimeで列挙し、現行C16の狭い集合を新saveへ無検証で流用しない。集合の複製や新しい手書きinvalidationを画面へ置かない。新commandの登録、generated error union・bindings・unwrapResultが保持する回復payload・mock/testを同時に同期する。
+
+開始前は数量入力を空にし、明示begin成功で入力欄へfocus、save成功で検索欄へ戻す。IME確定Enter、同じスキャンEnterでの二重実行、遅延応答による商品取り違えを防ぐ。save pendingの間は商品切替/離脱を抑止し、未保存contextの破棄と保存済み記録の取消を混同しない。日本語状態・非色表示・Windows受入条件は既存のdesign-systemを維持する。
+
 > **親文書**: [ARCHITECTURE.md](ARCHITECTURE.md)
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、SCREEN_DESIGN.md（画面設計）、FUNCTION_DESIGN.md（関数設計）
 > **最終更新**: 2026-07-01 / UI-08 PLU書出し native save / confirm 方針更新

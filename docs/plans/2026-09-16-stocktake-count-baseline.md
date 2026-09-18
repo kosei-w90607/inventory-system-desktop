@@ -5,19 +5,19 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: design
+- Phase: plan-draft
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Codex（ownerの明示した設計委任による起草・統合。Human Gateと正式なreview承認は代行しない）
-- Writer: Codex（このturnは設計文書と合成モデルのみ。runtimeは未着手）
-- Plan Reviewer: Sonnet + Opus（非Codex vendorのfresh context。今回の統合案の正式Plan Gateは未実施）
+- Writer: Codex（発注65のsource詳細同期。合成モデルは検証入力として保持、runtimeは未着手）
+- Plan Reviewer: Sonnet + Opus（非Codex vendorのfresh context。source同期版の正式Plan GateはFable発注待ち）
 - Final Reviewer: Sonnet + Opus（Writerと独立したfresh context）
 - Final Review Minimum: 2
 - Human Gate: ready,merge
 
-ownerの今回の指示は設計の引継ぎを許可する。実装開始・Ready・mergeの許可には読み替えない。現在のsource docsは現行実装の契約を保持し、改訂候補はADRへ案内する。詳細シグネチャ・migration・UI契約の同期と独立Plan Gateが揃うまでPhaseを前進させない。設計の技術的選択は委任範囲で詰め、未確認の店舗運用・ハードウェア事実を受容済みにしない。
+ownerの今回の指示はsource詳細同期とplan-draftの準備を許可する。実装開始・Ready・mergeの許可には読み替えない。source docsは現行実装とproposedの新契約を区別する。design出力が揃えばplan-draftへ進め、独立Plan Gateなしにplan-approvedへ進めない。設計の技術的選択は委任範囲で詰め、未確認の店舗運用・ハードウェア事実を受容済みにしない。
 
 遷移記録（append-only）:
 - kickoff → spec-check → design（`24294ec4`）: Risk R2（docs-only。BIZ-06 / BIZ-03 / UI-10 の設計正本と decision-log を更新し、runtime 契約はこの lane では変えない）。Design Phase = 本 packet で方式を比較し Coordinator 既定案を置く。owner 回答待ちのため plan-draft へは進めない（DEV_WORKFLOW「design → plan-draft: no unresolved design questions」）。
@@ -28,6 +28,8 @@ ownerの今回の指示は設計の引継ぎを許可する。実装開始・Rea
 
 引継ぎ（phase変更なし、2026-09-18）: owner「普通に君に設計任せる」を受領。反例ごとの条件追加を止め、時点証拠・復旧・保存順序をADRへ統合する。新しいsource契約はDB/command/保存・訂正の操作を直接定めるため、影響基準でRiskをR3へ更新しMatrixを作成する。旧rallyの評価はその対象commitに対する履歴として保持し、新案の承認には流用しない。
 
+- design → plan-draft（2026-09-19、発注65のsource同期content commitに同乗）: ADRの意味を変えずにS1〜S6の詳細契約とS7の対応表を同期。合成モデル・docs検査・禁止pathと要求token照合が成功し、新たな設計質問はない。実機依存は成立まで非有効化とする契約を明記。正式Plan GateはFableが新rallyで発注し、Plan Commitは承認までpendingを維持する。
+
 ## Owner Effort Budget
 
 - 介入回数上限: 8（既存のowner承認を維持）
@@ -36,12 +38,14 @@ ownerの今回の指示は設計の引継ぎを許可する。実装開始・Rea
 - relay往復上限: 2（ownerを伝書鳩にせず、read-only reviewは担当が回収する）
 - Plan Review round 天井: 3。今回の統合案の正式rallyは未開始。早期の設計点検をPlan Gateの承認と呼ばない
 
-このturnの最小完了経路は、設計案・反例検証・残る外部検証条件をレビュー可能な形で渡すこと。追加の証跡儀式やruntime実装へ広げない。
+このturnの最小完了経路は、ADRの判断をsourceの保存・関数・wire・回復導線へ同期し、Matrix/外部probe条件とともに正式レビューへ渡すこと。追加のowner判断やruntime実装へ広げない。
 
 ## Consultation Relay
 
-- Review Order Artifact: 設計点検はADR・Matrix・合成モデルを指定したread-only依頼。正式Plan Gate発注はplan-draft完成後
-- Review Order Ref: pending（正式Plan Gate未実施）
+- Review Order Artifact: none
+- Review Order Ref: none
+
+remote order branchを使うconsultation relayは本runで使用しない。sourceの事前点検はread-only subagentで行い、正式Plan Gateの発注はplan-draft完成後にFableが行う。
 
 ## Risk
 
@@ -55,11 +59,11 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 
 ### 最小完了条件
 
-- 実測・受領・精算区間・在庫ledgerの意味と前後判定が、ADRだけで追える。
+- 実測・受領・精算区間・在庫ledgerの意味と前後判定が、ADRとsourceの具体的な保存・関数契約で追える。
 - 通常、初回、時計不明、EJ不完全、同秒、取消、途中再開、旧DBについて拒否と復旧が定義される。
 - 設計モデルが主要な数値反例を再現し、採用案のassertが通る。
 - Matrixがruntimeで必要な検証と、モデルでは証明できない境界を分ける。
-- 本書・Plans・source docの案内が、現行実装と提案を混同させない。
+- 本書・Plans・source docの詳細が、現行実装と提案を混同させず、保存先から画面の回復までを接続する。
 
 ### 失敗定義
 
@@ -88,14 +92,21 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 
 ## Scope
 
-本turnのwrite範囲:
+発注65のwrite範囲。着手基準は単段merge後の `36891af8`。以下の同期用Scope/ACを先に確定し、source本文はその後に編集する。前のS1〜S4によるADR・モデル作成は完了済みの履歴であり、今回はその意味を変えない。
 
-- S1: docs/adr/2026-09-18-stocktake-time-evidence.md とADR index。技術判断・拒否理由・復旧・データ意味を統合する。
-- S2: 本packet、docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md、Plans.md。現在地と検証契約を同期する。
-- S3: scripts/probes/stocktake_time_model.py。合成値だけの設計probe。production moduleとして利用しない。
-- S4: 関係するfunction-design 23 / 32 / 35 / 55 / 73、DB tracking / pos、親indexへproposed ADRの案内を付ける。本文の現行実装契約を新方式実装済みに書き換えない。
+- S1（IO）: `docs/function-design/20-io-product-repo.md`（数量の汎用更新撤去、実測・再実測・flag・cursor取得）、`21-io-inventory-repo.md`（数量と版の不可分更新、補正区分）、`23-io-z004-parser.md`（精算メタ・ゼロ行）、`24-io-csv-import-repo.md`（受領記録、取消movement ID）。いずれも同じfunction-designディレクトリ内。
+- S2（BIZ）: `docs/function-design/30-biz-product-service.md`（設定変更・共有JANの検査）、`31-biz-inventory-service.md`（版更新の呼出し側）、`32-biz-csv-import-service.md`（受領・分類・保留・取消・外部probe条件）、`35-biz-stocktake-service.md`（context・即保存・確定・訂正）、`36-biz-integrity-check.md`（fix_integrityの版更新）。
+- S3（CMD）: `docs/function-design/40-cmd-product.md`（共通CmdErrorの新しい回復payload）、`41-cmd-pos.md`（preview/commit/取消のwire）、`42-cmd-sales-stocktake.md`（begin/save/abandon、DTO・error・登録義務）、`43-cmd-settings-log.md`（復元時のDB接続交換前のcontext失効）。
+- S4（operator）: `docs/function-design/55-ui-csv-import.md`（保留・再preview）、`65-inventory-record-traceability.md`（補正区分・訂正への到達・評価額）、`73-ui-stocktake.md`（計数開始・保存・回復・native検証）。
+- S5（DB）: `docs/db-design/master-tables.md`（stock_revision）、`transaction-tables.md`（既存入出庫TXと版の関係のみ）、`pos-tables.md`（source受領とimport）、`tracking-system-tables.md`（実測種別・証拠・再実測・flag・補正区分・migration）、`docs/DB_DESIGN.md`（proposed保存契約への索引）。
+- S6（境界・親文書）: `docs/ARCHITECTURE.md`、`docs/architecture/biz-task-specs.md` / `io-task-specs.md` / `cmd-task-specs.md` / `ui-task-specs.md` / `mnt-task-specs.md`（各層の責務と詳細契約への参照）、`docs/FUNCTION_DESIGN.md`、`docs/SCREEN_DESIGN.md`、`docs/UI_TECH_STACK.md`（到達導線、状態所有、失効と既存invalidation契約の接続）。
+- S7（引継ぎ）: 本packet、`docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md`、`docs/Plans.md`。Required Design Artifacts / Contract Coverage Ledger / Trace Matrix / runtime申し送り・現在地をsource本文に同期する。
 
-次のdesign出力: ADRに沿って20 / 21 / 23 / 24 / 32 / 35 / 36 / 41 / 42 / 55 / 65 / 73、DB/architectureの詳細契約を同期し、EJ本番条件の外部probeを整理してplan-draftへ。現在のADRの命名をruntimeの既存関数が実装済みである証拠にしない。
+各sourceに「時点証拠契約（proposed・未実装）」を区別して置く。現行のシグネチャ・schema・UIが既に新方式になったとは記載しない。関数設計の新規fileは作らず、既存file内で詳細化するためmodule-map登録の追加はない。実装・生成物・新しい要求IDの追加は行わず、既存要求tokenの増減が必要なら停止して再発注を求める。
+
+波及候補の裁定: 30は商品一括importも汎用更新を通るため採用、31は共通数量更新のcallerなので採用。43のfix_integrity自体は42への参照だけだが、実際のDB接続交換が43.9にあるためD1の失効を接続する目的で採用。DB masterは版の保存先、transactionは既存入出庫のTX契約との接続として採用する（header/item schemaは変更しない）。71の復元本体の復旧規則・error kindは変更せず、43から既存正本へ委譲したままにする。decision-logは新判断を追加しないため非編集。ADRと合成モデルも今回は検証入力として保持する。
+
+隣接契約の追加: CmdErrorの共通所有先は40 §5.3であり、現行はkind/message/field/error_idだけで回復対象を運べない。D8の機械判別とD9の対象商品への案内をmessage解析で代替しないため、40をS3へ追加してから編集する。既存kind・restoreの分類は維持し、新しい回復payloadはproposedとして区別する。
 
 ## Non-scope
 
@@ -105,20 +116,21 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 
 ## Acceptance Criteria
 
-このdesign引継ぎのAC。旧案の正規表現件数を新設計へ流用しない。
+source詳細同期のAC。件数一致だけを契約充足の代用にしない。
 
 - AC1: `rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` の出力にD1〜D9がある。実測窓、資料受領、未知の境界、保留と再確認、訂正、取消、legacyの意味は独立設計点検で確認する。
 - AC2: `python3 scripts/probes/stocktake_time_model.py` がexit 0でPASSを出力し、before/afterの断定が合成oracleに反しない。モデルのPASSは実装テストと別に扱う。
-- AC3: `rg '^## (Test Matrix|State Lifecycle Matrix|Residual Test Gaps)' docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md` が各見出しを出力する。契約・失敗とruntime/native/外部probeの境界は独立設計点検で確認する。
-- AC4: `git diff --name-only -- src src-tauri migrations` の出力が空。全変更がScopeの設計・案内・モデルに属することを確認する。
+- AC3: S1〜S6のsourceを `rg -n '時点証拠契約|SPEC-STK-TIME'` で辿れ、DBの保存条件→IO入出力→BIZのTX/拒否→CMDのwire→UIの回復の対応がContract Coverage Ledgerから追える。各sourceはproposed・未実装と現行本文を区別する。
+- AC4: `git diff --name-only 36891af8 -- src src-tauri` の出力が空。全変更がScopeのdocsに属する。`git diff 36891af8 -- docs/function-design/90-traceability.md scripts/probes/stocktake_time_model.py docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/templates` も空。変更docごとの要求tokenを基準版と比較して同一であることを確認する。
 - AC5: bash scripts/doc-consistency-check.sh --target plan とfullがERRORなし、git diff --checkが成功。
-- AC6: `rg '^### Codex設計引継ぎと早期点検' docs/plans/2026-09-16-stocktake-count-baseline.md` が記録見出しを出力する。指摘の反例と修正先を同節で追跡する。正式Plan Gateはsourceの詳細同期とplan-first commit後に別途行う。
+- AC6: `32-biz-csv-import-service.md` の外部probe表が、精算系列・EJ完全性・商品同定・時計対応の観測項目、許可条件、不成立時の動作を持つ。`42-cmd-sales-stocktake.md` と `73-ui-stocktake.md` にWindows監視・native検証の失敗条件を持つ。未実施の実機検証をpassと扱わない。
+- AC7: `git diff --check` と `bash scripts/check-workflow-git.sh` が成功する。Review Responseへfileごとの要点・波及裁定・実施/未実施の検証を追記し、必要な設計出力が揃った場合だけworkflow遷移表に従ってplan-draftへ進める。正式Plan GateとPlan Commitの確定はこのrunでは行わない。
 
 ## Design Sources
 
 - 要求: REQ-205 / REQ-401、docs/spec/requirements.md / requirements-coverage.md。
 - 新案: ADR SPEC-STK-TIME-D1〜D9（proposed）。
-- 現行契約: 35 / 32 / 23 / 31 / 36、tracking / pos、73 / 55。変更予定との違いをADRとScopeで示す。
+- 詳細同期: Scope S1〜S6の各sourceの「時点証拠契約（proposed・未実装）」。現行本文は保持し、変更予定との差分を同じ文書内で示す。
 - 境界: UI → CMD → BIZ → IO/MNT、INV-2、D-051、D-025。
 - 旧案の事実調査: feeb3fe9の起票時実測、承認済みEJサンプルの匿名化構造所見。raw値は持ち込まない。
 
@@ -126,25 +138,29 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 
 | Area | Artifact | Status |
 |---|---|---|
-| 時点・順序・復旧 | ADR | proposed、新案 |
-| DB / TX / migration | ADR D8、tracking / posへの案内 | 詳細SQLとmigrationは次の設計同期、未実装 |
-| CMD / DTO / token | ADR D1 / D8 / D9、Matrix | begin / save / abandonとwireの意味を規定。型・登録のruntime実装は未着手 |
-| operator flow | ADR D9、55 / 73への案内 | native L3はruntimeで実施 |
-| POS / EJ / 時計 | ADR D2〜D5、Contract Probe | 未確認条件では時刻による自動分類を許可しない |
-| 検証 | Matrix、合成モデル | 設計probeとruntime検証を区別 |
+| 時点・順序・復旧 | ADR D1〜D9、32 / 35 | ADRの意味は不変。sourceへ分類・TX・復旧を展開 |
+| DB / TX / migration | master / transaction / pos / tracking、20 / 21 / 24 / 36 | 論理列・型・制約・保存順・旧DB分類をproposedとして追加。SQL適用と故障注入はruntime |
+| CMD / DTO / token | 40 / 41 / 42 / 43 | API/DTO・回復payload・保管/失効・再送・登録と生成の義務を具体化。未実装 |
+| operator flow | 55 / 65 / 73、SCREEN_DESIGN / UI_TECH_STACK | 到達・focus・状態・中断/再開・差0商品の訂正・native合格条件を追加。UI実装は不変 |
+| POS / EJ / 時計 | 23 / 32 / 42、MNT task | 外部probeの観測項目・許可条件・不成立時の出口を列挙。実機は未実施 |
+| 検証 | Matrix、既存合成モデル | source別のruntime検証と本runのdocs/モデル検証を区別 |
 
 ## Registration / Generation Obligations
 
 このturnは新CMD・Rust関数・schemaの実装なし。bindings / route tree / traceabilityは生成しない。runtimeではcommand登録、生成binding、schema migration、REQ test traceability、record detailのkind伝播を必須とする。
 
+- runtimeの公開command追加はbegin/save/abandonとget_pos_stock_readiness。旧update_countの公開登録を外し、tauri/specta属性・collect_commands・bindings・caller/mockを同じ変更で更新する。
+- 共通CmdErrorのstocktake_guard/回復payloadに合わせ、全constructor・generated enum・CMD_ERROR_KIND・unwrapResultの保持・describeError・UI分岐/fixtureを同期する。
+- function-design fileの新設・改名なし。module-mapやroute登録の追加は本runでは不要。要求tokenの増減なしを基準版と照合し、90-traceabilityは手編集も再生成もしない。
+
 ## Design Intent Trace
 
 | Spec | Source / decision | Why | Future implementation | Verification |
 |---|---|---|---|---|
-| REQ-205 | D1 / D7 / D8 | stale入力、同秒、旧snapshotを誤適用しない | BIZ-06 / IO / CMD-10 / UI-10 | Matrixの保存・訂正・migration |
-| REQ-401 | D2 / D3 / D4 | 知らない前後を推測しない | IO-02 / BIZ-03 / CMD-07 / UI-07 | Matrixの受領・区間・0行・共有JAN |
-| REQ-205 / REQ-401 | D6 | 実測へ吸収した数量を二重に戻さない | rollback / stocktake repo | 合成モデル、runtime TX検証 |
-| REQ-401 | D5 | 不完全なEJで自動分割しない | 別EJ lane | 合成fixture、sanitized sample、native gate |
+| REQ-205 | D1 / D7 / D8、20/21/35/40/42/43/65/73、master/tracking | stale入力、同秒、旧snapshotを誤適用しない | BIZ-06 / IO / CMD-10 / UI-10 | Matrixの保存・訂正・migration |
+| REQ-401 | D2 / D3 / D4、23/24/30/32/41/55、pos | 知らない前後を推測しない | IO-02 / BIZ-03 / CMD-07 / UI-07 | Matrixの受領・区間・0行・共有JAN |
+| REQ-205 / REQ-401 | D6、24/32/35、tracking | 実測へ吸収した数量を二重に戻さない | rollback / stocktake repo | 合成モデル、runtime TX検証 |
+| REQ-401 | D5、23/32の外部probe表 | 不完全なEJで自動分割しない | 別EJ lane | 合成fixture、sanitized sample、native gate |
 
 ## Design Intent Audit
 
@@ -166,9 +182,9 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 
 ## Design Readiness
 
-Status: design。レビュー可能な統合案を作成した段階で、実装readyではない。
+Status: plan-draft。ADRの判断を変えず、層の所有、DB/TX・移行、API/wire、operatorの回復、外部証拠の利用条件をS1〜S6へ展開し、同期用ACを確認した。正式Plan Gate前であり、runtime実装readyではない。
 
-必要な残作業は、独立設計点検の反映、sourceの詳細契約への展開、外部時刻を信用する条件のprobe、正式Plan Gate。参照明細のない共有JAN候補の復旧制限と、物理的な計数の真偽は隠さない。新しいownerの運用判断を受容済みにしない。
+新たにownerへ返す設計質問はない。未検証の外部条件は、32のprobe表で対応する自動処理を有効にしない条件として明示した。Windows監視の実装/native probe・EJ全形状・レジ系列/時計の本番成立は未実施で、正式Plan Gateでは依存する前提の検証計画と非有効化条件を確認する。明細のない共有JAN候補は既知の非対応として保持し、店舗運用の受容済み扱いへ変更しない。
 
 ## Contract Probe
 
@@ -176,6 +192,8 @@ Status: design。レビュー可能な統合案を作成した段階で、実装
 - 既存実装確認: movements.idはDBで採番、同秒timestampでは順序不能。snapshotとcursorの同TX保存が必要。
 - 外部: Z004のメタ項目、EJの分精度・取引番号・点数欄・精算境界を既存所見で確認。精算番号のreset系列・時計差の保証期間・EJ全形式は未検証。これらが証明されるまで対応する自動分類を有効にしない。
 - 安全なfallback: 資料を受領してからの新しい実測。仮時刻、任意の時間幅、EJ合計だけの安全宣言は使わない。
+- 詳細なprobeの正本: 32「外部probeと本番条件」、42のWindows/native境界。系列・時計対応・EJ完全性・取引復元・商品同定・OS監視の観測と不成立時の動作を対応させた。実POS/DB/backupへの新規アクセスは本runで行っていない。
+- source接続probe: 既存CmdErrorは回復対象を持たず40が共通所有先、DB接続交換は43.9に存在、汎用数量更新は20のProductUpdates経路に存在。各sourceと該当codeの読取りで確認し、追加/撤去予定を相手側と同時にproposedへ記した。
 
 ## Test Design Matrix
 
@@ -187,16 +205,23 @@ Status: design。レビュー可能な統合案を作成した段階で、実装
 
 | Contract | Future target | Automated evidence | Native / external |
 |---|---|---|---|
-| D1 | 計数context・保存・revision | ABA、失効、再送、snapshot | UI-10 / 保留 / 訂正 |
-| D2〜D4 | source受領・区間・commit | 受領順、未知境界、0行、共有JAN | 実ファイル系列 |
-| D5 | EJ adapter | 境界欠落・未知行・数量検算 | 本番有効化probe |
-| D6 | rollback | 同秒、反復実測、最初の吸収先 | 対象外 |
-| D7〜D9 | 訂正・詳細・旧DB | 所有者guard、kind、migration | 再開・再実測のL3 |
+| D1 数量/版（20/21/30/31/35/36、master/transaction） | 共通repo、既存数量writer、数量なしの状態更新 | req205_stock_revision_all_writers / req205_stock_revision_non_quantity / ABA | operator手動故障注入は対象外 |
+| D1 context（35/42/43、MNT task） | begin/save/abandon、DB/環境世代、保存済み要求照会 | req205_count_save_idempotency / count_context_invalidation / req205_count_context_db_generation | Windows監視probe、73の計数L3 |
+| D2 受領（23/24/32/41、pos） | parser任意メタ、hash一意source、開始source_cursor | req401_receipt_before_count_start / req401_source_survives_zero_and_rollback | 実ファイル系列 |
+| D3 時刻（23/24/32、pos、MNT task） | qualified bounds、time_basis、独立証拠TXの失効 | check_counterexamples / check_diagnostic_order / req401_clock_invalidation_survives_rejected_commit | 32の時計・系列probe |
+| D4 分類/設定（30/32/35/41/55） | 共通分類、全候補、active/完了の所属、preflight | req401_shared_jan_all_candidates / req401_active_legacy_import_recheck / pos_stock_readiness_preflight | 準備不足と保留からの回復 |
+| D4 ゼロ行/flag（23/32/35、tracking） | 売上行と証拠行の分離、確定拒否、再preview | req401_zero_net_nonzero_after_count / req205_recount_flag_blocks_complete | 売上0の正常完了表示 |
+| D5（23/32） | 別EJ laneのadapter/照合/実行拒否 | req401_ej_coverage_boundaries / req401_ej_per_receipt_validation | 32の本番有効化probe |
+| D6（20/24/32/35、tracking） | movement ID、最初の吸収先、legacy停止・専用再確認 | check_lifecycle / check_legacy_recovery / req401_rollback_count_cursor | 取消→復旧の可視動作 |
+| D7（20/21/31/35/42/65/73） | 独立再実測、明示的kind、差0対象への到達、非遡及評価 | req205_recount_active_owner_guard / req205_stocktake_movement_kind | 73の確定後訂正L3 |
+| D8 DB（DB設計、20/21/24） | CHECK/FK/要求ID/内部上限、移行の全体rollback | check_migration_and_fill / req205_legacy_count_requires_recount | 実データ件数は本番移行gate |
+| D8 wire（40/41/42） | 新command/共通error/生成binding/旧入口撤去 | req205_recovery_wire_contract、runtimeのbindings/finite-enum検証 | UIはmessage解析しない |
+| D9（55/65/73、SCREEN_DESIGN/UI_TECH_STACK） | focus・IME・再開・型付き回復・invalidation | runtime UI state/route/error/再送試験、D-052 consumer照合 | 73のL3、Windows以外で代用しない |
 
 ## Test Plan
 
 - 設計probe: Python標準ライブラリのみ。外部入力なし。
-- docs: plan / full、diff --check。
+- docs: plan / full、diff --check、workflow-git。基準版36891af8との差分をScope・禁止path・要求tokenの観点で確認する。
 - runtime test: Matrixの予定名。未実施であり、本turnでRust/frontend全量を回して実装済みの証拠にしない。
 - read-only独立設計点検: 反例と最小修正を求める。正式Plan Gateと区別。
 
@@ -205,7 +230,7 @@ Status: design。レビュー可能な統合案を作成した段階で、実装
 - 現在のwireは変更しない。新案ではUIはopaque count tokenと数量だけを送る。
 - source/revision/cursor/日時の任意指定をUIから受け付けない。
 - previewは資料受領を保存し得るが、売上・在庫をcommitしない。
-- 保存と取消のtransaction、request重複、record kindのproducer/consumerをruntime packetで固定する。
+- 保存・取消・信用失効のTX、request重複、record kindのproducer/consumerはsourceへ展開済み。40/41/42の有限enumと回復payloadをgenerated bindingへ反映する実装はruntime packetへ渡す。
 
 ## Review Focus
 
@@ -218,7 +243,7 @@ Status: design。レビュー可能な統合案を作成した段階で、実装
 
 ## 後続 runtime lane ㉘ への申し送り
 
-旧案のfile:line指示はfeeb3fe9の履歴。新しいruntimeのscopeはADRとMatrixを元に起こし直す。
+旧案のfile:line指示はfeeb3fe9の履歴。新しいruntimeのscopeはADR、S1〜S6のproposed詳細、Matrixから起こし直し、別のplan-first commitとGateを持つ。
 
 - source受領の永続化、productsのrevision、count/recountの開始・終了・cursor・request識別子、明示的movement kind。
 - 数量更新の版増分はinventory_repo::update_stock_quantity内部で強制する。既存caller = inventory_service/common.rs、csv_import_service/commit.rsの取消戻し、stocktake_service.rsの確定補正、integrity_service.rsのfix_integrity。未使用のProductUpdates.stock_quantity分岐も撤去し、数量以外の基準・flag・設定・純量0取消・差0確定は同TX内で共通の版更新処理を使う。Matrixで各経路・overflow・TX rollbackを確認する。
@@ -227,6 +252,8 @@ Status: design。レビュー可能な統合案を作成した段階で、実装
 - UI-07/UI-10/記録詳細の即保存・再開・訂正、既存IME/Enter/focus/returnToを維持。
 - legacy migration、全行0、共有JAN、逆順資料、時計異常、EJ欠落を負の経路として実装前にfixture化。
 - EJはPLU本番前提。取得失敗で再実測の復旧まで閉ざさず、自動分割の許可と区別する。
+- 新たに具体化したtime_basis_id、型付き回復payload、準備照会、補正kind/recount参照をproducerから全consumerへ配線する。時計失効は業務rollbackで消さない。legacyのUnknown後は所属で一意に分岐する。
+- 各sourceの「現行本文」を新runtimeの完成形として混ぜず、対応するproposed節を実装し、旧仕様からの置換箇所を実装差分で確認する。profile/現行図面・D-052の実装SSOTはruntimeの挙動変更と同時に同期する。
 - 本packetのdesignはruntime実装許可ではない。
 
 ## Spec Contract
@@ -242,9 +269,9 @@ Contract ID: SPEC-STK-TIME-EVIDENCE
 
 | Spec | Scope | Evidence | Review |
 |---|---|---|---|
-| SPEC-STK-TIME-EVIDENCE | S1 / S2 / S3 | AC1〜AC3、Matrix | 時点・順序・復旧 |
-| REQ-205 | S1 / S4 | AC1 / AC4 / AC5 | snapshot・訂正・legacy |
-| REQ-401 | S1 / S4 | AC1 / AC4 / AC5 | 受領・区間・EJ・共有JAN |
+| SPEC-STK-TIME-EVIDENCE | S1〜S7 | AC1〜AC7、Matrix、source読取り点検 | 層間接続、時点・順序・復旧 |
+| REQ-205 | S1 / S2 / S3 / S4 / S5 / S6 | AC1 / AC2 / AC3 / AC4 / AC5 / AC7 | snapshot・訂正・legacy |
+| REQ-401 | S1 / S2 / S3 / S4 / S5 / S6 | AC1 / AC2 / AC3 / AC4 / AC5 / AC6 / AC7 | 受領・区間・EJ・共有JAN |
 
 ## Data Safety
 
@@ -404,3 +431,52 @@ Contract ID: SPEC-STK-TIME-EVIDENCE
 - Review-only skipped because: 既存closureでpassした設計のfollow-upに限定し、採用済みの操作方式は変更しない。新規broad/rallyは起こさず、対応assert・実変異・文書検査で是正を確認し、詳細source同期後の正式Plan Gateへ引き継ぐ。
 - 検証command: `python3 scripts/probes/stocktake_time_model.py` → exit 0、`PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy recovery, migration kinds, force_fill`。`git diff --check` 成功、`git diff --name-only HEAD -- src src-tauri` → 空。`rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` → D1〜D9の9見出しを維持。`bash scripts/check-workflow-git.sh` → PK5/STATECAP OK。
 - 文書検証: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-16-stocktake-count-baseline.md` → ともにexit 0、ERRORなし、既存履歴のPK6 WARN 3件のみ。計画側で業務上の状態語を未決マーカーと誤検出した箇所は「確定前」へ言い換え、検査ルールは変更していない。
+
+### source詳細同期とplan-draft（2026-09-19、発注65）
+
+- 開始版 `36891af8` は単段merge後のcleanなtree。Scope/ACをsource編集前に同期作業用へ置き換え、共通CmdErrorの所有先40を現物確認後に追加した。ADRと合成モデルの意味・内容は変更していない。
+- 波及採用は30（商品更新型/一括import）、31（共通在庫writer）、43（DB接続交換）、master（版の保存）、transaction（既存TXへの版の接続）。71の復元本体とdecision-logは非編集。profileと現行図面は現行実装の説明なので本runでは変更せず、runtime切替時の同期対象として申し送った。
+- 読取り専用の別contextでDB/IO/BIZ/CMDの新節をADRと照合。P2候補のactive legacy分岐と、業務失敗で時計失効が消えるTX境界を現物で確認して採用した。所属での一意な分岐と独立証拠TXへ修正し、相手側24/posにも同期した。再確認で両指摘CLOSED、是正箇所のP1/P2なし。これは正式Plan Gateではなく、UI/親文書を含むsource全体の承認へ流用しない。
+- 実施: `python3 scripts/probes/stocktake_time_model.py` → exit 0、既存PASS行を維持。`bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-16-stocktake-count-baseline.md` → ERRORなし、既存PK6 WARN 3件のみ。`git diff --check` 成功。`git diff --name-only 36891af8 -- src src-tauri` およびAC4の禁止path差分は空。
+- 要求参照の照合: 変更docごとに `git show 36891af8:<path>` とworktreeの `rg -o 'REQ-[0-9]+'` をsortしてdiff → 全て同一。新しい関数設計file・要求tokenの増減がなく、module-map/traceability/bindings/route treeの生成は不要。本runではこれらを変更していない。
+- 未実施: runtimeのSQL・TX故障注入・binding/enum配線・UI/native・実機EJ/時計/精算系列probe、正式Plan Gate。自動分類とPLU本番の成立を本runの成功で代用しない。設計変更を要して停止した項目はなし。
+
+fileごとの変更要点（function-designは同ディレクトリ内の番号、DB/architectureは各サブディレクトリ内）:
+
+| file | 変更要点 |
+|---|---|
+| 20-io-product-repo | 汎用数量欄撤去、context読取り、両cursor・実測/再実測・flag・要求照会 |
+| 21-io-inventory-repo | 数量/版の不可分更新、補正kind伝播、差異集計 |
+| 23-io-z004-parser | 任意精算メタ、正常JANゼロ行、信用判定のBIZ境界 |
+| 24-io-csv-import-repo | source upsert、証拠TX、取消前読取りとmovement ID |
+| 30-biz-product-service | 設定/マスタ変更時の全候補検査と版更新 |
+| 31-biz-inventory-service | 共通repoの版増分と既存TX/冪等性の接続 |
+| 32-biz-csv-import-service | 準備照会、受領/分類/commit/取消、時計失効、外部probe表 |
+| 35-biz-stocktake-service | contextの意味、save TX、N-L確定、legacy復旧、詳細読取り |
+| 36-biz-integrity-check | movementを作らない整合性補正でも版を進める契約 |
+| 40-cmd-product | 共通のstocktake_guard、型付き回復payloadと生成義務 |
+| 41-cmd-pos | stock_review/準備照会/結果の伝播、cacheとBIZの境界 |
+| 42-cmd-sales-stocktake | begin/save/abandon wire、保管/失効、旧入口撤去、native境界 |
+| 43-cmd-settings-log | DB交換前のcontext世代失効、復元本体の規則は維持 |
+| 55-ui-csv-import | 保留→商品別保存→再preview、再起動後の再選択 |
+| 65-inventory-record-traceability | 差0を含む訂正への到達、kind表示、過去評価の非遡及 |
+| 73-ui-stocktake | 明示begin・focus/IME・保存・回復とnative合格条件 |
+| master-tables | stock_revisionの型/制約と専用更新口 |
+| transaction-tables | header/item schema不変、既存業務TXへ版更新を接続 |
+| pos-tables | source/hash/メタ/時刻証拠/import参照と独立した失効保存 |
+| tracking-system-tables | kind・証拠・recount・flag・補正区分・移行の保存条件 |
+| DB_DESIGN | 新保存契約の索引と現行ER/schemaの区別 |
+| ARCHITECTURE | UI/CMD/BIZ/IO/MNTの新契約の所有表 |
+| biz-task-specs | 各BIZの役割と詳細sourceへの接続 |
+| io-task-specs | parser/永続化と業務判断の分離 |
+| cmd-task-specs | token/wireと登録・生成の相手側 |
+| ui-task-specs | 保存状態の所有と保留/訂正の導線 |
+| mnt-task-specs | OS監視・時刻対応・DB交換・移行の境界 |
+| FUNCTION_DESIGN | 関数詳細の索引、現行/新契約の区別 |
+| SCREEN_DESIGN | 既存画面での計数/保留/訂正と到達性 |
+| UI_TECH_STACK | feature-local入力、生成wire、D-052 consumerと失効 |
+| 本packet | 同期Scope/AC、source対応表、runtime申し送り、phase前進 |
+| test-matrices/2026-09-18-stocktake-time-evidence | source対応とruntime検証の不足を明記 |
+| Plans | closure/P3是正・source同期の完了と次の正式Plan Gate |
+
+新たな設計質問はなく、source出力と検証を根拠に `design → plan-draft` をcontent commitへ同乗する。独立した正式Plan Gate、Plan Commitの確定、runtime着手、push/PR/Ready/mergeは行わない。Fableへsource同期版のレビュー発注を引き継ぐ。

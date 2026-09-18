@@ -1,5 +1,42 @@
 # テーブル定義（在庫追跡・棚卸し・システム）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カラムと制約であり、現在のschemaに存在するとの記述ではない。migration番号・index名はruntimeのregistryと照合して採番する。既存の数量・評価額・日時を修正するmigrationは作らない。
+
+### 実測の保存形
+
+| 保存先 | 追加・拡張する項目 | 制約と意味 |
+|---|---|---|
+| stocktakes | reconciliation_version INTEGER | NOT NULL、0/1のCHECK。移行済み旧headerは0、新規headerは1。旧activeは再確認を終えて新式で確定するTXで1へ変更。完了済み0は変更しない |
+| stocktake_items | observation_kind TEXT | NOT NULL、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
+| stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点 |
+| stocktake_items | rebased_from_recount_id INTEGER | NULLまたはstocktake_recounts.idへのFK。legacy取消復旧で作るN/N基準だけが元の再実測を参照 |
+| stocktake_items / stocktake_recounts | time_basis_id TEXT | NULLは時刻対応不明。D3の時計対応を識別する内部値。異なる対応期間を日時文字列だけで比較しない。NULLでも受領cursorによる証拠は使える |
+| stocktake_recounts（新設） | id INTEGER PK AUTOINCREMENT、stocktake_item_id INTEGER FK、system_stock INTEGER、actual_count INTEGER、count_started_at TEXT、counted_at TEXT、ledger_cursor INTEGER、source_cursor INTEGER、observation_revision INTEGER、request_id TEXT、reason TEXT | 参照明細・N/L・時点証拠・版・要求IDはNOT NULL。request_idはUNIQUE。reasonはphysical_recheck / legacy_rollback_recheckのCHECK。値はappend-only、actual_countは非負。importへのFKは置かない |
+| stocktake_recount_flags（新設） | stocktake_item_id INTEGER FK、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL、明細/importを複合UNIQUE。理由はtemporal_unknown。取込みと同じTXで立て、受領後の有効な新実測か当該importの取消で解消する |
+
+cursorの0は空集合であり、source/movement IDへのFKにはしない。FKは親明細・再実測・importにだけ張り、親は業務取消で物理削除しない。auto_filled / uncountedには開始・両cursor・observation_revision・実測request IDを付けない。legacyのNULLを有効なmeasured証拠へ補完しない。公開request IDはUUID、派生N/N明細の内部IDは `rebase:<recount_id>` とし、公開saveでは内部IDを拒否する。
+
+実測順序の一意性は、商品別のchecked stock_revisionを進めて記録するBIZの単一TXで保証する。recountとitemのrequest IDを両方照会し、同じ公開IDが両方に見つかる異常は拒否する。検索用indexはitemの(product_code, observation_revision)、recountの(stocktake_item_id, observation_revision)、flagのcsv_import_idとする。indexは証拠の代わりではない。
+
+time_basis_idはD3の時刻対応の識別であり、UIから指定しない。未検証の対応を生成しただけでは時刻を信頼済みにしない。復旧で派生する明細はRのtime_basis_idも引き継ぐ。Windows通知やDB置換によるcontext失効は[CMDの新契約](../function-design/42-cmd-sales-stocktake.md)に従い、保存済み証拠の信用と未保存tokenの有効性を分離する。
+
+### movementと記録詳細
+
+inventory_movementsへ `stocktake_adjustment_kind TEXT NULL`（completion / rollback_compensation / recountのCHECK）と `stocktake_recount_id INTEGER NULL REFERENCES stocktake_recounts(id)` を追加する。新しいstocktake補正は区分を必須とし、非stocktake movementには設定しない。再実測由来の補正はrecountを参照し、reference_type='stocktake' / reference_idは参照明細の親headerを指す。補償が独立再実測を吸収先とする場合もそのrecountを関連付ける。旧movementのNULL区分をtimestampやnoteの推測で書き換えない。
+
+差0は実測行だけを保存し0数量movementを作らない。新方式の確定差異件数はcompletionだけから算出する。旧headerの既存NULL区分の集計は旧表示契約を保持し、新しいrecount/rollback_compensationを混ぜない。確定済みtotal_cost・valuation_cost_price・N/Lを、後から現在庫を直すために上書きしない。
+
+### 移行と保存TX
+
+- migrationの同じTXで、移行前movementの最大ID（空なら0）を内部app_settings key `stocktake_legacy_movement_ceiling`へ一度だけ保存する。通常設定APIの書込み対象にしない。これは吸収済みcursorではなく移行時上限で、再起動・再実行で現在値へ更新しない。
+- 旧itemは、actual_count/count時刻が両NULLならuncounted、actual_count=0・system_stock=0・count時刻NULLならauto_filled、両方ありならlegacy。その他の矛盾形もlegacyとして移行異常を示す。旧force_fillは日時付きなのでlegacy。現在の廃番フラグから逆算しない。
+- measured保存はN/L/S/E・両cursor・版・request ID・flag解消を1商品1TXにする。独立再実測はN-L補正を同じTXに加える。legacy取消復旧はRの保存・即時補正・activeのN/N再基準化を同じTXにし、部分保存しない。
+- migration失敗は新列・新表・内部上限・schema versionの記録をまとめて戻す。旧header・数量・movementを消すこと、旧日時からcursorを作ることは禁止。起動時移行失敗を無視して新commandを有効化しない。
+
+---
+
 計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D6〜D8（proposed）。実測の窓・cursor・版、独立再実測、明示的な補正区分、旧DBの再確認を定める。以下は現行スキーマであり、新列・新表は未実装。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)

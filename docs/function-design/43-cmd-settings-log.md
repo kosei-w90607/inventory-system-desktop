@@ -1,5 +1,13 @@
 ## CMD-11残り: 設定・ログ・バックアップ・画像コマンド群
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D8。§43.9でDB接続を交換する前に、計数contextのDB世代を進めて全未保存contextを失効させる。既にlookupされたcontextもBIZの世代検査で拒否する。context保管lockとDB lockの同時保持は避け、失効→既存の復元orchestration→業務再開の順を守る。
+
+成功・復旧再接続・復旧不能のどの場合にも古いtokenを新しい接続へ持ち越さない。復元前の保存済み要求が復元後DBにも存在する場合の副作用なし照会と、未保存tokenでの新規書込みを区別する。復元自体のbackup・no-create再接続・error kind・dummy接続の扱いは71の既存契約へ委譲し、ここでは変更しない。
+
+内部のmigration上限や時刻証拠を汎用update_settingから書き換えられる設定キーへ追加しない。fix_integrityのcommand本体は42にあり、数量/版の不可分更新は36→21の責務である。
+
 > CMD-11の整合性チェック部分（run_integrity_check, fix_integrity）は `42-cmd-sales-stocktake.md` に記載済み。
 > 本セクションは設定CRUD・操作ログ閲覧・バックアップ・画像保存コマンドを扱う。
 

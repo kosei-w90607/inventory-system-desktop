@@ -1,5 +1,22 @@
 ## 14. IO-01 追加: POS取込みリポジトリ（BIZ-03 / BIZ-08 用）
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sales_repoが[pos_import_sources](../db-design/pos-tables.md)の保存を所有する。
+
+| 操作 | 入力→出力 / 処理 |
+|---|---|
+| 受領のupsert | (tx, hash, received_at, 任意メタ) → source。hash衝突時は最初のID/時刻を返し、REPLACEや再採番をしない |
+| 受領済み上限 | (conn) → 最大source ID、空なら0。BIZ beginが読取り、UIへ公開しない |
+| 時刻証拠の読取り/失効 | (conn, source ID / 対応ID) → 保存済みの範囲・信用状態。同じ対応を使う他sourceへも失効が反映されるよう更新対象をBIZが指定する。IOが時計の正しさを認定しない |
+| import保存 | NewCsvImportにsource_idを加える。既存のactive hash重複判定と取消済み再取込み可否は維持 |
+| 取消対象の事前読取り | (conn, ref_type, ref_id) → 有効movementのid / product_code / quantity。legacy判定を終える前にvoidしない |
+| void_movements_by_reference | VoidedMovementにidを追加し、事前読取りと同じ対象を同一TXでvoidする。返却IDは元のmovement IDで、取消時刻や新しい番号で置換しない |
+
+受領表を売上commit前の短いTXで確定する。業務commit/rollbackはsourceを削除せず、日報bundleのtable/APIへこの処理を混入させない。DB失敗はDbErrorでBIZへ返し、受領失敗のまま証拠付きpreviewを返さない。索引・FK・状態はPOSの新契約を正とし、IOで保留集合を永続化しない。
+
+時計対応の失効更新はBIZが所有する独立の証拠TXで行い、後続の業務TXが戻っても維持する。IOが業務TXの途中で勝手にcommitして境界を破らない。失効保存失敗はBIZへ返し、保存できなかった信用を有効とみなす代替値は返さない。
+
 ### 14.1 モジュール配置
 
 ```

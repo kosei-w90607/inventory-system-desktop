@@ -1,5 +1,11 @@
 # タスク仕様（CMD層）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1〜D9。CMD-10は[42](../function-design/42-cmd-sales-stocktake.md)のbegin_stocktake_count / save_stocktake_count / abandon_stocktake_countへ切替え、無検査update_countの公開登録を外す。CMD-07は[41](../function-design/41-cmd-pos.md)の準備照会とstock_reviewを追加し、source/全候補はprivate cacheへ保持する。
+
+共通の回復payloadは[40](../function-design/40-cmd-product.md)、DB接続交換前のcontext失効は[43](../function-design/43-cmd-settings-log.md)。BIZの生成・検査済み内部contextを保管/復元するだけで、CMDに在庫分類・所有者guard・数量補正式を置かない。tauri/specta属性・collect_commands・bindings・全callerの同期はruntimeで行い、このdocs同期では生成しない。
+
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 
 CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ関数を呼ぶか」と「入出力の型」に限定する。

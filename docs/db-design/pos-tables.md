@@ -1,5 +1,28 @@
 # テーブル定義（POS連携）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、sale_recordsと日報の分離は維持する。
+
+| 保存先 | 項目 | 制約と意味 |
+|---|---|---|
+| pos_import_sources（新設） | id INTEGER PK AUTOINCREMENT、file_hash TEXT、received_at TEXT | hashはNOT NULL UNIQUE、受領日時はNOT NULL。同hashは最初のID/受領時刻を維持。正のID、空集合cursorは0 |
+| pos_import_sources | machine_no TEXT、report_kind TEXT、settlement_no TEXT、settled_at TEXT | 全てNULL可。IOが抽出したメタの意味を保持し、番号のleading zero・resetを推測で消さない。日時不明はNULL。精算日は既存settlement_dateとは別に日時へ勝手な0時を補わない |
+| pos_import_sources | time_evidence_state TEXT、time_evidence TEXT | stateはNOT NULL、unverified / verified / invalidのCHECK、既定unverified。証拠本体はNULLまたは下記の内部JSON。verifiedなら証拠本体を必須にする。raw売上・商品名・JAN・file本体は格納しない |
+| csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない |
+
+構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
+
+時刻対応は[取込みBIZの外部probe契約](../function-design/32-biz-csv-import-service.md)を満たすまでunverified。原本メタと初回受領は不変で、矛盾時に失効するのはその対応の信用状態である。同じ精算の別hashは追加売上と自動認定しない。系列が証明されない間は(machine_no, settlement_no)へ一律UNIQUEを張って別期間を潰さない。
+
+time_evidenceの論理型は `TimeEvidence { time_basis_id, valid_from, valid_until, clock_error_ms, timestamp_quantum_ms, lower_bound?, upper_bound?, series_key, predecessor_source_id? }`。境界と有効期間は解釈済みの日時、誤差は非負整数・粒度は正整数、前回sourceは存在するIDだけを許す。BIZが型・範囲・根拠を検査し、不正JSON・必須値欠落・期限切れをverifiedとして使用しない。JSON処理をIOの時計認定へすり替えない。実機probeで証明できない始端はnullのままで、time_basis_idを付けただけで対応を検証済みにしない。
+
+時計失効のmetadataは独立した証拠TXで保存し、後の業務保留・取消・commit失敗でも巻き戻さない。同じ対応の失効を各sourceへ伝え、保存失敗時はBIZが外部時刻の利用を止める。保存済みstateだけから再検証なしに信用を復活させない。
+
+保留集合はDBに新しい表やcsv_importsの仮行を作らず、同fileの再選択・再previewで再生成する。sourceだけでは元明細を復元できない。全行0でも境界・再確認の用途がある資料は受領し、解消後も売上0のimportとして完了できる。sale_recordsに0/0行を新設する理由にはしない。
+
+---
+
 計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D5 / D8（proposed）。資料受領記録と売上取込み状態を分離する。以下は現行スキーマであり、新列・新表は未実装。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)

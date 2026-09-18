@@ -1,5 +1,19 @@
 ## 17. CMD-07: Z004商品別CSV取込みコマンド群 / CMD-08: PLU書出しコマンド群
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、commit_csv_importのpreviewToken/additionalImportConfirmed、rollback_csv_importのimport IDは維持する。BIZの受領TXにmutable DB接続を渡すが、CMDに時点判定・在庫スキップのルールを置かない。
+
+read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、DB lock→BIZ-03の同名照会→error変換だけを行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
+
+parseの返却は既存previewへ[32のstock_review](32-biz-csv-import-service.md)を追加し、source ID・全JAN候補・証拠対象行はprivate cacheに保持する。既存のcache TTL、UUID検証、成功時削除・失敗時の扱いは維持する。BIZにcache/Mutexを渡さず、DB lockとcache lockを同時保持しない。
+
+commitはUI申告のskip集合・現物数・時刻・cursorを受け取らない。BIZがheld/preview_changedを返した場合は[共通回復型](40-cmd-product.md)へ写し、売上commit成功としてcacheを消す処理をしない。再preview時は同hashのsourceを再利用する。再起動ではfile再選択が必要で、source metadataからbytesを再構成しない。
+
+rollbackのlegacy保留もstocktake_guardで対象を渡し、UIはCMD-10のlegacy_rollback_recheck用途で再実測する。回復後に同import IDのrollbackを再送する。CSV取消が再実測を運んだり、CMDでpendingを適用済みへ昇格させたりしない。
+
+ImportResultのstatus/売上集計は維持し、取込み後のrecount_targetsとwarningsを追加する。これらはcommitが実際に作ったflagからBIZが返す。売上0の正常完了を失敗に変えない。bindingsの生成とUI-07のkind/code分岐・preview mockの更新はruntimeで同時に行う。日報CMD-12とPLU CMD-08の意味は変更しない。
+
 > **2026-06-30 REQ-401 redesign note**: 本書のCMD-07は既存Z004商品別CSV取込みのTauri command契約を記録する。current operation のZ001/Z002/Z005日報取込みは [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) のCMD-12で扱う。CMD-07へ日報bundleを追加しない。
 
 ### 17.1 モジュール構成

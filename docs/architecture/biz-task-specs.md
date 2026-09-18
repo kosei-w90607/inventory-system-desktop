@@ -1,5 +1,16 @@
 # タスク仕様（BIZ層）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、既存の処理を新方式実装済みとは扱わない。
+
+- BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。
+- BIZ-02/BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。専用repoが数量/版を同時更新し、必須ログを含む既存TX境界を維持。
+- BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。受領の証拠と業務importを分離。最新の証拠で一つの分類を使い、Unknownをflag/全file保留へ。取消は最初の有効な吸収先を補正し、legacyを吸収なしと解釈しない。
+- BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。開始context・1商品1TX・再送・N-L確定・独立再実測・legacy復旧。保存済み評価額は不変。
+
+日報BIZ-08、売上レポート、PLU書出しの意味は変更しない。EJ parser実装は別laneで、32の外部probeと本番条件を引き継ぐ。
+
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）
 

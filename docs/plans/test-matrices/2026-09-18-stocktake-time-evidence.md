@@ -10,6 +10,20 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 - D-D1 / D-D2: snapshot差分でカウント後の移動を保存する。
 - D-051: 現在庫と有効movement合計の不変条件。INV-2はBIZ/IOの算出・永続化責任を定める。
 
+## 詳細sourceとの対応（発注65）
+
+以下の「時点証拠契約（proposed・未実装）」をruntime検証の入力とする。ADRの設計モデルと実際のDB/wire/UI配線は別の証拠である。
+
+| 契約 | source | この同期で確認する境界 |
+|---|---|---|
+| D1 | 20/21/30/31/35/36/42/43、master/transaction、MNT task | 数量と版の更新口、数量なしの版更新、contextの保管と意味、DB/OS失効、1商品TX |
+| D2 / D3 | 23/24/32/41、pos | sourceと業務commitの分離、任意メタ、開始cursor、時刻対応・失効の独立TX |
+| D4 | 30/32/35/41/55、tracking | 全候補・0行・legacyの所属・flagとfile保留・本番準備照会 |
+| D5 | 23/32の外部probe表 | series/時計/開始と終了/続き/点数と純量/商品同定の成立前は自動分割不可 |
+| D6 | 20/24/32/35、tracking | movement ID・最初の有効吸収先・legacy停止と明示再実測 |
+| D7 / D8 | 20/21/35/40/42/65、DB詳細 | kindとrecount参照、旧headerの非遡及、要求ID再送、生成error/wire、移行失敗時rollback |
+| D9 | 55/65/73、SCREEN_DESIGN/UI_TECH_STACK、UI task | 差0商品の訂正到達、IME/focus、中断/再開、型付き回復、D-052 consumer導出 |
+
 ## Failure Modes
 
 - 不明な始端、保存時刻だけ、任意の時間幅で誤った前後を確定する。
@@ -29,6 +43,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D1 / D8 | 数量不変の基準・flag・設定・状態変更が版を変えない | state / TX | `req205_stock_revision_non_quantity` / 差0実測、snapshot補正、flag更新、pos_stock_sync変更、純量0取消、差0確定で旧context拒否。故障時は状態と版が共に戻る | 数量更新関数だけで全状態を保護した扱いにする |
 | D1 | 画面切替・再起動・sleep・時刻変更・監視登録失敗 | UI / state / native | `count_context_invalidation` / generation不一致、時計経過差の許容差超過、通知登録失敗で保存不可 | 商品revisionだけで検出できると思う、Instantだけでsleepを検知する、stale値を新時刻で再送する |
 | D1 | 応答喪失と同じ保存の再送 | integration | `req205_count_save_idempotency` / 補正と実測は一度だけ | 同じ要求で新たな補正を作る |
+| D1 / D8 | lookup済みcontextがDB交換後に保存される | integration / native | `req205_count_context_db_generation` / 復元前tokenで新規write0、復元後DBに保存済み要求があればreplayedのみ | cache消去だけでclone済みcontextの失効を代替する |
 | D2 | 受領と計数開始の順序 | boundary | `req401_receipt_before_count_start` / 開始前だけスキップ証拠になる | source_cursorを保存時に取得する |
 | D2 | 時計異常・時刻なし・初回 | recovery | `req401_recount_after_received_source` / 受領→新実測→commitで現在庫不変 | 時計修正だけで古い日時を信用する、復旧不能にする |
 | D3 | 初回の開始不明 | negative | `req401_unknown_start_no_midnight` / before証拠がなければunknown | 前日0時を補完する |
@@ -36,12 +51,14 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D3 | 同じ精算の別hash | duplicate | `req401_settlement_identity_conflict` / 自動追加を拒否 | hashが違えば同じ精算を二重計上する |
 | D3 | 0売上・取消済み資料 | persistence | `req401_source_survives_zero_and_rollback` / 受領事実を維持 | 0件guard/取消で境界の事実を失う |
 | D3 / D4 | 受領順beforeと信頼済み時計afterが矛盾 | model / integration | `check_counterexamples` / 開始の最遅候補より後、かつEより前の下限で時計を無効化。開始の誤差範囲内・接触は無効化しない。`check_diagnostic_order` / legacyでも区間逆転検査が先行。runtime `req401_clock_causal_conflict`で他fileへの失効伝播、受領beforeの維持を検証 | Eまで検出を遅らせる、拡張後の最早始端と比較する、早期returnで検査を迂回する、同じ時計対応を別fileで信用する |
+| D3 | held/業務TX失敗で時計失効が消える | TX / recovery | `req401_clock_invalidation_survives_rejected_commit` / commit時に新発見した矛盾を別の証拠TXで保持し、次fileもその対応を使用不可。失効保存失敗では利用停止・write0 | 信用の失効を業務rollbackへ巻き込む、invalidで再試行ループする |
 | D4 | 実測窓と精算区間の接触・包含 | boundary / model | `check_bounds` / before・afterと断定した全組がoracleと一致 | SでなくEでbeforeを判定する、接触を確定扱いする |
 | D4 | 日跨ぎ・精算後販売 | regression | `req401_sale_after_settlement_before_count` / unknown→再実測 | 日付が翌日なので通常適用する |
 | D4 | 日計0、実測前販売・実測後返品 | regression | `req401_zero_net_nonzero_after_count` / 現物との差を残さない | ゼロ行を判定前に捨てる |
 | D4 | 共有JAN、未実測と実測済み・在庫非連動候補の混在 | negative / model / integration | `check_counterexamples`、runtime `req401_shared_jan_all_candidates` / 一意でない在庫の自動配賦を正しい扱いにしない | 先頭候補だけで再確認を閉じる、在庫連動候補が一つなら共有を見逃す |
 | D4 / D5 | 共有JANや時計/EJ未検証を本番準備済みと表示 | state / UI | `pos_stock_readiness_preflight` / 自動連動できない条件を有効化前に表示し、値の無断変更なし | 恒久的に保留する設定を通常利用可能と扱う |
 | D4 | flag残存とforce_fill | state | `req205_recount_flag_blocks_complete` / 確定拒否 | 補完で未解決を隠す |
+| D4 / D8 | activeなlegacyを一律file保留へ変える | state / integration | `req401_active_legacy_import_recheck` / Unknown後もactive所属なら通常適用+flag、完了所属はheld。旧activeの確定は新実測まで不可 | kindと所属を混同し、ADRにない一律heldを追加する |
 | D4 | preview→commitで新実測・取消・資料追加 | TX | `req401_commit_rechecks_evidence` / 現在の証拠で再判定 | preview結果を確定値として使う |
 | D5 | EJの先頭・末尾・中間・続きの欠落 | parser / integration | `req401_ej_coverage_boundaries` / 不完全な自動分割は拒否 | 存在するfileだけで完全とする |
 | D5 | 相殺する読み落とし、未知形式、名称変更/衝突 | parser / negative | `req401_ej_per_receipt_validation` / 判定不能を残す | 日計純数量だけで検算する、未知行を無視する |
@@ -55,6 +72,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D8 | 旧active snapshot、旧completed、NULL証拠、自動補完との区別 | model / migration | `check_migration_and_fill`、runtime `req205_legacy_count_requires_recount` / 両NULL→uncounted、0/0で数量あり・時刻NULL→auto_filled、両あり→legacy。数量8・時刻NULL・snapshot0はlegacy。ledgerでも自動補完→移行→取消が保留されない。履歴・評価額保持、旧activeの確定拒否 | auto_filledをlegacyへ落とす、actual=0の条件を落とす、現在の廃番フラグで旧種別を推定する、旧force_fillを実測扱いする |
 | D1 / D4 | force_fillを実測と扱う、負在庫を0へ変える | model / integration | `check_migration_and_fill`、runtime `req205_force_fill_no_evidence` / N=L=max(book,0)、補正0、cursorなし、実測基準を上書きせずflag解消不可 | 補完で吸収先を作る、旧実測を隠す、負在庫を修正する |
 | D9 | 保留→一部保存→中断→再開 | native / integration | L3: 同じfileの再選択・再previewで残る集合を再生成。未保存だけ再確認、保存済み在庫を再適用しない | 保留集合がDBにあると仮定する、source metadataから商品明細を復元する |
+| D8 / D9 | errorのmessage解析、対象なしを偽IDで解除 | wire / UI | `req205_recovery_wire_contract` / 40のkind/code/actionを生成型で伝播、null対象は解除不可、saved/replayedは成功。全constructor/unwrapResult/mockでpayloadを保持 | 生成型とUI分岐がずれる、回復対象を文字列から抜く |
 
 ## State Lifecycle Matrix
 
@@ -108,6 +126,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 - 通常計数・再実測・記録詳細が同じcontext検査を通る。
 - 取消がcursor・flag・revisionへ接続され、結果と履歴がUIまで届く。
 - bindings / traceability / command登録はruntime laneで同期する。
+- 新command（begin/save/abandon・準備照会）、旧update_count登録撤去、共通errorのconstructor/enum/bindings/unwrapResult/consumer、補正kindの一覧/詳細への伝播を同じruntime変更で確認する。このdocs同期では登録・生成を行わない。
 
 ## Mutation-style Adequacy Questions
 
@@ -119,3 +138,5 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 ## Residual Test Gaps
 
 モデルは数学と順序の限定検証。Rust/SQLite/Tauri/Reactの配線、migration故障注入、実機の精算系列・EJ・時計、物理的な計数、Windows native L3は未実施。Plan Gate前に外部前提のprobeを確認し、runtime完了前に対応する検証を実施する。
+
+発注65ではsourceの具体化と既存モデル/文書検査のみを実行する。上記の追加予定テストを存在・成功済みとは扱わない。外部probeの正本は32の表、native自動probeとoperatorの観察の分担は42/73で固定する。参照明細のない共有JAN候補、紙の過去値の真偽、未提出資料の存在は引き続きモデルで証明できない。

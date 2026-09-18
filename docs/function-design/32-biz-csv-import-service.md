@@ -1,5 +1,58 @@
 ## 15. BIZ-03: Z004商品別CSV取込みパイプライン
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D2〜D6 / D8。以下の現行parse/commit/rollbackから変わる契約を本節にまとめる。日報bundle・売上の集計日・既存のactive hash拒否・同日追加確認は維持する。
+
+#### 受領・previewの内部型
+
+本番前のread-only照会は `get_pos_stock_readiness(conn) -> Result<PosStockReadiness, BizError>` とする。PosStockReadinessはready: boolとissuesを持ち、issueはcode（shared_jan / legacy_basis / clock_unverified / ej_unverified / no_count_targetのgenerated enum）、CountRecoveryTargetの集合、利用者向け説明を持つ。readyはissuesが空の場合だけtrue。全在庫連動商品と現在の証拠状態を照会し、明細なし・auto_filled・legacyを区別する。確認checkboxを保存するAPIではなく、file固有のcommit可否は下記の分類で決める。
+
+parse_and_validateは受領TXを作るためmutable DB接続を受ける。構文・種別・サイズ/行数を検証した後、hash一意なsource受領をcommitし、そのIDでpreviewを構築する。受領失敗時は証拠付きpreviewを返さない。previewで売上・在庫・要再確認flagをcommitせず、資料の受領と時刻証拠の検証状態だけを保存する。
+
+CachedPreviewへsource_idと、在庫判定用行（source_line_no / normalized_jan / quantity / amount / 全候補product_codeとpos_stock_sync）を加える。これは照合の再検証に必要な内部データであり、表示専用の名称をcacheへ複製するためではない。売上行と証拠行を分け、正常JANの0/0行も全候補照合に通す。0/0行そのものはsale_recordsや通常在庫movementを作らない。
+
+PreviewDataへstock_reviewを追加する。statusはready / recount_after_import / held、targetsは[回復対象型](40-cmd-product.md)、warningsは時刻証拠不明や精算欠落の説明とする。heldはfile全体の業務commit不可、recount_after_importはactive明細へflagを残す取込みが可能、readyは現在の証拠で保留対象なしを表す。資料受領を取込み成功と表示しない。
+
+#### 一つの分類関数とcommit
+
+分類の内部入力はsourceの受領ID・検証された期間/時計対応、商品候補、最新の有効観測。出力はBefore / After / Unknownと理由であり、EJ分割は商品別のAfter純数量を別に返す。
+
+1. D3の区間逆転・時計対応・因果矛盾を、legacyや受領済みの早期returnより前に検査する。下限が開始の最遅候補S_latestを超えた矛盾は時計の信用を失効する。異なるtime_basis_id・未検証期間を同じ時軸として使わない。
+2. 非連動候補は売上のみ。実測履歴のないNeverObservedは通常適用、LegacyObservedはUnknown。auto_filledは新しい実測基準を作らず、それ以前の有効観測を隠さない。
+3. `source.id <= source_cursor`ならBefore。信頼済み上限が拡張後Sより前ならBefore、信頼済み下限が拡張後Eより後ならAfter。それ以外は完全で有効なEJで商品別判定し、確定できなければUnknown。保存EだけのBefore判定や仮の始端は使わない。
+4. 共有JANは上記の通常適用より優先する行全体のguard。非連動との共有も含め、全在庫連動候補がBeforeと証明できる場合だけ在庫を全スキップしてcommit可能。他はfile全体をheldにし、先頭商品へ配賦しない。売上の既存先頭紐付けは、commit可能な場合だけ維持する。
+5. 一意の商品がUnknownなら、最新観測の所属で分岐する。active所属（legacyを含む）は通常適用+そのitem/importのflag、完了済み/独立再実測所属はfile全体をheldとする。legacyというkindだけでactiveをheldへ変えない。旧activeの確定拒否はD8の別条件として維持する。復旧は現在のactive明細を優先し、なければ完了済み明細に対する独立再実測へ案内する。対象明細なしは未対応として示す。
+
+commitは既存のhash・同日active ID snapshotを再検査した同じTXで、JAN候補・連動設定・現在の証拠を取り直す。マスタ候補がpreviewと変わったら再previewを要求する。heldなら業務write前に全体を拒否し、source受領は残す。通る場合だけsource参照付きimport・売上・許可されたmovement・flag・revisionをまとめて保存する。UI申告のskip集合や再実測値は入力に持たない。
+
+時計の信用失効は業務TXに巻き戻される保存へ置かない。commit前にも、同じDB lockを保持した短い証拠TXで矛盾検査と失効を確定し、その後に業務TXへ入る。業務TX内の再検査で新たに失効すべき対応を検出した場合は、業務writeを行わずそのTXを戻し、独立した証拠TXで失効を確定してから判定をやり直す。既にinvalidの同じ異常で再試行を繰り返さない。後続のheld・重複拒否・業務TX失敗でも失効は残る。失効保存に失敗した場合は外部時刻判定を利用不可にして業務処理を拒否し、再開時もその対応を再検証するまで信用を自動復活させない。
+
+Beforeの販売/返品はどちらも在庫を動かさない。EJが有効なら売上はZ004純数量、在庫はAfter純数量の符号反転で、日計0でもAfterが非0ならそのmovementを保存する。全行0でも境界・再確認用途があるfileは売上0で完了でき、解消後の再previewで0件guardへ戻さない。用途も対象もないfileは現行の空対象拒否を維持する。
+
+#### 取消と保留の復旧
+
+rollbackは対象importのstatus・有効movement ID・flagを同じTXで読み、legacy上限以下の取消で適用済み吸収先が分からない商品があれば、void前に全体を停止する。商品別純量0の例外でもflag・履歴・revisionを処理する。UIへrollback_recheck_requiredと対象を返し、[BIZ-06の専用再実測](35-biz-stocktake-service.md)後に同じimportの取消を再試行する。
+
+停止条件がなければ、現在も効力を持つ最初の吸収先を商品内の観測順で選ぶ。pendingなら通常戻しと同じTXでLから取消quantityを引く。適用済みなら通常戻しを同額のrollback_compensationで打ち消す。吸収先なしは通常戻しのみ。N/S/E・cursor・観測順を取消日時で置換しない。二度目の取消は副作用なし。source・独立recount・確定済み評価額を消さず、元importのflagだけ解消する。
+
+保留集合はpreviewの導出結果。中断/再起動後は同fileを再選択して再生成する。保存済みの個別実測はDBに残り、未保存の数量は持ち越さない。精算欠落の表示は現在庫を数え直しても消さず、売上欠落を0と認定しない。
+
+#### 外部probeと本番条件
+
+本runでは実機検証を行っていない。以下の成立が証明されるまで、その外部証拠に依存する自動分類を有効にしない。受領後の新しい実測は引き続き復旧手段であり、恒常的なPLU本番運用の代替と説明しない。
+
+| 前提 | 外部probeで観測するもの | 成立時の許可 / 不成立時 |
+|---|---|---|
+| 精算系列 | 同機の連続精算・0売上・同日複数・日跨ぎ・番号reset、区間の始端/終端とZ004 deltaの対応 | 証拠のある境界だけ利用。初回・欠番・reset不明は下限を捏造せずUnknown |
+| 時計対応 | POSとPCの実差、分/秒精度、検証対象期間、期限、PC/レジ時計変更前後 | 検証範囲と誤差を保存して拡張。暫定10分や年1回設定の申告だけではverifiedにしない。異常は受領証拠へ退避 |
+| EJ完全性 | 精算の開始/終了、取引一連番号、分割fileの必要な続き、先頭/末尾/途中欠落 | 対応が完全な区間だけ分割。存在する末尾fileだけで完結と推測しない |
+| EJ復元 | 通常/返品、数量×単価、名称反復、訂正/取消、未知行、取引内点数・商品別符号付き合計 | Z004純合計一致は必要条件のみ。未知形式・相殺する欠落は自動分割拒否 |
+| 商品同定 | 出力時の名称、改名、共有/衝突、部門名との一致、JAN候補 | 一意に帰属できた商品だけ判定。不明はflag/保留。現在の名称だけで過去を推定しない |
+| Windows計数監視 | 監視登録失敗、sleep/復帰、時刻変更、DB置換、保存直前の失効 | [CMD-10](42-cmd-sales-stocktake.md)の拒否をnative自動probeで検証。WSL mockを実機証拠としない |
+
+EJ取得・完全性不成立時の拒否・再実測復旧まで確認してからPLU本番へ進む。sampleの形状観察済みと、系列/時計/全取引形状の未検証を分ける。追加の採取・レジ操作は別のowner-operated gateで行い、このdocs同期をその許可にしない。
+
 計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D6（proposed）。資料受領と売上commitの分離、区間の証拠、共有JANの保留、取消順序を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
 
 > **2026-08-01 evidence sync**: 本書は既存の Z004-only product-sales import pipeline の実装契約を記録する。current operation の日報主入力 `Z001`/`Z002`/`Z005` は [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) のBIZ-08で扱う。集計日報データは `daily_report_imports` / `daily_report_*_lines` に保存し、item-level `sale_records` / `inventory_movements` へ擬似展開しない。Z004側はsale_records作成、`pos_stock_sync`在庫増減、重複・rollbackまで実装済み。2026-07-06店舗採取layout AはIO-02が二形状対応済み（SPEC-Z4A-D1〜D7）。field readinessは実データend-to-end再検証（CSV-09/10）を待つ。

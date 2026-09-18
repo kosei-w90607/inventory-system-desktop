@@ -1,5 +1,11 @@
 # タスク仕様（UI層）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D7〜D9。新方式の操作契約は[73](../function-design/73-ui-stocktake.md)（検索→明示begin→計数→即保存）、[55](../function-design/55-ui-csv-import.md)（保留→商品単位再確認→再preview）、[65](../function-design/65-inventory-record-traceability.md)（記録詳細→現在の現物で訂正）を正とする。
+
+未保存token・入力だけを画面状態に置き、保存済みの実測はDB/queryから再取得する。共有JANや時刻不明をUIで安全側へ推測せず、BIZが返す型付き理由と次操作を示す。kind・要再確認・補正区分は日本語と非色シグナルで表示する。既存のroute/returnTo、IME、focusとページの器を維持し、追加の汎用取消画面は作らない。実装・Windows L3は未実施。
+
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 
 UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-designを正本とする。現行の到達・戻り経路は [画面遷移図](../diagrams/current-system.md)、`screen_mockups.html` は初期提案の歴史資料。ここでは各UIタスクの「状態管理」「CMD呼び出しパターン」「利用者操作フロー」を記述する。

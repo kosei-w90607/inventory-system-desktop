@@ -1,5 +1,13 @@
 ## 12. BIZ-02: 在庫変動ロジック
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D8。apply_stock_changeの引数・符号・結果型は維持し、呼出し先update_stock_quantityが数量とstock_revisionを不可分に更新する契約へ接続する。版の増分をこのBIZ helperだけへ置くと、取消・棚卸し確定・fix_integrityの別callerを保護できないため採らない。
+
+quantityのchecked計算→専用repoの数量/版更新→movement INSERTを元の業務TX内で行い、どの段の失敗でもまとめて戻す。冪等要求の再送は新しいmovement/版を作らない。入庫・廃棄・手動販売・レジ未処理返品によるABAも古い計数contextを失効させる。レジ処理済み返品をアプリ内の架空移動に変えない。
+
+list_inventory_recordsの棚卸し差異集計は[追跡の新契約](65-inventory-record-traceability.md)に従い、補正区分をproducerからDTOへ伝播する。旧確定済み評価額を現在庫訂正と一緒に更新する処理は加えない。
+
 ### 12.1 モジュール構成
 
 ```
