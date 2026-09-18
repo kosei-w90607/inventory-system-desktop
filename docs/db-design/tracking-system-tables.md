@@ -30,6 +30,8 @@ inventory_movementsへ `stocktake_adjustment_kind TEXT NULL`（completion / roll
 
 ### 移行と保存TX
 
+旧header/item/movementがあるDBのための互換規則を以下に示す。[初導入の本番](../project-memory.md)に旧履歴が存在するという意味ではなく、開発・試験/将来の更新の合成テストも維持する。初導入という理由で存在する行を削除・無検査にせず、DB作り直しはADR D8の別作業へ分離する。
+
 - このschema migration、全item writerのkind/証拠対応、無検査update_countの公開登録撤去、context必須command/UIの切替は同じruntime変更・配布単位にする。DB laneだけを先行出荷し旧writerで稼働する中間版は作らない。実装commitを分けても、完成前の組合せを起動/配布可能なreleaseとして扱わない。
 - observation_kindのALTERにuncounted等の恒久DEFAULTを付けない。既存行は同一migration TX内で下記CASE分類を明示的に埋め、最終schemaをNOT NULL/CHECK/DEFAULTなしにする（必要なら一時列・table再構築を使う）。kindを省略したINSERTは失敗させる。新方式のstart、商品登録中の明細追加、商品一括import、force_fill、実測/再実測/再基準化の全writerがkindと対応する証拠列を明示する。旧数量だけのUPDATEを有効な書込み経路として残さない。
 

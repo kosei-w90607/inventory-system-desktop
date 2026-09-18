@@ -15,6 +15,8 @@ SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、s
 
 識別メタのNULL許容は同日追加の許可ではない。同じsettlement_dateのactive import（completed / completed_partial）をcsv_imports起点で取得し、sourceが取得できない行やmachine_no / settlement_noの片方・両方がNULLの行も除外しない。同日activeが存在し、取込み対象側または比較先側の識別メタが不足すれば、BIZは追加確認によらずsource_identity_conflictで拒否する。同日activeなしはこの追加guardの対象外だが、全受領sourceとの別hash衝突検査等は維持する。NULLを仮キーや衝突なしへ読み替えない。
 
+初導入の本番は[ADR D3 / D8](../adr/2026-09-18-stocktake-time-evidence.md)の新形式で開始し、旧Z004試験取込みを持ち込まない。現行csv_importsのimported_atはアプリ取込み日時であり、精算日時や識別メタのbackfill元にはできない。原本がlayout Aでも旧importの保存情報は不足し得る。sourceなし/メタ不足のactive importが存在すれば、本番前preflight用に全日付を列挙できるよう行を保持し、比較先としての拒否も維持する。DB列追加だけで本番準備完了にせず、抽出→保存の実装を必須とする。過去日を理由に取込みを拒否する新しい日付制約は置かない。migrationは売上・在庫移動・履歴を削除せず、開発/試験DBの整合した作り直しは別作業とする。
+
 構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
 
 時刻対応は[取込みBIZの外部probe契約](../function-design/32-biz-csv-import-service.md)を満たすまでunverified。原本メタと初回受領は不変で、矛盾時に失効するのはその対応の信用状態である。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含め、同番でも検証済みの別reset系列なら区別する。系列が証明されない間は(machine_no, settlement_no)へ一律UNIQUEを張って別期間を潰さない。時計比較の信用失効だけで精算同一性の衝突を消さない。

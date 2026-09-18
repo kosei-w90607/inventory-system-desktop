@@ -6,6 +6,8 @@ SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、com
 
 read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、DB lock→BIZ-03の同名照会→error変換だけを行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
 
+32のissue.codeにimport_identity_missing、issueにsettlement_dates: Vec<String>を含めてgenerated wireへ透過する。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
+
 parseの返却は既存previewへ[32のstock_review](32-biz-csv-import-service.md)を追加し、source ID・全JAN候補・証拠対象行はprivate cacheに保持する。既存のcache TTL、UUID検証、成功時削除・失敗時の扱いは維持する。BIZにcache/Mutexを渡さず、DB lockとcache lockを同時保持しない。
 
 commitはUI申告のskip集合・現物数・時刻・cursorを受け取らない。BIZがheld/preview_changedを返した場合は[共通回復型](40-cmd-product.md)へ写し、売上commit成功としてcacheを消す処理をしない。再preview時は同hashのsourceを再利用する。再起動ではfile再選択が必要で、source metadataからbytesを再構成しない。

@@ -54,6 +54,9 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D3 | 識別メタ欠落を候補なしとして同日追加する | duplicate / TX / compatibility | `req401_same_day_missing_identity_rejected` / h1で在庫10→7、同日activeがcompleted / completed_partialの各場合でh2のmachine_noのみNULL・settlement_noのみNULL・両方NULLをpreview/commitでsource_identity_conflict。追加確認false/trueとも売上はh1分だけ・在庫7・追加import/movement/flag/revisionのwriteなし、受領は保持。h2が完全でも既存側が各NULLまたはsource取得不可なら同じ拒否。両側完全かつ別精算と判別できれば既存の追加確認後に成功 | NULL一致検索/INNER JOINで候補0件へ落とす、片側だけ検査する、確認trueで解除する |
 | D3 | 同日active条件の取り違え・preview後の追加 | state / TX | 同testで初回・他日activeだけ・同日取消済みだけはメタ不足の追加guardでは拒否しない（全受領sourceの別hash衝突等は維持）。preview後に同日activeが増えた場合も業務writeなしで拒否し、既存snapshot変更で再previewを要求した場合はその再previewでメタ不足拒否を確認 | 取消済みをactiveへ含める、preview時の集合だけでcommitする、メタあり別hash衝突まで解除する |
 | D3 / D9 | 拒否した売上を再実測で復旧済みにする | UI / recovery | `req401_identity_conflict_recovery_limit` / 誤版取消後の訂正版・系列未証明reset・メタ不足同日追加に未取込み売上と在庫反映なしの制限を表示。記録ハブ/元資料の確認と、画面では解決不可の案内。再実測後も売上欠落表示を維持 | 計数ボタン・追加確認・正しい既存取込みの取消で解除を促す、時刻待ち/再起動を解決策にする |
+| D3 / D8 | 移行前importを候補から落とす/確認で許可する | migration / TX | `req401_pre_migration_import_identity_guard` / sourceなしの旧active importを移行し、sourceなしのまま/メタNULLのsourceへhash backfillした各形で、メタ完備の同日別精算をpreview/commitとも拒否。completed / completed_partial、当日追加/過去日後追い、追加確認trueでも新しい売上・在庫・importのwriteなし。元売上/在庫/履歴も不変。原本layout Aだったケースも対象 | 従来shapeだけの費用とみなす、legacyだけ確認で通す、imported_atを精算時刻へ流用する、migrationで旧履歴を削除する |
+| D3 / D8 / D9 | 旧取込みの行き止まりを本番前に表示しない | integration / wire / UI | `req401_import_identity_preflight_dates` / 複数日のsourceなし・片方/両方メタ欠落のactiveを、import_identity_missing + 重複なし昇順settlement_datesで返してready=false。連動商品なしでも検出、取消済みだけの日付は除外。CMD/bindings/UIに全日付と準備未完/解決不可の案内が届き、CountRecoveryTargetは空。空の初導入DBではこのissueなし、他issueがあればready=falseを維持 | 商品だけ走査する、INNER JOINで旧importを落とす、message解析/偽item IDで表示する、初導入申告で検査を省略する |
+| D3 / D8 | 初導入条件を過去日取込み禁止へ変える | integration / positive | `req401_new_metadata_late_import_allowed` / メタ完備の別精算どうしで、同日active追加確認後に過去日の後追いcommit成功。本番開始日/最終取込み日より前も対象。他のguardは成立済み、未実測の一意連動商品なら売上と在庫減算を一度だけ保存。受領sourceへ原本のmachine_no / settlement_no / settled_atが保存されていることも確認。全く同じfileの再送は拒否 | 日付で足切りする、DB列だけ追加して抽出/保存を忘れる、同日を一律拒否する |
 | D3 | 不正/欠落/期限切れTimeEvidenceを使用する | negative / boundary | `req401_time_evidence_validation` / 不正JSON、必須値欠落、負の誤差、粒度0、逆転期間、不在参照は自動分類不可。`req401_time_evidence_expiry` / valid_until内・一致・超過を検査、超過はunverified。受領cursorのBeforeは維持 | state='verified'だけを見る、不正値を既定値で補完する、失効後も信頼する |
 | D3 | 通常操作がverifiedを作る | authority / state | `req401_time_evidence_promotion` / 通常preview/commit・追加確認・汎用設定キーから昇格不可。owner-operated gate成立済み証拠の内部反映だけ許可、invalidからの復活にも再検証が必要 | 利用者の時計合わせ済みcheckboxや設定変更で過去を信用する |
 | D3 | 0売上・取消済み資料 | persistence | `req401_source_survives_zero_and_rollback` / 受領事実を維持 | 0件guard/取消で境界の事実を失う |
@@ -135,9 +138,10 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 
 ## Compatibility Checks
 
-- 既存帳票の構文受理と正規化は維持。精算メタなしは時刻証拠なしとして復旧可能。共有JANの先頭商品へ在庫を自動配賦する動作は意図的に変わる。自動在庫連動の本番前preflightで検出し、未対応の解除を可能と表示しない。
+- 既存帳票の構文受理と正規化は維持。時刻証拠だけの不足は受領後の再実測で復旧可能だが、識別メタ不足の同日追加拒否は別であり再実測で解除しない。共有JANの先頭商品へ在庫を自動配賦する動作は意図的に変わる。自動在庫連動の本番前preflightで検出し、未対応の解除を可能と表示しない。
 - 旧DBは履歴・評価額を保持。未検証metadataを補完して自動で有効化しない。
-- 本番移行preflightはlegacy基準の在庫連動商品を件数・一覧で示す。auto_filled自体はlegacy件数へ加算しないが、別の有効なlegacy基準は隠さない。実際の対象件数は未実測。再実測の作業量を隠して自動連動を有効化しない。
+- 旧観測があるDBのpreflightはlegacy基準の在庫連動商品を件数・一覧で示す。auto_filled自体はlegacy件数へ加算しないが、別の有効なlegacy基準は隠さない。初導入の本番には旧履歴なし（owner確認日と原文はproject-memory）であり、存在しない本番DBの件数調査/再実測を要求しない。開発・試験/将来の更新で旧観測があれば作業量を確認し、拒否/移行/legacy取消のテストを維持する。
+- 取込み側も初導入は新メタの抽出から保存までを実装した新形式で開始し、メタなし旧試験履歴を持ち込まない。既存行があれば上記のpreflight日付表示と拒否を維持する。開発・試験DBの整合した作り直しは本run外であり、試験で実DBを削除/補完しない。後追い可能性は正のoracleで固定する。
 - 日報取込み、PLU書出し、商品単位でない売上の意味は変えない。
 
 ## Data Safety Checks

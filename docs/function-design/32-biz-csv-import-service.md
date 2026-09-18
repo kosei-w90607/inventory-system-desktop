@@ -6,7 +6,9 @@ SPEC-STK-TIME-D2〜D6 / D8。以下の現行parse/commit/rollbackから変わる
 
 #### 受領・previewの内部型
 
-本番前のread-only照会は `get_pos_stock_readiness(conn) -> Result<PosStockReadiness, BizError>` とする。PosStockReadinessはready: boolとissuesを持ち、issueはcode（shared_jan / legacy_basis / clock_unverified / ej_unverified / no_count_targetのgenerated enum）、CountRecoveryTargetの集合、利用者向け説明を持つ。readyはissuesが空の場合だけtrue。全在庫連動商品と現在の証拠状態を照会し、明細なし・auto_filled・legacyを区別する。確認checkboxを保存するAPIではなく、file固有のcommit可否は下記の分類で決める。
+本番前のread-only照会は `get_pos_stock_readiness(conn) -> Result<PosStockReadiness, BizError>` とする。PosStockReadinessはready: boolとissuesを持ち、issueはcode（shared_jan / legacy_basis / clock_unverified / ej_unverified / no_count_target / import_identity_missingのgenerated enum）、CountRecoveryTargetの集合、settlement_dates: Vec<String>、利用者向け説明を持つ。readyはissuesが空の場合だけtrue。全在庫連動商品と現在の証拠状態を照会し、明細なし・auto_filled・legacyを区別する。確認checkboxを保存するAPIではなく、file固有のcommit可否は下記の分類で決める。
+
+import_identity_missingは全日付のactive Z004 import（completed / completed_partial）を対象に、sourceなし、またはmachine_no / settlement_noの片方でも欠落を検出して返す。在庫連動商品がなくても走査し、移行前importとhashからbackfillされたメタなしsourceも除外しない。settlement_datesは該当精算日の重複なし昇順一覧（YYYY-MM-DD）、このissueのCountRecoveryTargetは空。商品向けissueのsettlement_datesは空とし、偽のitem IDやmessage解析で日付を運ばない。取消済みだけの日付はこのissueの対象外だが、全受領sourceの別hash衝突guardは維持する。該当日は準備未完の理由となり、同日追加は下記guardで引き続き拒否する。preflight結果をcommit許可のtokenにせず、照会時の申告や初導入の前提でTX再検査を省略しない。
 
 parse_and_validateは受領TXを作るためmutable DB接続を受ける。構文・種別・サイズ/行数を検証した後、hash一意なsource受領をcommitし、そのIDでpreviewを構築する。受領失敗時は証拠付きpreviewを返さない。previewで売上・在庫・要再確認flagをcommitせず、資料の受領と時刻証拠の検証状態だけを保存する。
 
@@ -29,6 +31,8 @@ PreviewDataへstock_reviewを追加する。statusはready / recount_after_impor
 識別メタ不足も同じguardで拒否する。同じsettlement_dateのactive import（completed / completed_partial）を全件取得し、その集合が空でなく、取込み対象sourceまたは比較先のいずれかでmachine_no / settlement_noが揃わなければ、同一性未確認としてsource_identity_conflictを返す。両方NULL、machine_noだけNULL、settlement_noだけNULLは同じ扱い。比較先sourceの欠落も未確認であり、メタ一致検索やINNER JOINで候補0件へ落とさず、仮キーで埋めない。additional_import_confirmed=trueでも業務write前にfile全体を拒否する。同日activeがない場合（初回、他日のactiveだけ、同日が取消済みだけ）はこの追加条件では拒否しないが、全受領sourceとの別hash衝突・active hash拒否・時点分類等の他のguardは省略しない。従来shapeのparse受理は、同日追加commitの許可を意味しない。
 
 同日追加確認、受領後の再実測、元importの取消、時計のunverified化は同一精算別hashの関係を解決した証拠にならない。通常の同hash再取込みも別hash衝突がなければ可能という条件付きで、他方の受領を消して解除しない。衝突資料のどちらを採用するかを決める操作と既存sourceのメタ補完は本scopeにない。誤った版を取消しても訂正版は拒否されたままで、その精算の売上が欠落し、当該取込みによる在庫減算も行われない。番号resetの系列証明が未成立の場合も同じ制限。メタ不足の同日追加も上記の拒否条件が残る間は取り込めない。再実測は現在庫を直すだけで売上欠落を復旧しない。利用者には[UI-07の確認・制限案内](55-ui-csv-import.md)を返す。
+
+初導入の本番は[ADR D3 / D8](../adr/2026-09-18-stocktake-time-evidence.md)に従い、新しい識別メタの抽出→受領→保存を実装・検証してから開始し、メタを持たない旧Z004試験履歴を持ち込まない。これは旧行の存在時に拒否を外す例外ではない。原本layout Aでも移行前importはメタ不足になり得るため、preflightで日付を表示する。過去日の後追いは新形式どうしで他のguardを満たせば追加でき、本番開始日/最終取込み日による足切りは置かない。旧DBのlegacy実測・取消復旧も将来の更新/試験用に維持し、初導入にその本番履歴があると仮定しない。
 
 commitは既存のhash・同日active ID snapshotを再検査した同じTXで、精算同一性guard（同日active全件の識別メタ不足を含む）、JAN候補・連動設定・現在の証拠を取り直す。preview後の別hash受領・同日active追加も検出する。マスタ候補がpreviewと変わったら再previewを要求する。heldまたはsource_identity_conflictなら業務write前に全体を拒否し、source受領は残す。通る場合だけsource参照付きimport・売上・許可されたmovement・flag・revisionをまとめて保存する。UI申告のskip集合や再実測値は入力に持たない。
 
