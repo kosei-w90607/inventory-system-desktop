@@ -13,6 +13,8 @@ SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、s
 
 同sourceの再取込み可否はactive hash拒否だけでなく、BIZの同一精算別hash guardにも従う。受領済みの別hashとの関係が未解決なら、元importを取り消しても自動で解除しない。
 
+識別メタのNULL許容は同日追加の許可ではない。同じsettlement_dateのactive import（completed / completed_partial）をcsv_imports起点で取得し、sourceが取得できない行やmachine_no / settlement_noの片方・両方がNULLの行も除外しない。同日activeが存在し、取込み対象側または比較先側の識別メタが不足すれば、BIZは追加確認によらずsource_identity_conflictで拒否する。同日activeなしはこの追加guardの対象外だが、全受領sourceとの別hash衝突検査等は維持する。NULLを仮キーや衝突なしへ読み替えない。
+
 構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
 
 時刻対応は[取込みBIZの外部probe契約](../function-design/32-biz-csv-import-service.md)を満たすまでunverified。原本メタと初回受領は不変で、矛盾時に失効するのはその対応の信用状態である。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含め、同番でも検証済みの別reset系列なら区別する。系列が証明されない間は(machine_no, settlement_no)へ一律UNIQUEを張って別期間を潰さない。時計比較の信用失効だけで精算同一性の衝突を消さない。

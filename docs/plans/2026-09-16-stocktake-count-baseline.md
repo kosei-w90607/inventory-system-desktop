@@ -37,7 +37,7 @@ ownerの今回の指示はsource詳細同期とplan-draftの準備を許可す�
 - 介入実績: 旧packetの記録7/8に今回の設計委任を加え8/8として扱う。このturnでは追加の選択・承認質問を出さない。後段の新たなHuman Gate依頼前に予算を明示して調整する
 - 実働時間上限: 60分（既存承認。ownerの実測作業時間は未実測）
 - relay往復上限: 2（ownerを伝書鳩にせず、read-only reviewは担当が回収する）
-- Plan Review round 天井: 3。source同期版の新rallyはround 1消化（2026-09-19、対象63d7507d）。round 2はFableがOpus closureとして発注する。早期設計点検と旧rallyの承認は流用しない
+- Plan Review round 天井: 3。source同期版の新rallyはround 2消化（2026-09-19、対象 `0c5186f6`）。次は天井のround 3で、FableがOpus closureとして発注する。早期設計点検と旧rallyの承認は流用しない
 
 このturnの最小完了経路は、ADRの判断をsourceの保存・関数・wire・回復導線へ同期し、Matrix/外部probe条件とともに正式レビューへ渡すこと。追加のowner判断やruntime実装へ広げない。
 
@@ -46,7 +46,7 @@ ownerの今回の指示はsource詳細同期とplan-draftの準備を許可す�
 - Review Order Artifact: none
 - Review Order Ref: none
 
-remote order branchを使うconsultation relayは本runで使用しない。正式Plan Review round 1は実施済みで、発注66の是正後にFableがOpusのround 2 closureを発注する。旧指摘の追加sweepにはread-only subagentを使い、正式レビューの代行にはしない。
+remote order branchを使うconsultation relayは本runで使用しない。正式Plan Review round 2 closureは実施済みで、発注67の残件是正後にFableがOpusのround 3 closureを発注する。旧指摘の追加sweepは発注66で実施済み。今回の是正は残件と直接の波及先に限定し、正式レビューの代行にはしない。
 
 ## Risk
 
@@ -93,7 +93,7 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 
 ## Scope
 
-source同期で確定したS1〜S7を、発注66（着手基準 `63d7507d`）のPlan Review是正にも適用する。ADR D3へ展開済みの失効TXと信用状態の扱いを同期する。OS監視不成立で計数を止めるD1は維持し、合成モデルは変更しない。Scopeの無効化や別の設計判断が必要になれば停止してCoordinatorへ返す。
+source同期で確定したS1〜S7を、発注67（着手基準 `0c5186f6`）のPlan Review残件是正にも適用する。ADR D3と展開先へ識別メタ不足の同日追加拒否、および売上未取込みの制限を同期し、73の旧oracle置換範囲を明確にする。OS監視不成立で計数を止めるD1は維持し、合成モデルは変更しない。Scopeの無効化や別の設計判断が必要になれば停止してCoordinatorへ返す。
 
 - S1（IO）: `docs/function-design/20-io-product-repo.md`（数量の汎用更新撤去、実測・再実測・flag・cursor取得）、`21-io-inventory-repo.md`（数量と版の不可分更新、補正区分）、`23-io-z004-parser.md`（精算メタ・ゼロ行）、`24-io-csv-import-repo.md`（受領記録、取消movement ID）。いずれも同じfunction-designディレクトリ内。
 - S2（BIZ）: `docs/function-design/30-biz-product-service.md`（設定変更・共有JANの検査）、`31-biz-inventory-service.md`（版更新の呼出し側）、`32-biz-csv-import-service.md`（受領・分類・保留・取消・外部probe条件）、`35-biz-stocktake-service.md`（context・即保存・確定・訂正）、`36-biz-integrity-check.md`（fix_integrityの版更新）。
@@ -125,7 +125,7 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 - AC4: `git diff --name-only 36891af8 -- src src-tauri` の出力が空。全変更がScopeのdocsに属する。`git diff 36891af8 -- docs/function-design/90-traceability.md scripts/probes/stocktake_time_model.py docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/templates` も空。変更docごとの要求tokenを基準版と比較して同一であることを確認する。
 - AC5: bash scripts/doc-consistency-check.sh --target plan とfullがERRORなし、git diff --checkが成功。
 - AC6: `32-biz-csv-import-service.md` の外部probe表が、精算系列・EJ完全性・商品同定・時計対応の観測項目、許可条件、不成立時の動作を持つ。`42-cmd-sales-stocktake.md` と `73-ui-stocktake.md` にWindows監視・native検証の失敗条件を持つ。未実施の実機検証をpassと扱わない。
-- AC7: `git diff --check` と `bash scripts/check-workflow-git.sh` が成功する。Review Responseへfinding別の是正先・旧指摘sweep・検証を追記する。51/60にstocktake_guardの表示/回復、Matrixに商品master各write経路の拒否oracleがある。発注66ではWorkflow Stateのfieldを変更せずplan-gateを維持し、Plan Commitはpendingのままとする。
+- AC7: `git diff --check` と `bash scripts/check-workflow-git.sh` が成功する。Review Responseへfinding別の是正先・旧指摘sweep・検証を追記する。51/60にstocktake_guardの表示/回復、Matrixに商品master各write経路の拒否oracleがある。発注67でもWorkflow Stateのfieldを変更せずplan-gateを維持し、Plan Commitはpendingのままとする。
 
 ## Design Sources
 
@@ -139,7 +139,7 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 
 | Area | Artifact | Status |
 |---|---|---|
-| 時点・順序・復旧 | ADR D1〜D9、32 / 35 | ADRの意味は不変。sourceへ分類・TX・復旧を展開 |
+| 時点・順序・復旧 | ADR D1〜D9、32 / 35 | sourceへ分類・TX・復旧を展開。発注67でD3のメタ不足同日追加を拒否に確定 |
 | DB / TX / migration | master / transaction / pos / tracking、20 / 21 / 24 / 36 | 論理列・型・制約・保存順・旧DB分類をproposedとして追加。SQL適用と故障注入はruntime |
 | CMD / DTO / token | 40 / 41 / 42 / 43 | API/DTO・回復payload・保管/失効・再送・登録と生成の義務を具体化。未実装 |
 | operator flow | 55 / 65 / 73、SCREEN_DESIGN / UI_TECH_STACK | 到達・focus・状態・中断/再開・差0商品の訂正・native合格条件を追加。UI実装は不変 |
@@ -183,7 +183,7 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 
 ## Design Readiness
 
-Status: plan-gate。source同期版のround 1指摘をin placeで是正し、次のclosureを待つ。展開済みの失効TX/信用遷移をADRへ同期し、D1のOS監視必須は維持する。まだPlan Gate承認前であり、runtime実装readyではない。
+Status: plan-gate。source同期版のround 2残件をin placeで是正し、天井のround 3 closureを待つ。識別メタ不足は同日追加拒否に確定し、未取込み売上の制限も同期した。D1のOS監視必須は維持する。まだPlan Gate承認前であり、runtime実装readyではない。
 
 新たにownerへ返す設計質問はない。未検証の外部条件は、32のprobe表で対応する自動処理を有効にしない条件として明示した。Windows監視の実装/native probe・EJ全形状・レジ系列/時計の本番成立は未実施で、正式Plan Gateでは依存する前提の検証計画と非有効化条件を確認する。明細のない共有JAN候補は既知の非対応として保持し、店舗運用の受容済み扱いへ変更しない。
 
@@ -209,7 +209,7 @@ Status: plan-gate。source同期版のround 1指摘をin placeで是正し、次
 | D1 数量/版（20/21/30/31/35/36、master/transaction） | 共通repo、既存数量writer、数量なしの状態更新 | req205_stock_revision_all_writers / req205_stock_revision_non_quantity / ABA | operator手動故障注入は対象外 |
 | D1 context（35/42/43、MNT task） | begin/save/abandon、DB/環境世代、保存済み要求照会 | req205_count_save_idempotency / count_context_invalidation / req205_count_context_db_generation | Windows監視probe、73の計数L3 |
 | D2 受領（23/24/32/41、pos） | parser任意メタ、hash一意source、開始source_cursor | req401_receipt_before_count_start / req401_source_survives_zero_and_rollback | 実ファイル系列 |
-| D3 時刻/精算同一性（23/24/32、pos、MNT task） | qualified bounds、精算別hash guard、time_basis、独立証拠TX | check_counterexamples / check_diagnostic_order / req401_settlement_identity_conflict / req401_time_evidence_validation / req401_time_evidence_expiry / req401_time_evidence_promotion / req401_clock_invalidation_survives_rejected_commit | 32の時計・系列probe |
+| D3 時刻/精算同一性（23/24/32/41/55、pos、MNT task） | qualified bounds、精算別hash・メタ不足同日追加guard、time_basis、独立証拠TX、未取込み売上の制限表示 | check_counterexamples / check_diagnostic_order / req401_settlement_identity_conflict / req401_same_day_missing_identity_rejected / req401_identity_conflict_recovery_limit / req401_time_evidence_validation / req401_time_evidence_expiry / req401_time_evidence_promotion / req401_clock_invalidation_survives_rejected_commit | 32の時計・系列probe |
 | D4 分類/設定（30/32/35/40/41/51/55/60） | 共通分類、全候補、active/完了の所属、preflight、master各writeの拒否 | req401_shared_jan_all_candidates / req401_active_legacy_import_recheck / req401_ambiguous_jan_sync_rejected / req401_master_sync_guard_ui / pos_stock_readiness_preflight | 準備不足と保留からの回復 |
 | D4 ゼロ行/flag（23/32/35、tracking） | 売上行と証拠行の分離、確定拒否、再preview | req401_zero_net_nonzero_after_count / req205_recount_flag_blocks_complete | 売上0の正常完了表示 |
 | D5（23/32） | 別EJ laneのadapter/照合/実行拒否 | req401_ej_coverage_boundaries / req401_ej_per_receipt_validation | 32の本番有効化probe |
@@ -252,6 +252,7 @@ Status: plan-gate。source同期版のround 1指摘をin placeで是正し、次
 - 旧明細はuncounted / auto_filled / legacyへ分類し、旧force_fillはlegacyのまま。0/0の廃番自動入力をlegacy件数へ加算しない。既知producerに一致しない形は保守的にlegacyとして表示する。
 - schema migration・全writerのkind/証拠対応・無検査update_count撤去・新UIは同じruntime配布単位。DB laneだけの先行出荷/稼働を禁止し、ALTERの恒久DEFAULTで旧writerを通さない。実装commitを分けることと中間版を運用することを区別する。
 - BIZ内の計数context検査、同一判定関数を使うpreview/commit、取消の吸収先探索。
+- 精算同一性guardは同日active全件を取得し、対象sourceまたは比較先sourceのmachine_no / settlement_noの片方でも欠ければ追加確認trueでも業務write前に拒否する。メタNULL/source取得不可を候補なしにしない。activeなしの例外で全受領sourceの別hash衝突検査まで省略しない。衝突版の採用決定・メタ補完は非対応で、訂正版や系列未証明resetの拒否も含め、現在庫の再実測では未取込み売上を復旧しないことをUIへ伝える。
 - UI-07/UI-10/記録詳細の即保存・再開・訂正、既存IME/Enter/focus/returnToを維持。
 - legacy migration、全行0、共有JAN、逆順資料、時計異常、EJ欠落を負の経路として実装前にfixture化。
 - EJはPLU本番前提。取得失敗で再実測の復旧まで閉ざさず、自動分割の許可と区別する。
@@ -533,3 +534,22 @@ fileごとの変更要点（function-designは同ディレクトリ内の番号�
 - AC4: `git diff --name-only 36891af8 -- src src-tauri`、同基準の90-traceability/model/workflow/template差分、`git diff --name-only 63d7507d -- src src-tauri` → 全て空。変更docごとの要求tokenを開始版とsort比較して一致。Workflow Stateのfield行も開始版とのdiffが空。
 - AC5/AC7: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-16-stocktake-count-baseline.md` → ERRORなし・既知PK6 WARN 3件のみ。`bash scripts/check-workflow-git.sh`、`git diff --check` 成功。source追加に合わせScope/ACを同期し、phaseはplan-gateのまま。
 - 未実施: Matrixで追加したruntimeテスト、移行/配線の実装、Windows/EJ/時計の実機検証、round 2 closure。停止・backtrackを要した項目はなし。push/PR操作は行わない。
+
+### Plan Review 新 rally round 2（closure、2026-09-19、Opus、対象 `0c5186f6`、裁定 Coordinator = Fable）
+
+- closure結果: P2-1はメタあり経路のみCLOSED、メタ欠落経路がOPENのためPlan Gate通過不可。P2-2〜P2-4、P3-1〜P3-5 / P3-7はCLOSED、P3-6の不採用も妥当と判定された。発注66の旧指摘sweepの抽出群は現物一致。過去のReview Responseは書き換えない。
+- P2-1残件を採用し、設計者判断で(A)同日追加拒否に確定した。(B)確認同意で許可は二重計上を利用者の注意に委ねるため採らない。ADR D3 / 32へ、同日activeがあり対象側または既存側のmachine_no / settlement_noが片方でも欠ければsource_identity_conflictで業務write前に拒否する規則を置いた。24 / posはNULLやsource取得不可を候補なしへ落とさず、41 / 55は追加確認で解除しない。Ledger / runtime申し送り / Matrixも同期した。
+- この拒否はZ004の同一性guardであり、同日複数精算そのものやZ001/Z002/Z005日報取込みを禁止しない。識別メタが揃った別精算は他のguard通過後に追加可能。同日activeなしはメタ不足の追加条件では拒否しないが、全受領sourceの別hash衝突等は維持する。従来shapeの同日追加が止まり得る費用は残る。観測済みの実機資料はlayout Aだが、常に同じ形という保証は未検証で、費用ゼロとは扱わない。
+- 新規P3（旧oracle）を採用: 73冒頭の置換範囲へ§73.12のcurrent_stock差異/主列とテストoracleを含め、新方式のL-Nとの適用範囲を明確にした。
+- 新規P3（拒否の業務上の帰結）を採用: ADR D3 / 32 / 55 / Plansへ、誤版取消後の訂正版や系列未証明resetは取込み不能で売上・当該取込みの在庫減算が欠け、再実測では売上欠落を復旧しないことを明記。メタ不足の同日追加も拒否条件が残る間は同じ制限。55は元資料/既存記録の確認先と画面で解決できない場合の案内を持ち、正しい既存取込みの取消を迂回手順にしない。
+- `req401_same_day_missing_identity_rejected`は対象/既存双方の部分・全部欠落、activeの各status、追加確認false/true、source欠落、preview後の同日active追加、許可側の境界をruntime oracleとして固定した。メタとactive集合を持たない合成モデルは変更せず、そのPASSを新guardの検証に流用しない。
+- Review-only skipped because: 今回はclosure残件と直接の波及先に限定する。既存sweepをやり直す独立broadは追加せず、正式なround 3 closureはFableがOpusへ発注する。天井は据置きで、承認・phase前進は代行しない。
+
+#### 発注67の検証
+
+- AC1: `rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` → D1〜D9を確認。D3の同日追加拒否をADR→IO/DB→BIZ→CMD→UI→Matrixで照合した。
+- AC2: `python3 scripts/probes/stocktake_time_model.py` → exit 0、`PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy recovery, migration kinds, force_fill`。モデル自体は変更なし。
+- AC3/AC6: Scopeのsourceに `rg -n '時点証拠契約|SPEC-STK-TIME'` を実行してproposedを確認。32の外部probe表、42/73のWindows監視/native失敗条件と回復を維持。51/60のstocktake_guard表示とMatrixの商品master各write oracleも保持した。
+- AC4: `git diff --name-only 36891af8 -- src src-tauri` と `git diff --name-only 0c5186f6 -- src src-tauri` は空。同基準の90-traceability/model/workflow/template差分も空。変更pathはScope内docsだけ。変更docごとの `REQ-[0-9]+` tokenのsort比較は基準 `36891af8` / 開始 `0c5186f6` と一致、Workflow Stateのfield行も開始版と一致した。
+- AC5/AC7: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-16-stocktake-count-baseline.md` → ERRORなし、既知PK6 WARN 3件のみ。`bash scripts/check-workflow-git.sh` と `git diff --check` 成功。phaseはplan-gate、Plan Commit pendingを維持した。
+- 未実施: 新しいMatrix oracleを含むruntimeテスト、migration/bindings、Windows/EJ/時計/系列の実機検証、round 3 closure。停止・backtrack項目なし。push/PR操作なし。次の正式判定はFable発注のOpus closureへ渡す。

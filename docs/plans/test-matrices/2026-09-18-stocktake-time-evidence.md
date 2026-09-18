@@ -51,6 +51,9 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D3 | 初回の開始不明 | negative | `req401_unknown_start_no_midnight` / before証拠がなければunknown | 前日0時を補完する |
 | D3 | 逆順・欠番・reset・同じ分の精算 | compatibility | `req401_settlement_series_uncertainty` / 証拠のある境界だけ使用 | 受領順を精算順にする、同時刻を即正常/即異常と断定する |
 | D3 | 同じ精算の別hash | duplicate / TX | `req401_settlement_identity_conflict` / previewとcommitの両方でsource_identity_conflict。h1で10→7、h2の追加確認trueでも売上/在庫7を維持。preview後の別hash受領、未取込み/取消済みsourceも検査。検証済み別reset系列は区別 | hash差や追加同意、取消、再実測で衝突を解除する、生の番号へ一律UNIQUEを張る |
+| D3 | 識別メタ欠落を候補なしとして同日追加する | duplicate / TX / compatibility | `req401_same_day_missing_identity_rejected` / h1で在庫10→7、同日activeがcompleted / completed_partialの各場合でh2のmachine_noのみNULL・settlement_noのみNULL・両方NULLをpreview/commitでsource_identity_conflict。追加確認false/trueとも売上はh1分だけ・在庫7・追加import/movement/flag/revisionのwriteなし、受領は保持。h2が完全でも既存側が各NULLまたはsource取得不可なら同じ拒否。両側完全かつ別精算と判別できれば既存の追加確認後に成功 | NULL一致検索/INNER JOINで候補0件へ落とす、片側だけ検査する、確認trueで解除する |
+| D3 | 同日active条件の取り違え・preview後の追加 | state / TX | 同testで初回・他日activeだけ・同日取消済みだけはメタ不足の追加guardでは拒否しない（全受領sourceの別hash衝突等は維持）。preview後に同日activeが増えた場合も業務writeなしで拒否し、既存snapshot変更で再previewを要求した場合はその再previewでメタ不足拒否を確認 | 取消済みをactiveへ含める、preview時の集合だけでcommitする、メタあり別hash衝突まで解除する |
+| D3 / D9 | 拒否した売上を再実測で復旧済みにする | UI / recovery | `req401_identity_conflict_recovery_limit` / 誤版取消後の訂正版・系列未証明reset・メタ不足同日追加に未取込み売上と在庫反映なしの制限を表示。記録ハブ/元資料の確認と、画面では解決不可の案内。再実測後も売上欠落表示を維持 | 計数ボタン・追加確認・正しい既存取込みの取消で解除を促す、時刻待ち/再起動を解決策にする |
 | D3 | 不正/欠落/期限切れTimeEvidenceを使用する | negative / boundary | `req401_time_evidence_validation` / 不正JSON、必須値欠落、負の誤差、粒度0、逆転期間、不在参照は自動分類不可。`req401_time_evidence_expiry` / valid_until内・一致・超過を検査、超過はunverified。受領cursorのBeforeは維持 | state='verified'だけを見る、不正値を既定値で補完する、失効後も信頼する |
 | D3 | 通常操作がverifiedを作る | authority / state | `req401_time_evidence_promotion` / 通常preview/commit・追加確認・汎用設定キーから昇格不可。owner-operated gate成立済み証拠の内部反映だけ許可、invalidからの復活にも再検証が必要 | 利用者の時計合わせ済みcheckboxや設定変更で過去を信用する |
 | D3 | 0売上・取消済み資料 | persistence | `req401_source_survives_zero_and_rollback` / 受領事実を維持 | 0件guard/取消で境界の事実を失う |
@@ -87,6 +90,8 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 ### 既存テストの移行先（runtime申し送り）
 
 既存テストは削除/skipで回避せず、現行契約を守る部分と新式へ置き換えるoracleを分ける。本runはdocだけでtestを変更しない。
+
+識別メタ欠落の同日追加guardは上記runtime TX/UI oracleで検証する。既存合成モデルはsourceメタとactive import集合をモデル化していないため、そのPASSをこのguardの実装証明にしない。従来shapeのparse受理と追加commit許可も別に検証する。
 
 - stocktake_service.rsの `test_update_count_req205_dynamic_difference`: 計数前10→15、N12の差3は維持。新contextでL15が保存され、保存後movementで差が動かないことを加える。旧指示の3→-2は採らない。
 - `test_complete_req205_stock_after_equals_actual`: 後続移動なしの7は維持し、後続movementがある場合のN-L適用を追加する。

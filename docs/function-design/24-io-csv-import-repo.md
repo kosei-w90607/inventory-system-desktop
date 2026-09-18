@@ -9,6 +9,7 @@ SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sale
 | 受領のupsert | (tx, hash, received_at, 任意メタ) → source。hash衝突時は最初のID/時刻を返し、REPLACEや再採番をしない |
 | 受領済み上限 | (conn) → 最大source ID、空なら0。BIZ beginが読取り、UIへ公開しない |
 | 精算同一性の照合候補取得 | (conn, sourceメタ) → 同じ帳票のmachine_no / settlement_noに対応する全受領sourceと系列証拠。未取込み/取消済みも除外しない。ID/hash/メタを返し、同一性の業務判定と拒否はBIZが行う |
+| 同日activeの識別メタ取得 | (conn, settlement_date) → 同日のcompleted / completed_partial全件と任意sourceメタ。csv_importsを起点にLEFT JOIN等でsource欠落・片方/両方NULLも行を残す。メタ一致検索の候補0件で代用しない。既存の同日照会に接続し、BIZが取込み対象側と比較先側の不足をpreview/commit TXで検査する |
 | 時刻証拠の読取り/失効 | (conn, source ID / 対応ID) → 保存済みの範囲・信用状態。同じ対応を使う他sourceへも失効が反映されるよう更新対象をBIZが指定する。IOが時計の正しさを認定しない |
 | import保存 | NewCsvImportにsource_idを加える。既存のactive hash重複判定と取消済み再取込み可否は維持 |
 | 取消対象の事前読取り | (conn, ref_type, ref_id) → 有効movementのid / product_code / quantity。legacy判定を終える前にvoidしない |

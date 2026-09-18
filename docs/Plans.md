@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、plan-gate）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。source同期版（対象 `63d7507d`）の正式Plan Review round 1はSonnet通過可・Opus通過不可。発注66で精算別hash拒否、旧/新契約の区別、migrationと全writer同時切替、拒否/時刻証拠oracleを是正し、旧指摘から失われた検証申し送りも復元した。OS監視不成立時の計数拒否は維持。次はFable発注のOpus round 2 closure（天井3）。runtime・実機EJ/時計/系列・Windows nativeは未実施。参照明細のない共有JAN候補と同精算別hashの解決操作なしは制限として保持。wave 12 lane 2。
+- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、plan-gate）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit pending。正式Plan Review round 2 closure（対象 `0c5186f6`）はP2残件により通過不可。発注67で識別メタ不足の同日追加を拒否に確定し、旧UIテストoracleの置換範囲と拒否時の業務上の制限を是正した。次はFable発注のOpus round 3 closure（天井）。同精算別hashは誤版を取消しても訂正版を取り込めず、番号resetも別系列の証明までは同じ制限。メタ不足の同日追加も拒否条件が残る間は取込み不可で、未取込み売上と当該取込みによる在庫減算が欠ける。現在庫の再実測では売上欠落を復旧しない。採用版決定・メタ補完の操作なし、参照明細のない共有JAN候補は制限として保持。runtime・実機EJ/時計/系列・Windows nativeは未実施、OS監視不成立時の計数拒否も維持。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ㉗の統合案は是正 `68c3d0d3` でOpus closure pass、follow-up P3は `24087bad` で是正。main単段merge `36891af8` 後のsource同期はADRの判断を変えていない。sourceの事前点検で見つかったactive legacyの分岐と時計失効のTX境界も是正・解消確認済みだが、旧closureを新しいsource全体の正式承認には流用しない。
