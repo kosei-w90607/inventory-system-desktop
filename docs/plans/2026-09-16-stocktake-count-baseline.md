@@ -5,14 +5,14 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
 - Execution Mode: codex-only
-- Plan Commit: pending
+- Plan Commit: b7f195140ef03147d46d3a8cc26e4f39dcf5e062
 - Amendments: none
 - Coordinator: Codex（ownerの明示した設計委任による起草・統合。Human Gateと正式なreview承認は代行しない）
 - Writer: Codex（発注65のsource詳細同期。合成モデルは検証入力として保持、runtimeは未着手）
-- Plan Reviewer: Sonnet + Opus（非Codex vendorのfresh context。source同期版の正式Plan GateはFable発注待ち）
+- Plan Reviewer: Sonnet + Opus（非Codex vendorのfresh context。source同期版の正式Plan Gateは2026-09-19に通過）
 - Final Reviewer: Sonnet + Opus（Writerと独立したfresh context）
 - Final Review Minimum: 2
 - Human Gate: ready,merge
@@ -30,14 +30,15 @@ ownerの今回の指示はsource詳細同期とplan-draftの準備を許可す�
 
 - design → plan-draft（2026-09-19、発注65のsource同期content commitに同乗）: ADRの意味を変えずにS1〜S6の詳細契約とS7の対応表を同期。合成モデル・docs検査・禁止pathと要求token照合が成功し、新たな設計質問はない。実機依存は成立まで非有効化とする契約を明記。正式Plan GateはFableが新rallyで発注し、Plan Commitは承認までpendingを維持する。
 - plan-draft → plan-gate（2026-09-19、state-only）: packet と Test Design Matrix は content commit `9bed4f57` で commit 済み。同 commit で設計モデル・docs 検査（plan / full）・workflow-git が成功し、未解決の設計質問なし。正式 Plan Review の新しい rally（round 1、Sonnet + Opus の独立 fresh context、対象 `9bed4f57` の計画内容）を Fable が発注する。Plan Commit は pending のまま。
+- plan-gate → plan-approved（2026-09-19、state-only）: 正式 Plan Review の新 rally は round 1（Sonnet 通過可 / Opus P2 4）→ round 2（P2 1）→ round 3（新規 P2 1、天井到達、owner escalation）→ owner 決定の反映（`b7f19514`）→ 追加 Opus closure で P1/P2 = 0・通過可。Plan Reviewer は Writer（Codex）と別 vendor の独立 fresh context。Plan Commit = 承認された計画の content commit `b7f19514`。owner は同日に介入上限 9 を承認。runtime は未着手で、本 lane は docs-only のまま Final Review → Ready → merge へ進む。本体実装は後続 runtime lane の Gate を満たしてから。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 承認済み8。発注68では9へ引き上げる案を記載するが、owner承認待ち。上限変更を承認済みにしない
-- 介入実績: 設計委任までの8/8に、2026-09-19のowner escalationへの決定を1回加え実績9回。現行上限8を超えており、上限9の承認後に9/9となる。既に指示された本runの是正をまとめ、追加の介入を無断で発生させない
+- 介入回数上限: 9（owner 承認 2026-09-19「9で承認」。それ以前の承認済み上限は8）
+- 介入実績: 設計委任までの8/8に、2026-09-19のowner escalationへの決定を1回加え実績9回。上限9の承認により9/9。既に指示された本runの是正をまとめ、追加の介入を無断で発生させない
 - 実働時間上限: 60分（既存承認。ownerの実測作業時間は未実測）
 - relay往復上限: 2（ownerを伝書鳩にせず、read-only reviewは担当が回収する）
-- Plan Review round 天井: 3。source同期版はround 3まで消化（2026-09-19、対象 `a2a265bf`）、disposition = owner escalation。通常のround 4は開始しない。owner決定反映後の追加確認は1回（Opus closure、対象は発注68の是正差分）として記録し、未実施・Fable発注待ちとする。介入上限の改訂は上記の承認待ちを維持する
+- Plan Review round 天井: 3。source同期版はround 3まで消化（2026-09-19、対象 `a2a265bf`）、disposition = owner escalation。通常のround 4は開始しない。owner決定反映後の追加確認は1回（Opus closure、対象は発注68の是正差分）として実施済み（対象 `b7f19514`、P1/P2 = 0・通過可）
 
 このturnの最小完了経路は、ownerが確認した初導入の前提と移行判断を正本・preflight・Matrixへ同期し、追加確認へ渡せる差分をまとめること。未承認の予算改訂やruntime実装へ広げない。
 
@@ -184,7 +185,7 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 
 ## Design Readiness
 
-Status: plan-gate。source同期版のround 3は新規P2により通過不可・天井到達。owner escalationの決定を発注68で反映し、是正差分への追加Opus closureを待つ。初導入・本番履歴なしを正本化し、旧importの拒否と日付つきpreflightを同期した。D1のOS監視必須は維持する。介入上限9への改訂はowner承認待ちで、Plan Gate承認やruntime実装readyを意味しない。
+Status: plan-approved。source同期版は正式Plan Reviewの新rally（round 1〜3、owner escalation、追加Opus closure）を経てP1/P2 = 0で通過した。初導入・本番履歴なしを正本化し、旧importの拒否と日付つきpreflightを同期済み。D1のOS監視必須は維持する。これは設計と計画の承認であり、runtime実装ready・実機成立を意味しない。
 
 新たにownerへ返す設計質問はない。未検証の外部条件は、32のprobe表で対応する自動処理を有効にしない条件として明示した。Windows監視の実装/native probe・EJ全形状・レジ系列/時計の本番成立は未実施で、正式Plan Gateでは依存する前提の検証計画と非有効化条件を確認する。明細のない共有JAN候補は既知の非対応として保持し、店舗運用の受容済み扱いへ変更しない。
 
@@ -595,3 +596,11 @@ ADR全文、packetの現在契約、S1〜S6のproposed節で旧DB/移行/legacy/
 - AC5/AC7: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-16-stocktake-count-baseline.md` → ERRORなし・既知PK6 WARN 3件のみ。初回の追加PK6警告は、重複していた予算数値をOwner Effort Budgetへの参照に整理して解消。`bash scripts/check-workflow-git.sh` と `git diff --check` 成功。
 - AC6: 32の外部probe表（精算系列・時計対応・EJ完全性・商品同定）と42/73の監視/native失敗条件を確認し、未実施のまま保持した。51/60のmaster拒否表示とMatrixの対応oracleも維持している。
 - 未実施/停止条件: runtime/migration/bindings、実機/Windows、本番・開発DBの読取/作り直し、追加Opus closureは本run外。機構変更を要する点検所見や是正作業のblockerはなし。介入上限改訂はowner承認待ち、正式Plan Gateとphase前進は未実施。push/PR操作なし。
+
+### owner escalation 後の追加 closure と Plan Gate 通過（2026-09-19、Opus、対象 `b7f19514`、裁定 Coordinator = Fable）
+
+- round 3 の残件（移行前 import が比較先になる場合の規則、費用記述）はいずれも CLOSED。P1/P2 = 0、Plan Gate 通過可。owner 決定は ADR D3 / D8・DB・IO / BIZ / CMD / UI・Matrix へ同じ意味で反映され、拒否は fail-closed 側で前提（本番にメタなし import が無い）が破れても二重計上は通らず preflight で見える。「初導入の申告で検査を省略しない」は ADR / 32 / 41 / 55 に明文。後追い取込みは日付で止まらず、D4 の保留・要再確認と整合する。
+- 発注 68 の点検 3 は妥当: legacy 観測の移行・legacy 取消の復旧・legacy_movement_ceiling は維持、費用記述だけを旧観測を持つ DB へ限定。機構の削除・弱体化なし。
+- Coordinator の追加確認（owner 2026-09-19「営業中も PC で作業する。登録も編集も廃番も、営業中はなんでもやる」）: 棚卸し中の商品登録で明細を足す writer（BIZ-01 create_product ステップ 6）は、Matrix の `req205_count_schema_writer_atomic_rollout` が kind 明示の対象として観測している。
+- follow-up P3（blocker ではない）: ADR Consequences の棚卸し側の移行費用の段落から「旧データを持つ環境の更新を追加作業なしとは説明しない」の literal が置換で消えた。実質要件は同段落に残る。後続の docs 同期で戻す。
+- owner 承認 2026-09-19:「9で承認」（介入上限 9）。
