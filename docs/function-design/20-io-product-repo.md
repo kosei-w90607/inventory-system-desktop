@@ -9,7 +9,7 @@ SPEC-STK-TIME-D1 / D6 / D8。以下の既存APIは現行契約であり、新し
 | product_repoの更新型 | ProductUpdatesからstock_quantityを除く。数量更新SQLの分岐を残さない。NewProductの初期数量は維持。商品内部読取りにはstock_revisionを加え、UIへ生の版を渡さない |
 | stocktake_repoの計数開始用読取り（conn, item_id） | item・親status・productのL/revision・最新の有効観測・現在のactive所有者を同じDB snapshotで取得。不在はNone。measuredの新旧はobservation_revision、legacyの存在を未実測へ落とさない |
 | source上限取得（conn） | pos_import_sourcesの最大ID、空なら0。begin時にだけcontextへ固定する。保存時の値へ差し替えない |
-| ledger上限取得（conn, product_code） | 当該商品の既存movement最大ID、空なら0。void済みもIDの再利用をせず、snapshotと同じTXで取得。再実測自身の補正INSERTより前の上限 |
+| ledger上限取得（conn, product_code） | 呼出し時点の当該商品movement最大ID、空なら0。void済みもIDを再利用しない。通常の実測/Rは補正INSERT前、legacy取消復旧の派生N/N明細は補正後に再取得し、各snapshotと同じTXで保存 |
 | measured保存（tx, item_id, 新しいN/L/S/E・両cursor・版・request ID・時計対応） | 親の進行中を条件に既存itemを更新。BIZが発行した証拠だけを受ける。更新0行はNotFound/状態競合としてBIZへ返し、autocommitで数量だけ保存しない |
 | 再実測INSERT（tx, 保存型） | 新しいrecount IDを返す。import IDは入力に要求しない。差0もINSERTし、既存recountは上書きしない |
 | 保存要求照会（conn, request_id） | itemとrecountの保存済みN・保存先を返す。両方に公開IDが一致する異常を区別する。失効tokenより先にBIZがこの結果を評価する |
@@ -878,6 +878,10 @@ fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<(String, String,
 ---
 
 ### 2.11a stocktake_repo — 棚卸し記録詳細取得（65 slice 4c 用）
+
+本節の開始時snapshot・確定時live在庫基準の補正は、現行実装および移行後の完了済みreconciliation_version=0の旧記録の表示契約である。新方式は冒頭のproposed節を正とし、completionのadjustment_quantity=N-L、表示差異=L-N、stock_after=確定直前現在庫+(N-L)とする。recount/rollback_compensationは別区分で、確定差異との同値関係を全movementへ一般化しない。
+
+新しい詳細queryはheader.reconciliation_versionもcore型へ取得し、BIZのwire DTOまで保持する。版をUIが日時やkindの有無から推定する仕様にはしない。
 
 #### get_stocktake_record_detail
 

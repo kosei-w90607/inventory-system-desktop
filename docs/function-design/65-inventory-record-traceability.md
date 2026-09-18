@@ -266,6 +266,8 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
 
 ## 65.10 実装スライス
 
+下記slice 4cの「snapshot差では定義しない」は現行実装/完了済みreconciliation_version=0の旧表示契約に限定する。新方式では冒頭proposed節を正とし、completionの補正量=N-L、表示差異=L-N、stock_afterは後続移動を含む。recount/rollback_compensationを確定補正と同値扱いしない。新方式のschemaとwriter/CMD/UIは同じ配布単位とし、この一般スライス順を根拠にDBだけ先行稼働させない。
+
 完成形は一度に実装しない。source docs は完成形を保持し、実装 PR は次の順で小さく切る。
 
 1. DB / BIZ / CMD traceability foundation: record status、detail query、movement_kind、reference resolution。

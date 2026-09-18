@@ -9,7 +9,7 @@ SPEC-STK-TIME-D1〜D9のsource詳細を、各文書の同名節へ展開した�
 | 保存・数量/版・受領・parser | [20](function-design/20-io-product-repo.md)、[21](function-design/21-io-inventory-repo.md)、[23](function-design/23-io-z004-parser.md)、[24](function-design/24-io-csv-import-repo.md) |
 | 設定・入出庫・取込み・計数・整合性 | [30](function-design/30-biz-product-service.md)、[31](function-design/31-biz-inventory-service.md)、[32](function-design/32-biz-csv-import-service.md)、[35](function-design/35-biz-stocktake-service.md)、[36](function-design/36-biz-integrity-check.md) |
 | 共通回復wire・POS・計数・DB交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
-| 保留・記録詳細・実測操作 | [55](function-design/55-ui-csv-import.md)、[65](function-design/65-inventory-record-traceability.md)、[73](function-design/73-ui-stocktake.md) |
+| 商品設定拒否・保留・記録詳細・実測操作 | [51](function-design/51-ui-product-form.md)、[60](function-design/60-ui-product-import.md)、[55](function-design/55-ui-csv-import.md)、[65](function-design/65-inventory-record-traceability.md)、[73](function-design/73-ui-stocktake.md) |
 
 外部証拠の成立条件は32、Windows監視とcommand登録義務は42、永続化は[DB設計](DB_DESIGN.md)へ集約する。これらの実装・SQL migration・binding生成は後続runtimeで行い、本docs同期では行わない。
 

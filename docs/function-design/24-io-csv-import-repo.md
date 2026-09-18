@@ -8,6 +8,7 @@ SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sale
 |---|---|
 | 受領のupsert | (tx, hash, received_at, 任意メタ) → source。hash衝突時は最初のID/時刻を返し、REPLACEや再採番をしない |
 | 受領済み上限 | (conn) → 最大source ID、空なら0。BIZ beginが読取り、UIへ公開しない |
+| 精算同一性の照合候補取得 | (conn, sourceメタ) → 同じ帳票のmachine_no / settlement_noに対応する全受領sourceと系列証拠。未取込み/取消済みも除外しない。ID/hash/メタを返し、同一性の業務判定と拒否はBIZが行う |
 | 時刻証拠の読取り/失効 | (conn, source ID / 対応ID) → 保存済みの範囲・信用状態。同じ対応を使う他sourceへも失効が反映されるよう更新対象をBIZが指定する。IOが時計の正しさを認定しない |
 | import保存 | NewCsvImportにsource_idを加える。既存のactive hash重複判定と取消済み再取込み可否は維持 |
 | 取消対象の事前読取り | (conn, ref_type, ref_id) → 有効movementのid / product_code / quantity。legacy判定を終える前にvoidしない |
@@ -16,6 +17,8 @@ SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sale
 受領表を売上commit前の短いTXで確定する。業務commit/rollbackはsourceを削除せず、日報bundleのtable/APIへこの処理を混入させない。DB失敗はDbErrorでBIZへ返し、受領失敗のまま証拠付きpreviewを返さない。索引・FK・状態はPOSの新契約を正とし、IOで保留集合を永続化しない。
 
 時計対応の失効更新はBIZが所有する独立の証拠TXで行い、後続の業務TXが戻っても維持する。IOが業務TXの途中で勝手にcommitして境界を破らない。失効保存失敗はBIZへ返し、保存できなかった信用を有効とみなす代替値は返さない。
+
+verifiedへの保存もBIZのgate証拠検査後の指示だけを受ける。IOがメタの存在・日時の新しさ・ファイル名から信用を付与しない。精算同一性の候補はpreviewと業務commit TXで再取得し、同日追加確認やsourceの削除を衝突の解除手段にしない。
 
 ### 14.1 モジュール配置
 

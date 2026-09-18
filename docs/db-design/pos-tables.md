@@ -11,11 +11,15 @@ SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、s
 | pos_import_sources | time_evidence_state TEXT、time_evidence TEXT | stateはNOT NULL、unverified / verified / invalidのCHECK、既定unverified。証拠本体はNULLまたは下記の内部JSON。verifiedなら証拠本体を必須にする。raw売上・商品名・JAN・file本体は格納しない |
 | csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない |
 
+同sourceの再取込み可否はactive hash拒否だけでなく、BIZの同一精算別hash guardにも従う。受領済みの別hashとの関係が未解決なら、元importを取り消しても自動で解除しない。
+
 構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
 
-時刻対応は[取込みBIZの外部probe契約](../function-design/32-biz-csv-import-service.md)を満たすまでunverified。原本メタと初回受領は不変で、矛盾時に失効するのはその対応の信用状態である。同じ精算の別hashは追加売上と自動認定しない。系列が証明されない間は(machine_no, settlement_no)へ一律UNIQUEを張って別期間を潰さない。
+時刻対応は[取込みBIZの外部probe契約](../function-design/32-biz-csv-import-service.md)を満たすまでunverified。原本メタと初回受領は不変で、矛盾時に失効するのはその対応の信用状態である。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含め、同番でも検証済みの別reset系列なら区別する。系列が証明されない間は(machine_no, settlement_no)へ一律UNIQUEを張って別期間を潰さない。時計比較の信用失効だけで精算同一性の衝突を消さない。
 
 time_evidenceの論理型は `TimeEvidence { time_basis_id, valid_from, valid_until, clock_error_ms, timestamp_quantum_ms, lower_bound?, upper_bound?, series_key, predecessor_source_id? }`。境界と有効期間は解釈済みの日時、誤差は非負整数・粒度は正整数、前回sourceは存在するIDだけを許す。BIZが型・範囲・根拠を検査し、不正JSON・必須値欠落・期限切れをverifiedとして使用しない。JSON処理をIOの時計認定へすり替えない。実機probeで証明できない始端はnullのままで、time_basis_idを付けただけで対応を検証済みにしない。
+
+unverified→verified、invalidからの再検証は、owner-operated gateで成立した証拠をBIZ内部の反映処理が対象/期間/誤差と照合して保存する場合だけ許す。通常の利用者操作・設定キーからstateを直接更新しない。valid_untilを超えた対応は使用時点でunverifiedとして扱い、保存上のverifiedが残っていても信用しない。必要な降格は証拠TXで記録し、新たな成立証拠なしに復活させない。
 
 時計失効のmetadataは独立した証拠TXで保存し、後の業務保留・取消・commit失敗でも巻き戻さない。同じ対応の失効を各sourceへ伝え、保存失敗時はBIZが外部時刻の利用を止める。保存済みstateだけから再検証なしに信用を復活させない。
 

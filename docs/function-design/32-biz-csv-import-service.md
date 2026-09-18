@@ -2,7 +2,7 @@
 
 ### 時点証拠契約（proposed・未実装）
 
-SPEC-STK-TIME-D2〜D6 / D8。以下の現行parse/commit/rollbackから変わる契約を本節にまとめる。日報bundle・売上の集計日・既存のactive hash拒否・同日追加確認は維持する。
+SPEC-STK-TIME-D2〜D6 / D8。以下の現行parse/commit/rollbackから変わる契約を本節にまとめる。日報bundle・売上の集計日・既存のactive hash拒否は維持し、同日追加確認は精算同一性のguardを通過した別精算の追加に限定する。同一精算の別hashを確認操作で許可しない。
 
 #### 受領・previewの内部型
 
@@ -18,13 +18,17 @@ PreviewDataへstock_reviewを追加する。statusはready / recount_after_impor
 
 分類の内部入力はsourceの受領ID・検証された期間/時計対応、商品候補、最新の有効観測。出力はBefore / After / Unknownと理由であり、EJ分割は商品別のAfter純数量を別に返す。
 
-1. D3の区間逆転・時計対応・因果矛盾を、legacyや受領済みの早期returnより前に検査する。下限が開始の最遅候補S_latestを超えた矛盾は時計の信用を失効する。異なるtime_basis_id・未検証期間を同じ時軸として使わない。
-2. 非連動候補は売上のみ。実測履歴のないNeverObservedは通常適用、LegacyObservedはUnknown。auto_filledは新しい実測基準を作らず、それ以前の有効観測を隠さない。
-3. `source.id <= source_cursor`ならBefore。信頼済み上限が拡張後Sより前ならBefore、信頼済み下限が拡張後Eより後ならAfter。それ以外は完全で有効なEJで商品別判定し、確定できなければUnknown。保存EだけのBefore判定や仮の始端は使わない。
-4. 共有JANは上記の通常適用より優先する行全体のguard。非連動との共有も含め、全在庫連動候補がBeforeと証明できる場合だけ在庫を全スキップしてcommit可能。他はfile全体をheldにし、先頭商品へ配賦しない。売上の既存先頭紐付けは、commit可能な場合だけ維持する。
+1. D3の区間逆転・時計対応・因果矛盾と、下記の精算同一性guardを、legacyや受領済みの早期returnより前に検査する。下限が開始の最遅候補S_latestを超えた矛盾は時計の信用を失効する。異なるtime_basis_id・未検証期間を同じ時軸として使わない。
+2. 共有JANの行全体guardを先に選ぶ。非連動との共有も含め、全在庫連動候補について後述の個別分類を計算し、全てBeforeの場合だけ在庫を全スキップしてcommit可能。他はfile全体をheldにし、先頭商品への通常適用へ進まない。全候補が非連動なら在庫判定は不要。売上の既存先頭紐付けはcommit可能な場合だけ維持する。
+3. 一意な行または共有JAN内の候補の個別分類: 非連動は売上のみ。実測履歴のないNeverObservedはAfter、LegacyObservedはUnknown。auto_filledは新しい実測基準を作らず、それ以前の有効観測を隠さない。ここでは分類だけ行い、共有行の一部を先に適用しない。
+4. 有効な実測で `source.id <= source_cursor`ならBefore。信頼済み上限が拡張後Sより前ならBefore、信頼済み下限が拡張後Eより後ならAfter。それ以外は完全で有効なEJで商品別判定し、確定できなければUnknown。保存EだけのBefore判定や仮の始端は使わない。
 5. 一意の商品がUnknownなら、最新観測の所属で分岐する。active所属（legacyを含む）は通常適用+そのitem/importのflag、完了済み/独立再実測所属はfile全体をheldとする。legacyというkindだけでactiveをheldへ変えない。旧activeの確定拒否はD8の別条件として維持する。復旧は現在のactive明細を優先し、なければ完了済み明細に対する独立再実測へ案内する。対象明細なしは未対応として示す。
 
-commitは既存のhash・同日active ID snapshotを再検査した同じTXで、JAN候補・連動設定・現在の証拠を取り直す。マスタ候補がpreviewと変わったら再previewを要求する。heldなら業務write前に全体を拒否し、source受領は残す。通る場合だけsource参照付きimport・売上・許可されたmovement・flag・revisionをまとめて保存する。UI申告のskip集合や再実測値は入力に持たない。
+精算同一性guardはBIZがpreviewとcommit TXの両方でproduceする。同じ帳票種別についてmachine_no / settlement_noが一致する別hashの受領済みsourceを照合し、別のreset系列と検証できる証拠がなければ、同一精算の候補衝突として `source_identity_conflict` で業務write前にfile全体を拒否する。比較対象はactive importだけに限定せず、未取込み/取消済みsourceも含む。生の番号組の一致を永続的な精算identityとみなす一律UNIQUEは張らず、別系列の分離証拠を日付差・受領順・時計の信用だけから推測しない。識別メタ欠落を仮キーで補わず、その場合の同一性は未確認であると明示する。
+
+同日追加確認、受領後の再実測、元importの取消、時計のunverified化は同一精算別hashの関係を解決した証拠にならない。通常の同hash再取込みも別hash衝突がなければ可能という条件付きで、他方の受領を消して解除しない。衝突資料のどちらを採用するかを決める操作は本scopeには追加せず、元資料と精算系列の確認が必要な制限として示す。
+
+commitは既存のhash・同日active ID snapshotを再検査した同じTXで、精算同一性guard、JAN候補・連動設定・現在の証拠を取り直す。preview後に別hashが受領された場合も検出する。マスタ候補がpreviewと変わったら再previewを要求する。heldまたはsource_identity_conflictなら業務write前に全体を拒否し、source受領は残す。通る場合だけsource参照付きimport・売上・許可されたmovement・flag・revisionをまとめて保存する。UI申告のskip集合や再実測値は入力に持たない。
 
 時計の信用失効は業務TXに巻き戻される保存へ置かない。commit前にも、同じDB lockを保持した短い証拠TXで矛盾検査と失効を確定し、その後に業務TXへ入る。業務TX内の再検査で新たに失効すべき対応を検出した場合は、業務writeを行わずそのTXを戻し、独立した証拠TXで失効を確定してから判定をやり直す。既にinvalidの同じ異常で再試行を繰り返さない。後続のheld・重複拒否・業務TX失敗でも失効は残る。失効保存に失敗した場合は外部時刻判定を利用不可にして業務処理を拒否し、再開時もその対応を再検証するまで信用を自動復活させない。
 
@@ -35,6 +39,8 @@ Beforeの販売/返品はどちらも在庫を動かさない。EJが有効な�
 rollbackは対象importのstatus・有効movement ID・flagを同じTXで読み、legacy上限以下の取消で適用済み吸収先が分からない商品があれば、void前に全体を停止する。商品別純量0の例外でもflag・履歴・revisionを処理する。UIへrollback_recheck_requiredと対象を返し、[BIZ-06の専用再実測](35-biz-stocktake-service.md)後に同じimportの取消を再試行する。
 
 停止条件がなければ、現在も効力を持つ最初の吸収先を商品内の観測順で選ぶ。pendingなら通常戻しと同じTXでLから取消quantityを引く。適用済みなら通常戻しを同額のrollback_compensationで打ち消す。吸収先なしは通常戻しのみ。N/S/E・cursor・観測順を取消日時で置換しない。二度目の取消は副作用なし。source・独立recount・確定済み評価額を消さず、元importのflagだけ解消する。
+
+対象importは単一TXなので、実測が同import内のmovementの途中へ入ることはない。商品ごとに取消quantityをchecked SUMし、適用済み吸収先へのrollback_compensationは非0なら商品ごと1本、純量0なら作らない。pendingのL補正も同じ純量を使い、行ごとの重複補償や複数観測への補償を行わない。
 
 保留集合はpreviewの導出結果。中断/再起動後は同fileを再選択して再生成する。保存済みの個別実測はDBに残り、未保存の数量は持ち越さない。精算欠落の表示は現在庫を数え直しても消さず、売上欠落を0と認定しない。
 
@@ -52,6 +58,8 @@ rollbackは対象importのstatus・有効movement ID・flagを同じTXで読み�
 | Windows計数監視 | 監視登録失敗、sleep/復帰、時刻変更、DB置換、保存直前の失効 | [CMD-10](42-cmd-sales-stocktake.md)の拒否をnative自動probeで検証。WSL mockを実機証拠としない |
 
 EJ取得・完全性不成立時の拒否・再実測復旧まで確認してからPLU本番へ進む。sampleの形状観察済みと、系列/時計/全取引形状の未検証を分ける。追加の採取・レジ操作は別のowner-operated gateで行い、このdocs同期をその許可にしない。
+
+time_evidence_stateをverifiedへ書けるのは、owner-operated gate成立時の証拠を受けるBIZ内部の反映処理だけとする。対象source・time_basis_id・期間・誤差・系列を検証したTimeEvidenceを、証拠TXでstateと一緒に保存する。通常のpreview/commit・利用者の追加確認・汎用設定キーは昇格経路ではない。現時点でその反映処理/外部gateは未実装・未実施で、unverifiedのまま。使用時に不正JSON・必須値欠落・範囲不正を検査し、valid_until超過ではunverifiedとして判定する。再検証なしでexpired/invalidから復活させない。
 
 計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D6（proposed）。資料受領と売上commitの分離、区間の証拠、共有JANの保留、取消順序を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
 

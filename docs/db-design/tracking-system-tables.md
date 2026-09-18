@@ -9,7 +9,7 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 | 保存先 | 追加・拡張する項目 | 制約と意味 |
 |---|---|---|
 | stocktakes | reconciliation_version INTEGER | NOT NULL、0/1のCHECK。移行済み旧headerは0、新規headerは1。旧activeは再確認を終えて新式で確定するTXで1へ変更。完了済み0は変更しない |
-| stocktake_items | observation_kind TEXT | NOT NULL、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
+| stocktake_items | observation_kind TEXT | NOT NULL、DEFAULTなし、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
 | stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点 |
 | stocktake_items | rebased_from_recount_id INTEGER | NULLまたはstocktake_recounts.idへのFK。legacy取消復旧で作るN/N基準だけが元の再実測を参照 |
 | stocktake_items / stocktake_recounts | time_basis_id TEXT | NULLは時刻対応不明。D3の時計対応を識別する内部値。異なる対応期間を日時文字列だけで比較しない。NULLでも受領cursorによる証拠は使える |
@@ -29,6 +29,9 @@ inventory_movementsへ `stocktake_adjustment_kind TEXT NULL`（completion / roll
 差0は実測行だけを保存し0数量movementを作らない。新方式の確定差異件数はcompletionだけから算出する。旧headerの既存NULL区分の集計は旧表示契約を保持し、新しいrecount/rollback_compensationを混ぜない。確定済みtotal_cost・valuation_cost_price・N/Lを、後から現在庫を直すために上書きしない。
 
 ### 移行と保存TX
+
+- このschema migration、全item writerのkind/証拠対応、無検査update_countの公開登録撤去、context必須command/UIの切替は同じruntime変更・配布単位にする。DB laneだけを先行出荷し旧writerで稼働する中間版は作らない。実装commitを分けても、完成前の組合せを起動/配布可能なreleaseとして扱わない。
+- observation_kindのALTERにuncounted等の恒久DEFAULTを付けない。既存行は同一migration TX内で下記CASE分類を明示的に埋め、最終schemaをNOT NULL/CHECK/DEFAULTなしにする（必要なら一時列・table再構築を使う）。kindを省略したINSERTは失敗させる。新方式のstart、商品登録中の明細追加、商品一括import、force_fill、実測/再実測/再基準化の全writerがkindと対応する証拠列を明示する。旧数量だけのUPDATEを有効な書込み経路として残さない。
 
 - migrationの同じTXで、移行前movementの最大ID（空なら0）を内部app_settings key `stocktake_legacy_movement_ceiling`へ一度だけ保存する。通常設定APIの書込み対象にしない。これは吸収済みcursorではなく移行時上限で、再起動・再実行で現在値へ更新しない。
 - 旧itemは、actual_count/count時刻が両NULLならuncounted、actual_count=0・system_stock=0・count時刻NULLならauto_filled、両方ありならlegacy。その他の矛盾形もlegacyとして移行異常を示す。旧force_fillは日時付きなのでlegacy。現在の廃番フラグから逆算しない。

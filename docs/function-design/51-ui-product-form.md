@@ -1,5 +1,11 @@
 ## 7. UI-01b: 商品登録・修正
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D4 / D8のmaster write guardを[30](30-biz-product-service.md)と[40](40-cmd-product.md)から受ける。create/updateでstocktake_guard + shared_jan_unresolvedになった場合は「同じJANを複数の商品で使う場合、在庫連動は設定できません」と対象の商品コード・名称をform-level Alertに表示する。kind名を利用者へ露出せず、入力値・dirty状態を保持し、成功toastや一覧への成功遷移を行わない。在庫連動の自動提案/checkboxは維持するが、BIZ検査に通らない設定は保存できない。
+
+確認dialogの同意でguardを解除せず、在庫連動を自動でoffにして再送しない。利用者が許可された設定変更を行うか、商品同定を確認してから保存を再試行する。editのJAN読取り専用をこの拒否のために解除しない。再有効化に現物確認が必要な場合も40のcode/actionで案内し、参照明細なしは解除不可と表示する。inline/Alert・focus・非色表示は既存フォームに揃える。runtimeのUI oracleは拒否後の値保持・DB不変・自動再送なしを確認する。
+
 > 対応仕様: REQ-101 / REQ-102 / REQ-106 / UI-01b
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-01b、`docs/SCREEN_DESIGN.md` 商品登録・修正画面、`docs/function-design/30-biz-product-service.md` `create_product` / `update_product` / `toggle_discontinue` / `get_product`、`docs/function-design/40-cmd-product.md` CMD-01、`docs/function-design/20-io-product-repo.md` products / departments / suppliers

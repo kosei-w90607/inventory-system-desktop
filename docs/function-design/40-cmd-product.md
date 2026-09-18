@@ -9,6 +9,7 @@ SPEC-STK-TIME-D8 / D9の回復情報を、message文字列の解析なしで伝�
 - StocktakeRecoveryはcode、csv_import_id（取消復旧の場合だけSome）、targetsを持つ。codeはcount_context_invalid / count_target_changed / count_environment_unavailable / recount_required / import_held / preview_changed / rollback_recheck_required / shared_jan_unresolved / source_identity_conflictのgenerated enum。BIZが理由と対象を確定し、CMDは変換するだけ。
 - targetsの要素CountRecoveryTargetはproduct_code / product_name / stocktake_item_id（Option）/ stocktake_id（Option）/ actionを持つ。actionはactive_count / independent_recount / legacy_rollback_recheck / no_count_target。商品数量や時刻の証拠をclient入力へ戻さない。参照なしはnullとno_count_targetで表し、架空のIDを使わない。
 - 失効や保存先変更は新しい計数へ、import_heldは同file再previewへ、rollback_recheck_requiredは明示的な旧取消復旧へ案内する。環境不成立・同一精算の別hashは再実測で無条件解除できる種類と混ぜない。
+- source_identity_conflictはBIZ-03の精算同一性guardが生成する。shared_jan_unresolvedはBIZ-01のcreate/update/商品一括importが曖昧な連動設定を拒否する際にも生成する。kind名stocktake_guardをoperatorへ表示せず、商品フォーム/一括importの表示は51/60のproposed節へ接続する。
 - 負数・非整数・範囲外は既存validation、同じ保存要求の値違いは既存idempotency_conflictを使う。保存済み同値はerrorではなくsave結果のreplayed。UIはkind/code/actionを生成型で網羅し、未知コードを「そのまま続行」にしない。
 
 runtimeでは共通enum、全CmdError constructor、BizError変換、bindings、CMD_ERROR_KIND、describeErrorとfeatureの回復分岐・mock/testを同じ変更で同期する。数量や対象IDはwireで安全に表現できる範囲をBIZが書込み前に検査する。追加payloadにraw SQL、診断ログ、実file本体を載せない。

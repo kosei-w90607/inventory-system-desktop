@@ -2,7 +2,7 @@
 
 ### 時点証拠契約（proposed・未実装）
 
-SPEC-STK-TIME-D1 / D7〜D9。以下の現行update_count登録を新しいUIへの切替時に外し、tokenなしで書ける公開入口を残さない。通常計数・保留解除・記録詳細からの訂正は同じAPIを使う。
+SPEC-STK-TIME-D1 / D7〜D9。以下の現行update_count登録は新schema migration・全writerのkind対応・context必須UIと同じruntime変更で外し、tokenなしで書ける公開入口を残さない。schemaだけが新しく無検査commandが到達可能な中間版を稼働/出荷しない。通常計数・保留解除・記録詳細からの訂正は同じAPIを使う。
 
 | command | wire入力 | wire出力 |
 |---|---|---|
@@ -22,9 +22,13 @@ contextの有効性を決めるのはBIZの用途・世代・所有者・版・�
 
 Windowsのsuspend/resume・時計変更通知はMNTが受け、count_platform_generationを進める。登録失敗時はBIZへ環境不成立を渡す。保存前/直前のgenerationとwall/Instant検査をUIの時計申告で代替しない。DB接続交換でも全contextを失効させ、既にlookupされた内部contextも古いDB世代として拒否する。非Windows製品実行で監視成立を確認できない場合は計数不可、test/dev providerの成功はnative証拠ではない。
 
+監視不成立では新しい実測のbegin/未保存saveをcount_environment_unavailableで拒否し、既存の保存データを変えない。保存済みrequestの副作用なし照会は維持する。外部時計に対するtime_basis_id=NULLは、この中断検知・context失効の代わりにはならない。UIに停止理由を表示し、再起動で監視を再登録、復旧しなければ担当者によるnative診断/修正版確認へ進む。監視成立後に新beginからやり直し、旧tokenは復活させない。
+
 #### エラー・読取り・登録
 
 拒否のwireは[40の回復型](40-cmd-product.md)に統一する。get_stocktake_items / find_stocktake_item / get_stocktake_recordへ、kind・flag・保存先・補正区分・recountをBIZから透過する。完了済みitemの読取りを利用し、差0の商品にも訂正入口を用意する。fix_integrityのcommand署名は変更せず、BIZ/repoの版更新失敗を既存DBエラーへ変換する。
+
+get_stocktake_recordのheader.reconciliation_versionも生成wireへ透過し、UIが旧完了記録の表示契約と新方式を区別できるようにする。CMDが版を再推定しない。
 
 runtimeでは新commandのtauri/specta属性、collect_commands登録、旧update_countの公開登録削除、bindings生成と全caller/mockの切替を一緒に行う。native自動probeで通知登録失敗・保存直前時計変更・DB置換時の拒否を検証する。ownerのWindows L3は通常計数、変更通知後の数え直し、再起動後の保留再開、完了後の訂正の可視結果に限定し、手動のDB故障注入を要求しない。
 

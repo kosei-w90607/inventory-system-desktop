@@ -2,7 +2,7 @@
 
 ### 時点証拠契約（proposed・未実装）
 
-SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5の現行update_count・live在庫への上書き確定は、runtime切替時に本節で置き換える。ここで既存codeの実装済み状態は変更しない。
+SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5の現行update_count・live在庫への上書き確定に加え、§20.6aの差異定義、§20.7の動的差異、§20.8のINV-2/INV-3、§20.9の旧保存型/引数はruntime切替時に本節で置き換える。現行codeおよび完了済みreconciliation_version=0の旧表示は保存し、新方式を実装済みとはしない。
 
 #### 入出力と所有
 
@@ -435,6 +435,10 @@ fn get_stocktake_progress(
 
 ### 20.6a get_stocktake_record
 
+以下のlive在庫基準・開始時snapshotの説明は、現行実装/完了済みreconciliation_version=0の旧表示用。新方式のcompletion補正量はN-L、表示差異はL-Nであり、取消補償/再実測は別区分として返す。新しいactiveの実測は親の移行versionだけで旧算式へ戻さない。
+
+新しいStocktakeRecordDetail.headerはreconciliation_versionを明示的に含め、IOの値をCMD/UIへ返す。旧headerの表示と新補正の区分を同時に扱えるようにし、過去評価額を新式で再算出しない。
+
 **関数要求**: 棚卸し記録詳細を wire DTO として返す。[31-biz-inventory-service.md](31-biz-inventory-service.md) §12.6a 業務記録詳細 read 関数と同じ read-only パターンで、movements への source link 補完と NotFound 変換を BIZ が担う。棚卸し詳細画面（`/stocktake/records/$stocktakeId`、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 / §65.5 / §65.10 slice 4c）用
 
 **シグネチャ**:
@@ -488,16 +492,20 @@ fn get_stocktake_record(
 
 ### 20.8 対応不変条件
 
+現行実装と新方式で算式を区別する。新方式のactual_count非負は補正後現在庫の非負を保証しない。
+
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
-| INV-2: stock_after算出責任 | complete_stocktake のステップ5g で stock_after = actual_count を直接使用。通常の「stock_quantity + quantity」計算ではなく、actual_count が確定的な stock_after となる。insert_movement に渡す stock_after は actual_count そのもの |
-| INV-3: 負在庫ポリシー | complete_stocktake では actual_count が利用者入力のため、0以上が保証される（update_count のバリデーション）。棚卸し補正で stock_after < 0 にはならない |
+| INV-2: stock_after算出責任 | 現行はステップ5gでstock_after=actual_count。新方式はBIZが補正量N-Lとstock_after=確定直前現在庫+(N-L)をchecked算出し、IOへ渡す。後続移動なしの場合だけstock_after=Nになる |
+| INV-3: 負在庫ポリシー | 現行はactual_count非負へ上書きする。新方式はactual_count>=0でもstock_after<0になり得る。負在庫を許して表示し、評価数量だけmax(stock_after,0)とする。force_fillも負在庫を0へ書き換えない |
 | INV-8: products物理DELETE禁止 | 本モジュールは products を UPDATE のみ（stock_quantity）。DELETE 操作なし。find_stocktake_eligible_products は is_discontinued フラグで絞り込む |
 | INV-1a: 入力値は常に正数 | update_count で actual_count >= 0 を検証。complete_stocktake の adjustment_quantity は正負どちらもあり得る（棚卸し補正は INV-1a の対象外。INV-1a は Request 構造体の quantity フィールドに適用され、棚卸し補正の adjustment_quantity はBIZ層内部で算出される値） |
 
 ---
 
 ### 20.9 stocktake_repo への依存（新規関数）
+
+以下は現行依存型の記録。新方式では冒頭の入出力と20のproposed節へ切り替え、Nだけの確定型や数量/時刻だけの保存型を流用しない。L・kind・flag・証拠・request ID・版のproducer/consumerを同一runtime変更で揃える。
 
 BIZ-06 が使用するIO関数のうち、既存の find_active_stocktake / insert_stocktake_item 以外に必要な新規関数:
 
