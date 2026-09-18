@@ -7,7 +7,7 @@
 - Risk: R2
 - Execution Mode: dual-vendor-no-fable
 - Plan Commit: 36bbae61be2f29af5d36898f3015e4bf28a2cf2c
-- Amendments: none
+- Amendments: 25cf5cb26a2b6d78f53335d9b95bb29b612fa6fa
 - Coordinator: Codex（主担当、owner の今回の変更依頼による）
 - Writer: Codex
 - Plan Reviewer: Sonnet（独立 read-only context）
