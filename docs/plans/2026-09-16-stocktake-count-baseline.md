@@ -95,7 +95,7 @@ Goal Invariant: 実測より後の記録済み入出庫を棚卸し確定で消�
 
 ## Scope
 
-source同期で確定したS1〜S7を、発注68（着手基準 `a2a265bf`）のowner決定反映へ適用し、S7へproject-memoryを追加する。ADR D3 / D8 / Consequencesと展開先へ、初導入・本番履歴なし、新形式での本番開始、旧取込みのメタ不足拒否と日付つきpreflightを同期する。proposed節を点検し、旧DBの互換機構は維持したまま適用前提・費用を区別する。合成モデルは変更しない。機構削除や別の設計判断が必要なら停止してCoordinatorへ返す。
+source同期で確定したS1〜S7を、発注68（着手基準 `a2a265bf`）のowner決定反映へ適用し、S7へproject-memoryを追加する。ADR D3 / D8 / Consequencesと展開先へ、初導入・本番履歴なし、新形式での本番開始、旧取込みのメタ不足拒否と日付つきpreflightを同期する。proposed節を点検し、旧DBの互換機構は維持したまま適用前提・費用を区別する。合成モデルは、Gated Amendment 1（Final Review 初回 broadの是正）が列挙する箇所に限って変更する。それ以外は変更しない。機構削除や別の設計判断が必要なら停止してCoordinatorへ返す。
 
 - S1（IO）: `docs/function-design/20-io-product-repo.md`（数量の汎用更新撤去、実測・再実測・flag・cursor取得）、`21-io-inventory-repo.md`（数量と版の不可分更新、補正区分）、`23-io-z004-parser.md`（精算メタ・ゼロ行）、`24-io-csv-import-repo.md`（受領記録、取消movement ID）。いずれも同じfunction-designディレクトリ内。
 - S2（BIZ）: `docs/function-design/30-biz-product-service.md`（設定変更・共有JANの検査）、`31-biz-inventory-service.md`（版更新の呼出し側）、`32-biz-csv-import-service.md`（受領・分類・保留・取消・外部probe条件）、`35-biz-stocktake-service.md`（context・即保存・確定・訂正）、`36-biz-integrity-check.md`（fix_integrityの版更新）。
@@ -103,7 +103,7 @@ source同期で確定したS1〜S7を、発注68（着手基準 `a2a265bf`）の
 - S4（operator）: `docs/function-design/51-ui-product-form.md` / `60-ui-product-import.md`（発注66 P3-5: 商品マスタwrite guardの拒否表示・入力保持）、`55-ui-csv-import.md`（保留・再preview）、`65-inventory-record-traceability.md`（補正区分・訂正への到達・評価額）、`73-ui-stocktake.md`（計数開始・保存・回復・native検証）。
 - S5（DB）: `docs/db-design/master-tables.md`（stock_revision）、`transaction-tables.md`（既存入出庫TXと版の関係のみ）、`pos-tables.md`（source受領とimport）、`tracking-system-tables.md`（実測種別・証拠・再実測・flag・補正区分・migration）、`docs/DB_DESIGN.md`（proposed保存契約への索引）。
 - S6（境界・親文書）: `docs/ARCHITECTURE.md`、`docs/architecture/biz-task-specs.md` / `io-task-specs.md` / `cmd-task-specs.md` / `ui-task-specs.md` / `mnt-task-specs.md`（各層の責務と詳細契約への参照）、`docs/FUNCTION_DESIGN.md`、`docs/SCREEN_DESIGN.md`、`docs/UI_TECH_STACK.md`（到達導線、状態所有、失効と既存invalidation契約の接続）。
-- S7（引継ぎ）: 本packet、`docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md`、`docs/Plans.md`、`docs/project-memory.md`（発注68: owner原文・確認日付きの初導入前提と本番開始時の更新義務）。Required Design Artifacts / Contract Coverage Ledger / Trace Matrix / runtime申し送り・現在地をsource本文に同期する。
+- S7（引継ぎ）: 本packet、`docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md`、`docs/Plans.md`、`docs/project-memory.md`（発注68: owner原文・確認日付きの初導入前提と本番開始時の更新義務）。Required Design Artifacts / Contract Coverage Ledger / Trace Matrix / runtime申し送り・現在地をsource本文に同期する。Gated Amendment 1で `docs/backlog.md` のSTK-1 / STK-2 entryの現在地同期と、`scripts/probes/stocktake_time_model.py` の限定是正を追加する。
 
 S1〜S6の各sourceに「時点証拠契約（proposed・未実装）」を区別して置く。project-memoryはownerが確認した現在の店舗事実を記す。現行のシグネチャ・schema・UIが既に新方式になったとは記載しない。関数設計の新規fileは作らず、既存file内で詳細化するためmodule-map登録の追加はない。実装・生成物・新しい要求IDの追加は行わず、既存要求tokenの増減が必要なら停止して再発注を求める。
 
@@ -124,10 +124,10 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 - AC1: `rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` の出力にD1〜D9がある。実測窓、資料受領、未知の境界、保留と再確認、訂正、取消、legacyの意味は独立設計点検で確認する。
 - AC2: `python3 scripts/probes/stocktake_time_model.py` がexit 0でPASSを出力し、before/afterの断定が合成oracleに反しない。モデルのPASSは実装テストと別に扱う。
 - AC3: S1〜S6のsourceを `rg -n '時点証拠契約|SPEC-STK-TIME'` で辿れ、DBの保存条件→IO入出力→BIZのTX/拒否→CMDのwire→UIの回復の対応がContract Coverage Ledgerから追える。各sourceはproposed・未実装と現行本文を区別する。`rg -n '2026-09-19|本番|初導入' docs/project-memory.md` で確認日・owner原文・本番開始時の追記義務を確認し、`rg -n 'project-memory' AGENTS.md docs/PROJECT_HANDOFF.md` で入口から辿れることを確認する。
-- AC4: `git diff --name-only 36891af8 -- src src-tauri` の出力が空。全変更がScopeのdocsに属する。`git diff 36891af8 -- docs/function-design/90-traceability.md scripts/probes/stocktake_time_model.py docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/templates` も空。変更docごとの要求tokenを基準版と比較して同一であることを確認する。
+- AC4: `git diff --name-only 36891af8 -- src src-tauri` の出力が空。全変更がScopeのdocsに属する。`git diff 36891af8 -- docs/function-design/90-traceability.md docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/templates` も空。`scripts/probes/stocktake_time_model.py` の差分はGated Amendment 1が列挙する是正（取消補償の商品別純量化と対応case、検出力のないassert・コメントの是正）だけで、隔離copyへのmutation（是正前の明細ごとの補償へ戻す）でassertが落ちることを確認する。変更docごとの要求tokenを基準版と比較して同一であることを確認する。
 - AC5: bash scripts/doc-consistency-check.sh --target plan とfullがERRORなし、git diff --checkが成功。
 - AC6: `32-biz-csv-import-service.md` の外部probe表が、精算系列・EJ完全性・商品同定・時計対応の観測項目、許可条件、不成立時の動作を持つ。`42-cmd-sales-stocktake.md` と `73-ui-stocktake.md` にWindows監視・native検証の失敗条件を持つ。未実施の実機検証をpassと扱わない。
-- AC7: `git diff --check` と `bash scripts/check-workflow-git.sh` が成功する。Review Responseへfinding別の是正先・初導入前提の同種点検・検証を追記する。51/60のstocktake_guardとMatrixの商品master各write oracleを維持し、Matrixには移行前importの拒否・日付つきpreflight・新形式の後追い成功を追加する。発注68でもWorkflow Stateのfieldを変更せずplan-gate / Plan Commit pendingを維持し、介入上限の変更案はowner承認待ちと記す。
+- AC7: `git diff --check` と `bash scripts/check-workflow-git.sh` が成功する。Review Responseへfinding別の是正先・初導入前提の同種点検・検証を追記する。51/60のstocktake_guardとMatrixの商品master各write oracleを維持し、Matrixには移行前importの拒否・日付つきpreflight・新形式の後追い成功を追加する。Writerの是正runはWorkflow Stateのfieldを変更しない（発注68時点の「plan-gate / Plan Commit pendingを維持し、介入上限の変更案はowner承認待ちと記す」は当時の指示で、Plan Gate通過後は適用しない。Gated Amendment 1）。
 
 ## Design Sources
 
@@ -292,6 +292,20 @@ Contract ID: SPEC-STK-TIME-EVIDENCE
 
 未実装。設計モデルのPASSをruntime completionと呼ばない。
 
+
+## Gated Amendments
+
+### Gated Amendment 1（2026-09-21、Codex 発注書 69 run 1 の着手前停止）
+
+- 経緯: Final Review 初回 broad（対象 `552a7be7`、pass A Sonnet / pass B Opus）で pass B が P2 を挙げ、Coordinator（Fable）が全件 accept。うち P2-1（取消補償が商品別純量で1本になっていない）と P3 2件は `scripts/probes/stocktake_time_model.py` の是正を要する。発注書 69 run 1 は、Scope の「合成モデルは変更しない」と AC4 のモデル差分が空という条件に衝突するため、Writer（Codex）が編集前に停止した（正しい挙動。HEAD `552a7be7` のまま、tracked tree clean）。
+- 原因: Coordinator が発注前に Scope / AC4 を読まず、モデルの是正を Scope 内と誤認した。
+- 変更（本 commit、packet のみ）:
+  - Scope: 合成モデルの変更を、本 Amendment が列挙する箇所に限って許可する。S7 へ `docs/backlog.md` の STK-1 / STK-2 entry の現在地同期を追加する。
+  - AC4: モデルを差分が空の対象から外し、差分が本 Amendment の是正に限られることと、隔離 copy への mutation で assert が落ちることを条件にする。
+  - AC7: 発注68時点の「plan-gate / Plan Commit pending を維持」の指示を当時のものと明記し、Writer の是正 run は Workflow State の field を変更しない、へ置き換える。
+- モデルで変更してよい箇所: `cancel_import` の補償を商品別純量で吸収先へ1回だけ適用する形へ直す / 純量0と純量非0の適用済み吸収先 case を足す / 未知の始端への仮値挿入を落とす assert を足すか Matrix の Mutation-style Adequacy Questions から当該項を runtime test へ割り当て直す / 常に真になる assert 2件とコメントを、検査できる主張へ直す。
+- 不変: Risk、Execution Mode、Final Review Minimum、Human Gate、Plan Commit、SPEC-STK-TIME-D1〜D9 の決定の意味、Non-scope。ADR・source docs・Matrix の是正は従来の Scope S1〜S7 の内側。
+- 影響: Amendments の範囲が変わるため、是正後の head に対して Final Review の broad 2本を取り直す（`552a7be7` への broad 2本は finding の出所として保持する）。
 
 ## Review Response
 
