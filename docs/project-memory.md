@@ -123,18 +123,18 @@ Keep it factual and stable.
 ### 無いもの（owner回答 2026-09-19、種類2 全13件）
 
 - No production DB / production import history exists yet in the real store; only dev/demo/test DBs exist — owner回答2026-09-19
-- Everything outside the register is currently paper operation; this app is close to a from-scratch (greenfield) introduction — owner回答2026-09-19。owner原文: 「今間に合わせでexcelシート作って渡した。データの初期投入にも使えるから良いかと思って」（ただし owner 自身は運用が続くか不安、原文「あんま運用できる気せんし俺もどう導けばいいかわからん」）
-- No prior electronic stock record exists; the Excel sheet the owner just handed the store is still being filled in — owner回答2026-09-19「ないと言っていい」
-- No electronic purchasing/ordering record; paper slips/lists are the base, though some vendor documents arrive as PDF/email — owner回答2026-09-19「たまにPDFで送られるケースもあるけど結局紙でやってるのが基本」
+- Everything outside the register is currently paper operation; this app is close to a from-scratch (greenfield) introduction — owner回答2026-09-19。owner が用意した Excel シートが店舗に渡っており、データの初期投入にも使える想定だが、Excel シートの運用定着は未確認
+- No prior electronic stock record exists; the Excel sheet the owner just handed the store is still being filled in — owner回答2026-09-19
+- No electronic purchasing/ordering record; paper slips/lists are the base, though some vendor documents arrive as PDF/email — owner回答2026-09-19
 - No sales-record system other than the register; daily reports are register → Excel transcription → print only — owner回答2026-09-19
 - Single store, not multiple locations — owner回答2026-09-19
 - No multi-user/employee-account concept; effectively single-operator, low concurrency — owner回答2026-09-19
-- No network backup destination in use now; owner is unsure how to fit one to a store this size — owner回答2026-09-19「あったほうがいいんやろなと思いつつ…セキュリティとかそっち方面に不安が残る」
-- No accounting/bookkeeping software; the Excel sheet above is the closest thing, and the owner doubts it will stick — owner回答2026-09-19
-- No barcode label printer in the store; rejected earlier as impractical for a non-IT elderly-adjacent operator and because some items have no JAN — owner回答2026-09-19「そもそもJANコードない商品もあるのに実用的じゃない」
+- No network backup destination in use now; whether to adopt one is undecided — owner回答2026-09-19
+- No accounting/bookkeeping software; the Excel sheet above is the closest thing, and its operational adoption is unconfirmed — owner回答2026-09-19
+- No barcode label printer in the store; rejected earlier as impractical for a non-IT elderly-adjacent operator and because some items have no JAN — owner回答2026-09-19
 - No wheeled/mobile work table in the store — owner回答2026-09-19
-- `suppliers` table intentionally holds maker/brand only, not the wholesaler order channel — owner回答2026-09-19「その質問と回答が全てやと思う」
-- Only a single PC is in use; more than one PC would only happen if the PC itself is replaced — owner回答2026-09-19「単一だよ、単一じゃなくなるとしたらＰＣ変えるとき」
+- `suppliers` table intentionally holds maker/brand only, not the wholesaler order channel — owner回答2026-09-19
+- Only a single PC is in use; more than one PC would only happen if the PC itself is replaced — owner回答2026-09-19
 
 ### いまの手作業
 
@@ -148,13 +148,13 @@ Keep it factual and stable.
 - Old stock with no item code that sells is tracked from memory only and rung up on a department key — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - Rounding: maker markup ratios are usually truncated; the store's own cut-sale fractions are rounded up — 2026-08-21 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 
-### 営業中の作業と中断（owner原文、2026-09-19、旧記録の訂正）
+### 営業中の作業と中断（owner回答 2026-09-19、旧記録の訂正）
 
-旧記録「営業中はレジで販売のみ、システム操作なし」は誤り。owner が同日の会話で明確に訂正した。
+旧記録「営業中はレジで販売のみ、システム操作なし」（`docs/SCREEN_DESIGN.md` の1日の動線図にあった記述）は誤りだった。owner が同日の会話で明確に訂正し、該当記述は本 commit で是正済み。
 
-- 「PCを触ることもあるよ、作業とかあるやろし」— 営業中でも PC 作業がある
-- 「営業中は仕入れた商品開けて商品登録とかも当然やるだろうしな」— 入荷時の商品登録は営業中に発生し得る
-- 「編集も登録も廃番も、営業中はなんでもやるよたぶん」— 商品編集・新規登録・廃番のいずれも営業中に起こり得る、接客で中断されながら
+- 営業中でも PC 作業がある
+- 入荷時の商品登録は営業中に発生し得る
+- 商品編集・新規登録・廃番のいずれも営業中に起こり得る、接客で中断されながら
 - 上記はいずれも owner回答2026-09-19 が基準。設計・レビューで「営業中はシステム操作が発生しない」という前提を置かない。
 
 ### 決めた運用（このアプリの使い方について owner が決めたこと）
@@ -171,7 +171,7 @@ Keep it factual and stable.
 ### 利用者
 
 - Developer is a family member of the store owner, with a software background — （記録済み） — `docs/project-memory.md`
-- Operator is the store owner (non-IT); they are the one who operates the PC. Owner also operates it on occasion; nobody else does — 2026-09-19 owner回答「店主自身が操作するから店主想定で懇切丁寧に作らなあかんで、マジで全部説明してあげなあかん。俺が触るケースはある、他のケースはない」
+- Operator is the store owner (non-IT); they are the one who operates the PC, and design should not omit explanations for them. Owner also operates it on occasion; nobody else does — 2026-09-19 owner回答
 - Design must assume a non-IT, possibly elderly, low-vision-adjacent user; readability and distinguishability are treated as functional requirements — （記録済み） — `docs/SCREEN_DESIGN.md`
 - One real user has glaucoma; this shaped the accessibility baseline (forced-colors, target size, contrast) — PR #95 Windows native L3 owner所見 — `docs/archive/plans/2026-08-23-ui-list-backbone-d.md`
 - The PC screen is not customer-visible during normal operation (operator's back faces the screen); it is shown to customers only for maker-site catalogs — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
@@ -180,13 +180,13 @@ Keep it factual and stable.
 
 - Register model: `CASIO SR-S4000`; main daily inputs are Z001/Z002/Z005, with Z004 as the item-level PLU track — 2026-06-30/2026-07-06 field-check — `docs/project-memory.md`
 - Normal PLU occupies slots 1-216 (barcode-less, dial-in); scanning PLU is 217+ — 2026-07 field gate — `docs/project-memory.md`
-- Of the 216 normal PLU slots, only 2 hold real store data; the rest are unused factory defaults. The old record "existing PLU ~929 items" is stale and does not match the current store (that count traces to an old handoff doc describing a since-superseded state) — 2026-08-17 実機機械抽出、旧記載は `docs/archive/harness-context/2026-09-14-PROJECT_HANDOFF.md` 参照 — 2026-09-19 owner回答「テスト用に試しに登録しただけやね」で確認済み — `docs/plu-export-and-real-csv-verification.md`
+- Of the 216 normal PLU slots, only 2 hold real store data; the rest are unused factory defaults. The old record "existing PLU ~929 items" is stale and does not match the current store (that count traces to an old handoff doc describing a since-superseded state) — 2026-08-17 実機機械抽出、旧記載は `docs/archive/harness-context/2026-09-14-PROJECT_HANDOFF.md` 参照 — 2026-09-19 owner回答で、この2件はテスト登録だったと確認済み — `docs/plu-export-and-real-csv-verification.md`
 - PLU export is app-to-register only; the app cannot auto-confirm register-side reflection — （記録済み） — `docs/project-memory.md`
 - CV17 shows Z001/Z002/Z004/Z005 in one report-screen family and can write them together — 2026-07-06 field-check — `docs/project-memory.md`
 - Files left in PC-side `EcrDatas` after SD import are "layout A"; CV17's explicit export is "layout B" — 2026-07 L3 — `docs/project-memory.md`
 - Z004 returns appear as negative quantity/amount — 2026-08-15 issue #76 実機バッチ — `docs/plu-export-and-real-csv-verification.md`
 - Non-JAN custom-code items are currently all sold via department key; there is no item-level register sale or automatic stock decrement for them — 2026-07-23 owner確認 — `docs/plu-export-and-real-csv-verification.md`
-- CASIO ECR+（スマホアプリ）has a planned service end and is not the long-term primary integration — 2026-09-19 owner の既存認識「アプリってもうサービス終了間近とかじゃなかった？これもいつだか言った気がするな」に対応する記録あり — `docs/plu-export-and-real-csv-verification.md`（"サービス終了予定があるため長期の primary integration にはしない"）/ `docs/decision-log.md`（D-022 "despite service-end risk"）
+- CASIO ECR+（スマホアプリ）has a planned service end and is not the long-term primary integration — 2026-09-19 owner が同じ認識を示し、既存記録との対応を確認済み — `docs/plu-export-and-real-csv-verification.md`（"サービス終了予定があるため長期の primary integration にはしない"）/ `docs/decision-log.md`（D-022 "despite service-end risk"）
 
 ### 未確認
 
@@ -194,7 +194,7 @@ Keep it factual and stable.
 - CSV export and print behavior have not been end-to-end verified in real use; owner's own characterization is "まともにテストしたことがない" / "印刷は中身を作っていない" — `docs/backlog.md`（CSV出力・印刷の実挙動確認 項）
 - Whether the store will want a network (UNC/NAS) backup destination is still open; current handling is low priority pending an explicit need — `docs/backlog.md`（バックアップ保存先のUNC/ネットワークパス対応 項）
 
-owner が「前に言った気がする」と答えた 2 件は、記録を探索した結果、以下のとおり見つかった（未確認へは回さない）。
+owner が既出の記憶があると答えた 2 件は、記録を探索した結果、以下のとおり見つかった（未確認へは回さない）。
 
 - ECR+のサービス終了予定 → 見つかった。`docs/plu-export-and-real-csv-verification.md`「ECR+ は店舗で利用中だが、サービス終了予定があるため長期の primary integration にはしない」/ `docs/decision-log.md` D-022 の Alternatives considered「make ECR+ the primary integration despite service-end risk」
 - 部門キー（現行レジ最大20程度）の構成は聞き取りで決めた → 見つかった。`docs/db-design/master-tables.md`「初期データ（全21部門、C-1/C-3 2026-03-29 確定）」は同じ 2026-03-29 の「廃番特価の対応方針（利用者ヒアリングで確定）」と同日の店舗ヒアリングに基づく
