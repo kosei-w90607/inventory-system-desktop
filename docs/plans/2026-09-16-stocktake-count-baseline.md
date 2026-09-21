@@ -9,7 +9,7 @@
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: b7f195140ef03147d46d3a8cc26e4f39dcf5e062
-- Amendments: none
+- Amendments: 4298e0cbcd8a4f12cd2a161395509da03c75e5b2
 - Coordinator: Codex（ownerの明示した設計委任による起草・統合。Human Gateと正式なreview承認は代行しない）
 - Writer: Codex（発注65のsource詳細同期。合成モデルは検証入力として保持、runtimeは未着手）
 - Plan Reviewer: Sonnet + Opus（非Codex vendorのfresh context。source同期版の正式Plan Gateは2026-09-19に通過）
