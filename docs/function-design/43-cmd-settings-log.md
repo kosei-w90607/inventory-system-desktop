@@ -2,7 +2,7 @@
 
 ### 時点証拠契約（proposed・未実装）
 
-本節のDB接続交換時のPC時計epoch更新とPOS基準への対応は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+本節のDB接続交換時のPC時計epoch更新とPOS基準への対応は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generation・wall-clock / Instantの経過差によるcontext失効は実装対象として維持する。
 
 SPEC-STK-TIME-D1 / D8。§43.9でDB接続を交換する前に、計数contextのDB世代を進めて全未保存contextを失効させる。同時にMNTへD1のPC時計epoch更新を要求し、復元DBのPOS基準を新epochへ付け替えない。既にlookupされたcontextもBIZの世代検査で拒否する。context保管lockとDB lockの同時保持は避け、失効→既存の復元orchestration→業務再開の順を守る。
 

@@ -2,7 +2,7 @@
 
 ### 時点証拠契約（proposed・未実装）
 
-SPEC-STK-TIME-D2〜D5。parse_z004は純関数・DB非依存を維持し、既存ParseResultへ `settlement_metadata: Option<SettlementMetadata>` を追加する。内部型の内容はmachine_no / report_kind / settlement_no / settled_at（各Option）、timestamp_precision（日時があれば分精度等の粒度）とする。番号は意味が検証されるまで文字列として保持する。settled_atはPOSが印字した精算の終端候補で、取引発生時刻やアプリ受領時刻ではない。BIZ-03が保存済みの値と抽出精度を基準に照合し、今回の上限/同系列後続sourceの下限へ導出する。parser自身は境界・系列・時計信用を認定しない。
+SPEC-STK-TIME-D2〜D5。parse_z004は純関数・DB非依存を維持し、既存ParseResultへ `settlement_metadata: Option<SettlementMetadata>` を追加する。内部型の内容はmachine_no / report_kind / settlement_no / settled_at（各Option）、timestamp_precision（日時があれば分精度等の粒度）とする。番号は意味が検証されるまで文字列として保持する。settled_atはPOSが印字した精算の終端候補で、取引発生時刻やアプリ受領時刻ではない。BIZ-03が保存済みの値と抽出精度を基準に照合し、今回の上限/同系列後続sourceの下限へ導出する。parser自身は境界・系列・時計信用を認定しない。境界導出は[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘の実装対象外とし、精算メタの抽出自体は維持する。
 
 処理は既存のサイズ外ガード・strict decode・改行正規化・layout/header検出・日付/JAN/符号の規則を維持し、メタ領域の既知項目だけを抽出する。従来shapeの時刻なしはNone、欠落・解釈不能な任意メタから0時・前日・精算番号の隣接を補わない。ファイル種別/構文の致命的異常は従来どおりエラーで、時刻証拠を付けるために不正fileを成功へ変えない。
 

@@ -8,12 +8,19 @@
 
 ## 次の行動
 
-- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、implementing）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit `b7f19514`、Draft PR #85。Final Review broad `3 回目`でround天井に到達し、ownerは費用と未解決を明記して本laneを閉じると決定（2026-09-22）。発注72で時刻経路の適用範囲とP3を是正し、次はCoordinatorによるOpus closure → owner判断でReady → CI → merge。新しいbroad roundは開始しない。㉘は即保存・revision・受領・精算同一性guard・取消補償・拒否と回復などの確定部分を実装し、同じapp sessionに限る時刻経路は実装しない。次のdesign laneは実測とPOS系列の対応の取得・保存で、実機確認を着手条件とする。日次の自動在庫連動は未解決。runtime・DB作り直し・実機検証は未実施。wave 12 lane 2、介入はpacketのOwner Effort Budgetを参照。
+次lane候補（順序はownerと決める）:
+
+- (a) 次のdesign lane「実測とPOS系列の対応を取得・保存する」: 実機確認が着手条件。それまでにEJ parserの構造復元と訪店用の検証ツールを合成データで進められる。
+- (b) ㉘ runtime（R3）: 時刻判定の機構は実装対象外。最初のlaneは既存の危険な操作（旧棚卸しの開始・入力・確定、POSの業務commit・取消）の停止と再現fixture、という切り方が有力。
+- (c) workflowの軽量化: 発注の構造化と発注前検査 → Amendmentの影響別扱い → 重複文書の統合、を別々の変更で進める。
+
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
-㉗の統合案は是正 `68c3d0d3` でOpus closure pass、follow-up P3は `24087bad` で是正。main単段merge `36891af8` 後のsource同期はADRの判断を変えていない。sourceの事前点検で見つかったactive legacyの分岐と時計失効のTX境界も是正・解消確認済みだが、旧closureを新しいsource全体の正式承認には流用しない。
-
 ## 直近の完了
+
+- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2）の設計正本化**: [PR #85](https://github.com/kosei-w90607/inventory-system-desktop/pull/85) を merge（2026-09-21、main `a9e78720`）。棚卸しの実測と後着するPOS売上の前後関係を、日付比較ではなく時点証拠（商品単位の実測窓と即保存・revision、資料の受領記録、精算の識別メタと同一性の検査、受領順による前の判定、判定不能からの保留と再実測、取消の補償）で扱う設計をADR `docs/adr/2026-09-18-stocktake-time-evidence.md`（SPEC-STK-TIME-D1〜D9）へ統合し、DB/IO/BIZ/CMD/UIのsource正本へproposed契約として同期、初導入（本番DB・本番取込み履歴なし）を移行前提として正本化した。時刻判定の部分は[ADRの適用範囲の但し書き](adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により、同じapp sessionに限る設計として㉘のruntime実装対象外。日次の自動在庫連動はこのlaneだけでは未完成で、次のdesign lane（実測とPOS系列の対応の取得・保存）と実機確認に依る。[archiveのPlan Packet](archive/plans/2026-09-16-stocktake-count-baseline.md) / [Matrix](archive/plans/test-matrices/2026-09-18-stocktake-time-evidence.md)。review の経過 = 計画Plan Reviewのrally（round 1〜3、owner escalation、追加Opus closure）を経てplan-approved（2026-09-19）。Final Reviewはbroad `3 回`でround天井に到達しownerへescalation → closure passで通過。Gated Amendment 2回、介入 10/10、Codex発注 4 回のうち 1 回は発注書とpacketのScope / AC4の食い違いで編集前停止（Coordinatorの発注誤り、Writerは正しくfail-closed）。dogfood所見: 設計の問題を文書reviewの反復で閉じようとしてround天井に達した。3回の指摘は同じ一点（再起動を跨ぐ時計の対応の信用）の周りに出ていた。外部の設計相談で問題の立て方の違いが分かった。reviewerへの発注が毎回「誤った判定を通さないか」を重点にし「普通の一日で目的を達成できるか」を最初に問わなかった。GAを積むたびにbroadの取り直しになった。次のdogfood対象 = workflowの軽量化の1段目（発注の構造化と発注前検査、設計laneのPlan Reviewの最初に普通の一日の操作列を渡す）。
+
+- **現場の前提1枚**: [PR #84](https://github.com/kosei-w90607/inventory-system-desktop/pull/84) を merge（2026-09-21、main `b2d9d97c`）。owner決定によりowner発言は要旨で置き、原文は公開repositoryに置かない方針を採用。`docs/SCREEN_DESIGN.md` の営業中は操作なしという旧記述を是正した。
 
 - **Writer 発注文書の整理**: [PR #82](https://github.com/kosei-w90607/inventory-system-desktop/pull/82) を merge（2026-09-19、main `8ae12595`）。owner の発注漏れ調査依頼を受け、`docs/AGENT_OPERATING_MANUAL.md` §5.6 に発注構成・起草時の現物確認・初回 / 再開の区別・訂正時の照合を集約し、`docs/DEV_WORKFLOW.md` 前提訂正 sweep の対象へ当該変更の最終 Writer 発注書・再開指示を追加、`docs/templates/plan-packet.md` / `test-design-matrix.md` の Scope / AC / Registration / Matrix 欄を明確化した。[archive の Plan Packet](archive/plans/2026-09-17-writer-dispatch-docs.md)。Gated Amendment 1（`25cf5cb2`、Final Review Minimum 2 へ引上げ）後、Final Review = broad 2 本（Sonnet P1/P2 なし、Opus P2 2 件）→ 是正 `a9faaccc` → Opus closure pass。helper record と CI（Merge gate / Design doc consistency / Workflow regression pass）で Ready → merge。報告は PR #82 の comment `#issuecomment-5732743285` / `#issuecomment-5732763646` / `#issuecomment-5732927180`。取り込み順の申し送り: ㉗ 棚卸しの基準時点は再開時に本 PR 反映後の最新 main を単段 merge してから続ける。次 dogfood 対象: ㉗ の次回 Writer 発注で §5.6 の手順を使い、発注前の fail-closed の有無を観測する。
 
@@ -48,9 +55,9 @@
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
   - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）
   - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示 = **完了**（PR #67 squash `ebbbef14`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-price-revision-assign-default-off.md)）
-- **wave 12（起案時は非干渉並走、owner 2026-09-16「次何やるかふたつとって早速始めよう」、lane 選定は Coordinator）: 進行中（lane 2 plan-approved、lane 1/3 完了）** — 現在の作業対象はlane 2のみ。source同期の最新footprintはpacket Scope S1〜S7を正とし、起案時のruntime候補一覧を現在の編集許可にしない。生成fileの再生成なし。
+- **wave 12（起案時は非干渉並走、owner 2026-09-16「次何やるかふたつとって早速始めよう」、lane 選定は Coordinator）: 完了（lane 1〜3、2026-09-21）** — source同期の最新footprintはpacket Scope S1〜S7を正とし、起案時のruntime候補一覧を編集許可として流用しない。生成fileの再生成なし。
   - lane 1: ㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する = **完了**（PR #75 squash `6f7928ed`、介入 3/3、relay 4/4、[archive](archive/plans/2026-09-16-stock-movements-return-selected.md)）
-  - lane 2: ㉗ 棚卸しと後着売上の時点証拠（R3 docs-only、`agent/stocktake-count-baseline-design`、[Packet](plans/2026-09-16-stocktake-count-baseline.md)、Phase implementing、Draft PR #85）。Final Review broad `3 回目`のround天井でownerが費用・未解決の明記によるclosureを決定。発注72の是正headをOpus closure → owner判断でReady → CI → mergeへ渡す。次のdesign laneで実測とPOS系列の対応を取得・保存し、㉘は時刻経路を除く確定部分を実装する。介入はpacketのOwner Effort Budgetを参照。
+  - lane 2: ㉗ 棚卸しと後着売上の時点証拠 = **完了**（PR #85 squash `a9e78720`、介入 10/10、[archive](archive/plans/2026-09-16-stocktake-count-baseline.md)）
   - lane 3: ㉙ returnTo 衛生 = **完了**（PR #78 squash `a68ba291`、介入 3/3、relay 2/3、[archive](archive/plans/2026-09-17-return-to-hygiene.md)）
 - **wave 11（非干渉並走 2 lane、owner 2026-09-16「ホーム画面 + 廃棄の詳細 link」）: 完了（lane 1〜2、2026-09-16）** — file footprint 互いに素（lane 1 = `src/features/home/**` + `src/config/navigation.ts` + SCREEN_DESIGN / 53 / 52 / decision-log、lane 2 = `src/features/disposal/**` + 64）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
   - lane 1: ㉔ ホーム画面を mockup-c 案へ寄せる = **完了**（PR #70 squash `41c2e3e2`、介入 2/3、relay 1/2、[archive](archive/plans/2026-09-16-home-mockup-c-runtime.md)）
@@ -66,7 +73,7 @@ L8-4は owner 決定済み（下記参照）。L8-2/L8-5は旧⑩laneからの�
 
 - L8-4 明細数列は owner 決定 2026-09-15 で (a) 撤去。runtime 反映は Backlog の表示小修正 batch 2 に同乗。
 - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数列 撤去決定）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
-- STK-1 / STK-2は[統合ADR](adr/2026-09-18-stocktake-time-evidence.md)からsource詳細へ同期し、正式Plan Gateを通過してplan-approved（2026-09-19）。snapshot補正・商品単位の再実測・過去評価額の非遡及は引き継ぐ。旧日付比較や未検証の時刻補完を実装指示に使わない。ownerの未確認の店舗運用を受容済みにせず、正式Plan Gateまではruntimeへ進めない。
+- STK-1 / STK-2は[統合ADR](adr/2026-09-18-stocktake-time-evidence.md)へ設計を正本化済み（PR #85、2026-09-21 merge）。runtimeは㉘で未実装、恒常運用（日次の自動在庫連動）は実測とPOS系列の対応を取得・保存する次のdesign laneに依る。snapshot補正・商品単位の再実測・過去評価額の非遡及は引き継ぐ。旧日付比較や未検証の時刻補完を実装指示に使わない。
 
 元の文脈は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md)。関連する製品作業でownerの判断を得る。
 

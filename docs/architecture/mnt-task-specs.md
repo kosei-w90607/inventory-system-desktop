@@ -2,7 +2,7 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-本節のPC時計epochの発番 / 更新・連続性検査・供給は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+本節のPC時計epochの発番 / 更新・供給は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generation・wall-clock / Instantの経過差によるcontext失効は実装対象として維持する。
 
 SPEC-STK-TIME-D1 / D3 / D8。新しい業務判断をMNTへ移さず、計数に必要なOS環境の観測をBIZへ供給する。
 
