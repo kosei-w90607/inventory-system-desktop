@@ -66,7 +66,7 @@ If uncertain between R2 and R3, choose R3 when the change touches a stable contr
 - Completed plans move to `docs/archive/plans/` with evidence preserved.
 - For R2+ work, the Plan Packet's Scope and Test Design Matrix must be authored and committed before implementation code is written — as a change separate from the implementation commit, not folded into it. This applies regardless of who implements (Claude, Codex, or a sub-agent): letting the implementer author the Plan Packet as part of the same commit that adds implementation code removes the independent check that Plan authoring provides. When a Plan Packet is missing or was only written after the fact, treat design-doc contracts (e.g. specific interaction behaviors, not just data/error contracts) as unverified until the implementation and its tests are checked against the source design doc line by line.
 - Before committing a correction to a Plan Packet contract or premise, the Coordinator must search every section of that packet, its Test Design Matrix, its `Plans.md` entry, and the change's current Writer order / resume instructions with `rg` using the old premise's keyword. Correct every remaining live instruction in tracked artifacts (live: Workflow State fields, Scope, AC, Test Plan, Review Focus, and other currently-effective directives; historical: dated append-only narrative entries and superseded reports/orders) in the same commit, and update local-only orders before dispatch; preserve historical reports and superseded orders as evidence. Apply the same cross-check when correcting only the order. This correction-completeness check uses the `旧前提の keyword で` search; it is distinct from the Contract Audit `Drift-fix sweep`, which starts from a review finding and searches the whole repository. Order preparation follows [AGENT_OPERATING_MANUAL §5.6](AGENT_OPERATING_MANUAL.md#56-従来型-writer-発注書の共通出力契約).
-- R2+ active plan の `Ordinary Operation` 節は、設計を含む変更・workflow の変更で操作列の表を書く場所であり、それ以外は `not applicable` と理由を書く。Plan Review がその操作列の成立可否を最初に答える判定規則は [Review Rules](#review-rules) の該当項目が持つ。
+- R2+ の Plan Packet の `Ordinary Operation` 節は、[template](templates/plan-packet.md) の同節が定める適用対象では操作列の表を書く場所であり、それ以外は `not applicable` と理由を書く。Plan Review がその操作列の成立可否を最初に答える判定規則は [Review Rules](#review-rules) の該当項目が持つ。本規則は D-090 の merge 後に起票する packet から適用し、既存の active / archive packet へ遡及しない。
 
 **Evidence Ownership — design-document extension** (D-050; the Workflow State contract below remains unchanged): for descriptions written from 2026-07-12 forward in design documents, do not transcribe volatile counts derived from another source of truth; reference that source instead. Fixed contract constants, enum cardinalities, and thresholds are not volatile counts, and archived packets / WERs remain non-retroactive (sidebar pending-links WER lesson: the "19 項目" count drifted independently in five places).
 
@@ -323,7 +323,7 @@ R2+ Plan Packets carry a default owner-effort ceiling (D-038): interventions ≤
 | 6. 目的・製品の振舞い・受容リスク・予算・優先順位・範囲の変更・不可逆な操作 | owner | 省略不可 |
 | 7. Windows L3・R4・Ready・merge | owner | 現行の明示承認と有効な委任の範囲だけを使う |
 
-- (a) 問い合わせが複数の行に当てはまる場合、または裁定権の所在が争点の場合は owner 側の行（5〜7）を優先する。
+- (a) 問い合わせが複数の行に当てはまり、その中に owner 側の行（5〜7）が含まれる場合は owner 側の行を優先する。裁定権の所在そのものが争点の場合は owner へ送る。owner 側でない行だけに当てはまる場合は、各行の条件に従う。
 - (b) この表は [AGENTS.md](../AGENTS.md) Decision and Approval Boundaries と本節の上限・計上規則を変更しない。
 - (c) owner に証跡の編集や発注訂正の伝言を依頼しない。
 
