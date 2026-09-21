@@ -35,8 +35,8 @@ ownerの今回の指示はsource詳細同期とplan-draftの準備を許可す�
 
 ## Owner Effort Budget
 
-- 介入回数上限: 9（owner 承認 2026-09-19「9で承認」。それ以前の承認済み上限は8）
-- 介入実績: 設計委任までの8/8に、2026-09-19のowner escalationへの決定を1回加え実績9回。上限9の承認により9/9。既に指示された本runの是正をまとめ、追加の介入を無断で発生させない
+- 介入回数上限: `10`（owner 承認 2026-09-22。Final Review の round 天井で owner escalation が 1 回必要になったため。それ以前の承認済み上限は 9〈owner 承認 2026-09-19〉、その前は 8）
+- 介入実績: 設計委任までの8/8に、2026-09-19のowner escalationへの決定を1回加え実績9回。上限9の承認により9/9。既に指示された本runの是正をまとめ、追加の介入を無断で発生させない。2026-09-22 に Final Review の round 天井の owner escalation への決定を 1 回加え、実績 `10/10`
 - 実働時間上限: 60分（既存承認。ownerの実測作業時間は未実測）
 - relay往復上限: 2（ownerを伝書鳩にせず、read-only reviewは担当が回収する）
 - Plan Review round 天井: 3。source同期版はround 3まで消化（2026-09-19、対象 `a2a265bf`）、disposition = owner escalation。通常のround 4は開始しない。owner決定反映後の追加確認は1回（Opus closure、対象は発注68の是正差分）として実施済み（対象 `b7f19514`、P1/P2 = 0・通過可）
@@ -732,3 +732,17 @@ ADR全文、packetの現在契約、S1〜S6のproposed節で旧DB/移行/legacy/
 - AC5/AC7: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` → exit 0、`ERROR 0 / WARN 3（既知PK6のみ）`。追記した点検結果の否定文を未解決マーカーと拾うplan検査エラーが出たため、意味を保った肯定文へ直して再実行した。エラー出力の途中切断によるUTF-8 decode失敗は生byte保存で切り分けた。`bash scripts/check-workflow-git.sh` → PK5/STATECAP OK。`git diff --check` → exit 0。
 - AC6: 32の外部probe表（精算系列/時計対応/EJ完全性/商品同定）、42/73のWindows監視不成立と失敗/復旧条件を再点検。51/60のmaster拒否とMatrixのoracleも保持した。
 - 未実施: runtime/SQL migration/bindings/traceability生成、Rust/frontend全量、Windows/EJ/時計/系列の実機、独立Final Review。push/PR操作/helper record・ready・mergeは実施しない。停止項目・Scope/ACとの衝突なし。
+
+### Final Review broad `3 回目`（round 天井）と disposition（2026-09-21〜22、pass A Sonnet / pass B Opus、対象 `bf107424`、裁定 Coordinator = Fable）
+
+- 結果: broad `2 回目` の finding は pass A / pass B とも全件 CLOSED と確認。新規は pass A が P1/P2 なし・P3 `2 件`、pass B が P2 `1 件`・P3 `2 件`。3 回の broad を通じて、誤った前後判定を通す経路（fail-open）は見つかっていない。
+- 残った P2: PC 時計 epoch が process 起動ごとに発番されるため、時刻による前後判定・EJ 時刻分割・POS 基準の使用が「gate 認定と実測と分類が同じ app session に収まる場合」にしか成立しない。日常運用では POS 基準が次回起動で使用不可になり、過去に実測した商品を含む日次資料は毎回判定不能になる。ADR Consequences はこの頻度と、恒常運用の前提（時計 / EJ）へ到達できないことを書いていない。
+- 同型性: broad 初回の P2-2（file 境界の producer なし）、`2 回目` の P2-N1（実測側の時刻識別と POS 基準の併合）、今回と、同じ一点（PC の時計と POS の時計の対応を、再起動を跨いで信用できるか）の周りに形を変えて出た。docs の是正を重ねて閉じる種類の問題ではないと判断した。
+- disposition: DEV_WORKFLOW Review Rules の round 天井により次の broad round は開始しない。残 finding は **owner escalation**。Coordinator は (A) 本 lane は費用と未解決を正直に書いて閉じ、対応の取得方法を別の design lane に切り出す、(B) 本 lane の中で設計し直す（GA と新しい rally が要る）を提示し、(A) を推奨した。
+- 外部の設計相談（owner が実施、2026-09-21〜22）の要点: 確定済みの前後関係を、判定時点の PC 時計の状態へ従属させる必要はない。保存すべきは「実測が POS のどの精算境界より前 / 後か」という関係と、その根拠。実測は必ずどれか 1 つの精算区間の中に入るので、その区間は Z004 だけでは解けず、取引単位の資料（EJ）が要る。受領後の数え直しだけでは、毎回数え直す循環から抜けられない。現在の時計状態との一致条件を単に外すだけでは、未証明の後着資料まで信用することになり不足。
+- owner 決定（2026-09-22）: (A) で閉じる。介入上限 `10` を承認。実機確認が要る事項は後回しにし、他の作業を先に進める。
+- 本 lane での是正（発注書 72、Writer = Codex。Scope / AC は不変、Gated Amendment なし）:
+  - ADR の時刻判定に関わる部分（gate による POS 基準の認定、`pos_time_bases`、source の昇格 / 失効の伝播、PC 時計 epoch の一致条件、EJ 時刻分割）に、同じ app session に限って成立する安全性の設計であること、v1.0 の恒常運用は未解決であること、runtime の実装仕様としては確定していないことを明記する。Consequences の費用記述を事実に合わせる。
+  - ㉘ 申し送り: 上記の機構を実装しない。安定部分（商品単位の即保存、revision、受領記録と精算同一性 guard、取消の補償、拒否と回復、初導入の前提、非連動化の記録）を実装対象とする。次の design lane =「実測と POS 系列の対応を取得・保存する」。実機で確かめる事項を列挙する。
+  - P3 `4 件`（41 の分類経路への `CountEnvironment` の受渡し、backlog STK-1 / STK-2 の現在地、`time_basis_id` の同名別物の注意、起動頻度と `clock_unverified` の恒常化を店主向け案内と Matrix へ反映）。
+- 次: 是正後の head に対し、独立 closure を 1 本（Opus）。新しい broad round は開始しない。
