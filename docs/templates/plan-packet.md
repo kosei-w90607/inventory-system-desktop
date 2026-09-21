@@ -63,6 +63,14 @@ Goal Invariant:
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
 
+## Ordinary Operation
+
+設計を含む変更（operator の操作、data / command 契約、業務の状態遷移を決める・変える packet）は下表を 1 つ置き、必要なら翌日の起動・再試行まで含める。workflow の変更は、発注 → 停止と訂正 → review → owner 判断の通常列を使う。どちらでもない変更は `not applicable` と理由を 1 行で書き、節は削除しない。範囲を限定した packet（design-only 等）を閉じる場合も、製品の目的が未達なら明記し、「この文書を完了できる」と「通常運用を達成できる」を分けて書く。
+
+| 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
+| --- | --- | --- | --- | --- |
+| <initial state> | <operation> | <result the user gets> | <condition to proceed> | <unconfirmed assumption / probe reference> |
+
 ## Scope
 
 - <in scope>

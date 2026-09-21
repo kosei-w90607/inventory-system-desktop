@@ -733,3 +733,10 @@ Use concise ADR-style entries.
 - Decision: 補助文言は「基準を下回る商品」「在庫 0 の商品」「レジ反映待ち」のように状態を説明する文にし、「すぐ確認」のような行動を促す文は使わない。導線は入口 card と通知バーが担う。
 - Why: 件数 card を押しても遷移しないため、導線に見える文言は期待と挙動のずれを生む。
 - Compatibility: 表示文言のみ、query / route / DTO 不変。
+
+## D-090: 普通の一日の操作列を Plan Review の最初の問いにし、Writer 停止時の発注訂正は条件付きで owner 中継を省く（2026-09-22）
+
+- Status: accepted（owner 決定 2026-09-22）。
+- Decision: Plan Packet template に `Ordinary Operation` 節を置き、設計を含む変更・workflow の変更は操作列の表を書く（SPEC-WF-LIGHT1A-D1）。Plan Review は既存の同じ run で、その操作列が目的を達成できるかを報告の冒頭で `成立 / 具体的な反例あり / 外部前提が未確認` のどれかで答える（SPEC-WF-LIGHT1A-D2）。Writer が発注と正本の不一致で編集前に止まったとき、正本が一意で発注だけが誤っている場合は Coordinator が発注を作り直し §5.6 手順 4 の最終照合を行えば owner への中継を要しない。正本が曖昧・正本の意味を変える場合はこの経路を使わない（SPEC-WF-LIGHT1A-D3）。問い合わせの行き先を [DEV_WORKFLOW.md](DEV_WORKFLOW.md#問い合わせの行き先) Owner Effort Budget 内の表で 1 つにまとめる（SPEC-WF-LIGHT1A-D4）。
+- Why: Writer の編集前停止は PR #85 / #75 / #70 / #71 等で大半が Coordinator の発注誤りだった。発注だけの誤りの訂正に owner を伝言役として使わない。PR #85 の Plan Review rally は「誤った判定を通さないか」だけを問い「普通の一日で目的を達成できるか」を最初に問わなかった。
+- Compatibility: phase・review 本数・Human Gate・Plan Commit / Amendments・独立性・Double Audit・D-084 / D-087 の owner の裁定を維持する。checker は変更しない。既存の active / archive packet へ遡及しない。発注 schema（WriterOrderV1）・発注前検査 script・classifier / checker の変更（workflow の軽量化 1 段目の残り）と 2・3 段目は別 change。
