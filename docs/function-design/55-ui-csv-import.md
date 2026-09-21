@@ -5,6 +5,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+準備表示のclock_unverifiedは[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘の実装対象外とし、店主向けの準備issueとして表示しない。日次資料の時刻判定が恒常運用に足りないことは、clock_unverifiedの表示で解決済みとせず、次のdesign laneへ引き継ぐ。
+
 SPEC-STK-TIME-D4 / D5 / D9。既存のfile選択→preview→結果を使い、新しい独立アプリ風画面や在庫スキップcheckboxは作らない。以下の現行フローのcommit可否へ、stock_reviewによる保留と回復を加える。
 
 | 状態 | 表示・操作 | 書込みと回復 |

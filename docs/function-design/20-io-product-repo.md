@@ -2,6 +2,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+本節の実測保存・再実測INSERT・有効観測列挙に含むtime_basis_idは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 SPEC-STK-TIME-D1 / D6 / D8。以下の既存APIは現行契約であり、新しい保存型へ切替済みではない。保存列・CHECK/FKは[trackingの新契約](../db-design/tracking-system-tables.md)を正とする。
 
 | repo操作の入出力 | 処理・返却契約 |

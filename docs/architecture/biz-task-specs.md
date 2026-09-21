@@ -2,6 +2,8 @@
 
 ## 時点証拠契約（proposed・未実装）
 
+本節のBIZ-03のPOS基準認定・file境界導出・昇格 / 失効と、BIZ-06のepoch固定・保存は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、既存の処理を新方式実装済みとは扱わない。
 
 - BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。非連動化は単一の共通repo書込み経路で商品に版を記録し、適用済み再実測まで未調整を保持する。

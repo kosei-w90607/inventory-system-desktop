@@ -2,6 +2,8 @@
 
 ## 時点証拠契約（proposed・未実装）
 
+本節のtime_basis_idの必須保存は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+
 SPEC-STK-TIME-D1 / D7〜D9。既存の検索/HID・候補確認・一覧・確定結果を維持し、数量入力の前に明示的な「今から数える」を置く。旧UI-10-D2/D11の検索成功だけで数量入力へ進む動作、およびD10・§73.6/§73.10/§73.12のcurrent_stock差異/「現在在庫」主列とテストoracleは、新方式のruntime切替時に本節へ置き換える。新しく保存したmeasuredは親が移行途中のversion=0でもL-N表示とし、完了済みversion=0の旧記録表示だけを保存する。
 
 | 遷移 | 表示・入力・focus |

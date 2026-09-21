@@ -2,6 +2,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+本節の時刻基準API、基準FK / state、境界候補・file境界の保存 / JOINと昇格 / 失効は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sales_repoが[pos_import_sources](../db-design/pos-tables.md)の保存を所有する。
 
 | 操作 | 入力→出力 / 処理 |

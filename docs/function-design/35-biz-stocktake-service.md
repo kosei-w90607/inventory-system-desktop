@@ -2,6 +2,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+本節のCountContext / CountEnvironmentのepoch、begin / saveのepoch固定・一致検証・保存とlegacy復旧でのコピーは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+
 SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5の現行update_count・live在庫への上書き確定に加え、§20.6aの差異定義、§20.7の動的差異、§20.8のINV-2/INV-3、§20.9の旧保存型/引数はruntime切替時に本節で置き換える。現行codeおよび完了済みreconciliation_version=0の旧表示は保存し、新方式を実装済みとはしない。
 
 #### 入出力と所有

@@ -2,6 +2,8 @@
 
 ## 時点証拠契約（proposed・未実装）
 
+本節のpos_time_bases、基準FK、TimeBasis / TimeEvidenceの保存・typed decodeとfile境界の昇格 / 失効は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、sale_recordsと日報の分離は維持する。
 
 | 保存先 | 項目 | 制約と意味 |

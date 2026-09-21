@@ -2,6 +2,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+本節のPC時計epochの受渡し・一致検証・必須保存は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+
 SPEC-STK-TIME-D1 / D7〜D9。以下の現行update_count登録は新schema migration・全writerのkind対応・context必須UIと同じruntime変更で外し、tokenなしで書ける公開入口を残さない。schemaだけが新しく無検査commandが到達可能な中間版を稼働/出荷しない。通常計数・保留解除・記録詳細からの訂正は同じAPIを使う。
 
 | command | wire入力 | wire出力 |

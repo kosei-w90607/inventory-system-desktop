@@ -2,6 +2,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+準備表示のclock_unverifiedは[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘の実装対象外とし、店主向けの準備issueとして表示しない。日次資料の時刻判定が恒常運用に足りないことは、clock_unverifiedの表示で解決済みとせず、次のdesign laneへ引き継ぐ。
+
 SPEC-STK-TIME-D1 / D4 / D8。新方式では汎用ProductUpdatesのstock_quantity欄を使用も公開もしない。createの初期数量と同TXの初期movementは維持し、商品一括importの既存商品上書きで在庫を変更しない。
 
 - create/update/商品一括importのTX内で、在庫連動対象とJANを共有する候補を全て検査する。曖昧なJANで連動を有効化する操作、および既存の連動対象へ新たな曖昧さを作るJAN更新/追加を拒否する。previewだけの検証でcommitを通さない。

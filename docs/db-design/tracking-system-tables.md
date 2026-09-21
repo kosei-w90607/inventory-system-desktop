@@ -2,6 +2,8 @@
 
 ## 時点証拠契約（proposed・未実装）
 
+本節のtime_basis_idの列・必須制約・保存・派生時コピーは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カラムと制約であり、現在のschemaに存在するとの記述ではない。migration番号・index名はruntimeのregistryと照合して採番する。既存の数量・評価額・日時を修正するmigrationは作らない。
 
 ### 実測の保存形

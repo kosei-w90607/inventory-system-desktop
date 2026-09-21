@@ -4,7 +4,11 @@
 
 SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、commit_csv_importのpreviewToken/additionalImportConfirmed、rollback_csv_importのimport IDは維持する。BIZの受領TXにmutable DB接続を渡すが、CMDに時点判定・在庫スキップのルールを置かない。
 
+準備照会のPC時計epoch検査とclock_unverifiedは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、MNT供給のCountEnvironmentを取得し、DB lock→BIZ-03の同名照会（conn, CountEnvironment）→error変換を行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
+
+分類経路（parse_and_validate_csv / commit_csv_import）へのCountEnvironmentの受渡しは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)に従い時刻判定と一緒に次のlaneで決め、BIZからMNTを直接呼ばない。
 
 32のissue.codeにimport_identity_missing / settlement_missing / sync_disabled_unreconciled、issueにsettlement_dates: Vec<String>とsource_ids: Vec<i64>を含めてgenerated wireへ透過する。settlement_missingはsource単位、sync_disabled_unreconciledは商品単位のissueをその説明と組にして保持する。CMDで集約し直さない。前者のsource_ids/settlement_datesは各1要素、後者のtargetsも1要素である。source_idsは表示上の技術IDにせず対象の識別にだけ用い、欠落状態をstock_review.warningsへ複製しない。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
 

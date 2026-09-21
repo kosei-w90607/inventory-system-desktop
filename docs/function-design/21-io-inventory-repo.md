@@ -2,6 +2,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+本節のPC時計epochの受渡しは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 SPEC-STK-TIME-D1 / D6 / D8。`update_stock_quantity(conn, product_code, new_quantity) -> Result<bool, DbError>`の数量更新成功時に、stock_revisionのchecked増分を同関数内で強制する。署名の数量入力に版を任意指定させない。呼出し側のTXを使い、自分で別TXをcommitしない。
 
 - 対象商品なしはfalse。対象ありで版がi64上限なら数量も版も書き込まずエラー。同値の数量指定でも版を進める。Rustのchecked演算またはSQLの型・上限ガードで、SQLiteのREAL化を拒否する。

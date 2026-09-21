@@ -2,6 +2,8 @@
 
 ## 時点証拠契約（proposed・未実装）
 
+本節のPC時計epochの発番 / 更新・連続性検査・供給は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+
 SPEC-STK-TIME-D1 / D3 / D8。新しい業務判断をMNTへ移さず、計数に必要なOS環境の観測をBIZへ供給する。
 
 - Windowsの時刻変更・suspend/resume通知を登録し、環境generationを進める。登録不能は成功として隠さず、計数contextの発行不可として伝える。通知順序と保存直前の失効はnative自動probeで検証する。

@@ -2,6 +2,8 @@
 
 ### 時点証拠契約（proposed・未実装）
 
+本節のPOS基準認定、file境界導出・昇格 / 失効、分類stepの時刻比較 / EJ時刻分割、準備照会のclock_unverifiedは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
 SPEC-STK-TIME-D2〜D6 / D8。以下の現行parse/commit/rollbackから変わる契約を本節にまとめる。日報bundle・売上の集計日・既存のactive hash拒否は維持し、同日追加確認は下記の精算同一性guard（識別メタ不足の拒否を含む）を通過した別精算の追加に限定する。同一精算の別hashや、メタ不足で同一性未確認の同日追加を確認操作で許可しない。
 
 #### 受領・previewの内部型

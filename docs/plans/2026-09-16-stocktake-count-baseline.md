@@ -210,12 +210,12 @@ Status: implementing（2026-09-21）。plan-approved時点の評価: source同�
 | Contract | Future target | Automated evidence | Native / external |
 |---|---|---|---|
 | D1 数量/版（20/21/30/31/35/36、master/transaction） | 共通repo、既存数量writer、数量なしの状態更新 | req205_stock_revision_all_writers / req205_stock_revision_non_quantity / ABA | operator手動故障注入は対象外 |
-| D1 context（35/42/43、MNT task） | begin/save/abandon、DB/環境世代、PC時計epochの発番・保存、保存済み要求照会 | req205_count_save_idempotency / count_context_invalidation / req205_count_context_db_generation / req401_pc_epoch_across_basis_renewal | Windows監視probe、73の計数L3 |
+| D1 context（35/42/43、MNT task） | begin/save/abandon、DB/環境世代、PC時計epochの発番・保存、保存済み要求照会 **時刻経路は確定していない・㉘の実装対象外**。 | req205_count_save_idempotency / count_context_invalidation / req205_count_context_db_generation / req401_pc_epoch_across_basis_renewal | Windows監視probe、73の計数L3 |
 | D2 受領（23/24/32/41、pos） | parser任意メタ、hash一意source、開始source_cursor | req401_receipt_before_count_start / req401_source_survives_zero_and_rollback | 実ファイル系列 |
-| D3 時刻/精算同一性（23/24/32/41/55、pos、MNT task） | gate基準のpc_clock_epoch/file境界のproducer、実測epochとの比較、昇格/失効伝播、精算同一性guard、独立拒否証拠、settlement_missing | check_counterexamples / check_diagnostic_order / req401_settlement_identity_conflict / req401_same_day_missing_identity_rejected / req401_identity_conflict_recovery_limit / req401_time_evidence_validation / req401_time_evidence_expiry / req401_time_evidence_promotion / req401_file_bounds_producer / req401_file_bounds_not_derived / req401_file_bounds_propagation / req401_rejected_settlement_visible / req401_clock_invalidation_survives_rejected_commit / req401_pc_epoch_across_basis_renewal | 32の時計・系列probe |
-| D4 分類/設定（30/32/35/40/41/51/55/60） | 共通分類、全候補、active/完了、preflight、master各writeの拒否と非連動化記録/回復 | req401_shared_jan_all_candidates / req401_active_legacy_import_recheck / req401_ambiguous_jan_sync_rejected / req401_master_sync_guard_ui / req401_sync_disable_retains_recovery / pos_stock_readiness_preflight | 準備不足と保留からの回復 |
-| D4 ゼロ行/flag（23/32/35、tracking） | 売上行と証拠行の分離、確定拒否、再preview | req401_zero_net_nonzero_after_count / req205_recount_flag_blocks_complete | 売上0の正常完了表示 |
-| D5（23/32） | 別EJ laneのadapter/照合/実行拒否 | req401_ej_coverage_boundaries / req401_ej_per_receipt_validation | 32の本番有効化probe |
+| D3 時刻/精算同一性（23/24/32/41/55、pos、MNT task） | gate基準のpc_clock_epoch/file境界のproducer、実測epochとの比較、昇格/失効伝播、精算同一性guard、独立拒否証拠、settlement_missing **時刻経路は確定していない・㉘の実装対象外**。 | check_counterexamples / check_diagnostic_order / req401_settlement_identity_conflict / req401_same_day_missing_identity_rejected / req401_identity_conflict_recovery_limit / req401_time_evidence_validation / req401_time_evidence_expiry / req401_time_evidence_promotion / req401_file_bounds_producer / req401_file_bounds_not_derived / req401_file_bounds_propagation / req401_rejected_settlement_visible / req401_clock_invalidation_survives_rejected_commit / req401_pc_epoch_across_basis_renewal | 32の時計・系列probe |
+| D4 分類/設定（30/32/35/40/41/51/55/60） | 共通分類、全候補、active/完了、preflight、master各writeの拒否と非連動化記録/回復 **時刻経路は確定していない・㉘の実装対象外**。 | req401_shared_jan_all_candidates / req401_active_legacy_import_recheck / req401_ambiguous_jan_sync_rejected / req401_master_sync_guard_ui / req401_sync_disable_retains_recovery / pos_stock_readiness_preflight | 準備不足と保留からの回復 |
+| D4 ゼロ行/flag（23/32/35、tracking） | 売上行と証拠行の分離、確定拒否、再preview **時刻経路は確定していない・㉘の実装対象外**。 | req401_zero_net_nonzero_after_count / req205_recount_flag_blocks_complete | 売上0の正常完了表示 |
+| D5（23/32） | 別EJ laneのadapter/照合/実行拒否 **時刻経路は確定していない・㉘の実装対象外**。 | req401_ej_coverage_boundaries / req401_ej_per_receipt_validation | 32の本番有効化probe |
 | D6（20/24/32/35、tracking） | movement ID、最初の吸収先、legacy停止・専用再確認 | check_lifecycle / check_legacy_recovery / req401_rollback_count_cursor | 取消→復旧の可視動作 |
 | D7（20/21/31/35/42/65/73） | 独立再実測、明示的kind、差0対象への到達、非遡及評価 | req205_recount_active_owner_guard / req205_stocktake_movement_kind | 73の確定後訂正L3 |
 | D3 / D8 取込み移行（project-memory、pos、23/24/32/41/55） | 新メタ抽出→保存、本番前preflightの日付、旧importの拒否、後追い | req401_pre_migration_import_identity_guard / req401_import_identity_preflight_dates / req401_new_metadata_late_import_allowed | 初導入に旧本番履歴なし。旧試験DBの作り直しは別作業 |
@@ -249,6 +249,14 @@ Status: implementing（2026-09-21）。plan-approved時点の評価: source同�
 
 ## 後続 runtime lane ㉘ への申し送り
 
+発注書72のowner dispositionを以下の申し送りより優先する。線引きの正本は[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)。既存の契約本文は保持するが、時刻経路を㉘の実装仕様として確定した扱いにはしない。
+
+- **㉘で実装しないもの**: gateによるPOS基準の認定、pos_time_bases、TimeBasis / TimeEvidenceの保存とtyped decode、file境界導出、sourceの昇格 / 失効の伝播、PC時計epochの発番・保存と一致条件による時刻比較、EJ時刻分割、clock_unverifiedの準備issue。同じapp sessionでしか成立せず、次のdesign laneで置き換わるため。
+- **㉘で実装するもの**: 商品単位の即保存（begin / save / abandon、context、revision、冪等な再送）と数量・版の不可分更新。受領記録とhash・単調cursor、精算メタの抽出・保存、精算同一性guardと拒否記録（settlement_missing）。受領順によるBefore、NeverObserved / LegacyObservedの扱い、判定不能からの保留と再実測。商品別の純量による取消補償、訂正、共有JANの検査、非連動化の記録（pos_sync_disabled_revision、sync_disabled_unreconciled）。migrationとlegacy分類、初導入の前提、UIの回復導線。計数中のOS監視・generationとcontext失効も維持する。
+- **残る運用費用**: 時刻でAfterと判定できないため、過去に実測した商品を含む資料は受領順のBefore以外は判定不能となり、保留 / 再実測へ落ちる。active所属の通常適用と要再確認flag、完了済み / 独立再実測所属のfile全体保留という既存の分岐を維持する。NeverObservedの商品は共有JAN等のguardを満たせば通常の在庫連動となる。これだけではv1.0の恒常運用（日次の自動在庫連動）として足りない。
+- **同名別物の保存列**: 実測側time_basis_idはTEXTのepoch、source側はINTEGERの基準FKで別物だが、どちらも㉘では列を作らず、次のlaneが保存形を決めるときに同名を避ける。
+- **次のdesign lane**: 実測とPOS系列の対応を取得・保存する（design-first、R3）。実機確認を着手条件とし、(a)精算系列の意味（Z004のリセット範囲、同日複数精算、番号リセット、再出力・訂正版の識別）、(b)番号印字のEJ記録と取引一連番号・時刻との並び、売上・Z004への副作用の有無、(c)レジ時計を進める / 戻す操作のZ004 / EJへの痕跡、(d)棚卸し→アプリ終了→OS再起動→翌日の遅延・逆順取込みで、境界確定済みの商品に再計数を求めず実測後の販売だけが一度減るか、を確かめる。番号印字による接続は未検証の候補であり採用決定ではない。EJ parserの構造復元は並行して進められるが、時刻分割の実装は次のlaneの結論を待つ。
+
 旧案のfile:line指示はfeeb3fe9の履歴。新しいruntimeのscopeはADR、S1〜S6のproposed詳細、Matrixから起こし直し、別のplan-first commitとGateを持つ。
 
 - source受領の永続化、productsのrevision、count/recountの開始・終了・cursor・request識別子、明示的movement kind。
@@ -262,10 +270,10 @@ Status: implementing（2026-09-21）。plan-approved時点の評価: source同�
 - UI-07/UI-10/記録詳細の即保存・再開・訂正、既存IME/Enter/focus/returnToを維持。
 - legacy migration、全行0、共有JAN、逆順資料、時計異常、EJ欠落を負の経路として実装前にfixture化。
 - EJはPLU本番前提。取得失敗で再実測の復旧まで閉ざさず、自動分割の許可と区別する。
-- 新たに具体化したtime_basis_id、型付き回復payload、準備照会、補正kind/recount参照をproducerから全consumerへ配線する。時計失効は業務rollbackで消さない。legacyのUnknown後は所属で一意に分岐する。
+- **time_basis_idと時計失効は確定していない・㉘の実装対象外**: 新たに具体化したtime_basis_id、型付き回復payload、準備照会、補正kind/recount参照をproducerから全consumerへ配線する。時計失効は業務rollbackで消さない。legacyのUnknown後は所属で一意に分岐する。
 - 各sourceの「現行本文」を新runtimeの完成形として混ぜず、対応するproposed節を実装し、旧仕様からの置換箇所を実装差分で確認する。profile/現行図面・D-052の実装SSOTはruntimeの挙動変更と同時に同期する。
 - 既存green testと既知ignore診断はMatrix「既存テストの移行先」を正として移す。計数前の在庫変更で差3は維持し、保存後の移動で差を固定する。負在庫force_fill、L≠liveのformatter/画面、確定時の評価数量、商品別SUM補償を値で検証する。未実測「—」/自動入力の注記は一覧・選択商品・保存結果のoracleへ明記する。
-- Final Review是正のproducerを省略しない。gateはpos_time_basesの基準認定、BIZ-03はsettled_at/精度と同系列前回sourceからfile境界を導出してsourceへ保存する。基準認定/前回後着の適格sourceだけ昇格、失効は基準と全参照sourceへ伝播。通常操作から基準の認定は不可。実測側time_basis_idはMNTが発番するPC時計epochのTEXTとし、BIZ-06がbeginで固定、save TXで一致検証してitem/recountへ保存する。POS基準の既存TimeBasis JSONへpc_clock_epochを保存し、基準JOINで現在epoch/実測epochと比較する。source側time_basis_idだけがINTEGER FK。同じepochなら期限更新/reset後も既存実測と比較可能で、POS期間を実測窓へ課さない。epoch不一致/NULLは時刻Unknown、受領Beforeは維持する。
+- **時刻部分は確定していない・㉘の実装対象外（契約本文を保持）**: Final Review是正のproducerを省略しない。gateはpos_time_basesの基準認定、BIZ-03はsettled_at/精度と同系列前回sourceからfile境界を導出してsourceへ保存する。基準認定/前回後着の適格sourceだけ昇格、失効は基準と全参照sourceへ伝播。通常操作から基準の認定は不可。実測側time_basis_idはMNTが発番するPC時計epochのTEXTとし、BIZ-06がbeginで固定、save TXで一致検証してitem/recountへ保存する。POS基準の既存TimeBasis JSONへpc_clock_epochを保存し、基準JOINで現在epoch/実測epochと比較する。source側time_basis_idだけがINTEGER FK。同じepochなら期限更新/reset後も既存実測と比較可能で、POS期間を実測窓へ課さない。epoch不一致/NULLは時刻Unknown、受領Beforeは維持する。
 - 欠落表示は拒否された未取込み資料だけ（案a）。同一性拒否証拠を業務TXと独立保存し、PosStockReadiness.issuesのsettlement_missing/source_ids/settlement_datesへ接続する。未提出/欠番全般は本laneで検出せず、issueなしを全資料完備と表示しない。source単位のissueでID/精算日を各1要素にし、そのsourceの理由説明と組にする。再実測/再起動では消さない。
 - pos_stock_syncは変更前値の取得・true→false判定・版/切替記録の保存を単一の共通repo書込み経路で強制し、汎用更新の直接set分岐を残さない。true→falseは`products`の`pos_sync_disabled_revision`を同TX保存し、非連動/廃番もsync_disabled_unreconciledの検出対象にする。商品get/updateのsync_disabled_recoveryと商品一括importの対象Vec、stock_review/ImportResult、準備照会から既存CountRecoveryTargetへ接続する。active保存だけでは未調整を残し、切替後の適用済み新実測で解消する。未調整issueを商品単位にし、切替後のmeasured pendingだけ確定を案内する。それ以前の入力は数え直しを案内し、51/73へ既存準備照会の説明を渡す。無明細には棚卸し開始を案内し、既存flag・再有効化guardを維持する。
 - 本packetのdesignはruntime実装許可ではない。
@@ -283,9 +291,9 @@ Contract ID: SPEC-STK-TIME-EVIDENCE
 
 | Spec | Scope | Evidence | Review |
 |---|---|---|---|
-| SPEC-STK-TIME-EVIDENCE | S1〜S7 | AC1〜AC7、Matrix、source読取り点検 | 層間接続、時点・順序・復旧 |
-| REQ-205 | S1 / S2 / S3 / S4 / S5 / S6 | AC1 / AC2 / AC3 / AC4 / AC5 / AC7 | snapshot・訂正・legacy |
-| REQ-401 | S1 / S2 / S3 / S4 / S5 / S6 | AC1 / AC2 / AC3 / AC4 / AC5 / AC6 / AC7 | 受領・区間・EJ・共有JAN |
+| SPEC-STK-TIME-EVIDENCE | S1〜S7 | AC1〜AC7、Matrix、source読取り点検 | 層間接続、時点・順序・復旧。時刻経路は確定していない・㉘の実装対象外。 |
+| REQ-205 | S1 / S2 / S3 / S4 / S5 / S6 | AC1 / AC2 / AC3 / AC4 / AC5 / AC7 | snapshot・訂正・legacy。時刻経路は確定していない・㉘の実装対象外。 |
+| REQ-401 | S1 / S2 / S3 / S4 / S5 / S6 | AC1 / AC2 / AC3 / AC4 / AC5 / AC6 / AC7 | 受領・区間・EJ・共有JAN。時刻経路は確定していない・㉘の実装対象外。 |
 
 ## Data Safety
 
@@ -746,3 +754,41 @@ ADR全文、packetの現在契約、S1〜S6のproposed節で旧DB/移行/legacy/
   - ㉘ 申し送り: 上記の機構を実装しない。安定部分（商品単位の即保存、revision、受領記録と精算同一性 guard、取消の補償、拒否と回復、初導入の前提、非連動化の記録）を実装対象とする。次の design lane =「実測と POS 系列の対応を取得・保存する」。実機で確かめる事項を列挙する。
   - P3 `4 件`（41 の分類経路への `CountEnvironment` の受渡し、backlog STK-1 / STK-2 の現在地、`time_basis_id` の同名別物の注意、起動頻度と `clock_unverified` の恒常化を店主向け案内と Matrix へ反映）。
 - 次: 是正後の head に対し、独立 closure を 1 本（Opus）。新しい broad round は開始しない。
+
+
+### 発注書 72 の是正（2026-09-22）
+
+開始HEADは`b5822644`、指定branch / worktreeのtracked treeはclean。直前のCoordinatorのdispositionをそのまま保持し、決定済みの適用範囲と費用を反映した。Workflow Stateのfield、Scope、AC、Gated Amendments、Owner Effort Budget、過去Review Response、project-memory、設計モデルは変更していない。
+
+- pass BのP2とpass AのP3（起動頻度）: `docs/adr/2026-09-18-stocktake-time-evidence.md` のStatus直下「適用範囲の但し書き」に節別の線引きを置いた。Consequencesに同じapp sessionの条件、clock_unverifiedの恒常化、valid_untilの実効寿命と日次運用の不足を明記。外部設計相談は次のlaneの出発点として記録し、番号印字を未検証候補に留めた。Revisit Triggerに置換先を接続した。
+- pass AのP3（同名別物）: 本packet「後続 runtime lane ㉘ への申し送り」で実測TEXT epochとsource INTEGER FKを区別し、両列とも㉘では作らず次の保存形で同名を避けると明記した。同節に実装するもの / しないもの、残る保留・再実測の費用、次のdesign laneと実機確認の項目を置いた。Contract Coverage LedgerとTrace Matrixの時刻部分を対象外として標示し、確定部分と既存行は保持した。
+- pass BのP3（CMD受渡し）: `docs/function-design/41-cmd-pos.md` と `docs/architecture/cmd-task-specs.md` に分類経路のCountEnvironmentは次のlaneで決めることと、BIZからMNTを直接呼ばないことを記録した。
+- pass BのP3（現在地）: `docs/Plans.md` の㉗の次の行動 / Wave Registry laneと、`docs/backlog.md` のSTK-1 / STK-2をround天井・owner disposition・closure → Ready → mergeへ同期した。backlogの着手対象へ次のdesign laneを起票した。
+- source / UI / Matrix: 下記sourceのproposed節は参照文のみを追加し、契約本文を保持した。`30-biz-product-service.md` / `55-ui-csv-import.md` はclock_unverifiedを㉘の準備表示へ出さないことを明記。`docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md` は時刻oracleとlifecycleの印・混在行の区分を追加し、Residual Test Gapsに実測後販売の時刻Afterが㉘では未実装となることを記録した。OS監視・generationによる計数context失効は確定部分に残した。
+
+#### 対象箇所の全数と参照
+
+指定command `rg -n 'pos_time_bases|pc_clock_epoch|TimeEvidence|time_basis_id|clock_unverified' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` の着手時出力は`39 行 / 13 file`。内訳はADRが`11 行`、S1〜S6のsourceが`28 行 / 12 file`。一致行の開始版lineは以下のとおり（件数はtoken数ではなくrgの出力行数）。
+
+- `docs/adr/2026-09-18-stocktake-time-evidence.md:21,37,39,95,97,99,107,212,218,219,221`。
+- `docs/db-design/pos-tables.md:12,13,27,29,31,33`、`docs/db-design/tracking-system-tables.md:15,19,23,40`。
+- `docs/function-design/20-io-product-repo.md:14,15,18`、`21-io-inventory-repo.md:8`、`24-io-csv-import-repo.md:13,15`、`32-biz-csv-import-service.md:9,25,27`、`35-biz-stocktake-service.md:17,25,38`、`42-cmd-sales-stocktake.md:15,25`、`73-ui-stocktake.md:17`。
+- `docs/architecture/biz-task-specs.md:9`、`io-task-specs.md:5`、`mnt-task-specs.md:8`。
+
+ADRの但し書きでADR内の一致を扱い、sourceはproposed節の冒頭で時刻部分を限定して参照した。指定patternに現れないepoch / CountEnvironment / 準備表示も周辺検索・本文で確認し、`43-cmd-settings-log.md` / `41-cmd-pos.md` / `30-biz-product-service.md` / `55-ui-csv-import.md` / `architecture/cmd-task-specs.md`を補った。
+
+`rg -n '適用範囲の但し書き' docs/function-design docs/db-design docs/architecture` → 参照は`19 箇所 / 17 file`。是正後の参照位置は、DBのpos / trackingが各`:5`、function-designの20 / 21 / 24 / 30 / 32 / 35 / 42 / 43 / 73が各`:5`、41が`:7,:11`、55が`:8`、architectureのbiz / io / mntが各`:5`、cmdが`:5,:11`。追加文を含む指定patternの再検索は`49 行 / 16 file`で、開始時の全一致はADR本文または上記source参照の適用範囲内に残る。
+
+#### 実施した検証
+
+- AC1: `rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` → D1〜D9、出力`9 行`。
+- AC2: `python3 scripts/probes/stocktake_time_model.py` → `exit 0 / PASS`。モデルの成功はruntime実装や恒常運用の成立を意味しない。
+- AC3: S1〜S6の対象sourceへ `rg -n '時点証拠契約|SPEC-STK-TIME'` を実行してproposedの入口と層間の対応を確認。`rg -n '2026-09-19|本番|初導入' docs/project-memory.md` と `rg -n 'project-memory' AGENTS.md docs/PROJECT_HANDOFF.md` で確認日・回答要旨・本番開始時の追記義務・初導入が削除許可でない但し書きと入口を確認した。
+- AC4: `git diff --name-only 36891af8 -- src src-tauri`、`git diff 36891af8 -- docs/function-design/90-traceability.md docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/templates`、`git diff 7de29376 -- scripts/probes/stocktake_time_model.py` → すべて空。基準`36891af8`からの既存モデル差分はGA1の限定是正のまま。変更docの要求tokenは基準`36891af8` / 開始`b5822644`と多重集合で一致。保護節と過去記録は開始版と一致し、sourceの旧本文行は順序も含め全て保持した。
+- AC4 mutation: TMPDIR配下の隔離copyだけでcancel_importを`36891af8`の明細ごとの補償へ戻した。実行は`exit 1 / AssertionError`となり、check_lifecycleの補償一覧assertで検出した。trackedモデルへmutationは適用していない。
+- AC5 / AC7: `bash scripts/doc-consistency-check.sh` / `bash scripts/doc-consistency-check.sh --target plan` → `exit 0 / ERROR 0 / WARN 3（既知PK6のみ）`。新規追加行のM3警告語は`0 件`。`bash scripts/check-workflow-git.sh` → PK5/STATECAP OK。`git diff --check` → `exit 0`。
+- AC6 / AC7: 32の外部probe表の精算系列・時計対応・EJ完全性・商品同定と不成立時の動作、42 / 73のWindows監視・native失敗 / 復旧条件を点検。51 / 60のstocktake_guardとMatrixのmaster write、移行前import拒否・日付preflight・新形式後追いoracleを保持した。実機は未実施。
+- 公開範囲: 発注書の禁止原文patternによる非archive docsの検索は`0 件（rg exit 1）`。新しいowner発言原文は転記していない。
+- Review-only skipped because: 発注書72が単一thread・直列・subagent不使用を指定。Writerの自己点検は独立closureの代替ではなく、Coordinatorが是正headにOpus closureを発注する。
+- 未実施: runtime / migration / bindings / traceability生成、Rust / frontend全量、実機、独立Final Review、push / PR操作、helper status / record / ready / merge。PR操作禁止の指示に従い、このrunのhelper照会も行わず、serverの現状態は新たに確定していない。
+- 停止した項目・Scope / ACとの衝突はなし。後続の時刻経路はowner dispositionによる実装対象外であり、このrunの是正漏れではない。
