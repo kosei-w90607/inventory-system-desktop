@@ -6,6 +6,8 @@ SPEC-STK-TIME-D4 / D8。商品マスタのcommit_importでstocktake_guard + shar
 
 ファイル修正/再preview、または現在のUIが許す対象選択の見直しへ戻す。利用者の再同意だけでguardを無効化せず、pos_stock_syncを自動変更しない。正しい修正後のcommitもサーバーで全候補を再検証する。エラー行を除いた正常行の通常取込みと、業務TX全体が拒否されたこの状態を区別する。runtimeのUI oracleはtyped codeによる対象表示・選択保持・成功扱いなし・自動再送なしを確認する。
 
+既存商品の非連動化を含む場合、previewは対象商品と「在庫連動をやめても、画面の在庫数は直りません」を表示し、成功結果は未調整と型付きの回復先を保持する。個別フォームと同じBIZの切替記録を使い、batch操作で無記録にしない。
+
 > 対応仕様: REQ-104 / UI-01c
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-01c、`docs/SCREEN_DESIGN.md` 一括インポート画面、`docs/UI_TECH_STACK.md` §6.5.4、`docs/function-design/26-io-product-csv-importer.md`、`docs/function-design/30-biz-product-service.md` `preview_import` / `commit_import`、`docs/function-design/40-cmd-product.md`、`docs/function-design/42-cmd-sales-stocktake.md` §22.6

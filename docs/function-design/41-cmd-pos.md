@@ -6,7 +6,7 @@ SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、com
 
 read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、DB lock→BIZ-03の同名照会→error変換だけを行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
 
-32のissue.codeにimport_identity_missing、issueにsettlement_dates: Vec<String>を含めてgenerated wireへ透過する。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
+32のissue.codeにimport_identity_missing / settlement_missing / sync_disabled_unreconciled、issueにsettlement_dates: Vec<String>とsource_ids: Vec<i64>を含めてgenerated wireへ透過する。source_idsは表示上の技術IDにせず対象の識別にだけ用い、欠落状態をstock_review.warningsへ複製しない。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
 
 parseの返却は既存previewへ[32のstock_review](32-biz-csv-import-service.md)を追加し、source ID・全JAN候補・証拠対象行はprivate cacheに保持する。既存のcache TTL、UUID検証、成功時削除・失敗時の扱いは維持する。BIZにcache/Mutexを渡さず、DB lockとcache lockを同時保持しない。
 
@@ -16,7 +16,7 @@ preview/commitのsource_identity_conflictもstocktake_guardの同名codeで透�
 
 rollbackのlegacy保留もstocktake_guardで対象を渡し、UIはCMD-10のlegacy_rollback_recheck用途で再実測する。回復後に同import IDのrollbackを再送する。CSV取消が再実測を運んだり、CMDでpendingを適用済みへ昇格させたりしない。
 
-ImportResultのstatus/売上集計は維持し、取込み後のrecount_targetsとwarningsを追加する。これらはcommitが実際に作ったflagからBIZが返す。売上0の正常完了を失敗に変えない。bindingsの生成とUI-07のkind/code分岐・preview mockの更新はruntimeで同時に行う。日報CMD-12とPLU CMD-08の意味は変更しない。
+ImportResultのstatus/売上集計は維持し、取込み後のrecount_targetsとwarningsを追加する。これらはcommitが実際に作ったflagと、その時点の非連動化の未調整対象からBIZが返す。売上0の正常完了を失敗に変えない。bindingsの生成とUI-07のkind/code分岐・preview mockの更新はruntimeで同時に行う。日報CMD-12とPLU CMD-08の意味は変更しない。
 
 > **2026-06-30 REQ-401 redesign note**: 本書のCMD-07は既存Z004商品別CSV取込みのTauri command契約を記録する。current operation のZ001/Z002/Z005日報取込みは [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) のCMD-12で扱う。CMD-07へ日報bundleを追加しない。
 

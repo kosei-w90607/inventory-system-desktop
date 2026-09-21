@@ -24,6 +24,8 @@ SPEC-STK-TIME-D1 / D7〜D9。既存の検索/HID・候補確認・一覧・確�
 
 通常保存、保留からの確認、記録詳細の「今の数を確認して直す」は[42のAPI](42-cmd-sales-stocktake.md)を共用する。legacy取消復旧だけは専用purposeと対象importを使う。訂正は新しい現物確認の追記であり、確定済み評価額は変更しない。
 
+非連動化後の未調整対象も既存の計数フローへ受け入れる。activeの保存後は「棚卸し確定まで在庫数は未調整です」を示し、確定または独立再実測の成功後に商品表示/準備照会をrefetchする。商品側issueの解消とimport由来flagの解消を混同しない。
+
 UI状態は未保存入力/tokenだけ、保存済みの正はDB/query。D-052のSSOTから保存先に応じたconsumerをinvalidateし、refetchで未保存数量を復元しない。runtimeではgenerated commands、bindings、error型、mockを同時に切替える。現行update_countの無検査入口を残さない。
 
 Windows L3の対象は (a) 検索→明示begin→計数→保存→次の商品、(b) 記録変化で拒否→新しい計数、(c) 保留一部保存→再起動後の再開、(d) 確定後に差0の商品も検索して独立再実測へ戻れること。文字・数量・状態・次操作の読める表示を確認する。通知登録失敗や保存直前の時刻変更はnative自動probeで検証し、operatorにDB操作を求めない。いずれもruntime/nativeは未実施。

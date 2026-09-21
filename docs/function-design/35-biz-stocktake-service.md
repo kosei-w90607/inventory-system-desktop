@@ -37,6 +37,8 @@ complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査す�
 
 legacy取消復旧は現在数の再実測RとN-Lの即時補正、activeがあればN/Nへの再基準化を同じTXで行う。派生itemはRのS/E・source_cursor・time_basis_idをコピーし、ledger_cursorだけを補正後の上限、観測順をRより後にする。公開request IDはRだけに記録し、itemはrebase内部IDとRへのFKを使う。通常の独立再実測からactiveを迂回する権限は与えない。
 
+非連動化後の回復も同じbegin/saveを使う。pos_sync_disabled_revisionより後の観測の版を持つ適用済み新方式実測が未調整解消の証拠になる。独立再実測（差0含む）は保存後、active measuredは確定後に解消と判定する。active保存だけやauto_filledは解消せず、表示「棚卸し確定まで在庫数は未調整です」を維持する。既存import flagは従来の受領条件で別に検査し、商品側issueのみを理由に確定を循環拒否しない。
+
 #### 読取り・失敗・検証
 
 一覧はN/Lに基づく保存差異と現在庫を別の情報として返し、未計数・自動補完・旧入力・要再確認をkind/flagで区別する。record detailは補正kind、再実測のN/L・差・時刻・参照元を返す。差0商品の訂正対象も既存のitem一覧/検索から選べるようにし、差異movementがある商品だけに入口を限定しない。

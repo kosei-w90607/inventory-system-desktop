@@ -12,11 +12,11 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 | stocktake_items | observation_kind TEXT | NOT NULL、DEFAULTなし、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
 | stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点 |
 | stocktake_items | rebased_from_recount_id INTEGER | NULLまたはstocktake_recounts.idへのFK。legacy取消復旧で作るN/N基準だけが元の再実測を参照 |
-| stocktake_items / stocktake_recounts | time_basis_id TEXT | NULLは時刻対応不明。D3の時計対応を識別する内部値。異なる対応期間を日時文字列だけで比較しない。NULLでも受領cursorによる証拠は使える |
+| stocktake_items / stocktake_recounts | time_basis_id INTEGER FK → pos_time_bases.id | NULLは時刻対応不明。D3の時計対応を識別する内部値。異なる対応期間を日時文字列だけで比較しない。NULLでも受領cursorによる証拠は使える |
 | stocktake_recounts（新設） | id INTEGER PK AUTOINCREMENT、stocktake_item_id INTEGER FK、system_stock INTEGER、actual_count INTEGER、count_started_at TEXT、counted_at TEXT、ledger_cursor INTEGER、source_cursor INTEGER、observation_revision INTEGER、request_id TEXT、reason TEXT | 参照明細・N/L・時点証拠・版・要求IDはNOT NULL。request_idはUNIQUE。reasonはphysical_recheck / legacy_rollback_recheckのCHECK。値はappend-only、actual_countは非負。importへのFKは置かない |
 | stocktake_recount_flags（新設） | stocktake_item_id INTEGER FK、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL、明細/importを複合UNIQUE。理由はtemporal_unknown。取込みと同じTXで立て、受領後の有効な新実測か当該importの取消で解消する |
 
-cursorの0は空集合であり、source/movement IDへのFKにはしない。FKは親明細・再実測・importにだけ張り、親は業務取消で物理削除しない。auto_filled / uncountedには開始・両cursor・observation_revision・実測request IDを付けない。legacyのNULLを有効なmeasured証拠へ補完しない。公開request IDはUUID、派生N/N明細の内部IDは `rebase:<recount_id>` とし、公開saveでは内部IDを拒否する。
+cursorの0は空集合であり、source/movement IDへのFKにはしない。FKは親明細・再実測・import・時刻基準に張り、親は業務取消で物理削除しない。auto_filled / uncountedには開始・両cursor・observation_revision・実測request IDを付けない。legacyのNULLを有効なmeasured証拠へ補完しない。公開request IDはUUID、派生N/N明細の内部IDは `rebase:<recount_id>` とし、公開saveでは内部IDを拒否する。
 
 実測順序の一意性は、商品別のchecked stock_revisionを進めて記録するBIZの単一TXで保証する。recountとitemのrequest IDを両方照会し、同じ公開IDが両方に見つかる異常は拒否する。検索用indexはitemの(product_code, observation_revision)、recountの(stocktake_item_id, observation_revision)、flagのcsv_import_idとする。indexは証拠の代わりではない。
 

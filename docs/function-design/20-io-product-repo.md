@@ -7,6 +7,7 @@ SPEC-STK-TIME-D1 / D6 / D8。以下の既存APIは現行契約であり、新し
 | repo操作の入出力 | 処理・返却契約 |
 |---|---|
 | product_repoの更新型 | ProductUpdatesからstock_quantityを除く。数量更新SQLの分岐を残さない。NewProductの初期数量は維持。商品内部読取りにはstock_revisionを加え、UIへ生の版を渡さない |
+| 非連動化記録の保存/読取り | (tx, product_code, 変更後revision)でpos_sync_disabled_revisionを設定。商品内部読取り/準備照会は非連動・廃番も除外せず、最新の適用済み新方式実測の版と現在の回復先を返す。BIZが未調整を判定し、IOがflagを一括削除しない |
 | stocktake_repoの計数開始用読取り（conn, item_id） | item・親status・productのL/revision・最新の有効観測・現在のactive所有者を同じDB snapshotで取得。不在はNone。measuredの新旧はobservation_revision、legacyの存在を未実測へ落とさない |
 | source上限取得（conn） | pos_import_sourcesの最大ID、空なら0。begin時にだけcontextへ固定する。保存時の値へ差し替えない |
 | ledger上限取得（conn, product_code） | 呼出し時点の当該商品movement最大ID、空なら0。void済みもIDを再利用しない。通常の実測/Rは補正INSERT前、legacy取消復旧の派生N/N明細は補正後に再取得し、各snapshotと同じTXで保存 |

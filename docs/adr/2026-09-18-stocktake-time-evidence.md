@@ -61,7 +61,8 @@ IOはマシン番号、帳票種別、精算番号、精算日時をOptionで抽
 - 受領順と精算順は別。逆順取込み、同日複数精算、番号のリセット・桁戻り、マシン識別の変更を通常の連番と推測でつながない。系列不明なら時刻による自動適用はしない。
 - 同じ精算の別hashは追加売上と決めつけない。内容の重複か訂正版か分からない間はcommitを拒否する。同一hash重複拒否も維持する。
 - 取込み取消は、資料受領の事実を消さない。精算境界の証拠の有無と、売上が有効に取り込まれているかを別に扱う。0売上の資料も境界として残す。
-- 精算の欠落は欠落として表示し続ける。利用者の「ファイルが無い」という回答で、欠落売上を0と認定しない。現在庫の復旧と過去売上の欠落は別の結果である。
+- 本laneの欠落表示は、受領したが精算同一性guard（別hash衝突・識別メタ不足の同日追加）で拒否され、当該sourceのactive importがない資料に限定する（表示「取り込めていない精算資料があります」）。BIZ-03が拒否理由と初回拒否日時をsourceへ独立の証拠TXで保存し、read-onlyの準備照会が `PosStockReadiness.issues.code=settlement_missing` としてsource ID/精算日を返す。stock_review.warningsへ欠落状態を複製しない。再起動・元import取消・現在庫の再実測・「ファイルが無い」の確認で消さず、当該sourceにactive importが成立したときだけ表示対象から外す（拒否証拠は保持）。保存失敗は業務拒否を維持して記録失敗を返し、通常の拒否記録成功と扱わない。
+- 未提出の精算・系列の欠番は本laneでは検出/表示しない。系列がverifiedでも番号の穴を売上欠落と断定せず、完全性検査が必要なEJはD5の別契約を維持する。拒否された別版が既存売上と重複している可能性もあるため、欠落数量/金額や別売上の存在を断定しない。欠落issueなしを「全精算が揃った」と表示しない。
 
 識別メタが不足する同日追加は拒否する。同じsettlement_dateのactive import（completed / completed_partial）があり、取込み対象sourceまたは比較先active importのsourceのいずれかでmachine_no / settlement_noの片方でも欠ける場合、別精算と確認できないため、previewとcommit TXでsource_identity_conflictとして業務write前にfile全体を拒否する。同日追加確認では解除しない。両方欠落・片方欠落・比較先sourceを取得できない場合を候補なしへ落とさず、仮キーも作らない。同日activeがない場合はこの追加guardの拒否対象ではないが、既存のhash拒否と全受領sourceに対する同一精算別hashのguard等は引き続き適用する。
 
@@ -87,17 +88,23 @@ D4の早期returnより前に、区間の逆転と、受領順の証拠との矛
 
 信用失効は売上/在庫の業務TXと独立した証拠TXで確定し、後続の保留・拒否・業務失敗でも残す。業務TX再検査で新しい失効を検出した場合は業務write前に戻し、証拠TXで失効してから再判定する。既にinvalidなら同じ異常で再試行ループしない。失効保存失敗は外部時刻判定の利用停止と業務拒否にし、再検証なしで信用を復活させない。
 
-verifiedへの遷移は、owner-operated gateで対象・適用期間・誤差・系列の成立を確認した証拠を、BIZの内部反映処理が検証して保存する経路だけに限定する。通常のpreview/commit、利用者の確認操作、汎用設定キーからは昇格させない。期限超過は使用前にunverifiedとして扱い、再検証で同じ条件を満たすまで自動時刻分類を停止する。時計を合わせただけで過去のinvalidな対応を上書きして信用し直さない。
+時刻証拠は、gateが認定する基準とBIZが導出するfile境界を分ける。基準は `pos_time_bases` が所有し、time_basis_id、state（unverified / verified / invalid）、対象machine/report、series_key（reset区間を区別）とseries_rule（証明済みの対象番号範囲・順序・所属条件）、適用期間valid_from/valid_until、POS表示時刻からPC比較時軸への変換、clock_error_ms、timestamp_quantum_msを保存する。基準のverifiedへの遷移はowner-operated gateで対象・期間・変換・誤差・系列の成立を確認した証拠のBIZ内部反映だけ。通常preview/commit・確認操作・汎用設定キーは基準を認定できない。expired/invalidは再検証した新しい基準IDでのみ置き換え、旧基準を復活させない。
+
+file境界のproducerはBIZ-03。受領TXでrawメタとsourceを保存した後、preview/commitの分類前の証拠TXで、保存済みsettled_at・timestamp_precision、認定済み基準、同系列の前回sourceから導出し、sourceへ基準FKとTimeEvidence（lower_bound? / upper_bound? / predecessor_source_id?）を保存する。今回settled_atを変換・誤差/粒度拡張した上限をupper_bound、検証済み系列規則で今回より前と証明できる最も近い既知sourceのsettled_atを変換・拡張した下限をlower_boundとする。直接の前回でない場合は保守的下限に留める。前回未受領ならlower_boundとpredecessorはnull、上限だけでも保持する。受領順を精算順にしない。0売上/取消済みsourceも境界資料として使うが、同一性衝突・系列不明の候補は使わない。使用時に現在の全受領sourceで同一性も再検査し、後着した別hash衝突を無視して保存済み境界を再利用しない。
+
+sourceのtime_evidence_state=verifiedは、基準が現在もverified・期限内で、対象・系列・精度が一致し、使う境界が適用期間内、メタに不足/矛盾がなく境界を少なくとも一方導出できた場合だけBIZが設定する。基準の認定とは別の導出結果であり、基準IDのコピーだけで昇格しない。系列未証明、reset不明、今回の識別/日時/精度不足、適用期間外、適用基準が一意に定まらない場合なら境界を導出せずunverifiedとする。時刻比較時には実測のtime_basis_idと窓の適用期間も再検査する。series_ruleがメタから同系列への所属と先後を一意に評価できない場合はラベル一致だけで導出しない。初回の未知の始端は補完しない。
+
+昇格側の伝播は、基準認定または前回sourceの後着受領時に、BIZが該当する保存済みsourceを証拠TXで再評価する。条件を満たすsourceだけ境界を導出してverifiedへ進め、それ以外はunverifiedのまま。新しい基準の認定は過去資料への無条件遡及許可ではない。失効側は基準stateと参照source全件のstateを同じ証拠TXで降格し、利用時も基準をJOINして検査する。期限超過は保存stateにかかわらず使用不可。伝播保存の失敗は時刻利用を停止して業務を拒否する。受領cursorによるBeforeは維持する。
 
 ### SPEC-STK-TIME-D4: 前後の判定は一つの関数で行う
 
 基準は最新の有効な実測。実測の新旧は商品状態の版で決め、同秒のtimestampのMAXに依存しない。force_fillと廃番自動入力は実測ではなく、この基準を作らない。
 
-まずD3の矛盾検査で使用可能な時刻証拠を確定し、その後の判定順序を以下とする。previewとcommitが同じBIZの判定を呼び、commit TXが現在の証拠で再判定する。
+まずD3のfile境界導出と矛盾検査で使用可能な時刻証拠を確定し、その後の判定順序を以下とする。previewとcommitが同じBIZの判定を呼び、commit TXが現在の証拠で再判定する。
 
 | 条件 | 在庫への扱い |
 |---|---|
-| `pos_stock_sync=false` | 既存契約どおり売上のみ。在庫連動へ推測昇格しない |
+| `pos_stock_sync=false` | 売上のみ。在庫連動へ推測昇格しない。下記の非連動化の未調整記録は維持し、readyを現在庫の確認済みという意味にしない |
 | 実測履歴そのものがない（NeverObserved） | 未実測商品として通常の在庫連動。ただし下記の共有JANの優先規則と、商品照合・重複等の既存拒否は維持 |
 | 実測履歴はあるが時点証拠が欠ける（LegacyObserved） | 未実測へ読み替えず判定不能。新しい実測で移行する |
 | 実測開始前に当該資料を受領済み（D2） | 全部実測前。販売・返品とも在庫変動をスキップ |
@@ -120,6 +127,14 @@ EJが判定できた場合、売上はZ004の日計純数量、在庫は実測�
 - 検査は警告だけで有効化を通すものではなく、曖昧なJANを在庫連動対象として有効化する操作・新たにその曖昧さを作るマスタ変更を拒否する。既存の不適合設定は一覧に出し、商品同定の修正か、利用者による非連動への切替を案内する。非連動への切替は在庫を直す処理ではないため、その点を明示し、既存の要再確認flagも消さない。再有効化前には現在数の再確認と一意性の成立を要求する。pos_stock_syncの変更は商品状態の版を進め、開いた計数contextを失効させる。
 - 上記の再確認は、既存のcount APIでmeasuredを保存することで行い、確認checkboxでは代替しない。対象の明細がない商品は前項の既知の制限に該当し、対象範囲内の解除手段が整うまで非連動のままにする。新しい商品単独の計数APIをこの条件のために無断で追加しない。
 - 全行0でも、時点境界の評価や再確認に使った資料は売上0の取込みとして完了可能。要再確認・保留が解消して対象数0になった再previewで拒否しない。
+
+非連動化による保留の迂回を痕跡なしにしない。held集合は永続しておらず、受領メタから対象商品を復元できないため、BIZ-01は既存商品のtrue→falseを全て検出し、同じTXで `products.pos_sync_disabled_revision` に変更後のstock_revisionを保存する。heldだったかを推測して対象を絞らない。設定変更は許可し、現在庫や既存importのflagは変更しない。新規falseやfalse→falseの無変更では記録を作らず、再度true→falseになれば新しい版へ更新する。未調整ではない商品にも確認を求め得る費用を受け入れ、無記録の過大在庫を避ける。
+
+BIZ-03の準備照会は、非連動化の版より後の新方式の適用済み実測（完了したmeasured明細または独立recount）がない商品を、pos_stock_sync/廃番にかかわらず `sync_disabled_unreconciled` issueとして返す。記録は削除せず、その版との比較で解消を判定する。pendingへの新実測保存だけでは現在庫が直らないため、確定まではissueを残す。force_fill・取込み/取消・再起動・設定再有効化では解消しない。BIZ-01は未解消での再有効化をrecount_requiredで拒否する。一意性など既存guardも維持する。
+
+回復先は現在のactive明細、なければ完了済み明細に対する独立再実測、どちらもなければno_count_targetとする。明細がない商品はその制限を明示して記録を残し、偽明細や単独の新計数APIを作らない。activeでは通常の計数→確定、独立再実測では保存で現在庫を補正し、適用済み基準を新しい版にする。issueは通常の確定を妨げるimport flagではないため、実測済みactiveの確定を循環して拒否しない。
+
+UIは切替前に「在庫連動をやめても、画面の在庫数は直りません。取り込めていない売上がある可能性があります。あとで今の数を確認してください」と表示する。保存後も商品画面と取込み準備表示から同じtyped issue/回復先へ戻れる。再previewで非連動商品がheldから外れ売上のみcommitできても、stock_review/取込み結果に「在庫数は未調整です」を表示し、準備issueは残す。これは拒否の確認解除でも、売上から欠落数量を推測する処理でもない。
 
 保留集合はpreviewから導出する一時結果であり、新しい保留tableは作らない。再起動・preview失効後は利用者が同じfileを再選択し、hashから同じ受領記録へ接続して、現在の実測・マスタで集合を再生成する。保存済み実測と補正はDBに残り、未保存入力は復元しない。`pos_import_sources` だけから元fileの明細を復元できるとは扱わず、fileを用意できなければ未取込みのまま。要再確認flagは、通常適用されたimportに属する永続状態として別に保持する。
 
@@ -145,7 +160,7 @@ EJの検査が示せるのは提供資料の整合性と、証拠のある期間
 - 対象movementを吸収した最も早い**現在も効力を持つ実測**を探す。進行中で上書きされた旧カウントは対象外。確定済みの明細と独立再実測は残る。
 - それが進行中なら、取消の数量をsnapshotにも同じ向きで戻す。`system_stock -= SUM(voided.quantity)`。後で確定する補正量と現在庫の二重増減を防ぐ。
 - このsnapshot補正では実測自体のS/E、N、cursor、observation_revisionを変更しない。商品状態のstock_revisionだけを進める。取消を新しい物理実測として順序へ挿入しない。
-- それが確定済み・独立再実測なら、通常の取消で在庫を戻した後、同TXに同額を打ち消すstocktake movementを作る。元の実測値・評価額を書き換えない。
+- それが確定済み・独立再実測なら、対象movementを全てvoidして通常の取消で在庫を戻した後、商品ごとに取消quantityをchecked SUMし、同TXに純量と同額のrollback_compensationを非0なら商品ごと1本だけ作る。純量0なら作らない。pendingのsnapshot補正も同じ純量を使い、行ごとや複数観測へ重ねて補償しない。元の実測値・評価額を書き換えない。
 - 吸収した実測がなければ、通常の取消だけ。スキップ行にはmovementがなく、戻す在庫もない。取消で元のimportが立てたflagだけを消す。
 - 独立再実測とその補正はimportを参照しない。import取消で消さない。再取込みの新movementは新IDとなる。
 - 再実測・snapshot変更・取消・補正・flagの更新は同一TX内で商品状態の版にも反映する。開いていた古い計数contextを無効にする。
@@ -190,12 +205,13 @@ pendingを取消TX内で適用済みへ昇格させる案は、算術上の成�
 
 | 所有 | 保存する情報 | 用途 |
 |---|---|---|
-| products | stock_revision | 計数中の変化・基準の変更検出、実測の新旧。数量更新はupdate_stock_quantity内部でchecked増分を強制し、数量以外の対象更新も同じTXで共通の版更新処理を通す |
+| products | stock_revision、pos_sync_disabled_revision（nullable） | 計数中の変化・基準の変更検出、実測の新旧。数量更新はupdate_stock_quantity内部でchecked増分を強制し、数量以外の対象更新も同じTXで共通の版更新処理を通す |
 | stocktakes | reconciliation_version（旧データ0、新方式1） | 旧記録の表示を保存し、移行前の式で保存された明細を区別 |
 | stocktake_items | 既存のN/L/Eに加えobservation_kind（uncounted / measured / auto_filled / legacy）、S、observation_revision、ledger_cursor、source_cursor、保存request ID、rebased_from_recount_id（nullable） | 進行中・確定済みの実測種別を正に識別。NULLだけから推測しない。復旧で派生した基準は元の再実測へ関連付け |
 | stocktake_recounts（新設） | 明細への参照、N/L/S/E、ledger_cursor、source_cursor、observation_revision、保存request ID | 独立再実測のappend-only記録。import IDを要求しない |
 | stocktake_recount_flags（新設） | 明細・importの組、理由 | 判定不能のまま確定させない |
-| pos_import_sources（新設） | 単調ID、hash UNIQUE、受領時刻、抽出した精算メタ情報、時刻証拠の適用範囲・検証状態 | 売上commit前の受領証拠、精算区間の証拠 |
+| pos_time_bases（新設） | gate認定の基準ID・状態・対象/系列・適用期間・時計変換/誤差/粒度 | BIZだけが認定・失効。sourceと実測が同じ基準を参照 |
+| pos_import_sources（新設） | 単調ID、hash UNIQUE、受領時刻、抽出メタ/精度、基準FK、file固有の境界・導出状態、初回の同一性拒否理由/日時 | 売上commit前の受領証拠、BIZが導出する精算区間の証拠 |
 | csv_imports | sourceへの参照 | 売上の有効・取消状態。資料の存在とは分離 |
 | inventory_movements | 明示的な棚卸し補正区分 | 記録詳細の区別。時刻から推定しない |
 | migrationの不変メタ情報 | legacy_movement_ceiling | 移行後movementが旧実測に吸収され得ないことを識別。吸収済みcursorの捏造には使わない |
@@ -264,7 +280,8 @@ migrationは既存データの削除・過去の在庫補正を行わない。�
 | 取込みで要再確認 | 対象商品と理由を表示。進行中明細があれば未計数でもその明細へ、なければ完了済み明細を参照する商品単位の再実測へ |
 | 保留中に再起動・preview失効 | 同じfileを再選択して再preview。保存済み実測を使って残る対象を再生成し、未保存だけ新しく数える |
 | 時計・期間が不明 | 「販売の前後を確認できません。今の数を確認してください」。資料は受領済みなので再実測が復旧になる |
-| 資料欠落 | 欠けた精算を表示し、資料を追加する。現在庫を再実測で直しても過去売上の欠落表示を消さない |
+| 拒否された未取込み資料 | settlement_missingの精算日と理由を表示し、元資料/既存記録を確認する。現在庫の再実測で表示を消さず、未提出資料や欠番全般を検出したとは表示しない |
+| 在庫連動をやめた後の未調整 | 商品画面/取込み準備に対象商品と「在庫数は未調整です」。active計数→確定、なければ独立再実測へ。参照明細なしは制限を表示 |
 | 記録詳細から訂正 | 「今の数を確認して直す」。過去の確定値の編集とは表示しない |
 | 旧取込みの取消を保留 | 「この取込みを取り消す前に、対象商品の今の数を確認してください」。専用の再確認で現在庫と進行中明細を整え、取消を再試行する |
 

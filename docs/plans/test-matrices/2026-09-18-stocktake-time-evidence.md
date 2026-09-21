@@ -58,7 +58,11 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D3 / D8 / D9 | 旧取込みの行き止まりを本番前に表示しない | integration / wire / UI | `req401_import_identity_preflight_dates` / 複数日のsourceなし・片方/両方メタ欠落のactiveを、import_identity_missing + 重複なし昇順settlement_datesで返してready=false。連動商品なしでも検出、取消済みだけの日付は除外。CMD/bindings/UIに全日付と準備未完/解決不可の案内が届き、CountRecoveryTargetは空。空の初導入DBではこのissueなし、他issueがあればready=falseを維持 | 商品だけ走査する、INNER JOINで旧importを落とす、message解析/偽item IDで表示する、初導入申告で検査を省略する |
 | D3 / D8 | 初導入条件を過去日取込み禁止へ変える | integration / positive | `req401_new_metadata_late_import_allowed` / メタ完備の別精算どうしで、同日active追加確認後に過去日の後追いcommit成功。本番開始日/最終取込み日より前も対象。他のguardは成立済み、未実測の一意連動商品なら売上と在庫減算を一度だけ保存。受領sourceへ原本のmachine_no / settlement_no / settled_atが保存されていることも確認。全く同じfileの再送は拒否 | 日付で足切りする、DB列だけ追加して抽出/保存を忘れる、同日を一律拒否する |
 | D3 | 不正/欠落/期限切れTimeEvidenceを使用する | negative / boundary | `req401_time_evidence_validation` / 不正JSON、必須値欠落、負の誤差、粒度0、逆転期間、不在参照は自動分類不可。`req401_time_evidence_expiry` / valid_until内・一致・超過を検査、超過はunverified。受領cursorのBeforeは維持 | state='verified'だけを見る、不正値を既定値で補完する、失効後も信頼する |
-| D3 | 通常操作がverifiedを作る | authority / state | `req401_time_evidence_promotion` / 通常preview/commit・追加確認・汎用設定キーから昇格不可。owner-operated gate成立済み証拠の内部反映だけ許可、invalidからの復活にも再検証が必要 | 利用者の時計合わせ済みcheckboxや設定変更で過去を信用する |
+| D3 | 通常操作がverifiedを作る | authority / state | `req401_time_evidence_promotion` / 通常preview/commit・追加確認・汎用設定キーから基準の認定/任意source昇格は不可。owner-operated gate成立済み証拠の内部反映だけが基準をverifiedへ認定。sourceは別行の導出条件が必須、invalid/expiredは再検証した新基準IDが必要 | 利用者の時計合わせ済みcheckboxや設定変更で過去を信用する |
+| D3 | 認定済み基準が日々のfile境界へ接続されない | integration / positive | `req401_file_bounds_producer` / 合成ms、verified基準B（期間0..1000、変換0、誤差1、粒度1、現在500）と証明済み同系列の前回settled_at=50・今回100からlower=49/upper=102と前回ID/BのFKを保存。受領cursorによる証明なし・同Bのcount窓200..201ならBefore、20..21ならAfter。0売上/取消済みの前回でも同値。preview/commitで同じ結果 | settled_atを保存するだけ、基準とfile境界を混同する、consumerだけ実装する |
+| D3 | 基準verifiedだけで全sourceを信用する | negative / authority | `req401_file_bounds_not_derived` / 同Bでも系列未証明/reset不明/今回machine・番号・日時・精度の欠落/対象違い/期間外/基準候補が一意でない場合は境界なし・unverified。前回だけ不在ならupper=102、lower/predecessor=NULL、count20..21はUnknown、200..201はBefore。実測の基準違い/窓が期間外でも時刻分類不可 | stateだけコピー、初回を0時で補完、別時計のcountへ比較する |
+| D3 | 昇格と失効の伝播が非対称 | state / TX | `req401_file_bounds_propagation` / 未認定で受領済みの適格sourceだけ基準認定時に導出。今回を先に受領→前回後着でlower=NULL→49。基準invalid時に同B全source降格、受領Beforeは維持。現在1000は期限内、1001は使用不可。失効/昇格の保存失敗は時刻分類・業務writeなし、再検証は新Bで再導出 | 無条件一括昇格、受領順を系列順にする、片方だけ失効、業務rollbackで信用が復活 |
+| D3 / D9 | 拒否資料が再起動/再実測で消える | persistence / wire / UI | `req401_rejected_settlement_visible` / 精算日Dの別hash拒否・メタ不足同日追加それぞれでsourceへ初回拒否を保存。activeなしならissues=[settlement_missing(source_ids=[S], settlement_dates=[D])]（他issueなしfixture）、ready=false、stock_reviewに欠落warningなし。現在庫10→再実測8後も同issue、再起動後も同値。当該Sの正当なactive成立時のみ対象外、取消後は再表示。未提出/欠番だけならissueなし（系列verifiedでも同じ）、全精算完備とは表示しない | 拒否を記録せずpreview cacheだけ使う、数量補正で資料不足を解決、番号の穴から未検証の欠落を推定 |
 | D3 | 0売上・取消済み資料 | persistence | `req401_source_survives_zero_and_rollback` / 受領事実を維持 | 0件guard/取消で境界の事実を失う |
 | D3 / D4 | 受領順beforeと信頼済み時計afterが矛盾 | model / integration | `check_counterexamples` / 開始の最遅候補より後、かつEより前の下限で時計を無効化。開始の誤差範囲内・接触は無効化しない。`check_diagnostic_order` / legacyでも区間逆転検査が先行。runtime `req401_clock_causal_conflict`で他fileへの失効伝播、受領beforeの維持を検証 | Eまで検出を遅らせる、拡張後の最早始端と比較する、早期returnで検査を迂回する、同じ時計対応を別fileで信用する |
 | D3 | held/業務TX失敗で時計失効が消える | TX / recovery | `req401_clock_invalidation_survives_rejected_commit` / commit時に新発見した矛盾を別の証拠TXで保持し、次fileもその対応を使用不可。失効保存失敗では利用停止・write0 | 信用の失効を業務rollbackへ巻き込む、invalidで再試行ループする |
@@ -68,6 +72,8 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D4 | 共有JAN、未実測と実測済み・在庫非連動候補の混在 | negative / model / integration | `check_counterexamples`、runtime `req401_shared_jan_all_candidates` / 一意でない在庫の自動配賦を正しい扱いにしない | 先頭候補だけで再確認を閉じる、在庫連動候補が一つなら共有を見逃す |
 | D4 / D5 | 共有JANや時計/EJ未検証を本番準備済みと表示 | state / UI | `pos_stock_readiness_preflight` / 自動連動できない条件を有効化前に表示し、値の無断変更なし | 恒久的に保留する設定を通常利用可能と扱う |
 | D4 | 曖昧JANを警告だけで保存する | write / TX | `req401_ambiguous_jan_sync_rejected` / create・update・商品一括importそれぞれで曖昧な連動有効化/新しい共有を拒否、TX全体write0、既存pos_stock_sync不変。batch内共有・preview後の別商品追加・非連動との共有も検査 | preview表示だけ実装しcommitを通す、拒否商品のみskipして他行を書き込む |
+| D4 / D9 | 非連動化でheldを無記録に解除する | state / TX / UI | `req401_sync_disable_retains_recovery` / 完了済みP在庫10、後着F販売2でheld→Pをoff。変更後revisionを商品に保存、在庫10/既存flag不変、issue=sync_disabled_unreconciled。再preview ready→売上のみcommitしても在庫10・issue/結果warning保持。新しい独立再実測8で在庫8・issue解消、切替記録は保持。再起動/廃番/取消/同意/再有効化未遂でも消えない。新規false/false→falseは新記録なし、再度true→falseは新しい版 | held履歴だけ検査して未記録商品を見逃す、readyを在庫調整済みにする、設定値だけでissueを隠す |
+| D4 / D9 | pending保存や旧実測で非連動化の未調整を解消する | integration / UI | 同testでactiveへN8保存時は在庫10/issue保持、確定で在庫8/issue解消。切替前の実測/auto_filledは解消しない。既存import flagは受領条件で別途解除必須。明細なしはno_count_targetと制限表示、偽明細なし。設定/版/切替記録の各保存故障で全write rollback。update/商品一括importとも同じ記録・操作前警告・保存後/再訪導線 | snapshotだけで現在庫修正済みにする、確定をissueで循環拒否、batch経路やfailureで記録を落とす |
 | D4 / D9 | master write拒否を保存成功に見せる | UI | `req401_master_sync_guard_ui` / 51/60でstocktake_guard+shared_jan_unresolvedの対象表示、入力/選択保持、成功遷移なし、自動off/自動再送なし | messageを解析する、拒否後に値を落とす/成功toastを出す |
 | D4 | flag残存とforce_fill | state | `req205_recount_flag_blocks_complete` / 確定拒否 | 補完で未解決を隠す |
 | D4 / D8 | activeなlegacyを一律file保留へ変える | state / integration | `req401_active_legacy_import_recheck` / Unknown後もactive所属なら通常適用+flag、完了所属はheld。旧activeの確定は新実測まで不可 | kindと所属を混同し、ADRにない一律heldを追加する |
@@ -78,7 +84,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | D6 | 反復count、複数再実測、後続active | regression / model | `check_lifecycle`、runtime `req205_req401_rollback_first_absorber` | supersededなpendingを使う、複数の観測へ重ねて補償する |
 | D6 / D8 | legacyの吸収不明を通常取消へ落とす、旧pendingの証拠を残す | regression / model | `check_legacy_recovery` / activeなし・未計数・measured、migration時点のpendingを検証。取消前write0、再確認後の取消とactive確定で二重補正なし。後着fileは新しいRの時点窓で判定 | pendingだけで旧確定済みの吸収不明を解除する、未計数activeのN/N更新を落とす、古い差異や時点証拠を残す |
 | D6 | 商品別取消純量0のlegacy例外、取消で独立再実測を消す | model / integration | `check_migration_and_fill` / 純量0取消の在庫不変・版更新・movement無効化。`check_lifecycle` / 独立再実測とその補正を保持。runtimeでflag処理と単一TXも検証 | 相殺する明細を個別にlegacy保留する、再実測補正をimportへ関連付ける |
-| D6 | 同importの明細ごとに補償を増やす | integration / numeric | `req401_rollback_compensation_grouped` / 同商品の取消quantity=-3,+1はSUM=-2、適用済み吸収先へ補償-2を1本だけ作り現在庫不変。-2,+2は補償0本 | 複数実測/複数明細へ二重補償、純量0のmovement作成 |
+| D6 | 同importの明細ごとに補償を増やす | model / integration / numeric | `check_lifecycle`、 `req401_rollback_compensation_grouped` / 同商品の取消quantity=-3,+1はSUM=-2、適用済み吸収先へ補償-2を1本だけ作り現在庫不変。-2,+2は補償0本 | 複数実測/複数明細へ二重補償、純量0のmovement作成 |
 | D7 | 過去の記録詳細からactiveを迂回 | negative | `req205_recount_active_owner_guard` / active明細へ案内 | 現在庫だけ補正し古いpending差異を残す |
 | D7 | 確定後もactiveのguardが残り独立再実測へ戻れない | model / integration | `check_lifecycle` / pending→complete→独立再実測が成功し新しい実数へ補正 | completeでactiveの所有を解除しない |
 | D7 | 同秒の確定・取消補償・再実測 | report | `req205_stocktake_movement_kind` / 確定差異件数は不変 | created_atで補正区分を推定する |
@@ -110,6 +116,9 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 | 計数context | なし | 開始・数量未保存 | 1商品TX | 商品/画面/版/時計変化 | stale入力を戻さない | 新context | 未保存は失効 | 書込み0 | 再計数 | D1、runtime未実施 |
 | 独立再実測 | なし | 計数中 | 記録と補正が同時保存 | import取消で消えない | DBが正 | 記録詳細から新実測 | 保存済み保持 | TX rollback | 保存要求の重複防止 | D7、runtime未実施 |
 | 資料受領 | 未受領 | 構文検証 | hash一意の受領記録 | 時刻証拠だけ失効可 | 受領と売上を区別 | 同hashは同ID | 保持 | 不正形式は証拠にしない | 同hash冪等 | D2/D3、runtime未実施 |
+| 時刻基準/file境界 | 未認定/未導出 | gate認定とBIZ導出を分離 | 適格sourceのみverified | 基準と参照sourceを降格 | 基準JOIN再検査 | 現在証拠で分類 | 保存済み基準/境界 | 伝播失敗は業務拒否 | 新基準で再検証 | D3、runtime未実施 |
+| 拒否された未取込み資料 | 記録なし | 同一性guard拒否 | 拒否証拠保存 | 当該sourceのactive成立で非表示 | issuesを再照会 | 表示維持 | 証拠から再表示 | 記録失敗も業務拒否 | 正当な取込み以外で解除しない | D3/D9、runtime未実施 |
+| 非連動化の未調整 | 記録なし | true→false | 商品に版を保存 | 新しい適用済み実測で解消 | 非連動/廃番も照会 | 商品/準備表示 | 記録維持 | 設定/版/記録を一括rollback | 通常計数/確定または独立再実測 | D4/D9、runtime未実施 |
 | import | 未取込み | preview/保留 | 売上と許可された在庫 | 新状態で再判定 | flagはDB、保留は再生成 | 重複拒否 | 同じfileを再選択しpreview再作成 | 業務write0 | 再実測後commit | D4、runtime未実施 |
 
 ## Adjacent Pattern Audit
@@ -126,7 +135,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 - duplicate / ambiguous input: 同じ保存要求、同じhash、同じ精算の別hash、共有JANを別々に検証。
 - unknown reference / dependency: legacy証拠、時計/EJ不明は通常適用に補完しない。未実測商品との区別を検証。
 - permission / write failure: count記録・補正・flag・revisionの各段で故障を注入しTX全体が戻る。
-- dry-run side effect: previewは資料受領の証拠だけを保存し、売上・在庫を変更しない。UIも取込み完了と表示しない。
+- dry-run side effect: previewは資料受領・時刻証拠・同一性拒否の証拠だけを保存し、売上・在庫を変更しない。UIも取込み完了と表示しない。
 
 ## Boundary Checks
 
@@ -160,7 +169,7 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 
 ## Mutation-style Adequacy Questions
 
-- SをEへ置換、未知の始端へ仮値挿入、境界 `<` を `<=` に変更、受領cursorを保存時に更新するとモデルの対応assertが落ちるか。
+- SをEへ置換、境界 `<` を `<=` に変更するとモデルの対応assertが落ちるか。未知の始端への仮値挿入はruntime `req401_unknown_start_no_midnight`、受領cursorの保存時更新はruntime `req401_receipt_before_count_start`へ割り当てる。モデルは境界/cursorの生成処理を持たず、この生成契約を検証したとは扱わない。
 - snapshotの取消補正を削除、最初の吸収先を最後へ変更、全観測へ補償するとライフサイクル検証が落ちるか。auto_filledをlegacyへ分類、新pendingでlegacy取消を許可、計数側の粒度拡張・時計矛盾検出を除去しても落ちるか。
 - legacyの早期return後へ時計検査を移す、因果矛盾の閾値を開始最遅候補からEまたは開始最早候補へ変える、completeのactive解除・migrationのactual=0条件を落とすと、対応assertが落ちるか。
 - 数量だけで版を比較、同秒で区分を推定、0行を除外、共有JANを先頭だけに縮退するとruntimeの該当検証が落ちるか。

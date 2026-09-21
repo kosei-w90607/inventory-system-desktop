@@ -2,7 +2,7 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-SPEC-STK-TIME-D1〜D8。IO-01は[20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md)の新契約で、kind・両cursor・request ID・flag・受領を保存し、数量と版の不可分更新を強制する。TXの開始/確定と業務判断はBIZが所有する。
+SPEC-STK-TIME-D1〜D8。IO-01は[20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md)の新契約で、kind・両cursor・request ID・flag・受領を保存し、数量と版の不可分更新を強制する。TXの開始/確定と業務判断はBIZが所有する。24はgate基準のpos_time_basesとsourceの基準FK/導出境界を分離保存し、23のsettled_at/精度と前回候補をBIZへ渡す。
 
 IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に抽出し、正常JANのゼロ行を証拠集合へ残す。時計・精算系列の信用や商品別のBefore/Afterは判断しない。既存のCP932・改行・符号・空スロットとPLU占有modeは維持する。新しいSQL/schemaは未実装で、[DB契約](../DB_DESIGN.md)をruntimeの移行・故障注入試験へ渡す。
 

@@ -6,6 +6,8 @@ SPEC-STK-TIME-D4 / D8のmaster write guardを[30](30-biz-product-service.md)と[
 
 確認dialogの同意でguardを解除せず、在庫連動を自動でoffにして再送しない。利用者が許可された設定変更を行うか、商品同定を確認してから保存を再試行する。editのJAN読取り専用をこの拒否のために解除しない。再有効化に現物確認が必要な場合も40のcode/actionで案内し、参照明細なしは解除不可と表示する。inline/Alert・focus・非色表示は既存フォームに揃える。runtimeのUI oracleは拒否後の値保持・DB不変・自動再送なしを確認する。
 
+既存商品の在庫連動をonからoffへ変更した時点で「在庫連動をやめても、画面の在庫数は直りません。取り込めていない売上がある可能性があります。あとで今の数を確認してください」をcheckbox付近のAlertに表示する。切替は禁止しない。保存後の未調整状態はBIZの型付き結果を保持して案内し、再訪時も商品取得から「在庫数は未調整です」と「今の数を確認する」を表示する。active明細へ、なければ独立再実測へ案内し、no_count_targetなら「この商品を確認できる棚卸し記録がありません」と制限を示す。active保存だけでは「棚卸し確定まで在庫数は未調整です」を残す。新規登録の初期offは切替警告の対象外。既存の保存成功遷移は維持し、再訪/取込み準備にも残る表示をtoastだけで代替しない。
+
 > 対応仕様: REQ-101 / REQ-102 / REQ-106 / UI-01b
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-01b、`docs/SCREEN_DESIGN.md` 商品登録・修正画面、`docs/function-design/30-biz-product-service.md` `create_product` / `update_product` / `toggle_discontinue` / `get_product`、`docs/function-design/40-cmd-product.md` CMD-01、`docs/function-design/20-io-product-repo.md` products / departments / suppliers

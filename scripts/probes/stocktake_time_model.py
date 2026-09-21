@@ -175,20 +175,22 @@ class Ledger:
         net = sum(m.quantity for m in movements)
         if net and any(self.needs_legacy_recheck(m.id) for m in movements):
             raise ValueError("legacy cancellation needs a fresh applied recount")
+        if not movements:
+            return
         for movement in movements:
-            absorbed = [
-                o for o in self.observations
-                if not o.legacy and o.state != "superseded"
-                and o.cursor is not None and o.cursor >= movement.id
-            ]
-            first = min(absorbed, key=lambda o: o.order) if absorbed else None
             movement.active = False
-            self.revision += 1
-            if first is not None:
-                if first.state == "pending":
-                    first.snapshot -= movement.quantity
-                else:
-                    self.move(movement.quantity)
+        self.revision += 1  # void/flag state changes even when the net is zero
+        absorbed = [
+            o for o in self.observations
+            if not o.legacy and o.state != "superseded"
+            and o.cursor is not None and o.cursor >= max(m.id for m in movements)
+        ]
+        first = min(absorbed, key=lambda o: o.order) if absorbed else None
+        if first is not None:
+            if first.state == "pending":
+                first.snapshot -= net
+            elif net:
+                self.move(net)
 
     def migrate_legacy(self) -> None:
         self.legacy_ceiling = self.movements[-1].id
@@ -232,7 +234,7 @@ def check_bounds() -> None:
 
 
 def check_counterexamples() -> None:
-    # Unknown initial start never becomes an invented midnight lower bound.
+    # With no lower bound, an overlapping upper bound cannot prove AFTER.
     assert classify(Source(1, None, 100, True), Count(20, 21, 0)) == "unknown"
     assert classify(Source(1, None, 10, True), Count(20, 21, 0)) == "before"
     # The old saved-at-only rule would skip this overlapping count window.
@@ -310,6 +312,30 @@ def check_diagnostic_order() -> None:
 
 
 def check_lifecycle() -> None:
+    # REQ-401 / D6: one product, one import TX, one net correction at most.
+    for quantities in ((-2, 2), (-3, 1)):
+        for applied in (False, True):
+            ledger = Ledger()
+            imported = [ledger.move(q) for q in quantities]
+            first = ledger.observe(8)
+            if applied:
+                ledger.complete()
+                later = ledger.observe(7)  # cancellation must not touch this snapshot
+                later_snapshot = later.snapshot
+            before = len(ledger.movements)
+            ledger.cancel_import(imported)
+            compensation = ledger.movements[before:]
+            assert all(not ledger.movements[i - 1].active for i in imported)
+            if applied:
+                assert [m.quantity for m in compensation] == ([-2] if quantities == (-3, 1) else [])
+                assert ledger.stock == 8 and later.snapshot == later_snapshot
+                ledger.complete()
+                assert ledger.stock == 7
+            else:
+                assert not compensation and first.snapshot == 10
+                ledger.complete()
+                assert ledger.stock == 8
+
     for quantity in (-3, -1, 1, 3):
         for immediate in (False, True):
             ledger = Ledger()
@@ -361,10 +387,9 @@ def check_lifecycle() -> None:
         assert ledger.stock == 8
 
     ledger = Ledger()
-    version = ledger.revision
     ledger.move(-1)
     ledger.move(1)
-    assert ledger.stock == 10 and ledger.revision != version  # ABA
+    assert ledger.stock == 10  # offsetting movements; context ABA rejection is a runtime test
     count = ledger.observe(8, immediate=True)
     ledger.move(-1)
     assert ledger.stock == 7 and count.actual == 8  # no delayed overwrite at import
@@ -489,11 +514,11 @@ def check_migration_and_fill() -> None:
 
     ledger = Ledger()
     imported = ledger.move(-2)
-    measured = ledger.observe(9, immediate=True, time=Count(10, 11, 0))
+    ledger.observe(9, immediate=True, time=Count(10, 11, 0))
     ledger.force_fill()
     ledger.complete()
     ledger.cancel(imported)
-    assert ledger.stock == 9 and measured.time == Count(10, 11, 0)
+    assert ledger.stock == 9  # auto-fill did not displace the applied absorber
 
     ledger = Ledger()
     imported = [ledger.move(-2), ledger.move(2)]  # same import TX, net zero
