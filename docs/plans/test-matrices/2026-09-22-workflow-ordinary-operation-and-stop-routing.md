@@ -8,11 +8,11 @@ Risk: R3
 
 ## Contracts Under Test
 
-- SPEC-WF-LIGHT1A D1: template の `## Ordinary Operation` 節。
-- SPEC-WF-LIGHT1A D2: Plan Review の最初の問い（既存の Plan Review の同じ run・同じ採否）。
-- SPEC-WF-LIGHT1A D3: Writer が編集前に止まったときの規則（§5.6）。
-- SPEC-WF-LIGHT1A D4: 問い合わせの行き先の表（Owner Effort Budget）。
-- SPEC-WF-LIGHT1A D5: D-090。
+- SPEC-WF-LIGHT1A-D1: template の `## Ordinary Operation` 節。
+- SPEC-WF-LIGHT1A-D2: Plan Review の最初の問い（既存の Plan Review の同じ run・同じ採否）。
+- SPEC-WF-LIGHT1A-D3: Writer が編集前に止まったときの規則（§5.6）。
+- SPEC-WF-LIGHT1A-D4: 問い合わせの行き先の表（Owner Effort Budget）。
+- SPEC-WF-LIGHT1A-D5: D-090。
 - 保護する隣接契約: `AGENTS.md` Decision and Approval Boundaries、`docs/AGENT_OPERATING_MANUAL.md` §3.2（codex-only の自己裁定の禁止、D-087）、Owner Effort Budget の上限と計上、Findings Freeze、Plan Review round 天井、Workflow State の field。
 
 ## Failure Modes
@@ -36,7 +36,7 @@ Risk: R3
 | D3 / D4 行 4 | F3 | 事例照合（review、negative） | T3: PR #85 の「合成モデルは変更しない」とモデル是正の要求の衝突が、発注の訂正ではなく独立確認 + Gated Amendment へ戻る | 規則文の条件を満たすと読める（正本が一意でない・意味を変える場合の除外が欠ける） |
 | D3 / D4 行 4・6・7 | F4 | 事例照合（review、negative） | T4: Execution Mode が codex-only の packet で、finding の採否・Gated Amendment の承認が owner に残る。D-087 でも owner の採用・裁定・Human Gate が残る | D3 の 7 か D4 行 4 の但し書きが欠け、Coordinator の起草役が裁定できると読める |
 | D2 / 隣接契約 | F2 | CLI + review（negative） | T5: `git diff origin/main --stat -- scripts .github src src-tauri AGENTS.md CLAUDE.md docs/ci.md` が空。`git diff origin/main --numstat -- docs/templates/plan-packet.md` の削除 0。`docs/DEV_WORKFLOW.md` の既存行に削除・変更なし。D2 の項目が「足さない」を明記する | checker・phase enum・Final Review Minimum・Human Gate・上限値のいずれかに差分が出る |
-| D4 / D5 / D2 | F5 / F7 | CLI | T6: `bash scripts/doc-consistency-check.sh` が link と anchor を解決する。AC4 の `rg` で表が `docs/DEV_WORKFLOW.md` だけにある | S3 / S4 が表を複製する、または anchor が見出しと一致しない |
+| D4 / D5 / D2 | F5 / F7 | CLI（file の実在と文字列の突合）+ review | T6: `bash scripts/doc-consistency-check.sh` が link 先 file の実在を確認する（同 script は anchor 部を捨てるため anchor は検査しない）。anchor は AC4 の `rg -n '^### 問い合わせの行き先$' docs/DEV_WORKFLOW.md` と参照側の `DEV_WORKFLOW.md#問い合わせの行き先` の突合、Plan Packet Rules → Review Rules の link は review で確認する。AC4 の `rg` で表が `docs/DEV_WORKFLOW.md` だけにある | S3 / S4 が表を複製する、link 先 file が無い、または参照側の anchor 文字列が見出しと一致しない |
 | D1 / D2 | F6 | 事例照合（review） | T7: PR #77（test 1 本の追加、production code 不変）のような設計を含まない変更が `not applicable` + 理由 1 行で足り、Plan Review で D2 の問いを要求されない。archive の packet は書き換えない | 節が全 packet に表を要求する、または遡及適用を求める |
 
 ## State Lifecycle Matrix
@@ -53,9 +53,9 @@ not applicable: UI・data・cache・route・import/export・永続 state を変�
 
 ## Negative Paths
 
-- missing input: `Ordinary Operation` を書かない設計 packet → 既存の Plan Review で finding になる（checker では止めない、非目的）。
+- missing input: `Ordinary Operation` を書かない設計 packet → 既存の Plan Review で finding になる（checker では止めない、非目的）。設計を含むのに `not applicable` とした packet → D2 により reviewer が理由の妥当性を確認し finding にする（著者の宣言だけで問いを無効にできない）。
 - invalid input: 操作列が「文書を完了できる」だけを示す → D1 の「通常運用の達成」と分ける指示で reviewer が指摘できる。
-- duplicate/ambiguous input: 問い合わせが表の 2 行に当てはまる → 行 3 の「結果が製品の振舞い・受容リスクの選択になる場合は 6 へ」のように、owner 側の行を優先する記述があるか（Review Focus）。
+- duplicate/ambiguous input: 問い合わせが表の 2 行に当てはまる（例: 正本の意味を変える範囲の拡張 = 行 4 と行 6）、または裁定権の所在が争点 → D4 の注記 (a) により owner 側の行（5〜7）を優先する。
 - unknown reference: 表に当てはまらない問い合わせ → 既存の `AGENTS.md` Decision and Approval Boundaries に従う（表は境界を変更しない、と明記）。
 - dependency missing: 発注前検査の script は未導入 → D3 は §5.6 手順 4 を指す。
 - permission/write failure: not applicable。
@@ -96,6 +96,8 @@ not applicable: UI・data・cache・route・import/export・永続 state を変�
 - D3 から 7（実行 mode 上の裁定）を除くと、T4 が不成立になるか → なる。
 - D2 から「足さない」の明記を除くと、T5 の review 部分が不成立になるか → なる。
 - D1 から `not applicable` の扱いを除くと、T7 が不成立になるか → なる。
+- D4 から注記 (a)（owner 側の行を優先）を除くと、行 4 と行 6 の両方に当たる問い合わせが Coordinator 側で閉じ得るか → 閉じ得る。
+- D3 から 8（§5.6 の既存文との関係）を除くと、既存文を根拠に 5 を迂回できるか → できる読み方が残る。
 
 ## Residual Test Gaps
 

@@ -23,12 +23,12 @@ manual なし: 製品 runtime・画面・配布物への変化がない文書変
 
 遷移記録（append-only）:
 
-- kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 対象は workflow 文書 3 本と decision-log。規則の所有先は既存正本で決まっている（Plan Review は `docs/DEV_WORKFLOW.md` Review Rules、Writer 発注は `docs/AGENT_OPERATING_MANUAL.md` §5.6、owner 負担は `docs/DEV_WORKFLOW.md` Owner Effort Budget）。owner の設計判断を要する未決の論点は起票時点でなし。Plan Reviewer を Writer と別 model にするのは PR #88 の dogfood 所見（計画と実装を同じ model 系が見て packet の前提誤りが Plan Gate を通過した）による
+- kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 対象は workflow 文書 3 本と decision-log。規則の所有先は既存正本で決まっている（Plan Review は `docs/DEV_WORKFLOW.md` Review Rules、Writer 発注は `docs/AGENT_OPERATING_MANUAL.md` §5.6、owner 負担は `docs/DEV_WORKFLOW.md` Owner Effort Budget）。owner の設計判断を要する未決の論点は起票時点でなし。PR #88 の dogfood 所見（計画と実装を同じ vendor が見て packet の前提誤りが Plan Gate を通過した）に対し、本 packet の Plan Reviewer（Opus）は Writer（Sonnet）と別 model だが同じ vendor であり、Plan Gate の時点では所見の条件を解消しない。別 vendor の目は Final Review の Codex が担い、Plan Gate では同 vendor・別 model の残余 risk を受容する（owner relay を Plan Review に使わない判断。`docs/DEV_WORKFLOW.md` Review Rules の vendor 条項は Writer が Codex の packet が対象で、本 packet には literal に掛からない）
 
 ## Owner Effort Budget
 
 - 介入回数上限: 3（内訳の見込み: Codex の Final Review relay 1、Ready 1、merge 1）
-- 実働時間上限: 15分
+- 実働時間上限: 15分（既定 30 分から引下げ。文書だけの変更で、owner の作業は Codex relay 1 回と Ready / merge の判断に限られる見込みのため）
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3）
 
@@ -110,8 +110,8 @@ baseline は main `8fa12a5c` の worktree で同じ command を実行した実�
 
 - AC1: `rg -n '^## (Goal|Ordinary Operation|Scope)$' docs/templates/plan-packet.md` が `Goal` → `Ordinary Operation` → `Scope` の順に 3 行を出す（baseline: `48:## Goal` / `66:## Scope` の 2 行）。節は D1 の 5 列の表、適用対象、`not applicable` の扱い、「文書の完了」と「通常運用の達成」を分ける指示を含む。`git diff origin/main --numstat -- docs/templates/plan-packet.md` の削除行数が 0。
 - AC2: `rg -n '外部前提が未確認' docs/DEV_WORKFLOW.md` が Review Rules 内の 1 項目に一致する（baseline: 一致なし、exit 1）。その項目は D2 の全要素を含み、新しい phase・review 本数・常設 gate・承認 commit を足さないと明記する。Plan Packet Rules の項目はこの規則への link を持つ。
-- AC3: `rg -n '編集前に止まったとき' docs/AGENT_OPERATING_MANUAL.md` が §5.6 内に一致する（baseline: 一致なし、exit 1）。規則文は D3 の全要素を含み、PR #85 の衝突を「発注の訂正として通してはならない例」として挙げる。
-- AC4: `rg -n '問い合わせの行き先' docs --glob '!docs/archive/**' --glob '!docs/Plans.md' --glob '!docs/plans/**'` が `docs/DEV_WORKFLOW.md`（見出しと表）と、`docs/AGENT_OPERATING_MANUAL.md` / `docs/decision-log.md`（link または言及のみ）に一致する（baseline: 一致なし、exit 1）。表は D4 の 7 行を持ち、`docs/DEV_WORKFLOW.md` 以外に表の複製がない。
+- AC3: `rg -n '編集前に止まったとき' docs/AGENT_OPERATING_MANUAL.md` が §5.6 内に一致する（baseline: 一致なし、exit 1）。規則文は D3 の全要素を含み、§5.6 の既存文「食い違いは Coordinator が正本と発注書を訂正し」との関係（D3 の 8）を示し、PR #85 の衝突を「発注の訂正として通してはならない例」として挙げる。
+- AC4: `rg -n '問い合わせの行き先' docs --glob '!docs/archive/**' --glob '!docs/Plans.md' --glob '!docs/plans/**'` が `docs/DEV_WORKFLOW.md`（見出しと表）と、`docs/AGENT_OPERATING_MANUAL.md` / `docs/decision-log.md`（link または言及のみ）に一致する（baseline: 一致なし、exit 1）。`rg -n '^### 問い合わせの行き先$' docs/DEV_WORKFLOW.md` が 1 行に一致し、参照側の link はすべて `DEV_WORKFLOW.md#問い合わせの行き先` を指す（doc check は anchor を検査しないため、この突合で確認する）。表は D4 の 7 行と、複数の行に当てはまる場合の優先の 1 文を持ち、`docs/DEV_WORKFLOW.md` 以外に表の複製がない。
 - AC5: gate・役割・権限が不変。`git diff origin/main --stat -- scripts .github src src-tauri AGENTS.md CLAUDE.md docs/ci.md` が空。template の `Workflow State` field・`Human Gate`・`Final Review Minimum` の行に差分なし（AC1 の削除 0 行で観測）。
 - AC6: `rg -n '^## D-090' docs/decision-log.md` が 1 行に一致する（baseline: 一致なし、exit 1）。entry は Status / Decision / Why / Compatibility を持つ（D5）。
 - AC7: `git diff --check`、`bash scripts/doc-consistency-check.sh`、`bash scripts/doc-consistency-check.sh --target plan`、`bash scripts/local-ci.sh changed` が成功する。Test Plan の事例照合 T1〜T7 が成立する。未解決の P1 / P2 なし。
@@ -125,7 +125,7 @@ baseline は main `8fa12a5c` の worktree で同じ command を実行した実�
 - Screen / UI: 該当なし。
 - Workflow: `AGENTS.md` Decision and Approval Boundaries。`docs/DEV_WORKFLOW.md` Plan Packet Rules / Design Phase Rules / Owner Effort Budget / Review Rules。`docs/AGENT_OPERATING_MANUAL.md` §3 / §3.2（codex-only の自己裁定の禁止、D-087）/ §5.4 / §5.6。`docs/agent-guidance/merge-evidence.md`（Gated Amendment と broad の関係）。
 - Decision log / ADR: D-038（Owner Effort Budget、Findings Freeze）、D-055（decision point 計上）、D-062（実測・Plan Reviewer の vendor 独立）、D-084（codex-only の裁定は owner）、D-087。
-- 根拠となる実績: `docs/Plans.md`「直近の完了」の PR #85 / #88 / #82 / #75 の dogfood 所見、`docs/archive/plans/2026-09-17-writer-dispatch-docs.md`。外部設計相談（2026-09-22、owner 実施）の回答は local-only で公開 repository に置かないため、必要な内容は本 packet の Spec Contract に書き下した。
+- 根拠となる実績: `docs/Plans.md`「直近の完了」の PR #85 / #88 / #75 の dogfood 所見。§5.6 の現行の発注手順の出典は PR #82（`docs/archive/plans/2026-09-17-writer-dispatch-docs.md`）。外部設計相談（2026-09-22、owner 実施）の回答は local-only で公開 repository に置かないため、必要な内容は本 packet の Spec Contract に書き下した。
 
 ## Required Design Artifacts
 
@@ -141,7 +141,7 @@ baseline は main `8fa12a5c` の worktree で同じ command を実行した実�
 
 ## Registration / Generation Obligations
 
-- source / workflow doc の新設・改名・削除なし。既存文書への節・項目の追加のみ。`docs/DEV_WORKFLOW.md` に目次はなく、新設の `### 問い合わせの行き先` は S3 / S4 からの link 先として anchor を使う（link の実在は doc check が検査する）。
+- source / workflow doc の新設・改名・削除なし。既存文書への節・項目の追加のみ。`docs/DEV_WORKFLOW.md` に目次はなく、新設の `### 問い合わせの行き先` は S3 / S4 からの link 先として anchor を使う。`scripts/doc-consistency-check.sh` の link 検査は anchor 部を捨てて file の実在だけを見るため、anchor の一致は AC4 の command と review で確認する。
 - D-n の採番: main `8fa12a5c` の最新は D-089。並走・stacked の lane はなく D-090 を使う。merge 前に main が進んで D-090 が埋まった場合は Review Rules「連番契約 registry の採番を後続 lane が確定する」に従い採番し直す。
 - Tauri command / function-design doc / REQ / route / operator 画面: 該当なし。bindings / route tree / traceability の再生成は対象外。
 
@@ -197,13 +197,15 @@ Minimum design checks for business-app work: 製品の layer / command / DB / op
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
 | D1 template の Ordinary Operation 節 | `docs/templates/plan-packet.md` | AC1 の command、doc check | 節の有無を検査する checker は non-scope |
-| D2 Plan Review の最初の問い | `docs/DEV_WORKFLOW.md` Review Rules / Plan Packet Rules | AC2 の command、link は doc check | reviewer が実際に冒頭で答えるかは次の起票で観測 |
+| D2 Plan Review の最初の問い | `docs/DEV_WORKFLOW.md` Review Rules / Plan Packet Rules | AC2 の command。link 先 file の実在は doc check、anchor は review | reviewer が実際に冒頭で答えるかは次の起票で観測 |
 | D3 Writer 停止時の規則 | `docs/AGENT_OPERATING_MANUAL.md` §5.6 | AC3 の command | 事例照合 T2〜T4 は review で確認 |
-| D4 問い合わせの行き先 | `docs/DEV_WORKFLOW.md` Owner Effort Budget | AC4 の command、link は doc check | なし |
+| D4 問い合わせの行き先 | `docs/DEV_WORKFLOW.md` Owner Effort Budget | AC4 の command（見出しと参照側の anchor 文字列の突合を含む）| なし |
 | D5 D-090 | `docs/decision-log.md` | AC6 の command | なし |
 | 隣接契約: AGENTS Decision and Approval Boundaries（owner 承認の範囲） | 変更しない | AC5 | D3 / D4 が弱めないことを Review Focus で確認 |
 | 隣接契約: §3.2 codex-only の自己裁定の禁止、D-087 | 変更しない | AC5（file は同じだが §3.2 に差分なし: `git diff origin/main -- docs/AGENT_OPERATING_MANUAL.md` の hunk が §5.6 のみ） | なし |
 | 隣接契約: Plan Packet Rules の旧前提 sweep、§5.6 手順 1〜4 | 変更しない（D3 から参照） | 同上 | なし |
+| 隣接契約: §5.6 の既存文「食い違いは Coordinator が正本と発注書を訂正し…」「正本の変更が必要なら既存の改訂・承認経路を使う」 | 既存文は変更しない。D3 の 8 が関係を示し、正本の訂正を Gated Amendment の経路へ向ける | AC3 | 2 つの文が D3 の 5 を迂回する根拠として読めないことを Review Focus で確認 |
+| 隣接契約: Review Rules「連番契約 registry の採番を後続 lane が確定する」 | 変更しない。S4 の D-090 採番が行使する | AC6 | Registration / Generation Obligations の採番の項 |
 | 隣接契約: Owner Effort Budget の上限値・上限到達時の手順・decision point 計上 | 変更しない | `git diff origin/main -- docs/DEV_WORKFLOW.md` に既存行の削除・変更なし | 作業群通算は non-scope |
 | 隣接契約: Findings Freeze、Plan Review round 天井、Writer ≠ Plan Reviewer | 変更しない | 同上 | なし |
 
@@ -215,7 +217,7 @@ Minimum design checks for business-app work: 製品の layer / command / DB / op
 - negative tests: T3（正本の変更が要る不一致を発注の訂正で通さない）、T4（codex-only で owner の裁定を移さない）、T5（新しい gate が増えていない）。
 - compatibility checks: T7（設計を含まない小さな R2 は `not applicable` で足りる。既存 packet へ遡及しない）。
 - data safety checks: 外部設計相談の原文・owner 発言の原文を tracked file へ転記しない。
-- main wiring/integration checks: T6（S3 / S4 から行き先の表への link、Plan Packet Rules から Review Rules への link が doc check で解決する）。
+- main wiring/integration checks: T6（S3 / S4 から行き先の表への link、Plan Packet Rules から Review Rules への link。file の実在は doc check、anchor の一致は AC4 の command と review）。
 
 ## Boundary / Wire Contract
 
@@ -223,6 +225,7 @@ N/A: JSON / CSV / config / DTO / generated binding / DB の変更なし。`Ordin
 
 ## Review Focus
 
+- §5.6 の既存文（Coordinator が正本と発注書を訂正する）を根拠に、D3 の 5（Gated Amendment へ戻る）を迂回できる読み方が残っていないか。
 - D3 の「owner への中継を要しない」条件が、Scope / AC / 権限 / review 数 / finding の採否の変更や、実行 mode 上 owner が持つ裁定（§3.2 codex-only、D-087）を通す抜け道になっていないか。
 - D2 が新しい phase・review 本数・常設 gate・承認 commit を作っていないか。§5.4 の低制約 profile と矛盾しないか。
 - D4 の表が `AGENTS.md` Decision and Approval Boundaries と Owner Effort Budget の既存規則を弱めていないか。行の間で行き先が二重に読める問い合わせがないか。
@@ -233,8 +236,10 @@ N/A: JSON / CSV / config / DTO / generated binding / DB の変更なし。`Ordin
 
 Contract ID: SPEC-WF-LIGHT1A
 
+本 packet と Matrix の `D1`〜`D5` は、子 ID `SPEC-WF-LIGHT1A-D1`〜`SPEC-WF-LIGHT1A-D5` の略記である（`docs/decision-log.md` の `D-090` とは別の番号体系）。
+
 - D1（template `## Ordinary Operation`）: 位置は `## Goal` の直後。表の列は `初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照`。設計を含む変更（operator の操作、data / command 契約、業務の状態遷移を決める・変える packet）は表を 1 つ置き、必要なら翌日の起動・再試行まで含める。workflow の変更は、発注 → 停止と訂正 → review → owner 判断の通常列を使う。どちらでもない変更は `not applicable` と理由を 1 行で書き、節は削除しない。範囲を限定した packet（design-only 等）を閉じる場合も、製品の目的が未達なら明記し、「この文書を完了できる」と「通常運用を達成できる」を分けて書く。
-- D2（Plan Review の最初の問い）: Plan Review の発注は、対象 packet の適用版・Goal・`Ordinary Operation`・Contract Probe・対象差分を参照させ、Scope や期待結果を別の文へ書き直さない。reviewer は報告の冒頭で、操作列が目的を達成できるかを `成立 / 具体的な反例あり / 外部前提が未確認` のどれかで答える。不成立なら最短の入力・状態遷移と、期待した結果・到達した結果の差を示す。「危険な結果を出さないか」と「正常な条件で目的を達成できるか」は別々に問う。この確認は既存の Plan Review の同じ run・同じ採否判断に含め、新しい phase・review 本数・常設 gate・単独の承認 commit を足さない。`not applicable` の packet では問わない。
+- D2（Plan Review の最初の問い）: Plan Review の発注は、対象 packet の適用版・Goal・`Ordinary Operation`・Contract Probe・対象差分を参照させ、Scope や期待結果を別の文へ書き直さない。reviewer は報告の冒頭で、操作列が目的を達成できるかを `成立 / 具体的な反例あり / 外部前提が未確認` のどれかで答える。不成立なら最短の入力・状態遷移と、期待した結果・到達した結果の差を示す。「危険な結果を出さないか」と「正常な条件で目的を達成できるか」は別々に問う。この確認は既存の Plan Review の同じ run・同じ採否判断に含め、新しい phase・review 本数・常設 gate・単独の承認 commit を足さない。`not applicable` の packet では操作列の成立を問わないが、reviewer は `not applicable` とした理由の妥当性を確認し、D1 の適用対象（設計を含む変更・workflow の変更）に当たる packet が `not applicable` としていれば finding にする。
 - D3（Writer が編集前に止まったとき、§5.6）:
   1. Writer は、発注と適用版の正本が一致しない場合に編集を始めず、不一致箇所・正本の参照・現在 HEAD を Coordinator へ返す。
   2. 正本が一意で発注だけが誤っている場合は、Coordinator が発注を作り直す。この訂正で Scope・AC・commit 条件・権限・phase・Risk・review 数を変えない。
@@ -243,7 +248,8 @@ Contract ID: SPEC-WF-LIGHT1A
   5. 正本が曖昧な場合はこの経路を使わない。正本の意味を変える場合は既存の独立確認と Gated Amendment へ戻る。
   6. finding の採否と権限の追加を発注の訂正として扱わない。
   7. 実行 mode により owner が持つ裁定・承認（§3.2 codex-only、D-087）をこの規則で代行しない。
-  8. 例: PR #85 の「合成モデルは変更しない」という発注とモデル是正の要求の衝突は、正本の変更が必要な例であり、発注の訂正として通してはならない。
+  8. §5.6 の既存文「食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない」のうち正本の訂正は 5 の経路で行い、Coordinator が単独で行えるのは 2 の発注の訂正だけである、と同じ規則文の中で関係を示す。既存文「正本の変更が必要なら既存の改訂・承認経路を使う」と重複する文を別に足さず、5 はその文を指す。
+  9. 例: PR #85 の「合成モデルは変更しない」という発注とモデル是正の要求の衝突は、正本の変更が必要な例であり、発注の訂正として通してはならない。
 - D4（`### 問い合わせの行き先`、Owner Effort Budget 内）: 次の 7 行の表。列は `問い合わせの種類 | 最初の行き先 | owner への中継を省ける条件`。
   1. 発注書だけの誤記・転記の矛盾・古い着手条件 → Coordinator。条件 = D3 の 2〜3 を満たす。
   2. 環境の不備・既知 command の出力先の確認 → Coordinator / 担当者。条件 = 許可済みの環境・範囲で解消でき、追加の費用・権限・正本の変更を伴わない。
@@ -252,18 +258,18 @@ Contract ID: SPEC-WF-LIGHT1A
   5. 店の事実・実機でしか確認できない挙動 → owner。具体的な質問か、短い PASS / FAIL で答えられる形にする。省略不可。
   6. 目的・製品の振舞い・受容リスク・予算・優先順位・範囲の変更・不可逆な操作 → owner。省略不可。
   7. Windows L3・R4・Ready・merge → owner。現行の明示承認と有効な委任の範囲だけを使う。
-  表の前後に、この表は `AGENTS.md` Decision and Approval Boundaries と本節の上限・計上規則を変更しないこと、owner に証跡の編集や発注訂正の伝言を依頼しないことを書く。
+  表の前後に、(a) 問い合わせが複数の行に当てはまる場合、または裁定権の所在が争点の場合は owner 側の行（5〜7）を優先すること、(b) この表は `AGENTS.md` Decision and Approval Boundaries と本節の上限・計上規則を変更しないこと、(c) owner に証跡の編集や発注訂正の伝言を依頼しないことを書く。
 - D5（D-090）: Status = accepted（owner 決定 2026-09-22）。Decision = D1〜D4 の要旨。Why = PR #85 の Plan Review rally と発注訂正の停止の実績。Compatibility = phase・review 本数・Human Gate・Plan Commit / Amendments・独立性・Double Audit・D-084 / D-087 の owner の裁定を維持、checker は変更しない、既存 packet へ遡及しない、1 段目の残りと 2・3 段目は別 change。
 
 ## Trace Matrix
 
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
-| SPEC-WF-LIGHT1A D1 | S1 | AC1、T1、T7 | 普通の一日の観点 | PR の diff、runner 出力 |
-| SPEC-WF-LIGHT1A D2 | S2 | AC2、T1、T5 | 新しい gate を作っていないか | 同上 |
-| SPEC-WF-LIGHT1A D3 | S3 | AC3、T2、T3、T4 | 抜け道になっていないか | 同上 |
-| SPEC-WF-LIGHT1A D4 | S2 | AC4、T3、T4、T6 | 既存の承認境界を弱めていないか | 同上 |
-| SPEC-WF-LIGHT1A D5 | S4 | AC6、T6 | 複製がないか | 同上 |
+| SPEC-WF-LIGHT1A-D1 | S1 | AC1、T1、T7 | 普通の一日の観点 | PR の diff、runner 出力 |
+| SPEC-WF-LIGHT1A-D2 | S2 | AC2、T1、T5 | 新しい gate を作っていないか | 同上 |
+| SPEC-WF-LIGHT1A-D3 | S3 | AC3、T2、T3、T4 | 抜け道になっていないか | 同上 |
+| SPEC-WF-LIGHT1A-D4 | S2 | AC4、T3、T4、T6 | 既存の承認境界を弱めていないか | 同上 |
+| SPEC-WF-LIGHT1A-D5 | S4 | AC6、T6 | 複製がないか | 同上 |
 
 ## Data Safety
 
