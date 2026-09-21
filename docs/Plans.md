@@ -10,7 +10,7 @@
 
 次の着手順（owner決定2026-09-22）:
 
-1. 型生成の失敗検出（小変更、[backlog](backlog.md#やると決めたもの順番未定)「型生成の失敗が成功扱いになる」entry）。
+1. 型生成の失敗検出（小変更、[backlog](backlog.md#やると決めたもの順番未定)「型生成の失敗が成功扱いになる」entry）。**着手中（2026-09-22、plan-gate）**: [Plan Packet](plans/2026-09-22-bindings-export-failure-detection.md)、R2、Writer = Sonnet subagent / Plan Reviewer = Sonnet / Final Reviewer = Codex 1 本。
 2. workflowの軽量化1段目のうち文書だけの部分: packet templateへ普通の一日の操作列の節を足す、Writerが止まったときの規則文、問い合わせの行き先の表。
 3. ㉘ runtimeの最初のlane = 既存の危険な操作（旧棚卸しの開始・入力・確定、POSの業務commit・取消）の停止と再現fixture。並走でEJ（電子ジャーナル）parserのcoreを合成データで進める。
 
