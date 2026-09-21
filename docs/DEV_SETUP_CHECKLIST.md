@@ -135,7 +135,7 @@ npx lefthook install          # .git/hooks/pre-commit を書き込む（初回�
 
 ### 3.3 Claude Code auto-memory sandbox 設定（オプション）
 
-Claude Code の auto-memory 機能（`MEMORY.md` / 個別 memory ファイル / `.last_audit` sentinel など）は `~/.claude/projects/<sanitized-cwd>/memory/` に保存される。本リポジトリでは sanitize 後の path が `~/.claude/projects/-home-kosei-Projects-inventory-system-public/memory/` で固定だが、ここはデフォルトの sandbox writable mount に含まれないため、Claude 側からの書き込み (`touch .last_audit` や新規 memory ファイル `Write`) が `Read-only file system` で失敗する。
+Claude Code の auto-memory 機能（`MEMORY.md` / 個別 memory ファイル / `.last_audit` sentinel など）は `~/.claude/projects/<sanitized-cwd>/memory/` に保存される。本リポジトリでは sanitize 後の path が `~/.claude/projects/-home-kosei-projects-inventory-system-public/memory/` で固定だが、ここはデフォルトの sandbox writable mount に含まれないため、Claude 側からの書き込み (`touch .last_audit` や新規 memory ファイル `Write`) が `Read-only file system` で失敗する。
 
 auto-memory を使う場合、project local settings (`./.claude/settings.local.json`、repository `.gitignore` で管理外) に sandbox writable mount を 1 行追加する:
 
@@ -146,15 +146,15 @@ auto-memory を使う場合、project local settings (`./.claude/settings.local.
     "autoAllowBashIfSandboxed": true,
     "filesystem": {
       "allowWrite": [
-        "~/.claude/projects/-home-kosei-Projects-inventory-system-public/memory"
+        "~/.claude/projects/-home-kosei-projects-inventory-system-public/memory"
       ]
     }
   }
 }
 ```
 
-- `-home-kosei-Projects-inventory-system-public` は cwd の絶対パスを `/` → `-` 変換した sanitize 文字列。別ホームディレクトリで作業する場合は適宜置換（例: `/home/alice/inventory-system-public` なら `-home-alice-inventory-system-public`）
-- 検証: `touch ~/.claude/projects/-home-kosei-Projects-inventory-system-public/memory/.last_audit` で `Read-only file system` が出なくなれば反映済（現セッションで即時反映、restart 不要）
+- `-home-kosei-projects-inventory-system-public` は cwd の絶対パスを `/` → `-` 変換した sanitize 文字列。別ホームディレクトリで作業する場合は適宜置換（例: `/home/alice/inventory-system-public` なら `-home-alice-inventory-system-public`）
+- 検証: `touch ~/.claude/projects/-home-kosei-projects-inventory-system-public/memory/.last_audit` で `Read-only file system` が出なくなれば反映済（現セッションで即時反映、restart 不要）
 - gitignored ファイルなので team 共有されず、他マシン / 他 user は本節の手順で個別に設定する
 - global settings (`~/.claude/settings.json`) に書く方法もあるが、`<sanitized-cwd>` 部分がマシン依存のため project local の方が再利用性は低くスコープが明確
 - `denyWithinAllow` 設定で `settings.json` 系ファイル自体は引き続き Bash 経由から保護される（`Edit` tool 経由のみ書ける）
