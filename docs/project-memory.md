@@ -140,7 +140,7 @@ Keep it factual and stable.
 ### いまの手作業
 
 - Daily: SD card recovery → CV17 import to PC → paste Z001/Z002/Z005 into Excel → overwrite → print → file in a binder — 2026-06-30 field-check — `docs/project-memory.md`
-- Daily register closing happens same-day, with the store kept open; the SD card is run through CV17 during closing, pasted/printed into Excel, and only then is the store closed — owner回答2026-09-22
+- Daily register closing happens same-day, with the store kept open; during closing the SD card is imported through CV17, the reports are pasted into Excel and printed, and only then is the store closed — owner回答2026-09-22
 - Sales made between the day's register closing and the store's actual close are therefore folded into the next day's closing — owner回答2026-09-22
 - PC work such as product edits can also happen after the day's register closing — owner回答2026-09-22
 - Product lookup: check name on the shelf first; if absent, search the name on PC to find the maker, check the catalog, or call the supplier; product code is the final tie-breaker — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
