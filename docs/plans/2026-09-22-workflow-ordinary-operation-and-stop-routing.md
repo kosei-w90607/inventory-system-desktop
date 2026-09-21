@@ -23,7 +23,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない文書変
 
 遷移記録（append-only）:
 
-- kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 対象は workflow 文書 3 本と decision-log。規則の所有先は既存正本で決まっている（Plan Review は `docs/DEV_WORKFLOW.md` Review Rules、Writer 発注は `docs/AGENT_OPERATING_MANUAL.md` §5.6、owner 負担は `docs/DEV_WORKFLOW.md` Owner Effort Budget）。owner の設計判断を要する未決の論点は起票時点でなし。PR #88 の dogfood 所見（計画と実装を同じ vendor が見て packet の前提誤りが Plan Gate を通過した）に対し、本 packet の Plan Reviewer（Opus）は Writer（Sonnet）と別 model だが同じ vendor であり、Plan Gate の時点では所見の条件を解消しない。別 vendor の目は Final Review の Codex が担い、Plan Gate では同 vendor・別 model の残余 risk を受容する（owner relay を Plan Review に使わない判断。`docs/DEV_WORKFLOW.md` Review Rules の vendor 条項は Writer が Codex の packet が対象で、本 packet には literal に掛からない）
+- kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 対象は workflow 文書 3 本と decision-log。規則の所有先は既存正本で決まっている（Plan Review は `docs/DEV_WORKFLOW.md` Review Rules、Writer 発注は `docs/AGENT_OPERATING_MANUAL.md` §5.6、owner 負担は `docs/DEV_WORKFLOW.md` Owner Effort Budget）。owner の設計判断を要する未決の論点は起票時点でなし。PR #88 の dogfood 所見（計画と実装を同じ vendor が見て packet の前提誤りが Plan Gate を通過した）に対し、本 packet の Plan Reviewer（Opus）は Writer（Sonnet）と別 model だが同じ vendor であり、Plan Gate の時点では所見の条件を解消しない。別 vendor の目は Final Review の Codex が担い、Plan Gate では同 vendor・別 model の残余 risk を Coordinator の判断で受容して進め、owner へは 2026-09-22 の進捗報告で提示した（Codex への差替えは owner の指示があれば行う。owner relay を Plan Review に使わない判断。`docs/DEV_WORKFLOW.md` Review Rules の vendor 条項は Writer が Codex の packet が対象で、本 packet には literal に掛からない）
 
 ## Owner Effort Budget
 
@@ -84,6 +84,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 作業中に owner へ聞きたいことが出る | Coordinator が行き先の表で分類する | 技術的前提は agent の調査・probe へ、店の事実と Human Gate だけが owner へ届く | 表の行に当てはまる | 表に当てはまらない問い合わせの頻度は未実測 |
 
 ## Scope
+
+本 packet と Matrix の `D1`〜`D5` は、子 ID `SPEC-WF-LIGHT1A-D1`〜`SPEC-WF-LIGHT1A-D5` の略記である（`docs/decision-log.md` の `D-090` とは別の番号体系）。
 
 - S1 `docs/templates/plan-packet.md`: `## Goal` の直後、`## Scope` の直前に `## Ordinary Operation` を追加する（Spec Contract D1）。既存の節・field・文言は削除も変更もしない。
 - S2 `docs/DEV_WORKFLOW.md`:
@@ -235,8 +237,6 @@ N/A: JSON / CSV / config / DTO / generated binding / DB の変更なし。`Ordin
 ## Spec Contract
 
 Contract ID: SPEC-WF-LIGHT1A
-
-本 packet と Matrix の `D1`〜`D5` は、子 ID `SPEC-WF-LIGHT1A-D1`〜`SPEC-WF-LIGHT1A-D5` の略記である（`docs/decision-log.md` の `D-090` とは別の番号体系）。
 
 - D1（template `## Ordinary Operation`）: 位置は `## Goal` の直後。表の列は `初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照`。設計を含む変更（operator の操作、data / command 契約、業務の状態遷移を決める・変える packet）は表を 1 つ置き、必要なら翌日の起動・再試行まで含める。workflow の変更は、発注 → 停止と訂正 → review → owner 判断の通常列を使う。どちらでもない変更は `not applicable` と理由を 1 行で書き、節は削除しない。範囲を限定した packet（design-only 等）を閉じる場合も、製品の目的が未達なら明記し、「この文書を完了できる」と「通常運用を達成できる」を分けて書く。
 - D2（Plan Review の最初の問い）: Plan Review の発注は、対象 packet の適用版・Goal・`Ordinary Operation`・Contract Probe・対象差分を参照させ、Scope や期待結果を別の文へ書き直さない。reviewer は報告の冒頭で、操作列が目的を達成できるかを `成立 / 具体的な反例あり / 外部前提が未確認` のどれかで答える。不成立なら最短の入力・状態遷移と、期待した結果・到達した結果の差を示す。「危険な結果を出さないか」と「正常な条件で目的を達成できるか」は別々に問う。この確認は既存の Plan Review の同じ run・同じ採否判断に含め、新しい phase・review 本数・常設 gate・単独の承認 commit を足さない。`not applicable` の packet では操作列の成立を問わないが、reviewer は `not applicable` とした理由の妥当性を確認し、D1 の適用対象（設計を含む変更・workflow の変更）に当たる packet が `not applicable` としていれば finding にする。
