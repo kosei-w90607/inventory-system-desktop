@@ -75,7 +75,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - S2 `src-tauri/src/lib.rs`: 生成は同じ directory 内の一時 file へ出力し、整形と定数追記まで完成させてから `src/lib/bindings.ts` へ rename で置換する。失敗時は既存の `bindings.ts` に触れず、一時 file は best-effort で消す。path を引数に取る内部関数へ分け、test が tempdir に対して同じ経路を通せるようにする（公開 API は `export_specta_bindings()` のまま）。
 - S3 `src-tauri/src/lib.rs` `run()`: 呼出し側で `Err` を受け、現行どおり警告を `eprintln!` して起動を続ける（`tauri dev` を止めない）。
 - S4 `src-tauri/src/bin/generate_bindings.rs`: `Err` なら message を stderr へ出して `std::process::exit(1)`、`Ok` のときだけ完了 message を print する。冒頭の doc comment を実態に合わせる。
-- S5 `src-tauri/src/lib.rs` の `bindings_generation_tests`: 下記 Test Plan の test を追加する。既存 test 3 件は変更しない。
+- S5 `src-tauri/src/lib.rs` の `bindings_generation_tests`: 下記 Test Plan の test を追加する。この module は起動失敗表示・DB 初期化の test も同居しているが、既存 test はどれも変更しない。
 - S6 closeout（merge 後の別 PR）: `docs/backlog.md` の当該 entry の消し込みと `docs/Plans.md` の更新。
 
 呼出し側の確認（2026-09-22、`git grep -n 'export_specta_bindings\|generate_bindings' origin/main -- src-tauri scripts .github`）: `export_specta_bindings` の呼出しは `src-tauri/src/lib.rs` の `run()` と `src-tauri/src/bin/generate_bindings.rs` の 2 箇所だけ。CLI の利用者は `.github/workflows/ci.yml:235` と `scripts/local-ci.sh:214`（`run_required`）で、どちらも非 0 終了を失敗として扱うため編集不要。
@@ -91,9 +91,9 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Acceptance Criteria
 
-- AC1 `cd src-tauri && cargo run --bin generate_bindings` が exit 0 で完了 message を出し、`git diff --exit-code -- src/lib/bindings.ts` が差分 0（成功時の生成内容が不変）。
-- AC2 失敗の実測（Writer が 1 回行い PR 本文へ command と exit code を記録）: `src/lib` を一時的に書込み不可にして（`chmod a-w src/lib`）`cargo run --bin generate_bindings` を実行すると、非 0 で終了し、完了 message `TS bindings exported` を出さず、stderr に失敗した段と path が出る。実行後に権限を戻し（`chmod u+w src/lib`）、`git status --short` が clean で、`src/lib` に一時 file が残っていない。
-- AC3 Test Plan の T1〜T4 が全 PASS し、`cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` が成功する。
+- AC1 `cd src-tauri && cargo run --bin generate_bindings` が exit 0 で完了 message を出し、`git diff --exit-code -- src/lib/bindings.ts` が差分 0（成功時の生成内容が不変）で、`git status --short -- src/lib` が空（一時 file が残らない）。
+- AC2 失敗の実測（Writer が 1 回行い PR 本文へ command と exit code を記録）: `src/lib` を一時的に書込み不可にして（`chmod a-w src/lib`）`cargo run --bin generate_bindings` を実行すると、非 0 で終了し、完了 message `TS bindings exported` を出さず、stderr に失敗した段と path が出る。実行後に権限を戻し（`chmod u+w src/lib`）、`git status --short` が clean で、`src/lib` に一時 file が残っていない。この条件では一時 file の作成自体が失敗するため、作成後の後始末は T3 が担う。
+- AC3 Test Plan の T1〜T6 が全 PASS し、`cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` が成功する。
 - AC4 `export_specta_bindings()` とその内部関数に `eprintln!` が残らず、bindings 生成の警告は `run()` の 1 箇所だけになる。baseline（origin/main `54ed8990`、`rg -n 'eprintln!' src-tauri/src/lib.rs`）= 223 / 348 / 354 / 361 / 908 行の 5 件で、うち 348 / 354 / 361 の 3 件が `export_specta_bindings()` 内。223（起動失敗の表示）と 908（診断ログ初期化の警告）は対象外で残す。
 - AC5 `bash scripts/local-ci.sh changed` が成功する。
 
@@ -125,7 +125,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| REQ-104 | `docs/decision-log.md` D-054 | D-054 | bindings の clean diff 検査を同期の機械検査として信用するには、生成の失敗が検査の失敗になる必要がある。却下: CI 側で stderr を grep する（生成側の終了コードが正しければ不要な二重化） | `export_specta_bindings()` / `generate_bindings` の `main` | T1〜T4、AC2 |
+| REQ-104 | `docs/decision-log.md` D-054 | D-054 | bindings の clean diff 検査を同期の機械検査として信用するには、生成の失敗が検査の失敗になる必要がある。却下: CI 側で stderr を grep する（生成側の終了コードが正しければ不要な二重化） | `export_specta_bindings()` / `generate_bindings` の `main` | T1〜T6、AC2 |
 
 ## Design Intent Audit
 
@@ -177,7 +177,9 @@ test は実装と同じ commit に入れてよい。すべて `tempfile::tempdir
   - T4 既存 file の保護: 出力先に既存内容を置き、T3 と同じく置換が失敗する条件、または T2 の条件で失敗させたとき、既存内容が変わらない（T2 / T3 の assert に含めてよい）。
 - compatibility checks: AC1（実物の生成結果が差分 0）。
 - data safety checks: 該当なし（実データ・DB に触れない）。
-- main wiring/integration checks: AC2（CLI の終了コードの実測）。整形・定数追記の段は `?` による伝播を review で確認する（失敗注入の seam は足さない）。
+  - T5 整形の失敗: 存在しない path で `normalize_generated_bindings` が `Err`。
+  - T6 定数追記の失敗: 存在しない path で `append_generated_constants` が `Err`。
+- main wiring/integration checks: AC2（CLI の終了コードの実測）。整形・定数追記の段は T5 / T6 で各関数が `Err` を返すことを固定し、合成関数がそれを `?` で伝播することは review で確認する（合成関数の途中へ失敗を注入する seam は足さない）。
 
 ## Boundary / Wire Contract
 
