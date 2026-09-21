@@ -5,7 +5,7 @@
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: b7f195140ef03147d46d3a8cc26e4f39dcf5e062
@@ -31,6 +31,7 @@ ownerの今回の指示はsource詳細同期とplan-draftの準備を許可す�
 - design → plan-draft（2026-09-19、発注65のsource同期content commitに同乗）: ADRの意味を変えずにS1〜S6の詳細契約とS7の対応表を同期。合成モデル・docs検査・禁止pathと要求token照合が成功し、新たな設計質問はない。実機依存は成立まで非有効化とする契約を明記。正式Plan GateはFableが新rallyで発注し、Plan Commitは承認までpendingを維持する。
 - plan-draft → plan-gate（2026-09-19、state-only）: packet と Test Design Matrix は content commit `9bed4f57` で commit 済み。同 commit で設計モデル・docs 検査（plan / full）・workflow-git が成功し、未解決の設計質問なし。正式 Plan Review の新しい rally（round 1、Sonnet + Opus の独立 fresh context、対象 `9bed4f57` の計画内容）を Fable が発注する。Plan Commit は pending のまま。
 - plan-gate → plan-approved（2026-09-19、state-only）: 正式 Plan Review の新 rally は round 1（Sonnet 通過可 / Opus P2 4）→ round 2（P2 1）→ round 3（新規 P2 1、天井到達、owner escalation）→ owner 決定の反映（`b7f19514`）→ 追加 Opus closure で P1/P2 = 0・通過可。Plan Reviewer は Writer（Codex）と別 vendor の独立 fresh context。Plan Commit = 承認された計画の content commit `b7f19514`。owner は同日に介入上限 9 を承認。runtime は未着手で、本 lane は docs-only のまま Final Review → Ready → merge へ進む。本体実装は後続 runtime lane の Gate を満たしてから。
+- plan-approved → implementing（2026-09-21、state-only）: 本 lane の実装対象は docs のみ。Plan Commit `b7f19514` の後の content commit は follow-up P3 の是正 `e6189a5c`（ADR Consequences の literal を戻す）だけで、Plan Commit はその祖先。Draft PR を開き、Final Review（Sonnet + Opus、Writer と独立した fresh context）へ進む。以後の状態は GitHub evidence mode の helper と専用 record から導く。runtime は未着手のまま。
 
 ## Owner Effort Budget
 
@@ -185,7 +186,7 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 
 ## Design Readiness
 
-Status: plan-approved。source同期版は正式Plan Reviewの新rally（round 1〜3、owner escalation、追加Opus closure）を経てP1/P2 = 0で通過した。初導入・本番履歴なしを正本化し、旧importの拒否と日付つきpreflightを同期済み。D1のOS監視必須は維持する。これは設計と計画の承認であり、runtime実装ready・実機成立を意味しない。
+Status: implementing（2026-09-21）。plan-approved時点の評価: source同期版は正式Plan Reviewの新rally（round 1〜3、owner escalation、追加Opus closure）を経てP1/P2 = 0で通過した。初導入・本番履歴なしを正本化し、旧importの拒否と日付つきpreflightを同期済み。D1のOS監視必須は維持する。これは設計と計画の承認であり、runtime実装ready・実機成立を意味しない。
 
 新たにownerへ返す設計質問はない。未検証の外部条件は、32のprobe表で対応する自動処理を有効にしない条件として明示した。Windows監視の実装/native probe・EJ全形状・レジ系列/時計の本番成立は未実施で、正式Plan Gateでは依存する前提の検証計画と非有効化条件を確認する。明細のない共有JAN候補は既知の非対応として保持し、店舗運用の受容済み扱いへ変更しない。
 

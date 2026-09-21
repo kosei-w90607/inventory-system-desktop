@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、plan-approved）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit `b7f19514`。round 3 closure（対象 `a2a265bf`）は移行境界の新規P2で通過不可・天井到達、owner escalationを経た。発注68で[初導入・本番履歴なし](project-memory.md)を正本化し、新形式での本番開始、旧試験履歴の不持込み、旧importのメタ不足拒否と日付つきpreflight、過去日の後追い対応を同期した。追加Opus closure（対象 `b7f19514`）はP1/P2 = 0で通過し、2026-09-19にplan-approved。介入上限9はowner承認済み（9/9）。次はdocs-only laneのDraft PR → Final Review（Sonnet + Opus）→ Ready → merge。旧棚卸し/取消の互換機構は維持し、初導入の実作業とは区別する。同精算別hash・系列未証明reset等の未解決拒否は残り、再実測では売上欠落を復旧しない。runtime・DB作り直し・実機検証は未実施。wave 12 lane 2。
+- **㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、R3、implementing）**: [Plan Packet](plans/2026-09-16-stocktake-count-baseline.md)。branch `agent/stocktake-count-baseline-design`、Plan Commit `b7f19514`。round 3 closure（対象 `a2a265bf`）は移行境界の新規P2で通過不可・天井到達、owner escalationを経た。発注68で[初導入・本番履歴なし](project-memory.md)を正本化し、新形式での本番開始、旧試験履歴の不持込み、旧importのメタ不足拒否と日付つきpreflight、過去日の後追い対応を同期した。追加Opus closure（対象 `b7f19514`）はP1/P2 = 0で通過し、2026-09-19にplan-approved、2026-09-21にimplementingへ遷移。介入上限9はowner承認済み（9/9）。次はdocs-only laneのDraft PR → Final Review（Sonnet + Opus）→ Ready → merge。旧棚卸し/取消の互換機構は維持し、初導入の実作業とは区別する。同精算別hash・系列未証明reset等の未解決拒否は残り、再実測では売上欠落を復旧しない。runtime・DB作り直し・実機検証は未実施。wave 12 lane 2。
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ㉗の統合案は是正 `68c3d0d3` でOpus closure pass、follow-up P3は `24087bad` で是正。main単段merge `36891af8` 後のsource同期はADRの判断を変えていない。sourceの事前点検で見つかったactive legacyの分岐と時計失効のTX境界も是正・解消確認済みだが、旧closureを新しいsource全体の正式承認には流用しない。
@@ -50,7 +50,7 @@
   - lane 3: ㉓ 一括価格改定の取引先紐付けを既定 off + 文言明示 = **完了**（PR #67 squash `ebbbef14`、介入 1/3、relay 3/3、[archive](archive/plans/2026-09-16-price-revision-assign-default-off.md)）
 - **wave 12（起案時は非干渉並走、owner 2026-09-16「次何やるかふたつとって早速始めよう」、lane 選定は Coordinator）: 進行中（lane 2 plan-approved、lane 1/3 完了）** — 現在の作業対象はlane 2のみ。source同期の最新footprintはpacket Scope S1〜S7を正とし、起案時のruntime候補一覧を現在の編集許可にしない。生成fileの再生成なし。
   - lane 1: ㉖ 在庫変動履歴からの戻りで在庫照会の検索条件と商品選択を保持する = **完了**（PR #75 squash `6f7928ed`、介入 3/3、relay 4/4、[archive](archive/plans/2026-09-16-stock-movements-return-selected.md)）
-  - lane 2: ㉗ 棚卸しと後着売上の時点証拠（R3 docs-only、`agent/stocktake-count-baseline-design`、[Packet](plans/2026-09-16-stocktake-count-baseline.md)、Draft PR未作成、Phase plan-approved（2026-09-19、Plan Gate通過）。次はDraft PRとFinal Review。介入9/9（上限9はowner承認済み））
+  - lane 2: ㉗ 棚卸しと後着売上の時点証拠（R3 docs-only、`agent/stocktake-count-baseline-design`、[Packet](plans/2026-09-16-stocktake-count-baseline.md)、Phase implementing（2026-09-21、Plan Gate通過は2026-09-19）。次はDraft PRとFinal Review。介入9/9（上限9はowner承認済み））
   - lane 3: ㉙ returnTo 衛生 = **完了**（PR #78 squash `a68ba291`、介入 3/3、relay 2/3、[archive](archive/plans/2026-09-17-return-to-hygiene.md)）
 - **wave 11（非干渉並走 2 lane、owner 2026-09-16「ホーム画面 + 廃棄の詳細 link」）: 完了（lane 1〜2、2026-09-16）** — file footprint 互いに素（lane 1 = `src/features/home/**` + `src/config/navigation.ts` + SCREEN_DESIGN / 53 / 52 / decision-log、lane 2 = `src/features/disposal/**` + 64）、同じ source document を編集せず、生成 file の再生成なし。D-055 の並列 wave。merge train 順は Draft PR 到達順で owner が指定（既定案 = human-confirm 到達順）。
   - lane 1: ㉔ ホーム画面を mockup-c 案へ寄せる = **完了**（PR #70 squash `41c2e3e2`、介入 2/3、relay 1/2、[archive](archive/plans/2026-09-16-home-mockup-c-runtime.md)）
