@@ -55,7 +55,7 @@ not applicable: UI・data・cache・route・import/export・永続 state を変�
 
 - missing input: `Ordinary Operation` を書かない設計 packet → 既存の Plan Review で finding になる（checker では止めない、非目的）。設計を含むのに `not applicable` とした packet → D2 により reviewer が理由の妥当性を確認し finding にする（著者の宣言だけで問いを無効にできない）。
 - invalid input: 操作列が「文書を完了できる」だけを示す → D1 の「通常運用の達成」と分ける指示で reviewer が指摘できる。
-- duplicate/ambiguous input: 問い合わせが表の 2 行に当てはまる（例: 正本の意味を変える範囲の拡張 = 行 4 と行 6）、または裁定権の所在が争点 → D4 の注記 (a) により owner 側の行（5〜7）を優先する。
+- duplicate/ambiguous input: 問い合わせが表の複数行に当てはまり、その中に owner 側の行（5〜7）が含まれる場合（例: 正本の意味を変える範囲の拡張 = 行 4 と行 6）→ D4 の注記 (a) により owner 側の行を優先する。裁定権の所在そのものが争点の場合 → owner へ送る。owner 側でない行だけに当てはまる場合 → 各行の条件に従う（3 文、closeout で訂正、closure P3-2）。
 - unknown reference: 表に当てはまらない問い合わせ → 既存の `AGENTS.md` Decision and Approval Boundaries に従う（表は境界を変更しない、と明記）。
 - dependency missing: 発注前検査の script は未導入 → D3 は §5.6 手順 4 を指す。
 - permission/write failure: not applicable。
@@ -92,14 +92,15 @@ not applicable: UI・data・cache・route・import/export・永続 state を変�
 
 実注入の mutation は対象外（自動 test なし）。文書の mutant を review で問う:
 
-- D3 から「正本が曖昧な場合はこの経路を使わない」を除くと、T3 が不成立になるか → なる（PR #85 の衝突が発注の訂正で通る）。
-- D3 から 7（実行 mode 上の裁定）を除くと、T4 が不成立になるか → なる。
-- D2 から「足さない」の明記を除くと、T5 の review 部分が不成立になるか → なる。
-- D1 から `not applicable` の扱いを除くと、T7 が不成立になるか → なる。
-- D4 から注記 (a)（owner 側の行を優先）を除くと、行 4 と行 6 の両方に当たる問い合わせが Coordinator 側で閉じ得るか → 閉じ得る。
-- D3 から 8（§5.6 の既存文との関係）を除くと、既存文を根拠に 5 を迂回できるか → できる読み方が残る。
+- D3 から「正本が曖昧な場合はこの経路を使わない」を除くと、T3 が必敗になるか → 必敗にはならない（closeout で訂正、closure P3-2 / pass A A-2）。当該明示文の欠落は review / AC で検出できるが、正本が一意である前提（D3 の 2）、正本の意味を変える場合は Gated Amendment へ戻る規定（D3 の 5 後半）、PR #85 を発注の訂正として通してはならない例（D3 の 9）が残り、安全条件は維持される。
+- D3 から 7（実行 mode 上の裁定）を除くと、T4 の権限保護が必ず消えるか → 必ず消えるとはいえない（closeout で訂正、closure P3-2 / pass A A-2）。当該明示文の欠落は review / AC で検出できるが、finding の採否と権限の追加を発注の訂正として扱わない D3 の 6、§3.2 codex-only の自己裁定禁止と D-087、D4 行 4 の但し書きが残り、安全条件は維持される。
+- D2 から「足さない」の明記を除くと、T5 の review 部分が不成立になるか → なる（review 部分の明示文検査は不成立になる）。ただし phase・review 本数・gate・承認 commit が実際に変更されたことの機械的な証明とは別で、AC5 の `git diff` は影響を受けない。
+- D1 から `not applicable` の扱いを除くと、T7 が不成立になるか → AC1 で節の欠落は検出できるが、`docs/DEV_WORKFLOW.md`（D2 側、`:69` / `:391`）に `not applicable` の理由審査規定が残るため、小さな変更が必ず操作列表を要求されるという意味での T7 必敗とは限らない。
+- D4 から注記 (a)（owner 側の行を優先）を除くと、行 4 と行 6 の両方に当たる問い合わせが Coordinator 側で閉じ得るか → 優先規則が失われる曖昧さは review の検出対象になるが、行 6 の「省略不可」と `AGENTS.md` Decision and Approval Boundaries は残るため、Coordinator 側で正当に閉じられるとは扱えない。
+- D3 から 8（§5.6 の既存文との関係）を除くと、既存文を根拠に 5 を迂回できるか → できる読み方が残る、という判定は既存文との関係説明が消える局所的な曖昧さの検査として妥当。ただし D3 の 5 等の残存規則を含む権限移転の実証ではない。
 
 ## Residual Test Gaps
 
 - reviewer が実際に報告の冒頭で 3 値を答えるか、Writer の停止から再開までの往復が減るかは未実測。次の R2+ 起票（㉘ runtime の最初の lane）を dogfood 対象とし、closeout で観測結果を記録する。
 - 文書を読まずに発注する行動は機械的に防げない（1 段目の残り = 発注前検査の script で扱う）。
+- 非遡及の句（`docs/DEV_WORKFLOW.md:69` の D-090 merge 後の packet から適用）は Plan Packet Rules の項目にのみあり、Review Rules の項目（`:391`）に carve-out が無い（closure P3-3）。節を持たない旧 packet では D2 の問い自体が発火しないため実害はなく、両方に carve-out を足すのは policy 文書の変更になるため見送る。
