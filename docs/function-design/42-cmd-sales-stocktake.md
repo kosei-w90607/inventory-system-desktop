@@ -12,7 +12,7 @@ SPEC-STK-TIME-D1 / D7〜D9。以下の現行update_count登録は新schema migra
 
 BeginStocktakeCountRequestはstocktake_item_idとpurpose。purposeはtagged enumで `kind=in_progress` / `kind=independent_recount` / `kind=legacy_rollback_recheck`（最後だけcsv_import_id必須）。不正な組合せはdeserializeまたはBIZで拒否し、用途の値だけで所有者guardを迂回させない。
 
-BeginStocktakeCountResultはcount_token / stocktake_item_id / product_code / product_name / stock_unit / book_at_start / purposeを持つ。StocktakeCountSaveResultはstatus（saved / replayed）/ stocktake_item_id / recount_id（通常計数はnull）/ system_stock / actual_count / difference / stock_afterを持つ。difference=L-N、補正の符号N-Lと混同しない。active保存時は現在庫を変えず、独立再実測では即時補正後のstock_afterを返す。内部のS/E・revision・両cursor・世代はwire入力に追加しない。
+BeginStocktakeCountResultはcount_token / stocktake_item_id / product_code / product_name / stock_unit / book_at_start / purposeを持つ。StocktakeCountSaveResultはstatus（saved / replayed）/ stocktake_item_id / recount_id（通常計数はnull）/ system_stock / actual_count / difference / stock_afterを持つ。difference=L-N、補正の符号N-Lと混同しない。active保存時は現在庫を変えず、独立再実測では即時補正後のstock_afterを返す。内部のS/E・revision・両cursor・世代・time_basis_id（PC時計epoch）はwire入力に追加しない。
 
 #### 保管・ロック・失効
 
@@ -20,9 +20,9 @@ CMDのAppStateにtoken→BIZが生成したCountContextの保管場所を置く�
 
 contextの有効性を決めるのはBIZの用途・世代・所有者・版・時計検査であり、CMDのcacheに存在するだけでは書込み権限にならない。abandonはBIZの失効処理を通して未保存contextを破棄する。saveの応答喪失後は同tokenで再送し、commit済みならBIZのDB照会でreplayedになる。再起動で未保存tokenを復元しない。
 
-Windowsのsuspend/resume・時計変更通知はMNTが受け、count_platform_generationを進める。登録失敗時はBIZへ環境不成立を渡す。保存前/直前のgenerationとwall/Instant検査をUIの時計申告で代替しない。DB接続交換でも全contextを失効させ、既にlookupされた内部contextも古いDB世代として拒否する。非Windows製品実行で監視成立を確認できない場合は計数不可、test/dev providerの成功はnative証拠ではない。
+Windowsのsuspend/resume・時計変更通知はMNTが受け、count_platform_generationを進め、ADR D1に従ってPC時計epochのUUIDも更新する。CMDはMNTの時刻・generation・epochをCountEnvironmentとしてBIZへ渡す。BIZ-06がbeginでepochを固定し、save TXと保存直前に再検証してitem/recountへ保存する。POS基準の数や認定状態を実測epochの選択に使わない。登録失敗時はBIZへ環境不成立を渡す。保存前/直前のgenerationとwall/Instant検査をUIの時計申告で代替しない。DB接続交換でも全contextを失効させ、既にlookupされた内部contextも古いDB世代として拒否する。非Windows製品実行で監視成立を確認できない場合は計数不可、test/dev providerの成功はnative証拠ではない。
 
-監視不成立では新しい実測のbegin/未保存saveをcount_environment_unavailableで拒否し、既存の保存データを変えない。保存済みrequestの副作用なし照会は維持する。外部時計に対するtime_basis_id=NULLは、この中断検知・context失効の代わりにはならない。UIに停止理由を表示し、再起動で監視を再登録、復旧しなければ担当者によるnative診断/修正版確認へ進む。監視成立後に新beginからやり直し、旧tokenは復活させない。
+監視不成立では新しい実測のbegin/未保存saveをcount_environment_unavailableで拒否し、既存の保存データを変えない。保存済みrequestの副作用なし照会は維持する。PC時計epochの欠落をtime_basis_id=NULLとして新measuredへ保存することは許可しない。POS基準が未認定でも、監視成立下の実測epochは必須である。UIに停止理由を表示し、再起動で監視を再登録、復旧しなければ担当者によるnative診断/修正版確認へ進む。監視成立後に新beginからやり直し、旧tokenは復活させない。
 
 #### エラー・読取り・登録
 

@@ -4,9 +4,9 @@
 
 SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、commit_csv_importのpreviewToken/additionalImportConfirmed、rollback_csv_importのimport IDは維持する。BIZの受領TXにmutable DB接続を渡すが、CMDに時点判定・在庫スキップのルールを置かない。
 
-read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、DB lock→BIZ-03の同名照会→error変換だけを行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
+read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、MNT供給のCountEnvironmentを取得し、DB lock→BIZ-03の同名照会（conn, CountEnvironment）→error変換を行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
 
-32のissue.codeにimport_identity_missing / settlement_missing / sync_disabled_unreconciled、issueにsettlement_dates: Vec<String>とsource_ids: Vec<i64>を含めてgenerated wireへ透過する。source_idsは表示上の技術IDにせず対象の識別にだけ用い、欠落状態をstock_review.warningsへ複製しない。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
+32のissue.codeにimport_identity_missing / settlement_missing / sync_disabled_unreconciled、issueにsettlement_dates: Vec<String>とsource_ids: Vec<i64>を含めてgenerated wireへ透過する。settlement_missingはsource単位、sync_disabled_unreconciledは商品単位のissueをその説明と組にして保持する。CMDで集約し直さない。前者のsource_ids/settlement_datesは各1要素、後者のtargetsも1要素である。source_idsは表示上の技術IDにせず対象の識別にだけ用い、欠落状態をstock_review.warningsへ複製しない。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
 
 parseの返却は既存previewへ[32のstock_review](32-biz-csv-import-service.md)を追加し、source ID・全JAN候補・証拠対象行はprivate cacheに保持する。既存のcache TTL、UUID検証、成功時削除・失敗時の扱いは維持する。BIZにcache/Mutexを渡さず、DB lockとcache lockを同時保持しない。
 

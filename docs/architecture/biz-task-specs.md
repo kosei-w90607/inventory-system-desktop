@@ -4,10 +4,10 @@
 
 SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、既存の処理を新方式実装済みとは扱わない。
 
-- BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。非連動化は商品に版を記録し、適用済み再実測まで未調整を保持する。
+- BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。非連動化は単一の共通repo書込み経路で商品に版を記録し、適用済み再実測まで未調整を保持する。
 - BIZ-02/BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。専用repoが数量/版を同時更新し、必須ログを含む既存TX境界を維持。
-- BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。受領の証拠と業務importを分離。gateの基準認定と、settled_at/前回sourceからのfile境界導出・昇格/失効伝播を所有。最新の証拠で一つの分類を使い、Unknownをflag/全file保留へ。同一性拒否証拠からsettlement_missing、商品の切替記録からsync_disabled_unreconciledを準備照会へ返す。取消は最初の有効な吸収先を補正し、legacyを吸収なしと解釈しない。
-- BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。開始context・1商品1TX・再送・N-L確定・独立再実測・legacy復旧。保存済み評価額は不変。
+- BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。受領の証拠と業務importを分離。MNT供給epochをpc_clock_epochへ保存するgate基準認定と、settled_at/前回sourceからのfile境界導出・昇格/失効伝播を所有。最新の証拠で一つの分類を使い、Unknownをflag/全file保留へ。同一性拒否証拠からsource単位のsettlement_missing、商品の切替記録から商品単位のsync_disabled_unreconciledを準備照会へ返す。切替と実測の版に合わせた説明も同じissueで返す。取消は最初の有効な吸収先を補正し、legacyを吸収なしと解釈しない。
+- BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。MNT供給のPC時計epochをbeginでcontextへ固定し、saveの1商品TXで一致検証・実測保存する。開始context・1商品1TX・再送・N-L確定・独立再実測・legacy復旧。保存済み評価額は不変。
 
 日報BIZ-08、売上レポート、PLU書出しの意味は変更しない。EJ parser実装は別laneで、32の外部probeと本番条件を引き継ぐ。
 

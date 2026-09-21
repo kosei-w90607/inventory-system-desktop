@@ -14,15 +14,15 @@ SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5�
 | save_stocktake_count | (mutable conn, token, actual_count, Option<CountContext>, CountEnvironment) → StocktakeCountSaveResult |
 | abandon_stocktake_count | (未保存context) → 失効。保存済み数量や補正を戻す操作ではない |
 
-CountContextはサーバー生成UUID、用途、product_code、参照item/親header、開始S・monotonic開始、商品revision、開始時source_cursor、DB/context世代・OS通知generation・時計対応を持つ。token以外をUIへ送って再提出させない。CountEnvironmentの時刻とgenerationはMNT/CMD側の信頼した供給で、client値ではない。
+CountContextはサーバー生成UUID、用途、product_code、参照item/親header、開始S・monotonic開始、商品revision、開始時source_cursor、DB/context世代・OS通知generation・time_basis_id（PC時計epoch）を持つ。token以外をUIへ送って再提出させない。CountEnvironmentの時刻・generation・time_basis_idはMNTからCMDを経由する信頼した供給で、client値ではない。MNTのepoch発番/失効はADR D1を正とし、POS基準の認定数から選ばない。
 
 #### beginとsaveの処理
 
 1. beginで商品・参照明細・現在の所有者を同一DB snapshotから取得する。active明細があれば未計数/auto_filledでも通常の独立再実測を拒否してその明細へ案内する。legacy取消復旧用途は対象importとその商品の復旧必要性をBIZが検証する。
-2. 監視が成立している環境だけcontextを作る。開始時source上限を固定し、UIへ開始時帳簿と対象を返す。UIが開始応答を受けてから実測する。商品検索だけではcontextを作らない。
+2. 監視が成立している環境だけcontextを作る。開始時source上限とPC時計epochをcontextへ固定し、UIへ開始時帳簿と対象を返す。UIが開始応答を受けてから実測する。商品検索だけではcontextを作らない。
 3. save入口で保存済みrequest IDをDB照会する。同ID/同Nは書込みなしのreplayed、異なるNはidempotency_conflict。保存先が複数一致する異常は拒否する。未保存の場合だけcontextの存在・用途・世代・所有者・revisionを要求する。
-4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・商品revision・環境generationを再確認する。S/Eの逆行、wall-clockとInstantの経過差がD1の許容差を超える場合も拒否。保存直前にも環境の失効を検査する。
-5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revisionをitemへ保存する。source_cursorはbeginの値のまま。
+4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・商品revision・環境generation・PC時計epochを再確認する。S/Eの逆行、wall-clockとInstantの経過差がD1の許容差を超える場合も拒否。保存直前にも環境の失効を検査する。epoch不一致はcount_context_invalid、監視不成立はcount_environment_unavailableで書込み0とし、NULLのepochで保存を通さない。
+5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revision・contextに固定したtime_basis_idをitemへ保存する。source_cursorはbeginの値のまま。
 6. 独立再実測は同じ証拠をrecountへINSERTし、N-Lが非0なら現在庫へ補正movementを同TXで適用する。数量更新後に観測の版を採番する。差0でも実測行を保存する。過去のheaderや評価額は変更しない。
 7. flagを解消できるのは、その原因sourceを開始前に受領した新実測だけ。条件を満たさないflagを消さない。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
 8. commit後に保存先とsaved/replayedを返す。応答喪失は同tokenで照会を兼ねたsaveを再送する。既に別の保存へ置換された古いitem要求を、期限切れcontextから復元して新規適用しない。
@@ -35,9 +35,9 @@ complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査す�
 
 新方式のtotal_costは `Σ max(補正後現在庫,0) × 確定時評価原価`、数量と積和はchecked演算とする。補正区分はcompletion。差0の確定も商品状態の版を進めて古いcontextを失効させる。確定後には独立再実測の入口を利用できる状態へ戻す。既存のTX外best-effortログ・確定後整合性チェックは維持する。
 
-legacy取消復旧は現在数の再実測RとN-Lの即時補正、activeがあればN/Nへの再基準化を同じTXで行う。派生itemはRのS/E・source_cursor・time_basis_idをコピーし、ledger_cursorだけを補正後の上限、観測順をRより後にする。公開request IDはRだけに記録し、itemはrebase内部IDとRへのFKを使う。通常の独立再実測からactiveを迂回する権限は与えない。
+legacy取消復旧は現在数の再実測RとN-Lの即時補正、activeがあればN/Nへの再基準化を同じTXで行う。派生itemはRのS/E・source_cursor・PC時計epochのtime_basis_idをコピーし、ledger_cursorだけを補正後の上限、観測順をRより後にする。公開request IDはRだけに記録し、itemはrebase内部IDとRへのFKを使う。通常の独立再実測からactiveを迂回する権限は与えない。
 
-非連動化後の回復も同じbegin/saveを使う。pos_sync_disabled_revisionより後の観測の版を持つ適用済み新方式実測が未調整解消の証拠になる。独立再実測（差0含む）は保存後、active measuredは確定後に解消と判定する。active保存だけやauto_filledは解消せず、表示「棚卸し確定まで在庫数は未調整です」を維持する。既存import flagは従来の受領条件で別に検査し、商品側issueのみを理由に確定を循環拒否しない。
+非連動化後の回復も同じbegin/saveを使う。pos_sync_disabled_revisionより後の観測の版を持つ適用済み新方式実測が未調整解消の証拠になる。独立再実測（差0含む）は保存後、active measuredは確定後に解消と判定する。active保存だけやauto_filledは解消しない。案内は32と同じ版の条件で分け、切替後のmeasured pendingなら確定、切替前/同版/版なしなら切替後の数え直しを指す。切替前のpendingを確定しても観測の版を更新せず、未調整は残る。既存import flagは従来の受領条件で別に検査し、商品側issueのみを理由に確定を循環拒否しない。
 
 #### 読取り・失敗・検証
 

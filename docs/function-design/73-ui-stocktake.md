@@ -24,7 +24,7 @@ SPEC-STK-TIME-D1 / D7〜D9。既存の検索/HID・候補確認・一覧・確�
 
 通常保存、保留からの確認、記録詳細の「今の数を確認して直す」は[42のAPI](42-cmd-sales-stocktake.md)を共用する。legacy取消復旧だけは専用purposeと対象importを使う。訂正は新しい現物確認の追記であり、確定済み評価額は変更しない。
 
-非連動化後の未調整対象も既存の計数フローへ受け入れる。activeの保存後は「棚卸し確定まで在庫数は未調整です」を示し、確定または独立再実測の成功後に商品表示/準備照会をrefetchする。商品側issueの解消とimport由来flagの解消を混同しない。
+非連動化後の未調整対象も既存の計数フローへ受け入れる。get_pos_stock_readinessの当該商品issueを表示する。切替後の版を持つmeasured pendingだけは「棚卸しを確定すると、在庫数に反映されます。それまでは未調整です」、切替前/同版/版なし・未計数/auto_filled/legacyは「在庫連動をやめた後に、もう一度この商品を数えてください」とする。BIZの説明を表示し、UIで版や文言を解析しない。取得中/失敗時は未調整を維持して再試行を案内し、確定で解消すると断定しない。計数保存・確定・独立再実測の成功後、設定変更後と再訪時に商品表示/準備照会をrefetchする。no_count_targetには「棚卸しを始めると、この商品を数えられます」と案内する。棚卸し開始後は準備照会を取り直してactive_countへ接続する。商品側issueの解消とimport由来flagの解消を混同しない。
 
 UI状態は未保存入力/tokenだけ、保存済みの正はDB/query。D-052のSSOTから保存先に応じたconsumerをinvalidateし、refetchで未保存数量を復元しない。runtimeではgenerated commands、bindings、error型、mockを同時に切替える。現行update_countの無検査入口を残さない。
 

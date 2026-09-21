@@ -5,7 +5,7 @@
 SPEC-STK-TIME-D1 / D3 / D8。新しい業務判断をMNTへ移さず、計数に必要なOS環境の観測をBIZへ供給する。
 
 - Windowsの時刻変更・suspend/resume通知を登録し、環境generationを進める。登録不能は成功として隠さず、計数contextの発行不可として伝える。通知順序と保存直前の失効はnative自動probeで検証する。
-- 時計対応の識別と失効を保持し、対応期間の異なる過去の日時を同じ時軸として扱わない。time_basis_idはその識別であり、取得だけでは外部時計の検証にならない。BIZ-03がgate証拠から認定するpos_time_basesをsourceと実測が参照し、MNTはfile境界の認定者にはならない。壁時計とmonotonicの比較だけでsleep検出済みとしない。
+- PC時計epochのUUIDをD1の起動・時刻変更・suspend/resume・監視喪失・経過差異常・DB接続交換で発番/更新する。epoch開始から判定までの連続性をwall-clock/InstantとOS監視で検査し、CountEnvironmentへ供給する。BIZ-06が実測のtime_basis_idとして保存し、BIZ-03がPOS基準のpc_clock_epochとして認定TXで保存する。POS基準の認定とfile境界導出はBIZ-03の責務であり、MNTは認定しない。壁時計とmonotonicの比較だけでsleep検出済みとしない。
 - DB接続交換のorchestrationは[43](../function-design/43-cmd-settings-log.md)でcontextを先に失効する。MNT-01のbackup/復旧規則は変更しない。
 - MNT-03は[DBの新契約](../DB_DESIGN.md)の分類・内部上限・列/表追加を1TXで適用し、履歴・数量・評価額を変更しない。旧実測を推定時刻やcursorで補完しない。
 

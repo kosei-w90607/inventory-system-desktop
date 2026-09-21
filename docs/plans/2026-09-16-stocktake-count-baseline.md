@@ -142,7 +142,7 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 | Area | Artifact | Status |
 |---|---|---|
 | 時点・順序・復旧 | ADR D1〜D9、32 / 35 | メタ不足拒否を維持し、D3 / D8へ初導入と本番開始条件を同期 |
-| 店舗の導入前提 | project-memory | owner確認日/原文、本番履歴なし、本番開始時の更新義務を正本化。AGENTS / PROJECT_HANDOFFから到達可能 |
+| 店舗の導入前提 | project-memory | owner確認日/回答の要旨、本番履歴なし、本番開始時の更新義務を正本化。AGENTS / PROJECT_HANDOFFから到達可能 |
 | DB / TX / migration | master / transaction / pos / tracking、20 / 21 / 24 / 36 | 論理列・型・制約・保存順・旧DB分類をproposedとして追加。SQL適用と故障注入はruntime |
 | CMD / DTO / token | 40 / 41 / 42 / 43 | API/DTO・回復payload・保管/失効・再送・登録と生成の義務を具体化。未実装 |
 | operator flow | 55 / 65 / 73、SCREEN_DESIGN / UI_TECH_STACK | 到達・focus・状態・中断/再開・差0商品の訂正・native合格条件を追加。UI実装は不変 |
@@ -210,9 +210,9 @@ Status: implementing（2026-09-21）。plan-approved時点の評価: source同�
 | Contract | Future target | Automated evidence | Native / external |
 |---|---|---|---|
 | D1 数量/版（20/21/30/31/35/36、master/transaction） | 共通repo、既存数量writer、数量なしの状態更新 | req205_stock_revision_all_writers / req205_stock_revision_non_quantity / ABA | operator手動故障注入は対象外 |
-| D1 context（35/42/43、MNT task） | begin/save/abandon、DB/環境世代、保存済み要求照会 | req205_count_save_idempotency / count_context_invalidation / req205_count_context_db_generation | Windows監視probe、73の計数L3 |
+| D1 context（35/42/43、MNT task） | begin/save/abandon、DB/環境世代、PC時計epochの発番・保存、保存済み要求照会 | req205_count_save_idempotency / count_context_invalidation / req205_count_context_db_generation / req401_pc_epoch_across_basis_renewal | Windows監視probe、73の計数L3 |
 | D2 受領（23/24/32/41、pos） | parser任意メタ、hash一意source、開始source_cursor | req401_receipt_before_count_start / req401_source_survives_zero_and_rollback | 実ファイル系列 |
-| D3 時刻/精算同一性（23/24/32/41/55、pos、MNT task） | gate基準/file境界のproducer、昇格/失効伝播、精算同一性guard、独立拒否証拠、settlement_missing | check_counterexamples / check_diagnostic_order / req401_settlement_identity_conflict / req401_same_day_missing_identity_rejected / req401_identity_conflict_recovery_limit / req401_time_evidence_validation / req401_time_evidence_expiry / req401_time_evidence_promotion / req401_file_bounds_producer / req401_file_bounds_not_derived / req401_file_bounds_propagation / req401_rejected_settlement_visible / req401_clock_invalidation_survives_rejected_commit | 32の時計・系列probe |
+| D3 時刻/精算同一性（23/24/32/41/55、pos、MNT task） | gate基準のpc_clock_epoch/file境界のproducer、実測epochとの比較、昇格/失効伝播、精算同一性guard、独立拒否証拠、settlement_missing | check_counterexamples / check_diagnostic_order / req401_settlement_identity_conflict / req401_same_day_missing_identity_rejected / req401_identity_conflict_recovery_limit / req401_time_evidence_validation / req401_time_evidence_expiry / req401_time_evidence_promotion / req401_file_bounds_producer / req401_file_bounds_not_derived / req401_file_bounds_propagation / req401_rejected_settlement_visible / req401_clock_invalidation_survives_rejected_commit / req401_pc_epoch_across_basis_renewal | 32の時計・系列probe |
 | D4 分類/設定（30/32/35/40/41/51/55/60） | 共通分類、全候補、active/完了、preflight、master各writeの拒否と非連動化記録/回復 | req401_shared_jan_all_candidates / req401_active_legacy_import_recheck / req401_ambiguous_jan_sync_rejected / req401_master_sync_guard_ui / req401_sync_disable_retains_recovery / pos_stock_readiness_preflight | 準備不足と保留からの回復 |
 | D4 ゼロ行/flag（23/32/35、tracking） | 売上行と証拠行の分離、確定拒否、再preview | req401_zero_net_nonzero_after_count / req205_recount_flag_blocks_complete | 売上0の正常完了表示 |
 | D5（23/32） | 別EJ laneのadapter/照合/実行拒否 | req401_ej_coverage_boundaries / req401_ej_per_receipt_validation | 32の本番有効化probe |
@@ -265,9 +265,9 @@ Status: implementing（2026-09-21）。plan-approved時点の評価: source同�
 - 新たに具体化したtime_basis_id、型付き回復payload、準備照会、補正kind/recount参照をproducerから全consumerへ配線する。時計失効は業務rollbackで消さない。legacyのUnknown後は所属で一意に分岐する。
 - 各sourceの「現行本文」を新runtimeの完成形として混ぜず、対応するproposed節を実装し、旧仕様からの置換箇所を実装差分で確認する。profile/現行図面・D-052の実装SSOTはruntimeの挙動変更と同時に同期する。
 - 既存green testと既知ignore診断はMatrix「既存テストの移行先」を正として移す。計数前の在庫変更で差3は維持し、保存後の移動で差を固定する。負在庫force_fill、L≠liveのformatter/画面、確定時の評価数量、商品別SUM補償を値で検証する。未実測「—」/自動入力の注記は一覧・選択商品・保存結果のoracleへ明記する。
-- Final Review是正のproducerを省略しない。gateはpos_time_basesの基準認定、BIZ-03はsettled_at/精度と同系列前回sourceからfile境界を導出してsourceへ保存する。基準認定/前回後着の適格sourceだけ昇格、失効は基準と全参照sourceへ伝播。通常操作から基準の認定は不可。実測側time_basis_idも同じINTEGER FKへ揃える。
-- 欠落表示は拒否された未取込み資料だけ（案a）。同一性拒否証拠を業務TXと独立保存し、PosStockReadiness.issuesのsettlement_missing/source_ids/settlement_datesへ接続する。未提出/欠番全般は本laneで検出せず、issueなしを全資料完備と表示しない。再実測/再起動では消さない。
-- true→falseは全経路で`products`の`pos_sync_disabled_revision`を同TX保存し、非連動/廃番もsync_disabled_unreconciledの検出対象にする。商品get/updateのsync_disabled_recoveryと商品一括importの対象Vec、stock_review/ImportResult、準備照会から既存CountRecoveryTargetへ接続する。active保存だけでは未調整を残し、切替後の適用済み新実測で解消する。無明細の制限・既存flag・再有効化guardを維持する。
+- Final Review是正のproducerを省略しない。gateはpos_time_basesの基準認定、BIZ-03はsettled_at/精度と同系列前回sourceからfile境界を導出してsourceへ保存する。基準認定/前回後着の適格sourceだけ昇格、失効は基準と全参照sourceへ伝播。通常操作から基準の認定は不可。実測側time_basis_idはMNTが発番するPC時計epochのTEXTとし、BIZ-06がbeginで固定、save TXで一致検証してitem/recountへ保存する。POS基準の既存TimeBasis JSONへpc_clock_epochを保存し、基準JOINで現在epoch/実測epochと比較する。source側time_basis_idだけがINTEGER FK。同じepochなら期限更新/reset後も既存実測と比較可能で、POS期間を実測窓へ課さない。epoch不一致/NULLは時刻Unknown、受領Beforeは維持する。
+- 欠落表示は拒否された未取込み資料だけ（案a）。同一性拒否証拠を業務TXと独立保存し、PosStockReadiness.issuesのsettlement_missing/source_ids/settlement_datesへ接続する。未提出/欠番全般は本laneで検出せず、issueなしを全資料完備と表示しない。source単位のissueでID/精算日を各1要素にし、そのsourceの理由説明と組にする。再実測/再起動では消さない。
+- pos_stock_syncは変更前値の取得・true→false判定・版/切替記録の保存を単一の共通repo書込み経路で強制し、汎用更新の直接set分岐を残さない。true→falseは`products`の`pos_sync_disabled_revision`を同TX保存し、非連動/廃番もsync_disabled_unreconciledの検出対象にする。商品get/updateのsync_disabled_recoveryと商品一括importの対象Vec、stock_review/ImportResult、準備照会から既存CountRecoveryTargetへ接続する。active保存だけでは未調整を残し、切替後の適用済み新実測で解消する。未調整issueを商品単位にし、切替後のmeasured pendingだけ確定を案内する。それ以前の入力は数え直しを案内し、51/73へ既存準備照会の説明を渡す。無明細には棚卸し開始を案内し、既存flag・再有効化guardを維持する。
 - 本packetのdesignはruntime実装許可ではない。
 
 ## Spec Contract
@@ -682,3 +682,53 @@ ADR全文、packetの現在契約、S1〜S6のproposed節で旧DB/移行/legacy/
 - AC5/AC7: `bash scripts/doc-consistency-check.sh` / `bash scripts/doc-consistency-check.sh --target plan` → ともにexit 0、`ERROR 0 / WARN 3（既知PK6のみ）`。初回は追記の非箇条書きskip記録とproposed列の表記で追加WARNが出たため、既存の箇条書き形式と表/列を分けた参照表記へ是正して再実行した。検査scriptと既知履歴は変更なし。`bash scripts/check-workflow-git.sh` → PK5/STATECAP OK、`git diff --check` → exit 0。
 - 旧文言sweep: verifiedの所有・TimeEvidenceの旧shape・精算欠落の表示・古いSTK現在地/初導入参照をrepoでrg照合。変更対象の旧契約のlive残存はなし。packetの不採用を記した遷移履歴と過去Review Responseは保存した。
 - 未実施: runtime/SQL migration/bindings/traceability生成、Rust/frontend全量検証、Windows/EJ/時計/系列の実機、独立Final Review。push/PR操作/helperのrecord・ready・mergeは行わない。是正を停止した項目・Scope/ACとの衝突はなし。
+
+
+### Final Review broad `2 回目`（2026-09-21、pass A Sonnet / pass B Opus、対象 `7de29376`、裁定 Coordinator = Fable）
+
+- 出所はPR #85の[pass A](https://github.com/kosei-w90607/inventory-system-desktop/pull/85#issuecomment-5760937476) / [pass B](https://github.com/kosei-w90607/inventory-system-desktop/pull/85#issuecomment-5760937847)。前回指摘は両passで`P2 4件 / P3 4件、全件CLOSED`と確認された。今回のFindings Freezeは`P2 3件 / P3 5件、全件accept`の下記集合で固定する。
+- 発注71のdocs是正。開始HEADは`0d8ae025`、tracked tree clean。Workflow Stateのfield・Scope・AC・Gated Amendments・過去Review Response・Store Premises Factsは不変。次はCoordinatorが是正後headへ`broad 2本、rally 3回目（round天井）`を取り直す。Writerの自己点検を独立Final Review通過とは扱わない。
+
+| Finding / 種別 | disposition | 是正先と結果 |
+|---|---|---|
+| P2-N1 / producer・識別意味の欠落 | accept | ADR D1/D3/D4/D8/Consequences、tracking/pos、20/21/24/32/35/41/42/43、architectureのIO/BIZ/CMD/MNT、Matrix、Ledger/㉘申し送り。実測epochとPOS基準FKを分離し、producer・TX・比較条件・失効・費用を確定 |
+| P2-N2 / 解消条件と案内のdrift | accept | ADR D4、32/35/41/51/55/73、UI_TECH_STACK、architectureのBIZ/CMD/UI、Matrix。切替後のmeasured pendingだけ確定を案内し、それ以前の入力は数え直しへ。既存の準備issueの説明を商品ごとに渡す |
+| P2-N3 / Scope・AC・claimed validationの不一致 | accept | 是正の向きはownerの公開範囲決定に合わせGA2で処理済み。project-memoryのInitial deployment baselineへ削除許可ではない但し書きを復元。ADR/Matrix/本packetのliveな原文参照を要旨基準へ変更し、GA2後AC3を下記で再実行。過去の検証記録は当時の記録として保存 |
+| P3-N1 / 共通経路の強制不足 | accept | ADR D4、20/30、architecture BIZ、Matrix、㉘申し送り。pos_stock_syncの共通repo更新で旧値読取り・変更時の版更新・true→false時だけ切替版保存を強制し、汎用直接setを残さない |
+| P3-N2 / sourceと日付・理由の対応欠落 | accept | ADR D3、32/41/55、architecture BIZ/CMD/UI、Matrix。source単位のissue、ID/日付各単一要素、既存説明に同じsourceの拒否理由を載せる |
+| P3-N3 / 準備完了表示の制限欠落 | accept | 55のfile選択前表示へ、準備完了は未提出の精算資料がないことを意味しないと明記。ADR/Matrixの既存oracleと一致 |
+| P3-N4 / JAN変更によるheld解除 | accept（残存リスクを明記） | ADR Consequences。一括importのJAN変更（NULL化も含む）で候補から外れ、在庫未調整でもheldが消える経路を受容済み残存リスクとして保持 |
+| P3-A / 初導入但し書きの欠落 | accept | P2-N3と同じproject-memoryの但し書き復元で対応 |
+
+#### 決定と最小の契約面
+
+- P2-N1は案(i)。実測はPOSのマシン/精算系列に属さず、MNTが発番するPC時計epochを既存time_basis_idへTEXTで保存する。BIZ-06のbeginが固定し、saveの単一商品TXが検証/保存する。新しいPOS基準でも同じepochなら比較可能とし、実測窓へPOS基準の適用期間を課さない。epoch不一致/NULLでは時刻Unknown、受領Beforeは維持する。連続性を証明できない再起動/sleep等の費用はADRへ記録した。
+- 新たな保存fieldは既存TimeBasis JSONのpc_clock_epochのみ。BIZ-03のgate認定TXがMNTから保存し、24の保存/基準JOIN、32の分類・準備照会がconsumeする。欠落/不正/不一致ではverifiedでも使わず、Matrixのreq401_pc_epoch_across_basis_renewalに成功/拒否/保存故障のoracleを置いた。fieldなしで実測とPOS基準を別概念にするだけでは、変換先のPC epochを証明できない。起動のたびに全基準を無条件更新する別の同期機構も増やさず、既存JSONの識別値で閉じた。
+- 新しい表・列・issue code・named type・関数は追加しない。既存CountContext/CountEnvironmentの時計対応をepochとして具体化し、既存get_pos_stock_readinessのBIZ入力へCountEnvironmentを渡す。公開commandの引数は不変。source側time_basis_idのINTEGER FKは保持する。
+- P3-N2はsource単位の案。集約された配列から日付と理由の対応を復元させず、既存issueの説明を使えるため新しいreason型は不要。P2-N2も商品単位のissueに既存説明を載せ、51/73が既存準備照会を読む。UIへ版fieldやaction/codeを増やして業務判定を複製しない。
+- P3-N4は残存リスク記録の案。既存pos_sync_disabled_revisionはtrue→falseだけを表し、false→false/新規falseを対象外にし、UIも非連動化を説明する。連動を維持したJAN変更を載せると保存意味・再有効化guard・表示・oracleまで広がり、既存経路への文の追加だけでは整合しない。個別フォームはJAN read-only、一括importだけの経路として許可されたリスク明記で閉じる。
+- findingでない残る不確実性も記録した。51/73とADR/Matrixへno_count_targetから棚卸し開始→active_countの次操作を追記。取込み済みimportが後から衝突した前回sourceの下限に依存する場合の自動再判定/訂正が非対応である点をADR Consequencesへ明記した。
+
+#### 同種点検
+
+| 点検観点 | 現物と結果 |
+|---|---|
+| 保存値のproducer | pos_time_basesはgate→BIZ-03→24、file境界は32→24、実測はMNT→35→20、拒否証拠は32→24、切替版は30→共通20、flagは取込みTX→20。epochの保存/JOIN/現在値照合を追加し、基準認定数に依存する実測選択を除去。派生N/NはRのepochをコピー。点検範囲の全保存値についてproducerを追跡できた |
+| 解消条件と案内 | sync_disabled_unreconciledは適用済み観測の版、recount_requiredは同規則を共用。切替前pendingの確定・auto_filled・同版/版なしでは解消しない。商品単位の既存issue説明で案内を接続。settlement_missingは当該sourceのactive成立だけで非表示、再実測/取消/再起動を解消と表示しない |
+| heldの別解除経路 | runtimeのupdate_product/commit_import/toggle_discontinue、価格変更、PLU対象/slot/export確認、find_by_jan_code、棚卸し開始をread-only確認。廃番/PLU状態はJAN候補を除外せず、価格/取引先/名称はZ004のJAN照合を変えない。商品追加による共有はD4のguard、preview後の候補変化は再previewで検出。JAN変更/NULL化はP3-N4の残存リスクに含めた。通常APIから商品物理削除する経路は見つからず、test内DELETEを製品経路とは数えない |
+| 復旧の迂回 | 通常入出庫/fix_integrity/force_fillは新しい適用済み実測を作らず、切替記録を解消しない。取消は元flagだけを解消し、独立再実測を消さない。棚卸し開始は明細を作るだけで、未調整を解消しない。実DB復元は許可済みの別ライフサイクルで、本是正のheld解除手段にしない |
+| 前提・旧文言 | 原文所在のliveな主張を要旨へ同期。project-memoryは参照行の但し書きだけを追加し、Store Premises Factsと出典ラベルは不変。ADR/32/Matrixは現在の要旨と初導入条件を参照し、消えた旧文の内容を前提にしない |
+
+- Review-only skipped because: 発注71が単一thread・直列・subagent不使用を指定。独立Final ReviewはCoordinatorの次の発注で行う。
+
+#### GA2後AC3と発注71の検証
+
+- AC1: `rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` → D1〜D9。同patternの`rg -c` → `9`。
+- AC2: `python3 scripts/probes/stocktake_time_model.py` → exit 0、`PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy recovery, migration kinds, force_fill`。モデルは変更していない。epochのproducer/保存・UI案内の新oracleはruntime Matrixにあり、モデルPASSで実装済みとは扱わない。
+- AC3: S1〜S6へ `rg -n '時点証拠契約|SPEC-STK-TIME'` を実行しproposedの正本へ到達。`rg -n '2026-09-19|本番|初導入' docs/project-memory.md` で確認日・owner回答の要旨・本番開始時の追記義務を再確認。`rg -n 'project-memory' AGENTS.md docs/PROJECT_HANDOFF.md` で入口を確認。`rg -n 'permission|許可' docs/project-memory.md` はInitial deployment baselineの但し書きへ一致。非archiveの公開docsにowner発言の禁止原文は一致なし。
+- 原文所在sweep: `rg -n 'owner原文' docs/ --glob '!docs/archive/**' --glob '!docs/evidence/**'` の残りはproject-memoryの出典ラベル、packetの過去Review Response/GAの履歴のみ。ADR/Matrix/Required Design Artifactsのliveな原文参照は要旨へ変更した。過去のclaimed validationを現在の成立証拠に流用せず、本節のGA2後再検証を正とする。
+- AC4: `git diff --name-only 36891af8 -- src src-tauri`、`git diff 36891af8 -- docs/function-design/90-traceability.md docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/templates`、`git diff 7de29376 -- scripts/probes/stocktake_time_model.py` → 空。変更docごとの要求tokenは基準36891af8/開始0d8ae025と多重集合で一致。保護節・履歴・Store Premises Factsは開始版と一致。
+- mutation: TMPDIRの隔離copyでcancel_importだけを是正前のmovement単位補償へ戻すと、check_lifecycleの補償一覧assertがAssertionError（exit 1）。trackedモデルは不変。GA1の既存差分は取消純量化/対応case/検出力のないassertとコメントの限定是正である。
+- AC5/AC7: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` → exit 0、`ERROR 0 / WARN 3（既知PK6のみ）`。追記した点検結果の否定文を未解決マーカーと拾うplan検査エラーが出たため、意味を保った肯定文へ直して再実行した。エラー出力の途中切断によるUTF-8 decode失敗は生byte保存で切り分けた。`bash scripts/check-workflow-git.sh` → PK5/STATECAP OK。`git diff --check` → exit 0。
+- AC6: 32の外部probe表（精算系列/時計対応/EJ完全性/商品同定）、42/73のWindows監視不成立と失敗/復旧条件を再点検。51/60のmaster拒否とMatrixのoracleも保持した。
+- 未実施: runtime/SQL migration/bindings/traceability生成、Rust/frontend全量、Windows/EJ/時計/系列の実機、独立Final Review。push/PR操作/helper record・ready・mergeは実施しない。停止項目・Scope/ACとの衝突なし。

@@ -10,9 +10,9 @@ SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sale
 | 受領済み上限 | (conn) → 最大source ID、空なら0。BIZ beginが読取り、UIへ公開しない |
 | 精算同一性の照合候補取得 | (conn, sourceメタ) → 同じ帳票のmachine_no / settlement_noに対応する全受領sourceと系列証拠。未取込み/取消済みも除外しない。ID/hash/メタを返し、同一性の業務判定と拒否はBIZが行う |
 | active取込みの識別メタ取得 | (conn, settlement_date: Option) → completed / completed_partial全件のimport ID・精算日・任意sourceメタ。日付指定時は同日guard用、未指定時は全日付のpreflight用。csv_importsを起点にLEFT JOIN等で移行前のsourceなし・片方/両方NULLも行を残す。メタ一致検索の候補0件で代用せず、商品連動設定で絞らない。既存の同日照会に接続し、BIZが日付一覧の導出とpreview/commit TXでの拒否を所有する |
-| 時刻基準の保存/読取り | (tx, BIZ検証済みTimeBasisとstate) → basis ID。読取りは対象・系列候補を返す。gate認定はBIZ、汎用設定の更新口は持たない |
+| 時刻基準の保存/読取り | (tx, BIZ検証済みTimeBasis（MNT由来のpc_clock_epochを含む）とstate) → basis ID。読取りは対象・系列候補を返す。gate認定はBIZ、汎用設定の更新口は持たない |
 | 境界候補の読取り | (conn, 対象/系列) → 保存済みsourceのID・精算番号・settled_at・精度・衝突情報。0売上/取消済みも含め、受領順で前回と決めない。基準への適合と前後はBIZが判定 |
-| file境界の保存/読取り/失効 | (tx, source ID, basis ID, BIZ導出済みTimeEvidence, state)で保存。利用読取りは基準をJOIN。認定/前回資料受領時の再評価・基準失効の全source伝播を同じ証拠TXで保存し、IOが時計を認定しない |
+| file境界の保存/読取り/失効 | (tx, source ID, basis ID, BIZ導出済みTimeEvidence, state)で保存。利用読取りは基準をJOIN。認定/前回資料受領時の再評価・基準失効の全source伝播を同じ証拠TXで保存する。JOINで基準のpc_clock_epochも返す。IOが時計を認定しない |
 | 同一性拒否の記録/照会 | (tx, source ID, reason, rejected_at)で初回拒否を冪等保存。照会は拒否記録と当該sourceのactive import有無・精算日を返す。BIZがsettlement_missingを導出し、取消/再実測で証拠を削除しない |
 | import保存 | NewCsvImportにsource_idを加える。既存のactive hash重複判定と取消済み再取込み可否は維持 |
 | 取消対象の事前読取り | (conn, ref_type, ref_id) → 有効movementのid / product_code / quantity。legacy判定を終える前にvoidしない |
