@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: c9d7d02883d9d18d5c208d9f32b06860a8d8578b
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Sonnet subagent（worktree run）
@@ -24,6 +24,7 @@ manual なし: 画面・operator workflow・配布物に変化がなく、debug 
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 設計正本に型生成の失敗時の振舞いを定める節は無く、既存の利用契約（`docs/DEV_WORKFLOW.md` Verification Gates「generate_bindings の後に `src/lib/bindings.ts` の diff を見る」、D-054 の「L1 の bindings clean diff 検査が cross-language 同期の機械検査を兼ねる」）が暗黙に前提とする「生成が失敗したら検査も失敗する」を実装が満たしていない、という実装側の欠陥。owner の設計判断を要する論点なし
+- plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P1 0 / P2 2 / P3 2）→ 是正 `9f68abdc` → round 2 closure（同 reviewer、P1/P2 = 0、P3 1）→ P3 を in-place 是正。Plan Commit = `c9d7d028`（plan-first `41b1ad89` → 是正を含む確定版）。実装は Sonnet subagent の worktree run で本 commit を起点にする
 
 ## Owner Effort Budget
 
