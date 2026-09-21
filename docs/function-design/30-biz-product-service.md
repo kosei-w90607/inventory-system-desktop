@@ -1,5 +1,20 @@
 ## 4. BIZ-01: 商品管理ロジック
 
+### 時点証拠契約（proposed・未実装）
+
+準備表示のclock_unverifiedは[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘の実装対象外とし、店主向けの準備issueとして表示しない。日次資料の時刻判定が恒常運用に足りないことは、clock_unverifiedの表示で解決済みとせず、次のdesign laneへ引き継ぐ。
+
+SPEC-STK-TIME-D1 / D4 / D8。新方式では汎用ProductUpdatesのstock_quantity欄を使用も公開もしない。createの初期数量と同TXの初期movementは維持し、商品一括importの既存商品上書きで在庫を変更しない。
+
+- create/update/商品一括importのTX内で、在庫連動対象とJANを共有する候補を全て検査する。曖昧なJANで連動を有効化する操作、および既存の連動対象へ新たな曖昧さを作るJAN更新/追加を拒否する。previewだけの検証でcommitを通さない。
+- pos_stock_syncの書込みは、変更前値を同TXで読む単一の共通repo経路を通す。変更時は商品revisionを進め、true→falseの場合だけ同じ呼出しでpos_sync_disabled_revisionを保存する。汎用更新から直接setできる分岐を残さない。既存商品のtrue→falseはheld履歴の有無を問わず、同TXでpos_sync_disabled_revisionに変更後の版を保存する。受領メタだけではheld対象を再構成できないため、全切替を保守的に記録する。現在庫の補正や既存flagの解消は行わず、記録保存失敗は設定/版も含めTX全体を戻す。updateと既存商品を変更する商品一括importに共通で適用し、新規false/false→falseは記録しない。
+- 既存商品の連動再有効化は一意性と新方式の現物確認を要求する。pos_sync_disabled_revisionがあれば、それより後の適用済み新方式実測が必須で、未達はrecount_requiredと現在の回復対象を返す。pending保存やforce_fillでは解除しない。参照できる棚卸し明細がない場合は偽の明細を作らず、ADRの既知の制限として非連動を維持する。checkboxを実測の代わりにしない。
+- 本番前preflightは共有JAN候補・legacy基準・時計/EJの未検証を具体的に示す。既存値を自動で書き換えず、商品同定の修正か利用者による非連動切替へ案内する。PLU対象/plu_dirtyは在庫連動の安全確認の代用にしない。
+
+商品get/update結果へsync_disabled_recovery: Option<CountRecoveryTarget>、商品一括importのpreview/結果へ同対象のVecを返す。判定はBIZ-03の準備照会と同じ規則を共用する（IOやUIで独自判断しない）。UI-01bはtrue→falseの操作時に警告し、保存後/再訪も未調整と回復先を表示する。商品一括importも非連動化を含む場合はpreviewと結果で同じ案内を返す。
+
+既存の価格改定・supplier・slot解放・初期在庫の意味は不変。BIZの拒否理由と復旧対象は[共通errorの新契約](40-cmd-product.md)で型付きに渡し、DB/数量範囲外は従来の失敗経路でTX全体を戻す。
+
 ### 4.1 モジュール構成
 
 ```

@@ -1,5 +1,39 @@
 # 73. UI-10: 棚卸し画面（StocktakePage）
 
+## 時点証拠契約（proposed・未実装）
+
+本節のtime_basis_idの必須保存は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+
+SPEC-STK-TIME-D1 / D7〜D9。既存の検索/HID・候補確認・一覧・確定結果を維持し、数量入力の前に明示的な「今から数える」を置く。旧UI-10-D2/D11の検索成功だけで数量入力へ進む動作、およびD10・§73.6/§73.10/§73.12のcurrent_stock差異/「現在在庫」主列とテストoracleは、新方式のruntime切替時に本節へ置き換える。新しく保存したmeasuredは親が移行途中のversion=0でもL-N表示とし、完了済みversion=0の旧記録表示だけを保存する。
+
+| 遷移 | 表示・入力・focus |
+|---|---|
+| 商品特定→開始前 | 商品名・商品コード・単位、前回保存値は読取り表示。数量欄は空。「今から数える」へfocus。検索/HIDのEnterを同じイベントでbeginへ連鎖させない |
+| begin成功→計数中 | 「この商品の数を確認してください」、開始時帳簿、空の数量入力。「数を保存」。数量欄へfocusし、その後に実測する |
+| save成功 | 保存したN/L/差を反映し、保存済みのfeedback。検索欄へ戻り次の商品を選べる。完了済みへの再実測も同じ操作 |
+| 商品revision/環境の失効 | 「数えている間に記録が変わりました。もう一度数えてください」。古い数量を再送する操作を置かず、新beginでは空欄 |
+| 保存先変更 | 最新のactive明細へ案内し、新たにbegin。旧完了記録からactiveを迂回しない |
+| 応答不明 | 同token/同Nで保存結果を照会する。新tokenへ古いNを自動転記しない。再起動後は既存記録を取得し、未保存入力はやり直す |
+| 計数環境不成立 | 「数える操作の安全確認を開始できません。アプリを起動し直してください。続く場合は担当者に連絡してください」。未保存の計数を止め、保存済み記録は残す。監視復旧後は新beginから再開。60分待つ、確認checkbox、時刻自己申告で解除しない |
+
+製品対象外の非Windows環境では「この環境では計数できません。Windows版で開いてください」と区別し、再起動の繰返しで直ると案内しない。time_basis_id=NULLでOS監視の拒否を迂回する操作は設けない。再起動でもWindows監視が成立しなければ、担当者が診断・修正版のnative確認を行うまで実測入力を停止する。既存データの削除や全アプリ機能の停止を要求するものではない。
+
+数量は整数・非負・wire安全範囲を検査し、IME確定Enterでは送信しない。保存中の再送連打・商品変更・離脱を抑止し、遅い旧応答が別商品へ適用されないようtokenと対象を照合する。商品切替・中断・離脱はabandonで未保存contextを失効させる。既存のスキャン検索や部門候補は検索結果の変化で選べなくしない。
+
+一覧は「カウント時在庫」L、「実数」N、「差」L-Nを保存事実として表示し、現在庫は別値と分かる表示にする。uncountedは「—」、auto_filledは「自動入力」、legacyは「更新前の記録」、flagは「要再確認」と文字/非色表示で区別する。過去の値を新しい計数の入力値へ自動で埋めない。
+
+確定時は既存の常時確認dialog・取消不可の警告を維持する。flag/legacyがあれば対象の再確認へ戻り、force_fillの選択で通さない。新方式の結果は補正後現在庫による評価額、確定補正の差異件数を表示する。保存後に入出庫があれば確定在庫が古いNと一致しないことを説明し、現在庫との差だけでエラーにしない。
+
+通常保存、保留からの確認、記録詳細の「今の数を確認して直す」は[42のAPI](42-cmd-sales-stocktake.md)を共用する。legacy取消復旧だけは専用purposeと対象importを使う。訂正は新しい現物確認の追記であり、確定済み評価額は変更しない。
+
+非連動化後の未調整対象も既存の計数フローへ受け入れる。get_pos_stock_readinessの当該商品issueを表示する。切替後の版を持つmeasured pendingだけは「棚卸しを確定すると、在庫数に反映されます。それまでは未調整です」、切替前/同版/版なし・未計数/auto_filled/legacyは「在庫連動をやめた後に、もう一度この商品を数えてください」とする。BIZの説明を表示し、UIで版や文言を解析しない。取得中/失敗時は未調整を維持して再試行を案内し、確定で解消すると断定しない。計数保存・確定・独立再実測の成功後、設定変更後と再訪時に商品表示/準備照会をrefetchする。no_count_targetには「棚卸しを始めると、この商品を数えられます」と案内する。棚卸し開始後は準備照会を取り直してactive_countへ接続する。商品側issueの解消とimport由来flagの解消を混同しない。
+
+UI状態は未保存入力/tokenだけ、保存済みの正はDB/query。D-052のSSOTから保存先に応じたconsumerをinvalidateし、refetchで未保存数量を復元しない。runtimeではgenerated commands、bindings、error型、mockを同時に切替える。現行update_countの無検査入口を残さない。
+
+Windows L3の対象は (a) 検索→明示begin→計数→保存→次の商品、(b) 記録変化で拒否→新しい計数、(c) 保留一部保存→再起動後の再開、(d) 確定後に差0の商品も検索して独立再実測へ戻れること。文字・数量・状態・次操作の読める表示を確認する。通知登録失敗や保存直前の時刻変更はnative自動probeで検証し、operatorにDB操作を求めない。いずれもruntime/nativeは未実施。
+
+計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D7 / D9（proposed）。「今から数える」から保存までのcontext、再確認、保存後の訂正を定める。以下の本文は現行画面の契約であり、新しい操作の実装済み仕様ではない。
+
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
 > **入力ドキュメント**: [architecture/ui-task-specs.md](../architecture/ui-task-specs.md) UI-10、[DB_DESIGN.md](../DB_DESIGN.md)、[db-design/tracking-system-tables.md](../db-design/tracking-system-tables.md) §16-17（stocktakes / stocktake_items）、[35-biz-stocktake-service.md](35-biz-stocktake-service.md)、[42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5、[UI_TECH_STACK.md](../UI_TECH_STACK.md) §7.2（10-4a）、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)、[68-ui-backup-restore.md](68-ui-backup-restore.md) / [69-ui-threshold-settings.md](69-ui-threshold-settings.md)（構成の手本）
 > **対応タスク / 仕様**: UI-10（REQ-205、棚卸し）
@@ -95,6 +129,8 @@
 - **Rejected**: 新規追加分をハイライトする専用 UI（追加検知のための差分比較ロジックが必要になり、投資対効果が低い）。
 
 ### UI-10-D10: 一覧の差異・最終カウント列 + 確定警告の視認性 + 前回比較の独立表示（実装レビュー起因の追記）
+
+以下は現行UIの決定履歴。新方式では冒頭proposed節が在庫主列を保存L、差異をL-Nへ置き換える。current_stockを使う旧算式と「差異も在庫列も同一ソース」という根拠は新方式へ継承せず、保存Lと差異L-Nを同一ソースにする。警告の視認性・前回比較の独立表示は維持する。
 
 - **決定**: 2026-07-08、Windows native L3 実機観察（PR #159）と実装コード確認を受けて 3 点を追加・是正する。
   1. **一覧に「差異」「最終カウント」列を追加**する。差異は `current_stock - actual_count`（`update_count` の `current_difference` と同一計算式、35-biz §20.4「差異の動的計算」を一覧にも適用）。`actual_count` が `null`（未入力）の行は差異・最終カウントとも「—」。列表示は符号付き数値のプレーンテキストのみとし、結果画面の `adjusted_items` テーブル（既存、色分けなし）と表現を揃える（新規に色分けを導入しない）。最終カウントは既存 `formatMovementDateTime`（`src/features/stock-movements/lib/movement-formatters.ts`）と同じ `T` 区切り→スペース変換を流用する。**既存の「システム在庫」列（`stocktake_items.system_stock`、開始時点の参考値）は「現在在庫」列に改め、表示値を `current_stock` に揃える**（カウント入力欄の選択商品情報表示も同様）。差異の計算根拠と画面表示の在庫値が異なる列に見えると、棚卸し中に在庫が動いた場合（35-biz §20.4 の前提どおり CSV 取込み等で変動しうる）に「現在在庫 10 / 実際 9 / 差異 +3」のような数値的に矛盾した表示になるため、両者を同一ソースに統一する（実装レビュー P2 是正、2026-07-08）。

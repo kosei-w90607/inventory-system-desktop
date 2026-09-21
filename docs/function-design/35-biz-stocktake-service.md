@@ -1,5 +1,54 @@
 ## 20. BIZ-06: 棚卸しロジック
 
+### 時点証拠契約（proposed・未実装）
+
+本節のCountContext / CountEnvironmentのepoch、begin / saveのepoch固定・一致検証・保存とlegacy復旧でのコピーは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generationによるcontext失効は実装対象として維持する。
+
+SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5の現行update_count・live在庫への上書き確定に加え、§20.6aの差異定義、§20.7の動的差異、§20.8のINV-2/INV-3、§20.9の旧保存型/引数はruntime切替時に本節で置き換える。現行codeおよび完了済みreconciliation_version=0の旧表示は保存し、新方式を実装済みとはしない。
+
+#### 入出力と所有
+
+公開API・DTOは[CMD-10の新契約](42-cmd-sales-stocktake.md)、保存列は[tracking](../db-design/tracking-system-tables.md)を正とする。BIZは計数contextの生成・意味・検証を所有し、AppState/cacheを直接操作しない。CMDがopaque tokenの保管・lookupを行い、復元した内部contextを渡す。
+
+| BIZ操作 | 内部の入出力 |
+|---|---|
+| begin_stocktake_count | (conn, BeginStocktakeCountRequest, CountEnvironment) → publicな開始応答 + private CountContext |
+| save_stocktake_count | (mutable conn, token, actual_count, Option<CountContext>, CountEnvironment) → StocktakeCountSaveResult |
+| abandon_stocktake_count | (未保存context) → 失効。保存済み数量や補正を戻す操作ではない |
+
+CountContextはサーバー生成UUID、用途、product_code、参照item/親header、開始S・monotonic開始、商品revision、開始時source_cursor、DB/context世代・OS通知generation・time_basis_id（PC時計epoch）を持つ。token以外をUIへ送って再提出させない。CountEnvironmentの時刻・generation・time_basis_idはMNTからCMDを経由する信頼した供給で、client値ではない。MNTのepoch発番/失効はADR D1を正とし、POS基準の認定数から選ばない。
+
+#### beginとsaveの処理
+
+1. beginで商品・参照明細・現在の所有者を同一DB snapshotから取得する。active明細があれば未計数/auto_filledでも通常の独立再実測を拒否してその明細へ案内する。legacy取消復旧用途は対象importとその商品の復旧必要性をBIZが検証する。
+2. 監視が成立している環境だけcontextを作る。開始時source上限とPC時計epochをcontextへ固定し、UIへ開始時帳簿と対象を返す。UIが開始応答を受けてから実測する。商品検索だけではcontextを作らない。
+3. save入口で保存済みrequest IDをDB照会する。同ID/同Nは書込みなしのreplayed、異なるNはidempotency_conflict。保存先が複数一致する異常は拒否する。未保存の場合だけcontextの存在・用途・世代・所有者・revisionを要求する。
+4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・商品revision・環境generation・PC時計epochを再確認する。S/Eの逆行、wall-clockとInstantの経過差がD1の許容差を超える場合も拒否。保存直前にも環境の失効を検査する。epoch不一致はcount_context_invalid、監視不成立はcount_environment_unavailableで書込み0とし、NULLのepochで保存を通さない。
+5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revision・contextに固定したtime_basis_idをitemへ保存する。source_cursorはbeginの値のまま。
+6. 独立再実測は同じ証拠をrecountへINSERTし、N-Lが非0なら現在庫へ補正movementを同TXで適用する。数量更新後に観測の版を採番する。差0でも実測行を保存する。過去のheaderや評価額は変更しない。
+7. flagを解消できるのは、その原因sourceを開始前に受領した新実測だけ。条件を満たさないflagを消さない。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
+8. commit後に保存先とsaved/replayedを返す。応答喪失は同tokenで照会を兼ねたsaveを再送する。既に別の保存へ置換された古いitem要求を、期限切れcontextから復元して新規適用しない。
+
+#### 確定・legacy復旧
+
+以下のlegacy処理は旧履歴があるDBの互換契約であり、開発・試験DBや将来の更新でも維持する。[初導入の前提](../project-memory.md)では本番の旧棚卸し履歴は存在せず、本番開始のために存在しない旧実測を数え直す作業は要求しない。実際にlegacyがあれば初導入の申告で検査を省略しない。
+
+complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査する。flagまたは旧実測の再確認が残る間はforce_fillでも拒否する。measuredの補正は現在庫へ `N-L` を加算し、保存後の入出庫を残す。force_fillはkind=auto_filled、N=L=max(現在庫,0)、補正0。廃番の開始時自動入力もauto_filledで、過去の実測基準を上書きしない。
+
+新方式のtotal_costは `Σ max(補正後現在庫,0) × 確定時評価原価`、数量と積和はchecked演算とする。補正区分はcompletion。差0の確定も商品状態の版を進めて古いcontextを失効させる。確定後には独立再実測の入口を利用できる状態へ戻す。既存のTX外best-effortログ・確定後整合性チェックは維持する。
+
+legacy取消復旧は現在数の再実測RとN-Lの即時補正、activeがあればN/Nへの再基準化を同じTXで行う。派生itemはRのS/E・source_cursor・PC時計epochのtime_basis_idをコピーし、ledger_cursorだけを補正後の上限、観測順をRより後にする。公開request IDはRだけに記録し、itemはrebase内部IDとRへのFKを使う。通常の独立再実測からactiveを迂回する権限は与えない。
+
+非連動化後の回復も同じbegin/saveを使う。pos_sync_disabled_revisionより後の観測の版を持つ適用済み新方式実測が未調整解消の証拠になる。独立再実測（差0含む）は保存後、active measuredは確定後に解消と判定する。active保存だけやauto_filledは解消しない。案内は32と同じ版の条件で分け、切替後のmeasured pendingなら確定、切替前/同版/版なしなら切替後の数え直しを指す。切替前のpendingを確定しても観測の版を更新せず、未調整は残る。既存import flagは従来の受領条件で別に検査し、商品側issueのみを理由に確定を循環拒否しない。
+
+#### 読取り・失敗・検証
+
+一覧はN/Lに基づく保存差異と現在庫を別の情報として返し、未計数・自動補完・旧入力・要再確認をkind/flagで区別する。record detailは補正kind、再実測のN/L・差・時刻・参照元を返す。差0商品の訂正対象も既存のitem一覧/検索から選べるようにし、差異movementがある商品だけに入口を限定しない。
+
+context失効・保存先変更・環境不成立・再確認残存は[機械判別できる回復型](40-cmd-product.md)で返す。入力範囲はvalidation、同要求の値競合はidempotency_conflict、不在/DB失敗は既存分類を維持する。生のDB内容・ファイルパスをmessageへ混ぜない。確認する試験はABA、同秒、応答喪失、差0、force_fill負在庫、保存と取消/確定の競合、legacyと未計数activeの復旧、保存各段のTX故障である。
+
+計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D6〜D9（proposed）。計数context、snapshot補正、独立再実測、取消、legacy移行を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
+
 ### 20.1 モジュール構成
 
 ```
@@ -392,6 +441,10 @@ fn get_stocktake_progress(
 
 ### 20.6a get_stocktake_record
 
+以下のlive在庫基準・開始時snapshotの説明は、現行実装/完了済みreconciliation_version=0の旧表示用。新方式のcompletion補正量はN-L、表示差異はL-Nであり、取消補償/再実測は別区分として返す。新しいactiveの実測は親の移行versionだけで旧算式へ戻さない。
+
+新しいStocktakeRecordDetail.headerはreconciliation_versionを明示的に含め、IOの値をCMD/UIへ返す。旧headerの表示と新補正の区分を同時に扱えるようにし、過去評価額を新式で再算出しない。
+
 **関数要求**: 棚卸し記録詳細を wire DTO として返す。[31-biz-inventory-service.md](31-biz-inventory-service.md) §12.6a 業務記録詳細 read 関数と同じ read-only パターンで、movements への source link 補完と NotFound 変換を BIZ が担う。棚卸し詳細画面（`/stocktake/records/$stocktakeId`、[65-inventory-record-traceability.md](65-inventory-record-traceability.md) §65.3 / §65.5 / §65.10 slice 4c）用
 
 **シグネチャ**:
@@ -445,16 +498,20 @@ fn get_stocktake_record(
 
 ### 20.8 対応不変条件
 
+現行実装と新方式で算式を区別する。新方式のactual_count非負は補正後現在庫の非負を保証しない。
+
 | 不変条件 | 本モジュールでの対応 |
 |---------|-----------------|
-| INV-2: stock_after算出責任 | complete_stocktake のステップ5g で stock_after = actual_count を直接使用。通常の「stock_quantity + quantity」計算ではなく、actual_count が確定的な stock_after となる。insert_movement に渡す stock_after は actual_count そのもの |
-| INV-3: 負在庫ポリシー | complete_stocktake では actual_count が利用者入力のため、0以上が保証される（update_count のバリデーション）。棚卸し補正で stock_after < 0 にはならない |
+| INV-2: stock_after算出責任 | 現行はステップ5gでstock_after=actual_count。新方式はBIZが補正量N-Lとstock_after=確定直前現在庫+(N-L)をchecked算出し、IOへ渡す。後続移動なしの場合だけstock_after=Nになる |
+| INV-3: 負在庫ポリシー | 現行はactual_count非負へ上書きする。新方式はactual_count>=0でもstock_after<0になり得る。負在庫を許して表示し、評価数量だけmax(stock_after,0)とする。force_fillも負在庫を0へ書き換えない |
 | INV-8: products物理DELETE禁止 | 本モジュールは products を UPDATE のみ（stock_quantity）。DELETE 操作なし。find_stocktake_eligible_products は is_discontinued フラグで絞り込む |
 | INV-1a: 入力値は常に正数 | update_count で actual_count >= 0 を検証。complete_stocktake の adjustment_quantity は正負どちらもあり得る（棚卸し補正は INV-1a の対象外。INV-1a は Request 構造体の quantity フィールドに適用され、棚卸し補正の adjustment_quantity はBIZ層内部で算出される値） |
 
 ---
 
 ### 20.9 stocktake_repo への依存（新規関数）
+
+以下は現行依存型の記録。新方式では冒頭の入出力と20のproposed節へ切り替え、Nだけの確定型や数量/時刻だけの保存型を流用しない。L・kind・flag・証拠・request ID・版のproducer/consumerを同一runtime変更で揃える。
 
 BIZ-06 が使用するIO関数のうち、既存の find_active_stocktake / insert_stocktake_item 以外に必要な新規関数:
 

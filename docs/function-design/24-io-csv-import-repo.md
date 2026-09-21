@@ -1,5 +1,33 @@
 ## 14. IO-01 追加: POS取込みリポジトリ（BIZ-03 / BIZ-08 用）
 
+### 時点証拠契約（proposed・未実装）
+
+本節の時刻基準API、基準FK / state、境界候補・file境界の保存 / JOINと昇格 / 失効は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
+SPEC-STK-TIME-D2 / D3 / D6 / D8。以下の現行csv_imports APIに加え、sales_repoが[pos_import_sources](../db-design/pos-tables.md)の保存を所有する。
+
+| 操作 | 入力→出力 / 処理 |
+|---|---|
+| 受領のupsert | (tx, hash, received_at, settlement_date, 任意メタ/抽出精度) → source（初期の基準FK/境界はNULL、state=unverified）。hash衝突時は最初のID/時刻を返し、REPLACEや再採番をしない |
+| 受領済み上限 | (conn) → 最大source ID、空なら0。BIZ beginが読取り、UIへ公開しない |
+| 精算同一性の照合候補取得 | (conn, sourceメタ) → 同じ帳票のmachine_no / settlement_noに対応する全受領sourceと系列証拠。未取込み/取消済みも除外しない。ID/hash/メタを返し、同一性の業務判定と拒否はBIZが行う |
+| active取込みの識別メタ取得 | (conn, settlement_date: Option) → completed / completed_partial全件のimport ID・精算日・任意sourceメタ。日付指定時は同日guard用、未指定時は全日付のpreflight用。csv_importsを起点にLEFT JOIN等で移行前のsourceなし・片方/両方NULLも行を残す。メタ一致検索の候補0件で代用せず、商品連動設定で絞らない。既存の同日照会に接続し、BIZが日付一覧の導出とpreview/commit TXでの拒否を所有する |
+| 時刻基準の保存/読取り | (tx, BIZ検証済みTimeBasis（MNT由来のpc_clock_epochを含む）とstate) → basis ID。読取りは対象・系列候補を返す。gate認定はBIZ、汎用設定の更新口は持たない |
+| 境界候補の読取り | (conn, 対象/系列) → 保存済みsourceのID・精算番号・settled_at・精度・衝突情報。0売上/取消済みも含め、受領順で前回と決めない。基準への適合と前後はBIZが判定 |
+| file境界の保存/読取り/失効 | (tx, source ID, basis ID, BIZ導出済みTimeEvidence, state)で保存。利用読取りは基準をJOIN。認定/前回資料受領時の再評価・基準失効の全source伝播を同じ証拠TXで保存する。JOINで基準のpc_clock_epochも返す。IOが時計を認定しない |
+| 同一性拒否の記録/照会 | (tx, source ID, reason, rejected_at)で初回拒否を冪等保存。照会は拒否記録と当該sourceのactive import有無・精算日を返す。BIZがsettlement_missingを導出し、取消/再実測で証拠を削除しない |
+| import保存 | NewCsvImportにsource_idを加える。既存のactive hash重複判定と取消済み再取込み可否は維持 |
+| 取消対象の事前読取り | (conn, ref_type, ref_id) → 有効movementのid / product_code / quantity。legacy判定を終える前にvoidしない |
+| void_movements_by_reference | VoidedMovementにidを追加し、事前読取りと同じ対象を同一TXでvoidする。返却IDは元のmovement IDで、取消時刻や新しい番号で置換しない |
+
+受領表を売上commit前の短いTXで確定する。業務commit/rollbackはsourceを削除せず、日報bundleのtable/APIへこの処理を混入させない。DB失敗はDbErrorでBIZへ返し、受領失敗のまま証拠付きpreviewを返さない。索引・FK・状態はPOSの新契約を正とし、IOで保留集合を永続化しない。
+
+時計対応の失効更新はBIZが所有する独立の証拠TXで行い、後続の業務TXが戻っても維持する。IOが業務TXの途中で勝手にcommitして境界を破らない。失効保存失敗はBIZへ返し、保存できなかった信用を有効とみなす代替値は返さない。
+
+基準のverifiedはBIZのgate証拠検査、sourceのverifiedはBIZのfile境界導出検査の後の指示だけを受ける。IOがメタの存在・日時の新しさ・ファイル名から信用を付与しない。精算同一性の候補はpreviewと業務commit TXで再取得し、同日追加確認やsourceの削除を衝突の解除手段にしない。
+
+初導入では識別メタの抽出結果がsourceへ保存されることまで検証して本番開始する。旧importのhashから受領行をbackfillしても、DBにない識別メタや精算時刻は復元せずNULLのまま返す。IOは本番開始日より古いという条件で行/取込み対象を除外しない。旧試験履歴の不持込み・整合したDB作り直しはADR D8の配備条件であり、このrepo APIやmigrationが履歴だけを削除する処理ではない。
+
 ### 14.1 モジュール配置
 
 ```

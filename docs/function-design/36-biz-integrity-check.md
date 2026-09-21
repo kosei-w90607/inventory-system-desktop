@@ -1,5 +1,11 @@
 ## 21. BIZ-07: 整合性チェックロジック
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D8。fix_integrityの署名・確認操作・D-051のcache直接補正・同TX必須の操作ログは維持する。専用repoのupdate_stock_quantityが数量とstock_revisionを同時更新するため、movementを作らないこの経路でも開いていた計数contextは保存時に拒否される。
+
+版overflow・数量更新失敗・操作ログ失敗は全補正TXをrollbackする。差異なしでスキップした商品やread-onlyのrun_integrity_checkでは版を進めない。整合性補正を実測やEJの証拠にしない。結合試験は計数開始→fix_integrity成功→旧token保存拒否、およびログ失敗で数量/版とも不変を確認する。
+
 ### 21.1 モジュール構成
 
 ```

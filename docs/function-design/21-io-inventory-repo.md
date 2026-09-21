@@ -1,5 +1,19 @@
 ## 10. IO-01 追加: 在庫変動リポジトリ（BIZ-02 用）
 
+### 時点証拠契約（proposed・未実装）
+
+本節のPC時計epochの受渡しは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
+SPEC-STK-TIME-D1 / D6 / D8。`update_stock_quantity(conn, product_code, new_quantity) -> Result<bool, DbError>`の数量更新成功時に、stock_revisionのchecked増分を同関数内で強制する。署名の数量入力に版を任意指定させない。呼出し側のTXを使い、自分で別TXをcommitしない。
+
+- 対象商品なしはfalse。対象ありで版がi64上限なら数量も版も書き込まずエラー。同値の数量指定でも版を進める。Rustのchecked演算またはSQLの型・上限ガードで、SQLiteのREAL化を拒否する。
+- 数量を変えない基準・flag・状態更新用にも、共通のchecked版更新操作 `(conn, product_code) -> Result<i64, DbError>` を用意する。増分後の版を返し、観測順の採番に使う。PC時計epochのtime_basis_idは採番せず、MNTからBIZ-06を経て20の実測保存へ渡す。BIZは業務更新と同じTXで呼び、追加増分は許すが再利用はしない。
+- 対象callerは共通入出庫、CSV取消戻し、棚卸し確定補正、整合性補正。ProductUpdatesでの数量UPDATEは廃止する。movementや必須ログの失敗は版も含めて呼出し元TXがrollbackする。
+- NewMovement / MovementRecordへstocktake_adjustment_kindとstocktake_recount_idを伝播する。保存意味は[tracking](../db-design/tracking-system-tables.md)の新契約。既存のmovement_type、符号、stock_afterのBIZ算出責任は変えない。
+- 入出庫履歴の棚卸し差異母集団は新方式でcompletionだけ。recount/rollback_compensationを差異件数・代表商品へ足さない。商品別movement一覧は各区分を隠さず、日本語の種類と元記録へ渡す。
+
+旧API本文は現行実装を記す。単体試験は数量/版の同時成功・同量更新・overflow・TX rollback、結合試験は全callerによる古いcontextの拒否を検証する。
+
 ### 10.1 inventory_repo — 共通型
 
 **ListQuery構造体**（入庫/返品/廃棄の一覧取得で共通）:

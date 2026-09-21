@@ -1,5 +1,17 @@
 ## 13. IO-02: Z004パーサー
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D2〜D5。parse_z004は純関数・DB非依存を維持し、既存ParseResultへ `settlement_metadata: Option<SettlementMetadata>` を追加する。内部型の内容はmachine_no / report_kind / settlement_no / settled_at（各Option）、timestamp_precision（日時があれば分精度等の粒度）とする。番号は意味が検証されるまで文字列として保持する。settled_atはPOSが印字した精算の終端候補で、取引発生時刻やアプリ受領時刻ではない。BIZ-03が保存済みの値と抽出精度を基準に照合し、今回の上限/同系列後続sourceの下限へ導出する。parser自身は境界・系列・時計信用を認定しない。
+
+処理は既存のサイズ外ガード・strict decode・改行正規化・layout/header検出・日付/JAN/符号の規則を維持し、メタ領域の既知項目だけを抽出する。従来shapeの時刻なしはNone、欠落・解釈不能な任意メタから0時・前日・精算番号の隣接を補わない。ファイル種別/構文の致命的異常は従来どおりエラーで、時刻証拠を付けるために不正fileを成功へ変えない。
+
+正常JANのquantity=0かつamount=0のParsedRowはBIZの再確認判定まで保持する。全桁0の空スロットとは別である。BIZは売上対象行と証拠対象行を分け、IOへ在庫連動・候補商品の判定を持ち込まない。既存PLU占有読取りmodeも用途を維持する。
+
+IOが返すメタに「時計が正しい」「この精算区間は完全」という信用フラグを立てない。信用と系列はBIZ/外部probeの責務。EJ parserは別laneで、未知行の無視・純日計一致だけでの完全扱いは禁止。[取込みBIZの外部probe表](32-biz-csv-import-service.md)をそのlaneの入力契約とする。
+
+計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D5（proposed）。メタ情報の抽出と時刻・区間の信頼性判断を分離する。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
+
 > **2026-06-30 field-check note**: 本書は既存実装の Z004 parser contract を記録する。現場確認では、現在の店舗日報主入力は `Z001`/`Z002`/`Z005` であり、`Z004` は PLU(商品) / 商品別トラックとして再評価する対象になった。REQ-401 の current SALES import を変更する場合は、本書を拡張するのではなく SALES redesign で `Z001`/`Z002`/`Z005` parser contract を別途定義する。
 >
 > **2026-08-01 evidence boundary（2026-08-17 実態同期）**: 2026-07-06 issue #135 で、Z004 が メモリNo. / コード / 名称 / 個数 / 金額 の列意味を持つCV17のPLU別売上レポートであり、代表販売1件が個数非ゼロ行へ出ることを確認済み（実ヘッダ表記は `レコード / ｽｷｬﾆﾝｸﾞｺｰﾄﾞ / キャラクター / 個数 / 金額`、第2フィールドは半角カナ。2026-08-17 実ファイル機械抽出）。IO-02 は、従来shapeに加えてCV17のSD取込み後 `EcrDatas` に残るメタ6行+headerのlayout Aを受理する。BIZ-03のsale_records作成・`pos_stock_sync`在庫増減・rollbackと `ParseResult` 契約は変更しない。店舗採取shapeでのend-to-end確認はL3境界に残る。

@@ -1,5 +1,20 @@
 # 在庫管理システム 関数設計書
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1〜D9のsource詳細を、各文書の同名節へ展開した。現行API本文と新契約案を区別し、以下の既存機能一覧を新方式の実装完了として扱わない。
+
+| 境界 | 詳細source |
+|---|---|
+| 保存・数量/版・受領・parser | [20](function-design/20-io-product-repo.md)、[21](function-design/21-io-inventory-repo.md)、[23](function-design/23-io-z004-parser.md)、[24](function-design/24-io-csv-import-repo.md) |
+| 設定・入出庫・取込み・計数・整合性 | [30](function-design/30-biz-product-service.md)、[31](function-design/31-biz-inventory-service.md)、[32](function-design/32-biz-csv-import-service.md)、[35](function-design/35-biz-stocktake-service.md)、[36](function-design/36-biz-integrity-check.md) |
+| 共通回復wire・POS・計数・DB交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
+| 商品設定拒否・保留・記録詳細・実測操作 | [51](function-design/51-ui-product-form.md)、[60](function-design/60-ui-product-import.md)、[55](function-design/55-ui-csv-import.md)、[65](function-design/65-inventory-record-traceability.md)、[73](function-design/73-ui-stocktake.md) |
+
+外部証拠の成立条件は32、Windows監視とcommand登録義務は42、永続化は[DB設計](DB_DESIGN.md)へ集約する。これらの実装・SQL migration・binding生成は後続runtimeで行い、本docs同期では行わない。
+
+進行中の設計: [棚卸しと後着売上の時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md)（proposed、㉗）。上記の機能文書へ保存・関数・wire・回復導線の詳細を展開した。現行の関数・wireが変更済みであることを意味しない。
+
 > **最終更新**: 2026-07-29 / UI request builder shared primitives 追加
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、DB_DESIGN.md（テーブル定義書）
 > **対象範囲**: 実装第1〜第4段階 + 第7段階 UI 基盤 (UI-12 共通レイアウト) + 第8段階 Phase 2 8-1 (UI-00 ホーム画面) + 8-2 (UI-07 売上データ取込み画面) + 8-6 (UI-shortcuts ショートカット一覧ダイアログ) + Phase 4 UI-11b バックアップ・復元 / UI-11a 閾値設定 / UI-10 棚卸し / UI-11c 操作ログ画面 Design Phase。後続段階は実装進行に合わせて追記する

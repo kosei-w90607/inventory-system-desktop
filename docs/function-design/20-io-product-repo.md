@@ -1,5 +1,29 @@
 ## 2. IO-01: SQLiteデータアクセス層
 
+### 時点証拠契約（proposed・未実装）
+
+本節の実測保存・再実測INSERT・有効観測列挙に含むtime_basis_idは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
+SPEC-STK-TIME-D1 / D6 / D8。以下の既存APIは現行契約であり、新しい保存型へ切替済みではない。保存列・CHECK/FKは[trackingの新契約](../db-design/tracking-system-tables.md)を正とする。
+
+| repo操作の入出力 | 処理・返却契約 |
+|---|---|
+| product_repoの更新型 | ProductUpdatesからstock_quantityを除く。数量更新SQLの分岐を残さない。NewProductの初期数量は維持。商品内部読取りにはstock_revisionを加え、UIへ生の版を渡さない |
+| 非連動化記録の保存/読取り | pos_stock_syncの書込みは、変更前値を同TXで読んでtrue→falseを判定する単一の共通更新経路に限定する。変更時は同じ呼出しで版を進め、true→falseの場合だけpos_sync_disabled_revisionへ変更後の版を保存する。汎用更新から直接setできる分岐を残さない。商品内部読取り/準備照会は非連動・廃番も除外せず、最新の適用済み新方式実測の版と現在の回復先を返す。BIZが未調整を判定し、IOがflagを一括削除しない |
+| stocktake_repoの計数開始用読取り（conn, item_id） | item・親status・productのL/revision・最新の有効観測・現在のactive所有者を同じDB snapshotで取得。不在はNone。measuredの新旧はobservation_revision、legacyの存在を未実測へ落とさない |
+| source上限取得（conn） | pos_import_sourcesの最大ID、空なら0。begin時にだけcontextへ固定する。保存時の値へ差し替えない |
+| ledger上限取得（conn, product_code） | 呼出し時点の当該商品movement最大ID、空なら0。void済みもIDを再利用しない。通常の実測/Rは補正INSERT前、legacy取消復旧の派生N/N明細は補正後に再取得し、各snapshotと同じTXで保存 |
+| measured保存（tx, item_id, 新しいN/L/S/E・両cursor・版・request ID・time_basis_id: PC時計epochのUUID文字列） | 親の進行中を条件に既存itemを更新。BIZがbeginで固定しsaveで検証した証拠だけを受ける。epochのNULL/空文字を新measuredへ保存しない。更新0行はNotFound/状態競合としてBIZへ返し、autocommitで数量だけ保存しない |
+| 再実測INSERT（tx, N/L/S/E・両cursor・版・request ID・time_basis_idを含む保存型） | 新しいrecount IDを返す。import IDは入力に要求しない。差0もINSERTし、既存recountは上書きしない |
+| 保存要求照会（conn, request_id） | itemとrecountの保存済みN・保存先を返す。両方に公開IDが一致する異常を区別する。失効tokenより先にBIZがこの結果を評価する |
+| flag保存/解消（tx, item_id, import_id） | 組を一意に保存。同じ理由の重複追加で行を増やさない。解消対象はBIZが受領証拠または取消元で選ぶ。商品非連動への変更で一括削除しない |
+| 有効観測の列挙（conn, product_code） | supersededな旧pendingは除き、現在のmeasured itemと独立recountをtime_basis_idを含め商品内の観測順で返す。auto_filledを吸収先にせず、legacyは不明な証拠として返す |
+| pending snapshot補正（tx, item_id, delta） | system_stockだけをchecked更新。N/S/E/cursor/observation_revisionは変えない。商品revisionの更新は同TXで必須 |
+
+既存get_stocktake_items/find_stocktake_itemはkind・要再確認理由・現在の復旧先を読めるよう拡張し、全商品一覧と検索の両経路へ同じ列を伝播する。complete用の内部型はNだけでなくL・kind・flag・証拠の有効性を渡す。record detailは明示的な補正区分とrecountを取得し、確定差異件数へ再実測を混ぜない。SQL失敗・整数範囲外・FK違反はDbErrorとして返し、IOでbefore/afterや復旧の可否を決めない。
+
+---
+
 ### 2.1 モジュール構成
 
 ```
@@ -857,6 +881,10 @@ fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<(String, String,
 ---
 
 ### 2.11a stocktake_repo — 棚卸し記録詳細取得（65 slice 4c 用）
+
+本節の開始時snapshot・確定時live在庫基準の補正は、現行実装および移行後の完了済みreconciliation_version=0の旧記録の表示契約である。新方式は冒頭のproposed節を正とし、completionのadjustment_quantity=N-L、表示差異=L-N、stock_after=確定直前現在庫+(N-L)とする。recount/rollback_compensationは別区分で、確定差異との同値関係を全movementへ一般化しない。
+
+新しい詳細queryはheader.reconciliation_versionもcore型へ取得し、BIZのwire DTOまで保持する。版をUIが日時やkindの有無から推定する仕様にはしない。
 
 #### get_stocktake_record_detail
 

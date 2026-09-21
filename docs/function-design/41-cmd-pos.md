@@ -1,5 +1,27 @@
 ## 17. CMD-07: Z004商品別CSV取込みコマンド群 / CMD-08: PLU書出しコマンド群
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、commit_csv_importのpreviewToken/additionalImportConfirmed、rollback_csv_importのimport IDは維持する。BIZの受領TXにmutable DB接続を渡すが、CMDに時点判定・在庫スキップのルールを置かない。
+
+準備照会のPC時計epoch検査とclock_unverifiedは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+
+read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、MNT供給のCountEnvironmentを取得し、DB lock→BIZ-03の同名照会（conn, CountEnvironment）→error変換を行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
+
+分類経路（parse_and_validate_csv / commit_csv_import）へのCountEnvironmentの受渡しは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)に従い時刻判定と一緒に次のlaneで決め、BIZからMNTを直接呼ばない。
+
+32のissue.codeにimport_identity_missing / settlement_missing / sync_disabled_unreconciled、issueにsettlement_dates: Vec<String>とsource_ids: Vec<i64>を含めてgenerated wireへ透過する。settlement_missingはsource単位、sync_disabled_unreconciledは商品単位のissueをその説明と組にして保持する。CMDで集約し直さない。前者のsource_ids/settlement_datesは各1要素、後者のtargetsも1要素である。source_idsは表示上の技術IDにせず対象の識別にだけ用い、欠落状態をstock_review.warningsへ複製しない。移行前importも含むメタ不足の日付一覧をCMDで間引かず、商品対象IDに置換しない。初導入の申告による省略・日付の足切り・追加確認による拒否解除は行わない。識別メタの抽出から保存までとこのpreflightの配線を、本番開始前にruntimeで検証する。
+
+parseの返却は既存previewへ[32のstock_review](32-biz-csv-import-service.md)を追加し、source ID・全JAN候補・証拠対象行はprivate cacheに保持する。既存のcache TTL、UUID検証、成功時削除・失敗時の扱いは維持する。BIZにcache/Mutexを渡さず、DB lockとcache lockを同時保持しない。
+
+commitはUI申告のskip集合・現物数・時刻・cursorを受け取らない。BIZがheld/preview_changedを返した場合は[共通回復型](40-cmd-product.md)へ写し、売上commit成功としてcacheを消す処理をしない。再preview時は同hashのsourceを再利用する。再起動ではfile再選択が必要で、source metadataからbytesを再構成しない。
+
+preview/commitのsource_identity_conflictもstocktake_guardの同名codeで透過する。同一精算別hashだけでなく、同日activeがあり取込み対象側または比較先側のmachine_no / settlement_noが片方でも欠ける場合の拒否を含む。additionalImportConfirmed=trueで解除せず、同日追加確認は精算同一性guardを通過した別精算に限る。CMDは受領済みsourceを削除したり精算番号を書き換えたりしない。
+
+rollbackのlegacy保留もstocktake_guardで対象を渡し、UIはCMD-10のlegacy_rollback_recheck用途で再実測する。回復後に同import IDのrollbackを再送する。CSV取消が再実測を運んだり、CMDでpendingを適用済みへ昇格させたりしない。
+
+ImportResultのstatus/売上集計は維持し、取込み後のrecount_targetsとwarningsを追加する。これらはcommitが実際に作ったflagと、その時点の非連動化の未調整対象からBIZが返す。売上0の正常完了を失敗に変えない。bindingsの生成とUI-07のkind/code分岐・preview mockの更新はruntimeで同時に行う。日報CMD-12とPLU CMD-08の意味は変更しない。
+
 > **2026-06-30 REQ-401 redesign note**: 本書のCMD-07は既存Z004商品別CSV取込みのTauri command契約を記録する。current operation のZ001/Z002/Z005日報取込みは [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) のCMD-12で扱う。CMD-07へ日報bundleを追加しない。
 
 ### 17.1 モジュール構成
