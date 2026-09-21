@@ -10,7 +10,7 @@
 
 次の着手順（owner決定2026-09-22）:
 
-1. workflowの軽量化1段目のうち文書だけの部分: packet templateへ普通の一日の操作列の節を足す、Writerが止まったときの規則文、問い合わせの行き先の表。
+1. workflowの軽量化1段目のうち文書だけの部分: packet templateへ普通の一日の操作列の節を足す、Writerが止まったときの規則文、問い合わせの行き先の表。**起票済み（2026-09-22、plan-gate、R3 / Final Review Minimum 2）**: [Plan Packet](plans/2026-09-22-workflow-ordinary-operation-and-stop-routing.md) / [Matrix](plans/test-matrices/2026-09-22-workflow-ordinary-operation-and-stop-routing.md)。branch `agent/workflow-lightening-1a-docs`。次 = Plan Review（Opus）。
 2. ㉘ runtimeの最初のlane = 既存の危険な操作（旧棚卸しの開始・入力・確定、POSの業務commit・取消）の停止と再現fixture。並走でEJ（電子ジャーナル）parserのcoreを合成データで進める。
 
 次のdesign lane「実測とPOS系列の対応を取得・保存する」は実機確認が着手条件のまま。
