@@ -323,9 +323,9 @@ R2+ Plan Packets carry a default owner-effort ceiling (D-038): interventions ≤
 | 6. 目的・製品の振舞い・受容リスク・予算・優先順位・範囲の変更・不可逆な操作 | owner | 省略不可 |
 | 7. Windows L3・R4・Ready・merge | owner | 現行の明示承認と有効な委任の範囲だけを使う |
 
-(a) 問い合わせが複数の行に当てはまる場合、または裁定権の所在が争点の場合は owner 側の行（5〜7）を優先する。
-(b) この表は [../AGENTS.md](../AGENTS.md) Decision and Approval Boundaries と本節の上限・計上規則を変更しない。
-(c) owner に証跡の編集や発注訂正の伝言を依頼しない。
+- (a) 問い合わせが複数の行に当てはまる場合、または裁定権の所在が争点の場合は owner 側の行（5〜7）を優先する。
+- (b) この表は [AGENTS.md](../AGENTS.md) Decision and Approval Boundaries と本節の上限・計上規則を変更しない。
+- (c) owner に証跡の編集や発注訂正の伝言を依頼しない。
 
 ## Verification Gates
 
@@ -388,7 +388,7 @@ CI routing:
 - **連番契約 registry の採番を後続 lane が確定する**: 並行または stacked な lane が同じ連番 registry（例: D-052 C-n、decision-log D-n、REQ-n）へ追加する場合、merge 済み正本の番号は変えない。後続 lane は正本 merge 後に採番し直して gated amendment と同一 packet 内の full sweep を記録するか、packet 起草時に番号予約を宣言する。[Design Phase Rules の Design decision IDs](#design-decision-ids) と併せて適用する（出典実測: PR #86 の C18 二重割当、PR #84 の packet-local D-n 衝突）。
 - Before claiming that a file is absent, stale, duplicated, or divergent in a finding or correction proposal, confirm its file type with `eza -l` (including the symlink arrow) or `git ls-files -s` (where mode `120000` identifies a symlink). A static `git log` and a line-count difference in `diff --stat` can produce the same signature for a symlink and are not evidence of a duplicate by themselves; the existing irreversible-finding requirements still apply.
 - **Findings Freeze** (D-038): ① the finding set is frozen once the initial Broad Audit completes; rounds after that are closure confirmation only. Whenever two Contract Audit passes actually run — the mandatory Double Audit on R4/workflow gate changes, or an R3 change that opted into the Contract Audit section's recommended second pass — both passes together constitute that "initial Broad Audit", and Freeze takes effect only after both passes complete; this proviso is required so a Double Audit still catches what a single pass would miss. ② a new P2 found after Freeze is a blocker only when it is proven by a runtime failure. ③ a new P3 found after Freeze is a follow-up, not a blocker. ④ there is one broad review lane per change, chosen by where the risk sits: cross-layer/contract risk uses the Contract Audit lane, UI-presentation risk uses review-checklist §9 + the operator-ui skill, and both lanes run only when the change genuinely spans both.
-- Plan Review の発注は、対象 packet の適用版・Goal・`Ordinary Operation`・Contract Probe・対象差分を参照させ、Scope や期待結果を別の文へ書き直さない。reviewer は報告の冒頭で、操作列が目的を達成できるかを `成立 / 具体的な反例あり / 外部前提が未確認` のどれかで答える。不成立なら最短の入力・状態遷移と、期待した結果・到達した結果の差を示す。「危険な結果を出さないか」と「正常な条件で目的を達成できるか」は別々に問う。この確認は既存の Plan Review の同じ run・同じ採否判断に含め、新しい phase・review 本数・常設 gate・単独の承認 commit を足さない。`not applicable` の packet では操作列の成立を問わないが、reviewer は `not applicable` とした理由の妥当性を確認し、D1 の適用対象（設計を含む変更・workflow の変更）に当たる packet が `not applicable` としていれば finding にする。
+- Plan Review の発注は、対象 packet の適用版・Goal・`Ordinary Operation`・Contract Probe・対象差分を参照させ、Scope や期待結果を別の文へ書き直さない。reviewer は報告の冒頭で、操作列が目的を達成できるかを `成立 / 具体的な反例あり / 外部前提が未確認` のどれかで答える。不成立なら最短の入力・状態遷移と、期待した結果・到達した結果の差を示す。「危険な結果を出さないか」と「正常な条件で目的を達成できるか」は別々に問う。この確認は既存の Plan Review の同じ run・同じ採否判断に含め、新しい phase・review 本数・常設 gate・単独の承認 commit を足さない。`not applicable` の packet では操作列の成立を問わないが、reviewer は `not applicable` とした理由の妥当性を確認し、[template](templates/plan-packet.md) の `Ordinary Operation` 節が定める適用対象（設計を含む変更・workflow の変更）に当たる packet が `not applicable` としていれば finding にする。
 
 ## Contract Audit (R3/R4)
 
