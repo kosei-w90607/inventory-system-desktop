@@ -520,7 +520,7 @@ mod bindings_generation_tests {
     }
 
     // T3: 置換段の失敗。出力先が directory だと rename が失敗し、その directory と
-    // 中身（既存内容）はそのまま残り、一時 file も残らない（T4 の既存 file 保護も兼ねる）。
+    // 中身（既存内容）はそのまま残り、一時 file も残らない。
     #[test]
     fn export_bindings_to_fails_when_target_is_a_directory() {
         let dir = tempfile::tempdir().unwrap();
@@ -534,6 +534,23 @@ mod bindings_generation_tests {
         assert!(path.is_dir());
         assert!(path.join("marker.txt").exists());
         assert!(!dir.path().join("bindings.ts.tmp").exists());
+    }
+
+    // T4: 既存 file の保護。出力先に既存内容を置いた状態で一時 file の path
+    // （`<出力先>.tmp`）を directory で塞ぐと export 段が失敗し、出力先の
+    // 既存内容は byte 単位で変わらない（T2 / T3 は出力先を直接検証できないため独立 test）。
+    #[test]
+    fn export_bindings_to_preserves_existing_content_when_temp_path_is_blocked() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+        let existing = "export type Existing = string;\n";
+        std::fs::write(&path, existing).unwrap();
+        std::fs::create_dir(path.with_extension("ts.tmp")).unwrap();
+
+        let result = export_bindings_to(&path);
+
+        assert!(result.is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), existing);
     }
 
     // T5: 整形段の失敗。存在しない path は Err。
