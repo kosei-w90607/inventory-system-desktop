@@ -1,13 +1,13 @@
 # Plan Packet: 普通の一日の操作列・Writer 停止時の規則・問い合わせの行き先（workflow の軽量化 1 段目の文書部分、R3）
 
-2026-09-22 起草。出典は [Backlog](../backlog.md#やると決めたもの順番未定)「workflow の軽量化 3 段」（㉗ PR #85 の dogfood 所見起源、owner disposition 2026-09-22）と、`docs/Plans.md`「次の行動」1（owner 決定 2026-09-22）。1 段目「発注の構造化と発注前検査」のうち、script・schema を伴わない文書だけの部分を先に入れる。
+2026-09-22 起草。出典は [Backlog](../../backlog.md#やると決めたもの順番未定)「workflow の軽量化 3 段」（㉗ PR #85 の dogfood 所見起源、owner disposition 2026-09-22）と、`docs/Plans.md`「次の行動」1（owner 決定 2026-09-22）。1 段目「発注の構造化と発注前検査」のうち、script・schema を伴わない文書だけの部分を先に入れる。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 74085e4d4441ed594f944447087355ac716861ff
@@ -25,6 +25,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない文書変
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 対象は workflow 文書 3 本と decision-log。規則の所有先は既存正本で決まっている（Plan Review は `docs/DEV_WORKFLOW.md` Review Rules、Writer 発注は `docs/AGENT_OPERATING_MANUAL.md` §5.6、owner 負担は `docs/DEV_WORKFLOW.md` Owner Effort Budget）。owner の設計判断を要する未決の論点は起票時点でなし。PR #88 の dogfood 所見（計画と実装を同じ vendor が見て packet の前提誤りが Plan Gate を通過した）に対し、本 packet の Plan Reviewer（Opus）は Writer（Sonnet）と別 model だが同じ vendor であり、Plan Gate の時点では所見の条件を解消しない。別 vendor の目は Final Review の Codex が担い、Plan Gate では同 vendor・別 model の残余 risk を Coordinator の判断で受容して進め、owner へは 2026-09-22 の進捗報告で提示した（Codex への差替えは owner の指示があれば行う。owner relay を Plan Review に使わない判断。`docs/DEV_WORKFLOW.md` Review Rules の vendor 条項は Writer が Codex の packet が対象で、本 packet には literal に掛からない）
 - plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Opus、P1 0 / P2 5 / P3 4、操作列は `成立`）→ 全件採用し是正 `649b1f5b` → round 2 closure（同 reviewer、P1/P2 = 0、P3 2）→ P3 を反映。Plan Commit = `74085e4d`（plan-first `2c7139c6` → 是正を含む確定版）。実装は Sonnet subagent の worktree run で本 commit を起点にする
+- implementing → archive（closeout、本 commit）: PR #90 squash merge `89f0bc2d`（2026-09-22）。packet / Matrix を `docs/archive/plans/` へ移送し、Implementation Results / Review Response を記録した。broad 後の是正で実装とずれていた記述を closeout で訂正: Spec Contract D4 (a) と AC4 の「複数の行に当てはまる場合の優先の 1 文」を `docs/DEV_WORKFLOW.md` の実装（3 文）に合わせ、Matrix の Negative Paths の duplicate/ambiguous input を同じ 3 文に合わせ、Mutation-style Adequacy Questions の「除くと不成立になる → なる」という言い過ぎを pass A（A-2）の判定表に沿って訂正した（いずれも closure P3-2）。closure P3-3（非遡及の句が Plan Packet Rules 側〈`:69`〉だけにあり Review Rules 側〈`:391`〉に carve-out が無い）は Matrix の Residual Test Gaps に記録し、節を持たない旧 packet では発火せず実害が無いこと・policy 文書の変更を要することから見送った
 
 ## Owner Effort Budget
 
@@ -114,7 +115,7 @@ baseline は main `8fa12a5c` の worktree で同じ command を実行した実�
 - AC1: `rg -n '^## (Goal|Ordinary Operation|Scope)$' docs/templates/plan-packet.md` が `Goal` → `Ordinary Operation` → `Scope` の順に 3 行を出す（baseline: `48:## Goal` / `66:## Scope` の 2 行）。節は D1 の 5 列の表、適用対象、`not applicable` の扱い、「文書の完了」と「通常運用の達成」を分ける指示を含む。`git diff origin/main --numstat -- docs/templates/plan-packet.md` の削除行数が 0。
 - AC2: `rg -n '外部前提が未確認' docs/DEV_WORKFLOW.md` が Review Rules 内の 1 項目に一致する（baseline: 一致なし、exit 1）。その項目は D2 の全要素を含み、新しい phase・review 本数・常設 gate・承認 commit を足さないと明記する。Plan Packet Rules の項目はこの規則への link を持つ。
 - AC3: `rg -n '編集前に止まったとき' docs/AGENT_OPERATING_MANUAL.md` が §5.6 内に一致する（baseline: 一致なし、exit 1）。規則文は D3 の全要素を含み、§5.6 の既存文「食い違いは Coordinator が正本と発注書を訂正し」との関係（D3 の 8）を示し、PR #85 の衝突を「発注の訂正として通してはならない例」として挙げる。
-- AC4: `rg -n '問い合わせの行き先' docs --glob '!docs/archive/**' --glob '!docs/Plans.md' --glob '!docs/plans/**'` が `docs/DEV_WORKFLOW.md`（見出しと表）と、`docs/AGENT_OPERATING_MANUAL.md` / `docs/decision-log.md`（link または言及のみ）に一致する（baseline: 一致なし、exit 1）。`rg -n '^### 問い合わせの行き先$' docs/DEV_WORKFLOW.md` が 1 行に一致し、参照側の link はすべて `DEV_WORKFLOW.md#問い合わせの行き先` を指す（doc check は anchor を検査しないため、この突合で確認する）。表は D4 の 7 行と、複数の行に当てはまる場合の優先の 1 文を持ち、`docs/DEV_WORKFLOW.md` 以外に表の複製がない。
+- AC4: `rg -n '問い合わせの行き先' docs --glob '!docs/archive/**' --glob '!docs/Plans.md' --glob '!docs/plans/**'` が `docs/DEV_WORKFLOW.md`（見出しと表）と、`docs/AGENT_OPERATING_MANUAL.md` / `docs/decision-log.md`（link または言及のみ）に一致する（baseline: 一致なし、exit 1）。`rg -n '^### 問い合わせの行き先$' docs/DEV_WORKFLOW.md` が 1 行に一致し、参照側の link はすべて `DEV_WORKFLOW.md#問い合わせの行き先` を指す（doc check は anchor を検査しないため、この突合で確認する）。表は D4 の 7 行と、複数の行に当てはまり owner 側の行を含む場合の優先・裁定権の所在が争点の場合の扱い・owner 側でない行だけに当てはまる場合の扱いを分けて示す記述を持ち（closeout で訂正、closure P3-2）、`docs/DEV_WORKFLOW.md` 以外に表の複製がない。
 - AC5: gate・役割・権限が不変。`git diff origin/main --stat -- scripts .github src src-tauri AGENTS.md CLAUDE.md docs/ci.md` が空。template の `Workflow State` field・`Human Gate`・`Final Review Minimum` の行に差分なし（AC1 の削除 0 行で観測）。
 - AC6: `rg -n '^## D-090' docs/decision-log.md` が 1 行に一致する（baseline: 一致なし、exit 1）。entry は Status / Decision / Why / Compatibility を持つ（D5）。
 - AC7: `git diff --check`、`bash scripts/doc-consistency-check.sh`、`bash scripts/doc-consistency-check.sh --target plan`、`bash scripts/local-ci.sh changed` が成功する。Test Plan の事例照合 T1〜T7 が成立する。未解決の P1 / P2 なし。
@@ -259,7 +260,7 @@ Contract ID: SPEC-WF-LIGHT1A
   5. 店の事実・実機でしか確認できない挙動 → owner。具体的な質問か、短い PASS / FAIL で答えられる形にする。省略不可。
   6. 目的・製品の振舞い・受容リスク・予算・優先順位・範囲の変更・不可逆な操作 → owner。省略不可。
   7. Windows L3・R4・Ready・merge → owner。現行の明示承認と有効な委任の範囲だけを使う。
-  表の前後に、(a) 問い合わせが複数の行に当てはまる場合、または裁定権の所在が争点の場合は owner 側の行（5〜7）を優先すること、(b) この表は `AGENTS.md` Decision and Approval Boundaries と本節の上限・計上規則を変更しないこと、(c) owner に証跡の編集や発注訂正の伝言を依頼しないことを書く。
+  表の前後に、(a) 問い合わせが表の複数行に当てはまり、その中に owner 側の行（5〜7）が含まれる場合は owner 側の行を優先すること・裁定権の所在そのものが争点の場合は owner へ送ること・owner 側でない行だけに当てはまる場合は各行の条件に従うこと（3 文、closeout で訂正、closure P3-2。旧記述は「複数の行に当てはまる場合、または裁定権の所在が争点の場合は owner 側の行を優先」という 1 文で、実装〈`docs/DEV_WORKFLOW.md:326`〉と字面が一致していなかった）、(b) この表は `AGENTS.md` Decision and Approval Boundaries と本節の上限・計上規則を変更しないこと、(c) owner に証跡の編集や発注訂正の伝言を依頼しないことを書く。
 - D5（D-090）: Status = accepted（owner 決定 2026-09-22）。Decision = D1〜D4 の要旨。Why = PR #85 の Plan Review rally と発注訂正の停止の実績。Compatibility = phase・review 本数・Human Gate・Plan Commit / Amendments・独立性・Double Audit・D-084 / D-087 の owner の裁定を維持、checker は変更しない、既存 packet へ遡及しない、1 段目の残りと 2・3 段目は別 change。
 
 ## Trace Matrix
@@ -280,9 +281,14 @@ Contract ID: SPEC-WF-LIGHT1A
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #90](https://github.com/kosei-w90607/inventory-system-desktop/pull/90) で実装し squash merge 済み（`89f0bc2d`、2026-09-22）。`docs/templates/plan-packet.md` に `## Ordinary Operation` 節、`docs/DEV_WORKFLOW.md` の Review Rules・Plan Packet Rules・Owner Effort Budget に規則項目と `### 問い合わせの行き先` の表、`docs/AGENT_OPERATING_MANUAL.md` §5.6 に「Writer が編集前に止まったとき」の規則文、`docs/decision-log.md` に D-090 を追加した。4 file とも既存行の削除は無く追加のみ。Writer 実装後、Coordinator の diff 確認で packet 内だけの略記 `D1`〜`D4` が正本へ漏れた箇所・Writer 向けの指示文が規則文へ残った箇所・D-090 の Why の文意・表の注記の Markdown 描画の 5 点を是正した。Final Review broad の finding のうち 3 点（注記 (a) の複数行一致時の適用範囲〈A-1 / B-5〉、Plan Packet Rules の項目の出典を template へ明示〈B-2〉、非遡及の 1 句〈B-3〉）を採用して是正した。
 
 ## Review Response
 
-Fill after review.
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+Plan Review（Opus、独立 fresh context）: round 1 = 操作列は `成立`、P1 0 / P2 5 / P3 4 → 全件採用して是正 → round 2 closure = P1/P2 なし、P3 2 → 反映（Plan Commit）。Plan Reviewer は Writer（Sonnet）と別 model だが同じ vendor で、PR #88 の dogfood 所見の条件を Plan Gate 時点では解消しないことを遷移記録に明記した。
+
+Final Review broad 2 本（互いに独立、Plan Reviewer とも別の fresh context、Double Audit）: pass A（Codex、`#pullrequestreview-5272080909`）P1 0 / P2 0 / P3 2、pass B（Opus、`#issuecomment-5767767062`）P1 0 / P2 0 / P3 5。finding 7 件の裁定（Coordinator、`#issuecomment-5768012695` に記録）: 採用 4（A-1 / B-5 / B-2 / B-3）→ 是正して反映、closeout 1（A-2、Matrix の Mutation-style の言い過ぎ）→ 本 closeout で訂正、follow-up 2（B-1、B-4）→ `docs/backlog.md`「workflow の軽量化 3 段」へ起票。
+
+Final Review closure（Opus、別 context、`#issuecomment-5768012695`）: P1 0 / P2 0、新規 P3 3 件。うち 1 件（broad の裁定が PR に未記録）は PR body へ記録して解消、残り 2 件（closure P3-2: Spec Contract D4 (a) と Matrix の (a) 関連記述の実装への訂正、closure P3-3: 非遡及の句の carve-out 有無）は本 closeout で処理した。合格、hosted CI pass、helper Ready → merge。
+
+- Findings Freeze: frozen after Broad Audit（broad 2 本の完了後）; post-freeze exceptions: none.
