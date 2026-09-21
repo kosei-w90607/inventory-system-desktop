@@ -543,7 +543,7 @@ mod bindings_generation_tests {
         let message = export_bindings_to(&path).unwrap_err();
 
         assert!(message.contains(&path.display().to_string()));
-        assert!(!blocker.join("bindings.ts.tmp").exists());
+        assert!(!dir_has_tmp_entry(dir.path()));
     }
 
     // T3: 置換段の失敗。出力先が directory だと rename が失敗し、その directory と
@@ -565,7 +565,10 @@ mod bindings_generation_tests {
 
     // T4: 既存 file の保護。出力先の directory を書込み不可にして一時 file を作れなく
     // すると export 段が失敗し、出力先の既存内容は byte 単位で変わらない（一時 file 名が
-    // 呼出しごとに一意になったため、名前を事前に知って directory で塞む方法は使えない）。
+    // 呼出しごとに一意になったため、名前を事前に知って directory で塞ぐ方法は使えない）。
+    // directory の書込み権限を mode で落とす条件は unix 限定（Windows では T3 が既存内容の
+    // 保護を部分的に見る）。
+    #[cfg(unix)]
     #[test]
     fn export_bindings_to_preserves_existing_content_when_directory_is_read_only() {
         use std::os::unix::fs::PermissionsExt;
@@ -588,7 +591,7 @@ mod bindings_generation_tests {
         assert_eq!(std::fs::read_to_string(&path).unwrap(), existing);
     }
 
-    // GA finding #1: 固定名の一時 file だと並走する呼出しが互いの一時 file を
+    // Final Review finding #1: 固定名の一時 file だと並走する呼出しが互いの一時 file を
     // truncate / rename / remove し合い、両方 exit 0 のまま壊れた bindings.ts が
     // 残り得た。同じ出力先へ複数 thread から同時に呼び出し、全部 Ok・出力が単独実行と
     // 一致・一時 file が残らないことを固定する回帰 test（8 thread、race を検出するのに
@@ -618,7 +621,7 @@ mod bindings_generation_tests {
         let baseline_path = baseline_dir.path().join("bindings.ts");
         export_bindings_to(&baseline_path).unwrap();
         let baseline = std::fs::read_to_string(&baseline_path).unwrap();
-        assert_eq!(generated.len(), baseline.len());
+        assert_eq!(generated, baseline);
 
         assert!(!dir_has_tmp_entry(dir.path()));
     }
