@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 74085e4d4441ed594f944447087355ac716861ff
 - Amendments: none
 - Coordinator: Fable 5.1
 - Writer: Sonnet subagent（worktree run）
@@ -24,6 +24,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない文書変
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 対象は workflow 文書 3 本と decision-log。規則の所有先は既存正本で決まっている（Plan Review は `docs/DEV_WORKFLOW.md` Review Rules、Writer 発注は `docs/AGENT_OPERATING_MANUAL.md` §5.6、owner 負担は `docs/DEV_WORKFLOW.md` Owner Effort Budget）。owner の設計判断を要する未決の論点は起票時点でなし。PR #88 の dogfood 所見（計画と実装を同じ vendor が見て packet の前提誤りが Plan Gate を通過した）に対し、本 packet の Plan Reviewer（Opus）は Writer（Sonnet）と別 model だが同じ vendor であり、Plan Gate の時点では所見の条件を解消しない。別 vendor の目は Final Review の Codex が担い、Plan Gate では同 vendor・別 model の残余 risk を Coordinator の判断で受容して進め、owner へは 2026-09-22 の進捗報告で提示した（Codex への差替えは owner の指示があれば行う。owner relay を Plan Review に使わない判断。`docs/DEV_WORKFLOW.md` Review Rules の vendor 条項は Writer が Codex の packet が対象で、本 packet には literal に掛からない）
+- plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Opus、P1 0 / P2 5 / P3 4、操作列は `成立`）→ 全件採用し是正 `649b1f5b` → round 2 closure（同 reviewer、P1/P2 = 0、P3 2）→ P3 を反映。Plan Commit = `74085e4d`（plan-first `2c7139c6` → 是正を含む確定版）。実装は Sonnet subagent の worktree run で本 commit を起点にする
 
 ## Owner Effort Budget
 
