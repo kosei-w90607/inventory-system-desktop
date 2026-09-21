@@ -86,3 +86,116 @@ Keep it factual and stable.
 旧Progress SnapshotとOpen Itemsは [移送前のmemory](archive/harness-context/2026-09-14-project-memory.md) に保存した。未決記録の本文は [過去memoryの未決記録](backlog.md#過去memoryの未決記録) に残し、関係する作業で成立・解消状況を確認する。
 
 重要な判断と理由は [decision-log](decision-log.md) と該当design docを参照する。
+
+## Store Premises Facts（現場の前提、owner確認 2026-09-19）
+
+店の実態を前提にする設計・レビュー・移行の判断をする前に、まずここを引く。載っていない事実が判断に要るときは owner に 1 問だけ尋ね、答えを確認日つきで同じ commit へ足す（backlog の該当 entry を参照）。本番開始後に変わる前提（PLU 段階移行、印刷要否など）は、変わった時点で開始日とともに更新する。
+
+起票の背景: 2026-09-19、Plan Review round 3 で「実店舗に本番データが在る」という誤った前提のまま移行設計を議論し、owner へ escalation する事態が発生した。本節はその再発防止として、散らばった記録から拾った事実と owner の 2026-09-19 回答を 1 枚に統合したもの。種類 1・3〜7（下記）は owner の直接確認欄が未記入のため、出典を現物確認できたものだけを「記録済み（出典つき）」として収載している。種類 2「無いもの」と 15 問の owner 回答は 2026-09-19 に直接確認済み。
+
+### 在るもの
+
+- Register is `CASIO SR-S4000` — 2026-06-30 field-check — `docs/project-memory.md`（本文書 POS Facts）
+- Store has `カシオレジスターツール for SR-S500/SR-C550/SR-S4000/SR-S200`（CV-17 1.1.1.0）installed on the PC — 2026-06 field-check — `docs/project-memory.md`
+- SD card → CV17 import is the existing data-recovery route from register to PC — 2026-08-01 owner判断 — `docs/plu-export-and-real-csv-verification.md`
+- Store also uses CASIO ECR+（スマホアプリ）daily, but it will not be the long-term primary POS integration because it has a planned service end — 2026-06-30 field-check — `docs/plu-export-and-real-csv-verification.md`（decision-log D-022 でも同じ懸念を記録）
+- Daily report files (Z001/Z002/Z005) are pasted into an Excel file group almost as-is and overwritten/printed each day; printed pages are filed in a binder — 2026-06-30 field-check — `docs/project-memory.md`
+- Developer is a family member of the store owner with a software background — （記録済み） — `docs/project-memory.md`
+- Price-revision notices for handicraft goods all pass through one main wholesaler（メーカー兼業）; non-handicraft categories get no such notice and learn price changes only from reorder slips — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- About 80 supplier relationships total: ~5 direct wholesalers/makers, ~43 handicraft makers via wholesaler, ~31 others; the set shrinks over time as suppliers close or merge — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- Slip retention duty was 5 years, is now 7 years; about 4 years ago a tax accountant's cost inquiry required checking every retained slip individually — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- Register numeric keypad has a decimal point, so quantity × unit price with one decimal digit (e.g. 1.3 × 70円/m) can be entered — 2026-09-15 owner伝聞 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`（追記）
+- Excluded long-dormant items（単品コードなし）are sold via department key + amount, tracked only in the owner's memory — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- Current register lease has about 2 years remaining; at expiry the register is returned and a replacement is sought — 2026-09-08 owner原文要旨 — `docs/backlog.md`（D-023 POS adapter boundary 項）
+- Of 216 normal PLU slots, only 2 have real store-entered data; the remaining 214 are factory-default `PLU####` placeholders — see also「レジ・レジスターツール」節の訂正事実 — 2026-08-17 実機機械抽出 — `docs/plu-export-and-real-csv-verification.md`
+- 10 existing products use an 8-digit custom code + `EEEEEE` padding scheme (non-handicraft goods) — 2026-08-17 実機機械抽出 — `docs/plu-export-and-real-csv-verification.md`
+- Fabric/ribbon/string receiving slips record quantity in `m`; the store's counting vocabulary covers all 12 unit words in use (個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm) — 2026-09-14 owner原文 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
+- Some items are received boxed and sold individually after unboxing (e.g. one sewing-notion item) — 2026-09-14 owner原文 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
+- Purchase orders are written on one sheet per wholesaler, grouped by wholesaler — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
+- Owner already knows almost all discontinued items and defunct suppliers from memory — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
+- Counting words differ by category: 毛糸=玉, 布=枚, ファスナー=本, はさみ=丁, スナップ=枚, 刺繍糸=本, otherwise mostly 個 — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- The store never sources the same product from two different suppliers — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- Maker package renewals can change the maker's product code — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- Color numbers are commonly used to find/order color-variant products — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- Price-revision notices always carry barcode / product name / maker code / old & new price; one maker's notices lack catalog page references and renewals can confuse identification — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- 「約定」: the owner can negotiate a lower cost directly with a sales rep on bulk orders, below the standard reference cost — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- Some hair-accessory items have no reference list price; the store sets cost itself for those — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+
+### 無いもの（owner回答 2026-09-19、種類2 全13件）
+
+- No production DB / production import history exists yet in the real store; only dev/demo/test DBs exist — owner回答2026-09-19
+- Everything outside the register is currently paper operation; this app is close to a from-scratch (greenfield) introduction — owner回答2026-09-19。owner が用意した Excel シートが店舗に渡っており、データの初期投入にも使える想定だが、Excel シートの運用定着は未確認
+- No prior electronic stock record exists; the Excel sheet the owner just handed the store is still being filled in — owner回答2026-09-19
+- No electronic purchasing/ordering record; paper slips/lists are the base, though some vendor documents arrive as PDF/email — owner回答2026-09-19
+- No sales-record system other than the register; daily reports are register → Excel transcription → print only — owner回答2026-09-19
+- Single store, not multiple locations — owner回答2026-09-19
+- No multi-user/employee-account concept; effectively single-operator, low concurrency — owner回答2026-09-19
+- No network backup destination in use now; whether to adopt one is undecided — owner回答2026-09-19
+- No accounting/bookkeeping software; the Excel sheet above is the closest thing, and its operational adoption is unconfirmed — owner回答2026-09-19
+- No barcode label printer in the store; rejected earlier as impractical for a non-IT elderly-adjacent operator and because some items have no JAN — owner回答2026-09-19
+- No wheeled/mobile work table in the store — owner回答2026-09-19
+- `suppliers` table intentionally holds maker/brand only, not the wholesaler order channel — owner回答2026-09-19
+- Only a single PC is in use; more than one PC would only happen if the PC itself is replaced — owner回答2026-09-19
+
+### いまの手作業
+
+- Daily: SD card recovery → CV17 import to PC → paste Z001/Z002/Z005 into Excel → overwrite → print → file in a binder — 2026-06-30 field-check — `docs/project-memory.md`
+- Product lookup: check name on the shelf first; if absent, search the name on PC to find the maker, check the catalog, or call the supplier; product code is the final tie-breaker — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- Year-end stocktake: use a paper list in shelf order; blank entries mean not-yet-counted; newly added items are hand-written onto the paper list — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- During stocktake, items received but not yet billed are excluded from the count; discarded items are subtracted from the count — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- Price revision: hand-correct the paper prior-year list's cost/price, re-tag the shelf price, then correct the PC copy of the prior-year list afterward — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+- Price-revision notices: lists up to ~400 lines are worked through over several days, prioritizing high-volume items, without waiting for any listed effective date — 2026-08-21/22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- A heavy stocktake year took about 1 week to transcribe onto the paper list, then 2-3 more days to transcribe into the PC — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- Old stock with no item code that sells is tracked from memory only and rung up on a department key — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+- Rounding: maker markup ratios are usually truncated; the store's own cut-sale fractions are rounded up — 2026-08-21 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+
+### 営業中の作業と中断（owner回答 2026-09-19、旧記録の訂正）
+
+旧記録「営業中はレジで販売のみ、システム操作なし」（`docs/SCREEN_DESIGN.md` の1日の動線図にあった記述）は誤りだった。owner が同日の会話で明確に訂正し、該当記述は本 commit で是正済み。
+
+- 営業中でも PC 作業がある
+- 入荷時の商品登録は営業中に発生し得る
+- 商品編集・新規登録・廃番のいずれも営業中に起こり得る、接客で中断されながら
+- 上記はいずれも owner回答2026-09-19 が基準。設計・レビューで「営業中はシステム操作が発生しない」という前提を置かない。
+
+### 決めた運用（このアプリの使い方について owner が決めたこと）
+
+- Product sales move to PLU gradually after go-live, not in a one-day all-product conversion — 2026-08-01 owner原文 — `docs/project-memory.md`
+- Standard daily-report intake procedure is fixed to `SD → CV17 import → pick a file from EcrDatas`; direct SD access or explicit CV17 export are recovery/investigation paths only, not normal choices — 2026-08-01 owner原文（判断） — `docs/project-memory.md` / `docs/plu-export-and-real-csv-verification.md`
+- v1.0 gates on including the Z004 automatic-inventory-sync path; the app will not ship v1.0 unfinished in that respect — 2026-08-16 owner裁定 — `docs/decision-log.md`（D-070）
+- Long-dormant no-code excluded items are not modeled as a system feature; they stay outside the product master and are re-registered at new price/cost if they come back — 2026-08-22 owner同意 — `docs/decision-log.md`（D-076）
+- The ~80 suppliers are not bulk pre-loaded; they get linked incrementally when chosen in flows like bulk price revision — 2026-08-21/22 owner同意 — `docs/decision-log.md`（D-075）
+- Weight-based units（g・kg）are not used in this app — 2026-09-13 owner原文 — `docs/backlog.md`（単位の拡張 項）
+- Length items use a minimum 10 cm increment; remaining stock, purchasing, and price tags are all expressed in `m`（値札は 1 m あたり） — 2026-09-14 owner回答 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
+- Scanning-PLU の「単品売り」setting must always be `いいえ`; setting it to `はい` was confirmed on real hardware to make the register auto-settle and print a receipt on scan-call alone — 2026-08-19 Windows native L3実機確認 — `docs/project-memory.md`
+
+### 利用者
+
+- Developer is a family member of the store owner, with a software background — （記録済み） — `docs/project-memory.md`
+- Operator is the store owner (non-IT); they are the one who operates the PC, and design should not omit explanations for them. Owner also operates it on occasion; nobody else does — 2026-09-19 owner回答
+- Design must assume a non-IT, possibly elderly, low-vision-adjacent user; readability and distinguishability are treated as functional requirements — （記録済み） — `docs/SCREEN_DESIGN.md`
+- One real user has glaucoma; this shaped the accessibility baseline (forced-colors, target size, contrast) — PR #95 Windows native L3 owner所見 — `docs/archive/plans/2026-08-23-ui-list-backbone-d.md`
+- The PC screen is not customer-visible during normal operation (operator's back faces the screen); it is shown to customers only for maker-site catalogs — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
+
+### レジ・レジスターツール
+
+- Register model: `CASIO SR-S4000`; main daily inputs are Z001/Z002/Z005, with Z004 as the item-level PLU track — 2026-06-30/2026-07-06 field-check — `docs/project-memory.md`
+- Normal PLU occupies slots 1-216 (barcode-less, dial-in); scanning PLU is 217+ — 2026-07 field gate — `docs/project-memory.md`
+- Of the 216 normal PLU slots, only 2 hold real store data; the rest are unused factory defaults. The old record "existing PLU ~929 items" is stale and does not match the current store (that count traces to an old handoff doc describing a since-superseded state) — 2026-08-17 実機機械抽出、旧記載は `docs/archive/harness-context/2026-09-14-PROJECT_HANDOFF.md` 参照 — 2026-09-19 owner回答で、この2件はテスト登録だったと確認済み — `docs/plu-export-and-real-csv-verification.md`
+- PLU export is app-to-register only; the app cannot auto-confirm register-side reflection — （記録済み） — `docs/project-memory.md`
+- CV17 shows Z001/Z002/Z004/Z005 in one report-screen family and can write them together — 2026-07-06 field-check — `docs/project-memory.md`
+- Files left in PC-side `EcrDatas` after SD import are "layout A"; CV17's explicit export is "layout B" — 2026-07 L3 — `docs/project-memory.md`
+- Z004 returns appear as negative quantity/amount — 2026-08-15 issue #76 実機バッチ — `docs/plu-export-and-real-csv-verification.md`
+- Non-JAN custom-code items are currently all sold via department key; there is no item-level register sale or automatic stock decrement for them — 2026-07-23 owner確認 — `docs/plu-export-and-real-csv-verification.md`
+- CASIO ECR+（スマホアプリ）has a planned service end and is not the long-term primary integration — 2026-09-19 owner が同じ認識を示し、既存記録との対応を確認済み — `docs/plu-export-and-real-csv-verification.md`（"サービス終了予定があるため長期の primary integration にはしない"）/ `docs/decision-log.md`（D-022 "despite service-end risk"）
+
+### 未確認
+
+- Whether the daily/monthly report screens can fully replace the current Excel-print-binder record has not been accepted; this is planned as a go-live side-by-side check on one real day, not yet done — `docs/backlog.md`（日報画面のExcel印刷・バインダー代替受入判定 項） / `docs/function-design/56-ui-daily-sales.md`
+- CSV export and print behavior have not been end-to-end verified in real use; owner's own characterization is "まともにテストしたことがない" / "印刷は中身を作っていない" — `docs/backlog.md`（CSV出力・印刷の実挙動確認 項）
+- Whether the store will want a network (UNC/NAS) backup destination is still open; current handling is low priority pending an explicit need — `docs/backlog.md`（バックアップ保存先のUNC/ネットワークパス対応 項）
+
+owner が既出の記憶があると答えた 2 件は、記録を探索した結果、以下のとおり見つかった（未確認へは回さない）。
+
+- ECR+のサービス終了予定 → 見つかった。`docs/plu-export-and-real-csv-verification.md`「ECR+ は店舗で利用中だが、サービス終了予定があるため長期の primary integration にはしない」/ `docs/decision-log.md` D-022 の Alternatives considered「make ECR+ the primary integration despite service-end risk」
+- 部門キー（現行レジ最大20程度）の構成は聞き取りで決めた → 見つかった。`docs/db-design/master-tables.md`「初期データ（全21部門、C-1/C-3 2026-03-29 確定）」は同じ 2026-03-29 の「廃番特価の対応方針（利用者ヒアリングで確定）」と同日の店舗ヒアリングに基づく
