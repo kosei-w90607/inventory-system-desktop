@@ -250,7 +250,18 @@ fn show_pre_window_fatal(message: &str) {
 ///
 /// Phase 2 以降で段階的に拡張する。
 #[cfg(debug_assertions)]
-pub fn export_specta_bindings() {
+pub fn export_specta_bindings() -> Result<(), String> {
+    let bindings_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("src")
+        .join("lib")
+        .join("bindings.ts");
+    export_bindings_to(&bindings_path)
+}
+
+// test から tempdir の path を渡して同じ経路（export → 整形 → 定数追記 → 置換）を通す。
+#[cfg(debug_assertions)]
+fn export_bindings_to(bindings_path: &std::path::Path) -> Result<(), String> {
     use tauri_specta::{collect_commands, Builder};
 
     let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
@@ -336,34 +347,46 @@ pub fn export_specta_bindings() {
         cmd::settings_cmd::save_receipt_image,
     ]);
 
-    // CARGO_MANIFEST_DIR = `<project-root>/src-tauri`（compile-time 解決）。
-    // cwd 非依存で `<project-root>/src/lib/bindings.ts` を指す。
-    let bindings_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("src")
-        .join("lib")
-        .join("bindings.ts");
+    // 一時 file（同じ directory 内）へ生成・整形・定数追記まで終えてから置換する。
+    // 途中で失敗しても既存の bindings_path には触れない。
+    let temp_path = bindings_path.with_extension("ts.tmp");
 
-    if let Err(e) = builder.export(specta_typescript::Typescript::default(), &bindings_path) {
-        eprintln!(
-            "警告: TS bindings の export に失敗しました ({}): {e}",
-            bindings_path.display()
-        );
-    } else {
-        if let Err(e) = normalize_generated_bindings(&bindings_path) {
-            eprintln!(
-                "警告: TS bindings の整形に失敗しました ({}): {e}",
+    let result = (|| -> Result<(), String> {
+        builder
+            .export(specta_typescript::Typescript::default(), &temp_path)
+            .map_err(|e| {
+                format!(
+                    "TS bindings の export に失敗しました ({}): {e}",
+                    bindings_path.display()
+                )
+            })?;
+        normalize_generated_bindings(&temp_path).map_err(|e| {
+            format!(
+                "TS bindings の整形に失敗しました ({}): {e}",
                 bindings_path.display()
-            );
-            return;
-        }
-        if let Err(e) = append_generated_constants(&bindings_path) {
-            eprintln!(
-                "警告: TS bindings の定数追記に失敗しました ({}): {e}",
+            )
+        })?;
+        append_generated_constants(&temp_path).map_err(|e| {
+            format!(
+                "TS bindings の定数追記に失敗しました ({}): {e}",
                 bindings_path.display()
-            );
-        }
+            )
+        })?;
+        std::fs::rename(&temp_path, bindings_path).map_err(|e| {
+            format!(
+                "TS bindings の置換に失敗しました ({} -> {}): {e}",
+                temp_path.display(),
+                bindings_path.display()
+            )
+        })
+    })();
+
+    if result.is_err() {
+        // best-effort: 置換前の一時 file を残さない
+        let _ = std::fs::remove_file(&temp_path);
     }
+
+    result
 }
 
 #[cfg(debug_assertions)]
@@ -424,7 +447,7 @@ fn format_typescript_integer(value: usize) -> String {
 
 #[cfg(all(test, debug_assertions))]
 mod bindings_generation_tests {
-    use super::{append_generated_constants, normalize_generated_bindings};
+    use super::{append_generated_constants, export_bindings_to, normalize_generated_bindings};
 
     // WF 系 meta-test のため `test_` prefix なし命名（pre-push step ④ の REQ 番号必須対象外）
     #[test]
@@ -459,6 +482,76 @@ mod bindings_generation_tests {
         assert!(
             generated.ends_with("export const CSV_IMPORT_FILE_SIZE_LIMIT: number = 20_971_520;\n")
         );
+    }
+
+    // T1: 成功経路。生成・整形・定数追記まで終えた内容が置換された出力先に残り、一時 file は残らない。
+    #[test]
+    fn export_bindings_to_succeeds_and_leaves_no_temp_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+
+        export_bindings_to(&path).unwrap();
+
+        let generated = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            generated
+                .matches("export const CSV_IMPORT_FILE_SIZE_LIMIT")
+                .count(),
+            1
+        );
+        assert!(!generated.lines().any(|line| line != line.trim_end()));
+        assert!(!dir.path().join("bindings.ts.tmp").exists());
+    }
+
+    // T2: export 段の失敗。親 directory を作れない（同名の file が塞ぐ）と Err になり、
+    // message に出力先 path を含む。specta の export_to は通常 create_dir_all で親を
+    // 自動生成するため、単に親 directory が無いだけでは失敗しない。
+    #[test]
+    fn export_bindings_to_fails_when_parent_directory_cannot_be_created() {
+        let dir = tempfile::tempdir().unwrap();
+        let blocker = dir.path().join("blocker");
+        std::fs::write(&blocker, "not a directory").unwrap();
+        let path = blocker.join("bindings.ts");
+
+        let message = export_bindings_to(&path).unwrap_err();
+
+        assert!(message.contains(&path.display().to_string()));
+        assert!(!blocker.join("bindings.ts.tmp").exists());
+    }
+
+    // T3: 置換段の失敗。出力先が directory だと rename が失敗し、その directory と
+    // 中身（既存内容）はそのまま残り、一時 file も残らない（T4 の既存 file 保護も兼ねる）。
+    #[test]
+    fn export_bindings_to_fails_when_target_is_a_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+        std::fs::create_dir(&path).unwrap();
+        std::fs::write(path.join("marker.txt"), "keep").unwrap();
+
+        let result = export_bindings_to(&path);
+
+        assert!(result.is_err());
+        assert!(path.is_dir());
+        assert!(path.join("marker.txt").exists());
+        assert!(!dir.path().join("bindings.ts.tmp").exists());
+    }
+
+    // T5: 整形段の失敗。存在しない path は Err。
+    #[test]
+    fn normalize_generated_bindings_fails_for_missing_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing").join("bindings.ts");
+
+        assert!(normalize_generated_bindings(&path).is_err());
+    }
+
+    // T6: 定数追記段の失敗。存在しない path は Err。
+    #[test]
+    fn append_generated_constants_fails_for_missing_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing").join("bindings.ts");
+
+        assert!(append_generated_constants(&path).is_err());
     }
 
     #[test]
@@ -854,7 +947,9 @@ mod bindings_generation_tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(debug_assertions)]
-    export_specta_bindings();
+    if let Err(e) = export_specta_bindings() {
+        eprintln!("警告: {e}");
+    }
 
     let builder = tauri::Builder::default();
     #[cfg(debug_assertions)]
