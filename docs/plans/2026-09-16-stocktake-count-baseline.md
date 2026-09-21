@@ -103,7 +103,7 @@ source同期で確定したS1〜S7を、発注68（着手基準 `a2a265bf`）の
 - S4（operator）: `docs/function-design/51-ui-product-form.md` / `60-ui-product-import.md`（発注66 P3-5: 商品マスタwrite guardの拒否表示・入力保持）、`55-ui-csv-import.md`（保留・再preview）、`65-inventory-record-traceability.md`（補正区分・訂正への到達・評価額）、`73-ui-stocktake.md`（計数開始・保存・回復・native検証）。
 - S5（DB）: `docs/db-design/master-tables.md`（stock_revision）、`transaction-tables.md`（既存入出庫TXと版の関係のみ）、`pos-tables.md`（source受領とimport）、`tracking-system-tables.md`（実測種別・証拠・再実測・flag・補正区分・migration）、`docs/DB_DESIGN.md`（proposed保存契約への索引）。
 - S6（境界・親文書）: `docs/ARCHITECTURE.md`、`docs/architecture/biz-task-specs.md` / `io-task-specs.md` / `cmd-task-specs.md` / `ui-task-specs.md` / `mnt-task-specs.md`（各層の責務と詳細契約への参照）、`docs/FUNCTION_DESIGN.md`、`docs/SCREEN_DESIGN.md`、`docs/UI_TECH_STACK.md`（到達導線、状態所有、失効と既存invalidation契約の接続）。
-- S7（引継ぎ）: 本packet、`docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md`、`docs/Plans.md`、`docs/project-memory.md`（発注68: owner原文・確認日付きの初導入前提と本番開始時の更新義務）。Required Design Artifacts / Contract Coverage Ledger / Trace Matrix / runtime申し送り・現在地をsource本文に同期する。Gated Amendment 1で `docs/backlog.md` のSTK-1 / STK-2 entryの現在地同期と、`scripts/probes/stocktake_time_model.py` の限定是正を追加する。
+- S7（引継ぎ）: 本packet、`docs/plans/test-matrices/2026-09-18-stocktake-time-evidence.md`、`docs/Plans.md`、`docs/project-memory.md`（発注68: owner回答の要旨・確認日付きの初導入前提と本番開始時の更新義務。Gated Amendment 2: owner発言の原文は公開repositoryに置かない）。Required Design Artifacts / Contract Coverage Ledger / Trace Matrix / runtime申し送り・現在地をsource本文に同期する。Gated Amendment 1で `docs/backlog.md` のSTK-1 / STK-2 entryの現在地同期と、`scripts/probes/stocktake_time_model.py` の限定是正を追加する。
 
 S1〜S6の各sourceに「時点証拠契約（proposed・未実装）」を区別して置く。project-memoryはownerが確認した現在の店舗事実を記す。現行のシグネチャ・schema・UIが既に新方式になったとは記載しない。関数設計の新規fileは作らず、既存file内で詳細化するためmodule-map登録の追加はない。実装・生成物・新しい要求IDの追加は行わず、既存要求tokenの増減が必要なら停止して再発注を求める。
 
@@ -123,7 +123,7 @@ source詳細同期のAC。件数一致だけを契約充足の代用にしない
 
 - AC1: `rg '^### SPEC-STK-TIME-D' docs/adr/2026-09-18-stocktake-time-evidence.md` の出力にD1〜D9がある。実測窓、資料受領、未知の境界、保留と再確認、訂正、取消、legacyの意味は独立設計点検で確認する。
 - AC2: `python3 scripts/probes/stocktake_time_model.py` がexit 0でPASSを出力し、before/afterの断定が合成oracleに反しない。モデルのPASSは実装テストと別に扱う。
-- AC3: S1〜S6のsourceを `rg -n '時点証拠契約|SPEC-STK-TIME'` で辿れ、DBの保存条件→IO入出力→BIZのTX/拒否→CMDのwire→UIの回復の対応がContract Coverage Ledgerから追える。各sourceはproposed・未実装と現行本文を区別する。`rg -n '2026-09-19|本番|初導入' docs/project-memory.md` で確認日・owner原文・本番開始時の追記義務を確認し、`rg -n 'project-memory' AGENTS.md docs/PROJECT_HANDOFF.md` で入口から辿れることを確認する。
+- AC3: S1〜S6のsourceを `rg -n '時点証拠契約|SPEC-STK-TIME'` で辿れ、DBの保存条件→IO入出力→BIZのTX/拒否→CMDのwire→UIの回復の対応がContract Coverage Ledgerから追える。各sourceはproposed・未実装と現行本文を区別する。`rg -n '2026-09-19|本番|初導入' docs/project-memory.md` で確認日・owner回答の要旨・本番開始時の追記義務を確認し（Gated Amendment 2: 原文の存在は条件にしない。初導入の前提を開発/試験データの削除許可と読ませない但し書きがあることも確認する）、`rg -n 'project-memory' AGENTS.md docs/PROJECT_HANDOFF.md` で入口から辿れることを確認する。
 - AC4: `git diff --name-only 36891af8 -- src src-tauri` の出力が空。全変更がScopeのdocsに属する。`git diff 36891af8 -- docs/function-design/90-traceability.md docs/DEV_WORKFLOW.md docs/AGENT_OPERATING_MANUAL.md docs/templates` も空。`scripts/probes/stocktake_time_model.py` の差分はGated Amendment 1が列挙する是正（取消補償の商品別純量化と対応case、検出力のないassert・コメントの是正）だけで、隔離copyへのmutation（是正前の明細ごとの補償へ戻す）でassertが落ちることを確認する。変更docごとの要求tokenを基準版と比較して同一であることを確認する。
 - AC5: bash scripts/doc-consistency-check.sh --target plan とfullがERRORなし、git diff --checkが成功。
 - AC6: `32-biz-csv-import-service.md` の外部probe表が、精算系列・EJ完全性・商品同定・時計対応の観測項目、許可条件、不成立時の動作を持つ。`42-cmd-sales-stocktake.md` と `73-ui-stocktake.md` にWindows監視・native検証の失敗条件を持つ。未実施の実機検証をpassと扱わない。
@@ -309,6 +309,17 @@ Contract ID: SPEC-STK-TIME-EVIDENCE
 - モデルで変更してよい箇所: `cancel_import` の補償を商品別純量で吸収先へ1回だけ適用する形へ直す / 純量0と純量非0の適用済み吸収先 case を足す / 未知の始端への仮値挿入を落とす assert を足すか Matrix の Mutation-style Adequacy Questions から当該項を runtime test へ割り当て直す / 常に真になる assert 2件とコメントを、検査できる主張へ直す。
 - 不変: Risk、Execution Mode、Final Review Minimum、Human Gate、Plan Commit、SPEC-STK-TIME-D1〜D9 の決定の意味、Non-scope。ADR・source docs・Matrix の是正は従来の Scope S1〜S7 の内側。
 - 影響: Amendments の範囲が変わるため、是正後の head に対して Final Review の broad 2本を取り直す（`552a7be7` への broad 2本は finding の出所として保持する）。
+
+### Gated Amendment 2（2026-09-21、owner決定「発言の原文を公開repositoryに置かない」の反映）
+
+- 経緯: owner は 2026-09-21 に、店の事実についての自分の発言原文を外から見える場所へ置かず、要旨と確認日だけを置くと決めた（PR #84 で `docs/project-memory.md` の「Store Premises Facts」へ適用済み）。発注書 70 の是正は pass A の P3（同じ事実の二重所有）に従い `docs/project-memory.md` の Initial deployment baseline 行を同節への参照へ縮約し、結果として原文が正本から消えた。GA1 後の broad（対象 `7de29376`）で pass B が、Scope S7 と AC3 が「owner原文」を条件にしたまま不成立になっていること、claimed validation が成立していないことを P2 として指摘した。
+- 裁定（Coordinator = Fable）: 指摘の事実（AC3 / Scope S7 / claimed validation の不成立）は accept。是正の向きは reviewer 案（原文を正本へ戻す）と逆で、owner 決定に合わせて条件のほうを改める。pass B の発注文にこの owner 決定を書かなかったのは Coordinator の漏れ。
+- 変更（本 commit、packet のみ）:
+  - Scope S7: `docs/project-memory.md` の内容物を「owner回答の要旨・確認日付き」へ改める。
+  - AC3: 確認対象を「確認日・owner回答の要旨・本番開始時の追記義務」へ改め、初導入の前提を開発/試験データの削除許可と読ませない但し書きの存在を条件に足す（縮約で落ちた旧文 `This baseline is not permission to delete development/test data.` に相当。pass A の新規 P3）。
+  - Review Response に残っていた owner 発言の原文 1 箇所と、原文に近い引用 1 箇所を要旨へ置き換えた。過去 rally の記録の書換えは通常しないが、公開範囲についての owner 決定を優先する。要旨化した以外の記録（当時「owner原文付きで正本化した」と書いた行を含む）は当時の事実として残す。
+- 不変: Risk、Execution Mode、Final Review Minimum、Human Gate、Plan Commit、SPEC-STK-TIME-D1〜D9 の決定の意味、Non-scope、GA1 の内容。
+- 影響: Amendments の範囲が変わるため、是正後の head に対して Final Review の broad 2本をもう一度取り直す。Final Review の rally としては 3 回目で、DEV_WORKFLOW の round 天井に当たる。そこで P1/P2 が残った場合は次の round を開始せず、同型指摘の一括是正 / backlog 化 / owner escalation のいずれかへ disposition する。
 
 ## Review Response
 
@@ -584,7 +595,7 @@ fileごとの変更要点（function-designは同ディレクトリ内の番号�
 
 ### owner escalation と決定（2026-09-19）
 
-- owner原文:「今のうちの店にはレジのシステム以上のものも存在しないし、レジは商売の中の取引以外できないし、レジスターツールだって今コピペしてる。このアプリはほぼゼロからのスタート」。持ち帰った判断:「本番履歴なしを移行前提に記録し、新形式で本番開始。安全側の拒否は維持し、将来の後追い取込みは禁止しない」。
+- owner回答の要旨（2026-09-19。原文はGated Amendment 2により本packetから除いた）: 店にあるのはレジの仕組みだけで、レジは取引の記録以外をせず、レジスターツールの出力も手作業で写している。本アプリはほぼ初導入に当たる。持ち帰った判断:「本番履歴なしを移行前提に記録し、新形式で本番開始。安全側の拒否は維持し、将来の後追い取込みは禁止しない」。
 - 初導入の事実は[project-memory](../project-memory.md)のPOS Factsへ確認日/owner原文付きで正本化した。レジ周り以外の紙運用、手作業コピー、本番DB・本番取込み履歴なし、存在するapp DBは開発/demo/試験用、本番開始日を同じ位置へ追記する義務を記した。AGENTS Session StartとPROJECT_HANDOFFの既存参照から辿れるため、入口/workflow文書の変更は不要。
 - ADR D3 / D8 / Consequencesへ新形式での本番開始と移行費用を同期した。識別メタの抽出から保存までを実装して開始し、旧Z004試験履歴は本番に持ち込まない。旧importが存在すれば拒否を維持し、32 / 24 / pos / 41 / 55のpreflightはimport_identity_missing + settlement_datesで該当精算日を示す。参照先の商品がないことを理由に旧importを隠さない。
 - 採らなかった案: (a)更新前の全取り漏らし解消は、存在しない本番履歴の更新手順を課し将来の後追いを閉ざすため不採用。(b)legacyだけ確認で許可は二重計上の判断を利用者へ戻すため不採用。(c)識別メタのbackfillは旧DBだけでは復元できず、原本再提示/hash一致による補完機能も本番履歴のない今は追加しない。既存のhash単位source参照backfillまで撤去する意味ではない。
@@ -619,7 +630,7 @@ ADR全文、packetの現在契約、S1〜S6のproposed節で旧DB/移行/legacy/
 
 - round 3 の残件（移行前 import が比較先になる場合の規則、費用記述）はいずれも CLOSED。P1/P2 = 0、Plan Gate 通過可。owner 決定は ADR D3 / D8・DB・IO / BIZ / CMD / UI・Matrix へ同じ意味で反映され、拒否は fail-closed 側で前提（本番にメタなし import が無い）が破れても二重計上は通らず preflight で見える。「初導入の申告で検査を省略しない」は ADR / 32 / 41 / 55 に明文。後追い取込みは日付で止まらず、D4 の保留・要再確認と整合する。
 - 発注 68 の点検 3 は妥当: legacy 観測の移行・legacy 取消の復旧・legacy_movement_ceiling は維持、費用記述だけを旧観測を持つ DB へ限定。機構の削除・弱体化なし。
-- Coordinator の追加確認（owner 2026-09-19「営業中も PC で作業する。登録も編集も廃番も、営業中はなんでもやる」）: 棚卸し中の商品登録で明細を足す writer（BIZ-01 create_product ステップ 6）は、Matrix の `req205_count_schema_writer_atomic_rollout` が kind 明示の対象として観測している。
+- Coordinator の追加確認（owner回答 2026-09-19の要旨: 営業中もPC作業があり、商品の登録・編集・廃番のいずれも営業中に起こり得る）: 棚卸し中の商品登録で明細を足す writer（BIZ-01 create_product ステップ 6）は、Matrix の `req205_count_schema_writer_atomic_rollout` が kind 明示の対象として観測している。
 - follow-up P3（blocker ではない）: ADR Consequences の棚卸し側の移行費用の段落から「旧データを持つ環境の更新を追加作業なしとは説明しない」の literal が置換で消えた。実質要件は同段落に残る。owner 指示（2026-09-19「君が戻していいよ」）により Coordinator が同日に 1 文を戻した（設計の意味は不変、Plan Commit の後の docs 是正）。
 - owner 承認 2026-09-19:「9で承認」（介入上限 9）。
 
