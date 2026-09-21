@@ -1,11 +1,11 @@
 # Plan Packet: ㉗ 棚卸しと後着売上の時点証拠（STK-1 / STK-2、design-only、R3）
 
-2026-09-16起票、2026-09-18にownerがCodexへ設計を委任。起票時の資料と旧案は内容commit feeb3fe9、および本書末尾の非遡及なReview Responseで追跡できる。現在の設計案は [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) に一本化する。旧案の実装指示や数値oracleを現在の契約として使わない。
+2026-09-16起票、2026-09-18にownerがCodexへ設計を委任。起票時の資料と旧案は内容commit feeb3fe9、および本書末尾の非遡及なReview Responseで追跡できる。現在の設計案は [時点証拠ADR](../../adr/2026-09-18-stocktake-time-evidence.md) に一本化する。旧案の実装指示や数値oracleを現在の契約として使わない。
 
 ## Workflow State
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: codex-only
 - Plan Commit: b7f195140ef03147d46d3a8cc26e4f39dcf5e062
@@ -249,7 +249,7 @@ Status: implementing（2026-09-21）。plan-approved時点の評価: source同�
 
 ## 後続 runtime lane ㉘ への申し送り
 
-発注書72のowner dispositionを以下の申し送りより優先する。線引きの正本は[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)。既存の契約本文は保持するが、時刻経路を㉘の実装仕様として確定した扱いにはしない。
+発注書72のowner dispositionを以下の申し送りより優先する。線引きの正本は[ADRの適用範囲の但し書き](../../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)。既存の契約本文は保持するが、時刻経路を㉘の実装仕様として確定した扱いにはしない。
 
 - **㉘で実装しないもの**: gateによるPOS基準の認定、pos_time_bases、TimeBasis / TimeEvidenceの保存とtyped decode、file境界導出、sourceの昇格 / 失効の伝播、PC時計epochの発番・保存と一致条件による時刻比較、EJ時刻分割、clock_unverifiedの準備issue。同じapp sessionでしか成立せず、次のdesign laneで置き換わるため。
 - **㉘で実装するもの**: 商品単位の即保存（begin / save / abandon、context、revision、冪等な再送）と数量・版の不可分更新。受領記録とhash・単調cursor、精算メタの抽出・保存、精算同一性guardと拒否記録（settlement_missing）。受領順によるBefore、NeverObserved / LegacyObservedの扱い、判定不能からの保留と再実測。商品別の純量による取消補償、訂正、共有JANの検査、非連動化の記録（pos_sync_disabled_revision、sync_disabled_unreconciled）。migrationとlegacy分類、初導入の前提、UIの回復導線。計数中のOS監視・generationとcontext失効も維持する。
@@ -604,7 +604,7 @@ fileごとの変更要点（function-designは同ディレクトリ内の番号�
 ### owner escalation と決定（2026-09-19）
 
 - owner回答の要旨（2026-09-19。原文はGated Amendment 2により本packetから除いた）: 店にあるのはレジの仕組みだけで、レジは取引の記録以外をせず、レジスターツールの出力も手作業で写している。本アプリはほぼ初導入に当たる。持ち帰った判断:「本番履歴なしを移行前提に記録し、新形式で本番開始。安全側の拒否は維持し、将来の後追い取込みは禁止しない」。
-- 初導入の事実は[project-memory](../project-memory.md)のPOS Factsへ確認日/owner原文付きで正本化した。レジ周り以外の紙運用、手作業コピー、本番DB・本番取込み履歴なし、存在するapp DBは開発/demo/試験用、本番開始日を同じ位置へ追記する義務を記した。AGENTS Session StartとPROJECT_HANDOFFの既存参照から辿れるため、入口/workflow文書の変更は不要。
+- 初導入の事実は[project-memory](../../project-memory.md)のPOS Factsへ確認日/owner原文付きで正本化した。レジ周り以外の紙運用、手作業コピー、本番DB・本番取込み履歴なし、存在するapp DBは開発/demo/試験用、本番開始日を同じ位置へ追記する義務を記した。AGENTS Session StartとPROJECT_HANDOFFの既存参照から辿れるため、入口/workflow文書の変更は不要。
 - ADR D3 / D8 / Consequencesへ新形式での本番開始と移行費用を同期した。識別メタの抽出から保存までを実装して開始し、旧Z004試験履歴は本番に持ち込まない。旧importが存在すれば拒否を維持し、32 / 24 / pos / 41 / 55のpreflightはimport_identity_missing + settlement_datesで該当精算日を示す。参照先の商品がないことを理由に旧importを隠さない。
 - 採らなかった案: (a)更新前の全取り漏らし解消は、存在しない本番履歴の更新手順を課し将来の後追いを閉ざすため不採用。(b)legacyだけ確認で許可は二重計上の判断を利用者へ戻すため不採用。(c)識別メタのbackfillは旧DBだけでは復元できず、原本再提示/hash一致による補完機能も本番履歴のない今は追加しない。既存のhash単位source参照backfillまで撤去する意味ではない。
 - Matrixへ移行前sourceなし/メタ不足の拒否、日付つきpreflightのwire/UI、新形式どうしの後追い成功と抽出→保存のoracleを追加した。旧DBの分類・拒否・取消復旧は合成試験で維持する。開発/試験DBを作り直す場合は残すマスタを確認して売上・在庫移動と整合させる別作業であり、本runはDBを読取・変更していない。

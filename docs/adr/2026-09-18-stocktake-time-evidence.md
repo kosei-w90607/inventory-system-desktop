@@ -4,7 +4,7 @@
 
 proposed — 2026-09-18、owner の「設計を任せる」を受けた Codex の統合案。
 
-対象は REQ-205 / REQ-401。実装済みの契約ではない。㉗の Design Phase の出力として、[packet](../plans/2026-09-16-stocktake-count-baseline.md) の D-D4 / D-D8 / D-D9 / D-D10 と、その派生する実装指示を置き換える案をここに集約する。D-D1〜D-D3 の snapshot 補正、商品ごとの即保存、売上と在庫の分離、確定済み評価額の非遡及は維持する。実装開始には source docs の詳細同期と独立 Plan Gate が必要。
+対象は REQ-205 / REQ-401。実装済みの契約ではない。㉗の Design Phase の出力として、[packet](../archive/plans/2026-09-16-stocktake-count-baseline.md) の D-D4 / D-D8 / D-D9 / D-D10 と、その派生する実装指示を置き換える案をここに集約する。D-D1〜D-D3 の snapshot 補正、商品ごとの即保存、売上と在庫の分離、確定済み評価額の非遡及は維持する。実装開始には source docs の詳細同期と独立 Plan Gate が必要。
 
 ### 適用範囲の但し書き
 
@@ -333,7 +333,7 @@ PC時計epochを跨ぐ再起動・sleep復帰・時計変更・監視喪失・DB
 
 ## Evidence
 
-- [設計と検証の対応](../plans/test-matrices/2026-09-18-stocktake-time-evidence.md)。実装テストの完了を表すものではない。
+- [設計と検証の対応](../archive/plans/test-matrices/2026-09-18-stocktake-time-evidence.md)。実装テストの完了を表すものではない。
 - [設計モデル](../../scripts/probes/stocktake_time_model.py): 合成時刻・数量だけで、区間の保守性、受領順、競合、snapshot・取消を検算する。実POSの正しさやUI実装の代替証拠ではない。
 - 実コードの既存契約: [在庫変動共通処理](../../src-tauri/src/biz/inventory_service/common.rs)、[取込みcommit](../../src-tauri/src/biz/csv_import_service/commit.rs)、[取消](../../src-tauri/src/biz/csv_import_service/rollback.rs)、[棚卸し](../../src-tauri/src/biz/stocktake_service.rs)。新方式の実装はまだない。
 - 承認済みEJサンプルの構造所見: 分精度、取引一連番号、精算境界、取引ごとの点数、返品モード、同一名称の反復を確認済み。実値は本ADR・fixtureへ転記しない。訂正・取消の全形状、リセット系列、時計の実差・適用期間は本番有効化前の未検証事項。
