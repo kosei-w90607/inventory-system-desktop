@@ -175,10 +175,10 @@ test は実装と同じ commit に入れてよい。すべて `tempfile::tempdir
   - T2 export の失敗: 存在しない親 directory を出力先にすると `Err`、message に出力先 path を含む。
   - T3 置換の失敗: 出力先 path に directory を置いておくと `Err`、その directory は残り、一時 file が残らない。
   - T4 既存 file の保護: 出力先に既存内容を置き、T3 と同じく置換が失敗する条件、または T2 の条件で失敗させたとき、既存内容が変わらない（T2 / T3 の assert に含めてよい）。
-- compatibility checks: AC1（実物の生成結果が差分 0）。
-- data safety checks: 該当なし（実データ・DB に触れない）。
   - T5 整形の失敗: 存在しない path で `normalize_generated_bindings` が `Err`。
   - T6 定数追記の失敗: 存在しない path で `append_generated_constants` が `Err`。
+- compatibility checks: AC1（実物の生成結果が差分 0）。
+- data safety checks: 該当なし（実データ・DB に触れない）。
 - main wiring/integration checks: AC2（CLI の終了コードの実測）。整形・定数追記の段は T5 / T6 で各関数が `Err` を返すことを固定し、合成関数がそれを `?` で伝播することは review で確認する（合成関数の途中へ失敗を注入する seam は足さない）。
 
 ## Boundary / Wire Contract
