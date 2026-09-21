@@ -4,7 +4,7 @@
 
 SPEC-STK-TIME-D2〜D6 / D8。公開parse_and_validate_csvのbytes/filename、commit_csv_importのpreviewToken/additionalImportConfirmed、rollback_csv_importのimport IDは維持する。BIZの受領TXにmutable DB接続を渡すが、CMDに時点判定・在庫スキップのルールを置かない。
 
-準備照会のPC時計epoch検査とclock_unverifiedは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
+準備照会のPC時計epoch検査とclock_unverifiedは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。㉘では `get_pos_stock_readiness` は `CountEnvironment` を受け取らず `(conn)` だけで照会する。次のlaneが時刻検査を決めるときに引数を戻す。
 
 read-onlyの `get_pos_stock_readiness() -> Result<PosStockReadiness, CmdError>` を追加し、MNT供給のCountEnvironmentを取得し、DB lock→BIZ-03の同名照会（conn, CountEnvironment）→error変換を行う。型は32が所有する。UI-07のfile選択前と設定変更後の準備表示に使い、既存のpos_stock_sync値を変更しない。tauri/specta登録とbindings生成の対象に含める。
 
