@@ -250,7 +250,18 @@ fn show_pre_window_fatal(message: &str) {
 ///
 /// Phase 2 以降で段階的に拡張する。
 #[cfg(debug_assertions)]
-pub fn export_specta_bindings() {
+pub fn export_specta_bindings() -> Result<(), String> {
+    let bindings_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("src")
+        .join("lib")
+        .join("bindings.ts");
+    export_bindings_to(&bindings_path)
+}
+
+// test から tempdir の path を渡して同じ経路（export → 整形 → 定数追記 → 置換）を通す。
+#[cfg(debug_assertions)]
+fn export_bindings_to(bindings_path: &std::path::Path) -> Result<(), String> {
     use tauri_specta::{collect_commands, Builder};
 
     let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
@@ -336,34 +347,99 @@ pub fn export_specta_bindings() {
         cmd::settings_cmd::save_receipt_image,
     ]);
 
-    // CARGO_MANIFEST_DIR = `<project-root>/src-tauri`（compile-time 解決）。
-    // cwd 非依存で `<project-root>/src/lib/bindings.ts` を指す。
-    let bindings_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("src")
-        .join("lib")
-        .join("bindings.ts");
+    // 一時 file（同じ directory 内）へ生成・整形・定数追記まで終えてから置換する。
+    // 途中で失敗しても既存の bindings_path には触れない。固定名だと tauri dev の
+    // 自動生成と CLI 実行が並走したとき互いの一時 file を truncate / rename / remove
+    // し合い、両方 exit 0 のまま壊れた bindings.ts が残り得る（Final Review finding #1）。
+    // process id + counter で候補名を作るだけでは足りない: pid は PID namespace 間で
+    // 一意ではなく、同じ directory を共有する別 namespace の process が同じ候補を
+    // 選び得る（Final Review pass A finding #1）。`create_new` で候補を排他的に確保し、
+    // 既に他者が確保済みなら次の候補へ進む。
+    let temp_path = acquire_temp_path(bindings_path)?;
 
-    if let Err(e) = builder.export(specta_typescript::Typescript::default(), &bindings_path) {
-        eprintln!(
-            "警告: TS bindings の export に失敗しました ({}): {e}",
-            bindings_path.display()
-        );
-    } else {
-        if let Err(e) = normalize_generated_bindings(&bindings_path) {
-            eprintln!(
-                "警告: TS bindings の整形に失敗しました ({}): {e}",
+    let result = (|| -> Result<(), String> {
+        builder
+            .export(specta_typescript::Typescript::default(), &temp_path)
+            .map_err(|e| {
+                format!(
+                    "TS bindings の export に失敗しました ({}): {e}",
+                    bindings_path.display()
+                )
+            })?;
+        normalize_generated_bindings(&temp_path).map_err(|e| {
+            format!(
+                "TS bindings の整形に失敗しました ({}): {e}",
                 bindings_path.display()
-            );
-            return;
-        }
-        if let Err(e) = append_generated_constants(&bindings_path) {
-            eprintln!(
-                "警告: TS bindings の定数追記に失敗しました ({}): {e}",
+            )
+        })?;
+        append_generated_constants(&temp_path).map_err(|e| {
+            format!(
+                "TS bindings の定数追記に失敗しました ({}): {e}",
                 bindings_path.display()
-            );
+            )
+        })?;
+        std::fs::rename(&temp_path, bindings_path).map_err(|e| {
+            format!(
+                "TS bindings の置換に失敗しました ({} -> {}): {e}",
+                temp_path.display(),
+                bindings_path.display()
+            )
+        })
+    })();
+
+    if result.is_err() {
+        // best-effort: 置換前の一時 file を残さない
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    result
+}
+
+// bindings_path と同じ directory 内の一時 file 候補 path を作る。末尾は必ず `.tmp`
+// （"一時 file が directory に残っていない" 判定の目印）。pid と counter を引数に
+// 取ることで、test が特定の候補を確実に言い当てられる（production は
+// `acquire_temp_path` から実 process id と 0 起点で呼ぶ）。
+#[cfg(debug_assertions)]
+fn temp_candidate_path(
+    bindings_path: &std::path::Path,
+    pid: u32,
+    counter: u64,
+) -> std::path::PathBuf {
+    let file_name = bindings_path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy();
+    bindings_path.with_file_name(format!("{file_name}.{pid}.{counter}.tmp"))
+}
+
+// 一時 file を排他的に確保する。候補は `temp_candidate_path` で作り、`create_new` で
+// 最初に確保できた path だけを自分の一時 file として使う。他者が既に確保済みの候補は
+// 消さず次へ進む。無限 retry にはせず、上限に達したら export 段の失敗として Err にする。
+#[cfg(debug_assertions)]
+fn acquire_temp_path(bindings_path: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    const MAX_ATTEMPTS: u64 = 32;
+
+    for counter in 0..MAX_ATTEMPTS {
+        let candidate = temp_candidate_path(bindings_path, std::process::id(), counter);
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(_) => return Ok(candidate),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => {
+                return Err(format!(
+                    "TS bindings の export に失敗しました ({}): {e}",
+                    bindings_path.display()
+                ))
+            }
         }
     }
+    Err(format!(
+        "TS bindings の export に失敗しました ({}): 一時 file の候補が {MAX_ATTEMPTS} 回とも使用中でした",
+        bindings_path.display()
+    ))
 }
 
 #[cfg(debug_assertions)]
@@ -424,7 +500,19 @@ fn format_typescript_integer(value: usize) -> String {
 
 #[cfg(all(test, debug_assertions))]
 mod bindings_generation_tests {
-    use super::{append_generated_constants, normalize_generated_bindings};
+    use super::{
+        append_generated_constants, export_bindings_to, normalize_generated_bindings,
+        temp_candidate_path,
+    };
+
+    // 一時 file の名前は呼出しごとに変わるため、固定名の不在ではなく `.tmp` で終わる
+    // entry が directory に無いことで「一時 file が残らない」を確認する。
+    fn dir_has_tmp_entry(dir: &std::path::Path) -> bool {
+        std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .any(|entry| entry.file_name().to_string_lossy().ends_with(".tmp"))
+    }
 
     // WF 系 meta-test のため `test_` prefix なし命名（pre-push step ④ の REQ 番号必須対象外）
     #[test]
@@ -459,6 +547,187 @@ mod bindings_generation_tests {
         assert!(
             generated.ends_with("export const CSV_IMPORT_FILE_SIZE_LIMIT: number = 20_971_520;\n")
         );
+    }
+
+    // T1: 成功経路。生成・整形・定数追記まで終えた内容が置換された出力先に残り、一時 file は残らない。
+    #[test]
+    fn export_bindings_to_succeeds_and_leaves_no_temp_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+
+        export_bindings_to(&path).unwrap();
+
+        let generated = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            generated
+                .matches("export const CSV_IMPORT_FILE_SIZE_LIMIT")
+                .count(),
+            1
+        );
+        assert!(!generated.lines().any(|line| line != line.trim_end()));
+        assert!(!dir_has_tmp_entry(dir.path()));
+    }
+
+    // T2: 一時 file の確保（export 段）の失敗。親 directory を作れない（同名の file が
+    // 塞ぐ）と Err になり、message は既存の export 失敗と同じ形で出力先 path を含む。
+    // specta の export_to は通常 create_dir_all で親を自動生成するため単に親 directory
+    // が無いだけでは失敗しないが、`acquire_temp_path` の `create_new` は親が directory
+    // でない時点で失敗するため、この条件では specta の export より前に一時 file の
+    // 確保で落ちる（Final Review pass A finding #1）。
+    #[test]
+    fn export_bindings_to_fails_when_parent_directory_cannot_be_created() {
+        let dir = tempfile::tempdir().unwrap();
+        let blocker = dir.path().join("blocker");
+        std::fs::write(&blocker, "not a directory").unwrap();
+        let path = blocker.join("bindings.ts");
+
+        let message = export_bindings_to(&path).unwrap_err();
+
+        assert!(message.contains(&path.display().to_string()));
+    }
+
+    // T3: 置換段の失敗。出力先が directory だと rename が失敗し、その directory と
+    // 中身（既存内容）はそのまま残り、一時 file も残らない。
+    #[test]
+    fn export_bindings_to_fails_when_target_is_a_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+        std::fs::create_dir(&path).unwrap();
+        std::fs::write(path.join("marker.txt"), "keep").unwrap();
+
+        let result = export_bindings_to(&path);
+
+        assert!(result.is_err());
+        assert!(path.is_dir());
+        assert!(path.join("marker.txt").exists());
+        assert!(!dir_has_tmp_entry(dir.path()));
+    }
+
+    // T4: 既存 file の保護。出力先の directory を書込み不可にして一時 file を確保できなく
+    // すると（Final Review pass A finding #1 以降、一時 file の確保 = export 段で落ちる）
+    // Err になり、出力先の既存内容は byte 単位で変わらない（一時 file 名が呼出しごとに
+    // 一意になったため、名前を事前に知って directory で塞ぐ方法は使えない）。directory の
+    // 書込み権限を mode で落とす条件は unix 限定（Windows では T3 が既存内容の保護を部分的
+    // に見る）。root や権限を無視する filesystem では 0o555 でも書けてしまい export が
+    // 正当に成功し得るため、production 呼出しの前に probe file で書込み可否を確かめ、
+    // 書けてしまう環境ではこの test を対象外として skip する（Final Review pass A #2 /
+    // pass B P3-3）。
+    #[cfg(unix)]
+    #[test]
+    fn export_bindings_to_preserves_existing_content_when_directory_is_read_only() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+        let existing = "export type Existing = string;\n";
+        std::fs::write(&path, existing).unwrap();
+
+        let original_mode = std::fs::metadata(dir.path()).unwrap().permissions().mode();
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
+
+        // production 呼出しの前に probe file で書込み可否を確かめる。書けてしまう環境
+        // では export の成功可否を skip 判定に使わない（mutant を隠さないため）。
+        let probe = dir.path().join("write-probe");
+        let write_is_blocked = std::fs::write(&probe, "probe").is_err();
+        if !write_is_blocked {
+            let _ = std::fs::remove_file(&probe);
+        }
+
+        let result = write_is_blocked.then(|| export_bindings_to(&path));
+
+        // tempdir の削除が失敗しないよう、assert より先に必ず権限を戻す。
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(original_mode))
+            .unwrap();
+
+        let Some(result) = result else {
+            // この環境では directory の書込み拒否が成立しない（root 実行など）ため対象外。
+            return;
+        };
+
+        assert!(result.is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), existing);
+    }
+
+    // Final Review pass A finding #1: process id は PID namespace 間で一意ではないため、
+    // 別 namespace の process が同じ候補（pid + counter）を選び得る。最初の候補
+    // （counter=0）を他者が既に確保している状態を作り、生成は Ok で完成物を公開し、
+    // 先に在った file には触れない（内容も存在も変わらない）ことを固定する。
+    #[test]
+    fn export_bindings_to_skips_a_temp_candidate_already_claimed_by_someone_else() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+
+        let claimed_by_someone_else = temp_candidate_path(&path, std::process::id(), 0);
+        std::fs::write(&claimed_by_someone_else, "not mine").unwrap();
+
+        let result = export_bindings_to(&path);
+
+        assert!(result.is_ok(), "{result:?}");
+        assert_eq!(
+            std::fs::read_to_string(&claimed_by_someone_else).unwrap(),
+            "not mine"
+        );
+
+        let generated = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            generated
+                .matches("export const CSV_IMPORT_FILE_SIZE_LIMIT")
+                .count(),
+            1
+        );
+    }
+
+    // Final Review finding #1: 固定名の一時 file だと並走する呼出しが互いの一時 file を
+    // truncate / rename / remove し合い、両方 exit 0 のまま壊れた bindings.ts が
+    // 残り得た。同じ出力先へ複数 thread から同時に呼び出し、全部 Ok・出力が単独実行と
+    // 一致・一時 file が残らないことを固定する回帰 test（8 thread、race を検出するのに
+    // 十分な数で数秒以内に終わる）。
+    #[test]
+    fn export_bindings_to_is_safe_under_concurrent_calls_to_the_same_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bindings.ts");
+
+        let results: Vec<Result<(), String>> = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|_| scope.spawn(|| export_bindings_to(&path)))
+                .collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        assert!(results.iter().all(|r| r.is_ok()), "{results:?}");
+
+        let generated = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            generated
+                .matches("export const CSV_IMPORT_FILE_SIZE_LIMIT")
+                .count(),
+            1
+        );
+
+        let baseline_dir = tempfile::tempdir().unwrap();
+        let baseline_path = baseline_dir.path().join("bindings.ts");
+        export_bindings_to(&baseline_path).unwrap();
+        let baseline = std::fs::read_to_string(&baseline_path).unwrap();
+        assert_eq!(generated, baseline);
+
+        assert!(!dir_has_tmp_entry(dir.path()));
+    }
+
+    // T5: 整形段の失敗。存在しない path は Err。
+    #[test]
+    fn normalize_generated_bindings_fails_for_missing_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing").join("bindings.ts");
+
+        assert!(normalize_generated_bindings(&path).is_err());
+    }
+
+    // T6: 定数追記段の失敗。存在しない path は Err。
+    #[test]
+    fn append_generated_constants_fails_for_missing_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing").join("bindings.ts");
+
+        assert!(append_generated_constants(&path).is_err());
     }
 
     #[test]
@@ -854,7 +1123,9 @@ mod bindings_generation_tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(debug_assertions)]
-    export_specta_bindings();
+    if let Err(e) = export_specta_bindings() {
+        eprintln!("警告: {e}");
+    }
 
     let builder = tauri::Builder::default();
     #[cfg(debug_assertions)]
