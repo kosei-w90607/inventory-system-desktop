@@ -25,6 +25,7 @@ manual なし: 画面・operator workflow・配布物に変化がなく、debug 
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 設計正本に型生成の失敗時の振舞いを定める節は無く、既存の利用契約（`docs/DEV_WORKFLOW.md` Verification Gates「generate_bindings の後に `src/lib/bindings.ts` の diff を見る」、D-054 の「L1 の bindings clean diff 検査が cross-language 同期の機械検査を兼ねる」）が暗黙に前提とする「生成が失敗したら検査も失敗する」を実装が満たしていない、という実装側の欠陥。owner の設計判断を要する論点なし
 - plan-gate → plan-approved → implementing（本 commit、state-only）: Plan Review round 1（Sonnet、P1 0 / P2 2 / P3 2）→ 是正 `9f68abdc` → round 2 closure（同 reviewer、P1/P2 = 0、P3 1）→ P3 を in-place 是正。Plan Commit = `c9d7d028`（plan-first `41b1ad89` → 是正を含む確定版）。実装は Sonnet subagent の worktree run で本 commit を起点にする
+- Gated Amendment 1（本 commit）: Writer の初回実装 run（`368dec36`）の報告で、Test Plan T2 の失敗条件「存在しない親 directory」が現物と合わないと判明（`specta-typescript 0.0.11` `src/exporter.rs` の `export_to` が `create_dir_all(parent)` を実行、Coordinator が registry の source で確認）。T2 の条件を「親 directory を作れない」へ訂正し、T4 を既存 file の保護を直接見る独立 test に改める。Goal Invariant / Scope / AC / Risk / Final Review Minimum / Human Gate は不変。旧前提の sweep: `rg -n '存在しない親' ` で packet・Plans.md に残存なし
 
 ## Owner Effort Budget
 
@@ -173,9 +174,9 @@ test は実装と同じ commit に入れてよい。すべて `tempfile::tempdir
 - targeted tests:
   - T1 成功経路: tempdir 内の出力先へ生成すると `Ok`、出力 file が存在し、`export const CSV_IMPORT_FILE_SIZE_LIMIT` の行を 1 つ含み、行末空白が無く、一時 file が残らない。
 - negative tests:
-  - T2 export の失敗: 存在しない親 directory を出力先にすると `Err`、message に出力先 path を含む。
+  - T2 export の失敗: 出力先の親 directory を作れない条件（親の位置を同名の file が塞ぐ）にすると `Err`、message に出力先 path を含む。親 directory が存在しないだけでは失敗しない（`specta-typescript 0.0.11` の `export_to` は書込み前に `create_dir_all` を実行する、GA1）。
   - T3 置換の失敗: 出力先 path に directory を置いておくと `Err`、その directory は残り、一時 file が残らない。
-  - T4 既存 file の保護: 出力先に既存内容を置き、T3 と同じく置換が失敗する条件、または T2 の条件で失敗させたとき、既存内容が変わらない（T2 / T3 の assert に含めてよい）。
+  - T4 既存 file の保護: 出力先に既存内容の file を置き、一時 file の path を directory で塞いで export を失敗させると `Err`、出力先の既存内容が変わらない（GA1: T2 の条件では出力先 file を置けず、T3 の条件では出力先が directory になるため、既存 file の保護を直接見る独立の test にする）。
   - T5 整形の失敗: 存在しない path で `normalize_generated_bindings` が `Err`。
   - T6 定数追記の失敗: 存在しない path で `append_generated_constants` が `Err`。
 - compatibility checks: AC1（実物の生成結果が差分 0）。
