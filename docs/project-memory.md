@@ -135,7 +135,7 @@ Keep it factual and stable.
 - No sales-record system other than the register; daily reports are register → Excel transcription → print only — owner回答2026-09-19
 - Single store, not multiple locations — owner回答2026-09-19
 - No multi-user/employee-account concept; effectively single-operator, low concurrency — owner回答2026-09-19
-- No off-PC or network backup destination is in use now — owner回答2026-09-19。owner は、Google Drive はセキュリティ面に不安があり、使うなら小さな AWS 等と述べた — owner回答2026-09-19。外部に保存するなら置き場所は店 — owner回答2026-09-23。暗号化したクラウド保存は今は見送り、v1.0 に含めない方向（費用の懸念。backup の設計 lane で再判断し得る）— owner判断2026-09-23
+- No off-PC or network backup destination is in use now — owner回答2026-09-19。owner は、PC の外の保存先はあったほうがよいとは思うとしたうえで、個人店の規模で Google Drive を使うのはセキュリティ面に不安が残り、AWS 等で小さいものがあればという留保を付けた — owner回答2026-09-19。外部に保存するなら置き場所は店 — owner回答2026-09-23。暗号化したクラウド保存は今は見送り、v1.0 に含めない方向（費用の懸念）— owner判断2026-09-23。クラウド保存の扱いは backup の設計 lane で判断する — Coordinator の扱い 2026-09-23
 - No accounting/bookkeeping software; the Excel sheet above is the closest thing, and its operational adoption is unconfirmed — owner回答2026-09-19
 - No barcode label printer in the store; rejected earlier as impractical for a non-IT elderly-adjacent operator and because some items have no JAN — owner回答2026-09-19
 - No wheeled/mobile work table in the store — owner回答2026-09-19
@@ -200,7 +200,7 @@ Keep it factual and stable.
 - One real user has glaucoma; this shaped the accessibility baseline (forced-colors, target size, contrast) — PR #95 Windows native L3 owner所見 — `docs/archive/plans/2026-08-23-ui-list-backbone-d.md`
   - 実利用者は赤と黄色の区別がつかない。文字が小さすぎる可能性もあり、老眼もある — owner 伝聞 2026-06-06
 - The PC screen is not customer-visible during normal operation (operator's back faces the screen); it is shown to customers only for maker-site catalogs — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
-- 店主は、システムと実在庫のずれを、棚卸しでロス（廃棄・万引き等）として出る範囲内にしてほしいと答えている — 店主回答（2026-03）
+- 店主は、システムの在庫が実在庫と正確に合っていることを望み、ずれるならそのずれを棚卸しでロス（廃棄・万引き等）として出る範囲内にしてほしいと答えている — 店主回答（2026-03）
 - CSV 取込み画面の「エラー N 件」が展開できる操作部だと owner 自身も最初は気づかなかった。owner は、IT に不慣れな店主はもっと気づきにくいと判断した — owner判断2026-08-03
 - owner は店と家の 2 拠点を行き来し、家で作業するときはノート PC を家へ持って行く（PC は 1 台のまま）— owner回答2026-09-23
 
@@ -210,9 +210,9 @@ Keep it factual and stable.
 - Normal PLU occupies slots 1-216 (barcode-less, dial-in); scanning PLU is 217+ — 2026-07 field gate — `docs/project-memory.md`
 - Of the 216 normal PLU slots, only 2 hold real store data; the rest are unused factory defaults — 2026-08-17 実機機械抽出 — 2026-09-19 owner回答で、この2件はテスト登録だったと確認済み — `docs/plu-export-and-real-csv-verification.md`
 - 既存のスキャニング PLU 約 929 件は死蔵で、運用上は存在しないものとして扱ってよい — owner 伝聞 2026-07-06 — 件数の旧記載は `docs/archive/harness-context/2026-09-14-PROJECT_HANDOFF.md`
-- 2026-08-20 の店 PC での確認で、スキャニング PLU 領域は既存登録 933 件（検証用 4 件を含む）・空き 3,851・アプリ管理 0 — owner（店 PC での L3 報告）2026-08-20 — `docs/archive/plans/2026-08-18-plu-slot-core-implementation.md`
+- 2026-08-20 の店 PC での確認で、スキャニング PLU 領域は既存登録 933 件・空き 3,851・アプリ管理 0 — owner（店 PC での L3 報告）2026-08-20。933 件は、死蔵の約 929 件に owner がテストで登録した検証用スキャニング PLU 4 件（owner 2026-08-15）を足した数と合う（推測）— `docs/archive/plans/2026-08-18-plu-slot-core-implementation.md`
 - レジの売上/EJ 保存設定は有効で、SD の Z004 と同じフォルダに EJ（電子ジャーナル）のファイルがある。中身は締めレシートのような普通のジャーナルのテキスト — owner確認 2026-09-17。実物は採取済みで、repo 外の現場資料にある — owner回答2026-09-23
-- EJ は日報とは別の CV17「電子ジャーナルを閲覧する」操作で取り込み、取込み後は SD の `XZ_BKUP` と PC 側 `EcrDatas` に残る。SD 上に 2022-07 以降の約 4 年分がある — 2026-08-15 訪店の実機確認。店で EJ を PC へ取り込むのは月 1 回程度で、日次ではない（店主本人の話と EJ ファイルの日付で確認）— owner回答2026-09-23
+- EJ は日報とは別の CV17「電子ジャーナルを閲覧する」操作で取り込み、取り込むと SD 上では `XZ_BKUP` へ移り、PC 側 `EcrDatas` にも残る。SD 上に 2022-07 以降の約 4 年分がある — 2026-08-15 訪店の実機確認。店で EJ を PC へ取り込むのは月 1 回程度で、日次ではない（店主本人の話と EJ ファイルの日付で確認）— owner回答2026-09-23
 - レジの PLU 名称欄は 16 バイトまでで、この制約は動かせない — owner確認 2026-09-17
 - CV17 は日報をコピーして貼り付ける元としてだけ使われ、十分に活用されていない。店の CV17 は 1.1.1 で、公式の最新は 2.0.1。CV17 の更新は owner が行う — owner 2026-08-15
 - SD カードは 16GB・FAT32 で使用率は約 4%、PC 側の CV17 履歴は約 416MB — 2026-08-15 訪店記録
@@ -222,7 +222,7 @@ Keep it factual and stable.
 - Z004 returns appear as negative quantity/amount — 2026-08-15 issue #76 実機バッチ — `docs/plu-export-and-real-csv-verification.md`
 - Non-JAN custom-code items are currently all sold via department key; there is no item-level register sale or automatic stock decrement for them — 2026-07-23 owner確認 — `docs/plu-export-and-real-csv-verification.md`
 - CASIO ECR+（スマホアプリ）has a planned service end and is not the long-term primary integration — 2026-09-19 owner が同じ認識を示し、既存記録との対応を確認済み — `docs/plu-export-and-real-csv-verification.md`（"サービス終了予定があるため長期の primary integration にはしない"）/ `docs/decision-log.md`（D-022 "despite service-end risk"）
-  - CASIO の公式ページ（<https://web.casio.jp/ecr/ble/ecr.html>、2026-09-24 確認）では、ECR+ は新規申込受付を 2026年1月4日に終了し、サービス提供は 2028年12月末に終了予定。店主は精算に ECR+ を要すると答えている（`### 在るもの` の ECR+ の行）ため、レジのリース満了が 2028 年 12 月より後だと精算に支障が出る恐れがある（推論）。owner は、ECR+ が終わるならレジの入替えと同時でないと困り、続かないなら代わりを自分たちで作るしかないと見ている — owner回答2026-09-23。リースの満了年月は店主へ確認中
+  - CASIO の公式ページ（<https://web.casio.jp/ecr/ble/ecr.html>、2026-09-24 確認）では、ECR+ は新規申込受付を 2026年1月4日に終了し、サービス提供は 2028年12月末に終了予定。店主は精算に ECR+ を要すると答えている（`### 在るもの` の ECR+ の行）ため、レジのリース満了が 2028 年 12 月より後だと精算に支障が出る恐れがある（推論）。ECR+ の終了後にレシートの控えをアプリで見られる必要があるかという問いに、owner はまず分からないと答えたうえで、ECR+ が終わるならレジの入替えと同時でないと困り、続かないなら代わりを自分たちで作るしかないと見ている — owner回答2026-09-23。リースの満了年月は店主へ確認中
 
 ### 未確認
 
