@@ -9,7 +9,7 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
 - BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。受領の証拠と業務importを分離。受領順と実測の種別による一つの分類を使い、Unknownは所属によらず通常適用と(商品, 資料)単位の要再確認flagへ、共有JAN行だけをfile全体の保留へ。売上と返品の相殺をEJの証拠で判定し、名称が重なる行は候補の商品に局所化し、相殺の確認待ち（EJ待ち）を後から取り込むEJか前回のZ004で再評価する。準備照会はEJの日次取込みを実装するlaneまで `ej_unverified` を常に返し、商品単位の要再確認をrecount_after_importで返す。同一性拒否証拠からsource単位のsettlement_missing、商品の切替記録から商品単位のsync_disabled_unreconciledを準備照会へ返す。切替と実測の版に合わせた説明も同じissueで返す。取消は最初の有効な吸収先を補正し、legacyを吸収なしと解釈しない。
 - BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。開始context（商品revision・所有者・DB世代・source_cursor）・1商品1TX・再送・N-L確定・独立再実測・要再確認flagの解消・legacyの取消の保留の通常の実測による解除。保存済み評価額は不変。
 
-日報BIZ-08、売上レポート、PLU書出しの意味と記録は変更しない。相殺の判定の対応が変わった名称はZ004どうしのスキャニングコードと名称の組で求め、PLU書出しの確認に記録を加えない。名称の重なりの検知と登録名の付け直しの支援はPLU書出し側の別の変更で扱う。EJ parser実装は別laneで、32の外部probeと本番条件を引き継ぐ。
+日報BIZ-08、売上レポート、PLU書出しの意味と記録は変更しない。相殺の判定の対応が変わった名称はZ004どうしのスキャニングコードと名称の組で求め、PLU書出しの確認に記録を加えない。名称の重なりの検知と登録名の付け直しの支援はPLU書出し側の別の変更で扱い、在庫連動の有効化より前に入れる（`ej_unverified` を外す条件、32）。EJ parser実装は別laneで、32の外部probeと本番条件を引き継ぐ。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）
