@@ -62,10 +62,10 @@ fixture は test 内の builder で作る: 文字列を CP932 で encode し、2
 | IO-08-D3 / D6 | 返品の符号 | unit | `parse_ej_return_mode_keeps_positive_amounts` | モード欄 `戻` が `Return` にならない、明細の金額が負に反転される |
 | IO-08-D6 | 合計の無い現金ちょうどの取引 | unit | `parse_ej_exact_cash_tender_without_total_line` | 合計域が点数・対象計・内税・現金（全角数字）だけの取引が `Unresolved` になる、または「現金」行が明細に入る |
 | IO-08-D5 | 位置によらないラベル判定 | unit | `parse_ej_item_named_like_label_before_separator_is_item` | 区切りの前の「現金」で始まる名称の明細が `Labeled` に分類されて明細から消える |
-| IO-08-D7 | 入金 / 出金 / 替 | unit | `parse_ej_non_item_records_paid_in_paid_out_exchange` | 本文 1 行の `入金` / `出金` / `替` の記録が `NoItems` でない、または診断が出る |
+| IO-08-D7 | 入金 / 出金 / 替 | unit | `parse_ej_non_item_records_paid_in_paid_out_exchange` | 本文 1 行の `入金` / `出金` / `替` の記録が `NoItems` でない、または診断が出る。金額の無い `替` の行が `NoItems` / Unknown にならない（fixture の `替` の行は実物と同じく `替` + 空白 + 半角カナの文字列で、数字・通貨記号を含めない） |
 | IO-08-D5 / D7 | 設定書込み・精算 | unit | `parse_ej_settlement_and_program_records` | `PGM`（区切り・SD設定書込み・区切り）と `精算`（日計明細の題・総売・金額だけ・純売・金額だけ・現金在高・純客・区切り・日計明細・SDｶｰﾄﾞ保存・ｽﾏ-ﾄﾌｫﾝ送信）が `NoItems` でない、題の両端の数字が文字列で保持されない。返品だけの日の精算（`総売` / `純客` の負値、通貨記号なしの `-` + 数字の `AmountOnly`、`対象計` / `内税` / `消費税合計` / `現金在高` の通貨記号なしの負値）が `NoItems` でない |
 | IO-08-D3 / D9 | file 内の複数精算・前日付の先頭 | unit | `parse_ej_multiple_settlements_in_one_file_and_pre_dated_first_record` | 先頭の記録が file の他の記録より前の日付だと異常扱いされる、2 回目の精算の後の記録が落ちる、記録の順序が変わる |
-| IO-08-D6 | 金額の表記 | unit | `parse_ej_amount_formats` | 半角 `\1,234`、全角 `￥１２，３４５`（全角数字・全角読点）、単価 `@1,200`、通貨記号なしの `-980` のどれかが `i64` に読めない、全角と ASCII を混ぜた token が数値として受理される |
+| IO-08-D6 | 金額の表記 | unit | `parse_ej_amount_formats` | 半角 `\1,234`、全角 `￥１２，３４５`（全角数字・全角読点）、単価 `@1,200`、通貨記号なしの `-980` のどれかが `i64` に読めない。数字・桁区切り・通貨記号の幅が 1 つの token の中でそろわない token（`￥1,234`、`\１２`）が数値として受理される |
 | IO-08-D1 | file_hash | unit | `parse_ej_file_hash_is_raw_sha256` | file_hash が生バイトの SHA-256 小文字 hex 64 文字でない、decode 後の文字列から計算される |
 | IO-08-D5 / D6 | 名称の中の空白 | unit | `parse_ej_item_name_with_inner_space` | 名称に空白を含む明細（例 `ﾃｽﾄ ｲﾄ A` + 空白 + `\200`）で、名称が最初の空白で切れる、金額の一部が名称に入る、名称の末尾空白が残る |
 | IO-08-D6 | 0 円の明細 | unit | `parse_ej_zero_amount_item_is_restored` | 金額 `\0` の明細を含み合計が一致する取引が `Unresolved` になる |
