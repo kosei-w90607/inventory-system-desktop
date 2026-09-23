@@ -9,10 +9,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 47744266f45ae764270d61fd45377e5619ac16f2
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree run、effort medium。Coordinator とも Plan Reviewer とも別 context）
@@ -34,6 +34,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない設計文
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: 設計の決定は owner 2026-09-23 で確定している（判定不能の一本化、OS 監視と legacy 専用復旧の撤去、運用で解決しない、PC 時計による比較を捨てる）。その具体化を本 packet の Spec Contract に置き、source 文書への反映は plan-approved 後の Writer run が行う。Risk は `docs/project-profile.md` High-risk Changes の「stocktake / csv_imports の意味」「Z004 取込みの重複・取消の振舞い」「BIZ service の振舞い」「Tauri command の引数・返り値」に当たる契約を変えるため R3（file の種類は docs と合成モデルだけ）。merge 可否に効く test / workflow gate は変えない。起票中に owner へ 2 問を確認し、2026-09-24 の回答（TD-024 = 要再確認は計数後に売れた商品だけに付け、売上と返品の相殺には対策を講じる / TD-025 = 「今から数える」を押してから棚へ行く流れは成り立つ）を Spec Contract R3 / R8 / R9 に反映した。
+- plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 1 / P2 4 / P3 9）→ 是正 `a7841609` → round 2（別の fresh Opus、P1 1 / P2 2 / P3 7）→ 是正 `111105be` → round 3 closure（別の fresh Opus、P1/P2 = 0、P3 3）→ P3 を反映。Plan Commit = `47744266`。round 天井 3 に到達し通過。実装は Opus 5.5 subagent の worktree run。
 
 ## Owner Effort Budget
 
