@@ -627,16 +627,19 @@ fn labeled_kind(text: &str, labels: &[&'static str]) -> EjLineKind {
     labeled(text, labels).map_or(EjLineKind::Unknown, |label| EjLineKind::Labeled { label })
 }
 
-/// 空白 + 整数 + ` 点` + 空白 + `@` + 単価 + 空白
+/// 空白 + 1 以上の整数 + ` 点` + 空白 + `@` + 通貨記号なし・`-` なしの単価 + 空白。
+/// 数量 0 は Σ数量にも Σ金額にも寄与せず照合を素通りするため受理しない
 fn parse_quantity(text: &str) -> Option<(i64, i64)> {
     if !text.starts_with(' ') {
         return None;
     }
     let (quantity, rest) = text.trim().split_once(" 点")?;
     let price = rest.strip_prefix(' ')?.trim_start().strip_prefix('@')?;
-    match parse_amount(price)? {
-        (unit_price, false) => Some((parse_count(quantity)?, unit_price)),
-        (_, true) => None,
+    match (parse_count(quantity)?, parse_amount(price)?) {
+        (quantity @ 1.., (unit_price, false)) if !price.starts_with('-') => {
+            Some((quantity, unit_price))
+        }
+        _ => None,
     }
 }
 
@@ -1589,6 +1592,152 @@ mod tests {
         assert!(result.records[0].body.is_empty());
         assert_eq!(reasons_of(&result.records[0]), [IncompleteRecord]);
         assert_eq!(items_of(&result.records[1]).len(), 2);
+    }
+
+    // IO-08-D6: 数量行の連続は後の行で上書きせず不一致にする
+    #[test]
+    fn parse_ej_consecutive_quantity_lines_unresolve() {
+        let result = parse(&sale(
+            "",
+            "000210",
+            &[qty(2, "100"), qty(3, "100"), item(NAME_A, 300)],
+            3,
+            300,
+        ));
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+        assert_eq!(
+            diags(&result),
+            [(Some(1), InconsistentRecord, EjDiagnosticScope::Record)]
+        );
+    }
+
+    // IO-08-D6: 点数・合計・（合計が無いときの）現金の行が 2 行あれば、値がそろっていても不一致
+    #[test]
+    fn parse_ej_duplicate_count_or_total_lines_unresolve() {
+        let mut twice_count = ok_sale("000211");
+        twice_count.insert(6, count(2));
+        let mut twice_total = ok_sale("000212");
+        twice_total.insert(9, wide("合  計", 500));
+        let twice_cash = [
+            header("", AT, "000213"),
+            vec![
+                item(NAME_A, 100),
+                sep(),
+                count(1),
+                wide("現金", 100),
+                wide("現金", 100),
+            ],
+        ]
+        .concat();
+        let result = parse(&[twice_count, twice_total, twice_cash].concat());
+
+        let restorations: Vec<_> = result.records.iter().map(|r| &r.restoration).collect();
+        let inconsistent = EjRestoration::Unresolved {
+            reasons: vec![InconsistentRecord],
+        };
+        assert_eq!(restorations, [&inconsistent, &inconsistent, &inconsistent]);
+    }
+
+    // IO-08-D5 / D6: 数量 0 と `-` つきの単価の数量行は受理しない（数量 0 は照合を素通りするため）
+    #[test]
+    fn parse_ej_zero_quantity_or_negative_unit_price_unresolves() {
+        let lines = [
+            sale(
+                "",
+                "000214",
+                &[qty(0, "100"), item("ﾃｲｾｲ", 0), item(NAME_A, 100)],
+                1,
+                100,
+            ),
+            sale(
+                "",
+                "000215",
+                &[qty(0, "-100"), item("ﾃｲｾｲ", 0), item(NAME_A, 100)],
+                1,
+                100,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [UnknownLine]);
+            assert_eq!(record.body[0].kind, EjLineKind::Unknown);
+        }
+        assert_eq!(parse_quantity("  2 点   @-100"), None);
+        assert_eq!(parse_quantity("  1 点   @-0"), None);
+        assert_eq!(parse_quantity("  1 点   @0"), Some((1, 0)));
+    }
+
+    // IO-08-D6: 区切りの前に明細が 1 件も無い
+    #[test]
+    fn parse_ej_no_item_before_separator_unresolves() {
+        let result = parse(&sale("", "000216", &[], 0, 0));
+
+        assert_eq!(reasons_of(&result.records[0]), [IncompleteRecord]);
+    }
+
+    // IO-08-D6: 照合に使うラベルの金額 token が読めない（現金行があっても合計を読み替えない）
+    #[test]
+    fn parse_ej_unreadable_total_amount_unresolves() {
+        let lines = [
+            header("", AT, "000217"),
+            vec![
+                item(NAME_A, 100),
+                sep(),
+                count(1),
+                lr("合  計", "￥1,00"),
+                wide("現金", 100),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+    }
+
+    // IO-08-D5 / D7: 入金だけの本文を明細なしにするのは通常モードだけ
+    #[test]
+    fn parse_ej_paid_in_line_in_return_mode_unresolves() {
+        let result = parse(&[header("戻", AT, "000218"), vec![wide("入金", 500)]].concat());
+
+        assert_eq!(reasons_of(&result.records[0]), [IncompleteRecord]);
+    }
+
+    // IO-08-D2 / D4: 先頭断片の行にも幅の検査をする
+    #[test]
+    fn parse_ej_invalid_width_leading_line_is_reported() {
+        let mut short = row(&sep());
+        short.pop();
+        let mut all = vec![short];
+        all.extend(rows(&ok_sale("000219")));
+        let result = parse_ej(&crlf(all)).unwrap();
+
+        assert_eq!(
+            diags(&result),
+            [
+                (None, LeadingFragment, EjDiagnosticScope::File),
+                (Some(1), InvalidWidth, EjDiagnosticScope::Line),
+            ]
+        );
+        assert_eq!(items_of(&result.records[0]).len(), 2);
+    }
+
+    // IO-08-D5: 明細の金額は通貨記号つき、数量行の単価は通貨記号なしだけを受理する
+    #[test]
+    fn parse_ej_currency_symbol_required_on_item_and_rejected_on_unit_price() {
+        let lines = [
+            sale("", "000220", &[lr(NAME_A, "120")], 1, 120),
+            sale("", "000221", &[qty(2, "\\100"), item(NAME_A, 200)], 2, 200),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [UnknownLine]);
+            assert_eq!(record.body[0].kind, EjLineKind::Unknown);
+        }
     }
 
     // -----------------------------------------------------------------------
