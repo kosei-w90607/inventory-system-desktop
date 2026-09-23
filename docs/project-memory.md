@@ -128,7 +128,7 @@ Keep it factual and stable.
 
 - No production DB / production import history exists yet in the real store; only dev/demo/test DBs exist — owner回答2026-09-19
 - Everything outside the register is currently paper operation; this app is close to a from-scratch (greenfield) introduction — owner回答2026-09-19。owner が用意した Excel シートが店舗に渡っており、データの初期投入にも使える想定だが、Excel シートの運用定着は未確認
-  - Excel シートの定着について、owner は運用が根付く見込みは薄く、店主をどう導けばよいかも見えていないと述べた — owner回答2026-09-19
+  - Excel シートの定着について、owner は運用できる見込みは薄く、店主をどう導けばよいかも分からないと述べた — owner回答2026-09-19
 - No prior electronic stock record exists; the Excel sheet the owner just handed the store is still being filled in — owner回答2026-09-19
   - 日々の在庫の増減の電子記録は無いが、前年の棚卸しリスト（Word 等）は店の PC に残っている。今の棚卸しは、owner が新しく作って渡した Excel シートで行っている — owner回答2026-09-23
 - No electronic purchasing/ordering record; paper slips/lists are the base, though some vendor documents arrive as PDF/email — owner回答2026-09-19
@@ -156,7 +156,7 @@ Keep it factual and stable.
 - Price revision: hand-correct the paper prior-year list's cost/price, re-tag the shelf price, then correct the PC copy of the prior-year list afterward — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
 - Price-revision notices: lists up to ~400 lines are worked through over several days, prioritizing high-volume items, without waiting for any listed effective date — 2026-08-21/22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - A heavy stocktake year took about 1 week to transcribe onto the paper list, then 2-3 more days to transcribe into the PC — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
-  - この転記期間の記録は、アプリを使えていなかった頃の Word や手書きに頼る運用のもので、前提として正確かは疑わしい — owner 2026-09-23（疑問形の留保つき）
+  - この転記期間の記録は、アプリを使えていなかった頃の原始的な運用（Word や手書き）のもので、前提としては正確とは言いにくい — owner 2026-09-23（疑問形の留保つき）
 - Old stock with no item code that sells is tracked from memory only and rung up on a department key — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - Rounding: maker markup ratios are usually truncated; the store's own cut-sale fractions are rounded up — 2026-08-21 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - 棚卸しの評価額の丸め（上の行の価格を決めるときの端数処理とは別）: 商品別の金額を小数第 3 位で四捨五入して小数第 2 位まで持ち、全商品の金額を合計した最終合計で四捨五入する — owner 伝聞 2026-09-24（店主本人の答えを owner が確認）
@@ -214,7 +214,7 @@ Keep it factual and stable.
 - レジの売上/EJ 保存設定は有効で、SD の Z004 と同じフォルダに EJ（電子ジャーナル）のファイルがある。中身は締めレシートのような普通のジャーナルのテキスト — owner確認 2026-09-17。実物は採取済みで、repo 外の現場資料にある — owner回答2026-09-23
 - EJ は日報とは別の CV17「電子ジャーナルを閲覧する」操作で取り込み、取込み後は SD の `XZ_BKUP` と PC 側 `EcrDatas` に残る。SD 上に 2022-07 以降の約 4 年分がある — 2026-08-15 訪店の実機確認。店で EJ を PC へ取り込むのは月 1 回程度で、日次ではない（店主本人の話と EJ ファイルの日付で確認）— owner回答2026-09-23
 - レジの PLU 名称欄は 16 バイトまでで、この制約は動かせない — owner確認 2026-09-17
-- CV17 は日報を Excel へ貼り付ける元としてだけ使われ、十分に活用されていない。店の CV17 は 1.1.1 で、公式の最新は 2.0.1。CV17 の更新は owner が行う — owner 2026-08-15
+- CV17 は日報をコピーして貼り付ける元としてだけ使われ、十分に活用されていない。店の CV17 は 1.1.1 で、公式の最新は 2.0.1。CV17 の更新は owner が行う — owner 2026-08-15
 - SD カードは 16GB・FAT32 で使用率は約 4%、PC 側の CV17 履歴は約 416MB — 2026-08-15 訪店記録
 - PLU export is app-to-register only; the app cannot auto-confirm register-side reflection — （記録済み） — `docs/project-memory.md`
 - CV17 shows Z001/Z002/Z004/Z005 in one report-screen family and can write them together — 2026-07-06 field-check — `docs/project-memory.md`
@@ -229,7 +229,7 @@ Keep it factual and stable.
 - Whether the daily/monthly report screens can fully replace the current Excel-print-binder record has not been accepted; this is planned as a go-live side-by-side check on one real day, not yet done — `docs/backlog.md`（日報画面のExcel印刷・バインダー代替受入判定 項） / `docs/function-design/56-ui-daily-sales.md`
 - CSV export and print behavior have not been end-to-end verified in real use; owner's own characterization is "まともにテストしたことがない" / "印刷は中身を作っていない" — `docs/backlog.md`（CSV出力・印刷の実挙動確認 項）
 - Whether the store will want a network (UNC/NAS) backup destination is still open; current handling is low priority pending an explicit need — `docs/backlog.md`（バックアップ保存先のUNC/ネットワークパス対応 項）
-- 導入後、値上げのときに紙の前年リストを手で直す作業をやめるかは未確認。owner は、このアプリの導入がその作業を置き換える見込みと考えている — owner回答2026-09-23
+- 導入後、値上げのときに紙の前年リストを手で直す作業をやめるかは未確認。owner は、このアプリを渡すことがその作業の代わりになるはずと考えている — owner回答2026-09-23
 
 owner が既出の記憶があると答えた 2 件は、記録を探索した結果、以下のとおり見つかった（未確認へは回さない）。
 
