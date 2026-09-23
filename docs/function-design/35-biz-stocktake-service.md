@@ -24,7 +24,7 @@ CountContextはサーバー生成UUID、用途（in_progress / independent_recou
 4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・所有者・商品revision・DB世代を再確認する。不一致は書込み0で拒否し、[40の回復型](40-cmd-product.md)で返す。S/Eの前後や経過時間では拒否しない。
 5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revisionをitemへ保存する。source_cursorはbeginの値のまま。
 6. 独立再実測は同じ証拠をrecountへINSERTし、N-Lが非0なら現在庫へ補正movementを同TXで適用する。数量更新後に観測の版を採番する。差0でも実測行を保存する。過去のheaderや評価額は変更しない。
-7. 保存で解消できるflagは、その商品の未解消flagのうち、資料を開始前に受領していた（`source_id <= source_cursor`）ものだけ。active明細へのmeasured保存も独立再実測も同じTXで解消する。条件を満たさないflagを消さない（ほかの解消は当該importの取消と、相殺の確認待ち（EJ待ち）に対するEJの再評価で、[32](32-biz-csv-import-service.md)が行う）。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
+7. 保存で解消できるflagは、その商品の未解消flagのうち、資料を開始前に受領していた（`source_id <= source_cursor`）ものだけ。active明細へのmeasured保存も独立再実測も同じTXで解消する。条件を満たさないflagを消さない（ほかの解消は当該importの取消と、相殺の確認待ち（EJ待ち）に対するEJか前回のZ004の受領時の再評価で、[32](32-biz-csv-import-service.md)が行う）。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
 8. commit後に保存先とsaved/replayedを返す。応答喪失は同tokenで照会を兼ねたsaveを再送する。既に別の保存へ置換された古いitem要求を、期限切れcontextから復元して新規適用しない。
 
 #### 確定・legacyの取消の保留
