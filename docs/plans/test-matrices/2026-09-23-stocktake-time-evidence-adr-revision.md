@@ -6,7 +6,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 
 ## Contracts Under Test
 
-- [Plan Packet](../2026-09-23-stocktake-time-evidence-adr-revision.md) の Spec Contract SPEC-STK-TIME-REV-2026-09-23 R1〜R9。
+- [Plan Packet](../2026-09-23-stocktake-time-evidence-adr-revision.md) の Spec Contract SPEC-STK-TIME-REV-2026-09-23 R1〜R10。
 - [時点証拠 ADR](../../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9（改訂後）。
 - 維持する既存契約: D-D1 / D-D2 の snapshot 補正 N-L、D6 の商品別純量の取消補償、D2 の受領順による実測前、確定済み評価額の非遡及、INV-2、D-051。
 
@@ -46,8 +46,12 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 | M7 R5 / R7 | 但し書きが source に残る、anchor が切れる | docs search / doc check | packet AC1、AC7 | source に但し書きの行が残る、または Plans / backlog / archive のリンク先の見出しがない |
 | M9 R9 | 計数前の販売と計数後の返品が同じ精算で相殺し、帳簿が現物より 1 少ないまま残る | model | `check_unknown_apply_recheck`（R9 の場合） | 数量 0 の行を EJ の条件なしに flag なしとする mutation（AC5 (iv)）で red |
 | M9 R9 | EJ が無いのに数量 0 の行を flag なしで通す、確認待ちで確定を通す | model / Contract Audit | 同 check の (c)、ADR D4 と 35 の読取り | 確認待ちで確定が通る、または EJ が無いのに flag が付かない |
+| M9 R9 | 帰属できない行・商品別合計の不一致・別の精算の EJ を完全とみなし、名称変更後の商品を「行なし」にする | model / Contract Audit | 同 check の (d)、mutation (v)、ADR D5 と R9 の照合 | 帰属できない行があるのに区間の 0 行へ flag が付かない、照合に今のマスタ名を使う |
+| M9 R9 | 数量 0 で金額が 0 でない行を EJ 待ちにする、または見落とす | model | 同 check の (e) | その行が相殺の行ありにならない |
 | M9 R9 | 後から取り込んだ EJ で確認待ちを再評価しない、行ありを見落とす | Contract Audit | ADR D4 / D5 と 32 の読取り | 確認待ちが数え直しでしか解消しない、または行ありの EJ で解消してしまう |
 | M9 R9 | 活動のない商品の行を相殺とみなして全商品に付ける | Contract Audit | packet Contract Probe（Z004 は全スロットを出力）と ADR D4 の照合 | 数量 0 の行そのものを flag の条件にする |
+| M10 R10 | EJ の取込みと R9 がないまま在庫連動を有効にでき、複数日の棚卸しが確定に届かない | Contract Audit / docs search | packet AC10、ADR D4 と 30 / 32 の読取り | `ej_unverified` の間に create / update / 商品一括 import で在庫連動を有効にできる、checkbox や設定 key で `ej_unverified` が消える |
+| M10 R10 | ㉘ 単体の状態を Ordinary Operation が正しく描かない | Plan Review | packet Ordinary Operation | ㉘ 単体の行で Z004 が在庫を動かす、または EJ ありの行で確定に届かない |
 | M8 R8 | 台帳の owner 回答の理由が ADR から読めない、原文を公開 repository へ置く | Contract Audit | ADR Context / Rejected Options と台帳 L-054 / L-095〜L-099 の照合 | 6 件のどれかが欠ける、Rejected と Context を取り違える、発言の原文を引用する |
 | M7 R7 | ㉘ が archive の旧申し送りを正として読む | docs search | packet AC8 | archive の 2 か所に差替えの注記とリンクがない |
 | 全体 | runtime・生成物・要求 token に差分が入る | git diff | packet AC6 | `src` / `src-tauri` / 90-traceability に差分、または変更 docs の `REQ-nnn` の多重集合が変わる |
@@ -78,7 +82,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 計数 context | なし | 開始・数量未保存 | 1 商品 TX で保存 | 商品切替・離脱・abandon・DB 交換・revision / 所有者の不一致。sleep と時刻変更では失効しない | 保存済みは DB が正 | 新しい begin | 未保存 token を失う | 書込み 0 | 新しい begin | M1 |
-| 要再確認 flag（(商品, 資料)、理由 3 値） | なし | — | 取込みの業務 TX で保存 | 当該資料を開始前に受領した新しい実測の保存、当該 import の取消。確認待ちは R9 を満たす EJ の取込みでも再評価 | 準備照会・棚卸し一覧 | 準備表示に残る | DB に残る | 取込み TX 全体を戻す | 数え直し | M3 |
+| 要再確認 flag（(商品, 資料)、理由 4 値） | なし | — | 取込みの業務 TX で保存 | 当該資料を開始前に受領した新しい実測の保存、当該 import の取消。確認待ちは R9 を満たす EJ の取込みでも再評価 | 準備照会・棚卸し一覧 | 準備表示に残る | DB に残る | 取込み TX 全体を戻す | 数え直し | M3 |
 | 共有 JAN 行の保留 | 未取込み | preview で held | 全候補を数えて再 preview → commit | 保留集合は永続しない | 同じ file の再選択 | 再選択が要る | 再選択が要る | 業務 write なし | 再 preview | M3 |
 | legacy 取消の保留 | 取消要求 | void 前に停止 | 新しい適用済み実測の後の再試行で取消 | — | 対象商品の回復先 | 同じ | 同じ | 業務 write なし | 計数と確定、または独立再実測 → 再試行 | M4 |
 
@@ -138,6 +142,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 
 ## Mutation-style Adequacy Questions
 
+- 帰属できない行があっても区間を完全とみなすと、どの assert が落ちるか: `check_unknown_apply_recheck` の (d)。
 - 判定不能の行へ通常適用しない（在庫を動かさない）と、どの assert が落ちるか: `check_unknown_apply_recheck` の実測後販売の場合（数え直し前の帳簿が 10 のまま）。
 - flag を保存しないと、どの assert が落ちるか: 同 check の進行中の確定拒否。
 - 取消で flag を消さないと、どの assert が落ちるか: 同 check の取消後の flag 不在。
@@ -147,6 +152,6 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 ## Residual Test Gaps
 
 - runtime の実装・Windows L3 は ㉘ で行う。本 lane の Contract Audit は文書の読取りによる確認。
-- 「開始してから数える」の物理的な成立は agent では検証できない（owner は成り立つと判断、TD-025）。
+- 「開始してから数える」の物理的な成立は agent では検証できない（owner の見立てでは成り立つ、TD-025）。
 - R9 の EJ の外部前提（戻・訂正・取消の行の形、精算区間の対応、名称からの商品の特定、締めでの取得）は実機と承認済みサンプルで確かめる。EJ の日次取込みが ㉘ に入るまでは、数量 0 の行が全て確認待ちになる負担は未実測。
 - 時刻区間の合成モデル（`check_bounds` 等）は残るが、現行の ADR の契約を検証するものではなくなる。次の design lane で扱いを決める。
