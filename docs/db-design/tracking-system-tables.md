@@ -12,7 +12,7 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 | stocktake_items | observation_kind TEXT | NOT NULL、DEFAULTなし、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
 | stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点 |
 | stocktake_recounts（新設） | id INTEGER PK AUTOINCREMENT、stocktake_item_id INTEGER FK、system_stock INTEGER、actual_count INTEGER、count_started_at TEXT、counted_at TEXT、ledger_cursor INTEGER、source_cursor INTEGER、observation_revision INTEGER、request_id TEXT | 参照明細・N/L・時点証拠・版・要求IDはNOT NULL。request_idはUNIQUE。値はappend-only、actual_countは非負。importへのFKは置かない |
-| stocktake_recount_flags（新設） | product_code TEXT FK、source_id INTEGER FK → pos_import_sources.id、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL。未解消のflagを(product_code, source_id)で一意にする。csv_import_idはflagを作成したimport。reasonはsale_order_unknown（計数と前後不明の販売）/ offset_lines_present（相殺の行あり）/ offset_check_pending（相殺の確認待ち）/ legacy_basis（旧記録の実測）のCHECK。解消で行を削除し、解消の根拠は実測行・取消の記録に残る |
+| stocktake_recount_flags（新設） | product_code TEXT FK、source_id INTEGER FK → pos_import_sources.id、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL。未解消のflagを(product_code, source_id)で一意にする。csv_import_idはflagを作成したimport。reasonはsale_order_unknown（計数と前後不明の販売）/ offset_lines_present（相殺の行あり）/ offset_check_pending（相殺の確認待ち・EJ待ち）/ offset_mapping_changed（相殺の確認待ち・登録の変化）/ legacy_basis（旧記録の実測）のCHECK。解消で行を削除し、解消の根拠は実測行・取消の記録に残る |
 
 要再確認flagの規則（[ADR D4](../adr/2026-09-18-stocktake-time-evidence.md)）:
 
@@ -20,7 +20,7 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 - 進行中の棚卸しに最新の実測がある商品は、未解消のflagがある間、force_fillでも確定できない。確定済みの棚卸し・独立再実測に属する商品のflagは取込みを止めず、商品単位の準備issueとして残る（回復先はactive明細、なければ独立再実測）。
 - 解消は、当該資料を計数開始前に受領していた新しい実測の保存（active明細へのmeasured保存、または独立再実測。`source_id <= source_cursor`）か、作成importの取消に限る。
 - file全体の保留は、在庫連動の候補が複数ある共有JAN行で全候補の実測前を証明できない場合だけで、保留は永続しない（flagを作らない）。
-- 理由の決め方: 数量が0でない行は計数と前後不明の販売、LegacyObservedの行は数量によらず旧記録の実測、数量0で金額が0でない行は相殺の行あり。数量・金額とも0の行は同じ精算区間のEJで分ける。完全なEJに当該商品の行がなければflagを作らず、行があれば相殺の行あり、EJがない・不完全（前回のZ004からスロットと名称の対応が変わった区間と、前回のZ004がない最初の区間を含む）・名称を一意に特定できない場合は相殺の確認待ちとして確定を止める。相殺の確認待ちは、その区間の完全なEJが後から取り込まれた時点でBIZが再評価し、行がなければ解消（行を削除）、あればreasonを相殺の行ありへ変える。数え直しでも解消する。名称の対応が変わった区間はEJでは完全にならず、数え直しでだけ解消する。
+- 理由の決め方: 数量が0でない行は計数と前後不明の販売、LegacyObservedの行は数量によらず旧記録の実測、数量0で金額が0でない行は相殺の行あり。数量・金額とも0の行は同じ精算区間のEJで分ける。完全なEJに当該商品の行がなければflagを作らず、行があれば相殺の行あり、EJがない・不完全・名称を一意に特定できない場合はoffset_check_pending、前回のZ004から対応が変わった名称（スキャニングコードと名称の組の集合差）の明細の行が区間のEJにある場合と前回を証明できない区間（前回のZ004がない最初の区間を含む）はoffset_mapping_changedとして、どちらも確定を止める。offset_check_pendingは、その区間のEJが後から取り込まれた時点でBIZが再評価し、完全で行がなければ解消（行を削除）、あればreasonをoffset_lines_presentへ、変わった名称の行があるか前回を証明できなければoffset_mapping_changedへ変え、それ以外の不完全なら残す。offset_mapping_changedはEJの再評価の対象にせず、数え直しでだけ解消する。2種とも数え直しで解消する。
 
 cursorの0は空集合であり、source/movement IDへのFKにはしない。実測側のFKは親明細・再実測・商品・資料・importに張り、親は業務取消で物理削除しない。auto_filled / uncountedには開始・両cursor・observation_revision・実測request IDを付けない。legacyのNULLを有効なmeasured証拠へ補完しない。公開request IDはUUIDとする。
 
