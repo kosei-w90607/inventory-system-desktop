@@ -163,7 +163,8 @@ AC5 の実注入は、保持行ごとに 1 回、次の mutation を本 PR の�
   - `doc-consistency-check.sh` の必須 field の一覧から `Final Reviewer` を削る → T-P6 の `Final Reviewer` 欠落 case が red。
   - `doc-consistency-check.sh` の Risk 一致検査（`ws_risk_value != valid_risk`）を消す → T-P8 の case 4 が red。Plans.md「次の行動」link 検査を消す → case 12 が red。
   - `check-workflow-git.sh` の marker 値検査を消す → T-G4 の `Evidence Mode: legacy` case が red。Phase 検査を marker が github の時だけに戻す → T-G4 の marker なし `Phase: local-verified` case が red。
-  - `pr-gate.py` の `R4 gates missing` の require を消す → `test_r4_approval_gate_cannot_be_omitted`（T-H4）が red。`double` の R4 条件を消す → `test_r4_minimum_one_rejected`（T-H4）が red。
+  - `pr-gate.py` の `R4 gates missing` の require（`:183`）を消す → `test_r4_approval_gate_cannot_be_omitted`（T-H4）が red。
+  - R4 の Minimum 2 は `parse_packet`（`:183` の `R4 gates missing`）と `double`（`:250`）の二重 guard。`double` の R4 条件だけを消しても `test_r4_minimum_one_rejected` は `parse_packet` で止まり green のまま（round 2 の実行確認）。red を見るには両方を外す。
 - If a removed guard is wrongly kept, which test fails?
   - `pr-gate.py` に codex-only R3 UI 分岐を戻す → T-H7a が red。
   - 比較対象に `Execution Mode` を戻す → T-H6 が red。
