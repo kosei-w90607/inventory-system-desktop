@@ -98,7 +98,38 @@ def z004_names(register: dict[int, tuple[str, int]]) -> Names:
     return frozenset((code, name) for code, (name, _price) in register.items())
 
 
-UNRECEIVED = "unreceived"  # the previous settlement_no is known but its Z004 is not imported yet
+PENDING, MAPPING, LINES = "offset_check_pending", "offset_mapping_changed", "offset_lines_present"
+# The previous Z004 of an interval as BIZ knows it from its receipts (ADR D5), when not its pairs:
+FIRST = "first"  # no Z004 of this machine_no was received before this one
+ROLLED_BACK = "rolled_back"  # settlement_no below the largest one received (reset / replacement)
+UNRECEIVED = "unreceived"  # Z004s were received, but not the directly preceding settlement_no
+Previous = Names | str
+
+
+class Machine:
+    """Z004 receipts of one machine_no; "previous" is the directly preceding settlement_no."""
+
+    def __init__(self) -> None:
+        self.seen: set[int] = set()
+        self.pairs: dict[int, Names] = {}  # previous candidates: receipts since the last going-back
+        self.firsts: set[int] = set()  # settlement_nos received when nothing else was
+
+    def receive(self, settlement_no: int, names: Names = BASE_NAMES) -> Previous:
+        """Decided at the Z004 import, before and without the EJ."""
+        first = not self.seen
+        if first:
+            self.firsts.add(settlement_no)
+        back = bool(self.seen) and settlement_no < max(self.seen)
+        if back:
+            self.pairs = {}  # never pair later Z004s with receipts from before the going-back
+        self.seen.add(settlement_no)
+        self.pairs[settlement_no] = names
+        return ROLLED_BACK if back else self.previous(settlement_no)
+
+    def previous(self, settlement_no: int) -> Previous:
+        if settlement_no - 1 in self.pairs:
+            return self.pairs[settlement_no - 1]
+        return FIRST if settlement_no in self.firsts else UNRECEIVED
 
 
 def changed_names(previous: Names, current: Names) -> frozenset[str]:
@@ -106,48 +137,84 @@ def changed_names(previous: Names, current: Names) -> frozenset[str]:
     return frozenset(name for _code, name in previous - current)
 
 
-def candidates(name: str, ej: "EJ") -> frozenset[int] | None:
+def candidates(name: str, ej: "EJ", previous: Names) -> frozenset[int] | None:
     """ADR D5: products a detail line may belong to; empty = department sale; None = matches nothing.
 
     Several products (16-byte truncation), a product and a department, or a changed name do
     not make the interval incomplete: every candidate is treated as having a line.
     """
     current = {code for code, n in ej.z004 if n == name}
-    if name in changed_names(ej.previous_z004, ej.z004):
-        return frozenset(current | {code for code, n in ej.previous_z004 if n == name})
+    if name in changed_names(previous, ej.z004):
+        return frozenset(current | {code for code, n in previous if n == name})
     if current:
         return frozenset(current)
     return frozenset() if name in DEPARTMENTS else None
+
+
+def units(ej: "EJ", previous: Names) -> list[tuple[set[str], set[int]]]:
+    """ADR D5: names and codes joined by candidate sets (connected components)."""
+    found: list[tuple[set[str], set[int]]] = []
+    for name in dict.fromkeys(ej.lines):
+        owners = candidates(name, ej, previous)
+        if not owners:
+            continue  # department sale, or a line matching nothing
+        names, codes = {name}, set(owners)
+        for unit in [u for u in found if u[1] & codes]:
+            found.remove(unit)
+            names |= unit[0]
+            codes |= unit[1]
+        found.append((names, codes))
+    return found
+
+
+def totals_match(ej: "EJ", previous: Names) -> bool:
+    """Signed EJ lines against Z004 slot quantities, one comparison per unit (ADR D5)."""
+    qty = dict(ej.z004_qty)  # every slot, whether or not an app product uses the code
+    signed = dict.fromkeys(ej.lines, 0)
+    for name, quantity in zip(ej.lines, ej.signed):
+        signed[name] += quantity
+    current = {code for code, _name in ej.z004}
+    covered: set[int] = set()
+    for names, codes in units(ej, previous):
+        covered |= codes
+        if names & DEPARTMENTS:
+            continue  # lines of this name cannot be told from department sales; they flag candidates
+        if codes - current:
+            continue  # a code cleared from the register may drop unsettled sales (clear-line premise)
+        if sum(signed[n] for n in names) != sum(qty.get(c, 0) for c in codes):
+            return False
+    return all(q == 0 for code, q in qty.items() if code not in covered)
 
 
 @dataclass(frozen=True)
 class EJ:
     """One synthetic EJ settlement interval, already classified by the EJ parser (ADR D5)."""
     lines: tuple[str, ...] = ()  # register-side names on detail lines (products and departments)
+    signed: tuple[int, ...] = ()  # signed quantity per detail line; omitted = 0 (a sale and its return)
     non_item_lines: int = 0  # totals / payment / tax: known, never make the interval incomplete
     same_settlement: bool = True
     sequence_complete: bool = True
-    totals_match: bool = True  # per product, or per name for candidates sharing a name
-    # Proven previous settlement of the machine; None = none exists or unprovable; UNRECEIVED.
-    previous_z004: Names | None | str = BASE_NAMES
+    start: bool | None = True  # start evidence matches the received previous Z004 / contradicts / none
     z004: Names = BASE_NAMES  # Z004 of this settlement
+    z004_qty: tuple[tuple[int, int], ...] = ()  # (code, net quantity) per slot; omitted = 0
 
-    def complete(self) -> bool:
-        return self.same_settlement and self.sequence_complete and self.totals_match
+    def complete(self, previous: Names) -> bool:
+        return (self.same_settlement and self.sequence_complete and self.start is True
+                and totals_match(self, previous))
 
 
-def offset_reason(ej: EJ | None, code: int = PRODUCT) -> str | None:
+def offset_reason(ej: EJ | None, previous: Previous = BASE_NAMES, code: int = PRODUCT) -> str | None:
     """Zero-quantity, zero-amount row of a counted product (ADR D4, sale/return offset)."""
-    if ej is None or ej.previous_z004 == UNRECEIVED:
-        return "offset_check_pending"  # re-evaluated when the EJ or the previous Z004 arrives
-    if ej.previous_z004 is None:
-        return "offset_mapping_changed"  # first interval: a re-imported EJ cannot fix it
-    owners = [candidates(name, ej) for name in ej.lines]
-    if None in owners:
-        return "offset_mapping_changed"  # a line matching nothing: only a recount resolves it
-    if not ej.complete():
-        return "offset_check_pending"
-    return "offset_lines_present" if any(code in o for o in owners) else None
+    if previous in (FIRST, ROLLED_BACK):
+        return MAPPING  # decided at the Z004 import, before looking at any EJ
+    if previous == UNRECEIVED or ej is None:
+        return PENDING  # lines matching nothing are judged only against a received previous Z004
+    owners = [candidates(name, ej, previous) for name in ej.lines]
+    if None in owners or ej.start is False:
+        return MAPPING  # judged before completeness and lines; a re-imported EJ cannot fix it
+    if not ej.complete(previous):
+        return PENDING  # includes an EJ without start evidence
+    return LINES if any(code in o for o in owners) else None
 
 
 @dataclass
@@ -179,7 +246,8 @@ class Ledger:
         self.legacy_ceiling = 0
         self.active_item = False  # an uncounted item owns the active flow too
         self.received = 0  # max pos_import_sources id
-        self.flags: dict[int, tuple[str, int]] = {}  # source -> (reason, creating import)
+        # source -> (reason, creating import, registration change of a first interval)
+        self.flags: dict[int, tuple[str, int, bool]] = {}
         self.imports: dict[int, list[int]] = {}  # import id -> movement ids
 
     @property
@@ -288,7 +356,8 @@ class Ledger:
         valid = [o for o in self.observations if o.state != "superseded" and not o.auto_filled]
         return max(valid, key=lambda o: o.order) if valid else None
 
-    def import_row(self, source: int, sold: int, amount: int = 0, ej: EJ | None = None) -> int:
+    def import_row(self, source: int, sold: int, amount: int = 0, ej: EJ | None = None,
+                   previous: Previous = BASE_NAMES) -> int:
         """One Z004 row of this product, classified by receipt order only (ADR D4)."""
         basis = self.latest()
         reason = None
@@ -300,23 +369,27 @@ class Ledger:
             if sold:
                 reason = "sale_order_unknown"
             elif amount:
-                reason = "offset_lines_present"
+                reason = LINES
             else:
-                reason = offset_reason(ej, self.code)
+                reason = offset_reason(ej, previous, self.code)
         import_id = len(self.imports) + 1
         self.imports[import_id] = [self.move(-sold)] if sold else []
         if reason:
-            self.flags[source] = (reason, import_id)
+            self.set_flag(source, reason, import_id, previous)
         return import_id
 
-    def reevaluate(self, source: int, ej: EJ) -> None:
+    def set_flag(self, source: int, reason: str | None, import_id: int, previous: Previous) -> None:
+        if reason is None:
+            self.flags.pop(source, None)
+        else:
+            self.flags[source] = (reason, import_id, reason == MAPPING and previous == FIRST)
+
+    def reevaluate(self, source: int, ej: EJ | None, previous: Previous = BASE_NAMES) -> None:
+        """The interval's EJ or previous Z004 arrived: re-judge a pending check, and a first
+        interval's registration change once the directly preceding Z004 is received."""
         flag = self.flags.get(source)
-        if flag and flag[0] == "offset_check_pending":  # never offset_mapping_changed
-            reason = offset_reason(ej, self.code)
-            if reason is None:
-                del self.flags[source]
-            else:
-                self.flags[source] = (reason, flag[1])
+        if flag and (flag[0] == PENDING or flag[2]):  # other registration changes: recount only
+            self.set_flag(source, offset_reason(ej, previous, self.code), flag[1], previous)
 
     def rollback(self, import_id: int) -> None:
         self.cancel_import(self.imports[import_id])  # a legacy hold raises before any write
@@ -657,16 +730,17 @@ def check_unknown_apply_recheck() -> None:
     assert reason_of(ledger, source) == "legacy_basis"
 
     # Sale before the count, return after it, same settlement: Z004 shows 0 / 0.
-    def offset_case(ej: EJ | None, amount: int = 0, code: int = PRODUCT) -> Ledger:
+    def offset_case(ej: EJ | None, amount: int = 0, code: int = PRODUCT,
+                    previous: Previous = BASE_NAMES) -> Ledger:
         ledger = Ledger(code=code)  # book 10, physical 10
         ledger.observe(9)  # one sold before the count
         ledger.complete()  # book 9
-        ledger.import_row(ledger.receive(), sold=0, amount=amount, ej=ej)  # returned after
+        ledger.import_row(ledger.receive(), sold=0, amount=amount, ej=ej, previous=previous)  # returned after
         return ledger
 
     # (a) EJ has a line for P: flagged, and the recount converges to physical 10.
     ledger = offset_case(EJ(("P",)))
-    assert ledger.stock == 9 and reason_of(ledger, 1) == "offset_lines_present"
+    assert ledger.stock == 9 and reason_of(ledger, 1) == LINES
     ledger.observe(10, immediate=True)
     assert ledger.stock == 10 and not ledger.flags
     # (b) complete EJ without a line for P: no flag.
@@ -676,7 +750,7 @@ def check_unknown_apply_recheck() -> None:
     ledger.observe(10)
     source = ledger.receive()
     ledger.import_row(source, sold=0)
-    assert reason_of(ledger, source) == "offset_check_pending"
+    assert reason_of(ledger, source) == PENDING
     try:
         ledger.complete()
     except ValueError:
@@ -684,20 +758,20 @@ def check_unknown_apply_recheck() -> None:
     else:
         raise AssertionError("offset check pending did not block completion")
     ledger.reevaluate(source, EJ(sequence_complete=False))  # still incomplete
-    assert reason_of(ledger, source) == "offset_check_pending"
+    assert reason_of(ledger, source) == PENDING
     ledger.reevaluate(source, EJ())
     assert not ledger.flags
     ledger.complete()
     assert ledger.stock == 10
     ledger = offset_case(None)
     ledger.reevaluate(1, EJ(("P",)))
-    assert reason_of(ledger, 1) == "offset_lines_present"
+    assert reason_of(ledger, 1) == LINES
     # (d) a line matching no product, department or previous name puts every counted 0/0 product
     # of the interval on hold (registration changed); department sales and non-item lines do not.
-    assert reason_of(offset_case(EJ(("?",))), 1) == "offset_mapping_changed"
+    assert reason_of(offset_case(EJ(("?",))), 1) == MAPPING
     assert not offset_case(EJ(("D1", "D1", "D1"), non_item_lines=4)).flags
     # (e) zero quantity with a nonzero amount is movement evidence without waiting for EJ.
-    assert reason_of(offset_case(None, amount=100), 1) == "offset_lines_present"
+    assert reason_of(offset_case(None, amount=100), 1) == LINES
     # (f) changed names = {name | (code, name) in previous - current}. Price-only, discontinued,
     # renamed and added names flag nothing unless a changed name has an EJ line ((g)).
     register = {1: ("P", 100), 2: ("Q", 200)}
@@ -709,47 +783,110 @@ def check_unknown_apply_recheck() -> None:
         (BASE_NAMES | {(3, "R")}, ("R",)),  # new name R
         (frozenset({(1, "P2"), (2, "Q")}), ()),  # P itself renamed, not sold
     ):
-        assert not offset_case(EJ(lines, previous_z004=z004_names(register), z004=current)).flags
+        assert not offset_case(EJ(lines, z004=current), previous=z004_names(register)).flags
     # (g) names overlapping (16-byte truncation, a product named like a department, a changed
     # name) never hold the whole interval: only the 0/0 counted candidates get offset lines.
-    def flagged(ej: EJ, codes: tuple[int, ...]) -> list[int]:
-        return [c for c in codes if reason_of(offset_case(ej, code=c), 1) == "offset_lines_present"]
+    def flagged(ej: EJ, codes: tuple[int, ...], previous: Previous = BASE_NAMES) -> list[int]:
+        return [c for c in codes if reason_of(offset_case(ej, code=c, previous=previous), 1) == LINES]
 
     truncated = BASE_NAMES | {(3, "Q")}  # codes 2 and 3 print the same 16-byte name
     shadowed = BASE_NAMES | {(3, "D1")}  # a product named like a department
-    for ej, expected in (
-        (EJ(("Q",), previous_z004=truncated, z004=truncated), [2, 3]),
-        (EJ(("D1",), previous_z004=shadowed, z004=shadowed), [3]),
-        (EJ(("P",), z004=frozenset({(2, "P"), (1, "Q")})), [1, 2]),  # names swapped codes
-        (EJ(("Q",), z004=frozenset({(1, "P"), (2, "Q2")})), [2]),  # old name sold before the rename
-        (EJ(("Q",), z004=frozenset({(1, "P")})), [2]),  # sold before Q was discontinued
+    for ej, previous, expected in (
+        (EJ(("Q",), z004=truncated), truncated, [2, 3]),
+        (EJ(("D1",), z004=shadowed), shadowed, [3]),
+        (EJ(("P",), z004=frozenset({(2, "P"), (1, "Q")})), BASE_NAMES, [1, 2]),  # names swapped codes
+        (EJ(("Q",), z004=frozenset({(1, "P"), (2, "Q2")})), BASE_NAMES, [2]),  # old name sold before the rename
+        (EJ(("Q",), z004=frozenset({(1, "P")})), BASE_NAMES, [2]),  # sold before Q was discontinued
         # Changed names are a set difference of pairs; a name-keyed map collapses the two Q pairs.
-        (EJ(("Q",), previous_z004=truncated, z004=BASE_NAMES), [2, 3]),
-        (EJ(("Q",), previous_z004=truncated, z004=frozenset({(1, "P"), (3, "Q")})), [2, 3]),
+        (EJ(("Q",), z004=BASE_NAMES), truncated, [2, 3]),
+        (EJ(("Q",), z004=frozenset({(1, "P"), (3, "Q")})), truncated, [2, 3]),
     ):
-        assert flagged(ej, (1, 2, 3)) == expected, (ej, expected)
+        assert flagged(ej, (1, 2, 3), previous) == expected, (ej, expected)
         for code in {1, 2, 3} - set(expected):  # quiet counted products outside the candidates
-            assert not offset_case(ej, code=code).flags
-    # Registration changed (a line matching nothing, or no previous Z004 at all, e.g. the first
-    # interval): a re-imported EJ never resolves it (not even a clean one); a recount does.
-    for ej in (EJ(("?",)), EJ(previous_z004=None)):
-        ledger = offset_case(ej)
-        assert reason_of(ledger, 1) == "offset_mapping_changed"
+            assert not offset_case(ej, code=code, previous=previous).flags
+    # Registration changed (a line matching nothing, or the first interval): a re-imported EJ
+    # never resolves it (not even a clean one); a recount does.
+    for ej, previous in ((EJ(("?",)), BASE_NAMES), (EJ(), FIRST)):
+        ledger = offset_case(ej, previous=previous)
+        assert reason_of(ledger, 1) == MAPPING
         for later in (ej, EJ()):
-            ledger.reevaluate(1, later)
-            assert reason_of(ledger, 1) == "offset_mapping_changed"
+            ledger.reevaluate(1, later, previous)
+            assert reason_of(ledger, 1) == MAPPING
         ledger.observe(10, immediate=True)
         assert ledger.stock == 10 and not ledger.flags
     # A pending check turns into a registration change once the EJ shows a line matching nothing.
     ledger = offset_case(None)
     ledger.reevaluate(1, EJ(("?",)))
-    assert reason_of(ledger, 1) == "offset_mapping_changed"
+    assert reason_of(ledger, 1) == MAPPING
     # The previous Z004 is known but not received yet: pending, re-evaluated on its receipt.
-    for lines, after in (((), None), (("P",), "offset_lines_present")):
-        ledger = offset_case(EJ(lines, previous_z004=UNRECEIVED))
-        assert reason_of(ledger, 1) == "offset_check_pending"
+    for lines, after in (((), None), (("P",), LINES)):
+        ledger = offset_case(EJ(lines), previous=UNRECEIVED)
+        assert reason_of(ledger, 1) == PENDING
         ledger.reevaluate(1, EJ(lines))  # the previous Z004 has arrived
         assert reason_of(ledger, 1) == after
+
+    # (h) Totals are compared per unit of names and codes joined by candidates. A name shared with
+    # a department is left out of the comparison (its lines already flag the candidates).
+    ej = EJ(("D1", "D1"), signed=(1, 1), z004=shadowed)  # two department sales, product 3 unsold
+    assert ej.complete(shadowed) and flagged(ej, (1, 2, 3), shadowed) == [3]
+    assert not offset_case(ej, code=1, previous=shadowed).flags
+    # Names swapped mid-interval; product 1 sold as A before the swap and as B after it.
+    swapped_before, swapped = frozenset({(1, "A"), (2, "B")}), frozenset({(1, "B"), (2, "A")})
+    ej = EJ(("A", "B"), signed=(1, 1), z004=swapped, z004_qty=((1, 2),))
+    assert ej.complete(swapped_before) and flagged(ej, (2,), swapped_before) == [2]
+    # Every slot counts, even one no app product uses: a sale with no EJ line is incomplete.
+    assert not EJ(z004=BASE_NAMES | {(9, "R")}, z004_qty=((9, 1),)).complete(BASE_NAMES)
+    # First interval vs unreceived previous, decided at the Z004 import before any EJ.
+    machine = Machine()
+    first = machine.receive(10)
+    assert first == FIRST
+    ledger = offset_case(None, previous=first)
+    assert reason_of(ledger, 1) == MAPPING
+    ledger.reevaluate(1, EJ(), machine.previous(10))  # the EJ alone does not resolve it
+    assert reason_of(ledger, 1) == MAPPING
+    machine = Machine()
+    machine.receive(10)
+    gap = machine.receive(12)
+    assert gap == UNRECEIVED
+    ledger = offset_case(EJ(), previous=gap)
+    assert reason_of(ledger, 1) == PENDING
+    machine.receive(11)
+    ledger.reevaluate(1, EJ(), machine.previous(12))
+    assert not ledger.flags
+
+    # (i) F1: today's Z004 and EJ first (first interval), then the directly preceding Z004.
+    for lines, after in (((), None), (("P",), LINES), (("P", "?"), MAPPING)):
+        machine = Machine()
+        ledger = offset_case(EJ(lines), previous=machine.receive(10))
+        assert reason_of(ledger, 1) == MAPPING
+        machine.receive(9)
+        ledger.reevaluate(1, EJ(lines), machine.previous(10))
+        assert reason_of(ledger, 1) == after  # F6: a line matching nothing wins over lines present
+    # F2: while the previous Z004 is unreceived, a line matching nothing is not judged yet;
+    # it may carry a name the previous Z004 explains.
+    renamed = frozenset({(1, "P"), (2, "Q2")})
+    ej = EJ(("Q",), z004=renamed)
+    ledger = offset_case(ej, code=2, previous=UNRECEIVED)
+    assert reason_of(ledger, 1) == PENDING
+    ledger.reevaluate(1, ej, BASE_NAMES)
+    assert reason_of(ledger, 1) == LINES
+    # F3: a settlement_no below the largest received is a registration change, and later
+    # "previous" candidates are receipts from the going-back on.
+    machine = Machine()
+    for settlement_no in range(1, 6):
+        machine.receive(settlement_no)
+    assert machine.receive(3, renamed) == ROLLED_BACK
+    assert reason_of(offset_case(EJ(), previous=ROLLED_BACK), 1) == MAPPING
+    assert machine.receive(5) == UNRECEIVED  # the old 4 is not a candidate
+    assert machine.receive(4) == ROLLED_BACK and machine.previous(5) == BASE_NAMES
+    # F4: no start evidence = incomplete (pending); evidence contradicting the previous = changed.
+    assert reason_of(offset_case(EJ(start=None)), 1) == PENDING
+    assert reason_of(offset_case(EJ(start=False)), 1) == MAPPING
+    # F5 (clear-line premise true): a code in the previous Z004 but not in this one is judged as a
+    # 0/0 row, and its unit is left out of the totals (its unsettled sale left the Z004).
+    cleared = frozenset({(1, "P")})
+    ej = EJ(("Q",), signed=(1,), z004=cleared)
+    assert ej.complete(BASE_NAMES) and flagged(ej, (1, 2)) == [2]
 
 
 def check_migration_and_fill() -> None:
