@@ -163,7 +163,7 @@ def parse_packet(text):
     require(not {'Reviewed Content HEAD', 'Final Exact-HEAD Evidence', 'Hosted CI Requirement'} & fields.keys(),
             'legacy fields in packet')
     require(fields['Phase'] in ('kickoff','spec-check','design','plan-draft','plan-gate','plan-approved','implementing','archive'),
-            'invalid tracked github Phase')
+            'invalid tracked Phase')
     require(fields['Risk'] in ('R2', 'R3', 'R4'), 'invalid packet Risk')
     risks = re.findall(r'^Risk: (R[0-4])\s*$', text, flags=re.M)
     require(risks == [fields['Risk']], 'packet Risk section mismatch')

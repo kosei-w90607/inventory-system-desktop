@@ -309,6 +309,30 @@ assert_contains "$output" "の descendant ではありません" "非 descendant
 assert_not_contains "$output" "は現在の HEAD の祖先ではありません" "非 descendant テストで無関係な ancestor-of-HEAD ERROR も発生した"
 
 # ============================================================================
+# PK5: Amendments 非 ancestor-of-HEAD の負例（Plan Commit の子だが側 branch にある SHA）
+# ============================================================================
+repo="$tmp/pk5-amendments-not-in-head"
+init_repo "$repo"
+printf 'base\n' > "$repo/README.md"
+commit_all "$repo" "base" > /dev/null
+
+write_packet "$repo" "packet.md" "pending" "none"
+a_sha="$(commit_all "$repo" "docs(plans): plan-first")"
+
+git -C "$repo" switch -qc side-branch
+printf 'side\n' > "$repo/side.txt"
+s_sha="$(commit_all "$repo" "feat: side amendment")"
+git -C "$repo" switch -q main
+
+write_packet "$repo" "packet.md" "$a_sha" "$s_sha"
+commit_all "$repo" "docs(plans): gated amendment を記録" > /dev/null
+
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "HEAD の祖先でない Amendments が ERROR 判定されなかった"
+assert_contains "$output" "は現在の HEAD の祖先ではありません" "非 ancestor-of-HEAD ERROR が出力されない"
+assert_not_contains "$output" "の descendant ではありません" "非 ancestor-of-HEAD テストで無関係な descendant ERROR も発生した"
+
+# ============================================================================
 # PK5: pending は skip（ERROR/WARN いずれも出さない）
 # ============================================================================
 repo="$tmp/pk5-pending-skip"
