@@ -2,17 +2,13 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-本節のpos_time_bases、基準FK、TimeBasis / TimeEvidenceの保存・typed decodeとfile境界の昇格 / 失効は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
-
 SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、sale_recordsと日報の分離は維持する。
 
 | 保存先 | 項目 | 制約と意味 |
 |---|---|---|
 | pos_import_sources（新設） | id INTEGER PK AUTOINCREMENT、file_hash TEXT、received_at TEXT | hashはNOT NULL UNIQUE、受領日時はNOT NULL。同hashは最初のID/受領時刻を維持。正のID、空集合cursorは0 |
-| pos_import_sources | machine_no TEXT、report_kind TEXT、settlement_no TEXT、settled_at TEXT、timestamp_precision INTEGER | 全てNULL可。IOが抽出したメタの意味を保持し、番号のleading zero・resetを推測で消さない。日時不明はNULL。timestamp_precisionは抽出した正の粒度ms（不明ならNULL）。日付から日時へ勝手な0時を補わない |
+| pos_import_sources | machine_no TEXT、report_kind TEXT、settlement_no TEXT、settled_at TEXT | 全てNULL可。IOが抽出したメタの意味を保持し、番号のleading zero・resetを推測で消さない。日時不明はNULL。日付から日時へ勝手な0時を補わない。settled_atは識別と表示のメタで、実測との前後判定に使わない |
 | pos_import_sources | settlement_date TEXT NOT NULL | parserが検証した精算日。拒否資料の日付表示にも使用。旧importからの受領backfillは既存精算日を保持 |
-| pos_time_bases（新設） | id INTEGER PK、state TEXT、basis TEXT | 正のID、stateはunverified / verified / invalidのCHECK。basisは下記TimeBasis JSON。verifiedは本体必須。再検証は新ID、旧行は削除/再利用しない |
-| pos_import_sources | time_basis_id INTEGER FK → pos_time_bases.id、time_evidence_state TEXT、time_evidence TEXT | stateはNOT NULL、unverified / verified / invalidのCHECK、既定unverified。証拠本体はNULLまたは下記の内部JSON。verifiedなら証拠本体を必須にする。raw売上・商品名・JAN・file本体は格納しない |
 | pos_import_sources | identity_rejection_code TEXT、identity_rejected_at TEXT | 両方NULLまたは両方必須。codeはidentity_conflict / missing_identityのCHECK。BIZが初回の拒否時に証拠TXで保存し、取消/再実測で削除しない。raw明細は格納しない |
 | csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない |
 
@@ -24,21 +20,11 @@ SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、s
 
 構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
 
-時刻対応は[取込みBIZの外部probe契約](../function-design/32-biz-csv-import-service.md)を満たすまでunverified。原本メタと初回受領は不変で、矛盾時に失効するのはその対応の信用状態である。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含め、同番でも検証済みの別reset系列なら区別する。系列が証明されない間は(machine_no, settlement_no)へ一律UNIQUEを張って別期間を潰さない。時計比較の信用失効だけで精算同一性の衝突を消さない。
-
-基準の論理型は `TimeBasis { pc_clock_epoch, machine_no, report_kind, series_key, series_rule, valid_from, valid_until, pos_to_pc_offset_ms, clock_error_ms, timestamp_quantum_ms }`。pos_to_pc_offset_msはPOS表示時刻（タイムゾーンを含む解釈をgateで固定）からPC比較時軸への符号付き変換量、誤差は非負・粒度は正整数。有効期間はこの比較時軸の閉区間で、開始<=終了を必須とする。series_ruleはgateで証明した対象番号範囲・順序・reset区間への所属条件を持つtypedなadapter規則。BIZが今回/前回メタの所属と先後を一意に評価できない規則は認定しない。series_keyのラベル一致だけで系列所属を認定しない。対象とreset系列の適用を証明できなければ認定しない。
-
-sourceのtime_evidenceは `TimeEvidence { lower_bound?, upper_bound?, predecessor_source_id? }`。基準の値を複製せずtime_basis_idで参照する。BIZ-03が保存済みsettled_at/精度と基準から今回の上限を、同系列の証明済み前回sourceから下限を導出する（ADR D3）。前回IDは存在するsourceを参照し、lower_boundと対で保持する。初回は両方NULL、upperだけでverifiedになり得る。受領・売上状態と独立し、後着の前回資料でも再導出する。typed decodeで不正JSON・不在参照・必須欠落・負誤差・粒度0を拒否し、逆転境界はD3の失効へ回す。
-
-実測側time_basis_idはPC時計epochのTEXTであり、本表を参照しない。POS基準は認定時のPC時軸へ境界を変換するためのもの。実測窓にはPOS基準の適用期間を課さない。pc_clock_epochは空でないUUID文字列で、typed decode時に検証する。認定時のMNT供給UUIDをBIZ-03が独立証拠TXで保存する。BIZは使用時に現在epochと実測のtime_basis_idへの一致を検査する。欠落/不正/不一致はverifiedでも時刻利用不可で、通常操作では付替えない。再認定には現在epochとの対応を検証した新しいgate証拠と新基準IDを必要とする。
-
-基準の認定はowner-operated gate成立済み証拠のBIZ内部反映だけ。sourceのverifiedは分類前にBIZが導出し、verifiedかつ期限内でpc_clock_epochが現在epochと一致する基準、対象/系列/精度の一致、境界の適用期間内、識別/日時メタの充足と非矛盾を全て要求する。通常操作/設定キーが基準またはsourceのstateを指定する入力は設けない。認定・前回資料受領の証拠TXで対象sourceを再評価し、適格なsourceだけ昇格させる。系列未証明・reset不明・メタ不足・期間外・適用基準が一意でない場合は導出せずunverified。invalid/expiredな基準からの復活は再検証による新基準IDを必要とする。
-
-時計失効のmetadataは独立した証拠TXで保存し、後の業務保留・取消・commit失敗でも巻き戻さない。同じ基準の失効と全参照sourceの降格を同じ証拠TXで保存し、読取り時も基準state/期限をJOIN検査する。保存失敗時はBIZが外部時刻の利用を止め業務を拒否する。保存済みstateだけから再検証なしに信用を復活させない。
+原本メタと初回受領は不変。raw売上・商品名・JAN・file本体は格納しない。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含める。精算系列（番号のリセット区間）を証明する手段はないため、同じ帳票種別でmachine_no・settlement_noが一致する別hashは常に衝突とする。それでも(machine_no, settlement_no)へ一律UNIQUEは張らない。衝突した資料も受領して拒否証拠を残すためで、衝突の判定と拒否はBIZが行う。
 
 欠落表示の保存根拠はidentity_rejection_code/identity_rejected_atであり、保留集合ではない。BIZのread-only準備照会は拒否記録ありかつ当該sourceのactive importなしを抽出し、settlement_missingへ渡す。成功取込み後も証拠自体は保持し、取消でactiveがなくなれば再び表示対象とする。未提出/欠番の推測行を作らない。
 
-保留集合はDBに新しい表やcsv_importsの仮行を作らず、同fileの再選択・再previewで再生成する。sourceだけでは元明細を復元できない。全行0でも境界・再確認の用途がある資料は受領し、解消後も売上0のimportとして完了できる。sale_recordsに0/0行を新設する理由にはしない。
+共有JAN行の保留集合はDBに新しい表やcsv_importsの仮行を作らず、同fileの再選択・再previewで再生成する。sourceだけでは元明細を復元できない。全行0でも再確認・相殺の判定の用途がある資料は受領し、解消後も売上0のimportとして完了できる。sale_recordsに0/0行を新設する理由にはしない。
 
 ---
 

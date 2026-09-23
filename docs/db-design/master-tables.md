@@ -8,6 +8,7 @@
 - productsへ `pos_sync_disabled_revision INTEGER NULL` を追加する。NULLまたは非負INTEGERかつstock_revision以下をCHECK。BIZ-01が既存商品のtrue→falseと同TXで変更後の版を保存する（新規false/false→falseでは作らない）。同商品にこの版より後の適用済みmeasured/recountがあるかで未調整を判定し、解消時にも記録を削除しない。移行時はNULL、過去の切替を捏造しない。
 - 既存商品のstock_quantity更新はinventory_repoの専用関数だけを通し、数量とrevisionを同一更新・同一TXで進める。同量UPDATEでも増分する。初期INSERTの数量・revision=0は別で、既存行の更新へ流用しない。
 - 実測保存、snapshot補正、flag変更、pos_stock_sync変更、差0確定・純量0取消でも共通のchecked版更新を同じTXで行う。商品の表示名や価格だけの更新を物理移動とみなす仕様は追加しない。
+- `pos_stock_sync` の `DEFAULT 1` は変えない。準備照会が `ej_unverified` を返す間（EJの日次取込みがない㉘のbuildでは常に）、新規作成の商品・商品一括importの省略時の既定値falseはBIZ-01が与え、在庫連動の有効化（false→true、新規のtrue）はBIZ-01が拒否する（[商品BIZの新契約](../function-design/30-biz-product-service.md)）。
 - 共有JANは引き続きDBに存在できるが、先頭商品への在庫配賦を安全とみなす旧説明は新方式には適用しない。連動有効化と曖昧さを新設する更新の拒否、既存設定のpreflightは[商品BIZの新契約](../function-design/30-biz-product-service.md)で行う。jan_codeへの全件UNIQUE追加や既存pos_stock_syncの一括変更はしない。
 
 ---

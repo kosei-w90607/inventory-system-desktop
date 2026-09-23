@@ -11,7 +11,7 @@ SPEC-STK-TIME-D1〜D9のsource詳細を、各文書の同名節へ展開した�
 | 共通回復wire・POS・計数・DB交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
 | 商品設定拒否・保留・記録詳細・実測操作 | [51](function-design/51-ui-product-form.md)、[60](function-design/60-ui-product-import.md)、[55](function-design/55-ui-csv-import.md)、[65](function-design/65-inventory-record-traceability.md)、[73](function-design/73-ui-stocktake.md) |
 
-外部証拠の成立条件は32、Windows監視とcommand登録義務は42、永続化は[DB設計](DB_DESIGN.md)へ集約する。これらの実装・SQL migration・binding生成は後続runtimeで行い、本docs同期では行わない。
+外部証拠の成立条件と在庫連動の有効化の条件は32、command登録義務は42、永続化は[DB設計](DB_DESIGN.md)へ集約する。これらの実装・SQL migration・binding生成は後続runtimeで行い、本docs同期では行わない。
 
 進行中の設計: [棚卸しと後着売上の時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md)（proposed、㉗）。上記の機能文書へ保存・関数・wire・回復導線の詳細を展開した。現行の関数・wireが変更済みであることを意味しない。
 

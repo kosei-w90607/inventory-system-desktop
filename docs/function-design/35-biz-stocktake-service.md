@@ -2,8 +2,6 @@
 
 ### 時点証拠契約（proposed・未実装）
 
-本節のCountContext / CountEnvironmentのepoch、begin / saveのepoch固定・一致検証・保存とlegacy復旧でのコピーは、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。計数中のOS監視・generation・wall-clock / Instantの経過差によるcontext失効は実装対象として維持する。
-
 SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5の現行update_count・live在庫への上書き確定に加え、§20.6aの差異定義、§20.7の動的差異、§20.8のINV-2/INV-3、§20.9の旧保存型/引数はruntime切替時に本節で置き換える。現行codeおよび完了済みreconciliation_version=0の旧表示は保存し、新方式を実装済みとはしない。
 
 #### 入出力と所有
@@ -12,32 +10,32 @@ SPEC-STK-TIME-D1 / D6〜D9を本節に詳細化する。以下の§20.2〜20.5�
 
 | BIZ操作 | 内部の入出力 |
 |---|---|
-| begin_stocktake_count | (conn, BeginStocktakeCountRequest, CountEnvironment) → publicな開始応答 + private CountContext |
-| save_stocktake_count | (mutable conn, token, actual_count, Option<CountContext>, CountEnvironment) → StocktakeCountSaveResult |
+| begin_stocktake_count | (conn, BeginStocktakeCountRequest, 現在のDB世代) → publicな開始応答 + private CountContext |
+| save_stocktake_count | (mutable conn, token, actual_count, Option<CountContext>, 現在のDB世代) → StocktakeCountSaveResult |
 | abandon_stocktake_count | (未保存context) → 失効。保存済み数量や補正を戻す操作ではない |
 
-CountContextはサーバー生成UUID、用途、product_code、参照item/親header、開始S・monotonic開始、商品revision、開始時source_cursor、DB/context世代・OS通知generation・time_basis_id（PC時計epoch）を持つ。token以外をUIへ送って再提出させない。CountEnvironmentの時刻・generation・time_basis_idはMNTからCMDを経由する信頼した供給で、client値ではない。MNTのepoch発番/失効はADR D1を正とし、POS基準の認定数から選ばない。
+CountContextはサーバー生成UUID、用途（in_progress / independent_recount）、product_code、参照item/親header、開始S、商品revision、開始時source_cursor、DB世代を持つ。token以外をUIへ送って再提出させない。DB世代はCMDがDB接続の交換時に進める値で、client値ではない。contextの失効は商品切替・画面離脱・abandon・アプリの終了・DB接続の交換と、保存TXでの商品revision・所有者・親状態の不一致に限る。PCの蓋閉じ・sleep・時刻変更では失効させない（ADR D1）。S/Eは記録するが前後判定・失効に使わない。
 
 #### beginとsaveの処理
 
-1. beginで商品・参照明細・現在の所有者を同一DB snapshotから取得する。active明細があれば未計数/auto_filledでも通常の独立再実測を拒否してその明細へ案内する。legacy取消復旧用途は対象importとその商品の復旧必要性をBIZが検証する。
-2. 監視が成立している環境だけcontextを作る。開始時source上限とPC時計epochをcontextへ固定し、UIへ開始時帳簿と対象を返す。UIが開始応答を受けてから実測する。商品検索だけではcontextを作らない。
+1. beginで商品・参照明細・現在の所有者を同一DB snapshotから取得する。active明細があれば未計数/auto_filledでも通常の独立再実測を拒否してその明細へ案内する。
+2. 開始時source上限とDB世代をcontextへ固定し、UIへ開始時帳簿と対象を返す。UIが開始応答を受けてから実測する。商品検索だけではcontextを作らない。
 3. save入口で保存済みrequest IDをDB照会する。同ID/同Nは書込みなしのreplayed、異なるNはidempotency_conflict。保存先が複数一致する異常は拒否する。未保存の場合だけcontextの存在・用途・世代・所有者・revisionを要求する。
-4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・商品revision・環境generation・PC時計epochを再確認する。S/Eの逆行、wall-clockとInstantの経過差がD1の許容差を超える場合も拒否。保存直前にも環境の失効を検査する。epoch不一致はcount_context_invalid、監視不成立はcount_environment_unavailableで書込み0とし、NULLのepochで保存を通さない。
-5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revision・contextに固定したtime_basis_idをitemへ保存する。source_cursorはbeginの値のまま。
+4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・所有者・商品revision・DB世代を再確認する。不一致は書込み0で拒否し、[40の回復型](40-cmd-product.md)で返す。S/Eの前後や経過時間では拒否しない。
+5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revisionをitemへ保存する。source_cursorはbeginの値のまま。
 6. 独立再実測は同じ証拠をrecountへINSERTし、N-Lが非0なら現在庫へ補正movementを同TXで適用する。数量更新後に観測の版を採番する。差0でも実測行を保存する。過去のheaderや評価額は変更しない。
-7. flagを解消できるのは、その原因sourceを開始前に受領した新実測だけ。条件を満たさないflagを消さない。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
+7. 保存で解消できるflagは、その商品の未解消flagのうち、資料を開始前に受領していた（`source_id <= source_cursor`）ものだけ。active明細へのmeasured保存も独立再実測も同じTXで解消する。条件を満たさないflagを消さない（ほかの解消は当該importの取消と、相殺の確認待ちに対するEJの再評価で、[32](32-biz-csv-import-service.md)が行う）。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
 8. commit後に保存先とsaved/replayedを返す。応答喪失は同tokenで照会を兼ねたsaveを再送する。既に別の保存へ置換された古いitem要求を、期限切れcontextから復元して新規適用しない。
 
-#### 確定・legacy復旧
+#### 確定・legacyの取消の保留
 
 以下のlegacy処理は旧履歴があるDBの互換契約であり、開発・試験DBや将来の更新でも維持する。[初導入の前提](../project-memory.md)では本番の旧棚卸し履歴は存在せず、本番開始のために存在しない旧実測を数え直す作業は要求しない。実際にlegacyがあれば初導入の申告で検査を省略しない。
 
-complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査する。flagまたは旧実測の再確認が残る間はforce_fillでも拒否する。measuredの補正は現在庫へ `N-L` を加算し、保存後の入出庫を残す。force_fillはkind=auto_filled、N=L=max(現在庫,0)、補正0。廃番の開始時自動入力もauto_filledで、過去の実測基準を上書きしない。
+complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査する。進行中の棚卸しに最新の実測がある商品に、未解消の要再確認flag（計数と前後不明の販売・相殺の行あり・相殺の確認待ち・旧記録の実測のどれでも）か旧実測の再確認が残る間は、force_fillでも確定を拒否し、対象の明細の計数へ案内する。measuredの補正は現在庫へ `N-L` を加算し、保存後の入出庫を残す。force_fillはkind=auto_filled、N=L=max(現在庫,0)、補正0。廃番の開始時自動入力もauto_filledで、過去の実測基準を上書きしない。
 
 新方式のtotal_costは `Σ max(補正後現在庫,0) × 確定時評価原価`、数量と積和はchecked演算とする。補正区分はcompletion。差0の確定も商品状態の版を進めて古いcontextを失効させる。確定後には独立再実測の入口を利用できる状態へ戻す。既存のTX外best-effortログ・確定後整合性チェックは維持する。
 
-legacy取消復旧は現在数の再実測RとN-Lの即時補正、activeがあればN/Nへの再基準化を同じTXで行う。派生itemはRのS/E・source_cursor・PC時計epochのtime_basis_idをコピーし、ledger_cursorだけを補正後の上限、観測順をRより後にする。公開request IDはRだけに記録し、itemはrebase内部IDとRへのFKを使う。通常の独立再実測からactiveを迂回する権限は与えない。
+legacyの取消の保留（[32](32-biz-csv-import-service.md)。legacy上限 `stocktake_legacy_movement_ceiling` 以下で適用済み吸収先が分からない商品）は、通常のbegin/saveで解除する。active明細があればその計数と棚卸しの確定、なければ完了済み明細を参照する独立再実測で新しい適用済み実測を作り、その後に取消を再試行する。取消のための用途・理由・付け替えは設けない。旧activeを新方式で確定する場合は、必要な再確認が解消した同じTXでreconciliation_version=1にする。通常の独立再実測からactiveを迂回する権限は与えない。
 
 非連動化後の回復も同じbegin/saveを使う。pos_sync_disabled_revisionより後の観測の版を持つ適用済み新方式実測が未調整解消の証拠になる。独立再実測（差0含む）は保存後、active measuredは確定後に解消と判定する。active保存だけやauto_filledは解消しない。案内は32と同じ版の条件で分け、切替後のmeasured pendingなら確定、切替前/同版/版なしなら切替後の数え直しを指す。切替前のpendingを確定しても観測の版を更新せず、未調整は残る。既存import flagは従来の受領条件で別に検査し、商品側issueのみを理由に確定を循環拒否しない。
 
@@ -45,7 +43,7 @@ legacy取消復旧は現在数の再実測RとN-Lの即時補正、activeがあ�
 
 一覧はN/Lに基づく保存差異と現在庫を別の情報として返し、未計数・自動補完・旧入力・要再確認をkind/flagで区別する。record detailは補正kind、再実測のN/L・差・時刻・参照元を返す。差0商品の訂正対象も既存のitem一覧/検索から選べるようにし、差異movementがある商品だけに入口を限定しない。
 
-context失効・保存先変更・環境不成立・再確認残存は[機械判別できる回復型](40-cmd-product.md)で返す。入力範囲はvalidation、同要求の値競合はidempotency_conflict、不在/DB失敗は既存分類を維持する。生のDB内容・ファイルパスをmessageへ混ぜない。確認する試験はABA、同秒、応答喪失、差0、force_fill負在庫、保存と取消/確定の競合、legacyと未計数activeの復旧、保存各段のTX故障である。
+context失効・保存先変更・再確認残存は[機械判別できる回復型](40-cmd-product.md)で返す。入力範囲はvalidation、同要求の値競合はidempotency_conflict、不在/DB失敗は既存分類を維持する。生のDB内容・ファイルパスをmessageへ混ぜない。確認する試験はABA、同秒、応答喪失、差0、force_fill負在庫、保存と取消/確定の競合、legacyの取消の保留と通常の実測による解除、未計数activeの復旧、保存各段のTX故障である。
 
 計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D6〜D9（proposed）。計数context、snapshot補正、独立再実測、取消、legacy移行を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
 

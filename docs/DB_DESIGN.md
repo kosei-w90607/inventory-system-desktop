@@ -4,11 +4,11 @@
 
 [時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9の保存契約を詳細化した。現行ER図・以下のテーブル一覧は実装済みschemaであり、新契約のmigration適用を示さない。
 
-- 商品の単調版・非連動化後の未調整記録と数量更新: [master](db-design/master-tables.md)。既存入出庫TXとの接続: [transaction](db-design/transaction-tables.md)。
-- 売上commit前のhash一意な資料受領、精算メタ、gate認定基準とBIZ導出のfile境界、同一性拒否証拠、import参照: [POS](db-design/pos-tables.md)。
-- 実測kind・両cursor・要求ID・再実測・flag・補正区分・旧DBの移行: [tracking](db-design/tracking-system-tables.md)。
+- 商品の単調版・非連動化後の未調整記録・在庫連動の既定値と数量更新: [master](db-design/master-tables.md)。既存入出庫TXとの接続: [transaction](db-design/transaction-tables.md)。
+- 売上commit前のhash一意な資料受領、精算の識別メタ、同一性拒否証拠、import参照: [POS](db-design/pos-tables.md)。
+- 実測kind・両cursor・要求ID・再実測・(商品, 資料)単位の要再確認flag・補正区分・旧DBの移行: [tracking](db-design/tracking-system-tables.md)。
 
-migrationは履歴・評価額・数量を変更せず、旧証拠を捏造しない。新表の作成・分類・移行時上限・schema versionを単一TXで適用する。時刻対応の不明・失効と資料の受領事実は別であり、時計証拠なしでも受領後の新しい実測による復旧を維持する。runtimeのSQL、CHECK/FK/index・故障注入試験は未実施。
+migrationは履歴・評価額・数量を変更せず、旧証拠を捏造しない。新表の作成・分類・移行時上限・schema versionを単一TXで適用する。実測の前後は資料の受領順と実測の種別で判定し、保存する時刻を前後判定に使わない。受領後の新しい実測による復旧を維持する。runtimeのSQL、CHECK/FK/index・故障注入試験は未実施。
 
 > **現行スキーマの入口**: [ER図](inventory_system_erd.html)、[業務データフロー](diagrams/current-system.md)。適用順序は `src-tauri/src/db/migration.rs` と `schema_v*.rs` を照合する。
 > **図と本文の位置付け**: 現行構造と完成形の将来設計を区別する。[図面監査](research/2026-09-16-diagram-audit.md) に、実装と設計の不一致・再検討事項を記録する。
