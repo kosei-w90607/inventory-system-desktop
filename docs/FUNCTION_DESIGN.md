@@ -51,6 +51,7 @@ SPEC-STK-TIME-D1〜D9のsource詳細を、各文書の同名節へ展開した�
 - IO-05: レポートCSVエクスポーター（report_csv_exporter）
 - IO-06: 画像ファイル管理（image_manager）
 - IO-07: POS日報bundleパーサー（daily_report_parser）
+- IO-08: EJパーサー（ej_parser）
 - UI-01a: 商品検索・一覧（ProductListPage / patterns/SearchBar（旧 ProductSearchBar、PR-B で統合）/ ProductTable / patterns/Pagination）— Design Phase 更新済み。REQ-103、URL state、既存 `commands.searchProducts` 契約、`list_departments` CMD 設計、pagination、廃番表示、HID scanner 前提は [function-design/50-ui-product-list.md](function-design/50-ui-product-list.md) を参照
 - UI-01b: 商品登録・編集（ProductFormPage）— routes/ 系に更新済み。商品登録・修正 form 設計、generated command、supplier 候補、廃番確認、保存 toast は [function-design/51-ui-product-form.md](function-design/51-ui-product-form.md) を参照
 - UI-01c: 商品一括インポート（ProductImportPage）— Design Phase 更新済み。REQ-104、`/products/import` route、generated `previewImport` / `commitImport` 契約、共通 FilePicker（D-054、§6.5.4）、preview / duplicate / commit flow、Windows native L3 は [function-design/60-ui-product-import.md](function-design/60-ui-product-import.md) を参照
@@ -115,6 +116,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 - [IO-05: レポートCSVエクスポーター](function-design/27-io-report-csv-exporter.md) — export_csv（UTF-8 BOM付き、純関数）
 - [IO-06: 画像ファイル管理](function-design/28-io-image-manager.md) — save_receipt_image（レシート画像保存、相対パス管理）
 - [IO-07: POS日報bundleパーサー](function-design/29-io-daily-report-parser.md) — parse_daily_report_bundle（Z001/Z002/Z005、CP932/NEL、純関数）
+- [IO-08: EJパーサー](function-design/29-io-ej-parser.md) — parse_ej（EJ 1 file を取引単位の記録へ構造復元、24バイト固定幅・CP932・CRLF、純関数）
 
 ### MNT層（保守）
 - [MNT-01: バックアップ・リストア](function-design/71-mnt-backup.md) — create_backup（VACUUM INTO）, restore_backup, check_auto_backup, list_backups
