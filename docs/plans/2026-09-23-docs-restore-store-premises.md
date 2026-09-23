@@ -69,7 +69,7 @@ Goal Invariant:
 
 - 復元した記述が台帳の要旨と食い違う、推測を事実として書く、旧版を現行として書く。
 - owner 確認待ちの食い違い D-01 に依存する主張を確定として書く。
-- S1〜S6 の file に、owner・店主の発言原文（短い語句の引用を含む）、台帳の ID（`L-nnn` / `TD-nnn` / `D-nn` / `Q-nnn`）、実データ（JAN・商品名・価格・原価・売上金額・取引先名・個人名）、棚卸しの具体的な日付（年末の基準日として既存の記述にある大晦日は可、開始日など他の具体的な日付は不可）、`.local/` の path・会話の session ID が入る。
+- S1〜S6 の file に、owner・店主の発言原文（短い語句の引用を含む）、台帳の ID（`L-nnn` / `TD-nnn` / `D-nn` / `Q-nnn`）、実データ（JAN・商品名・価格・原価・売上金額・取引先名・個人名）、棚卸しの具体的な日付（年末の基準日としての大晦日〈L-059 の PM `### いまの手作業` の行と F73 §73.1〉は可、開始日など他の具体的な日付は不可）、`.local/` の path・会話の session ID が入る。
 - 他 lane が持つ記述（ADR lane の ADR と同期先、project-memory の Z004 layout A/B の行）を書き換える。
 
 ### 非目的
@@ -89,7 +89,7 @@ not applicable: operator の操作、data / command 契約、業務の状態遷�
 ## Scope
 
 - S1 `docs/project-memory.md` の `## Store Premises Facts（現場の前提、owner確認 2026-09-19）` 配下: 下表の戻し先が project-memory の行を追記・訂正する。既存の書式（事実 — 確認日と回答者 — 出典）と、節ごとの既存の言語に合わせる。新しい行の事実の部分は、英語の節でも日本語で書いてよい（既存の節も日英が混在する）。AC2 の検索語は日本語のまま使う。出典欄は回答者の区分（店主回答 / owner回答 / owner 伝聞 / owner判断 / 推論 / 訪店記録の推奨）と確認日、sanitized な記録がある場合はその tracked path、公式の外部 URL（例: CASIO の公式ページ）だけを書き、台帳の ID・`.local/` の path・発言の引用符付き語句を書かない（下表の要旨欄の括弧内の ID と「解消」の注記は packet 内の照合用）。40 行目（Z004 layout A/B、ADR lane が所有）と 190 行目（layout A/B）には触れない。
-- S2 `docs/backlog.md`: 下表の戻し先が backlog の entry へ追記・訂正する。ECR+ のサービス終了とリース満了の関係（TD-020）を `#### 機能・運用` の新しい entry に、評価額の丸めを店の規則に合わせる件（TD-023）を `#### やると決めたもの（順番未定）` の新しい entry にする（owner 決定 2026-09-24）。新しい entry は既存の見出し（`#### 見た目・UX` / `#### 機能・運用`）の末尾へ置く。24 行目（次の design lane）と 36 行目（layout B）には触れない。
+- S2 `docs/backlog.md`: 下表の戻し先が backlog の entry へ追記・訂正する。ECR+ のサービス終了とリース満了の関係（TD-020）を `#### 機能・運用` の新しい entry に、評価額の丸めを店の規則に合わせる件（TD-023）を `#### やると決めたもの（順番未定）` の新しい entry にする（owner 決定 2026-09-24）。新しい entry は置き先の見出しの末尾へ置く（TD-023 は `#### やると決めたもの（順番未定）` の末尾、次の `#### ⑰ …` の直前）。24 行目（次の design lane）と 36 行目（layout B）には触れない。
 - S3 `docs/SCREEN_DESIGN.md` `### 利用者の1日の動線`（78〜83 行の code block）: 81〜82 行の 2 行を次の 1 行に置き換える（文言は固定、Writer は変えない）。79〜80 行は変更しない。
 
   ```
@@ -201,7 +201,7 @@ D-16（EJ が PC に届く頻度）は TD-013、D-21（PC 上の前年の棚卸�
 - `docs/db-design/master-tables.md` と `docs/function-design/73-ui-stocktake.md` の `## 時点証拠契約（proposed・未実装）` 節（ADR lane）。
 - `docs/backlog.md` 24 行・36 行。
 - `docs/SCREEN_DESIGN.md` の最小ウィンドウの寸法（L-154 は backlog への記録だけ）。
-- 期間・動線の旧表記が残る次の箇所は本 lane で直さず、closeout で backlog の `#### workflow / test / lint / docs` へ follow-up として記録する: `src-tauri/src/biz/stocktake_service.rs:4`（code comment「10月〜大晦日」）、`docs/function-design/35-biz-stocktake-service.md:374`（「10月〜大晦日の長期作業」、ADR lane の同期先）、`docs/architecture/biz-task-specs.md:451`（同、ADR lane の同期先）、`docs/screen_mockups.html:259`（ボタン説明「閉店後にレジのCSVを読み込む」）、`docs/db-design/tracking-system-tables.md:137`（「10月〜大晦日の長期作業」）、`docs/screen_mockups.html:208`（図中の「10月〜大晦日」）、`docs/SCREEN_DESIGN.md:212`（「数週間スパン」）。
+- 期間・動線の旧表記が残る次の箇所は本 lane で直さず、closeout で backlog の `#### workflow / test / lint / docs` へ follow-up として記録する: `src-tauri/src/biz/stocktake_service.rs:4`（code comment「10月〜大晦日」）、`docs/function-design/35-biz-stocktake-service.md:374`（「10月〜大晦日の長期作業」、ADR lane の同期先）、`docs/architecture/biz-task-specs.md:451`（同、ADR lane の同期先）、`docs/screen_mockups.html:259`（ボタン説明「閉店後にレジのCSVを読み込む」）、`docs/db-design/tracking-system-tables.md:137`（「10月〜大晦日の長期作業」）、`docs/screen_mockups.html:208`（図中の「10月〜大晦日」）、`docs/SCREEN_DESIGN.md:212`（「数週間スパン」）。 同じく closeout で、設定時刻の自動バックアップを確認する 60 秒 timer が `src/features/backup-restore/BackupRestorePage.tsx:167-187` にしか無く、バックアップ画面を開いている間しか動かない（`function-design/71-mnt-backup.md` §71.8 の「フロントエンドタイマー」との差）ことを backlog `#### やると決めたもの（順番未定）` へ記録する（Plan Review round 3 P3-c）。
 - `docs/project-memory.md` 199 行（`### 未確認` のネットワーク保存先）。
 - 評価額の丸めの実装・設計（TD-023 は事実と backlog entry だけ）。
 
@@ -212,7 +212,7 @@ baseline は main `3148347b` の worktree（`.claude/worktrees/docs-rules`）で
 - AC1（約 929 件の否定の訂正）: `rg -n 'is stale and does not match' docs/project-memory.md` が一致なし（baseline: `187:` の 1 行）。`rg -n '933' docs/project-memory.md` が `### レジ・レジスターツール` 内に一致する（baseline: 一致なし）。
 - AC2（EJ の事実）: `rg -n 'EJ|電子ジャーナル' docs/project-memory.md` が `### レジ・レジスターツール` 内に一致する（baseline: 一致なし、exit 1）。一致する行は取込みの頻度を「月 1 回程度」とし、出典を owner回答2026-09-23 とする。`rg -n '2028年12月末' docs/project-memory.md docs/backlog.md` が両 file に一致する（baseline: 一致なし、exit 1）。`rg -n '小数第 ?2 位|第2位' docs/project-memory.md` が `### いまの手作業` 内に、`rg -n '評価額の丸め' docs/backlog.md` が `#### やると決めたもの（順番未定）` 内の 1 entry に一致する（baseline: どちらも一致なし、exit 1）。
 - AC3（1 日の動線）: `rg -n '→ レジ精算 → 閉店' docs/SCREEN_DESIGN.md` が一致なし（baseline: `81:` の 1 行）。`rg -n '閉店後CSV取込み' docs/db-design/master-tables.md` が一致なし（baseline: `86:` の 1 行）。訂正後の動線で売上データ取込みが店を離れる前に置かれる。
-- AC4（棚卸しの期間）: `rg -n '数週間かけて' docs/function-design/73-ui-stocktake.md`（baseline: `44:` の 1 行）の §73.1（44 行付近）の文が準備と正式カウントを分けて書かれ、棚卸しの具体的な日付を含まない（年末の基準日として既存の記述にある大晦日は可、開始日など他の具体的な日付は不可）。67 / 91 / 92 行の「数週間」（確定操作の損失の文脈）は変更しない。
+- AC4（棚卸しの期間）: `rg -n '数週間かけて' docs/function-design/73-ui-stocktake.md`（baseline: `44:` の 1 行）の §73.1（44 行付近）の文が準備と正式カウントを分けて書かれ、棚卸しの具体的な日付を含まない（年末の基準日としての大晦日〈L-059 の PM `### いまの手作業` の行と F73 §73.1〉は可、開始日など他の具体的な日付は不可）。67 / 91 / 92 行の「数週間」（確定操作の損失の文脈）は変更しない。
 - AC5（単位の拡張）: `rg -n '店の回答由来ではない' docs/backlog.md` が一致なし（baseline: `34:` の 1 行）。
 - AC6（網羅）: 「復元する候補」47 行と「追補2・追補3 から足す事実」5 行の計 52 行の各行について、戻し先の diff hunk に要旨が載ることを Test Plan T1 で確認する。後回しの 2 件と他 lane の 10 件は diff に現れない（T2）。
 - AC7（他 lane・保留の行に触れない）: `for n in 40 114 190; do git show 3148347b:docs/project-memory.md | sed -n "${n}p" | grep -Fxq -f - docs/project-memory.md || echo "missing $n"; done` が何も出さない（3 行とも内容が新しい file に同じ 1 行として残る）。`git diff 3148347b...HEAD -- docs/db-design/master-tables.md docs/function-design/73-ui-stocktake.md` に `時点証拠契約` 節の差分が無い。
