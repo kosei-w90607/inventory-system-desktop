@@ -8,6 +8,10 @@
 
 ## 次の行動
 
+wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する（既定: ㉗ ADR 修正 → ㉘）。Codex は rate limit 中のため Plan Review は fresh Opus のみ、Final Review だけ Codex を待つ（owner 確認 2026-09-23）。
+
+- EJ parser core（合成データ、R3）: [Plan Packet](plans/2026-09-23-ej-parser-core.md) / [Matrix](plans/test-matrices/2026-09-23-ej-parser-core.md)。branch `agent/ej-parser-core`、Phase plan-gate。
+
 次の着手順（owner決定2026-09-22）:
 
 1. ㉘ runtimeの最初のlane = 既存の危険な操作（旧棚卸しの開始・入力・確定、POSの業務commit・取消）の停止と再現fixture。並走でEJ（電子ジャーナル）parserのcoreを合成データで進める。本laneの起票はworkflowの軽量化1段目文書部分（PR #90）のdogfood対象: templateの `Ordinary Operation` 節を書き、Plan Reviewの冒頭でreviewerが `成立 / 具体的な反例あり / 外部前提が未確認` の3値を返すかを観測する。
