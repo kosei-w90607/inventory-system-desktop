@@ -49,12 +49,12 @@ DB 全 table の比較（以下「全 table 不変」）は、`sqlite_master` �
 | D2 | FM4 | CMD | T7: `csv_import_cmd::rollback_csv_import` → kind `import_error`、停止文言、全 table 不変（追加） | 同上 |
 | D2 | FM10 | CLI | T8: `cargo run --bin generate_bindings` 後 `git diff --exit-code -- src/lib/bindings.ts` が exit 0。`git diff origin/main --stat -- src-tauri/src/lib.rs src-tauri/src/biz/mod.rs src-tauri/src/cmd/mod.rs src/lib/invoke.ts` が空 | kind・型・登録が変わる |
 | D3 | FM5 | regression（既存 BIZ test の付け替え） | T9: `stocktake_service.rs` の test module、`commit_tests.rs`、`rollback_tests.rs`、`cross_feature_tests.rs` の通常 test が呼出し先だけ変えて PASS | 付け替えで assert・入力が変わる、旧本体の振舞いが変わる |
-| D3 | FM5 | CLI | T10: `rg -n 'legacy_(start_stocktake\|update_count\|complete_stocktake\|commit_csv_import\|rollback_csv_import)' src-tauri/src/cmd src-tauri/src/lib.rs src-tauri/src/bin src-tauri/src/seed_demo.rs` が一致なし。`cargo clippy --all-targets --all-features -- -D warnings` 成功 | production から旧本体を呼ぶ、dead_code で clippy が落ちる |
+| D3 | FM5 | CLI | T10: `rg -n 'legacy_(start_stocktake\|update_count\|complete_stocktake\|commit_csv_import\|rollback_csv_import)\(' src-tauri/src` のすべての一致が、旧本体の定義行か、`tests/` 配下の file か、`#[cfg(test)]` の module 内の行である（packet AC3 と同じ分類。Writer は一致行の分類を PR body に列挙）。`cargo clippy --all-targets --all-features -- -D warnings` 成功 | production から旧本体を呼ぶ、dead_code で clippy が落ちる |
 | D3 | FM6 | diagnostic（`--ignored`） | T11: `cargo test --offline --lib cross_feature_tests -- --ignored --nocapture` で 2 本が FAIL し、出力に `XFA_TEMPORAL_FAIL` / `XFA_LATE_IMPORT_FAIL` が出る。`#[ignore` は 2 行のまま | 診断が停止 error で `expect` の panic になり、時点問題の再現でなくなる |
 | D4 | FM7 / FM8 | component（React Testing Library、commands は mock） | T12: 棚卸し、進行中なし・停止中（既定）: 案内の見出し・本文（73 の正本と完全一致）と icon、「棚卸しを開始する」disabled、click しても `startStocktake` 未呼出し、前回の棚卸しの要約が表示 | 案内がない、開始できる、前回の要約まで消す |
 | D4 | FM7 / FM8 | component | T13: 棚卸し、進行中あり・停止中: カウント入力 fieldset が disabled、「棚卸しを確定する」disabled（confirm dialog が開かない）、`updateCount` / `completeStocktake` 未呼出し。部門絞り込み・未入力のみ・ページ送りは有効で search 更新が起きる | 書く入口が残る、または閲覧まで止める |
 | D4 | FM5 | regression（既存 UI test） | T14: `StocktakePage.test.tsx` / `StocktakePage.suggest.test.tsx` の既存 test を停止 off の render で assert 不変のまま PASS（IME Enter、HID 連続スキャン、kind 別回復を含む） | 停止の追加で既存 flow が壊れる |
-| D4 | FM7 / FM8 | component | T15: Z004 タブ（`CsvImportPage`）に案内（55 の正本と完全一致）。`PreviewStep` 停止中（既定）: プレビュー表示、「取り込む」disabled、click しても `PreviewStep` の `onConfirm` mock と `CsvImportPage.test.tsx` の `confirmImport` mock が未呼出し、「ファイルを選び直す」有効。disabled を外す mutation の実注入で red | 取り込める、プレビューまで止める |
+| D4 | FM7 / FM8 | component | T15: Z004 タブ（`CsvImportPage`）に案内（55 の正本と完全一致）。`PreviewStep` 停止中（既定）: プレビュー表示、「取り込む」disabled、click しても `PreviewStep` の `onConfirm` mock が未呼出し。`CsvImportPage.test.tsx` の停止 test は test ごとの mock で preview 状態と安定した `confirmImport` 参照を返して render し、click しても `confirmImport` が未呼出し（既存 test の assert は不変）。`commitCsvImport` の未呼出しは assert しない（`CsvImportPage` の test は `useCsvImportFlow` を mock するため到達経路が無い）。「ファイルを選び直す」有効。disabled を外す mutation の実注入で red | 取り込める、プレビューまで止める |
 | D4 | FM5 | regression | T16: `PreviewStep.test.tsx` の既存 test を停止 off で PASS。`CsvImportPage.test.tsx` の既存 test、`src/features/daily-report-import/**` の test が不変で PASS | 日報タブ・既存 Z004 flow が壊れる |
 | D5 | FM11 | integration | T1 と同じ（F1〜F7 の builder は T1 だけが assert に使う。後続 lane の期待結果は下の Fixture 表に記録し、① では実行しない） | fixture が未確定の期待結果を assert する |
 
@@ -64,7 +64,7 @@ DB 全 table の比較（以下「全 table 不変」）は、`sqlite_master` �
 
 | ID | 状態の作り方 | 現行（旧本体）の結果と再現場所 | 前提 assert（停止した入口を呼ぶ前） | ① の assert | 後続 lane の期待結果 |
 |---|---|---|---|---|---|
-| F1 STK-1 | 連動商品 在庫 10 → 旧 start → 旧 count 10 → 手動販売 2（在庫 8）。確定の直前 | 旧 complete で在庫 10 に戻る（`diagnostic_cross_feature_req205_count_then_movement`、`XFA_TEMPORAL_FAIL`） | 在庫 8、明細 actual_count 10（counted_at あり）、棚卸し in_progress、手動販売の movement（-2）がある | T1: 5 入口停止、在庫 8 のまま、全 table 不変 | ③: 確定後も 8（保存時の L を固定し確定で現在庫へ N − L を加える。㉗ 申し送り）。ADR 修正 lane 非依存 |
+| F1 STK-1 | 連動商品 1 件だけの DB（明細が 1 行になり、旧 complete を force_fill=false で呼べる）。在庫 10 → 旧 start → 旧 count 10 → 手動販売 2（在庫 8）。確定の直前 | 旧 complete で在庫 10 に戻る（`diagnostic_cross_feature_req205_count_then_movement`、`XFA_TEMPORAL_FAIL`） | 在庫 8、明細 actual_count 10（counted_at あり）、棚卸し in_progress、手動販売の movement（-2）がある | T1: 5 入口停止、在庫 8 のまま、全 table 不変 | ③: 確定後も 8（保存時の L を固定し確定で現在庫へ N − L を加える。㉗ 申し送り）。ADR 修正 lane 非依存 |
 | F2 STK-2 | 在庫 10、未取込みの POS 販売 2（現物 8）→ 旧 start → 旧 count 8 → 旧 complete（在庫 8）→ 販売 2 の Z004 を parse・cache | 旧 commit で在庫 6（`diagnostic_cross_feature_req205_req401_late_import`、`XFA_LATE_IMPORT_FAIL`） | 在庫 8、棚卸し completed、cache の matched_rows が連動商品の 1 行で数量 2、`sale_records` 0 件 | T1: commit 停止、在庫 8、売上未記録、全 table 不変 | ④: 売上 2 を一度だけ記録。資料の受領が実測より後の本 fixture は判定不能に当たり、在庫の扱いは ADR 修正 lane 依存（受領が実測より前なら受領順の Before で 8 のまま = ADR D4、非依存） |
 | F3 旧形式 | 旧 start で 4 形の明細: 通常商品 在庫 5（actual NULL / counted_at NULL）、廃番 在庫 0（0 / NULL）、旧 count 7（7 / 時刻）、異常形（SQL で actual NULL・counted_at 時刻）。別に旧 complete 済みの棚卸し 1 件、旧 commit 済み Z004 import 1 件（識別メタなし）と旧 rollback 済み import 1 件 | ② 以前の DB 形（ADR D8 の移行表の入力） | 進行中棚卸しの明細が 4 形（NULL / NULL、0 / NULL、7 / 時刻、NULL / 時刻）で各 1 行、completed の棚卸し 1 件、`csv_imports` に status completed 1 件と rolled_back 1 件 | T1 / T2: 5 入口停止（rolled_back 済みにも）、全 table 不変 | ② / ⑤: ADR D8 移行表で uncounted / auto_filled / legacy / legacy（異常表示）。識別メタなし import の日付を preflight に出す。ADR 修正 lane 依存（legacy 専用復旧を外すため、移行後の復旧経路は修正後の版） |
 | F4 ゼロ行 | 連動商品 A の行 0 / 0 と商品 B の行 1 / 100 を持つ Z004 を parse・cache。全行 0 の file は既存 `test_parse_and_validate_req401_no_valid_data` の入力を参照し、新しい builder を作らない | 0 / 0 行が照合前に捨てられる（`parse.rs:94`、`test_parse_and_validate_req401_empty_records_excluded`）。全行 0 は「取込み対象のデータがありません」 | cache の matched_rows が商品 B の 1 行だけで、A の 0 / 0 行が無い（現行の除外） | T1: commit 停止、全 table 不変 | ②: 在庫判定の対象になる全行（0 / 0 を含む）と売上記録の行を分ける（ADR D4 ゼロ行）。ADR 修正 lane 非依存 |
@@ -91,7 +91,7 @@ DB 全 table の比較（以下「全 table 不変」）は、`sqlite_master` �
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 棚卸し画面（進行中なし） | 案内 + 開始 disabled | 該当なし（開始を送らない） | 該当なし | 既存 query の invalidation は不変 | 前回の要約を再取得して表示 | 同じ表示 | 同じ表示（build 固定） | 状態取得の失敗は既存の Alert + 再試行 | 既存 | T12、M1 |
-| 棚卸し画面（進行中あり） | 案内 + 入力・確定 disabled、一覧は有効 | 該当なし | 該当なし | 不変 | 一覧の絞り込み・ページ送りで再取得 | 同じ | 同じ | 一覧取得の失敗は既存の Alert | 既存 | T13 |
+| 棚卸し画面（進行中あり） | 案内 + 入力・確定 disabled、一覧は有効 | 該当なし | 該当なし | 不変 | 一覧の絞り込み・ページ送りで再取得 | 同じ | 同じ | 一覧取得の失敗は既存の Alert | 既存 | T13。M1b で目視（表示された場合）、表示されなければ T13 だけ |
 | Z004 タブ | 案内 + ファイル選択 | parse 中は既存の spinner | プレビュー表示、「取り込む」disabled | 該当なし | 該当なし | 選び直しで再 parse | 同じ | parse 失敗は既存の `ErrorState` | 選び直し | T15、M2 |
 | preview cache（CMD） | 空 | parse で token 登録 | 停止中は commit が成功しないため削除されない | TTL 30 分で既存どおり失効 | 該当なし | 同じ token で再 commit しても停止 | app 再起動で cache 消失（既存） | 停止 error で token は残る | 停止のまま | T6 |
 | DB（開発 DB の旧進行中棚卸し・取込み記録） | 既存行 | 該当なし | 書換えなし | 該当なし | 該当なし | 閲覧のみ | 同じ | 停止 error、全 table 不変 | 同じ | T1〜T7 |
@@ -170,7 +170,7 @@ DB 全 table の比較（以下「全 table 不変」）は、`sqlite_master` �
 ## Residual Test Gaps
 
 - Windows native 上の見え方（案内の読みやすさ、disabled の見分け）は M1 / M2 の目視に依る。
-- 旧方式の進行中棚卸しがある実 DB での画面は L3 Eligibility を満たさず、T13 の component test だけで固定する。
+- 旧方式の進行中棚卸しがある画面は、既存 data でその状態が表示された場合は M1b で目視し、表示されなければ T13 の component test だけで固定する（合成行の挿入はしない）。
 - CMD `commit_csv_import` の mismatch 時 token 削除は停止中は到達不能で、⑤ まで test がない。
 - CMD `commit_csv_import` の成功時だけの token 削除と、AdditionalImportConfirmationRequired の token での commit 成功（`csv_import_cmd.rs:438-459` が固定していた 41 §17.5）も停止中は到達不能で、⑤ で新 commit 経路へ再接続するまで CMD 層の test がない。
 - 後続 lane の期待結果（Fixture 表の右列）は ① では実行しない。判定不能に関わる行は ADR 修正 lane の merge 後に確定する。
