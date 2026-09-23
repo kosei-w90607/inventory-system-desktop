@@ -4,12 +4,10 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-新modeは保護の有効化条件を満たしてから利用する。実装後の状態はPR native state / 専用record / CIが所有し、legacyのstate-onlyと三点一致を持ち込まない。移行bootstrapはDEV_WORKFLOWのlegacy schemaを使う。
+実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Evidence Mode: github
 - Phase: <kickoff|spec-check|design|plan-draft|plan-gate|plan-approved|implementing|archive>
 - Risk: <R2|R3|R4>
-- Execution Mode: <fable-window|dual-vendor-no-fable|codex-only>
 - Plan Commit: <pending|full SHA>
 - Amendments: <none|full SHA list (append-only)>
 - Coordinator: <role assignment>
@@ -19,7 +17,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: <1|2>
 - Human Gate: ready,merge
 
-必要なmanual/r4をHuman Gateへ追加する。R4はr4とminimum 2、workflow gateとcodex-only R3 UI契約変更もminimum 2。Plan Commit/Amendmentsと既存review独立性を維持する。
+必要なmanual/r4をHuman Gateへ追加する。R4はr4とminimum 2、workflow gateもminimum 2。Plan Commit/Amendmentsと既存review独立性を維持する。
 
 ## Owner Effort Budget
 
