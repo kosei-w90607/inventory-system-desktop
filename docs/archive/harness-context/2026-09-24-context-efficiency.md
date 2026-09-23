@@ -1,3 +1,5 @@
+<!-- 2026-09-24 に docs/agent-guidance/ から移送した設計記録。本文を保存し、相対リンクだけ移送先に合わせて補正。 -->
+
 # ハーネスの文脈効率
 
 Status: accepted（2026-09-14、[PR #52](https://github.com/kosei-w90607/inventory-system-desktop/pull/52)でmerge）。この入口を適用する。整備PR自身は変更前のworkflow gateで検証した。
@@ -6,7 +8,7 @@ Status: accepted（2026-09-14、[PR #52](https://github.com/kosei-w90607/invento
 
 SPEC-HARNESS-CONTEXT: Astra を主対象に、Sol と Claude Code でも、必要な契約を維持してタスク完了までの読み込みと重複作業を減らす。token 削減率は未実測。file bytes は入力負担の代理値であり、課金 token や cache hit の実測として扱わない。
 
-この設計では Risk、Plan Gate、vendor 独立性、Workflow State、R4 承認、L3、Ready/merge、最終 HEAD の証拠を変更しない。既存の規範を短い入口から必要時に参照する。R2 Plan Gate廃止とreviewer固定の撤廃は対象外。証跡保存・STATECAPの後継は[merge-evidence](merge-evidence.md)でEvidence Modeごとに定義し、Plan Commit保護を維持する。
+この設計では Risk、Plan Gate、vendor 独立性、Workflow State、R4 承認、L3、Ready/merge、最終 HEAD の証拠を変更しない。既存の規範を短い入口から必要時に参照する。R2 Plan Gate廃止とreviewer固定の撤廃は対象外。証跡保存・STATECAPの後継は[merge-evidence](../../agent-guidance/merge-evidence.md)でEvidence Modeごとに定義し、Plan Commit保護を維持する。
 
 ## 契約
 
@@ -32,7 +34,7 @@ SPEC-HARNESS-CONTEXT: Astra を主対象に、Sol と Claude Code でも、必�
 
 ## 参照した資料
 
-- [共通 workflow](../DEV_WORKFLOW.md)、[役割](../AGENT_OPERATING_MANUAL.md)、[CI](../ci.md)
+- [共通 workflow](../../DEV_WORKFLOW.md)、[役割](../../AGENT_OPERATING_MANUAL.md)、[CI](../../ci.md)
 - [OpenAI: Rethinking skills and prompts for GPT-6 Astra](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)
 - [OpenAI: prompting](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices)
 - [Anthropic: Claude Code best practices](https://code.claude.com/docs/en/best-practices)

@@ -676,7 +676,7 @@ Use concise ADR-style entries.
 - Alternatives considered: 改名だけにして 4 規範を別 PR にする案（規範は同じ公式 guidance の同一改訂に由来し、分けると `shared.md` の版が 2 段になるため却下）; model 名を repo 側 profile に残す案（D-057 の slot-neutral 方針に逆行）; 4 規範を `AGENT_OPERATING_MANUAL` §3 に置く案（Claude 側の運用と混在するため、Codex 専用の shared contract に留める）。
 - Revisit: 4 規範の運用で Human Gate の取りこぼし（packet が要求する L3 を Codex が省略する等）が実発生したとき。その場合は規範 (2) の文言を packet 優先へ絞る。
 
-- Superseded in part by（owner 2026-09-14、適用は当該変更merge後）: [ハーネス文脈効率 HC-D1/D7](agent-guidance/context-efficiency.md) により、D-034の入口を作業別の条件付き参照とし、D-057/D-082の共有規範配置を部分改訂する。同じ作業・操作の承認引継ぎ、未解決Human Gate、必須検証の保持はCodex/Claude共通のAGENTSへ、モデル固有補助は各vendorの参照先へ置く。D-082当時の「step 5で毎回sharedへ誘導」「Claude側への影響なし」はこの配置について置換される。model pinの所有、vendor独立性、実効権限、packetのgate/最終HEAD要件は変更しない。配置だけを変えて規範を落とす案と、モデル特性を他vendorへ横展開する案は採らない。
+- Superseded in part by（owner 2026-09-14、適用は当該変更merge後）: [ハーネス文脈効率 HC-D1/D7](archive/harness-context/2026-09-24-context-efficiency.md) により、D-034の入口を作業別の条件付き参照とし、D-057/D-082の共有規範配置を部分改訂する。同じ作業・操作の承認引継ぎ、未解決Human Gate、必須検証の保持はCodex/Claude共通のAGENTSへ、モデル固有補助は各vendorの参照先へ置く。D-082当時の「step 5で毎回sharedへ誘導」「Claude側への影響なし」はこの配置について置換される。model pinの所有、vendor独立性、実効権限、packetのgate/最終HEAD要件は変更しない。配置だけを変えて規範を落とす案と、モデル特性を他vendorへ横展開する案は採らない。
 
 ## D-083: biz/mnt からの DB/IO 直接 re-export を allow list で増加禁止（C′、衛生 batch 3）（2026-09-08）
 
