@@ -214,6 +214,8 @@ struct ParseAndValidateResponse {
 
 #### commit_csv_import
 
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。手順 1〜3 の token 検査は従来どおり先に走り、有効な token では手順 6 の BIZ が停止 error（`ImportError`、[32 §15.0](32-biz-csv-import-service.md#150-現行buildの一時停止) の BIZ-03 停止文言）を返す。手順 8 の通常変換で kind = `import_error`、field = null、error_id = null になり、token はキャッシュに残る（手順 7 の成功時削除と、snapshot 不一致時の削除には到達しない）。
+
 **関数要求**: プレビュー済みデータの取込みを確定する。preview_tokenでキャッシュを復元してBIZ-03のcommitを実行する
 
 **シグネチャ（Tauriコマンド）**:
@@ -277,6 +279,8 @@ struct ImportResult {
 ---
 
 #### rollback_csv_import
+
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。BIZ が対象の有無・status によらず停止 error（`ImportError`、[32 §15.0](32-biz-csv-import-service.md#150-現行buildの一時停止) の BIZ-03 停止文言）を返し、通常変換で kind = `import_error`、field = null、error_id = null になる。
 
 **関数要求**: 指定したCSV取込みをロールバック（論理無効化）する
 

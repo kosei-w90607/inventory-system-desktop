@@ -419,6 +419,22 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 - UI-11c / UI-13 の設計。
 - ルーティング実装、コンポーネント実装、hooks 実装、specta 属性付与、テストコード（本書は Design Phase のみ。実装 PR (R3) の scope）。
 
+## 73.15 現行buildの一時停止
+
+現行 build では、棚卸しの開始・数の保存・確定は一時停止中である（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D4。backend の停止は [35 §20.0](35-biz-stocktake-service.md#200-現行buildの一時停止)）。停止状態は `StocktakePage.tsx` の定数 1 つが所有し、`StocktakePage` はそれを既定値にする prop `writesSuspended` で受ける。route `/stocktake` は prop を渡さず、既定値（停止中）が本番経路になる。既存の flow test は停止 off を渡して維持する。
+
+停止中は PageHeader の直下に warning の Alert（`AlertTriangle` icon + 見出し + 本文）を出す。
+
+| 場所 | 文言 |
+|---|---|
+| 停止の案内 見出し | 棚卸しの入力は一時停止中です |
+| 停止の案内 本文 | 数えた後の入出庫が、確定のときに在庫から打ち消されてしまう不具合を直しています。直るまで、棚卸しの開始・数の保存・確定はできません。これまでの棚卸しの記録と一覧は見られます。 |
+
+- 無効にする操作: 「棚卸しを開始する」（未開始時）、カウント入力欄（検索・スキャン、候補の選択、実際の数、「数を保存」）、「棚卸しを確定する」（確認ダイアログを開かない）。どれも押しても command を送らない。
+- 使える操作: 前回の棚卸しの要約、進捗ヘッダ、棚卸し一覧、部門絞り込み、未入力のみ表示、ページ送り・表示件数、記録詳細（`/inventory/records` 経由）。
+- UI の定数は安全の根拠にしない。古い画面や直接の command 呼出しでも backend が停止 error（kind `validation`）を返し、既存の上部 Alert「操作できませんでした」に文言が出る。
+- 停止の解除は ⑤ だけで行う（SPEC-STOP-D6）。
+
 ### 更新履歴
 
 | 日付 | PR | 内容 |
@@ -443,3 +459,4 @@ RTL（text / role / value assertion、色 class のみの assert は不可）:
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §73.1 に棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）を明記。 |
 | 2026-09-02 | stocktake-empty-count-guard（本 PR） | §73.5 step 4 と §73.9 に、数量の空欄・空白のみを `update_count` 送信前の FieldError「数量を入力してください」で止める契約（ST-C5-D1）を追加。 |
 | 2026-09-06 | ⑨ 在庫少一覧の取引先列 + 棚卸し廃番 badge + R2-3（本 PR） | UI-10-D13 追加: `StocktakeItemDetail` に `is_discontinued: bool` を追加し、棚卸しカウント画面の一覧テーブルに廃番 badge（`variant="secondary"` + `border-border`、icon なし）を表示する（§73.3/§73.6）。同一 file 内の既存候補行 badge も同じ commit で `border-border` へ揃える。 |
+| 2026-09-24 | ㉘ runtime ①（本 PR） | §73.15 現行buildの一時停止（SPEC-STOP-D4、案内の見出し・本文の正本、無効にする操作と使える操作）を追加。 |

@@ -66,6 +66,20 @@ source_identity_conflictではBIZの利用者向けmessageで理由と以下の�
 - 画面文言「Z004形式の売上CSV」は既定主動線から外し、「商品別CSV取込み（Z004）」などPLU後の用途が分かる名称へ変更する。
 - Z004トラックは、PLU登録後にZ004が商品別売上として取得できることを実機確認してから運用主導線に出す。
 
+#### 現行buildの一時停止
+
+現行 build では、Z004 タブの取込みの確定と取消は一時停止中である（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D4。backend の停止は [32 §15.0](32-biz-csv-import-service.md#150-現行buildの一時停止)）。停止状態は `components/PreviewStep.tsx` が定義・export する定数 1 つが所有し、`PreviewStep` はそれを既定値にする prop `importSuspended` で受ける。`CsvImportPage.tsx` は同じ定数を import し、停止中は Z004 タブ（`CsvImportFlowPanel`）の先頭に warning の Alert（`AlertTriangle` icon + 見出し + 本文）を出す。既存の flow test は停止 off を渡して維持する。
+
+| 場所 | 文言 |
+|---|---|
+| 停止の案内 見出し | 商品別CSV（Z004）の取込みは一時停止中です |
+| 停止の案内 本文 | 取込みや取消で在庫が二重に減ったり戻ったりする不具合を直しています。直るまで、取込みの確定と取消はできません。ファイルの内容確認（プレビュー）と日報の取込みはできます。 |
+
+- 無効にする操作: プレビューの「取り込む」（押しても `onConfirm` を呼ばない）。取消の画面入口は結果 step だけで、commit の停止により到達しない（backend も停止）。
+- 使える操作: ファイル選択、プレビュー（正常行・スキップ行・警告・同日追加の表示）、「ファイルを選び直す」、日報取込みタブの全操作。
+- UI の定数は安全の根拠にしない。古い画面や直接の command 呼出しでも backend が停止 error（kind `import_error`）を返し、既存の `ErrorState` に文言が出る（recoverTo = idle）。
+- 停止の解除は ⑤ だけで行う（SPEC-STOP-D6）。
+
 #### UI判断 ID
 
 - `UI-07-D9`: 日報取込みとZ004商品別取込みを同一テーブル/同一結果として表示しない。理由は、Z001/Z002/Z005は集計日報であり商品別明細や在庫引落しを復元できないため。
@@ -548,3 +562,4 @@ memory `tauri2-linux-ime-limitation.md` 準拠、Phase 2 以降 Windows native �
 | 2026-05-13 | 8-2 UI-07（本 PR commit 1） | 新規作成。実装プラン [2026-05-13-phase-2-ui-07.md](../archive/plans/2026-05-13-phase-2-ui-07.md) §5 関数設計書骨子 + §2 確定済の前提 8 項目を関数設計書形式（業務ロジックあり版テンプレ、3 useMutation + reducer 駆動 + `useBlocker` 排他制御パターンの初適用）で転記。CMD 呼び出しは BIZ-03 / CMD-07 設計書（[32-biz-csv-import-service.md](32-biz-csv-import-service.md) / [41-cmd-pos.md §17.5](41-cmd-pos.md)）と整合 |
 | 2026-08-03 | PR #58（gated Amendment 2） | §55.5 ErrorRowsTable の accordion trigger を明示的操作文言（閉「エラー詳細を見る（N件）」/ 開「エラー詳細を閉じる（N件）」）+ 文言隣接 chevron へ改訂。owner Windows native L3 P3 起源（件数のみ trigger は展開可能な操作部と認識できない） |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5/D7: 両タブ共通の同日追加Alert/Dialog、全active summary、state/flag、per-import取消と再取得契約を正本化。 |
+| 2026-09-24 | ㉘ runtime ①（本 PR） | §55.0 に現行buildの一時停止（SPEC-STOP-D4、Z004 タブの案内の見出し・本文の正本、「取り込む」の無効化）を追加 |
