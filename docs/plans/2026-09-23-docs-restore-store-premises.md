@@ -54,7 +54,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない文書変
 Risk: R2
 
 Reason:
-`docs/DEV_WORKFLOW.md` Risk Tiers と `docs/project-profile.md` High-risk Changes を当てた。変更は店の事実の記録（project-memory・backlog）と、設計正本の中の事実の記述（1 日の動線の文、業務シナリオ例の 1 語、棚卸しの期間の文）の訂正で、runtime 契約・DB・CSV/TSV・command・route/search・画面の振舞い・merge gate を変えない。R3 の「operator workflow」は画面の操作や状態遷移を決める・変える変更を指し、本変更は owner の回答に記述を合わせるだけで新しい操作を決めない。data safety の境界（公開 repository への店の情報の掲載）には触れるが、既存の owner 決定（原文は置かず要旨と確認日）と `docs/project-profile.md` Data Safety Boundary の範囲内で、境界自体を変えない。`scripts/ci/classify-changes.sh` では対象がすべて `docs=true` のみ（`workflow=false`）。
+`docs/DEV_WORKFLOW.md` Risk Tiers と `docs/project-profile.md` High-risk Changes を当てた。変更は店の事実の記録（project-memory・backlog）と、設計正本の中の事実の記述（1 日の動線の文、業務シナリオ例の 1 語、棚卸しの期間の文）の訂正で、runtime 契約・DB・CSV/TSV・command・route/search・画面の振舞い・merge gate を変えない。R3 の「operator workflow」は画面の操作や状態遷移を決める・変える変更を指し、本変更は owner の回答に記述を合わせるだけで新しい操作を決めない。data safety の境界（公開 repository への店の情報の掲載）には触れるが、既存の owner 決定（原文は置かず要旨と確認日）と `docs/project-profile.md` Data Safety Boundary の範囲内で、境界自体を変えない。`scripts/ci/classify-changes.sh` に S1〜S6 と本 packet を渡すと `docs=true`・`traceability=true`・`rust_drift=true`・`workflow=false`（`docs/function-design/**` と `docs/db-design/**` が traceability / drift の検査対象になるため。hosted CI はその検査を回す）。
 
 ## Goal
 
@@ -62,22 +62,22 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 台帳 §4 の 58 件のうち本 lane が扱う 46 件（下表「復元する候補」）と、台帳 追補2 の未収載の店の事実 4 件（下表「追補2 から足す事実」）が、指定の戻し先に要旨・確認日・誰の回答かつきで載り、次の設計・レビューで店の事実を引くとき tracked docs だけで同じ答えに辿り着ける。
+- 台帳 §4 の 58 件のうち本 lane が扱う 46 件（下表「復元する候補」）と、台帳 追補2・追補3 の未収載の店の事実 5 件（下表「追補2・追補3 から足す事実」）の計 51 行が、指定の戻し先に要旨・確認日・誰の回答かつきで載り、次の設計・レビューで店の事実を引くとき tracked docs だけで同じ答えに辿り着ける。
 - 台帳が誤りと判定した現行の記述 4 か所（`docs/project-memory.md` の約 929 件の否定、`docs/SCREEN_DESIGN.md` の 1 日の動線、`docs/db-design/master-tables.md` の業務シナリオ例、`docs/function-design/73-ui-stocktake.md` §73.1 の期間）と `docs/backlog.md` 単位の拡張の「店の回答由来ではない」が、台帳の現行版に合う。
 
 ### 失敗定義
 
 - 復元した記述が台帳の要旨と食い違う、推測を事実として書く、旧版を現行として書く。
 - owner 確認待ちの食い違い D-01 に依存する主張を確定として書く。
-- 公開 repository に owner の発言原文、実データ（JAN・商品名・価格・原価・売上金額・取引先名・個人名）、棚卸しの具体的な日付、`.local/` の path・会話の session ID が入る。
+- S1〜S6 の file に、owner・店主の発言原文（短い語句の引用を含む）、台帳の ID（`L-nnn` / `TD-nnn` / `D-nn` / `Q-nnn`）、実データ（JAN・商品名・価格・原価・売上金額・取引先名・個人名）、棚卸しの具体的な日付、`.local/` の path・会話の session ID が入る。
 - 他 lane が持つ記述（ADR lane の ADR と同期先、project-memory の Z004 layout A/B の行）を書き換える。
 
 ### 非目的
 
 - 規則・harness の改訂（別 lane `agent/harness-overhaul`）。
 - ADR `docs/adr/2026-09-18-stocktake-time-evidence.md` と同期先の時点証拠契約の修正（ADR lane）。
-- 台帳 §4・追補2 に無い事実の追加。追補2 のうち設計判断（TD-003 / TD-005 / TD-006 / TD-008）と実機確認・記録の許可（TD-016 / TD-021）は店の事実ではないため扱わない。
-- 設計の変更（最小ウィンドウの寸法、単位 code、backup の保存先の設計、EJ 取込みの UI）。backlog への記録に留める。
+- 台帳 §4・追補2・追補3（TD-023）に無い事実の追加。追補3 の TD-024〜TD-026 は棚卸しの設計判断と未確認事項で、ADR lane・店主への確認に属するため扱わない。追補2 のうち設計判断（TD-003 / TD-005 / TD-006 / TD-008）と実機確認・記録の許可（TD-016 / TD-021）は店の事実ではないため扱わない。
+- 設計・実装の変更（最小ウィンドウの寸法、単位 code、backup の保存先の設計、EJ 取込みの UI、評価額の丸めの実装）。backlog への記録に留める。
 - 台帳自体の修正、`.local/` の file の変更。
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
@@ -88,10 +88,16 @@ not applicable: operator の操作、data / command 契約、業務の状態遷�
 
 ## Scope
 
-- S1 `docs/project-memory.md` の `## Store Premises Facts（現場の前提、owner確認 2026-09-19）` 配下: 下表の戻し先が project-memory の行を追記・訂正する。既存の書式（事実 — 確認日と回答者 — 出典）と、節ごとの既存の言語に合わせる。40 行目（Z004 layout A/B、ADR lane が所有）と 190 行目（layout A/B）には触れない。
-- S2 `docs/backlog.md`: 下表の戻し先が backlog の entry へ追記・訂正する。ECR+ のサービス終了とリース満了の関係（TD-020）を `#### 機能・運用` の新しい entry にする。新しい entry は既存の見出し（`#### 見た目・UX` / `#### 機能・運用`）の末尾へ置く。24 行目（次の design lane）と 36 行目（layout B）には触れない。
-- S3 `docs/SCREEN_DESIGN.md` `### 利用者の1日の動線`（79〜83 行）: L-298 に合わせて動線の文を訂正する。
-- S4 `docs/db-design/master-tables.md`: 86 行目の業務シナリオ例の語（L-298）、`### 初期データ（全21部門、C-1/C-3 2026-03-29 確定）` 直後の注記（L-025）、`### 設計意図` の jan_code NULLABLE の理由の近く（L-175）。先頭の `## 時点証拠契約（proposed・未実装）` 節には触れない。
+- S1 `docs/project-memory.md` の `## Store Premises Facts（現場の前提、owner確認 2026-09-19）` 配下: 下表の戻し先が project-memory の行を追記・訂正する。既存の書式（事実 — 確認日と回答者 — 出典）と、節ごとの既存の言語に合わせる。出典欄は回答者の区分（店主回答 / owner回答 / owner 伝聞 / owner判断 / 推論 / 訪店記録の推奨）と確認日、sanitized な記録がある場合はその tracked path だけを書き、台帳の ID・`.local/` の path・発言の引用符付き語句を書かない（下表の要旨欄の括弧内の ID と「解消」の注記は packet 内の照合用）。40 行目（Z004 layout A/B、ADR lane が所有）と 190 行目（layout A/B）には触れない。
+- S2 `docs/backlog.md`: 下表の戻し先が backlog の entry へ追記・訂正する。ECR+ のサービス終了とリース満了の関係（TD-020）と、評価額の丸めを店の規則に合わせる件（TD-023）を `#### 機能・運用` の新しい entry にする。新しい entry は既存の見出し（`#### 見た目・UX` / `#### 機能・運用`）の末尾へ置く。24 行目（次の design lane）と 36 行目（layout B）には触れない。
+- S3 `docs/SCREEN_DESIGN.md` `### 利用者の1日の動線`（78〜83 行の code block）: 81〜82 行の 2 行を次の 1 行に置き換える（文言は固定、Writer は変えない）。79〜80 行は変更しない。
+
+  ```
+  → レジ精算（店は開けたまま）→ 売上データ取込み（日報Z001/Z002/Z005、店を離れる前）→ 店を離れる
+  ```
+
+  code block の直後に次の 1 文を足す（文言は固定）: 「売上レポートの確認とバックアップを1日のどの時点で行うかは決めていない（backlog「やると決めたもの（順番未定）」のバックアップの項）。」。文中の「backlog」に `docs/SCREEN_DESIGN.md` から見た相対 link（同じ directory の `backlog.md`）を付ける。Excel への貼付け・印刷はアプリの動線に書かない（店の現行の手作業は project-memory が持つ）。
+- S4 `docs/db-design/master-tables.md`: 86 行目の業務シナリオ例の語（L-298。「閉店後CSV取込み」を「精算後のCSV取込み」に置き換える）、`### 初期データ（全21部門、C-1/C-3 2026-03-29 確定）` 直後の注記（L-025）、`### 設計意図` の jan_code NULLABLE の理由の近く（L-175）。先頭の `## 時点証拠契約（proposed・未実装）` 節には触れない。
 - S5 `docs/function-design/73-ui-stocktake.md` §73.1（44 行目）: L-059 / L-061 に合わせて期間と目的の文を訂正する。先頭の `## 時点証拠契約（proposed・未実装）` 節には触れない。
 - S6 `docs/plu-export-and-real-csv-verification.md`: `### SDカード / PCツール保存領域` に L-042 の EJ の取込み経路と頻度を 1 項目追記する。24 行の「SR-S4000 は 20 部門」を、初期部門は 21（`docs/db-design/master-tables.md` の初期データ、2026-03-29 確定）で「20 部門」は機種仕様と推測される、に直す（台帳 D-03）。
 - S7 本 packet・`docs/Plans.md`: 計画・現在地・次の行動の同期（Coordinator が担当。Writer は編集しない）。
@@ -104,19 +110,19 @@ not applicable: operator の操作、data / command 契約、業務の状態遷�
 
 | ID | 戻し先 | 書く要旨（公開可の要旨） |
 |---|---|---|
-| L-044 | PM `### レジ・レジスターツール` | レジの「売上/EJ 保存設定」は有効で、SD の Z004 と同じフォルダに EJ（電子ジャーナル）が実在する。中身は締めレシート様のテキスト。実物は 2026-09-17 に採取し repo 外の現場資料にある — owner確認 2026-09-17（2026-09-23 再確認） |
+| L-044 | PM `### レジ・レジスターツール` | レジの売上/EJ 保存設定は有効で、SD の Z004 と同じフォルダに EJ（電子ジャーナル）のファイルがある。中身は締めレシートのような普通のジャーナルのテキスト — owner確認 2026-09-17。実物は採取済みで repo 外の現場資料にある — owner回答2026-09-23 |
 | L-042 | 同上 + PLUV `### SDカード / PCツール保存領域` | EJ は日報とは別の CV17「電子ジャーナルを閲覧する」操作で取り込み、取込み後は SD の `XZ_BKUP` と PC 側 `EcrDatas` に残る。SD 上に 2022-07 以降の約 4 年分がある — 2026-08-15 訪店の実機確認。店での EJ の PC への取込みは月 1 回程度で、日次ではない — 店主本人の話と EJ ファイルの日付で確認（owner回答2026-09-23、TD-013。D-16 を解消） |
 | L-041 | PM `### レジ・レジスターツール` | レジの PLU 名称欄は 16 バイトまでで、動かせない制約 — owner確認 2026-09-17 |
 | L-017 | 同上 | CV17 は日報のコピペ元としてだけ使われ、まともに使えていない。CV17 の更新（公式の最新は 2.0.1）は owner が行う — owner 2026-08-15 |
 | L-006 | PM 187 行の訂正 | 「約 929 件は古い記録で現状と合わない」という否定を削る。既存のスキャニング PLU 約 929 件は死蔵で「無いのと同じ」扱いでよい — owner 伝聞 2026-07-06。通常 PLU の 2 件はテスト登録（owner回答2026-09-19）は残す |
 | L-010 | 同上 | 2026-08-20 の店 PC での確認で、スキャニング PLU 領域は既存登録 933 件（検証用 4 件を含む）・空き 3,851・アプリ管理 0 |
-| L-170 | 同上 + BL 50 行 | SD は 16GB・FAT32・使用率約 4%、PC 側の CV17 履歴は約 416MB。復旧に備える保全単位は SD の CASIO フォルダ全体と PC 側 CV17 の 2 フォルダの計 3 点 — 2026-08-15 訪店記録の推奨（実施の記録なし） |
-| L-018 | PM `### 在るもの` の ECR+ の行（101 行） | 店主は 2026-03 に「スマホ（ECR+）が無いと精算できない」と答えている — 店主回答（2026-03 ヒアリング） |
+| L-170 | PM `### レジ・レジスターツール`（SD・CV17 の容量の事実）+ BL 50 行（保全単位） | PM へ: SD は 16GB・FAT32・使用率約 4%、PC 側の CV17 履歴は約 416MB — 2026-08-15 訪店記録。BL 50 行へ: 復旧に備える保全単位は SD の CASIO フォルダ全体と PC 側 CV17 の 2 フォルダの計 3 点 — 訪店記録の推奨（実施の記録なし） |
+| L-018 | PM `### 在るもの` の ECR+ の行（101 行） | 店主は 2026-03 に、ECR+（スマホ）が無いと精算できないと答えている — 店主回答（2026-03 ヒアリング） |
 | L-049 | PM 144 行の注記 | この行は 2026-09-22 の owner 回答（143 行）からの Coordinator の推論で、owner の発言ではない、と出典欄を直す |
-| L-068 | PM `### いまの手作業` | 棚卸しで数える時間帯は決まっていない — owner 2026-09-16（owner の語「時間帯関係なし」の要旨） |
+| L-068 | PM `### いまの手作業` | 棚卸しで数える時間帯は決まっていない — owner 伝聞 2026-09-16 |
 | L-059 | 同上 + F73 44 行 | 棚卸しは税理士の指示で年 1 回、大晦日時点で行い、報告は仕入原価の総額だけ。差異は棚卸しロスとして許容する — 店主回答（2026-03）、owner 2026-08-27（年 1 回、多くても 2 回） |
 | L-060 | PM `### いまの手作業` | 年末の棚卸しの時期は毎年変わらない — owner回答2026-09-19 |
-| L-061 | F73 44 行 | 「10月〜大晦日・数週間」を、準備（10 月〜）と正式カウント（12 月中旬の終わりごろ〜大晦日）に分けて書く。準備の開始は 2026-08-15 の店主回答で前倒しされた（L-067、PM 149 行）。具体的な日付は書かない |
+| L-061 | F73 44 行 | 「10月〜大晦日・数週間」を、準備（10 月〜）と年末の正式カウント（大晦日に完了）に分けて書く。準備の開始は 2026-08-15 の店主回答で前倒しされた（PM 149 行）。正式カウントの開始日など 12 月内の日付は書かない |
 | L-062 | PM `### いまの手作業` | 10 月からの準備の中身は、値上げ品の原価・売価の確認と訂正、新商品のリストへの追加、原価不明品の問い合わせ — owner 伝聞 2026-07-07 |
 | L-076 | PM 147 行の注記 | 147 行は前回の年末棚卸し（Excel シートを渡す前）の運用。2026-09-23 時点は owner が渡した Excel シートへ、机に置いたノート PC と棚を往復して入力している（棚の前で PC を持って入力するのではない）— owner回答2026-09-23。次の年末も Excel で行うかは未確認 |
 | L-071 | PM 147 行の補足 | 新規品の書き足しは途中に手書きしたり最後にまとめたりで統一されていない（紙のリストに行を挿入できない前提の試行錯誤）。商品の場所はすべて分かっている — 店主回答・owner 伝聞 2026-08-20 |
@@ -127,21 +133,21 @@ not applicable: operator の操作、data / command 契約、業務の状態遷�
 | L-123 | 同上 | 在庫が少ないと感じる数は商品で違う（毛糸・スナップ・編み針・刺繍糸・はさみ類で目安が別、ミシン糸は定番色とそれ以外で分ける）— 店主回答（2026-08-15 フォーム）、`docs/evidence/issue-76/` の sanitized 記録 |
 | L-082 | PM `### 利用者` | 店主はシステムと実在庫のずれを、棚卸しでロス（廃棄・万引き等）として出る範囲内にしてほしいと答えている — 店主回答（2026-03） |
 | L-286 | PM 180 行の補足 | 実利用者は赤と黄色の区別がつかない。文字も小さいかもしれず、老眼もある — owner 伝聞 2026-06-06 |
-| L-280 | PM `### 利用者` | owner 自身も CSV 取込み画面の「エラー N 件」が展開できる操作だと最初は気づかなかった。店主はもっと気づきにくい前提で設計する — owner 2026-08-03 |
+| L-280 | PM `### 利用者` | CSV 取込み画面の「エラー N 件」が展開できる操作部だと owner 自身も最初は気づかなかった。owner は、店主はもっと気づきにくいと判断した — owner判断2026-08-03 |
 | L-297 | PM `### 利用者` | owner は店と家の 2 拠点を行き来し、家で作業するときはノート PC を家へ持って行く（PC は 1 台のまま）— owner回答2026-09-23 |
 | L-157 | PM `### 在るもの` | 店にネットワーク（Wi-Fi・LAN）がある — owner回答2026-09-19 |
-| L-164 | 同上 | 店での運用を想定した市販の USB HID バーコードリーダーを用意し（2026-08-09）、店 PC で Excel シートの JAN 入力に使っている（owner回答2026-09-23、TD-022 が現行版） |
-| L-217 | PM `### 無いもの` 133 行 | 外部・ネットワークの保存先は今は使っていない。owner は Google Drive はセキュリティ面に不安、小さな AWS 等ならと述べた（2026-09-19）。外部に保存するなら置き場所は店（L-299）、暗号化したクラウド保存は v1.0 に含めない方向（owner回答2026-09-23、TD-018 が現行版）。133 行の、採否がまだ決まっていないとする記述をこれに合わせる |
+| L-164 | 同上 | 店での運用を想定した市販の USB HID バーコードリーダーを用意し（owner 2026-08-09）、店 PC で Excel シートの JAN 入力に使っている — owner回答2026-09-23 |
+| L-217 | PM `### 無いもの` 133 行 | 外部・ネットワークの保存先は今は使っていない。owner は Google Drive はセキュリティ面に不安があり、小さな AWS 等ならと述べた — owner回答2026-09-19。外部に保存するなら置き場所は店 — owner回答2026-09-23。暗号化したクラウド保存は今は見送り、v1.0 に含めない方向（費用の懸念。backup の設計 lane で再判断し得る）— owner判断2026-09-23。133 行の、採否がまだ決まっていないとする記述をこれに合わせる。199 行（`### 未確認` のネットワーク保存先）は変更しない |
 | TD-017 | PM `### 無いもの` 128 行の補足 | 日々の在庫の増減の電子記録は無いが、前年の棚卸しリスト（Word 等）は店の PC に残っている。今の棚卸しは owner が新しく作って渡した Excel シートで行っている — owner回答2026-09-23（D-21 を解消） |
-| L-239 | PM 127 行の補足 | Excel シートの定着について、owner は「あまり運用できる気がせず、どう導けばよいか分からない」と述べた（要旨）— owner回答2026-09-19 |
+| L-239 | PM 127 行の補足 | Excel シートの定着について、owner は運用できる見込みが薄く、店主をどう導けばよいか分からないと述べた — owner回答2026-09-19 |
 | L-104 | PM `### 決めた運用` | 人は間違える前提で、間違えたときに検知・停止・訂正できる仕組み（起きても補える・実行前に止める・そもそも操作できない）で守り、設計で防げるものを運用に任せない — owner 判断 2026-09-18〜2026-09-23 |
-| L-298 | SCR 79〜83 行 + MT 86 行 | 売上の取込みは必ず店で、レジ締めの後・店を離れる前に行う。1 日の動線を「営業中に精算（店は開けたまま）→ SD 取込み・日報の印刷・アプリへの取込み → 店を離れる」に直す。MT 86 行の「閉店後CSV取込み」を精算後の取込みに直す — owner回答2026-09-23（2026-09-22 回答と合わせて） |
-| L-025 | MT `### 初期データ（全21部門…）` の注記 | 部門の数や割当を今後変えることは「ありえないとは思わない」— owner回答2026-09-19 |
+| L-298 | SCR 81〜82 行 + MT 86 行 | 売上の取込みは必ず店で、レジ締めの後・店を離れる前に行う — owner回答2026-09-23（2026-09-22 回答と合わせて）。SCR は S3 の固定文言、MT は S4 の置換だけを行う |
+| L-025 | MT `### 初期データ（全21部門…）` の注記 | 部門の数や割当を今後変える可能性を owner は否定していない — owner回答2026-09-19 |
 | L-175 | MT `### 設計意図`（jan_code NULLABLE の理由の近く） | JAN の無い商品は主に生地とヘア雑貨で、全体の約 2 割 — 店主回答（2026-03） |
 | L-022 | BL 81 行 | リース満了の時期は大体決まっているはずだが年と月は記録に無い（owner 2026-09-19）。満了年月は店主への確認中 |
 | L-014 | BL `#### 機能・運用` | 定額値引きを商品として追うなら通常 PLU が第一候補。その場の値引きは既存の「％-」キーで足りるので、業務の要求が出るまで作らない — owner 判断 2026-07-06 |
 | L-057 | BL `#### 機能・運用`（PLU 関連 82〜83 行の近く） | PLU へ移した商品と未移行の商品の見分け方と誤操作の防止は、店主に考えさせず運用設計の側で案を作る — owner 判断 2026-08-14 |
-| L-116 | BL 39 行 | 閉店時点の確認に使っている Excel 貼付け・印刷は、アプリで丸ごと置き換えるつもり（owner 2026-09-16。2026-08-01 には置き換えられるかは使い手次第とも述べた） |
+| L-116 | BL 39 行 | レジ締め時の確認に使っている Excel 貼付け・印刷は、アプリで丸ごと置き換えるつもり（owner 2026-09-16。2026-08-01 には置き換えられるかは使い手次第とも述べた） |
 | L-117 | BL 39 行 | 日報の印刷機能はあってもいい。紙はやめていく方針だが、目の悪さもあって紙が見やすい場面がある — owner 2026-09-19 |
 | L-219 | BL 50 行 | 現行 CV17 のインストーラと公式利用ガイドのオフライン保管は訪店記録の推奨で、実施は未確認 |
 | L-299 | BL 50 行 | バックアップを外部に保存するなら置き場所は店。PC が店にあるときは媒体と同じ場所になる残存リスクがある（推測として書く）— owner回答2026-09-23 |
@@ -152,27 +158,28 @@ not applicable: operator の操作、data / command 契約、業務の状態遷�
 | L-206 | BL 34 行 | 「現行 cm は…店の回答由来ではない」を直す。店主は 2026-03 に、切り売りは基本 m・販売は 10cm 単位でもする・棚卸しはメーカー記載の長さで数え cm までは数えないと答え、cm の整数管理で OK とも答えている（BL 259 行） |
 | L-210 | BL 34 行 | 2026-08-15 の単位系の選択（表示用 unit_label の追加）は、その後の単位 code の設計（2026-09-09〜）で置き換えた、と明記する |
 
-### 追補2 から足す事実（4 件）
+### 追補2・追補3 から足す事実（5 件）
 
-台帳 追補2（部分台帳 `ledger-parts/today-2026-09-23.md` 末尾、TD-013〜TD-022）と同 file の TD-001〜TD-012 のうち、上の候補に含まれない店の事実。TD-001 / TD-002 / TD-004 / TD-007 / TD-009 / TD-010 / TD-011 / TD-012 / TD-018 / TD-022 は上の候補（L-076 / L-079 / L-044 / L-104 / L-297 / L-298 / L-299 / L-217 / L-217 / L-164）の現行版として反映済み、TD-013 は L-042、TD-017 は上表の TD-017 行。
+台帳 追補2（部分台帳 `ledger-parts/today-2026-09-23.md` 末尾、TD-013〜TD-022）と同 file の TD-001〜TD-012、追補3（`ledger-parts/today-2026-09-24.md` の TD-023）のうち、上の候補に含まれない店の事実。TD-001 / TD-002 / TD-004 / TD-007 / TD-009 / TD-010 / TD-011 / TD-012 / TD-018 / TD-022 は上の候補（L-076 / L-079 / L-044 / L-104 / L-297 / L-298 / L-299 / L-217 / L-217 / L-164）の現行版として反映済み、TD-013 は L-042、TD-017 は上表の TD-017 行。
 
 | ID | 戻し先 | 書く要旨（公開可の要旨） |
 |---|---|---|
-| TD-014 | PM `### 決めた運用` | 毎日の精算の作業に EJ の取込みを足すことを owner が了承した（SD からファイルを取るだけなので負担は小さい、という判断）。アプリがどう支援するかは EJ の設計 lane で決める — owner判断2026-09-23 |
+| TD-014 | PM `### 決めた運用` | 毎日の精算の作業に EJ の取込みを足すことを owner が了承した（SD からファイルを取るだけなので負担は小さい、という owner の判断。店主本人は未確認）。アプリがどう支援するかは EJ の設計 lane で決める — owner判断2026-09-23 |
 | TD-015 | PM `### いまの手作業` | 棚卸しの途中でノート PC の蓋を閉じ（家へ持ち帰る場合を含む）、続きを後で入力することはありそう — owner回答2026-09-23 |
 | TD-019 | PM `### 未確認` | 導入後、値上げのときに紙の前年リストを手で直す作業をやめるかは未確認。owner は、このアプリを渡すことがその代わりになるはずと考えている — owner回答2026-09-23 |
-| TD-020 | PM `### レジ・レジスターツール` の ECR+ の行（193 行）+ BL `#### 機能・運用` の新 entry | CASIO の公式情報で ECR+ は新規申込が 2026-01-04 に終了し、サービス提供は 2028-12-31 に終了予定（2026-09-23 確認）。店主は精算に ECR+ を要する（L-018）ため、レジのリース満了が 2028-12 より後だと精算に困る恐れがある。owner の見立ては「ECR+ が終わるならレジの入替えと同時でないと困る。続かないなら代わりを自分たちで作るしかない」。満了年月は店主へ確認中。backlog entry は、満了年月の回答を待って ECR+ 終了後の精算とジャーナル閲覧の代替（L-020 の提起）を判断する、とする |
+| TD-020 | PM `### レジ・レジスターツール` の ECR+ の行（193 行）+ BL `#### 機能・運用` の新 entry | CASIO の公式ページ（<https://web.casio.jp/ecr/ble/ecr.html>、2026-09-24 確認: 新規申込受付終了 2026年1月4日、サービス提供終了 2028年12月末予定）。店主は精算に ECR+ を要すると答えている（L-018）ため、レジのリース満了が 2028 年 12 月より後だと精算に困る恐れがある（推論）。owner は、ECR+ が終わるならレジの入替えと同時でないと困り、続かないなら代わりを自分たちで作るしかないと見ている — owner回答2026-09-23。リースの満了年月は店主へ確認中。backlog entry は、満了年月の回答を待って ECR+ 終了後の精算とジャーナル閲覧の代替を判断する、とする |
+| TD-023 | PM `### いまの手作業` + BL `#### 機能・運用` の新 entry「評価額の丸めを店の規則に合わせる」 | PM へ: 棚卸しの評価額は、商品別の金額を小数第 3 位で四捨五入して小数第 2 位まで持ち、全商品の金額を合計した最終合計で四捨五入する — 店主回答（owner 経由、2026-09-24）。BL へ: 現行は原価が円の整数（`docs/db-design/master-tables.md` 34・53 行、`src-tauri/src/db/schema_v1.rs:36`・`:223` の INTEGER）で、確定時の総額は `valuation_cost_price × actual_count` の整数積和（`src-tauri/src/biz/stocktake_service.rs:464-475`、`docs/function-design/35-biz-stocktake-service.md` 94・330 行、新方式の式は同 38 行）。商品別の金額に小数が生じず丸めの段が無いため、単位当たり原価に端数が出る場合（単位の拡張、BL 34 行）に店の規則と一致しない。実装は本 lane の対象外 |
 | TD-016 / TD-021 | — | 実機確認・記録の許可で店の事実ではないため扱わない。実機確認の計画は次の design lane（`docs/backlog.md` 24 行）が持つ |
 
 ### 他 lane が持つ候補（本 lane では書かない、10 件）
 
 | ID | 持つ lane | 理由 |
 |---|---|---|
-| L-054 | ㉗ ADR 修正 lane | 戻し先が ADR の Context（PC 時計・レジ時計の見立て） |
-| L-095 / L-096 / L-097 / L-099 | ㉗ ADR 修正 lane | 戻し先が ADR の Context / Rejected（または decision-log）。棚卸しの時点証拠の owner 回答の理由・旧運用ルール |
-| L-098 | ㉗ ADR 修正 lane | 棚卸し設計の中心（いつ数えても年末へ繰り越す、二重減算しない）。台帳は decision-log を候補にするが、内容は ADR の設計の前提で、ADR 側の Context に置くのが自然。ADR lane が受けない場合は Coordinator が本 lane への Gated Amendment で戻す |
-| L-107 | ㉗ ADR 修正 lane | 判定不能は「適用＋要再確認」に一本化（owner 決定 2026-09-23、ADR 修正の本体） |
-| L-108 | ㉗ ADR 修正 lane / ㉘ 最初の lane | OS 監視と legacy 専用復旧を外す（ADR 修正の本体、㉘ packet にも反映） |
+| L-054 | ㉗ ADR 修正 lane（受入れ済み: 同 lane packet の Spec Contract R8 / S1） | 戻し先が ADR の Context（PC 時計・レジ時計の見立て） |
+| L-095 / L-096 / L-097 / L-099 | ㉗ ADR 修正 lane（受入れ済み: R8 / S1） | 戻し先が ADR の Context / Rejected。棚卸しの時点証拠の owner 回答の理由・旧運用ルール |
+| L-098 | ㉗ ADR 修正 lane（受入れ済み: R8 / S1） | 棚卸し設計の中心（いつ数えても年末へ繰り越す、二重減算しない）を ADR の Context に置く |
+| L-107 | ㉗ ADR 修正 lane（受入れ済み: R3 / R4） | 判定不能は「適用＋要再確認」に一本化（owner 決定 2026-09-23、ADR 修正の本体） |
+| L-108 | ㉗ ADR 修正 lane（受入れ済み: R3 / R4）/ ㉘ 最初の lane | OS 監視と legacy 専用復旧を外す（ADR 修正の本体、㉘ packet にも反映） |
 | L-045 | 次の design lane（実測と POS 系列の対応）/ EJ parser core | EJ の取込みを店にどう示し支援するかという owner の問い。戻し先が design lane の論点 |
 | L-053 | 次の design lane | Z004 の前後情報で内部計算できないかという owner の問いと見立て。戻し先が design lane の Context |
 
@@ -194,21 +201,23 @@ D-16（EJ が PC に届く頻度）は TD-013、D-21（PC 上の前年の棚卸�
 - `docs/db-design/master-tables.md` と `docs/function-design/73-ui-stocktake.md` の `## 時点証拠契約（proposed・未実装）` 節（ADR lane）。
 - `docs/backlog.md` 24 行・36 行。
 - `docs/SCREEN_DESIGN.md` の最小ウィンドウの寸法（L-154 は backlog への記録だけ）。
-- `src-tauri/src/biz/stocktake_service.rs:4` の code comment「年末の長期作業（10月〜大晦日）」: S5 の訂正後に comment と文書の期間表記がずれる。製品 code に触れないため follow-up として backlog の `#### workflow / test / lint / docs` へ本 lane の closeout で記録する。
+- 期間・動線の旧表記が残る次の箇所は本 lane で直さず、closeout で backlog の `#### workflow / test / lint / docs` へ follow-up として記録する: `src-tauri/src/biz/stocktake_service.rs:4`（code comment「10月〜大晦日」）、`docs/function-design/35-biz-stocktake-service.md:374`（「10月〜大晦日の長期作業」、ADR lane の同期先）、`docs/architecture/biz-task-specs.md:451`（同、ADR lane の同期先）、`docs/screen_mockups.html:259`（ボタン説明「閉店後にレジのCSVを読み込む」）。
+- `docs/project-memory.md` 199 行（`### 未確認` のネットワーク保存先）。
+- 評価額の丸めの実装・設計（TD-023 は事実と backlog entry だけ）。
 
 ## Acceptance Criteria
 
 baseline は main `3148347b` の worktree（`.claude/worktrees/docs-rules`）で同じ command を実行した実測。
 
 - AC1（約 929 件の否定の訂正）: `rg -n 'is stale and does not match' docs/project-memory.md` が一致なし（baseline: `187:` の 1 行）。`rg -n '933' docs/project-memory.md` が `### レジ・レジスターツール` 内に一致する（baseline: 一致なし）。
-- AC2（EJ の事実）: `rg -n 'EJ|電子ジャーナル' docs/project-memory.md` が `### レジ・レジスターツール` 内に一致する（baseline: 一致なし、exit 1）。一致する行は取込みの頻度を「月 1 回程度」とし、出典を owner回答2026-09-23 とする。`rg -n '2028-12-31' docs/project-memory.md docs/backlog.md` が両 file に一致する（baseline: 一致なし、exit 1）。
+- AC2（EJ の事実）: `rg -n 'EJ|電子ジャーナル' docs/project-memory.md` が `### レジ・レジスターツール` 内に一致する（baseline: 一致なし、exit 1）。一致する行は取込みの頻度を「月 1 回程度」とし、出典を owner回答2026-09-23 とする。`rg -n '2028年12月末' docs/project-memory.md docs/backlog.md` が両 file に一致する（baseline: 一致なし、exit 1）。`rg -n '小数第 ?2 位|第2位' docs/project-memory.md` が `### いまの手作業` 内に、`rg -n '評価額の丸め' docs/backlog.md` が 1 entry に一致する（baseline: どちらも一致なし、exit 1）。
 - AC3（1 日の動線）: `rg -n '→ レジ精算 → 閉店' docs/SCREEN_DESIGN.md` が一致なし（baseline: `81:` の 1 行）。`rg -n '閉店後CSV取込み' docs/db-design/master-tables.md` が一致なし（baseline: `86:` の 1 行）。訂正後の動線で売上データ取込みが店を離れる前に置かれる。
 - AC4（棚卸しの期間）: `rg -n '数週間かけて' docs/function-design/73-ui-stocktake.md`（baseline: `44:` の 1 行）の §73.1（44 行付近）の文が準備と正式カウントを分けて書かれ、棚卸しの具体的な日付を含まない。67 / 91 / 92 行の「数週間」（確定操作の損失の文脈）は変更しない。
 - AC5（単位の拡張）: `rg -n '店の回答由来ではない' docs/backlog.md` が一致なし（baseline: `34:` の 1 行）。
-- AC6（網羅）: 「復元する候補」46 行と「追補2 から足す事実」4 行の各行について、戻し先の diff hunk に要旨が載ることを Test Plan T1 で確認する。後回しの 2 件と他 lane の 10 件は diff に現れない（T2）。
-- AC7（他 lane・保留の行に触れない）: `git diff origin/main -U0 -- docs/project-memory.md` の hunk header が 40 行・114 行・190 行を含まない。`git diff origin/main -- docs/db-design/master-tables.md docs/function-design/73-ui-stocktake.md` に `時点証拠契約` 節の差分が無い。
-- AC8（data safety）: `git diff origin/main -- docs/project-memory.md docs/backlog.md docs/SCREEN_DESIGN.md docs/db-design/master-tables.md docs/function-design/73-ui-stocktake.md docs/plu-export-and-real-csv-verification.md | rg -n '^\+.*(\.local/|[0-9]{8,13}|session|jsonl)'` が一致なし（exit 1）。追加行に owner の発言の逐語の引用符付き長文、棚卸しの具体的な日付、実データ（JAN・商品名・価格・取引先名・個人名）が無いことを T3 で確認する。
-- AC9（footprint）: `git diff origin/main --name-only` が S1〜S7 の file だけを出す。`rg -n '20 部門' docs/plu-export-and-real-csv-verification.md` の 24 行が 21 部門と機種仕様の推測を書き分ける（baseline: `24:` の 1 行）。
+- AC6（網羅）: 「復元する候補」46 行と「追補2・追補3 から足す事実」5 行の計 51 行の各行について、戻し先の diff hunk に要旨が載ることを Test Plan T1 で確認する。後回しの 2 件と他 lane の 10 件は diff に現れない（T2）。
+- AC7（他 lane・保留の行に触れない）: `for n in 40 114 190; do git show 3148347b:docs/project-memory.md | sed -n "${n}p" | grep -Fxq -f - docs/project-memory.md || echo "missing $n"; done` が何も出さない（3 行とも内容が新しい file に同じ 1 行として残る）。`git diff 3148347b...HEAD -- docs/db-design/master-tables.md docs/function-design/73-ui-stocktake.md` に `時点証拠契約` 節の差分が無い。
+- AC8（data safety）: `git diff 3148347b...HEAD -- docs/project-memory.md docs/backlog.md docs/SCREEN_DESIGN.md docs/db-design/master-tables.md docs/function-design/73-ui-stocktake.md docs/plu-export-and-real-csv-verification.md | rg -n '^\+.*(\.local/|[0-9]{8,13}|session|jsonl|\b(L|TD|Q)-[0-9]{3}\b|\bD-(0[1-9]|1[0-9]|2[01])\b)'` が一致なし（exit 1）。追加行に owner の発言の逐語の引用符付き長文、棚卸しの具体的な日付、実データ（JAN・商品名・価格・取引先名・個人名）が無いことを T3 で確認する。
+- AC9（footprint）: `git diff 3148347b...HEAD --name-only` が S1〜S7 の file だけを出す。`rg -n '20 部門' docs/plu-export-and-real-csv-verification.md` の 24 行が 21 部門と機種仕様の推測を書き分ける（baseline: `24:` の 1 行）。
 - AC10: `git diff --check`、`bash scripts/doc-consistency-check.sh`、`bash scripts/doc-consistency-check.sh --target plan` が成功する。未解決の P1 / P2 なし。
 
 ## Design Sources
@@ -220,7 +229,8 @@ baseline は main `3148347b` の worktree（`.claude/worktrees/docs-rules`）で
 - Screen / UI: `docs/SCREEN_DESIGN.md` `### 利用者の1日の動線`（事実の訂正だけ）。
 - Store facts: `docs/project-memory.md` `## Store Premises Facts`、`docs/backlog.md`、`docs/plu-export-and-real-csv-verification.md`。
 - Decision log / ADR: owner 決定 2026-09-21（原文を置かず要旨と確認日。`docs/Plans.md`「直近の完了」の PR #84 の記録）。D-023（POS adapter boundary: EJ・CV17 の記述は adapter facts として project-memory / PLUV に置き、app core の契約にしない）。
-- 台帳（local-only、read-only）: §4 の 58 件、§3 の食い違い D-01 / D-03 / D-16 / D-21、部分台帳 `ledger-parts/today-2026-09-23.md` の TD-001〜TD-022。
+- 台帳（local-only、read-only）: §4 の 58 件、§3 の食い違い D-01 / D-03 / D-16 / D-21、部分台帳 `ledger-parts/today-2026-09-23.md` の TD-001〜TD-022、`ledger-parts/today-2026-09-24.md` の TD-023。
+- 外部: CASIO ECR+ 公式ページ <https://web.casio.jp/ecr/ble/ecr.html>（2026-09-24 確認）。
 
 ## Required Design Artifacts
 
@@ -286,16 +296,16 @@ Minimum design checks for business-app work: 製品の layer / command / DB / op
 自動 test は追加しない（事実の記述の正しさは機械で判定できない）。Writer は S1〜S6 を 1 つ以上の commit で実装し、packet と `docs/Plans.md` を編集しない。packet と実装は別 commit（plan-first）。
 
 - targeted tests: AC1〜AC5、AC7〜AC9 の command。
-- T1（50 行の照合）: 「復元する候補」と「追補2 から足す事実」の各行について、戻し先の diff に要旨があり、台帳の該当行の現行版（上書きの関係欄が「旧版」の行でない）と意味が一致し、回答者の区分（店主本人 / owner / owner 伝聞 / owner 判断 / 推論 / 訪店記録の推奨）と確認日が落ちていない。
+- T1（51 行の照合）: 「復元する候補」と「追補2・追補3 から足す事実」の各行について、戻し先の diff に要旨があり、台帳の該当行の現行版（上書きの関係欄が「旧版」の行でない）と意味が一致し、回答者の区分（店主本人 / owner / owner 伝聞 / owner 判断 / 推論 / 訪店記録の推奨）と確認日が落ちていない。
 - negative tests: T2（後回しの 2 件〈D-01〉と他 lane の 10 件の要旨、追補2 の設計判断と許可が diff に現れない）。
-- data safety checks: T3（AC8 の command に加え、追加行を目視で確認: 逐語の原文、棚卸しの具体的な日付、実データ、`.local/` の path、session ID が無い）。
-- compatibility checks: T4（既存の行を消す訂正は L-006 の否定文、L-298 の動線、MT 86 行の語、F73 44 行の期間、BL 34 行の一文、PM 133 行の採否の記述、PLUV 24 行の部門数に限る。他の既存行は削らない。`git diff origin/main --numstat` の削除行数を hunk ごとに説明できる）。
+- data safety checks: T3（AC8 の command に加え、追加行を目視で確認: 逐語の原文（短い語句の引用を含む）、棚卸しの具体的な日付、実データ、`.local/` の path、session ID が無い）。
+- compatibility checks: T4（既存の行を消す訂正は L-006 の否定文、SCR 81〜82 行（S3 の固定文言 1 行に置換。79〜80 行は不変）、MT 86 行の語、F73 44 行の期間、BL 34 行の一文、PM 133 行の採否の記述、PLUV 24 行の部門数に限る。他の既存行は削らない。`git diff 3148347b...HEAD --numstat` の削除行数を hunk ごとに説明できる）。
 - main wiring/integration checks: 追記した出典の file link が実在する（doc check）。
 
 ## Review Focus
 
 - 各要旨が台帳の現行版と一致するか、旧版・推測・訪店記録の推奨を確定の事実として書いていないか（T1）。
-- 保留の D-01 に依存する主張が混ざっていないか。TD-020 の ECR+ の終了日を CASIO の公式情報として書き、リース満了の年月を推測で書いていないか（T2）。
+- 保留の D-01 に依存する主張が混ざっていないか。TD-020 の ECR+ の終了時期を CASIO 公式ページの表記（2028年12月末予定）どおりに書き、リース満了の年月を推測で書いていないか（T2）。TD-023 の backlog entry が現行の挙動と店の規則を並べるだけで、実装方針を決めていないか。
 - 公開 repository に置いてよい粒度か（原文・日付・実データ・local path、T3）。
 - L-298 の動線の訂正が、新しい操作の決定（例: 取込みの順序や backup の時点の指定）へ踏み込んでいないか。
 - 他 lane が持つ行・節（PM 40 / 190 行、時点証拠契約節）に触れていないか（AC7）。
