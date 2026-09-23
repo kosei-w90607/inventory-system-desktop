@@ -15,8 +15,9 @@ Risk: R3
 - IO-08-D5 位置による行分類・Unknown を残す
 - IO-08-D6 明細の復元と記録内照合（数量×単価・点数・合計 / 現金・非負・同名非合算・符号非反転）
 - IO-08-D7 明細を持たない記録（入金 / 出金 / 替・設定書込み・精算）
-- IO-08-D8 復元状態の型（`Unresolved` は明細を持たない）・診断 code / 範囲・文言に生の行を入れない
-- 不変条件: どの行も失われない（先頭断片 + ヘッダ 2 行 × 記録数 + 本文 = 全行）
+- IO-08-D8 復元状態の型（`Unresolved` は明細を持たない）・`header_line_no`・診断 code / 範囲・code ごとの固定文言（完全一致）・文言に生の行を入れない
+- 不変条件: どの行も失われない（先頭断片・ヘッダ 2 行・本文の行番号を合わせると 1〜N をちょうど 1 回ずつ覆う）
+- 金額 token の字形: 合計域の `合  計` / `お預り` / `お  釣` / `現金` と `入金` / `出金` は全角 `￥` + 全角数字 + 全角 `，`、明細・`対象計`・`内税`・精算票は ASCII 数字。精算票の `AmountOnly` とラベル行は通貨記号なしの負値を取りうる（検査しない）
 
 ## Failure Modes
 
@@ -33,6 +34,9 @@ Risk: R3
 - 番号の連続・file 名の日付で区間を判断する（IO の範囲を越える）。
 - 診断の文言に名称・金額を含む生の行が入り、後の log・画面へ流れる。
 - decode 失敗・ヘッダなし・空入力で部分結果を返す。
+- 合計・現金の全角数字を読めず、正しい取引まで復元不能になる（実物の全取引が不成立になる）。
+- 精算票の通貨記号なしの負値を Unknown とし、返品だけの日の精算が復元不能になる。
+- 名称の中の空白で名称が切れる、または金額の一部が名称に入る。
 
 ## Test Matrix
 
@@ -40,23 +44,31 @@ Risk: R3
 - helper と mock の実装を読み、実際に通る境界と置換される境界を確認して Test Type / coverage を選ぶ。helper 名だけで実 router / integration と分類しない。
 - `Would fail if...` は壊れる振舞いを観測できる入力・経路と結びつける。状態 reset なら初回 mount に加え同値再選択等の別経路を確認し、対象契約が行使されるものを選ぶ。
 
-packet が使う ID と下表の対応: T-P1〜T-P11 = 表の 1〜11 行目（`parse_ej_normal_sale_restores_items` 〜 `parse_ej_file_hash_is_raw_sha256`）、T-N1〜T-N13 = 12〜24 行目（`parse_ej_unknown_line_in_item_region_unresolves_record_only` 〜 `parse_ej_decimal_quantity_unresolves`）、T-F1〜T-F3 = 25〜27 行目、T-I1 = `parse_ej_every_line_is_accounted_for`、T-R1 = `real_ej_structure_probe`。
+packet が使う ID と test 名の対応:
+
+- T-P1 `parse_ej_normal_sale_restores_items` / T-P2 `parse_ej_quantity_line_applies_to_next_item` / T-P3 `parse_ej_repeated_same_name_lines_kept_separate` / T-P4 `parse_ej_return_mode_keeps_positive_amounts` / T-P5 `parse_ej_exact_cash_tender_without_total_line` / T-P6 `parse_ej_item_named_like_label_before_separator_is_item` / T-P7 `parse_ej_non_item_records_paid_in_paid_out_exchange` / T-P8 `parse_ej_settlement_and_program_records` / T-P9 `parse_ej_multiple_settlements_in_one_file_and_pre_dated_first_record` / T-P10 `parse_ej_amount_formats` / T-P11 `parse_ej_file_hash_is_raw_sha256` / T-P12 `parse_ej_item_name_with_inner_space` / T-P13 `parse_ej_zero_amount_item_is_restored`
+- T-N1 `parse_ej_unknown_line_in_item_region_unresolves_record_only` / T-N2 `parse_ej_unknown_line_after_separator_unresolves_record` / T-N3 `parse_ej_unrecognized_header_mode_unresolves_record` / T-N4 `parse_ej_item_count_mismatch_unresolves` / T-N5 `parse_ej_quantity_price_mismatch_unresolves` / T-N6 `parse_ej_total_mismatch_unresolves` / T-N7 `parse_ej_negative_item_amount_unresolves` / T-N8 `parse_ej_quantity_line_not_followed_by_item_unresolves` / T-N9 `parse_ej_record_truncated_at_eof_unresolves` / T-N10 `parse_ej_missing_final_crlf_reports_diagnostic` / T-N11 `parse_ej_invalid_width_line_unresolves_record` / T-N12 `parse_ej_leading_lines_before_first_header_are_reported` / T-N13 `parse_ej_decimal_quantity_unresolves` / T-N14 `parse_ej_unknown_line_in_settlement_unresolves` / T-N15 `parse_ej_settlement_not_starting_with_title_unresolves` / T-N16 `parse_ej_program_body_with_other_line_unresolves` / T-N17 `parse_ej_count_without_total_or_cash_unresolves` / T-N18 `parse_ej_header_only_record_unresolves`
+- T-F1 `parse_ej_decode_failure_is_fatal` / T-F2 `parse_ej_no_record_header_is_fatal` / T-F3 `parse_ej_empty_input_is_fatal` / T-I1 `parse_ej_every_line_is_accounted_for` / T-I2 `parse_ej_diagnostic_messages_are_fixed_texts` / T-R1 `real_ej_structure_probe`
+
+合計域の `合  計` / `お預り` / `お  釣` / `現金` と `入金` / `出金` の fixture 行は、実物と同じく全角 `￥` + 全角数字 + 全角 `，` で組む（T-P1 / T-P5 / T-P7 / T-P10 ほか全取引）。ASCII 数字だけの fixture で全角の経路を素通りさせない。
 
 fixture は test 内の builder で作る: 文字列を CP932 で encode し、24 バイトに満たなければ右を空白で埋め、24 バイトを超えれば builder 自身が panic する（fixture の誤りを test の PASS に紛れ込ませない）。名称・金額・日付・番号は架空の値を使う。全 test は `src-tauri/src/io/ej_parser.rs` の `#[cfg(test)] mod tests` に置く（新設のため既存 test の引用は無い）。
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| IO-08-D3 / D5 / D6 | 通常販売の明細が名称・数量・金額で返らない。番号の先頭 0 が落ちる | unit | `parse_ej_normal_sale_restores_items` | 明細 2 行の取引（区切り・点数 2・対象計・内税・合計・お預り・お釣）が `Restored` でない、名称の末尾空白が残る、番号 `0001` / `000123` が数値化される、日時が文字列のまま返らない |
+| IO-08-D3 / D5 / D6 | 通常販売の明細が名称・数量・金額で返らない。番号の先頭 0 が落ちる | unit | `parse_ej_normal_sale_restores_items` | 明細 2 行の取引（区切り・点数 2・対象計・内税・合計・お預り・お釣。合計 / お預り / お釣は全角数字）が `Restored` でない、`header_line_no` がヘッダ 1 行目を指さない、名称の末尾空白が残る、番号 `0001` / `000123` が数値化される、日時が文字列のまま返らない |
 | IO-08-D6 | 数量行の掛かり方 | unit | `parse_ej_quantity_line_applies_to_next_item` | 数量行（3 点 @120）の直後の明細（\360）が数量 3・単価 120 にならない、その次の明細まで数量 3 になる、数量行の無い明細の単価が `Some` になる |
 | IO-08-D6 | 同名行の合算 | unit | `parse_ej_repeated_same_name_lines_kept_separate` | 同じ名称の明細 2 行が 1 件に合算される、点数 2 との照合が崩れる |
 | IO-08-D3 / D6 | 返品の符号 | unit | `parse_ej_return_mode_keeps_positive_amounts` | モード欄 `戻` が `Return` にならない、明細の金額が負に反転される |
-| IO-08-D6 | 合計の無い現金ちょうどの取引 | unit | `parse_ej_exact_cash_tender_without_total_line` | 合計域が点数・対象計・内税・現金だけの取引が `Unresolved` になる、または「現金」行が明細に入る |
+| IO-08-D6 | 合計の無い現金ちょうどの取引 | unit | `parse_ej_exact_cash_tender_without_total_line` | 合計域が点数・対象計・内税・現金（全角数字）だけの取引が `Unresolved` になる、または「現金」行が明細に入る |
 | IO-08-D5 | 位置によらないラベル判定 | unit | `parse_ej_item_named_like_label_before_separator_is_item` | 区切りの前の「現金」で始まる名称の明細が `Labeled` に分類されて明細から消える |
 | IO-08-D7 | 入金 / 出金 / 替 | unit | `parse_ej_non_item_records_paid_in_paid_out_exchange` | 本文 1 行の `入金` / `出金` / `替` の記録が `NoItems` でない、または診断が出る |
-| IO-08-D5 / D7 | 設定書込み・精算 | unit | `parse_ej_settlement_and_program_records` | `PGM`（区切り・SD設定書込み・区切り）と `精算`（日計明細の題・総売・金額だけ・純売・金額だけ・現金在高・純客・区切り・日計明細・SDｶｰﾄﾞ保存・ｽﾏ-ﾄﾌｫﾝ送信）が `NoItems` でない、題の両端の数字が文字列で保持されない |
+| IO-08-D5 / D7 | 設定書込み・精算 | unit | `parse_ej_settlement_and_program_records` | `PGM`（区切り・SD設定書込み・区切り）と `精算`（日計明細の題・総売・金額だけ・純売・金額だけ・現金在高・純客・区切り・日計明細・SDｶｰﾄﾞ保存・ｽﾏ-ﾄﾌｫﾝ送信）が `NoItems` でない、題の両端の数字が文字列で保持されない。返品だけの日の精算（`総売` / `純客` の負値、通貨記号なしの `-` + 数字の `AmountOnly`、`対象計` / `内税` / `消費税合計` / `現金在高` の通貨記号なしの負値）が `NoItems` でない |
 | IO-08-D3 / D9 | file 内の複数精算・前日付の先頭 | unit | `parse_ej_multiple_settlements_in_one_file_and_pre_dated_first_record` | 先頭の記録が file の他の記録より前の日付だと異常扱いされる、2 回目の精算の後の記録が落ちる、記録の順序が変わる |
-| IO-08-D6 | 金額の表記 | unit | `parse_ej_amount_formats` | 半角 `\1,234`、全角 `￥12，345`、単価 `@1,200` のどれかが `i64` に読めない |
+| IO-08-D6 | 金額の表記 | unit | `parse_ej_amount_formats` | 半角 `\1,234`、全角 `￥１２，３４５`（全角数字・全角読点）、単価 `@1,200`、通貨記号なしの `-980` のどれかが `i64` に読めない、全角と ASCII を混ぜた token が数値として受理される |
 | IO-08-D1 | file_hash | unit | `parse_ej_file_hash_is_raw_sha256` | file_hash が生バイトの SHA-256 小文字 hex 64 文字でない、decode 後の文字列から計算される |
+| IO-08-D5 / D6 | 名称の中の空白 | unit | `parse_ej_item_name_with_inner_space` | 名称に空白を含む明細（例 `ﾃｽﾄ ｲﾄ A` + 空白 + `\200`）で、名称が最初の空白で切れる、金額の一部が名称に入る、名称の末尾空白が残る |
+| IO-08-D6 | 0 円の明細 | unit | `parse_ej_zero_amount_item_is_restored` | 金額 `\0` の明細を含み合計が一致する取引が `Unresolved` になる |
 | IO-08-D5 / D8 | 明細域の未知の行 | unit | `parse_ej_unknown_line_in_item_region_unresolves_record_only` | 未知の行（例: 金額の無い架空の訂正表示）を含む取引が `Restored` になる、同じ file の前後の取引まで `Unresolved` になる、診断の行番号がずれる、`EjRestoration::Unresolved` 以外の variant になる |
 | IO-08-D5 | 合計域の未知の行 | unit | `parse_ej_unknown_line_after_separator_unresolves_record` | 合計域の未知のラベル（例: 架空の支払種別）を含む取引が `Restored` になる |
 | IO-08-D3 | 未知のモード | unit | `parse_ej_unrecognized_header_mode_unresolves_record` | 未知のモード欄の記録が `Unrecognized(raw)` にならない、`Normal` として明細が復元される |
@@ -70,12 +82,18 @@ fixture は test 内の builder で作る: 文字列を CP932 で encode し、2
 | IO-08-D2 | 幅違反・孤立 LF | unit | `parse_ej_invalid_width_line_unresolves_record` | 23 / 25 バイトの行や孤立した LF を含む行が正規化されて通る、`InvalidWidth` が出ない |
 | IO-08-D4 | 先頭断片 | unit | `parse_ej_leading_lines_before_first_header_are_reported` | 最初のヘッダより前の行が捨てられる、最初の記録に混ざる、`LeadingFragment` が出ない |
 | IO-08-D5 / D6 | 小数の数量 | unit | `parse_ej_decimal_quantity_unresolves` | `1.3 点 @…` の行が数量行として受理される（小数の数量は未観測） |
+| IO-08-D5 / D7 | 精算内の未知の行 | unit | `parse_ej_unknown_line_in_settlement_unresolves` | 精算の本文に未知の行がある記録が `NoItems` になる、`UnknownLine` が出ない |
+| IO-08-D7 | 題で始まらない精算 | unit | `parse_ej_settlement_not_starting_with_title_unresolves` | 本文の先頭が `SettlementTitle` でない精算が `NoItems` になる |
+| IO-08-D7 | PGM の本文 | unit | `parse_ej_program_body_with_other_line_unresolves` | 区切り・`Status` 以外の行を含む `PGM` の記録が `NoItems` になる |
+| IO-08-D6 | 合計も現金も無い取引 | unit | `parse_ej_count_without_total_or_cash_unresolves` | 区切り・点数はあるが `合  計` も `現金` も無い取引が `Restored` になる、`IncompleteRecord` が出ない |
+| IO-08-D6 | ヘッダだけの記録 | unit | `parse_ej_header_only_record_unresolves` | 本文 0 行の通常の記録（次のヘッダが直後に来る）が `Restored` / `NoItems` になる |
 | IO-08-D1 | decode 失敗 | unit | `parse_ej_decode_failure_is_fatal` | CP932 として不正なバイト列で `Ok` や部分結果が返る |
 | IO-08-D1 | ヘッダなし | unit | `parse_ej_no_record_header_is_fatal` | 24 バイトの行だけでヘッダの無い入力で `Ok` が返る |
 | IO-08-D1 | 空入力 | unit | `parse_ej_empty_input_is_fatal` | 0 バイトで `Err(Empty)` にならない |
-| 不変条件 / IO-08-D8 | 行の消失・文言への生の行の混入 | unit | `parse_ej_every_line_is_accounted_for` | 先頭断片・未知の行・幅違反・複数種の記録を混ぜた file で、先頭断片 + 2 × 記録数 + 本文の行数が全行数と一致しない。どれかの diagnostic の message に fixture の名称文字列が含まれる |
-| IO-08-D5〜D7（実物） | 実物の形状への不一致 | CLI（ignore、Coordinator 手元） | `real_ej_structure_probe` | `INVENTORY_EJ_PROBE_DIR` の実物 6 本のどれかが `Err`、`Unresolved` が 1 件以上、診断が 1 件以上。出力に件数以外が出る |
-| 既存契約の不変 | 既存 parser・BIZ・bindings・traceability の変化 | CLI | `cargo test`、`cargo test --test design_compliance_test`、`cargo run --bin generate_traceability -- --check` | 既存 test が落ちる、29-io が module に対応づかない、traceability の生成結果が変わる |
+| 不変条件 / IO-08-D8 | 行の消失・文言への生の行の混入 | unit | `parse_ej_every_line_is_accounted_for` | 先頭断片・未知の行・幅違反・複数種の記録を混ぜた file で、先頭断片 + 2 × 記録数 + 本文の行数が全行数と一致しない。先頭断片・`header_line_no` とその次の行・本文の行番号を合わせたものが 1〜N をちょうど 1 回ずつ覆わない（重複・欠番）。どれかの diagnostic の message に fixture の名称文字列が含まれる |
+| IO-08-D8 | 診断文言の揺れ | unit | `parse_ej_diagnostic_messages_are_fixed_texts` | 7 code をすべて発生させる fixture で、各 diagnostic の message が code ごとの固定文言と完全一致しない |
+| IO-08-D5〜D7（実物） | 実物の形状への不一致 | CLI（ignore、Coordinator 手元） | `real_ej_structure_probe` | `INVENTORY_EJ_PROBE_DIR` の実物 6 本のどれかが `Err`、`Unresolved` が 1 件以上、診断が 1 件以上。`.TXT`（大文字小文字を区別しない）以外の file を読む、読んだ / 読まなかった file 数を出さない、環境変数が無いのに PASS する、出力に件数以外が出る |
+| 既存契約の不変 | 既存 parser・BIZ・bindings・traceability の変化 | CLI | `cargo test`、`cargo test --test design_compliance_test`、`cargo run --bin generate_traceability -- --check` | 既存 test が落ちる、`29-io-ej-parser.md` が module に対応づかない、traceability の生成結果が変わる |
 
 ## State Lifecycle Matrix
 
@@ -98,7 +116,7 @@ not applicable: `parse_ej` は状態を持たない純関数で、保存・cache
 - invalid input: CP932 不正 → `Err(DecodeFailed)`。幅違反・孤立 LF / CR → `InvalidWidth` + 記録の復元不能。最終改行なし → `MissingFinalNewline`。
 - duplicate/ambiguous input: 同名の明細行は合算せず別の明細（`parse_ej_repeated_same_name_lines_kept_separate`）。明細域の「現金」で始まる名称は明細（`parse_ej_item_named_like_label_before_separator_is_item`）。同じ file を 2 回渡しても同じ結果・同じ file_hash（純関数。重複の判定は非目的）。
 - unknown reference: 未知の行・未知のモード → `Unresolved` + `UnknownLine` / `UnrecognizedMode`。
-- dependency missing: 該当なし（外部依存なし）。T-R1 は環境変数が無ければ panic せず、何も読まずに終わる（ignore 付きで CI は実行しない）。
+- dependency missing: 該当なし（外部依存なし）。T-R1 は ignore 付きで CI では実行しない。`--ignored` で実行したのに環境変数が無ければ panic する（何も確かめずに PASS しない）。dir 内の `.TXT` 以外の file は読まず、読まなかった数だけを出力する。
 - permission/write failure: 該当なし（読み取り専用、file I/O は T-R1 だけ）。
 - dry-run side effect: 該当なし（副作用なし）。
 
@@ -106,8 +124,8 @@ not applicable: `parse_ej` は状態を持たない純関数で、保存・cache
 
 - threshold: 行幅 24 バイトちょうど（23 / 25 は違反）。
 - null/default: 数量行の無い明細は数量 1・単価なし。合計が無ければ現金の値で照合し、どちらも無ければ `IncompleteRecord`。
-- empty/non-empty: 0 バイト、ヘッダだけの記録（本文 0 行の通常の記録は明細も入金等も無いので `IncompleteRecord`）、最後の CRLF の後が空 / 非空。
-- min/max: 金額 0 の明細（受理）、負の金額（不成立）、`i64` に収まらない桁の金額は数値化できず `Unknown`。
+- empty/non-empty: 0 バイト、ヘッダだけの記録（本文 0 行の通常の記録は `IncompleteRecord`、`parse_ej_header_only_record_unresolves`）、最後の CRLF の後が空 / 非空。
+- min/max: 金額 0 の明細（受理、`parse_ej_zero_amount_item_is_restored`）、負の金額（不成立）、`i64` に収まらない桁の金額は数値化できず `Unknown`。
 - status/policy enum: `EjMode` 5 種、`EjRestoration` 3 種、`EjDiagnosticCode` 7 種。
 - wire type: 生バイト（CP932・CRLF・24 バイト固定幅）。
 - internal type: 金額・数量・単価 `i64`、日時・番号は文字列。
@@ -151,7 +169,15 @@ not applicable: `parse_ej` は状態を持たない純関数で、保存・cache
 - 未知の行を黙って読み飛ばしたら? → `parse_ej_unknown_line_in_item_region_unresolves_record_only` と `parse_ej_every_line_is_accounted_for` が落ちる。
 - 改行を正規化したら? → `parse_ej_invalid_width_line_unresolves_record` が落ちる。
 - 先頭断片を捨てたら? → `parse_ej_leading_lines_before_first_header_are_reported` と `parse_ej_every_line_is_accounted_for` が落ちる。
-- 診断の message に生の行を埋めたら? → `parse_ej_every_line_is_accounted_for` が落ちる。
+- 診断の message に生の行を埋めたら、または文言を変えたら? → `parse_ej_every_line_is_accounted_for` と `parse_ej_diagnostic_messages_are_fixed_texts` が落ちる。
+- 行番号を 1 つずらす・ヘッダ 2 行目を数え落とすと? → `parse_ej_every_line_is_accounted_for`（1〜N の被覆）が落ちる。
+- 全角数字を読めなくしたら? → `parse_ej_amount_formats`、`parse_ej_normal_sale_restores_items`、`parse_ej_exact_cash_tender_without_total_line` が落ちる。
+- `AmountOnly` を通貨記号つき・非負に限ったら? → `parse_ej_settlement_and_program_records`（返品だけの日の精算）が落ちる。
+- 名称を最初の空白で切ったら? → `parse_ej_item_name_with_inner_space` が落ちる。
+- 明細の金額を「0 より大」にしたら? → `parse_ej_zero_amount_item_is_restored` が落ちる。
+- 合計 / 現金が無いとき照合を省いて通したら? → `parse_ej_count_without_total_or_cash_unresolves` が落ちる。
+- 本文 0 行の記録を空の `Restored` にしたら? → `parse_ej_header_only_record_unresolves` が落ちる。
+- 精算・PGM の本文の未知の行を読み飛ばしたら、または精算の題の位置を見なかったら? → `parse_ej_unknown_line_in_settlement_unresolves`、`parse_ej_program_body_with_other_line_unresolves`、`parse_ej_settlement_not_starting_with_title_unresolves` が落ちる。
 - 番号を数値化したら? → `parse_ej_normal_sale_restores_items`（先頭 0）が落ちる。
 - 未知のモードを `Normal` に倒したら? → `parse_ej_unrecognized_header_mode_unresolves_record` が落ちる。
 - mutation は Writer が主要 5 種（位置分類・点数照合・合計照合・EOF 閉じ・未知行の読み飛ばし）を実注入して red を確認し、PR body に種類だけを記録する。Final Reviewer はそのうち 1 種以上を独立に再注入する。
