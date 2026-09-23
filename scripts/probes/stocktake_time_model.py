@@ -87,6 +87,23 @@ def migration_kind(actual: int | None, counted_at: str | None, snapshot: int) ->
     return "legacy"  # includes malformed legacy rows, never invent measured evidence
 
 
+Names = frozenset[tuple[int, str]]  # (slot, register-side name) rows of one Z004
+BASE_NAMES: Names = frozenset({(1, "P"), (2, "Q")})
+
+
+def z004_names(register: dict[int, tuple[str, int]]) -> Names:
+    """Z004 shows slot and name but no price (ADR D5)."""
+    return frozenset((slot, name) for slot, (name, _price) in register.items())
+
+
+def names_unchanged(previous: Names | None, current: Names) -> bool:
+    """ADR D5: every previous name still sits in its slot; names new to all slots are fine."""
+    if previous is None:
+        return False  # first interval: nothing to compare with
+    now = {name: slot for slot, name in current}
+    return all(now.get(name) == slot for slot, name in previous)
+
+
 @dataclass(frozen=True)
 class EJ:
     """One synthetic EJ settlement interval, already classified by the EJ parser (ADR D5)."""
@@ -97,12 +114,13 @@ class EJ:
     same_settlement: bool = True
     sequence_complete: bool = True
     totals_match: bool = True
-    plu_export_since_previous_z004: bool = False  # receipt-order check, no clock
+    previous_z004: Names | None = BASE_NAMES  # Z004 of the previous settlement
+    z004: Names = BASE_NAMES  # Z004 of this settlement
 
     def complete(self) -> bool:
         return (
             self.same_settlement and self.sequence_complete and self.totals_match
-            and not self.plu_export_since_previous_z004 and self.unattributable_lines == 0
+            and names_unchanged(self.previous_z004, self.z004) and self.unattributable_lines == 0
         )
 
 
@@ -660,10 +678,26 @@ def check_unknown_apply_recheck() -> None:
     # (d) one unattributable line makes the interval incomplete even for P without lines;
     # department sales and non-item lines alone do not.
     assert reason_of(offset_case(EJ(unattributable_lines=1)), 1) == "offset_check_pending"
-    assert reason_of(offset_case(EJ(plu_export_since_previous_z004=True)), 1) == "offset_check_pending"
     assert not offset_case(EJ(department_lines=3, non_item_lines=4)).flags
     # (e) zero quantity with a nonzero amount is movement evidence without waiting for EJ.
     assert reason_of(offset_case(None, amount=100), 1) == "offset_lines_present"
+    # (f) a price-only PLU export leaves the Z004 slot/name mapping as is: no flag.
+    # A moved or vanished name, or no previous Z004, keeps the interval incomplete,
+    # and only a recount (not a re-imported EJ) resolves it.
+    register = {1: ("P", 100), 2: ("Q", 200)}
+    repriced = {1: ("P", 120), 2: ("Q", 200), 3: ("R", 300)}  # new name R is fine
+    assert not offset_case(EJ(previous_z004=z004_names(register), z004=z004_names(repriced))).flags
+    for previous, current in (
+        (BASE_NAMES, frozenset({(2, "P"), (1, "Q")})),  # names swapped slots
+        (BASE_NAMES, frozenset({(1, "P2"), (2, "Q")})),  # P renamed in its slot
+        (None, BASE_NAMES),  # first interval
+    ):
+        ledger = offset_case(EJ(previous_z004=previous, z004=current))
+        assert reason_of(ledger, 1) == "offset_check_pending"
+        ledger.reevaluate(1, EJ(previous_z004=previous, z004=current))
+        assert reason_of(ledger, 1) == "offset_check_pending"
+        ledger.observe(10, immediate=True)
+        assert ledger.stock == 10 and not ledger.flags
 
 
 def check_migration_and_fill() -> None:
