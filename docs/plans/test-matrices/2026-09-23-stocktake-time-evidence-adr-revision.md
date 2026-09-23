@@ -94,7 +94,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
-| 「時点証拠契約（proposed・未実装）」節 | `rg -l '時点証拠契約' docs --glob '!docs/archive/**'` の 32 file（main `3148347b`） | packet Scope S2〜S7 の 25 file | master-tables / transaction-tables / 31 / 36 / 51 / 60 / 65 は撤去対象の語を含まず、維持する契約だけを書いている（節を読んで確認） | packet AC1 / AC2 |
+| 「時点証拠契約（proposed・未実装）」節 | `rg -l '時点証拠契約' docs --glob '!docs/archive/**'` の 32 file（main `3148347b`） | packet Scope S2〜S7 の 28 file（master-tables / 51 / 60 は R10 のため round 2 で追加） | transaction-tables / 31 / 36 / 65 は撤去対象の語を含まず、維持する契約だけを書いている（節を読んで確認） | packet AC1 / AC2 |
 | 但し書きへのリンク `#適用範囲の但し書き` | `rg -o 'stocktake-time-evidence\.md#[^)]*'` の非 archive 23、archive 2 | source の 21 行を削除 | Plans / backlog / archive は編集対象外。見出しを残して着地させる | packet AC1 / AC7 |
 | 回復の code・action・purpose の列挙 | 40 :9-11、42 :15、55 :24、73 :27、ADR D8 | 同じ語の全出現を同時に変える | — | packet AC2 |
 
