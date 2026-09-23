@@ -11,16 +11,16 @@ Risk: R3
 - SPEC-WF-HARNESS1-D1: legacy の撤去（`Evidence Mode` 行は任意・値は github のみ、legacy field 3 種の拒否、Phase 8 値）。
 - SPEC-WF-HARNESS1-D2: Execution Mode の撤去（任意・未評価・承認時 snapshot の比較対象外・R3 UI の Minimum 分岐なし）。
 - SPEC-WF-HARNESS1-D3: `check-workflow-git.sh` は PK5 と full history だけを検査し、STATECAP / backtrack / Rebase Map を持たない。
-- SPEC-WF-HARNESS1-D4: PK4 は `Findings Freeze` 行を要求しない。
+- SPEC-WF-HARNESS1-D4: 欠番（Plan Review round 1 の裁定で PR4 へ移した。PK4 の `Findings Freeze` 行の要求は不変で、case 6 がそのまま通る）。
 - SPEC-WF-HARNESS1-D5: merge gate の中核の維持。
-- SPEC-WF-HARNESS1-D6 / D7: 文書の github 一本化、drift test の要求先。
+- SPEC-WF-HARNESS1-D6 / D7: 文書の github 一本化、ci-workflow の validator の要求。reading-order-drift の要求は不変（PR3）。
 - SPEC-WF-HARNESS1-D8: phase1 probe の削除、execpolicy mirror の解消。
 - SPEC-WF-HARNESS1-D9: 本 PR 自身の検査を base 版で行う手順（test ではなく AC9 の記録）。
 - 保護する隣接契約: PK5、Plans.md「次の行動」link、active packet 1 つ、base 側 classifier、RecordV1、直接 UI merge 禁止、pre-push の Ready push 拒否。
 
 ## Failure Modes
 
-- F1: 旧 field（`Evidence Mode: github` / `Execution Mode` / `Findings Freeze`）を持つ並走 lane の packet が拒否される。
+- F1: 旧 field（`Evidence Mode: github` / `Execution Mode`）を持つ並走 lane の packet が拒否される。
 - F2: 新 template の packet（旧 field なし）が拒否される。
 - F3: marker の任意化で `Evidence Mode: legacy` や未知値、legacy field、実装後の Phase が通る。
 - F4: STATECAP / backtrack の検査が残り、通常の commit で Phase を更新した packet が止まる。
@@ -28,7 +28,7 @@ Risk: R3
 - F6: 保持すべき gate（PK5、Minimum の R4 / workflow 条件、Human Gate、snapshot 比較）が一緒に消える。
 - F7: Execution Mode の値で review 本数が変わり続ける、または snapshot 比較に残って旧 packet の行の削除で KeyError / 拒否が起きる。
 - F8: 旧 capture が新 helper で黙って受理される（形の違う snapshot で record が書かれる）。
-- F9: 文書が撤去済みの仕組みを指示し続ける、または drift test が消した文を要求して PR3 の削除を止める。
+- F9: 文書が撤去済みの仕組みを指示し続ける、または DEV_WORKFLOW の書き直しで直接 UI merge 禁止・残存リスクの文が消える。
 - F10: mirror の削除で wrapper の default 検索が存在しない path を渡して失敗する、または allowlist に残る。
 
 ## Test Matrix
@@ -40,16 +40,17 @@ Risk: R3
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| D1 / D2 / D4 | F2 | CLI | T-P1: 既定 fixture（新 template 形: marker・Execution Mode・Findings Freeze 行なし、10 field）が `PK4: Workflow State machine 整合 OK`（case 1 / 27 の置換） | どれかの旧 field がまだ必須 |
-| D1 / D2 / D4 | F1 | CLI（互換） | T-P2: 旧 template 形（`Evidence Mode: github`、`Execution Mode` を fable-window / dual-vendor-no-fable / codex-only / 任意文字列の 4 通り、`Findings Freeze` 行あり）が 4 通りとも OK（case 5 / 14 の exec mode loop の置換） | Execution Mode の enum 検査が残る、または旧行を拒否する |
+| D1 / D2 | F2 | CLI | T-P1: 既定 fixture（新 template 形: marker・Execution Mode 行なし、10 field、R3 の `Findings Freeze` 行あり）が `PK4: Workflow State machine 整合 OK`（case 1 / 27 の置換） | どれかの旧 field がまだ必須 |
+| D1 / D2 | F1 | CLI（互換） | T-P2: 旧 template 形（`Evidence Mode: github`、`Execution Mode` を fable-window / dual-vendor-no-fable / codex-only / 任意文字列の 4 通り、`Findings Freeze` 行あり）が 4 通りとも OK（case 5 / 14 の exec mode loop の置換） | Execution Mode の enum 検査が残る、または旧行を拒否する |
 | D1 | F3 | CLI（negative） | T-P3: `Evidence Mode: legacy` と `Evidence Mode: mystery` がそれぞれ ERROR（末尾 merge evidence schema block の置換）。marker 行なしは OK | marker の値検査が消える（legacy が通る）、または marker なしを拒否し続ける |
 | D1 | F3 | CLI（negative） | T-P4: legacy field 3 種をそれぞれ 1 行足した fixture が ERROR（`legacy field` を含む）。旧 case 22（Hosted CI enum）の置換 | legacy field の拒否が github 分岐と一緒に消える |
 | D1 / D5 | F3 / F6 | CLI（保持） | T-P5: Phase `local-verified` / `independent-review` / `human-confirm` / `ready-hosted-final` / `merge` / `review` が marker ありとなしの両方で ERROR。8 値はすべて OK（case 3 / 14 の phase loop の置換） | Phase 検査が marker あり（github）の時だけ働く、または enum が 13 値のまま |
 | D5 | F6 | CLI（保持） | T-P6: 必須 10 field（Phase / Risk / Plan Commit / Amendments / Coordinator / Writer / Plan Reviewer / Final Reviewer / Final Review Minimum / Human Gate）をそれぞれ欠いた fixture と空値の Coordinator が ERROR（case 21 の配列の置換） | 必須 field の一覧から誤って削る |
 | D5 | F6 | CLI（保持） | T-P7: R4 で `Final Review Minimum: 1`、`Human Gate: none`、R4 で r4 なしがそれぞれ ERROR（marker なしの fixture で） | Minimum / Human Gate の検査が github 分岐と一緒に消える |
 | D5 | F6 | CLI（保持、既存） | T-P8: case 4（Risk 不一致）、case 7（implementing で Plan Commit pending）、case 11 / 11c / 12 / 28（Plans link）、case 13 / 25（archive skip）、case 26（R1 skip）が変更前と同じ判定 | 隣接の PK4 検査が巻き添えで変わる |
-| D4 | — | CLI | T-P9: R3 fixture から `Findings Freeze` 行を除いて OK（case 6 の反転） | 行要求が残る |
-| D1 | F9 | CLI（parity） | case 18: `doc-consistency-check.sh` と `check-workflow-git.sh` の `WORKFLOW_STATE_PHASES` が同じ 8 値 | 片方だけ 13 値のまま |
+| D5 | F6 | CLI（保持、既存） | case 6: R3 fixture から `Findings Freeze` 行を除くと ERROR のまま（T-P9 は欠番、撤去は PR4） | 行要求を本 PR で誤って消す |
+| D1 / D5 | F3 / F6 | CLI（保持） | T-P10: case 23（`:973-986`）を `Human Gate: ready,merge` に替え、Phase plan-gate・`Plan Commit: pending`・日本語先頭値の Plan Reviewer が OK（旧 case の `Human Gate: none` は無条件化した検査で ERROR になるため形だけ替え、自由記述と pending を拒否しない意図を保つ） | pending・自由記述を誤って拒否する、または case 23 を削って意図を失う |
+| D1 | F9 | CLI（parity） | case 18: `doc-consistency-check.sh` と `check-workflow-git.sh` の `WORKFLOW_STATE_PHASES` が同じ 8 値。`check-workflow-git.sh` の `main` は固定の `case` ではなくこの変数で Phase を判定する（S2）ので、parity が実際の検査を守る | 片方だけ 13 値のまま、または `main` が変数を使わず parity が検査と無関係になる |
 
 ### PK5 検査（`scripts/tests/workflow-git-checks.test.sh`）
 
@@ -61,8 +62,8 @@ fixture の `write_packet` に `- Phase: implementing`（pending の case は `p
 | D3 | F5 | git fixture（negative） | T-G2: plan-first を rebase して非 ancestor にし、patch-id 同値の `Rebase Map: <old> -> <new>` 行を足しても `は現在の HEAD の祖先ではありません` で ERROR（旧 T-PK5 正例の反転） | Map の解釈が残り escape hatch になる |
 | D3 / D5 | F6 | git fixture（保持、既存） | T-G3: shallow clone が `full history required` で ERROR、無関係な shallow ref は OK（現 `:729-745`） | full history の要求を STATECAP と一緒に削る |
 | D1 | F3 | git fixture | T-G4: marker なし + Phase implementing は OK、`Evidence Mode: legacy` / `mystery` は ERROR、`Phase: local-verified` は marker の有無に関わらず ERROR、Phase 行なしは ERROR（現 `:709-727` の置換） | marker を必須のまま残す、または Phase 検査が marker 依存 |
-| D3 | F4 | git fixture | T-G5: active packet ありで、`docs(plans): state-only遷移 ...` の forward commit 4 件と隣接する `docs(plans): state-backtrack ...` 2 件を積んでも exit 0 で、出力に `STATECAP` を含まない | STATECAP / backtrack 検査が残る |
-| D3 | F4 | git fixture | T-G6: `docs/plans/` が無い repo（packet 0 件）で同じ commit 列でも exit 0、`STATECAP` を含まない（変更前は packet 0 件でも STATECAP が走っていた） | packet 0 件の分岐に STATECAP が残る |
+| D3 | F4 | git fixture | T-G5: active packet ありで、`docs(plans): state-only遷移 ...` の forward commit 4 件と隣接する `docs(plans): state-backtrack ...` 2 件を積んでも exit 0 で、出力に `STATECAP` を含まない（回帰用。旧実装も active github packet がある時は STATECAP を走らせないため、STATECAP の撤去を判別するのは T-G6） | 通常の commit 列が PK5 検査を妨げる |
+| D3 | F4 | git fixture | T-G6: `docs/plans/` が無い repo（packet 0 件）で同じ commit 列でも exit 0、`STATECAP` を含まない。STATECAP の撤去を判別する test（変更前は packet 0 件で STATECAP が走り ERROR になる） | STATECAP / backtrack 検査が残る |
 
 ### helper（`scripts/tests/pr-gate.test.py`）
 
@@ -81,7 +82,7 @@ fixture の `write_packet` に `- Phase: implementing`（pending の case は `p
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| D7 | F9 | drift test | T-D1: `reading-order-drift.test.sh` — `直接UI merge` と `残存リスク` を `AGENTS.md` と `docs/DEV_WORKFLOW.md` に要求し、どちらかから `直接UI merge` の行を消した写しで検査関数が失敗する。`.agents/skills/*` の `Evidence Mode` は要求しない | 安全境界の要求が消える、または PR3 が消す定型文を要求し続ける |
+| D6 / D7 | F9 | drift test（変更なし） | T-D1: `reading-order-drift.test.sh` を変更せずに実行して exit 0。DEV_WORKFLOW の書き直し後も `直接UI merge` と `残存リスク` の文が残り、`CLAUDE.md`・PR template・Skill は編集しない（要求先の整理は PR3） | DEV_WORKFLOW の書き直しで安全境界の文が消える |
 | D6 / D7 | F9 | drift test | T-D2: `ci-workflow.test.sh` — `validate_public_actions_doc_contract` が ci.md の「Actions 利用不能なら merge を停止」の文を要求し、その文を消した写しで失敗する（M3 の 3 mutation の置換）。CI-PUBLIC-D1 / CI-TRIGGER-D1 と表 3 行の既存 mutation は維持 | 旧 2 経路の文を要求し続ける、または Actions 停止時の規則が消えても通る |
 | D8 | F10 | wrapper test | T-W1: `codex-safe-wrappers.test.sh` — fixture に `.codex/execpolicy.rules` を作らず T4 の default 検索が成功し一覧に `.codex/rules/default.rules` を含む。T11 は `.codex/rules/default.rules` に history-view token が無いこと、`git -C "$SOURCE_ROOT" ls-files --error-unmatch .codex/execpolicy.rules` が失敗することを確認する | wrapper の default 一覧に削除した path が残る（rg が存在しない path で失敗）、または file が残る |
 
@@ -101,13 +102,13 @@ workflow-state の変更として、github 方式の観点（capture / server �
 |---|---|---|---|---|
 | packet の field の解釈 | `scripts/doc-consistency-check.sh` PK4、`scripts/check-workflow-git.sh` `main`、`scripts/pr-gate.py` `FIELDS` / `parse_packet` / `requirements`（`rg -n 'Execution Mode\|Evidence Mode' scripts`） | 3 script すべて | なし | T-P1〜T-P5、T-G4、T-H1〜T-H2 |
 | Phase enum の定義 | `doc-consistency-check.sh:1270,1273`、`check-workflow-git.sh:38,384`、`pr-gate.py:164,172`、DEV_WORKFLOW Workflow State、template | すべて 8 値へ | なし | case 18、T-P5、T-G4 |
-| legacy 方式の文書上の指示 | DEV_WORKFLOW、ci.md、merge-evidence、template 2 本、MANUAL `:56,61,236,268`、project-profile `:160,163,237` | 左記すべて | 入口の定型文（AGENTS / CLAUDE / `.claude/**` / Skills / code_review / review 系 template / shared / README / HANDOFF / PR template）は PR3。条件文で誤った操作へ導かない（legacy packet は作れない）。`.agents/skills/inventory-code-review/SKILL.md:60` は無条件の指示として残る残余 | AC6、Review Focus |
-| 安全境界「直接 UI merge 禁止」の所在 | AGENTS / CLAUDE / DEV_WORKFLOW / ci.md / PR template（`rg -n '直接UI merge'`） | test の要求先を AGENTS + DEV_WORKFLOW へ | CLAUDE / PR template / ci.md の文は残す（削除は PR3） | T-D1 |
-| execpolicy の参照 | wrapper 3 本、wrapper test、`.codex/README.md`、decision-log D-049 | wrapper・test・README | decision-log は追記型で非変更（D-091 で扱う） | T-W1、AC8 |
+| legacy 方式・撤去済み Phase 名の文書上の指示 | DEV_WORKFLOW、ci.md（`:90` の MG-D11 参照を含む）、merge-evidence（状態表 `:122-123` を含む）、template 2 本、MANUAL `:56,61,82,236,268`、project-profile `:160,163,237` | 左記すべて | 入口の定型文（AGENTS / CLAUDE / `.claude/**` / Skills / code_review / review 系 template / shared / README / HANDOFF / PR template）は PR3。条件文で誤った操作へ導かない（legacy packet は作れない）。`.agents/skills/inventory-code-review/SKILL.md:60` は無条件の指示として残る残余 | AC6、Review Focus |
+| 安全境界「直接 UI merge 禁止」の所在 | AGENTS / CLAUDE / DEV_WORKFLOW / ci.md / PR template（`rg -n '直接UI merge'`） | DEV_WORKFLOW の書き直しで文を残す | test の要求先の整理と CLAUDE / PR template の文の扱いは PR3 | T-D1 |
+| execpolicy の参照（`rg --hidden`） | wrapper 3 本、wrapper test、`.codex/README.md`、`.codex/rules/default.rules:2`、decision-log D-049 | wrapper・test・README・default.rules の注記 | decision-log は追記型で非変更（D-091 で扱う） | T-W1、AC8 |
 
 ## Negative Paths
 
-- missing input: 必須 10 field の欠落・空値 → ERROR（T-P6）。marker・Execution Mode・Findings Freeze の欠落 → OK（T-P1、T-P9）。Phase 行の欠落 → checker と PK5 検査の両方で ERROR（T-P6、T-G4）。
+- missing input: 必須 10 field の欠落・空値 → ERROR（T-P6）。marker・Execution Mode の欠落 → OK（T-P1）。R3 の `Findings Freeze` 行の欠落 → 従来どおり ERROR（case 6）。Phase 行の欠落 → checker と PK5 検査の両方で ERROR（T-P6、T-G4）。
 - invalid input: `Evidence Mode: legacy` / 未知値、legacy field、Phase 8 値外 → ERROR（T-P3〜T-P5、T-G4、T-H1）。Execution Mode の任意値 → OK（T-P2、T-H2）。
 - duplicate/ambiguous input: 同じ key の重複は helper が従来どおり拒否（`workflow_fields` の `duplicate packet fields`、変更しない）。Rebase Map 行は解釈せず、ancestry は記録 SHA で判定（T-G2）。
 - unknown reference: 解決できない Plan Commit / Amendments SHA → 従来どおり ERROR（T-G1）。
@@ -148,7 +149,7 @@ workflow-state の変更として、github 方式の観点（capture / server �
 
 ## Mutation-style Adequacy Questions
 
-AC5 の実注入は、保持行ごとに 1 回、次の mutation を本 PR の変更後の code に入れて red を確認し、戻す。
+AC5 の実注入は、保持行ごとに 1 回、次の mutation を本 PR の変更後の code に入れて red を確認し、戻す（Plan Review round 1 で T-P4 / T-P6 / T-P8 / T-G4 / T-H4 を追加）。
 
 - If a guard is removed, which test fails?
   - `pr-gate.py` の `double = ... or flags['workflow'] == 'true'` から workflow 条件を消す → T-H3 が red。
@@ -158,13 +159,18 @@ AC5 の実注入は、保持行ごとに 1 回、次の mutation を本 PR の�
   - `doc-consistency-check.sh` の R4 Minimum 2 検査を消す → T-P7 が red。
   - `check-workflow-git.sh` の Plan Commit 書換え検出（`first_value` の比較）を消す → T-G1 の書換え case が red。
   - `check-workflow-git.sh` の shallow 検査を消す → T-G3 が red。
+  - `doc-consistency-check.sh` の legacy field 拒否を、以前の形（marker が github の時だけ）に戻す → T-P4（marker なしの fixture に legacy field を足す case）が red。
+  - `doc-consistency-check.sh` の必須 field の一覧から `Final Reviewer` を削る → T-P6 の `Final Reviewer` 欠落 case が red。
+  - `doc-consistency-check.sh` の Risk 一致検査（`ws_risk_value != valid_risk`）を消す → T-P8 の case 4 が red。Plans.md「次の行動」link 検査を消す → case 12 が red。
+  - `check-workflow-git.sh` の marker 値検査を消す → T-G4 の `Evidence Mode: legacy` case が red。Phase 検査を marker が github の時だけに戻す → T-G4 の marker なし `Phase: local-verified` case が red。
+  - `pr-gate.py` の `R4 gates missing` の require を消す → `test_r4_approval_gate_cannot_be_omitted`（T-H4）が red。`double` の R4 条件を消す → `test_r4_minimum_one_rejected`（T-H4）が red。
 - If a removed guard is wrongly kept, which test fails?
   - `pr-gate.py` に codex-only R3 UI 分岐を戻す → T-H7a が red。
   - 比較対象に `Execution Mode` を戻す → T-H6 が red。
-  - `check_state_only_commit_cap` の呼出しを戻す → T-G5 / T-G6 が red。
+  - `check_state_only_commit_cap` の呼出しを旧条件（legacy packet があるか packet 0 件の時）で戻す → T-G6 が red。T-G5 は active packet があるため旧条件では STATECAP が走らず green のまま（判別には使わない）。
   - Rebase Map の chain 解決を戻す → T-G2 が red。
-  - PK4 の Execution Mode 必須検査を戻す → T-P1 が red。Findings Freeze 行の要求を戻す → T-P9 が red。
-  - reading-order-drift に Skill の `Evidence Mode` 要求を戻す → PR3 で定型文を消した時点で red になる（本 PR では観測できないため固定 AC にしない。T-D1 は要求の不在を関数の対象 file 一覧で確認する）。
+  - PK4 の Execution Mode 必須検査を戻す → T-P1 が red。
+  - PK4 の `Findings Freeze` 行要求を誤って消す → case 6 が red。
 - If a key branch is inverted, which test fails? marker の値検査を「github 以外を受理」に反転 → T-P3 / T-G4 / T-H1 が red。
 - If tracked Workflow State stores the current PR HEAD, does a state commit make it stale immediately? 本 PR 後も tracked に実装後の状態・exact-HEAD を置かない（Phase 8 値、Evidence Ownership を維持）。
 - If output order changes / an output field is omitted: helper の `requirements` から `mode` を外す変更は capture の形を変える → T-H7b が旧形の capture を拒否することで固定する。
@@ -173,5 +179,5 @@ AC5 の実注入は、保持行ごとに 1 回、次の mutation を本 PR の�
 
 - 本 PR の merge 前の main から切った branch で新 template を使うと旧 checker / helper が拒否する制約は、運用規則（Ordinary Operation）で扱い、test では固定しない（旧版の script は本 PR の test から呼べない）。
 - AC9 の base 版 helper の実行は、実 PR と GitHub API を要するため自動 test にしない。PR body の記録と Final Review で確認する。
-- 入口文書の定型文（PR3）と `.agents/skills/inventory-code-review/SKILL.md:60` は本 PR 後も残る。reviewer への影響は Review Focus で確認し、PR3 で消す。
-- 文面が公式 Opus 5.5 prompting guide と整合するかは review の判断で、機械検査しない。
+- 入口文書の定型文（PR3）と `.agents/skills/inventory-code-review/SKILL.md:60` は本 PR 後も残る。reviewer への影響は Review Focus で確認し、PR3 で消す。reading-order-drift の要求（4 file と Skill 5 本）も PR3 まで変えない。
+- 文面が公式 Opus 5.5 prompting guide と整合するか（S6 の data 扱いの文と再開規則の追加、MANUAL `:82` の停止規則を含む）は review の判断で、機械検査しない。
