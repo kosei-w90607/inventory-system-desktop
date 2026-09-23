@@ -47,10 +47,10 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 | M9 R9 | 計数前の販売と計数後の返品が同じ精算で相殺し、帳簿が現物より 1 少ないまま残る | model | `check_unknown_apply_recheck`（R9 の場合） | 数量 0 の行を EJ の条件なしに flag なしとする mutation（AC5 (iv)）で red |
 | M9 R9 | EJ が無いのに数量 0 の行を flag なしで通す、確認待ちで確定を通す | model / Contract Audit | 同 check の (c)、ADR D4 と 35 の読取り | 確認待ちで確定が通る、または EJ が無いのに flag が付かない |
 | M9 R9 | 帰属できない行・商品別合計の不一致・別の精算の EJ を完全とみなし、名称変更後の商品を「行なし」にする | model / Contract Audit | 同 check の (d)、mutation (v)、ADR D5 と R9 の照合 | 帰属できない行があるのに区間の 0 行へ flag が付かない、照合に今のマスタ名を使う |
-| M9 R9 | 部門売りの行や明細でない行で区間を不完全にし、毎日の 0 行が全て確認待ちになる | model / Contract Audit | 同 check の (d) の部門売りの場合、ADR D4 / D5 と R9 の行の分類の照合 | 部門名に一意に一致する行か合計・支払・税の行だけの区間で確認待ちが付く |
-| M9 R9 | 区間の途中で名称が入れ替わった行を別の商品へ帰属させる、価格だけ・廃番・名称変更の PLU 書出しや名称の重なり（16 バイトの切り詰め・部門名との一致）で区間全体を不完全にして動きのない数えた商品を全て確認待ちにする（Gated Amendment 1 / 2 / 3） | 合成モデル AC5 (f)、Contract Audit | R9 の変わった名称の集合と区間の EJ の行の照合、「前回」の決め方、ADR D5 | 変わった名称の行があっても区間を完全とみなす（mutation (vi)）、または変わった名称があるだけで行の有無を問わず不完全とする（mutation (vii)） |
+| M9 R9 | 部門売りの行や明細でない行で区間を不完全にし、毎日の 0 行が全て確認待ちになる | model / Contract Audit | 同 check の (d) の部門売りの場合、ADR D4 / D5 と R9 の行の分類の照合 | 部門名だけに一致する行か合計・支払・税の行だけの区間で確認待ちが付く |
+| M9 R9 | 区間の途中で名称が入れ替わった行や名称が重なる行（16 バイトの切り詰め・部門名との一致）の候補の商品に相殺の行ありを付けず相殺を見逃す、価格だけ・廃番・名称変更の PLU 書出しや名称の重なりで区間全体を不完全にして動きのない数えた商品を全て確認待ちにする、名称の入替えや部門売りとの重なりで合計の照合を不一致にする、最初の区間と前回の Z004 の未受領を取り違える（Gated Amendment 1〜3 と GA3 の補足 2） | 合成モデル AC5 (f)(g)(h)、Contract Audit | R9 の変わった名称の集合・候補の商品・合計の照合の単位（連結成分）・「前回」の見分け方と区間の EJ の行の照合、ADR D4 / D5 | GA3 以降は、変わった名称の行や名称が重なる行があっても区間を完全とみなし、候補の商品だけに相殺の行ありを付けるのが正しい挙動。失敗は候補に flag を付けない側と区間全体を不完全にする側で、次の mutation で red: 変わった名称の行を無視する (vi)、変わった名称があるだけで行の有無を問わず区間を不完全にする (vii)、複数一致の行で区間全体を不完全にする (viii)、候補から前回の組を外す (ix)、名称をキーにした対応表で比べる (x)、部門名とも一致する名称の行を合計の照合に含める (xi)、合計の照合を名称ごとに行う (xii)、一度も受領していない machine_no と未受領を区別しない (xiii) |
 | M9 R9 | 数量 0 で金額が 0 でない行を EJ 待ちにする、または見落とす | model | 同 check の (e) | その行が相殺の行ありにならない |
-| M9 R9 | 後から取り込んだ EJ で確認待ちを再評価しない、行ありを見落とす | Contract Audit | ADR D4 / D5 と 32 の読取り | 確認待ちが数え直しでしか解消しない、または行ありの EJ で解消してしまう |
+| M9 R9 | 後から取り込んだ EJ で確認待ちを再評価しない、行ありを見落とす | Contract Audit | ADR D4 / D5 と 32 の読取り | EJ待ちが数え直しでしか解消しない、行ありの EJ で解消してしまう、または登録の変化が EJ の再取込みで解消する |
 | M9 R9 | 活動のない商品の行を相殺とみなして全商品に付ける | Contract Audit | packet Contract Probe（Z004 は全スロットを出力）と ADR D4 の照合 | 数量 0 の行そのものを flag の条件にする |
 | M10 R10 | EJ の取込みと R9 がないまま在庫連動を有効にでき、複数日の棚卸しが確定に届かない | Contract Audit / docs search | packet AC10、ADR D4 と 30 / 32 の読取り | `ej_unverified` の間に create / update / 商品一括 import で在庫連動を有効にできる、checkbox や設定 key で `ej_unverified` が消える |
 | M10 R10 | 既定値が true のままで ㉘ の商品登録・一括 import が全て拒否される、true→true の更新が拒否される | Contract Audit | R10 (b)(c) と 30 / 40 / 51 / 60 / master-tables の照合、packet AC10 | 既定値・提案値が false にならない、true→true が拒否される、60 が TX 全体を拒否する |
@@ -72,7 +72,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 | `req401_recount_after_received_source` | 維持（「時計異常」を「時刻を使わない」に読み替える） |
 | D3 の時刻経路の行（`req401_unknown_start_no_midnight`、`req401_settlement_series_uncertainty`、`req401_time_evidence_*`、`req401_file_bounds_*`、`req401_clock_invalidation_survives_rollback` 相当、`check_bounds` の runtime 対応、PC 時計 epoch の行） | ㉘ の対象外として削除。時刻区間の合成モデルは次の design lane の入力として残す |
 | `req401_settlement_identity_conflict` | 維持。「検証済み別 reset 系列は区別」を「系列の証明手段がないため同番の別 hash は常に衝突」へ置き換える |
-| `req401_zero_net_nonzero_after_count` | R9 の 3 分岐（EJ に行なし → flag なし、行あり → 要再確認、EJ なし → 確認待ちで確定を拒否）へ置き換える。EJ の取引単位の前後で純数量を分ける部分は次の design lane |
+| `req401_zero_net_nonzero_after_count` | R9 の分岐（完全な EJ に候補の行なし → flag なし、行あり → 相殺の行あり、EJ なし・不完全・前回の Z004 が未受領 → EJ待ち、帰属できない行・前回を証明できない → 登録の変化。確認待ちは確定を拒否）へ置き換える。EJ の取引単位の前後で純数量を分ける部分は次の design lane |
 | `pos_stock_readiness_*`（共有 JAN・時計/EJ 未検証の表示） | 時計の issue を外し、商品単位の要再確認 issue を加える |
 | `req205_recount_flag_blocks_complete` | 維持。flag の key を (商品, 資料) に変える |
 | `req401_active_legacy_import_recheck` | 所属によらず通常適用 + flag に一般化する（完了済み所属の file 全体保留の oracle を外す） |
@@ -86,7 +86,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 計数 context | なし | 開始・数量未保存 | 1 商品 TX で保存 | 商品切替・離脱・abandon・DB 交換・revision / 所有者の不一致。sleep と時刻変更では失効しない | 保存済みは DB が正 | 新しい begin | 未保存 token を失う | 書込み 0 | 新しい begin | M1 |
-| 要再確認 flag（(商品, 資料)、理由 5 値） | なし | — | 取込みの業務 TX で保存 | 当該資料を開始前に受領した新しい実測の保存、当該 import の取消。EJ待ちは R9 を満たす EJ の取込みでも再評価、登録の変化は数え直しでだけ解消（前回の Z004 が未受領なだけの区間はその受領で再評価） | 準備照会・棚卸し一覧 | 準備表示に残る | DB に残る | 取込み TX 全体を戻す | 数え直し | M3 |
+| 要再確認 flag（(商品, 資料)、理由 5 値） | なし | — | 取込みの業務 TX で保存 | 当該資料を開始前に受領した新しい実測の保存、当該 import の取消。EJ待ち（前回の Z004 が未受領なだけの区間を含む）は R9 を満たす EJ か前回の Z004 の取込みでも再評価、登録の変化は数え直しでだけ解消 | 準備照会・棚卸し一覧 | 準備表示に残る | DB に残る | 取込み TX 全体を戻す | 数え直し | M3 |
 | 共有 JAN 行の保留 | 未取込み | preview で held | 全候補を数えて再 preview → commit | 保留集合は永続しない | 同じ file の再選択 | 再選択が要る | 再選択が要る | 業務 write なし | 再 preview | M3 |
 | legacy 取消の保留 | 取消要求 | void 前に停止 | 新しい適用済み実測の後の再試行で取消 | — | 対象商品の回復先 | 同じ | 同じ | 業務 write なし | 計数と確定、または独立再実測 → 再試行 | M4 |
 
@@ -157,5 +157,5 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 
 - runtime の実装・Windows L3 は ㉘ で行う。本 lane の Contract Audit は文書の読取りによる確認。
 - 「開始してから数える」の物理的な成立は agent では検証できない（owner の見立てでは成り立つ、TD-025）。
-- R9 の EJ の外部前提（戻・訂正・取消・値引きの行の形、精算区間の対応、名称からの商品の特定、締めでの取得）は実機と承認済みサンプルで確かめる。R10 により、EJ の日次取込みと R9 が入るまで在庫連動は有効にできないので、その間に確認待ちは本番で発生しない（開発・試験 DB の既存の有効設定だけで現れる）。
+- R9 の EJ の外部前提（戻・訂正・取消・値引きの行の形、精算区間の対応、名称の重なりの程度、締めでの取得）は実機と承認済みサンプルで確かめる。R10 により、EJ の日次取込みと R9 が入るまで在庫連動は有効にできないので、その間に確認待ちは本番で発生しない（開発・試験 DB の既存の有効設定だけで現れる）。
 - 時刻区間の合成モデル（`check_bounds` 等）は残るが、現行の ADR の契約を検証するものではなくなる。次の design lane で扱いを決める。
