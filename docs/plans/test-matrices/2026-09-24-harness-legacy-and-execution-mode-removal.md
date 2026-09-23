@@ -84,7 +84,7 @@ fixture の `write_packet` に `- Phase: implementing`（pending の case は `p
 |---|---|---|---|---|
 | D6 / D7 | F9 | drift test（変更なし） | T-D1: `reading-order-drift.test.sh` を変更せずに実行して exit 0。DEV_WORKFLOW の書き直し後も `直接UI merge` と `残存リスク` の文が残り、`CLAUDE.md`・PR template・Skill は編集しない（要求先の整理は PR3） | DEV_WORKFLOW の書き直しで安全境界の文が消える |
 | D6 / D7 | F9 | drift test | T-D2: `ci-workflow.test.sh` — `validate_public_actions_doc_contract` が ci.md の「Actions 利用不能なら merge を停止」の文を要求し、その文を消した写しで失敗する（M3 の 3 mutation の置換）。CI-PUBLIC-D1 / CI-TRIGGER-D1 と表 3 行の既存 mutation は維持 | 旧 2 経路の文を要求し続ける、または Actions 停止時の規則が消えても通る |
-| D8 | F10 | wrapper test | T-W1: `codex-safe-wrappers.test.sh` — fixture に `.codex/execpolicy.rules` を作らず T4 の default 検索が成功し一覧に `.codex/rules/default.rules` を含む。T11 は `.codex/rules/default.rules` に history-view token が無いこと、`git -C "$SOURCE_ROOT" ls-files --error-unmatch .codex/execpolicy.rules` が失敗することを確認する | wrapper の default 一覧に削除した path が残る（rg が存在しない path で失敗）、または file が残る |
+| D8 | F10 | wrapper test | T-W1: `codex-safe-wrappers.test.sh` — fixture に `.codex/execpolicy.rules` を作らず T4 の default 検索が成功し一覧に `.codex/rules/default.rules` を含む。T11 は `.codex/rules/default.rules` に history-view token が無いこと、`git -C "$SOURCE_ROOT" ls-files --error-unmatch .codex/execpolicy.rules` が失敗することを確認する（この file は T11 に path の文字列が残るため AC8 の `rg` から除外し、この test が担保する） | wrapper の default 一覧に削除した path が残る（rg が存在しない path で失敗）、または file が残る |
 
 ## State Lifecycle Matrix
 
@@ -102,7 +102,7 @@ workflow-state の変更として、github 方式の観点（capture / server �
 |---|---|---|---|---|
 | packet の field の解釈 | `scripts/doc-consistency-check.sh` PK4、`scripts/check-workflow-git.sh` `main`、`scripts/pr-gate.py` `FIELDS` / `parse_packet` / `requirements`（`rg -n 'Execution Mode\|Evidence Mode' scripts`） | 3 script すべて | なし | T-P1〜T-P5、T-G4、T-H1〜T-H2 |
 | Phase enum の定義 | `doc-consistency-check.sh:1270,1273`、`check-workflow-git.sh:38,384`、`pr-gate.py:164,172`、DEV_WORKFLOW Workflow State、template | すべて 8 値へ | なし | case 18、T-P5、T-G4 |
-| legacy 方式・撤去済み Phase 名の文書上の指示 | DEV_WORKFLOW、ci.md（`:90` の MG-D11 参照を含む）、merge-evidence（状態表 `:122-123` を含む）、template 2 本、MANUAL `:56,61,82,236,268`、project-profile `:160,163,237` | 左記すべて | 入口の定型文（AGENTS / CLAUDE / `.claude/**` / Skills / code_review / review 系 template / shared / README / HANDOFF / PR template）は PR3。条件文で誤った操作へ導かない（legacy packet は作れない）。`.agents/skills/inventory-code-review/SKILL.md:60` は無条件の指示として残る残余 | AC6、Review Focus |
+| legacy 方式・撤去済み Phase 名の文書上の指示 | DEV_WORKFLOW、ci.md（`:90` の MG-D11 参照を含む）、merge-evidence（状態表 `:122-123` を含む）、template 2 本、MANUAL `:56,61,82,236,268`、project-profile `:160,163,237` | 左記すべて | 入口の定型文（AGENTS / CLAUDE / `.claude/**` / Skills / code_review / review 系 template / shared / README / HANDOFF / PR template）は PR3。条件文で誤った操作へ導かない（legacy packet は作れない）。`.agents/skills/inventory-code-review/SKILL.md:60` は無条件の指示として残る残余。WER template `docs/templates/workflow-effectiveness-review.md:78` は PR4。PR0 が archive へ移した context-efficiency は変えない | AC6、Review Focus |
 | 安全境界「直接 UI merge 禁止」の所在 | AGENTS / CLAUDE / DEV_WORKFLOW / ci.md / PR template（`rg -n '直接UI merge'`） | DEV_WORKFLOW の書き直しで文を残す | test の要求先の整理と CLAUDE / PR template の文の扱いは PR3 | T-D1 |
 | execpolicy の参照（`rg --hidden`） | wrapper 3 本、wrapper test、`.codex/README.md`、`.codex/rules/default.rules:2`、decision-log D-049 | wrapper・test・README・default.rules の注記 | decision-log は追記型で非変更（D-091 で扱う） | T-W1、AC8 |
 
