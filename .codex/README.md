@@ -89,7 +89,7 @@ effort など用途別設定は profile で調整できる。一時指定には 
 設定仕様: [公式 config reference](https://learn.chatgpt.com/docs/config-file/config-reference)。
 
 Mouse wheel absorption into the Codex composer is tracked separately in
-`status-bar/README.md`. The split-pane bar was tested as a possible cause, but
+`docs/archive/harness-context/2026-09-24-codex-status-bar-notes.md`. The split-pane bar was tested as a possible cause, but
 the symptom also reproduced after removing the split pane while remaining in
 the tmux wrapper path. Raw Codex with and without `--no-alt-screen` did not
 reproduce the symptom, and `CODEX_INVENTORY_NO_BAR=1` also did not reproduce.
