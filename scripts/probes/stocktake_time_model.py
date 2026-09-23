@@ -101,7 +101,8 @@ def z004_names(register: dict[int, tuple[str, int]]) -> Names:
 PENDING, MAPPING, LINES = "offset_check_pending", "offset_mapping_changed", "offset_lines_present"
 # The previous Z004 of an interval as BIZ knows it from its receipts (ADR D5), when not its pairs:
 FIRST = "first"  # no Z004 of this machine_no was received before this one
-ROLLED_BACK = "rolled_back"  # settlement_no below the largest one received (reset / replacement)
+ROLLED_BACK = "rolled_back"  # a received settlement_no arrived again as another settlement (reset)
+EARLIER = "earlier"  # settlement_no below the smallest received: its previous cannot be proven
 UNRECEIVED = "unreceived"  # Z004s were received, but not the directly preceding settlement_no
 Previous = Names | str
 
@@ -110,21 +111,26 @@ class Machine:
     """Z004 receipts of one machine_no; "previous" is the directly preceding settlement_no."""
 
     def __init__(self) -> None:
-        self.seen: set[int] = set()
-        self.pairs: dict[int, Names] = {}  # previous candidates: receipts since the last going-back
+        # Receipts since the last going-back: previous candidates and the settlement identities
+        # that smallest / largest / gap / going-back are judged against.
+        self.pairs: dict[int, Names] = {}
+        self.ids: dict[int, str] = {}
         self.firsts: set[int] = set()  # settlement_nos received when nothing else was
 
-    def receive(self, settlement_no: int, names: Names = BASE_NAMES) -> Previous:
-        """Decided at the Z004 import, before and without the EJ."""
-        first = not self.seen
-        if first:
+    def receive(self, settlement_no: int, names: Names = BASE_NAMES, identity: str = "") -> Previous:
+        """Decided at the Z004 import, before and without the EJ. A gap between the smallest and
+        the largest received is filled as an ordinary late receipt."""
+        if not self.ids:
             self.firsts.add(settlement_no)
-        back = bool(self.seen) and settlement_no < max(self.seen)
-        if back:
-            self.pairs = {}  # never pair later Z004s with receipts from before the going-back
-        self.seen.add(settlement_no)
+        back = self.ids.get(settlement_no, identity) != identity  # same number, another settlement
+        if back:  # never pair later Z004s with receipts from before the going-back
+            self.pairs, self.ids, self.firsts = {}, {}, set()
+        earlier = bool(self.ids) and settlement_no < min(self.ids)
+        self.ids[settlement_no] = identity
         self.pairs[settlement_no] = names
-        return ROLLED_BACK if back else self.previous(settlement_no)
+        if back:
+            return ROLLED_BACK
+        return EARLIER if earlier else self.previous(settlement_no)
 
     def previous(self, settlement_no: int) -> Previous:
         if settlement_no - 1 in self.pairs:
@@ -205,7 +211,7 @@ class EJ:
 
 def offset_reason(ej: EJ | None, previous: Previous = BASE_NAMES, code: int = PRODUCT) -> str | None:
     """Zero-quantity, zero-amount row of a counted product (ADR D4, sale/return offset)."""
-    if previous in (FIRST, ROLLED_BACK):
+    if previous in (FIRST, ROLLED_BACK, EARLIER):
         return MAPPING  # decided at the Z004 import, before looking at any EJ
     if previous == UNRECEIVED or ej is None:
         return PENDING  # lines matching nothing are judged only against a received previous Z004
@@ -850,7 +856,7 @@ def check_unknown_apply_recheck() -> None:
     assert gap == UNRECEIVED
     ledger = offset_case(EJ(), previous=gap)
     assert reason_of(ledger, 1) == PENDING
-    machine.receive(11)
+    assert machine.receive(11) == BASE_NAMES  # a late gap fill, not a going-back
     ledger.reevaluate(1, EJ(), machine.previous(12))
     assert not ledger.flags
 
@@ -870,15 +876,34 @@ def check_unknown_apply_recheck() -> None:
     assert reason_of(ledger, 1) == PENDING
     ledger.reevaluate(1, ej, BASE_NAMES)
     assert reason_of(ledger, 1) == LINES
-    # F3: a settlement_no below the largest received is a registration change, and later
-    # "previous" candidates are receipts from the going-back on.
+    # F3: a going-back is only a received settlement_no arriving again as another settlement; it is
+    # a registration change, and later "previous" candidates are receipts from the going-back on.
     machine = Machine()
-    for settlement_no in range(1, 6):
+    for settlement_no in (1, 2, 3, 5):
         machine.receive(settlement_no)
-    assert machine.receive(3, renamed) == ROLLED_BACK
+    assert machine.receive(3, renamed, identity="reset") == ROLLED_BACK
     assert reason_of(offset_case(EJ(), previous=ROLLED_BACK), 1) == MAPPING
-    assert machine.receive(5) == UNRECEIVED  # the old 4 is not a candidate
-    assert machine.receive(4) == ROLLED_BACK and machine.previous(5) == BASE_NAMES
+    assert machine.receive(4, identity="reset") == renamed  # the new 3, not the old one
+    assert machine.receive(6, identity="reset") == UNRECEIVED  # the old 5 is not a candidate
+    # Below the smallest received: its previous cannot be proven (registration change), but it is
+    # still the directly preceding Z004 for the next settlement_no (F1 above).
+    machine = Machine()
+    machine.receive(5)
+    earlier = machine.receive(3)
+    assert earlier == EARLIER and reason_of(offset_case(EJ(), previous=earlier), 1) == MAPPING
+    # A gap between the smallest and the largest received is an ordinary late receipt: it pairs with
+    # its own previous and re-evaluates the first interval and the unreceived previous after it.
+    machine = Machine()
+    first = offset_case(EJ(), previous=machine.receive(10))
+    assert reason_of(first, 1) == MAPPING
+    assert machine.receive(8) == EARLIER
+    unreceived = offset_case(EJ(), previous=machine.receive(12))
+    assert reason_of(unreceived, 1) == PENDING
+    for settlement_no in (9, 11):
+        assert not offset_case(EJ(), previous=machine.receive(settlement_no)).flags
+    first.reevaluate(1, EJ(), machine.previous(10))
+    unreceived.reevaluate(1, EJ(), machine.previous(12))
+    assert not first.flags and not unreceived.flags
     # F4: no start evidence = incomplete (pending); evidence contradicting the previous = changed.
     assert reason_of(offset_case(EJ(start=None)), 1) == PENDING
     assert reason_of(offset_case(EJ(start=False)), 1) == MAPPING
