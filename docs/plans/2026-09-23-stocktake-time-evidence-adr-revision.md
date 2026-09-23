@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 47744266f45ae764270d61fd45377e5619ac16f2
-- Amendments: 8daadb3806c5bd0c1404b6ba5567b7acfcad9d12
+- Amendments: 8daadb3806c5bd0c1404b6ba5567b7acfcad9d12, 324ac9cb372b9fede6faf930a21ea74e63be0ab3
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree run、effort medium。Coordinator とも Plan Reviewer とも別 context）
 - Plan Reviewer: Opus 5.5（fork でない fresh subagent、effort medium。Codex は rate limit 中のため Plan Review には入れない）
