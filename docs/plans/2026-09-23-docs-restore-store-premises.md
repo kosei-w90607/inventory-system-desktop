@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: f7b58778714eaf15b76f7d28095cb40d041acf6b
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（worktree run）
@@ -33,6 +33,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない文書変
 
 - kickoff → spec-check → plan-draft（起草、未 commit）: Design Readiness のとおり既存の設計正本で足りるため design phase を経ない（spec-check → plan-draft の唯一の skip）。
 - plan-draft → plan-gate（2026-09-24、Coordinator）: packet を plan-first commit で確定し、`docs/Plans.md` の wave 13 に登録。fresh Opus の Plan Review へ。
+- plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 0 / P2 3 / P3 14、Ordinary Operation は `not applicable` 妥当）→ 是正 `d11502d6` → round 2（別の fresh Opus、P1 0 / P2 2 / P3 8）→ 是正 `c8048116`（owner 決定 2026-09-24: 評価額の丸めは `やると決めたもの（順番未定）`）→ round 3 closure（別の fresh Opus、P1/P2 = 0、P3 3）→ P3 を反映（P3-c の自動バックアップ timer の差は closeout で backlog へ）。Plan Commit = `f7b58778`。round 天井 3 に到達し通過。実装は Opus 5.5 subagent の worktree run。
 
 ## Owner Effort Budget
 
