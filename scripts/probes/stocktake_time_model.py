@@ -4,6 +4,8 @@
 Run: python3 scripts/probes/stocktake_time_model.py
 Contracts: REQ-205 / REQ-401, SPEC-STK-TIME-D1..D8.
 The oracle knows physical event times; the classifier sees only evidence bounds.
+The clock-interval part (bound_clock_interval, classify's trusted branch, check_bounds)
+no longer backs the ADR contract; it is kept as input for the next design lane.
 No filesystem input, store data, dependencies, or writes.
 """
 
@@ -85,6 +87,35 @@ def migration_kind(actual: int | None, counted_at: str | None, snapshot: int) ->
     return "legacy"  # includes malformed legacy rows, never invent measured evidence
 
 
+@dataclass(frozen=True)
+class EJ:
+    """One synthetic EJ settlement interval, already classified by the EJ parser (ADR D5)."""
+    product_lines: frozenset[str] = frozenset()  # lines matched to one slot name
+    department_lines: int = 0  # known lines: never make the interval incomplete
+    non_item_lines: int = 0  # totals / payment / tax
+    unattributable_lines: int = 0
+    same_settlement: bool = True
+    sequence_complete: bool = True
+    totals_match: bool = True
+    plu_export_since_previous_z004: bool = False  # receipt-order check, no clock
+
+    def complete(self) -> bool:
+        return (
+            self.same_settlement and self.sequence_complete and self.totals_match
+            and not self.plu_export_since_previous_z004 and self.unattributable_lines == 0
+        )
+
+
+PRODUCT = "P"  # each Ledger models this one product
+
+
+def offset_reason(ej: EJ | None) -> str | None:
+    """Zero-quantity, zero-amount row of a counted product (ADR D4, sale/return offset)."""
+    if ej is None or not ej.complete():
+        return "offset_check_pending"
+    return "offset_lines_present" if PRODUCT in ej.product_lines else None
+
+
 @dataclass
 class Movement:
     id: int
@@ -101,8 +132,8 @@ class Observation:
     state: str  # pending / applied / superseded
     legacy: bool = False
     time: Count | None = None
-    rebased_from: int | None = None
     auto_filled: bool = False
+    sources: int = 0  # receipt cursor fixed when the count started
 
 
 class Ledger:
@@ -112,6 +143,9 @@ class Ledger:
         self.revision = 0
         self.legacy_ceiling = 0
         self.active_item = False  # an uncounted item owns the active flow too
+        self.received = 0  # max pos_import_sources id
+        self.flags: dict[int, tuple[str, int]] = {}  # source -> (reason, creating import)
+        self.imports: dict[int, list[int]] = {}  # import id -> movement ids
 
     @property
     def stock(self) -> int:
@@ -138,9 +172,11 @@ class Ledger:
         observation = Observation(
             self.revision, cursor, actual, snapshot,
             "applied" if immediate else "pending",
-            time=time,
+            time=time, sources=self.received,
         )
         self.observations.append(observation)
+        # A new count resolves flags for sources it already covered at start.
+        self.flags = {s: f for s, f in self.flags.items() if s > observation.sources}
         if not immediate:
             self.active_item = True
         return observation
@@ -156,6 +192,9 @@ class Ledger:
         return fill
 
     def complete(self) -> None:
+        latest = self.latest()
+        if self.flags and latest is not None and latest.state == "pending":
+            raise ValueError("an unresolved recount flag blocks completion, even with force_fill")
         for observation in self.observations:
             if observation.state != "pending":
                 continue
@@ -206,17 +245,47 @@ class Ledger:
         )
         return uncertain and movement_id <= self.legacy_ceiling and not applied_proof
 
-    def recover_legacy_rollback(self, movement_id: int, actual: int, time: Count | None = None) -> None:
-        assert self.needs_legacy_recheck(movement_id)
-        active = self.active_item
-        pending = [o for o in self.observations if o.state == "pending"]
-        for old in pending:
-            old.state = "superseded"
-        self.active_item = False  # only the dedicated recovery TX may do this
-        recount = self.observe(actual, immediate=True, time=time)
-        if active:
-            basis = self.observe(actual, time=time)  # derived N/N active basis
-            basis.rebased_from = recount.order
+    def receive(self) -> int:
+        self.received += 1
+        return self.received
+
+    def latest(self) -> Observation | None:
+        valid = [o for o in self.observations if o.state != "superseded" and not o.auto_filled]
+        return max(valid, key=lambda o: o.order) if valid else None
+
+    def import_row(self, source: int, sold: int, amount: int = 0, ej: EJ | None = None) -> int:
+        """One Z004 row for PRODUCT, classified by receipt order only (ADR D4)."""
+        basis = self.latest()
+        reason = None
+        if basis is not None and basis.legacy:
+            reason = "legacy_basis"
+        elif basis is not None and source <= basis.sources:
+            sold = 0  # before the count: sales and returns do not move stock
+        elif basis is not None:
+            if sold:
+                reason = "sale_order_unknown"
+            elif amount:
+                reason = "offset_lines_present"
+            else:
+                reason = offset_reason(ej)
+        import_id = len(self.imports) + 1
+        self.imports[import_id] = [self.move(-sold)] if sold else []
+        if reason:
+            self.flags[source] = (reason, import_id)
+        return import_id
+
+    def reevaluate(self, source: int, ej: EJ) -> None:
+        flag = self.flags.get(source)
+        if flag and flag[0] == "offset_check_pending" and ej.complete():
+            reason = offset_reason(ej)
+            if reason is None:
+                del self.flags[source]
+            else:
+                self.flags[source] = (reason, flag[1])
+
+    def rollback(self, import_id: int) -> None:
+        self.cancel_import(self.imports[import_id])  # a legacy hold raises before any write
+        self.flags = {s: f for s, f in self.flags.items() if f[1] != import_id}
 
 
 def check_bounds() -> None:
@@ -423,6 +492,7 @@ def check_lifecycle() -> None:
 
 
 def check_legacy_recovery() -> None:
+    # REQ-205 / D6: hold before void; release only through a normal APPLIED count.
     for quantity, active in product((-3, 3), ("none", "uncounted", "measured")):
         ledger = Ledger()
         imported = ledger.move(quantity)
@@ -430,7 +500,7 @@ def check_legacy_recovery() -> None:
         ledger.complete()
         ledger.migrate_legacy()
         if active == "measured":
-            ledger.observe(8)
+            ledger.observe(8)  # a new pending alone must not release the hold
         elif active == "uncounted":
             ledger.active_item = True
         stock_before = ledger.stock
@@ -440,16 +510,22 @@ def check_legacy_recovery() -> None:
             assert ledger.stock == stock_before and ledger.movements[imported - 1].active
         else:
             raise AssertionError("unknown legacy absorption silently undone")
-        ledger.recover_legacy_rollback(imported, 8)
-        if active != "none":
-            basis = ledger.observations[-1]
-            assert basis.state == "pending" and basis.actual == basis.snapshot == 8
-            assert basis.rebased_from is not None
-        ledger.move(4)  # movement after the recovery must survive both cancel and completion
-        ledger.cancel(imported)
-        assert ledger.stock == 12
+        if active == "none":
+            ledger.observe(8, immediate=True)  # independent recount
+        else:
+            try:
+                ledger.observe(8, immediate=True)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("release bypassed the active item")
+            ledger.observe(8)
+            ledger.complete()  # count and complete the active stocktake
+        assert ledger.stock == 8
+        ledger.cancel(imported)  # retry: undo and compensation cancel out
+        assert ledger.stock == 8 and not ledger.movements[imported - 1].active
+        ledger.move(4)  # a later movement survives completion and repeated cancel
         ledger.complete()
-        assert ledger.stock == 12
         ledger.cancel(imported)
         assert ledger.stock == 12
 
@@ -461,22 +537,133 @@ def check_legacy_recovery() -> None:
     ledger.cancel(new_import)  # new movement cannot be absorbed by a legacy observation
     assert ledger.stock == 10
 
-    # Migration while already pending; recovery must replace its OLD time evidence too.
+    # Migration while pending: the old pending is legacy; counting the item releases it.
     ledger = Ledger()
     imported = ledger.move(-3)
-    ledger.observe(10, time=Count(0, 1, 0))
+    ledger.observe(10)
     ledger.migrate_legacy()
-    fresh = Count(25, 30, 1)
-    ledger.recover_legacy_rollback(imported, 8, time=fresh)
-    recount, basis = ledger.observations[-2:]
-    assert basis.time == fresh and not basis.legacy
-    assert basis.rebased_from == recount.order and basis.order > recount.order
-    assert basis.cursor >= recount.cursor
-    later_file = Source(2, 10, 40, True)
-    assert classify(later_file, basis.time) == "unknown"  # old window would say AFTER
-    ledger.cancel(imported)
+    try:
+        ledger.cancel(imported)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("legacy pending did not hold the cancellation")
+    ledger.observe(8)
     ledger.complete()
+    ledger.cancel(imported)
     assert ledger.stock == 8
+
+
+def reason_of(ledger: Ledger, source: int) -> str | None:
+    return ledger.flags.get(source, (None, None))[0]
+
+
+def check_unknown_apply_recheck() -> None:
+    # REQ-205 / REQ-401, ADR D4: Unknown is applied as usual and flagged per (product, source).
+    # Confirmed product P: book 10 converges to physical 8 in all four cases.
+    for sold_before_count in (False, True):
+        for cancel_before_recount in (False, True):
+            ledger = Ledger()
+            ledger.observe(8 if sold_before_count else 10)  # physical at the count
+            ledger.complete()
+            source = ledger.receive()  # Z004 received after the count started
+            imported = ledger.import_row(source, sold=2)
+            assert ledger.stock == (6 if sold_before_count else 8)  # applied, not skipped
+            assert reason_of(ledger, source) == "sale_order_unknown"
+            if cancel_before_recount:
+                ledger.rollback(imported)
+                assert not ledger.flags
+                if sold_before_count:
+                    assert ledger.stock == 8
+                continue
+            recount = ledger.observe(8, immediate=True)  # physical 8
+            assert recount.actual - recount.snapshot == (2 if sold_before_count else 0)
+            assert ledger.stock == 8 and not ledger.flags
+            ledger.rollback(imported)  # undo +2 and compensation -2 cancel out
+            assert ledger.stock == 8
+
+    # In-progress stocktake: completion (and force_fill) wait for a fresh count.
+    for sold_before_count in (False, True):
+        ledger = Ledger()
+        ledger.observe(8 if sold_before_count else 10)
+        source = ledger.receive()
+        imported = ledger.import_row(source, sold=2)
+        for close in (ledger.complete, ledger.force_fill):
+            try:
+                close()
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("unresolved flag was bypassed")
+        ledger.observe(8)
+        assert not ledger.flags
+        ledger.complete()
+        assert ledger.stock == 8
+    ledger = Ledger()
+    ledger.observe(10)
+    imported = ledger.import_row(ledger.receive(), sold=2)
+    ledger.rollback(imported)  # cancelling the import also resolves its flag
+    assert not ledger.flags
+    ledger.complete()
+    assert ledger.stock == 10
+
+    # Received before the count: skipped without a flag. Legacy basis: flagged whatever the quantity.
+    ledger = Ledger()
+    source = ledger.receive()
+    ledger.observe(8, immediate=True)
+    ledger.import_row(source, sold=2)
+    assert ledger.stock == 8 and not ledger.flags
+    ledger = Ledger()
+    ledger.observe(10)
+    ledger.complete()
+    ledger.migrate_legacy()
+    source = ledger.receive()
+    ledger.import_row(source, sold=0)
+    assert reason_of(ledger, source) == "legacy_basis"
+
+    # Sale before the count, return after it, same settlement: Z004 shows 0 / 0.
+    def offset_case(ej: EJ | None, amount: int = 0) -> Ledger:
+        ledger = Ledger()  # book 10, physical 10
+        ledger.observe(9)  # one sold before the count
+        ledger.complete()  # book 9
+        ledger.import_row(ledger.receive(), sold=0, amount=amount, ej=ej)  # returned after
+        return ledger
+
+    # (a) EJ has a line for P: flagged, and the recount converges to physical 10.
+    ledger = offset_case(EJ(frozenset({PRODUCT})))
+    assert ledger.stock == 9 and reason_of(ledger, 1) == "offset_lines_present"
+    ledger.observe(10, immediate=True)
+    assert ledger.stock == 10 and not ledger.flags
+    # (b) complete EJ without a line for P: no flag.
+    assert not offset_case(EJ(frozenset({"Q"}))).flags
+    # (c) no EJ: pending check blocks completion; a later line-free EJ resolves it.
+    ledger = Ledger()
+    ledger.observe(10)
+    source = ledger.receive()
+    ledger.import_row(source, sold=0)
+    assert reason_of(ledger, source) == "offset_check_pending"
+    try:
+        ledger.complete()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("offset check pending did not block completion")
+    ledger.reevaluate(source, EJ(unattributable_lines=1))  # still incomplete
+    assert reason_of(ledger, source) == "offset_check_pending"
+    ledger.reevaluate(source, EJ())
+    assert not ledger.flags
+    ledger.complete()
+    assert ledger.stock == 10
+    ledger = offset_case(None)
+    ledger.reevaluate(1, EJ(frozenset({PRODUCT})))
+    assert reason_of(ledger, 1) == "offset_lines_present"
+    # (d) one unattributable line makes the interval incomplete even for P without lines;
+    # department sales and non-item lines alone do not.
+    assert reason_of(offset_case(EJ(unattributable_lines=1)), 1) == "offset_check_pending"
+    assert reason_of(offset_case(EJ(plu_export_since_previous_z004=True)), 1) == "offset_check_pending"
+    assert not offset_case(EJ(department_lines=3, non_item_lines=4)).flags
+    # (e) zero quantity with a nonzero amount is movement evidence without waiting for EJ.
+    assert reason_of(offset_case(None, amount=100), 1) == "offset_lines_present"
 
 
 def check_migration_and_fill() -> None:
@@ -537,5 +724,6 @@ if __name__ == "__main__":
     check_diagnostic_order()
     check_lifecycle()
     check_legacy_recovery()
+    check_unknown_apply_recheck()
     check_migration_and_fill()
-    print("PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy recovery, migration kinds, force_fill")
+    print("PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy hold and release, unknown apply and recheck, sale/return offset, migration kinds, force_fill")
