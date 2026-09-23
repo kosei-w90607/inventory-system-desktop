@@ -13,12 +13,31 @@ use crate::db::system_repo::{self, NewOperationLog};
 use crate::db::{DbConnection, DbError};
 use std::collections::HashMap;
 
-/// プレビュー済みデータをDBに書き込む
+/// BIZ-03 停止文言（32-biz-csv-import-service.md §15.0、SPEC-STOP-D2）
+const IMPORT_SUSPENDED_MESSAGE: &str =
+    "商品別CSV（Z004）の取込みの確定と取消は一時停止中です。在庫が二重に減ったり戻ったりする不具合を直すまで使えません。";
+
+pub(super) fn import_suspended() -> BizError {
+    BizError::ImportError(IMPORT_SUSPENDED_MESSAGE.to_string())
+}
+
+/// プレビュー済みデータをDBに書き込む。現行buildでは一時停止中で、最初の文で停止する。
+///
+/// docs/function-design/32-biz-csv-import-service.md §15.0（SPEC-STOP-D1）
+pub fn commit_csv_import(
+    _conn: &mut DbConnection,
+    _req: CommitRequest,
+) -> Result<ImportResult, BizError> {
+    Err(import_suspended())
+}
+
+/// 旧本体: プレビュー済みデータをDBに書き込む。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// CMD層から受け取ったキャッシュデータを使いTX内で一括実行する。
 ///
 /// docs/function-design/32-biz-csv-import-service.md §15.4
-pub fn commit_csv_import(
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn legacy_commit_csv_import(
     conn: &mut DbConnection,
     req: CommitRequest,
 ) -> Result<ImportResult, BizError> {
