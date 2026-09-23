@@ -18,8 +18,8 @@ MARKER = '<!-- inventory-workflow-v1 -->'
 POLICY = '.github/merge-gate-ruleset.json'
 SHA = re.compile(r'[0-9a-f]{40}\Z')
 OUTCOMES = {'pending', 'pass', 'fail', 'not-required'}
-FIELDS = {'Evidence Mode', 'Phase', 'Risk', 'Execution Mode', 'Plan Commit', 'Amendments',
-          'Coordinator', 'Writer', 'Plan Reviewer', 'Final Reviewer', 'Final Review Minimum', 'Human Gate'}
+FIELDS = {'Phase', 'Risk', 'Plan Commit', 'Amendments', 'Coordinator', 'Writer', 'Plan Reviewer',
+          'Final Reviewer', 'Final Review Minimum', 'Human Gate'}
 
 
 class GateError(Exception):
@@ -158,15 +158,15 @@ def parse_packet(text):
     fields = workflow_fields(text)
     require(FIELDS <= fields.keys(), 'packet fields missing/duplicate')
     text = markdown(text)
-    require(fields['Evidence Mode'] == 'github', 'helper requires explicit github mode')
+    # Retired marker lines are optional; other extra lines are accepted and not evaluated.
+    require(fields.get('Evidence Mode', 'github') == 'github', 'Evidence Mode is retired; write github or omit it')
     require(not {'Reviewed Content HEAD', 'Final Exact-HEAD Evidence', 'Hosted CI Requirement'} & fields.keys(),
-            'legacy fields in github packet')
+            'legacy fields in packet')
     require(fields['Phase'] in ('kickoff','spec-check','design','plan-draft','plan-gate','plan-approved','implementing','archive'),
             'invalid tracked github Phase')
     require(fields['Risk'] in ('R2', 'R3', 'R4'), 'invalid packet Risk')
     risks = re.findall(r'^Risk: (R[0-4])\s*$', text, flags=re.M)
     require(risks == [fields['Risk']], 'packet Risk section mismatch')
-    require(fields['Execution Mode'] in ('fable-window', 'dual-vendor-no-fable', 'codex-only'), 'unknown Execution Mode')
     plan = fields['Plan Commit']
     if plan == 'pending':
         require(fields['Phase'] in ('kickoff','spec-check','design','plan-draft','plan-gate'), 'approved Plan Commit missing')
@@ -181,7 +181,7 @@ def parse_packet(text):
     require(len(gates) == len(set(gates)) and {'ready', 'merge'} <= set(gates) <= {'ready', 'merge', 'manual', 'r4'},
             'Human Gate must explicitly include ready,merge')
     require(fields['Risk'] != 'R4' or ('r4' in gates and fields['Final Review Minimum'] == '2'), 'R4 gates missing')
-    return dict(phase=fields['Phase'], risk=fields['Risk'], mode=fields['Execution Mode'], plan_commit=plan, amendments=amendments,
+    return dict(phase=fields['Phase'], risk=fields['Risk'], plan_commit=plan, amendments=amendments,
                 minimum=int(fields['Final Review Minimum']), manual='manual' in gates, r4='r4' in gates)
 
 
@@ -237,18 +237,17 @@ class Gate:
                 approved_ref = result['amendments'][-1] if result['amendments'] else result['plan_commit']
                 approved = workflow_fields(self.contents(self.args.packet, approved_ref))
                 current = workflow_fields(packet_text)
-                for field in ('Risk', 'Execution Mode', 'Final Review Minimum', 'Human Gate'):
+                for field in ('Risk', 'Final Review Minimum', 'Human Gate'):
                     require(approved.get(field) == current[field], f'approved packet condition changed: {field}')
         else:
             require(not packets, 'R2+ active packet requires --packet')
             require(self.args.risk in ('R0','R1') and self.args.manual in ('required','not-required'),
                     'no-packet route needs --risk R0|R1 --manual required|not-required', 2)
             require(not (flags['workflow'] == 'true' and flags['rust'] == 'true'), 'CI execution change requires R3 packet')
-            result = dict(phase='implementing', risk=self.args.risk, mode=None, plan_commit=None, amendments=[], minimum=0,
+            result = dict(phase='implementing', risk=self.args.risk, plan_commit=None, amendments=[], minimum=0,
                           manual=self.args.manual == 'required', r4=False)
         if result['minimum']:
-            double = result['risk'] == 'R4' or flags['workflow'] == 'true' or (
-                result['risk'] == 'R3' and result['mode'] == 'codex-only' and flags['frontend'] == 'true')
+            double = result['risk'] == 'R4' or flags['workflow'] == 'true'
             require(not double or result['minimum'] == 2, 'required Double Audit minimum is 2')
         return result
 

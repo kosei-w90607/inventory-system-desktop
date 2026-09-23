@@ -17,7 +17,7 @@ ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('pr_gate', ROOT/'scripts/pr-gate.py')
 g=importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
 H='a'*40; B='b'*40; P='c'*40; OLD='d'*40
-REQ=dict(risk='R3',mode='codex-only',plan_commit=P,amendments=[],minimum=2,manual=True,r4=True)
+REQ=dict(risk='R3',plan_commit=P,amendments=[],minimum=2,manual=True,r4=True)
 
 def good_record():
     return dict(version=1,repo=g.REPO,pr=7,head=H,base=B,
@@ -79,24 +79,37 @@ class Records(unittest.TestCase):
         with self.assertRaises(g.GateError):self.gate.nonci(data)
         data['requirements']['manual']=False;self.gate.nonci(data)
     def test_packet_schema(self):
+        # T-H1: new template (no Evidence Mode / Execution Mode lines) is accepted and returns no mode.
         text='## Workflow State\n'+''.join(f'- {k}: {v}\n' for k,v in {
-            'Evidence Mode':'github','Phase':'implementing','Risk':'R3','Execution Mode':'codex-only',
+            'Phase':'implementing','Risk':'R3',
             'Plan Commit':P,'Amendments':'none','Coordinator':'owner','Writer':'codex',
             'Plan Reviewer':'opus','Final Reviewer':'sonnet','Final Review Minimum':'2','Human Gate':'ready,merge,manual'}.items())+'\n## Risk\nRisk: R3\n'
-        self.assertEqual(g.parse_packet(text)['minimum'],2)
-        for source,dest in [('Evidence Mode: github','Evidence Mode: legacy'),('Phase: implementing','Phase: local-verified'),('Final Review Minimum: 2','Final Review Minimum: 0'),('Human Gate: ready,merge,manual','Human Gate: none'),(P,'pending')]:
-            with self.assertRaises(g.GateError):g.parse_packet(text.replace(source,dest))
+        parsed=g.parse_packet(text)
+        self.assertEqual(parsed['minimum'],2)
+        self.assertNotIn('mode',parsed)
+        marker='- Phase: implementing'
+        mutants=[(marker,'- Evidence Mode: legacy\n'+marker),(marker,'- Evidence Mode: mystery\n'+marker),
+                 ('Phase: implementing','Phase: local-verified'),('Final Review Minimum: 2','Final Review Minimum: 0'),
+                 ('Human Gate: ready,merge,manual','Human Gate: none'),(P,'pending')]
+        mutants+=[(marker,f'- {field}: required\n'+marker) for field in ('Reviewed Content HEAD','Final Exact-HEAD Evidence','Hosted CI Requirement')]
+        for source,dest in mutants:
+            with self.subTest(dest=dest),self.assertRaises(g.GateError):g.parse_packet(text.replace(source,dest,1))
+        # T-H2: old template lines are accepted and Execution Mode is not evaluated.
+        for mode in ('fable-window','dual-vendor-no-fable','codex-only','waterfall（任意の文字列）'):
+            with self.subTest(mode=mode):
+                old=text.replace(marker,f'- Evidence Mode: github\n{marker}\n- Execution Mode: {mode}',1)
+                self.assertEqual(g.parse_packet(old),parsed)
 
 class RecordLifecycle(unittest.TestCase):
     setUp = Records.setUp
     # MG-D6 / GA1: server pass -> reused manual -> fresh capture -> current closure.
-    def exercise(self, old, kind='manual', outcome='pass', source=OLD, values=None, mutate_capture=False):
+    def exercise(self, old, kind='manual', outcome='pass', source=OLD, values=None, mutate_capture=False, captured_requirements=REQ):
         with tempfile.TemporaryDirectory() as tmp:
             self.gate.root=Path(tmp)
             folder=Path(tmp)/'.local/pr-gate';folder.mkdir(parents=True)
             server=None if old is None else dict(id=1,body='previous',updated_at='before',record=copy.deepcopy(old))
             snap=dict(version=1,repo=g.REPO,pr=7,head=H,base=B,packet=None,requirements=REQ,server=server)
-            capture=folder/'capture.json';capture.write_text(json.dumps(snap))
+            capture=folder/'capture.json';capture.write_text(json.dumps(snap|dict(requirements=captured_requirements)))
             if mutate_capture and server:server['updated_at']='changed'
             self.gate.args=args(capture=str(capture),kind=kind,outcome=outcome,review_stage='closure',
                 reuse_from=source if kind=='manual' else None,reuse_approval='https://example.invalid/owner' if source and kind=='manual' else None,
@@ -138,6 +151,10 @@ class RecordLifecycle(unittest.TestCase):
         current=self.exercise(self.previous(),kind='review',source=None)
         self.assertEqual(current['manual']['outcome'],'pending')
         with self.assertRaises(g.GateError):self.exercise(current)
+    def test_old_shape_capture_requires_fresh_capture(self):
+        # T-H7b: a capture made before the requirements lost 'mode' is rejected, not silently accepted.
+        with self.assertRaisesRegex(g.GateError,'fresh capture required'):
+            self.exercise(self.previous(),captured_requirements=REQ|dict(mode='codex-only'))
     def test_changed_plan_requires_new_broad(self):
         old=self.previous();old['review']['broad']['plan_commit']=P.replace('c','f')
         with self.assertRaises(g.GateError):self.exercise(old,kind='review',source=None)
@@ -254,7 +271,7 @@ class CLI(unittest.TestCase):
         self.state['pr']['head']['sha']=self.head
         self.state['runs'][0]['head_sha']=self.head
         self.state['packets']=[dict(type='file',name=Path(packet).name,path=packet)]
-        fields={'Evidence Mode':'github','Phase':'implementing','Risk':'R3','Execution Mode':'codex-only',
+        fields={'Phase':'implementing','Risk':'R3',
                 'Plan Commit':self.plan_ref,'Amendments':'none','Coordinator':'owner','Writer':'codex','Plan Reviewer':'opus',
                 'Final Reviewer':'sonnet+opus','Final Review Minimum':'2','Human Gate':'ready,merge'} | overrides
         self.state['contents'][packet]=self.packet_text(fields)
@@ -279,8 +296,7 @@ class CLI(unittest.TestCase):
     def test_unamended_gate_condition_changes_are_rejected(self):
         cases=[({'Risk':'R4','Human Gate':'ready,merge,manual,r4'},'Risk','R3'),
                ({'Human Gate':'ready,merge,manual'},'Human Gate','ready,merge'),
-               ({},'Final Review Minimum','1'),
-               ({'Execution Mode':'fable-window'},'Execution Mode','dual-vendor-no-fable')]
+               ({},'Final Review Minimum','1')]
         for approved,key,value in cases:
             with self.subTest(field=key):
                 packet,fields=self.configure_packet(**approved)
@@ -290,10 +306,24 @@ class CLI(unittest.TestCase):
                 self.assertIn('approved packet condition changed: '+key,result)
                 self.run_cli('ready','--packet',packet,expected=1)
 
+    def test_execution_mode_change_is_not_a_gate_condition(self):
+        # T-H6: approved snapshot carries Execution Mode; current changes or drops it without a condition error.
+        for current in ('dual-vendor-no-fable',None):
+            with self.subTest(current=current):
+                packet,fields=self.configure_packet(**{'Execution Mode':'fable-window'})
+                if current is None:
+                    fields=dict(fields);del fields['Execution Mode']
+                else:
+                    fields=fields|{'Execution Mode':current}
+                self.state['contents'][packet]=self.packet_text(fields);self.save()
+                status=self.run_cli('status','--packet',packet)
+                self.assertEqual(status['state'],'Draft')
+                self.assertFalse([b for b in status['blockers'] if 'approved packet condition changed' in b],status['blockers'])
+
     def test_registered_amendment_order_cannot_roll_back_manual(self):
         packet='docs/plans/2026-09-14-fixture.md'
         path=self.repo/packet;path.parent.mkdir(parents=True)
-        fields={'Evidence Mode':'github','Phase':'plan-gate','Risk':'R3','Execution Mode':'fable-window',
+        fields={'Phase':'plan-gate','Risk':'R3',
                 'Plan Commit':'pending','Amendments':'none','Coordinator':'owner','Writer':'codex','Plan Reviewer':'opus',
                 'Final Reviewer':'sonnet','Final Review Minimum':'1','Human Gate':'ready,merge,manual'}
         def commit(subject):
@@ -371,7 +401,7 @@ class CLI(unittest.TestCase):
 
 
     def test_workflow_minimum_one_rejected(self):
-        packet,_=self.configure_packet(**{'Execution Mode':'fable-window','Final Review Minimum':'1'})
+        packet,_=self.configure_packet(**{'Final Review Minimum':'1'})
         self.state['files']=[dict(filename='scripts/pr-gate.py')];self.save()
         self.run_cli('status','--packet',packet,expected=1)
         self.run_cli('ready','--packet',packet,expected=1)
@@ -386,11 +416,12 @@ class CLI(unittest.TestCase):
         self.run_cli('status','--packet',packet,expected=1)
         self.run_cli('ready','--packet',packet,expected=1)
 
-    def test_codex_ui_minimum_one_rejected(self):
-        packet,_=self.configure_packet(**{'Final Review Minimum':'1'})
+    def test_codex_only_r3_ui_minimum_one_accepted(self):
+        # T-H7a: Execution Mode no longer changes the review count; only R4 / workflow require 2.
+        packet,_=self.configure_packet(**{'Execution Mode':'codex-only','Final Review Minimum':'1'})
         self.state['files']=[dict(filename='src/features/example/view.tsx')];self.save()
-        self.run_cli('status','--packet',packet,expected=1)
-        self.run_cli('ready','--packet',packet,expected=1)
+        status=self.run_cli('status','--packet',packet)
+        self.assertFalse([b for b in status['blockers'] if 'minimum' in b.lower()],status['blockers'])
 
     def assert_rules_blocked(self):
         self.save()
