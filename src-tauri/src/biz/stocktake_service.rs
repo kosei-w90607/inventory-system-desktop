@@ -292,7 +292,7 @@ pub fn complete_stocktake(
 /// 旧本体: カウント値を更新する（autocommit、TX不要）。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 35-biz-stocktake-service.md §20.4
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn legacy_update_count(
     conn: &DbConnection,
     req: &UpdateCountRequest,
@@ -345,7 +345,7 @@ pub(crate) fn legacy_update_count(
 /// 旧本体: 棚卸しを開始する（TX + operation_log TX外）。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 35-biz-stocktake-service.md §20.3
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn legacy_start_stocktake(
     conn: &mut DbConnection,
 ) -> Result<StartStocktakeResult, BizError> {
@@ -436,7 +436,7 @@ pub(crate) fn legacy_start_stocktake(
 /// 旧本体: 棚卸しを確定する（最高リスク。TX + operation_log TX外）。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 35-biz-stocktake-service.md §20.5
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn legacy_complete_stocktake(
     conn: &mut DbConnection,
     req: &CompleteStocktakeRequest,

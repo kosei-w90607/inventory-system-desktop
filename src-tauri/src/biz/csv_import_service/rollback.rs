@@ -22,7 +22,7 @@ pub fn rollback_csv_import(
 /// 冪等（既に rolled_back なら何もせず成功を返す）。
 ///
 /// docs/function-design/32-biz-csv-import-service.md §15.5
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn legacy_rollback_csv_import(
     conn: &mut DbConnection,
     csv_import_id: i64,

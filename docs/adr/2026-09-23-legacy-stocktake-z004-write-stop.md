@@ -26,7 +26,7 @@ BIZ-06 は `BizError::ValidationFailed(<BIZ-06 停止文言>)`、BIZ-03 は `Biz
 
 ### SPEC-STOP-D3: 旧本体は crate 内部に残し、test だけが呼ぶ
 
-現行の処理本体は `legacy_start_stocktake` / `legacy_update_count` / `legacy_complete_stocktake` / `legacy_commit_csv_import` / `legacy_rollback_csv_import`（`pub(crate)`）として残す。呼出し元は `#[cfg(test)]` の test・診断・fixture だけとする。非 test build の dead_code 警告は旧本体に `#[cfg_attr(not(test), allow(dead_code))]` を置いて抑える。既存の BIZ test と `#[ignore]` 診断 2 本は旧本体を呼び、既知の不具合を再現し続ける。③ / ④ が新処理へ移すときの回帰の対照に使い、⑤ で撤去する。
+現行の処理本体は `legacy_start_stocktake` / `legacy_update_count` / `legacy_complete_stocktake` / `legacy_commit_csv_import` / `legacy_rollback_csv_import`（`pub(crate)`）として残す。呼出し元は `#[cfg(test)]` の test・診断・fixture だけとする。非 test build の dead_code 警告は旧本体に `#[cfg_attr(not(test), expect(dead_code))]` を置いて抑える。production から旧本体を呼ぶ変更が入ると期待が満たされず、CI と local-ci の必須 gate `cargo clippy --all-targets --all-features -- -D warnings` が `unfulfilled_lint_expectations` で失敗する（通常の `cargo build` は warning に留まる）。これで呼出し元が test だけであることを機械検査する。既存の BIZ test と `#[ignore]` 診断 2 本は旧本体を呼び、既知の不具合を再現し続ける。③ / ④ が新処理へ移すときの回帰の対照に使い、⑤ で撤去する。
 
 ### SPEC-STOP-D4: 画面は案内を出し、書く入口を無効にする
 

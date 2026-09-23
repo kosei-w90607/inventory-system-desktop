@@ -36,7 +36,7 @@ pub fn commit_csv_import(
 /// CMD層から受け取ったキャッシュデータを使いTX内で一括実行する。
 ///
 /// docs/function-design/32-biz-csv-import-service.md §15.4
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn legacy_commit_csv_import(
     conn: &mut DbConnection,
     req: CommitRequest,
