@@ -10,7 +10,7 @@
 
 wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する（既定: ㉗ ADR 修正 → ㉘）。Codex は rate limit 中のため Plan Review は fresh Opus のみ、Final Review だけ Codex を待つ（owner 確認 2026-09-23）。
 
-- ㉘ runtime の最初の lane（旧棚卸しと Z004 業務 commit・取消の停止と再現 fixture、R3）: [Plan Packet](plans/2026-09-23-legacy-stocktake-z004-write-stop.md) / [Matrix](plans/test-matrices/2026-09-23-legacy-stocktake-z004-write-stop.md)。branch `agent/stk-runtime-stop-dangerous-ops`、Phase plan-gate。
+- ㉘ runtime の最初の lane（旧棚卸しと Z004 業務 commit・取消の停止と再現 fixture、R3）: [Plan Packet](plans/2026-09-23-legacy-stocktake-z004-write-stop.md) / [Matrix](plans/test-matrices/2026-09-23-legacy-stocktake-z004-write-stop.md)。branch `agent/stk-runtime-stop-dangerous-ops`、Phase implementing。
 
 次の着手順（owner決定2026-09-22）:
 

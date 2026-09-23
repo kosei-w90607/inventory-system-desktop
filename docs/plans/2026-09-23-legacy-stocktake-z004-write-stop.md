@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: b569ca243964d1ca76b493ffe3dc02261064548c
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree run、effort medium）
@@ -28,6 +28,7 @@ manual の対象: 棚卸し画面と売上データ取込み画面（Z004 タブ
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: Risk R3（`docs/project-profile.md` High-risk Changes の stocktake / CSV import / rollback の BIZ 振舞い、daily workflow screens に該当。R4 の破壊的な data lifecycle には当たらない = DB の行・schema を変えず、停止は build の差し替えで戻せる）。Design Phase = 停止の契約を本 packet の Spec Contract（SPEC-STOP-D1〜D6）に置き、実装と同じ PR で新設 ADR と Scope S6 の source docs へ昇格する（Writer が実装 run で同期）。owner の設計判断を要する未決の論点なし（停止の対象は owner 決定 2026-09-22 で確定済み、画面文言は manual で確認する）。
+- plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 0 / P2 3 / P3 8、操作列は `成立`）→ 全件採用し是正 `94528ef8` → round 2 closure（別の fresh Opus、P1/P2 = 0、P3 5、操作列は `成立`）→ P3 を反映。Plan Commit = `b569ca24`（plan-first `d2acc6e9` → 是正を含む確定版）。実装は Opus 5.5 subagent の worktree run。
 
 ## Owner Effort Budget
 
