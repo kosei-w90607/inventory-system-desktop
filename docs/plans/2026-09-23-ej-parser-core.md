@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 6a827b907949fb16dd220c426b29c7fa09f63264
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree `agent/ej-parser-core`）
@@ -28,6 +28,7 @@ manual なし: operator 画面・配布物・wire の変化がない IO 層だ�
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: Risk は R3（下記 Risk）。in-scope の source docs は Design Sources に列挙し、IO-08 の関数設計書の新設が要ると判定した（spec-check → design）。設計判断は本 packet の Spec Contract（IO-08-D1〜D10）で確定し、owner の判断を要する未決の論点は無い。source doc への反映は本 PR 内で Writer が行う（Z004 layout A packet `docs/archive/plans/2026-08-16-z004-layout-a-parser.md` と同じ「updated in this PR」形）（design → plan-draft）。packet と Test Design Matrix を同じ commit に置く（plan-draft → plan-gate）。
+- plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 0 / P2 2 / P3 9、操作列は `具体的な反例あり`〈合計域の全角数字〉）→ 全件採用し是正 `8a364a3d` → round 2 closure（別の fresh Opus、P1/P2 = 0、P3 2、操作列は `成立`）→ P3 を反映。Plan Commit = `6a827b90`（plan-first `d4951245` → 是正を含む確定版）。実装は Opus 5.5 subagent の worktree run。
 
 ## Owner Effort Budget
 
