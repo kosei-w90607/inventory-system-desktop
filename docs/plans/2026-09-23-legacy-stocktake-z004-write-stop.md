@@ -90,7 +90,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | --- | --- | --- | --- | --- |
 | 店: アプリ未導入、棚卸しは Excel、売上は日報を Excel へ貼って印刷（L-076 / L-113 / L-237） | いつもどおり営業・精算・Excel 入力 | 本 lane の影響なし | v1.0（⑤ + 次の design lane + 実機確認）まで Excel を継続 | なし（台帳の現行行） |
 | 開発・demo DB、進行中の棚卸しなし | 棚卸し画面を開く | 停止の案内（見出し + 理由 + 見られるもの）。「棚卸しを開始する」は押せない。前回の棚卸しの要約は見られる | ⑤ で停止を解除 | なし |
-| 開発 DB に旧方式の進行中棚卸しがある | 棚卸し画面を開く | 停止の案内。進捗・一覧・部門絞り込み・未入力のみ・ページ送りは使える。カウント入力欄と「棚卸しを確定する」は操作できない。旧明細は書き換わらない | ⑤ の migration が旧明細を legacy 等へ分類する（ADR D8、ADR 修正 lane の版に従う） | 開発 DB に進行中棚卸しがあるかは未確認（L3 の対象にしない。自動 test で固定） |
+| 開発 DB に旧方式の進行中棚卸しがある | 棚卸し画面を開く | 停止の案内。進捗・一覧・部門絞り込み・未入力のみ・ページ送りは使える。カウント入力欄と「棚卸しを確定する」は操作できない。旧明細は書き換わらない。ただし商品の新規登録・商品一括 import は停止対象外で、進行中の旧棚卸しへ未計数の明細を追加し続ける（`product_service.rs:261-268` / `:1346-1352`。STK-1 / STK-2 は起こさないが、⑤ の移行対象の明細が増える） | ⑤ の migration が旧明細を legacy 等へ分類する（ADR D8、ADR 修正 lane の版に従う） | 開発 DB に進行中棚卸しがあるかは未確認（M1 は画面の表示で分岐、両分岐とも AC5 の自動 test で固定） |
 | 売上データ取込み画面（既定の日報タブ） | 日報 3 ファイルを選び、取り込む・取り消す | 従来どおり。在庫は変わらない | なし | なし |
 | 同画面の Z004 タブ | 合成 Z004 を選ぶ | 停止の案内。プレビュー（正常行・スキップ行・警告）は表示され、「取り込む」は押せない。「ファイルを選び直す」は使える | ⑤ で停止を解除 | なし |
 | 入庫・手動販売・返品・廃棄を記録する | 各画面で保存 | 従来どおり在庫が動く。棚卸し確定が無いので STK-1（確定がカウント後の増減を打ち消す）は起きない。Z004 commit が無いので STK-2（後着売上の二重減算）も起きない | なし | なし |
@@ -117,15 +117,16 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - S5 UI（SPEC-STOP-D4）:
   - `src/features/stocktake/StocktakePage.tsx`: 停止状態を持つ定数 1 つと、それを既定値にする `StocktakePage` の prop（例 `writesSuspended`）。停止中は PageHeader の直下に warning の Alert（icon + 見出し + 本文）を出し、`StocktakeStartPanel` の開始ボタン（:367）、`StocktakeCountEntry` の fieldset（:557 付近、`disabled` prop）、「棚卸しを確定する」（:304）を無効にする。`StocktakeItemList`（部門絞り込み・未入力のみ・ページ送り）は無効にしない。route（`src/routes/stocktake/index.tsx`）は変えない。
   - `src/features/stocktake/StocktakePage.test.tsx` / `StocktakePage.suggest.test.tsx`: 既存の render helper（`renderPage` :123、suggest :69）に停止 off を渡して従来の flow test を維持し、停止中（既定）の test を追加する。
-  - `src/features/csv-import/CsvImportPage.tsx`: `CsvImportFlowPanel` の先頭（Z004 タブ内）に warning の Alert。`src/features/csv-import/components/PreviewStep.tsx`: 停止状態の定数を既定値にする prop で「取り込む」（:128）を無効にする。「ファイルを選び直す」は有効のまま。
+  - `src/features/csv-import/components/PreviewStep.tsx`: Z004 の停止状態の定数をこの file で定義して export し、それを既定値にする prop で「取り込む」（:128）を無効にする。「ファイルを選び直す」は有効のまま。`src/features/csv-import/CsvImportPage.tsx`: その定数を `PreviewStep.tsx` から import し、停止中は `CsvImportFlowPanel` の先頭（Z004 タブ内）に warning の Alert を出す（定数を 2 箇所に持たない）。
   - `src/features/csv-import/CsvImportPage.test.tsx` / `components/PreviewStep.test.tsx`: 既存 test の render（PreviewStep :44 / :142）に停止 off を渡し、停止中の test を追加する。
-- S6 設計正本（Writer が実装と同じ PR で同期。ADR 修正 lane が編集する「時点証拠契約（proposed・未実装）」節には触れない）:
+- S6 設計正本（Writer が実装と同じ PR で同期。ADR 修正 lane が編集する「時点証拠契約（proposed・未実装）」節には触れない）。停止文言の正本を先に置くため、Writer は S6 の docs を実装 code（S1〜S5）より前の別 commit にする（test の期待値は docs から転記する。42 §22.10）:
   - 新設 `docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md`（templates/adr.md の形。SPEC-STOP-D1〜D6、Rejected Options、Revisit Trigger = ⑤）と `docs/adr/README.md` の Existing Decision Records へ 1 行。
   - `docs/function-design/35-biz-stocktake-service.md`: 現行本文側に停止の節（BIZ-06 停止文言の正本、3 関数が先頭で返すこと、§20.3〜§20.5 の処理ステップは旧本体の記述であること）。
   - `docs/function-design/32-biz-csv-import-service.md`: 同じく停止の節（BIZ-03 停止文言の正本、§15.4 / §15.5 は旧本体の記述）。
   - `docs/function-design/42-cmd-sales-stocktake.md` §22.5（start_stocktake / update_count / complete_stocktake）と `docs/function-design/41-cmd-pos.md` §17.5（commit_csv_import / rollback_csv_import）: CMD の処理ステップは不変で、停止中は BIZ の停止 error を通常変換で返す旨の注記。
   - `docs/function-design/73-ui-stocktake.md`: 停止中の画面（案内の見出し・本文の正本、無効にする操作と使える操作）。
   - `docs/function-design/55-ui-csv-import.md`: §55.0「既存Z004 UIの扱い」付近に停止中の Z004 タブ（案内の見出し・本文の正本、「取り込む」の無効化）。
+  - `docs/SCREEN_DESIGN.md`（owner 決定 2026-09-24: 同 file の重なりは merge 順で解く）: 「売上データ取込み画面（日報 / 商品別CSV）」の節（:113-125）と「棚卸し画面」の節（:204-213）のレイアウト判断に各 1 行「現行 build では一時停止中。73 / 55 / 新設 ADR 参照」（取込み画面は Z004 の確定・取消、棚卸し画面は開始・カウント入力・確定が対象）。実装状況表（:26 / :50）は変えない。
   - `docs/diagrams/current-system.md`: 「在庫の増減と取消」（:172〜）と「棚卸しの時間と在庫」（:196〜）に、現行 build では該当入口が停止している旨。
   - `docs/diagrams/cross-feature-verification.md`: XFA-D2 / D3 に、停止後の harness は 5 入口の旧本体を呼ぶこと（診断の再現性は維持）。
 - S7 生成物: `docs/function-design/90-traceability.md` を `cd src-tauri && cargo run --bin generate_traceability` で再生成する（REQ 付き test の追加で件数が変わる。手動編集しない）。
@@ -136,7 +137,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Non-scope
 
 - 上記以外の tracked file。特に `src-tauri/src/cmd/*.rs` の production 本体、`src-tauri/src/lib.rs`（command 登録）、`src/lib/bindings.ts`、`src/lib/invoke.ts`、`src-tauri/src/biz/mod.rs`（`BizError`）、`src-tauri/src/cmd/mod.rs`（`CmdErrorKind`）、migration・schema、`src/features/home/**`、`src/features/csv-import/components/ResultStep.tsx`、`src/features/stocktake/hooks/**`、`src/lib/invalidation-contract.ts`（D-052 の mutation entry は残る。停止中は呼ばれないだけ）。
-- `docs/SCREEN_DESIGN.md` と `docs/UI_TECH_STACK.md`: SCREEN_DESIGN の実装状況表（:26 / :50 の「実装済み」）は実装の存在を示し、停止中の画面の振舞いは UI 関数設計（73 / 55）と ADR が所有する。並走する docs 復元 lane が SCREEN_DESIGN を編集する予定のため本 lane では触れず、状況表への注記が要るなら closeout で扱う。UI_TECH_STACK: 新しい state 所有・query・invalidation の型を足さない。
+- `docs/SCREEN_DESIGN.md` の実装状況表（:26 / :50 の「実装済み」）: 実装の存在を示す表で、停止中の振舞いは S6 の 1 行と 73 / 55 / ADR が持つ。`docs/UI_TECH_STACK.md`: 新しい state 所有・query・invalidation の型を足さない。
 - `docs/function-design/40-cmd-product.md` §5.3 / `30-biz-product-service.md` §4.10: `CmdErrorKind` と `BizError` の値を変えない（SPEC-STOP-D2）。
 - `docs/decision-log.md`: 決定は新設 ADR に置く（並走する docs 復元 lane が新しい D-n を足すため、番号の衝突を避ける）。
 - `docs/adr/2026-09-18-stocktake-time-evidence.md` とその「時点証拠契約（proposed・未実装）」節: ADR 修正 lane の範囲。
@@ -148,15 +149,15 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 AC の文言・command は起票時 main `3148347b` の現物で確認した。test 本数・件数は PR / runner 出力を正とし、ここに書かない。
 
-- AC1（BIZ の停止）: `legacy_stop_tests.rs` の test が、F1〜F7 の各 fixture 状態で 5 つの BIZ 入口を呼び、`Err` の variant と文言が Spec Contract の BIZ-06 / BIZ-03 停止文言と完全一致し、DB 全 table（`sqlite_master` の `type='table'` かつ `name NOT LIKE 'sqlite_%'` の全行・全列。`operation_logs`・`stocktakes`・`stocktake_items` を含む）が呼出し前後で一致することを確かめ、`cd src-tauri && cargo test --lib legacy_stop` が PASS。`update_count` は負数・0・正数・存在しない明細 ID のどれでも停止文言を返す（検査より停止が先）。
+- AC1（BIZ の停止）: `legacy_stop_tests.rs` の test が、F1〜F7 の各 fixture 状態で 5 つの BIZ 入口を呼び、`Err` の variant と文言が Spec Contract の BIZ-06 / BIZ-03 停止文言と完全一致し、DB 全 table（`sqlite_master` の `type='table'` かつ `name NOT LIKE 'sqlite_%'` の全行・全列。`operation_logs`・`stocktakes`・`stocktake_items` を含む）が呼出し前後で一致することを確かめ、停止した入口を呼ぶ前に各 fixture の前提値を assert し（Matrix の Fixture 表「前提 assert」列。例: F1 = 在庫 8・明細 actual 10・棚卸し in_progress）、`cd src-tauri && cargo test --lib legacy_stop` が PASS。`update_count` は負数・0・正数・存在しない明細 ID のどれでも停止文言を返す（検査より停止が先）。
 - AC2（command の停止）: `cd src-tauri && cargo test --lib -- stocktake_cmd csv_import_cmd` が PASS。5 つの production command 関数（`stocktake_cmd::start_stocktake` / `update_count` / `complete_stocktake`、`csv_import_cmd::commit_csv_import` / `rollback_csv_import`）が kind = `validation`（棚卸し）/ `import_error`（Z004）、message = 停止文言、field = null、error_id = null を返し、DB が不変。`commit_csv_import` は有効な preview token を cache に残す。期待値は production 定数を import せず source design から転記する（42 §22.10）。
-- AC3（旧本体の保持と入口の閉鎖）: `rg -n 'legacy_(start_stocktake|update_count|complete_stocktake|commit_csv_import|rollback_csv_import)' src-tauri/src/cmd src-tauri/src/lib.rs src-tauri/src/bin src-tauri/src/seed_demo.rs` が一致なし（exit 1）。旧本体の呼出し元は `#[cfg(test)]` の module だけ。S2 の既存 test の差分は呼出し先の名前（と必要な `use`）だけで、assert・入力値の行に差分がない（reviewer が `git diff origin/main -- src-tauri/src/biz/csv_import_service/tests/commit_tests.rs src-tauri/src/biz/csv_import_service/tests/rollback_tests.rs src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs` と `stocktake_service.rs` の test module の hunk で確認）。`cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings` が成功。
+- AC3（旧本体の保持と入口の閉鎖）: `rg -n 'legacy_(start_stocktake|update_count|complete_stocktake|commit_csv_import|rollback_csv_import)\(' src-tauri/src` のすべての一致が、旧本体の定義行か、`tests/` 配下の file か、`#[cfg(test)]` の module 内の行である（reviewer が一致行ごとに確認し、Writer は一致行の分類を PR body に列挙する）。S2 の既存 test の差分は呼出し先の名前（と必要な `use`）だけで、assert・入力値の行に差分がない（reviewer が `git diff origin/main -- src-tauri/src/biz/csv_import_service/tests/commit_tests.rs src-tauri/src/biz/csv_import_service/tests/rollback_tests.rs src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs` と `stocktake_service.rs` の test module の hunk で確認）。`cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings` が成功。
 - AC4（診断の維持）: `rg -c '#\[ignore' src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs` が `2`（baseline: 同 command で `2`）。`cd src-tauri && cargo test --offline --lib cross_feature_tests -- --ignored --nocapture` の出力に `XFA_TEMPORAL_FAIL` と `XFA_LATE_IMPORT_FAIL` が出て、この 2 本は FAIL する（既知の不具合を旧本体で再現し続けることの確認。① の拒否で解消扱いにしない）。ignored を含めない通常の `cargo test` は PASS。
 - AC5（棚卸し画面）: `npm test -- src/features/stocktake` が PASS。停止中（prop 省略 = 既定）の test が、案内の見出し・本文（73 の正本と完全一致）、icon（非色の signal）、「棚卸しを開始する」の disabled、進行中の棚卸しがあるときのカウント入力欄 fieldset の disabled と「棚卸しを確定する」の disabled、部門絞り込み・未入力のみ・ページ送りが有効であることを確かめる。停止中はどの操作でも `startStocktake` / `updateCount` / `completeStocktake` の mock が呼ばれない。既存の flow test は停止 off で assert を変えずに PASS。
-- AC6（Z004 タブ）: `npm test -- src/features/csv-import` が PASS。停止中の test が、Z004 タブの案内（55 の正本と完全一致）、プレビュー表示、「取り込む」の disabled、「ファイルを選び直す」が有効、`commitCsvImport` が呼ばれないことを確かめる。日報タブの既存 test（`src/features/daily-report-import/**`）は不変で PASS。
+- AC6（Z004 タブ）: `npm test -- src/features/csv-import` が PASS。停止中の test が、Z004 タブの案内（55 の正本と完全一致）、プレビュー表示、「取り込む」の disabled、「ファイルを選び直す」が有効、「取り込む」の click で `PreviewStep` の `onConfirm` mock と `useCsvImportFlow` の `confirmImport`（`CsvImportPage.test.tsx` の mock）が呼ばれず、`commitCsvImport` も呼ばれないことを確かめる。「取り込む」の disabled を外す mutation でこの test が red になることを実注入で確かめる。日報タブの既存 test（`src/features/daily-report-import/**`）は不変で PASS。
 - AC7（wire 不変）: `cd src-tauri && cargo run --bin generate_bindings` の後の `git diff --exit-code -- src/lib/bindings.ts` が exit 0。`git diff origin/main --stat -- src-tauri/src/lib.rs src-tauri/src/biz/mod.rs src-tauri/src/cmd/mod.rs src/lib/invoke.ts src/lib/bindings.ts src/lib/invalidation-contract.ts src/features/home` が空。
-- AC8（設計正本と生成物）: `rg -n '^### SPEC-STOP-D[1-6]' docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md` が 6 行。`rg -l '一時停止中' docs/function-design/35-biz-stocktake-service.md docs/function-design/32-biz-csv-import-service.md docs/function-design/41-cmd-pos.md docs/function-design/42-cmd-sales-stocktake.md docs/function-design/73-ui-stocktake.md docs/function-design/55-ui-csv-import.md docs/diagrams/current-system.md` が 7 file すべてを出す。各 file の「時点証拠契約（proposed・未実装）」節に差分がない（reviewer が hunk で確認）。`cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0。
-- AC9（footprint）: `git diff --name-only origin/main...HEAD` が Scope S1〜S8 に列挙した file だけ。
+- AC8（設計正本と生成物）: `rg -n '^### SPEC-STOP-D[1-6]' docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md` が 6 行。`rg -l '一時停止中' docs/function-design/35-biz-stocktake-service.md docs/function-design/32-biz-csv-import-service.md docs/function-design/41-cmd-pos.md docs/function-design/42-cmd-sales-stocktake.md docs/function-design/73-ui-stocktake.md docs/function-design/55-ui-csv-import.md docs/diagrams/current-system.md docs/SCREEN_DESIGN.md` が 8 file すべてを出す。各 file の「時点証拠契約（proposed・未実装）」節に差分がない（reviewer が hunk で確認）。`cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0。
+- AC9（footprint）: `git diff --name-only origin/main...HEAD` が Scope S1〜S8 に列挙した file（S6 の `docs/SCREEN_DESIGN.md` を含む）だけ。S6 の docs の commit が S1〜S5 の実装 code を含む最初の commit より前にある（`git log --reverse --name-only origin/main..HEAD` で確認）。
 - AC10（検証 gate）: `bash scripts/local-ci.sh changed` が成功。`bash scripts/doc-consistency-check.sh` と `--target plan` が ERROR なし。Human Gate の manual 前に Writer が `cd src-tauri && cargo check --release` を成功させる。
 - AC11（manual）: owner の目視で Test Plan の M1 / M2 が PASS し、`python3 scripts/pr-gate.py record` の manual record に結果が残る。
 
@@ -177,7 +178,7 @@ AC の文言・command は起票時 main `3148347b` の現物で確認した。t
 | Backend function / command / repository / validation / error | 35 / 32（BIZ 停止の節と文言の正本）、41 / 42（CMD 注記）、新設 ADR | updated in this PR（S6） |
 | Command / DTO / generated binding / wire shape | 40 §5.3（kind 不変）、41 / 42 | existing sufficient（型・kind・登録・bindings を変えない。停止文言は 35 / 32 が所有） |
 | DB / transaction / audit / rollback / migration | db-design（変更なし） | existing sufficient（停止は DB を読まず書かない） |
-| Screen / UI / route state / Japanese wording | 73 / 55（案内の文言と無効化の正本） | updated in this PR（S6）。SCREEN_DESIGN / UI_TECH_STACK は Non-scope に理由 |
+| Screen / UI / route state / Japanese wording | 73 / 55（案内の文言と無効化の正本） | updated in this PR（S6、SCREEN_DESIGN の 2 節に各 1 行を含む）。UI_TECH_STACK と SCREEN_DESIGN の実装状況表は Non-scope に理由 |
 | CSV / TSV / report / import / export format | 32 / 23（変更なし） | existing sufficient（parse・preview は不変） |
 | Durable decision / ADR | 新設 `docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md` | updated in this PR（S6） |
 
@@ -224,13 +225,13 @@ AC の文言・command は起票時 main `3148347b` の現物で確認した。t
 | Replacement path | ⑤ が停止を外し新入口へ切替える。旧本体 `legacy_*` は ③ / ④ の移行後に ⑤ で撤去 | ADR Revisit Trigger |
 | Data safety / evidence | 合成データのみ。実 POS・実 DB・実 EJ を fixture に使わない | Data Safety |
 | Reporting / accounting semantics | 停止中は Z004 由来の商品別売上が増えない（日報の公式集計は不変）。棚卸しの評価額は増えない | 55 / ADR Consequences |
-| Manual verification | 案内の見え方・無効化の見分けは目視（M1 / M2）。旧進行中棚卸しの画面は L3 Eligibility（合成行の挿入が要る）を満たさず自動 test へ | Test Plan |
+| Manual verification | 案内の見え方・見出しの全文表示・無効化の見分けは目視（M1a / M1b / M2）。M1 は既存 data の表示で分岐し、合成行の挿入をしない（L3 Eligibility (3)）。表示されなかった分岐は自動 test（AC5）が固定 | Test Plan |
 | 環境・再現性 | 新しい環境依存なし。dead_code の扱いは rustc の挙動で、CI の clippy `-D warnings` が検出する | Contract Probe |
 
 ## Design Readiness
 
 - Existing design docs are sufficient because: 旧処理の振舞い（35 / 32 / 41 / 42 / 73 / 55 の現行本文）と STK-1 / STK-2 の根拠（監査・XFA）は既存で足りる。停止の決定だけが未記載で、本 PR の S6 で足す。
-- Source docs updated in this PR: 新設 ADR、ADR README、35、32、41、42、73、55、current-system、cross-feature-verification、90-traceability（生成）。
+- Source docs updated in this PR: 新設 ADR、ADR README、35、32、41、42、73、55、SCREEN_DESIGN（2 節に各 1 行）、current-system、cross-feature-verification、90-traceability（生成）。
 - Design gaps intentionally deferred: 新しい計数・受領・判定・取消の設計の実装（② 〜 ⑤）、時刻判定（次の design lane）。
 - Durable decisions discovered in this plan and promoted to source docs: SPEC-STOP-D1〜D6 → 新設 ADR。
 
@@ -270,6 +271,7 @@ Minimum design checks for business-app work:
 | SPEC-STOP-D6: 解除は ⑤ だけ | ADR | review | non-scope（⑤） |
 | 隣接: 42 §22.10 の CMD validation test 方式 | `stocktake_cmd` test | AC2 | — |
 | 隣接: 41 §17.5 / SPEC-SDI-D4 の mismatch 時 token 削除 | CMD（不変、停止中は到達不能） | 到達不能のため test なし（Matrix 移行先 = ⑤） | non-scope（⑤ で再有効化） |
+| 隣接: 41 §17.5 成功時のみ token 削除 / CMD の AdditionalImportConfirmationRequired → commit 成功（`csv_import_cmd.rs:438-459`、`:396` の test の後半） | CMD（不変、停止中は到達不能） | 到達不能のため test なし（Matrix 移行先 = ⑤） | non-scope（⑤ で新 commit 経路へ再接続） |
 | 隣接: 73 §73.9 の kind 別回復（`stocktake_in_progress` / `stocktake_not_in_progress`） | `StocktakePage.tsx`（不変） | 既存 test を停止 off で維持 | — |
 | 隣接: 55 §55.5 の kind 別表示・recoverTo | `useCsvImportFlow.ts` / `ErrorState.tsx`（不変） | 既存 test を維持 | — |
 | 隣接: D-052 の mutation entry と invalidation | `invalidation-contract.ts`（不変） | 既存 static / meta test | — |
@@ -285,9 +287,11 @@ Test Design Matrix: [2026-09-23-legacy-stocktake-z004-write-stop.md](test-matric
 - data safety checks: fixture は合成 JAN（既存 test と同じ `29xxxxxxxxxxx` / `4912345678xxx` 系）と合成商品名だけ。
 - main wiring/integration checks: production command 関数を `tauri::test::mock_builder` の managed `AppState` で直接呼ぶ（AC2）。route `/stocktake` は prop を渡さず停止中の既定値を使う（AC5 の既定 render が同じ経路）。
 - manual（owner の目視、native build）:
-  - M1 棚卸し画面 `/stocktake`（進行中の棚卸しなしの DB）: PageHeader の直下に warning の案内（icon + 見出し + 本文）が出る。「棚卸しを開始する」が押せない見た目で、押しても何も起きない。前回の棚卸しの要約が見える。合格 = 3 点とも満たし、文言が読みやすい。
-  - M2 売上データ取込み → 「商品別CSV取込み（Z004）」タブ: 案内が出る。Coordinator が渡す合成 Z004（CP932）を選ぶとプレビューが出て、「取り込む」が押せず「ファイルを選び直す」は押せる。「日報取込み」タブは従来どおり。合格 = 4 点とも満たす。
-  - 旧方式の進行中棚卸しがある画面は L3 Eligibility（合成行の挿入が要る）を満たさないため M に入れず、AC5 の自動 test で固定する。
+  - 種別: 画面変更の目視確認（Human Visual Confirmation）を native build で行う。Windows native 固有の L3 項目は無い（案内と disabled は jsdom でも観測でき、L3 Eligibility (1) を満たさない）。M1 / M2 とも、案内の見出し（AlertTitle、`src/components/ui/alert.tsx:45` の `line-clamp-1`）が省略記号で切れず全文読めることを合格条件に含める。
+  - M1 棚卸し画面 `/stocktake`。到達手順: 既存のアプリ data のまま起動し、サイドバーの「棚卸し」を開く。合成行の挿入や DB の作り直しはしない。画面の表示で分岐し、表示された方だけを確認する（もう一方は AC5 の自動 test が固定）。
+    - M1a（「棚卸しの開始」が表示される = 進行中なし）: PageHeader の直下に warning の案内（icon + 見出し + 本文）が出る。「棚卸しを開始する」が押せない見た目で、押しても何も起きない。前回の棚卸しの要約が見える。合格 = 3 点と見出しの全文表示を満たし、文言が読みやすい。
+    - M1b（進捗ヘッダと棚卸し一覧が表示される = 旧方式の進行中あり）: 案内が出る。カウント入力欄と「棚卸しを確定する」が操作できない。部門絞り込み・未入力のみ・ページ送り（2 ページ以上ある場合）が使える。合格 = 3 点と見出しの全文表示を満たす。
+  - M2 売上データ取込み `/csv-import` → 「商品別CSV取込み（Z004）」タブ: 案内が出る。Coordinator が渡す合成 Z004（CP932）を選ぶとプレビューが出て、「取り込む」が押せず「ファイルを選び直す」は押せる。「日報取込み」タブは従来どおり。合格 = 4 点と見出しの全文表示を満たす。
 
 ## Boundary / Wire Contract
 
@@ -306,7 +310,7 @@ Test Design Matrix: [2026-09-23-legacy-stocktake-z004-write-stop.md](test-matric
 - 旧本体への付け替えが呼出し先の名前だけで、既存 test の assert を弱めていないか。停止で到達不能になった契約（mismatch 時 token 削除）の扱いが移行先付きで記録されているか。
 - 既存 kind の流用（SPEC-STOP-D2）が consumer の既存分岐（`stocktake_*` の回復、`import_error` → idle）を誤作動させないか。
 - UI の停止定数が安全の根拠になっていないか（backend が独立に拒否するか）。閲覧が本当に残るか（一覧の絞り込み・ページ送り、記録詳細）。
-- SCREEN_DESIGN / home を Non-scope にした理由の妥当性。
+- home と SCREEN_DESIGN の実装状況表を Non-scope にした理由の妥当性。
 - ADR 修正 lane・EJ parser lane・docs 復元 lane との footprint の重なり（Plans.md への申し送りを参照）。
 
 ## Spec Contract
@@ -354,3 +358,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-24、plan-gate、Opus 5.5 fresh、対象 plan-first `d2acc6e9`、裁定 Coordinator）
+
+操作列 = `成立`。P1 0 / P2 3 / P3 8、全件採用し packet / Matrix を in-place で是正した。P2-1: `csv_import_cmd.rs:438-459`（成功時のみ token 削除 / 追加確認 → commit 成功）の到達不能化を Ledger・Matrix 移行先・Residual に記録。P2-2: T1 に fixture ごとの前提 assert を追加し、停止文を除く mutation で F1 = 在庫 10 / F2 = 在庫 6 を観測する証跡を要求。P2-3: M1 を DB の状態で M1a / M1b に分け到達手順を記載。P3-1: SCREEN_DESIGN の 2 節へ各 1 行を S6 / AC8 / AC9 に追加（owner 決定 2026-09-24、重なりは merge 順で解く。review が示した行番号 :116-125 / :204-210 は節が逆で、:113-125 = 取込み画面、:204-213 = 棚卸し画面に置いた）。P3-2: AC3 を `src-tauri/src` 全体の一致行の分類へ置換（`cfg_attr(expect)` 案は未 probe のため不採用）。P3-3: 商品登録・一括 import による旧進行中棚卸しへの明細追加を操作列と Adjacent Pattern Audit に記載。P3-4: 時計異常・EJ 欠落 fixture を除いた理由を Fixture 表の下に記載。P3-5: AC6 / T15 に `onConfirm` / `confirmImport` 未呼出しと disabled 除去 mutation を追加。P3-6: Z004 の停止定数を `PreviewStep.tsx` が定義・export し `CsvImportPage.tsx` が import。P3-7: M2 に route `/csv-import`、native 固有 L3 なしの判定、AlertTitle（`line-clamp-1`）の全文表示を合格条件に追加。P3-8: S6 の docs を実装 code より前の commit にする指示を S6 / AC9 に追加。
