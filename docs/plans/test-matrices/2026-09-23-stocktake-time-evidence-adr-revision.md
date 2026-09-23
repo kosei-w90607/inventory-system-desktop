@@ -47,10 +47,14 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 | M9 R9 | 計数前の販売と計数後の返品が同じ精算で相殺し、帳簿が現物より 1 少ないまま残る | model | `check_unknown_apply_recheck`（R9 の場合） | 数量 0 の行を EJ の条件なしに flag なしとする mutation（AC5 (iv)）で red |
 | M9 R9 | EJ が無いのに数量 0 の行を flag なしで通す、確認待ちで確定を通す | model / Contract Audit | 同 check の (c)、ADR D4 と 35 の読取り | 確認待ちで確定が通る、または EJ が無いのに flag が付かない |
 | M9 R9 | 帰属できない行・商品別合計の不一致・別の精算の EJ を完全とみなし、名称変更後の商品を「行なし」にする | model / Contract Audit | 同 check の (d)、mutation (v)、ADR D5 と R9 の照合 | 帰属できない行があるのに区間の 0 行へ flag が付かない、照合に今のマスタ名を使う |
+| M9 R9 | 部門売りの行や明細でない行で区間を不完全にし、毎日の 0 行が全て確認待ちになる | model / Contract Audit | 同 check の (d) の部門売りの場合、ADR D4 / D5 と R9 の行の分類の照合 | 部門名に一意に一致する行か合計・支払・税の行だけの区間で確認待ちが付く |
+| M9 R9 | 前回の Z004 の後に PLU を書き出し、区間の途中で名称が入れ替わった行を別の商品へ帰属させる | Contract Audit | R9 の受領順の条件と ADR D5 の照合 | 書出しの確認時の受領上限が前回の Z004 の受領 ID 以上でも区間を完全とみなす |
 | M9 R9 | 数量 0 で金額が 0 でない行を EJ 待ちにする、または見落とす | model | 同 check の (e) | その行が相殺の行ありにならない |
 | M9 R9 | 後から取り込んだ EJ で確認待ちを再評価しない、行ありを見落とす | Contract Audit | ADR D4 / D5 と 32 の読取り | 確認待ちが数え直しでしか解消しない、または行ありの EJ で解消してしまう |
 | M9 R9 | 活動のない商品の行を相殺とみなして全商品に付ける | Contract Audit | packet Contract Probe（Z004 は全スロットを出力）と ADR D4 の照合 | 数量 0 の行そのものを flag の条件にする |
 | M10 R10 | EJ の取込みと R9 がないまま在庫連動を有効にでき、複数日の棚卸しが確定に届かない | Contract Audit / docs search | packet AC10、ADR D4 と 30 / 32 の読取り | `ej_unverified` の間に create / update / 商品一括 import で在庫連動を有効にできる、checkbox や設定 key で `ej_unverified` が消える |
+| M10 R10 | 既定値が true のままで ㉘ の商品登録・一括 import が全て拒否される、true→true の更新が拒否される | Contract Audit | R10 (b)(c) と 30 / 40 / 51 / 60 / master-tables の照合、packet AC10 | 既定値・提案値が false にならない、true→true が拒否される、60 が TX 全体を拒否する |
+| M10 R10 | `ej_unverified` が DB の値や設定で外れる | Contract Audit | R10 (a) と 32 の準備照会の照合 | 準備照会が DB の flag・設定 key・EJ の取込み事実から `ej_unverified` を外せる |
 | M10 R10 | ㉘ 単体の状態を Ordinary Operation が正しく描かない | Plan Review | packet Ordinary Operation | ㉘ 単体の行で Z004 が在庫を動かす、または EJ ありの行で確定に届かない |
 | M8 R8 | 台帳の owner 回答の理由が ADR から読めない、原文を公開 repository へ置く | Contract Audit | ADR Context / Rejected Options と台帳 L-054 / L-095〜L-099 の照合 | 6 件のどれかが欠ける、Rejected と Context を取り違える、発言の原文を引用する |
 | M7 R7 | ㉘ が archive の旧申し送りを正として読む | docs search | packet AC8 | archive の 2 か所に差替えの注記とリンクがない |
@@ -153,5 +157,5 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 
 - runtime の実装・Windows L3 は ㉘ で行う。本 lane の Contract Audit は文書の読取りによる確認。
 - 「開始してから数える」の物理的な成立は agent では検証できない（owner の見立てでは成り立つ、TD-025）。
-- R9 の EJ の外部前提（戻・訂正・取消の行の形、精算区間の対応、名称からの商品の特定、締めでの取得）は実機と承認済みサンプルで確かめる。EJ の日次取込みが ㉘ に入るまでは、数量 0 の行が全て確認待ちになる負担は未実測。
+- R9 の EJ の外部前提（戻・訂正・取消・値引きの行の形、精算区間の対応、名称からの商品の特定、締めでの取得）は実機と承認済みサンプルで確かめる。R10 により、EJ の日次取込みと R9 が入るまで在庫連動は有効にできないので、その間に確認待ちは本番で発生しない（開発・試験 DB の既存の有効設定だけで現れる）。
 - 時刻区間の合成モデル（`check_bounds` 等）は残るが、現行の ADR の契約を検証するものではなくなる。次の design lane で扱いを決める。
