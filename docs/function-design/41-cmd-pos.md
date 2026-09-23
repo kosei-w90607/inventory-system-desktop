@@ -16,7 +16,7 @@ preview/commitのsource_identity_conflictもstocktake_guardの同名codeで透�
 
 rollbackのlegacy保留もstocktake_guardのrollback_recheck_requiredで対象を渡す。UIはCMD-10の通常の用途（active明細の計数と確定、なければ独立再実測）で新しい適用済み実測を作った後に、同import IDのrollbackを再送する。CSV取消が再実測を運んだり、CMDでpendingを適用済みへ昇格させたりしない。
 
-ImportResultのstatus/売上集計は維持し、取込み後のrecount_targetsとwarningsを追加する。これらはcommitが実際に作ったflagと、その時点の非連動化の未調整対象からBIZが返す。売上0の正常完了を失敗に変えない。bindingsの生成とUI-07のkind/code分岐・preview mockの更新はruntimeで同時に行う。日報CMD-12とPLU CMD-08の意味は変更しない。
+ImportResultのstatus/売上集計は維持し、取込み後のrecount_targetsとwarningsを追加する。recount_targetsの要素は[40](40-cmd-product.md)の回復対象型で、要再確認flagの理由をrecount_reasonsの型で持つ。これらはcommitが実際に作ったflagと、その時点の非連動化の未調整対象からBIZが返す。売上0の正常完了を失敗に変えない。bindingsの生成とUI-07のkind/code分岐・preview mockの更新はruntimeで同時に行う。日報CMD-12とPLU CMD-08の意味は変更しない。
 
 > **2026-06-30 REQ-401 redesign note**: 本書のCMD-07は既存Z004商品別CSV取込みのTauri command契約を記録する。current operation のZ001/Z002/Z005日報取込みは [45-cmd-daily-report-import.md](45-cmd-daily-report-import.md) のCMD-12で扱う。CMD-07へ日報bundleを追加しない。
 
