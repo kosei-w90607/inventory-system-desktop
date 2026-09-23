@@ -7,10 +7,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: 453d5bf0c074d7e9991ad6550c1ec3b268313400
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree `agent/harness-overhaul`、effort medium）
@@ -29,6 +29,7 @@ manual なし: 製品の runtime・画面・配布物は変わらない。
 
 - kickoff → spec-check → plan-draft（起草、未 commit）: Risk R3（下記 Risk）。改訂対象は workflow 正本と、それを強制する script / test そのものであり、設計の正本は本 PR が書き換える workflow 文書自身。規則の内容は owner 決定と監査で決まっており、owner の設計判断を要する未決の論点は無い（spec-check → plan-draft の唯一の skip。Design Readiness 参照）。
 - plan-draft → plan-gate（2026-09-24、Coordinator）: packet と Matrix を plan-first commit で確定し、`docs/Plans.md` の wave 13 に登録。fresh Opus の Plan Review へ（Codex は rate limit 中）。
+- plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus）→ 是正 `4ef24a53` → round 2（別の fresh Opus、P1 0 / P2 4 / P3 5）→ 是正 `2f40e4fc` → round 3（別の fresh Opus、P1 0 / P2 1 / P3 7、Ordinary Operation は全行成立）→ round 天井 3 に到達したため Review Rules の disposition「同型指摘の一括是正」で P2 1（AC8 と S4 / T-W1 の機械的な食い違い、gate を弱めない）と P3 7 を `453d5bf0` で是正し、Coordinator が diff を確認して通過。Plan Commit = `453d5bf0`。実装は Opus 5.5 subagent の worktree run。
 
 ## Owner Effort Budget
 
