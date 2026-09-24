@@ -1775,7 +1775,7 @@ mod tests {
     // IO-08-D2: 24 バイトの中に孤立した CR / LF がある行も幅違反とし、trim で隠さない
     #[test]
     fn parse_ej_lone_cr_or_lf_within_24_bytes_unresolves_record() {
-        for control in [b'\r', b'\n'] {
+        for control in *b"\r\n" {
             let mut all = rows(&ok_sale("000222"));
             all[5][1] = control; // 点数行の先頭の空白。幅は 24 のまま
             let result = parse_ej(&crlf(all)).unwrap();
@@ -1794,7 +1794,7 @@ mod tests {
     // IO-08-D2 / D3 / D4: CR / LF を含む行はヘッダにならず、先頭断片でも幅違反とする
     #[test]
     fn parse_ej_lone_cr_or_lf_in_header_or_leading_line_is_invalid_width() {
-        for control in [b'\r', b'\n'] {
+        for control in *b"\r\n" {
             // 2 件目のヘッダのモード欄（空白 5 バイト）の先頭
             let mut all = rows(&[ok_sale("000223"), ok_sale("000224")].concat());
             all[11][0] = control;
