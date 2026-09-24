@@ -366,7 +366,7 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 
 ### Final Review broad（Opus 5.5 fresh、対象 `f17ab303`、裁定 Coordinator）
 
-P1 0 / P2 0 / P3 3。SPEC-STOP-D1〜D6 は成立。P3-1（旧本体の `allow(dead_code)` では production からの呼出しを検出しない）= 採用、`94eb4956` で `cfg_attr(not(test), expect(dead_code))` に置き換え、ADR SPEC-STOP-D3 の文を合わせた。本 packet の S1・Assumptions・Contract Probe の `allow` の記述は Plan 時点の判断として残し、以後はこの裁定を正とする（必須 gate の clippy `-D warnings` が unfulfilled で失敗することを注入で確認。素の `cargo build` は warning に留まる）。P3-2（PR body の AC1 / AC3 の証跡と kind の誤記）= 採用、PR body を更新。P3-3（停止中も入力を促す subtitle と説明文）= M1 で owner の所感を聞いて判断する。
+P1 0 / P2 0 / P3 3。SPEC-STOP-D1〜D6 は成立。P3-1（旧本体の `allow(dead_code)` では production からの呼出しを検出しない）= 採用、`94eb4956` で `cfg_attr(not(test), expect(dead_code))` に置き換え、ADR SPEC-STOP-D3 の文を合わせた。本 packet の S1・Assumptions・Contract Probe の `allow` の記述は Plan 時点の判断として残し、以後はこの裁定を正とする（必須 gate の clippy `-D warnings` が unfulfilled で失敗することを注入で確認。素の `cargo build` は warning に留まる）。P3-2（PR body の AC1 / AC3 の証跡と kind の誤記）= 採用、PR body を更新。P3-3（停止中も入力を促す subtitle と説明文）= M1 で owner の所感を聞いて判断する → 2026-09-24 の M1 で owner「案内は案内として読めるから見出し下の説明とは全然違うし大丈夫じゃないかな」により変更しない。
 
 ### Final Review broad Codex 側（GPT-6 Astra high、対象 `faa7f9e3`、裁定 Coordinator）
 
