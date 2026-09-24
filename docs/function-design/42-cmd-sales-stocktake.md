@@ -177,6 +177,8 @@ fn get_active_stocktake(
 
 #### start_stocktake
 
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。BIZ が引数・DB の状態によらず停止 error（`ValidationFailed`、[35 §20.0](35-biz-stocktake-service.md#200-現行buildの一時停止) の BIZ-06 停止文言）を返し、通常変換で kind = `validation`、field = null、error_id = null になる。
+
 **関数要求**: 新しい棚卸しを開始する
 
 **シグネチャ（Tauriコマンド）**:
@@ -253,6 +255,8 @@ fn find_stocktake_item(
 
 #### update_count
 
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。BIZ が引数・DB の状態によらず停止 error（`ValidationFailed`、[35 §20.0](35-biz-stocktake-service.md#200-現行buildの一時停止) の BIZ-06 停止文言）を返し、通常変換で kind = `validation`、field = null、error_id = null になる。
+
 **関数要求**: 棚卸しアイテムのカウントを更新する
 
 **シグネチャ（Tauriコマンド）**:
@@ -274,6 +278,8 @@ fn update_count(
 6. Err(BizError) → CmdError に変換
 
 #### complete_stocktake
+
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。BIZ が引数・DB の状態によらず停止 error（`ValidationFailed`、[35 §20.0](35-biz-stocktake-service.md#200-現行buildの一時停止) の BIZ-06 停止文言）を返し、通常変換で kind = `validation`、field = null、error_id = null になる。
 
 **関数要求**: 棚卸しを確定する
 

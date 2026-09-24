@@ -41,7 +41,7 @@ fn test_commit_req401_normal_flow() {
     let pv = parse_and_build_cache(&conn, bytes, "Z004_260321");
     let cached = build_cached(pv);
 
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -76,7 +76,7 @@ fn test_commit_req401_same_day_additional_import_is_insert_only() {
     let bytes1 = make_z004_bytes("2026-03-21", &[("4912345678901", "商品A", 2, 600)]);
     let pv1 = parse_and_build_cache(&conn, bytes1, "Z004_old");
     let cached1 = build_cached(pv1);
-    let result1 = commit::commit_csv_import(
+    let result1 = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -99,7 +99,7 @@ fn test_commit_req401_same_day_additional_import_is_insert_only() {
         DuplicateStatus::AdditionalImportConfirmationRequired
     );
     let cached2 = build_cached(pv2);
-    let result2 = commit::commit_csv_import(
+    let result2 = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,
@@ -168,7 +168,7 @@ fn test_commit_req401_additional_import_requires_confirmation() {
     let cached = build_cached(pv);
     let before = write_surface(&conn);
 
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -209,7 +209,7 @@ fn test_commit_req401_toctou_check() {
 
     let cached = build_cached(pv);
     let before = write_surface(&conn);
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -233,7 +233,7 @@ fn test_commit_req401_pos_stock_sync_false() {
     let pv = parse_and_build_cache(&conn, bytes, "Z004_260321");
     let cached = build_cached(pv);
 
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -265,7 +265,7 @@ fn test_commit_req401_negative_stock_warning() {
     let pv = parse_and_build_cache(&conn, bytes, "Z004_260321");
     let cached = build_cached(pv);
 
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -299,7 +299,7 @@ fn test_commit_req401_partial_with_errors() {
     let pv = parse_and_build_cache(&conn, bytes, "Z004_260321");
     let cached = build_cached(pv);
 
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -322,7 +322,7 @@ fn test_commit_req401_sign_flip_inv1() {
     let pv = parse_and_build_cache(&conn, bytes, "Z004_260321");
     let cached = build_cached(pv);
 
-    commit::commit_csv_import(
+    commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -369,7 +369,7 @@ fn test_commit_req401_settlement_date_toctou() {
 
     let cached = build_cached(pv);
     let before = write_surface(&conn);
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -421,7 +421,7 @@ fn test_commit_req401_same_date_snapshot_removal_requires_repreview() {
     sales_repo::update_csv_import_status(&conn, existing_id, "rolled_back").unwrap();
     let before = write_surface(&conn);
 
-    let error = commit::commit_csv_import(
+    let error = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,
@@ -474,7 +474,7 @@ fn test_commit_req401_same_date_snapshot_replace_requires_repreview() {
     .unwrap();
     let before = write_surface(&conn);
 
-    let error = commit::commit_csv_import(
+    let error = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,
@@ -518,7 +518,7 @@ fn test_commit_req401_same_date_snapshot_order_requires_exact_match() {
     cached.active_same_date_import_ids.reverse();
     let before = write_surface(&conn);
 
-    let error = commit::commit_csv_import(
+    let error = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,
@@ -546,7 +546,7 @@ fn test_commit_req401_additional_confirmation_without_duplicate() {
     let cached = build_cached(pv);
     let before = write_surface(&conn);
 
-    let result = commit::commit_csv_import(
+    let result = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,

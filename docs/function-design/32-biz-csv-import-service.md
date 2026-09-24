@@ -78,6 +78,15 @@ EJ取得・完全性不成立時の拒否・再実測復旧まで確認してか
 
 > **2026-08-01 evidence sync**: 本書は既存の Z004-only product-sales import pipeline の実装契約を記録する。current operation の日報主入力 `Z001`/`Z002`/`Z005` は [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) のBIZ-08で扱う。集計日報データは `daily_report_imports` / `daily_report_*_lines` に保存し、item-level `sale_records` / `inventory_movements` へ擬似展開しない。Z004側はsale_records作成、`pos_stock_sync`在庫増減、重複・rollbackまで実装済み。2026-07-06店舗採取layout AはIO-02が二形状対応済み（SPEC-Z4A-D1〜D7）。field readinessは実データend-to-end再検証（CSV-09/10）を待つ。
 
+### 15.0 現行buildの一時停止
+
+現行 build では、Z004 の取込みの確定と取消は一時停止中である（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D1〜D3）。公開関数 `commit_csv_import` / `rollback_csv_import` は、関数の最初の文で次の error を返す。DB を読まず、TX を開かず、operation log（`csv_import_failed` を含む）を書かない。rolled_back 済みの取込みへの冪等 Ok も返さない。
+
+- BIZ-03 停止文言: `商品別CSV（Z004）の取込みの確定と取消は一時停止中です。在庫が二重に減ったり戻ったりする不具合を直すまで使えません。`
+- variant: `BizError::ImportError(<BIZ-03 停止文言>)`。CMD の既存変換で kind = `import_error`、field = null、error_id = null。
+
+以下の §15.4 / §15.5 の処理ステップは旧本体 `legacy_commit_csv_import` / `legacy_rollback_csv_import`（`pub(crate)`、呼出し元は `#[cfg(test)]` の test・診断・fixture だけ）の記述である。`parse_and_validate`（§15.3）と一覧・詳細の読取り（§15.6 / §15.6a）は停止しない。停止の解除は ⑤ だけで行う（SPEC-STOP-D6）。
+
 ### 15.1 モジュール構成
 
 ```
@@ -615,3 +624,4 @@ enum BizError {
 | 2026-04-13 | PR #22 | preview キャッシュ管理の所有責務を明確化（BIZ層→CMD層）。ロック区間最小化のため CachedPreview を CMD層 AppState に保持し、commit時に BIZ層へ渡す |
 | 2026-08-03 | CSV取込み詳細 Design Phase | §15.6a get_csv_import_record を追加（CSV取込み詳細画面用 wire DTO、31 §12.6a read-only パターン、ErrorRow 再利用、resolve_movement_source 共有） |
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別hashを追加取込みとし、全件summary、追加確認flag、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
+| 2026-09-24 | ㉘ runtime ①（本 PR） | §15.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-03 停止文言の正本）を追加。§15.4 / §15.5 は旧本体 `legacy_*` の記述と明記 |

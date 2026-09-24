@@ -47,6 +47,7 @@ describe("PreviewStep REQ-401 same-day addition", () => {
         onConfirm={onConfirm}
         onReselect={vi.fn()}
         isImporting={false}
+        importSuspended={false}
       />,
     );
 
@@ -145,6 +146,7 @@ describe("PreviewStep REQ-401 same-day addition", () => {
         onConfirm={onConfirm}
         onReselect={vi.fn()}
         isImporting
+        importSuspended={false}
       />,
     );
 
@@ -153,6 +155,32 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     await user.click(importButton);
     expect(onConfirm).not.toHaveBeenCalled();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("PreviewStep SPEC-STOP-D4 停止中（既定）", () => {
+  it("test_preview_step_req401_suspended_shows_preview_and_disables_import", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    render(
+      <PreviewStep
+        preview={preview}
+        filename="Z004_0002.CSV"
+        onConfirm={onConfirm}
+        onReselect={vi.fn()}
+        isImporting={false}
+      />,
+    );
+
+    // プレビュー（ファイル情報・紐付け結果）は止めない。
+    expect(screen.getByText("2026-03-21")).toBeInTheDocument();
+    expect(screen.getByText("紐付け結果")).toBeInTheDocument();
+    const importButton = screen.getByRole("button", { name: "取り込む" });
+    expect(importButton).toBeDisabled();
+    await user.click(importButton);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ファイルを選び直す（商品別CSV）" })).toBeEnabled();
   });
 });
 

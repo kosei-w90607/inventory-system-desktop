@@ -47,6 +47,15 @@ context失効・保存先変更・再確認残存は[機械判別できる回復
 
 計画中の改訂: [棚卸しと後着売上の時点証拠](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D6〜D9（proposed）。計数context、snapshot補正、独立再実測、取消、legacy移行を定める。以下の本文は現行実装契約であり、新方式の実装済み仕様ではない。
 
+### 20.0 現行buildの一時停止
+
+現行 build では、棚卸しの開始・数の保存・確定は一時停止中である（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D1〜D3）。公開関数 `start_stocktake` / `update_count` / `complete_stocktake` は、関数の最初の文で次の error を返す。DB を読まず、TX を開かず、operation log を書かない。引数の検査（`actual_count < 0` 等）や明細・棚卸しの存在確認より停止が先で、どの入力でも同じ error になる。
+
+- BIZ-06 停止文言: `棚卸しの開始・数の保存・確定は一時停止中です。数えた後の入出庫が確定で打ち消される不具合を直すまで使えません。`
+- variant: `BizError::ValidationFailed(<BIZ-06 停止文言>)`。CMD の既存変換で kind = `validation`、field = null、error_id = null。
+
+以下の §20.3〜§20.5 の処理ステップは旧本体 `legacy_start_stocktake` / `legacy_update_count` / `legacy_complete_stocktake`（`pub(crate)`、呼出し元は `#[cfg(test)]` の test・診断・fixture だけ）の記述である。読取り関数（§20.3.1、§20.6、§20.6a 等）は停止しない。停止の解除は ⑤ だけで行う（SPEC-STOP-D6）。
+
 ### 20.1 モジュール構成
 
 ```
@@ -572,3 +581,4 @@ CMD層では `kind="validation"` と BIZ の message / field をそのまま保�
 | 2026-04-12 | PR #21 | StocktakeItemForComplete を 5フィールド（IO設計書版）→ 3フィールド（id/product_code/actual_count）に統一。BIZ設計書を採用した理由: complete_stocktake の処理ステップ5で必要なのは更新対象IDと商品コードと実カウントのみで、system_stock や counted_at は product_repo::find_by_product_code から取得する方が責務分離として正しい |
 | 2026-08-27 | （本 PR） | §20.6a get_stocktake_record（棚卸し記録詳細 read、65 slice 4c）+ StocktakeStatus enum 新設 + 差異定義（補正 movement 正）の設計ノートを追加 |
 | 2026-08-30 | docs 整合性衛生 batch（本 PR） | §20.3 に棚卸しカウント対象の母集団（issue #91 owner 回答 2026-08-22）を設計判断として追加 |
+| 2026-09-24 | ㉘ runtime ①（本 PR） | §20.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-06 停止文言の正本）を追加。§20.3〜§20.5 は旧本体 `legacy_*` の記述と明記 |
