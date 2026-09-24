@@ -73,7 +73,7 @@
 - [ ] `在庫切れ` / `在庫少` / `商品コード` / `売上明細数` などの表示文言が業務上の意味と一致しているか（DSR-11）
 - [ ] テーブル、カード、チップの密度・幅・truncate が主要値の理解を壊していないか（DSR-12）
 - [ ] keyboard focus、active state、filter selection が色以外でも判別できるか（DSR-02）
-- [ ] 現在地と選択状態の色分離が DSR-21 に従い、主ナビゲーションの現在地だけに Primary アクセントを重ね、filter chip / SegmentedControl は stone のままか
+- [ ] 現在地と選択状態の色分離が DSR-21 に従い、主ナビゲーションの現在地だけに操作の役割色の細いバーを重ね、filter chip / SegmentedControl は stone のままか
 - [ ] 状態を変える control は、変更後も到達可能で、元に戻す / 別状態へ移る recovery path が残っているか（例: 表示拡大後に表示サイズ control へ戻れる）（DSR-07）
 - [ ] Select / filter の候補を現在の filtered result から派生していないか。派生する場合、選択後に候補が現在値だけへ縮退せず、他候補へ直接切り替えられるか（DSR-10）
 - [ ] 明細行を持つフォームでは、行の追加 / 編集 / 削除 / 再追加後に validation error が stale 表示されないか。変更・削除された行のエラーだけ消え、未変更行のエラーは残るか（DSR-07）
@@ -84,7 +84,8 @@
 - [ ] 作成・保存成功の feedback が DSR-19 に従い、同じ作業文脈へ戻る flow では toast を最低保証し、確認・継続操作がある場合は result panel、専用 result step / 結果画面では持続的結果表示を使い分けているか。duration の 3s / 5s / 8s 階層と、重複し得る通知だけに適用する toast id の範囲が適切か
 - [ ] destructive 確認 dialog が DSR-20 に従い、Action は `variant="destructive"`、DOM 順は Cancel → Action、`sm` 以上は Cancel 左 / Action 右、narrow は Action 上 / Cancel 下になっているか。Esc / 外側クリックは cancel ブリッジを本則とし、硬化時は適用条件を満たして明示 prop を使い、Cancel 文言から後状態を判別できるか
 - [ ] 一覧の器（toolbar 2 段・上下の件数と現在位置・sticky header・識別列 opt-in、識別列 mapping は DSR-22 の分類表に従う）と現在の行（左端バー + 淡い背景 + badge/文言の 3 点）、UI 部品の枠（操作枠 3:1 は interactive 部品限定 / 構造線を一段濃く / Badge は文字 4.5:1・枠線〈tone 固有色または `--border`〉必須・非中立の状態 badge は icon も必須（中立 tone は任意）・soft 背景単独は不可）、低視力 L3（forced-colors / DPI 125〜150% / 当たり判定 24×24）が DSR-22 に従っているか。同型情報のグループ化（DSR-16）・現在地の色分離（DSR-21）と主題を混同していないか
-- [ ] 状態 badge が①状態=outline+icon+soft tone（非中立のみ icon 必須、中立 tone は任意）／②分類=secondary pill+`--border`枠／③強調=琥珀pill+`--warning`枠の badge 3 種構成に従っているか（04-backbone 原則 4、DSR-22）
+- [ ] 状態 badge が①状態=outline+icon+soft tone（非中立のみ icon 必須、中立 tone は任意）／②分類=secondary pill+`--border`枠／③強調=琥珀 pill+`--warning`枠（最新・上書き件数、owner の現行の決定）の badge 3 種構成に従っているか。ランキング 1 位は色を使わず順位と太字で示す規則（owner 了承の試し）だが、runtime lane A の L3 で決まるまでは現行の琥珀 pill の形で作る（04-backbone 原則 4、DSR-22）
+- [ ] 各要素の色の役割と強調の段が `docs/design-system/00-foundations.md` の色の役割表・強調の段階・迷いやすい場面に従っているか（要素ごとに役割は 1 つ、行と行内の badge は別の要素、段 3 と段 4 は 1 画面に 1 つ）。役割の無い色・00 に登録されていない token を使っていないか。runtime lane A の merge 前は現行の部品の形だけ可とし、新しい見た目の先取り（候補色の直書き・新 token 名の先取り）をしていないか（DSR-08、DSR-01）
 - [ ] 業務上の増減数値（±）が記号 + 文言に加えて色（+ = `text-success-strong` / − = `text-destructive-strong` / 0 = `text-muted-foreground`）で示されているか（DSR-08）
 - [ ] page root は `PageShell`（`src/components/patterns/PageShell.tsx`）、一覧の器は `ListShell`（`src/components/patterns/ListShell.tsx`）を経由しているか。`p-6` 直書き root や自前 pagination/skeleton の再実装になっていないか（04 原則 6、DSR-22、Lane 2）
 - [ ] プルダウンが native `<select>` でなく shadcn `Select` になっているか。空値 sentinel を `SelectItem value=""` にしていないか（DSR-23）
@@ -117,6 +118,7 @@
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-24 | デザインの決まりの組み直し | カテゴリ 9 に色の役割と強調の段階（役割の無い色・未登録 token を含む、移行中は現行の部品の形だけ可）を見る行を追加。badge の行を 04 原則 4 に合わせ（ランキング 1 位は順位と太字の試し）、DSR-21 の行の現在地の表現を操作の役割色の細いバーへ。 |
 | 2026-09-10 | PR #49 | カテゴリ 9 に DSR-24（追加導線を伴う master 参照の picker dialog 統一）対応行を追加。 |
 | 2026-09-05 | 本 PR | カテゴリ 9 に badge 3 種構成・増減数値の色の 2 行を追加、`:86` の枠 3:1 記述を interactive 部品限定へ narrow 化。 |
 | 2026-09-05 | ⑧ native select 統一 | カテゴリ 9 に DSR-23（プルダウンは shadcn Select に統一）対応行を追加。 |
