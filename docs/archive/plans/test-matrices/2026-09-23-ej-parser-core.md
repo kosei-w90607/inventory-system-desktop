@@ -91,6 +91,14 @@ fixture は test 内の builder で作る: 文字列を CP932 で encode し、2
 | IO-08-D6 | 合計も現金も無い取引 | unit | `parse_ej_count_without_total_or_cash_unresolves` | 区切り・点数はあるが `合  計` も `現金` も無い取引が `Restored` になる、`IncompleteRecord` が出ない |
 | IO-08-D6 | 点数の行が無い取引 | unit | `parse_ej_total_without_item_count_unresolves` | 区切り・合計（明細とそろう）はあるが `ItemCount` の無い取引が `Restored` になる、`IncompleteRecord` が出ない |
 | IO-08-D6 | ヘッダだけの記録 | unit | `parse_ej_header_only_record_unresolves` | 本文 0 行の通常の記録（次のヘッダが直後に来る）が `Restored` / `NoItems` になる |
+| IO-08-D6 | 数量行の連続 | unit | `parse_ej_consecutive_quantity_lines_unresolve` | 同じ数量行（2 点 @100）が 2 行続き、直後の明細 \200・点数 2・合計 200 とそろう取引（前後どちらの数量行を採っても照合がそろう fixture）が `Restored` になる、`InconsistentRecord` が出ない |
+| IO-08-D6 | 点数・照合に使うラベルの行の重複 | unit | `parse_ej_duplicate_count_or_total_lines_unresolve` | 点数の行、`合  計` の行、合計の無い取引の `現金` の行のどれかが 2 行あり、値がそろっている取引が `Restored` になる（最初の行を採って照合する）、`InconsistentRecord` にならない |
+| IO-08-D5 / D6 | 数量 0・負の単価の数量行 | unit | `parse_ej_zero_quantity_or_negative_unit_price_unresolves` | `0 点 @100` と \0 の明細の組、または `1 点 @-100` の行が数量行として受理され、記録が `Restored` になる（数量 0 は照合を素通りする）。その行が `Unknown`・`UnknownLine` にならない。`@-0` が受理される、`@0` が拒否される |
+| IO-08-D6 | 区切りの前に明細が無い | unit | `parse_ej_no_item_before_separator_unresolves` | 明細 0 件・点数 0・合計 0 の取引が空の `Restored` になる、`IncompleteRecord` が出ない |
+| IO-08-D6 | 照合に使うラベルの金額が読めない | unit | `parse_ej_unreadable_total_amount_unresolves` | `合  計` の金額 token が読めない（`￥1,00`）取引で、`現金` の行へ読み替えて照合し `Restored` になる、`InconsistentRecord` にならない |
+| IO-08-D5 / D7 | 返品モードの入金の行 | unit | `parse_ej_paid_in_line_in_return_mode_unresolves` | 返品モード（`戻`）で本文が `入金` の 1 行だけの記録が `NoItems` になる（明細なしの判定は通常モードだけ）、`IncompleteRecord` にならない |
+| IO-08-D2 / D4 | 先頭断片の幅違反 | unit | `parse_ej_invalid_width_leading_line_is_reported` | 23 バイトの先頭断片の行に `InvalidWidth` が出ない、`LeadingFragment` が出ない、後続の記録の明細が復元されない |
+| IO-08-D5 | 通貨記号の必須 / 拒否 | unit | `parse_ej_currency_symbol_required_on_item_and_rejected_on_unit_price` | 通貨記号の無い明細の金額（`120`）や、通貨記号つきの単価（`@\100`）が受理され、記録が `Restored` になる、その行が `Unknown` にならない |
 | IO-08-D1 | decode 失敗 | unit | `parse_ej_decode_failure_is_fatal` | CP932 として不正なバイト列で `Ok` や部分結果が返る |
 | IO-08-D1 | ヘッダなし | unit | `parse_ej_no_record_header_is_fatal` | 24 バイトの行だけでヘッダの無い入力で `Ok` が返る |
 | IO-08-D1 | 空入力 | unit | `parse_ej_empty_input_is_fatal` | 0 バイトで `Err(Empty)` にならない |
@@ -183,6 +191,8 @@ not applicable: `parse_ej` は状態を持たない純関数で、保存・cache
 - 点数の行が無いとき点数の照合を省いて通したら? → `parse_ej_total_without_item_count_unresolves` が落ちる。
 - 区切りの直前の数量行の検査を外したら、または数量行の連続で後の行・前の行のどちらかを採ったら? → `parse_ej_quantity_line_not_followed_by_item_unresolves` / `parse_ej_consecutive_quantity_lines_unresolve` が落ちる（どちらも点数・合計を明細とそろえ、他の照合では落ちない fixture にしてある）。
 - 本文 0 行の記録を空の `Restored` にしたら? → `parse_ej_header_only_record_unresolves` が落ちる。
+- 数量行の数量 0 や `-` つきの単価を受理したら（数量の下限を 0 にする、単価の `-` の検査を外す）? → `parse_ej_zero_quantity_or_negative_unit_price_unresolves` が落ちる（数量 0 の数量行と \0 の明細の組は他の照合を素通りするため、この test だけが検出する）。
+- 点数・`合  計`・`現金` の行が重複したとき、最初の行を採って照合したら? → `parse_ej_duplicate_count_or_total_lines_unresolve` が落ちる。
 - 精算・PGM の本文の未知の行を読み飛ばしたら、または精算の題の位置を見なかったら? → `parse_ej_unknown_line_in_settlement_unresolves`、`parse_ej_program_body_with_other_line_unresolves`、`parse_ej_settlement_not_starting_with_title_unresolves` が落ちる。
 - 番号を数値化したら? → `parse_ej_normal_sale_restores_items`（先頭 0）が落ちる。
 - 未知のモードを `Normal` に倒したら? → `parse_ej_unrecognized_header_mode_unresolves_record` が落ちる。
