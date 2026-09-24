@@ -7,7 +7,7 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: f7b58778714eaf15b76f7d28095cb40d041acf6b
@@ -34,6 +34,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない文書変
 - kickoff → spec-check → plan-draft（起草、未 commit）: Design Readiness のとおり既存の設計正本で足りるため design phase を経ない（spec-check → plan-draft の唯一の skip）。
 - plan-draft → plan-gate（2026-09-24、Coordinator）: packet を plan-first commit で確定し、`docs/Plans.md` の wave 13 に登録。fresh Opus の Plan Review へ。
 - plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 0 / P2 3 / P3 14、Ordinary Operation は `not applicable` 妥当）→ 是正 `d11502d6` → round 2（別の fresh Opus、P1 0 / P2 2 / P3 8）→ 是正 `c8048116`（owner 決定 2026-09-24: 評価額の丸めは `やると決めたもの（順番未定）`）→ round 3 closure（別の fresh Opus、P1/P2 = 0、P3 3）→ P3 を反映（P3-c の自動バックアップ timer の差は closeout で backlog へ）。Plan Commit = `f7b58778`。round 天井 3 に到達し通過。実装は Opus 5.5 subagent の worktree run。
+- implementing → archive（closeout、本 commit）: PR #93 squash merge `e40e50b9`（2026-09-25）。packet を `docs/archive/plans/` へ移送し（R2 のため Matrix なし）、Implementation Results / Review Response を記録した。Final Review closure（Opus、`c58bd929`）の N-1（Review Response に Opus broad の裁定が無い、Codex の段落の位置）を本 closeout で直した。Non-scope の期間・動線の旧表記 7 か所と自動バックアップの timer の差（Plan Review round 3 P3-c、Opus broad の closeout 申し送り）を `docs/backlog.md` へ起票した。
 
 ## Owner Effort Budget
 
@@ -326,13 +327,15 @@ Minimum design checks for business-app work: 製品の layer / command / DB / op
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #93](https://github.com/kosei-w90607/inventory-system-desktop/pull/93) で実装し squash merge 済み（`e40e50b9`、2026-09-25）。S1〜S6 を実装した: 「復元する候補」47 行と「追補2・追補3 から足す事実」5 行の計 52 行を、`docs/project-memory.md` の Store Premises Facts、`docs/backlog.md`、`docs/db-design/master-tables.md`、`docs/plu-export-and-real-csv-verification.md` へ要旨・確認日・回答者の区分つきで戻した（`40564b4a`）。誤りと判定された記述（約 929 件の否定、`docs/SCREEN_DESIGN.md` の 1 日の動線を S3 の固定文言へ、業務シナリオ例の語、`docs/function-design/73-ui-stocktake.md` §73.1 の期間を準備と年末の正式カウントに分けた文、単位の拡張の「店の回答由来ではない」、PLUV の部門数）を直した。Writer の自己照合で言い換えを台帳の意味に寄せ（`1fd8e5d3`）、Final Review broad（Opus）の P3 8 件を `da304f51` で是正した。他 lane の行（PM の Z004 layout A/B の 2 行、時点証拠契約節）と D-01 保留の行には触れていない（AC7）。
 
 ## Review Response
 
 - Plan Review round 1（Opus 5.5、fresh subagent、`2a8c78aa`）: `Ordinary Operation` の `not applicable` は妥当。P1 0 / P2 3 / P3 14。Coordinator 裁定で全件採用し、`d11502d6` で是正（SCREEN_DESIGN の固定文言、AC の比較基準を merge-base に、棚卸しの期間の粒度、ほか P3）。同時に owner 回答 2026-09-24（評価額の丸め）を追加した。
 - Plan Review round 2（closure、同 reviewer 系、`d11502d6`）: `not applicable` は妥当。P1 0 / P2 2 / P3 8。P2 は round 1 の P2-1（自動バックアップが実装済みであることを無視した固定文言）と P2-2 に当たる AC2 と S1 の言語の食い違い。Coordinator 裁定で全件採用し、本改訂で是正した（S3 の固定文言、S1 の言語・外部 URL、大晦日の扱い、TD-023 の置き場所と区分、follow-up 3 件、行数 52、L-006 の言い換え、classifier の理由、owner 決定 2026-09-24 による TD-023 の backlog の置き場所）。
+- Final Review broad（2026-09-25、Opus 5.5 fresh、対象 `b20beefd`、裁定 Coordinator）: P1 0 / P2 0 / P3 9。復元した店の事実は台帳と一致し、誤記の是正は他 docs と整合、言い換えは許容範囲。P3-1〜P3-8（台帳の行の前段・条件・語の欠落、出典の区分の混在。PM の在庫精度の希望・外部保存・PLU 件数・EJ の取込み・ECR+ の終了、BL のバックアップの復旧許容・最小ウィンドウ、F73 §73.1 の棚卸しの回数）= 採用、`da304f51` で是正。P3-9（AC7〜AC9 の比較元が origin/main の取込み後に合わない）= 採用、記録だけ（lane の footprint を `dda8560a` 基準で PR body と本節に示す）。closeout への申し送り = SCREEN_DESIGN の期間表記の行（`数週間スパン`、取込み後は 213 行）と自動バックアップの timer の差を backlog へ。詳細は台帳の原文を含むため local-only。
+- Final Review broad Codex 側（2026-09-25、GPT-6 Astra medium、対象 `da304f51`、裁定 Coordinator）: P1 0 / P2 0 / P3 1。Opus 側の結果を読まずに行った独立の 1 本。P3（AC9 と T4 の比較元 `3148347b` は origin/main の取込み〈`b20beefd`、`dda8560a` を取込み〉の後は他 lane の変更まで含め 29 file を出し、本 lane の scope 違反に見える。内容の scope 違反ではない）= 採用。AC と T4 の文は Plan Gate 時点の baseline として残し、取込み後の lane の比較は `git diff dda8560a HEAD --name-only` とする（`da304f51` で 8 file、すべて S1〜S7。Coordinator が再実行して一致を確認）。PR body の Validation も旧 command の実測と補正後の結果を分けて書く。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
 
-Final Review broad Codex 側（2026-09-25、GPT-6 Astra medium、対象 `da304f51`、裁定 Coordinator）: P1 0 / P2 0 / P3 1。Opus 側の結果を読まずに行った独立の 1 本。P3（AC9 と T4 の比較元 `3148347b` は origin/main の取込み〈`b20beefd`、`dda8560a` を取込み〉の後は他 lane の変更まで含め 29 file を出し、本 lane の scope 違反に見える。内容の scope 違反ではない）= 採用。AC と T4 の文は Plan Gate 時点の baseline として残し、取込み後の lane の比較は `git diff dda8560a HEAD --name-only` とする（`da304f51` で 8 file、すべて S1〜S7。Coordinator が再実行して一致を確認）。PR body の Validation も旧 command の実測と補正後の結果を分けて書く。
+Final Review の closeout 時点の結論（2026-09-25、Coordinator）: helper の専用 record（`#issuecomment-5819646789`）に載る broad は 2 本で、互いに独立した Double Audit。(1) Opus 5.5 fresh の broad（対象 `b20beefd`、`#issuecomment-5819635015`）と、同じく fresh の Opus による closure（対象 `c58bd929`、`#issuecomment-5819635472`、新規 P1 0 / P2 0 / P3 2。Opus P3-1〜P3-9 と Codex P3 の閉鎖を台帳の該当行と隣接行に照合して確認）。(2) Codex broad（GPT-6 Astra medium、対象 `da304f51`、`#pullrequestreview-5308205216`、上の段落）。record の closure は base 同期後の fresh Opus（対象 `5867414f`、`#issuecomment-5820295708`、新規 P1 0 / P2 0 / P3 0。2 回の base 同期〈origin/main `94e4d58a`、`a3f08cdd`〉とも lane の 8 file の差分は変わらず、取り込んだ PR #97 の checker / helper は本 packet を受理し、PR #94 の EJ 関連の文書と本 PR が戻した店の事実は食い違わない）。manual / R4 は not-required。Opus closure（`c58bd929`）の新規 P3 2 件: N-1（本節に Opus broad の裁定が無い、Codex の段落が箇条書きでなく Findings Freeze の行の後ろ）は本 closeout で直した。N-2（PR body の Validation の追記の位置と Review-only の欄が古い）は merge 前に PR body を更新して解消。後回しにした所見は `docs/backlog.md` へ起票した: 期間・動線の旧表記 7 か所（Non-scope の follow-up、`#### workflow / test / lint / docs`）、設定時刻の自動バックアップの timer がバックアップ画面を開いている間しか動かない差（Plan Review round 3 P3-c、`#### やると決めたもの（順番未定）`）。
