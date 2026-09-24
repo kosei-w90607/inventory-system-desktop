@@ -1,13 +1,13 @@
 # Plan Packet: ㉘ runtime ① 旧棚卸しとZ004業務commit・取消の停止と再現fixture（R3）
 
-2026-09-23 起草。出典は `docs/Plans.md`「次の行動」1（owner 決定 2026-09-22: ㉘ runtime の最初の lane = 既存の危険な操作〈旧棚卸しの開始・入力・確定、POS の業務 commit・取消〉の停止と再現 fixture）と、[㉗ packet](../archive/plans/2026-09-16-stocktake-count-baseline.md) の節「後続 runtime lane ㉘ への申し送り」、[時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md)（[適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)を含む）、[監査 STK-1 / STK-2](../research/2026-09-16-diagram-audit.md)。lane の切り方（① 停止と再現 fixture → ② 受領・判定・保存の基盤 → ③ 計数と補正 → ④ 取込み・取消・回復 → ⑤ 一括切替）は 2026-09-22 の外部設計相談（owner 実施、回答は local-only）を Coordinator が採用したもので、本 packet は ① だけを扱う。本 lane は D-090 の dogfood 対象であり、`Ordinary Operation` 節を置く。
+2026-09-23 起草。出典は `docs/Plans.md`「次の行動」1（owner 決定 2026-09-22: ㉘ runtime の最初の lane = 既存の危険な操作〈旧棚卸しの開始・入力・確定、POS の業務 commit・取消〉の停止と再現 fixture）と、[㉗ packet](2026-09-16-stocktake-count-baseline.md) の節「後続 runtime lane ㉘ への申し送り」、[時点証拠 ADR](../../adr/2026-09-18-stocktake-time-evidence.md)（[適用範囲の但し書き](../../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)を含む）、[監査 STK-1 / STK-2](../../research/2026-09-16-diagram-audit.md)。lane の切り方（① 停止と再現 fixture → ② 受領・判定・保存の基盤 → ③ 計数と補正 → ④ 取込み・取消・回復 → ⑤ 一括切替）は 2026-09-22 の外部設計相談（owner 実施、回答は local-only）を Coordinator が採用したもので、本 packet は ① だけを扱う。本 lane は D-090 の dogfood 対象であり、`Ordinary Operation` 節を置く。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: b569ca243964d1ca76b493ffe3dc02261064548c
@@ -29,6 +29,7 @@ manual の対象: 棚卸し画面と売上データ取込み画面（Z004 タブ
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: Risk R3（`docs/project-profile.md` High-risk Changes の stocktake / CSV import / rollback の BIZ 振舞い、daily workflow screens に該当。R4 の破壊的な data lifecycle には当たらない = DB の行・schema を変えず、停止は build の差し替えで戻せる）。Design Phase = 停止の契約を本 packet の Spec Contract（SPEC-STOP-D1〜D6）に置き、実装と同じ PR で新設 ADR と Scope S6 の source docs へ昇格する（Writer が実装 run で同期）。owner の設計判断を要する未決の論点なし（停止の対象は owner 決定 2026-09-22 で確定済み、画面文言は manual で確認する）。
 - plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 0 / P2 3 / P3 8、操作列は `成立`）→ 全件採用し是正 `94528ef8` → round 2 closure（別の fresh Opus、P1/P2 = 0、P3 5、操作列は `成立`）→ P3 を反映。Plan Commit = `b569ca24`（plan-first `d2acc6e9` → 是正を含む確定版）。実装は Opus 5.5 subagent の worktree run。
+- implementing → archive（closeout、本 commit）: PR #95 squash merge `33b0dbbb`（2026-09-25）。packet / Matrix を `docs/archive/plans/` へ移送し、Implementation Results / Review Response を記録した。Non-scope に置いた `docs/backlog.md` の STK-1 / STK-2 entry の現在地（① の停止の完了）を更新した。Residual（CMD の token 削除 3 契約の到達不能、開発 DB の旧進行中棚卸し、ホームの Z004 未取込み警告）と ② 〜 ⑤ の lane は、停止 ADR の Consequences / Revisit Trigger と時点証拠 ADR の「㉘ への引継ぎ」節が正本のため、backlog には重ねない。
 
 ## Owner Effort Budget
 
@@ -350,14 +351,10 @@ Contract ID: SPEC-STOP
 
 ## Implementation Results
 
-Fill after implementation.
-
-Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+[PR #95](https://github.com/kosei-w90607/inventory-system-desktop/pull/95) で実装し squash merge 済み（`33b0dbbb`、2026-09-25）。S1〜S7 を実装した: (1) 旧棚卸しの開始・カウント保存・確定（BIZ-06 の `start_stocktake` / `update_count` / `complete_stocktake`）と Z004 の業務 commit・取消（BIZ-03 の `commit_csv_import` / `rollback_csv_import`）の 5 入口が、関数の最初の文で既存 kind の固定文言 error を返し、DB を読まず書かない（operation log・preview cache も触らない）。command の型・kind・登録・`bindings.ts` は不変。(2) 旧本体は `legacy_*`（`pub(crate)`）へ移し、既存 BIZ test と `#[ignore]` 診断 2 本（`XFA_TEMPORAL_FAIL` / `XFA_LATE_IMPORT_FAIL`）は旧本体を呼んで不具合の再現を続ける。旧本体の root は Final Review P3-1 の裁定で `#[cfg_attr(not(test), expect(dead_code))]` にし、production から呼ぶと clippy `-D warnings` が unfulfilled expectation で失敗する（Plan 時点の `allow` の記述は S1・Contract Probe に残る）。(3) 棚卸し画面（`StocktakePage`、`writesSuspended`）と売上データ取込み画面の Z004 タブ（`PreviewStep` が export する停止定数を既定値にする `importSuspended`、`CsvImportPage` が同じ定数で案内を出す）に warning の案内を出し、開始・カウント入力・確定と「取り込む」を無効にした。閲覧・絞り込み・ページ送り・プレビュー・日報タブは従来どおり。(4) 再現 fixture F1〜F7（合成データ）と、各 fixture の前提を assert してから 5 入口の停止と DB 全 table の不変を確かめる `legacy_stop_tests.rs`、CMD の停止 wire と preview token の保持の test。Codex broad C1 の是正で F1 / F3 にも合成 preview を持たせた。(5) 停止 ADR [`docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md`](../../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)（SPEC-STOP-D1〜D6）を新設し、35 / 32 / 41 / 42 / 73 / 55・SCREEN_DESIGN・現行図・横断検証図に停止中である旨と文言の正本を置き、traceability を再生成した。Gated Amendment 0 回。
 
 ## Review Response
 
-Fill after review.
-If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
 - Findings Freeze: frozen after round 1（94528ef8）; post-freeze exceptions: none.
 
 ### Plan Review round 1（2026-09-24、plan-gate、Opus 5.5 fresh、対象 plan-first `d2acc6e9`、裁定 Coordinator）
@@ -371,3 +368,5 @@ P1 0 / P2 0 / P3 3。SPEC-STOP-D1〜D6 は成立。P3-1（旧本体の `allow(de
 ### Final Review broad Codex 側（GPT-6 Astra high、対象 `faa7f9e3`、裁定 Coordinator）
 
 P1 0 / P2 0 / P3 1、Ordinary Operation 成立。Opus 側の結果（本節の前の小節と PR body の該当行）を読まずに行った独立の 1 本。C1（F1 と F3 の fixture は preview を持たず、`commit_csv_import` の停止を 0 回しか検査していない。production の停止は成立）= 採用、`196b21c2` で F1 / F3 に合成 preview を 1 件ずつ持たせ、検査の前に preview が空でないことを assert した（assert だけを入れた状態で F1 / F3 の 2 本が red、preview の追加後に 7 本 green）。production code の変更はなく、manual M1a / M1b / M2 の対象（画面）に影響しない。
+
+Final Review の closeout 時点の結論（2026-09-25、Coordinator）: helper の専用 record（`#issuecomment-5823886887`）の review は pass。broad は 2 本で、互いに独立した Double Audit。(1) Opus 5.5 fresh の broad（対象 `f17ab303`、`#issuecomment-5823882101`、P1 0 / P2 0 / P3 3。P3-1・P3-2 を採用し是正、P3-3 は owner の所感で変更なし）。(2) Codex broad（GPT-6 Astra high、対象 `faa7f9e3`、`#pullrequestreview-5307935006`、P1 0 / P2 0 / P3 1。C1 を採用し `196b21c2` で是正）。closure は Opus 5.5 fresh（対象 `93f729c8`、`#issuecomment-5823882398`、閉じる対象 4 件をすべて閉鎖と確認、新規 P3 1〈P3-3 の owner の結論の記録漏れ〉は `b9644702` で記録）と、base 同期（`docs/Plans.md` の衝突を解いた merge）後の Codex closure（対象 `b86fde68`、`#pullrequestreview-5311377167`、P1 0 / P2 0 / P3 0、合否 = 通す）。manual は pass（owner、tested head `b86fde68`、`#issuecomment-5824051403`: M1a PASS・M2 PASS。M1b は DB の状態で表示されない分岐で、自動 test〈AC5〉が固定する）。1 回目の manual は `faa7f9e3` で M1a / M1b / M2 PASS だったが、base 同期で衝突を解いたため `docs/agent-guidance/merge-evidence.md` の規則により引き継がず再実施した（Owner Effort Budget の引上げの理由）。R4 は not-required。Final Review P3-3（停止中も入力を促す subtitle と説明文）は M1 での owner の所感により変更なし。
