@@ -334,3 +334,5 @@ Fill after implementation.
 - Plan Review round 2（closure、同 reviewer 系、`d11502d6`）: `not applicable` は妥当。P1 0 / P2 2 / P3 8。P2 は round 1 の P2-1（自動バックアップが実装済みであることを無視した固定文言）と P2-2 に当たる AC2 と S1 の言語の食い違い。Coordinator 裁定で全件採用し、本改訂で是正した（S3 の固定文言、S1 の言語・外部 URL、大晦日の扱い、TD-023 の置き場所と区分、follow-up 3 件、行数 52、L-006 の言い換え、classifier の理由、owner 決定 2026-09-24 による TD-023 の backlog の置き場所）。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+Final Review broad Codex 側（2026-09-25、GPT-6 Astra medium、対象 `da304f51`、裁定 Coordinator）: P1 0 / P2 0 / P3 1。Opus 側の結果を読まずに行った独立の 1 本。P3（AC9 と T4 の比較元 `3148347b` は origin/main の取込み〈`b20beefd`、`dda8560a` を取込み〉の後は他 lane の変更まで含め 29 file を出し、本 lane の scope 違反に見える。内容の scope 違反ではない）= 採用。AC と T4 の文は Plan Gate 時点の baseline として残し、取込み後の lane の比較は `git diff dda8560a HEAD --name-only` とする（`da304f51` で 8 file、すべて S1〜S7。Coordinator が再実行して一致を確認）。PR body の Validation も旧 command の実測と補正後の結果を分けて書く。
