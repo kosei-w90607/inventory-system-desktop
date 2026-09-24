@@ -33,7 +33,7 @@ manual なし: 製品の runtime・画面・配布物は変わらない。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 3（見込み: Codex Final Review の relay 1、Ready 1、merge 1）
+- 介入回数上限: 5（当初 3〈Codex Final Review の relay 1、Ready 1、merge 1〉。2026-09-25 に owner 承認で引き上げ「引き上げしていいよ」: Coordinator が packet の Review Response に Opus 側の結果を載せたまま Codex broad を発注し独立性が崩れたため、取り直しの判断 1 と relay 1 が増えた。消費 3〈relay 79、取り直しの判断、relay 79b〉、残り Ready 1・merge 1）
 - 実働時間上限: 15分（文書と script の変更で、owner の作業は Codex relay と Ready / merge の判断に限られる見込み）
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3）
