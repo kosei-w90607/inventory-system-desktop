@@ -8,6 +8,8 @@
 
 ## 次の行動
 
+- デザインの決まりの見直し（design-first、docs、R2、owner 2026-09-24 の canvas での判断が起源）: [Plan Packet](plans/2026-09-24-design-rules-renewal.md) / [Matrix](plans/test-matrices/2026-09-24-design-rules-renewal.md)。branch `agent/design-rules-renewal`、Phase plan-gate（fresh Opus の Plan Review 待ち）。wave 13 とは独立の登録で、並走 lane と同じ file（`docs/backlog.md` 等）の重なりは merge 順で解消する。token の値と全画面への適用・書体の採用・棚卸し画面 D1 は後続 lane（packet の Non-scope）。
+
 次の着手順（owner決定2026-09-22）:
 
 1. ㉘ runtimeの最初のlane = 既存の危険な操作（旧棚卸しの開始・入力・確定、POSの業務commit・取消）の停止と再現fixture。並走でEJ（電子ジャーナル）parserのcoreを合成データで進める。本laneの起票はworkflowの軽量化1段目文書部分（PR #90）のdogfood対象: templateの `Ordinary Operation` 節を書き、Plan Reviewの冒頭でreviewerが `成立 / 具体的な反例あり / 外部前提が未確認` の3値を返すかを観測する。
