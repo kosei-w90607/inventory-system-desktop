@@ -65,7 +65,7 @@ fixture は test 内の builder で作る: 文字列を CP932 で encode し、2
 | IO-08-D7 | 入金 / 出金 / 替 | unit | `parse_ej_non_item_records_paid_in_paid_out_exchange` | 本文 1 行の `入金` / `出金` / `替` の記録が `NoItems` でない、または診断が出る。金額の無い `替` の行が `NoItems` / Unknown にならない（fixture の `替` の行は実物と同じく `替` + 空白 + 半角カナの文字列で、数字・通貨記号を含めない） |
 | IO-08-D5 / D7 | 設定書込み・精算 | unit | `parse_ej_settlement_and_program_records` | `PGM`（区切り・SD設定書込み・区切り）と `精算`（日計明細の題・総売・金額だけ・純売・金額だけ・現金在高・純客・区切り・日計明細・SDｶｰﾄﾞ保存・ｽﾏ-ﾄﾌｫﾝ送信）が `NoItems` でない、題の両端の数字が文字列で保持されない。返品だけの日の精算（`総売` / `純客` の負値、通貨記号なしの `-` + 数字の `AmountOnly`、`対象計` / `内税` / `消費税合計` / `現金在高` の通貨記号なしの負値）が `NoItems` でない |
 | IO-08-D3 / D9 | file 内の複数精算・前日付の先頭 | unit | `parse_ej_multiple_settlements_in_one_file_and_pre_dated_first_record` | 先頭の記録が file の他の記録より前の日付だと異常扱いされる、2 回目の精算の後の記録が落ちる、記録の順序が変わる |
-| IO-08-D6 | 金額の表記 | unit | `parse_ej_amount_formats` | 半角 `\1,234`、全角 `￥１２，３４５`（全角数字・全角読点）、単価 `@1,200`、通貨記号なしの `-980` のどれかが `i64` に読めない。数字・桁区切り・通貨記号の幅が 1 つの token の中でそろわない token（`￥1,234`、`\１２`）が数値として受理される |
+| IO-08-D6 | 金額の表記 | unit | `parse_ej_amount_formats` / `parse_ej_amount_i64_bounds` | 半角 `\1,234`、全角 `￥１２，３４５`（全角数字・全角読点）、単価 `@1,200`、通貨記号なしの `-980` のどれかが `i64` に読めない。数字・桁区切り・通貨記号の幅が 1 つの token の中でそろわない token（`￥1,234`、`\１２`）が数値として受理される。`i64::MIN` / `i64::MAX` が読めない、その外側が受理される |
 | IO-08-D1 | file_hash | unit | `parse_ej_file_hash_is_raw_sha256` | file_hash が生バイトの SHA-256 小文字 hex 64 文字でない、decode 後の文字列から計算される |
 | IO-08-D5 / D6 | 名称の中の空白 | unit | `parse_ej_item_name_with_inner_space` | 名称に空白を含む明細（例 `ﾃｽﾄ ｲﾄ A` + 空白 + `\200`）で、名称が最初の空白で切れる、金額の一部が名称に入る、名称の末尾空白が残る |
 | IO-08-D6 | 0 円の明細 | unit | `parse_ej_zero_amount_item_is_restored` | 金額 `\0` の明細を含み合計が一致する取引が `Unresolved` になる |
@@ -75,11 +75,14 @@ fixture は test 内の builder で作る: 文字列を CP932 で encode し、2
 | IO-08-D6 | 点数の不一致 | unit | `parse_ej_item_count_mismatch_unresolves` | 点数 3 と数量の合計 2 の取引が `Restored` になる |
 | IO-08-D6 | 数量×単価の不一致 | unit | `parse_ej_quantity_price_mismatch_unresolves` | 2 点 @100 に対し金額 \300 の取引が `Restored` になる |
 | IO-08-D6 | 合計の不一致 | unit | `parse_ej_total_mismatch_unresolves` | 合計が明細の金額の合計と違う取引が `Restored` になる |
+| IO-08-D6 | 合計が無いときの現金の不一致 | unit | `parse_ej_cash_mismatch_without_total_line_unresolves` | 合計行が無く、現金の金額が明細の金額の合計と違う取引が `Restored` になる、`InconsistentRecord` が出ない |
 | IO-08-D6 | 負の明細金額 | unit | `parse_ej_negative_item_amount_unresolves` | 明細域の負の金額が明細として受理される |
 | IO-08-D6 | 数量行の孤立 | unit | `parse_ej_quantity_line_not_followed_by_item_unresolves` | 数量行の直後が区切りの取引が `Restored` になる |
 | IO-08-D4 / D6 / D7 | EOF で切れた取引・精算 | unit | `parse_ej_record_truncated_at_eof_unresolves` | 明細の後で file が終わる取引、`日計明細` の終わり行の無い精算が `Restored` / `NoItems` になる |
 | IO-08-D2 | 最終改行なし | unit | `parse_ej_missing_final_crlf_reports_diagnostic` | 最後の CRLF が無い file で `MissingFinalNewline` が出ない、または最後の行が失われる |
 | IO-08-D2 | 幅違反・孤立 LF | unit | `parse_ej_invalid_width_line_unresolves_record` | 23 / 25 バイトの行や孤立した LF を含む行が正規化されて通る、`InvalidWidth` が出ない |
+| IO-08-D2 | 24 バイト内の孤立 CR / LF | unit | `parse_ej_lone_cr_or_lf_within_24_bytes_unresolves_record` | 幅 24 のまま空白 1 バイトが CR / LF に置き換わった行が trim で隠れて `Restored`・診断 0 になる、生行が保たれない |
+| IO-08-D2 / D3 / D4 | ヘッダ・先頭断片の孤立 CR / LF | unit | `parse_ej_lone_cr_or_lf_in_header_or_leading_line_is_invalid_width` | モード欄に CR / LF を含む 2 行がヘッダとして検出される、先頭断片の CR / LF を含む行に `InvalidWidth` が出ない |
 | IO-08-D4 | 先頭断片 | unit | `parse_ej_leading_lines_before_first_header_are_reported` | 最初のヘッダより前の行が捨てられる、最初の記録に混ざる、`LeadingFragment` が出ない |
 | IO-08-D5 / D6 | 小数の数量 | unit | `parse_ej_decimal_quantity_unresolves` | `1.3 点 @…` の行が数量行として受理される（小数の数量は未観測） |
 | IO-08-D5 / D7 | 精算内の未知の行 | unit | `parse_ej_unknown_line_in_settlement_unresolves` | 精算の本文に未知の行がある記録が `NoItems` になる、`UnknownLine` が出ない |
@@ -125,7 +128,7 @@ not applicable: `parse_ej` は状態を持たない純関数で、保存・cache
 - threshold: 行幅 24 バイトちょうど（23 / 25 は違反）。
 - null/default: 数量行の無い明細は数量 1・単価なし。合計が無ければ現金の値で照合し、どちらも無ければ `IncompleteRecord`。
 - empty/non-empty: 0 バイト、ヘッダだけの記録（本文 0 行の通常の記録は `IncompleteRecord`、`parse_ej_header_only_record_unresolves`）、最後の CRLF の後が空 / 非空。
-- min/max: 金額 0 の明細（受理、`parse_ej_zero_amount_item_is_restored`）、負の金額（不成立）、`i64` に収まらない桁の金額は数値化できず `Unknown`。
+- min/max: 金額 0 の明細（受理、`parse_ej_zero_amount_item_is_restored`）、負の金額（不成立）、`i64` に収まらない桁の金額は数値化できず `Unknown`（両端の `i64::MIN` / `i64::MAX` は受理、`parse_ej_amount_i64_bounds`）。
 - status/policy enum: `EjMode` 5 種、`EjRestoration` 3 種、`EjDiagnosticCode` 7 種。
 - wire type: 生バイト（CP932・CRLF・24 バイト固定幅）。
 - internal type: 金額・数量・単価 `i64`、日時・番号は文字列。
@@ -161,13 +164,13 @@ not applicable: `parse_ej` は状態を持たない純関数で、保存・cache
 - 位置による分類を外し、行の形だけで分類したら? → `parse_ej_exact_cash_tender_without_total_line`（「現金」行が明細になり点数と合計がずれる）と `parse_ej_item_named_like_label_before_separator_is_item` が落ちる。
 - 点数の照合を外したら? → `parse_ej_item_count_mismatch_unresolves` が落ちる。
 - 数量×単価の照合を外したら? → `parse_ej_quantity_price_mismatch_unresolves` が落ちる。
-- 合計 / 現金の照合を外したら? → `parse_ej_total_mismatch_unresolves` が落ちる。
+- 合計 / 現金の照合を外したら? → `parse_ej_total_mismatch_unresolves` が落ちる。現金の照合だけを外したら（現金の値を明細の合計に差し替える）→ `parse_ej_cash_mismatch_without_total_line_unresolves` が落ちる。
 - 数量行を後続の全明細に掛けたら? → `parse_ej_quantity_line_applies_to_next_item` が落ちる。
 - 同名行を合算したら? → `parse_ej_repeated_same_name_lines_kept_separate` が落ちる。
 - 返品モードで符号を反転したら? → `parse_ej_return_mode_keeps_positive_amounts` が落ちる。
 - EOF を記録の閉じとみなしたら? → `parse_ej_record_truncated_at_eof_unresolves` が落ちる。
 - 未知の行を黙って読み飛ばしたら? → `parse_ej_unknown_line_in_item_region_unresolves_record_only` と `parse_ej_every_line_is_accounted_for` が落ちる。
-- 改行を正規化したら? → `parse_ej_invalid_width_line_unresolves_record` が落ちる。
+- 改行を正規化したら? → `parse_ej_invalid_width_line_unresolves_record` が落ちる。幅 24 の行の CR / LF を検査しなかったら? → `parse_ej_lone_cr_or_lf_within_24_bytes_unresolves_record` と `parse_ej_lone_cr_or_lf_in_header_or_leading_line_is_invalid_width` が落ちる。
 - 先頭断片を捨てたら? → `parse_ej_leading_lines_before_first_header_are_reported` と `parse_ej_every_line_is_accounted_for` が落ちる。
 - 診断の message に生の行を埋めたら、または文言を変えたら? → `parse_ej_every_line_is_accounted_for` と `parse_ej_diagnostic_messages_are_fixed_texts` が落ちる。
 - 行番号を 1 つずらす・ヘッダ 2 行目を数え落とすと? → `parse_ej_every_line_is_accounted_for`（1〜N の被覆）が落ちる。

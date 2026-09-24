@@ -237,7 +237,7 @@ pub fn parse_ej(raw_bytes: &[u8]) -> Result<EjParseResult, EjParseError> {
     }
     let mut leading_lines = Vec::with_capacity(first_header);
     for (index, raw) in lines[..first_header].iter().enumerate() {
-        if raw.bytes.len() != LINE_WIDTH {
+        if !fixed_width(raw.bytes) {
             diagnostics.push(diagnostic(EjDiagnosticCode::InvalidWidth, Some(index + 1)));
         }
         leading_lines.push(EjLine {
@@ -309,10 +309,16 @@ fn split_crlf(raw: &[u8]) -> Vec<&[u8]> {
     segments
 }
 
+/// IO-08-D2: 24 バイトちょうどで、孤立した CR / LF を含まない行。
+/// CR / LF は trim で消えるため、ヘッダ検出と行の分類より前にここで弾く
+fn fixed_width(bytes: &[u8]) -> bool {
+    bytes.len() == LINE_WIDTH && !bytes.iter().any(|b| matches!(b, b'\r' | b'\n'))
+}
+
 /// IO-08-D3: モード欄5バイト + `YYYY-MM-DD HH:MM` + 空白3バイト / 空白13バイト + `NNNN-NNNNNN`
 fn parse_header(first: &RawLine, second: &RawLine) -> Option<Header> {
     let (a, b) = (first.bytes, second.bytes);
-    if a.len() != LINE_WIDTH || b.len() != LINE_WIDTH {
+    if !fixed_width(a) || !fixed_width(b) {
         return None;
     }
     let printed_at = &a[5..21];
@@ -379,7 +385,7 @@ fn build_record(
     for (index, raw) in body.iter().enumerate() {
         let line_no = start + 3 + index;
         let text = raw.text.as_str();
-        let kind = if raw.bytes.len() != LINE_WIDTH {
+        let kind = if !fixed_width(raw.bytes) {
             report(EjDiagnosticCode::InvalidWidth, line_no, &mut reasons);
             EjLineKind::Unknown
         } else {
@@ -696,9 +702,10 @@ fn parse_count(text: &str) -> Option<i64> {
 /// 通貨記号・数字・桁区切りの幅（半角 / 全角）が token 内でそろわなければ受理しない。
 /// 値と、通貨記号があったかを返す
 fn parse_amount(token: &str) -> Option<(i64, bool)> {
-    let (negative, rest) = match token.strip_prefix('-') {
-        Some(rest) => (true, rest),
-        None => (false, token),
+    // 負値は負のまま蓄積する（i64::MIN の絶対値は i64 に収まらない）
+    let (sign, rest) = match token.strip_prefix('-') {
+        Some(rest) => (-1, rest),
+        None => (1, token),
     };
     let (mut wide, rest) = if let Some(rest) = rest.strip_prefix('\\') {
         (Some(false), rest)
@@ -723,7 +730,7 @@ fn parse_amount(token: &str) -> Option<(i64, bool)> {
         }
         match digit {
             Some(d) => {
-                value = value.checked_mul(10)?.checked_add(i64::from(d))?;
+                value = value.checked_mul(10)?.checked_add(sign * i64::from(d))?;
                 after_digit = true;
             }
             // 桁区切りは数字の後だけ（先頭・連続を受理しない）
@@ -734,7 +741,7 @@ fn parse_amount(token: &str) -> Option<(i64, bool)> {
     if !after_digit {
         return None;
     }
-    Some((if negative { -value } else { value }, has_currency))
+    Some((value, has_currency))
 }
 
 /// IO-08-D8: code ごとの範囲と固定文言
@@ -1245,6 +1252,18 @@ mod tests {
         assert_eq!(items_of(&result.records[0])[0].unit_price, Some(1_200));
     }
 
+    // IO-08-D5: 金額 token は i64 の両端まで読み、その外は受理しない
+    #[test]
+    fn parse_ej_amount_i64_bounds() {
+        assert_eq!(
+            parse_amount("-9223372036854775808"),
+            Some((i64::MIN, false))
+        );
+        assert_eq!(parse_amount("9223372036854775807"), Some((i64::MAX, false)));
+        assert_eq!(parse_amount("-9223372036854775809"), None);
+        assert_eq!(parse_amount("9223372036854775808"), None);
+    }
+
     // IO-08-D1: file_hash は生バイトの SHA-256
     #[test]
     fn parse_ej_file_hash_is_raw_sha256() {
@@ -1391,6 +1410,20 @@ mod tests {
             2,
             400,
         ));
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+    }
+
+    // IO-08-D6: 合計行が無いときは現金の金額と明細の合計を照合する
+    #[test]
+    fn parse_ej_cash_mismatch_without_total_line_unresolves() {
+        let result = parse(
+            &[
+                header("", AT, "000168"),
+                vec![item(NAME_A, 100), sep(), count(1), wide("現金", 200)],
+            ]
+            .concat(),
+        );
 
         assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
     }
@@ -1722,6 +1755,61 @@ mod tests {
             ]
         );
         assert_eq!(items_of(&result.records[0]).len(), 2);
+    }
+
+    // IO-08-D2: 24 バイトの中に孤立した CR / LF がある行も幅違反とし、trim で隠さない
+    #[test]
+    fn parse_ej_lone_cr_or_lf_within_24_bytes_unresolves_record() {
+        for control in [b'\r', b'\n'] {
+            let mut all = rows(&ok_sale("000222"));
+            all[5][1] = control; // 点数行の先頭の空白。幅は 24 のまま
+            let result = parse_ej(&crlf(all)).unwrap();
+
+            let record = &result.records[0];
+            assert_eq!(reasons_of(record), [InvalidWidth]);
+            assert_eq!(
+                diags(&result),
+                [(Some(6), InvalidWidth, EjDiagnosticScope::Line)]
+            );
+            assert_eq!(record.body[3].kind, EjLineKind::Unknown);
+            assert!(record.body[3].text.contains(control as char), "生行を保つ");
+        }
+    }
+
+    // IO-08-D2 / D3 / D4: CR / LF を含む行はヘッダにならず、先頭断片でも幅違反とする
+    #[test]
+    fn parse_ej_lone_cr_or_lf_in_header_or_leading_line_is_invalid_width() {
+        for control in [b'\r', b'\n'] {
+            // 2 件目のヘッダのモード欄（空白 5 バイト）の先頭
+            let mut all = rows(&[ok_sale("000223"), ok_sale("000224")].concat());
+            all[11][0] = control;
+            let result = parse_ej(&crlf(all)).unwrap();
+
+            assert_eq!(result.records.len(), 1);
+            let record = &result.records[0];
+            assert_eq!(reasons_of(record)[0], InvalidWidth);
+            assert_eq!(
+                result.diagnostics[0].code, InvalidWidth,
+                "最初の診断はヘッダだった行"
+            );
+            assert_eq!(result.diagnostics[0].line_no, Some(12));
+
+            // 先頭断片の行
+            let mut leading = row(&sep());
+            leading[0] = control;
+            let mut all = vec![leading];
+            all.extend(rows(&ok_sale("000225")));
+            let result = parse_ej(&crlf(all)).unwrap();
+
+            assert_eq!(
+                diags(&result),
+                [
+                    (None, LeadingFragment, EjDiagnosticScope::File),
+                    (Some(1), InvalidWidth, EjDiagnosticScope::Line),
+                ]
+            );
+            assert_eq!(items_of(&result.records[0]).len(), 2);
+        }
     }
 
     // IO-08-D5: 明細の金額は通貨記号つき、数量行の単価は通貨記号なしだけを受理する
