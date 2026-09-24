@@ -47,7 +47,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない設計文
 
 ## Owner Effort Budget
 
-- 介入回数上限: 4（内訳の見込み: 起票中の owner 確認 1〈2026-09-24 に消費済み、TD-024 / TD-025〉、Codex の Final Review relay 1、Ready 1、merge 1。既定 3 から 1 増やす理由 = owner にしか答えられない店の運用と受容 risk の確認を 1 回含むため）
+- 介入回数上限: 10（当初 4〈起票中の owner 確認 1、Codex の Final Review relay 1、Ready 1、merge 1。既定 3 から 1 増やす理由 = owner にしか答えられない店の運用と受容 risk の確認を 1 回含むため〉。2026-09-25 に owner 承認で引き上げ「引き上げしていいよ」「その数で記録していいよ」: Codex broad の差し戻しで GA4 が入り、owner の承認・判断と取り直しの relay が増えた。消費 7〈起票中の確認〈2026-09-24〉、GA3 の判断〈TD-027〉、relay 80、GA4 の承認、Consequences の 1 文の判断、引き上げの承認、数え直しの確認〉、残り relay 80b・Ready・merge）
 - 実働時間上限: 20分（文書の変更で、owner の作業は回答・relay・Ready / merge の判断に限られる見込み。未実測）
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3）
