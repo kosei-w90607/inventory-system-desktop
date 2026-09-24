@@ -209,6 +209,17 @@ class EJ:
                 and totals_match(self, previous))
 
 
+def offset_targets(counted: frozenset[int], current: Names, previous: Previous) -> frozenset[int]:
+    """ADR D4, clear-line premise true: counted stock-synced products whose 0/0 row is judged.
+
+    Codes of this Z004, codes only in the previous one (cleared with their unsettled sales), and,
+    while the previous Z004 is not received, every counted product this Z004 has no row for.
+    """
+    if isinstance(previous, str):
+        return counted
+    return counted & {code for code, _name in current | previous}
+
+
 def offset_reason(ej: EJ | None, previous: Previous = BASE_NAMES, code: int = PRODUCT) -> str | None:
     """Zero-quantity, zero-amount row of a counted product (ADR D4, sale/return offset)."""
     if previous in (FIRST, ROLLED_BACK, EARLIER):
@@ -252,7 +263,8 @@ class Ledger:
         self.legacy_ceiling = 0
         self.active_item = False  # an uncounted item owns the active flow too
         self.received = 0  # max pos_import_sources id
-        # source -> (reason, creating import, registration change of a first interval)
+        # source -> (reason, creating import, registration change while the directly preceding
+        # Z004 is unreceived: first interval, below the smallest received, going-back)
         self.flags: dict[int, tuple[str, int, bool]] = {}
         self.imports: dict[int, list[int]] = {}  # import id -> movement ids
 
@@ -388,14 +400,24 @@ class Ledger:
         if reason is None:
             self.flags.pop(source, None)
         else:
-            self.flags[source] = (reason, import_id, reason == MAPPING and previous == FIRST)
+            unreceived = previous in (FIRST, EARLIER, ROLLED_BACK)
+            self.flags[source] = (reason, import_id, reason == MAPPING and unreceived)
 
-    def reevaluate(self, source: int, ej: EJ | None, previous: Previous = BASE_NAMES) -> None:
-        """The interval's EJ or previous Z004 arrived: re-judge a pending check, and a first
-        interval's registration change once the directly preceding Z004 is received."""
+    def reevaluate(self, source: int, ej: EJ | None, previous: Previous = BASE_NAMES,
+                   current: Names | None = None) -> None:
+        """The interval's EJ or previous Z004 arrived: re-judge a pending check, and a registration
+        change made while the directly preceding Z004 was unreceived once it is received. A
+        product without a row in this Z004 (`current`, default the EJ's) and not in the received
+        previous one is no longer a target and is resolved."""
         flag = self.flags.get(source)
-        if flag and (flag[0] == PENDING or flag[2]):  # other registration changes: recount only
-            self.set_flag(source, offset_reason(ej, previous, self.code), flag[1], previous)
+        # A marked registration change waits for its directly preceding Z004, not for an EJ.
+        # Other registration changes: recount only.
+        if flag and (flag[0] == PENDING or flag[2] and not isinstance(previous, str)):
+            if current is None:
+                current = ej.z004 if ej else BASE_NAMES
+            target = offset_targets(frozenset({self.code}), current, previous)
+            reason = offset_reason(ej, previous, self.code) if target else None
+            self.set_flag(source, reason, flag[1], previous)
 
     def rollback(self, import_id: int) -> None:
         self.cancel_import(self.imports[import_id])  # a legacy hold raises before any write
@@ -912,6 +934,78 @@ def check_unknown_apply_recheck() -> None:
     cleared = frozenset({(1, "P")})
     ej = EJ(("Q",), signed=(1,), z004=cleared)
     assert ej.complete(BASE_NAMES) and flagged(ej, (1, 2)) == [2]
+
+    # (j) Gated Amendment 4: every registration change made while the directly preceding Z004 was
+    # unreceived (first interval, below the smallest received, going-back) is re-evaluated in D4
+    # order once that Z004 arrives, so the receipt order never fixes the result.
+    for ej, after in ((EJ(), None), (EJ(("P",)), LINES), (None, PENDING)):
+        machine = Machine()
+        machine.receive(10)
+        ledger = offset_case(ej, previous=machine.receive(9))  # counted after 10; 9 arrives late
+        assert reason_of(ledger, 1) == MAPPING
+        ledger.reevaluate(1, EJ(), machine.previous(9))  # an EJ alone does not re-evaluate it
+        assert reason_of(ledger, 1) == MAPPING
+        machine.receive(8)
+        ledger.reevaluate(1, ej, machine.previous(9))
+        assert reason_of(ledger, 1) == after
+    ledger.reevaluate(1, EJ(), machine.previous(9))  # the missing EJ arrives
+    assert not ledger.flags
+    machine = Machine()  # three steps back: 10, then 9, 8, 7
+    machine.receive(10)
+    nine = offset_case(EJ(), previous=machine.receive(9))
+    eight = offset_case(EJ(), previous=machine.receive(8))
+    assert reason_of(nine, 1) == reason_of(eight, 1) == MAPPING
+    nine.reevaluate(1, EJ(), machine.previous(9))
+    assert not nine.flags and reason_of(eight, 1) == MAPPING
+    machine.receive(7)
+    eight.reevaluate(1, EJ(), machine.previous(8))
+    assert not eight.flags
+    machine = Machine()  # going-back (model only; the D3 identity guard keeps runtime from it)
+    for settlement_no in (1, 2, 3, 4, 5):
+        machine.receive(settlement_no)
+    back = offset_case(EJ(), previous=machine.receive(3, identity="reset"))
+    assert reason_of(back, 1) == MAPPING and machine.previous(3) == UNRECEIVED  # not the old 2
+    machine.receive(2, identity="reset")
+    back.reevaluate(1, EJ(), machine.previous(3))
+    assert not back.flags
+    # (k) Clear-line premise true, previous 11 unreceived: Q is sold, counted, returned and cleared
+    # within 12, so 12's Z004 has no Q row while its EJ has Q's sale and return (Codex broad #2).
+    cleared = frozenset({(1, "P")})
+    ej = EJ(("Q", "Q"), signed=(1, -1), z004=cleared)
+    for eleven, late_ej, after in ((BASE_NAMES, ej, LINES), (BASE_NAMES, None, PENDING),
+                                   (cleared, ej, None), (cleared, None, None)):
+        machine = Machine()
+        machine.receive(10)
+        previous = machine.receive(12, cleared)
+        ledger = Ledger(code=2)  # book 10
+        ledger.observe(9)  # counted after the sale; the later return makes physical 10
+        if offset_targets(frozenset({2}), cleared, previous):
+            ledger.import_row(ledger.receive(), sold=0, ej=late_ej, previous=previous)
+        assert reason_of(ledger, 1) == PENDING
+        machine.receive(11, eleven)
+        ledger.reevaluate(1, late_ej, machine.previous(12), current=cleared)
+        assert reason_of(ledger, 1) == after
+        if after:
+            try:
+                ledger.complete()
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("an offset of a cleared counted product was missed")
+    # Not in 11 either: Q resolves, and its EJ line now matches nothing, holding the other products.
+    assert offset_reason(ej, cleared) == MAPPING
+    # (l) Frozen after that re-evaluation: a line matching nothing, or start evidence contradicting
+    # the received previous Z004. Re-importing the EJ later does not re-evaluate them.
+    for ej in (EJ(("P", "?")), EJ(start=False)):
+        machine = Machine()
+        machine.receive(10)
+        ledger = offset_case(ej, previous=machine.receive(9))
+        machine.receive(8)
+        for later in (ej, EJ()):
+            ledger.reevaluate(1, later, machine.previous(9))
+            assert reason_of(ledger, 1) == MAPPING
+        ledger.observe(10, immediate=True)
+        assert not ledger.flags
 
 
 def check_migration_and_fill() -> None:
