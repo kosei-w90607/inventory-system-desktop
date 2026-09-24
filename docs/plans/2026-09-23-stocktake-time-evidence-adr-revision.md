@@ -503,3 +503,12 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
   - `docs/function-design/35-biz-stocktake-service.md`: :27（業務 TX による再評価の括弧）。`55-ui-csv-import.md` :22 は既に整合（Writer は読んで一致を確かめる）。
   - 合成モデル `scripts/probes/stocktake_time_model.py`: `set_flag` の revision の増分（実際に変わったときだけ）、`ImportModel` と `check_receipt_business_retry` を足して main から呼ぶ。mutation (xxv)〜(xxviii) を隔離 copy で実注入して red を確かめ報告する。
   - sweep: AC3 の `進行中の棚卸しに(属する)` と、AC9 の再評価の契機の旧文・店の使用の旧文の検索が 0 行。
+
+### Final Review broad（GA6 後、2026-09-25、Opus 5.5 fresh と Fable 5.1、互いに独立、対象 `893bf695`、裁定 Coordinator）
+
+- 結果: Opus P1 0 / P2 0 / P3 2（Ordinary Operation: 外部前提が未確認）、Fable P1 0 / P2 0 / P3 3（Ordinary Operation: 成立）。閉じる対象（Codex GA5 後 #1・#2、Opus GA5 後 N1〜N3）は 2 本とも全件 閉。Codex の修正案 run 80d の確認条件（モデルの 2 行の PASS、mutation (xxv)〜(xxviii) の red、旧文 sweep、文書間の対応表 9 組）を 2 本とも実行して満たした。既存 mutation (i)〜(xxiv) も 2 本とも 24/24 red。
+- Opus P3-1 = Fable N1（合成モデルの「実測・取消で解消した flag は再評価で復活しない」の assert が証拠 `EJ()` のため空の oracle）= 採用。回復 loop の証拠を `EJ(("P", "P"), signed=(1, -1))`（販売と戻しの 2 行、同 file の既存の書き方）へ替えた（Writer `bc3b3efb`）。解消済みの flag を作り直す mutation は、変更前は全 check PASS で生き残り、変更後は `resolved flag was resurrected` で red。AC5 (n) の文面は変えない（主張していた性質を実際に検査するようにしただけ）。
+- Opus P3-2（Writer 報告と同じ。モデルの `rollback` で movement 0 の import を取り消すと flag は消えるが revision が進まず、ADR :47 と食い違う）= 採用。flag が実際に消えたときに revision を進め、cancel 側に assert を足した（`bc3b3efb`）。正本は変えない。
+- Fable N3（32 :35 の step 5「flag の解消は…に限る」に、ADR :119・tracking の「相殺の確認待ちだけは再評価でも解消し得る」の但し書きがない）= 採用（Writer `6dc80ed6`）。
+- Fable N2（「直前の Z004 を利用できる」「前回」の受領に、D3 で同一性拒否された受領を含めるかが未定義）= 本 lane では直さず、次の design lane「実測とPOS系列の対応を取得・保存する」へ申し送る。D3 は同一精算の別 hash の採用を同じ design lane に送っており、現行の契約では拒否された受領から業務 TX が走らないため到達しにくい。closeout で backlog の同 entry に 1 句を足す。
+- 閉じ方: Plan Commit と Amendments は変わらないため、保持した broad 2 本に、是正と base 同期（先行 PR の closeout 後に `origin/main` を取り込む）の後の現在 head に対する独立 closure 1 本を足して閉じる。
