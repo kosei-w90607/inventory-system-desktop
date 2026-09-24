@@ -41,7 +41,7 @@ Windows L3の対象は (a) 検索→明示begin→計数→保存→次の商品
 
 ## 73.1 目的
 
-年末（10月〜大晦日）の長期棚卸し作業を、開始・中断・再開・確定まで単独の operator が扱えるようにする。現運用は一人運用・数週間かけて商品マスタ全件（数千点規模）を回る前提であり（ヒアリングシート C60/B60/Q12/Q13/Q20）、既存 BIZ-06/CMD-10 契約（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）をそのまま UI から使う。新規に追加するのは軽量 CMD 3 本（進行中判定用 `get_active_stocktake`、カウント対象解決用 `find_stocktake_item`、前回比較用 `get_last_completed_stocktake`、いずれも future）のみで、DB スキーマ変更や BIZ 確定ロジックの変更は伴わない。
+年1回（owner は多くても 2 回と述べた）・大晦日時点の棚卸し（税理士の指示で、報告するのは仕入原価の総額だけ。差異は棚卸しロスとして許容する。店主回答 2026-03、owner 2026-08-27）の作業を、開始・中断・再開・確定まで単独の operator が扱えるようにする。現運用は一人で商品マスタ全件（数千点規模）を回り、10月からの準備（値上げ品の原価・売価の訂正、新商品のリストへの追加、原価不明品の問い合わせ。準備の開始は 2026-08-15 の店主回答で前倒しされた）と、年末の正式カウント（大晦日に完了）に分かれる前提であり（ヒアリングシート C60/B60/Q12/Q13/Q20、店の運用の詳細は [project-memory](../project-memory.md) の Store Premises Facts）、既存 BIZ-06/CMD-10 契約（`start_stocktake` / `get_stocktake_items` / `update_count` / `complete_stocktake`）をそのまま UI から使う。新規に追加するのは軽量 CMD 3 本（進行中判定用 `get_active_stocktake`、カウント対象解決用 `find_stocktake_item`、前回比較用 `get_last_completed_stocktake`、いずれも future）のみで、DB スキーマ変更や BIZ 確定ロジックの変更は伴わない。
 
 **カウント対象の母集団（issue #91 owner 回答 2026-08-22）**: 画面がカウントさせる母集団は商品マスタ全件（[35-biz-stocktake-service.md](35-biz-stocktake-service.md) `find_stocktake_eligible_products` が返す全商品）であり、年数による除外はしない。実店舗で現物カウントの対象外になるのは、伝票保管義務範囲外で廃棄済み・取引先データなし・バーコードなし・販売に適さない見た目という原価根拠を欠く現物（例年 1〜2 点、多い年で 4〜5 点）で、これらは単品コードを付与せず商品マスタへ未登録のため、システム上は最初から母集団の外にある。除外を表す専用フラグや画面表示は追加しない。
 
