@@ -423,9 +423,9 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 ## DSR-21 現在地と選択状態の色分離
 
-**ルール**: 「今どこにいるか」を示す現在地（主ナビゲーションの active link、`aria-current="page"`）は、stone 系 selection tone に Primary token のアクセント 1 点（左端バー、`border-l-primary` 系 token）を重ねて有彩色で示す。「何を絞っているか / どのモードか」を示す選択状態（filter chip の on、SegmentedControl の active）は無彩色 stone のままとし、有彩色を使わない。hover は両者とも無彩色。アクセントは背景色ではなく細いバーに限定し、`amber-` 生 class は使わない（DSR-08）。
+**ルール**: 「今どこにいるか」を示す現在地（主ナビゲーションの active link、`aria-current="page"`）は、stone 系 selection tone に操作の役割色の細いバー 1 点（左端バー、`00-foundations.md` の強調の段階 2。現行は `border-l-primary` 系 token）を重ねて有彩色で示す。「何を絞っているか / どのモードか」を示す選択状態（filter chip の on、SegmentedControl の active）は無彩色 stone のままとし、有彩色を使わない。hover は両者とも無彩色。アクセントは背景色ではなく細いバーに限定し、`amber-` 生 class は使わない（DSR-08）。現在地（画面単位）と現在行（レコード単位、DSR-22）は色で区別せず、置き場所（ナビか一覧の行か）と文言で区別する。
 
-**Why**: 『UIデザインの教科書［新版］』（原田秀司、翔泳社、2020）5-3 は「現在地は有彩色、hover は無彩色」で現在地と一時状態を区別する。`00-foundations.md` の「アクティブ項目のみ Primary アクセント 1 色」はこれと一致する。一方 Primary（amber-700）は warning 系（PLU 通知・在庫少）と同系色のため、背景全面に使うと警告と現在地の区別が崩れる。背景は stone に残しバーだけ有彩色にすることで、`02-component-catalog.md` の「amber は選択状態の背景色とは分離する」を維持したまま現在地を有彩色化できる。
+**Why**: 『UIデザインの教科書［新版］』（原田秀司、翔泳社、2020）5-3 は「現在地は有彩色、hover は無彩色」で現在地と一時状態を区別する。`00-foundations.md`「4色エリアモデルの扱い」の、ナビの現在地だけを操作の役割色の細いバーで示す規則はこれと一致する。runtime lane A までの現状では、Primary（amber-700）は warning 系（PLU 通知・在庫少）と同系色のため、背景全面に使うと警告と現在地の区別が崩れる。背景は stone に残しバーだけ有彩色にすることで、`02-component-catalog.md` の「amber は選択状態の背景色とは分離する」を維持したまま現在地を有彩色化できる。`00-foundations.md` の色の役割表では操作と注意・確認の色相が分かれ、この重なりは runtime lane A の token 反映で解ける。
 
 **判定フロー / 具体例**: 対象が「画面の位置」を表すなら現在地 → アクセントあり（例: SidebarLink の active）。対象が「絞り込み・表示モード」を表すなら選択状態 → stone のみ（例: 在庫照会の状態 chip、商品別 / 部門別の切替、日次 / 月次 tab）。迷う場合は「他画面へ移動しても残る状態か」で判定し、移動で消える状態は選択状態とする。
 
