@@ -9,10 +9,10 @@
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
 - Execution Mode: fable-window
-- Plan Commit: pending
+- Plan Commit: ba6532e0acc3d9fe15276519ccd56ee5d8cd3f21
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（worktree run）
@@ -35,6 +35,7 @@ manual なし: 製品 runtime・画面・配布物は変わらない文書改訂
 
 - kickoff → spec-check → design → plan-draft（2026-09-24、Coordinator 起草）: 設計判断は owner と canvas で 2026-09-24 に確定した（「設計判断の出典」）。本 lane は design-only scope で、その判断を source docs へ反映すること自体が実装にあたり、[Spec Contract](#spec-contract) が反映内容を固定する。未解決の設計質問は書体の最終採用だけで、runtime lane の実機比較へ明示的に defer した（SPEC-DSR-RENEW-D3）。
 - plan-draft → plan-gate（2026-09-24、Coordinator）: packet と Test Design Matrix を plan-first commit で確定し、`docs/Plans.md` の `## 次の行動` に登録。fresh Opus の Plan Review へ。
+- plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 0 / P2 7 / P3 7）→ 差し戻しのため相談役 Fable 5.1 に是正方針を検討させた（src に当てた 12 場面・移行中の混在 3 経路）→ 是正 `fe43d11b` → round 2（別の fresh Opus、P1 0 / P2 2 / P3 7、owner 回答: 検索欄はボタンなしで確定、lane A は 1 PR）→ 是正 `0026386e` → round 3（別の fresh Opus、天井、P1 0 / P2 0 / P3 10）→ Plan Gate 前に直す P3 を `ba6532e0` で反映。Plan Commit = `ba6532e0`。round 天井 3 に到達し通過。実装は Opus 5.5 subagent の worktree run。
 
 ## Owner Effort Budget
 
