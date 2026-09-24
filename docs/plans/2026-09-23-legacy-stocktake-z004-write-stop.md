@@ -367,3 +367,7 @@ If R3 review-only sub-agent is skipped, record an explicit line beginning with `
 ### Final Review broad（Opus 5.5 fresh、対象 `f17ab303`、裁定 Coordinator）
 
 P1 0 / P2 0 / P3 3。SPEC-STOP-D1〜D6 は成立。P3-1（旧本体の `allow(dead_code)` では production からの呼出しを検出しない）= 採用、`94eb4956` で `cfg_attr(not(test), expect(dead_code))` に置き換え、ADR SPEC-STOP-D3 の文を合わせた。本 packet の S1・Assumptions・Contract Probe の `allow` の記述は Plan 時点の判断として残し、以後はこの裁定を正とする（必須 gate の clippy `-D warnings` が unfulfilled で失敗することを注入で確認。素の `cargo build` は warning に留まる）。P3-2（PR body の AC1 / AC3 の証跡と kind の誤記）= 採用、PR body を更新。P3-3（停止中も入力を促す subtitle と説明文）= M1 で owner の所感を聞いて判断する。
+
+### Final Review broad Codex 側（GPT-6 Astra high、対象 `faa7f9e3`、裁定 Coordinator）
+
+P1 0 / P2 0 / P3 1、Ordinary Operation 成立。Opus 側の結果（本節の前の小節と PR body の該当行）を読まずに行った独立の 1 本。C1（F1 と F3 の fixture は preview を持たず、`commit_csv_import` の停止を 0 回しか検査していない。production の停止は成立）= 採用、`196b21c2` で F1 / F3 に合成 preview を 1 件ずつ持たせ、検査の前に preview が空でないことを assert した（assert だけを入れた状態で F1 / F3 の 2 本が red、preview の追加後に 7 本 green）。production code の変更はなく、manual M1a / M1b / M2 の対象（画面）に影響しない。
