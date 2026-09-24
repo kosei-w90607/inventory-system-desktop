@@ -92,8 +92,12 @@ class Records(unittest.TestCase):
                  ('Phase: implementing','Phase: local-verified'),('Final Review Minimum: 2','Final Review Minimum: 0'),
                  ('Human Gate: ready,merge,manual','Human Gate: none'),(P,'pending')]
         mutants+=[(marker,f'- {field}: required\n'+marker) for field in ('Reviewed Content HEAD','Final Exact-HEAD Evidence','Hosted CI Requirement')]
+        # Valueless lines must not vanish: Evidence Mode at section end and mid-section, and an empty required field.
+        mutants+=[('\n\n## Risk','\n- Evidence Mode:\n## Risk'),(marker,'- Evidence Mode:\n'+marker),('Writer: codex','Writer:')]
         for source,dest in mutants:
             with self.subTest(dest=dest),self.assertRaises(g.GateError):g.parse_packet(text.replace(source,dest,1))
+        fields=g.workflow_fields(text.replace(marker,'- Evidence Mode:\n'+marker,1))
+        self.assertEqual((fields['Evidence Mode'],fields['Phase']),('','implementing'))
         # T-H2: old template lines are accepted and Execution Mode is not evaluated.
         for mode in ('fable-window','dual-vendor-no-fable','codex-only','waterfall（任意の文字列）'):
             with self.subTest(mode=mode):

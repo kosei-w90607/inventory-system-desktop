@@ -148,7 +148,8 @@ def workflow_fields(text):
     text = markdown(text)
     sections = re.findall(r'^## Workflow State\s*\n(.*?)(?=^## |\Z)', text, flags=re.M | re.S)
     require(len(sections) == 1, 'packet Workflow State missing/ambiguous')
-    pairs = re.findall(r'^- ([^:\n]+):\s*([^\n]+)', sections[0], flags=re.M)
+    # Spaces stay on the key's line; an empty value keeps the key so presence checks see it.
+    pairs = re.findall(r'^- ([^:\n]+):[ \t]*([^\n]*)', sections[0], flags=re.M)
     fields = dict(pairs)
     require(len(pairs) == len(fields), 'duplicate packet fields')
     return fields
@@ -156,7 +157,7 @@ def workflow_fields(text):
 
 def parse_packet(text):
     fields = workflow_fields(text)
-    require(FIELDS <= fields.keys(), 'packet fields missing/duplicate')
+    require(FIELDS <= fields.keys() and all(fields[key] for key in FIELDS), 'packet fields missing/empty/duplicate')
     text = markdown(text)
     # Retired marker lines are optional; other extra lines are accepted and not evaluated.
     require(fields.get('Evidence Mode', 'github') == 'github', 'Evidence Mode is retired; write github or omit it')

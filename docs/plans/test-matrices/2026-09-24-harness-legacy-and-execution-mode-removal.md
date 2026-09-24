@@ -69,7 +69,7 @@ fixture の `write_packet` に `- Phase: implementing`（pending の case は `p
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| D1 / D2 | F2 / F3 | unit | T-H1: `test_packet_schema` — 新 template 形（marker・Execution Mode なし）を `parse_packet` が受理し、戻り値に `mode` が無い。`Evidence Mode: legacy`、`Evidence Mode: mystery`、legacy field 3 種、`Phase: local-verified`、`Final Review Minimum: 0`、`Human Gate: none`、implementing で pending は GateError | 旧 field が `FIELDS` に残る、または marker 値・legacy field の拒否が消える |
+| D1 / D2 | F2 / F3 | unit | T-H1: `test_packet_schema` — 新 template 形（marker・Execution Mode なし）を `parse_packet` が受理し、戻り値に `mode` が無い。`Evidence Mode: legacy`、`Evidence Mode: mystery`、legacy field 3 種、`Phase: local-verified`、`Final Review Minimum: 0`、`Human Gate: none`、implementing で pending、値なしの `- Evidence Mode:` 行（section 末尾・section 途中の 2 位置、途中でも次行を値に飲み込まず `Phase` が残る）、値なしの必須 field（`Writer:`）は GateError | 旧 field が `FIELDS` に残る、marker 値・legacy field の拒否が消える、または `workflow_fields` が改行を越えて値を読む（値なし行が欠落扱いになる） |
 | D2 | F1 | unit（互換） | T-H2: 旧 template 形（`Evidence Mode: github` + `Execution Mode` 4 通り）を受理 | Execution Mode の enum が残る |
 | D5 | F6 | CLI fixture（保持、既存） | T-H3: `test_workflow_minimum_one_rejected`（`scripts/pr-gate.py` を含む PR で Minimum 1 → status / ready が exit 1）。Execution Mode 行を外した packet でも同じ | Double Audit の workflow 条件を codex-only 分岐と一緒に削る |
 | D5 | F6 | CLI fixture（保持、既存） | T-H4: `test_r4_minimum_one_rejected`、`test_r4_approval_gate_cannot_be_omitted` | R4 条件が変わる |
