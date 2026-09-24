@@ -102,6 +102,11 @@ fn assert_all_entries_stopped(conn: &mut DbConnection, targets: &Targets) {
         }
     }
 
+    // 空だとcommitの検査が0回で通るため、各fixtureは合成previewを1件以上持つ。
+    assert!(
+        !targets.previews.is_empty(),
+        "commitを検査するpreviewがない"
+    );
     for cached in &targets.previews {
         for additional_import_confirmed in [false, true] {
             expect_biz03(commit_csv_import(
@@ -195,9 +200,11 @@ fn build_f1(conn: &mut DbConnection) -> Targets {
     }))
     .unwrap();
     inventory_service::create_manual_sale(conn, request).unwrap();
+    let cached = preview(conn, "2026-03-02", &[("2900000001008", "合成F1", 1, 100)]);
     Targets {
         stocktake_ids: vec![stocktake_id],
         item_ids: vec![item],
+        previews: vec![cached],
         ..Targets::default()
     }
 }
@@ -386,11 +393,16 @@ fn test_legacy_stop_req205_req401_f3_legacy_shapes() {
         .iter()
         .map(|code| item_id(&conn, active, code))
         .collect();
+    let cached = preview(
+        &conn,
+        "2026-03-22",
+        &[("2900000003026", "合成F3-c", 1, 100)],
+    );
     let targets = Targets {
         stocktake_ids: vec![active, completed],
         item_ids,
         import_ids: vec![completed_import, rolled_back_import],
-        ..Targets::default()
+        previews: vec![cached],
     };
     assert_all_entries_stopped(&mut conn, &targets);
 }
