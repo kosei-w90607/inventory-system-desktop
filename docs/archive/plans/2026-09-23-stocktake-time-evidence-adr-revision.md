@@ -2,14 +2,14 @@
 
 2026-09-23 起票。出典は owner 決定 2026-09-23（店主・owner の回答台帳 `.local/reports/store-premises/answer-ledger.md` の L-107 / L-108、同日の TD-005 / TD-006 / TD-007）、owner 回答 2026-09-24（台帳 追補3 `ledger-parts/today-2026-09-24.md` の TD-024 / TD-025）と、2026-09-23 の ㉗ ADR の独立レビュー（Fable 5.1 と Opus 5.5 の fresh subagent に同じ依頼文、その統合候補を blind の fresh Opus で裏取り。原文は session 535b4afb の subagent 記録で、repository には置かない）。判定は 3 本とも「修正してから ㉘ へ進める」。
 
-対象は [時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md)（SPEC-STK-TIME-D1〜D9）と、その同期先の「時点証拠契約（proposed・未実装）」節。runtime code は変えない。後続の runtime lane ㉘ はこの改訂後の ADR を入力にする。
+対象は [時点証拠 ADR](../../adr/2026-09-18-stocktake-time-evidence.md)（SPEC-STK-TIME-D1〜D9）と、その同期先の「時点証拠契約（proposed・未実装）」節。runtime code は変えない。後続の runtime lane ㉘ はこの改訂後の ADR を入力にする。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 47744266f45ae764270d61fd45377e5619ac16f2
@@ -46,6 +46,7 @@ manual なし: 製品 runtime・画面・配布物への変化がない設計文
 - Gated Amendment 4（2026-09-25、Coordinator、Codex Final Review broad〈`e166021a`〉の P2 3 件・P3 1 件、相談役 Fable 5.1 の検討、owner 承認）: Codex の 4 件は全て本物と裁定し、相談役の推す是正を採った。design へは backtrack しない（D4 / D5 の再評価の契機と対象、文言の中で閉じる）。#1 と #2 は同じ根（前回の Z004 が未受領の区間の判定を受領の順で固定していた）なので 1 つの規則で閉じる: 直前の settlement_no の Z004 を初めて受領した時点で、その区間の相殺の確認待ちを全て D4 の順で再評価する（最初の区間・受領済みの最小より小さい番号の区間・番号の戻りの区間を同じく扱う）。前回の Z004 が未受領の区間では、F5 の外部前提が真のとき、今回の Z004 に行のない数えた在庫連動商品も確認待ちの対象に含める。#3 は共有 JAN の保留の条件を「JAN の候補商品が複数、かつ少なくとも 1 つが在庫連動対象で、全ての在庫連動候補の実測前を証明できない」に統一し、#4 は R7 / R9 / Boundary の文言と優先順を正本に揃えた。owner 判断（F5 の外部前提が真なら数えていない商品の売上も Z004 から落ち得る限界を Consequences に書く）を R9 の受け入れる限界 (e) に加えた。反映したのは R3 / R7 / R9、AC3 (d) / AC5 (j)〜(l) と mutation (xx) (xxi) / AC9、Ordinary Operation、Boundary、Review Focus、Test Plan、Matrix の M3 / M9 と flag の行。Writer への反映先は Review Response の同じ節に置く。Writer の反映の後、round は開かず GA4 の差分に限る Opus の closure 確認と、Codex の broad の取り直しで閉じる。
 - Gated Amendment 5（2026-09-25、Coordinator、Codex Final Review broad〈GA4 後、`d544373d`〉の P2 1 件、Opus closure〈GA4、`d544373d`〉の P3 2 件、相談役 Fable の検討）: 3 件とも本物と裁定し、相談役の推す是正を全件採った。design へは backtrack しない（owner 決定と force_fill の意味は変えず、packet の失敗定義・AC3 (b)・Ordinary Operation・Matrix M3 が既に持つ広い規則へ R3 と正本を揃える。新しい表・API・状態・error kind は要らない）。Codex #1 は R3 の確定の拒否を、確定対象の棚卸しに明細がある商品に未解消の flag が 1 つでもあれば、明細の kind（未計数・auto_filled・measured）・最新の実測の所属・flag の理由によらず掛け、その明細の計数へ案内する形にし、解消の 3 経路との関係と legacy DB の移行費用を R3 に書いた。Opus N1 は AC5 に (k') と mutation (xxiii)(xxiv) を足し、N2 は GA4 で入れた 4 種の意味の語を「前回の code が分からない区間」に改名した（1 種の意味の文は変えない）。反映したのは R3 / R7 / R9、AC3 (b) と旧文の検索、AC5 (k')(m) と mutation (xxii)〜(xxiv)、AC9、Review Focus、Test Plan、Owner Effort Budget、Matrix の M3 / M9 と Mutation-style Adequacy Questions。Writer への反映先は Review Response の同じ節に置く。GA5 の後は、Writer の反映 → GA5 の差分に限る Opus の closure 確認と、Codex の broad の取り直しで閉じる。
 - Gated Amendment 6（2026-09-25、Coordinator、Codex Final Review broad〈GA5 後、`341d4252`〉の P2 1 件・P3 1 件、Opus Final Review broad〈GA5 後、`341d4252`〉の P3 3 件、Codex の修正案 run 80d〈read-only〉、owner 決定 2026-09-25）: 5 件とも本物と裁定し、Codex の修正案の第一候補を採った。design へは backtrack しない（D4 / D5 の判定の順・対象・凍結と flag の理由の 5 値は変えず、再評価の契機と TX 境界を書き直す）。Codex #1 は、直前の Z004 が未受領の間の登録の変化の再評価の契機を「直前の settlement_no の Z004 を初めて受領した時点」から「当該区間の EJ か直前の Z004 を取り込む業務 TX」へ移し、確定していない再評価を内部の印 `previous_recheck_pending`（`stocktake_recount_flags` の列、reason が登録の変化のときだけ 1）で保持して、中止・guard の拒否・業務 TX の失敗・再起動・同 hash の再選択の後も再試行する形にした（preview は flag を commit せず〈32 :21〉、同 hash は最初の受領 ID を保ち〈pos :9〉、受領 TX は業務 TX と独立で失敗後も残る〈pos :21〉ため、旧文の契機は flag を書けない時点にあり、業務 TX の失敗の後に再発火しなかった。印は合成モデルの `flags[source][2]` が既に持ち、flag 更新時の checked 版更新は ADR :47 に既にある）。Codex #2 は、店が値引き・訂正・取消を使うことを確認済み（TD-029）とし、EJ の行の形・復元・分類は未検証のまま実機 gate に残す形に分けた。Opus N1 は 32 :13 の「進行中の棚卸しに属する商品」を「確定対象の棚卸しに明細がある商品」へ、N2 は ADR :129 の GA4 の語の改名漏れを直し、N3 は確定後に残った要再確認の商品を次の棚卸しで force_fill で飛ばせず数えることを ADR Consequences と Ordinary Operation に書く。反映したのは R3 / R7 / R9（:328・:330・:331・:332・:338）、AC3・AC5 (n) と mutation (xxv)〜(xxviii)・AC9、Review Focus、Test Plan、Ordinary Operation、Owner Effort Budget（owner 承認で上限 12）、Final Reviewer、Matrix の M9 と State Lifecycle と Mutation-style Adequacy Questions。Writer への反映先は Review Response の同じ節に置く。GA6 の後は、Writer の反映 → Opus 5.5 fresh と Fable 5.1 の broad 2 本（確認条件は Codex の修正案の §3: 合成モデルの 2 行の PASS、4 mutation の red、旧文の sweep、文書間の対応表）で閉じる。
+- implementing → archive（closeout、本 commit）: PR #96 squash merge `bf0b2b9c`（2026-09-25）。packet / Matrix を `docs/archive/plans/` へ移送し、Implementation Results / Review Response を記録した。GA6 後 broad の Fable N2（「直前の Z004 を利用できる」「前回」の受領に、D3 で同一性拒否された受領を含めるかが未定義）と Opus の観察（「直前の Z004 を利用できる」の定義を EJ の interface を決めるときに定める）は、`docs/backlog.md` の次の design lane「実測とPOS系列の対応を取得・保存する」の entry へ 1 句ずつ足した。㉘ への申し送りは ADR の「㉘ への引継ぎ」節が正本のため、backlog には重ねない。
 
 ## Owner Effort Budget
 
@@ -90,7 +91,7 @@ Goal Invariant: owner 決定 2026-09-23 のとおり、㉘ が実装する時点
 
 ### 非目的
 
-- 「数えた後」の判定（番号印字 + EJ による取引単位の前後判定）。次の design lane「実測と POS 系列の対応を取得・保存する」（[backlog](../backlog.md#やると決めたもの順番未定)）の対象で、番号印字は実機未検証の候補。
+- 「数えた後」の判定（番号印字 + EJ による取引単位の前後判定）。次の design lane「実測と POS 系列の対応を取得・保存する」（[backlog](../../backlog.md#やると決めたもの順番未定)）の対象で、番号印字は実機未検証の候補。
 - 精算同一性 guard の再設計（byte hash か正規化した内容か、preview 時点の受領で衝突させるか）とレジ入替・番号 reset の系列の扱い。次の design lane の (a) に含まれる。
 - 明示の「今から数える」を商品選択時の暗黙開始へ畳む案（Opus / Fable レビューの単純化の提案、owner 未判断）。
 - `project-memory.md` の :40 / :190 以外の編集、`decision-log.md` への新 D（本改訂の durable な決定の置き場は ADR。Spec Contract R8 参照）。
@@ -167,10 +168,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Design Sources
 
 - 要求: REQ-205 / REQ-401（`docs/spec/requirements.md`）。
-- 改訂対象: [時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9 と、Scope S2〜S7 の「時点証拠契約（proposed・未実装）」節。
+- 改訂対象: [時点証拠 ADR](../../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9 と、Scope S2〜S7 の「時点証拠契約（proposed・未実装）」節。
 - 店の事実: `docs/project-memory.md`（Store Premises Facts、初導入・本番履歴なし）、回答台帳 L-048 / L-052 / L-076 / L-101 / L-104 / L-107 / L-108 / L-297 / L-298、TD-001〜TD-008 / TD-014 / TD-015 / TD-024 / TD-025（`.local/`、公開 repository に原文を置かない）。
 - 境界: `UI -> CMD -> BIZ -> IO/MNT`、INV-2、D-051、D-025、D-070。
-- ㉗ の経緯: [archive packet](../archive/plans/2026-09-16-stocktake-count-baseline.md)（「後続 runtime lane ㉘ への申し送り」）、[archive Matrix](../archive/plans/test-matrices/2026-09-18-stocktake-time-evidence.md)。
+- ㉗ の経緯: [archive packet](2026-09-16-stocktake-count-baseline.md)（「後続 runtime lane ㉘ への申し送り」）、[archive Matrix](test-matrices/2026-09-18-stocktake-time-evidence.md)。
 
 ## Required Design Artifacts
 
@@ -371,9 +372,9 @@ Contract ID: SPEC-STK-TIME-REV-2026-09-23
 
 ## Implementation Results
 
-Fill after implementation.
+[PR #96](https://github.com/kosei-w90607/inventory-system-desktop/pull/96) で実装し squash merge 済み（`bf0b2b9c`、2026-09-25）。runtime code は変えず、[時点証拠 ADR](../../adr/2026-09-18-stocktake-time-evidence.md)、同期先の「時点証拠契約（proposed・未実装）」節（DB・IO・BIZ・CMD・UI の設計書と層の task spec）、合成モデル `scripts/probes/stocktake_time_model.py` を改訂した。主な変更: (1) OS の通知による監視・PC 時計による比較・legacy 専用の復旧（用途・理由・action）を外し、適用範囲の但し書きを「外したもの・理由・次の design lane が決めること」に置き換えた。(2) 判定不能を所属によらず通常適用し、(商品, 資料) 単位の要再確認 flag を残す形に一本化した（保留は共有 JAN の行だけ。legacy の取消の保留は通常の適用済み実測で解除する）。確定対象の棚卸しに明細がある商品に未解消の flag が 1 つでもあれば、明細の kind によらず確定を拒否する。(3) R9 の相殺の判定: 売上と返品の相殺を EJ の商品の行の有無で判定し、EJ が不完全・未取込みの区間は相殺の確認待ち（EJ待ち）で確定を止める。完全性は D5 の条件と、前回と今回の Z004 の名称の組の差で決め、名称の重なりは候補の商品だけに局所化し、合計の照合は連結成分で行う。(4) R10 の有効化の条件: EJ の日次取込みがそろうまで在庫連動の有効化を拒否し（`ej_unverified` の常時返却）、解除の条件に実測の基準と、名称の重なりの検知と付け直しの支援（TD-027、PLU の本番より前に必須）を置いた。(5) ADR の Context / Rejected Options に owner の判断の要旨、Consequences に移行費用と確定後に残る要再確認の費用を書き、「㉘ への引継ぎ」節を新設した。
 
-Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+Gated Amendment の要点: GA1 = 相殺の完全性を PLU 書出しの受領順から Z004 どうしのスロットと名称の対応の比較へ置き換えた。GA2 = 対応が変わった名称の明細の行の単位へ細かくした（組の集合差、2 回以上の反映の限界は受け入れ）。GA3 = 名称の重なりを候補の商品に局所化し（owner 判断 TD-027）、補足 1〜4 で連結成分・部門名の除外・最初の区間・前回の Z004 が未受領の区間・番号の戻りを加えた。GA4 = 直前の Z004 の受領による再評価と、共有 JAN の保留の条件の統一（Codex broad）。GA5 = 確定の拒否を明細のある商品の未解消の flag 全般へ広げ、4 種の意味の語を「前回の code が分からない区間」へ改名した。GA6 = 再評価の契機を当該区間の EJ か直前の Z004 を取り込む業務 TX へ移し、内部の印 `previous_recheck_pending` で中止・guard の拒否・失敗・再起動の後も再試行する形にし、値引き・訂正・取消を店が使うことは確認済み（TD-029）・EJ での表現は未検証に分けた。合成モデルは AC5 の各 check（相殺の分岐、名称の対応、局所化、再評価と印の再試行、確定の拒否）を main から呼び、mutation (i)〜(xxviii) を隔離 copy への実注入で red と確かめた。GA6 後 broad の P3 で、解消済みの flag の復活の assert が空の oracle だった点と、flag だけの取消で revision が進まない点を `bc3b3efb` で直した。
 
 ## Review Response
 
@@ -512,3 +513,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - Fable N3（32 :35 の step 5「flag の解消は…に限る」に、ADR :119・tracking の「相殺の確認待ちだけは再評価でも解消し得る」の但し書きがない）= 採用（Writer `6dc80ed6`）。
 - Fable N2（「直前の Z004 を利用できる」「前回」の受領に、D3 で同一性拒否された受領を含めるかが未定義）= 本 lane では直さず、次の design lane「実測とPOS系列の対応を取得・保存する」へ申し送る。D3 は同一精算の別 hash の採用を同じ design lane に送っており、現行の契約では拒否された受領から業務 TX が走らないため到達しにくい。closeout で backlog の同 entry に 1 句を足す。
 - 閉じ方: Plan Commit と Amendments は変わらないため、保持した broad 2 本に、是正と base 同期（先行 PR の closeout 後に `origin/main` を取り込む）の後の現在 head に対する独立 closure 1 本を足して閉じる。
+
+Final Review の closeout 時点の結論（2026-09-25、Coordinator）: helper の専用 record（`#issuecomment-5823094488`）の review は pass。broad は GA6 後の 2 本で、互いに独立した Double Audit。(1) Opus 5.5 fresh の broad（対象 `893bf695`、`#issuecomment-5823089174`、P1 0 / P2 0 / P3 2。P3-1・P3-2 を採用し `bc3b3efb` で是正）。(2) Fable 5.1 の broad（対象 `893bf695`、`#issuecomment-5823089458`、P1 0 / P2 0 / P3 3。N1〈Opus P3-1 と同じ〉と N3 を採用し `bc3b3efb` / `6dc80ed6` で是正、N2 は次の design lane へ申し送り）。2 本とも Codex の修正案 run 80d の確認条件（モデルの PASS、mutation (xxv)〜(xxviii) の red、旧文の sweep、文書間の対応表 9 組）を実行して満たした。Plan Commit と Amendments が変わらないため、2 本に現在 head の独立 closure として Fable 5.1（対象 `9d650782`、`#issuecomment-5823532816`、新規 P1 0 / P2 0 / P3 0。是正 2 件の mutation の red、32 :35 の但し書きと ADR :119 の一致、base 同期〈先行 #93・#98 と closeout #101・#102 の後の `origin/main` を `-X no-renames` で取込み〉の hunk の一致と active packet が本 lane の 1 組だけであること、PK5 を確認）を足した。manual / R4 は not-required。GA5 までの Codex broad（対象 `e166021a` の `#pullrequestreview-5307705346`、`d544373d` の `#pullrequestreview-5308374475`、`341d4252` の `#pullrequestreview-5308855600`）と GA6 前の Opus の broad・closure 確認は、その後に Amendments が増えたため record に入れず、裁定は上の各節と PR の review に残る。GA6 の後の閉じ方は owner 決定 2026-09-25（GA の後の取り直しは Codex に修正案と確認条件を read-only で出させ〈run 80d〉、Claude 側の独立 reviewer 2 本で確かめる）を初めて使った。GA6 後 broad の Fable N2 と、Opus の観察（「直前の Z004 を利用できる」を EJ の interface を決めるときに「guard を通り、名称の組を保存した受領」と定める）は、本 closeout で `docs/backlog.md` の次の design lane「実測とPOS系列の対応を取得・保存する」の entry に 1 句ずつ足した。

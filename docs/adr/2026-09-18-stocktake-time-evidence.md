@@ -387,7 +387,7 @@ PLU本番はEJの取得・欠落時の拒否・再実測による復旧まで実
 
 ## ㉘ への引継ぎ
 
-この節と[改訂のTest Design Matrix](../plans/test-matrices/2026-09-23-stocktake-time-evidence-adr-revision.md)を、[㉗のpacket](../archive/plans/2026-09-16-stocktake-count-baseline.md)の「後続 runtime lane ㉘ への申し送り」と[㉗のMatrix](../archive/plans/test-matrices/2026-09-18-stocktake-time-evidence.md)の該当行より優先する。
+この節と[改訂のTest Design Matrix](../archive/plans/test-matrices/2026-09-23-stocktake-time-evidence-adr-revision.md)を、[㉗のpacket](../archive/plans/2026-09-16-stocktake-count-baseline.md)の「後続 runtime lane ㉘ への申し送り」と[㉗のMatrix](../archive/plans/test-matrices/2026-09-18-stocktake-time-evidence.md)の該当行より優先する。
 
 順序: D4の在庫連動の有効化の拒否と `ej_unverified` の常時返却は、在庫連動付きのZ004業務commitを再開する㉘のlaneより遅れて入れない（同じlaneか、それより前のlaneで入れる）。
 
