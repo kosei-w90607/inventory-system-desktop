@@ -479,9 +479,9 @@ scroll を伴う遷移はどれか？
 
 ## DSR-08 semantic 色のみで意味を伝えない
 
-**ルール**: 色は `00-foundations.md` の色の役割表の役割に沿って `success` / `warning` / `destructive` 系のセマンティックトークンで当て、`emerald-` / `rose-` などの生 Tailwind 色 class を `src/features/**` に直書きしない。色は二次シグナルとし、意味は日本語テキストとアイコンが一次で担う。
+**ルール**: 色は `00-foundations.md` の色の役割表の役割に沿って `success` / `warning` / `destructive` 系のセマンティックトークンで当て、`emerald-` / `rose-` などの生 Tailwind 色 class を `src/features/**` に直書きしない。色は二次シグナルとし、意味は日本語テキストか記号が一次で担う（`00-foundations.md` の色の役割表の注記「どの状態も文字か記号を添え、色だけに頼らない」）。アイコンを必須にするのは非中立の①状態 badge（DSR-22、catalog ⑬）と Alert（catalog ⑥）で、入力欄のエラー文（catalog ④ の `FieldError`）・増減の ± のような役割色の文字だけの表示は、文言・記号・下線のどれかを添えればアイコンを要しない（`00-foundations.md` の迷いやすい場面）。
 
-**Why**: WCAG 1.4.1 と inventory-operator-ui の中核ルール（色相だけで業務状態を符号化しない）。赤黄を識別しにくい利用者でも、テキストとアイコン形状で意味が読める必要がある。生 Tailwind 色を直書きするとトークン体系から外れ、`00-foundations.md` のパレットと不整合になる。palette 外色の直書きは eslint `no-restricted-syntax`（PR-C 導入）が `src/features/**` + `src/components/patterns/**` で機械検出する。badge の tone family は `00-foundations.md` の色の役割表の役割で分ける: 完了（緑）= 終わったことを伝えるプラスの報告、注意・確認（琥珀）= 手を止めて確かめてほしい注意、危険・失敗（赤）= 警告（owner 回答 2026-09-06、catalog ⑬ 参照。この割り当ては変えない）。利用者の作業が続いている領域と行には進行中の役割を加える（token は runtime lane A で追加する）。ランキングの強調は色でなく順位と太字で示す（owner 了承の試し。runtime lane A の L3 で決まるまでは catalog ⑬ の現行の琥珀 pill で作る）。
+**Why**: WCAG 1.4.1 と inventory-operator-ui の中核ルール（色相だけで業務状態を符号化しない）。赤黄を識別しにくい利用者でも、テキストと記号（状態 badge と Alert ではアイコン形状も）で意味が読める必要がある。生 Tailwind 色を直書きするとトークン体系から外れ、`00-foundations.md` のパレットと不整合になる。palette 外色の直書きは eslint `no-restricted-syntax`（PR-C 導入）が `src/features/**` + `src/components/patterns/**` で機械検出する。badge の tone family は `00-foundations.md` の色の役割表の役割で分ける: 完了（緑）= 終わったことを伝えるプラスの報告、注意・確認（琥珀）= 手を止めて確かめてほしい注意、危険・失敗（赤）= 警告（owner 回答 2026-09-06、catalog ⑬ 参照。この割り当ては変えない）。利用者の作業が続いている領域と行には進行中の役割を加える（token は runtime lane A で追加する）。ランキングの強調は色でなく順位と太字で示す（owner 了承の試し。runtime lane A の L3 で決まるまでは catalog ⑬ の現行の琥珀 pill で作る）。
 
 **判定フロー / 具体例**: 在庫状態は `Badge` + `lucide` アイコン（`CircleAlert` / `TriangleAlert`）+ 日本語ラベル（`在庫切れ` / `在庫少`）で示す。比較のプラス / マイナスも記号 + テキストを併記する。増減数値の色は補助シグナルとして重ねる: + は `text-success-strong`、− は `text-destructive-strong`、0 は `text-muted-foreground`（記号 + 文言併記は維持する）。
 
