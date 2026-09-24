@@ -824,7 +824,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 })}
 ```
 
-**使用トークン**: 展開行は `bg-muted`（`stone-100`）で選択行と視覚的に一体化させる。展開セルは `whitespace-normal` で table 既定の `whitespace-nowrap` を打ち消し、長い商品名 / CTA 群の横はみ出しを防ぐ。
+**使用トークン**: 展開行は `bg-muted`（`stone-100`）で選択行と視覚的に一体化させる。展開セルは `whitespace-normal` で table 既定の `whitespace-nowrap` を打ち消し、長い商品名 / CTA 群の横はみ出しを防ぐ。狙いは 00 の進行中の役割（迷いやすい場面「詳細を開いた行」。runtime lane A の L3 で試し）で、本書は現行を記す。
 
 **状態**:
 - **selected（active 相当）**: 選択行に `data-state="selected"`、展開行に `bg-muted` を明示固定する（table primitive の自動トリガに依存しない）
