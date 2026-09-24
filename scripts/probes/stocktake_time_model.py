@@ -428,7 +428,10 @@ class Ledger:
 
     def rollback(self, import_id: int) -> None:
         self.cancel_import(self.imports[import_id])  # a legacy hold raises before any write
-        self.flags = {s: f for s, f in self.flags.items() if f[1] != import_id}
+        flags = {s: f for s, f in self.flags.items() if f[1] != import_id}
+        if flags != self.flags:
+            self.revision += 1  # ADR D1: a removed flag advances the revision even with no movement
+        self.flags = flags
 
 
 def check_bounds() -> None:
@@ -1150,16 +1153,20 @@ def check_receipt_business_retry() -> None:
             model.ledger.reevaluate(source, EJ(z004=cleared), eleven, cleared)
             assert model.business_state() == committed, "frozen mapping reopened"
     # A recount or cancellation while the predecessor is only received must not be resurrected.
+    # Twelve's EJ has a sale and its return, so re-judging it would flag lines: only skipping the
+    # resolved flag keeps it gone. Twelve has no movement, so the cancellation is flag-only.
     for recovery in ("recount", "cancel"):
         model = ImportModel()
         model.ledger.observe(10)
         source = model.receive("twelve", 12)
-        assert model.commit("twelve", EJ())
+        assert model.commit("twelve", EJ(("P", "P"), signed=(1, -1)))
         model.receive("eleven", 11)
         if recovery == "recount":
             model.ledger.observe(10)
         else:
+            version = model.ledger.revision
             model.ledger.rollback(model.active["twelve"])
+            assert model.ledger.revision > version, "flag-only cancellation kept the revision"
             del model.active["twelve"]
         assert source not in model.ledger.flags
         model = model.restart()
