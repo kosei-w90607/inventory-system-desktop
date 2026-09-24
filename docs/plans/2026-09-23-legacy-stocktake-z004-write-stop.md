@@ -32,7 +32,7 @@ manual の対象: 棚卸し画面と売上データ取込み画面（Z004 タブ
 
 ## Owner Effort Budget
 
-- 介入回数上限: 4（内訳の見込み: push と Draft PR 作成の承認 1、Codex の Final Review relay 1、manual の目視確認 1、Ready・merge の判断 1。既定 3 から 1 増やす理由 = 画面変更の manual が加わるため）
+- 介入回数上限: 5（内訳の見込み: push と Draft PR 作成の承認 1、Codex の Final Review relay 1、manual の目視確認 1、Ready・merge の判断 1。既定 3 から 1 増やす理由 = 画面変更の manual が加わるため。2026-09-25 に owner 承認で 5 へ引き上げ「全部承認、承認して大丈夫って状態になってるならね」: main の取込みで `docs/Plans.md` の競合を解くため、`docs/agent-guidance/merge-evidence.md` の base 同期の規則により manual の PASS を引き継げず、目視確認をもう 1 回行う。同じ承認で Ready・merge も承認済み〈ただし同期後の closure・CI・manual が揃ってから〉。消費 5 = push と Draft PR 作成 1、relay 1、manual 1、Ready・merge と引き上げの承認 1、同期後の manual 1）
 - 実働時間上限: 30分（既定。manual は 2 画面の目視で 10 分程度の見込み、未実測）
 - relay 往復上限: 2
 - Plan Review round 天井: 3（既定 3）
