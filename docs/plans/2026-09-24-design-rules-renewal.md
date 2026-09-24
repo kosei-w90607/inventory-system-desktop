@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Risk: R2
 - Execution Mode: fable-window
 - Plan Commit: ba6532e0acc3d9fe15276519ccd56ee5d8cd3f21
-- Amendments: none
+- Amendments: cbcbabc80fbacb7055b418100878044ac0e47cf9
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（worktree run）
 - Plan Reviewer: Opus 5.5（fork でない fresh subagent、Writer と別 context）
