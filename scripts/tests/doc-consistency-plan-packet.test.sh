@@ -312,16 +312,15 @@ reset_packet_defaults() {
     PKT_INCLUDE_WS=1
     PKT_PHASE="implementing"
     PKT_WS_RISK="R3"
-    PKT_EXEC_MODE="fable-window"
+    PKT_EVIDENCE_MODE=""
+    PKT_EXEC_MODE=""
     PKT_PLAN_COMMIT="abc1234"
     PKT_COORDINATOR="Fable 5（fixture coordinator）"
     PKT_WRITER="Codex（fixture writer）"
     PKT_PLAN_REVIEWER="Sonnet 5（fixture plan reviewer）"
     PKT_FINAL_REVIEWER="Sonnet 5（fixture final reviewer）"
-    PKT_REVIEWED_CONTENT_HEAD="pending"
-    PKT_FINAL_EXACT_HEAD_EVIDENCE="PR body"
-    PKT_HOSTED_CI_REQUIREMENT="required"
-    PKT_HUMAN_GATE="Ready approval"
+    PKT_FINAL_REVIEW_MINIMUM="2"
+    PKT_HUMAN_GATE="ready,merge"
     PKT_OMIT_FIELDS=""
     PKT_WORKFLOW_STATE_EXTRA=""
     PKT_RISK_SECTION="R3"
@@ -356,19 +355,22 @@ write_packet() {
         if [ "$PKT_INCLUDE_WS" = "1" ]; then
             echo "## Workflow State"
             echo ""
-            write_workflow_field "Evidence Mode" "legacy"
+            # 旧 template の任意行（Evidence Mode / Execution Mode）は値があるときだけ書く。
+            if [ -n "$PKT_EVIDENCE_MODE" ]; then
+                write_workflow_field "Evidence Mode" "$PKT_EVIDENCE_MODE"
+            fi
             write_workflow_field "Phase" "$PKT_PHASE"
             write_workflow_field "Risk" "$PKT_WS_RISK"
-            write_workflow_field "Execution Mode" "$PKT_EXEC_MODE"
+            if [ -n "$PKT_EXEC_MODE" ]; then
+                write_workflow_field "Execution Mode" "$PKT_EXEC_MODE"
+            fi
             write_workflow_field "Plan Commit" "$PKT_PLAN_COMMIT"
             write_workflow_field "Amendments" "none"
             write_workflow_field "Coordinator" "$PKT_COORDINATOR"
             write_workflow_field "Writer" "$PKT_WRITER"
             write_workflow_field "Plan Reviewer" "$PKT_PLAN_REVIEWER"
             write_workflow_field "Final Reviewer" "$PKT_FINAL_REVIEWER"
-            write_workflow_field "Reviewed Content HEAD" "$PKT_REVIEWED_CONTENT_HEAD"
-            write_workflow_field "Final Exact-HEAD Evidence" "$PKT_FINAL_EXACT_HEAD_EVIDENCE"
-            write_workflow_field "Hosted CI Requirement" "$PKT_HOSTED_CI_REQUIREMENT"
+            write_workflow_field "Final Review Minimum" "$PKT_FINAL_REVIEW_MINIMUM"
             write_workflow_field "Human Gate" "$PKT_HUMAN_GATE"
             if [ -n "$PKT_WORKFLOW_STATE_EXTRA" ]; then
                 echo "$PKT_WORKFLOW_STATE_EXTRA"
@@ -479,7 +481,7 @@ run_check() {
     ) > "$out" 2>&1
 }
 
-# --- 1. 正例: 現行 packet と同形式の synthetic fixture は ERROR 0 ---
+# --- 1. T-P1 正例: 新 template 形（Evidence Mode / Execution Mode 行なし、10 field）の fixture は ERROR 0 ---
 setup_repo_dirs
 reset_packet_defaults
 write_packet "$repo/docs/plans/2026-01-01-fixture.md"
@@ -532,16 +534,21 @@ if run_check "docs/plans/2026-01-02-fixture.md"; then
 fi
 assert_contains "$out" "必須セクション '## Workflow State' を欠いています"
 
-# --- 3. Phase が 13 phase enum 外 ---
-setup_repo_dirs
-reset_packet_defaults
-PKT_PHASE="review"
-write_packet "$repo/docs/plans/2026-01-03-fixture.md"
-write_plans_md_linking "2026-01-03-fixture.md"
-if run_check "docs/plans/2026-01-03-fixture.md"; then
-    fail "Phase enum outside 13 values was not rejected"
-fi
-assert_contains "$out" "13 phase enum に含まれません"
+# --- 3. T-P5 Phase が 8 値の enum 外（撤去済みの実装後 Phase を含む）は marker の有無に関わらず ERROR ---
+for marker in "" github; do
+    for phase in review local-verified independent-review human-confirm ready-hosted-final merge; do
+        setup_repo_dirs
+        reset_packet_defaults
+        PKT_EVIDENCE_MODE="$marker"
+        PKT_PHASE="$phase"
+        write_packet "$repo/docs/plans/2026-01-03-fixture.md"
+        write_plans_md_linking "2026-01-03-fixture.md"
+        if run_check "docs/plans/2026-01-03-fixture.md"; then
+            fail "Phase '$phase' outside the 8-value enum was not rejected (marker='$marker')"
+        fi
+        assert_contains "$out" "の Phase 値 '${phase}' が Phase enum"
+    done
+done
 
 # --- 4. Workflow State '- Risk:' と '## Risk' セクションの不一致 ---
 setup_repo_dirs
@@ -554,16 +561,20 @@ if run_check "docs/plans/2026-01-04-fixture.md"; then
 fi
 assert_contains "$out" "と不一致です"
 
-# --- 5. Execution Mode が既定3値外 ---
-setup_repo_dirs
-reset_packet_defaults
-PKT_EXEC_MODE="waterfall"
-write_packet "$repo/docs/plans/2026-01-05-fixture.md"
-write_plans_md_linking "2026-01-05-fixture.md"
-if run_check "docs/plans/2026-01-05-fixture.md"; then
-    fail "Execution Mode outside 3 enum values was not rejected"
-fi
-assert_contains "$out" "既定の3値"
+# --- 5. T-P2 互換: 旧 template 形（Evidence Mode: github + 任意値の Execution Mode）を受理し値を評価しない ---
+for mode in fable-window dual-vendor-no-fable codex-only "waterfall（任意の文字列）"; do
+    setup_repo_dirs
+    reset_packet_defaults
+    PKT_EVIDENCE_MODE="github"
+    PKT_EXEC_MODE="$mode"
+    write_packet "$repo/docs/plans/2026-01-05-fixture.md"
+    write_plans_md_linking "2026-01-05-fixture.md"
+    if ! run_check "docs/plans/2026-01-05-fixture.md"; then
+        cat "$out" >&2
+        fail "old-template packet with Execution Mode '$mode' was rejected"
+    fi
+    assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+done
 
 # --- 6. R3 packet で Findings Freeze 行欠落 ---
 setup_repo_dirs
@@ -715,16 +726,15 @@ assert_not_contains "$out" "docs/archive/plans/2020-01-01-archived-fixture.md (R
 assert_not_contains "$out" "必須セクション '## Owner Effort Budget' を欠いています"
 assert_not_contains "$out" "必須セクション '## Contract Probe' を欠いています"
 
-# --- 14. enum 全値の positive 網羅: 13 phase / 3 exec mode がすべて enum 判定を通る ---
+# --- 14. T-P5 enum 全値の positive 網羅: 8 phase がすべて enum 判定を通る ---
 # （Double Audit pass1 P3-1 反映: enum 文字列からの token 欠落を検出できる網）
-for phase in kickoff spec-check design plan-draft plan-gate plan-approved implementing \
-    local-verified independent-review human-confirm ready-hosted-final merge archive; do
+for phase in kickoff spec-check design plan-draft plan-gate plan-approved implementing archive; do
     setup_repo_dirs
     reset_packet_defaults
     PKT_PHASE="$phase"
     # plan-approved 以降の phase では Plan Commit: pending が field 関係 ERROR になるため実値を置く
     case "$phase" in
-        plan-approved|implementing|local-verified|independent-review|human-confirm|ready-hosted-final|merge|archive)
+        plan-approved|implementing|archive)
             PKT_PLAN_COMMIT="ffffff1" ;;
     esac
     write_packet "$repo/docs/plans/2026-01-14-fixture.md"
@@ -732,17 +742,6 @@ for phase in kickoff spec-check design plan-draft plan-gate plan-approved implem
     if ! run_check "docs/plans/2026-01-14-fixture.md"; then
         cat "$out" >&2
         fail "valid phase enum value '$phase' was rejected"
-    fi
-done
-for mode in fable-window dual-vendor-no-fable codex-only; do
-    setup_repo_dirs
-    reset_packet_defaults
-    PKT_EXEC_MODE="$mode"
-    write_packet "$repo/docs/plans/2026-01-14-fixture.md"
-    write_plans_md_linking "2026-01-14-fixture.md"
-    if ! run_check "docs/plans/2026-01-14-fixture.md"; then
-        cat "$out" >&2
-        fail "valid execution mode enum value '$mode' was rejected"
     fi
 done
 
@@ -920,20 +919,17 @@ fi
 assert_not_contains "$out" "PK6: docs/plans/2026-01-20-pk6-no-section.md"
 assert_contains "$out" "PK6: 数値主張の実測 evidence 欠落 OK"
 
-# --- 21. SPEC-PK4-F1 / M-P1: Workflow State 13 field の行欠落を全数検出 ---
+# --- 21. T-P6 SPEC-PK4-F1 / M-P1: Workflow State 必須 10 field の行欠落を全数検出 ---
 required_workflow_fields=(
     "Phase"
     "Risk"
-    "Execution Mode"
     "Plan Commit"
     "Amendments"
     "Coordinator"
     "Writer"
     "Plan Reviewer"
     "Final Reviewer"
-    "Reviewed Content HEAD"
-    "Final Exact-HEAD Evidence"
-    "Hosted CI Requirement"
+    "Final Review Minimum"
     "Human Gate"
 )
 for field in "${required_workflow_fields[@]}"; do
@@ -959,29 +955,34 @@ if run_check "docs/plans/2026-01-21-empty-field.md"; then
 fi
 assert_contains "$out" "Workflow State に '- Coordinator:' 行がありません"
 
-# --- 22. SPEC-PK4-F2 / M-P2: Hosted CI Requirement enum 外は ERROR ---
-setup_repo_dirs
-reset_packet_defaults
-PKT_HOSTED_CI_REQUIREMENT="maybe"
-write_packet "$repo/docs/plans/2026-01-22-hosted-ci-enum.md"
-write_plans_md_linking "2026-01-22-hosted-ci-enum.md"
-if run_check "docs/plans/2026-01-22-hosted-ci-enum.md"; then
-    fail "Hosted CI Requirement outside required/not-required was not rejected"
-fi
-assert_contains "$out" "Hosted CI Requirement 値 'maybe' が required/not-required に含まれません"
+# --- 22. T-P4: legacy field 3 種は marker の有無に関わらず ERROR ---
+for marker in "" github; do
+    for legacy_field in "Reviewed Content HEAD" "Final Exact-HEAD Evidence" "Hosted CI Requirement"; do
+        setup_repo_dirs
+        reset_packet_defaults
+        PKT_EVIDENCE_MODE="$marker"
+        PKT_WORKFLOW_STATE_EXTRA="- ${legacy_field}: required"
+        write_packet "$repo/docs/plans/2026-01-22-legacy-field.md"
+        write_plans_md_linking "2026-01-22-legacy-field.md"
+        if run_check "docs/plans/2026-01-22-legacy-field.md"; then
+            fail "legacy field '$legacy_field' was not rejected (marker='$marker')"
+        fi
+        assert_contains "$out" "legacy field '${legacy_field}'"
+    done
+done
 
-# --- 23. SPEC-PK4-F3 / M-P3: pending / none / 日本語先頭値は正当 ---
+# --- 23. T-P10 SPEC-PK4-F3 / M-P3: pending / 日本語先頭値は正当 ---
 setup_repo_dirs
 reset_packet_defaults
 PKT_PHASE="plan-gate"
 PKT_PLAN_COMMIT="pending"
 PKT_PLAN_REVIEWER="未定（plan-gate 時に選任）"
-PKT_HUMAN_GATE="none"
+PKT_HUMAN_GATE="ready,merge"
 write_packet "$repo/docs/plans/2026-01-23-valid-free-form.md"
 write_plans_md_linking "2026-01-23-valid-free-form.md"
 if ! run_check "docs/plans/2026-01-23-valid-free-form.md"; then
     cat "$out" >&2
-    fail "pending/none/non-ASCII Workflow State values were rejected"
+    fail "pending/non-ASCII Workflow State values were rejected"
 fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 
@@ -1046,14 +1047,14 @@ if ! run_check "docs/plans/2026-01-26-r1-field.md"; then
 fi
 assert_not_contains "$out" "Workflow State に '- Writer:' 行がありません"
 
-# --- 27. SPEC-PK4-F1..F5 / M-P7: 13 field default fixture は ERROR 0 ---
+# --- 27. T-P1 SPEC-PK4-F1..F5 / M-P7: 10 field default fixture は ERROR 0 ---
 setup_repo_dirs
 reset_packet_defaults
 write_packet "$repo/docs/plans/2026-01-27-complete-fields.md"
 write_plans_md_linking "2026-01-27-complete-fields.md"
 if ! run_check "docs/plans/2026-01-27-complete-fields.md"; then
     cat "$out" >&2
-    fail "complete 13-field Workflow State fixture was rejected"
+    fail "complete 10-field Workflow State fixture was rejected"
 fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 
@@ -1070,24 +1071,48 @@ assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 
 echo "PASS: doc-consistency-plan-packet"
 
-# SPEC-MERGE-EVIDENCE / MG-D5/D10: explicit new/legacy schemas, no phase guesses.
+# T-P3: Evidence Mode 行は任意。書くなら github だけ（legacy / 未知値は ERROR）。
+for marker in legacy mystery; do
+    setup_repo_dirs
+    reset_packet_defaults
+    PKT_EVIDENCE_MODE="$marker"
+    write_packet "$repo/docs/plans/2026-01-01-fixture.md"
+    write_plans_md_linking "2026-01-01-fixture.md"
+    if run_check; then fail "Evidence Mode '$marker' accepted"; fi
+    assert_contains "$out" "Evidence Mode は廃止。書くなら github"
+done
 setup_repo_dirs
 reset_packet_defaults
 write_packet "$repo/docs/plans/2026-01-01-fixture.md"
 write_plans_md_linking "2026-01-01-fixture.md"
-sed -i '/^- Evidence Mode:/d' "$repo/docs/plans/2026-01-01-fixture.md"
-if run_check; then fail "markerless active packet accepted"; fi
-sed -i '/^- Phase:/i\- Evidence Mode: mystery' "$repo/docs/plans/2026-01-01-fixture.md"
-if run_check; then fail "unknown evidence mode accepted"; fi
-sed -i 's/Evidence Mode: mystery/Evidence Mode: github/; /^- Reviewed Content HEAD:/d; /^- Final Exact-HEAD Evidence:/d; /^- Hosted CI Requirement:/d; s/^- Human Gate:.*/- Human Gate: ready,merge/; /^- Final Reviewer:/a\- Final Review Minimum: 2' "$repo/docs/plans/2026-01-01-fixture.md"
-if ! run_check; then cat "$out"; fail "github pre-implementation schema rejected"; fi
-for phase in local-verified independent-review human-confirm ready-hosted-final merge; do
-    sed -i "s/^- Phase:.*/- Phase: $phase/" "$repo/docs/plans/2026-01-01-fixture.md"
-    if run_check; then fail "github tracked late Phase accepted: $phase"; fi
+if ! run_check; then cat "$out" >&2; fail "markerless active packet rejected"; fi
+
+# T-P7: R4 は Final Review Minimum 2 と Human Gate の r4 が必須。Human Gate は ready,merge を含む（marker なし）。
+r4_defaults() {
+    reset_packet_defaults
+    PKT_WS_RISK="R4"
+    PKT_RISK_SECTION="R4"
+    PKT_HUMAN_GATE="ready,merge,r4"
+}
+setup_repo_dirs
+r4_defaults
+write_packet "$repo/docs/plans/2026-01-01-fixture.md"
+write_plans_md_linking "2026-01-01-fixture.md"
+if ! run_check; then cat "$out" >&2; fail "valid R4 packet rejected"; fi
+for r4_case in minimum-1 human-gate-none r4-token-missing; do
+    setup_repo_dirs
+    r4_defaults
+    case "$r4_case" in
+        minimum-1) PKT_FINAL_REVIEW_MINIMUM="1"; r4_message="Final Review Minimum は1/2（R4は2）が必須です" ;;
+        human-gate-none) PKT_HUMAN_GATE="none"; r4_message="Human Gate は ready,merge と必要な manual/r4 を明示してください" ;;
+        r4-token-missing) PKT_HUMAN_GATE="ready,merge"; r4_message="Human Gate は ready,merge と必要な manual/r4 を明示してください" ;;
+    esac
+    write_packet "$repo/docs/plans/2026-01-01-fixture.md"
+    write_plans_md_linking "2026-01-01-fixture.md"
+    if run_check; then fail "R4 case '$r4_case' accepted"; fi
+    assert_contains "$out" "$r4_message"
 done
-sed -i 's/^- Phase:.*/- Phase: plan-draft/; /^- Final Review Minimum:/d' "$repo/docs/plans/2026-01-01-fixture.md"
-if run_check; then fail "github missing minimum accepted"; fi
-echo "PASS: merge evidence schemas"
+echo "PASS: workflow state schema"
 
 # 衛生 batch 4 S1b / AC6: full checker の route 正例と未定義カラム負例。
 # ponytail: 拡張子と同名の不正カラムは除外される。区別が必要なら別途抽出方式を設計する。

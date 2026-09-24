@@ -202,9 +202,7 @@ validate_public_actions_doc_contract() {
     grep -Fq '同一 HEAD の run が 0 件であること' "$ci_doc" || return 1
     grep -Fq '| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に successful / in-progress run がないこと |' "$ci_doc" || return 1
     grep -Fq '| 同一 HEAD に successful final が既にある | 既存runを使う | Ready再操作もdispatchも不要 |' "$ci_doc" || return 1
-    grep -Fq '**non-release R2/R3 Actions unavailable**' "$ci_doc" || return 1
-    grep -Fq '**public repository Phase B bootstrap R4**' "$ci_doc" || return 1
-    grep -Fq '`not-required` でも観測済み product/test/gate failure は blocker' "$ci_doc" || return 1
+    grep -Fq 'GitHub Actions が利用不能なら merge を停止' "$ci_doc" || return 1
     grep -Fq 'CI-TRIGGER-D1' "$dev_workflow_doc" || return 1
     grep -Fxq '## D-063' "$decision_log"
 }
@@ -299,22 +297,10 @@ if validate_public_actions_doc_contract "$ci_doc_successful_row_mutation" "$DEV_
     fail "M2d public Actions docs validator accepted a missing already-successful no-op row"
 fi
 
-ci_doc_availability_mutation="$mutation_dir/ci-actions-unavailable-route-removed.md"
-sed 's/non-release R2\/R3 Actions unavailable/non-release R2\/R3 route removed/' "$CI_DOC" > "$ci_doc_availability_mutation"
+ci_doc_availability_mutation="$mutation_dir/ci-actions-unavailable-stop-removed.md"
+sed '/GitHub Actions が利用不能なら merge を停止/d' "$CI_DOC" > "$ci_doc_availability_mutation"
 if validate_public_actions_doc_contract "$ci_doc_availability_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
-    fail "M3 public Actions docs validator accepted a missing Actions-unavailable route"
-fi
-
-ci_doc_bootstrap_route_mutation="$mutation_dir/ci-bootstrap-route-removed.md"
-sed 's/public repository Phase B bootstrap R4/public repository bootstrap route removed/' "$CI_DOC" > "$ci_doc_bootstrap_route_mutation"
-if validate_public_actions_doc_contract "$ci_doc_bootstrap_route_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
-    fail "M3 public Actions docs validator accepted a missing Phase B bootstrap route"
-fi
-
-ci_doc_failure_blocker_mutation="$mutation_dir/ci-product-failure-not-blocking.md"
-sed 's/not-required` でも観測済み product\/test\/gate failure は blocker/not-required` でも観測済み product\/test\/gate failure は owner disposition 可/' "$CI_DOC" > "$ci_doc_failure_blocker_mutation"
-if validate_public_actions_doc_contract "$ci_doc_failure_blocker_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
-    fail "M3 public Actions docs validator accepted a non-blocking product or gate failure"
+    fail "M3 public Actions docs validator accepted a missing merge stop while Actions is unavailable"
 fi
 
 ci_doc_public_anchor_mutation="$mutation_dir/ci-public-anchor-removed.md"
