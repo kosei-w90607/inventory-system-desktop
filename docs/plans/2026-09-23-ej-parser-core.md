@@ -326,3 +326,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 Fill after review.
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+Final Review broad Codex 側（2026-09-25、GPT-6 Astra high、対象 `fc73b59f`、裁定 Coordinator）: P1 0 / P2 2 / P3 1。Codex は PR body の Validation 節にあった Opus 側の要約を読んだと申告し、独立した 1 本と扱えない → 是正後の head に Codex broad を取り直す（PR body と本節の Final Review の段落は読まない指示）。全件採用、`6124e9b3` で是正。P2-1（幅 24 を保った孤立 CR / LF が `trim()` に隠れて復元済みになる）= 幅の検査 3 か所を「24 バイトちょうどで CR / LF を含まない」判定に揃え、該当行は既存の `InvalidWidth`（29 :138 の「孤立した LF / CR はこの形で現れる」）で記録を復元不能にする。P2-2（合計行なしの現金の不一致を拒否する負例が無い）= test を 1 件追加し、現金の値を明細合計へ差し替える mutation で red を確認（実装は変更なし）。P3（`i64::MIN` の金額を読めない）= 負の値を符号つきの checked 演算で積み上げ、i64 の両端と 1 つ外側の test を追加。
