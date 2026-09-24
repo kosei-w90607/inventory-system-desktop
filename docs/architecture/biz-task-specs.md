@@ -2,16 +2,14 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-本節のBIZ-03のPOS基準認定・file境界導出・昇格 / 失効と、BIZ-06のepoch固定・保存は、[ADRの適用範囲の但し書き](../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
-
 SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、既存の処理を新方式実装済みとは扱わない。
 
-- BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。非連動化は単一の共通repo書込み経路で商品に版を記録し、適用済み再実測まで未調整を保持する。
+- BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。非連動化は単一の共通repo書込み経路で商品に版を記録し、適用済み再実測まで未調整を保持する。準備照会が `ej_unverified` を返す間は在庫連動の有効化を拒否し、既定値をfalseにする。
 - BIZ-02/BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。専用repoが数量/版を同時更新し、必須ログを含む既存TX境界を維持。
-- BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。受領の証拠と業務importを分離。MNT供給epochをpc_clock_epochへ保存するgate基準認定と、settled_at/前回sourceからのfile境界導出・昇格/失効伝播を所有。最新の証拠で一つの分類を使い、Unknownをflag/全file保留へ。同一性拒否証拠からsource単位のsettlement_missing、商品の切替記録から商品単位のsync_disabled_unreconciledを準備照会へ返す。切替と実測の版に合わせた説明も同じissueで返す。取消は最初の有効な吸収先を補正し、legacyを吸収なしと解釈しない。
-- BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。MNT供給のPC時計epochをbeginでcontextへ固定し、saveの1商品TXで一致検証・実測保存する。開始context・1商品1TX・再送・N-L確定・独立再実測・legacy復旧。保存済み評価額は不変。
+- BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。受領の証拠と業務importを分離。受領順と実測の種別による一つの分類を使い、Unknownは所属によらず通常適用と(商品, 資料)単位の要再確認flagへ、共有JAN行だけをfile全体の保留へ。売上と返品の相殺をEJの証拠で判定し、名称が重なる行は候補の商品に局所化し、合計を候補でつながる名称と商品の単位で照合する。最初の区間・受領済みの最小より小さいsettlement_no・settlement_noの戻り（同じ番号の別の精算）をZ004の取込みの時点で判定し、欠番を埋める後追いのZ004は通常の受領として扱い、相殺の確認待ち（EJ待ち）を後から取り込むEJか前回のZ004で、直前のZ004が未受領の間の相殺の確認待ち（登録の変化。最初の区間・受領済みの最小より小さいsettlement_no・settlement_noの戻り）を直前のZ004で、帰属できない行と前回の証明を先に判定する順で再評価する。準備照会はEJの日次取込みを実装するlaneまで `ej_unverified` を常に返し、商品単位の要再確認をrecount_after_importで返す。同一性拒否証拠からsource単位のsettlement_missing、商品の切替記録から商品単位のsync_disabled_unreconciledを準備照会へ返す。切替と実測の版に合わせた説明も同じissueで返す。取消は最初の有効な吸収先を補正し、legacyを吸収なしと解釈しない。
+- BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。開始context（商品revision・所有者・DB世代・source_cursor）・1商品1TX・再送・N-L確定・独立再実測・要再確認flagの解消・legacyの取消の保留の通常の実測による解除。保存済み評価額は不変。
 
-日報BIZ-08、売上レポート、PLU書出しの意味は変更しない。EJ parser実装は別laneで、32の外部probeと本番条件を引き継ぐ。
+日報BIZ-08、売上レポート、PLU書出しの意味と記録は変更しない。相殺の判定の対応が変わった名称はZ004どうしのスキャニングコードと名称の組で求め、PLU書出しの確認に記録を加えない。名称の重なりの検知と登録名の付け直しの支援はPLU書出し側の別の変更で扱い、在庫連動の有効化より前に入れる（`ej_unverified` を外す条件、32）。EJ parser実装は別laneで、32の外部probeと本番条件を引き継ぐ。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）

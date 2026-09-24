@@ -50,12 +50,12 @@ pattern="$1"
 shift
 
 if [ "$#" -eq 0 ]; then
-  set -- docs src src-tauri/src src-tauri/tests scripts .github/workflows .codex/README.md .codex/execpolicy.rules .codex/rules/default.rules .codex/bin .agents/skills .claude/skills AGENTS.md Plans.md
+  set -- docs src src-tauri/src src-tauri/tests scripts .github/workflows .codex/README.md .codex/rules/default.rules .codex/bin .agents/skills .claude/skills AGENTS.md Plans.md
 fi
 
 is_allowed_path() {
   case "$1" in
-    docs|docs/*|src|src/*|src-tauri/src|src-tauri/src/*|src-tauri/tests|src-tauri/tests/*|scripts|scripts/*|.github/workflows|.github/workflows/*|.codex/README.md|.codex/execpolicy.rules|.codex/rules|.codex/rules/*|.codex/bin|.codex/bin/*|.agents/skills|.agents/skills/*|.claude/skills|.claude/skills/*|AGENTS.md|Plans.md) return 0 ;;
+    docs|docs/*|src|src/*|src-tauri/src|src-tauri/src/*|src-tauri/tests|src-tauri/tests/*|scripts|scripts/*|.github/workflows|.github/workflows/*|.codex/README.md|.codex/rules|.codex/rules/*|.codex/bin|.codex/bin/*|.agents/skills|.agents/skills/*|.claude/skills|.claude/skills/*|AGENTS.md|Plans.md) return 0 ;;
     *) return 1 ;;
   esac
 }

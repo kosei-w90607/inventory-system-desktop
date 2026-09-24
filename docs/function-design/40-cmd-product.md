@@ -6,13 +6,13 @@ SPEC-STK-TIME-D8 / D9の回復情報を、message文字列の解析なしで伝�
 
 - CmdErrorKindへ `stocktake_guard` を加え、CmdErrorへ `stocktake_recovery: Option<StocktakeRecovery>` を加える。既存kindではNone、stocktake_guardではSomeを必須とする。既存field/error_id・internalのsanitize・restoreの分類は変えない。
 - 業務payloadのStocktakeRecovery / CountRecoveryTargetはBIZ所有とし、DBからCMD型を参照しない。`BizError::StocktakeGuard { message, recovery }` をCMDがstocktake_guardとSome(recovery)へ変換する。CMDは対象の選別や回復可否を再判定しない。
-- StocktakeRecoveryはcode、csv_import_id（取消復旧の場合だけSome）、targetsを持つ。codeはcount_context_invalid / count_target_changed / count_environment_unavailable / recount_required / import_held / preview_changed / rollback_recheck_required / shared_jan_unresolved / source_identity_conflictのgenerated enum。BIZが理由と対象を確定し、CMDは変換するだけ。
-- targetsの要素CountRecoveryTargetはproduct_code / product_name / stocktake_item_id（Option）/ stocktake_id（Option）/ actionを持つ。actionはactive_count / independent_recount / legacy_rollback_recheck / no_count_target。商品数量や時刻の証拠をclient入力へ戻さない。参照なしはnullとno_count_targetで表し、架空のIDを使わない。
-- 失効や保存先変更は新しい計数へ、import_heldは同file再previewへ、rollback_recheck_requiredは明示的な旧取消復旧へ案内する。環境不成立・同一精算の別hashは再実測で無条件解除できる種類と混ぜない。
+- StocktakeRecoveryはcode、csv_import_id（legacyの取消の保留の場合だけSome）、targetsを持つ。codeはcount_context_invalid / count_target_changed / recount_required / import_held / preview_changed / rollback_recheck_required / shared_jan_unresolved / source_identity_conflictのgenerated enum。BIZが理由と対象を確定し、CMDは変換するだけ。
+- targetsの要素CountRecoveryTargetはproduct_code / product_name / stocktake_item_id（Option）/ stocktake_id（Option）/ action / recount_reasonsを持つ。actionはactive_count / independent_recount / no_count_target。要再確認flagによる対象（準備照会のrecount_after_import、取込みのstock_review・recount_targets）では、`recount_reasons` にその商品の未解消flagの理由（sale_order_unknown / offset_lines_present / offset_check_pending / offset_mapping_changed / legacy_basisのgenerated enum。重複なし、この順）を入れ、他の対象では空にする。UIは表示する文言をこの型と[32](32-biz-csv-import-service.md)の説明から選び、message文字列を解析しない。商品数量や時刻の証拠をclient入力へ戻さない。参照なしはnullとno_count_targetで表し、架空のIDを使わない。
+- 失効や保存先変更は新しい計数へ、import_heldは共有JAN行の全候補の計数と同file再previewへ、rollback_recheck_requiredは対象商品の通常の計数（active_countなら計数と確定、independent_recountなら独立再実測）の後の同じ取消の再試行へ案内する。同一精算の別hashは再実測で無条件解除できる種類と混ぜない。
 - source_identity_conflictはBIZ-03の精算同一性guardが生成する。shared_jan_unresolvedはBIZ-01のcreate/update/商品一括importが曖昧な連動設定を拒否する際にも生成する。kind名stocktake_guardをoperatorへ表示せず、商品フォーム/一括importの表示は51/60のproposed節へ接続する。
 - 負数・非整数・範囲外は既存validation、同じ保存要求の値違いは既存idempotency_conflictを使う。保存済み同値はerrorではなくsave結果のreplayed。UIはkind/code/actionを生成型で網羅し、未知コードを「そのまま続行」にしない。
 
-商品get/update結果へ `sync_disabled_recovery: Option<CountRecoveryTarget>` を追加し、BIZ生成の非連動化後の未調整状態を透過する。Someは未調整、Noneはこのissueなし。商品一括importのpreview/結果には同じ対象のVecを追加する。再有効化拒否は既存recount_requiredを使う。型の理由を持たない文字列warningだけに落とさず、既存のaction集合を共用し新しい迂回計数commandは追加しない。
+商品get/update結果へ `sync_disabled_recovery: Option<CountRecoveryTarget>` を追加し、BIZ生成の非連動化後の未調整状態を透過する。Someは未調整、Noneはこのissueなし。商品一括importのpreview/結果には同じ対象のVecを追加する。再有効化拒否は既存recount_requiredを使う。準備照会が `ej_unverified` を返す間の在庫連動の有効化の拒否（[30](30-biz-product-service.md)）は、既存の `validation` kindとfield `pos_stock_sync` で返すため、kindとstocktake_guardのcodeは増えない。型の理由を持たない文字列warningだけに落とさず、既存のaction集合を共用し新しい迂回計数commandは追加しない。
 
 runtimeでは共通enum、全CmdError constructor、BizError変換、bindings、CMD_ERROR_KIND、describeErrorとfeatureの回復分岐・mock/testを同じ変更で同期する。数量や対象IDはwireで安全に表現できる範囲をBIZが書込み前に検査する。追加payloadにraw SQL、診断ログ、実file本体を載せない。
 

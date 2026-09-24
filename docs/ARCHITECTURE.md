@@ -10,9 +10,9 @@
 | CMD | opaque token/cacheの保管・lock調停・生成wire・error変換。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42/43 |
 | BIZ | contextの意味・数量/版/所有者の再検査、Before/After/Unknown、TX、復旧・評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
 | IO | 正規化メタと全候補を返すparser、受領・cursor・kind・版の原子的保存。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
-| MNT | OS監視の成立/世代、DB接続交換時の失効、非破壊的migration。[MNT task](architecture/mnt-task-specs.md) |
+| MNT | 非破壊的migration（分類・legacy上限・列/表追加）。計数contextには何も供給しない。DB接続交換時の失効はCMD（43）とBIZのDB世代が行う。[MNT task](architecture/mnt-task-specs.md) |
 
-資料受領と売上commitを分離し、現在庫の復旧・過去売上の欠落・確定済み評価額を別の結果にする。レジ固有の形式はadapter、証拠の信用と時点判定はBIZが所有する。外部probeなしの自動時刻分類・PLU本番可の宣言は行わない。
+資料受領と売上commitを分離し、現在庫の復旧・過去売上の欠落・確定済み評価額を別の結果にする。レジ固有の形式はadapter、証拠の信用と時点判定はBIZが所有する。時刻で前後を判定せず、外部probeなしのPLU本番可の宣言は行わない。
 
 > **現行構造の図**: [層・画面遷移・業務データフロー](diagrams/current-system.md)、[ER図](inventory_system_erd.html)。実装の照合結果と設計上の懸念は [図面監査](research/2026-09-16-diagram-audit.md) を参照。
 > **入力ドキュメント**: `docs/spec/requirements.md`（REQ inventory）、`docs/spec/requirements-coverage.md`（公開要求 coverage）、DB_DESIGN.md（テーブル定義書）、SCREEN_DESIGN.md（画面設計書）、screen_mockups.html（モックアップ）
@@ -195,6 +195,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | IO-05 | レポートCSVエクスポーター | 売上一覧等のCSV出力。UTF-8 BOM付き（Excel対応） |
 | IO-06 | 画像ファイル管理 | レシート画像の保存（アプリ管理下の相対パス）、パス管理 |
 | IO-07 | POS日報bundleパーサー | CASIO SR-S4000 adapter のZ001/Z002/Z005パース。CP932/NEL対応、3ファイル束のsource判定、日報サマリ/支払/部門別行への正規化。業務ロジックなし |
+| IO-08 | EJパーサー | CASIO SR-S4000 adapter の電子ジャーナル（EJ）1 file を記録の列へ構造復元。24バイト固定幅・CP932・CRLF、位置による行分類、記録内照合がそろう取引だけ明細を復元し、それ以外は記録単位で復元不能として返す。番号の連続・区間の完全性・商品同定・時刻は判断しない。業務ロジックなし |
 
 ### MNT層（保守/診断）
 
@@ -303,7 +304,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | レイヤー | ファイル | タスク |
 |---------|---------|--------|
 | BIZ層 | [architecture/biz-task-specs.md](architecture/biz-task-specs.md) | BIZ-01〜BIZ-09 |
-| IO層 | [architecture/io-task-specs.md](architecture/io-task-specs.md) | IO-01〜IO-07 |
+| IO層 | [architecture/io-task-specs.md](architecture/io-task-specs.md) | IO-01〜IO-08 |
 | MNT層 | [architecture/mnt-task-specs.md](architecture/mnt-task-specs.md) | MNT-01〜MNT-04 |
 | CMD層 | [architecture/cmd-task-specs.md](architecture/cmd-task-specs.md) | CMD-01〜CMD-12 |
 | UI層 | [architecture/ui-task-specs.md](architecture/ui-task-specs.md) | UI-00、UI-01a〜UI-13 |
