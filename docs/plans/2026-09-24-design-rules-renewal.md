@@ -74,6 +74,8 @@ Goal Invariant:
 - 新しい画面や修正を設計する人が、改訂後の design-system 文書だけを読んで、色（どの役割か）・強調（何段目か）・書体（いまは何を使い、何が採用前か）・補足情報の見せ方（ラベルと値の組）を迷わず選べる。選んだ理由を「見せ方 → 見る人の受け取り方 → 狙う効果 → 根拠」の 4 列で説明できる。
 - 原則が 1 か所にまとまり、DSR-01〜24 は番号を変えずに話題から引ける。README が「どこを読めばよいか」の索引になっている。
 - 現行の実装（amber の primary 等）と改訂後の決まりが食い違う箇所は、文書の上で「runtime lane 待ち」と明示され、読む人が現行の見た目と狙いの見た目を取り違えない。
+- runtime lane A の merge 前に画面を作る人が、「現行の token と 02 の部品の形で作る」か「lane A の merge を待つ」かを 1 つに決められる（[D8](#spec-contract)）。
+- 今の色の割り当て（在庫切れ・取消済み・マイナスの増減・取得失敗の赤、tone family の注意と完了）は変わらない。変えるもの（ランキング 1 位ほか [D12](#spec-contract) の「試し」の行）は、runtime lane A の L3 で owner が実画面を見て決める試しとして書かれる。
 - `bash scripts/doc-consistency-check.sh` の DS1〜DS4 が改訂前と同じ強さで働き続ける（file 名・DSR 見出し・token 表の突合件数が減らない）。
 
 ### 失敗定義
@@ -83,6 +85,7 @@ Goal Invariant:
 - file 改名・見出しの書式変更・token 表の行の削除で、DS2 / DS3 の検査対象が黙って減る。
 - 旧原則番号を引いている文書が、番号の付け替えで別の原則を指したまま残る。
 - owner の判断（1 色 1 役割、操作と進行中は同じ緑寄り、黒の 2px 枠と長いバッジは避ける、書体は Noto Sans JP が好みで最終は実機、ラベルと値の組）と食い違う規則を書く。
+- 今の色の割り当て（上の最小完了条件）を、owner の L3 を経ずに変える規則を書く。または、撤回・置換した旧文（[D13](#spec-contract)）が改訂後の文書に現行の規則として残る。
 - 発言の原文・canvas の URL・`.local/` の path・店の実データを tracked file に書く。
 
 ### 非目的
@@ -103,33 +106,35 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
 | 新しい画面を設計し始める。改訂後の design-system だけを開く | README の索引から読む順（00 土台 → 04 原則 → 01 判断ルール → 02 部品 → 03 出典）と「迷ったらここ」を引く | どの問いをどの節で解くかが 1 か所で分かる | 索引の全行が実在の節へ届く | なし（AC4 で索引の行と節の対応を確かめる） |
-| 押すボタン・作業中の対象・確かめてほしい行・済んだ知らせを置く | 00 の色の役割表で役割を選び、強調の段階表で段を選ぶ | 各要素の役割（操作 / 進行中 / 注意・確認 / 完了 / 危険・戻せない / ふつう・補足）と段（0〜4）、1 画面あたりの上限、受け取り方と狙う効果と根拠が 1 つに決まる | 同じ要素に 2 つの役割・段が当たらない | 進行中の token は runtime lane まで未実装（SPEC-DSR-RENEW-D8）。その間に進行中を実装で使う画面は runtime lane を先に通す |
-| 選んだ役割の「今の見た目」を確かめる | 00 の役割表の「現行の実装」列と「移行」列を読む | 現行の token（例: 操作 = `--primary`、現行値は amber）と、runtime lane 待ちかどうかが分かる | 狙いと現行の差が表の上で読める | 候補値（緑寄りの色）は canonical docs に無い。値は D-091 の候補と runtime lane の実測で決まる |
-| 商品名の下に補足情報（部門・コード・前回数えた数・数えた日）を置く | 00 のラベルと値の組の規則を当てる | 何の値かを言葉で言い切るラベル（小さく薄く）と値（ふつうの濃さ）の組になる | 日付・数量のそれぞれに、何の日付・何の数かのラベルが付く | なし |
-| 書体を選ぶ | 00 の書体の節を読む | いまは現行の system font stack を使うこと、候補 2 つ（Noto Sans JP / BIZ UDPゴシック）と選定条件、最終採用は runtime lane の実機比較で決まることが分かる | 「決まっていない」ことが明示され、勝手に書体を差し替えない | 店の PC に BIZ UDPゴシックが入っているか、Noto Sans JP の同梱サイズ（どちらも 未実測）は runtime lane B で確かめる |
+| 押すボタン・作業中の行・確かめてほしい行・済んだ知らせ・在庫切れの行・待ちの表示を置く | 要素（領域・行・badge・ボタン・部品の状態）ごとに、00 の色の役割表の「使う場面」列で役割を 1 つ選び、強調の段階表で段を選ぶ。部品の状態（focus ring・checked・進み具合の棒・保存中のボタン・減衰）と、現行と狙いが分かれる場面は 00 の「迷いやすい場面」表で引く | 各要素の役割（操作 / 進行中 / 注意・確認 / 完了 / 危険・失敗 / ふつう・補足 のうち 1 つ）と段（0〜4、または「段に数えない」）、1 画面あたりの上限、受け取り方と狙う効果と根拠が 1 つに決まる。行の役割と、その行の中の badge の役割は別の要素として選ぶ（例: 入力中の行 = 進行中、その行の在庫切れの badge = 危険・失敗） | 同じ要素に 2 つの役割・段が当たらない。「迷いやすい場面」表の全行が役割と段を 1 つずつ持つ（AC14） | 進行中の token は runtime lane A まで未実装（D8）。場面の答えは 2026-09-24 の src 実測に基づく（Contract Probe） |
+| lane A の merge 前に、新しい画面や修正を作る | README の「移行中の作り方」と、00 の役割表の「現行の実装」「移行」列を読む | 現行の token と 02 の部品の形で作ると分かる（操作 = `--primary`、現在行 = DSR-22 の 3 点表示で canonical は取引先選択 dialog の現在行）。進行中の地・作業中の囲みを新しく要する画面は lane A の merge 後に作ると分かる | 「現行の部品の形で作る」か「lane A を待つ」かの 1 つに決まる。新しい見た目の先取り（候補色の直書き・新 token 名の先取り）をしない（review-checklist カテゴリ 9） | 候補値（緑寄りの色）は canonical docs に無く、D-091 にだけある |
+| 補足情報（商品名の下の部門・コード・前回数えた数・数えた日）か、サマリカードの主値を置く | 00 のラベルと値の節を当てる | 補足情報はラベル（小さく薄く）と値（ふつうの濃さ）の組、サマリカードの主値はラベル（小さく薄く）と値（metric 30px）の組になる。どちらも何の値かをラベルで言い切る | 日付・数量のそれぞれに、何の日付・何の数かのラベルが付く | なし |
+| 書体を選ぶ | 00 の書体の節を読む | いまは現行の system font stack を使うこと、候補 2 つ（Noto Sans JP / BIZ UDPゴシック）と選定条件、最終採用は runtime lane B の実機比較で決まることが分かる | 「決まっていない」ことが明示され、勝手に書体を差し替えない | BIZ UDPゴシックが Windows 標準に含まれるという外部の事実と、店の PC に入っているか、Noto Sans JP の同梱サイズ（いずれも 未実測）は runtime lane B で確かめる |
 | 既存の DSR を探す | 01 の話題別の索引（配置と一覧 / 入力 / 知らせ方 / 移動と戻り / 色と状態）から DSR 番号を引く | 旧番号のまま該当の DSR に届く | 24 本すべてが索引に 1 回ずつ載る | なし |
-| 古い文書やコードのコメントに「04-backbone 原則 15」等の旧番号を見つける | 04 の旧番号対応表を引く | 新しい原則番号へ辿り着ける | 旧 1〜16 の全行が対応表にある | なし |
+| 古い文書やコードのコメントに「04-backbone 原則 15」等の旧番号を見つける | 04 の旧番号対応表を引く | 新しい原則番号へ辿り着ける。2 つの規則を持っていた旧 15 は規則ごとに行き先が分かれ（現在行の 3 点 → 新 10、ラベル小・値大 → 新 5 と 00 のラベルと値）、参照している文の主題で 1 つに決まる。撤回・置換した旧文は対応表の「撤回・置換」列で置換先が分かる | 旧 1〜16 の全行が対応表にあり、2 つに分かれる行は規則ごとに行き先を持つ | なし |
 
 ## Scope
 
 Writer は下の file だけを編集する。対象を使う呼出し側（link・番号参照・checker）は起草時に `rg` で洗い出し、[Test Design Matrix](test-matrices/2026-09-24-design-rules-renewal.md) の Adjacent Pattern Audit に列挙した。
 
-- S1 `docs/design-system/00-foundations.md`（土台）: 色の役割表（SPEC-DSR-RENEW-D1）、強調の段階（D2）、書体の節の改訂（D3）、ラベルと値の組と進み具合（D4）を新設・改訂する。新しい規則の節は「見せ方 / 受け取り方 / 狙う効果 / 根拠」の 4 列の表を持つ。既存のカラーパレット表・セマンティックカラー表は行も HEX も変えず（DS3 の突合対象）、各行が役割表のどの役割に属するかを示す列を足す。4 色エリアモデルの節・ウォーム系の論拠の節は、役割表と矛盾する文だけを直す（ニュートラルの stone はウォームのまま、役割色は色相で役割を分ける）。metric 行の「原則 15（04-backbone）」は新番号へ直す。
-- S2 `docs/design-system/04-backbone.md`（原則）: 03 の哲学と 04 の 16 原則を 10 本前後の原則に統合する（D5）。各原則は 1 文 + 受け取り方と効果 + 根拠（出典は 03）で書く。旧番号対応表（旧 04 原則 1〜16 → 新番号、旧 03 の各節 → 新原則または 03 の出典）を置く。役目を終えた節（「foundations への追記分（token）」「00〜03 への反映先」「適用の順序」）は削り、内容が 00 に無いものだけ 00 または新原則へ移す。削った旧文は `git show dda8560a:docs/design-system/04-backbone.md` で引けると更新履歴に 1 行書く。file 名は変えない。
+- S1 `docs/design-system/00-foundations.md`（土台）: 色の役割表（SPEC-DSR-RENEW-D1）、強調の段階（D2）、迷いやすい場面の表（D12）、書体の節の改訂（D3）、ラベルと値の組と進み具合（D4）を新設・改訂する。新しい規則の節は「見せ方 / 受け取り方 / 狙う効果 / 根拠」の 4 列の表を持つ。既存のカラーパレット表・セマンティックカラー表は行も HEX も変えず（DS3 の突合対象）、各行が役割表のどの役割に属するかを示す列を足す。撤回・置換表（D13）の 00 の行（セマンティックカラー表の Primary の用途、4 色エリアモデルの節のサイドバーの文、ウォーム系の論拠の節）を直す（ニュートラルの stone はウォームのまま、役割色は色相で役割を分ける）。04 から反映待ちだった 3 点（caption・ページ余白・icon）を src の実測に合わせて直す（D14）。metric 行の「原則 15（04-backbone）」は新しい行き先（新 5 と本書のラベルと値の節）へ直す。
+- S2 `docs/design-system/04-backbone.md`（原則）: 03 の哲学と 04 の 16 原則を 10 本前後の原則に統合する（D5）。各原則は 1 文 + 受け取り方と効果 + 根拠（出典は 03）で書く。旧番号対応表（旧 04 原則 1〜16 → 新番号。2 つの規則を持つ旧 15 は規則ごとに 2 つの行き先。旧 03 の各節 → 新原則または 03 の出典。撤回・置換した旧文は D13 の行を「撤回・置換」列に書く）を置く。役目を終えた節（「foundations への追記分（token）」「00〜03 への反映先」「適用の順序」）は削り、内容が 00 に無いものだけ 00 または新原則へ移す。削った旧文は `git show dda8560a:docs/design-system/04-backbone.md` で引けると更新履歴に 1 行書く。file 名は変えない。
 - S3 `docs/design-system/03-philosophy.md`（根拠の出典）: 原則を持たない「根拠の出典」へ改める（何を取り、何を取らないかは維持）。Laws of UX 日本語版（『UXデザインの法則』第 2 版、オライリー・ジャパン、2025-01）と、DSR が引く既存の出典（原田秀司『UIデザインの教科書［新版］』、NN/g、GOV.UK、WCAG）を一覧に揃える。`02-component-catalog.md` 72 行目が引く「japanese-webdesign の適用境界」の節は残す。file 名は変えない。
-- S4 `docs/design-system/01-decision-rules.md`（判断ルール）: 冒頭に話題別の索引を置き、DSR の節を話題の順に並べ直す（D6）。矛盾する DSR を改訂する（D7）。`読み方` の Why の接地先を「00 の役割表と 03 の出典」へ直す。
-- S5 `docs/design-system/README.md`（索引）: 読む順・「迷ったらここ」（問い → 節）・移行中の読み方（D8）・各 file の責務表を書く。機械強制の節は残す。
+- S4 `docs/design-system/01-decision-rules.md`（判断ルール）: 冒頭に話題別の索引を置き、DSR の節を話題の順に並べ直す（D6）。矛盾する DSR を改訂する（D7。DSR-22 の「選択行」を操作対象として開いている 1 行に限ること、現在地と現在行を色でなく置き場所と文言で区別することを含む）。`読み方` の Why の接地先を「00 の役割表と 03 の出典」へ直す。
+- S5 `docs/design-system/README.md`（索引）: 読む順・「迷ったらここ」（問い → 節）・移行中の読み方と「移行中の作り方」（D8）・各 file の責務表を書く。機械強制の節は残す。
 - S6 `docs/design-system/02-component-catalog.md`: 旧原則番号の参照（895・897・1012 行付近。874 行の原則 4 は新番号も 4 で変えない）を新番号へ直し、冒頭に「現行実装の canonical であり、00 の移行列が runtime lane 待ちとする項目は 00 / 04 / 01 を狙い、本書を現行として読む」旨の 1 文を置く。それ以外の部品の記述は変えない。
-- S7 `docs/quality/review-checklist.md` カテゴリ 9: 旧原則番号と「③強調=琥珀pill」の記述を新規則へ合わせ（移行中は現行実装も可と明記）、色の役割と強調の段階を見る 1 行を足す。全行に DSR 参照を保つ（DS4）。
+- S7 `docs/quality/review-checklist.md` カテゴリ 9: 旧原則番号と「③強調=琥珀pill」の記述を新規則へ合わせ、移行中の許容を「現行の部品の形だけ可。新しい見た目の先取りは不可」に限って明記し（D8）、色の役割と強調の段階を見る 1 行を足す。全行に DSR 参照を保つ（DS4）。
 - S8 `docs/UI_TECH_STACK.md`: §1「デザインシステム」表のカラーパレット行と「哲学のスタック」節、§4 の索引表を、README の索引と 00 の役割表へ向ける。先頭の「時点証拠契約」節（並走の ADR lane が編集中）には触れない。
 - S9 `docs/decision-log.md`: D-091 を追加する（D10）。
-- S10 `docs/backlog.md`: 後続 lane 3 件（runtime lane A / B、棚卸し画面 D1）を起票し（D11）、41 行目の「`04-backbone.md` の token 表 min-height 40px」の参照を新しい置き場所へ直す。
+- S10 `docs/backlog.md`: 後続 lane 3 件（runtime lane A / B、棚卸し画面 D1）を D11 の題と内容で起票し、41 行目の「`04-backbone.md` の token 表 min-height 40px」の参照を新しい置き場所へ直す。
 
 `docs/Plans.md` は Coordinator が Workflow State の遷移と一緒に更新し、Writer は触らない。packet と Matrix は Writer が編集しない。
 
 ## Non-scope
 
-- `src/styles/globals.css` の token の値の変更・進行中 token の新設・`--rank-top-*` の撤去、それに伴う 00 の HEX の更新と DS3 の同期、横断部品（button・ナビの現在地・badge・現在行）と全画面への適用 → runtime lane A（R3、manual 付き、before / after を並べて owner が見る L3）。
+- `src/styles/globals.css` の token の値の変更・進行中 token の新設・`--rank-top-*` の撤去、それに伴う 00 の HEX の更新と DS3 の同期、横断部品（button・badge の `defaultVariants`・checkbox・progress・`--ring`・待ちの spinner・Home の `ActionButton`・ナビの現在地・現在行）と全画面への適用、D12 の「試し」の行を実画面で見せること → runtime lane A（R3、manual 付き、before / after を並べて owner が見る L3。対象と進め方は D11）。
+- 02 部品カタログの tone family 表（日報の「取込み済み」= 注意、owner 決定 2026-09-06）と Alert 節（Home の前日分の未取込み = 危険、日次・月次の未取込み = 注意、owner 決定 2026-09-06）→ 現行の canonical として変えない。変える案は D12 の「試し」として lane A の L3 で owner が見る。
+- badge 以外の 12px の文字（`text-xs`、2026-09-24 実測 33 行）を caption 14px へ寄せる作業 → 本 lane は 00 の caption 行を直すだけで、画面は各画面を触る runtime lane が触れたときに直す（lane A の対象に入れない）。
 - 書体の実機比較・採用・同梱（依存追加は D-030 の名指し・`--save-exact` に従う）・等幅数字の適用 → runtime lane B。
 - 棚卸し画面 D1（owner 採用 2026-09-24）の実装 → ㉘ 以降の棚卸し実装 lane と組にする（挙動も変わるため見た目だけ先に変えない）。
 - `docs/SCREEN_DESIGN.md` の画面ごとの色の記述（ホームの入口 card の「primary 枠 + warning soft 背景」、ランキング 1 位の黄色バッジ、「手動」の黄色バッジ、§のウォーム系セマンティックの要約）→ 画面を変える runtime lane A が画面と同時に直す。現行の実装を正しく記述しているため、本 lane では変えない。並走 3 lane も同 file を編集中。
@@ -144,15 +149,19 @@ Writer は下の file だけを編集する。対象を使う呼出し側（link
 - AC2 DS 検査が弱まらない: 同 full 出力の DS2 行が `定義 24 件、孤立 0 / 壊れ参照 0`、DS3 行の突合件数が改訂前（`dda8560a` で `27 件突合`）以上、DS4 行が `カテゴリ 9 全 N 項目に DSR 参照あり`（N は改訂後の項目数、改訂前は 22）、DS1 が ERROR なし。
 - AC3 DSR の見出しが不変: `diff <(git show dda8560a:docs/design-system/01-decision-rules.md | rg '^## DSR-' | sort) <(rg '^## DSR-' docs/design-system/01-decision-rules.md | sort)` が空出力。
 - AC4 索引が全体を覆う: 01 の `## 話題別の索引` 節から `rg -o 'DSR-[0-9]{2}'` で取り出した番号が 01〜24 の 24 種で各 1 回。README の「迷ったらここ」の各行の link 先の節が実在する（Writer が各 link を `rg` で見出しと照合し PR に記録）。
-- AC5 役割表: `docs/design-system/00-foundations.md` の色の役割表に 6 役割（操作 / 進行中 / 注意・確認 / 完了 / 危険・戻せない / ふつう・補足）が各 1 行あり、表の見出しに `見せ方`・`受け取り方`・`狙う効果`・`根拠`・`現行の実装`・`移行` の列がある。役割表の行は `#` で始まる 6 桁 HEX を含まない。
-- AC6 強調の段階: 00 の強調の段階表に段 0〜4 が各 1 行あり、段 3 に「1 画面に 1 か所」と「黒・文字色で引かない」、段 4 に「押すボタンだけ」と DSR-01 への参照がある。
-- AC7 候補値が canonical docs に無い: `rg -n -i '#1D5C63|#2F7F86|#E6F0F0|#7FB0B4|#123E43' docs/design-system docs/quality/review-checklist.md docs/UI_TECH_STACK.md` が 0 件。候補値は `docs/decision-log.md` の D-091 にだけある（`rg -c -i '#1D5C63' docs/decision-log.md` が 1 以上）。
+- AC5 役割表: `docs/design-system/00-foundations.md` の色の役割表に 6 役割（操作 / 進行中 / 注意・確認 / 完了 / 危険・失敗 / ふつう・補足）が各 1 行あり、表の見出しに `使う場面`・`見せ方`・`受け取り方`・`狙う効果`・`根拠`・`現行の実装`・`移行` の列がある。危険・失敗の行に `在庫切れ`・`取消済み`・`マイナス`・`取得失敗`・`二重` があり、完了の行に `取込み済み` が無い。役割表の行は `#` で始まる 6 桁 HEX を含まない。
+- AC6 強調の段階: 00 の強調の段階表に段 0〜4 が各 1 行あり、段 0 に `stone` と `減衰`、段 1 に `役割の領域`、段 2 に `バー` と `面積`、段 3 に「1 画面に 1 か所」と「黒・文字色で引かない」、段 4 に「押すボタンだけ」・`DSR-01`・`DSR-20`（危険の塗りは dialog の実行ボタンだけ）がある。表の直後に「段に数えない」ものとして `focus ring`・`操作枠`・`checked`・`進み具合の棒`・`spinner` が列挙されている。
+- AC7 候補値が canonical docs に無い: `rg -n -i '#1D5C63|#2F7F86|#E6F0F0|#7FB0B4|#123E43' docs/design-system docs/quality/review-checklist.md docs/UI_TECH_STACK.md` が 0 件。候補値から計算したコントラスト比も canonical docs に無い（`rg -n '7\.28:1|4\.47:1|10\.07:1|2\.29:1|1\.11:1|1\.52:1' docs/design-system docs/quality/review-checklist.md docs/UI_TECH_STACK.md` が 0 件、起草時点で 0 件）。候補値と計算結果は `docs/decision-log.md` の D-091 にだけある（`rg -c -i '#1D5C63' docs/decision-log.md` が 1 以上）。
 - AC8 書体の旧理由の撤回: `rg -n '読み込み遅延のリスク' docs/design-system docs/UI_TECH_STACK.md` が 0 件。00 の書体の節に `Noto Sans JP` と `BIZ UDPゴシック` がともにあり、最終採用が runtime lane の実機比較で決まることと、それまで現行の system font stack を使うことが書かれている。
 - AC9 原則の統合: 04 の原則が 10 本前後（8〜12 本）で、旧番号対応表が旧 04 原則 1〜16 の 16 行を持つ。03 が原則を持たない出典の一覧になっている（`rg -n '核心4本柱|補助3原則' docs/design-system/03-philosophy.md docs/UI_TECH_STACK.md` が 0 件）。
 - AC10 旧番号の参照が別の原則を指したまま残らない: Writer は `rg -n '原則 ?[0-9]+' docs/design-system docs/quality/review-checklist.md docs/UI_TECH_STACK.md docs/backlog.md` の全 hit を「新番号で正しい」「旧番号対応表の行」「更新履歴の行」「Q 番号（原田本の Q 原則）」のどれかに分類して PR に記録し、どれにも当たらない hit が 0 件である。
 - AC11 DSR の矛盾の解消: `rg -n 'amber|琥珀' docs/design-system/01-decision-rules.md docs/design-system/04-backbone.md` の各 hit が「現行の実装（runtime lane 待ち）」の説明か更新履歴の行である（Writer が hit ごとに分類し PR に記録）。DSR-01 / 08 / 16 / 21 / 22 が [Spec Contract](#spec-contract) D7 のとおり改訂されている。
 - AC12 データ安全: `rg -n 'claude\.ai|\.local/' docs/design-system docs/quality/review-checklist.md docs/UI_TECH_STACK.md docs/backlog.md docs/decision-log.md` の新規 hit が 0 件（`git diff dda8560a -- …` の追加行で確かめる）。owner の発言は要旨と日付だけで書かれている。
-- AC13 後続 lane の起票: `docs/backlog.md` に runtime lane A / B と棚卸し画面 D1 の 3 entry があり、各 entry が本 packet の Non-scope の切り方と着手条件を持つ。
+- AC13 後続 lane の起票: `docs/backlog.md` に D11 の題（`デザインの決まり runtime lane A（色と強調）`・`デザインの決まり runtime lane B（書体）`・`棚卸し画面 D1 の実装`）の entry が各 1 行あり、lane A の行に `着手条件`・`1 PR`・`origin/main`・`--ring`・`defaultVariants`・`ActionButton`・`progress`・`spinner`・`L3`、lane B の行に `着手条件`・`D-030`・`L3`、D1 の行に `着手条件` と `lane A` がある（Matrix T13 の loop で確かめる）。
+- AC14 迷いやすい場面: 00 の `## 迷いやすい場面` 節の表に D12 の 19 場面が各 1 行あり、各行が役割 1 つと段 1 つ（または `段に数えない`）と `移行` の値を持つ。「試し」の行（Home の入口 card・日報の取込み済み・Home の前日分の未取込み・ランキング 1 位・最新と上書き件数）の移行の列に `lane A の L3` がある。
+- AC15 04 からの反映待ちを閉じる: 00 のタイポグラフィ表の caption 行が `14px`、スペーシング表の `space-6` の行に `ページ余白`（`PageShell`）があり `space-8` の行に `ページ余白` が無い、アイコンサイズ表が `12px`・`16px`・`20px`・`24px`・`32px` の 5 行で、32px の行に `spinner` がある。`rg -n 'batch 1' docs/design-system/04-backbone.md` の hit が更新履歴の行だけである。
+- AC16 撤回・置換: `rg -n 'info|色は家族|琥珀|新しい色相|ウォーム系主アクセント|Primary アクセント' docs/design-system/00-foundations.md docs/design-system/04-backbone.md docs/design-system/01-decision-rules.md docs/quality/review-checklist.md` の全 hit を「置換後の規則」「現行の実装（lane A 待ち）の説明」「旧番号対応表の行」「更新履歴の行」のどれかに分類して PR に記録し、どれにも当たらない hit が 0 件。04 に Q7 との関係の 1 文（`Q7` を含む）がある。
+- AC17 移行中の作り方: `docs/design-system/README.md` に `移行中の作り方` の節があり、`現行の token`・`lane A の merge 後`・`src/features/suppliers/components/SupplierPickerDialog.tsx`（現在行の canonical、DS1 が実在を検査する）を含む。`rg -n '新しい見た目の先取り' docs/quality/review-checklist.md` が 1 件以上。
 
 ## Design Sources
 
@@ -165,8 +174,11 @@ Writer は下の file だけを編集する。対象を使う呼出し側（link
 
 設計判断の出典（要旨と日付、原文は置かない）:
 
-- owner 2026-09-24（デザインの決まりの見直し canvas）: 色は絞りすぎで、amber 1 色に「押す・注意・現在地・1 位」が重なっている。操作と進行中は「いま自分がしていること」として同じ緑寄りの色で揃える（ボタンが緑で枠が青なのはちぐはぐ）。黒の 2px 枠と長いバッジはくどい。書体は Noto Sans JP が好み（Coordinator の推奨は BIZ UDPゴシック、同梱と実機での読み分けが条件）。商品名の下の情報はラベルと値の組が見やすく、日付は何の日付かをラベルで言い切る。決まりは「どう見せるか」でなく「見る人がどう受け取るか・その効果」から組む（見せ方 → 受け取り方 → 効果 → 根拠）。
+- owner 2026-09-24（デザインの決まりの見直し canvas）: 色の役割が少なすぎ、amber 1 色に「押す・注意・現在地・1 位」が重なっている。操作と進行中は利用者がいま自分でしていることとして同じ緑寄りの色で揃える（ボタンを緑・枠を青に分けると色がそろわず一体に見えない）。黒の 2px 枠と長いバッジは強すぎて煩わしい。書体は Noto Sans JP が好み（Coordinator の推奨は BIZ UDPゴシック、同梱と実機での読み分けが条件）。商品名の下の情報はラベルと値の組が見やすく、日付は何の日付かをラベルで言い切る。決まりは「どう見せるか」でなく「見る人がどう受け取るか・その効果」から組む（見せ方 → 受け取り方 → 効果 → 根拠）。
+- owner 2026-09-24（起票後）: ランキング 1 位を色でなく順位と太字で示す案を、試しとして了承。runtime lane A の L3 で実画面を見て最終判断する（D12）。
 - owner 2026-09-24（棚卸し画面 canvas）: D1（今のアプリの外枠の中で、部門をページ内の列にした案）を採用。囲みの中で状態が変わる形を基本にする。実装すると挙動も変わる点は owner も認識。
+- owner 2026-09-06（既存の決定、本 lane で変えない）: badge の tone family は感情で分ける（緑 = 済んだことのプラスの報告、琥珀 = 手を止めて確かめる注意、赤 = 警告）。日報の「取込み済み」は注意、Home の前日分の未取込みは危険、日次・月次の未取込みは注意（`docs/design-system/02-component-catalog.md` ⑬ と ⑥）。
+- Coordinator 裁定 2026-09-24（Plan Review round 1 と相談役の検討）: 在庫切れ等の今の赤の割り当ては変えない。変えるものは試しとして lane A の L3 で owner に見せる。Home の入口 card は操作の仲間の薄い地 + 1px 線（試し）。日報の取込み済みの badge は Alert と同じ役割へ揃える方向（試し）。
 - 理論の出典: Laws of UX（日本語版『UXデザインの法則』第 2 版、2025-01、owner 既選定）。theory → 正本 → 実装の順で形作る方針（owner 2026-08-29）。
 
 連番の予約: 本 lane は `docs/decision-log.md` に D-091 を予約する。起草時点で main と並走 lane（`agent/docs-restore-and-rules`、`agent/harness-overhaul`、`agent/harness-pr0-dead-docs`、`agent/stk-runtime-stop-dangerous-ops`、`agent/stocktake-time-evidence-adr-fix`、`agent/ej-parser-core`）の最終 entry はいずれも D-090（各 branch の `docs/decision-log.md` を `git show` で確認）。先に他 lane が D-091 を merge した場合は、本 lane が origin/main を取り込んだ後に採番し直し、Gated Amendment と同一 packet 内の sweep を記録する（`docs/DEV_WORKFLOW.md` Review Rules の連番 registry 規則）。
@@ -191,33 +203,36 @@ Writer は下の file だけを編集する。対象を使う呼出し側（link
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| SPEC-DSR-RENEW | 00 色の役割表 | SPEC-DSR-RENEW-D1 | 1 色 1 役割で、押す・注意・現在地・1 位の重なりを解く。却下: 進行中だけ青寄り（色数が増え、ボタンと枠がちぐはぐ、owner 2026-09-24） | S1 | Matrix T5・T7 |
-| SPEC-DSR-RENEW | 00 強調の段階 | SPEC-DSR-RENEW-D2 | 目立つものが多いと何も目立たない。却下: 黒・文字色の 2px 枠（くどい、owner 2026-09-24） | S1 | Matrix T6 |
+| SPEC-DSR-RENEW | 00 色の役割表 | SPEC-DSR-RENEW-D1 | 1 色 1 役割で、押す・注意・現在地・1 位の重なりを解く。却下: 進行中だけ青寄り（色数が増え、ボタンと枠の色がそろわない、owner 2026-09-24）。却下: 今の赤の割り当ての変更（壊さない優先、Coordinator 裁定 2026-09-24） | S1 | Matrix T5・T7 |
+| SPEC-DSR-RENEW | 00 強調の段階 | SPEC-DSR-RENEW-D2 | 目立つものが多いと何も目立たない。却下: 黒・文字色の 2px 枠（強すぎて煩わしい、owner 2026-09-24） | S1 | Matrix T6 |
 | SPEC-DSR-RENEW | 00 書体 | SPEC-DSR-RENEW-D3 | 旧理由（網からの読み込み遅延）は desktop 配布で当たらない。却下: 本 lane で書体を決め切る（実機の読み分けを見ていない） | S1 | Matrix T8 |
 | SPEC-DSR-RENEW | 00 ラベルと値 | SPEC-DSR-RENEW-D4 | 何の値か迷わない。却下: 1 行に詰める現行形（どれが大事か分からない） | S1 | Matrix T5 |
 | SPEC-DSR-RENEW | 04 原則 / 03 出典 | SPEC-DSR-RENEW-D5 | 原則が 3 か所に分かれ上下が分からない。却下: 04 と 03 を 1 file へ統合して片方を削除（外部参照の link が切れる） | S2・S3 | Matrix T9・T10 |
 | SPEC-DSR-RENEW | 01 話題別の索引 | SPEC-DSR-RENEW-D6 | 出来事ごとの追加順では探せない。却下: 番号の付け替え（src・docs の DSR 参照が壊れる） | S4 | Matrix T3・T4 |
 | SPEC-DSR-RENEW | DSR-01 / 08 / 16 / 21 / 22 | SPEC-DSR-RENEW-D7 | 役割表・強調の段階と矛盾する記述を解く | S4 | Matrix T11 |
-| SPEC-DSR-RENEW | README / 00 移行列 | SPEC-DSR-RENEW-D8 | 規則と実装の差を読めるようにする。却下: 候補 HEX を canonical docs に書く（2026-09-03 Codex P2-2） | S1・S5・S6 | Matrix T7 |
+| SPEC-DSR-RENEW | README / 00 移行列 | SPEC-DSR-RENEW-D8 | 規則と実装の差を読めるようにする。移行中に画面を作る人が現行の形で作るか lane A を待つかを 1 つに決める。却下: 候補 HEX を canonical docs に書く（2026-09-03 Codex P2-2） | S1・S5・S6・S7 | Matrix T7・T18 |
 | SPEC-DSR-RENEW | checker との境界 | SPEC-DSR-RENEW-D9 | DS 検査を弱めない | S1〜S6 | Matrix T1・T2 |
 | SPEC-DSR-RENEW | decision-log D-091 | SPEC-DSR-RENEW-D10 | 横断の判断と候補値の durable な置き場 | S9 | Matrix T7 |
-| SPEC-DSR-RENEW | backlog | SPEC-DSR-RENEW-D11 | 後続 lane の切り方 | S10 | Matrix T13 |
+| SPEC-DSR-RENEW | backlog | SPEC-DSR-RENEW-D11 | 後続 lane の切り方。却下: token を値ごと先に変えて部品を後から追う分割 merge（途中の main で操作・注意・現在地の色が混ざる） | S10 | Matrix T13 |
+| SPEC-DSR-RENEW | 00 迷いやすい場面 | SPEC-DSR-RENEW-D12 | 役割表と段の表だけでは部品の状態・現行と狙いの差で答えが 0 か 2 以上になる場面を、1 つの答えに固定する。却下: 場面ごとに DSR を新設（DSR の新設は非目的） | S1 | Matrix T15 |
+| SPEC-DSR-RENEW | 撤回・置換表 | SPEC-DSR-RENEW-D13 | 役割表と矛盾する旧文を現行の規則として残さない。却下: 旧文を残して新しい規則を足す（2 つの答えが並ぶ） | S1・S2・S4・S7 | Matrix T17 |
+| SPEC-DSR-RENEW | 00 タイポグラフィ・スペーシング・アイコン | SPEC-DSR-RENEW-D14 | 旧 04 が約束したまま 00 に反映されなかった 3 点を実装の多数派で閉じる。却下: 旧 04 の値で src を直す（画面が変わるため本 lane の非目的） | S1・S2 | Matrix T16 |
 
 ## Design Intent Audit
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: 改訂後の 00（4 列）・04（原則と旧番号対応）・D-091（決定・候補値・却下案・Revisit）で答えられる。
-- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D1〜D11 は S1〜S10 で source docs と D-091 へ移す。packet だけに残る判断はない。
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D1〜D14 は S1〜S10 で source docs と D-091 へ移す。packet だけに残る判断はない（D13 の撤回・置換表は 04 の旧番号対応表の「撤回・置換」列と D-091 へ移す）。
 - Assumptions and constraints: 候補値のコントラストは起草時に計算した（D-091 候補値の欄。値は本 packet の Contract Probe）。店の PC の書体・同梱サイズは 未実測。
 - Deferred design gaps, risk, and follow-up target: 書体の最終採用・候補色の確定・画面ごとの適用は runtime lane A / B（backlog、S10）。
 - Test Design Matrix can cite design decision IDs or source doc sections: 可（Matrix の Contract 列が D1〜D11 を引く）。
-- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 「1 色 1 役割」の例外は置かない。runtime lane までの間は現行の token が複数役割を兼ねる（`--primary` と `--warning-emphasis` が同値、`--rank-top-*` が amber）ことを 00 の移行列に明示し、これを例外でなく移行中の状態として扱う。
+- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 「1 色 1 役割」の例外は置かない。部品の状態（focus ring・checked・進み具合の棒・待ちの spinner）は段の数に入れないが、役割は 1 つ持つ（D2・D12）。runtime lane までの間は現行の token が複数役割を兼ねる（`--primary` と `--warning-emphasis` と `--ring` が同値、`--rank-top-*` が amber、`progress` の棒が `--warning`、Home の入口 card が操作の枠と注意の地の混在）ことを 00 の移行列と D12 に明示し、これを例外でなく移行中の状態として扱う。試しの行は lane A の L3 で owner が採るか決め、採らなかった行は lane A が 00 の役割表と場面表を現行に合わせて直す（どちらでも規則と実装が一致して終わる、D8）。
 
 ## Impact Review Lenses
 
 | Lens | Applicability / finding | Follow-up artifact |
 |---|---|---|
 | Adapter / core boundary | not applicable（外部 adapter に触れない） | なし |
-| Fact check / design decision split | canvas は判断の材料で、決まりの正本は source docs。canvas の説明文にある外部の事実（BIZ UDPゴシックが Windows 標準に入った時期、Noto Sans JP の同梱が数 MB）は起草時に確かめていない（未実測）ため、規則には「runtime lane B で確かめる前提」として書き、事実として書かない | runtime lane B |
+| Fact check / design decision split | canvas は判断の材料で、決まりの正本は source docs。canvas の説明文にある外部の事実（BIZ UDPゴシックが Windows 標準に含まれること・その時期、Noto Sans JP の同梱が数 MB）は起草時に確かめていない（未実測）ため、規則には「runtime lane B が vendor の公式資料と店の PC で確かめる前提」として書き、事実として書かない（D3） | runtime lane B |
 | Lifecycle / retry | not applicable（状態遷移を持たない文書改訂） | なし |
 | Operator workflow | 店主の見え方は本 lane では変わらない。棚卸し D1 の挙動の変化は ㉘ 以降の lane が持つ | backlog D1 entry |
 | Replacement path | 書体と役割色の値は token 経由で差し替わる（コードの直接色は stone だけで、他は token 経由。handoff の所見）。runtime lane A はこの前提を `rg` で確かめ直す | runtime lane A |
@@ -254,11 +269,18 @@ R2 のため必須ではない。起草時に次を確かめた。
 - 候補色のコントラスト（WCAG 2.x の相対輝度式、`python3` の 1 行計算、2026-09-24）: 操作の塗りと背景 `#fafaf9` = 7.28:1、進行中の枠と背景 = 4.47:1、進行中の文字と進行中の地 = 10.07:1、進行中の線と背景 = 2.29:1、進行中の地と背景 = 1.11:1、操作の塗りと完了の緑（`--success`）= 1.52:1。参考に現行の `--primary` と背景 = 4.81:1。含意: 進行中の線は 3:1 未満のため操作枠や現在行のバーの単独信号にできない、進行中の地は背景とほぼ同じで文字と併用が必須、操作と完了は色で区別できず文字と icon が必須。候補 HEX は D-091 に置く。
 - 文書の規模: `wc -l docs/design-system/*.md`（`dda8560a`）→ 合計 1953 行（00: 158 / 01: 520 / 02: 1068 / 03: 78 / 04: 71 / README: 58）。
 - 旧原則番号の参照元: `rg -n '原則 ?[0-9]+' docs --glob '!docs/archive/**'` と `rg -n '04-backbone' src docs` で洗い出した（Matrix の Adjacent Pattern Audit）。新番号 4・6 を旧番号と同じ主題に置くため、`src/components/patterns/PageShell.tsx`（原則 6）と `docs/function-design/73-ui-stocktake.md`（原則 4）は変えずに済む。
+- Plan Review round 1 の是正で src を当てた（`85e087f5`、2026-09-24、起草役の再測。相談役の実測と照合し、食い違いは Review Response に記録）:
+  - 操作の役割色の消費: `src/styles/globals.css` の `--ring` は `--primary` と同値（`#b45309`）。`badge.tsx` の `defaultVariants` は `variant: "default"`（= `bg-primary`）。`checkbox.tsx` の checked は `bg-primary`。ナビの現在地は `selection-tone.ts` の `CURRENT_LOCATION_ACCENT = "border-l-primary"`。features・patterns・layout の primary の消費は数え方で揺れる（`rg -n '(text|bg|border|ring|fill|stroke)-primary\b' src/features src/components/patterns` → 18 行、`rg -n 'primary' src/features src/components/patterns src/components/layout` → 23 行、相談役の数え方で 25 site）ため、lane A の Plan で式を固定して数え直す（D11）。
+  - 進行中へ移る表示: 待ちの spinner は `rg -n 'Loader2.*size-8.*text-primary|size-8 animate-spin text-primary' src` → 5 site（csv 取込みの 2 step・日報取込み 2・整合性チェック 1）。進み具合の棒は `progress.tsx` の indicator が `bg-warning`、消費は `rg -n '<Progress' src/features` → 3 site（棚卸し・整合性チェック・月次の部門比率）。保存中のボタンは `rg -n '保存中|確定しています' src --glob '!*.test.*'` → 6 site（元の役割のまま文言と spinner）。
+  - 危険の塗り: `rg -n 'variant="destructive"' src` から `Alert` を除いた 10 行はすべて dialog の実行ボタン（`AlertDialogAction` 9、取引先の統合 dialog の `DialogFooter` 内の `Button` 1）。画面上に危険の塗りのトリガーは無い。
+  - 現在行の 3 点表示: `rg -n 'border-l-primary bg-row-current' src` → `SupplierPickerDialog.tsx` の 1 site だけ（canonical）。一括価格改定の「入力中」は outline badge 1 点で、3 点表示でない。
+  - ③強調の badge: `rg -n 'variant="default" className="border-warning"' src` → 最新（バックアップ）と上書き件数（商品取込み）、ランキング 1 位は `ProductRankingTable.tsx` の `rank-top` custom class。`toast.info` / `toast.warning` は `rg -n 'toast\.(info|warning)' src` → 0 件。
+  - 04 からの反映待ち（D14）: caption は `rg -n 'text-xs' src/features src/components/patterns --glob '!*.test.*'` → 33 行、`rg -n 'text-sm text-muted-foreground' src --glob '!*.test.*'` → 101 行で 14px muted が多数派。ページ余白は `PageShell.tsx` の `p-6`（24px）。icon は `size-4` 35 行・`size-5` 4 行・`size-6` 2 行・`size-8` 9 行（`rg -n 'size-N\b' src` を N ごとに数えた）、`button.tsx` の svg 既定が `size-4`、`badge.tsx` の svg が `size-3`（12px）、`EmptyState.tsx` が `size={24}`、ナビの icon が `size-4`。
 
 ## Test Plan
 
-- targeted tests: `bash scripts/doc-consistency-check.sh` と `--target plan`、Matrix の `rg` / `diff` oracle（T1〜T13）。
-- negative tests: 候補 HEX が canonical docs に無い（T7）、旧書体理由が残らない（T8）、旧原則番号が別の原則を指したまま残らない（T10）。
+- targeted tests: `bash scripts/doc-consistency-check.sh` と `--target plan`、Matrix の `rg` / `diff` oracle（T1〜T18）。
+- negative tests: 候補 HEX が canonical docs に無い（T7）、候補値から計算した比が canonical docs に無い（T7）、撤回・置換した旧文が現行の規則として残らない（T17）、旧書体理由が残らない（T8）、旧原則番号が別の原則を指したまま残らない（T10）。
 - compatibility checks: DSR 見出しと番号が不変（T3）、file 名が不変（T2）、外部の link 先（`03-philosophy.md` の japanese-webdesign 節、`04-backbone.md`）が実在（T12）。
 - data safety checks: canvas URL・`.local/`・原文が追加行に無い（T14）。
 - main wiring/integration checks: DS2 / DS3 が改訂後の file を実際に読んで件数を出す（T1）。
@@ -272,6 +294,7 @@ R2 のため必須ではない。起草時に次を確かめた。
 - 原則の統合で、旧 16 原則と 03 の哲学の内容が落ちていないか（旧番号対応表で辿れるか）。
 - DSR-01 / 08 / 16 / 21 / 22 の改訂が役割表・強調の段階と一貫し、他の DSR と新たな矛盾を作らないか。
 - runtime lane の切り方（D11）が、画面・挙動・依存の変化をそれぞれの Human Gate に正しく載せているか。
+- round 2 で特に見る点: D12 の 19 場面の答えが役割表・段の表と一致し、今の赤の割り当てを変えていないか。「試し」の行が lane A の L3 まで現行のまま読めるか。D13 の撤回・置換表に漏れが無いか。D14 の値が src の実測と合うか。役割名「危険・失敗」が「危険・戻せない」と「失敗・欠け」の両方の場面を 1 行で持てているか。
 
 ## Spec Contract
 
@@ -279,17 +302,64 @@ Contract ID: SPEC-DSR-RENEW
 
 | Contract | 内容 | Test |
 |---|---|---|
-| SPEC-DSR-RENEW-D1 色の役割表 | 00 に 6 役割の表を置く: 操作（押すボタン・リンク・ナビの現在地、塗りは押すものだけ）/ 進行中（数えている・取り込んでいる・処理中。操作と同じ色の仲間で、薄い地で表す）/ 注意・確認（数え直し・在庫少・確かめてほしいもの。手を止めて確かめる、怖くはない）/ 完了（保存した・取り込んだ・数え終わり）/ 危険・戻せない（削除・確定・取消の確認）/ ふつう・補足（説明・件数・日付・ランキング）。列 = 役割・使う場面・見せ方・受け取り方・狙う効果・根拠・現行の実装（token 名、HEX なし）・移行（済 / runtime lane A 待ち）。「どの状態も文字と icon を添え、色だけに頼らない」「ランキング 1 位は色でなく順位と太字」「進行中は info ではない（利用者の作業が続いている状態に限り、お知らせ一般に使わない）」を明記。既存の token 表の各行に役割の列を足す（HEX と行は変えない）。受け取り方・効果・根拠の文は canvas 9 の表（操作: Hick の法則 / Von Restorff 効果、進行中: Zeigarnik 効果 / Von Restorff 効果、注意: Von Restorff 効果 / WCAG 1.4.1、完了: Peak-End の法則）を元にする | Matrix T5・T7 |
-| SPEC-DSR-RENEW-D2 強調の段階 | 00 に段 0〜4 を置く: 0 そのまま（地と線は stone）/ 1 薄い地（まとまり、線なし）/ 2 薄い地 + 同じ役割の 1px 線（状態を知らせる行・バッジ）/ 3 役割色の 2px 枠（いま操作している 1 つだけ、1 画面に 1 か所、黒・文字色で引かない）/ 4 塗り（押すボタンだけ、1 画面の主要ボタンは 1 つ = DSR-01）。上の段ほど 1 画面に置ける数を減らす。バッジの文は短く（目安 8 文字）、補足は下に小さく分ける。各段に 4 列（根拠: Von Restorff 効果、美的ユーザビリティ効果）。DSR-16（囲みは意味階層ごとに 1 つ、薄い線を単独のグループ信号にしない）と矛盾しないこと: 段 1 は線を引かず、段 2 の線は状態の行・バッジに限る | Matrix T6 |
-| SPEC-DSR-RENEW-D3 書体 | 00 の書体の節を改める: 選定条件（見間違えにくさ〈数字と似た形のカナ〉、太字でつぶれない、長時間読める、数字は等幅で桁がそろう、配布の方法〈Windows 標準か同梱か〉）。候補は Noto Sans JP（owner の好み、同梱が要る）と BIZ UDPゴシック（Coordinator の推奨、Windows 標準で同梱不要）。旧理由「カスタム Web フォントは読み込み遅延のリスクで不採用」は、Tauri の desktop 配布では網から読まないため当たらないとして撤回し、判断軸を同梱サイズと店の PC での読み分けに置き換える。最終採用は runtime lane B の実機比較（店主が通常距離で読み分けられるか、owner の目）で決め、それまでは現行の system font stack を使う。同梱サイズ・店の PC の書体の有無は 未実測 と書く | Matrix T8 |
-| SPEC-DSR-RENEW-D4 ラベルと値・進み具合 | 00 に置く: 補足情報はラベルと値の組にし、ラベルは小さく薄く、値はふつうの濃さにする。何の値かを言葉で言い切る（日付なら何の日付か。例: 前回数えた数 / 数えた日）。1 行に詰めて同じ薄さで並べない。根拠: チャンク化 / 近接の法則。進み具合は中くらいの大きさで数と棒の両方（根拠: 目標勾配効果、大きすぎると急かされる）。いずれも 4 列 | Matrix T5 |
-| SPEC-DSR-RENEW-D5 原則の統合 | 04 を「原則」にし、次の 11 本とする（番号 4・6 は旧番号と同じ主題に置く）: 1 読める大きさ（本文 16px の最低線・書体・icon 16/20/24）/ 2 1 色 1 役割、色だけに頼らない / 3 強調は段階で決め、上の段ほど少なく（主要ボタンは 1 つ）/ 4 badge は 3 種（③強調は色でなく順位と太字へ改める。移行中は現行の琥珀 pill）/ 5 何をする画面か・何の値かを言葉で言い切る / 6 器は 1 つ（PageShell・ListShell）/ 7 同じ操作は同じ顔と挙動（検索欄・待ち時間・押せる顔と当たり判定）/ 8 密度は業務データ優先 / 9 枠と線は少なく、操作枠は 3:1 / 10 いま扱っているものは進行中で示す（現在行・作業中の囲み）/ 11 低視力を前提に実機で確かめる。旧番号対応表: 旧1→1、旧2→2、旧3→2、旧4→4、旧5→3、旧6→6、旧7→7、旧8→7、旧9→5、旧10→1、旧11→7、旧12→8、旧13→9、旧14→6、旧15→10、旧16→11。旧 03 の核心 4 本柱・補助 3 原則・観点借用は 03 の出典に残し、対応表で各々がどの新原則の根拠かを示す。旧原則の細則（token 名・path・DSR への委譲）は落とさず新原則の本文か 00 / DSR へ移す | Matrix T9・T10 |
+| SPEC-DSR-RENEW-D1 色の役割表 | 00 に 6 役割の表を置く。役割は要素（領域・行・badge・ボタン・部品の状態）ごとに 1 つ選び、行の役割とその行の中の badge の役割は別に選ぶ。操作（押すボタン・リンク・ナビの現在地・フォーム部品の checked と focus ring。塗りは押すものだけ）/ 進行中（利用者の作業が続いている領域・行: 数えている・取り込んでいる・入力中の行・待ちの spinner・作業の進み具合の棒。操作と同じ色の仲間で、薄い地で表す。部品自身の busy〈保存中のボタン〉は元の役割のまま spinner と文言で示す。お知らせ一般に使わない）/ 注意・確認（手を止めて確かめてほしいもの: 在庫少・数え直し・未入力・同日データあり・未反映・部分成功・未取込みの知らせ。怖くはない）/ 完了（済んだことのプラスの報告: 保存した・取込みが成功した・反映済み・補正済み・数え終わり。段 2 まで、塗りにしない。「取込み済み」は二重取込みを防ぐ知らせで、完了に入れない）/ 危険・失敗（二つの場面を 1 行に持つ。危険・戻せない = 戻せない操作の確認〈dialog の実行ボタン、DSR-20〉。失敗・欠け = その行・画面の値が成り立たないもの〈取得失敗・在庫切れ・取消済み・マイナスの増減〉と、進めない・二重計上の防止〈DSR-03 のデータ安全系、日報の二重取込み〉）/ ふつう・補足（説明・件数・日付・ランキング・分類の badge・選択状態〈DSR-21〉・手を止めなくてよいお知らせ一般〈Alert の既定の stone〉・比率の棒）。列 = 役割・使う場面・見せ方・受け取り方・狙う効果・根拠・現行の実装（token 名、HEX なし）・移行（済 / runtime lane A 待ち / lane A の L3 で試し）。今の赤・琥珀・緑の割り当て（在庫切れ・取消済み・マイナスの増減・取得失敗の赤、02 ⑬ の tone family 表の注意と完了、owner 決定 2026-09-06）は変えない。現行と狙いが分かれる場面は D12 に置く。「どの状態も文字と icon を添え、色だけに頼らない」「進行中は info ではない」を明記。既存の token 表の各行に役割の列を足す（HEX と行は変えない）。受け取り方・効果・根拠の文は canvas 9 の表（操作: Hick の法則 / Von Restorff 効果、進行中: Zeigarnik 効果 / Von Restorff 効果、注意: Von Restorff 効果 / WCAG 1.4.1、完了: Peak-End の法則）を元にする | Matrix T5・T7 |
+| SPEC-DSR-RENEW-D2 強調の段階 | 00 に段 0〜4 を置く。0 そのまま（地と線は stone。ただのまとまり〈card・区画・Alert の既定〉も段 0。減衰〈押せないボタン・廃番の行・空状態〉は段 0 の中で muted・opacity で弱め、役割色を足さない）/ 1 役割の薄い地（その役割の領域だけ、線なし。例: 取込み中の領域の進行中の地）/ 2 薄い地 + 同じ役割の 1px 線、または細いバー（状態を知らせる行・badge・Alert と、現在地・現在行の左端のバー〈DSR-21 / 22〉。線の濃さは面積で決める: badge は `-border`、Alert・行は役割の base。完了は段 2 まで）/ 3 役割色の 2px 枠（いま操作している 1 つだけ、1 画面に 1 か所、黒・文字色で引かない）/ 4 塗り（押すボタンだけ。1 画面の主要ボタンは 1 つ = DSR-01 で、この 1 つは操作の塗りだけを数える。危険の塗りは dialog の実行ボタンだけ〈DSR-20〉で、画面上の確定・削除のトリガーは操作の役割）。表の直後に「段に数えない」もの（1 画面の上限の数に入れない）を列挙する: focus ring（`--ring`、操作の役割）・操作枠（`--border-strong`、DSR-22 の 3:1）・checkbox / radio の checked の小さな塗り（操作の役割）・進み具合の棒の塗り（作業の進み = 進行中、比率 = stone）・待ちの spinner（進行中）。上の段ほど 1 画面に置ける数を減らす。バッジの文は短く（目安 8 文字）、補足は下に小さく分ける。各段に 4 列（根拠: Von Restorff 効果、美的ユーザビリティ効果）。DSR-16（囲みは意味階層ごとに 1 つ、薄い線を単独のグループ信号にしない）と矛盾しないこと: 段 1 は線を引かず役割の領域だけに使い、ただのまとまりは段 0 の stone、段 2 の線は状態の行・badge・Alert に限る | Matrix T6 |
+| SPEC-DSR-RENEW-D3 書体 | 00 の書体の節を改める: 選定条件（見間違えにくさ〈数字と似た形のカナ〉、太字でつぶれない、長時間読める、数字は等幅で桁がそろう、配布の方法〈Windows 標準か同梱か〉）。候補は Noto Sans JP（owner の好み、同梱が要る）と BIZ UDPゴシック（Coordinator の推奨。Windows 標準に含まれ同梱が要らないという前提は、起草時に確かめていない外部の事実として書き、runtime lane B が vendor の公式資料と店の PC で確かめる）。旧理由「カスタム Web フォントは読み込み遅延のリスクで不採用」は、Tauri の desktop 配布では網から読まないため当たらないとして撤回し、判断軸を同梱サイズと店の PC での読み分けに置き換える。最終採用は runtime lane B の実機比較（店主が通常距離で読み分けられるか、owner の目）で決め、それまでは現行の system font stack を使う。同梱サイズ・店の PC の書体の有無は 未実測 と書く | Matrix T8 |
+| SPEC-DSR-RENEW-D4 ラベルと値・進み具合 | 00 に置く。適用範囲は 2 つ: (a) 補足情報（商品名の下の部門・コード・前回数えた数・数えた日のような副情報）はラベルと値の組にし、ラベルは小さく薄く、値はふつうの濃さ（本文の大きさ）。(b) サマリカードの主値はラベル（小さく薄く）と値（metric 30px、00 のタイポグラフィ表）の組で、旧 04 原則 15 の後半（ラベル小・値大）の行き先とする。どちらも何の値かを言葉で言い切る（日付なら何の日付か。例: 前回数えた数 / 数えた日）。1 行に詰めて同じ薄さで並べない。根拠: チャンク化 / 近接の法則。進み具合は中くらいの大きさで数と棒の両方（根拠: 目標勾配効果、大きすぎると急かされる。棒の塗りは D2 の段に数えない）。いずれも 4 列 | Matrix T5 |
+| SPEC-DSR-RENEW-D5 原則の統合 | 04 を「原則」にし、次の 11 本とする（番号 4・6 は旧番号と同じ主題に置く）: 1 読める大きさ（本文 16px の最低線、caption は 14px muted、12px は badge の中だけ、書体、icon は 00 の表の段だけ）/ 2 1 色 1 役割、色だけに頼らない、役割の無い色を足さない / 3 強調は段階で決め、上の段ほど少なく（主要ボタンは 1 つ）/ 4 badge は 3 種（③強調は操作・注意の役割色を使わず、順位・太字・文言で示す。ランキング 1 位は順位と太字、最新・上書き件数は stone の pill と太字。どちらも lane A の L3 で最終とする試しで、移行中は現行の琥珀 pill）/ 5 何をする画面か・何の値かを言葉で言い切る（ラベルと値、D4）/ 6 器は 1 つ（PageShell・ListShell）/ 7 同じ操作は同じ顔と挙動（検索欄・待ち時間・押せる顔と当たり判定）/ 8 密度は業務データ優先 / 9 枠と線は少なく、操作枠は 3:1 / 10 いま扱っているものは進行中で示す（現在行・作業中の囲み。選択行は操作対象として開いている 1 行に限る）/ 11 低視力を前提に実機で確かめる。旧番号対応表: 旧1→1、旧2→2、旧3→2、旧4→4、旧5→3、旧6→6、旧7→7、旧8→7、旧9→5、旧10→1、旧11→7、旧12→8、旧13→9 と 2、旧14→6、旧15→10（前半: 現在行の 3 点）と 5（後半: ラベル小・値大、00 のラベルと値の節）、旧16→11。対応表の列は「旧番号・旧文の要旨・新番号（規則ごと）・撤回・置換（D13 の行）」。旧 03 の核心 4 本柱・補助 3 原則・観点借用は 03 の出典に残し、対応表で各々がどの新原則の根拠かを示す。旧原則の細則（token 名・path・DSR への委譲）は落とさず新原則の本文か 00 / DSR へ移す | Matrix T9・T10 |
 | SPEC-DSR-RENEW-D6 DSR の並べ直し | 01 に `## 話題別の索引` を置き、DSR を次の話題の順に並べる。配置と一覧: DSR-04, 09, 12, 13, 16, 22。入力: DSR-02, 05, 06, 10, 14, 23, 24。知らせ方: DSR-03, 07, 11, 19, 20。移動と戻り: DSR-15, 17, 18。色と状態: DSR-01, 08, 21。`## DSR-NN 題` の見出しの文字列と番号は変えない。話題の区切りの見出しを置く場合も DSR の見出しは `## ` のまま。title の「DSR-01〜24」は維持 | Matrix T3・T4 |
-| SPEC-DSR-RENEW-D7 矛盾する DSR の改訂 | DSR-01: 「Primary は amber 系」を「Primary は操作の役割色（`--primary`、現行値は 00 の役割表）」へ。DSR-08: badge の tone family の説明を 00 の役割表へ向け、進行中を加え、ランキングの強調は色でなく順位と太字（移行中は現行）とする。DSR-16: 強調の段階との関係を 1 文加える。DSR-21: 現在地は操作の役割色の細いバーのまま、Why の「Primary（amber-700）は warning 系と同系色」は runtime lane A までの現状として書き、役割表により色相が分かれることを書く。DSR-22: 現在行（入力中 / 開いている行 / 選択行）を進行中の役割に属させ、3 点表示（バー + 薄い地 + 文言）を維持、作業中の囲みは段 3 で 1 画面 1 か所とする。現行の `--row-current` と primary のバーは runtime lane A で進行中の token へ移すと書く。進行中の線（候補）は背景に対し 3:1 未満のためバーや操作枠の単独信号にしない。その他の DSR は `rg -n 'amber|琥珀|primary|Primary|1 位|1位' docs/design-system/01-decision-rules.md` の各 hit を確かめ、変えない理由を PR に記録する | Matrix T11 |
-| SPEC-DSR-RENEW-D8 移行中の読み方 | canonical docs は狙いの規則を書き、現行の実装との差は 00 の役割表の「現行の実装」「移行」列に集める。候補の HEX は canonical docs に書かず D-091 に置く（2026-09-03 Codex P2-2 の先例）。README に「移行が runtime lane 待ちの項目は、00 / 04 / 01 を狙い、02 と画面を現行として読む」を書き、02 の冒頭に同旨の 1 文を置く | Matrix T7 |
-| SPEC-DSR-RENEW-D9 checker との境界 | `00-foundations.md`・`01-decision-rules.md`・`02-component-catalog.md`・`03-philosophy.md`・`04-backbone.md`・`README.md` の file 名を変えない。DSR の見出しは `## DSR-NN` のまま。00 の既存 token 表の行と HEX を変えず、新しい表の行に backtick の `--name` と #hex を同じ行に並べない。review-checklist カテゴリ 9 の全行に DSR 参照を保つ。`scripts/doc-consistency-check.sh` の M3 検査（`check_stale_markers` の `markers`）と曖昧表現検査（`ambiguous_words`）は `docs/design-system/*.md` と `docs/quality/*.md` も走査するため、そこで列挙される語を新しい文に入れない（WARN が増える）。canvas の役割名「注意・」に続く 3 文字は前者の語に当たるため、役割名は「注意・確認」と書く | Matrix T1・T2 |
-| SPEC-DSR-RENEW-D10 D-091 | decision-log に置く: 決定（1 色 1 役割の 6 役割、強調の段階 0〜4、書体の選定条件と runtime lane での採用、ラベルと値、原則の統合と DSR の話題別の並び）・理由（見る人の受け取り方から決める）・候補値（操作 塗り #1D5C63、進行中 地 #E6F0F0 / 線 #7FB0B4 / 枠 #2F7F86 / 文字 #123E43、注意 amber-50 / amber-200 / amber-900 + icon、完了 green-50 / green-200 / green-900、危険 red 系、ふつう stone。runtime lane A の実測と L3 で確定）と起草時のコントラストの計算結果・却下案（進行中だけ青寄り、黒の 2px 枠と長いバッジ、本 lane での書体の決め切り、file の改名）・Revisit（runtime lane A / B の L3 で狙った受け取り方にならなかったとき） | Matrix T7 |
-| SPEC-DSR-RENEW-D11 後続 lane の切り方 | backlog に 3 entry: runtime lane A（色と強調の token と横断部品と全画面、R3、manual、before / after を並べて owner が見る L3。着手条件 = 本 lane の merge）/ runtime lane B（書体の実機比較と採用・同梱、依存を足すなら D-030、L3 = 店の PC で店主が通常距離で読み分けられるか。着手条件 = 本 lane の merge。A と別 lane にする理由 = 依存と配布物が変わり、店の PC での確認が要る）/ 棚卸し画面 D1（㉘ 以降の棚卸し実装 lane と組、開始前・中断から戻った画面は canvas で未作成）| Matrix T13 |
+| SPEC-DSR-RENEW-D7 矛盾する DSR の改訂 | DSR-01: 「Primary は amber 系」を「Primary は操作の役割色（`--primary`、現行値は 00 の役割表）」へ。「1 画面 1 primary」は操作の塗りだけを数え、dialog の危険の実行ボタンは DSR-20 に従うと 1 文加える。DSR-08: badge の tone family の説明を 00 の役割表へ向け、進行中を加える。今の tone family の割り当て（owner 2026-09-06）は変えない。ランキングの強調は色でなく順位と太字（試し、移行中は現行）とする。DSR-16: 強調の段階との関係を 1 文加える（段 1 は役割の領域だけ、ただのまとまりは段 0）。DSR-21: 現在地は操作の役割色の細いバー（段 2）のまま、Why の「Primary（amber-700）は warning 系と同系色」は runtime lane A までの現状として書き、役割表により色相が分かれることを書く。現在地と現在行は色で区別せず、置き場所（ナビか一覧の行か）と文言で区別する（DSR-22 と対象階層で分ける既存の記述を保つ）。DSR-22: 現在行（入力中 / 開いている行 / 選択行）を進行中の役割に属させ、「選択行」は操作対象として開いている 1 行に限る。checkbox / radio の複数選択の行は選択状態（DSR-21 の stone と部品の checked）で、現在行に含めない。3 点表示（バー + 薄い地 + 文言）を維持、作業中の囲みは段 3 で 1 画面 1 か所とする。現行の `--row-current` と primary のバーは runtime lane A で進行中の token へ移すと書く。バーと作業中の囲みの枠は隣接背景に対し 3:1 以上の色で引く（既存の操作枠の要件と同じ）とだけ書き、候補値から計算した比は DSR-22 に書かず D-091 に置く。その他の DSR は `rg -n 'amber\|琥珀\|primary\|Primary\|1 位\|1位' docs/design-system/01-decision-rules.md` の各 hit を確かめ、変えない理由を PR に記録する | Matrix T11 |
+| SPEC-DSR-RENEW-D8 移行中の読み方と作り方 | canonical docs は狙いの規則を書き、現行の実装との差は 00 の役割表の「現行の実装」「移行」列と D12 の場面表に集める。候補の HEX は canonical docs に書かず D-091 に置く（2026-09-03 Codex P2-2 の先例）。README に「移行が runtime lane 待ちの項目は、00 / 04 / 01 を狙い、02 と画面を現行として読む」を書き、02 の冒頭に同旨の 1 文を置く。README に `移行中の作り方` の節を置く: lane A の merge 前に画面を作るときは、現行の token と 02 の部品の形で作る。現在行は DSR-22 の 3 点表示で、canonical は `src/features/suppliers/components/SupplierPickerDialog.tsx` の現在行（一括価格改定の「入力中」は outline badge 1 点のため canonical にしない）。進行中の地・作業中の囲み（進行中の段 1〜3）を新しく要する画面は lane A の merge 後に作る。review-checklist カテゴリ 9 の移行中の許容は「現行の部品の形だけ可。新しい見た目の先取り（候補色の直書き・新 token 名の先取り）は不可」に限る。D12 の試しの行は lane A の L3 で owner が採るか決め、採らなかった行は lane A が 00 の役割表と場面表を現行に合わせて直す。棚卸し画面 D1 の実装 lane の着手条件にも lane A の merge を置く（D11） | Matrix T7・T18 |
+| SPEC-DSR-RENEW-D9 checker との境界 | `00-foundations.md`・`01-decision-rules.md`・`02-component-catalog.md`・`03-philosophy.md`・`04-backbone.md`・`README.md` の file 名を変えない。DSR の見出しは `## DSR-NN` のまま。00 の既存 token 表の行と HEX を変えず、新しい表の行に backtick の `--name` と #hex を同じ行に並べない。review-checklist カテゴリ 9 の全行に DSR 参照を保つ。`scripts/doc-consistency-check.sh` の M3 検査（`check_stale_markers` の `markers`）は `docs/*.md`（本 lane が触る `decision-log.md`・`backlog.md`・`UI_TECH_STACK.md` を含む）・`docs/quality/*.md`・`docs/design-system/*.md` を、曖昧表現検査（`ambiguous_words`、句読点の直前の「など」を含む）は `docs/design-system/*.md` を走査するため、そこで列挙される語を新しい文に入れない（WARN が増える）。canvas の役割名「注意・」に続く 3 文字は前者の語に当たるため、役割名は「注意・確認」と書く | Matrix T1・T2 |
+| SPEC-DSR-RENEW-D10 D-091 | decision-log に置く: 決定（1 色 1 役割の 6 役割、強調の段階 0〜4 と段に数えないもの、迷いやすい場面の答え、書体の選定条件と runtime lane での採用、ラベルと値、原則の統合と DSR の話題別の並び、D13 の撤回・置換と Q7 との関係、D14 の 3 点）・理由（見る人の受け取り方から決める。今の割り当ては壊さず、変えるものは試し）・候補値（操作 塗り #1D5C63、進行中 地 #E6F0F0 / 線 #7FB0B4 / 枠 #2F7F86 / 文字 #123E43、注意 amber-50 / amber-200 / amber-900 + icon、完了 green-50 / green-200 / green-900、危険 red 系、ふつう stone。runtime lane A の実測と L3 で確定）と起草時のコントラストの計算結果（本 packet の Contract Probe の値。進行中の線が 3:1 未満のため、バーと囲みの枠に使えないことを含む）・試しの項目と L3 で決める人（owner）・却下案（進行中だけ青寄り、黒の 2px 枠と長いバッジ、本 lane での書体の決め切り、file の改名、今の赤の割り当ての変更、token の分割 merge）・Revisit（runtime lane A / B の L3 で狙った受け取り方にならなかったとき） | Matrix T7 |
+| SPEC-DSR-RENEW-D11 後続 lane の切り方 | backlog に 3 entry を各 1 行で置く（題は下の太字の文字列どおり）。**デザインの決まり runtime lane A（色と強調）**: 色と強調の token・横断部品・全画面、R3、manual、before / after を並べて owner が見る L3。着手条件 = 本 lane の merge。進め方 = 新 token を別名で追加 → 部品・画面を新 token へ移す → 最後に `--primary` / `--ring` の値を変えて旧 token（`--warning-emphasis` の操作との兼用・`--rank-top-*`）を削る。merge は 1 PR（途中の状態を main に置かない）。対象に名指しするもの = `globals.css`、`button`、`badge`（`defaultVariants` を `default` から外す）、`checkbox`、`progress`（棒の塗り）、`--ring`、待ちの spinner（`Loader2` の `text-primary`）、Home の `ActionButton`（操作の段 2、試し）、ナビの現在地（`CURRENT_LOCATION_ACCENT`）、現在行（`SupplierPickerDialog`）、ランキング（`ProductRankingTable`）、③強調の badge（最新・上書き件数）、日報の取込み済みの badge、Home の未取込みの Alert、`docs/SCREEN_DESIGN.md` の画面ごとの色の記述と 02 の該当節、00 の HEX と DS3。AC = merge 直前に origin/main を取り込み、`primary`・`ring`・`warning-emphasis`・`rank-top`・`row-current`・`toast.info` の rg を再実行して hit を全て分類済みにする（式は Plan で固定）。L3 項目 = before / after の並べ比べ、ランキング 1 位（順位と太字）、「最新」と②分類の「手動」を言い分けられるか、Home の入口 card、日報の取込み済みの badge と Alert の役割、Home の未取込みの知らせの色、操作の塗りと完了の緑を文字と icon で言い分けられるか、進行中の囲みが「まだ終わっていない」と受け取られるか。既存の backlog 項目（card の面色を白へ寄せる、destructive Alert の soft 塗り）と token が重なるため、同じ PR に入れるかを lane A の Plan で決める。**デザインの決まり runtime lane B（書体）**: 書体の実機比較と採用・同梱、依存を足すなら D-030、L3 = 店の PC で店主が通常距離で読み分けられるか。着手条件 = 本 lane の merge。A と別 lane にする理由 = 依存と配布物が変わり、店の PC での確認が要る。**棚卸し画面 D1 の実装**: ㉘ 以降の棚卸し実装 lane と組。着手条件 = 本 lane と lane A の merge（進行中の地・作業中の囲みを使うため）。開始前・中断から戻った画面は canvas で未作成 | Matrix T13 |
+| SPEC-DSR-RENEW-D12 迷いやすい場面 | 00 に `## 迷いやすい場面` の節を置き、[下の表](#spec-dsr-renew-d12-迷いやすい場面の答え)の 19 場面を、場面・役割・段・現行の実装・移行の列で書く。役割と段は各行 1 つ（部品の状態は「段に数えない」）。現行の実装の列は component 名と token 名で書き、`src/` の path を書くなら実在するものだけにする（DS1 が検査する） | Matrix T15 |
+| SPEC-DSR-RENEW-D13 撤回・置換 | [下の表](#spec-dsr-renew-d13-撤回置換する旧文)の旧文を、改訂後の file で現行の規則として残さない。04 の旧番号対応表の「撤回・置換」列と D-091 に行を写す。Q7 との関係を 04 の新 2 に 1 文で書く: Q7 原則①「色数をむやみに増やさない」と両立する。色は役割の数を上限とし、役割を持たない色を足さない。進行中の色相は、amber 1 色が操作・注意・現在地・1 位を兼ねていた重なりを解くために足すもので、有彩色の系統は 3（amber・green・red）から 4 へ 1 つ増えるだけである | Matrix T17 |
+| SPEC-DSR-RENEW-D14 04 からの反映待ちを閉じる | 旧 04 が「batch 1 で 00 を改める」としたまま 00 に反映されなかった 3 点を、2026-09-24 の src 実測（Contract Probe）の多数派で 00 に書く。caption = 14px muted（`text-sm text-muted-foreground`。12px は badge の中だけ。badge 以外の 12px は現行に残り、画面を触る lane が 14px へ寄せる）。ページ余白 = `space-6`（`PageShell` の `p-6`）、`space-8` は大セクション区切りだけ。icon = 12px（badge の中）/ 16px（ボタン・ナビ・Alert・表内・ラベル隣接）/ 20px（見出し・結果の行の隣）/ 24px（Home の入口 card・空状態）/ 32px（待ちの spinner・ファイル選択・画面単位のエラー）。旧 04 原則 10 の「16 / 20 / 24 の 3 段だけ」と 00 の旧表（ボタン内 16・テーブルセル 20）の食い違いはこの表で置き換える。Writer は icon の各段を `rg` で数え直して PR に記録する | Matrix T16 |
+
+### SPEC-DSR-RENEW-D12 迷いやすい場面の答え
+
+Plan Review round 1 と相談役の検討で、役割表と段の表だけでは答えが 0 か 2 以上になった場面。現行の実装の列は 2026-09-24 の src（Contract Probe）。「試し」の行は lane A の L3 で owner が採るか決め、それまでは現行の実装のまま作る（D8）。
+
+| 場面 | 役割 | 段 | 現行の実装 | 移行 |
+|---|---|---|---|---|
+| focus ring | 操作 | 段に数えない（部品の状態） | `--ring` は `--primary` と同値 | runtime lane A 待ち（`--primary` と同時に動かす） |
+| 操作枠（入力欄・outline ボタンの枠） | ふつう・補足 | 段に数えない（DSR-22 の 3:1） | `--border-strong` | 済 |
+| 保存中のボタン（部品自身の busy） | 元の役割のまま（保存ボタンなら操作） | 元の段のまま。spinner と「保存中...」の文言を添える（02 ⑥ Spinner） | 入庫・手動販売ほかの保存ボタン、棚卸しの確定ボタン | 済 |
+| 待ちの spinner（取込み中・照合中の大きな spinner） | 進行中 | 段に数えない | `Loader2` の `text-primary`（32px） | runtime lane A 待ち |
+| 進み具合の棒 | 作業の進み（棚卸し・整合性チェック）= 進行中、比率（月次の部門比率）= ふつう・補足 | 段に数えない | `progress` の棒は `bg-warning` | runtime lane A 待ち |
+| checkbox・radio の checked | 操作 | 段に数えない（小さな塗り） | `checkbox` の checked は `bg-primary` | runtime lane A 待ち（`--primary` の値と一緒に変わる） |
+| 複数選択の行（上書きする行を checkbox で選ぶ） | ふつう・補足（選択状態、DSR-21） | 段 0（行に色を付けず、部品の checked で示す。現在行に含めない） | 商品取込みの上書き選択列 | 済 |
+| Home の入口 card の強調（最重要の入口 1 つ） | 操作 | 段 2（操作の仲間の薄い地 + 1px 線） | `ActionButton` の primary は `border-primary bg-warning-soft`（操作の枠と注意の地の混在） | lane A の L3 で試し |
+| 画面上の確定・削除のトリガー | 操作 | 主要ボタンなら段 4（1 画面 1 つ）、それ以外は DSR-01 の降格 | 危険の塗りのボタンはすべて dialog の中 | 済 |
+| dialog の実行ボタン（戻せない操作） | 危険・失敗 | 段 4（DSR-20） | `variant="destructive"` | 済 |
+| 日報の取込み済み（二重取込みの防止） | 危険・失敗（Alert と badge を同じ役割に揃える） | 段 2 | Alert は危険、badge は注意（owner 決定 2026-09-06） | lane A の L3 で試し（採らなければ badge は注意のまま） |
+| 未取込みの知らせ（日次・月次・Home の前日分） | 注意・確認 | 段 2 | 日次・月次は注意、Home は危険（どちらも owner 決定 2026-09-06） | Home だけ lane A の L3 で試し（採らなければ Home は危険のまま） |
+| 減衰（押せないボタン・廃番の行・空状態） | 元の役割のまま（役割色を足さない） | 段 0 の中で muted・opacity で弱める | `disabled:opacity-50`、`EmptyState` の stone | 済 |
+| 注意の Alert と注意の badge の線 | 注意・確認 | 段 2（線の濃さは面積で決める: badge は `-border`、Alert・行は base） | Alert は `border-warning`、badge は `border-warning-border` | 済 |
+| 完了の知らせ（保存・取込みの成功・反映済み） | 完了 | 段 2 まで（塗りにしない。操作の塗りとは文字と icon で区別する） | 成功の toast、success tone の badge | 済 |
+| 現在地（ナビ）と現在行（一覧の 1 行） | 現在地 = 操作、現在行 = 進行中 | 段 2（細いバー）。色で区別せず、置き場所と文言で区別する | どちらも `border-l-primary` | runtime lane A 待ち |
+| ランキング 1 位 | ふつう・補足 | 段 0（順位と太字、色を使わない） | 琥珀の pill と `--rank-top-*` の行の地 | lane A の L3 で試し（owner 了承 2026-09-24） |
+| 最新・上書き件数の強調（③強調の badge） | ふつう・補足 | 段 2（stone の pill と太字） | 琥珀の pill（`variant="default"` と `border-warning`） | lane A の L3 で試し（「最新」と②分類の「手動」を言い分けられるか） |
+| お知らせ一般（手を止めなくてよい知らせ） | ふつう・補足 | 段 0（Alert の既定） | Alert の既定は `bg-card`。`toast.info` は使っていない | 済 |
+
+### SPEC-DSR-RENEW-D13 撤回・置換する旧文
+
+旧文の場所は改訂前（`dda8560a`）。「置換後」は改訂後の置き場所。
+
+| # | 旧文の場所 | 旧文の要旨 | 扱い | 置換後 |
+|---|---|---|---|---|
+| W1 | 04 原則 2 | 色は 3 家族。info 家族は作らず、お知らせ・注意喚起は warning トーン | 置換 | 色は役割で使う（新 2、00 の役割表）。手を止めて確かめてほしい知らせは注意・確認、手を止めなくてよいお知らせ一般はふつう・補足（Alert の既定）。進行中は info ではない。soft・border・strong の段の形は 00 の token 表に残す |
+| W2 | 04 原則 4 の③ | ③強調 = 琥珀 pill（ランキング 1 位 / 最新） | 置換 | ③強調は役割色を使わず順位・太字・文言（新 4、D12 の試し）。移行中は現行の琥珀 pill |
+| W3 | 04 原則 5 | 1 画面に primary（琥珀塗り）は 1 つ | 色の語だけ置換 | 1 画面に操作の塗りは 1 つ（新 3、DSR-01）。「琥珀」は 00 の現行の実装の列にだけ残す |
+| W4 | 04 原則 13 | 新しい色相は追加しない（Q7 原則①） | 置換 | 役割の無い色を足さない、色は役割の数を超えない（新 2 と新 9、D13 の Q7 の 1 文） |
+| W5 | 04 原則 15 | 左 4px の primary バー + `--row-current` + badge または文言 | 置換 | 現在行は進行中の役割（新 10、DSR-22）。3 点表示は維持し、色は lane A で進行中の token へ。現行は primary のバーと `--row-current` |
+| W6 | 00 セマンティックカラー表の Primary 行の用途 | 主要ボタン、ハイライト。ウォーム系主アクセント | 用途の列だけ置換（行と HEX は不変） | 操作（押すボタン・リンク・ナビの現在地）。「ハイライト」は撤回（③強調は役割色を使わない） |
+| W7 | 00 4 色エリアモデルの節 | サイドバーはアクティブ項目のみ Primary アクセント 1 色 | 置換 | ナビの現在地は操作の役割色の細いバー（段 2、DSR-21）。単色 stone のサイドバーと「色でなく構造で区分」は維持 |
+| W8 | 00 ウォーム系採用の論拠の節 | UI の色を暖色でそろえる | 一部置換 | ニュートラルの stone はウォームのまま。役割色は色相で役割を分ける |
+| W9 | 00 書体 | カスタム Web フォントは読み込み遅延のリスクで不採用 | 撤回 | D3 の選定条件と runtime lane B での採用 |
+| W10 | review-checklist カテゴリ 9 の badge の行 | ③強調 = 琥珀 pill + `--warning` 枠 | 置換 | 新 4 に合わせる。移行中は現行の部品の形だけ可 |
+| W11 | DSR-21 の Why | Primary（amber-700）は warning 系と同系色 | 現状の説明として残す | runtime lane A までの現状と書き、役割表で色相が分かれることを足す（D7） |
 
 ## Trace Matrix
 
@@ -301,11 +371,14 @@ Contract ID: SPEC-DSR-RENEW
 | SPEC-DSR-RENEW-D4 | S1 | T5 | 言い切るラベル | `rg` 出力 |
 | SPEC-DSR-RENEW-D5 | S2・S3 | T9・T10 | 内容の落ち | 旧番号対応表、hit の分類記録 |
 | SPEC-DSR-RENEW-D6 | S4 | T3・T4 | 番号と見出しの不変 | `diff` 空出力 |
-| SPEC-DSR-RENEW-D7 | S4 | T11 | DSR 間の一貫性 | hit の分類記録 |
-| SPEC-DSR-RENEW-D8 | S1・S5・S6 | T7 | 候補値の置き場 | `rg` 0 件 |
-| SPEC-DSR-RENEW-D9 | S1〜S7 | T1・T2 | gate を弱めない | DS1〜DS4 の出力行 |
-| SPEC-DSR-RENEW-D10 | S9 | T7 | 候補値と却下案 | D-091 |
-| SPEC-DSR-RENEW-D11 | S10 | T13 | Human Gate の載せ先 | backlog entry |
+| SPEC-DSR-RENEW-D7 | S4 | T11 | DSR 間の一貫性、選択行の限定、現在地と現在行 | hit の分類記録 |
+| SPEC-DSR-RENEW-D8 | S1・S5・S6・S7 | T7・T18 | 候補値の置き場、移行中の作り方 | `rg` 0 件、README と checklist の `rg` 出力 |
+| SPEC-DSR-RENEW-D9 | S1〜S10 | T1・T2 | gate を弱めない | DS1〜DS4 の出力行 |
+| SPEC-DSR-RENEW-D10 | S9 | T7 | 候補値・計算結果・試し・却下案 | D-091 |
+| SPEC-DSR-RENEW-D11 | S10 | T13 | Human Gate の載せ先、lane A の進め方 | backlog entry と T13 の loop 出力 |
+| SPEC-DSR-RENEW-D12 | S1 | T15 | 答えが 1 つに決まるか、今の赤を変えていないか | 場面の `rg` 出力 |
+| SPEC-DSR-RENEW-D13 | S1・S2・S4・S7 | T17 | 旧文の残り | hit の分類記録 |
+| SPEC-DSR-RENEW-D14 | S1・S2 | T16 | src の実測との一致 | `rg` 出力と icon の数え直しの記録 |
 
 ## Data Safety
 
@@ -324,3 +397,15 @@ Fill after implementation.
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Plan Review round 1（2026-09-24、fresh Opus 5.5 の read-only review、対象 `85e087f5`）: 冒頭 3 値 = Ordinary Operation の行 1 / 4 / 5 / 6 成立、行 2（役割と段を選ぶ）・行 3（今の見た目を確かめる）・行 7（旧番号を引く）具体的な反例あり。P1 0 / P2 7 / P3 7。Coordinator 裁定（2026-09-24）= 全件採用。反映先:
+  - P2-1 旧 15 の 2 規則 → D5 の対応表（旧 15 → 新 10 と新 5）、D4 の適用範囲 (a)(b)、S1 の metric 行の参照先、Ordinary Operation の行 3・行 7。
+  - P2-2 撤回・置換する旧文 → D13 の表（W1〜W11）と Q7 との関係の 1 文、お知らせ一般の行き先（D1 のふつう・補足、D12）、AC16、Matrix T17。
+  - P2-3 今の赤 → 役割名を「危険・失敗」とし、危険・戻せないと失敗・欠けの 2 場面を 1 行に持たせた（D1）。今の割り当てを変えない（Goal・D1・D7）。完了の例から「取込み済み」を外した（D1、AC5）。
+  - P2-4 ③強調 → 変えるのはランキング 1 位（owner 了承の試し）で、最新・上書き件数も試し案として lane A の L3 に載せた（D5 の新 4、D12、D11 の L3 項目）。
+  - P2-5 移行中の作り方 → D8、README の `移行中の作り方`、review-checklist の許容の限定（S7）、D11 の棚卸し D1 の着手条件、Ordinary Operation の行 2、AC17、Matrix T18。
+  - P2-6 バー → D2 の段 2 の一形態。段 1 は役割の領域だけ、ただのまとまりは段 0 の stone（AC6）。
+  - P2-7 04 から 00 への反映待ち → D14（src の実測で caption 14px・ページ余白 `space-6`・icon 12 / 16 / 20 / 24 / 32）、AC15、Matrix T16、Non-scope（badge 以外の 12px）。
+  - P3 ランキングの出典 → 設計判断の出典に owner の了承（試し）を追加。P3 BIZ UDPゴシック → D3・Impact Review Lenses・Ordinary Operation の行 5 で、確かめていない外部の事実として扱う。P3 D9 の走査範囲 → D9 に `docs/*.md` を追加。P3 DSR-22 の候補値由来の数値 → D7 で DSR-22 に比を書かず D-091 へ置き、AC7 に比の検査を追加。P3 focus ring と操作枠 → D2 の「段に数えない」。P3 owner の短い言い回し → 設計判断の出典と Design Intent Trace を言い換えた。P3 T13 の検出力 → AC13 と Matrix T13 を、題の文字列と行ごとの必須語の loop に強めた。
+- 相談役の検討（Fable 5.1、read-only、2026-09-24）: src に当てた 12 場面・受け取り方の混乱 3 点・移行中の混在 3 経路・P2-7 の実測。Coordinator 裁定 = 全件採用（1-6 = Home の入口 card を操作の段 2 にする試し、1-9 = 日報の取込み済みの badge を Alert と同じ役割へ揃える試し。どちらも lane A の L3 で最終）。反映先: 1-1・1-4・1-5・1-11・1-12 → D2。1-2・1-3・1-7・1-8・1-10 → D1・D12（1-7 は D7 の DSR-22 にも）。1-6・1-9 → D12 の試しの行。2-1・2-2 → D2・D7・D12。2-3 → D11 の L3 項目と D12。3-1・3-2 → D11。3-3 → D8。P2-7 の実測 → D14 と Contract Probe。
+- 起草役の再測で分かった食い違い（実物を正とした）: 棚卸しの「確定しています」は `StocktakePage.tsx:319`（相談役は 317）。危険の塗りのボタンは相談役が挙げた `AlertDialogAction` 4 site のほかに `AlertDialogAction` 5 site と取引先の統合 dialog の `Button` 1 site があり、すべて dialog の中で 1-8 の結論は変わらない。primary の消費数と caption の数は数え方で揺れる（Contract Probe）が、結論は変わらない。日報の取込み済みの badge が注意、Home の前日分の未取込みが危険なのは owner 決定 2026-09-06（`02-component-catalog.md` の ⑬ と ⑥）で、1-9 と 1-10 の向きはこの既存決定と逆になるため、試し（owner が採らなければ現行のまま）として扱った。
+- 起草役が新たに決めたこと（round 2 で見てほしい点）: 役割名「危険・失敗」。D12 の 19 場面の答え（とくに操作枠 = ふつう・補足、お知らせ一般 = 段 0、最新と上書き件数 = stone の pill で段 2）。D14 の icon の 5 段。token の分割 merge の却下（D11）。試しを owner が採らなかった場合は lane A が 00 を現行に合わせて直す規則（D8）。
