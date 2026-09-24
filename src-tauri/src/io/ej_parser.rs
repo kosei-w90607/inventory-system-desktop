@@ -1442,15 +1442,15 @@ mod tests {
         assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
     }
 
-    // IO-08-D6: 数量行の直後が明細でない
+    // IO-08-D6: 数量行の直後が明細でない（点数・合計は明細とそろえ、孤立した数量行だけで落とす）
     #[test]
     fn parse_ej_quantity_line_not_followed_by_item_unresolves() {
         let result = parse(&sale(
             "",
             "000169",
             &[item(NAME_A, 100), qty(2, "100")],
-            3,
-            300,
+            1,
+            100,
         ));
 
         assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
@@ -1617,6 +1617,20 @@ mod tests {
         );
     }
 
+    // IO-08-D6: 合計はあるが点数の行が無い（合計は明細とそろえる）
+    #[test]
+    fn parse_ej_total_without_item_count_unresolves() {
+        let mut lines = sale("", "000189", &[item(NAME_A, 100)], 1, 100);
+        lines.remove(4); // 区切りの直後の点数行
+        let result = parse(&lines);
+
+        assert_eq!(reasons_of(&result.records[0]), [IncompleteRecord]);
+        assert_eq!(
+            diags(&result),
+            [(Some(1), IncompleteRecord, EjDiagnosticScope::Record)]
+        );
+    }
+
     // IO-08-D6: 本文 0 行の通常の記録
     #[test]
     fn parse_ej_header_only_record_unresolves() {
@@ -1627,15 +1641,16 @@ mod tests {
         assert_eq!(items_of(&result.records[1]).len(), 2);
     }
 
-    // IO-08-D6: 数量行の連続は後の行で上書きせず不一致にする
+    // IO-08-D6: 数量行の連続は後の行で上書きせず、前の行も使わず不一致にする
+    // （同じ数量行を 2 つ並べ、どちらを採っても照合がそろう形にする）
     #[test]
     fn parse_ej_consecutive_quantity_lines_unresolve() {
         let result = parse(&sale(
             "",
             "000210",
-            &[qty(2, "100"), qty(3, "100"), item(NAME_A, 300)],
-            3,
-            300,
+            &[qty(2, "100"), qty(2, "100"), item(NAME_A, 200)],
+            2,
+            200,
         ));
 
         assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
@@ -1686,7 +1701,7 @@ mod tests {
             sale(
                 "",
                 "000215",
-                &[qty(0, "-100"), item("ﾃｲｾｲ", 0), item(NAME_A, 100)],
+                &[qty(1, "-100"), item("ﾃｲｾｲ", 0), item(NAME_A, 100)],
                 1,
                 100,
             ),

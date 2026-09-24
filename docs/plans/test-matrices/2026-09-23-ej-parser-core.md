@@ -77,7 +77,7 @@ fixture は test 内の builder で作る: 文字列を CP932 で encode し、2
 | IO-08-D6 | 合計の不一致 | unit | `parse_ej_total_mismatch_unresolves` | 合計が明細の金額の合計と違う取引が `Restored` になる |
 | IO-08-D6 | 合計が無いときの現金の不一致 | unit | `parse_ej_cash_mismatch_without_total_line_unresolves` | 合計行が無く、現金の金額が明細の金額の合計と違う取引が `Restored` になる、`InconsistentRecord` が出ない |
 | IO-08-D6 | 負の明細金額 | unit | `parse_ej_negative_item_amount_unresolves` | 明細域の負の金額が明細として受理される |
-| IO-08-D6 | 数量行の孤立 | unit | `parse_ej_quantity_line_not_followed_by_item_unresolves` | 数量行の直後が区切りの取引が `Restored` になる |
+| IO-08-D6 | 数量行の孤立 | unit | `parse_ej_quantity_line_not_followed_by_item_unresolves` | 数量行の直後が区切りの取引（点数 1・合計 \100 は明細 \100 とそろう）が `Restored` になる |
 | IO-08-D4 / D6 / D7 | EOF で切れた取引・精算 | unit | `parse_ej_record_truncated_at_eof_unresolves` | 明細の後で file が終わる取引、`日計明細` の終わり行の無い精算が `Restored` / `NoItems` になる |
 | IO-08-D2 | 最終改行なし | unit | `parse_ej_missing_final_crlf_reports_diagnostic` | 最後の CRLF が無い file で `MissingFinalNewline` が出ない、または最後の行が失われる |
 | IO-08-D2 | 幅違反・孤立 LF | unit | `parse_ej_invalid_width_line_unresolves_record` | 23 / 25 バイトの行や孤立した LF を含む行が正規化されて通る、`InvalidWidth` が出ない |
@@ -89,6 +89,7 @@ fixture は test 内の builder で作る: 文字列を CP932 で encode し、2
 | IO-08-D7 | 題で始まらない精算 | unit | `parse_ej_settlement_not_starting_with_title_unresolves` | 本文の先頭が `SettlementTitle` でない精算が `NoItems` になる |
 | IO-08-D7 | PGM の本文 | unit | `parse_ej_program_body_with_other_line_unresolves` | 区切り・`Status` 以外の行を含む `PGM` の記録が `NoItems` になる |
 | IO-08-D6 | 合計も現金も無い取引 | unit | `parse_ej_count_without_total_or_cash_unresolves` | 区切り・点数はあるが `合  計` も `現金` も無い取引が `Restored` になる、`IncompleteRecord` が出ない |
+| IO-08-D6 | 点数の行が無い取引 | unit | `parse_ej_total_without_item_count_unresolves` | 区切り・合計（明細とそろう）はあるが `ItemCount` の無い取引が `Restored` になる、`IncompleteRecord` が出ない |
 | IO-08-D6 | ヘッダだけの記録 | unit | `parse_ej_header_only_record_unresolves` | 本文 0 行の通常の記録（次のヘッダが直後に来る）が `Restored` / `NoItems` になる |
 | IO-08-D1 | decode 失敗 | unit | `parse_ej_decode_failure_is_fatal` | CP932 として不正なバイト列で `Ok` や部分結果が返る |
 | IO-08-D1 | ヘッダなし | unit | `parse_ej_no_record_header_is_fatal` | 24 バイトの行だけでヘッダの無い入力で `Ok` が返る |
@@ -179,6 +180,8 @@ not applicable: `parse_ej` は状態を持たない純関数で、保存・cache
 - 名称を最初の空白で切ったら? → `parse_ej_item_name_with_inner_space` が落ちる。
 - 明細の金額を「0 より大」にしたら? → `parse_ej_zero_amount_item_is_restored` が落ちる。
 - 合計 / 現金が無いとき照合を省いて通したら? → `parse_ej_count_without_total_or_cash_unresolves` が落ちる。
+- 点数の行が無いとき点数の照合を省いて通したら? → `parse_ej_total_without_item_count_unresolves` が落ちる。
+- 区切りの直前の数量行の検査を外したら、または数量行の連続で後の行・前の行のどちらかを採ったら? → `parse_ej_quantity_line_not_followed_by_item_unresolves` / `parse_ej_consecutive_quantity_lines_unresolve` が落ちる（どちらも点数・合計を明細とそろえ、他の照合では落ちない fixture にしてある）。
 - 本文 0 行の記録を空の `Restored` にしたら? → `parse_ej_header_only_record_unresolves` が落ちる。
 - 精算・PGM の本文の未知の行を読み飛ばしたら、または精算の題の位置を見なかったら? → `parse_ej_unknown_line_in_settlement_unresolves`、`parse_ej_program_body_with_other_line_unresolves`、`parse_ej_settlement_not_starting_with_title_unresolves` が落ちる。
 - 番号を数値化したら? → `parse_ej_normal_sale_restores_items`（先頭 0）が落ちる。
