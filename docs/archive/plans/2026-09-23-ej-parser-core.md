@@ -1,13 +1,13 @@
 # Plan Packet: EJ（電子ジャーナル）parser の core — 取引単位の構造復元（R3）
 
-2026-09-23 起草。出典は `docs/Plans.md`「次の行動」1（owner 決定 2026-09-22「並走で EJ parser の core を合成データで進める」）と [Backlog](../backlog.md#やると決めたもの順番未定)「実測とPOS系列の対応を取得・保存する」（「EJ parser の構造復元は並行可能だが、時刻分割は本 lane の結論を待つ」）。EJ を PLU 販売の本番開始の前提にする owner 判断（2026-09-18、[ADR SPEC-STK-TIME-D5](../adr/2026-09-18-stocktake-time-evidence.md#spec-stk-time-d5-ejの完全と商品を判定可能を分ける)）の部品を、実機確認を待たずに作る。
+2026-09-23 起草。出典は `docs/Plans.md`「次の行動」1（owner 決定 2026-09-22「並走で EJ parser の core を合成データで進める」）と [Backlog](../../backlog.md#やると決めたもの順番未定)「実測とPOS系列の対応を取得・保存する」（「EJ parser の構造復元は並行可能だが、時刻分割は本 lane の結論を待つ」）。EJ を PLU 販売の本番開始の前提にする owner 判断（2026-09-18、[ADR SPEC-STK-TIME-D5](../../adr/2026-09-18-stocktake-time-evidence.md#spec-stk-time-d5-ejの完全と商品を判定可能を分ける)）の部品を、実機確認を待たずに作る。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
 - Evidence Mode: github
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Execution Mode: fable-window
 - Plan Commit: 6a827b907949fb16dd220c426b29c7fa09f63264
@@ -29,6 +29,7 @@ manual なし: operator 画面・配布物・wire の変化がない IO 層だ�
 
 - kickoff → spec-check → design → plan-draft → plan-gate（本 commit、plan-first）: Risk は R3（下記 Risk）。in-scope の source docs は Design Sources に列挙し、IO-08 の関数設計書の新設が要ると判定した（spec-check → design）。設計判断は本 packet の Spec Contract（IO-08-D1〜D10）で確定し、owner の判断を要する未決の論点は無い。source doc への反映は本 PR 内で Writer が行う（Z004 layout A packet `docs/archive/plans/2026-08-16-z004-layout-a-parser.md` と同じ「updated in this PR」形）（design → plan-draft）。packet と Test Design Matrix を同じ commit に置く（plan-draft → plan-gate）。
 - plan-gate → plan-approved → implementing（2026-09-24、Coordinator、state-only）: Plan Review round 1（fresh Opus、P1 0 / P2 2 / P3 9、操作列は `具体的な反例あり`〈合計域の全角数字〉）→ 全件採用し是正 `8a364a3d` → round 2 closure（別の fresh Opus、P1/P2 = 0、P3 2、操作列は `成立`）→ P3 を反映。Plan Commit = `6a827b90`（plan-first `d4951245` → 是正を含む確定版）。実装は Opus 5.5 subagent の worktree run。
+- implementing → archive（closeout、本 commit）: PR #94 squash merge `8bd2bc9a`（2026-09-25）。packet / Matrix を `docs/archive/plans/` へ移送し、Implementation Results / Review Response を記録した。Final Review closure（Opus、`8d2975de`）の P3 2 件を PR #94 の Follow-up の裁定どおり処理した: Spec Contract IO-08-D2 / D5 / D6 の文法は 29 を正本とする注記（Review Response）と `docs/architecture/io-task-specs.md` IO-08 の処理構造 5 の文言、Matrix の Test Matrix に Opus 是正（`e0cd106d`）の test 8 本の行と Mutation-style の 2 項。`docs/backlog.md` へ EJ の文法の後続 lane を起票した。
 
 ## Owner Effort Budget
 
@@ -317,16 +318,14 @@ Contract ID: IO-08-D1〜D10（source doc 正本は本 PR で新設する `docs/f
 
 ## Implementation Results
 
-Fill after implementation.
-
-Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+[PR #94](https://github.com/kosei-w90607/inventory-system-desktop/pull/94) で実装し squash merge 済み（`8bd2bc9a`、2026-09-25）。S1〜S7 を実装した: `src-tauri/src/io/ej_parser.rs` に純関数 `parse_ej`（IO-08）と出力型を新設し、行を記録の種類と位置で分類して、通常・返品の取引は数量×単価・点数・合計（無ければ現金）が記録内でそろうときだけ明細へ復元する。そろわない記録・未知の行・幅違反（24 バイトの中の孤立 CR / LF を含む）は記録単位の復元不能と固定文言の診断にし、行を捨てない。関数設計書 `docs/function-design/29-io-ej-parser.md` を新設して IO-08-D1〜D10 と行の文法表を正本化し、`docs/FUNCTION_DESIGN.md`・`docs/ARCHITECTURE.md`・`docs/architecture/io-task-specs.md`・`design_compliance_test` へ登録した。Final Review の是正として、数量 0 と `-` つきの単価の数量行の拒否、24 バイト内の孤立 CR / LF の検査（先頭断片・ヘッダ・本文）、`i64::MIN` の金額の読取り、fail-closed の分岐の test と弱い負例の fixture の補強を入れた。実物 6 本の構造確認（AC9、Coordinator 手元、件数だけ）は是正の前後とも復元不能 0・診断 0 で、件数は PR body に記録した。
 
 ## Review Response
-
-Fill after review.
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
 
 Final Review broad Codex 側（2026-09-25、GPT-6 Astra high、対象 `fc73b59f`、裁定 Coordinator）: P1 0 / P2 2 / P3 1。Codex は PR body の Validation 節にあった Opus 側の要約を読んだと申告し、独立した 1 本と扱えない → 是正後の head に Codex broad を取り直す（PR body と本節の Final Review の段落は読まない指示）。全件採用、`6124e9b3` で是正。P2-1（幅 24 を保った孤立 CR / LF が `trim()` に隠れて復元済みになる）= 幅の検査 3 か所を「24 バイトちょうどで CR / LF を含まない」判定に揃え、該当行は既存の `InvalidWidth`（29 :138 の「孤立した LF / CR はこの形で現れる」）で記録を復元不能にする。P2-2（合計行なしの現金の不一致を拒否する負例が無い）= test を 1 件追加し、現金の値を明細合計へ差し替える mutation で red を確認（実装は変更なし）。P3（`i64::MIN` の金額を読めない）= 負の値を符号つきの checked 演算で積み上げ、i64 の両端と 1 つ外側の test を追加。
 
 Final Review broad Codex 側の取り直し（2026-09-25、GPT-6 Astra high、対象 `a96bd88e`、裁定 Coordinator）: P1 0 / P2 1 / P3 1。PR body と前回の結果を読まずに行った独立の 1 本。P2（孤立数量行の負例が点数・合計の不一致で先に落ち、拒否ガードを外しても全 test が通る）= 採用、`e03bedcf` で fixture の点数・合計を明細にそろえ、ガードを外す mutation でその test だけが red になることを確認。同じ型の弱い負例（数量行の連続、負の単価）も直し、負例の無かった点数の行の欠けに test を 1 本足した（主要な拒否ガード 23 種を 1 つずつ外して確認、残る 2 種は到達しない等価 mutant）。P3（`InvalidWidth` の発生条件が 24 バイトの中の孤立 CR / LF を含まない）= 採用、29 の D2 と診断表と同じ食い違いの 2 か所を実装に合わせ、固定文言は変えないと明記。
+
+Final Review の closeout 時点の結論（2026-09-25、Coordinator）: helper の専用 record（`#issuecomment-5819567040`）に載る broad は 2 本で、互いに独立した Double Audit。(1) Opus 5.5 fresh の broad（対象 `83a55cb0`、`#issuecomment-5819559986`、P1 0 / P2 1 / P3 6。P2・P3-1〜P3-4・P3-6 を採用し `e0cd106d` / `fc73b59f` で是正、P3-5〈採取期間は metadata〉は不採用）と、同じく fresh の Opus による closure（対象 `8d2975de`、`#issuecomment-5819560364`、閉じる対象の P2 はすべて閉鎖を mutation で確認、新規 P1 0 / P2 0 / P3 2）。(2) Codex broad の取り直し（GPT-6 Astra high、対象 `a96bd88e`、`#pullrequestreview-5308090364`、上の段落）。record の closure は base 同期後の fresh Opus（対象 `0018a604`、`#issuecomment-5819942211`、新規 P1 0 / P2 0 / P3 0。`8d2975de` 以降の delta は clippy の `byte_char_slices` に合わせた test の 2 行〈`309c09dd`〉と origin/main `94e4d58a` の単段 merge だけで、新しい main の checker / helper も packet を受理する）。初回の Codex broad（対象 `fc73b59f`、`#pullrequestreview-5307873862`）は PR body の Opus 側の要約を読んでおり独立性が成立しないため record に入れない（その P2 2 / P3 1 は採用し `6124e9b3` で是正済み）。manual / R4 は not-required。Opus closure（`8d2975de`）の新規 P3 2 件は head を動かさず本 closeout で処理した（PR #94 Follow-up の裁定）: P3-1 = 本 packet の Spec Contract IO-08-D2 / D5 / D6 の文法（24 バイトの中の孤立 CR / LF も `InvalidWidth` とすること、数量行は数量 1 以上・単価非負だけを受理すること、`合  計` / `現金` の金額 token は共通の規則で読み、観測は全角であること）は `docs/function-design/29-io-ej-parser.md`（IO-08.2 / IO-08.5 / IO-08.6 と金額 token）を正本とし、本 packet の該当文は 29 に置き換わった。`docs/architecture/io-task-specs.md` IO-08 の処理構造 5 も 29 の IO-08.2 の文言に揃えた。P3-2 = Matrix の Test Matrix に Opus 是正の test 8 本の行、Mutation-style に 2 項（数量 0 / `-` つきの単価の受理、重複行の最初の行の採用）を足した。どちらも実装は 29 どおり fail-closed で、在庫への害はない。
