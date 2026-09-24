@@ -58,7 +58,7 @@ fixture の `write_packet` に `- Phase: implementing`（pending の case は `p
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
-| D3 / D5 | F6 | git fixture（保持、既存） | T-G1: ancestry 正例、squash 相当の負例、Plan Commit 書換え検出、Amendments 追記正例・順序・削除の負例、非 descendant の負例、pending skip が変更前と同じ判定（現 `:106-240`、`:509-555` の case を維持） | PK5 の処理を Rebase Map と一緒に削る |
+| D3 / D5 | F6 | git fixture（保持、既存） | T-G1: ancestry 正例、squash 相当の負例、Plan Commit 書換え検出、Amendments 追記正例・順序・削除の負例、非 descendant の負例、Plan Commit の子だが側 branch にあり HEAD の祖先でない Amendments SHA の負例（`は現在の HEAD の祖先ではありません` で ERROR。Rebase Map の test と一緒に消えていたのを Final Review broad Opus F1 で `43557682` に追加）、pending skip が変更前と同じ判定（現 `:106-240`、`:509-555` の case を維持） | PK5 の処理を Rebase Map と一緒に削る。Amendments の HEAD 祖先検査だけを外す |
 | D3 | F5 | git fixture（negative） | T-G2: plan-first を rebase して非 ancestor にし、patch-id 同値の `Rebase Map: <old> -> <new>` 行を足しても `は現在の HEAD の祖先ではありません` で ERROR（旧 T-PK5 正例の反転） | Map の解釈が残り escape hatch になる |
 | D3 / D5 | F6 | git fixture（保持、既存） | T-G3: shallow clone が `full history required` で ERROR、無関係な shallow ref は OK（現 `:729-745`） | full history の要求を STATECAP と一緒に削る |
 | D1 | F3 | git fixture | T-G4: marker なし + Phase implementing は OK、`Evidence Mode: legacy` / `mystery` は ERROR、`Phase: local-verified` は marker の有無に関わらず ERROR、Phase 行なしは ERROR（現 `:709-727` の置換） | marker を必須のまま残す、または Phase 検査が marker 依存 |
@@ -159,6 +159,7 @@ AC5 の実注入は、保持行ごとに 1 回、次の mutation を本 PR の�
   - `doc-consistency-check.sh` の R4 Minimum 2 検査を消す → T-P7 が red。
   - `check-workflow-git.sh` の Plan Commit 書換え検出（`first_value` の比較）を消す → T-G1 の書換え case が red。
   - `check-workflow-git.sh` の shallow 検査を消す → T-G3 が red。
+  - `check-workflow-git.sh` の Amendments の HEAD 祖先検査（`git merge-base --is-ancestor "$amendment_full" HEAD`）を `if false` にする → T-G1 の側 branch の負例が red（Final Review broad Opus F1 の是正 `43557682`。Opus closure が copy で実注入し、`ad27e09b` 版の test は同じ mutant を見逃すことを確認）。
   - `doc-consistency-check.sh` の legacy field 拒否を、以前の形（marker が github の時だけ）に戻す → T-P4（marker なしの fixture に legacy field を足す case）が red。
   - `doc-consistency-check.sh` の必須 field の一覧から `Final Reviewer` を削る → T-P6 の `Final Reviewer` 欠落 case が red。
   - `doc-consistency-check.sh` の Risk 一致検査（`ws_risk_value != valid_risk`）を消す → T-P8 の case 4 が red。Plans.md「次の行動」link 検査を消す → case 12 が red。
