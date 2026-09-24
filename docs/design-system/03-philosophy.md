@@ -10,18 +10,18 @@
 
 | 出典 | 何を取るか | 何を取らないか | 主に根拠にする原則（04） |
 |---|---|---|---|
-| refactoring-ui（Steve Schoger & Adam Wathan） | 視覚設計の一次根拠: ヒエラルキー（§1）、タイポグラフィ階層（§2）、スペーシングシステム（§3）、カラー理論（§4、subtle saturation） | 業務アプリ固有の深さ（他の出典で補う） | 1・3・9 |
-| ux-principles（Nielsen 基盤） | Nielsen 10 ヒューリスティクス、WCAG 2.1 AA 準拠 | 手芸店 1 人運用への最適化（他の出典で補う） | 2・7・11 |
+| refactoring-ui（Steve Schoger & Adam Wathan） | 視覚設計の一次根拠: ヒエラルキー（§1）、タイポグラフィ階層（§2）、スペーシングシステム（§3）、カラー理論（§4、subtle saturation） | 業務アプリ固有の深さ（他の出典で補う） | 1・3 |
+| ux-principles（Nielsen 基盤） | Nielsen 10 ヒューリスティクス、WCAG 2.1 AA 準拠 | 手芸店 1 人運用への最適化（他の出典で補う） | 7 |
 | GOV.UK Design Principles | *Start with user needs* / ***Do less*** / *Make things open* | 公共機関の「コミュニティ駆動」 | 3・5 |
-| GOV.UK Design System *Summary list* | 少量の関連する key-value は列を揃えた定義リストで示す | 複数レコードを per-card で反復する形 | 9、DSR-16 |
-| IBM Carbon Foundations | A11y をインフラ化、Progressive disclosure、データテーブル設計パターン | エンタープライズ向けの密度をナビやヘッダーに持ち込むこと | 6・8 |
+| GOV.UK Design System *Summary list* | 少量の関連する key-value は列を揃えた定義リストで示す | 複数レコードを per-card で反復する形 | DSR-16 |
+| IBM Carbon Foundations | A11y をインフラ化、Progressive disclosure、データテーブル設計パターン | エンタープライズ向けの密度をナビやヘッダーに持ち込むこと | 8 |
 | Shopify Polaris | 情報アーキテクチャを基盤に置く、業務語彙の統一 | マルチ通貨・多言語・グローバル対応 | 5 |
-| Atlassian Design System | 業務画面は Practical 強め・Bold 抑制 | 大規模チームコラボ機能 | 3・9 |
+| Atlassian Design System | 業務画面は Practical 強め・Bold 抑制 | 大規模チームコラボ機能 | 9 |
 | Microsoft Fluent 2 | *Effortless / Coherent / Relevant* | Signature experiences（Mica / Acrylic 等の装飾マテリアル） | 6・7 |
-| Laws of UX（Jon Yablonski『UXデザインの法則 ―最高のプロダクトとサービスを支える心理学』第 2 版、相島雅樹・磯谷拓也 訳、オライリー・ジャパン、2025-01。原著 *Laws of UX*） | 見る人の受け取り方の根拠: Hick の法則、Von Restorff 効果、Zeigarnik 効果、Peak-End の法則、目標勾配効果、チャンク化、近接の法則、美的ユーザビリティ効果、Miller's Law、Law of Common Region | 理論書の主張をそのまま規則として転記すること（規則は受け取り方と効果に落として書く） | 2・3・5・6・9・10・11 |
-| 原田秀司『UIデザインの教科書［新版］』（翔泳社、2020。QA 整理は `ui-design-rules-qa-v2.md`、Q 番号で引く） | 現在地は有彩色・hover は無彩色（5-3）、Q5（一覧の操作）、Q7（色数をむやみに増やさない）、Q8（見出しと本文の区別、文字サイズでの視線誘導）、Q12（操作体系はシンプルに）、Q15（ページング）、Q17（UI パーツ適用ルール） | 高齢者・IT に不慣れな利用者への直接の配慮規定（同書に無いため WCAG / Laws of UX から引く、Q12 caution） | 1・2・5・6・9・10・11 |
+| Laws of UX（Jon Yablonski『UXデザインの法則 ―最高のプロダクトとサービスを支える心理学』第 2 版、相島雅樹・磯谷拓也 訳、オライリー・ジャパン、2025-01。原著 *Laws of UX*） | 見る人の受け取り方の根拠: Hick の法則、Von Restorff 効果、Zeigarnik 効果、Peak-End の法則、目標勾配効果、チャンク化、近接の法則、美的ユーザビリティ効果、Miller's Law、Law of Common Region | 理論書の主張をそのまま規則として転記すること（規則は受け取り方と効果に落として書く） | 2・3・4・5・6・9・10・11 |
+| 原田秀司『UIデザインの教科書［新版］』（翔泳社、2020。QA 整理は `ui-design-rules-qa-v2.md`、Q 番号で引く） | 現在地は有彩色・hover は無彩色（5-3）、Q5（一覧の操作）、Q7（色数をむやみに増やさない）、Q8（見出しと本文の区別、文字サイズでの視線誘導）、Q12（操作体系はシンプルに）、Q15（ページング）、Q17（UI パーツ適用ルール） | 高齢者・IT に不慣れな利用者への直接の配慮規定（同書に無いため WCAG / Laws of UX から引く、Q12 caution） | 1・5・6・10 |
 | NN/g *Common Region* | 共有の境界で囲むと 1 グループに見える。境界の多用は clutter を生む | 比較目的の反復に囲みを使うこと | 9、DSR-16 |
-| WCAG 2.x | 1.4.1（色だけで情報を伝えない）、1.4.3（文字 4.5:1）、1.4.11（UI 部品の境界 3:1）、2.4.13（focus の見え方）、2.5.8（当たり判定 24×24） | — | 1・2・4・9・11 |
+| WCAG 2.x | 1.4.1（色だけで情報を伝えない）、1.4.3（文字 4.5:1）、1.4.11（UI 部品の境界 3:1）、2.4.13（focus の見え方）、2.5.8（当たり判定 24×24） | — | 2・7・9・11 |
 | japanese-webdesign（観点借用） | 情報密度 = 信頼（Anshin 哲学）を、業務データの密度の判断基準にする | Skill 本体のインストール | 8 |
 | frontend-design（参考） | 「汎用 AI 美学を避ける」意識 | 具体原則（ボールド・対称崩し） | 原則の根拠にしない |
 

@@ -32,7 +32,7 @@
 6. **器は 1 つにする。** `PageShell`（`src/components/patterns/PageShell.tsx`、p-6 / space-y-6）を唯一の page root にする（`src/features/**/*Page.tsx` 43 箇所を統一済み）。一覧画面の検索・絞り込みは枠（`rounded-lg border bg-card p-4`、`ListShell` toolbar box、2 段時は段間 `space-y-3`）に入れ、「検索条件」と「並び替え・件数」は段を分ける。viewport を超える一覧は `ListShell`（`src/components/patterns/ListShell.tsx`）で、上下に件数、header は sticky、識別列は opt-in で固定する。上部は `PaginationSummary` の件数 + 現在位置テキストを必須、pager ボタンは任意とする（Q12 §1、同じボタンを上下 2 組出すと判断コストが増える）。ソート列の明示（Q5 原則①）、余白でのグルーピング（Q5 原則③）、見切れによる続きの示唆（Q5 原則④）を含む。左 rail への 3 大操作常設（Q5 原則②）は sidebar が左を占めるため採らず、横 toolbar 2 段で代替する（Q5-② 適用外注記）。ページングは「コントロール感」を保つため無限スクロールより本則とする（Q15）。必須構成・文言・perPage は 02 ⑯ / ⑩、適用条件と画面ごとの固定列は DSR-22 を正とする。
    - 受け取り方と効果: どの画面も同じ位置に同じものがあり、画面が変わっても迷わない。
    - 根拠: Fluent 2「Coherent」、Miller's Law / Law of Common Region（Laws of UX）、Q5・Q12・Q15（原田本）。起点は B §2.2、A 診断 #5 #6、B D15。
-7. **同じ操作は同じ顔と挙動にする。** 検索欄は全画面で live 型（入力で絞り込み）でボタンなしとし（owner 2026-09-24 確定）、Enter を押させる commit 型の画面を残さない（02 ⑨）。待ち時間の顔を揃える: 読込みは共通 `ListSkeleton`、空は既存 `EmptyState`、成功は toast、要再操作は上部 Alert（DSR-03、DSR-19）。押せるものは押せる顔をし、行内の icon のみボタンは見た目 16px のまま当たり判定 24×24 以上にする。押せる行の右端 chevron と、ボタン・入力欄の最小高 40px は実装が追いついておらず、`docs/backlog.md` で扱う。
+7. **同じ操作は同じ顔と挙動にする。** 検索欄は全画面で live 型（入力で絞り込み）でボタンなしとし（owner 2026-09-24 確定）、Enter を押させる commit 型の画面を残さない（02 ⑨）。待ち時間の顔を揃える: 読込みは共通 `ListSkeleton`、空は既存 `EmptyState`、成功は toast、要再操作は上部 Alert（DSR-03、DSR-19）。押せるものは押せる顔をし、行内の icon のみボタンは見た目 16px のまま当たり判定 24×24 以上にする。押せる行は `cursor-pointer` と hover 背景（`TableRow` の既定 `hover:bg-muted/50`）を持つ。hover 背景は押せない行にも付くため、押せる印の役目は cursor と右端 chevron が担う。押せる行の右端 chevron と、ボタン・入力欄の最小高 40px は実装が追いついておらず、`docs/backlog.md` で扱う。
    - 受け取り方と効果: 一度覚えた操作が他の画面でも同じように動き、予想どおりに進む。
    - 根拠: Fluent 2「Coherent」「Relevant」、ux-principles #1（処理中は状態を見せる）、WCAG 2.2 2.5.8。起点は B D7 D13 D14 D17、owner 裁定 2026-08-20。
 8. **密度は業務データ優先で現行を維持する。** 行高は 40px のままにする。読みにくさは原則 1（16px）と表示スケール（DSR-13）で解き、行高で解かない（owner 裁定 2026-08-20。B の 48px 2 段密度は見送り、16px 化の効果を確認後に再判定）。業務データは密に、ナビ・ヘッダー・通知は余白を取る。
@@ -61,7 +61,7 @@
 | 旧原則 5 | 1 画面に primary（琥珀塗り）は 1 つ。ホームは最重要導線 1 つ、0 primary の画面は昇格を検討 | 3 | 色の語だけ置換: 1 画面に操作の塗りは 1 つ（DSR-01）。「琥珀」は 00 の現行の実装の列にだけ残す。0 primary の画面の昇格は DSR-01 へ反映 |
 | 旧原則 6 | 画面の器は `PageShell` 1 つ。検索・絞り込みは枠に入れ 2 段 | 6 | なし（ページ余白 `space-6` は 00 のスペーシング表へ反映） |
 | 旧原則 7 | 検索欄は live 型 + 検索ボタン併記、commit 型を残さない（旧 token 表の検索欄の行も同じ） | 7 | 検索ボタン併記は撤回（owner 2026-09-24、検索欄は live 型でボタンなしで確定。02 ⑨ の現行どおり） |
-| 旧原則 8 | 押せるものは押せる顔（行は hover 背景 + 右端 chevron、ボタン・入力欄は最小高 40px） | 7 | なし（右端 chevron と最小高 40px は未了で `docs/backlog.md` へ） |
+| 旧原則 8 | 押せるものは押せる顔（行は hover 背景 + 右端 chevron、ボタン・入力欄は最小高 40px） | 7 | なし（右端 chevron〈hover 背景は反映済み〉と最小高 40px は未了で `docs/backlog.md` へ） |
 | 旧原則 9 | 入口と見出しに「何をする画面か」を 1 行で添える | 5 | なし |
 | 旧原則 10 | icon は 16 / 20 / 24 の 3 段だけ | 1 | 置換: 00 のアイコンサイズ表の 5 段（12 / 16 / 20 / 24 / 32） |
 | 旧原則 11 | 待ち時間の顔を揃える | 7 | なし |
@@ -82,15 +82,15 @@
 
 | 旧 03 の節 | 行き先 |
 |---|---|
-| 核心の柱 ① refactoring-ui（視覚設計） | 03 の出典。原則 1・3・9 の根拠 |
-| 核心の柱 ② ux-principles（Nielsen 基盤、利用者心理 + A11y） | 03 の出典。原則 2・7・11 の根拠 |
+| 核心の柱 ① refactoring-ui（視覚設計） | 03 の出典。原則 1・3 の根拠 |
+| 核心の柱 ② ux-principles（Nielsen 基盤、利用者心理 + A11y） | 03 の出典。原則 7 の根拠 |
 | 核心の柱 ③ GOV.UK Design Principles（作らない勇気） | 03 の出典。原則 3・5 の根拠 |
-| 核心の柱 ④ IBM Carbon Foundations（A11y 基盤 + 密集情報） | 03 の出典。原則 6・8 の根拠 |
+| 核心の柱 ④ IBM Carbon Foundations（A11y 基盤 + 密集情報） | 03 の出典。原則 8 の根拠 |
 | 補助 ⑤ Shopify Polaris（業務語彙） | 03 の出典。原則 5 の根拠 |
-| 補助 ⑥ Atlassian Design System（装飾強度の文脈依存） | 03 の出典。原則 3・9 の根拠 |
+| 補助 ⑥ Atlassian Design System（装飾強度の文脈依存） | 03 の出典。原則 9 の根拠 |
 | 補助 ⑦ Microsoft Fluent 2（Effortless / Coherent / Relevant） | 03 の出典。原則 6・7 の根拠 |
 | 観点借用 japanese-webdesign（Anshin 哲学） | 03 の出典。原則 8 の根拠 |
-| 観点借用 NN/g Common Region + GOV.UK Summary list | 03 の出典。原則 9 と DSR-16 の根拠 |
+| 観点借用 NN/g Common Region + GOV.UK Summary list | 03 の出典。原則 9（NN/g）と DSR-16（NN/g と Summary list）の根拠 |
 | 参考 frontend-design | 03 の参考（原則の根拠にしない） |
 
 ## 旧 04 の反映待ちの行き先
@@ -112,7 +112,8 @@
 | 02 の ⑬ badge 3 種・⑨ 検索行の器・`ListSkeleton`、review-checklist の本文 16px（旧原則 1・4・6・11） | 02 ⑬・⑯・⑥、review-checklist カテゴリ 9（反映済み） |
 | 操作目標 min-height 40px（旧原則 8、旧 token 表の操作目標の行） | `docs/backlog.md`「ボタンの最小サイズの不一致」 |
 | 部門 select の幅を全画面同一に（旧 token 表の検索欄の行）、sidebar ラベルの折返し、未使用の App.css の撤去、月数回・年数回の画面の個別 sweep（旧「適用の順序」4 段目） | `docs/backlog.md`（旧 04 の未了の作業） |
-| 押せる行は hover 背景 + 右端 chevron（旧原則 8、旧「適用の順序」2 段目） | `docs/backlog.md`（同上） |
+| badge は 12px / 600 / pill（旧 token 表の badge の行） | 12px と pill は 02 ⑬ と `badge.tsx`。weight は 600 を現行の 500（`font-medium`、2026-09-05 以降の L3 で owner が見てきた形）で置換する。600 は見出し（00 のタイポグラフィ表）と `AlertTitle`（02 ⑥）が使い、badge には使わない。runtime lane A の L3 の before / after で owner が違和感を言えば見直す |
+| 押せる行の右端 chevron（hover 背景は反映済み、原則 7）（旧原則 8、旧「適用の順序」2 段目） | `docs/backlog.md`（同上） |
 
 ## 更新履歴
 
