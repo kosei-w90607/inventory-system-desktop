@@ -515,3 +515,13 @@ Fill after implementation.
   | 同 | 旧 04 の未了の見た目の作業の行（54 行目）の (e) | 「押せる行の右端 chevron（hover 背景は `TableRow` の既定で全行に付いており、押せない行にも出るため、押せる印としては chevron か cursor が担う。採るかを含めて決める）」へ | 処分表 U14 |
 
 - Final Review broad round 1 の後の閉じ方: Writer の反映の後、Final Review broad を 2 本（fresh Opus と Codex）取り直す。理由は Workflow State の遷移記録の Gated Amendment 1 の段落（`scripts/pr-gate.py` が Amendments の変わった broad を拒む）。Codex の取り直しは介入の上限 8 を 1 回超えるため、発注の前に Coordinator が owner に確かめる（Owner Effort Budget）。
+
+### Final Review broad（GA1 後、2026-09-25、Codex と Opus 5.5 fresh、対象 `2f02ee7a`、裁定 Coordinator）
+
+- 結果: Codex P1 0 / P2 1 / P3 0、Opus P1 0 / P2 0 / P3 6。
+- Codex #1（P2、`FieldError` のような文字だけの表示を 00:94 は icon なしで適合とし、04 原則 2 は icon + 日本語 + 色の 3 点を一律に求めるため、同じ部品の適合の答えが 2 つになる）= 採用。D5 の原則 2 は「色だけに頼らない」だけを契約にしており、3 点の一律の要求は本文の書き過ぎなので、Amendment なしで本文を D5 と 00:23 へそろえる。04 原則 2 と受け取り方の文、旧番号対応表の旧 3 の行、01 DSR-08 の冒頭と Why を「文字か記号を添え、色だけに頼らない。icon の必須は非中立の状態 badge と Alert」へ（Writer `68c152cf`）。
+- Opus N1（P3、`TableRow` の既定 `has-aria-expanded` が行の中の選択欄を開いた行にも当たる）= 採用。00 の詳細を開いた行の現行の実装の列と、backlog の lane A の対象に明示の class の 1 句（`68c152cf`）。
+- Opus N2・N3・N4（P3、取込みの手順の結果のステップ、月次売上の前月比のセル、失敗でない赤の知らせの役割と段が決まらない）= 採用、行き先は lane A の Plan。00 の迷いやすい場面の表は D12 の 23 行を契約にしているため行を足さず、backlog の lane A の対象に 3 つを名指しし、L3 項目に済んだステップと先のステップの見分けを足した（`68c152cf`）。
+- Opus N5（P3、T13 が `has-aria-expanded` を行全体で確かめるため、AC の rg の並びから語が抜けても通る）= 採用。Matrix T13 で「AC =」から「。L3 項目」までを切り出して AC の rg の 3 語を確かめる。AC13 の文面は変えない（検査を厳しくするだけ）。語を抜いた変異で red を確認した。
+- Opus N6（P3、試しを採らないときの直し先が DSR-22 の 3 点目の句だけで、「開いている行」の部分が残る）= 採用。00 の直し先を DSR-22 の詳細を開いた行の 1 文全体にし、採らないときは DSR-22 と 04 原則 10 の「開いている行」を「入力や編集のために開いている行」と書き分けると足した（`68c152cf`）。
+- 閉じ方: Plan Commit と Amendments は変わらないため、`merge-evidence.md` の closure 規則どおり、保持した broad 2 本に現在 head の独立 closure 1 本を足して閉じる。closure は Fable 5.1（Writer とも Coordinator とも別 context、owner 決定 2026-09-25: 2 周目以降は Codex の修正案を Claude 側で裏取りして取り入れ、Claude 側の独立 reviewer で締める）。確認条件は Codex #1 の「新規画面で 02 ④ の `FieldError` を置いたとき、00・01・04 のどれを読んでも適合の 1 つの答えになる」。
