@@ -2,6 +2,7 @@
 
 > **親文書**: [README.md](README.md)
 > **責務**: 繰り返し使われる 16 パターンの canonical 定義。各パターンに使いどころ・JSX skeleton・使用トークン・全状態・a11y 要件・Do-Don't・canonical ファイル参照を記載する。
+> **現行と狙い**: 本書は現行実装の canonical である。[00-foundations.md](00-foundations.md) の色の役割表と迷いやすい場面の「移行」列が runtime lane 待ちとする項目は、00 / 04 / 01 を狙いとして読み、本書を現行として読む（[README.md「移行中の読み方」](README.md#移行中の読み方)）。
 
 ---
 
@@ -886,15 +887,15 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 | destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:20`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 | 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:36`「在庫あり」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 
-**表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 15「現在の行は 3 点で示す」の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:97`（formatter）/ `ReturnExchangePage.tsx:592`（aria-label）/ `ReturnExchangePage.tsx:602`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
+**表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 10「いま扱っているものは進行中で示す」（現在行の 3 点）の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:97`（formatter）/ `ReturnExchangePage.tsx:592`（aria-label）/ `ReturnExchangePage.tsx:602`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
 
 **②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）・手動（`daily-sales/components/ProductTable.tsx:133`、出どころの分類）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠が正しい形（`badge.tsx` の `secondary` に枠を実装済み）。
 
 **③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx:533`、`variant="default"` へ移行済み）・1 位（`ProductRankingTable.tsx:80`、`bg-rank-top-badge-bg` custom class）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）+ `border-warning` 枠。対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1。3 site とも `border-warning` を追加済み。
 
-**非Badge除外のクロスリファレンス**: 「入力中」（`PriceRevisionTable.tsx:104`）は [04-backbone.md](04-backbone.md) 原則 15「現在の行は 3 点で示す」の対象であり、tone family 表・②分類・③強調のいずれにも含めない。
+**非Badge除外のクロスリファレンス**: 「入力中」（`PriceRevisionTable.tsx:104`）は [04-backbone.md](04-backbone.md) 原則 10「いま扱っているものは進行中で示す」（現在行の 3 点）の対象であり、tone family 表・②分類・③強調のいずれにも含めない。
 
-**関連**: DSR-08（semantic 色のみで意味を伝えない）/ 04-backbone 原則 15（現在行 3 点、`入力中` の帰属先）/ [01-decision-rules.md](01-decision-rules.md) DSR-22（枠の narrow 化、badge 枠線必須・非中立①状態 icon 必須）。
+**関連**: DSR-08（semantic 色のみで意味を伝えない）/ 04-backbone 原則 10（現在行 3 点、`入力中` の帰属先）/ [01-decision-rules.md](01-decision-rules.md) DSR-22（枠の narrow 化、badge 枠線必須・非中立①状態 icon 必須）。
 
 標準パターン:
 
@@ -1009,11 +1010,11 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 3. **sticky header**（`<table>` は単一（header を別 table に分けない）。件数行（`bg-background`、線なし）と `thead`（`--list-head` 面 + 2px 下線）を page 地を挟まず垂直に隣接させ、同一 inset（`px-2`）で隣接させる（sticky は `thead` のみ、帯は箱の外で構造的に固定）。灰色面は列見出しのみ（owner L3 run 4、Gated Amendment 5 S39）。件数行の上端の線は owner run 6 で撤去（Gated Amendment 7 S47）。記録済み逸脱: mockup `.tbl` の外枠（border + radius + `overflow:hidden`）は runtime では付けない（`overflow-hidden` が sticky を殺す、Plan Review round 2）。inset 値は mockup 12px / runtime 8px で、揃えるのは帯と thead の相互一致であって絶対値ではない）。table の wrapper は `w-min min-w-full`（横 overflow 時に table 幅へ追随、非 overflow 時は 100%）。件数行は箱の外・root 直下に置く（Lane 4 Gated Amendment 4）。帯文言の溢れは子 `PaginationSummary` で「…」にする（追補 S17）。列見出し面の左右上は `rounded-md`（owner run 5、Gated Amendment 6 S43）。列見出し面は th cell 背景 + tr 背景（最小幅で cell 間に出る subpixel seam を塞ぐ）+ corner mask（`list-shell-sticky` hook、角丸維持、owner run 6、Gated Amendment 7 S48）。商品一覧では帯は箱の縦横 scroll に対して固定（page scroll では追従、GA4a）。table の wrapper がさらに専用 scroll 箱（`max-h-[calc(100vh-6.75rem)] overflow-auto`）に包まれ、箱が横に常時・箱の高さを内容が超えたときのみ縦に scroll する（`<main>` は toolbar 分を縦に page scroll する、Lane 4 Gated Amendment 4）
 4. **識別列 opt-in**（固定対象の画面→固定列 mapping は DSR-22 を正本とする。横スクロール時は固定列右端に影。Lane 2 では `identityColumns` prop を予約するのみで描画には影響しない、実装は Lane 3〜5）
 5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22。token は Lane 2 で提供、消費は Lane 3〜5）
-6. **読込みは `ListSkeleton`**（原則 11、既定 skeleton。`isLoading` のとき children の代わりに描画）
+6. **読込みは `ListSkeleton`**（04 原則 7、既定 skeleton。`isLoading` のとき children の代わりに描画）
 
 **使用トークン**: `--border-strong`（操作枠、`--input` が参照）/ `--row-current`（現在行背景、消費は Lane 3〜5）/ `--list-head`（`thead` surface、列見出しのみ、Gated Amendment 5 S39 で件数行は `--background` へ）/ `--background`（件数行の地色〈S47〉+ 列見出し corner mask の覆い色〈S48〉）。4 token とも `globals.css` に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とする。
 
-**状態**: 上部 pager の発動条件は DSR-22 を正本とする。読込みは `ListSkeleton`、空は既存 `EmptyState`（原則 11）。
+**状態**: 上部 pager の発動条件は DSR-22 を正本とする。読込みは `ListSkeleton`、空は既存 `EmptyState`（04 原則 7）。
 
 **アクセシビリティ**: 現在地（page / totalPages）はテキストで常時可視にする。sticky header・固定列の影は視覚のみの補助であり、screen reader の読み順は table の DOM 順に従う。
 
@@ -1043,6 +1044,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-24 | デザインの決まりの組み直し | 冒頭に「本書は現行実装の canonical で、00 の移行列が runtime lane 待ちとする項目は 00 / 04 / 01 を狙いとして読む」旨を追加。04 の原則の統合に合わせ、旧原則 15（現在行 3 点）の参照を原則 10 へ、旧原則 11（待ち時間の顔）の参照を原則 7 へ付け替え（原則 4 は番号不変）。部品の記述は変えない |
 | 2026-09-15 | 表示小修正 batch 2 | ⑥ AlertTitle の共通 weight を600、⑬ 在庫状態の中立 Badge を「在庫あり」に同期。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 4: owner L3 run 1 の是正（trigger icon / 固定帯） |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 3: 未解決時文言。 |

@@ -1,8 +1,9 @@
-# 04 デザインの背骨（backbone）
+# 04 原則（backbone）
 
-> **位置付け**: 本 doc は `00-foundations.md` / `01-decision-rules.md` / `02-component-catalog.md` / `03-philosophy.md` を捨てずに、その上に被せる「まず守る骨」である。新しい画面を作るとき・既存画面を直すとき・レビューするときは、先に本 doc の 16 行に照らし、詳細は 00〜03 に従う。
-> **成立経緯**: 2026-08-20、Opus 5 による 2 つの独立提案（A = 既存規範準拠 / B = 白紙）を Coordinator が突合・裁定し、owner が採用した（A / B の原文と統合案 C の mockup は [reference/](reference/README.md)）。両案の診断は「意味設計（色だけに頼らない・日本語ラベル主情報）は成熟しており、問題は視覚 system の断片化。しかも多くは規範が無いのではなく、規範があるのに実装が逸脱している」で一致した。
-> **00〜03 への反映**: 本 doc の各行のうち 00〜03 に未記載・不一致のものは、UI batch 1（規範の履行）packet の Required Design Artifacts として同一 PR で 00〜03 へ反映する。反映完了までの間、本 doc の行は「採用済みの設計判断」として有効で、00〜03 と食い違う場合は本 doc を意図、00〜03 を現行実装基準として読む。
+> **親文書**: [README.md](README.md)
+> **位置付け**: デザインの原則を 1 か所にまとめる。新しい画面を作るとき・既存画面を直すとき・レビューするときは、先に本書の 11 の原則に照らし、詳細は [00-foundations.md](00-foundations.md)（土台）・[01-decision-rules.md](01-decision-rules.md)（判断ルール）・[02-component-catalog.md](02-component-catalog.md)（部品）に従う。各原則は 1 文 + 見る人の受け取り方と効果 + 根拠で書き、根拠の出典は [03-philosophy.md](03-philosophy.md) の一覧にある。
+> **成立経緯**: 2026-08-20、Opus 5 による 2 つの独立提案（A = 既存規範準拠 / B = 白紙）を Coordinator が突合・裁定し、owner が採用した 16 の原則が起点（A / B の原文と統合案 C の mockup は [reference/](reference/README.md)）。2026-09-24 に、03 の哲学と 16 の原則を、見る人の受け取り方から組み直した 11 の原則へ統合した（decision-log D-091）。旧番号は本書の「旧番号の対応表」で引ける。
+> **現行と狙い**: 原則は狙いを書く。移行が runtime lane 待ちの項目は 00 の色の役割表と迷いやすい場面の「移行」列が示し、それまでは 02 と画面を現行として読む（[README.md「移行中の読み方」](README.md#移行中の読み方)）。
 
 ## 前提
 
@@ -10,59 +11,114 @@
 
 **UI パーツ適用ルール（Q17）**: Q17 の UI パーツ適用ルールは ⑤カラム（常設 sidebar）に適合する。③ヘッダ（全画面共通ナビ・検索窓の常設帯）は本アプリに不在で、その役割は sidebar + PageHeader が分担する（`ui-design-rules-qa-v2.md` 5-3/6-3〜6-6、原田秀司『UIデザインの教科書［新版］』翔泳社、2020）。
 
-## 16 の原則
+## 11 の原則
 
-各行は 1 文 + 由来（既存 = 00〜03 に既にある / A / B / owner 裁定）。
+1. **読める大きさを最低線にする。** 本文は 16px を最低線にし、見出しは h1 24px / h2 20px、caption は 14px muted、12px は badge の中だけにする。icon は 00 のアイコンサイズ表の 5 段だけを使い、書体は 00 の書体の節に従う（採用が決まるまでは現行の system font stack）。件数行（`Pagination`/`PaginationSummary` の範囲付き統一形文言）は 14px muted 補助情報とする（owner 決定 2026-09-05、Plans ④ R2-1、`text-sm text-muted-foreground`、AA 4.59:1）。
+   - 受け取り方と効果: 老眼でも通常距離で読め、読み返しと読み違いが減る。
+   - 根拠: refactoring-ui §2（大きさと太さで階層を作る）、Q8 原則①③（見出しと本文を区別し、PC は遠めで使われるため実サイズを大きめに保つ）、利用者前提（00「業務ステータスの視認性」）。
+2. **1 色 1 役割にし、色だけに頼らない。** 色は 00 の色の役割表の 6 役割（操作 / 進行中 / 注意・確認 / 完了 / 危険・失敗 / ふつう・補足）で使い、1 つの色に 1 つの役割だけを持たせる。状態は icon + 日本語 + 色の 3 点で伝え、色だけ・icon だけにしない（DSR-08）。役割の無い色を足さず、token は使う前に 00 の色表へ登録する。役割ごとの家族は soft・border・strong・emphasis の段の形を持つ（00 の token 表）。進行中は info（お知らせ）ではない。手を止めて確かめてほしい知らせは注意・確認、手を止めなくてよいお知らせ一般はふつう・補足（Alert の既定）で示す。
+   - 受け取り方と効果: 色を見ればその意味が 1 つに決まり、押す・注意・現在地を取り違えない。色が見分けにくい人も文字と icon で分かる。
+   - 根拠: Von Restorff 効果、WCAG 1.4.1、DSR-08。起点は A 診断 #2（未定義の色 token の参照 5 箇所）。
+   - Q7 との関係: 原田本の Q7 原則①「色数をむやみに増やさないこと」と両立する。色は役割の数を上限とし、役割を持たない色を足さない。進行中の色相は、amber 1 色が操作・注意・現在地・ランキング 1 位を兼ねていた重なりを解くために足すもので、有彩色の系統は 3（amber・green・red）から 4 へ 1 つ増えるだけである。
+3. **強調は段階で決め、上の段ほど少なくする。** 強調は 00 の強調の段階（段 0〜4）で選ぶ。1 画面に操作の塗りは 1 つ（主要ボタン、DSR-01）で、入口（ホーム）は最重要導線 1 つだけを操作の強調（Home の入口 card）にする。0 primary の画面は昇格を検討する（DSR-01）。
+   - 受け取り方と効果: 目立つものが少ないので、いま押すもの・いま見るものが 1 つに決まる。
+   - 根拠: Von Restorff 効果、Hick の法則、refactoring-ui §1（すべてを重要にはできない）、GOV.UK「Do less」。起点は A 診断 #3。
+4. **badge は 3 種だけにする。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等、遷移しうる状態）で、非中立 tone は icon 必須、中立 tone は任意。②分類 = secondary pill + 枠線（`--border`、DSR-22）で、恒常的な属性を示し状態を知らせない（段 0）。icon は識別に必要な場合に限り可（廃番等）。③強調 = 琥珀 pill（最新・上書き件数。owner 採用 2026-08-20、枠色は 2026-09-05 の owner 決定で `--warning`）。4 種目を作らない。ランキング 1 位は色を使わず順位と太字で示す（owner 了承の試し。runtime lane A の L3 までは 02 の現行の琥珀 pill で作る）。最新・上書き件数を stone の pill と太字へ移す案は runtime lane A の L3 で owner が決める試しで、採れば本原則と 00 を直す。badge の枠は tone 固有色または `--border` を必須とし、3:1 要件は interactive な操作枠に限る（2026-09-05 owner 決定）。バッジの文は短くする（目安 8 文字）。
+   - 受け取り方と効果: badge の形で「状態か・分類か・強調か」が分かり、状態の badge だけに目が留まる。
+   - 根拠: B §2.6、02 ⑬、DSR-22（badge は文字 4.5:1 と枠線必須）、Von Restorff 効果。
+5. **何をする画面か・何の値かを言葉で言い切る。** 入口と見出しは何をする画面かを 1 行で添える（ホームの入口 card は icon 24px + 題名 + 1 行説明、PageHeader は subtitle と actions を同時に持てる）。補足情報とサマリカードの主値はラベルと値の組で何の値かを言い切り、ラベルは小さく muted、値は大きく（サマリカードは metric 30px）する。見出し / ラベル / 値の 3 段を画面をまたいで同じ型にする（00「ラベルと値」）。
+   - 受け取り方と効果: 画面の目的と数の意味をすぐ読み取れ、読み違いと確かめ直しが減る。
+   - 根拠: チャンク化、近接の法則、Q8 原則④（色数を絞った上で文字サイズの強弱で視線誘導する）、GOV.UK「Start with user needs」、Polaris（業務語彙の統一）。起点は B D6 D11。
+6. **器は 1 つにする。** `PageShell`（`src/components/patterns/PageShell.tsx`、p-6 / space-y-6）を唯一の page root にする（`src/features/**/*Page.tsx` 43 箇所を統一済み）。一覧画面の検索・絞り込みは枠（`rounded-lg border bg-card p-4`、`ListShell` toolbar box、2 段時は段間 `space-y-3`）に入れ、「検索条件」と「並び替え・件数」は段を分ける。viewport を超える一覧は `ListShell`（`src/components/patterns/ListShell.tsx`）で、上下に件数、header は sticky、識別列は opt-in で固定する。上部は `PaginationSummary` の件数 + 現在位置テキストを必須、pager ボタンは任意とする（Q12 §1、同じボタンを上下 2 組出すと判断コストが増える）。ソート列の明示（Q5 原則①）、余白でのグルーピング（Q5 原則③）、見切れによる続きの示唆（Q5 原則④）を含む。左 rail への 3 大操作常設（Q5 原則②）は sidebar が左を占めるため採らず、横 toolbar 2 段で代替する（Q5-② 適用外注記）。ページングは「コントロール感」を保つため無限スクロールより本則とする（Q15）。必須構成・文言・perPage は 02 ⑯ / ⑩、適用条件と画面ごとの固定列は DSR-22 を正とする。
+   - 受け取り方と効果: どの画面も同じ位置に同じものがあり、画面が変わっても迷わない。
+   - 根拠: Fluent 2「Coherent」、Miller's Law / Law of Common Region（Laws of UX）、Q5・Q12・Q15（原田本）。起点は B §2.2、A 診断 #5 #6、B D15。
+7. **同じ操作は同じ顔と挙動にする。** 検索欄は全画面で live 型（入力で絞り込み）でボタンなしとし（owner 2026-09-24 確定）、Enter を押させる commit 型の画面を残さない（02 ⑨）。待ち時間の顔を揃える: 読込みは共通 `ListSkeleton`、空は既存 `EmptyState`、成功は toast、要再操作は上部 Alert（DSR-03、DSR-19）。押せるものは押せる顔をし、行内の icon のみボタンは見た目 16px のまま当たり判定 24×24 以上にする。押せる行の右端 chevron と、ボタン・入力欄の最小高 40px は実装が追いついておらず、`docs/backlog.md` で扱う。
+   - 受け取り方と効果: 一度覚えた操作が他の画面でも同じように動き、予想どおりに進む。
+   - 根拠: Fluent 2「Coherent」「Relevant」、ux-principles #1（処理中は状態を見せる）、WCAG 2.2 2.5.8。起点は B D7 D13 D14 D17、owner 裁定 2026-08-20。
+8. **密度は業務データ優先で現行を維持する。** 行高は 40px のままにする。読みにくさは原則 1（16px）と表示スケール（DSR-13）で解き、行高で解かない（owner 裁定 2026-08-20。B の 48px 2 段密度は見送り、16px 化の効果を確認後に再判定）。業務データは密に、ナビ・ヘッダー・通知は余白を取る。
+   - 受け取り方と効果: 一度に全体を把握でき、スクロールで探す手間が減る。
+   - 根拠: japanese-webdesign（情報密度 = 信頼）、IBM Carbon（密集情報のデータテーブル）、DSR-12、DSR-13。
+9. **枠と線は少なくし、操作枠は 3:1 にする。** 操作枠（`--border-strong`、`--input` が参照）は隣接背景に対し 3:1 以上にし、構造線（`--border`）は 3:1 対象外だが一段濃くする。値は 00 のカラーパレット表を正本とする。囲みは意味階層ごとに 1 つにし（DSR-16）、黒・文字色の 2px 枠は引かない（00 の強調の段階 3）。
+   - 受け取り方と効果: 押せる部品の境界が見え、飾りの線に惑わされない。
+   - 根拠: WCAG 2.2 SC 1.4.11、NN/g Common Region、美的ユーザビリティ効果、Atlassian（業務画面は装飾を抑える）、DSR-22。
+10. **いま扱っているものは進行中で示す。** 現在行（入力中の行 / 開いている行 / 選択行）と作業中の囲みは 00 の進行中の役割で示す。選択行は操作対象として開いている 1 行に限り、checkbox / radio で複数選ぶ行は選択状態（DSR-21）で現在行に含めない。現在行は左 4px のバー + 淡い背景 + badge または文言の 3 点で示し（色だけに頼らない、DSR-08）、行全体の塗りはしない（原則 3）。作業中の囲みは強調の段階 3 で 1 画面 1 か所にする。現行は primary のバーと `--row-current` で、runtime lane A で進行中の token へ移す。細則は DSR-22。
+   - 受け取り方と効果: まだ終わっていない作業の場所がすぐ分かり、中断から戻れる。
+   - 根拠: Zeigarnik 効果、Q8 原則④、DSR-22。
+11. **低視力を前提に実機で確かめる。** forced-colors / DPI 125% / 150% で崩れない（rem / em 基準、px 直書きを避ける）ことと、実利用者セッションを L3 checklist に含める。狙った受け取り方になったかは実機でしか確かめられないため、見た目を変える runtime lane は Windows native L3 で owner と実利用者が確かめる。**Q12 caution**: 高齢者・IT に不慣れな利用者への直接の配慮規定は原田本になく（Q12 §2/§3）、operator profile の根拠は WCAG / Laws of UX 側から引く。L3 checklist 項目の詳細は DSR-22「低視力 L3」節。
+   - 受け取り方と効果: 実際の店主の目で読め、区別できることが確かめられる。
+   - 根拠: WCAG 2.2、Laws of UX、DSR-22「低視力 L3」。
 
-1. **文字は本文 16px を最低線にする。** 12px は badge の中だけ。見出しは h1 24px / h2 20px。（16px = 既存 foundations タイポグラフィの履行 — A 診断 #1。「12px は badge 内のみ」= B 推奨表 1 行目。現行の caption 段（12px、補助説明・タイムスタンプ）は badge 以外で 20 箇所超使われており、batch 1 で 00-foundations の caption 行を「14px muted」へ改める）。件数行（`Pagination`/`PaginationSummary` の範囲付き統一形文言）は 14px muted 補助情報として例外とする（owner 決定 2026-09-05、Plans ④ R2-1「下部と同じ小さい表示に揃える」、`text-sm text-muted-foreground`、AA 4.59:1）
-2. **色は家族で使う。** destructive（赤）/ warning（琥珀）/ success（緑）の 3 家族、各 soft・border・strong・emphasis の 4 段。`info` 家族は作らず、お知らせ・注意喚起は warning トーンで描く。token は使う前に foundations の色表へ登録する。（A 診断 #2: `success-strong` / `info-*` の未定義参照 5 箇所が本 doc 成立の契機）
-3. **状態は icon + 日本語 + 色の 3 点で伝える。** 色だけ・icon だけは不可。（既存 DSR-08 — A / B 一致）
-4. **badge は 3 種だけ。** ①状態 = outline + icon + soft 背景（在庫切れ / 在庫少 / PLU 未反映 等）（非中立 tone は icon 必須、中立 tone は任意）②分類 = secondary pill + 枠線（`--border`、DSR-22。2026-09-05 owner 決定で 3:1 要件は interactive な操作枠へ限定、badge の枠は tone 固有色または `--border` を必須とする）。icon は識別に必要な場合に限り可（廃番等、Gated Amendment 1）③強調 = 琥珀 pill（ランキング 1 位 / 最新 等）。4 種目を作らない。（B §2.6、②の枠線化は 2026-09-03 owner Human Gate 所感の Gated Amendment 1 是正を受けて訂正）
-5. **1 画面に primary（琥珀塗り）は 1 つ。** 入口（ホーム）は最重要導線 1 つだけ primary にする。0 primary の画面は昇格を検討する。（既存 DSR-01 + A 診断 #3）
-6. **画面の器は 1 つ。** `PageShell`（`src/components/patterns/PageShell.tsx`、p-6 / space-y-6）を唯一の page root にする（Lane 2 実装、`src/features/**/*Page.tsx` 43 箇所を統一済み）。一覧画面の検索・絞り込みは枠（`rounded-lg border bg-card p-4`、`ListShell` toolbar box、2 段時は段間 `space-y-3`）に入れ、「検索条件」と「並び替え・件数」は段を分ける。（B §2.2 + A 診断 #5 #6 + B D15。00-foundations スペーシング表の「space-8 = ページ余白」行と数値が異なる = 現行実装の多数派 p-6 に合わせる意図、batch 1 で同行を修正）
-7. **検索欄は全画面で同じ挙動。** live 型（入力で絞り込み）+ 検索ボタン併記。Enter を押させる commit 型の画面を残さない。（B D7、owner 裁定 2026-08-20。02-component-catalog ⑨ の canonical `SearchBar` は live 型「ボタンなし」/ commit 型の 2 実装で、本行と異なる = batch 1〜2 で ⑨ の skeleton を「live + ボタン併記」の単一形へ改める）
-8. **押せるものは押せる顔をしている。** 行は hover 背景 + 右端 chevron、ボタン・入力欄は最小高 40px。（B D13 D17）
-9. **入口と見出しは「何をする画面か」を 1 行で添える。** ホームの大ボタンは icon（24px）+ 題名 + 1 行説明、PageHeader は subtitle と actions を同時に持てる。（B D6 D11、SCREEN_DESIGN の元意図）
-10. **icon は 16 / 20 / 24 の 3 段だけ。** 表内・badge = 16、ボタン・入力・ナビ・見出し隣接 = 20、ホーム大ボタン・空状態・画面題名 = 24。（既存 foundations の履行。B の 28 は不採用、ホーム大ボタンで弱ければ明示例外として追記する）
-11. **待ち時間の顔を揃える。** 読込みは共通 `ListSkeleton`、空は既存 `EmptyState`、成功は toast、要再操作は上部 Alert（DSR-03）。（B D14 + 既存）
-12. **密度は業務データ優先で現行を維持する。** 行高は 40px のまま。読みにくさは 1（16px）と表示スケール（DSR-13）で解き、行高で解かない。（既存 03-philosophy、owner 裁定 2026-08-20。B の 48px 2 段密度は見送り、16px 化の効果を確認後に再判定）
-13. **UI 部品の枠は 3:1、構造線は一段濃くする。** 操作枠（`--border-strong` `#8a8480`、対 `--background` 3.53:1、`--input` が参照）は隣接背景に対し 3:1 以上、構造線（`--border` `#cdc8c4`、対 `--background` 1.59:1、3:1 対象外）も現行より一段濃くする。新しい色相は追加しない（Q7 原則①「色数をむやみに増やさないこと」`ui-design-rules-qa-v2.md` 4-1/7-1、原田秀司『UIデザインの教科書［新版］』翔泳社、2020）。（DSR-22、旧 SPEC-UILB-D1〈2026-08-23 旧 Lane 1〉を承継。token は Lane 2 で `globals.css` に実装済み、値は 00-foundations カラーパレット表を正本とする）
-14. **viewport を超える一覧の器は、上下に件数、header は sticky、識別列は opt-in で固定する。** `ListShell`（`src/components/patterns/ListShell.tsx`、Lane 2 実装・商品一覧 pilot 採用）が担う。上部は `PaginationSummary` の件数 + 現在位置テキストを必須、pager ボタンは任意（Q12 §1「操作体系はシンプルなほうが使いやすい」`:419`、同書。同じボタンを上下 2 組出すと判断コストが増えるため安全側にする）。ソート列の明示（Q5 原則①、5-4）、余白でのグルーピング（Q5 原則③、6-9）、見切れによる続きの示唆（Q5 原則④、6-9）を含む。左 rail への 3 大操作常設（Q5 原則②、5-4）は sidebar が既に占有するため採らず横 toolbar 2 段（原則 6）で代替する（**Q5-② 適用外注記**）。ページングは「コントロール感」を保つため無限スクロールより本則とする（Q15、6-8）。一覧の器の統一は情報のグルーピングと選択負荷の低減にも資する（Miller's Law / Law of Common Region、Jon Yablonski『UXデザインの法則』第 2 版、相島雅樹・磯谷拓也 訳、オライリー・ジャパン、2025-01。DSR-19/20/21 と同型の引用範囲）。（DSR-22 + catalog ⑯、旧 SPEC-UILB-D2 を承継。必須構成 6 項目・文言 pin・perPage 裁定の詳細は catalog ⑯/⑩、適用条件〈viewport 超過時のみ / 横 overflow 時のみ / 画面→固定列 mapping〉は DSR-22 を正とする。識別列固定は Lane 2 で `identityColumns` prop を予約するのみで、実装は Lane 3〜5）
-15. **現在の行は 3 点で示す。** 入力中 / 開いている行 / 選択行は、左 4px の primary バー + 淡い背景 `--row-current`（`#fff8e6`、対 `--foreground` 16.5:1）+ badge または文言の 3 点で示す（色だけに頼らない、DSR-08）。色数を絞った上で文字サイズの強弱で視線誘導する（Q8 原則④「色数を絞った上で文字サイズの強弱による視線誘導」7-1、同書）ため、行全体の primary 塗りはしない（原則 5 に反する）。同じ原則から、ラベルは小さく muted、値は大きく — 見出し / ラベル / 値の 3 段を画面をまたいで同じ型にする（値の文字サイズは 00-foundations タイポグラフィ表の metric 行〈30px、既存 `text-3xl`〉を参照）。（DSR-22 + catalog ⑯、旧 SPEC-UILB-D3 を承継。`--row-current` は Lane 2 で `globals.css` に実装・00-foundations へ正式登録済み、消費者は Lane 3〜5）
-16. **低視力を前提にした L3 項目と行内操作の当たり判定を持つ。** forced-colors / DPI 125% / 150% で崩れない（rem / em 基準、px 直書きを避ける）/ 実利用者セッションを L3 checklist に含め、行内 icon ボタンは見た目 16px のまま当たり判定 24×24 以上にする。見出しと本文を明確に区別し（Q8 原則①、4-2、同書）、PC はやや遠い距離で使われるため実サイズを大きめに保つ（Q8 原則③、2-3、同書）。**Q12 caution**: 高齢者・IT に不慣れな利用者への直接の配慮規定は同書になく（Q12 §2/§3、`:424-433`）、operator profile の根拠は QA v2 側からではなく WCAG / Laws of UX 側から引く。（DSR-22「低視力 L3」節、旧 SPEC-UILB-D4 を承継。L3 checklist 項目の詳細は DSR-22「低視力 L3」節を参照）
+## 旧番号の対応表
 
-## foundations への追記分（token）
+2026-09-24 の統合前の 16 の原則（旧原則 1〜16）と、原則に紐づかずに撤回・置換した旧文の行き先。旧原則 15 のように 2 つの規則を持っていた行は、参照している文の主題で行き先を選ぶ。
 
-| 種別 | 値 | 備考 |
-|---|---|---|
-| success 家族 | soft `#f0fdf4` / border `#bbf7d0` / strong `#14532d` / emphasis `#16a34a` | strong・border を新設し warning / destructive と同形にする。2026-09-05 本 PR で `00-foundations.md` へ無条件登録済み |
-| info | 新設しない | お知らせ・注意喚起は warning トーン |
-| page root | p-6 / space-y-6（`PageShell`） | 実装済み（Lane 2、`src/features/**/*Page.tsx` 43 箇所を 1 系統へ統一） |
-| 操作目標 | min-height 40px | ボタン既定 36 → 40 |
-| icon | 16 / 20 / 24 | 「見出し隣接 = 20」を表に明記 |
-| 検索欄 | live + 検索ボタン併記 | 部門 select 幅は全画面同一 |
-| badge | 12px / 600 / pill、3 種 | 3 種構成は原則 4 の記述を正とする（DSR 新設なし）。②分類は枠線必須（`--border`）、icon は識別に必要な場合のみ可（原則 4 訂正、2026-09-05 narrow 化。本 PR で `02-component-catalog.md` ⑬ へ反映済み） |
-| 枠（原則 13） | 操作枠は隣接背景に対し 3:1 以上（WCAG 2.2 SC 1.4.11）。構造線は 3:1 対象外だが現行より一段濃くする | 実装済み（Lane 2、`--border-strong` `#8a8480` / `--border` `#cdc8c4`、値は 00-foundations カラーパレット表を正本とする、DSR-22） |
-| 現在行（原則 15） | 専用 tone（現在行 3 点表現の 1 つ。左 4px primary バー + badge/文言と併用） | 実装済み（Lane 2、`--row-current` `#fff8e6`、00-foundations へ正式登録済み、消費者は Lane 3〜5、DSR-22） |
+| 旧番号 | 旧文の要旨 | 新番号（規則ごと） | 撤回・置換 |
+|---|---|---|---|
+| 旧原則 1 | 本文 16px を最低線、12px は badge の中だけ、caption を 14px muted へ | 1 | なし（caption 14px は 00 のタイポグラフィ表へ反映） |
+| 旧原則 2 | 色は 3 家族。info 家族は作らず、お知らせ・注意喚起は warning トーン。token は使う前に登録 | 2 | 置換: 色は役割で使う（00 の色の役割表）。手を止めて確かめてほしい知らせは注意・確認、手を止めなくてよいお知らせ一般はふつう・補足（Alert の既定）。進行中は info ではない。soft・border・strong の段の形は 00 の token 表に残す |
+| 旧原則 3 | 状態は icon + 日本語 + 色の 3 点 | 2 | なし |
+| 旧原則 4 | badge は 3 種。③強調 = 琥珀 pill（ランキング 1 位 / 最新） | 4 | ランキング 1 位だけ置換: 色を使わず順位と太字（owner 了承の試し、移行中は現行の琥珀 pill）。最新・上書き件数の琥珀 pill は owner の現行の決定として残し、stone の pill と太字へ移す案は 00 の迷いやすい場面の試し |
+| 旧原則 5 | 1 画面に primary（琥珀塗り）は 1 つ。ホームは最重要導線 1 つ、0 primary の画面は昇格を検討 | 3 | 色の語だけ置換: 1 画面に操作の塗りは 1 つ（DSR-01）。「琥珀」は 00 の現行の実装の列にだけ残す。0 primary の画面の昇格は DSR-01 へ反映 |
+| 旧原則 6 | 画面の器は `PageShell` 1 つ。検索・絞り込みは枠に入れ 2 段 | 6 | なし（ページ余白 `space-6` は 00 のスペーシング表へ反映） |
+| 旧原則 7 | 検索欄は live 型 + 検索ボタン併記、commit 型を残さない（旧 token 表の検索欄の行も同じ） | 7 | 検索ボタン併記は撤回（owner 2026-09-24、検索欄は live 型でボタンなしで確定。02 ⑨ の現行どおり） |
+| 旧原則 8 | 押せるものは押せる顔（行は hover 背景 + 右端 chevron、ボタン・入力欄は最小高 40px） | 7 | なし（右端 chevron と最小高 40px は未了で `docs/backlog.md` へ） |
+| 旧原則 9 | 入口と見出しに「何をする画面か」を 1 行で添える | 5 | なし |
+| 旧原則 10 | icon は 16 / 20 / 24 の 3 段だけ | 1 | 置換: 00 のアイコンサイズ表の 5 段（12 / 16 / 20 / 24 / 32） |
+| 旧原則 11 | 待ち時間の顔を揃える | 7 | なし |
+| 旧原則 12 | 密度は業務データ優先、行高 40px | 8 | なし |
+| 旧原則 13 | 操作枠 3:1、構造線を一段濃く。新しい色相は追加しない（Q7 原則①） | 9 と 2 | 新しい色相の文を置換: 役割の無い色を足さない、色は役割の数を超えない（原則 2 の Q7 との関係、原則 9） |
+| 旧原則 14 | viewport を超える一覧の器（上下の件数、sticky header、識別列 opt-in） | 6 | なし |
+| 旧原則 15 | 現在の行は 3 点で示す。ラベルは小さく muted、値は大きく | 10（前半: 現在行の 3 点）と 5（後半: ラベル小・値大、00 の「ラベルと値」） | 前半を置換: 現在行は進行中の役割（DSR-22）。3 点表示は維持し、色は runtime lane A で進行中の token へ移す。現行は primary のバーと `--row-current` |
+| 旧原則 16 | 低視力を前提にした L3 項目と行内操作の当たり判定 | 11（当たり判定は 7） | なし |
+| 00 セマンティックカラー表の Primary 行の用途 | 主要ボタン、ハイライト。ウォーム系主アクセント | 2 | 用途の列だけ置換（行と HEX は不変）: 操作（押すボタン・リンク・ナビの現在地）。「ハイライト」は撤回（③強調の琥珀は操作の色でなく注意・確認の色で表す） |
+| 00 の 4 色エリアモデルの節 | サイドバーはアクティブ項目のみ Primary アクセント 1 色 | 2 | 置換: ナビの現在地は操作の役割色の細いバー（段 2、DSR-21）。単色 stone のサイドバーと「色でなく構造で区分」は維持 |
+| 00 のウォーム系採用の論拠 | UI の色を暖色でそろえる | 2 | 一部置換: ニュートラルの stone はウォームのまま。役割色は色相で役割を分ける |
+| 00 の書体 | カスタム Web フォントは網から読み込むと表示が遅れるため不採用 | 1 | 撤回: 00 の書体の節の選定条件と、runtime lane B での採用 |
+| review-checklist カテゴリ 9 の badge の行 | ③強調 = 琥珀 pill + `--warning` 枠 | 4 | 一部置換: 原則 4 に合わせる（ランキング 1 位は順位と太字の試し、最新・上書き件数は現行の琥珀 pill）。移行中は現行の部品の形だけ可 |
+| DSR-21 の Why | Primary（amber-700）は warning 系と同系色 | 2 | 現状の説明として残す: runtime lane A までの現状と書き、役割表で色相が分かれることを足した |
+| 00 セマンティックカラー表の Warning 行の用途 | PLU通知、手動バッジ、在庫少 | 4 | 用途の列だけ置換（行と HEX は不変）: 「手動バッジ」を外す。実物の「手動」は②分類の `variant="secondary"` で段 0 |
 
-## 00〜03 への反映先（UI batch 1 packet で同一 PR）
+旧 03（参照哲学）の節の行き先。出典そのものは 03 に残り、原則の根拠として引かれる。
 
-- `00-foundations.md`: 原則 1 / 2 / 6 / 8 / 10 / 12（上記 token 表）
-- `01-decision-rules.md`: 5（DSR-01 に「0 primary 画面の昇格」追記）/ 7（検索欄の単一挙動）/ 9（PageHeader subtitle 基準）
-- `02-component-catalog.md`: 原則 4（⑬ ステータスバッジに badge 3 種の visual 仕様）（完了、2026-09-05 本 PR）/ 6（⑨ 検索行の器）/ 7（⑨ `SearchBar` canonical を live + ボタン併記の単一形へ）/ 9（① subtitle + actions）/ 11（ListSkeleton）
-- `quality/review-checklist.md`: 原則 1（本文 16px）/ 2（token 登録）
+| 旧 03 の節 | 行き先 |
+|---|---|
+| 核心の柱 ① refactoring-ui（視覚設計） | 03 の出典。原則 1・3・9 の根拠 |
+| 核心の柱 ② ux-principles（Nielsen 基盤、利用者心理 + A11y） | 03 の出典。原則 2・7・11 の根拠 |
+| 核心の柱 ③ GOV.UK Design Principles（作らない勇気） | 03 の出典。原則 3・5 の根拠 |
+| 核心の柱 ④ IBM Carbon Foundations（A11y 基盤 + 密集情報） | 03 の出典。原則 6・8 の根拠 |
+| 補助 ⑤ Shopify Polaris（業務語彙） | 03 の出典。原則 5 の根拠 |
+| 補助 ⑥ Atlassian Design System（装飾強度の文脈依存） | 03 の出典。原則 3・9 の根拠 |
+| 補助 ⑦ Microsoft Fluent 2（Effortless / Coherent / Relevant） | 03 の出典。原則 6・7 の根拠 |
+| 観点借用 japanese-webdesign（Anshin 哲学） | 03 の出典。原則 8 の根拠 |
+| 観点借用 NN/g Common Region + GOV.UK Summary list | 03 の出典。原則 9 と DSR-16 の根拠 |
+| 参考 frontend-design | 03 の参考（原則の根拠にしない） |
 
-## 適用の順序（参考、正本は各 batch の Plan Packet）
+## 旧 04 の反映待ちの行き先
 
-1. 規範の履行（table 16px / success token / 見出し統一 / PageShell / ホーム primary）— 機械的で全画面に波及
-2. 器と導線（PageHeader variant / 検索欄 live 統一 / フィルタ行の枠 / ホーム説明文 / 40px / chevron / ListSkeleton）
-3. badge 3 種の全画面適用
-4. 月数回・年数回画面の個別 sweep、sidebar ラベル折返し、未使用 `App.css` 撤去
+統合前の本書が「00〜03 へ反映する」と約束していた項目の行き先（2026-09-24 の実物で判定）。
+
+| 旧 04 の約束 | 行き先 |
+|---|---|
+| 00 の caption 行を 14px muted へ（旧原則 1） | 00 のタイポグラフィ表（反映済み） |
+| 00 のページ余白を `space-6`（`PageShell` の `p-6`）へ（旧原則 6） | 00 のスペーシング表（反映済み） |
+| icon の段を 00 へ（旧原則 10、旧 token 表の icon 行） | 00 のアイコンサイズ表の 5 段で置き換え |
+| success 家族の token 登録（旧原則 2、旧 token 表の success 行） | 00 のセマンティックカラー表の success の 4 行（2026-09-05 に反映済み） |
+| token は使う前に 00 の色表へ登録する（旧原則 2） | 原則 2 |
+| 密度は業務データ優先、行高 40px（旧原則 12） | 原則 8 |
+| DSR-01 に 0 primary の画面の昇格を追記（旧原則 5） | DSR-01 |
+| 検索欄は全画面で live 型、commit 型を残さない（旧原則 7） | 02 ⑨（canonical は live 型、commit 型の採用箇所は 0）、原則 7 |
+| 検索ボタン併記と、02 ⑨ の `SearchBar` を併記の単一形へ（旧原則 7、旧 token 表の検索欄の行） | 撤回（旧番号の対応表の旧原則 7 の行） |
+| PageHeader の subtitle 基準（旧原則 9） | 02 ①（`subtitle` と `actions` の併用、PR #63 で runtime 反映済み） |
+| 02 の ⑬ badge 3 種・⑨ 検索行の器・`ListSkeleton`、review-checklist の本文 16px（旧原則 1・4・6・11） | 02 ⑬・⑯・⑥、review-checklist カテゴリ 9（反映済み） |
+| 操作目標 min-height 40px（旧原則 8、旧 token 表の操作目標の行） | `docs/backlog.md`「ボタンの最小サイズの不一致」 |
+| 部門 select の幅を全画面同一に（旧 token 表の検索欄の行）、sidebar ラベルの折返し、未使用の App.css の撤去、月数回・年数回の画面の個別 sweep（旧「適用の順序」4 段目） | `docs/backlog.md`（旧 04 の未了の作業） |
+| 押せる行は hover 背景 + 右端 chevron（旧原則 8、旧「適用の順序」2 段目） | `docs/backlog.md`（同上） |
 
 ## 更新履歴
 
 | 日付 | 内容 |
 |---|---|
+| 2026-09-24 | デザインの決まりの組み直し（decision-log D-091）。03 の哲学と 16 の原則を、見る人の受け取り方から組み直した 11 の原則へ統合し、旧番号の対応表・旧 03 の節の行き先・旧 04 の反映待ちの行き先を置いた。役目を終えた「foundations への追記分（token）」「00〜03 への反映先」「適用の順序」の節を削った（batch 1 で 00 を改めるとしていた caption・ページ余白・icon の 3 点は 00 へ反映済み）。削った旧文は `git show dda8560a:docs/design-system/04-backbone.md` で引ける |
 | 2026-09-05 | UI 規約補強 design batch（本 packet、本 PR）— 原則4②の枠線記述を `--border` 必須 + narrow 化の dated note へ更新（3:1 は interactive な操作枠へ限定、owner v2 mockup 決定）。foundations 追記分表の success 行・badge 行の備考に反映済みを追記。「00〜03 への反映先」の catalog⑬ badge 項目を完了済みへ更新 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 実装。原則 6 の枠文言を `rounded-lg border bg-card p-4` へ、原則 13〜15 の token 参照を実 token 名（`--border-strong` `#8a8480` / `--border` `#cdc8c4` / `--row-current` `#fff8e6`）へ、原則 14 に `ListShell` の実 path を明記。foundations 追記分表の page root / 枠 / 現在行の 3 行を実装済み表記へ更新 |
 | 2026-09-03 | UI 一覧の背骨 D Lane 1a refresh（PR #31、2026-09-03）— Human Gate + Codex review 是正。token 表から未実装 candidate の HEX（`--border-strong` / `--row-current`）を撤去し意味要件のみへ（Codex P2-2、前ラウンドの `#`/backtick 除外表記は撤回）。原則 13/15 の参照先を DSR-22 本文から packet「起票時実測」節 / reference 分析 doc へ差替え。metric 行参照を「30px、既存 `text-3xl`」へ訂正 |

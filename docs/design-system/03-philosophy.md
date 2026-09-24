@@ -1,48 +1,75 @@
-# 参照哲学
+# 根拠の出典
 
 > **親文書**: [README.md](README.md)
-> **責務**: デザイン判断の根拠となる哲学を一箇所に集約する。各哲学について「何を取り、何を取らないか」を明示する。
+> **責務**: デザイン判断の根拠となる出典を一か所に集める。各出典について「何を取り、何を取らないか」を明示する。原則は持たない。原則は [04-backbone.md](04-backbone.md)、原則と規則がどの出典を根拠にするかは 04 と [00-foundations.md](00-foundations.md) の根拠の列、[01-decision-rules.md](01-decision-rules.md) の各 DSR の Why が示す。
+> **経緯**: 2026-09-24 までの本書は、核心の柱 4 つ・補助 3 つ・観点借用を「参照哲学」として持っていた。原則は 04 の 11 の原則へ統合し、本書は出典の一覧に改めた（旧節の行き先は 04 の「旧番号の対応表」の後の表）。
 
 ---
 
-## 核心4本柱
+## 出典の一覧
 
-**① refactoring-ui** (Steve Schoger & Adam Wathan) — **主柱: 視覚設計**
+| 出典 | 何を取るか | 何を取らないか | 主に根拠にする原則（04） |
+|---|---|---|---|
+| refactoring-ui（Steve Schoger & Adam Wathan） | 視覚設計の一次根拠: ヒエラルキー（§1）、タイポグラフィ階層（§2）、スペーシングシステム（§3）、カラー理論（§4、subtle saturation） | 業務アプリ固有の深さ（他の出典で補う） | 1・3・9 |
+| ux-principles（Nielsen 基盤） | Nielsen 10 ヒューリスティクス、WCAG 2.1 AA 準拠 | 手芸店 1 人運用への最適化（他の出典で補う） | 2・7・11 |
+| GOV.UK Design Principles | *Start with user needs* / ***Do less*** / *Make things open* | 公共機関の「コミュニティ駆動」 | 3・5 |
+| GOV.UK Design System *Summary list* | 少量の関連する key-value は列を揃えた定義リストで示す | 複数レコードを per-card で反復する形 | 9、DSR-16 |
+| IBM Carbon Foundations | A11y をインフラ化、Progressive disclosure、データテーブル設計パターン | エンタープライズ向けの密度をナビやヘッダーに持ち込むこと | 6・8 |
+| Shopify Polaris | 情報アーキテクチャを基盤に置く、業務語彙の統一 | マルチ通貨・多言語・グローバル対応 | 5 |
+| Atlassian Design System | 業務画面は Practical 強め・Bold 抑制 | 大規模チームコラボ機能 | 3・9 |
+| Microsoft Fluent 2 | *Effortless / Coherent / Relevant* | Signature experiences（Mica / Acrylic 等の装飾マテリアル） | 6・7 |
+| Laws of UX（Jon Yablonski『UXデザインの法則 ―最高のプロダクトとサービスを支える心理学』第 2 版、相島雅樹・磯谷拓也 訳、オライリー・ジャパン、2025-01。原著 *Laws of UX*） | 見る人の受け取り方の根拠: Hick の法則、Von Restorff 効果、Zeigarnik 効果、Peak-End の法則、目標勾配効果、チャンク化、近接の法則、美的ユーザビリティ効果、Miller's Law、Law of Common Region | 理論書の主張をそのまま規則として転記すること（規則は受け取り方と効果に落として書く） | 2・3・5・6・9・10・11 |
+| 原田秀司『UIデザインの教科書［新版］』（翔泳社、2020。QA 整理は `ui-design-rules-qa-v2.md`、Q 番号で引く） | 現在地は有彩色・hover は無彩色（5-3）、Q5（一覧の操作）、Q7（色数をむやみに増やさない）、Q8（見出しと本文の区別、文字サイズでの視線誘導）、Q12（操作体系はシンプルに）、Q15（ページング）、Q17（UI パーツ適用ルール） | 高齢者・IT に不慣れな利用者への直接の配慮規定（同書に無いため WCAG / Laws of UX から引く、Q12 caution） | 1・2・5・6・9・10・11 |
+| NN/g *Common Region* | 共有の境界で囲むと 1 グループに見える。境界の多用は clutter を生む | 比較目的の反復に囲みを使うこと | 9、DSR-16 |
+| WCAG 2.x | 1.4.1（色だけで情報を伝えない）、1.4.3（文字 4.5:1）、1.4.11（UI 部品の境界 3:1）、2.4.13（focus の見え方）、2.5.8（当たり判定 24×24） | — | 1・2・4・9・11 |
+| japanese-webdesign（観点借用） | 情報密度 = 信頼（Anshin 哲学）を、業務データの密度の判断基準にする | Skill 本体のインストール | 8 |
+| frontend-design（参考） | 「汎用 AI 美学を避ける」意識 | 具体原則（ボールド・対称崩し） | 原則の根拠にしない |
+
+---
+
+## 視覚設計と利用者心理の出典
+
+**① refactoring-ui** (Steve Schoger & Adam Wathan) — **視覚設計**
 - 採用: §1 ヒエラルキー原則 / §2 タイポグラフィ階層 / §3 スペーシングシステム / §4 カラー理論（subtle saturation）
 - 取り入れ方: 全ての視覚決定（カラー・タイポ・スペース・アイコン）の一次根拠
-- 制約: 書籍由来で一般論に寄る場面あり。業務アプリ固有の深さは他哲学で補う
+- 制約: 書籍由来で一般論に寄る場面あり。業務アプリ固有の深さは他の出典で補う
 
-**② ux-principles** (Nielsen基盤) — **主柱: 利用者心理 + A11y**
+**② ux-principles** (Nielsen基盤) — **利用者心理 + A11y**
 - 採用: Nielsen 10 ヒューリスティクス全て、WCAG 2.1 AA 準拠
 - 特に強調: #1 System status visibility（処理中は必ずプログレス表示）、#5 Error prevention（確定ダイアログ）、#9 Help users recognize errors（エラーメッセージは「原因 + 解決策」）
-- 制約: 一般原則なので、本プロジェクトの「手芸店1人運用」に最適化された追加原則は他哲学で補う
+- 制約: 一般原則なので、本プロジェクトの「手芸店1人運用」に最適化された追加原則は他の出典で補う
 
-**③ GOV.UK Design Principles** — **主柱: 作らない勇気**
+**③ GOV.UK Design Principles** — **作らない勇気**
 - 採用: *Start with user needs* / ***Do less*** / *Make things open*
 - 取り入れ方: 機能肥大化の歯止め。「あったら便利」ではなく「なければ業務が止まる」で判断
 - 典型適用: ダッシュボードのウィジェット数、設定画面のオプション数、レポートのフィルタ組合せ
 - 制約: 公共機関発想のため「コミュニティ駆動」等は本プロジェクトに不要
 
-**④ IBM Carbon Foundations** — **主柱: A11y基盤 + 密集情報**
+**④ IBM Carbon Foundations** — **A11y基盤 + 密集情報**
 - 採用: A11yをインフラ化（装飾でなく基盤） / Progressive disclosure（段階的開示）/ データテーブル設計パターン
 - 取り入れ方: 在庫少一覧・変動履歴・日次売上明細の「大量行 + 複数列 + A11y」の設計パターン
 - 制約: エンタープライズ向けの密度は本プロジェクトには強すぎる場面あり。密集させるのは業務データのみ、ナビやヘッダーは余白を取る
 
+**Laws of UX（日本語版『UXデザインの法則』第 2 版、2025-01）** — **見る人の受け取り方**
+- 採用: 00 の色の役割・強調の段階・ラベルと値の「受け取り方」「狙う効果」「根拠」の列と、DSR-19 / 20 / 21 / 22 の Why が引く法則
+- 取り入れ方: 規則を「見せ方 → 受け取り方 → 狙う効果 → 根拠」の順で書くときの根拠。法則名と、規則にどう落としたかを併記する
+- 制約: 理論書の主張をそのまま規則として転記しない。狙った受け取り方になったかは実機の L3 で確かめる（04 原則 11）
+
 ---
 
-## 補助3原則
+## 業務語彙・装飾の強さ・Windows らしさの出典
 
-**⑤ Shopify Polaris** — 補助: 業務ドメインの語彙設計
+**⑤ Shopify Polaris** — 業務ドメインの語彙設計
 - 採用: *情報アーキテクチャを基盤に置く* / リソースページ + アクションページのパターン
 - 取り入れ方: 「商品」「在庫」「入庫」「売上」の語彙を画面・ボタン・通知で統一。シノニム（「アイテム」「ストック」等）を使わない
 - 不採用: マルチ通貨・多言語・グローバル対応（1店舗JSTローカルのため）
 
-**⑥ Atlassian Design System** — 補助: 装飾強度の文脈依存
+**⑥ Atlassian Design System** — 装飾強度の文脈依存
 - 採用: *Foundational / Harmonious / Bold-Optimistic-Practical with a wink* のうち、**業務画面では Practical 強め・Bold 抑制**
 - 取り入れ方: マーケ文脈（ヒーロー・ランディング）なら華やか、業務画面なら地味、の使い分け。本プロジェクトは全画面業務なので全体的に落ち着いた表現
 - 不採用: 大規模チームコラボ機能（個人1人運用）
 
-**⑦ Microsoft Fluent 2** — 補助: Windowsらしさ（Tauri+WebView2親和性）
+**⑦ Microsoft Fluent 2** — Windowsらしさ（Tauri+WebView2親和性）
 - 採用: *Effortless / Coherent / Relevant* の3語をプロジェクト憲法化
   - *Effortless*: キーボードショートカット、コンテキストメニュー等の Windows 慣習を踏襲
   - *Coherent*: 画面間で視覚階層と配置が一貫、どの画面でも同じ場所に戻るボタン
