@@ -7,7 +7,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 ## Contracts Under Test
 
 - [Plan Packet](../2026-09-23-stocktake-time-evidence-adr-revision.md) の Spec Contract SPEC-STK-TIME-REV-2026-09-23 R1〜R10。
-- [時点証拠 ADR](../../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9（改訂後）。
+- [時点証拠 ADR](../../../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9（改訂後）。
 - 維持する既存契約: D-D1 / D-D2 の snapshot 補正 N-L、D6 の商品別純量の取消補償、D2 の受領順による実測前、確定済み評価額の非遡及、INV-2、D-051。
 
 ## Failure Modes
@@ -65,7 +65,7 @@ Risk: R3（対象契約の impact）。本 lane は design-only。以下の本 l
 
 ### ㉗ の archive Matrix の行の扱い（㉘ への申し送り）
 
-[㉗ の Matrix](../../archive/plans/test-matrices/2026-09-18-stocktake-time-evidence.md) は ㉘ の runtime 検証の入力のまま残る。下表の行だけ、本 lane の改訂で置き換える。表にない行は変更しない。
+[㉗ の Matrix](2026-09-18-stocktake-time-evidence.md) は ㉘ の runtime 検証の入力のまま残る。下表の行だけ、本 lane の改訂で置き換える。表にない行は変更しない。
 
 | ㉗ Matrix の行（test 名） | ㉘ での扱い |
 |---|---|
