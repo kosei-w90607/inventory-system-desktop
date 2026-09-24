@@ -8,7 +8,7 @@
 
 ## 次の行動
 
-- デザインの決まりの見直し（design-first、docs、R2、owner 2026-09-24 の canvas での判断が起源）: [Plan Packet](plans/2026-09-24-design-rules-renewal.md) / [Matrix](plans/test-matrices/2026-09-24-design-rules-renewal.md)。branch `agent/design-rules-renewal`、Phase plan-gate（Plan Review round 1 と相談役の指摘を反映済み、fresh Opus の round 2 待ち）。wave 13 とは独立の登録で、並走 lane と同じ file（`docs/backlog.md` 等）の重なりは merge 順で解消する。token の値と全画面への適用・書体の採用・棚卸し画面 D1 は後続 lane（packet の Non-scope）。
+- デザインの決まりの見直し（design-first、docs、R2、owner 2026-09-24 の canvas での判断が起源）: [Plan Packet](plans/2026-09-24-design-rules-renewal.md) / [Matrix](plans/test-matrices/2026-09-24-design-rules-renewal.md)。branch `agent/design-rules-renewal`、Phase plan-gate（Plan Review round 1・2 と相談役の指摘、owner の回答 2026-09-24 を反映済み、fresh Opus の round 3 待ち）。wave 13 とは独立の登録で、並走 lane と同じ file（`docs/backlog.md` 等）の重なりは merge 順で解消する。token の値と全画面への適用・書体の採用・棚卸し画面 D1 は後続 lane（packet の Non-scope）。
 
 次の着手順（owner決定2026-09-22）:
 
