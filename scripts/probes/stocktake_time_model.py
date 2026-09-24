@@ -9,6 +9,7 @@ no longer backs the ADR contract; it is kept as input for the next design lane.
 No filesystem input, store data, dependencies, or writes.
 """
 
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from itertools import product
 
@@ -263,8 +264,9 @@ class Ledger:
         self.legacy_ceiling = 0
         self.active_item = False  # an uncounted item owns the active flow too
         self.received = 0  # max pos_import_sources id
-        # source -> (reason, creating import, registration change while the directly preceding
-        # Z004 is unreceived: first interval, below the smallest received, going-back)
+        # source -> (reason, creating import, previous_recheck_pending: a registration change made
+        # while the directly preceding Z004 was unreceived — first interval, below the smallest
+        # received, going-back — whose reevaluation with that Z004 is not committed yet)
         self.flags: dict[int, tuple[str, int, bool]] = {}
         self.imports: dict[int, list[int]] = {}  # import id -> movement ids
 
@@ -398,16 +400,20 @@ class Ledger:
         return import_id
 
     def set_flag(self, source: int, reason: str | None, import_id: int, previous: Previous) -> None:
+        before = self.flags.get(source)
         if reason is None:
             self.flags.pop(source, None)
         else:
             unreceived = previous in (FIRST, EARLIER, ROLLED_BACK)
             self.flags[source] = (reason, import_id, reason == MAPPING and unreceived)
+        if self.flags.get(source) != before:
+            self.revision += 1  # D1: actual flag/marker changes invalidate open counts
 
     def reevaluate(self, source: int, ej: EJ | None, previous: Previous = BASE_NAMES,
                    current: Names | None = None) -> None:
-        """The interval's EJ or previous Z004 arrived: re-judge a pending check, and a registration
-        change made while the directly preceding Z004 was unreceived once it is received. A
+        """Inside the business TX importing the interval's EJ or previous Z004 (never a receipt
+        alone, see ImportModel): re-judge a pending check, and a marked registration change once
+        the directly preceding Z004 is usable. A
         product without a row in this Z004 (`current`, default the EJ's) and not in the received
         previous one is no longer a target and is resolved."""
         flag = self.flags.get(source)
@@ -1036,6 +1042,132 @@ def check_unknown_apply_recheck() -> None:
         assert not ledger.flags
 
 
+class ImportModel:
+    """One machine/product, synthetic valid Z004s; all attributes model committed storage.
+
+    Receipt identity is the supplied synthetic hash. No parser, SQL, or D3 guard proof.
+    A new object loaded from these attributes models restart; no preview token survives.
+    """
+
+    def __init__(self, code: int = PRODUCT):
+        self.machine = Machine()
+        self.ledger = Ledger(code=code)
+        self.receipts: dict[str, tuple[int, int, Previous, Names]] = {}
+        self.intervals: dict[int, tuple[int, EJ | None, Names]] = {}
+        self.active: dict[str, int] = {}
+
+    def receive(self, file_hash: str, number: int, names: Names = BASE_NAMES) -> int:
+        if file_hash not in self.receipts:
+            previous = self.machine.receive(number, names, identity=file_hash)
+            self.receipts[file_hash] = (self.ledger.receive(), number, previous, names)
+        return self.receipts[file_hash][0]
+
+    def business_state(self):
+        ledger = self.ledger
+        return deepcopy((ledger.movements, ledger.observations, ledger.revision,
+                         ledger.flags, ledger.imports, self.intervals, self.active))
+
+    def commit(self, file_hash: str, ej: EJ | None = None, sold: int = 0,
+               *, fail: bool = False, held: bool = False) -> bool:
+        if file_hash in self.active:
+            raise ValueError("active hash duplicate")
+        if held:
+            return False  # represents a guard rejection before business writes
+        source, number, original_previous, names = self.receipts[file_hash]
+        previous = self.machine.previous(number)
+        if isinstance(previous, str):
+            previous = original_previous
+        ledger, intervals, active = deepcopy((self.ledger, self.intervals, self.active))
+        active[file_hash] = ledger.import_row(source, sold, ej=ej, previous=previous)
+        intervals[number] = (source, ej, names)
+        if number + 1 in intervals:
+            target, evidence, current = intervals[number + 1]
+            ledger.reevaluate(target, evidence, self.machine.previous(number + 1), current)
+        if fail:
+            return False  # fail after flag changes; discard the whole business TX
+        self.ledger, self.intervals, self.active = ledger, intervals, active
+        return True
+
+    def restart(self):
+        fresh = ImportModel(self.ledger.code)
+        fresh.machine, fresh.ledger, fresh.receipts, fresh.intervals, fresh.active = deepcopy(
+            (self.machine, self.ledger, self.receipts, self.intervals, self.active))
+        return fresh
+
+
+def check_receipt_business_retry() -> None:
+    # ADR D2/D4, packet R9: receipt alone survives abort/failure; same hash must retry.
+    cleared = frozenset({(1, "P")})
+    cases = (
+        (EJ(z004=cleared), BASE_NAMES, None),
+        (EJ(("Q", "Q"), signed=(1, -1), z004=cleared), BASE_NAMES, LINES),
+        (None, BASE_NAMES, PENDING),
+        (EJ(("?",), z004=cleared), BASE_NAMES, MAPPING),
+        (EJ(start=False, z004=cleared), BASE_NAMES, MAPPING),
+        (None, cleared, None),  # absent in both: resolves even without EJ
+    )
+    for before, interruption, (ej, eleven, expected) in product(
+        ((), (13,), (10,)), ("abort", "failure", "held"), cases
+    ):
+        model = ImportModel(code=2)
+        for number in before:
+            model.receive(str(number), number)
+        model.ledger.observe(9)
+        source = model.receive("twelve", 12, cleared)
+        assert model.commit("twelve", ej)
+        original = model.ledger.flags[source]
+        assert original[0] == (PENDING if before == (10,) else MAPPING)
+        assert original[2] == (before != (10,))
+        state = model.business_state()
+        receipt = model.receive("eleven", 11, eleven)
+        assert model.business_state() == state, "receipt mutated business state"
+        if interruption != "abort":
+            assert not model.commit("eleven", sold=2, fail=interruption == "failure",
+                                    held=interruption == "held")
+        assert model.business_state() == state, "failed TX leaked business state"
+        assert refused(model.ledger.complete), "interrupted import unblocked completion"
+        model = model.restart()
+        assert model.business_state() == state, "restart lost committed business state"
+        receipts = deepcopy(model.receipts)
+        machine = deepcopy(model.machine.__dict__)
+        assert model.receive("eleven", 11, eleven) == receipt
+        assert model.receipts == receipts and model.machine.__dict__ == machine
+        assert model.business_state() == state, "reselection mutated business state"
+        assert model.commit("eleven", sold=2)
+        assert reason_of(model.ledger, source) == expected, "same-hash retry missed reevaluation"
+        if expected:
+            assert model.ledger.flags[source] == (expected, original[1], False)
+        assert model.ledger.stock == 8 and len(model.active) == 2
+        committed = model.business_state()
+        model = model.restart()  # includes crash after commit, before the response
+        assert refused(lambda: model.commit("eleven", sold=2))
+        assert model.business_state() == committed, "duplicate import had side effects"
+        # Repeat only the judgement, not sales. Frozen mapping also resists a changed EJ.
+        for later in (ej, ej):
+            model.ledger.reevaluate(source, later, eleven, cleared)
+            assert model.business_state() == committed, "reevaluation was not idempotent"
+        if expected == MAPPING:
+            model.ledger.reevaluate(source, EJ(z004=cleared), eleven, cleared)
+            assert model.business_state() == committed, "frozen mapping reopened"
+    # A recount or cancellation while the predecessor is only received must not be resurrected.
+    for recovery in ("recount", "cancel"):
+        model = ImportModel()
+        model.ledger.observe(10)
+        source = model.receive("twelve", 12)
+        assert model.commit("twelve", EJ())
+        model.receive("eleven", 11)
+        if recovery == "recount":
+            model.ledger.observe(10)
+        else:
+            model.ledger.rollback(model.active["twelve"])
+            del model.active["twelve"]
+        assert source not in model.ledger.flags
+        model = model.restart()
+        assert model.commit("eleven")
+        assert source not in model.ledger.flags, "resolved flag was resurrected"
+    print("PASS: receipt/business separation, same-hash retry, restart, atomic rollback, idempotence")
+
+
 def check_completion_with_stale_basis() -> None:
     # Gated Amendment 5 (Codex broad #1): the latest count belongs to a completed stocktake or an
     # independent recount, and the new stocktake's item is uncounted (force_fill) or auto_filled at
@@ -1127,6 +1259,7 @@ if __name__ == "__main__":
     check_lifecycle()
     check_legacy_recovery()
     check_unknown_apply_recheck()
+    check_receipt_business_retry()
     check_completion_with_stale_basis()
     check_migration_and_fill()
     print("PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy hold and release, unknown apply and recheck, sale/return offset, completion over a stale basis, migration kinds, force_fill")
