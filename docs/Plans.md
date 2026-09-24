@@ -12,6 +12,7 @@ wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷�
 
 - EJ parser core（合成データ、R3）: [Plan Packet](plans/2026-09-23-ej-parser-core.md) / [Matrix](plans/test-matrices/2026-09-23-ej-parser-core.md)。branch `agent/ej-parser-core`、Phase implementing。
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。PR0（#92）と PR1（#97）は merge 済み。残り = PR2（座組と役割）、PR3（入口と重複）、PR4（手続きの軽量化・Findings Freeze 撤去・Owner Effort Budget・Wave Operation の改訂）、PR5（classifier / helper の穴・`.claude/agents`）。公式 Opus 5.5 prompting guide と照合して進める（owner 2026-09-24）。
+- ハーネス刷新 PR3（入口と重複、R3）: [Plan Packet](plans/2026-09-25-harness-pr3-entry-and-dedup.md) / [Matrix](plans/test-matrices/2026-09-25-harness-pr3-entry-and-dedup.md)。branch `agent/harness-pr3-entry`、Phase plan-gate。PR2 と並走し、merge は PR2 の後（review 依頼 template の削除が PR2 の MANUAL 改訂に依存）。
 
 次の着手順（owner決定2026-09-22）:
 
