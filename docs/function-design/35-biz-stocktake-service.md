@@ -31,7 +31,7 @@ CountContextはサーバー生成UUID、用途（in_progress / independent_recou
 
 以下のlegacy処理は旧履歴があるDBの互換契約であり、開発・試験DBや将来の更新でも維持する。[初導入の前提](../project-memory.md)では本番の旧棚卸し履歴は存在せず、本番開始のために存在しない旧実測を数え直す作業は要求しない。実際にlegacyがあれば初導入の申告で検査を省略しない。
 
-complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査する。進行中の棚卸しに最新の実測がある商品に、未解消の要再確認flag（計数と前後不明の販売・相殺の行あり・相殺の確認待ち・旧記録の実測のどれでも）か旧実測の再確認が残る間は、force_fillでも確定を拒否し、対象の明細の計数へ案内する。measuredの補正は現在庫へ `N-L` を加算し、保存後の入出庫を残す。force_fillはkind=auto_filled、N=L=max(現在庫,0)、補正0。廃番の開始時自動入力もauto_filledで、過去の実測基準を上書きしない。
+complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査する。確定対象の棚卸しに明細がある商品に、未解消の要再確認flag（計数と前後不明の販売・相殺の行あり・相殺の確認待ち・旧記録の実測のどれでも）か旧実測の再確認が残る間は、明細のkind（未計数・auto_filled〈廃番の開始時の自動入力を含む〉・measured）と最新の実測の所属によらず、force_fillでも確定を拒否し、その明細の計数へ案内する。measuredの補正は現在庫へ `N-L` を加算し、保存後の入出庫を残す。force_fillはkind=auto_filled、N=L=max(現在庫,0)、補正0。廃番の開始時自動入力もauto_filledで、過去の実測基準を上書きしない。
 
 新方式のtotal_costは `Σ max(補正後現在庫,0) × 確定時評価原価`、数量と積和はchecked演算とする。補正区分はcompletion。差0の確定も商品状態の版を進めて古いcontextを失効させる。確定後には独立再実測の入口を利用できる状態へ戻す。既存のTX外best-effortログ・確定後整合性チェックは維持する。
 
