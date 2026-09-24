@@ -313,8 +313,9 @@ class Ledger:
         return fill
 
     def complete(self) -> None:
-        latest = self.latest()
-        if self.flags and latest is not None and latest.state == "pending":
+        # Any unresolved flag of a product with an item blocks completion, whatever the item's kind
+        # (uncounted, auto_filled, measured), the latest count's owner or the flag's reason.
+        if self.flags and self.active_item:
             raise ValueError("an unresolved recount flag blocks completion, even with force_fill")
         for observation in self.observations:
             if observation.state != "pending":
@@ -694,6 +695,14 @@ def reason_of(ledger: Ledger, source: int) -> str | None:
     return ledger.flags.get(source, (None, None))[0]
 
 
+def refused(close) -> bool:
+    try:
+        close()
+    except ValueError:
+        return True
+    return False
+
+
 def check_unknown_apply_recheck() -> None:
     # REQ-205 / REQ-401, ADR D4: Unknown is applied as usual and flagged per (product, source).
     # Confirmed product P: book 10 converges to physical 8 in all four cases.
@@ -994,6 +1003,25 @@ def check_unknown_apply_recheck() -> None:
                 raise AssertionError("an offset of a cleared counted product was missed")
     # Not in 11 either: Q resolves, and its EJ line now matches nothing, holding the other products.
     assert offset_reason(ej, cleared) == MAPPING
+    # (k') The same with 12 as the first interval (12 received first) and below the smallest received
+    # (13, then 12): Q gets a marked registration change, re-evaluated when 11 arrives.
+    for before in ((), (13,)):
+        for eleven, late_ej, after in ((BASE_NAMES, ej, LINES), (BASE_NAMES, None, PENDING),
+                                       (cleared, ej, None), (cleared, None, None)):
+            machine = Machine()
+            for settlement_no in before:
+                machine.receive(settlement_no)
+            previous = machine.receive(12, cleared)
+            assert previous == (EARLIER if before else FIRST)
+            ledger = Ledger(code=2)
+            ledger.observe(9)
+            if offset_targets(frozenset({2}), cleared, previous):
+                ledger.import_row(ledger.receive(), sold=0, ej=late_ej, previous=previous)
+            assert ledger.flags.get(1) == (MAPPING, 1, True)
+            machine.receive(11, eleven)
+            ledger.reevaluate(1, late_ej, machine.previous(12), current=cleared)
+            assert reason_of(ledger, 1) == after
+            assert refused(ledger.complete) == bool(after)
     # (l) Frozen after that re-evaluation: a line matching nothing, or start evidence contradicting
     # the received previous Z004. Re-importing the EJ later does not re-evaluate them.
     for ej in (EJ(("P", "?")), EJ(start=False)):
@@ -1006,6 +1034,38 @@ def check_unknown_apply_recheck() -> None:
             assert reason_of(ledger, 1) == MAPPING
         ledger.observe(10, immediate=True)
         assert not ledger.flags
+
+
+def check_completion_with_stale_basis() -> None:
+    # Gated Amendment 5 (Codex broad #1): the latest count belongs to a completed stocktake or an
+    # independent recount, and the new stocktake's item is uncounted (force_fill) or auto_filled at
+    # its start (discontinued). An unresolved flag still blocks completion; counting the item resolves it.
+    for basis, kind, (sold, ej, reason, physical) in product(
+        ("completed", "independent"), ("uncounted", "auto_filled"),
+        ((0, EJ(("P", "P"), signed=(1, -1)), LINES, 10),  # sold, recounted 9, returned (Codex)
+         (0, None, PENDING, 10),
+         (1, None, "sale_order_unknown", 9)),  # sold before the recount 9, settled after it
+    ):
+        ledger = Ledger()  # book 10
+        if basis == "completed":
+            ledger.observe(9)
+            ledger.complete()
+        else:
+            ledger.observe(9, immediate=True)
+        if kind == "auto_filled":
+            ledger.force_fill()  # the new stocktake starts; discontinued items are auto-filled
+        else:
+            ledger.active_item = True  # the new stocktake starts; the item is not counted yet
+        source = ledger.receive()
+        ledger.import_row(source, sold=sold, ej=ej)
+        assert reason_of(ledger, source) == reason
+        if kind == "uncounted":
+            ledger.force_fill()
+        assert refused(ledger.complete), (basis, kind, reason)
+        ledger.observe(physical)  # count the item
+        assert not ledger.flags
+        ledger.complete()
+        assert ledger.stock == physical and not ledger.flags
 
 
 def check_migration_and_fill() -> None:
@@ -1067,5 +1127,6 @@ if __name__ == "__main__":
     check_lifecycle()
     check_legacy_recovery()
     check_unknown_apply_recheck()
+    check_completion_with_stale_basis()
     check_migration_and_fill()
-    print("PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy hold and release, unknown apply and recheck, sale/return offset, migration kinds, force_fill")
+    print("PASS: temporal bounds, causal receipt, clock conflict, zero-net split, revision, count/rollback lifecycle, legacy hold and release, unknown apply and recheck, sale/return offset, completion over a stale basis, migration kinds, force_fill")
