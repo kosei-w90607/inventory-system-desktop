@@ -10,7 +10,6 @@
 
 wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する（既定: ㉗ ADR 修正 → ㉘）。Codex は rate limit 中のため Plan Review は fresh Opus のみ、Final Review だけ Codex を待つ（owner 確認 2026-09-23）。
 
-- docs 復元（店主・owner 回答台帳の「docs へ戻す候補」、R2）: [Plan Packet](plans/2026-09-23-docs-restore-store-premises.md)。branch `agent/docs-restore-and-rules`、Phase implementing。
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。PR0（#92）と PR1（#97）は merge 済み。残り = PR2（座組と役割）、PR3（入口と重複）、PR4（手続きの軽量化・Findings Freeze 撤去・Owner Effort Budget・Wave Operation の改訂）、PR5（classifier / helper の穴・`.claude/agents`）。公式 Opus 5.5 prompting guide と照合して進める（owner 2026-09-24）。
 
 次の着手順（owner決定2026-09-22）:
@@ -24,6 +23,8 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 - 製品作業の既定順序は [次に動くlane](backlog.md#次に動く-lane順番固定) を維持する。
 
 ## 直近の完了
+
+- **docs 復元: 店主・owner 回答台帳の店の事実 52 件を正本へ戻し、動線・棚卸しの期間・部門数の誤記を直す**: [PR #93](https://github.com/kosei-w90607/inventory-system-desktop/pull/93) を merge（2026-09-25、main `e40e50b9`）。2026-09-23 の引継ぎ「次の行動」1 と owner 決定 2026-09-21（原文を公開 repository に置かず要旨と確認日）起源。repo 外の回答台帳の「docs へ戻す候補」46 件と追補の店の事実 6 件を、`docs/project-memory.md` の Store Premises Facts・`docs/backlog.md`・`docs/db-design/master-tables.md`・`docs/plu-export-and-real-csv-verification.md` へ要旨・確認日・回答者の区分つきで戻した。誤りと判定された記述（約 929 件の否定、`docs/SCREEN_DESIGN.md` の 1 日の動線〈売上の取込みはレジ精算の後・店を離れる前〉、業務シナリオ例の語、`docs/function-design/73-ui-stocktake.md` §73.1 の棚卸しの期間〈準備と年末の正式カウントを分ける〉、単位の拡張の出典、部門数）を直した。ECR+ のサービス終了とリース満了の関係、評価額の丸めを店の規則に合わせる件を backlog へ起票した。[archive の Plan Packet](archive/plans/2026-09-23-docs-restore-store-premises.md)（R2 のため Matrix なし）。review の経過 = Plan Review（fresh Opus）round 1〜3、round 天井で plan-approved → Final Review broad（Opus、P3 9、全件採用し是正・記録）→ Codex broad（Opus 側の結果を読まない独立の 1 本、P3 1、採用し記録）→ Opus closure（新規 P3 2、PR body の更新と本 closeout で処理）→ 2 回の base 同期後の Opus closure（新規指摘 0）。Gated Amendment 0 回。後続 = 期間・動線の旧表記 7 か所、設定時刻の自動バックアップの timer がバックアップ画面を開いている間しか動かない差（`docs/backlog.md`）。D-01（取引先の意味）に依存する 2 件は owner 確認待ち、他 lane の 10 件はそれぞれの lane が持つ。
 
 - **EJ parser core: EJ 1 file を取引単位の記録へ構造復元する `parse_ej`**: [PR #94](https://github.com/kosei-w90607/inventory-system-desktop/pull/94) を merge（2026-09-25、main `8bd2bc9a`）。owner 決定 2026-09-22（並走で EJ parser の core を合成データで進める）起源。`src-tauri/src/io/ej_parser.rs` に純関数 `parse_ej`（IO-08）を新設し、通常・返品の取引は数量×単価・点数・合計（無ければ現金）が記録内でそろうときだけ明細へ復元、そろわない記録・未知の行・幅違反は記録単位の復元不能と固定文言の診断にして行を捨てない。関数設計書 `docs/function-design/29-io-ej-parser.md` を新設した。実物 6 本（repo 外）は復元不能 0・診断 0。[archive の Plan Packet](archive/plans/2026-09-23-ej-parser-core.md) / [Matrix](archive/plans/test-matrices/2026-09-23-ej-parser-core.md)。review の経過 = Plan Review（fresh Opus）round 1〜2 で plan-approved → Final Review broad（Opus、P2 1 / P3 6、P3-5 以外を採用し是正）→ 初回の Codex broad は PR body の Opus 側の要約を読んでおり独立性が成立せず取り直し（P2 1 / P3 1、採用し是正。初回の P2 2 / P3 1 も採用し是正済み）→ Opus closure（新規 P3 2 件、本 closeout で処理）→ base 同期後の Opus closure（新規指摘 0）。Gated Amendment 0 回、介入の予算 6 回（当初 3、取り直しで owner 承認のうえ引上げ。内訳は packet の Owner Effort Budget）。後続 = 店がレジで普段使う値引き・訂正・取消の文法を足す lane（`docs/backlog.md`）。dogfood 所見: PR #97 と同じく、一方の review の要約を PR body に載せたまま他方の broad を発注すると Double Audit の独立性が崩れる。
 
