@@ -53,12 +53,14 @@ Evidence Modeによる保存先は[merge-evidence](agent-guidance/merge-evidence
 
 ### 3.2 Execution Mode
 
+Execution Mode 欄は任意で、checker / helper は要求も評価もしない。
+
 Execution Mode は Plan Packet `Workflow State` に記録する、その時点の可用 vendor 構成を示すラベル:
 
 - `fable-window`: 希少・最高能力 slot（§3.4 参照）が利用可能な期間
 - `dual-vendor-no-fable`: Claude 側 slot はあるが希少・最高能力 slot（§3.4 参照）はない期間
 - `codex-only`: Codex/OpenAI 側の slot のみで構成する期間
-  - 運用形（D-084、owner 2026-09-11「Claude 側に作業できる枠がない間、Codex 単体で要所に Sonnet / Opus のレビューをもらって作業させる」）: Codex は Writer に加え **Coordinator の起草役**（Plan Packet / Gated Amendment / state-only 遷移 / PR body の文案）を担い、**承認と裁定は owner** が行う。Plan Reviewer は D-062 どおり非 Codex vendor（通常 Sonnet 1 run）、Final Reviewer は Sonnet 1 run を最低条件とし、R3 の UI 契約変更は Opus 1 run を足す。Human Gate（L3 / Ready 承認）は owner。
+  - 運用形（D-084、owner 2026-09-11「Claude 側に作業できる枠がない間、Codex 単体で要所に Sonnet / Opus のレビューをもらって作業させる」）: Codex は Writer に加え **Coordinator の起草役**（Plan Packet / Gated Amendment / state-only 遷移 / PR body の文案）を担い、**承認と裁定は owner** が行う。Plan Reviewer は D-062 どおり非 Codex vendor（通常 Sonnet 1 run）、Final Reviewer は Sonnet 1 run を最低条件とする。Human Gate（L3 / Ready 承認）は owner。
   - 自己裁定の禁止: Codex はレビュー findings を自分で rebut / no-action にしない。P1 は owner 承認なしに rebut できず、P2 / P3 も裁定候補を報告に列挙して owner が決める（fable-window では Coordinator が担う裁定を owner に移す。Gated Amendment の文案は Codex が書いてよいが commit は owner 承認後）。
   - 適性: R1〜R2 の docs lane、AC が機械 oracle で閉じる小 runtime lane（衛生 batch、表示小修正 batch、⑰ 型の小 runtime）。design-first の lane（mockup 採用、DTO 公開を伴う表示設計、単位拡張）は判断が多く、`fable-window` または `dual-vendor-no-fable` へ戻るまで着手しない。
   - 発注書の必須 1 行: 「packet を起草する run」と「実装する run」を分け、起草 run は編集禁止 file を持たず docs/plans のみ、実装 run は packet 編集禁止（fable-window と同じ fail-closed 契約）。Plan Reviewer / Final Reviewer の発注書は Coordinator（= owner）が relay する。下記のAstra主担当ではrun分離・packet編集禁止・reviewer発注書のowner relayに代えてD-087を適用する。
@@ -78,10 +80,10 @@ ownerがAstraを主担当に選ぶ作業では、Astra自身が調査・計画�
 
 Execution Mode は vendor 単位の可用性を扱う。個別の役割担当（Coordinator / Plan Reviewer / Final Reviewer）が rate limit・枠切れ・障害で一時的に利用不能な場合は次を適用する:
 
-- Workflow State の該当役割を pending にし、理由を 1 行残す
-- Phase は前進禁止。特に plan-approved / independent-review 通過 / ready-hosted-final への遷移を止める。既に implementing の Writer 作業は継続してよいが、レビューを要する遷移では停止する
+- 利用できない役割だけを pending にし、理由を 1 行残す
+- pending の役割を要する遷移（plan-approved、Final Review の record、Ready）を進めない。それ以外の作業は続ける。別 vendor の reviewer が使えない間は、使える reviewer で進められる review を進め、別 vendor を要する review だけを待つ
 - owner が代替担当を指名するか、同 vendor の fresh context で再開する。§2 の独立性（Coordinator の自己承認禁止）は代替時も維持する
-- 代替が決まらない場合は停止し、[Plans.md](../Plans.md) のブロッカーへ記録する。pending のまま実装や Ready を進めない
+- 代替が決まらない場合は [Plans.md](../Plans.md) のブロッカーへ記録し、pending の役割を要する遷移を進めない
 
 ### 3.4 Model slot 対応表
 
@@ -233,8 +235,6 @@ docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠す�
 
 既存の Plan Review では上記の現物根拠を確認し、Plan Gate 後に作る発注書の最終照合は Coordinator が引き取る。追加のレビュー段階は設けず、正本の変更が必要なら既存の改訂・承認経路を使う。
 
-legacyの発注書には、state-only 遷移 commit が [DEV_WORKFLOW.md](DEV_WORKFLOW.md) `Workflow State` の canonical subject、すなわち forward 遷移では `docs(plans): state-only遷移 <from>-><to>[->…]`、backtrack では `docs(plans): state-backtrack <from>-><to>` に従うことを明記する。また、遷移は同節の契約を満たす正規の state-only commit で実体化し、`narrative 記述のみで遷移を主張しない`ことも出力契約に含める。
-
 遷移 commit の作成主体や Writer / Coordinator の分担は、本節で再配分しない。[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の現行規範と per-change Plan Packet の定めに従う。
 
 節番号と REQ 再生成の注意は上記の作成手順へ統合した。出典: PR #72 / #84 / #85、および PR #61 / #64 / #67 / #70 / #71 / #75 の発注訂正記録。
@@ -265,7 +265,7 @@ legacyの発注書には、state-only 遷移 commit が [DEV_WORKFLOW.md](DEV_WO
 8. commit 体裁
 9. 事実主張の幻覚検査（引用 `file:line` の実在）
 
-採用条件は P1 相当 0 件かつ監査指摘の是正完了とする。採用時は、Evidence Modeごとの規定fieldを維持し、`Workflow State` 直下の append-only narrative に `Draft Provenance` を記録する。監査がこの条件を満たさない場合は再起草へ fallback する。
+採用条件は P1 相当 0 件かつ監査指摘の是正完了とする。採用時は、規定fieldを維持し、`Workflow State` 直下の append-only narrative に `Draft Provenance` を記録する。監査がこの条件を満たさない場合は再起草へ fallback する。
 
 ## 6. ハーネス間の既知の非対称（重要な注意）
 

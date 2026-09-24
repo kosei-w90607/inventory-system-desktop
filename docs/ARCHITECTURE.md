@@ -195,6 +195,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | IO-05 | レポートCSVエクスポーター | 売上一覧等のCSV出力。UTF-8 BOM付き（Excel対応） |
 | IO-06 | 画像ファイル管理 | レシート画像の保存（アプリ管理下の相対パス）、パス管理 |
 | IO-07 | POS日報bundleパーサー | CASIO SR-S4000 adapter のZ001/Z002/Z005パース。CP932/NEL対応、3ファイル束のsource判定、日報サマリ/支払/部門別行への正規化。業務ロジックなし |
+| IO-08 | EJパーサー | CASIO SR-S4000 adapter の電子ジャーナル（EJ）1 file を記録の列へ構造復元。24バイト固定幅・CP932・CRLF、位置による行分類、記録内照合がそろう取引だけ明細を復元し、それ以外は記録単位で復元不能として返す。番号の連続・区間の完全性・商品同定・時刻は判断しない。業務ロジックなし |
 
 ### MNT層（保守/診断）
 
@@ -303,7 +304,7 @@ REQ-403（POS 部門別売上照合）は UI-13 / REQ-904 の在庫整合性と�
 | レイヤー | ファイル | タスク |
 |---------|---------|--------|
 | BIZ層 | [architecture/biz-task-specs.md](architecture/biz-task-specs.md) | BIZ-01〜BIZ-09 |
-| IO層 | [architecture/io-task-specs.md](architecture/io-task-specs.md) | IO-01〜IO-07 |
+| IO層 | [architecture/io-task-specs.md](architecture/io-task-specs.md) | IO-01〜IO-08 |
 | MNT層 | [architecture/mnt-task-specs.md](architecture/mnt-task-specs.md) | MNT-01〜MNT-04 |
 | CMD層 | [architecture/cmd-task-specs.md](architecture/cmd-task-specs.md) | CMD-01〜CMD-12 |
 | UI層 | [architecture/ui-task-specs.md](architecture/ui-task-specs.md) | UI-00、UI-01a〜UI-13 |
