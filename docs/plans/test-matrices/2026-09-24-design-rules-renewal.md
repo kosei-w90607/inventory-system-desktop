@@ -2,6 +2,8 @@
 
 対象 packet: [2026-09-24-design-rules-renewal](../2026-09-24-design-rules-renewal.md)。改訂前の基準版は `dda8560a`（origin/main）。本 lane は文書だけの変更のため、test は `bash scripts/doc-consistency-check.sh` と `rg` / `diff` の oracle で組む。
 
+Gated Amendment 1（2026-09-25、Final Review broad round 1 の是正）: T13 を lane A の行の対象の部分の検査に、T15 を表の第 1 列の行数と語ごとの 1 行一致の検査に強め、D12 の場面を 23 にした。変異の見込みと Adjacent Pattern Audit を合わせた（packet の Review Response の「Final Review broad round 1」）。
+
 ## Risk
 
 Risk: R2
@@ -19,7 +21,7 @@ Risk: R2
 - SPEC-DSR-RENEW-D9 checker との境界（file 名・`## DSR-NN`・token 表の書式）
 - SPEC-DSR-RENEW-D10 decision-log D-091
 - SPEC-DSR-RENEW-D11 後続 lane 3 件の起票（lane A の進め方・対象・AC・L3 項目）
-- SPEC-DSR-RENEW-D12 迷いやすい場面の答え（19 場面）
+- SPEC-DSR-RENEW-D12 迷いやすい場面の答え（23 場面。GA1 で 4 行を足した）
 - SPEC-DSR-RENEW-D13 撤回・置換する旧文（W1〜W13）
 - SPEC-DSR-RENEW-D14 04 からの反映待ち 3 点（caption・ページ余白・icon）
 
@@ -65,8 +67,8 @@ Risk: R2
 | D5 | F9 | CLI + review | T10: `rg -n '原則 ?[0-9]+' docs/design-system docs/quality/review-checklist.md docs/UI_TECH_STACK.md docs/backlog.md` の全 hit の分類 | 「新番号で正しい」「旧番号対応表の行」「更新履歴の行」「過去の記録の行（`docs/backlog.md` 235・237 行目の owner 回答の記録）」「Q 番号」のどれにも当たらない hit がある |
 | D7 | F10 | review | T11: `rg -n 'amber\|琥珀\|primary\|Primary\|1 位\|1位' docs/design-system/01-decision-rules.md docs/design-system/04-backbone.md` の全 hit の分類 | DSR-01 / 08 / 16 / 21 / 22 が Spec Contract D7 のとおりでない、hit が「狙いの規則」（D12 の試しの行で owner の現行の決定を規則として書いたものを含む）「現行の実装（runtime lane 待ち）の説明」「更新履歴の行」のどれにも当たらない |
 | D8 | F12 | CLI + review | T12: README の索引の link と、外部参照先の実在 | README の相対 link の先の節の見出しが `rg` で見つからない。`03-philosophy.md` に japanese-webdesign の節が無い（`02-component-catalog.md` 72 行目が引く） |
-| D11 | F13 | CLI | T13: 題ごとの loop。`for t in 'デザインの決まり runtime lane A（色と強調）' 'デザインの決まり runtime lane B（書体）' '棚卸し画面 D1 の実装'; do rg -n -F "$t" docs/backlog.md; done` で各題の行を取り、行ごとに必須語を `rg -F` で確かめる（lane A: `着手条件`・`1 PR`・`origin/main`・`--ring`・`defaultVariants`・`ActionButton`・`progress`・`spinner`・`L3`。lane B: `着手条件`・`D-030`・`L3`。D1: `着手条件`・`lane A`） | どれかの題が 0 行か 2 行以上、またはその行に必須語のどれかが無い |
-| D12 | F15 | CLI + review | T15: `awk '/^## 迷いやすい場面/{f=1;next} /^## /{f=0} f' docs/design-system/00-foundations.md` の出力に対し、場面の語 19 個（`focus ring`・`操作枠`・`保存中`・`待ちの spinner`・`進み具合の棒`・`checked`・`複数選択`・`入口 card`・`トリガー`・`実行ボタン`・`取込み済み`・`未取込み`・`減衰`・`注意の Alert`・`完了の知らせ`・`現在地`・`ランキング 1 位`・`最新`・`お知らせ一般`）を `rg -c -F` で数える。review では各行の役割・段が packet の D12 の表と一致するかを突き合わせる | 節が無い、場面の語のどれかが 0 件、役割か段が 1 つに決まらない行がある（行の中で条件ごとに 1 つを書く行は、条件ごとに 1 つずつあれば可。条件は要素・画面で分け、同じ要素の状態で役割を切り替える行は不可）、試しの 5 行の移行の列に `lane A の L3` が無い、ランキング 1 位を除く試しの 4 行の役割の列に `owner` と日付が無い（owner の現行の決定でない）、役割・段が D12 と違う、今の赤（在庫切れ・取消済み・マイナス・取得失敗）の役割を危険・失敗以外にする行がある |
+| D11 | F13 | CLI | T13: 題ごとの loop。`for t in 'デザインの決まり runtime lane A（色と強調）' 'デザインの決まり runtime lane B（書体）' '棚卸し画面 D1 の実装'; do rg -n -F "$t" docs/backlog.md; done` で各題の行を取る。lane A は行から対象の部分を `rg -o '対象 = .*?。AC = '` で切り出し、その部分に `--ring`・`defaultVariants`・`ActionButton`・`progress`・`spinner`・`alert.tsx`・`table.tsx`・`StepIndicator`・`ProductListTable` を `rg -F` で確かめ、行全体に `着手条件`・`1 PR`・`origin/main`・`L3`・`variant="destructive"`・`has-aria-expanded` を確かめる（GA1）。lane B は行全体に `着手条件`・`D-030`・`L3`、D1 は `着手条件`・`lane A` | どれかの題が 0 行か 2 行以上、lane A の行に「対象 =」から「。AC =」までの部分が 1 つに切り出せない、またはその部分・行に必須語のどれかが無い |
+| D12 | F15 | CLI + review | T15: 表の第 1 列を取り出す: `awk '/^## 迷いやすい場面/{f=1;next} /^## /{f=0} f' docs/design-system/00-foundations.md \| rg '^\| ' \| rg -v '^\| 場面 ' \| awk -F'\|' '{print $2}'`。その出力の行数を数え、場面の語 23 個（`focus ring`・`操作枠`・`保存中`・`待ちの spinner`・`進み具合の棒`・`checked`・`複数選択`・`入口 card`・`トリガー`・`実行ボタン`・`取込み済み`・`未取込み`・`減衰`・`注意の Alert`・`完了の知らせ`・`現在地`・`ランキング 1 位`・`最新`・`お知らせ一般`・`役割色の文字`・`危険・失敗の Alert`・`詳細を開いた行`・`手順`）のそれぞれを出力に `rg -c -F` で数える（0 件は空出力、GA1）。review では各行の役割・段が packet の D12 の表と一致するかを突き合わせる | 節が無い、第 1 列が 23 行でない、場面の語のどれかの数が 1 でない（0 件なら行の欠落、2 以上なら第 1 列の書き方が語を重ねている）、役割か段が 1 つに決まらない行がある（行の中で条件ごとに 1 つを書く行は、条件ごとに 1 つずつあれば可。部品の一時的な状態〈busy・disabled・hover・focus〉で役割を切り替える行は不可。業務の状態ごとに役割表で選ぶ行は可）、試しの 7 行の移行の列に `lane A の L3` が無い、owner の現行の決定がある試しの 4 行の役割の列に `owner` と日付が無い、ランキング 1 位・詳細を開いた行・取込みの手順の表示の移行の列に試しの出典（owner の了承の日付か Coordinator の既定）が無い、役割・段が D12 と違う、今の赤（在庫切れ・取消済み・マイナス・取得失敗）の役割を危険・失敗以外にする行がある |
 | D14 | F16 | CLI | T16: `rg -n '^\| caption \|' docs/design-system/00-foundations.md`、`rg -n 'space-6\|space-8' docs/design-system/00-foundations.md`、`rg -n '^\| (12\|16\|20\|24\|32)px \|' docs/design-system/00-foundations.md`、`rg -n 'batch 1' docs/design-system/04-backbone.md` | caption の行に `14px` が無い、`space-6` の行に `ページ余白` が無いか `space-8` の行に `ページ余白` がある、icon の行が 5 段でないか 32px の行に `spinner` が無い、`batch 1` の hit が更新履歴の外にある |
 | D13 | F17 | CLI + review | T17: `rg -n 'info\|色は家族\|琥珀\|新しい色相\|ウォーム系主アクセント\|Primary アクセント\|手動バッジ\|ボタン併記' docs/design-system/00-foundations.md docs/design-system/04-backbone.md docs/design-system/01-decision-rules.md docs/quality/review-checklist.md` の全 hit の分類と、`rg -n 'Q7' docs/design-system/04-backbone.md` | hit が「置換後の規則」「owner の現行の決定（D12 の試しの行）」「現行の実装（lane A 待ち）の説明」「旧番号対応表の行」「更新履歴の行」のどれにも当たらない、D13 の W1〜W13 のどれかが対応表の「撤回・置換」列に無い、04 に Q7 との関係の 1 文が無い |
 | D8 | F18 | CLI | T18: `rg -n '移行中の作り方\|現行の token\|lane A の merge 後\|src/features/suppliers/components/SupplierPickerDialog.tsx' docs/design-system/README.md` と `rg -n '新しい見た目の先取り' docs/quality/review-checklist.md` | README で 4 語のどれかが 0 件、review-checklist が 0 件。DS1 が README の `SupplierPickerDialog.tsx` の path を実在しないとする |
@@ -93,6 +95,10 @@ not applicable: 文書の改訂で、UI・data・cache・route/search・import/e
 | ②分類の badge と「手動」（D2・D13 の W12） | `ProductTable.tsx:132`（「手動」は `variant="secondary"`）、`00-foundations.md:32`（Warning の用途に「手動バッジ」）、`docs/SCREEN_DESIGN.md:225`（黄色「手動」バッジ） | 00:32 の用途の列 | `docs/SCREEN_DESIGN.md` の記述は lane A が画面の記述と同時に直す（packet Non-scope、D11） | T6・T17 |
 | 旧 04 の未反映の約束（packet S2 の処分表） | `04-backbone.md:34-60`（token 表・反映先・適用の順序）、`button.tsx`（既定 `h-9`）、`DepartmentFilter` の `widthClass`（`w-[10rem]` と `w-[11rem]` が混在）、`src/App.css`（参照 0）、`SearchBar.tsx` の live 型（ボタンなし）、一覧の行の右端 chevron（`rg -n 'Chevron' src` の hit は選択ボタンと select の開く印・accordion・pager・操作ログの詳細の開閉だけで、行の右端には無い） | 01 DSR-01（U7）、04 新 2・7・8（U5・U6・U8・U9）、backlog（U12・U13・U14） | 反映済みの U4・U10・U11 は行き先の実物を当てるだけで変えない | T9 |
 | 04 から 00 への反映待ち（D14） | `00-foundations.md` の caption 行・space-8 行・アイコンサイズ表、`04-backbone.md` 原則 1・6・10 の「batch 1 で改める」、`PageShell.tsx:21`（`p-6`）、`button.tsx`（svg 既定 `size-4`）、`badge.tsx`（svg `size-3`）、`EmptyState.tsx:29`（`size={24}`）、`alert-dialog.tsx:122`（`AlertDialogMedia` の svg 既定 `size-8`、消費は `UnsavedChangesDialog`）、`docs/UI_TECH_STACK.md:51`（アイコンサイズ 3 段） | 00 の 3 表、UI_TECH_STACK:51 | src の 12px の文字（`text-xs` 33 行）は画面を触る lane が直す（packet Non-scope） | T16 |
+| 役割色の文字だけの表示（D1・D2・D12、GA1） | `rg -n 'text-(success\|destructive\|warning)(-strong\|-emphasis)?\b' src --glob '!*.test.*'`（Opus F1 の再現式）: `FieldError` の `text-destructive`（入力エラー 15 か所以上）、`SummaryCardsBar.tsx` と `StocktakePage.tsx` と `IntegrityCheckPage.tsx` の ±、`ProductListTable.tsx:38-39` のセル、Home の `SummaryCards.tsx` の件数、記録詳細 6 画面と入出庫履歴の表のリンク（`text-primary underline-offset-4 hover:underline`） | なし（src を変えない） | 役割と段の答えは 00 の 1 行に集める。`IntegrityCheckPage.tsx:272` の `text-warning-foreground` は 00 に登録されていない token の既存の drift で、lane A の対象に名指しする | T15 |
+| destructive Alert（D1・D12、GA1） | `src/components/ui/alert.tsx` の `destructive`（`bg-card text-destructive`）、`HomePage.tsx`（icon あり）、`DailyReportImportPage.tsx` の二重取込みの Alert（icon なし）、`docs/backlog.md` 40 行目の既存項目、`02-component-catalog.md` ⑥ | なし | 役割は変えず、地・線・icon は lane A（既存の backlog 項目と束ねるかは lane A の Plan） | T13・T15 |
+| 詳細を開いた行（D7・D8・D12、GA1） | `src/components/ui/table.tsx:48`（`has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted`）、`src/features/stock-inquiry/components/ProductListTable.tsx:96`、`src/features/operation-logs/OperationLogsPage.tsx:544-556`（「詳細を閉じる」）、`02-component-catalog.md` ⑫（827 行目の使用トークン）、`01-decision-rules.md` DSR-22（136 行目） | 02 ⑫ の狙いの 1 文、DSR-22 の 3 点目の 1 句 | 02 ⑫ のそれ以外の記述と src は変えない（lane A） | T13・T15 |
+| 取込みの手順の表示（D12、GA1） | `src/features/csv-import/components/StepIndicator.tsx:31-33`（いまのステップは `bg-primary` の塗り、済んだステップは `bg-primary/10 text-primary`、`aria-current="step"`） | なし | src は lane A。塗りを段 2 へ移すかは lane A の L3 で owner が見る | T13・T15 |
 
 ## Negative Paths
 
@@ -144,9 +150,9 @@ not applicable: 文書の改訂で、UI・data・cache・route/search・import/e
 
 - `01-decision-rules.md` を改名した場合: DS2 は「見つかりません。スキップ」を出して ERROR にならないため、doc check の ERROR 0 だけでは検出できない。T1 が DS2 行の `定義 24 件` を要求し、T2 が改名を直接検出する。
 - 00 の既存 token 表の行を 1 行消した場合: DS3 は ERROR を出さず突合件数が減る。T1 の「27 件以上」で検出する。
-- 迷いやすい場面の表から 1 行落とした場合: doc check は検出しない。T15 の場面の語の数え上げで検出する。
+- 迷いやすい場面の表から 1 行落とした場合: doc check は検出しない。T15 の第 1 列の行数（23）と、その場面の語の数が 0 になることで検出する（GA1。旧 T15 の節全体の語の数え上げは、説明文や別の行に語が残ると検出できなかった。Codex #5 がメモリ上の変異で再現）。
 - 在庫切れを注意・確認の役割に書いた場合: T5 の危険・失敗の行の必須語（`在庫切れ`）の欠落で検出する。
-- backlog の lane A の行から `--ring` や `defaultVariants` を落とした場合: T13 の行ごとの必須語で検出する（旧 T13 の `rg 'D1'` は他の entry にも当たり検出できなかった）。
+- backlog の lane A の行の対象の列挙から `--ring` だけを落とした場合: T13 の対象の部分の検査で検出する（GA1。行全体の検査では進め方の `--ring` が残り検出できなかった。Opus F4・Codex #5 が再現）。`defaultVariants` を落とした場合も同じ。旧 T13 の `rg 'D1'` は他の entry にも当たり検出できなかった。
 - DSR-22 に候補値の比（例: 2.29:1）を書いた場合: DS3 は比を見ないため検出しない。T7 の 2 つ目の `rg` で検出する。
 - 役割表の行に候補 HEX を書いた場合: backtick の `--name` を同じ行に置かなければ DS3 は検出しない。T7 が候補 HEX の出現を直接検出する。
 - 話題別の索引から DSR を 1 本落とした場合: T4 の行数 24 で検出する。
@@ -157,6 +163,6 @@ not applicable: 文書の改訂で、UI・data・cache・route/search・import/e
 
 - 狙った受け取り方（例: 進行中の囲みが「まだ終わっていない」と受け取られるか）は文書の test で確かめられない。runtime lane A / B の実機 L3 が持つ。
 - 規則の文面が owner の判断の意図どおりかは機械で確かめられない。Plan Review・Final Review と owner の Ready 判断が持つ。
-- D12 の試しの行（Home の入口 card・日報の取込み済み・Home の前日分の未取込み・ランキング 1 位・最新と上書き件数）を owner が採るかは、runtime lane A の L3 まで決まらない。本 lane の test は、ランキング 1 位は試しの答えが、他の 4 行は owner の現行の決定が規則として読め、試しの答えが移行の列にあることまでを確かめる。
-- D12 の答えが今の src のすべての場面を覆うかは、2026-09-24 に相談役と起草役が当てた範囲に依る。新しい場面は lane A の merge 直前の `rg` 再実行（D11）で拾う。
+- D12 の試しの行（Home の入口 card・日報の取込み済み・Home の前日分の未取込み・ランキング 1 位・最新と上書き件数・詳細を開いた行・取込みの手順の表示）を owner が採るかは、runtime lane A の L3 まで決まらない。本 lane の test は、ランキング 1 位・詳細を開いた行・取込みの手順の表示は試しの答えが規則として読めて試しの出典が移行の列にあること、他の 4 行は owner の現行の決定が規則として読め、試しの答えが移行の列にあることまでを確かめる。badge の weight（現行 500 で置換）の受け取り方も lane A の L3 の before / after に依る。
+- D12 の答えが今の src のすべての場面を覆うかは、2026-09-24 に相談役と起草役が当てた範囲と、2026-09-25 の Final Review broad round 1 と相談役が足した 4 場面に依る（候補一覧の active 行〈`ProductAddSuggest`〉は表に無い）。新しい場面は lane A の merge 直前の `rg` 再実行（D11）で拾う。
 - 旧原則の細則が漏れなく移ったかは T9 の review（旧文との突き合わせ）に依る。
