@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted — 2026-09-24、㉘ runtime ①（packet `docs/plans/2026-09-23-legacy-stocktake-z004-write-stop.md`）。owner 決定 2026-09-22（㉘ runtime の最初の lane = 既存の危険な操作の停止と再現 fixture）。
+accepted — 2026-09-24、㉘ runtime ①（packet `docs/archive/plans/2026-09-23-legacy-stocktake-z004-write-stop.md`）。owner 決定 2026-09-22（㉘ runtime の最初の lane = 既存の危険な操作の停止と再現 fixture）。
 
 対象は REQ-205 / REQ-401。停止は現行 build に固定し、⑤（一括切替）で本 ADR を superseded にして解除する。
 
