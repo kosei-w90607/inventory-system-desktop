@@ -17,11 +17,12 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 2
 - Human Gate: ready,merge
 
-manual なし: 利用者から見える画面は変わらない。戻り link の label・行き先・href は変更前と同じ（業務記録詳細 6 画面と在庫変動履歴の既存 test の期待 href は書き換えない〈AC4〉。`detailReturnTo` の出力は現行の値の範囲で手組みと同一〈Contract Probe 2〉）。PR #78 が manual を付けた理由（在庫照会起点の 3 段往復の実クリックを自動 test が持たなかった）は、本 lane で実 router の往復 test T7 を足して自動化する。r4 なし: DB・command・data を触らない。
+manual なし: 利用者から見える画面は変わらない。戻り link の label・行き先・href は変更前と同じ（業務記録詳細 6 画面と在庫変動履歴の既存 test の期待 href は書き換えない〈AC4〉。`detailReturnTo` の出力は `/` 始まりの `returnTo` と `returnTo` なしで手組みと 1 byte も同じ。`/` 始まりでない不正な `returnTo` では詳細 link の href だけが変わり、在庫照会へ戻る先は既定の戻り先のまま〈Contract Probe 2、Boundary / Wire Contract の compatibility〉）。PR #78 が manual を付けた理由（在庫照会起点の 3 段往復の実クリックを自動 test が持たなかった）は、本 lane で実 router の往復 test T7 を足して自動化する。r4 なし: DB・command・data を触らない。
 
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（2026-09-25、本 commit、plan-first、起草役 = Opus 5.5 subagent）: Risk R3（下記 Risk）。設計正本の改訂（DSR-15 の判定フロー、DSR-18 の判定フローと共通 helper の段落、`01-decision-rules.md` 更新履歴、66 UI-06c-D9 / §66.5 / §66.7）を同じ plan-first commit に入れた。owner の設計判断を要する論点は無い（画面の振舞いは不変で、決めたのは helper の型と直列化の方法だけ。Design Readiness 参照）。`docs/Plans.md` の「次の行動」に本 packet と Matrix の link を 1 行足した。Plan Review へ。
+- plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は Claude 側 approve、Codex 側 reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
 
 ## Owner Effort Budget
 
@@ -106,7 +107,7 @@ route/search state の契約（戻り link の組み方）を変える packet �
   - `:76` を `returnToLinkProps(search.returnTo, { pathname: "/stock" })` にし、`:95` の分岐を `backLinkProps ? <Link {...backLinkProps}>… : <Link to="/stock" search={{ q: productCode, selected: productCode }}>…` にする（label・アイコン・fallback は現行のまま）。`:74-75` のコメントは「pin 不一致・欠落・不正で helper が `null`」に合わせる。
   - `:77-87` の `returnToParams` / `returnToQuery` を消し、`detailReturnTo` を `` `/stock/${encodeURIComponent(productCode)}/movements${defaultStringifySearch({ dateFrom: normalizedSearch.dateFrom, dateTo: normalizedSearch.dateTo, type: normalizedSearch.type === "all" ? undefined : normalizedSearch.type, page: normalizedSearch.page > 1 ? normalizedSearch.page : undefined, returnTo: search.returnTo })}` `` で組む（key の順は現行の `set` 順と同じにする。`defaultStringifySearch` は空 object で `""`、それ以外で `?` 付きを返すため、`?` の付け外しを自前で書かない）。`defaultStringifySearch` は `:7` の既存の `@tanstack/react-router` import に足す。
 - **S4 test**（Matrix の T1〜T7）:
-  - `src/lib/return-to.test.ts` の `describe("returnToLinkProps …")`（`:52-120`）を新しい署名で書き直す: T3 有効値の分解（`:53-63` の fallback 引数を外すだけ）/ T1 欠落（`undefined` / `null` / `""`）と不正値（`"relative"` / `"https://evil.example"` / `"/\\evil.example"` / `"/a/..//["` / `"//["`）で `null`、throw しない / T2 pin 不一致で `null`、pin 一致で props / T4 `expectTypeOf(returnToLinkProps("/x")).toEqualTypeOf<{ to: string; search: Record<string, unknown> } | null>()`（`vitest` から import。`npm run typecheck` で効く）。fallback 引数を前提にした 4 本（`:65-70` 欠落時の fallback 分解、`:72-77` 不正時の fallback 分解、`:79-84` query 付き fallback、`:100-106` pin を fallback へ再適用しない）と `:93-98` の不正 fallback の sentinel は、検査対象の引数が無くなるため削除し、`:93-98` の入力群は T1 の不正値 case へ移す（弱体化ではなく、消えた機能の test の撤去。6 画面の既定の戻り先は既存 T11 系が引き続き固定する）。`normalizeReturnTo` の describe（`:5-50`）は変えない。
+  - `src/lib/return-to.test.ts` の `describe("returnToLinkProps …")`（`:52-120`）を新しい署名で書き直す: T3 有効値の分解（`:53-63` の fallback 引数を外すだけ）/ T1 欠落（`undefined` / `null` / `""`）と不正値（`"relative"` / `"https://evil.example"` / `"/\\evil.example"` / `"/a/..//["` / `"//["`）で `null`、throw しない / T2 pin 不一致で `null`、pin 一致で props / T4 `expectTypeOf(returnToLinkProps("/x")).toEqualTypeOf<{ to: string; search: Record<string, unknown> } | null>()`（`vitest` から import。`npm run typecheck` で効く）。fallback 引数を前提にした 5 本（`:65-70` 欠落時の fallback 分解、`:72-77` 不正時の fallback 分解、`:79-84` query 付き fallback、`:86-91` malformed authority で throw せず fallback へ落ちる、`:100-106` pin を fallback へ再適用しない）と `:93-98` の不正 fallback の sentinel の計 6 本は、検査対象の引数が無くなるため削除し、`:86-91` の入力 `/a/..//[` と `:93-98` の入力群は T1 の不正値 case へ統合する（弱体化ではなく、消えた機能の test の撤去。6 画面の既定の戻り先は既存 T11 系が引き続き固定する）。`normalizeReturnTo` の describe（`:5-50`）は変えない。
   - `src/features/stock-movements/StockMovementsPage.test.tsx` に T5 を足す（`./types` から `stockMovementsSearchSchema` と `normalizeStockMovementsSearch` を値で import する。現行の `:14` は `import type { StockMovementsSearch }` だけ）。既存 `:89-124`（T6、期待 href の文字列）と `SPEC-UI06C-D9-R1` の describe（`:393-507`）は期待値を変えない。
   - `src/features/inventory-records/ReturnToFlow.test.tsx` に T7 を足す（実 `routeTree` + `createMemoryHistory`、既存 T8 の harness を再利用）。`vi.mock("@/lib/bindings")` の commands に在庫照会・在庫変動履歴・廃棄詳細が呼ぶものを足す（base の現物: `searchProducts` / `listLowStock` / `getStockDetail`〈`src/features/stock-inquiry/hooks/useStockInquiry.ts`〉、`listMovements`〈`src/features/stock-movements/hooks/useStockMovements.ts`〉、`getDisposalRecord`〈`DisposalRecordDetailPage.tsx:50`〉。`listDepartments` は既存）。
 - **S5 traceability の再生成**: S4 で REQ-207 / REQ-303 付きの test を足す・消すため、`cd src-tauri && cargo run --bin generate_traceability` で `docs/function-design/90-traceability.md` を再生成する（AUTO-GENERATED、手で編集しない）。
@@ -142,10 +143,12 @@ route/search state の契約（戻り link の組み方）を変える packet �
 
 ## Acceptance Criteria
 
+前提（AC1・AC2・AC6 と Test Plan の vitest / typecheck）: clean な checkout には `src/routeTree.gen.ts`（gitignore 済み）が無く、`.npmrc` の `ignore-scripts=true` で `pretypecheck` / `pretest` の生成も走らないため、依存を用意（`npm ci --ignore-scripts`）してから `npm run generate:routes` を実行し、その後に各 command を回す（未生成だと vitest は import 解決に失敗し、typecheck は exit 2）。AC8 の `local-ci.sh full` は自前で `npm ci` と `npm run generate:routes` を実行する。
+
 - **AC1** `npx vitest run src/lib/return-to.test.ts src/features/stock-movements src/features/inventory-records src/features/stock-inquiry` が pass し、T1〜T3・T5〜T7 を含む。
 - **AC2** `npm run typecheck` が exit 0（T4 と 7 画面の呼出しを含む）。
 - **AC3** `rg -n 'to: "", search: \{\}' src` が 0 hit（base の出力 = 2 hit: `src/lib/return-to.ts:43`、`src/lib/return-to.test.ts:96`）。
-- **AC4** 既存の期待 href を書き換えない: `git diff origin/main -- src/features/stock-movements/StockMovementsPage.test.tsx src/features/inventory-records/OtherRecordDetailPages.test.tsx src/features/inventory-records/DisposalRecordDetailPage.test.tsx src/features/inventory-records/StocktakeRecordDetailPage.test.tsx src/features/inventory-records/CsvImportRecordDetailPage.test.tsx` を `rg '^-[^-]'` に通した出力が、`StockMovementsPage.test.tsx` の `-import type { StockMovementsSearch } from "./types";`（T5 の値 import を足すために書き換える 1 行）だけになる（既存の期待 href・入力値の行を消さない。追加だけ）。
+- **AC4** 既存の期待 href を書き換えない: `git diff $(git merge-base origin/main HEAD) -- src/features/stock-movements/StockMovementsPage.test.tsx src/features/inventory-records/OtherRecordDetailPages.test.tsx src/features/inventory-records/DisposalRecordDetailPage.test.tsx src/features/inventory-records/StocktakeRecordDetailPage.test.tsx src/features/inventory-records/CsvImportRecordDetailPage.test.tsx` を `rg '^-[^-]'` に通した出力が、空（T5 の値 import を別の行で足した場合）、または `StockMovementsPage.test.tsx` の `-import type { StockMovementsSearch } from "./types";`（値 import へ書き換えた場合）の 1 行だけになる（既存の期待 href・入力値の行を消さない。追加だけ）。base の出力 = 空・rg exit 1（merge-base `85b18a04`）。
 - **AC5** `rg -c 'URLSearchParams' src/features/stock-movements/StockMovementsPage.tsx` が 0 hit（rg は 0 件の file を出力しないため出力なし・exit 1。base の出力 = `1`）。
 - **AC6** mutant（Writer が注入 → 該当 test の FAIL を確認 → 復元、Final Reviewer が独立に再注入）: (1) S1 で不合格時に `null` の代わりに `{ to: "", search: {} }` を返す（戻り値の型は `| null` のまま）→ T1 が FAIL (2) S1 の戻り値の型から `| null` を外し不合格時に sentinel を返す → `npm run typecheck` が T4 で FAIL (3) S1 の `options.pathname` 判定を外す → T2 の pin 不一致 case が FAIL (4) S3 の `detailReturnTo` を base の `URLSearchParams` の手組みへ戻す → T5 の `returnTo: "123"` case が FAIL (5) S3 で `detailReturnTo` の object から `returnTo` を落とす → T7 と既存 `REQ-207 / UI-06c-D9: 元記録 link の returnTo に在庫変動履歴の returnTo を入れ子で含める` が FAIL (6) S2 の 1 画面（`DisposalRecordDetailPage.tsx`）で既定の戻り先を `/` にする → 既存 `REQ-207 / T11 DSR-18: DisposalRecordDetailPage の returnTo %s を安全に %s へ正規化する` の不正 case が FAIL。 (7) S3 の `page > 1` を `page >= 1` にする → T5 (c)（`detailReturnTo` = `/stock/BT0002/movements` の文字列一致）が FAIL。
 - **AC7** `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0（S5 の再生成後）。
@@ -185,7 +188,7 @@ route/search state の契約（戻り link の組み方）を変える packet �
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | REQ-207 | 01-decision-rules DSR-15 / DSR-18 | DSR-18（改訂、2026-09-25） | 空の `to` の sentinel は型検査を通り、押しても遷移しない link になり得る（backlog `:28`）。`null` にすると spread も property 参照も型で止まる（Probe 1）。フォールバック引数を外す理由: `\| null` を返しつつ fallback 引数を残すと、呼出側は同じ既定 hub を `??` で二重に書くことになる。棄却: (a) 署名を保って両方不合格のときだけ `null`（上の二重記述）/ (b) sentinel のまま comment で注意（backlog の起点そのもの）/ (c) 呼出側で `!` を付ける（型で強制する意味が消える）/ (d) 既定 hub を Link props の定数として helper から export（6 画面の既定 hub は同じ `/inventory/records` だが、DSR-18 は遷移先ごとの既定 hub を呼出側の責務とするため、1 行の literal に留める） | S1 / S2 / S3 | T1 / T2 / T3 / T4、既存 T11 系 |
-| REQ-303 | 66 UI-06c-D9 | UI-06c-D9（改訂、2026-09-25） | `detailReturnTo` は router の直列化へ寄せる。ただし `location.href` ではなく、props で受けた検証済み search を正規化した object を `defaultStringifySearch` で直列化する。現行の値の範囲では出力が手組みと 1 byte も変わらず（Probe 2）、JSON として読める string だけに引用符が付く（将来 string の param を足したときに GA5 と同じ機序で型が落ちる罠を閉じる）。棄却: (a) 手組みを存置し DSR-18 の理由を書き直す（現状は無害だが罠が残り、DSR-18 の存置理由の記述〈parseSearch を通らない〉が現物と合わない）/ (b) `useRouterState` の `location.href`（URL の未検証の値・既定値の `page=1`・元の key 順をそのまま運び、入れ子 `returnTo` の形が変わる。page component が props ではなく router の現在地に依存し、既存 test の harness〈`renderWithRouter` の初期 path `/`〉と合わなくなる） | S3 | T5 / T6 / T7 |
+| REQ-303 | 66 UI-06c-D9 | UI-06c-D9（改訂、2026-09-25） | `detailReturnTo` は router の直列化へ寄せる。ただし `location.href` ではなく、props で受けた検証済み search を正規化した object を `defaultStringifySearch` で直列化する。`/` 始まりの `returnTo` と `returnTo` なしでは出力が手組みと 1 byte も変わらず、`/` 始まりでない不正値では詳細 link の href だけが変わって在庫照会へ戻る先は既定のまま（Probe 2、Boundary / Wire Contract の compatibility）。JSON として読める string だけに引用符が付く（将来 string の param を足したときに GA5 と同じ機序で型が落ちる罠を閉じる）。棄却: (a) 手組みを存置し DSR-18 の理由を書き直す（現状は無害だが罠が残り、DSR-18 の存置理由の記述〈parseSearch を通らない〉が現物と合わない）/ (b) `useRouterState` の `location.href`（URL の未検証の値・既定値の `page=1`・元の key 順をそのまま運び、入れ子 `returnTo` の形が変わる。page component が props ではなく router の現在地に依存し、既存 test の harness〈`renderWithRouter` の初期 path `/`〉と合わなくなる） | S3 | T5 / T6 / T7 |
 | REQ-303 / REQ-207 | 66 UI-06c-D9、DSR-17 (b) | UI-06c-D9 | 在庫照会起点の 3 段往復で href が文字列一致すること（scroll 復元の key が `location.href`）を実 router で固定する。PR #78 では L3 だけが持っていた | S3 | T7 |
 
 ## Design Intent Audit
@@ -207,7 +210,7 @@ Fact check / design decision split lens だけ該当: 外部 library（TanStack 
 - Source docs updated in this PR: DSR-15（判定フロー）/ DSR-18（判定フローの送信側と不合格時、共通 helper の段落）/ `01-decision-rules.md` 更新履歴 / 66 UI-06c-D9・§66.5・§66.7（いずれも plan-first commit）
 - Design gaps intentionally deferred: DSR-22 の古い行番号参照（Non-scope）
 - Durable decisions discovered in this plan and promoted to source docs: 上記 Design Intent Audit の 2 点
-- owner 決定待ち: なし（画面の振舞い・受容リスク・範囲に関わる選択が無い。backlog `:30` の寄せる / 寄せないは、出力が変わらないことを Probe 2 で確かめられる技術判断として drafter が決めた）
+- owner 決定待ち: なし（画面の振舞い・受容リスク・範囲に関わる選択が無い。backlog `:30` の寄せる / 寄せないは、正規の戻り先では出力が変わらず、不正値でも在庫照会へ戻る先が既定のままであることを Probe 2 で確かめられる技術判断として drafter が決めた）
 
 Minimum design checks for business-app work:
 
@@ -222,7 +225,7 @@ Minimum design checks for business-app work:
 ## Contract Probe
 
 - TanStack の typed `Link` は `{ to: string; search: … } | null` の spread を拒むか: base の `src` を scratch へ複製し、main checkout の `node_modules`（`@tanstack/react-router` 1.168.23、tsc 5.8.3）と `tsr generate` の routeTree で `tsc --noEmit -p tsconfig.json` -> `<Link {...nullable}>` は TS2322、`nullable.to` の参照は TS18047、`<Link>`（`to` なし）は TS2741、`nullable ?? { to: "/inventory/records", search: {} }` の spread と `nullable ? <Link {...nullable}> : <Link to="/stock" …>` は error なし（probe 以外の error 0）。`?? { to: "/inventory/recods", … }`（typo）の spread は error にならず、`<Link to="/inventory/recods">` の直書きだけが TS2820 になる。`expectTypeOf(非 null の値).toEqualTypeOf<… | null>()` は TS2344（T4 が型の後退を検出できる）
-- `defaultStringifySearch` の出力は現行の手組みと同じか: node で base の手組み（`StockMovementsPage.tsx:77-87` と同じ `set` 順）と S3 の object 直列化を 6 入力で比較 -> `{}` / 日付 + `type` + `page` / `type` + `returnTo` / 数字だけの商品コードを引用符付きで持つ入れ子 `returnTo`（`/stock?q=%222099000000019%22&selected=%222099000000019%22`）/ 日本語と `+` を含む入れ子 `returnTo` の 5 入力は文字列一致（例 `?dateFrom=2026-06-01&type=disposal&page=3&returnTo=%2Fstock%3Fq%3D%25222099000000019%2522%26selected%3D%25222099000000019%2522`）。`returnTo: "123"`（JSON として読める string）だけ `?returnTo=123` と `?returnTo=%22123%22` で異なり、後者を `defaultParseSearch` すると string `"123"` に戻る（前者は number 123 になり、route schema で `undefined` に落ちる）
+- `defaultStringifySearch` の出力は現行の手組みと同じか: node で base の手組み（`StockMovementsPage.tsx:77-87` と同じ `set` 順）と S3 の object 直列化を 6 入力で比較 -> `{}` / 日付 + `type` + `page` / `type` + `returnTo` / 数字だけの商品コードを引用符付きで持つ入れ子 `returnTo`（`/stock?q=%222099000000019%22&selected=%222099000000019%22`）/ 日本語と `+` を含む入れ子 `returnTo` の 5 入力は文字列一致（例 `?dateFrom=2026-06-01&type=disposal&page=3&returnTo=%2Fstock%3Fq%3D%25222099000000019%2522%26selected%3D%25222099000000019%2522`）。`returnTo: "123"`（JSON として読める string）だけ `?returnTo=123` と `?returnTo=%22123%22` で異なり、後者を `defaultParseSearch` すると string `"123"` に戻る（前者は number 123 になり、route schema で `undefined` に落ちる）。拡張比較（商品コード 4 × search 7 × `returnTo` 20 = 560 通り）: 差が出たのは JSON として読める `returnTo` の 9 値（`123` / `true` / `null` / `"x"` / `[1]` / `{}` / ` 1` / `-0` / `1e3`）だけで、どれも `/` 始まりでない。`/` 始まりの `returnTo` と `returnTo` なしは全件 1 byte 同じ（`/` 始まりの string は JSON として読めないため、新旧とも引用符なしでそのまま出る）。差の出る値は新旧とも不正な戻り先で、業務記録詳細との往復の後も「在庫照会へ戻る」は既定の戻り先に着地する（router-core 1.168.15 の `defaultStringifySearch` / `defaultParseSearch` の実物で `123` / `true` / `null` / `[]` / `"x"` / `[1]` / `{}` / ` 1` / `-0` / `1e3` を往復）。例外は JSON の文字列 literal として読める値（引用符ごとの `"/stock"`。二重に符号化した URL でだけ作れる）で、旧は往復で引用符を外して `/stock` へ着地させ、新は往復の前後とも既定の戻り先に着地する
 
 ## Contract Coverage Ledger
 
@@ -252,7 +255,8 @@ Adjacent-contract sweep: DSR-15 / DSR-18 / 66 §66.2 UI-06c-D9・§66.3・§66.5
 [Test Design Matrix](test-matrices/2026-09-25-nav-return-to-types.md)。
 
 - targeted tests: T1〜T7
-- negative tests: T1（欠落・不正・解析不能）/ T2（pin 不一致）/ T5 の `returnTo: "123"` case
+- 前提: vitest / typecheck の前に依存の用意と `npm run generate:routes`（Acceptance Criteria 冒頭の前提）
+- negative tests: T1（欠落・不正・解析不能）/ T2（pin 不一致）/ T5 の `/` 始まりでない不正値の case（(b) `returnTo: "123"`、(d) 在庫照会へ戻る先が新旧とも既定）
 - compatibility checks: AC4（既存の期待 href を書き換えない）、T6、既存 T11 系・`SPEC-UI06C-D9-R1`・GA5 T2-num・`ReturnToFlow.test.tsx` T8〜T10
 - data safety checks: 該当なし（synthetic 値だけ）
 - main wiring/integration checks: T7（実 `routeTree` + memory history で在庫照会 → 在庫変動履歴 → 業務記録詳細 → 戻る 2 回）
@@ -269,14 +273,14 @@ Adjacent-contract sweep: DSR-15 / DSR-18 / 66 §66.2 UI-06c-D9・§66.3・§66.5
 - precision/range: `returnTo` は `max(500)`（不変）。`page` は正の整数（不変）
 - round-trip path: 在庫照会 href → `returnTo` → 在庫変動履歴 → `detailReturnTo`（入れ子）→ 業務記録詳細 → `returnToLinkProps`（`defaultParseSearch`）→ `<Link>`（stringify）→ 在庫変動履歴 route の `validateSearch` → `returnToLinkProps`（pin `/stock`）→ 在庫照会 route の `validateSearch`
 - invalid input: 欠落 / 空 / `/` 始まりでない / 外部 origin に解決される / 解析不能 / pin 不一致 → `null` → 呼出側の既定 hub
-- compatibility: 変更前の `detailReturnTo`（手組み）で作られた URL と変更後の URL は、現行の値の範囲で同一（Probe 2）。bookmark 相当の既存 URL の受け側の扱いは変えない
+- compatibility: `/` 始まりの `returnTo`（正規の戻り先）と、`returnTo` が無い場合は、`detailReturnTo` の出力が変更前の手組みと 1 byte も変わらない。route schema が受ける `/` 始まりでない値（例 `"123"`、`"true"`、`"null"`、`"[]"`）は新旧とも不正な戻り先で、在庫照会へ戻る link は同じ既定の戻り先（`/stock?q=<code>&selected=<code>`）に着地する。この場合だけ詳細 link の href（と、href を key にする scroll 復元の key）が変わる。旧の手組みはこの値を number 等（`null`・配列を含む）に化けさせており、新は string のまま運ぶ。例外: JSON の文字列 literal として読める値（引用符ごとの `"/stock"` 等。二重に符号化した URL でだけ作れる）は、旧が業務記録詳細との往復で引用符を外して中身の `/stock…` へ着地させていた。新は往復の前後とも既定の戻り先に着地する（Probe 2）。bookmark 相当の既存 URL の受け側の扱いは変えない
 
 ## Review Focus
 
 - `returnToLinkProps` の `null` の分岐が 7 画面すべてで、変更前と同じ既定の戻り先へ落ちるか（6 画面の `/inventory/records`、在庫変動履歴の `/stock?q&selected`）
-- 撤去する `return-to.test.ts` の 5 本（fallback 引数の test 4 本と不正 fallback の sentinel）が、消えた機能だけを検査していたか。残る振舞い（既定 hub、query 付き値の型保存）が T1〜T3 と既存 T11 系で固定されているか
+- 撤去する `return-to.test.ts` の 6 本（fallback 引数の test 5 本と不正 fallback の sentinel）が、消えた機能だけを検査していたか。残る振舞い（既定 hub、query 付き値の型保存）が T1〜T3 と既存 T11 系で固定されているか
 - `detailReturnTo` の key 順・既定値の省略が手組みと同じで、既存 test の期待 href を書き換えずに通るか（AC4、T6）
-- T5 の `returnTo: "123"` case が、実害のない入力で直列化の可逆性を検査していることを test 名か comment で明示しているか（現行の正当な値では差が出ない）
+- T5 の `/` 始まりでない不正値の case（(b)・(d)）が、在庫照会へ戻る先の変わらない入力で直列化の可逆性を検査していることを test 名か comment で明示しているか（正規の戻り先〈`/` 始まり〉では差が出ない）
 - T7 が実 router の往復を通り、mock の境界が generated `commands.*` にあるか
 - 保守者が `StockMovementsPage.tsx` の `detailReturnTo` を読んで、手組みでも `location.href` でもない理由を 66 UI-06c-D9 から辿れるか
 

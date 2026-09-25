@@ -11,7 +11,7 @@ Risk: R3
 - SPEC-NAV-RETURN-TYPES-2026-09-25 C1: `returnToLinkProps(value, options?)` は合格値だけを `{ to, search }` で返し、欠落・不正・解析不能・pin 不一致は `null`。throw しない
 - C2: 戻り値の型は `{ to: string; search: Record<string, unknown> } | null`（呼出側の分岐を型で強制）
 - C3: `null` のとき業務記録詳細 6 画面は `/inventory/records`、在庫変動履歴は `/stock?q=<code>&selected=<code>`（変更前と同じ）
-- C4: `detailReturnTo` は正規化した search と入れ子 `returnTo` を router の既定の直列化で運び、受け側の schema で元の search に戻る。現行の値の範囲で href は変更前と同一
+- C4: `detailReturnTo` は正規化した search と入れ子 `returnTo` を router の既定の直列化で運び、受け側の schema で元の search に戻る。`/` 始まりの `returnTo`（正規の戻り先）と `returnTo` なしでは href が変更前と 1 byte も変わらない。route schema が受ける `/` 始まりでない値（例 `"123"`、`"true"`、`"null"`、`"[]"`）は新旧とも不正な戻り先で、在庫照会へ戻る link は同じ既定の戻り先に着地し、詳細 link の href（と scroll 復元の key）だけが変わる（旧は number 等に化けさせ、新は string のまま運ぶ。JSON の文字列 literal の例外は packet の Boundary / Wire Contract の compatibility）
 - C5: 在庫照会 → 在庫変動履歴 → 業務記録詳細 → 戻る 2 回で、各段の href が行きと文字列一致する
 - 維持: DSR-15 の guard（`normalizeReturnTo` / `parseReturnTo`）、UI-06c-D9 の pin と fallback、DSR-17 (a) の `<Link>` push
 
@@ -36,7 +36,7 @@ Risk: R3
 | C1 | FM4 | unit | T2 `return-to.test.ts`「returns null on an options.pathname mismatch」（`"/inventory/records?page=2"` と `"/stocktake?page=2"` を pin `/stock` で `null`）と「keeps a value that matches options.pathname」（`"/stock?q=BT0002&selected=BT0002"` → `{ to: "/stock", search: { q: "BT0002", selected: "BT0002" } }`） | pin 判定を外す（AC6 (3)）、`startsWith` に緩める、pin 一致の値まで `null` にする |
 | C1 | FM5 | unit | T3 `return-to.test.ts`「decomposes a valid returnTo into to (pathname) and search (object)」（base `:53-63` の fallback 引数を外すだけ。`q=%222099000000019%22` が string、`page=2` が number） | `search` を `{}` 固定にする、`defaultParseSearch` を通さず数字だけの `q` の型が崩れる |
 | C2 | FM2 | typecheck | T4 `return-to.test.ts` の `expectTypeOf(returnToLinkProps("/x")).toEqualTypeOf<{ to: string; search: Record<string, unknown> } \| null>()`（`npm run typecheck` が検査） | 戻り値の型から `\| null` を外す（AC6 (2)、Contract Probe 1 で TS2344 を確認済み） |
-| C4 | FM6 | unit | T5 `StockMovementsPage.test.tsx`「REQ-303 / UI-06c-D9 (SPEC-NAV-RETURN-TYPES C4): 元記録 link の detailReturnTo は受け側の schema で元の search に戻る」（`it.each`: (a) `{ dateFrom: "2026-06-01", dateTo: "2026-06-30", type: "disposal", page: 2, returnTo: "/stock?q=%222099000000019%22&selected=%222099000000019%22" }` (b) `{ returnTo: "123" }` (c) `{}`。「廃棄・破損 #7」の href の search から外側の `returnTo` を `defaultParseSearch` で取り、それを `new URL(…, "http://inventory.local")` にして pathname = `/stock/BT0002/movements`、`stockMovementsSearchSchema.parse(defaultParseSearch(inner.search))` を `normalizeStockMovementsSearch` した値が入力の同値と deep-equal、`returnTo` が入力と一致。(c) だけは外側の `returnTo` が `/stock/BT0002/movements`〈`?` なし〉と文字列一致することも見る） | `detailReturnTo` を base の `URLSearchParams` 手組みへ戻す（(b) で `returnTo` が number 123 → schema で `undefined`、AC6 (4)）、key を落とす、既定値の正規化を壊す。(b) は現行の正当な値では差が出ない入力で、直列化の可逆性（将来 string の param を足したときの罠）を検査する旨を test に comment で書く |
+| C4 | FM6 | unit | T5 `StockMovementsPage.test.tsx`「REQ-303 / UI-06c-D9 (SPEC-NAV-RETURN-TYPES C4): 元記録 link の detailReturnTo は受け側の schema で元の search に戻る」（`it.each`: (a) `{ dateFrom: "2026-06-01", dateTo: "2026-06-30", type: "disposal", page: 2, returnTo: "/stock?q=%222099000000019%22&selected=%222099000000019%22" }` (b) `{ returnTo: "123" }` (c) `{}`。「廃棄・破損 #7」の href の search から外側の `returnTo` を `new URLSearchParams(outer.search).get("returnTo")` で取り、それを `new URL(…, "http://inventory.local")` にして pathname = `/stock/BT0002/movements`、`stockMovementsSearchSchema.parse(defaultParseSearch(inner.search))` を `normalizeStockMovementsSearch` した値が入力の同値と deep-equal、`returnTo` が入力と一致。(c) だけは外側の `returnTo` が `/stock/BT0002/movements`〈`?` なし〉と文字列一致することも見る）。(d)「`/` 始まりでない不正値でも、在庫照会へ戻る先が既定の戻り先で新旧同じ」（`it.each`: `"123"` / `"true"` / `"null"` / `"[]"`。新 = `{ returnTo: <値> }` で描画し (a)〜(c) と同じ手順で得た内側の search を `stockMovementsSearchSchema.parse(defaultParseSearch(…))` した値、旧 = 手組みの形の literal〈`?returnTo=123` / `?returnTo=true` / `?returnTo=null` / `?returnTo=%5B%5D`〉を同じく parse した値。それぞれを `search` にして描画した「在庫照会へ戻る」の href が、`returnTo` なしで描画したときの href と一致する。詳細 link の href の文字列一致は求めない） | `detailReturnTo` を base の `URLSearchParams` 手組みへ戻す（(b) で `returnTo` が number 123 → schema で `undefined`、AC6 (4)）、key を落とす、既定値の正規化を壊す、`/` 始まりでない不正値を正規の戻り先へ化けさせる（(d)）。(b)・(d) は正規の戻り先（`/` 始まり）では差が出ない不正値の入力で、直列化の可逆性（将来 string の param を足したときの罠）と在庫照会へ戻る先の不変を検査する旨を test に comment で書く |
 | C4 | FM5 | unit（既存、期待値不変） | T6 `StockMovementsPage.test.tsx:89`「REQ-303: URL searchからMovementQueryを作りlistMovementsを呼ぶ」の href 文字列一致（`:120-123`） | key 順・`page` の出し方・符号化が変わる（AC4 で期待値の書換えを禁止） |
 | C4 / C5 | FM7 | unit（既存） | `StockMovementsPage.test.tsx:443`「REQ-207 / UI-06c-D9: 元記録 link の returnTo に在庫変動履歴の returnTo を入れ子で含める」 | `detailReturnTo` から `returnTo` を落とす（AC6 (5)） |
 | C5 | FM5 / FM7 | integration（実 `routeTree` + memory history） | T7 `ReturnToFlow.test.tsx`「SPEC-NAV-RETURN-TYPES C5 REQ-207 / REQ-303: 在庫照会（数字だけの商品コード）→ 在庫変動履歴 → 業務記録詳細 → 前の画面へ戻る → 在庫照会へ戻る で各段の href が行きと文字列一致する」: 初期 entry `/stock?q=%222099000000019%22&selected=%222099000000019%22`（router の直列化と同じ形）、在庫照会の詳細の在庫変動履歴への link を click → `pathname` = `/stock/2099000000019/movements` を待ち `location.href` を記録 → 「廃棄・破損 #7」→ `/inventory/disposal/records/7` → 「前の画面へ戻る」→ `location.href` が記録した在庫変動履歴の href と一致 → 「在庫照会へ戻る」→ `location.href` が初期 entry と一致し、`location.search` が `{ q: "2099000000019", selected: "2099000000019" }`（string） | 入れ子 `returnTo` を落とす（AC6 (5)）、helper が合格値を `null` にする、符号化が段ごとにずれる、数字だけの商品コードが number 化する |
@@ -44,7 +44,7 @@ Risk: R3
 | C3 / 維持 | FM3 / FM4 | unit（既存、期待値不変） | `StockMovementsPage.test.tsx:393` `SPEC-UI06C-D9-R1` の 7 case と `:425` GA5 T2-num | `null` の分岐を反転する（有効な `returnTo` でも fallback へ落ちる）、fallback の `q` / `selected` を文字列 URL で組む |
 | 維持 | — | unit（既存、変えない） | `return-to.test.ts:5-50` `normalizeReturnTo` の 2 describe | guard（`parseReturnTo`）を S1 の改修で壊す |
 
-撤去する test（`return-to.test.ts`）: `:65-70`「decomposes the fallback the same way when the value is missing」、`:72-77`「… when the value is invalid」、`:79-84`「decomposes a query-bearing fallback without losing search types」、`:93-98`「returns the empty sentinel for invalid fallback %s without throwing」、`:100-106`「does not reapply the pathname pin to the fallback」。いずれも S1 で消える `fallback` 引数だけを検査する。`:93-98` の入力群は T1 の不正値へ、query 付き値の型保存は T3 へ、既定 hub の行き先は既存 T11 系へ引き継ぐ。`:108-113` の pin 不一致 case は T2 へ書き換える（期待値を sentinel から `null` へ）。
+撤去する test（`return-to.test.ts`）: `:65-70`「decomposes the fallback the same way when the value is missing」、`:72-77`「… when the value is invalid」、`:79-84`「decomposes a query-bearing fallback without losing search types」、`:86-91`「falls back without throwing for a malformed normalized authority」、`:93-98`「returns the empty sentinel for invalid fallback %s without throwing」、`:100-106`「does not reapply the pathname pin to the fallback」の 6 本。いずれも S1 で消える `fallback` 引数だけを検査する。`:86-91` の入力 `/a/..//[` は T1 へ統合し（T1 の不正値に既にある）、`:93-98` の入力群は T1 の不正値へ、query 付き値の型保存は T3 へ、既定 hub の行き先は既存 T11 系へ引き継ぐ。`:108-113` の pin 不一致 case は T2 へ書き換える（期待値を sentinel から `null` へ）。
 
 ## State Lifecycle Matrix
 
@@ -92,7 +92,7 @@ route / search の往復は、T5 が受信側 schema の parse 後の型まで�
 
 ## Compatibility Checks
 
-- old schema/input: 変更前の手組みで作られた `detailReturnTo` の URL（bookmark 相当）は、現行の値の範囲で変更後と同一（Contract Probe 2）。受け側の扱いは不変
+- old schema/input: 変更前の手組みで作られた `detailReturnTo` の URL（bookmark 相当）は、`/` 始まりの `returnTo` と `returnTo` なしで変更後と 1 byte も同じ。`/` 始まりでない不正値では詳細 link の href だけが変わり、在庫照会へ戻る先は新旧とも既定の戻り先（T5 (d)、例外は packet の Boundary / Wire Contract の compatibility、Contract Probe 2）。受け側の扱いは不変
 - new schema/input: 追加の search param なし
 - output order: `detailReturnTo` の key 順は `dateFrom` / `dateTo` / `type` / `page` / `returnTo`（base の `set` 順と同じ。T6 の文字列一致が検出）
 - optional field behavior: 値が `undefined` の key は出さない（手組みの `if` と同じ。T5 (c)）
@@ -129,5 +129,6 @@ route / search の往復は、T5 が受信側 schema の parse 後の型まで�
 ## Residual Test Gaps
 
 - 既定 hub の literal（`{ to: "/inventory/records", search: {} }`）の typo は型検査されない（Contract Probe 1）。6 画面の既存 T11 系の不正 case が href で検出する
-- `detailReturnTo` の手組みへの差戻しは、現行の正当な値では観測できない（出力が同一）。T5 (b) の JSON として読める string の入力でだけ検出する
+- `detailReturnTo` の手組みへの差戻しは、正規の戻り先（`/` 始まり）と `returnTo` なしでは観測できない（出力が同一）。T5 (b) の JSON として読める string の入力でだけ検出する
+- JSON の文字列 literal として読める `returnTo`（引用符ごとの `"/stock"`）で旧が往復後に `/stock` へ着地していた差は test に固定しない（二重に符号化した URL でだけ作れる不正値で、新は往復の前後とも既定の戻り先。Contract Probe 2 の記録だけ）
 - Windows native の実クリックは確認しない（manual なし）。画面の変化が無く、T7 が実 router の往復を固定するため
