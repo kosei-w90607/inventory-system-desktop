@@ -6,9 +6,9 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 9adb9769ce849ec0dd2066a395240694b66753eb
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（fork でない fresh context、worktree `.claude/worktrees/nav-return-to-types`、branch `agent/nav-return-to-types`）
@@ -23,6 +23,7 @@ manual なし: 利用者から見える画面は変わらない。戻り link �
 
 - kickoff → spec-check → design → plan-draft → plan-gate（2026-09-25、本 commit、plan-first、起草役 = Opus 5.5 subagent）: Risk R3（下記 Risk）。設計正本の改訂（DSR-15 の判定フロー、DSR-18 の判定フローと共通 helper の段落、`01-decision-rules.md` 更新履歴、66 UI-06c-D9 / §66.5 / §66.7）を同じ plan-first commit に入れた。owner の設計判断を要する論点は無い（画面の振舞いは不変で、決めたのは helper の型と直列化の方法だけ。Design Readiness 参照）。`docs/Plans.md` の「次の行動」に本 packet と Matrix の link を 1 行足した。Plan Review へ。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は Claude 側 approve、Codex 側 reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
+- plan-gate → plan-approved → implementing（2026-09-25、Coordinator、本 commit）: Plan Review round 2 で Codex 側（GPT-6 Sol、high）が approve（P1/P2/P3 = 0）。Claude 側は round 1 で approve（P1/P2 = 0、P3 3 は round 1 の是正 `9adb9769` で反映済み）で、P3 だけのため round 2 は再投入しない。Plan Commit = `9adb9769`（是正後の承認版。plan-first `53f3f353`）。次は Writer（Opus 5.5 subagent）の実装。
 
 ## Owner Effort Budget
 
@@ -318,6 +319,16 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-Fill after review.
-If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
+- Review-only skipped because: R3 の review-only sub-agent は、Final Review の Claude 側（Fable 5.1）と Codex 側の 2 本の broad が兼ねる。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review round 1（2026-09-25、対象 `53f3f353`）
+
+- Claude 側（fresh Opus 5.5、read-only）: approve、P1 0 / P2 0 / P3 3。S1〜S3 を隔離 worktree で仮実装し、6 行の操作列が変更前と同じ href・検索条件・選択行へ戻ることを確認。P3 = (1) `return-to.test.ts:86-91` が撤去一覧に無い、(2) Matrix T5 の `defaultParseSearch` の戻り値は `AnySchema` で `.returnTo` が型エラー、(3) AC4 の条件と比較の基点。
+- Codex 側（GPT-6 Sol、high）: reject、P1 0 / P2 2 / P3 0。(1) `/` 始まりでない不正な `returnTo`（例 `"123"`）では新旧で詳細 link の href が変わり、packet の「全ての値で不変」が書き過ぎ、(2) clean な checkout では `routeTree.gen.ts` が無く AC1・AC2 がそのままでは落ちる。
+- 裁定（Coordinator）: 全件 accept。Codex (1) は直列化の変更を撤回せず、契約を「`/` 始まりの値と欠落時は 1 byte も変わらない。不正値は新旧とも既定の戻り先に着地し、href だけが変わる（旧は number に化けさせていた）」に正確化し T5 (d) を追加。Codex (2) は前提に `npm ci --ignore-scripts` と `npm run generate:routes`。Claude 側 P3 3 件は指摘どおり。是正 = `9adb9769`。
+
+### Plan Review round 2（2026-09-25、対象 `9adb9769`）
+
+- Codex 側（GPT-6 Sol、high）: approve、P1 0 / P2 0 / P3 0。型 probe と 560 通りの直列化比較を再現。AC8 の `local-ci.sh full` で本 lane と無関係の `OperationLogsPage.scroll-restoration.test.tsx:83` が 5 秒 timeout（変更前の base でも発生、並走 run の負荷の可能性）→ 実装後の gate で切り分ける。
+- Claude 側: round 1 の P3 だけのため再投入しない（DEV_WORKFLOW Subagent Budget）。
