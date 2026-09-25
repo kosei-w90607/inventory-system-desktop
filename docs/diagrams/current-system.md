@@ -190,6 +190,7 @@ flowchart TB
 - 共有JANは `product_code ASC` の先頭商品へ売上を割り当て、warningを表示する。JANから色・サイズの個別SKUは復元できない。[DATA-2](../research/2026-09-16-diagram-audit.md#data-2-共有janの売上は個別skuを識別できない)
 - `reference_type + reference_id` は業務記録への論理参照。初期在庫のような元記録を持たないmovementもある。
 - 通常業務記録の取消・訂正は将来設計。CSV rollbackの仕組みを入庫・廃棄等に実装済みとして流用描写しない。
+- 現行 build では、商品別CSV（Z004）の取込みの確定（図の `Z4`）と取消（図の `ROLLBACK`）は一時停止中で、BIZ の入口が最初の文で停止 error を返し DB を変えない。図は停止前の旧本体の動作である（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)）。
 
 根拠: [入出庫BIZ](../../src-tauri/src/biz/inventory_service/mod.rs)、[商品別CSV BIZ](../../src-tauri/src/biz/csv_import_service/mod.rs)、[日報BIZ](../../src-tauri/src/biz/daily_report_import_service/mod.rs)、[記録追跡設計](../function-design/65-inventory-record-traceability.md)。整合性補正は例外として在庫数をmovement合計へ直接合わせ、movementを増やさず、old/newの操作ログを同一TXで必須保存する（[integrity_service](../../src-tauri/src/biz/integrity_service.rs)）。この一致は実在庫の正しさまで保証しない。
 
@@ -212,6 +213,8 @@ sequenceDiagram
   P->>M: actual_count - 確定直前在庫の補正を記録
   Note over T,M: 評価原価を保存し、棚卸しをcompletedへ。同一TX
 ```
+
+現行 build では、棚卸しの開始・カウント・確定は一時停止中で、BIZ の入口が最初の文で停止 error を返し DB を変えない（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)）。図は停止前の旧本体の動作である。
 
 これは現行動作の図示である。カウント後の入出庫がある場合の時点整合に懸念があり、[STK-1](../research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す) に例と根拠を記録した。`counted_at` を保存することと、確定時にその後の増減を反映することは別である。
 

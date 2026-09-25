@@ -6,6 +6,8 @@ Risk: R3（対象契約のimpact）。現在の作業はdesign-only。以下のr
 
 [ADRの適用範囲の但し書き](../../../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)に従い、時刻経路は確定していない・㉘の実装対象外とする。以下の印はoracleを削除せず次のdesign laneで置き換える対象を示す。混在行は時刻部分のみを除外し、受領順・context失効・拒否・回復などの確定部分の検証を維持する。後述の配線・mutation・lifecycleにも同じ区分を適用する。
 
+2026-09-23 の改訂で本Matrixの一部の行は、ADRの[㉘ への引継ぎ](../../../adr/2026-09-18-stocktake-time-evidence.md#㉘-への引継ぎ)と、同節が示す改訂laneのTest Design Matrixに置き換わった。以下の行は書き換えず、差分は同節を優先する。
+
 ## Contracts Under Test
 
 - REQ-205 / REQ-401、[時点証拠ADR](../../../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9。

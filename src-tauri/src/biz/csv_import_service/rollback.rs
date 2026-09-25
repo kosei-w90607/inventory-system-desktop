@@ -1,18 +1,29 @@
 //! rollback_csv_import — CSV取込みのロールバック（論理無効化 + 在庫補正）
 
-use crate::biz::csv_import_service::commit::apply_void_stock_corrections;
+use crate::biz::csv_import_service::commit::{apply_void_stock_corrections, import_suspended};
 use crate::biz::csv_import_service::RollbackResult;
 use crate::biz::BizError;
 use crate::db::sales_repo;
 use crate::db::system_repo::{self, NewOperationLog};
 use crate::db::{DbConnection, DbError};
 
-/// 指定 csv_import を論理無効化し、在庫を補正する
+/// 指定 csv_import を論理無効化する。現行buildでは一時停止中で、最初の文で停止する。
+///
+/// docs/function-design/32-biz-csv-import-service.md §15.0（SPEC-STOP-D1）
+pub fn rollback_csv_import(
+    _conn: &mut DbConnection,
+    _csv_import_id: i64,
+) -> Result<RollbackResult, BizError> {
+    Err(import_suspended())
+}
+
+/// 旧本体: 指定 csv_import を論理無効化し、在庫を補正する。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 冪等（既に rolled_back なら何もせず成功を返す）。
 ///
 /// docs/function-design/32-biz-csv-import-service.md §15.5
-pub fn rollback_csv_import(
+#[cfg_attr(not(test), expect(dead_code))]
+pub(crate) fn legacy_rollback_csv_import(
     conn: &mut DbConnection,
     csv_import_id: i64,
 ) -> Result<RollbackResult, BizError> {

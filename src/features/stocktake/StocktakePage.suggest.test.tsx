@@ -68,7 +68,7 @@ function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <StocktakePage search={{}} onSearchChange={vi.fn()} />
+      <StocktakePage search={{}} onSearchChange={vi.fn()} writesSuspended={false} />
     </QueryClientProvider>,
   );
 }

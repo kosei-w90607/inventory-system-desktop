@@ -2,11 +2,11 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-SPEC-STK-TIME-D1 / D7〜D9。新方式の操作契約は[73](../function-design/73-ui-stocktake.md)（検索→明示begin→計数→即保存）、[55](../function-design/55-ui-csv-import.md)（保留→商品単位再確認→再preview）、[65](../function-design/65-inventory-record-traceability.md)（記録詳細→現在の現物で訂正）を正とする。
+SPEC-STK-TIME-D1 / D7〜D9。新方式の操作契約は[73](../function-design/73-ui-stocktake.md)（検索→明示begin→計数→即保存）、[55](../function-design/55-ui-csv-import.md)（要再確認→商品単位の数え直し、共有JAN行の保留→商品単位再確認→再preview）、[65](../function-design/65-inventory-record-traceability.md)（記録詳細→現在の現物で訂正）を正とする。
 
-[51](../function-design/51-ui-product-form.md) / [60](../function-design/60-ui-product-import.md)は非連動化時に在庫が直らないことを示し、55の準備照会とともに未調整の回復先を維持する。51/73は商品単位の準備issueからBIZが版で分けた確定/数え直し案内を表示する。拒否された未取込み資料の表示はsource単位のsettlement_missingの日付と理由を組にして使い、再実測や再起動で消さない。
+[51](../function-design/51-ui-product-form.md) / [60](../function-design/60-ui-product-import.md)は非連動化時に在庫が直らないことを示し、55の準備照会とともに未調整の回復先を維持する。準備照会が `ej_unverified` を返す間は在庫連動を有効にできないことを示す。51/73は商品単位の準備issueからBIZが版で分けた確定/数え直し案内を表示する。拒否された未取込み資料の表示はsource単位のsettlement_missingの日付と理由を組にして使い、再実測や再起動で消さない。
 
-未保存token・入力だけを画面状態に置き、保存済みの実測はDB/queryから再取得する。共有JANや時刻不明をUIで安全側へ推測せず、BIZが返す型付き理由と次操作を示す。kind・要再確認・補正区分は日本語と非色シグナルで表示する。既存のroute/returnTo、IME、focusとページの器を維持し、追加の汎用取消画面は作らない。実装・Windows L3は未実施。
+未保存token・入力だけを画面状態に置き、保存済みの実測はDB/queryから再取得する。共有JANや要再確認の理由をUIで推測せず、BIZが返す型付き理由と次操作を示す。kind・要再確認・補正区分は日本語と非色シグナルで表示する。既存のroute/returnTo、IME、focusとページの器を維持し、追加の汎用取消画面は作らない。実装・Windows L3は未実施。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 

@@ -2,11 +2,9 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-本節の基準認定 / 境界導出・時計失効による consumer 再取得は、[ADRの適用範囲の但し書き](adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)により㉘のruntime実装対象外とし、次のdesign laneで置き換える。
-
 SPEC-STK-TIME-D1 / D8 / D9。既存スタックを変えず、[42の生成wire](function-design/42-cmd-sales-stocktake.md)と[73の計数状態](function-design/73-ui-stocktake.md)へ接続する。未保存token/数量はfeature-local state、保存済み実測/flag/履歴はDBとQueryを正とし、永続化した画面draftから古い数量を復活させない。
 
-保存成功とreplayedでは保存先に応じたconsumerをD-052のSSOTで再取得する。snapshot保存、独立再実測、flag更新、確定/取消、受領・基準認定/境界導出・時計失効・同一性拒否証拠・非連動化の未調整で変わる列をruntimeで列挙し、現行C16の狭い集合を新saveへ無検証で流用しない。準備照会は55に加え51/73の版別案内もconsumeし、計数保存/確定・商品設定変更・棚卸し開始・再訪で同じqueryを再取得する。集合の複製や新しい手書きinvalidationを画面へ置かない。新commandの登録、generated error union・bindings・unwrapResultが保持する回復payload・mock/testを同時に同期する。
+保存成功とreplayedでは保存先に応じたconsumerをD-052のSSOTで再取得する。snapshot保存、独立再実測、flag更新、確定/取消、受領・要再確認flagの作成/理由の変更/解消・同一性拒否証拠・非連動化の未調整で変わる列をruntimeで列挙し、現行C16の狭い集合を新saveへ無検証で流用しない。準備照会は55に加え51/73の版別案内もconsumeし、計数保存/確定・商品設定変更・棚卸し開始・再訪で同じqueryを再取得する。集合の複製や新しい手書きinvalidationを画面へ置かない。新commandの登録、generated error union・bindings・unwrapResultが保持する回復payload・mock/testを同時に同期する。
 
 開始前は数量入力を空にし、明示begin成功で入力欄へfocus、save成功で検索欄へ戻す。IME確定Enter、同じスキャンEnterでの二重実行、遅延応答による商品取り違えを防ぐ。save pendingの間は商品切替/離脱を抑止し、未保存contextの破棄と保存済み記録の取消を混同しない。日本語状態・非色表示・Windows受入条件は既存のdesign-systemを維持する。
 
@@ -45,22 +43,20 @@ SPEC-STK-TIME-D1 / D8 / D9。既存スタックを変えず、[42の生成wire](
 
 | 項目 | 決定 | 参照章 |
 |------|------|-------|
-| カラーパレット | Tailwind `stone` ベース + セマンティックトークン（primary/success/warning/danger） | [00-foundations.md カラーパレット](design-system/00-foundations.md) |
+| カラーパレット | Tailwind `stone` のニュートラル + 色の役割 6 つ（操作 / 進行中 / 注意・確認 / 完了 / 危険・失敗 / ふつう・補足）と強調の段階 0〜4。token は役割ごとの家族（primary / success / warning / destructive。進行中は runtime lane A で追加） | [00-foundations.md 色の役割](design-system/00-foundations.md#色の役割)・[カラーパレット](design-system/00-foundations.md#カラーパレット) |
 | タイポ | 本文16px、ボタン・ラベル14px、見出しh1:24px/h2:20px/h3:18px | [00-foundations.md タイポグラフィ](design-system/00-foundations.md) |
 | スペーシング | Tailwindスケール 4/8/12/16/24/32px 固定 | [00-foundations.md スペーシング](design-system/00-foundations.md) |
-| アイコンサイズ | 16/20/24px 3段階 | [00-foundations.md アイコンサイズ](design-system/00-foundations.md) |
+| アイコンサイズ | 12/16/20/24/32px の 5 段 | [00-foundations.md アイコンサイズ](design-system/00-foundations.md) |
 | 4色エリアモデル | SCREEN_DESIGN.md §2 遷移図に限定。実UIには持ち込まない | [00-foundations.md 4色エリアモデルの扱い](design-system/00-foundations.md) |
 | 業務ステータス | 色は補助。日本語ラベル + 非色シグナル + 既存 Badge/Icon で意味を伝える | [00-foundations.md 業務ステータスの視認性](design-system/00-foundations.md) |
 | ダークモード | 見送り（手芸店の日中業務想定） | §6.6 |
 | 国際化 | なし（日本語UI固定） | §3.5 |
 
-### 哲学のスタック（核心4本柱 + 補助3原則 + 観点借用1件）
+### 原則と根拠の出典
 
-- **核心4本柱**: refactoring-ui（視覚設計）/ ux-principles（利用者心理）/ GOV.UK Design Principles（作らない勇気）/ IBM Carbon Foundations（A11y基盤・密集情報）
-- **補助3原則**: Shopify Polaris（業務語彙）/ Atlassian（装飾強度の文脈依存）/ Microsoft Fluent 2（Effortless/Coherent/Relevant）
-- **観点借用**: japanese-webdesign（Anshin哲学＝情報密度＝信頼）
-
-詳細は [design-system/03-philosophy.md](design-system/03-philosophy.md)（参照哲学の正典）。
+- **原則**: [design-system/04-backbone.md](design-system/04-backbone.md) の 11 の原則（2026-09-24 に旧 03 の哲学と 16 の原則を統合）
+- **根拠の出典**: [design-system/03-philosophy.md](design-system/03-philosophy.md) の一覧（refactoring-ui / ux-principles / GOV.UK / IBM Carbon / Shopify Polaris / Atlassian / Microsoft Fluent 2 / Laws of UX / 原田秀司『UIデザインの教科書［新版］』/ NN/g / WCAG、観点借用の japanese-webdesign）
+- **どこを読むか**: [design-system/README.md](design-system/README.md) の「読む順」と「迷ったらここ」。色と強調は [00-foundations.md の色の役割](design-system/00-foundations.md#色の役割) から引く
 
 <!-- reviewed: 2026-04-16 -->
 
@@ -409,10 +405,12 @@ Tauri 初期ウィンドウは `src-tauri/tauri.conf.json` で 1280x800、最小
 
 | サブ docs | 主な内容 |
 |---------|--------|
-| [design-system/00-foundations.md](design-system/00-foundations.md) | カラーパレット・セマンティックトークン・タイポグラフィ・スペーシング・アイコンサイズ・業務ステータス視認性 |
-| [design-system/01-decision-rules.md](design-system/01-decision-rules.md) | DSR-01〜24 実装判断ルール集 |
-| [design-system/02-component-catalog.md](design-system/02-component-catalog.md) | 13 パターンカタログ（⑤SegmentedControl / ⑥空状態・ローディング / ⑦Toast / ⑧Dialog / ⑬ステータスバッジ 等） |
-| [design-system/03-philosophy.md](design-system/03-philosophy.md) | 核心4本柱・補助3原則・japanese-webdesign 観点借用・参考位置付け |
+| [design-system/README.md](design-system/README.md) | 読む順・迷ったらここ・移行中の読み方と作り方 |
+| [design-system/00-foundations.md](design-system/00-foundations.md) | 色の役割・強調の段階・迷いやすい場面・ラベルと値・書体・カラーパレット・セマンティックトークン・タイポグラフィ・スペーシング・アイコンサイズ・業務ステータス視認性 |
+| [design-system/01-decision-rules.md](design-system/01-decision-rules.md) | DSR-01〜24 実装判断ルール集（話題別の索引） |
+| [design-system/02-component-catalog.md](design-system/02-component-catalog.md) | 16 パターンカタログ（現行実装の canonical。⑤SegmentedControl / ⑥空状態・ローディング / ⑦Toast / ⑧Dialog / ⑬ステータスバッジ 等） |
+| [design-system/03-philosophy.md](design-system/03-philosophy.md) | 根拠の出典の一覧（何を取り、何を取らないか） |
+| [design-system/04-backbone.md](design-system/04-backbone.md) | 11 の原則と旧番号の対応表 |
 
 ---
 
@@ -834,6 +832,7 @@ Vite の読み込み順序は `.env` → `.env.{mode}` → `.env.{mode}.local` �
 
 | 日付 | 内容 | 担当 |
 |------|------|------|
+| 2026-09-24 | デザインの決まりの組み直し（decision-log D-091）に合わせ、§1 デザインシステム表のカラーパレット行とアイコンサイズ行、哲学のスタック節（原則と根拠の出典へ改題）、§4 の索引表を design-system の README・00 の色の役割表・04 の原則・03 の出典へ向けた | Claude（Opus 5.5） |
 | 2026-09-10 | ⑱ 取引先ピッカー統合 dialog design（PR #49）反映。DSR-01〜24 の範囲更新を記録 | Codex |
 | 2026-08-03 | UI-EB-D1〜D3 / UI-USW-D1〜D4 の実装を反映。route error fallback 2 層、共通離脱警告 hook / AlertDialog、対象 6 画面配線と全 Page 分類 sweep を追加 | Codex |
 | 2026-07-23 | UI-REF-D1 を追加。render-phase `ref.current` access を禁止し、state / effect / event 境界への同期と `react-hooks/refs` の限定導入方針を明記 | Codex |
