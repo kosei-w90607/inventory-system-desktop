@@ -110,7 +110,7 @@
 | 検索ボタン併記と、02 ⑨ の `SearchBar` を併記の単一形へ（旧原則 7、旧 token 表の検索欄の行） | 撤回（旧番号の対応表の旧原則 7 の行） |
 | PageHeader の subtitle 基準（旧原則 9） | 02 ①（`subtitle` と `actions` の併用、PR #63 で runtime 反映済み） |
 | 02 の ⑬ badge 3 種・⑨ 検索行の器・`ListSkeleton`、review-checklist の本文 16px（旧原則 1・4・6・11） | 02 ⑬・⑯・⑥、review-checklist カテゴリ 9（反映済み） |
-| 操作目標 min-height 40px（旧原則 8、旧 token 表の操作目標の行） | `docs/backlog.md`「ボタンの最小サイズの不一致」 |
+| 操作目標 min-height 40px（旧原則 8、旧 token 表の操作目標の行） | [UI_TECH_STACK.md](../UI_TECH_STACK.md) §5.6（44×44 を目標、現状は未達）と `docs/backlog.md`「ボタンの高さを目標の 44px へ近づけるかを実機で決める」 |
 | 部門 select の幅を全画面同一に（旧 token 表の検索欄の行）、sidebar ラベルの折返し、未使用の App.css の撤去、月数回・年数回の画面の個別 sweep（旧「適用の順序」4 段目） | `docs/backlog.md`（旧 04 の未了の作業） |
 | badge は 12px / 600 / pill（旧 token 表の badge の行） | 12px と pill は 02 ⑬ と `badge.tsx`。weight は 600 を現行の 500（`font-medium`、2026-09-05 以降の L3 で owner が見てきた形）で置換する。600 は見出し（00 のタイポグラフィ表）と `AlertTitle`（02 ⑥）が使い、badge には使わない。runtime lane A の L3 の before / after で owner が違和感を言えば見直す |
 | 押せる行の右端 chevron（hover 背景は反映済み、原則 7）（旧原則 8、旧「適用の順序」2 段目） | `docs/backlog.md`（同上） |
