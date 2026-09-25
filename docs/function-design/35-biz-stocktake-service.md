@@ -325,8 +325,8 @@ fn complete_stocktake(
    - stocktake_repo::get_stocktake_items_for_complete(&tx, req.stocktake_id) → Vec\<StocktakeItemForComplete\>
    - StocktakeItemForComplete: { id, product_code, actual_count }
    - actual_count が NULL の行は存在しないはず（ステップ2またはステップ3aで保証）
-5. **各明細の処理**（adjusted_items, total_centi を蓄積）
-   - let mut total_centi: i64 = 0（1/100 円）
+5. **各明細の処理**（adjusted_items, line_centis を蓄積）
+   - let mut line_centis: Vec\<i128\> = Vec::new()（商品別の金額、1/100 円）
    - let mut adjusted_items: Vec\<AdjustedItem\> = Vec::new()
    - 各 stocktake_item について:
      a. product_repo::find_by_product_code(&tx, &item.product_code) → product
@@ -334,9 +334,8 @@ fn complete_stocktake(
      b. let actual_count = item.actual_count（ステップ2/3aで NULL なしを保証済み）
      c. let valuation_cost_price = product.cost_price
      d. stocktake_repo::update_stocktake_item_valuation(&tx, item.id, valuation_cost_price)
-     e. total_centi += valuation_line_centi(valuation_cost_price, actual_count, price_basis_quantity(product.stock_unit))（§20.5a。total_centi は 1/100 円の i64）
-        - ※ オーバーフロー検査: 関数内の checked 演算 + total_centi の checked_add。overflow → BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")
-        - ※ 負の原価・数量 → BizError::ValidationFailed（§20.5a SPEC-STK-VAL-D5）
+     e. line_centis.push(valuation_line_centi(valuation_cost_price, actual_count, price_basis_quantity(product.stock_unit), &item.product_code)?)（§20.5a）
+        - ※ 負の原価・数量、中間（× 100）の i128 の桁あふれ → BizError::ValidationFailed（検査と文言は関数の中、§20.5a SPEC-STK-VAL-D5）
      f. let difference = product.stock_quantity - actual_count
      g. difference != 0 の場合:
         - let adjustment_quantity = actual_count - product.stock_quantity（在庫視点: 正=増加、負=減少）
@@ -344,7 +343,7 @@ fn complete_stocktake(
         - inventory_repo::insert_movement(&tx, &NewMovement { product_code: item.product_code, movement_type: MovementType::Stocktake, quantity: adjustment_quantity, stock_after: actual_count, reference_type: Some(ReferenceType::Stocktake), reference_id: Some(req.stocktake_id), note: Some(format!("棚卸し補正: システム在庫{} → 実カウント{}", product.stock_quantity, actual_count)) })
         - adjusted_items.push(AdjustedItem { product_code: item.product_code, product_name: product.name, system_stock: product.stock_quantity, actual_count, difference, stock_after: actual_count })
 6. **棚卸しヘッダの確定**
-   - let total_cost = valuation_total_yen(total_centi)（§20.5a。円未満を四捨五入）
+   - let total_cost = valuation_total_yen(&line_centis)?（§20.5a。i128 で合計し、円未満を四捨五入して i64 へ検査付きで変換する。合計の桁あふれ・i64 を越える円額 → BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")）
    - stocktake_repo::complete_stocktake(&tx, req.stocktake_id, total_cost, now)
    - status = "completed", completed_at = 現在日時
 7. **COMMIT**（tx.commit()）
@@ -377,7 +376,7 @@ fn complete_stocktake(
 - よって、inventory_repo::update_stock_quantity + inventory_repo::insert_movement を直接呼び出す
 
 **設計判断 — total_cost のオーバーフロー対策**:
-- worst case: 4000商品 × 原価999,999円 × 在庫9,999個 = 約40兆。1/100円単位（§20.5a）で約4,000兆。i64の上限（約9.2 × 10^18）に収まるが、万一の不正データに備えて checked_mul / checked_add で検査する
+- worst case: 4000商品 × 原価999,999円 × 在庫9,999個 = 約40兆円。中間（原価 × 数量 × 100）と1/100円の合計は i128 で checked に計算し、最後の円額だけを i64 へ検査付きで変換する（§20.5a SPEC-STK-VAL-D2 / D5）。worst case は i64 の上限（約9.2 × 10^18）に収まるが、万一の不正データに備えて検査する
 - 実運用では原価平均500円 × 在庫平均20個 × 4000商品 = 4,000万円程度（i64で余裕）
 
 **設計判断 — force_fill パラメータ**:
@@ -429,27 +428,27 @@ Ok(StocktakeResult {
 **シグネチャ**:
 ```
 fn price_basis_quantity(unit: ProductStockUnit) -> i64
-fn valuation_line_centi(cost_price: i64, quantity: i64, basis: i64) -> Result<i64, BizError>
-fn valuation_total_yen(total_centi: i64) -> i64
+fn valuation_line_centi(cost_price: i64, quantity: i64, basis: i64, product_code: &str) -> Result<i128, BizError>
+fn valuation_total_yen(lines: &[i128]) -> Result<i64, BizError>
 ```
 
 **処理ステップ**:
 
-1. 各明細で、確定時評価原価（valuation_cost_price）・評価数量・商品の在庫単位の基準数量から、商品別の金額（1/100 円）を求める
-2. 商品別の金額を checked_add で合計する
-3. 合計を円未満で四捨五入し、total_cost（円）とする
+1. 各明細で、確定時評価原価（valuation_cost_price）・評価数量・商品の在庫単位の基準数量から、商品別の金額（1/100 円、i128）を `valuation_line_centi` で求める
+2. `valuation_total_yen` が商品別の金額を i128 の checked_add で合計する
+3. 同じ関数が合計を円未満で四捨五入し、円額を i64 へ検査付きで変換して total_cost（円）とする
 
 - **SPEC-STK-VAL-D1 価格の基準数量**: 商品の selling_price / cost_price は、在庫数量で「価格の基準数量」ぶんに対する円の価格である。基準数量は在庫単位で決まる: `pcs` = 1（1 個あたり）、`cm` = 100（1 m あたり）。商品ごとの列は持たない。`price_basis_quantity` は `ProductStockUnit` の全 variant を網羅する match とし、wildcard arm を置かない（単位を足すと compile error になり、基準数量を決めずに単位を足せない）。
   - 理由: 店は長さ商品の残り・仕入れ伝票・値札をすべて m で扱い、値札は 1 m あたりである。レジの数量 1 も 1 m である（[project-memory](../project-memory.md) の Store Premises Facts、2026-09-14 / 2026-09-15）。在庫は cm の整数で持つ（[31](31-biz-inventory-service.md) の整数契約）。基準数量が単位で決まるため、利用者が商品ごとに基準数量を入力して誤る入口を作らない。
   - 不採用: 商品ごとの基準数量の列（migration・DTO・商品フォーム・商品 CSV の追加が要り、長さ商品ごとに 100 を入れる操作を利用者に任せる。今ある単位では単位と基準数量が一対一）。原価を 1 cm あたりの小数で持つ（伝票・値札の m 単価と食い違い、原価の列に小数の型が要る）。
   - 見直す条件: 単位の拡張で、単位だけでは基準数量が決まらない商品（箱で仕入れて 1 個ずつ売る商品の原価を箱あたりで記録する等）が店の回答で確かめられたとき。
-- **SPEC-STK-VAL-D2 金額の表現**: 商品別の金額は 1/100 円単位の i64、総額は円の i64 で持つ。浮動小数（f32 / f64）を使わない。理由: 2 進の浮動小数は 0.005 の境界を正確に表せず、四捨五入を誤る（例: 1.005 は 1.00499… として保持され、小数第 2 位への四捨五入が 1.00 になる）。10 進小数の crate は追加しない（整数の分子と分母で正確に計算できる）。
+- **SPEC-STK-VAL-D2 金額の表現**: 中間（原価 × 数量 × 100、商、余り）・商品別の金額（1/100 円）・その合計は i128 で計算し、最後の円額だけを i64 へ検査付きで変換する。原価と数量は i64 のため、その積は i128 に必ず収まる（第 1 段の乗算は plain の `*` とし、その旨の comment を 1 行置く）。× 100 と合計の加算は checked とする。負の値を含まない入力で旧式（原価 × 数量の i64 の積和）が確定できたものは、新式でも確定できる。`pcs` だけなら総額は旧式と一致する（商品別の金額が `原価 × 数量 × 100` で、合計が旧式の総額 × 100 になるため）。`cm` を含めば総額は旧式より小さい。中間を i64 に限る案は、旧式が確定できた値（`pcs` の原価 92,233,720,368,547,759 円・数量 1 等）を × 100 で桁あふれさせるため採らない。浮動小数（f32 / f64）を使わない。理由: 2 進の浮動小数は 0.005 の境界を正確に表せず、四捨五入を誤る（例: 1.005 は 1.00499… として保持され、小数第 2 位への四捨五入が 1.00 になる）。10 進小数の crate は追加しない（整数の分子と分母で正確に計算できる）。
 - **SPEC-STK-VAL-D3 商品別の金額**: `valuation_line_centi` は `cost_price × quantity × 100 ÷ basis` を 1/100 円未満で四捨五入した値を返す。四捨五入は割り算の正確な値に対して行う（商 q・余り r で `2r >= basis` なら q + 1）。これは店の「商品別の金額を小数第 3 位で四捨五入して小数第 2 位まで持つ」と同じ値になる。quantity は旧本体では actual_count、新方式では `max(補正後現在庫, 0)`。今ある単位（基準数量 1 と 100）では割り切れるため実際の丸めは起きないが、段として持つ。
 - **SPEC-STK-VAL-D4 総額**: `valuation_total_yen` は商品別の金額の合計（1/100 円）を円未満で四捨五入した円の整数を返す。`stocktakes.total_cost`（INTEGER、円）・StocktakeResult.total_cost（i64）・操作ログの「仕入原価総額: ¥{total_cost}」の型と表示は変えない。
-- **SPEC-STK-VAL-D5 入力の検査**: cost_price か quantity が負なら評価額を求めず `BizError::ValidationFailed("評価額を計算できません。原価か数量が負の値です（商品 {product_code}）")` を返す（呼出し側が商品コードを入れる）。乗算・加算が i64 を越える場合は既存の `BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")` を返す。どちらも確定の TX を ROLLBACK し、header・明細・在庫を変えない。basis は `price_basis_quantity` の値だけを受け、1 以上である。
+- **SPEC-STK-VAL-D5 入力の検査**: cost_price か quantity が負なら、`valuation_line_centi` が評価額を求めず `BizError::ValidationFailed("評価額を計算できません。原価か数量が負の値です（商品 {product_code}）")` を返す（検査と文言は関数の中の 1 か所。呼出し側は商品コードを渡すだけ）。中間の × 100 か合計の加算が i128 を越える場合、または四捨五入した円額が i64 を越える場合は、既存の `BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました")` を返す（i64 への変換の失敗もこの文言に固定する。既存の overflow test〈原価 `i64::MAX / 2 + 1`・数量 2〉は新式では変換で初めて error になる）。どちらも確定の TX を ROLLBACK し、header・明細・在庫を変えない。basis は `price_basis_quantity` の値だけを受け、1 以上である。
 - **SPEC-STK-VAL-D6 非遡及**: 確定済みの total_cost と valuation_cost_price は再計算しない（[時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D7 と同じ）。本契約より前に確定した記録の total_cost は旧式（原価 × 数量の整数積和）のまま残る。本契約は本番開始前に入るため、本番の記録に旧式は現れない（[初導入の前提](../project-memory.md)）。
 
-**範囲の外（既知の不整合、Backlog）**: 入庫の原価小計・原価合計（[21](21-io-inventory-repo.md) の `quantity * cost_price`）、廃棄のロス原価（入力画面の合計の表示を含む）、棚卸し記録詳細のロス原価（画面が `|補正差異| × 評価原価` を計算する）は基準数量をまだ入れていない。長さ商品ではこれらが 100 倍になる。入庫・廃棄は店の端数の規則が未確認のため本契約を流用しない。確定後に商品の在庫単位を変えると、記録詳細の数量表示とロス原価は現在の単位で計算される。
+**範囲の外（既知の不整合、Backlog）**: 入庫の原価小計・原価合計（[21](21-io-inventory-repo.md) の `quantity * cost_price`）、廃棄のロス原価（入力画面の合計の表示を含む）、棚卸し記録詳細のロス原価（画面が補正差異の絶対値に評価原価を掛ける）、手動販売の金額の初期値（[62](62-ui-manual-sale.md) UI-04-D6。追加 1 回ごとに売価を足す）は基準数量をまだ入れていない。長さ商品ではこれらが 100 倍になる。入庫・廃棄は店の端数の規則が未確認のため本契約を流用しない。確定後に商品の在庫単位を変えると、記録詳細の数量表示とロス原価は現在の単位で計算される。
 
 ---
 
