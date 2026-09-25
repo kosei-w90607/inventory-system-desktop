@@ -484,7 +484,7 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
      - difference ≠ 0 の場合:
        - inventory_movementsにINSERT（movement_type='stocktake', quantity=actual_count - products.stock_quantity, stock_after=actual_count, reference_type='stocktake', reference_id=stocktake_id）
        - products.stock_quantityをactual_countに更新
-   - total_cost = SUM(valuation_cost_price × actual_count)を計算
+   - total_cost = 商品別の金額（valuation_cost_price・actual_count・価格の基準数量から1/100円で四捨五入）の合計を円未満で四捨五入（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め)）
    - stocktakes.total_cost, completed_at, status='completed'を更新
    - operation_logsに記録（operation_type='stocktake_complete', detail_jsonに差異件数・total_cost）
 3. COMMIT
