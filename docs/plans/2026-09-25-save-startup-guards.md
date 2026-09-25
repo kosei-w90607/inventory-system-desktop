@@ -27,6 +27,7 @@ manual は 1 項目（S4 の成功 toast をホームで見る。手順と合格
 - 追記（2026-09-25、Coordinator）: owner が自動バックアップの通知の出し方に (a)（成功は 1 回、失敗は連続失敗の最初の 1 回だけ）で回答した。packet は (a) で書いてあるため Scope・AC・Matrix は変えない。
 - plan-gate（2026-09-25、owner 決定）: lane 全体を R4 にし、S4 の成功 toast の manual を 1 項目足す。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は両 reviewer とも reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
+- plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
 
 ## Owner Effort Budget
 
@@ -83,7 +84,7 @@ Goal Invariant:
 - 商品 CSV の取込みで、商品コードが 100 文字（UTF-16 code unit、在庫照会の `selected` / `q` と同じ数え方）を超える行はプレビューでエラー行になり登録されない。100 文字ちょうどの商品コードは登録でき、在庫照会の `selected` で選べる。
 - `apply_stock_change` は借りた transaction（`&rusqlite::Transaction<'_>`）しか受け取らない。通常の接続を渡すコードはコンパイルできない。入庫・返品・手動販売・廃棄の在庫と履歴の結果は変わらない。
 - DB の schema 版がアプリの知る最大より新しいとき、起動は window の前に固有の文言の dialog を出して止まり、DB の論理内容・`schema_versions`・操作ログ・自動バックアップを書かない。SQLite の open / close は、残った WAL の取込みと消去（checkpoint）、および rollback-journal mode の file（`VACUUM INTO` で作った backup を復元した直後、legacy 移行の出力）の `journal_mode` の header の書換えを行い得る。どちらも論理内容を変えない。新しすぎる版のバックアップからの復元も、現在の DB に戻して失敗する。
-- 設定時刻の自動バックアップの確認が、どの画面を開いていても 60 秒ごとに動く。前の確認が終わるまで次の確認を呼ばず、バックアップ画面を開いても確認は二重に走らない。復元の間は確認を止め、復元の二重失敗の後は止まったままになる。
+- 設定時刻の自動バックアップの確認が、どの画面を開いていても 60 秒ごとに動く。前の確認が終わるまで次の確認を呼ばず、バックアップ画面を開いても確認は二重に走らない。復元の間は確認を止め、復元の前に始まった確認の結果は捨て、復元の二重失敗の後は止まったままになる。
 
 ### 失敗定義
 
@@ -91,7 +92,7 @@ Goal Invariant:
 - S2 の後に、入庫・返品・手動販売・廃棄・（停止中の）Z004 の旧本体のどれかで在庫・履歴の結果が変わる。
 - 新しすぎる DB で、起動が続く・`DatabaseInit` の「再起動してもう一度」の文言を出す・拒否の前に DB の論理内容（表・行）か `schema_versions` が変わる・DDL が走る・操作ログか自動バックアップが書かれる。
 - 版が同じか古い DB の起動・移行の挙動が変わる。
-- バックアップ画面以外を開いている間に、設定時刻を過ぎても確認が呼ばれない。バックアップ画面を開くと 1 分に 2 回以上呼ばれる。前の確認が終わる前に次の確認が呼ばれる。復元を始めた後に確認が呼ばれる、または復元の間に届いた確認の結果で toast が出る。二重失敗の後も呼ばれ続ける。
+- バックアップ画面以外を開いている間に、設定時刻を過ぎても確認が呼ばれない。バックアップ画面を開くと 1 分に 2 回以上呼ばれる。前の確認が終わる前に次の確認が呼ばれる。復元を始めた後に確認が呼ばれる、または復元の前に始まった確認の結果で、復元の間か再開の後に toast か一覧の invalidate が起きる。二重失敗の後も呼ばれ続ける。
 
 ### 非目的
 
@@ -172,21 +173,21 @@ operator の操作・command 入口の受理範囲・起動の状態遷移を変
   - `このデータは、より新しい版のアプリで使われています。この版のアプリで書き込むとデータを傷めるおそれがあるため、起動を中止しました（データは変更していません）。新しい版のアプリを入れ直してから起動してください。わからない場合は管理者へ連絡してください。`
   - `Display` は他の variant と同じく detail をそのまま返す。setup の分岐（`lib.rs:1188-1200`）は変えない（`operator_message()` の `Some` を `show_pre_window_fatal` へ渡し、Err で setup を終える既存の形に乗る）
 - 変えないもの: `restore.rs`（新しすぎる backup は既存の「開けなければ戻す」経路で `Recovered` になる。T10 で固定）、legacy 移行、`reconcile_restore`、PRAGMA の順
-- docs（同じ PR）: `docs/function-design/22-mnt-migration.md` §3.2 処理ステップ（step 1 の `schema_versions` の確保より前に、同じ接続で版を読んで比較する step を置く）とエラーハンドリング、MNT-03-D11 の設計判断（論理的な書込みの前に止める・何を書かないか〈DB の論理内容・`schema_versions`・操作ログ・自動バックアップ。SQLite の open / close による checkpoint と `journal_mode` の header の書換えは起こり得て、論理内容を変えない〉・同じ接続で DDL の前に版を読む理由・`DatabaseInit` と分ける理由・復元への波及）、§12.4 の文言表に 1 行。`docs/function-design/10-common-rules.md` の DbError 列挙に variant。`docs/function-design/20-io-product-repo.md` §2.2 のエラー一覧に 1 行。`docs/function-design/71-mnt-backup.md` §71.7 の復元に「新しすぎる版の backup は差し替え後の open で拒否され、現在の DB に戻る（MNT-03-D11）」を 1 文
+- docs（同じ PR）: `docs/function-design/22-mnt-migration.md` §3.2 処理ステップ（step 1 の `schema_versions` の確保より前に、同じ接続で版を読んで比較する step を置く）とエラーハンドリング、MNT-03-D11 の設計判断（論理的な書込みの前に止める・何を書かないか〈DB の論理内容・`schema_versions`・操作ログ・自動バックアップ。SQLite の open / close による checkpoint と `journal_mode` の header の書換えは起こり得て、論理内容を変えない〉・同じ接続で DDL の前に版を読む理由・`DatabaseInit` と分ける理由・復元への波及・見直し契機〈SQLite の版を上げて新しい構文を使うとき。旧版では `sqlite_master` の読取りで失敗し `DatabaseInit` に落ちる〉）、§12.4 の文言表に 1 行。`docs/function-design/10-common-rules.md` の DbError 列挙に variant。`docs/function-design/20-io-product-repo.md` §2.2 のエラー一覧に 1 行。`docs/function-design/71-mnt-backup.md` §71.7 の復元に「新しすぎる版の backup は差し替え後の open で拒否され、現在の DB に戻る（MNT-03-D11）」を 1 文
 
 ### S4 自動バックアップの確認の timer を共通レイアウトへ（UI-11b-D13）
 
 - 新設 `src/features/backup-restore/useAutoBackupCheck.ts`（68 §68.6 の Query hooks 一覧に名前がある hook）:
   - `useAutoBackupCheck()`: mount 時に 60 秒の `setInterval` を 1 本張り、unmount で外す。mount の瞬間には呼ばない（起動時の確認は Rust の setup hook が持つ）
-  - 各回: 停止中なら何もしない。前の回の `checkAutoBackup` が解決していなければ何もしない（実行中の guard を hook の `useRef` に 1 つ置く。backend の Mutex は DB 処理を直列にするが、command の呼出しが積み上がるのは防がない）。`commands.checkAutoBackup()` を `unwrapResult` で呼び、`true` なら `queryKeys.backupRestore.list()` を invalidate し `toast.success("自動バックアップを作成しました")`。`false` なら何もしない
+  - 各回: 停止中なら何もしない。前の回の `checkAutoBackup` が解決していなければ何もしない（実行中の guard を hook の `useRef` に 1 つ置く。backend の Mutex は DB 処理を直列にするが、command の呼出しが積み上がるのは防がない）。呼ぶ時点の世代番号（下）を控え、`commands.checkAutoBackup()` を `unwrapResult` で呼び、`true` なら `queryKeys.backupRestore.list()` を invalidate し `toast.success("自動バックアップを作成しました")`。`false` なら何もしない
   - 失敗: 直前の回が失敗でなければ `toast.error("自動バックアップ確認に失敗しました", { id: "backup-auto-check-error" })`。失敗が続く間は出さない。`true` / `false` が返れば連続失敗の状態を解く（owner 決定 2026-09-25 = (a)、Design Readiness）
-  - 結果が届いた時点で停止中なら、その結果は捨てる（invalidate も toast もしない）。停止の前に始まり停止の後に届いた確認がこれに当たる
-  - `suspendAutoBackupCheck()` / `resumeAutoBackupCheck()`: module scope の flag を立てる / 下ろす。再起動（reload）で消える（`src/lib/restore-success-notification.ts` と同じ in-memory flag の形）。test 専用の export は作らない。test の間の独立は、各 test file の `beforeEach` で本番 API の `resumeAutoBackupCheck()` を呼んで取る（`BackupRestorePage.flow.test.tsx` の `beforeEach` が `clearRestoreSuccessPending()` を呼ぶ既存の形）
+  - 結果を捨てる判定は世代番号で行う: 結果（`true` / `false` / 失敗）が届いた時点の世代番号が、呼ぶ時点に控えた世代と違えば、その結果を捨てる（invalidate・toast・連続失敗の状態の更新をしない）。停止の前に始まった確認は、停止中に届いても、停止 → 復元 → 再開の後に届いても捨てられる（届いた時点で停止中かだけを見ると、再開の後に届いた古い `true` が成功 toast と一覧の invalidate を起こす）。実行中の guard は結果を捨てたときも解く
+  - `suspendAutoBackupCheck()` / `resumeAutoBackupCheck()`: module scope の停止の flag を立てて世代番号を 1 進める / flag を下ろす（世代番号は戻さない）。どちらも再起動（reload）で初期値に戻る（`src/lib/restore-success-notification.ts` と同じ in-memory の module state の形）。test 専用の export は作らない。test の間の独立は、各 test file の `beforeEach` で本番 API の `resumeAutoBackupCheck()` を呼んで取る（`BackupRestorePage.flow.test.tsx` の `beforeEach` が `clearRestoreSuccessPending()` を呼ぶ既存の形）
 - `src/components/layout/RootLayout.tsx`: `useAutoBackupCheck()` を 1 回呼ぶ
-- `src/features/backup-restore/BackupRestorePage.tsx`: `:167-188` の `useEffect`（interval）を消す。`handleRestore` は `commands.restoreBackup` を呼ぶ前に `suspendAutoBackupCheck()` を呼ぶ（実行中の確認の解決は待たない。待機中の確認は backend の Mutex で lock を取るまで file に触れず、二重失敗の後の空の接続では `get_setting` が Err を返すだけで副作用が無い。その結果は上の「停止中なら捨てる」で toast にならない）。結果が出たら、`restore_failed_unrecoverable` / `restore_durability_unknown` の 2 種（`setFatalRestoreKind(kind)` の分岐、`:317-318` と同じ境界）のときは止めたままにし、それ以外（成功、`Recovered` などの fatal でない Err、IPC の例外）はすべて `resumeAutoBackupCheck()` で再開する。`unwrapResult` / `toast` などの import が使われなくなれば消す
+- `src/features/backup-restore/BackupRestorePage.tsx`: `:167-188` の `useEffect`（interval）を消す。`handleRestore` は `commands.restoreBackup` を呼ぶ前に `suspendAutoBackupCheck()` を呼ぶ（実行中の確認の解決は待たない。待機中の確認は backend の Mutex で lock を取るまで file に触れず、二重失敗の後の空の接続では `get_setting` が Err を返すだけで副作用が無い。その結果は上の世代番号の判定で捨てられ、再開の後に届いても toast にならない）。結果が出たら、`restore_failed_unrecoverable` / `restore_durability_unknown` の 2 種（`setFatalRestoreKind(kind)` の分岐、`:317-318` と同じ境界）のときは止めたままにし、それ以外（成功、`Recovered` などの fatal でない Err、IPC の例外）はすべて `resumeAutoBackupCheck()` で再開する。`unwrapResult` / `toast` などの import が使われなくなれば消す
 - `src/lib/invalidation-contract.static.test.ts:23-27`: `ALLOWED_DIRECT_CALL_FILES` に `features/backup-restore/useAutoBackupCheck.ts` を足す（`docs/UI_TECH_STACK.md:250` の「backup/restore domain」の範囲内。page の同じ invalidate がこの file へ移る）
 - `RootLayout` を QueryClient なしで描く既存 test（是正時に読んで確かめた 3 file）: `app-router.test.tsx` と `OtherRecordDetailRoutes.test.tsx` は hook の module を `vi.mock` する（`RootLayout.test.tsx` が `@/features/shortcuts` を mock しているのと同じ形）。`RootLayout.test.tsx` は例外で、hook を mock しない（`vi.mock` は file 単位に hoist され、同じ file の T16 が実 hook を通すため）。既存の「T6: gives the persistent main element its restoration id」を T16 と同じ `QueryClientProvider` で包み、bindings の `commands.checkAutoBackup` を mock する。どの file も assertion は変えない
-- docs（同じ PR）: `docs/function-design/68-ui-backup-restore.md` の UI-11b-F5 / UI-11b-D9 / §68.3 / §68.8 / §68.10 の「60 秒 interval」を「共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）」へ、UI-11b-D13 を新設（置き場所・実行中の guard・復元の間の停止と再開〈fatal 2 種だけ止めたまま〉・停止の後に届いた結果を捨てること・通知の出し方）、UI-11b-L3-5 の「60秒 interval 停止」は D13 の停止を指すと明記。`docs/function-design/71-mnt-backup.md` §71.8 関数要求の「フロントエンドタイマー（60秒間隔）」に「共通レイアウト（UI-12）が mount し、画面に依らない（UI-11b-D13）」を足す。`docs/function-design/52-ui-shared-layout.md` §52.1 の `RootLayout.tsx` 行に「自動バックアップ確認 hook の呼出し（UI-11b-D13。hook 本体と state は backup-restore feature が持つ）」、§52.2 に同じ例外を 1 文
+- docs（同じ PR）: `docs/function-design/68-ui-backup-restore.md` の UI-11b-F5 / UI-11b-D9 / §68.3 / §68.8 / §68.10 の「60 秒 interval」を「共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）」へ、UI-11b-D13 を新設（置き場所・実行中の guard・復元の間の停止と再開〈fatal 2 種だけ止めたまま〉・停止の前に始まった確認の結果を世代番号で捨てること〈再開の後に届いても捨てる〉・通知の出し方〈成功 toast は、当日のバックアップが無いときの即時作成を含め、1 日に数回まで〉）、UI-11b-L3-5 の「60秒 interval 停止」は D13 の停止を指すと明記。`docs/function-design/71-mnt-backup.md` §71.8 関数要求の「フロントエンドタイマー（60秒間隔）」に「共通レイアウト（UI-12）が mount し、画面に依らない（UI-11b-D13）」を足す。`docs/function-design/52-ui-shared-layout.md` §52.1 の `RootLayout.tsx` 行に「自動バックアップ確認 hook の呼出し（UI-11b-D13。hook 本体と state は backup-restore feature が持つ）」、§52.2 に同じ例外を 1 文
 
 ### S5 test と生成物
 
@@ -216,7 +217,7 @@ frontend の AC（AC2・AC7・AC10）の前提: 依存を `npm ci --ignore-scrip
 - **AC5（S3）** `cd src-tauri && cargo test --lib db::migration && cargo test --lib test_startup && cargo test --lib mnt::restore` が pass し、T6〜T10 を含む（T6〜T8 は `db::migration` の test module、T9 は `lib.rs` の test module〈`bindings_generation_tests`〉で名前を `test_startup_` で始める、T10 は `mnt::restore` の test module に置く）
 - **AC6（S4）** `rg -n 'setInterval|checkAutoBackup' src --glob '!*.test.*' --glob '!src/lib/bindings.ts'` の一致が `src/features/backup-restore/useAutoBackupCheck.ts` だけ（baseline: `BackupRestorePage.tsx:170` / `:173`）
 - **AC7（S4）** `npm run generate:routes && npx vitest run src/features/backup-restore src/components/layout src/lib` が pass し、T11〜T19 を含む
-- **AC8** mutant（Writer が注入 → red を確認 → 戻す。Final Reviewer が独立に再注入）: (1) S1 の判定を `chars().count()` にする → T1 の BMP 外の case が red (2) S1 の判定を `len()`（byte）にする → T1 のかなの case が red (3) `commit_import` の再検証を外す → T2 が red (4) S3 の比較を `>=` にする → T7 が red (5) S3 の比較を外す → T6・T8 が red (6) `prepare_database_with_init` の写像を外し `DatabaseInit` に落とす → T9 が red (7) S2 の第 1 引数を `&DbConnection` に戻す → `cargo test` がコンパイルで止まる（T4） (8) hook の失敗 toast の連続判定を外す → T13 が red (9) `BackupRestorePage` から `suspendAutoBackupCheck()` の呼出しを外す → T18 が red (10) `RootLayout` から hook の呼出しを外す → T16 が red (11) hook の実行中の guard を外す → T19 が red (12) 停止の後に届いた結果を捨てる判定を外す → T18 (b) が red (13) fatal でない Err の後の `resumeAutoBackupCheck()` を外す → T18 (c) が red。S3 の比較の位置（DDL より前か）は oracle が DDL の no-op で差を出せないため mutant にせず、Review Focus で見る
+- **AC8** mutant（Writer が注入 → red を確認 → 戻す。Final Reviewer が独立に再注入）: (1) S1 の判定を `chars().count()` にする → T1 の BMP 外の case が red (2) S1 の判定を `len()`（byte）にする → T1 のかなの case が red (3) `commit_import` の再検証を外す → T2 が red (4) S3 の比較を `>=` にする → T7 が red (5) S3 の比較を外す → T6・T8 が red (6) `prepare_database_with_init` の写像を外し `DatabaseInit` に落とす → T9 が red (7) S2 の第 1 引数を `&DbConnection` に戻す → `cargo test` がコンパイルで止まる（T4） (8) hook の失敗 toast の連続判定を外す → T13 が red (9) `BackupRestorePage` から `suspendAutoBackupCheck()` の呼出しを外す → T18 が red (10) `RootLayout` から hook の呼出しを外す → T16 が red (11) hook の実行中の guard を外す → T19 が red (12) 結果を捨てる判定を丸ごと外す → T18 (b-1)・(b-2) が red (13) fatal でない Err の後の `resumeAutoBackupCheck()` を外す → T18 (c) が red (14) 世代の比較を外し、結果が届いた時点で停止中かだけを見る判定に置き換える → T18 (b-2)（再開の後に届く）が red。S3 の比較の位置（DDL より前か）は oracle が DDL の no-op で差を出せないため mutant にせず、Review Focus で見る
 - **AC9** `cd src-tauri && cargo run --bin generate_bindings` の後 `git diff --exit-code src/lib/bindings.ts` が 0
 - **AC10** `bash scripts/local-ci.sh full` が pass（traceability の再生成を含む生成系の検査が clean）
 - **AC11** `bash scripts/doc-consistency-check.sh` が ERROR 0
@@ -257,7 +258,7 @@ frontend の AC（AC2・AC7・AC10）の前提: 依存を `npm ci --ignore-scrip
 | REQ-201〜204 | 31 §12.2 | 31 §12.2 前提条件 | 「TX の内側から呼ぶ」を型で強制する。棄却: doc comment のまま（backlog `:49` の指摘）、㉘ で一緒に直す（㉘ は店の確認待ちで未着手、型の変更は振舞いを変えず先に閉じられる） | S2 | T4 / T5 |
 | REQ-903 | 22 §3.2 / §12.4 | MNT-03-D11 | 旧版のアプリが新しい DB に書く事故を書込みの前に止める。`DatabaseInit` の「再起動してもう一度」は再起動で直らないため文言を分ける。棄却: 読み取り専用で起動（画面ごとの書込み禁止が要り範囲が大きい）、警告して続行（書込みが起きる） | S3 | T6〜T9 |
 | REQ-901 | 71 §71.7 | MNT-03-D11（波及） | 新しすぎる backup を復元すると旧版のアプリがそれに書く。差し替え後の open が拒否すれば既存の戻し経路で安全に失敗する。棄却: restore に版の事前検査を足す（同じ判定の二重化） | S3（変更なし、test のみ） | T10 |
-| REQ-901 | 71 §71.8、68 UI-11b-F5 / D9 | UI-11b-D13 | 71 §71.8 どおり画面に依らず 60 秒ごとに確認する。置き場所は共通レイアウト（全 route の親で、test で配線を確かめられる）。前の確認が解決するまで次を呼ばない（command の積み上がりを防ぐ）。復元の間は止め、fatal 2 種の後だけ止めたままにする。棄却: §71.8 を実装に合わせて弱める（設定時刻のバックアップが取れない日が残る）、`main.tsx` に置く（配線を source 文字列でしか確かめられない）、実行中の確認の解決を待ってから復元する（待機中の確認は lock を取るまで file に触れず、結果を捨てれば足りる） | S4 | T11〜T19 |
+| REQ-901 | 71 §71.8、68 UI-11b-F5 / D9 | UI-11b-D13 | 71 §71.8 どおり画面に依らず 60 秒ごとに確認する。置き場所は共通レイアウト（全 route の親で、test で配線を確かめられる）。前の確認が解決するまで次を呼ばない（command の積み上がりを防ぐ）。復元の間は止め（停止の前に始まった確認の結果は世代番号で捨てる）、fatal 2 種の後だけ止めたままにする。棄却: §71.8 を実装に合わせて弱める（設定時刻のバックアップが取れない日が残る）、`main.tsx` に置く（配線を source 文字列でしか確かめられない）、実行中の確認の解決を待ってから復元する（待機中の確認は lock を取るまで file に触れず、結果を捨てれば足りる） | S4 | T11〜T19 |
 
 ## Design Intent Audit
 
@@ -274,7 +275,7 @@ frontend の AC（AC2・AC7・AC10）の前提: 依存を `npm ci --ignore-scrip
 |---|---|---|
 | Adapter / core boundary | not applicable（POS adapter に触れない） | — |
 | Fact check / design decision split | 事実（SQLite の open / close が論理内容を変えないこと・checkpoint と header の書換えが起こり得ること・同じ接続で DDL の前に版を読めること、rusqlite の `Transaction` の `Deref`、zod の数え方）を Contract Probe で確かめ、設計判断（上限の層・拒否の位置・timer の置き場所）と分けた | Contract Probe |
-| Lifecycle / retry | S3: 拒否の後に新しい版を入れ直せば通常起動（DB の論理内容は不変）。S4: 失敗の後の次の回で再試行、前の確認が未解決なら次の回は呼ばない、復元の間は停止し fatal 2 種以外の結果で再開、二重失敗の後は再起動まで停止 | Matrix の State Lifecycle |
+| Lifecycle / retry | S3: 拒否の後に新しい版を入れ直せば通常起動（DB の論理内容は不変）。S4: 失敗の後の次の回で再試行、前の確認が未解決なら次の回は呼ばない、復元の間は停止し fatal 2 種以外の結果で再開（停止の前に始まった確認の結果は、再開の後に届いても世代番号で捨てる）、二重失敗の後は再起動まで停止 | Matrix の State Lifecycle |
 | Operator workflow | S3 の dialog と S4 の toast が operator に見える。文言は Scope。通知の出し方は owner 決定 2026-09-25 = (a) | Design Readiness |
 | Replacement path | S4 は page の timer を hook へ置き換える。page 側の 2 本の既存 test を hook と結合 harness へ移す（弱めない、Matrix の対応表） | Matrix |
 | Data safety / evidence | S3 は論理的な書込みの前に止める。S4 は保持日数を超えた backup の削除を画面に依らず動かす（R4、Rollback / recovery notes）。S1 は取込みの受理範囲を狭める（本番データ無し、店のコードは JAN 13 桁か独自コードで 100 に届かない） | Data Safety |
@@ -293,7 +294,7 @@ frontend の AC（AC2・AC7・AC10）の前提: 依存を `npm ci --ignore-scrip
 
 timer を画面に依らない場所へ移すと、確認の結果の toast がどの画面にも出るようになる。今の page は成功で toast を出さず（68 UI-11b-F5 / D9 は「完了 toast を表示する」と書く）、失敗で毎回 toast を出す（Toaster は 3 秒で消える、`RootLayout.tsx:69`）。
 
-- 決定 = (a): 成功は toast `自動バックアップを作成しました` を 1 回（正本 F5 / D9 どおり。設定時刻の分だけなので 1 日に高々 1 回）。失敗は連続失敗の最初の 1 回だけ toast、成功か `false` で解く。売上の入力中などに毎分 toast が出るのを避けつつ、失敗を 1 回は見せる
+- 決定 = (a): 成功は toast `自動バックアップを作成しました` を 1 回（正本 F5 / D9 どおり。当日のバックアップが無いときの即時作成〈`src-tauri/src/mnt/backup.rs:375-379`〉を含め、1 日に数回まで）。失敗は連続失敗の最初の 1 回だけ toast、成功か `false` で解く。売上の入力中などに毎分 toast が出るのを避けつつ、失敗を 1 回は見せる
 - 採らなかった案: 失敗も今の page と同じく毎分 toast（どの画面でも）/ 成功の toast を出さない（正本 F5 / D9 を実装に合わせて直す）
 
 **manual（L3 checklist、owner 決定 2026-09-25 で 1 項目）**
@@ -301,7 +302,7 @@ timer を画面に依らない場所へ移すと、確認の結果の toast が�
 L3-1（S4 の成功 toast、Windows native の Tauri build で見る）:
 
 - 画面: ホーム（`/`）
-- 到達手順: (1) バックアップ画面（`/settings/backup`）で自動バックアップを有効にし、時刻を今の 1 分後にして保存する (2) 時刻を設定した後は「今すぐバックアップを作成」を押さない（設定時刻以降の backup が当日にあると確認が `false` を返し、toast が出ない。71 §71.8） (3) ホームへ移り、画面を見たまま待つ。時刻を越えてから最大 60 秒の確認で作られるため、設定から最長 2 分弱かかる
+- 到達手順: (0) 当日のバックアップが一覧に 1 件以上ある。無ければ先に「今すぐバックアップを作成」を押す（当日のバックアップが無いと確認は設定時刻を待たずに作り、toast が (3) より前に出る。`src-tauri/src/mnt/backup.rs:375-379`） (1) バックアップ画面（`/settings/backup`）で自動バックアップを有効にし、時刻を今の 1 分後にして保存する (2) 時刻を設定した後は「今すぐバックアップを作成」を押さない（設定時刻以降の backup が当日にあると確認が `false` を返し、toast が出ない。71 §71.8） (3) ホームへ移り、画面を見たまま待つ。時刻を越えてから最大 60 秒の確認で作られるため、設定から最長 2 分弱かかる
 - 観測できる合格基準: ホームの右下に toast `自動バックアップを作成しました` が出る（Toaster は 3 秒で消える、`RootLayout.tsx` の `duration={3000}`。見逃したら時刻を次の 1 分後にして繰り返す）。その後バックアップ画面の一覧に、その時刻の backup が出ている
 - L3 Eligibility（`docs/DEV_WORKFLOW.md`）: (1) 実際の backend と Tauri の IPC を通した確認と toast は native でしか見えない (2) 新しい道具が要らない (3) 故障注入の手順が要らない、の 3 つを満たす
 - Writer の完了条件: owner の native build の前に `cargo check --release` を通す（Test Plan）
@@ -365,7 +366,7 @@ Minimum design checks for business-app work:
 | 68 UI-11b-F5 / D9 / §68.10 `true` で一覧を invalidate、完了 toast | S4 | T12 | L3-1（ホームでの toast の見え方） |
 | 68 UI-11b-D13 置き場所・通知（新設） | S4 | T11〜T17 | — |
 | 68 UI-11b-D13 実行中の guard（前の確認が解決するまで次を呼ばない） | S4 | T19 | — |
-| 68 UI-11b-D13 復元の間の停止・停止の後に届いた結果を捨てる・fatal 2 種以外で再開 | S4 | T18 | — |
+| 68 UI-11b-D13 復元の間の停止・停止の前に始まった確認の結果を世代番号で捨てる（再開の後に届いても）・fatal 2 種以外で再開 | S4 | T18 | — |
 | 68 UI-11b-D5 / L3-5 二重失敗で確認を止める | S4 | T18 | — |
 | 68 §68.3 / §68.6 hook 名 `useAutoBackupCheck` | S4 | T11 | — |
 | 52 §52.1 / §52.2 共通レイアウトの責務（hook の呼出しだけ） | S4 | T16 | — |
@@ -405,7 +406,7 @@ Minimum design checks for business-app work:
 - `SchemaNewerThanApp` だけを新しい文言へ写し、他の init 失敗の文言・順序を変えていないか
 - S1 の数え方が frontend と一致するか（T1 と T3 が独立に同じ golden 文字列を持つか）。`commit_import` の再検証が TX の前か
 - S2 が振舞いを変えていないか（呼出し元 5 file に差分が無いこと、common.rs の test の assertion が同じこと）
-- S4 の置き換えで既存 test が弱まっていないか（Matrix の「既存 test の移し先」）。復元の間の停止・停止の後に届いた結果の破棄・fatal 2 種以外での再開・二重失敗での停止が page と hook の間で正しく受け渡されるか。実行中の guard が unmount・StrictMode の二重 mount で残らないか。StrictMode の二重 mount で interval が 1 本か
+- S4 の置き換えで既存 test が弱まっていないか（Matrix の「既存 test の移し先」）。復元の間の停止・停止の前に始まった確認の結果の破棄（世代番号の比較で、再開の後に届く場合を含む）・fatal 2 種以外での再開・二重失敗での停止が page と hook の間で正しく受け渡されるか。実行中の guard が unmount・StrictMode の二重 mount で残らないか。StrictMode の二重 mount で interval が 1 本か
 - 自動バックアップの通知が owner 決定（2026-09-25 = (a)）と一致するか
 
 ## Spec Contract
@@ -420,7 +421,7 @@ Contract ID: SPEC-SSG-2026-09-25
 - C6: 新しすぎる版の backup の復元は、現在の DB に戻して `RestoreError::Recovered` で失敗する
 - C7: 自動バックアップの確認は共通レイアウトが mount する hook の 60 秒 interval で呼ばれ、route に依らない。前の確認が解決するまで次の確認を呼ばない。バックアップ画面は自分の interval を持たない
 - C8: 確認が `true` なら一覧を invalidate し成功 toast、失敗は連続失敗の最初の 1 回だけ失敗 toast（owner 決定 2026-09-25 = (a)）
-- C9: 復元を始める前に確認を止め、停止の後に届いた確認の結果は捨てる（toast も invalidate もしない）。復元の結果が `restore_failed_unrecoverable` / `restore_durability_unknown` なら確認を止めたまま（再起動まで）、それ以外の結果（成功・fatal でない Err・IPC の例外）なら再開する
+- C9: 復元を始める前に確認を止め、停止の前に始まった確認の結果は、停止中に届いても再開の後に届いても捨てる（停止のたびに進む世代番号を、確認を呼ぶ時点と結果が届いた時点で比べる。toast も invalidate もしない）。復元の結果が `restore_failed_unrecoverable` / `restore_durability_unknown` なら確認を止めたまま（再起動まで）、それ以外の結果（成功・fatal でない Err・IPC の例外）なら再開する
 
 ## Trace Matrix
 
@@ -434,7 +435,7 @@ Contract ID: SPEC-SSG-2026-09-25
 | C6 | S3 | T10 | 復元への波及 | AC5 |
 | C7 | S4 | T11 / T16 / T17 / T19 | 置き換えと二重呼出し・実行中の guard | AC6 / AC7 / AC8 (10)(11) |
 | C8 | S4 | T12 / T13 | owner 決定との一致 | AC7 / AC8 (8) |
-| C9 | S4 | T14 / T18 | 受け渡し・再開の境界 | AC7 / AC8 (9)(12)(13) |
+| C9 | S4 | T14 / T18 | 受け渡し・再開の境界 | AC7 / AC8 (9)(12)(13)(14) |
 
 ## Data Safety
 
