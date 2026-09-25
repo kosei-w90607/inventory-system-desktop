@@ -6,9 +6,9 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R4
-- Plan Commit: pending
+- Plan Commit: 01101c07b81d2ae53b0316498be09e90d80fd1bc
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（fork でない fresh context、worktree `.claude/worktrees/save-startup-guards`、branch `agent/save-startup-guards`）
@@ -28,12 +28,13 @@ manual は 1 項目（S4 の成功 toast をホームで見る。手順と合格
 - plan-gate（2026-09-25、owner 決定）: lane 全体を R4 にし、S4 の成功 toast の manual を 1 項目足す。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は両 reviewer とも reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
+- plan-gate → plan-approved（2026-09-26、Coordinator、本 commit）: Plan Review round 3（上限）で Codex 側は reject（P2 1 = relay 上限が round 3 を数えていない、P3 1 = Matrix T2 の検出力の記述）。技術面の P1/P2 は 0。round 天井に達したため追加の round は回さず、同型の一括是正として owner 承認（2026-09-26）のもと予算を relay 5・介入 12 に改め、T2 の記述を直した。Claude 側は round 2 で approve（P3 のみ）。Plan Commit = 本 commit の親（round 2 是正後の承認版 `01101c07`）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 11（見込みの内訳: owner 決定 2〜3〈通知の出し方 (a) = 1、R4 と manual = 1、round 2 以降に製品判断が出れば +1〉、Codex の relay 4、manual 1、r4 1、Ready 1、merge 1 = 10〜11）
+- 介入回数上限: 12（owner 承認 2026-09-26。見込みの内訳: owner 決定 2〜3〈通知の出し方 (a)、R4 と manual、予算の引上げ〉、Codex の relay 5、manual 1、r4 1、Ready 1、merge 1。R4 と、Plan Review を 3 round とも Codex に通した分が既定 3 を超える理由）
 - 実働時間上限: 45分
-- relay 往復上限: 4（Plan Review の Codex round 1・2、Final Review の Codex broad 1・closure 1）
+- relay 往復上限: 5（owner 承認 2026-09-26。Plan Review の Codex round 1・2・3、Final Review の Codex broad 1・closure 1）
 - Plan Review round 天井: 3（既定 3）
 
 既定値（介入 3・30 分・relay 2）から上げる理由: R4 にしたため r4 の承認と manual が 1 回ずつ増え、Codex の合否判定を Plan Review round 2 と Final Review の closure でも外さない（owner 決定 2026-09-25）ため relay が 2 回増える。既定の 3 は起票の時点で見込みを下回っていた。実働時間は manual の native build と、時刻を越えてから toast が出るまでの最長 2 分弱の待ちを足した。Plan Review round 3 に進むと relay が上限を超えるため、その前に Goal Invariant へ戻って残りの経路を見直す。
@@ -450,3 +451,9 @@ Fill after implementation.
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review（2026-09-25〜26、Claude 側 = fresh Opus 5.5、Codex 側 = GPT-6 Sol high、互いに独立）
+
+- round 1（`77f914b5`）: Claude reject（P2 1 / P3 10）、Codex reject（P1 3 / P2 2 / P3 1）。主な是正: 版の比較を DDL より前へ・保証の文を論理内容に・実行中の guard・復元中の確認の停止と再開・R4 化（owner 決定）と manual 1 項目・test の mock と module state の扱い。是正前に Fable 5.1 が裁定案の反例を探した。
+- round 2（`c39a3815`）: Claude approve（P3 3）、Codex reject（P2 1 = 再開の後に届く古い結果を捨てきれない）。是正 = 世代番号（`01101c07`）。
+- round 3（`01101c07`、上限）: Codex reject（P2 1 = relay 上限、P3 1 = T2 の検出力の記述）。技術面の P1/P2 = 0。同型の一括是正として owner 承認のもと予算を改め、plan-approved。
