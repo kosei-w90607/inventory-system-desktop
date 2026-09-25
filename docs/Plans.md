@@ -11,6 +11,7 @@
 wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する。Codex は rate limit 中のため Plan Review は fresh Opus のみ、Final Review だけ Codex を待つ（owner 確認 2026-09-23）。
 
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。PR0（#92）と PR1（#97）は merge 済み。残り = PR2（座組と役割）、PR3（入口と重複）、PR4（手続きの軽量化・Findings Freeze 撤去・Owner Effort Budget・Wave Operation の改訂）、PR5（classifier / helper の穴・`.claude/agents`）。公式 Opus 5.5 prompting guide と照合して進める（owner 2026-09-24）。
+- 保存と起動の守り（商品コードの長さ上限・在庫更新の接続の型・新しすぎる DB の拒否・自動バックアップの timer、R3）: [Plan Packet](plans/2026-09-25-save-startup-guards.md) / [Matrix](plans/test-matrices/2026-09-25-save-startup-guards.md)。branch `agent/save-startup-guards`、Phase plan-gate。backlog の 4 行（`:29` / `:49` / `:50` / `:56`）を S1〜S4 で扱う。自動バックアップの通知の出し方は owner 決定待ち（packet の Design Readiness、推奨案で起票）。
 
 次の着手順（owner決定2026-09-22）:
 
