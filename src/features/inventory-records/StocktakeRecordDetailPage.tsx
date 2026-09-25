@@ -53,7 +53,7 @@ export function StocktakeRecordDetailPage({
   stocktakeId,
   returnTo,
 }: StocktakeRecordDetailPageProps) {
-  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} };
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.stocktakeDetail(stocktakeId),
     queryFn: () =>

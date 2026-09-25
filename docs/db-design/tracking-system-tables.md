@@ -149,7 +149,7 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | started_at | TEXT | NOT NULL | 開始日時 |
 | completed_at | TEXT | NULLABLE | 完了日時。NULLなら作業中 |
 | status | TEXT | NOT NULL, DEFAULT 'in_progress' | 状態。'in_progress' / 'completed' |
-| total_cost | INTEGER | NULLABLE | 仕入原価総額（税理士報告用）。確定時に計算 |
+| total_cost | INTEGER | NULLABLE | 仕入原価総額（円、税理士報告用）。確定時に計算。商品別の金額を1/100円で求めて合計し、円未満を四捨五入する（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D3 / D4） |
 
 ### stocktake_items カラム定義
 
@@ -160,14 +160,14 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | product_code | TEXT | FK → products.product_code, NOT NULL | 商品コード |
 | system_stock | INTEGER | NOT NULL | カウント時点のシステム在庫 |
 | actual_count | INTEGER | NULLABLE | 実カウント数。NULLなら未入力 |
-| valuation_cost_price | INTEGER | NULLABLE | 確定時の評価原価（円）。total_costはこの値×actual_countの合計 |
+| valuation_cost_price | INTEGER | NULLABLE | 確定時の評価原価（円、価格の基準数量あたり。[master-tables](master-tables.md) products の価格の基準数量） |
 | counted_at | TEXT | NULLABLE | カウント日時（YYYY-MM-DDTHH:MM:SS）。NULLなら未入力 |
 
 ### 設計意図
 - **system_stockを明細に持つ理由**: 棚卸し中もCSV取込みで在庫が動く（SP-205-09修正）。差異の表示は「現在のproducts.stock_quantity - actual_count」で動的計算。system_stockは「カウントした時点のシステム在庫」を参考値として記録
 - **actual_countがNULLABLE**: 4000商品中、まだカウントしていない商品はNULL。NULLの件数が「未入力」の件数として進捗バーに使われる
 - **valuation_cost_priceの理由（指摘#4対応）**: 棚卸し確定時の原価を固定保存。商品マスタの原価が後から変わってもtotal_costがブレない。棚卸し確定時にproducts.cost_priceの値をコピーしてくる
-- **total_costの理由**: 棚卸し確定時に「全商品のvaluation_cost_price×actual_count」を合計した仕入原価総額を算出（SP-205-08、税理士報告用）
+- **total_costの理由**: 棚卸し確定時に、全商品の商品別の金額（valuation_cost_price・数量・価格の基準数量から1/100円で求める）を合計し、円未満を四捨五入した仕入原価総額を算出（SP-205-08、税理士報告用、店の端数の規則。35 §20.5a）。1/100円の商品別の金額は保存しない（報告するのは総額だけ）
 
 ### 困りそうなケースと対応方針（2026-03-28 確定）
 
