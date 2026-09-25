@@ -306,7 +306,7 @@ match mnt::backup::restore_backup(old_conn, &backup_path, &db_path) {
 
 ### 71.8 check_auto_backup
 
-**関数要求**: 自動バックアップの条件を判定し、必要なら実行する。setup hook（起動時）とフロントエンドタイマー（60秒間隔）から呼ばれる
+**関数要求**: 自動バックアップの条件を判定し、必要なら実行する。setup hook（起動時）とフロントエンドタイマー（60秒間隔。共通レイアウト〈UI-12〉が mount し、画面に依らない。UI-11b-D13）から呼ばれる
 
 **シグネチャ**:
 ```
