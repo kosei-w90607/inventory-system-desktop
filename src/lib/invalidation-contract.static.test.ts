@@ -22,6 +22,7 @@ import {
 const SOURCE_ROOT = join(process.cwd(), "src");
 const ALLOWED_DIRECT_CALL_FILES = new Set([
   "features/backup-restore/BackupRestorePage.tsx",
+  "features/backup-restore/useAutoBackupCheck.ts",
   "features/stocktake/stocktake-error-invalidation.ts",
   "lib/invalidation-contract.ts",
 ]);

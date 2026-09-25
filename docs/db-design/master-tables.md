@@ -26,7 +26,7 @@
 
 | カラム名 | 型 | 制約 | 説明 |
 |---------|---|----|------|
-| product_code | TEXT | PK | システム管理の一意コード。JAN個別管理商品はJANそのまま、それ以外は独自コード（例: HZ-0046, NU-0003） |
+| product_code | TEXT | PK | システム管理の一意コード。JAN個別管理商品はJANそのまま、それ以外は独自コード（例: HZ-0046, NU-0003）。100 文字以内（UTF-16 code unit）。取込み経路で BIZ-01-D5（30-biz）が保証し、DB CHECK は置かない |
 | jan_code | TEXT | NULLABLE, INDEX | JANコード（JAN-8 または JAN-13 = ASCII 数字 8/13 桁。手入力 create 経路の形式 validation は 51 UI-01b-D17 / 30-biz BIZ-01-D1 が所有し、import 経路・既存行は対象外）。複数商品が同じJANを共有する場合がある（グループコード）。NULLならJAN無し商品 |
 | name | TEXT | NOT NULL | 商品名（例: ハマナカ アミアミ極太 col.42） |
 | department_id | INTEGER | FK → departments.id, NOT NULL | 所属部門 |

@@ -21,7 +21,7 @@ UI-11b は、ローカル SQLite DB の手動バックアップ、バックア�
 | UI-11b-F2 | `backup_enabled` / `backup_time` / `backup_retention_days` を UI-11b で更新できる。 |
 | UI-11b-F3 | `backup_path` は native directory picker で選んだパスだけを `commands.updateSetting()` に渡す。自由入力欄は作らない。 |
 | UI-11b-F4 | 手動バックアップは `commands.createBackup()` を呼び、成功後に一覧を再取得する。 |
-| UI-11b-F5 | 自動バックアップ確認は実装済み。frontend の 60 秒 interval から `commands.checkAutoBackup()` を呼び、`true` の時は backup list を invalidate/refetch して完了 toast を表示する。 |
+| UI-11b-F5 | 自動バックアップ確認は実装済み。共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）から `commands.checkAutoBackup()` を呼び、`true` の時は backup list を invalidate/refetch して完了 toast を表示する（UI-11b-D13）。 |
 | UI-11b-F6 | 復元は、事前バックアップ作成、詳細提示、最終確認、`commands.restoreBackup({ backup_path })`、cache clear、ホーム遷移、結果 Alert の順で扱う。 |
 | UI-11b-F7 | 復元失敗時は CMD 層の再接続契約に合わせ、recoverable failure と double failure を UI 状態として分ける。 |
 
@@ -35,7 +35,7 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 | `commands.updateSetting(request)` | backup 系設定の保存。 | `UpdateSettingRequest { key, value }` |
 | `commands.listLogs(query)` | 直近の backup 操作ログを補助表示する場合だけ使う。全操作ログ UI は UI-11c が所有する。 | `LogQuery` -> `PaginatedResult<OperationLog>` |
 | `commands.createBackup()` | 手動バックアップ、復元前の強制事前バックアップ。 | `BackupResult { file_path, file_name, size_bytes }` |
-| `commands.checkAutoBackup()` | 60 秒 interval の自動バックアップ確認。 | `boolean` |
+| `commands.checkAutoBackup()` | 共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）の自動バックアップ確認（UI-11b-D13）。 | `boolean` |
 | `commands.listBackups()` | バックアップ一覧。 | `BackupInfo[]` |
 | `commands.getEffectiveBackupDir()` | `backup_path` 未設定時の実効保存先（アプリ既定フォルダ）常時表示。 | `String` |
 | `commands.restoreBackup(request)` | 選択バックアップへの復元。 | `RestoreBackupRequest { backup_path }` -> `null` |
@@ -91,10 +91,11 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 | UI-11b-D6 | `backup_enabled` / `backup_time` / `backup_path` / `backup_retention_days` は UI-11b が所有する。 | operator のメンタルモデルは「バックアップのことはバックアップ画面」。UI-11a は業務パラメータのみ。 |
 | UI-11b-D7 | バックアップ一覧は和式日時を主情報、MB サイズを副情報、行ごとの復元導線、先頭行 `最新` Badge とする。ファイル名・絶対パスは主表示にしない。 | ファイル名やパスより「いつの控えか」が operator の判断軸。 |
 | UI-11b-D8 | `backup_path` 変更は native directory picker のみ。自由入力は不可。現在の保存先は表示のみ。 | PR #125 の file dialog 移行前例に合わせ、WebView path 入力の誤操作を避ける。 |
-| UI-11b-D9 | `checkAutoBackup` の 60 秒 interval は frontend に実装済み。`true` の時は backup list を invalidate/refetch し、完了 toast を表示する。 | 自動バックアップの実行結果を一覧と利用者通知へ反映する契約。backend / binding も実装済み。 |
+| UI-11b-D9 | `checkAutoBackup` の呼出しは共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）で frontend に実装済み（UI-11b-D13）。`true` の時は backup list を invalidate/refetch し、完了 toast を表示する。 | 自動バックアップの実行結果を一覧と利用者通知へ反映する契約。backend / binding も実装済み。 |
 | UI-11b-D10 | Windows native L3 で、手動バックアップファイル、復元によるデータ切替、復元前自動バックアップ、backup_path 変更後出力を目視確認する。double failure は自動テスト + 文言目視のみ。 | ファイル実体と DB 入れ替わりは native runtime でしか最終確認できない。 |
 | UI-11b-D11 | 復元成功の success Alert はホーム遷移後に表示する one-shot 通知とし、受け渡しは frontend の in-memory flag で行う。router / history state・URL search param は使わない。ホーム component は **mount 時に一度だけ** flag を component-local 表示 state へ取り込み（取り込みと同時に flag を消去）、**その mount 中は Alert を表示し続ける**（他 query の更新や再 render で消さない）。非表示になるのは unmount 後の再訪・reload・アプリ再起動・通常到達（flag なし）のみ。React StrictMode の二重 mount でも表示される Alert は 1 個。navigate が reject された場合は flag を消去し、次回ホーム到達で誤表示しない。復元失敗時は flag を set しない。 | history.state 経由は reload / 履歴再訪で残存し one-shot 性の証明が実装依存になる。in-memory は消滅が構造的に保証される。render 中の module read で consume する実装は StrictMode の discard render が flag を消費し Alert 不可視になり得るため、mount 時取り込み + mount 中表示維持を契約とする（表示寿命を規定しないと PR #144 L3「toast 見落とし」問題を再生産する）。D4 / F6 の「遷移先で success Alert」契約の実装機構を固定する。 |
 | UI-11b-D12 | 復元成功 Alert を表示する mount effect は、D11 の one-shot flag を component-local state へ取り込んだ時に `scrollPageToTop()` を呼び、Alert の初期可視性を保証する。flag なしの通常 Home 到達では scroll しない。後続の実装 PR はこの negative test を完了条件とする（DSR-17 分類③）。 | 成功 Alert が下部 scroll 位置のまま画面外になる owner Windows native L3 P2（2026-08-29）。D11 の Alert 表示契約に可視性保証が欠けていた。 |
+| UI-11b-D13 | 自動バックアップの確認（71 §71.8 のフロントエンドタイマー）は `useAutoBackupCheck`（backup-restore feature）が持ち、共通レイアウト（UI-12 `RootLayout`）が 1 回 mount する。mount 時に 60 秒の interval を 1 本張り、unmount で外す。mount の瞬間には呼ばない（起動時の確認は Rust の setup hook が持つ）。バックアップ画面は自分の interval を持たない。**実行中の guard**: 前の回の `checkAutoBackup` が解決するまで次の回は呼ばない（backend の Mutex は DB 処理を直列にするが、command の呼出しの積み上がりは防がない）。**通知**（owner 決定 2026-09-25 = (a)）: `true` なら backup list を invalidate し成功 toast `自動バックアップを作成しました`（当日のバックアップが無いときの即時作成を含め、1 日に数回まで）。`false` は何もしない。失敗は連続失敗の最初の 1 回だけ toast `自動バックアップ確認に失敗しました`（id `backup-auto-check-error`）、`true` / `false` が返れば連続失敗を解く。**復元の間の停止**: `BackupRestorePage` は `commands.restoreBackup` を呼ぶ前に `suspendAutoBackupCheck()` を呼ぶ（実行中の確認の解決は待たない）。停止の flag と世代番号は module scope の in-memory state（UI-11b-D11 と同じ形、reload / 再起動で初期値）で、停止のたびに世代番号を 1 進める。確認は呼ぶ時点の世代を控え、結果（`true` / `false` / 失敗）が届いた時点の世代と違えばその結果を捨てる（invalidate・toast・連続失敗の更新をしない。捨てたときも実行中の guard は解く）。停止の前に始まった確認の結果は、停止中に届いても、停止 → 復元 → 再開の後に届いても捨てられる。復元の結果が `restore_failed_unrecoverable` / `restore_durability_unknown` の 2 種なら止めたまま（再起動まで）、それ以外（成功・`restore_failed_recovered` などの fatal でない Err・IPC の例外）は `resumeAutoBackupCheck()` で再開する（世代番号は戻さない）。 | 71 §71.8 は画面に依らない 60 秒ごとの確認を定めるが、確認がバックアップ画面を開いている間しか動かず、設定時刻のバックアップが取れない日が残っていた。全 route の親である共通レイアウトに置けば test で配線を確かめられる。結果が届いた時点で停止中かだけを見ると、再開の後に届いた古い `true` が成功 toast と一覧の invalidate を起こすため世代番号で比べる。棄却: §71.8 を実装に合わせて弱める / `main.tsx` に置く（配線を source 文字列でしか確かめられない）/ 実行中の確認の解決を待ってから復元する（待機中の確認は lock を取るまで file に触れず、結果を捨てれば足りる）/ 失敗を毎分 toast（売上の入力中などに毎分出る）。 |
 
 ## 68.6 Route / Components
 
@@ -137,7 +138,7 @@ restore_* 3 kind の表示（recoverable の定型 message、fatal Alert）に�
 | 設定保存 | `commands.updateSetting({ key, value })` | UI-11b は backup 系 key だけを保存する。`backup_path` は native picker 由来のみ。 |
 | 操作ログ補助表示 | `commands.listLogs(query)` | full 操作ログ画面は UI-11c。UI-11b では backup 操作の直近表示に限定する。 |
 | 手動 / 事前バックアップ | `commands.createBackup()` | `BackupResult` の `file_name` と `size_bytes` を表示。`file_path` は詳細/補助表示のみ。 |
-| 自動バックアップ確認 | `commands.checkAutoBackup()` | 60 秒 interval で呼び、`true` の時は一覧を再取得する。 |
+| 自動バックアップ確認 | `commands.checkAutoBackup()` | 共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）で呼び、`true` の時は一覧を再取得する（UI-11b-D13）。 |
 | 一覧読込 | `commands.listBackups()` | `created_at` は `YYYY-MM-DD HH:MM:SS` 文字列。UI で和式日時へ整形する。 |
 | 復元 | `commands.restoreBackup({ backup_path })` | 成功時は new DB connection が Mutex に入る。失敗時も CMD が再接続を試み、二重失敗では再起動文言を含む Err を返す。 |
 
@@ -164,7 +165,7 @@ restore_* 3 kind の表示（recoverable の定型 message、fatal Alert）に�
 |---|---|
 | 設定保存成功 | backup settings query を invalidate。`backup_path` 変更時は backup list と実効保存先（`getEffectiveBackupDir`）も invalidate。 |
 | 手動 `createBackup` 成功 | backup list を invalidate/refetch。 |
-| `checkAutoBackup` が `true` | backup list を invalidate/refetch。 |
+| `checkAutoBackup` が `true` | backup list を invalidate/refetch し、成功 toast を出す（共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）、UI-11b-D13）。 |
 | 復元成功 | React Query cache を `queryClient.clear()` で全消去。DB が丸ごと変わるため invalidate ではなく clear。 |
 | 復元成功後 | home route へ遷移し、遷移先で success Alert を出す。 |
 | 復元失敗 recovered | cache 全消去はしない。backup settings/list を refetch し、再試行可能なエラーとして表示する。 |
@@ -194,7 +195,7 @@ restore_* 3 kind の表示（recoverable の定型 message、fatal Alert）に�
 | UI-11b-L3-2 | 復元実行 | テスト DB で商品数など目視可能な差分を作り、復元後にデータが選択バックアップ時点へ切り替わったことを確認する。 |
 | UI-11b-L3-3 | 復元前自動バックアップ | 復元操作の第一段で新しい backup file が作成され、そのファイル実体を保存先で確認できる。 |
 | UI-11b-L3-4 | backup_path 変更 | native directory picker で新パスを選び、以降の手動バックアップが新パスへ出力される。 |
-| UI-11b-L3-5 | double failure path | 自動テストで状態分岐・文言・操作 disabled・60秒 interval 停止を担保する。実機での誘発は求めない。 |
+| UI-11b-L3-5 | double failure path | 自動テストで状態分岐・文言・操作 disabled・60秒 interval 停止（UI-11b-D13 の停止を指す。共通レイアウトの確認が再起動まで止まったままになる）を担保する。実機での誘発は求めない。 |
 
 L3 証跡に実店舗 DB、実 JAN、実商品名、価格、backup file、log file は入れない。必要な差分確認は synthetic / test DB で行う。
 

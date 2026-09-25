@@ -3,7 +3,6 @@
 use crate::biz::BizError;
 use crate::db::inventory_repo::{self, MovementType, NewMovement, ReferenceType};
 use crate::db::product_repo;
-use crate::db::DbConnection;
 use sha2::{Digest, Sha256};
 
 /// 冪等性キーの最大長（UUID v4 = 36文字だが、余裕を持って255）
@@ -34,12 +33,12 @@ pub(super) fn compute_fingerprint(header: &str, items: &[String]) -> String {
 
 /// 商品の在庫数を変動させ、inventory_movements に履歴を記録する
 ///
-/// TX 内部から呼ばれる。TX は呼び出し元の create_* が管理する。
+/// 引数の型（借りた transaction）で TX の内側に限る。TX は呼び出し元の create_* が管理する。
 /// BIZ-03（CSV取込み）からも直接呼び出し可（pub(crate) は意図的）。
 ///
 /// 31-biz-inventory-service.md §12.2
 pub(crate) fn apply_stock_change(
-    conn: &DbConnection,
+    conn: &rusqlite::Transaction<'_>,
     product_code: &str,
     quantity: i64,
     movement_type: MovementType,
@@ -140,11 +139,12 @@ mod tests {
         // REQ-201: 共通在庫操作（入庫/返品/手動販売/廃棄で使用）
         // Covers: REQ-201, REQ-202, REQ-203, REQ-204
         // FUNC-12.2: 共通在庫変動処理 — 在庫増加: 10 + 5 = 15
-        let (_dir, conn) = setup_test_db();
-        create_test_product(&conn, "ASC-001", 10);
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        create_test_product(&tx, "ASC-001", 10);
 
         let result = apply_stock_change(
-            &conn,
+            &tx,
             "ASC-001",
             5,
             MovementType::Receiving,
@@ -158,7 +158,7 @@ mod tests {
         assert!(!result.negative_stock_warning);
 
         // DB確認
-        let p = product_repo::find_by_product_code(&conn, "ASC-001")
+        let p = product_repo::find_by_product_code(&tx, "ASC-001")
             .unwrap()
             .unwrap();
         assert_eq!(p.product.stock_quantity, 15);
@@ -169,11 +169,12 @@ mod tests {
         // REQ-201: 共通在庫操作（入庫/返品/手動販売/廃棄で使用）
         // Covers: REQ-201, REQ-202, REQ-203, REQ-204
         // FUNC-12.2: 共通在庫変動処理 — 在庫減少: 10 - 3 = 7
-        let (_dir, conn) = setup_test_db();
-        create_test_product(&conn, "ASC-002", 10);
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        create_test_product(&tx, "ASC-002", 10);
 
         let result = apply_stock_change(
-            &conn,
+            &tx,
             "ASC-002",
             -3,
             MovementType::SaleManual,
@@ -192,11 +193,12 @@ mod tests {
         // REQ-201: 共通在庫操作（入庫/返品/手動販売/廃棄で使用）
         // Covers: REQ-201, REQ-202, REQ-203, REQ-204
         // FUNC-12.2: 共通在庫変動処理 — 在庫マイナス → 警告フラグ true、処理は続行（INV-3）
-        let (_dir, conn) = setup_test_db();
-        create_test_product(&conn, "ASC-003", 2);
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        create_test_product(&tx, "ASC-003", 2);
 
         let result = apply_stock_change(
-            &conn,
+            &tx,
             "ASC-003",
             -5,
             MovementType::Disposal,
@@ -210,7 +212,7 @@ mod tests {
         assert!(result.negative_stock_warning);
 
         // DB にも反映されていること
-        let p = product_repo::find_by_product_code(&conn, "ASC-003")
+        let p = product_repo::find_by_product_code(&tx, "ASC-003")
             .unwrap()
             .unwrap();
         assert_eq!(p.product.stock_quantity, -3);
@@ -221,10 +223,11 @@ mod tests {
         // REQ-201: 共通在庫操作（入庫/返品/手動販売/廃棄で使用）
         // Covers: REQ-201, REQ-202, REQ-203, REQ-204
         // FUNC-12.2: 共通在庫変動処理 — 存在しない商品 → NotFound
-        let (_dir, conn) = setup_test_db();
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
 
         let result = apply_stock_change(
-            &conn,
+            &tx,
             "NONEXISTENT",
             5,
             MovementType::Receiving,
@@ -241,11 +244,12 @@ mod tests {
         // REQ-201: 共通在庫操作（入庫/返品/手動販売/廃棄で使用）
         // Covers: REQ-201, REQ-202, REQ-203, REQ-204
         // FUNC-12.2: 共通在庫変動処理 — inventory_movements にレコードが記録されること
-        let (_dir, conn) = setup_test_db();
-        create_test_product(&conn, "ASC-005", 10);
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        create_test_product(&tx, "ASC-005", 10);
 
         apply_stock_change(
-            &conn,
+            &tx,
             "ASC-005",
             5,
             MovementType::Receiving,
@@ -256,7 +260,7 @@ mod tests {
         .unwrap();
 
         // movement レコード確認
-        let (qty, stock_after, mt, rt, ri, note): (i64, i64, String, String, i64, String) = conn
+        let (qty, stock_after, mt, rt, ri, note): (i64, i64, String, String, i64, String) = tx
             .query_row(
                 "SELECT quantity, stock_after, movement_type, reference_type, reference_id, note
                  FROM inventory_movements WHERE product_code = 'ASC-005'",
@@ -288,10 +292,11 @@ mod tests {
         // FUNC-12.2: 共通在庫変動処理 — update_stock_quantity が false を返す場合（race condition のエッジケース）
         // find→update の間に商品が削除された場合を想定
         // 直接テストは難しいので、存在しない商品コードでのNotFoundをカバー
-        let (_dir, conn) = setup_test_db();
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
 
         let result = apply_stock_change(
-            &conn,
+            &tx,
             "NO-SUCH-PRODUCT",
             1,
             MovementType::Receiving,

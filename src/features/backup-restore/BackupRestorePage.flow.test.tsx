@@ -10,7 +10,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/rea
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { routeTree } from "@/routeTree.gen";
 import { commands } from "@/lib/bindings";
@@ -26,6 +26,7 @@ import type {
 } from "@/lib/bindings";
 import { open } from "@tauri-apps/plugin-dialog";
 import { clearRestoreSuccessPending } from "@/lib/restore-success-notification";
+import { resumeAutoBackupCheck } from "./useAutoBackupCheck";
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ setTitle: vi.fn().mockResolvedValue(undefined) }),
@@ -208,7 +209,26 @@ async function driveToRestoreSuccess(user: ReturnType<typeof userEvent.setup>) {
 beforeEach(() => {
   vi.clearAllMocks();
   clearRestoreSuccessPending();
+  resumeAutoBackupCheck();
   installDefaultCommands();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("自動バックアップの確認 (REQ-901 / UI-11b-D13)", () => {
+  it("REQ-901 / UI-11b-D13: バックアップ画面を開いていても確認は 1 分に 1 回", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderApp("/settings/backup");
+    await screen.findByRole("heading", { name: "バックアップ・復元" });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mockCheckAutoBackup).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mockCheckAutoBackup).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("復元成功 Alert 統合テスト (UI-11b-D11, Matrix C5/C6)", () => {
