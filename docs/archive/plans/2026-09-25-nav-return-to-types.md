@@ -6,7 +6,7 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 9adb9769ce849ec0dd2066a395240694b66753eb
 - Amendments: none
@@ -24,6 +24,7 @@ manual なし: 利用者から見える画面は変わらない。戻り link �
 - kickoff → spec-check → design → plan-draft → plan-gate（2026-09-25、本 commit、plan-first、起草役 = Opus 5.5 subagent）: Risk R3（下記 Risk）。設計正本の改訂（DSR-15 の判定フロー、DSR-18 の判定フローと共通 helper の段落、`01-decision-rules.md` 更新履歴、66 UI-06c-D9 / §66.5 / §66.7）を同じ plan-first commit に入れた。owner の設計判断を要する論点は無い（画面の振舞いは不変で、決めたのは helper の型と直列化の方法だけ。Design Readiness 参照）。`docs/Plans.md` の「次の行動」に本 packet と Matrix の link を 1 行足した。Plan Review へ。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は Claude 側 approve、Codex 側 reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
 - plan-gate → plan-approved → implementing（2026-09-25、Coordinator、本 commit）: Plan Review round 2 で Codex 側（GPT-6 Sol、high）が approve（P1/P2/P3 = 0）。Claude 側は round 1 で approve（P1/P2 = 0、P3 3 は round 1 の是正 `9adb9769` で反映済み）で、P3 だけのため round 2 は再投入しない。Plan Commit = `9adb9769`（是正後の承認版。plan-first `53f3f353`）。次は Writer（Opus 5.5 subagent）の実装。
+- implementing → archive（2026-09-26、Coordinator、closeout）: PR #106 を helper 経由で merge（squash `42eddd0a`）。Final Review の 2 本（Codex GPT-6 Sol・Fable 5.1）とも approve、finding なし。packet と Matrix を archive へ移し、Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
@@ -320,7 +321,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 ## Review Response
 
 - Review-only skipped because: R3 の review-only sub-agent は、Final Review の Claude 側（Fable 5.1）と Codex 側の 2 本の broad が兼ねる。
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Broad Audit（2 本とも finding なし）; post-freeze exceptions: none.
 
 ### Plan Review round 1（2026-09-25、対象 `53f3f353`）
 
@@ -332,3 +333,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 - Codex 側（GPT-6 Sol、high）: approve、P1 0 / P2 0 / P3 0。型 probe と 560 通りの直列化比較を再現。AC8 の `local-ci.sh full` で本 lane と無関係の `OperationLogsPage.scroll-restoration.test.tsx:83` が 5 秒 timeout（変更前の base でも発生、並走 run の負荷の可能性）→ 実装後の gate で切り分ける。
 - Claude 側: round 1 の P3 だけのため再投入しない（DEV_WORKFLOW Subagent Budget）。
+
+### Final Review broad（2026-09-26、対象 `f5f69aed`、互いに独立）
+
+- Codex 側（GPT-6 Sol、high）: approve、P1 0 / P2 0 / P3 0。AC1〜AC9 すべて PASS（local-ci full を含む）、AC6 の mutant 7 本すべて red、正規の戻り先で旧実装との 560 通りの比較の byte 差 0。[review](https://github.com/kosei-w90607/inventory-system-desktop/pull/106#pullrequestreview-5320379437)
+- Claude 側（Fable 5.1、fresh、read-only）: approve、P1 0 / P2 0 / P3 0。Ordinary Operation 6 行を実装後の現物で確認（行 6 は既定の戻り先を外すと typecheck が TS2322）。AC1〜AC7・AC9 を再実行、mutant 7/7 red、`detailReturnTo` の同一性を 196 通り + `/` 始まりのランダム 20,000 件で確認（差 0）。
+- helper の record: review broad 2 本（pass）。owner の Ready・merge 指示（2026-09-26）で helper `ready` → hosted CI 成功 → helper `merge`。
