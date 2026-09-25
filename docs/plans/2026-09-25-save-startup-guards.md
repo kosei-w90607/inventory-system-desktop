@@ -6,10 +6,10 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R4
 - Plan Commit: 01101c07b81d2ae53b0316498be09e90d80fd1bc
-- Amendments: none
+- Amendments: f95ec36f3693dc16b8d2f0b6f830823370d34992
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（fork でない fresh context、worktree `.claude/worktrees/save-startup-guards`、branch `agent/save-startup-guards`）
 - Plan Reviewer: fresh Opus 5.5 subagent + Codex（GPT-6 Sol、effort high）。互いに独立で Writer と別 context、後の reviewer に先の結果を見せない
@@ -29,6 +29,8 @@ manual は 1 項目（S4 の成功 toast をホームで見る。手順と合格
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は両 reviewer とも reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
 - plan-gate（2026-09-25、Coordinator の指示で是正、round 2）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
 - plan-gate → plan-approved（2026-09-26、Coordinator、本 commit）: Plan Review round 3（上限）で Codex 側は reject（P2 1 = relay 上限が round 3 を数えていない、P3 1 = Matrix T2 の検出力の記述）。技術面の P1/P2 は 0。round 天井に達したため追加の round は回さず、同型の一括是正として owner 承認（2026-09-26）のもと予算を relay 5・介入 12 に改め、T2 の記述を直した。Claude 側は round 2 で approve（P3 のみ）。Plan Commit = 本 commit の親（round 2 是正後の承認版 `01101c07`）。
+- Gated Amendment 1（2026-09-26、Coordinator）: `f95ec36f` を登録。承認版 `01101c07` の遷移記録に同じ書き出しの行（round 1 と round 2 の是正）が 2 行あり、helper が `duplicate packet fields` で packet を読めないため、round 2 の行の key に「、round 2」を足した。あわせて main（`63896441`、#106〜#109）を同期。Scope・AC・Risk・Final Review Minimum・Human Gate は変えない。
+- plan-approved → implementing（2026-09-26、Coordinator、本 commit）: 実装の下ごしらえ（同期と Amendment）を済ませた。Writer（Opus 5.5 subagent）への発注は次の session で行う。
 
 ## Owner Effort Budget
 
