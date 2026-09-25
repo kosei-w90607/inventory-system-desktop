@@ -8,10 +8,10 @@
 
 ## 次の行動
 
-wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する。Codex は rate limit 中のため Plan Review は fresh Opus のみ、Final Review だけ Codex を待つ（owner 確認 2026-09-23）。
+wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する。Plan Review は fresh Opus + Codex、Codex が rate limit の間は fresh Opus のみで進め Final Review だけ Codex を待つ（owner 確認 2026-09-23、Codex 復帰後は両方）。
 
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。PR0（#92）と PR1（#97）は merge 済み。残り = PR2（座組と役割）、PR3（入口と重複）、PR4（手続きの軽量化・Findings Freeze 撤去・Owner Effort Budget・Wave Operation の改訂）、PR5（classifier / helper の穴・`.claude/agents`）。公式 Opus 5.5 prompting guide と照合して進める（owner 2026-09-24）。
-- 棚卸しの評価額（価格の基準数量と店の丸め、R3）: [Plan Packet](plans/2026-09-25-stocktake-valuation-basis.md) / [Matrix](plans/test-matrices/2026-09-25-stocktake-valuation-basis.md)。branch `agent/stocktake-valuation-basis`、Phase plan-gate（owner が Q1〜Q3 に回答済み 2026-09-25。Plan Review round 2 の是正後、round 3 待ち）。
+- 棚卸しの評価額（価格の基準数量と店の丸め、R3）: [Plan Packet](plans/2026-09-25-stocktake-valuation-basis.md) / [Matrix](plans/test-matrices/2026-09-25-stocktake-valuation-basis.md)。branch `agent/stocktake-valuation-basis`、Phase plan-approved。Plan Review round 2 の是正後、round 3 待ち）。
 
 次の着手順（owner決定2026-09-22）:
 

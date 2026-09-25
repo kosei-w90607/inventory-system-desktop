@@ -6,9 +6,9 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 325861c5ccb8a0bf6ff68e44ffafe98ca570b3f1
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（fork でない fresh context、worktree `/home/kosei/projects/inventory-system-public/.claude/worktrees/stocktake-valuation-basis`、branch `agent/stocktake-valuation-basis`）
@@ -25,12 +25,13 @@ manual なし: 画面・表示・文言・DTO・bindings を変えない（仕�
 - design → plan-draft → plan-gate（2026-09-25、Coordinator）: owner が Q1〜Q3 に回答した。Q1 = はい（円未満を四捨五入して 1 円単位）、Q2 = はい（在庫単位で決め、商品ごとの列は足さない）、Q3 = はい（4 項目は含めず closeout で Backlog へ）。Q2 について、箱や袋で仕入れてばらして売る商品は実在する（店の回答 2026-09-14、project-memory の Store Premises Facts）。店が仕入れ伝票の単価と棚卸しの手計算をどの単位で扱うかを訪店の確認事項（Issue #105）に足し、答えにより単位の拡張 lane で商品ごとの基準数量の列を足す。3 問とも推奨どおりのため、packet・Matrix・設計正本は変えず Phase だけを進める。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は両 reviewer とも reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
+- plan-gate → plan-approved（2026-09-26、Coordinator、本 commit）: Plan Review round 3（上限、対象 `325861c5`）で Codex 側は reject（P2 1 = 35 の共通の `total_cost` 説明と biz-task-specs が評価数量を actual_count とし §20.5a の新方式と食い違う、P3 1 = Plans.md の wave 13 の段落の Plan Review の座組が古い）。round 天井に達したため追加の round は回さず、同型の一括是正として本 commit で 2 か所の評価数量の記述と Plans.md の文を直し、owner 承認（2026-09-26）のもと予算を relay 5・介入 7 に改めた。Claude 側は round 2 で approve（P3 のみ）。Plan Commit = `325861c5`（round 2 是正後の承認版）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 4（見込み: Q1〜Q3 の回答 1、Plan Review の Codex relay 1、Final Review の Codex relay 1、Ready・merge 1。既定 3 を 1 超えるのは Codex を Plan Review と Final Review の両方に入れる座組〈owner 2026-09-25〉のため）
+- 介入回数上限: 7（owner 承認 2026-09-26。見込み: Q1〜Q3 の回答 1、予算の引上げ 1、Codex の relay 5〈Plan Review round 1・2・3、Final Review broad・closure〉は batch で他 lane と束ねる、Ready・merge 1。Plan Review を 3 round とも Codex に通した分が既定を超える理由）
 - 実働時間上限: 15分（owner の作業は 3 問の回答と relay・Ready・merge の判断。画面の確認は無い）
-- relay 往復上限: 2
+- relay 往復上限: 5（owner 承認 2026-09-26。Plan Review の Codex round 1・2・3、Final Review の Codex broad 1・closure 1）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -333,3 +334,9 @@ Fill after implementation.
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+### Plan Review（2026-09-25〜26、Claude 側 = fresh Opus 5.5、Codex 側 = GPT-6 Sol high、互いに独立）
+
+- round 1（`ca280c79`）: Claude reject（P2 2 / P3 3）、Codex reject（P1 1 / P2 1、Ordinary Operation に反例）。主な是正: 中間を i128 にし最後だけ i64 へ検査付き変換・mutant を段ごとに分け kill 入力を Rust の試作で確認・時点証拠 ADR の旧式・Ordinary Operation を (a) 本 lane で成立する列と (b) ⑤ の後の列に分ける・負の検査を関数の 1 か所に。是正前に Fable 5.1 が裁定案の反例を探した。
+- round 2（`91bb8618`）: Claude approve（P3 4）、Codex reject（P2 1 = 2^53 を超える円額の JS 表示 → ⑤ への申し送り）。是正 = `325861c5`。
+- round 3（`325861c5`、上限）: Codex reject（P2 1 = 評価数量の記述の食い違い、P3 1）。同型の一括是正と owner 承認の予算改定で plan-approved。

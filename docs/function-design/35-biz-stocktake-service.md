@@ -98,7 +98,7 @@ src-tauri/src/
 
 #### StocktakeResult構造体
 
-- total_cost: i64（仕入原価総額、円。商品別の金額〈valuation_cost_price・actual_count・価格の基準数量から1/100円で求める〉の合計を円未満で四捨五入した値。§20.5a。税理士報告用）
+- total_cost: i64（仕入原価総額、円。商品別の金額〈valuation_cost_price・評価数量〈現行の旧本体は actual_count、新方式は `max(補正後現在庫,0)`〉・価格の基準数量から1/100円で求める〉の合計を円未満で四捨五入した値。§20.5a。税理士報告用）
 - adjusted_items: Vec\<AdjustedItem\>（差異があった商品のリスト）
 - total_items: usize（棚卸し対象の総商品数）
 - integrity_result: Option\<IntegrityResult\>（D-2: 確定後の整合性チェック結果。失敗時はNone）
