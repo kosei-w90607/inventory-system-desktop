@@ -254,10 +254,46 @@ pub fn get_stocktake_progress(
     })
 }
 
-/// カウント値を更新する（autocommit、TX不要）
+/// BIZ-06 停止文言（35-biz-stocktake-service.md §20.0、SPEC-STOP-D2）
+const WRITES_SUSPENDED_MESSAGE: &str =
+    "棚卸しの開始・数の保存・確定は一時停止中です。数えた後の入出庫が確定で打ち消される不具合を直すまで使えません。";
+
+fn writes_suspended() -> BizError {
+    BizError::ValidationFailed(WRITES_SUSPENDED_MESSAGE.to_string())
+}
+
+/// カウント値を更新する。現行buildでは一時停止中で、最初の文で停止する。
+///
+/// 35-biz-stocktake-service.md §20.0（SPEC-STOP-D1）
+pub fn update_count(
+    _conn: &DbConnection,
+    _req: &UpdateCountRequest,
+) -> Result<UpdateCountResult, BizError> {
+    Err(writes_suspended())
+}
+
+/// 棚卸しを開始する。現行buildでは一時停止中で、最初の文で停止する。
+///
+/// 35-biz-stocktake-service.md §20.0（SPEC-STOP-D1）
+pub fn start_stocktake(_conn: &mut DbConnection) -> Result<StartStocktakeResult, BizError> {
+    Err(writes_suspended())
+}
+
+/// 棚卸しを確定する。現行buildでは一時停止中で、最初の文で停止する。
+///
+/// 35-biz-stocktake-service.md §20.0（SPEC-STOP-D1）
+pub fn complete_stocktake(
+    _conn: &mut DbConnection,
+    _req: &CompleteStocktakeRequest,
+) -> Result<StocktakeResult, BizError> {
+    Err(writes_suspended())
+}
+
+/// 旧本体: カウント値を更新する（autocommit、TX不要）。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 35-biz-stocktake-service.md §20.4
-pub fn update_count(
+#[cfg_attr(not(test), expect(dead_code))]
+pub(crate) fn legacy_update_count(
     conn: &DbConnection,
     req: &UpdateCountRequest,
 ) -> Result<UpdateCountResult, BizError> {
@@ -306,10 +342,13 @@ pub fn update_count(
     })
 }
 
-/// 棚卸しを開始する（TX + operation_log TX外）
+/// 旧本体: 棚卸しを開始する（TX + operation_log TX外）。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 35-biz-stocktake-service.md §20.3
-pub fn start_stocktake(conn: &mut DbConnection) -> Result<StartStocktakeResult, BizError> {
+#[cfg_attr(not(test), expect(dead_code))]
+pub(crate) fn legacy_start_stocktake(
+    conn: &mut DbConnection,
+) -> Result<StartStocktakeResult, BizError> {
     use crate::db::DbError;
 
     // 1. TX外: 進行中チェック
@@ -394,10 +433,11 @@ pub fn start_stocktake(conn: &mut DbConnection) -> Result<StartStocktakeResult, 
     })
 }
 
-/// 棚卸しを確定する（最高リスク。TX + operation_log TX外）
+/// 旧本体: 棚卸しを確定する（最高リスク。TX + operation_log TX外）。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 35-biz-stocktake-service.md §20.5
-pub fn complete_stocktake(
+#[cfg_attr(not(test), expect(dead_code))]
+pub(crate) fn legacy_complete_stocktake(
     conn: &mut DbConnection,
     req: &CompleteStocktakeRequest,
 ) -> Result<StocktakeResult, BizError> {
@@ -766,7 +806,7 @@ mod tests {
             stocktake_item_id: item_id,
             actual_count: 8,
         };
-        let result = update_count(&conn, &req).unwrap();
+        let result = legacy_update_count(&conn, &req).unwrap();
         assert!(result.success);
         assert_eq!(
             result.current_difference, 2,
@@ -787,7 +827,7 @@ mod tests {
             stocktake_item_id: item_id,
             actual_count: -1,
         };
-        let result = update_count(&conn, &req);
+        let result = legacy_update_count(&conn, &req);
         assert!(matches!(result, Err(BizError::ValidationFailed(_))));
     }
 
@@ -804,7 +844,7 @@ mod tests {
             stocktake_item_id: item_id,
             actual_count: 0,
         };
-        let result = update_count(&conn, &req).unwrap();
+        let result = legacy_update_count(&conn, &req).unwrap();
         assert!(result.success);
         assert_eq!(result.current_difference, 5);
     }
@@ -818,7 +858,7 @@ mod tests {
             stocktake_item_id: 9999,
             actual_count: 5,
         };
-        let result = update_count(&conn, &req);
+        let result = legacy_update_count(&conn, &req);
         assert!(matches!(result, Err(BizError::NotFound(_))));
     }
 
@@ -835,7 +875,7 @@ mod tests {
             stocktake_item_id: item_id,
             actual_count: 8,
         };
-        let result = update_count(&conn, &req);
+        let result = legacy_update_count(&conn, &req);
         assert!(matches!(result, Err(BizError::StocktakeNotInProgress(_))));
         if let Err(BizError::StocktakeNotInProgress(msg)) = result {
             assert!(
@@ -866,7 +906,7 @@ mod tests {
             stocktake_item_id: item_id,
             actual_count: 12,
         };
-        let result = update_count(&conn, &req).unwrap();
+        let result = legacy_update_count(&conn, &req).unwrap();
         // current_difference = 現在のstock_quantity(15) - actual_count(12) = 3
         // system_stock(10) ではなく、現在値を使う
         assert_eq!(result.current_difference, 3);
@@ -911,7 +951,7 @@ mod tests {
         seed_product(&conn, "SS-001", 10);
         seed_product(&conn, "SS-002", 5);
 
-        let result = start_stocktake(&mut conn).unwrap();
+        let result = legacy_start_stocktake(&mut conn).unwrap();
         assert!(result.stocktake_id > 0);
         assert_eq!(result.item_count, 2);
         assert_eq!(result.auto_filled_count, 0);
@@ -934,8 +974,8 @@ mod tests {
         let (_dir, mut conn) = setup_test_db();
         seed_product(&conn, "SAI-001", 10);
 
-        start_stocktake(&mut conn).unwrap(); // 1回目
-        let result = start_stocktake(&mut conn); // 2回目
+        legacy_start_stocktake(&mut conn).unwrap(); // 1回目
+        let result = legacy_start_stocktake(&mut conn); // 2回目
         assert!(matches!(result, Err(BizError::StocktakeInProgress(_))));
     }
 
@@ -944,7 +984,7 @@ mod tests {
         // REQ-205: 棚卸し（棚卸し開始 — 商品0件 → ValidationFailed）
         // BIZ-06 §20.3: 商品0件 → ValidationFailed
         let (_dir, mut conn) = setup_test_db();
-        let result = start_stocktake(&mut conn);
+        let result = legacy_start_stocktake(&mut conn);
         assert!(matches!(result, Err(BizError::ValidationFailed(_))));
     }
 
@@ -957,7 +997,7 @@ mod tests {
         seed_product_custom(&conn, "AD-002", true, 5, 200); // 廃番stock>0
         seed_product_custom(&conn, "AD-003", true, 0, 100); // 廃番stock=0
 
-        let result = start_stocktake(&mut conn).unwrap();
+        let result = legacy_start_stocktake(&mut conn).unwrap();
         assert_eq!(result.item_count, 3, "全3商品が対象");
         assert_eq!(result.auto_filled_count, 1, "廃番stock=0のみauto-fill");
 
@@ -989,7 +1029,7 @@ mod tests {
         let (_dir, mut conn) = setup_test_db();
         seed_product(&conn, "SOL-001", 10);
 
-        start_stocktake(&mut conn).unwrap();
+        legacy_start_stocktake(&mut conn).unwrap();
 
         let (op_type, summary): (String, String) = conn
             .query_row(
@@ -1011,7 +1051,7 @@ mod tests {
         conn: &mut DbConnection,
         counts: &[(&str, i64)], // [(product_code, actual_count)]
     ) -> i64 {
-        let result = start_stocktake(conn).unwrap();
+        let result = legacy_start_stocktake(conn).unwrap();
         for (pc, count) in counts {
             let item_id: i64 = conn
                 .query_row(
@@ -1044,7 +1084,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        let result = complete_stocktake(&mut conn, &req).unwrap();
+        let result = legacy_complete_stocktake(&mut conn, &req).unwrap();
         assert_eq!(result.adjusted_items.len(), 1, "差異は1件（CN-001）");
         assert_eq!(result.adjusted_items[0].product_code, "CN-001");
         assert_eq!(result.adjusted_items[0].difference, 2); // 10 - 8
@@ -1064,7 +1104,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: true,
         };
-        let result = complete_stocktake(&mut conn, &req).unwrap();
+        let result = legacy_complete_stocktake(&mut conn, &req).unwrap();
         assert_eq!(result.total_items, 2);
     }
 
@@ -1081,7 +1121,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        let result = complete_stocktake(&mut conn, &req);
+        let result = legacy_complete_stocktake(&mut conn, &req);
         assert!(matches!(result, Err(BizError::ValidationFailed(_))));
     }
 
@@ -1094,7 +1134,7 @@ mod tests {
             stocktake_id: 9999,
             force_fill: false,
         };
-        let result = complete_stocktake(&mut conn, &req);
+        let result = legacy_complete_stocktake(&mut conn, &req);
         assert!(matches!(result, Err(BizError::NotFound(_))));
     }
 
@@ -1110,9 +1150,9 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        complete_stocktake(&mut conn, &req).unwrap(); // 1回目
+        legacy_complete_stocktake(&mut conn, &req).unwrap(); // 1回目
 
-        let result = complete_stocktake(&mut conn, &req); // 2回目
+        let result = legacy_complete_stocktake(&mut conn, &req); // 2回目
         assert!(matches!(result, Err(BizError::StocktakeNotInProgress(_))));
     }
 
@@ -1128,7 +1168,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        complete_stocktake(&mut conn, &req).unwrap();
+        legacy_complete_stocktake(&mut conn, &req).unwrap();
 
         let (mt, qty, sa, rt, ri, note): (String, i64, i64, Option<String>, Option<i64>, Option<String>) = conn
             .query_row(
@@ -1162,7 +1202,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        let result = complete_stocktake(&mut conn, &req).unwrap();
+        let result = legacy_complete_stocktake(&mut conn, &req).unwrap();
         // 500*3 + 1000*2 = 3500
         assert_eq!(result.total_cost, 3500);
     }
@@ -1180,7 +1220,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        let result = complete_stocktake(&mut conn, &req).unwrap();
+        let result = legacy_complete_stocktake(&mut conn, &req).unwrap();
         assert!(result.adjusted_items.is_empty(), "差異なし");
 
         let mv_count: i64 = conn
@@ -1205,7 +1245,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        complete_stocktake(&mut conn, &req).unwrap();
+        legacy_complete_stocktake(&mut conn, &req).unwrap();
 
         let stock: i64 = conn
             .query_row(
@@ -1224,7 +1264,7 @@ mod tests {
         let (_dir, mut conn) = setup_test_db();
         seed_product(&conn, "FF-001", 10);
         seed_product(&conn, "FF-002", 5);
-        let result = start_stocktake(&mut conn).unwrap();
+        let result = legacy_start_stocktake(&mut conn).unwrap();
         // FF-001のみカウント、FF-002は未入力
         let item_id: i64 = conn
             .query_row(
@@ -1243,7 +1283,7 @@ mod tests {
             stocktake_id: result.stocktake_id,
             force_fill: true,
         };
-        complete_stocktake(&mut conn, &req).unwrap();
+        legacy_complete_stocktake(&mut conn, &req).unwrap();
 
         // FF-002 の actual_count が stock_quantity(5) と一致
         let actual: i64 = conn
@@ -1268,7 +1308,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        let result = complete_stocktake(&mut conn, &req);
+        let result = legacy_complete_stocktake(&mut conn, &req);
         assert!(
             matches!(result, Err(BizError::ValidationFailed(ref msg)) if msg.contains("オーバーフロー")),
             "オーバーフローでValidationFailed: {:?}",
@@ -1288,7 +1328,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        complete_stocktake(&mut conn, &req).unwrap();
+        legacy_complete_stocktake(&mut conn, &req).unwrap();
 
         let (op_type, detail): (String, Option<String>) = conn
             .query_row(
@@ -1320,14 +1360,14 @@ mod tests {
         // BIZ-06 §20.5 P3-7 + R-3: 負在庫の商品にforce_fill → actual_count=0
         let (_dir, mut conn) = setup_test_db();
         seed_product_custom(&conn, "NS-001", false, -3, 300);
-        let result = start_stocktake(&mut conn).unwrap();
+        let result = legacy_start_stocktake(&mut conn).unwrap();
         // NS-001 は未入力のまま
 
         let req = CompleteStocktakeRequest {
             stocktake_id: result.stocktake_id,
             force_fill: true,
         };
-        complete_stocktake(&mut conn, &req).unwrap();
+        legacy_complete_stocktake(&mut conn, &req).unwrap();
 
         // actual_count は max(0, -3) = 0
         let actual: i64 = conn
@@ -1364,7 +1404,7 @@ mod tests {
             stocktake_id: st_id,
             force_fill: false,
         };
-        let result = complete_stocktake(&mut conn, &req).unwrap();
+        let result = legacy_complete_stocktake(&mut conn, &req).unwrap();
 
         assert!(
             result.integrity_result.is_some(),

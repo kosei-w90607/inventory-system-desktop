@@ -249,6 +249,8 @@ Status: implementing（2026-09-21）。plan-approved時点の評価: source同�
 
 ## 後続 runtime lane ㉘ への申し送り
 
+2026-09-23 の改訂で本節の一部は、ADRの[㉘ への引継ぎ](../../adr/2026-09-18-stocktake-time-evidence.md#㉘-への引継ぎ)と、同節が示す改訂laneのTest Design Matrixに置き換わった。以下の本文は書き換えず、差分は同節を優先する。
+
 発注書72のowner dispositionを以下の申し送りより優先する。線引きの正本は[ADRの適用範囲の但し書き](../../adr/2026-09-18-stocktake-time-evidence.md#適用範囲の但し書き)。既存の契約本文は保持するが、時刻経路を㉘の実装仕様として確定した扱いにはしない。
 
 - **㉘で実装しないもの**: gateによるPOS基準の認定、pos_time_bases、TimeBasis / TimeEvidenceの保存とtyped decode、file境界導出、sourceの昇格 / 失効の伝播、PC時計epochの発番・保存と一致条件による時刻比較、EJ時刻分割、clock_unverifiedの準備issue。同じapp sessionでしか成立せず、次のdesign laneで置き換わるため。

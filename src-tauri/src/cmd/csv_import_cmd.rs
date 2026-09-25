@@ -392,23 +392,45 @@ mod tests {
         );
     }
 
+    // 32 §15.0 からの独立転記（42 §22.10 の方式。production定数をimportしない）。
+    const BIZ03_STOP: &str = "商品別CSV（Z004）の取込みの確定と取消は一時停止中です。在庫が二重に減ったり戻ったりする不具合を直すまで使えません。";
+
+    fn all_tables(state: &AppState) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+        let conn = state.db.lock().unwrap();
+        let names: Vec<String> = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        names
+            .iter()
+            .map(|name| {
+                let mut stmt = conn
+                    .prepare(&format!("SELECT * FROM \"{name}\" ORDER BY rowid"))
+                    .unwrap();
+                let width = stmt.column_count();
+                stmt.query_map([], |row| (0..width).map(|col| row.get(col)).collect())
+                    .unwrap()
+                    .collect::<Result<_, _>>()
+                    .unwrap()
+            })
+            .collect()
+    }
+
+    fn assert_stopped(error: CmdError) {
+        assert_eq!(error.kind, CmdErrorKind::ImportError);
+        assert_eq!(error.message, BIZ03_STOP);
+        assert_eq!(error.field, None);
+        assert_eq!(error.error_id, None);
+    }
+
     #[test]
-    fn test_csv_cmd_req401_snapshot_mismatch_deletes_preview_token() {
-        // REQ-401 / I-W5 / SPEC-SDI-D4: mismatch tokenは再利用させない。
+    fn test_csv_cmd_req401_commit_stop_keeps_preview_token() {
+        // REQ-401 / SPEC-STOP-D1,D2: 有効なtokenでもcommitは停止し、tokenをcacheに残しDBを変えない。
+        // snapshot不一致時・成功時のtoken削除（SPEC-SDI-D4 / 41 §17.5）は停止中は到達不能で、⑤で再び試験する。
         let (_dir, conn) = setup_test_db();
-        let concurrent_id = crate::db::sales_repo::insert_csv_import(
-            &conn,
-            &crate::db::sales_repo::NewCsvImport {
-                filename: "concurrent".into(),
-                settlement_date: "2026-03-21".into(),
-                file_hash: "concurrent-hash".into(),
-                total_items: 1,
-                total_amount: 1,
-                skipped_count: 0,
-                status: "completed".into(),
-            },
-        )
-        .unwrap();
         let token = uuid::Uuid::new_v4().to_string();
         let mut cache = HashMap::new();
         cache.insert(token.clone(), cached_for_snapshot(Instant::now()));
@@ -420,42 +442,63 @@ mod tests {
             })
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
+        let before = all_tables(&app.state::<AppState>());
 
-        let error = commit_csv_import(app.state::<AppState>(), token.clone(), false).unwrap_err();
-        assert_eq!(
-            error.message,
-            "同日の取込み状況が変わりました。再度プレビューしてください"
-        );
-        assert!(!app
-            .state::<AppState>()
-            .preview_cache
-            .lock()
-            .unwrap()
-            .contains_key(&token));
-        let retry = commit_csv_import(app.state::<AppState>(), token, false).unwrap_err();
-        assert_eq!(retry.kind, CmdErrorKind::ImportError);
+        for additional_import_confirmed in [false, false, true] {
+            let error = commit_csv_import(
+                app.state::<AppState>(),
+                token.clone(),
+                additional_import_confirmed,
+            )
+            .unwrap_err();
+            assert_stopped(error);
+            assert!(app
+                .state::<AppState>()
+                .preview_cache
+                .lock()
+                .unwrap()
+                .contains_key(&token));
+        }
+        assert_eq!(before, all_tables(&app.state::<AppState>()));
+    }
 
-        let new_token = uuid::Uuid::new_v4().to_string();
-        let mut fresh = cached_for_snapshot(Instant::now());
-        fresh.preview_data.duplicate_check.status =
-            csv_import_service::DuplicateStatus::AdditionalImportConfirmationRequired;
-        fresh.active_same_date_import_ids = vec![concurrent_id];
-        app.state::<AppState>()
-            .preview_cache
-            .lock()
-            .unwrap()
-            .insert(new_token.clone(), fresh);
-        let committed =
-            commit_csv_import(app.state::<AppState>(), new_token.clone(), true).unwrap();
-        assert_eq!(
-            committed.status,
-            crate::db::sales_repo::CsvImportStatus::Completed
-        );
-        assert!(!app
-            .state::<AppState>()
-            .preview_cache
-            .lock()
-            .unwrap()
-            .contains_key(&new_token));
+    #[test]
+    fn test_csv_cmd_req401_rollback_stop() {
+        // REQ-401 / SPEC-STOP-D1,D2: 実在・rolled_back済み・不存在のどのIDでもrollbackは停止し、DBを変えない。
+        let (_dir, conn) = setup_test_db();
+        let mut ids = Vec::new();
+        for status in ["completed", "rolled_back"] {
+            ids.push(
+                crate::db::sales_repo::insert_csv_import(
+                    &conn,
+                    &crate::db::sales_repo::NewCsvImport {
+                        filename: format!("Z004_{status}"),
+                        settlement_date: "2026-03-21".into(),
+                        file_hash: format!("{status}-hash"),
+                        total_items: 1,
+                        total_amount: 100,
+                        skipped_count: 0,
+                        status: status.into(),
+                    },
+                )
+                .unwrap(),
+            );
+        }
+        ids.push(99_999);
+        let app = tauri::test::mock_builder()
+            .manage(AppState {
+                db: Mutex::new(conn),
+                preview_cache: Mutex::new(HashMap::new()),
+                daily_report_preview_cache: Mutex::new(HashMap::new()),
+            })
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let before = all_tables(&app.state::<AppState>());
+
+        for id in ids {
+            assert_stopped(rollback_csv_import(app.state::<AppState>(), id).unwrap_err());
+        }
+
+        assert_eq!(before, all_tables(&app.state::<AppState>()));
     }
 }
