@@ -10,6 +10,18 @@ pub fn setup_test_db() -> (tempfile::TempDir, DbConnection) {
     (dir, conn)
 }
 
+/// schema 版がアプリの最大 + 1 の DB を作って閉じる（MNT-03-D11 の fixture）。足した版を返す
+pub fn write_newer_schema_db(path: &std::path::Path) -> i64 {
+    let conn = crate::db::init_database(path.to_str().unwrap()).unwrap();
+    let newer = crate::db::migration::app_max_version() + 1;
+    conn.execute(
+        "INSERT INTO schema_versions (version, applied_at) VALUES (?1, '2026-09-25T00:00:00')",
+        [newer],
+    )
+    .unwrap();
+    newer
+}
+
 /// テスト用に商品を1件挿入するヘルパー
 pub fn seed_product(conn: &DbConnection, product_code: &str) {
     let product = NewProduct {

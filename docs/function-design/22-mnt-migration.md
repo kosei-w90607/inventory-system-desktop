@@ -24,9 +24,9 @@ fn migrate(conn: &DbConnection) -> Result<(), DbError>
 ```
 
 **処理ステップ**:
-1. schema_versionsテーブルの存在チェック（SELECT name FROM sqlite_master WHERE type='table' AND name='schema_versions'）
-2. 存在しない → create_schema_versions_table() を呼ぶ
-3. SELECT MAX(version) FROM schema_versions → current_version（NULLなら0）
+1. 渡された同じ接続で、DDL を発行せずに版を読む（MNT-03-D11）: schema_versionsテーブルの存在チェック（SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_versions')）。存在しない → current_version = 0。存在する → SELECT MAX(version) FROM schema_versions → current_version（NULLなら0）。存在確認・読取りのその他の失敗 → DbError::MigrationFailed（版 0 に倒さない）
+2. current_version をコード内のマイグレーションリストの最大 version（app_max。リストから導き、数値を別に書かない）と比べ、current_version > app_max → DbError::SchemaNewerThanApp { db_version: current_version, app_max } を返す。DDL もどの migration も始めない（MNT-03-D11）
+3. schema_versionsテーブルを確保（CREATE TABLE IF NOT EXISTS）
 4. コード内のマイグレーションリスト（MIGRATIONS定数）からcurrent_versionより大きいものを取得
 5. 各マイグレーションについて順番に:
    a. BEGIN
@@ -37,6 +37,8 @@ fn migrate(conn: &DbConnection) -> Result<(), DbError>
 6. 全て成功 → Ok(())
 
 **エラーハンドリング**:
+- DB の版がアプリの最大より新しい → DbError::SchemaNewerThanApp（step 2、論理的な書込みの前。MNT-03-D11）
+- 版の読取り失敗（schema_versions が無い場合を除く）→ DbError::MigrationFailed
 - 個々のマイグレーションSQL失敗 → そのバージョンのROLLBACK。それ以降は実行しない
 - エラーメッセージにはバージョン番号と失敗したSQLの概要を含める
 - ROLLBACK 自体が失敗した場合の契約は **MNT-03-D1**（下記）に従う。`conn.execute_batch("ROLLBACK;").ok()` のような失敗の無言破棄は禁止
@@ -49,6 +51,18 @@ fn migrate(conn: &DbConnection) -> Result<(), DbError>
 - Why: ROLLBACK 失敗を `.ok()` で破棄すると、呼び出し元は transaction が閉じたと誤認する。接続が transaction 中または lock 保持のままなら後続処理が二次エラーを出し、最初の応答だけでは復旧不能状態を診断できない（監査 P3-1 系列の P3-3）。`.claude/rules/implementation-quality.md` の Result 握りつぶし禁止の適用でもある
 - Rejected alternatives: ROLLBACK 失敗時の自動再試行（lock 起因では悪化するだけで、migration は起動時実行のため再起動が最短復旧）/ ROLLBACK 失敗を独立エラーとして元エラーを差し替える（一次原因を隠す）
 - 見直し契機: migration を起動時以外から呼ぶ経路（例: 実行中の restore 後再初期化）を追加するとき
+
+**MNT-03-D11: アプリより新しい版の DB を論理的な書込みの前に拒否する（2026-09-25）**
+
+- 決定: `migrate` は最初の処理として、渡された同じ接続で DDL を発行せずに版を読み（step 1）、`migrations()` の最大 version より新しければ `DbError::SchemaNewerThanApp { db_version, app_max }` を返す（step 2）。比較は DB に論理的な書込みをする処理（`schema_versions` の `CREATE TABLE IF NOT EXISTS` 等の DDL、migration の BEGIN、`schema_versions` の INSERT）よりも前に置く。`configure_database` の PRAGMA（`journal_mode = WAL` を含む）の順は変えず、読取りをその前へ動かさない
+- 何を書かないか: DB の論理内容（表・行）・`schema_versions`・操作ログ・自動バックアップ。起動では操作ログの削除・起動時の自動バックアップ・復元後処理の補完が `prepare_database` の後にあるため、拒否すればどれも走らない。起こり得る物理的な書込みは SQLite の open / close によるもの（残った `-wal` の取込みと `-wal` / `-shm` の消去〈checkpoint〉と、rollback-journal mode の file〈`VACUUM INTO` で作った backup を復元した直後、legacy 移行の出力〉の `journal_mode` の header の書換え）で、どちらも論理内容を変えない
+- 同じ接続で DDL の前に読む理由: 別の read-only 接続は DB file が無い初回起動で開けない。同じ接続なら `schema_versions` が無い DB を版 0 と読み、最新版まで migrate できる。`schema_versions` が無いときだけ版 0 とし、その他の読取り失敗を版 0 に倒さない（新しすぎる DB を空の DB と誤認して書き込まないため）
+- 起動の文言: lib.rs は `SchemaNewerThanApp` だけを `StartupDatabaseError::SchemaNewerThanApp` へ写し、§12.4 の固有の文言で dialog を出して setup を Err で終える。`DatabaseInit` の「再起動してもう一度」は再起動で直らないため文言を分ける。他の init 失敗は `DatabaseInit` のまま
+- 復元への波及: 復元は差し替えた file を `open_existing_database`（= `configure_database` → `migrate`）で開くため、新しすぎる版の backup は差し替え後の open で拒否され、既存の「開けなければ現在の DB に戻す」経路で `RestoreError::Recovered` になる（71 §71.7）。restore に版の事前検査は足さない（同じ判定の二重化）
+- 回復: 新しい版のアプリを入れ直せば、拒否された DB はそのまま開ける（論理内容は不変）
+- Why: 旧版のアプリが新しい DB に書くと、旧版の知らない列・表・制約を無視した書込みでデータを傷める。書込みの前に止めるのが最も安全
+- Rejected alternatives: 読み取り専用で起動（画面ごとの書込み禁止が要り範囲が大きい）/ 警告して続行（書込みが起きる）/ 別の read-only 接続で先に版を読む（初回起動で開けない）
+- 見直し契機: SQLite の版を上げて旧版の SQLite が読めない構文を使うとき（旧版では `sqlite_master` の読取りで失敗し `DatabaseInit` に落ちる）、または古い版のアプリで新しい DB を読む互換を設けるとき
 
 ### 3.3 get_initial_schema
 
@@ -236,6 +250,7 @@ operator 文言の固定部は次のとおりで、いずれも末尾に改行�
 | `app_data_dir` | アプリのデータ保存場所を確認できなかったため、起動を中止しました。パソコンを再起動してもう一度お試しください。繰り返し失敗する場合は管理者へ連絡してください。 |
 | 保存場所作成 | アプリのデータ保存場所を作成できなかったため、起動を中止しました。ディスクの空き容量を確認し、パソコンを再起動してもう一度お試しください。繰り返し失敗する場合は管理者へ連絡してください。 |
 | `DatabaseInit` | データベースの準備に失敗したため、起動を中止しました。アプリを再起動してもう一度お試しください。繰り返し失敗する場合は診断ログ（アプリのデータフォルダ内）を添えて管理者へ連絡してください。 |
+| `SchemaNewerThanApp`（MNT-03-D11） | このデータは、より新しい版のアプリで使われています。この版のアプリで書き込むとデータを傷めるおそれがあるため、起動を中止しました（データは変更していません）。新しい版のアプリを入れ直してから起動してください。わからない場合は管理者へ連絡してください。 |
 | `.run()` | アプリを起動できませんでした。アプリを再起動してもう一度お試しください。繰り返し失敗する場合は管理者へ連絡してください。 |
 
 - 正常起動では fatal 文言生成・dialog 表示を呼ばない。既存 RestoreReconcile / LegacyMigration の MNT-03-D4 文言と順序は変更しない
