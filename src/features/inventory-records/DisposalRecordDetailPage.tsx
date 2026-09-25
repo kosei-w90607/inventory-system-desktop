@@ -43,7 +43,7 @@ const DISPOSAL_TYPE_LABELS: Record<string, string> = {
 };
 
 export function DisposalRecordDetailPage({ recordId, returnTo }: DisposalRecordDetailPageProps) {
-  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} };
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.disposalDetail(recordId),
     queryFn: () =>

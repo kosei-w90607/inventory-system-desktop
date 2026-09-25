@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { normalizeReturnTo, returnToLinkProps } from "./return-to";
 
@@ -49,12 +49,11 @@ describe("normalizeReturnTo (REQ-207 / DSR-15 / DSR-18 / SPEC-RETURNTO-HYGIENE-2
   });
 });
 
-describe("returnToLinkProps (REQ-207 / DSR-18 / SPEC-RETURNTO-HYGIENE-2026-09-17 T2)", () => {
-  it("decomposes a valid returnTo into to (pathname) and search (object)", () => {
+describe("returnToLinkProps (REQ-207 / DSR-18 / SPEC-RETURNTO-HYGIENE-2026-09-17 T2 / SPEC-NAV-RETURN-TYPES-2026-09-25 C1・C2)", () => {
+  it("T3 decomposes a valid returnTo into to (pathname) and search (object)", () => {
     expect(
       returnToLinkProps(
         "/inventory/records?recordType=receiving_record&page=2&q=%222099000000019%22",
-        "/inventory/records",
       ),
     ).toEqual({
       to: "/inventory/records",
@@ -62,59 +61,37 @@ describe("returnToLinkProps (REQ-207 / DSR-18 / SPEC-RETURNTO-HYGIENE-2026-09-17
     });
   });
 
-  it("decomposes the fallback the same way when the value is missing", () => {
-    expect(returnToLinkProps(undefined, "/inventory/receiving")).toEqual({
-      to: "/inventory/receiving",
-      search: {},
-    });
+  it.each([
+    undefined,
+    null,
+    "",
+    "relative",
+    "https://evil.example",
+    "/\\evil.example",
+    "/a/..//[",
+    "//[",
+  ])("T1 returns null for a missing or invalid returnTo %s without throwing", (value) => {
+    expect(returnToLinkProps(value)).toBeNull();
   });
 
-  it("decomposes the fallback the same way when the value is invalid", () => {
-    expect(returnToLinkProps("https://evil.example", "/inventory/records")).toEqual({
-      to: "/inventory/records",
-      search: {},
-    });
-  });
-
-  it("decomposes a query-bearing fallback without losing search types", () => {
-    expect(returnToLinkProps(undefined, "/inventory/records?q=%22123%22&page=2")).toEqual({
-      to: "/inventory/records",
-      search: { q: "123", page: 2 },
-    });
-  });
-
-  it("falls back without throwing for a malformed normalized authority", () => {
-    expect(returnToLinkProps("/a/..//[", "/inventory/records")).toEqual({
-      to: "/inventory/records",
-      search: {},
-    });
-  });
-
-  it.each(["", "relative", "https://evil.example", "/\\evil.example", "/a/..//[", "//["])(
-    "returns the empty sentinel for invalid fallback %s without throwing",
-    (fallback) => {
-      expect(returnToLinkProps(undefined, fallback)).toEqual({ to: "", search: {} });
+  it.each(["/inventory/records?page=2", "/stocktake?page=2"])(
+    "T2 returns null on an options.pathname mismatch (%s)",
+    (value) => {
+      expect(returnToLinkProps(value, { pathname: "/stock" })).toBeNull();
     },
   );
 
-  it("does not reapply the pathname pin to the fallback", () => {
-    expect(
-      returnToLinkProps("/stocktake", "/inventory/records?q=%22123%22&page=2", {
-        pathname: "/stock",
-      }),
-    ).toEqual({ to: "/inventory/records", search: { q: "123", page: 2 } });
-  });
-
-  it("treats a pathname mismatch under options.pathname as invalid and falls back", () => {
-    expect(returnToLinkProps("/inventory/records?page=2", "", { pathname: "/stock" })).toEqual({
-      to: "",
-      search: {},
+  it("T2 keeps a value that matches options.pathname", () => {
+    expect(returnToLinkProps("/stock?q=BT0002&selected=BT0002", { pathname: "/stock" })).toEqual({
+      to: "/stock",
+      search: { q: "BT0002", selected: "BT0002" },
     });
   });
 
-  it("keeps a value that matches options.pathname", () => {
-    expect(
-      returnToLinkProps("/stock?q=BT0002&selected=BT0002", "", { pathname: "/stock" }),
-    ).toEqual({ to: "/stock", search: { q: "BT0002", selected: "BT0002" } });
+  it("T4 forces callers to handle null through the return type", () => {
+    expectTypeOf(returnToLinkProps("/x")).toEqualTypeOf<{
+      to: string;
+      search: Record<string, unknown>;
+    } | null>();
   });
 });
