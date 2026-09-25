@@ -27,7 +27,7 @@ manual は 1 項目（S4 の成功 toast をホームで見る。手順と合格
 - 追記（2026-09-25、Coordinator）: owner が自動バックアップの通知の出し方に (a)（成功は 1 回、失敗は連続失敗の最初の 1 回だけ）で回答した。packet は (a) で書いてあるため Scope・AC・Matrix は変えない。
 - plan-gate（2026-09-25、owner 決定）: lane 全体を R4 にし、S4 の成功 toast の manual を 1 項目足す。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は両 reviewer とも reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
-- plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
+- plan-gate（2026-09-25、Coordinator の指示で是正、round 2）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
 - plan-gate → plan-approved（2026-09-26、Coordinator、本 commit）: Plan Review round 3（上限）で Codex 側は reject（P2 1 = relay 上限が round 3 を数えていない、P3 1 = Matrix T2 の検出力の記述）。技術面の P1/P2 は 0。round 天井に達したため追加の round は回さず、同型の一括是正として owner 承認（2026-09-26）のもと予算を relay 5・介入 12 に改め、T2 の記述を直した。Claude 側は round 2 で approve（P3 のみ）。Plan Commit = 本 commit の親（round 2 是正後の承認版 `01101c07`）。
 
 ## Owner Effort Budget
