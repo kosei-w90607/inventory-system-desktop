@@ -22,6 +22,7 @@ manual なし（判断の根拠は Design Readiness の「manual の要否」）
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（2026-09-25、本 commit、plan-first）: 設計正本の更新点（S1〜S4 の各「docs」）は実装と同じ PR で同期する（Scope に列挙）。owner の製品判断が要る点は Design Readiness の「owner 決定待ち」1 件（自動バックアップの通知の出し方）で、推奨案で packet を書いた。推奨と異なる決定なら plan-gate のまま packet を訂正する。
+- 追記（2026-09-25、Coordinator）: owner が自動バックアップの通知の出し方に (a)（成功は 1 回、失敗は連続失敗の最初の 1 回だけ）で回答した。packet は (a) で書いてあるため Scope・AC・Matrix は変えない。
 
 ## Owner Effort Budget
 
@@ -258,7 +259,7 @@ operator の操作・command 入口の受理範囲・起動の状態遷移を変
 - Design gaps intentionally deferred: MSI 配布手順（v1.0 gate）、`stock_revision`（㉘）
 - Durable decisions discovered in this plan and promoted to source docs: BIZ-01-D5 / MNT-03-D11 / UI-11b-D13（decision ID は本 packet が予約する。並走 lane が同じ系列を足す場合は merge 後の側が採番し直す）
 
-**owner 決定待ち（1 件）: 自動バックアップの通知の出し方**
+**owner 決定（2026-09-25 に回答済み = (a)）: 自動バックアップの通知の出し方**
 
 timer を画面に依らない場所へ移すと、確認の結果の toast がどの画面にも出るようになる。今の page は成功で toast を出さず（68 UI-11b-F5 / D9 は「完了 toast を表示する」と書く）、失敗で毎回 toast を出す（Toaster は 3 秒で消える、`RootLayout.tsx:69`）。
 
