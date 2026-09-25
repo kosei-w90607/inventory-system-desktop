@@ -1,12 +1,12 @@
 # Plan Packet: 棚卸しの評価額に価格の基準数量と店の丸め規則を入れる（R3）
 
-2026-09-25 起草。出典は [Backlog](../backlog.md) 「やると決めたもの」の 2 行（行番号は base `85b18a04`）: `:48`「棚卸しの評価額が価格の基準数量を持たない」（2026-09-22 の外部設計相談で指摘、Coordinator が現物で確認）と `:55`「評価額の丸めを店の規則に合わせる」（owner 決定 2026-09-24）。関連の `:35`「単位の拡張」（店の返答待ち）は本 lane の対象外。`:48` は「単位の拡張 lane の最初の成果物」とされていたが、評価額を独立した 1 本として先に進めることを owner が了承した（2026-09-25）。単位の拡張の店の返答が無くても成り立つ範囲（今ある単位 `pcs` / `cm`）で設計し、単位の拡張に依存する点は非目的か owner 決定待ちにした。
+2026-09-25 起草。出典は [Backlog](../../backlog.md) 「やると決めたもの」の 2 行（行番号は base `85b18a04`）: `:48`「棚卸しの評価額が価格の基準数量を持たない」（2026-09-22 の外部設計相談で指摘、Coordinator が現物で確認）と `:55`「評価額の丸めを店の規則に合わせる」（owner 決定 2026-09-24）。関連の `:35`「単位の拡張」（店の返答待ち）は本 lane の対象外。`:48` は「単位の拡張 lane の最初の成果物」とされていたが、評価額を独立した 1 本として先に進めることを owner が了承した（2026-09-25）。単位の拡張の店の返答が無くても成り立つ範囲（今ある単位 `pcs` / `cm`）で設計し、単位の拡張に依存する点は非目的か owner 決定待ちにした。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 325861c5ccb8a0bf6ff68e44ffafe98ca570b3f1
 - Amendments: 08a5cde47f1c5636aa96a9b0be6c78706946d570
@@ -17,7 +17,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 2
 - Human Gate: ready,merge
 
-manual なし: 画面・表示・文言・DTO・bindings を変えない（仕入原価総額は円の整数のまま。AC9 / AC10 で `src/` と `src/lib/bindings.ts` の差分 0 を確かめる）。現行 build では棚卸しの開始・保存・確定が停止中（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D1〜D3）で、operator が新しい評価額を画面で見る経路も無い。r4 なし: DB schema・既存の保存値・破壊的操作を含まず、revert で戻せる。
+manual なし: 画面・表示・文言・DTO・bindings を変えない（仕入原価総額は円の整数のまま。AC9 / AC10 で `src/` と `src/lib/bindings.ts` の差分 0 を確かめる）。現行 build では棚卸しの開始・保存・確定が停止中（[停止 ADR](../../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D1〜D3）で、operator が新しい評価額を画面で見る経路も無い。r4 なし: DB schema・既存の保存値・破壊的操作を含まず、revert で戻せる。
 
 遷移記録（append-only）:
 
@@ -28,6 +28,7 @@ manual なし: 画面・表示・文言・DTO・bindings を変えない（仕�
 - plan-gate → plan-approved（2026-09-26、Coordinator、本 commit）: Plan Review round 3（上限、対象 `325861c5`）で Codex 側は reject（P2 1 = 35 の共通の `total_cost` 説明と biz-task-specs が評価数量を actual_count とし §20.5a の新方式と食い違う、P3 1 = Plans.md の wave 13 の段落の Plan Review の座組が古い）。round 天井に達したため追加の round は回さず、同型の一括是正として本 commit で 2 か所の評価数量の記述と Plans.md の文を直し、owner 承認（2026-09-26）のもと予算を relay 5・介入 7 に改めた。Claude 側は round 2 で approve（P3 のみ）。Plan Commit = `325861c5`（round 2 是正後の承認版）。
 - plan-approved → implementing（2026-09-26、Coordinator、本 commit）: Writer（Opus 5.5 subagent）へ実装を発注する。
 - Gated Amendment 1（2026-09-26、Coordinator）: `08a5cde4` を登録。main（#106 と closeout #107）の同期に合わせ、遷移記録の round 2 の行の key が round 1 の行と同じで helper が `duplicate packet fields` として packet を読めなかったため、round 2 の行の key に「、round 2」を足した。あわせて Final Review の 2 本の共通 P3（Plans.md の登録行の古い文言）を直した。Scope・AC・Risk・Final Review Minimum・Human Gate は変えない。差分は Codex の closure で確かめる。
+- implementing → archive（2026-09-26、Coordinator、closeout）: PR #108 を helper 経由で merge（squash `3b94a58a`）。Final Review の 2 本（Codex GPT-6 Astra・Fable 5.1）とも approve、共通の P3 1 件は Gated Amendment 1 と同じ commit で是正し、Codex の closure が approve。packet と Matrix を archive へ移し、Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
@@ -149,7 +150,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Function / command / DTO: `docs/function-design/35-biz-stocktake-service.md` §20.5a（新設）・§20.5・「確定・legacyの取消の保留」・§20.0（停止）
 - DB: `docs/db-design/tracking-system-tables.md` stocktakes / stocktake_items、`docs/db-design/master-tables.md` products
 - Screen / UI: `docs/function-design/73-ui-stocktake.md`（`total_cost` の表示、変更なし）
-- Decision log / ADR: [時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D7（過去評価を上書きしない）、[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D1〜D6。店の事実は `docs/project-memory.md` Store Premises Facts（`:108`・`:113`・`:129`・`:162`・`:190`）と `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
+- Decision log / ADR: [時点証拠 ADR](../../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D7（過去評価を上書きしない）、[停止 ADR](../../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D1〜D6。店の事実は `docs/project-memory.md` Store Premises Facts（`:108`・`:113`・`:129`・`:162`・`:190`）と `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
 
 ## Required Design Artifacts
 
@@ -335,10 +336,18 @@ Fill after implementation.
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Broad Audit（両方とも approve、共通の P3 は是正済み）; post-freeze exceptions: none.
 
 ### Plan Review（2026-09-25〜26、Claude 側 = fresh Opus 5.5、Codex 側 = GPT-6 Sol high、互いに独立）
 
 - round 1（`ca280c79`）: Claude reject（P2 2 / P3 3）、Codex reject（P1 1 / P2 1、Ordinary Operation に反例）。主な是正: 中間を i128 にし最後だけ i64 へ検査付き変換・mutant を段ごとに分け kill 入力を Rust の試作で確認・時点証拠 ADR の旧式・Ordinary Operation を (a) 本 lane で成立する列と (b) ⑤ の後の列に分ける・負の検査を関数の 1 か所に。是正前に Fable 5.1 が裁定案の反例を探した。
 - round 2（`91bb8618`）: Claude approve（P3 4）、Codex reject（P2 1 = 2^53 を超える円額の JS 表示 → ⑤ への申し送り）。是正 = `325861c5`。
 - round 3（`325861c5`、上限）: Codex reject（P2 1 = 評価数量の記述の食い違い、P3 1）。同型の一括是正と owner 承認の予算改定で plan-approved。
+
+### Final Review（2026-09-26、互いに独立）
+
+- broad Codex 側（GPT-6 Astra）on `f6914e22`: approve、P1 0 / P2 0 / P3 1（Plans.md の登録行の古い文言）。AC1〜AC10・local-ci full PASS、mutant 8/8 red。[review](https://github.com/kosei-w90607/inventory-system-desktop/pull/108#pullrequestreview-5320720846)
+- broad Claude 側（Fable 5.1、fresh、read-only）on `f6914e22`: approve、P1 0 / P2 0 / P3 1（同じ）。python の Decimal の oracle と整数式を fuzz 20,000 件で不一致 0、pcs だけの総額 = 旧式も 20,000 件で不一致 0、mutant 8/8 red。
+- 裁定: P3 accept → main 同期の後の `08a5cde4` で是正。あわせて遷移記録の key の重複（helper が `duplicate packet fields` で packet を読めない）を解消し、Gated Amendment 1 として登録（`3eb982ca`）。
+- closure Codex 側（GPT-6 Astra）on `3eb982ca`: approve、P1/P2/P3 = 0。実装の差分は main 側と一致、packet は指定の 3 点だけ、P3 は解消。[review](https://github.com/kosei-w90607/inventory-system-desktop/pull/108#pullrequestreview-5320804744)
+- helper の record: review broad 2 本（pass）。owner の指示（2026-09-26「Codex 通してレビューも通ってるならマージや締めまで済ませて OK」）で helper `ready` → hosted CI 成功 → helper `merge`。
