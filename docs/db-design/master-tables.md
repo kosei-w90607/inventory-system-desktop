@@ -31,8 +31,8 @@
 | name | TEXT | NOT NULL | 商品名（例: ハマナカ アミアミ極太 col.42） |
 | department_id | INTEGER | FK → departments.id, NOT NULL | 所属部門 |
 | supplier_id | INTEGER | FK → suppliers.id, NULLABLE | 主な取引先（任意） |
-| selling_price | INTEGER | NOT NULL | 売価（税込、円） |
-| cost_price | INTEGER | NOT NULL | 原価（円） |
+| selling_price | INTEGER | NOT NULL | 売価（税込、円）。価格の基準数量あたり（下記の設計意図） |
+| cost_price | INTEGER | NOT NULL | 原価（円）。価格の基準数量あたり（下記の設計意図） |
 | tax_rate | TEXT | NOT NULL, DEFAULT '10' | 消費税率。'10' / '8' / '0'（非課税） |
 | maker_code | TEXT | NULLABLE | メーカー品番（例: H180-005-42）。JAN無しでもメーカー品番だけある場合あり |
 | stock_quantity | INTEGER | NOT NULL, DEFAULT 0 | 在庫数（個 or 枚 or cm） |
@@ -53,6 +53,7 @@
 - **jan_codeのUNIQUE制約をつけない理由**: 同じJANを複数商品が共有するケースがある（グループコード）。UNIQUE制約をつけると登録できなくなる
 - **jan_code の形式 validation を DB に置かない理由（2026-08-11、JAN 専用欄正規化 change）**: 手入力 create 経路の JAN-8/13 + チェックディジット検証は BIZ 保存時（BIZ-01-D1）と frontend（51 UI-01b-D17）が所有し、DB CHECK は追加しない。既存 DB 行と CSV/Z004 import 経路には非 JAN 値・非 13 桁値が実在し得るため（既存データ互換）、DB 制約は既存データの migration を強制してしまう。UNIQUE を付けない既存判断も不変。
 - **selling_price / cost_priceをINTEGERにした理由**: 日本円は小数点以下がないため整数で十分。浮動小数点の丸め誤差を避ける
+- **価格の基準数量（2026-09-25、[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D1）**: selling_price / cost_price は、在庫数量で「価格の基準数量」ぶんに対する価格である。基準数量は stock_unit で決まり、`pcs` = 1（1 個あたり）、`cm` = 100（1 m あたり）。反物などの長さ商品は在庫を cm で持ち、価格は値札・仕入れ伝票と同じ 1 m あたりで登録する（店は残り・仕入れ・値札をすべて m で扱う。レジでも数量 1 = 1 m で打てる、未運用）。基準数量の列は持たない（理由・不採用案・見直す条件は 35 §20.5a）。棚卸しの評価額はこの基準数量で割る。入庫の原価小計・廃棄のロス原価・棚卸し記録詳細のロス原価は `数量 × 原価` のまま、手動販売の金額の初期値（[62](../function-design/62-ui-manual-sale.md) UI-04-D6）は数量 1 ごとに売価を足すままで、長さ商品では 100 倍になる（既知の不整合、Backlog）
 - **plu_dirtyフラグの理由**: 「レジ登録データ作成」画面の差分書出しモード（REQ-402）で「前回以降に変更があった商品」を高速に抽出するため。売価変更・新規登録でON、TSV生成だけではOFFにせず、UI-08で保存後に利用者が書出し済み確認した時点でOFFにする（D-027）。
 - **plu_exported_atの理由**: plu_dirtyだけでは「未書出し」と「アプリ側では書出し済み」の区別がつかない。書出し済み確認日時を記録しておけば「最後にアプリでPLU TSVを作成・保存済みにしたのはいつか」が分かる。ただしPCツール受理やレジ側反映確認はAPIがないため、この値では証明しない。
 - **pos_stock_syncの理由（指摘#9対応）**: REQ-401「生地カテゴリの在庫減算除外」の判定カラム。stock_unit='cm'だけで判定するとcm管理でもCSV連動したい商品が将来出たときに困る。明示的なフラグで制御する
