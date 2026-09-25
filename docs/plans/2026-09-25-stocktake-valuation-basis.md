@@ -24,6 +24,7 @@ manual なし: 画面・表示・文言・DTO・bindings を変えない（仕�
 - kickoff → spec-check → design（2026-09-25、起草役 = Opus 5.5 subagent、本 commit）: Risk R3（下記 Risk）。設計正本の更新（`docs/function-design/35-biz-stocktake-service.md` §20.5a 新設ほか 4 file、下記 Required Design Artifacts）を本 plan-first commit に同乗させた。owner 決定待ち 3 問（Design Readiness の Q1〜Q3）が残るため Phase は design に置く。3 問とも推奨案どおりなら packet・Matrix・設計正本は変えずに design → plan-draft → plan-gate の遷移だけを記録して Plan Review へ進める。推奨と違う答えなら、答えに合わせて設計正本と本 packet を直してから遷移する（Q2 が「商品ごとの列」なら migration・DTO・画面が Scope に入り、manual が要る）。
 - design → plan-draft → plan-gate（2026-09-25、Coordinator）: owner が Q1〜Q3 に回答した。Q1 = はい（円未満を四捨五入して 1 円単位）、Q2 = はい（在庫単位で決め、商品ごとの列は足さない）、Q3 = はい（4 項目は含めず closeout で Backlog へ）。Q2 について、箱や袋で仕入れてばらして売る商品は実在する（店の回答 2026-09-14、project-memory の Store Premises Facts）。店が仕入れ伝票の単価と棚卸しの手計算をどの単位で扱うかを訪店の確認事項（Issue #105）に足し、答えにより単位の拡張 lane で商品ごとの基準数量の列を足す。3 問とも推奨どおりのため、packet・Matrix・設計正本は変えず Phase だけを進める。
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は両 reviewer とも reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
+- plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
 
 ## Owner Effort Budget
 
@@ -105,7 +106,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - S1 `src-tauri/src/biz/stocktake_service.rs`（非公開関数 3 つの追加と旧本体の置換）
   - `fn price_basis_quantity(unit: ProductStockUnit) -> i64`: `ProductStockUnit::Pcs => 1`、`ProductStockUnit::Cm => 100`。wildcard arm を置かない（`crate::db::product_repo::ProductStockUnit`、定義は `product_repo.rs:35`）。
-  - `fn valuation_line_centi(cost_price: i64, quantity: i64, basis: i64, product_code: &str) -> Result<i128, BizError>`: `cost_price < 0` か `quantity < 0` なら、関数の中で商品コード入りの負の error を作って返す（検査と文言はここ 1 か所）。`i128::from(cost_price) * i128::from(quantity)`（plain の `*`。「i64 の積は i128 に収まる」の comment を 1 行置く）に `checked_mul(100)` を掛け、`basis` で割って四捨五入（i128 の商 q・余り r で `2r >= basis` なら q + 1。basis は 100 以下なので `2r` は桁あふれしない）。× 100 の桁あふれは既存のオーバーフローの error（文言は 35 §20.5a SPEC-STK-VAL-D5）。私有の error 型は作らない。
+  - `fn valuation_line_centi(cost_price: i64, quantity: i64, basis: i64, product_code: &str) -> Result<i128, BizError>`: `cost_price < 0` か `quantity < 0` なら、関数の中で商品コード入りの負の error を作って返す（検査と文言はここ 1 か所）。`i128::from(cost_price) * i128::from(quantity)`（plain の `*`。「i64 の積は i128 に収まる」の comment を 1 行置く）に `checked_mul(100)` を掛け、`basis` で割って四捨五入（i128 の商 q・余り r で `2r >= basis` なら q + 1。`r < basis ≤ i64::MAX` なので `2r` は i128 で溢れない。実際の呼出しは basis 1 / 100、単体 test は合成値〈最大 250〉を直接渡す）。× 100 の桁あふれは既存のオーバーフローの error（文言は 35 §20.5a SPEC-STK-VAL-D5）。私有の error 型は作らない。
   - `fn valuation_total_yen(lines: &[i128]) -> Result<i64, BizError>`: 商品別の金額を i128 の `checked_add` で合計し、円未満で四捨五入（商 `total / 100`・余り `total % 100` で余りが 50 以上なら商 + 1。各行は負の検査を通った 0 以上の値）、円額を `i64::try_from` で変換する。合計の桁あふれと変換の失敗は既存のオーバーフローの error（文言を固定。既存の `test_complete_req205_total_cost_overflow` は新式では変換で初めて error になる）。0 行なら `Ok(0)`。
   - `legacy_complete_stocktake`（`:440`）のステップ 5〜6: `let mut total_cost`（`:495`）を商品別の金額の `Vec<i128>`（`lines`）にし、`:504-520` の `checked_mul` / `checked_add` を `valuation_line_centi(valuation_cost_price, item.actual_count, price_basis_quantity(product.product.stock_unit), &item.product_code)?` の push に置き換え、`:552` の直前で `valuation_total_yen(&lines)?` を `total_cost` にする。`valuation_cost_price` の保存（`:505`）、操作ログの文言・detail_json、StocktakeResult の型は変えない。
   - 3 関数は `pub` にしない（`design_compliance_test.rs:482` は `syn::Visibility::Public` だけを突合する）。非 test build の dead_code は Contract Probe 1 のとおり警告にならないので、属性を足さない。clippy が警告を出したら属性を足さずに Coordinator へ返す。
@@ -123,7 +124,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 入庫の `line_cost` / `total_cost`（`receiving_repo.rs:229`・`:250`）、廃棄の `line_loss_cost`（`disposal_repo.rs:647`）と入力画面の合計（`src/features/disposal/lib/disposal-request.ts:40`）。
 - `src-tauri/src/seed_demo.rs`（INSERT は列を明示し、`stock_unit` の値の意味だけが変わる。長さ商品の demo 価格〈100〜5000 円〉は 1 m あたりとしても成り立つ）と既存の test fixture（`pcs` の値は変わらない）。
 - 旧本体の停止・解除（SPEC-STOP-D1〜D6）、新方式の確定の実装、`stocktake_repo` の関数。
-- `docs/backlog.md` の `:48` / `:55` の完了処理と、Q3 の 4 項目・手動販売の金額の初期値（`62-ui-manual-sale.md:26` UI-04-D6、`src/features/manual-sale/lib/manual-sale-row-utils.ts:24,40`）の Backlog 起票（closeout で行う）。
+- `docs/backlog.md` の `:48` / `:55` の完了処理と、次の Backlog 起票（closeout で行う）: Q3 の 4 項目（入庫の原価小計・原価合計は式の正本 `docs/function-design/21-io-inventory-repo.md:103`、廃棄のロス原価は同 `:354`）、手動販売の金額の初期値（`docs/function-design/62-ui-manual-sale.md:26`・`:165` UI-04-D6、`src/features/manual-sale/lib/manual-sale-row-utils.ts:24,40`）、⑤ で `total_cost` を wire・表示まで正確に扱うこと（Boundary / Wire Contract の precision/range）。
 
 ## Acceptance Criteria
 
@@ -136,7 +137,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - **AC7** `bash scripts/doc-consistency-check.sh` が ERROR 0。
 - **AC8** 旧式が live な設計正本に残らない: `rg -n 'valuation_cost_price × actual_count|valuation_cost_price \* actual_count|valuation_cost_price×actual_count|この値×actual_count|× 確定時評価原価|× 評価原価' docs --glob '!docs/archive/**' --glob '!docs/backlog.md' --glob '!docs/plans/**'` が 0 hit（plan-first commit の直前の base `85b18a04` で 7 hit〈`adr/2026-09-18-stocktake-time-evidence.md:58`、`biz-task-specs.md:487`、`35-biz-stocktake-service.md:36`・`:101`・`:337`、`tracking-system-tables.md:163`・`:170`〉、Plan Review round 1 の是正 commit の時点で 0 hit〈exit 1〉を確認済み。Final Review で再実行する）。
 - **AC9** bindings を変えない: `git diff --exit-code origin/main -- src/lib/bindings.ts` が exit 0。
-- **AC10** 変更 file が Scope の内側: `git diff --name-only origin/main...HEAD` が plan-first commit と Plan Review round 1 の是正 commit の 8 file（是正 commit の時点で実測 8）と `src-tauri/src/biz/stocktake_service.rs`・`docs/function-design/90-traceability.md` だけ（`src/`・`src-tauri/src/db/` を含まない）。
+- **AC10** 変更 file が Scope の内側: `git diff --name-only origin/main...HEAD` が plan-first commit と Plan Review round 1・round 2 の是正 commit の 8 file（round 2 の是正 commit の時点で実測 8）と `src-tauri/src/biz/stocktake_service.rs`・`docs/function-design/90-traceability.md` だけ（`src/`・`src-tauri/src/db/` を含まない）。
 
 ## Design Sources
 
@@ -164,7 +165,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|
 | REQ coverage の変更（REQ-205 の test が増える） | `cd src-tauri && cargo run --bin generate_traceability` で `docs/function-design/90-traceability.md` を再生成（S3、AC5） |
 
-他の行（Tauri command / function-design doc 新設 / source doc 新設・改名 / consultation relay / route / operator 画面）は該当なし。35 に書いた `fn` 3 つは非公開のため `design_compliance_test` の突合（`pub` だけ）に載らない。
+他の行（Tauri command / function-design doc 新設 / source doc 新設・改名 / consultation relay / route / operator 画面）は該当なし。35 に書いた `fn` 3 つは非公開のため、`design_compliance_test` の INFO（not-yet-implemented）に載り続けるが失敗しない（コード側の突合は `pub` だけ）。
 
 ## Design Intent Trace
 
@@ -182,7 +183,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: yes。35 §20.5a に式・型・丸め・検査・非遡及と、決定の理由・不採用案・見直す条件がある。master-tables の products から価格の基準数量を引ける。
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: 「価格の基準数量は在庫単位で決まる（pcs = 1、cm = 100）」「金額は 1/100 円の整数」「入庫・廃棄・記録詳細のロス原価は未対応の既知の不整合」を 35 §20.5a と master-tables へ置いた。
 - Assumptions and constraints: 長さ商品の価格は 1 m あたりで登録される（店の事実）。現行 build は確定が停止中で、新方式の確定は ㉘ の後続 lane が §20.5a の関数を呼ぶ。
-- Deferred design gaps, risk, and follow-up target: Q3 の 4 項目（入庫・廃棄のロス原価と原価小計、記録詳細のロス原価、商品フォームの「1 m あたり」）と手動販売の金額の初期値（UI-04-D6）→ closeout で Backlog へ。箱あたりの原価（SPEC-STK-VAL-D1 の見直す条件）→ 単位の拡張 lane。
+- Deferred design gaps, risk, and follow-up target: Q3 の 4 項目（入庫・廃棄のロス原価と原価小計、記録詳細のロス原価、商品フォームの「1 m あたり」）と手動販売の金額の初期値（UI-04-D6）→ closeout で Backlog へ。JS の safe integer を越える `total_cost` の wire・表示 → ⑤（Design Readiness の申し送り、closeout で Backlog へ）。箱あたりの原価（SPEC-STK-VAL-D1 の見直す条件）→ 単位の拡張 lane。
 - Test Design Matrix can cite design decision IDs or source doc sections: yes（SPEC-STK-VAL-D1〜D6）。
 - Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 「総額は店の規則と一致する」の例外 = 本契約より前に確定した記録（旧式のまま、D6。本番には無い）、箱あたりの原価（表せない、D1 の見直す条件）。「浮動小数を使わない」は AC3 で本 file に限って検査する（frontend の `formatYen` は円の整数を表示するだけ）。「個数商品の総額は不変」は基準数量 1 で商品別の金額が `原価 × 数量 × 100` の整数になり、円未満の端数が出ないことから成り立つ（T9）。
 
@@ -191,7 +192,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | Lens | Applicability / finding | Follow-up artifact |
 |---|---|---|
 | Adapter / core boundary | 該当なし。POS の数量（Z004・EJ）は触らない。`ej_parser.rs:502` の `q × p == amount` はレジの数量と単価の照合で、在庫単位の基準数量とは別 | なし |
-| Fact check / design decision split | 店の事実（長さ商品は m で扱い値札は 1 m あたり、レジの数量 1 = 1 m、店の丸め規則）は project-memory と聞き取り記録から引き、式・型・関数の置き場所は設計判断として 35 §20.5a に分けた。丸め規則の読み方の残り（最終合計の単位）は Q1 | 35 §20.5a、Design Readiness Q1 |
+| Fact check / design decision split | 店の事実（長さ商品は m で扱い値札は 1 m あたり、レジでも数量 1 = 1 m で打てる〈未運用〉、店の丸め規則）は project-memory と聞き取り記録から引き、式・型・関数の置き場所は設計判断として 35 §20.5a に分けた。丸め規則の読み方の残り（最終合計の単位）は Q1 | 35 §20.5a、Design Readiness Q1 |
 | Lifecycle / retry | 確定は 1 TX。負・桁あふれは確定を止めて ROLLBACK（T10 で header・明細・在庫の不変を確認）。再試行は原因のデータを直して同じ確定を呼ぶ（既存と同じ） | T10 |
 | Operator workflow | 画面・操作は変えない。長さ商品の原価を 1 m あたりで入れることは店の運用と一致するが、フォームに表示は無い（Q3） | Q3 |
 | Replacement path | 単位を足すと `price_basis_quantity` の match が compile error になり、基準数量の決定を強制する。商品ごとの基準数量が要ると分かったら列を足し、この関数の呼出しを列の値へ置き換える（35 §20.5a の見直す条件） | 35 §20.5a |
@@ -205,6 +206,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Existing design docs are sufficient because: 不十分だったため本 commit で更新した（下記）。
 - Source docs updated in this PR: 35 §20.5a ほか、tracking-system-tables、master-tables、biz-task-specs（Scope の「設計正本の更新」）。
 - Design gaps intentionally deferred: 箱あたりの原価（単位の拡張 lane）、Q3 の 4 項目と手動販売の金額の初期値（Backlog）。
+- ⑤ への申し送り（後続必須条件）: ⑤ で `total_cost` を wire・表示まで正確に扱う（十進文字列等）。入力例: `cm` 原価 `100000000000000001` 円/m・数量 `100` cm は新式で保存でき、JS の `number` では 1 円ずれる。本 lane は関数の契約（i64 の範囲）を変えない。closeout で Backlog に起票する。
 - Durable decisions discovered in this plan and promoted to source docs: SPEC-STK-VAL-D1〜D6。
 
 owner 決定（2026-09-25 に回答済み。3 問とも推奨案どおりで、設計正本と本 packet は変えない。Q2 は店の回答で単位の拡張 lane が見直す）:
@@ -227,12 +229,12 @@ Minimum design checks for business-app work:
 
 - 非公開 fn を `#[cfg_attr(not(test), expect(dead_code))]` の関数だけが呼ぶと、非 test build で呼ばれる側に dead_code 警告が出るか: scratchpad で private mod の `helper` を `expect(dead_code)` の `legacy` だけから呼ぶ lib を `rustc 1.94.1 --crate-type lib` で build -> exit 0、警告なし（`--test` build では test から呼ばない条件で両方が警告。本 lane では test が旧本体を呼ぶ）。
 - 浮動小数の四捨五入の誤り: python3 `round(1.005, 2)` -> `1.0`（`1.005` の保持値は `1.00499999999999989342`）、`Decimal('1.005').quantize(Decimal('0.01'), ROUND_HALF_UP)` -> `1.01`。整数の四捨五入 `(2n + d) // (2d)` で `1000 × 5 × 100 / 12` -> `41667`（416.67 円）、`385 × 153 × 100 / 100` -> `58905`（589.05 円）。
-- design_compliance が非公開 fn を突合しないこと: `src-tauri/tests/design_compliance_test.rs:482` が `syn::Visibility::Public(_)` だけを集める -> 35 に書いた非公開 fn は INFO（未実装扱い）にもならず、失敗しない。
+- design_compliance が非公開 fn を突合しないこと: `src-tauri/tests/design_compliance_test.rs:482` が `syn::Visibility::Public(_)` だけを集める -> 35 に書いた非公開 fn は design_compliance の INFO（not-yet-implemented）に載り続けるが失敗しない（`extract_functions_from_design_doc` は 35 の `fn` をすべて拾い、コード側は `pub` だけを突き合わせる）。
 - i128 の中間・合計と kill 入力（2026-09-25、`ca280c79` の使い捨て worktree で 3 関数を 35 §20.5a どおりに試作し、`cargo test --lib biz::stocktake_service` を実行。試作は削除済み）: 正しい実装で既存の test（3500・overflow を含む）と試作の test 41 件がすべて pass。
   - T6: `valuation_line_centi(1 << 62, 737_869_762_948_382_065, 100, _)` -> オーバーフローの Err。`(i64::MAX, 1, 1, _)` -> `Ok(i64::MAX × 100)`、`(i64::MAX, 1, 100, _)` -> `Ok(i64::MAX)`。旧 T6 の入力 `(i64::MAX / 100 + 1, 1, 1, _)` は新式で `Ok(9223372036854775900)` になるため差し替えた。
   - T11: pcs 2 品 原価 `i64::MAX / 2 + 1`・数量 1 を旧本体で確定 -> オーバーフローの Err、header は `in_progress`。旧 T11 の入力（原価 `i64::MAX / 200 + 1`）は新式で `Ok(92233720368547760)` になるため差し替えた。
   - T12: `valuation_total_yen(&[i64::MAX × 100 + 49])` -> `Ok(i64::MAX)`、`+ 50` -> オーバーフローの Err、`&[]` -> `Ok(0)`、`&[valuation_line_centi(92_233_720_368_547_759, 1, 1, _)]` -> `Ok(92_233_720_368_547_759)`（中間を i64 に限ると × 100 で桁あふれする値）。原価 `1 << 60`・数量 `983_826_350_597_842_753`・basis 1 の行 3 本 -> オーバーフローの Err（2 本でも Err）。
-  - (7b) `× 100` の `checked_mul` を `wrapping_mul` -> T6 だけが FAIL（mutant は約 1.66 × 10^16 円を Ok で返す）。
+  - (7b) `× 100` の `checked_mul` を `wrapping_mul` -> T6 だけが FAIL（mutant の `valuation_line_centi` は 1/100 円で `1,660,206,966,633,859,645`〈約 1.66×10^18、円にして約 1.66 京円〉を Ok で返す。i128 の wrapping を python で再計算）。
   - (7c) 合計の `checked_add` を `wrapping_add` -> T12 の 3 行だけが FAIL（mutant の合計は正へ wrap し、約 5.07 × 10^17 円を Ok で返す）。
   - (7d) `i64::try_from` を `as i64` -> T11・T12・既存の `test_complete_req205_total_cost_overflow` の 3 件が FAIL（mutant は `i64::MIN` を Ok で返す）。
 
@@ -273,7 +275,7 @@ adjacent-contract sweep: 35 の §20.5a・§20.5（ステップ 1〜10、エラ�
 - consumer: `stocktake_repo::complete_stocktake` → `stocktakes.total_cost`、StocktakeResult.total_cost → CMD → 結果画面、`get_last_completed_stocktake` / 記録詳細（保存値の読取り）、操作ログ
 - wire type: `total_cost` は i64（bindings `number`）、DB は INTEGER。不変
 - internal type: 中間・商品別の金額・合計は 1/100 円の i128（非公開、保存しない）。最後の円額だけを i64 へ検査付きで変換する
-- precision/range: 円の整数。i128 の中間・合計は checked、円額の i64 への変換は検査付き。JS の safe integer（約 9 × 10^15 円）を越える総額は checked の範囲でも理論上ありうるが、worst case（35 設計判断: 約 40 兆円）は越えない
+- precision/range: 円の整数。i128 の中間・合計は checked、円額の i64 への変換は検査付き。現実の worst case（35 設計判断: 約 40 兆円）は JS の safe integer（約 9 × 10^15 円）を越えないが、i64 の範囲で確定できる成功値は越えうる。例: `cm` 原価 `100000000000000001` 円/m・数量 `100` cm は新式で `100000000000000001` 円を保存でき、JS の `number` で読むと 1 円ずれる（`100000000000000000`）。本 lane は wire・画面を変えないため、関数の契約（i64 の範囲）は変えず、⑤ で `total_cost` を wire・表示まで正確に扱う（十進文字列等）ことを後続必須条件にする（Design Readiness の ⑤ への申し送り、Matrix Residual、closeout の Backlog 候補）
 - round-trip path: 確定 → DB → 読取り → 画面。値の変換は無い
 - invalid input: 負の原価・数量、桁あふれ → ValidationFailed、書込み 0
 - compatibility: 既存の完了済み記録の total_cost は変えない（D6）。`pcs` だけの棚卸しは同じ値。`cm` 商品を含む開発・demo DB の新しい確定は値が変わる（本番 DB は無い、project-memory `:129`）

@@ -68,7 +68,7 @@ Risk: R3
 | 廃棄のロス原価 `di.quantity * di.cost_price` | `disposal_repo.rs:647`、入力画面の合計 `src/features/disposal/lib/disposal-request.ts:40`、表示 `DisposalRecordDetailPage.tsx:169` | なし | 同上（Q3 (b)） | 同上 |
 | 棚卸し記録詳細のロス原価 `|補正差異| × 評価原価` | `StocktakeRecordDetailPage.tsx:181-183`（画面が計算） | なし | 記録詳細を作り直す ⑤ で BIZ から返す形にする。⑤ までは新しい確定が起きない（Q3 (c)） | 同上 |
 | 売上金額 `selling_price * quantity` | `seed_demo.rs:469`（demo の売上の生成） | なし | demo data の生成だけで業務規則ではない。長さ商品の demo 売上金額は 100 倍になるが、demo 専用 | Non-scope |
-| レジの数量 × 単価の照合 | `ej_parser.rs:502` | なし | レジの数量（1 = 1 m）と単価の照合で、在庫単位の基準数量とは別 | Impact Review Lenses |
+| レジの数量 × 単価の照合 | `ej_parser.rs:502` | なし | レジの数量（1 = 1 m で打てる、未運用）と単価の照合で、在庫単位の基準数量とは別 | Impact Review Lenses |
 | 手動販売の金額の初期値 `amount = selling_price`（数量 1 ごとに売価を足す） | `62-ui-manual-sale.md:26` UI-04-D6、`src/features/manual-sale/lib/manual-sale-row-utils.ts:24,40` | なし | 棚卸しの評価額ではない。長さ商品を数量 1（= 1 cm）で足すと 1 m 分の金額が入る。本 lane の前から同じで悪化しない。master-tables の既知の不整合に置き、closeout で Backlog へ（Q3 の 4 項目の隣） | master-tables 価格の基準数量の設計意図、35 §20.5a「範囲の外」 |
 | 円の整数の表示 `formatYen` | `src/features/inventory-records/types.ts:109`、`StocktakePage.tsx:107,995,1010`、`StocktakeRecordDetailPage.tsx:149` | なし（総額は円の整数のまま） | 表示の変更が無い | AC9 / AC10 |
 
@@ -93,7 +93,7 @@ Risk: R3
 - internal type: 中間・商品別の金額・合計は 1/100 円の i128、円額は i64（非公開）
 - producer/consumer: 旧本体 → `complete_stocktake` → DB → 読取り（T7）
 - round-trip token: 該当なし
-- precision/range: 浮動小数なし（AC3）。worst case の総額は JS の safe integer を越えない（packet Boundary / Wire Contract）
+- precision/range: 浮動小数なし（AC3）。現実の worst case の総額は JS の safe integer を越えないが、i64 の成功値は越えうる（packet Boundary / Wire Contract、Residual Test Gaps）
 - cross-language parse: 該当なし（bindings 不変）
 
 ## Compatibility Checks
@@ -131,7 +131,7 @@ Risk: R3
 - If tracked Workflow State stores the current PR HEAD, does a state commit make it stale immediately? The accepted design must keep current exact-HEAD evidence in PR metadata.: 該当なし（packet に HEAD を書かない）
 - If output order changes, which test fails?: 該当なし（合計は順序に依らない）
 - If dry-run performs a side effect, which test fails?: 該当なし
-- If a JSON number crosses JavaScript safe integer range, which test fails?: 該当なし（型・範囲は不変。worst case は safe integer 未満）
+- If a JSON number crosses JavaScript safe integer range, which test fails?: 本 lane には無い（wire・画面を変えない）。i64 の成功値は safe integer を越えうるため ⑤ で扱う（Residual Test Gaps）
 - If a state token is round-tripped through browser/client code, which test fails?: 該当なし
 
 ## Residual Test Gaps
@@ -140,3 +140,4 @@ Risk: R3
 - 新方式の確定（㉘ の後続 lane）が §20.5a の関数を呼ぶことは本 lane では test できない。35 の設計に書き、後続 lane の Contract Coverage Ledger で確かめる。
 - 店の手計算との突合（実際の年末の棚卸し）は本番開始後。本 lane では合成の例（packet Ordinary Operation）で式を確かめる。
 - 商品別の金額の第 1 段（原価 × 数量）の桁あふれ検査を外す mutant (7a) は殺せない。i64 の積は i128 に必ず収まるため、第 1 段は plain の `*` として検査を置かない。関数の形（引数が i64 で中間が i128）と comment で守る。
+- i64 の円額を JS の `number` へ渡すと、safe integer（2^53）を越える成功値で精度が落ちる。入力例: `cm` 原価 `100000000000000001` 円/m・数量 `100` cm は新式で保存でき、JS の `number` では 1 円ずれる。本 lane は wire・画面を変えず、関数の契約（i64 の範囲）も変えない。⑤ で `total_cost` を wire・表示まで正確に扱い（十進文字列等）、この入力を確かめる（packet Design Readiness の ⑤ への申し送り、closeout で Backlog へ）。
