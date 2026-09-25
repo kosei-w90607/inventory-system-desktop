@@ -6,7 +6,7 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: implementing
+- Phase: archive
 - Risk: R4
 - Plan Commit: 01101c07b81d2ae53b0316498be09e90d80fd1bc
 - Amendments: f95ec36f3693dc16b8d2f0b6f830823370d34992
@@ -31,6 +31,7 @@ manual は 1 項目（S4 の成功 toast をホームで見る。手順と合格
 - plan-gate → plan-approved（2026-09-26、Coordinator、本 commit）: Plan Review round 3（上限）で Codex 側は reject（P2 1 = relay 上限が round 3 を数えていない、P3 1 = Matrix T2 の検出力の記述）。技術面の P1/P2 は 0。round 天井に達したため追加の round は回さず、同型の一括是正として owner 承認（2026-09-26）のもと予算を relay 5・介入 12 に改め、T2 の記述を直した。Claude 側は round 2 で approve（P3 のみ）。Plan Commit = 本 commit の親（round 2 是正後の承認版 `01101c07`）。
 - Gated Amendment 1（2026-09-26、Coordinator）: `f95ec36f` を登録。承認版 `01101c07` の遷移記録に同じ書き出しの行（round 1 と round 2 の是正）が 2 行あり、helper が `duplicate packet fields` で packet を読めないため、round 2 の行の key に「、round 2」を足した。あわせて main（`63896441`、#106〜#109）を同期。Scope・AC・Risk・Final Review Minimum・Human Gate は変えない。
 - plan-approved → implementing（2026-09-26、Coordinator、本 commit）: 実装の下ごしらえ（同期と Amendment）を済ませた。Writer（Opus 5.5 subagent）への発注は次の session で行う。
+- implementing → archive（2026-09-26、Coordinator、closeout）: Writer（Opus）が S1〜S4 を実装（AC1〜AC11 pass、mutant 14 本 red、`cargo check --release` と local-ci full PASS）。Final Review の 2 本（Codex GPT-6 Astra・Fable 5.1）とも approve、manual（L3-1）と r4 は owner が pass・承認。PR #111 を helper 経由で merge（squash `31ec7501`）。packet と Matrix を archive へ移し、Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
@@ -452,10 +453,16 @@ Fill after implementation.
 
 ## Review Response
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Broad Audit（両方とも approve）; post-freeze exceptions: none（Claude 側の P3 は follow-up として backlog へ）.
 
 ### Plan Review（2026-09-25〜26、Claude 側 = fresh Opus 5.5、Codex 側 = GPT-6 Sol high、互いに独立）
 
 - round 1（`77f914b5`）: Claude reject（P2 1 / P3 10）、Codex reject（P1 3 / P2 2 / P3 1）。主な是正: 版の比較を DDL より前へ・保証の文を論理内容に・実行中の guard・復元中の確認の停止と再開・R4 化（owner 決定）と manual 1 項目・test の mock と module state の扱い。是正前に Fable 5.1 が裁定案の反例を探した。
 - round 2（`c39a3815`）: Claude approve（P3 3）、Codex reject（P2 1 = 再開の後に届く古い結果を捨てきれない）。是正 = 世代番号（`01101c07`）。
 - round 3（`01101c07`、上限）: Codex reject（P2 1 = relay 上限、P3 1 = T2 の検出力の記述）。技術面の P1/P2 = 0。同型の一括是正として owner 承認のもと予算を改め、plan-approved。
+
+### Final Review と Human Gate（2026-09-26、対象 `4660cdd4`、互いに独立）
+
+- broad Codex 側（GPT-6 Astra）: approve、P1/P2/P3 = 0。AC1〜AC11 PASS、mutant 14/14 red。[review](https://github.com/kosei-w90607/inventory-system-desktop/pull/111)
+- broad Claude 側（Fable 5.1、fresh、read-only）: approve、P1/P2 = 0、P3 1（`migration.rs` の `migrate` の doc comment の手順番号が 22 §3.2 と合わない）→ Findings Freeze 後の P3 として follow-up（backlog）。Contract Audit C1〜C9 一致、R4 の 3 条件を実装で確認、重い mutant 5 本 red。
+- manual（L3-1、Windows native）: owner PASS。r4: owner が Rollback / recovery notes の 3 条件を承認（新しすぎる backup の復元が Recovered になる意味を確認のうえ）。
