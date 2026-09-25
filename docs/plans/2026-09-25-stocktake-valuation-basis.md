@@ -9,7 +9,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Phase: implementing
 - Risk: R3
 - Plan Commit: 325861c5ccb8a0bf6ff68e44ffafe98ca570b3f1
-- Amendments: none
+- Amendments: 08a5cde47f1c5636aa96a9b0be6c78706946d570
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（fork でない fresh context、worktree `/home/kosei/projects/inventory-system-public/.claude/worktrees/stocktake-valuation-basis`、branch `agent/stocktake-valuation-basis`）
 - Plan Reviewer: fresh Opus 5.5 subagent + Codex（GPT-6 Sol、effort high）。互いに独立で Writer と別 context、後の reviewer に先の結果を見せない
@@ -27,6 +27,7 @@ manual なし: 画面・表示・文言・DTO・bindings を変えない（仕�
 - plan-gate（2026-09-25、Coordinator の指示で是正、round 2）: Plan Review round 2 は Claude 側 approve、Codex 側 reject（P2 1）。plan-gate のまま是正した。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
 - plan-gate → plan-approved（2026-09-26、Coordinator、本 commit）: Plan Review round 3（上限、対象 `325861c5`）で Codex 側は reject（P2 1 = 35 の共通の `total_cost` 説明と biz-task-specs が評価数量を actual_count とし §20.5a の新方式と食い違う、P3 1 = Plans.md の wave 13 の段落の Plan Review の座組が古い）。round 天井に達したため追加の round は回さず、同型の一括是正として本 commit で 2 か所の評価数量の記述と Plans.md の文を直し、owner 承認（2026-09-26）のもと予算を relay 5・介入 7 に改めた。Claude 側は round 2 で approve（P3 のみ）。Plan Commit = `325861c5`（round 2 是正後の承認版）。
 - plan-approved → implementing（2026-09-26、Coordinator、本 commit）: Writer（Opus 5.5 subagent）へ実装を発注する。
+- Gated Amendment 1（2026-09-26、Coordinator）: `08a5cde4` を登録。main（#106 と closeout #107）の同期に合わせ、遷移記録の round 2 の行の key が round 1 の行と同じで helper が `duplicate packet fields` として packet を読めなかったため、round 2 の行の key に「、round 2」を足した。あわせて Final Review の 2 本の共通 P3（Plans.md の登録行の古い文言）を直した。Scope・AC・Risk・Final Review Minimum・Human Gate は変えない。差分は Codex の closure で確かめる。
 
 ## Owner Effort Budget
 
