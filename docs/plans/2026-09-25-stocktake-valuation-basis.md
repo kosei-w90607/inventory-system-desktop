@@ -6,7 +6,7 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: design
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -22,6 +22,7 @@ manual なし: 画面・表示・文言・DTO・bindings を変えない（仕�
 遷移記録（append-only）:
 
 - kickoff → spec-check → design（2026-09-25、起草役 = Opus 5.5 subagent、本 commit）: Risk R3（下記 Risk）。設計正本の更新（`docs/function-design/35-biz-stocktake-service.md` §20.5a 新設ほか 4 file、下記 Required Design Artifacts）を本 plan-first commit に同乗させた。owner 決定待ち 3 問（Design Readiness の Q1〜Q3）が残るため Phase は design に置く。3 問とも推奨案どおりなら packet・Matrix・設計正本は変えずに design → plan-draft → plan-gate の遷移だけを記録して Plan Review へ進める。推奨と違う答えなら、答えに合わせて設計正本と本 packet を直してから遷移する（Q2 が「商品ごとの列」なら migration・DTO・画面が Scope に入り、manual が要る）。
+- design → plan-draft → plan-gate（2026-09-25、Coordinator）: owner が Q1〜Q3 に回答した。Q1 = はい（円未満を四捨五入して 1 円単位）、Q2 = はい（在庫単位で決め、商品ごとの列は足さない）、Q3 = はい（4 項目は含めず closeout で Backlog へ）。Q2 について、箱や袋で仕入れてばらして売る商品は実在する（店の回答 2026-09-14、project-memory の Store Premises Facts）。店が仕入れ伝票の単価と棚卸しの手計算をどの単位で扱うかを訪店の確認事項（Issue #105）に足し、答えにより単位の拡張 lane で商品ごとの基準数量の列を足す。3 問とも推奨どおりのため、packet・Matrix・設計正本は変えず Phase だけを進める。
 
 ## Owner Effort Budget
 
@@ -195,7 +196,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - Design gaps intentionally deferred: 箱あたりの原価（単位の拡張 lane）、Q3 の 4 項目（Backlog）。
 - Durable decisions discovered in this plan and promoted to source docs: SPEC-STK-VAL-D1〜D6。
 
-owner 決定待ち（推奨案で設計正本を書いてある。回答が推奨と違えば設計正本と本 packet を直す）:
+owner 決定（2026-09-25 に回答済み。3 問とも推奨案どおりで、設計正本と本 packet は変えない。Q2 は店の回答で単位の拡張 lane が見直す）:
 
 - **Q1 店の規則の「最終合計で四捨五入」は、円未満を四捨五入して 1 円単位にすることか**。推奨: はい。`stocktakes.total_cost` の円の整数と画面の表示をそのまま使える。10 円単位などの別の単位なら SPEC-STK-VAL-D4 を直す。
 - **Q2 価格の基準数量を在庫単位で決める（`pcs` = 1 個あたり、`cm` = 1 m あたり）とし、商品ごとの列を足さないか**。推奨: はい。店は長さ商品を m で扱い値札は 1 m あたりなので、今ある単位では単位と基準数量が一対一で、利用者が商品ごとに 100 を入れて誤る入口を作らない。migration・DTO・商品フォーム・商品 CSV も変えずに済む。箱で仕入れて 1 個ずつ売る商品の原価を店が箱あたりで記録しているなら、そのとき（単位の拡張 lane）に商品ごとの列を足す。「今から列を持つ」を選ぶと、本 lane に migration・DTO・商品フォームが入り、画面の manual 確認が要る。
