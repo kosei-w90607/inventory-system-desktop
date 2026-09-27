@@ -10,7 +10,7 @@ Risk: R3
 
 - SPEC-WF-HARNESS3-D1: npm 供給網ガードと問い合わせの行き先（PR 操作と委任の範囲を含む）の正本は `AGENTS.md`。`CLAUDE.md` は冒頭の `@AGENTS.md` の import で AGENTS を Claude の session に読み込ませ、Claude 固有の補助だけを持つ。
 - SPEC-WF-HARNESS3-D2: 入口に廃止済みの仕組み（Evidence Mode、legacy、state-only、三点一致、exact-HEAD 証拠、撤去済みの Phase 名）の指示が無い。
-- SPEC-WF-HARNESS3-D3 / D4: 薄い wrapper と `pr-review-prompt` の削除、live な参照（archive の link を含む）が残らない。review の依頼・出力の規範（依頼形式・重大度・出力形式・確信度）は `docs/code_review.md`、subagent 発注の入力欄は review packet（PR2）。`inventory-code-review` Skill の出力形式も code_review を参照する。
+- SPEC-WF-HARNESS3-D3 / D4: 薄い wrapper と `pr-review-prompt` の削除、live な参照（archive の link を含む）が残らない。review の依頼・出力の規範（依頼形式・重大度・出力形式・確信度）は `docs/code_review.md`、subagent 発注の入力欄は review packet（PR2）。`inventory-code-review` Skill の出力形式も code_review を参照し、併用する `engineering-review` Skill も報告順と label を code_review の P1 / P2 / P3 に従わせる（SSOT の主張は review 哲学に限る）。
 - SPEC-WF-HARNESS3-D5: 保守者観点（P2、Severity 表の P3 の注記）と店の事実の照合、review-checklist の件数上限とカテゴリ外の除外の撤去。
 - SPEC-WF-HARNESS3-D6: project-profile の縮約。
 - SPEC-WF-HARNESS3-D7: drift test と T12 / T13 の要求先。
@@ -34,7 +34,7 @@ Risk: R3
 - F12: review-checklist が `:8` の「カテゴリ外は今回対象外」や `## 観点外` の扱いを残し、code_review の固定観点（保守者・現場の前提）を checklist に従って落とせる。
 - F13: 委任の範囲が AGENTS に無く、train 承認での Ready の代行や helper・closeout の実行代行が禁止と読める。
 - F14: `CLAUDE.md` が `AGENTS.md` を import しない（または backtick の中に書いて展開されない）ため、CLAUDE.md から消して AGENTS へ移した npm ガードと問い合わせの行き先が Claude の session に入らない。
-- F15: `inventory-code-review` Skill が code_review と別の出力形式（指摘なしの返し方 `重大な findings なし`）を持ち続け、規範が 2 つに割れる。
+- F15: `inventory-code-review` Skill が code_review と別の出力形式（指摘なしの返し方 `重大な findings なし`）を持ち続ける、または `inventory-code-review:9` が併用を指示する `engineering-review` Skill が `Blocking / P1 / nit` の報告順と `nit:` / `Blocking` / `optional:` の label 定義を持ち続け、規範が 2 つに割れる。
 
 ## Test Matrix
 
@@ -44,21 +44,21 @@ Risk: R3
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
 | D7 | F4 | regression（既存 test の書き換え） | T-D1: `reading-order-drift.test.sh` の `for path in AGENTS.md docs/DEV_WORKFLOW.md` loop（`:158` の置換）が green | loop から `docs/DEV_WORKFLOW.md` か `AGENTS.md` を誤って外す（T-D1m で検出） |
-| D7 | F4 | mutation（写し） | T-D1m: 写しの `AGENTS.md`、次に写しの `docs/DEV_WORKFLOW.md` から `直接UI merge` を含む行を消すと、それぞれ `FAIL: helper-only merge boundary missing: <file>` で exit 1。`残存リスク` の行でも同じ | 要求先が 1 file に減る、または rg の語が変わって検出しない |
+| D7 | F4 | mutation（写し） | T-D1m: 写しの `AGENTS.md`、次に写しの `docs/DEV_WORKFLOW.md` から `直接UI merge` を含む行を消すと、それぞれ `FAIL: helper-only merge boundary missing: <file>` で exit 1。`残存リスク` 側は診断が別: 写しの `docs/DEV_WORKFLOW.md` から `残存リスク` を含む行を消すと `FAIL: server enforcement limitation missing: docs/DEV_WORKFLOW.md`、写しの `AGENTS.md` は同じ行に `直接UI merge` があるため語だけを置き換えると `FAIL: server enforcement limitation missing: AGENTS.md`（どちらも exit 1、AC6） | 要求先が 1 file に減る、または rg の語が変わって検出しない |
 | D7 | F4（緩めた側） | mutation（写し） | T-D1r: 写しの `CLAUDE.md` と `.github/pull_request_template.md` から同じ語を消しても exit 0。`.agents/skills/*/SKILL.md` に `Evidence Mode` が無くても exit 0 | 要求の撤去が不完全で、S2 / S5 / S9 の後に test が落ちる |
 | D8 / D2 | F5 | regression（既存） | T-D2: check_entry_contract（`:64-79`）が書き換え後の `AGENTS.md` を受理し、既存の mutation（`:86-93`、R2+ 行の削除・`fail-closed` の削除）が引き続き拒否される | S1 の書き換えで R2+ 行の語（`R2+`・`実装`/`再開`・`Workflow State`・`完全`）か `fail-closed` を落とす |
 | D8 | F5 | regression（既存） | T-D3: DRIFT_PATTERN の実 repo 検査（`:150-153`）が violation 0。`AGENTS.md` は除外対象だが、S6 / S8 / S10 で書き換える code_review・review-checklist・project-profile は対象 | 書き換えで `AGENTS → DEV_WORKFLOW → Plans → project-memory` の順の近接列挙を作る |
 | D7 | F6 | regression（既存 test の書き換え） | T-W1: `codex-safe-wrappers.test.sh` の T13 から `CLAUDE.md` を外した後も exit 0（T13 の DEV_SETUP 側は残る） | S2 で namespace を消したのに T13 が `CLAUDE.md` を要求し続ける |
 | D7 | F6 | mutation（写し） | T-W1m: 写しの `CLAUDE.md` に `-home-kosei-Projects-inventory-system/` を足すと `FAIL: T12 live B-group file still contains the history-view encoded namespace` で exit 1。`/home/kosei/Projects/inventory-system/` を足すと T12 の旧 path の FAIL | T13 の変更の巻き添えで T12 の `live_files` から `CLAUDE.md` を外す |
 | D3 / D4 | F3 | CLI（doc check） | T-L1: `bash scripts/doc-consistency-check.sh` の R3（markdown link の実在、`docs/archive/**` を含む）が ERROR 0。S7 の着手条件（PR2 の closeout が origin/main に入り、PR2 が外した MANUAL `:124` の link が消えている）を満たした HEAD で実行する。変えた archive file は `bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-09-15-display-fixes-batch-2.md` も exit 0 | 削除した file を markdown link で指す行が残る（HEAD では MANUAL `:124` と archive `2026-09-15-display-fixes-batch-2.md:22` が該当） |
-| D3 / D4 | F3 | CLI（rg） | T-L2: packet の「削除する file と参照元」の 1 つ目の command（`` `/test` `` を含む。baseline 17 行）の一致が `scripts/tests/classify-changes.test.sh:46` の 1 行だけ、2 つ目の archive を含む link の検索（baseline 2 行）が 0 行（AC2） | Skill 名・command 名だけの参照（link でないため T-L1 が拾わない）や、archive の link が残る |
+| D3 / D4 | F3 | CLI（rg） | T-L2: packet の「削除する file と参照元」の 1 つ目の command（`` `/test` `` を含む。baseline 17 行）の一致が `scripts/tests/classify-changes.test.sh:46` の 1 行だけ、2 つ目の archive を含む link の検索（baseline 2 行）が 0 行、残す `plan-rally.md` に `Subagent Budget|consultation relay|予算上限` が 0 行（baseline 3 行）（AC2） | Skill 名・command 名だけの参照（link でないため T-L1 が拾わない）や、archive の link が残る |
 | D3 | F3 | regression（既存） | T-L3: `classify-changes.test.sh` が exit 0（`:46` の `.claude/rules/commands.md` は path の文字列で、file の実在を要求しない） | classifier の test が削除した file の実在に依存していた |
 | D3 | F3 | regression（既存） | T-L4: `claude-hooks.test.sh` が exit 0（`.claude/commands/plan-rally.md` を写し、`CLAUDE.md` の禁止語を検査する。S4 は plan-rally を削除しない） | plan-rally を誤って削除する、または `CLAUDE.md` に禁止語（`hook pass` 等）が入る |
-| D1 | F1 / F13 | CLI（rg） | T-A1: AC3（npm ガードの 4 語が `AGENTS.md` に 4、`CLAUDE.md` に 0）と AC5（行き先の 10 語〈`委任`・`closeout`・`裁定権者` を含む〉が `AGENTS.md` の Decision and Approval Boundaries にある） | 移す途中で項目を落とす、`CLAUDE.md` に残して重複させる、委任の範囲（closeout を含む）や事実確認の後の裁定権者が抜ける |
-| D1 | F14 | CLI（rg） | T-A7: AC11 の `rg -c '^@AGENTS\.md$' CLAUDE.md` が 1（baseline 一致なし） | import を書き忘れる、backtick の中や行の途中に書いて展開されない、2 回書く |
-| D2 | F2 | CLI（rg） | T-A2: AC1 の command（`-i` 付き、baseline 23 行）が 0 行 | 定型文や legacy の文が 1 箇所でも残る（`GitHub evidence mode` のような大文字小文字の違いを含む） |
+| D1 | F1 / F13 | CLI（rg） | T-A1: AC3（npm ガードの 4 語が `AGENTS.md` に 4、`CLAUDE.md` に 0、decision-log に `## D-093` が 1）と AC5（行き先の 10 語〈`委任`・`closeout`・`裁定権者` を含む〉が `AGENTS.md` の Decision and Approval Boundaries にあり、`label` と `issue comment` は既存の `:45` に加えて 2 以上） | 移す途中で項目を落とす、`CLAUDE.md` に残して重複させる、委任の範囲（closeout を含む）や事実確認の後の裁定権者が抜ける、(i) の PR 操作の列挙を落としても `:45` だけで通る、所在の移動を D-093 に記録し忘れる |
+| D1 | F14 | CLI（rg） | T-A7: AC11 の `rg -c '^@AGENTS\.md$' CLAUDE.md` が 1（baseline 一致なし）。`AGENTS.md` に `AGENT_OPERATING_MANUAL.md#座組` が 1 以上、`frontier` が 0 行（baseline 1 行） | import を書き忘れる、backtick の中や行の途中に書いて展開されない、2 回書く。AGENTS の `:21` を座組表への参照に替え損ねる |
+| D2 | F2 | CLI（rg） | T-A2: AC1 の command（`-i` 付き、`github mode` を含む、baseline 23 行）が 0 行 | 定型文や legacy の文が 1 箇所でも残る（`GitHub evidence mode` のような大文字小文字の違いと、退役した `github mode` の語を含む） |
 | D8 | F11 | CLI（rg） | T-A6: AC4 の後半（初回レビュー行に `範囲から始め`・`発注の範囲に関わらず`・`重大度と出力形式は範囲に関わらず` があり、`範囲だけ` が無い） | 指定範囲が読む上限になり、Contract Audit の設計正本を読まずに済む、または範囲を指定された review が code_review 以外の出力形式で返せる文面になる |
-| D4 / D5 | F7 / F15 | CLI（rg） | T-A3: AC8（`保守者`、`現場の前提`、`non-scope`、`Branch|Commit`、`確信度`、`unresolved questions` が code_review にあり、Severity 表の P3 に保守者の注記がある。`inventory-code-review` Skill に `重大な findings なし` が無く、`## Output Format` 節が `code_review.md` を参照する） | pr-review-prompt の固有部分や K13 / K14、review packet から移す確信度を移し損ねる、K13 と Severity 表が矛盾する、Skill に別の出力形式が残る |
+| D4 / D5 | F7 / F15 | CLI（rg） | T-A3: AC8（`保守者`、`現場の前提`、`non-scope`、`Branch|Commit`、`確信度`、`unresolved questions` が code_review にあり、Severity 表の P3 に保守者の注記がある。`inventory-code-review` Skill に `重大な findings なし` が無く、`## Output Format` 節と冒頭 `:9` が `code_review.md` を参照する。`engineering-review` Skill に `Blocking / P1 / nit` の報告順と label 定義が無く〈baseline 5 行〉、`code_review.md` を 3 回以上参照する。両 Skill に `nit/blocking` が無い。code_review の `## Output Shape`・`## Finding Severity` が残り、`:36` の検査項目〈head/base、broad/closure、manual/R4、実効 rules〉が 1 行残り、Verification Rules に `git status --short` がある） | pr-review-prompt の固有部分や K13 / K14、review packet から移す確信度を移し損ねる、K13 と Severity 表が矛盾する、Skill に別の出力形式や重大度の label が残る、`:36` の書換えで検査項目を落とす、project-profile から消す data safety の手順が行き先を失う |
 | D5 | F8 / F12 | CLI（rg + doc check） | T-A4: AC9（件数上限と新規観点禁止の文が 0、`今回は対象外` が 0、`Findings Freeze` と `AGENTS.md` への参照がある、`### N.` 見出しが 9、DS2 / DS4 に新しい WARN なし） | 運用ルールの書き換えで 9 カテゴリの見出しを崩す、カテゴリ外を対象外とする文が残る |
 | D6 | F9 | CLI（rg） | T-A5: AC10（削除する 6 見出しが 0、残す 8 見出しが 8、High-risk の `Test/workflow gates` 行が残る） | 残すべき節を消す |
 | D9 | F10 | CLI（git diff） | T-B1: AC13（PR2 の所有 file・helper・checker・CI 定義に本 PR 由来の差分が無い）と AC11（merge 直前の HEAD で `^## 座組$` が 1 行、MANUAL に `pr-review-prompt` が 0 行、`CLAUDE.md#` の anchor が live な文書に 0 行） | 所有を重ねる、PR2 より先に merge する、または本 PR が消す `CLAUDE.md` の見出しを指す anchor が黙って死ぬ |
@@ -78,6 +78,8 @@ not applicable: UI・data・cache・route・import / export・retry の状態を
 | MANUAL 内の anchor を指す link | `rg -n 'AGENT_OPERATING_MANUAL.md#'` | CLAUDE・AGENTS は `#座組`（PR2 が新設する H2）への link を新設 | inventory-workflow-start `:13` の §3 の anchor と語「Capacity-degraded」は変えない（PR2 が MANUAL の既存の見出しを変えないので有効のまま）。DEV_WORKFLOW 内の MANUAL への anchor link（PR2 / PR4 の所有） | AC11 |
 | `CLAUDE.md` の見出しを指す link | `rg -n 'CLAUDE\.md#'`（AC11 の command、baseline 1 行） | なし（本 PR の file には無い） | `docs/agent-guidance/model-notes.md:9` の `#sonnet--opus-の-effort`（PR2 が座組表へ向ける。packet の「PR2 に求めること」） | AC11 の merge 直前の rg が 0 行 |
 | PR 操作の承認境界と委任（K12） | AGENTS `:41`・`:45`、review-checklist `:10-11`、inventory-code-review `:83-97`、DEV_WORKFLOW `:292`（行 7「現行の明示承認と有効な委任の範囲だけを使う」） | AGENTS Decision and Approval Boundaries に委任の範囲（closeout を含む）を置き、review-checklist と inventory-code-review は AGENTS を参照する 1 文へ。MANUAL（PR2）の Human Gate の記述が委任に触れる場合も AGENTS を参照先にする | inventory-code-review の投稿手順（API の使い方）は境界ではなく手順なので残す | AC5、AC9 |
+| 重大度・出力形式の規範（D4。併用 Skill の報告順と label） | `rg -n -g 'SKILL.md' '\bnit\b\|Blocking\|optional:' .agents/skills` と `rg -n 'engineering-review'`（archive・plans を除く repo 全体、hidden を含む） | engineering-review `:17`・`:21`・`:36`・`:76`・`:80-82`、inventory-code-review `:9` と `## Output Format`（`:65-74`） | engineering-review `:102`（Google の原文の内容紹介）、`references/eng-practices/**`（無改変の原文、CC BY 3.0）、`docs/research/audit-2026-07/00-order.md:25`（2026-07 の調査記録で履歴） | AC8、T-A3 |
+| project-profile `## Review Commands / Tools` の手順（S10 で節ごと削除） | `:172-185` の 14 項目を AGENTS `:15`、inventory-code-review `## Start Here`、inventory-workflow-start `## Handoff`、DEV_WORKFLOW Verification Gates、code_review `## Verification Rules` と照合 | data safety の `git status --short`（`:184`）を code_review `## Verification Rules` へ 1 行 | 他の 13 項目（既に上の正本が持つ。packet S10 に行き先を列挙） | AC8、AC10 |
 | hook inventory 0 本の記述（N3） | CLAUDE `:13`、project-profile `:237`、MANUAL §6.1 | project-profile から消す | CLAUDE の 1 行は Claude への指示として残す、MANUAL は PR2 | T-L4 |
 
 ## Negative Paths
