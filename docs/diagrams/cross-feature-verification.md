@@ -51,6 +51,7 @@
 - 通常の業務操作について、有限の操作集合から順序付きの組合せを作り、その前後に同日追加取込み・取消・再送・拒否・再接続を組み合わせる。無限の状態空間を網羅したとは主張しない。
 - 最初に期待と異なった操作までのprefix、期待値、実値を失敗出力へ残す。これは最初の失敗prefixであり、全ての操作削除候補から求めた最小反例とは呼ばない。
 - 接続を閉じて同じ合成DBへ再接続する検証はDB永続化の確認であり、Tauriの再起動やCMDのpreview cache失効の検証とは区別する。
+- 棚卸しの開始・カウント・確定と商品別CSVの確定・取消は現行 build で停止している（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md)）。停止後の harness は 5 入口の旧本体 `legacy_start_stocktake` / `legacy_update_count` / `legacy_complete_stocktake` / `legacy_commit_csv_import` / `legacy_rollback_csv_import` を呼び、XFA-D2 の診断は停止の拒否ではなく旧本体で既知の不具合を再現し続ける。停止の拒否で STK-1 / STK-2 を解消扱いにしない。
 
 ### XFA-D4: 通常テストと診断の判定
 

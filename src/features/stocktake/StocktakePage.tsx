@@ -86,9 +86,14 @@ import {
 } from "./stocktake-error-invalidation";
 import type { StocktakeSearch } from "./types";
 
+/// 旧棚卸しの書く操作（開始・数の保存・確定）の一時停止（SPEC-STOP-D4、73 §73.15）。
+/// UI の定数は安全の根拠にしない（backend も BIZ-06 で停止する）。解除は ⑤ だけ。
+const STOCKTAKE_WRITES_SUSPENDED = true;
+
 interface StocktakePageProps {
   search: StocktakeSearch;
   onSearchChange: (updater: (prev: StocktakeSearch) => StocktakeSearch) => void;
+  writesSuspended?: boolean;
 }
 
 function formatYen(value: number): string {
@@ -117,7 +122,11 @@ const PRODUCT_NAME_SEARCH_QUERY = {
   per_page: 10,
 };
 
-export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
+export function StocktakePage({
+  search,
+  onSearchChange,
+  writesSuspended = STOCKTAKE_WRITES_SUSPENDED,
+}: StocktakePageProps) {
   const queryClient = useQueryClient();
   const stocktakeStatus = useStocktakeStatus();
   const activeStocktakeId = stocktakeStatus.activeStocktakeId;
@@ -220,6 +229,16 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
         subtitle="商品コードまたはJANを読み取り、実際の在庫数を入力します"
       />
 
+      {writesSuspended ? (
+        <Alert variant="warning">
+          <AlertTriangle aria-hidden="true" />
+          <AlertTitle>棚卸しの入力は一時停止中です</AlertTitle>
+          <AlertDescription>
+            数えた後の入出庫が、確定のときに在庫から打ち消されてしまう不具合を直しています。直るまで、棚卸しの開始・数の保存・確定はできません。これまでの棚卸しの記録と一覧は見られます。
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {errorMessage !== null ? (
         <Alert variant="destructive">
           <AlertTitle>操作できませんでした</AlertTitle>
@@ -248,6 +267,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
           lastStocktake={lastCompletedQuery.data}
           isLoadingLast={lastCompletedQuery.isLoading}
           isStarting={isStarting}
+          startDisabled={writesSuspended}
           onStart={() => void handleStart()}
         />
       ) : (
@@ -279,7 +299,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
 
           <StocktakeCountEntry
             stocktakeId={activeStocktakeId}
-            disabled={isCompleting}
+            disabled={isCompleting || writesSuspended}
             productSuggestRef={productSuggestRef}
             findMutation={findMutation}
             updateMutation={updateMutation}
@@ -304,7 +324,7 @@ export function StocktakePage({ search, onSearchChange }: StocktakePageProps) {
             <Button
               type="button"
               variant="outline"
-              disabled={isCompleting}
+              disabled={isCompleting || writesSuspended}
               onClick={() => {
                 setIsConfirmOpen(true);
               }}
@@ -337,6 +357,7 @@ interface StocktakeStartPanelProps {
   lastStocktake: LastStocktakeSummary | null | undefined;
   isLoadingLast: boolean;
   isStarting: boolean;
+  startDisabled?: boolean;
   onStart: () => void;
 }
 
@@ -344,6 +365,7 @@ export function StocktakeStartPanel({
   lastStocktake,
   isLoadingLast,
   isStarting,
+  startDisabled = false,
   onStart,
 }: StocktakeStartPanelProps) {
   return (
@@ -364,7 +386,7 @@ export function StocktakeStartPanel({
             )}
           </CardContent>
         </Card>
-        <Button type="button" onClick={onStart} disabled={isStarting}>
+        <Button type="button" onClick={onStart} disabled={isStarting || startDisabled}>
           {isStarting ? <Loader2 className="animate-spin" /> : <ClipboardCheck />}
           棚卸しを開始する
         </Button>

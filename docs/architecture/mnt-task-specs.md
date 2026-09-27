@@ -1,5 +1,14 @@
 # タスク仕様（MNT層）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D8。新しい業務判断をMNTへ移さない。MNTは計数contextに何も供給せず、OSの通知の登録や時計の検査を持たない（ADR D1）。
+
+- DB接続交換のorchestrationは[43](../function-design/43-cmd-settings-log.md)でcontextを先に失効する。MNT-01のbackup/復旧規則は変更しない。
+- MNT-03は[DBの新契約](../DB_DESIGN.md)の分類・内部上限・列/表追加を1TXで適用し、履歴・数量・評価額を変更しない。旧実測を推定時刻やcursorで補完しない。
+
+本番有効化前の外部probeは[32](../function-design/32-biz-csv-import-service.md)に置き、operatorへ手動のDB故障注入を依頼しない。
+
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）
 

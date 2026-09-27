@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# L0 pre-push gate. Legacy uses local full; github evidence uses pr-gate (MG-D7).
+# L0 pre-push gate. Merge evidence uses pr-gate (MG-D7).
 
 set -euo pipefail
 
@@ -180,11 +180,10 @@ done
 
 CHECKS_RUN=""
 
-# PK5 (Plan Commit ancestry) / STATECAP (state-only commit 上限) は変更ファイルの
-# classification に関係なく毎回実行する pre-merge gate（Plan Commit ancestry や
-# state-only commit の積み上がりは push 増分の変更ファイルではなくブランチ全体の
-# git 履歴状態そのものに対する検査のため）。hosted docsもfull historyで同じPK5を実行する。
-echo "[pre-push] Workflow git checks (PK5/STATECAP)"
+# PK5 (Plan Commit ancestry) は変更ファイルの classification に関係なく毎回実行する
+# pre-merge gate（push 増分の変更ファイルではなくブランチ全体の git 履歴状態そのものに
+# 対する検査のため）。hosted docsもfull historyで同じPK5を実行する。
+echo "[pre-push] Workflow git checks (PK5)"
 append_check workflow-git
 bash "$REPO_ROOT/scripts/check-workflow-git.sh" || fail_gate workflow-git
 

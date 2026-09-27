@@ -44,6 +44,13 @@ pub const CSV_IMPORT_FILE_SIZE_LIMIT: usize = 20 * 1024 * 1024; // 20MB
 /// Z004ファイルのデータ行数上限
 pub const CSV_IMPORT_LINE_LIMIT: usize = 10_000;
 
+// --- 商品マスタ ---
+/// 商品コードの長さ上限（BIZ-01-D5）。
+///
+/// UTF-16 code unit で数える。frontend の route search（`selected` / `q`）の
+/// zod `.max(100)` と同じ数え方で、登録できる商品コードは在庫照会でも選べる。
+pub const PRODUCT_CODE_MAX_LEN: usize = 100;
+
 // --- プレビューキャッシュ ---
 /// preview_cache の最大エントリ数（FIFO: 上限超過時に最古を削除）
 pub const PREVIEW_CACHE_LIMIT: usize = 10;

@@ -103,7 +103,7 @@ if (
     cd "$repo"
     WORKFLOW_GIT_CHECK_EXIT=7 bash scripts/local-ci.sh changed
 ); then
-    fail "workflow-git (PK5/STATECAP) gate failure was swallowed"
+    fail "workflow-git (PK5) gate failure was swallowed"
 fi
 workflow_git_failed_log="$(find "$repo/.local/ci-evidence" -type f -name "*${head_sha}*" | sort | tail -1)"
 grep -Fq "GATE=workflow-git" "$workflow_git_failed_log" || fail "workflow-git gate missing from failure evidence"

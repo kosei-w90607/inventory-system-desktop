@@ -123,7 +123,7 @@ function renderWithClient(
 async function renderPage(search: StocktakeSearch = {}) {
   const onSearchChange = vi.fn();
   const utils = renderWithClient(
-    <StocktakePage search={search} onSearchChange={onSearchChange} />,
+    <StocktakePage search={search} onSearchChange={onSearchChange} writesSuspended={false} />,
     {
       onSearchChange,
     },
@@ -1286,6 +1286,87 @@ describe("StocktakePage (UI-10)", () => {
     // 残っていないこと（単一ページで空 <fieldset> を残さない、S5）。
     expect(container.querySelectorAll("fieldset")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "前のページ" })).not.toBeInTheDocument();
+  });
+});
+
+// SPEC-STOP-D4 / 73 §73.15: 停止中（prop 省略 = 既定）。文言は 73 の正本から転記する。
+const SUSPENDED_TITLE = "棚卸しの入力は一時停止中です";
+const SUSPENDED_BODY =
+  "数えた後の入出庫が、確定のときに在庫から打ち消されてしまう不具合を直しています。直るまで、棚卸しの開始・数の保存・確定はできません。これまでの棚卸しの記録と一覧は見られます。";
+
+async function renderSuspendedPage(search: StocktakeSearch = {}) {
+  const onSearchChange = vi.fn();
+  const utils = renderWithClient(
+    <StocktakePage search={search} onSearchChange={onSearchChange} />,
+    {
+      onSearchChange,
+    },
+  );
+  await screen.findByRole("heading", { name: "棚卸し" });
+  return utils;
+}
+
+function expectSuspendedNotice() {
+  const title = screen.getByText(SUSPENDED_TITLE);
+  const notice = title.closest('[data-slot="alert"]');
+  expect(notice).not.toBeNull();
+  expect(notice).toHaveAttribute("data-variant", "warning");
+  expect(title).toHaveTextContent(new RegExp(`^${SUSPENDED_TITLE}$`));
+  expect(within(notice as HTMLElement).getByText(SUSPENDED_BODY)).toBeInTheDocument();
+  expect(notice?.querySelector('svg.lucide-triangle-alert[aria-hidden="true"]')).not.toBeNull();
+}
+
+describe("StocktakePage SPEC-STOP-D4 停止中（既定）", () => {
+  it("test_stocktake_page_req205_suspended_not_started_disables_start_and_keeps_last_summary", async () => {
+    const user = userEvent.setup();
+    await renderSuspendedPage();
+
+    const start = await screen.findByRole("button", { name: "棚卸しを開始する" });
+    expectSuspendedNotice();
+    expect(start).toBeDisabled();
+    await user.click(start);
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("前回の棚卸し（2026-09-30 18:00:00）: 仕入原価総額 ¥2,000"),
+    ).toBeInTheDocument();
+  });
+
+  it("test_stocktake_page_req205_suspended_in_progress_disables_writes_and_keeps_browsing", async () => {
+    const user = userEvent.setup();
+    mockGetActive.mockResolvedValue(ok(activeStocktake()));
+    mockGetItems.mockResolvedValue(listResponse({ total_count: 250 }));
+    const { onSearchChange } = await renderSuspendedPage();
+    await screen.findByText("棚卸し中（開始日: 2026-10-01 09:00:00）");
+
+    expectSuspendedNotice();
+    const countEntry = screen.getByLabelText("商品を検索・スキャン").closest("fieldset");
+    expect(countEntry).toBeDisabled();
+    expect(screen.getByLabelText("商品を検索・スキャン")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "対象を確認" })).toBeDisabled();
+    const complete = screen.getByRole("button", { name: "棚卸しを確定する" });
+    expect(complete).toBeDisabled();
+    await user.click(complete);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+
+    // 閲覧（部門絞り込み・未入力のみ・ページ送り）は止めない。
+    await user.click(screen.getByRole("combobox", { name: "部門" }));
+    await user.click(screen.getByRole("option", { name: "毛糸" }));
+    await user.click(screen.getByLabelText("未入力のみ表示"));
+    await waitFor(() => {
+      expect(mockGetItems).toHaveBeenLastCalledWith(77, 1, false, 1, 50);
+    });
+    const next = screen.getByRole("button", { name: "次のページ" });
+    expect(next).toBeEnabled();
+    await user.click(next);
+    await waitFor(() => {
+      expect(mockGetItems).toHaveBeenLastCalledWith(77, 1, false, 2, 50);
+    });
+    expect(onSearchChange).toHaveBeenCalled();
+
+    expect(mockFindItem).not.toHaveBeenCalled();
+    expect(mockUpdateCount).not.toHaveBeenCalled();
+    expect(mockComplete).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
   });
 });
 

@@ -70,7 +70,7 @@ fi
 is_allowed_path() {
   case "$1" in
     AGENTS.md|Plans.md|README.md|package.json|package-lock.json|tsconfig*.json|vite.config.ts|eslint.config.js|components.json|lefthook.yml|.gitignore|.editorconfig|.prettierignore|.prettierrc.json) return 0 ;;
-    docs/*|src/*|src-tauri/src/*|src-tauri/tests/*|scripts/*|.github/workflows/*|.codex/README.md|.codex/config.toml|.codex/execpolicy.rules|.codex/rules/*|.codex/bin/*) return 0 ;;
+    docs/*|src/*|src-tauri/src/*|src-tauri/tests/*|scripts/*|.github/workflows/*|.codex/README.md|.codex/config.toml|.codex/rules/*|.codex/bin/*) return 0 ;;
     .agents/skills/*.md|.agents/skills/*.txt|.agents/skills/*.json|.agents/skills/*.toml|.agents/skills/*.yml|.agents/skills/*.yaml) return 0 ;;
     .claude/skills/*.md|.claude/skills/*.txt|.claude/skills/*.json|.claude/skills/*.toml|.claude/skills/*.yml|.claude/skills/*.yaml) return 0 ;;
     *) return 1 ;;

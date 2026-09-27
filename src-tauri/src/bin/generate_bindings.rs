@@ -9,10 +9,16 @@
 //!
 //! 通常の tauri dev 起動時は `lib.rs::run()` 冒頭で `export_specta_bindings()`
 //! が debug build 時に自動呼び出しされるため、このバイナリは必要に応じて実行する。
+//!
+//! 生成のいずれかの段（specta export / 整形 / 定数追記 / 置換）が失敗した場合は
+//! 完了 message を出さず、stderr に失敗した段と対象 path を出して非 0 で終了する。
 
 #[cfg(debug_assertions)]
 fn main() {
-    inventory_system_tauri_scaffold_lib::export_specta_bindings();
+    if let Err(e) = inventory_system_tauri_scaffold_lib::export_specta_bindings() {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
     println!("TS bindings exported to src/lib/bindings.ts");
 }
 

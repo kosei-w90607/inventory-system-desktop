@@ -53,12 +53,14 @@ Evidence Modeによる保存先は[merge-evidence](agent-guidance/merge-evidence
 
 ### 3.2 Execution Mode
 
+Execution Mode 欄は任意で、checker / helper は要求も評価もしない。
+
 Execution Mode は Plan Packet `Workflow State` に記録する、その時点の可用 vendor 構成を示すラベル:
 
 - `fable-window`: 希少・最高能力 slot（§3.4 参照）が利用可能な期間
 - `dual-vendor-no-fable`: Claude 側 slot はあるが希少・最高能力 slot（§3.4 参照）はない期間
 - `codex-only`: Codex/OpenAI 側の slot のみで構成する期間
-  - 運用形（D-084、owner 2026-09-11「Claude 側に作業できる枠がない間、Codex 単体で要所に Sonnet / Opus のレビューをもらって作業させる」）: Codex は Writer に加え **Coordinator の起草役**（Plan Packet / Gated Amendment / state-only 遷移 / PR body の文案）を担い、**承認と裁定は owner** が行う。Plan Reviewer は D-062 どおり非 Codex vendor（通常 Sonnet 1 run）、Final Reviewer は Sonnet 1 run を最低条件とし、R3 の UI 契約変更は Opus 1 run を足す。Human Gate（L3 / Ready 承認）は owner。
+  - 運用形（D-084、owner 2026-09-11「Claude 側に作業できる枠がない間、Codex 単体で要所に Sonnet / Opus のレビューをもらって作業させる」）: Codex は Writer に加え **Coordinator の起草役**（Plan Packet / Gated Amendment / state-only 遷移 / PR body の文案）を担い、**承認と裁定は owner** が行う。Plan Reviewer は D-062 どおり非 Codex vendor（通常 Sonnet 1 run）、Final Reviewer は Sonnet 1 run を最低条件とする。Human Gate（L3 / Ready 承認）は owner。
   - 自己裁定の禁止: Codex はレビュー findings を自分で rebut / no-action にしない。P1 は owner 承認なしに rebut できず、P2 / P3 も裁定候補を報告に列挙して owner が決める（fable-window では Coordinator が担う裁定を owner に移す。Gated Amendment の文案は Codex が書いてよいが commit は owner 承認後）。
   - 適性: R1〜R2 の docs lane、AC が機械 oracle で閉じる小 runtime lane（衛生 batch、表示小修正 batch、⑰ 型の小 runtime）。design-first の lane（mockup 採用、DTO 公開を伴う表示設計、単位拡張）は判断が多く、`fable-window` または `dual-vendor-no-fable` へ戻るまで着手しない。
   - 発注書の必須 1 行: 「packet を起草する run」と「実装する run」を分け、起草 run は編集禁止 file を持たず docs/plans のみ、実装 run は packet 編集禁止（fable-window と同じ fail-closed 契約）。Plan Reviewer / Final Reviewer の発注書は Coordinator（= owner）が relay する。下記のAstra主担当ではrun分離・packet編集禁止・reviewer発注書のowner relayに代えてD-087を適用する。
@@ -78,10 +80,10 @@ ownerがAstraを主担当に選ぶ作業では、Astra自身が調査・計画�
 
 Execution Mode は vendor 単位の可用性を扱う。個別の役割担当（Coordinator / Plan Reviewer / Final Reviewer）が rate limit・枠切れ・障害で一時的に利用不能な場合は次を適用する:
 
-- Workflow State の該当役割を pending にし、理由を 1 行残す
-- Phase は前進禁止。特に plan-approved / independent-review 通過 / ready-hosted-final への遷移を止める。既に implementing の Writer 作業は継続してよいが、レビューを要する遷移では停止する
+- 利用できない役割だけを pending にし、理由を 1 行残す
+- pending の役割を要する遷移（plan-approved、Final Review の record、Ready）を進めない。それ以外の作業は続ける。別 vendor の reviewer が使えない間は、使える reviewer で進められる review を進め、別 vendor を要する review だけを待つ
 - owner が代替担当を指名するか、同 vendor の fresh context で再開する。§2 の独立性（Coordinator の自己承認禁止）は代替時も維持する
-- 代替が決まらない場合は停止し、[Plans.md](../Plans.md) のブロッカーへ記録する。pending のまま実装や Ready を進めない
+- 代替が決まらない場合は [Plans.md](../Plans.md) のブロッカーへ記録し、pending の役割を要する遷移を進めない
 
 ### 3.4 Model slot 対応表
 
@@ -212,12 +214,42 @@ docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠す�
 
 本節は、§5.4 の read-only Reviewer / Explorer 専用の低制約 profile ではなく、手順を含む従来型発注書で Writer に実装を発注する場合を対象とする。
 
-legacyの発注書には、state-only 遷移 commit が [DEV_WORKFLOW.md](DEV_WORKFLOW.md) `Workflow State` の canonical subject、すなわち forward 遷移では `docs(plans): state-only遷移 <from>-><to>[->…]`、backtrack では `docs(plans): state-backtrack <from>-><to>` に従うことを明記する。また、遷移は同節の契約を満たす正規の state-only commit で実体化し、`narrative 記述のみで遷移を主張しない`ことも出力契約に含める。
+仕様は設計正本、R2+ の変更範囲・AC・commit 条件は承認済み Packet（適用済み Amendment を含む）を参照する。発注書は該当節・ID を指し、条件全文を転記しない。R0/R1 は合意済みの依頼範囲と設計正本を参照し、発注のために Packet を新設しない。食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない。
+
+発注には次の情報を置く。これは人が読む構成例であり、機械 parse 用の固定 schema や追加の承認 gate ではない。
+
+| 項目 | 記載内容 |
+|---|---|
+| 種別・対象 | 初回 / 再開、作業 worktree、branch、開始 HEAD。HEAD の照合はその worktree で行う |
+| 正本 | Packet / Matrix と適用済み Amendment の参照。R0/R1 は依頼範囲と設計正本 |
+| 現在地・残作業 | 完了済みの変更と残作業を Scope / AC の ID（R0/R1 は依頼項目）で示す。未 commit の作業があれば状態も明示する |
+| 固有の実行条件 | この run に必要な環境準備、既に許可された操作、編集禁止対象。権限を新たに広げない |
+| 検証・報告 | 必要な検証への参照、再利用候補の証跡と適用範囲、報告先。報告は開始 / 終了 HEAD、完了 / 残作業、実施・再利用・未実施の検証を区別する |
+
+**作成・訂正の手順**:
+
+1. 起票時に、対象を使う呼出し側・隣接 test・helper / mock・生成物・依存更新の波及を現物で確認し、必要な file と変更目的を Packet の Scope / Registration / Generation Obligations へ含める。既存 REQ を参照する test の追加・変更・削除も traceability 再生成の対象（template の該当行を参照）。「関連 file 全般」の包括許可に置き換えず、未承認の拡張は既存 Gated Amendment で扱う。
+2. 指定する doc 節は `rg` で番号の実在と内容の一致を確認する。数値は対象版で同じ command を実行した出力に基づき、未実測の期待値を停止条件にしない。helper 名から実 router 等を推定せず実装・mock 境界を読む。AC の可観測性と削除検査の旧例 / 新例は [Packet template](templates/plan-packet.md#acceptance-criteria)、経路と mutation の選び方は [Matrix](templates/test-design-matrix.md) に従う。
+3. 初回は承認済み計画の着手条件を対象 worktree で確認する。再開は現在の HEAD・変更状態・前回報告から「完了済み / 残作業 / 証跡」を書き直し、実装前 baseline を完成後の状態に要求しない。長い改訂履歴は過去報告への参照へ寄せる。証跡再利用と再検証は対象変更・Evidence Mode・正本の条件に従い、失敗した検証を再利用で PASS にしない。
+4. 発注直前に最終版を正本と対象 worktree の現在地へ照合し、Scope・AC・commit 条件、および必須 command の出力先が編集禁止範囲に入らないことが同時に成立するか確認する。訂正は停止した一文だけで終えず、[Plan Packet Rules](DEV_WORKFLOW.md#plan-packet-rules) の旧前提 sweep を最終発注書・再開指示にも適用する。Packet が不変で発注書だけを訂正するときも同じ照合を行う。
+
+既存の Plan Review では上記の現物根拠を確認し、Plan Gate 後に作る発注書の最終照合は Coordinator が引き取る。追加のレビュー段階は設けず、正本の変更が必要なら既存の改訂・承認経路を使う。
 
 遷移 commit の作成主体や Writer / Coordinator の分担は、本節で再配分しない。[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の現行規範と per-change Plan Packet の定めに従う。
 
-- **doc 節番号は referent 一致まで検証する**: 発注書で `§n` などの doc 節番号を指定する場合、起草時に `rg` で節の実在を確認し、その節の既存内容が発注対象と一致するところまで確認する。番号が存在するだけでは足りない（出典実測: PR #84 の §12 occupancy 不一致）。
-- **REQ token 変更の発注は 90-traceability 再生成を完了条件にする**: test 追加を含め、REQ token に触れる変更を依頼する発注書は、generated `docs/function-design/90-traceability.md` の再生成を完了条件へ明記する（出典実測: PR #72 / #84 / #85）。
+節番号と REQ 再生成の注意は上記の作成手順へ統合した。出典: PR #72 / #84 / #85、および PR #61 / #64 / #67 / #70 / #71 / #75 の発注訂正記録。
+
+**Writer が編集前に止まったとき**:
+
+1. 発注と適用版の正本が一致しない場合、Writer は編集を始めず、不一致箇所・正本の参照・現在 HEAD を Coordinator へ返す。
+2. 正本が一意で発注だけが誤っている場合、Coordinator は発注を作り直す。この訂正で Scope・AC・commit 条件・権限・phase・Risk・review 数を変えない。
+3. Coordinator は訂正後に本節の作成・訂正の手順 4 の最終照合（旧前提 sweep を含む）を行う。
+4. 2 と 3 を満たす発注の訂正は owner への中継を要しない。行き先は [DEV_WORKFLOW.md](DEV_WORKFLOW.md#問い合わせの行き先)「問い合わせの行き先」を参照する。
+5. 正本が曖昧な場合はこの経路を使わない。正本の意味を変える場合は既存の独立確認と Gated Amendment へ戻る。
+6. finding の採否と権限の追加は発注の訂正として扱わない。
+7. 実行 mode により owner が持つ裁定・承認（§3.2 codex-only、D-087）はこの規則で代行しない。
+8. 上記の「食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない」のうち、正本の訂正は 5 の経路で行い、Coordinator が単独で行えるのは 2 の発注の作り直しだけである。5 の「既存の独立確認と Gated Amendment」は、上記の「正本の変更が必要なら既存の改訂・承認経路を使う」が指す経路である。
+9. 例: PR #85 の「合成モデルは変更しない」という発注とモデル是正の要求の衝突は、正本の変更が必要な例であり、発注の訂正として通してはならない。
 
 ### 5.7 変則 provenance packet の監査採用手順
 
@@ -233,7 +265,7 @@ legacyの発注書には、state-only 遷移 commit が [DEV_WORKFLOW.md](DEV_WO
 8. commit 体裁
 9. 事実主張の幻覚検査（引用 `file:line` の実在）
 
-採用条件は P1 相当 0 件かつ監査指摘の是正完了とする。採用時は、Evidence Modeごとの規定fieldを維持し、`Workflow State` 直下の append-only narrative に `Draft Provenance` を記録する。監査がこの条件を満たさない場合は再起草へ fallback する。
+採用条件は P1 相当 0 件かつ監査指摘の是正完了とする。採用時は、規定fieldを維持し、`Workflow State` 直下の append-only narrative に `Draft Provenance` を記録する。監査がこの条件を満たさない場合は再起草へ fallback する。
 
 ## 6. ハーネス間の既知の非対称（重要な注意）
 

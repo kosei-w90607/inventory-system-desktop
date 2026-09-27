@@ -21,7 +21,7 @@
 ### 既存仕様・設計
 
 - `docs/project-memory.md`: SR-S4000、Z001/Z002/Z004/Z005、Z004 の CP932 / NEL / 返品マイナス、PLU export は app-to-register の片方向で自動反映確認できないこと。
-- `docs/PROJECT_HANDOFF.md`: SR-S4000 は 20 部門 / 5000 PLU、PCツール経由CSV出力と PLU 一括登録が確認済み、既存 PLU は約929品で手芸用品は未登録。
+- `docs/PROJECT_HANDOFF.md`: SR-S4000 は 20 部門 / 5000 PLU（「20 部門」は機種仕様と推測される。店の初期部門は 21 で、`docs/db-design/master-tables.md` の初期データ〈2026-03-29 確定〉が正）、PCツール経由CSV出力と PLU 一括登録が確認済み、既存 PLU は約929品で手芸用品は未登録。
 - `docs/function-design/25-io-plu-formatter.md`: CV17 1.1.1 adapter profile に基づく PLUファイル。CP932、タブ区切り、`PLU_{YYYYMMDD}.txt`、11列ヘッダ、13桁JAN/EAN-13必須、商品名 16 bytes、課税方式マッピング。
 - `docs/function-design/33-biz-plu-export-service.md`: Full / Diff、廃番除外、スキャニングPLU実効上限チェック、`plu_dirty` / `plu_exported_at` 更新、レジ側書込みは運用手順範囲。
 - `docs/function-design/41-cmd-pos.md`: `preparePluExport({ mode })` は `bytes_base64`、`suggested_filename`、`target_product_codes` を返し、UIが保存する。保存後に利用者が明示確認した場合だけ `confirmPluExportSaved({ product_codes })` で書出し済み扱いにする。
@@ -144,6 +144,7 @@ issue #135 で採取した実 Z001/Z002/Z004/Z005 の匿名化解析結果（詳
 - レジからSDカードでデータを回収し、CV17の取込み操作でPCローカルへ保存する作業自体は、アプリ導入後も必要になる。2026-08-01 owner判断により、店舗の標準手順は **SDからCV17へ取り込んだ後、PC側 `EcrDatas` の日報ファイル群をアプリで選ぶ** 経路に固定する。初回だけ手順書に従って所定フォルダを選び、以後はUI-07の前回選択フォルダ記憶を使う
 - `XZ_BKUP` 直接参照やCV17の明示書出しは通常手順の選択肢として並べず、復旧・調査用途に限定する。layout A/Bの双方をparserが受理することはadapter互換性であり、operatorに採取方法やlayoutを選ばせる意味ではない
 - `EcrDatas` の保持期間、命名、同日複数精算、取込み途中、再取込み時の扱いは後続R3で設計する。この未設計事項は標準入力元の決定を巻き戻さない
+- EJ（電子ジャーナル）は日報とは別の CV17「電子ジャーナルを閲覧する」操作で取り込み、取り込むと SD 上では `XZ_BKUP` へ移り、PC 側 `EcrDatas` にも残る。SD 上に 2022-07 以降の約 4 年分がある（2026-08-15 訪店の実機確認）。店で EJ を PC へ取り込むのは月 1 回程度で、日次ではない（owner回答2026-09-23。店主本人の話と EJ ファイルの日付で確認）
 
 ## 確認リスト
 

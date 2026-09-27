@@ -1,5 +1,56 @@
 # テーブル定義（在庫追跡・棚卸し・システム）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カラムと制約であり、現在のschemaに存在するとの記述ではない。migration番号・index名はruntimeのregistryと照合して採番する。既存の数量・評価額・日時を修正するmigrationは作らない。
+
+### 実測の保存形
+
+| 保存先 | 追加・拡張する項目 | 制約と意味 |
+|---|---|---|
+| stocktakes | reconciliation_version INTEGER | NOT NULL、0/1のCHECK。移行済み旧headerは0、新規headerは1。旧activeは再確認を終えて新式で確定するTXで1へ変更。完了済み0は変更しない |
+| stocktake_items | observation_kind TEXT | NOT NULL、DEFAULTなし、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
+| stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点 |
+| stocktake_recounts（新設） | id INTEGER PK AUTOINCREMENT、stocktake_item_id INTEGER FK、system_stock INTEGER、actual_count INTEGER、count_started_at TEXT、counted_at TEXT、ledger_cursor INTEGER、source_cursor INTEGER、observation_revision INTEGER、request_id TEXT | 参照明細・N/L・時点証拠・版・要求IDはNOT NULL。request_idはUNIQUE。値はappend-only、actual_countは非負。importへのFKは置かない |
+| stocktake_recount_flags（新設） | product_code TEXT FK、source_id INTEGER FK → pos_import_sources.id、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL。未解消のflagを(product_code, source_id)で一意にする。csv_import_idはflagを作成したimport。reasonはsale_order_unknown（計数と前後不明の販売）/ offset_lines_present（相殺の行あり）/ offset_check_pending（相殺の確認待ち・EJ待ち）/ offset_mapping_changed（相殺の確認待ち・登録の変化）/ legacy_basis（旧記録の実測）のCHECK。解消で行を削除し、実測・取消による解消の根拠はその記録、再評価による解消の根拠は対応する保存済みの資料とEJの証拠に残る |
+| stocktake_recount_flags | previous_recheck_pending INTEGER | NOT NULL、0/1のCHECK。1はreason=offset_mapping_changedの場合だけ許可する（CHECK）。直前のZ004の未受領を原因に作る登録の変化（最初の区間・受領済みの最小より小さい番号・settlement_noの戻り）では1、それ以外では0をwriterが明示する。直前のZ004の受領だけでは変えず、そのZ004を使った再評価を業務TXで確定するとき、残すflagを0にする。業務TXの失敗では元の値を保つ。flagの解消では行とともに削除する。理由の追加や公開DTOへの露出は行わない |
+
+要再確認flagの規則（[ADR D4](../adr/2026-09-18-stocktake-time-evidence.md)）:
+
+- 一意の商品の判定不能は、最新の実測の所属（進行中の棚卸し・確定済みの棚卸し・独立再実測・legacy）によらず通常適用し、同じ業務TXで(商品, 資料)単位のflagを保存する。flagの保存失敗は取込みTX全体を戻す。
+- 確定対象の棚卸しに明細がある商品は、未解消のflagが一つでもある間、明細のkind（未計数・auto_filled・measured）・最新の実測の所属・flagの理由によらず、force_fillでも確定できない。確定済みの棚卸し・独立再実測に属する商品のflagは取込みを止めず、商品単位の準備issueとして残る（回復先はactive明細、なければ独立再実測）。
+- 解消は、当該資料を計数開始前に受領していた新しい実測の保存（active明細へのmeasured保存、または独立再実測。`source_id <= source_cursor`）か、作成importの取消に限る。相殺の確認待ちだけは、下の理由の決め方の再評価でも解消し得る。
+- file全体の保留は、JANの候補商品が複数、かつ少なくとも一つが在庫連動対象の共有JAN行（非連動商品との共有を含む）で、全ての在庫連動候補の実測前を証明できない場合だけで、保留は永続しない（flagを作らない）。
+- 理由の決め方: 数量が0でない行は計数と前後不明の販売、LegacyObservedの行は数量によらず旧記録の実測、数量0で金額が0でない行は相殺の行あり。数量・金額とも0の行は同じ精算区間のEJで分ける（未精算の売上があるPLUをPLU書出しのclear行で消せる場合は、今回のZ004に行がなく前回のZ004にはあるcodeの数えた商品も同じく分ける）。完全なEJに当該商品の行がなければflagを作らず、行があれば相殺の行ありとする。複数の商品の名称・商品の名称と部門名・前回のZ004から対応が変わった名称（スキャニングコードと名称の組の集合差）に一致する行は、区間を不完全にせず、候補の商品のうち数量・金額とも0の数えた商品を全て相殺の行ありにする。EJがない・不完全（区間の開始の証拠がないEJを含む）な場合と前回のZ004が未受領なだけの区間はoffset_check_pending、どの名称にも一致しない明細の行が区間のEJにある場合（前回のZ004を受領しているときだけ判定する）と前回を証明できない区間（最初の区間とsettlement_noが戻った区間を含む。最初の区間はそのmachine_noのZ004を一度も受領していない区間で、EJの有無より先に判定する）はoffset_mapping_changedとして、どちらも確定を止める。区間全体の確認待ちの対象に、今回のZ004に行がない商品は含まない（clear行の場合の商品を除く。前回のcodeが分からない区間〈直前のsettlement_noのZ004を受領していない区間〉では、clear行の外部前提が真のとき、今回のZ004に行のない数えた在庫連動商品を全て含め、直前のZ004を使う業務TXでの再評価で前回にそのcodeがあれば判定し、無ければ解消する）。offset_check_pendingは、その区間のEJか前回のZ004を取り込む業務TXで、同一性・重複・共有JAN等のguardを通過した後にBIZが次の順に再評価する。どれにも一致しない行があるか前回を証明できなければoffset_mapping_changedへ変え、どちらもなく不完全なら残し、完全なら当該商品を候補に含む行がなければ解消（行を削除）、あればreasonをoffset_lines_presentへ変える。offset_mapping_changedはEJの再評価の対象にせず、数え直しで解消する。直前のZ004が未受領の間のもの（最初の区間・受領済みの最小より小さい番号の区間・settlement_noが戻った区間）だけは、作る業務TXでprevious_recheck_pending=1を保存し、直前のsettlement_noのZ004を使う業務TXで同じ順に全て再評価する（戻った区間では戻った後に受領した直前の番号のZ004に限る）。その再評価を確定するとき残すflagのprevious_recheck_pendingを0にし、そこで残るoffset_mapping_changedは凍結する。previewと資料受領TXはflagと印を変更せず、初回受領か同hashの再選択かによらず業務TXで現在の未解消flagを読み直す。flag・印の変更・削除と必要な商品revisionの更新は取込みの業務変更と同じTXで確定し、中止・拒否・失敗では従前の状態を残し、同じfileの再選択（最初の受領ID）から業務TXで再試行する。成功済みの取込みはactive hashで重複拒否する。結果が変わらない再評価は書込みもrevisionの更新もせず、実測・取消で削除したflagを作り直さず、作成importへの参照を変えない。2種とも数え直しで解消する。
+
+cursorの0は空集合であり、source/movement IDへのFKにはしない。実測側のFKは親明細・再実測・商品・資料・importに張り、親は業務取消で物理削除しない。auto_filled / uncountedには開始・両cursor・observation_revision・実測request IDを付けない。legacyのNULLを有効なmeasured証拠へ補完しない。公開request IDはUUIDとする。
+
+実測順序の一意性は、商品別のchecked stock_revisionを進めて記録するBIZの単一TXで保証する。recountとitemのrequest IDを両方照会し、同じ公開IDが両方に見つかる異常は拒否する。検索用indexはitemの(product_code, observation_revision)、recountの(stocktake_item_id, observation_revision)、flagのcsv_import_idとする。indexは証拠の代わりではない。
+
+count_started_at / counted_atはアプリの時計で記録する操作の時刻で、前後判定・context失効に使わない。DB置換によるcontext失効は[CMDの新契約](../function-design/42-cmd-sales-stocktake.md)に従い、保存済みの実測と未保存tokenの有効性を分離する。
+
+### movementと記録詳細
+
+inventory_movementsへ `stocktake_adjustment_kind TEXT NULL`（completion / rollback_compensation / recountのCHECK）と `stocktake_recount_id INTEGER NULL REFERENCES stocktake_recounts(id)` を追加する。新しいstocktake補正は区分を必須とし、非stocktake movementには設定しない。再実測由来の補正はrecountを参照し、reference_type='stocktake' / reference_idは参照明細の親headerを指す。補償が独立再実測を吸収先とする場合もそのrecountを関連付ける。旧movementのNULL区分をtimestampやnoteの推測で書き換えない。
+
+差0は実測行だけを保存し0数量movementを作らない。新方式の確定差異件数はcompletionだけから算出する。旧headerの既存NULL区分の集計は旧表示契約を保持し、新しいrecount/rollback_compensationを混ぜない。確定済みtotal_cost・valuation_cost_price・N/Lを、後から現在庫を直すために上書きしない。
+
+### 移行と保存TX
+
+旧header/item/movementがあるDBのための互換規則を以下に示す。[初導入の本番](../project-memory.md)に旧履歴が存在するという意味ではなく、開発・試験/将来の更新の合成テストも維持する。初導入という理由で存在する行を削除・無検査にせず、DB作り直しはADR D8の別作業へ分離する。
+
+- このschema migration、全item writerのkind/証拠対応、無検査update_countの公開登録撤去、context必須command/UIの切替は同じruntime変更・配布単位にする。DB laneだけを先行出荷し旧writerで稼働する中間版は作らない。実装commitを分けても、完成前の組合せを起動/配布可能なreleaseとして扱わない。
+- observation_kindのALTERにuncounted等の恒久DEFAULTを付けない。既存行は同一migration TX内で下記CASE分類を明示的に埋め、最終schemaをNOT NULL/CHECK/DEFAULTなしにする（必要なら一時列・table再構築を使う）。kindを省略したINSERTは失敗させる。新方式のstart、商品登録中の明細追加、商品一括import、force_fill、実測/再実測の全writerがkindと対応する証拠列を明示する。旧数量だけのUPDATEを有効な書込み経路として残さない。
+
+- migrationの同じTXで、移行前movementの最大ID（空なら0）を内部app_settings key `stocktake_legacy_movement_ceiling`へ一度だけ保存する。通常設定APIの書込み対象にしない。これは吸収済みcursorではなく移行時上限で、再起動・再実行で現在値へ更新しない。
+- 旧itemは、actual_count/count時刻が両NULLならuncounted、actual_count=0・system_stock=0・count時刻NULLならauto_filled、両方ありならlegacy。その他の矛盾形もlegacyとして移行異常を示す。旧force_fillは日時付きなのでlegacy。現在の廃番フラグから逆算しない。
+- measured保存はN/L/S/E・両cursor・版・request ID・flag解消を1商品1TXにする。独立再実測はN-L補正を同じTXに加え、部分保存しない。legacyの取消の保留は業務write前に全体を止め、対象商品に新しい適用済み実測（active明細があればその計数と確定、なければ独立再実測）ができた後の取消の再試行で解除する。
+- migration失敗は新列・新表・内部上限・schema versionの記録をまとめて戻す。旧header・数量・movementを消すこと、旧日時からcursorを作ることは禁止。起動時移行失敗を無視して新commandを有効化しない。
+
+---
+
+計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D1 / D6〜D8（proposed）。実測の窓・cursor・版、独立再実測、明示的な補正区分、旧DBの再確認を定める。以下は現行スキーマであり、新列・新表は未実装。
+
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
 ---
@@ -98,7 +149,7 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | started_at | TEXT | NOT NULL | 開始日時 |
 | completed_at | TEXT | NULLABLE | 完了日時。NULLなら作業中 |
 | status | TEXT | NOT NULL, DEFAULT 'in_progress' | 状態。'in_progress' / 'completed' |
-| total_cost | INTEGER | NULLABLE | 仕入原価総額（税理士報告用）。確定時に計算 |
+| total_cost | INTEGER | NULLABLE | 仕入原価総額（円、税理士報告用）。確定時に計算。商品別の金額を1/100円で求めて合計し、円未満を四捨五入する（[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D3 / D4） |
 
 ### stocktake_items カラム定義
 
@@ -109,14 +160,14 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | product_code | TEXT | FK → products.product_code, NOT NULL | 商品コード |
 | system_stock | INTEGER | NOT NULL | カウント時点のシステム在庫 |
 | actual_count | INTEGER | NULLABLE | 実カウント数。NULLなら未入力 |
-| valuation_cost_price | INTEGER | NULLABLE | 確定時の評価原価（円）。total_costはこの値×actual_countの合計 |
+| valuation_cost_price | INTEGER | NULLABLE | 確定時の評価原価（円、価格の基準数量あたり。[master-tables](master-tables.md) products の価格の基準数量） |
 | counted_at | TEXT | NULLABLE | カウント日時（YYYY-MM-DDTHH:MM:SS）。NULLなら未入力 |
 
 ### 設計意図
 - **system_stockを明細に持つ理由**: 棚卸し中もCSV取込みで在庫が動く（SP-205-09修正）。差異の表示は「現在のproducts.stock_quantity - actual_count」で動的計算。system_stockは「カウントした時点のシステム在庫」を参考値として記録
 - **actual_countがNULLABLE**: 4000商品中、まだカウントしていない商品はNULL。NULLの件数が「未入力」の件数として進捗バーに使われる
 - **valuation_cost_priceの理由（指摘#4対応）**: 棚卸し確定時の原価を固定保存。商品マスタの原価が後から変わってもtotal_costがブレない。棚卸し確定時にproducts.cost_priceの値をコピーしてくる
-- **total_costの理由**: 棚卸し確定時に「全商品のvaluation_cost_price×actual_count」を合計した仕入原価総額を算出（SP-205-08、税理士報告用）
+- **total_costの理由**: 棚卸し確定時に、全商品の商品別の金額（valuation_cost_price・数量・価格の基準数量から1/100円で求める）を合計し、円未満を四捨五入した仕入原価総額を算出（SP-205-08、税理士報告用、店の端数の規則。35 §20.5a）。1/100円の商品別の金額は保存しない（報告するのは総額だけ）
 
 ### 困りそうなケースと対応方針（2026-03-28 確定）
 

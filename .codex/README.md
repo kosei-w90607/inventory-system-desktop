@@ -7,7 +7,6 @@ It is separate from the Codex application/config area on the Windows `C:` drive.
 
 - `config.toml` records project-local Codex defaults such as sandbox intent.
 - `rules/default.rules` records the current project-local command policy for Codex versions that load `.codex/rules/*.rules`.
-- `execpolicy.rules` mirrors the same policy for explicit validation and older notes.
 - `bin/` contains safe wrappers used by the command policy.
 - `README.md` explains this directory's project-local permission model.
 
@@ -15,11 +14,11 @@ It is separate from the Codex application/config area on the Windows `C:` drive.
 
 | Layer | Path | Git | Purpose |
 |---|---|---|---|
-| Project shared | `.codex/config.toml`, `.codex/rules/default.rules`, `.codex/execpolicy.rules`, `.codex/README.md` | tracked | Repository-wide Codex defaults and command policy intent |
+| Project shared | `.codex/config.toml`, `.codex/rules/default.rules`, `.codex/README.md` | tracked | Repository-wide Codex defaults and command policy intent |
 | Project local | `.codex/config.local.toml`, `.codex/execpolicy.local.rules`, `.codex/hooks.json`, `.codex/hooks/` | ignored | Machine-specific temporary overrides and hook experiments |
 | Global / app-owned | Codex app config outside this repo | not touched here | Codex-wide defaults managed by the app/user, not by this project |
 
-Do not treat repo-local `config.toml` or `hooks.json` as automatically active unless the active Codex version documents project autoloading for those files. Current Codex Desktop/CLI builds load project-local policy from `.codex/rules/*.rules` only when the project is trusted. Keep `execpolicy.rules` mirrored for explicit `codex execpolicy check --rules` validation.
+Do not treat repo-local `config.toml` or `hooks.json` as automatically active unless the active Codex version documents project autoloading for those files. Current Codex Desktop/CLI builds load project-local policy from `.codex/rules/*.rules` only when the project is trusted. `.codex/rules/default.rules` is the only project policy; validate it explicitly with `codex execpolicy check --rules .codex/rules/default.rules`.
 
 ## Recommended Local Mode
 
@@ -89,7 +88,7 @@ effort など用途別設定は profile で調整できる。一時指定には 
 設定仕様: [公式 config reference](https://learn.chatgpt.com/docs/config-file/config-reference)。
 
 Mouse wheel absorption into the Codex composer is tracked separately in
-`status-bar/README.md`. The split-pane bar was tested as a possible cause, but
+`docs/archive/harness-context/2026-09-24-codex-status-bar-notes.md`. The split-pane bar was tested as a possible cause, but
 the symptom also reproduced after removing the split pane while remaining in
 the tmux wrapper path. Raw Codex with and without `--no-alt-screen` did not
 reproduce the symptom, and `CODEX_INVENTORY_NO_BAR=1` also did not reproduce.

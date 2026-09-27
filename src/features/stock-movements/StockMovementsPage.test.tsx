@@ -12,6 +12,7 @@ import { stockInquirySearchSchema } from "@/features/stock-inquiry/types";
 import { renderWithRouter } from "@/test/render-with-router";
 import { StockMovementsPage } from "./StockMovementsPage";
 import type { StockMovementsSearch } from "./types";
+import { normalizeStockMovementsSearch, stockMovementsSearchSchema } from "./types";
 
 vi.mock("@/lib/bindings", () => ({
   commands: {
@@ -504,4 +505,94 @@ describe("StockMovementsPage SPEC-UI06C-D9-R1（在庫照会への戻り導線�
           },
     );
   });
+});
+
+describe("StockMovementsPage SPEC-NAV-RETURN-TYPES-2026-09-25 C4（detailReturnTo の直列化）", () => {
+  // 「廃棄・破損 #7」の href から外側の returnTo（= detailReturnTo）を取り出す。
+  async function renderDetailReturnTo(search: StockMovementsSearch): Promise<string> {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [makeMovement()], total_count: 1, page: 1, per_page: 50 },
+    });
+    const { unmount } = renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={search} onSearchChange={vi.fn()} />,
+    );
+    const href = (await screen.findByRole("link", { name: "廃棄・破損 #7" })).getAttribute("href");
+    unmount();
+    const outer = new URL(href ?? "", "http://inventory.local");
+    return new URLSearchParams(outer.search).get("returnTo") ?? "";
+  }
+
+  // 受け側（在庫変動履歴 route の validateSearch と同じ schema）で search に戻す。
+  function parseMovementsSearch(query: string): StockMovementsSearch {
+    return stockMovementsSearchSchema.parse(defaultParseSearch(query));
+  }
+
+  async function renderBackToStockHref(search: StockMovementsSearch): Promise<string | null> {
+    mockGetStockDetail.mockResolvedValue({ status: "ok", data: makeStockDetail() });
+    mockListMovements.mockResolvedValue({
+      status: "ok",
+      data: { items: [], total_count: 0, page: 1, per_page: 50 },
+    });
+    const { unmount } = renderWithClient(
+      <StockMovementsPage productCode="BT0002" search={search} onSearchChange={vi.fn()} />,
+    );
+    const href = (await screen.findByRole("link", { name: "在庫照会へ戻る" })).getAttribute("href");
+    unmount();
+    return href;
+  }
+
+  // (b) の "123" は / 始まりでない不正な戻り先で、正規の戻り先（/ 始まり）では新旧の直列化に
+  // 差が出ない。JSON として読める string を引用符付きで運べること（直列化の可逆性。将来 string
+  // の param を足したときに number へ化ける罠）を検査するための入力。
+  it.each<[string, StockMovementsSearch]>([
+    [
+      "(a) 期間・種別・page・数字だけの商品コードの入れ子 returnTo",
+      {
+        dateFrom: "2026-06-01",
+        dateTo: "2026-06-30",
+        type: "disposal",
+        page: 2,
+        returnTo: "/stock?q=%222099000000019%22&selected=%222099000000019%22",
+      },
+    ],
+    ["(b) JSON として読める不正な returnTo", { returnTo: "123" }],
+    ["(c) 既定値だけ", {}],
+  ])(
+    "REQ-303 / UI-06c-D9 (SPEC-NAV-RETURN-TYPES C4): 元記録 link の detailReturnTo は受け側の schema で元の search に戻る %s",
+    async (_label, search) => {
+      const detailReturnTo = await renderDetailReturnTo(search);
+      const inner = new URL(detailReturnTo, "http://inventory.local");
+      expect(inner.pathname).toBe("/stock/BT0002/movements");
+      const parsed = parseMovementsSearch(inner.search);
+      expect(normalizeStockMovementsSearch(parsed)).toEqual(normalizeStockMovementsSearch(search));
+      expect(parsed.returnTo).toBe(search.returnTo);
+      if (Object.keys(search).length === 0) {
+        expect(detailReturnTo).toBe("/stock/BT0002/movements");
+      }
+    },
+  );
+
+  // (d) / 始まりでない不正値は新旧とも不正な戻り先で、在庫照会へ戻る先は returnTo なしと同じ
+  // 既定の戻り先に着地する（詳細 link の href は新旧で変わってよい。正規の戻り先では差が出ない）。
+  it.each([
+    ["123", "?returnTo=123"],
+    ["true", "?returnTo=true"],
+    ["null", "?returnTo=null"],
+    ["[]", "?returnTo=%5B%5D"],
+  ])(
+    "REQ-303 / UI-06c-D9 (SPEC-NAV-RETURN-TYPES C4): / 始まりでない不正値 %s でも在庫照会へ戻る先が既定の戻り先で新旧同じ",
+    async (returnTo, legacyQuery) => {
+      const detailReturnTo = await renderDetailReturnTo({ returnTo });
+      const current = parseMovementsSearch(
+        new URL(detailReturnTo, "http://inventory.local").search,
+      );
+      const legacy = parseMovementsSearch(legacyQuery);
+      const expected = await renderBackToStockHref({});
+      expect(expected).toBe("/stock?q=BT0002&selected=BT0002");
+      expect(await renderBackToStockHref(current)).toBe(expected);
+      expect(await renderBackToStockHref(legacy)).toBe(expected);
+    },
+  );
 });

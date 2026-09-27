@@ -12,7 +12,7 @@ fn commit_import(
 ) -> ImportResult {
     let pv = parse_and_build_cache(conn, bytes, filename);
     let cached = build_cached(pv);
-    commit::commit_csv_import(
+    commit::legacy_commit_csv_import(
         conn,
         CommitRequest {
             additional_import_confirmed: false,
@@ -39,7 +39,7 @@ fn test_rollback_req401_normal() {
     assert_eq!(p.product.stock_quantity, 7); // 10 - 3
 
     // ロールバック
-    let rb = rollback::rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
+    let rb = rollback::legacy_rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
     assert!(rb.success);
     assert_eq!(rb.voided_sale_count, 1);
     assert_eq!(rb.voided_movement_count, 1);
@@ -64,12 +64,12 @@ fn test_rollback_req401_idempotent() {
     let import_result = commit_import(&mut conn, bytes, "Z004_260321");
 
     // 1回目のロールバック
-    let rb1 = rollback::rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
+    let rb1 = rollback::legacy_rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
     assert!(rb1.success);
     assert_eq!(rb1.voided_sale_count, 1);
 
     // 2回目のロールバック（冪等）
-    let rb2 = rollback::rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
+    let rb2 = rollback::legacy_rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
     assert!(rb2.success);
     assert_eq!(rb2.voided_sale_count, 0);
     assert_eq!(rb2.voided_movement_count, 0);
@@ -86,7 +86,7 @@ fn test_rollback_req401_idempotent() {
 fn test_rollback_req401_not_found() {
     // REQ-401: CSV取込み
     let (_dir, mut conn) = setup_test_db();
-    let result = rollback::rollback_csv_import(&mut conn, 999);
+    let result = rollback::legacy_rollback_csv_import(&mut conn, 999);
     assert!(result.is_err());
     match result.unwrap_err() {
         BizError::NotFound(msg) => assert!(msg.contains("999")),
@@ -120,7 +120,7 @@ fn test_rollback_req401_stock_corrections() {
     assert_eq!(p2.product.stock_quantity, 12); // 15 - 3
 
     // ロールバック
-    let rb = rollback::rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
+    let rb = rollback::legacy_rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
     assert_eq!(rb.voided_sale_count, 2);
     assert_eq!(rb.voided_movement_count, 2);
     assert_eq!(rb.stock_corrections.len(), 2);
@@ -151,7 +151,7 @@ fn test_rollback_req401_same_day_is_per_import_with_negative_return() {
         make_z004_bytes("2026-03-21", &[("4912345678901", "返品A", -1, -300)]),
         "Z004_0002",
     );
-    let second = commit::commit_csv_import(
+    let second = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,
@@ -160,7 +160,7 @@ fn test_rollback_req401_same_day_is_per_import_with_negative_return() {
     )
     .unwrap();
 
-    rollback::rollback_csv_import(&mut conn, first.csv_import_id).unwrap();
+    rollback::legacy_rollback_csv_import(&mut conn, first.csv_import_id).unwrap();
 
     let active =
         crate::db::sales_repo::find_imports_by_settlement_date(&conn, "2026-03-21").unwrap();
@@ -192,7 +192,7 @@ fn test_rollback_req401_selected_negative_return_reverses_only_return_contributi
         make_z004_bytes("2026-03-21", &[("4912345678901", "返品A", -1, -300)]),
         "Z004_0002",
     );
-    let returned = commit::commit_csv_import(
+    let returned = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,
@@ -205,7 +205,7 @@ fn test_rollback_req401_selected_negative_return_reverses_only_return_contributi
         .unwrap();
     assert_eq!(before.product.stock_quantity, 9);
 
-    rollback::rollback_csv_import(&mut conn, returned.csv_import_id).unwrap();
+    rollback::legacy_rollback_csv_import(&mut conn, returned.csv_import_id).unwrap();
 
     let after = product_repo::find_by_product_code(&conn, "TEST-001")
         .unwrap()
@@ -247,7 +247,7 @@ fn test_import_rollback_req401_logs_exact_selected_id_and_preserves_commit_on_lo
         make_z004_bytes("2026-03-21", &[("4912345678901", "商品B", 2, 600)]),
         "Z004_0002",
     );
-    let second = commit::commit_csv_import(
+    let second = commit::legacy_commit_csv_import(
         &mut conn,
         CommitRequest {
             additional_import_confirmed: true,
@@ -263,7 +263,7 @@ fn test_import_rollback_req401_logs_exact_selected_id_and_preserves_commit_on_lo
          BEGIN SELECT RAISE(FAIL, 'synthetic log failure'); END;",
     )
     .unwrap();
-    let result = rollback::rollback_csv_import(&mut conn, first.csv_import_id).unwrap();
+    let result = rollback::legacy_rollback_csv_import(&mut conn, first.csv_import_id).unwrap();
     assert!(result.success);
     let first_record = sales_repo::find_csv_import_by_id(&conn, first.csv_import_id)
         .unwrap()
@@ -276,7 +276,7 @@ fn test_import_rollback_req401_logs_exact_selected_id_and_preserves_commit_on_lo
 
     conn.execute_batch("DROP TRIGGER fail_csv_rollback_log;")
         .unwrap();
-    rollback::rollback_csv_import(&mut conn, second.csv_import_id).unwrap();
+    rollback::legacy_rollback_csv_import(&mut conn, second.csv_import_id).unwrap();
     let (summary, detail): (String, String) = conn
         .query_row(
             "SELECT summary, detail_json FROM operation_logs

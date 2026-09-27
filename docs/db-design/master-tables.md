@@ -1,5 +1,18 @@
 # テーブル定義（マスタ）
 
+## 時点証拠契約（proposed・未実装）
+
+[時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1 / D4 / D8の追加予定。以下の既存カラム表は現行スキーマを記す。
+
+- productsへ `stock_revision INTEGER NOT NULL DEFAULT 0` を追加する。非負・INTEGER型をCHECKし、i64上限を越える加算は更新せずエラーにする。SQLiteの整数overflowによるREAL化を成功扱いしない。
+- productsへ `pos_sync_disabled_revision INTEGER NULL` を追加する。NULLまたは非負INTEGERかつstock_revision以下をCHECK。BIZ-01が既存商品のtrue→falseと同TXで変更後の版を保存する（新規false/false→falseでは作らない）。同商品にこの版より後の適用済みmeasured/recountがあるかで未調整を判定し、解消時にも記録を削除しない。移行時はNULL、過去の切替を捏造しない。
+- 既存商品のstock_quantity更新はinventory_repoの専用関数だけを通し、数量とrevisionを同一更新・同一TXで進める。同量UPDATEでも増分する。初期INSERTの数量・revision=0は別で、既存行の更新へ流用しない。
+- 実測保存、snapshot補正、flag変更、pos_stock_sync変更、差0確定・純量0取消でも共通のchecked版更新を同じTXで行う。商品の表示名や価格だけの更新を物理移動とみなす仕様は追加しない。
+- `pos_stock_sync` の `DEFAULT 1` は変えない。準備照会が `ej_unverified` を返す間（EJの日次取込みがない㉘のbuildでは常に）、新規作成の商品・商品一括importの省略時の既定値falseはBIZ-01が与え、在庫連動の有効化（false→true、新規のtrue）はBIZ-01が拒否する（[商品BIZの新契約](../function-design/30-biz-product-service.md)）。
+- 共有JANは引き続きDBに存在できるが、先頭商品への在庫配賦を安全とみなす旧説明は新方式には適用しない。連動有効化と曖昧さを新設する更新の拒否、既存設定のpreflightは[商品BIZの新契約](../function-design/30-biz-product-service.md)で行う。jan_codeへの全件UNIQUE追加や既存pos_stock_syncの一括変更はしない。
+
+---
+
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
 ---
@@ -13,13 +26,13 @@
 
 | カラム名 | 型 | 制約 | 説明 |
 |---------|---|----|------|
-| product_code | TEXT | PK | システム管理の一意コード。JAN個別管理商品はJANそのまま、それ以外は独自コード（例: HZ-0046, NU-0003） |
+| product_code | TEXT | PK | システム管理の一意コード。JAN個別管理商品はJANそのまま、それ以外は独自コード（例: HZ-0046, NU-0003）。100 文字以内（UTF-16 code unit）。取込み経路で BIZ-01-D5（30-biz）が保証し、DB CHECK は置かない |
 | jan_code | TEXT | NULLABLE, INDEX | JANコード（JAN-8 または JAN-13 = ASCII 数字 8/13 桁。手入力 create 経路の形式 validation は 51 UI-01b-D17 / 30-biz BIZ-01-D1 が所有し、import 経路・既存行は対象外）。複数商品が同じJANを共有する場合がある（グループコード）。NULLならJAN無し商品 |
 | name | TEXT | NOT NULL | 商品名（例: ハマナカ アミアミ極太 col.42） |
 | department_id | INTEGER | FK → departments.id, NOT NULL | 所属部門 |
 | supplier_id | INTEGER | FK → suppliers.id, NULLABLE | 主な取引先（任意） |
-| selling_price | INTEGER | NOT NULL | 売価（税込、円） |
-| cost_price | INTEGER | NOT NULL | 原価（円） |
+| selling_price | INTEGER | NOT NULL | 売価（税込、円）。価格の基準数量あたり（下記の設計意図） |
+| cost_price | INTEGER | NOT NULL | 原価（円）。価格の基準数量あたり（下記の設計意図） |
 | tax_rate | TEXT | NOT NULL, DEFAULT '10' | 消費税率。'10' / '8' / '0'（非課税） |
 | maker_code | TEXT | NULLABLE | メーカー品番（例: H180-005-42）。JAN無しでもメーカー品番だけある場合あり |
 | stock_quantity | INTEGER | NOT NULL, DEFAULT 0 | 在庫数（個 or 枚 or cm） |
@@ -36,9 +49,11 @@
 - **product_codeとjan_codeを分けた理由（2026-03-28 利用者ヒアリングで判明）**: 布やファスナーのグループコード商品は、複数の色違い/サイズ違いが同じJANを共有する。JANをPKにすると1レコードにまとまってしまう。product_code（独自コード）をPKにして、JANは参考カラムとして持つことで、グループ単位の管理と個別管理を両立
 - **jan_codeにINDEXを張る理由**: CSV取込み時にZ004のJANコードでproductsを検索する。INDEXがないと4000件のフルスキャンになる
 - **jan_codeがNULLABLEな理由**: ボタンのように品番もJANもない商品がある
+- **JANの無い商品の規模（店主回答、2026-03）**: 主に生地とヘア雑貨で、全体の約2割
 - **jan_codeのUNIQUE制約をつけない理由**: 同じJANを複数商品が共有するケースがある（グループコード）。UNIQUE制約をつけると登録できなくなる
 - **jan_code の形式 validation を DB に置かない理由（2026-08-11、JAN 専用欄正規化 change）**: 手入力 create 経路の JAN-8/13 + チェックディジット検証は BIZ 保存時（BIZ-01-D1）と frontend（51 UI-01b-D17）が所有し、DB CHECK は追加しない。既存 DB 行と CSV/Z004 import 経路には非 JAN 値・非 13 桁値が実在し得るため（既存データ互換）、DB 制約は既存データの migration を強制してしまう。UNIQUE を付けない既存判断も不変。
 - **selling_price / cost_priceをINTEGERにした理由**: 日本円は小数点以下がないため整数で十分。浮動小数点の丸め誤差を避ける
+- **価格の基準数量（2026-09-25、[35 §20.5a](../function-design/35-biz-stocktake-service.md#205a-評価額の計算価格の基準数量と店の丸め) SPEC-STK-VAL-D1）**: selling_price / cost_price は、在庫数量で「価格の基準数量」ぶんに対する価格である。基準数量は stock_unit で決まり、`pcs` = 1（1 個あたり）、`cm` = 100（1 m あたり）。反物などの長さ商品は在庫を cm で持ち、価格は値札・仕入れ伝票と同じ 1 m あたりで登録する（店は残り・仕入れ・値札をすべて m で扱う。レジでも数量 1 = 1 m で打てる、未運用）。基準数量の列は持たない（理由・不採用案・見直す条件は 35 §20.5a）。棚卸しの評価額はこの基準数量で割る。入庫の原価小計・廃棄のロス原価・棚卸し記録詳細のロス原価は `数量 × 原価` のまま、手動販売の金額の初期値（[62](../function-design/62-ui-manual-sale.md) UI-04-D6）は数量 1 ごとに売価を足すままで、長さ商品では 100 倍になる（既知の不整合、Backlog）
 - **plu_dirtyフラグの理由**: 「レジ登録データ作成」画面の差分書出しモード（REQ-402）で「前回以降に変更があった商品」を高速に抽出するため。売価変更・新規登録でON、TSV生成だけではOFFにせず、UI-08で保存後に利用者が書出し済み確認した時点でOFFにする（D-027）。
 - **plu_exported_atの理由**: plu_dirtyだけでは「未書出し」と「アプリ側では書出し済み」の区別がつかない。書出し済み確認日時を記録しておけば「最後にアプリでPLU TSVを作成・保存済みにしたのはいつか」が分かる。ただしPCツール受理やレジ側反映確認はAPIがないため、この値では証明しない。
 - **pos_stock_syncの理由（指摘#9対応）**: REQ-401「生地カテゴリの在庫減算除外」の判定カラム。stock_unit='cm'だけで判定するとcm管理でもCSV連動したい商品が将来出たときに困る。明示的なフラグで制御する
@@ -71,7 +86,7 @@
 → products.stock_quantity: 5 → 17（+12）
 → products.updated_at: 更新
 
-閉店後CSV取込み: 同商品が3個売れた
+精算後のCSV取込み: 同商品が3個売れた
 → products.stock_quantity: 17 → 14（-3）
 
 売価変更: 594円 → 648円
@@ -133,6 +148,8 @@
 - 9999まで発番可能（各部門数百品に対して十分）
 
 ### 初期データ（全21部門、C-1/C-3 2026-03-29 確定）
+
+部門の数や割当を今後変える可能性を owner は否定していない（owner回答2026-09-19）。
 
 | id | name | z005_name | code_prefix | JAN無し商品 | 備考 |
 |----|------|-----------|-------------|-----------|------|

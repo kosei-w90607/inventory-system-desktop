@@ -4,16 +4,18 @@
 // 4 step UI (Parse/Preview/Importing/Result) に振り分け、error variant は重ね描き。
 // 設計: docs/function-design/55-ui-csv-import.md §55.1 / §55.4
 
+import { AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 import type { PickedFile } from "@/components/FilePicker";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DailyReportImportPage } from "@/features/daily-report-import/DailyReportImportPage";
 import { useCsvImportFlow } from "./hooks/useCsvImportFlow";
 import { ErrorState } from "./components/ErrorState";
 import { ImportingStep } from "./components/ImportingStep";
 import { ParseStep } from "./components/ParseStep";
-import { PreviewStep } from "./components/PreviewStep";
+import { PreviewStep, Z004_IMPORT_SUSPENDED } from "./components/PreviewStep";
 import { ResultStep } from "./components/ResultStep";
 import { StepIndicator, type StepNumber } from "./components/StepIndicator";
 import type { CsvImportState } from "./types";
@@ -73,6 +75,15 @@ function CsvImportFlowPanel() {
   // a11y: HTML5 main landmark は RootLayout の <main> が持つため <div> を採用 (HomePage.tsx と同方針)
   return (
     <div className="space-y-6">
+      {Z004_IMPORT_SUSPENDED ? (
+        <Alert variant="warning">
+          <AlertTriangle aria-hidden="true" />
+          <AlertTitle>商品別CSV（Z004）の取込みは一時停止中です</AlertTitle>
+          <AlertDescription>
+            取込みや取消で在庫が二重に減ったり戻ったりする不具合を直しています。直るまで、取込みの確定と取消はできません。ファイルの内容確認（プレビュー）と日報の取込みはできます。
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <StepIndicator currentStep={currentStep} />
 
       {renderBody(flow)}

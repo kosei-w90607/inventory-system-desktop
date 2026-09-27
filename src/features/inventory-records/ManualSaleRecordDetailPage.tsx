@@ -45,7 +45,7 @@ export function ManualSaleRecordDetailPage({
   recordId,
   returnTo,
 }: ManualSaleRecordDetailPageProps) {
-  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} };
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.manualSaleDetail(recordId),
     queryFn: () =>

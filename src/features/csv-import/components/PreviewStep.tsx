@@ -14,12 +14,18 @@ import type { PreviewData } from "@/lib/bindings";
 import { ErrorRowsTable } from "./ErrorRowsTable";
 import { AdditionalImportConfirmDialog } from "./AdditionalImportConfirmDialog";
 
+/// Z004 の取込みの確定と取消の一時停止（SPEC-STOP-D4、55 §55.0）。CsvImportPage の案内も
+/// この定数を import する。UI の定数は安全の根拠にしない（backend も BIZ-03 で停止する）。解除は ⑤ だけ。
+// `as boolean`: 定数の分岐を lint（no-unnecessary-condition）が常真と見なさないよう型を広げる。
+export const Z004_IMPORT_SUSPENDED = true as boolean;
+
 export interface PreviewStepProps {
   preview: PreviewData;
   filename: string;
   onConfirm: (additionalImportConfirmed: boolean) => void;
   onReselect: (file: PickedFile) => void;
   isImporting: boolean;
+  importSuspended?: boolean;
 }
 
 export function PreviewStep({
@@ -28,6 +34,7 @@ export function PreviewStep({
   onConfirm,
   onReselect,
   isImporting,
+  importSuspended = Z004_IMPORT_SUSPENDED,
 }: PreviewStepProps) {
   const { file_info, matched_summary, error_summary, duplicate_check } = preview;
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -125,7 +132,7 @@ export function PreviewStep({
       {error_summary.count > 0 && <ErrorRowsTable errorSummary={error_summary} />}
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={handleImportClick} disabled={isImporting}>
+        <Button onClick={handleImportClick} disabled={isImporting || importSuspended}>
           取り込む
         </Button>
         <FilePicker

@@ -83,7 +83,7 @@ owner承認の狭いScope補正（2026-09-14）: `docs/decision-log.md` のD-082
 
 ## Design Sources
 
-- [提案する設計とHC-D1〜D11](../../agent-guidance/context-efficiency.md)
+- [提案する設計とHC-D1〜D11](../harness-context/2026-09-24-context-efficiency.md)
 - [workflow](../../DEV_WORKFLOW.md)、[役割](../../AGENT_OPERATING_MANUAL.md)、[CI](../../ci.md)、[profile](../../project-profile.md)
 - [AGENTS](../../../AGENTS.md)、[Codex共有契約](../../agent-guidance/shared.md)、`CLAUDE.md`、既存safe wrapper/tests
 

@@ -2,21 +2,19 @@
 
 CIとmerge evidenceの正本。設計理由とwire契約は [merge-evidence.md](agent-guidance/merge-evidence.md)（MG-D1〜D12）。
 
-## 移行状態
+## 現行契約
 
-CI/helperはlegacy gate下で導入する。bootstrapのDraft/Ready・分類失敗、merge後のdocs-only、検証用rulesetの拒否を確認し、ownerの本番有効化承認とread-backが揃ってからgithub modeのReady/mergeを利用する。有効化事実はPR専用commentとhelper statusで確認し、この文書に未確認の設定完了を記録しない。
-
-GitHubが強制するのはmainへのPRとCI。review/manual/R4はhelperが確認し、直接UI merge・確認を飛ばす直接gh mergeは禁止。GitHub UIがCI成功だけでmerge可能と示し得る残存リスクを受容した契約であり、非CI結果をserverが強制するとは主張しない。
+GitHubはmainへのPRとCIを強制し、helperはreview/manual/R4を確認する。直接UI merge・確認を飛ばす直接gh mergeは禁止し、GitHub UIがCI成功だけでmerge可能と示し得る残存リスクを受容した契約であって、非CI結果をserverが強制するとは主張しない。
 
 ## Verification Ladder
 
 | 層 | 目的 | 証跡 |
 |---|---|---|
 | L0 pre-push | push増分のfeedback、Ready push拒否 | `.local/quality-check.log` |
-| L1 local full | 全gateとlocal固有確認。legacyでは必須merge証拠 | `.local/ci-evidence/` |
+| L1 local full | 全gateとlocal固有確認 | `.local/ci-evidence/` |
 | L2 hosted final | 必要jobの実成功をMerge gateへ集約 | GitHubの対象workflow/check |
 
-github modeはhostedを最終CI根拠にし、一律のlocal/full/SHA三点一致を要求しない。localで観測した失敗、Windows L3・manual/R4の保護は維持する。legacyはCLEANなcompleted HEADで`local-ci.sh full`を実行し、PR HEAD・PR本文のL1 SHA・required hosted headShaの三点一致を維持する。
+hostedを最終CI根拠にし、一律のlocal fullやPR本文へのSHA転記をmergeの条件にしない。localで観測した失敗、Windows L3・manual/R4の保護は維持する。
 
 ## Hosted Trigger Model
 
@@ -46,16 +44,7 @@ CI-PUBLIC-D1: この repository は public で、現行 workflow は standard Gi
 
 free minutes と無関係に、runner / Actions service の障害、concurrency、cache、重複実行には運用コストがある。CI-TRIGGER-D1 の 1 HEAD 1 final、L1 での事前検証、失敗原因を直してからの recovery を維持する。
 
-以下は **legacyだけ** のActions利用不能時の例外。github modeはActions利用不能ならmergeを停止する。
-
-GitHub-hosted runner が利用不能な場合、pure docs-only（workflow / release contract 非接触）は従来どおり 0 hosted run とする。workflow / release contract の docs-only change は原則として owner Ready 後に explicit dispatch を 1 run するが、Actions 利用不能かつ次の閉じた経路へ完全一致する場合だけ `not-required` にできる。
-
-Actions 利用不能時の `Hosted CI Requirement` 例外は次の閉じた 2 経路だけとする。
-
-1. **non-release R2/R3 Actions unavailable**: migration design doc を含むが、実際の R4 mutation や release を行わない変更は `not-required` にできる。exact-HEAD `local-ci.sh full`、risk-tier の独立 review、PR body の未実行 hosted gate/availability 理由、owner residual-risk disposition をすべて要求し、利用可能になった後に必要な HEAD/main を backfill する。
-2. **public repository Phase B bootstrap R4**: active control PR の source Actions allocation が利用不能で、かつ destination Actions を安全上 push 前から無効にする Phase B に限り `not-required` にできる。固定 final-root fresh clone の local full、privacy/public-surface gate、R4 Double Audit/closure、PR body の例外、owner disposition を compensating evidence とする。destination Actions は後続の CI 再設計 R3 まで有効化しない。
-
-上記以外の release、R4、workflow executable change は `required` のまま。`not-required` でも観測済み product/test/gate failure は blocker であり、infrastructure/cancel/availability 以外を owner disposition してはならない。この例外の追加自体を行う PR は workflow gate change として Double Audit を必須とし、owner disposition が得られなければ merge しない。
+GitHub Actions が利用不能なら merge を停止し、許可済みの local 作業と証跡を保存する。
 
 ## Local Commands
 
@@ -69,7 +58,7 @@ changedはorigin/main（なければmain）とのmerge-baseからPR全差分を�
 
 local fullとhosted workflow jobは同じ`run-workflow-tests.sh`を呼び、検証一覧を複製しない。hosted docs jobは全経路でfetch-depth: 0、実PR head/baseを用いてPK5を実行する。浅い履歴や解決不能baseは成功にしない。Node pinとRuby/ripgrep/Pythonを用意する。
 
-local evidenceは開始/終了のHEADとtree状態を保存し、gate中のHEAD更新・CLEANからDIRTYへの変更を失敗にする。DIRTYは診断用、legacyのmerge証拠はfull/CLEAN/同一HEADだけ。github modeでもlocalでの失敗を無視しない。
+local evidenceは開始/終了のHEADとtree状態を保存し、gate中のHEAD更新・CLEANからDIRTYへの変更を失敗にする。DIRTYは診断用。localでの失敗を無視しない。
 
 ## Classifier Contract
 
@@ -77,7 +66,7 @@ local evidenceは開始/終了のHEADとtree状態を保存し、gate中のHEAD�
 
 ## Pre-push Contract
 
-pre-pushは実際のpush先remote_refのReady状態を確認し、Ready pushと照会失敗を拒否する。修正はDraftへ戻す。Rust、docs、env、traceability、frontend routes/typecheck/lintとPK5を維持する。legacyは修正HEADのlocal fullと旧遷移を、新modeは対象検証・改版record・hosted finalを使う。
+pre-pushは実際のpush先remote_refのReady状態を確認し、Ready pushと照会失敗を拒否する。修正はDraftへ戻す。Rust、docs、env、traceability、frontend routes/typecheck/lintとPK5を維持する。修正後は対象検証・改版record・hosted finalを使う。
 
 Rustまたはtraceability分類では`cargo run --bin generate_traceability -- --check`を1回実行し、T1/T2/T4のERRORをpush拒否、T3を従来どおりWARNとして扱う。全Rust関数名へ`_reqNNN`だけを要求する重複検査は使わない。REQ対象の名前規約と、技術/workflowテストの適用SPEC・設計IDはreviewで確認し、機械検査の成功を全テストの仕様対応の証明にしない。
 
@@ -85,9 +74,9 @@ Rustまたはtraceability分類では`cargo run --bin generate_traceability -- -
 
 ## Stale Green Prevention
 
-新modeは`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+は`--packet`、R0/R1は`--risk`と`--manual required|not-required`を明示する。capture/server/head/baseが変われば記録し直す。Ready/mergeはowner指示の後、helperがfreshなPR・record・rules・CIを確認する。mergeはmatch-headとstrictを使い、admin fallbackはない。
+正規経路は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+は`--packet`、R0/R1は`--risk`と`--manual required|not-required`を明示する。capture/server/head/baseが変われば記録し直す。Ready/mergeはowner指示の後、helperがfreshなPR・record・rules・CIを確認する。mergeはmatch-headとstrictを使い、admin fallbackはない。
 
-旧legacyは従来のstate-only、exact-HEAD full、PR本文の三点一致を継続する。Ready後の修正はDraftへ戻し、旧greenを流用しない。base同期時のclosureとmanual限定再利用はMG-D6/D7、復旧はMG-D11に従う。
+Ready後の修正はDraftへ戻し、旧greenを流用しない。base同期時のclosureとmanual限定再利用はMG-D6/D7、Actions停止時の扱いは[merge-evidence](agent-guidance/merge-evidence.md)「closeoutとActions停止時」に従う。
 
 ## Cache Policy
 

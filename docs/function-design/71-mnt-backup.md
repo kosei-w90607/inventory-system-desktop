@@ -230,6 +230,7 @@ fn restore_backup(
 5. バックアップファイルを `{db_path}` にコピー
 6. `db::init_database(db_path)` で新しい接続を作成
    - PRAGMA再設定＋マイグレーション実行が含まれる
+   - 新しすぎる版の backup は差し替え後の open で拒否され、現在の DB に戻る（MNT-03-D11、22 §3.2。ステップ8の巻き戻しで `RestoreError::Recovered`）
 7. 成功の場合（**committed manifest は operation_log 記録完了まで durable な pending marker として保持する** — manifest を log より先に消すと「7d INSERT 前の中断で manifest / temp / 退避が全て無く reconcile 非起動 → log 恒久欠落」の反例が成立する。Codex 第 6 round P2）:
    a. manifest の phase を `committed` へ原子的に durable 更新する（MNT-01-D5: 退避ファイル削除より前が必須。**更新失敗時は新接続を公開せず退避も削除しない** — 失敗点により「rename 前 = active 確定の Err」と「rename 後 sync 失敗 = durability 不明の unrecoverable」に分類する。D5 durability 契約 (e)）
    b. 退避ファイルを削除（`.restore_backup` ファイル群の unlink 完了後、**親 directory sync で永続化**してから次へ進む — D5 durability 契約 (d)）
@@ -305,7 +306,7 @@ match mnt::backup::restore_backup(old_conn, &backup_path, &db_path) {
 
 ### 71.8 check_auto_backup
 
-**関数要求**: 自動バックアップの条件を判定し、必要なら実行する。setup hook（起動時）とフロントエンドタイマー（60秒間隔）から呼ばれる
+**関数要求**: 自動バックアップの条件を判定し、必要なら実行する。setup hook（起動時）とフロントエンドタイマー（60秒間隔。共通レイアウト〈UI-12〉が mount し、画面に依らない。UI-11b-D13）から呼ばれる
 
 **シグネチャ**:
 ```

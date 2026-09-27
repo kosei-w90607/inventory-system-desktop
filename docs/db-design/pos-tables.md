@@ -1,5 +1,35 @@
 # テーブル定義（POS連携）
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、sale_recordsと日報の分離は維持する。
+
+| 保存先 | 項目 | 制約と意味 |
+|---|---|---|
+| pos_import_sources（新設） | id INTEGER PK AUTOINCREMENT、file_hash TEXT、received_at TEXT | hashはNOT NULL UNIQUE、受領日時はNOT NULL。同hashは最初のID/受領時刻を維持。正のID、空集合cursorは0 |
+| pos_import_sources | machine_no TEXT、report_kind TEXT、settlement_no TEXT、settled_at TEXT | 全てNULL可。IOが抽出したメタの意味を保持し、番号のleading zero・resetを推測で消さない。日時不明はNULL。日付から日時へ勝手な0時を補わない。settled_atは識別と表示のメタで、実測との前後判定に使わない |
+| pos_import_sources | settlement_date TEXT NOT NULL | parserが検証した精算日。拒否資料の日付表示にも使用。旧importからの受領backfillは既存精算日を保持 |
+| pos_import_sources | identity_rejection_code TEXT、identity_rejected_at TEXT | 両方NULLまたは両方必須。codeはidentity_conflict / missing_identityのCHECK。BIZが初回の拒否時に証拠TXで保存し、取消/再実測で削除しない。raw明細は格納しない |
+| csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない |
+
+同sourceの再取込み可否はactive hash拒否だけでなく、BIZの同一精算別hash guardにも従う。受領済みの別hashとの関係が未解決なら、元importを取り消しても自動で解除しない。
+
+識別メタのNULL許容は同日追加の許可ではない。同じsettlement_dateのactive import（completed / completed_partial）をcsv_imports起点で取得し、sourceが取得できない行やmachine_no / settlement_noの片方・両方がNULLの行も除外しない。同日activeが存在し、取込み対象側または比較先側の識別メタが不足すれば、BIZは追加確認によらずsource_identity_conflictで拒否する。同日activeなしはこの追加guardの対象外だが、全受領sourceとの別hash衝突検査等は維持する。NULLを仮キーや衝突なしへ読み替えない。
+
+初導入の本番は[ADR D3 / D8](../adr/2026-09-18-stocktake-time-evidence.md)の新形式で開始し、旧Z004試験取込みを持ち込まない。現行csv_importsのimported_atはアプリ取込み日時であり、精算日時や識別メタのbackfill元にはできない。原本がlayout Aでも旧importの保存情報は不足し得る。sourceなし/メタ不足のactive importが存在すれば、本番前preflight用に全日付を列挙できるよう行を保持し、比較先としての拒否も維持する。DB列追加だけで本番準備完了にせず、抽出→保存の実装を必須とする。過去日を理由に取込みを拒否する新しい日付制約は置かない。migrationは売上・在庫移動・履歴を削除せず、開発/試験DBの整合した作り直しは別作業とする。
+
+構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
+
+原本メタと初回受領は不変。raw売上・商品名・JAN・file本体は格納しない。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含める。精算系列（番号のリセット区間）を証明する手段はないため、同じ帳票種別でmachine_no・settlement_noが一致する別hashは常に衝突とする。それでも(machine_no, settlement_no)へ一律UNIQUEは張らない。衝突した資料も受領して拒否証拠を残すためで、衝突の判定と拒否はBIZが行う。
+
+欠落表示の保存根拠はidentity_rejection_code/identity_rejected_atであり、保留集合ではない。BIZのread-only準備照会は拒否記録ありかつ当該sourceのactive importなしを抽出し、settlement_missingへ渡す。成功取込み後も証拠自体は保持し、取消でactiveがなくなれば再び表示対象とする。未提出/欠番の推測行を作らない。
+
+共有JAN行の保留集合はDBに新しい表やcsv_importsの仮行を作らず、同fileの再選択・再previewで再生成する。sourceだけでは元明細を復元できない。全行0でも再確認・相殺の判定の用途がある資料は受領し、解消後も売上0のimportとして完了できる。sale_recordsに0/0行を新設する理由にはしない。
+
+---
+
+計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D5 / D8（proposed）。資料受領記録と売上取込み状態を分離する。以下は現行スキーマであり、新列・新表は未実装。
+
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
 ---

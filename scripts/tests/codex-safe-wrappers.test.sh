@@ -88,7 +88,6 @@ printf 'fixture-marker\n' > "$fixture_repo/docs/guide.md"
 printf 'fixture-marker\n' > "$fixture_repo/AGENTS.md"
 printf 'fixture-marker\n' > "$fixture_repo/Plans.md"
 printf 'fixture-marker\n' > "$fixture_repo/.codex/README.md"
-printf 'fixture-marker\n' > "$fixture_repo/.codex/execpolicy.rules"
 printf 'fixture-marker\n' > "$fixture_repo/.codex/rules/default.rules"
 printf 'fixture-marker\n' > "$fixture_repo/.codex/bin/fixture-marker.txt"
 printf 'fixture-marker\n' > "$fixture_repo/.agents/skills/sample/SKILL.md"
@@ -134,7 +133,6 @@ default_files=(
     scripts/sample.sh
     .github/workflows/sample.yml
     .codex/README.md
-    .codex/execpolicy.rules
     .codex/rules/default.rules
     .codex/bin/fixture-marker.txt
     .agents/skills/sample/SKILL.md
@@ -332,12 +330,12 @@ assert_success "T9 public bar root" env -u CODEX_INVENTORY_REPO \
     "$SOURCE_ROOT/.codex/bin/codex-inventory-bar" --debug
 grep -Fq "repo: $SOURCE_ROOT" "$out" || fail "T9 public bar did not resolve public repo"
 
-# T11: execpolicy mirrors are identical and contain no history-view path token.
-cmp "$SOURCE_ROOT/.codex/execpolicy.rules" "$SOURCE_ROOT/.codex/rules/default.rules" ||
-    fail "T11 execpolicy mirrors differ"
-if rg -n "$OLD_ROOT_PATTERN" \
-    "$SOURCE_ROOT/.codex/execpolicy.rules" \
-    "$SOURCE_ROOT/.codex/rules/default.rules"; then
+# T11: .codex/rules/default.rules is the only project policy (no tracked mirror)
+# and contains no history-view path token.
+if git -C "$SOURCE_ROOT" ls-files --error-unmatch .codex/execpolicy.rules >/dev/null 2>&1; then
+    fail "T11 retired execpolicy mirror is still tracked"
+fi
+if rg -n "$OLD_ROOT_PATTERN" "$SOURCE_ROOT/.codex/rules/default.rules"; then
     fail "T11 execpolicy still contains history-view path tokens"
 fi
 

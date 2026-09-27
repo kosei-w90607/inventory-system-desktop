@@ -144,7 +144,7 @@ grep -Fq "workflow-git" "$repo/.local/quality-check.log" || fail "workflow-git c
 
 FAKE_WORKFLOW_GIT_EXIT=9
 if run_hook true; then
-    fail "workflow-git (PK5/STATECAP) failure was swallowed"
+    fail "workflow-git (PK5) failure was swallowed"
 fi
 assert_last_contains "$repo/.local/quality-check.log" "FAIL workflow-git"
 unset FAKE_WORKFLOW_GIT_EXIT

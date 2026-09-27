@@ -1,5 +1,18 @@
 # 65. 入出庫記録・在庫変動追跡 完成形
 
+## 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D6〜D9。棚卸しの現在庫訂正は、下記の一般的な取消/訂正完成形とは区別し、確定headerを取り消さず新しい現物確認を追記する。新方式はここに記す差分だけを導入し、一般業務記録の取消機能を同時実装しない。
+
+- 棚卸し詳細 `/stocktake/records/$stocktakeId` の商品行に「今の数を確認して直す」を置く。差異movementだけの既存一覧とは別に、既存get_stocktake_items/find_stocktake_itemで参照明細を選べる入口を持ち、差0・自動入力の商品も訂正対象から落とさない。
+- 現在のactive明細がある商品は、その明細の計数へ案内する。なければ独立再実測のbegin/saveを使用する。過去Nの直接編集や、保存日時だけ付け直す操作は置かない。
+- DTOのstocktake_adjustment_kindはcompletion / rollback_compensation / recountを区別し、「確定時の補正」「取消の打ち消し」「現物再確認」と表示する。区分をcreated_atとcompleted_atの大小やnoteから推定しない。確定差異件数・代表明細はcompletionに限定する。
+- recountは補正前L・実数N・差・S/E・保存順序・参照明細を保持し、差0でも表示する。movementがある場合はrecountへの関連も辿れる。importを取り消しても独立recountとその補正は残す。
+- 旧headerのreconciliation_version=0と既存NULL区分の表示は保存する。新しい再実測/補償を旧確定差異へ混ぜない。header.total_costと評価原価は非遡及で、「現在庫の再確認。確定時の評価額は変更していません」と明示する。
+- 詳細への到達と復帰は既存の入出庫履歴・商品別movement・returnToを使う。検索条件を保持し、保存後の再取得はDBの結果を反映する。新しい汎用取消routeや新しいSidebar項目は作らない。
+
+IO/BIZは[20](20-io-product-repo.md)・[21](21-io-inventory-repo.md)・[35](35-biz-stocktake-service.md)、wireは[42](42-cmd-sales-stocktake.md)、操作の失効とfocusは[73](73-ui-stocktake.md)の新契約に従う。見た目の新規部品ではなく、既存の詳細表・補助文・保存feedbackで区別する。
+
 > 対応仕様: REQ-201 / REQ-202 / REQ-203 / REQ-204 / REQ-205 / REQ-303 / REQ-902 / REQ-206 / REQ-207 / REQ-208
 >
 > 入力ドキュメント: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、`docs/db-design/transaction-tables.md`、`docs/db-design/tracking-system-tables.md`、`docs/function-design/21-io-inventory-repo.md`、`docs/function-design/31-biz-inventory-service.md`、`docs/function-design/44-cmd-inventory.md`、`docs/function-design/55-ui-csv-import.md`、`docs/function-design/61-ui-receiving.md`、`docs/function-design/62-ui-manual-sale.md`、`docs/function-design/63-ui-return-exchange.md`、`docs/function-design/64-ui-disposal.md`、`docs/function-design/72-mnt-log-manager.md`、`docs/SCREEN_DESIGN.md`
@@ -252,6 +265,8 @@ UI-03 の既存 `return_records.receipt_image_path` は互換維持し、共通�
 CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。出力は検索条件を反映する。
 
 ## 65.10 実装スライス
+
+下記slice 4cの「snapshot差では定義しない」は現行実装/完了済みreconciliation_version=0の旧表示契約に限定する。新方式では冒頭proposed節を正とし、completionの補正量=N-L、表示差異=L-N、stock_afterは後続移動を含む。recount/rollback_compensationを確定補正と同値扱いしない。新方式のschemaとwriter/CMD/UIは同じ配布単位とし、この一般スライス順を根拠にDBだけ先行稼働させない。
 
 完成形は一度に実装しない。source docs は完成形を保持し、実装 PR は次の順で小さく切る。
 

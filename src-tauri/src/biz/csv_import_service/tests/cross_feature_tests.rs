@@ -211,7 +211,7 @@ impl World {
             preview.preview_data.duplicate_check.status,
             DuplicateStatus::AdditionalImportConfirmationRequired
         );
-        let result = commit_csv_import(
+        let result = commit::legacy_commit_csv_import(
             self.conn_mut(),
             CommitRequest {
                 additional_import_confirmed: confirmed,
@@ -234,7 +234,7 @@ impl World {
     fn rollback(&mut self, index: usize) {
         self.trace.push(format!("Rollback(import={index})"));
         let import = self.imports[index].clone();
-        let result = rollback_csv_import(self.conn_mut(), import.id).unwrap();
+        let result = rollback::legacy_rollback_csv_import(self.conn_mut(), import.id).unwrap();
         assert!(result.success);
         if import.active {
             self.model.csv(
@@ -437,7 +437,7 @@ fn temporal_trace(actions: &[Temporal]) -> Option<String> {
         match action {
             Temporal::Start => {
                 stocktake = Some(
-                    stocktake_service::start_stocktake(world.conn_mut())
+                    stocktake_service::legacy_start_stocktake(world.conn_mut())
                         .unwrap()
                         .stocktake_id,
                 );
@@ -451,7 +451,7 @@ fn temporal_trace(actions: &[Temporal]) -> Option<String> {
                         |r| r.get(0),
                     )
                     .unwrap();
-                stocktake_service::update_count(
+                stocktake_service::legacy_update_count(
                     world.conn(),
                     &stocktake_service::UpdateCountRequest {
                         stocktake_item_id: id,
@@ -481,7 +481,7 @@ fn temporal_trace(actions: &[Temporal]) -> Option<String> {
             }
             Temporal::Complete => {
                 // 対象外のSKUはforce_fill。確定失敗を時点問題の再現として数えない。
-                stocktake_service::complete_stocktake(
+                stocktake_service::legacy_complete_stocktake(
                     world.conn_mut(),
                     &stocktake_service::CompleteStocktakeRequest {
                         stocktake_id: stocktake.unwrap(),

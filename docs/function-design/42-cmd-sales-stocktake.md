@@ -1,5 +1,35 @@
 ## 22. CMD-09: 売上集計コマンド群 / CMD-10: 棚卸しコマンド群 / CMD-01 追加: 一括インポート / CMD-11 部分: 整合性チェック
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D7〜D9。以下の現行update_count登録は新schema migration・全writerのkind対応・context必須UIと同じruntime変更で外し、tokenなしで書ける公開入口を残さない。schemaだけが新しく無検査commandが到達可能な中間版を稼働/出荷しない。通常計数・保留解除・記録詳細からの訂正は同じAPIを使う。
+
+| command | wire入力 | wire出力 |
+|---|---|---|
+| begin_stocktake_count | request: BeginStocktakeCountRequest | Result<BeginStocktakeCountResult, CmdError> |
+| save_stocktake_count | count_token: String、actual_count: i64 | Result<StocktakeCountSaveResult, CmdError> |
+| abandon_stocktake_count | count_token: String | Result<(), CmdError>。保存済み実測の取消は行わない |
+
+BeginStocktakeCountRequestはstocktake_item_idとpurpose。purposeはtagged enumで `kind=in_progress` / `kind=independent_recount` の2種。enumにない用途はdeserializeで拒否する。不正な組合せはdeserializeまたはBIZで拒否し、用途の値だけで所有者guardを迂回させない。
+
+BeginStocktakeCountResultはcount_token / stocktake_item_id / product_code / product_name / stock_unit / book_at_start / purposeを持つ。StocktakeCountSaveResultはstatus（saved / replayed）/ stocktake_item_id / recount_id（通常計数はnull）/ system_stock / actual_count / difference / stock_afterを持つ。difference=L-N、補正の符号N-Lと混同しない。active保存時は現在庫を変えず、独立再実測では即時補正後のstock_afterを返す。内部のS/E・revision・両cursor・DB世代はwire入力に追加しない。
+
+#### 保管・ロック・失効
+
+CMDのAppStateにtoken→BIZが生成したCountContextの保管場所を置く。BIZはAppState/cacheを参照しない。beginはDB lockでBIZに生成させ、DB lockを解放後に保管する。saveはcontextを短くlookupして保管lockを解放し、その後DB lockでBIZへ渡す。lookup失敗でも保存済みrequestの照会を先にできるよう、OptionとしてBIZへ渡す。DBとcontext/cacheのlockを同時保持しない。
+
+contextの有効性を決めるのはBIZの用途・DB世代・所有者・版の検査であり、CMDのcacheに存在するだけでは書込み権限にならない。abandonはBIZの失効処理を通して未保存contextを破棄する。saveの応答喪失後は同tokenで再送し、commit済みならBIZのDB照会でreplayedになる。再起動で未保存tokenを復元しない。
+
+CMDはDB接続の交換で全contextを失効させ、DB世代を進めてBIZへ渡す。既にlookupされた内部contextも古いDB世代として拒否する。contextの失効の条件は[ADR D1](../adr/2026-09-18-stocktake-time-evidence.md)と[35](35-biz-stocktake-service.md)に従い、CMDはOSの通知を受ける仕組みや時計の検査を持たない。UIの時計申告で有効性を決めない。
+
+#### エラー・読取り・登録
+
+拒否のwireは[40の回復型](40-cmd-product.md)に統一する。get_stocktake_items / find_stocktake_item / get_stocktake_recordへ、kind・flag・保存先・補正区分・recountをBIZから透過する。完了済みitemの読取りを利用し、差0の商品にも訂正入口を用意する。fix_integrityのcommand署名は変更せず、BIZ/repoの版更新失敗を既存DBエラーへ変換する。
+
+get_stocktake_recordのheader.reconciliation_versionも生成wireへ透過し、UIが旧完了記録の表示契約と新方式を区別できるようにする。CMDが版を再推定しない。
+
+runtimeでは新commandのtauri/specta属性、collect_commands登録、旧update_countの公開登録削除、bindings生成と全caller/mockの切替を一緒に行う。DB置換時の拒否は自動testで検証する。ownerのWindows L3は通常計数、記録変化後の数え直し、取込み後の要再確認→再起動→数え直しで解消、完了後の訂正の可視結果に限定し、手動のDB故障注入を要求しない。
+
 ### 22.1 モジュール構成
 
 ```
@@ -147,6 +177,8 @@ fn get_active_stocktake(
 
 #### start_stocktake
 
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。BIZ が引数・DB の状態によらず停止 error（`ValidationFailed`、[35 §20.0](35-biz-stocktake-service.md#200-現行buildの一時停止) の BIZ-06 停止文言）を返し、通常変換で kind = `validation`、field = null、error_id = null になる。
+
 **関数要求**: 新しい棚卸しを開始する
 
 **シグネチャ（Tauriコマンド）**:
@@ -223,6 +255,8 @@ fn find_stocktake_item(
 
 #### update_count
 
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。BIZ が引数・DB の状態によらず停止 error（`ValidationFailed`、[35 §20.0](35-biz-stocktake-service.md#200-現行buildの一時停止) の BIZ-06 停止文言）を返し、通常変換で kind = `validation`、field = null、error_id = null になる。
+
 **関数要求**: 棚卸しアイテムのカウントを更新する
 
 **シグネチャ（Tauriコマンド）**:
@@ -244,6 +278,8 @@ fn update_count(
 6. Err(BizError) → CmdError に変換
 
 #### complete_stocktake
+
+> **現行 build では一時停止中**（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D2）: 下記の処理ステップは変えない。BIZ が引数・DB の状態によらず停止 error（`ValidationFailed`、[35 §20.0](35-biz-stocktake-service.md#200-現行buildの一時停止) の BIZ-06 停止文言）を返し、通常変換で kind = `validation`、field = null、error_id = null になる。
 
 **関数要求**: 棚卸しを確定する
 

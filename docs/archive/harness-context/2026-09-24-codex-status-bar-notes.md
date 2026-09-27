@@ -1,3 +1,5 @@
+<!-- 2026-09-24 に .codex/status-bar/README.md から移送したdebug記録。本文は移送前のまま。 -->
+
 # Codex Inventory Status Bar Notes
 
 This directory tracks the project-local Codex status bar experiments for

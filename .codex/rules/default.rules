@@ -1,5 +1,5 @@
 # Project-local Codex exec policy for inventory-system.
-# This policy is mirrored at `.codex/execpolicy.rules` and `.codex/rules/default.rules`.
+# This file is the only project-local Codex policy; Codex loads `.codex/rules/*.rules`.
 # Keep Desktop/global approval narrow: only the repo-owned safe wrappers should be auto-allowed.
 
 prefix_rule(

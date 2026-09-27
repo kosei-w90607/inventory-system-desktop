@@ -1,5 +1,13 @@
 # テーブル定義（トランザクション）
 
+## 時点証拠契約（proposed・未実装）
+
+[時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1 / D8との接続。以下の入庫・返品交換・手動販売・廃棄のheader/itemカラムと符号規約は変更しない。
+
+在庫を動かす既存TXは、header/item・products.stock_quantity・inventory_movementsに加えproducts.stock_revisionを一括確定する。版は[専用repo更新](../function-design/21-io-inventory-repo.md)内で強制し、movement・必須ログ・版更新のいずれかの失敗でTX全体を戻す。レジ処理済み返品など在庫を動かさない経路を、架空のmovementで失効通知することはしない。既存冪等要求の再送は新しい移動でも版更新でもない。
+
+---
+
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
 ---

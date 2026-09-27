@@ -192,7 +192,7 @@ log "CLASSIFICATION_END"
 
 run_required docs "$REPO_ROOT" bash scripts/doc-consistency-check.sh
 
-# PK5/STATECAP は変更ファイルの classification に関係なく毎回実行する（docs gate と同様、
+# PK5 は変更ファイルの classification に関係なく毎回実行する（docs gate と同様、
 # ブランチ全体の git 履歴状態そのものに対する検査のため）。
 run_required workflow-git "$REPO_ROOT" bash scripts/check-workflow-git.sh
 

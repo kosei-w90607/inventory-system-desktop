@@ -6,6 +6,12 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ setTitle: vi.fn().mockResolvedValue(undefined) }),
 }));
 
+vi.mock("@/features/backup-restore/useAutoBackupCheck", () => ({
+  useAutoBackupCheck: () => undefined,
+  suspendAutoBackupCheck: vi.fn(),
+  resumeAutoBackupCheck: vi.fn(),
+}));
+
 vi.mock("@/features/receiving/ReceivingPage", () => ({
   ReceivingPage: () => <div>入庫記録ページ marker</div>,
 }));

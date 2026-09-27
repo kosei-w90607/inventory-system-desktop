@@ -37,7 +37,7 @@ export interface ReceivingRecordDetailPageProps {
 }
 
 export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecordDetailPageProps) {
-  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} };
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.receivingDetail(recordId),
     queryFn: () =>

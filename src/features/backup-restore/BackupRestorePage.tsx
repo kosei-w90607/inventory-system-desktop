@@ -8,7 +8,7 @@ import {
   Loader2,
   RotateCcw,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/patterns/PageHeader";
@@ -53,6 +53,7 @@ import {
   clearRestoreSuccessPending,
   setRestoreSuccessPending,
 } from "@/lib/restore-success-notification";
+import { resumeAutoBackupCheck, suspendAutoBackupCheck } from "./useAutoBackupCheck";
 import { open } from "@tauri-apps/plugin-dialog";
 
 const BACKUP_SETTING_KEYS = new Set([
@@ -164,29 +165,6 @@ export function BackupRestorePage() {
     [backups],
   );
 
-  useEffect(() => {
-    if (fatalRestoreKind) return;
-
-    const interval = window.setInterval(() => {
-      void (async () => {
-        try {
-          const created = await unwrapResult(commands.checkAutoBackup(), {
-            source: "commands",
-            cmd: "check_auto_backup",
-          });
-          if (created) {
-            await queryClient.invalidateQueries({ queryKey: queryKeys.backupRestore.list() });
-          }
-        } catch {
-          toast.error("自動バックアップ確認に失敗しました", { id: "backup-auto-check-error" });
-        }
-      })();
-    }, 60_000);
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [fatalRestoreKind, queryClient]);
-
   async function refetchBackupState() {
     await Promise.all([settingsQuery.refetch(), backupsQuery.refetch()]);
   }
@@ -291,11 +269,14 @@ export function BackupRestorePage() {
     setRestoreFailureErrorId(null);
     setStatusMessage(null);
     setRestoreState((current) => ({ ...current, confirmOpen: false }));
+    // UI-11b-D13: 復元の間は自動バックアップの確認を止める（実行中の確認の解決は待たない）
+    suspendAutoBackupCheck();
     try {
       await unwrapResult(commands.restoreBackup({ backup_path: restoreState.selected.file_path }), {
         source: "commands",
         cmd: "restore_backup",
       });
+      resumeAutoBackupCheck();
       queryClient.clear();
       // UI-11b-D11: 遷移先ホームで success Alert を表示する in-memory one-shot flag。
       // navigate が reject された場合は次回到達での誤表示を防ぐため flag を消去する
@@ -315,9 +296,11 @@ export function BackupRestorePage() {
       const kind = restoreErrorKind(error);
       setRestoreFailureErrorId(restoreErrorId(error));
       if (kind === "restore_failed_unrecoverable" || kind === "restore_durability_unknown") {
+        // UI-11b-D13: fatal 2 種は再起動まで確認を止めたままにする
         setFatalRestoreKind(kind);
         setErrorMessage(null);
       } else {
+        resumeAutoBackupCheck();
         setErrorMessage(
           "バックアップの復元に失敗しました。現在のデータには戻しています。もう一度お試しください。",
         );

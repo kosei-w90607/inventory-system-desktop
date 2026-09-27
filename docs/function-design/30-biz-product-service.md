@@ -1,5 +1,21 @@
 ## 4. BIZ-01: 商品管理ロジック
 
+### 時点証拠契約（proposed・未実装）
+
+SPEC-STK-TIME-D1 / D4 / D8。新方式では汎用ProductUpdatesのstock_quantity欄を使用も公開もしない。createの初期数量と同TXの初期movementは維持し、商品一括importの既存商品上書きで在庫を変更しない。
+
+- create/update/商品一括importのTX内で、在庫連動対象とJANを共有する候補を全て検査する。曖昧なJANで連動を有効化する操作、および既存の連動対象へ新たな曖昧さを作るJAN更新/追加を拒否する。previewだけの検証でcommitを通さない。
+- pos_stock_syncの書込みは、変更前値を同TXで読む単一の共通repo経路を通す。変更時は商品revisionを進め、true→falseの場合だけ同じ呼出しでpos_sync_disabled_revisionを保存する。汎用更新から直接setできる分岐を残さない。既存商品のtrue→falseはheld履歴の有無を問わず、同TXでpos_sync_disabled_revisionに変更後の版を保存する。受領メタだけではheld対象を再構成できないため、全切替を保守的に記録する。現在庫の補正や既存flagの解消は行わず、記録保存失敗は設定/版も含めTX全体を戻す。updateと既存商品を変更する商品一括importに共通で適用し、新規false/false→falseは記録しない。
+- 既存商品の連動再有効化は一意性と新方式の現物確認を要求する。pos_sync_disabled_revisionがあれば、それより後の適用済み新方式実測が必須で、未達はrecount_requiredと現在の回復対象を返す。pending保存やforce_fillでは解除しない。参照できる棚卸し明細がない場合は偽の明細を作らず、ADRの既知の制限として非連動を維持する。checkboxを実測の代わりにしない。
+- 準備照会が `ej_unverified` を返す間（[32](32-biz-csv-import-service.md)。EJの日次取込みがない㉘のbuildでは常に）、create/update/商品一括importは在庫連動のfalse→trueの遷移と、新規作成の商品・商品一括importの新規行でのtrueの設定を拒否する。true→true（既存の有効設定のままの更新）は許可し、既存の有効設定は自動で書き換えない。拒否は既存の `validation` kindとfield `pos_stock_sync` で返し、message「電子ジャーナルの毎日の取込みが使えるようになるまで、在庫連動は有効にできません」はBIZが作る。商品一括importでは当該行だけをerror行とし、他の正常行の取込みは続ける（TX全体は拒否しない）。DBのflag・設定key・確認checkboxで `ej_unverified` を外さない。外す条件（32）には、PLU書出しの時点と準備照会で切り詰め後の名称が他の商品や部門名と重なることを知らせる検知と、登録名の付け直しの支援が入っていることを含む（店は色違いの商品が多く、名称の重なりが多いと相殺の判定で候補の商品の数え直しが増えるため）。
+- `ej_unverified` の間、商品一括importで `pos_stock_sync` を省略した行の既定値はfalseにする（現行の省略時true、DBの `DEFAULT 1` は変えない）。商品フォームのpcs商品の提案値は[51](51-ui-product-form.md)が同じ条件でfalseにする。
+- `ej_unverified` を外した後、在庫連動したことのない商品を初めてtrueにするとき、在庫連動なしで取り込んだ売上がその商品にあれば、その最後の売上の資料を計数開始前に受領していた（`source_id <= source_cursor`）適用済み実測を要求し、未達なら `recount_required` で拒否する（上の再有効化の規則と同じ趣旨の、より強い基準を初回に当てる）。初導入で売上だけの期間に本番の販売がなければ該当しない。
+- 本番前preflightは共有JAN候補・legacy基準・EJの未検証（`ej_unverified`）と、その間に残る既存の在庫連動の有効設定を具体的に示す。既存値を自動で書き換えず、商品同定の修正か利用者による非連動切替へ案内する。PLU対象/plu_dirtyは在庫連動の安全確認の代用にしない。
+
+商品get/update結果へsync_disabled_recovery: Option<CountRecoveryTarget>、商品一括importのpreview/結果へ同対象のVecを返す。判定はBIZ-03の準備照会と同じ規則を共用する（IOやUIで独自判断しない）。UI-01bはtrue→falseの操作時に警告し、保存後/再訪も未調整と回復先を表示する。商品一括importも非連動化を含む場合はpreviewと結果で同じ案内を返す。
+
+既存の価格改定・supplier・slot解放・初期在庫の意味は不変。BIZの拒否理由と復旧対象は[共通errorの新契約](40-cmd-product.md)で型付きに渡し、DB/数量範囲外は従来の失敗経路でTX全体を戻す。
+
 ### 4.1 モジュール構成
 
 ```
@@ -412,7 +428,7 @@ struct ImportRow {
    - 任意列 `PLU対象` は `1` / `0` / 空欄だけを受理する。それ以外は行 error とし、IO-03 は raw 値の parse だけを担う（BIZ-01-D4 / SPEC-PLS-D6）
 
 4. **各行のバリデーション**
-   - 商品コード: 空でないこと
+   - 商品コード: 空でないこと。空でなければ 100 文字（UTF-16 code unit）以内であること。超過は「商品コードは100文字以内で入力してください」（BIZ-01-D5）
    - 商品名: 空でないこと
    - 部門ID: 整数変換可能、departments に存在すること
    - 売価・原価: 0以上の整数
@@ -459,6 +475,10 @@ struct ImportResult {
 
 **処理ステップ**:
 
+0. **商品コードの上限の再検証**（BIZ-01-D5）
+   - TX を開く前に valid_rows の全行を §4.8 step 4 と同じ判定で調べる（wire から来る行を信頼しない）
+   - 1 行でも 100 文字（UTF-16 code unit）を超えれば BizError::ValidationFailed("商品コードは100文字以内で入力してください") を返し、DB を変えない（正常な行も登録しない）
+
 1. **TX開始**（conn.transaction()）
 
 2. **各行を処理**（TX内で直接 repo 関数を呼ぶ。create_product / update_product の BIZ 関数は内部でTXを開始するため、ネストTX回避のために呼ばない）
@@ -483,7 +503,9 @@ struct ImportResult {
 
 **エラーハンドリング**:
 - TX内でのDB操作失敗 → BizError::DatabaseError（TX自動ロールバック）
-- 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない
+- 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない。商品コードの上限だけは step 0 で再検証する（BIZ-01-D5）
+
+**設計判断（BIZ-01-D5、商品コードの長さ上限、2026-09-25）**: 商品コードの上限は 100 文字（owner 決定 2026-09-25）。在庫照会の route search `selected` / `q` の zod `.max(100)` と揃え、「登録できるのに照会で選べない」食い違いを消す。数え方は zod `.max()` と同じ UTF-16 code unit（Rust は `encode_utf16().count()`、定数 `constants::PRODUCT_CODE_MAX_LEN`）。文字数（`chars().count()`）では BMP 外の文字で照会より多く通し、byte 数（`len()`）ではかなで照会より少なく通すため採らない。判定は BIZ に置き、任意の文字列が入る唯一の経路である商品 CSV の取込み（preview_import の行検証と commit_import の TX 前の再検証）で閉じる。手入力の create_product は JAN（BIZ-01-D1）か §4.3 の発番で上限に届かず、update_product は product_code を変えないため判定を置かない。DB CHECK は置かない: `products.product_code` を外部キーで参照する定義が 8 あり、SQLite は CHECK の追加に `products` の再作成が要る一方、上の BIZ の判定で入口が閉じるため。
 
 ---
 

@@ -69,6 +69,33 @@ fn migrations() -> Vec<Migration> {
     ]
 }
 
+/// アプリが扱える最大の schema 版（`migrations()` から導く）
+pub(crate) fn app_max_version() -> i64 {
+    migrations()
+        .iter()
+        .map(|migration| migration.version)
+        .max()
+        .unwrap_or(0)
+}
+
+/// DDL を発行せずに、同じ接続で現在の schema 版を読む（MNT-03-D11）
+///
+/// `schema_versions` 表が無ければ版 0。存在の確認・読取りのその他の失敗は
+/// `MigrationFailed` にし、版 0 に倒さない。
+fn read_current_version_without_ddl(conn: &Connection) -> Result<i64, DbError> {
+    let exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'schema_versions')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| DbError::MigrationFailed(format!("schema_versionsの存在確認失敗: {}", e)))?;
+    if !exists {
+        return Ok(0);
+    }
+    get_current_version(conn)
+}
+
 /// schema_versionsテーブルを作成する（存在しなければ）
 fn ensure_schema_versions_table(conn: &Connection) -> Result<(), DbError> {
     conn.execute_batch(
@@ -127,17 +154,24 @@ fn apply_sql_migration(
 /// schema_versionsテーブルを確認し、未適用のマイグレーションを順番に実行する
 ///
 /// 22-mnt-migration.md §3.2:
+/// 0. DDL を発行せずに現在の最大バージョンを読み、アプリの最大より新しければ拒否（MNT-03-D11）
 /// 1. schema_versionsテーブルの存在チェック → なければ作成
-/// 2. 現在の最大バージョンを取得
-/// 3. 未適用のマイグレーションを順番に実行
+/// 2. 未適用のマイグレーションを順番に実行
 pub fn migrate(conn: &Connection) -> Result<(), DbError> {
+    // 0. 論理的な書込み（DDL・BEGIN・INSERT）より前に版を比較する（MNT-03-D11）
+    let current_version = read_current_version_without_ddl(conn)?;
+    let app_max = app_max_version();
+    if current_version > app_max {
+        return Err(DbError::SchemaNewerThanApp {
+            db_version: current_version,
+            app_max,
+        });
+    }
+
     // 1. schema_versionsテーブルを確保
     ensure_schema_versions_table(conn)?;
 
-    // 2. 現在のバージョンを取得
-    let current_version = get_current_version(conn)?;
-
-    // 3. 未適用のマイグレーションを順番に実行
+    // 2. 未適用のマイグレーションを順番に実行
     for migration in migrations() {
         if migration.version > current_version {
             match &migration.kind {
@@ -337,6 +371,165 @@ mod tests {
         assert_eq!(migration.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v2.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v3.matches("commit_transaction").count(), 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // MNT-03-D11: 新しすぎる版の DB を論理的な書込みの前に拒否する
+    // -----------------------------------------------------------------------
+
+    fn schema_version_rows(conn: &Connection) -> Vec<i64> {
+        let mut statement = conn
+            .prepare("SELECT version FROM schema_versions ORDER BY version")
+            .unwrap();
+        statement
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    fn schema_objects(conn: &Connection) -> Vec<(String, String, Option<String>)> {
+        let mut statement = conn
+            .prepare("SELECT type, name, sql FROM sqlite_master ORDER BY name")
+            .unwrap();
+        statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    fn table_row_counts(conn: &Connection) -> Vec<(String, i64)> {
+        let tables: Vec<String> = {
+            let mut statement = conn
+                .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+                .unwrap();
+            statement
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap()
+        };
+        tables
+            .into_iter()
+            .map(|table| {
+                let count = conn
+                    .query_row(&format!("SELECT COUNT(*) FROM \"{table}\""), [], |row| {
+                        row.get(0)
+                    })
+                    .unwrap();
+                (table, count)
+            })
+            .collect()
+    }
+
+    fn file_sha256(path: &std::path::Path) -> String {
+        use sha2::{Digest, Sha256};
+        format!("{:x}", Sha256::digest(std::fs::read(path).unwrap()))
+    }
+
+    fn dir_file_names(dir: &std::path::Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn test_migrate_req903_d11_rejects_newer_schema_without_writes() {
+        // REQ-903 / MNT-03-D11 / Matrix T6
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("inventory.db");
+        let newer = crate::db::test_support::write_newer_schema_db(&db_path);
+        let app_max = super::app_max_version();
+
+        let conn = Connection::open(&db_path).unwrap();
+        let versions_before = schema_version_rows(&conn);
+        let objects_before = schema_objects(&conn);
+
+        let error = super::migrate(&conn).unwrap_err();
+
+        assert!(matches!(
+            error,
+            DbError::SchemaNewerThanApp { db_version, app_max: max }
+                if db_version == newer && db_version == app_max + 1 && max == app_max
+        ));
+        assert_eq!(schema_version_rows(&conn), versions_before);
+        assert_eq!(schema_objects(&conn), objects_before);
+    }
+
+    #[test]
+    fn test_migrate_req903_d11_same_version_is_noop() {
+        // REQ-903 / MNT-03-D11 / Matrix T7: 同じ版は拒否しない（比較の境界）
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("inventory.db");
+        let conn = init_database(db_path.to_str().unwrap()).unwrap();
+        let versions_before = schema_version_rows(&conn);
+        assert_eq!(versions_before.last(), Some(&super::app_max_version()));
+
+        super::migrate(&conn).unwrap();
+
+        assert_eq!(schema_version_rows(&conn), versions_before);
+    }
+
+    #[test]
+    fn test_init_database_req903_d11_newer_schema_leaves_file_bytes_unchanged() {
+        // REQ-903 / MNT-03-D11 / Matrix T8 (i): 正常に閉じた DB は file の bytes も変わらない
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("inventory.db");
+        let newer = crate::db::test_support::write_newer_schema_db(&db_path);
+        let hash_before = file_sha256(&db_path);
+        let files_before = dir_file_names(dir.path());
+
+        let error = init_database(db_path.to_str().unwrap()).unwrap_err();
+        assert!(matches!(
+            error,
+            DbError::SchemaNewerThanApp { db_version, .. } if db_version == newer
+        ));
+
+        assert_eq!(file_sha256(&db_path), hash_before);
+        assert_eq!(dir_file_names(dir.path()), files_before);
+    }
+
+    #[test]
+    fn test_init_database_req903_d11_newer_schema_in_wal_keeps_logical_content() {
+        // REQ-903 / MNT-03-D11 / Matrix T8 (ii): 版が WAL にだけある DB も拒否し、論理内容を変えない
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("inventory.db");
+        drop(init_database(db_path.to_str().unwrap()).unwrap());
+        let app_max = super::app_max_version();
+        let writer = Connection::open(&db_path).unwrap();
+        writer
+            .execute_batch(
+                "PRAGMA wal_autocheckpoint=0;
+                 PRAGMA wal_checkpoint(TRUNCATE);",
+            )
+            .unwrap();
+        writer
+            .execute(
+                "INSERT INTO schema_versions (version, applied_at) VALUES (?1, '2026-09-25T00:00:00')",
+                [app_max + 1],
+            )
+            .unwrap();
+        let wal_path = std::path::PathBuf::from(format!("{}-wal", db_path.display()));
+        assert!(
+            std::fs::metadata(&wal_path).unwrap().len() > 32,
+            "WAL frame fixture required"
+        );
+        let counts_before = table_row_counts(&writer);
+        let versions_before = schema_version_rows(&writer);
+
+        let error = init_database(db_path.to_str().unwrap()).unwrap_err();
+        assert!(matches!(
+            error,
+            DbError::SchemaNewerThanApp { db_version, app_max: max }
+                if db_version == app_max + 1 && max == app_max
+        ));
+
+        assert_eq!(table_row_counts(&writer), counts_before);
+        assert_eq!(schema_version_rows(&writer), versions_before);
     }
 
     fn setup_v1_only_db() -> (tempfile::TempDir, Connection) {

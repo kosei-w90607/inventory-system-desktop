@@ -225,9 +225,43 @@ mod tests {
         (dir, conn, stocktake_id, item_id)
     }
 
+    // 35 §20.0 からの独立転記（42 §22.10。production定数をimportしない）。
+    const BIZ06_STOP: &str = "棚卸しの開始・数の保存・確定は一時停止中です。数えた後の入出庫が確定で打ち消される不具合を直すまで使えません。";
+
+    fn all_tables(state: &AppState) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+        let conn = state.db.lock().unwrap();
+        let names: Vec<String> = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        names
+            .iter()
+            .map(|name| {
+                let mut stmt = conn
+                    .prepare(&format!("SELECT * FROM \"{name}\" ORDER BY rowid"))
+                    .unwrap();
+                let width = stmt.column_count();
+                stmt.query_map([], |row| (0..width).map(|col| row.get(col)).collect())
+                    .unwrap()
+                    .collect::<Result<_, _>>()
+                    .unwrap()
+            })
+            .collect()
+    }
+
+    fn assert_stopped(err: CmdError) {
+        assert_eq!(err.kind, CmdErrorKind::Validation);
+        assert_eq!(err.message, BIZ06_STOP);
+        assert_eq!(err.field, None);
+        assert_eq!(err.error_id, None);
+    }
+
     #[test]
-    fn test_update_count_req205_negative_validation() {
-        // REQ-205 / BIZ-06-VAL-D1: 実CMDの負数境界とwire tripleを独立転記で固定する。
+    fn test_update_count_req205_negative_stops_before_validation() {
+        // REQ-205 / SPEC-STOP-D1,D2: 実CMDの負数でも入力検査より先に停止し、wireを独立転記で固定する。
         let negative_counts: Vec<i64> = vec![-1, -100, i64::MIN];
         for count in negative_counts {
             let (_dir, conn, _stocktake_id, item_id) = setup_in_progress_stocktake();
@@ -235,28 +269,49 @@ mod tests {
                 .manage(app_state_for_test(conn))
                 .build(tauri::test::mock_context(tauri::test::noop_assets()))
                 .unwrap();
+            let before = all_tables(&app.state::<AppState>());
 
             let err = update_count(app.state::<AppState>(), item_id, count).unwrap_err();
 
-            assert_eq!(err.kind, CmdErrorKind::Validation);
-            assert_eq!(err.message, "カウント数は0以上で入力してください");
-            assert_eq!(err.field, None);
+            assert_stopped(err);
+            assert_eq!(before, all_tables(&app.state::<AppState>()));
         }
     }
 
     #[test]
-    fn test_update_count_req205_zero_is_valid() {
-        // REQ-205 / BIZ-06-VAL-D1: 実CMDで0を受理し、更新結果まで到達する。
+    fn test_update_count_req205_zero_stops() {
+        // REQ-205 / SPEC-STOP-D1,D2: 実CMDで0も停止し、明細を更新しない。
         let (_dir, conn, _stocktake_id, item_id) = setup_in_progress_stocktake();
         let app = tauri::test::mock_builder()
             .manage(app_state_for_test(conn))
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
+        let before = all_tables(&app.state::<AppState>());
 
-        let result = update_count(app.state::<AppState>(), item_id, 0).unwrap();
+        let err = update_count(app.state::<AppState>(), item_id, 0).unwrap_err();
 
-        assert!(result.success);
-        assert_eq!(result.current_difference, 0);
+        assert_stopped(err);
+        assert_eq!(before, all_tables(&app.state::<AppState>()));
+    }
+
+    #[test]
+    fn test_start_and_complete_stocktake_req205_stop() {
+        // REQ-205 / SPEC-STOP-D1,D2: 実CMDの開始・確定（force_fillの有無、進行中あり）も停止する。
+        let (_dir, conn, stocktake_id, _item_id) = setup_in_progress_stocktake();
+        let app = tauri::test::mock_builder()
+            .manage(app_state_for_test(conn))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let before = all_tables(&app.state::<AppState>());
+
+        assert_stopped(start_stocktake(app.state::<AppState>()).unwrap_err());
+        for force_fill in [false, true] {
+            assert_stopped(
+                complete_stocktake(app.state::<AppState>(), stocktake_id, force_fill).unwrap_err(),
+            );
+        }
+
+        assert_eq!(before, all_tables(&app.state::<AppState>()));
     }
 
     #[test]

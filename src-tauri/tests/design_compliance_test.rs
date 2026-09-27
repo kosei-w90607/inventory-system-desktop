@@ -159,6 +159,8 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
         vec!["io::daily_report_parser"],
     );
 
+    map.insert("29-io-ej-parser.md", vec!["io::ej_parser"]);
+
     map.insert("25-io-plu-formatter.md", vec!["io::plu_formatter"]);
 
     map.insert("30-biz-product-service.md", vec!["biz::product_service"]);
