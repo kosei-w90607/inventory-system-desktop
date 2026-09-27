@@ -6,7 +6,7 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 6b51e223c3bf8e14a27136acb33a8223b8f75eac
 - Amendments: none
@@ -32,12 +32,13 @@ decision-log の番号予約: 本 PR は **D-092** を使う。D-091 は PR #98�
 - plan-gate（2026-09-27、round 3 の一括是正）: Plan Review round 3（上限）は両 reviewer とも reject。round 4 は回さず、同型の一括是正（裁定 r3）。予算の改定は owner 承認待ち。
 - plan-gate → plan-approved（2026-09-27、Coordinator、本 commit）: Plan Review round 3（上限、対象 `a76a1514`）は Claude 側（fresh Opus 5.5）・Codex 側（GPT-6 Astra、high）とも reject（P2 = helper が同じ head/base の broad だけを数えるのに Claude 側 broad の取り直しが無い、AC8 の期待値が `#座組` の link の追加と矛盾、S4 の残す文が AC2 / AC7 の禁止語に当たる、ほか P3）。round 天井に達したため追加の round は回さず、同型の一括是正（`6b51e223`、裁定 r3）で全件を反映し、Coordinator が現物で確かめた。owner 承認（2026-09-27）のもと予算を介入 10・relay 5 に改めた。Plan Commit = 本 commit の親（round 3 の一括是正後の承認版 `6b51e223`）。
 - plan-approved → implementing（2026-09-27、Coordinator、本 commit）: plan-approved の承認版（`10190352` の親）のまま Writer（Opus 5.5 subagent）に実装を発注する。packet の契約は変えない。
+- implementing → archive（2026-09-28、Coordinator、closeout、本 commit）: PR #113 を squash merge（`7c51572c`、2026-09-28）。packet と Matrix を archive へ移送し、Implementation Results と Review Response を記録。Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 10（owner 承認 2026-09-27 で 4 から改定。消費 6 = 起票承認 2026-09-25 1、範囲縮小の owner 決定 2026-09-25 1、Plan Review round 1〜3 の Codex relay 3、本改定と plan-approved の承認 1。残る見込み = Final Review の Codex relay 1、必要なら Codex closure 1、Ready 1、merge 1）
+- 介入回数上限: 10（owner 承認 2026-09-27 で 4 から改定。closeout 時の消費 12 で上限を 2 超過 = plan-approved までの 6、Final Review の Codex relay 2〈broad 107・closure 111〉、helper record の指示 1〈見込みに無かった〉、record の形の判断 1〈broad の record 前に是正を push した Coordinator の順序の誤りで生じた〉、Ready 1、merge 1〈owner 指示 2026-09-28〉。超過は merge 後の closeout で判明し、事前に上限の改定を諮っていない。plan-approved 時点の消費 6 = 起票承認 2026-09-25 1、範囲縮小の owner 決定 2026-09-25 1、Plan Review round 1〜3 の Codex relay 3、本改定と plan-approved の承認 1。残る見込み = Final Review の Codex relay 1、必要なら Codex closure 1、Ready 1、merge 1）
 - 実働時間上限: 15分（文書だけの変更で、owner の作業は Codex の起動 1 行と Ready・merge の判断に限られる見込み）
-- relay 往復上限: 5（owner 承認 2026-09-27 で 4 から改定。消費 3 = Plan Review round 1〜3 の Codex。残り = Final Review の Codex broad 1、必要なら是正の後の Codex closure 1。理由: round が天井の 3 まで回り、是正の後の取り直しにも Codex の合否を含めるため〈owner 決定 2026-09-25〉）
+- relay 往復上限: 5（owner 承認 2026-09-27 で 4 から改定。closeout 時の消費 5 = Plan Review round 1〜3 の Codex 3、Final Review の Codex broad 107・closure 111 の 2。plan-approved 時点の消費 3 = Plan Review round 1〜3 の Codex。残り = Final Review の Codex broad 1、必要なら是正の後の Codex closure 1。理由: round が天井の 3 まで回り、是正の後の取り直しにも Codex の合否を含めるため〈owner 決定 2026-09-25〉）
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -168,7 +169,7 @@ S1〜S7 が本 PR の実装範囲。行番号は base `e7c22f8f`（本 branch �
 - **S3 `docs/agent-guidance/` の退役した言及と effort の値だけを直す**（file の構成と `merge-evidence.md`・`evals/`・`profiles/` の本文は変えない）。
   - `README.md:8` の「適用条件が成立してから github mode を使い、bootstrap は legacy 規定を維持」の句を削る。他の行（`:5`・`:6` の shared / profiles の link を含む）は変えない。
   - `shared.md:9` の段落（Evidence Mode・legacy・三点一致）を削る。他の段落は変えない。
-  - `model-notes.md`: 見出し `## Effort の選定` は保つ（`evals/context-routing-fixture.md:11` が anchor で参照する）。節の本文は effort の値を持たず、Claude 側・Codex 側とも `../AGENT_OPERATING_MANUAL.md#座組`（link） を参照する 1〜2 文にする（`:7` の owner 方針 2026-09-14 と `:9` の値は座組表の effort 列が引き継ぐ）。`:9` の `[CLAUDE.md](../../CLAUDE.md#sonnet--opus-の-effort)` の link は `../AGENT_OPERATING_MANUAL.md#座組` へ付け替える（PR3 が CLAUDE.md の effort 節を座組表への参照に替えるので、そのままでは PR3 の merge で anchor が切れる。退役に伴う参照の付け替え = owner 決定の (4)）。`GPT-5.6 Sol` の見出しと文を GPT-6 Sol に改め、model 固有の傾向（Sol は Astra と同じ effort の選び方へ機械的に揃えない、Astra 向けの傾向を自動継承しない等）だけを残す。model-notes 全体で `medium` / `high` / `xhigh` の値の語を書かない（AC12）。公式確認日を更新する。
+  - `model-notes.md`: 見出し `## Effort の選定` は保つ（`evals/context-routing-fixture.md:11` が anchor で参照する）。節の本文は effort の値を持たず、Claude 側・Codex 側とも `../AGENT_OPERATING_MANUAL.md#座組`（link） を参照する 1〜2 文にする（`:7` の owner 方針 2026-09-14 と `:9` の値は座組表の effort 列が引き継ぐ）。`:9` の `[CLAUDE.md](../../../CLAUDE.md#sonnet--opus-の-effort)` の link は `../AGENT_OPERATING_MANUAL.md#座組` へ付け替える（PR3 が CLAUDE.md の effort 節を座組表への参照に替えるので、そのままでは PR3 の merge で anchor が切れる。退役に伴う参照の付け替え = owner 決定の (4)）。`GPT-5.6 Sol` の見出しと文を GPT-6 Sol に改め、model 固有の傾向（Sol は Astra と同じ effort の選び方へ機械的に揃えない、Astra 向けの傾向を自動継承しない等）だけを残す。model-notes 全体で `medium` / `high` / `xhigh` の値の語を書かない（AC12）。公式確認日を更新する。
 - **S4 `docs/templates/subagent-review-packet.md` を改訂する**（本 PR の所有。PR3 は編集しない）。review の出力の規範は `docs/code_review.md` 1 か所に置き（PR3 の S6 が統合する）、本 template は出力の規範を持たない。発注の型（入力の 5 点）は MANUAL §5.4 に残し（owner 2026-09-25。§5.4 は書き直さない）、本 template に複製しない。
   - `## Role`: read-only 宣言に「subagent を起動しない（depth 1）」を文として足す。`:7` の「根拠、推定severity、確信度を示し、」の句を除く（出力の要求は `## Output` の参照に寄せる）。reviewer の姿勢として「軽微さや不確実さだけで黙って落とさない」（`:7`）と「P2 を残したまま pass にしない」（現行 `:32`）の 2 句を `## Role` に残す。read-only・claim の扱いは残す。`確信度` の語は置かない（確信度の要求は PR3 の S6 が `code_review.md` の `## Output Shape` へ足す。本 PR は足さない）。
   - `## Target` に 1 項目足す: 「読ませないもの（同じ round で 2 本以上の review を回すときの各 reviewer。Plan Review・Final Review とも、Double Audit を含む）: 他の reviewer の結果が置かれた場所すべて（例: packet の Review Response の段落、PR body、PR の comment / review、Coordinator が保存した local の報告 file）。その発注の本文にも他の reviewer の結果とそれ由来の観点を書かない（closure・是正の発注は前回 findings から始めてよい）。`../AGENT_OPERATING_MANUAL.md`（link）§3 の独立性の項」。
@@ -404,7 +405,23 @@ Fill after implementation.
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
+- Writer（Opus 5.5 subagent）が S1〜S5・S7 を実装した（S6 の Plans.md 登録行は起票 commit、backlog は本 closeout）。MANUAL に `## 座組` の表と独立性の項 (a)〜(e)・§3.3 の 2 文を足し、§3.1・§3.2・§3.4・§5.5・§5.7 を削除、DEV_WORKFLOW の 6 か所・agent-guidance 3 file・review packet・plan-packet template の 2 行を直し、decision-log に D-092 を追記した。AC1〜AC12 と検査は PASS。
+- Final Review の是正 1 件（Codex の P3 と Coordinator の指摘 C-1〈P2〉が同じ点）: owner 方針 2026-09-14「総 token で効率を判断」が PR2 + PR3 で tracked から消えるため、MANUAL `## 座組` の表の下の注記に「effort の選び方」（owner 2026-09-14）を置き、model-notes の `## Effort の選定` からその注記を指すようにした。S1 は注記を (1)〜(4) の 4 項目と列挙し、S3 は方針を「座組表の effort 列が引き継ぐ」と書くが、実物は注記 (5) が方針を持つ（列は値だけを持つため）。packet 本文の書換えは broad を無効化するため行わず、ここに記録する。
+- CI: Merge gate success（https://github.com/kosei-w90607/inventory-system-desktop/actions/runs/36332090301）。Ready・merge は owner 指示（2026-09-28）で helper 経由、[PR #113](https://github.com/kosei-w90607/inventory-system-desktop/pull/113)。
+
 ## Review Response
 
 Fill after review. Final Review の結果は、Double Audit の 2 本がそろうまで本節と PR body に転記しない（S1 (2) (b)）。
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+- Findings Freeze: frozen after Broad Audit（両方とも approve）; post-freeze exceptions: none（broad の Codex P3 と同じ点の Coordinator の指摘 C-1 を是正、Fable の P3 は follow-up として backlog へ）.
+
+### Plan Review（2026-09-25〜27、Claude 側 = fresh Opus 5.5、Codex 側 = GPT-6〈round 3 は Astra、high〉、互いに独立）
+
+- round 1〜3 とも両 reviewer が reject。round 1・2 は plan-gate のまま是正（round 2 の後に owner 決定で範囲を縮小）、round 3（上限、`a76a1514`）は同型の一括是正（`6b51e223`、裁定 r3）で全件を反映し、owner 承認のもと予算を改めて plan-approved。経過は遷移記録。
+
+### Final Review（2026-09-27〜28、互いに独立な Double Audit）
+
+- broad（head `24ca59ba`、base `e7c22f8f`）Claude 側（Fable 5.1、fresh）: approve、P1/P2 = 0、P3 3 → 3 件とも PR4 への follow-up（backlog）。① closure の record は audit 1 つで、2 本の closure run のどちらを record するかが文書で決まらない（`scripts/pr-gate.py:436-439`）。② MANUAL の「design lane」が tracked の正本で未定義。③ 読ませない場所の例示に是正 commit の件名が無い。
+- broad Codex 側（GPT-6 Astra、発注 107）: approve、P1/P2 = 0、P3 1 = owner 方針 2026-09-14「総 token で効率を判断」が PR2 + PR3 で tracked から消える（Coordinator の追加指摘 C-1〈P2〉と同じ）→ 採用し是正 `f30f3ea7`（Implementation Results）。
+- closure（head `f30f3ea7`）Codex 側（GPT-5.6 Sol、発注 111）: approve、P1/P2/P3 = 0、AC1〜AC12 PASS。
+- closure Claude 側（Fable 5.1）: approve、P1/P2 = 0、P3 1 = S1 / S3 の記述と注記 (5) の食い違い → 記録で処理（Implementation Results の 2 項目め）。
+- helper record: broad を受けた後、record の前に head が `f30f3ea7` へ進んだため、「broad `24ca59ba` + closure `f30f3ea7`」の形では記録できなかった（capture は PR の現 head だけを取る）。owner 決定（2026-09-28）で、現 head `f30f3ea7` に broad の audit 2 本（Codex = 107 + 111、Fable = broad + closure）として記録し、evidence に実際の SHA と run を書いた。教訓: broad の record は是正の push より前に行う。
