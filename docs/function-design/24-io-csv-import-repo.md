@@ -571,17 +571,20 @@ fn list_daily_report_imports(
 
 **シグネチャ**:
 ```
-fn get_completed_daily_report_aggregate(conn: &DbConnection, report_date: &str) -> Result<Option<OfficialDailyReportSummary>, DbError>
+fn get_completed_daily_report_aggregate(conn: &DbConnection, report_date: &str) -> Result<Option<OfficialDailyReportRow>, DbError>
 ```
+
+返り値の `OfficialDailyReportRow` は IO が所有する DB DTO（`sales_repo`）で、BIZ-05 が `map_official_daily_report` で公開 DTO `OfficialDailyReportSummary` へ写し、warning を作る。IO は BIZ の型を参照しない。
 
 **処理ステップ**:
 1. `daily_report_imports` から `report_date=? AND status='completed'` の親を全件取得する。親がなければ `Ok(None)` を返す。
 2. `source_import_count` は対象親件数とする。親 `gross_amount` / `net_amount` はそれぞれ合計するが、いずれかの親で対象値が NULL なら集約値も NULL とする。
 3. `daily_report_payment_lines` は `payment_key` で集約する。amount / count は対象行のいずれかが NULL なら集約値も NULL とする。
 4. `daily_report_department_lines` は `department_id` がある行をその ID で、未対応行を `normalized_department_name`、それもなければ `raw_department_name` で集約する。amount は合計し、quantity / count は対象行のいずれかが NULL なら集約値も NULL とする。
-5. label と sort は、各 group の最小 `sort_order`、同値なら最小 row ID の行を決定的な代表とする。未対応警告は集約後の group 数から1件だけ構築し、import ごとに重複させない。
+5. label と sort は、各 group の最小 `sort_order`、同値なら最小 row ID の行を決定的な代表とする。未対応の部門は集約後の group として返し、import ごとに重複させない（警告の文は BIZ-05 が作る）。
 6. `daily_report_summary_lines`（Z001）を、手順 1 と同じ条件（`report_date=? AND status='completed'`、`rolled_back` の親の行は読まない）の親に join する 1 つの query で読み、親の `imported_at ASC, id ASC`、行の `sort_order ASC, id ASC` で並べる。行は合算しない（D-096）。手順 1 の親ごとに 1 件の取込み（親 `id`・`imported_at`・行の `label` / `quantity` / `count` / `amount`）を作り、行の無い親も空の行で残す（件数は `source_import_count` と等しい）。`line_key` は返さない。新しい repo 関数・schema・index は足さない（`idx_daily_report_summary_lines_import_id` を使う）。
-7. `OfficialDailyReportSummary` にマッピングして返す。支払・部門の集約では単一親 ID を返さない。Z001 の取込みごとの行（BIZ-05 の `summary_imports`、[34 §19.2](34-biz-sales-service.md#192-型定義)）だけが親 ID と `imported_at` を持つ。
+   取込みと行の型は、BIZ-05 の `OfficialDailySummaryImport` / `OfficialDailySummaryLine`（[34 §19.2](34-biz-sales-service.md#192-型定義)）と同じ形の DB DTO（IO の所有。既存の `OfficialDailyPaymentRow` と同じ命名で `OfficialDailySummaryImportRow` / `OfficialDailySummaryLineRow`）とし、`OfficialDailyReportRow` の field `summary_imports` に入れる。
+7. `OfficialDailyReportRow` を返す。支払・部門の集約では単一親 ID を返さない。Z001 の取込みごとの行（`summary_imports`）だけが親 ID と `imported_at` を持つ。BIZ-05 はこれを公開 DTO へ写し、並びと値を変えない。
 
 ---
 

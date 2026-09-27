@@ -51,6 +51,8 @@ Risk: R3
 | 全体 | F2・F5 | CLI | T9（AC9）: `bash scripts/doc-consistency-check.sh` と `--target plan` | exit 0 でない |
 | 全体 | F5 | CLI | T10（AC10）: `git diff --quiet e7c22f8f -- docs/function-design/90-traceability.md` | exit 1（REQ の参照を増減せずに生成物がずれた、または再生成が要るのに無い） |
 | D2 / D3 | F2 | review | T11: 56 の REQ-401 第2スライス表示詳細の `N回の取込みを合算` の行、UI-09a-D15、D16 と、24 §14.21 手順 6・§14.24 の D-071 の行を並べて読む | 2 回以上の日の文、Z001 を合算するか、`rolled_back` を読むかのどれかで答えが 2 つになる |
+| D5 / D4 | F2 | CLI | T12（AC11）: `rg -c 'Option<OfficialDailyReportSummary>, DbError' docs/function-design/24-io-csv-import-repo.md` と `rg -c 'get_completed_daily_report_aggregate\(conn, date\) → Option<OfficialDailyReportSummary>' docs/function-design/34-biz-sales-service.md` | どちらかに出力がある（IO が BIZ の型を返すと読める） |
+| D6 | F11 | CLI | T13（AC12）: `rg -c 'import_internal_contract_test' docs/plans/test-matrices/2026-09-27-daily-report-z-display.md` | 出力なし（Rust の wire 契約 test の更新義務が申し送りから落ちる） |
 
 後続 runtime lane（R 行、runtime lane で実装・実行する）:
 
@@ -63,14 +65,14 @@ Risk: R3
 | D5 | F9 | unit（repo） | R5: 親が 0 件の日 | `Ok(None)` でない |
 | D5 | F8 | unit（repo） | R6: `quantity` だけの行・`count` だけの行・`amount` NULL の行・値 0 の行 | NULL が 0 になる、0 の行が落ちる、`quantity` と `count` が入れ替わる |
 | D4 | F6・F11 | unit（BIZ） | R7: `get_daily_sales` が 2 親の日に `summary_imports` を 2 件、repo と同じ順・同じ値で返す（既存 `test_get_daily_sales_includes_official_report_req501` の隣） | map で並びが変わる、`imported_at` / id が落ちる、`line_key` が DTO に出る |
-| D6 | F11 | CLI | R8: bindings drift 検査（L1） | `src/lib/bindings.ts` に `summary_imports` / `OfficialDailySummaryImport` / `OfficialDailySummaryLine` が無い、生成と差分がある |
+| D6 / D4 | F11 | CLI + integration（Rust） | R8: bindings drift 検査（L1）と、`src-tauri/tests/import_internal_contract_test.rs` の `test_wire_contract_req401_i_w1_i_w2_i_w3_i_w5_generated_binding_is_atomic`（`:222-232`、`OfficialDailyReportSummary` の field 列の完全一致）を `summary_imports` を足した 8 field へ更新 | `src/lib/bindings.ts` に `summary_imports` / `OfficialDailySummaryImport` / `OfficialDailySummaryLine` が無い、生成と差分がある。field 列が 8 field と一致しない、または既存の禁止事項（単一 parent ID を返さない、旧取込み契約の語を bindings に残さない）の assert が消える |
 | D1 | F8 | unit（UI、`DailySalesPage.test.tsx`） | R9: 1 取込みの日。Z001 に 0 の行と NULL の欄を含む 4 行 | 見出し「日計（Z001）」が無い、行の順が返された順と違う、0 の行が無い、NULL が「—」でない（「未取得」や 0 になる）、ラベルが言い換えられる、数に単位の文字が付く |
 | D1 | F9 | unit（UI） | R10: 未取込みの日（`official_daily_report: null`、既存 `test_daily_sales_page_no_official_note_req501`） | 「日計（Z001）」の見出しや表が出る |
 | D2 | F6 | unit（UI） | R11: 2 取込みの日 | 取込みごとの表が 2 つでない、「1回目の取込み（取込み日時 …）」「2回目の取込み（取込み日時 …）」が返された順でない、日時が `YYYY-MM-DD HH:mm` でない、合算した表が出る、2 回以上の日の文が出ない |
-| D2 | F10 | unit（UI） | R12: 1 取込みの日（既存 `test_daily_sales_page_req501_shows_source_import_count_without_cross_series_sum` の拡張） | 取込みごとの見出しが出る、`1回の取込みを合算` の文が変わる |
+| D2 | F10 | unit（UI） | R12: 1 取込みの日（`source_import_count: 1` の既存 `test_daily_sales_page_official_warnings_note_req501` の拡張か新規 test。`summary_imports` 1 件を持たせる） | 取込みごとの見出しが出る、`1回の取込みを合算` の文が変わる |
 | D1 | F9 | unit（UI） | R13: `lines` が空の取込み | 「この取込みの日計（Z001）の行はありません。」が出ない、取込みの見出しごと落ちる |
-| D3 | F10 | unit（UI） | R14: 既存の `DailySalesPage.test.tsx` 3 件（official の 2 件と warnings）を factory の型追随だけで PASS、見出し「支払集計（Z002）」「部門別集計（Z005）」を text で確かめる | 既存の metric・合算・warning の表示が変わる、見出しに出どころが無い |
-| D1 / D2 / D3 | F10 | L3（Windows native、manual） | R15: 実機 before / after（DPI 125% / 150%、合成 fixture の 1 回分と 2 回分） | owner が表の長さ・「—」と 0 の行・合算と取込みごとの違い・Z002 の見出しの語を読み取れない |
+| D3 | F10 | unit（UI） | R14: 既存 `test_daily_sales_page_req501_shows_source_import_count_without_cross_series_sum`（`source_import_count: 2`）の 3 つの完全一致の assert（`2回の取込みを合算`・`支払集計`・`部門別集計`）を、D16 の 2 回以上の日の文と「支払集計（Z002）」「部門別集計（Z005）」へ更新する（意図した変更）。同じ test の金額・「未取得」・series 分離（`¥14,000` が無い）の assert と、warnings・未取込みの test は変えずに PASS（mock に `summary_imports` を足すだけ） | 既存の metric・合算・warning の表示が変わる、見出しに出どころが無い、2 回以上の日の文が出ない |
+| D1 / D2 / D3 | F10 | L3（Windows native、manual） | R15: 実機 before / after（DPI 125% / 150%、合成 fixture の 1 回分と 2 回分） | owner が表の長さ・「—」と 0 の行・合算と取込みごとの違い・Z002 の見出しの語を読み取れない、「N回目の取込み」を精算の回数と読み違える |
 
 ## State Lifecycle Matrix
 
@@ -82,7 +84,8 @@ Risk: R3
 
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
-| `OfficialDailyReportSummary` の型の消費者 | `rg -n 'official_daily_report' src --glob '!src/lib/bindings.ts'`: `DailySalesPage.tsx`、`DailySalesPage.test.tsx`（非 null の object 2 か所、`:82` `:153`）、null だけの mock 5 file（`BackupRestorePage.flow.test.tsx` / `SummaryCardsBar.test.tsx` / `HomePage.test.tsx` / `useHomeSummary.test.tsx` / `SummaryCards.test.tsx`） | runtime lane: `DailySalesPage.tsx` と `DailySalesPage.test.tsx` の非 null object 2 か所 | null だけの mock は型が変わっても通るため直さない | R14、`npm run typecheck` |
+| `OfficialDailyReportSummary` の型の消費者 | `rg -n 'official_daily_report' src --glob '!src/lib/bindings.ts'`: `DailySalesPage.tsx`、`DailySalesPage.test.tsx`（非 null の object 2 か所、`:82` `:153`）、null だけの mock 5 file（`BackupRestorePage.flow.test.tsx` / `SummaryCardsBar.test.tsx` / `HomePage.test.tsx` / `useHomeSummary.test.tsx` / `SummaryCards.test.tsx`） | runtime lane: `DailySalesPage.tsx` と `DailySalesPage.test.tsx` の非 null object 2 か所（`source_import_count: 2` の test は文と見出しの 3 つの assert も更新、R14） | null だけの mock は型が変わっても通るため直さない | R14、`npm run typecheck` |
+| wire の field 列を固定する Rust の契約 test | `rg -n 'OfficialDailyReportSummary' src-tauri/tests`: `import_internal_contract_test.rs:222-232`（`typescript_type_fields` で field 列を完全一致） | runtime lane: 期待列に `summary_imports` を足して 8 field へ | 禁止事項（単一 parent ID を返さない、旧取込み契約の語を残さない）の assert は保つ | R8 |
 | 公式セクションの表（`OfficialLinesTable`） | `DailySalesPage.tsx` の支払集計・部門別集計 | runtime lane: 日計の表を同じ 3 列・右寄せの形で作る（部品を共有するかは runtime lane の実装判断） | 列見出し・単位の文字は Z001 だけ D16 に従う（既存 2 表の「N 件」「N 点」は変えない） | R9 / R14 |
 | repo の aggregate の親の読み出し | `sales_repo.rs::get_completed_daily_report_aggregate`（親は `imported_at DESC, id DESC`）、payment / department の join query | runtime lane: Z001 の join query を足す | 既存の親の並び（DESC）は支払・部門の代表の選び方に影響しないが、Z001 は ASC で返すため親の並びを流用しない | R1 / R2 |
 | 日時の表示 | `src/features/inventory-records/types.ts::formatDateTime`（`T` を空白にするだけで秒を残す） | runtime lane: 日計の見出しは秒を落とす（D16） | `formatDateTime` をそのまま使うと秒が出るため、使う場合は秒を落とす形で足すか別に整形する（runtime lane の判断） | R11 |
@@ -151,4 +154,5 @@ Risk: R3
 
 - 実物の同日 2 回精算の Z001 / Z002 で行の集合と並びが同じかは未確認（backlog の「実物の同日 2 回精算の Z001 / Z002 の確認」）。D-096 で Z001 は合算しないため、本 lane と runtime lane の正しさはこれに依らない。
 - Z002 の見出しの語が行の中身に合うかは、行の名前を照合していないため runtime lane の L3 で owner が決める（R15）。
+- 既存の支払集計（Z002）は、1 取込みの中でも `code=01` / `現金` や `code=03` / `クレジット` に当たる行が 2 行以上あると同じ `payment_key` で 1 行に合算される。本 lane・runtime lane の Scope 外で、実ラベルでの発生は backlog の確認項目で数だけ確かめる。
 - i64 の値が JS の安全な整数を超える場合は既存の支払・部門と同じく扱わない。

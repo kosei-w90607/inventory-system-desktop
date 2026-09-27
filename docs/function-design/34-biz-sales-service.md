@@ -191,14 +191,14 @@ fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, 
    - 0件でも正常（データなしの日）
 
 3. **公式日報集計取得（REQ-401 redesign target）**
-   - sales_repo::get_completed_daily_report_aggregate(conn, date) → Option<OfficialDailyReportSummary>
-   - `report_date=date AND status='completed'` の親を全件対象とし、`source_import_count` に親件数を返す。単一parent IDはwireへ返さない
+   - sales_repo::get_completed_daily_report_aggregate(conn, date) → Option<OfficialDailyReportRow>（IO の DB DTO）を、`map_official_daily_report` で `OfficialDailyReportSummary` へ写す。warning は BIZ がここで作る
+   - `report_date=date AND status='completed'` の親を全件対象とし、`source_import_count` に親件数を返す。単一parent IDはwireへ返さない（`summary_imports` の要素の取込み ID は除く、D-096）
    - 親gross/netは合計する。ただし対象親のいずれかがNULLなら集約値もNULLとし、不完全値を確定値に見せない
    - paymentは `payment_key` で、departmentは `department_id`、未対応行は `normalized_department_name` fallback `raw_department_name` で集約する。amountは合計し、optional quantity/countは対象行のいずれかがNULLなら集約値もNULLとする
    - labelとsortはgroup内の最小 `sort_order`、同値なら最小row IDの行を決定的な代表とする
    - 日報未取込みでも正常。`official_daily_report=None` とし、UIは「日報未取込み」と表示できる
    - SALES2-D5: 集約後の `department_id IS NULL` groupが n 件ある場合、`warnings` に「部門マスタと対応していない部門が n 件あります（部門名のまま表示しています）」を1件だけ追加する。importごとに警告を重複させない。NULL groupがなければ空配列
-   - Z001の行は合算しない。同じ親の集合について親ごとに `OfficialDailySummaryImport` を作り、`summary_imports` に取込みの古い順で返す（D-096、[24 §14.21](24-io-csv-import-repo.md#1421-get_completed_daily_report_aggregate)）
+   - Z001の行は合算しない。IO が同じ親の集合について親ごとに返す取込み（`OfficialDailyReportRow.summary_imports`）を、並びと値を変えずに `OfficialDailySummaryImport` / `OfficialDailySummaryLine` へ写し、`summary_imports` に取込みの古い順で返す（D-096、[24 §14.21](24-io-csv-import-repo.md#1421-get_completed_daily_report_aggregate)）
 
 4. **部門小計の計算**
    - items を department_id でグルーピング
