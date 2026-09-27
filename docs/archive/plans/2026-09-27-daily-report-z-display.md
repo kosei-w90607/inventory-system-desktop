@@ -1,6 +1,6 @@
 # Plan Packet: Z001 / Z002 / Z005 の取り込み情報を画面で見られるようにする（design-first、R3）
 
-2026-09-27 起草。起源は owner の L3 所感（2026-09-04 run 3 原文「Z001とか002とか005とかってもっと情報あるじゃん、その辺の取り込み情報も見れないと困るくない？…無いのはまずい」、[原文](../design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「run 3 原文」）と、owner 2026-09-11 の再確認「やるべきこと」（[backlog](../backlog.md) の該当項目と「run 3 原文による訂正」(a)）。owner の着手承認は 2026-09-27「Issue の範囲を避けて片っ端から並列で」（wave 14 の lane D）。
+2026-09-27 起草。起源は owner の L3 所感（2026-09-04 run 3 原文「Z001とか002とか005とかってもっと情報あるじゃん、その辺の取り込み情報も見れないと困るくない？…無いのはまずい」、[原文](../../design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「run 3 原文」）と、owner 2026-09-11 の再確認「やるべきこと」（[backlog](../../backlog.md) の該当項目と「run 3 原文による訂正」(a)）。owner の着手承認は 2026-09-27「Issue の範囲を避けて片っ端から並列で」（wave 14 の lane D）。
 
 本 lane は design-first で、取り込んだ Z001 / Z002 / Z005 の情報を「どの画面で・どの項目を・どう見せるか」と、そのための BIZ / IO の読み出し契約と Tauri command の返り値（DTO）を設計正本に書く。runtime の実装は後続 lane（[後続 runtime lane への申し送り](#後続-runtime-lane-への申し送り)）が持つ。packet・Matrix・設計正本を plan-first change で更新し、runtime のコードは後続 lane が書く。owner 決定（2026-09-27、Plan Review round 2 の後）により、本 lane の Goal は Z001 の全行に絞った。Z002 / Z005 は既存の表示のまま見出しに出どころを添えるだけで、既存の Z002 の合算は backlog の独立した項目で扱う。
 
@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 2e9078ca2f5bdffbe6c80e3d3fc25a83b17cf198
 - Amendments: none
@@ -21,7 +21,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 2
 - Human Gate: ready,merge
 
-Final Review Minimum の根拠: R3 で workflow gate を変えない（予定 file はすべて `docs/` 配下で、`scripts/ci/classify-changes.sh` の policy docs の列挙に当たらず `workflow=false`）ため、規則上は 1 を選べ helper も 2 を要求しない。本 lane は operator に見える表示の契約を決めるため、[Contract Audit](../DEV_WORKFLOW.md#contract-audit-r3r4) が R3 に推奨する 2 本目の独立 audit に当たり、座組も Fable と Codex の 2 本を置く（Codex の合否を外さない owner 方針 2026-09-25）。Codex を待たない判断をするなら Plan Gate 前に 1 へ下げる。
+Final Review Minimum の根拠: R3 で workflow gate を変えない（予定 file はすべて `docs/` 配下で、`scripts/ci/classify-changes.sh` の policy docs の列挙に当たらず `workflow=false`）ため、規則上は 1 を選べ helper も 2 を要求しない。本 lane は operator に見える表示の契約を決めるため、[Contract Audit](../../DEV_WORKFLOW.md#contract-audit-r3r4) が R3 に推奨する 2 本目の独立 audit に当たり、座組も Fable と Codex の 2 本を置く（Codex の合否を外さない owner 方針 2026-09-25）。Codex を待たない判断をするなら Plan Gate 前に 1 へ下げる。
 
 Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane で、Windows native で確かめる対象がない（`manual` なし）。owner の設計判断（[owner への質問](#owner-への質問)）は Human Gate の token ではなく、Owner Effort Budget の介入 1 回として受ける。見た目の確認（実機の before / after と L3）は後続 runtime lane の Human Gate に置く。
 
@@ -36,19 +36,20 @@ Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane �
 - Plan Review round 3（上限、2026-09-27、fresh Opus 5.5 と Codex GPT-6 Astra、対象 `e1bb49df`）: Claude 側は approve、Codex 側は予算の不整合で reject。round 4 は回さず同型の一括是正とし、予算は owner 承認済み（介入 7・relay 5、この change での介入 5 回目）。Writer が予算の欄・Matrix R3 / R9 / R11・Scope S8 と Design Sources を是正した。Phase は plan-gate、Plan Commit は pending のまま（plan-approved の記録は Coordinator の別 commit）。
 - plan-gate → plan-approved（2026-09-27、Coordinator、本 commit）: Plan Review round 3（上限、対象 `e1bb49df`）は Claude 側 approve（P3 4）、Codex 側は予算の不整合（P2）と R11（P3）で reject、設計の blocker は無し。round 天井に従い追加の round は回さず、同型の一括是正（`2e9078ca`）で全件を反映し Coordinator が確かめた。owner 承認（2026-09-27、介入 7・relay 5）のもと plan-approved。Plan Commit = 本 commit の親（`2e9078ca`）。
 - plan-approved → implementing（2026-09-28、Coordinator、state-only）: 本 lane の成果物（設計正本の Scope S1〜S8）は plan-first の change に同乗済みで、implementing で書く runtime のコードは無い（[Implementation Results](#implementation-results)）。Draft PR を作り Final Review（Fable 5.1 と Codex、互いに独立、Minimum 2）へ進む。
+- implementing → archive（2026-09-28、Coordinator の closeout、本 commit）: PR #114 を squash merge（`253eef06`、2026-09-28、helper 経由、owner 指示）。packet と Matrix を archive へ移送し、Implementation Results と Review Response を記録。Owner Effort Budget を closeout 時点の実数に直した。Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 7（owner 承認 2026-09-27、この change での介入 5 回目。2026-09-28 の relay の改定の承認で消費 6、残りの Ready・merge で 8 になり 1 超えるため、8 への改定は Ready の承認と同じ 1 回で求める。既定 3 → 起票時 4 → 1 回目の改定 5〈介入 4 回目〉→ 2 回目の改定 7〈介入 5 回目〉）
-- 上限の理由: 既定 3 に対し、design-first の lane で owner にしか決められない画面の選択（Q1〜Q3）が 1 回要り、Plan Review round 2 の P1 を owner の Goal の決定で解消し、予算の改定の承認が 2 回要った。これに着手承認・Ready・merge を足して 7 になる。
+- 介入回数上限: 8（owner 承認 2026-09-28、Ready の承認と同じ 1 回〈「Readyにしてあげていいよ」、介入 7 回目〉で 7 から改定。closeout 時の消費 8 / 上限 8 = relay 6 の承認までの 6、Ready 1、merge 1〈8 回目〉。既定 3 → 起票時 4 → 1 回目の改定 5〈介入 4 回目〉→ 2 回目の改定 7〈介入 5 回目〉→ 3 回目の改定 8〈介入 7 回目〉）
+- 上限の理由: 既定 3 に対し、design-first の lane で owner にしか決められない画面の選択（Q1〜Q3）が 1 回要り、Plan Review round 2 の P1 を owner の Goal の決定で解消し、予算の改定の承認が 2 回要った。これに着手承認・Ready・merge を足して 7 になり、base 同期の closure の是正で relay の改定の承認 1 回が加わって 8 になった（8 への改定は Ready の承認と同じ 1 回）。
 - 実働時間上限: 30分（既定。owner の作業は質問への回答、relay、Ready / merge の判断）
-- relay 往復上限: 6（owner 承認 2026-09-28、この change での介入 6 回目。既定 2 → 4 → 5 → 6。base 同期の closure〈Codex 114〉が packet の Codex の model の根拠の欠け〈P2〉を指摘し、是正後の closure を取り直すため）
-- relay の上限の理由: Plan Review が round 3（天井）まで進み、各 round で Codex の合否を取った（Codex の合否を外さない owner 方針 2026-09-25）。これに Final Review の Codex 1 と、Final Review の closure で Codex を取り直す場合の予備 1 を足して 5 になる。
+- relay 往復上限: 6（owner 承認 2026-09-28、この change での介入 6 回目。既定 2 → 4 → 5 → 6。base 同期の closure〈Codex 114〉が packet の Codex の model の根拠の欠け〈P2〉を指摘し、是正後の closure を取り直すため）。closeout 時の消費 6 / 上限 6
+- relay の上限の理由: Plan Review が round 3（天井）まで進み、各 round で Codex の合否を取った（Codex の合否を外さない owner 方針 2026-09-25）。これに Final Review の Codex 1 と、Final Review の closure で Codex を取り直す場合の予備 1 を足して 5 になり、base 同期の closure の P2 の是正後に closure を取り直す 1 が加わって 6 になった。
 
-| 種類 | 消費（2026-09-27 時点） | 見込み | 計 / 上限 |
+| 種類 | 消費（2026-09-28 closeout 時点） | 見込み | 計 / 上限 |
 |---|---|---|---|
-| 介入 | 5: 着手承認「Issue の範囲を避けて片っ端から並列で」、Q1〜Q3 の回答（1 回の問いでまとめて回答）、Goal を Z001 に絞る決定（裁定 r2）、予算の改定の承認 2 回（介入 5・relay 4 の承認、介入 7・relay 5 の承認）、relay 6 の承認（2026-09-28）で 6 | Ready 1（上限 8 への改定を同じ 1 回で）、merge 1 | 8 / 7（改定待ち） |
-| relay 往復 | 5: Plan Review の Codex round 1（GPT-6 Astra）・round 2（GPT-5.6 Sol）・round 3（GPT-6 Astra）、Final Review broad（112、GPT-6 Astra）、base 同期の closure（114、GPT-5.6 Sol） | 是正後の closure 1 | 6 / 6 |
+| 介入 | 5: 着手承認「Issue の範囲を避けて片っ端から並列で」、Q1〜Q3 の回答（1 回の問いでまとめて回答）、Goal を Z001 に絞る決定（裁定 r2）、予算の改定の承認 2 回（介入 5・relay 4 の承認、介入 7・relay 5 の承認）、relay 6 の承認（2026-09-28）、Ready（上限 8 への改定を同じ 1 回で、2026-09-28）、merge（2026-09-28）で 8 | なし | 8 / 8 |
+| relay 往復 | 6: Plan Review の Codex round 1（GPT-6 Astra）・round 2（GPT-5.6 Sol）・round 3（GPT-6 Astra）、Final Review broad（112、GPT-6 Astra）、base 同期の closure（114、GPT-5.6 Sol）、是正後の closure（115、GPT-5.6 Sol） | なし | 6 / 6 |
 
 - 見込みを超える介入・relay が要ると分かった時点で、Goal Invariant の最小完了条件に戻り、Coordinator が owner に諮る（DEV_WORKFLOW `Owner Effort Budget` の hard stop）。
 - Plan Review round 天井: 3（既定 3）
@@ -66,7 +67,7 @@ Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane �
 Risk: R3
 
 Reason:
-本 lane の diff は設計文書だけだが、決める契約は BIZ-05 の日次売上の返り値（`DailySalesReport.official_daily_report` の Tauri command DTO と生成 bindings）、IO の読み出し、毎日使う日次売上画面の表示である。Risk は file の種類でなく影響で決める（先例: [㉗ 棚卸しと後着売上の時点証拠](../archive/plans/2026-09-16-stocktake-count-baseline.md) は docs-only で R3）。後続の runtime lane も R3。
+本 lane の diff は設計文書だけだが、決める契約は BIZ-05 の日次売上の返り値（`DailySalesReport.official_daily_report` の Tauri command DTO と生成 bindings）、IO の読み出し、毎日使う日次売上画面の表示である。Risk は file の種類でなく影響で決める（先例: [㉗ 棚卸しと後着売上の時点証拠](2026-09-16-stocktake-count-baseline.md) は docs-only で R3）。後続の runtime lane も R3。
 
 ## Goal
 
@@ -284,7 +285,7 @@ owner の決定（2026-09-27、Plan Review round 2 の裁定 r2、介入 3 回�
 
 - Source docs can answer what is being built and why without chat history or archived Plan Packets: 答えられる（56 UI-09a-D16、34 §19.2 / §19.3、24 §14.21、D-096 に書いた。AC1〜AC4）。
 - Plan-only durable decisions found and promoted to source docs / decision-log / ADR: SPEC-DRZ-D1〜D7 を 56 / 34 / 24 / SCREEN_DESIGN / D-096 へ昇格した。packet だけで決めて正本に無いものは無い。
-- Assumptions and constraints: Z001 の行は数値列が整数で parse できる（実ファイルは 2026-07 の L3 で `parse_errors=0`、[REQ-401 実装 packet](../archive/plans/2026-07-04-req401-sales-daily-report-implementation.md) の Local-only gate）。行数と各行の性質は P1 / P2 のとおり（行の名前ごとの照合と、実物の同日 2 回精算は未確認）。
+- Assumptions and constraints: Z001 の行は数値列が整数で parse できる（実ファイルは 2026-07 の L3 で `parse_errors=0`、[REQ-401 実装 packet](2026-07-04-req401-sales-daily-report-implementation.md) の Local-only gate）。行数と各行の性質は P1 / P2 のとおり（行の名前ごとの照合と、実物の同日 2 回精算は未確認）。
 - Deferred design gaps, risk, and follow-up target: 印刷（Issue #105）、紙の代わりの受入（backlog）、月次への展開・取込み履歴と後日の取消（S7 で backlog へ）。
 - Test Design Matrix can cite design decision IDs or source doc sections: 可（[Test Design Matrix](#test-design-matrix) の予定行は SPEC-DRZ-D1〜D7 を引く）。
 - Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 「どの取込みも落とさない」は `rolled_back` を除く completed の全親を読むことで守る。例外は無い。「`summary_imports` の件数 = `source_import_count`」は completed の取込みが総売か純売の行を必ず持つこと（`parse.rs:75-79` で両方無ければ取込み不可）に依る。Z001 の行が 0 件の completed 親は作られない。
@@ -416,6 +417,12 @@ Contract ID: SPEC-DRZ
 
 本 lane の成果物は設計文書で、`design → plan-draft` の条件（設計の出力が正本にある）として plan-first の change に同乗する（Scope S1〜S8、2026-09-27 Writer run）。runtime の実装は無い。
 
+- Writer（Opus 5.5 subagent）が S1〜S8 を設計正本へ書いた: 56 に UI-09a-D16（日計〈Z001〉の表の置き場所・列・見出し・行の順・0 の行・「—」・同日複数取込みの見出しと並び・合算の文の完全一致の文字列・既存 2 表の見出しの出どころ）、34 §19 に `summary_imports` と 2 つの型、24 §14.21 に Z001 の行を取込みごとに読む手順と古い「実装遷移義務」の削除、§14.24 と biz-task-specs BIZ-08 に D-096 の 1 句、SCREEN_DESIGN §3 に 1 行、decision-log に D-096、29 §29.4.1 に匿名化した Z001 / Z002 の形、backlog に後続 runtime lane と follow-up。
+- Final Review で P1/P2 は無く、base 同期の後の closure の P2（packet の Codex の model の根拠）を是正した（両 reviewer の行に owner 決定 2026-09-26 を記し、予算を実数に）。Fable の P3 2 件は後続 runtime lane の起票時に直す（backlog）。
+- CI: hosted CI success（https://github.com/kosei-w90607/inventory-system-desktop/actions/runs/36336635693）。Ready・merge は owner 指示（2026-09-28）で helper 経由、[PR #114](https://github.com/kosei-w90607/inventory-system-desktop/pull/114)。
+
 ## Review Response
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+- Closeout（2026-09-28）: Final Review broad（head `d72e1dc5`、互いに独立）は Claude 側 Fable 5.1 = approve（P1/P2 = 0、P3 2）、Codex 側 GPT-6 Astra（発注 112）= approve（P 0）。Fable の P3 は ① 24 §14.21 手順 1 の取得列に `imported_at` が無い（`sales_repo.rs:1019-1023` は `id, report_date, gross_amount, net_amount` だけ）、② 34 §19.2 の `OfficialDailyReportSummary` の field 順が code（`sales_service.rs:77-85`）と違う、で、どちらも後続 runtime lane の起票時に直す（backlog）。main 同期 `2b00d9b9`（#113・#115 を取込み、Plans.md と decision-log の競合は両方残して解消）の後の closure 1（Codex GPT-5.6 Sol、発注 114）= reject P2 1（packet の Codex の model が座組表〈GPT-6 Sol 既定〉と不一致で根拠が無い）→ 是正 `06b0d121`（両 reviewer の行に owner 決定 2026-09-26「DevDay まで GPT-6 Sol を GPT-5.6 Sol で代える」を記し、予算を実数に）→ closure 2（Codex GPT-5.6 Sol、発注 115）= approve（P3 1: Owner Effort Budget に旧日付・旧集計の表記が残る → 本 closeout で表を closeout 時点の実数に直して解消）。helper record は broad 2 本（`d72e1dc5`）と closure（`06b0d121`）が pass、record は owner が 2026-09-28 に Coordinator へ委任した。
