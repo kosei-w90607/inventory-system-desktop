@@ -29,7 +29,8 @@ import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
 import { returnToLinkProps } from "@/lib/return-to";
-import { formatDateTime, formatRecordStatus } from "./types";
+import { formatDateTime } from "@/lib/date-time";
+import { formatRecordStatus } from "./types";
 
 export interface ReturnRecordDetailPageProps {
   recordId: number;

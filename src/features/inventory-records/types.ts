@@ -101,11 +101,6 @@ export function formatRecordType(recordType: string): string {
   );
 }
 
-export function formatDateTime(value: string): string {
-  // DB の YYYY-MM-DDTHH:MM:SS は区切りを半角スペースにするだけで足り、タイムゾーン変換は行わない。
-  return value.replace("T", " ");
-}
-
 export function formatYen(value: number): string {
   return `¥${value.toLocaleString("ja-JP")}`;
 }
