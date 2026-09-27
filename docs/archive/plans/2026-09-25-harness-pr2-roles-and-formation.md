@@ -36,7 +36,7 @@ decision-log の番号予約: 本 PR は **D-092** を使う。D-091 は PR #98�
 
 ## Owner Effort Budget
 
-- 介入回数上限: 10（owner 承認 2026-09-27 で 4 から改定。closeout 時の消費 10 = plan-approved までの 6、Final Review の Codex relay 2〈broad 107・closure 111〉、Ready 1、merge 1〈owner 指示 2026-09-28〉。plan-approved 時点の消費 6 = 起票承認 2026-09-25 1、範囲縮小の owner 決定 2026-09-25 1、Plan Review round 1〜3 の Codex relay 3、本改定と plan-approved の承認 1。残る見込み = Final Review の Codex relay 1、必要なら Codex closure 1、Ready 1、merge 1）
+- 介入回数上限: 10（owner 承認 2026-09-27 で 4 から改定。closeout 時の消費 12 で上限を 2 超過 = plan-approved までの 6、Final Review の Codex relay 2〈broad 107・closure 111〉、helper record の指示 1〈見込みに無かった〉、record の形の判断 1〈broad の record 前に是正を push した Coordinator の順序の誤りで生じた〉、Ready 1、merge 1〈owner 指示 2026-09-28〉。超過は merge 後の closeout で判明し、事前に上限の改定を諮っていない。plan-approved 時点の消費 6 = 起票承認 2026-09-25 1、範囲縮小の owner 決定 2026-09-25 1、Plan Review round 1〜3 の Codex relay 3、本改定と plan-approved の承認 1。残る見込み = Final Review の Codex relay 1、必要なら Codex closure 1、Ready 1、merge 1）
 - 実働時間上限: 15分（文書だけの変更で、owner の作業は Codex の起動 1 行と Ready・merge の判断に限られる見込み）
 - relay 往復上限: 5（owner 承認 2026-09-27 で 4 から改定。closeout 時の消費 5 = Plan Review round 1〜3 の Codex 3、Final Review の Codex broad 107・closure 111 の 2。plan-approved 時点の消費 3 = Plan Review round 1〜3 の Codex。残り = Final Review の Codex broad 1、必要なら是正の後の Codex closure 1。理由: round が天井の 3 まで回り、是正の後の取り直しにも Codex の合否を含めるため〈owner 決定 2026-09-25〉）
 - Plan Review round 天井: 3（既定 3）
