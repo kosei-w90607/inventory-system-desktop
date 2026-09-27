@@ -25,12 +25,13 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 - kickoff → spec-check → plan-draft → plan-gate（本 commit、plan-first、2026-09-27、起草役）: Risk R3 を記録。Design Readiness が D-091 と `docs/design-system/00-foundations.md`（色の役割・強調の段階・迷いやすい場面）・`01-decision-rules.md`（DSR-08 / DSR-21 / DSR-22）・`02-component-catalog.md`（⑥ ⑫ ⑬）を実装に足りると引用するため、spec-check → plan-draft の許容 skip を使う（正本で決まっていない 2 点〈card の面色・muted の文字色の値〉は Non-scope に置き、design へ戻さない）。packet と Test Design Matrix を同じ commit に置く。decision-log の番号は **D-094** を予約する（D-092 / D-093 は並走のハーネス PR2 / PR3 が予約済み）。
 - owner 回答の反映（Phase は plan-gate のまま、2026-09-27、起草役、本 commit）: owner の回答（Coordinator の中継）を反映した。card の面色 = 別 lane（Non-scope のまま理由を差し替え）、muted の文字色 = `--muted-foreground` を濃くする（Scope に S19 と D-CE16 を足し、候補 3 つを L3 の試しにする）、返品・交換の選択カード = 操作の色へ追従のまま、Home の入口 card の試しの地 = #E6F0F0、D-CE8〜10 は事前確認なしで L3 の試しで採否（Coordinator 判断）。介入の消費は 2 になった。
 - Plan Review round 1: 両 reviewer とも reject、plan-gate のまま是正（裁定 r1、2026-09-27、起草役、本 commit）。Plan Commit は pending のまま。裁定の B1-1〜B1-12 を Scope / AC / L3 / Owner Effort Budget / Matrix へ反映した（中身は裁定書、Review Response には書かない）。
+- 予算の承認（2026-09-27、Coordinator の記録）: owner が介入 19・実働 75 分・relay 6 を承認（この change での介入 4 回目）。plan-gate のまま Plan Review round 2 へ進む。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 19（**owner 承認待ち**。既定は 3。起票時に 7、owner 回答の反映で 8 と書いたが、いずれも owner の承認は無く、L3 を session 単位で数えていた。DEV_WORKFLOW Owner Effort Budget の decision point 単位で下の表に数え直した）
-- 実働時間上限: 75分（**owner 承認待ち**。既定は 30 分。L3 round 1 は build 4 本〈main / PR head / 試し / muted の M1〉を並べて 15 項目を見る）
-- relay 往復上限: 6（**owner 承認待ち**。既定は 2。内訳 = Plan Review の Codex 3〈round 1 は消費済み、round 2、round 3 は天井まで行った場合の予備〉+ Final Review の Codex 1 + manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉）
+- 介入回数上限: 19（owner 承認 2026-09-27（「介入19・75分・relay 6で承認」）。既定は 3。起票時に 7、owner 回答の反映で 8 と書いたが、いずれも owner の承認は無く、L3 を session 単位で数えていた。DEV_WORKFLOW Owner Effort Budget の decision point 単位で下の表に数え直した）
+- 実働時間上限: 75分（owner 承認 2026-09-27（「介入19・75分・relay 6で承認」）。既定は 30 分。L3 round 1 は build 4 本〈main / PR head / 試し / muted の M1〉を並べて 15 項目を見る）
+- relay 往復上限: 6（owner 承認 2026-09-27（「介入19・75分・relay 6で承認」）。既定は 2。内訳 = Plan Review の Codex 3〈round 1 は消費済み、round 2、round 3 は天井まで行った場合の予備〉+ Final Review の Codex 1 + manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉）
 
 介入の判断点（decision point 単位、2026-09-27 の数え直し）:
 
