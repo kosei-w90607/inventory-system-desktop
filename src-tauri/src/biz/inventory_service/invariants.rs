@@ -210,7 +210,8 @@ mod tests {
         let _ = std::mem::size_of::<DisposalCreateResult>();
 
         // 関数シンボルの存在確認
-        let _ = apply_stock_change as fn(_, _, _, _, _, _, _) -> _;
+        // 31 §12.2: 第 1 引数は借りた transaction に限る（通常の接続に戻すとここでコンパイルが止まる）
+        let _ = apply_stock_change as fn(&rusqlite::Transaction<'_>, _, _, _, _, _, _) -> _;
         let _ = create_receiving as fn(_, _) -> _;
         let _ = create_return as fn(_, _) -> _;
         let _ = create_manual_sale as fn(_, _) -> _;

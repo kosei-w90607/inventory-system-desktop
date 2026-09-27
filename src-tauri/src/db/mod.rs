@@ -101,6 +101,8 @@ pub enum DbError {
     ForeignKeyViolation(String),
     /// レコードが見つからない
     NotFound,
+    /// DB の schema 版がアプリの扱える最大より新しい（MNT-03-D11）
+    SchemaNewerThanApp { db_version: i64, app_max: i64 },
 }
 
 impl fmt::Display for DbError {
@@ -113,6 +115,14 @@ impl fmt::Display for DbError {
             DbError::DuplicateKey(key) => write!(f, "重複キー: {}", key),
             DbError::ForeignKeyViolation(msg) => write!(f, "外部キー制約違反: {}", msg),
             DbError::NotFound => write!(f, "レコードが見つかりません"),
+            DbError::SchemaNewerThanApp {
+                db_version,
+                app_max,
+            } => write!(
+                f,
+                "データの版がこのアプリより新しいため開けません（データの版: {}、このアプリが扱える版: {}）",
+                db_version, app_max
+            ),
         }
     }
 }

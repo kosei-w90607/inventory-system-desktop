@@ -70,7 +70,7 @@ const ERROR_TYPE_LABELS = {
 } as const;
 
 export function CsvImportRecordDetailPage({ importId, returnTo }: CsvImportRecordDetailPageProps) {
-  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} };
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.csvImportDetail(importId),
     queryFn: () =>

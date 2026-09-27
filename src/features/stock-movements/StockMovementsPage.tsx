@@ -4,7 +4,7 @@
 // 設計: docs/function-design/66-ui-stock-movements.md
 
 import { ArrowLeft, PackageSearch } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, defaultStringifySearch } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { LIST_PER_PAGE_OPTIONS } from "@/components/patterns/list-per-page";
@@ -71,20 +71,20 @@ export function StockMovementsPage({
       page: undefined,
     }));
   };
-  // UI-06c-D9: 「在庫照会へ戻る」は /stock 以外へ着地しない（pin）。欠落・不正・pin 不一致は
-  // 商品コードで在庫照会を再展開する既定 fallback へ。
-  const backLinkProps = returnToLinkProps(search.returnTo, "", { pathname: "/stock" });
-  const returnToParams = new URLSearchParams();
-  if (normalizedSearch.dateFrom !== undefined)
-    returnToParams.set("dateFrom", normalizedSearch.dateFrom);
-  if (normalizedSearch.dateTo !== undefined) returnToParams.set("dateTo", normalizedSearch.dateTo);
-  if (normalizedSearch.type !== "all") returnToParams.set("type", normalizedSearch.type);
-  if (normalizedSearch.page > 1) returnToParams.set("page", String(normalizedSearch.page));
-  if (search.returnTo !== undefined) returnToParams.set("returnTo", search.returnTo);
-  const returnToQuery = returnToParams.toString();
-  const detailReturnTo = `/stock/${encodeURIComponent(productCode)}/movements${
-    returnToQuery ? `?${returnToQuery}` : ""
-  }`;
+  // UI-06c-D9: 「在庫照会へ戻る」は /stock 以外へ着地しない（pin）。pin 不一致・欠落・不正で
+  // helper が null を返したら、商品コードで在庫照会を再展開する既定 fallback へ。
+  const backLinkProps = returnToLinkProps(search.returnTo, { pathname: "/stock" });
+  // UI-06c-D9: 元記録 link の returnTo は、正規化した search（既定値を載せない）と入れ子の
+  // returnTo を router の既定の直列化で組む（手組みでも location.href でもない理由は 66 UI-06c-D9）。
+  const detailReturnTo = `/stock/${encodeURIComponent(productCode)}/movements${defaultStringifySearch(
+    {
+      dateFrom: normalizedSearch.dateFrom,
+      dateTo: normalizedSearch.dateTo,
+      type: normalizedSearch.type === "all" ? undefined : normalizedSearch.type,
+      page: normalizedSearch.page > 1 ? normalizedSearch.page : undefined,
+      returnTo: search.returnTo,
+    },
+  )}`;
 
   return (
     <PageShell>
@@ -92,8 +92,8 @@ export function StockMovementsPage({
         title="在庫変動履歴"
         actions={
           <Button type="button" asChild variant="outline">
-            {backLinkProps.to ? (
-              <Link to={backLinkProps.to} search={backLinkProps.search}>
+            {backLinkProps ? (
+              <Link {...backLinkProps}>
                 <ArrowLeft aria-hidden="true" />
                 在庫照会へ戻る
               </Link>

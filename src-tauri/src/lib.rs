@@ -32,6 +32,7 @@ enum StartupDatabaseError {
     RestoreReconcile(String),
     LegacyMigration(String),
     DatabaseInit(String),
+    SchemaNewerThanApp(String),
 }
 
 impl std::fmt::Display for StartupDatabaseError {
@@ -39,7 +40,8 @@ impl std::fmt::Display for StartupDatabaseError {
         match self {
             Self::RestoreReconcile(message)
             | Self::LegacyMigration(message)
-            | Self::DatabaseInit(message) => formatter.write_str(message),
+            | Self::DatabaseInit(message)
+            | Self::SchemaNewerThanApp(message) => formatter.write_str(message),
         }
     }
 }
@@ -55,6 +57,10 @@ impl StartupDatabaseError {
             )),
             Self::DatabaseInit(details) => Some(format!(
                 "データベースの準備に失敗したため、起動を中止しました。アプリを再起動してもう一度お試しください。繰り返し失敗する場合は診断ログ（アプリのデータフォルダ内）を添えて管理者へ連絡してください。\n{details}"
+            )),
+            // MNT-03-D11: 再起動では直らないため DatabaseInit と文言を分ける
+            Self::SchemaNewerThanApp(details) => Some(format!(
+                "このデータは、より新しい版のアプリで使われています。この版のアプリで書き込むとデータを傷めるおそれがあるため、起動を中止しました（データは変更していません）。新しい版のアプリを入れ直してから起動してください。わからない場合は管理者へ連絡してください。\n{details}"
             )),
         }
     }
@@ -179,8 +185,12 @@ where
     let db_path_text = db_path.to_str().ok_or_else(|| {
         StartupDatabaseError::DatabaseInit("DBパスの文字列変換に失敗".to_string())
     })?;
-    let conn = init(db_path_text)
-        .map_err(|error| StartupDatabaseError::DatabaseInit(error.to_string()))?;
+    let conn = init(db_path_text).map_err(|error| match error {
+        db::DbError::SchemaNewerThanApp { .. } => {
+            StartupDatabaseError::SchemaNewerThanApp(error.to_string())
+        }
+        _ => StartupDatabaseError::DatabaseInit(error.to_string()),
+    })?;
     if let Err(error) = mnt::backup::complete_reconciled_restore(&conn, &db_path) {
         // committed snapshot は利用可能。ログ補完/manifest cleanup は次回起動で再試行する。
         tracing::warn!(%error, "復元後処理の補完を次回起動へ持ち越し");
@@ -812,6 +822,49 @@ mod bindings_generation_tests {
         let branch = &source[branch_start..branch_end];
         assert!(branch.contains("if let Some(message) = error.operator_message()"));
         assert!(branch.contains("show_pre_window_fatal(&message);"));
+    }
+
+    #[test]
+    fn test_startup_req903_d11_newer_schema_stops_startup_with_own_message() {
+        // REQ-903 / MNT-03-D11 / Matrix T9
+        let app_data = tempfile::tempdir().unwrap();
+        let db_path = app_data.path().join("inventory.db");
+        let newer = crate::db::test_support::write_newer_schema_db(&db_path);
+        let app_max = newer - 1;
+
+        // (a) 実 DB: DatabaseInit でなく固有の区分で止まる
+        let error = super::prepare_database(app_data.path()).unwrap_err();
+        assert!(matches!(
+            error,
+            super::StartupDatabaseError::SchemaNewerThanApp(_)
+        ));
+
+        // (b) 固定部（packet Scope S3 の文を独立転記）+ "\n" + 版の detail
+        let message = error
+            .operator_message()
+            .expect("SchemaNewerThanApp must be operator-visible");
+        let expected_fixed = "このデータは、より新しい版のアプリで使われています。この版のアプリで書き込むとデータを傷めるおそれがあるため、起動を中止しました（データは変更していません）。新しい版のアプリを入れ直してから起動してください。わからない場合は管理者へ連絡してください。";
+        let expected_detail = format!(
+            "データの版がこのアプリより新しいため開けません（データの版: {newer}、このアプリが扱える版: {app_max}）"
+        );
+        assert_eq!(message, format!("{expected_fixed}\n{expected_detail}"));
+
+        // (c) 他の init 失敗は従来どおり DatabaseInit
+        let other = super::prepare_database_with_init(
+            app_data.path(),
+            || Ok(app_data.path().to_path_buf()),
+            |_old, _new| Ok(false),
+            |_path| {
+                Err(crate::db::DbError::ConnectionFailed(
+                    "injected connection failure".to_string(),
+                ))
+            },
+        )
+        .unwrap_err();
+        assert!(matches!(
+            other,
+            super::StartupDatabaseError::DatabaseInit(_)
+        ));
     }
 
     #[test]

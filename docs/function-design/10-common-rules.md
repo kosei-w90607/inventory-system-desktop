@@ -74,6 +74,7 @@ enum DbError {
     DuplicateKey(String),
     ForeignKeyViolation(String),
     NotFound,
+    SchemaNewerThanApp { db_version: i64, app_max: i64 },  // DB の版がアプリより新しい（22 MNT-03-D11）
 }
 ```
 

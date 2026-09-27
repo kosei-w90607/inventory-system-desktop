@@ -1313,6 +1313,47 @@ mod tests {
     }
 
     #[test]
+    fn test_restore_req901_newer_schema_backup_rolls_back_to_current() {
+        // REQ-901 / MNT-03-D11（波及）/ Matrix T10: 新しすぎる版の backup は差し替え後の open で拒否され、現在の DB へ戻る
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("inventory.db");
+        let backup_path = dir.path().join("replacement.db");
+        let conn = database_with_supplier(&db_path, "old");
+        let newer = crate::db::test_support::write_newer_schema_db(&backup_path);
+        {
+            let backup = rusqlite::Connection::open(&backup_path).unwrap();
+            backup
+                .execute(
+                    "INSERT INTO suppliers (name, created_at) VALUES ('new', '2026-07-18T00:00:00')",
+                    [],
+                )
+                .unwrap();
+        }
+
+        let error = restore_backup_with_ops(
+            conn,
+            &backup_path,
+            &db_path,
+            &InjectedOps::new(InjectedFailure::None),
+        )
+        .unwrap_err();
+
+        match error {
+            RestoreError::Recovered(message) => {
+                assert!(
+                    message.contains(&format!("データの版: {newer}")),
+                    "版の detail が必要: {message}"
+                );
+            }
+            other => panic!("Recovered が期待されるが {other:?}"),
+        }
+        let reopened = db::open_existing_database(db_path.to_str().unwrap()).unwrap();
+        assert_eq!(supplier_names(&reopened), vec!["old"]);
+        drop(reopened);
+        assert_no_restore_artifacts(&RestorePaths::new(&db_path));
+    }
+
+    #[test]
     fn test_restore_req901_b5_removes_new_generation_sidecars_on_rollback() {
         // REQ-901 / Matrix B5
         let dir = tempfile::tempdir().unwrap();

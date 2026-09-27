@@ -34,6 +34,12 @@ vi.mock("@tauri-apps/api/webview", () => ({
   getCurrentWebview: () => ({ setZoom: vi.fn().mockResolvedValue(undefined) }),
 }));
 
+vi.mock("@/features/backup-restore/useAutoBackupCheck", () => ({
+  useAutoBackupCheck: () => undefined,
+  suspendAutoBackupCheck: vi.fn(),
+  resumeAutoBackupCheck: vi.fn(),
+}));
+
 vi.mock("@tanstack/react-router-devtools", () => ({
   TanStackRouterDevtools: () => null,
 }));

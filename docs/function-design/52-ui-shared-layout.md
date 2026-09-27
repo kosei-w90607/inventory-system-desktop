@@ -28,7 +28,7 @@ UI 層の関数設計書は業務ロジック有無で 2 段階のテンプレ�
 | ファイル | 責務 |
 |---|---|
 | `src/config/navigation.ts` | NavStatus / NavItem / NavArea 型定義 + navigation 定数（4 エリア × 22 項目）。アイコンは lucide-react を import |
-| `src/components/layout/RootLayout.tsx` | 2 カラム grid + Outlet + Toaster + Devtools + ウィンドウタイトル更新 useEffect（§52.5） |
+| `src/components/layout/RootLayout.tsx` | 2 カラム grid + Outlet + Toaster + Devtools + ウィンドウタイトル更新 useEffect（§52.5）+ 自動バックアップ確認 hook の呼出し（UI-11b-D13。hook 本体と state は backup-restore feature が持つ） |
 | `src/components/layout/Sidebar.tsx` | aside + SidebarHeader + min-h-0 ScrollArea + 4 エリアの map（SidebarArea を呼ぶ） + DisplayScaleControl |
 | `src/components/layout/SidebarArea.tsx` | 1 エリア描画。h2 + アイコン + SidebarLink × N + Separator |
 | `src/components/layout/SidebarLink.tsx` | active/pending status 分岐。`activeMatch` を持たない項目は `<Link>` + `activeOptions={{ exact: true, includeSearch: false }}`（search params 付き URL でも path 一致のみで active 判定、TanStack デフォルト `includeSearch:true` は search 完全一致を要求し active が外れる）+ shared stone selection tone。`activeMatch` を持つ項目（在庫照会・在庫少一覧、同じ `to="/stock"` を共有）は `includeSearch` 意味論に依存せず、router の現在 pathname + search state を明示比較して排他的に active 判定する（UI-12-D1、§52.6。route 文字列のコンポーネント内ハードコード禁止）。pending=`<span role="link" aria-disabled="true" tabIndex={-1}>` + sr-only "（未実装）"、cursor-not-allowed + opacity-60。focusable な link（active / inactive）には UI_TECH_STACK §5.4 系統①の focus ring `focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50` を付与する（pending は `tabIndex={-1}` で focus 対象外。2026-08-03、batch A packet 起源） |
@@ -51,6 +51,8 @@ UI-12 は業務データの内部 state を持たない（純構造コンポー�
 唯一の例外として、ウィンドウタイトル機構（§52.5）が `useRouterState({ select: (s) => s.location.pathname })` で取得する pathname を派生値として読むが、これは TanStack Router 由来の参照値であり UI-12 内部 state ではない（Phase 2 で route `head()` 機能を導入する際は `useMatches()` 経由の最深 `match.head?.title` 参照に切り替える、詳細は §52.5）。
 
 SidebarLink の active 判定も TanStack Router の `<Link activeProps>` で表現する（router 内部 state を読むのみ、UI-12 で state 管理しない）。
+
+同じく例外として、RootLayout は自動バックアップの確認 hook `useAutoBackupCheck`（UI-11b-D13）を 1 回呼ぶ。interval・実行中の guard・連続失敗・復元の間の停止の state は hook と backup-restore feature が持ち、UI-12 は呼出しの置き場所だけを提供する。
 
 2026-06-07 follow-up で追加した表示サイズ機構だけは UI 表示設定として `DisplayScaleValue = "standard" | "large" | "extra_large"` を React state で保持する。初期値は `localStorage["inventory.displayScale.v1"]` から読み、未知値は `"standard"` に fallback する。state 変更時に同 key へ保存し、`getCurrentWebview().setZoom(1 | 1.15 | 1.3)` で WebView zoom に反映する。Tauri 呼び出し失敗は `console.warn` のみで握り、画面描画は継続する。
 
