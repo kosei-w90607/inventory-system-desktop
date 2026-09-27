@@ -14,11 +14,12 @@ URL: https://google.github.io/eng-practices/
 
 ## 責務境界（ドリフト源の一本化）
 
-このスキルは**汎用レビュー哲学の SSOT**。
+このスキルは**汎用レビュー哲学の SSOT**。重大度・出力形式は含まない（正本は `docs/code_review.md` の `## Finding Severity` と `## Output Shape`）。
 
 | 観点 | 担当スキル |
 |------|-----------|
-| 汎用レビュー哲学（bug優先・nit/blocking・scope規律・実証防御・指摘応答） | **このスキル** |
+| 汎用レビュー哲学（bug優先・scope規律・実証防御・指摘応答） | **このスキル** |
+| 重大度・出力形式 | `docs/code_review.md` |
 | 在庫システム設計書照合・層境界・在庫不変条件 | `inventory-code-review`（併用） |
 | Codex CLI 往復・gh 投稿・hook 機械強制・plan-rally | `preflight-codex-review` / `respond-to-codex-review` / `claude-codex-review-loop` |
 
@@ -33,7 +34,7 @@ URL: https://google.github.io/eng-practices/
 1. **意図先読み** — CL（PR/diff）の説明と変更全体の目的を把握する。`reviewer/navigate.md` 参照。
 2. **実 diff を読む** — Design を最初に評価し、残りを詳しく読む。`reviewer/standard.md` 参照。
 3. **drift 疑いは repo 全体 grep** — 既知パターンのずれはファイル単独でなく全箇所を一括確認する（ピンポイント修正は次 round で同種残存を検出されて 1 round 浪費する）。
-4. **severity 順に findings を報告** — Blocking / P1 / nit の順。詳細は `reviewer/comments.md` 参照。
+4. **severity 順に findings を報告** — findings を `docs/code_review.md` の `## Finding Severity`（P1 / P2 / P3）の順に、`## Output Shape` の形で報告する。書き方の原文は `reviewer/comments.md` 参照。
 
 ---
 
@@ -73,13 +74,11 @@ Google Engineering Practices は CL（Changelist）中心で書かれている�
 
 ---
 
-## nit / blocking の明示ラベルと scope 規律
+## label と scope 規律
 
 土台原文: `reviewer/comments.md` / `reviewer/pushback.md`
 
-- **nit:** — スタイル・細かい改善提案。merge gate に昇格させない。
-- **Blocking** / **P1** — マージ前必須修正。
-- **optional:** — 任意改善（~10 min + PR スコープ内 + レビュー 3 回以内なら同 PR で潰す）。
+重大度と merge を止めるかどうかは `docs/code_review.md` の P1 / P2 / P3 だけで決める。`nit:` / `optional:` の label を添える場合は P3 の finding の書き方の補助に限り、同じ PR で直すか follow-up にするかは `docs/code_review.md` の `## Same PR vs Follow-up` に従う。
 
 scope 規律: PR スコープ外の問題を発見したら別 PR として指摘し、現 PR をブロックしない。
 

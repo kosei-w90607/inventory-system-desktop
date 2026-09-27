@@ -8,6 +8,8 @@ Use this alongside [quality/review-checklist.md](quality/review-checklist.md). T
 
 Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ は対象packetの Design Sources / Design Readiness を確認する。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
 
+店の事実を前提にする判断は、`docs/project-memory.md` の「Store Premises Facts（現場の前提）」と照合する。載っていない事実は owner へ 1 問にして送る。
+
 ## Blocking Review Focus
 
 - Bugs, behavioral regressions, data loss, unsafe defaults, or broken runtime paths.
@@ -20,6 +22,7 @@ Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ �
 - Report CSV schema, BOM/encoding, filename, or export UX contract drift.
 - UI route/search state, daily operator workflow, Japanese labels, query invalidation, import/unsaved guards, or Windows native behavior drift.
 - Missing tests for changed contracts, negative paths, compatibility, data safety, or main wiring.
+- 保守者として読めるか（命名、理由の comment、賢い圧縮より退屈な構造、関数の長さ）。読めない変更は P2（owner 2026-09-07）。
 
 ## Finding Severity
 
@@ -27,13 +30,13 @@ Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ �
 |---|---|
 | P1 | Data loss, destructive behavior, committed secret/store data, broken default runtime, unsafe schema/runtime break. |
 | P2 | Contract violation, missing critical test, misleading UI/report/output, layer-boundary drift, data safety gap, compatibility break. |
-| P3 | Non-blocking robustness, docs/status drift, maintainability, small test clarity issue. |
+| P3 | Non-blocking robustness, docs/status drift, maintainability, small test clarity issue. 保守者が読めない変更は P2（Blocking Review Focus）。 |
 
 Risk tier describes the change. Severity describes each finding.
 
 ## Verification Rules
 
-Evidence Modeを先に確認する。github modeは[MG-D5〜D8](agent-guidance/merge-evidence.md)のserver recordと対象head/base、broad/closure、manual/R4、実効rulesを検査する。reviewerは専用recordを編集しない。実装後state-onlyとPR本文L1の三点一致はlegacyだけ。
+実装後の状態は helper status と [MG-D5〜D8](agent-guidance/merge-evidence.md) の server record・CI で確認し、record の対象 head/base、broad/closure、manual/R4、実効 rules を検査する。reviewer は専用 record を編集しない。
 
 Review entry follows `AGENTS.md` `Session Start`. Initial review reads the touched source contracts directly. Closure starts from prior findings, correction diff, and affected contracts/tests; expand for newly affected behavior or concrete defect evidence. Do not impose a second full startup reading route. Existing Contract Audit / Double Audit, Findings Freeze, and gate evidence remain required.
 
@@ -47,6 +50,7 @@ Review entry follows `AGENTS.md` `Session Start`. Initial review reads the touch
 - For R3/R4 work, check `Design Intent Trace`: spec IDs, design decision IDs, source design sections, implementation targets, and test targets should be connected.
 - Treat Plan Packet-only design rationale as drift when it is durable and absent from source design docs, `docs/decision-log.md`, or ADRs.
 - For UI changes affecting operator flow, state whether Windows native L3 verification is required.
+- data safety の review では `git status --short` を見て、実 POS / 店舗の成果物が ignored のままかを確かめる。
 
 ## Same PR vs Follow-up
 
@@ -73,9 +77,20 @@ Track as follow-up:
 - For R3 skip, record `Review-only skipped because:` in the Plan Packet or PR body.
 - R4 review-only is required.
 
+## External PR Review Request
+
+外部 reviewer（Codex 等）へ PR review を依頼するときは、次を渡す。
+
+- PR context: Repo / PR / Title / Branch / Commit。
+- In scope と Non-scope。
+- Critical Contracts（対象 PR で壊してはならない契約）。
+- 作者の検証結果。reviewer はそれを claim として扱い、現物で確かめる。
+
+reviewer は実装しない。findings first で返し、style・命名・将来の拡張・明示された non-scope で block しない。重大度・closure・出力形式はこの文書の他の節に従う。
+
 ## Output Shape
 
-Lead with findings.
+Lead with findings. finding ごとに確信度を添える。
 
 ```md
 ## Findings
@@ -88,4 +103,4 @@ Lead with findings.
 - risk or test gap
 ```
 
-If no blocking issue is found, say `No blocking findings.` and list remaining test gaps or residual risks.
+If no blocking issue is found, say `No blocking findings.` and list remaining test gaps or residual risks. 必要な時だけ unresolved questions / verification gaps / merge-split judgment を付け、findings を複数の要約節で繰り返さない。
