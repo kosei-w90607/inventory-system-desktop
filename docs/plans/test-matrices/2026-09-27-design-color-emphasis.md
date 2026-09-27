@@ -11,6 +11,8 @@ Risk: R3
 - SPEC-COLOR-EMPHASIS-RT-1: 00 の色の役割・強調の段階・迷いやすい場面（試しは owner の L3 の答え）が token・部品・画面へ反映され、今の赤・琥珀・緑の割り当てと文言・role・accessible name は変わらない。
 - 00 のカラーパレット表・セマンティックカラー表の HEX と `src/styles/globals.css` の `:root` が一致する（DS3）。
 - DSR-08: 非中立の Alert は icon を持ち、色だけで意味を伝えない。
+- 進行中の地（#E6F0F0）の上に載る文字は 4.5:1 以上、icon は 3:1 以上（packet の Contract Probe の表）。
+- DSR-22 の操作枠 3:1 を focus にも当てる: 枠の無い部品の focus は不透明な ring（D-CE17）。
 - 00 サブテキスト（D-CE16）: `--muted-foreground` は owner が選んだ候補の値で、`--card`・`--background`・進行中の地の上で 4.5:1 以上。class は変えない。
 - DSR-22 / 02 ⑫: 現在行と詳細を開いた行は左端のバー + 薄い地 + 文言（または開いた詳細）で示し、選択欄を開いた入力行は進行中にしない。
 
@@ -29,6 +31,10 @@ Risk: R3
 - F11 L3 で採らなかった試しの docs の戻しが一部だけ行われ、00 と 01 / 02 / 04 / review-checklist が食い違う。
 - F12 新しい FE test file に REQ / UI の ID が無く、traceability T4 が ERROR になる。
 - F13 `--muted-foreground` を候補外の値にする、または 00 のパレット表の HEX を直し忘れて DS3 が割れる。
+- F14 開いた行の在庫少のセルが `text-warning-emphasis` のまま進行中の地に載り、4.33:1 で AA を割る。
+- F15 `TableBody` の `[&_tr:last-child]:border-0` が、最後のレコードを開いたときの詳細の行の左のバーを消す（class の assert と tailwind-merge の probe では検出できない）。
+- F16 枠の無い部品の focus が 50% の透過の ring のままで、合成後 2.35:1 と 3:1 に届かない。`destructive` の ring は 1.41:1。
+- F17 取込みの手順の表示の試しを採らなかったとき、分岐表に無い形へ直す（契約の外）。
 
 ## Test Matrix
 
@@ -50,7 +56,8 @@ Risk: R3
 | D-CE7 | F6 | integration | `ProductListTable.test.tsx` に「選択行と展開行が `bg-ongoing-soft` と `border-l-ongoing`、別の行を選ぶと元の行から外れる」 | 素の class で書いて負ける（jsdom は CSS の詳細度を計算しないため、class 名が `data-[state=selected]:bg-ongoing-soft` であることを assert し、見え方は AC-L3-9） |
 | D-CE7 | F7 | unit | `table.test` 相当の既存 test が無ければ AC7 の `rg`（`table.tsx` の既定の 1 行が不変） | `table.tsx` の既定を進行中へ変える |
 | D-CE7 | F6 | integration | `OperationLogsPage.test.tsx` に「詳細を表示で開いた行が `has-aria-expanded:bg-ongoing-soft`、閉じると詳細の行が消える」 | 開いた行が stone のまま |
-| D-CE8 | — | unit（新 file、describe に `UI-07`） | StepIndicator: `currentStep` 1 / 2 / 3 で `aria-current="step"` の丸だけが `bg-ongoing-soft` と太字、他は muted | いまのステップが塗り（段 4）のまま、済んだステップが操作の色 |
+| D-CE8（採った側） | F17 | unit（新 file、describe に `UI-07`） | StepIndicator: `currentStep` 1 / 2 / 3 で `aria-current="step"` の丸だけが `bg-ongoing-soft` と太字、他は muted | いまのステップが塗り（段 4）のまま、済んだステップが操作の色 |
+| D-CE8（採らなかった側） | F17 | unit（同 file） | いまのステップが `bg-primary text-primary-foreground`、済みが `bg-primary/10 text-primary`、先が muted（現行の class を固定） | 分岐表に無い形へ変える、済みと先の区別を失う |
 | D-CE9 | F10 | integration | `ProductRankingTable.test.tsx` または `DepartmentTable.test.tsx` に前月比 +1.0% / −1.0% / 0 / 比較不可の 4 値で文言（`+1.0%` 等）と `text-success-strong` / `text-destructive-strong` / `text-muted-foreground` | 閾値の分岐が入れ替わる、地の class が残る |
 | D-CE10 | F10 | integration | 移動制限: `CsvImportPage` の既存 test か ImportingStep の新 test（describe に `UI-07`）で Alert が `data-variant="warning"` と文言。未保存の案内: 入力 4 画面の既存 test のうち 1 つで文言の要素が `text-warning-emphasis` | 赤のまま |
 | D-CE13 | F9 | integration | `ProductRankingTable.test.tsx:76-99` の「1 位」の追従 test を保ち、1 位の要素が `font-semibold`、行に `bg-rank-top-bg` が無い | 1 位が色の pill のまま、sort 後に太字が追従しない |
@@ -58,6 +65,9 @@ Risk: R3
 | docs の移行の印 | F11 | CLI | AC12 の `rg`（0 行）と、Final Review が 00 の迷いやすい場面の移行列を直読み | 採らなかった試しの戻しが一部だけ |
 | traceability | F12 | CLI | `cd src-tauri && cargo run --bin generate_traceability -- --check` | 新 test file に ID が無い |
 | D-CE16 | F13 | unit（fs literal）+ CLI | `globals.test.ts` に owner が選んだ `--muted-foreground` の literal、`doc-consistency-check.sh` の DS3 | 値が候補外、00 と `globals.css` が不一致 |
+| D-CE7 / WCAG 1.4.3 | F14 | integration | `ProductListTable.test.tsx`: 在庫少の行を選ぶとそのセルが `text-warning-strong`、選択を外すと `text-warning-emphasis`（採らなかった側では常に `text-warning-emphasis`） | 開いた行で琥珀の `-emphasis` のまま |
+| D-CE7（末尾の規則） | F15 | unit + probe | `TableBody` の class が `[&_tr:last-child]:border-b-0` を持ち `[&_tr:last-child]:border-0` を持たない。描画は Contract Probe（Chrome の実測）と AC-L3-9 | 末尾の規則が全ての枠を消す |
+| D-CE17 / DSR-22 | F16 | unit | `button.test.tsx`: base と `destructive` が `focus-visible:ring-ring` を持ち、`ring-ring/50`・`ring-destructive/20` を持たない。accordion・scroll-area も同じ | 透過の ring が残る |
 
 ## State Lifecycle Matrix
 
@@ -68,7 +78,7 @@ Risk: R3
 | 取引先の picker の現在行 | dialog を開いた時点の選択が現在行 | — | 別の行を押すと現在行が移る | — | — | 閉じて開き直すと確定済みの選択が現在行 | — | 取得失敗は dialog 内の危険・失敗の Alert | — | `SupplierPickerDialog.test.tsx`、AC-L3-8 |
 | 取込みの手順の表示（`computeCurrentStep`） | idle / parsing = 1 が進行中 | preview = 2 が進行中 | importing / result = 3 が進行中 | — | — | 画面を離れて戻ると idle（1） | — | error は呼出し側で直前の status に展開、直接来れば 1 | 再選択で 1 から | StepIndicator の新 test、AC-L3-10 |
 | 取込み中の表示（Z004 の spinner・移動制限の知らせ。確定が停止中〈SPEC-STOP-D4〉のため画面では出ず、test だけ。日報取込みの spinner は画面で出る） | — | importing: spinner（進行中）と注意・確認の Alert | result へ移り両方消える | — | — | — | — | commit 失敗は ErrorState の危険・失敗の Alert | 再試行 | 移動制限の test、AC-L3-13 |
-| Home の前日分の知らせと入口 card | 前日分が未取込みなら知らせが出る | — | 取込み後に Home へ戻ると知らせが消える | 取込みの成功で関連 query が無効化される（既存） | Home の再取得 | — | 起動時に再判定 | 取得失敗はカード内の危険・失敗の Alert | 再試行 | 既存の Home の test、AC-L3-4 / 6 |
+| Home の前日分の知らせと入口 card（知らせの条件は最後の Z004 取込みの精算日 < 前日、`useHomeSummary.ts`） | Z004 の取込みが 0 件なら知らせは出ない（本番 DB）。Z004 の履歴を持つ開発 DB の写しで精算日が前日より前なら出る | — | Z004 の確定の停止中（SPEC-STOP-D4）は、日報を取り込んでも Z004 の履歴は変わらず知らせは消えない | — | Home の再取得でも同じ | — | 起動時に再判定（同じ DB なら同じ） | 取得失敗はカード内の危険・失敗の Alert | 再試行 | 既存の Home の test、AC-L3-4 / 6（見た目の比較だけ） |
 
 ## Adjacent Pattern Audit
 
@@ -90,6 +100,8 @@ Risk: R3
 | 00 に無い token（`warning-foreground` / `info-*`） | `IntegrityCheckPage.tsx:272`、`PluExportPage.tsx:366` | 2 site（S14） | なし | AC11 |
 | 失敗ではない赤（`text-destructive` の案内、`ImportingStep` の Alert） | 入力 4 画面の未保存の案内 4、`ImportingStep.tsx:29` | 5 site（S13） | 他の `text-destructive`（`FieldError` 等の入力エラー、在庫切れのセル）は危険・失敗のまま不変 | AC10 |
 | `--muted-foreground`（`rg -n 'muted-foreground' src --glob '!*.test.*'` = 276 行、75 file。test 27 行） | `text-muted-foreground` 265 ほか（内訳は packet の起票時実測 #16）、`EmptyState.tsx:32` の `text-stone-500`（同じ役割で token を読まない） | `globals.css:75` の値（S19） | 追従: 読み手 274 行（token 定義 2 行を除く）。除外: `EmptyState.tsx:32`（catalog ⑥ が生の stone を指定、backlog へ） | AC17、AC-L3-14 |
+| focus ring の透過（`focus-visible:ring-ring/50` と `ring-destructive/20`） | `rg -n -o '"[^"]*ring-ring[^"]*"' src --glob '!*.test.*'` の 16 行: 枠あり（`input`・`select`・`checkbox`・`tabs`・`badge`・`toggle`〈使用 site は outline〉・`SidebarLink`・`ReturnExchangePage.tsx:147,625`・`segmented-control`〈`border-border-strong`〉）、不透明な ring（`dialog`・`DateNavigator`・`MonthNavigator`）、枠なし（`button`・`accordion`・`scroll-area`） | 枠なし 3 部品（S20）。`<Button` 187 site（無指定 44・ghost 9・link 5・outline 126・destructive 1・default 2）、`<AccordionTrigger` 1、`<ScrollArea` 2 | 枠あり・不透明の部品は変えない（focus で 1px の不透明な枠が 7.28:1 / 6.97:1） | AC18 |
+| `TableBody` の末尾の規則（`table.tsx:27`） | `rg -l '<TableBody' src --glob '!*.test.*'` = 30 file | `table.tsx:27` の 1 行（S9） | 30 file の `TableRow` は `border-b` 以外の枠を持たないため見た目は変わらない（`rg -n 'TableRow[^>]*border-l' src` の出力なし） | AC7 |
 
 ### 最終 sweep の式（AC13）
 
@@ -157,14 +169,19 @@ merge 直前に `origin/main` を 1 回 merge した後、次の 9 本を実行�
 - M3 `alert.tsx` の icon の描画を `variant` に関わらず行う → `alert.test.tsx` の warning / default の svg 0 個が red。
 - M4 S3 の 1 site（`HomePage.tsx`）に明示の icon を戻す → Home の integration test の svg 1 つが red。
 - M5 `badge.tsx` に `defaultVariants: { variant: "default" }` と `default` を戻す → `badge.test.tsx` が red。
-- M6 `ProductListTable.tsx` の上書きを素の `bg-ongoing-soft` へ変える → `ProductListTable.test.tsx` の `data-[state=selected]:bg-ongoing-soft` の assert が red。
+- M6（採った側だけ）`ProductListTable.tsx` の上書きを素の `bg-ongoing-soft` へ変える → `ProductListTable.test.tsx` の `data-[state=selected]:bg-ongoing-soft` の assert が red。
 - M7 `comparison-cell.tsx` の +/− の class を入れ替える → 前月比の test が red。
 - M8 `DepartmentTable.tsx` の `indicatorClassName` を外す → `DepartmentTable.test.tsx` が red。
-- M9 StepIndicator の `currentStep === step.num` を `>=` にする → StepIndicator の test（済んだステップが muted）が red。
+- M9 StepIndicator の `currentStep === step.num` を `>=` にする → 採った側では済んだステップが muted の assert、採らなかった側では済みが `bg-primary/10` の assert が red。
 - M10 `globals.css` の `--muted-foreground` を `#78716c` に戻す → `globals.test.ts` の muted の literal と DS3 が red。
+- M11 開いた行の在庫少のセルを `text-warning-emphasis` に戻す → `ProductListTable.test.tsx` の選択時の `text-warning-strong` の assert が red（採った側）。
+- M12 `table.tsx:27` を `[&_tr:last-child]:border-0` に戻す → `TableBody` の class の assert が red。
+- M13 `button.tsx` の base を `focus-visible:ring-ring/50` に戻す → `button.test.tsx` の focus の assert が red。
 
 ## Residual Test Gaps
 
-- 色の見え方・受け取り方（操作と完了の言い分け、進行中の緑寄りの違和感、琥珀 pill と②分類の見分け）は自動 test で測れず、L3 だけが oracle（AC-L3-1〜13）。
+- 色の見え方・受け取り方（操作と完了の言い分け、進行中の緑寄りの違和感、琥珀 pill と②分類の見分け）は自動 test で測れず、L3 だけが oracle（AC-L3-1〜15）。
+- `TableBody` の末尾の規則が左のバーを消すかは jsdom で測れない。Plan Review（Codex）の Chrome の実測と AC-L3-9 が oracle。
+- DSR-22 の低視力 L3 の (c)（実利用者の Windows native 1 セッション）は本 lane の L3 に含めない（(a) forced-colors と (b) DPI は AC-L3-15）。
 - jsdom は CSS の詳細度と tailwind の class 生成を評価しないため、F2 / F6 の実描画は L3 と Contract Probe（tailwind-merge の出力）で補う。
 - muted の候補のどれが「補足と分かり、かつ読める」かは L3（AC-L3-14）だけが oracle。比の計算は packet の D-CE16 と Contract Probe。
