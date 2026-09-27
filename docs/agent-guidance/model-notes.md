@@ -1,12 +1,10 @@
 # モデル差分メモ
 
-公式確認日: 2026-09-14。実モデルが明示された場合だけ該当する補助を使う。設定によるモデル選択や、repositoryでの性能改善の実測結果ではない。
+公式確認日: 2026-09-25。実モデルが明示された場合だけ該当する補助を使う。設定によるモデル選択や、repositoryでの性能改善の実測結果ではない。
 
 ## Effort の選定
 
-owner方針（2026-09-14）: 見落としを防ぎ、修正・再試行・再レビューを含むタスク完了までの総tokenで効率を判断する。低いeffortが効率的とは限らず、難問では `xhigh` が総消費を減らす場合もある。選択理由と取得できたusage/実効metadataを残し、未取得は未実測とする。
-
-Astraは `medium` を選べるが、問題に応じて上げる。Solは基本 `high` とし、Astraと同じラベルへ機械的に揃えない。Claudeの既定値・別セッション起動時の指定は [CLAUDE.md](../../CLAUDE.md#sonnet--opus-の-effort) を参照する。過去のSol `medium` 比較はその設定での観測に限り、通常運用への推奨や品質保証にしない。
+Claude 側・Codex 側とも、effort の値と決定日は [AGENT_OPERATING_MANUAL の座組](../AGENT_OPERATING_MANUAL.md#座組) の effort 列が持ち、ここには書かない。effort の選び方の owner 方針（2026-09-14、総 token で効率を判断する）は同じ座組の表の下の注記「effort の選び方」を読む。
 
 ## GPT-6 Astra
 
@@ -14,9 +12,9 @@ Astraは `medium` を選べるが、問題に応じて上げる。Solは基本 `
 
 根拠: [Skills and prompts](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)、[Prompting best practices](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices)。
 
-## GPT-5.6 Sol と未知のモデル
+## GPT-6 Sol と未知のモデル
 
-共通契約と用途別profileを使う。今回の整理では、Solだけに長い旧手順を残す根拠は未実測。共通の短い依頼で不足が観測された箇所にだけ補助を追加する。Astra向けの傾向を自動継承しない。
+共通契約と用途別profileを使う。今回の整理では、Solだけに長い旧手順を残す根拠は未実測。共通の短い依頼で不足が観測された箇所にだけ補助を追加する。Astra向けの傾向を自動継承しない。SolのeffortはAstraと同じ選び方へ機械的に揃えない。過去のSolのeffort比較はその設定での観測に限り、通常運用への推奨や品質保証にしない。
 
 ## Claude Code との共有境界
 

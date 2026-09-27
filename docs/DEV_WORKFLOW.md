@@ -80,7 +80,7 @@ Required fields, one non-empty `- Key: value` line each:
 - `Risk`: R2 - R4 (same value as the packet `Risk` section; R0/R1 do not use a Plan Packet or Workflow State)
 - `Plan Commit`: SHA of the plan-first commit; the literal `pending` until plan-approved
 - `Amendments`: `none`, or the SHA list of gated amendments recorded after Plan Gate (see PK5 below); the original `Plan Commit` value is never rewritten
-- `Coordinator` / `Writer` / `Plan Reviewer` / `Final Reviewer`: role assignment for this change (role definitions in AGENT_OPERATING_MANUAL; concrete model names appear only as values here, never in normative rules)
+- `Coordinator` / `Writer` / `Plan Reviewer` / `Final Reviewer`: role assignment for this change (role definitions and the formation table are in [AGENT_OPERATING_MANUAL `## 座組`](AGENT_OPERATING_MANUAL.md#座組); in normative text, concrete model names appear only as values of these fields and in that formation table)
 - `Final Review Minimum`: 1 | 2 — the number of independent broad audits required. R4 and workflow gate changes (classifier `workflow=true`) require 2
 - `Human Gate`: `ready,merge`, plus `manual` and/or `r4` when required. R4 requires `r4`. Free-form conditions are not inferred as exemptions
 
@@ -212,7 +212,6 @@ Design completion criteria:
 
 - Start from the applicable route in [../AGENTS.md](../AGENTS.md) `Session Start`. Read the sections needed for the current task/phase; do not duplicate the route or reload unrelated history.
 - Use `$inventory-workflow-start` ([Skill doc](../.agents/skills/inventory-workflow-start/SKILL.md)) for kickoff and `$inventory-implementation` ([Skill doc](../.agents/skills/inventory-implementation/SKILL.md)) for scoped implementation work.
-- Astra主担当の作業は[Agent Operating Manual §3.2](AGENT_OPERATING_MANUAL.md#astraを主担当にする場合d-087)の一貫担当を既定とする。通常作業のサブエージェント分割や起草/実装の別runを要求せず、独立レビューとPlan Gateを維持する。
 - `$...` workflow skills are Codex/OpenAI harness entrypoints under `.agents/skills/`. Claude Code sessions that do not load those skills should follow `AGENTS.md`, this document, and the linked Skill files as plain procedure docs.
 - Keep `UI -> CMD -> BIZ -> IO/MNT` intact. UI must not call IO. CMD must stay thin.
 - Put product rules in BIZ or design docs, not in presentational UI wrappers.
@@ -251,16 +250,7 @@ stacked train は、後続 lane を先頭 lane の branch 上へ stack する逐
 
 ## Subagent Budget
 
-Risk-tiered ceiling for delegated sub-agents, regardless of harness (D-034):
-
-| Risk / stage | Max concurrent sub-agents |
-|---|---|
-| R0 / R1 | 0 |
-| R2 | 0 - 1 |
-| R3 | 2 |
-| R4 or workflow gate change | 3 |
-
-- Wave Operation でも上表の per-lane 上限を維持し、加えて `全 lane 合算の同時 subagent 上限は 4` とする（D-055）。上限には Writer 以外の Plan Reviewer / Final Reviewer / review-only subagent を含め、空き枠がなければ新規 delegation を待機する。
+- 同時に動かす subagent の数に上限は置かず、Coordinator が作業ごとに決める（owner 2026-09-23）。
 - Max delegation depth is 1: sub-agents must not spawn sub-agents.
 - One-writer rule: at most one agent holds write ownership of a file set at a time. Write-parallelism requires separate worktrees or non-overlapping file ownership declared in the Plan Packet.
 - Sub-agent output contract: a bounded evidence summary (about 20 items max) with file:line references. No raw logs, no full-file dumps.
@@ -277,7 +267,7 @@ R2+ Plan Packets carry a default owner-effort ceiling (D-038): interventions ≤
 - Wave Operation の owner 承認は wave summary として batch できるが、`batch で進めた各 lane に介入 1 回を計上`し、各 lane の既定 3 回を緩和しない。summary は lane ごとの `介入 N/M + 完了 1 文` を束ね、lane ごとの承認・却下を独立に扱う。計上は session 数ではなく `decision point 単位`であり、同一 lane の複数 decision point を 1 session で判断した場合はその数だけ計上する（D-055）。
 - When any ceiling is likely to be exceeded, stop before requesting another approval or generating more evidence, scripts, or ceremony. Restate the Goal Invariant and return to its minimal sufficient completion route; defer optional evidence and follow-ups. If the remaining route cannot fit, report the blocker instead of silently widening the budget.
 - An owner's qualitative discomfort such as “this is taking too long” or “I cannot tell what is being built” is a `goal-drift signal`. Stop immediately, compare the current outcome state with the Goal Invariant, classify candidate-safety work separately from supporting evidence, and do not resume until the next step visibly advances the minimum completion condition within the remaining budget.
-- For the one-time, irreversible, owner-gated task shape, use the `one-shot irreversible` owner-attended time-boxed session in [AGENT_OPERATING_MANUAL.md](AGENT_OPERATING_MANUAL.md) §3.5. This task-shape choice is separate from the vendor-oriented Execution Mode.
+- For the one-time, irreversible, owner-gated task shape, use the `one-shot irreversible` owner-attended time-boxed session in [AGENT_OPERATING_MANUAL.md](AGENT_OPERATING_MANUAL.md) §3.5.
 
 ### 問い合わせの行き先
 
@@ -286,7 +276,7 @@ R2+ Plan Packets carry a default owner-effort ceiling (D-038): interventions ≤
 | 1. 発注書だけの誤記・転記の矛盾・古い着手条件 | Coordinator | [AGENT_OPERATING_MANUAL.md §5.6](AGENT_OPERATING_MANUAL.md#56-従来型-writer-発注書の共通出力契約)「Writer が編集前に止まったとき」の 2〜3 を満たす |
 | 2. 環境の不備・既知 command の出力先の確認 | Coordinator / 担当者 | 許可済みの環境・範囲で解消でき、追加の費用・権限・正本の変更を伴わない |
 | 3. 技術的な前提が不明 | agent の調査・Contract Probe | owner に技術的な正しさの承認を求めない。結果が製品の振舞い・受容リスクの選択になる場合は 6 へ |
-| 4. 正本の意味の変更・影響の分類の争い | 独立 reviewer による事実確認、その後は実行 mode 上の裁定者 | 独立 review は owner の採用権を代替せず、裁定権が owner にある場合は中継を省かない |
+| 4. 正本の意味の変更・影響の分類の争い | 独立 reviewer による事実確認、その後は Coordinator（finding の採否）。owner の裁定権に当たる場合は owner（`AGENTS.md` Decision and Approval Boundaries） | 独立 review は owner の採用権を代替せず、裁定権が owner にある場合は中継を省かない |
 | 5. 店の事実・実機でしか確認できない挙動 | owner | 省略不可。具体的な質問か、短い PASS / FAIL で答えられる形にする |
 | 6. 目的・製品の振舞い・受容リスク・予算・優先順位・範囲の変更・不可逆な操作 | owner | 省略不可 |
 | 7. Windows L3・R4・Ready・merge | owner | 現行の明示承認と有効な委任の範囲だけを使う |
@@ -346,7 +336,7 @@ CI routing:
 - Before an irreversible finding can authorize deletion, recreation, forceful repair, or another destructive mutation, it must state all four items: `actual harm path`, `affected candidate or mutation`, `non-destructive revalidation`, and `blocker reason`. Run the cheapest safe revalidation first; a missing item keeps the finding non-authoritative for destructive action.
 - When the Plan Packet includes `Impact Review Lenses`, pass those lenses into the review-only sub-agent packet and ask the reviewer to use them as prompts for missing design, evidence, tests, manual checks, or replacement-boundary risks.
 - For R3, run review-only sub-agent by default; if skipped, record `Review-only skipped because:` in the Plan Packet or PR body.
-- Writer が Codex（発注書駆動の実装者）である packet の Plan Reviewer は、Writer と同一 vendor であってはならない。同一 vendor の fresh context はこの独立性を満たさない（D-062）。この vendor 単位の制約は `Execution Mode` が `codex-only`（AGENT_OPERATING_MANUAL.md §3.2）であっても免除されない。 non-Codex の Plan Reviewer が実在しない場合は、免除するのではなく AGENT_OPERATING_MANUAL.md §3.3 Capacity-degraded に従って Plan Reviewer を pending 化し、Phase を前進させない。
+- Writer が Codex の packet の Plan Reviewer は [AGENT_OPERATING_MANUAL.md](AGENT_OPERATING_MANUAL.md) §3 の独立性の項（Writer と別 vendor の Plan Reviewer を含める。担当は同書 `## 座組`）に従い、役割担当が一時的に使えないときは同書 §3.3 に従う（D-062）。
 - For narrow docs-only PRs where review-only is skipped, the PR body must state why local verification is enough.
 - For R4, review-only sub-agent is required and destructive or irreversible actions need explicit human approval.
 - Sub-agent findings are claims. Verify each finding against files, diffs, specs, and test output before accepting or rejecting it.
