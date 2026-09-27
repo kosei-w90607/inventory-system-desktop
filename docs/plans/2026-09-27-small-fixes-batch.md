@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: design
 - Risk: R2
 - Plan Commit: pending
 - Amendments: none
@@ -21,6 +21,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 - kickoff → spec-check → plan-draft → plan-gate（本 commit、plan-first、2026-09-27、起草役）: owner の起票承認 2026-09-27「B 色と強調 + E 小口」と wave 14 の方針（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」）を受け、`docs/backlog.md` の小口 4 群を現物で確かめて Scope S1〜S8 を確定した。lane 全体を R3 以上へ押し上げる ⑰-1（操作ログ `detail_json` の非価格 field）と、restore の表示契約・wire を変える follow-up (2)（新しすぎる backup の文言）は Non-scope へ移した。spec-check → plan-draft は Design Readiness が既存の正本で足りることを示すため design を飛ばす（根拠は同節）。
 - Plan Review round 1（2026-09-27、Coordinator の裁定 r1）: fresh Opus 5.5 と Codex（GPT-6 Astra）の両 reviewer とも reject。Risk・Non-scope の判断は両者とも妥当とし、指摘 E1-1〜E1-10 をすべて accept して plan-gate のまま是正した（本 commit）。
+- Plan Review round 2（2026-09-27、fresh Opus 5.5 と Codex GPT-5.6 Sol、対象 `22331e15`）: 両 reviewer とも reject。Coordinator の裁定 r2 に沿い、plan-gate から design へ戻して S5・S6・S7 の設計正本を plan 側で先に訂正した（2026-09-28、起草役、本 commit。02 ⑨・04 の反映待ちの表・59 §59.1・55 §55.5 / §55.9・plu-tables §25）。旧稿の「design を飛ばす」判断は撤回する。
 
 ## Owner Effort Budget
 

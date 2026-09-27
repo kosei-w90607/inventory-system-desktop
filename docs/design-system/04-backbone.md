@@ -111,7 +111,8 @@
 | PageHeader の subtitle 基準（旧原則 9） | 02 ①（`subtitle` と `actions` の併用、PR #63 で runtime 反映済み） |
 | 02 の ⑬ badge 3 種・⑨ 検索行の器・`ListSkeleton`、review-checklist の本文 16px（旧原則 1・4・6・11） | 02 ⑬・⑯・⑥、review-checklist カテゴリ 9（反映済み） |
 | 操作目標 min-height 40px（旧原則 8、旧 token 表の操作目標の行） | [UI_TECH_STACK.md](../UI_TECH_STACK.md) §5.6（44×44 を目標、現状は未達）と `docs/backlog.md`「ボタンの高さを目標の 44px へ近づけるかを実機で決める」 |
-| 部門 select の幅を全画面同一に（旧 token 表の検索欄の行）、sidebar ラベルの折返し、未使用の App.css の撤去、月数回・年数回の画面の個別 sweep（旧「適用の順序」4 段目） | `docs/backlog.md`（旧 04 の未了の作業） |
+| 部門 select の幅を全画面同一に（旧 token 表の検索欄の行） | 02 ⑨（`DepartmentFilter` が `w-[11rem]` に固定、部品を使わない入出庫履歴の select は `w-44` = 11rem） |
+| sidebar ラベルの折返し、未使用の App.css の撤去、月数回・年数回の画面の個別 sweep（旧「適用の順序」4 段目） | `docs/backlog.md`（旧 04 の未了の作業） |
 | badge は 12px / 600 / pill（旧 token 表の badge の行） | 12px と pill は 02 ⑬ と `badge.tsx`。weight は 600 を現行の 500（`font-medium`、2026-09-05 以降の L3 で owner が見てきた形）で置換する。600 は見出し（00 のタイポグラフィ表）と `AlertTitle`（02 ⑥）が使い、badge には使わない。runtime lane A の L3 の before / after で owner が違和感を言えば見直す |
 | 押せる行の右端 chevron（hover 背景は反映済み、原則 7）（旧原則 8、旧「適用の順序」2 段目） | `docs/backlog.md`（同上） |
 
@@ -119,6 +120,7 @@
 
 | 日付 | 内容 |
 |---|---|
+| 2026-09-28 | 旧 04 の反映待ちの行き先の表で、部門 select の幅の行き先を 02 ⑨ へ移す（small-fixes-batch、plan 側で先に訂正）。 |
 | 2026-09-24 | デザインの決まりの組み直し（decision-log D-091）。03 の哲学と 16 の原則を、見る人の受け取り方から組み直した 11 の原則へ統合し、旧番号の対応表・旧 03 の節の行き先・旧 04 の反映待ちの行き先を置いた。役目を終えた「foundations への追記分（token）」「00〜03 への反映先」「適用の順序」の節を削った（batch 1 で 00 を改めるとしていた caption・ページ余白・icon の 3 点は 00 へ反映済み）。削った旧文は `git show dda8560a:docs/design-system/04-backbone.md` で引ける |
 | 2026-09-05 | UI 規約補強 design batch（本 packet、本 PR）— 原則4②の枠線記述を `--border` 必須 + narrow 化の dated note へ更新（3:1 は interactive な操作枠へ限定、owner v2 mockup 決定）。foundations 追記分表の success 行・badge 行の備考に反映済みを追記。「00〜03 への反映先」の catalog⑬ badge 項目を完了済みへ更新 |
 | 2026-09-03 | UI 一覧の背骨 D — Lane 2 実装。原則 6 の枠文言を `rounded-lg border bg-card p-4` へ、原則 13〜15 の token 参照を実 token 名（`--border-strong` `#8a8480` / `--border` `#cdc8c4` / `--row-current` `#fff8e6`）へ、原則 14 に `ListShell` の実 path を明記。foundations 追記分表の page root / 枠 / 現在行の 3 行を実装済み表記へ更新 |
