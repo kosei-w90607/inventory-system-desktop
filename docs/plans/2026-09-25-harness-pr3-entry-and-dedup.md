@@ -6,7 +6,7 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 920740eaab41228c1760f78942fe818df130c853
 - Amendments: none
@@ -29,6 +29,7 @@ manual なし: 製品の runtime・画面・配布物は変わらない。r4 な
 - plan-gate（2026-09-27、round 2 の是正）: Plan Review round 2 は両 reviewer とも reject、plan-gate のまま是正。owner 決定（2026-09-25）で PR2 の範囲が縮小されたので、PR2 への前提を合わせた。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
 - plan-gate（2026-09-27、round 3 の一括是正）: Plan Review round 3（上限）は両 reviewer とも reject。round 4 は回さず、同型の一括是正（裁定 r3）。予算の改定は owner 承認待ち。
 - plan-gate → plan-approved（2026-09-27、Coordinator、本 commit）: Plan Review round 3（上限、対象 `fb1cc6bf`）は Codex 側（GPT-6 Astra、high）が P1 1、Claude 側（fresh Opus 5.5）が同じ指摘を P2 1 として reject（`inventory-code-review` が併用を指示する `engineering-review` Skill に別の重大度・label の規範が残り、最小完了条件 3 が成立しない、ほか P3）。範囲の漏れで作り直しには当たらないため、round 天井に従い追加の round は回さず、同型の一括是正（`920740ea`、裁定 r3）で S5 に engineering-review を加えるなど全件を反映し、Coordinator が現物で確かめた。owner 承認（2026-09-27）のもと予算を介入 9・relay 5 に改めた。Plan Commit = 本 commit の親（round 3 の一括是正後の承認版 `920740ea`）。
+- plan-approved → implementing（2026-09-27、Coordinator、本 commit）: plan-approved の承認版（`2a209954` の親）のまま Writer（Opus 5.5 subagent）に実装を発注する。packet の契約は変えない。
 
 ## Owner Effort Budget
 
