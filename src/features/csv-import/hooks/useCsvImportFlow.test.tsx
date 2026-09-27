@@ -209,6 +209,50 @@ describe("useCsvImportFlow UI-07 D-052-C8/C9", () => {
     expect(result.current.state.status).toBe("idle");
   });
 
+  it("REQ-401: internal commit failure shows the error state and recovers to the same preview", async () => {
+    // 55 §55.5 / §55.9: 取込み（commit）の失敗は kind を問わず ErrorState を出す。
+    // import_error 以外は recoverTo="preview" で、戻ると失敗前と同じプレビューから再試行できる。
+    mockCommit.mockResolvedValueOnce({
+      status: "error",
+      error: {
+        kind: "internal",
+        message: "合成の DB ロック競合",
+        field: null,
+        error_id: null,
+      },
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const { result } = renderHook(() => useCsvImportFlow(), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.selectFile({
+        bytes: new Uint8Array([1]),
+        filename: "sales.csv",
+        size: 1,
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.state.status).toBe("preview");
+    });
+    const previewBeforeFailure = result.current.state;
+    act(() => {
+      result.current.confirmImport(false);
+    });
+    await waitFor(() => {
+      expect(result.current.state.status).toBe("error");
+    });
+    expect(result.current.state).toMatchObject({ status: "error", recoverTo: "preview" });
+
+    act(() => {
+      result.current.dismissError();
+    });
+    expect(result.current.state).toEqual(previewBeforeFailure);
+  });
+
   it("commit invalidates the exact independent oracle set", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
