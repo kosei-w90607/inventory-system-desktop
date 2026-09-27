@@ -12,8 +12,8 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree と branch を書く）
-- Plan Reviewer: Opus 5.5（fresh subagent、Writer と別 context）+ Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定）
-- Final Reviewer: Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定）
+- Plan Reviewer: Opus 5.5（fresh subagent、Writer と別 context）+ Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定（GPT-6 Sol は owner 決定 2026-09-26 により DevDay まで GPT-5.6 Sol で代える。座組表〈AGENT_OPERATING_MANUAL `## 座組`〉の GPT-6 Sol に当たる））
+- Final Reviewer: fresh Opus 5.5（Claude 側、R2 のため座組表の既定）+ Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定（GPT-6 Sol は owner 決定 2026-09-26 により DevDay まで GPT-5.6 Sol で代える。座組表〈AGENT_OPERATING_MANUAL `## 座組`〉の GPT-6 Sol に当たる））。互いに独立で、後の reviewer に先の結果を見せない（2026-09-28 に main へ入った座組表〈PR #113〉に合わせて Claude 側を足した。Minimum は 1 のまま）
 - Final Review Minimum: 1
 - Human Gate: ready,merge,manual
 
