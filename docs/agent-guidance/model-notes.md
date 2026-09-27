@@ -4,7 +4,7 @@
 
 ## Effort の選定
 
-Claude 側・Codex 側とも、effort の値と決定日は [AGENT_OPERATING_MANUAL の座組](../AGENT_OPERATING_MANUAL.md#座組) の effort 列が持ち、ここには書かない。選択理由と取得できたusage/実効metadataを残し、未取得は未実測とする。
+Claude 側・Codex 側とも、effort の値と決定日は [AGENT_OPERATING_MANUAL の座組](../AGENT_OPERATING_MANUAL.md#座組) の effort 列が持ち、ここには書かない。effort の選び方の owner 方針（2026-09-14、総 token で効率を判断する）は同じ座組の表の下の注記「effort の選び方」を読む。
 
 ## GPT-6 Astra
 

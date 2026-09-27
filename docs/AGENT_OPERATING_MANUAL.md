@@ -73,6 +73,7 @@
 
 - 確認日: 2026-09-27。担当と effort は owner 決定 2026-09-07 / 08・14・23・24・25 による。
 - モデル更改時は owner 決定を受けてこの表だけを書き換える。座組・effort を他の文書へ複製しない。owner をモデル間の伝書鳩にしない（発注は Plan Packet / PR body / review packet という repository 証跡経由で渡す）。
+- effort の選び方: 見落としを防ぐことを優先し、修正・再試行・再レビューを含むタスク完了までの総 token で効率を判断する。低い effort が効率的とは限らず、選択理由と取得できた usage / 実効 metadata を残し、未取得は未実測とする（owner 2026-09-14）。
 - Fable は context を絞った subagent の発注で使い、advisor は常用しない（owner 2026-09-25「週制限のなかで Fable 持て余す、指揮を Opus にしてる分」）。1〜2 週ごとに `/usage` の Fable の消費を見て出番を増減する。
 - 根拠: [Opus 5.5 prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5#calibrate-effort)「Calibrate effort」、[effort](https://platform.claude.com/docs/en/build-with-claude/effort)「Recommended effort levels for Claude Opus 5.5」、[Fable 5.1 prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1)。名前の同じ effort を model 間で同じ思考量と見なさない。
 
