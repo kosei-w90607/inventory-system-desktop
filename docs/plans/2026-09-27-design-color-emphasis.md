@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: dbd5dd5412070fdcb32d382fd31fe4971e9afb67
 - Amendments: none
@@ -30,6 +30,7 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 - 予算の再承認（2026-09-27、Coordinator の記録）: owner が介入 24・relay 7・実働 75 分を承認（この change での介入 9 回目）。plan-gate のまま Plan Review round 3（上限）へ進む。
 - 上限の Plan Review round 3 の結果（2026-09-28、起草役、本 commit）: 両 reviewer とも reject、一括是正（裁定 r3）。round 4 は出さず、plan-gate のまま裁定の B3-1〜B3-11 を反映した。Plan Commit は pending のまま。介入の上限は 25 に改め owner 承認待ち（plan-approved の承認と同じ 1 回で求める）。
 - plan-gate → plan-approved（2026-09-28、Coordinator、本 commit）: Plan Review round 3（上限、対象 `b3844379`）は両 reviewer とも reject（P1 0）。round 天井に従い追加の round は回さず、裁定 r3 の一括是正（`dbd5dd54`）で全件を反映し、Coordinator が予算表・AC12 の baseline・L3 の DB の前提を現物で確かめた。owner 承認（2026-09-28「返事二つOKだよ」、この change での介入 11 回目、介入の上限 25）のもと plan-approved。Plan Commit = 本 commit の親（`dbd5dd54`）。
+- plan-approved → implementing（2026-09-28、Coordinator、state-only）: Writer（Opus 5.5 subagent の worktree run）へ実装を発注する。Writer の開始 HEAD は本 commit。
 
 ## Owner Effort Budget
 
