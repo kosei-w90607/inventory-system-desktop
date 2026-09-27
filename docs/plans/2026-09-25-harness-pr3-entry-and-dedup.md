@@ -369,7 +369,8 @@ Contract ID: SPEC-WF-HARNESS3
 
 ## Implementation Results
 
-Fill after implementation.
+- 同期: PR2（#113）と closeout（#115）を含む origin/main を単段で merge した。競合は `docs/Plans.md` と `docs/decision-log.md` の追記だけで、両方を残し decision-log は D-092 → D-093 の順にした。PR2 側の前提（`## 座組` の H2、MANUAL の `pr-review-prompt` の link の除去、review packet の出力の規範の除去、`CLAUDE.md#` の anchor の除去、座組表の注記「effort の選び方」）が同期後の tree で成り立つことを確かめた。
+- S7: 着手条件（MANUAL の `pr-review-prompt` が 0 件）の成立後に `docs/templates/pr-review-prompt.md` を削除した。live な参照は残らない（AC2 の検索は classifier test の path 文字列 1 行だけ、archive を含む link は 0 行）。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
