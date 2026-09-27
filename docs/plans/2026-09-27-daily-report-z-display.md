@@ -10,9 +10,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 2e9078ca2f5bdffbe6c80e3d3fc25a83b17cf198
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree `.claude/worktrees/daily-report-z-display`、branch `agent/daily-report-z-display`）
@@ -34,6 +34,7 @@ Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane �
 - Plan Review round 2（2026-09-27、fresh Opus 5.5 と Codex GPT-5.6 Sol、対象 `b67b1f48`）: Claude 側は approve、Codex 側は reject。P1 は owner 決定（2026-09-27、Goal を Z001 に絞り Z002 の既存の合算は backlog の独立した項目）で解消し、Coordinator の裁定 r2 に沿って Writer が packet・Matrix・56 D16 の文字列の確定・backlog・biz-task-specs を是正した。予算の上限の改定は owner 承認待ち。plan-gate のまま round 3 へ。
 - 予算の承認（2026-09-27、Coordinator の記録）: owner が介入 5・relay 4 を承認（この change での介入 4 回目）。plan-gate のまま Plan Review round 3（上限）へ進む。
 - Plan Review round 3（上限、2026-09-27、fresh Opus 5.5 と Codex GPT-6 Astra、対象 `e1bb49df`）: Claude 側は approve、Codex 側は予算の不整合で reject。round 4 は回さず同型の一括是正とし、予算は owner 承認済み（介入 7・relay 5、この change での介入 5 回目）。Writer が予算の欄・Matrix R3 / R9 / R11・Scope S8 と Design Sources を是正した。Phase は plan-gate、Plan Commit は pending のまま（plan-approved の記録は Coordinator の別 commit）。
+- plan-gate → plan-approved（2026-09-27、Coordinator、本 commit）: Plan Review round 3（上限、対象 `e1bb49df`）は Claude 側 approve（P3 4）、Codex 側は予算の不整合（P2）と R11（P3）で reject、設計の blocker は無し。round 天井に従い追加の round は回さず、同型の一括是正（`2e9078ca`）で全件を反映し Coordinator が確かめた。owner 承認（2026-09-27、介入 7・relay 5）のもと plan-approved。Plan Commit = 本 commit の親（`2e9078ca`）。
 
 ## Owner Effort Budget
 
