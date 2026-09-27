@@ -6,7 +6,7 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 6b51e223c3bf8e14a27136acb33a8223b8f75eac
 - Amendments: none
@@ -31,6 +31,7 @@ decision-log の番号予約: 本 PR は **D-092** を使う。D-091 は PR #98�
 - Risk の経緯（2026-09-27 に追記）: 起票時（`c0e4a14b`）の Risk は R2 で、Plan Review round 1 の是正（`9d444c3f`、2026-09-25）で R3 に改めた（review の規則を書き換える workflow gate の変更。理由は下記 Risk）。上の起票行の「Risk R2」はその時点の値。D-091 は PR #98 で merge 済み。
 - plan-gate（2026-09-27、round 3 の一括是正）: Plan Review round 3（上限）は両 reviewer とも reject。round 4 は回さず、同型の一括是正（裁定 r3）。予算の改定は owner 承認待ち。
 - plan-gate → plan-approved（2026-09-27、Coordinator、本 commit）: Plan Review round 3（上限、対象 `a76a1514`）は Claude 側（fresh Opus 5.5）・Codex 側（GPT-6 Astra、high）とも reject（P2 = helper が同じ head/base の broad だけを数えるのに Claude 側 broad の取り直しが無い、AC8 の期待値が `#座組` の link の追加と矛盾、S4 の残す文が AC2 / AC7 の禁止語に当たる、ほか P3）。round 天井に達したため追加の round は回さず、同型の一括是正（`6b51e223`、裁定 r3）で全件を反映し、Coordinator が現物で確かめた。owner 承認（2026-09-27）のもと予算を介入 10・relay 5 に改めた。Plan Commit = 本 commit の親（round 3 の一括是正後の承認版 `6b51e223`）。
+- plan-approved → implementing（2026-09-27、Coordinator、本 commit）: plan-approved の承認版（`10190352` の親）のまま Writer（Opus 5.5 subagent）に実装を発注する。packet の契約は変えない。
 
 ## Owner Effort Budget
 
