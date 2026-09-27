@@ -154,11 +154,14 @@ fn apply_sql_migration(
 /// schema_versionsテーブルを確認し、未適用のマイグレーションを順番に実行する
 ///
 /// 22-mnt-migration.md §3.2:
-/// 0. DDL を発行せずに現在の最大バージョンを読み、アプリの最大より新しければ拒否（MNT-03-D11）
-/// 1. schema_versionsテーブルの存在チェック → なければ作成
-/// 2. 未適用のマイグレーションを順番に実行
+/// 1. DDL を発行せずに同じ接続で現在の最大バージョンを読む（schema_versions が無ければ 0、MNT-03-D11）
+/// 2. アプリの最大バージョンより新しければ SchemaNewerThanApp で拒否する（DDL も migration も始めない、MNT-03-D11）
+/// 3. schema_versionsテーブルを確保する（CREATE TABLE IF NOT EXISTS）
+/// 4. マイグレーションリストから current_version より大きいものを取り出す
+/// 5. 各マイグレーションを順番に BEGIN → 実行 → バージョン記録 → COMMIT（失敗は ROLLBACK して MigrationFailed）
+/// 6. 全て成功 → Ok(())
 pub fn migrate(conn: &Connection) -> Result<(), DbError> {
-    // 0. 論理的な書込み（DDL・BEGIN・INSERT）より前に版を比較する（MNT-03-D11）
+    // 1〜2. 論理的な書込み（DDL・BEGIN・INSERT）より前に版を読んで比較する（MNT-03-D11）
     let current_version = read_current_version_without_ddl(conn)?;
     let app_max = app_max_version();
     if current_version > app_max {
@@ -168,10 +171,10 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
         });
     }
 
-    // 1. schema_versionsテーブルを確保
+    // 3. schema_versionsテーブルを確保
     ensure_schema_versions_table(conn)?;
 
-    // 2. 未適用のマイグレーションを順番に実行
+    // 4〜5. 未適用のマイグレーションを順番に実行
     for migration in migrations() {
         if migration.version > current_version {
             match &migration.kind {
