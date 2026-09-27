@@ -6,9 +6,9 @@
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 920740eaab41228c1760f78942fe818df130c853
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session）
 - Writer: Opus 5.5 subagent（fork でない fresh context、Coordinator が指定する worktree で作業）
@@ -28,12 +28,13 @@ manual なし: 製品の runtime・画面・配布物は変わらない。r4 な
 - plan-gate（2026-09-25、Coordinator の指示で是正）: Plan Review round 1 は両 reviewer とも reject。plan-gate のまま packet を是正した。findings と裁定の詳細は round 2 の完了後に Review Response へ記録する。
 - plan-gate（2026-09-27、round 2 の是正）: Plan Review round 2 は両 reviewer とも reject、plan-gate のまま是正。owner 決定（2026-09-25）で PR2 の範囲が縮小されたので、PR2 への前提を合わせた。findings と裁定の詳細は Plan Review の完了後に Review Response へ記録する。
 - plan-gate（2026-09-27、round 3 の一括是正）: Plan Review round 3（上限）は両 reviewer とも reject。round 4 は回さず、同型の一括是正（裁定 r3）。予算の改定は owner 承認待ち。
+- plan-gate → plan-approved（2026-09-27、Coordinator、本 commit）: Plan Review round 3（上限、対象 `fb1cc6bf`）は Codex 側（GPT-6 Astra、high）が P1 1、Claude 側（fresh Opus 5.5）が同じ指摘を P2 1 として reject（`inventory-code-review` が併用を指示する `engineering-review` Skill に別の重大度・label の規範が残り、最小完了条件 3 が成立しない、ほか P3）。範囲の漏れで作り直しには当たらないため、round 天井に従い追加の round は回さず、同型の一括是正（`920740ea`、裁定 r3）で S5 に engineering-review を加えるなど全件を反映し、Coordinator が現物で確かめた。owner 承認（2026-09-27）のもと予算を介入 9・relay 5 に改めた。Plan Commit = 本 commit の親（round 3 の一括是正後の承認版 `920740ea`）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 4（2026-09-27 時点の消費 4 = owner の起票承認 2026-09-25「PR2とPR3の並列はやろうかな」1 + Plan Review round 1〜3 の Codex relay 3。上限に達した。残る見込み: plan-approved と予算改定の承認 1、Final Review の Codex relay 1、Ready・merge 1。超過の扱いは下の relay の改定案と同じ承認依頼で owner に諮る）
+- 介入回数上限: 9（owner 承認 2026-09-27 で 4 から改定。消費 5 = 起票承認 2026-09-25 1、Plan Review round 1〜3 の Codex relay 3、本改定と plan-approved の承認 1。残る見込み = Final Review の Codex relay 1、必要なら Codex closure 1、Ready 1、merge 1）
 - 実働時間上限: 15分（文書と test の変更で、owner の作業は Codex relay と Ready / merge の判断に限られる見込み）
-- relay 往復上限: 2（2026-09-27 時点の消費 3 = Plan Review round 1〜3 の Codex。round 2 で上限に達し、round 3 で超過した。改定案 = 5、**owner 承認待ち**〈未承認。承認までは 2 のまま扱い、次の relay は承認の後〉。理由: 残る relay は Final Review の Codex broad 1〈R3 の Double Audit で Final Review Minimum 2 の一方。省けない〉と、findings が出た場合の Codex closure 1 で、消費 3 と合わせて 5。値は承認の後に確定する）
+- relay 往復上限: 5（owner 承認 2026-09-27 で 2 から改定。消費 3 = Plan Review round 1〜3 の Codex。残り = Final Review の Codex broad 1、必要なら是正の後の Codex closure 1。理由: round が天井の 3 まで回り、是正の後の取り直しにも Codex の合否を含めるため〈owner 決定 2026-09-25〉）
 - Plan Review round 天井: 3（既定 3。round 3 で到達し、round 4 は回さない）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
