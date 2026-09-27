@@ -765,3 +765,12 @@ Use concise ADR-style entries.
   - PR #97（PR1）で撤去済みの記録: D-035（state-only・三点一致）、D-038(8)（STATECAP）、D-046-3（backtrack）、D-049（execpolicy の 2 mirror 維持）、D-055 / D-074 のうち Rebase Map、D-085 の MG-D10 / MG-D11（移行）。
   - 維持: D-059（hook 0 本）、D-062(a)(b) と設計原則、D-039（PK5）、D-085 / D-086（merge gate）、D-090（Ordinary Operation・Writer 停止時）、独立性・Double Audit・Human Gate、MANUAL の残す節（§3.3・§3.5・§5.1〜§5.4・§5.6・§6）。MANUAL の見出しと節番号は変えず、削った節は欠番のまま残す（全面的な縮約は別 change）。
   - checker・helper・classifier は変えない。Writer・reviewer の Opus の effort は subagent の定義 file を置く後続 change まで実効せず、実効値を run 報告に記録する。
+
+## D-096: 日計（Z001）は同日の取込みごとに並べ、合算しない（2026-09-27）
+
+- Status: accepted（owner 2026-09-27。Plan Packet [Z001 / Z002 / Z005 を画面で見る](plans/2026-09-27-daily-report-z-display.md) の Q1 = A、Q2 = (a)、Q3 = (a)）。
+- Decision: 日次売上の「レジ日報（公式）」に Z001 の全行の表「日計（Z001）」を足す（[UI-09a-D16](function-design/56-ui-daily-sales.md#日計z001の表示)）。D-071 の「同日の全 active import を加算して読む」のうち、Z001 の行は全 active import を読むが加算せず、取込みの古い順に取込みごとの表として並べ、2 回以上取り込んだ日だけ、各表に取込み日時の見出しを付ける（1 回の日は表 1 つで見出しなし）。総売上 / 純売上・支払集計・部門別集計の合算（UI-09a-D15）は変えない。BIZ-05 は `OfficialDailyReportSummary.summary_imports` で親ごとの行を返し（[34 §19.2](function-design/34-biz-sales-service.md#192-型定義)）、IO は既存の `get_completed_daily_report_aggregate` に 1 つの query を足して読む（[24 §14.21](function-design/24-io-csv-import-repo.md#1421-get_completed_daily_report_aggregate)）。見た目は runtime lane の Draft で実機の before / after を並べて確かめ、mockup は作らない。
+- Why: Z001 の行が同日の 2 回の精算で足してよい値かは、帳票仕様（日計明細の精算は取引データをクリアする）からは言えるが、実物の同日 2 回精算の Z001 では確かめていない。総売・純売以外の行の鍵は並び順から作る `summary_N` で、2 回の精算で行の集合や並びが違えば別の意味の行を足すおそれがある。取込みごとに並べれば、行の性質によらず正しく、どの取込みも落とさない。画面は既存の公式セクションに表を 1 つ足すだけで、route・導線を増やさない（owner の「壊さない優先」）。
+- Alternatives: Z001 を 1 つの表に合算する案（上の理由で、実物で全行が足せると確かめるまで採らない）; 最新 1 回の取込みだけを出す案（先行の精算分を隠し D-071 に反する）; 新しい画面「レジ日報」を作る案 B（画面と覚えることが増え、印刷の要否が決まる前に紙の形へ寄せる）; 取込みの確認・完了画面と取込みの記録に出す案 C（日付で過去日を引けず、日次売上との二重の置き場所になる）。
+- Compatibility: `get_daily_sales` の名前・引数は変えず、返り値に field が 1 つ増える（bindings は runtime lane で再生成）。DB schema・parser・取込みの確認と完了の画面・日次 CSV 出力・月次は変えない。
+- Revisit: 実物の同日 2 回精算の Z001 で全行が足せると確かめ、owner が 1 つの表を望んだとき。印刷の設計（Issue #105 G）が紙 1 枚の形を要するとき。レジが変わり adapter が Z001 相当の行を別の形で作るとき。

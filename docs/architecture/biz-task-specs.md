@@ -362,7 +362,7 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
 
 **集計契約**:
 - 商品別日次は同日の `is_voided=0` 全行を `product_code + source` で加算し、manual/autoを混ぜない
-- 公式日報日次は同日の全completed parentを加算する。親・明細のoptional値はいずれかNULLなら集約結果もNULLとし、単一parent IDではなく `source_import_count` を返す
+- 公式日報日次は同日の全completed parentを加算する。親・明細のoptional値はいずれかNULLなら集約結果もNULLとし、単一parent IDではなく `source_import_count` を返す（Z001 の行は全 active import を読むが加算せず、取込みごとに ID つきで返す、D-096）
 - 月次は同日複数parentを加算し、将来のcoverage日数は `COUNT(DISTINCT report_date)` とする。公式日報seriesと商品別seriesは互いに加算しない
 
 ---
