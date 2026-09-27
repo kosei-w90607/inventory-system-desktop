@@ -13,8 +13,8 @@ Risk: R2
 - C-S3: `formatDateTime` は `src/lib/date-time.ts` の 1 箇所だけに定義され、DB の `YYYY-MM-DDTHH:MM:SS` の `T` を半角スペースへ置くだけで時差の変換をしない（74 §74.7、⑰ UIDISP-D6）。各画面は共有 helper を import し、ローカル定義を持たない。
 - C-S4: PLU書出し画面の「最終読込み日時」と「保存日時」は `YYYY-MM-DD HH:mm:ss`（ローカル時刻、秒まで）。`snapshot_at` は時差変換をしない、`savedAt`（UTC）はローカルへ直す、解釈できない値はそのまま出す（67 処理ステップ 3・8）。
 - C-S5: 部門の絞り込み欄の幅は部品だけが持ち `w-[11rem]`。呼び出し側は幅を渡せない。部品を使わない入出庫履歴の欄（`w-44` = 11rem）と同じ幅になる（02 ⑨、旧 04「部門 select 幅は全画面同一」）。
-- C-S6: CSV 取込みの解析・commit の失敗は `ErrorState` を出し `recoverTo` に従って戻る。取消（rollback）の失敗はトーストを出し `result` のまま（55 §55.5・§55.8、state 遷移表、処理手順 20）。
-- C-S7: `plu_slots.activated_at` / `released_at` はアプリ内で状態が変わった日時で、実レジへの反映・削除を証明しない（plu-tables §25、UI-08-D2。文書訂正のみ）。
+- C-S6: CSV 取込みの解析・commit の失敗は `ErrorState` を出し `recoverTo` に従って戻る。取消（rollback）の失敗はトーストを出し `result` のまま（55 §55.5・§55.8・§55.9、state 遷移表、処理手順 20）。
+- C-S7: `plu_slots.activated_at` / `released_at` はアプリ内で状態が変わった日時で、実レジへの反映・削除を証明しない。`released_at` は release_pending → free（clear 行の保存済み確認、snapshot でレジ空の観測）でだけ書き、解放 trigger では書かない（plu-tables §25、UI-08-D2、`plu_export_service.rs`。文書訂正のみ）。
 - C-S8: REQ 付き test の増減が `docs/function-design/90-traceability.md` に再生成で反映され、T4 の baseline が動かない。
 
 ## Failure Modes
@@ -43,12 +43,13 @@ Risk: R2
 | C-S3 | F-S3a | source 走査 | 「⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない」7 本（既存、import 元の正規表現を `@/lib/date-time` へ書換え） | 対象画面が旧い置き場から import したまま、または `formatDateTime` / `formatCheckedAt` のローカル定義を持つ |
 | C-S3 | F-S3a | 型検査 | `npm run typecheck`（`types.ts` から定義を消し re-export を残さない） | 15 の importer のどれかが旧い置き場を指したまま |
 | C-S4 | F-S4a | component（page） | T-S4a `PluExportPage.test.tsx`（新規、REQ-402） | `snapshot_at = "2026-08-20T17:34:05"` で「最終読込み日時: 2026-08-20 17:34:05」以外（`2026/08/20 17:34` 等）を出す |
-| C-S4 | F-S4b | component（page） | T-S4b `PluExportPage.test.tsx`（新規、REQ-402） | `savedAt = new Date(2026, 6, 1, 21, 5, 9).toISOString()` で「保存日時: 2026-07-01 21:05:09」以外を出す（UTC のまま、ミリ秒・`Z` が残る、分まで） |
+| C-S4 | F-S4b | component（page） | T-S4b `PluExportPage.test.tsx`（新規、REQ-402、`process.env.TZ = "Asia/Tokyo"`） | `savedAt = "2026-12-31T15:05:09.000Z"` で「保存日時: 2027-01-01 00:05:09」以外を出す（UTC のまま並べる、ミリ秒・`Z` が残る、分まで）。`toISOString().slice(0, 19).replace("T", " ")` 相当の mutant は UTC の runner でも red |
+| C-S4 | 保存形（ISO の UTC）の維持 | component（page） | T-S4d `REQ-402 keeps a saved pending export recovery state without PLU file bytes`（既存、書換え） | 固定時計 `2026-07-01T12:00:00.000Z` で保存した localStorage の `savedAt` が `"2026-07-01T12:00:00.000Z"` と完全一致しない（保存時にローカル書式へ変える等） |
 | C-S4 | F-S4c | component（page） | T-S4c `PluExportPage.test.tsx`（新規、REQ-402） | 解釈できない `savedAt` で入力と違う文字列（空・`Invalid Date`）を出す |
 | C-S5 | F-S5a | component | DF-4 `src/components/patterns/DepartmentFilter.test.tsx`（書換え） | `SelectTrigger` の幅が `w-[11rem]` 以外 |
 | C-S5 | F-S5a | component（結線の characterization） | B0-daily-DF2・B0-stock-DF2・B0-products-DF2（書換え） | 画面の props のまま描画して `w-[11rem]` 以外になる |
 | C-S5 | F-S5a | 型検査 + 検索 | `npm run typecheck`、`rg -c 'widthClass' src` が 0 件 | 部品が幅の prop を受け続ける、または呼び出し側に `widthClass` が残る |
-| C-S5 | F-S5b | manual | L3-1（packet の Test Plan） | 5 画面（入出庫履歴を含む）で幅が違って見える、「ビューティ関連」「すべての部門」が切れる、絞り込みの行が崩れる |
+| C-S5 | F-S5b | manual | L3-1（packet の Test Plan） | 5 画面（入出庫履歴を含む）で幅が違って見える、「ビューティ関連」や未選択の表示（「すべての部門」、入出庫履歴は「すべて」）が切れる、絞り込みの行が崩れる |
 | C-S6 | F-S6 | hook | T-S6 `useCsvImportFlow.test.tsx`（新規、REQ-401） | commit の `internal` 失敗で `recoverTo` が `"preview"` 以外になる、または `dismissError` で `preview` に戻らない |
 | C-S6 | 取消失敗の挙動の維持 | hook | `test_import_rollback_req401_failure_retries_same_id_success_refetches_remaining_aggregate`（既存） | 取消の失敗でトーストが出ない、`result` を失う |
 | C-S6 | import_error の挙動の維持 | hook | `REQ-401: import_error commit failure recovers to idle`（既存） | `import_error` が `idle` 以外へ戻る |
@@ -61,7 +62,7 @@ S4 だけが状態（保存済み未確認の復帰状態）を読む。S6 は�
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| PLU の保存済み未確認の復帰状態（`savedAt`） | なし（表示なし） | 保存中は変更なし | 保存成功で localStorage に ISO の UTC で保存（不変） | confirm 成功で削除（不変） | 該当なし | 画面の再表示で「保存日時」を新書式で表示 | アプリ再起動後も同じ値を新書式で表示 | 解釈できない値はそのまま表示 | 該当なし | T-S4b、T-S4c、既存の復帰 test |
+| PLU の保存済み未確認の復帰状態（`savedAt`） | なし（表示なし） | 保存中は変更なし | 保存成功で localStorage に ISO の UTC で保存（不変） | confirm 成功で削除（不変） | 該当なし | 画面の再表示で「保存日時」を新書式で表示 | アプリ再起動後も同じ値を新書式で表示 | 解釈できない値はそのまま表示 | 該当なし | T-S4b、T-S4c、T-S4d、既存の復帰 test |
 | レジ登録状況の要約（`snapshot_at`） | 未読込みなら表示なし | 読込み中は変更なし | 読込み成功で新書式 | 該当なし | summary の再取得で同じ書式 | 同上 | 同上 | 該当なし（読込み失敗は既存の表示） | 該当なし | T-S4a |
 | CSV 取込みの flow（文書のみ） | idle | parsing / importing | preview / result | 該当なし | 該当なし | 該当なし | 該当なし | 解析・commit 失敗は error（`recoverTo`）、取消失敗は result のまま | error からの戻り、取消は同じ ID で再試行 | T-S6、既存 `reducer.test.ts`・`useCsvImportFlow.test.tsx` |
 
@@ -73,8 +74,9 @@ S4 だけが状態（保存済み未確認の復帰状態）を読む。S6 は�
 | 共有 `formatDateTime`（⑰ UIDISP-D6） | `rg -l '\bformatDateTime\b' src --glob '!*.test.*'` の 16 file（定義 1 + importer 15） | importer 15 file を `@/lib/date-time` へ | なし | 「⑰ SC6」7 本、typecheck |
 | 日時の表示書式 `YYYY-MM-DD HH:mm:ss` | `rg -n 'toLocaleString\("ja-JP"' src --glob '!*.test.*'` と `rg -n 'toLocale(Date|Time)String' src --glob '!*.test.*'`（起草時に実行。日時に `toLocaleString` を使うのは `PluExportPage.tsx:162` だけで、他の hit は金額・件数。`toLocaleDateString("sv-SE")` の 4 箇所は日付の計算用で表示の日時ではない） | `PluExportPage.tsx` の 2 箇所 | 月次売上の期間表示「YYYY/MM/DD-MM/DD」は SCREEN_DESIGN が固定文言として定める日付範囲で、日時ではないため対象外 | T-S4a〜c |
 | 部門 select の幅 | `rg -n '<DepartmentFilter' src --glob '!*.test.*'` の 5 site と、`rg -n 'listDepartments' src --glob '!*.test.*'` で部門 master を読む画面 | 部品を使う 5 site（棚卸しは既定値を使っていたため属性の削除なし） | 入出庫履歴 `InventoryRecordsPage.tsx:229` は部品を使わない独自 select で `w-44` = 11rem、幅は一致するため変更しない（部品への置換は検索状態の配線に触れ Non-scope）。商品フォームの部門（`useProductFormOptions.ts`）は入力欄で絞り込みではない。棚卸しの画面は旧棚卸しの開始が ㉘ で止まっており manual で到達できないため、部品の test だけで確かめる | DF-4、B0-*-DF2、L3-1 |
-| DOC-2 の「アプリ内の状態の時刻は実レジの証明ではない」 | `rg -n 'activated_at|released_at' docs --glob '!docs/archive/**'`（plu-tables・33・67・diagrams・ERD） | plu-tables §25 の 2 行 | 33・diagrams・ERD は既に実装と一致（「not register proof」「実レジへの反映完了を証明しない」） | AC-S7 |
-| CSV 取込みの失敗表示 | 55 の §55.5 表・182 行・遷移表・処理手順 20・§55.8・515 行、`useCsvImportFlow.ts`、`ErrorState.tsx` | §55.5 の表の 2 行 | 182・515 行と遷移表・図は既に実装と一致 | AC-S6、T-S6 |
+| DOC-2 の「アプリ内の状態の時刻は実レジの証明ではない」 | `rg -n 'activated_at|released_at' docs --glob '!docs/archive/**'`（plu-tables・33・67・diagrams・ERD） | plu-tables §25 のカラム定義の 2 行 | 33・diagrams・ERD は既に実装と一致（「not register proof」「実レジへの反映完了を証明しない」） | AC-S7 |
+| `released_at` を書く契機 | `rg -n 'released_at' src-tauri/src/biz/plu_export_service.rs`（書込みは 164・637 行の 2 箇所。147・713 行は前の値の持ち越し、725 行は NULL）、plu-tables §25 の状態遷移表、33 §16.3 の 86 行・§16.5 の 138 行 | plu-tables §25 の状態遷移表の解放 trigger の 2 行（52・54 行）から「released_at」を外す | 33 の 2 行は既に実装と一致。runtime は変えない | AC-S7 の 2 つ目の command |
+| CSV 取込みの失敗表示 | 55 の §55.5 表・182 行・遷移表・処理手順 20・§55.8・§55.9（499〜505 行の `decideRecoverTo` の例、515 行、517〜519 行の沈黙ポリシー）、`useCsvImportFlow.ts`、`ErrorState.tsx` | §55.5 の表の 2 行、§55.9 の沈黙ポリシーと `decideRecoverTo` の例 | 182・515 行と遷移表・図は既に実装と一致 | AC-S6、T-S6 |
 
 ## Negative Paths
 
@@ -97,7 +99,7 @@ S4 だけが状態（保存済み未確認の復帰状態）を読む。S6 は�
 - internal type: 表示時だけ `Date`。
 - producer/consumer: 保存側は不変、表示側だけ変える。
 - round-trip token: 保存 → localStorage → 再表示（既存の復帰 test）。
-- precision/range: 時差のある環境でもローカル時刻で出る（T-S4b はローカルの部品から入力を作る）。
+- precision/range: 時差のある環境でもローカル時刻で出る（T-S4b は `TZ=Asia/Tokyo` で日付の境界を跨ぐ固定の UTC 値を使う）。
 - cross-language parse: `snapshot_at` は Rust の `%Y-%m-%dT%H:%M:%S` を文字列置換だけで表示する（`Date` に通さない）。
 
 ## Compatibility Checks
@@ -136,7 +138,7 @@ Writer は下の mutation を実装へ一時的に入れて対象 test が red �
 - If output order changes, which test fails? → 該当なし。
 - If dry-run performs a side effect, which test fails? → 該当なし。
 - If a JSON number crosses JavaScript safe integer range, which test fails? → 該当なし。
-- If a state token is round-tripped through browser/client code, which test fails? → `savedAt` を保存時にローカル書式へ変える（保存形の変更）と、既存の復帰 test（ISO の UTC を置いた localStorage からの復帰）が T-S4b の書式と合わず red になる。
+- If a state token is round-tripped through browser/client code, which test fails? → `savedAt` を保存時にローカル書式へ変える（保存形の変更）と T-S4d（固定時計に対する ISO の UTC の完全一致）が red になる。既存の復帰 test は localStorage に直接値を置くため、この mutant を捕まえない（round 1 で実測）。
 - 部品の幅を `w-[10rem]` に戻すと DF-4 と B0-*-DF2 が red。
 
 ## Residual Test Gaps
