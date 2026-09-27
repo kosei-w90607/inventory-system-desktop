@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: design
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -28,10 +28,12 @@ Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane �
 遷移記録（append-only）:
 
 - kickoff → spec-check → design（2026-09-27、Writer 起草の plan-first commit）: Risk は R3（Tauri command の返り値と、毎日使う画面の表示契約を決める。`docs/project-profile.md` High-risk Changes の「Tauri command arguments/return types」「daily workflow screens」「BIZ service behavior for sales」に当たる）。設計正本の対象は [Design Sources](#design-sources) のとおりで、設計の更新が要る（Z001 の全行を読む経路・返り値・画面の置き場所がどの正本にも無い）。design に留める理由は 2 つ: (1) 画面の案の選択と同日複数取込みの見せ方が owner の判断待ち（[owner への質問](#owner-への質問)）、(2) 実 Z001 / Z002 の行の性質が未確認（[Contract Probe](#contract-probe) P1 / P2）。どちらも `design → plan-draft` の条件「no unresolved design questions」を満たさず、設計の出力も正本にまだ無い。
+- design → plan-draft（2026-09-27、Writer〈Opus 5.5 subagent、worktree run〉）: owner の回答（2026-09-27、Q1 = A、Q2 = (a)、Q3 = (a)、[owner への質問](#owner-への質問)）と Coordinator の Contract Probe（P1 / P2、[Contract Probe](#contract-probe)）を受け、Scope S1〜S7 を設計正本へ書いた（56 UI-09a-D16、34 §19.2 / §19.3、24 §14.21 / §14.24、SCREEN_DESIGN §3、decision-log D-096、29 §29.4.1、backlog）。未解決の設計の質問は無い: 画面の案・同日複数取込み・見た目の確かめ方は owner が決め、P2 の未確認（実物の同日 2 回精算）は Q2 (a) で設計の前提から外れ、Z002 の見出しの語は既定「支払集計」を置いて runtime lane の L3 の文言の確認に回した（SPEC-DRZ-D3）。
+- plan-draft → plan-gate（2026-09-27、Writer）: packet と [Test Design Matrix](test-matrices/2026-09-27-daily-report-z-display.md) を commit した（R3）。Plan Commit は pending のまま。Plan Review（fresh Opus と Codex）は Coordinator が発注する。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 4（消費 1: owner の着手承認 2026-09-27「Issue の範囲を避けて片っ端から並列で」。見込み = 設計の質問 Q1〜Q3 を 1 回の問いでまとめて答える 1、Ready 1、merge 1）
+- 介入回数上限: 4（消費 2: owner の着手承認 2026-09-27「Issue の範囲を避けて片っ端から並列で」、設計の質問 Q1〜Q3 への回答 2026-09-27〈1 回の問いでまとめて回答〉。見込み = Ready 1、merge 1）
 - 上限の理由: 既定 3 に対し、design-first の lane で owner にしか決められない画面の選択が 1 回要り、着手承認・Ready・merge と合わせて 4 になる。
 - 実働時間上限: 30分（既定。owner の作業は質問への回答、relay、Ready / merge の判断）
 - relay 往復上限: 2（Codex の Plan Review 1、Codex の Final Review 1）
@@ -113,7 +115,7 @@ src/lib/bindings.ts:180: （生成物の定義だけ）
 
 | 案 | 中身 | 良い点 | 気になる点 |
 |---|---|---|---|
-| **A（推奨）**: 日次売上の「レジ日報（公式）」に Z001 の表を足す | 既存の section の中、総売上 / 純売上の metric の下に「日計（Z001）」の表を 1 つ足す。列は 名称 / 個数/件数 / 金額、行は Z001 の全行をレジの並びのまま（0 の行も出す）。既存の 2 表の見出しにも出どころを添える（「支払集計（Z002）」「部門別集計（Z005）」）。route・サイドバー・取込み画面は変えない | 壊さない（表を 1 つ足すだけで、既存の表示・導線・route はそのまま）。取込み完了 →「日次売上を見る」の既存の導線でそのまま届く。前日 / 翌日と日付入力で過去日を引ける。既存の部品（`OfficialLinesTable` と同じ形の表、DSR-16 の「比較が目的 → 列を揃えた表」）で作れる | 日次売上の縦が伸び、商品別明細が下へ下がる。Z001 の行数が多いと表が長い（行数は 未実測、P1） |
+| **A（推奨、owner 採用 2026-09-27）**: 日次売上の「レジ日報（公式）」に Z001 の表を足す | 既存の section の中、総売上 / 純売上の metric の下に「日計（Z001）」の表を 1 つ足す。列は 名称 / 個数/件数 / 金額、行は Z001 の全行をレジの並びのまま（0 の行も出す）。既存の 2 表の見出しにも出どころを添える（「支払集計（Z002）」「部門別集計（Z005）」）。route・サイドバー・取込み画面は変えない | 壊さない（表を 1 つ足すだけで、既存の表示・導線・route はそのまま）。取込み完了 →「日次売上を見る」の既存の導線でそのまま届く。前日 / 翌日と日付入力で過去日を引ける。既存の部品（`OfficialLinesTable` と同じ形の表、DSR-16 の「比較が目的 → 列を揃えた表」）で作れる | 日次売上の縦が伸び、商品別明細が下へ下がる。Z001 の行数が多いと表が長い（匿名化要約ではデータ 28〜29 行、P1） |
 | B: 新しい画面「レジ日報」 | `/reports/daily-report?date=` のような route を新設し、Z001 / Z002 / Z005 を紙の日報と同じ並びで全行出す。日次売上には今の要約を残し「レジ日報の全項目を見る」リンクを置く | 1 日 1 枚の紙に近い形で見られる。将来、印刷を作るならその土台になる | 画面が 1 つ増え、覚えることが増える。route・サイドバー・到達テスト（`navigation.test.ts`）の義務が増える。印刷の要否が決まる前に紙の形へ寄せることになる |
 | C: 取込みの確認・完了画面と、取込みの記録に出す | 売上データ取込みの確認・完了画面に Z001 の全行を出し、取込みごとの詳細画面（記録ハブ）を新設する | 取込みごとに見るので合算の問題が起きない | 日付で過去日を引けない（取込みの記録からたどる）。日報の記録ハブと詳細画面は新設で、A より作るものが多い。「見る」画面が取込み画面になり、日次売上との二重の置き場所になる |
 
@@ -123,14 +125,14 @@ src/lib/bindings.ts:180: （生成物の定義だけ）
 
 - 既定案（推奨）: **取込みごとに並べ、合算しない**。取込みが 2 回以上の日だけ、Z001 の表を取込みの古い順に並べ、各表の見出しに「1 回目の取込み（取込み日時 2026-03-21 18:05）」の形で取込み日時（`imported_at`、`YYYY-MM-DD HH:mm`）を添える。1 回の日は見出しを付けず表 1 つ。どの取込みも落とさない（D-071 の「同日の全 active import を読む」は守る）。
 - 理由: Z001 の行が精算ごとの差分（足してよい値）か累計・回数かが未確認（P2）で、総売・純売以外の行の鍵は並び順から作る `summary_N`（`daily_report_parser.rs:494-502`）のため、合算すると別の意味の行を足すおそれがある。取込みごとに並べれば、行の性質によらず正しい。
-- 別案: 1 つの表に合算する（支払集計・部門別集計と同じ見せ方）。P2 で Z001 の全行が足してよい値と確かめられた場合に限り選べる。
+- 別案: 1 つの表に合算する（支払集計・部門別集計と同じ見せ方）。P2 で Z001 の全行が足してよい値と確かめられた場合に限り選べる。owner は既定案 (a) を採った（2026-09-27）ため、この案は D-096 の見直す条件に置く。
 - 取込みごとに並べる場合、総売上 / 純売上の metric・支払集計・部門別集計は今までどおり合算のまま（UI-09a-D15 を変えない）。同じ section の中で「合算」と「取込みごと」が混ざるため、`N回の取込みを合算` の文を「総売上・純売上・支払集計・部門別集計は N 回の取込みを合算しています。日計（Z001）は取込みごとに表示します。」の類へ直す（文言の確定は runtime lane の L3）。
 
 ### 契約の既定案（案 A と「取込みごとに並べる」を採る場合。Writer が正本へ書く）
 
 - SPEC-DRZ-D1（画面、56 の UI-09a-D16 として正本化）: 「レジ日報（公式）」section の metric の下に「日計（Z001）」の表を置く。列は 名称 / 個数/件数 / 金額（見出しの「個数/件数」はレジの帳票の見出しに合わせる。単位の文字は付けない）。行は保存された `label` をそのまま、`sort_order` の順に全行（0 の行を含む）。値が NULL の欄は「—」（その行にその値が無いという意味。合算で欠けた「未取得」とは別）。金額は既存の `¥` 表記、数は `toLocaleString("ja-JP")`。
 - SPEC-DRZ-D2（複数取込み）: 上の「取込みごとに並べる」。
-- SPEC-DRZ-D3（既存表示の不変）: 総売上 / 純売上の metric、支払集計・部門別集計の合算、未取込みの note、部門未対応の warning、商品別明細との分離（UI-09a-D12）、UI-09a-D15 の合算表示は変えない。変えるのは既存 2 表の見出しに出どころ（Z002 / Z005）を添えることと、D2 の文だけ。Z002 の表の見出しの語（「支払集計」のままか「支払・取引の集計」か）は P1 の結果（Z002 に支払以外の取引キーの行があるか）で決める。
+- SPEC-DRZ-D3（既存表示の不変）: 総売上 / 純売上の metric、支払集計・部門別集計の合算、未取込みの note、部門未対応の warning、商品別明細との分離（UI-09a-D12）、UI-09a-D15 の合算表示は変えない。変えるのは既存 2 表の見出しに出どころ（Z002 / Z005）を添えることと、D2 の文だけ。Z002 の表の見出しの語は P1 で決める予定だったが、行の名前ごとの照合は未実施（生の CSV を開かない決まり）のため、既定を「支払集計」のままとし、語が行の中身に合うかは runtime lane の L3 で owner が確かめる（UI-09a-D16）。
 - SPEC-DRZ-D4（BIZ-05 の返り値、34 に正本化）: `OfficialDailyReportSummary` に field `summary_imports` を足す。型は下のとおり。`line_key` は返さない（並び順から作る鍵は利用者に意味を持たない）。`summary_imports` の件数は `source_import_count` と等しい（completed の取込みは総売か純売の行を必ず持つ、`parse.rs:75-79`）。
 
 ```rust
@@ -161,6 +163,13 @@ struct OfficialDailySummaryLine {
 - Q2 同じ日に 2 回以上取り込んだ日の日計（Z001）: (a) 取込みごとに並べる（推奨）/ (b) 1 つの表に合算する（P2 で全行が足せると確かめた場合だけ）。
 - Q3 見た目の確かめ方: (a) runtime lane の Draft で実機の before / after を並べて見る（推奨。案 A は既存の表と同じ形を足すだけなので、先に mockup を作る効果が小さい）/ (b) 先に mockup（静的な HTML）を作って見てから runtime lane を起こす。
 
+owner の回答（2026-09-27、Coordinator が中継、介入 2 回目）:
+
+- Q1 = **A**（日次売上の「レジ日報（公式）」の下に Z001 の表を 1 つ足す。既存 2 表の見出しに出どころ〈Z002 / Z005〉を添える）。
+- Q2 = **(a)**（同じ日に 2 回以上取り込んだ日の Z001 は、取込みごとに古い順で並べ、取込み日時を見出しにする。合算しない）。
+- Q3 = **(a)**（見た目は後続 runtime lane の Draft で実機の before / after を並べて見る。mockup は作らない）。
+- 画面の変更の時期: owner は「画面の変更は店舗確認の後」を本 lane には掛けない（2026-09-27 確認）。本 lane は設計の文書だけ。
+
 ## Ordinary Operation
 
 この文書を完了できること（本 lane）と、店主が画面で日報の全項目を見られること（通常運用の目的）は別である。後者は runtime lane の実装と L3 まで達成しない。紙（Excel + 印刷 + バインダー）をやめられるかは、さらに別の受入判定（導入後の実 1 日）で決まる。下表は案 A と Q2 (a) を採った場合の、runtime lane の完了後の店主の普通の一日である。
@@ -179,7 +188,7 @@ struct OfficialDailySummaryLine {
 
 - S1 `docs/function-design/56-ui-daily-sales.md`: §56.1 の表示領域の表に「日報サマリの日計（Z001）」の行を足し、UI-09a-D16（SPEC-DRZ-D1〜D3 の画面の契約: 置き場所・列・見出し・行の順・0 の行・「—」の意味・複数取込みの見出しと並び・`N回の取込みを合算` の文の直し・既存 2 表の見出しの出どころ）を「REQ-401 第2スライス表示詳細」の後に置く。UI-09a-D15 に「Z001 の行は UI-09a-D16 のとおり取込みごと」の 1 文を足す。§56.13 非目的の印刷の行は変えない。更新履歴に 1 行。
 - S2 `docs/function-design/34-biz-sales-service.md`: §19 の `DailySalesReport` / `OfficialDailyReportSummary` の型に SPEC-DRZ-D4 の `summary_imports` と 2 つの型を足し、`get_daily_sales` の処理ステップと「設計判断 — 日報集計と商品別明細を分ける」に Z001 の行は合算しないことを 1 文ずつ足す。
-- S3 `docs/function-design/24-io-csv-import-repo.md` §14.21: 関数要求・処理ステップに SPEC-DRZ-D5 の Z001 行の読み出し（1 query、並び、`rolled_back` を読まない、合算しない）を足す。古い「実装遷移義務」の段落と旧 symbol のコード片を消す（code は rename 済み）。
+- S3 `docs/function-design/24-io-csv-import-repo.md` §14.21: 関数要求・処理ステップに SPEC-DRZ-D5 の Z001 行の読み出し（1 query、並び、`rolled_back` を読まない、合算しない）を足す。古い「実装遷移義務」の段落と旧 symbol のコード片を消す（code は rename 済み）。§14.24 の D-071 の行に「Z001 の行は加算せず取込みごとに返す、D-096」の 1 句を足す（additive read が Z001 にも掛かると読めないように）。
 - S4 `docs/SCREEN_DESIGN.md` §3「日次売上レポート画面」: レイアウト判断に「日報サマリに日計（Z001）の全行の表を置き、同日複数取込みの日は取込みごとに並べる（UI-09a-D16）」の 1 行。
 - S5 `docs/decision-log.md`: D-096 を足す（SPEC-DRZ-D7）。
 - S6 `docs/function-design/29-io-daily-report-parser.md` §29.4.1: P1 / P2 で分かった Z001 / Z002 の行の性質（行数の範囲、どの欄が埋まるか、精算ごとの差分か累計か）を、実値・実ラベルなしの匿名化した形で 1〜3 行足す。P1 / P2 が新しい事実を出さなければ変えない。
@@ -249,9 +258,9 @@ struct OfficialDailySummaryLine {
 
 ## Design Intent Audit
 
-- Source docs can answer what is being built and why without chat history or archived Plan Packets: 現時点では答えられない（本 lane の Writer run で S1〜S5 を書いて満たす。AC1〜AC4）。
-- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: SPEC-DRZ-D1〜D7 は packet の既定案で、Writer run で 56 / 34 / 24 / SCREEN_DESIGN / D-096 へ昇格する。
-- Assumptions and constraints: Z001 の行は数値列が整数で parse できる（実ファイルは 2026-07 の L3 で `parse_errors=0`、[REQ-401 実装 packet](../archive/plans/2026-07-04-req401-sales-daily-report-implementation.md) の Local-only gate）。行数と各行の性質は未確認（P1 / P2）。
+- Source docs can answer what is being built and why without chat history or archived Plan Packets: 答えられる（56 UI-09a-D16、34 §19.2 / §19.3、24 §14.21、D-096 に書いた。AC1〜AC4）。
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: SPEC-DRZ-D1〜D7 を 56 / 34 / 24 / SCREEN_DESIGN / D-096 へ昇格した。packet だけで決めて正本に無いものは無い。
+- Assumptions and constraints: Z001 の行は数値列が整数で parse できる（実ファイルは 2026-07 の L3 で `parse_errors=0`、[REQ-401 実装 packet](../archive/plans/2026-07-04-req401-sales-daily-report-implementation.md) の Local-only gate）。行数と各行の性質は P1 / P2 のとおり（行の名前ごとの照合と、実物の同日 2 回精算は未確認）。
 - Deferred design gaps, risk, and follow-up target: 印刷（Issue #105）、紙の代わりの受入（backlog）、月次への展開・取込み履歴と後日の取消（S7 で backlog へ）。
 - Test Design Matrix can cite design decision IDs or source doc sections: 可（[Test Design Matrix](#test-design-matrix) の予定行は SPEC-DRZ-D1〜D7 を引く）。
 - Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 「どの取込みも落とさない」は `rolled_back` を除く completed の全親を読むことで守る。例外は無い。「`summary_imports` の件数 = `source_import_count`」は completed の取込みが総売か純売の行を必ず持つこと（`parse.rs:75-79` で両方無ければ取込み不可）に依る。Z001 の行が 0 件の completed 親は作られない。
@@ -272,8 +281,8 @@ struct OfficialDailySummaryLine {
 
 ## Design Readiness
 
-- Existing design docs are sufficient because: 十分でない。Z001 の全行を読む経路・返り値・画面の置き場所がどの正本にも無い（[現状の事実](#現状の事実2026-09-27e7c22f8f-の現物)）。
-- Source docs updated in this PR: S1〜S7（owner の回答と P1 / P2 の後、Writer run）。
+- Existing design docs are sufficient because: 起草時は十分でなかった（Z001 の全行を読む経路・返り値・画面の置き場所がどの正本にも無い、[現状の事実](#現状の事実2026-09-27e7c22f8f-の現物)）。本 change の S1〜S7 で埋めた。
+- Source docs updated in this PR: S1〜S7（owner の回答と P1 / P2 の後、Writer run、2026-09-27）。
 - Design gaps intentionally deferred: 印刷、紙の代わりの受入、月次、取込み履歴と後日の取消（Non-scope）。
 - Durable decisions discovered in this plan and promoted to source docs: D-096（Z001 は取込みごと）、UI-09a-D16。
 
@@ -291,25 +300,25 @@ Minimum design checks for business-app work:
 
 本 lane は実 Z001 / Z002 の行の性質（外部のレジの帳票仕様）に依る。plan-draft の前に Coordinator が repo 外の匿名化メモ（`inventory-field-check/summaries/2026-07-06-z00x-shape-analysis.md`）と帳票仕様の PDF（`approved-readable/ECRCV17.pdf`、`SRS4000_JA3.pdf`）を読み、下の形で記録する。実値・実ラベル・実店舗の値は書かない。
 
-- P1 実 Z001（layout A / B）と実 Z002 の行構成: 行数の範囲、各行で「個数/件数」「金額」のどちらが埋まるか、ラベルがレジの既定か店の設定か、Z002 に支払以外の取引キーの行があるか → 結果: 未実施（本 commit 時点）。
-- P2 Z001 / Z002 の各行が精算ごとの差分（同日の複数精算で足してよい値）か、累計・回数・比率か → 結果: 未実施（本 commit 時点）。足せない行が 1 つでもあれば Q2 の別案 (b) は選べない。Z002 に足せない行があれば、既存の支払集計の合算（UI-09a-D15）の問題として backlog へ起票する（本 lane の Scope は広げない）。
+- P1 実 Z001（layout A / B）と実 Z002 の行構成: 行数の範囲、各行で「個数/件数」「金額」のどちらが埋まるか、ラベルがレジの既定か店の設定か、Z002 に支払以外の取引キーの行があるか → 結果（2026-09-27、Coordinator 実施）: repo 外の匿名化要約（`inventory-field-check/summaries/`、2026-07 の 2 回の採取）で、Z001 はヘッダが 8 行目・4 列（レコード / キャラクター / 個数・件数 / 金額）、データ 28〜29 行。Z002 も同じ 4 列形状でデータ約 50 行。行の名前ごとの照合は、生の CSV を開かない決まり（field-check の「Z001 / Z002 / Z005 は直接閲覧禁止」）のため未実施。Z001 の行の種類は取扱説明書（`SRS4000_JA3.pdf` の日計明細の精算の印字例 p.33）から、部門・総売・純売・在高・税の対象額と税額・非課税・高額券の枚数・丸め・取引中止・戻モード・電卓・領収書の類と推定（CV17 の Z001 が印字と同じ行の集合かは未確認）。Z002 に支払以外の行があるかは未確認のため、Z002 の見出しは既定「支払集計」とし runtime lane の L3 で確かめる（SPEC-DRZ-D3）。29 §29.4.1 に匿名化した形で記録した（S6）。
+- P2 Z001 / Z002 の各行が精算ごとの差分（同日の複数精算で足してよい値）か、累計・回数・比率か → 結果（2026-09-27、Coordinator 実施）: 取扱説明書（`SRS4000_JA3.pdf` p.57 の表）で日計明細の精算は取引データをクリアする（点検はクリアしない）。したがって Z001 の各行は前回の精算から今回までの件数・金額で、同日の 2 回の精算は足すとその日の値になる、と帳票仕様の根拠では言える。構成比は標準で印字されず、CSV にも個数・金額の列だけ。実物の同日 2 回精算の Z001 は未確認（`未実測`）。Q2 は (a)（合算しない）のため、この未確認は本 lane の設計を止めず、runtime lane の前提にもしない。Z002 の既存の合算は帳票仕様では足せる値だが、合算の鍵 `payment_N` が並び順由来のため、実物の同日 2 回精算で行の集合と並びを確かめる項目を backlog へ起票した（S7、本 lane の Scope は広げない）。
 
 ## Contract Coverage Ledger
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
-| SPEC-DRZ-D1 / UI-09a-D16（置き場所・列・見出し・行の順・0 の行・「—」） | runtime lane: `DailySalesPage.tsx` | runtime lane: `DailySalesPage.test.tsx`（text / role で確かめる） | L3: 表の長さと読みやすさ（before / after） |
-| SPEC-DRZ-D2（複数取込みは取込みごと、古い順、取込み日時の見出し） | runtime lane: `DailySalesPage.tsx`、`sales_repo.rs` | runtime lane: 2 取込みの日の repo / BIZ / UI の test | L3: 「合算」と「取込みごと」の違いが伝わるか |
-| SPEC-DRZ-D3（既存表示の不変、見出しの出どころ、合算の文） | runtime lane: `DailySalesPage.tsx` | runtime lane: 既存の `DailySalesPage.test.tsx` を変えずに PASS + 見出しの test | L3: 文言 |
-| SPEC-DRZ-D4（`summary_imports` と 2 つの型、件数 = `source_import_count`） | runtime lane: `sales_service.rs` | runtime lane: `sales_service.rs` の REQ-501 test | non-scope（型の契約） |
-| SPEC-DRZ-D5（1 query、並び、`rolled_back` を読まない、合算しない） | runtime lane: `sales_repo.rs` | runtime lane: `sales_repo.rs` の test | non-scope |
-| SPEC-DRZ-D6（command 名・引数不変、bindings 再生成） | runtime lane: `src/lib/bindings.ts`（生成） | runtime lane: L1 の bindings drift 検査 | non-scope |
-| SPEC-DRZ-D7 / D-096 | 本 lane: `docs/decision-log.md` | AC4 | non-scope |
+| SPEC-DRZ-D1 / UI-09a-D16（置き場所・列・見出し・行の順・0 の行・「—」） | runtime lane: `DailySalesPage.tsx` | runtime lane: `DailySalesPage.test.tsx`（text / role で確かめる、Matrix R9 / R10 / R13） | L3: 表の長さと読みやすさ（before / after、R15） |
+| SPEC-DRZ-D2（複数取込みは取込みごと、古い順、取込み日時の見出し） | runtime lane: `DailySalesPage.tsx`、`sales_repo.rs` | runtime lane: 2 取込みの日の repo / BIZ / UI の test（R1 / R2 / R7 / R11 / R12） | L3: 「合算」と「取込みごと」の違いが伝わるか（R15） |
+| SPEC-DRZ-D3（既存表示の不変、見出しの出どころ、合算の文） | runtime lane: `DailySalesPage.tsx` | runtime lane: 既存の `DailySalesPage.test.tsx` を factory の型追随だけで PASS + 見出しの test（R14） | L3: 文言と Z002 の見出しの語（R15） |
+| SPEC-DRZ-D4（`summary_imports` と 2 つの型、件数 = `source_import_count`） | runtime lane: `sales_service.rs` | runtime lane: `sales_service.rs` の REQ-501 test（R7） | non-scope（型の契約） |
+| SPEC-DRZ-D5（1 query、並び、`rolled_back` を読まない、合算しない） | runtime lane: `sales_repo.rs` | runtime lane: `sales_repo.rs` の test（R1〜R6） | non-scope |
+| SPEC-DRZ-D6（command 名・引数不変、bindings 再生成） | runtime lane: `src/lib/bindings.ts`（生成） | runtime lane: L1 の bindings drift 検査（R8） | non-scope |
+| SPEC-DRZ-D7 / D-096 | 本 lane: `docs/decision-log.md` | AC4（T4） | non-scope |
 | UI-09a-D12（公式と商品別を混ぜない）、UI-09a-D13（受入は別）、UI-09a-D15（合算表示）、D-025、D-071 の隣接契約 | 変えない | 既存の test のまま | 受入判定は Non-scope |
 
 ## Test Design Matrix
 
-R3 の Test Design Matrix は `design → plan-draft` で作る（owner の Q1 の答えで Scope と画面の対象が変わるため、3 案分を先に書かない）。予定する行: 本 lane は AC1〜AC10 を Matrix の行にする（文書の検査・削除検査・不変の検査）。後続 runtime lane の Matrix は Contract Coverage Ledger の各行を、State Lifecycle（未取込み / 1 回 / 2 回 / 取消後の再取得 / 取得失敗 / 前日の取得失敗）で展開する。
+[Test Design Matrix](test-matrices/2026-09-27-daily-report-z-display.md)（R3、2026-09-27）。T1〜T11 は本 lane の検査（AC1〜AC10 と、正本の答えが 2 つにならないかを読む T11）。R1〜R15 は後続 runtime lane が使う test の設計で、Contract Coverage Ledger の各行を repo / BIZ / UI / L3 に展開する（表の出る条件、未取込み、行の無い取込み、複数取込み、取消済みの除外、並び順、「—」の表示、既存 2 表の見出し）。
 
 ## Test Plan
 
@@ -379,7 +388,7 @@ Contract ID: SPEC-DRZ
 
 ## Implementation Results
 
-未着手（本 commit は plan-first の起草だけ）。
+本 lane の成果物は設計文書で、`design → plan-draft` の条件（設計の出力が正本にある）として plan-first の change に同乗する（Scope S1〜S7、2026-09-27 Writer run）。runtime の実装は無い。
 
 ## Review Response
 
