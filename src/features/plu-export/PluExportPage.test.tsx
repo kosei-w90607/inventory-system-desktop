@@ -77,6 +77,21 @@ function installMemoryStorage() {
   });
 }
 
+function pendingExportJson(savedAt: string) {
+  return JSON.stringify({
+    version: 1,
+    mode: "diff",
+    savedAt,
+    savedPath: "/home/kosei/PLU_20260701.txt",
+    suggestedFilename: "PLU_20260701.txt",
+    count: 1,
+    encoding: "CP932",
+    targetProductCodes: ["PLU-001"],
+    preparedRows: [{ memory_no: 217, row_kind: "product", target_product_codes: ["PLU-001"] }],
+    overLimitWarning: false,
+  });
+}
+
 function expectStatusRegionBeforeContent() {
   const statusRegion = screen.getByRole("region", { name: "PLU書出し状態" });
   const contentRegion = screen.getByRole("region", { name: "PLU書出し内容" });
@@ -388,29 +403,84 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
   });
 
   it("REQ-402 keeps a saved pending export recovery state without PLU file bytes", async () => {
-    const user = userEvent.setup();
-    mockSave.mockResolvedValue("/home/kosei/PLU_20260701.txt");
-    mockWriteFile.mockResolvedValue(undefined);
+    // 67 処理ステップ 8: 保存形の savedAt は ISO の UTC のまま（表示だけをローカル書式にする）。
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-01T12:00:00.000Z"));
+    try {
+      const user = userEvent.setup();
+      mockSave.mockResolvedValue("/home/kosei/PLU_20260701.txt");
+      mockWriteFile.mockResolvedValue(undefined);
+
+      renderWithClient(<PluExportPage />);
+      await user.click(await screen.findByRole("button", { name: "差分を書き出す" }));
+
+      await screen.findByText("PLUファイルを保存しました");
+      const rawPending = window.localStorage.getItem(PLU_EXPORT_PENDING_STORAGE_KEY);
+      expect(rawPending).toBeTruthy();
+      expect(rawPending).not.toContain("QUJD");
+      expect(rawPending).not.toContain("bytes_base64");
+      expect(JSON.parse(rawPending ?? "{}")).toMatchObject({
+        version: 1,
+        mode: "diff",
+        savedPath: "/home/kosei/PLU_20260701.txt",
+        suggestedFilename: "PLU_20260701.txt",
+        count: 1,
+        encoding: "CP932",
+        targetProductCodes: ["PLU-001"],
+        preparedRows: [{ memory_no: 217, row_kind: "product", target_product_codes: ["PLU-001"] }],
+        overLimitWarning: false,
+        savedAt: "2026-07-01T12:00:00.000Z",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("REQ-402 shows the last snapshot time as YYYY-MM-DD HH:mm:ss without time zone conversion", async () => {
+    // 67 処理ステップ 3: snapshot_at は DB の時差なしの文字列で、Date に通さず T を半角スペースにする。
+    mockGetPluSlotSummary.mockResolvedValue({
+      status: "ok",
+      data: {
+        snapshot_at: "2026-08-20T17:34:05",
+        free_count: 4_780,
+        external_count: 1,
+        app_managed_count: 3,
+        conflict_count: 0,
+        release_pending_count: 0,
+      },
+    });
 
     renderWithClient(<PluExportPage />);
-    await user.click(await screen.findByRole("button", { name: "差分を書き出す" }));
 
-    await screen.findByText("PLUファイルを保存しました");
-    const rawPending = window.localStorage.getItem(PLU_EXPORT_PENDING_STORAGE_KEY);
-    expect(rawPending).toBeTruthy();
-    expect(rawPending).not.toContain("QUJD");
-    expect(rawPending).not.toContain("bytes_base64");
-    expect(JSON.parse(rawPending ?? "{}")).toMatchObject({
-      version: 1,
-      mode: "diff",
-      savedPath: "/home/kosei/PLU_20260701.txt",
-      suggestedFilename: "PLU_20260701.txt",
-      count: 1,
-      encoding: "CP932",
-      targetProductCodes: ["PLU-001"],
-      preparedRows: [{ memory_no: 217, row_kind: "product", target_product_codes: ["PLU-001"] }],
-      overLimitWarning: false,
-    });
+    expect(await screen.findByText("最終読込み日時: 2026-08-20 17:34:05")).toBeInTheDocument();
+  });
+
+  it("REQ-402 shows the saved time of a restored pending export in local YYYY-MM-DD HH:mm:ss", async () => {
+    // 67 処理ステップ 8: savedAt（UTC）をローカル時刻へ直す。日付の境界を跨ぐ値で時差変換漏れを捕まえる。
+    // 実行中の process.env.TZ の変更が Date に効くのは vitest の pool が forks（既定）であることに依る。
+    const originalTz = process.env.TZ;
+    process.env.TZ = "Asia/Tokyo";
+    try {
+      window.localStorage.setItem(
+        PLU_EXPORT_PENDING_STORAGE_KEY,
+        pendingExportJson("2026-12-31T15:05:09.000Z"),
+      );
+
+      renderWithClient(<PluExportPage />);
+
+      expect(await screen.findByText("保存日時: 2027-01-01 00:05:09")).toBeInTheDocument();
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+
+  it("REQ-402 shows an unparsable saved time of a restored pending export as is", async () => {
+    window.localStorage.setItem(PLU_EXPORT_PENDING_STORAGE_KEY, pendingExportJson("保存時刻不明"));
+
+    renderWithClient(<PluExportPage />);
+
+    expect(await screen.findByText("保存日時: 保存時刻不明")).toBeInTheDocument();
   });
 
   it("REQ-402 restores saved pending export after returning to the page", async () => {
