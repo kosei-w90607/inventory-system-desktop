@@ -27,12 +27,13 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 - Plan Review round 1: 両 reviewer とも reject、plan-gate のまま是正（裁定 r1、2026-09-27、起草役、本 commit）。Plan Commit は pending のまま。裁定の B1-1〜B1-12 を Scope / AC / L3 / Owner Effort Budget / Matrix へ反映した（中身は裁定書、Review Response には書かない）。
 - 予算の承認（2026-09-27、Coordinator の記録）: owner が介入 19・実働 75 分・relay 6 を承認（この change での介入 4 回目）。plan-gate のまま Plan Review round 2 へ進む。
 - Plan Review round 2: 両 reviewer とも reject、plan-gate のまま是正（裁定 r2、2026-09-27、起草役、本 commit）。Plan Commit は pending のまま。裁定の B2-1〜B2-11 を反映し、予算は判断点を数え直して改定案を owner 承認待ちで書いた（中身は裁定書、Review Response には書かない）。
+- 予算の再承認（2026-09-27、Coordinator の記録）: owner が介入 24・relay 7・実働 75 分を承認（この change での介入 9 回目）。plan-gate のまま Plan Review round 3（上限）へ進む。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 24（**owner 承認待ち**。承認済みの値は 19〈owner 承認 2026-09-27「介入19・75分・relay 6で承認」〉。裁定 r2 の B2-4 で、owner の色の判断を 4 つの判断点に分け、Final Review の指摘後の Codex closure の予備と、この改定の承認を足して数え直した。下の表）
+- 介入回数上限: 24（owner 承認 2026-09-27（再改定、この change での介入 9 回目）。以前の承認済みの値は 19〈owner 承認 2026-09-27「介入19・75分・relay 6で承認」〉。裁定 r2 の B2-4 で、owner の色の判断を 4 つの判断点に分け、Final Review の指摘後の Codex closure の予備と、この改定の承認を足して数え直した。下の表）
 - 実働時間上限: 75分（owner 承認 2026-09-27「介入19・75分・relay 6で承認」。既定は 30 分。L3 round 1 は build 4 本〈main / PR head / 試し / muted の M1〉を並べて 15 項目を見る。今回の数え直しで変えない）
-- relay 往復上限: 7（**owner 承認待ち**。承認済みの値は 6〈同上〉。内訳 = Plan Review の Codex 3〈round 1・round 2 は消費済み、round 3〉+ Final Review の Codex 1 + Final Review の指摘後の Codex closure 1〈予備〉+ manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉）
+- relay 往復上限: 7（owner 承認 2026-09-27（再改定、この change での介入 9 回目）。以前の承認済みの値は 6〈同上〉。内訳 = Plan Review の Codex 3〈round 1・round 2 は消費済み、round 3〉+ Final Review の Codex 1 + Final Review の指摘後の Codex closure 1〈予備〉+ manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉）
 
 介入の判断点（decision point 単位、2026-09-27 の裁定 r2 による数え直し）:
 
