@@ -6,9 +6,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R2
-- Plan Commit: pending
+- Plan Commit: 06f12ca86fe175190a6ebcf0d9496c1107704a0f
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree と branch を書く）
@@ -24,17 +24,18 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Plan Review round 2（2026-09-27、fresh Opus 5.5 と Codex GPT-5.6 Sol、対象 `22331e15`）: 両 reviewer とも reject。Coordinator の裁定 r2 に沿い、plan-gate から design へ戻して S5・S6・S7 の設計正本を plan 側で先に訂正した（2026-09-28、起草役、本 commit。02 ⑨・04 の反映待ちの表・59 §59.1・55 §55.5 / §55.9・plu-tables §25）。旧稿の「design を飛ばす」判断は撤回する。
 - design → plan-draft → plan-gate（2026-09-28、起草役、本 commit）: design の出力（S5・S6・S7 の新しい契約）は直前の plan 側の commit で設計正本に入り、未解決の設計の質問は無い（11rem の見た目は L3-1 で確かめる前提として Design Intent Audit に置く）。裁定 r2 の残りの項目に沿って packet と Matrix を直し、Ordinary Operation を表にした。Plan Commit は pending のまま、Plan Review round 3（上限）へ。
 - 上限の round 3（2026-09-28）: 両 reviewer とも reject、一括是正（裁定 r3）。対象 `cf9213a6`、fresh Opus 5.5 と Codex GPT-5.6 Sol。Ordinary Operation は両者とも成立とした。round 4 は無いため、Coordinator の裁定 r3 の E3-1〜E3-7 を plan-gate のまま一括で packet と Matrix に反映した（起草役、本 commit）。Plan Commit は pending のまま、owner の plan-approved の承認へ。
+- plan-gate → plan-approved（2026-09-28、Coordinator、本 commit）: 上限の round 3（対象 `cf9213a6`）は両 reviewer とも reject（P1 0）。追加の round は回さず、裁定 r3 の一括是正（`06f12ca8`）で全件を反映し、Coordinator が AC-S2 の baseline・予算表・旧前提の語の sweep を現物で確かめた。owner 承認（2026-09-28「両方OK」、この change での介入 4 回目、介入の上限 7）のもと plan-approved。Plan Commit = 本 commit の親（`06f12ca8`）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 7（owner 承認待ち）。承認済みの上限は 6（owner 承認 2026-09-27、この change での介入 3 回目。起票時の 4 = 起票承認・manual の PASS / FAIL・Ready・merge から改定）。Plan Review round 3 の後の一括是正を plan-approved にする承認で介入が 1 増えて 7 となり 6 を超えるため、7 への改定をその承認と同じ 1 回（この change での介入 4 回目）で求める。
+- 介入回数上限: 7（owner 承認 2026-09-28、この change での介入 4 回目）。その前の上限は 6（owner 承認 2026-09-27、この change での介入 3 回目。起票時の 4 = 起票承認・manual の PASS / FAIL・Ready・merge から改定）。Plan Review round 3 の後の一括是正を plan-approved にする承認で介入が 1 増えて 7 となり 6 を超えるため、7 への改定をその承認と同じ 1 回（この change での介入 4 回目）で求める。
 - 実働時間上限: 30分（manual の目視: 部門の欄 5 画面〈「ビューティ関連」を選ぶのは部門 master を候補にする 3 画面だけ〉+ PLU 画面の日時 2 箇所。L3 のための DB の準備は無い）
 - relay 往復上限: 5（owner 承認 2026-09-27。起票時の 2 = Plan Review と Final Review の Codex 各 1 から、Plan Review が 3 round に延びたため改定）
 - Plan Review round 天井: 3（round 3 で到達。round 4 は無い）
 
 | 種別 | 上限 | 消費（2026-09-28 時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 7（owner 承認待ち。承認済みは 6） | 3: 1 回目 = 起票承認 2026-09-27「B 色と強調 + E 小口」、2 回目 = Non-scope へ移した 2 件（操作ログ `detail_json` の非価格 field・新しすぎる backup の文言）を backlog のまま残す owner 決定 2026-09-27、3 回目 = 予算の改定の承認 2026-09-27 | 4: 4 回目 = plan-approved の承認（上限 7 への改定の承認を同じ 1 回で求める）、manual の PASS / FAIL、Ready、merge | 0 | 7 = 3 + 4 + 0 |
+| 介入 | 7（owner 承認 2026-09-28） | 4: 1 回目 = 起票承認 2026-09-27「B 色と強調 + E 小口」、2 回目 = Non-scope へ移した 2 件（操作ログ `detail_json` の非価格 field・新しすぎる backup の文言）を backlog のまま残す owner 決定 2026-09-27、3 回目 = 予算の改定の承認 2026-09-27、4 回目 = plan-approved と上限 7 の承認 2026-09-28（helper の record は同日 owner が Coordinator に委任したため介入に数えない） | 3: manual の PASS / FAIL、Ready、merge | 0 | 7 = 4 + 3 + 0 |
 | relay | 5 | 3: Plan Review round 1・round 2・round 3（113）の Codex | 1: Final Review の Codex | 1: closure | 5 = 3 + 1 + 1 |
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
