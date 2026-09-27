@@ -753,3 +753,15 @@ Use concise ADR-style entries.
 - Alternatives: 進行中だけ青寄りにする案（色数が増え、ボタンと枠の色がそろわず一体に見えない）、黒・文字色の 2px 枠と長いバッジ（強すぎて煩わしい）、本 change で書体を決め切る案（実機で読み分けを見ていない）、design-system の file の改名（checker が file 名を固定で読み、DS2 / DS3 が黙ってスキップする）、今の赤の割り当ての変更（壊さない優先）、token を値ごと先に変えて部品を後から追う分割 merge（途中の main で操作・注意・現在地の色が混ざる）は採らない。
 - Compatibility: token の値・部品・画面は変えない（runtime lane A / B と棚卸し画面 D1 の実装は `docs/backlog.md`）。file 名・`## DSR-NN` 見出し・00 の既存 token 表の行と HEX は不変で、doc-consistency-check の DS1〜DS4 は同じ強さで働く。旧原則番号は 04 の旧番号の対応表で引ける。`PageShell` 系のコメントの「04 原則 6」と棚卸しの設計書の「04 原則 4」は新番号でも同じ主題を指す。
 - Revisit: runtime lane A / B の L3 で狙った受け取り方にならなかったとき（例: 進行中の囲みが「まだ終わっていない」と受け取られない、操作の塗りと完了の緑を言い分けられない、書体を店の PC で読み分けられない）。
+
+## D-092: Opus 5.5 主軸の座組を AGENT_OPERATING_MANUAL の座組表 1 か所に置き、Execution Mode 時代の役割規則を退役させる（2026-09-25）
+
+- Status: accepted（owner 決定 2026-09-23 / 24 / 25。範囲の縮小は owner 2026-09-25）。
+- Decision: 座組（担当・model・effort・Codex 停止中の進め方）の tracked の正本を [AGENT_OPERATING_MANUAL.md](AGENT_OPERATING_MANUAL.md#座組) の `## 座組` の表 1 つにし、effort の値もその表の effort 列だけに置く（SPEC-WF-HARNESS2-D1）。同書 §3 の独立性に、fork を独立に数えない、同じ round で 2 本以上の review を回すときは各 reviewer に他の reviewer の結果が置かれた場所すべてを読ませず発注の本文にも書かない、Writer が Codex の packet は別 vendor の Plan Reviewer を含める、load-bearing な判断は正本を直接読む、Plan Reviewer と Final Reviewer は別の fresh context、を足す（D2）。§3.3 に、Plan Review の Codex 分は座組表の Codex 停止中の列に従い、Codex の Final Review の枠は Codex の別 model でのみ代替できる（Claude での代替は owner の明示決定だけ）を足す。Final Review の Claude 側は R3 以上と design lane で Fable 5.1、closure の Claude 側の既定も Fable 5.1 とし、Codex の合否は是正の後の取り直しでも外さない（D6）。Execution Mode 時代の役割規則を退役させ、MANUAL の残す節は書き直さず退役した仕組みへの言及だけを除く（D3 / D4）。
+- Why: 環境が変わった（owner 決定 2026-09-23 / 24 / 25: Opus 5.5 と Fable 5.1 の水準、Codex の役割が review 中心へ、Claude 側の枠が潤沢）。規則は環境が変わるたびに変え、安全境界は維持する（owner 2026-09-24）。PR #97・#94 で後の reviewer が先の reviewer の結果を読んで独立性が崩れ、2 回取り直した。#96 の GA6 を Claude 側の reviewer 2 本だけで締めて merge し、最終形が Codex の合否を通らなかった（owner 2026-09-25「レビューとしての通すか否かが第三者の目として入るからそこはしっかり責務として持ちたい。あくまで一案でそこを採用するかはこっち次第」）。
+- Compatibility:
+  - 全面 superseded: D-056（Opus の read-only 専任）、D-058（相談窓口役）、D-079（UI 座組）、D-084（`codex-only` の運用形）、D-087（Astra 主担当）。
+  - 部分的に superseded: D-034（Execution Mode 3 値〈PR #97 で撤去済み〉と Subagent Budget の数値上限）、D-038(1)（slot 表 → 座組表）、D-062(c)（vendor 規則は MANUAL §3 の独立性の項へ移し、`codex-only` の句は消える。capacity pending は §3.3 の一般則が持つ）、D-065 のうち §5.7 変則 provenance 監査。
+  - PR #97（PR1）で撤去済みの記録: D-035（state-only・三点一致）、D-038(8)（STATECAP）、D-046-3（backtrack）、D-049（execpolicy の 2 mirror 維持）、D-055 / D-074 のうち Rebase Map、D-085 の MG-D10 / MG-D11（移行）。
+  - 維持: D-059（hook 0 本）、D-062(a)(b) と設計原則、D-039（PK5）、D-085 / D-086（merge gate）、D-090（Ordinary Operation・Writer 停止時）、独立性・Double Audit・Human Gate、MANUAL の残す節（§3.3・§3.5・§5.1〜§5.4・§5.6・§6）。MANUAL の見出しと節番号は変えず、削った節は欠番のまま残す（全面的な縮約は別 change）。
+  - checker・helper・classifier は変えない。Writer・reviewer の Opus の effort は subagent の定義 file を置く後続 change まで実効せず、実効値を run 報告に記録する。
