@@ -567,17 +567,11 @@ fn list_daily_report_imports(
 
 ### 14.21 get_completed_daily_report_aggregate
 
-**関数要求**: 指定日の全 completed 日報取込みと配下の支払/部門別行を取得・集約し、BIZ-05の日次レポート用構造へ渡す。
+**関数要求**: 指定日の全 completed 日報取込みと配下の支払/部門別行を取得・集約し、Z001 の行は取込みごとに合算せず取得して、BIZ-05の日次レポート用構造へ渡す。
 
 **シグネチャ**:
 ```
 fn get_completed_daily_report_aggregate(conn: &DbConnection, report_date: &str) -> Result<Option<OfficialDailyReportSummary>, DbError>
-```
-
-**実装遷移義務**: 現行codeの公開symbolは次の本amendment前の登録名である。後続implementation commitで本節の `get_completed_daily_report_aggregate` へrenameし、BIZ caller / tests / design-compliance registrationを同じcommitで追随する。旧symbol名は移行対象のcode inventoryを示すだけで、最新1parentを選ぶ契約として存続しない。
-
-```rust
-fn get_latest_completed_daily_report(/* 現行codeの移行元。新規caller追加禁止 */)
 ```
 
 **処理ステップ**:
@@ -586,7 +580,8 @@ fn get_latest_completed_daily_report(/* 現行codeの移行元。新規caller追
 3. `daily_report_payment_lines` は `payment_key` で集約する。amount / count は対象行のいずれかが NULL なら集約値も NULL とする。
 4. `daily_report_department_lines` は `department_id` がある行をその ID で、未対応行を `normalized_department_name`、それもなければ `raw_department_name` で集約する。amount は合計し、quantity / count は対象行のいずれかが NULL なら集約値も NULL とする。
 5. label と sort は、各 group の最小 `sort_order`、同値なら最小 row ID の行を決定的な代表とする。未対応警告は集約後の group 数から1件だけ構築し、import ごとに重複させない。
-6. `OfficialDailyReportSummary` にマッピングして返す。単一親 ID は返さない。
+6. `daily_report_summary_lines`（Z001）を、手順 1 と同じ条件（`report_date=? AND status='completed'`、`rolled_back` の親の行は読まない）の親に join する 1 つの query で読み、親の `imported_at ASC, id ASC`、行の `sort_order ASC, id ASC` で並べる。行は合算しない（D-096）。手順 1 の親ごとに 1 件の取込み（親 `id`・`imported_at`・行の `label` / `quantity` / `count` / `amount`）を作り、行の無い親も空の行で残す（件数は `source_import_count` と等しい）。`line_key` は返さない。新しい repo 関数・schema・index は足さない（`idx_daily_report_summary_lines_import_id` を使う）。
+7. `OfficialDailyReportSummary` にマッピングして返す。支払・部門の集約では単一親 ID を返さない。Z001 の取込みごとの行（BIZ-05 の `summary_imports`、[34 §19.2](34-biz-sales-service.md#192-型定義)）だけが親 ID と `imported_at` を持つ。
 
 ---
 
@@ -630,10 +625,11 @@ fn get_monthly_official_department_totals(
 - **INV-6**: file_hash 自然冪等性 — find_blocking_import_by_file_hash が `status IN ('completed','completed_partial')` で判定。UNIQUE 制約なし（ロールバック後の再取込みで同一 hash が2行になるため）。単一接続前提で check-then-insert の競合なし
 - **INV-7**: csv_import 参照の movements は sale_auto 限定 — void_movements_by_reference が movement_type 条件なしで安全に void できる根拠
 - **D-025**: 日報取込みは sale_records / inventory_movements へ擬似展開しない — daily_report_imports のrollbackは親status更新のみで完結する
-- **D-071 / SPEC-SDI-D1〜D8**: business date は group key であり uniqueness key ではない。active content hash 単位の identity、指定 ID 単位の rollback、同日の全 active imports の additive read を維持する
+- **D-071 / SPEC-SDI-D1〜D8**: business date は group key であり uniqueness key ではない。active content hash 単位の identity、指定 ID 単位の rollback、同日の全 active imports の additive read を維持する（Z001 の行は全 active import を読むが加算せず取込みごとに返す、D-096）
 
 ### 更新履歴
 
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別 hash の active import 全件取得、commit snapshot 再検証、per-import rollback、日報の日次・月次 additive read 契約を正本化。 |
+| 2026-09-27 | daily-report-z-display（design） | §14.21 に Z001 の行を取込みごとに読む手順 6 を追加（D-096）。rename 済みの旧 symbol の「実装遷移義務」の段落を削除（[Plan Packet](../plans/2026-09-27-daily-report-z-display.md)）。 |

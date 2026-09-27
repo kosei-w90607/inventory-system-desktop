@@ -753,3 +753,12 @@ Use concise ADR-style entries.
 - Alternatives: 進行中だけ青寄りにする案（色数が増え、ボタンと枠の色がそろわず一体に見えない）、黒・文字色の 2px 枠と長いバッジ（強すぎて煩わしい）、本 change で書体を決め切る案（実機で読み分けを見ていない）、design-system の file の改名（checker が file 名を固定で読み、DS2 / DS3 が黙ってスキップする）、今の赤の割り当ての変更（壊さない優先）、token を値ごと先に変えて部品を後から追う分割 merge（途中の main で操作・注意・現在地の色が混ざる）は採らない。
 - Compatibility: token の値・部品・画面は変えない（runtime lane A / B と棚卸し画面 D1 の実装は `docs/backlog.md`）。file 名・`## DSR-NN` 見出し・00 の既存 token 表の行と HEX は不変で、doc-consistency-check の DS1〜DS4 は同じ強さで働く。旧原則番号は 04 の旧番号の対応表で引ける。`PageShell` 系のコメントの「04 原則 6」と棚卸しの設計書の「04 原則 4」は新番号でも同じ主題を指す。
 - Revisit: runtime lane A / B の L3 で狙った受け取り方にならなかったとき（例: 進行中の囲みが「まだ終わっていない」と受け取られない、操作の塗りと完了の緑を言い分けられない、書体を店の PC で読み分けられない）。
+
+## D-096: 日計（Z001）は同日の取込みごとに並べ、合算しない（2026-09-27）
+
+- Status: accepted（owner 2026-09-27。Plan Packet [Z001 / Z002 / Z005 を画面で見る](plans/2026-09-27-daily-report-z-display.md) の Q1 = A、Q2 = (a)、Q3 = (a)）。
+- Decision: 日次売上の「レジ日報（公式）」に Z001 の全行の表「日計（Z001）」を足す（[UI-09a-D16](function-design/56-ui-daily-sales.md#日計z001の表示)）。D-071 の「同日の全 active import を加算して読む」のうち、Z001 の行は全 active import を読むが加算せず、取込みの古い順に取込みごとの表として並べ、各表に取込み日時の見出しを付ける。総売上 / 純売上・支払集計・部門別集計の合算（UI-09a-D15）は変えない。BIZ-05 は `OfficialDailyReportSummary.summary_imports` で親ごとの行を返し（[34 §19.2](function-design/34-biz-sales-service.md#192-型定義)）、IO は既存の `get_completed_daily_report_aggregate` に 1 つの query を足して読む（[24 §14.21](function-design/24-io-csv-import-repo.md#1421-get_completed_daily_report_aggregate)）。見た目は runtime lane の Draft で実機の before / after を並べて確かめ、mockup は作らない。
+- Why: Z001 の行が同日の 2 回の精算で足してよい値かは、帳票仕様（日計明細の精算は取引データをクリアする）からは言えるが、実物の同日 2 回精算の Z001 では確かめていない。総売・純売以外の行の鍵は並び順から作る `summary_N` で、2 回の精算で行の集合や並びが違えば別の意味の行を足すおそれがある。取込みごとに並べれば、行の性質によらず正しく、どの取込みも落とさない。画面は既存の公式セクションに表を 1 つ足すだけで、route・導線を増やさない（owner の「壊さない優先」）。
+- Alternatives: Z001 を 1 つの表に合算する案（上の理由で、実物で全行が足せると確かめるまで採らない）; 最新 1 回の取込みだけを出す案（先行の精算分を隠し D-071 に反する）; 新しい画面「レジ日報」を作る案 B（画面と覚えることが増え、印刷の要否が決まる前に紙の形へ寄せる）; 取込みの確認・完了画面と取込みの記録に出す案 C（日付で過去日を引けず、日次売上との二重の置き場所になる）。
+- Compatibility: `get_daily_sales` の名前・引数は変えず、返り値に field が 1 つ増える（bindings は runtime lane で再生成）。DB schema・parser・取込みの確認と完了の画面・日次 CSV 出力・月次は変えない。
+- Revisit: 実物の同日 2 回精算の Z001 で全行が足せると確かめ、owner が 1 つの表を望んだとき。印刷の設計（Issue #105 G）が紙 1 枚の形を要するとき。レジが変わり adapter が Z001 相当の行を別の形で作るとき。
