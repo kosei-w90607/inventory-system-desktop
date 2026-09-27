@@ -162,7 +162,9 @@ function DailyReportPreviewStep({
           <CardTitle>取込み内容</CardTitle>
           <Badge
             variant="outline"
-            tone={alreadyImported || requiresAdditionalConfirm ? "warning" : "success"}
+            tone={
+              alreadyImported ? "destructive" : requiresAdditionalConfirm ? "warning" : "success"
+            }
           >
             {/* DSR-03: 同日追加確認の主情報は上部 Alert 帯が担うため、Badge は補助的な
                 状態表示に留める（gated Amendment 4、PreviewStep.tsx と対称の改名。

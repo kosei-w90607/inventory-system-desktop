@@ -515,7 +515,7 @@ export function BackupRestorePage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium">{displayDate}</span>
                               {isLatest ? (
-                                <Badge className="border-warning bg-warning-emphasis text-primary-foreground">
+                                <Badge variant="secondary" className="font-semibold">
                                   最新
                                 </Badge>
                               ) : null}

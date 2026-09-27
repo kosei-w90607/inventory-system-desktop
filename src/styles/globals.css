@@ -71,7 +71,7 @@
   --control-surface: #fafaf9; /* 入力欄・Select の操作面、owner run 6 指定。--background と同値だが独立 token（将来 page 地と操作面を分けられるように）。対 --card 1.02:1（面の差は僅少、枠 --border-strong 3.53:1 が操作対象の主信号）、Gated Amendment 7 S46 */
   --input: var(--border-strong);
   --muted: #f5f5f4; /* stone-100 */
-  --muted-foreground: #6b6560; /* D-CE16 M2、対 --card 5.27:1・対 --background 5.50:1・対 --ongoing-soft 4.95:1 */
+  --muted-foreground: #57534e; /* D-CE16 M3（L3 round 1 の試しの版）、対 --card 6.99:1・対 --background 7.30:1・対 --ongoing-soft 6.57:1 */
   --accent: #f5f5f4;
   --accent-foreground: #1c1917;
   --secondary: #e7e5e4; /* stone-200 */
