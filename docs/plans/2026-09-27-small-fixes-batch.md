@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R2
 - Plan Commit: 06f12ca86fe175190a6ebcf0d9496c1107704a0f
 - Amendments: none
@@ -25,6 +25,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - design → plan-draft → plan-gate（2026-09-28、起草役、本 commit）: design の出力（S5・S6・S7 の新しい契約）は直前の plan 側の commit で設計正本に入り、未解決の設計の質問は無い（11rem の見た目は L3-1 で確かめる前提として Design Intent Audit に置く）。裁定 r2 の残りの項目に沿って packet と Matrix を直し、Ordinary Operation を表にした。Plan Commit は pending のまま、Plan Review round 3（上限）へ。
 - 上限の round 3（2026-09-28）: 両 reviewer とも reject、一括是正（裁定 r3）。対象 `cf9213a6`、fresh Opus 5.5 と Codex GPT-5.6 Sol。Ordinary Operation は両者とも成立とした。round 4 は無いため、Coordinator の裁定 r3 の E3-1〜E3-7 を plan-gate のまま一括で packet と Matrix に反映した（起草役、本 commit）。Plan Commit は pending のまま、owner の plan-approved の承認へ。
 - plan-gate → plan-approved（2026-09-28、Coordinator、本 commit）: 上限の round 3（対象 `cf9213a6`）は両 reviewer とも reject（P1 0）。追加の round は回さず、裁定 r3 の一括是正（`06f12ca8`）で全件を反映し、Coordinator が AC-S2 の baseline・予算表・旧前提の語の sweep を現物で確かめた。owner 承認（2026-09-28「両方OK」、この change での介入 4 回目、介入の上限 7）のもと plan-approved。Plan Commit = 本 commit の親（`06f12ca8`）。
+- plan-approved → implementing（2026-09-28、Coordinator、state-only）: Writer（Opus 5.5 subagent の worktree run）へ実装を発注する。Writer の開始 HEAD は本 commit。
 
 ## Owner Effort Budget
 
