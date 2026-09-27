@@ -25,7 +25,6 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
-  --color-row-current: var(--row-current);
   --color-list-head: var(--list-head);
   --color-control-surface: var(--control-surface);
   --color-input: var(--input);
@@ -43,9 +42,10 @@
   --color-success-border: var(--success-border);
   --color-success-strong: var(--success-strong);
   --color-success-emphasis: var(--success-emphasis);
-  --color-rank-top-bg: var(--rank-top-bg);
-  --color-rank-top-badge-bg: var(--rank-top-badge-bg);
-  --color-rank-top-badge-text: var(--rank-top-badge-text);
+  --color-ongoing: var(--ongoing);
+  --color-ongoing-soft: var(--ongoing-soft);
+  --color-ongoing-border: var(--ongoing-border);
+  --color-ongoing-strong: var(--ongoing-strong);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -67,21 +67,20 @@
   --popover-foreground: #1c1917;
   --border: #cdc8c4; /* DSR-22 構造線、対 --background 1.59:1 */
   --border-strong: #8a8480; /* DSR-22 操作枠、対 --background 3.53:1・対 --card 3.38:1 */
-  --row-current: #fff8e6; /* DSR-22 現在行背景、対 --foreground 16.5:1 */
   --list-head: #e7e5e4; /* 一覧 sticky 帯（summary + thead）surface、対 --background 1.20:1・対 --foreground 13.93:1、Gated Amendment 2 S11 */
   --control-surface: #fafaf9; /* 入力欄・Select の操作面、owner run 6 指定。--background と同値だが独立 token（将来 page 地と操作面を分けられるように）。対 --card 1.02:1（面の差は僅少、枠 --border-strong 3.53:1 が操作対象の主信号）、Gated Amendment 7 S46 */
   --input: var(--border-strong);
   --muted: #f5f5f4; /* stone-100 */
-  --muted-foreground: #78716c; /* stone-500 */
+  --muted-foreground: #6b6560; /* D-CE16 M2、対 --card 5.27:1・対 --background 5.50:1・対 --ongoing-soft 4.95:1 */
   --accent: #f5f5f4;
   --accent-foreground: #1c1917;
   --secondary: #e7e5e4; /* stone-200 */
   --secondary-foreground: #1c1917;
 
   /* セマンティックカラー（design-system/00-foundations.md カラーパレット） */
-  --primary: #b45309; /* amber-700 */
+  --primary: #1d5c63; /* 操作（D-091）、対 --background 7.28:1・対 --card 6.97:1 */
   --primary-foreground: #fafaf9;
-  --ring: #b45309;
+  --ring: #1d5c63;
   --destructive: #b91c1c; /* red-700 */
   --destructive-foreground: #fafaf9;
   --success: #15803d; /* green-700 */
@@ -99,9 +98,12 @@
   --success-border: #bbf7d0; /* green-200 */
   --success-strong: #14532d; /* green-900 */
   --success-emphasis: #16a34a; /* green-600 */
-  --rank-top-bg: #fffbeb; /* amber-50 */
-  --rank-top-badge-bg: #fef3c7; /* amber-100 */
-  --rank-top-badge-text: #92400e; /* amber-800 */
+
+  /* 進行中（D-091 / D-094）: 現在行・待ちの spinner・作業の進み具合の棒・詳細を開いた行・手順のいまのステップ */
+  --ongoing: #2f7f86; /* バー・棒・spinner、対 --background 4.47:1 */
+  --ongoing-soft: #e6f0f0; /* 地 */
+  --ongoing-border: #7fb0b4; /* badge 大の要素の 1px 線（2.29:1 のためバーには使わない） */
+  --ongoing-strong: #123e43; /* 文字、対 --ongoing-soft 10.07:1 */
 }
 
 /* Gated Amendment 3 追補 S16（Opus P1-1、AC-L3-4）: forced-colors では box-shadow が無効化され

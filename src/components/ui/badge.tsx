@@ -9,7 +9,6 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
         // S1 の exact-match oracle が検査する分類 variant の定義。
         // prettier-ignore
         secondary: "border-border bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
@@ -27,15 +26,12 @@ const badgeVariants = cva(
         destructive: "border-destructive-border bg-destructive-soft text-destructive-strong",
       },
     },
-    defaultVariants: {
-      variant: "default",
-    },
   },
 );
 
 function Badge({
   className,
-  variant = "default",
+  variant,
   tone,
   asChild = false,
   ...props

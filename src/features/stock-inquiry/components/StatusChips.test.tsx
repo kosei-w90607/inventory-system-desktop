@@ -36,6 +36,16 @@ describe("StatusChips (REQ-302 状態フィルタ)", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  // SPEC-COLOR-EMPHASIS-RT-1 / D-CE17: 押された chip は selection-tone の枠が focus でも変わらないため、
+  // 目印は不透明な ring（合成後の比は AC-L3-15）。
+  it("D-CE17: the pressed chip shows focus with the opaque ring", () => {
+    render(<StatusChips value="stockout" onChange={vi.fn()} />);
+    const pressed = screen.getByLabelText("在庫切れ");
+    expect(pressed).toHaveAttribute("data-state", "on");
+    expect(pressed).toHaveClass("focus-visible:ring-ring");
+    expect(pressed).not.toHaveClass("focus-visible:ring-ring/50");
+  });
+
   it("renders every stock filter descriptor in owner order", () => {
     render(<StatusChips value="all" onChange={vi.fn()} />);
 

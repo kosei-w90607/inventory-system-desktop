@@ -322,7 +322,6 @@ export function BackupRestorePage() {
 
       {fatalRestoreKind ? (
         <Alert variant="destructive">
-          <AlertTriangle />
           <AlertTitle>
             {fatalRestoreKind === "restore_durability_unknown"
               ? "復元結果を確認できませんでした"
@@ -362,7 +361,6 @@ export function BackupRestorePage() {
 
       {errorMessage ? (
         <Alert variant="destructive">
-          <AlertTriangle />
           <AlertTitle>
             {restoreState.preBackupFailed
               ? "復元前のバックアップを作成できませんでした"
@@ -517,7 +515,7 @@ export function BackupRestorePage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium">{displayDate}</span>
                               {isLatest ? (
-                                <Badge variant="default" className="border-warning">
+                                <Badge className="border-warning bg-warning-emphasis text-primary-foreground">
                                   最新
                                 </Badge>
                               ) : null}
