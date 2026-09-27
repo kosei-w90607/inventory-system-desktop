@@ -42,3 +42,17 @@ describe("stockInquirySearchSchema.selected (REQ-301 / SPEC-RETURNTO-HYGIENE-202
     expect(stockInquirySearchSchema.parse({ selected: code100 }).selected).toBe(code100);
   });
 });
+
+describe("stockInquirySearchSchema.selected (REQ-301 / BIZ-01-D5)", () => {
+  it("REQ-301 / BIZ-01-D5: selected は BIZ と同じ数え方で 100 まで受理する", () => {
+    // BIZ-01-D5 の golden（T1 と独立に転記）: UTF-16 code unit で数える
+    const accepted = ["A".repeat(100), "\u{2000B}".repeat(50), "あ".repeat(100)];
+    const rejected = ["A".repeat(101), "\u{2000B}".repeat(51)];
+    for (const code of accepted) {
+      expect(stockInquirySearchSchema.parse({ selected: code }).selected).toBe(code);
+    }
+    for (const code of rejected) {
+      expect(stockInquirySearchSchema.parse({ selected: code }).selected).toBeUndefined();
+    }
+  });
+});

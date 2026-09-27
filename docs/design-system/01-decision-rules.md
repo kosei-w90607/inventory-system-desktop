@@ -374,7 +374,7 @@ DSR-07 は確認 dialog を出すかどうかの境界を決め、DSR-20 は出�
 
 **Why**: 任意文字列を遷移先として使うと、外部 URL / protocol-relative URL への想定外遷移（open-redirect 型）が起きうる。デスクトップアプリでも業務動線が壊れ、利用者が迷子になる。PR #114-#115 の入出庫 4 詳細ページで `normalizeReturnTo` として確立した規約を全 returnTo 系 param に適用する。旧判定（prefix 文字列一致のみ）は `/\host`（バックスラッシュ）や tab 入り値（`/\t/evil.example`）を `/` 始まりのまま通し、ブラウザの URL 正規化がこれらを別 origin へ解決するため、origin 判定へ強化した（returnTo 衛生 R3、起票時実測、2026-09-17）。
 
-**判定フロー / 具体例**: 戻り link を描画する側は `returnToLinkProps(value, fallback, options?)`（`src/lib/return-to.ts`）を使い、`to`(pathname) / `search`(object) へ分解した結果を受け取る。内部の判定は共有 guard `parseReturnTo` が担い、`value` が `/` 始まりで、かつ `new URL(value, "http://inventory.local")` の `origin` が base と一致し、解決後の pathname が `//` 始まりでないときだけ合格とする。合格しない場合は `fallback` を同じ guard に通し、それも不合格なら `{ to: "", search: {} }` を返す。`/\evil.example` や `/\t/evil.example` は `/` 始まりだが origin が `http://evil.example` に解決されるため拒否する。`/ok#frag` は `/ok`（hash なし）として合格する。`/..//evil.example` のように解決後の pathname が `//` 始まりになる値も拒否し、検証済みの `pathname + search` を再解析しない。`normalizeReturnTo(value, fallback)` は同じ guard を共有する primitive で、文字列 1 本（`pathname + search`）が必要な呼出側のために残す。共通 guard は値ごとの URL 解析を 1 回にし、不正値でも throw しない。新規に returnTo を受ける route を作るときは同じ検証を必ず入れる。
+**判定フロー / 具体例**: 戻り link を描画する側は `returnToLinkProps(value, options?)`（`src/lib/return-to.ts`）を使い、`to`(pathname) / `search`(object) へ分解した結果を受け取る。内部の判定は共有 guard `parseReturnTo` が担い、`value` が `/` 始まりで、かつ `new URL(value, "http://inventory.local")` の `origin` が base と一致し、解決後の pathname が `//` 始まりでないときだけ合格とする。合格しない場合（`options.pathname` の不一致を含む）は `null` を返し、呼出側が遷移先ごとの既定ルートへ切り替える（DSR-18）。`/\evil.example` や `/\t/evil.example` は `/` 始まりだが origin が `http://evil.example` に解決されるため拒否する。`/ok#frag` は `/ok`（hash なし）として合格する。`/..//evil.example` のように解決後の pathname が `//` 始まりになる値も拒否し、検証済みの `pathname + search` を再解析しない。`normalizeReturnTo(value, fallback)` は同じ guard を共有する primitive で、文字列 1 本（`pathname + search`）が必要な呼出側のために残す。共通 guard は値ごとの URL 解析を 1 回にし、不正値でも throw しない。新規に returnTo を受ける route を作るときは同じ検証を必ず入れる。
 
 **関連**: パターン①ページヘッダ（詳細ルートの戻る導線）。review-checklist カテゴリ 9 対応（状態を変える control へ戻れるか / 導線が行き止まりにならないか）。
 
@@ -444,20 +444,23 @@ scroll を伴う遷移はどれか？
 ├─ Yes → 送信側は現在の pathname + search state を returnTo に直列化して送る
 │         （router の href、`useRouterState({ select: (s) => s.location.href })`。
 │          文字列を手組みしない — 数字だけの検索語が number 化して型が失われる、GA5 系）
-│         ただし自由入力の string 値を router の parseSearch に通さない既存 2 site
-│         （StockMovementsPage.tsx の detailReturnTo / products/lib/return-to.ts の
-│          buildProductListReturnTo）は手組みを存置する。
+│         在庫変動履歴（StockMovementsPage.tsx の detailReturnTo）は href ではなく、
+│         route が検証した search を正規化した object を router と同じ直列化
+│         （`defaultStringifySearch`）で組む（66 UI-06c-D9）。
+│         受け側が typed parse-back で router の parseSearch を通らない
+│         products/lib/return-to.ts の buildProductListReturnTo は手組みを存置する。
 │         └─ 詳細側の「前の画面へ戻る」で共通 helper `returnToLinkProps` を通す
 │              ├─ DSR-15 の origin 判定を通る → `to`(pathname) / `search`(object) へ
 │              │   分解して戻る（文字列 `to` に query を埋め込まない）
 │              ├─ `options.pathname` を渡した導線は、解決した pathname が一致しない
 │              │   場合も不正値として扱う（例: 在庫変動履歴の「在庫照会へ戻る」は
 │              │   `/stock` に pin する）
-│              └─ 欠落・不正・pin 不一致 → 呼出側が渡した遷移先ごとの既定 hub へ戻る
+│              └─ 欠落・不正・pin 不一致 → helper は `null` を返し、呼出側が書いた
+│                  遷移先ごとの既定 hub へ戻る
 └─ No  → その導線固有の契約に従う
 ```
 
-共通 helper（`normalizeReturnTo` / `returnToLinkProps`、`src/lib/return-to.ts`）は DSR-15 の origin 検証を最低基準とし、フォールバック先を引数で受ける。これは DSR-15 を supersede せず extend し、DSR-15 が別 PR の宿題としていた共通 util 抽出を、後続実装の必須契約にするものである。`returnToLinkProps` は `to` に query を埋め込まず `search` object へ分解するため、戻り link は `<Link {...returnToLinkProps(...)}>` の形にする（`<Link to={backHref}>` のような文字列 `to` へ query を直書きしない、returnTo 衛生 R3、2026-09-17）。
+共通 helper（`normalizeReturnTo` / `returnToLinkProps`、`src/lib/return-to.ts`）は DSR-15 の origin 検証を最低基準とする。これは DSR-15 を supersede せず extend し、DSR-15 が別 PR の宿題としていた共通 util 抽出を、後続実装の必須契約にするものである。`normalizeReturnTo` はフォールバック先を引数で受ける。`returnToLinkProps` はフォールバック先を受けず、不合格を `null` で返す（戻り値の型は `{ to, search } | null`）。空の `to` を「値なし」の印にすると、呼出側が分岐を書き忘れても型検査を通り、押しても遷移しない戻り link になるため、分岐を型で強制する（2026-09-25）。`returnToLinkProps` は `to` に query を埋め込まず `search` object へ分解するため、戻り link は `<Link {...(returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} })}>` のように既定 hub を呼出側で併記した形にする（`<Link to={backHref}>` のような文字列 `to` へ query を直書きしない、returnTo 衛生 R3、2026-09-17）。
 
 商品一覧の typed parse-back に使う `src/features/products/lib/return-to.ts` は、この共通 helper へ緩和しない。`pathname` が `/products` または `/products/` の場合だけ許可する exact-allowlist は、復元対象の search 型まで限定する用途で prefix 検証を強化した上位互換として存置する。typed 復元が必要な導線は同様に許可範囲を強化してよいが、共通 helper の最低基準を下回ってはならない。
 
@@ -507,6 +510,7 @@ scroll を伴う遷移はどれか？
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-25 | 画面遷移の戻り先を型で守る（R3） | DSR-15 / DSR-18: `returnToLinkProps` からフォールバック引数と空の `to` の印を外し、不合格を `null` で返して呼出側の分岐を型で強制する。在庫変動履歴の `detailReturnTo` を手組みの存置例外から外し、正規化した search を router と同じ直列化（`defaultStringifySearch`）で組む（66 UI-06c-D9）。手組みの存置は商品一覧の `buildProductListReturnTo` だけになる。 |
 | 2026-09-24 | デザインの決まりの組み直し | `## 話題別の索引` を置き、DSR を番号と見出しを変えずに話題の順（配置と一覧 / 入力 / 知らせ方 / 移動と戻り / 色と状態）へ並べ直した。00 の色の役割表・強調の段階と矛盾する記述を直した: DSR-01（操作の塗りだけを数える、0 primary の画面の昇格）、DSR-08（tone family を役割表へ向け進行中を加える、ランキングは順位と太字の試し）、DSR-16（強調の段階との関係）、DSR-21（現在地は操作の役割色の細いバー、現在地と現在行は置き場所と文言で区別）、DSR-22（現在行は進行中の役割、選択行は開いている 1 行に限る、04 原則 14 の参照を原則 6 へ）。DSR-24 の primary の色の語を現行の説明へ。読み方の Why の接地先を 00 と 03 へ |
 | 2026-09-17 | PR #78 | DSR-15「判定フロー / 具体例」の主語を、production caller が 0 になった `normalizeReturnTo` から、戻り link を描画する側が使う `returnToLinkProps` へ同期。`normalizeReturnTo` は共有 guard `parseReturnTo` を使う primitive として残す旨を明記。 |
 | 2026-09-17 | returnTo 衛生 GA2 | 解決後の pathname が `//` 始まりの値を拒否し、共通 helper の URL 解析を 1 回にして throw を防ぐ契約と、送信側の手組みを存置する 2 site の例外を明記。 |

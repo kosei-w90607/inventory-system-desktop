@@ -5,6 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type ReceivingRecordDetail } from "@/lib/bindings";
+import {
+  makeMockProductWithRelations,
+  makeMockStockDetail,
+} from "@/features/stock-inquiry/lib/test-fixtures";
 import { routeTree } from "@/routeTree.gen";
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -22,6 +26,11 @@ vi.mock("@/lib/bindings", () => ({
     getReceivingRecord: vi.fn(),
     listInventoryRecords: vi.fn(),
     listDepartments: vi.fn(),
+    searchProducts: vi.fn(),
+    listLowStock: vi.fn(),
+    getStockDetail: vi.fn(),
+    listMovements: vi.fn(),
+    getDisposalRecord: vi.fn(),
   },
 }));
 
@@ -30,6 +39,11 @@ const listLogOperationTypes = vi.mocked(commands.listLogOperationTypes);
 const getReceivingRecord = vi.mocked(commands.getReceivingRecord);
 const listInventoryRecords = vi.mocked(commands.listInventoryRecords);
 const listDepartments = vi.mocked(commands.listDepartments);
+const searchProducts = vi.mocked(commands.searchProducts);
+const listLowStock = vi.mocked(commands.listLowStock);
+const getStockDetail = vi.mocked(commands.getStockDetail);
+const listMovements = vi.mocked(commands.listMovements);
+const getDisposalRecord = vi.mocked(commands.getDisposalRecord);
 
 function receivingDetail(): ReceivingRecordDetail {
   return {
@@ -63,6 +77,11 @@ beforeEach(() => {
   getReceivingRecord.mockReset();
   listInventoryRecords.mockReset();
   listDepartments.mockReset();
+  searchProducts.mockReset();
+  listLowStock.mockReset();
+  getStockDetail.mockReset();
+  listMovements.mockReset();
+  getDisposalRecord.mockReset();
   listLogOperationTypes.mockResolvedValue({ status: "ok", data: ["backup_create"] });
   listLogs.mockResolvedValue({
     status: "ok",
@@ -192,5 +211,102 @@ describe("REQ-207 / UI-11c-D16 / DSR-18 returnTo route flow", () => {
     });
     expect(router.state.location.search).toEqual({ q: "2099000000019" });
     expect(await screen.findByText("合成テスト商品")).toBeInTheDocument();
+  });
+  it("T7 SPEC-NAV-RETURN-TYPES C5 REQ-207 / REQ-303: 在庫照会（数字だけの商品コード）→ 在庫変動履歴 → 業務記録詳細 → 前の画面へ戻る → 在庫照会へ戻る で各段の href が行きと文字列一致する", async () => {
+    const code = "2099000000019";
+    const product = makeMockProductWithRelations({
+      product_code: code,
+      name: "合成数字コード商品",
+    });
+    searchProducts.mockResolvedValue({
+      status: "ok",
+      data: { items: [product], total_count: 1, page: 1, per_page: 50 },
+    });
+    listLowStock.mockResolvedValue({ status: "ok", data: [] });
+    getStockDetail.mockResolvedValue({ status: "ok", data: makeMockStockDetail({ product }) });
+    listMovements.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          {
+            id: 10,
+            product_code: code,
+            movement_type: "disposal",
+            quantity: -1,
+            stock_after: 9,
+            reference_type: "disposal_record",
+            reference_id: 7,
+            source: { label: "廃棄・破損 #7", route: "/inventory/disposal/records/7" },
+            note: "synthetic",
+            created_at: "2026-06-27T10:11:12",
+          },
+        ],
+        total_count: 1,
+        page: 1,
+        per_page: 50,
+      },
+    });
+    getDisposalRecord.mockResolvedValue({
+      status: "ok",
+      data: {
+        id: 7,
+        disposal_date: "2026-06-27",
+        status: "active",
+        created_at: "2026-06-27T10:30:00",
+        total_loss_cost: 300,
+        items: [
+          {
+            id: 1,
+            product_code: code,
+            product_name: "合成数字コード商品",
+            department_name: "毛糸",
+            stock_unit: "pcs",
+            disposal_type: "damage",
+            quantity: 1,
+            cost_price: 300,
+            reason: "synthetic",
+            line_loss_cost: 300,
+          },
+        ],
+        movements: [],
+      },
+    });
+
+    // router の直列化と同じ形（数字だけの q / selected は JSON-quote される）。
+    const stockHref = `/stock?q=%22${code}%22&selected=%22${code}%22`;
+    const history = createMemoryHistory({ initialEntries: [stockHref] });
+    const router = createRouter({ routeTree, history });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("link", { name: "在庫変動履歴" }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/stock/${code}/movements`);
+    });
+    const movementsHref = router.state.location.href;
+
+    await user.click(await screen.findByRole("link", { name: "廃棄・破損 #7" }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/inventory/disposal/records/7");
+    });
+    expect(await screen.findByRole("heading", { name: "廃棄・破損 #7" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "前の画面へ戻る" }));
+    await waitFor(() => {
+      expect(router.state.location.href).toBe(movementsHref);
+    });
+
+    await user.click(await screen.findByRole("link", { name: "在庫照会へ戻る" }));
+    await waitFor(() => {
+      expect(router.state.location.href).toBe(stockHref);
+    });
+    expect(router.state.location.search).toEqual({ q: code, selected: code });
   });
 });

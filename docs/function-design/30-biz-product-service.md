@@ -428,7 +428,7 @@ struct ImportRow {
    - 任意列 `PLU対象` は `1` / `0` / 空欄だけを受理する。それ以外は行 error とし、IO-03 は raw 値の parse だけを担う（BIZ-01-D4 / SPEC-PLS-D6）
 
 4. **各行のバリデーション**
-   - 商品コード: 空でないこと
+   - 商品コード: 空でないこと。空でなければ 100 文字（UTF-16 code unit）以内であること。超過は「商品コードは100文字以内で入力してください」（BIZ-01-D5）
    - 商品名: 空でないこと
    - 部門ID: 整数変換可能、departments に存在すること
    - 売価・原価: 0以上の整数
@@ -475,6 +475,10 @@ struct ImportResult {
 
 **処理ステップ**:
 
+0. **商品コードの上限の再検証**（BIZ-01-D5）
+   - TX を開く前に valid_rows の全行を §4.8 step 4 と同じ判定で調べる（wire から来る行を信頼しない）
+   - 1 行でも 100 文字（UTF-16 code unit）を超えれば BizError::ValidationFailed("商品コードは100文字以内で入力してください") を返し、DB を変えない（正常な行も登録しない）
+
 1. **TX開始**（conn.transaction()）
 
 2. **各行を処理**（TX内で直接 repo 関数を呼ぶ。create_product / update_product の BIZ 関数は内部でTXを開始するため、ネストTX回避のために呼ばない）
@@ -499,7 +503,9 @@ struct ImportResult {
 
 **エラーハンドリング**:
 - TX内でのDB操作失敗 → BizError::DatabaseError（TX自動ロールバック）
-- 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない
+- 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない。商品コードの上限だけは step 0 で再検証する（BIZ-01-D5）
+
+**設計判断（BIZ-01-D5、商品コードの長さ上限、2026-09-25）**: 商品コードの上限は 100 文字（owner 決定 2026-09-25）。在庫照会の route search `selected` / `q` の zod `.max(100)` と揃え、「登録できるのに照会で選べない」食い違いを消す。数え方は zod `.max()` と同じ UTF-16 code unit（Rust は `encode_utf16().count()`、定数 `constants::PRODUCT_CODE_MAX_LEN`）。文字数（`chars().count()`）では BMP 外の文字で照会より多く通し、byte 数（`len()`）ではかなで照会より少なく通すため採らない。判定は BIZ に置き、任意の文字列が入る唯一の経路である商品 CSV の取込み（preview_import の行検証と commit_import の TX 前の再検証）で閉じる。手入力の create_product は JAN（BIZ-01-D1）か §4.3 の発番で上限に届かず、update_product は product_code を変えないため判定を置かない。DB CHECK は置かない: `products.product_code` を外部キーで参照する定義が 8 あり、SQLite は CHECK の追加に `products` の再作成が要る一方、上の BIZ の判定で入口が閉じるため。
 
 ---
 

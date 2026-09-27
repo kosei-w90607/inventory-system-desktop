@@ -6,8 +6,12 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { resumeAutoBackupCheck } from "@/features/backup-restore/useAutoBackupCheck";
+import { commands } from "@/lib/bindings";
 
 import { RootLayout } from "./RootLayout";
 
@@ -36,26 +40,81 @@ vi.mock("@/features/shortcuts", () => ({
   useShortcutsDialog: () => ({ open: false, setOpen: vi.fn() }),
 }));
 
+// UI-11b-D13: RootLayout は実 hook の useAutoBackupCheck を呼ぶため、hook は mock せず command だけを mock する
+vi.mock("@/lib/bindings", () => ({
+  commands: { checkAutoBackup: vi.fn() },
+}));
+
+const mockCheckAutoBackup = vi.mocked(commands.checkAutoBackup);
+
+function createLayoutRouter() {
+  const outerRoute = createRootRoute({ component: () => <Outlet /> });
+  const layoutRoute = createRoute({
+    getParentRoute: () => outerRoute,
+    id: "layout",
+    component: RootLayout,
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: "/",
+    component: () => <p>test outlet</p>,
+  });
+  const otherRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: "/stock",
+    component: () => <p>other outlet</p>,
+  });
+  return createRouter({
+    routeTree: outerRoute.addChildren([layoutRoute.addChildren([indexRoute, otherRoute])]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+}
+
+function renderLayout() {
+  const router = createLayoutRouter();
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return { router, ...view };
+}
+
+beforeEach(() => {
+  resumeAutoBackupCheck();
+  mockCheckAutoBackup.mockReset();
+  mockCheckAutoBackup.mockResolvedValue({ status: "ok", data: false });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("UI-12 / DSR-17 RootLayout scroll container", () => {
   it("T6: gives the persistent main element its restoration id", async () => {
-    const outerRoute = createRootRoute({ component: () => <Outlet /> });
-    const layoutRoute = createRoute({
-      getParentRoute: () => outerRoute,
-      id: "layout",
-      component: RootLayout,
-    });
-    const indexRoute = createRoute({
-      getParentRoute: () => layoutRoute,
-      path: "/",
-      component: () => <p>test outlet</p>,
-    });
-    const router = createRouter({
-      routeTree: outerRoute.addChildren([layoutRoute.addChildren([indexRoute])]),
-      history: createMemoryHistory({ initialEntries: ["/"] }),
-    });
-    const { container } = render(<RouterProvider router={router} />);
+    const { container } = renderLayout();
 
     await screen.findByText("test outlet");
     expect(container.querySelector("main")).toHaveAttribute("data-scroll-restoration-id", "main");
+  });
+});
+
+describe("UI-12 / UI-11b-D13 RootLayout auto backup check", () => {
+  it("UI-12 / UI-11b-D13: route を移っても自動バックアップの確認が続く", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { router } = renderLayout();
+    await screen.findByText("test outlet");
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mockCheckAutoBackup).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await router.navigate({ to: "/stock" });
+    });
+    await screen.findByText("other outlet");
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mockCheckAutoBackup).toHaveBeenCalledTimes(2);
   });
 });

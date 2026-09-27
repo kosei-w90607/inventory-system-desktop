@@ -61,7 +61,7 @@ function hasNote(value: string | null | undefined): boolean {
 }
 
 export function ReturnRecordDetailPage({ recordId, returnTo }: ReturnRecordDetailPageProps) {
-  const backLinkProps = returnToLinkProps(returnTo, "/inventory/records");
+  const backLinkProps = returnToLinkProps(returnTo) ?? { to: "/inventory/records", search: {} };
   const detailQuery = useQuery({
     queryKey: queryKeys.inventoryRecords.returnDetail(recordId),
     queryFn: () =>

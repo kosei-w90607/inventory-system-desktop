@@ -1003,6 +1003,13 @@ pub struct ProductImportResult {
     pub skipped_count: usize,
 }
 
+const PRODUCT_CODE_TOO_LONG_MESSAGE: &str = "商品コードは100文字以内で入力してください";
+
+/// 商品コードが上限（BIZ-01-D5、UTF-16 code unit）を超えるか
+fn product_code_exceeds_max_len(code: &str) -> bool {
+    code.encode_utf16().count() > crate::constants::PRODUCT_CODE_MAX_LEN
+}
+
 /// 商品マスタCSVファイルをプレビューする（読み取り専用、DB書込みなし）
 ///
 /// 30-biz-product-service.md §4.7 / BIZ-01-VAL-D1
@@ -1066,6 +1073,8 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
         let product_code = row.fields.get("商品コード").cloned().unwrap_or_default();
         if product_code.is_empty() {
             errors.push("商品コードが空です".to_string());
+        } else if product_code_exceeds_max_len(&product_code) {
+            errors.push(PRODUCT_CODE_TOO_LONG_MESSAGE.to_string());
         }
 
         // #5 (P2): CSV内重複チェック
@@ -1245,6 +1254,16 @@ pub fn commit_import(
     valid_rows: Vec<ImportRow>,
     overwrite_codes: Vec<String>,
 ) -> Result<ProductImportResult, BizError> {
+    // BIZ-01-D5: wire から来る行を信頼せず、TX を開く前に商品コードの上限を再検証する
+    if valid_rows
+        .iter()
+        .any(|row| product_code_exceeds_max_len(&row.product_code))
+    {
+        return Err(BizError::ValidationFailed(
+            PRODUCT_CODE_TOO_LONG_MESSAGE.to_string(),
+        ));
+    }
+
     let overwrite_set: std::collections::HashSet<String> = overwrite_codes.into_iter().collect();
 
     // 1. TX開始
@@ -2510,6 +2529,51 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_preview_import_req104_product_code_length_limit() {
+        // REQ-104 / BIZ-01-D5: 商品コードは UTF-16 code unit で 100 まで
+        let (_dir, conn) = setup_test_db();
+        let a100 = "A".repeat(100);
+        let a101 = "A".repeat(101);
+        let supp50 = "\u{2000B}".repeat(50); // 100 unit
+        let supp51 = "\u{2000B}".repeat(51); // 102 unit
+        let kana100 = "あ".repeat(100); // 300 byte
+        let kana101 = "あ".repeat(101);
+        let rows: Vec<String> = [&a100, &a101, &supp50, &supp51, &kana100, &kana101]
+            .iter()
+            .map(|code| format!("{code},テスト商品,1,500,300,10"))
+            .collect();
+        let row_refs: Vec<&str> = rows.iter().map(String::as_str).collect();
+        let csv = make_csv("商品コード,商品名,部門ID,売価,原価,税率", &row_refs);
+
+        let result = preview_import(&conn, &csv).unwrap();
+
+        let valid: Vec<&str> = result
+            .valid_rows
+            .iter()
+            .map(|row| row.product_code.as_str())
+            .collect();
+        assert_eq!(
+            valid,
+            vec![a100.as_str(), supp50.as_str(), kana100.as_str()]
+        );
+        let errored: Vec<(&str, Vec<String>)> = result
+            .error_rows
+            .iter()
+            .map(|row| (row.raw_data["商品コード"].as_str(), row.errors.clone()))
+            .collect();
+        let expected_errors = vec!["商品コードは100文字以内で入力してください".to_string()];
+        assert_eq!(
+            errored,
+            vec![
+                (a101.as_str(), expected_errors.clone()),
+                (supp51.as_str(), expected_errors.clone()),
+                (kana101.as_str(), expected_errors),
+            ]
+        );
+    }
+
+    #[test]
+    #[serial]
     fn test_preview_import_req104_duplicates() {
         // REQ-104: 一括インポート — 既存商品はduplicate_rows
         // BIZ-01 §4.7: 既存商品 → duplicate_rows
@@ -3052,6 +3116,39 @@ mod tests {
         let result = commit_import(&mut conn, vec![], vec![]).unwrap();
         assert_eq!(result.created_count, 0);
         assert_eq!(result.updated_count, 0);
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_rejects_overlong_product_code_without_writes() {
+        // REQ-104 / BIZ-01-D5: wire から来た行も TX の前に再検証し、DB を変えない
+        let (_dir, mut conn) = setup_test_db();
+        let counts = |conn: &DbConnection| -> (i64, i64, i64) {
+            let count = |table: &str| -> i64 {
+                conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap()
+            };
+            (
+                count("products"),
+                count("operation_logs"),
+                count("inventory_movements"),
+            )
+        };
+        let before = counts(&conn);
+        let mut good_row = make_import_row("LEN-OK", "正常商品");
+        good_row.initial_stock = Some(5);
+        let long_row = make_import_row(&"A".repeat(101), "長すぎる商品");
+
+        let result = commit_import(&mut conn, vec![good_row, long_row], vec![]);
+
+        assert!(matches!(
+            result,
+            Err(BizError::ValidationFailed(ref msg))
+                if msg == "商品コードは100文字以内で入力してください"
+        ));
+        assert_eq!(counts(&conn), before);
     }
 
     #[test]

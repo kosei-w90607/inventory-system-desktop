@@ -25,7 +25,7 @@ src-tauri/src/
 **シグネチャ**:
 ```
 fn apply_stock_change(
-    conn: &DbConnection,   // TX内で呼ばれるため &Transaction 経由の &DbConnection
+    conn: &Transaction<'_>, // 借りた transaction（rusqlite::Transaction）。通常の接続は渡せない
     product_code: &str,
     quantity: i64,          // 在庫視点: +増加 / -減少（BIZ層が符号変換済み）
     movement_type: MovementType,
@@ -39,7 +39,7 @@ fn apply_stock_change(
 - stock_after: i64
 - negative_stock_warning: bool（stock_after < 0 なら true）
 
-**前提条件**: この関数は呼び出し元のトランザクション内で実行される。自身ではトランザクションを開始しない。products.stock_quantity 更新と inventory_movements INSERT は同一TX内で常にセットで実行される。いずれかが失敗した場合、呼び出し元のTX全体がROLLBACKされる（rusqlite::Transaction RAII による自動ROLLBACK）
+**前提条件**: この関数は呼び出し元のトランザクション内で実行される。第 1 引数を借りた transaction（`&rusqlite::Transaction<'_>`）にし、TX の内側に限ることを型で強制する（通常の接続を渡すコードはコンパイルできない。repo 関数へは `Deref` で `&DbConnection` として渡る）。自身ではトランザクションを開始しない。products.stock_quantity 更新と inventory_movements INSERT は同一TX内で常にセットで実行される。いずれかが失敗した場合、呼び出し元のTX全体がROLLBACKされる（rusqlite::Transaction RAII による自動ROLLBACK）
 
 **処理ステップ**:
 1. product_repo::find_by_product_code(conn, product_code) → product

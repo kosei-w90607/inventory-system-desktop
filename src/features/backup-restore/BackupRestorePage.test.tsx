@@ -7,12 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { commands } from "@/lib/bindings";
 import type { CmdErrorKind } from "@/lib/bindings";
+import { queryKeys } from "@/lib/query-keys";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   clearRestoreSuccessPending,
   consumeRestoreSuccessPending,
 } from "@/lib/restore-success-notification";
 import { BackupRestorePage } from "./BackupRestorePage";
+import { resumeAutoBackupCheck, useAutoBackupCheck } from "./useAutoBackupCheck";
 
 const mockNavigate = vi.fn();
 
@@ -71,6 +73,32 @@ function renderWithClient(ui: ReactNode) {
     clearSpy,
     ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>),
   };
+}
+
+// UI-11b-D13: 確認の timer は共通レイアウトの hook が持つ。page 単体では timer が無く
+// 停止の assertion が自明に通るため、hook を mount する wrapper と page を一緒に描く。
+function PageWithAutoBackupCheck() {
+  useAutoBackupCheck();
+  return <BackupRestorePage />;
+}
+
+type CheckResult = Awaited<ReturnType<typeof commands.checkAutoBackup>>;
+type RestoreResult = Awaited<ReturnType<typeof commands.restoreBackup>>;
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
+function listInvalidateCount(spy: { mock: { calls: unknown[][] } }): number {
+  return spy.mock.calls.filter(
+    ([filters]) =>
+      JSON.stringify((filters as { queryKey?: unknown } | undefined)?.queryKey) ===
+      JSON.stringify(queryKeys.backupRestore.list()),
+  ).length;
 }
 
 function mockDefaultCommands() {
@@ -144,6 +172,7 @@ beforeEach(() => {
   mockToastSuccess.mockReset();
   mockDefaultCommands();
   clearRestoreSuccessPending();
+  resumeAutoBackupCheck();
 });
 
 afterEach(() => {
@@ -288,28 +317,136 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
     expect(screen.getByRole("button", { name: "この控えに戻す" })).toBeDisabled();
   });
 
-  it("QR-05 REQ-901 stops auto backup checks after double failure", async () => {
+  it.each([
+    ["restore_failed_unrecoverable", "再起動が必要です"],
+    ["restore_durability_unknown", "復元結果を確認できませんでした"],
+  ] as const)(
+    "QR-05 REQ-901 stops auto backup checks after double failure (%s)",
+    async (kind, title) => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      mockCheckAutoBackup.mockResolvedValue(ok(false));
+      mockRestoreBackup.mockResolvedValueOnce(cmdError("synthetic fatal restore failure", kind));
+
+      renderWithClient(<PageWithAutoBackupCheck />);
+      await startRestoreConfirmation(user);
+      await user.click(screen.getByRole("button", { name: "7月3日 21:00 の控えに戻す" }));
+
+      expect(await screen.findByText(title)).toBeInTheDocument();
+      const callsAtFatal = mockCheckAutoBackup.mock.calls.length;
+
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(mockCheckAutoBackup).toHaveBeenCalledTimes(callsAtFatal);
+    },
+  );
+
+  it("REQ-901 / UI-11b-D13: 復元の前に発火して待機中の確認の結果は捨てる（復元の間に届く）", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    mockCheckAutoBackup.mockResolvedValue(ok(false));
-    mockRestoreBackup.mockResolvedValueOnce(
-      cmdError(
-        "バックアップの復元に失敗し、DB接続の復旧もできませんでした。アプリを再起動してください",
-        "restore_failed_unrecoverable",
-      ),
-    );
+    const pendingCheck = deferred<CheckResult>();
+    const pendingRestore = deferred<RestoreResult>();
+    mockCheckAutoBackup.mockReturnValueOnce(pendingCheck.promise);
+    mockRestoreBackup.mockReturnValueOnce(pendingRestore.promise);
 
-    renderWithClient(<BackupRestorePage />);
-    await startRestoreConfirmation(user);
-    await user.click(screen.getByRole("button", { name: "7月3日 21:00 の控えに戻す" }));
+    const { queryClient } = renderWithClient(<PageWithAutoBackupCheck />);
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    try {
+      await screen.findByRole("heading", { name: "バックアップ・復元" });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mockCheckAutoBackup).toHaveBeenCalledTimes(1);
 
-    expect(await screen.findByText("再起動が必要です")).toBeInTheDocument();
-    const callsAtFatal = mockCheckAutoBackup.mock.calls.length;
+      await startRestoreConfirmation(user);
+      await user.click(screen.getByRole("button", { name: "7月3日 21:00 の控えに戻す" }));
+      await waitFor(() => {
+        expect(mockRestoreBackup).toHaveBeenCalledTimes(1);
+      });
 
-    await vi.advanceTimersByTimeAsync(60_000);
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(mockCheckAutoBackup).toHaveBeenCalledTimes(1);
 
-    expect(mockCheckAutoBackup).toHaveBeenCalledTimes(callsAtFatal);
+      const listInvalidatesBefore = listInvalidateCount(invalidateSpy);
+      pendingCheck.resolve(ok(true));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(mockToastSuccess).not.toHaveBeenCalled();
+      expect(listInvalidateCount(invalidateSpy)).toBe(listInvalidatesBefore);
+    } finally {
+      pendingCheck.resolve(ok(false));
+      pendingRestore.resolve(ok(null));
+      await vi.advanceTimersByTimeAsync(0);
+    }
   });
+
+  it("REQ-901 / UI-11b-D13: 復元の前に発火して待機中の確認の結果は捨てる（再開の後に届く）", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const pendingCheck = deferred<CheckResult>();
+    mockCheckAutoBackup.mockReturnValueOnce(pendingCheck.promise);
+    mockRestoreBackup.mockResolvedValueOnce(ok(null));
+
+    const { queryClient } = renderWithClient(<PageWithAutoBackupCheck />);
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    try {
+      await screen.findByRole("heading", { name: "バックアップ・復元" });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mockCheckAutoBackup).toHaveBeenCalledTimes(1);
+
+      await startRestoreConfirmation(user);
+      await user.click(screen.getByRole("button", { name: "7月3日 21:00 の控えに戻す" }));
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+      });
+
+      const listInvalidatesBefore = listInvalidateCount(invalidateSpy);
+      pendingCheck.resolve(ok(true));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(mockToastSuccess).not.toHaveBeenCalled();
+      expect(listInvalidateCount(invalidateSpy)).toBe(listInvalidatesBefore);
+
+      // 捨てた後も実行中の guard は解けていて、再開した確認が次の 60 秒で呼ばれる
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mockCheckAutoBackup).toHaveBeenCalledTimes(2);
+    } finally {
+      pendingCheck.resolve(ok(false));
+      await vi.advanceTimersByTimeAsync(0);
+    }
+  });
+
+  it.each([
+    ["成功", () => mockRestoreBackup.mockResolvedValueOnce(ok(null))],
+    [
+      "restore_failed_recovered",
+      () =>
+        mockRestoreBackup.mockResolvedValueOnce(
+          cmdError("synthetic recovered failure", "restore_failed_recovered"),
+        ),
+    ],
+    ["IPC の例外", () => mockRestoreBackup.mockRejectedValueOnce(new Error("synthetic ipc"))],
+  ] as const)(
+    "REQ-901 / UI-11b-D13: fatal でない結果の後は再開する（%s）",
+    async (_label, arrangeRestore) => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      arrangeRestore();
+
+      renderWithClient(<PageWithAutoBackupCheck />);
+      await startRestoreConfirmation(user);
+      await user.click(screen.getByRole("button", { name: "7月3日 21:00 の控えに戻す" }));
+      await waitFor(() => {
+        expect(mockRestoreBackup).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "この控えに戻す" })).toBeEnabled();
+      });
+      const callsAfterRestore = mockCheckAutoBackup.mock.calls.length;
+
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(mockCheckAutoBackup).toHaveBeenCalledTimes(callsAfterRestore + 1);
+    },
+  );
 
   it("QR-05 REQ-901 clears query cache and navigates home after restore success", async () => {
     const user = userEvent.setup();
@@ -435,22 +572,6 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
     ).not.toBeInTheDocument();
     // 他機能（手動バックアップ）は取得失敗の影響を受けない
     expect(screen.getByRole("button", { name: "今すぐバックアップを作成" })).toBeEnabled();
-  });
-
-  it("QR-05 REQ-901 checks auto backup every 60 seconds", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    mockCheckAutoBackup.mockResolvedValue(ok(true));
-
-    renderWithClient(<BackupRestorePage />);
-    await screen.findByRole("heading", { name: "バックアップ・復元" });
-    expect(mockCheckAutoBackup).not.toHaveBeenCalled();
-
-    await vi.advanceTimersByTimeAsync(60_000);
-
-    expect(mockCheckAutoBackup).toHaveBeenCalledTimes(1);
-    await waitFor(() => {
-      expect(mockListBackups).toHaveBeenCalledTimes(2);
-    });
   });
 });
 

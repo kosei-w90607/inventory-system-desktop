@@ -57,6 +57,7 @@ fn init_database(db_path: &str) -> Result<DbConnection, DbError>
 - ファイルオープン失敗（パス不正、権限不足）→ DbError::ConnectionFailed(詳細)
 - PRAGMA実行失敗 → DbError::PragmaFailed(詳細)
 - マイグレーション失敗 → DbError::MigrationFailed(詳細)
+- DB の版がアプリの扱える最大より新しい → DbError::SchemaNewerThanApp { db_version, app_max }（migrate が論理的な書込みの前に拒否。22 MNT-03-D11）
 
 ---
 
