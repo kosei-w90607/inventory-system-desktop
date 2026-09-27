@@ -33,14 +33,22 @@ Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane �
 - Plan Review round 1（2026-09-27、fresh Opus 5.5 と Codex GPT-6 Astra、対象 `e38844cd`）: 両 reviewer とも reject。Coordinator の裁定 r1（全件 accept、Scope は広げない）に沿って Writer が packet・Matrix・24 / 34 / 56 / D-096 / backlog・Plans.md を是正し、plan-gate のまま round 2 へ。
 - Plan Review round 2（2026-09-27、fresh Opus 5.5 と Codex GPT-5.6 Sol、対象 `b67b1f48`）: Claude 側は approve、Codex 側は reject。P1 は owner 決定（2026-09-27、Goal を Z001 に絞り Z002 の既存の合算は backlog の独立した項目）で解消し、Coordinator の裁定 r2 に沿って Writer が packet・Matrix・56 D16 の文字列の確定・backlog・biz-task-specs を是正した。予算の上限の改定は owner 承認待ち。plan-gate のまま round 3 へ。
 - 予算の承認（2026-09-27、Coordinator の記録）: owner が介入 5・relay 4 を承認（この change での介入 4 回目）。plan-gate のまま Plan Review round 3（上限）へ進む。
+- Plan Review round 3（上限、2026-09-27、fresh Opus 5.5 と Codex GPT-6 Astra、対象 `e1bb49df`）: Claude 側は approve、Codex 側は予算の不整合で reject。round 4 は回さず同型の一括是正とし、予算は owner 承認済み（介入 7・relay 5、この change での介入 5 回目）。Writer が予算の欄・Matrix R3 / R9 / R11・Scope S8 と Design Sources を是正した。Phase は plan-gate、Plan Commit は pending のまま（plan-approved の記録は Coordinator の別 commit）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 5（owner 承認 2026-09-27 で 4 から改定）（消費 3: owner の着手承認 2026-09-27「Issue の範囲を避けて片っ端から並列で」、設計の質問 Q1〜Q3 への回答 2026-09-27〈1 回の問いでまとめて回答〉、Goal を Z001 に絞る決定 2026-09-27〈Plan Review round 2 の裁定 r2〉。見込み = Ready 1、merge 1 で計 5 となり上限を 1 超える）
-- 上限の理由: 既定 3 に対し、design-first の lane で owner にしか決められない画面の選択が 1 回要り、着手承認・Ready・merge と合わせて 4 になる。
+- 介入回数上限: 7（owner 承認 2026-09-27、この change での介入 5 回目。既定 3 → 起票時 4 → 1 回目の改定 5〈介入 4 回目〉→ 2 回目の改定 7〈介入 5 回目〉）
+- 上限の理由: 既定 3 に対し、design-first の lane で owner にしか決められない画面の選択（Q1〜Q3）が 1 回要り、Plan Review round 2 の P1 を owner の Goal の決定で解消し、予算の改定の承認が 2 回要った。これに着手承認・Ready・merge を足して 7 になる。
 - 実働時間上限: 30分（既定。owner の作業は質問への回答、relay、Ready / merge の判断）
-- relay 往復上限: 4（owner 承認 2026-09-27 で 2 から改定）（消費 2: Codex の Plan Review round 1〈GPT-6 Astra〉と round 2〈GPT-5.6 Sol〉。見込み = Plan Review round 3 の Codex 1、Final Review の Codex 1 で計 4 となり上限を 2 超える）
-- 上限の改定案（owner 承認 2026-09-27、介入 4 回目）: 介入 4 → 5、relay 往復 2 → 4。理由: Plan Review が round 3（天井）まで進み、各 round で Codex の合否を取る（Codex の合否を外さない owner 方針 2026-09-25）ため relay が 2 増え、round 2 の P1 を owner の Goal の決定で解消したため介入が 1 増えた。承認されなければ、Goal Invariant の最小完了条件に戻り、残りの round・Final Review の Codex の扱いを Coordinator が owner に諮る（DEV_WORKFLOW `Owner Effort Budget` の hard stop）。
+- relay 往復上限: 5（owner 承認 2026-09-27、介入 5 回目。既定 2 → 1 回目の改定 4 → 2 回目の改定 5）
+- relay の上限の理由: Plan Review が round 3（天井）まで進み、各 round で Codex の合否を取った（Codex の合否を外さない owner 方針 2026-09-25）。これに Final Review の Codex 1 と、Final Review の closure で Codex を取り直す場合の予備 1 を足して 5 になる。
+
+| 種類 | 消費（2026-09-27 時点） | 見込み | 計 / 上限 |
+|---|---|---|---|
+| 介入 | 5: 着手承認「Issue の範囲を避けて片っ端から並列で」、Q1〜Q3 の回答（1 回の問いでまとめて回答）、Goal を Z001 に絞る決定（裁定 r2）、予算の改定の承認 2 回（介入 5・relay 4 の承認、介入 7・relay 5 の承認） | Ready 1、merge 1 | 7 / 7 |
+| relay 往復 | 3: Plan Review の Codex round 1（GPT-6 Astra）・round 2（GPT-5.6 Sol）・round 3（GPT-6 Astra） | Final Review の Codex 1、closure の予備 1 | 5 / 5 |
+
+- 見込みを超える介入・relay が要ると分かった時点で、Goal Invariant の最小完了条件に戻り、Coordinator が owner に諮る（DEV_WORKFLOW `Owner Effort Budget` の hard stop）。
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -191,7 +199,7 @@ owner の決定（2026-09-27、Plan Review round 2 の裁定 r2、介入 3 回�
 
 ## Scope
 
-本 lane は設計文書だけを変える。Writer は owner の回答（Q1〜Q3）と Contract Probe P1 / P2 の結果を受けて、下の file だけを編集する。下の S1〜S7 は案 A・Q2 (a) の場合で、owner が別の案を選んだら design のまま Scope を書き直してから plan-draft へ進む。
+本 lane は設計文書だけを変える。Writer は owner の回答（Q1〜Q3）と Contract Probe P1 / P2 の結果を受けて、下の file だけを編集する。下の S1〜S8 は案 A・Q2 (a) の場合で、owner が別の案を選んだら design のまま Scope を書き直してから plan-draft へ進む。
 
 - S1 `docs/function-design/56-ui-daily-sales.md`: §56.1 の表示領域の表に「日報サマリの日計（Z001）」の行を足し、UI-09a-D16（SPEC-DRZ-D1〜D3 の画面の契約: 置き場所・列・見出し・行の順・0 の行・「—」の意味・複数取込みの見出しと並び・`N回の取込みを合算` の文の直し・既存 2 表の見出しの出どころ）を「REQ-401 第2スライス表示詳細」の後に置く。UI-09a-D15 に「Z001 の行は UI-09a-D16 のとおり取込みごと」の 1 文を足す。§56.13 非目的の印刷の行は変えない。更新履歴に 1 行。
 - S2 `docs/function-design/34-biz-sales-service.md`: §19 の `DailySalesReport` / `OfficialDailyReportSummary` の型に SPEC-DRZ-D4 の `summary_imports` と 2 つの型を足し、`get_daily_sales` の処理ステップと「設計判断 — 日報集計と商品別明細を分ける」に Z001 の行は合算しないことを 1 文ずつ足す。
@@ -200,6 +208,7 @@ owner の決定（2026-09-27、Plan Review round 2 の裁定 r2、介入 3 回�
 - S5 `docs/decision-log.md`: D-096 を足す（SPEC-DRZ-D7）。
 - S6 `docs/function-design/29-io-daily-report-parser.md` §29.4.1: P1 / P2 で分かった Z001 / Z002 の行の性質（行数の範囲、どの欄が埋まるか、精算ごとの差分か累計か）を、実値・実ラベルなしの匿名化した形で 1〜3 行足す。P1 / P2 が新しい事実を出さなければ変えない。
 - S7 `docs/backlog.md`: 34 行目の項目に本 packet への link と状態（design lane 起票済み）を足す。後続 runtime lane を 1 行で起票する。本 lane で見つけた後続候補（月次への Z001 / Z002、日報取込みの履歴一覧と後日の取消の導線、Z002 の合算の鍵の妥当性〈P2 の結果次第〉）を 1 行ずつ起票する（既存の項目で扱えるものは既存へ寄せる）。
+- S8 `docs/architecture/biz-task-specs.md`: BIZ-08 の「集計契約」の公式日報日次の 1 行に「（Z001 の行は全 active import を読むが加算せず、取込みごとに ID つきで返す、D-096）」を足す（24 §14.24 と同じ扱い、Plan Review round 2 の裁定 r2 D2-5 で追加）。
 
 確認した呼出し側と隣接（編集しないが Scope の判断に使った）: `docs/function-design/42-cmd-sales-stocktake.md` の `get_daily_sales`（「DailySalesReport をそのまま返す」で型を持たないため変更不要、SPEC-DRZ-D6）、`docs/function-design/37-biz-daily-report-import-service.md` / `45-cmd-daily-report-import.md` / `55-ui-csv-import.md`（取込みの確認・完了は変えない）、`docs/function-design/57-ui-monthly-sales.md`（月次は Non-scope）、`docs/db-design/pos-tables.md` 12c（「表示・照合に使える行データとして保存」で読み出しを既に想定、変更不要）、`docs/DB_DESIGN.md`（schema 不変）、`docs/function-design/90-traceability.md`（下の Registration / Generation Obligations）。
 
@@ -239,7 +248,7 @@ owner の決定（2026-09-27、Plan Review round 2 の裁定 r2、介入 3 回�
 
 - Requirements / spec: `docs/spec/requirements.md` REQ-401 / REQ-501、`docs/spec/requirements-coverage.md` SP-501
 - Architecture: `docs/ARCHITECTURE.md`（`UI -> CMD -> BIZ -> IO/MNT`）、`docs/project-memory.md` Store Premises Facts（日報の Excel 貼付け・上書き・印刷・バインダー）
-- Function / command / DTO: `docs/function-design/56-ui-daily-sales.md` §56.1（UI-09a-D12 / D13 / D15）、`34-biz-sales-service.md` §19.3、`24-io-csv-import-repo.md` §14.21、`42-cmd-sales-stocktake.md` `get_daily_sales`、`29-io-daily-report-parser.md` §29.4、`37-biz-daily-report-import-service.md` §37.2
+- Function / command / DTO: `docs/architecture/biz-task-specs.md` BIZ-08 の集計契約（S8）、`docs/function-design/56-ui-daily-sales.md` §56.1（UI-09a-D12 / D13 / D15）、`34-biz-sales-service.md` §19.3、`24-io-csv-import-repo.md` §14.21、`42-cmd-sales-stocktake.md` `get_daily_sales`、`29-io-daily-report-parser.md` §29.4、`37-biz-daily-report-import-service.md` §37.2
 - DB: `docs/DB_DESIGN.md`、`docs/db-design/pos-tables.md` 12b〜12e と B-2
 - Screen / UI: `docs/SCREEN_DESIGN.md` §3「日次売上レポート画面」、`docs/design-system/00-foundations.md`（ラベルと値、強調の段階）、`01-decision-rules.md` DSR-16、`04-backbone.md` 原則 2 / 3 / 5、`.agents/skills/inventory-operator-ui/SKILL.md`
 - Decision log / ADR: D-023（POS adapter の境界）、D-025（日報と Z004 の分離）、D-071（同日複数精算の加算の読み出し）、D-091（デザインの決まり）。新規 D-096（予約、SPEC-DRZ-D7）
@@ -294,8 +303,8 @@ owner の決定（2026-09-27、Plan Review round 2 の裁定 r2、介入 3 回�
 
 ## Design Readiness
 
-- Existing design docs are sufficient because: 起草時は十分でなかった（Z001 の全行を読む経路・返り値・画面の置き場所がどの正本にも無い、[現状の事実](#現状の事実2026-09-27e7c22f8f-の現物)）。本 change の S1〜S7 で埋めた。
-- Source docs updated in this PR: S1〜S7（owner の回答と P1 / P2 の後、Writer run、2026-09-27）。
+- Existing design docs are sufficient because: 起草時は十分でなかった（Z001 の全行を読む経路・返り値・画面の置き場所がどの正本にも無い、[現状の事実](#現状の事実2026-09-27e7c22f8f-の現物)）。本 change の S1〜S8 で埋めた。
+- Source docs updated in this PR: S1〜S8（owner の回答と P1 / P2 の後、Writer run、2026-09-27。S8 は Plan Review round 2 の是正）。
 - Design gaps intentionally deferred: 印刷、紙の代わりの受入、月次、取込み履歴と後日の取消（Non-scope）。
 - Durable decisions discovered in this plan and promoted to source docs: D-096（Z001 は取込みごと）、UI-09a-D16。
 
@@ -403,7 +412,7 @@ Contract ID: SPEC-DRZ
 
 ## Implementation Results
 
-本 lane の成果物は設計文書で、`design → plan-draft` の条件（設計の出力が正本にある）として plan-first の change に同乗する（Scope S1〜S7、2026-09-27 Writer run）。runtime の実装は無い。
+本 lane の成果物は設計文書で、`design → plan-draft` の条件（設計の出力が正本にある）として plan-first の change に同乗する（Scope S1〜S8、2026-09-27 Writer run）。runtime の実装は無い。
 
 ## Review Response
 
