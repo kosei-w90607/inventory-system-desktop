@@ -33,7 +33,7 @@ Risk: R3
 - F13 `--muted-foreground` を候補外の値にする、または 00 のパレット表の HEX を直し忘れて DS3 が割れる。
 - F14 開いた行の在庫少のセルが `text-warning-emphasis` のまま進行中の地に載り、4.33:1 で AA を割る。
 - F15 `TableBody` の `[&_tr:last-child]:border-0` が、最後のレコードを開いたときの詳細の行の左のバーを消す（class の assert と tailwind-merge の probe では検出できない）。
-- F16 枠の無い部品の focus が 50% の透過の ring のままで、合成後 2.35:1 と 3:1 に届かない。`destructive` の ring は 1.41:1。
+- F16 枠の無い部品の focus が 50% の透過の ring のままで、合成後 2.35:1 と 3:1 に届かない。`destructive` の ring は 1.41:1。checked の checkbox と「レジ戻し済み」の選択カードは枠が `--ring` と同じ値で focus の前後に変わらず、目印は透過の ring だけ（2.35:1 / 2.33:1）。
 - F17 取込みの手順の表示の試しを採らなかったとき、分岐表に無い形へ直す（契約の外）。
 
 ## Test Matrix
@@ -47,7 +47,7 @@ Risk: R3
 | 00 と `globals.css` の HEX | F2 / F9 | CLI | `bash scripts/doc-consistency-check.sh`（DS3） | 00 に足した `--ongoing*` の HEX が `:root` と違う、00 に消した token が残る |
 | D-CE2 / DSR-08 | F3 | unit | `alert.test.tsx` に「destructive は soft の 4 点の class と svg 1 つを持つ」 | 部品が icon を描かない、class が旧 `bg-card text-destructive` のまま |
 | D-CE2 | F4 | unit | `alert.test.tsx` に「warning と default は部品が svg を描かない」（子に icon を渡さない render で `svg` 0 個） | 部品が全 variant に icon を描く |
-| D-CE2（main wiring） | F3 | integration | `HomePage`（または `BackupRestorePage`）の既存 test に、前日分の知らせの Alert 内の `svg` が 1 つ | 明示の icon を外し忘れて 2 つ |
+| D-CE2（main wiring） | F3 | integration | `BackupRestorePage` の既存 test に、常に destructive のまま残る Alert（`BackupRestorePage.tsx:324`）の中の `svg` が 1 つ（Home の前日分の知らせは試しの採否で variant が変わるため使わない） | 明示の icon を外し忘れて 2 つ |
 | D-CE3 | F5 | unit | `badge.test.tsx:64` を「variant 無指定で `bg-primary` を出さない」へ | `default` variant か `defaultVariants` が残る |
 | D-CE3（③強調） | F5 / F10 | integration | `BackupRestorePage.test.tsx` の「最新」が `bg-warning-emphasis` と `border-warning`（試しを採れば `font-semibold` と stone の class） | 移し先を `--warning`（3.05:1）にする、塗りを失う |
 | D-CE4 | F8 | unit | `progress` の test（新規は既存の近い test file に足す）: 既定の棒は `bg-ongoing`、`indicatorClassName` で上書きされる | 棒の色が固定で上書きできない |
@@ -61,13 +61,14 @@ Risk: R3
 | D-CE9 | F10 | integration | `ProductRankingTable.test.tsx` または `DepartmentTable.test.tsx` に前月比 +1.0% / −1.0% / 0 / 比較不可の 4 値で文言（`+1.0%` 等）と `text-success-strong` / `text-destructive-strong` / `text-muted-foreground` | 閾値の分岐が入れ替わる、地の class が残る |
 | D-CE10 | F10 | integration | 移動制限: `CsvImportPage` の既存 test か ImportingStep の新 test（describe に `UI-07`）で Alert が `data-variant="warning"` と文言。未保存の案内: 入力 4 画面の既存 test のうち 1 つで文言の要素が `text-warning-emphasis` | 赤のまま |
 | D-CE13 | F9 | integration | `ProductRankingTable.test.tsx:76-99` の「1 位」の追従 test を保ち、1 位の要素が `font-semibold`、行に `bg-rank-top-bg` が無い | 1 位が色の pill のまま、sort 後に太字が追従しない |
+| D-CE13（採らなかった側）/ D-CE3 | F5 / F9 | integration | `ProductRankingTable.test.tsx:101` の `data-variant="default"`（S4 で必ず red）を、琥珀 pill の `bg-rank-top-badge-bg`・`text-rank-top-badge-text`・`border-warning` と、sort 後も 1 位の行に追従する assert へ置き換える | `default` variant を消した後に琥珀 pill の地や枠を失う、追従が崩れる |
 | 割り当て不変 | F10 | regression | `StockStatusBadge` / `ProductListTable`（在庫数セル）/ `SummaryCards` / `CsvImportRecordDetailPage` の既存 test が無変更で PASS | 赤・琥珀・緑の class が変わる |
 | docs の移行の印 | F11 | CLI | AC12 の `rg`（0 行）と、Final Review が 00 の迷いやすい場面の移行列を直読み | 採らなかった試しの戻しが一部だけ |
 | traceability | F12 | CLI | `cd src-tauri && cargo run --bin generate_traceability -- --check` | 新 test file に ID が無い |
 | D-CE16 | F13 | unit（fs literal）+ CLI | `globals.test.ts` に owner が選んだ `--muted-foreground` の literal、`doc-consistency-check.sh` の DS3 | 値が候補外、00 と `globals.css` が不一致 |
 | D-CE7 / WCAG 1.4.3 | F14 | integration | `ProductListTable.test.tsx`: 在庫少の行を選ぶとそのセルが `text-warning-strong`、選択を外すと `text-warning-emphasis`（採らなかった側では常に `text-warning-emphasis`） | 開いた行で琥珀の `-emphasis` のまま |
 | D-CE7（末尾の規則） | F15 | unit + probe | `TableBody` の class が `[&_tr:last-child]:border-b-0` を持ち `[&_tr:last-child]:border-0` を持たない。描画は Contract Probe（Chrome の実測）と AC-L3-9 | 末尾の規則が全ての枠を消す |
-| D-CE17 / DSR-22 | F16 | unit | `button.test.tsx`: base と `destructive` が `focus-visible:ring-ring` を持ち、`ring-ring/50`・`ring-destructive/20` を持たない。accordion・scroll-area も同じ | 透過の ring が残る |
+| D-CE17 / DSR-22 | F16 | unit | `button.test.tsx`: base と `destructive` が `focus-visible:ring-ring` を持ち、`ring-ring/50`・`ring-destructive/20` を持たない。accordion・scroll-area も同じ。checkbox は `checked` で render して `focus-visible:ring-ring` を持ち `ring-ring/50` を持たない。返品・交換の選択カードは `focus-within:ring-ring` | 透過の ring が残る。checked + focus の外側の比（7.28:1 / 6.97:1）は Contract Probe と AC-L3-15 |
 
 ## State Lifecycle Matrix
 
@@ -87,8 +88,8 @@ Risk: R3
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
 | `primary`（`rg -n 'primary' src --glob '!*.test.*'` = 35 行） | 記録詳細 6 画面と在庫変動のリンク 8 行（`CsvImportRecordDetailPage.tsx:223`、`ManualSaleRecordDetailPage.tsx:141,178`、`ReceivingRecordDetailPage.tsx:167`、`DisposalRecordDetailPage.tsx:174`、`StocktakeRecordDetailPage.tsx:208`、`ReturnRecordDetailPage.tsx:211`、`MovementTable.tsx:84`）/ 待ちの spinner 5 行 / `StepIndicator.tsx:31,33` / `globals.css:16,17,82,83` / `ActionButton.tsx:22,39,43`・`QuickActionGrid.tsx:11` / `ReturnExchangePage.tsx:151` / `FilePicker.tsx:134` / `SupplierPickerDialog.tsx:137` / `badge.tsx:12,21` / `checkbox.tsx:12` / `input.tsx:11` / `button.tsx:12,21` / `selection-tone.ts:6` / コメント 2 行（`BackupRestorePage.tsx:292`、`SidebarLink.tsx:20`） | 移す: spinner 5（S7）、`StepIndicator` 2（S10）、`SupplierPickerDialog` 1（S8）、`badge.tsx:12`（削除、S4）、`globals.css:82`（値、S1） | 追従: リンク 8、`ActionButton` 3（PR head。試しを採れば `:39` の地だけ移す）、`QuickActionGrid` 1（prop 名）、`ReturnExchangePage.tsx:151`（owner 決定 2026-09-27: 操作の色へ追従のまま、AC-L3-1 で見る）、`FilePicker` 1、`badge.tsx:21`、`checkbox` 1、`input` 1、`button` 2、`selection-tone` 1、`globals.css:16,17,83`。コメント 2 は色の token ではない | AC1、`SidebarLink.test.tsx`、AC-L3-1 |
-| `--ring`（`rg -n -e '-ring\b' src --glob '!*.test.*'` = 19 行、16 file） | `globals.css` 3、`ui/` の accordion・badge・button・checkbox・dialog・input・scroll-area・segmented-control・select・tabs・toggle 各 1、`SidebarLink.tsx` 1、`DateNavigator.tsx` 1、`MonthNavigator.tsx` 1、`ReturnExchangePage.tsx` 2 | `globals.css` の `--ring` の値（S1） | 追従: 他の 18 行（`ring-ring` / `border-ring` / `outline-ring` / `var(--ring)` の読み取り 17 行と、`globals.css:108` のコメント 1 行） | AC1 |
-| `warning-emphasis`（非 test 5 行） | `globals.css:38,94`、`SummaryCards.tsx:79`、`ProductImportPreview.tsx:288`、`ProductListTable.tsx:38` | なし（S5 と S13 で使う site が増える） | 不変: 5 行とも注意・確認の文字か token 定義。値は不変 | AC4 / AC10 |
+| `--ring`（`rg -n -e '-ring\b' src --glob '!*.test.*'` = 19 行、16 file） | `globals.css` 3、`ui/` の accordion・badge・button・checkbox・dialog・input・scroll-area・segmented-control・select・tabs・toggle 各 1、`SidebarLink.tsx` 1、`DateNavigator.tsx` 1、`MonthNavigator.tsx` 1、`ReturnExchangePage.tsx` 2 | 6 行: `globals.css:84` の値（S1）と、`button`・`accordion`・`scroll-area`・`checkbox`・`ReturnExchangePage.tsx:147` の透過の ring を不透明へ（S20） | 追従: 12 行（`globals.css:32`・`badge`・`dialog`・`input`・`segmented-control`・`select`・`tabs`・`toggle`・`SidebarLink`・`DateNavigator`・`MonthNavigator`・`ReturnExchangePage.tsx:625`）。コメント 1 行（`globals.css:108`） | AC1 |
+| `warning-emphasis`（非 test 5 行） | `globals.css:38,94`、`SummaryCards.tsx:79`、`ProductImportPreview.tsx:288`、`ProductListTable.tsx:38` | `ProductListTable.tsx:38` の在庫少のセルに、詳細を開いた行だけ `text-warning-strong` へ替える条件分岐が加わる（S9、試しを採った側）。S5 と S13 で使う site が増える | 不変: 他の 4 行（注意・確認の文字か token 定義。値は不変） | AC4 / AC7 / AC10 |
 | `rank-top`（8 行、test 0） | `globals.css` 6、`ProductRankingTable.tsx:77,80` | 試しを採れば 8 行とも削除（S1 / S11） | 採らなければ不変 | AC1 |
 | `row-current`（非 test 3、test 6） | `globals.css:28,70`、`SupplierPickerDialog.tsx:137`、test は `globals.test.ts` と `SupplierPickerDialog.test.tsx` | 全削除・進行中へ（S1 / S8 / S16） | なし | AC1、`globals.test.ts` |
 | `toast.info`（0） | なし | — | 00「お知らせ一般」どおり使わない | 起票時実測 #6 |
@@ -100,7 +101,7 @@ Risk: R3
 | 00 に無い token（`warning-foreground` / `info-*`） | `IntegrityCheckPage.tsx:272`、`PluExportPage.tsx:366` | 2 site（S14） | なし | AC11 |
 | 失敗ではない赤（`text-destructive` の案内、`ImportingStep` の Alert） | 入力 4 画面の未保存の案内 4、`ImportingStep.tsx:29` | 5 site（S13） | 他の `text-destructive`（`FieldError` 等の入力エラー、在庫切れのセル）は危険・失敗のまま不変 | AC10 |
 | `--muted-foreground`（`rg -n 'muted-foreground' src --glob '!*.test.*'` = 276 行、75 file。test 27 行） | `text-muted-foreground` 265 ほか（内訳は packet の起票時実測 #16）、`EmptyState.tsx:32` の `text-stone-500`（同じ役割で token を読まない） | `globals.css:75` の値（S19） | 追従: 読み手 274 行（token 定義 2 行を除く）。除外: `EmptyState.tsx:32`（catalog ⑥ が生の stone を指定、backlog へ） | AC17、AC-L3-14 |
-| focus ring の透過（`focus-visible:ring-ring/50` と `ring-destructive/20`） | `rg -n -o '"[^"]*ring-ring[^"]*"' src --glob '!*.test.*'` の 16 行: 枠あり（`input`・`select`・`checkbox`・`tabs`・`badge`・`toggle`〈使用 site は outline〉・`SidebarLink`・`ReturnExchangePage.tsx:147,625`・`segmented-control`〈`border-border-strong`〉）、不透明な ring（`dialog`・`DateNavigator`・`MonthNavigator`）、枠なし（`button`・`accordion`・`scroll-area`） | 枠なし 3 部品（S20）。`<Button` 187 site（無指定 44・ghost 9・link 5・outline 126・destructive 1・default 2）、`<AccordionTrigger` 1、`<ScrollArea` 2 | 枠あり・不透明の部品は変えない（focus で 1px の不透明な枠が 7.28:1 / 6.97:1） | AC18 |
+| focus ring の透過（`focus-visible:ring-ring/50`・`focus-within:ring-ring/50` と `ring-destructive/20`） | `rg -n -o '"[^"]*ring-ring[^"]*"' src --glob '!*.test.*'` の 16 行: 枠あり（`input`・`select`・`tabs`・`badge`・`toggle`〈使用 site は outline〉・`SidebarLink`・`ReturnExchangePage.tsx:625`・`segmented-control`〈`border-border-strong`〉）、枠が focus で変わらない（checked の `checkbox`、`ReturnExchangePage.tsx:147` の選択カード）、不透明な ring（`dialog`・`DateNavigator`・`MonthNavigator`）、枠なし（`button`・`accordion`・`scroll-area`） | 5 部品（S20）: `<Button` 187 site（無指定 41・ghost 9・link 5・outline 126・destructive 1・default 2・動的 3）、`<AccordionTrigger` 1、`<ScrollArea` 2、`<Checkbox` 9、選択カード 2 | 枠あり・不透明の部品は変えない（focus で 1px の不透明な枠が 7.28:1 / 6.97:1） | AC18 |
 | `TableBody` の末尾の規則（`table.tsx:27`） | `rg -l '<TableBody' src --glob '!*.test.*'` = 30 file | `table.tsx:27` の 1 行（S9） | 30 file の `TableRow` は `border-b` 以外の枠を持たないため見た目は変わらない（`rg -n 'TableRow[^>]*border-l' src` の出力なし） | AC7 |
 
 ### 最終 sweep の式（AC13）
@@ -167,7 +168,7 @@ merge 直前に `origin/main` を 1 回 merge した後、次の 9 本を実行�
 - M1 `globals.css` の `--ring` を `#b45309` に戻す → `globals.test.ts` の `--ring` の literal が red。
 - M2 `@theme inline` の `--color-ongoing-soft` の行を消す → `globals.test.ts` が red（jsdom は class の生成を見ないため、class 名の assert では拾えない。literal の test が唯一の自動検出）。
 - M3 `alert.tsx` の icon の描画を `variant` に関わらず行う → `alert.test.tsx` の warning / default の svg 0 個が red。
-- M4 S3 の 1 site（`HomePage.tsx`）に明示の icon を戻す → Home の integration test の svg 1 つが red。
+- M4 S3 の 1 site（`BackupRestorePage.tsx:324`、試しの採否に関わらず destructive のまま）に明示の icon を戻す → `BackupRestorePage` の integration test の svg 1 つが red。
 - M5 `badge.tsx` に `defaultVariants: { variant: "default" }` と `default` を戻す → `badge.test.tsx` が red。
 - M6（採った側だけ）`ProductListTable.tsx` の上書きを素の `bg-ongoing-soft` へ変える → `ProductListTable.test.tsx` の `data-[state=selected]:bg-ongoing-soft` の assert が red。
 - M7 `comparison-cell.tsx` の +/− の class を入れ替える → 前月比の test が red。
@@ -177,11 +178,14 @@ merge 直前に `origin/main` を 1 回 merge した後、次の 9 本を実行�
 - M11 開いた行の在庫少のセルを `text-warning-emphasis` に戻す → `ProductListTable.test.tsx` の選択時の `text-warning-strong` の assert が red（採った側）。
 - M12 `table.tsx:27` を `[&_tr:last-child]:border-0` に戻す → `TableBody` の class の assert が red。
 - M13 `button.tsx` の base を `focus-visible:ring-ring/50` に戻す → `button.test.tsx` の focus の assert が red。
+- M14 `checkbox.tsx` を `focus-visible:ring-ring/50` に戻す → checkbox の checked の focus の assert が red。
 
 ## Residual Test Gaps
 
 - 色の見え方・受け取り方（操作と完了の言い分け、進行中の緑寄りの違和感、琥珀 pill と②分類の見分け）は自動 test で測れず、L3 だけが oracle（AC-L3-1〜15）。
 - `TableBody` の末尾の規則が左のバーを消すかは jsdom で測れない。Plan Review（Codex）の Chrome の実測と AC-L3-9 が oracle。
+- 進み具合の棒の色（D-CE4）: 棚卸しの棒（`StocktakePage.tsx:430`）は旧棚卸しの開始・カウント保存が停止中（SPEC-STOP-D4）で進行中の棚卸しを作れないため、自動 test だけで確かめる。整合性チェックの確認中の overlay の棒（`IntegrityCheckPage.tsx:495`）は数秒で消え見分けの判断に向かないため、L3 に入れず自動 test だけで確かめる。進行中の色そのものの受け取り方は、日報取込みの spinner（AC-L3-7）・現在行（AC-L3-8）・詳細を開いた行（AC-L3-9）で見る。部門比率の棒（ふつう・補足）は月次売上（AC-L3-11）の画面で目に入る。
+- checked + focus の外側の ring の実描画の比は jsdom で測れない。Contract Probe の計算（と Plan Review r2 の Chrome 実測）と AC-L3-15 が oracle。
 - DSR-22 の低視力 L3 の (c)（実利用者の Windows native 1 セッション）は本 lane の L3 に含めない（(a) forced-colors と (b) DPI は AC-L3-15）。
 - jsdom は CSS の詳細度と tailwind の class 生成を評価しないため、F2 / F6 の実描画は L3 と Contract Probe（tailwind-merge の出力）で補う。
 - muted の候補のどれが「補足と分かり、かつ読める」かは L3（AC-L3-14）だけが oracle。比の計算は packet の D-CE16 と Contract Probe。

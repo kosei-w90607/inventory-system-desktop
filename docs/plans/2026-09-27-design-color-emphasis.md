@@ -26,32 +26,38 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 - owner 回答の反映（Phase は plan-gate のまま、2026-09-27、起草役、本 commit）: owner の回答（Coordinator の中継）を反映した。card の面色 = 別 lane（Non-scope のまま理由を差し替え）、muted の文字色 = `--muted-foreground` を濃くする（Scope に S19 と D-CE16 を足し、候補 3 つを L3 の試しにする）、返品・交換の選択カード = 操作の色へ追従のまま、Home の入口 card の試しの地 = #E6F0F0、D-CE8〜10 は事前確認なしで L3 の試しで採否（Coordinator 判断）。介入の消費は 2 になった。
 - Plan Review round 1: 両 reviewer とも reject、plan-gate のまま是正（裁定 r1、2026-09-27、起草役、本 commit）。Plan Commit は pending のまま。裁定の B1-1〜B1-12 を Scope / AC / L3 / Owner Effort Budget / Matrix へ反映した（中身は裁定書、Review Response には書かない）。
 - 予算の承認（2026-09-27、Coordinator の記録）: owner が介入 19・実働 75 分・relay 6 を承認（この change での介入 4 回目）。plan-gate のまま Plan Review round 2 へ進む。
+- Plan Review round 2: 両 reviewer とも reject、plan-gate のまま是正（裁定 r2、2026-09-27、起草役、本 commit）。Plan Commit は pending のまま。裁定の B2-1〜B2-11 を反映し、予算は判断点を数え直して改定案を owner 承認待ちで書いた（中身は裁定書、Review Response には書かない）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 19（owner 承認 2026-09-27（「介入19・75分・relay 6で承認」）。既定は 3。起票時に 7、owner 回答の反映で 8 と書いたが、いずれも owner の承認は無く、L3 を session 単位で数えていた。DEV_WORKFLOW Owner Effort Budget の decision point 単位で下の表に数え直した）
-- 実働時間上限: 75分（owner 承認 2026-09-27（「介入19・75分・relay 6で承認」）。既定は 30 分。L3 round 1 は build 4 本〈main / PR head / 試し / muted の M1〉を並べて 15 項目を見る）
-- relay 往復上限: 6（owner 承認 2026-09-27（「介入19・75分・relay 6で承認」）。既定は 2。内訳 = Plan Review の Codex 3〈round 1 は消費済み、round 2、round 3 は天井まで行った場合の予備〉+ Final Review の Codex 1 + manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉）
+- 介入回数上限: 24（**owner 承認待ち**。承認済みの値は 19〈owner 承認 2026-09-27「介入19・75分・relay 6で承認」〉。裁定 r2 の B2-4 で、owner の色の判断を 4 つの判断点に分け、Final Review の指摘後の Codex closure の予備と、この改定の承認を足して数え直した。下の表）
+- 実働時間上限: 75分（owner 承認 2026-09-27「介入19・75分・relay 6で承認」。既定は 30 分。L3 round 1 は build 4 本〈main / PR head / 試し / muted の M1〉を並べて 15 項目を見る。今回の数え直しで変えない）
+- relay 往復上限: 7（**owner 承認待ち**。承認済みの値は 6〈同上〉。内訳 = Plan Review の Codex 3〈round 1・round 2 は消費済み、round 3〉+ Final Review の Codex 1 + Final Review の指摘後の Codex closure 1〈予備〉+ manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉）
 
-介入の判断点（decision point 単位、2026-09-27 の数え直し）:
+介入の判断点（decision point 単位、2026-09-27 の裁定 r2 による数え直し）:
 
 | 判断点 | 回数 | 状態 |
 |---|---|---|
 | 起票承認（owner 2026-09-27「B 色と強調 + E 小口」） | 1 | 消費済み |
-| owner の色の判断（card の面色・muted の文字色・選択カード・入口 card の地） | 1 | 消費済み |
+| owner の色の判断: card の面色を別 lane に分ける | 1 | 消費済み |
+| owner の色の判断: muted の文字色を濃くする | 1 | 消費済み |
+| owner の色の判断: 返品・交換の選択カードは操作の色へ追従 | 1 | 消費済み |
+| owner の色の判断: 入口 card の試しの地は #E6F0F0 | 1 | 消費済み |
 | Plan Review round 1 の Codex の起動 | 1 | 消費済み |
-| 本表の予算の改定の承認（裁定 r1 の B1-8） | 1 | 見込み |
-| Plan Review round 2 の Codex の起動 | 1 | 見込み |
-| Plan Review round 3 の Codex の起動（天井まで行った場合） | 1 | 予備 |
+| 予算の改定の承認（裁定 r1 の B1-8、19・75 分・6） | 1 | 消費済み |
+| Plan Review round 2 の Codex の起動 | 1 | 消費済み |
+| 予算の再改定の承認（裁定 r2 の B2-4、本表） | 1 | 見込み |
+| Plan Review round 3 の Codex の起動（天井） | 1 | 見込み |
 | L3 round 1 の試しの採否（D-CE7 / D-CE8 / D-CE12 / D-CE13 / D-CE16、日報の取込み済みの badge、Home の前日分の知らせ、最新と上書き件数） | 8 | 見込み |
 | L3 round 1 の試し以外の合否（AC-L3-1 / 7 / 8 / 11〜13 / 15） | 1 | 見込み |
 | Final Review の Codex の起動 | 1 | 見込み |
+| Final Review の指摘後の Codex closure の起動 | 1 | 予備 |
 | L3 round 2（採否を反映した最終版）の合否 | 1 | 見込み |
 | Ready | 1 | 見込み |
 | merge | 1 | 見込み |
-| 合計 | 19 | 消費 3 / 見込み 15 / 予備 1 |
+| 合計 | 24 | 消費 8 / 見込み 15 / 予備 1 |
 
-Plan Review（Codex）の試算は 15 回（消費 2 + L3 の試し 8 + L3 round 2 1 + Codex 2 + Ready 1 + merge 1）。本表はそれに Plan Review round 1〜3 の Codex の起動、予算の改定の承認、L3 round 1 の試し以外の合否を足した。
+Plan Review round 2（Codex）の試算は 22 回（round 1 の表 19 に色の判断の分割 +3。round 3 を使わなければ 21）。本表はそれに Codex closure の予備 1 と、この再改定の承認 1 を足した。round 3 は次に発注するため予備でなく見込みに移した。
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -81,7 +87,7 @@ Goal Invariant:
 - 00 の「迷いやすい場面」23 行と色の役割表の移行列に「runtime lane A 待ち」「lane A の L3 で試し」が残らず、試し 8 点は owner の L3 の採否どおりの形（実装と 00 / 01 / 02 / 04 / review-checklist）にそろう。
 - 説明文の muted の文字（`--muted-foreground`）が `--card`・`--background`・進行中の地のどれの上でも AA（4.5:1）以上になり、値は owner が L3 で候補 3 つから選んだもの（D-CE16）。
 - 進行中の地（#E6F0F0）の上に載るすべての文字が AA（4.5:1）以上、icon は 3:1 以上になる（Contract Probe の「進行中の地の上の文字色」の表。在庫少のセルは開いた行では `text-warning-strong`、D-CE7）。
-- 枠の無い操作部品（Button の塗り・ghost・link・destructive、Accordion の開閉、ScrollArea）の focus 表示が不透明な ring になり、合成後の色で対 background・対 card 3:1 以上になる（D-CE17、DSR-22）。
+- 枠の無い操作部品（Button の塗り・ghost・link・destructive、Accordion の開閉、ScrollArea）と、focus の前後で枠の色が変わらない部品（checked の Checkbox、返品・交換の選択カード）の focus 表示が不透明な ring になり、合成後の色で対 background・対 card 3:1 以上になる（D-CE17、DSR-22）。
 - 旧 token（`--row-current`、試しを採った場合の `--rank-top-*`、`--warning-emphasis` と操作の兼用）が src と 00 から消え、DS3（00 ↔ `globals.css` の HEX 突合）が通る。
 
 ### 失敗定義
@@ -169,7 +175,7 @@ site 数は下の command をこの worktree で実行した出力。「非 test
   | M3（Tailwind の stone-600） | #57534e | 6.99:1 | 7.30:1 | 6.57:1 | 6.08:1 | 2.29:1 |
 
   3 候補とも必須の 3 つの地（card・background・進行中の地）で 4.5:1 以上。M1 は一覧の見出しの帯（`--list-head`）の上では 4.5:1 に届かない。濃くするほど本文（`--foreground`）との差が縮み、ラベルと値の濃さの差（00「ラベルと値」）が弱まる。PR head は M2 で作り、L3 round 1 で M1・M3 と並べる。token の名前と class（`text-muted-foreground` 265 行ほか）は変えず、`globals.css` の値だけを変える。
-- **D-CE17 枠の無い部品の focus 表示（DSR-22 の操作枠 3:1、裁定 r1 B1-4）**: focus ring の `focus-visible:ring-ring/50`（3px、50% の透過）は、合成後の色で見ると新しい `--ring` でも対 background 2.35:1・対 card 2.33:1 で 3:1 に届かない（現行の琥珀でも 2.08:1・2.05:1）。枠を持つ部品は focus で 1px の枠が不透明な `border-ring`（7.28:1 / 6.97:1）になるため足りるが、枠の無い部品は透過の ring だけが目印になる。対象を次の 3 部品に限り、`focus-visible:ring-ring/50` を不透明な `focus-visible:ring-ring` にそろえる: `src/components/ui/button.tsx`（base。`outline` 以外の variant は枠が無い。`destructive` の `focus-visible:ring-destructive/20`〈合成後 1.41:1〉も外し、focus は操作の色にそろえる）、`src/components/ui/accordion.tsx`（開閉の trigger）、`src/components/ui/scroll-area.tsx`（viewport）。site 数（非 test、`rg -U -c '<Button\b[^>]*variant="(ghost|link|outline|secondary|destructive|default)"' ` の variant ごとの合計と `rg -c '<Button\b'` の差から）: `<Button` 187 = 無指定（塗り）44・`ghost` 9・`link` 5・`outline` 126・`destructive` 1・`default` 2・`secondary` 0。ほかに `AlertDialogAction` / `AlertDialogCancel` が `Button` を使う。`<AccordionTrigger` 1（`ErrorRowsTable.tsx:43`）、`<ScrollArea` 2（`Sidebar.tsx:15`、`ShortcutsDialog.tsx:39`）。`toggle.tsx` は使用 site（`StatusChips.tsx`）が `variant="outline"` で枠を持つため対象外、`dialog.tsx` の閉じるボタンと `DateNavigator` / `MonthNavigator` は既に不透明な ring、`segmented-control.tsx` は focus で `border-border-strong`（3.53:1）。塗りのボタンでは不透明な ring が塗りと同じ色でつながり、3px 太く見える形になる（AC-L3-1 で見る）。
+- **D-CE17 枠の無い部品の focus 表示（DSR-22 の操作枠 3:1、裁定 r1 B1-4）**: focus ring の `focus-visible:ring-ring/50`（3px、50% の透過）は、合成後の色で見ると新しい `--ring` でも対 background 2.35:1・対 card 2.33:1 で 3:1 に届かない（現行の琥珀でも 2.08:1・2.05:1）。枠を持つ部品は focus で 1px の枠が不透明な `border-ring`（7.28:1 / 6.97:1）になるため足りるが、枠の無い部品は透過の ring だけが目印になる。対象を次の部品に限り、`focus-visible:ring-ring/50` を不透明な `focus-visible:ring-ring` にそろえる: `src/components/ui/button.tsx`（base。`outline` 以外の variant は枠が無い。`destructive` の `focus-visible:ring-destructive/20`〈合成後 1.41:1〉も外し、focus は操作の色にそろえる）、`src/components/ui/accordion.tsx`（開閉の trigger）、`src/components/ui/scroll-area.tsx`（viewport）、`src/components/ui/checkbox.tsx`（checked のとき枠と地が `--primary` で `--ring` と同じ値になり、focus で枠の色が変わらないため、目印は透過の ring だけになる。裁定 r2 B2-3）、`src/features/return-exchange/ReturnExchangePage.tsx:147` の登録方法の選択カードの `focus-within:ring-ring/50`（「レジ戻し済み」を選ぶと枠が `border-primary` で checkbox と同じ形。同じ扱いにそろえる 1 通りに決めた）。site 数（非 test、`rg -U -c '<Button\b[^>]*variant="(ghost|link|outline|secondary|destructive|default)"' ` の variant ごとの合計と `rg -c '<Button\b'` の差から）: `<Button` 187 = 無指定（塗り）41・`ghost` 9・`link` 5・`outline` 126・`destructive` 1・`default` 2・`secondary` 0・動的な `variant={…}` 3（`PluExportPage.tsx:729`、`alert-dialog.tsx:138,156`。`rg -U -c '<Button\b[^>]*variant=\{' src --glob '!*.test.*'` の合計）。ほかに `AlertDialogAction` / `AlertDialogCancel` が `Button` を使う。`<AccordionTrigger` 1（`ErrorRowsTable.tsx:43`）、`<ScrollArea` 2（`Sidebar.tsx:15`、`ShortcutsDialog.tsx:39`）、`<Checkbox` 9（`rg -c '<Checkbox\b' src --glob '!*.test.*'` の合計。7 file）、選択カード 2（`ReturnExchangePage.tsx:565,588`）。checkbox の focus の比（`$TMPDIR/blend.py` と `$TMPDIR/cr.py`、2026-09-27）: checked の枠と地 #1D5C63 は focus の前後で変わらない（1.00:1）。透過の ring は対 background 2.35:1・対 card 2.33:1（現行の琥珀 2.08:1。Plan Review r2〈Codex〉の Chrome 実測は 2.354:1・2.321:1）、不透明にすると 7.28:1・6.97:1。未 checked は focus で 1px の枠が `border-ring`（7.28:1、focus 前の `--border-strong` は 3.53:1）。不透明な ring は checked の地と同じ色でつながり、3px 大きく見える形になる。`toggle.tsx` は使用 site（`StatusChips.tsx`）が `variant="outline"` で枠を持つため対象外、`dialog.tsx` の閉じるボタンと `DateNavigator` / `MonthNavigator` は既に不透明な ring、`segmented-control.tsx` は focus で `border-border-strong`（3.53:1）。塗りのボタンでは不透明な ring が塗りと同じ色でつながり、3px 太く見える形になる（AC-L3-1 で見る）。
 
 ## Scope
 
@@ -193,15 +199,15 @@ site 数は下の command をこの worktree で実行した出力。「非 test
 - **S16 test**（既存 assert の更新は意図を保つ。class だけでなく文言・role・icon を assert する）:
   - `src/components/ui/alert.test.tsx`: destructive が soft の 4 点の class と `svg` 1 つ（部品が描く）を持つ、`warning` と `default` は部品が icon を描かない。既存の「destructive は warning の class を持たない」は保つ。
   - `src/components/ui/badge.test.tsx:64`: `bg-primary` の既定の塗りの assert を、variant 無指定で `bg-primary` を出さない assert へ。`:13-26` の対照 test（outline は `border-border-strong` を持ち、比べる相手は持たない）は、比べる相手を `variant="secondary"` に替えて意図を保つ。`badge.tsx:38` の既定引数 `variant = "default"` も削る。
-  - `data-variant="default"` の assert（`BackupRestorePage.test.tsx:581`、`ProductImportPreview.test.tsx:95`、`ProductRankingTable.test.tsx:101`）は、③強調の class（`bg-warning-emphasis` と `border-warning`。ランキングは試しの答えの `font-semibold`）の assert へ替える。
+  - `data-variant="default"` の assert（`BackupRestorePage.test.tsx:581`、`ProductImportPreview.test.tsx:95`、`ProductRankingTable.test.tsx:101`）は、③強調の class（`bg-warning-emphasis` と `border-warning`。ランキングは採った側では試しの答えの `font-semibold`、採らなかった側では rank-top の地・文字・枠。下の `ProductRankingTable.test.tsx` の項目）の assert へ替える。
   - `src/components/ui/alert.test.tsx:34-42` の `it.each(["default", "destructive"])` の `bg-card` の assert は、`default` だけに残し、`destructive` は soft の 4 点の class の assert へ分ける（warning の class を持たない対照は両方に残す）。
-  - `src/components/ui/button.test.tsx` に「base と `destructive` が `focus-visible:ring-ring` を持ち、`focus-visible:ring-ring/50` と `focus-visible:ring-destructive/20` を持たない」、accordion・scroll-area の class の assert（D-CE17）。
+  - `src/components/ui/button.test.tsx` に「base と `destructive` が `focus-visible:ring-ring` を持ち、`focus-visible:ring-ring/50` と `focus-visible:ring-destructive/20` を持たない」、accordion・scroll-area・checkbox（checked の状態で render して class を確かめる）と返品・交換の選択カードの class の assert（D-CE17）。描画（checked + focus の外側の ring の比）は jsdom で測れないため Contract Probe と AC-L3-15 で確かめる。
   - `table.tsx` の `TableBody` が `[&_tr:last-child]:border-b-0` を持ち `[&_tr:last-child]:border-0` を持たない class の assert。描画（最後のレコードを開いても左のバー 4px が残る）は jsdom で測れないため Contract Probe と AC-L3-9 で確かめる。
   - `src/styles/globals.test.ts:20,28`: `--row-current` の literal を撤去し、`--ongoing*` 4 token と `@theme` の 4 行、`--primary` / `--ring` の値を literal で固定。
   - `src/features/suppliers/components/SupplierPickerDialog.test.tsx:61,65,66`: `bg-row-current` / `border-l-primary` を `bg-ongoing-soft` / `border-l-ongoing` へ（「選択中」の文言の assert は保つ）。
   - `src/features/stock-inquiry/components/ProductListTable.test.tsx`・`src/features/operation-logs/OperationLogsPage.test.tsx`: 開いた行と詳細の行が進行中の class を持ち、閉じると外れる（D-CE7）。選択欄を開いた入力行が進行中にならないことは `table.tsx` の既定が不変であることで保つ。
   - `ProductListTable.test.tsx` に、在庫少の行を選ぶとそのセルが `text-warning-strong`、選択を外すと `text-warning-emphasis` に戻る assert（B1-1）。
-  - `src/features/monthly-sales/components/ProductRankingTable.test.tsx`: 1 位の「1 位」の文言が `font-semibold` で、行に地の class が無い（採らなければ現行の assert のまま）。
+  - `src/features/monthly-sales/components/ProductRankingTable.test.tsx`: 採った側は 1 位の「1 位」の文言が `font-semibold` で、行に地の class が無い。採らなかった側でも S4 で `default` variant を削るため `:101` の `data-variant="default"` は必ず red になる。`:101` を琥珀 pill の地・文字・枠（`bg-rank-top-badge-bg`・`text-rank-top-badge-text`・`border-warning`）と、sort 後も 1 位の行に追従する assert に置き換える。
   - StepIndicator の test を足す（`aria-current="step"` のステップだけが進行中の class と太字、済んだ・先のステップは muted）。新しい test file は REQ か UI の ID（例 `UI-07`）を describe に含める（traceability T4 は ID の無い FE test file の数を baseline と比べる）。
   - 前月比のセル・移動制限の Alert・未保存の案内・③強調の badge・Home の入口 card・日報の badge・Home の Alert の既存 test のうち class を assert するものを、新しい形へ（`ActionButton.test.tsx:43,44,80`、`DailyReportImportPage.test.tsx`、`BackupRestorePage.test.tsx`、`IntegrityCheckPage.test.tsx`、`DepartmentTable.test.tsx` ほか。対象は `rg -l 'primary|rank-top|row-current|bg-warning\b|bg-muted|destructive-soft|success-soft' src --glob '*.test.*'` の 17 file から Writer が確かめる。2026-09-27 に同じ command の `| wc -l` で 17）。
 - **S17 docs**（L3 の分岐の答えを反映した最終形で書く）:
@@ -214,13 +220,14 @@ site 数は下の command をこの worktree で実行した出力。「非 test
   - `docs/quality/review-checklist.md`: カテゴリ 9 の③強調とランキングの行、「runtime lane A の merge 前は…」の句。
   - `docs/UI_TECH_STACK.md:46`: token の家族に進行中を足し「進行中は runtime lane A で追加」を削る。
   - `docs/SCREEN_DESIGN.md`: `:110`（入口 card）、`:228`（「手動」は黄色でなく②分類の stone の pill）、`:368`（1 位）、`:373`（前月比）。
+  - `docs/function-design/56-ui-daily-sales.md:326`: 「黄色「手動」バッジ」を②分類の stone の pill（`variant="secondary"`）へ（`docs/SCREEN_DESIGN.md:228` と同じ drift、実装は `daily-sales/components/ProductTable.tsx:132`）。
   - `docs/function-design/57-ui-monthly-sales.md`: `:397-399`、`:404`、`:456-458`（前月比と 1 位の class）。
   - `docs/design-system/00-foundations.md` のカラーパレット表の `--muted-foreground` の行: owner が選んだ HEX と、対 `--background`・対 `--card`・対 進行中の地の実測比へ（DS3 が `globals.css` と突合する）。
   - `docs/decision-log.md`: **D-094** を追加（D-CE1 の token 名と値の確定、D-CE16 の muted の候補 3 つと owner の選んだ値・比、試し 8 点の採否、試しを採らなかった場合の恒久の例外〈Home の入口 card の地・③強調の琥珀 pill、D-091 の求め〉、D-CE2 / D-CE9 / D-CE10 の役割の割当て）。
   - `docs/backlog.md`: D-CE15 の除外 2 件を起票する。「card の面色を白へ寄せる」の項目は残し「lane A から分けた（owner 決定 2026-09-27）」の 1 句を足す。「muted の文字色が通常サイズの説明文で AA に届かない箇所」は本 lane で閉じる（完了印は closeout）。lane A の項目と「destructive Alert の soft 塗り + 三角 icon」の完了印も closeout で付ける。
 - **S18（Coordinator、plan-first commit と owner 回答の反映 commit）**: 本 packet、Matrix、`docs/Plans.md` の登録 1 行。Writer は触らない。
 - **S19 muted の文字色**: `src/styles/globals.css` の `--muted-foreground` を D-CE16 の候補の値へ（PR head は M2、L3 の答えで確定）。`src/styles/globals.test.ts` に選んだ値の literal を足す。site の class は変えない。
-- **S20 枠の無い部品の focus 表示**: D-CE17。`button.tsx`・`accordion.tsx`・`scroll-area.tsx` の `focus-visible:ring-ring/50` を `focus-visible:ring-ring` へ、`button.tsx` の `destructive` の `focus-visible:ring-destructive/20` を外す。
+- **S20 枠の無い部品の focus 表示**: D-CE17。`button.tsx`・`accordion.tsx`・`scroll-area.tsx`・`checkbox.tsx` の `focus-visible:ring-ring/50` を `focus-visible:ring-ring` へ、`ReturnExchangePage.tsx:147` の `focus-within:ring-ring/50` を `focus-within:ring-ring` へ、`button.tsx` の `destructive` の `focus-visible:ring-destructive/20` を外す。`ReturnExchangePage.tsx:625`（枠を持つ textarea）は変えない。
 
 ### L3 の分岐
 
@@ -258,8 +265,8 @@ baseline は起票時実測（`e7c22f8f`）。「分岐」と書いた AC は L3
 - **AC4 badge**: `rg -n '<Badge variant="default"' src --glob '!*.test.*' | wc -l` = 0（baseline 2）/ `rg -c 'defaultVariants' src/components/ui/badge.tsx` = 0（baseline 1）/ `rg -c 'bg-primary' src/components/ui/badge.tsx` = 0（baseline 1）/ 分岐: 最新・上書き件数の試しを採らなければ `rg -c 'bg-warning-emphasis' src/features/backup-restore/BackupRestorePage.tsx src/features/products/import/ProductImportPreview.tsx` が各 1（baseline 0）、採れば各 0。
 - **AC5 spinner と棒**: `rg -n 'animate-spin text-primary' src | wc -l` = 0（baseline 5）/ `rg -c 'bg-warning' src/components/ui/progress.tsx` = 0（baseline 1）/ `rg -n 'before:bg-warning' src | wc -l` = 0（baseline 1）/ `rg -c 'indicatorClassName' src/features/monthly-sales/components/DepartmentTable.tsx` = 1（baseline 0）。
 - **AC6 現在行**: `rg -c 'border-l-ongoing bg-ongoing-soft' src/features/suppliers/components/SupplierPickerDialog.tsx` = 1（baseline 0）。
-- **AC7 詳細を開いた行（分岐）**: 採れば `rg -c 'bg-ongoing-soft' src/features/stock-inquiry/components/ProductListTable.tsx` ≥ 2 と `rg -c 'bg-ongoing-soft' src/features/operation-logs/OperationLogsPage.tsx` ≥ 1（baseline 0 / 0）、`rg -c 'bg-muted' src/features/stock-inquiry/components/ProductListTable.tsx` = 0（baseline 2）。採らなければ 3 つとも baseline のまま。どちらでも `rg -c 'has-aria-expanded:bg-muted/50 data-\[state=selected\]:bg-muted' src/components/ui/table.tsx` = 1（不変）と `rg -c 'last-child\]:border-b-0' src/components/ui/table.tsx` = 1（baseline 0）・`rg -c 'last-child\]:border-0' src/components/ui/table.tsx` = 0（baseline 1）。採れば `rg -c 'text-warning-strong' src/features/stock-inquiry/components/ProductListTable.tsx` ≥ 1（baseline 0）。
-- **AC8 取込みの手順の表示（分岐）**: 採れば `rg -c 'primary' src/features/csv-import/components/StepIndicator.tsx` = 0（baseline 2）と `rg -c 'bg-ongoing-soft' src/features/csv-import/components/StepIndicator.tsx` = 1（baseline 0）。 採らなければ `rg -c 'primary' src/features/csv-import/components/StepIndicator.tsx` = 2 と `rg -c 'bg-ongoing-soft' src/features/csv-import/components/StepIndicator.tsx` = 0（どちらも baseline のまま）、D-094 に例外の記録がある。どちらの側でも StepIndicator の test がその側の class を assert する。
+- **AC7 詳細を開いた行（分岐）**: 数えるのは class の文字列（二重引用符の中）だけで、comment 行は数えない。採れば `rg -o '"[^"]*bg-ongoing-soft[^"]*"' src/features/stock-inquiry/components/ProductListTable.tsx | wc -l` ≥ 2 と `rg -o '"[^"]*bg-ongoing-soft[^"]*"' src/features/operation-logs/OperationLogsPage.tsx | wc -l` ≥ 1（baseline 0 / 0）、`rg -o '"[^"]*bg-muted[^"]*"' src/features/stock-inquiry/components/ProductListTable.tsx | wc -l` = 0（baseline 1）、`rg -o '"[^"]*text-warning-strong[^"]*"' src/features/stock-inquiry/components/ProductListTable.tsx | wc -l` ≥ 1（baseline 0）。採らなければ 4 つとも baseline のまま。どちらでも `rg -c 'has-aria-expanded:bg-muted/50 data-\[state=selected\]:bg-muted' src/components/ui/table.tsx` = 1（不変）と `rg -c 'last-child\]:border-b-0' src/components/ui/table.tsx` = 1（baseline 0）・`rg -c 'last-child\]:border-0' src/components/ui/table.tsx` = 0（baseline 1）。
+- **AC8 取込みの手順の表示（分岐）**: 数えるのは class の文字列だけ。採れば `rg -o '"[^"]*primary[^"]*"' src/features/csv-import/components/StepIndicator.tsx | wc -l` = 0（baseline 2）と `rg -o '"[^"]*bg-ongoing-soft[^"]*"' src/features/csv-import/components/StepIndicator.tsx | wc -l` = 1（baseline 0）。採らなければ同じ 2 式が 2 と 0（どちらも baseline のまま）で、D-094 に例外の記録がある。どちらの側でも StepIndicator の test がその側の class を assert する。
 - **AC9 前月比**: `rg -c 'success-soft|destructive-soft' src/features/monthly-sales/components/comparison-cell.tsx` = 0（baseline 2）/ `rg -c 'text-success-strong|text-destructive-strong' src/features/monthly-sales/components/comparison-cell.tsx` = 2（baseline 0）/ `rg -c 'bg-success-soft text-success|bg-destructive-soft text-destructive' docs/function-design/57-ui-monthly-sales.md` = 0（baseline 2）。
 - **AC10 失敗ではない赤**: `rg -c 'variant="destructive"' src/features/csv-import/components/ImportingStep.tsx` = 0（baseline 1）/ `rg -c 'variant="warning"' src/features/csv-import/components/ImportingStep.tsx` = 1（baseline 0）/ `rg -B1 '未保存の(入庫|手動販売|廃棄・破損|返品・交換)内容があります' src --glob '!*.test.*' | rg -c 'text-destructive'` = 0（baseline 4）/ 同 `| rg -c 'text-warning-emphasis'` = 4（baseline 0）。
 - **AC11 drift**: `rg -n 'warning-foreground|info-soft|border-info|text-info-strong' src | wc -l` = 0（baseline 2）。
@@ -269,23 +276,23 @@ baseline は起票時実測（`e7c22f8f`）。「分岐」と書いた AC は L3
 - **AC15**: `bash scripts/doc-consistency-check.sh --target plan` ERROR 0 / `bash scripts/check-workflow-git.sh` PASS。
 - **AC16 負の oracle**: `git diff --name-only origin/main...HEAD -- src-tauri src/lib/bindings.ts src/routeTree.gen.ts package.json package-lock.json docs/design-system/reference .agents | wc -l` = 0。
 - **AC17 muted の文字色**: `rg -n -e '--muted-foreground: #' src/styles/globals.css` の値が D-CE16 の M1 / M2 / M3 のどれか（baseline `#78716c`、`:75`）/ 差分検査: `diff <(git grep -c 'muted-foreground' origin/main -- src ':!*.test.*' | sed 's/^origin\/main://') <(git grep -c 'muted-foreground' HEAD -- src ':!*.test.*' | sed 's/^HEAD://')` の出力に現れる file が `DepartmentTable.tsx`（S6 の `bg-muted-foreground` で増える）・`comparison-cell.tsx`（S12 で 0 から増える）・`StepIndicator.tsx`（S10）だけで、他の file の件数は減らない（baseline: 出力なし・exit 0、`git grep -c` の対象 75 file。3 file の baseline は 1 / 0 / 3）/ DS3 が OK（00 の `--muted-foreground` の行の HEX が `globals.css` と一致、AC2）/ `globals.test.ts` の muted の literal の test が PASS。
-- **AC18 focus 表示（D-CE17）**: `rg -c 'ring-ring/50' src/components/ui/button.tsx src/components/ui/accordion.tsx src/components/ui/scroll-area.tsx` が各 0（baseline 各 1）/ `rg -c 'focus-visible:ring-destructive/20' src/components/ui/button.tsx` = 0（baseline 1）/ 合成後の比は Contract Probe の式で対 background 7.28:1・対 card 6.97:1（不透明のため `--ring` の比と同じ）/ `button.test.tsx` の focus の assert が PASS。
+- **AC18 focus 表示（D-CE17）**: `rg -c 'ring-ring/50' src/components/ui/button.tsx src/components/ui/accordion.tsx src/components/ui/scroll-area.tsx src/components/ui/checkbox.tsx` が各 0（baseline 各 1）/ `rg -c 'focus-within:ring-ring/50' src/features/return-exchange/ReturnExchangePage.tsx` = 0（baseline 1）・`rg -c 'focus-visible:ring-ring/50' src/features/return-exchange/ReturnExchangePage.tsx` = 1（不変、textarea）/ checkbox の test に checked + focus の class の assert（`data-state="checked"` で `focus-visible:ring-ring` を持ち `ring-ring/50` を持たない）/ `rg -c 'focus-visible:ring-destructive/20' src/components/ui/button.tsx` = 0（baseline 1）/ 合成後の比は Contract Probe の式で対 background 7.28:1・対 card 6.97:1（不透明のため `--ring` の比と同じ）/ `button.test.tsx` の focus の assert が PASS。
 - **AC-L3**（画面 / 到達手順 / 観測可能な合格基準。結果は github mode の `manual` record に残す。round 1 は build 4 本〈before = main、after = PR head、試し = 試しの版、muted の M1 の比較 build〉を並べる。round 2 は採否を反映した PR head だけで、round 1 から変わった画面を見る）:
   - **AC-L3-1 全体の並べ比べ**: Home（`/`）と入庫記録（`/inventory/receiving`）/ 起動して左のナビから開く / after でナビの現在地のバー・主要ボタンの塗り・focus ring（Tab で移る）が同じ操作の色で、在庫少の琥珀・PLU 通知バーの琥珀と別の色に見える。
   - **AC-L3-2 ランキング 1 位**: 月次売上（`/reports/monthly`）の商品別 / ナビ →「月次売上」→ 商品別 / 1 位が色なしで順位と太字だけで見分けられる（採否）。
-  - **AC-L3-3 最新と手動**: バックアップ（`/settings/backup`、最新）と日次売上（`/reports/daily`、手動）/ ナビから各画面 / 「最新」と②分類の「手動」を言い分けられる。琥珀 pill（after）と stone の pill + 太字（試し）を比べる（採否）。あわせて badge の文字の太さ（現行 500）が読み分けに足りるかを owner が言う（変えるなら別 lane）。
+  - **AC-L3-3 最新と手動**: バックアップ（`/settings/backup`、最新）と日次売上（`/reports/daily`、手動）/ ナビから各画面。日次売上の既定の表示日は今日（`DailySalesPage.tsx:46`）で、「手動」badge はその日に手動販売があるときだけ出る（`daily-sales/components/ProductTable.tsx:132` の `item.source === "manual"`）。開発 DB の写しで手動販売出庫（`/inventory/manual-sale`）を 1 件保存してから今日の日次売上を開く（または手動販売のある日の DB の写しを Coordinator が用意し、日付の移動で開く）/ 「最新」と②分類の「手動」を言い分けられる。琥珀 pill（after）と stone の pill + 太字（試し）を比べる（採否）。あわせて badge の文字の太さ（現行 500）が読み分けに足りるかを owner が言う（変えるなら別 lane）。
   - **AC-L3-4 Home の入口 card の 3 状態**: Home（`/`）/ 起動直後 / before（琥珀の線 + 注意の薄い地）・after（操作の新しい線 + 注意の薄い地）・試し（操作の線 + 操作の仲間の薄い地）を並べ、最重要の入口 1 つとして目に留まる形を owner が選ぶ（採否。before は見比べるだけで、選ぶのは after か試し）。
   - **AC-L3-5 日報の取込み済み**: 売上データ取込み（`/csv-import`）の日報取込みタブ / 取込み済みの日の日報を選ぶ（CP932 の合成 fixture は Coordinator が用意） / Alert（危険・失敗）と badge（after = 注意・確認、試し = 危険・失敗。同日追加確認の badge は注意・確認のまま）の役割を見て選ぶ（採否）。
   - **AC-L3-6 Home の未取込みの知らせ**: Home（`/`）/ 最後の Z004 取込みの精算日が前日より前の開発 DB の写しで起動（fixture は Coordinator が用意。日報の取込みでは知らせは消えない）/ after（危険・失敗の soft の地 + 三角 icon）と試し（注意・確認）を比べる（採否）。
   - **AC-L3-7 操作と完了の言い分け**: 日報取込みの結果の画面（`/csv-import`、`DailyReportImportPage.tsx` の結果）/ 未取込みの日の日報を取り込む / 完了の緑の badge（icon + 文言「成功」）と操作の塗りのボタンを文字と icon で言い分けられる（D-091 の比 1.52:1 のため色では区別できない前提）。取込み中の spinner が進行中の色で見える。
   - **AC-L3-8 現在行**: 入庫記録（`/inventory/receiving`）の取引先を選ぶ dialog / 取引先の欄を押す / 選んでいる行が左端のバー + 進行中の地 + 「選択中」で分かる。
-  - **AC-L3-9 詳細を開いた行**: 在庫照会（`/stock`）と操作ログ（`/settings/logs`）/ 行を押して詳細を開く・もう一度押して閉じる・別の行を開く・一覧の最後の行を開く / 開いた行と詳細が一体に見え、最後の行でも左のバーが詳細の行まで続く。在庫少の行を開いたとき在庫数が読める。緑寄りの色に違和感が無いか、3 点目に badge を足さない形で分かるか、行内の薄い文字が読めるかを owner が言う（採否）。
+  - **AC-L3-9 詳細を開いた行**: 在庫照会（`/stock`）と操作ログ（`/settings/logs`）/ 在庫照会は行を押して詳細を開く・もう一度押して閉じる・別の行を開く・一覧の最後の行を開く。操作ログは行の「詳細を表示」ボタンで開き「詳細を閉じる」で閉じる（行そのものには開閉の操作が無い、`OperationLogsPage.tsx:540-558`）・最後の行を開く / 開いた行と詳細が一体に見え、最後の行でも左のバーが詳細の行まで続く。在庫少の行を開いたとき在庫数が読める。緑寄りの色に違和感が無いか、3 点目に badge を足さない形で分かるか、行内の薄い文字が読めるかを owner が言う（採否）。
   - **AC-L3-10 取込みの手順の表示**: 売上データ取込み（`/csv-import`）の商品別CSV取込み（Z004）タブ / ファイルを選ぶ → プレビュー（確定は停止中のためステップ 3 は出ない）/ いまのステップが進行中の段 2 で目に留まり、済んだステップ（プレビュー時の 1）と先のステップ（3）を見分けられる（採否。before は見比べるだけで、選ぶのは after か、採らない側〈現行の class〉。結果の画面の見え方は StepIndicator の自動 test だけで確かめ、停止の解除〈㉘ の ⑤〉の lane の L3 で見る）。
   - **AC-L3-11 前月比**: 月次売上（`/reports/monthly`）/ 部門別と商品別 / 地の無い文字色 + 記号で増減が読める（D-CE9）。
   - **AC-L3-12 危険・失敗の Alert の見本**: 日報取込みの二重取込みの Alert（AC-L3-5 と同じ画面、`/csv-import`）/ 同上 / 薄い地 + 線 + 三角 icon + 文言で「止まる」と受け取れる。
-  - **AC-L3-13 失敗ではない知らせ**: 入庫記録（`/inventory/receiving`）/ 明細を 1 行入れる / 「未保存の入庫内容があります」が琥珀の文字で、失敗の赤と取り違えない（取込み中の移動制限の知らせ〈`ImportingStep.tsx`〉は Z004 の確定が停止中で画面に出ないため、自動 test だけで確かめる）。
+  - **AC-L3-13 失敗ではない知らせ**: 入庫記録（`/inventory/receiving`）/ 明細を 1 行入れた後、商品コード欄に存在しないコードを入れて「追加」を押し（Enter でもよい）、「該当する商品がありません」を出す（案内は `searchMessage === "該当する商品がありません"` かつ明細 1 行以上のときだけ出る。`ReceivingPage.tsx:490-501`、手動販売・廃棄・返品交換も同じ）/ 「未保存の入庫内容があります」が琥珀の文字で、失敗の赤と取り違えない（取込み中の移動制限の知らせ〈`ImportingStep.tsx`〉は Z004 の確定が停止中で画面に出ないため、自動 test だけで確かめる）。
   - **AC-L3-14 muted の文字色**: 在庫照会（`/stock`、部門・取引先の列と詳細を開いた行 = 進行中の地の上）、日報取込みの結果の画面（`/csv-import`、`DailyReportImportPage.tsx` の結果の card の「取込み ID」「対象日」等のラベル = `--card` の上）、入庫記録（`/inventory/receiving`、説明文 = `--background` の上）/ ナビから各画面（日報の結果は AC-L3-7 の続き）/ M2（PR head）・M3（試しの版）・M1（追加の比較 build）を並べ、説明文が通常距離で読め、見出しや値より薄い補足と分かる 1 つを owner が選ぶ（採否。どれか 1 つを採る）。
-  - **AC-L3-15 返品・交換の選択カードと低視力の条件**: 返品・交換（`/inventory/return`）の登録方法の選択カード（D-CE15、owner 決定 2026-09-27 の確認先）/ 選択を切り替える / 選んだカードの枠と地が操作の色になっても選択状態と分かる。あわせて代表画面（Home `/`、在庫照会 `/stock`、日報取込み `/csv-import`）で DSR-22 の低視力 L3 の (a) Windows の forced-colors（ハイコントラスト）で状態・枠・focus が消えない、(b) DPI 125% / 150% で崩れない、を見る（(c) の実利用者の 1 セッションは本 lane の L3 に含めない。Residual）。
+  - **AC-L3-15 返品・交換の選択カードと低視力の条件**: 返品・交換（`/inventory/return`）の登録方法の選択カード（D-CE15、owner 決定 2026-09-27 の確認先）/ 選択を切り替え、Tab で focus を当てる / 「レジ戻し済み」を選んだカードは枠と地が操作の色（`border-primary bg-primary/5`、`--primary` に追従）、「レジ未処理」を選んだカードは現行の注意・確認（`border-warning-border bg-warning-soft`、変えない）のままで、どちらも選択状態と分かる。focus の外側の ring が不透明な操作の色で見える（D-CE17）。あわせて代表画面（Home `/`、在庫照会 `/stock`、日報取込み `/csv-import`）で DSR-22 の低視力 L3 の (a) Windows の forced-colors（ハイコントラスト）で状態・枠・focus が消えない、(b) DPI 125% / 150% で崩れない、を見る（(c) の実利用者の 1 セッションは本 lane の L3 に含めない。Residual）。
 
 ## Design Sources
 
@@ -386,6 +393,7 @@ Minimum design checks for business-app work:
 
   badge（soft の地）・outline ボタン（`bg-background`）・`pre`（`bg-muted`）は自分の地を持つため進行中の地の上の文字に数えない。
 - focus ring の合成後の色（本 worktree の `$TMPDIR/blend.py`、合成色 = `α × ring + (1 − α) × 地` を sRGB で計算し相対輝度で比、2026-09-27）: `#1D5C63` 50% を #fafaf9 に合成 = #8cabae、対 #fafaf9 2.35:1 / #f5f5f4 に合成 = #89a8ac、対 #f5f5f4 2.33:1 / 現行の `#b45309` 50% = 2.08:1・2.05:1 / `#b91c1c` 20%（destructive の ring）を #fafaf9 に合成 = 1.41:1 / 不透明な `#1D5C63` = 7.28:1・6.97:1。Plan Review（Codex）も 2.35:1・2.32:1 と実測（card の値は丸めの差）
+- checked の checkbox と「レジ戻し済み」の選択カードの focus（同じ `$TMPDIR/blend.py` / `$TMPDIR/cr.py`、2026-09-27。command は `python3 "$TMPDIR/blend.py" '#1D5C63:0.5:#fafaf9' '#1D5C63:0.5:#f5f5f4' '#1D5C63:1:#fafaf9' '#1D5C63:1:#f5f5f4'` と `python3 "$TMPDIR/cr.py" '#1D5C63:#1D5C63' '#8a8480:#fafaf9'`）: checked の枠と地 #1D5C63 は focus の前後で同じ（1.00:1）ため、枠の変化は目印にならない。外側の ring は透過で対 background 2.35:1・対 card 2.33:1（Plan Review r2〈Codex〉の Chrome 実測 2.354:1・2.321:1）、不透明で 7.28:1・6.97:1。未 checked は focus 前の枠 `--border-strong` 3.53:1 から `border-ring` 7.28:1 へ変わる
 - `TableBody` の末尾の規則: Plan Review（Codex）が生成した Tailwind CSS を Chrome で描画し、最後のレコードを開くと親の行の左の枠は 4px、詳細の行は 0px（`[&_tr:last-child]:border-0` が勝つ）、`border-b-0` に限ると詳細の行も 4px と実測した（reviewer の実測。Writer が実装後に同じ probe か L3 の AC-L3-9 で確かめる）
 - `tr` の左の枠が表に描かれる: Tailwind の preflight が `table` を `border-collapse: collapse` にし、`SupplierPickerDialog` の現在行（`border-l-4`）が既に描かれている（DSR-22 の現在行の L3 で確認済み）。WebView2 での在庫照会・操作ログの行は AC-L3-9 で確かめる
 - WebView2 の実描画と色の受け取り方: L3（AC-L3-1〜15）
@@ -428,7 +436,7 @@ Test Design Matrix: [2026-09-27-design-color-emphasis](test-matrices/2026-09-27-
 - negative tests: destructive Alert の icon が 1 つだけ（二重にならない）、`warning` と `default` は部品が icon を描かない、`table.tsx` の既定が stone のまま、badge の variant 無指定で `bg-primary` を出さない
 - compatibility checks: 在庫状態・取消済み・増減・注意の既存 test が無変更で PASS（赤・琥珀・緑の割り当て不変）
 - data safety checks: not applicable
-- main wiring/integration checks: 画面の test で、部品の変更が実画面に届く（例: `HomePage` の前日分の知らせが soft の class と icon 1 つを持つ）
+- main wiring/integration checks: 画面の test で、部品の変更が実画面に届く（例: `BackupRestorePage` の常に destructive のまま残る Alert〈`BackupRestorePage.tsx:324`〉が soft の class と icon 1 つを持つ。Home の前日分の知らせは試しの採否で variant が変わるため対象にしない）
 - Human Gate に L3 を含むため、Writer 完了時に `cargo check --release` を実行する（Rust 非接触だが手順どおり）
 
 ## Boundary / Wire Contract
@@ -442,7 +450,7 @@ not applicable（JSON / CSV / DTO / bindings / route state 非接触。`indicato
 - D-CE9 / D-CE10: 役割の割当てが 00 の既存の行から一意に導けるか（新しい方針を足していないか）
 - L3 の分岐: 採らなかった側の docs の直し（00 の注記の列挙）が漏れなく Scope にあるか
 - 今の赤・琥珀・緑の割り当てが変わる site が D-CE10 と試し以外に無いか（開いた行の在庫少のセルは琥珀の家族の中で `-strong` へ替えるだけ）
-- D-CE17: 不透明な ring を塗りのボタンに当てたときの見え方、対象を 3 部品に限った census に漏れが無いか
+- D-CE17: 不透明な ring を塗りのボタン・checked の checkbox に当てたときの見え方、対象を 5 部品に限った census に漏れが無いか
 - D-CE16: 3 候補の比が packet の計算式どおりか。濃くした muted と本文の差（ラベルと値の濃さの差）が L3 で見られるか
 
 ## Spec Contract
