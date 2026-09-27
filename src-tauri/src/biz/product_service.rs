@@ -150,8 +150,11 @@ pub(crate) mod failpoint {
 /// 独自コードを生成する（FUNC-4.3）
 ///
 /// department の code_prefix + "-" + 4桁ゼロ埋め連番。
-/// トランザクション内で呼ばれることを前提とする。
-fn generate_custom_code(conn: &DbConnection, department_id: i64) -> Result<String, BizError> {
+/// 連番の更新を呼び出し元の TX に含めるため、借りた transaction だけを受け取る（31 §12.2 と同じ形）。
+fn generate_custom_code(
+    conn: &rusqlite::Transaction<'_>,
+    department_id: i64,
+) -> Result<String, BizError> {
     let department = product_repo::find_department_by_id(conn, department_id)?
         .ok_or_else(|| BizError::ValidationFailed("部門が見つかりません".to_string()))?;
 
@@ -1596,6 +1599,14 @@ mod tests {
         assert_eq!(code1, "HZ-0001");
         assert_eq!(code2, "HZ-0002");
         tx.commit().unwrap();
+    }
+
+    #[test]
+    fn test_generate_custom_code_req101_requires_borrowed_transaction() {
+        // REQ-101 / FUNC-4.3: 連番の更新を TX の外へ漏らさないため、第 1 引数は借りた transaction に限る
+        // （31 §12.2 の apply_stock_change と同じ形。通常の接続に戻すとここでコンパイルが止まる）
+        let _ =
+            generate_custom_code as fn(&rusqlite::Transaction<'_>, i64) -> Result<String, BizError>;
     }
 
     // ===== FUNC-4.2: create_product テスト =====
