@@ -496,7 +496,7 @@ export function ReceivingPage() {
                   未登録商品の場合は、商品マスタに登録してから入庫記録に戻って追加します。
                 </span>
                 {values.rows.length > 0 ? (
-                  <span className="text-destructive">
+                  <span className="text-warning-emphasis">
                     未保存の入庫内容があります。商品登録へ進むとこの画面の入力は残りません。
                   </span>
                 ) : null}

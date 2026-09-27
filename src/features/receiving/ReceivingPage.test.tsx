@@ -199,11 +199,12 @@ describe("ReceivingPage (UI-02 / REQ-201)", () => {
 
     await user.type(screen.getByLabelText("入庫商品検索"), "missing{enter}");
 
-    expect(
-      await screen.findByText(
-        "未保存の入庫内容があります。商品登録へ進むとこの画面の入力は残りません。",
-      ),
-    ).toBeInTheDocument();
+    const unsaved = await screen.findByText(
+      "未保存の入庫内容があります。商品登録へ進むとこの画面の入力は残りません。",
+    );
+    // D-CE10: 失敗ではない知らせは注意・確認の文字（危険の赤にしない）。
+    expect(unsaved).toHaveClass("text-warning-emphasis");
+    expect(unsaved).not.toHaveClass("text-destructive");
   });
 
   it("allows no-supplier save when supplier options fail", async () => {

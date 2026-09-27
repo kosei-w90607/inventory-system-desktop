@@ -518,7 +518,13 @@ export function OperationLogsPage({
               <TableBody>
                 {logsQuery.data.items.map((item) => (
                   <Fragment key={item.id}>
-                    <TableRow>
+                    <TableRow
+                      className={
+                        expanded === item.id
+                          ? "border-l-4 border-l-ongoing hover:bg-ongoing-soft has-aria-expanded:bg-ongoing-soft"
+                          : "border-l-4 border-l-transparent"
+                      }
+                    >
                       <TableCell className="font-mono tabular-nums">
                         {formatDateTime(item.created_at)}
                       </TableCell>
@@ -558,7 +564,10 @@ export function OperationLogsPage({
                       </TableCell>
                     </TableRow>
                     {expanded === item.id && (
-                      <TableRow id={`log-detail-${String(item.id)}`}>
+                      <TableRow
+                        id={`log-detail-${String(item.id)}`}
+                        className="border-l-4 border-l-ongoing bg-ongoing-soft hover:bg-ongoing-soft"
+                      >
                         <TableCell colSpan={4} className="whitespace-normal">
                           <Detail log={item} returnTo={returnTo} />
                         </TableCell>

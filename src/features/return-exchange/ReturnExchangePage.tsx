@@ -144,7 +144,7 @@ function registerOptionClass(
 ): string {
   return cn(
     "flex cursor-pointer gap-3 rounded-md border p-3 text-sm transition-colors",
-    "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+    "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring",
     selected && stockChangesOnSave
       ? "border-warning-border bg-warning-soft"
       : selected
@@ -568,7 +568,7 @@ export function ReturnExchangePage() {
                 aria-label="レジ戻し済み"
                 checked={values.registerProcessed}
                 disabled={isFormLocked}
-                className="mt-1"
+                className="mt-1 accent-primary"
                 onChange={() => {
                   updateValues((prev) => ({ ...prev, registerProcessed: true }));
                 }}
@@ -591,7 +591,7 @@ export function ReturnExchangePage() {
                 aria-label="レジ未処理"
                 checked={!values.registerProcessed}
                 disabled={isFormLocked}
-                className="mt-1"
+                className="mt-1 accent-primary"
                 onChange={() => {
                   updateValues((prev) => ({ ...prev, registerProcessed: false }));
                 }}
@@ -746,7 +746,7 @@ export function ReturnExchangePage() {
                   未登録商品の場合は、商品マスタに登録してから返品・交換へ戻って追加します。
                 </span>
                 {values.rows.length > 0 ? (
-                  <span className="text-destructive">
+                  <span className="text-warning-emphasis">
                     未保存の返品・交換内容があります。商品登録へ進むとこの画面の入力は残りません。
                   </span>
                 ) : null}

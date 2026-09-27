@@ -134,7 +134,7 @@ export function SupplierPickerDialog({
                     key={row.id ?? "none"}
                     className={
                       row.id === selected
-                        ? "border-l-4 border-l-primary bg-row-current"
+                        ? "border-l-4 border-l-ongoing bg-ongoing-soft"
                         : "border-l-4 border-l-transparent"
                     }
                     onClick={() => {

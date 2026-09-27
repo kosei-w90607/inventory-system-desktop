@@ -95,7 +95,7 @@ function DailyReportParseStep({
         role="status"
         aria-live="polite"
       >
-        <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+        <Loader2 className="size-8 animate-spin text-ongoing" aria-hidden="true" />
         <p className="text-sm font-medium">日報ファイルを解析中…</p>
       </div>
     );
@@ -295,7 +295,7 @@ function SelectionErrorMessage({ message }: { message: string | null }) {
 function DailyReportImportingStep({ filenames }: { filenames: string[] }) {
   return (
     <div className="flex min-h-52 flex-col items-center justify-center gap-3 rounded-lg border p-8">
-      <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+      <Loader2 className="size-8 animate-spin text-ongoing" aria-hidden="true" />
       <p className="text-sm font-medium">日報を取り込み中…</p>
       <p className="text-xs text-muted-foreground">{filenames.join(" / ")}</p>
     </div>

@@ -97,9 +97,15 @@ describe("ProductRankingTable (REQ-502 sort 結線)", () => {
     const badgeEl = rowEl ? screen.getAllByText("1 位").find((el) => rowEl.contains(el)) : null;
     expect(badgeEl).not.toBeUndefined();
     expect(badgeEl?.textContent).toContain("1 位");
-    // SC3 / DSR-22: 順位の強調には琥珀の枠を伴う。
-    expect(badgeEl).toHaveAttribute("data-variant", "default");
-    expect(badgeEl).toHaveClass("border-warning");
+    // SPEC-COLOR-EMPHASIS-RT-1 / D-CE13: 1 位は色でなく順位と太字（badge と行の地を持たない）。
+    expect(badgeEl).toHaveClass("text-sm", "font-semibold", "text-foreground");
+    expect(badgeEl).not.toHaveAttribute("data-slot", "badge");
+    // 行の地（素の bg-*）を持たない。table.tsx の既定の hover / 状態の variant は数えない。
+    expect((rowEl?.className ?? "").split(/\s+/).filter((c) => c.startsWith("bg-"))).toEqual([]);
+    // 2 位以下は muted のまま、太字を持たない。
+    const second = screen.getByText("2 位");
+    expect(second).toHaveClass("text-sm", "text-muted-foreground");
+    expect(second).not.toHaveClass("font-semibold");
   });
 
   it("UI-09b: active indicator, ARIA, and numeric header alignment stay connected", () => {

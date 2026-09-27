@@ -116,6 +116,19 @@ afterEach(() => {
 });
 
 describe("DailyReportImportPage_req401", () => {
+  // SPEC-COLOR-EMPHASIS-RT-1 / D-CE5: 待ちの spinner は進行中の色（操作の色ではない）。
+  it("REQ-401 / D-CE5: the parsing spinner uses the ongoing color", async () => {
+    setFlow({ status: "parsing", filenames: ["Z001_260321.CSV"] });
+
+    renderWithRouter(<DailyReportImportPage />);
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("日報ファイルを解析中…");
+    const spinner = status.querySelector("svg");
+    expect(spinner).toHaveClass("animate-spin", "text-ongoing");
+    expect(spinner).not.toHaveClass("text-primary");
+  });
+
   it("REQ-401: preview shows target date, totals, payment, department, and unmatched warning", async () => {
     setFlow({
       status: "preview",

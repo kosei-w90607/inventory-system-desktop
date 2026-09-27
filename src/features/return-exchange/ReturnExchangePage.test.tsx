@@ -782,6 +782,22 @@ describe("ReturnExchangePage native input tokens（Lane 5 SC4d）", () => {
   });
 });
 
+// SPEC-COLOR-EMPHASIS-RT-1 / D-CE17 / S21: 登録方法の選択カードは選ぶと枠が操作の色で focus の前後に
+// 変わらないため、focus は不透明な ring。radio の点は操作の色（accent-primary）。
+it("D-CE17 / S21: register option cards use the opaque focus ring and the operation-colored radio", () => {
+  renderWithClient(<ReturnExchangePage />);
+  const processed = screen.getByLabelText("レジ戻し済み");
+  const unprocessed = screen.getByLabelText("レジ未処理");
+  expect(processed).toBeChecked();
+  for (const radio of [processed, unprocessed]) {
+    expect(radio).toHaveClass("accent-primary");
+    const card = radio.closest("label");
+    expect(card).toHaveClass("focus-within:ring-ring");
+    expect(card).not.toHaveClass("focus-within:ring-ring/50");
+  }
+  expect(processed.closest("label")).toHaveClass("border-primary", "bg-primary/5");
+});
+
 it("⑮ SC3/SC14: 副題と直近件数の説明を表示する", () => {
   renderWithClient(<ReturnExchangePage />);
   expect(

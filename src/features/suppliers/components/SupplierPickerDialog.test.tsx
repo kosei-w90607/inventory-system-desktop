@@ -58,12 +58,13 @@ it("DSR-24: renders title, description, search, current-selection band and fixed
   expect(scrollBox).toHaveClass("max-h-[50vh]", "overflow-auto");
   expect(scrollBox).not.toContainElement(screen.getByText("現在の選択"));
   const band = screen.getByText("現在の選択").parentElement;
-  expect(band).not.toHaveClass("bg-row-current");
+  expect(band).not.toHaveClass("bg-ongoing-soft");
   expect(screen.getByText("現在の選択").parentElement).not.toHaveTextContent("選択中");
   expect(screen.getByRole("columnheader", { name: "選択" })).toHaveClass("sr-only");
   const current = screen.getByRole("row", { name: /選択中.*か商店/ });
-  expect(current).toHaveClass("bg-row-current");
-  expect(current).toHaveClass("border-l-primary");
+  // SPEC-COLOR-EMPHASIS-RT-1 / D-CE6: 現在行は進行中のバー + 地 + 「選択中」の 3 点。
+  expect(current).toHaveClass("border-l-4", "border-l-ongoing", "bg-ongoing-soft");
+  expect(current).not.toHaveClass("border-l-primary");
   expect(current.querySelector("svg")).toBeInTheDocument();
   const add = screen.getByRole("button", { name: "新しい取引先を追加" });
   const close = screen.getByRole("button", { name: "閉じる" });

@@ -4,6 +4,7 @@
 // 旧「テーブル下部固定カード」実装の混入を nextElementSibling colSpan guard で落とす（C-P2-3）。
 // 設計: docs/function-design/58-ui-stock-inquiry.md §58.7 / §58.8
 
+import { useState } from "react";
 import { describe, it, expect, vi } from "vitest";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { screen } from "@testing-library/react";
@@ -277,5 +278,96 @@ describe("ProductListTable (REQ-301 インライン展開)", () => {
     expect(row).not.toBeNull();
     await userEvent.setup().click(row as HTMLElement);
     expect(onSelect).toHaveBeenCalledWith("P-002");
+  });
+});
+
+// SPEC-COLOR-EMPHASIS-RT-1 / D-CE7: 詳細を開いた行は左端のバー + 進行中の地で詳細と一体に見せる。
+// table.tsx の既定は variant 付き（data-[state=selected]:bg-muted）のため、同じ variant で上書きする。
+// 描画（CSS の詳細度）は jsdom で測れないため AC-L3-9。
+describe("ProductListTable (REQ-301 詳細を開いた行の進行中の見た目)", () => {
+  function Harness() {
+    const [selected, setSelected] = useState<string | null>(null);
+    return (
+      <ProductListTable
+        items={[
+          makeMockProductWithRelations({
+            product_code: "P-001",
+            name: "はさみ",
+            stock_quantity: 2,
+          }),
+          makeMockProductWithRelations({
+            product_code: "P-002",
+            name: "ボタン",
+            stock_quantity: 10,
+          }),
+        ]}
+        source="low_stock"
+        selected={selected}
+        detailQuery={makeDetailQuery()}
+        onSelect={setSelected}
+      />
+    );
+  }
+
+  it("REQ-301 D-CE7: the open row and its detail row carry the ongoing bar and surface; closing removes them", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<Harness />);
+    const rowA = (await screen.findByText("はさみ")).closest("tr");
+    const rowB = screen.getByText("ボタン").closest("tr");
+    if (!rowA || !rowB) throw new Error("rows not rendered");
+
+    // 閉じた行は透明のバーで列をそろえる。
+    expect(rowA).toHaveClass("border-l-4", "border-l-transparent");
+    expect(rowA).not.toHaveClass("data-[state=selected]:bg-ongoing-soft");
+
+    await user.click(rowA);
+    expect(rowA).toHaveAttribute("data-state", "selected");
+    expect(rowA).toHaveClass(
+      "border-l-4",
+      "border-l-ongoing",
+      "data-[state=selected]:bg-ongoing-soft",
+      "hover:bg-ongoing-soft",
+    );
+    expect(rowA).not.toHaveClass("data-[state=selected]:bg-muted");
+    const detailRow = rowA.nextElementSibling;
+    expect(detailRow?.querySelector('td[colspan="7"]')).not.toBeNull();
+    expect(detailRow).toHaveClass(
+      "border-l-4",
+      "border-l-ongoing",
+      "bg-ongoing-soft",
+      "hover:bg-ongoing-soft",
+    );
+    expect(detailRow).not.toHaveClass("bg-muted");
+
+    // 別の行を開くと元の行から外れる。
+    await user.click(rowB);
+    expect(rowA).not.toHaveAttribute("data-state");
+    expect(rowA).toHaveClass("border-l-transparent");
+    expect(rowA).not.toHaveClass("border-l-ongoing");
+    expect(rowB).toHaveClass("border-l-ongoing", "data-[state=selected]:bg-ongoing-soft");
+
+    // もう一度押すと閉じる。
+    await user.click(rowB);
+    expect(rowB).not.toHaveClass("border-l-ongoing");
+    expect(screen.queryByText("最終入庫日")).not.toBeInTheDocument();
+  });
+
+  it("REQ-301 D-CE7 / WCAG 1.4.3: the low-stock cell turns -strong only while its row is open", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<Harness />);
+    const rowA = (await screen.findByText("はさみ")).closest("tr");
+    if (!rowA) throw new Error("row not rendered");
+    const stockCell = rowA.querySelectorAll("td")[5];
+
+    expect(stockCell).toHaveClass("text-warning-emphasis");
+    expect(stockCell).not.toHaveClass("text-warning-strong");
+
+    await user.click(rowA);
+    expect(stockCell).toHaveClass("text-warning-strong", "font-medium");
+    expect(stockCell).not.toHaveClass("text-warning-emphasis");
+
+    await user.click(rowA);
+    expect(stockCell).toHaveClass("text-warning-emphasis");
+    expect(stockCell).not.toHaveClass("text-warning-strong");
   });
 });
