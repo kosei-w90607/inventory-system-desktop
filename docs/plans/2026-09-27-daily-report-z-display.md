@@ -2,7 +2,7 @@
 
 2026-09-27 起草。起源は owner の L3 所感（2026-09-04 run 3 原文「Z001とか002とか005とかってもっと情報あるじゃん、その辺の取り込み情報も見れないと困るくない？…無いのはまずい」、[原文](../design-system/reference/2026-09-04-owner-l3-feedback-raw.md)「run 3 原文」）と、owner 2026-09-11 の再確認「やるべきこと」（[backlog](../backlog.md) の該当項目と「run 3 原文による訂正」(a)）。owner の着手承認は 2026-09-27「Issue の範囲を避けて片っ端から並列で」（wave 14 の lane D）。
 
-本 lane は design-first で、取り込んだ Z001 / Z002 / Z005 の情報を「どの画面で・どの項目を・どう見せるか」と、そのための BIZ / IO の読み出し契約と Tauri command の返り値（DTO）を設計正本に書く。runtime の実装は後続 lane（[後続 runtime lane への申し送り](#後続-runtime-lane-への申し送り)）が持つ。この起草 run は packet の plan-first commit だけを作り、設計正本の本文と実装コードは書かない。
+本 lane は design-first で、取り込んだ Z001 / Z002 / Z005 の情報を「どの画面で・どの項目を・どう見せるか」と、そのための BIZ / IO の読み出し契約と Tauri command の返り値（DTO）を設計正本に書く。runtime の実装は後続 lane（[後続 runtime lane への申し送り](#後続-runtime-lane-への申し送り)）が持つ。packet・Matrix・設計正本を plan-first change で更新し、runtime のコードは後続 lane が書く。owner 決定（2026-09-27、Plan Review round 2 の後）により、本 lane の Goal は Z001 の全行に絞った。Z002 / Z005 は既存の表示のまま見出しに出どころを添えるだけで、既存の Z002 の合算は backlog の独立した項目で扱う。
 
 ## Workflow State
 
@@ -31,13 +31,15 @@ Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane �
 - design → plan-draft（2026-09-27、Writer〈Opus 5.5 subagent、worktree run〉）: owner の回答（2026-09-27、Q1 = A、Q2 = (a)、Q3 = (a)、[owner への質問](#owner-への質問)）と Coordinator の Contract Probe（P1 / P2、[Contract Probe](#contract-probe)）を受け、Scope S1〜S7 を設計正本へ書いた（56 UI-09a-D16、34 §19.2 / §19.3、24 §14.21 / §14.24、SCREEN_DESIGN §3、decision-log D-096、29 §29.4.1、backlog）。未解決の設計の質問は無い: 画面の案・同日複数取込み・見た目の確かめ方は owner が決め、P2 の未確認（実物の同日 2 回精算）は Q2 (a) で設計の前提から外れ、Z002 の見出しの語は既定「支払集計」を置いて runtime lane の L3 の文言の確認に回した（SPEC-DRZ-D3）。
 - plan-draft → plan-gate（2026-09-27、Writer）: packet と [Test Design Matrix](test-matrices/2026-09-27-daily-report-z-display.md) を commit した（R3）。Plan Commit は pending のまま。Plan Review（fresh Opus と Codex）は Coordinator が発注する。
 - Plan Review round 1（2026-09-27、fresh Opus 5.5 と Codex GPT-6 Astra、対象 `e38844cd`）: 両 reviewer とも reject。Coordinator の裁定 r1（全件 accept、Scope は広げない）に沿って Writer が packet・Matrix・24 / 34 / 56 / D-096 / backlog・Plans.md を是正し、plan-gate のまま round 2 へ。
+- Plan Review round 2（2026-09-27、fresh Opus 5.5 と Codex GPT-5.6 Sol、対象 `b67b1f48`）: Claude 側は approve、Codex 側は reject。P1 は owner 決定（2026-09-27、Goal を Z001 に絞り Z002 の既存の合算は backlog の独立した項目）で解消し、Coordinator の裁定 r2 に沿って Writer が packet・Matrix・56 D16 の文字列の確定・backlog・biz-task-specs を是正した。予算の上限の改定は owner 承認待ち。plan-gate のまま round 3 へ。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 4（消費 2: owner の着手承認 2026-09-27「Issue の範囲を避けて片っ端から並列で」、設計の質問 Q1〜Q3 への回答 2026-09-27〈1 回の問いでまとめて回答〉。見込み = Ready 1、merge 1）
+- 介入回数上限: 4（消費 3: owner の着手承認 2026-09-27「Issue の範囲を避けて片っ端から並列で」、設計の質問 Q1〜Q3 への回答 2026-09-27〈1 回の問いでまとめて回答〉、Goal を Z001 に絞る決定 2026-09-27〈Plan Review round 2 の裁定 r2〉。見込み = Ready 1、merge 1 で計 5 となり上限を 1 超える）
 - 上限の理由: 既定 3 に対し、design-first の lane で owner にしか決められない画面の選択が 1 回要り、着手承認・Ready・merge と合わせて 4 になる。
 - 実働時間上限: 30分（既定。owner の作業は質問への回答、relay、Ready / merge の判断）
-- relay 往復上限: 2（Codex の Plan Review 1、Codex の Final Review 1）
+- relay 往復上限: 2（消費 2: Codex の Plan Review round 1〈GPT-6 Astra〉と round 2〈GPT-5.6 Sol〉。見込み = Plan Review round 3 の Codex 1、Final Review の Codex 1 で計 4 となり上限を 2 超える）
+- 上限の改定案（**owner 承認待ち**。承認されるまで上の上限は変えない）: 介入 4 → 5、relay 往復 2 → 4。理由: Plan Review が round 3（天井）まで進み、各 round で Codex の合否を取る（Codex の合否を外さない owner 方針 2026-09-25）ため relay が 2 増え、round 2 の P1 を owner の Goal の決定で解消したため介入が 1 増えた。承認されなければ、Goal Invariant の最小完了条件に戻り、残りの round・Final Review の Codex の扱いを Coordinator が owner に諮る（DEV_WORKFLOW `Owner Effort Budget` の hard stop）。
 - Plan Review round 天井: 3（既定 3）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -57,12 +59,12 @@ Reason:
 
 ## Goal
 
-Goal Invariant:
+Goal Invariant: 取り込んだ Z001 の全行を、日次売上で見られる設計にする（owner 決定 2026-09-27 で Z001 に絞った。Z002 / Z005 は既存の表示のまま、見出しに出どころを添えるだけ）。
 
 ### 最小完了条件
 
 - 後続 runtime lane の実装者が、設計正本（56 / 34 / 24 / SCREEN_DESIGN / decision-log）だけを読んで、次を 1 つに決められる: Z001 のどの行を・どの画面のどこに・どの列と見出しで出すか、同じ日に複数回取り込んだ日にどう見せるか、そのために IO / BIZ がどの行をどの順で読み、Tauri command がどの形で返すか。
-- 店主が Excel に貼って見ていた Z001 / Z002 / Z005 の項目が、アプリの画面のどこかで漏れなく見える設計になっている（Z005 は既存の表示で全行が見える。Z001 の全行を足す。Z002 は既存の表示で全行が出るが、1 取込みの中でも `code=01` / `現金` や `code=03` / `クレジット` に当たる行が 2 行以上あると同じ `payment_key` になり、日次売上では 1 行に合算される（`daily_report_parser.rs:504-513`、`sales_repo.rs:1070-1082`。実ラベルでの発生は未確認）。本 lane はこれを直さず、backlog の確認項目と「既存の支払集計で異なる項目が 1 行に合算されうる」の項目に記録する）。
+- 店主が Excel に貼って見ていた Z001 の全行（総売・純売以外の行、総売の個数・純売の件数を含む）が、日次売上の画面で見える設計になっている。Z002 / Z005 は既存の支払集計・部門別集計の表示のまま（行・合算・列を変えず、見出しに出どころ〈Z002 / Z005〉を添えるだけ）。既存の Z002 の合算（1 取込みの中でも `code=01` / `現金` や `code=03` / `クレジット` に当たる行が 2 行以上あると同じ `payment_key` になり 1 行に合算されうる、`daily_report_parser.rs:504-513`、`sales_repo.rs:1070-1082`、実ラベルでの発生は未確認）は既存の潜在バグとして backlog の独立した項目に置き、本 lane の Goal に含めない。
 - 決めない事柄（印刷・紙の代わりになるかの受入・月次への展開・取込み履歴の導線）が Non-scope と backlog に行き先つきで残る。
 
 ### 失敗定義
@@ -80,6 +82,7 @@ Goal Invariant:
 - runtime の実装（Rust / TypeScript / bindings の変更）。
 - parser・DB schema の変更、Z006 / Z009 / Z011 の取込み。
 - 月次画面への Z001 / Z002 の展開。
+- Z002 / Z005 の表示の変更（見出しに出どころを添える以外）と、既存の Z002 の合算の是正（backlog の独立した項目）。
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
 
@@ -91,7 +94,7 @@ Z001 / Z002 / Z005 は日報として取り込まれ、在庫は動かさない�
 |---|---|---|---|
 | Z001 の総売・純売の金額 | 親 `daily_report_imports.gross_amount` / `net_amount`（`src-tauri/src/biz/daily_report_import_service/parse.rs:65-74` が Z001 の `gross_sales` / `net_sales` 行の金額から導く） | `sales_repo::get_completed_daily_report_aggregate`（`src-tauri/src/db/sales_repo.rs:1013`）→ BIZ `OfficialDailyReportSummary`（`src-tauri/src/biz/sales_service.rs:77-85`）→ 日次売上の「レジ日報（公式）」の総売上 / 純売上（`src/features/daily-sales/DailySalesPage.tsx:200-201`）。取込みの確認と完了の画面にも出る（`src/features/daily-report-import/DailyReportImportPage.tsx:193-194`、`:331-332`） | — |
 | Z001 の全行（総売・純売を含む、ラベル・個数/件数・金額・並び） | `daily_report_summary_lines`（`src-tauri/src/db/schema_v4.rs:22`、INSERT は `src-tauri/src/biz/daily_report_import_service/commit.rs:130`）。総売の第 3 列は `quantity`、それ以外は `count`（`src-tauri/src/io/daily_report_parser.rs:268-272`）。総売・純売以外の `line_key` は並び順から作る `summary_N`（同 `:494-502`、`:515-517`） | 本番の読み出し経路が無い。`FROM daily_report_summary_lines` を含む SELECT は test だけ（下の実測）。BIZ の DTO にも生成 bindings にも Z001 の行の型が無い | **総売・純売以外の全行と、総売の個数・純売の件数** |
-| Z002 の全行（ラベル・件数・金額） | `daily_report_payment_lines` | 上と同じ aggregate が `payment_key` で合算（`sales_repo.rs:1046-1099`）→ 日次売上の「支払集計」表（`DailySalesPage.tsx:205-214`）。取込みの確認画面にも出る（`DailyReportImportPage.tsx:221`） | 原則は全行が見える。ただし1 取込みの中でも `code=01` / `現金` や `code=03` / `クレジット` に当たる行が 2 行以上あると同じ `payment_key` になり、日次売上では 1 行に合算される（`daily_report_parser.rs:504-513`、`sales_repo.rs:1070-1082`。実ラベルでの発生は未確認）。また合算の鍵は Z002 の行の並びから作る `payment_N` を含み（同）、同日 2 回の取込みで行の集合や並びが違えば別の項目が合算される（実物の同日 2 回精算は未確認、[Contract Probe](#contract-probe) P2） |
+| Z002 の全行（ラベル・件数・金額） | `daily_report_payment_lines` | 上と同じ aggregate が `payment_key` で合算（`sales_repo.rs:1046-1099`）→ 日次売上の「支払集計」表（`DailySalesPage.tsx:205-214`）。取込みの確認画面にも出る（`DailyReportImportPage.tsx:221`） | 支払集計に出る（本 lane は変えない）。ただし1 取込みの中でも `code=01` / `現金` や `code=03` / `クレジット` に当たる行が 2 行以上あると同じ `payment_key` になり、日次売上では 1 行に合算される（`daily_report_parser.rs:504-513`、`sales_repo.rs:1070-1082`。実ラベルでの発生は未確認）。また合算の鍵は Z002 の行の並びから作る `payment_N` を含み（同）、同日 2 回の取込みで行の集合や並びが違えば別の項目が合算される（実物の同日 2 回精算は未確認、[Contract Probe](#contract-probe) P2）。既存の潜在バグとして backlog の独立した項目「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」へ（owner 決定 2026-09-27） |
 | Z005 の全行（部門名・個数・金額） | `daily_report_department_lines`（`count` は常に NULL、`daily_report_parser.rs:467-474`） | aggregate が部門で合算（`sales_repo.rs:1101-1197`）→ 日次売上の「部門別集計」表（`DailySalesPage.tsx:215-225`）。月次売上の公式部門集計（`sales_repo.rs:1216`） | 全行が見える |
 | 取込みごとの識別（取込み日時・ファイル名） | 親 `imported_at` / `source_files_json`。精算回数・時刻などのプリアンブルは保存しない | 日次売上は `N回の取込みを合算` だけ（`DailySalesPage.tsx:182-184`）。一覧の command `list_daily_report_imports` は登録済み（`src-tauri/src/lib.rs:325`）だが UI からの呼び出しは無い（下の実測） | 同日の各取込みの日時・ファイル名（本 lane は Z001 の見出しに取込み日時だけを使う。一覧と後日の取消の導線は Non-scope） |
 
@@ -127,13 +130,13 @@ src/lib/bindings.ts:180: （生成物の定義だけ）
 - 既定案（推奨）: **取込みごとに並べ、合算しない**。取込みが 2 回以上の日だけ、Z001 の表を取込みの古い順に並べ、各表の見出しに「1 回目の取込み（取込み日時 2026-03-21 18:05）」の形で取込み日時（`imported_at`、`YYYY-MM-DD HH:mm`）を添える。1 回の日は見出しを付けず表 1 つ。どの取込みも落とさない（D-071 の「同日の全 active import を読む」は守る）。
 - 理由: Z001 の行が精算ごとの差分（足してよい値）か累計・回数かが未確認（P2）で、総売・純売以外の行の鍵は並び順から作る `summary_N`（`daily_report_parser.rs:494-502`）のため、合算すると別の意味の行を足すおそれがある。取込みごとに並べれば、行の性質によらず正しい。
 - 別案: 1 つの表に合算する（支払集計・部門別集計と同じ見せ方）。P2 で Z001 の全行が足してよい値と確かめられた場合に限り選べる。owner は既定案 (a) を採った（2026-09-27）ため、この案は D-096 の見直す条件に置く。
-- 取込みごとに並べる場合、総売上 / 純売上の metric・支払集計・部門別集計は今までどおり合算のまま（UI-09a-D15 を変えない）。同じ section の中で「合算」と「取込みごと」が混ざるため、`N回の取込みを合算` の文を「総売上・純売上・支払集計・部門別集計は N 回の取込みを合算しています。日計（Z001）は取込みごとに表示します。」の類へ直す（文言の確定は runtime lane の L3）。
+- 取込みごとに並べる場合、総売上 / 純売上の metric・支払集計・部門別集計は今までどおり合算のまま（UI-09a-D15 を変えない）。同じ section の中で「合算」と「取込みごと」が混ざるため、`N回の取込みを合算` の文を `総売上・純売上・支払集計・部門別集計は{N}回の取込みを合算しています。日計（Z001）は取込みごとに表示します。` へ直す（文字列は UI-09a-D16 で完全一致として確定）。
 
 ### 契約の既定案（案 A と「取込みごとに並べる」を採る場合。Writer が正本へ書く）
 
 - SPEC-DRZ-D1（画面、56 の UI-09a-D16 として正本化）: 「レジ日報（公式）」section の metric の下に「日計（Z001）」の表を置く。列は 名称 / 個数/件数 / 金額（見出しの「個数/件数」はレジの帳票の見出しに合わせる。単位の文字は付けない）。行は保存された `label` をそのまま、`sort_order` の順に全行（0 の行を含む）。値が NULL の欄は「—」（その行にその値が無いという意味。合算で欠けた「未取得」とは別）。金額は既存の `¥` 表記、数は `toLocaleString("ja-JP")`。
 - SPEC-DRZ-D2（複数取込み）: 上の「取込みごとに並べる」。
-- SPEC-DRZ-D3（既存表示の不変）: 総売上 / 純売上の metric、支払集計・部門別集計の合算、未取込みの note、部門未対応の warning、商品別明細との分離（UI-09a-D12）、UI-09a-D15 の合算表示は変えない。変えるのは既存 2 表の見出しに出どころ（Z002 / Z005）を添えることと、D2 の文だけ。Z002 の表の見出しの語は P1 で決める予定だったが、行の名前ごとの照合は未実施（生の CSV を開かない決まり）のため、既定を「支払集計」のままとし、語が行の中身に合うかは runtime lane の L3 で owner が確かめる（UI-09a-D16）。
+- SPEC-DRZ-D3（既存表示の不変）: 総売上 / 純売上の metric、支払集計・部門別集計の合算、未取込みの note、部門未対応の warning、商品別明細との分離（UI-09a-D12）、UI-09a-D15 の合算表示は変えない。変えるのは既存 2 表の見出しに出どころ（Z002 / Z005）を添えることと、D2 の文だけ。Z002 の表の見出しの語は P1 で決める予定だったが、行の名前ごとの照合は未実施（生の CSV を開かない決まり）のため、語は「支払集計」のまま変えず、見出しは `支払集計（Z002）` で確定した（UI-09a-D16。Goal を Z001 に絞った owner 決定 2026-09-27 により、Z002 の行の中身に合わせた言い換えは本 lane で扱わない）。
 - SPEC-DRZ-D4（BIZ-05 の返り値、34 に正本化）: `OfficialDailyReportSummary` に field `summary_imports` を足す。型は下のとおり。`line_key` は返さない（並び順から作る鍵は利用者に意味を持たない）。`summary_imports` の件数は `source_import_count` と等しい（completed の取込みは総売か純売の行を必ず持つ、`parse.rs:75-79`）。
 
 ```rust
@@ -171,6 +174,8 @@ owner の回答（2026-09-27、Coordinator が中継、介入 2 回目）:
 - Q3 = **(a)**（見た目は後続 runtime lane の Draft で実機の before / after を並べて見る。mockup は作らない）。
 - 画面の変更の時期: owner は「画面の変更は店舗確認の後」を本 lane には掛けない（2026-09-27 確認）。本 lane は設計の文書だけ。
 
+owner の決定（2026-09-27、Plan Review round 2 の裁定 r2、介入 3 回目）: 本 lane の Goal は「取り込んだ Z001 の全行を日次売上で見られる」に絞る。Z002 / Z005 は既存の表示のまま（見出しに出どころを添えるだけ）。既存の Z002 の合算（`code=01` / `現金`、`code=03` / `クレジット` が同じ `payment_key` になり 1 行に合算されうる）は既存の潜在バグとして backlog に独立した項目で起票し、Z002 の行の構成を確かめてから直す。
+
 ## Ordinary Operation
 
 この文書を完了できること（本 lane）と、店主が画面で日報の全項目を見られること（通常運用の目的）は別である。後者は runtime lane の実装と L3 まで達成しない。紙（Excel + 印刷 + バインダー）をやめられるかは、さらに別の受入判定（導入後の実 1 日）で決まる。下表は案 A と Q2 (a) を採った場合の、runtime lane の完了後の店主の普通の一日である。
@@ -178,7 +183,7 @@ owner の回答（2026-09-27、Coordinator が中継、介入 2 回目）:
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
 | 閉店後、レジを精算し SD から CV17 へ取り込んだ。アプリはホーム | 「売上データ取込み」で Z001 / Z002 / Z005 の 3 つを選び、確認して取り込む | 完了画面に総売上 / 純売上が出る（既存のまま） | 完了画面の「日次売上を見る」を押す | なし（既存の導線） |
-| 日次売上がその日の日付で開く | 「レジ日報（公式）」の section を見る | 総売上 / 純売上の下に「日計（Z001）」の表があり、Excel に貼っていた Z001 の項目がレジの帳票と同じ名前・同じ並びで、個数/件数と金額つきで全部見える。その下に支払集計（Z002）・部門別集計（Z005）の全行 | Z001 の全行が表にあり、値の無い欄が「—」で、0 の行も出ている | Z001 の行数と各行の埋まる欄（P1）。行数が多いと表が長い。Z002 の実ラベルで `code=01` / `現金` / `code=03` / `クレジット` に当たる行が 1 取込みに 2 行以上あると、支払集計でその行が 1 行に合算される（未確認、backlog） |
+| 日次売上がその日の日付で開く | 「レジ日報（公式）」の section を見る | 総売上 / 純売上の下に「日計（Z001）」の表があり、Excel に貼っていた Z001 の項目がレジの帳票と同じ名前・同じ並びで、個数/件数と金額つきで全部見える。その下に既存の支払集計（Z002）・部門別集計（Z005）が見出しに出どころつきで今までどおり出る | Z001 の全行が表にあり、値の無い欄が「—」で、0 の行も出ている | Z001 の行数と各行の埋まる欄（P1）。行数が多いと表が長い。Z002 の既存の合算（`payment_key` の重複）は本 lane の Goal の外で、backlog の独立した項目 |
 | 翌日以降、前の日の日報を見返したい | 日次売上で「前日」ボタンか日付入力で過去日を開く | その日の日計（Z001）・支払集計・部門別集計が出る。取り込んでいない日は既存の「この日付のレジ日報は未取込みです。」 | 取り込んだ日と取り込んでいない日を見分けられる | なし |
 | 同じ日に精算を 2 回して、2 回とも取り込んだ | 日次売上でその日を開く | 総売上 / 純売上・支払集計・部門別集計は 2 回分の合算。日計（Z001）は「1 回目の取込み（取込み日時 …）」「2 回目の取込み（取込み日時 …）」の 2 つの表が古い順に並ぶ。section の文で「合算している表」と「取込みごとの表」の違いが分かる | 2 つの表のどちらがどの取込みか、取込み日時で分かる | Z001 の行が足せる値か（P2）。取込み日時は精算の時刻ではない（精算時刻は保存していない） |
 | 取り込んだ直後に、間違ったファイルだったと気づいた | 取込みの完了画面で「取消」 | 取り消した取込みの日計は日次売上から消え、残った取込みだけが出る（既存の取消・再取得の挙動に Z001 が乗る） | 日次売上を開き直すと残った取込みだけ | 後日（完了画面を離れた後）の取消の導線は無い（Non-scope、backlog） |
@@ -208,7 +213,7 @@ owner の回答（2026-09-27、Coordinator が中継、介入 2 回目）:
 - 日報取込みの履歴一覧と、完了画面を離れた後の取消の導線（`list_daily_report_imports` は登録済みで UI 未使用。backlog「日報取込み標準手順の残設計」へ寄せる）。
 - 日次 CSV 出力への Z001 の追加、run 3 のほかの項目（前日比の符号色、CSV 出力・印刷のボタンの位置）。
 - layout A のプリアンブル（精算回数・日付・時刻）と Z001 の「レコード」列の表示（どちらも保存していない。backlog へ）。そのため日計の「N回目の取込み」は取込みの順で、精算の順ではない（UI-09a-D16）。
-- 既存の支払集計（Z002）の `payment_key` の重複・並び順由来の鍵による合算（本 lane は直さず、backlog へ記録）。
+- 既存の支払集計（Z002）の `payment_key` の重複・並び順由来の鍵による合算。既存の潜在バグで、owner 決定 2026-09-27 により backlog の独立した項目「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」で、Z002 の行の構成を確かめてから直す。
 
 ## Acceptance Criteria
 
@@ -226,6 +231,8 @@ owner の回答（2026-09-27、Coordinator が中継、介入 2 回目）:
 - AC10 traceability: `git diff --quiet e7c22f8f -- docs/function-design/90-traceability.md` が exit 0。REQ の参照を増減した場合は `cargo run --bin generate_traceability` で再生成し、その差分を同じ commit に含める（下の Registration / Generation Obligations）。
 - AC11 IO と BIZ の型の層（Plan Review round 1 の裁定 r1 で追加）: `rg -c 'Option<OfficialDailyReportSummary>, DbError' docs/function-design/24-io-csv-import-repo.md` と `rg -c 'get_completed_daily_report_aggregate\(conn, date\) → Option<OfficialDailyReportSummary>' docs/function-design/34-biz-sales-service.md` がどちらも出力なし・exit=1（baseline: `e7c22f8f` でどちらも `1`、`git show e7c22f8f:<path> | rg -c '<同じ pattern>'` で実測）。IO の返り値は `OfficialDailyReportRow`（review で確認）。
 - AC12 Rust の wire 契約 test の申し送り（同）: `rg -c 'import_internal_contract_test' docs/plans/test-matrices/2026-09-27-daily-report-z-display.md` が 1 以上（baseline: `e38844cd` の Matrix で出力なし、exit=1）。
+- AC13 表示の文字列の確定（Plan Review round 2 の裁定 r2 で追加）: `rg -c '総売上・純売上・支払集計・部門別集計は\{N\}回の取込みを合算しています。日計（Z001）は取込みごとに表示します。' docs/function-design/56-ui-daily-sales.md` が 1 以上（baseline: `b67b1f48` で出力なし、exit=1）、かつ `rg -c '文言の確定は|の類を出す|言い換えは runtime lane' docs/function-design/56-ui-daily-sales.md` が出力なし・exit=1（baseline: `b67b1f48` で `2`）。どちらも `git show b67b1f48:<path> | rg -c '<同じ pattern>'` で実測。
+- AC14 日次 CSV の不変の test 設計（同）: `rg -c 'R16' docs/plans/test-matrices/2026-09-27-daily-report-z-display.md` が 1 以上（baseline: `b67b1f48` で出力なし、exit=1）。
 
 ## Design Sources
 
@@ -297,7 +304,7 @@ Minimum design checks for business-app work:
 - Backend function design: 既存の `get_completed_daily_report_aggregate` と `map_official_daily_report` を広げる（SPEC-DRZ-D4 / D5）。
 - Command / DTO / data contract: `get_daily_sales` の返り値に field が増える（後方互換の追加。field を消さない）。
 - Persistence / transaction / audit impact: なし（読み出しだけ）。
-- Operator workflow / Japanese UI wording: 見出し「日計（Z001）」「支払集計（Z002）」「部門別集計（Z005）」、複数取込みの見出し「N 回目の取込み（取込み日時 …）」、合算の文の直し。文言の確定は runtime lane の L3。
+- Operator workflow / Japanese UI wording: 見出し・文・取込みごとの見出し・行の無い取込みの文は UI-09a-D16 の文字列の表で完全一致として確定した。runtime lane の L3 はその文字列で店主が読み違えないかの確認に限る。
 - Error, empty, retry, and recovery behavior: 未取込みの日は既存の note のまま（Z001 の表も出さない）。取得失敗は既存の上部 Alert と再試行のまま。
 - Testability and traceability IDs: REQ-501 / REQ-401、UI-09a-D16、SPEC-DRZ-D1〜D7。
 
@@ -305,8 +312,8 @@ Minimum design checks for business-app work:
 
 本 lane は実 Z001 / Z002 の行の性質（外部のレジの帳票仕様）に依る。plan-draft の前に Coordinator が repo 外の匿名化メモ（`inventory-field-check/summaries/2026-07-06-z00x-shape-analysis.md`）と帳票仕様の PDF（`approved-readable/ECRCV17.pdf`、`SRS4000_JA3.pdf`）を読み、下の形で記録する。実値・実ラベル・実店舗の値は書かない。
 
-- P1 実 Z001（layout A / B）と実 Z002 の行構成: 行数の範囲、各行で「個数/件数」「金額」のどちらが埋まるか、ラベルがレジの既定か店の設定か、Z002 に支払以外の取引キーの行があるか → 結果（2026-09-27、Coordinator 実施）: repo 外の匿名化要約（`inventory-field-check/summaries/`、2026-07 の 2 回の採取）で、Z001 はヘッダが 8 行目・4 列（レコード / キャラクター / 個数・件数 / 金額）、データ 28〜29 行。Z002 も同じ 4 列形状でデータ約 50 行。行の名前ごとの照合は、生の CSV を開かない決まり（field-check の「Z001 / Z002 / Z005 は直接閲覧禁止」）のため未実施。Z001 の行の種類は取扱説明書（`SRS4000_JA3.pdf` の日計明細の精算の印字例 p.33）から、部門・総売・純売・在高・税の対象額と税額・非課税・高額券の枚数・丸め・取引中止・戻モード・電卓・領収書の類と推定（CV17 の Z001 が印字と同じ行の集合かは未確認）。Z002 に支払以外の行があるかは未確認のため、Z002 の見出しは既定「支払集計」とし runtime lane の L3 で確かめる（SPEC-DRZ-D3）。29 §29.4.1 に匿名化した形で記録した（S6）。
-- P2 Z001 / Z002 の各行が精算ごとの差分（同日の複数精算で足してよい値）か、累計・回数・比率か → 結果（2026-09-27、Coordinator 実施）: 取扱説明書（`SRS4000_JA3.pdf` p.57 の表）で日計明細の精算は取引データをクリアする（点検はクリアしない）。したがって Z001 の各行は前回の精算から今回までの件数・金額で、同日の 2 回の精算は足すとその日の値になる、と帳票仕様の根拠では言える。構成比は標準で印字されず、CSV にも個数・金額の列だけ。実物の同日 2 回精算の Z001 は未確認（`未実測`）。Q2 は (a)（合算しない）のため、この未確認は本 lane の設計を止めず、runtime lane の前提にもしない。Z002 の既存の合算は帳票仕様では足せる値だが、合算の鍵 `payment_N` が並び順由来のため、実物の同日 2 回精算で行の集合と並びを確かめる項目を backlog へ起票した（S7、本 lane の Scope は広げない）。
+- P1 実 Z001（layout A / B）と実 Z002 の行構成: 行数の範囲、各行で「個数/件数」「金額」のどちらが埋まるか、ラベルがレジの既定か店の設定か、Z002 に支払以外の取引キーの行があるか → 結果（2026-09-27、Coordinator 実施）: repo 外の匿名化要約（`inventory-field-check/summaries/`、2026-07 の 2 回の採取）で、Z001 はヘッダが 8 行目・4 列（レコード / キャラクター / 個数・件数 / 金額）、データ 28〜29 行。Z002 も同じ 4 列形状でデータ約 50 行。行の名前ごとの照合は、生の CSV を開かない決まり（field-check の「Z001 / Z002 / Z005 は直接閲覧禁止」）のため未実施。Z001 の行の種類は取扱説明書（`SRS4000_JA3.pdf` の日計明細の精算の印字例 p.33）から、部門・総売・純売・在高・税の対象額と税額・非課税・高額券の枚数・丸め・取引中止・戻モード・電卓・領収書の類と推定（CV17 の Z001 が印字と同じ行の集合かは未確認）。Z002 に支払以外の行があるかは未確認。Z002 の見出しは語を変えず `支払集計（Z002）` で確定した（SPEC-DRZ-D3、owner 決定 2026-09-27 で Goal を Z001 に絞った）。29 §29.4.1 に匿名化した形で記録した（S6）。
+- P2 Z001 / Z002 の各行が精算ごとの差分（同日の複数精算で足してよい値）か、累計・回数・比率か → 結果（2026-09-27、Coordinator 実施）: 取扱説明書（`SRS4000_JA3.pdf` p.57 の表）で日計明細の精算は取引データをクリアする（点検はクリアしない）。したがって Z001 の各行は前回の精算から今回までの件数・金額で、同日の 2 回の精算は足すとその日の値になる、と帳票仕様の根拠では言える。構成比は標準で印字されず、CSV にも個数・金額の列だけ。実物の同日 2 回精算の Z001 は未確認（`未実測`）。Q2 は (a)（合算しない）のため、この未確認は本 lane の設計を止めず、runtime lane の前提にもしない。Z002 の既存の合算は帳票仕様では足せる値だが、合算の鍵 `payment_N` が並び順由来のため、実物の同日 2 回精算で行の集合と並びを確かめることを、backlog の独立した項目「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」に含めた（S7、本 lane の Scope は広げない）。
 
 ## Contract Coverage Ledger
 
@@ -314,7 +321,7 @@ Minimum design checks for business-app work:
 |---|---|---|---|
 | SPEC-DRZ-D1 / UI-09a-D16（置き場所・列・見出し・行の順・0 の行・「—」） | runtime lane: `DailySalesPage.tsx` | runtime lane: `DailySalesPage.test.tsx`（text / role で確かめる、Matrix R9 / R10 / R13） | L3: 表の長さと読みやすさ（before / after、R15） |
 | SPEC-DRZ-D2（複数取込みは取込みごと、古い順、取込み日時の見出し） | runtime lane: `DailySalesPage.tsx`、`sales_repo.rs` | runtime lane: 2 取込みの日の repo / BIZ / UI の test（R1 / R2 / R7 / R11 / R12） | L3: 「合算」と「取込みごと」の違いが伝わるか（R15） |
-| SPEC-DRZ-D3（既存表示の不変、見出しの出どころ、合算の文） | runtime lane: `DailySalesPage.tsx` | runtime lane: 既存 `DailySalesPage.test.tsx` の 3 つの完全一致の assert（`2回の取込みを合算`・`支払集計`・`部門別集計`）を D16 の新しい文・見出しへ更新（意図した変更。金額・NULL・series 分離の assert は保つ）+ 見出しの test（R14） | L3: 文言と Z002 の見出しの語（R15） |
+| SPEC-DRZ-D3（既存表示の不変、見出しの出どころ、合算の文） | runtime lane: `DailySalesPage.tsx` | runtime lane: 既存 `DailySalesPage.test.tsx` の 3 つの完全一致の assert（`2回の取込みを合算`・`支払集計`・`部門別集計`）を UI-09a-D16 の文字列へ更新（意図した変更。金額・NULL・series 分離の assert は保つ）+ 見出しの test（R14）、日次 CSV の不変（R16） | L3: UI-09a-D16 の文字列で読み違えないか（R15） |
 | SPEC-DRZ-D4（`summary_imports` と 2 つの型、件数 = `source_import_count`） | runtime lane: `sales_service.rs` | runtime lane: `sales_service.rs` の REQ-501 test（R7） | non-scope（型の契約） |
 | SPEC-DRZ-D5（1 query、並び、`rolled_back` を読まない、合算しない） | runtime lane: `sales_repo.rs` | runtime lane: `sales_repo.rs` の test（R1〜R6） | non-scope |
 | SPEC-DRZ-D6（command 名・引数不変、bindings 再生成） | runtime lane: `src/lib/bindings.ts`（生成） | runtime lane: L1 の bindings drift 検査と `import_internal_contract_test.rs:222-232` の field 列の更新（R8） | non-scope |
@@ -323,11 +330,11 @@ Minimum design checks for business-app work:
 
 ## Test Design Matrix
 
-[Test Design Matrix](test-matrices/2026-09-27-daily-report-z-display.md)（R3、2026-09-27）。T1〜T13 は本 lane の検査（AC1〜AC12 と、正本の答えが 2 つにならないかを読む T11）。R1〜R15 は後続 runtime lane が使う test の設計で、Contract Coverage Ledger の各行を repo / BIZ / UI / L3 に展開する（表の出る条件、未取込み、行の無い取込み、複数取込み、取消済みの除外、並び順、「—」の表示、既存 2 表の見出し）。
+[Test Design Matrix](test-matrices/2026-09-27-daily-report-z-display.md)（R3、2026-09-27）。T1〜T15 は本 lane の検査（AC1〜AC14 と、正本の答えが 2 つにならないかを読む T11）。R1〜R16 は後続 runtime lane が使う test の設計で、Contract Coverage Ledger の各行を repo / BIZ / UI / L3 に展開する（表の出る条件、未取込み、行の無い取込み、複数取込み、取消済みの除外、並び順、「—」の表示、既存 2 表の見出し、日次 CSV の不変）。
 
 ## Test Plan
 
-- targeted tests: 本 lane は文書だけ。AC1〜AC4 / AC8 / AC11 / AC12 の `rg`、AC5 の diff の読み取り。
+- targeted tests: 本 lane は文書だけ。AC1〜AC4 / AC8 / AC11〜AC14 の `rg`、AC5 の diff の読み取り。
 - negative tests: AC3（古い義務が残らない）、AC6（runtime を触らない）、AC10（traceability の差分なし）。
 - compatibility checks: 既存の UI-09a-D12 / D13 / D15 と D-025 / D-071 と矛盾しない（review）。
 - data safety checks: P1 / P2 の記録に実値・実ラベルが無い（AC7）。
@@ -347,7 +354,7 @@ Minimum design checks for business-app work:
 ## Review Focus
 
 - 冒頭で [Ordinary Operation](#ordinary-operation) が目的を達成できるかを `成立 / 具体的な反例あり / 外部前提が未確認` で答える。
-- [現状の事実](#現状の事実2026-09-27e7c22f8f-の現物) の file:line が現物と合うか。とくに「Z001 の総売・純売以外の行を読む本番経路が無い」「Z002 と Z005 は全行が見える（Z002 は `payment_key` の重複で合算されうる例外つき）」の 2 点。
+- [現状の事実](#現状の事実2026-09-27e7c22f8f-の現物) の file:line が現物と合うか。とくに「Z001 の総売・純売以外の行を読む本番経路が無い」「Z002 / Z005 は既存の表示のまま（Z002 の既存の合算は backlog の独立した項目）」の 2 点。
 - 画面の 3 案の比較と推奨の根拠に、owner の好み・既存の決まり（D-091、DSR-16、04 原則 2 / 3 / 5）に照らした見落としが無いか。
 - SPEC-DRZ-D2 / D-096（取込みごとに並べる）が D-071・UI-09a-D15 と両立するか。合算の文の直しで利用者が混乱しないか。
 - Non-scope に落とした項目（印刷、受入、月次、取込み履歴と後日の取消、取込み画面）が Goal Invariant の最小完了条件を削っていないか。
@@ -358,8 +365,9 @@ Minimum design checks for business-app work:
 - 題: 日次売上の「レジ日報（公式）」に日計（Z001）の表を出す（runtime、R3、Human Gate `ready,merge,manual`）。本 lane の merge 後に起票する。
 - Scope の起点: `sales_repo.rs` の aggregate と `OfficialDailyReportRow`、`sales_service.rs` の型と map、bindings の再生成、`DailySalesPage.tsx` の公式 section、各層の test。Contract Coverage Ledger の runtime 行をすべて持つ。
 - DailySalesReport を mock している frontend の test の factory（型に field が増えるため）を洗い出して Scope に入れる。既存 `DailySalesPage.test.tsx` の `test_daily_sales_page_req501_shows_source_import_count_without_cross_series_sum` の 3 つの完全一致の assert（`2回の取込みを合算`・`支払集計`・`部門別集計`）は D16 の新しい文・見出しへ更新する（意図した変更。金額・NULL・series 分離の assert は保つ）。
+- 日次 CSV 出力（`export_sales_csv` が `get_daily_sales` を使う）は、公式日報と Z001 の行を seed した日でも列・行が変わらないことを確かめる（Matrix R16）。
 - `src-tauri/tests/import_internal_contract_test.rs` の `test_wire_contract_req401_i_w1_i_w2_i_w3_i_w5_generated_binding_is_atomic`（`:222-232`）は `OfficialDailyReportSummary` の field 列を完全一致で固定する。既存の禁止事項（単一 parent ID を返さない、旧取込み契約の語を bindings に残さない assert）を保ったまま、`summary_imports` を足した 8 field の契約へ更新する。
-- L3: 実機（Windows native、DPI 125% / 150%）で before / after を並べ、表の長さ・「—」と 0 の行の読み取り・複数取込みの見出しと合算の文、取込みの順と精算の順を読み違えないか（「N回目の取込み」は精算の回数ではない）、Z002 の見出しの語を owner が確かめる。fixture は実 encoding（CP932）の合成 Z001 / Z002 / Z005 を 1 回分と 2 回分用意し、Z001 は総売・純売以外の行を含める（`tests/fixtures/daily-report/` の既存 fixture は Z001 が 2 行だけ）。
+- L3: 実機（Windows native、DPI 125% / 150%）で before / after を並べ、表の長さ・「—」と 0 の行の読み取り・複数取込みの見出しと合算の文、取込みの順と精算の順を読み違えないか（「N回目の取込み」は精算の回数ではない）を、UI-09a-D16 の確定した文字列で owner が確かめる（文字列を変えるなら Gated Amendment）。fixture は実 encoding（CP932）の合成 Z001 / Z002 / Z005 を 1 回分と 2 回分用意し、Z001 は総売・純売以外の行を含める（`tests/fixtures/daily-report/` の既存 fixture は Z001 が 2 行だけ）。
 
 ## Spec Contract
 
