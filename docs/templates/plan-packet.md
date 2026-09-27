@@ -31,7 +31,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 ## Consultation Relay
 
-§5.5を使わないchangeは両方`none`のままにする。使う場合はtarget branch / PRへorder commitを混ぜず、artifact pathと専用remote order branch refを宣言する。
+相談役への相談は[AGENT_OPERATING_MANUAL](../AGENT_OPERATING_MANUAL.md)の座組に従う。本節の2欄は`none`のままにする。
 
 - Review Order Artifact: <none|repo-relative path>
 - Review Order Ref: <none|refs/heads/...>
@@ -122,7 +122,7 @@ Use `docs/DEV_WORKFLOW.md` Design artifact selection to decide what must exist b
 | Tauri command（frontend から呼ぶ） | `lib.rs` の specta `collect_commands` 登録 / command 関数への `#[tauri::command]` + `#[specta::specta]` 属性の対 / `cargo run --bin generate_bindings` での `bindings.ts` 再生成 |
 | function-design doc 新設 | `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` へ entry 追加 / checker が要求する必須セクション（シグネチャ / 処理ステップ / エラーハンドリング）の充足 |
 | source / workflow doc 新設・改名・削除 | 親文書の目次・索引を更新し、リンク先と登録位置を確認する |
-| AGENT_OPERATING_MANUAL §5.5 consultation relay 使用 | `Consultation Relay`欄のartifact path /専用remote order branch refを設定し、target branch / PRとorder branchを分離する |
+| 相談役（AGENT_OPERATING_MANUAL の座組）への相談 | 登録義務なし。`Consultation Relay`の2欄は`none`のままにする |
 | REQ / coverage の追加・変更・削除（設計書・test 内の既存 REQ 参照の増減を含む） | `cargo run --bin generate_traceability` で `docs/function-design/90-traceability.md` 再生成。生成先を Scope と完了条件へ含める（AUTO-GENERATED、手動編集は禁止のまま） |
 | route 新設・改名・削除 | `npm run generate:routes`（routeTree 生成） |
 | operator 画面新設・改名・削除 | `src/config/navigation.ts` の entry 有効化（`to` + `status: "active"`）+ `navigation.test.ts` に REQ 番号入り到達テスト（ui-11c パターン）。「operator が画面に到達できる」到達導線契約を Contract Coverage Ledger の標準行として必ず立てる — route 直 render テストと doc 整合レビューは到達性を検証しない（UI-13 Amendment 4 の実例） |

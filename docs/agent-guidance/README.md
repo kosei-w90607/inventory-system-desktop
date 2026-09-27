@@ -5,7 +5,7 @@
 - [Shared Contract](shared.md): 共通契約との接続と指示競合の扱い。
 - profile は用途別: [frontier](profiles/frontier.md)、[balanced](profiles/balanced.md)、[high-throughput](profiles/high-throughput.md)。未指定は frontier。model や承認権限の指定ではない。
 - [モデル差分メモ](model-notes.md): 明示された実モデルに合う補助だけを使う。未知モデルへ別世代の性質を転記しない。
-- [マージ検証とhelper](merge-evidence.md): SHA手作業、実装後の状態保存、GitHub保護とdocs経路。適用条件が成立してからgithub modeを使い、bootstrapはlegacy規定を維持。
+- [マージ検証とhelper](merge-evidence.md): SHA手作業、実装後の状態保存、GitHub保護とdocs経路。
 
 ## Model updates
 
