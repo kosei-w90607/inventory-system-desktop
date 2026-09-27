@@ -33,7 +33,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 | 種別 | 上限 | 消費（2026-09-28 時点） | 残りの見込み |
 |---|---|---|---|
-| 介入 | 6 | 3: 1 回目 = 起票承認 2026-09-27「B 色と強調 + E 小口」、2 回目 = 内訳は packet に未記録（Coordinator が round 3 の発注前に補う）、3 回目 = 予算の改定の承認 2026-09-27 | 3: manual の PASS / FAIL、Ready、merge |
+| 介入 | 6 | 3: 1 回目 = 起票承認 2026-09-27「B 色と強調 + E 小口」、2 回目 = Non-scope へ移した 2 件（操作ログ `detail_json` の非価格 field・新しすぎる backup の文言）を backlog のまま残す owner 決定 2026-09-27、3 回目 = 予算の改定の承認 2026-09-27 | 3: manual の PASS / FAIL、Ready、merge |
 | relay | 5 | 2: Plan Review round 1・round 2 の Codex | 3: Plan Review round 3 の Codex、Final Review の Codex、closure の予備 1 |
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
