@@ -16,8 +16,8 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree `.claude/worktrees/daily-report-z-display`、branch `agent/daily-report-z-display`）
-- Plan Reviewer: Opus 5.5（fresh subagent、Writer と別 context）+ Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定）
-- Final Reviewer: Fable 5.1（fresh subagent、design lane の Claude 側）+ Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定）、互いに独立
+- Plan Reviewer: Opus 5.5（fresh subagent、Writer と別 context）+ Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定（GPT-6 Sol は owner 決定 2026-09-26 により DevDay まで GPT-5.6 Sol で代える。座組表〈AGENT_OPERATING_MANUAL `## 座組`〉の GPT-6 Sol に当たる））
+- Final Reviewer: Fable 5.1（fresh subagent、design lane の Claude 側）+ Codex（GPT-5.6 Sol か GPT-6 Astra、owner が起動時に指定（GPT-6 Sol は owner 決定 2026-09-26 により DevDay まで GPT-5.6 Sol で代える。座組表〈AGENT_OPERATING_MANUAL `## 座組`〉の GPT-6 Sol に当たる））、互いに独立
 - Final Review Minimum: 2
 - Human Gate: ready,merge
 
@@ -39,16 +39,16 @@ Human Gate の根拠: 製品 runtime・画面は変わらない文書の lane �
 
 ## Owner Effort Budget
 
-- 介入回数上限: 7（owner 承認 2026-09-27、この change での介入 5 回目。既定 3 → 起票時 4 → 1 回目の改定 5〈介入 4 回目〉→ 2 回目の改定 7〈介入 5 回目〉）
+- 介入回数上限: 7（owner 承認 2026-09-27、この change での介入 5 回目。2026-09-28 の relay の改定の承認で消費 6、残りの Ready・merge で 8 になり 1 超えるため、8 への改定は Ready の承認と同じ 1 回で求める。既定 3 → 起票時 4 → 1 回目の改定 5〈介入 4 回目〉→ 2 回目の改定 7〈介入 5 回目〉）
 - 上限の理由: 既定 3 に対し、design-first の lane で owner にしか決められない画面の選択（Q1〜Q3）が 1 回要り、Plan Review round 2 の P1 を owner の Goal の決定で解消し、予算の改定の承認が 2 回要った。これに着手承認・Ready・merge を足して 7 になる。
 - 実働時間上限: 30分（既定。owner の作業は質問への回答、relay、Ready / merge の判断）
-- relay 往復上限: 5（owner 承認 2026-09-27、介入 5 回目。既定 2 → 1 回目の改定 4 → 2 回目の改定 5）
+- relay 往復上限: 6（owner 承認 2026-09-28、この change での介入 6 回目。既定 2 → 4 → 5 → 6。base 同期の closure〈Codex 114〉が packet の Codex の model の根拠の欠け〈P2〉を指摘し、是正後の closure を取り直すため）
 - relay の上限の理由: Plan Review が round 3（天井）まで進み、各 round で Codex の合否を取った（Codex の合否を外さない owner 方針 2026-09-25）。これに Final Review の Codex 1 と、Final Review の closure で Codex を取り直す場合の予備 1 を足して 5 になる。
 
 | 種類 | 消費（2026-09-27 時点） | 見込み | 計 / 上限 |
 |---|---|---|---|
-| 介入 | 5: 着手承認「Issue の範囲を避けて片っ端から並列で」、Q1〜Q3 の回答（1 回の問いでまとめて回答）、Goal を Z001 に絞る決定（裁定 r2）、予算の改定の承認 2 回（介入 5・relay 4 の承認、介入 7・relay 5 の承認） | Ready 1、merge 1 | 7 / 7 |
-| relay 往復 | 3: Plan Review の Codex round 1（GPT-6 Astra）・round 2（GPT-5.6 Sol）・round 3（GPT-6 Astra） | Final Review の Codex 1、closure の予備 1 | 5 / 5 |
+| 介入 | 5: 着手承認「Issue の範囲を避けて片っ端から並列で」、Q1〜Q3 の回答（1 回の問いでまとめて回答）、Goal を Z001 に絞る決定（裁定 r2）、予算の改定の承認 2 回（介入 5・relay 4 の承認、介入 7・relay 5 の承認）、relay 6 の承認（2026-09-28）で 6 | Ready 1（上限 8 への改定を同じ 1 回で）、merge 1 | 8 / 7（改定待ち） |
+| relay 往復 | 5: Plan Review の Codex round 1（GPT-6 Astra）・round 2（GPT-5.6 Sol）・round 3（GPT-6 Astra）、Final Review broad（112、GPT-6 Astra）、base 同期の closure（114、GPT-5.6 Sol） | 是正後の closure 1 | 6 / 6 |
 
 - 見込みを超える介入・relay が要ると分かった時点で、Goal Invariant の最小完了条件に戻り、Coordinator が owner に諮る（DEV_WORKFLOW `Owner Effort Budget` の hard stop）。
 - Plan Review round 天井: 3（既定 3）
