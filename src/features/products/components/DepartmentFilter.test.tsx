@@ -2,7 +2,7 @@
 //
 // B0 characterization test: products DepartmentFilter の現 DOM 固定。
 // B3 移行後: patterns/DepartmentFilter を使用。
-// D-B4: allLabel は「すべての部門」/ widthClass="w-[11rem]" / idPrefix="product-dept-filter" / disabled prop 有。
+// D-B4: allLabel は「すべての部門」/ idPrefix="product-dept-filter" / disabled prop 有。幅は部品の固定 w-[11rem]（02 ⑨）。
 // 設計: docs/function-design/50-ui-product-list.md
 
 import { render, screen } from "@testing-library/react";
@@ -20,7 +20,6 @@ const mockOptions: DepartmentOption[] = [
 /** products 呼び出し元と同じ props セット（DOM 不変の機械証明） */
 const productsProps = {
   allLabel: "すべての部門" as const,
-  widthClass: "w-[11rem]",
   idPrefix: "product-dept-filter",
 } as const;
 
@@ -39,7 +38,7 @@ describe("DepartmentFilter (products, UI-01a) B0 characterization (D-B4)", () =>
     expect(trigger).toBeInTheDocument();
   });
 
-  it("B0-products-DF2: SelectTrigger に w-[11rem] クラスが付いている（width 現状固定、daily/stock の w-[10rem] と異なる）", () => {
+  it("B0-products-DF2: SelectTrigger に w-[11rem] クラスが付いている（部門 select の幅は全画面同一、02 ⑨）", () => {
     render(
       <DepartmentFilter
         options={mockOptions}

@@ -85,7 +85,6 @@ export function DailySalesPage({ search, onSearchChange }: DailySalesPageProps) 
           options={derived.departmentOptions}
           selected={dept}
           onChange={handleDeptChange}
-          widthClass="w-[10rem]"
           idPrefix="dept-filter"
         />
       </div>

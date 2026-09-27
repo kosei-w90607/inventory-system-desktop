@@ -1,7 +1,7 @@
 // src/components/patterns/DepartmentFilter.test.tsx
 //
 // patterns/DepartmentFilter の unit test。
-// allLabel 既定 / 上書き、widthClass / idPrefix / disabled の反映、
+// allLabel 既定 / 上書き、固定幅 / idPrefix / disabled の反映、
 // 選択操作での onChange（__all__ → null 変換含む）を検証する。
 // 設計: docs/function-design/59-ui-shared-patterns.md §59.3
 
@@ -56,26 +56,12 @@ describe("DepartmentFilter (patterns) unit", () => {
     });
   });
 
-  describe("widthClass", () => {
-    it("DF-4: widthClass 省略時は SelectTrigger に w-[10rem] が付く", () => {
+  describe("width", () => {
+    // 02 ⑨: 幅は部品が w-[11rem] に固定し、呼び出し側は変えない（幅の prop は無く typecheck が止める）。
+    it("DF-4: SelectTrigger に固定幅 w-[11rem] が付く", () => {
       render(<DepartmentFilter options={mockOptions} selected={null} onChange={vi.fn()} />);
 
       const trigger = document.getElementById("dept-filter");
-      expect(trigger?.className).toContain("w-[10rem]");
-    });
-
-    it("DF-5: widthClass='w-[11rem]' を渡すと SelectTrigger に w-[11rem] が付く", () => {
-      render(
-        <DepartmentFilter
-          options={mockOptions}
-          selected={null}
-          onChange={vi.fn()}
-          widthClass="w-[11rem]"
-          idPrefix="product-dept-filter"
-        />,
-      );
-
-      const trigger = document.getElementById("product-dept-filter");
       expect(trigger?.className).toContain("w-[11rem]");
     });
   });

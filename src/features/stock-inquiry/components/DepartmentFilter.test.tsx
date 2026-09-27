@@ -2,7 +2,7 @@
 //
 // B0 characterization test: stock-inquiry DepartmentFilter の現 DOM 固定。
 // B3 移行後: patterns/DepartmentFilter を使用。
-// D-B4: allLabel は「すべての部門」/ widthClass="w-[10rem]" / idPrefix="stock-dept-filter"。
+// D-B4: allLabel は「すべての部門」/ idPrefix="stock-dept-filter"。幅は部品の固定 w-[11rem]（02 ⑨）。
 // 設計: docs/function-design/58-ui-stock-inquiry.md §58.7
 
 import { render, screen } from "@testing-library/react";
@@ -20,7 +20,6 @@ const mockOptions: DepartmentOption[] = [
 /** stock-inquiry 呼び出し元と同じ props セット（DOM 不変の機械証明） */
 const stockProps = {
   allLabel: "すべての部門" as const,
-  widthClass: "w-[10rem]",
   idPrefix: "stock-dept-filter",
 } as const;
 
@@ -34,13 +33,13 @@ describe("DepartmentFilter (stock-inquiry, UI-06a) B0 characterization (D-B4)", 
     expect(trigger).toBeInTheDocument();
   });
 
-  it("B0-stock-DF2: SelectTrigger に w-[10rem] クラスが付いている（width 現状固定、products の w-[11rem] と異なる）", () => {
+  it("B0-stock-DF2: SelectTrigger に w-[11rem] クラスが付いている（部門 select の幅は全画面同一、02 ⑨）", () => {
     render(
       <DepartmentFilter options={mockOptions} selected={null} onChange={vi.fn()} {...stockProps} />,
     );
 
     const trigger = document.getElementById("stock-dept-filter");
-    expect(trigger?.className).toContain("w-[10rem]");
+    expect(trigger?.className).toContain("w-[11rem]");
   });
 
   it("B0-stock-DF3: unselected 時、placeholder「すべての部門」が表示される", () => {
