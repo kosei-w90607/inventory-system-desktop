@@ -8,9 +8,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: dbd5dd5412070fdcb32d382fd31fe4971e9afb67
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（worktree `.claude/worktrees/design-color-emphasis`、branch `agent/design-color-emphasis`）
@@ -29,10 +29,11 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 - Plan Review round 2: 両 reviewer とも reject、plan-gate のまま是正（裁定 r2、2026-09-27、起草役、本 commit）。Plan Commit は pending のまま。裁定の B2-1〜B2-11 を反映し、予算は判断点を数え直して改定案を owner 承認待ちで書いた（中身は裁定書、Review Response には書かない）。
 - 予算の再承認（2026-09-27、Coordinator の記録）: owner が介入 24・relay 7・実働 75 分を承認（この change での介入 9 回目）。plan-gate のまま Plan Review round 3（上限）へ進む。
 - 上限の Plan Review round 3 の結果（2026-09-28、起草役、本 commit）: 両 reviewer とも reject、一括是正（裁定 r3）。round 4 は出さず、plan-gate のまま裁定の B3-1〜B3-11 を反映した。Plan Commit は pending のまま。介入の上限は 25 に改め owner 承認待ち（plan-approved の承認と同じ 1 回で求める）。
+- plan-gate → plan-approved（2026-09-28、Coordinator、本 commit）: Plan Review round 3（上限、対象 `b3844379`）は両 reviewer とも reject（P1 0）。round 天井に従い追加の round は回さず、裁定 r3 の一括是正（`dbd5dd54`）で全件を反映し、Coordinator が予算表・AC12 の baseline・L3 の DB の前提を現物で確かめた。owner 承認（2026-09-28「返事二つOKだよ」、この change での介入 11 回目、介入の上限 25）のもと plan-approved。Plan Commit = 本 commit の親（`dbd5dd54`）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 25（**owner 承認待ち**。承認済みの値は 24〈owner 承認 2026-09-27（再改定、この change での介入 9 回目）〉、その前は 19〈owner 承認 2026-09-27「介入19・75分・relay 6で承認」〉。裁定 r3 の B3-6 で、予算の再改定の承認と Plan Review round 3 の Codex の起動を消費済みにし、round 3 後の一括是正の plan-approved の承認 1 回を見込みに足した。合計 25 は承認済みの 24 を 1 超えるため、plan-approved の承認と同じ 1 回〈この change での介入 11 回目〉で求める。下の表）
+- 介入回数上限: 25（owner 承認 2026-09-28、この change での介入 11 回目。その前の値は 24〈owner 承認 2026-09-27（再改定、この change での介入 9 回目）〉、その前は 19〈owner 承認 2026-09-27「介入19・75分・relay 6で承認」〉。裁定 r3 の B3-6 で、予算の再改定の承認と Plan Review round 3 の Codex の起動を消費済みにし、round 3 後の一括是正の plan-approved の承認 1 回を見込みに足した。合計 25 は 24 を 1 超えるため、plan-approved の承認と同じ 1 回〈この change での介入 11 回目〉で承認を得た。下の表）
 - 実働時間上限: 75分（owner 承認 2026-09-27「介入19・75分・relay 6で承認」。既定は 30 分。L3 round 1 は build 4 本〈main / PR head / 試し / muted の M1〉を並べて 15 項目を見る。今回の数え直しで変えない）
 - relay 往復上限: 7（owner 承認 2026-09-27（再改定、この change での介入 9 回目）。以前の承認済みの値は 6〈同上〉。内訳 = Plan Review の Codex 3〈round 1・round 2・round 3 とも消費済み〉+ Final Review の Codex 1 + Final Review の指摘後の Codex closure 1〈予備〉+ manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉。2026-09-28 の数え直し〈裁定 r3 の B3-6〉で 消費 3 / 見込み 3 / 予備 1 = 7、承認済みの 7 の内）
 
@@ -50,7 +51,7 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 | Plan Review round 2 の Codex の起動 | 1 | 消費済み |
 | 予算の再改定の承認（裁定 r2 の B2-4、24・75 分・7） | 1 | 消費済み |
 | Plan Review round 3 の Codex の起動（天井） | 1 | 消費済み |
-| round 3 後の一括是正の plan-approved の承認（介入の上限 25 の承認を同じ 1 回で求める。裁定 r3 の B3-6） | 1 | 見込み |
+| round 3 後の一括是正の plan-approved の承認（介入の上限 25 の承認を同じ 1 回で求める。裁定 r3 の B3-6） | 1 | 消費済み |
 | L3 round 1 の試しの採否（D-CE7 / D-CE8 / D-CE12 / D-CE13 / D-CE16、日報の取込み済みの badge、Home の前日分の知らせ、最新と上書き件数） | 8 | 見込み |
 | L3 round 1 の試し以外の合否（AC-L3-1 / 7 / 8 / 11〜13 / 15） | 1 | 見込み |
 | Final Review の Codex の起動 | 1 | 見込み |
@@ -58,7 +59,7 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 | L3 round 2（採否を反映した最終版）の合否 | 1 | 見込み |
 | Ready | 1 | 見込み |
 | merge | 1 | 見込み |
-| 合計 | 25 | 消費 10 / 見込み 14 / 予備 1 |
+| 合計 | 25 | 消費 11 / 見込み 13 / 予備 1 |
 
 Plan Review round 2（Codex）の試算は 22 回（round 1 の表 19 に色の判断の分割 +3）。裁定 r2 の表はそれに Codex closure の予備 1 と、再改定の承認 1 を足した 24。裁定 r3 の表は round 3 後の一括是正の plan-approved の承認 1 を足した 25（round 3 は上限のため、以後の Plan Review の起動は無い）。
 - Plan Review round 天井: 3（既定 3）
