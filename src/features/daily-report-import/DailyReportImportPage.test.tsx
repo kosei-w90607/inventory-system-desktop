@@ -407,11 +407,12 @@ describe("DailyReportImportPage_req401", () => {
 });
 
 it.each([
+  // D-094（L3 round 1 で試しを採る）: 取込み済みは上部 Alert と同じ危険・失敗。同日追加確認は注意・確認のまま。
   [
     "AlreadyImported",
     "取込み済み",
-    "warning",
-    ["border-warning-border", "bg-warning-soft", "text-warning-strong"],
+    "destructive",
+    ["border-destructive-border", "bg-destructive-soft", "text-destructive-strong"],
   ],
   [
     "AdditionalImportConfirmationRequired",
@@ -442,6 +443,15 @@ it.each([
     for (const expected of classes)
       expect(badge?.className.split(/\s+/).filter((token) => token === expected)).toHaveLength(1);
     expect(badge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+    // 他の tone の地を持たない（取込み済みが注意・確認の地へ戻る、同日追加確認が危険・失敗へ寄る退行を拒む）。
+    for (const other of ["bg-warning-soft", "bg-destructive-soft", "bg-success-soft"])
+      if (!(classes as readonly string[]).includes(other)) expect(badge).not.toHaveClass(other);
+    if (status === "AlreadyImported") {
+      const alert = screen
+        .getByText("この日報は取込み済みです。二重取込みはできません。")
+        .closest('[data-slot="alert"]');
+      expect(alert).toHaveAttribute("data-variant", "destructive");
+    }
     if (status === "AdditionalImportConfirmationRequired") {
       const alert = screen.getByText("同じ日の取込みがあります").closest('[data-slot="alert"]');
       expect(alert).toHaveAttribute("data-variant", "warning");

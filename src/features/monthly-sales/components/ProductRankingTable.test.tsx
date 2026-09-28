@@ -97,15 +97,21 @@ describe("ProductRankingTable (REQ-502 sort 結線)", () => {
     const badgeEl = rowEl ? screen.getAllByText("1 位").find((el) => rowEl.contains(el)) : null;
     expect(badgeEl).not.toBeUndefined();
     expect(badgeEl?.textContent).toContain("1 位");
-    // SPEC-COLOR-EMPHASIS-RT-1 / D-CE13: 1 位は色でなく順位と太字（badge と行の地を持たない）。
-    expect(badgeEl).toHaveClass("text-sm", "font-semibold", "text-foreground");
-    expect(badgeEl).not.toHaveAttribute("data-slot", "badge");
-    // 行の地（素の bg-*）を持たない。table.tsx の既定の hover / 状態の variant は数えない。
-    expect((rowEl?.className ?? "").split(/\s+/).filter((c) => c.startsWith("bg-"))).toEqual([]);
-    // 2 位以下は muted のまま、太字を持たない。
+    // SPEC-COLOR-EMPHASIS-RT-1 / D-094（L3 round 1 で D-CE13 の試しを採らない）: 1 位は琥珀の pill
+    // （地・文字・枠）と行の地。操作の色（bg-primary）は持たない。
+    expect(badgeEl).toHaveAttribute("data-slot", "badge");
+    expect(badgeEl).toHaveClass(
+      "bg-rank-top-badge-bg",
+      "text-rank-top-badge-text",
+      "border-warning",
+    );
+    expect(badgeEl).not.toHaveClass("bg-primary");
+    expect(rowEl).toHaveClass("bg-rank-top-bg/40");
+    // 2 位の行は pill と地を持たず、順位は muted の文字のまま。
     const second = screen.getByText("2 位");
+    expect(second).not.toHaveAttribute("data-slot", "badge");
     expect(second).toHaveClass("text-sm", "text-muted-foreground");
-    expect(second).not.toHaveClass("font-semibold");
+    expect(screen.getByText("商品B").closest("tr")).not.toHaveClass("bg-rank-top-bg/40");
   });
 
   it("UI-09b: active indicator, ARIA, and numeric header alignment stay connected", () => {

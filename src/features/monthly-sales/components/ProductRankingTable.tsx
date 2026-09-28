@@ -7,6 +7,7 @@
 
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { SortableHeader } from "@/components/sales/SortableHeader";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -73,10 +74,12 @@ export function ProductRankingTable({
             const info = comparisonMap.get(row.key);
             const isTop = row.ranking === 1;
             return (
-              <TableRow key={row.key}>
+              <TableRow key={row.key} className={isTop ? "bg-rank-top-bg/40" : undefined}>
                 <TableCell>
                   {isTop ? (
-                    <span className="text-sm font-semibold text-foreground">{`${String(row.ranking)} 位`}</span>
+                    <Badge className="border-warning bg-rank-top-badge-bg text-rank-top-badge-text hover:bg-rank-top-badge-bg">
+                      {`${String(row.ranking)} 位`}
+                    </Badge>
                   ) : (
                     <span className="text-sm text-muted-foreground">{`${String(row.ranking)} 位`}</span>
                   )}

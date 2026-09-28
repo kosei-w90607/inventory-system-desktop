@@ -62,7 +62,17 @@ describe("SPEC-COLOR-EMPHASIS-RT-1: operation / ongoing / muted token literals (
     expect(GLOBALS_CSS).toContain("--warning-emphasis: #b45309;");
   });
 
-  // D-CE16: owner が L3 で候補 3 つ（M1 #6f6964 / M2 #6b6560 / M3 #57534e）から選ぶ値。
+  // D-094（L3 round 1 で D-CE13 の試しを採らない）: ランキング 1 位の琥珀の pill と行の地の token を残す。
+  it("keeps the rank-top tokens for the ranking top row", () => {
+    expect(GLOBALS_CSS).toContain("--rank-top-bg: #fffbeb;");
+    expect(GLOBALS_CSS).toContain("--rank-top-badge-bg: #fef3c7;");
+    expect(GLOBALS_CSS).toContain("--rank-top-badge-text: #92400e;");
+    expect(GLOBALS_CSS).toContain("--color-rank-top-bg: var(--rank-top-bg);");
+    expect(GLOBALS_CSS).toContain("--color-rank-top-badge-bg: var(--rank-top-badge-bg);");
+    expect(GLOBALS_CSS).toContain("--color-rank-top-badge-text: var(--rank-top-badge-text);");
+  });
+
+  // D-CE16 / D-094: owner が L3 round 1 で候補 3 つ（M1 #6f6964 / M2 #6b6560 / M3 #57534e）から選んだ M2。
   it("sets --muted-foreground to the chosen darker stone", () => {
     expect(GLOBALS_CSS).toContain("--muted-foreground: #6b6560;");
   });

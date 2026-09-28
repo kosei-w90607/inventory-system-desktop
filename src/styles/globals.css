@@ -42,6 +42,9 @@
   --color-success-border: var(--success-border);
   --color-success-strong: var(--success-strong);
   --color-success-emphasis: var(--success-emphasis);
+  --color-rank-top-bg: var(--rank-top-bg);
+  --color-rank-top-badge-bg: var(--rank-top-badge-bg);
+  --color-rank-top-badge-text: var(--rank-top-badge-text);
   --color-ongoing: var(--ongoing);
   --color-ongoing-soft: var(--ongoing-soft);
   --color-ongoing-border: var(--ongoing-border);
@@ -98,6 +101,9 @@
   --success-border: #bbf7d0; /* green-200 */
   --success-strong: #14532d; /* green-900 */
   --success-emphasis: #16a34a; /* green-600 */
+  --rank-top-bg: #fffbeb; /* amber-50 */
+  --rank-top-badge-bg: #fef3c7; /* amber-100 */
+  --rank-top-badge-text: #92400e; /* amber-800 */
 
   /* 進行中（D-091 / D-094）: 現在行・待ちの spinner・作業の進み具合の棒・詳細を開いた行・手順のいまのステップ */
   --ongoing: #2f7f86; /* バー・棒・spinner、対 --background 4.47:1 */
