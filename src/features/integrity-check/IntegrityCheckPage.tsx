@@ -209,7 +209,6 @@ export function IntegrityCheckPage() {
 
       {operationError ? (
         <Alert variant="destructive">
-          <AlertTriangle aria-hidden="true" />
           <AlertTitle>処理を完了できませんでした</AlertTitle>
           <AlertDescription>
             <p>{operationError.message}</p>
@@ -269,7 +268,7 @@ export function IntegrityCheckPage() {
         ) : (
           <div className="space-y-5">
             <Alert role="status" variant="warning">
-              <AlertTriangle aria-hidden="true" className="text-warning-foreground" />
+              <AlertTriangle aria-hidden="true" />
               <AlertTitle>差異が見つかりました</AlertTitle>
               <AlertDescription>
                 {result.mismatch_count.toLocaleString("ja-JP")}件の商品を確認してください。
@@ -487,14 +486,14 @@ export function IntegrityCheckPage() {
           className="absolute inset-0 z-40 flex items-center justify-center bg-background/85 p-6 backdrop-blur-[1px]"
         >
           <div className="w-full max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-lg">
-            <Loader2 aria-hidden="true" className="mx-auto size-8 animate-spin text-primary" />
+            <Loader2 aria-hidden="true" className="mx-auto size-8 animate-spin text-ongoing" />
             <p className="text-lg font-semibold">
               {pendingOperation === "fix" ? "補正を記録しています" : "在庫データを確認しています"}
             </p>
             <p className="text-sm text-muted-foreground">完了するまでこの画面でお待ちください。</p>
             <Progress
               aria-label="処理中"
-              className="before:absolute before:inset-y-0 before:left-1/4 before:w-1/2 before:animate-pulse before:bg-warning before:content-['']"
+              className="before:absolute before:inset-y-0 before:left-1/4 before:w-1/2 before:animate-pulse before:bg-ongoing before:content-['']"
             />
           </div>
         </div>

@@ -65,6 +65,7 @@ export function PreviewStep({
           neutral で日報側と非対称だった）。 */}
       {requiresAdditionalConfirm && (
         <Alert variant="warning">
+          <TriangleAlertIcon aria-hidden="true" />
           <AlertTitle>同じ日の取込みがあります</AlertTitle>
           <AlertDescription className="text-warning-strong">
             既存分を残したまま今回分を追加します。内容を確認してください。

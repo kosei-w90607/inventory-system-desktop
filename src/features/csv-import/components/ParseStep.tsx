@@ -22,7 +22,7 @@ export function ParseStep({ isParsing, onFileSelect }: ParseStepProps) {
         role="status"
         aria-live="polite"
       >
-        <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+        <Loader2 className="size-8 animate-spin text-ongoing" aria-hidden="true" />
         <p className="text-sm font-medium">ファイルを解析中…</p>
         <p className="text-xs text-muted-foreground">数百行で約 1-3 秒かかります</p>
       </div>

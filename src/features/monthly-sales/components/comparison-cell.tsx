@@ -7,12 +7,12 @@ import type { ComparisonInfo } from "../types";
 
 const THRESHOLD = 0.01; // ±1.0%
 
-const GREEN_CLASS = "bg-success-soft text-success";
-const RED_CLASS = "bg-destructive-soft text-destructive";
-const NEUTRAL_CLASS = "bg-stone-50 text-stone-600";
-const INCOMPARABLE_CLASS = "bg-stone-50 text-stone-500";
+// D-CE9: 00「役割色の文字だけの表示」。地の chip を持たず、記号と % の文言が意味を担う。
+const GREEN_CLASS = "text-success-strong";
+const RED_CLASS = "text-destructive-strong";
+const MUTED_CLASS = "text-muted-foreground";
 
-const CELL_BASE = "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium";
+const CELL_BASE = "text-sm font-medium tabular-nums";
 
 export interface ComparisonCellProps {
   info: ComparisonInfo | undefined;
@@ -20,10 +20,10 @@ export interface ComparisonCellProps {
 
 export function ComparisonCell({ info }: ComparisonCellProps) {
   if (!info || !info.isComparable || info.ratio === null) {
-    return <span className={`${CELL_BASE} ${INCOMPARABLE_CLASS}`}>—</span>;
+    return <span className={`${CELL_BASE} ${MUTED_CLASS}`}>—</span>;
   }
   const colorClass =
-    info.ratio >= THRESHOLD ? GREEN_CLASS : info.ratio <= -THRESHOLD ? RED_CLASS : NEUTRAL_CLASS;
+    info.ratio >= THRESHOLD ? GREEN_CLASS : info.ratio <= -THRESHOLD ? RED_CLASS : MUTED_CLASS;
   const sign = info.ratio >= 0 ? "+" : "";
   const pct = (info.ratio * 100).toFixed(1);
   return <span className={`${CELL_BASE} ${colorClass}`}>{`${sign}${pct}%`}</span>;

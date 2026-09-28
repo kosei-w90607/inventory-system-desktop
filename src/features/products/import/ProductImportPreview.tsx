@@ -73,7 +73,7 @@ export function ProductImportPreview({
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant="secondary">ファイル: {filename}</Badge>
         {overwriteCount > 0 ? (
-          <Badge variant="default" className="border-warning">
+          <Badge className="border-warning bg-warning-emphasis text-primary-foreground">
             上書き {overwriteCount.toLocaleString()} 件
           </Badge>
         ) : null}
@@ -81,7 +81,6 @@ export function ProductImportPreview({
 
       {targetCount === 0 ? (
         <Alert variant="destructive">
-          <AlertTriangle className="size-4" aria-hidden="true" />
           <AlertTitle>登録できる行がありません</AlertTitle>
           <AlertDescription>
             エラー行を修正するか、重複行を上書き対象に選んでから再度実行してください。

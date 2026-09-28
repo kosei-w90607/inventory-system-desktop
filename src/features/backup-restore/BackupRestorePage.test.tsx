@@ -317,6 +317,24 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
     expect(screen.getByRole("button", { name: "この控えに戻す" })).toBeDisabled();
   });
 
+  // SPEC-COLOR-EMPHASIS-RT-1 / D-CE2（main wiring）: 常に危険・失敗のまま残る Alert に、
+  // 部品が描く三角 icon が 1 つだけ出る（site の明示の icon と二重にならない）。
+  it("D-CE2: the fatal restore alert is the soft destructive alert with exactly one icon", async () => {
+    const user = userEvent.setup();
+    mockRestoreBackup.mockResolvedValueOnce(
+      cmdError("synthetic fatal restore failure", "restore_failed_unrecoverable"),
+    );
+
+    renderWithClient(<BackupRestorePage />);
+    await startRestoreConfirmation(user);
+    await user.click(screen.getByRole("button", { name: "7月3日 21:00 の控えに戻す" }));
+
+    const alert = (await screen.findByText("再起動が必要です")).closest('[data-slot="alert"]');
+    expect(alert).toHaveAttribute("data-variant", "destructive");
+    expect(alert).toHaveClass("bg-destructive-soft", "border-destructive");
+    expect(alert?.querySelectorAll("svg")).toHaveLength(1);
+  });
+
   it.each([
     ["restore_failed_unrecoverable", "再起動が必要です"],
     ["restore_durability_unknown", "復元結果を確認できませんでした"],
@@ -575,11 +593,11 @@ describe("BackupRestorePage (UI-11b / QR-05 / REQ-901)", () => {
   });
 });
 
-it("SC3 / QR-05: latest backup is an emphasis badge with warning border", async () => {
+it("SC3 / QR-05 / D-CE3: latest backup is an emphasis badge filled with warning-emphasis", async () => {
   renderWithClient(<BackupRestorePage />);
   const latest = await screen.findByText("最新");
-  expect(latest).toHaveAttribute("data-variant", "default");
-  expect(latest).toHaveClass("border-warning");
+  expect(latest).toHaveClass("border-warning", "bg-warning-emphasis", "text-primary-foreground");
+  expect(latest).not.toHaveClass("bg-primary");
   expect(latest).not.toHaveAttribute("data-tone");
 });
 

@@ -39,6 +39,9 @@ const STOCK_CLASS: Record<StockStatus, string> = {
   stockout: "text-destructive font-medium",
 };
 
+// D-CE7: 進行中の地（#E6F0F0）の上では -emphasis が 4.33:1 で AA に届かないため、同じ注意・確認の家族の -strong へ。
+const OPEN_LOW_STOCK_CLASS = "text-warning-strong font-medium";
+
 const priceFormatter = new Intl.NumberFormat("ja-JP", {
   style: "currency",
   currency: "JPY",
@@ -72,7 +75,11 @@ export function ProductListTable({
             <Fragment key={item.product_code}>
               <TableRow
                 data-state={isSelected ? "selected" : undefined}
-                className="cursor-pointer"
+                className={
+                  isSelected
+                    ? "cursor-pointer border-l-4 border-l-ongoing hover:bg-ongoing-soft data-[state=selected]:bg-ongoing-soft"
+                    : "cursor-pointer border-l-4 border-l-transparent"
+                }
                 onClick={() => {
                   onSelect(isSelected ? null : item.product_code);
                 }}
@@ -84,7 +91,12 @@ export function ProductListTable({
                 <TableCell>
                   <StockStatusBadge status={status} />
                 </TableCell>
-                <TableCell className={cn("text-right tabular-nums", STOCK_CLASS[status])}>
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums",
+                    isSelected && status === "low" ? OPEN_LOW_STOCK_CLASS : STOCK_CLASS[status],
+                  )}
+                >
                   {formatStockDisplay(item.stock_quantity, item.stock_unit)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
@@ -92,9 +104,9 @@ export function ProductListTable({
                 </TableCell>
               </TableRow>
               {isSelected && (
-                // 展開行は選択行と視覚的に一体化させるため bg-muted を明示固定する
+                // 展開行は選択行と一体に見せるため、進行中のバーと地を明示固定する（D-CE7）
                 // （table primitive の data-state / has-aria-expanded トリガに依存しない、New-1）。
-                <TableRow className="bg-muted hover:bg-muted">
+                <TableRow className="border-l-4 border-l-ongoing bg-ongoing-soft hover:bg-ongoing-soft">
                   {/* table primitive 既定の whitespace-nowrap を打ち消し、詳細コンテンツを通常折り返し
                       させる（Codex 実装レビュー Round 1 P2-1、長い商品名 / CTA 群の横はみ出し防止） */}
                   <TableCell colSpan={7} className="p-0 align-top whitespace-normal">

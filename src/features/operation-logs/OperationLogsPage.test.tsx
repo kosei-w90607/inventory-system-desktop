@@ -914,6 +914,43 @@ describe("UI-11c REQ-902", () => {
     }
   });
 
+  // SPEC-COLOR-EMPHASIS-RT-1 / D-CE7: 開いた行と詳細の行を進行中のバー + 地で一体に見せる。
+  it("D-CE7: the open log row and its detail row carry the ongoing bar and surface; closing removes them", async () => {
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: { items: [log()], total_count: 1, page: 1, per_page: 20 },
+    });
+    renderPage();
+    const user = userEvent.setup();
+    const trigger = await screen.findByRole("button", { name: "詳細を表示" });
+    const row = trigger.closest("tr");
+    if (!row) throw new Error("row not rendered");
+    expect(row).toHaveClass("border-l-4", "border-l-transparent");
+    expect(row).not.toHaveClass("has-aria-expanded:bg-ongoing-soft");
+
+    await user.click(trigger);
+    expect(row).toHaveClass(
+      "border-l-4",
+      "border-l-ongoing",
+      "has-aria-expanded:bg-ongoing-soft",
+      "hover:bg-ongoing-soft",
+    );
+    expect(row).not.toHaveClass("has-aria-expanded:bg-muted/50");
+    const detailRow = document.getElementById(trigger.getAttribute("aria-controls") ?? "");
+    expect(detailRow).toBe(row.nextElementSibling);
+    expect(detailRow).toHaveClass(
+      "border-l-4",
+      "border-l-ongoing",
+      "bg-ongoing-soft",
+      "hover:bg-ongoing-soft",
+    );
+
+    await user.click(screen.getByRole("button", { name: "詳細を閉じる" }));
+    expect(row).toHaveClass("border-l-transparent");
+    expect(row).not.toHaveClass("border-l-ongoing");
+    expect(row.nextElementSibling).toBeNull();
+  });
+
   it("toggles detail exactly once through native Enter and Space keyboard paths", async () => {
     listLogs.mockResolvedValue({
       status: "ok",

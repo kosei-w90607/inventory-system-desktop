@@ -77,6 +77,7 @@ export function StockUnitField({
           <input
             id="pos-stock-sync"
             type="checkbox"
+            className="accent-primary"
             checked={posStockSync}
             onChange={(event) => {
               onPosStockSyncChange(event.target.checked);

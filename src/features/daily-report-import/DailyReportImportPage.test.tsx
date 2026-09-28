@@ -116,6 +116,19 @@ afterEach(() => {
 });
 
 describe("DailyReportImportPage_req401", () => {
+  // SPEC-COLOR-EMPHASIS-RT-1 / D-CE5: 待ちの spinner は進行中の色（操作の色ではない）。
+  it("REQ-401 / D-CE5: the parsing spinner uses the ongoing color", async () => {
+    setFlow({ status: "parsing", filenames: ["Z001_260321.CSV"] });
+
+    renderWithRouter(<DailyReportImportPage />);
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("日報ファイルを解析中…");
+    const spinner = status.querySelector("svg");
+    expect(spinner).toHaveClass("animate-spin", "text-ongoing");
+    expect(spinner).not.toHaveClass("text-primary");
+  });
+
   it("REQ-401: preview shows target date, totals, payment, department, and unmatched warning", async () => {
     setFlow({
       status: "preview",
@@ -394,11 +407,12 @@ describe("DailyReportImportPage_req401", () => {
 });
 
 it.each([
+  // D-094（L3 round 1 で試しを採る）: 取込み済みは上部 Alert と同じ危険・失敗。同日追加確認は注意・確認のまま。
   [
     "AlreadyImported",
     "取込み済み",
-    "warning",
-    ["border-warning-border", "bg-warning-soft", "text-warning-strong"],
+    "destructive",
+    ["border-destructive-border", "bg-destructive-soft", "text-destructive-strong"],
   ],
   [
     "AdditionalImportConfirmationRequired",
@@ -429,10 +443,22 @@ it.each([
     for (const expected of classes)
       expect(badge?.className.split(/\s+/).filter((token) => token === expected)).toHaveLength(1);
     expect(badge?.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+    // 他の tone の地を持たない（取込み済みが注意・確認の地へ戻る、同日追加確認が危険・失敗へ寄る退行を拒む）。
+    for (const other of ["bg-warning-soft", "bg-destructive-soft", "bg-success-soft"])
+      if (!(classes as readonly string[]).includes(other)) expect(badge).not.toHaveClass(other);
+    if (status === "AlreadyImported") {
+      const alert = screen
+        .getByText("この日報は取込み済みです。二重取込みはできません。")
+        .closest('[data-slot="alert"]');
+      expect(alert).toHaveAttribute("data-variant", "destructive");
+    }
     if (status === "AdditionalImportConfirmationRequired") {
       const alert = screen.getByText("同じ日の取込みがあります").closest('[data-slot="alert"]');
       expect(alert).toHaveAttribute("data-variant", "warning");
       expect(alert).toHaveAttribute("role", "alert");
+      // DSR-08 / AC-L3-12: warning の Alert は部品が icon を描かないため、画面が三角 icon を置く。
+      expect(alert?.querySelectorAll("svg")).toHaveLength(1);
+      expect(alert?.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     }
   },
 );

@@ -58,7 +58,7 @@ skeleton の例示文言・コードはすべて合成データ（架空の商�
 
 **バリエーション: セクション見出し（h2）**: page 内の sub-section（「直近の○○」テーブル / 公式部門集計 / 差異のある商品 / 棚卸し進捗 等）の見出しは h2（**`text-xl font-semibold`、④ / 00-foundations の h2 20px と同一 token**）+ 任意の右要素（Button / Badge）+ 任意の説明 `<p className="text-sm text-muted-foreground">` で構成する。配置は **見出し行 + 説明行** の 2 段: 見出し行は `flex flex-wrap items-start justify-between gap-3` に h2（`min-w-0 flex-1`。長い見出しは行内で折り返し、右要素を次行へ落とさない）と右要素（`shrink-0`）を置き、説明は見出し行の**下**に全幅で置く（外側 `space-y-1`）。説明を見出しと同じ flex 行の左 group に置いて右要素の横で折り返す形（旧 差異のある商品 / 棚卸し進捗）は採らない。`PageHeader` (c) も同じ 2 段配置（① 構造）であり、page 見出しと sub-section 見出しの規範は 1 本。「直近の○○」系 4 画面（③ テーブルの **「直近の○○」系4画面の統一** 段落の文型）は既にこの配置であり不変。**1 ページ 1 h1 は不変**であり、sub-section を `PageHeader` で描かない。Dialog の `AlertDialogTitle` は対象外。適用は class / 文型 / token の統一とし、component 化（`SectionHeader{title, description?, actions?}`）は現時点で採用しない（3 箇所目の独自要件が出た時点で再検討）
 
-**使用トークン**: h1 = タイポ `h1`（24px / weight 600）。アクションボタンは Primary（`amber-700`）。要素間ギャップは `space-3`（12px）。
+**使用トークン**: h1 = タイポ `h1`（24px / weight 600）。アクションボタンは Primary（`--primary`、操作の塗り）。要素間ギャップは `space-3`（12px）。
 
 **状態**: h1 自体に状態変化は規定なし。主動線ボタンは hover / focus / disabled をボタン primitive の既定に従う。
 
@@ -319,13 +319,13 @@ function FormSection({ title, description, children }: FormSectionProps) {
 - route-driven navigation（例: 日次/月次）は `<Link>` に `segmentedControlListClass` / `segmentedControlItemClass` / active / inactive class を適用する
 - local view mode（例: 商品別ランキング/部門別構成比）は `SegmentedControl` の button group を使い、`aria-pressed` と `data-state=active|inactive` を出す
 - SidebarLink の現在地は stone 系 selection tone に DSR-21 の Primary アクセントを重ねる。StatusChips / SegmentedControl は選択状態のため stone のままとし、状態 chip は `border-stone-400`、二択切替は押しボタン状の濃い外枠を避けて `border-stone-300` にする
-- amber は在庫少や通知などの業務セマンティック色、または主要アクションと DSR-21 の現在地アクセントに残し、選択状態の背景色とは分離する
+- 役割色（琥珀の注意・確認、操作の色の主要アクションと DSR-21 の現在地アクセント）は、選択状態の背景色（stone）とは分離する
 
 **アクセシビリティ**: `role="group"` + `aria-label` で群を識別（フィルタ toolbar 内で可視 Label を出す場合は `aria-labelledby` で span に紐付け、`aria-label` は出さない）。button group は `aria-pressed` で選択状態を伝える。Windows native L3 では active / inactive / hover / クリック後 focus の 4 状態を比較し、同じ二択切替パターンに見えることを確認する。tab / mode 切替として使う場合は可視 Label を持たない、フィルタ toolbar 内で使う場合は ⑨ の上置き Label 規範に従う（`ariaLabel` は常に必須）
 
 **Do**:
 - 二択は共有 visual primitive を使う
-- 選択状態の背景色（stone 系）と業務セマンティック色（amber 等）を分離する
+- 選択状態の背景色（stone 系）と役割色（操作・注意・確認 等）を分離する
 
 **Don't**:
 - 各画面で独自の padding / border / active tone を組まない
@@ -412,11 +412,11 @@ function FormSection({ title, description, children }: FormSectionProps) {
 </Alert>
 ```
 
-適用先: `PriceRevisionPage.tsx:79-83`（移行前 anchor）。`<Alert variant="warning" role="note">` + icon + `AlertTitle`「ご注意」へ移行済みで、既存本文は `AlertDescription` に維持する。追加適用先（owner 決定、2026-09-06）: ホーム『前日分が未取込みです』（`HomePage.tsx:76-84`）は destructive のまま `AlertTriangle` icon を追加（警告）、日次 / 月次売上の『レジ日報は未取込みです』（`DailySalesPage.tsx:175`、`MonthlySalesPage.tsx:166`）は warning variant。success Alert の本文色は現状（`text-success-strong`）を維持する（owner 保留、2026-09-06）。
+適用先: `PriceRevisionPage.tsx:79-83`（移行前 anchor）。`<Alert variant="warning" role="note">` + icon + `AlertTitle`「ご注意」へ移行済みで、既存本文は `AlertDescription` に維持する。追加適用先（owner 決定、2026-09-06）: ホーム『前日分が未取込みです』（`HomePage.tsx`）は destructive のまま（警告。三角 icon は部品が描く）、日次 / 月次売上の『レジ日報は未取込みです』（`DailySalesPage.tsx:175`、`MonthlySalesPage.tsx:166`）は warning variant。success Alert の本文色は現状（`text-success-strong`）を維持する（owner 保留、2026-09-06）。
 
 **Alternatives considered**: (a) `bg-card` 据え置き + `text-warning-strong`（対 `bg-card` 8.32:1、AA 達成だが「薄い」という owner 指摘を soft 背景なしでは解消できず不採用）。(b) `bg-card` 据え置き + `text-foreground` 本文、枠と icon のみ amber（owner が「すっきり見えるが警告表示としての一貫性に欠ける」と評し不採用）。(d) タイトルのみ `text-warning-strong` bold、本文 `text-foreground`（見出しのみの強調では①状態 badge との視覚言語統一に届かず不採用）。
 
-`destructive` variant（`bg-card` + red 系）は本 packet では変更しない。`warning` の soft 塗り確定により両者は非対称になるが、`destructive` の soft 塗り統一は対称性のための後続候補として Non-scope に記録する（別 change で owner 判断）。
+`destructive` variant は `warning` と対称の 4 点構造にする（decision-log D-094）: `destructive: "bg-destructive-soft border-destructive text-destructive-strong [&>svg]:text-destructive *:data-[slot=alert-description]:text-destructive-strong/90"`。destructive の Alert は部品が三角 icon を描き、site は icon を書かない（`variant === "destructive"` のとき `alert.tsx` が `TriangleAlert`〈`aria-hidden`〉を最初の子として描く。DSR-08 の icon 必須を 1 か所で守り、今後の site の書き忘れを構造で防ぐ）。`warning` と既定の variant は部品が icon を描かず、warning の site が `AlertTriangle` を書く。失敗でも戻せない操作でもない知らせ（例: 取込み中の移動制限。待ってほしい知らせ）は destructive にせず warning にする。
 
 ### ローディング状態の標準UI
 
@@ -447,7 +447,7 @@ WCAG 2.1 AA の前提として、状態・警告・選択・比較の意味を�
 
 在庫照会の `在庫切れ` / `在庫少` はこの対象である。赤 / amber の文字色は補助として残してよいが、実利用者が赤黄を識別できない場合でも意味が読める実装にする。
 
-**使用トークン**: Skeleton は shadcn/ui 既定。エラーは `Alert` destructive variant。注意喚起（業務は止めない）は `Alert` warning variant（`bg-warning-soft` + `border-warning` + `text-warning-strong` + `AlertTriangle`）。空状態は `EmptyState` 既定（囲み `rounded-md border p-12 text-center`、見出し `text-stone-700`、説明 `text-sm text-stone-500`、アイコン 24px `text-stone-400`）。
+**使用トークン**: Skeleton は shadcn/ui 既定。エラーは `Alert` destructive variant（`bg-destructive-soft` + `border-destructive` + `text-destructive-strong` + 部品が描く三角 icon）。注意喚起（業務は止めない）は `Alert` warning variant（`bg-warning-soft` + `border-warning` + `text-warning-strong` + `AlertTriangle`）。空状態は `EmptyState` 既定（囲み `rounded-md border p-12 text-center`、見出し `text-stone-700`、説明 `text-sm text-stone-500`、アイコン 24px `text-stone-400`）。
 
 **状態**: 本パターン自体が loading / error / empty の 3 状態を表す。hover / focus / active / disabled は規定なし。
 
@@ -588,9 +588,9 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 
 **canonical**: `SupplierPickerDialog`（`src/features/suppliers/components/SupplierPickerDialog.tsx`）。
 
-**構成**: 起動ボタンは現在値（取引先名、未指定時は文脈に応じた先頭行の文言）を表示する。右端に `ChevronDown`（`text-muted-foreground`（`SelectTrigger` と同じ薄さ）、開く控え）を置き、文言は `truncate` で枠内に収める。一覧から名前を解決できない場合（取得失敗 / 削除済み id）は「取引先を確認できません」と表示し、未指定の文言で断定しない。ヘッダ（title、例:「取引先を選択」）+ 本体（名前検索 input、live・client-side filter — `list_suppliers` は無引数のため取得済み一覧をここで絞り込む — + 検索 input の下・scroll 箱の**外**に「現在の選択」の固定帯（白地の箱（全周の枠 `--border-strong` + 角丸、背景は `--background`）+ 小見出し「現在の選択」+ 取引先名（medium）。一覧の現在行〈`--row-current` + 左 4px primary バー〉の語彙は帯に使わず、箱 = 要約 / クリーム + バー = 現在行 と分ける。帯に badge は置かない。名前を解決できない場合は起動ボタンと同じ「取引先を確認できません」を帯にも同じ関数で出す。「すべての取引先」/「取引先なし」を選んでいればそれが帯に出る。）+ scroll 一覧（箱の見た目は商品一覧の表を流用、列見出しの「選択」文字は表示せず sr-only（読み上げ専用）にし列は ✓ + 「選択中」badge のみ、行に現在選択（DSR-22 の現在行 3 点: 左 4px primary バー + `--row-current` 背景 + ✓ と「選択中」badge / 文言。色だけに頼らない）、フィルタ文脈では先頭に「すべての取引先」行、入力文脈では先頭に既存 sentinel 相当の行〈「取引先なし」/「指定なし」〉を維持）+ footer（枠外固定、左「新しい取引先を追加（`Plus` icon 付き）」**primary（amber、inline SVG icon。全角「＋」文字は使わない）**・右「閉じる」outline）。一覧行クリック = 選択確定 + dialog を閉じる。footer は一覧の scroll と独立して常時固定表示する。picker dialog は独立した surface であり、その内部の主動線は追加ボタン 1 個。画面本体の主動線とは surface が異なるため 1 画面 1 主動線は維持される。`CreateSupplierDialog` 側の確定ボタンも同様に自 surface の主動線。
+**構成**: 起動ボタンは現在値（取引先名、未指定時は文脈に応じた先頭行の文言）を表示する。右端に `ChevronDown`（`text-muted-foreground`（`SelectTrigger` と同じ薄さ）、開く控え）を置き、文言は `truncate` で枠内に収める。一覧から名前を解決できない場合（取得失敗 / 削除済み id）は「取引先を確認できません」と表示し、未指定の文言で断定しない。ヘッダ（title、例:「取引先を選択」）+ 本体（名前検索 input、live・client-side filter — `list_suppliers` は無引数のため取得済み一覧をここで絞り込む — + 検索 input の下・scroll 箱の**外**に「現在の選択」の固定帯（白地の箱（全周の枠 `--border-strong` + 角丸、背景は `--background`）+ 小見出し「現在の選択」+ 取引先名（medium）。一覧の現在行〈進行中の地 `--ongoing-soft` + 左 4px の進行中の枠 `--ongoing` のバー〉の語彙は帯に使わず、箱 = 要約 / 進行中の地 + バー = 現在行 と分ける。帯に badge は置かない。名前を解決できない場合は起動ボタンと同じ「取引先を確認できません」を帯にも同じ関数で出す。「すべての取引先」/「取引先なし」を選んでいればそれが帯に出る。）+ scroll 一覧（箱の見た目は商品一覧の表を流用、列見出しの「選択」文字は表示せず sr-only（読み上げ専用）にし列は ✓ + 「選択中」badge のみ、行に現在選択（DSR-22 の現在行 3 点: 左 4px の進行中の枠 `--ongoing` のバー + 進行中の地 `--ongoing-soft` + ✓ と「選択中」badge / 文言。色だけに頼らない）、フィルタ文脈では先頭に「すべての取引先」行、入力文脈では先頭に既存 sentinel 相当の行〈「取引先なし」/「指定なし」〉を維持）+ footer（枠外固定、左「新しい取引先を追加（`Plus` icon 付き）」**primary（操作の塗り（`--primary`）、inline SVG icon。全角「＋」文字は使わない）**・右「閉じる」outline）。一覧行クリック = 選択確定 + dialog を閉じる。footer は一覧の scroll と独立して常時固定表示する。picker dialog は独立した surface であり、その内部の主動線は追加ボタン 1 個。画面本体の主動線とは surface が異なるため 1 画面 1 主動線は維持される。`CreateSupplierDialog` 側の確定ボタンも同様に自 surface の主動線。
 
-**動作**: 外クリック / Esc = 「閉じる」と同じ（選択は変更しない、DSR-20 の硬化対象ではない通常 Dialog）。「新しい取引先を追加」→ 既存 `CreateSupplierDialog` をそのまま開く（owner 仕様）。追加成功後は一覧を再取得し、新規取引先を自動選択して両方の dialog を閉じる（owner 確定 2026-09-10、A 案）。picker は確認 Action を持たず（一覧行クリックが確定）、footer 左は別 surface を開く primary（追加の確定へ進む導線、amber）、右が dismiss。⑧ の **配置** bullet が定める Cancel 左 / Action 右 は確認 dialog の 2 ボタン規則であり、picker footer には適用しない。
+**動作**: 外クリック / Esc = 「閉じる」と同じ（選択は変更しない、DSR-20 の硬化対象ではない通常 Dialog）。「新しい取引先を追加」→ 既存 `CreateSupplierDialog` をそのまま開く（owner 仕様）。追加成功後は一覧を再取得し、新規取引先を自動選択して両方の dialog を閉じる（owner 確定 2026-09-10、A 案）。picker は確認 Action を持たず（一覧行クリックが確定）、footer 左は別 surface を開く primary（追加の確定へ進む導線、操作の塗り（`--primary`））、右が dismiss。⑧ の **配置** bullet が定める Cancel 左 / Action 右 は確認 dialog の 2 ボタン規則であり、picker footer には適用しない。
 
 **dialog 重ね契約**（`CreateSupplierDialog` を picker dialog の上に開く）:
 - **(A) 推奨**: Radix `Dialog.Root` を picker dialog の内側でネストする。owner 仕様「既存 CreateSupplierDialog をそのまま開く」に文字面で忠実。両 dialog とも `z-50` の overlay を持ち、後着 dialog が DOM 順で後にマウントされ視覚的に手前へ来る。ESC は Radix `DismissableLayer` のスタック管理により最前面の dialog のみを閉じる想定、フォーカスは `CreateSupplierDialog` を閉じたあと picker dialog へ戻る想定。**本アプリに dialog-in-dialog の先例が無いため、これらは実機未検証の期待値であり、Windows WebView2 で ESC・外クリック伝播・focus trap を確認する（runtime lane の Windows WebView2 実機確認で検証する）**。内側 dialog の overlay は既定のまま（二重 scrim を許容、owner 確定 2026-09-10）とする（根拠: `src/components/ui/dialog.tsx` の `DialogOverlay` `bg-black/50` + `z-50`）。
@@ -804,7 +804,11 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
     <Fragment key={item.product_code}>
       <TableRow
         data-state={isSelected ? "selected" : undefined}
-        className="cursor-pointer"
+        className={
+          isSelected
+            ? "cursor-pointer border-l-4 border-l-ongoing hover:bg-ongoing-soft data-[state=selected]:bg-ongoing-soft"
+            : "cursor-pointer border-l-4 border-l-transparent"
+        }
         onClick={() => onSelect(item.product_code)}
       >
         <TableCell className="font-mono text-sm font-medium">{item.product_code}</TableCell>
@@ -812,7 +816,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
         {/* …状態列 / 在庫数 / 売価… */}
       </TableRow>
       {isSelected && (
-        <TableRow className="bg-muted hover:bg-muted">
+        <TableRow className="border-l-4 border-l-ongoing bg-ongoing-soft hover:bg-ongoing-soft">
           <TableCell colSpan={6} className="p-0 align-top whitespace-normal">
             <StockDetailContent query={detailQuery} />
           </TableCell>
@@ -823,11 +827,11 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 })}
 ```
 
-**使用トークン**: 展開行は `bg-muted`（`stone-100`）で選択行と視覚的に一体化させる。展開セルは `whitespace-normal` で table 既定の `whitespace-nowrap` を打ち消し、長い商品名 / CTA 群の横はみ出しを防ぐ。狙いは 00 の進行中の役割（迷いやすい場面「詳細を開いた行」。runtime lane A の L3 で試し）で、本書は現行を記す。
+**使用トークン**: 選択行と展開行は左端のバー（`border-l-ongoing`）+ 進行中の地（`bg-ongoing-soft`）で一体に見せる（00 の進行中の役割、迷いやすい場面「詳細を開いた行」、D-094）。選択行の地は `TableRow` の既定と同じ variant（`data-[state=selected]:`）で上書きする（既定の variant 付き class は素の `bg-*` より詳細度が高い）。閉じた行は `border-l-transparent` で列をそろえる。`TableBody` の末尾の規則は `[&_tr:last-child]:border-b-0` に限り、最後の行を開いても展開行の左のバーを消さない。展開行の上の在庫少のセルは `text-warning-strong`（`-emphasis` は進行中の地の上で 4.5:1 に届かない）。展開セルは `whitespace-normal` で table 既定の `whitespace-nowrap` を打ち消し、長い商品名 / CTA 群の横はみ出しを防ぐ。
 
 **状態**:
-- **selected（active 相当）**: 選択行に `data-state="selected"`、展開行に `bg-muted` を明示固定する（table primitive の自動トリガに依存しない）
-- hover: 行は `cursor-pointer`。展開行は `hover:bg-muted` で hover でも色が動かないようにする
+- **selected（active 相当）**: 選択行に `data-state="selected"` と `data-[state=selected]:bg-ongoing-soft`、展開行に `bg-ongoing-soft` を明示固定する（table primitive の自動トリガに依存しない）。`TableRow` の既定（stone）は選択欄を開いた入力行にも当たるため変えない
+- hover: 行は `cursor-pointer`。選択行と展開行は `hover:bg-ongoing-soft` で hover でも色が動かないようにする
 - focus / disabled / error: 行自体に規定なし。詳細の error / loading は `StockDetailContent` 側（query 状態）が担う
 
 **フォールバック**: 一覧取得が失敗し選択商品が残る場合は、インライン展開できないため `StockDetailCard`（`StockDetailContent` を `Card` で包む）で独立描画する（部分障害許容）。
@@ -871,7 +875,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Badge>
 ```
 
-**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = `variant="default"` + `border-warning`（琥珀 pill、枠色は owner v3 決定で `--warning` に確定、ランキング・最新 等）。この 3 種以外を作らない。
+**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = 琥珀 pill（最新・上書き件数は `border-warning bg-warning-emphasis text-primary-foreground`、ランキング 1 位は `border-warning bg-rank-top-badge-bg text-rank-top-badge-text`。badge に既定の塗りは無く、class で指定する。枠色は owner v3 決定で `--warning`、D-094）。この 3 種以外を作らない。
 
 `Badge` の `tone` prop（warning / success / destructive）は `variant` と独立の軸。①状態は `variant="outline"` と組み合わせる。未指定時は `data-tone` と tone class を出さず、②分類・③強調・中立状態には付けない。
 
@@ -881,16 +885,16 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
 |---|---|---|
-| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:29`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:88`「未反映」（tone propへ移行済み）/ `ResultStep.tsx:47`「部分成功」（tone propへ移行済み）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（warning toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「部分成功」（tone="warning"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:29`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:88`「未反映」（tone propへ移行済み）/ `ResultStep.tsx:47`「部分成功」（tone propへ移行済み）/ `CsvImportRecordDetailPage.tsx:140`「部分成功」（tone="warning"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 | success（`border-success-border bg-success-soft text-success-strong` + icon） | `IntegrityCheckPage.tsx:389`「補正済み」（soft success toneへ移行済み）/ `StocktakePage.tsx:404`（棚卸し全数完了時のsoft success tone）/ `ProductTable.tsx:93`「反映済み」（success toneへ移行済み）/ `ResultStep.tsx:47`「成功」（success toneへ移行済み）/ `DailyReportImportPage.tsx:164,186`「確認済み」（success toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「成功」（tone="success"） / `DailyReportImportPage.tsx:322`「成功」（tone="success"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
-| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:20`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:20`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） / `DailyReportImportPage.tsx`「取込み済み」（上部の Alert と同じ destructive tone、L3 round 1 で試しを採った、D-094） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 | 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:36`「在庫あり」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 
 **表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 10「いま扱っているものは進行中で示す」（現在行の 3 点）の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:97`（formatter）/ `ReturnExchangePage.tsx:592`（aria-label）/ `ReturnExchangePage.tsx:602`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
 
 **②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）・手動（`daily-sales/components/ProductTable.tsx:133`、出どころの分類）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠が正しい形（`badge.tsx` の `secondary` に枠を実装済み）。
 
-**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx:533`、`variant="default"` へ移行済み）・1 位（`ProductRankingTable.tsx:80`、`bg-rank-top-badge-bg` custom class）・上書き件数（`ProductImportPreview.tsx:76`、正しい実装例）は `variant="default"`（琥珀 pill）+ `border-warning` 枠。対 fill `#fef3c7` = 2.86:1、対 `--background` = 3.05:1。3 site とも `border-warning` を追加済み。
+**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx`）・上書き件数（`ProductImportPreview.tsx`）は `border-warning bg-warning-emphasis text-primary-foreground`（琥珀 pill。塗りの上の文字 4.81:1、枠は対 `--background` 3.05:1）。押すボタンでない badge の塗りは③強調だけの恒久の例外で、段 2 に数える（00 の強調の段階、D-094）。1 位（`ProductRankingTable.tsx`）は `border-warning bg-rank-top-badge-bg text-rank-top-badge-text` の琥珀 pill（薄い地で塗りではない。枠は対 fill `#fef3c7` 2.86:1・対 `--background` 3.05:1）と行の `bg-rank-top-bg/40` で示す。順位と太字だけにする試しは L3 で採らなかった（D-094。2 位・3 位を含む見せ方は別 lane、`docs/backlog.md`）。
 
 **非Badge除外のクロスリファレンス**: 「入力中」（`PriceRevisionTable.tsx:104`）は [04-backbone.md](04-backbone.md) 原則 10「いま扱っているものは進行中で示す」（現在行の 3 点）の対象であり、tone family 表・②分類・③強調のいずれにも含めない。
 
@@ -1011,7 +1015,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 5. **現在行 3 点**（左端バー + 淡い背景 + badge/文言、DSR-22。token は Lane 2 で提供、消費は Lane 3〜5）
 6. **読込みは `ListSkeleton`**（04 原則 7、既定 skeleton。`isLoading` のとき children の代わりに描画）
 
-**使用トークン**: `--border-strong`（操作枠、`--input` が参照）/ `--row-current`（現在行背景、消費は Lane 3〜5）/ `--list-head`（`thead` surface、列見出しのみ、Gated Amendment 5 S39 で件数行は `--background` へ）/ `--background`（件数行の地色〈S47〉+ 列見出し corner mask の覆い色〈S48〉）。4 token とも `globals.css` に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とする。
+**使用トークン**: `--border-strong`（操作枠、`--input` が参照）/ `--list-head`（`thead` surface、列見出しのみ、Gated Amendment 5 S39 で件数行は `--background` へ）/ `--background`（件数行の地色〈S47〉+ 列見出し corner mask の覆い色〈S48〉）。3 token とも `globals.css` に実装済み、値は [00-foundations.md](00-foundations.md) カラーパレット表を正本とする。
 
 **状態**: 上部 pager の発動条件は DSR-22 を正本とする。読込みは `ListSkeleton`、空は既存 `EmptyState`（04 原則 7）。
 
@@ -1043,6 +1047,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
+| 2026-09-28 | 色と強調の反映（decision-log D-094） | ⑥ destructive の Alert を warning と対称の 4 点構造にし、三角 icon を部品が描く形を記した。⑫ 選択行と展開行を進行中のバーと地へ。⑬ ③強調を `--warning-emphasis` の塗りの琥珀 pill へ（1 位は `--rank-top-*` の琥珀 pill と行の地のまま）、日報の取込み済みの badge を destructive の行へ。① ⑤ ⑧ ⑯ の操作の色と旧現在行背景の記述を直した |
 | 2026-09-24 | デザインの決まりの組み直し | 冒頭に「本書は現行実装の canonical で、00 の移行列が runtime lane 待ちとする項目は 00 / 04 / 01 を狙いとして読む」旨を追加。04 の原則の統合に合わせ、旧原則 15（現在行 3 点）の参照を原則 10 へ、旧原則 11（待ち時間の顔）の参照を原則 7 へ付け替え（原則 4 は番号不変）。部品の記述は変えない |
 | 2026-09-15 | 表示小修正 batch 2 | ⑥ AlertTitle の共通 weight を600、⑬ 在庫状態の中立 Badge を「在庫あり」に同期。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 4: owner L3 run 1 の是正（trigger icon / 固定帯） |

@@ -30,20 +30,20 @@
 | Tabs か SegmentedControl か、Toast か Alert か、戻り導線はどうするか | [01「話題別の索引」](01-decision-rules.md#話題別の索引) |
 | 部品の JSX・token・状態・canonical file | [02 コンポーネントカタログ](02-component-catalog.md) |
 | 規則の根拠をどこから引くか | [03「出典の一覧」](03-philosophy.md#出典の一覧) |
-| runtime lane A の merge 前に画面を作るとき | [「移行中の作り方」](#移行中の作り方) |
+| 書体の反映（runtime lane B）の前に画面を作るとき | [「移行中の作り方」](#移行中の作り方) |
 
 ## 移行中の読み方
 
-規則と実装は、runtime lane A（色と強調）と runtime lane B（書体）が反映するまで一部で食い違う。どちらも `docs/backlog.md` に起票してある。移行が runtime lane 待ちの項目は、00 / 04 / 01 を狙いとして読み、02 と画面を現行として読む。どの項目が待ちかは、00 の色の役割表と迷いやすい場面の「移行」列に集めてある。候補の色の値は正本に書かず、`docs/decision-log.md` の D-091 に置いてある。
+色と強調は token・部品・画面へ反映済みである（2026-09-28、`docs/decision-log.md` の D-094）。規則と実装が食い違うのは、runtime lane B（書体）が反映するまでの書体だけで、`docs/backlog.md` に起票してある。移行が runtime lane 待ちの項目は、00 / 04 / 01 を狙いとして読み、02 と画面を現行として読む。色の値は 00 のカラーパレット表とセマンティックカラー表にあり、候補の値とコントラスト比は D-091 と D-094 に置いてある。
 
 ## 移行中の作り方
 
-runtime lane A の merge 前に新しい画面や修正を作るときは、次のどちらか 1 つに決める。
+runtime lane B（書体）の反映前に新しい画面や修正を作るときは、書体は現行の system font stack のまま作り、画面ごとに書体を差し替えない（00「書体」）。色と強調は 00 の役割と段、02 の部品の形で作る。
 
-- **現行の token と 02 の部品の形で作る**: 操作は `--primary`、現在行は DSR-22 の 3 点表示で作る。現在行の canonical は `src/features/suppliers/components/SupplierPickerDialog.tsx` の現在行で、一括価格改定の「入力中」は outline badge 1 点のため canonical にしない。00 の迷いやすい場面で「lane A の L3 で試し」の行は、現行の実装のまま作る。
-- **lane A の merge 後に作る**: 進行中の地・作業中の囲み（進行中の段 1〜3）を新しく要する画面は、lane A の merge 後に作る。棚卸し画面の新しい形（部門をページ内の列にする案）もこちらに当たる。
+- 操作は `--primary`、現在行は DSR-22 の 3 点表示（進行中の `--ongoing` のバー + `--ongoing-soft` の地 + 文言）で作る。現在行の canonical は `src/features/suppliers/components/SupplierPickerDialog.tsx` の現在行で、一括価格改定の「入力中」は outline badge 1 点のため canonical にしない。
+- 進行中の地・作業中の囲み（進行中の段 1〜3）を新しく要する画面（例: 棚卸し画面の新しい形〈部門をページ内の列にする案〉）は、00 に登録済みの進行中の token で作る。
 
-どちらの場合も、新しい見た目の先取り（候補色の直書き・新 token 名の先取り）はしない（`docs/quality/review-checklist.md` カテゴリ 9）。
+書体の候補の先取り（候補の書体の直書き・同梱）と、00 に登録されていない色や token の直書きはしない（`docs/quality/review-checklist.md` カテゴリ 9）。
 
 ---
 
@@ -63,7 +63,7 @@ runtime lane A の merge 前に新しい画面や修正を作るときは、次�
 
 | ドキュメント | 責務 | 本ディレクトリとの関係 |
 |-----------|------|-------------------|
-| `docs/SCREEN_DESIGN.md` | 画面固有の判断（各画面の項目・操作フロー・状態遷移） | 横断規約は本ディレクトリへ移設済み、画面固有部分は SCREEN_DESIGN に残る。画面ごとの色の記述は runtime lane A が画面と同時に直す |
+| `docs/SCREEN_DESIGN.md` | 画面固有の判断（各画面の項目・操作フロー・状態遷移） | 横断規約は本ディレクトリへ移設済み、画面固有部分は SCREEN_DESIGN に残る。画面ごとの色の記述は、色と強調の反映（D-094）で 00 の役割にそろえた |
 | `docs/UI_TECH_STACK.md` | 技術スタック選定・A11y 要件・Tauri 特有の決定（§1〜§3・§5・§6・§7） | §4 デザインシステム本文は本ディレクトリへ移設、UI_TECH_STACK §4 はスタブ + リンク |
 | `docs/quality/review-checklist.md` | PR レビュー観点チェックリスト | カテゴリ 9 の参照先が本ディレクトリの対応パターン見出しへ張り替わる（A5 で更新） |
 

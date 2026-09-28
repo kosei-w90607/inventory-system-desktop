@@ -40,7 +40,9 @@ describe("UI-00 ActionButton", () => {
   it("D-H2: primary は枠・背景・icon を強調する", async () => {
     renderAction({ navItemId: "ui-07", variant: "primary" });
     const link = await screen.findByRole("link", { name: /売上データ取込み/ });
-    expect(link).toHaveClass("border-primary", "bg-warning-soft");
+    // D-CE12 / D-094（L3 round 1 で試しを採る）: 操作の線 + 進行中の薄い地。注意の地は持たない。
+    expect(link).toHaveClass("border-primary", "bg-ongoing-soft");
+    expect(link).not.toHaveClass("bg-warning-soft");
     expect(link.querySelector("svg")).toHaveClass("h-6", "w-6", "text-primary");
   });
 
@@ -77,6 +79,6 @@ describe("UI-00 ActionButton", () => {
     renderAction({ navItemId: "ui-00" });
     const link = await screen.findByRole("link", { name: "ホーム" });
     expect(link).toHaveTextContent(/^ホーム$/);
-    expect(link).not.toHaveClass("border-primary", "bg-warning-soft");
+    expect(link).not.toHaveClass("border-primary", "bg-ongoing-soft");
   });
 });

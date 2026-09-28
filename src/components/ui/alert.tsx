@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { TriangleAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -9,8 +10,9 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: "bg-card text-card-foreground",
-        destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
+        // D-CE2: 危険・失敗は warning と対称の段 2。三角 icon は部品が描く（site は書かない）。
+        // prettier-ignore
+        destructive: "bg-destructive-soft border-destructive text-destructive-strong [&>svg]:text-destructive *:data-[slot=alert-description]:text-destructive-strong/90",
         // catalog の文字列契約と手書き class の全数検査を区別する語順を維持する。
         // prettier-ignore
         warning: "bg-warning-soft border-warning text-warning-strong [&>svg]:text-warning *:data-[slot=alert-description]:text-warning-strong/90",
@@ -25,6 +27,7 @@ const alertVariants = cva(
 function Alert({
   className,
   variant = "default",
+  children,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
@@ -34,7 +37,10 @@ function Alert({
       role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {variant === "destructive" && <TriangleAlert aria-hidden="true" />}
+      {children}
+    </div>
   );
 }
 

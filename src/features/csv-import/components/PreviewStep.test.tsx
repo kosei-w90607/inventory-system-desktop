@@ -61,6 +61,9 @@ describe("PreviewStep REQ-401 same-day addition", () => {
     );
     // gated Amendment 5（owner L3-lite round 3 裁定②）: 日報側と対称の warning tone。
     expect(alertBanner).toHaveClass("border-warning", "bg-warning-soft", "text-warning-strong");
+    // DSR-08 / AC-L3-12: warning の Alert は部品が icon を描かないため、画面が三角 icon を置く。
+    expect(alertBanner.querySelectorAll("svg")).toHaveLength(1);
+    expect(alertBanner.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     const matchingResultHeading = screen.getByText("紐付け結果");
     expect(
       alertBanner.compareDocumentPosition(matchingResultHeading) & Node.DOCUMENT_POSITION_FOLLOWING,

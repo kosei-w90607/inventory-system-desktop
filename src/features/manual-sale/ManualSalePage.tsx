@@ -521,7 +521,7 @@ export function ManualSalePage() {
                   未登録商品の場合は、商品マスタに登録してから手動販売へ戻って追加します。
                 </span>
                 {values.rows.length > 0 ? (
-                  <span className="text-destructive">
+                  <span className="text-warning-emphasis">
                     未保存の手動販売内容があります。商品登録へ進むとこの画面の入力は残りません。
                   </span>
                 ) : null}

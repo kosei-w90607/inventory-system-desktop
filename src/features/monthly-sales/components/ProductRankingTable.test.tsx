@@ -97,9 +97,21 @@ describe("ProductRankingTable (REQ-502 sort 結線)", () => {
     const badgeEl = rowEl ? screen.getAllByText("1 位").find((el) => rowEl.contains(el)) : null;
     expect(badgeEl).not.toBeUndefined();
     expect(badgeEl?.textContent).toContain("1 位");
-    // SC3 / DSR-22: 順位の強調には琥珀の枠を伴う。
-    expect(badgeEl).toHaveAttribute("data-variant", "default");
-    expect(badgeEl).toHaveClass("border-warning");
+    // SPEC-COLOR-EMPHASIS-RT-1 / D-094（L3 round 1 で D-CE13 の試しを採らない）: 1 位は琥珀の pill
+    // （地・文字・枠）と行の地。操作の色（bg-primary）は持たない。
+    expect(badgeEl).toHaveAttribute("data-slot", "badge");
+    expect(badgeEl).toHaveClass(
+      "bg-rank-top-badge-bg",
+      "text-rank-top-badge-text",
+      "border-warning",
+    );
+    expect(badgeEl).not.toHaveClass("bg-primary");
+    expect(rowEl).toHaveClass("bg-rank-top-bg/40");
+    // 2 位の行は pill と地を持たず、順位は muted の文字のまま。
+    const second = screen.getByText("2 位");
+    expect(second).not.toHaveAttribute("data-slot", "badge");
+    expect(second).toHaveClass("text-sm", "text-muted-foreground");
+    expect(screen.getByText("商品B").closest("tr")).not.toHaveClass("bg-rank-top-bg/40");
   });
 
   it("UI-09b: active indicator, ARIA, and numeric header alignment stay connected", () => {
