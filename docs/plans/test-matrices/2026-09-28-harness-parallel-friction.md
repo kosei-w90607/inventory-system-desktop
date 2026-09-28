@@ -9,7 +9,7 @@ Risk: R3
 ## Contracts Under Test
 
 - SPEC-WF-PARALLEL-FRICTION-D1: R2+ は差分（`removed` 以外の `filename`、`renamed` の `previous_filename`、`removed` の `filename`）が触る `docs/plans/` 直下の dated packet（full path が `docs/plans/\d{4}-\d\d-\d\d-[^/]*\.md`）がちょうど `--packet` の 1 つで、それが head にあるときだけ通る。差分の entry が 0 か 3000 以上なら exit 1（切り詰めの疑い）。
-- SPEC-WF-PARALLEL-FRICTION-D2: R0 / R1 は head にある active packet を触らないときだけ通る。`docs/plans/` を離れる packet は head の `docs/archive/plans/<同じ名前>` の Phase が `archive` のときだけ closeout の移送として通す。archive が取得できない（404 を含む）なら exit 2、取得できた内容の Phase が `archive` でなければ exit 1。
+- SPEC-WF-PARALLEL-FRICTION-D2: R0 / R1 は head にある active packet を触らないときだけ通る。`docs/plans/` を離れる packet は、同じ PR の差分の中で同名の `docs/archive/plans/<同じ名前>` への移送（`renamed` で `previous_filename` = active・`filename` = archive、または `removed` の active と `added` / `modified` の archive の組）が無ければ exit 1（既存の archive が無変更のまま active packet が消える差分を含む）。移送があれば head の archive を取得し、Phase が `archive` のときだけ closeout の移送として通す。archive が取得できない（404 を含む）なら exit 2、取得できた内容の Phase が `archive` でなければ exit 1。
 - SPEC-WF-PARALLEL-FRICTION-D3: helper は head の `docs` / `docs/plans` の一覧と `docs/Plans.md` を読まない。
 - SPEC-WF-PARALLEL-FRICTION-D4: PK5 の祖先・不変性の検査は、起点（`WORKFLOW_BASE_SHA` が HEAD と違えばそれ、そうでなければ `origin/main`）からの差分（`--no-renames`）が触る、HEAD にある packet に掛け、起点が無いか merge-base が 1 つでなければ全 packet に掛ける。
 - SPEC-WF-PARALLEL-FRICTION-D5: 後続 lane の base 同期は先行 lane の closeout を待たない（文書の規則。rg で確かめる）。
@@ -34,6 +34,7 @@ Risk: R3
 - F13: 既存の test の置き換えで、同じ失敗（曖昧な結び付け・HTTP 失敗の握り潰し）を拒む力が落ちる。
 - F14: 未知の file の `status` を黙って既知の扱いにする。
 - F15: files API の上限（3000 entry）で切り詰められた差分を完全な差分として受け、3001 件目以降にある active packet の編集を見逃す。
+- F16: base に同名の古い archive があるとき、active packet を削除するだけの R0 の PR が、head の archive の存在と Phase だけを見て closeout の移送として通る（Plan Review round 2 の Codex の反例、裁定 r2 の G1）。
 
 ## Test Matrix
 
@@ -51,7 +52,8 @@ Risk: R3
 | D2 | F2 | CLI | `test_r0_closeout_archive_move_passes`: `--risk R0`、差分 = `renamed` で packet と Matrix を archive へ、archive の packet の Phase archive、head に他の lane の active packet も残る → status の blockers が空、ready・merge まで通る | R0 の経路が head の一覧を見る、移送を削除として扱う |
 | D2 | F6 | CLI | `test_r0_closeout_reported_as_remove_and_add_passes`: 同じ移送を `removed docs/plans/…` と `added docs/archive/plans/…` で返す → 通る | `renamed` の metadata だけで移送を判定する |
 | D2 | F4 | CLI | `test_r0_edit_of_active_packet_rejected`: `--risk R0`、差分 = active packet の `modified` → exit 1、`R2+ active packet requires --packet` | R0 の経路の触る packet の検査を外す（MU3） |
-| D2 | F4 | CLI | `test_r0_packet_deletion_without_archive_fails_closed`: `--risk R0`、差分 = `removed docs/plans/…`、archive に無い（fake gh の contents が失敗 = GitHub の 404）→ exit 2 | 離れる packet を無条件に通す、取得不能を移送なしとして通す |
+| D2 | F4 | CLI | `test_r0_packet_deletion_without_archive_rejected`: `--risk R0`、差分 = `removed docs/plans/…` だけ、archive は差分にも head にも無い（fake gh の contents は失敗 = GitHub の 404）→ exit 1、`packet leaving docs/plans must move to docs/archive/plans in this PR`（移送の対応の検査で止まり、contents を読まない） | 離れる packet を無条件に通す、移送の対応を見ずに contents の取得へ進む（MU11 では exit 2 になり red） |
+| D2 | F16 | CLI | `test_r0_removal_with_preexisting_archive_rejected`（裁定 r2 の G1 の反例）: base に active `docs/plans/2026-01-01-a.md`・`docs/plans/2026-01-02-b.md` と、古い `docs/archive/plans/2026-01-01-a.md`（Phase archive）がある。差分 = `removed docs/plans/2026-01-01-a.md` の 1 entry だけ（archive A は差分に無い）。head の contents: `docs/archive/plans/2026-01-01-a.md`（Phase archive、base と同じ本文）、`docs/plans/2026-01-02-b.md`（Phase implementing）。`--risk R0 --manual not-required` → status と ready が exit 1、`packet leaving docs/plans must move to docs/archive/plans in this PR`。fake gh の呼出しに `/contents/docs/archive/plans/2026-01-01-a.md` が無い | 離れる packet を head の archive の存在と Phase だけで判定する（MU11） |
 | D2 | F5 | CLI | `test_r0_archive_move_without_phase_archive_rejected`: `--risk R0`、`renamed` で archive へ、archive の内容の Phase が `implementing`（directory rename の事故の形）→ exit 1（理由の message を assert） | Phase archive の検査を外す（MU5） |
 | D2 | F13 | CLI | 置き換えた `test_parent_or_present_directory_http_failure_is_error` の後継: closeout の移送の archive の contents が HTTP 失敗 → exit 2 | 取得失敗を空や移送なしに置き換える |
 | D3 | F11・F13 | CLI | `test_packet_scope_does_not_list_docs_or_read_plans`: R0 と R2+ の status を通し、fake gh の呼出しに `/contents/docs?`・`/contents/docs/plans?`・`/contents/docs/Plans.md` が無い | 一覧か Plans.md の照合が残る |
@@ -80,7 +82,7 @@ packet（lane）の状態の遷移と、各状態で helper・PK4・PK5 がど�
 |---|---|---|---|---|---|---|---|---|---|---|
 | 自分の lane の packet | 起票で `docs/plans/` に `added`。helper は差分の packet 1 つで判定、PK5 は Plan Commit が pending の間は対象外 | 実装中。差分に出続け、PK5 の対象 | merge。main に Phase implementing のまま残る | main の取込みで head/base が変わると record は旧版になり closure が要る（D9、変えない） | helper は毎回 PR の差分を取り直す（cache しない） | 再開は依頼の名指しと `Branch` 行で選ぶ（D7） | merge 済みの packet は再開しない | 差分の packet が 0 か 2 以上なら拒否 | 是正して取り直す | AC1、AC2 |
 | 他の lane の merge 済み packet（closeout 前） | main に残る | 後続 lane が取り込む。差分に出ない | helper・PK5 の対象外、PK4 は形式だけ | 後続 lane の差分が触れば対象になり拒否・red | — | — | — | 触った PR は拒否 | 触らないように直す | AC1、AC4 |
-| closeout の PR | R0。packet を archive へ移し Phase archive | — | 離れる packet が Phase archive の移送なら通る | archive の Phase が archive でなければ拒否（exit 1） | — | — | — | archive の取得失敗（404 を含む）は exit 2 | 再実行 | AC1 |
+| closeout の PR | R0。packet を archive へ移し Phase archive | — | 離れる packet が、同じ PR の差分の中の同名の archive への移送（`renamed`、または `removed` と `added` / `modified` の組）で、head の archive が Phase archive なら通る | 同じ PR の差分に archive への移送が無い（既存の archive が無変更の削除を含む）か、archive の Phase が archive でなければ拒否（exit 1） | — | — | — | archive の取得失敗（404 を含む）は exit 2 | 再実行 | AC1 |
 | Plans.md の pointer | 本 lane の実装で 1 行置く | — | active packet がある間 PK4 が求める | pointer を消すと PK4 が ERROR | — | — | — | — | 行を戻す | AC5 |
 
 For workflow-state changes, cover capture/server races, stale head/base, broad/closure, manual/R4 and hosted gate: 本 lane は capture・record・closure・manual・R4・hosted gate の処理を変えない（D9）。既存の `RecordLifecycle`・`CLI.test_offline_bad_repo_input_and_race`・`test_merge_match_head_race` が現行どおり green であることで確かめる（AC2）。
@@ -90,9 +92,9 @@ For workflow-state changes, cover capture/server races, stale head/base, broad/c
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
 | 「head の `docs/plans/` の全 packet」で判定する | `scripts/pr-gate.py:223-234`・`:244`、`scripts/check-workflow-git.sh` の `main()` の loop、`scripts/doc-consistency-check.sh:1364-1391`（PK4 の Plans.md）、`iter_active_dated_plans`、`--target plan` の既定の対象 | helper（S1）、PK5（S3）、PK4 の Plans.md（S5） | PK1〜PK4 の形式の検査と `--target plan` の既定の対象は全 packet のまま（merge 済み packet も形式は満たしている）。Evidence Mode・Phase の検査も全 packet のまま | AC1、AC4、AC5 |
-| 「Plans.md の lane の link から packet を選ぶ」「lane が Plans.md へ lane 固有の事項を書き足す」 | `docs/DEV_WORKFLOW.md:110`・`:229`・`:235`・`:385`・`:390`・`:419`、`docs/agent-guidance/merge-evidence.md:142`・`:144`・`:160`、`.agents/skills/inventory-workflow-start/SKILL.md:12`、`.claude/commands/plan-rally.md:7`、`docs/AGENT_OPERATING_MANUAL.md:50`・`:86`、`docs/Plans.md:85`、`AGENTS.md:14`、`docs/PROJECT_HANDOFF.md:7`、`docs/DEV_WORKFLOW.md:68` | S7・S8（`:229`・`:390` を含む）・S10・S11 | `AGENTS.md:14`（pointer 経由で意味が保たれ、drift test の対象）、`docs/PROJECT_HANDOFF.md:7`（「Plans.md と対象 Plan Packet」で誤りでない）、`docs/DEV_WORKFLOW.md:68`（entry がある場合の sweep で、書込みの義務を作らない。PR4）、`docs/AGENT_OPERATING_MANUAL.md:50`（役割が決まらないときの blocker は lane でなく全体の事項で、Plans.md に残す） | AC8 |
+| 「Plans.md の lane の link から packet を選ぶ」「lane が Plans.md へ lane 固有の事項を書き足す」 | `docs/DEV_WORKFLOW.md:110`・`:229`・`:235`・`:385`・`:390`・`:419`、`docs/agent-guidance/merge-evidence.md:142`・`:144`・`:160`、`.agents/skills/inventory-workflow-start/SKILL.md:12`、`.claude/commands/plan-rally.md:7`、`docs/AGENT_OPERATING_MANUAL.md:50`・`:86`、`docs/Plans.md:85`、`AGENTS.md:14`・`:33`、`docs/PROJECT_HANDOFF.md:7`、`docs/DEV_WORKFLOW.md:68`・`:453` | S7・S8（`:229`・`:390` を含む）・S10・S11 | `AGENTS.md:14`（pointer 経由で意味が保たれ、drift test の対象）、`AGENTS.md:33`（「重要な進捗は `Plans.md`」は全体の進捗の置き場で、lane ごとの行を求めない）、`docs/PROJECT_HANDOFF.md:7`（「Plans.md と対象 Plan Packet」で誤りでない）、`docs/DEV_WORKFLOW.md:68`（entry がある場合の sweep で、書込みの義務を作らない。PR4）、`docs/DEV_WORKFLOW.md:453`（archive せずに残す packet の follow-up は「`Plans.md` or the PR body」で、PR body で満たせるので Plans.md への書込みの義務にならない）、`docs/AGENT_OPERATING_MANUAL.md:50`（役割が決まらないときの blocker は lane でなく全体の事項で、Plans.md に残す）。`AGENTS.md:33` と `DEV_WORKFLOW.md:453` の文言を変えるなら PR4 へ回す（裁定 r2 の G10） | AC8 |
 | 「先行 lane の closeout を後続 lane の同期より先に」 | `docs/agent-guidance/merge-evidence.md:130`、`docs/DEV_WORKFLOW.md:419`・`:426`、`docs/ci.md:79`（MG-D6/D7 と Actions 停止時の参照だけ） | S7・S8 | `docs/ci.md` は順序を定めていない | AC6 |
-| 単段 merge の command | `docs/DEV_WORKFLOW.md:238`・`:246`（Stacked train）、merge-evidence の base 同期 | `:238`（S8） | `:246` は Stacked train の base 付け替えで `:238` を参照する形のまま。merge-evidence は「origin/mainを取り込む」とだけ書き、command は DEV_WORKFLOW が持つ | AC7 |
+| 単段 merge の command | `docs/DEV_WORKFLOW.md:238`（Wave Operation）・`:246`（Stacked train）、`docs/agent-guidance/merge-evidence.md:130`（base 同期の正本） | DEV `:238`・`:246`（S8）、merge-evidence `:130`（S7） | —（参照の向きは `:238` → Stacked train だけで、`:246` と merge-evidence `:130` から `:238` への参照は無いため、3 か所に同じ command を置く。裁定 r2 の G7） | AC7 |
 | test の fixture の Plans.md の link | `scripts/tests/pr-gate.test.py` の `configure_packet`・`test_registered_amendment_order_cannot_roll_back_manual`、`scripts/tests/doc-consistency-plan-packet.test.sh` の `write_plans_md_*` | S2・S6 | — | AC2、AC5 |
 
 ## Negative Paths
@@ -100,7 +102,7 @@ For workflow-state changes, cover capture/server races, stale head/base, broad/c
 - missing input: `--packet` なしで差分が active packet を触る（R0 の拒否）、`--packet` ありで差分が packet を触らない（R2+ の拒否）。
 - invalid input: 未知の file の `status`（exit 2）、`--packet` の path の形式違い（現行の exit 2）。
 - duplicate/ambiguous input: 差分が active packet を 2 つ触る、rename で 2 path が出る。
-- unknown reference: `docs/plans/` を離れる packet が archive に無い（取得不能として exit 2）。
+- unknown reference: `docs/plans/` を離れる packet に、同じ PR の差分の中の同名の archive への移送が無い（exit 1。archive が head に無い場合も、古い archive が無変更で残る場合も）。移送はあるが head の archive が取得できない（exit 2）。
 - dependency missing: 起点（`origin/main`・`WORKFLOW_BASE_SHA`）が無い → PK5 は全 packet に倒す。
 - permission/write failure: archive の contents の HTTP 失敗 → exit 2（空に置き換えない）。
 - dry-run side effect: helper の `status` は read-only のまま（既存の `test_status_capture_ready_merge` の GET だけの確認）。
@@ -138,12 +140,12 @@ For workflow-state changes, cover capture/server races, stale head/base, broad/c
 
 - helper connected to main path: `python3 scripts/pr-gate.py status|capture|record|ready|merge` の全 action が `requirements()` を通る（`snapshot()`）。CLI の test は fake gh の process を通す。
 - output reaches manifest/report: 該当なし。
-- effective config reaches runtime: hosted の PR の docs job が `WORKFLOW_BASE_SHA` = PR の base を渡し、S3 が起点に使う（`.github/workflows/ci.yml:311`、S4 (a1)）。pre-push・local-ci は env 未設定で `origin/main` を使う（S4 (a2)）。hosted の dispatch の `origin/main` は Contract Probe 5（外部前提）。
+- effective config reaches runtime: hosted の PR の docs job が `WORKFLOW_BASE_SHA` = PR の base を渡し、S3 が起点に使う（`.github/workflows/ci.yml:311`、S4 (a1)）。その base が後続 lane の取り込んだ main 以上であることは外部前提（Residual Test Gaps）。pre-push・local-ci は env 未設定で `origin/main` を使う（S4 (a2)）。hosted の dispatch の `origin/main` は Contract Probe 5（外部前提）。
 - CLI arg reaches implementation: `--packet` と `--risk` が R2+ と R0 の経路を選ぶ（既存の argparse のまま）。
 
 ## Mutation-style Adequacy Questions
 
-mutation は packet の Test Plan の MU1〜MU10。実注入で red を確かめる（AC10）。
+mutation は packet の Test Plan の MU1〜MU11。実注入で red を確かめる（AC10）。
 
 - If a key branch is inverted, which test fails?: R2+ と R0 の経路の取り違え → `test_other_lane_packet_in_head_r2_passes`（R2+ が通るべき）と `test_r0_edit_of_active_packet_rejected`（R0 が拒むべき）。
 - If a guard is removed, which test fails?: Phase archive の検査（MU5）→ `test_r0_archive_move_without_phase_archive_rejected`、触る packet の検査（MU3）→ `test_r0_edit_of_active_packet_rejected`、pointer の検査（MU8）→ S6 の pointer なし。
@@ -155,10 +157,12 @@ mutation は packet の Test Plan の MU1〜MU10。実注入で red を確かめ
 - mock の値の取り違え: fake gh の差分（`state['files']`）と head の一覧（`state['packets']`）・内容（`state['contents']`）を別々に持たせ、差分に無い他の lane の packet を一覧と内容にだけ置く（`test_other_lane_packet_in_head_r2_passes`）。一覧で判定する実装（MU1）なら一覧の 2 packet を拾って落ちる。
 - PK5 の対象の取り違え: MU6（全 packet）は S4 (a1)・(a2)、MU7（空）は S4 (b)・(c)、MU9（env 未設定で `origin/main` を使わない）は S4 (a2) が捉える。
 - 差分の切り詰め: MU10（path の数での判定）は `test_truncated_diff_rejected` が捉える。
+- 移送の対応: MU11（離れる packet を head の archive の Phase だけで判定する）は `test_r0_removal_with_preexisting_archive_rejected` が捉える。
 
 ## Residual Test Gaps
 
 - 他の lane の Test Design Matrix（`docs/plans/test-matrices/`）の書き換えは helper も PK5 も検出しない（現行も同じ。本 lane の範囲外）。
 - hosted の workflow_dispatch の run で `origin/main` が解決できること（Contract Probe 5）は外部前提として残す（checkout v6 の実装で裏付け。PR の run は `WORKFLOW_BASE_SHA` を使うので、その log では確かめられない）。解決できなくても全 packet の検査に倒れる（red の向き）。
+- hosted の PR run の `pull_request.base.sha` が、後続 lane が単段 merge で取り込んだ main 以上であること（裁定 r2 の G4）は、S4 (a1) が base = main ちょうどの合成 fixture なので確かめない。外部前提として残し、本 lane の merge 後に main を取り込んだ最初の PR の docs job の step log の `WORKFLOW_BASE_SHA` と取り込んだ main を read-only で突き合わせる。外れると先行 lane の packet も差分に出て PK5 が red になる（安全側）。
 - GitHub が移送を `renamed` で返すか削除と追加で返すかの閾値は未実測。どちらの形も test で通す。
 - 業務上の Risk の申告の正しさ（R2+ の作業を R0 と称して packet なしで出す PR）は、現行どおり helper では検出しない（owner と model の判断）。packet を触らない runtime の変更（例: classifier で BIZ の変更は `workflow=false`）の R0 の申告は機械では拒めず、拒むのは CI 実行 code の変更（`CI execution change requires R3 packet`）だけ。本 lane の「R2+ で差分の packet が 0」の拒否は `--packet` を付けた PR に限り、packet 0 の R2+ の作業を全面的に自動検出するものではない。
