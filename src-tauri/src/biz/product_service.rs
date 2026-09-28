@@ -175,10 +175,8 @@ fn generate_custom_code(
 
 /// 商品を新規登録する（FUNC-4.2）
 ///
-/// ## 設計ドキュメントとの差分
-/// 30-biz-product-service.md ではステップ2（コード決定）の後にBEGINだが、
-/// generate_custom_code 内の increment_next_seq が DB を更新するため
-/// TX 開始をコード決定の前に移動。
+/// generate_custom_code 内の increment_next_seq が DB を更新するため、
+/// TX はコード決定の前に開始する（30-biz-product-service.md のステップ2）。
 pub fn create_product(
     conn: &mut DbConnection,
     req: ProductCreateRequest,
