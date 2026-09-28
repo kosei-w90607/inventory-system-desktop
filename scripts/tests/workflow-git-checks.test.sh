@@ -428,6 +428,17 @@ run_scoped "$main_sha"
 git -C "$repo" update-ref refs/remotes/origin/main "$main_sha"
 run_scoped ""
 [[ "$CHECK_STATUS" -eq 0 ]] || fail "D4 (a2): env-unset origin/main route checked the merged packet: $output"
+# (a3) the start point resolves but `git diff` fails: every packet is checked (fail-closed)
+fail_diff_bin="$tmp/fail-diff-bin"
+mkdir -p "$fail_diff_bin"
+printf '#!/usr/bin/env bash\n[[ "${1:-}" == diff ]] && exit 128\nexec %q "$@"\n' "$(command -v git)" > "$fail_diff_bin/git"
+chmod +x "$fail_diff_bin/git"
+set +e
+output="$(cd "$repo" && env -u WORKFLOW_BASE_SHA PATH="$fail_diff_bin:$PATH" bash "$CHECK_SCRIPT" 2>&1)"
+CHECK_STATUS=$?
+set -e
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (a3): failed diff was treated as an empty scope: $output"
+assert_contains "$output" "$x_packet の Plan Commit" "D4 (a3): merged packet not checked after a failed diff"
 # (d) no start point: every packet is checked
 git -C "$repo" update-ref -d refs/remotes/origin/main
 run_scoped ""
