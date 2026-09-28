@@ -174,7 +174,7 @@ baseline は下の command を逐語で実行して写した値（「実装前 �
 |---|---|---|---|---|---|
 | REQ-101 | 30 §4.3、31 §12.2 | 31 §12.2 の「借りた transaction に型で限る」 | 通常の接続を渡すとコンパイルが止まる。棄却: コメントだけで前提を書く現行 | `generate_custom_code` の引数型 | T-S2 |
 | REQ-206 | 74 §74.7 | ⑰ UIDISP-D6（共有 `formatDateTime`、archive） | 8 feature から import される表示 helper を feature の外へ。棄却: `types.ts` から re-export を残す（置き場が 2 つになる） | `src/lib/date-time.ts` | T-S3、T-S3b、「⑰ SC6 / UIDISP-D6」7 本 |
-| REQ-402 | 67 処理ステップ 3・8 | ⑰ UIDISP-D6 の書式 `YYYY-MM-DD HH:mm:ss` | DB の文字列は時差変換をせず、`savedAt`（UTC）だけローカルへ直す。棄却: `snapshot_at` も `Date` に通す（DB 側の時差なしの約束から外れる）、`savedAt` の保存形を変える（既存の localStorage と互換が切れる） | `PluExportPage.tsx` | T-S4a〜c |
+| REQ-402 | 67 処理ステップ 3・8 | ⑰ UIDISP-D6 の書式 `YYYY-MM-DD HH:mm:ss` | DB の文字列は時差変換をせず、`savedAt`（UTC）だけローカルへ直す。棄却: `snapshot_at` も `Date` に通す（DB 側の時差なしの約束から外れる）、`savedAt` の保存形を変える（既存の localStorage と互換が切れる） | `PluExportPage.tsx` | T-S4a〜d |
 | 旧 04 token 表「検索欄」 | 02 ⑨、04 の反映待ちの表 | 旧 04「部門 select 幅は全画面同一」 | 幅を部品だけが持てば画面ごとの drift が起きない。棄却: prop を残して値だけ揃える（再び混在し得る）、10rem（最長の部門名に余裕がない見積もり） | `DepartmentFilter.tsx` と呼び出し 4 箇所 | DF-4、B0-*-DF2 |
 | REQ-401 | 55 §55.5・§55.8・§55.9 | 55 の reducer 遷移表と処理手順 20 | 実装・遷移図・遷移表・手順が一致し、§55.5 の表の 2 行と §55.9 の `internal` の節だけが取消の挙動を解析・取込みにまで広げていた。取込みの失敗で state を変えないと取込み中（importing）のまま止まり、`useBlocker` で抜け出せない。棄却: 実装を旧い表に合わせる | 正本は plan 側で訂正済み（実装は変えない） | T-S6、既存の rollback 失敗 test |
 | REQ-402 | plu-tables §25、33 §16.5、67 UI-08-D2 | UI-08-D2（レジ反映済みとは書かない）、D-011 / D-023 | アプリはレジへの反映を観測できない。状態遷移表・実装・ERD は既に「アプリ側で active になった日時」。`released_at` は実装が release_pending → free でだけ書き、解放 trigger では書かない | plu-tables §25 のカラム説明と状態遷移表（plan 側で訂正済み、runtime は変えない） | test なし（AC-S7 の検索） |
@@ -285,8 +285,16 @@ Fill after implementation.
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
+- 実装: [PR #118](https://github.com/kosei-w90607/inventory-system-desktop/pull/118)。S1〜S8 を Writer（Opus 5.5 subagent）が実装した。manual の L3-1・L3-2 は owner が PASS とした後、main の取込みで衝突を解いたため、最終の head でやり直す（merge-evidence の再利用の条件を満たさない）。
+
 ## Review Response
 
 Fill after review.
+
+- Final Review broad（2026-09-28、互いに独立の 2 本）: Claude 側 fresh Opus 5.5（`6e0f84b6` で全体、`01834368` で main の取込み分を確認）= approve（P1 / P2 0、P3 1）、Codex 側 GPT-5.6 Sol（発注 117、`01834368`）= approve（P1 / P2 0、P3 2）。Coordinator の裁定: manual をやり直す前に P3 を全部直す。
+  - Opus P3（T-S4a が TZ を固定しておらず、UTC の runner では `snapshot_at` を UTC と解釈する誤りを見逃す）: accept。Writer が T-S4b と同じ形で TZ を固定する。
+  - Codex P3-1（`product_service.rs:179` のコメントが旧い TX の順序のまま）: accept。Writer が現行の順序へ直す。
+  - Codex P3-2（REQ-402 の Trace が T-S4d を落としている）: accept。Coordinator が `T-S4a〜d` へ直した。
+  - 是正の後の closure は Claude 側の fresh reviewer で行う（Final Review Minimum 1）。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
