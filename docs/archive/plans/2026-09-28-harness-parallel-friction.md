@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 13403d0f523168ec08f2fde92cbc1469246f8a19
 - Amendments: none
@@ -36,12 +36,13 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - Plan Review round 3（上限）の結果と裁定 r3 の一括是正（2026-09-29、起草役 = Opus 5.5 subagent、Phase は plan-gate のまま）: fresh Opus 5.5 は approve（P3 6）、Codex（GPT-6 Astra）は reject（P1 0 / P2 1 / P3 1）で、Coordinator が全件を accept した（H1〜H8）。Ordinary Operation の base 同期の後の record の順序を merge-evidence の manual の再利用の順序に合わせ（H1）、S2 に複数 page の fixture と test・MU12 を足し（H2）、守る境界を「差分が `--packet` 以外の active packet を触る PR の拒否」に絞って `--packet` に他の lane の packet を名指しする経路を Residual Test Gaps に置き（H3）、S8 に `docs/DEV_WORKFLOW.md:420` を足し（H4）、closeout の test を 2 packet にし（H5）、S5 で `strip_inline_code_spans` を消し（H6）、引用を直し（H7）、S3 の fail-closed の MU13 を足した（H8）。round 4 は回さず、Coordinator の現物の確認と owner の plan-approved へ。
 - plan-gate → plan-approved（2026-09-29、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `1a2c5fe7`）は Claude 側 = approve（P3 6）、Codex 側 = reject（P1 0 / P2 1 / P3 1）。round 天井に従い追加の round は回さず、裁定 r3 の一括是正（`13403d0f`）で全件を反映した。Coordinator が一括是正を現物で確かめた（MU1〜MU13 と追加の test 4 本が packet と Matrix にそろう、H4 の文言、`strip_inline_code_spans` の削除の項目、`doc-consistency-check.sh --target plan` と `check-workflow-git.sh` が exit 0）。owner 承認（2026-09-29「承認するよ」、この change での介入 4 回目、介入の上限 5 → 6 を同じ 1 回で承認）のもと plan-approved。Plan Commit = `13403d0f`。
 - plan-approved → implementing（2026-09-29、Coordinator、state-only）: Writer（Opus 5.5 subagent）へ実装を発注する。Writer の開始 HEAD は本 commit。
+- implementing → archive（2026-09-29、Coordinator の closeout〈Opus 5.5 subagent〉、本 commit）: PR #123 を squash merge（`294ba366`、2026-09-29、helper 経由）。本 lane は「本 lane 自身の merge」のとおり旧い helper（merge 前の origin/main の `scripts/pr-gate.py`）で record・Ready・merge した。packet と Matrix を archive へ移送し、Implementation Results と Review Response を記録。S11 で closeout まで残した本 lane の行を `docs/Plans.md` の `## 次の行動` から消し、Fable broad の P3-3 に沿って backlog の Wave Registry の link の項目を閉じ、closure 2 の P3・起票時に見つけた checker の脆さ・manual の再利用の観測を backlog に置いた。本 closeout は D-097 の新しい規則と helper のもとで出す最初の closeout。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 6（owner 承認 2026-09-29、この change での介入 4 回目。plan-approved の承認が見込みに入っていなかったため、その承認と同じ 1 回で 5 から改めた）。その前は 5（既定 3 から。理由: G2 の推奨が owner の示した案と違い、Plan Gate で owner の判断点が増える）
+- 介入回数上限: 6（owner 承認 2026-09-29、この change での介入 4 回目。plan-approved の承認が見込みに入っていなかったため、その承認と同じ 1 回で 5 から改めた）。その前は 5（既定 3 から。理由: G2 の推奨が owner の示した案と違い、Plan Gate で owner の判断点が増える）。closeout 時点の実績: 6 / 6（起票承認、G2 = B、S3 の承認、plan-approved と上限 6、Ready、merge）
 - 実働時間上限: 15分（文書・script・test の変更で manual は無い。owner の作業は判断点の回答と Ready・merge の指示に限られる見込み）
-- relay 往復上限: 5（Plan Review の Codex が最大 3 round、Final Review の Codex broad 1、base 同期の後の Codex closure 1）
+- relay 往復上限: 5（Plan Review の Codex が最大 3 round、Final Review の Codex broad 1、base 同期の後の Codex closure 1）。closeout 時点の実績: 4 / 5（Plan Review の Codex 3、Final Review broad の Codex 1）。closure は Claude 側で 2 本行い、Codex closure の予備は使わなかった
 - Plan Review round 天井: 3（既定 3）
 
 | 種別 | 上限 | 消費（2026-09-29 時点） | 残りの見込み | 予備 | 合計 |
@@ -508,6 +509,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - 実装: [PR #123](https://github.com/kosei-w90607/inventory-system-desktop/pull/123)。S1〜S12 を Writer（Opus 5.5 subagent、発注 133）が 4 commit で実装した（helper、PK5、PK4、文書と D-097）。AC1〜AC12 を満たし、MU1〜MU13 を実注入して red を確かめた。S10 の `.claude/commands/plan-rally.md` も sandbox に拒まれず編集できた。
 - 文言の細部で packet の逐語から離れた所: D-097 は closeout での移送で link が切れないよう、packet を link でなく名前で参照した。DEV_WORKFLOW の S8 の文から行番号の参照を省いた。Scope・AC は変えていない。
 - commit 3（PK4）だけを checkout すると、実 repo の self-pass の test が Plans.md の pointer 行（commit 4）の前なので red になる。最終 head では green。
+- 実装の要旨: helper は PR に結び付く packet を head の `docs/plans/` の一覧でなく PR の差分が触る active packet で決め（R2+ はちょうど `--packet` の 1 つ、R0 / R1 は active packet を触らず、closeout の移送は同じ PR の中の同名の archive への移送で Phase archive のものだけ）、Plans.md の link の照合をやめた。PK5 は branch の差分が触る packet に絞り、起点が解決できない・merge-base が 1 つでない・差分の取得に失敗したときは全 packet に倒す。PK4 は `## 次の行動` に `docs/plans/` を指す行を求める。merge-evidence・DEV_WORKFLOW・template・入口の語を、closeout を待たない base 同期（`merge.directoryRenames=false` の単段 merge）と wave ごとにまとめる closeout へ書き換え、D-097 を置いた。
+- review の是正: Final Review broad の P2 1 件・P3 4 件と closure 1 の P3 1 件（ASCII でない名前の packet が PK5 から外れる）を Writer と Coordinator が Ready の前に直した（Review Response）。Fable broad の P3-3 は本 closeout で backlog の項目を閉じ、closure 2 の P3 は backlog に置いた。
+- CI・manual・merge: hosted CI は全ジョブ pass。manual は not-required（製品の画面が無い）。Ready・merge は旧い helper 経由（2026-09-29）。
 
 ## Review Response
 
@@ -522,3 +526,5 @@ Fill after review.
   - 是正の後の closure は Claude 側の fresh reviewer で行う（Final Review Minimum 2 は broad の 2 本で満たしている）。
 - closure（2026-09-29、対象 `c6d6506d`、Claude 側 fresh Opus 5.5）: approve。前回の 5 件はすべて閉じた（F1 は修正を戻すと D4 (a3) が red）。新しい P3 1 件（N1）: `scripts/check-workflow-git.sh:149`・`:170` の `git diff --name-only` は既定の `core.quotePath` の下で、ASCII でない文字や `"` を含む path を quote して出すため、そういう名前の packet が PK5 の対象から黙って外れる（合成で再現）。今ある packet はすべて ASCII の名前で、helper も ASCII 以外の `--packet` を受け付けないので実害は小さいが、検査が黙って通る穴なので、Coordinator は Ready の前に直すと裁定した（Writer、回帰 test 1 件）。直した後の closure も Claude 側で行う。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+- Closeout（2026-09-29）: Plan Review は round 3（上限）まで回し plan-approved（遷移記録のとおり）。round 2 の Codex の P1（古い同名の archive があると active packet の単純な削除が通る、closeout の判定の抜け道）は、差分の中の移送の対応を必須にして塞いだ。closure 1 の N1 を `-z` の NUL 区切りで直した後の closure 2（`4a9b5c8b`、fresh Fable 5.1）= approve（新しい P1 / P2 0、P3 1）。その P3（`scripts/check-workflow-git.sh` の `wait "$!"` は、loop と `wait` の間に別の background や process substitution が無いことに依存する）は対応不要とし、将来そこを触るときの注意として backlog に置いた。専用 record は review pass（broad 2 + closure 2）、manual not-required。hosted CI 全ジョブ pass の後、owner の指示で helper 経由の squash merge（PR #123、`294ba366`、2026-09-29）。衝突を解いた版の manual の再利用は緩めず、本 lane を入れた後の実際の衝突を見て owner が改めて決める（backlog の観測の項目）。
