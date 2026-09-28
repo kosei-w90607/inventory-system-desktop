@@ -30,6 +30,7 @@ UI-00 ホーム同型の「簡潔版 = useState + useQuery + 純関数」を採�
 | 領域 | データソース | 表示意味 |
 |---|---|---|
 | 日報サマリ | `DailySalesReport.official_daily_report`（daily_report_imports / daily_report_*_lines） | レジ日報の公式集計。総売上、純売上、支払集計、部門別集計 |
+| 日報サマリの日計（Z001） | `DailySalesReport.official_daily_report.summary_imports`（daily_report_imports / daily_report_summary_lines） | Z001 の全行をレジの並びのまま取込みごとに表示する。合算しない（UI-09a-D16） |
 | 商品別明細 | `DailySalesReport.items`（sale_records） | Z004商品別CSVまたは手動販売出庫から得た商品別売上 |
 | 商品別部門小計 | `DailySalesReport.department_subtotals`（sale_records集計） | 商品別明細が存在する範囲の部門小計 |
 
@@ -42,11 +43,40 @@ UI-00 ホーム同型の「簡潔版 = useState + useQuery + 純関数」を採�
 - `DailySalesPage` は `SummaryCardsBar` の下に「レジ日報（公式）」セクションを表示する。
 - `official_daily_report === null` の場合は「この日付のレジ日報は未取込みです。」の軽量 note を表示し、画面全体 error や大きな EmptyState にはしない。
 - `official_daily_report` がある場合は、総売上 / 純売上、支払集計、部門別集計を表示する。支払行の `amount` は nullable のため「未取得」を許容し、部門行の `amount` は必須金額として表示する。
-- `official_daily_report.source_import_count` が1以上なら、公式セクションに `N回の取込みを合算` と表示する。複数parentのgross/netまたは明細optional値がNULL安全側へ伝播した場合も「未取得」を維持し、0として見せない。
+- `official_daily_report.source_import_count` が1以上なら、公式セクションに `N回の取込みを合算` と表示する（N が 2 以上の日の文は UI-09a-D16 のとおり直す）。複数parentのgross/netまたは明細optional値がNULL安全側へ伝播した場合も「未取得」を維持し、0として見せない。
 - `official_daily_report.warnings` が非空の場合は、公式日報セクション内に warning トーンの注記（アイコン + テキスト）を表示する。上部 Alert 帯は取得失敗やデータ安全系状態に限定し、部門未対応 warning とは混ぜない。
 - official があり `items.length === 0` の場合、商品別明細セクションは「商品別明細は未取込み」と表示する。「売上なし」と誤読される文言は使わない。
 
-`UI-09a-D15`: 同日の複数active importは日報サマリ、商品別明細ともBIZ-05の加算済み結果を表示する。UIで最新1回へ絞らず、公式日報seriesと商品別seriesを互いに足さない。rollback後のrefetchでは残存active importのaggregateへ直ちに収束する。
+`UI-09a-D15`: 同日の複数active importは日報サマリ、商品別明細ともBIZ-05の加算済み結果を表示する。UIで最新1回へ絞らず、公式日報seriesと商品別seriesを互いに足さない。rollback後のrefetchでは残存active importのaggregateへ直ちに収束する。日計（Z001）の行は UI-09a-D16 のとおり取込みごとに並べ、合算しない。
+
+#### 日計（Z001）の表示
+
+`UI-09a-D16`（Z001 の全行、[D-096](../decision-log.md#d-096-日計z001は同日の取込みごとに並べ合算しない2026-09-27)）: 公式セクションに Z001 の全行の表を置く。BIZ-05 の `official_daily_report.summary_imports`（[34 §19.2](34-biz-sales-service.md#192-型定義)）をそのまま描き、UI で合算・並べ替え・行の絞り込みをしない。
+
+- 置き場所: `official_daily_report` がある日だけ、総売上 / 純売上の metric の下、支払集計・部門別集計の 2 表の上に、幅いっぱいで置く。未取込みの日（`official_daily_report === null`）は既存の note だけで、日計の表も見出しも出さない。
+- 分岐: 1 回の日と 2 回以上の日は `official_daily_report.source_import_count`（= `summary_imports` の件数、34 §19.2）で分ける。表と文で同じ値を使う。
+- 文字列（完全一致。下の `{N}` は `toLocaleString("ja-JP")` の数、`{日時}` は取込み日時。括弧は全角、`/` は半角、「—」は U+2014）:
+
+| 使う場所 | 要素 | 文字列 |
+|---|---|---|
+| Z001 の表の見出し | h3（既存 2 表の見出しと同じ段） | `日計（Z001）` |
+| 既存の支払の表の見出し | h3 | `支払集計（Z002）` |
+| 既存の部門の表の見出し | h3 | `部門別集計（Z005）` |
+| Z001 の表の列見出し | th | `名称` / `個数/件数` / `金額` |
+| 1 回の日の文 | 既存の `p` | `{N}回の取込みを合算`（既存のまま。例 `1回の取込みを合算`） |
+| 2 回以上の日の文 | 既存の `p` の文を置き換える | `総売上・純売上・支払集計・部門別集計は{N}回の取込みを合算しています。日計（Z001）は取込みごとに表示します。` |
+| 2 回以上の日の取込みごとの見出し | h4（`日計（Z001）` の h3 の下） | `{N}回目の取込み（取込み日時 {日時}）`。`{日時}` は `YYYY-MM-DD HH:mm`（例 `1回目の取込み（取込み日時 2026-03-21 18:05）`） |
+| 行の無い取込み | `p` | `この取込みの日計（Z001）の行はありません。` |
+| 値の無い欄 | td | `—` |
+
+- 見出し: `日計（Z001）` の h3 を表の直前に置く。既存 2 表の見出しは上の表の文字列に変える（語は変えず出どころを添えるだけ。Z002 / Z005 の行・合算・列は変えない）。runtime lane の L3 は、これらの文字列で店主が読み違えないかの確認に限り、文字列を変えるなら Gated Amendment で本表を直す。
+- 列: 名称 / 個数/件数 / 金額 の 3 列（既存 2 表と同じ並び、数と金額は右寄せ）。見出しの「個数/件数」はレジの帳票の見出しに合わせる。
+- 行: 各取込みの `lines` を返された順（`sort_order` の順）に全行出す。値が 0 の行も出す。名称は保存された `label` をそのまま出し、アプリで言い換えない。
+- 値: 個数/件数の欄は `quantity` があればそれを、無ければ `count` を出す（Z001 の行はどちらか一方だけを持つ。総売の行は `quantity` だけ）。数は `toLocaleString("ja-JP")` で単位の文字を付けない。金額は既存と同じ `¥` + `toLocaleString("ja-JP")`。両方 NULL の個数/件数と、NULL の金額は `—` とする。`—` は「その行にその値が無い」を表す（既存の支払集計でも欠けた件数は `—`）。合算で欠けた金額の「未取得」（metric と支払集計の金額）とは別の表示である。
+- 1 回の取込みの日（`source_import_count` が 1）: 表 1 つ。取込みごとの見出しは付けない。文は既存のまま。
+- 同じ日に 2 回以上取り込んだ日（`source_import_count` が 2 以上）: `日計（Z001）` の h3 の下に、取込みごとの表を返された順（取込みの古い順）に並べ、各表の直前に取込みごとの h4 を置く。`{N}` はその日に表示中の取込みの中での古い順の番号で、レジの精算回数ではない（取り消した取込みは数えず、残りで振り直す）。`{日時}` は `imported_at` の秒を落として `T` を空白にした形（見出しとして読みやすさを優先する。秒までの取込み日時は、同じ日に追加で取り込むときの確認の dialog の既存分の表〈UI-07-D13〉で見える）。合算した表は出さない。文は上の表の 2 回以上の日の文にする。
+- 行が 0 件の取込み: 取込みの経路では作られない（完了した取込みは総売か純売の行を必ず持つ）が、`lines` が空なら、その取込みの位置（2 回以上の日は h4 の下、1 回の日は h3 の下）に表の代わりに上の表の文を出し、取込み自体は落とさない。
+- 変えないもの: 総売上 / 純売上の metric、支払集計・部門別集計の合算と行、未取込みの note、部門未対応の warning、取得失敗の上部 Alert と再試行、商品別明細との分離（UI-09a-D12）、UI-09a-D15 の合算表示、前日の取得（`SummaryCardsBar` の前日比は日計を使わない）、日次 CSV 出力の列。
 
 **ファイル構成（18 file = lib 7 + hooks 2 + components 6 + page 1 + types 1 + route 1）**:
 
@@ -543,3 +573,4 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 | 2026-06-08 | selection-tone follow-up | TabsHeader の二択切替 visual を `SegmentedControl` primitive に寄せ、monthly ModeTabs と同じ shared segmented control 仕様を参照する形に更新 |
 | 2026-07-29 | 監査是正 順21a plan-first | UI-TABLE-D1として日次5 sortable列のheader implementation ownerを`src/components/sales/SortableHeader.tsx`へ正本化。列集合・sort callback・ARIA・表示は不変 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: `source_import_count` の「N回の取込みを合算」表示、NULL安全表示、同日複数active importの加算済み表示契約を正本化。 |
+| 2026-09-27 | daily-report-z-display（design） | UI-09a-D16: 公式セクションに日計（Z001）の全行の表を足し、同日複数取込みの日は取込みごとに並べる。既存 2 表の見出しに出どころ（Z002 / Z005）を添える（[Plan Packet](../plans/2026-09-27-daily-report-z-display.md)、D-096）。 |
