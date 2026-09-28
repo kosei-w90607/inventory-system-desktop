@@ -19,7 +19,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Review Minimum: 1
 - Human Gate: ready,merge,manual
 
-manual = owner Windows native L3 の抜き取り 3 画面（AC-L3-1〜3、10 分以内）。文言・weight の変更は rg oracle で閉じるが、Alert title の太さと「全 N 件」の見え方は owner の目が oracle（[視覚系 UI change の運用教訓](../../../.claude/rules/review-workflow.md) ではなく owner 方針 2026-09-05）。Fable 指揮の分業 lane で D-087 の一貫担当例外は適用しない。
+manual = owner Windows native L3 の抜き取り 3 画面（AC-L3-1〜3、10 分以内）。文言・weight の変更は rg oracle で閉じるが、Alert title の太さと「全 N 件」の見え方は owner の目が oracle（視覚系 UI change の運用教訓（`.claude/rules/review-workflow.md`） ではなく owner 方針 2026-09-05）。Fable 指揮の分業 lane で D-087 の一貫担当例外は適用しない。
 
 遷移記録（append-only）:
 - kickoff → spec-check → plan-draft → plan-gate（`b21703ad`）: Risk R2、Design Readiness が既存 function-design 58 / 65 / 69 + catalog ⑥ / ⑬ + mockup-d を十分と引用（文言・token の同期のみ）。Test Matrix は R2 任意だが test 更新が 5 file に及ぶため付ける。

@@ -5,7 +5,7 @@ Planの独立レビューが必要なときだけ使うoptional helper。review�
 ## 実行フロー
 
 1. `Plans.md`から対象のactive Plan Packetを一意に特定する。
-2. PacketのRisk、Plan Reviewer、Owner Effort Budget、Subagent Budgetを確認する。
+2. PacketのRisk、Plan Reviewer、Plan Review round 天井を確認する。
 3. 独立fresh contextのread-only reviewerへ、対象scopeと既存findingだけを渡す。
 4. 結果をP1 / P2 / P3、根拠、最小修正境界に整理し、Coordinatorへ返す。
 5. 修正と最終裁定はCoordinatorが行う。P1/P2=0でもWorkflow Stateとowner Human Gateを自動遷移させない。
@@ -15,12 +15,10 @@ Planの独立レビューが必要なときだけ使うoptional helper。review�
 - mandatoryな反復回数、model名、agent log時間窓、個人memory更新を要求しない。
 - reviewerへWrite / Edit / commit / push / PR操作を渡さない。
 - 同じfindingのclosure確認と、新しいbroad reviewを混ぜない。
-- Packetの予算上限へ達したら追加reviewを生成せず、Coordinatorへblockerを返す。
+- Plan Review round 天井に達したら追加reviewを生成せず、Coordinatorへblockerを返す。
 
 ## 正本
 
 - workflow / phase / review: `docs/DEV_WORKFLOW.md`
-- role / consultation relay: `docs/AGENT_OPERATING_MANUAL.md`
+- role / 座組: `docs/AGENT_OPERATING_MANUAL.md`
 - task scope / budget / reviewer: 対象Plan Packet
-
-証跡の保存先とhelperは `docs/agent-guidance/merge-evidence.md` のEvidence Modeに従う。実装後state-only/三点一致はlegacyだけで、github modeのreview/manual/R4は専用recordをsingle-writerが更新する。

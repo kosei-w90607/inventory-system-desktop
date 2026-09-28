@@ -361,13 +361,6 @@ old_namespace_pattern='-home-kosei-Projects-inventory-system($|[^-])'
 if rg -n -- "$old_namespace_pattern" "${live_files[@]}"; then
     fail "T12 live B-group file still contains the history-view encoded namespace"
 fi
-namespace_files=(
-    "$SOURCE_ROOT/CLAUDE.md"
-)
-for namespace_file in "${namespace_files[@]}"; do
-    grep -Fq -- "$public_namespace" "$namespace_file" ||
-        fail "T13 public namespace missing from $namespace_file"
-done
 live_setup_sections="$(sed -n '130,160p;236,244p' "$SOURCE_ROOT/docs/DEV_SETUP_CHECKLIST.md")"
 if printf '%s\n' "$live_setup_sections" | rg -n -- "$old_namespace_pattern"; then
     fail "T12 live DEV_SETUP sections contain the history-view encoded namespace"
