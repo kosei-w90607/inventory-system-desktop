@@ -188,20 +188,19 @@ setup_repo_dirs() {
     mkdir -p "$repo/docs/plans"
 }
 
+# D-097: '## 次の行動' は packet ごとの link でなく docs/plans/ を指す pointer 行を持つ。
+# 引数（packet の basename）は受けるが使わない（呼出し側の正例 fixture の意味を保つ）。
 write_plans_md_linking() {
     {
         echo "# Plans"
         echo ""
         echo "## 次の行動"
         echo ""
-        local basename
-        for basename in "$@"; do
-            echo "1. fixture entry: [plans/${basename}](plans/${basename})"
-        done
+        echo "1. active な lane の Plan Packet は docs/plans/ の dated packet が正本"
     } > "$repo/docs/Plans.md"
 }
 
-# SC5: '## 次の行動' 配下の '### Wave Registry' 小見出しの下に active packet link を置く。
+# SC5 の後継: '## 次の行動' 配下の '### Wave Registry' 小見出しの下に pointer を置く。
 write_plans_md_linking_under_wave_registry() {
     {
         echo "# Plans"
@@ -210,10 +209,7 @@ write_plans_md_linking_under_wave_registry() {
         echo ""
         echo "### Wave Registry"
         echo ""
-        local basename
-        for basename in "$@"; do
-            echo "1. fixture entry: [plans/${basename}](plans/${basename})"
-        done
+        echo "1. active な lane の Plan Packet は docs/plans/ の dated packet が正本"
     } > "$repo/docs/Plans.md"
 }
 
@@ -227,84 +223,31 @@ write_plans_md_no_link() {
     } > "$repo/docs/Plans.md"
 }
 
-write_plans_md_text_only() {
-    local basename="$1"
-    {
-        echo "# Plans"
-        echo ""
-        echo "## 次の行動"
-        echo ""
-        echo "1. fixture entry mentions ${basename} without a Markdown link"
-    } > "$repo/docs/Plans.md"
-}
-
-write_plans_md_hidden_links() {
-    local fenced_basename="$1"
-    local comment_basename="$2"
+# pointer が code fence と HTML comment の中にしか無い。
+write_plans_md_hidden_pointer() {
     {
         echo "# Plans"
         echo ""
         echo "## 次の行動"
         echo ""
         echo '```markdown'
-        echo "1. fixture entry: [plans/${fenced_basename}](plans/${fenced_basename})"
+        echo "1. active な lane の Plan Packet は docs/plans/ の dated packet が正本"
         echo '```'
         echo ""
         echo "<!--"
-        echo "1. fixture entry: [plans/${comment_basename}](plans/${comment_basename})"
+        echo "1. active な lane の Plan Packet は docs/plans/ の dated packet が正本"
         echo "-->"
     } > "$repo/docs/Plans.md"
 }
 
-write_plans_md_mixed_fence_and_inline_code() {
-    local fenced_basename="$1"
-    local inline_basename="$2"
+# inline code の中の docs/plans/ は pointer として数える（link でなく文字列の要求）。
+write_plans_md_inline_code_pointer() {
     {
         echo "# Plans"
         echo ""
         echo "## 次の行動"
         echo ""
-        echo '```markdown'
-        echo "~~~"
-        echo "1. fixture entry: [plans/${fenced_basename}](plans/${fenced_basename})"
-        echo '```'
-        echo ""
-        echo "1. inline code only: \`[plans/${inline_basename}](plans/${inline_basename})\`"
-    } > "$repo/docs/Plans.md"
-}
-
-write_plans_md_escaped_link() {
-    local basename="$1"
-    {
-        echo "# Plans"
-        echo ""
-        echo "## 次の行動"
-        echo ""
-        echo "1. escaped syntax only: \\[plans/${basename}](plans/${basename})"
-    } > "$repo/docs/Plans.md"
-}
-
-write_plans_md_double_inline_code() {
-    local basename="$1"
-    {
-        echo "# Plans"
-        echo ""
-        echo "## 次の行動"
-        echo ""
-        printf '1. double-code: `` `[plans/%s](plans/%s)` ``\n' "$basename" "$basename"
-    } > "$repo/docs/Plans.md"
-}
-
-write_plans_md_multiline_inline_code() {
-    local basename="$1"
-    {
-        echo "# Plans"
-        echo ""
-        echo "## 次の行動"
-        echo ""
-        echo '1. multiline code only: `'
-        echo "[plans/${basename}](plans/${basename})"
-        echo '`'
+        echo '1. active な lane の Plan Packet は `docs/plans/` の dated packet が正本'
     } > "$repo/docs/Plans.md"
 }
 
@@ -639,7 +582,7 @@ if ! run_check "docs/plans/2026-01-10-fixture.md"; then
 fi
 assert_not_contains "$out" "Contract Probe"
 
-# --- 11. D-055 T-PK4a/b: 複数 active packet は全 packet の「次の行動」link を必須化 ---
+# --- 11. D-097: 複数 active packet でも packet ごとの link は求めず、docs/plans/ の pointer 行を求める ---
 setup_repo_dirs
 reset_packet_defaults
 write_packet "$repo/docs/plans/2026-01-11-fixture-a.md"
@@ -647,65 +590,39 @@ write_packet "$repo/docs/plans/2026-01-11-fixture-b.md"
 write_plans_md_linking "2026-01-11-fixture-a.md" "2026-01-11-fixture-b.md"
 if ! run_check ""; then
     cat "$out" >&2
-    fail "multiple active packets with complete Plans.md links were unexpectedly rejected"
+    fail "multiple active packets with a docs/plans/ pointer and no per-packet link were rejected"
 fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 
-write_plans_md_linking "2026-01-11-fixture-a.md"
+write_plans_md_no_link
 if run_check ""; then
-    fail "an active packet missing from Plans.md was not rejected"
+    fail "Plans.md without a docs/plans/ pointer was not rejected"
 fi
-assert_contains "$out" "active packet '2026-01-11-fixture-b.md' へのリンクが見つかりません"
+assert_contains "$out" "docs/Plans.md の '## 次の行動' に active packet の一覧（docs/plans/）を指す行がありません"
 
-write_plans_md_text_only "2026-01-11-fixture-a.md"
+# --- 11c. D-097: code fence / HTML comment 内の pointer は無効、inline code の pointer は有効 ---
+write_plans_md_hidden_pointer
 if run_check ""; then
-    fail "a plain-text packet basename was incorrectly accepted as a Plans.md link"
+    fail "a pointer visible only inside a code fence or HTML comment was accepted"
 fi
-assert_contains "$out" "active packet '2026-01-11-fixture-a.md' へのリンクが見つかりません"
+assert_contains "$out" "docs/Plans.md の '## 次の行動' に active packet の一覧（docs/plans/）を指す行がありません"
 
-# --- 11c. D-055 T-PK4c: code fence / HTML comment 内の見かけ上の link は無効 ---
-write_plans_md_hidden_links "2026-01-11-fixture-a.md" "2026-01-11-fixture-b.md"
-if run_check ""; then
-    fail "links visible only inside a code fence or HTML comment were incorrectly accepted"
+write_plans_md_inline_code_pointer
+if ! run_check ""; then
+    cat "$out" >&2
+    fail "a docs/plans/ pointer inside inline code was rejected"
 fi
-assert_contains "$out" "active packet '2026-01-11-fixture-a.md' へのリンクが見つかりません"
-assert_contains "$out" "active packet '2026-01-11-fixture-b.md' へのリンクが見つかりません"
+assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 
-write_plans_md_mixed_fence_and_inline_code \
-    "2026-01-11-fixture-a.md" "2026-01-11-fixture-b.md"
-if run_check ""; then
-    fail "mixed fence delimiters or inline code exposed a non-rendered link"
-fi
-assert_contains "$out" "active packet '2026-01-11-fixture-a.md' へのリンクが見つかりません"
-assert_contains "$out" "active packet '2026-01-11-fixture-b.md' へのリンクが見つかりません"
-
-write_plans_md_double_inline_code "2026-01-11-fixture-a.md"
-if run_check ""; then
-    fail "a double-backtick code span exposed a non-rendered link"
-fi
-assert_contains "$out" "active packet '2026-01-11-fixture-a.md' へのリンクが見つかりません"
-
-write_plans_md_multiline_inline_code "2026-01-11-fixture-a.md"
-if run_check ""; then
-    fail "a multiline code span exposed a non-rendered link"
-fi
-assert_contains "$out" "active packet '2026-01-11-fixture-a.md' へのリンクが見つかりません"
-
-write_plans_md_escaped_link "2026-01-11-fixture-a.md"
-if run_check ""; then
-    fail "escaped Markdown syntax was incorrectly accepted as a rendered link"
-fi
-assert_contains "$out" "active packet '2026-01-11-fixture-a.md' へのリンクが見つかりません"
-
-# --- 12. active packet と docs/Plans.md「次の行動」リンクの不一致 ---
+# --- 12. active packet があるのに docs/Plans.md「次の行動」に pointer が無い ---
 setup_repo_dirs
 reset_packet_defaults
 write_packet "$repo/docs/plans/2026-01-12-fixture.md"
 write_plans_md_no_link
 if run_check "docs/plans/2026-01-12-fixture.md"; then
-    fail "missing Plans.md link to the active packet was not rejected"
+    fail "missing Plans.md pointer for the active packet was not rejected"
 fi
-assert_contains "$out" "へのリンクが見つかりません"
+assert_contains "$out" "docs/Plans.md の '## 次の行動' に active packet の一覧（docs/plans/）を指す行がありません"
 
 # --- 13. compatibility: docs/archive/ 配下へ明示パスで渡した場合は PK4 の新チェックを skip ---
 # 実在の archive packet と同じ状態（Workflow State / Owner Effort Budget / Contract Probe が
@@ -1058,14 +975,14 @@ if ! run_check "docs/plans/2026-01-27-complete-fields.md"; then
 fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 
-# --- 28. SPEC-HYG1-D1 SC5: '### Wave Registry' 配下の active packet link を検出する ---
+# --- 28. SPEC-HYG1-D1 SC5 の後継（D-097）: '### Wave Registry' 配下の pointer を検出する ---
 setup_repo_dirs
 reset_packet_defaults
 write_packet "$repo/docs/plans/2026-01-28-wave-registry-fixture.md"
 write_plans_md_linking_under_wave_registry "2026-01-28-wave-registry-fixture.md"
 if ! run_check "docs/plans/2026-01-28-wave-registry-fixture.md"; then
     cat "$out" >&2
-    fail "active packet link placed under '### Wave Registry' was not detected"
+    fail "docs/plans/ pointer placed under '### Wave Registry' was not detected"
 fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 

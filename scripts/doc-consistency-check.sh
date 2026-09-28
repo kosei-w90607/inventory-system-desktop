@@ -936,62 +936,6 @@ strip_fenced_code_and_html_comments() {
     '
 }
 
-strip_inline_code_spans() {
-    awk '
-        function backtick_run_length(text, position, count) {
-            count = 0
-            while (substr(text, position + count, 1) == "`") {
-                count++
-            }
-            return count
-        }
-        {
-            document = document $0 ORS
-        }
-        END {
-            output = ""
-            cursor = 1
-
-            while (cursor <= length(document)) {
-                relative_open = index(substr(document, cursor), "`")
-                if (relative_open == 0) {
-                    output = output substr(document, cursor)
-                    break
-                }
-
-                open_position = cursor + relative_open - 1
-                output = output substr(document, cursor, open_position - cursor)
-                open_length = backtick_run_length(document, open_position)
-                search_position = open_position + open_length
-                close_position = 0
-
-                while (search_position <= length(document)) {
-                    relative_close = index(substr(document, search_position), "`")
-                    if (relative_close == 0) {
-                        break
-                    }
-                    candidate_position = search_position + relative_close - 1
-                    candidate_length = backtick_run_length(document, candidate_position)
-                    if (candidate_length == open_length) {
-                        close_position = candidate_position
-                        break
-                    }
-                    search_position = candidate_position + candidate_length
-                }
-
-                if (close_position == 0) {
-                    output = output substr(document, open_position)
-                    break
-                }
-                output = output " "
-                cursor = close_position + open_length
-            }
-
-            printf "%s", output
-        }
-    '
-}
-
 # Workflow State セクション本文（extract_markdown_section の出力）から
 # "- <field>: <value>" 形式の1行目の値を取り出す。値は enum/SHA/pending を
 # 想定し英数字・アンダースコア・ハイフンのみを対象にする（末尾の注記括弧等は無視）。
@@ -1361,32 +1305,24 @@ check_plan_packet_workflow_state() {
         fi
     done < <(iter_plan_packet_targets "$@")
 
-    # --- active packet と Plans.md「次の行動」リンク整合 ---
+    # --- active packet と Plans.md「次の行動」の pointer（D-097） ---
     # 対象は docs/plans/ 直下の実状態そのもの（PLAN_FILES / TARGET_PATH には依存しない）。
+    # lane ごとの link は求めない。一覧は docs/plans/ が持ち、dashboard はそこを指す行を 1 つ持つ。
     local active_packets active_count
     active_packets=$(iter_active_dated_plans)
     active_count=$(printf '%s\n' "$active_packets" | grep -c . || true)
 
     local plans_md="docs/Plans.md"
     if [ "$active_count" -gt 0 ]; then
-        local active_packet active_basename next_actions_section=""
-        local next_actions_links=""
+        local next_actions_pointer=""
         if [ -f "$plans_md" ]; then
-            next_actions_section=$(extract_markdown_h2_section "$plans_md" "次の行動")
-            next_actions_links=$(printf '%s\n' "$next_actions_section" \
+            next_actions_pointer=$(extract_markdown_h2_section "$plans_md" "次の行動" \
                 | strip_fenced_code_and_html_comments \
-                | strip_inline_code_spans \
-                | grep -oE '(^|[^!\\])\[[^][]+\]\((\./)?plans/[^()[:space:]]+\)' || true)
+                | grep -F 'docs/plans/' || true)
         fi
-        while IFS= read -r active_packet; do
-            [ -n "$active_packet" ] || continue
-            active_basename=$(basename "$active_packet")
-            if [ -z "$next_actions_links" ] ||
-                { ! printf '%s\n' "$next_actions_links" | grep -qF "](plans/${active_basename})" &&
-                    ! printf '%s\n' "$next_actions_links" | grep -qF "](./plans/${active_basename})"; }; then
-                error "PK4: docs/Plans.md の '## 次の行動' に active packet '${active_basename}' へのリンクが見つかりません"
-            fi
-        done <<< "$active_packets"
+        if [ -z "$next_actions_pointer" ]; then
+            error "PK4: docs/Plans.md の '## 次の行動' に active packet の一覧（docs/plans/）を指す行がありません"
+        fi
     fi
 
     if [ "$ERRORS" -eq "$before" ]; then
