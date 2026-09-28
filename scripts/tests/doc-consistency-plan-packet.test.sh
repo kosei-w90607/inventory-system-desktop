@@ -240,6 +240,20 @@ write_plans_md_hidden_pointer() {
     } > "$repo/docs/Plans.md"
 }
 
+# backtick fence の中の '~~~' は fence を閉じず、pointer は fence の中に残る。
+write_plans_md_mixed_fence_pointer() {
+    {
+        echo "# Plans"
+        echo ""
+        echo "## 次の行動"
+        echo ""
+        echo '```markdown'
+        echo "~~~"
+        echo "1. active な lane の Plan Packet は docs/plans/ の dated packet が正本"
+        echo '```'
+    } > "$repo/docs/Plans.md"
+}
+
 # inline code の中の docs/plans/ は pointer として数える（link でなく文字列の要求）。
 write_plans_md_inline_code_pointer() {
     {
@@ -604,6 +618,12 @@ assert_contains "$out" "docs/Plans.md の '## 次の行動' に active packet �
 write_plans_md_hidden_pointer
 if run_check ""; then
     fail "a pointer visible only inside a code fence or HTML comment was accepted"
+fi
+assert_contains "$out" "docs/Plans.md の '## 次の行動' に active packet の一覧（docs/plans/）を指す行がありません"
+
+write_plans_md_mixed_fence_pointer
+if run_check ""; then
+    fail "mixed fence delimiters exposed a pointer inside a code fence"
 fi
 assert_contains "$out" "docs/Plans.md の '## 次の行動' に active packet の一覧（docs/plans/）を指す行がありません"
 
