@@ -456,6 +456,9 @@ it.each([
       const alert = screen.getByText("同じ日の取込みがあります").closest('[data-slot="alert"]');
       expect(alert).toHaveAttribute("data-variant", "warning");
       expect(alert).toHaveAttribute("role", "alert");
+      // DSR-08 / AC-L3-12: warning の Alert は部品が icon を描かないため、画面が三角 icon を置く。
+      expect(alert?.querySelectorAll("svg")).toHaveLength(1);
+      expect(alert?.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     }
   },
 );
