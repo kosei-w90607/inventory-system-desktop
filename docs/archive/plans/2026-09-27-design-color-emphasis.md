@@ -1,6 +1,6 @@
 # Plan Packet: デザインの決まり runtime lane A（色と強調）
 
-2026-09-27 起票。起点は `e7c22f8f`（origin/main）。デザインの決まりの組み直し（[D-091](../decision-log.md#d-091-デザインの決まりを見る人の受け取り方から組み直す2026-09-24)、PR #98）が `docs/design-system/00-foundations.md` に置いた色の役割・強調の段階・迷いやすい場面を、token・横断部品・全画面へ反映する。範囲の正本は [backlog](../backlog.md) の「デザインの決まり runtime lane A（色と強調）」の項目で、本 packet は現行 main の site を `rg` で数え直し、移すか除外かを決めた。実装は plan-approved の後に Writer（別 context）が行う。
+2026-09-27 起票。起点は `e7c22f8f`（origin/main）。デザインの決まりの組み直し（[D-091](../../decision-log.md#d-091-デザインの決まりを見る人の受け取り方から組み直す2026-09-24)、PR #98）が `docs/design-system/00-foundations.md` に置いた色の役割・強調の段階・迷いやすい場面を、token・横断部品・全画面へ反映する。範囲の正本は [backlog](../../backlog.md) の「デザインの決まり runtime lane A（色と強調）」の項目で、本 packet は現行 main の site を `rg` で数え直し、移すか除外かを決めた。実装は plan-approved の後に Writer（別 context）が行う。
 
 ## Workflow State
 
@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: dbd5dd5412070fdcb32d382fd31fe4971e9afb67
 - Amendments: none
@@ -32,12 +32,13 @@ manual = owner が before / after（と試し）を実機で並べて見る L3�
 - plan-gate → plan-approved（2026-09-28、Coordinator、本 commit）: Plan Review round 3（上限、対象 `b3844379`）は両 reviewer とも reject（P1 0）。round 天井に従い追加の round は回さず、裁定 r3 の一括是正（`dbd5dd54`）で全件を反映し、Coordinator が予算表・AC12 の baseline・L3 の DB の前提を現物で確かめた。owner 承認（2026-09-28「返事二つOKだよ」、この change での介入 11 回目、介入の上限 25）のもと plan-approved。Plan Commit = 本 commit の親（`dbd5dd54`）。
 - plan-approved → implementing（2026-09-28、Coordinator、state-only）: Writer（Opus 5.5 subagent の worktree run）へ実装を発注する。Writer の開始 HEAD は本 commit。
 - L3 round 1 の答えの反映（2026-09-28、Coordinator、S18、Phase は implementing のまま）: owner の L3 round 1（2026-09-28、PR head `212d8f19`・試し `25c7c5bc`・M1 `5adf4682`）の答えを記録する。**PASS** は AC-L3-1 / 7 / 8 / 11 / 12 / 13 / 15。**採る**は 9（詳細を開いた行、D-CE7）、10（取込みの手順の表示、D-CE8）、4（Home の入口 card、D-CE12、試しの `bg-ongoing-soft`）、5（日報の取込み済みの badge、試しの危険・失敗）。**採らない**は 3（最新・上書き件数、D-CE3、琥珀 pill のまま。D-094 に恒久の例外として記録）、6（Home の前日分の知らせ、危険・失敗のまま）。muted の文字色（D-CE16）は **M2 #6b6560**。owner の懸念「新しいデザイン（card の面色・書体）で疑似的なちゃぶ台返しになるのでは」を受け、D-094 の Revisit に「card の面色・書体の lane の L3 で muted を見直す」を書く（owner の選んだ値は変えない）。**2（ランキング 1 位、D-CE13）** は試し（順位と太字だけ）を採らない。owner の新方向「1 位を分かりやすく明示、なんなら 3 位まで」は分岐表の 2 通りの外なので、owner 決定 2026-09-28（この change での介入 21 回目）により、本 lane は分岐表の「採らなかったとき」（1 位の行に琥珀の pill と地、`--rank-top-*` を残す）で閉じ、2 位・3 位の見せ方は別 lane として backlog に起こす（Gated Amendment にしない）。同じ回で介入の上限を 25 → 26 に改めた。L3 の所感の別件（入庫記録の単位の並び、stone 以外の中立色）は Writer が backlog へ起こす。採否の反映は S15 / S16 / S17 で Writer に発注する。
+- implementing → archive（2026-09-28、Coordinator の closeout、本 commit）: PR #116 を squash merge（`e188366e`、2026-09-28、helper 経由）。packet と Matrix を archive へ移送し、Implementation Results と Review Response を記録。closure 2 の P3（backlog の旧 04 の (a) が #118 で解消した幅の混在を未了のまま書いている）を backlog で直した。Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 26（owner 承認 2026-09-28、この change での介入 21 回目。L3 round 1 の 2 の新方向を別 lane に分ける判断と同じ 1 回で、その判断 1 回分を足した）。その前は 25（owner 承認 2026-09-28、この change での介入 11 回目。その前の値は 24〈owner 承認 2026-09-27（再改定、この change での介入 9 回目）〉、その前は 19〈owner 承認 2026-09-27「介入19・75分・relay 6で承認」〉。裁定 r3 の B3-6 で、予算の再改定の承認と Plan Review round 3 の Codex の起動を消費済みにし、round 3 後の一括是正の plan-approved の承認 1 回を見込みに足した。合計 25 は 24 を 1 超えるため、plan-approved の承認と同じ 1 回〈この change での介入 11 回目〉で承認を得た。下の表）
+- 介入回数上限: 26（owner 承認 2026-09-28、この change での介入 21 回目。L3 round 1 の 2 の新方向を別 lane に分ける判断と同じ 1 回で、その判断 1 回分を足した）。その前は 25（owner 承認 2026-09-28、この change での介入 11 回目。その前の値は 24〈owner 承認 2026-09-27（再改定、この change での介入 9 回目）〉、その前は 19〈owner 承認 2026-09-27「介入19・75分・relay 6で承認」〉。裁定 r3 の B3-6 で、予算の再改定の承認と Plan Review round 3 の Codex の起動を消費済みにし、round 3 後の一括是正の plan-approved の承認 1 回を見込みに足した。合計 25 は 24 を 1 超えるため、plan-approved の承認と同じ 1 回〈この change での介入 11 回目〉で承認を得た。下の表）。closeout 時の消費 25 / 上限 26 = 下の表の消費 21、Final Review の Codex の起動 1、L3 round 2 の合否 1、Ready 1、merge 1。Codex closure の予備 1 は使わなかった（closure は Claude 側で 2 本）
 - 実働時間上限: 75分（owner 承認 2026-09-27「介入19・75分・relay 6で承認」。既定は 30 分。L3 round 1 は build 4 本〈main / PR head / 試し / muted の M1〉を並べて 15 項目を見る。今回の数え直しで変えない）
-- relay 往復上限: 7（owner 承認 2026-09-27（再改定、この change での介入 9 回目）。以前の承認済みの値は 6〈同上〉。内訳 = Plan Review の Codex 3〈round 1・round 2・round 3 とも消費済み〉+ Final Review の Codex 1 + Final Review の指摘後の Codex closure 1〈予備〉+ manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉。2026-09-28 の数え直し〈裁定 r3 の B3-6〉で 消費 3 / 見込み 3 / 予備 1 = 7、承認済みの 7 の内。L3 round 1 の受け渡しで 消費 4 / 見込み 2 / 予備 1 = 7）
+- relay 往復上限: 7（owner 承認 2026-09-27（再改定、この change での介入 9 回目）。以前の承認済みの値は 6〈同上〉。内訳 = Plan Review の Codex 3〈round 1・round 2・round 3 とも消費済み〉+ Final Review の Codex 1 + Final Review の指摘後の Codex closure 1〈予備〉+ manual〈L3 の結果の受け渡し〉2〈round 1・round 2〉。2026-09-28 の数え直し〈裁定 r3 の B3-6〉で 消費 3 / 見込み 3 / 予備 1 = 7、承認済みの 7 の内。L3 round 1 の受け渡しで 消費 4 / 見込み 2 / 予備 1 = 7）。closeout 時の消費 6 / 上限 7 = Plan Review の Codex 3、L3 round 1 の受け渡し 1、Final Review の Codex 1、L3 round 2 の受け渡し 1。closure は Claude 側で 2 本行い、Codex closure の予備は使わなかった
 
 介入の判断点（decision point 単位、2026-09-28 の裁定 r3 による数え直し）:
 
@@ -122,7 +123,7 @@ operator の操作手順・data 契約・状態遷移は変えないが、operat
 | 最後の商品別 CSV（Z004）取込みの精算日が前日より前（Z004 の取込み履歴を持つ L3 の DB〈合成、AC-L3 の前提〉。本番 DB は Z004 の取込みが 0 件のため知らせが出ない。知らせの条件は `useHomeSummary.ts` の `lastImportSettlementDate < yesterday`） | Home を開く | 前日分の未取込みの知らせ（危険・失敗の薄い地 + 線 + 三角 icon + 文言）と、「売上データ取込み」の入口 card（操作の線）が目に入り、押す先が 1 つに決まる | 入口 card を押す。日報を取り込んでも Z004 の取込み履歴は変わらず、Z004 の確定の停止中は知らせは消えない | 知らせを注意・確認へ揃える試し、入口 card の地を操作の仲間へ揃える試しは L3（AC-L3-4 / 6、見た目の比較だけ。fixture は Coordinator が用意） |
 | 売上データ取込みの日報取込みタブ、ファイル未選択 | 日報ファイルを選び、プレビューを見て取り込む | 取込み中は待ちの spinner が進行中の色で示される。取込み済みの日なら危険・失敗の Alert で止まる | 結果の画面が出る | 取込み済みの badge を危険・失敗へ揃える試しは L3（AC-L3-5）。spinner は一瞬のため色は自動 test（AC5、S16）で確かめる |
 | 日報取込みの結果の画面 | 結果を読む | 完了の badge（緑、icon + 文言）と、押すボタン（操作の塗り）を言い分けられる | 次の画面へ移る | AC-L3-7 |
-| 商品別CSV取込み（Z004）タブ | ファイルを選び、プレビューを見る | 手順の表示のいまのステップが分かる。取込みの確定は停止中（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D4）のため、「3 結果」と取込み中の表示（移動制限の知らせ）は画面では出ない | —（停止の解除は ㉘ の ⑤） | いまのステップの試しは L3（AC-L3-10、ステップ 1〜2）。ステップ 3 と移動制限の知らせは自動 test だけで確かめる |
+| 商品別CSV取込み（Z004）タブ | ファイルを選び、プレビューを見る | 手順の表示のいまのステップが分かる。取込みの確定は停止中（[停止 ADR](../../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D4）のため、「3 結果」と取込み中の表示（移動制限の知らせ）は画面では出ない | —（停止の解除は ㉘ の ⑤） | いまのステップの試しは L3（AC-L3-10、ステップ 1〜2）。ステップ 3 と移動制限の知らせは自動 test だけで確かめる |
 | 在庫照会の一覧 | 行を押して詳細を開き、もう一度押して閉じる | 開いた行と詳細が一体に見え、どれを開いているか分かる | 別の行を開く・閉じる | 詳細を開いた行を進行中にする試しは L3（AC-L3-9）。行内の muted の文字は現行の値では進行中の地の上で 4.13:1、D-CE16 の 3 候補で 4.66〜6.57:1（Contract Probe） |
 | 入庫記録の入力 | 取引先を選ぶ dialog で行を選ぶ | 選んでいる行が左端のバー + 進行中の地 + 「選択中」で分かる | 閉じて入力を続ける | AC-L3-8 |
 | 月次売上の商品別 | ランキングと前月比を見る | 1 位が琥珀の pill「1 位」と行の地で分かる（L3 round 1 で試し〈順位と太字〉を採らなかった側、owner 2026-09-28）。前月比は記号と文字色で増減が分かる | — | AC-L3-2 / 11 |
@@ -314,7 +315,7 @@ baseline は起票時実測（`e7c22f8f`）。「分岐」と書いた AC は L3
 - Function / command / DTO: `docs/function-design/57-ui-monthly-sales.md` §57.7 / §57.10（前月比と 1 位の表示。S17 で同期）
 - DB: 該当なし
 - Screen / UI: `docs/design-system/00-foundations.md`（色の役割・強調の段階・迷いやすい場面・カラーパレット・セマンティックカラー）、`01-decision-rules.md` DSR-08 / DSR-20 / DSR-21 / DSR-22、`02-component-catalog.md` ⑥ / ⑫ / ⑬、`04-backbone.md` 原則 2 / 4 / 10、`docs/SCREEN_DESIGN.md`、`.agents/skills/inventory-operator-ui/SKILL.md`
-- Decision log / ADR: [D-091](../decision-log.md#d-091-デザインの決まりを見る人の受け取り方から組み直す2026-09-24)（候補値・コントラスト・試し・移し先）、D-094（本 lane で予約）
+- Decision log / ADR: [D-091](../../decision-log.md#d-091-デザインの決まりを見る人の受け取り方から組み直す2026-09-24)（候補値・コントラスト・試し・移し先）、D-094（本 lane で予約）
 
 ## Required Design Artifacts
 
@@ -498,6 +499,10 @@ Fill after implementation.
 - 実装: [PR #116](https://github.com/kosei-w90607/inventory-system-desktop/pull/116)。S1〜S17・S19〜S21 を Writer（Opus 5.5 subagent）が実装し、L3 round 1 の採否（遷移記録の最後の行）を S15〜S17 で反映した。
 - ランキング 1 位（D-CE13）は分岐表の「採らなかったとき」で閉じた。「設計判断」の D-CE13、「L3 の分岐」の表の PR head の列、「Design Intent Trace」の SPEC-COLOR-EMPHASIS-RT-1（ランキング 1 位）の行にある「順位と太字」は計画時の試しの記述で、最終形は D-094・00・02 ⑬・04 原則 4 のとおり琥珀の pill と行の地である。
 - Registration / Generation Obligations の「90-traceability の再生成は要らない」は計画時の見込みで、実装では新しい test の REQ 参照数が変わったため再生成した（`docs(traceability)` の commit）。
+- 実装の要旨: 操作の色（`--primary` / `--ring` = #1D5C63）と進行中の家族（`--ongoing` / `-soft` / `-border` / `-strong`）を token に足し、`--row-current` を削った。危険・失敗の Alert は薄い地 + 線 + 文字の段 2 にし、三角 icon を部品が描く。badge の既定の塗りを削り、最新・上書き件数は `--warning-emphasis` の琥珀 pill へ移した。進み具合の棒・待ちの spinner・現在行・詳細を開いた行・取込みの手順のいまのステップを進行中の token へ、前月比のセルを地の無い役割色の文字 + 記号へ、失敗ではない知らせ（取込み中の移動制限・入力 4 画面の未保存の案内）を注意・確認へ移した。枠の無い部品と focus の前後で枠の色が変わらない部品の focus ring を不透明にし、ネイティブの radio・checkbox の checked を操作の色にした。muted の文字色は owner が選んだ M2 #6b6560。00 / 01 / 02 / 04 / README / review-checklist / UI_TECH_STACK / SCREEN_DESIGN / 56 / 57 を最終形へ直し、D-094 を記録した。
+- 試しの採否（L3 round 1、遷移記録のとおり）: 詳細を開いた行・取込みの手順の表示・Home の入口 card（進行中の地）・日報の取込み済みの badge（危険・失敗）を採り、最新・上書き件数（琥珀 pill のまま）・Home の前日分の知らせ（危険・失敗のまま）・ランキング 1 位（琥珀の pill と行の地のまま）は採らなかった。採らなかった側の恒久の例外は D-094 に記録した。
+- review の是正: Final Review broad の P2 2 件・P3 5 件（Review Response）を Writer（発注 121）と Coordinator の packet の同期で直した。
+- CI・manual・merge: hosted CI は全ジョブ pass。manual は owner の Windows native L3 の round 1（採否）と round 2（round 1 から変わった 4 画面が PASS）。Ready・merge は helper 経由（2026-09-28）。
 
 ## Review Response
 
@@ -511,3 +516,5 @@ Fill after review.
   - Fable P3-4（90-traceability の再生成の記述の食い違い）: accept。Implementation Results に事実を書いた。
   - 是正の後の closure は Claude 側の fresh reviewer で行う（Final Review Minimum 1）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+- Closeout（2026-09-28）: Plan Review は round 3（上限）まで回し plan-approved（遷移記録のとおり）。Final Review broad の是正の後、closure 1（`4b08d6be`、fresh Fable 5.1）= approve（P 0）。小口のまとめ #118・#121 を含む main の取込みの後の closure 2（`5c23d983`、fresh Fable 5.1）= approve（新しい P1 / P2 0、P3 1）。その P3（`docs/backlog.md` の「旧 04 の未了の見た目の作業」の (a) が #118 で解消した幅の混在を未了のまま書いている）は本 closeout で backlog を直した。manual は owner の Windows native L3 の round 2（`5c23d983`、2026-09-28 23:42）で、round 1 から変わった 4 画面（AC-L3-2・4・5・12）がすべて PASS。専用 record は review pass（broad 2 + closure 2）、manual pass。hosted CI は全ジョブ pass、[PR #116](https://github.com/kosei-w90607/inventory-system-desktop/pull/116) を squash merge（`e188366e`）。L3 round 2 の owner の所感 2 件（ランキングは 3 位まで強調したい、Alert を上に出すなら同じ意味の badge は要るのか）は、後のデザインの刷新で扱う（owner 判断）として backlog に置いた。
