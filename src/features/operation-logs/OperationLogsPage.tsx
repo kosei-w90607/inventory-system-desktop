@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { commands, type OperationLog } from "@/lib/bindings";
-import { formatDateTime } from "@/features/inventory-records/types";
+import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { scrollPageToTop } from "@/lib/page-scroll";

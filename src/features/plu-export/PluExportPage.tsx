@@ -16,6 +16,7 @@ import {
   type PluExportPrepareResponse,
   type PluPreparedRow,
 } from "@/lib/bindings";
+import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";
@@ -156,16 +157,12 @@ function buildPendingPluExport(
   };
 }
 
+// savedAt は toISOString() の UTC なので、ローカル時刻の YYYY-MM-DD HH:mm:ss へ直す（67 処理ステップ 8）。
 function formatPendingSavedAt(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 function formatExcludedReason(reason: string): string {
@@ -378,7 +375,7 @@ export function PluExportPage() {
           {snapshotLoaded && slotSummaryQuery.data ? (
             <>
               <p className="text-sm">
-                最終読込み日時: {formatPendingSavedAt(slotSummaryQuery.data.snapshot_at ?? "")}
+                最終読込み日時: {formatDateTime(slotSummaryQuery.data.snapshot_at ?? "")}
               </p>
               <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                 <div>

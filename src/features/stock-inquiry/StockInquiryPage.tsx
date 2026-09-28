@@ -128,7 +128,6 @@ export function StockInquiryPage({ search, onSearchChange }: StockInquiryPagePro
             }));
           }}
           allLabel="すべての部門"
-          widthClass="w-[10rem]"
           idPrefix="stock-dept-filter"
           disabled={departmentOptionsQuery.isLoading}
         />

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { commands, type PriceHistoryEntry } from "@/lib/bindings";
-import { formatDateTime } from "@/features/inventory-records/types";
+import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 

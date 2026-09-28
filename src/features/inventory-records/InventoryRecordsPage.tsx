@@ -33,13 +33,13 @@ import { SearchBar } from "@/components/patterns/SearchBar";
 import { PageShell } from "@/components/patterns/PageShell";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
 import { commands } from "@/lib/bindings";
+import { formatDateTime } from "@/lib/date-time";
 import { unwrapResult } from "@/lib/invoke";
 import { scrollPageToTop } from "@/lib/page-scroll";
 import { queryKeys } from "@/lib/query-keys";
 import {
   INVENTORY_RECORD_STATUS_OPTIONS,
   INVENTORY_RECORD_TYPE_OPTIONS,
-  formatDateTime,
   formatRecordStatus,
   formatRecordType,
   normalizeInventoryRecordsSearch,

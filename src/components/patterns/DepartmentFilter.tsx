@@ -32,14 +32,13 @@ export interface DepartmentFilterProps {
    * daily-sales は意図的差分②として「すべての部門」へ移行（D-B4）。
    */
   allLabel?: string;
-  /** SelectTrigger の幅クラス（例: "w-[10rem]" / "w-[11rem]"）。省略時は "w-[10rem]" */
-  widthClass?: string;
   /** SelectTrigger / label の id prefix（例: "dept-filter" / "product-dept-filter"）。省略時は "dept-filter" */
   idPrefix?: string;
 }
 
 /**
- * 部門フィルタ。呼び出し側で widthClass / idPrefix を渡すことで各画面の DOM を維持する。
+ * 部門フィルタ。幅は全画面で同一の w-[11rem] を部品だけが持ち、呼び出し側は変えない（02 ⑨）。
+ * 呼び出し側は idPrefix を渡して各画面の id を維持する。
  *
  * 意図的差分②（D-B4）: daily-sales の placeholder「すべて」→「すべての部門」は
  * 呼び出し側で allLabel を渡さず既定値を採用することで実現する。
@@ -50,7 +49,6 @@ export function DepartmentFilter({
   onChange,
   disabled = false,
   allLabel = "すべての部門",
-  widthClass = "w-[10rem]",
   idPrefix = "dept-filter",
 }: DepartmentFilterProps) {
   const value = selected === null ? ALL_VALUE : String(selected);
@@ -68,7 +66,7 @@ export function DepartmentFilter({
           onChange(v === ALL_VALUE ? null : Number(v));
         }}
       >
-        <SelectTrigger id={triggerId} className={widthClass}>
+        <SelectTrigger id={triggerId} className="w-[11rem]">
           <SelectValue placeholder={allLabel} />
         </SelectTrigger>
         <SelectContent>

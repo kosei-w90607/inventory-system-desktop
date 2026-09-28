@@ -19,8 +19,8 @@ SR-S4000 のスキャニング PLU 領域について、レジで観測した占
 | scanning_code | TEXT | NULLABLE | app 管理時は 13 桁 JAN、既存登録はレジで観測したコード、free は NULL |
 | status | TEXT | NOT NULL, CHECK(status IN ('free','external','reserved','active','release_pending')) | スロット状態 |
 | reserved_at | TEXT | NULLABLE | 予約日時 |
-| activated_at | TEXT | NULLABLE | レジ反映確認日時 |
-| released_at | TEXT | NULLABLE | 解放確認日時 |
+| activated_at | TEXT | NULLABLE | slot が active になった日時。アプリ側の記録で、書くのは reserved の保存済み確認（confirm）、snapshot での観測による採用（reserved → active、free → active）、prepare での external の採用、再対象化による active への復元。解放 trigger で active → release_pending になった行は値を保持し、再対象化で active と reserved のどちらへ戻すかの判別に使う（snapshot の重複 stale で free → release_pending になった行は NULL のため reserved へ戻る）。実レジへの反映完了は証明しない（UI-08-D2、D-011 / D-023） |
+| released_at | TEXT | NULLABLE | release_pending → free の解放をアプリが記録した日時。書くのは clear 行の保存済み確認（confirm）と、snapshot でのレジ空の観測の 2 つだけで、解放の契機（商品の対象外化・廃番化・JAN 変更）では書かない。実レジからの削除完了は証明しない |
 | updated_at | TEXT | NOT NULL | 最終更新日時 |
 
 `scanning_code` には `status IN ('external','reserved','active')` の行だけを対象とする partial UNIQUE index を置く。同じ JAN / 観測コードをこれら 3 status の複数スロットへ割り当てる状態は DB が拒否する。`release_pending` は clear 待ちの stale 保持であり index の対象外とする（同一コードの `release_pending` 複数行、および `active` / `reserved` / `external` との共存を許容する）。スナップショット照合の重複解消（最小番号だけ active、残り release_pending）と解放 trigger はこの例外で保存できる（gated amendment 2、2026-08-18。`status <> 'free'` では重複解消結果が保存不能だった）。
@@ -49,14 +49,14 @@ migration v5 は table と partial UNIQUE index を作り、memory No. 217〜500
 | reserved | confirm / snapshot: レジ有・同一コード | active | activated_at |
 | reserved | snapshot: レジ空 | reserved | 未書込み予約を維持 |
 | reserved | snapshot: レジ有・別コード | external | 予約破棄、reservation_dropped、旧 JAN は再予約対象 |
-| reserved | 解放 trigger | free | released_at。レジ未書込みのため clear 不要 |
+| reserved | 解放 trigger | free | scanning_code を NULL。レジ未書込みのため clear 不要 |
 | reserved | 保存失敗・キャンセル後の再 prepare | reserved | 同じ番号を維持 |
-| active | 解放 trigger（同一 JAN の対象 product なし） | release_pending | released_at、clear 待ち |
+| active | 解放 trigger（同一 JAN の対象 product なし） | release_pending | activated_at を保持（再対象化の復元先の判別）、clear 待ち |
 | active | snapshot: レジ空 | active | missing 報告、商品を dirty |
 | active | snapshot: レジ有・同一コード | active | 維持 |
 | active | snapshot: レジ有・別コード | active | conflict 報告、商品を dirty |
-| release_pending | clear 行 confirm | free | scanning_code を NULL、再利用可 |
-| release_pending | snapshot: レジ空 | free | 解放確認 |
+| release_pending | clear 行 confirm | free | scanning_code を NULL、released_at、再利用可 |
+| release_pending | snapshot: レジ空 | free | scanning_code を NULL、released_at |
 | release_pending | snapshot: レジ有・同一コード | release_pending | clear 待ちを維持 |
 | release_pending | snapshot: レジ有・別コード | external | 解放済み扱い、clear 不要 |
 | release_pending | 元 JAN を再対象化 | active / reserved | activated_at の有無で復元、商品を dirty。同一 JAN の release_pending が複数行なら最小 memory No. の 1 行のみ復元し残りは維持。同一コードの external があれば external → active 採用を優先し本行は維持 |

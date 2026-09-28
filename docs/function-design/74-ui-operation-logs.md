@@ -210,7 +210,7 @@ OperationLogFilters + OperationLogTable（展開行1件） + Pagination
 
 列（左から）:
 
-1. 日時（`created_at`、`formatDateTime` で `T` を半角スペースに置換した `YYYY-MM-DD HH:mm:ss` 表示。既存 `inventory-records/types.ts` の `formatDateTime` を再利用する）
+1. 日時（`created_at`、`formatDateTime` で `T` を半角スペースに置換した `YYYY-MM-DD HH:mm:ss` 表示。共有 helper `src/lib/date-time.ts` の `formatDateTime` を再利用する）
 2. 種別（`operation-type-labels.ts` の日本語ラベル。未知値は「その他（raw値）」）
 3. 概要（`summary`。1行表示、`min-w-0` + `truncate` で長文をトランケートし、`title` 属性でフルテキストを提供する。詳細行を展開すれば `summary` 自体も折り返し全文表示される）
 4. 詳細（展開トグルボタン。`aria-expanded` + `aria-controls` で対応する詳細行 `id` を指す）

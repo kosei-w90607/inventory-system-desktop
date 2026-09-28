@@ -36,7 +36,8 @@ import { UnsavedChangesDialog } from "@/components/patterns/UnsavedChangesDialog
 import { useProductAddSuggest } from "@/components/patterns/useProductAddSuggest";
 import { PageShell } from "@/components/patterns/PageShell";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
-import { formatDateTime, formatRecordStatus } from "@/features/inventory-records/types";
+import { formatDateTime } from "@/lib/date-time";
+import { formatRecordStatus } from "@/features/inventory-records/types";
 // 数量と単位の表記は共通formatterに揃え、単位列のある行は数値だけ描く。
 import {
   formatStockDisplay,

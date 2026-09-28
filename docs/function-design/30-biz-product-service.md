@@ -77,7 +77,7 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
       - product_code = jan_code.clone()
       - product_repo::find_by_product_code() で重複チェック → 既存あり → BizError::DuplicateProductCode(product_code)
    b. jan_codeがNone:
-      - generate_custom_code(conn, department_id) を呼ぶ（後述）→ product_codeを取得
+      - generate_custom_code(&tx, department_id) を呼ぶ（後述）→ product_codeを取得
       - jan_code = None のまま
 
 4. **productsにINSERT**
@@ -122,8 +122,9 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
 
 **シグネチャ**:
 ```
-fn generate_custom_code(conn: &DbConnection, department_id: i64) -> Result<String, BizError>
-// 注: TX内で呼ばれるため、引数は &Transaction（Deref<Target=Connection>）経由の &DbConnection
+fn generate_custom_code(conn: &rusqlite::Transaction<'_>, department_id: i64) -> Result<String, BizError>
+// 注: 連番の更新（increment_next_seq）を呼び出し元の TX に含めるため、引数は借りた transaction に型で限る
+//     （31 §12.2 の apply_stock_change と同じ形。通常の接続を渡すとコンパイルが止まる）
 ```
 
 **処理ステップ**:
