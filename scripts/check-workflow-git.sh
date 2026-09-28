@@ -139,14 +139,20 @@ main() {
 
     # Merged lanes awaiting closeout keep packets whose squashed Plan Commit is not ancestral;
     # only packets this branch's diff touches are its own ancestry evidence.
-    local start="" pk5_scope="all"
+    local start="" pk5_all=1 path
+    local -A pk5_touched=()
     if [[ -n "${WORKFLOW_BASE_SHA:-}" && "$(git rev-parse "$WORKFLOW_BASE_SHA^{commit}")" != "$(git rev-parse HEAD)" ]]; then
         start="$WORKFLOW_BASE_SHA"
     else
         start="$(git rev-parse --verify -q 'origin/main^{commit}')" || start=""
     fi
     if [[ -n "$start" && "$(git merge-base --all "$start" HEAD | wc -l)" -eq 1 ]]; then
-        pk5_scope="$(git diff --no-renames --name-only "$start"...HEAD -- "$PLAN_DIR/")" || pk5_scope="all"
+        # -z: the default core.quotePath would quote non-ASCII, `"` and `\` names so they never match.
+        pk5_all=0
+        while IFS= read -r -d '' path; do
+            pk5_touched["$path"]=1
+        done < <(git diff -z --no-renames --name-only "$start"...HEAD -- "$PLAN_DIR/")
+        wait "$!" || pk5_all=1
     fi
 
     while IFS= read -r file; do
@@ -161,7 +167,8 @@ main() {
             echo "❌ [workflow-git] invalid tracked Phase in $file"
             FAIL=1
         fi
-        if [[ "$pk5_scope" == "all" ]] || grep -qxF -- "${file#"$REPO_ROOT"/}" <<< "$pk5_scope"; then
+        path="${file#"$REPO_ROOT"/}"
+        if ((pk5_all)) || [[ -n "${pk5_touched[$path]:-}" ]]; then
             check_plan_commit_ancestry "$file"
         fi
     done < <(find "$REPO_ROOT/$PLAN_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | sort)

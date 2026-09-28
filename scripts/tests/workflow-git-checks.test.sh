@@ -468,6 +468,19 @@ run_scoped "$z_head"
 [[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (e): dispatch with env = HEAD skipped the own packet"
 assert_contains "$output" "docs/plans/2026-01-03-z.md の Plan Commit" "D4 (e): own packet reason missing"
 assert_not_contains "$output" "$x_packet" "D4 (e): dispatch did not use origin/main"
+# (c2) (c) for names git quotes by default (non-ASCII, `"`): the touched packet stays in scope
+for name in '2026-01-04-日本語.md' '2026-01-05-"q".md'; do
+    git -C "$repo" switch -qc "lane-quoted-old-${name:8:2}" "$main_sha"
+    write_packet "$repo" "$name" "pending" "none"
+    quoted_old_plan="$(commit_all "$repo" "docs(plans): quoted plan-first")"
+    git -C "$repo" switch -qc "lane-quoted-${name:8:2}" "$main_sha"
+    write_packet "$repo" "$name" "$quoted_old_plan" "none"
+    commit_all "$repo" "docs(plans): quoted plan-first rebased" > /dev/null
+    run_scoped ""
+    [[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (c2): own non-ancestral Plan Commit accepted for $name"
+    assert_contains "$output" "docs/plans/$name の Plan Commit" "D4 (c2): own packet reason missing for $name"
+    assert_not_contains "$output" "$x_packet" "D4 (c2): merged packet checked with a start point"
+done
 # (f) criss-cross: two merge-bases between origin/main and HEAD check every packet
 git -C "$repo" switch -qc criss-p "$main_sha"
 printf 'p\n' > "$repo/p.txt"; p1="$(commit_all "$repo" "p1")"
