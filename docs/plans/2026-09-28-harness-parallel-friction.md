@@ -29,6 +29,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（2026-09-28、起草役 = Opus 5.5 subagent、本 commit、plan-first）: Risk R3（下記 Risk）。spec-check で、現行の正本（`docs/agent-guidance/merge-evidence.md` の「base同期だけでheadが変わる場合」「Helperの境界」、`docs/DEV_WORKFLOW.md` の Workflow State の packet 選択規則・Wave Operation・Post-Merge Closeout）が「先行 lane の closeout を後続 lane の同期より先に済ませる」「Plans.md の lane ごとの link から packet を選ぶ」を定めており、既存の設計のままでは足りないと確かめた（skip は使わない）。design の出力は本 packet の Spec Contract（D1〜D9）と G2 の比較に置き、正本（merge-evidence・DEV_WORKFLOW・decision-log D-097）への昇格は実装の S7・S8・S12 で行う（workflow の正本は本 lane が書き換える文書そのもの。ハーネス刷新 PR3 と同じ形）。G2 は推奨案（B）で設計を閉じ、owner の示した案（A）と違うため Plan Gate で owner に諮る（owner が A か C を選べば design へ戻る）。Plan Review へ。
+- owner の判断の反映（2026-09-29、Coordinator、Phase は plan-gate のまま）: owner が G2 に B（closeout を後回しにして wave ごとに R0 の PR 1 本にまとめる）を選び、PK5 を PR の差分が触る packet に絞る S3 を本 lane に入れることを承認した（この change での介入 2 回目、2 つを同じ 1 回で得た）。起票時に owner へ示した A は採らない。設計は本 packet の推奨のまま閉じ、Plan Review round 1 へ出す。あわせて origin/main（`df0488eb`、小口のまとめ・色と強調の closeout まで）を取り込んだ。
 
 ## Owner Effort Budget
 
@@ -37,9 +38,9 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - relay 往復上限: 5（Plan Review の Codex が最大 3 round、Final Review の Codex broad 1、base 同期の後の Codex closure 1）
 - Plan Review round 天井: 3（既定 3）
 
-| 種別 | 上限 | 消費（2026-09-28 時点） | 残りの見込み | 予備 | 合計 |
+| 種別 | 上限 | 消費（2026-09-29 時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 5 | 1: 起票承認 2026-09-28（並走の摩擦だけを先に 1 本の lane で起こす） | 3: Plan Gate の G2 の判断（推奨 B か owner 案 A か組み合わせ C）1、Ready 1、merge 1 | 1: round 天井の disposition の owner escalation | 5 = 1 + 3 + 1 |
+| 介入 | 5 | 2: 起票承認 2026-09-28（並走の摩擦だけを先に 1 本の lane で起こす）、G2 = B と S3 の承認 2026-09-29 | 2: Ready 1、merge 1 | 1: round 天井の disposition の owner escalation | 5 = 2 + 2 + 1 |
 | relay | 5 | 0 | 5: Plan Review の Codex 最大 3、Final Review の Codex broad 1、base 同期の後の Codex closure 1 | 0 | 5 = 0 + 5 + 0 |
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -264,7 +265,7 @@ merge 済みで closeout 前の packet が main に残る間の扱い（B）:
 - PK 検査: PK1〜PK4・PK6 は他の active packet と同じく掛かる（形式は merge 時点で満たしている）。PK5 の祖先の検査は、その packet を差分が触る PR だけに掛かる（D4）。closeout の PR は packet を `docs/plans/` から出すので PK5 の対象外。
 - Plans.md: 何もしない（lane の行が無い）。`## 次の行動` の pointer 行が `docs/plans/` を指し、merge 済みかどうかは packet の `Branch` 行から PR を引いて helper status で分かる。
 
-owner に諮る判断点: 推奨 B は owner の示した A と違うため、Plan Gate で owner の選択（A / B / C）を得る。A か C を選べば、Scope（S1 に自分の packet の archive からの読み方、S3 に archive の自分の packet の PK5、S8 に遷移表の変更）と Owner Effort Budget（closure の増加）を改めて design へ戻る。
+owner に諮る判断点: 推奨 B は owner の示した A と違うため、Plan Gate で owner の選択（A / B / C）を得る。**owner は 2026-09-29 に B を選んだ（決着）。**A か C を選べば、Scope（S1 に自分の packet の archive からの読み方、S3 に archive の自分の packet の PK5、S8 に遷移表の変更）と Owner Effort Budget（closure の増加）を改めて design へ戻る。
 
 ## Design Intent Audit
 
