@@ -505,6 +505,10 @@ Fill after implementation.
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
+- 実装: [PR #123](https://github.com/kosei-w90607/inventory-system-desktop/pull/123)。S1〜S12 を Writer（Opus 5.5 subagent、発注 133）が 4 commit で実装した（helper、PK5、PK4、文書と D-097）。AC1〜AC12 を満たし、MU1〜MU13 を実注入して red を確かめた。S10 の `.claude/commands/plan-rally.md` も sandbox に拒まれず編集できた。
+- 文言の細部で packet の逐語から離れた所: D-097 は closeout での移送で link が切れないよう、packet を link でなく名前で参照した。DEV_WORKFLOW の S8 の文から行番号の参照を省いた。Scope・AC は変えていない。
+- commit 3（PK4）だけを checkout すると、実 repo の self-pass の test が Plans.md の pointer 行（commit 4）の前なので red になる。最終 head では green。
+
 ## Review Response
 
 Fill after review.
