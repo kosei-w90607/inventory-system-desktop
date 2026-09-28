@@ -209,7 +209,7 @@ if method!='GET':
     s['comments']=[dict(id=1,user=dict(login=s['owner']),body=payload['body'],updated_at='now')]
     save();print(json.dumps(s['comments'][0]));sys.exit(0)
 if path=='user':value={'login':s['owner']}
-elif '/pulls/7/files' in path:value=[s['files']]
+elif '/pulls/7/files' in path:value=s['file_pages'] if 'file_pages' in s else [s['files']]
 elif path.endswith('/pulls/7'):
     s['reads']=s.get('reads',0)+1
     if s.get('head_race_at')==s['reads']:s['pr']['head']['sha']='e'*40
@@ -218,11 +218,9 @@ elif '/issues/7/comments' in path:value=[s['comments']]
 elif '/contents/' in path:
     import base64
     name=path.split('/contents/')[1].split('?')[0]
-    if name=='docs':
-        value=[dict(type='dir',name='plans',path='docs/plans')] if s.get('plans_exists',True) else []
-    elif name=='docs/plans':
-        if not s.get('plans_exists',True):sys.exit(1)  # GitHub 404 for an absent directory.
-        value=s.get('packets',[])
+    # Head listings stay served so a regression back to listing-based selection is caught.
+    if name=='docs':value=[dict(type='dir',name='plans',path='docs/plans')]
+    elif name=='docs/plans':value=s.get('packets',[])
     else:
         ref=path.split('?ref=')[1]
         content=s.get('snapshots',{}).get(ref,{}).get(name,s['contents'][name])
@@ -247,7 +245,7 @@ class CLI(unittest.TestCase):
         policy=json.loads((ROOT/'.github/merge-gate-ruleset.json').read_text())
         self.state={'owner':g.OWNER,'calls':[],'pr':dict(number=7,state='open',merged=False,draft=True,
             head=dict(sha=self.head,ref='feature',repo=dict(full_name=g.REPO)),base=dict(sha=self.head,ref='main',repo=dict(full_name=g.REPO)),mergeable=True,mergeable_state='clean'),
-            'files':[dict(filename='docs/example.md')], 'comments':[], 'policy':policy,
+            'files':[dict(filename='docs/example.md',status='modified')], 'comments':[], 'policy':policy,
             'contents':{'scripts/ci/classify-changes.sh':(ROOT/'scripts/ci/classify-changes.sh').read_text(),g.POLICY:json.dumps(policy)},
             'effective':[r|{'ruleset_id':1} for r in policy['rules']],
             'runs':[dict(id=10,head_sha=self.head,created_at='2026-09-14',event='pull_request',path='.github/workflows/ci.yml',head_repository=dict(full_name=g.REPO),head_branch='feature',status='completed',conclusion='success',check_suite_id=2,html_url='https://example.invalid/run')],
@@ -274,28 +272,16 @@ class CLI(unittest.TestCase):
         self.head=self.git('rev-parse','HEAD')
         self.state['pr']['head']['sha']=self.head
         self.state['runs'][0]['head_sha']=self.head
-        self.state['packets']=[dict(type='file',name=Path(packet).name,path=packet)]
+        self.state['files']=self.state['files']+[dict(filename=packet,status='added')]
         fields={'Phase':'implementing','Risk':'R3',
                 'Plan Commit':self.plan_ref,'Amendments':'none','Coordinator':'owner','Writer':'codex','Plan Reviewer':'opus',
                 'Final Reviewer':'sonnet+opus','Final Review Minimum':'2','Human Gate':'ready,merge'} | overrides
         self.state['contents'][packet]=self.packet_text(fields)
-        self.state['contents']['docs/Plans.md']=f'## 次の行動\n[packet](plans/{Path(packet).name})\n'
         # Approval snapshot predates its own SHA; phase/self-reference are not gate conditions.
         approved=fields | {'Phase':'plan-gate','Plan Commit':'pending'}
         self.state['snapshots']={self.plan_ref:{packet:self.packet_text(approved)}}
         self.save()
         return packet,fields
-
-    def test_absent_plans_directory_is_normal_r0(self):
-        self.state['plans_exists']=False;self.save()
-        for action in ('status','capture','ready','merge'):
-            self.run_cli(action)
-        self.assertFalse(any('/contents/docs/plans?' in ' '.join(call) for call in self.load()['calls']))
-
-    def test_parent_or_present_directory_http_failure_is_error(self):
-        for path in ('/contents/docs?', '/contents/docs/plans?'):
-            self.state['http_error_path']=path;self.save()
-            self.run_cli('status',expected=2)
 
     def test_unamended_gate_condition_changes_are_rejected(self):
         cases=[({'Risk':'R4','Human Gate':'ready,merge,manual,r4'},'Risk','R3'),
@@ -343,9 +329,8 @@ class CLI(unittest.TestCase):
         a2=commit('A2 requires manual')
         fields['Amendments']=a1+', '+a2
         commit('register A2')
-        self.state['packets']=[dict(type='file',name=Path(packet).name,path=packet)]
+        self.state['files']=[dict(filename=packet,status='added')]
         self.state['snapshots']={ref:{packet:self.git('show',ref+':'+packet)} for ref in (plan,a1,a2)}
-        self.state['contents']['docs/Plans.md']=f'## 次の行動\n[packet](plans/{Path(packet).name})\n'
         def observe():
             self.state['pr']['head']['sha']=self.git('rev-parse','HEAD')
             self.state['contents'][packet]=path.read_text();self.save()
@@ -373,7 +358,7 @@ class CLI(unittest.TestCase):
         # Merely pointing to the old Plan Commit cannot authorize the amendment's conditions.
         self.state['contents'][packet]=self.packet_text(amended)
         self.save()
-        self.run_cli('status','--packet',packet,expected=1)
+        self.assertIn('approved packet condition changed',self.run_cli('status','--packet',packet,expected=1))
 
     def test_status_capture_ready_merge(self):
         self.assertEqual(self.run_cli('status')['blockers'],[])
@@ -383,11 +368,11 @@ class CLI(unittest.TestCase):
         self.assertTrue(self.load()['pr']['merged'])
     def test_packet_double_audit_cli(self):
         packet,fields=self.configure_packet()
-        self.state['files']=[dict(filename='scripts/pr-gate.py')];self.save()
+        self.state['files']=[dict(filename='scripts/pr-gate.py',status='modified'),dict(filename=packet,status='added')];self.save()
         common=('--packet',packet)
         capture=self.run_cli('capture',*common)['capture']
         self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','sonnet','--run-ref','sonnet-audit','--evidence','https://example.invalid/sonnet','--outcome','pending')
-        self.run_cli('ready',*common,expected=1)
+        self.assertIn('review not passed',self.run_cli('ready',*common,expected=1))
         capture=self.run_cli('capture',*common)['capture']
         self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','opus','--run-ref','opus-audit','--evidence','https://example.invalid/opus','--outcome','pass')
         self.run_cli('ready',*common)
@@ -399,31 +384,31 @@ class CLI(unittest.TestCase):
         self.save()
         waiting=self.run_cli('status',*common)
         self.assertIn('Plan Gate incomplete',waiting['blockers'])
-        self.run_cli('ready',*common,expected=1)
-        self.run_cli('capture',*common,expected=1)
-        self.run_cli('merge',*common,expected=1)
+        self.assertIn('Plan Gate incomplete',self.run_cli('ready',*common,expected=1))
+        self.assertIn('packet has not reached implementing',self.run_cli('capture',*common,expected=1))
+        self.assertIn('Plan Gate incomplete',self.run_cli('merge',*common,expected=1))
 
 
     def test_workflow_minimum_one_rejected(self):
         packet,_=self.configure_packet(**{'Final Review Minimum':'1'})
-        self.state['files']=[dict(filename='scripts/pr-gate.py')];self.save()
-        self.run_cli('status','--packet',packet,expected=1)
-        self.run_cli('ready','--packet',packet,expected=1)
+        self.state['files']=[dict(filename='scripts/pr-gate.py',status='modified'),dict(filename=packet,status='added')];self.save()
+        for action in ('status','ready'):
+            self.assertIn('required Double Audit minimum is 2',self.run_cli(action,'--packet',packet,expected=1))
 
     def test_r4_minimum_one_rejected(self):
         packet,_=self.configure_packet(**{'Risk':'R4','Human Gate':'ready,merge,r4','Final Review Minimum':'1'})
-        self.run_cli('status','--packet',packet,expected=1)
-        self.run_cli('ready','--packet',packet,expected=1)
+        for action in ('status','ready'):
+            self.assertIn('R4 gates missing',self.run_cli(action,'--packet',packet,expected=1))
 
     def test_r4_approval_gate_cannot_be_omitted(self):
         packet,_=self.configure_packet(**{'Risk':'R4'})
-        self.run_cli('status','--packet',packet,expected=1)
-        self.run_cli('ready','--packet',packet,expected=1)
+        for action in ('status','ready'):
+            self.assertIn('R4 gates missing',self.run_cli(action,'--packet',packet,expected=1))
 
     def test_codex_only_r3_ui_minimum_one_accepted(self):
         # T-H7a: Execution Mode no longer changes the review count; only R4 / workflow require 2.
         packet,_=self.configure_packet(**{'Execution Mode':'codex-only','Final Review Minimum':'1'})
-        self.state['files']=[dict(filename='src/features/example/view.tsx')];self.save()
+        self.state['files']=[dict(filename='src/features/example/view.tsx',status='modified'),dict(filename=packet,status='added')];self.save()
         status=self.run_cli('status','--packet',packet)
         self.assertFalse([b for b in status['blockers'] if 'minimum' in b.lower()],status['blockers'])
 
@@ -573,9 +558,95 @@ class CLI(unittest.TestCase):
         self.assertEqual(len(self.load()['comments']),1)
         self.run_cli('record','--manual','required','--capture',capture,'--kind','manual','--outcome','pass','--evidence','x',expected=1)
     def test_low_risk_execution_change_rejected(self):
-        self.state['files']=[dict(filename='scripts/pr-gate.py')];self.save();self.run_cli('status',expected=1)
-    def test_multiple_packet_and_missing_manual(self):
-        self.state['packets']=[dict(type='file',name='2026-09-14-one.md',path='docs/plans/2026-09-14-one.md'),dict(type='file',name='2026-09-14-two.md',path='docs/plans/2026-09-14-two.md')];self.save()
-        self.run_cli('status','--packet','docs/plans/2026-09-14-one.md',expected=1)
+        self.state['files']=[dict(filename='scripts/pr-gate.py',status='modified')];self.save();self.run_cli('status',expected=1)
+
+MINE='docs/plans/2026-09-14-fixture.md'; OTHER='docs/plans/2026-09-13-other.md'
+TOUCH='PR diff must touch exactly the --packet active packet'
+LEAVE='packet leaving docs/plans must move to docs/archive/plans in this PR'
+
+class PacketScope(unittest.TestCase):
+    # SPEC-WF-PARALLEL-FRICTION D1..D3: the PR binds to the active packets its own diff touches.
+    setUp=CLI.setUp;tearDown=CLI.tearDown;save=CLI.save;load=CLI.load;run_cli=CLI.run_cli
+    packet_text=staticmethod(CLI.packet_text);configure_packet=CLI.configure_packet
+    def phase(self,path,phase):self.state['contents'][path]=self.packet_text({'Phase':phase,'Risk':'R3'})
+    def diff(self,*entries):
+        self.state['files']=[dict(filename='docs/example.md',status='modified')]+[dict(zip(('status','filename','previous_filename'),e)) for e in entries]
+        self.save()
+    def archive(self,path):return 'docs/archive/plans/'+Path(path).name
+    def fetched(self,path):return any('/contents/'+path+'?' in ' '.join(call) for call in self.load()['calls'])
+
+    def test_other_lane_packet_in_head_r2_passes(self):
+        self.configure_packet();self.phase(OTHER,'implementing')
+        self.state['packets']=[dict(type='file',name=Path(p).name,path=p) for p in (OTHER,MINE)];self.save()
+        status=self.run_cli('status','--packet',MINE)
+        self.assertFalse([b for b in status['blockers'] if 'packet' in b],status['blockers'])
+    def test_two_active_packets_in_diff_rejected(self):
+        self.configure_packet();self.phase(OTHER,'implementing');self.diff(('added',MINE),('modified',OTHER))
+        self.assertIn(TOUCH,self.run_cli('status','--packet',MINE,expected=1))
+    def test_diff_across_pages_rejected(self):
+        self.configure_packet();self.phase(OTHER,'implementing')
+        self.state['file_pages']=[[dict(filename='docs/example.md',status='modified'),dict(filename=MINE,status='added')],[dict(filename=OTHER,status='modified')]]
+        self.save()
+        self.assertIn(TOUCH,self.run_cli('status','--packet',MINE,expected=1))
+    def test_packet_argument_mismatch_rejected(self):
+        self.configure_packet();self.phase(OTHER,'implementing');self.diff(('added',OTHER))
+        self.assertIn(TOUCH,self.run_cli('status','--packet',MINE,expected=1))
+    def test_r2_archiving_other_lane_packet_rejected(self):
+        self.configure_packet();self.phase(self.archive(OTHER),'archive')
+        self.diff(('added',MINE),('renamed',self.archive(OTHER),OTHER))
+        self.assertIn(TOUCH,self.run_cli('status','--packet',MINE,expected=1))
+    def test_rename_inside_plans_counts_both_paths(self):
+        self.configure_packet();self.diff(('renamed',MINE,OTHER))
+        self.assertIn(TOUCH,self.run_cli('status','--packet',MINE,expected=1))
+    def test_r0_closeout_archive_move_passes(self):
+        x,y,z='docs/plans/2026-09-10-x.md','docs/plans/2026-09-11-y.md','docs/plans/2026-09-12-z.md'
+        for path in (x,y):self.phase(self.archive(path),'archive')
+        self.phase(z,'implementing')
+        self.state['packets']=[dict(type='file',name=Path(z).name,path=z)]
+        self.diff(('renamed',self.archive(x),x),('renamed','docs/archive/plans/test-matrices/2026-09-10-x.md','docs/plans/test-matrices/2026-09-10-x.md'),
+                  ('removed',y),('added',self.archive(y)),('modified','docs/Plans.md'))
+        self.assertEqual(self.run_cli('status')['blockers'],[])
+        self.run_cli('ready');self.run_cli('merge')
+        self.assertTrue(self.load()['pr']['merged'])
+        self.assertTrue(self.fetched(self.archive(x)) and self.fetched(self.archive(y)))
+    def test_r0_closeout_reported_as_remove_and_add_passes(self):
+        self.phase(self.archive(OTHER),'archive');self.diff(('removed',OTHER),('added',self.archive(OTHER)))
+        self.assertEqual(self.run_cli('status')['blockers'],[])
+    def test_r0_edit_of_active_packet_rejected(self):
+        self.phase(OTHER,'implementing');self.diff(('modified',OTHER))
+        self.assertIn('R2+ active packet requires --packet',self.run_cli('status',expected=1))
+    def test_r0_packet_deletion_without_archive_rejected(self):
+        self.state['http_error_path']='/contents/'+self.archive(OTHER)  # GitHub 404: the archive is absent.
+        self.diff(('removed',OTHER))
+        self.assertIn(LEAVE,self.run_cli('status',expected=1))
+        self.assertFalse(self.fetched(self.archive(OTHER)))
+    def test_r0_removal_with_preexisting_archive_rejected(self):
+        a,b='docs/plans/2026-01-01-a.md','docs/plans/2026-01-02-b.md'
+        self.phase(self.archive(a),'archive');self.phase(b,'implementing');self.diff(('removed',a))
+        for action in ('status','ready'):
+            self.assertIn(LEAVE,self.run_cli(action,expected=1))
+        self.assertFalse(self.fetched(self.archive(a)))
+    def test_r0_archive_move_without_phase_archive_rejected(self):
+        self.phase(self.archive(OTHER),'implementing');self.diff(('renamed',self.archive(OTHER),OTHER))
+        self.assertIn('moved packet is not Phase archive',self.run_cli('status',expected=1))
+    def test_archive_contents_http_failure_is_error(self):
+        self.state['http_error_path']='/contents/'+self.archive(OTHER)
+        self.diff(('renamed',self.archive(OTHER),OTHER))
+        self.run_cli('status',expected=2)
+    def test_packet_scope_does_not_list_docs_or_read_plans(self):
+        self.run_cli('status')
+        self.configure_packet();self.run_cli('status','--packet',MINE)
+        calls=[' '.join(call) for call in self.load()['calls']]
+        for path in ('/contents/docs?','/contents/docs/plans?','/contents/docs/Plans.md'):
+            self.assertFalse([c for c in calls if path in c],path)
+    def test_unknown_file_status_is_input_error(self):
+        self.diff(('moved','docs/plans/2026-09-13-other.md'))
+        self.assertIn('unknown PR file status',self.run_cli('status',expected=2))
+    def test_truncated_diff_rejected(self):
+        for count,expected in ((3000,1),(2999,0)):
+            with self.subTest(count=count):
+                self.state['files']=[dict(filename=f'docs/x{i}.md',status='modified') for i in range(count)];self.save()
+                result=self.run_cli('status',expected=expected)
+                if expected:self.assertIn('PR diff unavailable or truncated',result)
 
 if __name__=='__main__':unittest.main()

@@ -212,26 +212,38 @@ class Gate:
     def requirements(self, pr):
         head, base = pr['head']['sha'], pr['base']['sha']
         pages = api(f'{self.endpoint}/pulls/{self.args.pr}/files?per_page=100', pages=True)
-        paths = [path for page in pages for item in page for path in (item['filename'], item.get('previous_filename', item['filename']))]
-        require(paths and len(paths) < 6000, 'PR diff unavailable or truncated')
+        items = [item for page in pages for item in page]
+        # GitHub lists at most 3000 files per PR; at the cap the diff may be truncated.
+        require(0 < len(items) < 3000, 'PR diff unavailable or truncated')
+        paths = [path for item in items for path in (item['filename'], item.get('previous_filename', item['filename']))]
         # Use current main, not the PR's classifier, to determine review requirements.
         classifier = self.contents('scripts/ci/classify-changes.sh', base)
         output = command(['bash', '-c', classifier, 'classify-changes', '--files-from-stdin'], data='\n'.join(paths)+'\n')
         flags = dict(line.split('=', 1) for line in output.splitlines())
         expected = set('rust rust_drift frontend docs env generated traceability workflow unknown'.split())
         require(set(flags) == expected and all(v in ('true','false') for v in flags.values()), 'invalid main classifier', 2)
-        # Git has no empty directories: an archived last packet removes docs/plans.
-        docs = api(f'{self.endpoint}/contents/docs?ref={head}')
-        plans = [entry for entry in docs if entry['name'] == 'plans']
-        require(not plans or (len(plans) == 1 and plans[0]['type'] == 'dir'), 'invalid plans directory', 2)
-        entries = api(f'{self.endpoint}/contents/docs/plans?ref={head}') if plans else []
-        packets = [entry['path'] for entry in entries if entry['type'] == 'file' and re.fullmatch(r'\d{4}-\d\d-\d\d-.*\.md', entry['name'])]
+        # The PR binds to the active packets its own diff touches, not to every packet in head:
+        # merged lanes awaiting closeout stay in docs/plans without blocking other PRs.
+        active = re.compile(r'docs/plans/\d{4}-\d\d-\d\d-[^/]*\.md')
+        present, leaving, moves, removed, archived = set(), set(), set(), set(), set()
+        for item in items:
+            status, name = item['status'], item['filename']
+            require(status in ('added','removed','modified','renamed','copied','changed','unchanged'), f'unknown PR file status: {status}', 2)
+            if status == 'removed':
+                removed.add(name)
+            elif active.fullmatch(name):
+                present.add(name)
+            if status in ('added', 'modified'):
+                archived.add(name)
+            if status == 'renamed':
+                moves.add((item['previous_filename'], name))
+                if active.fullmatch(item['previous_filename']):
+                    leaving.add(item['previous_filename'])
+        leaving |= {name for name in removed if active.fullmatch(name)}
         if self.args.packet:
             require(re.fullmatch(r'docs/plans/\d{4}-\d\d-\d\d-[A-Za-z0-9_-]+\.md', self.args.packet), 'invalid packet path', 2)
-            require(packets == [self.args.packet], 'packet absent or multiple active packets')
-            dashboard = markdown(self.contents('docs/Plans.md', head))
-            section = re.search(r'^## 次の行動\s*\n(.*?)(?=^## |\Z)', dashboard, flags=re.M | re.S)
-            require(section and f'](plans/{Path(self.args.packet).name})' in section[1], 'packet not registered in Plans')
+            require(present | leaving == {self.args.packet} and self.args.packet in present,
+                    'PR diff must touch exactly the --packet active packet')
             packet_text = self.contents(self.args.packet, head)
             result = parse_packet(packet_text)
             if result['plan_commit'] != 'pending':
@@ -241,10 +253,18 @@ class Gate:
                 for field in ('Risk', 'Final Review Minimum', 'Human Gate'):
                     require(approved.get(field) == current[field], f'approved packet condition changed: {field}')
         else:
-            require(not packets, 'R2+ active packet requires --packet')
+            require(not present, 'R2+ active packet requires --packet')
             require(self.args.risk in ('R0','R1') and self.args.manual in ('required','not-required'),
                     'no-packet route needs --risk R0|R1 --manual required|not-required', 2)
             require(not (flags['workflow'] == 'true' and flags['rust'] == 'true'), 'CI execution change requires R3 packet')
+            # Only a closeout may take a packet out of docs/plans: moved to the same-named archive
+            # within this PR, and archived there. A pre-existing archive does not prove the move.
+            for packet in sorted(leaving):
+                archive = 'docs/archive/plans/' + Path(packet).name
+                require((packet, archive) in moves or (packet in removed and archive in archived),
+                        'packet leaving docs/plans must move to docs/archive/plans in this PR')
+                require(workflow_fields(self.contents(archive, head)).get('Phase') == 'archive',
+                        f'moved packet is not Phase archive: {archive}')
             result = dict(phase='implementing', risk=self.args.risk, plan_commit=None, amendments=[], minimum=0,
                           manual=self.args.manual == 'required', r4=False)
         if result['minimum']:
