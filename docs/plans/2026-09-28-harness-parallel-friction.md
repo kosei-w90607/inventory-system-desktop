@@ -52,7 +52,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 介入の予備は 0 になった。round 天井の disposition などで追加の owner 判断が要れば、その判断と介入の上限の改定を同じ 1 回で owner に求める。
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
-承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。Ready の依頼は「この change での介入 4 回目 / 予算 5 回」、merge の指示の依頼は「5 回目 / 予算 5 回」と書く。
+承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。Ready の依頼は「この change での介入 5 回目 / 予算 6 回」、merge の指示の依頼は「6 回目 / 予算 6 回」と書く。
 
 ## Consultation Relay
 
@@ -512,4 +512,12 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 ## Review Response
 
 Fill after review.
+- Final Review broad（2026-09-29、対象 `77443223`、互いに独立の 2 本）: Claude 側 Fable 5.1 = approve（P1 / P2 0、P3 3）、Codex 側 GPT-6 Astra（発注 134）= reject（P1 0 / P2 1 / P3 2）。両者とも MU1〜MU13 の red と正常な経路の成立を確かめた。Coordinator の裁定（すべて accept）:
+  - Codex P2-F1（`scripts/check-workflow-git.sh:149` で `git diff` が失敗すると検査の対象が空になり、祖先に無い Plan Commit が exit 0 で通る。旧実装は exit 1）: Writer が、差分の取得に失敗したら全 packet の検査へ戻す（fail-closed）形に直し、回帰 test と mutation で固定する。
+  - Codex P3-F2（承認依頼の例の回数が上限 6 に合わない）: Coordinator が直した（本 commit）。
+  - Codex P3-F3（PK4 の test から、混在する fence の負例が落ち、その判定を壊す mutation が green になる）: Writer が pointer の形の負例を戻す。
+  - Fable P3-1（`pr-gate.py` の集合 `archived` が `added` / `modified` の全 file を集め、名前が誤読を招く）: Writer が名前か絞り込みを直す（判定の結果は変えない）。
+  - Fable P3-2（`PacketScope` が `CLI` の fixture を属性で借りる理由が書かれていない）: Writer が 1 行の comment を足す。
+  - Fable P3-3（`docs/backlog.md:141` の Wave Registry の link の項目が旧前提の語のまま）: closeout で直す。
+  - 是正の後の closure は Claude 側の fresh reviewer で行う（Final Review Minimum 2 は broad の 2 本で満たしている）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
