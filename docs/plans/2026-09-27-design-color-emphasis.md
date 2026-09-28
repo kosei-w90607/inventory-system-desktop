@@ -125,7 +125,7 @@ operator の操作手順・data 契約・状態遷移は変えないが、operat
 | 商品別CSV取込み（Z004）タブ | ファイルを選び、プレビューを見る | 手順の表示のいまのステップが分かる。取込みの確定は停止中（[停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) SPEC-STOP-D4）のため、「3 結果」と取込み中の表示（移動制限の知らせ）は画面では出ない | —（停止の解除は ㉘ の ⑤） | いまのステップの試しは L3（AC-L3-10、ステップ 1〜2）。ステップ 3 と移動制限の知らせは自動 test だけで確かめる |
 | 在庫照会の一覧 | 行を押して詳細を開き、もう一度押して閉じる | 開いた行と詳細が一体に見え、どれを開いているか分かる | 別の行を開く・閉じる | 詳細を開いた行を進行中にする試しは L3（AC-L3-9）。行内の muted の文字は現行の値では進行中の地の上で 4.13:1、D-CE16 の 3 候補で 4.66〜6.57:1（Contract Probe） |
 | 入庫記録の入力 | 取引先を選ぶ dialog で行を選ぶ | 選んでいる行が左端のバー + 進行中の地 + 「選択中」で分かる | 閉じて入力を続ける | AC-L3-8 |
-| 月次売上の商品別 | ランキングと前月比を見る | 1 位が順位と太字で分かる。前月比は記号と文字色で増減が分かる | — | AC-L3-2 / 11 |
+| 月次売上の商品別 | ランキングと前月比を見る | 1 位が琥珀の pill「1 位」と行の地で分かる（L3 round 1 で試し〈順位と太字〉を採らなかった側、owner 2026-09-28）。前月比は記号と文字色で増減が分かる | — | AC-L3-2 / 11 |
 | どの画面でも取得に失敗 | 画面を開く | 危険・失敗の Alert（薄い地 + 線 + 三角 icon + 原因と次の一手）と再試行 | 再試行を押す | AC-L3-12 |
 
 本 lane で完了できるのは見た目の移行までで、operator の業務の目的（取込み・照会・記録）は現行のまま達成できる。muted の文字の AA 未達は本 lane で閉じる（D-CE16）。card の面色は別 lane に残る。
@@ -292,7 +292,7 @@ baseline は起票時実測（`e7c22f8f`）。「分岐」と書いた AC は L3
 - **AC-L3**（画面 / 到達手順 / 観測可能な合格基準。結果は github mode の `manual` record に残す。round 1 は build 4 本〈before = main、after = PR head、試し = 試しの版、muted の M1 の比較 build〉を並べる。round 2 は採否を反映した PR head だけで、round 1 から変わった画面を見る）:
   - **AC-L3 の前提（DB の共有、裁定 r3 B3-4）**: 4 build は `src-tauri/tauri.conf.json` の identifier が同じ（`com.kosei.inventory`）で、app_data の `inventory.db` を共有する。Coordinator は AC-L3-3 / 5 / 6 / 7 の前提（最後の Z004 取込みの精算日が前日より前、取込み済みの日と未取込みの日の日報に合う取込みの状態）を 1 つで満たす合成 DB（以下「L3 の DB」）を用意して hash（`sha256sum`）を取り、元の `inventory.db`（と `-wal`・`-shm`）を退避する。各 build の起動前に、同じ hash の L3 の DB の写しを app_data の `inventory.db` の位置へ置き直し（`-wal`・`-shm` は消す）、写しの hash と build 名を manual record に書く。AC-L3-7 の前に、対象日の日報が未取込みであることを取込み画面で確かめる。AC-L3-3 で手動販売を保存したら（AC-L3-7 で取り込んだ後も）、次の build の前に置き直す。L3 の後は、退避した元の DB を app_data へ戻す。
   - **AC-L3-1 全体の並べ比べ**: Home（`/`）と入庫記録（`/inventory/receiving`）/ 起動して左のナビから開く / after でナビの現在地のバー・主要ボタンの塗り・focus ring（Tab で移る）が同じ操作の色で、在庫少の琥珀・PLU 通知バーの琥珀と別の色に見える。
-  - **AC-L3-2 ランキング 1 位**: 月次売上（`/reports/monthly`）の商品別 / ナビ →「月次売上」→ 商品別 / 1 位が色なしで順位と太字だけで見分けられる（採否）。
+  - **AC-L3-2 ランキング 1 位**: 月次売上（`/reports/monthly`）の商品別 / ナビ →「月次売上」→ 商品別 / 1 位が色なしで順位と太字だけで見分けられる（採否）。round 1 で試しを採らなかったため（owner 2026-09-28）、round 2 では 1 位の行が琥珀の pill「1 位」と行の地で見分けられることを PASS / FAIL で見る。
   - **AC-L3-3 最新と手動**: バックアップ（`/settings/backup`、最新）と日次売上（`/reports/daily`、手動）/ ナビから各画面。日次売上の既定の表示日は今日（`DailySalesPage.tsx:46`）で、「手動」badge はその日に手動販売があるときだけ出る（`daily-sales/components/ProductTable.tsx:132` の `item.source === "manual"`）。L3 の DB で手動販売出庫（`/inventory/manual-sale`）を 1 件保存してから今日の日次売上を開く（または手動販売のある日を L3 の DB に入れておき、日付の移動で開く。保存したら次の build の前に L3 の DB を置き直す）/ 「最新」と②分類の「手動」を言い分けられる。琥珀 pill（after）と stone の pill + 太字（試し）を比べる（採否）。あわせて badge の文字の太さ（現行 500）が読み分けに足りるかを owner が言う（変えるなら別 lane）。
   - **AC-L3-4 Home の入口 card の 3 状態**: Home（`/`）/ 起動直後 / before（琥珀の線 + 注意の薄い地）・after（操作の新しい線 + 注意の薄い地）・試し（操作の線 + 操作の仲間の薄い地）を並べ、最重要の入口 1 つとして目に留まる形を owner が選ぶ（採否。before は見比べるだけで、選ぶのは after か試し）。
   - **AC-L3-5 日報の取込み済み**: 売上データ取込み（`/csv-import`）の日報取込みタブ / 取込み済みの日の日報を選ぶ（CP932 の合成 fixture は Coordinator が用意） / Alert（危険・失敗）と badge（after = 注意・確認、試し = 危険・失敗。同日追加確認の badge は注意・確認のまま）の役割を見て選ぶ（採否）。
@@ -495,7 +495,19 @@ Contract ID: SPEC-COLOR-EMPHASIS-RT-1
 
 Fill after implementation.
 
+- 実装: [PR #116](https://github.com/kosei-w90607/inventory-system-desktop/pull/116)。S1〜S17・S19〜S21 を Writer（Opus 5.5 subagent）が実装し、L3 round 1 の採否（遷移記録の最後の行）を S15〜S17 で反映した。
+- ランキング 1 位（D-CE13）は分岐表の「採らなかったとき」で閉じた。「設計判断」の D-CE13、「L3 の分岐」の表の PR head の列、「Design Intent Trace」の SPEC-COLOR-EMPHASIS-RT-1（ランキング 1 位）の行にある「順位と太字」は計画時の試しの記述で、最終形は D-094・00・02 ⑬・04 原則 4 のとおり琥珀の pill と行の地である。
+- Registration / Generation Obligations の「90-traceability の再生成は要らない」は計画時の見込みで、実装では新しい test の REQ 参照数が変わったため再生成した（`docs(traceability)` の commit）。
+
 ## Review Response
 
 Fill after review.
+
+- Final Review broad（2026-09-28、対象 `4420ca04`、互いに独立の 2 本）: Claude 側 Fable 5.1 = approve（P1 / P2 0、P3 4）、Codex 側 GPT-6 Astra（発注 120）= reject（P1 0 / P2 2 / P3 1）。Coordinator の裁定:
+  - Codex P2-1（同日追加確認の注意の Alert 2 site〈日報取込み・CSV 取込みのプレビュー〉に三角 icon が無い。DSR-08 の「非中立の Alert は icon 必須」と AC-L3-12 に反する）: accept。Writer が 2 site に icon を足し、test で固定する。
+  - Codex P2-2 と Fable P3-2（Ordinary Operation の 1 位の行が試しの文のまま）: accept。Coordinator が Ordinary Operation の行と AC-L3-2 を採った側へ直し、計画時の記述の読み方を Implementation Results に書いた。
+  - Codex P3 と Fable P3-1（02 ⑧ の picker footer に「amber」が残る）: accept。Writer が「操作の塗り（`--primary`）」へ直す。
+  - Fable P3-3（`comparison-cell.tsx` の同じ値の定数 2 つ）: accept。Writer が 1 つに畳む。
+  - Fable P3-4（90-traceability の再生成の記述の食い違い）: accept。Implementation Results に事実を書いた。
+  - 是正の後の closure は Claude 側の fresh reviewer で行う（Final Review Minimum 1）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
