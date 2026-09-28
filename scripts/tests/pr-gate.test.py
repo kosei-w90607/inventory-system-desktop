@@ -566,6 +566,7 @@ LEAVE='packet leaving docs/plans must move to docs/archive/plans in this PR'
 
 class PacketScope(unittest.TestCase):
     # SPEC-WF-PARALLEL-FRICTION D1..D3: the PR binds to the active packets its own diff touches.
+    # Borrows CLI's fixture by attribute: subclassing CLI would run every CLI test a second time.
     setUp=CLI.setUp;tearDown=CLI.tearDown;save=CLI.save;load=CLI.load;run_cli=CLI.run_cli
     packet_text=staticmethod(CLI.packet_text);configure_packet=CLI.configure_packet
     def phase(self,path,phase):self.state['contents'][path]=self.packet_text({'Phase':phase,'Risk':'R3'})

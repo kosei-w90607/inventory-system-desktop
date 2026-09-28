@@ -225,7 +225,7 @@ class Gate:
         # The PR binds to the active packets its own diff touches, not to every packet in head:
         # merged lanes awaiting closeout stay in docs/plans without blocking other PRs.
         active = re.compile(r'docs/plans/\d{4}-\d\d-\d\d-[^/]*\.md')
-        present, leaving, moves, removed, archived = set(), set(), set(), set(), set()
+        present, leaving, moves, removed, written = set(), set(), set(), set(), set()
         for item in items:
             status, name = item['status'], item['filename']
             require(status in ('added','removed','modified','renamed','copied','changed','unchanged'), f'unknown PR file status: {status}', 2)
@@ -234,7 +234,7 @@ class Gate:
             elif active.fullmatch(name):
                 present.add(name)
             if status in ('added', 'modified'):
-                archived.add(name)
+                written.add(name)
             if status == 'renamed':
                 moves.add((item['previous_filename'], name))
                 if active.fullmatch(item['previous_filename']):
@@ -261,7 +261,7 @@ class Gate:
             # within this PR, and archived there. A pre-existing archive does not prove the move.
             for packet in sorted(leaving):
                 archive = 'docs/archive/plans/' + Path(packet).name
-                require((packet, archive) in moves or (packet in removed and archive in archived),
+                require((packet, archive) in moves or (packet in removed and archive in written),
                         'packet leaving docs/plans must move to docs/archive/plans in this PR')
                 require(workflow_fields(self.contents(archive, head)).get('Phase') == 'archive',
                         f'moved packet is not Phase archive: {archive}')
