@@ -92,7 +92,11 @@ export function DepartmentTable({
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <span className="min-w-[3rem] text-xs text-muted-foreground">{pct}%</span>
-                    <Progress value={row.ratio * 100} className="flex-1" />
+                    <Progress
+                      value={row.ratio * 100}
+                      className="flex-1"
+                      indicatorClassName="bg-muted-foreground"
+                    />
                   </div>
                 </TableCell>
                 <TableCell className="text-right">

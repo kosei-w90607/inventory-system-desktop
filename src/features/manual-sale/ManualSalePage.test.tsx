@@ -349,11 +349,12 @@ describe("ManualSalePage (UI-04 / REQ-203)", () => {
     expect(
       screen.getByText("未登録商品の場合は、商品マスタに登録してから手動販売へ戻って追加します。"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "未保存の手動販売内容があります。商品登録へ進むとこの画面の入力は残りません。",
-      ),
-    ).toBeInTheDocument();
+    const unsaved = screen.getByText(
+      "未保存の手動販売内容があります。商品登録へ進むとこの画面の入力は残りません。",
+    );
+    // D-CE10: 失敗ではない知らせは注意・確認の文字（危険の赤にしない）。
+    expect(unsaved).toHaveClass("text-warning-emphasis");
+    expect(unsaved).not.toHaveClass("text-destructive");
     expect(screen.getByRole("link", { name: "商品登録へ進む" })).toHaveAttribute(
       "href",
       "/products/new",

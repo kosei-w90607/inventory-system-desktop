@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -139,7 +139,6 @@ export function CostDiffDialog({
                   </Alert>
                 ) : state.status === "error" ? (
                   <Alert variant="destructive" role="alert">
-                    <AlertTriangle aria-hidden="true" />
                     <AlertTitle>マスタ原価の更新に失敗しました</AlertTitle>
                     <AlertDescription className="space-y-2">
                       <p>{state.detail}</p>

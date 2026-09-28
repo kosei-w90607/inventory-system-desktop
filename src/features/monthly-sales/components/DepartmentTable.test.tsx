@@ -130,3 +130,68 @@ describe("DepartmentTable (REQ-502 sort 結線)", () => {
     expect(screen.getByText("布")).toBeDefined();
   });
 });
+
+// SPEC-COLOR-EMPHASIS-RT-1: 構成比の棒はふつう・補足（D-CE4）。前月比は地の無い役割色の文字 +
+// 記号（D-CE9、±1.0% の閾値は不変）。
+describe("DepartmentTable (REQ-502 色と強調)", () => {
+  const cmp = (ratio: number | null, isComparable = true) => ({
+    prevAmount: isComparable ? 1000 : null,
+    diff: ratio === null ? null : ratio * 1000,
+    ratio,
+    isComparable,
+  });
+
+  it("REQ-502 D-CE4: the composition ratio bar uses the neutral muted color, not the ongoing color", () => {
+    const { container } = render(
+      <DepartmentTable
+        rows={sampleRows}
+        comparisonMap={new Map()}
+        sortBy={null}
+        sortDir="asc"
+        onSortChange={vi.fn()}
+      />,
+    );
+    const bars = container.querySelectorAll('[data-slot="progress-indicator"]');
+    expect(bars).toHaveLength(2);
+    for (const bar of bars) {
+      expect(bar).toHaveClass("bg-muted-foreground");
+      expect(bar).not.toHaveClass("bg-ongoing");
+    }
+  });
+
+  it("REQ-502 D-CE9: month-over-month shows role-colored text without a soft chip at the ±1.0% boundary", () => {
+    const rows = [
+      makeMockDeptCompositionRow({ key: "up", label: "増", amount: 1, ratio: 0.25 }),
+      makeMockDeptCompositionRow({ key: "down", label: "減", amount: 1, ratio: 0.25 }),
+      makeMockDeptCompositionRow({ key: "flat", label: "横", amount: 1, ratio: 0.25 }),
+      makeMockDeptCompositionRow({ key: "na", label: "無", amount: 1, ratio: 0.25 }),
+    ];
+    render(
+      <DepartmentTable
+        rows={rows}
+        comparisonMap={
+          new Map([
+            ["up", cmp(0.01)],
+            ["down", cmp(-0.01)],
+            ["flat", cmp(0)],
+            ["na", cmp(null, false)],
+          ])
+        }
+        sortBy={null}
+        sortDir="asc"
+        onSortChange={vi.fn()}
+      />,
+    );
+    const up = screen.getByText("+1.0%");
+    const down = screen.getByText("-1.0%");
+    const flat = screen.getByText("+0.0%");
+    const na = screen.getByText("—");
+    expect(up).toHaveClass("text-success-strong", "text-sm");
+    expect(down).toHaveClass("text-destructive-strong", "text-sm");
+    expect(flat).toHaveClass("text-muted-foreground");
+    expect(na).toHaveClass("text-muted-foreground");
+    for (const cell of [up, down, flat, na]) {
+      expect(cell.className.split(/\s+/).filter((c) => c.startsWith("bg-"))).toEqual([]);
+    }
+  });
+});

@@ -353,7 +353,7 @@ export function calculateEffectiveUnitPrice(item: DailySaleItem): number | null 
 | `Table` | ProductTable（6 列） |
 | `SortableHeader<T extends string>` | `src/components/sales/SortableHeader.tsx` を共通ownerとし、ProductTableの5列（`product_code` / `name` / `quantity` / `unit_price` / `amount`）で利用（UI-TABLE-D1） |
 | `Tooltip` | SummaryCardsBar（売上明細数）、ExportBar（印刷 disabled） |
-| `Badge` | ProductTable（手動行の黄色「手動」バッジ） |
+| `Badge` | ProductTable（手動行の②分類の stone の「手動」バッジ、`variant="secondary"`） |
 | `Alert` | DailySalesPage（当日 fail 時の画面全体 error） |
 | `Skeleton` | DailySalesPage / ProductTable（loading 時） |
 

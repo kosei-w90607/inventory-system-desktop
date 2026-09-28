@@ -43,7 +43,7 @@ SPEC-STK-TIME-D1 / D8 / D9。既存スタックを変えず、[42の生成wire](
 
 | 項目 | 決定 | 参照章 |
 |------|------|-------|
-| カラーパレット | Tailwind `stone` のニュートラル + 色の役割 6 つ（操作 / 進行中 / 注意・確認 / 完了 / 危険・失敗 / ふつう・補足）と強調の段階 0〜4。token は役割ごとの家族（primary / success / warning / destructive。進行中は runtime lane A で追加） | [00-foundations.md 色の役割](design-system/00-foundations.md#色の役割)・[カラーパレット](design-system/00-foundations.md#カラーパレット) |
+| カラーパレット | Tailwind `stone` のニュートラル + 色の役割 6 つ（操作 / 進行中 / 注意・確認 / 完了 / 危険・失敗 / ふつう・補足）と強調の段階 0〜4。token は役割ごとの家族（primary / ongoing / success / warning / destructive。decision-log D-094） | [00-foundations.md 色の役割](design-system/00-foundations.md#色の役割)・[カラーパレット](design-system/00-foundations.md#カラーパレット) |
 | タイポ | 本文16px、ボタン・ラベル14px、見出しh1:24px/h2:20px/h3:18px | [00-foundations.md タイポグラフィ](design-system/00-foundations.md) |
 | スペーシング | Tailwindスケール 4/8/12/16/24/32px 固定 | [00-foundations.md スペーシング](design-system/00-foundations.md) |
 | アイコンサイズ | 12/16/20/24/32px の 5 段 | [00-foundations.md アイコンサイズ](design-system/00-foundations.md) |
@@ -466,7 +466,7 @@ Tauri 初期ウィンドウは `src-tauri/tauri.conf.json` で 1280x800、最小
 
 ### 5.4 フォーカス管理
 
-- **フォーカスリング明示**: 全フォーカス可能要素で可視の focus 表示を維持する（outcome 契約。ブラウザデフォルト outline を抑制する要素は代替の focus ring を必ず持つ）。実装パターンは 2 系統を正とする: ①現行 shadcn/ui primitive（button / input / checkbox 等）と SidebarLink は `focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50` 系（§52.1 参照）、②native date / month input・segmented-control 等は design-system/02-component-catalog.md の規定（`focus-visible:ring-2` 系）に従う。2 系統の統一は将来判断（旧記載 `ring-2 ring-ring ring-offset-2` の全要素一律規範は実装乖離のため 2026-08-03 に本 outcome 契約へ改訂。UI backlog batch A packet 起源）
+- **フォーカスリング明示**: 全フォーカス可能要素で可視の focus 表示を維持する（outcome 契約。ブラウザデフォルト outline を抑制する要素は代替の focus ring を必ず持つ）。実装パターンは 2 系統を正とする: ①現行 shadcn/ui primitive（button / input / checkbox 等）と SidebarLink は `focus-visible:border-ring focus-visible:ring-[3px]` 系（§52.1 参照）で、枠を持つ部品（input 等）は focus で 1px の不透明な枠 `border-ring` に透過の `focus-visible:ring-ring/50` を添える。枠の無い部品と、focus の前後で枠の色が変わらない部品（checked の checkbox・選んだ選択カード・押された toggle）は透過させず不透明な `focus-visible:ring-ring` にする（DSR-22 の操作枠 3:1。透過の ring は合成後に対 background 2.35:1 で 3:1 に届かない。decision-log D-094）、②native date / month input・segmented-control 等は design-system/02-component-catalog.md の規定（`focus-visible:ring-2` 系）に従う。2 系統の統一は将来判断（旧記載 `ring-2 ring-ring ring-offset-2` の全要素一律規範は実装乖離のため 2026-08-03 に本 outcome 契約へ改訂。UI backlog batch A packet 起源）
 - **フォーカストラップ**: Dialog / AlertDialog / Sheet 内では Tab でダイアログ外に出ない。Radix UI の仕様で標準装備
 - **初期フォーカス**: 各画面の「一番使う要素」に自動フォーカス（検索画面なら検索ボックス、フォーム画面なら先頭入力）
 - **候補プレビューの focus 非奪取**: 商品追加欄の live 候補プレビュー（catalog ⑮）は focus を input に保持したまま `aria-activedescendant` で選択状態を表現する（リストへ focus を移さない）。↓/↑・Esc・click・footer の挙動は catalog ⑮ D6 を正とする

@@ -1,7 +1,7 @@
 // src/styles/globals.test.ts
 //
-// SC1: token 5 件（--border-strong / --row-current / --border / --input / --list-head）+
-// @theme map 3 件の fs literal oracle。値は独立転記（production 定数を import しない）。
+// SC1: token 4 件（--border-strong / --border / --input / --list-head）+
+// @theme map 2 件の fs literal oracle（--row-current は runtime lane A で撤去）。値は独立転記（production 定数を import しない）。
 // 共有部品の contract test。traceability 上は Lane 2 pilot = UI-01a へ紐付け（Gated Amendment 1）。
 // Plan Packet: docs/plans/2026-09-03-ui-list-backbone-d-lane2.md S1 / D-7
 
@@ -14,19 +14,67 @@ const GLOBALS_CSS = readFileSync(join(REPO_ROOT, "src/styles/globals.css"), "utf
 const INPUT_TSX = readFileSync(join(REPO_ROOT, "src/components/ui/input.tsx"), "utf8");
 const SELECT_TSX = readFileSync(join(REPO_ROOT, "src/components/ui/select.tsx"), "utf8");
 
-describe("SC1: globals.css declares border-strong / row-current / border / input tokens (UI-01a pilot / 共有 token)", () => {
-  it("declares the five :root token literals", () => {
+describe("SC1: globals.css declares border-strong / border / input / list-head tokens (UI-01a pilot / 共有 token)", () => {
+  it("declares the four :root token literals", () => {
     expect(GLOBALS_CSS).toContain("--border-strong: #8a8480;");
-    expect(GLOBALS_CSS).toContain("--row-current: #fff8e6;");
     expect(GLOBALS_CSS).toContain("--border: #cdc8c4;");
     expect(GLOBALS_CSS).toContain("--input: var(--border-strong);");
     expect(GLOBALS_CSS).toContain("--list-head: #e7e5e4;");
   });
 
-  it("maps the three new tokens in @theme inline", () => {
+  it("maps the tokens in @theme inline", () => {
     expect(GLOBALS_CSS).toContain("--color-border-strong: var(--border-strong);");
-    expect(GLOBALS_CSS).toContain("--color-row-current: var(--row-current);");
     expect(GLOBALS_CSS).toContain("--color-list-head: var(--list-head);");
+  });
+
+  // SPEC-COLOR-EMPHASIS-RT-1 / D-CE6: 現在行は進行中の token へ移し、--row-current は消す。
+  it("no longer declares the retired --row-current token", () => {
+    expect(GLOBALS_CSS).not.toContain("--row-current");
+    expect(GLOBALS_CSS).not.toContain("--color-row-current");
+  });
+});
+
+// SPEC-COLOR-EMPHASIS-RT-1（D-091 / D-CE1 / D-CE16）: 操作の色・進行中の家族・muted の文字色。
+// 値は独立転記（production 定数を import しない）。
+describe("SPEC-COLOR-EMPHASIS-RT-1: operation / ongoing / muted token literals (UI-12)", () => {
+  it("sets --primary and --ring to the operation color #1d5c63", () => {
+    expect(GLOBALS_CSS.toLowerCase()).toContain("--primary: #1d5c63;");
+    expect(GLOBALS_CSS.toLowerCase()).toContain("--ring: #1d5c63;");
+    expect(GLOBALS_CSS).toContain("--primary-foreground: #fafaf9;");
+  });
+
+  it("declares the four ongoing tokens in :root", () => {
+    const css = GLOBALS_CSS.toLowerCase();
+    expect(css).toContain("--ongoing: #2f7f86;");
+    expect(css).toContain("--ongoing-soft: #e6f0f0;");
+    expect(css).toContain("--ongoing-border: #7fb0b4;");
+    expect(css).toContain("--ongoing-strong: #123e43;");
+  });
+
+  it("maps the four ongoing tokens in @theme inline", () => {
+    expect(GLOBALS_CSS).toContain("--color-ongoing: var(--ongoing);");
+    expect(GLOBALS_CSS).toContain("--color-ongoing-soft: var(--ongoing-soft);");
+    expect(GLOBALS_CSS).toContain("--color-ongoing-border: var(--ongoing-border);");
+    expect(GLOBALS_CSS).toContain("--color-ongoing-strong: var(--ongoing-strong);");
+  });
+
+  it("keeps --warning-emphasis for caution only (value unchanged)", () => {
+    expect(GLOBALS_CSS).toContain("--warning-emphasis: #b45309;");
+  });
+
+  // D-094（L3 round 1 で D-CE13 の試しを採らない）: ランキング 1 位の琥珀の pill と行の地の token を残す。
+  it("keeps the rank-top tokens for the ranking top row", () => {
+    expect(GLOBALS_CSS).toContain("--rank-top-bg: #fffbeb;");
+    expect(GLOBALS_CSS).toContain("--rank-top-badge-bg: #fef3c7;");
+    expect(GLOBALS_CSS).toContain("--rank-top-badge-text: #92400e;");
+    expect(GLOBALS_CSS).toContain("--color-rank-top-bg: var(--rank-top-bg);");
+    expect(GLOBALS_CSS).toContain("--color-rank-top-badge-bg: var(--rank-top-badge-bg);");
+    expect(GLOBALS_CSS).toContain("--color-rank-top-badge-text: var(--rank-top-badge-text);");
+  });
+
+  // D-CE16 / D-094: owner が L3 round 1 で候補 3 つ（M1 #6f6964 / M2 #6b6560 / M3 #57534e）から選んだ M2。
+  it("sets --muted-foreground to the chosen darker stone", () => {
+    expect(GLOBALS_CSS).toContain("--muted-foreground: #6b6560;");
   });
 });
 

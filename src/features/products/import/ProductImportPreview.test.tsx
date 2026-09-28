@@ -91,9 +91,13 @@ describe("ProductImportPreview", () => {
       />,
     );
 
-    // SC3 / DSR-22: 上書き件数は強調badge。
-    expect(screen.getByText("上書き 1 件")).toHaveAttribute("data-variant", "default");
-    expect(screen.getByText("上書き 1 件")).toHaveClass("border-warning");
+    // SC3 / DSR-22 / D-CE3: 上書き件数は③強調の琥珀 pill（--warning-emphasis の塗り）。
+    expect(screen.getByText("上書き 1 件")).toHaveClass(
+      "border-warning",
+      "bg-warning-emphasis",
+      "text-primary-foreground",
+    );
+    expect(screen.getByText("上書き 1 件")).not.toHaveClass("bg-primary");
     await user.click(screen.getByRole("button", { name: "インポート実行" }));
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByRole("button", { name: "キャンセル" })).toBeInTheDocument();
