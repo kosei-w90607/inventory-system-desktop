@@ -766,6 +766,13 @@ Use concise ADR-style entries.
   - 維持: D-059（hook 0 本）、D-062(a)(b) と設計原則、D-039（PK5）、D-085 / D-086（merge gate）、D-090（Ordinary Operation・Writer 停止時）、独立性・Double Audit・Human Gate、MANUAL の残す節（§3.3・§3.5・§5.1〜§5.4・§5.6・§6）。MANUAL の見出しと節番号は変えず、削った節は欠番のまま残す（全面的な縮約は別 change）。
   - checker・helper・classifier は変えない。Writer・reviewer の Opus の effort は subagent の定義 file を置く後続 change まで実効せず、実効値を run 報告に記録する。
 
+## D-093: 入口文書を単一所有にし、review の依頼・出力の規範を code_review に統合する（2026-09-27）
+
+- Status: accepted（owner 決定 2026-09-24「規則は環境が変わるたびに変える（安全境界は維持）」、2026-09-25 の起票承認、2026-09-27 の plan-approved。ハーネス刷新 PR3）。
+- Decision: (1) npm 供給網ガード（D-030）の行動規則の所在を `CLAUDE.md` から [AGENTS.md](../AGENTS.md) の `## npm 供給網ガード（D-030）` へ移す（D-030 の Impact の「CLAUDE.md の節」を部分的に置き換える。規則の中身は変えない）。`CLAUDE.md` は冒頭の `@AGENTS.md` の import で `AGENTS.md` を Claude の session に読み込ませる（`CLAUDE.md` があると Claude Code は `AGENTS.md` を既定では読まないため）。(2) 問い合わせの行き先（PR の label・thread 状態・close・issue comment と、判断は owner・現行の明示承認と有効な委任の範囲では Coordinator が実行を代行できることを含む）の所有を `AGENTS.md` Decision and Approval Boundaries にする（D-090 の SPEC-WF-LIGHT1A-D4 を部分的に置き換える。`docs/DEV_WORKFLOW.md` の表は PR4 が link に置き換える）。(3) review の依頼・出力の規範（依頼形式・重大度・出力形式・確信度）を [code_review.md](code_review.md) に統合し、`pr-review` / `review-only-subagent` Skill と `pr-review-prompt` template を廃止する。併用する review Skill（`inventory-code-review`・`engineering-review`）は重大度・出力形式を code_review に従わせ、`engineering-review` の SSOT の主張は review 哲学に限る。subagent 発注の入力欄は `docs/templates/subagent-review-packet.md`（D-092）が持ち、規範を複製しない。`pr-review-prompt` は本 change で code_review へ統合済みで、PR4 での移入は要らない。(4) Final Review の固定観点「保守者として読めるか」（読めない変更は P2、owner 2026-09-07）と、店の事実を `docs/project-memory.md` の「Store Premises Facts（現場の前提）」と照合する観点を code_review へ置く。
+- Why: Codex は `CLAUDE.md` を読まないため、安全境界と承認の行き先を Claude 用の文書だけに置くと片方の agent に届かない。同じ規則を両方に置くと重複が drift する。review の規範が code_review・Skill・template に分かれ、指摘なしの返し方（`重大な findings なし` と `No blocking findings.`）や重大度の label（`Blocking / P1 / nit`）が割れていた。Evidence Mode の退役後、「新旧を混ぜない」ための定型文は意味を失った。
+- Compatibility: 直接 UI merge 禁止と残存リスクの文は `AGENTS.md` と `docs/DEV_WORKFLOW.md` に残し、drift test はこの 2 file に要求する。Session Start の R2+ 経路と fail-closed、history-view の旧 path・旧 namespace の拒否（T12）、hook inventory 0 本（D-059）は変えない。helper・checker・classifier・CI 定義は変えない。
+
 ## D-096: 日計（Z001）は同日の取込みごとに並べ、合算しない（2026-09-27）
 
 - Status: accepted（owner 2026-09-27。Plan Packet [Z001 / Z002 / Z005 を画面で見る](archive/plans/2026-09-27-daily-report-z-display.md) の Q1 = A、Q2 = (a)、Q3 = (a)）。
