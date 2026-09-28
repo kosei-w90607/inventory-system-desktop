@@ -438,21 +438,29 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
 
   it("REQ-402 shows the last snapshot time as YYYY-MM-DD HH:mm:ss without time zone conversion", async () => {
     // 67 処理ステップ 3: snapshot_at は DB の時差なしの文字列で、Date に通さず T を半角スペースにする。
-    mockGetPluSlotSummary.mockResolvedValue({
-      status: "ok",
-      data: {
-        snapshot_at: "2026-08-20T17:34:05",
-        free_count: 4_780,
-        external_count: 1,
-        app_managed_count: 3,
-        conflict_count: 0,
-        release_pending_count: 0,
-      },
-    });
+    // TZ を UTC 以外に固定し、UTC として解釈して直す誤りを runner の TZ に依らず捕まえる（pool は forks が前提）。
+    const originalTz = process.env.TZ;
+    process.env.TZ = "Asia/Tokyo";
+    try {
+      mockGetPluSlotSummary.mockResolvedValue({
+        status: "ok",
+        data: {
+          snapshot_at: "2026-08-20T17:34:05",
+          free_count: 4_780,
+          external_count: 1,
+          app_managed_count: 3,
+          conflict_count: 0,
+          release_pending_count: 0,
+        },
+      });
 
-    renderWithClient(<PluExportPage />);
+      renderWithClient(<PluExportPage />);
 
-    expect(await screen.findByText("最終読込み日時: 2026-08-20 17:34:05")).toBeInTheDocument();
+      expect(await screen.findByText("最終読込み日時: 2026-08-20 17:34:05")).toBeInTheDocument();
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
   });
 
   it("REQ-402 shows the saved time of a restored pending export in local YYYY-MM-DD HH:mm:ss", async () => {
