@@ -520,4 +520,5 @@ Fill after review.
   - Fable P3-2（`PacketScope` が `CLI` の fixture を属性で借りる理由が書かれていない）: Writer が 1 行の comment を足す。
   - Fable P3-3（`docs/backlog.md:141` の Wave Registry の link の項目が旧前提の語のまま）: closeout で直す。
   - 是正の後の closure は Claude 側の fresh reviewer で行う（Final Review Minimum 2 は broad の 2 本で満たしている）。
+- closure（2026-09-29、対象 `c6d6506d`、Claude 側 fresh Opus 5.5）: approve。前回の 5 件はすべて閉じた（F1 は修正を戻すと D4 (a3) が red）。新しい P3 1 件（N1）: `scripts/check-workflow-git.sh:149`・`:170` の `git diff --name-only` は既定の `core.quotePath` の下で、ASCII でない文字や `"` を含む path を quote して出すため、そういう名前の packet が PK5 の対象から黙って外れる（合成で再現）。今ある packet はすべて ASCII の名前で、helper も ASCII 以外の `--packet` を受け付けないので実害は小さいが、検査が黙って通る穴なので、Coordinator は Ready の前に直すと裁定した（Writer、回帰 test 1 件）。直した後の closure も Claude 側で行う。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
