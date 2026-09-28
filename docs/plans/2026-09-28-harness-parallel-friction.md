@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 13403d0f523168ec08f2fde92cbc1469246f8a19
 - Amendments: none
@@ -35,6 +35,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - Plan Review round 2 の裁定 r2 の反映（2026-09-29、起草役 = Opus 5.5 subagent、Phase は plan-gate のまま）: fresh Opus 5.5 は approve（P3 7）、Codex（GPT-6 Astra）は reject（P1 1 / P2 1 / P3 1）で、Coordinator が全件を accept した（G1〜G10）。closeout の判定に同じ PR の中の同名 archive への移送の対応を必須にし（G1、test と MU11 を追加）、Ordinary Operation の Draft の次条件・hosted の起点の前提、S7・S8・S9・S10、AC6・AC7・AC8・AC11、relay の消費、G2 の費用、Matrix の走査を直した。Plan Review round 3（上限）へ。
 - Plan Review round 3（上限）の結果と裁定 r3 の一括是正（2026-09-29、起草役 = Opus 5.5 subagent、Phase は plan-gate のまま）: fresh Opus 5.5 は approve（P3 6）、Codex（GPT-6 Astra）は reject（P1 0 / P2 1 / P3 1）で、Coordinator が全件を accept した（H1〜H8）。Ordinary Operation の base 同期の後の record の順序を merge-evidence の manual の再利用の順序に合わせ（H1）、S2 に複数 page の fixture と test・MU12 を足し（H2）、守る境界を「差分が `--packet` 以外の active packet を触る PR の拒否」に絞って `--packet` に他の lane の packet を名指しする経路を Residual Test Gaps に置き（H3）、S8 に `docs/DEV_WORKFLOW.md:420` を足し（H4）、closeout の test を 2 packet にし（H5）、S5 で `strip_inline_code_spans` を消し（H6）、引用を直し（H7）、S3 の fail-closed の MU13 を足した（H8）。round 4 は回さず、Coordinator の現物の確認と owner の plan-approved へ。
 - plan-gate → plan-approved（2026-09-29、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `1a2c5fe7`）は Claude 側 = approve（P3 6）、Codex 側 = reject（P1 0 / P2 1 / P3 1）。round 天井に従い追加の round は回さず、裁定 r3 の一括是正（`13403d0f`）で全件を反映した。Coordinator が一括是正を現物で確かめた（MU1〜MU13 と追加の test 4 本が packet と Matrix にそろう、H4 の文言、`strip_inline_code_spans` の削除の項目、`doc-consistency-check.sh --target plan` と `check-workflow-git.sh` が exit 0）。owner 承認（2026-09-29「承認するよ」、この change での介入 4 回目、介入の上限 5 → 6 を同じ 1 回で承認）のもと plan-approved。Plan Commit = `13403d0f`。
+- plan-approved → implementing（2026-09-29、Coordinator、state-only）: Writer（Opus 5.5 subagent）へ実装を発注する。Writer の開始 HEAD は本 commit。
 
 ## Owner Effort Budget
 
