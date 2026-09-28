@@ -103,7 +103,7 @@ export type MonthlySalesReport = {
 | 新規 | `src/features/monthly-sales/components/ModeTabs.tsx` | mode 切替（`?mode=by_product\|by_department`）。`SegmentedControl` で商品別ランキング / 部門別構成比の二択を描画し、active tone は shared stone selection tone | 40-55 |
 | 新規 | `src/features/monthly-sales/components/SummaryCardsBar.tsx` | 4 カード（売上合計 / 販売点数 / 期間表示 / 前月比） | 100-140 |
 | 新規 | `src/features/monthly-sales/components/DepartmentTable.tsx` | shadcn Table 4 列 + `<Progress>` 構成比バー + 前月比色分け（Q-4 商品数列は `MonthlySaleItem` DTO 不在で非対応、Plans.md Backlog 参照） | 110-150 |
-| 新規 | `src/features/monthly-sales/components/ProductRankingTable.tsx` | 上位 10 + 1 位は順位と太字（`item.ranking === 1` 追従、G-3） | 90-120 |
+| 新規 | `src/features/monthly-sales/components/ProductRankingTable.tsx` | 上位 10 + 1 位は琥珀の pill と行の地（`item.ranking === 1` 追従、G-3） | 90-120 |
 | 新規 | `src/features/monthly-sales/components/ExportBar.tsx` | CSV 出力 button（active）+ 印刷 button（aria-disabled + Tooltip） | 50-70 |
 
 #### components/ui + components/sales（共通化）
@@ -399,9 +399,9 @@ function MonthlySalesPage() {
   - 赤（`text-destructive-strong`）: `ratio <= -0.01`
   - **「—」灰**: `isComparable: false`（`prev === null` / `prev_amount = 0` / `prev_amount < 0`）
 
-#### ProductRankingTable（上位 10 + 1 位の順位と太字）
+#### ProductRankingTable（上位 10 + 1 位の琥珀の pill）
 - 列: 順位（`ranking`）/ 商品名 / 数量 / 金額 / 前月比 / -
-- `item.ranking === 1` → 「1 位」を `<span className="text-sm font-semibold text-foreground">` の順位と太字で示す（行の地と badge を持たない。2 位以下は `text-sm text-muted-foreground`。sort で順序変わっても `ranking === 1` 追従、G-3。design-system 00 の迷いやすい場面「ランキング 1 位」、decision-log D-094）
+- `item.ranking === 1` → 「1 位」を `<Badge className="border-warning bg-rank-top-badge-bg text-rank-top-badge-text hover:bg-rank-top-badge-bg">` の琥珀の pill で示し、行に `bg-rank-top-bg/40` の地を付ける（2 位以下は `text-sm text-muted-foreground` の文字。sort で順序変わっても `ranking === 1` 追従、G-3。design-system 00 の迷いやすい場面「ランキング 1 位」、decision-log D-094。順位と太字だけにする試しは L3 で採らなかった）
 - **SortableHeader 適用列 (4 列、順位列はソート対象外)**: 共通owner `src/components/sales/SortableHeader.tsx`（UI-TABLE-D1）を使い、商品名 (`name`) / 数量 (`quantity`) / 金額 (`amount`) / 前月比 (`prev_month_diff`)を結線する。click で `onSortChange(column)` 発火 → MonthlySalesPage の `handleSortChange` が `sortBy/sortDir` 切替 (同列再 click → desc toggle / 別列 → asc) を `onSearchChange` 経由で URL state 更新
 
 #### ExportBar

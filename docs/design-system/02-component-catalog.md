@@ -876,7 +876,7 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 </Badge>
 ```
 
-**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = `border-warning bg-warning-emphasis text-primary-foreground` の琥珀 pill（最新・上書き件数。badge に既定の塗りは無く、class で指定する。枠色は owner v3 決定で `--warning`）。ランキング 1 位は badge にせず、順位と太字で示す（D-094）。この 3 種以外を作らない。
+**badge 3 種構成**（`04-backbone.md` 原則 4 の具体化、新規 DSR は起草しない）: ①状態 = `variant="outline"` + icon + soft tone（tone 固有色の枠、在庫切れ・在庫少・PLU 未反映 等、遷移しうる状態）（非中立 tone は icon 必須、中立 tone は任意）。②分類 = `variant="secondary"` + `--border` 枠（icon は識別に必要な場合のみ、廃番・PLU 対象外・最近改定 等の恒常的な属性）。③強調 = 琥珀 pill（最新・上書き件数は `border-warning bg-warning-emphasis text-primary-foreground`、ランキング 1 位は `border-warning bg-rank-top-badge-bg text-rank-top-badge-text`。badge に既定の塗りは無く、class で指定する。枠色は owner v3 決定で `--warning`、D-094）。この 3 種以外を作らない。
 
 `Badge` の `tone` prop（warning / success / destructive）は `variant` と独立の軸。①状態は `variant="outline"` と組み合わせる。未指定時は `data-tone` と tone class を出さず、②分類・③強調・中立状態には付けない。
 
@@ -886,16 +886,16 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | tone family | 該当する状態 badge（file:line、実測文言） | owner culling（残す/外す/追加、原文回答） |
 |---|---|---|
-| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:29`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:88`「未反映」（tone propへ移行済み）/ `ResultStep.tsx:47`「部分成功」（tone propへ移行済み）/ `DailyReportImportPage.tsx:164,179`「取込み済み」（warning toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「部分成功」（tone="warning"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| warning（`border-warning-border bg-warning-soft text-warning-strong` + icon） | `StockStatusBadge.tsx:29`「在庫少」（実装済み）/ `StocktakePage.tsx:396-401`「未入力 N」（実装済み）/ `csv-import/components/PreviewStep.tsx:75-80`「同日データあり」（実装済み）/ `ProductTable.tsx:88`「未反映」（tone propへ移行済み）/ `ResultStep.tsx:47`「部分成功」（tone propへ移行済み）/ `CsvImportRecordDetailPage.tsx:140`「部分成功」（tone="warning"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 | success（`border-success-border bg-success-soft text-success-strong` + icon） | `IntegrityCheckPage.tsx:389`「補正済み」（soft success toneへ移行済み）/ `StocktakePage.tsx:404`（棚卸し全数完了時のsoft success tone）/ `ProductTable.tsx:93`「反映済み」（success toneへ移行済み）/ `ResultStep.tsx:47`「成功」（success toneへ移行済み）/ `DailyReportImportPage.tsx:164,186`「確認済み」（success toneへ移行済み） / `CsvImportRecordDetailPage.tsx:140`「成功」（tone="success"） / `DailyReportImportPage.tsx:322`「成功」（tone="success"） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
-| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:20`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
+| destructive（`border-destructive-border bg-destructive-soft text-destructive-strong` + icon） | `StockStatusBadge.tsx:20`「在庫切れ」（実装済み）/ `CsvImportRecordDetailPage.tsx:41,140`「取消済み」（destructive toneへ移行済み）・`:192`「明細取消済み」（destructive toneへ移行済み） / `DailyReportImportPage.tsx`「取込み済み」（上部の Alert と同じ destructive tone、L3 round 1 で試しを採った、D-094） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 | 中立（家族なし、`variant="outline"` の既定枠色、無彩色 soft（`bg-stone-50` 等）可・icon 任意） | `StockStatusBadge.tsx:36`「在庫あり」（実装済み、`border-stone-200 bg-stone-50 text-stone-600`、icon なしで準拠）/ `inventory-records/types.ts:87-94` `formatRecordStatus`（`active`="有効" 等、複数の記録詳細ページで共有、owner culling で個別確認） | 原文 2:「終わったから緑で終わったと教えてあげる、これ取り込み済みだよと教えてあげるのは注意に値しそうだけども。あと反映済み橙にしてるなら緑にしちゃうのもありだな、感情的にプラスの報告は緑、ちょっと待ってねって言いたくなるのは琥珀というか橙？警告したいのは赤、みたいな感情の分け方になると思う」 |
 
 **表から除外した項目とその理由**: `IntegrityCheckPage.tsx:65-69` の `differenceLabel()` の実装値は「システム在庫が多い」「入出庫の合計が多い」「差異なし」の 3 値のみで、複数 tone family に読めるため owner culling 対象としテーブルには含めない。「入力中」（`PriceRevisionTable.tsx:104`）は `04-backbone.md` 原則 10「いま扱っているものは進行中で示す」（現在行の 3 点）の対象であり、tone family の対象外（下記クロスリファレンス参照）。「対象外」（`ProductTable.tsx:74`）は廃番と同じ恒常的属性のため②分類 note へ移す。「有効」（`CsvImportRecordDetailPage.tsx:194`）は Badge ではなく `<span className="text-muted-foreground">` の plain text のため除外。「レジ未処理」（`ReturnExchangePage.tsx:97`（formatter）/ `ReturnExchangePage.tsx:592`（aria-label）/ `ReturnExchangePage.tsx:602`）も plain text の radio ラベルであり Badge ではないため除外（隣接する実際の Badge「この保存で反映」は owner 承認済みの現状維持、Non-scope）。
 
 **②分類の note**（枠は `--border`、tone family 表とは別建て）: 廃番（`ProductTable.tsx:56` 等）・PLU 対象外（`ProductTable.tsx:74`）・最近改定（`PriceRevisionTable.tsx:98`）・手動（`daily-sales/components/ProductTable.tsx:133`、出どころの分類）は恒常的な属性・分類ラベルであり、`variant="secondary"` + `--border` 枠が正しい形（`badge.tsx` の `secondary` に枠を実装済み）。
 
-**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx`）・上書き件数（`ProductImportPreview.tsx`）は `border-warning bg-warning-emphasis text-primary-foreground`（琥珀 pill。塗りの上の文字 4.81:1、枠は対 `--background` 3.05:1）。押すボタンでない badge の塗りは③強調だけの恒久の例外で、段 2 に数える（00 の強調の段階、D-094）。1 位（`ProductRankingTable.tsx`）は badge にせず `text-sm font-semibold text-foreground` の「1 位」で示し、行の地を持たない。
+**③強調の note**（枠色 `--warning`、owner v3 決定済み）: 最新（`BackupRestorePage.tsx`）・上書き件数（`ProductImportPreview.tsx`）は `border-warning bg-warning-emphasis text-primary-foreground`（琥珀 pill。塗りの上の文字 4.81:1、枠は対 `--background` 3.05:1）。押すボタンでない badge の塗りは③強調だけの恒久の例外で、段 2 に数える（00 の強調の段階、D-094）。1 位（`ProductRankingTable.tsx`）は `border-warning bg-rank-top-badge-bg text-rank-top-badge-text` の琥珀 pill（薄い地で塗りではない。枠は対 fill `#fef3c7` 2.86:1・対 `--background` 3.05:1）と行の `bg-rank-top-bg/40` で示す。順位と太字だけにする試しは L3 で採らなかった（D-094。2 位・3 位を含む見せ方は別 lane、`docs/backlog.md`）。
 
 **非Badge除外のクロスリファレンス**: 「入力中」（`PriceRevisionTable.tsx:104`）は [04-backbone.md](04-backbone.md) 原則 10「いま扱っているものは進行中で示す」（現在行の 3 点）の対象であり、tone family 表・②分類・③強調のいずれにも含めない。
 
@@ -1048,7 +1048,7 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-28 | 色と強調の反映（decision-log D-094） | ⑥ destructive の Alert を warning と対称の 4 点構造にし、三角 icon を部品が描く形を記した。⑫ 選択行と展開行を進行中のバーと地へ。⑬ ③強調を `--warning-emphasis` の塗りの琥珀 pill へ、1 位を順位と太字へ。① ⑤ ⑧ ⑯ の操作の色と旧現在行背景の記述を直した |
+| 2026-09-28 | 色と強調の反映（decision-log D-094） | ⑥ destructive の Alert を warning と対称の 4 点構造にし、三角 icon を部品が描く形を記した。⑫ 選択行と展開行を進行中のバーと地へ。⑬ ③強調を `--warning-emphasis` の塗りの琥珀 pill へ（1 位は `--rank-top-*` の琥珀 pill と行の地のまま）、日報の取込み済みの badge を destructive の行へ。① ⑤ ⑧ ⑯ の操作の色と旧現在行背景の記述を直した |
 | 2026-09-24 | デザインの決まりの組み直し | 冒頭に「本書は現行実装の canonical で、00 の移行列が runtime lane 待ちとする項目は 00 / 04 / 01 を狙いとして読む」旨を追加。04 の原則の統合に合わせ、旧原則 15（現在行 3 点）の参照を原則 10 へ、旧原則 11（待ち時間の顔）の参照を原則 7 へ付け替え（原則 4 は番号不変）。部品の記述は変えない |
 | 2026-09-15 | 表示小修正 batch 2 | ⑥ AlertTitle の共通 weight を600、⑬ 在庫状態の中立 Badge を「在庫あり」に同期。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 4: owner L3 run 1 の是正（trigger icon / 固定帯） |

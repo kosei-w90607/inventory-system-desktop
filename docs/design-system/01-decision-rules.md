@@ -484,7 +484,7 @@ scroll を伴う遷移はどれか？
 
 **ルール**: 色は `00-foundations.md` の色の役割表の役割に沿って `success` / `warning` / `destructive` 系のセマンティックトークンで当て、`emerald-` / `rose-` などの生 Tailwind 色 class を `src/features/**` に直書きしない。色は二次シグナルとし、意味は日本語テキストか記号が一次で担う（`00-foundations.md` の色の役割表の注記「どの状態も文字か記号を添え、色だけに頼らない」）。アイコンを必須にするのは非中立の①状態 badge（DSR-22、catalog ⑬）と非中立の〈warning・destructive〉Alert（catalog ⑥。destructive は部品が三角 icon を描く）で、入力欄のエラー文（catalog ④ の `FieldError`）・増減の ± のような役割色の文字だけの表示は、文言・記号・下線のどれかを添えればアイコンを要しない（`00-foundations.md` の迷いやすい場面）。
 
-**Why**: WCAG 1.4.1 と inventory-operator-ui の中核ルール（色相だけで業務状態を符号化しない）。赤黄を識別しにくい利用者でも、テキストと記号（状態 badge と非中立の Alert ではアイコン形状も）で意味が読める必要がある。生 Tailwind 色を直書きするとトークン体系から外れ、`00-foundations.md` のパレットと不整合になる。palette 外色の直書きは eslint `no-restricted-syntax`（PR-C 導入）が `src/features/**` + `src/components/patterns/**` で機械検出する。badge の tone family は `00-foundations.md` の色の役割表の役割で分ける: 完了（緑）= 終わったことを伝えるプラスの報告、注意・確認（琥珀）= 手を止めて確かめてほしい注意、危険・失敗（赤）= 警告（owner 回答 2026-09-06、catalog ⑬ 参照。この割り当ては変えない）。利用者の作業が続いている領域と行には進行中の役割を加える（`--ongoing` の家族、00 のカラーパレット表）。ランキング 1 位は色でなく順位と太字で示す（D-094）。
+**Why**: WCAG 1.4.1 と inventory-operator-ui の中核ルール（色相だけで業務状態を符号化しない）。赤黄を識別しにくい利用者でも、テキストと記号（状態 badge と非中立の Alert ではアイコン形状も）で意味が読める必要がある。生 Tailwind 色を直書きするとトークン体系から外れ、`00-foundations.md` のパレットと不整合になる。palette 外色の直書きは eslint `no-restricted-syntax`（PR-C 導入）が `src/features/**` + `src/components/patterns/**` で機械検出する。badge の tone family は `00-foundations.md` の色の役割表の役割で分ける: 完了（緑）= 終わったことを伝えるプラスの報告、注意・確認（琥珀）= 手を止めて確かめてほしい注意、危険・失敗（赤）= 警告（owner 回答 2026-09-06、catalog ⑬ 参照。この割り当ては変えない）。利用者の作業が続いている領域と行には進行中の役割を加える（`--ongoing` の家族、00 のカラーパレット表）。ランキング 1 位は③強調の琥珀 pill（地・文字・`--warning` の枠）と行の地に「1 位」の文字を添えて示す（色だけに頼らない。catalog ⑬、D-094）。
 
 **判定フロー / 具体例**: 在庫状態は `Badge` + `lucide` アイコン（`CircleAlert` / `TriangleAlert`）+ 日本語ラベル（`在庫切れ` / `在庫少`）で示す。比較のプラス / マイナスも記号 + テキストを併記する。増減数値の色は補助シグナルとして重ねる: + は `text-success-strong`、− は `text-destructive-strong`、0 は `text-muted-foreground`（記号 + 文言併記は維持する）。
 
@@ -510,7 +510,7 @@ scroll を伴う遷移はどれか？
 
 | 日付 | PR | 内容 |
 |---|---|---|
-| 2026-09-28 | 色と強調の反映（decision-log D-094） | DSR-08: icon を必須にする Alert を非中立の Alert に、ランキング 1 位を順位と太字に、進行中の token を 00 の家族に。DSR-21 の Why を操作の色の分離後の形へ。DSR-22: 現在行のバーと地を進行中の token に、詳細を開いた行の出典を D-094 に、token の列挙から旧現在行背景を外した。DSR-24 の「現行は amber」を外した |
+| 2026-09-28 | 色と強調の反映（decision-log D-094） | DSR-08: icon を必須にする Alert を非中立の Alert に、ランキング 1 位を③強調の琥珀 pill と行の地に（順位と太字の試しは L3 で採らなかった）、進行中の token を 00 の家族に。DSR-21 の Why を操作の色の分離後の形へ。DSR-22: 現在行のバーと地を進行中の token に、詳細を開いた行の出典を D-094 に、token の列挙から旧現在行背景を外した。DSR-24 の「現行は amber」を外した |
 | 2026-09-25 | 画面遷移の戻り先を型で守る（R3） | DSR-15 / DSR-18: `returnToLinkProps` からフォールバック引数と空の `to` の印を外し、不合格を `null` で返して呼出側の分岐を型で強制する。在庫変動履歴の `detailReturnTo` を手組みの存置例外から外し、正規化した search を router と同じ直列化（`defaultStringifySearch`）で組む（66 UI-06c-D9）。手組みの存置は商品一覧の `buildProductListReturnTo` だけになる。 |
 | 2026-09-24 | デザインの決まりの組み直し | `## 話題別の索引` を置き、DSR を番号と見出しを変えずに話題の順（配置と一覧 / 入力 / 知らせ方 / 移動と戻り / 色と状態）へ並べ直した。00 の色の役割表・強調の段階と矛盾する記述を直した: DSR-01（操作の塗りだけを数える、0 primary の画面の昇格）、DSR-08（tone family を役割表へ向け進行中を加える、ランキングは順位と太字の試し）、DSR-16（強調の段階との関係）、DSR-21（現在地は操作の役割色の細いバー、現在地と現在行は置き場所と文言で区別）、DSR-22（現在行は進行中の役割、選択行は開いている 1 行に限る、04 原則 14 の参照を原則 6 へ）。DSR-24 の primary の色の語を現行の説明へ。読み方の Why の接地先を 00 と 03 へ |
 | 2026-09-17 | PR #78 | DSR-15「判定フロー / 具体例」の主語を、production caller が 0 になった `normalizeReturnTo` から、戻り link を描画する側が使う `returnToLinkProps` へ同期。`normalizeReturnTo` は共有 guard `parseReturnTo` を使う primitive として残す旨を明記。 |
