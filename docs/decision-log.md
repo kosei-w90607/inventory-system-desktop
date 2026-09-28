@@ -754,6 +754,18 @@ Use concise ADR-style entries.
 - Compatibility: token の値・部品・画面は変えない（runtime lane A / B と棚卸し画面 D1 の実装は `docs/backlog.md`）。file 名・`## DSR-NN` 見出し・00 の既存 token 表の行と HEX は不変で、doc-consistency-check の DS1〜DS4 は同じ強さで働く。旧原則番号は 04 の旧番号の対応表で引ける。`PageShell` 系のコメントの「04 原則 6」と棚卸しの設計書の「04 原則 4」は新番号でも同じ主題を指す。
 - Revisit: runtime lane A / B の L3 で狙った受け取り方にならなかったとき（例: 進行中の囲みが「まだ終わっていない」と受け取られない、操作の塗りと完了の緑を言い分けられない、書体を店の PC で読み分けられない）。
 
+## D-092: Opus 5.5 主軸の座組を AGENT_OPERATING_MANUAL の座組表 1 か所に置き、Execution Mode 時代の役割規則を退役させる（2026-09-25）
+
+- Status: accepted（owner 決定 2026-09-23 / 24 / 25。範囲の縮小は owner 2026-09-25）。
+- Decision: 座組（担当・model・effort・Codex 停止中の進め方）の tracked の正本を [AGENT_OPERATING_MANUAL.md](AGENT_OPERATING_MANUAL.md#座組) の `## 座組` の表 1 つにし、effort の値もその表の effort 列だけに置く（SPEC-WF-HARNESS2-D1）。同書 §3 の独立性に、fork を独立に数えない、同じ round で 2 本以上の review を回すときは各 reviewer に他の reviewer の結果が置かれた場所すべてを読ませず発注の本文にも書かない、Writer が Codex の packet は別 vendor の Plan Reviewer を含める、load-bearing な判断は正本を直接読む、Plan Reviewer と Final Reviewer は別の fresh context、を足す（D2）。§3.3 に、Plan Review の Codex 分は座組表の Codex 停止中の列に従い、Codex の Final Review の枠は Codex の別 model でのみ代替できる（Claude での代替は owner の明示決定だけ）を足す。Final Review の Claude 側は R3 以上と design lane で Fable 5.1、closure の Claude 側の既定も Fable 5.1 とし、Codex の合否は是正の後の取り直しでも外さない（D6）。Execution Mode 時代の役割規則を退役させ、MANUAL の残す節は書き直さず退役した仕組みへの言及だけを除く（D3 / D4）。
+- Why: 環境が変わった（owner 決定 2026-09-23 / 24 / 25: Opus 5.5 と Fable 5.1 の水準、Codex の役割が review 中心へ、Claude 側の枠が潤沢）。規則は環境が変わるたびに変え、安全境界は維持する（owner 2026-09-24）。PR #97・#94 で後の reviewer が先の reviewer の結果を読んで独立性が崩れ、2 回取り直した。#96 の GA6 を Claude 側の reviewer 2 本だけで締めて merge し、最終形が Codex の合否を通らなかった（owner 2026-09-25「レビューとしての通すか否かが第三者の目として入るからそこはしっかり責務として持ちたい。あくまで一案でそこを採用するかはこっち次第」）。
+- Compatibility:
+  - 全面 superseded: D-056（Opus の read-only 専任）、D-058（相談窓口役）、D-079（UI 座組）、D-084（`codex-only` の運用形）、D-087（Astra 主担当）。
+  - 部分的に superseded: D-034（Execution Mode 3 値〈PR #97 で撤去済み〉と Subagent Budget の数値上限）、D-038(1)（slot 表 → 座組表）、D-062(c)（vendor 規則は MANUAL §3 の独立性の項へ移し、`codex-only` の句は消える。capacity pending は §3.3 の一般則が持つ）、D-065 のうち §5.7 変則 provenance 監査。
+  - PR #97（PR1）で撤去済みの記録: D-035（state-only・三点一致）、D-038(8)（STATECAP）、D-046-3（backtrack）、D-049（execpolicy の 2 mirror 維持）、D-055 / D-074 のうち Rebase Map、D-085 の MG-D10 / MG-D11（移行）。
+  - 維持: D-059（hook 0 本）、D-062(a)(b) と設計原則、D-039（PK5）、D-085 / D-086（merge gate）、D-090（Ordinary Operation・Writer 停止時）、独立性・Double Audit・Human Gate、MANUAL の残す節（§3.3・§3.5・§5.1〜§5.4・§5.6・§6）。MANUAL の見出しと節番号は変えず、削った節は欠番のまま残す（全面的な縮約は別 change）。
+  - checker・helper・classifier は変えない。Writer・reviewer の Opus の effort は subagent の定義 file を置く後続 change まで実効せず、実効値を run 報告に記録する。
+
 ## D-094: 色と強調の役割を token・部品・画面へ反映する（2026-09-28）
 
 - Status: accepted（owner 2026-09-28、Plan Packet `docs/plans/2026-09-27-design-color-emphasis.md` の plan-approved）。試し 8 点の採否は owner の L3 round 1（2026-09-28）の答えで確定した（下の「試し 8 点の採否」）。
@@ -767,3 +779,12 @@ Use concise ADR-style entries.
 - Alternatives: token の値だけ先に変えて部品と画面を後から追う分割 merge（途中の main で操作・注意・現在地の色が混ざる）、危険・失敗の Alert に 53 site で個別に icon を書く案（差分が大きく、今後の site で漏れる）、`table.tsx` の既定の選択色を進行中にする案（選択欄を開いた入力行まで進行中になる）、muted の文字を site ごとに濃くする案（276 行に及び、ラベルと値の役割を site ごとに割る）、前月比の chip に枠と icon を足す案（強調が増える）は採らない。
 - Compatibility: 今の赤・琥珀・緑の割り当て（在庫切れ・取消済み・マイナスの増減・取得失敗の赤、注意の琥珀、完了の緑、owner 決定 2026-09-06）と、文言・role・accessible name は変えない。例外は日報の取込み済みの badge で、owner が L3 round 1 で注意・確認から危険・失敗へ移した。DB・Tauri command・DTO・route・CSV は変えない。`table.tsx` の `TableRow` の既定（stone）は変えず、`TableBody` の末尾の規則だけ `border-b-0` に限る。card の面色は別 lane（owner 決定 2026-09-27、backlog）。書体は runtime lane B。
 - Revisit: owner が試しの形を選び直したとき、操作の塗りと完了の緑を文字と icon で言い分けられないとき、進行中の地の上の文字が読めないと言われたとき。card の面色・書体の lane の L3 で muted を見直す（owner の懸念 2026-09-28: 新しいデザインで疑似的なちゃぶ台返しになるのでは）。ランキングの 2 位・3 位の見せ方の lane で 1 位の形を見直す。
+
+## D-096: 日計（Z001）は同日の取込みごとに並べ、合算しない（2026-09-27）
+
+- Status: accepted（owner 2026-09-27。Plan Packet [Z001 / Z002 / Z005 を画面で見る](archive/plans/2026-09-27-daily-report-z-display.md) の Q1 = A、Q2 = (a)、Q3 = (a)）。
+- Decision: 日次売上の「レジ日報（公式）」に Z001 の全行の表「日計（Z001）」を足す（[UI-09a-D16](function-design/56-ui-daily-sales.md#日計z001の表示)）。D-071 の「同日の全 active import を加算して読む」のうち、Z001 の行は全 active import を読むが加算せず、取込みの古い順に取込みごとの表として並べ、2 回以上取り込んだ日だけ、各表に取込み日時の見出しを付ける（1 回の日は表 1 つで見出しなし）。総売上 / 純売上・支払集計・部門別集計の合算（UI-09a-D15）は変えない。BIZ-05 は `OfficialDailyReportSummary.summary_imports` で親ごとの行を返し（[34 §19.2](function-design/34-biz-sales-service.md#192-型定義)）、IO は既存の `get_completed_daily_report_aggregate` に 1 つの query を足して読む（[24 §14.21](function-design/24-io-csv-import-repo.md#1421-get_completed_daily_report_aggregate)）。見た目は runtime lane の Draft で実機の before / after を並べて確かめ、mockup は作らない。
+- Why: Z001 の行が同日の 2 回の精算で足してよい値かは、帳票仕様（日計明細の精算は取引データをクリアする）からは言えるが、実物の同日 2 回精算の Z001 では確かめていない。総売・純売以外の行の鍵は並び順から作る `summary_N` で、2 回の精算で行の集合や並びが違えば別の意味の行を足すおそれがある。取込みごとに並べれば、行の性質によらず正しく、どの取込みも落とさない。画面は既存の公式セクションに表を 1 つ足すだけで、route・導線を増やさない（owner の「壊さない優先」）。
+- Alternatives: Z001 を 1 つの表に合算する案（上の理由で、実物で全行が足せると確かめるまで採らない）; 最新 1 回の取込みだけを出す案（先行の精算分を隠し D-071 に反する）; 新しい画面「レジ日報」を作る案 B（画面と覚えることが増え、印刷の要否が決まる前に紙の形へ寄せる）; 取込みの確認・完了画面と取込みの記録に出す案 C（日付で過去日を引けず、日次売上との二重の置き場所になる）。
+- Compatibility: `get_daily_sales` の名前・引数は変えず、返り値に field が 1 つ増える（bindings は runtime lane で再生成）。DB schema・parser・取込みの確認と完了の画面・日次 CSV 出力・月次は変えない。
+- Revisit: 実物の同日 2 回精算の Z001 で全行が足せると確かめ、owner が 1 つの表を望んだとき。印刷の設計（Issue #105 G）が紙 1 枚の形を要するとき。レジが変わり adapter が Z001 相当の行を別の形で作るとき。
