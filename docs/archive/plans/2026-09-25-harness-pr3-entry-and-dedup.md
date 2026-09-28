@@ -1,12 +1,12 @@
 # Plan Packet: 入口と重複の整理（harness 改訂 PR3、R3）
 
-2026-09-25 起草。出典は harness 監査（2026-09-24、fresh Opus 5.5、local-only の報告。要点は本 packet に書き下した）の §0・§3.A / 3.K / 3.N / 3.O / 3.P / 3.Q / 3.S・§4・§5・§7 の PR3 行・§8 と、PR1（[archive packet](../archive/plans/2026-09-24-harness-legacy-and-execution-mode-removal.md)）が Non-scope で PR3 へ送った項目。owner 決定: 2026-09-24「規則は環境が変わるたびに変える（安全境界は維持）」、2026-09-23「Coordinator = high、Writer / reviewer = medium」（本体は PR2 の座組表）、2026-09-25「PR2とPR3の並列はやろうかな」（本 packet の起票承認）、2026-09-25（Final Review の Claude 側は R3 以上で Fable 5.1、Plan Review の Codex は owner の指定で Sol）。npm 供給網ガード（D-030）を AGENTS へ移すのは監査 §9 の技術判断。2026-09-25 の owner 決定で PR2 は MANUAL の全面的な縮約をやめ、既存の見出しを変えずに `## 座組` を H2 で新設する範囲に絞った。本 packet の PR2 への前提（「PR2 との境界と merge 順」）はその範囲に合わせてある。
+2026-09-25 起草。出典は harness 監査（2026-09-24、fresh Opus 5.5、local-only の報告。要点は本 packet に書き下した）の §0・§3.A / 3.K / 3.N / 3.O / 3.P / 3.Q / 3.S・§4・§5・§7 の PR3 行・§8 と、PR1（[archive packet](2026-09-24-harness-legacy-and-execution-mode-removal.md)）が Non-scope で PR3 へ送った項目。owner 決定: 2026-09-24「規則は環境が変わるたびに変える（安全境界は維持）」、2026-09-23「Coordinator = high、Writer / reviewer = medium」（本体は PR2 の座組表）、2026-09-25「PR2とPR3の並列はやろうかな」（本 packet の起票承認）、2026-09-25（Final Review の Claude 側は R3 以上で Fable 5.1、Plan Review の Codex は owner の指定で Sol）。npm 供給網ガード（D-030）を AGENTS へ移すのは監査 §9 の技術判断。2026-09-25 の owner 決定で PR2 は MANUAL の全面的な縮約をやめ、既存の見出しを変えずに `## 座組` を H2 で新設する範囲に絞った。本 packet の PR2 への前提（「PR2 との境界と merge 順」）はその範囲に合わせてある。
 
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 920740eaab41228c1760f78942fe818df130c853
 - Amendments: none
@@ -30,12 +30,13 @@ manual なし: 製品の runtime・画面・配布物は変わらない。r4 な
 - plan-gate（2026-09-27、round 3 の一括是正）: Plan Review round 3（上限）は両 reviewer とも reject。round 4 は回さず、同型の一括是正（裁定 r3）。予算の改定は owner 承認待ち。
 - plan-gate → plan-approved（2026-09-27、Coordinator、本 commit）: Plan Review round 3（上限、対象 `fb1cc6bf`）は Codex 側（GPT-6 Astra、high）が P1 1、Claude 側（fresh Opus 5.5）が同じ指摘を P2 1 として reject（`inventory-code-review` が併用を指示する `engineering-review` Skill に別の重大度・label の規範が残り、最小完了条件 3 が成立しない、ほか P3）。範囲の漏れで作り直しには当たらないため、round 天井に従い追加の round は回さず、同型の一括是正（`920740ea`、裁定 r3）で S5 に engineering-review を加えるなど全件を反映し、Coordinator が現物で確かめた。owner 承認（2026-09-27）のもと予算を介入 9・relay 5 に改めた。Plan Commit = 本 commit の親（round 3 の一括是正後の承認版 `920740ea`）。
 - plan-approved → implementing（2026-09-27、Coordinator、本 commit）: plan-approved の承認版（`2a209954` の親）のまま Writer（Opus 5.5 subagent）に実装を発注する。packet の契約は変えない。
+- implementing → archive（2026-09-28、Coordinator の closeout、本 commit）: PR #117 を squash merge（`dc2f14f1`、2026-09-28、helper 経由）。packet と Matrix を archive へ移送し、Implementation Results と Review Response を記録。Fable の P3-2 を本 packet で直した。Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 9（owner 承認 2026-09-27 で 4 から改定。消費 5 = 起票承認 2026-09-25 1、Plan Review round 1〜3 の Codex relay 3、本改定と plan-approved の承認 1。残る見込み = Final Review の Codex relay 1、必要なら Codex closure 1、Ready 1、merge 1）
+- 介入回数上限: 9（owner 承認 2026-09-27 で 4 から改定。消費 5 = 起票承認 2026-09-25 1、Plan Review round 1〜3 の Codex relay 3、本改定と plan-approved の承認 1。残る見込み = Final Review の Codex relay 1、必要なら Codex closure 1、Ready 1、merge 1）。closeout 時の消費 9 / 上限 9 = plan-approved までの 5、Final Review の Codex broad の起動 1、base 同期の後の Codex closure の起動 1、Ready 1、merge 1
 - 実働時間上限: 15分（文書と test の変更で、owner の作業は Codex relay と Ready / merge の判断に限られる見込み）
-- relay 往復上限: 5（owner 承認 2026-09-27 で 2 から改定。消費 3 = Plan Review round 1〜3 の Codex。残り = Final Review の Codex broad 1、必要なら是正の後の Codex closure 1。理由: round が天井の 3 まで回り、是正の後の取り直しにも Codex の合否を含めるため〈owner 決定 2026-09-25〉）
+- relay 往復上限: 5（owner 承認 2026-09-27 で 2 から改定。消費 3 = Plan Review round 1〜3 の Codex。残り = Final Review の Codex broad 1、必要なら是正の後の Codex closure 1。理由: round が天井の 3 まで回り、是正の後の取り直しにも Codex の合否を含めるため〈owner 決定 2026-09-25〉）。closeout 時の消費 5 / 上限 5 = Plan Review 3、Final Review broad 1、closure 1
 - Plan Review round 天井: 3（既定 3。round 3 で到達し、round 4 は回さない）
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -176,7 +177,7 @@ archive を含む link の検索（link 検査は `docs/archive/**` も走査す
 ### helper と PK5 の前提（capture の前に満たす）
 
 - `scripts/pr-gate.py:231` は PR head の `docs/plans/` に active packet がちょうど 1 つであることを要求する。base `e7c22f8f` の main には `docs/plans/` の packet が無く（`git ls-tree --name-only e7c22f8f docs/plans/` が空）、active な他 packet は並走 PR2 の branch にだけある。PR2 の packet は PR2 の merge から closeout まで main に残るので、本 PR の capture の前に PR2 の closeout が origin/main に入り、それを本 branch へ merge してあることを確認する。
-- branch の HEAD で `bash scripts/check-workflow-git.sh` は exit 0（本 packet は `Plan Commit: pending` で PK5 の対象外。下記 AC12 の baseline）。
+- branch の HEAD で `bash scripts/check-workflow-git.sh` は exit 0（下記 AC12 の baseline。plan-approved で Plan Commit を設定した後は本 packet も PK5 の対象で、`check-workflow-git.sh` は exit 0）。
 
 ## Non-scope
 
@@ -211,7 +212,7 @@ baseline は本 branch の HEAD（base に本 packet・Matrix・`Plans.md` の�
 - AC9（review-checklist、D5）: `rg -n '最大3件|新規観点の追加は禁止' docs/quality/review-checklist.md` が 0 行（exit 1。baseline 2 行）、`rg -n '今回は対象外' docs/quality/review-checklist.md` が 0 行（baseline 1 行: `:8`）、`rg -n 'Findings Freeze' docs/quality/review-checklist.md` と `rg -n 'AGENTS.md' docs/quality/review-checklist.md` がそれぞれ 1 行以上。`rg -c '^### [1-9]\. ' docs/quality/review-checklist.md` が 9 のまま（baseline 9）。`bash scripts/doc-consistency-check.sh` の DS2 / DS4 が新しい WARN を出さない。
 - AC10（project-profile、D6）: `rg -c '^## (Source of Truth|Test Commands|Review Commands / Tools|Current Workflow State|Open Questions|Suggested Follow-up)$' docs/project-profile.md` が 0（exit 1）、`rg -c '^## (Project Type|Outputs / Artifacts|Stable Contracts|High-risk Changes|Data Safety Boundary|Risk Level Examples|Test Design Focus|Workflow Notes)$' docs/project-profile.md` が 8。baseline: 前者 6、後者 8。`rg -n 'Test/workflow gates that affect what may be merged' docs/project-profile.md` が 1 行のまま。
 - AC11（CLAUDE.md と PR2 の境界、D1 / D9）: `rg -c 'AGENT_OPERATING_MANUAL.md#座組' CLAUDE.md` が 1 以上、同じ command の `AGENTS.md` が 1 以上（S1 `:21`。baseline 一致なし、exit 1）、`rg -n 'frontier' AGENTS.md` が 0 行（exit 1。baseline 1 行: `:21`）、`rg -n 'xhigh|Sonnet 5|prompting-claude-opus-5|Projects-inventory|Evidence Mode' CLAUDE.md` が 0 行（exit 1。npm ガードの 4 語が 0 であることは AC3 が見る。`:42` の参照文が「npm」の語を含むのは可）、`rg -n 'hook' CLAUDE.md` が 1 行以上（hook inventory の記述は残す）。`rg -c '^@AGENTS\.md$' CLAUDE.md` が 1（import が backtick の外の行頭に 1 回。baseline 一致なし、exit 1）。merge 直前の HEAD（PR2 の closeout を含む origin/main の同期後）で `rg -n '^## 座組$' docs/AGENT_OPERATING_MANUAL.md` が 1 行、`rg -n 'pr-review-prompt' docs/AGENT_OPERATING_MANUAL.md` が 0 行、`rg -n 'CLAUDE\.md#' -g '!docs/archive/**' -g '!docs/plans/**' -g '!docs/decision-log.md' AGENTS.md docs .agents .claude .codex scripts` が 0 行（本 PR が消す `CLAUDE.md` の見出しを指す anchor が残らない。baseline 1 行: `docs/agent-guidance/model-notes.md:9`、PR2 が直す）。
-- AC12（検査の全体）: `bash scripts/doc-consistency-check.sh`（link 検査 R3 を含む）と `bash scripts/doc-consistency-check.sh --target plan` が exit 0、`bash scripts/tests/run-workflow-tests.sh` が exit 0（claude-hooks・classify-changes を含む workflow suite）、`bash scripts/local-ci.sh full` が exit 0。`bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-09-15-display-fixes-batch-2.md`（変えた archive file を explicit path で。baseline exit 0、既存の PK6 WARN 1 件）が exit 0。`bash scripts/check-workflow-git.sh` が exit 0（baseline exit 0。本 packet は pending で PK5 の対象外）。`git diff --check` が exit 0。
+- AC12（検査の全体）: `bash scripts/doc-consistency-check.sh`（link 検査 R3 を含む）と `bash scripts/doc-consistency-check.sh --target plan` が exit 0、`bash scripts/tests/run-workflow-tests.sh` が exit 0（claude-hooks・classify-changes を含む workflow suite）、`bash scripts/local-ci.sh full` が exit 0。`bash scripts/doc-consistency-check.sh --target plan docs/archive/plans/2026-09-15-display-fixes-batch-2.md`（変えた archive file を explicit path で。baseline exit 0、既存の PK6 WARN 1 件）が exit 0。`bash scripts/check-workflow-git.sh` が exit 0（baseline exit 0。Plan Commit の設定後は本 packet も PK5 の対象で、exit 0）。`git diff --check` が exit 0。
 - AC13（範囲、S 全体）: `git diff --name-status origin/main...HEAD`（S7 の同期後）の変更 file が Scope の S1〜S14（S3 の archive `docs/archive/plans/2026-09-15-display-fixes-batch-2.md` の 1 行を含む）と Plans.md の登録行・本 packet・Matrix に限られる。`scripts/pr-gate.py`、`scripts/ci/**`、`scripts/doc-consistency-check.sh`、`scripts/check-workflow-git.sh`、`.github/workflows/**`、`docs/DEV_WORKFLOW.md`、`docs/AGENT_OPERATING_MANUAL.md`、`docs/templates/subagent-review-packet.md`、`docs/templates/plan-packet.md`、`.claude/settings.json` に本 PR 由来の差分が無い（PR2 の merge で入った差分は除く）。
 
 ## Design Sources
@@ -371,6 +372,10 @@ Contract ID: SPEC-WF-HARNESS3
 
 - 同期: PR2（#113）と closeout（#115）を含む origin/main を単段で merge した。競合は `docs/Plans.md` と `docs/decision-log.md` の追記だけで、両方を残し decision-log は D-092 → D-093 の順にした。PR2 側の前提（`## 座組` の H2、MANUAL の `pr-review-prompt` の link の除去、review packet の出力の規範の除去、`CLAUDE.md#` の anchor の除去、座組表の注記「effort の選び方」）が同期後の tree で成り立つことを確かめた。
 - S7: 着手条件（MANUAL の `pr-review-prompt` が 0 件）の成立後に `docs/templates/pr-review-prompt.md` を削除した。live な参照は残らない（AC2 の検索は classifier test の path 文字列 1 行だけ、archive を含む link は 0 行）。
+- 入口: npm 供給網ガード（D-030）と問い合わせの行き先（PR 操作と委任の範囲を含む）を `AGENTS.md` へ移し、`CLAUDE.md` は冒頭の `@AGENTS.md` の import と Claude 固有の補助だけにした。座組と effort は MANUAL の座組表を参照する。Session Start の R2+ 行から Evidence Mode・legacy の手順を消し、初回レビュー行に発注で範囲を指定した review の最短経路を足した。D-093 を記録した。
+- review: 依頼・出力の規範（重大度・出力形式・確信度）を `docs/code_review.md` に統合し、保守者観点（P2）と「現場の前提」の照合を置いた。`inventory-code-review`・`engineering-review` の重大度・出力形式を code_review に従わせ、review-checklist の件数上限とカテゴリ外の除外をやめた。`pr-review` / `review-only-subagent` Skill、rules 2 本、commands 3 本、`pr-review-prompt` template を削除し参照を是正した。
+- その他: PR template・HANDOFF から Evidence Mode の記述を消し、project-profile を repo 固有の節に絞った。drift test の直接 UI merge 禁止の要求先を `AGENTS.md` と `docs/DEV_WORKFLOW.md` に絞り、T13 から `CLAUDE.md` を外した（T12 の旧 path・旧 namespace の拒否は残す）。
+- CI・merge: hosted CI は全ジョブ pass。Ready・merge は helper 経由、[PR #117](https://github.com/kosei-w90607/inventory-system-desktop/pull/117)（2026-09-28）。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
@@ -378,3 +383,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+- Closeout（2026-09-28）: Plan Review は round 3（上限）まで回し plan-approved（遷移記録のとおり）。Final Review broad（head `3961d79a`、互いに独立の 2 本）は Claude 側 Fable 5.1 = approve（P1 / P2 0、P3 4）、Codex 側 GPT-6 Astra（発注 116）= approve（P 0）。base 同期（origin/main `9d351d5b` の merge、head `f4ceaf26`）の後の closure は Codex GPT-5.6 Sol（発注 119）= approve（P 0）。PR3 の差分は保たれ、違いは `docs/Plans.md` と `docs/decision-log.md` の衝突を解いた箇所だけ。専用 record は review pass（broad 2 + closure 1）、manual not-required。Fable の P3 の disposition: P3-2（「`Plan Commit: pending` で PK5 の対象外」が Workflow State と食い違う）は本 closeout で「helper と PK5 の前提」と AC12 の 2 か所を直した。P3-1（`docs/code_review.md` の `## Output Shape` の例に確信度の欄が無い）と P3-3（`AGENTS.md` の行き先 (ii) から MANUAL §5.6「Writer が編集前に止まったとき」への導線が無い）はハーネス刷新 PR4 の入力（backlog）。P3-4（`docs/TOOLING_SKILL_COMMANDS.md:44` の「（`CLAUDE.md` で推奨）」の参照先が無い、既存）は backlog に 1 行。
