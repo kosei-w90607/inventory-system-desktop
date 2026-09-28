@@ -55,15 +55,11 @@ npm run tauri
 
 参照元:
 - `.claude/commands/check.md`
-- `.claude/commands/design-review.md`
-- `.claude/commands/phase-complete.md`
-- `.claude/commands/test.md`
+- `.claude/commands/plan-rally.md`
 
 使い方（例）:
 - `/check`
-- `/test`
-- `/design-review BIZ-02`
-- `/phase-complete Phase 6`
+- `/plan-rally <対象Plan>`
 
 ### `/check`
 - 実行内容:
@@ -71,22 +67,6 @@ npm run tauri
   2. `cargo clippy --all-targets --all-features -- -D warnings`
   3. `cargo test`
 - 目的: 一連の品質チェックをまとめて回す
-
-### `/test`
-- 実行内容: `cargo test`
-- 目的: テスト実行 + 失敗時の原因分析
-
-### `/design-review <module>`
-- 実行内容: 設計ドキュメント読込（`ARCHITECTURE/FUNCTION_DESIGN/DB_DESIGN`）→実装前要件の要約
-- 目的: 実装前の設計確認
-
-### `/phase-complete <phase>`
-- 実行内容:
-  1. `cargo test`
-  2. `cargo clippy --all-targets --all-features -- -D warnings`
-  3. `cargo fmt --check`
-  4. REQ対応のテスト一覧確認
-- 目的: フェーズ完了判定
 
 ---
 
@@ -160,9 +140,7 @@ npm run tauri
 
 2. PR前は固定で品質チェックを回す（下記6.1参照）
 
-3. レビュー時は `/check` か `/phase-complete` を使う
-
-4. 設計変更前は `/design-review <module>` を使う
+3. レビュー時は `/check` を使う
 
 ### 6.1 PR提出前チェックフロー
 
