@@ -390,6 +390,88 @@ capture_check "$repo" output
 [[ "$CHECK_STATUS" -eq 0 ]] || fail "packet 0 件で旧 subject の commit 列が ERROR になった:\n$output"
 assert_not_contains "$output" "STATECAP" "packet 0 件で STATECAP 出力が発生した"
 
+# ============================================================================
+# SPEC-WF-PARALLEL-FRICTION D4: PK5 は起点からの差分が触る packet だけを検査する。
+# main に squash 済みの lane X の packet（Plan Commit が祖先でない）が残り、lane Y は自分の packet を足す。
+# ============================================================================
+repo="$tmp/pk5-diff-scope"
+init_repo "$repo"
+printf 'base\n' > "$repo/README.md"
+commit_all "$repo" "base" > /dev/null
+git -C "$repo" switch -qc lane-x
+write_packet "$repo" "2026-01-01-x.md" "pending" "none"
+x_plan="$(commit_all "$repo" "docs(plans): X plan-first")"
+write_packet "$repo" "2026-01-01-x.md" "$x_plan" "none"
+commit_all "$repo" "docs(plans): X implementing" > /dev/null
+git -C "$repo" switch -q main
+git -C "$repo" merge -q --squash lane-x > /dev/null
+main_sha="$(commit_all "$repo" "feat: X (squashed)")"
+git -C "$repo" switch -qc lane-y
+write_packet "$repo" "2026-01-02-y.md" "pending" "none"
+y_plan="$(commit_all "$repo" "docs(plans): Y plan-first")"
+write_packet "$repo" "2026-01-02-y.md" "$y_plan" "none"
+y_head="$(commit_all "$repo" "docs(plans): Y implementing")"
+x_packet="docs/plans/2026-01-01-x.md"
+
+run_scoped() {
+    local base="$1"
+    set +e
+    output="$(cd "$repo" && env -u WORKFLOW_BASE_SHA ${base:+WORKFLOW_BASE_SHA="$base"} bash "$CHECK_SCRIPT" 2>&1)"
+    CHECK_STATUS=$?
+    set -e
+}
+
+# (a1) hosted PR: WORKFLOW_BASE_SHA = main
+run_scoped "$main_sha"
+[[ "$CHECK_STATUS" -eq 0 ]] || fail "D4 (a1): merged packet outside the diff was checked: $output"
+# (a2) pre-push / local-ci: env unset, origin/main
+git -C "$repo" update-ref refs/remotes/origin/main "$main_sha"
+run_scoped ""
+[[ "$CHECK_STATUS" -eq 0 ]] || fail "D4 (a2): env-unset origin/main route checked the merged packet: $output"
+# (d) no start point: every packet is checked
+git -C "$repo" update-ref -d refs/remotes/origin/main
+run_scoped ""
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (d): unresolved start point skipped the merged packet"
+assert_contains "$output" "$x_packet の Plan Commit" "D4 (d): merged packet not checked without a start point"
+git -C "$repo" update-ref refs/remotes/origin/main "$main_sha"
+# (b) the branch rewrites the merged packet: it becomes a target
+git -C "$repo" switch -qc lane-y-touches-x "$y_head"
+printf '\nedited by another lane\n' >> "$repo/$x_packet"
+commit_all "$repo" "docs(plans): touch X" > /dev/null
+run_scoped ""
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (b): rewriting a merged packet escaped PK5"
+assert_contains "$output" "$x_packet の Plan Commit" "D4 (b): touched merged packet reason missing"
+# (c) own packet whose Plan Commit is not ancestral (rebased plan-first)
+git -C "$repo" switch -qc lane-z-old "$main_sha"
+write_packet "$repo" "2026-01-03-z.md" "pending" "none"
+z_old_plan="$(commit_all "$repo" "docs(plans): Z plan-first")"
+git -C "$repo" switch -qc lane-z "$main_sha"
+write_packet "$repo" "2026-01-03-z.md" "$z_old_plan" "none"
+z_head="$(commit_all "$repo" "docs(plans): Z plan-first rebased")"
+run_scoped ""
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (c): own non-ancestral Plan Commit accepted"
+assert_contains "$output" "docs/plans/2026-01-03-z.md の Plan Commit" "D4 (c): own packet reason missing"
+assert_not_contains "$output" "$x_packet" "D4 (c): merged packet checked with a start point"
+# (e) dispatch: WORKFLOW_BASE_SHA = HEAD falls back to origin/main and still checks the own packet
+run_scoped "$z_head"
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (e): dispatch with env = HEAD skipped the own packet"
+assert_contains "$output" "docs/plans/2026-01-03-z.md の Plan Commit" "D4 (e): own packet reason missing"
+assert_not_contains "$output" "$x_packet" "D4 (e): dispatch did not use origin/main"
+# (f) criss-cross: two merge-bases between origin/main and HEAD check every packet
+git -C "$repo" switch -qc criss-p "$main_sha"
+printf 'p\n' > "$repo/p.txt"; p1="$(commit_all "$repo" "p1")"
+git -C "$repo" switch -qc criss-q "$main_sha"
+printf 'q\n' > "$repo/q.txt"; q1="$(commit_all "$repo" "q1")"
+git -C "$repo" merge -q --no-edit "$p1" > /dev/null
+git -C "$repo" switch -q criss-p
+git -C "$repo" merge -q --no-edit "$q1" > /dev/null
+git -C "$repo" update-ref refs/remotes/origin/main criss-q
+[[ "$(git -C "$repo" merge-base --all criss-q HEAD | wc -l)" -eq 2 ]] || fail "D4 (f) fixture: expected two merge-bases"
+run_scoped ""
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "D4 (f): ambiguous merge-base skipped the merged packet"
+assert_contains "$output" "$x_packet の Plan Commit" "D4 (f): merged packet not checked on criss-cross"
+echo "PASS: PK5 diff scope"
+
 echo "PASS: workflow-git-checks"
 
 # T-G4: Evidence Mode 行は任意（あれば github だけ）。Phase は marker の有無に関わらず 8 値のどれか。

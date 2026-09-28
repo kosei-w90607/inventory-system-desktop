@@ -16,6 +16,8 @@
 #     (b) `Amendments` 行の各 SHA が `Plan Commit` の descendant かつ HEAD の ancestor であること
 #     (c) `Plan Commit` の値が過去に書き換えられていないこと（初回 non-pending 値と現在値の比較）
 #     (d) `Amendments` の登録順を含む prefix が保存されていること
+#   PK5 の対象は起点（WORKFLOW_BASE_SHA が HEAD と違えばそれ、なければ origin/main）からの差分が触る packet。
+#   起点が解決できないか merge-base が 1 つでなければ全 packet（fail-closed）。
 #   検査対象の履歴が shallow なら ERROR（full history が必要）。
 #
 # 「active plan なし」自体は本スクリプトの対象外（doc-consistency-check.sh PK1 が担当、
@@ -135,6 +137,18 @@ main() {
         exit 1
     fi
 
+    # Merged lanes awaiting closeout keep packets whose squashed Plan Commit is not ancestral;
+    # only packets this branch's diff touches are its own ancestry evidence.
+    local start="" pk5_scope="all"
+    if [[ -n "${WORKFLOW_BASE_SHA:-}" && "$(git rev-parse "$WORKFLOW_BASE_SHA^{commit}")" != "$(git rev-parse HEAD)" ]]; then
+        start="$WORKFLOW_BASE_SHA"
+    else
+        start="$(git rev-parse --verify -q 'origin/main^{commit}')" || start=""
+    fi
+    if [[ -n "$start" && "$(git merge-base --all "$start" HEAD | wc -l)" -eq 1 ]]; then
+        pk5_scope="$(git diff --no-renames --name-only "$start"...HEAD -- "$PLAN_DIR/")"
+    fi
+
     while IFS= read -r file; do
         [[ -n "$file" ]] || continue
         if grep -qE '^- Evidence Mode:' "$file" &&
@@ -147,7 +161,9 @@ main() {
             echo "❌ [workflow-git] invalid tracked Phase in $file"
             FAIL=1
         fi
-        check_plan_commit_ancestry "$file"
+        if [[ "$pk5_scope" == "all" ]] || grep -qxF -- "${file#"$REPO_ROOT"/}" <<< "$pk5_scope"; then
+            check_plan_commit_ancestry "$file"
+        fi
     done < <(find "$REPO_ROOT/$PLAN_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | sort)
 
     if [[ "$FAIL" -eq 0 ]]; then
