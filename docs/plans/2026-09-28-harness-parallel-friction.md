@@ -1,0 +1,423 @@
+# Plan Packet: 並走の摩擦を削る（ハーネス、R3）
+
+2026-09-28 起草。出典は wave 14（2026-09-28）で起きた並走の摩擦の観測（下の「現状の事実」）と、owner 決定 2026-09-28「規則とハーネスの改善を最優先にする（全体の開発の動きに関係するから）」、同日の起票承認（並走の摩擦だけを先に 1 本の lane で起こす。PR4・PR5 の残りはその後）。owner の考え方（要旨）: 規則は失敗を測る方法としてはよいが、それで首が回らなくなるのは避けたい。Coordinator の言い換え: 規則が止めるときは、起きている失敗を 1 文で言えること。言えないのに止める規則は緩めてよい。安全の境界（古い証拠の拒否、独立 review、owner の L3、承認）は残す。
+
+本 lane は wave に属さない単独の lane（ハーネス刷新 PR4・PR5 の前に置く）。
+
+## Workflow State
+
+Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
+
+実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
+
+- Phase: plan-gate
+- Risk: R3
+- Plan Commit: pending
+- Amendments: none
+- Coordinator: Opus 5.5（Claude Code main session、effort high）
+- Writer: Opus 5.5 subagent（fresh context、Coordinator が指定する worktree で作業）
+- Plan Reviewer: fresh Opus 5.5 subagent（fork でない）+ Codex（GPT-6 Astra、effort high。`.local/codex-orders/MODEL-SELECTION.md` の「merge gate・helper・classifier・hook の合否を変える変更」の行）。互いに独立で Writer と別 context
+- Final Reviewer: Fable 5.1（Claude 側、R3）+ Codex（GPT-6 Astra、effort high、同じ行）。互いに独立で Writer・Plan Reviewer と別 context（Double Audit）。後の reviewer に先の結果を見せない
+- Final Review Minimum: 2
+- Human Gate: ready,merge
+- Branch: agent/harness-parallel-friction
+
+`Branch` は helper・checker が評価しない追加行（D7 の dogfood。template への追加は S9）。
+
+manual なし: 製品の runtime・画面・配布物を変えず、Windows native L3 の対象画面が無い。helper・checker の振舞いは合成 fixture の自動 test で確かめる（L3 Eligibility の (1) に当たらない）。r4 なし: data・DB・破壊的 git 操作を含まず、変更は revert で戻せる。Final Review Minimum 2: `scripts/pr-gate.py`・`scripts/check-workflow-git.sh`・`scripts/doc-consistency-check.sh`・`scripts/tests/**` は `scripts/ci/classify-changes.sh:55` の実行制御（full）、`docs/DEV_WORKFLOW.md` ほかは `:59` の policy docs で、どちらも workflow=true になり helper は Minimum 2 を要求する（`scripts/pr-gate.py:250-252`）。
+
+遷移記録（append-only）:
+
+- kickoff → spec-check → design → plan-draft → plan-gate（2026-09-28、起草役 = Opus 5.5 subagent、本 commit、plan-first）: Risk R3（下記 Risk）。spec-check で、現行の正本（`docs/agent-guidance/merge-evidence.md` の「base同期だけでheadが変わる場合」「Helperの境界」、`docs/DEV_WORKFLOW.md` の Workflow State の packet 選択規則・Wave Operation・Post-Merge Closeout）が「先行 lane の closeout を後続 lane の同期より先に済ませる」「Plans.md の lane ごとの link から packet を選ぶ」を定めており、既存の設計のままでは足りないと確かめた（skip は使わない）。design の出力は本 packet の Spec Contract（D1〜D9）と G2 の比較に置き、正本（merge-evidence・DEV_WORKFLOW・decision-log D-097）への昇格は実装の S7・S8・S12 で行う（workflow の正本は本 lane が書き換える文書そのもの。ハーネス刷新 PR3 と同じ形）。G2 は推奨案（B）で設計を閉じ、owner の示した案（A）と違うため Plan Gate で owner に諮る（owner が A か C を選べば design へ戻る）。Plan Review へ。
+
+## Owner Effort Budget
+
+- 介入回数上限: 5（既定 3 から。理由: G2 の推奨が owner の示した案と違い、Plan Gate で owner の判断点が 1 つ増える。予備 1 は round 天井の disposition を owner へ上げる場合の分）
+- 実働時間上限: 15分（文書・script・test の変更で manual は無い。owner の作業は判断点の回答と Ready・merge の指示に限られる見込み）
+- relay 往復上限: 5（Plan Review の Codex が最大 3 round、Final Review の Codex broad 1、base 同期の後の Codex closure 1）
+- Plan Review round 天井: 3（既定 3）
+
+| 種別 | 上限 | 消費（2026-09-28 時点） | 残りの見込み | 予備 | 合計 |
+|---|---|---|---|---|---|
+| 介入 | 5 | 1: 起票承認 2026-09-28（並走の摩擦だけを先に 1 本の lane で起こす） | 3: Plan Gate の G2 の判断（推奨 B か owner 案 A か組み合わせ C）1、Ready 1、merge 1 | 1: round 天井の disposition の owner escalation | 5 = 1 + 3 + 1 |
+| relay | 5 | 0 | 5: Plan Review の Codex 最大 3、Final Review の Codex broad 1、base 同期の後の Codex closure 1 | 0 | 5 = 0 + 5 + 0 |
+
+既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
+承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。Plan Gate の判断は「この change での介入 2 回目 / 予算 5 回（既定 3 からの改定を含む）」と書く。
+
+## Consultation Relay
+
+- Review Order Artifact: none
+- Review Order Ref: none
+
+## Risk
+
+Risk: R3
+
+Reason:
+`docs/DEV_WORKFLOW.md` Risk Tiers の R3「merge gate changes」に当たる。本 lane は merge の可否を決める 3 つの判定を変える: helper の packet の判定（`scripts/pr-gate.py:223-252`）、PK4 の Plans.md の登録の検査（`scripts/doc-consistency-check.sh:1364-1391`）、PK5 の Plan Commit の祖先の検査の対象（`scripts/check-workflow-git.sh` の `main()`）。どれも「変更前に red だった入力が変更後に green になる」向きの変更を含む（他の lane の merge 済み packet が残る head、Plans.md に lane の link が無い head）。kickoff の問い「この変更でどれかの required gate の green / red が変わるか」の答えは「変わる」で、R3・Minimum 2。R4 には当たらない（data・破壊的操作なし）。
+
+Review-only skipped because: R3 の review-only sub-agent は、Final Review の Double Audit の broad（Fable 5.1 と Codex の 2 本、どちらも Contract Audit を正本から行う）が兼ねる（`docs/DEV_WORKFLOW.md` Review Rules・Draft PR Checkpoint）。
+
+## 現状の事実（wave 14、2026-09-28）
+
+Coordinator の観測（1〜6）と、起票時の実測（7）。
+
+1. main に merge 済みの lane の packet が `docs/plans/` に残ると、main を取り込んだ別の lane の PR で helper が `packet absent or multiple active packets`（`scripts/pr-gate.py:231`）を返し、record も Ready もできなかった。PR #118 が #114 の packet を持ち込んだ。そのため lane ごとに「merge → closeout の PR（Ready・CI・merge）→ 他の lane が追いつく」が直列になり、1 lane につき PR を 2 本ずつ通した（#114→#119、#117→#120、#118→closeout）。
+2. R0 / R1 の PR（closeout を含む）も、head の `docs/plans/` に packet が 1 つでもあると `R2+ active packet requires --packet`（`:244`）で止まる。
+3. helper は `docs/Plans.md` の `## 次の行動` に packet への link を求める（`:232-234`、`packet not registered in Plans`）。PK4（`scripts/doc-consistency-check.sh:1364-1391`）も同じ link を求める。各 lane がこの節に 1 行ずつ書き足すため、main の取込みのたびに Plans.md がほぼ必ず衝突した（#118・#116・#117 で計 4 回）。衝突を解いた版では manual を再利用できない（merge-evidence の規則）ため、#118 は L3 をやり直した。
+4. strict（最新の main との整合）は MG-D1 のまま。1 本の merge ごとに他の PR が追いつく必要は残る。
+5. ほかの衝突源（decision-log の末尾への追記、`90-traceability.md` の再生成）は本 lane の対象外（Non-scope に判断を書いた）。
+6. 事故: `docs/plans/` が空になる merge で、git の directory rename の推測が別の lane の packet を `docs/archive/plans/` へ動かしかけた。`git -c merge.directoryRenames=false merge` で避けた（Contract Probe 4 で再現）。
+7. 起票時の実測: merge 済みの packet が main に残ると、PK5（`scripts/check-workflow-git.sh`）も red になる。squash merge の後は packet の Plan Commit が main の祖先でないため。base `b0f3b68b` で exit 1（Contract Probe 3）。PK5 は pre-push（`scripts/pre-push.sh:188`）・local-ci（`scripts/local-ci.sh:197`）・hosted の docs job（`.github/workflows/ci.yml:312`）で走るので、helper を直しても、後続 lane は先行 lane の closeout を待たないと Merge gate が red になる。
+
+## Goal
+
+Goal Invariant:
+
+### 最小完了条件
+
+- 並走する 2 lane の片方が merge された後、もう片方は、先の lane の closeout の PR（Ready・CI・merge）を待たずに main を取り込み、helper の `status` / `capture` / `record` / `ready` / `merge` と hosted の PK4・PK5 を通して merge できる。
+- merge 済みで closeout 前の packet が main に残っていても、他の lane の R2+ の PR も、無関係な R0 / R1 の PR（closeout を含む）も、その packet を理由に止まらない。
+- lane の起票と closeout が `docs/Plans.md` の `## 次の行動` へ lane ごとの行を足さない。そのため main の取込みで Plans.md が衝突しない。dashboard は `docs/plans/` を指す 1 行で active な作業を示し、lane の branch・Phase・PR は packet と helper status から追える。
+- 守る境界として次の入力を拒否する（現行で拒否していたものは引き続き、差分に基づくものは新たに）: 他の lane の packet を書き換える PR、差分が active packet を 0 個または 2 個以上触る R2+ の PR、`--packet` と差分の packet の不一致、active packet を編集・削除する R0 / R1 の PR、自分の packet の Plan Commit の祖先・不変性の破れ、古い head/base の record。
+
+### 失敗定義
+
+- 上の待ちのどれかが残る（先行 lane の closeout を待たないと、後続 lane の helper・PK4・PK5 のどれかが red になる）。
+- 判定を緩めた結果、他の lane の packet を書き換える PR、R2+ の作業を R0 と称して active packet を編集する PR、git の directory rename の推測で他の lane の packet を archive へ動かした PR が通る。
+- 自分の packet の Plan Commit の祖先・不変性（PK5）、承認済み packet の Risk・Final Review Minimum・Human Gate の照合、record の head/base の照合、Double Audit の下限のどれかが弱まる。
+- lane の branch・Phase・PR を tracked の証跡から辿れなくなる。
+
+### 非目的
+
+- manual の再利用の条件を緩めること（衝突を解いて追いついた版の manual の再利用は、本 lane を入れた後の実際の衝突を見て owner が改めて決める）。
+- strict（MG-D1）の撤去。1 本の merge ごとに他の PR が追いつく必要は残る。本 lane は追いつきのたびに起きる衝突と待ちを減らす。
+- `docs/decision-log.md` の末尾への追記と `docs/function-design/90-traceability.md` の再生成による衝突。
+- PR4 の残り（Findings Freeze の撤去・Owner Effort Budget・Wave Operation の他の改訂・PR2 / PR3 の follow-up）と PR5 の残り（classifier の穴・`.claude/agents`・local-ci の symlink 検出・pre-push の merge 済み PR の検出）。
+
+Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
+
+## Ordinary Operation
+
+workflow の変更なので、本 lane の merge 後に並走する 2 lane（X・Y）を起票から closeout まで通す操作列を書く。各行の「旧:」が本 lane の前に起きていた待ちで、本 lane が消す所を示す。
+
+| 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
+| --- | --- | --- | --- | --- |
+| main に本 lane が入っている。X・Y の起票の承認がある | X・Y の起草役がそれぞれ plan-first commit に packet と Matrix だけを置く（packet の前文に wave と lane、Workflow State に `Branch` 行） | Plans.md を触らないので、起票が Plans.md の衝突源にならない（旧: 各 lane が `## 次の行動` に 1 行足し、main の取込みのたびに衝突。wave 14 で計 4 回） | `bash scripts/doc-consistency-check.sh` の PK4 が、`## 次の行動` の `docs/plans/` を指す行で green（D6） | なし |
+| X・Y が実装・Draft PR・Final Review を進める | 通常どおり | 変化なし | helper status の blockers が review / manual の待ちだけ | なし |
+| X が Ready・CI 成功・owner の merge 指示 | helper `merge` で X を merge | main に X の packet が Phase implementing のまま残る | merge 成功 | なし |
+| Y は Draft、X の closeout はまだ | Y を Draft のまま（Ready なら Draft に戻して）`git -c merge.directoryRenames=false merge origin/main` を 1 回 | X の closeout を待たずに取り込める（旧: X の closeout の PR の Ready・CI・merge を待つ = 待ち 1）。Plans.md は X も Y も触っていないので衝突しない。directory rename の推測で Y の packet が archive へ動かない | 単段 merge。`bash scripts/check-workflow-git.sh` が Y の packet だけを PK5 の対象にして green（X の packet は Y の差分が触らない、D4） | hosted の docs job で `origin/main` が解決できること（Contract Probe 5。解決できなければ全 packet を検査して red になり、安全側に倒れる） |
+| Y は main を取り込んだ新しい head | `python3 scripts/pr-gate.py status / capture --pr Y --packet Y の packet`、closure を record | helper が Y の差分が触る active packet 1 つで判定し、record できる（旧: head の `docs/plans/` に X と Y の 2 つがあり `packet absent or multiple active packets` で record も Ready もできない = 待ち 2） | closure pass、現在版の record | なし |
+| Y の record が揃う | owner の Ready 判断 → helper `ready` → hosted CI → owner の merge 指示 → helper `merge` | Y が merge される。hosted の PK4・PK5 も X の packet で red にならない | Merge gate 成功 | なし |
+| X・Y とも merge 済み、どちらも closeout 前 | 1 本の R0 の closeout の PR で X と Y の packet と Matrix を `docs/archive/plans/` へ移し（Phase archive）、`docs/Plans.md` の `## 直近の完了` を更新する | lane ごとの closeout の PR 2 本が 1 本になる（旧: #114→#119、#117→#120、#118→closeout の 1 lane 1 本）。その間も他の lane は止まらない | helper `--risk R0` が、差分の packet が archive への移送で Phase archive であることを確かめて通す（D2） | GitHub が移送を `renamed` でなく削除と追加で返す場合も、head の archive の内容で判定する（Contract Probe 1・2） |
+| X の merge 後・closeout 前に、無関係な R0 の docs 修正 PR が出る | helper `--risk R0 --manual not-required` | 通る（旧: head の `docs/plans/` に X の packet があり `R2+ active packet requires --packet` で止まる = 待ち 3） | 差分が active packet を触らない | なし |
+| 誤り: Y の PR が X の packet を書き換える、R0 の PR が active packet を編集する、同期の衝突の解き方で Y の packet が archive へ動く | helper `status` | 拒否（R2+ は差分の packet が 2 つ、R0 は active packet の編集、archive へ動いた Y の packet は `--packet` と差分が一致しない） | 是正して取り直す | なし |
+
+この列で、wave 14 の 3 つの待ち（closeout の PR の直列・record 不可・R0 の停止）と Plans.md の衝突が消える。strict による追いつき（merge のたびに他の Ready の PR が同期・CI をやり直す）は残る（非目的）。closeout の PR の merge も strict の追いつきを 1 回起こすが、wave ごとに 1 本にまとめる（D5）。
+
+## Scope
+
+行番号は base `b0f3b68b`（本 branch の起点 = origin/main）のもの。各 file の変更は該当行・節に限る。
+
+- S1 `scripts/pr-gate.py` の `Gate.requirements()`（D1〜D3）
+  - `:223-228` の head の `docs` / `docs/plans` の一覧の取得をやめ、`:214-215` で取得済みの PR の差分（`/pulls/N/files` の各 entry の `status`・`filename`・`previous_filename`）から、差分が触る active packet を決める。active packet の path は `docs/plans/` 直下の `YYYY-MM-DD-*.md`（現行 `:228` の正規表現と同じ）。
+  - 触る packet の分類（D1）: entry の `filename` が active packet の path で `status` が `removed` 以外なら「head にある packet」。entry の `previous_filename`（`renamed` の旧 path）か、`status` が `removed` の `filename` が active packet の path なら「差分で `docs/plans/` を離れる packet」。`status` が `added` / `modified` / `renamed` / `removed` / `changed` / `copied` / `unchanged` 以外なら入力エラー（exit 2）。
+  - 離れる packet の扱い（D2）: head に `docs/archive/plans/<同じ basename>` があり、その内容の Workflow State の Phase が `archive` のとき「closeout の移送」とする。それ以外（archive に無い、Phase が archive でない）は「packet の削除」として拒否する（exit 1）。archive の内容は `self.contents(path, head)` で取得し、取得の失敗は現行どおり exit 2。
+  - R2+（`--packet` あり）: 触る packet（head にある packet と離れる packet の和）がちょうど `{--packet}` で、かつ `--packet` が head にある packet でなければ拒否する（exit 1。message は `PR diff must touch exactly the --packet active packet`）。他の lane の packet の編集・移送・削除は「2 つ以上」として拒否される。
+  - R0 / R1（`--packet` なし）: head にある packet を 1 つでも触れば `R2+ active packet requires --packet` で拒否する。離れる packet がすべて closeout の移送なら通す。
+  - `:232-234` の `docs/Plans.md` の `## 次の行動` の link の照合を削除する（D3。dashboard の検査は PK4 の 1 か所に置く）。
+  - 変えないもの: `:229-230` の `--packet` の path の形式、`:235-242` の approved snapshot との Risk・Final Review Minimum・Human Gate の照合、`:245-247` の R0 / R1 の `--risk` / `--manual` の要求と `CI execution change requires R3 packet`、`:250-252` の Double Audit の下限、`:217-222` の main 側の classifier、record・status・capture・ready・merge の他の全処理。
+- S2 `scripts/tests/pr-gate.test.py`
+  - `FAKE_GH` の `/pulls/7/files` の entry に `status` と `previous_filename` を持たせる（既定の entry は `status: modified`）。
+  - 新しい class `PacketScope`（CLI 経由、fake gh の process を通す）に Test Design Matrix の G1 の行の test を置く: `test_other_lane_packet_in_head_r2_passes`、`test_two_active_packets_in_diff_rejected`、`test_packet_argument_mismatch_rejected`、`test_r0_closeout_archive_move_passes`、`test_r0_closeout_reported_as_remove_and_add_passes`、`test_r0_edit_of_active_packet_rejected`、`test_r2_archiving_other_lane_packet_rejected`、`test_r0_packet_deletion_without_archive_rejected`、`test_r0_archive_move_without_phase_archive_rejected`、`test_rename_inside_plans_counts_both_paths`、`test_packet_scope_does_not_list_docs_or_read_plans`、`test_unknown_file_status_is_input_error`。
+  - 既存の test の fixture を新しい契約に合わせる（期待する合否は変えない）: `configure_packet` と `test_registered_amendment_order_cannot_roll_back_manual` は packet を `state['files']` に `added` で載せ、`state['packets']` と `docs/Plans.md` の fixture を使わない。`test_packet_double_audit_cli` と `test_workflow_minimum_one_rejected` は `scripts/pr-gate.py` に加えて packet を差分に載せる。
+  - 退役する契約の test を置き換える: `test_absent_plans_directory_is_normal_r0`（head の一覧を読まない R0 の経路）は `test_packet_scope_does_not_list_docs_or_read_plans` へ、`test_parent_or_present_directory_http_failure_is_error`（一覧の HTTP 失敗）は「closeout の移送で archive の内容の取得が HTTP 失敗なら exit 2」へ、`test_multiple_packet_and_missing_manual`（head の 2 packet）は `test_two_active_packets_in_diff_rejected` へ置き換える。置き換えは、退役する「head の一覧」という入力の代わりに同じ失敗（曖昧な結び付け・HTTP 失敗の握り潰し）を新しい入力で拒否することを確かめるもので、弱めない。
+- S3 `scripts/check-workflow-git.sh`（D4）
+  - PK5 の `check_plan_commit_ancestry` を、branch の差分が触る packet だけに適用する。差分の起点: `WORKFLOW_BASE_SHA` が設定されていて HEAD と違えばそれ、そうでなければ `origin/main`。起点と HEAD の `git merge-base` から HEAD までの `git diff --name-only -- docs/plans/` に出る packet を対象にする。起点が解決できなければ現行どおり全 packet を対象にする（fail-closed）。
+  - Evidence Mode の値と Phase の enum の検査（`main()` の loop 内）と shallow の検査は、現行どおり全 packet・全履歴に掛ける。
+  - 冒頭の comment の「検査内容」に対象の範囲を 1 行足す。
+- S4 `scripts/tests/workflow-git-checks.test.sh`: 合成 repo に、squash 相当で Plan Commit が祖先でない merge 済み packet（main 側）と、自分の packet（branch 側）を置く。(a) 起点を main にすると merge 済み packet は対象外で exit 0、(b) branch が merge 済み packet を書き換えると対象になり exit 1、(c) 自分の packet の Plan Commit が祖先でないと exit 1、(d) 起点が解決できない（`origin/main` も `WORKFLOW_BASE_SHA` も無い）と全 packet を検査して exit 1、(e) `WORKFLOW_BASE_SHA` が HEAD と同じ（dispatch）なら `origin/main` を起点にする。既存の「squash 相当の負例」は起点なしのまま残す。
+- S5 `scripts/doc-consistency-check.sh` の PK4 の Plans.md の検査（`:1364-1391`、D6）: active packet が 1 つ以上あるとき、`## 次の行動` の本文（`strip_fenced_code_and_html_comments` の後）に文字列 `docs/plans/` が 1 回以上あることを求める。packet ごとの link の要求はやめる（link があっても拒まない）。error の文は `PK4: docs/Plans.md の '## 次の行動' に active packet の一覧（docs/plans/）を指す行がありません`。
+- S6 `scripts/tests/doc-consistency-plan-packet.test.sh`: `write_plans_md_linking` を、`docs/plans/` を指す行を書く helper に変える（正例の fixture の意味を保つ）。section 11・11c・12・28 を新しい契約へ置き換える: packet ごとの link が無くても pointer があれば PK4 OK、pointer が無ければ ERROR、pointer が code fence か HTML comment の中だけなら ERROR、`### Wave Registry` の小見出しの下の pointer も検出する。inline code の中の `docs/plans/` は pointer として数える（文字列の要求で、link の要求ではないため）。
+- S7 `docs/agent-guidance/merge-evidence.md`
+  - `## base同期だけでheadが変わる場合` の冒頭の文（`:130`）: 「まず先行PRのcloseoutを完了し」を消し、「先行 PR の closeout を待たない。merge 済みで closeout 前の packet は、後続 PR の差分が触らない限り helper と PK5 の判定に入らない」にする。以降の文は変えない。
+  - `## Helperの境界`: `:142` の段落（親 docs の一覧で packet の不在を確かめる）を、「R2+ は PR の差分が触る active packet がちょうど `--packet` の 1 つであること、R0 / R1 は差分が active packet を触らないこと（closeout の移送だけを許す）を確かめる。触る packet は差分の `filename` と `previous_filename` で決め、head の `docs/plans/` の一覧と Plans.md は読まない」の段落に替える。`:144` の「当該PR headのpacket・Plansの登録と照合する」を「当該 PR の差分が触る active packet と照合する」にする。
+  - `## closeoutとActions停止時` に 1 文足す: 「merge 済みの lane の closeout は wave ごとに 1 本の R0 PR にまとめてよく、wave を閉じる前（次の wave の起票の前）に完了する。単独の lane は 1 lane の wave とみなす」。
+  - `## 実行手順` の `:160` の「`PACKET`は登録された単一packet」を「`PACKET`はその PR の差分が触る単一の active packet」にする。
+- S8 `docs/DEV_WORKFLOW.md`
+  - Workflow State の packet 選択規則（`:110`）: 前半（Plans.md の current-work の link、`Wave Registry` の lane、registry の 3 種の不一致）を、「依頼が名指しする lane の packet（`docs/plans/` の dated packet。packet の `Branch` 行と前文の wave・lane で特定する）から始める。active であることだけで選ばない。依頼が 1 つの packet を特定できない、packet の `Branch` と branch / PR が一致しない、PR が merge 済み（closeout 待ち）のときは推測で選ばず停止して owner に報告する」にする。後半の「再開時は、行動する前に packet・helper status・専用 record・CI を読み…」は残す。
+  - Wave Operation `:235`: 「現 wave と lane の task、branch、packet、Draft PR、Phase、owner 介入状況、merge train 順序は Plans.md の Wave Registry に置く」を、「lane の一覧は `docs/plans/` の packet（前文に wave と lane、Workflow State の `Branch` 行に branch）、Draft PR・Phase・現在地は packet と helper status が持つ。lane ごとに `Plans.md` へ行を足さない。merge train 順序は owner が batch Ready 承認時に指定する（`:237`）」にする。
+  - Wave Operation `:238`: 単段 merge の command を `git -c merge.directoryRenames=false merge origin/main` と明記する（D8）。
+  - Draft PR Checkpoint `:385`: 「Record pending manual checks in the PR body and `Plans.md`.」を「Record pending manual checks in the PR body.」にする（lane が Plans.md へ書き足す経路を残さない）。
+  - Post-Merge Closeout `:419`: 「merge 済み lane を個別に archive し、Wave Registry の lane 状態を同期してから train の次 lane を進める」を「merge 済み lane の closeout は wave ごとにまとめてよく、train の次 lane はその closeout を待たない」にする。後半（全 lane の closeout 後の WER）は残す。`:426` の「先行closeoutを後続PRのbase同期より先に完了する。」の 1 文を消す（同じ行の他の文は残す）。
+- S9 `docs/templates/plan-packet.md`: `## Workflow State` の箇条の末尾に `- Branch: <agent/...>` の 1 行と、「`Branch` は helper・checker が評価しない追加行。lane の branch を packet から辿るために書く」の 1 文を足す（D7）。
+- S10 入口の語（D7）: `.agents/skills/inventory-workflow-start/SKILL.md:12` の「`Plans.md` の対象リンクから packet の」を「`docs/plans/` の対象 packet（`Plans.md` が指す一覧から、依頼が名指しするもの）の」に、`.claude/commands/plan-rally.md:7` の「`Plans.md`から対象のactive Plan Packetを一意に特定する」を「`docs/plans/` から依頼が名指しする active Plan Packet を一意に特定する」に、`docs/AGENT_OPERATING_MANUAL.md:86` の表の右列の「+ Plans.md の「Wave Registry」への link」を「+ `docs/plans/` の packet」にする。`.claude/skills/inventory-workflow-start` は同じ本文への symlink で触らない。
+- S11 `docs/Plans.md`（D6）
+  - `## 次の行動` の先頭の段落の後に 1 行を置く: 「active な lane の Plan Packet は `docs/plans/` の dated packet が正本（lane の branch は各 packet の `Branch` 行、現在地は helper status）。lane の起票・closeout はこの節へ行を足さない（D-097）」。
+  - 本 lane の起票で足した本 lane の行は、本 lane の closeout まで残す（下の「本 lane 自身の merge」）。他の lane の既存の行は触らない（各 lane の closeout で消える）。
+  - `### Wave Registry` の「形式」の行（`:83`）を、「完了済み wave の記録だけを置く。進行中の lane は `docs/plans/` の packet が持つ（D-097）」にする。完了済み wave の記録は変えない。
+- S12 `docs/decision-log.md` の末尾に `## D-097` を追記する（番号は本 packet で予約する。D-094 は並走の色と強調の lane、D-095 は小口のまとめが予約して使わない、D-096 は使用済み）: 並走の摩擦を削る判定の変更（D1〜D8 の要旨、G2 の採った案と棄却案、D-055 の「Wave Registry だけを複数 active packet の入口とする」と D-039 の PK5 の対象範囲と merge-evidence の「先行 PR の closeout を先に」を部分的に置き換えること、Revisit trigger = 本 lane の後の実際の衝突で manual の再利用の条件を owner が見直すとき）。
+- 登録（本 plan-first commit に同乗）: `docs/Plans.md` の `## 次の行動` に本 packet と Matrix の link を 1 行足す（現行の PK4 と helper が要求するため。本 lane の実装の前の規則に従う）。
+
+対象を使う呼出し側・隣接 test を確認した: helper の呼出し側は `docs/agent-guidance/merge-evidence.md` の実行手順と `.local/` の運用だけで、`scripts/local-ci.sh:197`・`scripts/pre-push.sh:188`・`.github/workflows/ci.yml:312` は `check-workflow-git.sh` を引数なしで呼び（ci は `WORKFLOW_BASE_SHA` を渡す）、呼び方は変えない。`scripts/tests/local-ci.test.sh:39` と `scripts/tests/pre-push.test.sh:54` は `check-workflow-git.sh` を偽物に差し替えるので影響しない。`scripts/tests/pr-gate.test.py:353` は `check-workflow-git.sh` を `origin` の無い合成 repo で呼ぶため、起点なしの全 packet の検査のまま（S3 の fail-closed の経路）。`scripts/tests/doc-consistency-plan-packet.test.sh:848` は Phase の配列の parity だけを見る。予期しない拡張は既存の改訂経路へ戻し、「関連 file 全般」を許可範囲にしない。
+
+### 本 lane 自身の merge（自分の変更で自分の gate を緩めない）
+
+- 本 lane の PR の helper の操作（status・capture・record・ready・merge）は origin/main の helper で行う: `git show origin/main:scripts/pr-gate.py > "$TMPDIR/pr-gate-main.py"` を本 lane の worktree で `python3 "$TMPDIR/pr-gate-main.py" …` として使う（Gate は cwd の git で head を確かめるため、script の置き場所に依らない）。本 lane の branch の helper で自分の PR を判定しない。
+- そのため本 lane は旧い規則で merge する: capture の前に、head の `docs/plans/` の active packet が本 packet 1 つだけであること（並走の小口のまとめ〈#118〉と色と強調〈#116〉の closeout が main に入り、それを本 branch へ単段 merge してあること）と、`## 次の行動` に本 packet の link があること（S11 で残す）を満たす。これが旧い規則で待つ最後の回になる。
+- hosted CI は PR の head の script（新しい PK4・PK5）で走る。これは既存の設計どおりで、変更の妥当性は Double Audit が見る。
+
+## Non-scope
+
+- manual の再利用の条件（merge-evidence の MG-D6 の機械条件と `reuse_geometry`）、strict（MG-D1）、Merge gate・classifier（`scripts/ci/**`）・`.github/workflows/**`・`.github/merge-gate-ruleset.json`。
+- `docs/decision-log.md` の追記と `90-traceability.md` の再生成による衝突: backlog に残す（本 lane の closeout で 1 項目を起こす。起こさない判断もその時の観測で決める。decision-log は lane が予約した番号の順に末尾へ足すため衝突は機械的に解け、traceability は再生成で解けるので、本 lane の 3 点ほど待ちを生んでいない）。
+- `AGENTS.md` の `Session Start` の R2+ の行の「`Plans.md` から対象 packet を特定し」: `Plans.md` の pointer 行から `docs/plans/` を辿れるので意味は保たれる。drift test（`scripts/tests/reading-order-drift.test.sh`）の対象の行で、語を変える利益が小さいため変えない。
+- `docs/DEV_WORKFLOW.md:68`（訂正の sweep の対象の「its `Plans.md` entry」）と `:390`（PR を作らない場合の Plans.md への記録）: lane の行が無くなれば該当が無いだけで誤りにならない。PR4 の文面の整理に回す。
+- `docs/templates/test-design-matrix.md`、PR template、`docs/AGENT_OPERATING_MANUAL.md` の `:86` 以外（§5.3 の Plans.md cleanup prompt を含む。closeout の文面は Post-Merge Closeout を参照しており変えなくてよい）。
+- helper の処理の中の、他の lane の Test Design Matrix（`docs/plans/test-matrices/`）の書き換えの検出: 本 lane は packet の判定だけを変える（現行も Matrix は見ていない）。Residual Test Gaps に記録する。
+- `.local/checklists/kickoff.md` の [43]（packet を置く commit に Plans.md の link を同乗）と closeout の checklist: tracked 外。本 lane の merge 後に Coordinator が直す。
+- `docs/Plans.md` の他の lane の既存の行と `## 直近の完了`: 本 lane の実装では触らない（S11 の 3 点だけ）。
+- `scripts/check-workflow-git.sh` が Phase を packet 全体の行頭 `- Phase:` から読む（`## Workflow State` の節に限らない。Plan Commit・Amendments は最初の 1 行）脆さ: 起票時に本 packet の本文の箇条が同じ形で始まり `invalid tracked Phase` になった（2026-09-28、本文を直して回避）。S3 はこの読み方を変えない。closeout で backlog の候補にする。
+
+## Acceptance Criteria
+
+baseline は本 branch の HEAD（base `b0f3b68b` に本 packet・Matrix・`docs/Plans.md` の登録行を足しただけ）で、同じ command を逐語で 2026-09-28 に実行した実測。AC の数は機能の代理にせず、test は全 PASS を求める（本数は runner の出力を参照）。
+
+- AC1（G1 の判定、D1・D2）: `python3 scripts/tests/pr-gate.test.py -v -k PacketScope` が exit 0 で、S2 の `PacketScope` の各 test が `ok`。baseline: `Ran 0 tests` / `NO TESTS RAN`、exit 5。
+- AC2（helper の既存の契約、D9）: `python3 scripts/tests/pr-gate.test.py` が exit 0。baseline: exit 0（`OK`）。
+- AC3（一覧と Plans.md の照合の撤去、D3）: `rg -n 'packet absent or multiple active packets|packet not registered in Plans|contents/docs\?ref|contents/docs/plans\?ref' scripts/pr-gate.py` が 0 行（exit 1）。baseline: 4 行（`:224`・`:227`・`:231`・`:234`）。
+- AC4（PK5 の対象、D4）: `bash scripts/tests/workflow-git-checks.test.sh` が exit 0（S4 の (a)〜(e) を含む）。baseline: exit 0（S4 の場面は未実装）。実物: 実装の HEAD で `WORKFLOW_BASE_SHA=$(git rev-parse origin/main) bash scripts/check-workflow-git.sh` が exit 0。baseline（origin/main = `b0f3b68b`）: exit 1（`docs/plans/2026-09-27-small-fixes-batch.md の Plan Commit '06f12ca8…' は現在の HEAD の祖先ではありません`。merge 済みの小口のまとめの packet が main に残るため）。実装の時点で main から merge 済みの packet が closeout で消えていれば、この command は merge 済み packet の場面を含まない。その場面は S4 の (a) が合成 repo で持つ。
+- AC5（PK4 の pointer、D6）: `bash scripts/tests/doc-consistency-plan-packet.test.sh` が exit 0（S6 の置き換えを含む）。baseline: exit 0（packet ごとの link の契約）。実物: `awk '/^## 次の行動/,/^## 直近の完了/' docs/Plans.md | rg -c 'docs/plans/'` が 1 以上。baseline: 一致なし（exit 1）。本 lane の行は closeout まで残す: 同じ出力への `rg -c '\]\(plans/2026-09-28-harness-parallel-friction\.md\)'` が 1（baseline: 1）。
+- AC6（closeout を先に済ませる規則の撤去、D5）: `rg -n '先行closeoutを後続PRのbase同期より先に完了する|まず先行PRのcloseoutを完了し|lane 状態を同期してから' docs/DEV_WORKFLOW.md docs/agent-guidance/merge-evidence.md` が 0 行（exit 1）。baseline: 3 行（DEV_WORKFLOW `:419`・`:426`、merge-evidence `:130`）。新しい規則: `rg -n '差分が触る' docs/agent-guidance/merge-evidence.md` が 2 行以上（base同期の節と Helperの境界）。baseline: 一致なし（exit 1）。
+- AC7（directory rename の手順、D8）: `rg -n 'directoryRenames=false' docs/DEV_WORKFLOW.md` が 1 行以上。baseline: 一致なし（exit 1）。
+- AC8（Plans.md の lane の登録を前提にした規則の撤去、D6・D7）: `rg -n 'Plansの登録と照合|packet不在は親docs一覧で確認する|linked from the current-work section|owner 介入状況、merge train 順序は|各 lane に是正単位、branch、active packet link' docs/DEV_WORKFLOW.md docs/agent-guidance/merge-evidence.md docs/Plans.md` が 0 行（exit 1）。baseline: 5 行（Plans `:84`、merge-evidence `:142`・`:144`、DEV_WORKFLOW `:110`・`:235`）。入口: `rg -n 'Plans\.md. の対象リンク|Plans\.md.から対象のactive|Plans\.md\]\(Plans\.md\)「Wave Registry」' .agents/skills/inventory-workflow-start/SKILL.md .claude/commands/plan-rally.md docs/AGENT_OPERATING_MANUAL.md` が 0 行（exit 1）。baseline: 3 行（SKILL `:12`、plan-rally `:7`、MANUAL `:86`）。`rg -n 'Record pending manual checks in the PR body and' docs/DEV_WORKFLOW.md` が 0 行（exit 1。baseline: 1 行 `:385`）。`rg -n '^- Branch:' docs/templates/plan-packet.md` が 1 行（baseline: 一致なし、exit 1）。
+- AC9（durable decision）: `rg -c '^## D-097' docs/decision-log.md` が 1。baseline: 一致なし（exit 1）。
+- AC10（mutation、Test Plan の MU1〜MU8）: 実装を commit した後、`$TMPDIR` の写し（`copy="$TMPDIR/friction-mut"; mkdir -p "$copy"; git archive HEAD | tar -x -C "$copy"; git -C "$copy" init -q; git -C "$copy" add -A`。改変ごとに作り直し、終わったら消す。本 repo の index・設定は触らない）で各 mutation を入れ、対応する test が red（exit 非 0）になり、改変なしの写しでは green になる。
+- AC11（検査の全体）: `bash scripts/tests/run-workflow-tests.sh` が exit 0、`bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が exit 0、`bash scripts/check-workflow-git.sh` が exit 0、`git diff --check` が exit 0、`bash scripts/local-ci.sh full` が exit 0。baseline: run-workflow-tests exit 0、doc-consistency exit 0、`--target plan` exit 0、check-workflow-git exit 1（AC4 と同じ理由）、`git diff --check` exit 0、local-ci full は未実測（check-workflow-git の段で失敗する見込みだが、見込みを固定の条件にしない）。
+- AC12（範囲、S 全体）: `git diff --name-status origin/main...HEAD` の変更 file が S1〜S12 の file と本 packet・Matrix に限られる。`scripts/ci/**`・`.github/**`・`scripts/local-ci.sh`・`scripts/pre-push.sh`・`AGENTS.md`・`CLAUDE.md` に本 lane 由来の差分が無い。
+
+## Design Sources
+
+- Requirements / spec: 該当なし（製品要件を変えない）。
+- Architecture / Function / DB / Screen: 該当なし。
+- Workflow 正本（本 lane が書き換える文書と、参照だけする文書）: `docs/agent-guidance/merge-evidence.md`（MG-D1 strict・MG-D5〜D9、「base同期だけでheadが変わる場合」「Helperの境界」「closeoutとActions停止時」）、`docs/DEV_WORKFLOW.md`（Workflow State の packet 選択規則と PK5 の段落、Wave Operation、Draft PR Checkpoint、Post-Merge Closeout）、`docs/templates/plan-packet.md`、`docs/Plans.md`。
+- Decision log / ADR: D-034（Session Start と Workflow State）、D-039（PK5）、D-055（Wave Operation と Wave Registry）、D-085 / MG-D1〜D12（helper 経由の merge と strict）、D-090（Ordinary Operation）。本 lane は D-097 を足す。
+
+## Required Design Artifacts
+
+| Area touched by upcoming work | Required source doc / artifact | Status: existing sufficient / updated in this PR / intentionally deferred |
+|---|---|---|
+| Backend function / command / repository / validation / error | なし | existing sufficient（製品コードを変えない） |
+| Command / DTO / generated binding / wire shape | なし | existing sufficient |
+| DB / transaction / audit / rollback / migration | なし | existing sufficient |
+| Screen / UI / route state / Japanese wording | なし | existing sufficient |
+| CSV / TSV / report / import / export format | なし | existing sufficient |
+| Workflow gate（helper・PK4・PK5 の判定、closeout の時期、packet の選択） | `docs/agent-guidance/merge-evidence.md`、`docs/DEV_WORKFLOW.md`、`docs/templates/plan-packet.md` | updated in this PR（S7〜S9） |
+| Durable decision / ADR | `docs/decision-log.md` D-097 | updated in this PR（S12） |
+
+## Registration / Generation Obligations
+
+| 変更対象 | 登録・生成義務 |
+|---|---|
+| decision-log の追記 | D-097（本 packet で予約）。D-094 の後に並走の lane が merge した場合は番号の順に並べる |
+| workflow の正本の文の変更（S7〜S10） | 親文書の索引・link の実在は `bash scripts/doc-consistency-check.sh` の link 検査（R3）で確かめる。文書の新設・改名・削除は無い |
+| test の追加・置き換え（S2・S4・S6） | `scripts/tests/run-workflow-tests.sh` が既に 3 本を実行している（新しい test file は無い） |
+
+Tauri command・function-design doc・REQ・route・operator 画面: 該当なし。
+
+## Design Intent Trace
+
+| Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
+|---|---|---|---|---|---|
+| SPEC-WF-PARALLEL-FRICTION | merge-evidence「Helperの境界」 | D1 | PR に結び付く packet は、その PR が作り・変える packet で決まる。head の一覧は main から取り込んだ他の lane の packet を含むため、PR と無関係な理由で止まる（観測 1）。却下: head の一覧のうち merge 済みを除く（merge 済みの判定に PR の API か packet の追加行が要り、誤りの向きが緩む側になる） | S1 | AC1、AC3 |
+| SPEC-WF-PARALLEL-FRICTION | merge-evidence「Helperの境界」「closeoutとActions停止時」 | D2 | R0 / R1 の経路は「差分が active packet を触らない」で決め、closeout の移送だけを許す。移送は head の archive の Phase が archive のときだけ認め、directory rename の推測で動いた進行中の packet（Phase は implementing 等）を拒む。却下: rename の metadata だけで判定する（GitHub が削除と追加で返す場合を取り逃す）、移送を一律に許す（観測 6 の事故を通す） | S1 | AC1 |
+| SPEC-WF-PARALLEL-FRICTION | merge-evidence「Helperの境界」 | D3 | dashboard の検査は PK4（hosted の docs job で走る）の 1 か所に置き、helper は PR と packet の結び付けだけを持つ（MG-D2・D4 の二重実装の回避）。却下: helper が pointer 行を照合する（同じ検査を 2 か所に持つ） | S1 | AC3 |
+| SPEC-WF-PARALLEL-FRICTION | DEV_WORKFLOW「Plan Commit ancestry」、`check-workflow-git.sh` | D4 | squash merge 後の packet の Plan Commit は main の祖先でないため、merge 済みの packet が残る head は PK5 が必ず red になる（2026-09-28 に実測）。PK5 は自分の plan-first の祖先を確かめる検査なので、差分が触る packet に限っても保護は変わらない。起点が無ければ全 packet（現行）に倒す。却下: merge 済みの packet を Phase の値で除く（Phase は merge で変わらない）、PK5 を hosted だけに限る（local の gate で red が残る） | S3 | AC4 |
+| SPEC-WF-PARALLEL-FRICTION | merge-evidence「base同期」「closeoutとActions停止時」、DEV_WORKFLOW Post-Merge Closeout | D5 | 下の「G2 の比較」。closeout を後回しにしてまとめる（推奨 B）。却下: lane の PR の最後の commit に含める（A）、lane ごとに A と B を選ぶ（C） | S7、S8 | AC6 |
+| SPEC-WF-PARALLEL-FRICTION | Plans.md、DEV_WORKFLOW Artifact Map・Wave Operation、PK4 | D6 | 共有の節へ lane ごとに行を足す運用が取込みのたびの衝突を生む（観測 3）。active な作業の一覧は `docs/plans/` 自体が持ち、Plans.md はそこを指す 1 行を持つ。pointer は markdown link にしない（link 検査 R3 が `-f` で file の実在を見るため directory を指せない。`scripts/doc-consistency-check.sh:1716`）。却下: PK4 の Plans.md の検査を丸ごと消す（dashboard が active な作業を指さなくなっても検出できない）、Wave Registry に lane の行を残す（同じ衝突が残る） | S5、S11 | AC5、AC8 |
+| SPEC-WF-PARALLEL-FRICTION | DEV_WORKFLOW Workflow State の packet 選択規則、template | D7 | Plans.md の lane の行が持っていた branch を packet の `Branch` 行へ移し、packet は依頼の名指しで選ぶ。merge 済み（closeout 待ち）の packet は再開しない。却下: `Branch` を必須 field にする（10 field の契約と helper・PK4・既存 packet の変更が要る。追加行で足りる） | S8、S9、S10 | AC8 |
+| SPEC-WF-PARALLEL-FRICTION | DEV_WORKFLOW Wave Operation の単段 merge | D8 | `docs/plans/` が空になる merge で git の directory rename の推測が他の lane の packet を archive へ動かしかけた（観測 6）。Contract Probe 4 で再現し、`merge.directoryRenames=false` で起きないことを確かめた。D2 と D1 が起きた場合も検出する。却下: `docs/plans/README.md` で directory を空にしない（`check-workflow-git.sh` の Phase の検査と `--target plan` の既定の対象に入り、`test-matrices/` にも別に要る） | S8 | AC7 |
+| SPEC-WF-PARALLEL-FRICTION | merge-evidence 全体 | D9 | 守る境界を変えない: record の head/base、approved snapshot の 3 条件、Double Audit の下限、main 側の classifier、R0 / R1 の `--risk` / `--manual`、CI 実行 code の R0 / R1 の拒否、manual の再利用の条件、strict | S1（変えないもの） | AC2、AC11 |
+
+## G2 の比較（設計判断。Plan Review で覆せる形）
+
+owner に示した案は A（closeout を lane の PR の最後の commit に含める）。Coordinator の見立て（G1 で merge 済みの packet が他の lane を止めなくなるので、closeout を後回しにしてもまとめても止まらない）は、helper については成り立つが、PK5 については成り立たない: 2026-09-28 に base `b0f3b68b` で `bash scripts/check-workflow-git.sh` が exit 1（merge 済みの小口のまとめの packet の Plan Commit が squash merge で祖先でなくなる）。そのため B と C は D4 を前提にする。
+
+| 観点 | A: lane の PR の最後の commit に closeout を含める | B: closeout を後回しにし、wave ごとにまとめる（推奨） | C: 組み合わせ（manual の無い lane は A、manual のある lane は B） |
+|---|---|---|---|
+| 他の lane を止めるか | 止めない（main に merge 済みの packet が残らない） | 止めない（D1・D2・D4） | 止めない |
+| review・L3 の後に head が変わるか | 変わる。Review Response は Final Review の後にしか書けないので、closeout の commit は review の後になり、closure が 1 回増える（Codex の relay も 1 増える）。manual の lane は manual の record が旧 head のものになり、再利用は base 同期の単段 merge だけに限られる（非目的で緩めない）ため L3 のやり直しになる。closeout の commit を L3 の前に置けば避けられるが、L3 の FAIL の是正でまた書き直す | 変わらない | manual の無い lane は A と同じ closure の増加、manual のある lane は B と同じ |
+| helper・Workflow State・PK5 の変更 | 自分の packet を head の `docs/archive/plans/` から読む経路、merge 前に Phase archive を受ける変更（遷移表の implementing → archive の条件「helper で merge 済み」の書き換え）、PK5 が archive へ移した自分の packet の Plan Commit を検査する経路（無いと最終 head で祖先の検査が抜ける）が要る | D1・D2・D4 だけ。遷移表・自分の packet の読み方・PK5 の自分の packet の検査は変わらない | A と B の両方の経路と、その選び分けの fail-closed |
+| Plans.md の衝突 | lane の PR が `## 直近の完了` へ書き足すため、取込みのたびに衝突する（G3 の目的に反する）。書き足しを lane の PR から外すと、dashboard の更新だけを B と同じくまとめて後で行う形になる | lane の PR は Plans.md を触らない。書き足すのはまとめた closeout の PR だけで、lane とは衝突しない | manual の無い lane は A と同じ |
+| PR の本数 | lane ごとに 1 本 | lane ごとに 1 本 + wave ごとに closeout 1 本 | 間 |
+| strict の追いつき | 増えない | closeout の merge で他の Ready の PR の追いつきが wave ごとに 1 回増える | 間 |
+| 記録の正確さ | archive へ移す時点では merge の SHA・最終の CI が分からない | merge 後に書くので揃う | 間 |
+
+推奨: B。理由: (1) 安全の境界を担う code の変更が最も少ない（自分の packet の読み方・遷移表・PK5 の自分の packet の検査を変えない）。(2) review と L3 の後に head を変えないので、owner が緩めないと決めた manual の再利用の条件のもとでも L3 のやり直しが起きない。(3) lane が Plans.md を触らないので G3 の目的と両立する。受け入れる費用: wave ごとに 1 本の closeout の PR と、その merge による追いつき 1 回。merge 済みの packet が wave を閉じるまで `docs/plans/` に残る（D7 の選択規則で再開の対象から外し、helper status で merge 済みと分かる）。
+
+closeout の期限とまとめ方（B）: merge 済みの lane の closeout は wave ごとに 1 本の R0 PR にまとめ、wave を閉じる前（次の wave の起票の前）に完了する。単独の lane は 1 lane の wave とみなす（merge の後の最初の closeout の機会）。早めに出すのは妨げない。closeout の PR は他の lane の PR の同期を待たせない。
+
+merge 済みで closeout 前の packet が main に残る間の扱い（B）:
+
+- Phase の値: `implementing` のまま（実装後の状態は PR の native state が持つ、MG-D5。merge 済みかは helper status が `merged` を返す）。closeout の commit で `archive` にする（遷移表は変えない）。
+- PK 検査: PK1〜PK4・PK6 は他の active packet と同じく掛かる（形式は merge 時点で満たしている）。PK5 の祖先の検査は、その packet を差分が触る PR だけに掛かる（D4）。closeout の PR は packet を `docs/plans/` から出すので PK5 の対象外。
+- Plans.md: 何もしない（lane の行が無い）。`## 次の行動` の pointer 行が `docs/plans/` を指し、merge 済みかどうかは packet の `Branch` 行から PR を引いて helper status で分かる。
+
+owner に諮る判断点: 推奨 B は owner の示した A と違うため、Plan Gate で owner の選択（A / B / C）を得る。A か C を選べば、Scope（S1 に自分の packet の archive からの読み方、S3 に archive の自分の packet の PK5、S8 に遷移表の変更）と Owner Effort Budget（closure の増加）を改めて design へ戻る。
+
+## Design Intent Audit
+
+- Source docs can answer what is being built and why without chat history or archived Plan Packets: 規則は S7〜S11 の正本に、判断と棄却案は D-097 に置く。
+- Plan-only durable decisions found and promoted to source docs / decision-log / ADR: D1〜D8 を merge-evidence・DEV_WORKFLOW・template と D-097 に置く（実装の S7〜S12）。G2 の比較の表は D-097 に要約を置く。
+- Assumptions and constraints: hosted の docs job で `origin/main` が解決できる（Contract Probe 5、解決できなくても fail-closed）。GitHub の PR の files API が `status` と `renamed` の `previous_filename` を返す（Probe 1）。本 lane の PR は旧い helper で merge する（「本 lane 自身の merge」）。
+- Deferred design gaps, risk, and follow-up target: 他の lane の Test Design Matrix の書き換えの検出（Residual Test Gaps）、decision-log と traceability の衝突（Non-scope、closeout で backlog の判断）、衝突を解いた版の manual の再利用（owner が本 lane の後の観測で決める）。
+- Test Design Matrix can cite design decision IDs or source doc sections: D1〜D9 を Matrix が引く。
+- Absolute guarantee / escape hatch self-check completed, with every exception checked and compatibility stated: 「merge 済みの packet は他の PR を止めない」の例外 = その packet を差分が触る PR（他の lane の packet の書き換え、closeout）。前者は D1 / D2 で拒否、後者は Phase archive の移送だけを通す。「PK5 は差分が触る packet だけ」の例外 = 起点が解決できないとき（全 packet に倒す）と、`WORKFLOW_BASE_SHA` が HEAD と同じ dispatch（`origin/main` を起点にする）。main 上の dispatch では差分が空になり PK5 の祖先の検査は掛からないが、main の packet は各 PR の head で検査済み（現行でも main の dispatch は merge 済みの packet で red になっており、検査として働いていなかった）。
+
+## Impact Review Lenses
+
+安全の境界が弱まらないことを、owner の指定した 4 点を中心に論じる。現場調査・実機・POS・CSV の lens は該当なし（1 行ずつ理由を書く）。
+
+| Lens | Applicability / finding | Follow-up artifact |
+|---|---|---|
+| Adapter / core boundary | 該当なし: 製品の adapter と core を変えない | — |
+| Fact check / design decision split | 事実 = wave 14 の観測 1〜6、PK5 の red（2026-09-28 実測）、GitHub の files API の返し方（PR #118・#119・#120・#116 を実測）、git の directory rename の挙動（probe で再現）。判断 = D1〜D8 と G2 の推奨 | Contract Probe、D-097 |
+| Lifecycle / retry | lane の packet の状態 = 起票 → 実装 → merge 済み（closeout 待ち）→ archive。merge 済みの間の Phase・PK・Plans.md の扱いを G2 の節に書いた。closeout の PR が失敗・中断しても他の lane は止まらない | Matrix の State Lifecycle |
+| Operator workflow | 該当なし（店の operator の操作を変えない）。開発の操作列は Ordinary Operation | — |
+| Replacement path | helper の判定の入力を head の一覧から PR の差分へ替える。GitHub の API の形が変わった場合、未知の `status` は exit 2 で止まる | S1 |
+| Data safety / evidence | 古い証拠の拒否: record の head/base の照合、capture と server の record の一致、closure の要求、approved snapshot の Risk・Minimum・Human Gate の照合はどれも変えない（D9、AC2）。判定の入力が差分に替わっても record は現在の head/base に結び付いたまま | AC2、AC11 |
+| Reporting / accounting semantics | 該当なし | — |
+| Manual verification | 該当なし: 画面が無い。helper・checker は合成 fixture で確かめる | — |
+| 環境・再現性 | hosted の docs job の checkout（fetch-depth 0）で `origin/main` を解決する前提は Contract Probe 5 で実装時に確かめる。`merge.directoryRenames=false` は repo の設定（`.git/config`）でなく command に付け、環境に依らない | S3、S8 |
+
+owner が指定した 4 点:
+
+- 古い証拠の拒否: 上の Data safety の行。helper の判定は PR の差分（GitHub が PR の現在の head/base から返す）で行い、record の対象版の照合は変えない。
+- Plan Commit の固定: 自分の packet は PR の差分に必ず出る（plan-first commit が branch にあり、merge-base 以降の差分に入る）ので、PK5 の祖先・不変性の検査は変わらずに掛かる。approved snapshot の照合も変えない。自分の packet を差分に出さずに R2+ の作業をする経路は、`--packet` が差分の packet と一致しないため拒否される。
+- 他の lane の packet の改変の検出: 強くなる。現行は head の packet の数だけを見ていたため、他の lane の packet を書き換えても数が変わらなければ検出しなかった。新しい判定は、差分が他の packet を触った時点で R2+ も R0 も拒否する（D1・D2）。PK5 も、差分が触る merge 済みの packet の祖先の破れで red になる。
+- R0 の経路の乱用: 現行の R0 の拒否（head に packet があれば止める）は PR と無関係な理由で掛かっていた（main に packet が無い時期は R0 の申告を何も止めていない）。新しい判定は、R0 の PR が active packet を編集・削除すること自体を拒み、closeout の移送は Phase archive のときだけ通す。R0 の申告で CI 実行 code を変える PR の拒否（`CI execution change requires R3 packet`）と main 側の classifier は変えない。業務上の Risk の申告の正しさは現行どおり owner と model が判断する。
+
+## Design Readiness
+
+- Existing design docs are sufficient because: 足りない（spec-check の結果）。design の出力は本 packet の Spec Contract と G2 の比較にあり、正本への昇格は S7〜S12。
+- Source docs updated in this PR: merge-evidence、DEV_WORKFLOW、plan-packet template、入口の 3 file の語、Plans.md、decision-log D-097。
+- Design gaps intentionally deferred: Non-scope の各項目。
+- Durable decisions discovered in this plan and promoted to source docs: D-097。
+
+Minimum design checks for business-app work: 製品コードを変えないため、layer・function・DTO・永続化・画面・error の各項目は該当なし。testability は Matrix。
+
+## Contract Probe
+
+- 1「GitHub の PR の files API は、closeout の移送を `renamed` と `previous_filename` で返し、main を取り込んだ lane の PR の差分は自分の packet だけを含む」: `gh api -X GET 'repos/kosei-w90607/inventory-system-desktop/pulls/N/files?per_page=100'`（2026-09-28、read-only）を #120・#119（closeout: `renamed docs/archive/plans/… ← docs/plans/…`）、#118（#114 の packet が main にある時期に merge した lane: 差分の packet は `added docs/plans/2026-09-27-small-fixes-batch.md` だけ）、#116（open の lane: 自分の packet の `added` だけ）で読んだ → 成立。
+- 2「GitHub が移送を `renamed` でなく削除と追加で返す場合がある」: 類似度の閾値による（未実測）→ 設計は依存しない。D2 は `removed` の `filename` も離れる packet として扱い、head の archive の内容で判定する（`test_r0_closeout_reported_as_remove_and_add_passes`）。
+- 3「merge 済みの packet が main に残ると PK5 が red になる」: base `b0f3b68b` の worktree で `bash scripts/check-workflow-git.sh` → exit 1、`docs/plans/2026-09-27-small-fixes-batch.md の Plan Commit '06f12ca8…' は現在の HEAD の祖先ではありません`。`git merge-base --is-ancestor 06f12ca8… b0f3b68b` も exit 1 → 成立（Coordinator の観測に無かった 4 つ目の待ち。G2 の比較の前提）。
+- 4「`docs/plans/` が空になる main の closeout を lane が取り込むと、git が lane の packet を archive へ動かす候補にする」: `$TMPDIR` の合成 repo（git 2.53.0。main が最後の packet を archive へ移し、lane が別の packet を足す）で `git merge main` → `CONFLICT (file location)`（lane が足した `docs/plans/2026-01-02-b.md` を、main で rename された directory の中の追加とみなし `docs/archive/plans/2026-01-02-b.md` への移動を示す）、作業 tree では lane の packet が `docs/archive/plans/` にある。`git -c merge.directoryRenames=false merge main` は衝突なしで lane の packet が `docs/plans/` に残る → 成立（D8）。
+- 5「hosted の docs job（`actions/checkout@v6`、`fetch-depth: 0`）で `origin/main` が解決できる」: 未実測（本 lane は PR を作らない）。実装の PR の hosted の docs job の log で、S3 が起点に `origin/main` を使ったことを確かめる。解決できなければ S3 は全 packet の検査に倒れ（red の向き）、安全は弱まらない。
+- 6「現行の helper の判定」: `scripts/pr-gate.py:223-234`（head の一覧、`packet absent or multiple active packets`、`packet not registered in Plans`）と `:243-244`（`R2+ active packet requires --packet`）を読んだ → 成立。
+- 7「link 検査は directory を指す link を拒む」: `scripts/doc-consistency-check.sh:1716`（`[ ! -f "$resolved_path" ]`）→ 成立。D6 の pointer は文字列 `docs/plans/` にする。
+
+## Contract Coverage Ledger
+
+| Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
+|---|---|---|---|
+| D1 R2+ は差分が触る active packet がちょうど `--packet` | S1 | AC1（`PacketScope` の R2+ の行）、AC10 の MU1・MU2・MU4 | — |
+| D2 R0 / R1 は active packet を触らない、closeout の移送は Phase archive だけ | S1 | AC1（R0 の行）、AC10 の MU3・MU5 | — |
+| D3 helper は head の一覧と Plans.md を読まない | S1 | AC1（`test_packet_scope_does_not_list_docs_or_read_plans`）、AC3 | — |
+| D4 PK5 の祖先の検査は差分が触る packet、起点なしは全 packet | S3 | AC4、AC10 の MU6・MU7 | hosted の `origin/main`（Probe 5） |
+| D5 closeout は wave ごとにまとめ、後続 lane は待たない | S7、S8 | AC6 | owner の G2 の判断（Plan Gate） |
+| D6 Plans.md は `docs/plans/` を指す 1 行、PK4 はその行を求める | S5、S6、S11 | AC5、AC10 の MU8 | — |
+| D7 packet の `Branch` 行と依頼の名指しによる選択、入口の語 | S8、S9、S10 | AC8 | — |
+| D8 単段 merge は `merge.directoryRenames=false` | S8 | AC7 | — |
+| D9 守る境界（record の head/base、approved snapshot、Double Audit、classifier、R0 / R1 の要求、manual の再利用、strict） | S1 の変えないもの | AC2（既存の test 全体） | 非目的 |
+| 隣接: PK4 の Workflow State の形式の検査（10 field・enum・Findings Freeze） | 変えない | AC5（既存の section 1〜10・14〜27） | — |
+| 隣接: PK5 の Plan Commit の書換え・Amendments の prefix（D-039・MG-D5） | 変えない（対象の packet に掛かる） | AC4（既存の場面）、AC2（`test_registered_amendment_order_cannot_roll_back_manual`） | — |
+| 隣接: closeout の PR は R0 で自身の closeout を要求しない（MG-D9） | 変えない | AC1（`test_r0_closeout_archive_move_passes`） | — |
+| 隣接: Plan Packet の Plans.md の登録（本 plan-first commit） | 本 packet の登録行 | `--target plan` | 本 lane の closeout で消す |
+
+adjacent-contract sweep: S7〜S11 が触る節で上表に無い契約は、merge-evidence の RecordV1・capture / record の順序・Actions 停止時の扱い、DEV_WORKFLOW の遷移表・fail-closed・Evidence Ownership・Stacked train の base 付け替え（どれも変えない）。
+
+## Test Plan
+
+Test Design Matrix: [2026-09-28-harness-parallel-friction.md](test-matrices/2026-09-28-harness-parallel-friction.md)
+
+- targeted tests: `python3 scripts/tests/pr-gate.test.py`（`-k PacketScope` を含む）、`bash scripts/tests/workflow-git-checks.test.sh`、`bash scripts/tests/doc-consistency-plan-packet.test.sh`、`bash scripts/doc-consistency-check.sh`、`--target plan`、`bash scripts/check-workflow-git.sh`。
+- negative tests: Matrix の拒否の行（2 packet、`--packet` の不一致、R0 の編集・削除、Phase archive でない移送、他の lane の packet の移送、未知の status、起点なしの PK5、pointer 無し）。
+- mutation（AC10、各 mutation は実注入して red を確かめる。構造の推論だけで済ませない）:
+  - MU1: S1 の触る packet を head の一覧（旧 `:224-228`）に戻す → `test_other_lane_packet_in_head_r2_passes` が red。
+  - MU2: R2+ の条件を「`--packet` が触る packet に含まれる」（部分集合）に緩める → `test_two_active_packets_in_diff_rejected` と `test_r2_archiving_other_lane_packet_rejected` が red。
+  - MU3: R0 / R1 の経路から触る packet の検査を外す → `test_r0_edit_of_active_packet_rejected` が red。
+  - MU4: 触る packet の計算から `previous_filename` を外す → `test_r2_archiving_other_lane_packet_rejected` と `test_rename_inside_plans_counts_both_paths` が red。
+  - MU5: 離れる packet の Phase archive の検査を外す → `test_r0_archive_move_without_phase_archive_rejected` が red。
+  - MU6: S3 の対象を全 packet に戻す → S4 (a)（merge 済み packet が対象外で exit 0）が red。
+  - MU7: S3 の対象を常に空にする → S4 (b)・(c) が red。
+  - MU8: S5 の pointer の検査を外す → S6 の「pointer が無ければ ERROR」が red。
+- compatibility checks: 既存の helper の test 全体（AC2）、PK4 の既存の section（AC5）、PK5 の既存の場面（AC4）。
+- data safety checks: 変更は script・test・文書だけで、実データ・secret を含まない（Data Safety）。
+- main wiring/integration checks: `bash scripts/tests/run-workflow-tests.sh`、`bash scripts/local-ci.sh full`、実装の PR の hosted CI（Probe 5 の確認を含む）。
+
+## Boundary / Wire Contract
+
+- producer: GitHub REST の `GET /repos/{owner}/{repo}/pulls/{n}/files`（`--paginate --slurp`）と `GET /contents/{path}?ref=` 。
+- consumer: `scripts/pr-gate.py` の `Gate.requirements()`。
+- wire type: file entry の `status`（`added` / `removed` / `modified` / `renamed` / `copied` / `changed` / `unchanged`）、`filename`、`previous_filename`（renamed のとき）。contents は base64 の本文。
+- internal type: 触る packet の path の集合 2 つ（head にある、離れる）。
+- precision/range: 差分の path の数は現行の上限（`:216` の 6000 未満）のまま。
+- round-trip path: なし（read-only の判定）。
+- invalid input: 未知の `status`、`removed` / `renamed` の entry の欠損 field は exit 2。archive の内容の取得失敗は exit 2。
+- compatibility: CLI の引数・exit code・record の wire（RecordV1）・capture の形は変えない。capture の `requirements` の中身も同じ key。
+
+## Review Focus
+
+- Plan Review の冒頭で `Ordinary Operation` の操作列が目的を達成できるかを `成立 / 具体的な反例あり / 外部前提が未確認` で答える（Probe 5 は外部前提）。
+- G2 の比較: 推奨 B の理由と棄却した A・C の評価が現物と合うか。特に A の「review の後の head の変化と manual のやり直し」と「Plans.md の `## 直近の完了` の衝突」の評価、Coordinator の見立てに PK5 が抜けていたという指摘（Probe 3）。
+- D1・D2 の判定が、他の lane の packet の改変、R0 の乱用、directory rename の事故、GitHub の rename の返し方の揺れのどれかを通さないか。R2+ の lane の PR が自分の packet を差分に出さない場面が現実にあるか（あれば fail-closed で止まることの影響）。
+- D4 の起点の決め方（`WORKFLOW_BASE_SHA` → `origin/main` → 全 packet）が、pre-push・local-ci・hosted の PR・hosted の dispatch（PR の branch と main）のどれでも、自分の packet を検査から外さないか。
+- D6 の pointer を文字列の検査にしたこと（link にしない理由、inline code を数える理由）と、PK4 の検査を丸ごと消す案との比較。
+- S2 の既存の test の置き換えが、退役する入力の代わりに同じ失敗を新しい入力で拒むものになっているか（弱めていないか）。
+- 「本 lane 自身の merge」で旧い helper を使う手順が成り立つか（Gate が cwd の git を使うこと）。
+
+## Spec Contract
+
+Contract ID: SPEC-WF-PARALLEL-FRICTION
+
+- D1: R2+ の PR は、差分（file entry の `filename` と `previous_filename`）が触る `docs/plans/` 直下の dated packet がちょうど `--packet` の 1 つで、それが head にあるときだけ helper の判定を通る。
+- D2: R0 / R1 の PR は、差分が head にある active packet を触らないときだけ通る。差分で `docs/plans/` を離れる packet は、head の `docs/archive/plans/<同じ名前>` の Phase が `archive` のとき closeout の移送として通し、それ以外は削除として拒む。
+- D3: helper は head の `docs` / `docs/plans` の一覧と `docs/Plans.md` を読まない。
+- D4: PK5 の Plan Commit / Amendments の祖先・不変性の検査は、起点（`WORKFLOW_BASE_SHA` が HEAD と違えばそれ、そうでなければ `origin/main`）と HEAD の merge-base からの差分が触る packet に掛ける。起点が解決できなければ全 packet に掛ける。Evidence Mode・Phase・shallow の検査は全体に掛ける。
+- D5: merge 済みの lane の closeout は wave ごとに 1 本の R0 PR にまとめてよく、wave を閉じる前に完了する。後続 lane の base 同期は先行 lane の closeout を待たない。merge 済みで closeout 前の packet は Phase implementing のまま `docs/plans/` に残る。
+- D6: `docs/Plans.md` の `## 次の行動` は `docs/plans/` を指す 1 行を持ち、lane の起票・closeout はこの節へ lane ごとの行を足さない。PK4 は active packet があるとき、その節（code fence と HTML comment を除く）に `docs/plans/` の文字列を求める。
+- D7: packet は Workflow State に helper・checker が評価しない `Branch` 行を持ち、前文に wave と lane を書く。再開は依頼が名指しする packet から始め、特定できない・branch が一致しない・merge 済みのときは停止する。
+- D8: lane の base 同期の単段 merge は `git -c merge.directoryRenames=false merge origin/main` で行う。
+- D9: record の head/base の照合、approved snapshot の Risk・Final Review Minimum・Human Gate の照合、Double Audit の下限、main 側の classifier、R0 / R1 の `--risk` / `--manual` の要求と CI 実行 code の拒否、manual の再利用の条件、strict は変えない。
+
+## Trace Matrix
+
+| Spec ID | Plan Step | Test | Review Focus | Evidence |
+|---|---|---|---|---|
+| SPEC-WF-PARALLEL-FRICTION-D1 | S1、S2 | AC1、AC10（MU1・MU2・MU4） | 他の lane の packet の改変 | test 出力と mutation の exit |
+| SPEC-WF-PARALLEL-FRICTION-D2 | S1、S2 | AC1、AC10（MU3・MU5） | R0 の乱用、directory rename | test 出力と mutation の exit |
+| SPEC-WF-PARALLEL-FRICTION-D3 | S1 | AC1、AC3 | 二重実装 | rg 出力 |
+| SPEC-WF-PARALLEL-FRICTION-D4 | S3、S4 | AC4、AC10（MU6・MU7） | 起点の決め方 | test 出力と実物の exit |
+| SPEC-WF-PARALLEL-FRICTION-D5 | S7、S8 | AC6 | G2 の比較 | rg 出力、owner の判断 |
+| SPEC-WF-PARALLEL-FRICTION-D6 | S5、S6、S11 | AC5、AC10（MU8） | pointer を文字列にしたこと | test 出力と rg 出力 |
+| SPEC-WF-PARALLEL-FRICTION-D7 | S8、S9、S10 | AC8 | 選択規則の fail-closed | rg 出力 |
+| SPEC-WF-PARALLEL-FRICTION-D8 | S8 | AC7 | 手順の所在 | rg 出力、Contract Probe 4 |
+| SPEC-WF-PARALLEL-FRICTION-D9 | S1 の変えないもの | AC2、AC11 | 境界の弱化 | test 出力 |
+
+## Data Safety
+
+- 変更は tracked の script・test・文書だけ。実 POS / 店舗データ、DB、backup、log、receipt、secret、`.env*` を読まず、commit しない。
+- local-only: `.local/`（Codex の発注書、helper の capture）、`$TMPDIR`（AC10 の mutation の写し、Contract Probe 4 の合成 repo）。
+- synthetic-only: helper・checker の test の fixture（合成の path・SHA・packet の本文）。GitHub の実 PR は read-only の GET でだけ読み、fixture に写さない。
+
+## Implementation Results
+
+Fill after implementation.
+
+Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+
+## Review Response
+
+Fill after review.
+- Findings Freeze: not yet frozen; post-freeze exceptions: none.
