@@ -94,7 +94,6 @@ export function PriceRevisionFilters({
           selected={normalized.dept ?? null}
           disabled={departmentsQuery.isLoading}
           idPrefix="price-revision-department"
-          widthClass="w-[11rem]"
           onChange={(dept) => {
             onPatch({ dept });
           }}

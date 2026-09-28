@@ -189,7 +189,7 @@ describe("PreviewStep SPEC-STOP-D4 停止中（既定）", () => {
 
 it("⑰ SC6 / UIDISP-D6: 共有 formatDateTime を import しローカル定義を持たない", () => {
   expect(dateTimeSource).toMatch(
-    /import\s*\{[^}]*\bformatDateTime\b[^}]*\}\s*from\s*"@\/features\/inventory-records\/types"/,
+    /import\s*\{[^}]*\bformatDateTime\b[^}]*\}\s*from\s*"@\/lib\/date-time"/,
   );
   expect(dateTimeSource).not.toMatch(/function\s+(?:formatDateTime|formatCheckedAt)\s*\(/);
   expect(dateTimeSource).not.toContain("formatCheckedAt");

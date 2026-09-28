@@ -42,7 +42,7 @@ import {
 } from "@/features/stock-inquiry/lib/format-stock-display";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type DisposalCreateResult, type ProductWithRelations } from "@/lib/bindings";
-import { formatDateTime } from "@/features/inventory-records/types";
+import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
 import { unwrapResult } from "@/lib/invoke";

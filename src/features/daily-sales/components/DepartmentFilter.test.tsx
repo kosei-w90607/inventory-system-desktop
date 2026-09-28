@@ -1,7 +1,7 @@
 // src/features/daily-sales/components/DepartmentFilter.test.tsx
 //
 // B0 characterization test: daily-sales DepartmentFilter の現 DOM 固定。
-// B3 移行後: patterns/DepartmentFilter を使用。widthClass="w-[10rem]" / idPrefix="dept-filter"（既定値）。
+// B3 移行後: patterns/DepartmentFilter を使用。idPrefix="dept-filter"（既定値）。幅は部品の固定 w-[11rem]（02 ⑨）。
 // D-B4 意図的差分②: allLabel は「すべての部門」（旧実装「すべて」から変更）。
 // 設計: docs/function-design/56-ui-daily-sales.md §56.7
 
@@ -25,11 +25,11 @@ describe("DepartmentFilter (daily-sales, UI-09a) B0 characterization (D-B4)", ()
     expect(trigger).toBeInTheDocument();
   });
 
-  it("B0-daily-DF2: SelectTrigger に w-[10rem] クラスが付いている（width 現状固定）", () => {
+  it("B0-daily-DF2: SelectTrigger に w-[11rem] クラスが付いている（部門 select の幅は全画面同一、02 ⑨）", () => {
     render(<DepartmentFilter options={mockOptions} selected={null} onChange={vi.fn()} />);
 
     const trigger = document.getElementById("dept-filter");
-    expect(trigger?.className).toContain("w-[10rem]");
+    expect(trigger?.className).toContain("w-[11rem]");
   });
 
   it("B0-daily-DF3: unselected 時、placeholder「すべての部門」が表示される（D-B4 意図的差分②: allLabel 既定「すべての部門」へ統一）", () => {

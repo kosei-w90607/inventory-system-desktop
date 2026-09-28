@@ -630,12 +630,11 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 />
 
 // 部門フィルタ: 候補は listDepartments の master 全件（filtered result 由来にしない）。
-// widthClass / idPrefix は呼び出し側で現値を維持する
+// 幅は部品が w-[11rem] に固定し、呼び出し側では渡さない（幅の prop を持たない）。idPrefix は呼び出し側で現値を維持する
 <DepartmentFilter
   options={departmentOptions}
   selected={dept ?? null}
   onChange={(deptId) => updateSearch({ dept: deptId ?? undefined })}
-  widthClass="w-[11rem]"
   idPrefix="product-dept-filter"
 />
 
@@ -643,14 +642,14 @@ toast.error(`出力に失敗しました: ${message}`, { id: `export-${reportTyp
 <div className="grid gap-1">
   <label className="text-sm text-muted-foreground" htmlFor={triggerId}>部門</label>
   <Select …>
-    <SelectTrigger id={triggerId} className={widthClass}>…</SelectTrigger>
+    <SelectTrigger id={triggerId} className="w-[11rem]">…</SelectTrigger>
     …
   </Select>
 </div>
 // component 1 箇所の改修で 5 サイトが揃う。
 ```
 
-**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。**すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数 / フィルタ toolbar 内の SegmentedControl）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400、既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。`Label` component を使う場合は `className="text-sm font-normal text-muted-foreground"` を渡して component 既定の `font-medium` を打ち消す（`cn()` の twMerge は同じ font-weight group の後勝ちで置換する。class を足すだけでは消えない）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持し、toolbar 内では `h-9 items-center self-end`（入力と同じ高さの箱を行の下端に揃え、その中で縦中央。上置き label を持たないため行の中央では浮く。owner L3 2026-09-15）。**tab / mode 切替として使う SegmentedControl（monthly ModeTabs、PLU書出しの書出しモード 等、⑤ 参照）は可視 Label を持たない**（`ariaLabel` 必須）。判定軸は選択肢の数ではなく文脈であり、フィルタ toolbar 内の SegmentedControl（廃番表示 / PLU表示 / 並び順）は `ariaLabel` の文言を上置き label として可視化する（廃番表示と PLU表示は隣接してどちらも「すべて」を持ち、label なしでは識別できない。並び順も同じ列にあるため揃える。owner 確認 2026-09-11 で確定。廃番表示 3 択 / PLU表示 5 択が SegmentedControl なのは DSR-02 drift〈2 択以外は Tabs〉であり、Tabs / Select 化しても同じ文脈軸を適用する）。SegmentedControl は `role="group"` の button 群で labelable 要素を持たないため、この label は `<span id={…} className="text-sm text-muted-foreground">` + `aria-labelledby` で紐付け、`htmlFor` は使わない。live 型 SearchBar は `Input`（`max-w-md` 維持）を続ける。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。フィルタは `w-[11rem]`（商品一覧）等の固定幅を呼び出し側で指定。
+**使用トークン**: commit 型は wrapper `min-w-[18rem] flex-1` + 要素間 `space-2`（8px）+ ラベル `text-muted-foreground`。**すべてのフィルタ入力**（検索 / Select / date / number / `DepartmentFilter` / 並び替え / 表示件数 / フィルタ toolbar 内の SegmentedControl）は `div.grid.gap-1` 配下に可視 label を上置きし、入力要素を続ける。可視 label は `<label className="text-sm text-muted-foreground" htmlFor={…}>`（weight 400、既存の上置きサイト〈入出庫履歴 / 操作ログ / 在庫変動〉と同じ見た目）。`Label` component を使う場合は `className="text-sm font-normal text-muted-foreground"` を渡して component 既定の `font-medium` を打ち消す（`cn()` の twMerge は同じ font-weight group の後勝ちで置換する。class を足すだけでは消えない）。呼び出し側 toolbar は `flex flex-wrap items-end gap-3` で入力欄の下辺を揃える（⑭ で live 型 SearchBar に導入した形を全入力へ拡張。owner 2026-09-08「検索ツールの場所の表記は揃えたい」）。例外 2 種: **Checkbox は label 内包の横並び**（`<label className="flex items-center gap-2 text-sm">` に `Checkbox` + 文言、文言は muted にしない、checkbox の慣行）を維持し、toolbar 内では `h-9 items-center self-end`（入力と同じ高さの箱を行の下端に揃え、その中で縦中央。上置き label を持たないため行の中央では浮く。owner L3 2026-09-15）。**tab / mode 切替として使う SegmentedControl（monthly ModeTabs、PLU書出しの書出しモード 等、⑤ 参照）は可視 Label を持たない**（`ariaLabel` 必須）。判定軸は選択肢の数ではなく文脈であり、フィルタ toolbar 内の SegmentedControl（廃番表示 / PLU表示 / 並び順）は `ariaLabel` の文言を上置き label として可視化する（廃番表示と PLU表示は隣接してどちらも「すべて」を持ち、label なしでは識別できない。並び順も同じ列にあるため揃える。owner 確認 2026-09-11 で確定。廃番表示 3 択 / PLU表示 5 択が SegmentedControl なのは DSR-02 drift〈2 択以外は Tabs〉であり、Tabs / Select 化しても同じ文脈軸を適用する）。SegmentedControl は `role="group"` の button 群で labelable 要素を持たないため、この label は `<span id={…} className="text-sm text-muted-foreground">` + `aria-labelledby` で紐付け、`htmlFor` は使わない。live 型 SearchBar は `Input`（`max-w-md` 維持）を続ける。`id` 未指定時は `useId()` でラベルとの対応を一意にし、`label` 未指定時は「商品を検索」。部門フィルタ（`DepartmentFilter`）の幅は部品が `w-[11rem]` に固定し、呼び出し側では変えない（旧 04 の token 表「検索欄」の行「部門 select 幅は全画面同一」。11rem は、初期データで最も長い部門名「ビューティ関連」〈7 文字〉と未選択の「すべての部門」を、trigger の `text-sm` の字幅に左右 padding と chevron を足しても切らずに収める見積もりの値で、runtime 反映時に owner の実機確認〈L3〉で確かめる。より長い部門名が入れば見直す）。部品を使わない入出庫履歴の部門 select は `w-44`（= 11rem）で同じ幅を持つ。そのほかのフィルタの Select は固定幅を呼び出し側で指定する。
 
 **状態**:
 - **disabled**: フィルタは候補ロード中 `disabled` にできる
@@ -1073,3 +1072,4 @@ tone family は感情で分ける: 緑 = 終わったことを伝えるプラス
 | 2026-09-11 | PR #51 | ⑳ Gated Amendment 3: 見出しの shrink 保証 / runtime 未反映の明示。 |
 | 2026-09-11 | PR #50 | ⑲ Gated Amendment 5: 固定帯を白地の箱へ / chevron を muted。 |
 | 2026-09-15 | PR #63 | ㉑ フィルタ Label 上置き・PageHeader と section 見出しの2段配置・h2 token の runtime 反映。① props、⑤ 群名の紐付け、⑨ 適用サイトと mode 切替例を同期。 toolbar Checkbox `h-9 self-end`（L3 round 1）。 |
+| 2026-09-28 | small-fixes-batch（plan 側で先に訂正） | ⑨ `DepartmentFilter` の幅を部品の `w-[11rem]` 固定にし、呼び出し側で幅を渡す記述と例をやめる（旧 04「部門 select 幅は全画面同一」）。入出庫履歴の独自 select の `w-44` を同じ幅として記す。 |

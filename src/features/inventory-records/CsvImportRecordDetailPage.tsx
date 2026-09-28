@@ -37,7 +37,8 @@ import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
 import { queryKeys } from "@/lib/query-keys";
 import { returnToLinkProps } from "@/lib/return-to";
-import { formatDateTime, formatYen } from "./types";
+import { formatDateTime } from "@/lib/date-time";
+import { formatYen } from "./types";
 
 export interface CsvImportRecordDetailPageProps {
   importId: number;

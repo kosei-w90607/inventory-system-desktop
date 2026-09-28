@@ -124,7 +124,6 @@ export function ProductListPage({ search, onSearchChange }: ProductListPageProps
           updateSearch({ dept });
         }}
         allLabel="すべての部門"
-        widthClass="w-[11rem]"
         idPrefix="product-dept-filter"
       />
       {departmentsQuery.isError ? (

@@ -342,10 +342,12 @@ Phase 2 closeout で `typedInvoke` fallback / baseline 監視は撤去済み。C
 |---|---|---|---|
 | `import_error` | `ErrorState` フルスクリーン表示。「再度ファイルを選択してください」+ メッセージ本文（BIZ-03 由来の日本語）+「最初に戻る」ボタン | `"idle"` | キャッシュ期限切れ（30 分超）/ プレビュー消失 / 重複ブロック。preview に戻っても再利用不可、idle 強制 |
 | `validation` | `ErrorState` 表示。recoverTo は元 state による（parsing → idle、importing → preview） | `"idle"` or `"preview"` | サイズ超過 / プレビュー token 不正等、CMD-07 入口で弾かれた防御チェック |
-| `internal` | Sonner トースト「データベースエラーが発生しました」+ state は据え置き | 該当なし（state 据え置き） | DB ロック競合等、リトライ可能 |
-| `not_found` | Sonner トースト + state 据え置き | 該当なし | rollback 時の csv_import_id 不在等（理論上 result variant からは発生しないが念のため） |
+| `internal` | `ErrorState` 表示。題名「エラーが発生しました」+ 本文（`describeError`）+ recoverTo に応じた「最初に戻る」/「プレビューに戻る」ボタン。recoverTo は元 state による（parsing → idle、importing → preview） | `"idle"` or `"preview"` | DB ロック競合等。取込み（commit）の失敗ならプレビューに戻り、同じプレビューから取込みをやり直せる |
+| `not_found` ほか上記以外の kind | `internal` と同じ `ErrorState` 表示（題名「エラーが発生しました」） | `"idle"` or `"preview"` | 解析・取込みでは通常発生しないが、発生しても `ErrorState` に出す |
 
-`recoverTo` の決定は hook 側で kind から導出する: `import_error` → `"idle"` 固定、それ以外は `state.status` で分岐（parsing 由来なら `"idle"`、importing 由来なら `"preview"`）。
+取消（rollback）の失敗は上の表に依らず、kind を問わず `ErrorState` を出さない。Sonner トースト「取り消しに失敗しました。もう一度お試しください」を出し、state は `result` のまま変えない（§55.2 の `rollback_failed` の注記、§55.9「rollback 失敗の UX」）。
+
+`recoverTo` の決定: 取込み（commit）の失敗は hook（`decideRecoverTo`）が kind から決め、`import_error` なら `"idle"`、それ以外は `"preview"`。解析（parse）の失敗は reducer の `parse_failed` が kind を問わず常に `"idle"` にする。
 
 **enum 契約化（D-061）**: `CmdErrorKind` は bindings 由来の generated union であり、`src/lib/invoke.ts` の `CMD_ERROR_KIND` はその 12 値に対する exhaustive 検査付き定数 map である。移行前は `export_error` と restore 3 値の計 4 値が定数 map に欠落していたが、現在は全 12 値を収録する。上記マトリクスの値・表示・recoverTo 分岐は不変。
 
@@ -497,12 +499,13 @@ ASCII 版（mermaid 非対応環境用）:
 `src/lib/invoke.ts` の `CMD_ERROR_KIND` const は generated `CmdErrorKind` の全 12 値を収録し、`IMPORT_ERROR: "import_error"` を含む。`useCsvImportFlow` 内で kind 別の `recoverTo` 決定を以下の形で書く:
 
 ```ts
-function decideRecoverTo(error: InvokeError, currentStatus: CsvImportState["status"]): "idle" | "preview" {
-  if (error.kind === CMD_ERROR_KIND.IMPORT_ERROR) return "idle";
-  if (currentStatus === "parsing") return "idle";
+function decideRecoverTo(error: InvokeError): ErrorRecoverTo {
+  if (error.cmdError.kind === CMD_ERROR_KIND.IMPORT_ERROR) return "idle";
   return "preview";
 }
 ```
+
+`decideRecoverTo` は取込み（commit）の `onError` だけが使う（`ErrorRecoverTo` は `"idle" | "preview"`）。解析の失敗は reducer の `parse_failed` が常に `idle` へ戻すため、呼出し元の state を引数に取らない。
 
 直書き `if (error.kind === "import_error")` を禁止する根拠: タイポによる分岐漏れを防ぐ。bindings 由来の `CmdErrorKind` と exhaustive 検査付き `CMD_ERROR_KIND` で TypeScript が静的検査する。
 
@@ -514,9 +517,9 @@ BIZ-03 §15.9 で preview キャッシュは 30 分有効。30 分超過後の c
 
 `rollbackMutation.onError` で Sonner トースト「取り消しに失敗しました。もう一度お試しください」+ state は `result` 据え置き。対象import IDを変えずに再試行できる。data-corruption は BIZ-03 §15.5 / BIZ-08 §37.5 のTXで保護されているため、UI側で日付検索から別IDを推測しない。
 
-#### `internal` kind の沈黙ポリシー
+#### `internal` kind の表示
 
-DB ロック競合等の `internal` は Sonner トーストのみで state を据え置く。これは UI-00 の pluDirty / csvImports クエリ失敗時の「誤検知より沈黙を選ぶ」方針（[53-ui-home.md §53.5](53-ui-home.md)）と整合的。CSV 取込みは利用者がリトライ判断できる文脈なので、強制的に state を巻き戻さない。
+DB ロック競合等の `internal` も、解析・取込みの失敗では他の kind と同じく `ErrorState` を出し、`recoverTo` に従って戻す（§55.5 の表）。取込みの失敗ならプレビューに戻り、利用者は同じプレビューから取込みをやり直せる。トーストだけを出して state を変えないのは取消（rollback）の失敗だけ（上の「rollback 失敗の UX」）。取込みの失敗で state を `importing` のまま残すと、§55.7 の `useBlocker` が画面の移動を止めたまま利用者が抜け出せないため、トーストだけで済ませない。
 
 ---
 
@@ -562,3 +565,4 @@ memory `tauri2-linux-ime-limitation.md` 準拠、Phase 2 以降 Windows native �
 | 2026-08-03 | PR #58（gated Amendment 2） | §55.5 ErrorRowsTable の accordion trigger を明示的操作文言（閉「エラー詳細を見る（N件）」/ 開「エラー詳細を閉じる（N件）」）+ 文言隣接 chevron へ改訂。owner Windows native L3 P3 起源（件数のみ trigger は展開可能な操作部と認識できない） |
 | 2026-08-16 | PR #79 | SPEC-SDI-D5/D7: 両タブ共通の同日追加Alert/Dialog、全active summary、state/flag、per-import取消と再取得契約を正本化。 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §55.0 に現行buildの一時停止（SPEC-STOP-D4、Z004 タブの案内の見出し・本文の正本、「取り込む」の無効化）を追加 |
+| 2026-09-28 | small-fixes-batch（plan 側で先に訂正） | DOC-2: §55.5 の kind 別表示マトリクスの `internal` / `not_found` の行と recoverTo の決定の文、§55.9 の `decideRecoverTo` の例と `internal` の節を、実装・§55.2 の reducer 遷移表・§55.4 手順 20・§55.8 に合わせる。取消の失敗のトーストは表の外の文に分ける |

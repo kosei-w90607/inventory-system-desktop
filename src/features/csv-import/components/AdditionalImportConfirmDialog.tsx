@@ -9,7 +9,7 @@
 // （gated Amendment 4、共通 src/components/ui/table.tsx は変更せず利用側 className で
 // whitespace-nowrap 既定を override）。docs/design-system/01-decision-rules.md DSR-16 参照。
 
-import { formatDateTime } from "@/features/inventory-records/types";
+import { formatDateTime } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
