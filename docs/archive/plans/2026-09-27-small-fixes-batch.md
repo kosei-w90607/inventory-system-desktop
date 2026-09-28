@@ -6,7 +6,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Plan Commit: 06f12ca86fe175190a6ebcf0d9496c1107704a0f
 - Amendments: none
@@ -26,12 +26,13 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - 上限の round 3（2026-09-28）: 両 reviewer とも reject、一括是正（裁定 r3）。対象 `cf9213a6`、fresh Opus 5.5 と Codex GPT-5.6 Sol。Ordinary Operation は両者とも成立とした。round 4 は無いため、Coordinator の裁定 r3 の E3-1〜E3-7 を plan-gate のまま一括で packet と Matrix に反映した（起草役、本 commit）。Plan Commit は pending のまま、owner の plan-approved の承認へ。
 - plan-gate → plan-approved（2026-09-28、Coordinator、本 commit）: 上限の round 3（対象 `cf9213a6`）は両 reviewer とも reject（P1 0）。追加の round は回さず、裁定 r3 の一括是正（`06f12ca8`）で全件を反映し、Coordinator が AC-S2 の baseline・予算表・旧前提の語の sweep を現物で確かめた。owner 承認（2026-09-28「両方OK」、この change での介入 4 回目、介入の上限 7）のもと plan-approved。Plan Commit = 本 commit の親（`06f12ca8`）。
 - plan-approved → implementing（2026-09-28、Coordinator、state-only）: Writer（Opus 5.5 subagent の worktree run）へ実装を発注する。Writer の開始 HEAD は本 commit。
+- implementing → archive（2026-09-28、Coordinator の closeout、本 commit）: PR #118 を squash merge（`b0f3b68b`、2026-09-28、helper 経由）。packet と Matrix を archive へ移送し、Implementation Results と Review Response を記録。closure の P3（T-S4a の TZ の固定が Risk の「環境・再現性」の行と T-S4a の仕様に書かれていない）を本 packet の 2 か所で直した。Plans.md と backlog を同期。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 7（owner 承認 2026-09-28、この change での介入 4 回目）。その前の上限は 6（owner 承認 2026-09-27、この change での介入 3 回目。起票時の 4 = 起票承認・manual の PASS / FAIL・Ready・merge から改定）。Plan Review round 3 の後の一括是正を plan-approved にする承認で介入が 1 増えて 7 となり 6 を超えるため、7 への改定をその承認と同じ 1 回（この change での介入 4 回目）で求める。
+- 介入回数上限: 7（owner 承認 2026-09-28、この change での介入 4 回目）。その前の上限は 6（owner 承認 2026-09-27、この change での介入 3 回目。起票時の 4 = 起票承認・manual の PASS / FAIL・Ready・merge から改定）。Plan Review round 3 の後の一括是正を plan-approved にする承認で介入が 1 増えて 7 となり 6 を超えるため、7 への改定をその承認と同じ 1 回（この change での介入 4 回目）で求める。closeout 時の消費 9 / 上限 9（開発での Codex の使い方の判断と同じ回で 7 から 9 へ改定）= 起票承認、Non-scope の 2 件を backlog に残す決定、予算の改定、plan-approved と上限 7、manual の PASS（`988a9198`）、開発での Codex の使い方の判断と上限 9、manual の PASS（`f4b6d478`）、Ready、merge
 - 実働時間上限: 30分（manual の目視: 部門の欄 5 画面〈「ビューティ関連」を選ぶのは部門 master を候補にする 3 画面だけ〉+ PLU 画面の日時 2 箇所。L3 のための DB の準備は無い）
-- relay 往復上限: 5（owner 承認 2026-09-27。起票時の 2 = Plan Review と Final Review の Codex 各 1 から、Plan Review が 3 round に延びたため改定）
+- relay 往復上限: 5（owner 承認 2026-09-27。起票時の 2 = Plan Review と Final Review の Codex 各 1 から、Plan Review が 3 round に延びたため改定）。closeout 時の消費 4 / 上限 5 = Plan Review の Codex 3、Final Review broad の Codex 1。closure は Claude 側で行い、Codex closure の予備は使わなかった
 - Plan Review round 天井: 3（round 3 で到達。round 4 は無い）
 
 | 種別 | 上限 | 消費（2026-09-28 時点） | 残りの見込み | 予備 | 合計 |
@@ -202,7 +203,7 @@ DOC-2 は 2026-09-16 の図面監査の finding が起点のため、該当す�
 | Data safety / evidence | test は合成の値だけを使う。実店舗の data・PLU file・DB を commit しない | Data Safety は R2 のため節を置かず Test Plan に書く |
 | Reporting / accounting semantics | not applicable（集計・金額を変えない） | not applicable |
 | Manual verification | S4・S5 の見た目は owner の目でしか確かめられない | Test Plan の L3-1・L3-2 |
-| 環境・再現性 | S4 の T-S4b は test の中で `process.env.TZ` を `Asia/Tokyo` に固定し、日付の境界を跨ぐ固定の UTC 値で組む（runner の時差に依らず、UTC の runner でも時差変換漏れを捕まえる）。新しい環境依存は足さない | T-S4b |
+| 環境・再現性 | S4 の T-S4a と T-S4b は test の中で `process.env.TZ` を `Asia/Tokyo` に固定する（T-S4a は UTC の runner でも `snapshot_at` を UTC と解釈して直す誤りを捕まえる。T-S4b は日付の境界を跨ぐ固定の UTC 値で組み、runner の時差に依らず時差変換漏れを捕まえる）。新しい環境依存は足さない | T-S4a、T-S4b |
 
 ## Design Readiness
 
@@ -237,7 +238,7 @@ Test Design Matrix: [2026-09-27-small-fixes-batch](test-matrices/2026-09-27-smal
   - T-S2 `test_generate_custom_code_req101_requires_borrowed_transaction`（`product_service.rs` の test module）: `let _ = generate_custom_code as fn(&rusqlite::Transaction<'_>, i64) -> Result<String, BizError>;` の形で型を固定する（`invariants.rs` の `apply_stock_change` と同じ先例）。修正前: 現行の `&DbConnection` の引数では cast が型不一致で `cargo test` のコンパイルが止まる（red）。
   - T-S3 `src/lib/date-time.test.ts`（REQ-206）: `formatDateTime("2026-09-27T08:05:09")` が `"2026-09-27 08:05:09"`、時差の変換をしないこと。修正前: `@/lib/date-time` が無く import で失敗する（red）。既存 7 本の import 元の正規表現を `@/lib/date-time` に直したものは、修正前の source（旧 import 元）で red、移動後に green になる。
   - T-S3b `REQ-206 ⑰ UIDISP-D6: formatDateTime の定義は src/lib/date-time.ts だけで、使う file はすべて @/lib/date-time から import する`（`src/lib/date-time.test.ts`）: `src` の production source（`.ts` / `.tsx`、`*.test.*` を除く。走査の形は `src/lib/file-contract-no-local-duplicates.test.ts` の `sourceFiles` と同じ）を読み、次の 3 点を assert する。(1) `formatDateTime` を定義する file（`function formatDateTime` か `const` / `let` / `var formatDateTime =`、export の有無を問わない）の一覧が `["lib/date-time.ts"]` と完全一致する。(2) 定義 file 以外で `\bformatDateTime\b` を含む file のうち、`import { … formatDateTime … } from "@/lib/date-time"` の形の import 文（改行を含む named import も一致させる）を持たないものの一覧が `[]`（re-export や旧い置き場からの import もここで red）。(3) 定義 file 以外で `formatDateTime` を含む file の一覧が空でない（走査の誤りで空集合のまま green にならない）。修正前: `src/lib/date-time.ts` が無く定義が `features/inventory-records/types.ts` にあるため (1) で red。反例の mutant = 7 本が走査しない `ManualSalePage.tsx` の import を外して非 export のローカル `formatDateTime` を定義する → (1) と (2) で red（typecheck・7 本・AC-S3 の `export function` の検索はどれも通るため、この test だけが捕まえる）。
-  - T-S4a（REQ-402）: `getPluSlotSummary` の `snapshot_at` が `"2026-08-20T17:34:05"` のとき「最終読込み日時: 2026-08-20 17:34:05」を表示する。修正前: `toLocaleString` が「2026/08/20 17:34」を出し red。
+  - T-S4a（REQ-402）: test の中で `process.env.TZ` を `Asia/Tokyo` にし、終わりに元へ戻す（戻し方と pool の前提は T-S4b と同じ）。`getPluSlotSummary` の `snapshot_at` が `"2026-08-20T17:34:05"` のとき「最終読込み日時: 2026-08-20 17:34:05」を表示する。TZ を固定するのは、UTC の runner では `snapshot_at` を UTC と解釈して直す誤りが同じ文字列を出して見逃されるため。修正前: `toLocaleString` が「2026/08/20 17:34」を出し red。
   - T-S4b（REQ-402、必須）: test の中で `process.env.TZ` を `Asia/Tokyo` にし、終わりに元へ戻す。実行中の `process.env.TZ` の変更が `Date` に効くのは vitest の pool が forks（既定）であることに依る（worker threads では効かない）。戻すときは、元が未設定なら `delete process.env.TZ`（系の既定の時差に戻る）、元の値があればその値を代入する（未設定の値をそのまま代入すると文字列 `"undefined"` になるため、分岐で分ける）。保存済み未確認の復帰状態の `savedAt` に日付の境界を跨ぐ固定値 `"2026-12-31T15:05:09.000Z"` を置き、「保存日時: 2027-01-01 00:05:09」を表示する。修正前: 「2027/01/01 00:05」で red。UTC のまま並べる誤実装（`toISOString().slice(0, 19).replace("T", " ")` 相当）を一時的に入れて red になることを確かめ（`TZ=UTC` の runner でも捕まえる）、戻す。Node は実行中の `process.env.TZ` の変更を `Date` に反映する前提で、この mutant の red で前提も確かめる。
   - T-S4c（REQ-402）: `savedAt` が解釈できない文字列なら、その文字列をそのまま表示する（現行の挙動の維持）。
   - T-S4d（REQ-402、既存 test の書換え）: 保存 test `REQ-402 keeps a saved pending export recovery state without PLU file bytes`（起草時 390 行、`toMatchObject` は 404〜413 行）で時計を固定し（`vi.useFakeTimers({ toFake: ["Date"] })` と `vi.setSystemTime(new Date("2026-07-01T12:00:00.000Z"))`、終わりに `vi.useRealTimers()`）、localStorage の `savedAt` が `"2026-07-01T12:00:00.000Z"`（ISO の UTC）と完全一致することを足す。現行も green（保存形を変えない約束の固定）。保存時にローカル書式へ変える mutant で red になることを確かめる。
@@ -286,6 +287,11 @@ Fill after implementation.
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
 - 実装: [PR #118](https://github.com/kosei-w90607/inventory-system-desktop/pull/118)。S1〜S8 を Writer（Opus 5.5 subagent）が実装した。manual の L3-1・L3-2 は owner が PASS とした後、main の取込みで衝突を解いたため、最終の head でやり直す（merge-evidence の再利用の条件を満たさない）。
+- 保守の 3 件: `migrate` のコメントの手順番号を 22 §3.2 に合わせ（S1）、`generate_custom_code` の第 1 引数を借りた transaction に型で限って 30 §4.2・§4.3 を直し（S2）、`formatDateTime` を `src/lib/date-time.ts` へ移して re-export を残さず、production source 全体を走査する test で置き場を固定した（S3）。
+- 表示: PLU書出しの「最終読込み日時」「保存日時」を `YYYY-MM-DD HH:mm:ss`（ローカル時刻）にした（S4。`snapshot_at` は `Date` に通さず、`savedAt` の保存形は ISO の UTC のまま）。部門の絞り込み欄の幅を共有部品が `w-[11rem]` だけで持ち、呼び出し側の `widthClass` を消した（S5）。
+- 正本: CSV 取込みの解析・取込みの失敗は `ErrorState` とする 55 §55.5・§55.9 と、PLU slot の `activated_at` / `released_at` の意味を実装に合わせた plu-tables §25 は plan 側で訂正し、取込み由来の `internal` を固定する hook test を足した（S6・S7）。traceability は再生成した（S8）。
+- review の是正: Final Review の P3 3 件（T-S4a の TZ の固定、`product_service.rs` のコメントの TX の順序、REQ-402 の Trace）を manual のやり直しの前に直した。
+- CI・manual・merge: hosted CI は全ジョブ pass。manual の L3-1・L3-2 は最終の head で owner が PASS とした。Ready・merge は helper 経由（2026-09-28）。
 
 ## Review Response
 
@@ -298,3 +304,5 @@ Fill after review.
   - 是正の後の closure は Claude 側の fresh reviewer で行う（Final Review Minimum 1）。
 
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
+
+- Closeout（2026-09-28）: Plan Review は round 3（上限）まで回し plan-approved（遷移記録のとおり）。Final Review broad の P3 3 件の是正と、PR3 #117・#120 を含む main の取込みの後の closure は Claude 側 fresh Opus 5.5（`f4b6d478`）= approve（新しい P1 / P2 0、P3 1）。その P3（Risk の「環境・再現性」の行が TZ を固定する test を T-S4b だけとし、T-S4a の仕様にも TZ の固定が書かれていない）は本 closeout で 2 か所を直した。manual は owner の Windows native L3（`f4b6d478`、2026-09-28）で L3-1・L3-2 とも PASS。`988a9198` での PASS は、その後に衝突を解いた main の取込みがあったため再利用せず（merge-evidence の再利用の条件を満たさない）、最終の head でやり直した。専用 record は review pass（broad 2 + closure 1）、manual pass。hosted CI は全ジョブ pass、[PR #118](https://github.com/kosei-w90607/inventory-system-desktop/pull/118) を squash merge（`b0f3b68b`）。owner 決定（2026-09-28）: 開発で Codex に頼るのは基本 review だけ（今のところ）。
