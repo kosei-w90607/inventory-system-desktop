@@ -573,4 +573,4 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 | 2026-06-08 | selection-tone follow-up | TabsHeader の二択切替 visual を `SegmentedControl` primitive に寄せ、monthly ModeTabs と同じ shared segmented control 仕様を参照する形に更新 |
 | 2026-07-29 | 監査是正 順21a plan-first | UI-TABLE-D1として日次5 sortable列のheader implementation ownerを`src/components/sales/SortableHeader.tsx`へ正本化。列集合・sort callback・ARIA・表示は不変 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: `source_import_count` の「N回の取込みを合算」表示、NULL安全表示、同日複数active importの加算済み表示契約を正本化。 |
-| 2026-09-27 | daily-report-z-display（design） | UI-09a-D16: 公式セクションに日計（Z001）の全行の表を足し、同日複数取込みの日は取込みごとに並べる。既存 2 表の見出しに出どころ（Z002 / Z005）を添える（[Plan Packet](../plans/2026-09-27-daily-report-z-display.md)、D-096）。 |
+| 2026-09-27 | daily-report-z-display（design） | UI-09a-D16: 公式セクションに日計（Z001）の全行の表を足し、同日複数取込みの日は取込みごとに並べる。既存 2 表の見出しに出どころ（Z002 / Z005）を添える（[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)、D-096）。 |

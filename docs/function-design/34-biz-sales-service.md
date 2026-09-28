@@ -414,4 +414,4 @@ fn export_sales_csv(
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 商品別 `product_code + source` 集約、全completed日報親のNULL安全な日次集約、`source_import_count`、月次additive regressionを正本化。 |
-| 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../plans/2026-09-27-daily-report-z-display.md)）。 |
+| 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
