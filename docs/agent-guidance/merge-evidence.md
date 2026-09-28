@@ -127,7 +127,7 @@ captureはrepo/PR/head/base、Plan Commit/Amendmentsと現在の正当なrecord�
 
 ## base同期だけでheadが変わる場合
 
-strictによりmainの取込みが必要な場合、まず先行PRのcloseoutを完了し、対象をDraftへ戻してからorigin/mainを取り込む。GitHubのUpdate branchも同じ扱いで、hookを通らない更新を信頼しない。新headではCIを実行し、独立reviewは新たなdelta/相互作用のclosureに限定する。全面監査を最初から繰り返す義務はない。並行PRではmain更新に伴う再Ready判断とCIが追加され得る。これはstrictを選ぶ運用コストとして各作業の予算に含め、今回のrollout予算だけで将来分も賄えるとはしない。
+strictによりmainの取込みが必要な場合、先行 PR の closeout を待たない。merge 済みで closeout 前の packet は、後続 PR の差分が触らない限り helper と PK5 の判定に入らない。対象を Draft へ戻してから `git -c merge.directoryRenames=false merge origin/main` で取り込む。GitHubのUpdate branchも同じ扱いで、hookを通らない更新を信頼しない。新headではCIを実行し、独立reviewは新たなdelta/相互作用のclosureに限定する。全面監査を最初から繰り返す義務はない。並行PRではmain更新に伴う再Ready判断とCIが追加され得る。これはstrictを選ぶ運用コストとして各作業の予算に含め、今回のrollout予算だけで将来分も賄えるとはしない。
 
 manualの再実施が不要とownerが判断できる候補は、new headが旧headをfirst parent、取得したmainをsecond parentに持つ単一のmergeで、旧base→旧headと新base→新headのPR差分が`git diff --binary --full-index --no-ext-diff --no-textconv BASE...HEAD --`のbyte比較で同一の場合に限る。patch-idだけの同値は根拠にしない。競合解消・別の編集があった場合、またはmanual対象への影響が否定できない場合は再利用しない。判定不能も同じ。merge-baseが複数ある等で差分が一意に定まらない場合も再利用しない。機械条件は必要条件で、manual対象への無影響を証明しない。
 
@@ -139,9 +139,9 @@ manual失敗の修正や対象挙動を変える修正は、既存L3の復旧・
 
 ## Helperの境界
 
-packet不在は親docs一覧で確認する。Git上にdocs/plansが無ければR0/R1のno-packet経路とし、親一覧の取得失敗や存在するdirectoryへのHTTP失敗は空結果に置き換えない。
+R2+はPRの差分が触るactive packetがちょうど`--packet`の1つであること、R0/R1は差分がactive packetを触らないことを確かめる。R0/R1で許すのはcloseoutの移送だけで、同じPRの差分の中で同名の`docs/archive/plans/`へ移し（`renamed`、または`removed`と`added`/`modified`の組）、archiveのPhaseがarchiveのものに限る。触るpacketは差分の`filename`と`previous_filename`で決め、headの`docs/plans/`の一覧とPlans.mdは読まない。archiveの取得失敗は空結果に置き換えない。
 
-追加候補は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+では`--packet docs/plans/FILE.md`を指定し、当該PR headのpacket・Plansの登録と照合する。対象を複数packetへ曖昧に結び付ける入力は拒否する。R0/R1は明示Riskとdiff分類、および`--manual required|not-required`を必須とし、CI制御の実行code変更をR0/R1へ下げる入力を拒否する。Risk値でCIの実行範囲を縮めず、policy文書の意味変更のRisk判定はowner/modelが行う。packet不在をmanual免除とみなさない。業務的Riskの分類自体はowner/モデルが担う。PR作成前はtrackedの計画phaseを使い、helperで架空のPR状態を作らない。
+追加候補は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+では`--packet docs/plans/FILE.md`を指定し、当該PRの差分が触るactive packetと照合する。対象を複数packetへ曖昧に結び付ける入力は拒否する。R0/R1は明示Riskとdiff分類、および`--manual required|not-required`を必須とし、CI制御の実行code変更をR0/R1へ下げる入力を拒否する。Risk値でCIの実行範囲を縮めず、policy文書の意味変更のRisk判定はowner/modelが行う。packet不在をmanual免除とみなさない。業務的Riskの分類自体はowner/モデルが担う。PR作成前はtrackedの計画phaseを使い、helperで架空のPR状態を作らない。
 
 statusはread-only、結果は短い状態と阻害理由（`--json`で構造化）。captureはignored `.local/pr-gate/`だけへ書く。recordは`--capture FILE --kind review|manual|r4 --outcome VALUE --evidence POINTER`を受ける。reviewでは`--review-stage broad|closure --pass-model MODEL --run-ref REF`を指定し、Auditを追加/更新する。同じrun_refを別監査として数えない。manualの再利用には`--reuse-from SHA --reuse-approval POINTER`を両方指定する。helperがcapture/serverの正当なbroadを保持し、CLI入力から架空のbroadを作らない。対象commentだけを作成/更新する。対象版が変わったrecordでは他kindもpendingへ戻し、必須でないものだけnot-requiredを設定する。Ready/mergeはownerの明示指示を前提にする。
 
@@ -151,13 +151,13 @@ merge時はGitHubのPR head/base・実効rules・必要checkをfreshに取得し
 
 ## closeoutとActions停止時
 
-docs/closeout PRはR0のまま、docs gateとMerge gateを通す。親PRで許可された後処理の範囲なら、その都度同じ承認を聞き直さない。自身のPlanを持たないcloseout PRには次のcloseoutを要求しない。通常squashを維持し、既存commitの履歴保持が必要な例外はownerの明示範囲で扱う。
+docs/closeout PRはR0のまま、docs gateとMerge gateを通す。merge済みのlaneのcloseoutはwaveごとに1本のR0 PRにまとめてよく、waveを閉じる前（次のwaveの起票の前）に完了する。単独のlaneは1 laneのwaveとみなす。親PRで許可された後処理の範囲なら、その都度同じ承認を聞き直さない。自身のPlanを持たないcloseout PRには次のcloseoutを要求しない。通常squashを維持し、既存commitの履歴保持が必要な例外はownerの明示範囲で扱う。
 
 Actions利用不能時はmergeを停止し、許可済みのlocal作業と証拠を保存する。設定やCIの障害では保護を残して修正PRを準備する。rulesが失われたPRはDraftで保持し、手動mergeで回避しない。設定の復旧が必要なら、事前snapshotと正確な対象をownerへ示して別途操作し、無承認で保護を解除してmergeしない。単なるGitHub障害を理由に再reviewを発注しない。
 
 ## 実行手順
 
-R2+の例（`PR`は対象PR番号、`PACKET`は登録された単一packet）。以下のrecord/Ready/mergeはその操作のowner指示を得てから実行する。captureの返すpathを使い、SHAを手転記しない。
+R2+の例（`PR`は対象PR番号、`PACKET`はそのPRの差分が触る単一のactive packet）。以下のrecord/Ready/mergeはその操作のowner指示を得てから実行する。captureの返すpathを使い、SHAを手転記しない。
 
 ```bash
 python3 scripts/pr-gate.py status --pr "$PR" --packet "$PACKET"

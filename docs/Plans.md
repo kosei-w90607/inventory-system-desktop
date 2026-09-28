@@ -10,6 +10,8 @@
 
 wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷新を追加）: lane 数の上限と同じ source document の同居禁止（D-055）は owner 決定 2026-09-24「規則は環境が変わるたびに変える」により適用せず、同じ file の重なりは merge 順で解消する。Plan Review は fresh Opus + Codex、Codex が rate limit の間は fresh Opus のみで進め Final Review だけ Codex を待つ（owner 確認 2026-09-23、Codex 復帰後は両方）。
 
+active な lane の Plan Packet は `docs/plans/` の dated packet が正本（lane の branch は各 packet の `Branch` 行、現在地は helper status）。lane の起票・closeout はこの節へ lane ごとの行を足さない（D-097）。
+
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。PR0（#92）・PR1（#97）・PR2（#113、座組と役割）・PR3（#117、入口と重複）は merge 済み。残り = PR4（手続きの軽量化・Findings Freeze 撤去・Owner Effort Budget・Wave Operation の改訂）、PR5（classifier / helper の穴・`.claude/agents`）。公式 Opus 5.5 prompting guide と照合して進める（owner 2026-09-24）。
 - wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）は merge 済み。次 = 後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（R3、Human Gate `ready,merge,manual`）。着手は訪店（Issue #105）の後（owner 決定 2026-09-28。Z001 の表を足すと日次売上の画面が縦に伸び既存の並びが崩れうるため、実物の Z001 の行数を見てから作る）。起票の中身は [backlog](backlog.md) の該当項目。
 - ハーネス: 並走の摩擦を削る（R3、owner 2026-09-28 起票承認。PR4・PR5 の残りより先）: [Plan Packet](plans/2026-09-28-harness-parallel-friction.md) / [Matrix](plans/test-matrices/2026-09-28-harness-parallel-friction.md)。branch `agent/harness-parallel-friction`、Phase implementing（2026-09-29 に plan-approved。G2 は B）。
@@ -82,7 +84,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ### Wave Registry
 
-- 形式: 現 wave ごとに status / lane 数 / merge train 順序を置き、各 lane に是正単位、branch、active packet link、Draft PR、Workflow State Phase、owner 介入回数を記録する。完了済み wave の記録は [archive](archive/harness-context/2026-09-14-Plans.md) に移送済み。
+- 形式: 完了済み wave の記録だけを置く。進行中の lane は `docs/plans/` の packet が持つ（D-097）。これより前の完了済み wave の記録は [archive](archive/harness-context/2026-09-14-Plans.md) に移送済み。
 - **wave 10（stacked train 2 lane、owner 2026-09-15「次の行動二つとって並走」）: 完了（lane 1〜3、2026-09-16）** — 非干渉 wave の条件（file footprint 互いに素 / 同じ source document を編集しない）を `src/features/stock-inquiry/StockInquiryPage.tsx` と `docs/design-system/02-component-catalog.md` の共有で満たさないため、D-074 の stacked train を採る。merge train = ㉑ → ㉒ 固定。
   - lane 1: ㉑ フィルタ Label 上置き + 見出し 2 段の runtime = **完了**（PR #63 squash `bb1862a5`、介入 3/4、relay 4/4、[archive](archive/plans/2026-09-15-filter-label-top-runtime.md)）
   - lane 2: ㉒ 表示小修正 batch 2 = **完了**（PR #64 squash `f2ef9e52`、介入 2/3、relay 4/4、[archive](archive/plans/2026-09-15-display-fixes-batch-2.md)）

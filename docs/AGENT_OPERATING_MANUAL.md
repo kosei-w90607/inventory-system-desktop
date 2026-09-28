@@ -83,7 +83,7 @@
 |---|---|
 | start / resume kickoff | [.agents/skills/inventory-workflow-start](../.agents/skills/inventory-workflow-start/SKILL.md) + Plan Packet `Workflow State` |
 | Codex/OpenAI session | [agent-guidance index](agent-guidance/README.md) |
-| wave 編成 / resume / merge train | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Wave Operation」+ [Plans.md](Plans.md)「Wave Registry」 |
+| wave 編成 / resume / merge train | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Wave Operation」+ `docs/plans/` の packet |
 | Design Phase | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Design Phase Rules / Impact Review Lenses」 |
 | 実装 | [.agents/skills/inventory-implementation](../.agents/skills/inventory-implementation/SKILL.md) + [docs/templates/plan-packet.md](templates/plan-packet.md) |
 | Contract Audit / review-only subagent | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit (R3/R4)」+ [docs/templates/subagent-review-packet.md](templates/subagent-review-packet.md) |

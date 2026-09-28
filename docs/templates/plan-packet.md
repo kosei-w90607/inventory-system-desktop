@@ -1,5 +1,7 @@
 # Plan Packet
 
+前文に wave と lane を書く（単独の lane は「wave に属さない単独の lane」と書く）。
+
 ## Workflow State
 
 Use the field definitions, enums, transition evidence, packet-selection rule, and fail-closed behavior from `docs/DEV_WORKFLOW.md` `Workflow State`. Keep exactly one `- Key: value` line per field.
@@ -16,6 +18,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Final Reviewer: <role assignment>
 - Final Review Minimum: <1|2>
 - Human Gate: ready,merge
+- Branch: <agent/...>
+
+`Branch` は helper・checker が評価しない追加行。lane の branch を packet から辿るために書く。
 
 必要なmanual/r4をHuman Gateへ追加する。R4はr4とminimum 2、workflow gateもminimum 2。Plan Commit/Amendmentsと既存review独立性を維持する。
 

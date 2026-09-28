@@ -4,7 +4,7 @@ Planの独立レビューが必要なときだけ使うoptional helper。review�
 
 ## 実行フロー
 
-1. `Plans.md`から対象のactive Plan Packetを一意に特定する。
+1. `docs/plans/` から依頼が名指しする active Plan Packet を一意に特定する。
 2. PacketのRisk、Plan Reviewer、Plan Review round 天井を確認する。
 3. 独立fresh contextのread-only reviewerへ、対象scopeと既存findingだけを渡す。
 4. 結果をP1 / P2 / P3、根拠、最小修正境界に整理し、Coordinatorへ返す。
