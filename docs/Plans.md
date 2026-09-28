@@ -12,6 +12,7 @@ wave 13（owner 2026-09-23「全部並行で」、2026-09-24 にハーネス刷�
 
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。PR0（#92）・PR1（#97）・PR2（#113、座組と役割）は merge 済み。残り = PR3（入口と重複）、PR4（手続きの軽量化・Findings Freeze 撤去・Owner Effort Budget・Wave Operation の改訂）、PR5（classifier / helper の穴・`.claude/agents`）。公式 Opus 5.5 prompting guide と照合して進める（owner 2026-09-24）。
 - ハーネス刷新 PR3（入口と重複、R3）: [Plan Packet](plans/2026-09-25-harness-pr3-entry-and-dedup.md) / [Matrix](plans/test-matrices/2026-09-25-harness-pr3-entry-and-dedup.md)。branch `agent/harness-pr3-entry`、Phase implementing。PR2（#113）の merge 後に main を取り込み済み（review 依頼 template の削除は PR2 の MANUAL 改訂に依存）。
+- wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）は merge 済み。次 = 後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（R3、Human Gate `ready,merge,manual`）。着手は訪店（Issue #105）の後（owner 決定 2026-09-28。Z001 の表を足すと日次売上の画面が縦に伸び既存の並びが崩れうるため、実物の Z001 の行数を見てから作る）。起票の中身は [backlog](backlog.md) の該当項目。
 
 次の着手順（owner決定2026-09-22）:
 
@@ -25,6 +26,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## 直近の完了
 
+- **Z001（日計）の全行を日次売上で見る画面と読み出しの契約を設計する（design-first、R3）**: [PR #114](https://github.com/kosei-w90607/inventory-system-desktop/pull/114) を merge（2026-09-28、main `253eef06`）。日次売上の「レジ日報（公式）」に日計（Z001）の表を足す案 A、同日複数取込みは取込みごとに古い順で並べ合算しない（D-096）、見た目は runtime lane の実機 before / after で確かめる（owner 回答 2026-09-27）。56 UI-09a-D16、34 §19 の `summary_imports`、24 §14.21 の読み出し、SCREEN_DESIGN §3、29 §29.4.1、biz-task-specs BIZ-08 に書いた。Goal は Z001 に絞り（owner 決定 2026-09-27）、既存の Z002 の合算は backlog の独立した項目。Plan Review 3 round、Final Review は Fable 5.1 + Codex GPT-6 Astra とも approve、base 同期後の closure の P2（packet の Codex の model の根拠）を是正し Codex GPT-5.6 Sol が approve。後続 runtime lane は訪店（Issue #105）の後（owner 2026-09-28）。[archive](archive/plans/2026-09-27-daily-report-z-display.md)
 - **ハーネス刷新 PR2: 座組表を正本に置き、Execution Mode 時代の役割規則を退役させる（R3）**: [PR #113](https://github.com/kosei-w90607/inventory-system-desktop/pull/113) を merge（2026-09-28、main `7c51572c`）。`docs/AGENT_OPERATING_MANUAL.md` に `## 座組` の表（担当・Codex 停止中の進め方・effort）と独立性の規則（fork を数えない、同じ round の各 reviewer に他の reviewer の結果を見せない、Plan Reviewer と Final Reviewer は別の fresh context ほか）を置き、希少 slot・Execution Mode・Opus read-only 専任・相談窓口役・変則 provenance 監査・Astra 主担当・Subagent Budget の数値上限を削除、D-092 を記録した。Plan Review 3 round、Final Review は Fable 5.1 + Codex GPT-6 Astra とも approve、是正 1 件（effort の選び方の owner 方針を座組の注記へ）の closure は Fable 5.1 + Codex GPT-5.6 Sol とも approve。Fable の P3 3 件は PR4 へ。[archive](archive/plans/2026-09-25-harness-pr2-roles-and-formation.md)
 - **保存と起動の守り（R4）**: [PR #111](https://github.com/kosei-w90607/inventory-system-desktop/pull/111) を merge（2026-09-26、main `31ec7501`）。商品 CSV の商品コードを 100 文字（UTF-16）までに制限、`apply_stock_change` の接続を借りた transaction に型で限る、アプリより新しい版の DB を論理的な書込みの前に拒否して起動を止める、自動バックアップの確認を共通レイアウトへ移し画面に依らず 60 秒ごとに動かす（実行中の guard・復元中の停止・世代番号）。Plan Review 3 round、Final Review は Fable 5.1 + Codex GPT-6 Astra とも approve、manual と r4 は owner。[archive](archive/plans/2026-09-25-save-startup-guards.md)
 - **棚卸しの評価額に価格の基準数量と店の丸め規則を入れる**: [PR #108](https://github.com/kosei-w90607/inventory-system-desktop/pull/108) を merge（2026-09-26、main `3b94a58a`）。基準数量は在庫単位（pcs = 1 個、cm = 1 m）、商品別の金額を 1/100 円で四捨五入して合計し、最終合計を円未満で四捨五入（owner 決定 2026-09-24 / 25）。`stocktake_service` の非公開 3 関数（中間 i128、最後だけ i64 へ検査付き変換）に置き、旧本体の確定経路が使う。㉘ の新方式も同じ関数を使う（35 §20.5a）。確定は停止中のため店主が画面で見るのは ⑤ の後。Plan Review 3 round（fresh Opus + Codex GPT-6 Sol）、Final Review は Fable 5.1 + Codex GPT-6 Astra とも approve。[archive](archive/plans/2026-09-25-stocktake-valuation-basis.md)
@@ -92,7 +94,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## ブロッカー
 
-次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。
+次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。日計（Z001）の表を出す runtime lane は訪店（Issue #105）の後に着手する（owner 決定 2026-09-28、実物の Z001 の行数を見てから作る）。
 
 ## 製品の未決判断
 

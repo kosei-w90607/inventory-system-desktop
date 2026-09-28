@@ -69,8 +69,32 @@ struct OfficialDailyReportSummary {
     payment_lines: Vec<OfficialDailyPaymentLine>,
     department_lines: Vec<OfficialDailyDepartmentLine>,
     warnings: Vec<String>,
+    summary_imports: Vec<OfficialDailySummaryImport>, // Z001の全行を取込みごとに。imported_at ASC, id ASC。合算しない（D-096）
 }
 ```
+
+**OfficialDailySummaryImport構造体**:
+
+```
+struct OfficialDailySummaryImport {
+    daily_report_import_id: i64,          // UIのkeyと取込みの識別
+    imported_at: String,                  // YYYY-MM-DDTHH:MM:SS（daily_report_imports.imported_at）
+    lines: Vec<OfficialDailySummaryLine>, // sort_order ASC, id ASC
+}
+```
+
+**OfficialDailySummaryLine構造体**:
+
+```
+struct OfficialDailySummaryLine {
+    label: String,          // 保存されたZ001のラベルをそのまま
+    quantity: Option<i64>,  // 総売の行の個数（それ以外の行はNone）
+    count: Option<i64>,     // 総売以外の行の件数（総売の行はNone）
+    amount: Option<i64>,
+}
+```
+
+- `summary_imports` は `report_date=date AND status='completed'` の親ごとに1件で、件数は `source_import_count` と等しい。`line_key`（総売・純売以外は並び順から作る `summary_N`）は利用者に意味を持たないため返さない。
 
 **OfficialDailyPaymentLine構造体**:
 
@@ -167,13 +191,14 @@ fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, 
    - 0件でも正常（データなしの日）
 
 3. **公式日報集計取得（REQ-401 redesign target）**
-   - sales_repo::get_completed_daily_report_aggregate(conn, date) → Option<OfficialDailyReportSummary>
-   - `report_date=date AND status='completed'` の親を全件対象とし、`source_import_count` に親件数を返す。単一parent IDはwireへ返さない
+   - sales_repo::get_completed_daily_report_aggregate(conn, date) → Option<OfficialDailyReportRow>（IO の DB DTO）を、`map_official_daily_report` で `OfficialDailyReportSummary` へ写す。warning は BIZ がここで作る
+   - `report_date=date AND status='completed'` の親を全件対象とし、`source_import_count` に親件数を返す。単一parent IDはwireへ返さない（`summary_imports` の要素の取込み ID は除く、D-096）
    - 親gross/netは合計する。ただし対象親のいずれかがNULLなら集約値もNULLとし、不完全値を確定値に見せない
    - paymentは `payment_key` で、departmentは `department_id`、未対応行は `normalized_department_name` fallback `raw_department_name` で集約する。amountは合計し、optional quantity/countは対象行のいずれかがNULLなら集約値もNULLとする
    - labelとsortはgroup内の最小 `sort_order`、同値なら最小row IDの行を決定的な代表とする
    - 日報未取込みでも正常。`official_daily_report=None` とし、UIは「日報未取込み」と表示できる
    - SALES2-D5: 集約後の `department_id IS NULL` groupが n 件ある場合、`warnings` に「部門マスタと対応していない部門が n 件あります（部門名のまま表示しています）」を1件だけ追加する。importごとに警告を重複させない。NULL groupがなければ空配列
+   - Z001の行は合算しない。IO が同じ親の集合について親ごとに返す取込み（`OfficialDailyReportRow.summary_imports`）を、並びと値を変えずに `OfficialDailySummaryImport` / `OfficialDailySummaryLine` へ写し、`summary_imports` に取込みの古い順で返す（D-096、[24 §14.21](24-io-csv-import-repo.md#1421-get_completed_daily_report_aggregate)）
 
 4. **部門小計の計算**
    - items を department_id でグルーピング
@@ -192,6 +217,7 @@ fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, 
 - Z001/Z002/Z005は商品別明細を持たないため、`items` を水増ししない。
 - UIは、日報集計と商品別明細の差を「日報集計」「商品別（PLU/Z004・手動販売）」のように日本語で分けて表示する。
 - 公式日報seriesと商品別seriesは別の正本であり、互いを加算して一つの売上値にしない。
+- 公式日報seriesの中でも、Z001の行は足してよいと確かめていないため取込みごとに返し、支払・部門のように合算しない（D-096）。
 
 **エラーハンドリング**:
 - 日付形式不正 → BizError::ValidationFailed(メッセージ)
@@ -388,3 +414,4 @@ fn export_sales_csv(
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 商品別 `product_code + source` 集約、全completed日報親のNULL安全な日次集約、`source_import_count`、月次additive regressionを正本化。 |
+| 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
