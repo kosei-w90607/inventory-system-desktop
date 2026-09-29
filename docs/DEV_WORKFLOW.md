@@ -169,7 +169,6 @@ Backfill note: Design Phase is not a blanket backfill requirement; backfill hist
 - Do not commit real POS CSV, PLU exports, DB files, backups, logs, receipt images, secrets, or local app data.
 - Session coordination tools such as `goal` or `$agmsg` may organize work, but durable workflow state belongs in repository evidence: `Plans.md`, Plan Packets, PR bodies, archived plans, and source docs.
 - When a Plan Packet includes L3 in its Human Gate, the Writer must run `cargo check --release` before the owner performs the native build; this is a Writer completion condition, not a CI gate (backup/migration implementation PR1 WER lesson).
-- Dashboard-only merge baseline sync can be batched with the next related docs cleanup when there is no blocker, user-facing ambiguity, or stale next action.
 
 ## Wave Operation
 
@@ -336,7 +335,7 @@ Verification and publish:
 - Run `bash scripts/doc-consistency-check.sh`; if active plans remain, also run `bash scripts/doc-consistency-check.sh --target plan`.
 - docs-only closeoutを別branchのR0 PRにし、docs＋Merge gateでmergeする。mainへ直接pushしない。親の許可済み後処理は承認を引き継ぎ、自身のPlanを持たないcloseout PRに次のcloseoutを要求しない。
 - Finish by checking `git status --short --branch`.
-- After D-033 migration, a normal `push: main` does not start CI. Use `workflow_dispatch` only when main itself needs an explicit clean-room recheck.
+- A normal `push: main` does not start CI. Use `workflow_dispatch` only when main itself needs an explicit clean-room recheck.
 
 ## Commit / PR Messages
 

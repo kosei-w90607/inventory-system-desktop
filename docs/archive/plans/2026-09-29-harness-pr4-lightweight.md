@@ -12,7 +12,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: ac00162da132ea4405079ccb160fb49052677781
 - Amendments: none
@@ -635,6 +635,8 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - Coordinator の裁定: G3 = 認める（2026-09-30。S15 の 3 file は PR5 の所有表にも無く衝突しない）。
 - packet の逐語から離れた所: template の「R3/R4 の部分」は見出しを増やさず、`## Contract Ledger` の先頭の 1 行で示した。並走の PR5 の packet を新しい checker で確かめるとき、Matrix への link のため Matrix も一緒に一時的に置いた（発注書の手順の不足。Scope・AC は変えていない）。
 - base 同期: origin/main を単段 merge で取り込んだ（衝突なし。main 側は `docs/backlog.md`・`docs/project-memory.md` だけ）。
+- 実装の要旨（closeout、2026-09-30）: R3 の契約の追跡を Contract Ledger の 1 表、設計の準備を Design Readiness の 1 節にまとめ、旧 template の packet も通し続ける。止める規則は防ぐ失敗を 1 文で言えることを原則にし、3 分類・review-only の二重の語・Findings Freeze の記録行・WER・wave の lane 数と同じ source document の上限・問い合わせの行き先の重複した表を消した。Owner Effort Budget は介入 6 回・実働 30 分を既定にし、relay の上限を外し、上限に届くときは次の判断と同じ 1 回で諮る。PK4 は `Plan Commit` の書式（`pending` か 40 桁の小文字 hex）を commit の前に止める。受理した P1/P2 は修正前に red の test で固定する（D-098）。
+- review・CI・merge: Final Review broad の受理 P2 1 件を Writer が是正し、closure は Codex GPT-6.1 Sol が approve。PR5（#127）の merge の後の base 同期の closure も GPT-6.1 Sol が approve。manual は not-required。merge は PR5 → PR4 の順（owner 2026-09-30 の train 委任）で、helper 経由の squash merge（2026-09-30）。
 
 ## Review Response
 
@@ -680,3 +682,5 @@ Final Review broad（2026-09-30、対象 `473d90cf`）: Fable 5.1 = approve（P1
 - 是正の検証（Writer の報告、`9b54ae46`）: AC1〜AC20 を逐語で再実行し全件期待どおり。`Plan Commit` の書式に関わる MU4・MU5・MU6・MU10・MU12 と新規の MU-F1（前置を `[[:space:]]` に戻す）を注入して red。MU12 を Test Plan の字面どおりに入れると PR4-F12 より前の section で red になるため、狭くした版で PR4-F12 の red を確かめた。`bash scripts/local-ci.sh full` PASS（`MERGE_EVIDENCE_VALID=true`）。Coordinator が test の見出し comment の空白の脱落（PR4-F8）を直した。
 
 - Findings Freeze: frozen after Final Review broad（Double Audit の 2 本、2026-09-30）; post-freeze exceptions: none.
+
+- Closeout（2026-09-30）: 是正の後の closure は Codex GPT-6.1 Sol = approve（取り直しの 162。160 は発注書の矛盾で数えなかった）、PR5（#127）の merge の後の base 同期の closure も GPT-6.1 Sol = approve（165）。見送った P3 の F-1（PK1・PK3 の Ledger の経路の見出しの判定が `###` の小見出しにも当たる）と F-2（Risk Tiers の R2 の行が Final Review に触れない）、closure 162 の観察（PK4 の field 検査が並列実行で 1 回だけ失敗し、逐次で PASS。原因は分かっていない）は `docs/backlog.md` の「workflow / test / lint / docs」へ置いた。

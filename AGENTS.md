@@ -33,7 +33,6 @@ merge は helper 経由で、専用 record と手順は [merge-evidence](docs/ag
 - 重要な進捗は `Plans.md`、参照先が変われば `docs/PROJECT_HANDOFF.md` を同期する。履歴の全文は dashboard に戻さない。
 - commit / PR 文面は `docs/DEV_WORKFLOW.md` の Commit / PR Messages、review は `docs/code_review.md` に従う。
 - Plan Packet の数値主張は測定コマンドと出力を併記するか `未実測` とする（D-062）。
-- Docker を使う作業では、先に WSL の `docker info` 成功を確認する。
 
 ## Decision and Approval Boundaries
 
