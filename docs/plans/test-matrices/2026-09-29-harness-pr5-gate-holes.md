@@ -10,7 +10,7 @@ Risk: R3
 
 - D1: classifier は `.claude/agents/*` を実行制御（full）、`docs/quality/review-checklist.md` を policy docs（docs＋workflow）に分類し、他の path の分類を変えない。
 - D2: helper は実行中の file が PR の base の `scripts/pr-gate.py` と bytes で一致するときだけ、status・capture・record・ready・merge を進める。
-- D3: `.claude/agents/{writer,reviewer}.md` が tracked で、effort medium、reviewer は編集の tool なし。
+- D3: `.claude/agents/{writer,reviewer}.md` が tracked で、effort medium、reviewer は編集の tool なし、frontmatter に `hooks` が無い。
 - D4: `.claude/settings.json` の `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` は `"1"`。
 - D5: `local-ci.sh full` は symlink の `node_modules` で gate の前に止まる。changed は止めない。
 - D6: pre-push は open の PR が無く merged の PR がある branch への push を止める。open も merged も無ければ通す。照会失敗も止める。
@@ -36,7 +36,7 @@ Risk: R3
 ## Test Matrix
 
 - 既存の test を回帰の証拠として引く前に、`rg` でその test の実在を確かめた（2026-09-29、起草役）: `scripts/tests/classify-changes.test.sh:46-52`・`:92-99`、`scripts/tests/pr-gate.test.py` の `CLI.test_packet_double_audit_cli`・`RecordLifecycle`、`scripts/tests/local-ci.test.sh:25-56`、`scripts/tests/pre-push.test.sh:56-82`・`:119-139`・`:185-194`、`scripts/tests/claude-hooks.test.sh:13-26`・`:68-81`。
-- helper の test の境界: `CLI` は `scripts/pr-gate.py` を実 process で起動し、fake の `gh`（Python の script、`FAKE_GH`）が GitHub API の argv と endpoint を受ける。contents は fixture の `contents`・`snapshots` から返る。D2 の base の `pr-gate.py` はこの `contents` に置く（実物の text を既定、不一致の場面だけ 1 byte 変える）。
+- helper の test の境界: `CLI` は `scripts/pr-gate.py` を実 process で起動し、fake の `gh`（Python の script、`FAKE_GH`）が GitHub API の argv と endpoint を受ける。contents は fixture の `snapshots[ref]` にあればそれ、無ければ ref に依らない `contents` から返る（`:226`）。D2 の base の `pr-gate.py` は、既定では `contents` に実物の text を置き、不一致の場面だけ 1 byte 変える。base と head を区別する場面だけ `pr.base.sha` を head と別の `B` にし、`snapshots[B]` に base の本文を置く（`contents` が head 側の本文になる。`test_rules_keep_explicit_desired_defaults` の形）。
 - pre-push の test の境界: fake の `gh` は `--jq` の式を fixture の JSON に `jq` で当てる（実 gh の出力形を再現）。npm・cargo は呼出しを記録する stub。
 - local-ci の test の境界: fixture の repo に local-ci.sh と classifier の実物を置き、他の script と npm・cargo は stub。
 
@@ -47,9 +47,11 @@ Risk: R3
 | D1 | 無関係の docs が workflow になる | unit（classifier） | 同 test の `docs/backlog.md`・`docs/quality/other.md` の `workflow=false` | pattern を `docs/quality/*` のように広げる |
 | D1 | hook test の classify の検査から agent 定義が漏れる | integration（hook audit） | `claude-hooks.test.sh` の `validate_audit_wiring` と、classifier から `.claude/agents/*` を外した fixture の負例 | 検査の path に `.claude/agents/reviewer.md` が無い、または負例が green |
 | D2 | 変更後の helper が自分を検査できる | CLI | `HelperVersion.test_mismatch_blocks_every_action`（status・capture・record・ready・merge、base の `pr-gate.py` を 1 byte 変えた fixture） | 照合が無い（MU3）、一部の操作にしか掛からない（MU4）。assert: exit 1、stderr に `helper differs from base` と base SHA、fake gh の呼出しに `pr` の mutation と comment の POST・PATCH が無い、capture の file が増えない |
-| D2 | base と同じ helper が止まる | CLI | `HelperVersion.test_same_bytes_passes`（既存の `test_status_capture_ready_merge` の形） | bytes の比較でなく改行の正規化や別 file と比べる、base でなく head から取得する |
+| D2 | base と同じ helper が止まる | CLI | `HelperVersion.test_same_bytes_passes`（既存の `test_status_capture_ready_merge` の形） | bytes の比較でなく改行の正規化や別 file と比べる |
+| D2 | base でなく head から取得する | CLI | `HelperVersion.test_compares_base_not_head`（`pr.base.sha` = `B`〈head と別〉、`snapshots[B]['scripts/pr-gate.py']` = base の本文、`contents['scripts/pr-gate.py']` = head 側の本文。順: base = 実物・head = 実物 + 1 byte → `status` の blockers が空。逆: base = 実物 + 1 byte・head = 実物 → exit 1、message に `helper differs from base` と `B`） | 取得の ref を head にする（MU14。順が exit 1、逆が exit 0 で両方 red）。ref に依らない fixture だけでは検出できない |
 | D2 | base の取得失敗で進む | CLI | `HelperVersion.test_base_fetch_failure_exit_2`（fake の `http_error_path` に `contents/scripts/pr-gate.py`） | 取得の失敗を一致とみなす |
 | D3 | 定義が tracked でない、中身が違う | schema（CLI の rg / git） | AC7 の `git check-ignore`・`git ls-files`・`rg '^effort: medium$'`・`rg '^disallowedTools: …'` | `.gitignore:116` が残る、frontmatter の値が違う |
+| D3 | agent 定義が frontmatter の `hooks` で command を登録する | integration（hook audit） | `claude-hooks.test.sh` の `validate_inventory` の `^hooks:` の検査と、`.claude/agents/writer.md` に `hooks:` の行を置いた fixture の負例 | 検査が無い（MU16）、または `.claude/agents` を見ない |
 | D4 | depth の設定が消えても green | integration（hook audit） | `claude-hooks.test.sh` の `validate_inventory` の jq と、env を消した fixture の負例 | jq の検査が無い（MU5） |
 | D5 | symlink 先が空になる | CLI（local-ci） | `local-ci.test.sh` の symlink の full の場面 | 検査が無い（MU6）。assert: exit 非 0、evidence に `ERROR=node_modules is a symlink`・`RESULT=FAIL`、`GATE=` の行が無い、stub の呼出し記録が空、`target/marker` が残る |
 | D5 | changed まで止まる | CLI（local-ci） | 同 test の symlink の changed の場面 | 条件から `MODE == full` を外す（MU7）。assert: exit 0、ERROR が無い |
@@ -60,6 +62,7 @@ Risk: R3
 | D6 | 照会失敗で push が通る | CLI（hook） | 同 test の merged の照会だけ失敗する場面（fake に `FAKE_MERGED_EXIT`） | 失敗を無視する（MU9）。assert: exit 非 0、`FAIL ready-state-lookup` |
 | D7 | 未 stage の変更で push が止まる | CLI（hook） | 同 test の push 範囲の `src/example.ts` の未 stage の編集の場面 | WARN を `fail_gate` にする（MU10）。assert: exit 0、stderr に `WARN: unstaged changes in pushed files` と path |
 | D7 | 範囲の外で WARN が出る | CLI（hook） | 同 test の push 範囲の外の file（`README.md`）の未 stage の編集の場面 | 共通部分でなく全体の `git diff` を見る。assert: WARN が無い |
+| D7 | diff を取れない ref で hook が落ちる | CLI（hook） | 同 test の remote_oid が local に無い SHA の場面（`run_hook` に remote_oid の引数を足す。既定は `$base_sha`） | `git diff` の失敗を `set -e` に落とさせる（`\|\| true` が無い。MU15）。assert: exit 0、WARN が無い、log の最後が `PASS `（分類は classifier の full fallback〈`classify-changes.sh:224-228`〉） |
 | D8 | 監査していない head の broad が record される | CLI | `ReviewedHead.test_broad_mismatch_rejected`（capture は H、`--reviewed-head` は別の SHA） | 一致の判定が無い（MU11）。assert: exit 1、fake の `comments` が不変 |
 | D8 | closure で同じ誤り | CLI | `ReviewedHead.test_closure_mismatch_rejected`（server に broad があり、head が変わった後の capture） | 判定が broad だけ（MU12） |
 | D8 | 引数の欠落で進む | CLI | `ReviewedHead.test_missing_reviewed_head_exit_2` | 欠落を許す |
@@ -81,9 +84,10 @@ stale head/base・broad/closure の race は既存の `RecordLifecycle`・`test_
 
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
-| main 側から取得して PR の変更を信頼しない（classifier `:220`、policy `:352`） | `scripts/pr-gate.py` の `contents()` の呼出し全部（classifier・packet・archive・policy） | helper 本体（D2） | packet・archive は head から読む（PR の内容そのもの） | `HelperVersion` |
+| main 側から取得して PR の変更を信頼しない（classifier `:220`、policy `:352`） | `scripts/pr-gate.py` の `contents()` の呼出し全部（classifier・packet・archive・policy） | helper 本体（D2） | packet・archive は head から読む（PR の内容そのもの） | `HelperVersion`（base と head で本文が違う `test_compares_base_not_head` を含む） |
 | 照会失敗は止める（pre-push の Ready の照会 `:98-101`） | `scripts/pre-push.sh` の `gh` の呼出し | merged の照会（D6） | — | S9 の照会失敗の場面 |
 | 実行制御の path（`.claude/settings.json`・`.claude/hooks/*`） | `classify-changes.sh:55`、merge-evidence `:53`、`claude-hooks.test.sh:78` | `.claude/agents/*`（D1） | `.claude/{rules,commands,skills}/**` と `.agents/**` は policy のまま。`.claude/rules` は frontmatter を持たず、`.claude/commands` は公式 hooks の置き場所の表に無い。skill（`.agents/skills/**/SKILL.md`、`.claude/skills/*` はその symlink）は公式 hooks「Hooks in skills and agents」により frontmatter の `hooks` を持てる（2026-09-29 確認）が、本 lane は分類を変えない（費用: skill 文書の編集がすべて R3。残るリスクは Residual Test Gaps と D-099） | S2、S11 |
+| agent への指示になる隣接 path の分類（classifier `:59`・`:67`） | `.claude/CLAUDE.md`、`docs/**/CLAUDE.md`、`.claude/output-styles/*` を `classify-changes.sh --files-from-stdin` で実測（2026-09-30） | — | `.claude/CLAUDE.md`・`.claude/output-styles/*`・`:59` の pattern の外の `docs/**/CLAUDE.md`（例 `docs/CLAUDE.md`。`docs/agent-guidance/CLAUDE.md` は `:59` で workflow=true）は一般 docs（docs=true・workflow=false）。今は tracked に無い。本 lane は分類を変えない（D1「他の path の分類を変えない」。残るリスクは Residual Test Gaps） | — |
 | worktree の symlink の運用 | `scripts/local-ci.sh` の `npm` の呼出し（`:224` の `npm ci` と `:226-231` の `npm run`） | `npm ci` の前の検査（D5） | `npm run` は `node_modules` を消さない | S7 |
 
 ## Negative Paths
@@ -91,7 +95,7 @@ stale head/base・broad/closure の race は既存の `RecordLifecycle`・`test_
 - missing input: `--reviewed-head` の欠落（exit 2）。base の `pr-gate.py` の取得失敗（exit 2）。
 - invalid input: `--reviewed-head` が SHA でない（exit 2）。
 - duplicate/ambiguous input: open と merged の PR が同じ branch にある（open を優先）。
-- unknown reference: base の `pr-gate.py` が無い（404 → exit 2）。
+- unknown reference: base の `pr-gate.py` が無い（404 → exit 2）。remote_oid が local に無い ref（D7 は WARN 無しで続け、分類は classifier の full fallback）。
 - dependency missing: `gh` が無い（既存どおり push を止める）。
 - permission/write failure: helper の不一致で何も書かない。local-ci の symlink で gate を走らせない。
 - dry-run side effect: status は read-only のまま（不一致でも comment を書かない）。
@@ -134,10 +138,10 @@ stale head/base・broad/closure の race は既存の `RecordLifecycle`・`test_
 
 ## Mutation-style Adequacy Questions
 
-mutation は packet の Test Plan の MU1〜MU13。実注入の手順は packet の AC9。
+mutation は packet の Test Plan の MU1〜MU16。実注入の手順は packet の AC9。
 
 - If a key branch is inverted: D2 の一致の判定を反転 → `HelperVersion` の一致・不一致の両方の test が red。
-- If a guard is removed: MU3・MU6・MU8・MU11。
+- If a guard is removed: MU3・MU6・MU8・MU11・MU16。取得の ref を誤る: MU14。失敗を握らない: MU15。
 - If a threshold comparison changes: D2 の比較を正規化した文字列にする → 1 byte（末尾の改行）違いの fixture で `test_mismatch_blocks_every_action` が red。
 - If an output field is omitted: WARN の path の出力を消す → S9 の assert（path を含む）が red。
 - If tracked Workflow State stores the current PR HEAD: 本 lane は tracked に head を書かない（`--reviewed-head` は CLI の入力で、record の head と同じ値）。
@@ -150,8 +154,9 @@ mutation は packet の Test Plan の MU1〜MU13。実注入の手順は packet 
 - 照合の code を消した helper を実行する場合は D2 が守らない（差分に出るので Double Audit が見る）。
 - 本 lane の merge より前に分岐した lane（PR4、#81、本体の checkout）の旧い helper は自己照合を持たず、main の helper を取り込むまで `--reviewed-head` 無しの broad・closure の record が通る。移行（最初の helper 操作の前の単段 merge か写し）は手順で、忘れると抜ける。Coordinator が merge の直後に open の PR を列挙して各 lane の発注書に書く（packet「本 lane 自身の検査と merge」の 7）。
 - skill の frontmatter の `hooks`（`.agents/skills/**/SKILL.md`、`.claude/skills/*` はその symlink）は policy（rust=false）のままで、R1 の申告なら packet 無しに `pr-gate.py:259` を通る。公式 hooks「Hooks in skills and agents」: skill の hooks は invoke で登録され session の終わりまで残り、-p の未 trust folder でも登録される（2026-09-29 確認）。分類は変えない（費用は D-099）。kickoff の問いと Final Review が見る（D10 と同じ形）。
+- `.claude/CLAUDE.md`・`.claude/output-styles/*`・`:59` の pattern の外の `docs/**/CLAUDE.md` は一般 docs（workflow=false）のままで、R1 の申告なら packet 無し・Minimum 0（`pr-gate.py:268`）で通り、workflow 回帰も走らない（skill の hooks・D10 と同じ形。今は tracked に無い）。分類は変えない。kickoff の問いと Final Review が見る。
 - 生成器（`src-tauri/src/bin/generate_*`、`lib.rs` の bindings の export）の判定を緩める変更は R1 と申告すれば packet 無しで通る（D10）。kickoff の問いと Final Review が見る。
-- `docs/quality/review-checklist.md` を含む policy docs だけの PR を R1・packet 無しで申告すれば Minimum は 0（`pr-gate.py:264-266`、既存の設計）。D1 が足すのは workflow 回帰と、packet 付きのときの Minimum 2。
+- `docs/quality/review-checklist.md` を含む policy docs だけの PR を R1・packet 無しで申告すれば Minimum は 0（`pr-gate.py:268`、既存の設計）。D1 が足すのは workflow 回帰と、packet 付きのときの Minimum 2。
 - 座組表の effort と agent 定義の値の一致は自動で照合しない（どちらかを変える PR は D1 で Minimum 2 が掛かる）。
 - agent 定義と depth の設定の実効は本体の同期と再起動の後の run でしか確かめられない（AC7、P3）。
 - PR の base の SHA が古い場合、helper が要求する版は古い main の版になる（message の command がその版を示すので進める。安全は弱まらない）。
