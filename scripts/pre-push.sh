@@ -112,8 +112,53 @@ if [[ "$REMOTE_URL" == *github.com* ]]; then
                 fail_gate ready-state-lookup
                 ;;
         esac
+
+        # SPEC-WF-HARNESS5-D6: an open PR wins; only a branch with no open PR is checked for a merged one.
+        if [[ -z "$pr_draft" ]]; then
+            if ! merged_pr="$(gh pr list --head "$branch" --state merged --json number --jq 'if length == 0 then empty else .[0].number end')"; then
+                echo "[pre-push] GitHub PR state lookup failed for $branch; blocking safely." >&2
+                fail_gate ready-state-lookup
+            fi
+            if [[ -n "$merged_pr" ]]; then
+                echo "[pre-push] PR #$merged_pr for $branch is already merged; create a new branch from main with a new name (a reused name stays blocked)." >&2
+                fail_gate merged-pr
+            fi
+        fi
     done
 fi
+
+# Push range start shared by the unstaged warning and the classification.
+push_range_base() {
+    local local_oid="$1"
+    local remote_oid="$2"
+    local base=""
+    if [[ "$remote_oid" != "$zero_sha" ]]; then
+        printf '%s' "$remote_oid"
+        return
+    fi
+    if git rev-parse --verify 'origin/main^{commit}' >/dev/null 2>&1; then
+        base="$(git merge-base origin/main "$local_oid" 2>/dev/null || true)"
+    fi
+    if [[ -z "$base" ]] && git rev-parse --verify 'main^{commit}' >/dev/null 2>&1; then
+        base="$(git merge-base main "$local_oid" 2>/dev/null || true)"
+    fi
+    printf '%s' "$base"
+}
+
+# SPEC-WF-HARNESS5-D7: warn, never block, when a pushed file of the HEAD ref still has unstaged edits.
+for index in "${!PUSH_LOCAL_OIDS[@]}"; do
+    local_oid="${PUSH_LOCAL_OIDS[$index]}"
+    [[ "$local_oid" == "$COMMIT_HASH" ]] || continue
+    base="$(push_range_base "$local_oid" "${PUSH_REMOTE_OIDS[$index]}")"
+    [[ -n "$base" ]] || continue
+    pushed="$(git diff --name-only "$base" "$local_oid" 2>/dev/null)" || true
+    unstaged="$(git diff --name-only)"
+    [[ -n "$pushed" && -n "$unstaged" ]] || continue
+    both="$(grep -Fx -f <(printf '%s\n' "$pushed") <<< "$unstaged" || true)"
+    if [[ -n "$both" ]]; then
+        echo "[pre-push] WARN: unstaged changes in pushed files: ${both//$'\n'/ }" >&2
+    fi
+done
 
 declare -A CLASSIFIED=(
     [rust]=false
@@ -155,21 +200,11 @@ for index in "${!PUSH_LOCAL_OIDS[@]}"; do
     remote_oid="${PUSH_REMOTE_OIDS[$index]}"
     [[ "$local_oid" == "$zero_sha" ]] && continue
 
-    if [[ "$remote_oid" == "$zero_sha" ]]; then
-        base=""
-        if git rev-parse --verify 'origin/main^{commit}' >/dev/null 2>&1; then
-            base="$(git merge-base origin/main "$local_oid" 2>/dev/null || true)"
-        fi
-        if [[ -z "$base" ]] && git rev-parse --verify 'main^{commit}' >/dev/null 2>&1; then
-            base="$(git merge-base main "$local_oid" 2>/dev/null || true)"
-        fi
-        if [[ -z "$base" ]]; then
-            classify_and_merge --all
-        else
-            classify_and_merge --base "$base" --head "$local_oid"
-        fi
+    base="$(push_range_base "$local_oid" "$remote_oid")"
+    if [[ -z "$base" ]]; then
+        classify_and_merge --all
     else
-        classify_and_merge --base "$remote_oid" --head "$local_oid"
+        classify_and_merge --base "$base" --head "$local_oid"
     fi
 done
 
