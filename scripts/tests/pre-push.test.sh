@@ -55,14 +55,19 @@ printf '#!/bin/bash\nexit "${FAKE_WORKFLOW_GIT_EXIT:-0}"\n' > "$repo/scripts/che
 
 cat > "$bin/gh" <<'EOF'
 #!/bin/bash
+printf 'gh %s\n' "$*" >> "$CALL_LOG"
 if [[ "${FAKE_GH_EXIT:-0}" != "0" ]]; then
     exit "$FAKE_GH_EXIT"
 fi
 head_branch=""
 query=""
+state=""
 while [[ $# -gt 0 ]]; do
     if [[ "$1" == "--head" && $# -ge 2 ]]; then
         head_branch="$2"
+        shift 2
+    elif [[ "$1" == "--state" && $# -ge 2 ]]; then
+        state="$2"
         shift 2
     elif [[ "$1" == "--jq" ]]; then
         query="$2"
@@ -72,7 +77,16 @@ while [[ $# -gt 0 ]]; do
     fi
 done
 # Run gh's jq expression against synthetic API data instead of pre-filtering the result.
-if [[ -n "${FAKE_READY_HEAD:-}" && "$head_branch" == "$FAKE_READY_HEAD" ]]; then
+if [[ "$state" == "merged" ]]; then
+    if [[ "${FAKE_MERGED_EXIT:-0}" != "0" ]]; then
+        exit "$FAKE_MERGED_EXIT"
+    fi
+    if [[ -n "${FAKE_MERGED_HEAD:-}" && "$head_branch" == "$FAKE_MERGED_HEAD" ]]; then
+        printf '[{"number":42}]' | jq -r "$query"
+    else
+        printf '[]' | jq -r "$query"
+    fi
+elif [[ -n "${FAKE_READY_HEAD:-}" && "$head_branch" == "$FAKE_READY_HEAD" ]]; then
     printf '[{"isDraft":false}]' | jq -r "$query"
 elif [[ -n "${FAKE_GH_DRAFT:-}" ]]; then
     printf '[{"isDraft":%s}]' "$FAKE_GH_DRAFT" | jq -r "$query"
@@ -122,13 +136,16 @@ run_hook() {
     local remote_branch="${3:-feature}"
     local ready_head="${4:-}"
     local command_path="${5:-$bin:$PATH}"
+    local remote_oid="${6:-$base_sha}"
     local log="$tmp/calls.log"
     : > "$log"
     (
         cd "$repo"
-        printf 'refs/heads/feature %s refs/heads/%s %s\n' "$head_sha" "$remote_branch" "$base_sha" |
+        printf 'refs/heads/feature %s refs/heads/%s %s\n' "$head_sha" "$remote_branch" "$remote_oid" |
             PATH="$command_path" CALL_LOG="$log" FAKE_GH_DRAFT="$draft" \
             FAKE_GH_EXIT="${FAKE_GH_EXIT:-0}" \
+            FAKE_MERGED_HEAD="${FAKE_MERGED_HEAD:-}" \
+            FAKE_MERGED_EXIT="${FAKE_MERGED_EXIT:-0}" \
             FAKE_NPM_FAIL_ON="${FAKE_NPM_FAIL_ON:-}" \
             FAKE_CARGO_FAIL_ON="${FAKE_CARGO_FAIL_ON:-}" \
             FAKE_WORKFLOW_GIT_EXIT="${FAKE_WORKFLOW_GIT_EXIT:-0}" \
@@ -213,6 +230,47 @@ fi
 if grep -Fq "free form" "$repo/.local/quality-check.log"; then
     fail "free-form bypass text leaked into evidence"
 fi
+
+# SPEC-WF-HARNESS5-D6: a merged PR's branch is blocked only when no open PR exists.
+quality_log="$repo/.local/quality-check.log"
+FAKE_MERGED_HEAD=feature
+if run_hook "" 2> "$tmp/stderr.log"; then
+    fail "push to a merged PR's branch was not blocked"
+fi
+assert_last_contains "$quality_log" "FAIL merged-pr"
+assert_contains "$tmp/stderr.log" "already merged"
+assert_contains "$tmp/stderr.log" "new branch"
+run_hook true || fail "an open Draft PR was blocked by an older merged PR"
+assert_not_contains "$tmp/calls.log" "--state merged"
+unset FAKE_MERGED_HEAD
+run_hook "" || fail "a branch without any PR was blocked"
+assert_last_contains "$quality_log" "PASS "
+assert_contains "$tmp/calls.log" "--state merged"
+FAKE_MERGED_EXIT=4
+if run_hook ""; then
+    fail "merged PR lookup failure did not block the push"
+fi
+assert_last_contains "$quality_log" "FAIL ready-state-lookup"
+unset FAKE_MERGED_EXIT
+
+# SPEC-WF-HARNESS5-D7: unstaged edits in pushed files warn without blocking.
+warning="WARN: unstaged changes in pushed files"
+printf 'export const edited = true;\n' > "$repo/src/example.ts"
+run_hook true 2> "$tmp/stderr.log" || fail "unstaged pushed file blocked the push"
+assert_contains "$tmp/stderr.log" "$warning"
+assert_contains "$tmp/stderr.log" "src/example.ts"
+missing_remote="1234567890abcdef1234567890abcdef12345678"
+run_hook true "" feature "" "$bin:$PATH" "$missing_remote" 2> "$tmp/stderr.log" ||
+    fail "an unknown remote_oid made the hook fail"
+assert_not_contains "$tmp/stderr.log" "$warning"
+assert_last_contains "$quality_log" "PASS "
+git -C "$repo" restore src/example.ts
+printf 'edited\n' >> "$repo/README.md"
+run_hook true 2> "$tmp/stderr.log"
+assert_not_contains "$tmp/stderr.log" "$warning"
+git -C "$repo" restore README.md
+run_hook true 2> "$tmp/stderr.log"
+assert_not_contains "$tmp/stderr.log" "$warning"
 
 printf '#!/bin/bash\nexit 7\n' > "$repo/scripts/ci/classify-changes.sh"
 if run_hook true; then

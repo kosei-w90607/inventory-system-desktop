@@ -52,11 +52,11 @@ classify_files() {
         local matched=false
 
         case "$file" in
-            .github/workflows/*|.github/actions/*|.github/merge-gate-ruleset.json|scripts/ci/*|scripts/tests/*|scripts/local-ci.sh|scripts/pre-push.sh|scripts/doc-consistency-check.sh|scripts/check-env-safety.sh|scripts/check-workflow-git.sh|scripts/check-command-drift.sh|scripts/pr-gate.py|.codex/bin/*|.claude/settings.json|.claude/hooks/*)
+            .github/workflows/*|.github/actions/*|.github/merge-gate-ruleset.json|scripts/ci/*|scripts/tests/*|scripts/local-ci.sh|scripts/pre-push.sh|scripts/doc-consistency-check.sh|scripts/check-env-safety.sh|scripts/check-workflow-git.sh|scripts/check-command-drift.sh|scripts/pr-gate.py|.codex/bin/*|.claude/settings.json|.claude/hooks/*|.claude/agents/*|*/.claude-plugin/*)
                 set_full_areas
                 matched=true
                 ;;
-            AGENTS.md|CLAUDE.md|docs/DEV_WORKFLOW.md|docs/ci.md|docs/AGENT_OPERATING_MANUAL.md|docs/code_review.md|docs/project-profile.md|docs/agent-guidance/*|docs/templates/*|.agents/*|.claude/rules/*|.claude/commands/*|.claude/skills/*|.github/pull_request_template.md)
+            AGENTS.md|CLAUDE.md|docs/DEV_WORKFLOW.md|docs/ci.md|docs/AGENT_OPERATING_MANUAL.md|docs/code_review.md|docs/quality/review-checklist.md|docs/project-profile.md|docs/agent-guidance/*|docs/templates/*|.agents/*|.claude/rules/*|.claude/commands/*|.claude/skills/*|.github/pull_request_template.md)
                 docs=true
                 workflow=true
                 matched=true

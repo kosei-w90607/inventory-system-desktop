@@ -110,4 +110,56 @@ grep -Fq "GATE=workflow-git" "$workflow_git_failed_log" || fail "workflow-git ga
 grep -Fq "RESULT=FAIL" "$workflow_git_failed_log" || fail "workflow-git failure did not fail the run"
 grep -Eq '^EXIT_CODE=7$' "$workflow_git_failed_log" || fail "workflow-git gate exit code was not preserved"
 
+# SPEC-WF-HARNESS5-D5: full stops before any gate when node_modules is a symlink; changed does not.
+mkdir -p "$tmp/bin" "$tmp/target"
+printf 'kept\n' > "$tmp/target/marker"
+for stub in npm cargo; do
+    printf '#!/bin/bash\nprintf "%%s %%s\\n" "%s" "$*" >> "$STUB_LOG"\n' "$stub" > "$tmp/bin/$stub"
+    chmod +x "$tmp/bin/$stub"
+done
+export STUB_LOG="$tmp/stub-calls.log"
+: > "$STUB_LOG"
+ln -s "$tmp/target" "$repo/node_modules"
+latest_log() {
+    find "$repo/.local/ci-evidence" -type f -name "local-ci-$1-${head_sha}-*" | sort | tail -1
+}
+
+if (
+    cd "$repo"
+    PATH="$tmp/bin:$PATH" bash scripts/local-ci.sh full
+); then
+    fail "full ran with a symlinked node_modules"
+fi
+symlink_log="$(latest_log full)"
+grep -Fq "ERROR=node_modules is a symlink" "$symlink_log" || fail "symlink ERROR missing"
+grep -Eq '^RESULT=FAIL$' "$symlink_log" || fail "symlink full did not fail"
+if grep -q '^GATE=' "$symlink_log"; then
+    fail "a gate ran before the symlink check"
+fi
+[[ ! -s "$STUB_LOG" ]] || fail "npm/cargo ran with a symlinked node_modules: $(cat "$STUB_LOG")"
+[[ -f "$tmp/target/marker" ]] || fail "symlink target was modified"
+
+(
+    cd "$repo"
+    PATH="$tmp/bin:$PATH" bash scripts/local-ci.sh changed
+) || fail "changed stopped on a symlinked node_modules"
+if grep -Fq "ERROR=" "$(latest_log changed)"; then
+    fail "changed reported an ERROR for a symlinked node_modules"
+fi
+
+unlink "$repo/node_modules"
+mkdir -p "$repo/node_modules" "$repo/src-tauri"
+printf '#!/bin/bash\nexit 0\n' > "$repo/scripts/tests/run-workflow-tests.sh"
+printf '#!/bin/bash\nexit 0\n' > "$repo/scripts/check-env-safety.sh"
+(
+    cd "$repo"
+    PATH="$tmp/bin:$PATH" bash scripts/local-ci.sh full
+) || true
+real_log="$(latest_log full)"
+if grep -Fq "ERROR=" "$real_log"; then
+    fail "full with a real node_modules reported an ERROR"
+fi
+grep -Fq "GATE=frontend-install" "$real_log" || fail "full with a real node_modules did not reach frontend-install"
+grep -Fxq "npm ci" "$STUB_LOG" || fail "npm ci was not called with a real node_modules"
+
 echo "PASS: local-ci"

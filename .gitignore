@@ -104,6 +104,7 @@ docs/research/real-csv/*
 # 参照: https://code.claude.com/docs/en/permission-modes#protected-paths
 # 判断軸: memory/sandbox-protected-paths-gitignore-strategy.md
 # Layer 4 の詳細: memory/sandbox-architecture-2026-04-19.md
+# .claude/agents は tracked の subagent 定義を置くので除外しない（本体の checkout の sandbox の mount は同期で実 dir になれば消える）。
 .bash_profile
 .bashrc
 .profile
@@ -113,7 +114,6 @@ docs/research/real-csv/*
 .gitmodules
 .ripgreprc
 .mcp.json
-.claude/agents
 .claude/hooks
 .claude/launch.json
 .claude/loop.md
