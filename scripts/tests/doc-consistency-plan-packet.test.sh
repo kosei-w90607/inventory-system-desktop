@@ -1127,7 +1127,30 @@ for pr4_f7_value in "${pr4_f7_values[@]}"; do
     assert_contains "$out" "Plan Commit は pending か 40 桁"
 done
 
-# --- PR4-F8 SPEC-WF-HARNESS4-D5/D14: R4 の review-only skip 行は評価しない。R4 の Minimum 1 は PK4 が ERROR ---
+# --- PR4-F7b SPEC-WF-HARNESS4-D3: Plan Commit: の直後で落とすのは ASCII の空白とタブだけ（helper と同じ、locale に依らない） ---
+# UTF-8 の locale では [[:space:]] が U+3000 に当たるので、LC_ALL=C.UTF-8 で走らせる。
+for pr4_f7b_case in "ok: ${pr4_sha40}" "ok:"$'\t'"${pr4_sha40}" "ng:"$'\xe3\x80\x80'"${pr4_sha40}"; do
+    setup_repo_dirs
+    reset_packet_defaults
+    PKT_PHASE="plan-gate"
+    PKT_PLAN_COMMIT="${pr4_f7b_case#*:}"
+    write_packet "$repo/docs/plans/2026-02-07-pr4-plan-commit-prefix.md"
+    write_plans_md_linking "2026-02-07-pr4-plan-commit-prefix.md"
+    if [ "${pr4_f7b_case%%:*}" = "ok" ]; then
+        if ! LC_ALL=C.UTF-8 run_check "docs/plans/2026-02-07-pr4-plan-commit-prefix.md"; then
+            cat "$out" >&2
+            fail "PR4-F7b: Plan Commit with an ASCII blank prefix was rejected"
+        fi
+        assert_not_contains "$out" "Plan Commit は pending か 40 桁"
+    else
+        if LC_ALL=C.UTF-8 run_check "docs/plans/2026-02-07-pr4-plan-commit-prefix.md"; then
+            fail "PR4-F7b: Plan Commit with a U+3000 prefix was accepted"
+        fi
+        assert_contains "$out" "Plan Commit は pending か 40 桁"
+    fi
+done
+
+# --- PR4-F8SPEC-WF-HARNESS4-D5/D14: R4 の review-only skip 行は評価しない。R4 の Minimum 1 は PK4 が ERROR ---
 setup_repo_dirs
 r4_pr4_defaults() {
     reset_packet_defaults

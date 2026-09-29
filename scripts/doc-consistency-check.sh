@@ -1288,8 +1288,9 @@ check_plan_packet_workflow_state() {
         fi
 
         # 値全体を末尾の空白・タブを削らずに照合する（helper の fullmatch と同じ集合、D-098）。
+        # 前置で落とすのは ASCII の空白とタブだけ（helper の [ \t]*。[[:space:]] は UTF-8 の locale で U+3000 に当たる）。
         local plan_commit_raw
-        plan_commit_raw=$(printf '%s\n' "$ws_section" | grep -E '^- Plan Commit:' | head -1 | sed -E 's/^- Plan Commit:[[:space:]]*//' || true)
+        plan_commit_raw=$(printf '%s\n' "$ws_section" | grep -E '^- Plan Commit:' | head -1 | sed -E $'s/^- Plan Commit:[ \t]*//' || true)
         if [ -n "$plan_commit_raw" ] && [[ ! "$plan_commit_raw" =~ ^(pending|[0-9a-f]{40})$ ]]; then
             error "PK4: $file (R${level}) の Plan Commit は pending か 40 桁の小文字 hex の SHA（末尾の注記・空白・タブなし）。commit 済みで未 push なら、新しい commit ではなくその commit を直す（PK5 は commit 済みの初回値を固定する） -> '${plan_commit_raw}'"
         fi
