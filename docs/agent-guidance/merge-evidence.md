@@ -157,7 +157,7 @@ Actions利用不能時はmergeを停止し、許可済みのlocal作業と証拠
 
 ## 実行手順
 
-R2+の例（`PR`は対象PR番号、`PACKET`はそのPRの差分が触る単一のactive packet）。以下のrecord/Ready/mergeはその操作のowner指示を得てから実行する。captureの返すpathを使い、SHAを手転記しない。reviewed headだけは、reviewerの報告が監査したcommitを書いていればそれを、無ければそのreviewを発注したreview packetの`対象差分と内容commit`欄（`docs/templates/subagent-review-packet.md:15`）のcommitを写す。captureの出力や現在のHEADから取らない（監査していないheadを記録する誤りをhelperがcaptureのheadとの照合で止める）。
+R2+の例（`PR`は対象PR番号、`PACKET`はそのPRの差分が触る単一のactive packet）。以下のrecord/Ready/mergeはその操作のowner指示を得てから実行する。captureの返すpathを使い、SHAを手転記しない。reviewed headだけは、reviewerの報告が監査したcommitを書いていればそれを、無ければそのreviewを発注したreview packetの`対象差分と内容commit`欄（`docs/templates/subagent-review-packet.md:15`）のcommitを40桁のfull SHAで写す（短縮SHAはhelperが拒む）。captureの出力や現在のHEADから取らない（監査していないheadを記録する誤りをhelperがcaptureのheadとの照合で止める）。
 
 ```bash
 python3 scripts/pr-gate.py status --pr "$PR" --packet "$PACKET"
