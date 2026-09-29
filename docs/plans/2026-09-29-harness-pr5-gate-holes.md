@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 0c6489ab9c8bd3a50e0dbed5513b1d610100530c
 - Amendments: none
@@ -31,6 +31,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - plan-gate（round 2）: Plan Review round 2 の是正（相談役 Fable 5.1 の起草、2026-09-30。内訳は Review Response）
 - plan-gate（round 3）: Plan Review round 3（上限、対象 3dbdf369。fresh Opus 5.5 reject P2 1 / P3 7、Codex GPT-6 Astra reject P2 1）→ round 天井の disposition「同型指摘の一括是正」（相談役 Fable 5.1 の起草、2026-09-30。内訳は Review Response）。Coordinator が現物で確かめて plan-approved を owner に諮り、reviewer の再確認は Final Review に回す
 - plan-gate → plan-approved（2026-09-30、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `3dbdf369`）の後、round 天井の disposition「同型指摘の一括是正」（`0c6489ab`）を Coordinator が現物で確かめた（撤回した前提の sweep 0 件、新しい文の件数、`doc-consistency-check.sh --target plan` exit 0〈WARN 1 = PK3〉、`check-workflow-git.sh` exit 0、helper の `parse_packet` が通る）。独立 reviewer の再確認は Final Review（Fable 5.1 + Codex）で行う。owner 承認（2026-09-30、この change での介入 2・3 回目 = plan-approved と G1 の確認）: G1 = (a)（`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` は本 lane で入れる、`disableSkillShellExecution` は backlog の follow-up）、残すリスク = A。Plan Commit = `0c6489ab`（承認した計画の最後の commit）
+- plan-approved → implementing（2026-09-30、Coordinator、state-only）: Writer（Opus 5.5 subagent）へ実装を発注する。Writer の開始 HEAD は本 commit。
 
 ## Owner Effort Budget
 
