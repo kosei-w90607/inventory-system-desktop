@@ -12,7 +12,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: ac00162da132ea4405079ccb160fb49052677781
 - Amendments: none
@@ -35,6 +35,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - plan-gate（round 2）: Plan Review round 2 の是正（相談役 Fable 5.1 の起草、2026-09-30。内訳は Review Response）
 - plan-gate（round 3）: Plan Review round 3 の P3 の是正（2026-09-30。内訳は Review Response）
 - plan-gate → plan-approved（2026-09-30、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `87cf8eca`）で独立 Plan Reviewer 2 本の P1/P2 = 0、P3 の是正（`ac00162d`）を Coordinator が現物で確かめた（`doc-consistency-check.sh --target plan` と `check-workflow-git.sh` が exit 0、helper の `parse_packet` が通る）。owner 承認（2026-09-30、この change での介入 2〜4 回目 = plan-approved・G1・G2 を同じ 1 回の問い合わせで得た）: G1 = A（1 本）、G2 = A（介入の既定 6・実働 30 分、relay の上限を外す、上限に届くときは次の判断と同じ 1 回で諮る）。Plan Commit = `ac00162d`（承認した計画の最後の commit）
+- plan-approved → implementing（2026-09-30、Coordinator、state-only）: Writer（Opus 5.5 subagent）へ実装を発注する。Writer の開始 HEAD は本 commit。
 
 ## Owner Effort Budget
 
