@@ -1150,7 +1150,7 @@ for pr4_f7b_case in "ok: ${pr4_sha40}" "ok:"$'\t'"${pr4_sha40}" "ng:"$'\xe3\x80\
     fi
 done
 
-# --- PR4-F8SPEC-WF-HARNESS4-D5/D14: R4 の review-only skip 行は評価しない。R4 の Minimum 1 は PK4 が ERROR ---
+# --- PR4-F8 SPEC-WF-HARNESS4-D5/D14: R4 の review-only skip 行は評価しない。R4 の Minimum 1 は PK4 が ERROR ---
 setup_repo_dirs
 r4_pr4_defaults() {
     reset_packet_defaults
