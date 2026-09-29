@@ -107,15 +107,17 @@ Keep it factual and stable.
 - Slip retention duty was 5 years, is now 7 years; about 4 years ago a tax accountant's cost inquiry required checking every retained slip individually — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - Register numeric keypad has a decimal point, so quantity × unit price with one decimal digit (e.g. 1.3 × 70円/m) can be entered — 2026-09-15 owner伝聞 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`（追記）
 - Excluded long-dormant items（単品コードなし）are sold via department key + amount, tracked only in the owner's memory — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
-- Current register lease has about 2 years remaining; at expiry the register is returned and a replacement is sought — 2026-09-08 owner原文要旨 — `docs/backlog.md`（D-023 POS adapter boundary 項）
 - Of 216 normal PLU slots, only 2 have real store-entered data; the remaining 214 are factory-default `PLU####` placeholders — see also「レジ・レジスターツール」節の訂正事実 — 2026-08-17 実機機械抽出 — `docs/plu-export-and-real-csv-verification.md`
 - 10 existing products use an 8-digit custom code + `EEEEEE` padding scheme (non-handicraft goods) — 2026-08-17 実機機械抽出 — `docs/plu-export-and-real-csv-verification.md`
 - Fabric/ribbon/string receiving slips record quantity in `m`; the store's counting vocabulary covers all 12 unit words in use (個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm) — 2026-09-14 owner原文 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
 - Some items are received boxed and sold individually after unboxing (e.g. one sewing-notion item) — 2026-09-14 owner原文 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
+  - 箱・袋で仕入れてばらす商品は、伝票が 1 袋いくらで、在庫はばらした 1 個あたりで数える（粒で数えるものも、詰め直した小袋もある）。1 個の原価は 1 袋の値段 ÷ 入り数を、小数第 3 位で四捨五入して小数第 2 位まで持つ。切り売りのひも類も同様の商品 — 店主回答（owner 経由の質問票）2026-09-29
 - Purchase orders are written on one sheet per wholesaler, grouped by wholesaler — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Owner already knows almost all discontinued items and defunct suppliers from memory — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Counting words differ by category: 毛糸=玉, 布=枚, ファスナー=本, はさみ=丁, スナップ=枚, 刺繍糸=本, otherwise mostly 個 — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
 - The store never sources the same product from two different suppliers — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+  - 訂正: 発注書を分ける「取引先」は注文先（問屋・仕入先）。同じ商品を 2 つ以上の注文先から仕入れるのは緊急時だけ（お客様に約束した日に、通常の仕入れ先の納品が間に合わないとき）。上の行の「never」は「通常は 1 つの注文先だけ」の意味 — 店主回答（owner 経由の質問票）2026-09-29
+  - この「取引先」は問屋・仕入先を指し、D-075 (6) が `suppliers` に持たせたメーカー/ブランドとは別の軸。見直しは `docs/backlog.md` の取引先の項目で扱い、決定はまだ変えていない
 - Maker package renewals can change the maker's product code — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
 - Color numbers are commonly used to find/order color-variant products — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
 - Price-revision notices always carry barcode / product name / maker code / old & new price; one maker's notices lack catalog page references and renewals can confuse identification — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
@@ -123,6 +125,8 @@ Keep it factual and stable.
 - Some hair-accessory items have no reference list price; the store sets cost itself for those — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - 店にネットワーク（Wi-Fi・LAN）がある — owner回答2026-09-19
 - 店での運用を想定した市販の USB HID バーコードリーダーを owner が用意し（owner 2026-08-09）、店の PC で Excel シートの JAN 入力に使っている — owner回答2026-09-23
+- 店の PC は Windows 11 Pro 64-bit、画面は 1366×768・表示倍率 100%、BIZ UDPゴシックが入っている — owner確認 2026-09-29
+- プリンタは Canon TR8630（既定のプリンタ、標準 TCP/IP ポート）。Wi-Fi か有線 LAN かの区別と、Edge からの A4 1 枚の印刷は次の訪店で確かめる — owner確認 2026-09-29
 
 ### 無いもの（owner回答 2026-09-19、種類2 全13件）
 
@@ -145,6 +149,10 @@ Keep it factual and stable.
 ### いまの手作業
 
 - Daily: SD card recovery → CV17 import to PC → paste Z001/Z002/Z005 into Excel → overwrite → print → file in a binder — 2026-06-30 field-check — `docs/project-memory.md`
+- 締めで印刷している Excel は 1 シート（売上日報）で、A4 縦・1 ページに縮小して収める。上に年月日、その下に 4 つの枠（売上明細 Z001・取引キー Z002・部門 Z005・PLU Z004）を横に並べ、各枠の列は CSV と同じ（レコード / キャラクター / 個数(件数) / 金額）。行数は Z001 が 28、Z002 が 38、Z005 が 21。PLU の枠は見出しだけで中身は空。1 日 1 枚 — owner確認 2026-09-29
+- 締めで印刷する紙は A4 縦。見返すのは日付と印刷のずれの確認だけ。導入後も紙で要るもの = 日報・月の売上・棚卸しの一覧・入荷や廃棄の記録。申告の前に紙で作る集計の用紙の項目 = ページ番号、メーカー、JAN コード（メーカー型番と兼用）、売価、仕入れ価格、数量、金額 — 店主回答（owner 経由の質問票）2026-09-29
+- 毎日の締めで EJ も取り込める（取込みの頻度は今は月 1 回ほど）— 店主回答（owner 経由の質問票）2026-09-29
+- 値下げ品の売り方: バーコードのある商品は読んでから値引きキー、バーコードの無い商品は部門キー — 店主回答（owner 経由の質問票）2026-09-29
 - Daily register closing happens same-day, with the store kept open; during closing the SD card is imported through CV17, the reports are pasted into Excel and printed, and only then is the store closed — owner回答2026-09-22
 - Sales made between the day's register closing and the store's actual close are therefore folded into the next day's closing — Coordinator の推論（上の行の owner回答2026-09-22 からの帰結で、owner の発言ではない）
 - PC work such as product edits can also happen after the day's register closing — owner回答2026-09-22
@@ -153,6 +161,8 @@ Keep it factual and stable.
   - この行は前回の年末棚卸し（Excel シートを渡す前）の運用。2026-09-23 時点は、owner が渡した Excel シートへ、机に置いたノート PC と棚を往復して入力している（棚の前で PC を持って入力するのではない）— owner回答2026-09-23。次の年末の棚卸しも Excel で行うかは未確認
   - 新規品の書き足しは、途中に手書きしたり最後にまとめたりで統一されていない（紙のリストに行を挿入できない前提での試行錯誤）。商品の場所はすべて把握している — 店主回答・owner 伝聞 2026-08-20
 - During stocktake, items received but not yet billed are excluded from the count; discarded items are subtracted from the count — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+  - 未会計の取り置きは数に入れる（取り置きは会計の前が多い）。取り寄せは先払いで、先払いの取り寄せ品がお渡し待ちの間に棚卸しになっても数えない。先払いの取り寄せは、受注の時点で JAN が分からないことがあるため、レジで部門キーで金額を打つ — 店主回答（owner 経由の質問票）2026-09-29
+  - 棚卸しの途中の入荷のうち、問屋の締め・請求・支払いの周期で請求と支払いが翌年になるものは、12 月末の在庫に数えない。見分けは問屋の締め日 — 店主回答（owner 経由の質問票）2026-09-29
 - Price revision: hand-correct the paper prior-year list's cost/price, re-tag the shelf price, then correct the PC copy of the prior-year list afterward — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
 - Price-revision notices: lists up to ~400 lines are worked through over several days, prioritizing high-volume items, without waiting for any listed effective date — 2026-08-21/22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - A heavy stocktake year took about 1 week to transcribe onto the paper list, then 2-3 more days to transcribe into the PC — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
@@ -164,7 +174,7 @@ Keep it factual and stable.
 - 年末の棚卸しの時期は毎年変わらない — owner回答2026-09-19
 - 棚卸しで数える時間帯は決まっていない — owner 伝聞 2026-09-16
 - 10 月からの棚卸しの準備の中身は、値上げ品の原価・売価の確認と訂正、新商品のリストへの追加、原価不明品の問い合わせ — owner 伝聞 2026-07-07
-- 棚卸しの途中でノート PC の蓋を閉じ（家へ持ち帰る場合を含む）、続きを後で入力することはありそう — owner回答2026-09-23
+- 棚卸しの途中でノート PC の蓋を閉じ（家へ持ち帰る場合を含む）、続きを後で入力することはたまにやる。アプリの完成後も続く見込み（今の頻度は Excel の棚卸しシートを埋める作業も込み）— owner回答2026-09-29
 - 値上げの PDF は画面では作業しにくいので、印刷して書き込み、後で PC の棚卸しリストの売価・原価をまとめて直す（紙と PC の二重管理）— owner 伝聞 2026-08-21
 - 期限切れ・破損品は記録しておらず、棚卸しのときに在庫数を変えてロスとして計上してきた — 店主回答（2026-03）
 - 発注時はメーカー品番で照会し、分からなければ JAN の一部、それも無ければメーカー名＋商品名で仕入先へ照会する。品番と JAN の対応が載る資料は商品によって異なる（カタログの一覧・一覧でない記載・品番だけ・カタログが無く現物確認だけ）— 店主回答（2026-03）
@@ -216,13 +226,25 @@ Keep it factual and stable.
 - レジの PLU 名称欄は 16 バイトまでで、この制約は動かせない — owner確認 2026-09-17
 - CV17 は日報をコピーして貼り付ける元としてだけ使われ、十分に活用されていない。店の CV17 は 1.1.1 で、公式の最新は 2.0.1。CV17 の更新は owner が行う — owner 2026-08-15
 - SD カードは 16GB・FAT32 で使用率は約 4%、PC 側の CV17 履歴は約 416MB — 2026-08-15 訪店記録
+  - SD カードは SanDisk Ultra 16GB（表示速度 80MB/s）— owner確認 2026-09-29。CASIO の動作確認一覧との照合は未実施（`docs/plu-export-and-real-csv-verification.md` PLU-04）
 - PLU export is app-to-register only; the app cannot auto-confirm register-side reflection — （記録済み） — `docs/project-memory.md`
 - CV17 shows Z001/Z002/Z004/Z005 in one report-screen family and can write them together — 2026-07-06 field-check — `docs/project-memory.md`
 - Files left in PC-side `EcrDatas` after SD import are "layout A"; CV17's explicit export is "layout B" (observed on daily reports; the Z004 parser accepts layout A only, layout B is not yet supported) — 2026-07 L3 — `docs/project-memory.md`
 - Z004 returns appear as negative quantity/amount — 2026-08-15 issue #76 実機バッチ — `docs/plu-export-and-real-csv-verification.md`
 - Non-JAN custom-code items are currently all sold via department key; there is no item-level register sale or automatic stock decrement for them — 2026-07-23 owner確認 — `docs/plu-export-and-real-csv-verification.md`
 - CASIO ECR+（スマホアプリ）has a planned service end and is not the long-term primary integration — 2026-09-19 owner が同じ認識を示し、既存記録との対応を確認済み — `docs/plu-export-and-real-csv-verification.md`（"サービス終了予定があるため長期の primary integration にはしない"）/ `docs/decision-log.md`（D-022 "despite service-end risk"）
-  - CASIO の公式ページ（<https://web.casio.jp/ecr/ble/ecr.html>、2026-09-24 確認）では、ECR+ は新規申込受付を 2026年1月4日に終了し、サービス提供は 2028年12月末に終了予定。店主は精算に ECR+ を要すると答えている（`### 在るもの` の ECR+ の行）ため、レジのリース満了が 2028 年 12 月より後だと精算に支障が出る恐れがある（推論）。ECR+ の終了後にレシートの控えをアプリで見られる必要があるかという問いに、owner はまず分からないと答えたうえで、ECR+ が終わるならレジの入替えと同時でないと困り、続かないなら代わりを自分たちで作るしかないと見ている — owner回答2026-09-23。リースの満了年月は店主へ確認中
+  - CASIO の公式ページ（<https://web.casio.jp/ecr/ble/ecr.html>、2026-09-24 確認）では、ECR+ は新規申込受付を 2026年1月4日に終了し、サービス提供は 2028年12月末に終了予定。ECR+ の終了後にレシートの控えをアプリで見られる必要があるかという問いに、owner はまず分からないと答えたうえで、ECR+ が終わるならレジの入替えと同時でないと困り、続かないなら代わりを自分たちで作るしかないと見ている — owner回答2026-09-23
+  - 一方、店主は精算に ECR+ を要すると答えている（`### 在るもの` の ECR+ の行）。ECR+ の終了後に精算を続けられるかは未確認で、`docs/backlog.md`（ECR+ のサービス終了の項）に残る論点として置く
+- 精算の系列（持ち帰りの EJ 1,504 files〈2022-07-28〜2026-09-29〉と 2026-07〜09 の Z 帳票の手元集計）— 持ち帰りデータの手元集計 2026-09-29（Issue #105）
+  - 2026-07〜09 の 103 組すべてで、Z001 / Z002 / Z005 の精算回数は同じ値を共有し、Z004 の精算回数はそれより +1。全期間で、終わりの印字がある `日計明細 Z` 1,593 件がすべて Z004 に一意に対応する（EJ タイトル末尾 4 桁 + 1 = Z004 の settlement_no、ヘッダの 4 桁 = machine_no）
+  - Z004 の日付が EJ の印字日より後になる 7 件はすべて 2022-07-28〜08-17（使い始めの 3 週間）で、以後 4 年間は 0 件。2022 年に中断した精算と再実行で末尾番号が重なる組が 5 組あるため、精算の区切りには終わりの印字がある完了した精算だけを使う。EJ の取引番号は全期間 8,624 件が +1 で連続
+  - 逆向き: EJ に `日計明細 Z` の記録が無い Z004 が 26 件（全 1,619 件の約 1.6%）。25 件は、Z001 と Z004 はあるのにその精算の記録が EJ のどこにも無い（取引番号は連続しているので取引は欠けていない。17 日はその日の EJ ファイルが精算の直前で終わり、8 日は同じ日のもう 1 回の精算だけが EJ にある。2022〜2026-06 に散在し、原因は店主へ質問中）。残る 1 件は使い始めの単独の `PLU Z`。EJ の区間と Z004 を 1 対 1 に決め打ちできない
+  - EJ ファイル名の日付は、そのファイルの最後の精算の日。精算の後の販売と、精算の無かった日の販売は、次に精算した日のファイルに入る。暦日でファイルを選ぶと取りこぼすため、欠けの判定はファイルの有無ではなく取引番号の連続性で行う
+- 取消・訂正・値引きなどの EJ の形（持ち帰りの EJ の手元集計）— 持ち帰りデータの手元集計 2026-09-29（Issue #105）
+  - 取消（`取引中止`、取引全体を無効にする記録で商品の行を含む）50 件、訂正 59 件、％値引き 57 件、マイナスキー 7 件（最後は 2023-03）、訂正ラベルの無いマイナスの部門行 7 件（2022-08）。全種類の実例があり、試し打ちは要らない
+  - 今の parser が知らないモード: `点検` 181、`OFF` 34、`練習` 33（売上に入らないトレーニングの記録と見られる）、`PGM3` 7、`PGM1` 2
+- 部門キーで小数 1 桁の数量を売った日（2026-09-29）は、EJ の数量・点数の行、Z001 の `総売` の個数/件数、Z005 のその部門の個数が小数になる（Z002 と Z004 には出ない）。今の `daily_report_parser.rs` は Z001 の個数/件数と Z005 の個数を整数でしか読まず、`invalid_number` でその日の日報の取込み全体が失敗する。`ej_parser.rs` の `parse_quantity` も整数だけ。PLU の小数の Z004 は 2026-09-30 に試す予定 — 持ち帰りデータの手元集計 2026-09-29（Issue #105）
+- clear した PLU 枠の行は、名前が空・コード全桁 0 のまま、数量と金額を持って次の Z004 に残る（2026-09-28 の検証で 1 行）。`z004_parser.rs` はコード全桁 0 の行を数量・金額を見ずに空スロットとして読み飛ばす（`normalize_jan` が `Ok(None)` を返す分岐）ため、精算の前に売れた PLU を clear するとその売上は在庫に反映されず、エラーにもならない — 持ち帰りデータの手元集計 2026-09-29（Issue #105）
 
 ### 未確認
 
@@ -230,6 +252,7 @@ Keep it factual and stable.
 - CSV export and print behavior have not been end-to-end verified in real use; owner's own characterization is "まともにテストしたことがない" / "印刷は中身を作っていない" — `docs/backlog.md`（CSV出力・印刷の実挙動確認 項）
 - Whether the store will want a network (UNC/NAS) backup destination is still open; current handling is low priority pending an explicit need — `docs/backlog.md`（バックアップ保存先のUNC/ネットワークパス対応 項）
 - 導入後、値上げのときに紙の前年リストを手で直す作業をやめるかは未確認。owner は、このアプリを渡すことがその作業の代わりになるはずと考えている — owner回答2026-09-23
+- 布・ファスナー以外に、複数の商品が同じバーコードを共有するものがあるかは、店主が確認中 — 店主回答（owner 経由の質問票）2026-09-29
 
 owner が既出の記憶があると答えた 2 件は、記録を探索した結果、以下のとおり見つかった（未確認へは回さない）。
 
