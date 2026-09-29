@@ -31,6 +31,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft → plan-gate（2026-09-29、起草役 = Opus 5.5 subagent、本 commit、plan-first）: Risk R3（下記 Risk）。spec-check で、本 lane の設計の正本は本 lane が書き換える workflow 文書そのもの（`docs/DEV_WORKFLOW.md`・`docs/templates/*`・`docs/code_review.md`）で、今の正本のままでは足りない（Owner Effort Budget・Wave・review の規則を書き換える）と確かめ、製品の設計正本（function / DB / screen）は触らないと確かめた（skip は使わない）。design の出力は本 packet の Spec Contract（D1〜D15）・「規則の処置表」・設計判断 1〜3 に置き（同じ plan-first の変更）、正本と decision-log D-098 への昇格は実装の S1〜S16 で行う（PR2・PR3・並走の摩擦と同じ形）。owner に諮る判断点 G1（分け方）・G2（Owner Effort Budget の値）は推奨案（A・A）で設計を閉じ、Plan Gate で owner に諮る。owner が G1 = B を選べば plan-draft へ戻って packet を 2 つに分け、G2 で A 以外を選べば S1・S6 と AC10 の値を plan-approved の前に直す。G3（所有表の外の 3 file）は Coordinator の裁定。Plan Review へ。
+- plan-gate: Plan Review round 1（fresh Opus 5.5 reject P2 2 / P3 6、Codex GPT-6 Astra reject P2 4 / P3 2）→ 全件採用し是正（相談役 Fable 5.1 の起草、2026-09-29）
 
 ## Owner Effort Budget
 
@@ -94,7 +95,7 @@ Coordinator が挙げた候補を今の main で確かめた結果。「済み�
 | B8 `inventory-operator-ui` Skill の読む物に `01-decision-rules.md` | 教訓 73 | 無し | S12 |
 | B9 Owner Effort Budget の改訂に伴う 40・49 | 教訓 40・49 | A2 と同じ | S6、G2 |
 | C(2) MANUAL の「design lane」の定義 | backlog `:64` の (2) | 語は座組表（`docs/AGENT_OPERATING_MANUAL.md:70`、PR5 の所有）にだけあり、定義が無い | S13（表の外に定義を置く） |
-| C(3) 読ませない場所の例示に是正 commit | backlog `:64` の (3) | MANUAL `:35`、subagent-review-packet `:19` に無い | S11・S13 |
+| C(3) 読ませない場所の例示に是正 commit | backlog `:64` の (3) | MANUAL `:36`、subagent-review-packet `:19` に無い | S11・S13 |
 | C(4) code_review の Output Shape の確信度の欄 | backlog `:64` の (4) | 本文は確信度を求める（`docs/code_review.md:93`）が例に欄が無い | S10 |
 | C(5) AGENTS の行き先 (ii) から MANUAL §5.6 への導線 | backlog `:64` の (5) | `AGENTS.md:47` に link が無い | S14 |
 | C(1) closure の record | backlog `:64` の (1) | `scripts/pr-gate.py:436-439`（PR5 の所有） | 外す（Coordinator 裁定で PR5） |
@@ -120,7 +121,7 @@ Goal Invariant:
 ### 最小完了条件
 
 - R3 の Plan Packet を新しい template で書くと、契約の追跡は 1 表（Contract Ledger）、設計の準備は 1 節（Design Readiness）で済み、Consultation Relay 節・`- Findings Freeze:` 行・`Review-only skipped because:` 行を書かなくても docs job の checker（PK1〜PK4）が通る。旧 template で書いた active packet（本 packet と、並走する PR5 の packet を含む）も通り続ける。
-- `Plan Commit` に `pending` でも 40 桁の SHA でもない値を書いた packet は、push の前の doc check（pre-push・local-ci・hosted の docs job）で ERROR になる。
+- `Plan Commit` に `pending` でも 40 桁の小文字 hex でもない値（末尾の空白・タブ・注記を含む）を書いた active packet は、`bash scripts/doc-consistency-check.sh --target plan <packet>` が ERROR にする。起草役はこれを commit の前に回す。pre-push・local-ci・hosted の docs job でも同じ ERROR が出るが、そこでは PK5（`scripts/pre-push.sh:186-188` が doc check `:207` より先に走る）が commit 済みの初回値を固定した後になる（`scripts/check-workflow-git.sh:93-104`）。
 - `docs/DEV_WORKFLOW.md` から、失敗を 1 文で言えない手続き（3 分類、review-only と Final Review の二重の語、WER の要求、wave の lane 数と同じ source document の上限、一過性の dogfood 記述、Design Phase と Contract Audit の重複した列挙、問い合わせの行き先の重複した表）が消え、残す規則は 1 か所にだけある。Owner Effort Budget は数値の上限を残したうえで G2 の値と扱いになる。
 - 受理した P1/P2 の固定（修正前に red の test）、L3 の fixture の列挙、component の import / 描画の表、Matrix の oracle の規律、事実主張の裏取り、scope 増減の照合、design lane の定義、読ませない場所の是正 commit、確信度の欄、AGENTS から MANUAL §5.6 への導線が、使う場面の正本に 1 行ずつある。
 
@@ -148,7 +149,7 @@ workflow の変更なので、本 lane の merge 後の R3 lane の一日（起�
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
 | main に本 lane が入っている。R3 lane の起票の承認がある | 起草役が新しい template で packet を書く | 軽くなる: 契約の追跡は Contract Ledger の 1 表（旧 4 表）、設計の準備は Design Readiness の 1 節（旧 4 節）、Consultation Relay 節と `- Findings Freeze:` 行は無い。R2 なら R3/R4 の部分を書かない。残る: Goal Invariant、Ordinary Operation、Contract Probe、Data Safety、Matrix、Owner Effort Budget（G2 の値） | `bash scripts/doc-consistency-check.sh --target plan` が exit 0（PK1 が Contract Ledger を R3 の節として受ける） | なし |
-| 起草役が `Plan Commit` に確定待ちの注記を書いて push しようとする | pre-push の doc check | 軽くなる（事故が減る）: PK4 が ERROR で止め、PK5 が初回値を凍結する前に気付く（旧: PK4 は通し、PK5 が値を凍結して branch を作り直した。教訓 42） | `pending` か 40 桁の SHA に直して exit 0 | なし（Contract Probe 3・4） |
+| 起草役が `Plan Commit` に確定待ちの注記や短い SHA を書いた | commit の前に `bash scripts/doc-consistency-check.sh --target plan <packet>`（作業木を読む） | 軽くなる（事故が減る）: PK4 が書式で ERROR にし、commit する前に直せる。commit 済みで未 push なら、新しい commit を足さずにその commit を直す（PK5 は commit 履歴の最古の non-pending 値を初回値に固定する〈`scripts/check-workflow-git.sh:93-104`〉ので、新しい commit で直すと書き換えの ERROR になる。旧: 書式検査が無く、解決できる短い SHA は PK5 も通し、helper が record の時点で拒んだ。教訓 42） | `pending` か 40 桁の小文字 hex に直して exit 0、それから commit | なし（Contract Probe 3・4・10・11） |
 | packet が plan-gate | Plan Review（fresh Opus + Codex、互いに独立） | 軽くなる: finding を 3 分類に振り分けない（P1/P2/P3 の重大度だけ）。reviewer の scope の追加・除外の提案は owner の記録（catalog の除外注記・owner の原文・前 lane の Review Response）と照合してから採否を決める。残る: 冒頭の 3 値の答え、round 天井 3、相互修正案、不可逆 finding の 4 項目 | P1/P2 = 0 と plan-approved の owner 承認 | なし |
 | Plan Gate で owner の判断が要る | Coordinator が承認依頼を出す | 軽くなる（G2 = A のとき）: relay の往復は数えない。介入の上限（既定 6）に届く見込みなら、次の判断と上限の改定を同じ 1 回で諮る（止まって別の承認を足さない）。残る: `この change での介入 N 回目 / 予算 M 回` と完了 1 文、decision point 単位の計上、goal-drift signal での即停止 | owner の回答 | G2 の owner の選択 |
 | plan-approved | Writer が実装し Draft PR | 変化なし（plan-first、Plan Commit の固定、PK5） | 対象の検証が通る | なし |
@@ -165,23 +166,23 @@ workflow の変更なので、本 lane の merge 後の R3 lane の一日（起�
 行番号は起点 `7ac96d9e`。各 file の変更は該当の行・節に限る。文の新しい中身は「規則の処置表」と Spec Contract に従い、Writer が文面を書く（逐語の文は AC の anchor の語だけを固定する）。
 
 - **S1 `docs/templates/plan-packet.md` の組み直し**（D1・D2・D6・D13）
-  - 構成: 前半を全 Risk の本体（前文、Workflow State、Owner Effort Budget、Risk、Goal、Ordinary Operation、Scope、Non-scope、Acceptance Criteria、Design Readiness、Registration / Generation Obligations、Test Plan、Review Focus、Implementation Results、Review Response）、後半を「R3/R4（R2 は該当するときだけ）」の部分（Contract Ledger、Contract Probe、Data Safety、Impact Review Lenses、Boundary / Wire Contract）にし、後半の頭に 1 行でその旨を書く。R2 は後半を書かなくてよい（Registration は全 Risk で残す: 列挙漏れの対策で、該当なしの 1 行で足りる）。
+  - 構成: 前半を全 Risk の本体（前文、Workflow State、Owner Effort Budget、Risk、Goal、Ordinary Operation、Scope、Non-scope、Acceptance Criteria、Design Readiness、Registration / Generation Obligations、Boundary / Wire Contract、Test Plan、Review Focus、Implementation Results、Review Response）、後半を「R3/R4 の部分」（Contract Ledger、Contract Probe、Data Safety、Impact Review Lenses）にし、後半の頭に 1 行でその旨を書く。R2 は後半を書かなくてよい。Boundary / Wire Contract は Risk に依らず、`docs/DEV_WORKFLOW.md:62` の対象形式（JSON、browser state、CSV、config、manifest、cache schema、Tauri command DTO、generated bindings）に触る変更では必須のまま（節の位置だけ前半へ移し、条件文は変えない）。Registration は全 Risk で残す（列挙漏れの対策で、該当なしの 1 行で足りる）。
   - Contract Ledger（新設、旧 Spec Contract `:236-243`・Trace Matrix `:245-250`・Design Intent Trace `:137-143`・Contract Coverage Ledger `:199-206` を置き換える）: 列は `契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象`。説明は 3 行以内: R3/R4 は必須、触る正本の節の契約・設計判断 ID をすべて行にする（行の欠けは Plan Gate の blocker）、行を書く前に隣接する契約の sweep、Final Review で各行を実装と突き合わせる。設計の理由と棄却案は正本・decision-log に置き、Ledger には ID で引く。
   - Design Readiness（旧 Design Sources `:97-106`・Required Design Artifacts `:108-119`・Design Intent Audit `:145-152`・Design Readiness `:172-189` を 1 節に）: 箇条は 6 つ = 引用する設計正本（節まで）、必要な設計成果物（DEV_WORKFLOW の Design artifact selection の当たる行だけ、状態 = existing sufficient / updated in this PR / deferred）、plan にしかない durable な判断の昇格先、前提・制約と延期した gap の follow-up、絶対保証の例外の自己点検、判定（ready / not ready と理由）。旧 `Minimum design checks` の 7 行は DEV_WORKFLOW の設計の完了条件への参照 1 行にする。
   - Owner Effort Budget（`:27-35`）: G2 の値と扱い（推奨 A: `介入回数上限`・`実働時間上限`・`Plan Review round 天井`、relay の行を消す）。消費の表（種別・上限・消費・残りの見込み・予備・合計）を置く。`介入 N`・`予算 M` の語は残す（test の section 17 が要求）。
-  - 消す: Consultation Relay 節（`:37-42`）、Registration 表の相談役の行（`:130`）、Review Response の `Review-only skipped because:` の案内と `- Findings Freeze:` 行（`:269-270`）、`independent-review`（`:201`、Ledger の説明に置き換わる）。
+  - 消す: Consultation Relay 節（`:37-42`）、Registration 表の相談役の行（`:130`）、Review Response の `Review-only skipped because:` の案内と `- Findings Freeze:` 行（`:269-270`）、`independent-review`（`:201`、Ledger の説明に置き換わる）。Registration の本文 `:123` と表 `:133` の「Contract Coverage Ledger」は「Contract Ledger」に直す（template 内に旧名の残りを作らない。AC5）。
   - Scope 節（`:77-81`）に 1 行（B3、教訓 29）: component の移動・統合・置換を含む Scope は、統合後の各 file が何を import し何を描画するかの表を置き、import の AC をそこから導く（anchor の語 `import し何を描画`）。
   - Test Plan 節（`:208-217`）に 1 行（B2、教訓 103）: Human Gate に manual（L3）を含むときは、L3 の項目ごとに到達経路・必要な入力物（DB のデータ・import する file・CSV・scan）・依存する既知 backlog を並べ、受理される fixture を Ready の依頼と同時に渡す（anchor の語 `受理される fixture`。規範の本文は S9 の Human Visual Confirmation）。
-  - Impact Review Lenses（`:154-170`）: lens の表の唯一の所在にする（J7）。「不該当の lens は 1 行の理由」の説明をここへ移す。
+  - Impact Review Lenses（`:154-170`）: lens の表の唯一の所在にする（J7）。DEV_WORKFLOW `:172-181` の表が持つ `Question to answer`・`Evidence home` の 2 列を template の表へ移し（template の今の表 `:158-168` は Lens 名・Applicability / finding・Follow-up artifact だけで問いを持たない）、列は `Lens | Question to answer | Evidence home | Applicability / finding | Follow-up artifact`。「不該当の lens は 1 行の理由」（`:183`）の説明をここへ移す（anchor: `Which claims are observed facts` が template に 1 件、AC14）。
 - **S2 `scripts/doc-consistency-check.sh`**（D2・D3・D4）
-  - PK1（`:1009-1074`）: R3 必須節（`:1015`）から `Spec Contract`・`Trace Matrix` を外し、`## Contract Ledger` があるか、`## Spec Contract` と `## Trace Matrix` の両方があるときに通す（どちらでもなければ ERROR `PK1: … Contract Ledger（旧 template は Spec Contract と Trace Matrix）を欠いています`）。archive の明示 path の扱い（`:1039-1048`）は変えない。R4 の review-only skip の ERROR（`:1060-1068`）を消す。`Owner Effort Budget`・`Data Safety`・`Contract Probe`・Test Design Matrix の参照の要求は変えない。
+  - PK1（`:1009-1074`）: R3 必須節（`:1015`）から `Spec Contract`・`Trace Matrix` を外し、`## Contract Ledger` があるか、`## Spec Contract` と `## Trace Matrix` の両方があるときに通す（どちらでもなければ ERROR `PK1: … Contract Ledger（旧 template は Spec Contract と Trace Matrix）を欠いています`）。`## Contract Ledger` があるときはその表のデータ行（`trace_matrix_data_rows` の読み〈`:962-980`〉を節名を引数にして使い回す。header と区切り行と空の行は数えない）が 0 件なら ERROR `PK1: … Contract Ledger にデータ行がありません`（PK2 は表の行を見ない〈`extract_prose` `:852-861`〉ので、空の Ledger を止める検査が他に無い。旧い組の経路には足さない）。archive の明示 path の扱い（`:1039-1048`）は変えない。R4 の review-only skip の ERROR（`:1060-1068`）を消す。`Owner Effort Budget`・`Data Safety`・`Contract Probe`・Test Design Matrix の参照の要求は変えない。
   - PK3（`:1112-1170`）: データ行の抽出（`trace_matrix_data_rows`、`:962-980`）を、`## Contract Ledger` があればその表から、無ければ `## Trace Matrix` から読むようにし、WARN の文言の節名もそれに合わせる。placeholder と `test_` token の検査は同じ。review-only skip の WARN（`:1148-1154`）を消す。
-  - PK4（`:1217-1331`）: R3 の `- Findings Freeze:` 行の要求（`:1298-1305`）を消す。`Plan Commit` の値全体（`extract_workflow_field … full`）が `pending` か `[0-9a-f]{40}` に一致しなければ ERROR `PK4: … Plan Commit は pending か 40 桁の SHA`（archive の明示 path は従来どおり PK4 の対象外）。既存の「plan-approved 以降で pending」の ERROR は残す。
+  - PK4（`:1217-1331`）: R3 の `- Findings Freeze:` 行の要求（`:1298-1305`）を消す。`Plan Commit` の値は `- Plan Commit:` の直後の空白を除いた行の残り全体で読み、末尾の空白・タブを削らない（`extract_workflow_field … full` は `:948` で末尾を削るので使わない。helper は `scripts/pr-gate.py:147-155` で末尾を保ち `:72-73` の `fullmatch` で拒む）。その値が `pending` か `[0-9a-f]{40}` に完全一致しなければ ERROR `PK4: … Plan Commit は pending か 40 桁の小文字 hex の SHA（末尾の注記・空白・タブなし）。commit 済みで未 push なら、新しい commit ではなくその commit を直す（PK5 は commit 済みの初回値を固定する）`（archive の明示 path は従来どおり PK4 の対象外）。既存の「plan-approved 以降で pending」の ERROR（`:1286-1291`）は残す。
   - WER: `check_new_wer_retired_rules`（`:1363-1411`）と呼出し（`:1929`・`:1984`）を消す。
 - **S3 `scripts/tests/doc-consistency-plan-packet.test.sh`**（D2・D3・D4・D7）
-  - fixture の既定の `PKT_PLAN_COMMIT`（`:274`、`abc1234`）を 40 桁の合成 SHA にする。`write_packet` に新 template の形（`## Contract Ledger` と `## Design Readiness`、Spec Contract・Trace Matrix・Findings Freeze 行なし）を出す切替えを足す。
-  - section 6（`:536`、Findings Freeze 行の欠落を ERROR）を「欠落でも ERROR なし」に置き換える（PR4-F3）。section 16（`:709-757`、WER の Retired 節）を「WER の検査が走らない」1 件に置き換える（PR4-F10）。section 17（`:759-`）の 3 分類の assert（`:770-772`）を消し、K3 の 4 項目・`goal-drift signal`・`one-shot irreversible`・`介入 N`・`予算 M`・承認依頼の counter の assert は残す。
-  - 新しい section（見出しは `# --- PR4-F<番号>`）: 下の Test Plan の PR4-F1〜PR4-F10。
+  - fixture の既定の `PKT_PLAN_COMMIT`（`:274`、`abc1234`）と section 14 の上書き値（`:675`、`ffffff1`。plan-approved / implementing / archive の 3 phase）を 40 桁の合成 SHA にする（section 14 の 8 phase の正例はそのまま残す）。既定値を 40 桁にすると section 13（`:647-664`）・25（`:938-949`）が偶然守っていた「archive の明示 path では短い SHA が通る」の網が消えるので、PR4-F12 で archive の明示 path に `abc1234` の fixture を置き exit 0 を確かめる。`write_packet` に新 template の形（`## Contract Ledger` と `## Design Readiness`、Spec Contract・Trace Matrix・Findings Freeze 行なし）を出す切替えと、Ledger のデータ行を 0 件にする切替えを足す。
+  - section 6（`:536`、Findings Freeze 行の欠落を ERROR）を「欠落でも ERROR なし」に置き換える（PR4-F3）。section 16（`:709-757`、WER の Retired 節）を「WER の検査が走らない」1 件に置き換える（PR4-F10）。section 17（`:759-`）の 3 分類の assert（`:770-772`）を消し、K3 の 4 項目・`goal-drift signal`・`one-shot irreversible`・`介入 N`・`予算 M`・承認依頼の counter の assert は残す。PR4-F5・F7 は exit 1 に加えて PK4 の書式の文言（`Plan Commit は pending か 40 桁`）を `assert_contains` で固定する（`pending（注記）` は Phase plan-gate で書く: implementing だと既存の「pending のままです」が先に出て MU5 を exit code で捕まえられない）。
+  - 新しい section（見出しは `# --- PR4-F<番号>`）: 下の Test Plan の PR4-F1〜PR4-F12。
 - **S4 `docs/DEV_WORKFLOW.md` の Artifact Map・Risk Tiers・Plan Packet Rules**（D5・D1・D13）
   - Artifact Map: `:35` の Review packets の行を「Plan Review・Final Review の発注に使う」に、`:37` の WER の行を消す。
   - Risk Tiers: `:49` の R3 の Required workflow を「Plan Packet、Test Matrix、targeted gates、Final Review（本数は Workflow State の `Final Review Minimum`）」に、`:50` の R4 に「Final Review Minimum 2 と Human Gate `r4`」を書く。
@@ -190,17 +191,18 @@ workflow の変更なので、本 lane の merge 後の R3 lane の一日（起�
   - `:106` の停止の列挙から「Owner Effort Budget の hard stop」を「Owner Effort Budget の goal-drift signal」に直し、1 文足す: 停止を足すときは防ぐ失敗を 1 文で書く。書けない停止は緩める候補にする。安全の境界（古い証拠の拒否、独立 review、Plan Commit の固定、owner の Human Gate、R4 の承認、不可逆 finding の 4 項目）はこの原則で緩めない（owner 2026-09-28、D-098。anchor の語 `防ぐ失敗を 1 文で`）。
   - Design Phase Rules（`:116-209`）: 処置表の「Design Phase」の行どおりに縮める。見出し `## Design Phase Rules` は残す（`.agents/skills/inventory-implementation/SKILL.md` の anchor）。Review Rules `:346` の link `#design-decision-ids`（該当する見出しが元から無い）を `#design-phase-rules` に直す。
 - **S6 `docs/DEV_WORKFLOW.md` の Owner Effort Budget と問い合わせの行き先**（D6・D11）
-  - `## Owner Effort Budget`（`:260-270`）を G2 の値と扱いで書き直す（見出しは残す: `.agents/skills/inventory-workflow-start/SKILL.md:22` と `:239` の anchor）。推奨 A の中身: 既定の上限は介入 6 回・実働 30 分（anchor の語 `介入 6 回`）、packet が理由を書いて変えてよい。数え方は decision point 単位で、L3 の各 round も 1 回（anchor の語 `L3 の round`）、wave の batch 承認も lane ごとに数える（`:267` の縮約）。relay（Coordinator が Codex 等を起動する往復）は owner の手間でないので上限を置かない。上限に届く見込みのときは、追加の証跡・script・儀式を足す前に Goal Invariant の最小完了経路へ戻り、それでも owner の判断が要るなら、その判断と上限の改定を同じ 1 回で諮る。goal-drift signal は即停止のまま（`:269` の文を保つ）。Plan Review round 天井は Review Rules の 1 か所に置き、ここは参照だけ（`:264` の重複を消す）。one-shot irreversible の行（`:270`）は残す。
+  - `## Owner Effort Budget`（`:260-270`）を G2 の値と扱いで書き直す（見出しは残す: `.agents/skills/inventory-workflow-start/SKILL.md:22` と `:239` の anchor）。推奨 A の中身: 既定の上限は介入 6 回・実働 30 分（anchor の語 `介入 6 回`）、packet が理由を書いて変えてよい。数え方は decision point 単位で、L3 の各 round も 1 回（anchor の語 `L3 の round`）、wave の batch 承認も lane ごとに数える（`:267` の縮約）。relay（Coordinator が Codex 等を起動する往復）は owner の手間でないので上限を置かない。上限に届く見込みのときは、追加の証跡・script・儀式を足す前に Goal Invariant の最小完了経路へ戻り、それでも owner の判断が要るなら、その判断と上限の改定を同じ 1 回で諮る。goal-drift signal は即停止のまま（`:269` の文を保つ）。Plan Review round 天井は Review Rules の 1 か所に置き、ここは参照だけ（`:264` の重複を消す）。one-shot irreversible の行（`:270`）は残し、「one-shot irreversible の task shape では MANUAL §3.5 の停止（`docs/AGENT_OPERATING_MANUAL.md:60`: time-box・Owner Effort Budget・goal-drift signal に達したら mutation 前に停止）が本節の「同じ 1 回で諮る」より優先する」を 1 文足す（anchor の語 `§3.5 の停止が優先`）。goal-drift signal の文（`:269`）の「classify candidate-safety work separately from supporting evidence」は 3 分類の語なので「compare the minimum completion route with supporting evidence」の趣旨に書き換える（`candidate-safety` を残さない。AC10）。
   - `### 問い合わせの行き先`（`:272-286`）を消し、`## Owner Effort Budget` の末尾に「問い合わせの行き先と委任の範囲は `AGENTS.md` の Decision and Approval Boundaries」の 1 行を置く（DEV_WORKFLOW から `../AGENTS.md` への markdown link）。
 - **S7 `docs/DEV_WORKFLOW.md` の Review Rules と Contract Audit**（D5・D7・D8）
-  - 処置表の「Review Rules」「Contract Audit」の行どおり。3 分類（`:335`）を消し、K3 の 4 項目（`:336`）は語を変えずに残す。review-only の 4 行（`:338`・`:340`・`:341` と `:337` の一部）を 1 行にする: R2+ は `Final Review Minimum` の本数の Final Review（broad audit）を行い、skip しない。R4 は Minimum 2 と `r4`（PK4・helper が強制）。旧称 review-only sub-agent はこの Final Review を指し、旧 packet の `Review-only skipped because:` 行は評価しない（anchor: この行だけが `review-only` を含む）。Findings Freeze（`:348`）は ①〜④ の原則を 3 行に縮め、packet への記録の要求を書かない。1 行足す（B6、教訓 62）: reviewer の scope の追加・除外の提案は、catalog の除外注記・owner の原文・前 lane の Review Response と照合してから採否を決め、照合先を 1 行残す（anchor の語 `owner の記録と照合`）。
+  - 処置表の「Review Rules」「Contract Audit」の行どおり。3 分類（`:335`）を消し、K3 の 4 項目（`:336`）は語を変えずに残す。review-only の 4 行（`:338`・`:340`・`:341` と `:337` の一部）を 1 行にする: R2+ は `Final Review Minimum` の本数の Final Review（broad audit）を行い、skip しない。R4 は Minimum 2 と `r4`（PK4・helper が強制）。旧称 review-only sub-agent はこの Final Review を指し、旧 packet の `Review-only skipped because:` 行は評価しない（anchor: `旧称 review-only sub-agent`。DEV_WORKFLOW でこの行だけが `review-only` を含む）。Contract Audit の前文 `:353` の「It extends the review-only sub-agent packet」は「It extends the review packet（`templates/subagent-review-packet.md`）」に直す（`:353` は旧い AC7 の式の唯一の一致で、AC7 の baseline 誤りの元）。Findings Freeze（`:348`）は ①〜④ の原則を 3 行に縮め、packet への記録の要求を書かない。1 行足す（B6、教訓 62）: reviewer の scope の追加・除外の提案は、catalog の除外注記・owner の原文・前 lane の Review Response と照合してから採否を決め、照合先を 1 行残す（anchor の語 `owner の記録と照合`）。
   - Contract Audit（`:351-365`）を 8 項目にする（K9）: Contract Ledger の再検証（隣接 sweep `:362` を統合）、Double audit、State Lifecycle Matrix、Adjacent Pattern Audit、mutation（`:359`・`:360` を統合）、Negative-space audit、Drift-fix sweep（Draft PR の旧文言 grep `:374` を統合）、Manual verification boundary。PR body freshness（`:365`）は S9 で Draft PR Checkpoint へ移す。見出し `## Contract Audit (R3/R4)` は残す（subagent-review-packet の anchor）。
 - **S8 `docs/DEV_WORKFLOW.md` の Wave Operation と Stacked train**（D9）: 処置表の「Wave」の行どおりに縮める。lane 数 2〜3 と同じ source document の同居禁止（`:234`）を消し、「起票時に予定 file（生成物を含む）を突合し、重なる file は両 packet に行・節の所有表を書く（末尾への追記は merge 順で両方残す）。生成物が衝突したら手で解かず、取り込んだ後に再生成する」に置き換える（owner 2026-09-24 の不適用の決定の正本化、D-098 が D-055 の該当部分を置き換える）。train の委任の文（`:239`、`AGENTS.md:46` が参照）は意味を変えずに残す。見出し `## Wave Operation`・`### Stacked train` は残す。
-- **S9 `docs/DEV_WORKFLOW.md` の Human Visual Confirmation・Draft PR Checkpoint・Post-Merge Closeout・Done Definition**（D5・D10・D13）
+- **S9 `docs/DEV_WORKFLOW.md` の Flow の順序・Human Visual Confirmation・Draft PR Checkpoint・Post-Merge Closeout・Done Definition**（D5・D10・D13）
   - Human Visual Confirmation: `:326` の「review-only sub-agent approval」を「Final Review」に。`:329` の fixture の encoding の行に B2 の本文を足す（L3 の項目ごとの到達経路・入力物・既知 backlog の列挙と、受理される fixture の Ready 依頼との同時手渡し）。
   - Draft PR Checkpoint（`:367-394`）: 処置表の行どおり。`:376` の review-only の条件を消し（Final Review は Draft で行う）、`:374` を Contract Audit の Drift-fix sweep へ、PR body freshness を受け入れ、Workflow-change dogfood（`:392-394`）を消す。`Human Gate` の欄と `この change での介入 N 回目 / 予算 M 回` の文（test の section 17 が要求）は残す。
   - Post-Merge Closeout（`:396-428`）: `:419` の WER の文と `:421` を消す。helper の手順と重なる Before merge（`:402-408`）を Workflow State `:105` への参照と、この節にしか無い 2 行（残存リスクの記録、manual の結果は agent が記録）に縮める。
   - Done Definition: `:454` を消す。
+  - 順序（C4）: `:7` の Flow `5. Verify -> 6. Review -> 6.5 Draft PR`、`:381`（Draft PR を Verify と Review の後に開く文）、`:449`（Done Definition の同じ順序の文）は helper の手順（`:105`: Draft で対象検証と capture、Final Review Minimum 以上の broad audit）と逆。Verify → Draft PR → capture → Final Review の順に揃える（Flow は `5. Verify -> 6. Draft PR -> 7. Final Review -> …` の形、`:381`・`:449` は「after Verify」と、Draft で Final Review を受ける旨）。Verify と Review を `+` でつないだ旧い語を残さない（AC13）。
 - **S10 `docs/code_review.md`**（D5・D12・D13）
   - `:9` の「Design Sources / Design Readiness」を「Design Readiness」に、`:50` の「Design Intent Trace」を「Contract Ledger（旧 packet は Design Intent Trace と Trace Matrix）」に。
   - `## Verification Rules`: 2 行足す。file の不在・重複・drift を主張する前に file type（symlink）を `git ls-files -s` か `eza -l` で確かめる（DEV_WORKFLOW `:347` を移す、K8）。closure の固定の確認: Closure of an accepted P1/P2 confirms its pin: the pinning test (or L3 item / sweep) is in the diff and reverting the fix turns it red. A missing pin keeps that finding open; it is not a new finding（anchor の語 `reverting the fix turns it red`）。
@@ -215,17 +217,18 @@ workflow の変更なので、本 lane の merge 後の R3 lane の一日（起�
   - `.agents/skills/workflow-effectiveness-review/` を削除する（`.claude/skills` に symlink は無い、`ls -la .claude/skills` で確認）。
   - `test-design/SKILL.md`: Required Reading の Design Sources・Design Readiness・Design Intent Trace の 3 行を「Plan Packet の Design Readiness と Contract Ledger（旧 packet は Design Sources・Design Intent Trace）」に、「For accepted P1/P2 fixes, prefer adding a regression test.」を code_review の固定の規則への参照に。
   - `inventory-code-review/SKILL.md`: `:54` の Contract Coverage Ledger を Contract Ledger（旧名を併記）に、`:62` の「Review-only results」を「Final Review results」に。
+  - `inventory-implementation/SKILL.md:22`「独立レビューを完了する。… Draft PR Checkpoint で…引き渡す」を Verify → Draft → capture → Final Review の順に直す（C4。`独立レビューを完了する` を残さない）。
   - `inventory-operator-ui/SKILL.md` の Rules に 1 行（B8、教訓 73）: 見やすさ・見た目を目的にする change は、`docs/design-system/01-decision-rules.md` の該当 DSR を先に確かめ、無ければ DSR を先に起こす。
 - **S13 `docs/AGENT_OPERATING_MANUAL.md`（`## 座組` の表を除く）**（D5・D6・D11・D13）
   - §2 の Coordinator の行（`:17`）の「超過見込みまたは goal-drift signal で hard stop する」を DEV_WORKFLOW `Owner Effort Budget` に従う形に。
-  - §3 の独立性の項（`:35`）の読ませない場所の例に「是正 commit の件名・本文」を足す（C3）。§3 の末尾（`:41` の後、座組表の外）に design lane の定義を 1 行（C2）: design lane は、製品の設計正本（`docs/function-design/`・`docs/db-design/`・`docs/SCREEN_DESIGN.md`・`docs/design-system/`・ADR）の変更を主目的とし製品コードを変えない lane を指す（anchor の語 `design lane は`）。
+  - §3 の独立性の項（`:36`）の読ませない場所の例に「是正 commit の件名・本文」を足す（C3）。§3 の末尾（`:41` の後、座組表の外）に design lane の定義を 1 行（C2）: design lane は、製品の設計正本（`docs/function-design/`・`docs/db-design/`・`docs/SCREEN_DESIGN.md`・`docs/design-system/`・ADR）の変更を主目的とし製品コードを変えない lane を指す（anchor の語 `design lane は`）。
   - §4 の router（`:87`・`:89`）を「Design Phase → DEV_WORKFLOW Design Phase Rules と template の Impact Review Lenses」「Contract Audit / Final Review」に。§5.6 の `:185` の link を `../AGENTS.md` の Decision and Approval Boundaries に。§6 の `:193` の「review-only packet」を「review packet」に。
 - **S14 `AGENTS.md`（follow-up (5) の導線だけ）**（D11）: Decision and Approval Boundaries の agent 側で解く問い合わせの項（`:47`）の「発注だけの誤り」に、MANUAL §5.6「Writer が編集前に止まったとき」への markdown link（path は `docs/AGENT_OPERATING_MANUAL.md`、anchor は `#56-従来型-writer-発注書の共通出力契約`。DEV_WORKFLOW `:68` と同じ anchor）を足す。他の行は変えない。
 - **S15 所有表の外の 3 file（判断点 G3、Coordinator の裁定待ち）**（D5）: review-only の語の統合に必要。PR5 の所有表にも無い。
   - `.github/pull_request_template.md`: `## Review-only`（`:35-38`）を消す（`## Validation` の「必要review/manual/R4と残るHuman Gate」が同じ欄を持つ）。PR2 packet が PR4 に回した行。
   - `docs/project-profile.md:160`: 「R3/R4 use the Final Review (count per `Final Review Minimum`); R4 also requires human approval (`r4`).」に。PR3 packet が PR4 に回した行（当時 `:231`）。
   - `docs/DOC_STYLE_GUIDE.md:234`: PK3 の説明を「R3/R4 plan の Contract Ledger（旧 Trace Matrix）と Acceptance evidence を warning で見える化する」に。
-- **S16 `docs/decision-log.md` の末尾に `## D-098`**（番号は本 packet で予約する。D-097 は並走の摩擦で使用済み。PR5 は D-099 以降を使う前提で、Coordinator が PR5 の起草役に伝える）: 手続きの軽量化。(1) 止める規則は防ぐ失敗を 1 文で言えること、言えない停止は緩める候補、安全の境界は緩めない（owner 2026-09-28）。(2) Contract Ledger と Design Readiness への統合（D-034 の template の該当部分を置き換える。旧形式は受理）。(3) review-only を Final Review に統合し PK1 の R4 skip 検査を撤去（R4 の review は PK4 と helper の Minimum 2 が強制）。(4) Findings Freeze の記録行の要求を撤去し原則は残す（D-038(2) の記録の部分を置き換える）。(5) 3 分類の撤去（D-046-2 の分類の部分を置き換える。4 項目は残す）。(6) WER と Retired 節の検査の撤去（D-046 の該当部分。規則は環境が変わったとき・誤作動したときにその場で直す）。(7) Owner Effort Budget の G2 の値と扱い（D-038(6)・D-046-1 の値と hard stop の部分を置き換える）。(8) wave の lane 数と同じ source document の同居禁止の撤去（D-055 の該当部分。owner 2026-09-24）。(9) 受理 P1/P2 の回帰テスト固定（owner 2026-09-27 の試行の明文化、集計は本 packet）。(10) PK4 の `Plan Commit` の書式検査。Revisit: 固定できずに止まる件が続いたとき、Owner Effort Budget の上限の改定が lane ごとに続くとき。
+- **S16 `docs/decision-log.md` の末尾に `## D-098`**（番号は本 packet で予約する。D-097 は並走の摩擦で使用済み。PR5 は D-099 以降を使う前提で、Coordinator が PR5 の起草役に伝える）: 手続きの軽量化。(1) 止める規則は防ぐ失敗を 1 文で言えること、言えない停止は緩める候補、安全の境界は緩めない（owner 2026-09-28）。(2) Contract Ledger と Design Readiness への統合（D-034 の template の該当部分を置き換える。旧形式は受理）。(3) review-only を Final Review に統合し PK1 の R4 skip 検査を撤去（R4 の review は PK4 と helper の Minimum 2 が強制）。(4) Findings Freeze の記録行の要求を撤去し原則は残す（D-038(2) の記録の部分を置き換える）。(5) 3 分類の撤去（D-046-2 の分類の部分を置き換える。4 項目は残す）。(6) WER と Retired 節の検査の撤去（D-046 の該当部分。規則は環境が変わったとき・誤作動したときにその場で直す）。(7) Owner Effort Budget の G2 の値と扱い（D-038(6)・D-046-1 の値と hard stop の部分を置き換える）。(8) wave の lane 数と同じ source document の同居禁止の撤去（D-055 の該当部分。owner 2026-09-24）。(9) 受理 P1/P2 の回帰テスト固定（owner 2026-09-27 の試行の明文化、集計は本 packet）。(10) PK4 の `Plan Commit` の書式検査（値全体を末尾を削らずに `pending` か 40 桁の小文字 hex と照合。検出点は commit の前の `--target plan`。PK5 は commit 済みの初回値を固定するので、commit 済み未 push ならその commit を直す）。Revisit: 固定できずに止まる件が続いたとき、Owner Effort Budget の上限の改定が lane ごとに続くとき。
 - review-checklist（`docs/quality/review-checklist.md`）: 変更なし。`:11` の Findings Freeze への参照は原則が残るので有効（確認のみ）。
 - `scripts/tests/run-workflow-tests.sh`: 変更なし（新しい test file は無い）。
 
@@ -236,12 +239,12 @@ keep = 移し先の節に残す、merge = 他の行・文書に統合、delete =
 | 節 | 現行（起点の行） | 処置 | 理由（防ぐ失敗、または消す理由） |
 |---|---|---|---|
 | Design Phase | 適用条件 `:118` | keep | 正本が変わる R2+ の変更で設計を飛ばす |
-| Design Phase | Design inputs の一覧 `:120-127` | merge → artifact selection の表 | 表の各行が同じ正本を挙げている（重複） |
+| Design Phase | Design inputs の一覧 `:120-127` | merge → Source Index（`:9-25`）への参照 1 行 | 同じ正本の一覧が Source Index にある（要件・spec map `:18`、architecture `:19`、function `:20`、DB `:21`、screen `:22`、ADR `:24`）。artifact selection の表 `:131-139` は要件・spec と ARCHITECTURE を挙げないので、表への merge では消える |
 | Design Phase | artifact selection の表 `:129-139` | keep（最後の行の Design Sources を Design Readiness に） | 変更の種類ごとに更新すべき正本を取り違える |
 | Design Phase | Design outputs `:141-149` | delete | 表と Design Readiness の重複。Design Intent Trace の行は Contract Ledger へ |
 | Design Phase | Design decision IDs `:151-156` | keep（2 行） | 設計判断の理由が plan にだけ残り追えなくなる |
 | Design Phase | intent audit `:158-166`・checklist `:189-201`・completion `:203-209` | merge → 「設計の完了条件」11 行以内 | 3 つの列挙が同じことを言う（J9）。中身は 1 行ずつ残す: 正本だけで何を・なぜ・何を棄却したか分かる、spec ID ごとの設計成果物、plan だけの判断の昇格、前提と延期 gap、完成形を先に書く、Matrix が正本から導ける、高い risk tier での一時評価と隣接 spec の比較、層・関数・command / data・永続化・operator の流れ・選択肢の出所、絶対保証の例外（WER 由来の教訓、安全）、引用 test の実在（WER 由来の教訓）、欠けた設計は実装前に正本を直すか design-only に |
-| Design Phase | Impact Review Lenses の表 `:168-183` | merge → template（表は template だけ、DEV_WORKFLOW は使う場面の 2 行と link） | 2 か所の表がずれる（J7） |
+| Design Phase | Impact Review Lenses の表 `:168-183` | merge → template（表は template だけ。`Question to answer`・`Evidence home` の 2 列を template の表へ移す。DEV_WORKFLOW は使う場面の 2 行と link） | 2 か所の表がずれる（J7）。問いの列を移さないと 8 lens の問いが消える |
 | Design Phase | Backfill note `:185-187` | keep（1 行） | 触らない領域の設計まで遡って書かせる |
 | Review Rules | `:333`・`:334`・`:342` | keep | 正本より packet を信じる、finding を検証せずに採る |
 | Review Rules | 3 分類 `:335` | delete | 失敗を 1 文で言えず、Ordinary Operation の finding の行き先の割当てが無いまま（backlog `:61`）。重大度 P1〜P3 で足りる |
@@ -294,7 +297,7 @@ keep = 移し先の節に残す、merge = 他の行・文書に統合、delete =
 baseline は起点 `7ac96d9e` の本 worktree（本 packet と Matrix を置く前の状態。AC3 だけは本 packet を置いた後）で、同じ command を逐語で 2026-09-29 に起草役が実行した出力。AC の数は機能の代理にせず、test は全 PASS を求める（本数は runner の出力を参照）。G2 で owner が推奨 A 以外を選んだ場合、AC10 の該当行を plan-approved の前に直す。
 
 - AC1（checker の fixture test 全体）: `bash scripts/tests/doc-consistency-plan-packet.test.sh` が exit 0。baseline: exit 0（section 6・16・17 は旧い契約）。
-- AC2（新しい fixture）: `rg -c '^# --- PR4-F' scripts/tests/doc-consistency-plan-packet.test.sh` が 10 以上で、AC1 の中で各 section が期待どおり（Test Plan の PR4-F1〜PR4-F10）。baseline: 一致なし（exit 1）。
+- AC2（新しい fixture）: `rg -c '^# --- PR4-F' scripts/tests/doc-consistency-plan-packet.test.sh` が 12 以上で、AC1 の中で各 section が期待どおり（Test Plan の PR4-F1〜PR4-F12）。baseline: 一致なし（exit 1）。
 - AC3（本 packet が新旧どちらの checker でも通る、`--target plan`）
   - `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-29-harness-pr4-lightweight.md` が exit 0。baseline: exit 0、末尾 `結果: 全チェック通過`（本 commit の packet と Matrix を置いた状態で起草役が実行）。
   - `git show origin/main:scripts/doc-consistency-check.sh > "$TMPDIR/dcc-main.sh" && bash "$TMPDIR/dcc-main.sh" --target plan docs/plans/2026-09-29-harness-pr4-lightweight.md` が exit 0（起点の checker。実装の後も本 packet が旧い規則を満たすことの確認）。baseline: exit 0、末尾 `結果: 全チェック通過`（同上）。
@@ -307,20 +310,21 @@ baseline は起点 `7ac96d9e` の本 worktree（本 packet と Matrix を置く�
   - `rg -n '^## (Spec Contract|Trace Matrix|Design Intent Trace|Contract Coverage Ledger|Design Sources|Required Design Artifacts|Design Intent Audit|Consultation Relay)$' docs/templates/plan-packet.md` が一致なし（exit 1）。baseline: 8 行（`:37`・`:97`・`:108`・`:137`・`:145`・`:199`・`:236`・`:245`）。
   - `rg -n '^## (Contract Ledger|Design Readiness)$' docs/templates/plan-packet.md` が 2 行。baseline: 1 行（`:172` Design Readiness）。
   - `rg -n 'Review Order Artifact|Review Order Ref|independent-review|Findings Freeze:|Review-only skipped|relay 往復上限' docs/templates/plan-packet.md` が一致なし（exit 1、`relay 往復上限` は G2 = A のとき）。baseline: 6 行（`:31`・`:41`・`:42`・`:201`・`:269`・`:270`）。
+  - `rg -c 'Contract Coverage Ledger' docs/templates/plan-packet.md` が一致なし（exit 1）。baseline: `3`（`:123`・`:133`・`:199`）。
   - `rg -c '受理される fixture' docs/templates/plan-packet.md` が 1、`rg -c 'import し何を描画' docs/templates/plan-packet.md` が 1。baseline: どちらも一致なし（exit 1）。
 - AC6（WER の撤去）: `test ! -e docs/templates/workflow-effectiveness-review.md && test ! -e .agents/skills/workflow-effectiveness-review` が exit 0。baseline: exit 1。`rg -n 'complete Workflow Effectiveness Review|templates/workflow-effectiveness-review|WER を完了' docs/DEV_WORKFLOW.md` が一致なし（exit 1）。baseline: 4 行（`:37`・`:419`・`:421`・`:454`）。
-- AC7（review-only の統合）: 次の file ごとの `rg -c -i 'review-only' <file>` が一致なし（exit 1）。baseline は file ごとに `docs/code_review.md` 3、`docs/templates/plan-packet.md` 1、`docs/templates/subagent-review-packet.md` 1、`docs/AGENT_OPERATING_MANUAL.md` 2、`docs/project-profile.md` 1、`docs/DOC_STYLE_GUIDE.md` 1、`.github/pull_request_template.md` 2、`.agents/skills/inventory-code-review/SKILL.md` 1（後ろの 3 file は G3 で Coordinator が認めたとき）。`docs/DEV_WORKFLOW.md` だけは `rg -c -i 'review-only' docs/DEV_WORKFLOW.md` が `1`（旧称の 1 文）で、`rg -c -i 'review-only.*Final Review|Final Review.*review-only' docs/DEV_WORKFLOW.md` も `1`。baseline: `8` と一致なし。
+- AC7（review-only の統合）: 次の file ごとの `rg -c -i 'review-only' <file>` が一致なし（exit 1）。baseline は file ごとに `docs/code_review.md` 3、`docs/templates/plan-packet.md` 1、`docs/templates/subagent-review-packet.md` 1、`docs/AGENT_OPERATING_MANUAL.md` 2、`docs/project-profile.md` 1、`docs/DOC_STYLE_GUIDE.md` 1、`.github/pull_request_template.md` 2、`.agents/skills/inventory-code-review/SKILL.md` 1（後ろの 3 file は G3 で Coordinator が認めたとき）。`docs/DEV_WORKFLOW.md` だけは `rg -c -i 'review-only' docs/DEV_WORKFLOW.md` が `1`（旧称の 1 文。baseline `8`）で、`rg -c '旧称 review-only sub-agent' docs/DEV_WORKFLOW.md` が `1`（baseline 一致なし）。
 - AC8（Findings Freeze は原則だけ残る）: `rg -c 'Findings Freeze' docs/DEV_WORKFLOW.md` が 1 以上（baseline `2`）、`rg -c 'Findings Freeze' docs/templates/plan-packet.md` が一致なし（baseline は AC5 の `:270` の 1 行）。
 - AC9（3 分類の撤去、K3 の保持）: `rg -c 'candidate safety|mutation authority|evidence quality' docs/DEV_WORKFLOW.md` と `rg -c 'candidate safety|mutation authority|evidence quality' scripts/tests/doc-consistency-plan-packet.test.sh` がどちらも一致なし（exit 1）。baseline: `1` と `3`。`rg -c 'actual harm path' docs/DEV_WORKFLOW.md` が `1`（baseline `1`）。
-- AC10（Owner Effort Budget、G2 = A の場合）: `rg -n 'interventions ≤3|relay round-trips ≤2|hard stop, not a target' docs/DEV_WORKFLOW.md` が一致なし（baseline: 1 行 `:262`）。`rg -c '介入 6 回' docs/DEV_WORKFLOW.md` が `1`、`rg -c 'L3 の round' docs/DEV_WORKFLOW.md` が `1`（baseline: どちらも一致なし）。`rg -c 'goal-drift signal' docs/DEV_WORKFLOW.md` が 1 以上（baseline `2`）。
+- AC10（Owner Effort Budget、G2 = A の場合）: `rg -n 'interventions ≤3|relay round-trips ≤2|hard stop, not a target' docs/DEV_WORKFLOW.md` が一致なし（baseline: 1 行 `:262`）。`rg -c '介入 6 回' docs/DEV_WORKFLOW.md` が `1`、`rg -c 'L3 の round' docs/DEV_WORKFLOW.md` が `1`（baseline: どちらも一致なし）。`rg -c 'goal-drift signal' docs/DEV_WORKFLOW.md` が 1 以上（baseline `2`）。`rg -c -i 'candidate-safety' docs/DEV_WORKFLOW.md` が一致なし（baseline `1`、`:269`）。`rg -c '§3.5 の停止が優先' docs/DEV_WORKFLOW.md` が `1`（baseline 一致なし）。
 - AC11（問い合わせの行き先と導線）: `rg -n '^### 問い合わせの行き先' docs/DEV_WORKFLOW.md` が一致なし（baseline `:272`）。`rg -n 'DEV_WORKFLOW.md#問い合わせの行き先' docs/AGENT_OPERATING_MANUAL.md` が一致なし（baseline `:185`）。`rg -n 'AGENT_OPERATING_MANUAL.md#56-' AGENTS.md` が 1 行（baseline 一致なし）。
 - AC12（Wave と D-055）: `rg -n '2〜3 lane|同じ source document を編集する lane は同居させず|生成 file を再生成する lane は 1 wave に 1 つまで' docs/DEV_WORKFLOW.md` が一致なし（baseline: 2 行 `:234`・`:245`）。`rg -c 'directoryRenames=false' docs/DEV_WORKFLOW.md` が 1 以上（baseline `2`）。`rg -n '全 lane の Ready 遷移実行を Coordinator に委任' docs/DEV_WORKFLOW.md` が 1 行（baseline `:239`、AGENTS が参照する train 委任）。
-- AC13（Draft PR / closeout）: `rg -n 'inventory-records-other-details|Workflow-change dogfood' docs/DEV_WORKFLOW.md` が一致なし（baseline: 2 行 `:392`・`:394`）。`awk '/^## Draft PR Checkpoint/,/^## Post-Merge Closeout/' docs/DEV_WORKFLOW.md | rg -c 'PR body freshness'` が `1`（baseline: 一致なし、今は Contract Audit にある）。
-- AC14（見出しと安全の規則の保持）: `rg -c -x -F -e '## Risk Tiers' -e '## Plan Packet Rules' -e '## Workflow State' -e '## Design Phase Rules' -e '## Implementation Rules' -e '## Wave Operation' -e '### Stacked train' -e '## Owner Effort Budget' -e '## Verification Gates' -e '## Review Rules' -e '## Contract Audit (R3/R4)' -e '## Draft PR Checkpoint' -e '## Post-Merge Closeout' -e '## Done Definition' docs/DEV_WORKFLOW.md` が `14`（baseline `14`、inbound の anchor）。次の file ごと・語ごとの `rg -c` が 1 以上（baseline は括弧内、語ごとに分ける）: `docs/DEV_WORKFLOW.md` の `Double Audit|Double audit`（`3`）、`State Lifecycle`（`1`）、`Adjacent Pattern`（`1`）、`Negative-space`（`1`）、`Drift-fix sweep`（`2`）、`Cited test existence|引用 test の実在`（`1`）、`escape hatch|絶対保証`（`1`）、`adjacent-contract sweep|隣接する契約の sweep`（`1`）。`docs/templates/plan-packet.md` の `adjacent-contract sweep|隣接する契約の sweep`（`1`）。
+- AC13（Draft PR / closeout）: `rg -n 'inventory-records-other-details|Workflow-change dogfood' docs/DEV_WORKFLOW.md` が一致なし（baseline: 2 行 `:392`・`:394`）。`awk '/^## Draft PR Checkpoint/,/^## Post-Merge Closeout/' docs/DEV_WORKFLOW.md | rg -c 'PR body freshness'` が `1`（baseline: 一致なし、今は Contract Audit にある）。`rg -n 'Verify \+ Review' docs/DEV_WORKFLOW.md` が一致なし（baseline 2 行 `:381`・`:449`）。`rg -n '6\. Review -> 6\.5 Draft PR' docs/DEV_WORKFLOW.md` が一致なし（baseline `:7`）。`rg -n '独立レビューを完了する' .agents/skills/inventory-implementation/SKILL.md` が一致なし（baseline `:22`）。
+- AC14（見出しと安全の規則の保持）: `rg -c -x -F -e '## Risk Tiers' -e '## Plan Packet Rules' -e '## Workflow State' -e '## Design Phase Rules' -e '## Implementation Rules' -e '## Wave Operation' -e '### Stacked train' -e '## Owner Effort Budget' -e '## Verification Gates' -e '## Review Rules' -e '## Contract Audit (R3/R4)' -e '## Draft PR Checkpoint' -e '## Post-Merge Closeout' -e '## Done Definition' docs/DEV_WORKFLOW.md` が `14`（baseline `14`、inbound の anchor）。次の file ごと・語ごとの `rg -c` が 1 以上（baseline は括弧内、語ごとに分ける）: `docs/DEV_WORKFLOW.md` の `Double Audit|Double audit`（`3`）、`State Lifecycle`（`1`）、`Adjacent Pattern`（`1`）、`Negative-space`（`1`）、`Drift-fix sweep`（`2`）、`Cited test existence|引用 test の実在`（`1`）、`escape hatch|絶対保証`（`1`）、`adjacent-contract sweep|隣接する契約の sweep`（`1`）。`docs/templates/plan-packet.md` の `adjacent-contract sweep|隣接する契約の sweep`（`1`）。Impact Review Lenses の問いの列の移送: `rg -c 'Which claims are observed facts' docs/templates/plan-packet.md` が `1`、`rg -c 'Question to answer' docs/templates/plan-packet.md` が `1`（baseline どちらも一致なし）。`rg -c 'Which claims are observed facts' docs/DEV_WORKFLOW.md` が一致なし（baseline `1`、`:175`）。
 - AC15（受理 P1/P2 の固定）: `rg -c 'fails on the pre-fix code' docs/code_review.md` が `1`、`rg -c 'reverting the fix turns it red' docs/code_review.md` が `1`（baseline: どちらも一致なし）。`rg -c 'prefer adding a regression test' .agents/skills/test-design/SKILL.md` が一致なし（baseline `1`）。
 - AC16（小さな項目、file ごとの anchor）: `rg -c '確かめた所を併記' docs/DEV_WORKFLOW.md` が `1`（baseline 一致なし）。`rg -n "its \`Plans.md\` entry" docs/DEV_WORKFLOW.md` が一致なし（baseline `:68`）。`rg -c 'owner の記録と照合' docs/DEV_WORKFLOW.md` が `1`（baseline 一致なし）。`rg -c '防ぐ失敗を 1 文で' docs/DEV_WORKFLOW.md` が `1`（baseline 一致なし）。`rg -c 'oracle' docs/templates/test-design-matrix.md` が 1 以上、`rg -c 'tracked Workflow State stores the current PR HEAD' docs/templates/test-design-matrix.md` が一致なし（baseline 一致なしと `1`）。`rg -c '01-decision-rules.md' .agents/skills/inventory-operator-ui/SKILL.md` が `1`（baseline 一致なし）。`rg -c 'design lane は' docs/AGENT_OPERATING_MANUAL.md` が `1`（baseline 一致なし）。`rg -c '是正 commit' docs/AGENT_OPERATING_MANUAL.md` と `rg -c '是正 commit' docs/templates/subagent-review-packet.md` がそれぞれ `1`（baseline 一致なし）。`rg -c '確信度: ' docs/code_review.md` が `1`（baseline 一致なし）。
 - AC17（durable decision）: `rg -c '^## D-098' docs/decision-log.md` が `1`。baseline: 一致なし（exit 1）。
-- AC18（mutation、Test Plan の MU1〜MU9）: 実装を commit した後、`$TMPDIR` の写し（`copy="$TMPDIR/pr4-mut"; mkdir -p "$copy"; git archive HEAD | tar -x -C "$copy"; git -C "$copy" init -q; git -C "$copy" add -A`。改変ごとに作り直し、終わったら消す。本 repo の index・設定は触らない）で各 mutation を入れ、対応する test が red（exit 非 0）になり、改変なしの写しでは green になる。
+- AC18（mutation、Test Plan の MU1〜MU12）: 実装を commit した後、`$TMPDIR` の写し（`copy="$TMPDIR/pr4-mut"; mkdir -p "$copy"; git archive HEAD | tar -x -C "$copy"; git -C "$copy" init -q; git -C "$copy" add -A`。改変ごとに作り直し、終わったら消す。本 repo の index・設定は触らない）で各 mutation を入れ、対応する test が red（exit 非 0）になり、改変なしの写しでは green になる。
 - AC19（検査の全体、すべて exit 0）: `bash scripts/tests/run-workflow-tests.sh`、`bash scripts/doc-consistency-check.sh`、`bash scripts/doc-consistency-check.sh --target plan`、`bash scripts/check-workflow-git.sh`、`git diff --check origin/main...HEAD`、`bash scripts/local-ci.sh full`。baseline: run-workflow-tests exit 0（末尾 `OK`）、doc-consistency exit 0（`結果: 全チェック通過`）、check-workflow-git exit 0（`PK5 検査 OK`）、`git diff --check origin/main...HEAD` exit 0。`--target plan` は本 commit の実測（AC3）。`bash scripts/local-ci.sh full` は `未実測`（起草役は実行していない。Plan Review か Writer が実行する）。
 - AC20（範囲、S 全体）: `git diff --name-status origin/main...HEAD` の変更 file が S1〜S16 の file と本 packet・Matrix に限られる。`git diff --stat origin/main...HEAD -- scripts/ci scripts/pr-gate.py scripts/local-ci.sh scripts/pre-push.sh .gitignore .claude docs/agent-guidance docs/ci.md docs/Plans.md docs/backlog.md docs/archive` が空。座組表が変わらない: `diff <(git show origin/main:docs/AGENT_OPERATING_MANUAL.md | awk '/^## 座組/,/^## 4\./') <(awk '/^## 座組/,/^## 4\./' docs/AGENT_OPERATING_MANUAL.md)` が exit 0（baseline exit 0）。
 
@@ -359,7 +363,7 @@ Tauri command・function-design doc・REQ・route・operator 画面: 該当な�
 
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
-| SPEC-WF-HARNESS4 | template、DEV_WORKFLOW Plan Packet Rules、PK1・PK3 | D1・D2 | 下の「設計判断 1」 | S1・S2 | AC2（PR4-F1・F2・F4・F4b・F9）、AC5 |
+| SPEC-WF-HARNESS4 | template、DEV_WORKFLOW Plan Packet Rules、PK1・PK3 | D1・D2 | 下の「設計判断 1」 | S1・S2 | AC2（PR4-F1・F2・F4・F4b・F9・F11）、AC5 |
 | SPEC-WF-HARNESS4 | PK4 | D3 | Findings Freeze の記録行は helper の broad / closure の仕組みと重複し、行が無いことで防ぐ失敗を 1 文で言えない（監査 K6）。`Plan Commit` の書式は教訓 42 の事故（凍結後の branch の作り直し）を 1 文で言える。書式を helper と同じ 40 桁にする理由は「設計判断 3」 | S2 | AC2（PR4-F3・F5〜F7） |
 | SPEC-WF-HARNESS4 | DEV_WORKFLOW Post-Merge・Done、WER の template・Skill | D4 | WER は 2026-08-12 を最後に回っておらず、要求は形だけ（監査 M7）。却下: WER を任意で残す（任意の儀式は誰も回さず、Retired 節の検査だけが残る） | S2・S3・S9・S11・S12 | AC6、PR4-F10 |
 | SPEC-WF-HARNESS4 | Risk Tiers、Review Rules、code_review | D5 | 下の「設計判断 2」 | S4・S7・S10〜S15 | AC7 |
@@ -387,7 +391,7 @@ Tauri command・function-design doc・REQ・route・operator 画面: 該当な�
 
 ### 設計判断 3: `Plan Commit` の書式（Plan Review で覆せる形）
 
-- 採る: 値全体が `pending` か `[0-9a-f]{40}`。helper の `sha()`（`scripts/pr-gate.py:19` `SHA = re.compile(r'[0-9a-f]{40}\Z')`）と同じ集合にし、helper が record の時点で拒む値を push の前に止める。
+- 採る: 値全体が `pending` か `[0-9a-f]{40}`。helper の `sha()`（`scripts/pr-gate.py:19` `SHA = re.compile(r'[0-9a-f]{40}\Z')`）と同じ集合にし、値は末尾の空白・タブを削らずに照合し（helper は `fullmatch`）、helper が record の時点で拒む値を commit の前に止める。
 - 棄却: (a) 教訓 42 の案の 7〜40 桁（PK4 を通っても helper が `invalid full SHA` で拒み、早く止める目的に反する）。(b) 先頭の token だけを見る（`extract_workflow_field` の既定。注記付きの値を通すが、PK5 は値全体を SHA として解決するので `解決できない SHA` になる、`scripts/check-workflow-git.sh:52-61`）。
 - 影響: archive の packet（短い SHA が 50 件以上ある、Contract Probe 5）は PK4 の対象外のまま。helper 導入後の packet はすべて 40 桁（同 Probe）。
 
@@ -403,13 +407,13 @@ Tauri command・function-design doc・REQ・route・operator 画面: 該当な�
 | 期間 | PR5 と並走で 1 回 | PR4a の merge を待って PR4b（owner の順番「ハーネス PR4・PR5 ＞ 作業」の間が延びる） |
 | 失敗の risk | 縮約の review が検査の変更の review と注意を分け合う | 検査の変更は小さく見やすいが、PR4a の間は template と DEV_WORKFLOW の語がずれる（Contract Ledger が template にあり DEV_WORKFLOW の Plan Packet Rules は旧名） |
 
-推奨: A。理由: 検査の変更（PK1・PK3・PK4・WER）は数十行で小さく、重さの大半は文の縮約で、それは処置表の各行を移し先の anchor（AC14）で機械的に確かめられる。B は同じ file を直列に 2 回通すので、review の手間の総量と待ちが増え、間の期間に語のずれが生じる。Plan Review round 1 で reviewer が範囲の広さを理由に見落としの risk を具体的に挙げた場合は、B へ戻して plan-draft からやり直す（本 packet の B 列が非目的の分け方）。
+推奨: A。理由: 検査の変更（PK1・PK3・PK4・WER）は数十行で小さく、重さの大半は文の縮約で、それは処置表の各行を移し先の anchor（AC14）で機械的に確かめられる。B は同じ file を直列に 2 回通すので、review の手間の総量と待ちが増え、間の期間に語のずれが生じる。Plan Review round 1 は範囲の広さを理由にした finding を出さず、指摘は個別の接続漏れだった（Opus・Codex とも G1 = A を妥当とした）。B へ戻す条件は round 2・3 に持ち越す: reviewer が範囲の広さを理由に見落としの risk を具体的に挙げた場合は、B へ戻して plan-draft からやり直す（本 packet の B 列が非目的の分け方）。
 
 B を選んだ場合の非目的: PR4a は文の縮約（Design Phase・Contract Audit・Wave・Draft・closeout・Owner Effort Budget・問い合わせ）と B・C・D の項目を含めない。PR4b は checker・test を変えない（test の section 17 の 3 分類の assert の撤去だけは PR4b に入る）。
 
 ### G2: Owner Effort Budget の値と扱い（owner に諮る判断点）
 
-実績（起点の archive の packet、`rg -m3 '^- (介入回数上限|実働時間上限|relay 往復上限)' docs/archive/plans/2026-09-2*.md` の出力から）: 2026-09-22 以降の 17 件のうち、既定の介入 3 のまま閉じたのは 3 件（小さな lane）。ほかは 5〜26 に上限を改め（例: 並走の摩擦 3 → 5 → 6、PR2 4 → 10、色と強調 26）、改定はそのつど owner の承認と同じ 1 回で行われた。relay の上限は 2 から 5〜7 に改められた。並走の摩擦の packet では、介入 6 回はすべて owner の判断で、relay 4 は Coordinator が Codex を起動した往復で、owner の手間に数えていない（同 packet の Owner Effort Budget の表）。
+実績（起点の archive、`rg -n -m1 '^- 介入回数上限' docs/archive/plans/2026-09-2*.md`）: 2026-09-22 以降の 17 件のうち、既定 3 のまま閉じたのは 3 件（docs-restore・ordinary-operation・nav-return）。上限の中央値は 7。改定の形は 3 つに分かれる。(a) 別の判断と同じ 1 回で改定した lane: 並走の摩擦（`2026-09-28-harness-parallel-friction.md:43`、plan-approved と同じ 1 回で 5→6）、PR3（`2026-09-25-harness-pr3-entry-and-dedup.md:37`）・PR2（`2026-09-25-harness-pr2-roles-and-formation.md:39`、「本改定と plan-approved の承認 1」）、小口（`2026-09-27-small-fixes-batch.md:33`）、色と強調（`2026-09-27-design-color-emphasis.md:39`）、Z001 表示（`2026-09-27-daily-report-z-display.md:43`、Ready と同じ 1 回）、Z004（`2026-09-23-legacy-stocktake-z004-write-stop.md:36`）。(b) 引き上げの承認（と数え直しの確認）だけで 1〜2 回を使った lane: EJ（`2026-09-23-ej-parser-core.md:36`）、legacy 撤去（`2026-09-24-harness-legacy-and-execution-mode-removal.md:37`）、design-rules（`2026-09-24-design-rules-renewal.md:44`）、棚卸時刻 ADR（`2026-09-23-stocktake-time-evidence-adr-revision.md:53`）。評価基準（`2026-09-25-stocktake-valuation-basis.md:35`）は「予算の引上げ 1」を単独の介入として見込んだ。(c) 事前の改定なしに超過した lane: PR2（上限 10 に消費 12、`:39`「事前に上限の改定を諮っていない」）。relay の上限は 2 から 5〜7 に改められ、並走の摩擦では relay 4 は Coordinator が Codex を起動した往復で owner の手間に数えていない（`:45`）。
 
 | 案 | 介入 | 実働 | relay | 上限に届くとき |
 |---|---|---|---|---|
@@ -417,7 +421,7 @@ B を選んだ場合の非目的: PR4a は文の縮約（Design Phase・Contract
 | B | 既定 6 | 既定 30 分 | 既定 5（Plan Review 3 + broad 1 + closure 1） | hard stop のまま |
 | C（監査 Q1 の推奨） | 上限を置かず、承認依頼の形式（介入 N 回目・完了 1 文）だけ | 置かない | 置かない | goal-drift signal だけ |
 
-推奨: A。理由: (1) owner の「残して緩める」に沿って介入と実働の数値を残す。(2) 既定 6 は、起票承認・plan-approved・Ready・merge の 4 に判断点 1〜2 を足した、判断点のある R3 lane の実績の中央付近（上の実績）。manual の lane は L3 の round ごとに 1 回足し、packet が理由を書いて上げる。(3) relay は Coordinator が Codex を起動する往復で owner の手間でなく、上限は owner の方針「relay の節約を目的にしない」と緊張する（教訓 49）。review の round は Plan Review の round 天井 3 が既に抑える。(4) hard stop は実績では毎回「承認と同じ 1 回で改定」に置き換わっていた。止まって承認を 1 回足すより、判断と改定を同じ 1 回にする方が owner の手間が少ない。B は relay の上限を残す（owner の「残す」に字義どおり沿うが、教訓 49 の緊張が残る）。C は owner の「残して緩める」に反する。教訓 40（L3 の round の計上）はどの案でも「L3 の各 round を 1 回」と正本に書く。
+推奨: A。理由: (1) owner の「残して緩める」に沿って介入と実働の数値を残す。(2) 既定 6 は実績の平均でなく、判断点の積算による提案: 起票承認・plan-approved・Ready・merge の 4 に、Plan Gate の判断点 1〜2 を足した値。中央値 7 と近く、manual の lane は L3 の round ごとに 1 回足し、packet が理由を書いて上げる。(3) relay は Coordinator が Codex を起動する往復で owner の手間でなく、上限は owner の方針「relay の節約を目的にしない」と緊張する（教訓 49）。review の round は Plan Review の round 天井 3 が既に抑える。(4) hard stop を「同じ 1 回で諮る」に置き換える根拠は、(a) の 7 lane がすでにその形で運用し、(b) の 4 lane では引き上げの承認と数え直しの確認だけで owner の 1〜2 回を使い、(c) の PR2 では hard stop が超過を防がなかったこと。つまり hard stop は止める働きより承認を 1 回増やす働きが大きかった。B は relay の上限を残す（owner の「残す」に字義どおり沿うが教訓 49 の緊張が残る）。C は「残して緩める」に反する。教訓 40（L3 の round の計上）はどの案でも「L3 の各 round を 1 回」と正本に書く。
 
 ### G3: 所有表の外の 3 file（Coordinator の裁定）
 
@@ -451,7 +455,7 @@ S15 の 3 file は review-only の語の統合に要る。所有表に無く、P
 指定の 6 点:
 
 - 独立 review: Writer ≠ Plan Reviewer・Final Reviewer、fresh context、同じ round の他の reviewer の結果を読ませない（MANUAL §3、本 lane は例示に是正 commit を足して強める）、Double Audit（Final Review Minimum 2、PK4 と helper）を変えない。review-only の語の統合は review の本数を減らさない（R3 の review-only は既に Final Review の broad が兼ねていた。並走の摩擦 packet の Risk の skip の記録）。
-- Plan Commit の固定: PK5（`scripts/check-workflow-git.sh`）の祖先・不変性の検査は変えない。PK4 の書式検査を足して、PK5 が凍結する前に誤った値を止める（強める）。
+- Plan Commit の固定: PK5（`scripts/check-workflow-git.sh`）の祖先・不変性の検査は変えない。PK4 の書式検査を足し、commit の前の `--target plan` で誤った値を止める（強める）。commit 済みの値は PK5 が固定するので、その場合は同じ commit を直す。
 - Human Gate: PK4 の Human Gate の検査（`ready,merge` と R4 の `r4`、`:1274-1278`）と helper の検査を変えない。owner の Ready・merge・L3・R4 の判断は変えない。Owner Effort Budget の改訂（G2 = A）は上限に届いたときの扱いを「止まって承認を足す」から「次の判断と改定を同じ 1 回で諮る」に変えるが、owner の判断を省かない（改定そのものが owner の判断）。goal-drift signal の即停止と one-shot irreversible の time-box の停止（MANUAL §3.5）は残す。
 - R4 の必須: 設計判断 2。PK4 の R4 の Minimum 2 と `r4`、helper の `R4 gates missing` が強制し、PR4-F8 が確かめる。
 - 古い証拠の拒否: helper を変えない（Data safety の行）。Findings Freeze の記録行の撤去は、helper の broad / closure の record（head/base つき）が同じ事実を持つため（監査 K6）。
@@ -471,20 +475,22 @@ Minimum design checks for business-app work: 製品コードを変えないた�
 - 1「PK1 は節の見出しの行一致で判定し、本文の語は見ない（旧い組と新しい Ledger のどちらでも通す実装にできる）」: `sed -n '1050,1054p' scripts/doc-consistency-check.sh`（`grep -qE "^#{2,}[[:space:]]+${section}([[:space:]].*)?$"`）を読んだ → 成立。
 - 2「archive の packet は PK4 の対象外で、PK1 も archive では D-039 の節を要求しない」: `sed -n '1039,1048p;1225p' scripts/doc-consistency-check.sh` を読んだ → 成立。書式検査を PK4 に足しても archive は壊れない。
 - 3「helper は Plan Commit に 40 桁の小文字 hex か `pending` だけを受ける」: `sed -n '19p;171-178p' scripts/pr-gate.py` → `SHA = re.compile(r'[0-9a-f]{40}\Z')`、`plan == 'pending'` か `sha(plan)` → 成立（設計判断 3）。
-- 4「PK5 は Plan Commit の値全体を SHA として解決し、注記付きの値は解決できない」: `sed -n '52,62p' scripts/check-workflow-git.sh`（値全体を `sed` で取り、`pending` の完全一致だけを除外）→ 成立。
+- 4「PK5 は `Plan Commit` の値全体（末尾空白は削る）を SHA として解決し、注記付きは解決できない。初回値は commit 履歴から固定する」: `sed -n '52,63p;93,104p' scripts/check-workflow-git.sh`（`:53` で末尾空白を削り、`:60` で解決、`:96-100` で `git log --follow -p` の最古の non-pending 値を初回値）→ 成立。commit 済みの値は push 前でも固定される。
 - 5「main に active packet は無く、helper 導入後の archive の Plan Commit は 40 桁」: `ls docs/plans/` → `No such file or directory`。`rg -n '^- Plan Commit:' docs/archive/plans/2026-09-1*.md docs/archive/plans/2026-09-2*.md | grep -vE ':- Plan Commit: [0-9a-f]{40}$'` → `2026-09-10`〜`2026-09-13` の 3 件だけ（helper 導入前）。archive 全体では短い SHA が多数（PK4 の対象外）→ 成立。
 - 6「link 検査は anchor を検査しない（`#問い合わせの行き先` の見出しを消しても decision-log の過去の link は red にならない）」: `sed -n '1646,1647p' scripts/doc-consistency-check.sh`（`path#anchor → path` で anchor を除去）→ 成立。
 - 7「WER の template と Skill への markdown link は DEV_WORKFLOW の 1 件だけ」: `rg -n -o "\]\([^)]*(templates/workflow-effectiveness-review\.md|skills/workflow-effectiveness-review[^)]*)\)" docs .agents .github AGENTS.md CLAUDE.md --hidden` → `docs/DEV_WORKFLOW.md:37` の 1 件 → 成立。
 - 8「test が DEV_WORKFLOW の 3 分類の語の存在を要求している（同じ PR で assert を外さないと AC1 が red）」: `sed -n '770,772p' scripts/tests/doc-consistency-plan-packet.test.sh` → 3 行の `assert_contains` → 成立。
 - 9「PK2 と P2 の検査は本 packet の語で ERROR にならない（表の中の未解決の marker の語を避けた）」: 本 commit で `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-09-29-harness-pr4-lightweight.md` → exit 0、末尾 `結果: 全チェック通過`（AC3）→ 成立。
+- 10「40 桁+末尾空白は checker の full 抽出と PK5 を通り、helper が拒む」: `sed -n '948p' scripts/doc-consistency-check.sh`（`s/[[:space:]]+$//`）、`sed -n '53p' scripts/check-workflow-git.sh`、`sed -n '72,73p;147,155p' scripts/pr-gate.py`（`fullmatch`、値の末尾を保つ）。相談役（Fable 5.1）と Plan Review round 1 の Codex が `$TMPDIR` の写しで `parse_packet` に 40 桁+空白 / +tab を渡す → `invalid full SHA` → 成立（設計判断 3 の「末尾を削らない」の根拠）。
+- 11「pre-push は docs の分類で doc-consistency を回し、PK5 が先」: `sed -n '186,188p;204,208p' scripts/pre-push.sh`、`sed -n '67p' scripts/ci/classify-changes.sh`（`docs/*` → docs=true）→ 成立。docs だけの branch でも push 前に ERROR は出るが PK5 の後。
 
 ## Contract Coverage Ledger
 
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
 | D1 template の構成（Contract Ledger・Design Readiness・R2 の短い本体・Consultation Relay の撤去・B2・B3） | S1 | AC5、PR4-F1 | — |
-| D2 PK1 の Ledger か旧い組、PK1 の R4 skip ERROR と PK3 の skip WARN の撤去、PK3 の Ledger の読み | S2・S3 | AC2（PR4-F1・F2・F4・F4b・F8・F9）、AC4、MU1〜MU3・MU8 | — |
-| D3 PK4 の Findings Freeze 行の撤去と Plan Commit の書式 | S2・S3 | AC2（PR4-F3・F5〜F7）、AC4、MU4〜MU7 | — |
+| D2 PK1 の Ledger か旧い組、PK1 の R4 skip ERROR と PK3 の skip WARN の撤去、PK3 の Ledger の読み | S2・S3 | AC2（PR4-F1・F2・F4・F4b・F8・F9・F11）、AC4、MU1〜MU3・MU8・MU11 | — |
+| D3 PK4 の Findings Freeze 行の撤去と Plan Commit の書式 | S2・S3 | AC2（PR4-F3・F5〜F7・F12）、AC4、MU4〜MU7・MU10・MU12 | — |
 | D4 WER の撤去 | S2・S3・S4・S9・S11・S12 | AC6、PR4-F10 | — |
 | D5 review-only の統合 | S4・S7・S9〜S15 | AC7、PR4-F8 | S15 は G3 |
 | D6 Owner Effort Budget | S1・S6・S13 | AC10、AC1（section 17 の counter の assert） | G2 |
@@ -508,19 +514,21 @@ adjacent-contract sweep: S2 が触る関数の隣で上表に無い契約は、P
 
 Test Design Matrix: [2026-09-29-harness-pr4-lightweight.md](test-matrices/2026-09-29-harness-pr4-lightweight.md)
 
-- targeted tests: `bash scripts/tests/doc-consistency-plan-packet.test.sh`（PR4-F1〜PR4-F10 と既存の section）、`bash scripts/doc-consistency-check.sh`、`--target plan`（本 packet を新旧の checker で、AC3）。
+- targeted tests: `bash scripts/tests/doc-consistency-plan-packet.test.sh`（PR4-F1〜PR4-F12 と既存の section）、`bash scripts/doc-consistency-check.sh`、`--target plan`（本 packet を新旧の checker で、AC3）。
 - 新しい fixture（S3、見出し `# --- PR4-F<番号>`）
   - PR4-F1: 新 template の R3 packet（`## Contract Ledger`・`## Design Readiness`、Spec Contract・Trace Matrix・Findings Freeze 行・Consultation Relay なし）→ exit 0、PK1・PK4 OK、`Trace Matrix table に data row がありません` の WARN が出ない。
   - PR4-F2: 旧 template の R3 packet（今の既定の fixture。Spec Contract・Trace Matrix・Findings Freeze 行あり）→ exit 0。
   - PR4-F3: 旧 template で Findings Freeze 行だけが無い R3 packet → exit 0（section 6 の置き換え）。
   - PR4-F4: R3 で Contract Ledger も旧い組も無い → ERROR（`Contract Ledger` を含む PK1 の文言）。PR4-F4b: R3 で Spec Contract だけあり Trace Matrix と Ledger が無い → ERROR。
-  - PR4-F5: `Plan Commit` が確定待ちの英字と括弧の注記（Phase plan-gate）→ ERROR（PK4 の書式）。
+  - PR4-F5: `Plan Commit` が確定待ちの英字と括弧の注記（Phase plan-gate）→ exit 1、PK4 の書式の文言を assert。
   - PR4-F6: `pending`（Phase plan-gate）と 40 桁の小文字 hex（Phase implementing）→ どちらも exit 0。
-  - PR4-F7: 7 桁の hex、39 桁、41 桁、大文字の 40 桁、`pending` に括弧の注記、40 桁に括弧の注記 → それぞれ ERROR。
+  - PR4-F7: 7 桁の hex、39 桁、41 桁、大文字の 40 桁、`pending` に括弧の注記（Phase plan-gate）、40 桁に括弧の注記、40 桁+末尾空白、40 桁+末尾タブ → それぞれ exit 1、書式の文言を assert。
   - PR4-F8: R4 packet（Minimum 2、Human Gate に `r4`）に `Review-only skipped because:` 行 → PK1 の ERROR も PK3 の WARN も出ない。R4 で Minimum 1 → PK4 の ERROR（既存の検査が R4 の review を守ることの確認）。
   - PR4-F9: 新 template の R3 packet の Contract Ledger に存在しない `test_` token → PK3 の WARN（`Contract Ledger` の節名を含む）。Ledger に placeholder → WARN。
   - PR4-F10: 2026-07-15 以降の日付で Retired 節の無い WER を archive に置く → D-046 の WER の WARN が出ず、header `WER Retired` も出ない。
-- negative tests: PR4-F4・F4b・F5・F7、PR4-F8 の後半。
+  - PR4-F11: 新 template の R3 packet で Contract Ledger の表がデータ行 0 件（header と区切り行だけ、または template の空行 `|  |  |  |  |`）→ PK1 の ERROR（`データ行がありません`）。
+  - PR4-F12: archive の明示 path（`docs/archive/plans/…`）に `Plan Commit: abc1234` の packet → exit 0、PK4 の書式の文言が出ない。
+- negative tests: PR4-F4・F4b・F5・F7・F11、PR4-F8 の後半。
 - mutation（AC18、各 mutation は実注入して red を確かめる。構造の推論だけで済ませない）
   - MU1: PK1 の Ledger の経路を外す（R3 は Spec Contract と Trace Matrix だけ）→ PR4-F1 が red。
   - MU2: PK1 の Ledger か組の要求そのものを外す → PR4-F4 が red。
@@ -531,6 +539,9 @@ Test Design Matrix: [2026-09-29-harness-pr4-lightweight.md](test-matrices/2026-0
   - MU7: PK4 の Findings Freeze 行の要求を戻す → PR4-F1 と PR4-F3 が red。
   - MU8: PK3 のデータ行を Trace Matrix からだけ読む → PR4-F9 が red（WARN が出ない）、PR4-F1 が red（data row が無い WARN が出る）。
   - MU9: DEV_WORKFLOW の写しから `actual harm path` を消す → section 17 が red（K3 の保持の感度）。
+  - MU10: PK4 の書式検査の前に末尾の空白を削る（`extract_workflow_field … full` に戻す）→ PR4-F7 の末尾空白・タブの 2 件が red。
+  - MU11: PK1 の Ledger のデータ行の検査を外す → PR4-F11 が red。
+  - MU12: PK4 の書式検査を `is_archived_plan_path` の skip の前に置く → PR4-F12 が red。
 - compatibility checks: 既存の section 1〜5・7〜15・18〜28（旧 template の既定の fixture が通り続ける）、AC3（本 packet が新旧の checker で通る）。
 - data safety checks: 変更は script・test・文書だけで、実データ・secret を含まない（Data Safety）。
 - main wiring/integration checks: `bash scripts/tests/run-workflow-tests.sh`、`bash scripts/local-ci.sh full`、実装の PR の hosted CI の docs job（PR の head の checker が本 packet を検査する）。
@@ -539,9 +550,9 @@ Test Design Matrix: [2026-09-29-harness-pr4-lightweight.md](test-matrices/2026-0
 
 - producer: Plan Packet（markdown）。
 - consumer: `scripts/doc-consistency-check.sh` の PK1・PK3・PK4。helper（`scripts/pr-gate.py`）は変えない。
-- wire type: 節の見出しの行（`## Contract Ledger`、`## Spec Contract`、`## Trace Matrix`）、Workflow State の `- Plan Commit:` 行の値全体。
+- wire type: 節の見出しの行（`## Contract Ledger`、`## Spec Contract`、`## Trace Matrix`）、Workflow State の `- Plan Commit:` 行の値全体（末尾の空白・タブを含む）。
 - internal type: 節の有無の真偽、`Plan Commit` の値の文字列。
-- precision/range: `Plan Commit` は `pending` か小文字 hex 40 桁（helper の `SHA` と同じ）。
+- precision/range: `pending` か小文字 hex 40 桁の完全一致（helper の `fullmatch` と同じ集合。末尾の空白・タブ・注記は不一致）。
 - round-trip path: なし（read-only の検査）。
 - invalid input: 書式外の `Plan Commit` は PK4 の ERROR（exit 1）。Ledger も旧い組も無い R3 packet は PK1 の ERROR。
 - compatibility: 旧 template の packet（Spec Contract と Trace Matrix、`- Findings Freeze:` 行、`Review-only skipped because:` 行、Consultation Relay 節、relay の上限の行）はすべて受理する。archive の明示 path の扱いは変えない。
@@ -560,8 +571,8 @@ Test Design Matrix: [2026-09-29-harness-pr4-lightweight.md](test-matrices/2026-0
 Contract ID: SPEC-WF-HARNESS4
 
 - D1: template は全 Risk の本体と R3/R4 の部分に分かれ、R3/R4 の契約の追跡は Contract Ledger（`契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象`）の 1 表、設計の準備は Design Readiness の 1 節。Consultation Relay 節、Findings Freeze 行、review-only skip の案内、`independent-review` の語は無い。Scope 節に component の import / 描画の表、Test Plan に L3 の fixture の列挙がある。
-- D2: PK1 は R3/R4 に `## Contract Ledger` か `## Spec Contract` と `## Trace Matrix` の組を求め、どちらも無ければ ERROR。R4 の review-only skip の ERROR と PK3 の skip の WARN は無い。PK3 の Trace の WARN は Ledger があればその表、無ければ Trace Matrix を読む。
-- D3: PK4 は R3 に `- Findings Freeze:` 行を求めない。active packet の `Plan Commit` の値全体が `pending` か小文字 hex 40 桁でなければ ERROR。
+- D2: PK1 は R3/R4 に `## Contract Ledger` か `## Spec Contract` と `## Trace Matrix` の組を求め、どちらも無ければ ERROR。R4 の review-only skip の ERROR と PK3 の skip の WARN は無い。PK3 の Trace の WARN は Ledger があればその表、無ければ Trace Matrix を読む。`## Contract Ledger` があるときはデータ行 1 件以上を求める（0 件は ERROR）。
+- D3: PK4 は R3 に `- Findings Freeze:` 行を求めない。active packet の `Plan Commit` の値全体（末尾の空白・タブを削らない）が `pending` か小文字 hex 40 桁に完全一致しなければ ERROR。ERROR の文は、commit 済みで未 push ならその commit を直すよう案内する。
 - D4: WER の要求（DEV_WORKFLOW の Artifact Map・Post-Merge・Done）、`check_new_wer_retired_rules`、WER の template と Skill は無い。
 - D5: review-only sub-agent は Final Review に統合され、R2+ の Final Review の本数は `Final Review Minimum`、skip の経路は無い。旧称の 1 文が DEV_WORKFLOW にある。
 - D6: Owner Effort Budget は G2 の値と扱い（推奨 A: 介入 6 回・実働 30 分、relay の上限なし、上限に届くときは次の判断と改定を同じ 1 回、L3 の各 round を 1 回、goal-drift signal で即停止）。
@@ -580,8 +591,8 @@ Contract ID: SPEC-WF-HARNESS4
 | Spec ID | Plan Step | Test | Review Focus | Evidence |
 |---|---|---|---|---|
 | SPEC-WF-HARNESS4-D1 | S1 | AC5、PR4-F1 | Ledger の列 | rg 出力と test 出力 |
-| SPEC-WF-HARNESS4-D2 | S2・S3 | AC2、AC4、MU1〜MU3・MU8 | 旧形式の受理 | test 出力と mutation の exit |
-| SPEC-WF-HARNESS4-D3 | S2・S3 | AC2、AC4、MU4〜MU7 | 40 桁の理由 | test 出力と mutation の exit |
+| SPEC-WF-HARNESS4-D2 | S2・S3 | AC2、AC4、MU1〜MU3・MU8・MU11 | 旧形式の受理 | test 出力と mutation の exit |
+| SPEC-WF-HARNESS4-D3 | S2・S3 | AC2、AC4、MU4〜MU7・MU10・MU12 | 40 桁の理由 | test 出力と mutation の exit |
 | SPEC-WF-HARNESS4-D4 | S2・S3・S4・S9・S11・S12 | AC6、PR4-F10 | 形だけの要求 | rg 出力と test 出力 |
 | SPEC-WF-HARNESS4-D5 | S4・S7・S9〜S15 | AC7、PR4-F8 | R4 の review の強制 | rg 出力と test 出力 |
 | SPEC-WF-HARNESS4-D6 | S1・S6・S13 | AC10 | G2 | rg 出力、owner の判断 |
@@ -610,4 +621,19 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 ## Review Response
 
 Fill after review.
+- Plan Review round 1（2026-09-29、対象 `9037c760`、互いに独立の 2 本）: fresh Opus 5.5 = reject（P2 2 / P3 6）、Codex GPT-6 Astra = reject（P2 4 / P3 2）。Coordinator が全件を採用し、相談役 Fable 5.1 の起草で是正した。finding ごとの採否と是正の所在（行番号は本 commit）:
+  - Opus #1（P2、`Plan Commit` の書式検査は PK5 が初回値を固定する前に気付けない）: 採用。検出点を commit の前の `--target plan` に直し、commit 済み未 push ならその commit を直す案内を足した（Goal `:124`、Ordinary Operation `:152`、S2 PK4 `:180`、S16 の (10) `:231`、設計判断 3 `:394`、Impact Review Lenses の「Plan Commit の固定」`:458`、Contract Probe 4・11 `:478`・`:485`）。
+  - Opus #2（P2、Impact Review Lenses の問いの列が消える、Design inputs の行の理由が事実と違う）: 採用。S1 の Lenses `:176`、処置表の Design inputs `:242`・Lenses `:247`、AC14 `:323`。
+  - Opus #3（P3、section 14 の短い SHA の上書き値、archive の短い SHA の網、MU5 の kill）: 採用。S3 `:183`・`:184`、Test Plan の PR4-F5・F7・F12 `:523`・`:525`・`:530`、Matrix の F5・F7・F12 の行。
+  - Opus #4（P3、旧語の拾い漏れ: template の Registration の Contract Coverage Ledger、DEV_WORKFLOW の candidate-safety、`:353` の review-only）: 採用。S1 の消す `:173`、S6 `:194`、S7 `:197`、AC5 `:309`、AC10 `:319`。
+  - Opus #5（P3、AC7 の baseline の誤り）: 採用。AC7 `:316` を旧称の文の固有 literal に直し baseline を訂正。
+  - Opus #6（P3、空の Contract Ledger が WARN だけで通る）: 採用。根拠は PK2 が表の行を見ない（`extract_prose` `scripts/doc-consistency-check.sh:852-861`）ので空の Ledger を止める検査が無いこと。S2 PK1 `:178`、PR4-F11 `:529`、MU11 `:543`、Matrix の FM11。
+  - Opus #7（P3、MANUAL §3.5 の停止と G2 = A の食い違い）: 採用。MANUAL の該当行は `:60`。S6 `:194` に「§3.5 の停止が優先」、AC10 `:319`。
+  - Opus #8（P3、MANUAL の読ませない場所は `:36`）: 採用。範囲の候補の確認 `:98`、S13 `:224`。
+  - Codex F1（P2、末尾空白つきの 40 桁が PK4 を通り helper で拒まれる）: 採用。S2 PK4 `:180`（末尾を削らずに照合）、PR4-F7 `:525`、MU10 `:542`、Contract Probe 10 `:484`、Boundary / Wire Contract `:553`・`:555`、Matrix。
+  - Codex F2（P2、section 14 の上書き値）: 採用。S3 `:183`。
+  - Codex F3（P2、R2 で Boundary / Wire Contract まで省ける）: 採用。S1 の構成 `:169`（Boundary / Wire Contract を前半へ、`docs/DEV_WORKFLOW.md:62` の条件を保つ）。
+  - Codex F4（P2、Draft の前に review を置く古い順序が残る）: 採用。S9 の順序 `:205`、S12 の inventory-implementation `:220`、AC13 `:322`。
+  - Codex F5（P3、G2 の根拠の一般化が archive と合わない）: 採用。G2 の実績 `:416` を (a)〜(c) に分け、理由 (2)・(4) `:424` を判断点の積算と事実に合わせた。G1 `:410` も round 1 の事実に合わせた。
+  - Codex F6（P3、AC7 の baseline と式）: 採用。Opus #5 と同じ是正（AC7 `:316`）。
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
