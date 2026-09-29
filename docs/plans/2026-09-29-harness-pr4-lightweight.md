@@ -53,6 +53,8 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 
 G1 と G2 は同じ 1 回の問い合わせで答えを得ても、decision point ごとに 2 回と数える。
 
+改定（2026-09-30、owner「Aだな」。train〈PR5 → PR4〉の Ready の委任と同じ 1 回）: relay 上限 5 → 7。消費は Plan Review 3、Final broad の Codex 1（発注 155）、closure 2（160 は発注書が packet を含む差分の全文を読ませたため数えず取り直し、162）、見込みは PR5 の merge の後の base 同期の closure 1。介入は 5（従来の 4 + broad の record の owner の `!` 1）+ Ready・merge の 2 = 7 で上限内。
+
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
 
