@@ -211,6 +211,10 @@ class Gate:
 
     def requirements(self, pr):
         head, base = pr['head']['sha'], pr['base']['sha']
+        # SPEC-WF-HARNESS5-D2: only the PR base's helper may judge the PR; a changed helper must not judge itself.
+        require(self.contents('scripts/pr-gate.py', base).encode() == Path(__file__).read_bytes(),
+                f'helper differs from base {base}; run: git fetch origin && git show {base}:scripts/pr-gate.py'
+                f' > "${{TMPDIR:-/tmp}}/pr-gate-base.py" && python3 "${{TMPDIR:-/tmp}}/pr-gate-base.py" …')
         pages = api(f'{self.endpoint}/pulls/{self.args.pr}/files?per_page=100', pages=True)
         items = [item for page in pages for item in page]
         # GitHub lists at most 3000 files per PR; at the cap the diff may be truncated.
@@ -445,6 +449,10 @@ class Gate:
         if args.kind == 'review':
             require(req['minimum'] and args.review_stage and args.pass_model and args.run_ref and args.evidence,
                     'review needs stage/model/run-ref/evidence', 2)
+            # SPEC-WF-HARNESS5-D8: the audited head must be the captured head, for broad and closure alike.
+            require(args.reviewed_head, 'review needs --reviewed-head', 2)
+            require(sha(args.reviewed_head) == snap['head'],
+                    'reviewed head differs from capture head; record the broad before pushing a fix, or audit the current head')
             item=dict(model=pointer(args.pass_model),run_ref=pointer(args.run_ref),evidence=args.evidence)
             broad=record['review']['broad']
             if args.review_stage == 'broad':
@@ -517,6 +525,7 @@ def main():
     parser.add_argument('--review-stage',choices=('broad','closure'))
     parser.add_argument('--pass-model')
     parser.add_argument('--run-ref')
+    parser.add_argument('--reviewed-head')
     parser.add_argument('--reuse-from')
     parser.add_argument('--reuse-approval')
     args=parser.parse_args()

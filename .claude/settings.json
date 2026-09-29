@@ -1,5 +1,8 @@
 {
   "effortLevel": "high",
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"
+  },
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,

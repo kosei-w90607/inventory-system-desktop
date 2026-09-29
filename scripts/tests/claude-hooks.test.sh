@@ -10,6 +10,13 @@ fail() {
     exit 1
 }
 
+# SPEC-WF-HARNESS5-D3: frontmatter (CRLF too) is read as YAML; a top-level hooks key or unparsable YAML fails closed.
+# --disable-gems -rdate: the same stdlib psych everywhere; a newer psych gem loads Date implicitly, the stock one does not.
+frontmatter_lacks_hooks() {
+    awk '{ sub(/\r$/, "") } NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } NR > 1 { print }' "$1" |
+        ruby --disable-gems -ryaml -rdate -e 'doc = YAML.safe_load(STDIN.read, permitted_classes: [Date, Time]); exit(doc.is_a?(Hash) && doc.key?("hooks") ? 1 : 0)' 2>/dev/null
+}
+
 validate_inventory() {
     local root="$1"
     local settings="$root/.claude/settings.json"
@@ -19,8 +26,28 @@ validate_inventory() {
         return 1
     jq -e --arg key "$HARNESS_KEY" '.enabledPlugins[$key] == false' "$settings" >/dev/null ||
         return 1
+    # SPEC-WF-HARNESS5-D4: subagent nesting stays off (depth 1).
+    jq -e '.env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH == "1"' "$settings" >/dev/null ||
+        return 1
 
     if [[ -d "$hook_dir" ]] && find "$hook_dir" -type f -print -quit | grep -q .; then
+        return 1
+    fi
+
+    # SPEC-WF-HARNESS5-D3: agent, command file and skill frontmatter register no hooks.
+    local file
+    while IFS= read -r -d '' file; do
+        frontmatter_lacks_hooks "$file" || return 1
+    done < <(
+        [[ -d "$root/.claude/agents" ]] && find "$root/.claude/agents" -name '*.md' -print0
+        [[ -d "$root/.claude/commands" ]] && find "$root/.claude/commands" -name '*.md' -print0
+        [[ -d "$root/.agents/skills" ]] && find "$root/.agents/skills" -name SKILL.md -print0
+        [[ -d "$root/.claude/skills" ]] && find "$root/.claude/skills" -name SKILL.md -print0
+        true
+    )
+    # A skill folder turned into a plugin (.claude-plugin/) would load its agents, hooks and MCP.
+    # -quit instead of `| grep -q`: under pipefail, find's SIGPIPE after grep exits would read as "none found".
+    if [[ -n "$(find "$root/.agents" "$root/.claude" -path "$root/.claude/worktrees" -prune -o -name .claude-plugin -print -quit 2>/dev/null)" ]]; then
         return 1
     fi
 }
@@ -75,7 +102,7 @@ validate_audit_wiring() {
     grep -Fq 'run: bash scripts/tests/claude-hooks.test.sh' \
         "$root/.github/workflows/ci.yml" || return 1
     local path output
-    for path in .claude/settings.json .claude/hooks/probe.sh .claude/commands/plan-rally.md; do
+    for path in .claude/settings.json .claude/hooks/probe.sh .claude/commands/plan-rally.md .claude/agents/reviewer.md .agents/skills/example/.claude-plugin/plugin.json; do
         output="$(printf '%s\n' "$path" | bash "$root/scripts/ci/classify-changes.sh" --files-from-stdin)" || return 1
         grep -Fxq 'workflow=true' <<< "$output" || return 1
     done
@@ -119,6 +146,7 @@ expect_rejected() {
     fi
 }
 
+command -v ruby >/dev/null || fail "ruby (yaml) is required"
 validate_source_binding "$SOURCE_ROOT/scripts/tests/claude-hooks.test.sh" ||
     fail "CH10 source-direct validation binding is missing or ambiguous"
 validate_contract "$SOURCE_ROOT" ||
@@ -217,5 +245,63 @@ ignore_mutant="$tmp/ignore-mutant"
 cp -a "$fixture" "$ignore_mutant"
 sed -i '\|^\*\*/\.claude/settings\.local\.json$|d' "$ignore_mutant/.gitignore"
 expect_rejected "CH11 repository ignore" "$ignore_mutant"
+
+# SPEC-WF-HARNESS5-D3/D4: clean agent and skill frontmatter pass; hooks, plugins and a missing depth are rejected.
+frontmatter_fixture="$tmp/frontmatter-fixture"
+cp -a "$fixture" "$frontmatter_fixture"
+mkdir -p "$frontmatter_fixture/.claude/agents" "$frontmatter_fixture/.agents/skills/example"
+printf '%s\n' '---' 'name: writer' 'description: fixture' 'model: opus' 'effort: medium' '---' 'body' \
+    > "$frontmatter_fixture/.claude/agents/writer.md"
+printf '%s\n' '---' 'name: example' 'metadata:' '  updated: 2026-09-30' '---' 'body' \
+    > "$frontmatter_fixture/.agents/skills/example/SKILL.md"
+validate_contract "$frontmatter_fixture" || fail "clean agent and skill frontmatter was rejected"
+
+depth_mutant="$tmp/depth-mutant"
+cp -a "$fixture" "$depth_mutant"
+jq 'del(.env)' "$fixture/.claude/settings.json" > "$depth_mutant/.claude/settings.json"
+expect_rejected "HARNESS5-D4 subagent depth" "$depth_mutant"
+
+agents_classifier_mutant="$tmp/agents-classifier-mutant"
+cp -a "$fixture" "$agents_classifier_mutant"
+sed -i 's#|\.claude/agents/\*##' "$agents_classifier_mutant/scripts/ci/classify-changes.sh"
+expect_rejected "HARNESS5-D1 agent classification" "$agents_classifier_mutant"
+
+agent_hooks_mutant="$tmp/agent-hooks-mutant"
+cp -a "$frontmatter_fixture" "$agent_hooks_mutant"
+printf '%s\n' '---' 'name: writer' "'hooks':" '  Stop: []' '---' 'body' > "$agent_hooks_mutant/.claude/agents/writer.md"
+expect_rejected "HARNESS5-D3 agent frontmatter hooks" "$agent_hooks_mutant"
+
+command_hooks_mutant="$tmp/command-hooks-mutant"
+cp -a "$fixture" "$command_hooks_mutant"
+{ printf '%s\n' '---' '"hooks":' '---'; cat "$fixture/.claude/commands/plan-rally.md"; } \
+    > "$command_hooks_mutant/.claude/commands/plan-rally.md"
+expect_rejected "HARNESS5-D3 command frontmatter hooks" "$command_hooks_mutant"
+
+skill_hooks_mutant="$tmp/skill-hooks-mutant"
+cp -a "$frontmatter_fixture" "$skill_hooks_mutant"
+printf '%s\n' '---' 'name: example' 'hooks:' '  Stop: []' '---' 'body' > "$skill_hooks_mutant/.agents/skills/example/SKILL.md"
+expect_rejected "HARNESS5-D3 skill frontmatter hooks" "$skill_hooks_mutant"
+
+plugin_manifest_mutant="$tmp/plugin-manifest-mutant"
+cp -a "$frontmatter_fixture" "$plugin_manifest_mutant"
+mkdir -p "$plugin_manifest_mutant/.agents/skills/example/.claude-plugin"
+printf '{"name":"example"}\n' > "$plugin_manifest_mutant/.agents/skills/example/.claude-plugin/plugin.json"
+expect_rejected "HARNESS5-D3 skill plugin manifest" "$plugin_manifest_mutant"
+
+crlf_hooks_mutant="$tmp/crlf-hooks-mutant"
+cp -a "$frontmatter_fixture" "$crlf_hooks_mutant"
+printf '%s\r\n' '---' 'name: writer' 'hooks:' '  Stop: []' '---' 'body' > "$crlf_hooks_mutant/.claude/agents/writer.md"
+expect_rejected "HARNESS5-D3 CRLF agent frontmatter hooks" "$crlf_hooks_mutant"
+
+claude_skill_hooks_mutant="$tmp/claude-skill-hooks-mutant"
+cp -a "$frontmatter_fixture" "$claude_skill_hooks_mutant"
+mkdir -p "$claude_skill_hooks_mutant/.claude/skills/local"
+printf '%s\n' '---' 'name: local' 'hooks:' '  Stop: []' '---' 'body' > "$claude_skill_hooks_mutant/.claude/skills/local/SKILL.md"
+expect_rejected "HARNESS5-D3 .claude/skills frontmatter hooks" "$claude_skill_hooks_mutant"
+
+many_manifests_mutant="$tmp/many-manifests-mutant"
+cp -a "$frontmatter_fixture" "$many_manifests_mutant"
+mkdir -p "$many_manifests_mutant"/.agents/skills/s{1..200}/.claude-plugin
+expect_rejected "HARNESS5-D3 many skill plugin manifests" "$many_manifests_mutant"
 
 echo "PASS: Claude hook zero-inventory contract"
