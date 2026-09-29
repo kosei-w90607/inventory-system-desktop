@@ -11,9 +11,10 @@ fail() {
 }
 
 # SPEC-WF-HARNESS5-D3: frontmatter (CRLF too) is read as YAML; a top-level hooks key or unparsable YAML fails closed.
+# --disable-gems -rdate: the same stdlib psych everywhere; a newer psych gem loads Date implicitly, the stock one does not.
 frontmatter_lacks_hooks() {
     awk '{ sub(/\r$/, "") } NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } NR > 1 { print }' "$1" |
-        ruby -ryaml -e 'doc = YAML.safe_load(STDIN.read, permitted_classes: [Date, Time]); exit(doc.is_a?(Hash) && doc.key?("hooks") ? 1 : 0)' 2>/dev/null
+        ruby --disable-gems -ryaml -rdate -e 'doc = YAML.safe_load(STDIN.read, permitted_classes: [Date, Time]); exit(doc.is_a?(Hash) && doc.key?("hooks") ? 1 : 0)' 2>/dev/null
 }
 
 validate_inventory() {
