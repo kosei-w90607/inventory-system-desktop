@@ -10,9 +10,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 0c6489ab9c8bd3a50e0dbed5513b1d610100530c
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（fresh context、Coordinator が指定する worktree で作業）
@@ -30,6 +30,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - plan-gate: Plan Review round 1（fresh Opus 5.5 reject P2 2 / P3 5、Codex GPT-6 Astra reject P1 1 / P2 5）→ 全件採用し是正（相談役 Fable 5.1 の起草、2026-09-29）
 - plan-gate（round 2）: Plan Review round 2 の是正（相談役 Fable 5.1 の起草、2026-09-30。内訳は Review Response）
 - plan-gate（round 3）: Plan Review round 3（上限、対象 3dbdf369。fresh Opus 5.5 reject P2 1 / P3 7、Codex GPT-6 Astra reject P2 1）→ round 天井の disposition「同型指摘の一括是正」（相談役 Fable 5.1 の起草、2026-09-30。内訳は Review Response）。Coordinator が現物で確かめて plan-approved を owner に諮り、reviewer の再確認は Final Review に回す
+- plan-gate → plan-approved（2026-09-30、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `3dbdf369`）の後、round 天井の disposition「同型指摘の一括是正」（`0c6489ab`）を Coordinator が現物で確かめた（撤回した前提の sweep 0 件、新しい文の件数、`doc-consistency-check.sh --target plan` exit 0〈WARN 1 = PK3〉、`check-workflow-git.sh` exit 0、helper の `parse_packet` が通る）。独立 reviewer の再確認は Final Review（Fable 5.1 + Codex）で行う。owner 承認（2026-09-30、この change での介入 2・3 回目 = plan-approved と G1 の確認）: G1 = (a)（`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` は本 lane で入れる、`disableSkillShellExecution` は backlog の follow-up）、残すリスク = A。Plan Commit = `0c6489ab`（承認した計画の最後の commit）
 
 ## Owner Effort Budget
 
@@ -38,9 +39,9 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - relay 往復上限: 6（既定 2 から。理由: Plan Review の Codex 3 round、Final Review の Codex broad 1、Final の是正の後の Codex closure 1。予備 1 = PR4 が先に merge されて base 同期した後の Codex closure。是正の closure と base 同期の closure は両方起こり得る）
 - Plan Review round 天井: 3（既定 3）
 
-| 種別 | 上限 | 消費（2026-09-30 時点） | 残りの見込み | 予備 | 合計 |
+| 種別 | 上限 | 消費（2026-09-30 の plan-approved 時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 7 | 1: 起票承認と範囲の判断（2026-09-29、同じ問いの 1 回） | 4: plan-approved と判断点 G1 の回答 1、Ready 1、merge 1、merge 後の本体の同期と Claude Code の再起動 1 | 2: G1 (a) の owner の代行 1、PR4 の merge の後の再 Ready 1 | 7 = 1 + 4 + 2 |
+| 介入 | 7 | 3: 起票承認と範囲の判断（2026-09-29、同じ問いの 1 回）、plan-approved（2026-09-30）、G1 の確認（2026-09-30。plan-approved と別の decision point、`docs/DEV_WORKFLOW.md:267`） | 3: Ready 1、merge 1、merge 後の本体の同期と Claude Code の再起動 1 | 1: G1 (a) の owner の代行 1。PR4 の merge の後の再 Ready が要るときは、その問い合わせと同じ 1 回で上限の改定を諮る | 7 = 3 + 3 + 1 |
 | relay | 6 | 3: Plan Review の Codex round 1・round 2・round 3 | 2: Final Review の Codex broad 1、Final の是正の後の Codex closure 1 | 1: PR4 の merge の後の base 同期の Codex closure | 6 = 3 + 2 + 1 |
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
