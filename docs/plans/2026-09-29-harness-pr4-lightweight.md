@@ -669,4 +669,12 @@ Fill after review.
   - Opus #4（Final Reviewer 行の Codex の model の理由）: 採用。Workflow State の Final Reviewer 行に「難所: merge gate の合否を変える」。
   - Opus #5（AC20 の座組表の比較相手）: 採用。`AC20` を merge-base の版との比較に。
   - Codex #2（`workflow-git-checks.test.sh:357` の説明）: 採用。Non-scope の該当行を「doc-consistency 側は撤去済み Phase の拒否、workflow-git 側（T-G5）は旧 commit 件名の受理」に。
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+Final Review broad（2026-09-30、対象 `473d90cf`）: Fable 5.1 = approve（P1 0 / P2 0 / P3 2、F-1・F-2）、Codex GPT-6 Astra（発注 155）= reject（P1 0 / P2 1 / P3 1、A1・A2）。broad の 2 本は是正の push の前に `473d90cf` で record した。Coordinator が現物で裏取りした。是正は Writer（Opus 5.5 subagent、発注 158）。
+
+- A1（P2、`scripts/doc-consistency-check.sh:1292` の `[[:space:]]` が UTF-8 の locale で U+3000 を落とし、helper〈`scripts/pr-gate.py:152` の `[ \t]*`〉が拒む `Plan Commit` を checker が通す。D3 の「commit の前に止める」が未達）: 採用。Coordinator が `C.UTF-8` で削れ `C` で削れないことを再現。前置で落とす文字を ASCII の空白とタブに限り（`e48400b1`）、`LC_ALL=C.UTF-8` で走る PR4-F7b（空白・タブは通り、U+3000 は PK4 の ERROR）を足した。修正前 red → 修正後 green（呼ぶ側の locale が C でも同じ）。
+- A2（P3、D-098 の「4 表」が base の template の実物〈追跡表 3 つと Spec Contract の箇条書き〉と合わない）: 採用。D-098 の Why・Alternatives を「契約を書く 4 つの節」にした（`9b54ae46`）。本 packet の「4 表」（計画時の呼び方）は plan の記録なので書き換えない。
+- F-1（P3、PK1・PK3 の Ledger の経路の見出しの判定が `###` の小見出しにも当たる）: 見送り。既存の節検出と同じ規約で、誤れば ERROR（fail-closed）。closeout で backlog へ。
+- F-2（P3、DEV_WORKFLOW の Risk Tiers の R2 の行が Final Review に触れない）: 見送り。base から同じで本 PR 起因でない。closeout で backlog へ。
+- 是正の検証（Writer の報告、`9b54ae46`）: AC1〜AC20 を逐語で再実行し全件期待どおり。`Plan Commit` の書式に関わる MU4・MU5・MU6・MU10・MU12 と新規の MU-F1（前置を `[[:space:]]` に戻す）を注入して red。MU12 を Test Plan の字面どおりに入れると PR4-F12 より前の section で red になるため、狭くした版で PR4-F12 の red を確かめた。`bash scripts/local-ci.sh full` PASS（`MERGE_EVIDENCE_VALID=true`）。Coordinator が test の見出し comment の空白の脱落（PR4-F8）を直した。
+
+- Findings Freeze: frozen after Final Review broad（Double Audit の 2 本、2026-09-30）; post-freeze exceptions: none.
