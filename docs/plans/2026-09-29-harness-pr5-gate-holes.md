@@ -573,4 +573,15 @@ Plan Review round 3（2026-09-30、対象 `3dbdf369`。round 天井）: Codex GP
 - R3-O8（P3、S7 の fixture と AC10 の baseline）: 採用。S7 に `src-tauri/`（P:172）、AC10 の baseline に PK3 WARN 1（P:289）。
 - 相談役の反例 D（skill の body の `!` command が残すリスクの記述に無い）: 採用（記述だけ）。G1（P:300）、D-099（P:229）、Design Intent Audit（P:358）、Matrix の Residual（M:161）。塞ぐ手段（settings の `disableSkillShellExecution`）は本 lane に入れず follow-up 候補。
 
-- Findings Freeze: not yet frozen; post-freeze exceptions: none.
+Final Review broad（2026-09-30、対象 `c3129f59`）: Fable 5.1 = approve（P1 0 / P2 0 / P3 3、F-1〜F-3）、Codex GPT-6 Astra（発注 156）= reject（P1 0 / P2 2 / P3 1、A1〜A3）。数えない観察の Codex GPT-6.1 Sol（発注 157、PR へ投稿しない。owner 2026-09-30）= reject（P1 0 / P2 3 / P3 1、S1〜S4。S1・S2・S4 は A1〜A3 と同じ）。broad の 2 本は是正の push の前に `c3129f59` で record した（origin/main の helper の写し、本 lane 自身の検査と merge の 3）。Coordinator が現物で裏取りし、P2 は全件採用した。是正は Writer（Opus 5.5 subagent、発注 159）。
+
+- A1・S2（P2、`scripts/tests/claude-hooks.test.sh:43` が `.claude/skills` の下の実 file を監査しない）: 採用。`.claude/skills` の `SKILL.md` を frontmatter の監査に入れ（symlink は `find` の既定で辿らない）、実 dir の `hooks` 付き skill の負例を足した（`bd18c65a`）。D3（P:487）の監査対象の列挙と S11（P:192-197）の literal code はこの追加の前の形のまま。実装が D3 の目的（hook を登録できる frontmatter を持たせない）を広げる向きなので、packet は書き換えず本項で結ぶ。
+- A2・S1（P2、`:15` の awk が CRLF の frontmatter を「frontmatter なし」として通す）: 採用。行末の CR を落としてから区切りを判定し、CRLF の agent 定義の `hooks` の負例を足した（`bd18c65a`）。
+- S3（P2、`:47` の `find … | grep -q .` が `pipefail` の下で SIGPIPE の 141 を「manifest なし」と読む。観察の Sol だけが検出）: 採用。Coordinator が `.claude-plugin` 200 個で 3/3 再現（1 個なら 3/3 拒否）。`find … -print -quit` の出力が空でないかで判定し、200 個の負例を足した（`bd18c65a`、修正前 5/5 red）。数えない run の finding だが、D3 の zero inventory が数で破れる実害の筋なので採る。
+- A3・S4（P3、helper の復帰 command の末尾が literal の `…`）: 見送り。S3 が message を literal と決めており、直すには Amendment が要る。安全側に止まり、operator が引数を補えば動く。closeout で backlog へ。
+- F-1（P3、docs job が runner image の ruby に頼る）: 見送り。`.github/**` は本 lane の所有の外。fail-closed。closeout で backlog へ。
+- F-2（P3、frontmatter の `permissionMode`・`mcpServers` を拒まない）: 見送り。範囲の拡大。full（R3・Minimum 2）には乗る。closeout で backlog へ。
+- F-3（P3、`--reviewed-head` の短縮 SHA の error に引数名が無い）: 採用（文書だけ）。merge-evidence の実行手順（`:160`）に「40 桁の full SHA で写す（短縮 SHA は helper が拒む）」を足した（`92f04dd0`）。helper は変えない。
+- 是正の検証（Writer の報告、`92f04dd0`）: 受理 P2 3 件は修正前 red → 修正後 green。MU5・MU16・MU17 を再注入して red。AC7・AC10 exit 0、origin/main の checker と PK5 の cross-run exit 0、`bash scripts/local-ci.sh full` PASS（`MERGE_EVIDENCE_VALID=true`）。変更は `claude-hooks.test.sh` と merge-evidence の 2 file だけ。
+
+- Findings Freeze: frozen after Final Review broad（Double Audit の 2 本、2026-09-30）; post-freeze exceptions: none.
