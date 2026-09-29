@@ -29,4 +29,4 @@ mockup-c / mockup-d / mockup-e / mockup-f / mockup-g は同じ CSS（token）系
 
 - 新しい一覧画面や入口を作るとき: 対応する mockup を開き、枠・検索欄・行・badge の作りを合わせる
 - レビューで「背骨 n に反している」と指摘するとき: mockup の該当箇所を根拠として指す
-- 背骨を改定したとき: mockup の該当箇所を同時に直す（batch packet の Required Design Artifacts に含める）
+- 背骨を改定したとき: mockup の該当箇所を同時に直す（batch packet の Design Readiness の必要な設計成果物に含める）

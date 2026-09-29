@@ -44,7 +44,7 @@ merge は helper 経由で、専用 record と手順は [merge-evidence](docs/ag
 - 疲労は説明を短くする材料に限る。容量最適化の明示依頼がない限り、作業の中止・延期・縮小・単線化の理由にしない。
 - GitHub PR レビュー依頼は、その PR への指摘投稿を含む。label、thread 状態、Ready、merge、close、issue comment などは別の明示承認に従う。
 - owner へ送り、中継を省かない問い合わせ: 店の事実と実機でしか確認できない挙動（具体的な質問か短い PASS / FAIL で答えられる形にする）、目的・製品の振舞い・受容リスク・予算・優先順位・範囲の変更・不可逆な操作、Windows L3・R4・Ready・merge、PR の label・thread 状態・close・issue comment といった外部書込み。判断は owner。現行の明示承認と有効な委任（push・Draft PR 作成、owner の承認後の helper `ready` / `merge` と closeout の実行）の範囲では Coordinator が実行を代行できる。委任の範囲の正本はこの項目（`docs/DEV_WORKFLOW.md` Wave Operation の train 委任を除く）。問い合わせが複数に当たり owner 側を含む場合と、裁定権の所在が争点の場合は owner へ送る。
-- agent 側で解く問い合わせ: 発注だけの誤り（正本が一意で発注が食い違う）、環境の不備（許可済みの環境・範囲で解消でき、追加の費用・権限・正本の変更を伴わない場合）、技術的な前提（調査・Contract Probe）、正本の意味や影響の分類の争いの事実確認（独立 reviewer）。事実確認の後の裁定は裁定権者が行い、owner にある場合は中継を省かない。owner に技術的な正しさの承認を求めず、証跡の編集や発注訂正の伝言を頼まない。
+- agent 側で解く問い合わせ: 発注だけの誤り（正本が一意で発注が食い違う。手順は [MANUAL §5.6](docs/AGENT_OPERATING_MANUAL.md#56-従来型-writer-発注書の共通出力契約)「Writer が編集前に止まったとき」）、環境の不備（許可済みの環境・範囲で解消でき、追加の費用・権限・正本の変更を伴わない場合）、技術的な前提（調査・Contract Probe）、正本の意味や影響の分類の争いの事実確認（独立 reviewer）。事実確認の後の裁定は裁定権者が行い、owner にある場合は中継を省かない。owner に技術的な正しさの承認を求めず、証跡の編集や発注訂正の伝言を頼まない。
 
 ## Workspace Access
 

@@ -1,4 +1,4 @@
-# Review-only Sub-agent Packet
+# Review Packet（Plan Review・Final Review）
 
 R3/R4 の独立レビューへ、下の対象情報を埋めて渡す。手順・Risk・承認は [DEV_WORKFLOW.md](../DEV_WORKFLOW.md)、重大度と裁定は [code_review.md](../code_review.md) を正本とし、ここに複製しない。
 
@@ -11,12 +11,12 @@ read-only の独立 reviewer。tracked file の編集、patch適用、git/PRの�
 - Risk / stage:
 - Plan Packet（R0/R1でない場合）:
 - Source design / critical contracts:
-- Contract Coverage Ledger / Test Design Matrix:
+- Contract Ledger（旧 packet は Contract Coverage Ledger）/ Test Design Matrix:
 - 対象差分と内容commit:
 - 初回監査 / closure、既存findings:
 - Scope / Non-scope / accepted residual risks:
 - Claimed validationと必要な証拠の場所:
-- 読ませないもの（同じ round で 2 本以上の review を回すときの各 reviewer。Plan Review・Final Review とも、Double Audit を含む）: 他の reviewer の結果が置かれた場所すべて（例: packet の Review Response の段落、PR body、PR の comment / review、Coordinator が保存した local の報告 file）。その発注の本文にも他の reviewer の結果とそれ由来の観点を書かない（closure・是正の発注は前回 findings から始めてよい）。[AGENT_OPERATING_MANUAL.md](../AGENT_OPERATING_MANUAL.md) §3 の独立性の項
+- 読ませないもの（同じ round で 2 本以上の review を回すときの各 reviewer。Plan Review・Final Review とも、Double Audit を含む）: 他の reviewer の結果が置かれた場所すべて（例: packet の Review Response の段落、PR body、PR の comment / review、Coordinator が保存した local の報告 file、是正 commit の件名・本文）。その発注の本文にも他の reviewer の結果とそれ由来の観点を書かない（closure・是正の発注は前回 findings から始めてよい）。[AGENT_OPERATING_MANUAL.md](../AGENT_OPERATING_MANUAL.md) §3 の独立性の項
 
 ## Contract Audit
 

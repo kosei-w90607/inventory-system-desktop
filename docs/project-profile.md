@@ -157,7 +157,7 @@ Project-specific failure modes to test:
 - Design Phase happens before Plan Packet for R2+ work when source design docs may be affected.
 - Plan Packets are implementation planning evidence, not durable design source of truth. Durable design belongs in architecture, DB design, function design, screen/UI design, decision-log, or ADR docs.
 - R3/R4 should use a Test Design Matrix and explicit Boundary / Wire Contract.
-- R3 should use review-only sub-agent by default; R4 requires review-only sub-agent and human approval. This profile does not itself add enforcement.
+- R3/R4 use the Final Review (count per `Final Review Minimum`); R4 also requires human approval (`r4`). This profile does not itself add enforcement.
 - Requirement/spec IDs should be attached to tests or test comments when the touched area has traceability.
 - Behavior changes must update the relevant source document in the same change: architecture, DB design, function design, screen design, or UI tech stack.
 - Task-local evidence belongs in active/archive plans. Long PR histories should not make `Plans.md` the product truth.

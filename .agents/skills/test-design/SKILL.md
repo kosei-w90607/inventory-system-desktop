@@ -12,9 +12,7 @@ Create a Test Design Matrix before implementation so tests are tied to contracts
 ## Required Reading
 
 - `docs/project-profile.md`
-- source design docs cited by the Plan Packet's `Design Sources`
-- Plan Packet `Design Readiness`
-- Plan Packet `Design Intent Trace`
+- Plan Packet の `Design Readiness` と `Contract Ledger`（旧 packet は `Design Sources`・`Design Intent Trace`）と、そこが引く source design docs
 - Plan Packet
 - relevant specs / contracts
 - relevant existing tests
@@ -51,5 +49,5 @@ Use `docs/templates/test-design-matrix.md`.
 - Do not optimize for test count; optimize for test effectiveness.
 - Prefer tests that cite spec IDs, design decision IDs, or source doc sections when the touched area has traceability.
 - Every important test should state what broken implementation it catches.
-- For accepted P1/P2 fixes, prefer adding a regression test.
+- Accepted P1/P2 fixes are pinned per `docs/code_review.md` `## Same PR vs Follow-up` (a test that fails on the pre-fix code).
 - Test Design Matrix の数値クレーム（duration / count / percentage / threshold）は測定コマンドと出力を併記するか、明示的に `未実測` とタグ付けする（D-062、AGENTS.md の数値主張規則と同一趣旨）。

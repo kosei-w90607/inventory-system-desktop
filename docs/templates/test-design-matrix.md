@@ -17,6 +17,9 @@ Risk: <R2|R3|R4>
 - Before citing an existing test as regression coverage, use `rg` or an equivalent repository search to verify that the cited test exists.
 - helper と mock の実装を読み、実際に通る境界と置換される境界を確認して Test Type / coverage を選ぶ。helper 名だけで実 router / integration と分類しない。
 - `Would fail if...` は壊れる振舞いを観測できる入力・経路と結びつける。状態 reset なら初回 mount に加え同値再選択等の別経路を確認し、対象契約が行使されるものを選ぶ。
+- oracle の anchor は定義文にしか現れない literal を選び、`rg -c` で対象 file 内 1 件を file ごとに確かめる（複数 file を 1 本の `rg` で数えない）。不変の guard にも感度の実測行を置き、文言を改訂した後は「新しい文言が exact で 1 件 + 旧い文言が 0 件」の対にする。
+- oracle は検証対象と独立の正本から転記し、mutation は production 側だけを変える。
+- 結果を空にする注入で、期待が空集合の case だけが kill を主張していないかを確かめ、各組合せに非空の期待を 1 件置く。
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
@@ -98,7 +101,6 @@ mutation は対象経路の観測結果を変えるものを選び、既存の�
 - If a threshold comparison changes, which test fails?
 - If a guard is removed, which test fails?
 - If an output field is omitted, which test fails?
-- If tracked Workflow State stores the current PR HEAD, does a state commit make it stale immediately? The accepted design must keep current exact-HEAD evidence in PR metadata.
 - If output order changes, which test fails?
 - If dry-run performs a side effect, which test fails?
 - If a JSON number crosses JavaScript safe integer range, which test fails?

@@ -32,11 +32,6 @@ Known warnings:
 
 -
 
-## Review-only
-
-- Run / skipped:
-- If skipped, `Review-only skipped because:`
-
 ## Review Focus
 
 -

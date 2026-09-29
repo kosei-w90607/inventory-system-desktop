@@ -6,7 +6,7 @@ Use this alongside [quality/review-checklist.md](quality/review-checklist.md). T
 
 関係する設計正本から契約を確認し、live code・diff・tests・生成物と照合する。対象に応じて ARCHITECTURE / FUNCTION_DESIGN / DB_DESIGN / SCREEN_DESIGN / UI_TECH_STACK の該当節を選び、無関係な設計書の全文を読む順序にはしない。
 
-Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ は対象packetの Design Sources / Design Readiness を確認する。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
+Risk / workflow が関係する場合は project-profile / DEV_WORKFLOW、R2+ は対象packetの Design Readiness を確認する。作者の説明・validation log・AIコメントは現物で検証するclaimであり、sourceの代用にしない。durableな設計判断がPlanだけにある場合は、明示されたdesign-only scopeや具体的なfollow-upがなければdriftとして扱う。
 
 店の事実を前提にする判断は、`docs/project-memory.md` の「Store Premises Facts（現場の前提）」と照合する。載っていない事実は owner へ 1 問にして送る。
 
@@ -47,10 +47,12 @@ Review entry follows `AGENTS.md` `Session Start`. Initial review reads the touch
 - Check generated bindings after command or DTO changes.
 - Check active plans with `bash scripts/doc-consistency-check.sh --target plan` when workflow artifacts changed.
 - For R2+ work, check whether Design Phase completed before implementation: source design docs are cited as sufficient or updated in the same PR.
-- For R3/R4 work, check `Design Intent Trace`: spec IDs, design decision IDs, source design sections, implementation targets, and test targets should be connected.
+- For R3/R4 work, check the `Contract Ledger` (old packets: `Design Intent Trace` and `Trace Matrix`): contract / design decision IDs, source design sections, implementation targets, and test targets should be connected.
 - Treat Plan Packet-only design rationale as drift when it is durable and absent from source design docs, `docs/decision-log.md`, or ADRs.
 - For UI changes affecting operator flow, state whether Windows native L3 verification is required.
 - data safety の review では `git status --short` を見て、実 POS / 店舗の成果物が ignored のままかを確かめる。
+- Before claiming that a file is absent, stale, duplicated, or divergent, confirm its file type with `git ls-files -s` (mode `120000` is a symlink) or `eza -l` (the symlink arrow). A static `git log` or a line-count difference in `diff --stat` is not evidence of a duplicate by itself.
+- Closure of an accepted P1/P2 confirms its pin: the pinning test (or L3 item / sweep) is in the diff and reverting the fix turns it red. A missing pin keeps that finding open; it is not a new finding.
 
 ## Same PR vs Follow-up
 
@@ -61,6 +63,7 @@ Fix in the same PR:
 - Missing tests for the changed contract.
 - Data safety or layer-boundary gaps.
 - Review findings that block a correct merge.
+- Pin each accepted P1/P2 finding whose fix changes behavior an automated test can observe (product runtime or workflow scripts) with a test that fails on the pre-fix code and passes after the fix, and report the red→green commands. When no automated test can observe it (visual, Windows native, hardware), add an L3 checklist item instead; docs-only findings go through the drift-fix sweep. Do not weaken an existing test to get green; when no test can be added, stop and report why instead of fixing.
 
 Track as follow-up:
 
@@ -69,13 +72,11 @@ Track as follow-up:
 - Optional polish that does not affect the changed contract.
 - Tooling improvements discovered while reviewing but not needed for this merge.
 
-## Review-only Sub-agent Protocol
+## Final Review Protocol
 
-- Use [templates/subagent-review-packet.md](templates/subagent-review-packet.md) for R3/R4 before PR/external review.
-- The sub-agent is read-only and findings-only.
+- Use [templates/subagent-review-packet.md](templates/subagent-review-packet.md) for R3/R4 review orders.
+- The reviewer is read-only and findings-only.
 - The implementer verifies every finding independently before fixing, rejecting, or deferring.
-- For R3 skip, record `Review-only skipped because:` in the Plan Packet or PR body.
-- R4 review-only is required.
 
 ## External PR Review Request
 
@@ -94,7 +95,7 @@ Lead with findings. finding ごとに確信度を添える。
 
 ```md
 ## Findings
-- P2 - path:line - issue / impact / smallest safe fix
+- P2（確信度: 高）- path:line - issue / impact / smallest safe fix
 
 ## Verification Performed
 - command -> result
