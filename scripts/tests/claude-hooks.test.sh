@@ -10,9 +10,9 @@ fail() {
     exit 1
 }
 
-# SPEC-WF-HARNESS5-D3: frontmatter is read as YAML; a top-level hooks key or unparsable YAML fails closed.
+# SPEC-WF-HARNESS5-D3: frontmatter (CRLF too) is read as YAML; a top-level hooks key or unparsable YAML fails closed.
 frontmatter_lacks_hooks() {
-    awk 'NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } NR > 1 { print }' "$1" |
+    awk '{ sub(/\r$/, "") } NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } NR > 1 { print }' "$1" |
         ruby -ryaml -e 'doc = YAML.safe_load(STDIN.read, permitted_classes: [Date, Time]); exit(doc.is_a?(Hash) && doc.key?("hooks") ? 1 : 0)' 2>/dev/null
 }
 
@@ -41,10 +41,12 @@ validate_inventory() {
         [[ -d "$root/.claude/agents" ]] && find "$root/.claude/agents" -name '*.md' -print0
         [[ -d "$root/.claude/commands" ]] && find "$root/.claude/commands" -name '*.md' -print0
         [[ -d "$root/.agents/skills" ]] && find "$root/.agents/skills" -name SKILL.md -print0
+        [[ -d "$root/.claude/skills" ]] && find "$root/.claude/skills" -name SKILL.md -print0
         true
     )
     # A skill folder turned into a plugin (.claude-plugin/) would load its agents, hooks and MCP.
-    if find "$root/.agents" "$root/.claude" -path "$root/.claude/worktrees" -prune -o -name .claude-plugin -print 2>/dev/null | grep -q .; then
+    # -quit instead of `| grep -q`: under pipefail, find's SIGPIPE after grep exits would read as "none found".
+    if [[ -n "$(find "$root/.agents" "$root/.claude" -path "$root/.claude/worktrees" -prune -o -name .claude-plugin -print -quit 2>/dev/null)" ]]; then
         return 1
     fi
 }
@@ -284,5 +286,21 @@ cp -a "$frontmatter_fixture" "$plugin_manifest_mutant"
 mkdir -p "$plugin_manifest_mutant/.agents/skills/example/.claude-plugin"
 printf '{"name":"example"}\n' > "$plugin_manifest_mutant/.agents/skills/example/.claude-plugin/plugin.json"
 expect_rejected "HARNESS5-D3 skill plugin manifest" "$plugin_manifest_mutant"
+
+crlf_hooks_mutant="$tmp/crlf-hooks-mutant"
+cp -a "$frontmatter_fixture" "$crlf_hooks_mutant"
+printf '%s\r\n' '---' 'name: writer' 'hooks:' '  Stop: []' '---' 'body' > "$crlf_hooks_mutant/.claude/agents/writer.md"
+expect_rejected "HARNESS5-D3 CRLF agent frontmatter hooks" "$crlf_hooks_mutant"
+
+claude_skill_hooks_mutant="$tmp/claude-skill-hooks-mutant"
+cp -a "$frontmatter_fixture" "$claude_skill_hooks_mutant"
+mkdir -p "$claude_skill_hooks_mutant/.claude/skills/local"
+printf '%s\n' '---' 'name: local' 'hooks:' '  Stop: []' '---' 'body' > "$claude_skill_hooks_mutant/.claude/skills/local/SKILL.md"
+expect_rejected "HARNESS5-D3 .claude/skills frontmatter hooks" "$claude_skill_hooks_mutant"
+
+many_manifests_mutant="$tmp/many-manifests-mutant"
+cp -a "$frontmatter_fixture" "$many_manifests_mutant"
+mkdir -p "$many_manifests_mutant"/.agents/skills/s{1..200}/.claude-plugin
+expect_rejected "HARNESS5-D3 many skill plugin manifests" "$many_manifests_mutant"
 
 echo "PASS: Claude hook zero-inventory contract"
