@@ -68,12 +68,12 @@ design lane は、製品の設計正本（`docs/function-design/`・`docs/db-des
 |---|---|---|---|
 | Coordinator | Opus 5.5 の main session | 同じ | high（owner 2026-09-23） |
 | Writer | Opus 5.5 の subagent（Codex も可。Writer が Codex のときは §3 の独立性の項の Writer が Codex の場合に従う） | Opus 5.5 の subagent | medium（owner 2026-09-23。Codex が Writer のときは Plan Reviewer 行の Codex の値）。起動: Agent tool では `subagent_type: writer`（`.claude/agents/writer.md`、effort medium）で起動する。定義を使わない起動は session の値（high）を継承する。subagent の入れ子は `.claude/settings.json` の `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` で止める（`docs/DEV_WORKFLOW.md` Subagent Budget の depth 1）。定義と設定は本体の checkout を同期し Claude Code を再起動してから効く（公式 [sub-agents](https://code.claude.com/docs/en/sub-agents)「Write subagent files」・「Supported frontmatter fields」の `effort`）。実効値を run 報告に記録する（`/tasks`） |
-| Plan Reviewer | fresh Opus 5.5（fork でない）+ Codex（GPT-6 Astra 既定。owner の指定で GPT-6 Sol） | fresh Opus 5.5 だけで進める（§3.3） | Opus = medium（`subagent_type: reviewer`、`.claude/agents/reviewer.md`、effort medium、編集の tool なし。起動と実効の注意は Writer 行と同じ）。Codex は model ごと: Astra = 既定 medium・難所 high（owner 2026-09-07 / 08）、Sol = 既定 high（owner 2026-09-14） |
-| Final Reviewer | Claude 側 1 本 + Codex（GPT-6 Sol 既定、難所は GPT-6 Astra）。Claude 側は R3 以上と design lane で Fable 5.1、それ以外は fresh Opus 5.5。closure（base 同期を含む）の Claude 側の既定は Fable 5.1（owner 2026-09-25）。Codex の本務はレビューとしての合否判定で、是正の後の取り直しでも外さない。修正案は一案で採否は Coordinator（owner 決定 2026-09-25）。Fable が使えないときは §3.3 に従い理由を 1 行残して fresh Opus 5.5 で代えてよい。発注と実効 model が違う（宣言なしに切り替わった）run は数えず取り直す | Claude 側を済ませ、Codex の枠は §3.3 に従い pending（Ready 以降だけが止まる） | Fable 5.1 = high（owner 2026-09-25。定義を使わず session の値を継承）、Opus = medium（Plan Reviewer 行と同じ `reviewer` の定義）、Codex は Plan Reviewer 行と同じ |
+| Plan Reviewer | fresh Opus 5.5（fork でない）+ Codex（GPT-6 Astra 既定。owner の指定で GPT-6.1 Sol） | fresh Opus 5.5 だけで進める（§3.3） | Opus = medium（`subagent_type: reviewer`、`.claude/agents/reviewer.md`、effort medium、編集の tool なし。起動と実効の注意は Writer 行と同じ）。Codex は model ごと: Astra = 既定 medium・難所 high（owner 2026-09-07 / 08）、Sol = 既定 high（owner 2026-09-14） |
+| Final Reviewer | Claude 側 1 本 + Codex（GPT-6.1 Sol 既定、難所は GPT-6 Astra）。Claude 側は R3 以上と design lane で Fable 5.1、それ以外は fresh Opus 5.5。closure（base 同期を含む）の Claude 側の既定は Fable 5.1（owner 2026-09-25）。Codex の本務はレビューとしての合否判定で、是正の後の取り直しでも外さない。修正案は一案で採否は Coordinator（owner 決定 2026-09-25）。Fable が使えないときは §3.3 に従い理由を 1 行残して fresh Opus 5.5 で代えてよい。発注と実効 model が違う（宣言なしに切り替わった）run は数えず取り直す | Claude 側を済ませ、Codex の枠は §3.3 に従い pending（Ready 以降だけが止まる） | Fable 5.1 = high（owner 2026-09-25。定義を使わず session の値を継承）、Opus = medium（Plan Reviewer 行と同じ `reviewer` の定義）、Codex は Plan Reviewer 行と同じ |
 | 相談役 | Fable 5.1。Plan Review・Final Review の P1/P2 の差し戻しと、Gated Amendment を書くたびに、是正を書く前に反例探しを頼む。Writer・reviewer の数に入れない。使えないときは省くか fresh Opus 5.5 で代え、遷移を止めない。相談した run は closure に数えず、closure は fresh context で行う。advisor（公式 [advisor](https://code.claude.com/docs/en/advisor)、experimental）は座組の必須にしない。使う場合は main の Opus 5.5 に Fable 5.1 を組み、有効化は owner（`/advisor` 等）。Max では Fable の使用が週の上限の 50% を超えると usage credits になる | 同じ | high（owner 2026-09-25） |
 | Human Gate | owner（判断は owner。委任の範囲は [AGENTS.md](../AGENTS.md) の Decision and Approval Boundaries） | 同じ | — |
 
-- 確認日: 2026-09-27。担当と effort は owner 決定 2026-09-07 / 08・14・23・24・25 による。
+- 確認日: 2026-09-30。担当と effort は owner 決定 2026-09-07 / 08・14・23・24・25・30 による。
 - モデル更改時は owner 決定を受けてこの表だけを書き換える。座組・effort を他の文書へ複製しない。owner をモデル間の伝書鳩にしない（発注は Plan Packet / PR body / review packet という repository 証跡経由で渡す）。
 - effort の選び方: 見落としを防ぐことを優先し、修正・再試行・再レビューを含むタスク完了までの総 token で効率を判断する。低い effort が効率的とは限らず、選択理由と取得できた usage / 実効 metadata を残し、未取得は未実測とする（owner 2026-09-14）。
 - Fable は context を絞った subagent の発注で使い、advisor は常用しない（owner 2026-09-25「週制限のなかで Fable 持て余す、指揮を Opus にしてる分」）。1〜2 週ごとに `/usage` の Fable の消費を見て出番を増減する。
@@ -101,7 +101,7 @@ design lane は、製品の設計正本（`docs/function-design/`・`docs/db-des
 目的の業務フローを 1 文で固定する。
 
 1. 「事実確認」と「設計判断」を分離する。docs/ARCHITECTURE.md の POS Adapter Boundary に従い、実機 / PC ツール / 外部ファイルで確認した事実は adapter facts として記録し、BIZ/CMD/UI/DB の contract へ昇格する判断は Design Phase で行う。
-2. 調査項目は GitHub issue でバッチ管理する。各項目は L3 checklist 形式で、場所 / 操作 / 目視できる合格基準を必ず書く。参考実例は issue #135。
+2. 調査項目は GitHub issue でバッチ管理する。各項目は L3 checklist 形式で、場所 / 操作 / 目視できる合格基準を必ず書く。
 3. 証跡は匿名化または形状のみを残す。実 JAN、実商品名、価格、店舗固有情報、実ファイルは repo に入れない。
 4. 結果は docs/plu-export-and-real-csv-verification.md 方式の状態列で source doc へ反映する。
 5. adapter facts がアプリ core の contract に影響する場合は、同じ PR で source doc / decision-log へ昇格するか、後続 Design Phase の blocker として明記する。
@@ -131,11 +131,10 @@ design lane は、製品の設計正本（`docs/function-design/`・`docs/db-des
 ```text
 docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠する。
 
-1. 「現在の基準」の SHA / PR 番号を GitHub main の実態と突合する。
-2. 完了項目を archive へ移す。archive へ移したリンクは必ず相対パスへ変換する。
-3. 同一項目の重複記載を 1 箇所へ統合する。
-4. 「次の行動」が空なら、active runway / roadmap / backlog から補充する。
-5. bash scripts/doc-consistency-check.sh を実行し、green を確認してから PR / closeout を完了する。
+1. 完了項目を archive へ移す。archive へ移したリンクは必ず相対パスへ変換する。
+2. 同一項目の重複記載を 1 箇所へ統合する。
+3. 「次の行動」が空なら、active runway / roadmap / backlog から補充する。
+4. bash scripts/doc-consistency-check.sh を実行し、green を確認してから PR / closeout を完了する。
 ```
 
 ### 5.4 低制約発注書 profile（read-only の Reviewer / Explorer 向け）

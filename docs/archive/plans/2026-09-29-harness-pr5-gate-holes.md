@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 0c6489ab9c8bd3a50e0dbed5513b1d610100530c
 - Amendments: none
@@ -45,12 +45,14 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 | 介入 | 7 | 3: 起票承認と範囲の判断（2026-09-29、同じ問いの 1 回）、plan-approved（2026-09-30）、G1 の確認（2026-09-30。plan-approved と別の decision point、`docs/DEV_WORKFLOW.md:267`） | 3: Ready 1、merge 1、merge 後の本体の同期と Claude Code の再起動 1 | 1: G1 (a) の owner の代行 1。PR4 の merge の後の再 Ready が要るときは、その問い合わせと同じ 1 回で上限の改定を諮る | 7 = 3 + 3 + 1 |
 | relay | 6 | 3: Plan Review の Codex round 1・round 2・round 3 | 2: Final Review の Codex broad 1、Final の是正の後の Codex closure 1 | 1: PR4 の merge の後の base 同期の Codex closure | 6 = 3 + 2 + 1 |
 
+改定（2026-09-30、owner の承認）: 介入の上限 7 → 9、relay の上限 6 → 8。
+
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
 
 ## Consultation Relay
 
-相談役への相談は[AGENT_OPERATING_MANUAL](../AGENT_OPERATING_MANUAL.md)の座組に従う。本節の2欄は`none`のままにする。
+相談役への相談は[AGENT_OPERATING_MANUAL](../../AGENT_OPERATING_MANUAL.md)の座組に従う。本節の2欄は`none`のままにする。
 
 - Review Order Artifact: none
 - Review Order Ref: none
@@ -527,6 +529,9 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - G1 (a) の経路: `.claude/agents/{writer,reviewer}.md` と `.claude/settings.json` は Writer が tool で書けた。`.gitignore` の編集は auto mode の classifier に拒否され（Self-Modification）、Writer は迂回せず、owner が sandbox の外で `.gitignore` の 2 か所と定義 2 本を commit・push した（予備の介入 1 を使用）。
 - 実装の判断: pre-push の push 範囲の起点を関数 `push_range_base` に移し、D7 と分類で共用した（分類の振舞いは変えない）。AC2 の実物（新しい helper の `status` の exit 1）は broad の record の前に確かめた。record の後の再確認は「本 lane 自身の検査と merge」の 6 として Coordinator が行う。
 - base 同期: origin/main を単段 merge で取り込んだ（衝突なし。main 側は `docs/backlog.md`・`docs/project-memory.md` だけ）。
+- 実装の要旨（closeout、2026-09-30）: classifier は `.claude/agents/**` と skill folder の plugin manifest を実行制御、`docs/quality/review-checklist.md` を policy docs に置く。helper は PR の base と同じ版でだけ動き、review の record に監査した head（`--reviewed-head`）を求める。local-ci full は `node_modules` が symlink なら gate の前に止まり、pre-push は merge 済みの PR の branch への push を止め、push する file の未 stage の変更に WARN を出す。writer・reviewer の subagent 定義を tracked に置き、`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` で入れ子を止め、hook test が frontmatter の `hooks` と plugin manifest を拒む（D-099）。
+- review・CI・merge: Final Review broad の受理 P2 3 件を Writer が是正し、closure は Codex GPT-6.1 Sol が approve。Ready の後の hosted CI の red（`claude-hooks.test.sh` の ruby が `Date` を require しない。手元は gem の psych が隠した）を Coordinator が `ruby --disable-gems -ryaml -rdate` に直し、その後の closure も GPT-6.1 Sol が approve。manual は not-required。merge は PR5 → PR4 の順（owner 2026-09-30 の train 委任）で、helper 経由の squash merge（2026-09-30）。
+- AC7 の merge 後の項目（2026-09-30、G1 = owner の本体の同期と Claude Code の再起動の後、最初の `subagent_type: reviewer` の run）: subagent の tool に `Agent` / `Task` が無く（depth 1 が効いた）、Edit / Write / NotebookEdit も無く（定義の `disallowedTools` が効いた）、実効 model は Opus 5.5 だった。effort は `/tasks` の表示で確かめる。
 
 ## Review Response
 
@@ -587,3 +592,5 @@ Final Review broad（2026-09-30、対象 `c3129f59`）: Fable 5.1 = approve（P1
 - Ready 後の hosted CI（2026-09-30、run `36632701759`、head `e3103e2b`）: docs job と workflow job の `claude-hooks.test.sh` の live 検査が `live Claude hook contract is not the D-059 zero-hook inventory` で red。Draft の間は hosted が走らず、初めての実行だった。原因（Coordinator が再現）: `frontmatter_lacks_hooks` の `YAML.safe_load(…, permitted_classes: [Date, Time])` が `Date` を require していない。手元の rbenv の ruby は gem の psych 5.3.1 が `date` を読み込むので通り、runner の標準の psych 5.0.1 では `NameError`（stderr を捨てる）→「hooks あり」と判定された。`ruby --disable-gems` で手元でも同じ失敗を再現。Findings Freeze ② の実行時の失敗で証明された P2 として、Coordinator が `ruby --disable-gems -ryaml -rdate` に直した（1 行）。修正前（`-rdate` なし）は手元で同じ文面の red、修正後 green。`--disable-gems` で手元と hosted が同じ標準ライブラリで動くので、`-rdate` を消すと手元でも red になる（固定）。PR を Draft に戻し、Codex の closure で確かめる。Fable の F-1（docs job の ruby）の見送りは変えない（runner image に ruby があり、失敗の原因ではなかった）。
 
 - Findings Freeze: frozen after Final Review broad（Double Audit の 2 本、2026-09-30）; post-freeze exceptions: none.
+
+- Closeout（2026-09-30）: 是正の後の closure は Codex GPT-6.1 Sol = approve（取り直しの 163。161 は発注書の矛盾で数えなかった）、Ready の後の hosted CI の red を直した後の closure も GPT-6.1 Sol = approve（164）。見送った P3 の A3・S4（helper の復帰 command の末尾が literal の `…`）、F-1（hosted の docs job が runner image の ruby に頼る）、F-2（frontmatter の `permissionMode`・`mcpServers` を拒まない）と、G1 で後回しにした `disableSkillShellExecution` の follow-up は `docs/backlog.md` へ置いた。backlog の PR2・PR3 の follow-up (1)（同じ head の 2 本の closure の record）は本 lane の D9 で閉じた。
