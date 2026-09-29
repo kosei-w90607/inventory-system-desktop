@@ -43,12 +43,21 @@ classify_paths() {
 [[ -x "$CLASSIFIER" ]] || fail "shared classifier is missing or not executable"
 
 # SPEC-MERGE-EVIDENCE / MG-D3/D4: policy needs regressions without Rust/frontend.
-for path in AGENTS.md CLAUDE.md docs/ci.md docs/DEV_WORKFLOW.md docs/agent-guidance/shared.md docs/templates/plan-packet.md .agents/skills/example/SKILL.md .claude/rules/commands.md .claude/commands/check.md .github/pull_request_template.md; do
+# SPEC-WF-HARNESS5-D1: review-checklist is policy; plugin contents stay policy (the manifest is full).
+for path in AGENTS.md CLAUDE.md docs/ci.md docs/DEV_WORKFLOW.md docs/agent-guidance/shared.md docs/templates/plan-packet.md docs/quality/review-checklist.md .agents/skills/example/SKILL.md .agents/skills/example/hooks/hooks.json .claude/rules/commands.md .claude/commands/check.md .github/pull_request_template.md; do
     output="$(classify_paths "$path")"
     assert_value "$output" docs true
     assert_value "$output" workflow true
     assert_value "$output" rust false
     assert_value "$output" frontend false
+done
+
+# SPEC-WF-HARNESS5-D1: unrelated docs stay out of workflow.
+for path in docs/backlog.md docs/quality/other.md; do
+    output="$(classify_paths "$path")"
+    assert_contract "$output"
+    assert_value "$output" docs true
+    assert_value "$output" workflow false
 done
 
 output="$(classify_paths docs/ci.md)"
@@ -88,8 +97,8 @@ assert_contract "$output"
 assert_value "$output" generated true
 assert_value "$output" rust_drift true
 
-# MG-D4 / O-P3-5: control paths stay full, not merely workflow=true.
-for path in scripts/local-ci.sh .github/merge-gate-ruleset.json .codex/bin/read-safe-file.sh .claude/settings.json .claude/hooks/check-plan-on-exit.sh; do
+# MG-D4 / O-P3-5 / SPEC-WF-HARNESS5-D1: control paths stay full, not merely workflow=true.
+for path in scripts/local-ci.sh .github/merge-gate-ruleset.json .codex/bin/read-safe-file.sh .claude/settings.json .claude/hooks/check-plan-on-exit.sh .claude/agents/reviewer.md .claude/agents/sub/writer.md .agents/skills/example/.claude-plugin/plugin.json .claude/skills/example/.claude-plugin/plugin.json; do
     output="$(classify_paths "$path")"
     assert_contract "$output"
     for key in rust rust_drift frontend docs env generated traceability workflow; do
