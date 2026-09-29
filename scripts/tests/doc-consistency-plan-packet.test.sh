@@ -271,7 +271,7 @@ reset_packet_defaults() {
     PKT_WS_RISK="R3"
     PKT_EVIDENCE_MODE=""
     PKT_EXEC_MODE=""
-    PKT_PLAN_COMMIT="abc1234"
+    PKT_PLAN_COMMIT="0123456789abcdef0123456789abcdef01234567"
     PKT_COORDINATOR="Fable 5（fixture coordinator）"
     PKT_WRITER="Codex（fixture writer）"
     PKT_PLAN_REVIEWER="Sonnet 5（fixture plan reviewer）"
@@ -286,6 +286,11 @@ reset_packet_defaults() {
     PKT_INCLUDE_CONTRACT_PROBE=1
     PKT_INCLUDE_FINDINGS_FREEZE=1
     PKT_INCLUDE_GOAL_INVARIANT=1
+    # old = Spec Contract + Trace Matrix（旧 template）、new = Contract Ledger + Design Readiness、
+    # both = 両方、spec-only = Spec Contract だけ、none = どれも無い（PR4）
+    PKT_TEMPLATE="old"
+    # data = データ行 1 件、empty = header と区切り行だけ、blank = template の空行だけ（PR4）
+    PKT_TRACE_ROWS="data"
     PKT_TRACE_TEST_CELL='`bash` fixture test'
     PKT_CONTRACT_PROBE_LINE="- fixture premise: verified via fixture experiment -> result ok"
     PKT_REVIEW_RESPONSE_EXTRA=""
@@ -389,18 +394,46 @@ write_packet() {
         echo "- fixture review focus item"
         echo ""
         if [ "$PKT_INCLUDE_R3_SECTIONS" = "1" ]; then
-            echo "## Spec Contract"
-            echo ""
-            echo "Contract ID: SPEC-FIXTURE"
-            echo ""
-            echo "- SPEC-FIXTURE: fixture contract line"
-            echo ""
-            echo "## Trace Matrix"
-            echo ""
-            echo "| Spec ID | Plan Step | Test | Review Focus | Evidence |"
-            echo "|---|---|---|---|---|"
-            echo "| SPEC-FIXTURE | Scope 1 | ${PKT_TRACE_TEST_CELL} | Review Focus | fixture evidence |"
-            echo ""
+            case "$PKT_TEMPLATE" in
+                old|both|spec-only)
+                    echo "## Spec Contract"
+                    echo ""
+                    echo "Contract ID: SPEC-FIXTURE"
+                    echo ""
+                    echo "- SPEC-FIXTURE: fixture contract line"
+                    echo ""
+                    ;;
+            esac
+            case "$PKT_TEMPLATE" in
+                old|both)
+                    echo "## Trace Matrix"
+                    echo ""
+                    echo "| Spec ID | Plan Step | Test | Review Focus | Evidence |"
+                    echo "|---|---|---|---|---|"
+                    case "$PKT_TRACE_ROWS" in
+                        data) echo "| SPEC-FIXTURE | Scope 1 | ${PKT_TRACE_TEST_CELL} | Review Focus | fixture evidence |" ;;
+                        blank) echo "|  |  |  |  |  |" ;;
+                    esac
+                    echo ""
+                    ;;
+            esac
+            case "$PKT_TEMPLATE" in
+                new|both)
+                    echo "## Design Readiness"
+                    echo ""
+                    echo "- 判定: ready（fixture）"
+                    echo ""
+                    echo "## Contract Ledger"
+                    echo ""
+                    echo "| 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |"
+                    echo "|---|---|---|---|---|"
+                    case "$PKT_TRACE_ROWS" in
+                        data) echo "| SPEC-FIXTURE | fixture design section | Scope 1 | ${PKT_TRACE_TEST_CELL} | 非対象 |" ;;
+                        blank) echo "|  |  |  |  |  |" ;;
+                    esac
+                    echo ""
+                    ;;
+            esac
             echo "## Data Safety"
             echo ""
             echo "- fixture data safety line"
@@ -414,7 +447,7 @@ write_packet() {
         fi
         echo "## Review Response"
         echo ""
-        if [ "$PKT_INCLUDE_FINDINGS_FREEZE" = "1" ]; then
+        if [ "$PKT_INCLUDE_FINDINGS_FREEZE" = "1" ] && [ "$PKT_TEMPLATE" != "new" ]; then
             echo "- Findings Freeze: frozen after fixture Broad Audit"
         fi
         if [ -n "${PKT_REVIEW_RESPONSE_EXTRA:-}" ]; then
@@ -533,16 +566,18 @@ for mode in fable-window dual-vendor-no-fable codex-only "waterfall（任意の�
     assert_contains "$out" "PK4: Workflow State machine 整合 OK"
 done
 
-# --- 6. R3 packet で Findings Freeze 行欠落 ---
+# --- PR4-F3 SPEC-WF-HARNESS4-D3: 旧 template で Findings Freeze 行だけが無い R3 packet は ERROR なし（旧 section 6） ---
 setup_repo_dirs
 reset_packet_defaults
 PKT_INCLUDE_FINDINGS_FREEZE=0
 write_packet "$repo/docs/plans/2026-01-06-fixture.md"
 write_plans_md_linking "2026-01-06-fixture.md"
-if run_check "docs/plans/2026-01-06-fixture.md"; then
-    fail "missing Findings Freeze line at R3 was not rejected"
+if ! run_check "docs/plans/2026-01-06-fixture.md"; then
+    cat "$out" >&2
+    fail "PR4-F3: missing Findings Freeze line at R3 was rejected"
 fi
-assert_contains "$out" "Findings Freeze:' 行がありません"
+assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+assert_not_contains "$out" "Findings Freeze"
 
 # --- 7. Phase が plan-approved 以降なのに Plan Commit が pending ---
 setup_repo_dirs
@@ -672,7 +707,7 @@ for phase in kickoff spec-check design plan-draft plan-gate plan-approved implem
     # plan-approved 以降の phase では Plan Commit: pending が field 関係 ERROR になるため実値を置く
     case "$phase" in
         plan-approved|implementing|archive)
-            PKT_PLAN_COMMIT="ffffff1" ;;
+            PKT_PLAN_COMMIT="ffffffffffffffffffffffffffffffffffffffff" ;;
     esac
     write_packet "$repo/docs/plans/2026-01-14-fixture.md"
     write_plans_md_linking "2026-01-14-fixture.md"
@@ -706,7 +741,7 @@ if ! run_check "docs/archive/plans/2026-07-15-archived-goal-invariant-missing.md
 fi
 assert_not_contains "$out" "D-046: docs/archive/plans/2026-07-15-archived-goal-invariant-missing.md"
 
-# --- 16. D-046 T5: 2026-07-15 以降の WER は Retired 節必須（WARN）、既存日付は遡及対象外 ---
+# --- PR4-F10 SPEC-WF-HARNESS4-D4: WER の Retired 節の検査は走らない（旧 section 16） ---
 setup_repo_dirs
 reset_packet_defaults
 write_packet "$repo/docs/plans/2026-07-15-wer-retired-fixture.md"
@@ -715,46 +750,10 @@ mkdir -p "$repo/docs/archive/plans"
 printf '# Workflow Effectiveness Review\n' > "$repo/docs/archive/plans/2026-07-15-fixture-workflow-effectiveness-review.md"
 if ! run_check "docs/plans/2026-07-15-wer-retired-fixture.md"; then
     cat "$out" >&2
-    fail "Retired 節欠落 WARN fixture が ERROR になった"
+    fail "PR4-F10: WER fixture was rejected"
 fi
-assert_contains "$out" "D-046: docs/archive/plans/2026-07-15-fixture-workflow-effectiveness-review.md は '## Retired / Consolidated Rules' を欠いています"
-
-printf '# Workflow Effectiveness Review\n\n## Retired / Consolidated Rules\n' > "$repo/docs/archive/plans/2026-07-15-fixture-workflow-effectiveness-review.md"
-if ! run_check "docs/plans/2026-07-15-wer-retired-fixture.md"; then
-    cat "$out" >&2
-    fail "空 Retired 節 WARN fixture が ERROR になった"
-fi
-assert_contains "$out" "Retired / Consolidated Rules' が空です"
-
-printf '# Workflow Effectiveness Review\n\n## Retired / Consolidated Rules\n\nTemplate guidance.\n\n- ...\n' > "$repo/docs/archive/plans/2026-07-15-fixture-workflow-effectiveness-review.md"
-if ! run_check "docs/plans/2026-07-15-wer-retired-fixture.md"; then
-    cat "$out" >&2
-    fail "Retired placeholder WARN fixture が ERROR になった"
-fi
-assert_contains "$out" "具体的な item または理由付き none がありません"
-
-printf '# Workflow Effectiveness Review\n\n## Retired / Consolidated Rules\n\n- none\n' > "$repo/docs/archive/plans/2026-07-15-fixture-workflow-effectiveness-review.md"
-if ! run_check "docs/plans/2026-07-15-wer-retired-fixture.md"; then
-    cat "$out" >&2
-    fail "理由なし none WARN fixture が ERROR になった"
-fi
-assert_contains "$out" "具体的な item または理由付き none がありません"
-
-printf '# Workflow Effectiveness Review\n\n## Retired / Consolidated Rules\n\n- none: fixture では net rule growth なし\n' > "$repo/docs/archive/plans/2026-07-15-fixture-workflow-effectiveness-review.md"
-if ! run_check "docs/plans/2026-07-15-wer-retired-fixture.md"; then
-    cat "$out" >&2
-    fail "有効な Retired 節 fixture が ERROR になった"
-fi
-assert_not_contains "$out" "Retired / Consolidated Rules' が空です"
-assert_not_contains "$out" "具体的な item または理由付き none がありません"
-
-rm "$repo/docs/archive/plans/2026-07-15-fixture-workflow-effectiveness-review.md"
-printf '# Workflow Effectiveness Review\n' > "$repo/docs/archive/plans/2026-07-14-fixture-workflow-effectiveness-review.md"
-if ! run_check "docs/plans/2026-07-15-wer-retired-fixture.md"; then
-    cat "$out" >&2
-    fail "既存日付 WER compatibility fixture が ERROR になった"
-fi
-assert_not_contains "$out" "D-046: docs/archive/plans/2026-07-14-fixture-workflow-effectiveness-review.md"
+assert_not_contains "$out" "WER Retired"
+assert_not_contains "$out" "Retired / Consolidated Rules"
 
 # --- 17. D-046 T2/T6: template と source docs の規範 token drift ---
 assert_contains "$SOURCE_ROOT/docs/templates/plan-packet.md" "介入 N"
@@ -767,9 +766,6 @@ draft_pr_section="$(awk '
 printf '%s\n' "$draft_pr_section" | grep -Fq "Human Gate" || fail "Draft PR Checkpoint に Human Gate 欄がない"
 printf '%s\n' "$draft_pr_section" | grep -Fq "この change での介入 N 回目 / 予算 M 回" ||
     fail "Draft PR Checkpoint に承認依頼カウンタがない"
-assert_contains "$SOURCE_ROOT/docs/DEV_WORKFLOW.md" "candidate safety"
-assert_contains "$SOURCE_ROOT/docs/DEV_WORKFLOW.md" "mutation authority"
-assert_contains "$SOURCE_ROOT/docs/DEV_WORKFLOW.md" "evidence quality"
 assert_contains "$SOURCE_ROOT/docs/DEV_WORKFLOW.md" "actual harm path"
 assert_contains "$SOURCE_ROOT/docs/DEV_WORKFLOW.md" "affected candidate or mutation"
 assert_contains "$SOURCE_ROOT/docs/DEV_WORKFLOW.md" "non-destructive revalidation"
@@ -1005,6 +1001,200 @@ if ! run_check "docs/plans/2026-01-28-wave-registry-fixture.md"; then
     fail "docs/plans/ pointer placed under '### Wave Registry' was not detected"
 fi
 assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+
+# --- PR4-F1 SPEC-WF-HARNESS4-D1/D2: 新 template の R3 packet（Contract Ledger・Design Readiness、Findings Freeze 行なし）は通る ---
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="new"
+write_packet "$repo/docs/plans/2026-02-01-pr4-new-template.md"
+write_plans_md_linking "2026-02-01-pr4-new-template.md"
+if ! run_check "docs/plans/2026-02-01-pr4-new-template.md"; then
+    cat "$out" >&2
+    fail "PR4-F1: new-template R3 packet was rejected"
+fi
+assert_contains "$out" "PK1: Plan Packet presence OK"
+assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+assert_not_contains "$out" "table に data row がありません"
+assert_not_contains "$out" "Findings Freeze"
+
+# Negative Paths: Contract Ledger と旧い組の両方がある packet も通る
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="both"
+write_packet "$repo/docs/plans/2026-02-01-pr4-both.md"
+write_plans_md_linking "2026-02-01-pr4-both.md"
+if ! run_check "docs/plans/2026-02-01-pr4-both.md"; then
+    cat "$out" >&2
+    fail "PR4-F1: packet with both Contract Ledger and the old pair was rejected"
+fi
+
+# --- PR4-F2 SPEC-WF-HARNESS4-D2: 旧 template の R3 packet（既定の fixture）は通る ---
+setup_repo_dirs
+reset_packet_defaults
+write_packet "$repo/docs/plans/2026-02-02-pr4-old-template.md"
+write_plans_md_linking "2026-02-02-pr4-old-template.md"
+if ! run_check "docs/plans/2026-02-02-pr4-old-template.md"; then
+    cat "$out" >&2
+    fail "PR4-F2: old-template R3 packet was rejected"
+fi
+assert_contains "$out" "PK1: Plan Packet presence OK"
+assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+
+# --- PR4-F2b SPEC-WF-HARNESS4-D2: 旧 template で Trace Matrix のデータ行が 0 件は ERROR でなく PK3 の WARN ---
+setup_repo_dirs
+reset_packet_defaults
+PKT_TRACE_ROWS="empty"
+write_packet "$repo/docs/plans/2026-02-02-pr4-old-empty-trace.md"
+write_plans_md_linking "2026-02-02-pr4-old-empty-trace.md"
+if ! run_check "docs/plans/2026-02-02-pr4-old-empty-trace.md"; then
+    cat "$out" >&2
+    fail "PR4-F2b: old-template packet with an empty Trace Matrix was rejected"
+fi
+assert_contains "$out" "PK3: docs/plans/2026-02-02-pr4-old-empty-trace.md (R3) の Trace Matrix table に data row がありません"
+assert_not_contains "$out" "データ行がありません"
+
+# --- PR4-F4 SPEC-WF-HARNESS4-D2: R3 で Contract Ledger も旧い組も無いと PK1 の ERROR ---
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="none"
+write_packet "$repo/docs/plans/2026-02-04-pr4-no-ledger.md"
+write_plans_md_linking "2026-02-04-pr4-no-ledger.md"
+if run_check "docs/plans/2026-02-04-pr4-no-ledger.md"; then
+    fail "PR4-F4: R3 packet without Contract Ledger or the old pair was accepted"
+fi
+assert_contains "$out" "PK1: docs/plans/2026-02-04-pr4-no-ledger.md (R3) は Contract Ledger（旧 template は Spec Contract と Trace Matrix）を欠いています"
+
+# PR4-F4b: Spec Contract だけ（Trace Matrix と Ledger なし）も ERROR
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="spec-only"
+write_packet "$repo/docs/plans/2026-02-04-pr4-spec-only.md"
+write_plans_md_linking "2026-02-04-pr4-spec-only.md"
+if run_check "docs/plans/2026-02-04-pr4-spec-only.md"; then
+    fail "PR4-F4b: R3 packet with Spec Contract only was accepted"
+fi
+assert_contains "$out" "PK1: docs/plans/2026-02-04-pr4-spec-only.md (R3) は Contract Ledger（旧 template は Spec Contract と Trace Matrix）を欠いています"
+
+# --- PR4-F5 SPEC-WF-HARNESS4-D3: Plan Commit に確定待ちの注記（Phase plan-gate）は PK4 の書式 ERROR ---
+setup_repo_dirs
+reset_packet_defaults
+PKT_PHASE="plan-gate"
+PKT_PLAN_COMMIT="TBD（plan-approved で確定）"
+write_packet "$repo/docs/plans/2026-02-05-pr4-plan-commit-note.md"
+write_plans_md_linking "2026-02-05-pr4-plan-commit-note.md"
+if run_check "docs/plans/2026-02-05-pr4-plan-commit-note.md"; then
+    fail "PR4-F5: Plan Commit with a pending note was accepted"
+fi
+assert_contains "$out" "Plan Commit は pending か 40 桁"
+
+# --- PR4-F6 SPEC-WF-HARNESS4-D3: pending（plan-gate）と 40 桁の小文字 hex（implementing）は通る ---
+for pr4_f6_case in "plan-gate:pending" "implementing:0123456789abcdef0123456789abcdef01234567"; do
+    setup_repo_dirs
+    reset_packet_defaults
+    PKT_PHASE="${pr4_f6_case%%:*}"
+    PKT_PLAN_COMMIT="${pr4_f6_case#*:}"
+    write_packet "$repo/docs/plans/2026-02-06-pr4-plan-commit-valid.md"
+    write_plans_md_linking "2026-02-06-pr4-plan-commit-valid.md"
+    if ! run_check "docs/plans/2026-02-06-pr4-plan-commit-valid.md"; then
+        cat "$out" >&2
+        fail "PR4-F6: valid Plan Commit '$pr4_f6_case' was rejected"
+    fi
+    assert_not_contains "$out" "Plan Commit は pending か 40 桁"
+done
+
+# --- PR4-F7 SPEC-WF-HARNESS4-D3: 書式外の Plan Commit（Phase plan-gate）はどれも PK4 の書式 ERROR ---
+pr4_sha40="0123456789abcdef0123456789abcdef01234567"
+pr4_f7_values=(
+    "abc1234"
+    "${pr4_sha40:0:39}"
+    "${pr4_sha40}0"
+    "0123456789ABCDEF0123456789ABCDEF01234567"
+    "pending（注記）"
+    "${pr4_sha40}（注記）"
+    "${pr4_sha40} "
+    "${pr4_sha40}"$'\t'
+)
+for pr4_f7_value in "${pr4_f7_values[@]}"; do
+    setup_repo_dirs
+    reset_packet_defaults
+    PKT_PHASE="plan-gate"
+    PKT_PLAN_COMMIT="$pr4_f7_value"
+    write_packet "$repo/docs/plans/2026-02-07-pr4-plan-commit-invalid.md"
+    write_plans_md_linking "2026-02-07-pr4-plan-commit-invalid.md"
+    if run_check "docs/plans/2026-02-07-pr4-plan-commit-invalid.md"; then
+        fail "PR4-F7: invalid Plan Commit '$pr4_f7_value' was accepted"
+    fi
+    assert_contains "$out" "Plan Commit は pending か 40 桁"
+done
+
+# --- PR4-F8 SPEC-WF-HARNESS4-D5/D14: R4 の review-only skip 行は評価しない。R4 の Minimum 1 は PK4 が ERROR ---
+setup_repo_dirs
+r4_pr4_defaults() {
+    reset_packet_defaults
+    PKT_WS_RISK="R4"
+    PKT_RISK_SECTION="R4"
+    PKT_HUMAN_GATE="ready,merge,r4"
+}
+r4_pr4_defaults
+PKT_REVIEW_RESPONSE_EXTRA="Review-only skipped because: fixture reason"
+write_packet "$repo/docs/plans/2026-02-08-pr4-r4-skip-line.md"
+write_plans_md_linking "2026-02-08-pr4-r4-skip-line.md"
+if ! run_check "docs/plans/2026-02-08-pr4-r4-skip-line.md"; then
+    cat "$out" >&2
+    fail "PR4-F8: R4 packet with a review-only skip line was rejected"
+fi
+assert_not_contains "$out" "review-only skip"
+
+setup_repo_dirs
+r4_pr4_defaults
+PKT_FINAL_REVIEW_MINIMUM="1"
+write_packet "$repo/docs/plans/2026-02-08-pr4-r4-minimum-1.md"
+write_plans_md_linking "2026-02-08-pr4-r4-minimum-1.md"
+if run_check "docs/plans/2026-02-08-pr4-r4-minimum-1.md"; then
+    fail "PR4-F8: R4 packet with Final Review Minimum 1 was accepted"
+fi
+assert_contains "$out" "Final Review Minimum は1/2（R4は2）が必須です"
+
+# --- PR4-F9 SPEC-WF-HARNESS4-D2: PK3 は Contract Ledger の test token と placeholder を WARN にする ---
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="new"
+PKT_TRACE_TEST_CELL="test_pr4_f9_missing_token / <fixture placeholder>"
+write_packet "$repo/docs/plans/2026-02-09-pr4-ledger-warn.md"
+write_plans_md_linking "2026-02-09-pr4-ledger-warn.md"
+if ! run_check "docs/plans/2026-02-09-pr4-ledger-warn.md"; then
+    cat "$out" >&2
+    fail "PR4-F9: Contract Ledger WARN fixture exited nonzero"
+fi
+assert_contains "$out" 'PK3: docs/plans/2026-02-09-pr4-ledger-warn.md (R3) の Contract Ledger test token `test_pr4_f9_missing_token` が tests/src/src-tauri に見つかりません'
+assert_contains "$out" "PK3: docs/plans/2026-02-09-pr4-ledger-warn.md (R3) の Contract Ledger table に placeholder が残っています"
+
+# --- PR4-F11 SPEC-WF-HARNESS4-D2: 新 template でデータ行 0 件の Contract Ledger は PK1 の ERROR ---
+for pr4_f11_rows in empty blank; do
+    setup_repo_dirs
+    reset_packet_defaults
+    PKT_TEMPLATE="new"
+    PKT_TRACE_ROWS="$pr4_f11_rows"
+    write_packet "$repo/docs/plans/2026-02-11-pr4-empty-ledger.md"
+    write_plans_md_linking "2026-02-11-pr4-empty-ledger.md"
+    if run_check "docs/plans/2026-02-11-pr4-empty-ledger.md"; then
+        fail "PR4-F11: Contract Ledger without data rows ($pr4_f11_rows) was accepted"
+    fi
+    assert_contains "$out" "PK1: docs/plans/2026-02-11-pr4-empty-ledger.md (R3) の Contract Ledger にデータ行がありません"
+done
+
+# --- PR4-F12 SPEC-WF-HARNESS4-D3: archive の明示 path は Plan Commit の書式検査の対象外 ---
+setup_repo_dirs
+reset_packet_defaults
+PKT_PLAN_COMMIT="abc1234"
+mkdir -p "$repo/docs/archive/plans"
+write_plans_md_no_link
+write_packet "$repo/docs/archive/plans/2026-02-12-pr4-archived-short-sha.md"
+if ! run_check "docs/archive/plans/2026-02-12-pr4-archived-short-sha.md"; then
+    cat "$out" >&2
+    fail "PR4-F12: archived packet with a short Plan Commit was rejected"
+fi
+assert_not_contains "$out" "Plan Commit は pending か 40 桁"
 
 echo "PASS: doc-consistency-plan-packet"
 

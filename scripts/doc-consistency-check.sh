@@ -961,7 +961,8 @@ is_in_word_list() {
 
 trace_matrix_data_rows() {
     local file="$1"
-    extract_markdown_section "$file" "Trace Matrix" \
+    local section="${2:-Trace Matrix}"
+    extract_markdown_section "$file" "$section" \
         | awk '
             /^[[:space:]]*\|/ {
                 row=$0
@@ -1012,7 +1013,7 @@ check_plan_packet_sections() {
     local before=$ERRORS
     local file valid_risk any_risk level section
     local base_sections=("Risk" "Goal" "Scope" "Non-scope" "Acceptance Criteria" "Test Plan" "Review Focus" "Owner Effort Budget")
-    local r3_sections=("Spec Contract" "Trace Matrix" "Data Safety" "Contract Probe")
+    local r3_sections=("Data Safety" "Contract Probe")
 
     while IFS= read -r file; do
         [ -n "$file" ] || continue
@@ -1057,13 +1058,15 @@ check_plan_packet_sections() {
             error "PK1: $file (R${level}) は Test Design Matrix へのリンクまたは '## Test Design Matrix' セクションを欠いています"
         fi
 
-        if [ "$level" -ge 4 ]; then
-            local r4_skip_hits
-            r4_skip_hits=$(grep -nE '^[[:space:]]*Review-only skipped because:' "$file" || true)
-            if [ -n "$r4_skip_hits" ]; then
-                while IFS= read -r line; do
-                    error "PK1: $file (R${level}) は R4 で review-only skip を記録しています -> $line"
-                done <<< "$r4_skip_hits"
+        # 新 template は Contract Ledger の 1 表、旧 template は Spec Contract と Trace Matrix の組を受ける。
+        if [ "$level" -ge 3 ]; then
+            if grep -qE '^#{2,}[[:space:]]+Contract Ledger([[:space:]].*)?$' "$file"; then
+                if [ -z "$(trace_matrix_data_rows "$file" "Contract Ledger")" ]; then
+                    error "PK1: $file (R${level}) の Contract Ledger にデータ行がありません"
+                fi
+            elif ! grep -qE '^#{2,}[[:space:]]+Spec Contract([[:space:]].*)?$' "$file" ||
+                ! grep -qE '^#{2,}[[:space:]]+Trace Matrix([[:space:]].*)?$' "$file"; then
+                error "PK1: $file (R${level}) は Contract Ledger（旧 template は Spec Contract と Trace Matrix）を欠いています"
             fi
         fi
     done < <(iter_plan_packet_targets "$@")
@@ -1123,16 +1126,18 @@ check_plan_packet_heuristic_warnings() {
         level="${valid_risk#R}"
         [ "$level" -le 2 ] && continue
 
+        local trace_section="Trace Matrix"
+        grep -qE '^#{2,}[[:space:]]+Contract Ledger([[:space:]].*)?$' "$file" && trace_section="Contract Ledger"
         local trace_rows
-        trace_rows=$(trace_matrix_data_rows "$file")
+        trace_rows=$(trace_matrix_data_rows "$file" "$trace_section")
         if [ -z "$trace_rows" ]; then
-            warn "PK3: $file (R${level}) の Trace Matrix table に data row がありません"
+            warn "PK3: $file (R${level}) の ${trace_section} table に data row がありません"
         else
             local placeholder_hits
             placeholder_hits=$(printf '%s\n' "$trace_rows" | sed 's/`[^`]*`//g' | grep -nE '<[A-Za-z][A-Za-z0-9 ._-]*>' || true)
             if [ -n "$placeholder_hits" ]; then
                 while IFS= read -r line; do
-                    warn "PK3: $file (R${level}) の Trace Matrix table に placeholder が残っています -> $line"
+                    warn "PK3: $file (R${level}) の ${trace_section} table に placeholder が残っています -> $line"
                 done <<< "$placeholder_hits"
             fi
 
@@ -1140,17 +1145,9 @@ check_plan_packet_heuristic_warnings() {
             test_tokens=$(printf '%s\n' "$trace_rows" | grep -oE 'test_[A-Za-z0-9_]+' | sort -u || true)
             for token in $test_tokens; do
                 if ! test_token_exists "$token"; then
-                    warn "PK3: $file (R${level}) の Trace Matrix test token \`$token\` が tests/src/src-tauri に見つかりません"
+                    warn "PK3: $file (R${level}) の ${trace_section} test token \`$token\` が tests/src/src-tauri に見つかりません"
                 fi
             done
-        fi
-
-        local skip_hits
-        skip_hits=$(grep -nE '^[[:space:]]*Review-only skipped because:' "$file" || true)
-        if [ -n "$skip_hits" ]; then
-            while IFS= read -r line; do
-                warn "PK3: $file (R${level}) は review-only skip を記録しています -> $line"
-            done <<< "$skip_hits"
         fi
 
         local bullet_hits
@@ -1290,18 +1287,17 @@ check_plan_packet_workflow_state() {
             fi
         fi
 
+        # 値全体を末尾の空白・タブを削らずに照合する（helper の fullmatch と同じ集合、D-098）。
+        local plan_commit_raw
+        plan_commit_raw=$(printf '%s\n' "$ws_section" | grep -E '^- Plan Commit:' | head -1 | sed -E 's/^- Plan Commit:[[:space:]]*//' || true)
+        if [ -n "$plan_commit_raw" ] && [[ ! "$plan_commit_raw" =~ ^(pending|[0-9a-f]{40})$ ]]; then
+            error "PK4: $file (R${level}) の Plan Commit は pending か 40 桁の小文字 hex の SHA（末尾の注記・空白・タブなし）。commit 済みで未 push なら、新しい commit ではなくその commit を直す（PK5 は commit 済みの初回値を固定する） -> '${plan_commit_raw}'"
+        fi
+
         local ws_risk_value
         ws_risk_value=$(extract_workflow_field "$ws_section" "Risk")
         if [ -n "$ws_risk_value" ] && [ "$ws_risk_value" != "$valid_risk" ]; then
             error "PK4: $file (R${level}) の Workflow State '- Risk: ${ws_risk_value}' が '## Risk' セクションの 'Risk: ${valid_risk}' と不一致です"
-        fi
-
-        if [ "$level" -ge 3 ]; then
-            local review_response_section
-            review_response_section=$(extract_markdown_section "$file" "Review Response")
-            if ! printf '%s\n' "$review_response_section" | grep -qE '^- Findings Freeze:'; then
-                error "PK4: $file (R${level}) の '## Review Response' に '- Findings Freeze:' 行がありません"
-            fi
         fi
     done < <(iter_plan_packet_targets "$@")
 
@@ -1357,57 +1353,6 @@ check_active_plan_goal_invariant() {
 
     if [ "$WARNINGS" -eq "$before" ]; then
         info "D-046: active Plan Packet Goal Invariant 構造 OK"
-    fi
-}
-
-# --- D-046: 2026-07-15 以降の WER は retire / consolidate を明示（WARN 導入） ---
-check_new_wer_retired_rules() {
-    header "D-046: WER Retired / Consolidated Rules"
-
-    local before=$WARNINGS
-    local file base date_prefix section bullets item valid_item
-    local cutoff="2026-07-15"
-
-    while IFS= read -r file; do
-        [ -n "$file" ] || continue
-        base=$(basename "$file")
-        date_prefix="${base:0:10}"
-        [[ "$date_prefix" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || continue
-        [[ "$date_prefix" < "$cutoff" ]] && continue
-
-        if ! grep -qE '^##[[:space:]]+Retired / Consolidated Rules([[:space:]].*)?$' "$file"; then
-            warn "D-046: $file は '## Retired / Consolidated Rules' を欠いています"
-            continue
-        fi
-
-        section=$(extract_markdown_h2_section "$file" "Retired / Consolidated Rules")
-        if ! printf '%s\n' "$section" | grep -q '[^[:space:]]'; then
-            warn "D-046: $file の '## Retired / Consolidated Rules' が空です"
-            continue
-        fi
-
-        bullets=$(printf '%s\n' "$section" | grep -E '^[[:space:]]*[-*][[:space:]]+' || true)
-        valid_item=false
-        while IFS= read -r item; do
-            [ -n "$item" ] || continue
-            item=$(printf '%s\n' "$item" | sed -E 's/^[[:space:]]*[-*][[:space:]]+//; s/[[:space:]]+$//')
-            case "$item" in
-                "..."|"<"*">") continue ;;
-            esac
-            if [[ "$item" =~ ^none([[:space:][:punct:]]*)$ ]]; then
-                continue
-            fi
-            valid_item=true
-            break
-        done <<< "$bullets"
-
-        if [ "$valid_item" != true ]; then
-            warn "D-046: $file の '## Retired / Consolidated Rules' に具体的な item または理由付き none がありません"
-        fi
-    done < <(find "docs/archive/plans" -maxdepth 1 -name '*-workflow-effectiveness-review.md' -type f 2>/dev/null | sort)
-
-    if [ "$WARNINGS" -eq "$before" ]; then
-        info "D-046: 新規 WER Retired / Consolidated Rules OK"
     fi
 }
 
@@ -1926,7 +1871,6 @@ if [ "$TARGET_MODE" = "plan" ]; then
     check_plan_packet_numeric_evidence_warnings "${PLAN_FILES[@]}"
     check_plan_packet_workflow_state "${PLAN_FILES[@]}"
     check_active_plan_goal_invariant
-    check_new_wer_retired_rules
 
     # 参照整合性チェック（3項目、プランモードでも実行）
     check_stale_parent_doc_references
@@ -1981,7 +1925,6 @@ else
     check_plan_packet_numeric_evidence_warnings
     check_plan_packet_workflow_state
     check_active_plan_goal_invariant
-    check_new_wer_retired_rules
 
     check_command_registry_drift
 fi
