@@ -13,7 +13,7 @@ Risk: R3
 - D3: `.claude/agents/{writer,reviewer}.md` が tracked で、effort medium、reviewer は編集の tool なし。
 - D4: `.claude/settings.json` の `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` は `"1"`。
 - D5: `local-ci.sh full` は symlink の `node_modules` で gate の前に止まる。changed は止めない。
-- D6: pre-push は open の PR が無く merged の PR がある branch への push を止める。照会失敗も止める。
+- D6: pre-push は open の PR が無く merged の PR がある branch への push を止める。open も merged も無ければ通す。照会失敗も止める。
 - D7: pre-push は push 範囲の file の未 stage の変更に WARN を出し、exit code を変えない。
 - D8: review の record は `--reviewed-head` を必須にし、capture の head と一致しなければ書かない。
 - D11: 既存の helper・classifier・pre-push・local-ci・hook の契約を変えない。
@@ -56,7 +56,7 @@ Risk: R3
 | D5 | 実 dir の full まで止まる | CLI（local-ci） | 同 test の実 dir の full の場面（他の gate は stub） | `-L` でなく `-e` 等で判定する。assert: ERROR が無く `GATE=frontend-install` と `npm ci` の呼出しがある |
 | D6 | merged の branch への push が通る | CLI（hook） | `pre-push.test.sh` の `FAKE_MERGED_HEAD=feature` の場面 | merged の照会が無い（MU8）。assert: exit 非 0、log の最後が `FAIL merged-pr`、stderr に `already merged` と `new branch` |
 | D6 | open の PR が再利用の branch で止まる | CLI（hook） | 同 test の open の Draft と merged の併存の場面 | open より先に merged を見る。assert: exit 0 |
-| D6 | PR の無い branch が止まる | CLI（hook） | 既存の `run_hook true`（fake の既定は merged も `[]`） | merged の結果の空を merged とみなす |
+| D6 | PR の無い branch が止まる | CLI（hook） | 同 test の `run_hook ""`（open も merged も `[]`）の場面。fake の `gh` が argv を `CALL_LOG` に記録し、`--state merged` の照会が実行されたことも assert する | merged の結果の空を merged とみなす（MU13）。assert: exit 0、log の最後が `PASS `、`FAIL merged-pr` が無い、calls.log に `--state merged` |
 | D6 | 照会失敗で push が通る | CLI（hook） | 同 test の merged の照会だけ失敗する場面（fake に `FAKE_MERGED_EXIT`） | 失敗を無視する（MU9）。assert: exit 非 0、`FAIL ready-state-lookup` |
 | D7 | 未 stage の変更で push が止まる | CLI（hook） | 同 test の push 範囲の `src/example.ts` の未 stage の編集の場面 | WARN を `fail_gate` にする（MU10）。assert: exit 0、stderr に `WARN: unstaged changes in pushed files` と path |
 | D7 | 範囲の外で WARN が出る | CLI（hook） | 同 test の push 範囲の外の file（`README.md`）の未 stage の編集の場面 | 共通部分でなく全体の `git diff` を見る。assert: WARN が無い |
@@ -73,7 +73,7 @@ workflow の状態（review の record）に触るため、record の lifecycle 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
 | review の record（D8） | record なし | broad を pending で record（`--reviewed-head` = capture の head） | 必要数の broad と裁定で pass | 是正の push で head が変わり、broad は旧 head のまま（closure が要る） | 新しい head で capture し直す | closure を `--reviewed-head` = 新しい head で record | 旧い helper の期間（本 lane 自身）は順序を手で守る | 監査した head と capture の head が違う → exit 1、書かない | 監査した head で record し直すか、現在の head を監査し直す | `ReviewedHead` の test |
-| helper の版（D2） | branch の helper = base | — | 一致して進む | main が helper を更新、または PR が helper を変える | — | base の版の写しで実行 | 単段 merge の後は branch の helper が base と一致しうる | 不一致 → exit 1、何も書かない。取得失敗 → exit 2 | 写しか単段 merge の後に再実行 | `HelperVersion` の test |
+| helper の版（D2） | branch の helper = base | — | 一致して進む | main が helper を更新、または PR が helper を変える | — | base の版の写しで実行 | 単段 merge の後は branch の helper が base と一致しうる。本 lane の merge より前に分岐した lane の旧い helper は自己照合を持たず、最初の操作の前に単段 merge か写しへ手で切り替える | 不一致 → exit 1、何も書かない。取得失敗 → exit 2 | 写しか単段 merge の後に再実行 | `HelperVersion` の test |
 
 stale head/base・broad/closure の race は既存の `RecordLifecycle`・`test_offline_bad_repo_input_and_race` が持ち、本 lane は変えない（D11）。manual/R4 と hosted gate の判定も変えない。
 
@@ -83,7 +83,7 @@ stale head/base・broad/closure の race は既存の `RecordLifecycle`・`test_
 |---|---|---|---|---|
 | main 側から取得して PR の変更を信頼しない（classifier `:220`、policy `:352`） | `scripts/pr-gate.py` の `contents()` の呼出し全部（classifier・packet・archive・policy） | helper 本体（D2） | packet・archive は head から読む（PR の内容そのもの） | `HelperVersion` |
 | 照会失敗は止める（pre-push の Ready の照会 `:98-101`） | `scripts/pre-push.sh` の `gh` の呼出し | merged の照会（D6） | — | S9 の照会失敗の場面 |
-| 実行制御の path（`.claude/settings.json`・`.claude/hooks/*`） | `classify-changes.sh:55`、merge-evidence `:53`、`claude-hooks.test.sh:78` | `.claude/agents/*`（D1） | `.claude/{rules,commands,skills}` は policy のまま（実行の設定を持たない） | S2、S11 |
+| 実行制御の path（`.claude/settings.json`・`.claude/hooks/*`） | `classify-changes.sh:55`、merge-evidence `:53`、`claude-hooks.test.sh:78` | `.claude/agents/*`（D1） | `.claude/{rules,commands,skills}/**` と `.agents/**` は policy のまま。`.claude/rules` は frontmatter を持たず、`.claude/commands` は公式 hooks の置き場所の表に無い。skill（`.agents/skills/**/SKILL.md`、`.claude/skills/*` はその symlink）は公式 hooks「Hooks in skills and agents」により frontmatter の `hooks` を持てる（2026-09-29 確認）が、本 lane は分類を変えない（費用: skill 文書の編集がすべて R3。残るリスクは Residual Test Gaps と D-099） | S2、S11 |
 | worktree の symlink の運用 | `scripts/local-ci.sh` の `npm` の呼出し（`:224` の `npm ci` と `:226-231` の `npm run`） | `npm ci` の前の検査（D5） | `npm run` は `node_modules` を消さない | S7 |
 
 ## Negative Paths
@@ -134,7 +134,7 @@ stale head/base・broad/closure の race は既存の `RecordLifecycle`・`test_
 
 ## Mutation-style Adequacy Questions
 
-mutation は packet の Test Plan の MU1〜MU12。実注入の手順は packet の AC9。
+mutation は packet の Test Plan の MU1〜MU13。実注入の手順は packet の AC9。
 
 - If a key branch is inverted: D2 の一致の判定を反転 → `HelperVersion` の一致・不一致の両方の test が red。
 - If a guard is removed: MU3・MU6・MU8・MU11。
@@ -148,7 +148,10 @@ mutation は packet の Test Plan の MU1〜MU12。実注入の手順は packet 
 ## Residual Test Gaps
 
 - 照合の code を消した helper を実行する場合は D2 が守らない（差分に出るので Double Audit が見る）。
+- 本 lane の merge より前に分岐した lane（PR4、#81、本体の checkout）の旧い helper は自己照合を持たず、main の helper を取り込むまで `--reviewed-head` 無しの broad・closure の record が通る。移行（最初の helper 操作の前の単段 merge か写し）は手順で、忘れると抜ける。Coordinator が merge の直後に open の PR を列挙して各 lane の発注書に書く（packet「本 lane 自身の検査と merge」の 7）。
+- skill の frontmatter の `hooks`（`.agents/skills/**/SKILL.md`、`.claude/skills/*` はその symlink）は policy（rust=false）のままで、R1 の申告なら packet 無しに `pr-gate.py:259` を通る。公式 hooks「Hooks in skills and agents」: skill の hooks は invoke で登録され session の終わりまで残り、-p の未 trust folder でも登録される（2026-09-29 確認）。分類は変えない（費用は D-099）。kickoff の問いと Final Review が見る（D10 と同じ形）。
 - 生成器（`src-tauri/src/bin/generate_*`、`lib.rs` の bindings の export）の判定を緩める変更は R1 と申告すれば packet 無しで通る（D10）。kickoff の問いと Final Review が見る。
+- `docs/quality/review-checklist.md` を含む policy docs だけの PR を R1・packet 無しで申告すれば Minimum は 0（`pr-gate.py:264-266`、既存の設計）。D1 が足すのは workflow 回帰と、packet 付きのときの Minimum 2。
 - 座組表の effort と agent 定義の値の一致は自動で照合しない（どちらかを変える PR は D1 で Minimum 2 が掛かる）。
-- agent 定義と depth の設定の実効は merge 後の run でしか確かめられない（AC7、P3）。
+- agent 定義と depth の設定の実効は本体の同期と再起動の後の run でしか確かめられない（AC7、P3）。
 - PR の base の SHA が古い場合、helper が要求する版は古い main の版になる（message の command がその版を示すので進める。安全は弱まらない）。

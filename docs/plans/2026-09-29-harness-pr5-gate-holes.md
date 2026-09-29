@@ -27,17 +27,18 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 遷移記録（append-only）:
 
 - kickoff → spec-check → plan-draft → plan-gate（2026-09-29、起草役 = Opus 5.5 subagent、本 commit、plan-first）: Risk R3（下記 Risk）。spec-check で、既存の正本（`docs/agent-guidance/merge-evidence.md` の MG-D4 の分類表・「Helperの境界」・「実行手順」、`docs/ci.md` の Classifier / Pre-push Contract、`docs/AGENT_OPERATING_MANUAL.md` の `## 座組`）が本 lane の判定の置き場所として足りると確かめた（新しい設計文書は作らない）。設計判断（D1〜D10）は本 packet の Spec Contract に置き、正本への反映は実装の S9〜S12 で行う（workflow の正本は本 lane が書き換える文書そのもの。PR2・PR3・並走の摩擦の lane と同じ形）。design phase は使わない（skip の条件は Design Readiness）。Plan Review へ。
+- plan-gate: Plan Review round 1（fresh Opus 5.5 reject P2 2 / P3 5、Codex GPT-6 Astra reject P1 1 / P2 5）→ 全件採用し是正（相談役 Fable 5.1 の起草、2026-09-29）
 
 ## Owner Effort Budget
 
-- 介入回数上限: 5（既定 3 から。理由: `.claude/agents/**` と `.claude/settings.json` は本体の checkout が sandbox から書けず、merge 後に owner が sandbox の外で本体を同期する 1 回が要る〈G1〉。plan-approved に owner の判断点が 1 つある）
+- 介入回数上限: 7（既定 3 から。理由: `.claude/agents/**` と `.claude/settings.json` は本体の checkout が sandbox から書けず、merge 後に owner が sandbox の外で本体を同期し Claude Code を再起動する 1 回が要る〈G1〉。plan-approved に owner の判断点が 1 つある。予備 2 = Writer が worktree の `.claude/agents/**` を書けないときの owner の代行 1〈G1 (a)〉と、Ready の後に PR4 が merge されて base 同期の後に再 Ready を諮る 1）
 - 実働時間上限: 15分（owner の作業は判断点の回答、Ready・merge の指示、merge 後の本体の同期 1 回）
 - relay 往復上限: 5（Plan Review の Codex が最大 3 round、Final Review の Codex broad 1、base 同期の後の Codex closure の予備 1）
 - Plan Review round 天井: 3（既定 3）
 
 | 種別 | 上限 | 消費（2026-09-29 時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 5 | 1: 起票承認と範囲の判断（2026-09-29、同じ問いの 1 回） | 4: plan-approved と判断点 G1 の回答 1、Ready 1、merge 1、merge 後の本体の同期 1 | 0 | 5 = 1 + 4 + 0 |
+| 介入 | 7 | 1: 起票承認と範囲の判断（2026-09-29、同じ問いの 1 回） | 4: plan-approved と判断点 G1 の回答 1、Ready 1、merge 1、merge 後の本体の同期と Claude Code の再起動 1 | 2: G1 (a) の owner の代行 1、PR4 の merge の後の再 Ready 1 | 7 = 1 + 4 + 2 |
 | relay | 5 | 0 | 5: Plan Review の Codex 最大 3、Final Review の Codex broad 1、Codex closure 1 | 0 | 5 = 0 + 5 + 0 |
 
 既定値と超過時の Coordinator 責務は `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
@@ -79,12 +80,12 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- `.claude/agents/**` と `docs/quality/review-checklist.md` を変える PR に、helper が Minimum 2 を、hosted が workflow 回帰を要求する。`.claude/agents/**` を変える PR は R0 / R1 の経路を通れない。
-- helper は、自分の file が PR の base の `scripts/pr-gate.py` と違うときに何もせず止まり、base の版を使う command を示す。`pr-gate.py` を変える PR が変更後の helper で自分を検査する経路が、手順を忘れても塞がる。
+- `.claude/agents/**` と `docs/quality/review-checklist.md` を変える PR に、hosted が workflow 回帰を、helper が packet 付きなら Minimum 2 を要求する（`scripts/pr-gate.py:270-272`）。`.claude/agents/**` を変える PR は R0 / R1 の経路を通れない（`:259`）。`docs/quality/review-checklist.md` だけを R1 で申告した packet 無しの経路は、他の policy docs と同じく残る（Residual Test Gaps）。
+- helper は、自分の file が PR の base の `scripts/pr-gate.py` と違うときに何もせず止まり、base の版を使う command を示す。この停止は D2 を載せた helper（本 lane の merge 後の main から分岐した branch と、main を取り込んだ branch）で、手順を忘れても効く。本 lane の merge より前に分岐した lane の旧い helper は止まらず、移行手順で塞ぐ（「本 lane 自身の検査と merge」の 7、Residual Test Gaps）。
 - review の record は監査した head を受け取り、capture の head と違えば止まる。是正の push の後に broad を record して closure を飛ばす経路が塞がる。
 - local-ci full は `node_modules` が symlink のとき、どの gate よりも前に非 0 で止まり、symlink 先を変えない。
 - pre-push は merge 済みの PR の branch への push を止め、「main から新しい branch」を示す。push する file に未 stage の変更が残れば WARN を出して push を続ける。
-- Coordinator が Agent tool で起動する Writer・reviewer が、tracked の定義（`.claude/agents/{writer,reviewer}.md`）から座組表の effort（medium）で動き、subagent の入れ子は設定（`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`）で止まる。座組表の注記が実態と合う。
+- Coordinator が Agent tool で起動する Writer・reviewer が、tracked の定義（`.claude/agents/{writer,reviewer}.md`）から座組表の effort（medium）で動き、subagent の入れ子は設定（`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`）で止まる（どちらも本体の checkout の同期と Claude Code の再起動の後）。座組表の注記が実態と合う。
 
 ### 失敗定義
 
@@ -108,7 +109,7 @@ workflow の変更なので、本 lane の merge 後に 1 本の lane（X）を 
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| 本 lane が main にあり、owner が本体の checkout を sandbox の外で同期した（G1） | Coordinator が Agent tool で `subagent_type: writer`（または `reviewer`）を起動する | subagent が effort medium で動き、`/tasks` の行に model と effort が出る（旧: session の high を継承）。subagent が Agent tool を持たない（depth 1） | Coordinator が run 報告に実効の model・effort を記録する | P3（本体の同期までは効かない）。merge 後の最初の run で `/tasks` を確かめる（AC7） |
+| 本 lane が main にあり、owner が本体の checkout を sandbox の外で origin/main に同期し、Claude Code の main session を再起動した（G1） | Coordinator が Agent tool で `subagent_type: writer`（または `reviewer`）を起動する | subagent が effort medium で動き、`/tasks` の行に model と effort が出る（旧: session の high を継承）。subagent が Agent tool を持たない（depth 1） | Coordinator が run 報告に実効の model・effort を記録する | P3（本体の同期と再起動までは効かない。公式 sub-agents「Write subagent files」: watcher は session 開始時に存在した dir だけを見る）。再起動後の最初の run で `/tasks` を確かめる（AC7） |
 | X の worktree を origin/main から作り、`node_modules` を本体への symlink にした | `bash scripts/local-ci.sh changed` | 従来どおり（changed は `npm ci` を実行しない） | exit 0 | なし |
 | 同上 | `bash scripts/local-ci.sh full` | どの gate よりも前に `ERROR=node_modules is a symlink …` で exit 非 0。本体の `node_modules` は変わらない（旧: `npm ci` が本体を空にした） | symlink を外して `npm ci --ignore-scripts` で実 dir を作り、full をやり直す | なし |
 | X の Draft PR（open） | commit して `git push origin <branch>`。push する file の 1 つに未 stage の編集が残っている | `[pre-push] WARN: unstaged changes in pushed files: …` を出し、push は続く（旧: 何も出ない） | 意図した commit なら続ける。add し忘れなら add・commit して push し直す | なし |
@@ -121,7 +122,7 @@ workflow の変更なので、本 lane の merge 後に 1 本の lane（X）を 
 | PR が `.claude/agents/writer.md` を変える | helper `status --risk R1 --manual not-required` | `CI execution change requires R3 packet` で止まる（旧: R1 で review 無しに通った）。packet 付きなら Minimum 2 | R3 の packet で進める | なし |
 | PR が `docs/quality/review-checklist.md` だけを変える | hosted CI、helper | docs と workflow 回帰の job が走り、packet 付きなら Minimum 2（旧: docs だけ） | 従来の条件 | なし |
 
-この列で、現状の事実 1・3〜7・9・10 の穴が塞がる。11 は本体の同期（G1）の後に効く。
+この列で、現状の事実 1・3〜7・9・10 の穴が塞がる。11 は本体の同期と再起動（G1）の後に効く。
 
 ### 本 lane 自身の検査と merge（自分の変更で自分の gate を緩めない）
 
@@ -133,7 +134,7 @@ workflow の変更なので、本 lane の merge 後に 1 本の lane（X）を 
 4. base が進んだら（origin/main の単段 merge の後）1 をやり直す。`ready` と `merge` の直前には、base が進んでいなくても 1 の blob 照合をやり直す。
 5. origin/main の `scripts/doc-consistency-check.sh` と `scripts/check-workflow-git.sh` も `$TMPDIR` に取り出し、本 lane の worktree の root で実行する（checker は既定 mode と `--target plan` の両方、PK5 は `WORKFLOW_BASE_SHA` 付き）。hosted CI は PR の head の script（新しい classifier・pre-push 等）で走り、その妥当性は Double Audit が見る。
 6. 本 lane の新しい helper の `status` も、Phase が implementing・PR が Draft・broad の record がある状態で本 lane の worktree で実行し、D2 の自己照合で exit 1（`helper differs from base`）になることを確かめる（AC2 の実物の確認。本 lane は `pr-gate.py` を変えるので必ず違う）。
-7. 本 lane の merge の後は、D2 が同じ手順を helper 自身で強制する。`pr-gate.py` を変える後続の PR は、手順を忘れても自分の helper が止まる。本 lane の closeout（R0）は main の新しい helper で行う。
+7. 本 lane の merge の後、D2 の自動停止は D2 を載せた helper にだけ効く（本 lane の merge 後の main から分岐した lane と、main を取り込んだ lane。`pr-gate.py` を変える後続の PR は手順を忘れても自分の helper が止まる）。本 lane の merge より前に分岐した lane の helper は旧い版で、自己照合も `--reviewed-head` も無い（PR4 の `scripts/pr-gate.py` は origin/main と同じ blob `95c5f91c`、merge-base `7ac96d9e`。open の PR は他に #81 だけ）。その lane は本 lane の merge の後、helper の最初の操作の前に origin/main を単段 merge する（strict で元々必要）か、`git show origin/main:scripts/pr-gate.py > "$TMPDIR/pr-gate-base.py"` の写しを使う。取り込むまでのその lane の record は `--reviewed-head` 無しで通る。この移行は手順で、忘れると抜ける（機械的な停止は無い。Residual Test Gaps と D-099）。Coordinator は本 lane の merge の直後に `gh pr list --state open --json number,headRefName` で open の PR を列挙し、各 lane の次の発注書にこの手順を書く。本 lane の closeout（R0）は main の新しい helper で行う。
 
 ## Scope
 
@@ -160,7 +161,7 @@ workflow の変更なので、本 lane の merge 後に 1 本の lane（X）を 
   - 新しい class `HelperVersion`: base の `scripts/pr-gate.py` が実物と 1 byte 違う fixture で、status・capture・record・ready・merge のそれぞれが exit 1、message に `helper differs from base` と base SHA、fake gh の呼出しに `pr ready` / `pr merge` / comment の POST・PATCH が無い。同じ bytes なら status の blockers が従来どおり。base の取得が HTTP 失敗なら exit 2。
   - 新しい class `ReviewedHead`: broad・closure の record で `--reviewed-head` が capture の head と違えば exit 1 で comment を書かない（fake の `comments` が不変）。無ければ exit 2。一致すれば従来どおり record される（`test_packet_double_audit_cli` の形）。
 - S6 `scripts/local-ci.sh`（D5）
-  - 分類の log（`:187-191`）の直後、最初の gate（`:193` の docs）の前に、`MODE == full` かつ `-L "$REPO_ROOT/node_modules"` なら `log "ERROR=node_modules is a symlink; npm ci would empty its target. Remove the link and run npm ci --ignore-scripts for a real directory"` と `finish FAIL 1`。
+  - 分類の log（`:187-191`）の直後、最初の gate（`:193` の docs）の前に、`MODE == full` かつ `-L "$REPO_ROOT/node_modules"` なら `log "ERROR=node_modules is a symlink; npm ci would empty its target. Run: unlink node_modules (no trailing slash), then npm ci --ignore-scripts"` と `finish FAIL 1`。`rm -rf node_modules/`（末尾 /）は symlink 先の中身を消すので案内しない。
   - changed では検査しない（`npm ci` を実行しないため。worktree で symlink を使う正当な運用を止めない）。`:224` の `npm ci` は変えない。
 - S7 `scripts/tests/local-ci.test.sh`（D5）
   - fixture の repo に `target/marker` を持つ dir と、それを指す `node_modules` の symlink を置き、PATH の先頭に呼出しを記録する stub の `npm`・`cargo` を置く。`local-ci.sh full` が exit 非 0、evidence に `ERROR=node_modules is a symlink`・`RESULT=FAIL`、`GATE=` の行が 1 つも無い、stub の呼出し記録が空、`target/marker` が残る。
@@ -168,11 +169,11 @@ workflow の変更なので、本 lane の merge 後に 1 本の lane（X）を 
   - `node_modules` を実 dir にし、full の他の gate を stub（`scripts/tests/run-workflow-tests.sh`・`scripts/check-env-safety.sh`・`npm`・`cargo`）で通すと、ERROR が無く `GATE=frontend-install` と `npm ci` の呼出しがある。
   - `:13` の `grep -Fq 'run_required frontend-install "$REPO_ROOT" npm ci'` は残す。
 - S8 `scripts/pre-push.sh`（D6・D7）
-  - D6: `:98` の open の照会が空のとき、同じ branch で `gh pr list --head "$branch" --state merged --json number --jq 'if length == 0 then empty else .[0].number end'` を照会する。番号が返れば `[pre-push] PR #<N> for <branch> is already merged; create a new branch from main.` を出して `fail_gate merged-pr`。照会の失敗は `fail_gate ready-state-lookup`（既存と同じ fail-closed）。open の PR があれば merged を照会しない（branch 名を再利用した新しい PR を止めない）。
+  - D6: `:98` の open の照会が空のとき、同じ branch で `gh pr list --head "$branch" --state merged --json number --jq 'if length == 0 then empty else .[0].number end'` を照会する。番号が返れば `[pre-push] PR #<N> for <branch> is already merged; create a new branch from main with a new name (a reused name stays blocked).` を出して `fail_gate merged-pr`。番号が空（open も merged も無い）なら通す。照会の失敗は `fail_gate ready-state-lookup`（既存と同じ fail-closed）。open の PR があれば merged を照会しない（既存の open PR を止めないための安全弁。open の PR は push の後にしか作れないので、merge 済みの名前を再利用した最初の push は必ず止まる。名前の再利用は避ける）。
   - D7: Ready の確認の後、分類の前に、push する各 ref のうち `local_oid` が HEAD と同じものについて、push 範囲（分類と同じ起点: remote_oid、新しい ref なら origin/main（無ければ main）との merge-base）の変更 file と `git diff --name-only`（index と作業 tree の差 = 未 stage）の共通部分を求め、空でなければ `[pre-push] WARN: unstaged changes in pushed files: <path…>` を stderr に出す。exit code・`quality-check.log` の outcome は変えない。起点が決まらない ref は WARN の対象にしない（止めない）。
 - S9 `scripts/tests/pre-push.test.sh`（D6・D7）
-  - fake の `gh`（`:56-82`）に `--state` の解析と、`FAKE_MERGED_HEAD`（その branch の merged の照会に `[{"number":42}]` を返す）を足す。既定は merged も `[]`。
-  - merged の branch → exit 非 0、log の最後が `FAIL merged-pr`、stderr に `already merged` と `new branch`。open の Draft の PR と merged の PR が同じ branch にある → exit 0（open を優先）。PR 無し → exit 0（既存の `run_hook true` の形）。merged の照会だけ失敗 → exit 非 0・`FAIL ready-state-lookup`。
+  - fake の `gh`（`:56-82`）に `--state` の解析、`FAKE_MERGED_HEAD`（その branch の merged の照会に `[{"number":42}]` を返す）、`FAKE_MERGED_EXIT`（merged の照会だけ非 0）、呼出しの記録（`printf 'gh %s\n' "$*" >> "$CALL_LOG"`。`CALL_LOG` は `run_hook` が既に渡す `:114`）を足す。既定は merged も `[]`。
+  - merged の branch（`FAKE_MERGED_HEAD=feature`）→ exit 非 0、log の最後が `FAIL merged-pr`、stderr に `already merged` と `new branch`。open の Draft の PR と merged の PR が同じ branch にある → exit 0（open を優先。calls.log に `--state merged` が無い）。PR 無し（`run_hook ""`。open も merged も `[]`）→ exit 0、log の最後が `PASS `、`FAIL merged-pr` が無く、calls.log に `--state merged` がある（照会が実行されたことの証拠）。merged の照会だけ失敗（`FAKE_MERGED_EXIT=4`）→ exit 非 0・`FAIL ready-state-lookup`。
   - push 範囲の file（`src/example.ts`）に未 stage の変更 → exit 0、stderr に `WARN: unstaged changes in pushed files` と path。push 範囲の外の file の未 stage の変更 → WARN が出ない。変更なし → WARN が出ない。
 - S10 `.gitignore` と `.claude/agents/**`（D3）
   - `.gitignore:116` の `.claude/agents` を消し、`:100-107` の comment に「`.claude/agents` は tracked の subagent 定義を置くので除外しない（本体の checkout の sandbox の mount は同期で実 dir になれば消える）」の 1 文を足す。他の行は変えない。
@@ -185,19 +186,18 @@ workflow の変更なので、本 lane の merge 後に 1 本の lane（X）を 
 - S12 正本の文書（D1〜D9）
   - `docs/agent-guidance/merge-evidence.md`
     - `:53` の実行制御の行に `.claude/agents/**`、`:54` の policy の行に `docs/quality/review-checklist.md` を足す。
-    - `:58` の段落（helper は current main 側の分類を使う）に 1 文: 「helper は自分の file が PR の base の `scripts/pr-gate.py` と同じときだけ動き、違えば base の版を使う command を示して止まる（D2）」。
-    - `## Helperの境界`（`:146`）の record の説明に `--reviewed-head`（review で必須、capture の head と一致）を足す。
-    - `## 実行手順`（`:158-171`）: 例の record に `--reviewed-head "$REVIEWED_HEAD"` を足す。`:171` の後に 2 文: 「broad は是正の push の前に、監査した head の capture で record する」「同じ head に closure run が 2 本あるときは、後に完了判定を出した run を model・run_ref にし、両方の証跡 pointer を evidence に並べて 1 回 record する」。
+    - `:58` の段落（helper は current main 側の分類を使う）に 1 文: 「helper は自分の file が PR の base の `scripts/pr-gate.py` と同じときだけ動き、違えば base の版を使う command を示して止まる（D2。D2 を載せた版以降の helper に効く）」。
+    - `## Helperの境界`（見出し `:140`。record の説明は `statusはread-only` で始まる同節の 146 行目の段落）の record の説明に `--reviewed-head`（review で必須、capture の head と一致）を足す。
+    - `## 実行手順`（`:158-171`）: `:160` の「captureの返すpathを使い、SHAを手転記しない」の後に「reviewed headだけは、reviewerの報告の`対象差分と内容commit`の行（`docs/templates/subagent-review-packet.md:15`）からその監査のcommitを写す。captureの出力や現在のHEADから取らない（監査していないheadを記録する誤りをhelperがcaptureのheadとの照合で止める）」を足す。例の record（`:164-168`）に `--reviewed-head "$REVIEWED_HEAD"` を足す。`:171` の後に 2 文: 「broad は是正の push の前に、監査した head の capture で record する」「同じ head に closure run が 2 本あるときは、後に完了判定を出した run を model・run_ref にし、両方の証跡 pointer を evidence に並べて 1 回 record する」。
   - `docs/ci.md`
     - `## Local Commands`（`:49-61`）に 1 文: 「full は `node_modules` が symlink なら gate の前に失敗する（`npm ci` が symlink 先を空にするため）。changed は検査しない」。
     - `## Pre-push Contract`（`:67-73`）に 1 文: 「push 先の branch の PR が open に無く merged にあれば push を拒否し、main から新しい branch を案内する。push する file に未 stage の変更があれば WARN を出して push を続ける」。
     - `## Stale Green Prevention`（`:75-79`）の正規経路の文に「helper は PR の base と同じ版でだけ動く」を足す。
-  - `docs/AGENT_OPERATING_MANUAL.md` の `## 座組` の表（`:65-72`）
-    - Writer 行の effort 欄の「実効値の注意」を「Agent tool では `subagent_type: writer`（`.claude/agents/writer.md`、effort medium）で起動する。定義を使わない起動は session の値（high）を継承する。実効値を run 報告に記録する（`/tasks`）」に置き換える。`.gitignore:116` と PR5 の句を消す。公式 link は残す。
-    - Plan Reviewer 行の「実効値の注意は Writer 行と同じ」を「Opus は `subagent_type: reviewer`（`.claude/agents/reviewer.md`、effort medium、編集の tool なし）」に置き換える。Final Reviewer 行の Opus = medium にも同じ定義を使う旨を 1 句。Fable 5.1 は定義を使わない（high、session の継承）。
-    - 表の下の箇条に 1 文: 「subagent の入れ子は `.claude/settings.json` の `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` で止める（`docs/DEV_WORKFLOW.md` Subagent Budget の depth 1）。定義と設定は本体の checkout を同期してから効く」。
-    - 表の外の MANUAL の節は変えない（PR4 の所有）。
-  - `docs/decision-log.md` の末尾に `## D-099` を追記する（番号の予約は下の G2）。書く内容: D1〜D10 の要旨、D2 の採った案と棄却案、D10 の入れない判断と残るリスク、D1 で `.claude/agents/**` を full にした理由。
+  - `docs/AGENT_OPERATING_MANUAL.md` の `## 座組` の表（`:65-72`。表の外と表の下にある箇条書きは触らない = PR4 の所有と PR4 の AC20 の不変条件）
+    - Writer 行（`:68`）の effort 欄を置き換える: 「medium（owner 2026-09-23。Codex が Writer のときは Plan Reviewer 行の Codex の値）。起動: Agent tool では `subagent_type: writer`（`.claude/agents/writer.md`、effort medium）で起動する。定義を使わない起動は session の値（high）を継承する。subagent の入れ子は `.claude/settings.json` の `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` で止める（`docs/DEV_WORKFLOW.md` Subagent Budget の depth 1）。定義と設定は本体の checkout を同期し Claude Code を再起動してから効く（公式 [sub-agents](https://code.claude.com/docs/en/sub-agents)「Write subagent files」・「Supported frontmatter fields」の `effort`）。実効値を run 報告に記録する（`/tasks`）」。`.gitignore:116` と PR5 の句を消す。
+    - Plan Reviewer 行（`:69`）の「Opus = medium（実効値の注意は Writer 行と同じ）」を「Opus = medium（`subagent_type: reviewer`、`.claude/agents/reviewer.md`、effort medium、編集の tool なし。起動と実効の注意は Writer 行と同じ）」に置き換える。Codex の句は変えない。
+    - Final Reviewer 行（`:70`）の effort 欄「Opus = medium」を「Opus = medium（Plan Reviewer 行と同じ `reviewer` の定義）」に、「Fable 5.1 = high（owner 2026-09-25）」を「Fable 5.1 = high（owner 2026-09-25。定義を使わず session の値を継承）」に置き換える。
+  - `docs/decision-log.md` の末尾に `## D-099` を追記する（番号の予約は下の G2）。書く内容: D1〜D10 の要旨。D2 の採った案と棄却案、および D2 の保証の範囲（D2 を載せた helper 以降。本 lane の merge より前に分岐した lane は手順で移行し、忘れると抜ける。旧 helper を classifier の出力 key の追加で fail-closed にする案は、ci.md Classifier Contract の 9 key を変えるので採らない）。D10 の入れない判断と残るリスク。D1 で `.claude/agents/**` を full にした理由と、skill の frontmatter の `hooks`（公式 hooks「Hooks in skills and agents」、2026-09-29 確認）が policy のまま R1 の申告で packet 無しに通る残るリスク（分類を変えない理由 = skill 文書の編集がすべて R3 になる費用）。
 
 対象を使う呼出し側・隣接 test の確認: classifier の consumer は `scripts/pre-push.sh`・`scripts/local-ci.sh`・hosted の `changes` job・`scripts/pr-gate.py:220-221`（どれも出力 key で読み、path の一覧を持たない）と `scripts/tests/claude-hooks.test.sh:78-81`。helper の consumer は merge-evidence の手順と Coordinator の checklist（tracked 外）。`scripts/tests/run-workflow-tests.sh` は既存の test file だけを実行し、本 lane は新しい test file を作らないので登録の変更は無い。
 
@@ -211,7 +211,7 @@ workflow の変更なので、本 lane の merge 後に 1 本の lane（X）を 
 | `docs/Plans.md`、`docs/backlog.md`、`docs/archive/**` | どちらも実装 PR で触らない（closeout） |
 
 - 表に無く本 lane が触る file: `scripts/tests/claude-hooks.test.sh`（S11。settings の監査と classify の検査を持つ test で、settings と classifier を所有する本 lane に置く。PR4 の表にも無い）。判断点 G2 で Coordinator に確かめる。
-- merge 順の影響: 本 lane が先に merge されると、PR4 が触る `docs/quality/review-checklist.md` が workflow=true になる。PR4 は `docs/DEV_WORKFLOW.md` 等で元から workflow=true・Minimum 2 なので要件は変わらない。PR4 の branch が本 lane の merge の前に分岐していれば、PR4 の helper の操作は D2 で止まり、origin/main の単段 merge（strict で元々必要）か base の版の写しで進める。PR4 が先なら本 lane への影響は無い（PR4 は `pr-gate.py` を触らない）。
+- merge 順の影響: 本 lane が先に merge されると、PR4 が触る `docs/quality/review-checklist.md` が workflow=true になる。PR4 は `docs/DEV_WORKFLOW.md` 等で元から workflow=true・Minimum 2 なので要件は変わらない。PR4 の branch は本 lane の merge の前に分岐しており（merge-base `7ac96d9e`、PR4 の `scripts/pr-gate.py` は origin/main と同じ blob `95c5f91c`）、PR4 の helper は旧い版で D2 では止まらない。本 lane が先に merge されたら、PR4 は helper の最初の操作の前に origin/main を単段 merge する（strict で元々必要）か base の版の写しを使う。取り込むまでの PR4 の record は `--reviewed-head` 無しで通る（Residual Test Gaps）。PR4 が先なら本 lane への影響は無い（PR4 は `pr-gate.py` を触らない）。
 - `docs/decision-log.md` は両方が末尾に足す。後に merge する側が単段 merge で両方の節を残す（番号は G2）。
 
 ## Non-scope
@@ -244,9 +244,9 @@ baseline は main `7ac96d9e`（本 branch の plan 側の HEAD と script・文�
 - AC6（pre-push、D6・D7、S8・S9）: `bash scripts/tests/pre-push.test.sh` が exit 0（S9 の場面を含む）。baseline: exit 0（`PASS: pre-push`）。`rg -n -- '--state merged' scripts/pre-push.sh` が 1 行。baseline: 一致なし（exit 1）。
 - AC7（agent 定義と depth、D3・D4、S10・S11）: 下の 4 つ（`git check-ignore` の exit 1、`jq` の出力 `1`、test の exit 0、merge 後の run 報告）。
   - `git check-ignore -v .claude/agents/reviewer.md` が exit 1（除外されない）。baseline: `.gitignore:116:.claude/agents` と対象 path（tab 区切り）、exit 0。
-  - `git ls-files .claude/agents` が `.claude/agents/reviewer.md` と `.claude/agents/writer.md` の 2 行。`rg -n '^effort: medium$' .claude/agents` が 2 行、`rg -n '^disallowedTools: Edit, Write, NotebookEdit$' .claude/agents/reviewer.md` が 1 行。baseline: どれも一致なし。
+  - `git ls-files .claude/agents` が `.claude/agents/reviewer.md` と `.claude/agents/writer.md` の 2 行。`rg -n '^effort: medium$' .claude/agents` が 2 行、`rg -n '^disallowedTools: Edit, Write, NotebookEdit$' .claude/agents/reviewer.md` が 1 行。baseline: `git ls-files` は出力なし、`rg` は対象 path が無く exit 2。
   - `jq -r '.env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH' .claude/settings.json` が `1`。baseline: `null`。`bash scripts/tests/claude-hooks.test.sh` が exit 0（S11 の 2 つの負例を含む）。baseline: exit 0。
-  - merge 後（本体の同期〈G1〉の後）: Coordinator が最初に `subagent_type: writer` か `reviewer` で起動した run の `/tasks` の行に model と effort medium が出ること、その subagent が Agent tool を持たないことを run 報告に記録する（P3 の外部前提の確認。合否は Ready・merge の条件にしない。出なければ follow-up）。
+  - merge 後（本体の同期と Claude Code の再起動〈G1〉の後）: Coordinator が最初に `subagent_type: writer` か `reviewer` で起動した run の `/tasks` の行に model と effort medium が出ること、その subagent が Agent tool を持たないことを run 報告に記録する（P3 の外部前提の確認。合否は Ready・merge の条件にしない。出なければ follow-up）。
 - AC8（正本の文書、S12）: 下の各 `rg` の出力が期待の行数。
   - `rg -n '\.claude/agents' docs/agent-guidance/merge-evidence.md` が 1 行以上、`rg -n 'review-checklist' docs/agent-guidance/merge-evidence.md` が 1 行以上。baseline: どちらも一致なし（exit 1）。
   - `rg -n 'helper differs from base|base の版' docs/agent-guidance/merge-evidence.md docs/ci.md` が 1 行以上。baseline: 一致なし（exit 1）。
@@ -254,7 +254,7 @@ baseline は main `7ac96d9e`（本 branch の plan 側の HEAD と script・文�
   - `rg -n 'symlink' docs/ci.md` が 1 行以上、`rg -n 'merged' docs/ci.md` が 1 行以上。baseline: どちらも一致なし（exit 1）。
   - `rg -n 'session の値（high）を継承する。Workflow から起動する|gitignore:116' docs/AGENT_OPERATING_MANUAL.md` が 0 行（exit 1）。baseline: 1 行（`:68`）。`rg -n 'subagent_type: writer' docs/AGENT_OPERATING_MANUAL.md` が 1 行、`rg -n 'CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH' docs/AGENT_OPERATING_MANUAL.md` が 1 行。baseline: どちらも一致なし。
   - `rg -c '^## D-099' docs/decision-log.md` が 1（番号は G2 で変わりうる）。baseline: 一致なし（exit 1）。
-- AC9（mutation、Test Plan の MU1〜MU12）: 実装を commit した後、`$TMPDIR` の写し（`copy="$TMPDIR/pr5-mut"; mkdir -p "$copy"; git archive HEAD | tar -x -C "$copy"; git -C "$copy" init -q; git -C "$copy" add -A`。改変ごとに作り直し、終わったら消す。本 repo の index・設定は触らない）で各 mutation を入れ、対応する test が red（exit 非 0）になり、改変なしの写しでは green になる。
+- AC9（mutation、Test Plan の MU1〜MU13）: 実装を commit した後、`$TMPDIR` の写し（`copy="$TMPDIR/pr5-mut"; mkdir -p "$copy"; git archive HEAD | tar -x -C "$copy"; git -C "$copy" init -q; git -C "$copy" add -A`。改変ごとに作り直し、終わったら消す。本 repo の index・設定は触らない）で各 mutation を入れ、対応する test が red（exit 非 0）になり、改変なしの写しでは green になる。
 - AC10（検査の全体。すべて exit 0）: `bash scripts/tests/run-workflow-tests.sh`、`bash scripts/doc-consistency-check.sh`、`bash scripts/doc-consistency-check.sh --target plan`、`bash scripts/check-workflow-git.sh`、`git diff --check origin/main...HEAD`、`bash scripts/local-ci.sh changed`、`bash scripts/check-env-safety.sh`（`.gitignore` を変えるため）。「本 lane 自身の検査」の 5（origin/main の checker と PK5 の cross-run）も exit 0。baseline（plan 側の HEAD の前、main と同じ内容で 2026-09-29 に起草役が実測）: run-workflow-tests exit 0、doc-consistency exit 0（全チェック通過）、check-workflow-git exit 0、`git diff --check origin/main...HEAD` exit 0。local-ci changed・check-env-safety は未実測（実装時に Writer が実測する）。`bash scripts/local-ci.sh full` は Writer の worktree の `node_modules` が実 dir のときだけ実行する（symlink なら本 lane の S6 がまさに止める）。
 - AC11（範囲）: `git diff --name-status origin/main...HEAD` の変更 file が S1〜S12 の file と本 packet・Matrix に限られる。`docs/DEV_WORKFLOW.md`・`docs/templates/**`・`docs/code_review.md`・`docs/quality/review-checklist.md`・`scripts/doc-consistency-check.sh`・`scripts/check-workflow-git.sh`・`.agents/**`・`AGENTS.md`・`docs/Plans.md`・`docs/backlog.md`・`src-tauri/**` に本 lane 由来の差分が無い。
 
@@ -262,10 +262,11 @@ baseline は main `7ac96d9e`（本 branch の plan 側の HEAD と script・文�
 
 owner に諮る判断点（G1）と、Coordinator に確かめる判断点（G2・G3）。各判断点は Plan Review で覆せる。
 
-- G1（owner、plan-approved の依頼と同じ 1 回で諮る。merge 後の作業を含む）: `.claude/agents/**` と `.claude/settings.json` の書込みと、本体の checkout の同期。
-  - 確認済みの事実: 本 lane の worktree（`.claude/worktrees/harness-pr5`）では、sandbox の Bash で `mkdir .claude/agents` が成功し（直後に `rmdir`、2026-09-29 の probe）、`.claude/settings.json` は `test -w` が真。本体の checkout では `.claude/settings.json` は `test -w` が偽、`.claude/agents` は sandbox の mount で塞がれる。公式の protected paths は `.claude` を保護し `.claude/worktrees` を除く（P2）。Edit / Write の tool で worktree の `.claude/agents/**` を書けるかは未確認。
-  - 選択肢: (a) Writer が worktree で書く。書けなければ Writer は内容を報告に書き、owner が sandbox の外（自分の terminal）でその file を作る。merge 後、owner が本体の checkout を sandbox の外で origin/main に同期する（1 回）。(b) 定義を tracked にせず owner の `~/.claude/agents/` に置く（review が掛からない。classifier の穴を塞ぐ意味が薄れる）。(c) Coordinator の main session を本体でなく origin/main の worktree から起動する運用に変える（session の起動のたびに owner の操作が要る）。
-  - 推奨: (a)（candidate。Writer の最初の書込みの結果で、owner の代行が要るかが決まる）。承認すると、Writer・reviewer の subagent が座組表の effort で動き、入れ子が設定で止まる。
+- G1（owner、plan-approved の依頼と同じ 1 回で諮る。merge 後の作業を含む）: `.claude/agents/**` と `.claude/settings.json` の書込みと、本体の checkout の同期・Claude Code の再起動。
+  - 確認済みの事実: 本 lane の worktree（`.claude/worktrees/harness-pr5`）では、sandbox の Bash で `mkdir .claude/agents` が成功し（直後に `rmdir`、2026-09-29 の probe）、`.claude/settings.json` は `test -w` が真。本体の checkout では `.claude/settings.json` は `test -w` が偽、`.claude/agents` は sandbox の mount で塞がれ dir でない。公式の protected paths は `.claude` を保護し `.claude/worktrees` を除く（P2）。公式 sub-agents「Write subagent files」: watcher は session 開始時に存在した dir だけを見るので、`.claude/agents` を初めて置いた後は再起動が要る（2026-09-29 WebFetch）。Edit / Write の tool で worktree の `.claude/agents/**` を書けるかは未確認。
+  - 選択肢: (a) Writer が worktree で書く。書けなければ Writer は内容を報告に書き、owner が sandbox の外（自分の terminal）でその file を作る（予備の介入 1）。merge 後、owner が本体の checkout を sandbox の外で origin/main に同期し、Claude Code の main session を再起動する（同期と再起動で介入 1）。再起動後の最初の run で Coordinator が `/tasks` を確かめる（AC7）。(b) 定義を tracked にせず owner の `~/.claude/agents/` に置く（review が掛からない。classifier の穴を塞ぐ意味が薄れる）。(c) Coordinator の main session を本体でなく origin/main の worktree から起動する運用に変える（session の起動のたびに owner の操作が要る）。
+  - 推奨: (a)（candidate。Writer の最初の書込みの結果で、owner の代行が要るかが決まる）。承認すると、Writer・reviewer の subagent が座組表の effort（medium、owner 2026-09-23。`CLAUDE.md` は #117 で座組表を正本にした）で初めて実効になり、入れ子が設定で止まる。
+  - G1 と同じ依頼で owner に示す残すリスク（判断点でなく確認）: skill の frontmatter の `hooks` は invoke で登録され session の終わりまで残る（公式 hooks「Hooks in skills and agents」、2026-09-29 確認）が、`.agents/skills/**`・`.claude/skills/*` は policy（rust=false）のままで、R1 の申告なら packet 無しに `pr-gate.py:259` を通る。本 lane は分類を変えない（full にすると skill 文書の編集がすべて R3 packet と Minimum 2 になる費用）。owner が費用を払って塞ぐなら別 lane。
 - G2（Coordinator、PR4 の packet と照合）: decision-log の番号と、表に無い file（`scripts/tests/claude-hooks.test.sh`）。本 packet は D-099 を予約する（PR4 が D-098 を予約する前提）。PR4 の packet と食い違えば、Coordinator が裁定し、後に merge する側が packet の gated amendment で採番し直す（`docs/DEV_WORKFLOW.md` Review Rules の連番の規則）。
 - G3（Coordinator、Plan Review で確かめる）: D2 の方式（自己照合で止める）と D10（生成器を入れない）。どちらも技術判断で、下の Design Intent Trace に理由と棄却案を書いた。
 
@@ -305,11 +306,11 @@ Tauri command・function-design doc・REQ・route・operator 画面: 該当な�
 | Spec / requirement ID | Source design doc section | Decision ID | Why / rejected alternatives | Implementation target | Test target |
 |---|---|---|---|---|---|
 | SPEC-WF-HARNESS5 | merge-evidence MG-D4 の分類表 | D1 | `.claude/agents/*.md` は subagent の model・effort・tools に加え `hooks`（command を実行する）と `permissionMode` を持てる設定で、`.claude/settings.json`・`.claude/hooks/*` と同じ「実行制御」に置く。full にすると R0 / R1 の経路（`pr-gate.py:259`）で拒まれ、R3 の packet と Minimum 2 が要る。`docs/quality/review-checklist.md` は review の観点の正本（`docs/DEV_WORKFLOW.md` Review Rules・`AGENTS.md` の初回レビューが参照）で、`docs/code_review.md` と同じ policy docs に置く。却下: `.claude/agents/*` を policy docs（`:59`）に置く（監査の当初案。workflow 回帰と packet 付きの Minimum 2 は掛かるが、R1 の申告で packet 無しに reviewer の定義を変えられる経路が残る）。費用: agent 定義を変える PR は hosted で Rust・frontend の job も走る（変更は稀） | S1 | AC1、S2 |
-| SPEC-WF-HARNESS5 | merge-evidence「Helperの境界」、`:58` | D2 | helper が PR の base の `pr-gate.py` と自分の bytes を比べ、違えば止まる。base の classifier を使う既存の設計（`:58`・`:62`「PR が自分用に弱めた policy を信頼しない」）を helper 本体に広げる。変更後の helper が照合そのものを消せば通るが、その変更は Double Audit が読む差分に出る。守るのは「手順を忘れて変更後の helper を使う」事故で、悪意の helper の実行は守らない（hook と同じく local の実行は信頼の外）。却下: (i) 自動で base の版を取得して exec する（摩擦は無いが、GitHub から取った code を暗黙に実行する経路が増え、どの版が動いたかが見えにくい）、(ii) 実行場所の強制（wrapper script。wrapper も PR の checkout にあり同じ問題）、(iii) hosted CI での検査（helper は local で動き、CI はどの helper が動いたかを知らない）、(iv) `pr-gate.py` を変える PR だけ照合する（main が helper を更新した後に古い branch が古い helper で record でき、D8 のような新しい検査が効かない） | S3 | AC2 |
+| SPEC-WF-HARNESS5 | merge-evidence「Helperの境界」、`:58` | D2 | helper が PR の base の `pr-gate.py` と自分の bytes を比べ、違えば止まる。base の classifier を使う既存の設計（`:58`・`:62`「PR が自分用に弱めた policy を信頼しない」）を helper 本体に広げる。変更後の helper が照合そのものを消せば通るが、その変更は Double Audit が読む差分に出る。守るのは「手順を忘れて変更後の helper を使う」事故で、D2 を載せた helper 以降に効く（本 lane の merge より前に分岐した lane の旧い helper は止まらず、手順で移行する。「本 lane 自身の検査と merge」の 7）。悪意の helper の実行は守らない（hook と同じく local の実行は信頼の外）。却下: (i) 自動で base の版を取得して exec する（摩擦は無いが、GitHub から取った code を暗黙に実行する経路が増え、どの版が動いたかが見えにくい）、(ii) 実行場所の強制（wrapper script。wrapper も PR の checkout にあり同じ問題）、(iii) hosted CI での検査（helper は local で動き、CI はどの helper が動いたかを知らない）、(iv) `pr-gate.py` を変える PR だけ照合する（D2 以降も、main が helper を更新した後に古い branch が古い helper で record でき、D8 のような新しい検査が効かない）、(v) 旧 helper も止めるために classifier の出力 key を足す（旧 helper は key の集合の不一致で exit 2 になる `pr-gate.py:224` が、ci.md Classifier Contract の 9 key と MG-D4 の契約を変え、所有の外の hosted job の出力も変わる） | S3 | AC2 |
 | SPEC-WF-HARNESS5 | 座組表、公式 sub-agents の frontmatter | D3 | 座組表の effort（Writer・Opus reviewer = medium）を Agent tool の起動で効かせる手段は frontmatter の `effort`（公式、P1）。`model: opus` は main が Opus 5.5 なら main と同じ model に解決する（P4）。reviewer は編集の tool を外す（Bash は test と mutation の実注入に要るので残す）。定義の body は規則を複製しない。却下: Workflow の `agent()` だけで指定する（Agent tool の通常の起動に効かない）、Fable の定義も作る（Fable は high で session の継承と同じ） | S10、S12 | AC7 |
 | SPEC-WF-HARNESS5 | DEV_WORKFLOW Subagent Budget、公式 env-vars | D4 | depth 1 の規則を設定で機械化する（公式に `1` で入れ子を止めると明記、P1）。project の settings に置き、hook test で固定する。却下: 各定義の `disallowedTools: Agent` だけにする（定義を使わない起動に効かない） | S11 | AC7 |
 | SPEC-WF-HARNESS5 | ci.md Local Commands | D5 | full だけが `npm ci` を実行するので、full の最初（gate の前）で止める。途中の gate を走らせてから止めると時間を捨てる。changed は止めない（worktree の symlink は changed の正当な使い方）。却下: `npm ci` の直前に置く（Rust の gate の後まで待つ）、symlink を自動で外す（本体の checkout を壊す操作に近づく） | S6 | AC5 |
-| SPEC-WF-HARNESS5 | ci.md Pre-push Contract | D6 | open の PR が無く merged の PR がある branch への push は、PR に載らない commit を作るだけ。open を優先して branch 名の再利用を止めない。照会の失敗は既存どおり止める。却下: closed（merge されていない）も止める（閉じた PR の branch を作り直す正当な使い方がある） | S8 | AC6 |
+| SPEC-WF-HARNESS5 | ci.md Pre-push Contract | D6 | open の PR が無く merged の PR がある branch への push は、PR に載らない commit を作るだけ。open があれば merged を照会しない（既存の open PR を止めない安全弁）。merged の照会は branch を削除した後も PR を返す（read-only probe #104、2026-09-29）ので、merge 済みの名前を再利用した最初の push は必ず止まる。名前の再利用は避け、message で新しい名前を案内する。照会の失敗は既存どおり止める。却下: closed（merge されていない）も止める（閉じた PR の branch を作り直す正当な使い方がある）、merged の `headRefOid` の祖先判定で再利用を許す（複雑さに見合う頻度が無い） | S8 | AC6 |
 | SPEC-WF-HARNESS5 | ci.md Pre-push Contract | D7 | 未 stage の変更は正当な WIP でも起きるので止めず WARN。push する file と HEAD の ref に限って雑音を減らす。却下: 止める（WIP の push を止める）、全 ref に出す（HEAD でない ref の作業 tree は無関係） | S8 | AC6 |
 | SPEC-WF-HARNESS5 | merge-evidence「Helperの境界」「実行手順」 | D8 | review の record に監査した head を必須にし、capture の head と一致を求める。broad・closure の両方に掛ける（closure も是正の後の capture で同じ誤りが起きる）。record の wire は変えない。却下: broad だけ（closure の同じ穴が残る）、record に reviewed head の field を足す（capture の head と同じ値の複製） | S4 | AC3 |
 | SPEC-WF-HARNESS5 | merge-evidence「実行手順」、RecordV1 | D9 | 同じ head の 2 本の closure は、後に完了判定を出した run を 1 つの audit にし、両方の証跡を evidence に並べる（record は後の書込みで closure を置き換える現行の振舞いに合う）。却下: `Closure.audit` を配列にする（RecordV1 の wire・既存の record・fixture の変更が要り、closure の必要数は 1 のまま） | S12 | AC8 |
@@ -333,7 +334,7 @@ Tauri command・function-design doc・REQ・route・operator 画面: 該当な�
 | Fact check / design decision split | 事実 = 現状の事実 1〜11（起草役が現物で確認）、公式資料（P1〜P4）、probe（P2・P6）。判断 = D1〜D10 と G1〜G3 | Contract Probe、D-099 |
 | Lifecycle / retry | review の record の順序（broad → 是正の push → closure）を D8 で機械化。止まった後の戻り方を各 message に書く（base の版の command、新しい branch、実 dir の作り方、broad のやり直し） | Ordinary Operation |
 | Operator workflow | 該当なし（店の operator の操作を変えない）。開発の操作列は Ordinary Operation | — |
-| Replacement path | helper の実行を「checkout の file」から「base と同じ版」に替える。PR4 等の並走 lane は D2 で止まったら単段 merge か写しで進む（上の「PR4 との file の所有」） | S3、S12 |
+| Replacement path | helper の実行を「checkout の file」から「base と同じ版」に替える。並走 lane は、D2 を載せた helper なら止まった時点で、旧い helper（PR4）なら本 lane の merge の直後に手順で、単段 merge か写しに切り替える（上の「PR4 との file の所有」） | S3、S12 |
 | Data safety / evidence | 古い証拠の拒否は強まる（D8 が監査していない head の broad を拒む）。record の wire・capture の形は変えない。helper の自己照合は何も書かずに止まる | AC3、AC4 |
 | Reporting / accounting semantics | 該当なし | — |
 | Manual verification | 該当なし: 画面が無い。agent 定義の実効値は merge 後の run 報告で確かめる（AC7、Ready・merge の条件にしない） | AC7 |
@@ -351,7 +352,7 @@ Tauri command・function-design doc・REQ・route・operator 画面: 該当な�
 - WIP の push: D7 は WARN だけで exit 0（S9 の test）。
 - symlink でない worktree・changed: D5 は full かつ symlink のときだけ止まる（S7 の test）。
 - open の PR の branch・PR の無い branch への push: D6 は open が空で merged があるときだけ止まる（S9 の test）。
-- `pr-gate.py` を変えない PR の helper: base と同じ版なら従来どおり。main の helper が分岐の後に変わった lane だけが止まり、単段 merge か写しで進む（1 command）。
+- `pr-gate.py` を変えない PR の helper: base と同じ版なら従来どおり。D2 を載せた helper の lane は、main の helper が分岐の後に変わると止まり、単段 merge か写しで進む（1 command）。旧い helper の lane は止まらない（Residual Test Gaps）。
 - agent 定義: 定義を使わない起動（general-purpose・Fable）は従来どおり。
 
 ## Design Readiness
@@ -367,7 +368,7 @@ Minimum design checks for business-app work: 製品コードを変えないた�
 
 - P1「subagent の frontmatter の `effort` が session の effort を上書きし、`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` が入れ子を止める」: 公式 [sub-agents](https://code.claude.com/docs/en/sub-agents) の frontmatter の表（`effort`: 「Effort level when this subagent is active. Overrides the session effort level. Default: inherits from session」）と「Let subagents spawn their own subagents」（既定は 3 層、`settings.json` の `env` で変える、「Set `1` to turn nesting off」）、[env-vars](https://code.claude.com/docs/en/env-vars)（v2.1.217 以降、正の整数だけ受理）を 2026-09-29 に WebFetch → 成立。local の Claude Code は v2.1.284（`claude --version`）。
 - P2「worktree の `.claude/agents/**` と `.claude/settings.json` を書ける」: 公式 [permission-modes](https://code.claude.com/docs/en/permission-modes) の Protected paths は `.claude` を保護し「except for `.claude/worktrees`」（2026-09-29 WebFetch）。本 lane の worktree で sandbox の Bash の `mkdir .claude/agents` が成功（直後に `rmdir`、差分なし）、`test -w .claude/settings.json` が真。本体の checkout では `test -w` が偽 → worktree の Bash では成立。Edit / Write の tool の経路は未確認（Writer が最初の書込みで確かめ、書けなければ G1 の (a) の代行）。
-- P3「project の subagent 定義と settings の `env` は session の cwd の checkout から読まれる」: 公式 sub-agents の scope の表（`.claude/agents/` は「Current project」、cwd から上へ走査）と settings（`.claude/settings.json` は clone の中で session を始めたときに読む。`env` の多くは folder の trust の後に効く）→ 成立。本体の checkout の HEAD は `253eef06`（origin/main より古い）で、`.claude/agents` は sandbox の mount（owner `nobody` の character special file）→ merge 後の本体の同期（G1）まで Coordinator の session には効かない。外部前提として AC7 の merge 後の項目で確かめる。
+- P3「project の subagent 定義と settings の `env` は session の cwd の checkout から読まれる」: 公式 sub-agents の scope の表（`.claude/agents/` は「Current project」、cwd から上へ走査）と「Write subagent files」（watcher は session 開始時に存在した dir だけを見る。初めて置いた後は再起動）、settings（`.claude/settings.json` は clone の中で session を始めたときに読む。`env` の多くは folder の trust の後に効く）→ 成立（2026-09-29 WebFetch）。本体の checkout の HEAD は `253eef06`（origin/main より古い）で、`.claude/agents` は sandbox の mount（owner `nobody` の character special file）→ merge 後の本体の同期と Claude Code の再起動（G1）まで Coordinator の session には効かない。外部前提として AC7 の merge 後の項目で確かめる。
 - P4「`model: opus` は Opus 5.5 に解決する」: 公式 sub-agents「Choose a model」（main の model が同じ family なら alias は main の model に解決する）→ 成立（main session が Opus 5.5 である限り）。
 - P5「helper は cwd の git で動き、base の file を contents API で取れる」: `scripts/pr-gate.py:196`（`git rev-parse --show-toplevel`）、`rg -c '__file__' scripts/pr-gate.py` → 0 件（exit 1）、`:207-210` の `contents()` と `:220` の classifier の取得 → 成立。自己照合の `Path(__file__)` は新しく足す唯一の file 位置の参照で、写しを `$TMPDIR` から実行しても自分の bytes を読む。
 - P6「`gh pr list --head <branch> --state merged` が merge 済みの PR を返す」: `gh pr list --head agent/harness-parallel-friction --state merged --json number,isDraft,state` → `[{"isDraft":false,"number":123,"state":"MERGED"}]`、同じ branch の `--state open` の照会は空（2026-09-29、read-only）→ 成立。
@@ -378,11 +379,11 @@ Minimum design checks for business-app work: 製品コードを変えないた�
 | Design contract / decision ID | Implementation target | Automated test | L3 or non-scope |
 |---|---|---|---|
 | D1 `.claude/agents/*` は full、`docs/quality/review-checklist.md` は policy、無関係の docs は不変 | S1 | AC1（S2）、AC7（S11 の classify の負例）、MU1・MU2 | — |
-| D2 helper は base と同じ版でだけ動く、違えば何も書かず exit 1 | S3 | AC2（`HelperVersion`）、MU3・MU4 | 照合を消した helper の実行（守らない範囲） |
+| D2 helper は base と同じ版でだけ動く、違えば何も書かず exit 1 | S3 | AC2（`HelperVersion`）、MU3・MU4 | 照合を消した helper の実行、本 lane の merge より前に分岐した lane の旧い helper（守らない範囲。手順で移行） |
 | D3 writer / reviewer の定義（effort medium、reviewer は編集の tool なし）、除外の解除 | S10、S12 | AC7 | 実効値は merge 後の run 報告（P3） |
 | D4 depth 1 の設定 | S11 | AC7（`claude-hooks.test.sh` の負例）、MU5 | — |
 | D5 local-ci full は symlink の `node_modules` で gate の前に止まる、changed は止めない | S6 | AC5（S7）、MU6・MU7 | — |
-| D6 pre-push は merged の branch への push を止め、open を優先、照会失敗で止める | S8 | AC6（S9）、MU8・MU9 | — |
+| D6 pre-push は merged の branch への push を止め、open を優先、照会失敗で止める | S8 | AC6（S9）、MU8・MU9・MU13 | — |
 | D7 未 stage の変更の WARN、exit 0 | S8 | AC6（S9）、MU10 | — |
 | D8 review の record は `--reviewed-head` を要り、capture の head と一致 | S4 | AC3（`ReviewedHead`）、MU11・MU12 | — |
 | D9 同じ head の 2 本の closure の record の仕方 | S12 | AC8 | 文書の規則（helper は検査しない） |
@@ -412,6 +413,7 @@ Test Design Matrix: [2026-09-29-harness-pr5-gate-holes.md](test-matrices/2026-09
   - MU10: S8 の WARN を `fail_gate` にする → S9 の未 stage の場面が red（exit 非 0）。
   - MU11: S4 の一致の判定を外す → `ReviewedHead` の不一致の test が red。
   - MU12: S4 の判定を broad だけに掛ける → `ReviewedHead` の closure の不一致の test が red。
+  - MU13: S8 の merged の判定を、open が空なら番号の有無に関わらず `fail_gate merged-pr` にする → S9 の PR 無し（`run_hook ""`）の場面が red（exit 非 0、`FAIL merged-pr`）。
 - compatibility checks: 既存の helper の test 全体（AC4）、classifier・local-ci・pre-push・hook の既存の場面（AC1・AC5・AC6・AC7）。
 - data safety checks: 変更は script・test・設定・文書だけで、実データ・secret を含まない（Data Safety）。
 - main wiring/integration checks: `bash scripts/tests/run-workflow-tests.sh`、`bash scripts/local-ci.sh changed`、実装の PR の hosted CI、「本 lane 自身の検査」の 5・6。
@@ -463,7 +465,7 @@ Contract ID: SPEC-WF-HARNESS5
 | SPEC-WF-HARNESS5-D3 | S10、S12 | AC7、AC8 | 定義の中身と座組表 | `git ls-files`・rg、merge 後の `/tasks` |
 | SPEC-WF-HARNESS5-D4 | S11 | AC7、AC9（MU5） | 設定の効く条件 | jq・test 出力 |
 | SPEC-WF-HARNESS5-D5 | S6、S7 | AC5、AC9（MU6・MU7） | 止める位置 | test 出力 |
-| SPEC-WF-HARNESS5-D6 | S8、S9 | AC6、AC9（MU8・MU9） | open の優先 | test 出力 |
+| SPEC-WF-HARNESS5-D6 | S8、S9 | AC6、AC9（MU8・MU9・MU13） | open の優先 | test 出力 |
 | SPEC-WF-HARNESS5-D7 | S8、S9 | AC6、AC9（MU10） | WARN の範囲 | test 出力 |
 | SPEC-WF-HARNESS5-D8 | S4、S5 | AC3、AC9（MU11・MU12） | closure にも掛けること | test 出力 |
 | SPEC-WF-HARNESS5-D9 | S12 | AC8 | wire を変えないこと | rg 出力 |
@@ -487,4 +489,22 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 If R3 review-only sub-agent is skipped, record an explicit line beginning with `Review-only skipped because:` and the reason.
+
+Plan Review round 1（2026-09-29、対象 `ae965767`）: fresh Opus 5.5 = reject（P1 0 / P2 2 / P3 5、O1〜O7）、Codex GPT-6 Astra = reject（P1 1 / P2 5、C1〜C6）。Coordinator が現物で裏取りし全件を採用した。是正の文面は相談役 Fable 5.1 の起草（反例 A・C を採り、B は採らない）を起草役が反映した。行番号は本是正の commit のもの。
+
+- O1（P2、skill の frontmatter の `hooks` が policy のまま R1 で通る）: 採用。分類は変えず、Matrix の Adjacent Pattern Audit の実行制御の行（M:86）の除外理由を事実に直し、Matrix の Residual Test Gaps（M:152）、S12 の D-099 の書く内容（P:200）、G1 の残すリスクの項（P:269）に書いた。
+- O2（P2、「PR 無し」の test が Draft PR を入力する）: 採用。S9 に `run_hook ""`（open も merged も `[]`）の場面と fake `gh` の呼出しの記録を足し（P:175-176）、Matrix の D6 の行（M:59）を差し替え、MU13（P:416）を足した（Ledger P:386・Trace P:468・AC9 P:257・Matrix M:137）。
+- O3（P3、branch 名の再利用）: 採用（小さい方）。S8 の D6（P:172）の説明と message を「新しい名前で切り直す」に直し、Design Intent Trace の D6 の行（P:313）に、merged の PR の head の祖先判定で再利用を許す案の棄却を書いた。
+- O4（P3、`--reviewed-head` の値の出所）: 採用。S12 の merge-evidence の実行手順（P:191）に「reviewed head は reviewer の報告の監査 commit の行から写し、capture・現在の HEAD から取らない」を足した。
+- O5（P3、symlink の ERROR 文言）: 採用。S6（P:164）の message を、symlink を末尾の / 無しで外してから `npm ci --ignore-scripts` で実 dir を作る案内にした。
+- O6（P3、同期の後の再起動と代行の予備）: 採用。Owner Effort Budget（P:34・P:41）、G1（P:265-269）、Ordinary Operation の 1 行目（P:112）に再起動と代行の予備を入れた（C3・C5 と同じ是正）。
+- O7（P3、`CLAUDE.md` の effort 節と座組表の medium の食い違い）: 採用。前提が origin/main に無かったため、判断点にせず G1 の承認文に 1 文（相談役の反例 A）。G1 の推奨（P:268）に「座組表の medium〈owner 2026-09-23〉が初めて実効になる。`CLAUDE.md` は #117 で座組表を正本にした」を入れた。
+- C1（P1、PR5 の前に分岐した lane の旧い helper は自己照合で止まらない）: 採用。D2 の自動停止の保証を「D2 を載せた helper 以降」に限り、移行手順と「忘れると抜ける」事実を書いた: 最小完了条件（P:84）、本 lane 自身の検査と merge の 7（P:137）、PR4 との file の所有の merge 順（P:214）、D2 の行（P:309、旧 helper を classifier の出力 key で止める案は棄却案 (v)）、Replacement path（P:337）、新しい停止の項（P:355）、Ledger の D2（P:382）、D-099（P:200）、Matrix の State Lifecycle（M:76）と Residual Test Gaps（M:151）。
+- C2（P2、review-checklist の Minimum 2 の保証が Goal と設計で違う）: 採用。最小完了条件（P:83）を「packet 付きなら Minimum 2」に揃え、packet 無しの経路を Matrix の Residual Test Gaps（M:154）に書いた。
+- C3（P2、定義の初回の読込みに session の再起動が要る）: 採用。最小完了条件（P:88）、Ordinary Operation の 1 行目（P:112）と列の結び（P:125）、G1（P:265-269）、AC7 の merge 後の項目（P:249）、Contract Probe P3（P:371）に「本体の同期 → Claude Code の再起動 → 最初の run で確認」を入れた。
+- C4（P2、「PR 無し」の予定 test が Draft PR を入力する）: 採用。O2 と同じ是正。
+- C5（P2、介入の予算に代行と並走の再 Ready が入っていない）: 採用。介入の上限を 7（消費 1 + 見込み 4 + 予備 2、予備 = G1 の owner の代行 1・PR4 の merge の後の再 Ready 1）にした（P:34・P:41）。
+- C6（P2、S12 が PR4 所有の、座組の表の下にある箇条書きを編集する）: 採用。depth と同期の注記を PR5 が所有する座組表の Writer 行の effort 欄に置き、表の外と表の下にある箇条書きを触らないと明記した（P:196-199）。PR4 の packet の編集は不要（相談役の反例 C: PR4 の AC20 が `## 座組` 節全体の不変を求める）。
+- 行番号の正誤（相談役の起草 §1 末尾）: S12 の `## Helperの境界` の参照に見出し `:140` を足した（P:190）。record の説明の段落は起票時の 146 行目で正しく、起草の「record の段落は 144 行目」は `追加候補は` で始まる別の段落なので採らず、146 行目の段落を文で指した（`sed -n 146p docs/agent-guidance/merge-evidence.md` が `statusはread-only…recordは…`）。AC7 の baseline を「`rg` は対象 path が無く exit 2」に直した（P:247）。
+
 - Findings Freeze: not yet frozen; post-freeze exceptions: none.
