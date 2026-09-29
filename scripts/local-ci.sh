@@ -190,6 +190,12 @@ while IFS= read -r line; do
 done <<< "$CLASSIFICATION"
 log "CLASSIFICATION_END"
 
+# SPEC-WF-HARNESS5-D5: npm ci through a symlinked node_modules empties the symlink target.
+if [[ "$MODE" == "full" && -L "$REPO_ROOT/node_modules" ]]; then
+    log "ERROR=node_modules is a symlink; npm ci would empty its target. Run: unlink node_modules (no trailing slash), then npm ci --ignore-scripts"
+    finish FAIL 1
+fi
+
 run_required docs "$REPO_ROOT" bash scripts/doc-consistency-check.sh
 
 # PK5 は変更ファイルの classification に関係なく毎回実行する（docs gate と同様、
