@@ -14,7 +14,7 @@
 
 | 役割 | 責務 |
 |---|---|
-| Coordinator | thread を薄く保ち、委譲・統合・phase 遷移を管理する。実作業は原則しない。[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の `Owner Effort Budget` を承認インターフェースで可視化し、超過見込みまたは `goal-drift signal` で hard stop する |
+| Coordinator | thread を薄く保ち、委譲・統合・phase 遷移を管理する。実作業は原則しない。[DEV_WORKFLOW.md](DEV_WORKFLOW.md) の `Owner Effort Budget` を承認インターフェースで可視化し、上限に届く見込みと `goal-drift signal` の扱いは同節に従う |
 | Plan Reviewer（Plan Gate 担当） | plan-draft を独立レビューし P1/P2 = 0 まで差し戻す。Writer と兼任不可。phase 名 plan-gate はこの役割の審査 phase を指す |
 | Writer | 実装・docs 編集の書き手。one-writer rule（DEV_WORKFLOW `Subagent Budget`）に従う |
 | Final Reviewer | 実装後の Final Review（broad audit）の担当。R3/R4 は Contract Audit（DEV_WORKFLOW）を source docs 直読みで実施 |
@@ -33,12 +33,14 @@
 - R4・workflow gate change は Double Audit（独立2回の Contract Audit。詳細は [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit (R3/R4)」参照）
 - Human Gate は owner 限定
 - fork は独立に数えない。第三者性の要る review は fork でない fresh な subagent を使う（owner 2026-09-23。fork は会話の全履歴を継承する: Claude Code 公式 [sub-agents](https://code.claude.com/docs/en/sub-agents)「How forks differ from other subagents」）
-- 同じ round で 2 本以上の review を回すとき（Plan Review・Final Review とも。Double Audit を含む）は、同じ round の各 reviewer に、他の reviewer の結果が置かれた場所すべて（例: packet の Review Response の段落、PR body、PR の comment / review、Coordinator が保存した local の報告 file）を読ませず、その発注の本文にも他の reviewer の結果とそれ由来の観点を書かない。発注の順や同時発注に依らず、どの reviewer の発注にもこの指示を入れる。closure・是正の発注は前回 findings から始めてよい（[code_review.md](code_review.md) の `## Verification Rules` の closure の文）。すべての結果がそろうまで Coordinator は結果を packet・PR body に転記しない。読んだと申告した run は独立に数えず取り直す。Codex の broad が round をまたいで pending のときは、Claude 側の findings の是正を進めてよく、Codex には是正後の HEAD への初回 broad として（先の findings を見せず）発注する。Codex の broad が返ったら、Claude 側も同じ HEAD で broad を取り直す（helper は同じ head/base の broad だけを Final Review Minimum に数える。`scripts/pr-gate.py` の `record`）。取り直しの発注にも Codex の結果と先の findings を見せない（2026-09-25 の dogfood 所見: PR #97・#94 で 2 回取り直した）
+- 同じ round で 2 本以上の review を回すとき（Plan Review・Final Review とも。Double Audit を含む）は、同じ round の各 reviewer に、他の reviewer の結果が置かれた場所すべて（例: packet の Review Response の段落、PR body、PR の comment / review、Coordinator が保存した local の報告 file、是正 commit の件名・本文）を読ませず、その発注の本文にも他の reviewer の結果とそれ由来の観点を書かない。発注の順や同時発注に依らず、どの reviewer の発注にもこの指示を入れる。closure・是正の発注は前回 findings から始めてよい（[code_review.md](code_review.md) の `## Verification Rules` の closure の文）。すべての結果がそろうまで Coordinator は結果を packet・PR body に転記しない。読んだと申告した run は独立に数えず取り直す。Codex の broad が round をまたいで pending のときは、Claude 側の findings の是正を進めてよく、Codex には是正後の HEAD への初回 broad として（先の findings を見せず）発注する。Codex の broad が返ったら、Claude 側も同じ HEAD で broad を取り直す（helper は同じ head/base の broad だけを Final Review Minimum に数える。`scripts/pr-gate.py` の `record`）。取り直しの発注にも Codex の結果と先の findings を見せない（2026-09-25 の dogfood 所見: PR #97・#94 で 2 回取り直した）
 - Writer が Codex の packet は、Writer と別 vendor の Plan Reviewer を含める（担当は `## 座組`）。同じ vendor の fresh context はこの条件を満たさない（D-062 の原則「縛られる側に gate 文と検査器を書かせない」）
 - load-bearing な判断（Plan Gate、Final、裁定）は担当者が正本を直接読み、subagent の要約は claim として扱う（[DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Subagent Budget」の Load-bearing decisions の項）
 - Plan Reviewer と Final Reviewer は別の fresh context（同じ model・vendor でよい）
 
 数値閾値（`Owner Effort Budget` 等）は [DEV_WORKFLOW.md](DEV_WORKFLOW.md) を参照し、本書には再掲しない。
+
+design lane は、製品の設計正本（`docs/function-design/`・`docs/db-design/`・`docs/SCREEN_DESIGN.md`・`docs/design-system/`・ADR）の変更を主目的とし、製品コードを変えない lane を指す。
 
 ### 3.3 Capacity-degraded（役割担当の一時不能）
 
@@ -84,9 +86,9 @@
 | start / resume kickoff | [.agents/skills/inventory-workflow-start](../.agents/skills/inventory-workflow-start/SKILL.md) + Plan Packet `Workflow State` |
 | Codex/OpenAI session | [agent-guidance index](agent-guidance/README.md) |
 | wave 編成 / resume / merge train | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Wave Operation」+ `docs/plans/` の packet |
-| Design Phase | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Design Phase Rules / Impact Review Lenses」 |
+| Design Phase | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Design Phase Rules」+ [docs/templates/plan-packet.md](templates/plan-packet.md) の Impact Review Lenses |
 | 実装 | [.agents/skills/inventory-implementation](../.agents/skills/inventory-implementation/SKILL.md) + [docs/templates/plan-packet.md](templates/plan-packet.md) |
-| Contract Audit / review-only subagent | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit (R3/R4)」+ [docs/templates/subagent-review-packet.md](templates/subagent-review-packet.md) |
+| Contract Audit / Final Review | [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit (R3/R4)」+ [docs/templates/subagent-review-packet.md](templates/subagent-review-packet.md) |
 | PR review 依頼 | [docs/code_review.md](code_review.md) |
 | 設計書レビュー観点 | [docs/quality/review-checklist.md](quality/review-checklist.md) |
 | PR handoff | [.github/pull_request_template.md](../.github/pull_request_template.md) + [DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Draft PR Checkpoint」 |
@@ -182,7 +184,7 @@ read-only の Reviewer / Explorer への発注書はこの profile を用いる�
 1. 発注と適用版の正本が一致しない場合、Writer は編集を始めず、不一致箇所・正本の参照・現在 HEAD を Coordinator へ返す。
 2. 正本が一意で発注だけが誤っている場合、Coordinator は発注を作り直す。この訂正で Scope・AC・commit 条件・権限・phase・Risk・review 数を変えない。
 3. Coordinator は訂正後に本節の作成・訂正の手順 4 の最終照合（旧前提 sweep を含む）を行う。
-4. 2 と 3 を満たす発注の訂正は owner への中継を要しない。行き先は [DEV_WORKFLOW.md](DEV_WORKFLOW.md#問い合わせの行き先)「問い合わせの行き先」を参照する。
+4. 2 と 3 を満たす発注の訂正は owner への中継を要しない。行き先は [AGENTS.md](../AGENTS.md#decision-and-approval-boundaries) の Decision and Approval Boundaries を参照する。
 5. 正本が曖昧な場合はこの経路を使わない。正本の意味を変える場合は既存の独立確認と Gated Amendment へ戻る。
 6. finding の採否と権限の追加は発注の訂正として扱わない。
 7. 上記の「食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない」のうち、正本の訂正は 5 の経路で行い、Coordinator が単独で行えるのは 2 の発注の作り直しだけである。5 の「既存の独立確認と Gated Amendment」は、上記の「正本の変更が必要なら既存の改訂・承認経路を使う」が指す経路である。
@@ -190,7 +192,7 @@ read-only の Reviewer / Explorer への発注書はこの profile を用いる�
 
 ## 6. ハーネス間の既知の非対称（重要な注意）
 
-- `.codex/hooks.json` は gitignore 済みの未確認実験で非稼働。Claude側もD-059採用時点のtracked project hook inventoryは0本。両harnessともpre-push / local full / hosted CIの正本gateとreview-only packetを使う。
+- `.codex/hooks.json` は gitignore 済みの未確認実験で非稼働。Claude側もD-059採用時点のtracked project hook inventoryは0本。両harnessともpre-push / local full / hosted CIの正本gateとreview packetを使う。
 - `$inventory-workflow-start` 等の `$` 記法は Codex/OpenAI harness の入口。Claude や他 agent は `.agents/skills/*/SKILL.md` を plain procedure docs として読む。
 - 同時に動かす subagent の数に上限は置かず Coordinator が決める（[DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Subagent Budget」）。depth 1 と one-writer は守る。
 

@@ -231,7 +231,7 @@ fn name(args) -> Result<T, E>
 | **参照整合** | **R3** | **Markdownリンク先ファイルが実在するか** |
 | **Plan 構造** | **PK1** | **`docs/plans/` 直下の dated active plan が Risk 行と必須セクションを持つか** |
 | **Plan 内容** | **PK2** | **R2+ plan に未編集 placeholder / 空 bullet が残っていないか** |
-| **Plan 警告** | **PK3** | **R3/R4 plan の Trace Matrix / review-only skip / Acceptance evidence を warning で見える化する** |
+| **Plan 警告** | **PK3** | **R3/R4 plan の Contract Ledger（旧 Trace Matrix）と Acceptance evidence を warning で見える化する** |
 
 実行方法:
 ```bash

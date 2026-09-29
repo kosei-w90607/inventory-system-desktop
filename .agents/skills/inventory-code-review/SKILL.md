@@ -51,7 +51,7 @@ See `references/source-map.md` for which design doc to read for each review targ
 
 When the review is the independent review for R3/R4, run `docs/DEV_WORKFLOW.md` `Contract Audit (R3/R4)` directly from the touched source design docs, not from the Writer's summary.
 
-1. Re-verify every Contract Coverage Ledger row against the actual implementation, automated tests, and L3/non-scope disposition; a populated row is not proof of compliance.
+1. Re-verify every Contract Ledger row (old packets: Contract Coverage Ledger) against the actual implementation, automated tests, and L3/non-scope disposition; a populated row is not proof of compliance.
 2. Perform the negative-space audit: report every touched source-doc contract that is absent from the ledger, implementation, or tests.
 3. Check the State Lifecycle Matrix across initial, pending, success, invalidate, refetch, revisit, restart, failure, and retry where state exists.
 4. Re-run the Adjacent Pattern Audit for every source pattern and verify each site is ported or explicitly excluded.
@@ -59,7 +59,7 @@ When the review is the independent review for R3/R4, run `docs/DEV_WORKFLOW.md` 
 6. Confirm every non-automatable assertion has an L3 item with screen, reachability steps, and observable pass criteria.
 7. Before Ready, compare the complete PR body with the final diff, current Workflow State, helper status and the dedicated records, manual gates, and residual risks; report stale text as a finding.
 
-For workflow gate changes and R4, require the independent double-audit defined by `docs/DEV_WORKFLOW.md`. Review-only results remain claims until the coordinator verifies each finding in the repository.
+For workflow gate changes and R4, require the independent double-audit defined by `docs/DEV_WORKFLOW.md`. Final Review results remain claims until the coordinator verifies each finding in the repository.
 
 ## Output Format
 

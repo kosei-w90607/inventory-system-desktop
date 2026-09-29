@@ -21,6 +21,7 @@ If the task changes operator workflow, status meaning, route/search behavior, or
 
 ## Rules
 
+- 見やすさ・見た目を目的にする change は、`docs/design-system/01-decision-rules.md` の該当 DSR を先に確かめ、無ければ DSR を先に起こす。
 - Design for the actual operator: non-IT, daily store work, Japanese labels, possible presbyopia, and limited tolerance for ambiguous UI.
 - Preserve the existing inventory-system visual language before changing a screen: inspect nearby implemented screens, shared layout, table/card/chip patterns, spacing, typography, color tokens, and component variants. A new page should feel like the same Windows business app unless a Plan Packet explicitly changes the shared UI direction.
 - Do not encode business status by hue alone. Pair semantic color with Japanese text and at least one non-color signal such as icon, shape, position, badge, or column.
