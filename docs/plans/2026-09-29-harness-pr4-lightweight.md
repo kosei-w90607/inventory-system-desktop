@@ -12,9 +12,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: ac00162da132ea4405079ccb160fb49052677781
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（fresh context、Coordinator が指定する worktree で作業）
@@ -34,6 +34,7 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - plan-gate（round 1）: Plan Review round 1 の是正（相談役 Fable 5.1 の起草、2026-09-29。内訳は Review Response）
 - plan-gate（round 2）: Plan Review round 2 の是正（相談役 Fable 5.1 の起草、2026-09-30。内訳は Review Response）
 - plan-gate（round 3）: Plan Review round 3 の P3 の是正（2026-09-30。内訳は Review Response）
+- plan-gate → plan-approved（2026-09-30、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `87cf8eca`）で独立 Plan Reviewer 2 本の P1/P2 = 0、P3 の是正（`ac00162d`）を Coordinator が現物で確かめた（`doc-consistency-check.sh --target plan` と `check-workflow-git.sh` が exit 0、helper の `parse_packet` が通る）。owner 承認（2026-09-30、この change での介入 2〜4 回目 = plan-approved・G1・G2 を同じ 1 回の問い合わせで得た）: G1 = A（1 本）、G2 = A（介入の既定 6・実働 30 分、relay の上限を外す、上限に届くときは次の判断と同じ 1 回で諮る）。Plan Commit = `ac00162d`（承認した計画の最後の commit）
 
 ## Owner Effort Budget
 
@@ -44,9 +45,9 @@ manual なし: 製品の runtime・画面・配布物を変えず、Windows nati
 - relay 往復上限: 5（Plan Review の Codex が最大 3 round、Final Review の Codex broad 1、base 同期の後の Codex closure 1）
 - Plan Review round 天井: 3（既定 3）
 
-| 種別 | 上限 | 消費（2026-09-30 時点） | 残りの見込み | 予備 | 合計 |
+| 種別 | 上限 | 消費（2026-09-30 の plan-approved 時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 7 | 1: 起票承認（2026-09-29、PR4・PR5 の起票） | 5: G1 1、G2 1、plan-approved 1、Ready 1、merge 1 | 1 | 7 = 1 + 5 + 1 |
+| 介入 | 7 | 4: 起票承認（2026-09-29、PR4・PR5 の起票）、G1・G2・plan-approved（2026-09-30、同じ 1 回の問い合わせ） | 2: Ready 1、merge 1 | 1 | 7 = 4 + 2 + 1 |
 | relay | 5 | 3: Plan Review の Codex round 1・round 2・round 3（各 1。2026-09-29・2026-09-30・2026-09-30） | 2: Final Review の Codex broad 1、base 同期の後の Codex closure 1 | 0 | 5 = 3 + 2 + 0 |
 
 G1 と G2 は同じ 1 回の問い合わせで答えを得ても、decision point ごとに 2 回と数える。
