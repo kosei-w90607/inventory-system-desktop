@@ -50,12 +50,12 @@ docs-onlyを含むhostedの全正規経路には実PR headに対するPK5（Plan
 
 | 分類 | 具体pathと扱い |
 |---|---|
-| 実行制御/full | `.github/workflows/**`、`.github/actions/**`、`.github/merge-gate-ruleset.json`、`scripts/ci/**`、`scripts/tests/**`、`scripts/{local-ci,pre-push,doc-consistency-check,check-env-safety,check-workflow-git,check-command-drift}.sh`、`scripts/pr-gate.py`、`.codex/bin/**`、`.claude/settings.json`、`.claude/hooks/**` |
-| policy/docs＋workflow回帰 | `AGENTS.md`、`CLAUDE.md`、`docs/{DEV_WORKFLOW,ci,AGENT_OPERATING_MANUAL,code_review,project-profile}.md`、`docs/agent-guidance/**`、`docs/templates/**`、`.agents/**`、`.claude/{rules,commands,skills}/**`、`.github/pull_request_template.md` |
+| 実行制御/full | `.github/workflows/**`、`.github/actions/**`、`.github/merge-gate-ruleset.json`、`scripts/ci/**`、`scripts/tests/**`、`scripts/{local-ci,pre-push,doc-consistency-check,check-env-safety,check-workflow-git,check-command-drift}.sh`、`scripts/pr-gate.py`、`.codex/bin/**`、`.claude/settings.json`、`.claude/hooks/**`、`.claude/agents/**`、`**/.claude-plugin/**`（skill folderをpluginにするmanifest。中身のpathはfullにせず、manifestが無いことをhook testが求める） |
+| policy/docs＋workflow回帰 | `AGENTS.md`、`CLAUDE.md`、`docs/{DEV_WORKFLOW,ci,AGENT_OPERATING_MANUAL,code_review,project-profile}.md`、`docs/quality/review-checklist.md`、`docs/agent-guidance/**`、`docs/templates/**`、`.agents/**`、`.claude/{rules,commands,skills}/**`、`.github/pull_request_template.md` |
 | 一般docs | `docs/Plans.md`、`docs/backlog.md`、`docs/archive/**`等。既存のfunction-design/REQ/bindings/drift分類が重なる場合はそのflagも保持 |
 | その他 | 既存のRust/frontend/env/generated/traceability分類を維持。未登録pathは全gateへfallback |
 
-helperのRisk/review要件確認ではcurrent main側の分類を使い、PRがclassifier/evaluatorを変更して自分の必要reviewを減らせないようにする。CI判定自体を二重実装せず、helperは正しいworkflow/app/対象版の実行済みMerge gateを確認する。
+helperのRisk/review要件確認ではcurrent main側の分類を使い、PRがclassifier/evaluatorを変更して自分の必要reviewを減らせないようにする。helperは自分のfileがPRのbaseの`scripts/pr-gate.py`と同じときだけ動き、違えば`helper differs from base …`でbaseの版を使うcommandを示して止まる（D-099。この照合を載せた版以降のhelperに効く）。CI判定自体を二重実装せず、helperは正しいworkflow/app/対象版の実行済みMerge gateを確認する。
 
 ruleset案は`inventory-main-merge`、target=branch、include=`refs/heads/main`、exclude=[]、enforcement=active、bypass_actors=[]。rulesはpull_request（required_approving_review_count=0）、required_status_checks（context=`Merge gate`、integration_id=15368、strict_required_status_checks_policy=true）、deletion禁止、non_fast_forward禁止。15368は現repoのCI check APIで確認したGitHub Actions app IDで、設定直前にも照合する。review承認数0はモデルによるPlan/Final Reviewを免除せず、別GitHubユーザーを増やさないための設定。既存rulesetを上書きせず、別設定が増えていれば適用差分を再確認する。
 
@@ -143,7 +143,7 @@ R2+はPRの差分が触るactive packetがちょうど`--packet`の1つである
 
 追加候補は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+では`--packet docs/plans/FILE.md`を指定し、当該PRの差分が触るactive packetと照合する。対象を複数packetへ曖昧に結び付ける入力は拒否する。R0/R1は明示Riskとdiff分類、および`--manual required|not-required`を必須とし、CI制御の実行code変更をR0/R1へ下げる入力を拒否する。Risk値でCIの実行範囲を縮めず、policy文書の意味変更のRisk判定はowner/modelが行う。packet不在をmanual免除とみなさない。業務的Riskの分類自体はowner/モデルが担う。PR作成前はtrackedの計画phaseを使い、helperで架空のPR状態を作らない。
 
-statusはread-only、結果は短い状態と阻害理由（`--json`で構造化）。captureはignored `.local/pr-gate/`だけへ書く。recordは`--capture FILE --kind review|manual|r4 --outcome VALUE --evidence POINTER`を受ける。reviewでは`--review-stage broad|closure --pass-model MODEL --run-ref REF`を指定し、Auditを追加/更新する。同じrun_refを別監査として数えない。manualの再利用には`--reuse-from SHA --reuse-approval POINTER`を両方指定する。helperがcapture/serverの正当なbroadを保持し、CLI入力から架空のbroadを作らない。対象commentだけを作成/更新する。対象版が変わったrecordでは他kindもpendingへ戻し、必須でないものだけnot-requiredを設定する。Ready/mergeはownerの明示指示を前提にする。
+statusはread-only、結果は短い状態と阻害理由（`--json`で構造化）。captureはignored `.local/pr-gate/`だけへ書く。recordは`--capture FILE --kind review|manual|r4 --outcome VALUE --evidence POINTER`を受ける。reviewでは`--review-stage broad|closure --pass-model MODEL --run-ref REF --reviewed-head SHA`を指定し（`--reviewed-head`はreviewで必須、captureのheadと一致しなければ何も書かず止まる）、Auditを追加/更新する。同じrun_refを別監査として数えない。manualの再利用には`--reuse-from SHA --reuse-approval POINTER`を両方指定する。helperがcapture/serverの正当なbroadを保持し、CLI入力から架空のbroadを作らない。対象commentだけを作成/更新する。対象版が変わったrecordでは他kindもpendingへ戻し、必須でないものだけnot-requiredを設定する。Ready/mergeはownerの明示指示を前提にする。
 
 merge時はGitHubのPR head/base・実効rules・必要checkをfreshに取得し、対象CI workflow、GitHub Actions app、必要job成功、review/manualの対応版、Ready、merge可能状態を確認する。`gh pr merge --match-head-commit`で確認後のhead変更を拒否し、strict ruleでbase更新も防ぐ。helperはsettingsを変更せず、`--admin`やbypass fallbackを持たない。未知/不足/HTTP失敗/permission failureは非0で終了する。
 
@@ -157,15 +157,17 @@ Actions利用不能時はmergeを停止し、許可済みのlocal作業と証拠
 
 ## 実行手順
 
-R2+の例（`PR`は対象PR番号、`PACKET`はそのPRの差分が触る単一のactive packet）。以下のrecord/Ready/mergeはその操作のowner指示を得てから実行する。captureの返すpathを使い、SHAを手転記しない。
+R2+の例（`PR`は対象PR番号、`PACKET`はそのPRの差分が触る単一のactive packet）。以下のrecord/Ready/mergeはその操作のowner指示を得てから実行する。captureの返すpathを使い、SHAを手転記しない。reviewed headだけは、reviewerの報告が監査したcommitを書いていればそれを、無ければそのreviewを発注したreview packetの`対象差分と内容commit`欄（`docs/templates/subagent-review-packet.md:15`）のcommitを写す。captureの出力や現在のHEADから取らない（監査していないheadを記録する誤りをhelperがcaptureのheadとの照合で止める）。
 
 ```bash
 python3 scripts/pr-gate.py status --pr "$PR" --packet "$PACKET"
 python3 scripts/pr-gate.py capture --pr "$PR" --packet "$PACKET"
 python3 scripts/pr-gate.py record --pr "$PR" --packet "$PACKET" \
   --capture "$CAPTURE" --kind review --review-stage broad \
-  --pass-model "$MODEL" --run-ref "$PUBLIC_REVIEW_REF" \
+  --pass-model "$MODEL" --run-ref "$PUBLIC_REVIEW_REF" --reviewed-head "$REVIEWED_HEAD" \
   --outcome pending --evidence "$EVIDENCE"
 ```
 
 Double Auditは最初のauditをpendingで記録し、fresh captureから次のauditを追加する。必要数とfinding裁定が揃ったときだけpassにする。改版後のclosureはserverに残るbroadを使い、manual再利用時は前節のmanual→fresh capture→closureの順序を守る。モデル名/run_refは公開可能な実施記録であり独立性の機械的証明ではない。
+
+broad は head を変える push（是正・base 同期）の前に、監査した head の capture で record する。同じ head に closure run が 2 本あるときは、後に完了判定を出した run を model・run_ref にし、両方の証跡 pointer を evidence に並べて 1 回 record する。

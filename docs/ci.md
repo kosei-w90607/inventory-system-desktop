@@ -54,7 +54,7 @@ bash scripts/local-ci.sh full
 bash scripts/tests/run-workflow-tests.sh
 ```
 
-changedはorigin/main（なければmain）とのmerge-baseからPR全差分を分類する。push増分とは異なる。fullはdocs、実履歴PK5、shell syntax、workflow YAML、workflow回帰、Rust fmt/clippy/tests、bindings、traceability、frontend install/routes/typecheck/lint/format/tests/build、envを保持する。npm auditは従来どおりwarn-only。
+changedはorigin/main（なければmain）とのmerge-baseからPR全差分を分類する。push増分とは異なる。fullはdocs、実履歴PK5、shell syntax、workflow YAML、workflow回帰、Rust fmt/clippy/tests、bindings、traceability、frontend install/routes/typecheck/lint/format/tests/build、envを保持する。npm auditは従来どおりwarn-only。fullは`node_modules`がsymlinkならgateの前に失敗する（`npm ci`がsymlink先を空にするため）。changedは検査しない。
 
 local fullとhosted workflow jobは同じ`run-workflow-tests.sh`を呼び、検証一覧を複製しない。hosted docs jobは全経路でfetch-depth: 0、実PR head/baseを用いてPK5を実行する。浅い履歴や解決不能baseは成功にしない。Node pinとRuby/ripgrep/Pythonを用意する。
 
@@ -66,7 +66,7 @@ local evidenceは開始/終了のHEADとtree状態を保存し、gate中のHEAD�
 
 ## Pre-push Contract
 
-pre-pushは実際のpush先remote_refのReady状態を確認し、Ready pushと照会失敗を拒否する。修正はDraftへ戻す。Rust、docs、env、traceability、frontend routes/typecheck/lintとPK5を維持する。修正後は対象検証・改版record・hosted finalを使う。
+pre-pushは実際のpush先remote_refのReady状態を確認し、Ready pushと照会失敗を拒否する。修正はDraftへ戻す。push先のbranchのPRがopenに無くmergedにあればpushを拒否し、mainから新しいbranchを案内する。pushするfileに未stageの変更があればWARNを出してpushを続ける。Rust、docs、env、traceability、frontend routes/typecheck/lintとPK5を維持する。修正後は対象検証・改版record・hosted finalを使う。
 
 Rustまたはtraceability分類では`cargo run --bin generate_traceability -- --check`を1回実行し、T1/T2/T4のERRORをpush拒否、T3を従来どおりWARNとして扱う。全Rust関数名へ`_reqNNN`だけを要求する重複検査は使わない。REQ対象の名前規約と、技術/workflowテストの適用SPEC・設計IDはreviewで確認し、機械検査の成功を全テストの仕様対応の証明にしない。
 
@@ -74,7 +74,7 @@ Rustまたはtraceability分類では`cargo run --bin generate_traceability -- -
 
 ## Stale Green Prevention
 
-正規経路は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。R2+は`--packet`、R0/R1は`--risk`と`--manual required|not-required`を明示する。capture/server/head/baseが変われば記録し直す。Ready/mergeはowner指示の後、helperがfreshなPR・record・rules・CIを確認する。mergeはmatch-headとstrictを使い、admin fallbackはない。
+正規経路は`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`。helperはPRのbaseと同じ版でだけ動く（違えば`helper differs from base`でbaseの版を使うcommandを示して止まる）。R2+は`--packet`、R0/R1は`--risk`と`--manual required|not-required`を明示する。capture/server/head/baseが変われば記録し直す。Ready/mergeはowner指示の後、helperがfreshなPR・record・rules・CIを確認する。mergeはmatch-headとstrictを使い、admin fallbackはない。
 
 Ready後の修正はDraftへ戻し、旧greenを流用しない。base同期時のclosureとmanual限定再利用はMG-D6/D7、Actions停止時の扱いは[merge-evidence](agent-guidance/merge-evidence.md)「closeoutとActions停止時」に従う。
 
