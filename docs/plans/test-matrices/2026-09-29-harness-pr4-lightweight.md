@@ -8,7 +8,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-- SPEC-WF-HARNESS4-D1: template の構成（Contract Ledger・Design Readiness・R2 の短い本体、Consultation Relay・Findings Freeze 行・review-only skip・`independent-review` の撤去、import / 描画の表、L3 の fixture）。
+- SPEC-WF-HARNESS4-D1: template の構成（Contract Ledger・Design Readiness・R2 の短い本体、Consultation Relay・Findings Freeze 行・review-only skip・`independent-review` の撤去、import / 描画の表、L3 の fixture、先行 round の結果は Review Response にだけ）。
 - SPEC-WF-HARNESS4-D2: PK1 は R3/R4 に `## Contract Ledger` か `## Spec Contract` + `## Trace Matrix` を求める。R4 の review-only skip の ERROR と PK3 の skip の WARN は無い。PK3 の Trace の WARN は Ledger → Trace Matrix の順に読む。`## Contract Ledger` があるときはデータ行 1 件以上を求める（0 件は ERROR）。
 - SPEC-WF-HARNESS4-D3: PK4 は `- Findings Freeze:` 行を求めない。active packet の `Plan Commit` の値全体（末尾の空白・タブを削らない）は `pending` か `[0-9a-f]{40}` の完全一致。
 - SPEC-WF-HARNESS4-D4: WER の要求・検査・template・Skill が無い。
@@ -18,9 +18,9 @@ Risk: R3
 ## Failure Modes
 
 - FM1: 新 template の R3 packet が PK1 で ERROR になる（Ledger を R3 の節と認めない）。
-- FM2: 旧 template の R3 packet（本 packet・PR5 の packet）が ERROR になる（旧い組の受理漏れ、Findings Freeze 行の要求の残り）。
+- FM2: 旧 template の R3 packet（本 packet・PR5 の packet）が ERROR になる（旧い組の受理漏れ、Findings Freeze 行の要求の残り、Ledger のデータ行の ERROR が旧い組の Trace Matrix に及ぶ）。
 - FM3: Ledger も旧い組も無い R3 packet が通る（受理を緩めすぎる）。旧い組の片方だけで通る。
-- FM4: `Plan Commit` に確定待ちの注記・短い SHA・大文字・注記付き・末尾の空白やタブの値が入っても PK4 が通し、commit 後に PK5 が初回値として固定する、または helper だけが record の時点で拒む（教訓 42 の再発、Codex F1）。
+- FM4: `Plan Commit` に確定待ちの注記・短い SHA・大文字・注記付き・末尾の空白やタブの値が入っても PK4 が通し、commit 後に PK5 が初回値として固定する、または helper だけが record の時点で拒む（教訓 42 の再発）。
 - FM5: `pending` か 40 桁の正しい値が PK4 で ERROR になる（過検出）。
 - FM6: R4 の review が弱まる（R4 skip の検査を消した結果、R4 で Minimum 1 の packet が通る）。
 - FM7: PK3 が新 template の Ledger を読まず、test token の実在の WARN を失う、または「Trace Matrix に data row が無い」の誤 WARN を出す。
@@ -40,6 +40,7 @@ Risk: R3
 |---|---|---|---|---|
 | D1・D2 | FM1 | CLI（fixture） | PR4-F1 新 template の R3 packet | PK1 が Ledger を R3 の節として受けない（MU1）、PK4 が Findings Freeze 行を求める（MU7）、PK3 が Trace Matrix だけを読む（MU8） |
 | D2 | FM2 | CLI（fixture） | PR4-F2 旧 template の R3 packet（既定の fixture） | 旧い組の経路を外す |
+| D2 | FM2 | CLI（fixture） | PR4-F2b 旧 template で Trace Matrix が header と区切り行だけ | データ行の ERROR が Trace Matrix にも及ぶ（MU13）、PK3 の WARN が消える |
 | D3 | FM2 | CLI（fixture） | PR4-F3 Findings Freeze 行だけが無い旧 template の R3 packet | Findings Freeze 行の要求が残る（MU7） |
 | D2 | FM3 | CLI（fixture） | PR4-F4 Ledger も旧い組も無い R3 | 要求そのものが消える（MU2） |
 | D2 | FM3 | CLI（fixture） | PR4-F4b Spec Contract だけの R3 | 旧い組の条件が OR になる（MU3） |
@@ -91,7 +92,7 @@ For workflow-state changes, cover capture/server races, stale head/base, broad/c
 
 - threshold: `Plan Commit` の桁数 39 / 40 / 41（PR4-F7・F6）、末尾 1 文字の空白（40 桁の判定が末尾で崩れる境界）。
 - null/default: `Plan Commit` が空は既存の PK4 の field 欠落の ERROR（section 21）。
-- empty/non-empty: Ledger の表にデータ行が無い → PK1 の ERROR（PR4-F11）。旧 Trace Matrix の空は従来どおり PK3 の WARN。
+- empty/non-empty: Ledger の表にデータ行が無い → PK1 の ERROR（PR4-F11）。旧 Trace Matrix の空は従来どおり PK3 の WARN（PR4-F2b）。
 - min/max: 7 桁（下限の旧案）と 40 桁。
 - status/policy enum: 該当なし（Phase enum は変えない）。
 - wire type: 該当なし。
@@ -103,7 +104,7 @@ For workflow-state changes, cover capture/server races, stale head/base, broad/c
 
 ## Compatibility Checks
 
-- old schema/input: 旧 template の packet（Spec Contract・Trace Matrix・Design Intent Trace・Contract Coverage Ledger・Consultation Relay・Findings Freeze 行・review-only skip の行・relay の上限の行）→ 受理（PR4-F2・F3・F8、AC3）。
+- old schema/input: 旧 template の packet（Spec Contract・Trace Matrix・Design Intent Trace・Contract Coverage Ledger・Consultation Relay・Findings Freeze 行・review-only skip の行・relay の上限の行）→ 受理（PR4-F2・F3・F8、AC3）。Trace Matrix が空の旧 packet → 受理と PK3 の WARN（PR4-F2b）。
 - new schema/input: 新 template の packet → 受理（PR4-F1）。
 - output order: checker の出力の header の順（PK1〜PK4・PK6・D-046）は変えない。WER の header だけ消える（PR4-F10）。
 - optional field behavior: `Branch`・`Evidence Mode`・`Execution Mode` の任意行の扱いは変えない（既存 section 5・24）。
@@ -128,11 +129,11 @@ For workflow-state changes, cover capture/server races, stale head/base, broad/c
 mutation は対象経路の観測結果を変えるものを選び、実注入で red を確かめる（packet の AC18、`$TMPDIR` の写し）。
 
 - MU1〜MU9 は packet の Test Plan のとおり。
-- MU10〜MU12 は packet の Test Plan のとおり。
+- MU10〜MU13 は packet の Test Plan のとおり。
 - oracle の独立性: fixture の期待（ERROR の文言の断片）は checker の文言から写すが、判定の正しさは「入力の形 → exit と header」で見る。書式の期待値は helper の `SHA`（`scripts/pr-gate.py:19`）という独立の正本から取る。
 - 空集合の期待だけで kill を主張しない: PR4-F9 は WARN が「出る」側、PR4-F1 は WARN が「出ない」側を持ち、MU8 は両方で観測できる。
 - If a key branch is inverted, which test fails? 旧い組の AND/OR（MU3 → PR4-F4b）。
-- If a guard is removed, which test fails? 書式検査（MU4 → PR4-F5・F7）、Ledger の要求（MU2 → PR4-F4）、Ledger のデータ行（MU11 → PR4-F11）、末尾の strip（MU10 → PR4-F7）、archive の skip の順序（MU12 → PR4-F12）。
+- If a guard is removed, which test fails? 書式検査（MU4 → PR4-F5・F7）、Ledger の要求（MU2 → PR4-F4）、Ledger のデータ行（MU11 → PR4-F11）、末尾の strip（MU10 → PR4-F7）、archive の skip の順序（MU12 → PR4-F12）、旧い組へのデータ行の検査の波及（MU13 → PR4-F2b）。
 - If a threshold comparison changes, which test fails? `{7,40}`（MU6 → PR4-F7）。
 - If an output field is omitted, which test fails? K3 の語（MU9 → section 17）。
 
