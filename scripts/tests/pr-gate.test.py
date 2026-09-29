@@ -29,7 +29,7 @@ def good_record():
 def args(**kw):
     value=dict(repo=g.REPO,pr=7,packet=None,risk='R0',manual='not-required',capture=None,
                kind='review',outcome='pass',review_stage='broad',pass_model='sonnet',run_ref='new',
-               evidence=['https://example.invalid/result'],reuse_from=None,reuse_approval=None)
+               evidence=['https://example.invalid/result'],reuse_from=None,reuse_approval=None,reviewed_head=H)
     return argparse.Namespace(**(value|kw))
 
 class Records(unittest.TestCase):
@@ -233,6 +233,8 @@ else:raise AssertionError(path)
 print(json.dumps(value))
 '''
 
+HELPER='scripts/pr-gate.py';HELPER_TEXT=(ROOT/HELPER).read_text()
+
 class CLI(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
@@ -246,7 +248,8 @@ class CLI(unittest.TestCase):
         self.state={'owner':g.OWNER,'calls':[],'pr':dict(number=7,state='open',merged=False,draft=True,
             head=dict(sha=self.head,ref='feature',repo=dict(full_name=g.REPO)),base=dict(sha=self.head,ref='main',repo=dict(full_name=g.REPO)),mergeable=True,mergeable_state='clean'),
             'files':[dict(filename='docs/example.md',status='modified')], 'comments':[], 'policy':policy,
-            'contents':{'scripts/ci/classify-changes.sh':(ROOT/'scripts/ci/classify-changes.sh').read_text(),g.POLICY:json.dumps(policy)},
+            'contents':{'scripts/ci/classify-changes.sh':(ROOT/'scripts/ci/classify-changes.sh').read_text(),g.POLICY:json.dumps(policy),
+                        HELPER:HELPER_TEXT},
             'effective':[r|{'ruleset_id':1} for r in policy['rules']],
             'runs':[dict(id=10,head_sha=self.head,created_at='2026-09-14',event='pull_request',path='.github/workflows/ci.yml',head_repository=dict(full_name=g.REPO),head_branch='feature',status='completed',conclusion='success',check_suite_id=2,html_url='https://example.invalid/run')],
             'checks':[dict(name='Merge gate',app=dict(id=15368),status='completed',conclusion='success')]}
@@ -371,10 +374,10 @@ class CLI(unittest.TestCase):
         self.state['files']=[dict(filename='scripts/pr-gate.py',status='modified'),dict(filename=packet,status='added')];self.save()
         common=('--packet',packet)
         capture=self.run_cli('capture',*common)['capture']
-        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','sonnet','--run-ref','sonnet-audit','--evidence','https://example.invalid/sonnet','--outcome','pending')
+        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','sonnet','--run-ref','sonnet-audit','--evidence','https://example.invalid/sonnet','--outcome','pending','--reviewed-head',self.head)
         self.assertIn('review not passed',self.run_cli('ready',*common,expected=1))
         capture=self.run_cli('capture',*common)['capture']
-        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','opus','--run-ref','opus-audit','--evidence','https://example.invalid/opus','--outcome','pass')
+        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','opus','--run-ref','opus-audit','--evidence','https://example.invalid/opus','--outcome','pass','--reviewed-head',self.head)
         self.run_cli('ready',*common)
         self.run_cli('status',*common,*common,expected=2)
         self.load()
@@ -559,6 +562,79 @@ class CLI(unittest.TestCase):
         self.run_cli('record','--manual','required','--capture',capture,'--kind','manual','--outcome','pass','--evidence','x',expected=1)
     def test_low_risk_execution_change_rejected(self):
         self.state['files']=[dict(filename='scripts/pr-gate.py',status='modified')];self.save();self.run_cli('status',expected=1)
+
+class HelperVersion(unittest.TestCase):
+    # SPEC-WF-HARNESS5-D2: the helper runs only when its bytes equal the PR base's scripts/pr-gate.py.
+    setUp=CLI.setUp;tearDown=CLI.tearDown;save=CLI.save;load=CLI.load;run_cli=CLI.run_cli
+    CHANGED=HELPER_TEXT+'\n'  # One trailing byte: normalizing (rstrip, newline folding) must still differ.
+    def captures(self):return sorted((self.repo/'.local/pr-gate').glob('*.json'))
+    def test_mismatch_blocks_every_action(self):
+        capture=self.run_cli('capture','--manual','required')['capture']
+        self.load();self.state['contents'][HELPER]=self.CHANGED;self.state['calls']=[];self.save()
+        before=self.captures()
+        for action,extra in (('status',()),('capture',()),('ready',()),('merge',()),
+                             ('record',('--capture',capture,'--kind','manual','--outcome','pass','--evidence','https://example.invalid/manual'))):
+            with self.subTest(action=action):
+                if action=='merge':self.load();self.state['pr']['draft']=False;self.save()
+                error=self.run_cli(action,'--manual','required',*extra,expected=1)
+                self.assertIn('helper differs from base '+self.head,error)
+                self.assertIn('git show '+self.head+':scripts/pr-gate.py',error)
+        calls=self.load()['calls']
+        self.assertFalse([c for c in calls if c[0]=='pr' or 'POST' in c or 'PATCH' in c],calls)
+        self.assertEqual(self.state['comments'],[])
+        self.assertEqual(self.captures(),before)
+    def test_same_bytes_passes(self):
+        self.assertEqual(self.run_cli('status')['blockers'],[])
+    def test_base_fetch_failure_exit_2(self):
+        self.state['http_error_path']='/contents/'+HELPER;self.save()
+        self.run_cli('status',expected=2)
+    def test_compares_base_not_head(self):
+        self.state['pr']['base']['sha']=B
+        for base,head,expected in ((HELPER_TEXT,self.CHANGED,0),(self.CHANGED,HELPER_TEXT,1)):
+            with self.subTest(base_changed=expected==1):
+                self.state['snapshots']={B:{HELPER:base}};self.state['contents'][HELPER]=head;self.save()
+                result=self.run_cli('status',expected=expected)
+                if expected:self.assertIn('helper differs from base '+B,result)
+                else:self.assertEqual(result['blockers'],[])
+
+class ReviewedHead(unittest.TestCase):
+    # SPEC-WF-HARNESS5-D8: a review record binds to the head the reviewer audited.
+    tearDown=CLI.tearDown;save=CLI.save;load=CLI.load;run_cli=CLI.run_cli
+    packet_text=staticmethod(CLI.packet_text);configure_packet=CLI.configure_packet
+    def review(self,stage,run,reviewed,expected=0,outcome='pass'):
+        common=('--packet',self.packet)
+        capture=self.run_cli('capture',*common)['capture']
+        extra=('--reviewed-head',reviewed) if reviewed is not None else ()
+        return self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage',stage,'--pass-model',run,
+                            '--run-ref',run,'--evidence','https://example.invalid/'+run,'--outcome',outcome,*extra,expected=expected)
+    def setUp(self):
+        CLI.setUp(self)
+        self.packet,_=self.configure_packet()
+        self.state['files']=[dict(filename='scripts/pr-gate.py',status='modified'),dict(filename=self.packet,status='added')];self.save()
+    def broad_then_push(self):
+        # Broad passes at H1, then a fix is pushed: H2 needs a closure.
+        self.review('broad','sonnet',self.head,outcome='pending');self.review('broad','opus',self.head)
+        self.audited=self.head
+        self.git('commit','--allow-empty','-qm','fix');self.head=self.git('rev-parse','HEAD')
+        self.load();self.state['pr']['head']['sha']=self.head;self.state['runs'][0]['head_sha']=self.head;self.save()
+        return copy.deepcopy(self.load()['comments'])
+    def test_broad_mismatch_rejected(self):
+        self.assertIn('reviewed head differs from capture head',self.review('broad','sonnet',OLD,expected=1))
+        self.assertEqual(self.load()['comments'],[])
+    def test_closure_mismatch_rejected(self):
+        before=self.broad_then_push()
+        self.assertIn('reviewed head differs from capture head',self.review('closure','closure',self.audited,expected=1))
+        self.assertEqual(self.load()['comments'],before)
+    def test_missing_reviewed_head_exit_2(self):
+        for value in (None,'abc'):
+            with self.subTest(value=value):self.review('broad','sonnet',value,expected=2)
+        self.assertEqual(self.load()['comments'],[])
+    def test_matching_head_records(self):
+        self.broad_then_push()
+        self.review('closure','closure',self.head)
+        record=json.loads(self.load()['comments'][0]['body'].split('```json\n')[1].split('\n```')[0])
+        self.assertEqual((record['review']['broad']['head'],record['review']['closure']['head']),(self.audited,self.head))
+        self.run_cli('ready','--packet',self.packet)
 
 MINE='docs/plans/2026-09-14-fixture.md'; OTHER='docs/plans/2026-09-13-other.md'
 TOUCH='PR diff must touch exactly the --packet active packet'
