@@ -68,6 +68,8 @@ grep -Fq "TREE_STATE=CLEAN" "$clean_log" || fail "CLEAN marker missing"
 grep -Fq "GATE=docs" "$clean_log" || fail "docs gate missing"
 grep -Fq "GATE=workflow-git" "$clean_log" || fail "workflow-git gate missing (must run unconditionally like docs)"
 grep -Fq "RESULT=PASS" "$clean_log" || fail "PASS result missing"
+# D-100 D3: local evidence is not merge evidence.
+if grep -Fq "MERGE_EVIDENCE_VALID" "$clean_log"; then fail "local evidence still claims merge validity"; fi
 
 printf 'dirty\n' > "$repo/untracked.txt"
 (

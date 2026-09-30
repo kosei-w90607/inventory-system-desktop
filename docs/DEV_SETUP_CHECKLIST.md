@@ -99,15 +99,16 @@ cd inventory-system
 
 #### pre-push hook（push 増分の fast gate + Ready push guard）
 
-push 前に以下を順次実行し、いずれか失敗で push をブロックする:
+push 前に以下を `scripts/pre-push.sh` の順に実行し、いずれか失敗で push をブロックする（Rust の test の実行は Draft の hosted の rust_test が担う）:
 
-- ① `cargo fmt --check` / `cargo clippy -- -D warnings` / `cargo test`
-- ② `./scripts/doc-consistency-check.sh`（設計書整合 19 項目）
-- ③ `./scripts/check-env-safety.sh`（.env / `src/lib/env.ts` 安全性、UI_TECH_STACK §6.9 準拠）
-- ④ frontend 変更時の `npm run typecheck` / `npm run lint`
+- ① workflow git checks（PK5）
+- ② Rust 変更時の `cargo fmt --check` / `cargo clippy --all-targets --all-features -- -D warnings`
+- ③ `./scripts/doc-consistency-check.sh`（設計書整合 19 項目）
+- ④ `./scripts/check-env-safety.sh`（.env / `src/lib/env.ts` 安全性、UI_TECH_STACK §6.9 準拠）
 - ⑤ Rust / frontend test / function design / requirements 変更時の traceability check
+- ⑥ frontend 変更時の `npm run generate:routes` / `npm run typecheck` / `npm run lint`
 
-pre-push は push 増分の L0 gate であり、PR 全差分の merge evidence ではない。merge 前は completed HEAD で `bash scripts/local-ci.sh full` を実行し、HEAD SHA が一致する `CLEAN` evidence を使う。
+pre-push は push 増分の L0 gate であり、PR 全差分の merge evidence ではない。merge 前の feedback は push ごとに走る Draft の hosted の run（`Draft (no merge evidence)`）で、merge の CI 根拠は Ready 後の run の `Merge gate`。手元で全 gate を回したいときだけ `bash scripts/local-ci.sh full`（任意）を使う。
 
 Ready PR への push は stale green 防止のため block する。修正は PR を Draft に戻してから行う。緊急 bypass は raw `--no-verify` ではなく、docs/ci.md が定義する固定 reason token を環境変数で渡して hook を実行し、`.local/quality-check.log` に `BYPASS` を残す。
 
@@ -116,9 +117,10 @@ INVENTORY_PRE_PUSH_BYPASS_REASON=owner-approved git push
 ```
 
 ```bash
-cp scripts/pre-push.sh .git/hooks/pre-push
-chmod +x .git/hooks/pre-push
+ln -s ../../scripts/pre-push.sh .git/hooks/pre-push
 ```
+
+複製ではなく symlink にするのは、複製だと後の `scripts/pre-push.sh` の改善が hook に届かないため。`scripts/pre-push.sh` は tracked の mode が実行可能なので `chmod` は要らない。hook は `git rev-parse --show-toplevel` で push した worktree の root を使うので、本体 checkout の版の hook でも検査対象は push した側になる。
 
 実行ログは `.local/quality-check.log` に記録される（`.gitignore` 済み）。
 

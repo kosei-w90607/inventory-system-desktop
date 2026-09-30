@@ -191,7 +191,7 @@ read-only の Reviewer / Explorer への発注書はこの profile を用いる�
 
 ## 6. ハーネス間の既知の非対称（重要な注意）
 
-- `.codex/hooks.json` は gitignore 済みの未確認実験で非稼働。Claude側もD-059採用時点のtracked project hook inventoryは0本。両harnessともpre-push / local full / hosted CIの正本gateとreview packetを使う。
+- `.codex/hooks.json` は gitignore 済みの未確認実験で非稼働。Claude側もD-059採用時点のtracked project hook inventoryは0本。両harnessともpre-push / hosted CI の正本 gateとreview packetを使う。
 - `$inventory-workflow-start` 等の `$` 記法は Codex/OpenAI harness の入口。Claude や他 agent は `.agents/skills/*/SKILL.md` を plain procedure docs として読む。
 - 同時に動かす subagent の数に上限は置かず Coordinator が決める（[DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Subagent Budget」）。depth 1 と one-writer は守る。
 
@@ -206,5 +206,5 @@ Claude Code hook は、設定の置き場所と効力を分離する（D-059）�
 - 将来decision hookを再導入する場合は、入力、stdout、stderr、exit code、許可 / 拒否条件、正常系runtime、timeoutを先に契約化し、fixture testを持たせる。既存checkerの単純接続は、正常系runtimeがhook timeoutを超えないことを複数回実測するまで採用しない
 - advisory hook は tool 実行の成否や副作用を command 文字列だけから推定しない。実際には完了していない push / PR 作成を完了済みと表現したり、read-only role へ tracked write を命じたり、`[MANDATORY]` 文言で repository workflow を上書きしたりしない
 - Plan Reviewer、Final Reviewer、subagent の要否は Plan Packet と DEV_WORKFLOW が所有する。旧hook固有の7観点 `Self-Review` とplan rally強制は後継なしで退役する。hook は model 名、agent log、時間窓、個人 memory を根拠に追加 review を強制しない
-- effective hook inventory（0本を含む）とplugin無効化はrepo-owned testをlocal fullとhosted finalの両方で実行する
+- effective hook inventory（0本を含む）とplugin無効化はrepo-owned testをhosted（Draft と Ready の run）で実行する（local full は任意）
 - CASIO 語彙（`Z00x` / `CV17` / `SR-S4000` / `CP932`）の BIZ/CMD 契約への混入検出は機械ガードが存在しない。レビューが最後の砦であり、[review-checklist](quality/review-checklist.md) の設計判断レンズ #2 を必ず使う。

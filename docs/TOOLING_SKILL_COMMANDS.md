@@ -158,7 +158,6 @@ npm run tauri
 # ③ 設計-コード突合チェック（コードPRで必須）
 cd src-tauri
 cargo test --test architecture_test       # L1: レイヤー依存ルール
-cargo test --test design_compliance_test  # L2: シグネチャ突合
 
 # ④ コード品質チェック（コードを含むPRで必須）
 cd src-tauri
@@ -172,7 +171,6 @@ cargo test
 | 設計書の横断整合（16項目: 用語/型/責務/TX/DB参照/関数整合/REQ/INV/エラー/曖昧/テンプレート/マーカー等） | `./scripts/doc-consistency-check.sh` | 設計書PRの提出前 |
 | プランの整合（6項目: DB参照/関数名/曖昧表現/マーカー/設計矛盾/先決事項） | `./scripts/doc-consistency-check.sh --target plan` | 実装計画の承認前 |
 | レイヤー依存ルール（db→biz禁止等の4層制約） | `cargo test --test architecture_test` | コードPRの提出前 |
-| 設計-コード シグネチャ突合（関数名の存在チェック） | `cargo test --test design_compliance_test` | コードPRの提出前 |
 | **設計書追加時のマッピング登録** | `design_compliance_test.rs` の `build_doc_to_modules_map()` に追記 | **設計書PRの提出前**（忘れるとCIが落ちる） |
 | Rustコードの品質（型/lint/テスト） | `cargo fmt + clippy + test` | コードPRの提出前 |
 | Rustコードの深いレビュー（セキュリティ/パフォーマンス） | `/harness-review` | 実装コードが多いPR |

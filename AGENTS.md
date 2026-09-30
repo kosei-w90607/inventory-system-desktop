@@ -28,7 +28,7 @@ merge は helper 経由で、専用 record と手順は [merge-evidence](docs/ag
 
 - `UI -> CMD -> BIZ -> IO/MNT` を維持し、CMD を薄く、業務規則を BIZ に置く。
 - 振舞いの変更には意味のあるテストを同時に用意し、使用している REQ / spec ID を付ける。source design も同期する。既存テストを不都合だから削除・skip・弱体化しない。誤ったテストは設計正本との不一致と理由を示して修正する。
-- 必須 gate の選択は `docs/DEV_WORKFLOW.md` と `docs/ci.md` に従う。実装中は対象テスト、必要な最終確認では `bash scripts/local-ci.sh full`。成功済み検証の追加・反復には変更、失敗、未解決懸念などの理由を持つ。
+- 必須 gate の選択は `docs/DEV_WORKFLOW.md` と `docs/ci.md` に従う。実装中は対象テスト。push のたびに Draft の hosted が changed 分類で走り、merge の CI 根拠は Ready 後の run の `Merge gate`。手元で全 gate を回す必要があるときだけ `bash scripts/local-ci.sh full`（任意）。成功済み検証の追加・反復には変更、失敗、未解決懸念などの理由を持つ。
 - docs は `bash scripts/doc-consistency-check.sh`、active plan は `--target plan`。Rust / frontend / bindings / traceability のコマンドは workflow の Verification を参照する。
 - 重要な進捗は `Plans.md`、参照先が変われば `docs/PROJECT_HANDOFF.md` を同期する。履歴の全文は dashboard に戻さない。
 - commit / PR 文面は `docs/DEV_WORKFLOW.md` の Commit / PR Messages、review は `docs/code_review.md` に従う。

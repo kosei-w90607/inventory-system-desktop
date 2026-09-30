@@ -4,7 +4,7 @@
 
 ## 運用ルール
 
-1. **レビュー前**: `./scripts/doc-consistency-check.sh` を実行し、機械検出可能な不整合をゼロにする
+1. **レビュー前**: PR が無い段階（Plan Review）では `./scripts/doc-consistency-check.sh` の既定 mode を手元で回し、機械検出可能な不整合をゼロにする。PR の後（Final Review・closure）は hosted の docs job（`Design doc consistency`）の結果を読み、手元で回すのは hosted の赤の再現と `--target plan` の plan 固有の検査だけ
 2. **レビュー時**: 下記9カテゴリと設計判断レンズ、および `docs/code_review.md` の Blocking Review Focus を観点とし、カテゴリ外の指摘も severity を付けて返す
 3. **返却時**: 見つけた指摘は件数で落とさない。カテゴリ外の指摘はカテゴリ外と明示して返す
 4. **PR 操作**: PR への指摘投稿と、それ以外の PR 操作の承認は `AGENTS.md` Decision and Approval Boundaries に従う
@@ -61,7 +61,6 @@
 
 - [ ] 関数シグネチャを変更した場合、対応する設計書も更新したか
 - [ ] 新規 pub 関数を追加した場合、設計書に記載があるか（なければ allowlist に追加理由を明記）
-- [ ] `cargo test --test design_compliance_test` を PR 提出前に実行したか
 - [ ] テスト・設計書・REQ インベントリを変更した場合、`cd src-tauri && cargo run --bin generate_traceability -- --check` が green か（drift 時は再生成して commit）
 
 ### 9. Operator UI visibility

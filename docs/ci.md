@@ -11,28 +11,32 @@ GitHubはmainへのPRとCIを強制し、helperはreview/manual/R4を確認す�
 | 層 | 目的 | 証跡 |
 |---|---|---|
 | L0 pre-push | push増分のfeedback、Ready push拒否 | `.local/quality-check.log` |
-| L1 local full | 全gateとlocal固有確認 | `.local/ci-evidence/` |
-| L2 hosted final | 必要jobの実成功をMerge gateへ集約 | GitHubの対象workflow/check |
+| L1 local full（任意） | hosted と同じ gate 一式を手元で回す道具。merge の条件にしない | `.local/ci-evidence/` の log |
+| L2 hosted | Draft の run は push ごとの feedback（`Draft (no merge evidence)`）。Ready / dispatch の final run が必要 job の実成功を `Merge gate` へ集約 | GitHub の対象 workflow / check |
 
 hostedを最終CI根拠にし、一律のlocal fullやPR本文へのSHA転記をmergeの条件にしない。localで観測した失敗、Windows L3・manual/R4の保護は維持する。
 
 ## Hosted Trigger Model
 
-`pull_request`のopened/reopened/ready_for_review/synchronize（base=main）と`workflow_dispatch`だけを使う。pushやbody編集では起動しない。全docsをevent対象とし、path filterと本文skip tokenは廃止した。Draftは全runnerを止め、aggregate名は`Draft (no merge evidence)`。Ready/dispatchだけ`Merge gate`を発行する。required名でDraftのskippedを発行しない。
+`pull_request`のopened/reopened/ready_for_review/synchronize（base=main）と`workflow_dispatch`だけを使う。pushやbody編集では起動しない。全docsをevent対象とし、path filterと本文skip tokenは廃止した。Draft でも changes と changed 分類の job と aggregate が走り、aggregate 名は `Draft (no merge evidence)`。Ready / dispatch だけ `Merge gate` を発行する。required 名で Draft の skipped を発行しない。
 
-aggregateのifは`always()`とDraft判定だけ。changes成功条件をifへ追加すると分類失敗でaggregateがskipされるため禁止。`check-required-jobs.sh`が分類key/値と全jobを検査し、選択されたjobはsuccessだけ、非対象jobはsuccess/skippedを受理する。failure/cancelled/欠落/未知値は拒否する。CI tokenはcontents:read。
+aggregate の if は `always()` だけ。Draft の判定は name 式だけが持つ。changes成功条件をifへ追加すると分類失敗でaggregateがskipされるため禁止。`check-required-jobs.sh`が分類key/値と全jobを検査し、選択されたjobはsuccessだけ、非対象jobはsuccess/skippedを受理する。failure/cancelled/欠落/未知値は拒否する。CI tokenはcontents:read。
 
 ### Final Trigger Selection
 
 CI-TRIGGER-D1: 同じHEADへ予防的なdispatchを重ねない。dispatchは常にfull。
 
+final run = 同じ head の latest の run が completed / success で、その check suite に `Merge gate` が success でちょうど 1 つある run（`scripts/pr-gate.py:388-399`）。Draft の run（`Draft (no merge evidence)`）は final run でなく、条件に数えない。
+
 | HEADの状態 | 選ぶtrigger | dispatch前の確認 |
 |---|---|---|
 | docsを含む全PR | owner Ready、Ready更新の例外はsynchronize、再開はreopened | dispatch しない |
-| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に successful / in-progress run がないこと |
-| 同一 HEAD に successful final が既にある | 既存runを使う | Ready再操作もdispatchも不要 |
+| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に、helper が受理する final run も、進行中の final の run も無いこと。final の run = Ready 化の後に作られた run（`ready_for_review`、または Draft でない PR の `synchronize`・`reopened`）と dispatch の run。進行中の run が final かは PR の timeline の Ready 化の時刻と run の `created_at` で見分ける |
+| 同一 HEAD に helper が受理する final run が既にある | 既存runを使う | Ready再操作もdispatchも不要 |
 
-base付替え等でrunが無い場合も、同一 HEAD の run が 0 件であること、または失敗/cancelを確認してからrecoveryを選ぶ。
+Ready の後に同じ head の赤・cancel の `Draft (no merge evidence)` が残り merge が `unstable` なら、その Draft の run を `gh run rerun <run id>` で再実行する（元の event で走るので `Merge gate` は出ない）。再実行でも緑にならなければ Draft へ戻して直す。
+
+base付替え等でrunが無い場合も、同一 HEAD に final run が無いこと（Draft の run は数えない）、または final の run の失敗/cancel を確認してからrecoveryを選ぶ。
 
 ## Risk Routing
 
@@ -42,7 +46,7 @@ base付替え等でrunが無い場合も、同一 HEAD の run が 0 件であ�
 
 CI-PUBLIC-D1: この repository は public で、現行 workflow は standard GitHub-hosted runner のみを使う。[GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions) と [job execution time](https://docs.github.com/en/actions/how-tos/monitor-workflows/view-job-execution-time) の公式 contract 上、この組み合わせでは Actions の billable execution minutes は発生しないため、private repository 時代の月間 minute 使用率や reset 日を hosted gate の判断条件にしない。larger runner を将来導入する場合は public repository でも課金対象になるため、別の R3 change で費用・security boundary・routing を再設計する。
 
-free minutes と無関係に、runner / Actions service の障害、concurrency、cache、重複実行には運用コストがある。CI-TRIGGER-D1 の 1 HEAD 1 final、L1 での事前検証、失敗原因を直してからの recovery を維持する。
+free minutes と無関係に、runner / Actions service の障害、concurrency、cache、重複実行には運用コストがある。CI-TRIGGER-D1 の 1 HEAD 1 final、Draft 中の hosted と L0 での事前検証、失敗原因を直してからの recovery を維持する。
 
 GitHub Actions が利用不能なら merge を停止し、許可済みの local 作業と証跡を保存する。
 
@@ -50,7 +54,7 @@ GitHub Actions が利用不能なら merge を停止し、許可済みの local 
 
 ```bash
 bash scripts/local-ci.sh changed
-bash scripts/local-ci.sh full
+bash scripts/local-ci.sh full  # 任意
 bash scripts/tests/run-workflow-tests.sh
 ```
 

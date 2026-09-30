@@ -231,8 +231,6 @@ if [[ "$(classification_value rust)" == "true" ]]; then
         cargo fmt --check || exit "$?"
         echo "  cargo clippy --all-targets --all-features -- -D warnings"
         cargo clippy --all-targets --all-features -- -D warnings || exit "$?"
-        echo "  cargo test"
-        cargo test || exit "$?"
     ) || fail_gate rust
 fi
 
