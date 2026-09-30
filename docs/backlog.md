@@ -183,6 +183,7 @@
 - **CI の二重を削る lane の P9 の未確認 2 点（回復の場面が起きたら観測して記録する）**: (1) `gh run rerun` が元の event の payload（`draft: true`）で走り、aggregate の名前が `Draft (no merge evidence)` のままで `Merge gate` を出さないか。(2) Ready の後、同名の後継が無い `Draft (no merge evidence)` の赤・cancel の check だけが head に残るか。PR #130 では赤・cancel の Draft の check が残る場面が起きず観測できなかった（[archive](archive/plans/2026-09-30-ci-dedup.md) の Contract Probe P9）。
 - **`docs/Plans.md` の `### Wave Registry` が見出しと形式の行だけになる**（ハーネスの残りの小口の整理〈PR #132〉の Plan Review round 3 の P3）: 完了済み wave を全て完了履歴へ移した後、見出しと形式の行だけが残る。見出しごと移送 file へ移すなら、`### Wave Registry` を `## 直近の完了` の範囲の終端に使う検査（closeout の行数の確認など）の終端も含めて小さな R0/R1 で直す。
 - **`scripts/tests/reading-order-drift.test.sh:61-63` のコメントが削除した routing fixture を指す**（ハーネスの残りの小口の整理〈PR #132〉の S4 の既知の残り）: コメントが PR #132 で削除した `docs/agent-guidance/evals/context-routing-fixture.md` を指したまま。`scripts/tests` は workflow 分類なので、次に同 file を触る lane で直す。
+- **home の小文字化の残り（`scripts/tests` と未知 path に当たる分）**（PR #81 の作り直し〈PR #134〉で R1 に入らなかった分、2026-10-01）: `.codex/rules/default.rules` の `/home/kosei/Projects/`（classifier の未知 path で全領域に倒れ、helper が R0/R1 を拒否する。Windows の Codex Desktop 専用）、`docs/DEV_SETUP_CHECKLIST.md` の Claude auto-memory の namespace `-home-kosei-Projects-inventory-system-public`（実在は小文字）と `scripts/tests/codex-safe-wrappers.test.sh` の T12・T13（DEV_SETUP に大文字の namespace を要求し、旧 root の検出 pattern が小文字を拾わない。PR #81 の `[Pp]rojects` の形で広げる）。上の reading-order-drift のコメントと 1 本の R3 にまとめる
 
 ### 記録目的（受容済みリスク・revisit 条件付き）
 
