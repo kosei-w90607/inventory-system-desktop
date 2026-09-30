@@ -349,3 +349,9 @@ Fill after review.
   - Opus #7（P3、引用の行番号）: 一括是正。tie-breaker を `docs/DEV_WORKFLOW.md:52`（`:52`）、D-049 の範囲を `docs/decision-log.md:367-373`（`:125`）に実読で直した。
   - Opus の残存リスク（新 §5.4 の「読むもの」に入口文書を列挙すると `scripts/tests/reading-order-drift.test.sh` の `DRIFT_PATTERN` に当たりうる）: 一括是正。Test Plan `:274` に 1 行、AC-C-4 `:216` にこの test の exit 0（DRIFT_PATTERN の条件を括弧で）。
   - Opus #5（P3、完了済み wave を全て移すと `### Wave Registry` は見出しと形式の行だけになる）: backlog。消すと AC-S1-1 の範囲の終端が変わるので本 commit では入れず、S1 の既知の残り `:103` に 1 行、closeout で backlog に積む。
+
+- Final Review broad（2026-10-01、対象 `89c58c2e`、互いに独立の 2 本、Final Review Minimum 2）: fresh Opus 5.5 = approve（P1 / P2 0、P3 2）、Codex GPT-6.1 Sol = approve（P1 / P2 0、P3 2。PR #132 の review）。両本とも round 3 の後の一括是正（`a8e3bb17..842f7ab8`）を独立に確かめ、正本との矛盾は無かった。2 本を pending で record してから是正した（Coordinator、finding は現物で確認）。
+  - Opus #1（P3、`docs/DEV_WORKFLOW.md:329` の「exceeds 10 lines」が Wave Registry の行を数えるかで 1 通りに読めない）: 是正。「`### Wave Registry` より上の entry の行が 10 を超えたら」に直した（AC-S1-1 の数え方と一致）。
+  - Opus #2（P3、`.codex/README.md` への起動設定の案内が Desktop の条件の下だけに移り、WSL の Codex CLI の起動設定〈`.codex/README.md:35`〉を AGENTS から辿れない）: 是正。`AGENTS.md` の Workspace Access の冒頭に「Codex の起動設定は `.codex/README.md`」を戻し、Desktop の項は「Windows 側の実行と許可コマンド」に絞った。Safety 以降は不変（AC-S2-3）。
+  - Codex #1（P3、`docs/Plans.md` の短い行に D3 の求める R3/R4 の Matrix の link が無い）: 是正。archive に Matrix がある R3/R4 の entry に Matrix の link を足した（R2 の小口のまとめは D3 の対象外）。`docs/DEV_WORKFLOW.md:329` にも Matrix の link を書き足した。
+  - Codex #2（P3、AC-S3-2 の「読まないもの」の単独検査は、語が §5.4 の別の行にもあるので必須の行を消しても落ちない）: 見送り。直すには packet の AC を変える Gated Amendment が要る。実装の §5.4 は必須項目がそろうことを両 reviewer が確かめており、AC は merge 後に archive される計画の検査で以後の運用に残らないため、費用に見合わない。
