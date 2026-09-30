@@ -17,7 +17,7 @@ description: Implement inventory-system code or documentation changes against it
 
 ## Verify and hand off
 
-検証の種類とタイミングは [Verification Gates](../../../docs/DEV_WORKFLOW.md#verification-gates) と [CI](../../../docs/ci.md) が所有する。実装中は対象テストと `local-ci.sh changed`、必要な最終候補では `local-ci.sh full`。
+検証の種類とタイミングは [Verification Gates](../../../docs/DEV_WORKFLOW.md#verification-gates) と [CI](../../../docs/ci.md) が所有する。実装中は対象テストと `local-ci.sh changed`。merge 前の feedback は push ごとの Draft の hosted の run で、手元で全 gate を回したいときだけ `local-ci.sh full`（任意）。
 
 Verify の後に [Draft PR Checkpoint](../../../docs/DEV_WORKFLOW.md#draft-pr-checkpoint) で Draft PR を開き、helper の capture の後に [Review Rules](../../../docs/DEV_WORKFLOW.md#review-rules) の Final Review（`Final Review Minimum` の本数。R4 / workflow gate change は Double Audit）を Draft で受ける。指摘は現物で確認し、成果物と検証、残る owner 確認を引き渡す。Ready / merge は明示承認に従う。
 

@@ -208,9 +208,9 @@ validate_public_actions_doc_contract() {
     grep -Fq 'CI-PUBLIC-D1:' "$ci_doc" || return 1
     grep -Fq 'CI-TRIGGER-D1:' "$ci_doc" || return 1
     grep -Fq '| docsを含む全PR | owner Ready、Ready更新の例外はsynchronize、再開はreopened | dispatch しない |' "$ci_doc" || return 1
-    grep -Fq '同一 HEAD の run が 0 件であること' "$ci_doc" || return 1
-    grep -Fq '| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に successful / in-progress run がないこと |' "$ci_doc" || return 1
-    grep -Fq '| 同一 HEAD に successful final が既にある | 既存runを使う | Ready再操作もdispatchも不要 |' "$ci_doc" || return 1
+    grep -Fq '同一 HEAD に final run が無いこと（Draft の run は数えない）' "$ci_doc" || return 1
+    grep -Fq '| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に、helper が受理する final run も、進行中の final の run も無いこと。' "$ci_doc" || return 1
+    grep -Fq '| 同一 HEAD に helper が受理する final run が既にある | 既存runを使う | Ready再操作もdispatchも不要 |' "$ci_doc" || return 1
     grep -Fq 'GitHub Actions が利用不能なら merge を停止' "$ci_doc" || return 1
     grep -Fq 'CI-TRIGGER-D1' "$dev_workflow_doc" || return 1
     grep -Fxq '## D-063' "$decision_log"
@@ -292,10 +292,10 @@ if validate_public_actions_doc_contract "$ci_doc_event_dispatch_mutation" "$DEV_
 fi
 
 ci_doc_zero_run_mutation="$mutation_dir/ci-zero-run-removed.md"
-sed 's/同一 HEAD の run が 0 件であること/同一 HEAD の run 確認は不要/' "$CI_DOC" > "$ci_doc_zero_run_mutation"
+sed 's/同一 HEAD に final run が無いこと/同一 HEAD の run 確認は不要/' "$CI_DOC" > "$ci_doc_zero_run_mutation"
 assert_mutated "$CI_DOC" "$ci_doc_zero_run_mutation" M2b
 if validate_public_actions_doc_contract "$ci_doc_zero_run_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
-    fail "M2b public Actions docs validator accepted dispatch without the zero-run prerequisite"
+    fail "M2b public Actions docs validator accepted dispatch without the no-final-run prerequisite"
 fi
 
 ci_doc_recovery_scope_mutation="$mutation_dir/ci-recovery-auto-only.md"
@@ -306,14 +306,14 @@ if validate_public_actions_doc_contract "$ci_doc_recovery_scope_mutation" "$DEV_
 fi
 
 ci_doc_in_progress_mutation="$mutation_dir/ci-in-progress-wait-removed.md"
-sed 's/successful \/ in-progress run/successful run/' "$CI_DOC" > "$ci_doc_in_progress_mutation"
+sed 's/、進行中の final の run も//' "$CI_DOC" > "$ci_doc_in_progress_mutation"
 assert_mutated "$CI_DOC" "$ci_doc_in_progress_mutation" M2c-in-progress
 if validate_public_actions_doc_contract "$ci_doc_in_progress_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M2c public Actions docs validator accepted recovery without the in-progress wait"
 fi
 
 ci_doc_successful_row_mutation="$mutation_dir/ci-successful-row-removed.md"
-sed '/同一 HEAD に successful final が既にある/d' "$CI_DOC" > "$ci_doc_successful_row_mutation"
+sed '/同一 HEAD に helper が受理する final run が既にある/d' "$CI_DOC" > "$ci_doc_successful_row_mutation"
 assert_mutated "$CI_DOC" "$ci_doc_successful_row_mutation" M2d
 if validate_public_actions_doc_contract "$ci_doc_successful_row_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M2d public Actions docs validator accepted a missing already-successful no-op row"

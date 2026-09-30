@@ -36,11 +36,11 @@ GitHub UIがCI成功だけでmerge可能と表示する場合があることは�
 
 ## CIとmain保護
 
-現在のRust集約jobを全体の`merge_gate`へ置き換える。既存のRust lint/test/drift、frontend、docs、env jobを保持し、workflow回帰suiteのjobを追加する。aggregateは全jobを`needs`に持ち、jobのifは`always()`とname式と同じDraft判定だけにする。`needs.changes.result == success`をjobのifへ入れてはならず、分類失敗は実際に起動したevaluatorが非0で処理する。既存ci-workflow.test.shの全always jobへのsuccess前提をaggregateについて置換し、前提を付け足すmutantを拒否する。分類成功が必須で、選択されたjobは`success`だけを受理し、非対象jobの`skipped`だけを許す。未知pathはfull fallbackとして受理するが、分類key/値の不備や未知のjob結果は拒否する。npm auditのwarn-onlyという現行契約はこの変更で改変しない。
+現在のRust集約jobを全体の`merge_gate`へ置き換える。既存のRust lint/test/drift、frontend、docs、env jobを保持し、workflow回帰suiteのjobを追加する。aggregateは全jobを`needs`に持ち、aggregate の if は `always()` だけ、Draft の判定は name 式だけが持つ。`needs.changes.result == success`をjobのifへ入れてはならず、分類失敗は実際に起動したevaluatorが非0で処理する。既存ci-workflow.test.shの全always jobへのsuccess前提をaggregateについて置換し、前提を付け足すmutantを拒否する。分類成功が必須で、選択されたjobは`success`だけを受理し、非対象jobの`skipped`だけを許す。未知pathはfull fallbackとして受理するが、分類key/値の不備や未知のjob結果は拒否する。npm auditのwarn-onlyという現行契約はこの変更で改変しない。
 
-`pull_request`はmain対象のopened/reopened/ready_for_review/synchronize、dispatchは現行どおりfull。paths-ignoreと本文のskip tokenで全workflowを止める経路は廃止する。body編集では実行しない。base付替え等でrunが無い場合は、helperが同じHEADの成功/進行中runを確認してから明示recovery dispatchを案内する。予防的な重複dispatchは行わない。
+`pull_request`はmain対象のopened/reopened/ready_for_review/synchronize、dispatchは現行どおりfull。paths-ignoreと本文のskip tokenで全workflowを止める経路は廃止する。body編集では実行しない。base付替え等でrunが無い場合は、helper が同じ HEAD の final run（成功か進行中。Draft の run は数えない）を確認してから明示recovery dispatchを案内する。予防的な重複dispatchは行わない。
 
-Draft時はaggregateのcheck名を`Draft (no merge evidence)`、Ready/dispatch時だけ`Merge gate`とする（`jobs.<job_id>.name`のgithub expression）。Draft guardによりrunnerは起動しない。**required名のskipped checkをDraftで発行してはならない**。GitHubはskipped/neutralもrequired checkの成功条件に含めるためである。実際のcheck-run名とDraft→Ready境界の挙動は、有効化前のlive dogfoodで確認する。期待どおりでなければmain保護を有効化しない。
+Draft時はaggregateのcheck名を`Draft (no merge evidence)`、Ready/dispatch時だけ`Merge gate`とする（`jobs.<job_id>.name`のgithub expression）。Draft でも changes と分類された job と aggregate が走り、check 名は `Draft (no merge evidence)`。**required名のskipped checkをDraftで発行してはならない**。GitHubはskipped/neutralもrequired checkの成功条件に含めるためである。実際のcheck-run名とDraft→Ready境界の挙動は、有効化前のlive dogfoodで確認する。期待どおりでなければmain保護を有効化しない。
 
 docs-onlyを含むhostedの全正規経路には実PR headに対するPK5（Plan Commit/Amendmentsの祖先・不変確認）も必須接続する。該当jobはfetch-depth: 0とPR head/baseを取得し、履歴不足をskip成功にしない。parityの対象はlocal-ci.sh fullの全gate（workflow-git、shell-syntax、workflow-yamlも含む）。回帰suiteの実行と、実PRのPK5検査を別の義務として扱う。必要なRuby/ripgrep/PythonとNode pinをhostedに用意し、CI tokenはcontents:readに固定してownerの運用commentを書き換える権限を渡さない。
 

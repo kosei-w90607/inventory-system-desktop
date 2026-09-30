@@ -214,9 +214,9 @@ R2+ Plan Packets carry a default owner-effort ceiling (D-038, D-098): 介入 6 �
 
 CI / merge evidence is a three-layer ladder:
 
-- L0 local changed: `scripts/pre-push.sh` runs fast checks for the push increment.
-- L1 local full: `bash scripts/local-ci.sh full` runs the complete local gate set and writes HEAD-SHA evidence under `.local/ci-evidence/`.
-- L2 hosted final: GitHub Actions runs only for a completed HEAD at Ready creation/transition or explicit dispatch.
+- L0 pre-push: `scripts/pre-push.sh` runs the fast gate for the push increment.
+- L1 local full (optional): `bash scripts/local-ci.sh full` is a tool that runs the same gate set as hosted on the local machine and writes a log under `.local/ci-evidence/`. It is not a merge condition.
+- L2 hosted: a Draft run is per-push feedback and publishes `Draft (no merge evidence)`; a Ready / dispatch run is the merge evidence and publishes `Merge gate`.
 
 For implementation iteration, use `bash scripts/local-ci.sh changed`. It classifies the PR-wide diff from `git merge-base origin/main HEAD`; it is not the same as the pre-push push increment. A gate-created HEAD/tree change fails the run; `DIRTY` evidence is diagnostic only.
 
@@ -225,22 +225,21 @@ For implementation iteration, use `bash scripts/local-ci.sh changed`. It classif
 | Docs/design | `bash scripts/doc-consistency-check.sh` |
 | Active plan packet | `bash scripts/doc-consistency-check.sh --target plan` |
 | Rust/backend | `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` |
-| Rust design compliance | `cd src-tauri && cargo test --test design_compliance_test` |
 | Tauri command DTOs | `cd src-tauri && cargo run --bin generate_bindings`, then inspect `src/lib/bindings.ts` diff |
 | Frontend | `npm run typecheck && npm run lint && npm run format:check && npm test && npm run build` |
 | env or gitignore | `bash scripts/check-env-safety.sh` |
 | Traceability (REQ / design docs / tests) | `cd src-tauri && cargo run --bin generate_traceability -- --check` |
 | PR-wide changed gate | `bash scripts/local-ci.sh changed` |
-| Merge-candidate full gate | `bash scripts/local-ci.sh full` |
+| Local full (optional) | `bash scripts/local-ci.sh full` |
 
 Traceability check details (WF-TRACE-01..04): T1 = `docs/function-design/90-traceability.md` drift (ERROR, regenerate with `cd src-tauri && cargo run --bin generate_traceability`), T2 = REQ ID used by tests but missing from `docs/spec/requirements.md` (ERROR), T3 = REQ with zero tests and `coverage=required` (WARN only; `coverage=deferred` is excluded until implementation starts), T4 = count of FE test files without `REQ-NNN` / `UI-NN` references vs baseline, both directions (ERROR). CI rust job and the pre-push hook run the same command.
 
-Use targeted gates first while iterating, then run the relevant full gate set before finalizing.
+Use targeted gates while iterating. The Draft hosted run then runs the changed-area jobs on every push, and the final evidence is the `Merge gate` of the Ready run.
 
 CI routing:
 
 - [ci.md](ci.md) CI-TRIGGER-D1とMG-D1〜D4が正本。全PRにdocs/実PR PK5/aggregate、policyにはshared workflow suite、実行コード・未知pathにはfullを要求する。
-- Draftはrunnerを止め、required名とは別のcheck名にする。分類失敗でもReady aggregateは起動して失敗する。
+- Draft でも changed 分類の job と aggregate を回し、required 名とは別の check 名にする。分類失敗でも aggregate は Draft でも Ready でも起動して失敗する。
 - workflow=trueは回帰suiteの意味で、Rust/frontendへ再昇格しない。bindings/traceability、Node pin、env、warn-only npm auditとdependency-only cacheを維持する。
 - hosted finalをCIの最終根拠にする。localの対象検証・失敗修正・Windows/manual/R4は保持し、通常Ready/mergeのためだけにfullを反復しない。
 
@@ -303,9 +302,10 @@ Default behavior:
 - Record pending manual checks in the PR body.
 - PR body freshness: before Ready, re-read the whole PR body against the final state of the change and refresh stale sections.
 - Do not mark the PR Ready until required manual checks are done and the project owner explicitly asks to ready it.
-- owner Ready指示の後、helperでReadyへ進む。docsを含むReadyは自動CI対象。recovery dispatchはCI-TRIGGER-D1の同一HEAD run確認後だけ。
+- Ready にするのは同じ head の Draft の run が完了し `Draft (no merge evidence)` が緑になってから。赤・cancel の Draft の check は Ready の run に同名の後継が無く head に残り、merge が `unstable` になる。残ったら `gh run rerun` で再実行する（[ci.md](ci.md)）。
+- owner Ready指示の後、helperでReadyへ進む。docsを含むReadyは自動CI対象。recovery dispatchはCI-TRIGGER-D1の同一 HEAD の final run の確認後だけ。
 - If a Ready PR needs another push, return it to Draft first. The pre-push hook blocks the normal Ready-push path so an old green cannot be mistaken for the new HEAD.
-- If the user explicitly asks for an earlier PR, a Draft PR may be opened before full validation only when the known missing gates and residual risk are written in the PR body.
+- A Draft PR may be opened before its Draft hosted run is green; write pending manual checks, pending reviews, and residual risk in the PR body.
 - If the user explicitly asks not to create a PR, leave the branch local and record the next publish step in the change's Plan Packet (`## Implementation Results`); only a no-packet R0/R1 change records it in `Plans.md`.
 
 ## Post-Merge Closeout
@@ -315,7 +315,7 @@ Use this when the owner says the PR is OK and asks for post-merge cleanup. Keep 
 Before merge:
 
 - Follow the helper route in [Workflow State](#workflow-state): PR/head/base, effective rules, CI, and review/manual/R4 are checked fresh through the helper; direct UI merge is forbidden.
-- A green `CI` run from an older HEAD is stale and must not be reused; the helper requires a successful run for the exact PR HEAD. If GitHub Actions is unavailable, stop the merge ([ci.md](ci.md)).
+- A green `CI` run from an older HEAD is stale and must not be reused; the helper requires a final run (`Merge gate` success) for the exact PR HEAD. If GitHub Actions is unavailable, stop the merge ([ci.md](ci.md)).
 - If manual checks, Windows native L3, or residual risks were accepted instead of evidenced, record that in the PR body before merging. The agent records manual check results (L3 outcomes, waivers, residual-risk notes); the owner is not asked to transcribe them.
 
 Merge and sync:
