@@ -63,7 +63,6 @@ finish() {
     local code="$2"
     local end_head_sha="UNAVAILABLE"
     local end_tree_state="UNKNOWN"
-    local merge_evidence_valid=false
 
     end_head_sha="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf 'UNAVAILABLE')"
     if git -C "$REPO_ROOT" status --porcelain --untracked-files=normal >/dev/null 2>&1; then
@@ -87,10 +86,6 @@ finish() {
         result="FAIL"
         code=1
     fi
-    if [[ "$result" == "PASS" && "$MODE" == "full" && "$TREE_STATE" == "CLEAN" && "$end_tree_state" == "CLEAN" && "$end_head_sha" == "$HEAD_SHA" ]]; then
-        merge_evidence_valid=true
-    fi
-    log "MERGE_EVIDENCE_VALID=$merge_evidence_valid"
     log "RESULT=$result"
     log "EXIT_CODE=$code"
     log "EVIDENCE_FILE=$EVIDENCE_FILE"
