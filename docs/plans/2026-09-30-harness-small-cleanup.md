@@ -8,9 +8,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R2
-- Plan Commit: pending
+- Plan Commit: 842f7ab8790887808e8e3aede3f995ed1050d9f0
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`）
@@ -29,6 +29,8 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - plan-draft → plan-gate（2026-09-30、本 commit）: packet を plan-first commit で確定。R2 のため Test Design Matrix は作らない（下の Test Plan）。fresh Opus 5.5 と Codex の Plan Review へ。
 - plan-gate → design（2026-09-30、round 1 の後の是正）: round 1 の Codex #2（P2）が「本 lane は既存の正本に無い規則（`Plans.md` に残す件数・entry の形・移送先、新しい §5.4、profiles・evals の撤去）を決めるので、`docs/DEV_WORKFLOW.md:96` の skip の条件〈既存の設計正本で十分〉に当たらず、`:131` の表は Plan より前に decision-log か ADR を求める」と示し、上の spec-check → plan-draft の skip を取り消して design に戻る。設計を無効にする指摘は最初に影響を受ける phase に戻り表をたどり直す（`docs/DEV_WORKFLOW.md:104`）。
 - design → plan-draft → plan-gate（2026-09-30、round 1 の後）: 設計の出力が同じ plan-first の変更の中にある（`docs/DEV_WORKFLOW.md:97`）= 本 commit の `docs/decision-log.md` D-101 と、本 packet の設計判断 D1〜D5。未解決の設計の問いは無い。packet と D-101 を同じ commit に置き、1 つの commit で隣接する遷移を記録する（`docs/DEV_WORKFLOW.md:103`）。round 1 の他の是正は Review Response 参照。
+- plan-gate → plan-approved（2026-10-01、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `a8e3bb17`）の後、round 天井の disposition「同型指摘の一括是正」（`842f7ab8`）を Coordinator が現物で確かめた（doc check full・`--target plan`・PK5・`scripts/tests/reading-order-drift.test.sh` が exit 0）。一括是正の独立の再確認は Final Review が兼ねる。owner の plan-approved の判断（2026-10-01）。Plan Commit = `842f7ab8`。
+- plan-approved → implementing（2026-10-01、Coordinator、state-only、本 commit）: Writer（Opus 5.5 subagent、`subagent_type: writer`）へ実装を発注する。発注の直前に AC-S1-1〜AC-S4-4・AC-C-4 の baseline を逐語で再実行し、上の baseline と一致した。
 
 ## Owner Effort Budget
 
@@ -38,7 +40,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 2（2026-09-30: #5 の回答 1、組み方の判断 1） | 2（Ready 1、merge 1） | 2 | 6 = 2 + 2 + 2 |
+| 介入 | 6 | 3（2026-09-30: #5 の回答 1、組み方の判断 1。2026-10-01: plan-approved 1〈予備から〉） | 2（Ready 1、merge 1） | 1 | 6 = 3 + 2 + 1 |
 
 relay（Coordinator が Codex を起動する往復）は上限を置かない（D-098）。
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
