@@ -302,7 +302,7 @@ Default behavior:
 - Record pending manual checks in the PR body.
 - PR body freshness: before Ready, re-read the whole PR body against the final state of the change and refresh stale sections.
 - Do not mark the PR Ready until required manual checks are done and the project owner explicitly asks to ready it.
-- Ready にするのは同じ head の Draft の run が完了し `Draft (no merge evidence)` が緑になってから。赤・cancel の Draft の check は Ready の run に同名の後継が無く head に残り、merge が `unstable` になる。残ったら `gh run rerun` で再実行する（[ci.md](ci.md)）。
+- Ready にするのは同じ head の Draft の run が完了し `Draft (no merge evidence)` が緑になってから。赤・cancel の Draft の check は Ready の run に同名の後継が無く head に残り、merge が `unstable` になる。残ったら、Ready の run の完了を待ってから `gh run rerun` で再実行する（Ready の run の進行中に再実行すると、PR 番号単位の concurrency で Ready の run が cancel される。[ci.md](ci.md)）。
 - owner Ready指示の後、helperでReadyへ進む。docsを含むReadyは自動CI対象。recovery dispatchはCI-TRIGGER-D1の同一 HEAD の final run の確認後だけ。
 - If a Ready PR needs another push, return it to Draft first. The pre-push hook blocks the normal Ready-push path so an old green cannot be mistaken for the new HEAD.
 - A Draft PR may be opened before its Draft hosted run is green; write pending manual checks, pending reviews, and residual risk in the PR body.

@@ -31,7 +31,7 @@ final run = 同じ head の latest の run が completed / success で、その 
 | HEADの状態 | 選ぶtrigger | dispatch前の確認 |
 |---|---|---|
 | docsを含む全PR | owner Ready、Ready更新の例外はsynchronize、再開はreopened | dispatch しない |
-| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に、helper が受理する final run も、進行中の final の run も無いこと。final の run = Ready 化の後に作られた run（`ready_for_review`、または Draft でない PR の `synchronize`・`reopened`）と dispatch の run。進行中の run が final かは PR の timeline の Ready 化の時刻と run の `created_at` で見分ける（名前は完了まで確定しないので名前で見分けない） |
+| required final の自動 run または explicit dispatch が作成されない、失敗、または cancel | 原因是正後のrecovery dispatch | 同一 HEAD に、helper が受理する final run も、進行中の final の run も無いこと。final の run = Ready 化の後に作られた run（`ready_for_review`、または Draft でない PR の `synchronize`・`reopened`）と dispatch の run。進行中の run が final かは PR の timeline の Ready 化の時刻と run の `created_at` で見分ける |
 | 同一 HEAD に helper が受理する final run が既にある | 既存runを使う | Ready再操作もdispatchも不要 |
 
 Ready の後に同じ head の赤・cancel の `Draft (no merge evidence)` が残り merge が `unstable` なら、その Draft の run を `gh run rerun <run id>` で再実行する（元の event で走るので `Merge gate` は出ない）。再実行でも緑にならなければ Draft へ戻して直す。
