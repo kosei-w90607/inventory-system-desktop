@@ -131,7 +131,7 @@ design lane は、製品の設計正本（`docs/function-design/`・`docs/db-des
 ```text
 docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠する。
 
-1. 完了項目を archive へ移す。archive へ移したリンクは必ず相対パスへ変換する。
+1. 完了項目を archive（`docs/archive/harness-context/2026-09-30-Plans-completed.md` の `## 直近の完了` 節の先頭）へ移す。archive へ移したリンクは必ず相対パスへ変換する。
 2. 同一項目の重複記載を 1 箇所へ統合する。
 3. 「次の行動」が空なら、active runway / roadmap / backlog から補充する。
 4. bash scripts/doc-consistency-check.sh を実行し、green を確認してから PR / closeout を完了する。
