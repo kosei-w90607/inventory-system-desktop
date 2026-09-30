@@ -1,6 +1,6 @@
 # Plan Packet: ハーネスの残りの小口を整理する（R2）
 
-wave に属さない単独の lane。2026-09-30 起草。出典は [backlog](../backlog.md) の「ハーネスの残りの小口の整理」（`docs/backlog.md:87`、ハーネス刷新 PR4・PR5 の closeout で挙がった 4 件）。owner 決定 2026-09-30: 4 件を R2 の 1 本にする（規則の意味を変えるので、Risk Tiers `docs/DEV_WORKFLOW.md:48` の R2「Local developer workflow … docs change」に当たり、backlog の「R0/R1 で 1 本」は起票時の見積もり違い）。同日の owner 回答: Windows の Codex Desktop はこの repo では多分使わない（個人の別 repo では使う）。
+wave に属さない単独の lane。2026-09-30 起草。出典は [backlog](../../backlog.md) の「ハーネスの残りの小口の整理」（`docs/backlog.md:87`、ハーネス刷新 PR4・PR5 の closeout で挙がった 4 件）。owner 決定 2026-09-30: 4 件を R2 の 1 本にする（規則の意味を変えるので、Risk Tiers `docs/DEV_WORKFLOW.md:48` の R2「Local developer workflow … docs change」に当たり、backlog の「R0/R1 で 1 本」は起票時の見積もり違い）。同日の owner 回答: Windows の Codex Desktop はこの repo では多分使わない（個人の別 repo では使う）。
 
 ## Workflow State
 
@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R2
 - Plan Commit: 842f7ab8790887808e8e3aede3f995ed1050d9f0
 - Amendments: none
@@ -307,7 +307,7 @@ R2 のため必須でない。店のデータ・secret・`.env*`・`auth.json` �
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
-PR: [#132](https://github.com/kosei-w90607/inventory-system-desktop/pull/132)（Draft）。AC の実測表と検証の結果は PR body。
+PR: [#132](https://github.com/kosei-w90607/inventory-system-desktop/pull/132)（Writer = Opus 5.5 subagent。helper 経由の squash merge、2026-10-01）。AC の実測表と検証の結果は PR body。
 
 - S1: `docs/Plans.md` の `## 直近の完了` の長文 entry 全件と Wave Registry の完了済み wave 10〜12 の行（lane の行を含む）を、`git show origin/main:docs/Plans.md` から機械的に切り出して `docs/archive/harness-context/2026-09-30-Plans-completed.md` へ移した（相対 link の接頭だけ D1 の規則で補正、AC-S1-5 の diff が一致）。`Plans.md` には直近 10 件を D3 の形の 1 行で置き、Wave Registry は見出しと形式の行だけにした。`docs/DEV_WORKFLOW.md` Post-Merge Closeout の行を D4 の英文に置き換え、MANUAL §5.3 の 1 に移送先を足した。
 - S2: `AGENTS.md` の Workspace Access を、全 session 共通（WSL の checkout と cwd の確認、repo 外の Skill の読み方）と、Windows の Codex Desktop から動かすときだけの項（`.codex/README.md`・wrapper の読書・検索・allow しない command・PowerShell / UNC）に組み替えた。`## Safety` 以降は不変。
@@ -315,6 +315,8 @@ PR: [#132](https://github.com/kosei-w90607/inventory-system-desktop/pull/132)（
 - S4: `docs/agent-guidance/profiles/`・`evals/` の 5 file を `git rm` し、README の profile の行と fixture の文、shared の profile の 2 文、model-notes の「用途別profile」を外した。
 - D-101 は実装の結果で文が変わらず、変更しなかった。
 - 見送り（packet の既知の残り、closeout で backlog へ）: `scripts/tests/reading-order-drift.test.sh:61-63` のコメントが削除した routing fixture を指す点、Wave Registry の見出しと形式の行の扱い。
+- 実装の要旨（closeout、2026-10-01）: `docs/Plans.md` の `## 直近の完了` は 1 行 + link の短い行を直近 10 件だけ置く形になり、長文と完了済み wave の記録は完了履歴の file へ移った。closeout は短い行を先頭に 1 行足し、10 を超えた古い行を完了履歴へ移す（長文が既にある行は消す）書き方に変わった（D-101）。`AGENTS.md` の Workspace Access は全 session 共通の項と Windows の Codex Desktop から動かすときだけの項に分かれ、MANUAL §5.4 は read-only の Reviewer / Explorer への発注書に必ず書くことの規則になった。どこからも参照されない GPT-5.6 向けの profiles・evals は削除した。
+- review・CI・merge: Plan Review は 3 round の天井で、round 3 の後の一括是正を Coordinator が確かめ owner が plan-approved。Final Review broad は fresh Opus 5.5・Codex GPT-6.1 Sol とも approve で、P3 4 件のうち 3 件を是正し 1 件を見送り、closure は GPT-6.1 Sol が approve。Draft の run は各 head で success、Ready の後の run の `Merge gate` と `CLEAN` で helper 経由で merge した（owner の Ready・merge、2026-10-01）。manual は not-required。
 
 ## Review Response
 
@@ -355,3 +357,5 @@ Fill after review.
   - Opus #2（P3、`.codex/README.md` への起動設定の案内が Desktop の条件の下だけに移り、WSL の Codex CLI の起動設定〈`.codex/README.md:35`〉を AGENTS から辿れない）: 是正。`AGENTS.md` の Workspace Access の冒頭に「Codex の起動設定は `.codex/README.md`」を戻し、Desktop の項は「Windows 側の実行と許可コマンド」に絞った。Safety 以降は不変（AC-S2-3）。
   - Codex #1（P3、`docs/Plans.md` の短い行に D3 の求める R3/R4 の Matrix の link が無い）: 是正。archive に Matrix がある R3/R4 の entry に Matrix の link を足した（R2 の小口のまとめは D3 の対象外）。`docs/DEV_WORKFLOW.md:329` にも Matrix の link を書き足した。
   - Codex #2（P3、AC-S3-2 の「読まないもの」の単独検査は、語が §5.4 の別の行にもあるので必須の行を消しても落ちない）: 見送り。直すには packet の AC を変える Gated Amendment が要る。実装の §5.4 は必須項目がそろうことを両 reviewer が確かめており、AC は merge 後に archive される計画の検査で以後の運用に残らないため、費用に見合わない。
+
+- Closeout（2026-10-01）: 是正（上限の数え方、AGENTS の Codex の起動設定の案内、R3/R4 の短い行の Matrix の link）の後の closure は Codex GPT-6.1 Sol = approve（新しい指摘 0）。record は broad の 2 本を pending、closure を pass で記録した。Ready の後の run `36758395876` は `Merge gate` success、helper の blockers は空、`mergeStateStatus` は `CLEAN`。Draft の run は各 head で success。見送った Codex #2（AC-S3-2 の単独検査の検出力）は archive される計画の検査で運用に残らないため積まない。既知の残り 2 点（Plan Review round 3 の Opus #5 の `### Wave Registry` の見出しと形式の行、S4 の `scripts/tests/reading-order-drift.test.sh:61-63` のコメント）は `docs/backlog.md` の保留へ置いた。本 closeout は D-101 の書き方で `docs/Plans.md` に短い行を足した最初の closeout。

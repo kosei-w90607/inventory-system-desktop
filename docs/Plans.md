@@ -27,6 +27,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## 直近の完了
 
+- 2026-10-01 [PR #132](https://github.com/kosei-w90607/inventory-system-desktop/pull/132) ハーネスの残りの小口の整理（単独の lane、R2）: 直近の完了を 1 行 + link の短い行にして長文を完了履歴へ移し、closeout の書き方を変え（D-101）、AGENTS の Workspace Access と MANUAL §5.4 を今の運用に合わせ、使われない profiles・evals を削った。[archive](archive/plans/2026-09-30-harness-small-cleanup.md)
 - 2026-09-30 [PR #130](https://github.com/kosei-w90607/inventory-system-desktop/pull/130) CI の二重を削る（単独の lane、R3）: Draft の PR にも hosted CI が回り、merge の CI 根拠は Ready の後の run の `Merge gate` だけになり、`bash scripts/local-ci.sh full` は任意の道具になった。[archive](archive/plans/2026-09-30-ci-dedup.md)・[Matrix](archive/plans/test-matrices/2026-09-30-ci-dedup.md)
 - 2026-09-30 [PR #127](https://github.com/kosei-w90607/inventory-system-desktop/pull/127)・[PR #128](https://github.com/kosei-w90607/inventory-system-desktop/pull/128) ハーネス刷新 PR5・PR4（R3、並走の 2 本）: PR5 が gate の穴を塞ぎ、PR4 が止める理由を 1 文で言えない手続きを削り R3 の契約の追跡を Contract Ledger の 1 表にまとめた。[archive PR4](archive/plans/2026-09-29-harness-pr4-lightweight.md)・[Matrix](archive/plans/test-matrices/2026-09-29-harness-pr4-lightweight.md)・[archive PR5](archive/plans/2026-09-29-harness-pr5-gate-holes.md)・[Matrix](archive/plans/test-matrices/2026-09-29-harness-pr5-gate-holes.md)
 - 2026-09-29 [PR #123](https://github.com/kosei-w90607/inventory-system-desktop/pull/123) ハーネス: 並走の摩擦を削る（単独の lane、R3）: 後続の lane が先行 lane の closeout を待たずに main を取り込んで merge でき、helper は PR の差分が触る active packet で packet を決める。[archive](archive/plans/2026-09-28-harness-parallel-friction.md)・[Matrix](archive/plans/test-matrices/2026-09-28-harness-parallel-friction.md)
@@ -36,7 +37,6 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 - 2026-09-28 [PR #114](https://github.com/kosei-w90607/inventory-system-desktop/pull/114) Z001（日計）の全行を日次売上で見る画面と読み出しの契約を設計する（design-first、R3）: 日次売上の「レジ日報（公式）」に日計の表を足す案 A と、同日複数取込みを合算しない規則（D-096）を設計正本に書いた。[archive](archive/plans/2026-09-27-daily-report-z-display.md)・[Matrix](archive/plans/test-matrices/2026-09-27-daily-report-z-display.md)
 - 2026-09-28 [PR #113](https://github.com/kosei-w90607/inventory-system-desktop/pull/113) ハーネス刷新 PR2: 座組表を正本に置き、Execution Mode 時代の役割規則を退役させる（R3）: MANUAL に座組表と独立性の規則を置き、旧い役割規則を削った（D-092）。[archive](archive/plans/2026-09-25-harness-pr2-roles-and-formation.md)・[Matrix](archive/plans/test-matrices/2026-09-25-harness-pr2-roles-and-formation.md)
 - 2026-09-26 [PR #111](https://github.com/kosei-w90607/inventory-system-desktop/pull/111) 保存と起動の守り（R4）: 商品コードの長さの制限、新しい版の DB の起動拒否、画面に依らない自動バックアップの確認などを入れた。[archive](archive/plans/2026-09-25-save-startup-guards.md)・[Matrix](archive/plans/test-matrices/2026-09-25-save-startup-guards.md)
-- 2026-09-26 [PR #108](https://github.com/kosei-w90607/inventory-system-desktop/pull/108) 棚卸しの評価額に価格の基準数量と店の丸め規則を入れる: 基準数量を在庫単位に合わせ、商品別に 1/100 円で丸めて合計し最終合計を円未満で丸める。[archive](archive/plans/2026-09-25-stocktake-valuation-basis.md)・[Matrix](archive/plans/test-matrices/2026-09-25-stocktake-valuation-basis.md)
 
 ### Wave Registry
 
