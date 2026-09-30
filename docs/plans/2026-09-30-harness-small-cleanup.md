@@ -305,9 +305,16 @@ R2 のため必須でない。店のデータ・secret・`.env*`・`auth.json` �
 
 ## Implementation Results
 
-Fill after implementation.
-
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+
+PR: [#132](https://github.com/kosei-w90607/inventory-system-desktop/pull/132)（Draft）。AC の実測表と検証の結果は PR body。
+
+- S1: `docs/Plans.md` の `## 直近の完了` の長文 entry 全件と Wave Registry の完了済み wave 10〜12 の行（lane の行を含む）を、`git show origin/main:docs/Plans.md` から機械的に切り出して `docs/archive/harness-context/2026-09-30-Plans-completed.md` へ移した（相対 link の接頭だけ D1 の規則で補正、AC-S1-5 の diff が一致）。`Plans.md` には直近 10 件を D3 の形の 1 行で置き、Wave Registry は見出しと形式の行だけにした。`docs/DEV_WORKFLOW.md` Post-Merge Closeout の行を D4 の英文に置き換え、MANUAL §5.3 の 1 に移送先を足した。
+- S2: `AGENTS.md` の Workspace Access を、全 session 共通（WSL の checkout と cwd の確認、repo 外の Skill の読み方）と、Windows の Codex Desktop から動かすときだけの項（`.codex/README.md`・wrapper の読書・検索・allow しない command・PowerShell / UNC）に組み替えた。`## Safety` 以降は不変。
+- S3: MANUAL §5.4 を「read-only の Reviewer / Explorer への発注書」にし、必ず書くこと 8 項目・packet の無い発注と closure の扱い・残す Contract Audit の文・書かないことを置いた。逆向きの 3 句を消し、§5.6 冒頭の参照を新しい見出しに合わせた。AC-S3-2 の検出力の確認で、2 語が同じ行にあると 1 語の欠落を見分けられなかったため、read-only 宣言と subagent 生成上限、判定の問いと確かめる command を別の項目に分けた。
+- S4: `docs/agent-guidance/profiles/`・`evals/` の 5 file を `git rm` し、README の profile の行と fixture の文、shared の profile の 2 文、model-notes の「用途別profile」を外した。
+- D-101 は実装の結果で文が変わらず、変更しなかった。
+- 見送り（packet の既知の残り、closeout で backlog へ）: `scripts/tests/reading-order-drift.test.sh:61-63` のコメントが削除した routing fixture を指す点、Wave Registry の見出しと形式の行の扱い。
 
 ## Review Response
 
