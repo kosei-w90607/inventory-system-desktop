@@ -20,7 +20,6 @@ env:
 jobs:
   changes:
     name: Detect changed areas
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
@@ -257,7 +256,7 @@ jobs:
   merge_gate:
     name: ${{ (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false) && 'Merge gate' || 'Draft (no merge evidence)' }}
     needs: [changes, rust_lint, rust_test, rust_drift, docs, env_safety, frontend, workflow]
-    if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

@@ -44,8 +44,8 @@ jobs.each do |name, job|
   condition = job["if"].to_s
   expected_always_guard = "always() && needs.changes.result == 'success'"
   if name == "merge_gate"
-    guard = "always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)"
-    abort "aggregate must run even when classification fails" unless condition == guard
+    # D-100: the aggregate runs for Draft too; only the name expression knows Draft.
+    abort "aggregate must run even when classification fails" unless condition == "always()"
     abort "aggregate must depend on every job" unless needs.sort == (jobs.keys - ["merge_gate"]).sort
   elsif condition.include?("always()") && condition != expected_always_guard
     abort "always job #{name} can run after changes is skipped: #{condition.inspect}"
@@ -72,7 +72,7 @@ abort "pull_request trigger is not a map" unless pull_request.is_a?(Hash)
 types = pull_request.fetch("types")
 abort "pull_request.types is not an array" unless types.is_a?(Array)
 
-# D-043: Final-only CI must react to every non-Draft PR head update.
+# D-043/D-100: CI reacts to every PR head update; Draft runs are feedback, non-Draft runs are final.
 expected = %w[opened reopened ready_for_review synchronize]
 actual = types.map(&:to_s)
 unless actual.length == expected.length && actual.uniq.length == actual.length && actual.sort == expected.sort
@@ -91,11 +91,8 @@ abort "superseded-run cancellation is not enabled" unless concurrency.fetch("can
 
 jobs = workflow.fetch("jobs")
 changes = jobs.fetch("changes")
-expected_changes_condition = "github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false"
-actual_changes_condition = changes.fetch("if").to_s.split.join(" ")
-unless actual_changes_condition == expected_changes_condition
-  abort "changes job guard drifted: #{actual_changes_condition.inspect}"
-end
+# D-100: changes has no guard so Draft PRs classify and run the selected jobs.
+abort "changes job must run for Draft: #{changes["if"].inspect}" if changes.key?("if")
 
 filter_steps = changes.fetch("steps").select { |step| step["id"] == "filter" }
 abort "expected exactly one classifier step" unless filter_steps.length == 1
@@ -176,6 +173,18 @@ end
 RUBY
 }
 
+# D-100 D6: npm security monitor runs daily (D-030 standing guard).
+validate_monitor_schedule() {
+    ruby - "$1" <<'RUBY'
+require "yaml"
+workflow = YAML.safe_load(File.read(ARGV.fetch(0)), aliases: true)
+schedule = Array((workflow["on"] || workflow[true] || {})["schedule"])
+abort "monitor must have exactly one schedule: #{schedule.inspect}" unless schedule.length == 1
+cron = schedule.first["cron"].to_s
+abort "monitor cron must be daily: #{cron.inspect}" unless cron.match?(/\A[0-9]+ [0-9]+ \* \* \*\z/)
+RUBY
+}
+
 validate_claude_hook_audit() {
     local workflow="${1:-$WORKFLOW}"
     grep -Fq 'run: bash scripts/tests/claude-hooks.test.sh' "$workflow"
@@ -239,6 +248,7 @@ validate_parity "$WORKFLOW" "$REPO_ROOT/scripts/local-ci.sh" "$REPO_ROOT/scripts
 validate_job_graph "$WORKFLOW"
 validate_workflow_contract "$WORKFLOW"
 validate_node_contract
+validate_monitor_schedule "$NPM_SECURITY_WORKFLOW"
 # D-059 / SPEC-HOOK-01 / CH8: hosted workflow owns the inventory audit step.
 validate_claude_hook_audit ||
     fail "CH8 hosted Claude hook audit step is missing"
@@ -248,6 +258,13 @@ validate_public_actions_doc_contract "$CI_DOC" "$DEV_WORKFLOW_DOC" "$DECISION_LO
 
 mutation_dir="$(mktemp -d)"
 trap 'rm -rf "$mutation_dir"' EXIT
+
+# A sed that no longer matches leaves the original bytes and would pass green.
+assert_mutated() {
+    if cmp -s "$1" "$2"; then
+        fail "mutation did not change $1: $3"
+    fi
+}
 
 parity_mutation="$mutation_dir/missing-suite-check.sh"
 sed '\|bash scripts/tests/pre-push.test.sh|d' "$REPO_ROOT/scripts/tests/run-workflow-tests.sh" > "$parity_mutation"
@@ -269,36 +286,42 @@ fi
 
 ci_doc_event_dispatch_mutation="$mutation_dir/ci-event-dispatch.md"
 sed 's/| dispatch しない |/| workflow_dispatch してよい |/' "$CI_DOC" > "$ci_doc_event_dispatch_mutation"
+assert_mutated "$CI_DOC" "$ci_doc_event_dispatch_mutation" M2a
 if validate_public_actions_doc_contract "$ci_doc_event_dispatch_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M2a public Actions docs validator accepted preventive dispatch for an event-eligible change"
 fi
 
 ci_doc_zero_run_mutation="$mutation_dir/ci-zero-run-removed.md"
 sed 's/同一 HEAD の run が 0 件であること/同一 HEAD の run 確認は不要/' "$CI_DOC" > "$ci_doc_zero_run_mutation"
+assert_mutated "$CI_DOC" "$ci_doc_zero_run_mutation" M2b
 if validate_public_actions_doc_contract "$ci_doc_zero_run_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M2b public Actions docs validator accepted dispatch without the zero-run prerequisite"
 fi
 
 ci_doc_recovery_scope_mutation="$mutation_dir/ci-recovery-auto-only.md"
 sed 's/required final の自動 run または explicit dispatch/event-eligible だが自動 run/' "$CI_DOC" > "$ci_doc_recovery_scope_mutation"
+assert_mutated "$CI_DOC" "$ci_doc_recovery_scope_mutation" M2c-scope
 if validate_public_actions_doc_contract "$ci_doc_recovery_scope_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M2c public Actions docs validator accepted recovery narrowed to automatic events"
 fi
 
 ci_doc_in_progress_mutation="$mutation_dir/ci-in-progress-wait-removed.md"
 sed 's/successful \/ in-progress run/successful run/' "$CI_DOC" > "$ci_doc_in_progress_mutation"
+assert_mutated "$CI_DOC" "$ci_doc_in_progress_mutation" M2c-in-progress
 if validate_public_actions_doc_contract "$ci_doc_in_progress_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M2c public Actions docs validator accepted recovery without the in-progress wait"
 fi
 
 ci_doc_successful_row_mutation="$mutation_dir/ci-successful-row-removed.md"
 sed '/同一 HEAD に successful final が既にある/d' "$CI_DOC" > "$ci_doc_successful_row_mutation"
+assert_mutated "$CI_DOC" "$ci_doc_successful_row_mutation" M2d
 if validate_public_actions_doc_contract "$ci_doc_successful_row_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M2d public Actions docs validator accepted a missing already-successful no-op row"
 fi
 
 ci_doc_availability_mutation="$mutation_dir/ci-actions-unavailable-stop-removed.md"
 sed '/GitHub Actions が利用不能なら merge を停止/d' "$CI_DOC" > "$ci_doc_availability_mutation"
+assert_mutated "$CI_DOC" "$ci_doc_availability_mutation" M3
 if validate_public_actions_doc_contract "$ci_doc_availability_mutation" "$DEV_WORKFLOW_DOC" "$DECISION_LOG" "$PLANS_DOC" "$PROJECT_HANDOFF_DOC" >/dev/null 2>&1; then
     fail "M3 public Actions docs validator accepted a missing merge stop while Actions is unavailable"
 fi
@@ -407,18 +430,34 @@ fi
 
 draft_guard_mutation="$mutation_dir/weakened-draft-guard.yml"
 sed 's/github.event.pull_request.draft == false/github.event.pull_request.draft == false || true/' "$WORKFLOW" > "$draft_guard_mutation"
+assert_mutated "$WORKFLOW" "$draft_guard_mutation" draft-guard
 if validate_workflow_contract "$draft_guard_mutation" >/dev/null 2>&1; then
     fail "workflow contract validator accepted a weakened Draft guard"
 fi
 
 # MG-D2/D3: a classification failure must fail, never skip the aggregate.
 aggregate_mutation="$mutation_dir/classification-success-guard.yml"
-sed "s/if: always() \&\& (github/if: always() \&\& needs.changes.result == 'success' \&\& (github/" "$WORKFLOW" > "$aggregate_mutation"
+sed "s/^    if: always()\$/    if: always() \&\& needs.changes.result == 'success'/" "$WORKFLOW" > "$aggregate_mutation"
+assert_mutated "$WORKFLOW" "$aggregate_mutation" aggregate-success-guard
 if validate_job_graph "$aggregate_mutation" >/dev/null 2>&1; then
     fail "aggregate accepted a changes-success precondition"
 fi
+# D-100: Draft must run changes and the aggregate.
+changes_draft_mutation="$mutation_dir/changes-draft-guard.yml"
+sed '/^    name: Detect changed areas$/a\    if: github.event.pull_request.draft == false' "$WORKFLOW" > "$changes_draft_mutation"
+assert_mutated "$WORKFLOW" "$changes_draft_mutation" changes-draft-guard
+if validate_workflow_contract "$changes_draft_mutation" >/dev/null 2>&1; then
+    fail "changes job accepted a Draft guard"
+fi
+aggregate_draft_mutation="$mutation_dir/aggregate-draft-guard.yml"
+sed "s/^    if: always()\$/    if: always() \&\& (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)/" "$WORKFLOW" > "$aggregate_draft_mutation"
+assert_mutated "$WORKFLOW" "$aggregate_draft_mutation" aggregate-draft-guard
+if validate_job_graph "$aggregate_draft_mutation" >/dev/null 2>&1; then
+    fail "aggregate accepted a Draft guard"
+fi
 name_mutation="$mutation_dir/draft-required-name.yml"
 sed "s/'Draft (no merge evidence)'/'Merge gate'/" "$WORKFLOW" > "$name_mutation"
+assert_mutated "$WORKFLOW" "$name_mutation" draft-name
 if validate_workflow_contract "$name_mutation" >/dev/null 2>&1; then
     fail "Draft can publish required check name"
 fi
@@ -445,6 +484,13 @@ merge_group_mutation="$mutation_dir/merge-group-trigger.yml"
 sed '/^on:$/a\  merge_group:' "$WORKFLOW" > "$merge_group_mutation"
 if validate_workflow_contract "$merge_group_mutation" >/dev/null 2>&1; then
     fail "workflow contract validator accepted an extra top-level trigger"
+fi
+
+monitor_weekly_mutation="$mutation_dir/monitor-weekly.yml"
+sed 's/cron: "0 21 \* \* \*"/cron: "0 21 * * 0"/' "$NPM_SECURITY_WORKFLOW" > "$monitor_weekly_mutation"
+assert_mutated "$NPM_SECURITY_WORKFLOW" "$monitor_weekly_mutation" monitor-weekly
+if validate_monitor_schedule "$monitor_weekly_mutation" >/dev/null 2>&1; then
+    fail "monitor schedule validator accepted a weekly cron"
 fi
 
 claude_hook_step_mutation="$mutation_dir/missing-claude-hook-audit.yml"

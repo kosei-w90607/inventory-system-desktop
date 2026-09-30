@@ -1,6 +1,6 @@
 # npm dependency-security 常設 monitoring（D-030）
 #
-# 週次または明示 dispatch で scripts/npm-security-monitor.sh を実行し、findings があれば
+# 日次または明示 dispatch で scripts/npm-security-monitor.sh を実行し、findings があれば
 # issue で通知する（情報提供のみ、自動対処なし）。
 # - findings あり: 固定タイトルの issue を作成 or 既存 open issue へ report を追記
 # - clean: open の alert issue があれば「解消」コメントを付けて close
@@ -9,7 +9,7 @@ name: npm security monitor
 
 on:
   schedule:
-    - cron: "0 21 * * 0" # Monday 06:00 JST
+    - cron: "0 21 * * *" # daily 06:00 JST
   workflow_dispatch:
 
 permissions:
