@@ -47,10 +47,10 @@ merge は helper 経由で、専用 record と手順は [merge-evidence](docs/ag
 
 ## Workspace Access
 
-WSL の作業 checkout を使用する。別 worktree では cwd を確認する。
+WSL の作業 checkout を使用する。Codex の起動設定は `.codex/README.md`。別 worktree では cwd を確認する。
 
 - repo 外の Skill は指定された `SKILL.md` と必要な参照だけを直接読む。
-- Windows の Codex Desktop から動かすときだけ、次に従う（WSL から起動する Codex と Claude Code の通常の session は対象外）: 実行・許可コマンド・起動設定は `.codex/README.md`。wrapper の所属先を確認する。repo 内の読書・検索は `.codex/bin/read-safe-file.sh` / `search-safe-files.sh` / `list-safe-files.sh` で行い、長い資料は見出し検索と先頭引数の `--lines START:END <path>` で必要な範囲を読む。repo-relative wrapper に外部 path を渡さない。raw `wsl.exe ... bash -lc ...`、`cat` / `sed` / `rg` / `find` を広く allow しない。PowerShell の相対 path や直接 UNC アクセスに依存しない。
+- Windows の Codex Desktop から動かすときだけ、次に従う（WSL から起動する Codex と Claude Code の通常の session は対象外）: Windows 側の実行と許可コマンドも `.codex/README.md`。wrapper の所属先を確認する。repo 内の読書・検索は `.codex/bin/read-safe-file.sh` / `search-safe-files.sh` / `list-safe-files.sh` で行い、長い資料は見出し検索と先頭引数の `--lines START:END <path>` で必要な範囲を読む。repo-relative wrapper に外部 path を渡さない。raw `wsl.exe ... bash -lc ...`、`cat` / `sed` / `rg` / `find` を広く allow しない。PowerShell の相対 path や直接 UNC アクセスに依存しない。
 
 ## Memory Model
 
