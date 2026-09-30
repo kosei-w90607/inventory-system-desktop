@@ -326,7 +326,7 @@ Merge and sync:
 Repository evidence:
 
 - Move completed active Plan Packets and Test Matrices from `docs/plans/` to `docs/archive/plans/`, preserving evidence and fixing links.
-- Update `Plans.md` so it reflects current live state, completed work, archived evidence, and next action.
+- Add one line at the top of `Plans.md` `## 直近の完了`: date, PR link, title, a one-sentence result, and the link to the archived packet, followed by its Test Design Matrix link for R3/R4 (an R0/R1 merge without a packet gets the PR link only). Do not write SHAs or test counts. When the entry lines above `### Wave Registry` exceed 10, move the oldest entry lines unchanged to the top of the `## 直近の完了` section of `docs/archive/harness-context/2026-09-30-Plans-completed.md`, fixing only the relative-link prefix (`archive/` becomes `../`; other docs-relative paths get `../../` prepended). Delete, instead of moving, a short line whose long form is already in that file. Sync `## 次の行動`, `## ブロッカー`, and `## 製品の未決判断` to the current state (D-101).
 - Wave Operation では merge 済み lane の closeout は wave ごとにまとめてよく、train の次 lane はその closeout を待たない。
 - Update `docs/PROJECT_HANDOFF.md` when its navigation targets change. Project-level live progress belongs in `Plans.md`; a lane's state lives in its Plan Packet and helper status, not in `Plans.md`.
 

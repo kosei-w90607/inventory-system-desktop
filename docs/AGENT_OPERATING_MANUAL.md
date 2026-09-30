@@ -131,27 +131,34 @@ design lane は、製品の設計正本（`docs/function-design/`・`docs/db-des
 ```text
 docs/Plans.md cleanup は DEV_WORKFLOW.md の Post-Merge Closeout に準拠する。
 
-1. 完了項目を archive へ移す。archive へ移したリンクは必ず相対パスへ変換する。
+1. 完了項目を archive（`docs/archive/harness-context/2026-09-30-Plans-completed.md` の `## 直近の完了` 節の先頭）へ移す。archive へ移したリンクは必ず相対パスへ変換する。
 2. 同一項目の重複記載を 1 箇所へ統合する。
 3. 「次の行動」が空なら、active runway / roadmap / backlog から補充する。
 4. bash scripts/doc-consistency-check.sh を実行し、green を確認してから PR / closeout を完了する。
 ```
 
-### 5.4 低制約発注書 profile（read-only の Reviewer / Explorer 向け）
+### 5.4 read-only の Reviewer / Explorer への発注書
 
-read-only の Reviewer / Explorer への発注書はこの profile を用いる。次の 5 点のみで構成し、過程指示・検証手順の指定を書かない（手順を縛るほど性能が落ちる世代特性への対応。findings は claims として Coordinator が裁定し、検証は workflow 側が担うため、実行者に process 契約を内面化させる必要がない）:
+read-only の Reviewer（Plan Review / Final Review）と Explorer への発注書は、対象と問いを具体に書き、結論と手順の順序は reviewer に任せる。findings は claims として Coordinator が裁定する（[DEV_WORKFLOW.md](DEV_WORKFLOW.md) Review Rules）。
+
+必ず書くこと:
 
 1. goal（何を判定・報告してほしいか）
-2. scope 境界（対象物と読取り範囲）
-3. read-only 宣言（ファイル変更・git / PR 操作の禁止）
-4. 報告フォーマット（Verdict 形式・件数上限・file:line 実読・全文 dump 禁止）
-5. subagent 生成上限（既定 0。委譲過多傾向への上限明記は必須）
+2. 対象と**読むもの**（packet は `## Review Response` の前まで、設計正本の触る節と隣接節、Scope が触る現物）と**読まないもの**（同じ round の他の reviewer の結果の置き場、PR body・comment。範囲は §3 の独立性の項と同じ）
+3. read-only 宣言（tracked file の編集・git / PR 操作の禁止。Final Review の review comment の投稿は例外として明記する）
+4. subagent 生成上限（既定 0）
+5. **判定の問い**。Plan Review の発注（[DEV_WORKFLOW.md](DEV_WORKFLOW.md) Review Rules の Plan Review の発注の項）では、冒頭 1 行で `Ordinary Operation` の操作列の成立を `成立 / 具体的な反例あり / 外部前提が未確認` で答えさせる（Final Review の発注では必須にしない）。「正常な条件で目的を達成できるか」と「危険な結果を出さないか」は別々に問う
+6. **確かめる command**（AC の command を含めて具体に書く）。doc check は [review-checklist.md](quality/review-checklist.md) の段階別（PR 前は手元の既定 mode、PR 後は hosted の docs job の結果を読み、手元は hosted の赤の再現と `--target plan` だけ）に従う
+7. 報告フォーマット（合否と P1/P2/P3 の件数、findings は file:line と具体的な反例と最小の修正案一案、AC 実測表、確認した対象と確認できなかった対象、全文 dump 禁止）
+8. 停止する条件（対象 SHA / PR head の不一致だけ。途中で許可を求めて止まらない）
 
-出力契約（4）と委譲上限（5）は必ず書く。観点 list・必読順・検証 command の指定は書かない。Writer への発注など他の発注には従来型発注書（手順込み、§5.6）を使う。Contract Audit / Final Review 役への発注では、[DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit」の実施項目を**検証対象として scope 境界（2）に列挙する** — これは対象物の指定（出力契約）であり過程指示ではない。検証の手順・順序・command は引き続き指定しない。
+packet・SHA の無い発注（Explorer の証跡収集など）は、goal に対する問いと対象範囲・読まないものを書き、2・5・6・8 の packet・AC・SHA の項は当たるときだけ書く。closure・是正の確認の発注は、前回の findings と修正差分から始める（[subagent-review-packet.md](templates/subagent-review-packet.md)）。Contract Audit / Final Review 役への発注では、[DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit」の実施項目を**検証対象として対象（2）に列挙する** — これは対象物の指定（出力契約）であり過程指示ではない。
+
+書かないこと: 期待する結論や finding（「○○が問題のはず」）、finding の件数の目標、検証の手順と順序（「まず X を確認してから Y」）、同じ round の他の reviewer の結果、Writer 向けの手順（§5.6）。
 
 ### 5.6 従来型 Writer 発注書の共通出力契約
 
-本節は、§5.4 の read-only Reviewer / Explorer 専用の低制約 profile ではなく、手順を含む従来型発注書で Writer に実装を発注する場合を対象とする。
+本節は、§5.4 の read-only の Reviewer / Explorer への発注書ではなく、手順を含む従来型発注書で Writer に実装を発注する場合を対象とする。
 
 仕様は設計正本、R2+ の変更範囲・AC・commit 条件は承認済み Packet（適用済み Amendment を含む）を参照する。発注書は該当節・ID を指し、条件全文を転記しない。R0/R1 は合意済みの依頼範囲と設計正本を参照し、発注のために Packet を新設しない。食い違いは Coordinator が正本と発注書を訂正し、Writer が独断で条件を外さない。
 
