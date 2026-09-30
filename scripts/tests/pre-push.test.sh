@@ -286,7 +286,7 @@ printf 'pub fn example() {}\n' > "$repo/src-tauri/src/example.rs"
 git -C "$repo" add src-tauri/src/example.rs
 git -C "$repo" commit -qm rust
 head_sha="$(git -C "$repo" rev-parse HEAD)"
-for failed_command in "fmt --check" "clippy --all-targets --all-features -- -D warnings" "test"; do
+for failed_command in "fmt --check" "clippy --all-targets --all-features -- -D warnings"; do
     FAKE_CARGO_FAIL_ON="$failed_command"
     if run_hook true "" rust-only; then
         fail "Rust command failure was swallowed: cargo $failed_command"
@@ -303,6 +303,10 @@ for failed_command in "fmt --check" "clippy --all-targets --all-features -- -D w
     esac
 done
 unset FAKE_CARGO_FAIL_ON
+# D-100 D2: the Rust fast gate is fmt + clippy; hosted rust_test owns cargo test.
+run_hook true "" rust-only
+assert_contains "$tmp/calls.log" "cargo clippy"
+assert_not_contains "$tmp/calls.log" "cargo test"
 
 # SPEC-MERGE-EVIDENCE / WF-TRACE-01..04: SPEC-tagged technical tests are valid.
 # The real L0 script must use the canonical traceability command, not a name-only regex.
