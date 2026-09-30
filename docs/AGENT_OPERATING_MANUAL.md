@@ -145,12 +145,14 @@ read-only の Reviewer（Plan Review / Final Review）と Explorer への発注�
 
 1. goal（何を判定・報告してほしいか）
 2. 対象と**読むもの**（packet は `## Review Response` の前まで、設計正本の触る節と隣接節、Scope が触る現物）と**読まないもの**（同じ round の他の reviewer の結果の置き場、PR body・comment。範囲は §3 の独立性の項と同じ）
-3. read-only 宣言（tracked file の編集・git / PR 操作の禁止。Final Review の review comment の投稿は例外として明記する）と subagent 生成上限（既定 0）
-4. **判定の問い**と**確かめる command**。Plan Review の発注（[DEV_WORKFLOW.md](DEV_WORKFLOW.md) Review Rules の Plan Review の発注の項）では、冒頭 1 行で `Ordinary Operation` の操作列の成立を `成立 / 具体的な反例あり / 外部前提が未確認` で答えさせる（Final Review の発注では必須にしない）。「正常な条件で目的を達成できるか」と「危険な結果を出さないか」は別々に問う。確かめる command は AC の command を含めて具体に書く。doc check は [review-checklist.md](quality/review-checklist.md) の段階別（PR 前は手元の既定 mode、PR 後は hosted の docs job の結果を読み、手元は hosted の赤の再現と `--target plan` だけ）に従う
-5. 報告フォーマット（合否と P1/P2/P3 の件数、findings は file:line と具体的な反例と最小の修正案一案、AC 実測表、確認した対象と確認できなかった対象、全文 dump 禁止）
-6. 停止する条件（対象 SHA / PR head の不一致だけ。途中で許可を求めて止まらない）
+3. read-only 宣言（tracked file の編集・git / PR 操作の禁止。Final Review の review comment の投稿は例外として明記する）
+4. subagent 生成上限（既定 0）
+5. **判定の問い**。Plan Review の発注（[DEV_WORKFLOW.md](DEV_WORKFLOW.md) Review Rules の Plan Review の発注の項）では、冒頭 1 行で `Ordinary Operation` の操作列の成立を `成立 / 具体的な反例あり / 外部前提が未確認` で答えさせる（Final Review の発注では必須にしない）。「正常な条件で目的を達成できるか」と「危険な結果を出さないか」は別々に問う
+6. **確かめる command**（AC の command を含めて具体に書く）。doc check は [review-checklist.md](quality/review-checklist.md) の段階別（PR 前は手元の既定 mode、PR 後は hosted の docs job の結果を読み、手元は hosted の赤の再現と `--target plan` だけ）に従う
+7. 報告フォーマット（合否と P1/P2/P3 の件数、findings は file:line と具体的な反例と最小の修正案一案、AC 実測表、確認した対象と確認できなかった対象、全文 dump 禁止）
+8. 停止する条件（対象 SHA / PR head の不一致だけ。途中で許可を求めて止まらない）
 
-packet・SHA の無い発注（Explorer の証跡収集など）は、goal に対する問いと対象範囲・読まないものを書き、2・4・6 の packet・AC・SHA の項は当たるときだけ書く。closure・是正の確認の発注は、前回の findings と修正差分から始める（[subagent-review-packet.md](templates/subagent-review-packet.md)）。Contract Audit / Final Review 役への発注では、[DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit」の実施項目を**検証対象として対象（2）に列挙する** — これは対象物の指定（出力契約）であり過程指示ではない。
+packet・SHA の無い発注（Explorer の証跡収集など）は、goal に対する問いと対象範囲・読まないものを書き、2・5・6・8 の packet・AC・SHA の項は当たるときだけ書く。closure・是正の確認の発注は、前回の findings と修正差分から始める（[subagent-review-packet.md](templates/subagent-review-packet.md)）。Contract Audit / Final Review 役への発注では、[DEV_WORKFLOW.md](DEV_WORKFLOW.md)「Contract Audit」の実施項目を**検証対象として対象（2）に列挙する** — これは対象物の指定（出力契約）であり過程指示ではない。
 
 書かないこと: 期待する結論や finding（「○○が問題のはず」）、finding の件数の目標、検証の手順と順序（「まず X を確認してから Y」）、同じ round の他の reviewer の結果、Writer 向けの手順（§5.6）。
 
