@@ -549,6 +549,14 @@ sed -i '/^- Phase: implementing$/d' "$packet"
 sed -i '/^## Workflow State/a\\n- Phase: implementing' "$packet"
 capture_check "$repo" output
 [[ "$CHECK_STATUS" == 0 ]] || fail "restored packet rejected after D4 scenarios: $output"
+cp "$packet" "$tmp/d4-packet.md"
+sed -i '/^- Phase: implementing$/d' "$packet"
+sed -i 's/^## Scope$/## Workflow State\n\n- Phase: implementing\n\n## Scope/' "$packet"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "Phase in a second Workflow State section was counted"
+assert_contains "$output" "invalid tracked Phase" "second Workflow State section reason missing"
+echo "PASS: only the first Workflow State section is read"
+cp "$tmp/d4-packet.md" "$packet"
 
 # MG-D4: a real shallow clone must fail, even if its visible tip looks consistent.
 shallow="$tmp/shallow"

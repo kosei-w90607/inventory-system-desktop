@@ -159,8 +159,8 @@ main() {
         [[ -n "$file" ]] || continue
         # Phase / Evidence Mode は最初の `## Workflow State` の h2 の節だけから読む（helper と同じ範囲、D-102 D4）。
         # Plan Commit / Amendments（check_plan_commit_ancestry）は file 全体のまま。
-        ws_section="$(awk '/^## Workflow State[[:space:]]*$/ { active=1; next }
-            active && /^## / { exit } active { print }' "$file")"
+        ws_section="$(awk 'active && /^## / { exit } /^## Workflow State[[:space:]]*$/ { active=1; next }
+            active { print }' "$file")"
         if grep -qE '^- Evidence Mode:' <<<"$ws_section" &&
             [[ "$(sed -n 's/^- Evidence Mode: *//p' <<<"$ws_section" | sed -E 's/[[:space:]]+$//')" != "github" ]]; then
             echo "❌ [workflow-git] Evidence Mode は廃止。書くなら github: $file"
