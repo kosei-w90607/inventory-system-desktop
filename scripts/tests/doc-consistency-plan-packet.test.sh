@@ -104,6 +104,8 @@ repo="$tmp/repo"
 mkdir -p "$repo/docs/plans" "$repo/docs/function-design"
 git init -q "$repo"
 cp "$SOURCE_ROOT/scripts/doc-consistency-check.sh" "$repo/doc-consistency-check.sh"
+# PK4 の key の重複の検査は cwd 相対の scripts/pr-gate.py（helper の workflow_fields）を呼ぶ（D-102 D3）
+mkdir -p "$repo/scripts" && cp "$SOURCE_ROOT/scripts/pr-gate.py" "$repo/scripts/"
 
 write_rg_call_log() {
     local file="$1"
@@ -1218,6 +1220,63 @@ if ! run_check "docs/archive/plans/2026-02-12-pr4-archived-short-sha.md"; then
     fail "PR4-F12: archived packet with a short Plan Commit was rejected"
 fi
 assert_not_contains "$out" "Plan Commit は pending か 40 桁"
+
+# --- PK4-DUP SPEC D-102 D3: key の重複は helper の workflow_fields が判定し、PK4 が ERROR にする ---
+pk4_dup_case() {
+    local label="$1" expect="$2" extra="$3"
+    setup_repo_dirs
+    reset_packet_defaults
+    PKT_WORKFLOW_STATE_EXTRA="$extra"
+    write_packet "$repo/docs/plans/2026-03-01-pk4-dup.md"
+    write_plans_md_linking "2026-03-01-pk4-dup.md"
+    if [ "$expect" = reject ]; then
+        if run_check "docs/plans/2026-03-01-pk4-dup.md"; then
+            fail "$label: duplicate Workflow State key was accepted"
+        fi
+        assert_contains "$out" "PK4: docs/plans/2026-03-01-pk4-dup.md の Workflow State に重複する field があります"
+    else
+        if ! run_check "docs/plans/2026-03-01-pk4-dup.md"; then
+            cat "$out" >&2
+            fail "$label: packet without a duplicate key was rejected"
+        fi
+        assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+        assert_not_contains "$out" "重複する field"
+    fi
+}
+pk4_dup_case "PK4-DUP-1 必須 field の重複" reject "- Human Gate: ready,merge"
+pk4_dup_case "PK4-DUP-2 遷移記録の同じ key" reject $'- plan-draft → plan-gate（2026-01-01）: a\n- plan-draft → plan-gate（2026-01-01）: b'
+pk4_dup_case "PK4-DUP-3 遷移記録の違う key" accept $'- plan-draft → plan-gate（round 1）: a\n- plan-draft → plan-gate（round 2）: b'
+pk4_dup_case "PK4-DUP-4 HTML comment の中" accept $'<!--\n- Phase: x\n-->'
+pk4_dup_case "PK4-DUP-5 字下げした fence の中" reject $'  ```\n- Phase: x\n  ```'
+pk4_dup_case "PK4-DUP-6 列 0 の fence の中" accept $'```\n- Phase: x\n```'
+
+# PK4-DUP-7: helper が無ければ fail-closed の ERROR
+setup_repo_dirs
+reset_packet_defaults
+write_packet "$repo/docs/plans/2026-03-01-pk4-dup.md"
+write_plans_md_linking "2026-03-01-pk4-dup.md"
+rm -f "$repo/scripts/pr-gate.py"
+if run_check "docs/plans/2026-03-01-pk4-dup.md"; then
+    cp "$SOURCE_ROOT/scripts/pr-gate.py" "$repo/scripts/"
+    fail "PK4-DUP-7: missing scripts/pr-gate.py was accepted (fail-open)"
+fi
+cp "$SOURCE_ROOT/scripts/pr-gate.py" "$repo/scripts/"
+assert_contains "$out" "PK4: docs/plans/2026-03-01-pk4-dup.md の Workflow State の重複の検査に python3 と scripts/pr-gate.py が必要です"
+
+# PK4-DUP-8: Workflow State が 2 つ（helper は missing/ambiguous）でも重複の誤報をしない
+setup_repo_dirs
+reset_packet_defaults
+write_packet "$repo/docs/plans/2026-03-01-pk4-dup.md"
+write_plans_md_linking "2026-03-01-pk4-dup.md"
+{
+    echo ""
+    sed -n '/^## Workflow State$/,/^## Owner Effort Budget$/p' "$repo/docs/plans/2026-03-01-pk4-dup.md" | sed '$d'
+} >> "$repo/docs/plans/2026-03-01-pk4-dup.md"
+[ "$(grep -c '^## Workflow State$' "$repo/docs/plans/2026-03-01-pk4-dup.md")" = 2 ] ||
+    fail "PK4-DUP-8: fixture does not have two Workflow State sections"
+run_check "docs/plans/2026-03-01-pk4-dup.md" || true
+assert_not_contains "$out" "重複する field"
+assert_not_contains "$out" "python3 と scripts/pr-gate.py が必要"
 
 echo "PASS: doc-consistency-plan-packet"
 
