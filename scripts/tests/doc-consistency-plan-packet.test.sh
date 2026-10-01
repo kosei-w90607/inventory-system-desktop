@@ -1278,6 +1278,45 @@ run_check "docs/plans/2026-03-01-pk4-dup.md" || true
 assert_not_contains "$out" "重複する field"
 assert_not_contains "$out" "python3 と scripts/pr-gate.py が必要"
 
+# --- PK1-H2 SPEC D-102 D5: packet の節は `##` の見出しだけ。`###` の小見出しは節を満たさない ---
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="new"
+write_packet "$repo/docs/plans/2026-03-02-pk1-h2.md"
+write_plans_md_linking "2026-03-02-pk1-h2.md"
+sed -i 's/^## Contract Ledger$/### Contract Ledger/' "$repo/docs/plans/2026-03-02-pk1-h2.md"
+if run_check "docs/plans/2026-03-02-pk1-h2.md"; then
+    fail "PK1-H2-1: R3 packet with only ### Contract Ledger was accepted"
+fi
+assert_contains "$out" "PK1: docs/plans/2026-03-02-pk1-h2.md (R3) は Contract Ledger（旧 template は Spec Contract と Trace Matrix）を欠いています"
+
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="new"
+write_packet "$repo/docs/plans/2026-03-02-pk1-h2.md"
+write_plans_md_linking "2026-03-02-pk1-h2.md"
+sed -i 's/^## Data Safety$/### Data Safety/' "$repo/docs/plans/2026-03-02-pk1-h2.md"
+if run_check "docs/plans/2026-03-02-pk1-h2.md"; then
+    fail "PK1-H2-2: ### Data Safety satisfied the required section"
+fi
+assert_contains "$out" "必須セクション '## Data Safety' を欠いています"
+
+# PK1-H2-3: `## Contract Ledger` と、Test Plan の下（Matrix の link の後）の空の `### Contract Ledger` の両方 → OK
+setup_repo_dirs
+reset_packet_defaults
+PKT_TEMPLATE="new"
+write_packet "$repo/docs/plans/2026-03-02-pk1-h2.md"
+write_plans_md_linking "2026-03-02-pk1-h2.md"
+sed -i '/^Test Design Matrix: /a ### Contract Ledger' "$repo/docs/plans/2026-03-02-pk1-h2.md"
+[ "$(grep -c 'Contract Ledger$' "$repo/docs/plans/2026-03-02-pk1-h2.md")" = 2 ] ||
+    fail "PK1-H2-3: fixture does not have both Contract Ledger headings"
+if ! run_check "docs/plans/2026-03-02-pk1-h2.md"; then
+    cat "$out" >&2
+    fail "PK1-H2-3: packet with ## and ### Contract Ledger was rejected"
+fi
+assert_contains "$out" "PK1: Plan Packet presence OK"
+assert_contains "$out" "PK3: Plan Packet heuristic warnings OK"
+
 echo "PASS: doc-consistency-plan-packet"
 
 # T-P3: Evidence Mode 行は任意。書くなら github だけ（legacy / 未知値は ERROR）。
