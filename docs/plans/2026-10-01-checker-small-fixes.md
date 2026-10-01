@@ -392,3 +392,8 @@ Fill after review.
   - Opus #3・Codex #2（S3 (c) は `GateError` の種類の誤分類を検出しない）: 採用。S3 に (h)（`## Workflow State` が 2 つ → 重複の誤報なし）、Test Plan に MU14、Matrix に行を足し、(c) の「Would fail if」から誤分類を外した。
   - Opus #4（awk と helper が fence の中の見出しの例で別の節を読む）: 採用。Matrix の Residual Test Gaps に 1 行。
   - Codex #3（前半の G1 に前 round の reviewer 識別付きの参照）: 採用。G1 から識別を外し「round 2 の後」にした。
+- Final Review broad（2026-10-01、対象 `268e044e`、PR #136、互いに独立の 2 本）: Fable 5.1 = approve（P1 / P2 = 0、P3 2）、Codex GPT-6.1 Sol = reject（P2 1）。2 本とも pending で record 済み。両 reviewer とも、発注書の差分の指定に packet の除外が漏れた箇所があり Review Response の一部が目に入ったと自己申告した（判定の根拠には使っていない。発注書側の原因）。
+  - Codex #1（P2、`scripts/check-workflow-git.sh:162` の awk は開始の判定が終了の判定より先にあるので、最初の `## Workflow State` の直後に同名の節が続くと 2 つ目の節まで読み、最初の節に無い Phase で通る。S4 の「最初の節だけを読み、次の `^## ` で exit」に反する）: 採用。Coordinator が再現し、修正前に red になる場面を `scripts/tests/workflow-git-checks.test.sh` に足してから（`FAIL: Phase in a second Workflow State section was counted`）、awk の 2 つの規則の順を入れ替えた（`5e69e092`）。修正後は同 test が `PASS: only the first Workflow State section is read`、`run-workflow-tests.sh` が `OK`。packet の Scope・AC は変えない（実装を S4 の記述に合わせた）。
+  - Fable #1（P3、PK4 の重複の検査で `GateError` 以外の例外〈不正な UTF-8 など〉も `python3 と scripts/pr-gate.py が必要です` と出て原因に辿り着けない）: 見送り。fail-closed は保たれる。message を変えると S3 (g) と AC の literal に触れるので、closeout で backlog へ。
+  - Fable #2（P3、PK4-DUP-8 に packet S3 (h) に無い assertion〈`python3 と scripts/pr-gate.py が必要` も含まない〉がある）: 見送り（変更なし）。S3 (h) の意図〈`missing/ambiguous` を別の ERROR に誤報しない〉の範囲で oracle を強めたもので、Scope の変更ではない。
+  - Coordinator の ponytail-review（Writer の差分）: `doc-consistency-plan-packet.test.sh` の PK4-DUP-7 の `fail` 直前の写し戻し 1 行は無効（`fail` が exit する）。害は無く、closeout で backlog へ。
