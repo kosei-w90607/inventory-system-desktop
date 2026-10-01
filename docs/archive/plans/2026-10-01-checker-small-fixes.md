@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 4030a2fda456eca2f5f265f94b6e5a5804a4e7c3
 - Amendments: none
@@ -359,7 +359,9 @@ R3 の外部前提。各行に実験と結果、確認日（2026-10-01）を書�
 - S4: `check-workflow-git.sh` が Phase / Evidence Mode を最初の `## Workflow State` の h2 の節だけから awk で読む。`check_plan_commit_ancestry` は不変。workflow-git test に本文の箇条の場面と節に Phase が無い場面を足した。
 - S5: `has_h2_section` を足し、PK1 の 5 箇所と PK3 の 1 箇所を置き換え、`trace_matrix_data_rows` は `extract_markdown_h2_section` で読む。`extract_markdown_section` は不変。packet test に case (a)〜(c) を足した。
 - S6: `frontmatter_lacks_forbidden_keys` が `hooks`・`permissionMode`・`mcpServers` を拒む。mutant 3 つを足した。
-- 検証（AC1〜AC9、mutation MU1〜MU14、「本 lane 自身の検査」の 1〜3）の実測値と Draft の run は PR の body が持つ。PR: [#136](https://github.com/kosei-w90607/inventory-system-desktop/pull/136)
+- 検証（AC1〜AC9、mutation MU1〜MU14、「本 lane 自身の検査」の 1〜3）の実測値と Draft の run は PR の body が持つ。PR: [#136](https://github.com/kosei-w90607/inventory-system-desktop/pull/136)（Writer = Opus 5.5 subagent。helper 経由の squash merge、2026-10-01）
+- 実装の要旨（closeout、2026-10-01）: PK4 は helper の `workflow_fields` を呼んで Workflow State の key の重複を push の前に止め、helper を呼べないときは fail-closed で止まる。`check-workflow-git.sh` は Phase と Evidence Mode を最初の `## Workflow State` の節だけから読むので、本文の箇条の `- Phase:` で止まらず、節に Phase が無い packet も通さない。PK1・PK3 の節の判定は `##` の見出しだけに当たる。hook test は agent 定義・command file・skill の frontmatter の `permissionMode`・`mcpServers` も拒む。`.codex/rules/default.rules` と DEV_SETUP の auto-memory の namespace は小文字の home に揃い、wrapper test は大小どちらの旧 clone の path も拾う。reading-order-drift test の comment は撤去済みの fixture を指さなくなった（D-102）。
+- review・CI・merge: Plan Review は 3 round の上限で、round 3 の P3 を Coordinator が一括是正し owner が plan-approved。Final Review broad は Fable 5.1 が approve（P3 2）、Codex GPT-6.1 Sol が reject（P2 1）で、2 本とも round 3 の後の一括是正の独立の再確認を兼ねた。P2 は Coordinator が修正前に red になる test を先に足して是正し、closure は GPT-6.1 Sol が approve。Draft の run は各 head で success、Ready の後の run の `Merge gate` と `CLEAN` で helper 経由で merge した（owner の Ready・merge、2026-10-01）。manual は not-required。
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
@@ -397,3 +399,5 @@ Fill after review.
   - Fable #1（P3、PK4 の重複の検査で `GateError` 以外の例外〈不正な UTF-8 など〉も `python3 と scripts/pr-gate.py が必要です` と出て原因に辿り着けない）: 見送り。fail-closed は保たれる。message を変えると S3 (g) と AC の literal に触れるので、closeout で backlog へ。
   - Fable #2（P3、PK4-DUP-8 に packet S3 (h) に無い assertion〈`python3 と scripts/pr-gate.py が必要` も含まない〉がある）: 見送り（変更なし）。S3 (h) の意図〈`missing/ambiguous` を別の ERROR に誤報しない〉の範囲で oracle を強めたもので、Scope の変更ではない。
   - Coordinator の ponytail-review（Writer の差分）: `doc-consistency-plan-packet.test.sh` の PK4-DUP-7 の `fail` 直前の写し戻し 1 行は無効（`fail` が exit する）。害は無く、closeout で backlog へ。
+
+- Closeout（2026-10-01）: Codex #1（P2）の是正の後の closure は Codex GPT-6.1 Sol = approve（新しい指摘 0、修正を戻すと test が red になることを確かめた）。record は broad の 2 本を pending、closure を pass で記録した。Ready の後の run `36863242805` は `Merge gate` success、9 job とも success、`mergeStateStatus` は `CLEAN`。Draft の run は各 head で success。見送った Fable #1（`GateError` 以外の例外の message）、前文の `- Plan Commit:` で PK5 が誤る件（D4 の範囲外、Residual Test Gaps）、PK4-DUP-7 の効いていない写し戻しの 1 行は `docs/backlog.md` の保留へ 1 項目で置いた。Fable #2 は変更なしで積まない。Final Review broad の 2 本が Review Response の一部を目にした件は、発注書の雛形を直した（tracked 外）。
