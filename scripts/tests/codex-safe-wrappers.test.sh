@@ -4,12 +4,17 @@
 set -euo pipefail
 
 SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-OLD_ROOT_PATTERN='Projects/inventory-system($|[^-])'
+OLD_ROOT_PATTERN='[Pp]rojects/inventory-system($|[^-])'
 
 fail() {
     echo "FAIL: $*" >&2
     exit 1
 }
+
+# Pattern sensitivity: catch the history-view clone in either case, never the public clone.
+printf '%s\n' '/home/kosei/projects/inventory-system/x' | rg -q "$OLD_ROOT_PATTERN" || fail "OLD_ROOT_PATTERN misses the lowercase history-view path"
+printf '%s\n' '/home/kosei/Projects/inventory-system/x' | rg -q "$OLD_ROOT_PATTERN" || fail "OLD_ROOT_PATTERN misses the uppercase history-view path"
+printf '%s\n' '/home/kosei/projects/inventory-system-public/x' | rg -q "$OLD_ROOT_PATTERN" && fail "OLD_ROOT_PATTERN matches the public path"
 
 assert_success() {
     local label="$1"
@@ -356,8 +361,11 @@ if sed -n '130,160p;236,244p' "$SOURCE_ROOT/docs/DEV_SETUP_CHECKLIST.md" |
     rg -n "$OLD_ROOT_PATTERN"; then
     fail "T12 live DEV_SETUP sections still reference the history-view clone"
 fi
-public_namespace='-home-kosei-Projects-inventory-system-public'
-old_namespace_pattern='-home-kosei-Projects-inventory-system($|[^-])'
+public_namespace='-home-kosei-projects-inventory-system-public'
+old_namespace_pattern='-home-kosei-[Pp]rojects-inventory-system($|[^-])'
+printf '%s\n' '-home-kosei-projects-inventory-system' | rg -q -- "$old_namespace_pattern" || fail "old_namespace_pattern misses the lowercase history-view namespace"
+printf '%s\n' '-home-kosei-Projects-inventory-system' | rg -q -- "$old_namespace_pattern" || fail "old_namespace_pattern misses the uppercase history-view namespace"
+printf '%s\n' '-home-kosei-projects-inventory-system-public' | rg -q -- "$old_namespace_pattern" && fail "old_namespace_pattern matches the public namespace"
 if rg -n -- "$old_namespace_pattern" "${live_files[@]}"; then
     fail "T12 live B-group file still contains the history-view encoded namespace"
 fi
