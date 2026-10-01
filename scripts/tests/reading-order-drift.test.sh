@@ -60,7 +60,7 @@ fi
 
 # HC-D2/HC-D9: structural contract lint, not proof of model behavior.
 # Keep the R2+ route, complete state input, and fail-closed marker discoverable;
-# the routing fixture separately checks what models actually do with them.
+# the routing fixture that exercised them was retired with D-101 (PR #132).
 check_entry_contract() {
     local entry
     entry="$(awk '/^## Session Start[[:space:]]*$/ { active=1; next }

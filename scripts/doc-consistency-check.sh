@@ -849,6 +849,11 @@ extract_markdown_h2_section() {
     ' "$file"
 }
 
+# packet の節の有無は template と同じ `##` の見出しだけで判定する（`###` の小見出しは節でない、D-102 D5）。
+has_h2_section() {
+    grep -qE "^##[[:space:]]+${2}([[:space:]].*)?$" "$1"
+}
+
 extract_prose() {
     local file="$1"
     awk '
@@ -962,7 +967,7 @@ is_in_word_list() {
 trace_matrix_data_rows() {
     local file="$1"
     local section="${2:-Trace Matrix}"
-    extract_markdown_section "$file" "$section" \
+    extract_markdown_h2_section "$file" "$section" \
         | awk '
             /^[[:space:]]*\|/ {
                 row=$0
@@ -1000,7 +1005,7 @@ test_token_exists() {
 
 has_test_design_matrix_reference() {
     local file="$1"
-    if grep -qE '^#{2,}[[:space:]]+Test Design Matrix([[:space:]].*)?$' "$file"; then
+    if has_h2_section "$file" "Test Design Matrix"; then
         return 0
     fi
     extract_markdown_section "$file" "Test Plan" \
@@ -1049,7 +1054,7 @@ check_plan_packet_sections() {
         fi
 
         for section in "${required_sections[@]}"; do
-            if ! grep -qE "^#{2,}[[:space:]]+${section}([[:space:]].*)?$" "$file"; then
+            if ! has_h2_section "$file" "$section"; then
                 error "PK1: $file (R${level}) は必須セクション '## ${section}' を欠いています"
             fi
         done
@@ -1060,12 +1065,12 @@ check_plan_packet_sections() {
 
         # 新 template は Contract Ledger の 1 表、旧 template は Spec Contract と Trace Matrix の組を受ける。
         if [ "$level" -ge 3 ]; then
-            if grep -qE '^#{2,}[[:space:]]+Contract Ledger([[:space:]].*)?$' "$file"; then
+            if has_h2_section "$file" "Contract Ledger"; then
                 if [ -z "$(trace_matrix_data_rows "$file" "Contract Ledger")" ]; then
                     error "PK1: $file (R${level}) の Contract Ledger にデータ行がありません"
                 fi
-            elif ! grep -qE '^#{2,}[[:space:]]+Spec Contract([[:space:]].*)?$' "$file" ||
-                ! grep -qE '^#{2,}[[:space:]]+Trace Matrix([[:space:]].*)?$' "$file"; then
+            elif ! has_h2_section "$file" "Spec Contract" ||
+                ! has_h2_section "$file" "Trace Matrix"; then
                 error "PK1: $file (R${level}) は Contract Ledger（旧 template は Spec Contract と Trace Matrix）を欠いています"
             fi
         fi
@@ -1127,7 +1132,7 @@ check_plan_packet_heuristic_warnings() {
         [ "$level" -le 2 ] && continue
 
         local trace_section="Trace Matrix"
-        grep -qE '^#{2,}[[:space:]]+Contract Ledger([[:space:]].*)?$' "$file" && trace_section="Contract Ledger"
+        has_h2_section "$file" "Contract Ledger" && trace_section="Contract Ledger"
         local trace_rows
         trace_rows=$(trace_matrix_data_rows "$file" "$trace_section")
         if [ -z "$trace_rows" ]; then
@@ -1261,6 +1266,28 @@ check_plan_packet_workflow_state() {
                 error "PK4: $file に legacy field '$field' は保存できません"
             fi
         done
+
+        # key の重複は helper の workflow_fields そのものに判定させる（D-102 D3。checker 側に判定を持たない）。
+        # helper の path は cwd（repo root）相対。python3 か import が失敗すれば ERROR（fail-closed）。
+        local dup_check
+        dup_check=$(PYTHONDONTWRITEBYTECODE=1 python3 -c '
+import importlib.util, sys
+s = importlib.util.spec_from_file_location("pr_gate", "scripts/pr-gate.py")
+m = importlib.util.module_from_spec(s)
+s.loader.exec_module(m)
+try:
+    m.workflow_fields(open(sys.argv[1], encoding="utf-8").read())
+    print("ok")
+except m.GateError as e:
+    print(e)
+' "$file" 2>/dev/null) || dup_check=""
+        case "$dup_check" in
+            "duplicate packet fields")
+                error "PK4: $file の Workflow State に重複する field があります（helper の workflow_fields が拒否）" ;;
+            ok | "packet Workflow State missing/ambiguous") ;;
+            *)
+                error "PK4: $file の Workflow State の重複の検査に python3 と scripts/pr-gate.py が必要です" ;;
+        esac
 
         local minimum human_gate
         minimum=$(extract_workflow_field "$ws_section" "Final Review Minimum" full)

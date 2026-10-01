@@ -10,11 +10,12 @@ fail() {
     exit 1
 }
 
-# SPEC-WF-HARNESS5-D3: frontmatter (CRLF too) is read as YAML; a top-level hooks key or unparsable YAML fails closed.
+# SPEC-WF-HARNESS5-D3: frontmatter (CRLF too) is read as YAML; a top-level hooks, permissionMode or mcpServers key
+# (subagent permission / reach settings, https://code.claude.com/docs/en/sub-agents; D-102 D6) or unparsable YAML fails closed.
 # --disable-gems -rdate: the same stdlib psych everywhere; a newer psych gem loads Date implicitly, the stock one does not.
-frontmatter_lacks_hooks() {
+frontmatter_lacks_forbidden_keys() {
     awk '{ sub(/\r$/, "") } NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } NR > 1 { print }' "$1" |
-        ruby --disable-gems -ryaml -rdate -e 'doc = YAML.safe_load(STDIN.read, permitted_classes: [Date, Time]); exit(doc.is_a?(Hash) && doc.key?("hooks") ? 1 : 0)' 2>/dev/null
+        ruby --disable-gems -ryaml -rdate -e 'doc = YAML.safe_load(STDIN.read, permitted_classes: [Date, Time]); exit(doc.is_a?(Hash) && %w[hooks permissionMode mcpServers].any? { |k| doc.key?(k) } ? 1 : 0)' 2>/dev/null
 }
 
 validate_inventory() {
@@ -34,10 +35,10 @@ validate_inventory() {
         return 1
     fi
 
-    # SPEC-WF-HARNESS5-D3: agent, command file and skill frontmatter register no hooks.
+    # SPEC-WF-HARNESS5-D3: agent, command file and skill frontmatter register no hooks, permissionMode or mcpServers.
     local file
     while IFS= read -r -d '' file; do
-        frontmatter_lacks_hooks "$file" || return 1
+        frontmatter_lacks_forbidden_keys "$file" || return 1
     done < <(
         [[ -d "$root/.claude/agents" ]] && find "$root/.claude/agents" -name '*.md' -print0
         [[ -d "$root/.claude/commands" ]] && find "$root/.claude/commands" -name '*.md' -print0
@@ -298,6 +299,21 @@ cp -a "$frontmatter_fixture" "$claude_skill_hooks_mutant"
 mkdir -p "$claude_skill_hooks_mutant/.claude/skills/local"
 printf '%s\n' '---' 'name: local' 'hooks:' '  Stop: []' '---' 'body' > "$claude_skill_hooks_mutant/.claude/skills/local/SKILL.md"
 expect_rejected "HARNESS5-D3 .claude/skills frontmatter hooks" "$claude_skill_hooks_mutant"
+
+agent_permission_mode_mutant="$tmp/agent-permission-mode-mutant"
+cp -a "$frontmatter_fixture" "$agent_permission_mode_mutant"
+printf '%s\n' '---' 'name: writer' 'permissionMode: bypassPermissions' '---' 'body' > "$agent_permission_mode_mutant/.claude/agents/writer.md"
+expect_rejected "HARNESS5-D3 agent frontmatter permissionMode" "$agent_permission_mode_mutant"
+
+agent_mcp_servers_mutant="$tmp/agent-mcp-servers-mutant"
+cp -a "$frontmatter_fixture" "$agent_mcp_servers_mutant"
+printf '%s\n' '---' 'name: writer' 'mcpServers:' '  - playwright:' '      type: stdio' '      command: npx' '---' 'body' > "$agent_mcp_servers_mutant/.claude/agents/writer.md"
+expect_rejected "HARNESS5-D3 agent frontmatter mcpServers" "$agent_mcp_servers_mutant"
+
+skill_permission_mode_mutant="$tmp/skill-permission-mode-mutant"
+cp -a "$frontmatter_fixture" "$skill_permission_mode_mutant"
+printf '%s\n' '---' 'name: example' 'permissionMode: plan' '---' 'body' > "$skill_permission_mode_mutant/.agents/skills/example/SKILL.md"
+expect_rejected "HARNESS5-D3 skill frontmatter permissionMode" "$skill_permission_mode_mutant"
 
 many_manifests_mutant="$tmp/many-manifests-mutant"
 cp -a "$frontmatter_fixture" "$many_manifests_mutant"

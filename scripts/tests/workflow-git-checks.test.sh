@@ -535,6 +535,29 @@ capture_check "$repo" output
 [[ "$CHECK_STATUS" == 0 ]] || fail "restored packet rejected: $output"
 echo "PASS: workflow state marker and phase"
 
+# D-102 D4: Phase / Evidence Mode are read only from the first `## Workflow State` h2 section.
+printf '%s\n' '' '## Scope' '' '- Phase: 本文の箇条' '- Evidence Mode: legacy の語' >> "$packet"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" == 0 ]] || fail "body bullets outside Workflow State were read: $output"
+echo "PASS: body bullets outside Workflow State are ignored"
+sed -i '/^- Phase: implementing$/d; s/^- Phase: 本文の箇条$/- Phase: implementing/; /^- Evidence Mode: legacy の語$/d' "$packet"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "Phase outside Workflow State was counted"
+assert_contains "$output" "invalid tracked Phase" "Phase outside Workflow State reason missing"
+echo "PASS: Phase outside Workflow State does not count"
+sed -i '/^- Phase: implementing$/d' "$packet"
+sed -i '/^## Workflow State/a\\n- Phase: implementing' "$packet"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" == 0 ]] || fail "restored packet rejected after D4 scenarios: $output"
+cp "$packet" "$tmp/d4-packet.md"
+sed -i '/^- Phase: implementing$/d' "$packet"
+sed -i 's/^## Scope$/## Workflow State\n\n- Phase: implementing\n\n## Scope/' "$packet"
+capture_check "$repo" output
+[[ "$CHECK_STATUS" != 0 ]] || fail "Phase in a second Workflow State section was counted"
+assert_contains "$output" "invalid tracked Phase" "second Workflow State section reason missing"
+echo "PASS: only the first Workflow State section is read"
+cp "$tmp/d4-packet.md" "$packet"
+
 # MG-D4: a real shallow clone must fail, even if its visible tip looks consistent.
 shallow="$tmp/shallow"
 git clone -q --depth 1 "file://$repo" "$shallow"

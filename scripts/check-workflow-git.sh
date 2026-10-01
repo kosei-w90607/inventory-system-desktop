@@ -121,7 +121,7 @@ check_plan_commit_ancestry() {
 }
 
 main() {
-    local file phase
+    local file phase ws_section
     # Only the target ancestry matters: an unrelated ref can retain a shallow marker.
     # rev-list treats a shallow boundary as a root; the raw commit still names its parents.
     local history_root history_roots
@@ -157,12 +157,16 @@ main() {
 
     while IFS= read -r file; do
         [[ -n "$file" ]] || continue
-        if grep -qE '^- Evidence Mode:' "$file" &&
-            [[ "$(sed -n 's/^- Evidence Mode: *//p' "$file" | sed -E 's/[[:space:]]+$//')" != "github" ]]; then
+        # Phase / Evidence Mode は最初の `## Workflow State` の h2 の節だけから読む（helper と同じ範囲、D-102 D4）。
+        # Plan Commit / Amendments（check_plan_commit_ancestry）は file 全体のまま。
+        ws_section="$(awk 'active && /^## / { exit } /^## Workflow State[[:space:]]*$/ { active=1; next }
+            active { print }' "$file")"
+        if grep -qE '^- Evidence Mode:' <<<"$ws_section" &&
+            [[ "$(sed -n 's/^- Evidence Mode: *//p' <<<"$ws_section" | sed -E 's/[[:space:]]+$//')" != "github" ]]; then
             echo "❌ [workflow-git] Evidence Mode は廃止。書くなら github: $file"
             FAIL=1
         fi
-        phase="$(sed -n 's/^- Phase: *//p' "$file" | sed -E 's/[[:space:]]+$//')"
+        phase="$(sed -n 's/^- Phase: *//p' <<<"$ws_section" | sed -E 's/[[:space:]]+$//')"
         if ! is_workflow_phase "$phase"; then
             echo "❌ [workflow-git] invalid tracked Phase in $file"
             FAIL=1
