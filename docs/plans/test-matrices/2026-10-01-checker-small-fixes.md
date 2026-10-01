@@ -8,7 +8,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-- C1（D3、S3）: PK4 は helper の `workflow_fields`（`scripts/pr-gate.py:148-156`）を `python3` で呼び、`GateError` が `duplicate packet fields` のときだけ ERROR にする。行集合と key の切り方は定義により helper と同じ（checker 側に判定を持たない）。`python3` が無ければ ERROR。
+- C1（D3、S3）: PK4 は helper の `workflow_fields`（`scripts/pr-gate.py:148-156`）を `python3` で呼び、`GateError` が `duplicate packet fields` のときだけ ERROR にする。行集合と key の切り方は定義により helper と同じ（checker 側に判定を持たない）。helper の path は cwd（repo root）相対の `scripts/pr-gate.py` で、fixture の test は setup で `$repo/scripts/` に写す。`python3` か import が無ければ ERROR（fail-closed）。
 - C2（D4、S4）: `scripts/check-workflow-git.sh` は Phase・Evidence Mode を最初の h2 の `## Workflow State` の節（次の `## ` まで）からだけ読む。節に Phase が無ければ `invalid tracked Phase`。Plan Commit / Amendments の読み方、PK5 の判定式と対象の選び方は不変。
 - C3（D5、S5）: PK1 の節の有無（base_sections・Contract Ledger・Spec Contract / Trace Matrix・Test Design Matrix）と PK3 の Contract Ledger の判定は `##` の見出しだけに当たる。`extract_markdown_section` は不変。archive の packet に新しい ERROR を出さない。
 - C4（D6、S6）: hook test は agent 定義・command file・skill（`.agents/skills`・`.claude/skills`）の frontmatter の top-level の `hooks`・`permissionMode`・`mcpServers` を拒む。YAML として読めなければ拒む（既存）。tracked の frontmatter は通る。
@@ -31,6 +31,7 @@ Risk: R3
 - F11: pattern の変更で public の path（`…/inventory-system-public/…`）を旧 clone と誤検出する、または大文字の旧 clone の検出を失う。
 - F12: DEV_SETUP の namespace を小文字にしたのに T13 が大文字を要求して red、またはその逆（文書と test の片方だけ直す）。
 - F13: `.codex/rules/default.rules` に大文字の path が残る、または置換が他の token を壊す（rules の構文が崩れる）。
+- F14: `python3` か `scripts/pr-gate.py` の import が失敗したとき PK4 が ERROR を出さず「重複なし」と読んで通す（fail-open）。
 
 ## Test Matrix
 
@@ -51,7 +52,8 @@ test 名は実装で付ける名前（既存の命名: `doc-consistency-plan-pac
 | C1 | F2 | CLI | S3 (d) `PK4-DUP-4: HTML comment の中の行は数えない`（`PKT_WORKFLOW_STATE_EXTRA` に `<!--` / `- Phase: x` / `-->` の 3 行、exit 0） | helper の `workflow_fields`（`markdown()` が comment を除く）を呼ばず、節の生の行で `^- Phase:` を数える再実装（除去を外した MU1 の変種）。1 行の `<!-- - Phase: x -->` は行頭が `<!--` で除去が無くても `^- ` に当たらないので観測できない |
 | C1 | F2 | CLI | S3 (e) `PK4-DUP-5: 字下げした code fence の中の重複は ERROR`（`PKT_WORKFLOW_STATE_EXTRA` に `  ```` / `- Phase: x` / `  ```` の 3 行、exit 非 0、`重複する field`） | checker の `strip_fenced_code_and_html_comments`（字下げした fence も除く）で再実装して helper より緩くなる（P11 (c)、D3 の棄却案 (a)） |
 | C1 | F2 | CLI | S3 (f) `PK4-DUP-6: 列 0 の code fence の中の重複は OK`（`PKT_WORKFLOW_STATE_EXTRA` に ```` ``` ```` / `- Phase: x` / ```` ``` ```` の 3 行、exit 0） | fence を除かない再実装で helper より厳しくなる |
-| C1 | F2 | CLI（packet 実物） | AC3 の 2 本目: 本 packet の `--target plan` が exit 0（遷移記録 5 行 + `Branch` の key が互いに違う。helper では `ok 16`、P11 (b)） | 検査が過剰に拒む（helper の `GateError` 以外の例外や `python3` の失敗を重複と誤報する） |
+| C1 | F14 | CLI（fixture packet、helper を消した写し） | S3 (g) `PK4-DUP-7: scripts/pr-gate.py が無ければ fail-closed の ERROR`（setup で写した `$repo/scripts/pr-gate.py` を `rm -f` して R3 の packet を検査、exit 非 0、出力に `PK4:` と `python3 と scripts/pr-gate.py が必要`。検査の後に写し戻す） | 失敗の分岐を `\|\| true` にして import の失敗を「重複なし」と読む（MU13。packet の Contract Probe P12 で仮実装に注入して red を確かめた） |
+| C1 | F2 | CLI（packet 実物） | AC3 の 2 本目: 本 packet の `--target plan` が exit 0（遷移記録 7 行 + `Branch` の key が互いに違う。helper では `ok 18`〈round 2 の後。P11 (b) の `ok 16` は round 1 の後の 5 行の時点〉） | 検査が過剰に拒む（helper の `GateError` 以外の例外や `python3` の失敗を重複と誤報する） |
 | C1 | F2 | CLI（`$TMPDIR` の写し） | AC3 の字下げした fence の写し（exit 1、`重複する field`）と P11 (c)（helper `duplicate packet fields`、checker の strip では `1`） | PK4 が helper を呼ばず checker の strip で再実装する |
 | C2 | F3 | CLI（synthetic git repo） | `workflow-git-checks.test.sh` S4 (a) `PASS: body bullets outside Workflow State are ignored`（`## Scope` に `- Phase: 本文の箇条` と `- Evidence Mode: legacy の語`、exit 0） | Phase / Evidence Mode を file 全体から読む（MU2・MU3） |
 | C2 | F4 | CLI | S4 (b) `PASS: Phase outside Workflow State does not count`（節に Phase 無し、本文に `- Phase: implementing`、本文に Evidence Mode の行は無し、exit 非 0、`invalid tracked Phase`） | 節の抽出に失敗したとき file 全体に fallback する、本文の値を拾う（MU2） |
@@ -83,7 +85,7 @@ UI・DB・cache・route の状態は無い。packet と frontmatter の検査の
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| packet の Workflow State（key の重複） | 起草（key が互いに違う） | push の前 | pre-push の PK4 OK → hosted docs job OK → helper `parse_packet` OK | key を重複させる編集 | pre-push の PK4 が ERROR で push が止まる | 直して push し直す | — | pre-push を bypass しても hosted docs job が red、helper も止まる（3 箇所で同じ `workflow_fields`） | 直して push | AC3、S3 (a)〜(f)、「本 lane 自身の検査」の 1〜3 |
+| packet の Workflow State（key の重複） | 起草（key が互いに違う） | push の前 | pre-push の PK4 OK → hosted docs job OK → helper `parse_packet` OK | key を重複させる編集 | pre-push の PK4 が ERROR で push が止まる | 直して push し直す | — | pre-push を bypass しても hosted docs job が red、helper も止まる（3 箇所で同じ `workflow_fields`） | 直して push | AC3、S3 (a)〜(g)、「本 lane 自身の検査」の 1〜3 |
 | packet の Phase（読み取り範囲） | 節に Phase | — | `check-workflow-git.sh` OK | 本文に `- Phase:` の箇条を足す | OK のまま（旧: 止まる） | 節の Phase を消す | — | `invalid tracked Phase`（旧: 本文の値で通る） | 節に書く | AC4、S4 (a)〜(b) |
 | frontmatter（agent 定義） | `name`・`description`・`model`・`effort`（clean） | — | hook test OK | `permissionMode` / `mcpServers` / `hooks` を足す | hosted workflow job が red（classifier は `.claude/agents/*` で full） | key を消す | — | red のまま merge できない（`Merge gate` の workflow job） | 消して push | AC6、S6 (a)〜(d) |
 | rules と DEV_SETUP の path | 大文字（実在と不一致） | — | 小文字（実在と一致、T11 / T13 OK） | 大文字や小文字の旧 clone を書く | T11 / T12 / T13 が red | — | — | — | — | AC1、MU8〜MU10・MU12 |
@@ -106,7 +108,7 @@ workflow-state の race（capture / server、stale head、broad / closure、manu
 - invalid input: YAML として読めない frontmatter → 既存の fail-closed（`ruby` の例外で exit 非 0 → 拒む）。`permissionMode: plan`（公式の値だが D6 で拒む）。
 - duplicate/ambiguous input: key の重複（S3 (a)・(b)）。`## Workflow State` が 2 つある packet → helper は `missing/ambiguous` で止まる（既存）。PK4 は最初の節を読む（既存。変えない）。`##` と `###` の両方（S5 (c)）。
 - unknown reference: 本 packet の Matrix の link は `has_test_design_matrix_reference`（PK1）が見る（本 packet の Test Plan の link）。
-- dependency missing: `ruby` が無い環境では hook test は既存の fail-closed（D-099、`2>/dev/null` の後の exit 非 0 → 拒む）。`python3` か `scripts/pr-gate.py` の import が無い・失敗する環境では PK4 の重複の検査は ERROR（fail-closed、S3）。hosted の docs job は runner image の `python3`（`ci.yml` は install しない。同じ job の `ruby` と同じ前提）。`rg` が無い環境は既存の前提（`run-workflow-tests.sh` の `rg --files`）。
+- dependency missing: `ruby` が無い環境では hook test は既存の fail-closed（D-099、`2>/dev/null` の後の exit 非 0 → 拒む）。`python3` か `scripts/pr-gate.py` の import が無い・失敗する環境では PK4 の重複の検査は ERROR（fail-closed、S3 (g)、MU13）。hosted の docs job は runner image の `python3`（`ci.yml` は install しない。同じ job の `ruby` と同じ前提）。`rg` が無い環境は既存の前提（`run-workflow-tests.sh` の `rg --files`）。
 - permission/write failure: fixture は `mktemp -d` と `$TMPDIR`。書けなければ test が止まる（既存）。
 - dry-run side effect: 検査は読むだけ。`sed -i` は fixture の写しだけに掛ける（S5 (a)・(b) は `write_packet` の後の写し、本 repo の file ではない）。
 
@@ -154,7 +156,7 @@ mutation は対象経路の観測結果を変えるものを選び、写し（AC
 - If invalidate/refetch changes the value before versus after the operation, which test proves the lifecycle order and preserved snapshot are correct? — 当たらない（状態の snapshot が無い）。
 - If a key branch is inverted, which test fails? — 重複の有無の分岐: S3 (a)（red になる側）と S3 (c)（通る側）の対。`GateError` の種類の分岐（`duplicate packet fields` だけ ERROR）: S3 (a) と、`missing/ambiguous` を重複と誤報すれば既存 case の `## Workflow State` 欠如の出力が変わる。節の有無の分岐: S4 (a)（通る側）と S4 (b)（止まる側）の対。`##` の判定: S5 (a)・(b)（止まる側）と S5 (c)・既存 PR4-F1（通る側）の対。表の行の出所: S5 (c)（h2 から取れば通る、`#{2,}` なら ERROR）。key の一覧: S6 (a)〜(c)（止まる側）と既存の clean fixture（通る側）の対。`[Pp]`: 感度の自己点検の大文字・小文字の行の対。
 - If a threshold comparison changes, which test fails? — PK4 が `GateError` の message の照合を反転（`duplicate packet fields` 以外で ERROR）すれば S3 (c)・(d)・(f) と本 packet（AC3 の 2 本目）が止まって red。helper の閾値は変えない（D7）。
-- If a guard is removed, which test fails? — MU1（S3 (a)・(b)・(e)）、MU2・MU3（S4 (a)・(b)）、MU4・MU5（S5 (a)・(b)）、MU6・MU7（S6 (a)〜(c)）、MU8（T13）、MU9（S1-c の感度の小文字の行）、MU10（T11）、MU11（S5 (c)）、MU12（S1-c の感度の大文字の行）。
+- If a guard is removed, which test fails? — MU1（S3 (a)・(b)・(e)）、MU2・MU3（S4 (a)・(b)）、MU4・MU5（S5 (a)・(b)）、MU6・MU7（S6 (a)〜(c)）、MU8（T13）、MU9（S1-c の感度の小文字の行）、MU10（T11）、MU11（S5 (c)）、MU12（S1-c の感度の大文字の行）、MU13（S3 (g)）。
 - If an output field is omitted, which test fails? — PK4 の ERROR の message から `重複する field` を省けば S3 (a)・(b)・(e) の `assert_contains` が red。`PK4:` の接頭を省けば同じく red。
 - If output order changes, which test fails? — 当たらない（有無だけを見る）。
 - If dry-run performs a side effect, which test fails? — 当たらない（検査は読むだけ。`sed -i` は写し）。
