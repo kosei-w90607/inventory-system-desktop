@@ -353,7 +353,13 @@ R3 の外部前提。各行に実験と結果、確認日（2026-10-01）を書�
 
 ## Implementation Results
 
-Fill after implementation.
+- S1: `.codex/rules/default.rules` の home の path と `docs/DEV_SETUP_CHECKLIST.md` の auto-memory の namespace を小文字にした。`codex-safe-wrappers.test.sh` は `[Pp]rojects` の pattern・小文字の `public_namespace` と、path と namespace の感度の自己点検（各 3 行）を持つ。classifier は不変（D1）。
+- S2: `reading-order-drift.test.sh` の comment を、routing fixture が D-101（PR #132）で撤去された旨に直した。判定式は不変。
+- S3: PK4 が cwd 相対の `scripts/pr-gate.py` の `workflow_fields` を `python3` で呼び、`duplicate packet fields` のときだけ ERROR、`missing/ambiguous` は ERROR なし、`python3` / import の失敗は fail-closed の ERROR にした。packet test の fixture は helper を `$repo/scripts/` に写し、case (a)〜(h) を足した。helper は不変。
+- S4: `check-workflow-git.sh` が Phase / Evidence Mode を最初の `## Workflow State` の h2 の節だけから awk で読む。`check_plan_commit_ancestry` は不変。workflow-git test に本文の箇条の場面と節に Phase が無い場面を足した。
+- S5: `has_h2_section` を足し、PK1 の 5 箇所と PK3 の 1 箇所を置き換え、`trace_matrix_data_rows` は `extract_markdown_h2_section` で読む。`extract_markdown_section` は不変。packet test に case (a)〜(c) を足した。
+- S6: `frontmatter_lacks_forbidden_keys` が `hooks`・`permissionMode`・`mcpServers` を拒む。mutant 3 つを足した。
+- 検証（AC1〜AC9、mutation MU1〜MU14、「本 lane 自身の検査」の 1〜3）の実測値と Draft の run は PR の body が持つ。PR: [#136](https://github.com/kosei-w90607/inventory-system-desktop/pull/136)
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
