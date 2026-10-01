@@ -10,9 +10,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 4030a2fda456eca2f5f265f94b6e5a5804a4e7c3
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、fresh context、Coordinator が指定する worktree で作業）
@@ -32,6 +32,8 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - plan-gate → design（2026-10-01、round 2 の後の訂正）: D-102 の記録の時期の訂正。上の design → plan-draft は起票の commit `8ab8a41a` で記録したが、D-102 は後の `41bebb8e` で入った（`docs/DEV_WORKFLOW.md:103`「各遷移の条件がその commit より前に揃っていること」）。先例 ci-dedup と同じく最初に影響を受ける phase に戻り表をたどり直す（`docs/DEV_WORKFLOW.md:104`）。design の出力は D-102（`41bebb8e` で記録、round 1 の後に改訂）と本 packet の設計判断 D1〜D7。
 - design → plan-draft → plan-gate（2026-10-01、round 2 の後）: D-102 が本 commit より前にあり、未解決の設計の問いは無い。packet と Matrix は本 commit で是正済み（round 2 の是正、Review Response 参照）。Phase は plan-gate のまま。
 - plan-gate（round 3 の後）（2026-10-01）: round 3 の後の是正（Review Response 参照）。Phase は plan-gate のまま。
+- plan-gate → plan-approved（2026-10-01、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `7ac3911e`）で 2 本とも P1 / P2 = 0。round 3 の後の一括是正（`4030a2fd`、P3 のみ）を Coordinator が現物で確かめた（doc check の既定 mode・`--target plan`・`check-workflow-git.sh`・helper の `parse_packet` が exit 0 / ok）。一括是正の独立の再確認は Final Review が兼ねる。owner の plan-approved の判断（2026-10-01）。Plan Commit = `4030a2fd`。
+- plan-approved → implementing（2026-10-01、Coordinator、state-only、本 commit）: Writer（Opus 5.5 subagent、`subagent_type: writer`）へ実装を発注する。発注の直前に AC1・AC2・AC3・AC5・AC6 の `rg` / `grep` の baseline を逐語で再実行し、上の baseline と一致した。
 
 ## Owner Effort Budget
 
@@ -41,7 +43,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 1（2026-10-01: 起票と範囲の判断〈6 件を 1 本に、別 lane の切り分け〉） | 3（plan-approved 1、Ready 1、merge 1） | 2（G1 の design の扱いで owner の判断が要る場合、D1 の classifier の扱いで reviewer と Coordinator が割れた場合） | 6 = 1 + 3 + 2 |
+| 介入 | 6 | 2（2026-10-01: 起票と範囲の判断〈6 件を 1 本に、別 lane の切り分け〉1、plan-approved 1） | 2（Ready 1、merge 1） | 2（G1 の design の扱いで owner の判断が要る場合〈使わなかった〉、D1 の classifier の扱いで reviewer と Coordinator が割れた場合〈割れなかった〉） | 6 = 2 + 2 + 2 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。介入は decision point 単位で数え、1 回の問い合わせで複数を得てもその数だけ数える。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
