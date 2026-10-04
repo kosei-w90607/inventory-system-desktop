@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 116c118a391e95dd3a6d06d7076c75209ca99fb0
 - Amendments: none
@@ -31,6 +31,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定 file に `scrip
 - plan-gate（round 3 の後の一括是正、2026-10-04、起草役、本 commit）: round 天井に達し、Coordinator の disposition（一括是正）を反映した（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（Review Response の記入、2026-10-04、Coordinator、本 commit）: round 1〜3 と一括是正の裁定を Review Response に書いた。Plan Commit は pending のまま。
 - plan-gate → plan-approved（2026-10-04、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `bdb5bea5`）の残りを Coordinator の disposition（一括是正、`d3489d00`）で閉じ、Coordinator が現物で確かめた（doc check の `--target plan` と full が ERROR 0）。一括是正の独立の再確認は Final Review が兼ねる。owner の判断（2026-10-04、一括是正の後に plan-approved）。Plan Commit は `116c118a`。
+- plan-approved → implementing（2026-10-04、Coordinator、state-only、本 commit）: Writer（Opus 5.5 subagent、`subagent_type: writer`）へ実装を発注する。発注の直前に baseline を逐語で再実行し、起票時実測 #1（io::ej_parser、49 passed・ignored 1）、#2（exit 1）、#3（7）、#5（traceability OK）が上の baseline と一致。
 
 ## Owner Effort Budget
 
