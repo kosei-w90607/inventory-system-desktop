@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 90990977b33aecf717a8bd88a16f76db1821784a
 - Amendments: none
@@ -28,6 +28,7 @@ Final Review Minimum は規則どおり 1（R4 でない。予定の file に `s
 - plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus approve（P3 2）・Codex reject（P1 1・P2 3・P3 1）。Coordinator の裁定と owner 決定 TD-108・TD-109 を反映した。Plan Commit は pending のまま。
 - plan-gate（round 2 の是正、2026-10-04、Coordinator、本 commit）: round 2 の是正（Review Response 参照）。P3 のみ。Plan Commit は pending のまま。
 - plan-gate → plan-approved（2026-10-04、Coordinator、本 commit）: Plan Review round 2（対象 `09418db6`）で 2 本とも P1 / P2 = 0。round 2 の後の是正（`90990977`、P3 のみ）を Coordinator が現物で確かめた（doc check の `--target plan` と full が ERROR 0、helper の `parse_packet` が通る、pre-push の PK5 と traceability が OK）。是正の独立の再確認は Final Review が兼ねる。owner の plan-approved の判断（2026-10-04）。Plan Commit は `90990977`。
+- plan-approved → implementing（2026-10-04、Coordinator、state-only、本 commit）: Writer（Opus 5.5 subagent、`subagent_type: writer`）へ実装を発注する。発注の直前に AC1〜AC4・AC7 の command を逐語で再実行し、上の baseline と一致した（AC1・AC2・AC3 exit 0 で新しい test 名は 0 行、AC4 `traceability check: OK`、AC7 は 0 行と 4 file）。
 
 ## Owner Effort Budget
 
