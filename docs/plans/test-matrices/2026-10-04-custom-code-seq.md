@@ -8,7 +8,8 @@ Risk: R3
 
 ## Contracts Under Test
 
-- BIZ-01-D6（30-biz §4.3）: 独自コードの発番は、同じ接頭辞の既存の独自コードの番号の最大 + 1 と next_seq の大きい方を使う。取り込んだ番号の間の抜けは使わない。番号として数えるのは `{接頭辞}-` の後ろが 1 文字以上の ASCII 数字だけで i64 として読めるコード（全商品、部門を問わない、大文字・小文字を区別）。最大 + 1 が i64 を超えれば `ValidationFailed`。
+- BIZ-01-D6（30-biz §4.3）: 独自コードの発番は、同じ接頭辞の既存の独自コードの番号の最大 + 1 と next_seq の大きい方を使う。取り込んだ番号の間の抜けは使わない（owner 決定 TD-108）。番号として数えるのは `{接頭辞}-` の後ろが 1 文字以上の ASCII 数字だけで i64 として読めるコード（全商品、部門を問わない、大文字・小文字を区別）。step 3c の `floor = 最大.checked_add(1)` と step 3d の `cand = max(next_seq, floor)`・`cand.checked_add(1)` のどちらかが None なら、next_seq の SQL 更新の前に `ValidationFailed("この部門の独自コードの番号を振れません")`（商品・next_seq を変えない）。
+- master-tables C-1・30-biz §4.3 step 6: 番号は 4 桁以上の 0 埋めで、9999 を超えたら 5 桁以上で続ける（owner 決定 TD-109）。
 - 30-biz §4.2 / §4.3 の注: 番号の読み書きは `create_product` の TX の中で、登録の失敗で next_seq の引上げも戻る。
 - 30-biz §4.9 step 2c: 商品 CSV の取込みは next_seq を進めない（振舞いは不変）。
 - 20-io §2.3 `list_product_codes_by_prefix`: `substr` の一致で、大文字・小文字を区別し `%` `_` を特殊文字にしない。廃番を含む全商品。
@@ -24,10 +25,11 @@ Risk: R3
 - F5 `LIKE` で一致を取り、`hz-0009` を数える（次の番号が不要に跳ぶ）か、接頭辞の `%` `_` が wildcard になる。
 - F6 番号の読み取りが数字以外の文字を含むコード（`HZ-00A1`、`HZ-0009X`）や空（`HZ-`）を数える、または前方一致だけで `HZX-0009` を数える。
 - F7 部門で絞って数え、別の部門の ID で取り込んだ `HZ-...` に当たる。
-- F8 i64 を超える桁のコードで parse が panic する、または最大 + 1 が overflow する。
-- F9 取込みの無い部門の番号が変わる（既存の発番の回帰）。
+- F8 i64 を超える桁のコードで parse が panic する。または最大の次・next_seq の次が i64 を超える（Rust の `+ 1` が debug で panic / release で wrap する、検査が無く `increment_next_seq` の SQL `next_seq + 1` で next_seq が REAL になる、検査が next_seq の SQL 更新の後で next_seq が変わる）。
+- F9 同じ接頭辞の既存の独自コードの番号の最大 + 1 が next_seq 以下の部門で、振られる番号が変わる（既存の発番の回帰）。
 - F10 既存の test の前提（既存のコードがあると `DuplicateProductCode`）を直さず残し、新しい設計と食い違う、または理由なく消す。
 - F11 新しい pub 関数が 20-io に載らず、`design_compliance_test` が落ちる。新しい test の REQ が traceability に載らない。
+- F12 9999 を超えたところで止まる、または 4 桁に切る（owner 決定 TD-109 に反する）。
 
 ## Test Matrix
 
@@ -41,12 +43,15 @@ Risk: R3
 | BIZ-01-D6（next_seq の方が大きい） | F3 | unit（BIZ） | T3 `test_generate_custom_code_req101_keeps_next_seq_above_max`: 部門 2 の next_seq を 10 に（test の中の `UPDATE`）、既存 `HZ-0003` → `HZ-0010`、その後の next_seq が 11 | next_seq を最大 + 1 で上書きする実装（`HZ-0004`） |
 | BIZ-01-D6（数えるコードの規則） | F5 / F6 | unit（BIZ） | T4 `test_generate_custom_code_req101_ignores_non_numbered_codes`: 既存 `HZ-00A1`・`HZ-0009X`・`HZ-`・`hz-0009`・`HZX-0009`・`SY-0009`・`HZ-99999999999999999999`（i64 を超える）→ `HZ-0001`。panic しない | 数字以外を除いて読む、前方一致だけ、`LIKE`、i64 の parse で panic / unwrap |
 | BIZ-01-D6（部門を問わない） | F7 | unit（BIZ） | T5 `test_generate_custom_code_req101_counts_codes_in_other_departments`: 既存 `HZ-0007` を部門 1 で入れる → `generate_custom_code(&tx, 2)` が `HZ-0008` | 部門で絞って数える実装（`HZ-0001`） |
-| 30-biz §4.2 / §4.3 の注（TX） | F4 | integration（BIZ、failpoint） | T6 `test_create_product_req101_rollback_restores_raised_next_seq`: 既存 `HZ-0003`、`CREATE_PRODUCT_AFTER_INSERT` を arm して `create_product` → Err、部門 2 の next_seq が 1 のまま。guard を外して再び `create_product` → `HZ-0004` | 引上げを別の接続・別の TX で行う実装（next_seq が 5 のまま残る） |
-| BIZ-01-D6（i64 の上限） | F8 | unit（BIZ） | T7 `test_generate_custom_code_req101_rejects_seq_overflow`: 既存 `HZ-9223372036854775807` → `Err(BizError::ValidationFailed(_))`、文言が「この部門の独自コードの番号を振れません」 | `+ 1` が overflow で panic（debug）/ 負の値へ wrap（release）、別の文言 |
+| 30-biz §4.2 / §4.3 の注（TX） | F4 | integration（BIZ、failpoint） | T6 `test_create_product_req101_rollback_restores_raised_next_seq`: 既存 `HZ-0003`、`CREATE_PRODUCT_AFTER_INSERT` を arm して `create_product` → Err、部門 2 の next_seq が 1 のまま。guard を外して再び `create_product` → `HZ-0004` | 引上げを別の接続・別の TX で行う実装（next_seq が 4 のまま残る） |
+| BIZ-01-D6（i64 の上限、step 3c） | F8 | unit（BIZ、TX 内） | T7a `test_generate_custom_code_req101_rejects_seq_overflow`: 既存 `HZ-9223372036854775807`（i64::MAX）→ `Err(BizError::ValidationFailed(_))`、文言が「この部門の独自コードの番号を振れません」。同じ TX で商品数と部門 2 の next_seq（1）が呼ぶ前と同じ | step 3c の `+ 1` が overflow で panic（debug）/ 負の値へ wrap（release）、別の文言 |
+| BIZ-01-D6（i64 の上限、step 3d: 最大の次） | F8 | unit（BIZ、TX 内） | T7b `test_generate_custom_code_req101_rejects_overflow_after_max`: 既存 `HZ-9223372036854775806`（i64::MAX − 1）、部門 2 の next_seq は 1 → `Err(BizError::ValidationFailed(_))`、同じ文言。同じ TX で商品数と next_seq（1）が呼ぶ前と同じ | step 3d の検査が無い（floor = i64::MAX が通り、SQL の `next_seq + 1` で next_seq が REAL になって Ok を返す）、検査が next_seq の SQL 更新の後（next_seq が変わる） |
+| BIZ-01-D6（i64 の上限、step 3d: next_seq） | F8 | unit（BIZ、TX 内） | T7c `test_generate_custom_code_req101_rejects_overflow_from_next_seq`: `HZ-` のコードは無し、部門 2 の next_seq を i64::MAX に（test の中の `UPDATE`）→ `Err(BizError::ValidationFailed(_))`、同じ文言。同じ TX で商品数と next_seq（i64::MAX）が呼ぶ前と同じ | next_seq 側を検査しない（floor = 1 だけを見る）、検査が next_seq の SQL 更新の後 |
+| C-1（9999 の次、TD-109） | F12 | unit（BIZ） | T8 `test_generate_custom_code_req101_continues_past_9999`: 既存 `HZ-9999`（直接 INSERT、商品 CSV の取込みと同じく next_seq は 1 のまま）→ `generate_custom_code(&tx, 2)` が `HZ-10000`、その後の next_seq が 10001 | 9999 を上限として止める、4 桁に切る |
 | 30-biz §4.2 エラーハンドリング、BIZ-01-D6（S2 の改名） | F10 | integration（BIZ） | 既存 `test_create_product_req101_duplicate_key_from_insert` を `test_create_product_req101_skips_directly_inserted_custom_code` に改名して書き換え: 既存 `HZ-0001`（直接 INSERT）→ `create_product`（JAN なし、部門 2）が `HZ-0002`。comment に「旧前提は BIZ-01-D6 で廃止。INSERT 時の `DuplicateKey` の正規化には元から届いていなかった」の 1 行 | 旧前提のまま残す（新しい実装で red）、理由なく消す（AC1 で名前が出ない） |
 | 20-io §2.3 | F5 | unit（IO） | R1 `test_list_product_codes_by_prefix_req101_exact_prefix`: 既存 `HZ-0001`・`HZ-0002`（廃番）・`hz-0009`・`HZX-0009`・`H%-0001` → `"HZ-"` で `HZ-0001`・`HZ-0002` の 2 件（順は問わない）。`"H%-"` で `H%-0001` だけ。`"QQ-"` で空 | `LIKE` を使う（`hz-0009` が入る、`"H%-"` が `HZ-...` を返す）、廃番を除く |
 | 20-io §2.4 | F3 | unit（IO） | R2 `test_raise_next_seq_req101_raises_only`: 部門 2（next_seq 1）に `raise_next_seq(2, 5)` → 5、続けて `raise_next_seq(2, 3)` → 5 のまま、`raise_next_seq(9999, 5)` → `Err(DbError::NotFound)` | 下げる（`SET next_seq = ?2`）、存在しない部門で Ok |
-| 取込みの無い部門の発番（回帰） | F9 | unit（BIZ、既存） | `test_generate_custom_code_req101_normal`・`_sequential`（既存、不変） | 既存のコードが無いのに番号が 1 から始まらない、連番が飛ぶ |
+| 既存の番号の最大 + 1 が next_seq 以下の部門の発番（回帰） | F9 | unit（BIZ、既存） | `test_generate_custom_code_req101_normal`・`_sequential`（既存、不変） | 既存のコードが無いのに番号が 1 から始まらない、連番が飛ぶ |
 | 30-biz §4.3 step 1〜2、signature | — | unit（既存） | `test_generate_custom_code_req101_no_prefix`・`_requires_borrowed_transaction`（既存、不変） | 接頭辞の無い部門で発番する、signature を通常の接続に戻す |
 | 30-biz §4.2（JAN の重複） | — | integration（既存） | `test_create_product_req101_duplicate_jan`（既存、不変） | JAN の重複の判定を消す |
 | 30-biz §4.2 step 2（TX、取込みの無い場合） | F4 | integration（既存） | `test_create_product_req101_rollback_after_insert`（既存、不変） | 発番の TX の境界を変える |
@@ -62,10 +67,11 @@ Writer は実装の後、次の仮の mutation をそれぞれ当てて対象の
 - M3 `raise_next_seq` を `SET next_seq = ?2` にする → R2・T3 が red。
 - M4 番号の読み取りで ASCII 数字の判定を外し、数字だけを取り出して読む → T4 が red。
 - M5 `raise_next_seq` の呼び出しを外す（今の実装へ戻す）→ T1・T2・T5・T6・改名した test が red。
+- M6 step 3c・3d の `checked_add` をそれぞれ `+ 1` に戻す → 3c は T7a、3d は T7b・T7c が red（`cargo test` の debug build では overflow の panic）。3d の検査そのものを消すと T7b・T7c は Ok を返し next_seq が変わって red。
 
 ## State Lifecycle
 
-画面の状態は変えない。DB の next_seq の遷移は: 初期（1）→ 取込み（不変、T1）→ 発番（最大 + 1 と next_seq の大きい方 + 1、T1〜T3）→ 失敗（引上げも戻る、T6）→ 再試行（同じ番号、T6）→ 再起動（状態は DB だけ。test 不要）。
+画面の状態は変えない。DB の next_seq の遷移は: 初期（1）→ 取込み（不変、T1）→ 発番（最大 + 1 と next_seq の大きい方 + 1、T1〜T3・T8）→ 上限（i64 を超えるなら更新の前に止めて不変、T7a〜T7c）→ 失敗（引上げも戻る、T6）→ 再試行（同じ番号、T6）→ 再起動（状態は DB だけ。test 不要）。
 
 ## Manual Verification
 

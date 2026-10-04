@@ -25,6 +25,7 @@ Final Review Minimum は規則どおり 1（R4 でない。予定の file に `s
 遷移記録（append-only）:
 - kickoff → spec-check → design → plan-draft（本 commit、plan-first、2026-10-04、起草役）: Risk R3 を記録。Contract Probe で不具合の再現を確かめた後、設計正本が足りない（30-biz §4.3 の step 5 が既存の番号で止まる設計そのもの）ため design を経た。30-biz §4.2 / §4.3 / §4.9、20-io §2.3 / §2.4、`docs/db-design/master-tables.md` の departments、`docs/decision-log.md` の D-106 を同じ commit で更新し、未解決の設計の問いは無い。packet と Test Design Matrix を同じ commit に置く。decision-log の番号は D-106（Coordinator の割当て）。
 - plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `018f5197` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。Plan Reviewer の Codex を表の当てはめ（R3 の初回）で GPT-6.1 Sol に直した。
+- plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus approve（P3 2）・Codex reject（P1 1・P2 3・P3 1）。Coordinator の裁定と owner 決定 TD-108・TD-109 を反映した。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -34,7 +35,7 @@ Final Review Minimum は規則どおり 1（R4 でない。予定の file に `s
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 1（起票の判断 TD-104、本 lane を含む lane 選択） | 2（Ready、merge） | 3（Plan Review の後に owner へ諮る事項が出たとき） | 6 = 1 + 2 + 3 |
+| 介入 | 6 | 3（起票の判断 TD-104〈本 lane を含む lane 選択〉、Plan Review round 1 の後の番号の振り方 TD-108〈抜けを埋めない〉・TD-109〈9999 を超えたら 5 桁以上〉） | 2（Ready、merge） | 1（この後に owner へ諮る事項が出たとき） | 6 = 3 + 2 + 1 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。Codex の起動（relay）は数えない。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -57,8 +58,8 @@ Goal Invariant:
 ### 失敗定義
 
 - 取り込んだ番号と同じコードを振ろうとして登録が「この商品コードは既に使用されています」で止まる（1 回でも、続けてでも）。
-- 取り込んだ番号の間の抜けた番号を新しい商品に振る（店が使わなくなった番号を別の商品に渡す。BIZ-01-D6）。
-- CSV を取り込んでいない部門で、振られる番号が今までと変わる。
+- 取り込んだ番号の間の抜けた番号を新しい商品に振る（使わなくなった番号を別の商品に回す。owner 決定 TD-108、BIZ-01-D6）。
+- 同じ接頭辞の既存の独自コードの番号の最大 + 1 が next_seq 以下の部門で、振られる番号が今までと変わる。
 - 登録が途中で失敗したのに next_seq の引上げだけが残る（TX の外へ漏れる）。
 - 既存の商品コード・next_seq の値を一括で書き換える、または schema・command・DTO・`src/lib/bindings.ts` に diff が出る。
 
@@ -78,7 +79,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 部門「ヘア雑貨」（接頭辞 HZ）に、商品 CSV で `HZ-0001`・`HZ-0002` を取り込んだ直後。next_seq は 1 のまま（取込みは進めない） | 商品登録で JAN を空欄、部門「ヘア雑貨」、必須項目を入れて保存 | `HZ-0003` で登録され、保存の結果にコードが出る。今は `HZ-0001` の重複で毎回止まる | 続けて次の商品を登録すると `HZ-0004` | Probe P1・P2（今の失敗の再現）。T1 |
 | 取り込んだコードが `HZ-0001` と `HZ-0005`（間が抜けている） | 同じく登録 | `HZ-0006`。抜けた `HZ-0002`〜`HZ-0004` は使わない | — | BIZ-01-D6。T2 |
 | `HZ-0007` を別の部門（その他小物）の部門 ID で取り込んだ | 「ヘア雑貨」で登録 | `HZ-0008`（コードは部門をまたいで一意なので飛ばす） | — | T5 |
-| CSV を取り込んでいない部門（その他小物、接頭辞 KM） | 登録 | 今までどおり next_seq の番号（`KM-0001` から） | — | Probe P2 の最後の行。既存 test `test_generate_custom_code_req101_normal` |
+| 同じ接頭辞の既存の独自コードの番号の最大 + 1 が next_seq 以下の部門（その他小物、接頭辞 KM。`KM-` のコードが無い） | 登録 | 振られる番号は今までと変わらない（next_seq の番号、`KM-0001` から） | — | Probe P2 の最後の行。既存 test `test_generate_custom_code_req101_normal` |
+| `HZ-9999` を取り込んだ | 「ヘア雑貨」で登録 | `HZ-10000`（9999 を超えたら 5 桁以上で続ける。owner 決定 TD-109） | — | T8 |
 | 取り込んだ `HZ-0003` がある部門で、登録の途中で DB の失敗が起きた | 画面に失敗が出る。もう一度保存する | next_seq の引上げも戻っており、再試行で `HZ-0004` が振られる | — | T6 |
 | 上のどれかの後、アプリを閉じて翌日に起動 | 登録 | 同じ結果（毎回 DB の商品から数えるので、起動をまたぐ状態を持たない） | — | 状態は DB だけ（BIZ-01-D6） |
 
@@ -92,18 +94,20 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 2 | next_seq を書く本番の経路 | `rg -n 'increment_next_seq\(' src-tauri/src --glob '!**/tests/**'` | 本番は `product_service.rs:165` だけ（他は `product_repo.rs` の定義と test） |
 | 3 | 商品を INSERT する本番の経路 | `rg -n 'insert_product\(&tx' src-tauri/src/biz/product_service.rs` | 3 行: `:225`（`create_product`）、`:1348`（`commit_import`）、`:1595`（test）。CSV の取込みは next_seq に触れない（#2） |
 | 4 | next_seq を直す画面 | `rg -n 'next_seq' src --glob '!*.test.*' --glob '!src/lib/bindings.ts'` | 2 行で、どちらも test 用の fixture（`src/features/stock-inquiry/lib/test-fixtures.ts:55`、`src/features/products/lib/test-fixtures.ts:42`）。画面の code には無い（`docs/UI_TECH_STACK.md:260` E6 も「現 UI は利用しない」） |
-| 5 | 新しい repo 関数の不在 | `rg -n 'fn raise_next_seq\|fn list_product_codes_by_prefix' src-tauri/src` | 0 行（exit 1） |
+| 5 | 新しい repo 関数の不在 | 表の下の注 | 0 行（exit 1） |
+
+#5 の command（表の外に置く。表の中では `|` を `\|` と書くので、生の文字列を写すと rg が字義の `|` を探して常に 0 行になる。round 1 の是正で直し、本 branch `8ded2dfc`〈code は base と同じ〉で 2026-10-04 に測り直した）: `rg -n 'fn (raise_next_seq|list_product_codes_by_prefix)' src-tauri/src`
 
 ## Scope
 
 ### S1 発番が既存の番号を飛ばす（BIZ-01-D6）
 
-- `src-tauri/src/biz/product_service.rs` の `generate_custom_code` を 30-biz §4.3 の step 1〜8 にする。step 3 の番号の読み取り（`{接頭辞}-` の後ろが 1 文字以上の ASCII 数字だけで i64 として読めるもの。最大 + 1 が i64 を超えれば `ValidationFailed("この部門の独自コードの番号を振れません")`）は同 file の private 関数にしてよい。signature（`&rusqlite::Transaction<'_>`）・step 1 / 2 / 7 と、`create_product` / `commit_import` の他の処理は変えない。
+- `src-tauri/src/biz/product_service.rs` の `generate_custom_code` を 30-biz §4.3 の step 1〜8 にする。step 3 の番号の読み取り（`{接頭辞}-` の後ろが 1 文字以上の ASCII 数字だけで i64 として読めるもの）は同 file の private 関数にしてよい。上限の検査は step 3c（`floor = 最大.checked_add(1)`）と step 3d（`cand = max(next_seq, floor)`、`cand.checked_add(1)`）のとおりで、どちらかが None なら next_seq の SQL 更新（step 4・5）の前に `ValidationFailed("この部門の独自コードの番号を振れません")` を返す（`increment_next_seq` の SQL `next_seq + 1` は i64 を超えると next_seq を REAL にする）。signature（`&rusqlite::Transaction<'_>`）・step 1 / 2 / 7 と、`create_product` / `commit_import` の他の処理は変えない。
 - `src-tauri/src/db/product_repo.rs` に 20-io §2.3 `list_product_codes_by_prefix` と §2.4 `raise_next_seq` を足す（SQL は設計正本の処理ステップのとおり。`LIKE` を使わない）。`increment_next_seq` は変えない。
 
 ### S2 test
 
-- Matrix の新しい test（product_service の T1〜T7、product_repo の R1・R2）を足す。test 名と各 test の comment に `REQ-101` を入れる（traceability）。CSV を通す test の bytes は合成で、既存の test（`product_service.rs` の UTF-8 BOM を付ける preview の test）と同じ形にする。
+- Matrix の新しい test（product_service の T1〜T8〈T7 は T7a〜T7c の 3 本〉、product_repo の R1・R2）を足す。test 名と各 test の comment に `REQ-101` を入れる（traceability）。CSV を通す test の bytes は合成で、既存の test（`product_service.rs` の UTF-8 BOM を付ける preview の test）と同じ形にする。
 - 既存の `test_create_product_req101_duplicate_key_from_insert`（`product_service.rs:1887`）は、前提（既存の `HZ-0001` があると発番が `DuplicateProductCode` を返す）が BIZ-01-D6 と食い違うため、`test_create_product_req101_skips_directly_inserted_custom_code` に改名し、`HZ-0002` で登録できることを確かめる形に直す。この test は名前と違い INSERT 時の `DuplicateKey` の正規化（`product_service.rs:225-229`）に届いておらず（`:169-171` の重複の判定が先に返す）、直した後も正規化の経路は残す（JAN の競合のための防御。決定的に届く test は今も無い）。理由を test の comment に 1 行書く。
 - 既存の `test_create_product_req101_rollback_after_insert`・`test_generate_custom_code_req101_*`・`test_increment_next_seq_req101_*`・`test_create_product_req101_duplicate_jan` は変えずに通す。
 
@@ -126,7 +130,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|
 | `docs/decision-log.md` | 末尾に D-106 の 1 件だけ | A = D-103、B = D-104、D = D-105 をそれぞれ末尾に。merge の順で末尾の衝突を解く |
 | `docs/db-design/pos-tables.md` | 触らない | A・B の持ち場 |
-| `docs/db-design/master-tables.md` | departments の next_seq の行と設計意図の 1 文 | 他 lane は触らない見込み |
+| `docs/db-design/master-tables.md` | departments の next_seq の行と設計意図の 1 文、独自コードルール（C-1） | 他 lane は触らない見込み |
+| `docs/SCREEN_DESIGN.md` | §4 の独自コードの形の 1 行（:387） | 他 lane は触らない見込み |
 | `docs/function-design/30-biz-product-service.md`・`20-io-product-repo.md` | §4.2 のエラーハンドリング・§4.3・§4.9 step 2c、§2.3 / §2.4 の新しい関数 | 他 lane は触らない見込み（A・B・D は POS の取込み・EJ） |
 | `docs/function-design/90-traceability.md` | 再生成 | 他 lane も再生成しうる。merge 後の再生成で解く（D-098） |
 | `docs/adr/` の stocktake / EJ の ADR、`docs/project-memory.md`、`docs/backlog.md`、`Plans.md`、`docs/PROJECT_HANDOFF.md` | 触らない | どの lane も触らない |
@@ -135,7 +140,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 baseline は 2026-10-04 に起草役が本 branch（base `76de30d8` と同じ code）で同じ command を逐語で実行した実測。test は全 PASS を求め、本数を AC にしない。
 
-- AC1（Goal、S1・S2）: `cd src-tauri && cargo test --lib biz::product_service` が exit 0 で、Matrix の T1〜T7 と改名した `test_create_product_req101_skips_directly_inserted_custom_code` が出力の `test ... ok` の行に出る。baseline: exit 0（`test result: ok.`、新しい test 名は 0 行）。
+- AC1（Goal、S1・S2）: `cd src-tauri && cargo test --lib biz::product_service` が exit 0 で、Matrix の T1〜T8（T7 は `test_generate_custom_code_req101_rejects_seq_overflow`・`test_generate_custom_code_req101_rejects_overflow_after_max`・`test_generate_custom_code_req101_rejects_overflow_from_next_seq` の 3 本、T8 は `test_generate_custom_code_req101_continues_past_9999`）と改名した `test_create_product_req101_skips_directly_inserted_custom_code` が出力の `test ... ok` の行に出る。baseline: exit 0（`test result: ok.`、新しい test 名は 0 行）。
 - AC2（S1・S2）: `cd src-tauri && cargo test --lib db::product_repo` が exit 0 で、R1・R2 が `ok`。baseline: exit 0（R1・R2 の名前は 0 行）。
 - AC3（設計と実装の突合）: `cd src-tauri && cargo test --test design_compliance_test` が exit 0（新しい pub 関数 2 つが 20-io に載っている）。baseline: exit 0。
 - AC4（S3）: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0（`traceability check: OK`）。baseline: exit 0（`traceability check: OK（ERROR 0 件 / WARN 0 件）`）。
@@ -146,11 +151,11 @@ baseline は 2026-10-04 に起草役が本 branch（base `76de30d8` と同じ co
 
 ## Design Readiness
 
-- 引用する設計正本（節まで）: `docs/function-design/30-biz-product-service.md` §4.2（create_product、エラーハンドリング）・§4.3（generate_custom_code、BIZ-01-D6）・§4.9（commit_import step 2c）、`docs/function-design/20-io-product-repo.md` §2.3（`list_product_codes_by_prefix`）・§2.4（`increment_next_seq`・`raise_next_seq`）、`docs/db-design/master-tables.md` §2 departments（next_seq）、`docs/decision-log.md` D-106。隣接して読んだが変えない: `docs/function-design/51-ui-product-form.md` UI-01b-D4（JAN 空欄 + 接頭辞のある部門はサーバーが発番）、`docs/UI_TECH_STACK.md` E6、`docs/db-design/master-tables.md` SP-102-04（独自コードは変更不可）、30-biz BIZ-01-D5（商品コードの長さ上限）。
+- 引用する設計正本（節まで）: `docs/function-design/30-biz-product-service.md` §4.2（create_product、エラーハンドリング）・§4.3（generate_custom_code、BIZ-01-D6）・§4.9（commit_import step 2c）、`docs/function-design/20-io-product-repo.md` §2.3（`list_product_codes_by_prefix`）・§2.4（`increment_next_seq`・`raise_next_seq`）、`docs/db-design/master-tables.md` §2 departments（next_seq）、`docs/decision-log.md` D-106。owner 決定 TD-109 に合わせて直した: `docs/db-design/master-tables.md` 独自コードルール（C-1）、`docs/SCREEN_DESIGN.md` §4 の独自コードの形の 1 行。隣接して読んだが変えない: `docs/function-design/51-ui-product-form.md` UI-01b-D4（JAN 空欄 + 接頭辞のある部門はサーバーが発番）、`docs/UI_TECH_STACK.md` E6、`docs/db-design/master-tables.md` SP-102-04（独自コードは変更不可）、30-biz BIZ-01-D5（商品コードの長さ上限）。
 - 必要な設計成果物: BIZ の振舞いの変更 → 30-biz を updated in this PR（plan-first commit）。新しい IO 関数 → 20-io を updated in this PR。持続の振舞い（next_seq の意味）→ `docs/db-design/master-tables.md` を updated in this PR（`docs/DB_DESIGN.md` の索引の 1 行「独自コード発番」は変わらないため existing sufficient）。durable な判断 → D-106。Tauri command / DTO / 画面 / CSV の形は変えないため該当なし。
-- plan にしかない durable な判断の昇格先: 番号の振り方と却下案は 30-biz BIZ-01-D6 と D-106。packet にしかない判断は無い。
+- plan にしかない durable な判断の昇格先: 番号の振り方と却下案は 30-biz BIZ-01-D6 と D-106。owner 決定 TD-108（抜けを埋めない）は BIZ-01-D6 と D-106、TD-109（9999 を超えたら 5 桁以上）は master-tables C-1・30-biz §4.3 step 6・D-106 に書いた。packet にしかない判断は無い。
 - 前提・制約と、延期した design gap の follow-up: 実データの独自コードの形は未確認（P3）。Excel から初期投入する経路の設計は本 lane の外（材料の報告の別項目。Coordinator が backlog 化を判断）。同時登録の競合は非目的（single-instance）。
-- 絶対保証の自己点検: 「既存の商品に当たって止まらない」は、番号の最大を全商品から数え、`{接頭辞}-{数字}` の形だけが発番の結果と同じ文字列になりうることに依る。例外: (1) i64 を超える桁のコードは数えないが、発番の結果（i64 の 4 桁以上の 0 埋め）と同じ文字列にならない。(2) 0 埋めの桁が違うコード（`HZ-3` と `HZ-0003`）は別の文字列で、両方とも番号 3 と数えるので次は 4 以上になり当たらない。(3) 最大 + 1 が i64 を超える場合は `ValidationFailed` で止まる（登録できない。現実の店の運用では届かない）。(4) step 7 の重複の判定は残す（届かないが、上の推論の誤りを `DuplicateProductCode` で止め、データを壊さない）。
+- 絶対保証の自己点検: 「既存の商品に当たって止まらない」は、番号の最大を全商品から数え、`{接頭辞}-{数字}` の形だけが発番の結果と同じ文字列になりうることに依る。例外: (1) i64 を超える桁のコードは数えないが、発番の結果（i64 の 4 桁以上の 0 埋め）と同じ文字列にならない。(2) 0 埋めの桁が違うコード（`HZ-3` と `HZ-0003`）は別の文字列で、両方とも番号 3 と数えるので次は 4 以上になり当たらない。(3) 既存の番号の最大が i64::MAX のとき（step 3c）と、next_seq と最大 + 1 の大きい方が i64::MAX のとき（step 3d）は、next_seq の SQL 更新の前に `ValidationFailed` で止まる（商品・next_seq を変えない。登録できないが、現実の店の運用では届かない）。(4) step 7 の重複の判定は残す（届かないが、上の推論の誤りを `DuplicateProductCode` で止め、データを壊さない）。
 - 判定: ready。上の設計正本だけで、何を作るか・なぜか・何を却下したかに答えられ、Matrix は BIZ-01-D6 と 20-io の処理ステップから導ける。
 
 ## Registration / Generation Obligations
@@ -182,36 +187,37 @@ Tauri command・route・画面・function-design doc の新設は無い。
 - consumer: `create_product` の結果の `ProductCreateResult.product_code`（frontend の保存の結果の表示）、以後の発番。
 - wire type: 変えない（`ProductCreateRequest` / `ProductCreateResult` / `CmdError` の形と `src/lib/bindings.ts` は不変）。
 - internal type: `departments.next_seq`（INTEGER）の意味を「次に発番する連番」から「次に発番する連番の下限」へ（master-tables）。`products.product_code` の形は不変（`{接頭辞}-{4 桁以上の 0 埋め}`）。
-- precision/range: 番号は i64。最大 + 1 が i64 を超えると `ValidationFailed`。
+- precision/range: 番号は i64。step 3c の `最大.checked_add(1)` か step 3d の `cand.checked_add(1)` が None なら、next_seq の SQL 更新の前に `ValidationFailed`（商品・next_seq は不変）。番号の桁は 4 桁以上で、9999 を超えたら 5 桁以上で続ける（owner 決定 TD-109、T8）。
 - round-trip path: 商品 CSV の取込み（コードをそのまま入れる）→ 発番（取り込んだ番号を飛ばす）。逆向き（発番したコードを CSV で上書き）は既存の上書きの経路で、コードは変わらない。
 - invalid input: `{接頭辞}-` の後ろが数字以外を含む・空・i64 を超える桁のコードは番号として数えない（発番の結果と同じ文字列にならない）。
-- compatibility: 既存の DB は migration なしで動く。取込みの無い部門の結果は今と同じ。古い版のアプリで同じ DB を開いても、next_seq は上がっただけなので古い発番の結果も既存と重ならない方向にしか動かない。
+- compatibility: 既存の DB は migration なしで動く。同じ接頭辞の既存の独自コードの番号の最大 + 1 が next_seq 以下の部門では、振られる番号は今までと変わらない。古い版のアプリで同じ DB を開いても、next_seq は上がっただけなので古い発番の結果も既存と重ならない方向にしか動かない。
 
 ## Test Plan
 
 Test Design Matrix: [2026-10-04-custom-code-seq](test-matrices/2026-10-04-custom-code-seq.md)。
 
-- targeted tests: `cargo test --lib biz::product_service`（T1〜T7 と改名した 1 本）、`cargo test --lib db::product_repo`（R1・R2）、`cargo test --test design_compliance_test`。
-- negative tests: 番号として数えないコード（T4）、i64 の上限（T7）、存在しない部門の `raise_next_seq`（R2）、`LIKE` の大文字・小文字・`%` の取り違え（R1）。
-- compatibility checks: 取込みの無い部門は今と同じ番号（既存の `test_generate_custom_code_req101_normal`・`_sequential`）、next_seq が最大より大きいときは next_seq を使う（T3）。
+- targeted tests: `cargo test --lib biz::product_service`（T1〜T8 と改名した 1 本。T7 は `test_generate_custom_code_req101_rejects_seq_overflow`・`test_generate_custom_code_req101_rejects_overflow_after_max`・`test_generate_custom_code_req101_rejects_overflow_from_next_seq`、T8 は `test_generate_custom_code_req101_continues_past_9999`）、`cargo test --lib db::product_repo`（R1・R2）、`cargo test --test design_compliance_test`。
+- negative tests: 番号として数えないコード（T4）、i64 の上限（T7a〜T7c。商品数と next_seq が不変）、存在しない部門の `raise_next_seq`（R2）、`LIKE` の大文字・小文字・`%` の取り違え（R1）。
+- compatibility checks: 同じ接頭辞の既存の独自コードの番号の最大 + 1 が next_seq 以下の部門では、振られる番号は今までと変わらない（既存の `test_generate_custom_code_req101_normal`・`_sequential`、next_seq が最大より大きい T3）。9999 の次は 5 桁（T8）。
 - data safety checks: test の値は合成のコードだけ（Data Safety）。
 - main wiring/integration checks: T1 が `preview_import` → `commit_import` → `create_product` を同じ DB で通す（画面の取込みと登録と同じ BIZ の入口）。CMD は薄く変えないため、CMD の test は足さない。
 
 ## Review Focus
 
-- BIZ-01-D6 が Goal（取込み後も登録できる）を満たすか。特に「抜けた番号を使わない」の採否（却下 (a)）が店の運用にとって正しいか。owner に諮るべき製品の判断と見るかどうか。
+- BIZ-01-D6 が Goal（取込み後も登録できる）を満たすか。「抜けた番号を使わない」の採否（却下 (a)）は owner 決定 TD-108 で解決。
 - 番号の読み取りの規則（`{接頭辞}-` + ASCII 数字だけ、大文字・小文字を区別、部門を問わない）の穴。Design Readiness の絶対保証の例外 (1)〜(4) が漏れなく閉じているか。
 - `raise_next_seq` と `list_product_codes_by_prefix` の SQL（`LIKE` を使わない理由、`MAX` で下げない、変更行数 0 で NotFound）。
 - 既存 test `test_create_product_req101_duplicate_key_from_insert` の改名と書換えが「不都合な test の弱体化」でないか（S2 の理由）。
-- T1〜T7・R1・R2 が Matrix の mutation（空き番号を埋める実装、`LIKE`、next_seq を下げる、TX の外での引上げ、数字以外を数える）で red になるか。
+- T1〜T8・R1・R2 が Matrix の mutation（空き番号を埋める実装、`LIKE`、next_seq を下げる、TX の外での引上げ、数字以外を数える、`checked_add` を `+ 1` に戻す）で red になるか。
 
 ## Contract Ledger
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
-| BIZ-01-D6（最大の次と next_seq の大きい方、抜けを使わない） | 30-biz §4.3 step 3〜6・設計判断 | S1 `generate_custom_code` | T1、T2、T3 | — |
+| BIZ-01-D6（最大の次と next_seq の大きい方、抜けを使わない〈TD-108〉） | 30-biz §4.3 step 3〜6・設計判断 | S1 `generate_custom_code` | T1、T2、T3 | — |
 | BIZ-01-D6（番号として数えるコードの規則） | 30-biz §4.3 step 3a〜3b | S1 | T4、T5 | — |
-| BIZ-01-D6（i64 を超える場合） | 30-biz §4.3 step 3c | S1 | T7 | — |
+| BIZ-01-D6（i64 の上限: step 3c・3d の `checked_add` が None なら next_seq の SQL 更新の前に `ValidationFailed`） | 30-biz §4.3 step 3c〜3d | S1 | T7a、T7b `test_generate_custom_code_req101_rejects_overflow_after_max`、T7c `test_generate_custom_code_req101_rejects_overflow_from_next_seq` | — |
+| C-1（9999 を超えたら 5 桁以上で続ける、TD-109） | `docs/db-design/master-tables.md` C-1、30-biz §4.3 step 6 | 変えない（`{:04}` は 4 桁以上を出す） | T8 `test_generate_custom_code_req101_continues_past_9999` | — |
 | 30-biz §4.3 step 7（重複の判定を残す） | 30-biz §4.3 step 7 | S1（変えない） | 届かないため直接の test なし（Design Readiness の例外 (4)） | — |
 | 30-biz §4.3 step 1〜2（部門の不在・接頭辞の無い部門） | 30-biz §4.3 | 変えない | `test_generate_custom_code_req101_no_prefix`（既存） | — |
 | 30-biz §4.3 signature（借りた transaction） | 30-biz §4.3 | 変えない | `test_generate_custom_code_req101_requires_borrowed_transaction`（既存） | — |
@@ -234,14 +240,14 @@ adjacent-contract sweep: 30-biz §4.2〜§4.3・§4.8〜§4.9、20-io §2.3〜§
 Probe は scratch の仮の test（`product_service.rs` の test module の末尾に一時的に足し、実行後に `git checkout -- src-tauri/src/biz/product_service.rs` で消した。tracked に残していない）で、base `76de30d8` の code のまま `cd src-tauri && cargo test --lib probe_lane_e -- --nocapture` を実行した（2026-10-04、exit 0）。CSV は合成の UTF-8 BOM 付きの 3 行（header、`HZ-0001`、`HZ-0002`、部門 ID 2）。
 
 - P1 商品 CSV の取込みは部門の next_seq を進めない: `preview_import` → `commit_import` の後の部門 2 の next_seq → 出力 `PROBE preview valid=2 err=0 dup=0` / `PROBE commit created=2` / `PROBE next_seq after import = 1`。
-- P2 画面と同じ経路の登録（`create_product`、JAN なし、部門 2）は毎回止まり、next_seq は TX の rollback で戻る: 3 回続けて呼ぶ → 出力 `PROBE attempt 1 -> Err("DuplicateProductCode(\"HZ-0001\")") ; next_seq = 1`、attempt 2・3 も同じ。同じ DB で部門 1（接頭辞 KM）は `PROBE other dept (KM) -> Ok("KM-0001")`（取込みの無い部門は影響を受けない）。
+- P2 画面と同じ経路の登録（`create_product`、JAN なし、部門 2）は毎回止まり、next_seq は TX の rollback で戻る: 3 回続けて呼ぶ → 出力 `PROBE attempt 1 -> Err("DuplicateProductCode(\"HZ-0001\")") ; next_seq = 1`、attempt 2・3 も同じ。同じ DB で部門 1（接頭辞 KM）は `PROBE other dept (KM) -> Ok("KM-0001")`（`KM-` のコードが無く、既存の番号の最大 + 1 が next_seq 以下の部門は影響を受けない）。
 - P3 実データに `{接頭辞}-NNNN` の形の独自コードがあるか: 未確認。店の Excel の在庫シートは持ち帰りに無い（材料の報告の結論 1）。POS の独自コードは 8 桁（`docs/plu-export-and-real-csv-verification.md:127`）で別の形。Goal は実データの有無に依らないため、確かめずに進める。
 - P4 SQLite の `UPDATE departments SET next_seq = MAX(next_seq, ?2) WHERE id = ?1` は値が変わらなくても変更行数 1、id が無ければ 0。`substr(code, 1, length(?1)) = ?1` は大文字・小文字を区別し `%` を特殊文字にしない（`LIKE ?1 || '%'` は `hz-0009` も返す）: Python sqlite3（SQLite 3.51.3）の in-memory の DB で実行 → `changes(no-op raise)= 1 (5,)`、`changes(missing id)= 0`、`substr: [('HZ-0001',)]`、`substr H%-: [('H%-0001',)]`、`like HZ-%: [('HZ-0001',), ('hz-0009',)]`。アプリの rusqlite は bundled SQLite 3.45.0 で版が違うが、`changes()` の数え方と `substr` / `length` / `LIKE` の大文字・小文字の扱いは両版の公式の仕様で同じ。R1・R2 が bundled の版で確かめる。
 
 ## Data Safety
 
 - 持ち帰りデータ（`~/downloads/inventory-field-check/`）は本 lane で読んでいない。件数・商品名・JAN・部門名・実際の商品コードを tracked に書かない。
-- test・probe のコードは合成（`HZ-0001` 等の 2 文字の接頭辞 + 4 桁、部門は `schema_v1.rs` の初期データの ID）。
+- test・probe のコードは合成（`HZ-0001` 等の 2 文字の接頭辞 + 4 桁以上、部門は `schema_v1.rs` の初期データの ID）。
 - local-only paths: probe の log と diff は Coordinator の scratchpad（tracked の外）。
 - synthetic-only paths: `src-tauri/src/**` の `#[cfg(test)]` と tempdir の DB。
 

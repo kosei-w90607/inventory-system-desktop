@@ -356,7 +356,7 @@ fn increment_next_seq(conn: &DbConnection, department_id: i64) -> Result<i64, Db
 3. UPDATE departments SET next_seq = next_seq + 1 WHERE id = ?
 4. current_seq（インクリメント前の値）を返す
 
-**注意**: この関数はトランザクション内で呼ばれることを前提とする（BIZ-01の独自コード発番処理内）
+**注意**: この関数はトランザクション内で呼ばれることを前提とする（BIZ-01の独自コード発番処理内）。step 3 の SQL は next_seq が i64::MAX のとき next_seq を REAL にするため、呼び出し元の BIZ が先に止める（30-biz §4.3 step 3d）
 
 #### raise_next_seq
 

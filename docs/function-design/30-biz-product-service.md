@@ -132,24 +132,25 @@ fn generate_custom_code(conn: &rusqlite::Transaction<'_>, department_id: i64) ->
 2. department.code_prefix が None → BizError::ValidationFailed("この部門は独自コード発番に対応していません")
 3. 既存の番号の最大を求める（BIZ-01-D6）
    a. product_repo::list_product_codes_by_prefix(conn, "{code_prefix}-") → codes（部門を問わず全商品から。比較は大文字・小文字を区別する）
-   b. 各 code の `{code_prefix}-` より後ろが 1 文字以上の ASCII 数字だけで、i64 として読めるものを番号として数える。それ以外（数字以外を含む・空・i64 を超える桁）は数えない（step 4 の形の文字列にならないため、当たらない）
-   c. floor = 数えた番号の最大 + 1（無ければ 1）。+1 が i64 を超える → BizError::ValidationFailed("この部門の独自コードの番号を振れません")
-4. product_repo::raise_next_seq(conn, department_id, floor)（next_seq が floor より小さいときだけ floor へ上げる）
-5. product_repo::increment_next_seq(conn, department_id) → seq_num
-6. code = format!("{}-{:04}", department.code_prefix, seq_num)（例: "HZ-0047"。10000 以上は 5 桁以上になる）
+   b. 各 code の `{code_prefix}-` より後ろが 1 文字以上の ASCII 数字だけで、i64 として読めるものを番号として数える。それ以外（数字以外を含む・空・i64 を超える桁）は数えない（step 6 の形の文字列にならないため、当たらない）
+   c. floor = 数えた番号の最大.checked_add(1)（数えた番号が無ければ 1）。None（最大が i64::MAX）→ BizError::ValidationFailed("この部門の独自コードの番号を振れません")
+   d. cand = max(department.next_seq, floor)。cand.checked_add(1) が None（cand が i64::MAX）→ 同じ BizError::ValidationFailed。step 5 の SQL `next_seq + 1` は i64 を超えると SQLite が next_seq を REAL にするため、ここで止める。step 4・5 の next_seq の SQL 更新の前に返すので、商品・next_seq を変えない
+4. product_repo::raise_next_seq(conn, department_id, floor)（next_seq が floor より小さいときだけ floor へ上げる。この後の next_seq は cand）
+5. product_repo::increment_next_seq(conn, department_id) → seq_num（= cand）
+6. code = format!("{}-{:04}", department.code_prefix, seq_num)（例: "HZ-0047"。9999 を超えたら 5 桁以上で続ける。`HZ-9999` の次は "HZ-10000"。owner 決定 2026-10-04 TD-109、master-tables C-1）
 7. product_repo::find_by_product_code(conn, &code) で重複チェック
    - Some → BizError::DuplicateProductCode(code)（step 3〜5 により起きないが、安全のため残す）
 8. code を返す
 
 step 3〜5 の読み書きは呼び出し元の TX の中で行う。登録が後で失敗すれば next_seq の引上げも戻る（§4.2 のエラーハンドリング）。
 
-**設計判断（BIZ-01-D6、既存の独自コードを飛ばして発番する、2026-10-04、D-106）**: 発番は、同じ接頭辞の既存の独自コードの番号の最大 + 1 と next_seq の大きい方を使う。商品 CSV の取込み（§4.9）は商品コードを CSV のまま入れ、部門の next_seq を進めない。このため `{接頭辞}-NNNN` の形のコードを取り込んだ部門では、旧 step 5 の重複チェックが毎回 `DuplicateProductCode` を返し、同じ TX の rollback で next_seq も戻るので、画面からの独自コードの登録が止まり続けた（Contract Probe、`docs/plans/2026-10-04-custom-code-seq.md`）。最大の次から振るので、取り込んだ番号の間の抜けた番号は使わない（店の Excel や紙で別の商品を指していた番号を、新しい商品へ渡さない）。番号の読み取り（どの文字列を番号と数えるか）は業務の規則なので BIZ に置き、IO は接頭辞が一致するコードの一覧と next_seq の引上げだけを持つ。対象は全商品で、部門を問わない（商品コードは部門をまたいで一意。別の部門の ID で取り込んだ `HZ-...` も飛ばす）。
-- 却下 (a) 空き番号まで 1 つずつ進める（next_seq から順に、使われていない最初の番号を使う）: 新しい repo 関数が要らず最も小さいが、取り込んだ番号の抜けを埋める。抜けは店が使わなくなった番号である見込みがあり、古い紙の記録の番号が別の商品を指すようになる。
+**設計判断（BIZ-01-D6、既存の独自コードを飛ばして発番する、2026-10-04、D-106）**: 発番は、同じ接頭辞の既存の独自コードの番号の最大 + 1 と next_seq の大きい方を使う。商品 CSV の取込み（§4.9）は商品コードを CSV のまま入れ、部門の next_seq を進めない。このため `{接頭辞}-NNNN` の形のコードを取り込んだ部門では、旧 step 5 の重複チェックが毎回 `DuplicateProductCode` を返し、同じ TX の rollback で next_seq も戻るので、画面からの独自コードの登録が止まり続けた（Contract Probe、`docs/plans/2026-10-04-custom-code-seq.md`）。取り込んだ番号の間の抜けた番号は埋めず、最大の次から振る（owner 決定 2026-10-04 TD-108: `HZ-0001` と `HZ-0005` なら `HZ-0006`。使わなくなった番号を別の商品に回さない）。番号の読み取り（どの文字列を番号と数えるか）は業務の規則なので BIZ に置き、IO は接頭辞が一致するコードの一覧と next_seq の引上げだけを持つ。対象は全商品で、部門を問わない（商品コードは部門をまたいで一意。別の部門の ID で取り込んだ `HZ-...` も飛ばす）。
+- 却下 (a) 空き番号まで 1 つずつ進める（next_seq から順に、使われていない最初の番号を使う）: 新しい repo 関数が要らず最も小さいが、取り込んだ番号の抜けを埋め、owner 決定 TD-108（使わなくなった番号を別の商品に回さない）に反する。補足（推測）: 抜けた番号が店の古い紙の記録に残っていれば、その番号が別の商品を指すようになる。
 - 却下 (b) 商品 CSV の取込みで、取り込んだコードの番号に合わせて部門の next_seq を進める: 取込みの経路に発番の規則（コードの形の読み取り）を持ち込む。CSV の部門 ID とコードの接頭辞が違う行（別の部門の ID で `HZ-...`）を扱えず、発番と取込みの 2 か所が next_seq を書くことになり、今後ほかの経路でコードが入るたびに同じ対応が要る。
 - 却下 (c) 失敗の文言を変えて、利用者に直してもらう: next_seq を直す画面が無く（`docs/UI_TECH_STACK.md` E6）、利用者が抜け出せない。
 - 却下 (d) next_seq の列をやめ、毎回最大値だけから振る: migration が要る（`departments` の再作成か列の放置）。商品は削除しない（廃番は flag）ため結果は本設計と同じで、得るものが無い。
 - 却下 (e) 最大値を SQL（`CAST(substr(...))` と `GLOB`）で求める: 番号の読み取りの規則が IO の SQL に入り、i64 を超える桁や空の扱いが SQL の型変換に依る。
-- Revisit: 商品の削除（物理削除）を入れるとき（削除された番号の再利用の扱い）。独自コードの形（`{接頭辞}-{4 桁}`）を変えるとき。商品が増えて、接頭辞の一覧の読み取りが登録の待ち時間として見えるとき。
+- Revisit: 商品の削除（物理削除）を入れるとき（削除された番号の再利用の扱い）。独自コードの形（`{接頭辞}-{4 桁以上}`）を変えるとき。商品が増えて、接頭辞の一覧の読み取りが登録の待ち時間として見えるとき。
 
 ---
 
