@@ -41,8 +41,17 @@ pub enum EjLineKind {
         quantity: i64,
         unit_price: i64,
     },
+    /// 金額は印字の符号のまま（戻の印の直後だけ負）
     Item {
         name: String,
+        amount: i64,
+    },
+    /// 折り返した明細の名称の行（IO-08-D5a）
+    ItemName {
+        name: String,
+    },
+    /// 直前の行の続きの金額だけの行（IO-08-D5a）
+    Continued {
         amount: i64,
     },
     ItemCount {
@@ -52,12 +61,38 @@ pub enum EjLineKind {
     Labeled {
         label: &'static str,
     },
-    SettlementTitle {
-        leading_no: String,
-        trailing_no: String,
+    /// 訂正（IO-08-D6a）
+    Correction {
+        amount: i64,
     },
+    Subtotal {
+        amount: i64,
+    },
+    /// 率の行（`-N%`）。値を解釈しない
+    DiscountRate,
+    /// ％値引き。subtotal = 金額の後に `*`
+    PercentDiscount {
+        amount: i64,
+        subtotal: bool,
+    },
+    /// マイナスキー（`－`）
+    MinusKey {
+        amount: i64,
+    },
+    /// 戻の印（`戻 ････`）
+    ReturnMark,
+    /// 取引中止の印（`取引中止 ････`）
+    CancelMark,
+    /// 番号印字（`＃ N`）。値を解釈しない
+    NumberPrint,
+    ReportTitle {
+        leading_no: Option<String>,
+        trailing_no: Option<String>,
+    },
+    ReportEnd,
     AmountOnly,
-    SettlementEnd,
+    /// 値を解釈しない文字の行（案内文・設定の印字・練習の本文）
+    Text,
     Status {
         label: &'static str,
         result: String,
@@ -70,7 +105,9 @@ pub enum EjLineKind {
 pub struct EjRecord {
     /// ヘッダ1行目の行番号（2行目は header_line_no + 1）
     pub header_line_no: usize,
+    /// 見出しのモード欄。記録の種類は kind、返品の判定は mode（IO-08-D3a）
     pub mode: EjMode,
+    pub kind: EjRecordKind,
     /// 印字日時（`YYYY-MM-DD HH:MM`、変換しない）
     pub printed_at: String,
     /// 番号行の4桁の欄（意味は未検証、文字列のまま）
@@ -85,17 +122,62 @@ pub struct EjRecord {
 pub enum EjMode {
     Normal,
     Return,
+    Training,
     Settlement,
+    Inspection,
     Program,
+    Program1,
+    Program3,
+    Off,
     Unrecognized(String),
+}
+
+/// 記録の種類（IO-08-D3a）。モード欄ではなく本文の行で決める
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EjRecordKind {
+    /// 取引（区切りあり）。通常と戻の両方を含み、返品は mode で判定する
+    Sale,
+    /// 取引中止
+    Cancelled,
+    /// 入金 / 出金 / 替
+    CashMovement,
+    /// 領収書の発行
+    Receipt,
+    /// 精算票（Z）。completed は終わりの印字の有無
+    Settlement {
+        report: EjSettlementReport,
+        completed: bool,
+    },
+    /// 点検票（X）
+    Inspection,
+    /// 設定の書込み・読込み・保存・印字
+    Settings,
+    /// 練習
+    Training,
+    /// どれにも当たらない（常に Unresolved）
+    Unclassified,
+}
+
+/// 日計明細 / ＰＬＵ / 勤怠
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EjSettlementReport {
+    Daily,
+    Plu,
+    Attendance,
 }
 
 /// 復元状態（IO-08-D8）。Unresolved は明細を持たない
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EjRestoration {
-    Restored { items: Vec<EjItem>, item_count: i64 },
+    Restored {
+        items: Vec<EjItem>,
+        item_count: i64,
+        adjustments: Vec<EjAdjustment>,
+    },
     NoItems,
-    Unresolved { reasons: Vec<EjDiagnosticCode> },
+    Unresolved {
+        reasons: Vec<EjDiagnosticCode>,
+    },
 }
 
 /// 復元済みの明細（同名の行を合算しない。返品でも符号を反転しない）
@@ -108,6 +190,26 @@ pub struct EjItem {
     /// 数量行があるときだけ
     pub unit_price: Option<i64>,
     pub amount: i64,
+}
+
+/// 値引き（IO-08-D6b）。明細へ配らない
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EjAdjustment {
+    /// ％値引き・マイナスキーの行の行番号
+    pub line_no: usize,
+    pub kind: EjAdjustmentKind,
+    /// 印字の符号のまま（負）
+    pub amount: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EjAdjustmentKind {
+    /// 明細値引き。直前の明細の line_no
+    ItemDiscount { item_line_no: usize },
+    /// 小計値引き
+    SubtotalDiscount,
+    /// マイナスキー。掛かり先を解釈しない
+    MinusKey,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,16 +264,27 @@ const LINE_WIDTH: usize = 24;
 const SEPARATOR: [u8; LINE_WIDTH] = [b'-'; LINE_WIDTH];
 const TOTAL_LABELS: [&str; 6] = ["対象計", "内税", "合  計", "お預り", "お  釣", "現金"];
 const PAID_LABELS: [&str; 3] = ["入金", "出金", "替"];
-const SETTLEMENT_LABELS: [&str; 7] = [
+const REPORT_LABELS: [&str; 12] = [
     "総売",
     "純売",
     "純客",
     "現金在高",
+    "信在高",
+    "貸在高",
+    "券在高",
     "対象計",
     "内税",
     "消費税合計",
+    "領収書",
+    "取引中止",
 ];
-const STATUS_LABELS: [&str; 3] = ["SD設定書込み", "SDｶｰﾄﾞ保存", "ｽﾏ-ﾄﾌｫﾝ送信"];
+const STATUS_LABELS: [&str; 5] = [
+    "SD設定書込み",
+    "SDｶｰﾄﾞ保存",
+    "ｽﾏ-ﾄﾌｫﾝ送信",
+    "SD設定読込み",
+    "自動設定保存",
+];
 
 // ---------------------------------------------------------------------------
 // 公開関数
@@ -261,6 +374,7 @@ pub fn parse_ej(raw_bytes: &[u8]) -> Result<EjParseResult, EjParseError> {
                 header,
                 start,
                 &lines[start + 2..end],
+                end == lines.len(),
                 missing_final_line,
                 &mut diagnostics,
             )
@@ -340,8 +454,13 @@ fn parse_header(first: &RawLine, second: &RawLine) -> Option<Header> {
     let mode = match mode_field.trim() {
         "" => EjMode::Normal,
         "戻" => EjMode::Return,
+        "練習" => EjMode::Training,
         "精算" => EjMode::Settlement,
+        "点検" => EjMode::Inspection,
         "PGM" => EjMode::Program,
+        "PGM1" => EjMode::Program1,
+        "PGM3" => EjMode::Program3,
+        "OFF" => EjMode::Off,
         other => EjMode::Unrecognized(other.to_string()),
     };
     Some(Header {
@@ -356,6 +475,7 @@ fn build_record(
     header: Header,
     start: usize,
     body: &[RawLine],
+    is_last: bool,
     missing_final_line: Option<usize>,
     diagnostics: &mut Vec<EjDiagnostic>,
 ) -> EjRecord {
@@ -368,7 +488,8 @@ fn build_record(
         }
     };
 
-    if matches!(header.mode, EjMode::Unrecognized(_)) {
+    let unrecognized = matches!(header.mode, EjMode::Unrecognized(_));
+    if unrecognized {
         report(
             EjDiagnosticCode::UnrecognizedMode,
             header_line_no,
@@ -376,40 +497,52 @@ fn build_record(
         );
     }
 
+    let kind = record_kind(&header.mode, body);
+    // 番号印字の行を除いて数えた先頭の行（IO-08-D3a）
+    let first_core = body.iter().position(|raw| !is_number_print(&raw.text));
     let separator_at = body.iter().position(|raw| raw.bytes == SEPARATOR);
-    let paid_only = header.mode == EjMode::Normal
-        && body.len() == 1
-        && labeled(&body[0].text, &PAID_LABELS).is_some();
 
-    let mut lines = Vec::with_capacity(body.len());
+    let mut lines: Vec<EjLine> = Vec::with_capacity(body.len());
     for (index, raw) in body.iter().enumerate() {
         let line_no = start + 3 + index;
         let text = raw.text.as_str();
-        let kind = if !fixed_width(raw.bytes) {
+        let line_kind = if !fixed_width(raw.bytes) {
             report(EjDiagnosticCode::InvalidWidth, line_no, &mut reasons);
             EjLineKind::Unknown
         } else {
-            let kind = match &header.mode {
-                EjMode::Normal | EjMode::Return if paid_only => labeled_kind(text, &PAID_LABELS),
-                EjMode::Normal | EjMode::Return => match separator_at {
+            let first = Some(index) == first_core;
+            let line_kind = match kind {
+                // 未知のモードと練習は本文を分類しない（IO-08-D5d）
+                EjRecordKind::Unclassified if unrecognized => EjLineKind::Unknown,
+                EjRecordKind::Training => EjLineKind::Text,
+                EjRecordKind::Settlement { report, .. } => {
+                    classify_report(raw, Some(report), first)
+                }
+                EjRecordKind::Inspection | EjRecordKind::Unclassified => {
+                    classify_report(raw, None, first)
+                }
+                EjRecordKind::Settings => classify_settings(raw),
+                EjRecordKind::CashMovement if is_number_print(text) => EjLineKind::NumberPrint,
+                EjRecordKind::CashMovement => labeled_kind(text, &PAID_LABELS),
+                EjRecordKind::Receipt if is_number_print(text) => EjLineKind::NumberPrint,
+                EjRecordKind::Receipt => receipt_label(text)
+                    .map_or(EjLineKind::Unknown, |label| EjLineKind::Labeled { label }),
+                EjRecordKind::Sale | EjRecordKind::Cancelled => match separator_at {
                     Some(at) if index == at => EjLineKind::Separator,
                     Some(at) if index > at => classify_totals(text),
                     _ => classify_items(text),
                 },
-                EjMode::Settlement => classify_settlement(raw),
-                EjMode::Program => classify_program(raw),
-                EjMode::Unrecognized(_) => EjLineKind::Unknown,
             };
             // 未知のモードは UnrecognizedMode 1 件で表し、本文の行ごとには出さない
-            if kind == EjLineKind::Unknown && !matches!(header.mode, EjMode::Unrecognized(_)) {
+            if line_kind == EjLineKind::Unknown && !unrecognized {
                 report(EjDiagnosticCode::UnknownLine, line_no, &mut reasons);
             }
-            kind
+            line_kind
         };
         lines.push(EjLine {
             line_no,
             text: raw.text.clone(),
-            kind,
+            kind: line_kind,
         });
     }
 
@@ -423,7 +556,7 @@ fn build_record(
 
     // 行単位の問題がある記録は、記録内の照合をせずに復元不能とする
     let restoration = if reasons.is_empty() {
-        match check_record(&header.mode, &lines, paid_only) {
+        match check_record(&kind, &lines, is_last) {
             Ok(restoration) => restoration,
             Err(code) => {
                 report(code, header_line_no, &mut reasons);
@@ -437,6 +570,7 @@ fn build_record(
     EjRecord {
         header_line_no,
         mode: header.mode,
+        kind,
         printed_at: header.printed_at,
         number_prefix: header.number_prefix,
         number: header.number,
@@ -445,34 +579,66 @@ fn build_record(
     }
 }
 
-/// IO-08-D6 / D7: 行種がすべて既知の記録について、閉じと照合を判定する
-fn check_record(
-    mode: &EjMode,
-    lines: &[EjLine],
-    paid_only: bool,
-) -> Result<EjRestoration, EjDiagnosticCode> {
-    let has = |kind: fn(&EjLineKind) -> bool| lines.iter().any(|line| kind(&line.kind));
+/// IO-08-D3a: 番号印字の行を除いた本文で、表を上から当てて記録の種類を決める
+fn record_kind(mode: &EjMode, body: &[RawLine]) -> EjRecordKind {
+    let core: Vec<&str> = body
+        .iter()
+        .map(|raw| raw.text.as_str())
+        .filter(|text| !is_number_print(text))
+        .collect();
+    if matches!(mode, EjMode::Unrecognized(_)) {
+        return EjRecordKind::Unclassified;
+    }
+    if let Some(first) = core.first() {
+        if let Some((report, _, _)) = parse_z_title(first) {
+            let name = report_name(report);
+            let completed = core[1..].iter().any(|text| text.trim() == name);
+            return EjRecordKind::Settlement { report, completed };
+        }
+        if parse_x_title(first).is_some() {
+            return EjRecordKind::Inspection;
+        }
+    }
+    let training_display =
+        |text: &&str| text.starts_with("ﾄﾚｰﾆﾝｸﾞﾓｰﾄﾞを") || text.trim() == "･･････トレーニング･･････";
+    if *mode == EjMode::Training || (!core.is_empty() && core.iter().all(training_display)) {
+        return EjRecordKind::Training;
+    }
     match mode {
-        EjMode::Normal | EjMode::Return if paid_only => Ok(EjRestoration::NoItems),
-        EjMode::Normal | EjMode::Return => restore_items(lines),
-        EjMode::Settlement => {
-            let titled = lines
-                .first()
-                .is_some_and(|line| matches!(line.kind, EjLineKind::SettlementTitle { .. }));
-            if titled && has(|kind| *kind == EjLineKind::SettlementEnd) {
-                Ok(EjRestoration::NoItems)
-            } else {
-                Err(EjDiagnosticCode::IncompleteRecord)
-            }
+        EjMode::Program | EjMode::Program1 | EjMode::Program3 | EjMode::Off => {
+            return EjRecordKind::Settings
         }
-        EjMode::Program => {
-            if has(|kind| matches!(kind, EjLineKind::Status { .. })) {
-                Ok(EjRestoration::NoItems)
-            } else {
-                Err(EjDiagnosticCode::IncompleteRecord)
-            }
+        EjMode::Settlement | EjMode::Inspection => return EjRecordKind::Unclassified,
+        _ => {}
+    }
+    match core.as_slice() {
+        [only] if labeled(only, &PAID_LABELS).is_some() => EjRecordKind::CashMovement,
+        [a, b, c]
+            if receipt_label(a) == Some("一連No.")
+                && receipt_label(b) == Some("領収No.")
+                && receipt_label(c) == Some("領収書") =>
+        {
+            EjRecordKind::Receipt
         }
-        EjMode::Unrecognized(_) => Err(EjDiagnosticCode::UnrecognizedMode),
+        _ => EjRecordKind::Sale,
+    }
+}
+
+/// IO-08-D6 / D7 / D7a: 行種がすべて既知の記録について、閉じと照合を判定する
+fn check_record(
+    kind: &EjRecordKind,
+    lines: &[EjLine],
+    is_last: bool,
+) -> Result<EjRestoration, EjDiagnosticCode> {
+    match kind {
+        EjRecordKind::Sale | EjRecordKind::Cancelled => restore_items(lines),
+        // EOF を閉じの根拠にしない（IO-08-D4）。次のヘッダで閉じた中断は NoItems
+        EjRecordKind::Settlement {
+            completed: false, ..
+        } if is_last => Err(EjDiagnosticCode::IncompleteRecord),
+        // 題の無い精算・点検のモードの記録（未知のモードは行単位で先に Unresolved）
+        EjRecordKind::Unclassified => Err(EjDiagnosticCode::IncompleteRecord),
+        _ => Ok(EjRestoration::NoItems),
     }
 }
 
@@ -546,7 +712,11 @@ fn restore_items(lines: &[EjLine]) -> Result<EjRestoration, EjDiagnosticCode> {
         return Err(InconsistentRecord);
     }
 
-    Ok(EjRestoration::Restored { items, item_count })
+    Ok(EjRestoration::Restored {
+        items,
+        item_count,
+        adjustments: Vec::new(),
+    })
 }
 
 /// 同じ種類の行が 2 つ以上あれば照合できない
@@ -586,39 +756,147 @@ fn classify_items(text: &str) -> EjLineKind {
 fn classify_totals(text: &str) -> EjLineKind {
     if let Some(count) = parse_item_count(text) {
         EjLineKind::ItemCount { count }
-    } else {
-        labeled_kind(text, &TOTAL_LABELS)
-    }
-}
-
-fn classify_settlement(raw: &RawLine) -> EjLineKind {
-    let text = raw.text.as_str();
-    if raw.bytes == SEPARATOR {
-        EjLineKind::Separator
-    } else if text.trim() == "日計明細" {
-        EjLineKind::SettlementEnd
-    } else if let Some((leading_no, trailing_no)) = parse_settlement_title(text) {
-        EjLineKind::SettlementTitle {
-            leading_no,
-            trailing_no,
-        }
-    } else if let Some(kind) = parse_status(text) {
-        kind
-    } else if let Some(label) = labeled(text, &SETTLEMENT_LABELS) {
+    } else if let Some(label) = labeled(text, &TOTAL_LABELS) {
         EjLineKind::Labeled { label }
-    } else if text.starts_with(' ') && parse_amount(text.trim()).is_some() {
-        EjLineKind::AmountOnly
+    } else if is_number_print(text) {
+        EjLineKind::NumberPrint
     } else {
         EjLineKind::Unknown
     }
 }
 
-fn classify_program(raw: &RawLine) -> EjLineKind {
+/// 精算票・点検票（題の無い精算・点検のモードの記録を含む）の行（IO-08-D5d）
+fn classify_report(raw: &RawLine, report: Option<EjSettlementReport>, first: bool) -> EjLineKind {
+    let text = raw.text.as_str();
     if raw.bytes == SEPARATOR {
         EjLineKind::Separator
+    } else if report.is_some_and(|report| text.trim() == report_name(report)) {
+        EjLineKind::ReportEnd
+    } else if let Some(title) = first.then(|| report_title(text)).flatten() {
+        title
+    } else if let Some(kind) = parse_status(text) {
+        kind
+    } else if let Some(label) = labeled(text, &REPORT_LABELS) {
+        EjLineKind::Labeled { label }
+    } else if text.starts_with(' ') && parse_amount(text.trim()).is_some() {
+        EjLineKind::AmountOnly
+    } else if is_number_print(text) {
+        EjLineKind::NumberPrint
+    } else if !text.starts_with(char::is_whitespace)
+        && !text.contains(|c: char| c.is_ascii_digit() || ('０'..='９').contains(&c))
+        && !has_currency(text)
+    {
+        EjLineKind::Text
     } else {
-        parse_status(&raw.text).unwrap_or(EjLineKind::Unknown)
+        EjLineKind::Unknown
     }
+}
+
+/// 設定の行（IO-08-D5d）。通貨記号の行は行種の分類より前に Unknown にする。
+/// 判定は decode 後の文字列で行う（2 byte 目が 0x5C の漢字を通貨記号と誤らない）
+fn classify_settings(raw: &RawLine) -> EjLineKind {
+    let text = raw.text.as_str();
+    if has_currency(text) {
+        EjLineKind::Unknown
+    } else if raw.bytes == SEPARATOR {
+        EjLineKind::Separator
+    } else if let Some(kind) = parse_status(text) {
+        kind
+    } else if is_number_print(text) {
+        EjLineKind::NumberPrint
+    } else if !text.contains(" 点") {
+        EjLineKind::Text
+    } else {
+        EjLineKind::Unknown
+    }
+}
+
+fn has_currency(text: &str) -> bool {
+    text.contains(['\\', '￥'])
+}
+
+/// 空白除去後が `＃` + 半角空白 1 個以上 + ASCII 数字 1 個以上
+fn is_number_print(text: &str) -> bool {
+    text.trim()
+        .strip_prefix("＃ ")
+        .map(str::trim_start)
+        .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// 領収書の 3 行（`一連No.N` / `領収No.N` / `領収書 金額`）。値は解釈しない
+fn receipt_label(text: &str) -> Option<&'static str> {
+    let text = text.trim();
+    let numbered = |label: &str| {
+        text.strip_prefix(label)
+            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+    };
+    if numbered("一連No.") {
+        Some("一連No.")
+    } else if numbered("領収No.") {
+        Some("領収No.")
+    } else if text
+        .strip_prefix("領収書 ")
+        .is_some_and(|rest| parse_amount(rest.trim()).is_some())
+    {
+        Some("領収書")
+    } else {
+        None
+    }
+}
+
+fn report_name(report: EjSettlementReport) -> &'static str {
+    match report {
+        EjSettlementReport::Daily => "日計明細",
+        EjSettlementReport::Plu => "ＰＬＵ",
+        EjSettlementReport::Attendance => "勤怠",
+    }
+}
+
+fn is_title_no(word: &str) -> bool {
+    word.len() == 4 && word.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Z の題: `NNNN 帳票名 [任意の語] Z NNNN`。両端の数字は意味を解釈しない
+fn parse_z_title(text: &str) -> Option<(EjSettlementReport, String, String)> {
+    let words: Vec<_> = text.split_whitespace().collect();
+    let [leading, name, .., "Z", trailing] = words.as_slice() else {
+        return None;
+    };
+    let report = match *name {
+        "日計明細" => EjSettlementReport::Daily,
+        "ＰＬＵ" => EjSettlementReport::Plu,
+        "勤怠" => EjSettlementReport::Attendance,
+        _ => return None,
+    };
+    (is_title_no(leading) && is_title_no(trailing))
+        .then(|| (report, leading.to_string(), trailing.to_string()))
+}
+
+/// X の題: `[NNNN] 帳票名 X` か `X` だけ。先頭の数字を返す
+fn parse_x_title(text: &str) -> Option<Option<String>> {
+    let words: Vec<_> = text.split_whitespace().collect();
+    let (leading, name) = match words.as_slice() {
+        ["X"] => return Some(None),
+        [leading, name, "X"] if is_title_no(leading) => (Some(leading.to_string()), *name),
+        [name, "X"] => (None, *name),
+        _ => return None,
+    };
+    ["日計明細", "ＰＬＵ", "在売点検"]
+        .contains(&name)
+        .then_some(leading)
+}
+
+fn report_title(text: &str) -> Option<EjLineKind> {
+    if let Some((_, leading, trailing)) = parse_z_title(text) {
+        return Some(EjLineKind::ReportTitle {
+            leading_no: Some(leading),
+            trailing_no: Some(trailing),
+        });
+    }
+    parse_x_title(text).map(|leading_no| EjLineKind::ReportTitle {
+        leading_no,
+        trailing_no: None,
+    })
 }
 
 /// ラベルで始まり、その直後が空白の行
@@ -666,17 +944,6 @@ fn parse_item(text: &str) -> Option<(String, i64)> {
     let name = name.trim_end();
     match parse_amount(token)? {
         (amount, true) if !name.is_empty() => Some((name.to_string(), amount)),
-        _ => None,
-    }
-}
-
-/// `NNNN 日計明細 ... Z NNNN`。両端の数字は意味を解釈しない
-fn parse_settlement_title(text: &str) -> Option<(String, String)> {
-    let is_no = |s: &str| s.len() == 4 && s.bytes().all(|b| b.is_ascii_digit());
-    match text.split_whitespace().collect::<Vec<_>>().as_slice() {
-        [leading, "日計明細", .., "Z", trailing] if is_no(leading) && is_no(trailing) => {
-            Some((leading.to_string(), trailing.to_string()))
-        }
         _ => None,
     }
 }
@@ -1027,6 +1294,7 @@ mod tests {
                     },
                 ],
                 item_count: 2,
+                adjustments: vec![],
             }
         );
     }
@@ -1184,11 +1452,17 @@ mod tests {
             modes,
             [EjMode::Program, EjMode::Settlement, EjMode::Settlement]
         );
+        let kinds: Vec<_> = result.records.iter().map(|r| r.kind.clone()).collect();
+        let daily = EjRecordKind::Settlement {
+            report: EjSettlementReport::Daily,
+            completed: true,
+        };
+        assert_eq!(kinds, [EjRecordKind::Settings, daily.clone(), daily]);
         assert_eq!(
             result.records[1].body[0].kind,
-            EjLineKind::SettlementTitle {
-                leading_no: "0007".to_string(),
-                trailing_no: "0003".to_string(),
+            EjLineKind::ReportTitle {
+                leading_no: Some("0007".to_string()),
+                trailing_no: Some("0003".to_string()),
             }
         );
         assert_eq!(
@@ -1357,10 +1631,10 @@ mod tests {
     // IO-08-D3: 未知のモードは Unrecognized で復元しない
     #[test]
     fn parse_ej_unrecognized_header_mode_unresolves_record() {
-        let result = parse(&sale("点検", "000164", &[item(NAME_A, 100)], 1, 100));
+        let result = parse(&sale("ZZZ", "000164", &[item(NAME_A, 100)], 1, 100));
 
         let record = &result.records[0];
-        assert_eq!(record.mode, EjMode::Unrecognized("点検".to_string()));
+        assert_eq!(record.mode, EjMode::Unrecognized("ZZZ".to_string()));
         assert_eq!(reasons_of(record), [UnrecognizedMode]);
         assert_eq!(
             diags(&result),
@@ -1581,7 +1855,7 @@ mod tests {
         assert_eq!(reasons_of(&result.records[0]), [IncompleteRecord]);
     }
 
-    // IO-08-D7: PGM の本文は区切りと Status だけ
+    // IO-08-D5d / D7a: PGM の本文の通貨記号つきの行は未知の行。区切りだけの PGM は設定の NoItems
     #[test]
     fn parse_ej_program_body_with_other_line_unresolves() {
         let mut lines = program(AT, "000184");
@@ -1590,7 +1864,8 @@ mod tests {
         let result = parse(&lines);
 
         assert_eq!(reasons_of(&result.records[0]), [UnknownLine]);
-        assert_eq!(reasons_of(&result.records[1]), [IncompleteRecord]);
+        assert_eq!(result.records[1].kind, EjRecordKind::Settings);
+        assert_eq!(result.records[1].restoration, EjRestoration::NoItems);
     }
 
     // IO-08-D6: 点数はあるが合計も現金も無い
@@ -1745,12 +2020,13 @@ mod tests {
         assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
     }
 
-    // IO-08-D5 / D7: 入金だけの本文を明細なしにするのは通常モードだけ
+    // G-O3 / IO-08-D3a / D7: 戻のモードの入金も入金 / 出金 / 替の記録（明細なし）
     #[test]
-    fn parse_ej_paid_in_line_in_return_mode_unresolves() {
+    fn parse_ej_paid_in_line_in_return_mode_is_cash_movement() {
         let result = parse(&[header("戻", AT, "000218"), vec![wide("入金", 500)]].concat());
 
-        assert_eq!(reasons_of(&result.records[0]), [IncompleteRecord]);
+        assert_eq!(result.records[0].kind, EjRecordKind::CashMovement);
+        assert_eq!(result.records[0].restoration, EjRestoration::NoItems);
     }
 
     // IO-08-D2 / D4: 先頭断片の行にも幅の検査をする
@@ -1844,6 +2120,554 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
+    // 記録の種類と明細を持たない記録（IO-08-D3a / D5d / D7a）
+    // -----------------------------------------------------------------------
+
+    const DAILY_DONE: EjRecordKind = EjRecordKind::Settlement {
+        report: EjSettlementReport::Daily,
+        completed: true,
+    };
+    const DAILY_CUT: EjRecordKind = EjRecordKind::Settlement {
+        report: EjSettlementReport::Daily,
+        completed: false,
+    };
+
+    fn kinds(result: &EjParseResult) -> Vec<EjRecordKind> {
+        result.records.iter().map(|r| r.kind.clone()).collect()
+    }
+
+    fn body_kinds(record: &EjRecord) -> Vec<EjLineKind> {
+        record.body.iter().map(|l| l.kind.clone()).collect()
+    }
+
+    fn all_no_items(result: &EjParseResult) -> bool {
+        result
+            .records
+            .iter()
+            .all(|r| r.restoration == EjRestoration::NoItems)
+    }
+
+    fn training_mark() -> String {
+        "･･････トレーニング･･････".to_string()
+    }
+
+    fn number_print(n: &str) -> String {
+        lr(&format!("＃ {n}"), "")
+    }
+
+    /// 終わりの印字の無い日計明細 Z（題・値・送信の異常終了）
+    fn cut_settlement_body() -> Vec<String> {
+        vec![
+            "0007 日計明細  Z 0003".to_string(),
+            lr("総売", "12"),
+            lr("", &yen(4_560)),
+            lr("ｽﾏ-ﾄﾌｫﾝ送信", "異常終了"),
+        ]
+    }
+
+    // G-K1 / IO-08-D3 / D3a: 精算票は題で決め、モード欄（空・点検・PGM）によらない
+    #[test]
+    fn parse_ej_settlement_kind_is_decided_by_title_not_mode() {
+        let lines = [
+            header("", AT, "000300"),
+            settlement_body(),
+            header("点検", AT, "000301"),
+            settlement_body(),
+            header("PGM", AT, "000302"),
+            settlement_body(),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(kinds(&result), [DAILY_DONE, DAILY_DONE, DAILY_DONE]);
+        assert!(all_no_items(&result));
+        let modes: Vec<_> = result.records.iter().map(|r| r.mode.clone()).collect();
+        assert_eq!(modes, [EjMode::Normal, EjMode::Inspection, EjMode::Program]);
+    }
+
+    // G-K2 / IO-08-D3a: 点検票の題はモード欄（空・精算）によらず Inspection
+    #[test]
+    fn parse_ej_inspection_title_in_blank_or_settlement_mode() {
+        let body = vec![
+            "0007 日計明細 X".to_string(),
+            lr("総売", "12"),
+            lr("", &yen(4_560)),
+        ];
+        let lines = [
+            header("", AT, "000303"),
+            body.clone(),
+            header("精算", AT, "000304"),
+            body,
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            kinds(&result),
+            [EjRecordKind::Inspection, EjRecordKind::Inspection]
+        );
+        assert!(all_no_items(&result));
+    }
+
+    // G-K3 / IO-08-D2 / D3a / D8: 練習の記録は明細を返さず、本文は番号印字の行も Text。幅の検査はする
+    #[test]
+    fn parse_ej_training_records_return_no_items() {
+        let training_sale = [
+            header("練習", AT, "000305"),
+            vec![item(NAME_A, 120), item(NAME_B, 380)],
+            totals(2, 500),
+            vec![training_mark(), number_print("0012")],
+        ]
+        .concat();
+        let training_paid_in = [header("練習", AT, "000306"), vec![wide("入金", 1_000)]].concat();
+        let result = parse(&[training_sale.clone(), training_paid_in].concat());
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            kinds(&result),
+            [EjRecordKind::Training, EjRecordKind::Training]
+        );
+        assert!(all_no_items(&result));
+        for record in &result.records {
+            assert!(body_kinds(record).iter().all(|k| *k == EjLineKind::Text));
+        }
+
+        // 25 バイトの行を 1 行だけ持つ練習の取引
+        let mut all = rows(&training_sale);
+        all[2].insert(8, b' ');
+        let result = parse_ej(&crlf(all)).unwrap();
+        let record = &result.records[0];
+        assert_eq!(record.kind, EjRecordKind::Training);
+        assert_eq!(reasons_of(record), [InvalidWidth]);
+        assert_eq!(
+            diags(&result),
+            [(Some(3), InvalidWidth, EjDiagnosticScope::Line)]
+        );
+        assert_eq!(record.body[0].kind, EjLineKind::Unknown);
+    }
+
+    // G-K4 / IO-08-D3a: 点検のモードのトレーニングの表示は Training
+    #[test]
+    fn parse_ej_training_display_in_inspection_mode() {
+        let lines = [
+            header("点検", AT, "000307"),
+            vec!["ﾄﾚｰﾆﾝｸﾞﾓｰﾄﾞを開始します".to_string(), training_mark()],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(kinds(&result), [EjRecordKind::Training]);
+        assert!(all_no_items(&result));
+    }
+
+    // G-K5 / IO-08-D3a / D8: 未知のモードは Unclassified で UnrecognizedMode 1 件だけ
+    #[test]
+    fn parse_ej_unknown_mode_is_unclassified() {
+        let result = parse(&sale("ZZZ", "000308", &[item(NAME_A, 100)], 1, 100));
+
+        let record = &result.records[0];
+        assert_eq!(record.kind, EjRecordKind::Unclassified);
+        assert_eq!(record.mode, EjMode::Unrecognized("ZZZ".to_string()));
+        assert_eq!(reasons_of(record), [UnrecognizedMode]);
+        assert_eq!(
+            diags(&result),
+            [(Some(1), UnrecognizedMode, EjDiagnosticScope::Record)]
+        );
+    }
+
+    // G-K6 / IO-08-D3a: 精算のモードで題の無い記録は Unclassified + IncompleteRecord
+    #[test]
+    fn parse_ej_settlement_mode_without_title_is_unclassified() {
+        let lines = [
+            header("精算", AT, "000309"),
+            settlement_body()[1..].to_vec(),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        let record = &result.records[0];
+        assert_eq!(record.kind, EjRecordKind::Unclassified);
+        assert_eq!(reasons_of(record), [IncompleteRecord]);
+    }
+
+    // G-K7 / IO-08-D3: モード欄の既知の値
+    #[test]
+    fn parse_ej_known_mode_values() {
+        let lines = [
+            header("練習", AT, "000310"),
+            header("点検", AT, "000311"),
+            header("PGM1", AT, "000312"),
+            header("PGM3", AT, "000313"),
+            header("OFF", AT, "000314"),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        let modes: Vec<_> = result.records.iter().map(|r| r.mode.clone()).collect();
+        assert_eq!(
+            modes,
+            [
+                EjMode::Training,
+                EjMode::Inspection,
+                EjMode::Program1,
+                EjMode::Program3,
+                EjMode::Off,
+            ]
+        );
+    }
+
+    // G-K8 / IO-08-D3a: 点検のモードの取引の本文は取引の文法で復元しない
+    #[test]
+    fn parse_ej_sale_body_in_inspection_mode_unresolves() {
+        let result = parse(&sale("点検", "000315", &[item(NAME_A, 100)], 1, 100));
+
+        let record = &result.records[0];
+        assert_eq!(record.kind, EjRecordKind::Unclassified);
+        assert_eq!(reasons_of(record), [UnknownLine]);
+    }
+
+    // G-S1 / IO-08-D5d / D7a: ＰＬＵ Z と勤怠 Z は完了した精算票
+    #[test]
+    fn parse_ej_plu_and_attendance_settlements() {
+        let lines = [
+            header("精算", AT, "000316"),
+            vec![
+                "0014 ＰＬＵ Z 0003".to_string(),
+                "ﾃﾞｰﾀｦﾎｿﾞﾝｼﾏｼﾀ".to_string(),
+                sep(),
+                "ＰＬＵ".to_string(),
+                lr("SDｶｰﾄﾞ保存", "正常終了"),
+            ],
+            header("精算", AT, "000317"),
+            vec![
+                "0021 勤怠 Z 0003".to_string(),
+                sep(),
+                "勤怠".to_string(),
+                lr("SDｶｰﾄﾞ保存", "正常終了"),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            kinds(&result),
+            [
+                EjRecordKind::Settlement {
+                    report: EjSettlementReport::Plu,
+                    completed: true,
+                },
+                EjRecordKind::Settlement {
+                    report: EjSettlementReport::Attendance,
+                    completed: true,
+                },
+            ]
+        );
+        assert!(all_no_items(&result));
+        assert_eq!(result.records[0].body[3].kind, EjLineKind::ReportEnd);
+    }
+
+    // G-S2 / IO-08-D5d: 精算票の追加のラベル行
+    #[test]
+    fn parse_ej_settlement_additional_labels() {
+        let mut body = settlement_body();
+        let extra = [
+            lr("信在高", "1,000"),
+            lr("貸在高", "-500"),
+            lr("券在高", "300"),
+            lr("領収書", "3 件"),
+            lr("領収書 印紙", "1 件"),
+            lr("取引中止", "2 件"),
+        ];
+        body.splice(6..6, extra.iter().cloned());
+        let result = parse(&[header("精算", AT, "000318"), body].concat());
+
+        assert!(result.diagnostics.is_empty());
+        assert!(all_no_items(&result));
+        let labels: Vec<_> = result.records[0].body[6..12]
+            .iter()
+            .map(|l| l.kind.clone())
+            .collect();
+        let expected: Vec<_> = ["信在高", "貸在高", "券在高", "領収書", "領収書", "取引中止"]
+            .into_iter()
+            .map(|label| EjLineKind::Labeled { label })
+            .collect();
+        assert_eq!(labels, expected);
+    }
+
+    // G-S3 / IO-08-D5d: 送信の異常終了の後の 4 桁の行と案内文の行
+    #[test]
+    fn parse_ej_settlement_transmission_failure_lines() {
+        let mut body = settlement_body();
+        body.pop();
+        body.extend([
+            lr("ｽﾏ-ﾄﾌｫﾝ送信", "異常終了"),
+            lr("", "4012"),
+            "ｿｳｼﾝﾆｼｯﾊﾟｲｼﾏｼﾀ".to_string(),
+            "ｻｲｿｳｼﾝｼﾃｸﾀﾞｻｲ".to_string(),
+        ]);
+        let result = parse(&[header("精算", AT, "000319"), body].concat());
+
+        assert!(result.diagnostics.is_empty());
+        assert!(all_no_items(&result));
+        let tail = &body_kinds(&result.records[0])[10..];
+        assert_eq!(
+            tail,
+            [
+                EjLineKind::Status {
+                    label: "ｽﾏ-ﾄﾌｫﾝ送信",
+                    result: "異常終了".to_string(),
+                },
+                EjLineKind::AmountOnly,
+                EjLineKind::Text,
+                EjLineKind::Text,
+            ]
+        );
+    }
+
+    // G-S4 / IO-08-D7a / D4: 次のヘッダで閉じた中断は NoItems、file の最後の記録なら IncompleteRecord
+    #[test]
+    fn parse_ej_interrupted_settlement() {
+        let lines = [
+            header("精算", AT, "000320"),
+            cut_settlement_body(),
+            settlement("000321"),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(kinds(&result), [DAILY_CUT, DAILY_DONE]);
+        assert!(all_no_items(&result));
+
+        let result = parse(&[header("精算", AT, "000322"), cut_settlement_body()].concat());
+        let record = &result.records[0];
+        assert_eq!(record.kind, DAILY_CUT);
+        assert_eq!(reasons_of(record), [IncompleteRecord]);
+    }
+
+    // G-S5 / IO-08-D5d: 点検票の題の 4 形
+    #[test]
+    fn parse_ej_inspection_title_forms() {
+        let titles = ["0000 日計明細 X", "0014 ＰＬＵ X", "在売点検 X", "X"];
+        let lines: Vec<String> = titles
+            .iter()
+            .enumerate()
+            .flat_map(|(n, title)| {
+                [
+                    header("点検", AT, &format!("00033{n}")),
+                    vec![title.to_string(), lr("総売", "12")],
+                ]
+                .concat()
+            })
+            .collect();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert!(all_no_items(&result));
+        assert!(result
+            .records
+            .iter()
+            .all(|r| r.kind == EjRecordKind::Inspection));
+        let titles: Vec<_> = result
+            .records
+            .iter()
+            .map(|r| r.body[0].kind.clone())
+            .collect();
+        let title = |leading: Option<&str>| EjLineKind::ReportTitle {
+            leading_no: leading.map(str::to_string),
+            trailing_no: None,
+        };
+        assert_eq!(
+            titles,
+            [
+                title(Some("0000")),
+                title(Some("0014")),
+                title(None),
+                title(None)
+            ]
+        );
+    }
+
+    // G-S6 / IO-08-D5d: 精算票の Text は数字を含む行を通さない
+    #[test]
+    fn parse_ej_settlement_name_line_with_digit_unresolves() {
+        let mut lines = settlement("000323");
+        lines.insert(4, "ﾃｽﾄ2ｺｳﾓｸ".to_string());
+        let result = parse(&lines);
+
+        assert_eq!(reasons_of(&result.records[0]), [UnknownLine]);
+        assert_eq!(result.records[0].body[2].kind, EjLineKind::Unknown);
+    }
+
+    // G-O1 / IO-08-D5d / D7a: 設定の記録（状態・本文 0 行・設定の印字）は NoItems
+    #[test]
+    fn parse_ej_settings_records() {
+        assert!(sjis("表").contains(&0x5C), "2 byte 目が 0x5C の漢字");
+        let lines = [
+            header("PGM", AT, "000324"),
+            vec![lr("SD設定読込み", "正常終了")],
+            header("OFF", AT, "000325"),
+            vec![sep(), lr("自動設定保存", "正常終了"), sep()],
+            header("PGM1", AT, "000326"),
+            header("PGM3", AT, "000327"),
+            vec![
+                "ﾋｮｳｼﾞ 表 ｾｯﾃｲ".to_string(),
+                String::new(),
+                lr("ﾄｹｲ", "12:30"),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert!(result
+            .records
+            .iter()
+            .all(|r| r.kind == EjRecordKind::Settings));
+        assert!(all_no_items(&result));
+        assert!(body_kinds(&result.records[3])
+            .iter()
+            .all(|k| *k == EjLineKind::Text));
+    }
+
+    // G-O2 / IO-08-D5d: 設定の記録に紛れた取引の形（通貨記号・状態ラベル + 通貨記号・` 点`）
+    #[test]
+    fn parse_ej_settings_reject_sale_lines() {
+        let cases = [
+            lr("ﾃｽﾄ", "\\100"),
+            lr("自動設定保存", "\\100"),
+            lr("SD設定読込み", "￥１００"),
+            lr("", "1 点"),
+        ];
+        let lines: Vec<String> = cases
+            .iter()
+            .enumerate()
+            .flat_map(|(n, line)| {
+                [header("PGM", AT, &format!("00034{n}")), vec![line.clone()]].concat()
+            })
+            .collect();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(record.kind, EjRecordKind::Settings);
+            assert_eq!(reasons_of(record), [UnknownLine]);
+            assert_eq!(record.body[0].kind, EjLineKind::Unknown);
+        }
+    }
+
+    // G-O4 / IO-08-D3a / D5d: 領収書の 3 行
+    #[test]
+    fn parse_ej_receipt_record() {
+        let lines = [
+            header("", AT, "000328"),
+            vec![
+                " 一連No.000327".to_string(),
+                " 領収No.1".to_string(),
+                wide("領収書", 1_500),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(kinds(&result), [EjRecordKind::Receipt]);
+        assert!(all_no_items(&result));
+        let labels: Vec<_> = ["一連No.", "領収No.", "領収書"]
+            .into_iter()
+            .map(|label| EjLineKind::Labeled { label })
+            .collect();
+        assert_eq!(body_kinds(&result.records[0]), labels);
+    }
+
+    // G-O5 / IO-08-D3a: 番号印字の行は入金・設定の記録の種類を変えない
+    #[test]
+    fn parse_ej_number_print_in_paid_in_and_settings() {
+        let lines = [
+            header("", AT, "000329"),
+            vec![number_print("0012"), wide("入金", 1_000)],
+            header("OFF", AT, "000330"),
+            vec![
+                sep(),
+                lr("自動設定保存", "正常終了"),
+                sep(),
+                number_print("0013"),
+                number_print("0014"),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            kinds(&result),
+            [EjRecordKind::CashMovement, EjRecordKind::Settings]
+        );
+        assert!(all_no_items(&result));
+        assert_eq!(result.records[0].body[0].kind, EjLineKind::NumberPrint);
+        assert_eq!(result.records[1].body[3].kind, EjLineKind::NumberPrint);
+        assert_eq!(result.records[1].body[4].kind, EjLineKind::NumberPrint);
+    }
+
+    // G-O6 / IO-08-D3a / D5 / D6c: 合計域の番号印字は照合を変えず、明細域の番号印字は未知の行
+    #[test]
+    fn parse_ej_number_print_in_sale() {
+        let plain = [
+            header("", AT, "000331"),
+            vec![
+                item(NAME_A, 120),
+                item(NAME_B, 380),
+                sep(),
+                count(2),
+                lr("対象計", &yen(500)),
+                lr("内税", &yen(45)),
+                wide("現金", 500),
+            ],
+        ]
+        .concat();
+        let printed = [
+            plain.clone(),
+            vec![number_print("0012"), number_print("0013")],
+        ]
+        .concat();
+        let result = parse(&[plain, printed].concat());
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(items_of(&result.records[0]).len(), 2);
+        let shape = |record: &EjRecord| {
+            items_of(record)
+                .iter()
+                .map(|i| (i.name.clone(), i.quantity, i.unit_price, i.amount))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(shape(&result.records[0]), shape(&result.records[1]));
+        assert!(matches!(
+            result.records[1].restoration,
+            EjRestoration::Restored { item_count: 2, ref adjustments, .. } if adjustments.is_empty()
+        ));
+        assert_eq!(result.records[1].body[7].kind, EjLineKind::NumberPrint);
+
+        let in_items = [
+            header("", AT, "000332"),
+            vec![
+                item(NAME_A, 120),
+                number_print("0012"),
+                sep(),
+                count(1),
+                wide("合  計", 120),
+            ],
+        ]
+        .concat();
+        let result = parse(&in_items);
+        let record = &result.records[0];
+        assert_eq!(reasons_of(record), [UnknownLine]);
+        assert_eq!(record.body[1].kind, EjLineKind::Unknown);
+    }
+
+    // -----------------------------------------------------------------------
     // 致命的エラー
     // -----------------------------------------------------------------------
 
@@ -1907,7 +2731,7 @@ mod tests {
         all.extend(rows(&header("", AT, "000202")));
         all.push(wide_row);
         all.extend(rows(&totals(1, 380)));
-        all.extend(rows(&sale("点検", "000203", &[item(NAME_A, 100)], 1, 100)));
+        all.extend(rows(&sale("ZZZ", "000203", &[item(NAME_A, 100)], 1, 100)));
         all.extend(rows(&sale("", "000204", &[item(NAME_A, 100)], 2, 100)));
         all.extend(rows(&program(AT, "000205")));
         all.extend(rows(&settlement("000206")));
@@ -1944,7 +2768,7 @@ mod tests {
 
         assert!(!result.diagnostics.is_empty());
         for diagnostic in &result.diagnostics {
-            for name in [NAME_A, NAME_B, "ﾃｲｾｲﾋｮｳｼﾞ", "点検"] {
+            for name in [NAME_A, NAME_B, "ﾃｲｾｲﾋｮｳｼﾞ", "ZZZ"] {
                 assert!(
                     !diagnostic.message.contains(name),
                     "文言に名称が入っています"
@@ -1997,7 +2821,38 @@ mod tests {
     // 実物確認（Coordinator 手元、CI では実行しない）
     // -----------------------------------------------------------------------
 
-    // IO-08-D5〜D7: 実物 EJ の構造への一致。出力は件数だけ
+    /// 明細と値引きの digest（SHA-256 の先頭 16 桁）。値を出さずに base と突き合わせる（S3）
+    fn restoration_digest(items: &[EjItem], adjustments: &[EjAdjustment]) -> String {
+        let mut text = items
+            .iter()
+            .map(|item| {
+                let unit_price = item.unit_price.map_or("-".to_string(), |p| p.to_string());
+                format!(
+                    "{}\x1f{}\x1f{}\x1f{}",
+                    item.name, item.quantity, unit_price, item.amount
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\x1e");
+        if !adjustments.is_empty() {
+            let adjustments = adjustments
+                .iter()
+                .map(|adjustment| {
+                    let kind = match adjustment.kind {
+                        EjAdjustmentKind::ItemDiscount { .. } => "ItemDiscount",
+                        EjAdjustmentKind::SubtotalDiscount => "SubtotalDiscount",
+                        EjAdjustmentKind::MinusKey => "MinusKey",
+                    };
+                    format!("{kind}\x1f{}", adjustment.amount)
+                })
+                .collect::<Vec<_>>()
+                .join("\x1e");
+            text = format!("{text}\x1d{adjustments}");
+        }
+        format!("{:x}", Sha256::digest(text.as_bytes()))[..16].to_string()
+    }
+
+    // IO-08-D3a〜D7a: 実物 EJ の構造への一致。出力は件数・file 名・記録の番号・code・digest だけ
     #[test]
     #[ignore = "INVENTORY_EJ_PROBE_DIR に実物のEJを置いた dir を与えて手元で実行する"]
     fn real_ej_structure_probe() {
@@ -2014,7 +2869,9 @@ mod tests {
         let (mut read, mut skipped, mut fatal) = (0, 0, 0);
         let mut modes: BTreeMap<&str, usize> = BTreeMap::new();
         let mut restorations: BTreeMap<&str, usize> = BTreeMap::new();
+        let mut kinds: BTreeMap<(String, &str), usize> = BTreeMap::new();
         let mut codes: BTreeMap<String, usize> = BTreeMap::new();
+        let mut records: Vec<String> = Vec::new();
         for path in paths {
             let is_txt = path.is_file()
                 && path
@@ -2026,6 +2883,10 @@ mod tests {
                 continue;
             }
             read += 1;
+            let file_name = path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default();
             let bytes = std::fs::read(&path).expect("file を読めません");
             let Ok(result) = parse_ej(&bytes) else {
                 fatal += 1;
@@ -2035,17 +2896,40 @@ mod tests {
                 let mode = match record.mode {
                     EjMode::Normal => "Normal",
                     EjMode::Return => "Return",
+                    EjMode::Training => "Training",
                     EjMode::Settlement => "Settlement",
+                    EjMode::Inspection => "Inspection",
                     EjMode::Program => "Program",
+                    EjMode::Program1 => "Program1",
+                    EjMode::Program3 => "Program3",
+                    EjMode::Off => "Off",
                     EjMode::Unrecognized(_) => "Unrecognized",
                 };
                 *modes.entry(mode).or_default() += 1;
-                let restoration = match record.restoration {
-                    EjRestoration::Restored { .. } => "Restored",
-                    EjRestoration::NoItems => "NoItems",
-                    EjRestoration::Unresolved { .. } => "Unresolved",
+                let kind = format!("{:?}", record.kind);
+                let number = &record.number;
+                let restoration = match &record.restoration {
+                    EjRestoration::Restored {
+                        items, adjustments, ..
+                    } => {
+                        let digest = restoration_digest(items, adjustments);
+                        records.push(format!("{file_name} {number} Restored {digest}"));
+                        "Restored"
+                    }
+                    EjRestoration::NoItems => {
+                        let digest = restoration_digest(&[], &[]);
+                        records.push(format!("{file_name} {number} NoItems {digest}"));
+                        "NoItems"
+                    }
+                    EjRestoration::Unresolved { reasons } => {
+                        records.push(format!(
+                            "{file_name} {number} Unresolved {kind} {reasons:?}"
+                        ));
+                        "Unresolved"
+                    }
                 };
                 *restorations.entry(restoration).or_default() += 1;
+                *kinds.entry((kind, restoration)).or_default() += 1;
             }
             for diagnostic in &result.diagnostics {
                 *codes.entry(format!("{:?}", diagnostic.code)).or_default() += 1;
@@ -2055,10 +2939,12 @@ mod tests {
         println!("files_read {read} files_skipped {skipped} fatal {fatal}");
         println!("modes {modes:?}");
         println!("restorations {restorations:?}");
+        println!("kinds {kinds:?}");
         println!("diagnostics {codes:?}");
+        for line in &records {
+            println!("record {line}");
+        }
         assert!(read > 0, "読んだ file が 0 本です");
         assert_eq!(fatal, 0);
-        assert_eq!(restorations.get("Unresolved"), None);
-        assert!(codes.is_empty());
     }
 }
