@@ -14,7 +14,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、worktree は本 lane の隔離 worktree、branch `agent/custom-code-seq`）
-- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`、Writer と別 context）+ Codex（GPT-6.1 Sol、`.local/codex-orders/MODEL-SELECTION.md` の表。repo 外）
+- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`、Writer と別 context）+ Codex（`.local/codex-orders/MODEL-SELECTION.md` の表で round ごとに選ぶ。round 1 = GPT-6.1 Sol、round 2 = GPT-6 Astra。repo 外）
 - Final Reviewer: Fable 5.1（fresh subagent）+ Codex（GPT-6.1 Sol）。互いに独立で、後の reviewer に先の結果を見せない
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -26,6 +26,7 @@ Final Review Minimum は規則どおり 1（R4 でない。予定の file に `s
 - kickoff → spec-check → design → plan-draft（本 commit、plan-first、2026-10-04、起草役）: Risk R3 を記録。Contract Probe で不具合の再現を確かめた後、設計正本が足りない（30-biz §4.3 の step 5 が既存の番号で止まる設計そのもの）ため design を経た。30-biz §4.2 / §4.3 / §4.9、20-io §2.3 / §2.4、`docs/db-design/master-tables.md` の departments、`docs/decision-log.md` の D-106 を同じ commit で更新し、未解決の設計の問いは無い。packet と Test Design Matrix を同じ commit に置く。decision-log の番号は D-106（Coordinator の割当て）。
 - plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `018f5197` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。Plan Reviewer の Codex を表の当てはめ（R3 の初回）で GPT-6.1 Sol に直した。
 - plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus approve（P3 2）・Codex reject（P1 1・P2 3・P3 1）。Coordinator の裁定と owner 決定 TD-108・TD-109 を反映した。Plan Commit は pending のまま。
+- plan-gate（round 2 の是正、2026-10-04、Coordinator、本 commit）: round 2 の是正（Review Response 参照）。P3 のみ。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -102,7 +103,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ### S1 発番が既存の番号を飛ばす（BIZ-01-D6）
 
-- `src-tauri/src/biz/product_service.rs` の `generate_custom_code` を 30-biz §4.3 の step 1〜8 にする。step 3 の番号の読み取り（`{接頭辞}-` の後ろが 1 文字以上の ASCII 数字だけで i64 として読めるもの）は同 file の private 関数にしてよい。上限の検査は step 3c（`floor = 最大.checked_add(1)`）と step 3d（`cand = max(next_seq, floor)`、`cand.checked_add(1)`）のとおりで、どちらかが None なら next_seq の SQL 更新（step 4・5）の前に `ValidationFailed("この部門の独自コードの番号を振れません")` を返す（`increment_next_seq` の SQL `next_seq + 1` は i64 を超えると next_seq を REAL にする）。signature（`&rusqlite::Transaction<'_>`）・step 1 / 2 / 7 と、`create_product` / `commit_import` の他の処理は変えない。
+- `src-tauri/src/biz/product_service.rs` の `generate_custom_code` を 30-biz §4.3 の step 1〜8 にする。step 3 の番号の読み取り（`{接頭辞}-` の後ろが 1 文字以上の ASCII 数字だけで i64 として読めるもの）は同 file の private 関数にしてよい。上限の検査は step 3c（`floor = 最大.checked_add(1)`）と step 3d（`cand = max(next_seq, floor)`、`cand.checked_add(1)`）のとおりで、どちらかが None なら next_seq の SQL 更新（step 4・5）の前に `ValidationFailed("この部門の独自コードの番号を振れません")` を返す（`increment_next_seq` の SQL `next_seq + 1` は i64 を超えると next_seq を REAL にする）。関数の doc comment（今の「4桁ゼロ埋め連番」）も §4.3 に合わせる（4 桁以上、既存の番号を飛ばす）。signature（`&rusqlite::Transaction<'_>`）・step 1 / 2 / 7 と、`create_product` / `commit_import` の他の処理は変えない。
 - `src-tauri/src/db/product_repo.rs` に 20-io §2.3 `list_product_codes_by_prefix` と §2.4 `raise_next_seq` を足す（SQL は設計正本の処理ステップのとおり。`LIKE` を使わない）。`increment_next_seq` は変えない。
 
 ### S2 test
@@ -261,3 +262,14 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+- Plan Review round 1（2026-10-04、対象 `8ded2dfc`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 2）、Codex GPT-6.1 Sol（発注 199）= reject（P1 1 / P2 3 / P3 1）。Coordinator が現物で裏取りして全件を採用し、P2 2 件は owner 決定（TD-108・TD-109）で解いた。是正は相談役（Fable 5.1）の反例探しの後、起草役（Opus 5.5）が反映した（`09418db6`）。Phase は plan-gate のまま。
+  - Codex #1（P1、上限の検査が最大 + 1 だけで、その後の `increment_next_seq` の `next_seq + 1` が i64 を超えて next_seq が REAL になる）・Opus #1（P3、同じ境界の 1 つずれ）: 採用。30-biz §4.3 を step 3c（`最大.checked_add(1)`）と step 3d（`cand = max(next_seq, floor)`、`cand.checked_add(1)`）の 1 通りにし、next_seq の SQL 更新の前に `ValidationFailed` で止める。Matrix に T7b・T7c と M6 を足した。
+  - Codex #2（P2、Goal の「CSV 未取込みの部門は番号不変」と、部門を問わず全商品から最大を求める契約が矛盾する）: 採用。Goal と互換性の段を「既存の番号の最大 + 1 が next_seq 以下の部門」に直した。
+  - Codex #3（P2、抜けを使わない判断を未確認の店の事実から確定している）: 採用。owner に諮り TD-108（抜けを埋めず最大の次）を得て、BIZ-01-D6・D-106 の根拠を置き換えた。
+  - Codex #4（P2、master-tables の「4 桁・9999 まで」と新しい契約が同期していない）: 採用。owner に諮り TD-109（9999 を超えたら 5 桁以上で続ける）を得て、master-tables C-1・SCREEN_DESIGN・30-biz に反映した。
+  - Codex #5（P3、不在確認の `rg` が `\|` を alternation として扱い、不在の証明にならない）: 採用。起票時実測 #5 の command を直した。
+  - Opus #2（P3、T6 の「Would fail if」の数値が設計と合わない）: 採用。T6 の期待値を直した。
+- Plan Review round 2（2026-10-04、対象 `09418db6`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 2）、Codex GPT-6 Astra（発注 203。round 1 で Codex が P1 を出したので MODEL-SELECTION の表で Astra）= approve（P1 0 / P2 0 / P3 0）。Ordinary Operation は 2 本とも成立。P3 は Coordinator が全件採用し、本 commit で反映した。独立の再確認は Final Review が兼ねる。
+  - Opus #1（P3、T4 に符号付きの形が無く、ASCII 数字の判定を省いて `str::parse::<i64>` だけで読む実装〈`+` を受ける〉が green のまま通る）: 採用。Matrix の T4 の既存コードに `HZ-+0009` を足し、「Would fail if」にその近道を足した（期待値 `HZ-0001` は変えない）。
+  - Opus #2（P3、`generate_custom_code` の doc comment「4桁ゼロ埋め連番」〈`product_service.rs:152`〉が TD-109 と食い違い、S1 に comment の更新が無い）: 採用。S1 に doc comment を §4.3 に合わせる一句を足した。
