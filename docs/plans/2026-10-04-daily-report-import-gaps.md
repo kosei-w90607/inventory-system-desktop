@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: c3d97d3e73c61d3800700544093cfbd633f446cf
 - Amendments: none
@@ -35,6 +35,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定の path に `sc
 - plan-gate（round 3 の後の一括是正、2026-10-04、起草役、本 commit）: round 天井に達し、Coordinator の disposition（一括是正）を反映した（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（一括是正の範囲の拡張と Review Response の記入、2026-10-04、Coordinator、本 commit）: 一括是正の範囲を部門の amount の合計に広げた（`130da5a1`）。round 1〜3 と一括是正の裁定を Review Response に書いた。Plan Commit は pending のまま。
 - plan-gate → plan-approved（2026-10-04、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `02f437cb`）の残りを Coordinator の disposition（一括是正、`e827213b`・`130da5a1`）で閉じ、Coordinator が現物で確かめた（doc check の `--target plan` と full が ERROR 0）。一括是正の独立の再確認は Final Review が兼ねる。owner の判断（2026-10-04、一括是正の後に plan-approved）。Plan Commit は `c3d97d3e`。
+- plan-approved → implementing（2026-10-04、Coordinator、state-only、本 commit）: Writer（Opus 5.5 subagent、`subagent_type: writer`）へ実装を発注する。発注の直前に起票時実測 #1〜#7 を逐語で再実行し、上の baseline と一致した（#1 は 4 行、#2 は 2 行、#3〜#6 は exit 1、#7 は 54 passed）。
 
 ## Owner Effort Budget
 
