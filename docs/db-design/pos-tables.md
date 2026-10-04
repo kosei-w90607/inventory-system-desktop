@@ -108,8 +108,8 @@ CSV取込み時にスキップされた行（マスタ未登録、フォーマ�
 | source_line_no | INTEGER | NOT NULL | Z004のレコード番号 |
 | normalized_jan | TEXT | NULLABLE | 正規化後のJANコード（正規化前にエラーならNULL） |
 | raw_name | TEXT | NOT NULL | Z004上の商品名（そのまま保存） |
-| raw_quantity | TEXT | NOT NULL | Z004上の個数（数値変換前の生値） |
-| raw_amount | TEXT | NOT NULL | Z004上の金額（数値変換前の生値） |
+| raw_quantity | TEXT | NOT NULL | Z004上の個数（文字列。値の出どころは設計意図の「raw_quantity / raw_amountの値」） |
+| raw_amount | TEXT | NOT NULL | Z004上の金額（同上） |
 | error_type | TEXT | NOT NULL, CHECK(error_type IN ('unmatched_product','invalid_format','invalid_jan','invalid_number')) | エラー種別 |
 | error_message | TEXT | NOT NULL | エラー詳細（例: 「JAN 4973167064078 に該当する商品がありません」） |
 | created_at | TEXT | NOT NULL | 作成日時（YYYY-MM-DDTHH:MM:SS） |
@@ -125,6 +125,7 @@ CSV取込み時にスキップされた行（マスタ未登録、フォーマ�
 
 ### 設計意図
 - **raw_quantity / raw_amountをTEXTで持つ理由**: 数値変換に失敗した行も保存するため。INTEGERだと変換失敗時に保存できない
+- **raw_quantity / raw_amountの値**: IO-02 の ParseError 由来の行（invalid_format / invalid_jan / invalid_number）は、取得できた field の元の文字列（数値変換前。カンマ付きのまま）。field が 5 未満の invalid_format で取得できなかった field は `""`。unmatched_product など BIZ-03 が整数から作る行は整数の文字列表現（金額 `1,234` の行は `"1234"`。[32 §15.3](../function-design/32-biz-csv-import-service.md) 手順 4b / 4c、D-103）
 - **normalized_janがNULLABLEな理由**: JAN正規化自体が失敗した場合（invalid_jan）は正規化後の値がない
 - **error_messageの理由**: 利用者向けの日本語メッセージをそのまま保存。画面表示時に再生成しなくて済む
 
