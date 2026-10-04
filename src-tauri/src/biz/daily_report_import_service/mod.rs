@@ -81,7 +81,7 @@ pub struct DailyReportDepartmentLinePreview {
     pub raw_department_name: String,
     pub normalized_department_name: Option<String>,
     pub amount: i64,
-    /// 単位の数（IO-07-D2 の 100 倍の整数を戻した値）
+    // 単位の数（IO-07-D2 の 100 倍の整数を戻した値）
     pub quantity: Option<f64>,
     pub count: Option<i64>,
     pub sort_order: i64,

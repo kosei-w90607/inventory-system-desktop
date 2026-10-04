@@ -101,7 +101,7 @@ pub struct OfficialDailyDepartmentLine {
     pub raw_department_name: String,
     pub normalized_department_name: Option<String>,
     pub amount: i64,
-    /// 単位の数（DB の 100 倍の整数を IO-07-D2 の変換で戻した値）
+    // 単位の数（DB の 100 倍の整数を IO-07-D2 の変換で戻した値）
     pub quantity: Option<f64>,
     pub count: Option<i64>,
 }
@@ -132,7 +132,7 @@ pub struct OfficialMonthlyDepartmentTotal {
     pub department_id: Option<i64>,
     pub label: String,
     pub amount: i64,
-    /// 単位の数（月の SUM を 100 倍の整数で足してから戻した値）
+    // 単位の数（月の SUM を 100 倍の整数で足してから戻した値）
     pub quantity: Option<f64>,
     pub count: Option<i64>,
 }
