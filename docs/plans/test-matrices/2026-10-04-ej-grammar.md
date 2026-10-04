@@ -49,7 +49,7 @@ Risk: R3
 |---|---|---|---|---|---|
 | G-K1 | IO-08-D3 / D3a | F6 | unit | モード欄が空・`点検`・`PGM` の 3 記録に同じ完了した日計明細 Z の本文。どれも `kind == Settlement { report: Daily, completed: true }`・`NoItems`・診断 0、`mode` はそれぞれ `Normal` / `Inspection` / `Program` | 種類をモード欄で決める |
 | G-K2 | IO-08-D3a | F6 | unit | モード欄が空と `精算` の記録に `4 桁 日計明細 X` の本文。`kind == Inspection`・`NoItems` | 点検票を取引・精算と読む |
-| G-K3 | IO-08-D3a | F5 / F11 | unit | `練習` のモードの取引（明細・区切り・点数・合計・`･･････トレーニング･･････` の行・合計域の後ろの番号印字の行）と入金。`kind == Training`・`NoItems`・診断 0、本文の行は番号印字の行を含めすべて `Text` | 練習の明細を返す、印の行で `UnknownLine`、練習の番号印字の行を `NumberPrint` にする |
+| G-K3 | IO-08-D2 / D3a / D8 | F5 / F11 | unit | `練習` のモードの取引（明細・区切り・点数・合計・`･･････トレーニング･･････` の行・合計域の後ろの番号印字の行）と入金。`kind == Training`・`NoItems`・診断 0、本文の行は番号印字の行を含めすべて `Text`。もう 1 case: 同じ練習の取引の本文の 1 行を 25 バイトにした記録（ほかの行は 24 バイト）。`kind == Training`・`Unresolved`、reasons `[InvalidWidth]`、その行は `Unknown`（29 の IO-08.2・IO-08.8「幅違反と最終改行なしは未知のモード・練習の記録でも出す」、行単位の問題は照合なしで `Unresolved`） | 練習の明細を返す、印の行で `UnknownLine`、練習の番号印字の行を `NumberPrint` にする、練習の記録で幅の検査を飛ばす（25 バイトの行を `Text` にして `NoItems`） |
 | G-K4 | IO-08-D3a | F5 | unit | `点検` のモードの `ﾄﾚｰﾆﾝｸﾞﾓｰﾄﾞを開始します` + 印の行。`kind == Training`・`NoItems` | トレーニングの表示を未知の記録にする |
 | G-K5 | IO-08-D3a / D8 | F16 | unit | 未知のモード（例 `ZZZ`）の取引の本文。`kind == Unclassified`、`mode == Unrecognized("ZZZ")`、reasons `[UnrecognizedMode]`、診断はその 1 件だけ | 未知のモードを復元する、行ごとに `UnknownLine` を出す |
 | G-K6 | IO-08-D3a | F6 | unit | `精算` のモードで題の無い本文（`総売` の行から始まる）。`kind == Unclassified`、reasons `[IncompleteRecord]` | 題の無い精算を `NoItems` にする |
@@ -66,7 +66,7 @@ Risk: R3
 | G-O3 | IO-08-D3a | — | unit | 戻のモードの `入金 ￥1,000` の 1 行。`CashMovement`・`NoItems` | 戻のモードの入金を復元不能にする |
 | G-O4 | IO-08-D3a / D5d | — | unit | 領収書の 3 行（` 一連No.000123` 相当の合成・` 領収No.1`・`領収書 ￥1,500`）。`Receipt`・`NoItems`・診断 0 | 領収書を取引として `IncompleteRecord` |
 | G-O5 | IO-08-D3a | F11 | unit | 番号印字の行 + `入金` の行の記録が `CashMovement`、`OFF` の設定の後ろの番号印字 2 行が `Settings` の `NoItems`、行種 `NumberPrint` | 番号印字で入金の 1 行の判定が崩れる |
-| G-O6 | IO-08-D3a / D6c | F11 | unit | 取引の合計域の `現金` の後に番号印字 2 行。`Restored`（明細・点数は番号印字の無い同じ取引と同じ） | 番号印字で照合が崩れる |
+| G-O6 | IO-08-D3a / D5 / D6c | F11 | unit | 取引の合計域の `現金` の後に番号印字 2 行。`Restored`（明細・点数は番号印字の無い同じ取引と同じ）。もう 1 case: 明細域の番号印字。明細 A → `＃ 12` の行 → 区切り → 点数 1 → 合計 A。`Unresolved`、reasons `[UnknownLine]`、`＃ 12` の行は `Unknown`（29 の IO-08-D3a: 取引の明細域の番号印字の行は明細域の規則の行種で、`Item` / `ItemName` に当たらない） | 番号印字で照合が崩れる、明細域の番号印字の行を `NumberPrint` にして照合から外す（`Restored` になる） |
 | G-T1 | IO-08-D5a | F9 | unit | `対象計 8.0%` の行 + 空白で始まる `\12,345` の行（5 桁で折り返す合成）。`Restored`、続きの行は `Continued` | 折返しの金額の行が `UnknownLine` |
 | G-T2 | IO-08-D5a / D6c | F9 | unit | `合  計` の無い取引で `ｸﾚｼﾞｯﾄ電子M` のラベルだけの行 + `Continued`（金額 = 明細の和）。`Restored` | 折り返した支払行の金額を照合に使えない |
 | G-T3 | IO-08-D5a | F9 | unit | `お預り` / `お  釣` の折返し（`合  計` あり）。`Restored` | お預り・お釣の折返しで復元不能 |
@@ -83,7 +83,7 @@ Risk: R3
 | G-M6 | IO-08-D5a | F9 | unit | 名称だけの行 → 空白で始まる `\1,200` の行、数量行 → 名称だけの行 → 金額の行（2 点 @600）。それぞれ 1 明細（`line_no` は名称の行） | 折返しを 2 行の未知の行にする |
 | G-M7 | IO-08-D6b | F4 | unit | 明細 → `－ -100*`、明細 → `－ -50`。`adjustments == [MinusKey]`、点数は明細の数量の和 | マイナスキーを明細にする、`*` で読めない |
 | G-M8 | IO-08-D6d | F10 | unit | 空のモードで 明細 A → `戻 ････` → `名称 -300`（通貨記号なし）→ 区切り → 点数 0 → 合計 A − 300。`items` の 2 件目は数量 -1・金額 -300 | 戻の印の明細を受けない、数量 1 で返す |
-| G-M9 | IO-08-D6 / D6a | F1 | unit | 明細 1 件 → `訂正` で取消 → 区切り → ` 0 点` → `現金 ￥0`。`Restored { items: [] , item_count: 0 }` | すべて取り消した取引を復元不能にする（または取り消した明細を返す） |
+| G-M9 | IO-08-D6 / D6a | F1 | unit | 明細 1 件 → `訂正` で取消 → 区切り → ` 0 点` → `wide("現金", 0)`（全角の `￥０`。金額 token の幅をそろえる規則）。`Restored { items: [] , item_count: 0 }` | すべて取り消した取引を復元不能にする（または取り消した明細を返す） |
 | G-C1 | IO-08-D7a | F5 | unit | 明細 2 件 → `訂正` → 数量行つきの明細 → `取引中止 ････`（区切りなし）。`kind == Cancelled`・`NoItems`・診断 0 | 取引中止を `IncompleteRecord` にする、明細を返す |
 | G-C2 | IO-08-D7a | F5 | unit | 明細 → 率 → `％－` → `取引中止 ････`、明細 → `－ -100` → `取引中止 ････`。`Cancelled`・`NoItems` | 値引きを含む取引中止を読めない |
 | G-C3 | IO-08-D7a | F2 | unit | 取引中止の記録の中で訂正の取消先が合わない（`訂正` の金額 ≠ −直前の明細）。`InconsistentRecord` | 取引中止の中の項目の規則を検査しない |
@@ -99,7 +99,7 @@ Risk: R3
 | G-F10 | IO-08-D6a | F8 | unit | 合計域の訂正の直前が `対象計`、金額が直前の支払行と合わない。`InconsistentRecord` | 合計域の訂正を検査しない |
 | G-F11 | IO-08-D7a | F5 | unit | 区切りのある取引の明細域に `取引中止 ････` の行。`UnknownLine` | 取引中止の印を途中の行でも受ける |
 | G-F12 | IO-08-D5 | F14 | unit | `合  計 －1,000`（全角の符号と ASCII 数字）、`現金 -１，０００`（半角の符号と全角数字）。`InconsistentRecord`（照合のラベルの金額が読めない） | 幅の混ざった token を受ける |
-| G-F13 | IO-08-D5a | F9 | unit | 明細域で前に名称だけの行が無い `\1,200` の行、合計域で前が金額つきのラベルの `Continued` の形の行。`UnknownLine` | 続きの行を前の行なしで受ける |
+| G-F13 | IO-08-D5 / D5a | F9 | unit | 明細域で前に名称だけの行が無い `\1,200` の行、合計域で前が金額つきのラベルの `Continued` の形の行。`UnknownLine`。もう 1 case（金額が読めない明細の行の後の続きの行）: 通常のモードで `lr("A", "\\9223372036854775808")`（半角 `\` + ASCII 数字、`i64` の範囲外）→ `lr("", &yen(100))` → 区切り → 点数 1 → `wide("合  計", 100)`。先頭の行は金額 token が `i64` に収まらず `Unknown`（29 の金額 token「収まらない桁は受理しない（その行は `Unknown`）」）、続きの行は直前の行が `ItemName` でないため `Continued` に当たらず `Unknown`。`Unresolved`、reasons `[UnknownLine]`（`UnknownLine` は 2 件） | 続きの行を前の行なしで受ける、`Item` の金額を読めなかった行を `ItemName` にする（数量 1・金額 100 の明細になり `Restored` になる） |
 | G-F14 | IO-08-D5（単位の拡張は Non-scope） | — | unit | 小数の数量行（` 1.5 点 @100`）と小数の点数。`UnknownLine`（既存の `parse_ej_decimal_quantity_unresolves` と同じ扱い） | 小数を黙って整数に丸める |
 | G-F15 | IO-08-D6a / D6c | F8 | unit | `合  計` の無い取引の照合の金額の候補の選び方（IO-08.6 の照合の条件 4・5）。(a) 明細 A 100 → 区切り → ` 1 点` → `売掛 ￥１００` → `訂正 -100`（売掛の取消。条件 5 を満たす）。取り消されていない支払行が 0 行なので `IncompleteRecord`。(b) 明細 A 100 → 区切り → ` 1 点` → `現金 ￥１００` → `売掛 ￥４０`。取り消されていない支払行が 2 行で、先頭の 1 行だけが明細の和と一致し、2 行の和（140）は一致しない。`InconsistentRecord` | (a) 取り消した支払行を候補に残す（候補 1 行 = 100 で `Restored` になる）、(b) 候補が 2 行以上でも先頭の候補を選ぶ（100 で `Restored` になる） |
 | G-X1 | IO-08-D8 | F15 | unit | `parse_ej_every_line_is_accounted_for` と `parse_ej_diagnostic_messages_are_fixed_texts` の fixture に、取引中止・練習・精算票（次のヘッダで閉じた中断）・設定の印字・領収書・折返し・訂正・値引き・番号印字の記録を足す。行番号が 1〜N を 1 回ずつ覆い、message に fixture の名称が含まれない。`fixed_texts` に足す記録は、S2 で直した `mixed_file()` の dedup した 7 code の順を崩さない位置に限る | 新しい行種で行が消える、文言に行が入る |
@@ -133,3 +133,6 @@ Writer は実装後に次の変異を 1 つずつ入れて、挙げた test が 
 - `合  計` の無い取引で、候補が 2 行以上でも先頭の候補を照合の金額に選ぶ → G-F15 (b) が red。
 - 戻の印の明細の数量を 1 にする → G-M8・G-T8 が red。
 - `Continued` の前の行の条件を外す → G-F13 が red。
+- `Item` の金額 token を読めなかった行を、直後が続きの行の形なら `ItemName` にする → G-F13（金額が読めない明細の行の case）が red。
+- 番号印字の行を記録の種類・位置によらず先に `NumberPrint` に分類する → G-O6（明細域の番号印字の case）が red。
+- 練習の記録で幅の検査を飛ばす → G-K3（25 バイトの行の case）が red。
