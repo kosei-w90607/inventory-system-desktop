@@ -10,9 +10,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: c3d97d3e73c61d3800700544093cfbd633f446cf
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、worktree は本 lane のもの、branch `agent/daily-report-import-gaps`）
@@ -34,6 +34,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定の path に `sc
 - plan-gate（round 2 の是正、2026-10-04、起草役、本 commit）: round 2 の是正（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（round 3 の後の一括是正、2026-10-04、起草役、本 commit）: round 天井に達し、Coordinator の disposition（一括是正）を反映した（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（一括是正の範囲の拡張と Review Response の記入、2026-10-04、Coordinator、本 commit）: 一括是正の範囲を部門の amount の合計に広げた（`130da5a1`）。round 1〜3 と一括是正の裁定を Review Response に書いた。Plan Commit は pending のまま。
+- plan-gate → plan-approved（2026-10-04、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `02f437cb`）の残りを Coordinator の disposition（一括是正、`e827213b`・`130da5a1`）で閉じ、Coordinator が現物で確かめた（doc check の `--target plan` と full が ERROR 0）。一括是正の独立の再確認は Final Review が兼ねる。owner の判断（2026-10-04、一括是正の後に plan-approved）。Plan Commit は `c3d97d3e`。
 
 ## Owner Effort Budget
 
@@ -43,7 +44,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定の path に `sc
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 3（2026-10-04: 起票の判断〈TD-104、本 lane を含む lane の選択〉、Plan Review round 1 の精算回数の扱い〈TD-110: 精算回数を読めたファイルどうしは比べ、読めないファイルの出所は確かめない。TD-111: 読めないファイルを含む束での別の精算の混入の見逃しを受容リスクとする〉。予備 2 のうち「Plan Review で owner の製品判断が要る指摘」を使った） | 3（plan-approved 1、Ready 1、merge 1） | 0（Final Review の指摘の裁定で owner が要ると上限を超える。`docs/DEV_WORKFLOW.md` `Owner Effort Budget` の上限に届くときの扱いに従う） | 6 = 3 + 3 + 0 |
+| 介入 | 6 | 4（2026-10-04: 起票の判断〈TD-104、本 lane を含む lane の選択〉、Plan Review round 1 の精算回数の扱い〈TD-110: 精算回数を読めたファイルどうしは比べ、読めないファイルの出所は確かめない。TD-111: 読めないファイルを含む束での別の精算の混入の見逃しを受容リスクとする〉。予備 2 のうち「Plan Review で owner の製品判断が要る指摘」を使った。round 3 の後の disposition と plan-approved 1〈2026-10-04〉） | 2（Ready 1、merge 1） | 0（Final Review の指摘の裁定で owner が要ると上限を超える。`docs/DEV_WORKFLOW.md` `Owner Effort Budget` の上限に届くときの扱いに従う） | 6 = 4 + 2 + 0 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。介入は decision point 単位で数え、1 回の問い合わせで複数を得てもその数だけ数える。relay（Codex の起動の往復）は上限に数えない。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
