@@ -302,6 +302,14 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 
 実装後に記入する。exact-HEAD SHA と test 件数は書かない（D-035 / D-038）。
 
+### Gated Amendment 1（2026-10-05、Coordinator）
+
+- Final Review broad の Codex 側（P1 1 / P2 1）と Claude 側の P3 を受けた是正。相談役（Fable 5.1）が反例を探し、29 の表の全行種を明細域に置いて確かめた。
+- `ItemName` は、本書の表でほかの行種として形が定まった行（取引中止の印・番号印字・状態の行・合計域 / 入金・出金・替 / 領収書 / 精算票・点検票のラベルの行・題・終わりの印字・トレーニングの表示）に当たらない（29 の `ItemName` の行と「`ItemName` が当たらない形」）。今の実装ではこれらが明細域で名称の行になり、続きの行と組んで架空の明細で `Restored` になっていた（P1）。
+- 数量行の単価は全角の `－` も符号として拒む（29 の `Quantity` の行と小数の項。P2）。
+- 合計域の `Continued` の受け手を、29 の定義どおりラベルだけの行（注記を除く）と `対象計` の率だけの行に限る（Claude 側の P3 #2）。
+- Matrix に G-F16〜G-F18・G-T9 と Mutation の 4 行を足す。Scope・AC・Goal は変えない（S1 の「IO-08-D5a〜D5d の実装」の範囲）。実装は本 Amendment の後の commit。
+
 ## Review Response
 
 review の後に記入する。

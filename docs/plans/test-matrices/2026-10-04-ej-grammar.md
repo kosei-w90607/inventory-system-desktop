@@ -9,7 +9,7 @@ Risk: R3
 ## Contracts Under Test
 
 - IO-08-D3a: 記録の種類（`EjRecord.kind`）を本文の行で決める。判定順の表、番号印字の行は判定から除く。モード欄は既知の値（`練習` / `点検` / `PGM1` / `PGM3` / `OFF` を含む）を別の field で返す。
-- IO-08-D5a: 明細の折返し（`ItemName` + `Continued`）と合計域のラベルの折返し（ラベルだけの行 + `Continued`）。
+- IO-08-D5a: 明細の折返し（`ItemName` + `Continued`）と合計域のラベルの折返し（ラベルだけの行 + `Continued`）。 `ItemName` は本書の表でほかの行種として形が定まった行に当たらない。合計域の `Continued` の受け手は、ラベルだけの行（注記を除く）と `対象計` の率だけの行（Gated Amendment 1）。
 - IO-08-D5b: 合計域の支払行 4 種・軽減税率の行・注記・合計域の訂正の行。金額 token の全角 `－` と印 `*` / `※`。
 - IO-08-D5c: 明細域の訂正・小計・率・％値引き・マイナスキー・戻の印・取引中止の印の行。
 - IO-08-D5d / D7a: 精算票（日計明細 / ＰＬＵ / 勤怠、完了・次のヘッダで閉じた中断、表に無い行）・点検票（4 形の題）・設定・練習・入金 / 出金 / 替（戻のモードを含む）・領収書は `NoItems`、`Unclassified` は `Unresolved`。file の最後の記録で `ReportEnd` の無い精算票は `kind: Settlement { completed: false }`・`Unresolved`（`IncompleteRecord`。IO-08-D4）。設定の記録は行種の分類より前に通貨記号の行を、ほかに当たらず半角空白 + `点` を含む行を `Unknown` にする（判定は decode 後の文字列）。
@@ -102,6 +102,10 @@ Risk: R3
 | G-F13 | IO-08-D5 / D5a | F9 | unit | 明細域で前に名称だけの行が無い `\1,200` の行、合計域で前が金額つきのラベルの `Continued` の形の行。`UnknownLine`。もう 1 case（金額が読めない明細の行の後の続きの行）: 通常のモードで `lr("A", "\\9223372036854775808")`（半角 `\` + ASCII 数字、`i64` の範囲外）→ `lr("", &yen(100))` → 区切り → 点数 1 → `wide("合  計", 100)`。先頭の行は金額 token が `i64` に収まらず `Unknown`（29 の金額 token「収まらない桁は受理しない（その行は `Unknown`）」）、続きの行は直前の行が `ItemName` でないため `Continued` に当たらず `Unknown`。`Unresolved`、reasons `[UnknownLine]`（`UnknownLine` は 2 件） | 続きの行を前の行なしで受ける、`Item` の金額を読めなかった行を `ItemName` にする（数量 1・金額 100 の明細になり `Restored` になる） |
 | G-F14 | IO-08-D5（単位の拡張は Non-scope） | — | unit | 小数の数量行（` 1.5 点 @100`）と小数の点数。`UnknownLine`（既存の `parse_ej_decimal_quantity_unresolves` と同じ扱い） | 小数を黙って整数に丸める |
 | G-F15 | IO-08-D6a / D6c | F8 | unit | `合  計` の無い取引の照合の金額の候補の選び方（IO-08.6 の照合の条件 4・5）。(a) 明細 A 100 → 区切り → ` 1 点` → `売掛 ￥１００` → `訂正 -100`（売掛の取消。条件 5 を満たす）。取り消されていない支払行が 0 行なので `IncompleteRecord`。(b) 明細 A 100 → 区切り → ` 1 点` → `現金 ￥１００` → `売掛 ￥４０`。取り消されていない支払行が 2 行で、先頭の 1 行だけが明細の和と一致し、2 行の和（140）は一致しない。`InconsistentRecord` | (a) 取り消した支払行を候補に残す（候補 1 行 = 100 で `Restored` になる）、(b) 候補が 2 行以上でも先頭の候補を選ぶ（100 で `Restored` になる） |
+| G-F16 | IO-08-D5a / D5 | F9 / F11 / F5 | unit | `parse_ej_item_name_rejects_other_line_shapes`（Gated Amendment 1）: ヘッダ → 明細 B 50 → X → ` \100` → 区切り → ` 2 点` → `合  計 ￥１５０`。X は本書の表で形が定まったほかの行種の 19 形（`取引中止 ････`、`＃ 12`、`SD設定書込み 正常終了`、`合  計`、`現金`、`商品券`、`対象計 8.0%`、`注）※は軽減税率適用`、`替 ｺｵｳｶﾝ`、`一連No.000123`、`領収No.1`、`総売 12`、`領収書 3 件`、`取引中止 2 件`、`ﾄﾚｰﾆﾝｸﾞﾓｰﾄﾞを開始します`、`･･････トレーニング･･････`、`日計明細`、`0000 日計明細 X`、`在売点検 X`）。どれも X と続きの行が `Unknown` で `Unresolved`、reasons `[UnknownLine]`。対照: X = `ｼﾞｮｰｾｲ 500ml` は診断 0 で 2 明細 | `ItemName` がほかの行種の形を名称として拾い、架空の明細で `Restored` になる |
+| G-F17 | IO-08-D5 | F14 | unit | `parse_ej_full_width_minus_unit_price_unresolves`（Gated Amendment 1）: `parse_quantity` が ` 1 点   @－１` / `@－０` / `@-1` / `@-0` で `None`、`@100` で `Some((1, 100))`。記録 ` 1 点 @－０` → 明細 A `\0` → 区切り → ` 1 点` → `合  計 ￥０` と、` 1 点 @－１` → `A -1` → 区切り → ` 1 点` → `合  計 －１` が、どちらも数量行が `Unknown` で reasons `[UnknownLine]` | 単価の符号の禁止が半角だけで、`－０` の数量行が照合を素通りして `Restored` になる |
+| G-F18 | IO-08-D5a | F9 | unit | `parse_ej_totals_continued_requires_bare_label_or_taxable_rate`（Gated Amendment 1）: 明細 A 100 → 区切り → ` 1 点` → (a) `合  計 ￥１００` → `注）※は軽減税率適用` → ` ￥１００`、(b) `内税 8.0%` → ` \9` → `合  計 ￥１００`、(c) `合  計 ￥１００` → `現金 abc` → ` ￥１００`。どれも金額だけの行が `Unknown` で reasons `[UnknownLine]`。対照: `対象計※ 8.0%` → ` \100` → `合  計 ￥１００` は診断 0 で `Continued { 100 }` | 金額 token を持たない `Labeled` なら何でも続きの行の受け手になる |
+| G-T9 | IO-08-D6a / D6c | F8 | unit | `parse_ej_total_region_correction_cancels_wrapped_payment`（Gated Amendment 1）: `合  計` の無い取引で、明細 A 100 → 区切り → ` 1 点` → `ｸﾚｼﾞｯﾄ電子M` → ` ￥１００` → `訂正 -100` → `現金 ￥１００`。`Restored { items: [A], item_count: 1, adjustments: [] }`、`Continued { 100 }` と `Correction { -100 }` | 合計域の訂正の取消先を `Continued` から 1 行さかのぼらず、折り返した支払行を取り消せない（`InconsistentRecord`） |
 | G-X1 | IO-08-D8 | F15 | unit | `parse_ej_every_line_is_accounted_for` と `parse_ej_diagnostic_messages_are_fixed_texts` の fixture に、取引中止・練習・精算票（次のヘッダで閉じた中断）・設定の印字・領収書・折返し・訂正・値引き・番号印字の記録を足す。行番号が 1〜N を 1 回ずつ覆い、message に fixture の名称が含まれない。`fixed_texts` に足す記録は、S2 で直した `mixed_file()` の dedup した 7 code の順を崩さない位置に限る | 新しい行種で行が消える、文言に行が入る |
 
 ### 既存 test の変更（S2）
@@ -121,6 +125,10 @@ Risk: R3
 
 Writer は実装後に次の変異を 1 つずつ入れて、挙げた test が red になることを確かめ、PR body に結果（red になった test 名）を書く。期待値は設計正本の規則から手で決めた fixture の値で、parser の出力から写さない。
 
+- `ItemName` の「ほかの行種の形に当たらない」の除外を外したら → G-F16 が赤（Gated Amendment 1）。
+- `parse_quantity` の単価の符号の禁止を半角 `-` だけに戻したら → G-F17 が赤（Gated Amendment 1）。
+- 合計域の `Continued` の受け手を「最後の語が金額 token でない `Labeled`」に戻したら → G-F18 が赤（Gated Amendment 1）。
+- 合計域の訂正の取消先で `Continued` を 1 行さかのぼる分岐を外したら → G-T9 が赤（Gated Amendment 1）。
 - 訂正（負）の取消先を「直前の項目」から「同額の最初の有効な明細」に変える → G-F1 が red。
 - 取り消した明細を `items` から外さない → G-M1・G-M2・G-M9 が red。
 - 値引きを `items` に混ぜる（`Item` として扱う）→ G-M4・G-M5 が red。
