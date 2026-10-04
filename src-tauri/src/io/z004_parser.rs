@@ -7,6 +7,7 @@
 
 use sha2::{Digest, Sha256};
 use std::fmt;
+use std::sync::LazyLock;
 
 // ---------------------------------------------------------------------------
 // 型定義
@@ -201,7 +202,7 @@ pub fn parse_z004(raw_bytes: &[u8]) -> Result<ParseResult, Z004ParseError> {
 
         match parse_data_line(line, line_no) {
             Ok(Some(row)) => parsed_rows.push(row),
-            Ok(None) => {} // 空スロット（全桁ゼロ）— スキップ
+            Ok(None) => {} // 売上の無い枠（SPEC-Z4A-D8）— スキップ
             Err(error) => parse_errors.push(error),
         }
     }
@@ -325,51 +326,55 @@ fn parse_data_line(line: &str, line_no: usize) -> Result<Option<ParsedRow>, Pars
         });
     }
 
+    let record_no = fields[0].trim();
     let scanning_code_raw = &fields[1];
     let name_raw = &fields[2];
     let quantity_raw = &fields[3];
     let amount_raw = &fields[4];
-
-    // Step 2: JAN正規化
-    let normalized_jan = match normalize_jan(scanning_code_raw, line_no) {
-        Ok(None) => return Ok(None), // 空スロット
-        Err(msg) => {
-            return Err(ParseError {
-                line_no,
-                error_type: ParseErrorType::InvalidJan,
-                error_message: msg,
-                raw_name: Some(name_raw.to_string()),
-                raw_quantity: Some(quantity_raw.to_string()),
-                raw_amount: Some(amount_raw.to_string()),
-            });
-        }
-        Ok(Some(jan)) => jan,
+    let row_error = |error_type, error_message| ParseError {
+        line_no,
+        error_type,
+        error_message,
+        raw_name: Some(name_raw.to_string()),
+        raw_quantity: Some(quantity_raw.to_string()),
+        raw_amount: Some(amount_raw.to_string()),
     };
 
-    // Step 3: quantity パース
-    let quantity: i32 = quantity_raw.trim().parse().map_err(|_| ParseError {
-        line_no,
-        error_type: ParseErrorType::InvalidNumber,
-        error_message: format!(
-            "行{}: 数量が数値ではありません: '{}'",
-            line_no, quantity_raw
-        ),
-        raw_name: Some(name_raw.to_string()),
-        raw_quantity: Some(quantity_raw.to_string()),
-        raw_amount: Some(amount_raw.to_string()),
+    // Step 2-3: 個数・金額を先に読む（§13.4.1）
+    let quantity = parse_z004_int(quantity_raw).ok_or_else(|| {
+        row_error(
+            ParseErrorType::InvalidNumber,
+            format!(
+                "行{}: 数量が数値ではありません: '{}'",
+                line_no, quantity_raw
+            ),
+        )
+    })?;
+    let amount = parse_z004_int(amount_raw).ok_or_else(|| {
+        row_error(
+            ParseErrorType::InvalidNumber,
+            format!("行{}: 金額が数値ではありません: '{}'", line_no, amount_raw),
+        )
     })?;
 
-    // Step 4: amount パース
-    let amount: i32 = amount_raw.trim().parse().map_err(|_| ParseError {
-        line_no,
-        error_type: ParseErrorType::InvalidNumber,
-        error_message: format!("行{}: 金額が数値ではありません: '{}'", line_no, amount_raw),
-        raw_name: Some(name_raw.to_string()),
-        raw_quantity: Some(quantity_raw.to_string()),
-        raw_amount: Some(amount_raw.to_string()),
-    })?;
+    // Step 4-5: 売上の有無で分類する（§13.4.2、SPEC-Z4A-D8）
+    let has_sales = quantity != 0 || amount != 0;
+    let normalized_jan = match normalize_jan(scanning_code_raw, line_no) {
+        Ok(Some(jan)) => jan, // 0/0 でも返す（除外は BIZ-03 Stage 2）
+        Ok(None) | Err(_) if !has_sales => return Ok(None), // 売上の無い枠
+        Ok(None) => {
+            return Err(row_error(
+                ParseErrorType::InvalidJan,
+                format!(
+                    "行{}: 商品コードの無い枠（メモリNo.{}）に売上があります。PLU の登録を消した枠の売上などで、在庫には反映されません",
+                    line_no, record_no
+                ),
+            ));
+        }
+        Err(msg) => return Err(row_error(ParseErrorType::InvalidJan, msg)),
+    };
 
-    // Step 5: 成功
+    // Step 6: 成功
     Ok(Some(ParsedRow {
         line_no,
         normalized_jan,
@@ -377,6 +382,20 @@ fn parse_data_line(line: &str, line_no: usize) -> Result<Option<ParsedRow>, Pars
         quantity,
         amount,
     }))
+}
+
+/// 個数・金額の整数の読み取り（23 §13.4.1、SPEC-Z4A-D7）。
+/// カンマなしの整数か、正しい3桁区切りのカンマ付きの整数だけを受理する。
+fn parse_z004_int(raw: &str) -> Option<i32> {
+    static INT_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(r"^-?(?:[0-9]+|[1-9][0-9]{0,2}(?:,[0-9]{3})+)$")
+            .expect("数値パターンのコンパイル失敗")
+    });
+    let trimmed = raw.trim();
+    if !INT_RE.is_match(trimmed) {
+        return None;
+    }
+    trimmed.replace(',', "").parse().ok()
 }
 
 /// 従来 shape の1行目から `YYYY-MM-DD` を抽出する。
@@ -439,8 +458,9 @@ fn is_layout_a_header_line(line: &str) -> bool {
 fn normalize_jan(raw: &str, line_no: usize) -> Result<Option<String>, String> {
     let trimmed = raw.trim();
 
-    // 全桁ゼロ → 空スロット（設計書13.5: 13桁/14桁ゼロが対象。
-    // 他の桁数の全ゼロは後続の13桁チェックでErrになるため実害なし）
+    // 全桁ゼロ → Ok(None)（設計書13.5: 13桁/14桁ゼロが対象。売上の有無による
+    // 分類は呼出し側の§13.4.2。他の桁数の全ゼロも同じくOk(None)で、0/0なら読み飛ばし、
+    // 売上があれば商品コードの無い枠として InvalidJan になる）
     if !trimmed.is_empty() && trimmed.chars().all(|c| c == '0') {
         return Ok(None);
     }
@@ -687,6 +707,95 @@ mod tests {
         assert_eq!(result.parse_errors.len(), 1);
         assert_eq!(result.parsed_rows[0].line_no, 3);
         assert_eq!(result.parse_errors[0].line_no, 4);
+    }
+
+    #[test]
+    fn test_parse_z004_req401_comma_grouped_numbers() {
+        // REQ-401 / SPEC-Z4A-D7: 3桁区切りのカンマ付きの個数・金額を受理する（23 §13.4.1）
+        let raw = make_valid_z004(
+            "\"1\",\"4976383262108\",\"A\",\"1\",\"1,234\"\r\n\
+             \"2\",\"4976383262115\",\"B\",\"-1\",\"-12,345\"\r\n\
+             \"3\",\"4976383262122\",\"C\",\"1,000\",\"1,000,000\"",
+        );
+        let result = parse_z004(&raw).unwrap();
+
+        assert!(result.parse_errors.is_empty(), "{:?}", result.parse_errors);
+        let values: Vec<(i32, i32)> = result
+            .parsed_rows
+            .iter()
+            .map(|r| (r.quantity, r.amount))
+            .collect();
+        assert_eq!(values, vec![(1, 1234), (-1, -12345), (1000, 1_000_000)]);
+    }
+
+    #[test]
+    fn test_parse_z004_req401_malformed_comma_invalid_number() {
+        // REQ-401 / SPEC-Z4A-D7 / SPEC-Z4A-D8: 区切りの崩れ・小数・符号+・範囲外は InvalidNumber
+        let cases = [
+            ("4976383262108", "1", "1,23"),
+            ("4976383262108", "1", "12,3456"),
+            ("4976383262108", "1", "1,,234"),
+            ("4976383262108", "1", ",123"),
+            ("4976383262108", "1", "1,234,"),
+            ("4976383262108", "1", "0,123"),
+            ("4976383262108", "1", "1.5"),
+            ("4976383262108", "1", "+5"),
+            ("4976383262108", "1", "2,147,483,648"),
+            ("4976383262108", "1,2", "100"),
+            ("00000000000000", "1.5", "500"),
+            ("00000000000000", "0", "1,23"),
+        ];
+        let lines: Vec<String> = cases
+            .iter()
+            .enumerate()
+            .map(|(i, (code, q, a))| format!("\"{}\",\"{code}\",\"X\",\"{q}\",\"{a}\"", i + 1))
+            .collect();
+        let result = parse_z004(&make_valid_z004(&lines.join("\r\n"))).unwrap();
+
+        assert!(result.parsed_rows.is_empty());
+        assert_eq!(result.parse_errors.len(), cases.len());
+        for (err, (_, q, a)) in result.parse_errors.iter().zip(cases.iter()) {
+            assert_eq!(err.error_type, ParseErrorType::InvalidNumber, "{q} / {a}");
+            assert_eq!(err.raw_quantity.as_deref(), Some(*q));
+            assert_eq!(err.raw_amount.as_deref(), Some(*a));
+        }
+    }
+
+    #[test]
+    fn test_parse_z004_req401_zero_code_with_sales_is_invalid_jan() {
+        // REQ-401 / SPEC-Z4A-D8 / SPEC-Z4A-D6: コード全桁0で売上のある行は InvalidJan（D-103）
+        let cases = [
+            ("", "1", "500"),
+            ("", "0", "500"),
+            ("", "-1", "0"),
+            ("PLU0001", "1", "300"),
+        ];
+        let mut lines = Vec::new();
+        let mut expected = Vec::new();
+        for code in ["00000000000000", "0000000000000"] {
+            for (name, q, a) in cases {
+                let record_no = format!("{}", 41 + expected.len());
+                lines.push(format!(
+                    "\"{record_no}\",\"{code}\",\"{name}\",\"{q}\",\"{a}\""
+                ));
+                expected.push((record_no, q, a));
+            }
+        }
+        let result = parse_z004(&make_valid_z004(&lines.join("\r\n"))).unwrap();
+
+        assert!(result.parsed_rows.is_empty());
+        assert_eq!(result.parse_errors.len(), expected.len());
+        for (err, (record_no, q, a)) in result.parse_errors.iter().zip(expected.iter()) {
+            assert_eq!(err.error_type, ParseErrorType::InvalidJan);
+            assert!(err.error_message.contains("商品コードの無い枠"));
+            assert!(
+                err.error_message.contains(&format!("メモリNo.{record_no}")),
+                "{}",
+                err.error_message
+            );
+            assert_eq!(err.raw_quantity.as_deref(), Some(*q));
+            assert_eq!(err.raw_amount.as_deref(), Some(*a));
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1004,6 +1113,46 @@ mod layout_a_tests {
         assert_eq!(result.parse_errors.len(), 0);
         assert_eq!(result.parsed_rows[0].quantity, 3);
         assert_eq!(result.parsed_rows[1].amount, 250);
+    }
+
+    #[test]
+    fn test_parse_z004_req401_non_jan_code_without_sales_skipped() {
+        // REQ-401 / SPEC-Z4A-D8 / SPEC-Z4A-D5 / SPEC-Z4A-D4: 非JANの0/0は読み飛ばし、売上ありはnormalize_janの文言
+        let raw = encode_cp932(&layout_a_text(
+            &["\"日付\",\"2026-08-15\""],
+            &[
+                "\"1\",\"9999999999990E\",\"合成商品A\",\"2\",\"600\"",
+                "\"2\",\"12345678EEEEEE\",\"合成独自0\",\"0\",\"0\"",
+                "\"3\",\"INVALID\",\"合成不正\",\"0\",\"0\"",
+                "\"4\",\"12345678EEEEEE\",\"合成独自C\",\"1\",\"100\"",
+            ],
+        ));
+        let result = parse_z004(&raw).unwrap();
+
+        assert_eq!(result.total_data_lines, 4);
+        assert_eq!(result.parsed_rows.len(), 1);
+        assert_eq!(result.parse_errors.len(), 1);
+        let err = &result.parse_errors[0];
+        assert_eq!(err.line_no, 6);
+        assert_eq!(err.error_type, ParseErrorType::InvalidJan);
+        assert!(err.error_message.contains("正規化できません"));
+        assert!(!err.error_message.contains("商品コードの無い枠"));
+    }
+
+    #[test]
+    fn test_parse_z004_req401_valid_jan_zero_row_kept() {
+        // REQ-401 / SPEC-Z4A-D8: 13桁JANの0/0はIOで捨てずParsedRowで返す（除外はBIZ-03）
+        let raw = encode_cp932(&layout_a_text(
+            &["\"日付\",\"2026-08-15\""],
+            &["\"1\",\"9999999999990E\",\"合成商品A\",\"0\",\"0\""],
+        ));
+        let result = parse_z004(&raw).unwrap();
+
+        assert!(result.parse_errors.is_empty());
+        assert_eq!(result.parsed_rows.len(), 1);
+        assert_eq!(result.parsed_rows[0].normalized_jan, "9999999999990");
+        assert_eq!(result.parsed_rows[0].quantity, 0);
+        assert_eq!(result.parsed_rows[0].amount, 0);
     }
 
     #[test]
