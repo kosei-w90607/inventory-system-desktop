@@ -183,7 +183,7 @@ fn parse_and_validate_daily_report(
 3. `parse_errors` がある場合は `BizError::ImportError` として返す。
    - **BIZ-08-D1**: 各errorの `source_file` / `filename` / `line_no` / `error_type` / `error_message` を開発者向けdiagnostic WARNへ構造化して記録する。filenameはunknown sourceを含む入力識別用で、diagnostic専用とする。
    - 利用者向けerror messageと `operation_logs.summary` は汎用文言を維持し、raw parse detailをwireまたは `operation_logs.detail_json` へ載せない。
-   - **BIZ-08-D2**: ただし `parse_errors` に `settlement_mismatch`（IO-07-D3）が 1 件でもあれば、利用者向けの message と `operation_logs.summary` を次の文にする（他の error が同時にあってもこの文を優先する。選び直せば直る失敗で、汎用文では利用者が同じ 3 ファイルを選び直してしまう）: `別の精算の日報ファイルが混ざっています。ファイル名の「Z001」「Z002」「Z005」より後ろが同じ 3 つを選び直してください。` 文は error_type だけから作り、ファイル名・精算回数・行番号などの raw detail を含めない（BIZ-08-D1 は維持）。日付の不一致だけ（`invalid_date`）の文は変えない（同じ日に 2 回以上精算した日の混在は精算回数で止まり、別の日の混在も精算回数が違えばこの文になる）。
+   - **BIZ-08-D2**: ただし `parse_errors` に `settlement_mismatch`（IO-07-D3）が 1 件でもあれば、利用者向けの message と `operation_logs.summary` を次の文にする（他の error が同時にあってもこの文を優先する。選び直せば直る失敗で、汎用文では利用者が同じ 3 ファイルを選び直してしまう）: `別の精算の日報ファイルが混ざっています。ファイル名の「Z001」「Z002」「Z005」より後ろが同じ 3 つを選び直してください。` 文は error_type だけから作り、ファイル名・精算回数・行番号などの raw detail を含めない（BIZ-08-D1 は維持）。日付の不一致だけ（`invalid_date`）の文は変えない（3 本とも精算回数を読める束〈通常の layout A〉では、同じ日に 2 回以上精算した日の混在は精算回数で止まり、別の日の混在も精算回数が違えばこの文になる。読めないファイルの出所は確かめない〈TD-110・TD-111 の受容リスク、IO-07-D3〉）。
    - 返却前に `operation_logs.operation_type='daily_report_parse_failed'` を best-effort で記録する。
 4. `report_date` を検証する。
    - IO-07はCV17出力上の `YYYY/M/D` / `YYYY-MM-DD` を `YYYY-MM-DD` へ正規化する。BIZ-08では正規化後の日付がYYYY-MM-DD形式でない、暦日として不正、3 sourceで不一致ならエラー。
