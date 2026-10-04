@@ -122,7 +122,7 @@ fn execute_commit(
             line_key: line.line_key.clone(),
             label: line.label.clone(),
             amount: line.amount,
-            quantity: line.quantity,
+            quantity_hundredths: line.quantity_hundredths,
             count: line.count,
             sort_order: line.sort_order,
         })
@@ -160,7 +160,7 @@ fn execute_commit(
             raw_department_name: line.raw_department_name.clone(),
             normalized_department_name: line.normalized_department_name.clone(),
             amount: line.amount,
-            quantity: line.quantity,
+            quantity_hundredths: line.quantity_hundredths,
             count: line.count,
             sort_order: line.sort_order,
         })

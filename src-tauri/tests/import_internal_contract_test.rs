@@ -148,13 +148,7 @@ fn test_import_internal_contract_req401_is_minimal() {
         "CommitRequest design section must keep the minimal field contract"
     );
 
-    // IO-07-D2 遷移 pin。実装 PR（packet 2026-10-04-daily-report-import-gaps の
-    // S8）で Rust の field 改名と同時に単一 pin（`quantity_hundredths`）へ戻す。
-    // どちらか一方だけの変更はこの test が検出する。
-    for (source, quantity_field) in [
-        (&daily_source, "quantity"),
-        (&daily_design, "quantity_hundredths"),
-    ] {
+    for source in [&daily_source, &daily_design] {
         assert_struct_fields(
             source,
             "DailyReportSummaryLine",
@@ -162,7 +156,7 @@ fn test_import_internal_contract_req401_is_minimal() {
                 "line_key",
                 "label",
                 "amount",
-                quantity_field,
+                "quantity_hundredths",
                 "count",
                 "sort_order",
             ],
@@ -179,7 +173,7 @@ fn test_import_internal_contract_req401_is_minimal() {
                 "raw_department_name",
                 "normalized_department_name",
                 "amount",
-                quantity_field,
+                "quantity_hundredths",
                 "count",
                 "sort_order",
             ],

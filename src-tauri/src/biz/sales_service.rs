@@ -8,6 +8,7 @@
 use crate::biz::BizError;
 use crate::db::sales_repo;
 use crate::db::DbConnection;
+use crate::io::daily_report_parser::quantity_hundredths_to_units;
 use crate::io::report_csv_exporter;
 use chrono::NaiveDate;
 use std::collections::BTreeMap;
@@ -100,7 +101,8 @@ pub struct OfficialDailyDepartmentLine {
     pub raw_department_name: String,
     pub normalized_department_name: Option<String>,
     pub amount: i64,
-    pub quantity: Option<i64>,
+    /// 単位の数（DB の 100 倍の整数を IO-07-D2 の変換で戻した値）
+    pub quantity: Option<f64>,
     pub count: Option<i64>,
 }
 
@@ -130,7 +132,8 @@ pub struct OfficialMonthlyDepartmentTotal {
     pub department_id: Option<i64>,
     pub label: String,
     pub amount: i64,
-    pub quantity: Option<i64>,
+    /// 単位の数（月の SUM を 100 倍の整数で足してから戻した値）
+    pub quantity: Option<f64>,
     pub count: Option<i64>,
 }
 
@@ -269,7 +272,7 @@ pub fn get_monthly_sales(
                 department_id: row.department_id,
                 label: row.label,
                 amount: row.amount,
-                quantity: row.quantity,
+                quantity: row.quantity_hundredths.map(quantity_hundredths_to_units),
                 count: row.count,
             })
             .collect()
@@ -486,7 +489,7 @@ fn map_official_daily_report(
                 raw_department_name: line.raw_department_name,
                 normalized_department_name: line.normalized_department_name,
                 amount: line.amount,
-                quantity: line.quantity,
+                quantity: line.quantity_hundredths.map(quantity_hundredths_to_units),
                 count: line.count,
             })
             .collect(),
@@ -638,7 +641,7 @@ mod tests {
                 raw_department_name: "その他小物".to_string(),
                 normalized_department_name: Some("その他小物".to_string()),
                 amount: 11000,
-                quantity: Some(7),
+                quantity_hundredths: Some(700),
                 count: Some(3),
                 sort_order: 1,
             }],
@@ -1078,5 +1081,100 @@ mod tests {
         let (_dir, conn) = setup_test_db();
         let err = export_sales_csv(&conn, &SalesReportType::Daily, "2026/03/21").unwrap_err();
         assert!(matches!(err, BizError::ValidationFailed(_)));
+    }
+
+    #[test]
+    fn test_get_daily_sales_req501_official_quantity_in_units() {
+        // REQ-501 / §19.2: DB の 100 倍の整数を wire の単位の数（f64）に戻す
+        let (_dir, conn) = setup_test_db();
+        let import_id = seed_daily_report(&conn, "2026-03-21", "official-units");
+        let line = |department_id: Option<i64>, name: &str, quantity_hundredths, sort_order| {
+            NewDailyReportDepartmentLine {
+                daily_report_import_id: import_id,
+                source_file: "Z005".to_string(),
+                department_id,
+                raw_department_name: name.to_string(),
+                normalized_department_name: Some(name.to_string()),
+                amount: 100,
+                quantity_hundredths,
+                count: None,
+                sort_order,
+            }
+        };
+        sales_repo::insert_daily_report_department_lines(
+            &conn,
+            &[
+                line(Some(1), "合成部門A", Some(130), 1),
+                line(Some(2), "合成部門B", Some(400), 2),
+                line(None, "合成部門C", None, 3),
+            ],
+        )
+        .unwrap();
+
+        let official = get_daily_sales(&conn, "2026-03-21")
+            .unwrap()
+            .official_daily_report
+            .unwrap();
+        let quantities: Vec<Option<f64>> = official
+            .department_lines
+            .iter()
+            .map(|line| line.quantity)
+            .collect();
+        assert_eq!(quantities, vec![Some(1.3), Some(4.0), None]);
+    }
+
+    #[test]
+    fn test_get_monthly_sales_req502_official_quantity_in_units() {
+        // REQ-502 / §19.2: BIZ-08 で取り込んだ小数の個数が月次の wire で単位の数になる
+        use crate::biz::daily_report_import_service::{
+            commit_daily_report_import, parse_and_validate_daily_report, DailyReportInputFile,
+        };
+        fn file(name: &str, date: &str, rows: &str) -> DailyReportInputFile {
+            let text = format!(
+                "\"精算回数    \",\"0001\",\"\",\"\"\r\n\"日付        \",\"{date}\",\"\",\"\"\r\n\r\n\"レコード    \",\"キャラクター\",\"個数/件数   \",\"金額        \"\r\n{rows}"
+            );
+            let (encoded, _, _) = encoding_rs::SHIFT_JIS.encode(&text);
+            DailyReportInputFile {
+                filename: name.to_string(),
+                bytes: encoded.to_vec(),
+            }
+        }
+        let (_dir, mut conn) = setup_test_db();
+        let mut import_day = |date: &str, quantity: &str| {
+            let parsed = parse_and_validate_daily_report(
+                &conn,
+                vec![
+                    file(
+                        "Z001_x.CSV",
+                        date,
+                        &format!("\"0001\",\"総売\",\"{quantity}\",\"1000\"\r\n\"0002\",\"純売\",\"1\",\"1000\"\r\n"),
+                    ),
+                    file("Z002_x.CSV", date, "\"0001\",\"現金\",\"1\",\"1000\"\r\n"),
+                    file(
+                        "Z005_x.CSV",
+                        date,
+                        &format!("\"0001\",\"その他小物\",\"{quantity}\",\"1000\"\r\n"),
+                    ),
+                ],
+            )
+            .unwrap();
+            commit_daily_report_import(&mut conn, parsed.cached_preview, false).unwrap();
+        };
+
+        import_day("2026-03-20", "1.3");
+        import_day("2026-03-21", "1.2");
+
+        let official = get_monthly_sales(&conn, "2026-03", SalesMode::ByDepartment)
+            .unwrap()
+            .official_department_totals
+            .unwrap();
+        assert_eq!(official.len(), 1);
+        assert_eq!(official[0].label, "その他小物");
+        assert_eq!(official[0].quantity, Some(2.5));
+        let daily = get_daily_sales(&conn, "2026-03-20")
+            .unwrap()
+            .official_daily_report
+            .unwrap();
+        assert_eq!(daily.department_lines[0].quantity, Some(1.3));
     }
 }

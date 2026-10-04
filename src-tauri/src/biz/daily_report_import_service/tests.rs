@@ -843,3 +843,119 @@ fn test_daily_report_req401_list_validation_and_result() {
     );
     assert!(matches!(invalid, Err(BizError::ValidationFailed(_))));
 }
+
+const SETTLEMENT_MISMATCH_MESSAGE: &str = "別の精算の日報ファイルが混ざっています。ファイル名の「Z001」「Z002」「Z005」より後ろが同じ 3 つを選び直してください。";
+
+/// 合成ファイルの精算回数（`0001`）を別の値に置き換える
+fn with_settlement(file: DailyReportInputFile, number: &str) -> DailyReportInputFile {
+    let (text, _, _) = encoding_rs::SHIFT_JIS.decode(&file.bytes);
+    let replaced = text.replace(
+        "\"精算回数    \",\"0001\"",
+        &format!("\"精算回数    \",\"{number}\""),
+    );
+    assert_ne!(replaced, text, "精算回数の行があること");
+    source_file(&file.filename, &replaced)
+}
+
+fn assert_settlement_mismatch_rejected(files: Vec<DailyReportInputFile>) {
+    let (_dir, conn) = setup_test_db();
+    let (result, diagnostic) =
+        crate::test_tracing::capture(|| parse_and_validate_daily_report(&conn, files));
+
+    match result {
+        Err(BizError::ImportError(message)) => assert_eq!(message, SETTLEMENT_MISMATCH_MESSAGE),
+        other => panic!("expected settlement mismatch import error, got {other:?}"),
+    }
+    assert!(
+        diagnostic.contains("error_type=settlement_mismatch"),
+        "{diagnostic}"
+    );
+    let (summary, detail_json): (String, Option<String>) = conn
+        .query_row(
+            "SELECT summary, detail_json FROM operation_logs
+             WHERE operation_type = 'daily_report_parse_failed'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(summary, SETTLEMENT_MISMATCH_MESSAGE);
+    assert_eq!(detail_json, None);
+    assert_eq!(count_rows(&conn, "daily_report_imports"), 0);
+}
+
+#[test]
+fn test_daily_report_req401_settlement_mismatch_guides_reselection() {
+    // REQ-401 / BIZ-08-D2: 精算回数の違う束は選び直しを案内する固定の文。raw detail は出さない
+    assert_settlement_mismatch_rejected(vec![
+        z001("2026-03-21"),
+        with_settlement(z002("2026-03-21"), "0002"),
+        with_settlement(z005("2026-03-21"), "0002"),
+    ]);
+
+    // 他の parse error と同時でも BIZ-08-D2 の文を優先する
+    assert_settlement_mismatch_rejected(vec![
+        z001_with_lines("2026-03-21", &[("101", "総売", "not-a-number", "12000")]),
+        with_settlement(z002("2026-03-21"), "0002"),
+        with_settlement(z005("2026-03-21"), "0002"),
+    ]);
+}
+
+#[test]
+fn test_daily_report_req401_decimal_quantity_preview_and_commit() {
+    // REQ-401 / §37.2: preview は単位の数、cache と commit は 100 倍の整数（wire の f64 から戻さない）
+    let (_dir, mut conn) = setup_test_db();
+    let z005_decimal = source_file(
+        "Z005_260321.CSV",
+        &format!(
+            "{}\"0001\",\"その他小物\",\"1.3\",\"3000\"\r\n",
+            daily_report_preamble("2026-03-21")
+        ),
+    );
+    let files = vec![
+        z001_with_lines(
+            "2026-03-21",
+            &[
+                ("0001", "総売", "1.3", "12000"),
+                ("0002", "純売", "7", "11000"),
+            ],
+        ),
+        z002("2026-03-21"),
+        z005_decimal,
+    ];
+    let mut parsed = parse_and_validate_daily_report(&conn, files).unwrap();
+
+    assert_eq!(
+        parsed.preview_data.department_summary[0].quantity,
+        Some(1.3)
+    );
+    assert_eq!(
+        parsed.cached_preview.department_lines[0].quantity_hundredths,
+        Some(130)
+    );
+    assert_eq!(
+        parsed.cached_preview.summary_lines[0].quantity_hundredths,
+        Some(130)
+    );
+
+    parsed.cached_preview.preview_data.department_summary[0].quantity = Some(9.99);
+    commit_daily_report_import(&mut conn, parsed.cached_preview, false).unwrap();
+
+    let department: Option<i64> = conn
+        .query_row(
+            "SELECT quantity_hundredths FROM daily_report_department_lines
+             WHERE raw_department_name = 'その他小物'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(department, Some(130));
+    let gross: Option<i64> = conn
+        .query_row(
+            "SELECT quantity_hundredths FROM daily_report_summary_lines
+             WHERE line_key = 'gross_sales'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(gross, Some(130));
+}
