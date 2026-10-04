@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -25,6 +25,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定 file に `scrip
 遷移記録（append-only）:
 
 - kickoff → spec-check → design → plan-draft（本 commit、plan-first、2026-10-04、起草役）: Risk R3 を記録（下の Risk）。in-scope の設計正本は `29-io-ej-parser.md` の IO-08.3〜IO-08.8 で、記録の種類をモード欄で決める契約（旧 IO-08.3）が実物と矛盾し、文法表に無い形が多いため更新が要ると判定した（spec-check → design）。設計の決定を `29-io-ej-parser.md`（IO-08-D3a・D5a〜D5d・D6a〜D6d・D7a、型定義、全期間の構造所見、採らなかった案）、`docs/architecture/io-task-specs.md` の IO-08 節、`docs/ARCHITECTURE.md` の IO-08 の行、`docs/decision-log.md` の D-105 に書き、owner の判断を要する未決の論点は無い（design → plan-draft）。packet と Test Design Matrix を同じ commit に置く。
+- plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `59a4f6ca` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。
 
 ## Owner Effort Budget
 
