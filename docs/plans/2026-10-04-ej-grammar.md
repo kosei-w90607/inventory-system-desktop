@@ -8,9 +8,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 116c118a391e95dd3a6d06d7076c75209ca99fb0
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、本 lane の worktree、branch `agent/ej-grammar`）
@@ -30,6 +30,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定 file に `scrip
 - plan-gate（round 2 の是正、2026-10-04、起草役、本 commit）: round 2 の是正（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（round 3 の後の一括是正、2026-10-04、起草役、本 commit）: round 天井に達し、Coordinator の disposition（一括是正）を反映した（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（Review Response の記入、2026-10-04、Coordinator、本 commit）: round 1〜3 と一括是正の裁定を Review Response に書いた。Plan Commit は pending のまま。
+- plan-gate → plan-approved（2026-10-04、Coordinator、本 commit）: 上限の Plan Review round 3（対象 `bdb5bea5`）の残りを Coordinator の disposition（一括是正、`d3489d00`）で閉じ、Coordinator が現物で確かめた（doc check の `--target plan` と full が ERROR 0）。一括是正の独立の再確認は Final Review が兼ねる。owner の判断（2026-10-04、一括是正の後に plan-approved）。Plan Commit は `116c118a`。
 
 ## Owner Effort Budget
 
@@ -39,7 +40,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定 file に `scrip
 
 | 種別 | 上限 | 消費（2026-10-04 起票時） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 1（起票の判断 TD-104、本 lane を含む lane 選択） | 2（Ready 1、merge 1） | 3（実装中の Gated Amendment などで owner の判断が要る場合） | 6 = 1 + 2 + 3 |
+| 介入 | 6 | 2（起票の判断 TD-104、本 lane を含む lane 選択 1、round 3 の後の disposition と plan-approved 1〈2026-10-04〉） | 2（Ready 1、merge 1） | 2（実装中の Gated Amendment などで owner の判断が要る場合） | 6 = 2 + 2 + 2 |
 
 消費と残りの見込みは owner の判断の回数だけを数える。relay（Coordinator が Codex 等を起動する往復）は数えない（`docs/DEV_WORKFLOW.md` `Owner Effort Budget`）。
 
