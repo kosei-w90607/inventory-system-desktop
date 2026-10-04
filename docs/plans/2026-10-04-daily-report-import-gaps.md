@@ -13,7 +13,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Phase: implementing
 - Risk: R3
 - Plan Commit: c3d97d3e73c61d3800700544093cfbd633f446cf
-- Amendments: none
+- Amendments: 71ce94b9f94a678fc92ac5f44b0b0afe2771f029
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、worktree は本 lane のもの、branch `agent/daily-report-import-gaps`）
 - Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6 Astra、round 1〜3 とも。`.local/codex-orders/MODEL-SELECTION.md` の表の「データの安全〈migration〉」の行）。互いに独立で Writer と別 context
