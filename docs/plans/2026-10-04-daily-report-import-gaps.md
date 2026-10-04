@@ -32,6 +32,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定の path に `sc
 - plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `ffb42112` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。Plan Reviewer の Codex を表の当てはめ（migration v7 を含む）で GPT-6 Astra に直した。
 - plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus reject（P2 1・P3 4）・Codex reject（P1 1・P2 7）。Coordinator の裁定、相談役の反例探し、owner 決定 TD-110・TD-111 を反映した。Plan Commit は pending のまま。
 - plan-gate（round 2 の是正、2026-10-04、起草役、本 commit）: round 2 の是正（Review Response 参照）。Plan Commit は pending のまま。
+- plan-gate（round 3 の後の一括是正、2026-10-04、起草役、本 commit）: round 天井に達し、Coordinator の disposition（一括是正）を反映した（Review Response 参照）。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -115,7 +116,8 @@ targeted test の baseline: 起票時に実行した要約行を [Matrix](test-m
 - 精算回数: 読めたファイルが 2 本以上なら一致を求める。1 本以下なら比べない（layout B の束を止めない）。読めないファイルの出所は確かめず、それを含む束での別の精算の混入の見逃しは受容リスク（owner 決定 TD-110・TD-111）。精算回数は保存しない（IO-07-D3）。
 - 利用者向けの文: `settlement_mismatch` があるときだけ固定の文（BIZ-08-D2）。raw detail は出さない（BIZ-08-D1）。
 - 鍵はラベルだけで決め、コードの比較を消す（IO-07-D4）。
-- migration v7 は Custom の 1 transaction で範囲検査 + 改名 + 100 倍 + 件数・型・合計（÷100 の合計と余り）の検証（MNT-03-D12、22 §15）。v4 の CREATE 文は書き換えない。
+- migration v7 は Custom の 1 transaction で範囲検査 + 改名 + 100 倍 + 件数・型・合計（÷100 の合計と、余りが 0 でない行が無いこと）の検証（MNT-03-D12、22 §15）。v4 の CREATE 文は書き換えない。
+- 日次の集約の加算（`sum_optional_strict` を使う全て）は溢れを検査し、溢れたら `DbError::QueryFailed`（24 §14.21 手順 7）。v7 の行の範囲検査は集約の溢れを防がないため。月次の `SUM` は SQLite が `integer overflow` の error を返すので、両方とも error で止まる側にそろう。型・DTO・wire は変えない。
 
 ## 判断点
 
@@ -131,7 +133,7 @@ targeted test の baseline: 起票時に実行した要約行を [Matrix](test-m
 - S3 IO-07 の鍵（IO-07-D4）: 同 file — `summary_line_key` / `payment_key` からコードの比較を消し、ラベルだけで決める（関数の引数の `code` も消してよい）。
 - S4 BIZ-08（BIZ-08-D2、§37.2）: `src-tauri/src/biz/daily_report_import_service/mod.rs`（`DailyReportDepartmentLinePreview.quantity: Option<f64>`、`CachedDailyReportSummaryLine.quantity_hundredths`、`CachedDailyReportDepartmentLine` を新設し `CachedDailyReportPreview.department_lines` の型にする）、`parse.rs`（preview は `quantity_hundredths_to_units` で、cache は 100 倍のまま。`settlement_mismatch` があれば BIZ-08-D2 の文を message と `operation_logs.summary` に）、`commit.rs`（cache の 100 倍をそのまま保存）。
 - S5 migration v7（MNT-03-D12）: `src-tauri/src/db/schema_v7.rs`（新設、`apply_v7_daily_report_quantity_hundredths`。22 §15 の手順 1 の範囲検査、手順 2 の件数と合計、手順 6 の検証 (a)〜(c)）、`src-tauri/src/db/migration.rs`（登録と migration の test。v6 までを数える既存の test の期待値の追従）、`src-tauri/src/db/mod.rs`（`mod schema_v7;`）。
-- S6 IO の repo（24 §14.15・§14.21・§14.22）: `src-tauri/src/db/sales_repo.rs` — `NewDailyReportSummaryLine` / `NewDailyReportDepartmentLine` の field と INSERT 文、日次の部門の aggregate の SELECT と DB DTO、月次の `SUM(l.quantity_hundredths)` と DB DTO。値は 100 倍のまま返す。
+- S6 IO の repo（24 §14.15・§14.21・§14.22）: `src-tauri/src/db/sales_repo.rs` — `NewDailyReportSummaryLine` / `NewDailyReportDepartmentLine` の field と INSERT 文、日次の部門の aggregate の SELECT と DB DTO、月次の `SUM(l.quantity_hundredths)` と DB DTO。値は 100 倍のまま返す。`sum_optional_strict` の加算を `checked_add` にし、溢れたら `DbError::QueryFailed` を返す（24 §14.21 手順 7。戻り値の型を `Result` にし、呼出し側〈親の gross / net、支払の amount / count、部門の quantity / count〉で `?` を通す。新しい file は足さない）。
 - S7 BIZ-05（34 §19.2）: `src-tauri/src/biz/sales_service.rs` — `OfficialDailyDepartmentLine.quantity` / `OfficialMonthlyDepartmentTotal.quantity` を `Option<f64>` にし、写像で `quantity_hundredths_to_units` を呼ぶ。
 - S8 呼出し側と test の追従: `src-tauri/src/cmd/sales_cmd.rs`（test の INSERT の field 名）、`src-tauri/src/cmd/daily_report_import_cmd.rs`（test の `CachedDailyReportPreview` の組立て。型が変わるときだけ）、`src-tauri/src/biz/daily_report_import_service/tests.rs`、`sales_repo.rs` / `sales_service.rs` / `migration.rs` / `daily_report_parser.rs` の test（新しい test は Matrix、既存 test の追従の範囲は Matrix の Compatibility Checks）。`src-tauri/tests/import_internal_contract_test.rs`（`test_import_internal_contract_req401_is_minimal` の IO-07-D2 の遷移 pin。plan 側の commit〈round 1 の是正〉で Rust の field = `quantity`、29 §29.2 の Markdown = `quantity_hundredths` を別々に pin した〈先例 `f7b0e1cf` → `1f5c1afd`〉。実装 PR で Rust の改名と同時に単一 pin `quantity_hundredths` へ戻す）。`src-tauri/src/db/schema_v2.rs` の test（`:378`・`:586`・`:596`・`:601` の最新版・版件数 6 の固定を v7 に追従させる）。
 - S9 生成物・図: `src/lib/bindings.ts`（`cd src-tauri && cargo run --bin generate_bindings` で再生成。型は `number` のままで diff 0 の見込み）、`docs/function-design/90-traceability.md`（REQ 付きの test を足すので `cargo run --bin generate_traceability` で再生成）、`docs/inventory_system_erd.html`（2 表の `quantity` → `quantity_hundredths`。現行 schema の図のため実装の PR で直す）。
@@ -168,7 +170,7 @@ baseline は main `76de30d8`（本 branch の plan 側の親）で、同じ comm
 - AC2（S2、IO-07-D3）: Matrix の T6〜T9 が PASS。精算回数の違う束が `settlement_mismatch`、同じ束と layout B の束（`test_parse_daily_report_req401_layout_b_concatenated_shape_supported`、assert の意味を変えず field 名と値の 100 倍だけ直して PASS）が通る。`rg -n 'settlement_mismatch' src-tauri/src` が 1 行以上（baseline: 出力なし、exit 1）。
 - AC3（S3、IO-07-D4）: `rg -n 'code == "(101|201|01|03)"' src-tauri/src/io/daily_report_parser.rs` が出力なし・exit 1（baseline: 4 行、exit 0）。Matrix の T10・T11 が PASS。
 - AC4（S4、BIZ-08-D2）: Matrix の T12〜T14 が PASS。`settlement_mismatch` の束で `BizError::ImportError` の message と `operation_logs.summary` が BIZ-08-D2 の文と完全一致し、`daily_report_imports` が 0 行。既存の `test_daily_report_req401_parse_error_logs_parse_failed`（汎用の文）が変えずに PASS。
-- AC5（S5・S6、MNT-03-D12、pos-tables §12c・§12e）: Matrix の T15〜T18（T15b を含む）が PASS。`rg -n 'l\.quantity\b' src-tauri/src/db/sales_repo.rs` が出力なし・exit 1（baseline: 2 行、exit 0。`l.quantity_hundredths` / `SUM(l.quantity_hundredths)` には当たらないことを置換した写しで確かめた）。`rg -c 'schema_v7' src-tauri/src/db/migration.rs` が 1 以上（baseline: 出力なし、exit 1）。
+- AC5（S5・S6、MNT-03-D12、pos-tables §12c・§12e、24 §14.21 手順 7）: Matrix の T15〜T18（T15b・T18b を含む）が PASS。`rg -n 'l\.quantity\b' src-tauri/src/db/sales_repo.rs` が出力なし・exit 1（baseline: 2 行、exit 0。`l.quantity_hundredths` / `SUM(l.quantity_hundredths)` には当たらないことを置換した写しで確かめた）。`rg -c 'schema_v7' src-tauri/src/db/migration.rs` が 1 以上（baseline: 出力なし、exit 1）。
 - AC6（S7、§19.2）: Matrix の T19・T20 が PASS（日次・月次の wire の `quantity` が `Some(1.3)`、整数の日が `Some(4.0)`）。`cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` が exit 0。
 - AC7（S9、wire の互換）: `cd src-tauri && cargo run --bin generate_bindings` の後 `git diff --exit-code -- ':(top)src/lib/bindings.ts'` が exit 0（`src-tauri` を cwd にしても repo の root から引く）（`quantity: number | null` のまま）。差分が出たら Boundary の範囲（field の型が `number` のまま）か確かめ、外れるなら止めて Gated Amendment。`cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0。
 - AC8（FE の回帰なし）: `npm run generate:routes && npm run typecheck && npm run lint && npm test` が exit 0（FE の file を変えない）。先頭の `generate:routes` は、`.npmrc` の `ignore-scripts=true` で `pretypecheck` が走らず、fresh checkout に `routeTree.gen.ts` が無いと typecheck が失敗するため。CI と同じ順（`.github/workflows/ci.yml:350` の `npm run generate:routes` → `:353` typecheck → `:356` lint → `:364` `npm test`、`scripts/local-ci.sh:227`〜`:231` も同じ順）。
@@ -181,7 +183,7 @@ baseline は main `76de30d8`（本 branch の plan 側の親）で、同じ comm
 - 必要な設計成果物: BIZ / IO の振舞い = updated in this PR（IO-07、BIZ-08、BIZ-05、IO の repo）。DTO / wire = updated in this PR（§37.2・§19.2 と Boundary）。table / column / migration = updated in this PR（pos-tables・MNT-03）。CSV の形の互換 = updated in this PR（§29.4.1・Boundary）。durable な選択 = updated in this PR（D-104）。画面 = existing sufficient（UI-09a-D16 と既存の部門別集計は `toLocaleString` で数を出し、型は `number` のまま）。
 - plan にしかない durable な判断の昇格先: なし（上の「設計判断」はすべて正本と D-104 にある）。
 - 前提・制約と、延期した design gap の follow-up: layout B のメタの精算回数は未確認（IO-07-D3 の「1 本以下なら比べない」で止めない側に倒した。Revisit は D-104）。精算回数の保存・表示、`点` の字、PM:246 の古さ、日付の不一致の文は follow-up（下の Review Focus の後の follow-up）。
-- 絶対保証の自己点検: 「混在は止まる」は 3 本とも精算回数を読める束（通常の layout A）に限り、読めないファイルの出所は確かめない（owner 決定 TD-110・TD-111 の受容リスク）と Goal・失敗定義・IO-07-D3・D-104 Guarantee range・BIZ-08-D2 に書いた。「既存の値は同じに見える」は v7 の範囲検査（100 倍で `i64` を溢れる値は変換前に止める）と、件数・型・÷100 の合計と余りの検証で、NULL と負を含めて確かめる（MNT-03-D12、T15〜T17）。「件数は整数」は件数の小数で止まる（黙って通さない）。
+- 絶対保証の自己点検: 「混在は止まる」は 3 本とも精算回数を読める束（通常の layout A）に限り、読めないファイルの出所は確かめない（owner 決定 TD-110・TD-111 の受容リスク）と Goal・失敗定義・IO-07-D3・D-104 Guarantee range・BIZ-08-D2 に書いた。「既存の値は同じに見える」は v7 の範囲検査（100 倍で `i64` を溢れる値は変換前に止める）と、件数・型・÷100 の合計と、余りが 0 でない行が無いことの検証で、NULL と負を含めて確かめる（MNT-03-D12、T15〜T17）。行の範囲検査は集約の溢れを防がないので、日次・月次の集約の溢れは黙って誤った値を出さず `DbError` で止まる（24 §14.21 手順 7・§14.22 手順 2、T18b）。「件数は整数」は件数の小数で止まる（黙って通さない）。
 - 判定: ready。未解決の設計の問い・owner 判断待ちは無い。
 
 ## Registration / Generation Obligations
@@ -203,7 +205,7 @@ baseline は main `76de30d8`（本 branch の plan 側の親）で、同じ comm
 | Fact check / design decision split | Which claims are observed facts from hardware/tool/files, and which are app decisions that need source-doc promotion? | Investigation doc, source design docs, decision-log | 当たる。事実 = 小数 1 桁の形、精算回数の行、ファイル名の形、「レコード」列は行の位置（Contract Probe）。決定 = 100 倍の整数、比べ方、鍵（D-104） | Contract Probe、D-104 |
 | Lifecycle / retry | What happens before, during, after, and after failure for import/export, duplicate input, rollback, retry, cancellation, and re-run? | Function design, DB design, UI design, Test Matrix | 当たる。混在で止まった後は選び直して再試行（何も保存しない）。migration は 1 transaction で失敗時は rollback、再起動で再試行。既存の同日追加・bundle_hash の重複判定は変えない | MNT-03-D12、Matrix T13・T15〜T18 |
 | Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | 当たる。`EcrDatas` から 3 つ選ぶ通常の手順のまま。選び間違えたときの文だけが増える | BIZ-08-D2、Ordinary Operation |
-| Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | 当たる。レジが変われば IO-07 を差し替え、`quantity_hundredths` と `settlement_mismatch` の契約は残る | IO-07-D2・D3 |
+| Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | 当たる。レジが変われば IO-07 を差し替え、`quantity_hundredths` と `settlement_mismatch` の契約は残る。IO-07 を差し替えるときは、BIZ-05 / BIZ-08 が import する `quantity_hundredths_to_units`（今は `io::daily_report_parser` にある）も移す対象にする | IO-07-D2・D3 |
 | Data safety / evidence | How can the claim be supported by anonymized shape/count/hash/procedure evidence without committing real store data? | Plan Packet Data Safety, investigation doc, review evidence | 当たる。実データは scratch の probe で成否・行種・行番号だけを出し、tracked に件数・値を書かない。fixture は合成 | Data Safety、AC9 |
 | Reporting / accounting semantics | Are totals, summaries, item records, returns, corrections, and inventory movements modeled separately enough to avoid false business meaning? | DB design, function design, report design, Test Matrix | 当たる。小数の個数は部門売りで在庫に効かない（換算しない）。月次の `SUM` は 100 倍の整数で誤差なし。別の精算の混在は総売・支払・部門の不一致の行を作るので止める | pos-tables §12e、Matrix T18・T20 |
 | Manual verification | Which assertions cannot be proven by automated tests and require Windows native L3, external tool import, or real-device confirmation? | Plan Packet, Test Matrix, PR body | 該当なし。画面の code を変えず、Windows native でしか見えない項目が無い。実データの確かめは AC9（local-only の probe） | — |
@@ -236,11 +238,11 @@ baseline は main `76de30d8`（本 branch の plan 側の親）で、同じ comm
 - IO-07-D4 で半角の `ｸﾚｼﾞｯﾄ` を `credit` にしない判断（Non-scope）が、対象 3（行の対応）の取りこぼしでなく、合算を避ける選択として妥当か。
 - IO-07-D3 の「読めたのが 1 本以下なら比べない」が混在を見逃す経路（layout A と layout B を混ぜた束）は owner 決定 TD-110・TD-111 で受容リスクとした。Goal・失敗定義・Ordinary Operation・IO-07-D3・BIZ-08-D2・D-104 の保証の範囲が「3 本とも精算回数を読める束」でそろっているか。
 - 100 倍の整数と wire の `f64` の境界（cache と wire の型の分け方、`SUM` の後の変換、`toLocaleString` の出力）。
-- migration v7 の範囲検査（`i64::MAX / 100`）と検証（件数・型・÷100 の合計と余り、NULL・負、範囲の境界、実際の v7 経由の rollback）、v4 の CREATE を書き換えない方針、v6 以前の backup の復元。
+- migration v7 の範囲検査（`i64::MAX / 100`）と検証（件数・型・÷100 の合計と余りが 0 でない行が無いこと、NULL・負、範囲の境界、実際の v7 経由の rollback）、v4 の CREATE を書き換えない方針、v6 以前の backup の復元。日次の集約の加算の溢れ（24 §14.21 手順 7）。
 - BIZ-08-D2 の文の言い回し（利用者が次に何をすればよいか分かるか）と、Human Gate に manual を足さない判断。
 - lane C の前提（UI-09a-D16、34 §19.2 の `OfficialDailySummaryLine`）を壊していないか。共有 file の所有と schema version 7 の予約。
 
-follow-up（本 lane では直さない。closeout で backlog へ）: (1) 精算回数の保存・表示（既存の項目に IO-07-D3 の読み方を足す）。(2) 部門別集計の数量の字 `点` を長さの部門でどう出すか。(3) `docs/project-memory.md:246` の「Z002 と Z004 には出ない」の Z004 の部分が古い（9/30 の PLU の試し）。(4) 日付の不一致だけの文。(5) layout B の実物のメタに精算回数があるかの確認（D-104 Revisit）。(6) 単位の拡張の lane が 100 倍の整数の読み方の helper を Z004 と共有するか。(7) backlog の Z002 の合算の項目に、半角の `ｸﾚｼﾞｯﾄ` を含む行が 1 本に複数あり全角の `クレジット` の行が無いこと（`credit` の鍵は実データで作られない）を足す。
+follow-up（本 lane では直さない。closeout で backlog へ）: (1) 精算回数の保存・表示（既存の項目に IO-07-D3 の読み方を足す）。(2) 部門別集計の数量の字 `点` を長さの部門でどう出すか。(3) `docs/project-memory.md:246` の「Z002 と Z004 には出ない」の Z004 の部分が古い（9/30 の PLU の試し）。(4) 日付の不一致だけの文。(5) layout B の実物のメタに精算回数があるかの確認（D-104 Revisit）。(6) 単位の拡張の lane が 100 倍の整数の読み方の helper を Z004 と共有するか。(7) backlog の Z002 の合算の項目に、半角の `ｸﾚｼﾞｯﾄ` を含む行が 1 本に複数あり全角の `クレジット` の行が無いこと（`credit` の鍵は実データで作られない）を足す。(8) 29 §29.4.1 の layout B の「通常の行改行を持たず」の記述と、CV17 の静的解析で日報の書出し（layout B）がカンマと CRLF で書く推定との食い違いの候補（Contract Probe P14。正本の記述は本 lane で変えない）。
 
 ## Contract Ledger
 
@@ -258,9 +260,10 @@ R3 の必須の表。触る設計正本の節の契約・設計判断 ID を行�
 | §37.2 preview の `quantity: Option<f64>`、cache の `quantity_hundredths`、`CachedDailyReportDepartmentLine` | 37 §37.2 | S4 | Matrix T14 | — |
 | §37.3 手順 8 / §37.4 の重複判定・同日追加・TX 内の再検査・insert-only | 37 §37.3〜§37.4、SPEC-SDI-D1〜D8 | 変えない | 既存の BIZ-08 の test（変えない） | — |
 | pos-tables §12c・§12e の `quantity_hundredths` | pos-tables §12c・§12e | S5・S6 | Matrix T15〜T18 | — |
-| MNT-03-D12 migration v7（範囲検査 + 改名 + 100 倍 + 件数・型・÷100 の合計と余りの検証、1 transaction） | 22 §15 | S5 | Matrix T15・T15b・T16・T17 | — |
+| MNT-03-D12 migration v7（範囲検査 + 改名 + 100 倍 + 件数・型・÷100 の合計と、余りが 0 でない行が無いことの検証、1 transaction） | 22 §15 | S5 | Matrix T15・T15b・T16・T17 | — |
 | MNT-03-D11 新しすぎる版を開かない、MNT-03-D1 の rollback | 22 §3.2 | 変えない | 既存の migration の test（v7 の数に追従） | — |
 | 24 §14.21 手順 4・§14.22 手順 2 の 100 倍の整数での集約 | 24 §14.21・§14.22 | S6 | Matrix T18 | — |
+| 24 §14.21 手順 7 日次の集約の加算は溢れたら `DbError`、§14.22 の `SUM` の溢れも error | 24 §14.21・§14.22、22 §15 手順 1 | S6 | Matrix T18b | — |
 | 24 §14.21 手順 6（Z001 の取込みごとの行、lane C） | 24 §14.21 手順 6 | 列名だけ本 lane が書く。実装は lane C | 非対象（lane C） | — |
 | §19.2 wire の `quantity: Option<f64>`（日次・月次の部門） | 34 §19.2 | S7 | Matrix T19・T20 | — |
 | §19.2 `OfficialDailySummaryLine.quantity: Option<f64>`（lane C） | 34 §19.2 | 型だけ本 lane が書く。実装は lane C | 非対象（lane C） | — |
@@ -286,6 +289,8 @@ R3 の外部前提。実データは `~/downloads/inventory-field-check/approved
 - P10「Z002 の `credit` の鍵は実データで作られない。半角の `ｸﾚｼﾞｯﾄ` を含む行は 1 本に複数ある」: 独立の数え直し（2026-10-04、repo 外の報告の「新しく見つけた事実」1。Python 標準ライブラリ、出力は位置と本数だけ）→ 全角の `クレジット` を含むラベルは無く、半角の `ｸﾚｼﾞｯﾄ` を含むラベルが Z002 の複数の位置にある。3 行目は含まない。実装の `payment_key` は全角だけを見る（`rg -n 'クレジット|payment_key' src-tauri/src` → `daily_report_parser.rs:504`・`:507`）。`credit` を業務で読む処理は無い（`rg -n '"credit"' src-tauri/src src --glob '!**/*.test.*'` の一致は parser の `:509` と `sales_repo.rs` の test だけ）→ 成立（IO-07-D4 の半角を `credit` にしない判断の根拠）。
 - P11「v7 の範囲検査と検証の前提」（round 1 の是正、2026-10-04、起草役。Python の sqlite3 3.51.3、合成の値だけ）: `SELECT 100000000000000001*100` → `1e+19`・`real`（100 倍の溢れは error でなく REAL になる）。範囲内の最大 `i64::MAX / 100` を 2 行入れた表で、100 倍した後の `SUM` → `integer overflow` の error（合計の 100 倍では比べられない）。改名前の列名 `quantity` で書いた `AFTER UPDATE` trigger は `RENAME COLUMN` で本文が `quantity_hundredths` に書き換わり、100 倍の UPDATE の後に各行へ +1 すると `SUM(quantity_hundredths % 100)` が 0 でなくなり、rollback で列名・値・trigger が元に戻る → 成立（22 §15 手順 1・2・6、Matrix T15b・T16 の根拠。同梱の SQLite 3.45.0 での実行は実装の T15b・T16 で確かめる）。
 - P12「行が 0 の表と全行が NULL の表の `SUM`」（round 2 の是正、2026-10-04、起草役。Python の sqlite3 3.51.3、合成の値だけ）: 行 0 の表と `NULL` 2 行の表のどちらでも `SUM(q % 100) = 0` → `None`、`COALESCE(SUM(q / 100), 0)` → `0`、`COALESCE(SUM(q % 100), 0) = 0` → `1`、`COALESCE(SUM(q), 0)` → `0`、`COUNT(q)` → `0` → 成立（22 §15 手順 2・6 (c) の `COALESCE`、Matrix T17 の根拠。同梱の SQLite での実行は実装の T17 で確かめる）。
+- P13「余りの検証は符号の違う余りで打ち消されない」（round 3 の後の一括是正、2026-10-04、起草役。Python の sqlite3 3.51.3、合成の値だけ）: `101`・`-201`・NULL の合成の表で `COALESCE(SUM(q % 100), 0) = 0` → `1`（打ち消し合って通る）、`NOT EXISTS (SELECT 1 FROM <表> WHERE q % 100 <> 0)` → `0`（止まる）。行 0 の表と、NULL 2 行 + `700`・`-200` の表では `NOT EXISTS …` → `1` 。改名前の列名で書いた `AFTER UPDATE` trigger で非負の行に +1・負の行に -1 すると、`7`・`-2` は `701`・`-201` になり、件数 2・`SUM(q / 100) = 5`・余りの `SUM` = 0 で、`NOT EXISTS …` だけが `0` → 成立（22 §15 手順 6 (c) の後半、Matrix T16 (2) の根拠。同梱の SQLite での実行は実装の T16・T17 で確かめる）。
+- P14「layout B の小数の個数と file の範囲」: 未確認。CV17 の静的解析（owner の持ち帰り資料 2026-10-04。静的解析での推定と IL の事実）では、日報の書出し（layout B）は DataTable から作り直してカンマと CRLF で書き、期間の合計・結合の書出しもある。layout B で小数の日の個数が小数のまま出るか、layout B のひとつの file がひとつの精算か（期間の合計・結合の書出しがある）は確かめていない。本 lane の主経路は layout A（P1〜P6）。29 §29.4.1 の layout B の記述との食い違いの候補は follow-up (8)。
 
 ## Data Safety
 

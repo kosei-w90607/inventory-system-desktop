@@ -13,8 +13,9 @@ Risk: R3
 - IO-07-D4: `gross_sales` / `net_sales` / `cash` / `credit` はラベルだけで決め、「レコード」列の値を使わない。
 - BIZ-08-D2: `settlement_mismatch` があれば利用者向けの message と `operation_logs.summary` を固定の文にする。他の parse error は汎用の文（BIZ-08-D1）。
 - §37.2: preview の部門の `quantity` は単位の数（`f64`）、cache は 100 倍の整数で、commit は cache の整数を保存する。
-- MNT-03-D12: migration v7 は変換の前に範囲検査（NULL でない値が `i64::MAX / 100` の範囲外なら何も変えず版も記録せず、message に `範囲検査` と表名を含む `MigrationFailed`）をし、2 表の `quantity` を `quantity_hundredths` に改名し、NULL でない値を 100 倍し、(a) 件数 (b) `typeof = integer` (c) `COALESCE(SUM(quantity_hundredths / 100), 0)` が変換前の合計（`COALESCE(SUM(quantity), 0)`）と同じで `COALESCE(SUM(quantity_hundredths % 100), 0) = 0` を検証して 1 transaction で commit する（22 §15）。行が 0 の表・全行が NULL の表でも成功する。
+- MNT-03-D12: migration v7 は変換の前に範囲検査（NULL でない値が `i64::MAX / 100` の範囲外なら何も変えず版も記録せず、message に `範囲検査` と表名を含む `MigrationFailed`）をし、2 表の `quantity` を `quantity_hundredths` に改名し、NULL でない値を 100 倍し、(a) 件数 (b) `typeof = integer` (c) `COALESCE(SUM(quantity_hundredths / 100), 0)` が変換前の合計（`COALESCE(SUM(quantity), 0)`）と同じで `NOT EXISTS (SELECT 1 FROM <表> WHERE quantity_hundredths % 100 <> 0)`（余りを `SUM` で足さない。符号の違う余りが打ち消し合う）を検証して 1 transaction で commit する（22 §15）。行が 0 の表・全行が NULL の表でも成功する。
 - 24 §14.21 手順 4・§14.22 手順 2 / 34 §19.2: DB DTO は 100 倍の整数で集約し、BIZ-05 が wire の `f64` に戻す。月次の `SUM` は整数のまま。
+- 24 §14.21 手順 7 / §14.22 手順 2: 日次の集約の加算（`sum_optional_strict`）は溢れを検査し、溢れたら panic も wrap もせず `DbError::QueryFailed`。月次の `SUM` の溢れも SQLite の `integer overflow` で `DbError::QueryFailed`。
 
 ## Failure Modes
 
@@ -33,6 +34,8 @@ Risk: R3
 - F13 migration v7 が NULL を 0 にする、負の値を落とす、件数・合計を検証しない、途中の失敗で改名だけが残る、検証の呼出しが v7 の本体から外れる。
 - F18 100 倍で `i64` を溢れる値が REAL になって黙って通る（範囲検査が無い、`abs()` で `i64::MIN` が溢れる）、または検証を合計の 100 倍で比べて範囲内の最大の 2 行で `SUM` が溢れ、正しい DB の v7 が失敗する。
 - F19 v7 の合計の検証が `COALESCE` を持たず、行が 0 の表（新規 DB、日報を取り込んでいない DB）や全行が NULL の表で `SUM` が NULL になり、正しい DB の v7 が `MigrationFailed` で起動できない。
+- F20 日次の集約の加算が検査なしの `sum + value` のままで、範囲内（`i64::MAX / 100`）の 2 行の和が debug で panic、release で wrap して負の値の個数を黙って返す（v7 の行の範囲検査は集約の溢れを防がない）。
+- F21 v7 の検証 (c) の余りを `SUM` で足し、符号の違う余り（`101` と `-201`）が打ち消し合って 100 で割り切れない値が通る。
 - F14 v4 の CREATE 文を書き換え、既存 DB と新規 DB で列の履歴が分かれる。
 - F15 月次の集計を `f64` で足して誤差が出る、または日次・月次の写像で ÷100 を忘れて 100 倍の値が wire に出る。
 - F16 `bindings.ts` の `quantity` の型が `number` 以外になる。
@@ -52,22 +55,23 @@ Risk: R3
 | T5 | IO-07-D2 | F15 | unit（IO-07） | `test_daily_report_req401_quantity_hundredths_to_units`: `130` → `1.3`、`400` → `4.0`、`-50` → `-0.5`、`serde_json::to_string(&1.3_f64)` が `1.3` | 割る数の誤り、`f32` |
 | T6 | IO-07-D3 | F6 | unit（IO-07） | `test_parse_daily_report_req401_settlement_mismatch`: 同じ日付で Z001 の精算回数 `0001`、Z002 / Z005 が `0002` → `settlement_mismatch`（`source_file` は None でよい、error_message あり）、`invalid_date` は出ない | 比べない（今の挙動） |
 | T7 | IO-07-D3 | F7 | unit（IO-07） | 既存の `test_parse_daily_report_req401_layout_b_concatenated_shape_supported` が assert の意味を変えずに PASS（個数は field 名と値の 100 倍だけ直す。Z001 だけ精算回数を持つ） | 読めないファイルを不一致と扱う |
-| T8 | IO-07-D3 / IO-07-D1 | F6 / F8 / F9 | unit（IO-07） | `test_parse_daily_report_req401_settlement_number_read_from_preamble_only`: (a) 引用符なしの `精算回数,5,,` と引用符付きの `"0005"` の束 → 通る。(b) 精算回数の行の無い Z005 + 一致する Z001 / Z002 → 通る。(c) データ行のラベルに `精算回数` を含む行がある束 → 精算回数として読まない（通る）。(d) 精算回数の行の無い Z005 + Z001 = `0001`・Z002 = `0002`（読める 2 本が不一致、残り 1 本は読めない）→ `settlement_mismatch` | 文字列比較、ヘッダ後を読む、3 本とも読めたときだけ比べる |
+| T8 | IO-07-D3 / IO-07-D1 | F6 / F8 / F9 | unit（IO-07） | `test_parse_daily_report_req401_settlement_number_read_from_preamble_only`: (a) 引用符なしの `精算回数,5,,` と引用符付きの `"0005"` の束 → 通る。(b) 精算回数の行の無い Z005 + 一致する Z001 / Z002 → 通る。(c) Z002 のプリアンブルから精算回数の行を外し（他のメタ行は残す）、ヘッダの後に第1列 = `精算回数`・第2列 = 他の 2 本（`0001`）と異なる数字（例 `0009`）・第3列と第4列は整数の合成のデータ行を置く。Z001 / Z005 は `0001` → `settlement_mismatch` が出ない（IO-07-D3 はヘッダより前の行だけを見るので Z002 は読めない 1 本、読めた 2 本は一致）、その行は Z002 の支払の行（`payment_N`）として残る。(d) 精算回数の行の無い Z005 + Z001 = `0001`・Z002 = `0002`（読める 2 本が不一致、残り 1 本は読めない）→ `settlement_mismatch` | 文字列比較、ヘッダの後も走査して第1列の `精算回数` を読む（(c) が `settlement_mismatch`）、3 本とも読めたときだけ比べる |
 | T9 | IO-07-D3 | F6 | unit（IO-07） | 日付も精算回数も違う束 → `invalid_date` と `settlement_mismatch` の両方 | 片方だけで return する |
-| T10 | IO-07-D4 | F10 | unit（IO-07） | `test_parse_daily_report_req401_record_column_is_row_position`: Z002 の行 `0001`=`現金`、`0002`=合成ラベル、`0003`=クレジットでない合成ラベル → `cash`・`payment_2`・`payment_3`（`credit` が無い）。Z001 の `0001`=`総売`、`0002`=`純売` → `gross_sales`・`net_sales` | コードの比較が残る・先頭 0 の正規化 |
+| T10 | IO-07-D4 | F10 | unit（IO-07） | `test_parse_daily_report_req401_record_column_is_row_position`: Z002 の行 `0001`=`現金`、`0002`=合成ラベル、`0003`=クレジットでない合成ラベル → `cash`・`payment_2`・`payment_3`（`credit` が無い）。Z001 の `0001`=`総売`、`0002`=`純売` → `gross_sales`・`net_sales` | 先頭の 0 を正規化して比べる（`0003` → `03`、`0001` → `01`）。コードの比較がそのまま残る件は今の code でも `"0001" != "01"` で T10 が green なので、T11 が拾う |
 | T11 | IO-07-D4 | F10 | unit（IO-07） | 同じ test に、コード `101` で総売でないラベルの行 → `summary_N`、コード `03` でクレジットでないラベルの行 → `payment_N`。半角の `ｸﾚｼﾞｯﾄ` を含む合成ラベルの 2 行 → それぞれ `payment_N`（`credit` にならず、鍵が重ならない） | `code == "101"` / `"03"` が残る、半角も `credit` にして 2 行が同じ鍵になる |
 | T12 | BIZ-08-D2 / BIZ-08-D1 | F11 | unit（BIZ-08） | `test_daily_report_req401_settlement_mismatch_guides_reselection`: 精算回数の違う束で `BizError::ImportError(message)` が BIZ-08-D2 の文と完全一致、`operation_logs.summary` も同じ、`detail_json` は None、diagnostic に `error_type=settlement_mismatch`、`daily_report_imports` 0 行 | 汎用の文、raw detail を含む |
 | T13 | BIZ-08-D2 | F11 | unit（BIZ-08） | 同じ test に、`settlement_mismatch` と `invalid_number` が同時にある束 → BIZ-08-D2 の文（優先）。既存の `test_daily_report_req401_parse_error_logs_parse_failed` は変えずに汎用の文 | 優先順が逆 |
 | T14 | §37.2 | F12 | unit（BIZ-08） | `test_daily_report_req401_decimal_quantity_preview_and_commit`: Z005 の個数 `1.3` の束 → preview の `department_summary[*].quantity == Some(1.3)`、cache の `quantity_hundredths == Some(130)`。commit の前に `parsed.cached_preview.preview_data.department_summary[i].quantity` を別の値（例 `Some(9.99)`）へ書き換えてから `commit_daily_report_import` を呼び、`daily_report_department_lines.quantity_hundredths` が cache の `130` のまま（`999` でない）、Z001 の総売の行が 100 倍の値 | preview に 100 倍が出る、commit が wire の f64 から戻す（`round(preview.quantity * 100)` 等。書き換えた値が保存される） |
 | T15 | MNT-03-D12 | F13 | unit（migration） | `test_migration_req401_v7_scales_daily_report_quantity`: v6 まで適用した DB に 2 表の行（`7`・NULL・`-2`）を入れ、v7 を適用 → `quantity_hundredths` が `700`・NULL・`-200`、`count` は不変、`quantity` 列が無い、schema_versions に v7 | NULL を 0、負を落とす、改名だけ |
-| T15b | MNT-03-D12 | F18 | unit（migration） | `test_migration_req401_v7_quantity_range_boundary`: v6 まで適用した合成 DB で (1) 2 表それぞれに `i64::MAX / 100` の行を 2 行（と `-(i64::MAX / 100)` の行）→ v7 が成功し、値が 100 倍の整数（`typeof = integer`）、v7 が記録される。(2) どちらかの表に `i64::MAX / 100 + 1`（または `-(i64::MAX / 100) - 1`）の行を 1 行 → `MigrationFailed` で、その message が `範囲検査` と該当の表名を含む（手順 6 の検証の失敗の message でない）、2 表とも列名が `quantity`・値が不変、v7 が記録されない | 範囲検査が無い（手順 6 (b) の rollback で値は戻るが、message が範囲検査のものにならない）、合計の 100 倍で比べて (1) が溢れで失敗する、`abs()` の溢れ |
-| T16 | MNT-03-D12 / MNT-03-D1 | F13 | unit（migration） | `test_migration_req401_v7_verification_failure_rolls_back`: v6 まで適用した合成 DB の `daily_report_department_lines` に、**改名前の列名 `quantity` で書いた** `AFTER UPDATE` trigger（`UPDATE … SET quantity = quantity + 1 WHERE id = NEW.id`）を置く（`RENAME COLUMN` が trigger の本文を `quantity_hundredths` に書き換え、`recursive_triggers` は既定 OFF なので 1 回だけ +1 される）。2 表に行を入れて実際の `migrate`（v7 経由）を呼ぶ → 手順 6 の検証の不一致で `MigrationFailed`、2 表とも列名が `quantity`・値が不変、v7 が記録されない。trigger を外して `migrate` を再び呼ぶと成功し、値が 100 倍 | 途中の状態が残る、検証の呼出しが v7 の本体から外れる、検証の関数だけを単体で test して本体の配線を見ない |
+| T15b | MNT-03-D12 | F18 | unit（migration） | `test_migration_req401_v7_quantity_range_boundary`: v6 まで適用した合成 DB で (1) 2 表それぞれに `i64::MAX / 100` の行を 2 行（と `-(i64::MAX / 100)` の行）→ v7 が成功し、値が 100 倍の整数（`typeof = integer`）、v7 が記録される。(2) どちらかの表に `i64::MAX / 100 + 1`（または `-(i64::MAX / 100) - 1`）の行を 1 行 → `MigrationFailed` で、その message が `範囲検査` と該当の表名を含む（手順 6 の検証の失敗の message でない）、2 表とも列名が `quantity`・値が不変、v7 が記録されない。同じ assert を、どちらかの表に `i64::MIN` の行を 1 行置いた DB でも行う（panic せず `MigrationFailed`、message に `範囲検査` と表名、2 表とも列名・値が不変、v7 が記録されない） | 範囲検査が無い（手順 6 (b) の rollback で値は戻るが、message が範囲検査のものにならない）、合計の 100 倍で比べて (1) が溢れで失敗する、`q.abs() > L` で比べる（`±L`・`±(L+1)` では同じ判定になるが、`i64::MIN` で debug は panic、release は `abs()` が `i64::MIN` のままで範囲内と判定される） |
+| T16 | MNT-03-D12 / MNT-03-D1 | F13 / F21 | unit（migration） | `test_migration_req401_v7_verification_failure_rolls_back`: v6 まで適用した合成 DB の `daily_report_department_lines` に、**改名前の列名 `quantity` で書いた** `AFTER UPDATE` trigger（`UPDATE … SET quantity = quantity + 1 WHERE id = NEW.id`）を置く（`RENAME COLUMN` が trigger の本文を `quantity_hundredths` に書き換え、`recursive_triggers` は既定 OFF なので 1 回だけ +1 される）。2 表に行を入れて実際の `migrate`（v7 経由）を呼ぶ → 手順 6 の検証の不一致で `MigrationFailed`、2 表とも列名が `quantity`・値が不変、v7 が記録されない。trigger を外して `migrate` を再び呼ぶと成功し、値が 100 倍。(2) 同じ形で trigger の本文を `SET quantity = quantity + CASE WHEN NEW.quantity >= 0 THEN 1 ELSE -1 END WHERE id = NEW.id` にし、`daily_report_department_lines` の行を `7` と `-2` の 2 行にする（100 倍の後に `701` と `-201`。件数・型・`SUM(q / 100) = 5` は変換前と一致し、余りは `1` と `-1`）→ 手順 6 (c) の後半（余りが 0 でない行がある）で `MigrationFailed`、2 表とも列名が `quantity`・値が不変、v7 が記録されない | 途中の状態が残る、検証の呼出しが v7 の本体から外れる、検証の関数だけを単体で test して本体の配線を見ない、(c) の後半を余りの `SUM` で比べる（(2) の符号の違う余りが打ち消し合って通る） |
 | T17 | MNT-03-D12 / F14 / F19 | F14 / F19 | unit（migration） | 新規 DB（2 表とも行 0）の `migrate` が成功し、schema_versions に v7 があり、`PRAGMA table_info` に `quantity_hundredths` があり `quantity` が無い。`test_migration_req401_v7_empty_and_all_null_tables`: v6 まで適用した合成 DB で (1) 2 表とも行 0 → v7 が成功し v7 が記録される。(2) 2 表とも `quantity` が全行 NULL（各 2 行）→ v7 が成功し、値は NULL のまま、v7 が記録される。既存の v4 の test（`test_migration_req401_v4_creates_daily_report_tables_and_indexes`・`test_migration_req401_v4_daily_report_constraints`）は `init_database` で最新版まで適用した DB を見るので、版の期待を v7 に、INSERT の列名を `quantity_hundredths` に追従させ、assert の意味（表・index・制約の検査）を変えずに PASS | v4 を書き換える、v7 の未登録、手順 2・6 (c) の `SUM` に `COALESCE` が無い（行 0・全行 NULL で `MigrationFailed`） |
 | T18 | 24 §14.21 手順 4 / §14.22 手順 2 / UI-09b-D10 | F15 | unit（sales_repo） | `test_daily_report_repo_req401_quantity_hundredths_aggregates_as_integer`: 同じ日・同じ部門の 2 取込みの `110`・`20`（1.1 + 0.2）→ 日次の集約が `130`、月次の `SUM` が `130`（整数）。既存の `test_get_completed_daily_report_aggregate_req501_propagates_parent_and_line_nulls` は field 名と値の 100 倍の追従だけで NULL 伝播を保つ | 列名の取り違え、REAL で足す |
+| T18b | 24 §14.21 手順 7 / §14.22 手順 2 | F20 | unit（sales_repo） | `test_get_completed_daily_report_aggregate_req501_aggregate_overflow_is_error`: 同じ日・同じ部門に `quantity_hundredths = i64::MAX / 100` の部門の行を 2 行（同じ親でも 2 つの親でもよい）→ `get_completed_daily_report_aggregate` が `Err(DbError::QueryFailed(_))`（panic しない）。同じ DB で `get_monthly_official_department_totals` も `Err(DbError::QueryFailed(_))` | `sum + value` のまま（debug の `cargo test` は panic、release は wrap で負の値の `Ok`） |
 | T19 | §19.2 | F15 | unit（sales_service） | `test_get_daily_sales_req501_official_quantity_in_units`: 部門の行 `quantity_hundredths = 130` → `official_daily_report.department_lines[0].quantity == Some(1.3)`、`400` → `Some(4.0)`、NULL → None | ÷100 を忘れる |
 | T20 | §19.2 / main wiring | F15 | integration（BIZ-08 → BIZ-05） | `test_get_monthly_sales_req502_official_quantity_in_units`: BIZ-08 で小数の束を commit した後、`get_monthly_sales` の `official_department_totals[*].quantity == Some(1.3)`（同じ月の 2 日分なら合計の単位の数） | 月次の写像の変換漏れ |
 | T21 | wire | F16 | CLI | AC7: `cd src-tauri && cargo run --bin generate_bindings` → `git diff --exit-code -- ':(top)src/lib/bindings.ts'` が exit 0 | specta が `f64` を別の型にする |
-| T22 | traceability | F17 | CLI + reviewer の照合 | AC7: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0（新しい test の名前に `req401` / `req501` / `req502` を含める）。generator は名前から REQ（`_reqNNN` の後が `_` か終端）を抽出できない test を集計しないので、`--check` だけでは付け忘れを検出しない。reviewer は repo の root で `git diff -U0 origin/main...HEAD -- src-tauri \| rg -o '^\+\s*fn (test_\w+)' -r '$1' \| rg -v '_req[0-9]{3}(_\|$)'` を実行し、出力なし・exit 1 を確かめる（REQ の無い新設の test が無い）。続けて同じ diff の `rg -o` の出力（新設の test 名の一覧）を Matrix の T1〜T20 の行と突き合わせ、各 test 名の REQ が Matrix の行の REQ（IO-07・BIZ-08・migration・repo は `req401`、日次は `req501`、月次は `req502`）と合うことを確かめる | REQ の無い test、REQ の取り違え |
+| T22 | traceability | F17 | CLI + reviewer の照合 | AC7: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0（新しい test の名前に `req401` / `req501` / `req502` を含める）。generator は名前から REQ（`_reqNNN` の後が `_` か終端）を抽出できない test を集計しないので、`--check` だけでは付け忘れを検出しない。reviewer は repo の root で `git diff -U0 origin/main...HEAD -- src-tauri \| rg -o '^\+\s*fn (test_\w+)' -r '$1' \| rg -v '_req[0-9]{3}(_\|$)'` を実行し、出力なし・exit 1 を確かめる（REQ の無い新設の test が無い）。続けて同じ diff の `rg -o` の出力（新設の test 名の一覧）を Matrix の T1〜T20（T15b・T18b を含む）の行と突き合わせ、各 test 名の REQ が Matrix の行の REQ（IO-07・BIZ-08・migration・repo は `req401`、日次〈T18b の日次の集約を含む〉は `req501`、月次は `req502`）と合うことを確かめる | REQ の無い test、REQ の取り違え |
 
 ## Baseline
 
@@ -103,13 +107,13 @@ test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 973 filtered out; f
 
 ## Negative Paths
 
-- T3（不正な小数の形）、T4（件数の小数）、T6・T9（精算回数・日付の不一致）、T11（コードだけが一致する行）、T13（複数の error）、T15b（範囲外の値）、T16（migration の検証の失敗）。
+- T3（不正な小数の形）、T4（件数の小数）、T6・T9（精算回数・日付の不一致）、T11（コードだけが一致する行）、T13（複数の error）、T15b（範囲外の値・`i64::MIN`）、T16（migration の検証の失敗）、T18b（集約の溢れ）。
 
 ## Boundary Checks
 
 - 小数 2 桁の上限 `9999.99` → `999999`（T2）、負の小数（T1）、カンマ付き（T1）、`0` と `0.0`（T1 に足してよい）。
 - 精算回数の先頭 0（T8）、読めたのが 1 本（T7）・2 本で不一致（T8 (d)）・0 本（layout B だけの束は既存 test の形で十分）。
-- migration v7 の範囲: 範囲内の最大 `i64::MAX / 100`（2 行）と負の端、範囲外の 1 件（T15b）。行が 0 の表と全行が NULL の表（T17）。
+- migration v7 の範囲: 範囲内の最大 `i64::MAX / 100`（2 行）と負の端、範囲外の 1 件と `i64::MIN`（T15b）。日次・月次の集約の溢れ（範囲内の最大の 2 行、T18b）。行が 0 の表と全行が NULL の表（T17）。
 
 ## Compatibility Checks
 
@@ -145,6 +149,10 @@ test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 973 filtered out; f
 - migration の `WHERE … IS NOT NULL` を外して `COALESCE(…, 0) * 100` にすると T15 が red になるか。
 - 手順 2・6 (c) の `SUM` から `COALESCE` を外すと T17（新規 DB と `test_migration_req401_v7_empty_and_all_null_tables` の行 0・全行 NULL）が red になるか（`SUM` が NULL で比較が成り立たず `MigrationFailed`）。
 - v7 の範囲検査を消すと T15b (2) が red になるか（範囲外の値は 100 倍で REAL になり手順 6 (b) が rollback するので、値・列名・版の assert は green のままで、message の `範囲検査` の assert だけが red になる）。検証 (c) を「合計の 100 倍と比べる」に変えると T15b (1) が red になるか（`SUM` の溢れ）。v7 の本体から検証の呼出しを消すと T16 が red になるか。
+- v7 の範囲検査を `q.abs() > L` に変えると T15b (2) の `i64::MIN` の行が red になるか（debug は panic、release は範囲内と判定して範囲検査の message にならない）。
+- v7 の検証 (c) の後半を `COALESCE(SUM(quantity_hundredths % 100), 0) = 0` に戻すと T16 (2) が red になるか（`701` と `-201` の余り `1` と `-1` が打ち消し合い、(a)・(b)・(c) の前半も通るので v7 が成功してしまう）。
+- 精算回数の読み取りをヘッダの後も走査するように変えると T8 (c) が red になるか（ヘッダの後の第1列 `精算回数` の行の `0009` を読み、`settlement_mismatch`）。
+- 日次の集約の `checked_add` を `sum + value` に戻すと T18b が red になるか（debug の `cargo test` は panic）。
 - commit の部門の行を cache の 100 倍の整数でなく preview の `quantity`（wire の `f64`）から `round(q * 100)` で作ると T14 が red になるか（commit の前に preview の値を書き換えるので、書き換えた値が保存される）。
 - BIZ-05 の写像の ÷100 を消すと T19・T20 が red になるか（型が `f64` なので compile は通る）。
 
