@@ -186,6 +186,7 @@ pub struct EjItem {
     /// 名称行の行番号
     pub line_no: usize,
     pub name: String,
+    /// 数量行が掛かる明細はその値、戻の印の明細は -1、それ以外は 1
     pub quantity: i64,
     /// 数量行があるときだけ
     pub unit_price: Option<i64>,
@@ -516,7 +517,9 @@ fn build_record(
     let kind = record_kind(&header.mode, body);
     // 番号印字の行を除いて数えた先頭の行（IO-08-D3a）
     let first_core = body.iter().position(|raw| !is_number_print(&raw.text));
+    let last_core = body.iter().rposition(|raw| !is_number_print(&raw.text));
     let separator_at = body.iter().position(|raw| raw.bytes == SEPARATOR);
+    let item_region_end = separator_at.unwrap_or(body.len());
 
     let mut lines: Vec<EjLine> = Vec::with_capacity(body.len());
     for (index, raw) in body.iter().enumerate() {
@@ -546,7 +549,14 @@ fn build_record(
                 EjRecordKind::Sale | EjRecordKind::Cancelled => match separator_at {
                     Some(at) if index == at => EjLineKind::Separator,
                     Some(at) if index > at => classify_totals(text, lines.last()),
-                    _ => classify_items(text),
+                    _ => classify_items(
+                        text,
+                        lines.last(),
+                        body[index + 1..item_region_end]
+                            .first()
+                            .map(|next| next.text.as_str()),
+                        kind == EjRecordKind::Cancelled && Some(index) == last_core,
+                    ),
                 },
             };
             // 未知のモードは UnrecognizedMode 1 件で表し、本文の行ごとには出さない
@@ -572,7 +582,7 @@ fn build_record(
 
     // 行単位の問題がある記録は、記録内の照合をせずに復元不能とする
     let restoration = if reasons.is_empty() {
-        match check_record(&kind, &lines, is_last) {
+        match check_record(&kind, &header.mode, &lines, is_last) {
             Ok(restoration) => restoration,
             Err(code) => {
                 report(code, header_line_no, &mut reasons);
@@ -597,11 +607,11 @@ fn build_record(
 
 /// IO-08-D3a: 番号印字の行を除いた本文で、表を上から当てて記録の種類を決める
 fn record_kind(mode: &EjMode, body: &[RawLine]) -> EjRecordKind {
-    let core: Vec<&str> = body
+    let core_lines: Vec<&RawLine> = body
         .iter()
-        .map(|raw| raw.text.as_str())
-        .filter(|text| !is_number_print(text))
+        .filter(|raw| !is_number_print(&raw.text))
         .collect();
+    let core: Vec<&str> = core_lines.iter().map(|raw| raw.text.as_str()).collect();
     if matches!(mode, EjMode::Unrecognized(_)) {
         return EjRecordKind::Unclassified;
     }
@@ -636,6 +646,12 @@ fn record_kind(mode: &EjMode, body: &[RawLine]) -> EjRecordKind {
         {
             EjRecordKind::Receipt
         }
+        [.., last]
+            if is_mark(last, "取引中止")
+                && !core_lines.iter().any(|raw| raw.bytes == SEPARATOR) =>
+        {
+            EjRecordKind::Cancelled
+        }
         _ => EjRecordKind::Sale,
     }
 }
@@ -643,11 +659,21 @@ fn record_kind(mode: &EjMode, body: &[RawLine]) -> EjRecordKind {
 /// IO-08-D6 / D7 / D7a: 行種がすべて既知の記録について、閉じと照合を判定する
 fn check_record(
     kind: &EjRecordKind,
+    mode: &EjMode,
     lines: &[EjLine],
     is_last: bool,
 ) -> Result<EjRestoration, EjDiagnosticCode> {
     match kind {
-        EjRecordKind::Sale | EjRecordKind::Cancelled => restore_items(lines),
+        EjRecordKind::Sale => restore_items(mode, lines),
+        // IO-08-D7a: 取引中止の印（最後の行）より前の明細域が項目の規則を満たせば明細なし
+        EjRecordKind::Cancelled => {
+            let end = lines
+                .iter()
+                .position(|line| line.kind == EjLineKind::CancelMark)
+                .ok_or(EjDiagnosticCode::IncompleteRecord)?;
+            item_region(mode, &lines[..end])?;
+            Ok(EjRestoration::NoItems)
+        }
         // EOF を閉じの根拠にしない（IO-08-D4）。次のヘッダで閉じた中断は NoItems
         EjRecordKind::Settlement {
             completed: false, ..
@@ -658,52 +684,17 @@ fn check_record(
     }
 }
 
-/// IO-08-D6: 明細の復元と記録内の照合（数量×単価・点数・合計または現金）
-fn restore_items(lines: &[EjLine]) -> Result<EjRestoration, EjDiagnosticCode> {
+/// IO-08-D6: 明細の復元と記録内の照合（数量×単価・点数・照合の金額）
+fn restore_items(mode: &EjMode, lines: &[EjLine]) -> Result<EjRestoration, EjDiagnosticCode> {
     use EjDiagnosticCode::{IncompleteRecord, InconsistentRecord};
 
     let separator = lines
         .iter()
         .position(|line| line.kind == EjLineKind::Separator)
         .ok_or(IncompleteRecord)?;
-
-    let mut items = Vec::new();
-    let mut pending_quantity = None;
-    for line in &lines[..separator] {
-        match &line.kind {
-            EjLineKind::Quantity {
-                quantity,
-                unit_price,
-            } => {
-                if pending_quantity.replace((*quantity, *unit_price)).is_some() {
-                    return Err(InconsistentRecord);
-                }
-            }
-            EjLineKind::Item { name, amount } => {
-                let (quantity, unit_price) = match pending_quantity.take() {
-                    Some((q, p)) if q.checked_mul(p) == Some(*amount) => (q, Some(p)),
-                    Some(_) => return Err(InconsistentRecord),
-                    None => (1, None),
-                };
-                if *amount < 0 {
-                    return Err(InconsistentRecord);
-                }
-                items.push(EjItem {
-                    line_no: line.line_no,
-                    name: name.clone(),
-                    quantity,
-                    unit_price,
-                    amount: *amount,
-                });
-            }
-            _ => return Err(InconsistentRecord),
-        }
-    }
-    if pending_quantity.is_some() {
-        return Err(InconsistentRecord);
-    }
-    // 明細の無い取引は未観測のため復元しない
-    if items.is_empty() {
+    let (items, adjustments, saw_item) = item_region(mode, &lines[..separator])?;
+    // 明細の項目の無い取引は未観測のため復元しない（すべて取り消した取引は復元する）
+    if !saw_item {
         return Err(IncompleteRecord);
     }
 
@@ -718,18 +709,180 @@ fn restore_items(lines: &[EjLine]) -> Result<EjRestoration, EjDiagnosticCode> {
     let quantity_sum = items
         .iter()
         .try_fold(0i64, |sum, item| sum.checked_add(item.quantity));
-    let amount_sum = items
-        .iter()
-        .try_fold(0i64, |sum, item| sum.checked_add(item.amount));
-    if quantity_sum != Some(item_count) || amount_sum != Some(total) {
+    if quantity_sum != Some(item_count) || amount_sum(&items, &adjustments) != Some(total) {
         return Err(InconsistentRecord);
     }
 
     Ok(EjRestoration::Restored {
         items,
         item_count,
-        adjustments: Vec::new(),
+        adjustments,
     })
+}
+
+/// 有効な明細と値引きの金額の和
+fn amount_sum(items: &[EjItem], adjustments: &[EjAdjustment]) -> Option<i64> {
+    items
+        .iter()
+        .map(|item| item.amount)
+        .chain(adjustments.iter().map(|adjustment| adjustment.amount))
+        .try_fold(0i64, i64::checked_add)
+}
+
+/// 直前の項目（IO-08-D6a / D6b）
+#[derive(PartialEq)]
+enum Previous {
+    Start,
+    Item,
+    ReturnItem,
+    PercentDiscount,
+    Subtotal,
+    Other,
+}
+
+/// IO-08-D6 / D6a / D6b / D6d: 明細域の行を項目にまとめ、出現順に規則を当てる。
+/// 有効な明細・値引きと、明細の項目（取り消したものを含む）があったかを返す
+fn item_region(
+    mode: &EjMode,
+    region: &[EjLine],
+) -> Result<(Vec<EjItem>, Vec<EjAdjustment>, bool), EjDiagnosticCode> {
+    use EjDiagnosticCode::InconsistentRecord as Bad;
+    use EjLineKind as K;
+
+    let mut items: Vec<EjItem> = Vec::new();
+    let mut adjustments: Vec<EjAdjustment> = Vec::new();
+    let mut saw_item = false;
+    let mut previous = Previous::Start;
+    let mut i = 0;
+    while i < region.len() {
+        let kind_at = |at: usize| region.get(at).map(|line| &line.kind);
+        // 小計の直後の項目は `*` つきの ％値引きだけ
+        if previous == Previous::Subtotal && region[i].kind != K::DiscountRate {
+            return Err(Bad);
+        }
+        match &region[i].kind {
+            // 任意の数量行 + `Item`、または任意の数量行 + `ItemName` + `Continued`
+            K::Quantity { .. } | K::Item { .. } | K::ItemName { .. } => {
+                let (quantity, unit_price, at) = match region[i].kind {
+                    K::Quantity {
+                        quantity,
+                        unit_price,
+                    } => (quantity, Some(unit_price), i + 1),
+                    _ => (1, None, i),
+                };
+                let (name, amount, next) = match kind_at(at) {
+                    Some(K::Item { name, amount }) => (name, *amount, at + 1),
+                    Some(K::ItemName { name }) => match kind_at(at + 1) {
+                        Some(K::Continued { amount }) => (name, *amount, at + 2),
+                        _ => return Err(Bad),
+                    },
+                    _ => return Err(Bad),
+                };
+                // 戻の印を持たない負の明細、数量 × 単価 ≠ 金額
+                if amount < 0 || unit_price.is_some_and(|p| quantity.checked_mul(p) != Some(amount))
+                {
+                    return Err(Bad);
+                }
+                items.push(EjItem {
+                    line_no: region[at].line_no,
+                    name: name.clone(),
+                    quantity,
+                    unit_price,
+                    amount,
+                });
+                saw_item = true;
+                previous = Previous::Item;
+                i = next;
+                continue;
+            }
+            // IO-08-D6d: 空のモードで、戻の印の直後の負の明細は数量 -1
+            K::ReturnMark => {
+                let Some(K::Item { name, amount }) = kind_at(i + 1) else {
+                    return Err(Bad);
+                };
+                if *mode != EjMode::Normal || *amount >= 0 {
+                    return Err(Bad);
+                }
+                items.push(EjItem {
+                    line_no: region[i + 1].line_no,
+                    name: name.clone(),
+                    quantity: -1,
+                    unit_price: None,
+                    amount: *amount,
+                });
+                saw_item = true;
+                previous = Previous::ReturnItem;
+                i += 2;
+                continue;
+            }
+            // IO-08-D6a: 直前の項目の取消（負 = 明細、正 = ％値引き）
+            K::Correction { amount } => {
+                let cancels =
+                    |target: Option<i64>| target.and_then(i64::checked_neg) == Some(*amount);
+                match previous {
+                    Previous::Item if *amount < 0 && cancels(items.last().map(|it| it.amount)) => {
+                        items.pop();
+                    }
+                    Previous::PercentDiscount
+                        if *amount > 0 && cancels(adjustments.last().map(|a| a.amount)) =>
+                    {
+                        adjustments.pop();
+                    }
+                    _ => return Err(Bad),
+                }
+                previous = Previous::Other;
+            }
+            // IO-08-D6b: 小計 = それまでの有効な明細と値引きの和
+            K::Subtotal { amount } => {
+                if amount_sum(&items, &adjustments) != Some(*amount) {
+                    return Err(Bad);
+                }
+                previous = Previous::Subtotal;
+            }
+            // IO-08-D6b: 率の行 + ％値引き。`*` つきは小計値引き、`*` なしは明細値引き
+            K::DiscountRate => {
+                let Some(K::PercentDiscount { amount, subtotal }) = kind_at(i + 1) else {
+                    return Err(Bad);
+                };
+                let kind = match (subtotal, &previous) {
+                    (true, Previous::Subtotal) => EjAdjustmentKind::SubtotalDiscount,
+                    (false, Previous::Item) => EjAdjustmentKind::ItemDiscount {
+                        item_line_no: items.last().ok_or(Bad)?.line_no,
+                    },
+                    _ => return Err(Bad),
+                };
+                if *amount >= 0 {
+                    return Err(Bad);
+                }
+                adjustments.push(EjAdjustment {
+                    line_no: region[i + 1].line_no,
+                    kind,
+                    amount: *amount,
+                });
+                previous = Previous::PercentDiscount;
+                i += 2;
+                continue;
+            }
+            // IO-08-D6b: マイナスキーは直前の有効な明細（戻の明細を除く）の後で、金額は負
+            K::MinusKey { amount } => {
+                if previous != Previous::Item || *amount >= 0 {
+                    return Err(Bad);
+                }
+                adjustments.push(EjAdjustment {
+                    line_no: region[i].line_no,
+                    kind: EjAdjustmentKind::MinusKey,
+                    amount: *amount,
+                });
+                previous = Previous::Other;
+            }
+            _ => return Err(Bad),
+        }
+        i += 1;
+    }
+    if previous == Previous::Subtotal {
+        return Err(Bad);
+    }
+    Ok((items, adjustments, saw_item))
 }
 
 /// 同じ種類の行が 2 つ以上あれば照合できない
@@ -806,17 +959,105 @@ fn reconciled_total(totals: &[EjLine]) -> Result<i64, EjDiagnosticCode> {
     }
 }
 
-fn classify_items(text: &str) -> EjLineKind {
-    if let Some((quantity, unit_price)) = parse_quantity(text) {
+/// 取引・取引中止の明細域（IO-08-D5a / D5c）。prev は直前の行、next は明細域の直後の行。
+/// cancel_last は取引中止の記録の最後の行（番号印字の行を除く）
+fn classify_items(
+    text: &str,
+    prev: Option<&EjLine>,
+    next: Option<&str>,
+    cancel_last: bool,
+) -> EjLineKind {
+    if is_mark(text, "戻") {
+        EjLineKind::ReturnMark
+    } else if cancel_last && is_mark(text, "取引中止") {
+        EjLineKind::CancelMark
+    } else if is_discount_rate(text) {
+        EjLineKind::DiscountRate
+    } else if let Some(amount) = parse_labeled_amount(text, "訂正") {
+        EjLineKind::Correction { amount }
+    } else if let Some(amount) = parse_labeled_amount(text, "小計") {
+        EjLineKind::Subtotal { amount }
+    } else if let Some((amount, subtotal)) = parse_starred_amount(text, "％－") {
+        EjLineKind::PercentDiscount { amount, subtotal }
+    } else if let Some((amount, _)) = parse_starred_amount(text, "－") {
+        EjLineKind::MinusKey { amount }
+    } else if let Some((quantity, unit_price)) = parse_quantity(text) {
         EjLineKind::Quantity {
             quantity,
             unit_price,
         }
     } else if let Some((name, amount)) = parse_item(text) {
         EjLineKind::Item { name, amount }
+    } else if !text.starts_with(char::is_whitespace)
+        && next.and_then(item_continued).is_some()
+        && !item_token_overflows(text)
+    {
+        EjLineKind::ItemName {
+            name: text.trim_end().to_string(),
+        }
+    } else if let Some(amount) = prev
+        .filter(|prev| matches!(prev.kind, EjLineKind::ItemName { .. }))
+        .and_then(|_| item_continued(text))
+    {
+        EjLineKind::Continued { amount }
     } else {
         EjLineKind::Unknown
     }
+}
+
+/// 明細域の続きの行の形: 空白で始まり、空白除去後が通貨記号つきの金額 token だけ
+fn item_continued(text: &str) -> Option<i64> {
+    if !text.starts_with(' ') {
+        return None;
+    }
+    match parse_amount(text.trim())? {
+        (amount, true) => Some(amount),
+        _ => None,
+    }
+}
+
+/// 最後の語が金額 token の形で、値が i64 に収まらない行（ItemName にしない）
+fn item_token_overflows(text: &str) -> bool {
+    text.trim_end().rsplit_once(' ').is_some_and(|(_, token)| {
+        let token = token.strip_suffix('※').unwrap_or(token);
+        matches!(amount_token(token), Some((None, _)))
+    })
+}
+
+/// `戻` / `取引中止` + 半角空白 1 個以上 + `･` 1 個以上 + 空白
+fn is_mark(text: &str, label: &str) -> bool {
+    let Some(rest) = text.strip_prefix(label) else {
+        return false;
+    };
+    let dots = rest.trim_start_matches(' ');
+    dots.len() < rest.len()
+        && dots.starts_with('･')
+        && dots.trim_start_matches('･').trim().is_empty()
+}
+
+/// `-` + ASCII 数字 1 個以上 + `%` で始まり、残りが空白
+fn is_discount_rate(text: &str) -> bool {
+    text.strip_prefix('-')
+        .and_then(|rest| rest.split_once('%'))
+        .is_some_and(|(digits, rest)| {
+            !digits.is_empty()
+                && digits.bytes().all(|b| b.is_ascii_digit())
+                && rest.trim().is_empty()
+        })
+}
+
+/// ラベル + 空白 + 金額 token + 任意の `*`。`*` の有無を返す
+fn parse_starred_amount(text: &str, label: &str) -> Option<(i64, bool)> {
+    let rest = text.strip_prefix(label)?;
+    if !rest.starts_with(' ') {
+        return None;
+    }
+    let token = rest.trim();
+    let (token, starred) = match token.strip_suffix('*') {
+        Some(token) => (token, true),
+        None => (token, false),
+    };
+    parse_amount(token).map(|(amount, _)| (amount, starred))
 }
 
 /// 取引の合計域（IO-08-D5a / D5b）。prev は直前の行
@@ -1043,9 +1284,16 @@ fn parse_item(text: &str) -> Option<(String, i64)> {
     let (name, token) = text.trim_end().rsplit_once(' ')?;
     let name = name.trim_end();
     // `※`（軽減税率の印）は通貨記号つきの金額の後だけ。解釈しない
-    let token = token.strip_suffix('※').unwrap_or(token);
+    // `※`（軽減税率の印）は通貨記号つきの金額の後だけ。解釈しない
+    let (token, marked) = match token.strip_suffix('※') {
+        Some(token) => (token, true),
+        None => (token, false),
+    };
     match parse_amount(token)? {
-        (amount, true) if !name.is_empty() => Some((name.to_string(), amount)),
+        _ if name.is_empty() => None,
+        (amount, true) => Some((name.to_string(), amount)),
+        // 通貨記号なしの負の金額（戻の印の明細）
+        (amount, false) if amount < 0 && !marked => Some((name.to_string(), amount)),
         _ => None,
     }
 }
@@ -1067,10 +1315,16 @@ fn parse_count(text: &str) -> Option<i64> {
     text.parse().ok()
 }
 
-/// 金額 token: 任意の `-`、任意の通貨記号（`\` / `￥`）、数字と桁区切り。
-/// 通貨記号・数字・桁区切りの幅（半角 / 全角）が token 内でそろわなければ受理しない。
+/// 金額 token: 任意の符号（`-` / `－`）、任意の通貨記号（`\` / `￥`）、数字と桁区切り。
+/// 符号・通貨記号・数字・桁区切りの幅（半角 / 全角）が token 内でそろわなければ受理しない。
 /// 値と、通貨記号があったかを返す
 fn parse_amount(token: &str) -> Option<(i64, bool)> {
+    let (value, has_currency) = amount_token(token)?;
+    Some((value?, has_currency))
+}
+
+/// 金額 token の形なら Some。値が i64 に収まらなければ値は None
+fn amount_token(token: &str) -> Option<(Option<i64>, bool)> {
     // 負値は負のまま蓄積する（i64::MIN の絶対値は i64 に収まらない）。
     // 符号・通貨記号・数字・桁区切りの幅（半角 / 全角）を token 内でそろえる
     let (sign, mut wide, rest) = if let Some(rest) = token.strip_prefix('-') {
@@ -1094,7 +1348,7 @@ fn parse_amount(token: &str) -> Option<(i64, bool)> {
     }
     let has_currency = currency.is_some();
 
-    let mut value: i64 = 0;
+    let mut value: Option<i64> = Some(0);
     let mut after_digit = false;
     for c in rest.chars() {
         let (digit, is_wide) = match c {
@@ -1108,7 +1362,7 @@ fn parse_amount(token: &str) -> Option<(i64, bool)> {
         }
         match digit {
             Some(d) => {
-                value = value.checked_mul(10)?.checked_add(sign * i64::from(d))?;
+                value = value.and_then(|v| v.checked_mul(10)?.checked_add(sign * i64::from(d)));
                 after_digit = true;
             }
             // 桁区切りは数字の後だけ（先頭・連続を受理しない）
@@ -3072,6 +3326,714 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
+    // 取引の明細域と取引中止（IO-08-D5a / D5c / D6a / D6b / D6d / D7a）
+    // -----------------------------------------------------------------------
+
+    const NAME_C: &str = "ﾃｽﾄｸﾞﾐ";
+    const LONG_NAME: &str = "ﾅｶﾞｲﾒｲｼｮｳﾉ ﾃｽﾄｼｮｳﾋﾝ";
+
+    fn correction(amount: &str) -> String {
+        lr("訂正", amount)
+    }
+
+    fn rate(percent: u32) -> String {
+        lr(&format!("-{percent}%"), "")
+    }
+
+    fn percent_off(amount: &str) -> String {
+        lr("％－", amount)
+    }
+
+    fn minus_key(amount: &str) -> String {
+        lr("－", amount)
+    }
+
+    fn return_mark() -> String {
+        lr("戻 ････", "")
+    }
+
+    fn cancel_mark() -> String {
+        lr("取引中止 ････", "")
+    }
+
+    /// 明細域の行 → 区切り → 点数 → 合計
+    fn sale_with(number: &str, items: &[String], n: i64, total: i64) -> Vec<String> {
+        [
+            header("", AT, number),
+            items.to_vec(),
+            vec![sep(), count(n), wide("合  計", total)],
+        ]
+        .concat()
+    }
+
+    fn adjustments_of(record: &EjRecord) -> &[EjAdjustment] {
+        match &record.restoration {
+            EjRestoration::Restored { adjustments, .. } => adjustments,
+            other => panic!("Restored を期待しました: {other:?}"),
+        }
+    }
+
+    fn item_count_of(record: &EjRecord) -> i64 {
+        match &record.restoration {
+            EjRestoration::Restored { item_count, .. } => *item_count,
+            other => panic!("Restored を期待しました: {other:?}"),
+        }
+    }
+
+    fn names(record: &EjRecord) -> Vec<&str> {
+        items_of(record).iter().map(|i| i.name.as_str()).collect()
+    }
+
+    fn adjustment_kinds(record: &EjRecord) -> Vec<(EjAdjustmentKind, i64)> {
+        adjustments_of(record)
+            .iter()
+            .map(|a| (a.kind.clone(), a.amount))
+            .collect()
+    }
+
+    // G-T8 / IO-08-D5 / D6d: 取引全体が負（戻の印の明細 × 2、全角 `－` の合計と支払）
+    #[test]
+    fn parse_ej_whole_negative_sale() {
+        let lines = [
+            header("", AT, "000500"),
+            vec![
+                return_mark(),
+                lr(NAME_A, "-600"),
+                return_mark(),
+                lr(NAME_B, "-400"),
+                sep(),
+                count(-2),
+                lr("対象計 8.0%", "-1,000"),
+                lr("合  計", "－１，０００"),
+                lr("売掛", "－１，０００"),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        let record = &result.records[0];
+        let items: Vec<_> = items_of(record)
+            .iter()
+            .map(|i| (i.quantity, i.amount))
+            .collect();
+        assert_eq!(items, [(-1, -600), (-1, -400)]);
+        assert_eq!(item_count_of(record), -2);
+    }
+
+    // G-F12 / IO-08-D5: 幅の混ざった全角 `－` / 半角 `-` の照合の金額は読めない
+    #[test]
+    fn parse_ej_mixed_width_negative_total_unresolves() {
+        let negative = |number: &str, last: String| {
+            [
+                header("", AT, number),
+                vec![return_mark(), lr(NAME_A, "-1,000"), sep(), count(-1), last],
+            ]
+            .concat()
+        };
+        let result = parse(
+            &[
+                negative("000501", lr("合  計", "－1,000")),
+                negative("000502", lr("現金", "-１，０００")),
+            ]
+            .concat(),
+        );
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [InconsistentRecord]);
+        }
+    }
+
+    // G-M1 / IO-08-D6a: 負の訂正は直前の明細を取り消す
+    #[test]
+    fn parse_ej_negative_correction_cancels_previous_item() {
+        let result = parse(&sale_with(
+            "000510",
+            &[item(NAME_A, 120), item(NAME_B, 380), correction("-380")],
+            1,
+            120,
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        let record = &result.records[0];
+        assert_eq!(names(record), [NAME_A]);
+        assert_eq!(item_count_of(record), 1);
+    }
+
+    // G-M2 / IO-08-D6a: 数量行つきの明細・折り返した明細も取り消せる
+    #[test]
+    fn parse_ej_correction_cancels_quantity_and_wrapped_items() {
+        let lines = [
+            sale_with(
+                "000511",
+                &[
+                    qty(3, "100"),
+                    item(NAME_A, 300),
+                    correction("-300"),
+                    item(NAME_C, 200),
+                ],
+                1,
+                200,
+            ),
+            sale_with(
+                "000512",
+                &[
+                    LONG_NAME.to_string(),
+                    lr("", "\\1,200"),
+                    correction("-1,200"),
+                    item(NAME_B, 200),
+                ],
+                1,
+                200,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(names(&result.records[0]), [NAME_C]);
+        assert_eq!(item_count_of(&result.records[0]), 1);
+        assert_eq!(names(&result.records[1]), [NAME_B]);
+    }
+
+    // G-M3 / IO-08-D6a: 正の訂正は直前の ％値引きを取り消す
+    #[test]
+    fn parse_ej_positive_correction_cancels_percent_discount() {
+        let result = parse(&sale_with(
+            "000513",
+            &[
+                item(NAME_A, 500),
+                rate(10),
+                percent_off("-50"),
+                correction("\\50"),
+            ],
+            1,
+            500,
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        let record = &result.records[0];
+        assert_eq!(names(record), [NAME_A]);
+        assert!(adjustments_of(record).is_empty());
+    }
+
+    // G-M4 / IO-08-D6b: 小計値引きは adjustments に入り、小計の和はマイナスキーを含む
+    #[test]
+    fn parse_ej_subtotal_discount() {
+        let lines = [
+            sale_with(
+                "000514",
+                &[
+                    item(NAME_A, 400),
+                    item(NAME_B, 600),
+                    lr("小計", "\\1,000"),
+                    rate(10),
+                    percent_off("-100*"),
+                ],
+                2,
+                900,
+            ),
+            sale_with(
+                "000515",
+                &[
+                    item(NAME_A, 1_000),
+                    minus_key("-100"),
+                    lr("小計", "\\900"),
+                    rate(10),
+                    percent_off("-90*"),
+                ],
+                1,
+                810,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(names(&result.records[0]), [NAME_A, NAME_B]);
+        assert_eq!(item_count_of(&result.records[0]), 2);
+        assert_eq!(
+            adjustment_kinds(&result.records[0]),
+            [(EjAdjustmentKind::SubtotalDiscount, -100)]
+        );
+        assert_eq!(adjustments_of(&result.records[0])[0].line_no, 7);
+        assert_eq!(
+            adjustment_kinds(&result.records[1]),
+            [
+                (EjAdjustmentKind::MinusKey, -100),
+                (EjAdjustmentKind::SubtotalDiscount, -90)
+            ]
+        );
+    }
+
+    // G-M5 / IO-08-D6b: 明細値引きの掛かり先は直前の明細の行
+    #[test]
+    fn parse_ej_item_discount_targets_previous_item() {
+        let result = parse(&sale_with(
+            "000516",
+            &[
+                item(NAME_A, 200),
+                rate(20),
+                percent_off("-40"),
+                item(NAME_B, 300),
+            ],
+            2,
+            460,
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            adjustment_kinds(&result.records[0]),
+            [(EjAdjustmentKind::ItemDiscount { item_line_no: 3 }, -40)]
+        );
+        assert_eq!(names(&result.records[0]), [NAME_A, NAME_B]);
+    }
+
+    // G-M6 / IO-08-D5a: 名称だけの行 + 金額の行は 1 明細（数量行が前に付く形を含む）
+    #[test]
+    fn parse_ej_wrapped_item_name() {
+        let lines = [
+            sale_with(
+                "000517",
+                &[LONG_NAME.to_string(), lr("", "\\1,200")],
+                1,
+                1_200,
+            ),
+            sale_with(
+                "000518",
+                &[qty(2, "600"), LONG_NAME.to_string(), lr("", "\\1,200")],
+                2,
+                1_200,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        let first = &items_of(&result.records[0])[0];
+        assert_eq!(
+            (
+                first.line_no,
+                first.name.as_str(),
+                first.quantity,
+                first.amount
+            ),
+            (3, LONG_NAME, 1, 1_200)
+        );
+        let second = &items_of(&result.records[1])[0];
+        assert_eq!(
+            (
+                second.line_no,
+                second.quantity,
+                second.unit_price,
+                second.amount
+            ),
+            (11, 2, Some(600), 1_200)
+        );
+        assert_eq!(
+            result.records[0].body[0].kind,
+            EjLineKind::ItemName {
+                name: LONG_NAME.to_string()
+            }
+        );
+        assert_eq!(
+            result.records[0].body[1].kind,
+            EjLineKind::Continued { amount: 1_200 }
+        );
+    }
+
+    // G-M7 / IO-08-D6b: マイナスキー（`*` の有無）は adjustments で、点数を変えない
+    #[test]
+    fn parse_ej_minus_key() {
+        let lines = [
+            sale_with("000519", &[item(NAME_A, 500), minus_key("-100*")], 1, 400),
+            sale_with("000520", &[item(NAME_A, 500), minus_key("-50")], 1, 450),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            adjustment_kinds(&result.records[0]),
+            [(EjAdjustmentKind::MinusKey, -100)]
+        );
+        assert_eq!(
+            adjustment_kinds(&result.records[1]),
+            [(EjAdjustmentKind::MinusKey, -50)]
+        );
+        assert_eq!(item_count_of(&result.records[0]), 1);
+    }
+
+    // G-M8 / IO-08-D6d: 戻の印の直後の負の明細は数量 -1・負の金額
+    #[test]
+    fn parse_ej_return_marked_item() {
+        let result = parse(&sale_with(
+            "000521",
+            &[item(NAME_A, 1_000), return_mark(), lr(NAME_B, "-300")],
+            0,
+            700,
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        let items = items_of(&result.records[0]);
+        assert_eq!(items.len(), 2);
+        assert_eq!(
+            (items[1].name.as_str(), items[1].quantity, items[1].amount),
+            (NAME_B, -1, -300)
+        );
+        assert_eq!(items[1].unit_price, None);
+    }
+
+    // G-M9 / IO-08-D6 / D6a: すべて取り消した取引は items 空の Restored
+    #[test]
+    fn parse_ej_all_items_cancelled_restores_empty() {
+        let lines = [
+            header("", AT, "000522"),
+            vec![
+                item(NAME_A, 100),
+                correction("-100"),
+                sep(),
+                count(0),
+                wide("現金", 0),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            result.records[0].restoration,
+            EjRestoration::Restored {
+                items: vec![],
+                item_count: 0,
+                adjustments: vec![],
+            }
+        );
+    }
+
+    // G-C1 / IO-08-D7a: 取引中止の記録は明細を返さない
+    #[test]
+    fn parse_ej_cancelled_transaction() {
+        let lines = [
+            header("", AT, "000530"),
+            vec![
+                item(NAME_A, 120),
+                item(NAME_B, 380),
+                correction("-380"),
+                qty(2, "100"),
+                item(NAME_C, 200),
+                cancel_mark(),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(kinds(&result), [EjRecordKind::Cancelled]);
+        assert!(all_no_items(&result));
+        assert_eq!(result.records[0].body[5].kind, EjLineKind::CancelMark);
+    }
+
+    // G-C2 / IO-08-D7a: 値引き・マイナスキーを含む取引中止
+    #[test]
+    fn parse_ej_cancelled_transaction_with_discounts() {
+        let lines = [
+            header("", AT, "000531"),
+            vec![
+                item(NAME_A, 500),
+                rate(10),
+                percent_off("-50"),
+                cancel_mark(),
+            ],
+            header("", AT, "000532"),
+            vec![item(NAME_A, 500), minus_key("-100"), cancel_mark()],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(
+            kinds(&result),
+            [EjRecordKind::Cancelled, EjRecordKind::Cancelled]
+        );
+        assert!(all_no_items(&result));
+    }
+
+    // G-C3 / IO-08-D7a: 取引中止の中の訂正の取消先が合わない
+    #[test]
+    fn parse_ej_cancelled_transaction_with_mismatched_correction() {
+        let lines = [
+            header("", AT, "000533"),
+            vec![
+                item(NAME_A, 120),
+                item(NAME_B, 380),
+                correction("-120"),
+                cancel_mark(),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert_eq!(result.records[0].kind, EjRecordKind::Cancelled);
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+    }
+
+    // G-F1 / IO-08-D6a: 直前でない同額の明細への訂正は取り消さない
+    #[test]
+    fn parse_ej_correction_of_non_previous_item_unresolves() {
+        let result = parse(&sale_with(
+            "000540",
+            &[item(NAME_A, 120), item(NAME_B, 380), correction("-120")],
+            1,
+            380,
+        ));
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+    }
+
+    // G-F2 / IO-08-D6a: 直前の項目の無い訂正・訂正の連続・金額 0 の訂正
+    #[test]
+    fn parse_ej_correction_without_previous_item_unresolves() {
+        let lines = [
+            sale_with("000541", &[correction("-100"), item(NAME_A, 100)], 1, 100),
+            [
+                header("", AT, "000542"),
+                vec![
+                    item(NAME_A, 100),
+                    item(NAME_B, 200),
+                    correction("-200"),
+                    correction("-100"),
+                    sep(),
+                    count(0),
+                    wide("現金", 0),
+                ],
+            ]
+            .concat(),
+            sale_with("000543", &[item(NAME_A, 100), correction("\\0")], 1, 100),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [InconsistentRecord]);
+        }
+    }
+
+    // G-F3 / IO-08-D6b: 率の行と ％値引きは対
+    #[test]
+    fn parse_ej_rate_and_percent_discount_must_pair() {
+        let lines = [
+            sale_with(
+                "000544",
+                &[item(NAME_A, 500), rate(10), item(NAME_B, 500)],
+                2,
+                1_000,
+            ),
+            sale_with("000545", &[item(NAME_A, 500), percent_off("-50")], 1, 450),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [InconsistentRecord]);
+        }
+    }
+
+    // G-F4 / IO-08-D6b: 小計の金額は前の明細の和
+    #[test]
+    fn parse_ej_subtotal_mismatch_unresolves() {
+        let result = parse(&sale_with(
+            "000546",
+            &[
+                item(NAME_A, 400),
+                item(NAME_B, 600),
+                lr("小計", "\\900"),
+                rate(10),
+                percent_off("-100*"),
+            ],
+            2,
+            900,
+        ));
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+    }
+
+    // G-F5 / IO-08-D6b: `*` つきは小計の後、`*` なしは明細の後
+    #[test]
+    fn parse_ej_subtotal_and_item_discount_are_not_swapped() {
+        let lines = [
+            sale_with(
+                "000547",
+                &[item(NAME_A, 1_000), rate(10), percent_off("-100*")],
+                1,
+                900,
+            ),
+            sale_with(
+                "000548",
+                &[
+                    item(NAME_A, 1_000),
+                    lr("小計", "\\1,000"),
+                    rate(10),
+                    percent_off("-100"),
+                ],
+                1,
+                900,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [InconsistentRecord]);
+        }
+    }
+
+    // G-F6 / IO-08-D6b: ％値引き・マイナスキーの金額は負
+    #[test]
+    fn parse_ej_positive_discount_unresolves() {
+        let lines = [
+            sale_with(
+                "000549",
+                &[item(NAME_A, 1_000), rate(10), percent_off("\\100")],
+                1,
+                1_100,
+            ),
+            sale_with(
+                "000550",
+                &[item(NAME_A, 1_000), minus_key("\\100")],
+                1,
+                1_100,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [InconsistentRecord]);
+        }
+    }
+
+    // G-F7 / IO-08-D6d: 戻のモードでは戻の印を受けない
+    #[test]
+    fn parse_ej_return_mark_in_return_mode_unresolves() {
+        let lines = [
+            header("戻", AT, "000551"),
+            vec![
+                item(NAME_A, 1_000),
+                return_mark(),
+                lr(NAME_B, "-300"),
+                sep(),
+                count(0),
+                wide("合  計", 700),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+    }
+
+    // G-F8 / IO-08-D6d: 戻の印の無い負の明細、戻の印の直後の正の明細
+    #[test]
+    fn parse_ej_negative_item_without_return_mark_unresolves() {
+        let lines = [
+            sale_with("000552", &[item(NAME_A, 1_000), lr(NAME_B, "-300")], 0, 700),
+            sale_with("000553", &[item(NAME_A, 1_000), item(NAME_B, -300)], 0, 700),
+            sale_with(
+                "000554",
+                &[item(NAME_A, 1_000), return_mark(), item(NAME_B, 300)],
+                2,
+                1_300,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [InconsistentRecord]);
+        }
+    }
+
+    // G-F11 / IO-08-D7a: 区切りのある取引の明細域の取引中止の印は未知の行
+    #[test]
+    fn parse_ej_cancel_mark_in_sale_unresolves() {
+        let result = parse(&sale_with(
+            "000555",
+            &[item(NAME_A, 100), cancel_mark()],
+            1,
+            100,
+        ));
+
+        let record = &result.records[0];
+        assert_eq!(record.kind, EjRecordKind::Sale);
+        assert_eq!(reasons_of(record), [UnknownLine]);
+        assert_eq!(record.body[1].kind, EjLineKind::Unknown);
+    }
+
+    // G-F13 / IO-08-D5 / D5a: 前の行の無い続きの行、読めない明細の行の後の続きの行
+    #[test]
+    fn parse_ej_continued_line_without_name_line_unresolves() {
+        let lines = [
+            sale_with("000556", &[item(NAME_A, 100), lr("", "\\1,200")], 2, 1_300),
+            one_item_sale(
+                "000557",
+                100,
+                &[wide("合  計", 100), lr("", &zen_amount(100))],
+            ),
+            sale_with(
+                "000558",
+                &[lr("A", "\\9223372036854775808"), lr("", &yen(100))],
+                1,
+                100,
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [UnknownLine]);
+        }
+        let overflow = &result.records[2];
+        assert_eq!(overflow.body[0].kind, EjLineKind::Unknown);
+        assert_eq!(overflow.body[1].kind, EjLineKind::Unknown);
+        let unknown_lines = result
+            .diagnostics
+            .iter()
+            .filter(|d| d.code == UnknownLine && d.line_no >= Some(overflow.header_line_no))
+            .count();
+        assert_eq!(unknown_lines, 2);
+    }
+
+    // G-F14 / IO-08-D5: 小数の数量行と小数の点数は受理しない
+    #[test]
+    fn parse_ej_decimal_quantity_and_count_unresolve() {
+        let lines = [
+            sale_with(
+                "000559",
+                &["  1.5 点   @100".to_string(), item(NAME_A, 150)],
+                1,
+                150,
+            ),
+            [
+                header("", AT, "000560"),
+                vec![
+                    item(NAME_A, 150),
+                    sep(),
+                    lr("", "1.5 点"),
+                    wide("合  計", 150),
+                ],
+            ]
+            .concat(),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        for record in &result.records {
+            assert_eq!(reasons_of(record), [UnknownLine]);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // 致命的エラー
     // -----------------------------------------------------------------------
 
@@ -3138,6 +4100,68 @@ mod tests {
         all.extend(rows(&sale("ZZZ", "000203", &[item(NAME_A, 100)], 1, 100)));
         all.extend(rows(&sale("", "000204", &[item(NAME_A, 100)], 2, 100)));
         all.extend(rows(&program(AT, "000205")));
+        // G-X1: 診断を出さない新しい行種の記録（dedup した 7 code の順を崩さない）
+        all.extend(rows(
+            &[
+                header("", AT, "000230"),
+                vec![
+                    item(NAME_A, 100),
+                    lr("-10%", ""),
+                    lr("％－", "-10"),
+                    lr("取引中止 ････", ""),
+                ],
+            ]
+            .concat(),
+        ));
+        all.extend(rows(
+            &[
+                header("練習", AT, "000231"),
+                vec![item(NAME_A, 100), "･･････トレーニング･･････".to_string()],
+            ]
+            .concat(),
+        ));
+        all.extend(rows(
+            &[
+                header("精算", AT, "000232"),
+                vec![
+                    "0007 日計明細  Z 0003".to_string(),
+                    lr("ｽﾏ-ﾄﾌｫﾝ送信", "異常終了"),
+                ],
+            ]
+            .concat(),
+        ));
+        all.extend(rows(
+            &[header("PGM3", AT, "000233"), vec!["ﾋｮｳｼﾞ ｾｯﾃｲ".to_string()]].concat(),
+        ));
+        all.extend(rows(
+            &[
+                header("", AT, "000234"),
+                vec![
+                    " 一連No.000233".to_string(),
+                    " 領収No.1".to_string(),
+                    wide("領収書", 100),
+                ],
+            ]
+            .concat(),
+        ));
+        all.extend(rows(
+            &[
+                header("", AT, "000235"),
+                vec![
+                    "ﾅｶﾞｲﾒｲｼｮｳﾉ ﾃｽﾄｼｮｳﾋﾝ".to_string(),
+                    lr("", "\\300"),
+                    item(NAME_B, 200),
+                    lr("訂正", "-200"),
+                    item(NAME_A, 100),
+                    lr("－", "-50"),
+                    sep(),
+                    count(2),
+                    wide("合  計", 350),
+                    lr("＃ 0012", ""),
+                ],
+            ]
+            .concat(),
+        ));
         all.extend(rows(&settlement("000206")));
         all.extend(rows(
             &[header("", AT, "000207"), vec![wide("入金", 3_000)]].concat(),
@@ -3170,9 +4194,46 @@ mod tests {
         covered.sort_unstable();
         assert_eq!(covered, (1..=n).collect::<Vec<_>>());
 
+        // G-X1: 足した記録は診断を出さずに読める（dedup で隠れないよう個別に見る）
+        let added: Vec<_> = result
+            .records
+            .iter()
+            .filter(|r| ("000230"..="000235").contains(&r.number.as_str()))
+            .map(|r| {
+                (
+                    r.kind.clone(),
+                    matches!(r.restoration, EjRestoration::Unresolved { .. }),
+                )
+            })
+            .collect();
+        assert_eq!(
+            added,
+            [
+                (EjRecordKind::Cancelled, false),
+                (EjRecordKind::Training, false),
+                (
+                    EjRecordKind::Settlement {
+                        report: EjSettlementReport::Daily,
+                        completed: false,
+                    },
+                    false
+                ),
+                (EjRecordKind::Settings, false),
+                (EjRecordKind::Receipt, false),
+                (EjRecordKind::Sale, false),
+            ]
+        );
+
         assert!(!result.diagnostics.is_empty());
         for diagnostic in &result.diagnostics {
-            for name in [NAME_A, NAME_B, "ﾃｲｾｲﾋｮｳｼﾞ", "ZZZ"] {
+            for name in [
+                NAME_A,
+                NAME_B,
+                "ﾃｲｾｲﾋｮｳｼﾞ",
+                "ZZZ",
+                "ﾅｶﾞｲﾒｲｼｮｳﾉ ﾃｽﾄｼｮｳﾋﾝ",
+                "ﾋｮｳｼﾞ ｾｯﾃｲ",
+            ] {
                 assert!(
                     !diagnostic.message.contains(name),
                     "文言に名称が入っています"
