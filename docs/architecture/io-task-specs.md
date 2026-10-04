@@ -4,7 +4,7 @@
 
 SPEC-STK-TIME-D1〜D8。IO-01は[20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md)の新契約で、kind・両cursor・request ID・(商品, 資料)単位のflag・受領を保存し、数量と版の不可分更新を強制する。TXの開始/確定と業務判断はBIZが所有する。24はsourceの受領と識別メタ（23のsettled_atを含む）を保存し、精算同一性の照合候補をBIZへ渡す。
 
-IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に抽出し、正常JANのゼロ行を証拠集合へ残す。時計・精算系列の信用や商品別のBefore/Afterは判断しない。既存のCP932・改行・符号・空スロットとPLU占有modeは維持する。新しいSQL/schemaは未実装で、[DB契約](../DB_DESIGN.md)をruntimeの移行・故障注入試験へ渡す。
+IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に抽出し、正常JANのゼロ行を証拠集合へ残す。時計・精算系列の信用や商品別のBefore/Afterは判断しない。既存のCP932・改行・符号・売上の無い枠の読み飛ばし（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）とPLU占有modeは維持する。新しいSQL/schemaは未実装で、[DB契約](../DB_DESIGN.md)をruntimeの移行・故障注入試験へ渡す。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）
@@ -74,8 +74,8 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
 4. 2行目スキップ（ヘッダ）
 5. 3行目以降を5フィールドCSVパース
    - フィールド数不正 → parse_errorsに追加、次の行へ
-   - JAN正規化（末尾アルファベット除去→13桁化）。全桁ゼロは除外（エラーにもしない）
-   - quantity/amountを整数パース。失敗 → parse_errorsに追加
+   - quantity/amountを整数パース（3桁区切りのカンマを受理）。失敗 → parse_errorsに追加
+   - JAN正規化（末尾アルファベット除去→13桁化）。コードが全桁ゼロか13桁JANにならない行は、個数・金額とも0なら除外、売上があれば parse_errors に追加（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）
 6. ParseResultを返す
 
 **【制御構造】**

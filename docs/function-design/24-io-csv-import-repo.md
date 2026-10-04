@@ -63,7 +63,7 @@ sales_repo.rs に追加する（ARCHITECTURE.md: sales_repository は sale_recor
 - source_line_no: i64
 - normalized_jan: Option\<String\>（JAN正規化前にエラーならNone）
 - raw_name: String
-- raw_quantity: String（数値変換前の生値。TEXTで保持する理由は DB_DESIGN.md 12a 参照）
+- raw_quantity: String（値の出どころ〈ParseError 由来は元の文字列、unmatched_product は整数の文字列表現〉とTEXTで保持する理由は DB_DESIGN.md 12a 参照）
 - raw_amount: String（同上）
 - error_type: String（"unmatched_product" / "invalid_format" / "invalid_jan" / "invalid_number"）
 - error_message: String（利用者向け日本語メッセージ）
