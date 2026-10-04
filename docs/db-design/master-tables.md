@@ -125,12 +125,12 @@
 | name | TEXT | NOT NULL, UNIQUE | 部門名（例: 毛糸、ヘア雑貨） |
 | z005_name | TEXT | NULLABLE | Z005でのCSV上の部門名（整合性検証用） |
 | code_prefix | TEXT | NULLABLE | 独自コードの接頭辞（例: F, H）。NULLなら独自コード発番対象外 |
-| next_seq | INTEGER | NOT NULL, DEFAULT 1 | 次に発番する連番 |
+| next_seq | INTEGER | NOT NULL, DEFAULT 1 | 次に発番する連番の下限。発番時に、同じ接頭辞の既存の独自コードの番号の最大 + 1 まで上げてから使う（30-biz BIZ-01-D6） |
 | created_at | TEXT | NOT NULL | 作成日時 |
 
 ### 設計意図
 - **z005_nameの理由**: システムの部門名とZ005のCSV上の部門名が微妙に違う可能性への対策。整合性検証（REQ-403）でZ005の部門名をこのカラムでマッピングする
-- **code_prefix + next_seqの理由**: 独自コードの自動発番をDBで管理。「ヘア雑貨」部門でcode_prefix="HZ", next_seq=47なら、次に登録する独自コード商品は"HZ-0047"。発番後にnext_seqを+1する。トランザクションで排他制御すれば番号の重複が起きない
+- **code_prefix + next_seqの理由**: 独自コードの自動発番をDBで管理。「ヘア雑貨」部門でcode_prefix="HZ", next_seq=47なら、次に登録する独自コード商品は"HZ-0047"。発番後にnext_seqを+1する。トランザクションで排他制御すれば番号の重複が起きない。商品 CSV の取込みは next_seq を進めないため、取り込んだ `HZ-0047` などと重ならないよう、発番は既存のコードの番号の最大の次と next_seq の大きい方を使う（30-biz BIZ-01-D6、D-106）
 
 ### 他の案と不採用理由
 - **独自コード発番を別テーブル（code_sequences）で管理する案**: 部門と1:1の関係なので分ける意味が薄い。departmentsに持たせた方がシンプル

@@ -307,6 +307,24 @@ fn find_active_products_for_plu(conn: &DbConnection) -> Result<Vec<ProductForPlu
 
 ---
 
+#### list_product_codes_by_prefix
+
+**関数要求**: product_code が指定の文字列で始まる商品の product_code を全件返す。独自コード発番で既存の番号を数えるため（30-biz §4.3、BIZ-01-D6）。番号の読み取りはしない（BIZ が持つ）
+
+**シグネチャ**:
+```
+fn list_product_codes_by_prefix(conn: &DbConnection, prefix: &str) -> Result<Vec<String>, DbError>
+```
+
+**処理ステップ**:
+1. SQL実行: SELECT product_code FROM products WHERE substr(product_code, 1, length(?1)) = ?1（`LIKE` は使わない。ASCII の大文字・小文字を同一視し、`%` `_` を特殊文字として扱うため）。廃番を含む全商品
+2. 0 行 → 空の Vec
+
+**エラーハンドリング**:
+- SQL実行失敗 → DbError::QueryFailed(詳細)
+
+---
+
 ### 2.4 product_repo — 部門リポジトリ（同ファイル内）
 
 #### find_department_by_id
@@ -339,6 +357,21 @@ fn increment_next_seq(conn: &DbConnection, department_id: i64) -> Result<i64, Db
 4. current_seq（インクリメント前の値）を返す
 
 **注意**: この関数はトランザクション内で呼ばれることを前提とする（BIZ-01の独自コード発番処理内）
+
+#### raise_next_seq
+
+**関数要求**: departments の next_seq が指定の値より小さいときだけ、その値へ上げる。下げない。独自コード発番で既存の番号を飛ばすため（30-biz §4.3、BIZ-01-D6）
+
+**シグネチャ**:
+```
+fn raise_next_seq(conn: &DbConnection, department_id: i64, at_least: i64) -> Result<(), DbError>
+```
+
+**処理ステップ**:
+1. UPDATE departments SET next_seq = MAX(next_seq, ?2) WHERE id = ?1
+2. 変更行数 0 → DbError::NotFound
+
+**注意**: increment_next_seq と同じく、トランザクション内で呼ばれることを前提とする（BIZ-01の独自コード発番処理内）
 
 ---
 
