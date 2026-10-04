@@ -605,6 +605,11 @@ fn build_record(
     }
 }
 
+/// トレーニングの表示の行（IO-08-D3a の 4）
+fn is_training_display(text: &str) -> bool {
+    text.starts_with("ﾄﾚｰﾆﾝｸﾞﾓｰﾄﾞを") || text.trim() == "･･････トレーニング･･････"
+}
+
 /// IO-08-D3a: 番号印字の行を除いた本文で、表を上から当てて記録の種類を決める
 fn record_kind(mode: &EjMode, body: &[RawLine]) -> EjRecordKind {
     let core_lines: Vec<&RawLine> = body
@@ -625,9 +630,9 @@ fn record_kind(mode: &EjMode, body: &[RawLine]) -> EjRecordKind {
             return EjRecordKind::Inspection;
         }
     }
-    let training_display =
-        |text: &&str| text.starts_with("ﾄﾚｰﾆﾝｸﾞﾓｰﾄﾞを") || text.trim() == "･･････トレーニング･･････";
-    if *mode == EjMode::Training || (!core.is_empty() && core.iter().all(training_display)) {
+    if *mode == EjMode::Training
+        || (!core.is_empty() && core.iter().all(|text| is_training_display(text)))
+    {
         return EjRecordKind::Training;
     }
     match mode {
@@ -991,6 +996,7 @@ fn classify_items(
     } else if !text.starts_with(char::is_whitespace)
         && next.and_then(item_continued).is_some()
         && !item_token_overflows(text)
+        && !is_other_line_shape(text)
     {
         EjLineKind::ItemName {
             name: text.trim_end().to_string(),
@@ -1014,6 +1020,22 @@ fn item_continued(text: &str) -> Option<i64> {
         (amount, true) => Some(amount),
         _ => None,
     }
+}
+
+/// 表でほかの行種として形が定まった行（ItemName にしない。IO-08-D5a）。
+/// Text / AmountOnly / Unknown は形が定まらないので含めない
+fn is_other_line_shape(text: &str) -> bool {
+    is_mark(text, "取引中止")
+        || is_number_print(text)
+        || parse_status(text).is_some()
+        || labeled(text, &TOTAL_LABELS).is_some()
+        || labeled(text, &PAID_LABELS).is_some()
+        || labeled(text, &REPORT_LABELS).is_some()
+        || text.trim() == REDUCED_TAX_NOTE
+        || receipt_label(text).is_some()
+        || report_title(text).is_some()
+        || ["日計明細", "ＰＬＵ", "勤怠"].contains(&text.trim())
+        || is_training_display(text)
 }
 
 /// 最後の語が金額 token の形で、値が i64 に収まらない行（ItemName にしない）
@@ -1062,14 +1084,14 @@ fn parse_starred_amount(text: &str, label: &str) -> Option<(i64, bool)> {
 
 /// 取引の合計域（IO-08-D5a / D5b）。prev は直前の行
 fn classify_totals(text: &str, prev: Option<&EjLine>) -> EjLineKind {
-    // 直前が金額 token を持たないラベルの行（ラベルだけ・`対象計` の率だけ）なら続きの行になれる
-    let after_bare_label = prev.is_some_and(|prev| {
-        matches!(prev.kind, EjLineKind::Labeled { .. })
-            && prev
-                .text
-                .split_whitespace()
-                .last()
-                .is_none_or(|token| parse_amount(token).is_none())
+    // 直前がラベルだけの行（軽減税率の注記を除く）か `対象計` の率だけの行なら続きの行になれる
+    let after_bare_label = prev.is_some_and(|prev| match prev.kind {
+        EjLineKind::Labeled { label } if label != REDUCED_TAX_NOTE => prev
+            .text
+            .strip_prefix(label)
+            .map(str::trim)
+            .is_some_and(|rest| rest.is_empty() || (label.starts_with("対象計") && is_rate(rest))),
+        _ => false,
     });
     if let Some(count) = parse_item_count(text) {
         EjLineKind::ItemCount { count }
@@ -1091,6 +1113,14 @@ fn classify_totals(text: &str, prev: Option<&EjLine>) -> EjLineKind {
     } else {
         EjLineKind::Unknown
     }
+}
+
+/// `対象計` の率: ASCII 数字 1 個以上 + 任意の（`.` + ASCII 数字 1 個以上）+ `%`
+fn is_rate(text: &str) -> bool {
+    text.strip_suffix('%').is_some_and(|rate| {
+        let (whole, fraction) = rate.split_once('.').unwrap_or((rate, "0"));
+        parse_count(whole).is_some() && parse_count(fraction).is_some()
+    })
 }
 
 /// 精算票・点検票（題の無い精算・点検のモードの記録を含む）の行（IO-08-D5d）
@@ -1239,7 +1269,7 @@ fn labeled_kind(text: &str, labels: &[&'static str]) -> EjLineKind {
     labeled(text, labels).map_or(EjLineKind::Unknown, |label| EjLineKind::Labeled { label })
 }
 
-/// 空白 + 1 以上の整数 + ` 点` + 空白 + `@` + 通貨記号なし・`-` なしの単価 + 空白。
+/// 空白 + 1 以上の整数 + ` 点` + 空白 + `@` + 通貨記号なし・符号（`-` / `－`）なしの単価 + 空白。
 /// 数量 0 は Σ数量にも Σ金額にも寄与せず照合を素通りするため受理しない
 fn parse_quantity(text: &str) -> Option<(i64, i64)> {
     if !text.starts_with(' ') {
@@ -1248,7 +1278,7 @@ fn parse_quantity(text: &str) -> Option<(i64, i64)> {
     let (quantity, rest) = text.trim().split_once(" 点")?;
     let price = rest.strip_prefix(' ')?.trim_start().strip_prefix('@')?;
     match (parse_count(quantity)?, parse_amount(price)?) {
-        (quantity @ 1.., (unit_price, false)) if !price.starts_with('-') => {
+        (quantity @ 1.., (unit_price, false)) if !price.starts_with(['-', '－']) => {
             Some((quantity, unit_price))
         }
         _ => None,
@@ -1283,7 +1313,6 @@ fn parse_item(text: &str) -> Option<(String, i64)> {
     }
     let (name, token) = text.trim_end().rsplit_once(' ')?;
     let name = name.trim_end();
-    // `※`（軽減税率の印）は通貨記号つきの金額の後だけ。解釈しない
     // `※`（軽減税率の印）は通貨記号つきの金額の後だけ。解釈しない
     let (token, marked) = match token.strip_suffix('※') {
         Some(token) => (token, true),
@@ -4031,6 +4060,171 @@ mod tests {
         for record in &result.records {
             assert_eq!(reasons_of(record), [UnknownLine]);
         }
+    }
+
+    // G-F16 / IO-08-D5a: 明細域のほかの行種の形は名称の行にしない
+    #[test]
+    fn parse_ej_item_name_rejects_other_line_shapes() {
+        let record_with = |x: &str| {
+            parse(
+                &[
+                    header("", AT, "000561"),
+                    vec![
+                        item(NAME_B, 50),
+                        x.to_string(),
+                        lr("", "\\100"),
+                        sep(),
+                        count(2),
+                        wide("合  計", 150),
+                    ],
+                ]
+                .concat(),
+            )
+        };
+        let shapes = [
+            "取引中止 ････",
+            "＃ 12",
+            "SD設定書込み 正常終了",
+            "合  計",
+            "現金",
+            "商品券",
+            "対象計 8.0%",
+            REDUCED_TAX_NOTE,
+            "替 ｺｵｳｶﾝ",
+            "一連No.000123",
+            "領収No.1",
+            "総売 12",
+            "領収書 3 件",
+            "取引中止 2 件",
+            "ﾄﾚｰﾆﾝｸﾞﾓｰﾄﾞを開始します",
+            "･･････トレーニング･･････",
+            "日計明細",
+            "0000 日計明細 X",
+            "在売点検 X",
+        ];
+        for x in shapes {
+            let result = record_with(x);
+            let record = &result.records[0];
+            assert_eq!(
+                (&record.body[1].kind, &record.body[2].kind),
+                (&EjLineKind::Unknown, &EjLineKind::Unknown),
+                "X = {x}"
+            );
+            assert!(
+                matches!(&record.restoration, EjRestoration::Unresolved { reasons } if reasons == &[UnknownLine]),
+                "X = {x}: {:?}",
+                record.restoration
+            );
+        }
+
+        let control = record_with("ｼﾞｮｰｾｲ 500ml");
+        assert!(control.diagnostics.is_empty());
+        assert_eq!(items_of(&control.records[0]).len(), 2);
+    }
+
+    // G-F17 / IO-08-D5: 単価の全角の `－` も符号として拒む
+    #[test]
+    fn parse_ej_full_width_minus_unit_price_unresolves() {
+        for price in ["－１", "－０", "-1", "-0"] {
+            assert_eq!(
+                parse_quantity(&format!(" 1 点   @{price}")),
+                None,
+                "@{price}"
+            );
+        }
+        assert_eq!(parse_quantity(" 1 点   @100"), Some((1, 100)));
+
+        let lines = [
+            header("", AT, "000562"),
+            vec![
+                " 1 点 @－０".to_string(),
+                item(NAME_A, 0),
+                sep(),
+                count(1),
+                wide("合  計", 0),
+            ],
+            header("", AT, "000563"),
+            vec![
+                " 1 点 @－１".to_string(),
+                lr(NAME_A, "-1"),
+                sep(),
+                count(1),
+                lr("合  計", "－１"),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert_eq!(result.records.len(), 2);
+        for record in &result.records {
+            assert_eq!(record.body[0].kind, EjLineKind::Unknown);
+            assert_eq!(reasons_of(record), [UnknownLine]);
+        }
+    }
+
+    // G-F18 / IO-08-D5a: 合計域の続きの行の受け手はラベルだけの行と `対象計` の率だけの行
+    #[test]
+    fn parse_ej_totals_continued_requires_bare_label_or_taxable_rate() {
+        let cases = [
+            (
+                vec![
+                    wide("合  計", 100),
+                    REDUCED_TAX_NOTE.to_string(),
+                    lr("", &zen_amount(100)),
+                ],
+                5,
+            ),
+            (
+                vec![lr("内税", "8.0%"), lr("", "\\9"), wide("合  計", 100)],
+                4,
+            ),
+            (
+                vec![
+                    wide("合  計", 100),
+                    lr("現金", "abc"),
+                    lr("", &zen_amount(100)),
+                ],
+                5,
+            ),
+        ];
+        for (tail, at) in cases {
+            let result = parse(&one_item_sale("000564", 100, &tail));
+            let record = &result.records[0];
+            assert_eq!(record.body[at].kind, EjLineKind::Unknown, "{tail:?}");
+            assert_eq!(reasons_of(record), [UnknownLine], "{tail:?}");
+        }
+
+        let control = parse(&one_item_sale(
+            "000565",
+            100,
+            &[lr("対象計※", "8.0%"), lr("", "\\100"), wide("合  計", 100)],
+        ));
+        assert!(control.diagnostics.is_empty());
+        assert_eq!(
+            control.records[0].body[4].kind,
+            EjLineKind::Continued { amount: 100 }
+        );
+    }
+
+    // G-T9 / IO-08-D6a / D6c: 合計域の訂正は折り返した支払行を取り消す
+    #[test]
+    fn parse_ej_total_region_correction_cancels_wrapped_payment() {
+        let result = parse(&one_item_sale(
+            "000566",
+            100,
+            &[
+                "ｸﾚｼﾞｯﾄ電子M".to_string(),
+                lr("", &zen_amount(100)),
+                correction("-100"),
+                wide("現金", 100),
+            ],
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        restored_one(&result.records[0], 100);
+        let body = &result.records[0].body;
+        assert_eq!(body[4].kind, EjLineKind::Continued { amount: 100 });
+        assert_eq!(body[5].kind, EjLineKind::Correction { amount: -100 });
     }
 
     // -----------------------------------------------------------------------
