@@ -120,7 +120,7 @@ CSV取込み時にスキップされた行（マスタ未登録、フォーマ�
 |---|------|---------|
 | unmatched_product | マスタ未登録商品 | Validate |
 | invalid_format | フィールド数不正等 | Parse |
-| invalid_jan | JAN正規化不能 | Parse |
+| invalid_jan | JAN正規化不能（売上のある行だけ）、または商品コードの無い枠（PLU の登録を消した枠、コードを持たない通常 PLU）の売上（D-103） | Parse |
 | invalid_number | 個数・金額が数値でない | Parse |
 
 ### 設計意図
@@ -331,18 +331,19 @@ COMMIT後に:
 
 **JAN正規化**:
 - scanning_code_rawが14桁かつ末尾がアルファベット（E等）→ 末尾を除去して13桁化
-- `00000000000000` → 未登録スロット扱い（除外、エラーにもカウントしない）
-- 正規化後が13桁でも全桁0埋め等の異常値 → 行エラー（error_type='invalid_jan'）
+- 個数・金額を先に読み、売上の有無で行を分ける（[23 §13.4.2](../function-design/23-io-z004-parser.md) SPEC-Z4A-D8、D-103）
+- コード全桁0（`00000000000000` / `0000000000000`）で個数・金額とも0 → 売上の無い枠（除外、エラーにもカウントしない）
+- コード全桁0で個数か金額が0でない（PLU の登録を消した枠、コードを持たない通常 PLU）→ 行エラー（error_type='invalid_jan'、商品コードの無い枠の売上）。黙って除外しない
+- 13桁JANにならないコード（8桁独自コード + `EEEEEE` 等）→ 個数・金額とも0なら除外、売上があれば行エラー（error_type='invalid_jan'）
 
 **数値変換**:
-- quantity_raw / amount_raw を整数にパース
+- quantity_raw / amount_raw を整数にパース。3桁区切りのカンマ（例 `1,234`）は受理する（23 §13.4.1 SPEC-Z4A-D7）
 - パース失敗 → 行エラー（error_type='invalid_number'）
 
 ### Stage 2: Validate（構造化データ → 処理対象の選別）
 
 **空レコード除外**（エラーにもカウントしない）:
-- normalized_jan = `0000000000000`（13桁ゼロ）→ 除外
-- quantity = 0 かつ amount = 0 → 除外（PLU登録あるが当日販売なし）
+- quantity = 0 かつ amount = 0 → 除外（PLU登録あるが当日販売なし。コード全桁0の行は Stage 1 で分類済みで、ここには来ない）
 
 **実データ判定**:
 - normalized_janが有効（非ゼロ）かつ（quantity ≠ 0 or amount ≠ 0）

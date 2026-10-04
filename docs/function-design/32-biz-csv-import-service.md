@@ -258,14 +258,14 @@ fn parse_and_validate(
 4. **Stage 2: Validate**
    a. 空レコード除外（エラーにもカウントしない）
       - quantity == 0 かつ amount == 0（PLU登録あるが当日販売なしのスロット）
-      - ※ 全桁ゼロJAN（"0000000000000"）はIO-02 parse_data_lineで除外済み（Ok(None)返却）。BIZ-03では重複チェック不要
+      - ※ コードが全桁ゼロか13桁JANにならない行は、IO-02 parse_data_line が個数・金額とも0なら読み飛ばし（Ok(None)）、どちらかが0でなければ invalid_jan の行エラーにする（[23 §13.4.2](23-io-z004-parser.md) SPEC-Z4A-D8、D-103）。parsed_rows には13桁JANの行だけが来るため、BIZ-03では全桁ゼロの再判定は不要
    b. 実データ行のマスタ照合: 各行について
       - product_repo::find_by_jan_code(conn, &normalized_jan) を呼び出し
       - ヒット1件 → MatchedRow { line_no, product_code, quantity, amount, pos_stock_sync: product.pos_stock_sync }
       - ヒット0件 → ErrorRow { line_no, normalized_jan: Some(normalized_jan), name, raw_quantity: quantity.to_string(), raw_amount: amount.to_string(), error_type: "unmatched_product", error_message: "JAN {jan} に該当する商品がありません" }
       - ヒット複数件 → ORDER BY product_code ASC で先頭を採用。warnings に "JAN {jan} は複数商品に紐付いています（{code} を使用）" を追加
    c. parse_result.parse_errors を ErrorRow にマージ
-      - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"
+      - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"。商品コードの無い枠の売上（PLU の登録を消した枠、コードを持たない通常 PLU。SPEC-Z4A-D8）も IO-02 の InvalidJan として届き、"invalid_jan" の ErrorRow になる。取込みは completed_partial になり、文言で見分ける（新しい種別を足さない理由は 23 §13.4.2）
       - Option→String 変換規約: ParseError.raw_name/raw_quantity/raw_amount が None の場合、空文字列に変換する。None は error_type が invalid_format の場合にのみ発生する（フィールド分割前のエラーで値が取得できなかった）。Z004のフィールドは実運用で空文字にならないため、空文字はパース前エラーと判別可能。DB保存（csv_import_errors）は空文字のまま、UI表示時に error_type が invalid_format なら「(不明)」等に置換する
    d. 実質0件ガード
       - matched_rows.is_empty() && error_rows.is_empty() → BizError::ImportError("取込み対象のデータがありません")

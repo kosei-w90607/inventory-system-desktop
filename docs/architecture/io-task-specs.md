@@ -74,8 +74,8 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
 4. 2行目スキップ（ヘッダ）
 5. 3行目以降を5フィールドCSVパース
    - フィールド数不正 → parse_errorsに追加、次の行へ
-   - JAN正規化（末尾アルファベット除去→13桁化）。全桁ゼロは除外（エラーにもしない）
-   - quantity/amountを整数パース。失敗 → parse_errorsに追加
+   - quantity/amountを整数パース（3桁区切りのカンマを受理）。失敗 → parse_errorsに追加
+   - JAN正規化（末尾アルファベット除去→13桁化）。コードが全桁ゼロか13桁JANにならない行は、個数・金額とも0なら除外、売上があれば parse_errors に追加（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）
 6. ParseResultを返す
 
 **【制御構造】**
