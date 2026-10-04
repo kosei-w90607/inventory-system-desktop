@@ -10,13 +10,13 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、worktree は本 lane のもの、branch `agent/daily-report-import-gaps`）
-- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6.1 Sol。`.local/codex-orders/MODEL-SELECTION.md` の表）。互いに独立で Writer と別 context
+- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6 Astra。`.local/codex-orders/MODEL-SELECTION.md` の表の「データの安全〈migration〉」の行）。互いに独立で Writer と別 context
 - Final Reviewer: Fable 5.1（fresh subagent）+ Codex（GPT-6.1 Sol）。互いに独立で Writer・Plan Reviewer と別 context。後の reviewer に先の結果を見せない
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -29,6 +29,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定の path に `sc
 - kickoff → spec-check（2026-10-04、起草役）: owner の lane の選択（TD-104）。Risk = R3 を記録（下の Risk）。
 - spec-check → design（2026-10-04、起草役）: 設計正本（IO-07 §29.2〜§29.5、BIZ-08 §37.2〜§37.7、pos-tables §12c・§12e・B-2、BIZ-05 §19.2、IO の repo §14.21・§14.22、MNT-03）が小数の個数・精算回数の照合・「レコード」列の意味を決めておらず、実物と食い違う（§29.4.1 の行コード）。`docs/DEV_WORKFLOW.md` Design artifact selection の「BIZ / IO の振舞い」「table / column / migration」「CSV の形の互換」「durable な選択（decision-log）」の行に当たるので design を通す。
 - design → plan-draft（2026-10-04、起草役、本 commit）: design の出力 = IO-07-D2〜D4、BIZ-08-D2、MNT-03-D12、[D-104](../decision-log.md#d-104-日報の小数の個数別の精算の混在レコード列の対応2026-10-04) と、各正本の型・手順・表の更新（下の Design Readiness）。同じ plan-first の commit に置く。未解決の設計の問いは無い（owner の判断を待つ事項も無い。下の「判断点」）。packet と Test Design Matrix を同じ commit に置く。
+- plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `ffb42112` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。Plan Reviewer の Codex を表の当てはめ（migration v7 を含む）で GPT-6 Astra に直した。
 
 ## Owner Effort Budget
 
