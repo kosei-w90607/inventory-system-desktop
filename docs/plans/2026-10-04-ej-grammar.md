@@ -26,6 +26,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定 file に `scrip
 
 - kickoff → spec-check → design → plan-draft（本 commit、plan-first、2026-10-04、起草役）: Risk R3 を記録（下の Risk）。in-scope の設計正本は `29-io-ej-parser.md` の IO-08.3〜IO-08.8 で、記録の種類をモード欄で決める契約（旧 IO-08.3）が実物と矛盾し、文法表に無い形が多いため更新が要ると判定した（spec-check → design）。設計の決定を `29-io-ej-parser.md`（IO-08-D3a・D5a〜D5d・D6a〜D6d・D7a、型定義、全期間の構造所見、採らなかった案）、`docs/architecture/io-task-specs.md` の IO-08 節、`docs/ARCHITECTURE.md` の IO-08 の行、`docs/decision-log.md` の D-105 に書き、owner の判断を要する未決の論点は無い（design → plan-draft）。packet と Test Design Matrix を同じ commit に置く。
 - plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `59a4f6ca` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。
+- plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus reject（P2 2・P3 5）・Codex reject（P2 3・P3 3）。Coordinator の裁定、相談役の反例探し、実データの確認を反映した。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -53,7 +54,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 店が普段レジで打つ取引（値引き・訂正・取消・現金以外の支払）と精算が、EJ の 1 file を `parse_ej` に渡したとき安全側の「復元不能」に倒れず、設計正本（`29-io-ej-parser.md` IO-08-D3a〜D7a）どおりに読める: 訂正で取り消した明細を除いた明細と値引きが返り、取引中止・練習・精算票（中断を含む）・点検票・設定・領収書は明細を返さない既知の記録として返る。合成 fixture の test で形ごとに示す（AC1〜AC8）。
+- 店が普段レジで打つ取引（値引き・訂正・取消・現金以外の支払）と精算が、EJ の 1 file を `parse_ej` に渡したとき安全側の「復元不能」に倒れず、設計正本（`29-io-ej-parser.md` IO-08-D3a〜D7a）どおりに読める: 訂正で取り消した明細を除いた明細と値引きが返り、取引中止・練習・精算票（次のヘッダで閉じた中断を含む）・点検票・設定・領収書は明細を返さない既知の記録として返る。file の最後の記録で終わりの印字の無い精算票は、EOF を閉じの根拠にせず今どおり復元不能（IO-08-D4）。合成 fixture の test で形ごとに示す（AC1〜AC8）。
 - 記録の種類（`EjRecord.kind`）が見出しのモード欄でなく本文の行で決まり、モード欄が `精算` でない完了した精算票も `Settlement { completed: true }` になる（AC1）。
 - 読めない形（未知の行・未知のモード・照合の不一致・訂正の取消先の不一致・本書に無い並び）は、今どおりその記録だけの復元不能（明細を返さない）に倒れる（AC9）。
 - 旧 parser（`76de30d8`）で `Restored` / `NoItems` だった実物の記録は、新 parser でも同じ復元状態で、`Restored` の明細は同じになる。実物で残る復元不能は Non-scope の形の記録だけになる（AC11、Coordinator の手元の確認。件数は tracked に書かない）。
@@ -83,7 +84,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | --- | --- | --- | --- | --- |
 | 普段の一日の EJ 1 file（販売・訂正つきの販売・％値引き・クレジットだけの支払・取引中止・入金・領収書・精算） | `parse_ej` に生バイトを渡す | 記録ごとに `kind` と復元状態。販売は訂正で取り消した明細を除く明細と値引きつきの `Restored`、取引中止・入金・領収書・精算票は `NoItems` | 後続が区間の照合と在庫反映に使える | 形は全期間の EJ の構造所見で確認済み（Contract Probe 1） |
 | 精算をモード欄が空・`点検`・`PGM` のまま打った日 | 同上 | 精算票が `Settlement { report: Daily, completed: true }` | 後続が区間の区切りに使える | Contract Probe 1 |
-| 送信の失敗で中断した精算票と再実行の精算票が並ぶ file | 同上 | 中断は `completed: false`、再実行は `completed: true`。どちらも `NoItems` | 区切りに使う精算の選び方は後続の design lane | 同上 |
+| 送信の失敗で中断した精算票と再実行の精算票が並ぶ file | 同上 | 中断は `completed: false`、再実行は `completed: true`。どちらも `NoItems`（中断は次のヘッダで閉じた記録。file の最後の記録で終わりの印字が無ければ `completed: false` の `Unresolved`〈`IncompleteRecord`〉） | 区切りに使う精算の選び方は後続の design lane | Contract Probe 1 の実データ (a)（中断はどれも file の最後の記録でない） |
 | 練習モードで打った取引・入金と、トレーニング開始 / 終了の表示 | 同上 | `Training` の `NoItems`。明細を返さない | — | 練習が売上に入らないことは精算票の件数で確認（Contract Probe 1） |
 | 部門キーで小数の数量を売った取引 | 同上 | その記録だけ `Unresolved`（`UnknownLine`）。他の記録は変わらない | 単位の拡張の lane で受ける | Non-scope |
 | 本書に無い並び（例: 訂正の直前が値引きでも明細でもない） | 同上 | その記録だけ `Unresolved`（`InconsistentRecord`） | 実物の形を確かめてから文法を足す | — |
@@ -117,8 +118,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Scope
 
 - S1 `src-tauri/src/io/ej_parser.rs`: `29-io-ej-parser.md` の IO-08-D3a・D5a〜D5d・D6a〜D6d・D7a の実装と、同じ file の `#[cfg(test)]` の test（Matrix）。出力型の変更（`EjRecord.kind`、`EjRecordKind`、`EjSettlementReport`、`EjMode` の variant、`EjLineKind` の variant と `SettlementTitle` / `SettlementEnd` → `ReportTitle` / `ReportEnd`、`Restored.adjustments`、`EjAdjustment`、`EjAdjustmentKind`）。`parse_ej` 以外の `pub fn` を作らない。合成 fixture は既存の builder（`lr` / `zen` / `yen` / `item` / `qty` ほか）で 24 バイトの行を組む。fixture file は置かない。
-- S2 同 file の既存 test の更新（設計の変更に合わせる。理由は Matrix の「既存 test の変更」）: `parse_ej_unrecognized_header_mode_unresolves_record`（`点検` が既知になったため未知の値の文字列へ替え、`点検` のモードの取引の本文は別 test で `Unclassified` を見る）、`parse_ej_program_body_with_other_line_unresolves`（PGM の本文の通貨記号つきの行は `UnknownLine` のまま、区切りだけの PGM は `Settings` の `NoItems` へ）、`parse_ej_paid_in_line_in_return_mode_unresolves`（戻のモードの入金を `CashMovement` へ）、`parse_ej_settlement_and_program_records` ほか `SettlementTitle` / `SettlementEnd` / `Restored { items, item_count }` の pattern を使う test（型の追従だけ）。どの test も assert を弱めず、期待値は設計正本から導く。
-- S3 同 file の `real_ej_structure_probe`（T-R1）: 出力に記録の種類 × 復元状態の件数を足し、`Unresolved` の記録ごとに file 名・記録の番号・種類・診断 code（初出順）を 1 行ずつ出し、`Restored` / `NoItems` の記録ごとに file 名・記録の番号・復元状態・明細と値引きの digest（名称・数量・単価・金額・値引きの種類と金額を連結した SHA-256 の先頭 16 桁）を出す。値・名称・行の文字列は出さない。`Unresolved` 0 の assert を外し、`fatal == 0` と読んだ file 数 > 0 の assert は残す（Non-scope の形が実物に残るため。AC11 の突合は Coordinator が手元で行う）。
+- S2 同 file の既存 test の更新（設計の変更に合わせる。理由は Matrix の「既存 test の変更」）: `parse_ej_unrecognized_header_mode_unresolves_record`（`点検` が既知になったため未知の値の文字列へ替え、`点検` のモードの取引の本文は別 test で `Unclassified` を見る）、`parse_ej_program_body_with_other_line_unresolves`（PGM の本文の通貨記号つきの行は `UnknownLine` のまま、区切りだけの PGM は `Settings` の `NoItems` へ）、`parse_ej_paid_in_line_in_return_mode_unresolves`（戻のモードの入金を `CashMovement` へ）、`mixed_file()`（`parse_ej_every_line_is_accounted_for` と `parse_ej_diagnostic_messages_are_fixed_texts` の fixture。`sale("点検", …)` のモードを未知の値 `ZZZ` に替え、dedup した code 列の期待値〈7 code〉は保つ。相談役の走査で、是正後の dedup 列は期待の 7 code と一致。`every_line` の名称の検査の `"点検"` も同じ値へ。G-X1 で `fixed_texts` に記録を足すときはこの 7 code の順を崩さない位置に限る）、`parse_ej_settlement_and_program_records` ほか `SettlementTitle` / `SettlementEnd` / `Restored { items, item_count }` の pattern を使う test（型の追従だけ）。どの test も assert を弱めず、期待値は設計正本から導く。
+- S3 同 file の `real_ej_structure_probe`（T-R1）: 出力に記録の種類 × 復元状態の件数を足し、`Unresolved` の記録ごとに file 名・記録の番号・種類・診断 code（初出順）を 1 行ずつ出し、`Restored` / `NoItems` の記録ごとに file 名・記録の番号・復元状態・明細と値引きの digest（名称・数量・単価・金額・値引きの種類と金額を連結した SHA-256 の先頭 16 桁）を出す。digest の式は、`adjustments` が空なら base と同じ式（明細の連結だけ。AC11 で base 側に足す式と同じ）にする。値・名称・行の文字列は出さない。probe の `assert_eq!(restorations.get("Unresolved"), None)` と `assert!(codes.is_empty())` の両方を外し、`fatal == 0` と読んだ file 数 > 0 の assert は残す（Non-scope の形と診断が実物に残るため。残る復元不能の許容は AC11 (d) で判定し、突合は Coordinator が手元で行う）。probe の `match record.mode` は exhaustive なので `EjMode` の新しい variant に追従させる。probe の変更の記述は本項だけを正本とし、Matrix は本項を参照する。
 - S4 設計正本（plan-first の commit に含める。Writer は実装と食い違えば Gated Amendment で直す）: `docs/function-design/29-io-ej-parser.md`（冒頭・型定義・IO-08.1 の手順 7・IO-08.3〜IO-08.8・構造所見・採らなかった案。IO-08.9 / IO-08.10 は触らない）、`docs/architecture/io-task-specs.md` の IO-08 節、`docs/ARCHITECTURE.md` の IO-08 の行、`docs/decision-log.md` の末尾の D-105。
 - plan-first の commit（起草役）: 本 packet、Test Design Matrix、S4。`docs/Plans.md` は触らない（PK4 は `## 次の行動` の `docs/plans/` への pointer の行だけを見る。D-097）。
 
@@ -155,8 +156,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 baseline は起票時実測。test 名は Matrix のもの。
 
 - AC1 記録の種類（IO-08-D3a）: `cd src-tauri && cargo test --lib io::ej_parser` で Matrix の G-K1〜G-K8 が PASS。モード欄が空・`点検`・`PGM` の完了した精算票が `Settlement { report: Daily, completed: true }`、モード欄が空・`精算` の点検票の題の記録が `Inspection`、`練習` のモードの取引と `点検` のモードのトレーニングの表示が `Training`、未知のモードが `Unclassified` + `UnrecognizedMode`、`精算` のモードの題の無い記録が `Unclassified` + `IncompleteRecord`。
-- AC2 精算票・点検票（IO-08-D5d / D7a）: G-S1〜G-S6 が PASS。ＰＬＵ Z・勤怠 Z が `completed: true`、`信在高` / `貸在高` / `券在高` / `領収書 N 件` / `取引中止 N 件` / 送信の異常終了の後の 4 桁の行 / 案内文の行を含む精算票が `NoItems`・診断 0、終わりの印字の無い精算票が `completed: false` の `NoItems`、4 形の点検票の題が `Inspection` の `NoItems`、精算票の本文の未知の行（数字を含む名称の行）は `UnknownLine`。
-- AC3 設定・練習・入金 / 出金・領収書・番号印字（IO-08-D3a / D5d / D7a）: G-O1〜G-O6 が PASS。`SD設定読込み` / `自動設定保存` の状態の記録、通貨記号の無い設定の印字、本文 0 行の `PGM1` が `Settings` の `NoItems`、通貨記号を含む行は `UnknownLine`。戻のモードの入金が `CashMovement`。領収書の 3 行が `Receipt`。番号印字の行が合計域・設定・入金の記録の中で `NumberPrint` になり、記録の種類と照合を変えない。
+- AC2 精算票・点検票（IO-08-D5d / D7a）: G-S1〜G-S6 が PASS。ＰＬＵ Z・勤怠 Z が `completed: true`、`信在高` / `貸在高` / `券在高` / `領収書 N 件` / `取引中止 N 件` / 送信の異常終了の後の 4 桁の行 / 案内文の行を含む精算票が `NoItems`・診断 0、終わりの印字の無い精算票が、次のヘッダで閉じた記録なら `completed: false` の `NoItems`、file の最後の記録なら `completed: false` の `Unresolved`（`IncompleteRecord`。既存の `parse_ej_record_truncated_at_eof_unresolves` は変えずに PASS）、4 形の点検票の題が `Inspection` の `NoItems`、精算票の本文の未知の行（数字を含む名称の行）は `UnknownLine`。
+- AC3 設定・練習・入金 / 出金・領収書・番号印字（IO-08-D3a / D5d / D7a）: G-O1〜G-O6 が PASS。`SD設定読込み` / `自動設定保存` の状態の記録、通貨記号の無い設定の印字、本文 0 行の `PGM1` が `Settings` の `NoItems`、設定の記録で通貨記号を含む行（状態ラベルで始まる行を含む）と半角空白 + `点` を含む行は `UnknownLine`。戻のモードの入金が `CashMovement`。領収書の 3 行が `Receipt`。番号印字の行が合計域・設定・入金の記録の中で `NumberPrint` になり、記録の種類と照合を変えない。
 - AC4 合計域（IO-08-D5a / D5b / D6c）: G-T1〜G-T8 が PASS。`対象計` の折返し、支払行の折返し、`お預り` / `お  釣` の折返し、`合  計` の無い支払行 1 行だけの取引（`ｸﾚｼﾞｯﾄ電子M` / `売掛` / `商品券`）、`合  計` + 支払行 + 現金、合計域の訂正（直前の支払行・現金行の取消）、軽減税率の行、全角 `－` の負の取引が `Restored` で、`items` と `item_count` が fixture の期待値どおり。
 - AC5 明細域（IO-08-D5a / D5c / D6a / D6b / D6d）: G-M1〜G-M9 が PASS。負の訂正で取り消した明細が `items` に入らず（数量行つき・折返しの明細を含む）、`item_count` が取り消した数量を除く。正の訂正で取り消した値引きが `adjustments` に入らない。小計値引きが `SubtotalDiscount`、明細値引きが `ItemDiscount { item_line_no }`（直前の明細の行番号）、マイナスキーが `MinusKey` で `adjustments` に入る。戻の印の明細が数量 -1・負の金額。名称だけの行 + 金額の行が 1 明細（数量行が前に付く形を含む）。すべて取り消した取引が `items` 空の `Restored`。
 - AC6 取引中止（IO-08-D7a）: G-C1〜G-C3 が PASS。明細・数量・訂正・値引きの後に `取引中止 ････` で終わる記録が `Cancelled` の `NoItems`（明細を返さない）。項目の規則の不一致は `InconsistentRecord`。
@@ -192,7 +193,7 @@ baseline は起票時実測。test 名は Matrix のもの。
 | Lens | Question to answer | Evidence home | Applicability / finding | Follow-up artifact |
 |---|---|---|---|---|
 | Adapter / core boundary | Which concepts belong to replaceable external adapters, and which concepts are stable app-core contracts? | Architecture, function design, decision-log, Plan Packet | CASIO の行の形（ラベル・折返し・全角 `－`・`*` / `※`）は adapter の事実。記録の種類・明細・値引き・復元状態は後続の BIZ が使う core 側の契約で、レジが替わっても保つ形にする（D-023）。モード欄は adapter の内側で使い、種類は本文で決める | D-105、IO-08-D3a |
-| Fact check / design decision split | Which claims are observed facts from hardware/tool/files, and which are app decisions that need source-doc promotion? | Investigation doc, source design docs, decision-log | 事実: 行の形・題の位置・訂正が直前の取消であること・点数の数え方・練習が純売に入らないこと（構造所見、件数は repo 外）。決定: 種類の判定順・値引きを配らない・照合の金額の選び方・中断を `NoItems` にする・小数を受けない（IO-08-D3a〜D7a、D-105） | `29-io-ej-parser.md` |
+| Fact check / design decision split | Which claims are observed facts from hardware/tool/files, and which are app decisions that need source-doc promotion? | Investigation doc, source design docs, decision-log | 事実: 行の形・題の位置・訂正が直前の取消であること・点数の数え方・練習が純売に入らないこと（構造所見、件数は repo 外）。決定: 種類の判定順・値引きを配らない・照合の金額の選び方・次のヘッダで閉じた中断を `NoItems` にし、file の最後の記録では終わりの印字を必須にする・小数を受けない（IO-08-D3a〜D7a、D-105） | `29-io-ej-parser.md` |
 | Lifecycle / retry | What happens before, during, after, and after failure for import/export, duplicate input, rollback, retry, cancellation, and re-run? | Function design, DB design, UI design, Test Matrix | parser は純関数で状態を持たない。中断した精算と再実行は別の記録として返り、どちらを区切りにするかは IO の外 | IO-08-D7a、Follow-up |
 | Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | この lane で operator の操作は変わらない。店の運用（値引き・訂正・取消・クレジット払い・練習・領収書）を変えずに読めるようにする | — |
 | Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | レジが替われば `ej_parser.rs` と `29-io-ej-parser.md` を取り替え、出力型（種類・明細・値引き・復元状態）は保つ | `29-io-ej-parser.md` |
@@ -224,7 +225,7 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 
 ## Review Focus
 
-- 記録の種類の判定順（IO-08-D3a）: モード欄を使う 4 つの場面がモード欄で種類を決めた旧契約の取りこぼし（精算票・点検票）を再び生まないか。設定の記録をモード欄で決めることが、取引の行の紛れ込みを通さないか（通貨記号の行を `Unknown` にする規則）。
+- 記録の種類の判定順（IO-08-D3a）: モード欄を使う 4 つの場面がモード欄で種類を決めた旧契約の取りこぼし（精算票・点検票）を再び生まないか。設定の記録をモード欄で決めることが、取引の行の紛れ込みを通さないか（行種の分類より前に通貨記号の行を、`Text` の候補で半角空白 + `点` を含む行を `Unknown` にする規則。負の明細の形は `Text` で通る限界は `29-io-ej-parser.md` の採らなかった案）。
 - 訂正・値引きの項目の規則（IO-08-D6a / D6b）: 取り消した明細・値引きが `items` / `adjustments` に残る経路、または残すべきものが消える経路が無いか。「直前の項目」の定義と、数量行・折返しとの組合せ。
 - 照合の金額の選び方（IO-08-D6c）: `合  計` が無いときの支払行 1 行の規則と合計域の訂正が、未観測の並びを受理しないか。
 - 旧 parser の復元結果を変えない（AC7・AC11）: 旧で `Restored` だった並びが新でも同じ判定順で `Sale` になり、同じ明細になるか。`小計` / `訂正` の行が旧では `Item` と読めた形（ラベル + 通貨記号つきの金額）を新で取り違えないか。
@@ -239,7 +240,7 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 | IO-08-D2 CRLF・24 バイト固定幅・最終改行 | IO-08.2 | 不変 | `parse_ej_missing_final_crlf_reports_diagnostic` / `parse_ej_invalid_width_line_unresolves_record` | — |
 | IO-08-D3 2 行ヘッダ・モード欄の既知の値・日時と番号は文字列 | IO-08.3 | S1 `EjMode` | G-K1 / G-K7 / `parse_ej_normal_sale_restores_items` | — |
 | IO-08-D3a 記録の種類を本文で決める（判定順の表、番号印字を除いて判定） | IO-08.3 記録の種類 | S1 `EjRecordKind` の判定 | G-K1〜G-K8 / G-O6 | AC11 |
-| IO-08-D4 先頭断片・EOF は閉じの根拠にしない | IO-08.4 | 不変 | `parse_ej_record_truncated_at_eof_unresolves` / `parse_ej_leading_lines_before_first_header_are_reported` | — |
+| IO-08-D4 先頭断片・EOF は閉じの根拠にしない | IO-08.4 | 不変 | `parse_ej_record_truncated_at_eof_unresolves` / `parse_ej_leading_lines_before_first_header_are_reported` / G-S4（EOF 側の case） | — |
 | IO-08-D5 位置による行分類・Unknown を残す・金額 token（全角 `－`、印 `*` / `※`） | IO-08.5 | S1 行分類・`parse_amount` | G-T7 / G-T8 / G-M8 / `parse_ej_amount_formats` / `parse_ej_unknown_line_in_item_region_unresolves_record_only` | AC11 |
 | IO-08-D5a 折返し（名称だけの行 + 続き、ラベルだけの行 + 続き） | IO-08.5 | S1 `ItemName` / `Continued` | G-T1 / G-T2 / G-T3 / G-M6 / G-F13 | AC11 |
 | IO-08-D5b 合計域の追加ラベル（支払 4 種・軽減税率・注記）と合計域の訂正の行 | IO-08.5 | S1 合計域の分類 | G-T4〜G-T7 | AC11 |
@@ -251,7 +252,7 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 | IO-08-D6c 照合の金額 = `合  計`、無ければ取り消されていない支払行 1 行 | IO-08.6 | S1 | G-T4 / G-T5 / G-T6 / G-F9 / `parse_ej_exact_cash_tender_without_total_line` | AC11 |
 | IO-08-D6d 戻の印の明細（空のモードだけ、数量 -1・負の金額、点数に −1） | IO-08.6 | S1 | G-M8 / G-F7 / G-F8 | AC11 |
 | IO-08-D7 明細を持たない記録（入金 / 出金 / 替・設定・精算） | IO-08.7 | S1 | `parse_ej_non_item_records_paid_in_paid_out_exchange` / `parse_ej_settlement_and_program_records` / G-O3 | AC11 (c) |
-| IO-08-D7a 取引中止・領収書・精算票（中断）・点検票・設定・練習は `NoItems`、`Unclassified` は `Unresolved` | IO-08.7 | S1 | G-C1〜G-C3 / G-S1〜G-S6 / G-O1〜G-O5 / G-K5〜G-K8 | AC11 |
+| IO-08-D7a 取引中止・領収書・精算票（次のヘッダで閉じた中断を含む。file の最後の記録は `ReportEnd` 必須で `IncompleteRecord`）・点検票・設定・練習は `NoItems`、`Unclassified` は `Unresolved` | IO-08.7 | S1 | G-C1〜G-C3 / G-S1〜G-S6 / G-O1〜G-O5 / G-K5〜G-K8 / `parse_ej_record_truncated_at_eof_unresolves` | AC11 |
 | IO-08-D8 型による閉じ・行の網羅・診断の範囲と固定文言（7 code 不変） | IO-08.8 | S1 | G-X1 / `parse_ej_every_line_is_accounted_for` / `parse_ej_diagnostic_messages_are_fixed_texts` | review（`Unresolved` に明細・値引きの field が無い） |
 | IO-08-D9 IO が判断しないこと | IO-08.9（触らない） | 非実装 | なし | non-scope（`completed`・番号印字・精算票の値を解釈しないことを review で確認） |
 | IO-08-D10 日次取込みとの接続 | IO-08.10（触らない） | なし | なし | non-scope |
@@ -264,6 +265,7 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 ## Contract Probe
 
 - 全期間の EJ の行の形（記録の種類・題の位置・ラベル・折返し・訂正と値引きの並び・金額の字形・練習が純売に入らないこと）: repo 外の材料の見落としチェックの集計 script（本文で記録の種類と行種を決める、標準ライブラリだけ・read-only）の出力（2026-10-04）と、Coordinator 側 scratch の 2 つの probe（ラベルが固定の行だけ数字を `9` / `９` に伏せた形を出す `shape_probe.py`、記録の種類の判定順の前提〈題が先頭の行か・トレーニングの表示の記録の他の行・領収書の行の順・取引中止の最後の行・設定のモードの記録の種類と通貨記号・取引の区切りの数〉を数える `order_probe.py`）-> 形は `29-io-ej-parser.md` の「全期間の EJ の構造所見」のとおり。判定順の前提はすべて例外なし（精算票・点検票の題はどの記録でも先頭の行、トレーニングの表示の記録に他の行なし、領収書は常に `一連No.` → `領収No.` → `領収書`、取引中止の最後の行は常に `取引中止 ････` で区切りなし、設定のモードの記録で通貨記号を含むのは題で始まる精算票だけ、取引の区切りは常に 1 本）。件数は数え直しの前のため未実測扱いで tracked に書かない。
+- Plan Review round 1 の後の実データの確認（Coordinator、手元の全期間。件数は tracked に書かず、形の事実だけ）: (a) 中断した精算票（終わりの印字の無い `日計明細 Z`）は、どれも file の最後の記録ではなく、すぐ後ろに同じ日・同じ末尾番号の終わりの印字のある精算票（再実行）がある。file の最後の記録はどれも終わりの印字のある精算票 -> IO-08-D7a の「次のヘッダで閉じた中断は `NoItems`、file の最後の記録は `ReportEnd` 必須」で実物の中断はすべて `NoItems` になる。(b) 本文の形で設定（区切り + 状態）と判定される記録に、半角空白 + `点`・半角 `\`・全角 `￥` を含む行は無い（CP932 で decode した後の文字列で判定）。モード欄が `PGM` で本文が `日計明細 Z` の精算票の記録には ` 点` と `\` の行があるが、題で先に精算票と決まる（IO-08-D3a の 2）-> 通貨記号の規則は、前項の「設定のモードの記録で通貨記号を含むのは題で始まる精算票だけ」と合わせて実物の設定の記録を復元不能にしない。` 点` の規則は区切りと状態の形の記録で成立し、設定の印字の記録に ` 点` の行があれば AC11 (d) の差として現れる（復元不能の側）。(c) 訂正のラベルの無い負の明細は、どれも直前が戻の印（`戻` で始まる印の行）で、戻の印の次の行はどれも負の明細 -> IO-08-D6d の「戻の印を持たない負の `Item` は `InconsistentRecord`」は実物の記録を復元不能にしない。
 - 旧 parser（`76de30d8`）の実物での結果: Coordinator 側 scratch で全期間の EJ の file を 1 つの dir に symlink し、`INVENTORY_EJ_PROBE_DIR=<dir> cargo test --lib io::ej_parser -- --ignored real_ej_structure_probe --nocapture` を実行 -> 全 file が `Ok`（fatal 0）、診断 code は `UnknownLine` / `UnrecognizedMode` / `IncompleteRecord` / `LeadingFragment` の 4 種で `InvalidWidth` と `MissingFinalNewline` は出ない。`Restored` / `NoItems` / `Unresolved` の件数は数え直しの前のため未実測扱い（repo 外に保存、AC11 の基準）。
 - 既存 crate の前提（`encoding_rs::SHIFT_JIS` の strict decode が全角の `－` `％` `＃` `※` `･` と半角カナを decode できる）: 上の旧 parser の probe で全 file が decode できた（DecodeFailed 0）-> 成立。
 - 未検証の外部前提（OS / 外部ライブラリの新規依存）: なし。
