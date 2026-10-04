@@ -34,7 +34,7 @@ struct DailyReportSummaryLine {
     line_key: String,
     label: String,
     amount: Option<i64>,
-    quantity: Option<i64>,
+    quantity_hundredths: Option<i64>, // 個数の100倍（IO-07-D2）
     count: Option<i64>,
     sort_order: i64,
 }
@@ -51,7 +51,7 @@ struct DailyReportDepartmentLine {
     raw_department_name: String,
     normalized_department_name: Option<String>,
     amount: i64,
-    quantity: Option<i64>,
+    quantity_hundredths: Option<i64>, // 個数の100倍（IO-07-D2）
     count: Option<i64>,
     sort_order: i64,
 }
@@ -80,6 +80,37 @@ struct DailyReportParseResult {
 - `DailyReportParseError` は、productionで診断に使う `source_file` / `filename` / `line_no` / `error_type` / `error_message` を保持する。特にsource判定前に失敗するunknown fileは `ParsedDailyReportSourceFile` に入らないため、error側のfilenameを診断専用provenanceとして維持する。
 - parse error詳細はBIZ-08が開発者向けdiagnostic logへ構造化して記録する。利用者向け `BizError` と業務監査用operation logにはraw詳細を載せない。
 
+**IO-07-D2（小数の個数は 100 倍の整数で持つ、[D-104](../decision-log.md#d-104-日報の小数の個数別の精算の混在レコード列の対応2026-10-04)）**:
+
+- 部門キーで小数の数量を打った日は、Z001 の総売の行の個数と Z005 のその部門の個数が小数になる（実データに小数 1 桁の形がある）。レジの数量は小数 2 桁まで（取扱説明書の乗算の数量 0.01〜9999.99）。
+- 個数の列（Z001 の総売の行の第3列、Z005 の第3列）は `^-?[0-9]+(\.[0-9]{1,2})?$`（3桁区切りのカンマと空白は既存の `clean_number` で除いた後）を受け、浮動小数を通さずに整数部 ×100 + 小数部（1桁は ×10）の `i64` にする（`1.3` → 130、`-2` → -200、`4` → 400）。小数 3 桁以上・`.5`・`1.` は `invalid_number`。
+- 件数の列（Z001 の総売以外の行の第3列、Z002 の第3列）は整数のまま。小数なら今までどおり `invalid_number`（件数は数えた回数で小数にならない。実データで小数が出たのは個数の列だけ）。
+- 100 倍の整数を単位の数へ戻す変換は IO-07 が持つ 1 つの関数に限り、BIZ-05 / BIZ-08 は wire DTO を作るときにこれを呼ぶ:
+
+```rust
+fn quantity_hundredths_to_units(quantity_hundredths: i64) -> f64
+```
+
+  `quantity_hundredths as f64 / 100.0`。整数どうしの割り算の丸めで、`130` は `1.3`、`400` は `4.0` の最近接の倍精度になり、serde の出力も `1.3` / `4.0` になる。
+- 棄却案: 倍精度（REAL / `f64`）で保存する（月次の部門集計は `SUM` で足すので 0.1 の積み上げで誤差が出る）、文字列のまま保存する（`SUM` できず月次集計が壊れる）、四捨五入して整数にする（レジの値と食い違う）、小数の行の個数を NULL にする（月次集計が NULL 安全側に倒れて、その部門の月の個数が丸ごと「未取得」になる）、wire も 100 倍の整数で返す（UI-09a-D16 の「数は `toLocaleString`」と既存の部門別集計の表示が 100 倍の値を出す。UI 側の割り戻しが全 site に要る）。
+- 単位の拡張（[backlog](../backlog.md) の「単位の拡張」。Z004 の小数を 100 倍の整数で受け、商品の単位が長さなら BIZ で cm に換算する案）と同じ 100 倍の整数の表し方にそろえる。日報の個数は部門の数で商品の単位を持たないので、換算はしない。
+
+**IO-07-D3（同じ精算の 3 ファイルかを精算回数で確かめる、D-104）**:
+
+- layout A の 7 行プリアンブルの「精算回数」の行（第1列を trim すると `精算回数`、第2列が数字だけ）から、ファイルごとの精算回数を整数で読む（先頭の 0 は値に影響しない。`0005` と `5` は同じ）。ヘッダより前の行だけを見る。
+- 精算回数を読めたファイルが 2 本以上あり、値が 1 つでも違えば `settlement_mismatch`（commit 不可）。日付の一致（§29.3 手順 6）とは別に判定し、両方が出てもよい。
+- 精算回数を読めたファイルが 1 本以下なら比べず、日付の一致だけで通す（layout B のエクスポート出力のメタに精算回数があるかは未確認。layout B の束は Z001 が layout A 系の形、Z002 / Z005 が連結型で出る〈§29.4.1〉ため、読めた 1 本だけでは比べられない）。通常の手順（`EcrDatas` から選ぶ layout A）では 3 本とも読める。
+- 同じ日に 2 回以上精算すると、日付だけでは別の精算の Z001 / Z002 / Z005 を混ぜて選んでも通る（実データに同日 2 回・3 回の精算の日がある）。ファイル名は `Z001_{日}{接尾字}_{連番}.CSV` の形で、接尾字（空白・`A`・`B`）は精算の順を表さず、順を表すのは連番 `_000N`。名前の並びで選ぶと順が入れ替わる日がある。同じ精算の 3 ファイルは `Z00k_` より後ろの部分が同じになる。ファイル名からは精算回数を推測しない（形の約束が無く、Excel で保存し直した形も受ける）。
+- 棄却案: 1 本以上が読めないなら拒む（layout B の束〈Z001 だけが読める〉が正規の形でも止まる）、ファイル名の連番を比べる（ファイル名は利用者が変えうる。中身の精算回数が正）、精算回数を保存して画面に出す（本 lane の Goal は混在を止めること。保存と表示は backlog の「layout A のプリアンブル（精算回数…）」の項で別に設計する）。
+
+**IO-07-D4（「レコード」列は行の位置、ラベルで対応づける、D-104）**:
+
+- layout A の「レコード」列は 3 帳票とも行の位置そのもの（先頭 0 付き 4 桁の `0001`〜。Excel で保存し直した形は先頭の 0 が落ちる）で、帳票仕様の行コード（例: 総売 101）ではない（手元の実データはどのファイルも行の位置）。
+- `gross_sales` / `net_sales` / `cash` / `credit` はラベルだけで決める（総売 → `gross_sales`、純売 → `net_sales`、現金 → `cash`、クレジット → `credit`。ASCII の別名 `gross_sales` 等も受ける）。それ以外の行は並び順の `summary_N` / `payment_N`。「レコード」列の値は鍵に使わない。
+- 罠: コードで対応づけ、先頭の 0 を正規化して比べると、Z002 の 3 行目（`0003`）がクレジットでない行なのに `credit` に、1 行目（`0001`）が `cash` になる。コードの比較は実データで 1 行も当たらず、正規化した瞬間に誤った鍵を作るので、比較そのものを持たない。
+- `credit` の鍵は全角の `クレジット` を含むラベルだけで、半角の `ｸﾚｼﾞｯﾄ` は `credit` にしない（並び順の `payment_N` のまま）。実データの Z002 には半角の `ｸﾚｼﾞｯﾄ` を含むラベルの行が 1 本の中に複数あり、全角の `クレジット` の行は無い。半角も `credit` にすると、1 本の中の複数の行が同じ鍵になり、BIZ-05 の支払の集約（`payment_key` で group 化、24 §14.21 手順 3）が別の項目を 1 行に足す。`credit` の鍵を読む業務の処理は無い（表示の行の鍵だけ）。支払の行の鍵の作り直しは backlog の「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」で扱う。
+- 棄却案: コードを先頭 0 を落として比べる（上の罠）、コードを位置として使う（帳票の行の並びがレジの設定で変わりうる。2022 年に精算の途中でラベルの並びが変わった日がある）、半角の `ｸﾚｼﾞｯﾄ` も `credit` にする（上の合算）。
+
 ### 29.3 parse_daily_report_bundle
 
 **関数要求**: Z001/Z002/Z005 のファイル束を受け取り、正規化済みの日報行データとparse errorを返す。
@@ -107,6 +138,7 @@ fn parse_daily_report_bundle(files: Vec<DailyReportSourceFile>) -> DailyReportPa
 6. report_date抽出
    - 3ファイルから抽出できる日付が一致すれば `report_date=Some(YYYY-MM-DD)`。
    - 不一致または抽出不可ならparse errorにし、`report_date=None` または最初の抽出値を返す場合でもBIZ-08でcommit不可にする。
+   - 日付が一致しても、精算回数を読めたファイルが 2 本以上で値が違えば `settlement_mismatch` を追加する（IO-07-D3）。
 7. `DailyReportParseResult` を返す。
    - `parse_errors` の各要素はBIZ-08の診断経路で消費される。詳細の利用者向けwire/operation logへの転送は禁止する。
 
@@ -126,10 +158,10 @@ CV17 1.1.1 では、SD取込み後にツール内部ディレクトリへ常在�
 
 | Source | 匿名化shape | Parserでの扱い |
 |---|---|---|
-| 共通 | CRLF複数行。7行プリアンブル（マシン/ファイル/モード/精算回数/日付/時刻/空行）→ 1行ヘッダ → 4列データ行 | ヘッダ行を検出し、それ以前はメタとして読み飛ばす。ヘッダ後の非空行が4列でない場合は `invalid_format` |
-| Z001 | 4列は `record_code, label, quantity_or_count, amount`。ヘッダの第3列は「個数/件数」、第4列は「金額」。日付は `YYYY/M/D` または `YYYY-MM-DD` を受けて `YYYY-MM-DD` へ正規化する | `record_code=101` または総売ラベルを `gross_sales`、`record_code=201` または純売ラベルを `net_sales` にする。総売は第3列を `quantity`、純売は第3列を `count`、第4列を `amount` として保存する |
-| Z002 | 4列は `record_code, label, count, amount`。ヘッダの第3列は「個数/件数」、第4列は「金額」。日付は `YYYY/M/D` または `YYYY-MM-DD` を受けて `YYYY-MM-DD` へ正規化する | 第3列を `count`、第4列を `amount` として `payment_lines` に変換する。`record_code=01` または現金ラベルは `cash`、`record_code=03` またはクレジットラベルは `credit` |
-| Z005 | 4列は `record_code, department_label, quantity, amount`。全フィールドがクォートされる場合がある。日付は `YYYY-MM-DD` または `YYYY/M/D` を受けて `YYYY-MM-DD` へ正規化する | 第2列を `raw_department_name`、第3列を `quantity`、第4列を必須 `amount` として `department_lines` に変換する。`count` は `None` |
+| 共通 | CRLF複数行。7行プリアンブル（マシン/ファイル/モード/精算回数/日付/時刻/空行）→ 1行ヘッダ → 4列データ行。第1列の「レコード」は行の位置（先頭 0 付き 4 桁の `0001`〜、IO-07-D4） | ヘッダ行を検出し、それ以前はメタとして読み飛ばす。ただし「精算回数」の行だけは読む（IO-07-D3）。ヘッダ後の非空行が4列でない場合は `invalid_format` |
+| Z001 | 4列は `record_code, label, quantity_or_count, amount`。ヘッダの第3列は「個数/件数」、第4列は「金額」。日付は `YYYY/M/D` または `YYYY-MM-DD` を受けて `YYYY-MM-DD` へ正規化する | 総売ラベルの行を `gross_sales`、純売ラベルの行を `net_sales` にする（ラベルだけで決める、IO-07-D4）。総売の行は第3列を `quantity_hundredths`（小数 2 桁まで、IO-07-D2）、それ以外の行は第3列を `count`（整数）、第4列を `amount` として保存する |
+| Z002 | 4列は `record_code, label, count, amount`。ヘッダの第3列は「個数/件数」、第4列は「金額」。日付は `YYYY/M/D` または `YYYY-MM-DD` を受けて `YYYY-MM-DD` へ正規化する | 第3列を `count`（整数）、第4列を `amount` として `payment_lines` に変換する。現金ラベルの行は `cash`、クレジットラベルの行は `credit`（ラベルだけで決める、IO-07-D4） |
+| Z005 | 4列は `record_code, department_label, quantity, amount`。全フィールドがクォートされる場合がある。日付は `YYYY-MM-DD` または `YYYY/M/D` を受けて `YYYY-MM-DD` へ正規化する | 第2列を `raw_department_name`、第3列を `quantity_hundredths`（小数 2 桁まで、IO-07-D2）、第4列を必須 `amount` として `department_lines` に変換する。`count` は `None` |
 
 **layout B: 連結型**
 
@@ -156,7 +188,8 @@ CV17 1.1.1 では、SD取込み後にツール内部ディレクトリへ常在�
 | decode_failed | CP932 strict decodeに失敗 | commit不可 |
 | invalid_format | source別の最低限行構造に合わない | commit不可 |
 | invalid_date | 日付抽出不可または不一致 | commit不可 |
-| invalid_number | 金額/数量/件数の数値変換不可 | commit不可 |
+| settlement_mismatch | 精算回数を読めたファイルが 2 本以上あり、値が違う（IO-07-D3） | commit不可。利用者向けの文は BIZ-08-D2 |
+| invalid_number | 金額/件数が整数でない、個数が小数 2 桁までの数でない（IO-07-D2） | commit不可 |
 
 ### 29.6 非目的
 

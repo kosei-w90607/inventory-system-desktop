@@ -12,6 +12,7 @@ src-tauri/src/
     schema_v4.rs  -- 日報取込みテーブル追加
     schema_v5.rs  -- PLU slot 永続割当テーブル追加
     schema_v6.rs  -- suppliers.updated_at 追加
+    schema_v7.rs  -- 日報の個数を100倍の整数へ（quantity → quantity_hundredths）
 ```
 
 ### 3.2 migrate
@@ -303,3 +304,22 @@ fixture / 注入の必須条件は 71 §71.10「fixture / 注入の必須条件�
 SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 default を直接追加しない。table rebuild による NOT NULL 化も行わず、列は NULLABLE のまま維持する。新規作成行は改名前なら NULL を許容し、BIZ-01 `rename_supplier` が実際の改名時だけ現在日時へ更新する。
 
 **MIGRATIONS 登録順**: `migration.rs` の migrations() は v1 → v2 → v3 → v4 → v5 → v6 の順に登録する。v6 の description は `suppliers.updated_at 追加` とし、kind は `MigrationKind::Custom(schema_v6::apply_v6_supplier_updated_at)` とする。実装は既存行の backfill、新規行の NULL 許容、再実行時に v6 を重複適用しないことを検証する。
+
+## 15. MNT-03 追加: migration v7（日報の個数を100倍の整数へ）
+
+**MNT-03-D12 / IO-07-D2 / D-104**: migration v7 を schema_versions に追加し、`daily_report_summary_lines` と `daily_report_department_lines` の `quantity` 列を `quantity_hundredths`（個数の100倍の整数）へ改名して既存値を100倍する。列の意味の正本は [db-design/pos-tables.md](../db-design/pos-tables.md) §12c・§12e。実装と migration map 登録は後続実装 PR の義務であり、本 design-first の変更では schema を変更しない。
+
+**手順**（`MigrationKind::Custom`、1 つの transaction）:
+
+1. 2 表の `quantity` が NULL でない行の件数と合計を読む（検証用）
+2. `ALTER TABLE daily_report_summary_lines RENAME COLUMN quantity TO quantity_hundredths`
+3. `ALTER TABLE daily_report_department_lines RENAME COLUMN quantity TO quantity_hundredths`
+4. 2 表とも `UPDATE … SET quantity_hundredths = quantity_hundredths * 100 WHERE quantity_hundredths IS NOT NULL`
+5. 同じ transaction 内で、2 表それぞれについて NULL でない行の件数が手順 1 と同じで、合計が手順 1 の 100 倍であることを確かめる。違えば §3.2 / MNT-03-D1 に従って rollback し `DbError::MigrationFailed` を返す
+6. schema_versions に v7 を記録して commit する
+
+`RENAME COLUMN` は SQLite 3.25 以降で使える（同梱の SQLite は 3.45.0、`libsqlite3-sys` 0.28.0）。index は `quantity` を含まないので作り直さない。CHECK・FK・NULL 許容は変えない。v4 の CREATE 文（`schema_v4.rs`）は書き換えず、新規 DB も v4 で `quantity` を作ってから v7 で改名する（migration の履歴を変えない）。表を作り直さないので v2 の foreign_keys OFF の手順は要らない。
+
+既存の DB の日報の個数は今まで整数でしか保存できなかった（小数の日は取込み自体が失敗していた）ので、100 倍は値を変えずに単位だけを変える。v7 を適用した DB は v7 を知らない旧版のアプリでは開けない（MNT-03-D11 の `SchemaNewerThanApp`）。v6 以前の backup を復元すると、open の migrate が v7 を適用する。
+
+**MIGRATIONS 登録順**: `migration.rs` の migrations() は v1 → … → v6 → v7 の順に登録する。v7 の description は `日報の個数を100倍の整数へ` とし、kind は `MigrationKind::Custom(schema_v7::apply_v7_daily_report_quantity_hundredths)` とする。実装は、既存行の 100 倍（NULL は NULL のまま、負の値も 100 倍）、改名後の列名、再実行時に v7 を重複適用しないこと、v6 の DB に日報の行がある状態からの適用を検証する。
