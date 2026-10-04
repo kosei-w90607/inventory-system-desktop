@@ -306,6 +306,10 @@ R3 の外部前提。実データは `~/downloads/inventory-field-check/approved
 
 実装の後に書く。
 
+### Gated Amendment 1（2026-10-04、Coordinator）
+
+- Matrix T18b (1) の値を `quantity_hundredths = i64::MAX / 100` から `(i64::MAX / 100) * 100`（v7 の後に取りうる最大）に直す。旧い値の 2 行の和は i64 を溢れず、`sum + value` の mutant が green のまま通る（Writer が実測して報告）。round 3 の Codex の指摘は「v6 の DB に `i64::MAX / 100` の 2 行を置き、v7 で 100 倍した後」の値で、一括是正の起草で v7 の前後を取り違えた。契約（24 §14.21 手順 7）・Scope・AC は変えない。実装の test は直した値で書かれている（`68b70f81` まで）。
+
 ## Review Response
 
 Review の後に書く。
