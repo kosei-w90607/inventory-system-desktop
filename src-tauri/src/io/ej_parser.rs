@@ -262,7 +262,23 @@ impl std::error::Error for EjParseError {}
 
 const LINE_WIDTH: usize = 24;
 const SEPARATOR: [u8; LINE_WIDTH] = [b'-'; LINE_WIDTH];
-const TOTAL_LABELS: [&str; 6] = ["対象計", "内税", "合  計", "お預り", "お  釣", "現金"];
+const TOTAL_LABELS: [&str; 12] = [
+    "対象計",
+    "対象計※",
+    "内税",
+    "内税※",
+    "合  計",
+    "お預り",
+    "お  釣",
+    "現金",
+    "ｸﾚｼﾞｯﾄ電子M",
+    "ｸｰﾎﾟﾝﾎﾟｲﾝﾄ払",
+    "売掛",
+    "商品券",
+];
+/// 合計域の支払行（IO-08-D5b）。`合  計` が無いときの照合の金額の候補
+const PAYMENT_LABELS: [&str; 5] = ["現金", "ｸﾚｼﾞｯﾄ電子M", "ｸｰﾎﾟﾝﾎﾟｲﾝﾄ払", "売掛", "商品券"];
+const REDUCED_TAX_NOTE: &str = "注）※は軽減税率適用";
 const PAID_LABELS: [&str; 3] = ["入金", "出金", "替"];
 const REPORT_LABELS: [&str; 12] = [
     "総売",
@@ -529,7 +545,7 @@ fn build_record(
                     .map_or(EjLineKind::Unknown, |label| EjLineKind::Labeled { label }),
                 EjRecordKind::Sale | EjRecordKind::Cancelled => match separator_at {
                     Some(at) if index == at => EjLineKind::Separator,
-                    Some(at) if index > at => classify_totals(text),
+                    Some(at) if index > at => classify_totals(text, lines.last()),
                     _ => classify_items(text),
                 },
             };
@@ -697,10 +713,7 @@ fn restore_items(lines: &[EjLine]) -> Result<EjRestoration, EjDiagnosticCode> {
         _ => None,
     }))?
     .ok_or(IncompleteRecord)?;
-    let total = match labeled_amount(totals, "合  計")? {
-        Some(total) => total,
-        None => labeled_amount(totals, "現金")?.ok_or(IncompleteRecord)?,
-    };
+    let total = reconciled_total(totals)?;
 
     let quantity_sum = items
         .iter()
@@ -728,16 +741,69 @@ fn at_most_one<T>(mut values: impl Iterator<Item = T>) -> Result<Option<T>, EjDi
     Ok(first)
 }
 
-fn labeled_amount(totals: &[EjLine], label: &str) -> Result<Option<i64>, EjDiagnosticCode> {
-    at_most_one(totals.iter().filter(
-        |line| matches!(line.kind, EjLineKind::Labeled { label: found } if found == label),
-    ))?
-    .map(|line| {
-        parse_amount(line.text[label.len()..].trim())
-            .map(|(amount, _)| amount)
-            .ok_or(EjDiagnosticCode::InconsistentRecord)
-    })
-    .transpose()
+/// IO-08-D6c: 照合の金額。`合  計` の行があればその金額、無ければ合計域の訂正で
+/// 取り消されていない支払行がちょうど 1 行のときの金額
+fn reconciled_total(totals: &[EjLine]) -> Result<i64, EjDiagnosticCode> {
+    use EjDiagnosticCode::{IncompleteRecord, InconsistentRecord};
+
+    // ラベルの行が金額 token を持たなければ、直後の Continued の金額を値とする
+    let amount_at = |index: usize| -> Result<i64, EjDiagnosticCode> {
+        let line = &totals[index];
+        let EjLineKind::Labeled { label } = line.kind else {
+            return Err(InconsistentRecord);
+        };
+        let rest = line.text[label.len()..].trim();
+        if !rest.is_empty() {
+            return parse_amount(rest)
+                .map(|(amount, _)| amount)
+                .ok_or(InconsistentRecord);
+        }
+        match totals.get(index + 1).map(|next| &next.kind) {
+            Some(EjLineKind::Continued { amount }) => Ok(*amount),
+            _ => Err(InconsistentRecord),
+        }
+    };
+
+    let mut total_at = None;
+    let mut payments: Vec<(usize, bool)> = Vec::new(); // (行, 取消済み)
+    for (index, line) in totals.iter().enumerate() {
+        match line.kind {
+            EjLineKind::Labeled { label: "合  計" } => {
+                if total_at.replace(index).is_some() {
+                    return Err(InconsistentRecord);
+                }
+            }
+            EjLineKind::Labeled { label } if PAYMENT_LABELS.contains(&label) => {
+                payments.push((index, false));
+            }
+            // IO-08-D6a: 直前の行（折り返していれば Continued の前）の支払行の取消
+            EjLineKind::Correction { amount } => {
+                let mut target = index.checked_sub(1).ok_or(InconsistentRecord)?;
+                if matches!(totals[target].kind, EjLineKind::Continued { .. }) {
+                    target = target.checked_sub(1).ok_or(InconsistentRecord)?;
+                }
+                let payment = payments
+                    .iter_mut()
+                    .find(|(at, cancelled)| *at == target && !*cancelled)
+                    .ok_or(InconsistentRecord)?;
+                if amount_at(target)?.checked_neg() != Some(amount) {
+                    return Err(InconsistentRecord);
+                }
+                payment.1 = true;
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(index) = total_at {
+        return amount_at(index);
+    }
+    let mut live = payments.iter().filter(|(_, cancelled)| !cancelled);
+    match (live.next(), live.next()) {
+        (None, _) => Err(IncompleteRecord),
+        (Some((index, _)), None) => amount_at(*index),
+        _ => Err(InconsistentRecord),
+    }
 }
 
 fn classify_items(text: &str) -> EjLineKind {
@@ -753,11 +819,32 @@ fn classify_items(text: &str) -> EjLineKind {
     }
 }
 
-fn classify_totals(text: &str) -> EjLineKind {
+/// 取引の合計域（IO-08-D5a / D5b）。prev は直前の行
+fn classify_totals(text: &str, prev: Option<&EjLine>) -> EjLineKind {
+    // 直前が金額 token を持たないラベルの行（ラベルだけ・`対象計` の率だけ）なら続きの行になれる
+    let after_bare_label = prev.is_some_and(|prev| {
+        matches!(prev.kind, EjLineKind::Labeled { .. })
+            && prev
+                .text
+                .split_whitespace()
+                .last()
+                .is_none_or(|token| parse_amount(token).is_none())
+    });
     if let Some(count) = parse_item_count(text) {
         EjLineKind::ItemCount { count }
     } else if let Some(label) = labeled(text, &TOTAL_LABELS) {
         EjLineKind::Labeled { label }
+    } else if text.trim() == REDUCED_TAX_NOTE {
+        EjLineKind::Labeled {
+            label: REDUCED_TAX_NOTE,
+        }
+    } else if let Some(amount) = (after_bare_label && text.starts_with(' '))
+        .then(|| parse_amount(text.trim()))
+        .flatten()
+    {
+        EjLineKind::Continued { amount: amount.0 }
+    } else if let Some(amount) = parse_labeled_amount(text, "訂正") {
+        EjLineKind::Correction { amount }
     } else if is_number_print(text) {
         EjLineKind::NumberPrint
     } else {
@@ -927,12 +1014,25 @@ fn parse_quantity(text: &str) -> Option<(i64, i64)> {
     }
 }
 
-/// 空白 + 整数 + ` 点` + 空白
+/// 空白 + 整数（任意の半角 `-`）+ ` 点` + 空白
 fn parse_item_count(text: &str) -> Option<i64> {
     if !text.starts_with(' ') {
         return None;
     }
-    parse_count(text.trim().strip_suffix(" 点")?)
+    let count = text.trim().strip_suffix(" 点")?;
+    match count.strip_prefix('-') {
+        Some(digits) => parse_count(digits)?.checked_neg(),
+        None => parse_count(count),
+    }
+}
+
+/// ラベル + 空白 + 金額 token だけの行（`訂正` / `小計`）
+fn parse_labeled_amount(text: &str, label: &str) -> Option<i64> {
+    let rest = text.strip_prefix(label)?;
+    if !rest.starts_with(' ') {
+        return None;
+    }
+    parse_amount(rest.trim()).map(|(amount, _)| amount)
 }
 
 /// 名称 + 空白 + 通貨記号つきの金額 token。名称は空白でない文字で始まり、中の空白を許す
@@ -942,6 +1042,8 @@ fn parse_item(text: &str) -> Option<(String, i64)> {
     }
     let (name, token) = text.trim_end().rsplit_once(' ')?;
     let name = name.trim_end();
+    // `※`（軽減税率の印）は通貨記号つきの金額の後だけ。解釈しない
+    let token = token.strip_suffix('※').unwrap_or(token);
     match parse_amount(token)? {
         (amount, true) if !name.is_empty() => Some((name.to_string(), amount)),
         _ => None,
@@ -969,19 +1071,28 @@ fn parse_count(text: &str) -> Option<i64> {
 /// 通貨記号・数字・桁区切りの幅（半角 / 全角）が token 内でそろわなければ受理しない。
 /// 値と、通貨記号があったかを返す
 fn parse_amount(token: &str) -> Option<(i64, bool)> {
-    // 負値は負のまま蓄積する（i64::MIN の絶対値は i64 に収まらない）
-    let (sign, rest) = match token.strip_prefix('-') {
-        Some(rest) => (-1, rest),
-        None => (1, token),
+    // 負値は負のまま蓄積する（i64::MIN の絶対値は i64 に収まらない）。
+    // 符号・通貨記号・数字・桁区切りの幅（半角 / 全角）を token 内でそろえる
+    let (sign, mut wide, rest) = if let Some(rest) = token.strip_prefix('-') {
+        (-1, Some(false), rest)
+    } else if let Some(rest) = token.strip_prefix('－') {
+        (-1, Some(true), rest)
+    } else {
+        (1, None, token)
     };
-    let (mut wide, rest) = if let Some(rest) = rest.strip_prefix('\\') {
+    let (currency, rest) = if let Some(rest) = rest.strip_prefix('\\') {
         (Some(false), rest)
     } else if let Some(rest) = rest.strip_prefix('￥') {
         (Some(true), rest)
     } else {
         (None, rest)
     };
-    let has_currency = wide.is_some();
+    if let Some(is_wide) = currency {
+        if *wide.get_or_insert(is_wide) != is_wide {
+            return None;
+        }
+    }
+    let has_currency = currency.is_some();
 
     let mut value: i64 = 0;
     let mut after_digit = false;
@@ -2665,6 +2776,299 @@ mod tests {
         let record = &result.records[0];
         assert_eq!(reasons_of(record), [UnknownLine]);
         assert_eq!(record.body[1].kind, EjLineKind::Unknown);
+    }
+
+    // -----------------------------------------------------------------------
+    // 取引の合計域（IO-08-D5a / D5b / D6c）
+    // -----------------------------------------------------------------------
+
+    /// 明細 A（金額 total）→ 区切り → 点数 1 → 合計域の行
+    fn one_item_sale(number: &str, total: i64, tail: &[String]) -> Vec<String> {
+        [
+            header("", AT, number),
+            vec![item(NAME_A, total), sep(), count(1)],
+            tail.to_vec(),
+        ]
+        .concat()
+    }
+
+    fn restored_one(record: &EjRecord, amount: i64) {
+        let items = items_of(record);
+        assert_eq!(items.len(), 1);
+        assert_eq!((items[0].name.as_str(), items[0].amount), (NAME_A, amount));
+        assert!(matches!(
+            record.restoration,
+            EjRestoration::Restored { item_count: 1, ref adjustments, .. } if adjustments.is_empty()
+        ));
+    }
+
+    // 合計域の全角の金額（`￥１，０００` / `－１，０００`）
+    fn zen_amount(amount: i64) -> String {
+        let text = zen(&yen(amount.abs()));
+        if amount < 0 {
+            format!("－{}", text.trim_start_matches('￥'))
+        } else {
+            text
+        }
+    }
+
+    // IO-08-D5: 全角の `－` は全角の数字とだけ組む
+    #[test]
+    fn parse_ej_full_width_minus_amount_token() {
+        assert_eq!(parse_amount("－１，０００"), Some((-1_000, false)));
+        assert_eq!(parse_amount("－￥１００"), Some((-100, true)));
+        for mixed in ["－1,000", "-１，０００", "－\\100", "-￥１００"] {
+            assert_eq!(parse_amount(mixed), None, "受理してはいけない token");
+        }
+    }
+
+    // G-T1 / IO-08-D5a: `対象計` の率の後の金額の折返し
+    #[test]
+    fn parse_ej_taxable_total_wraps_amount() {
+        let result = parse(&one_item_sale(
+            "000400",
+            12_345,
+            &[
+                lr("対象計", "8.0%"),
+                lr("", "\\12,345"),
+                lr("内税", "\\914"),
+                wide("合  計", 12_345),
+            ],
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        restored_one(&result.records[0], 12_345);
+        assert_eq!(
+            result.records[0].body[4].kind,
+            EjLineKind::Continued { amount: 12_345 }
+        );
+    }
+
+    // G-T2 / IO-08-D5a / D6c: `合  計` の無い取引で折り返した支払行の金額を照合に使う
+    #[test]
+    fn parse_ej_wrapped_payment_line_without_total() {
+        let result = parse(&one_item_sale(
+            "000401",
+            1_000,
+            &["ｸﾚｼﾞｯﾄ電子M".to_string(), lr("", &zen_amount(1_000))],
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        restored_one(&result.records[0], 1_000);
+    }
+
+    // G-T3 / IO-08-D5a: `お預り` / `お  釣` の折返し
+    #[test]
+    fn parse_ej_tendered_and_change_wrap() {
+        let result = parse(&one_item_sale(
+            "000402",
+            1_000,
+            &[
+                wide("合  計", 1_000),
+                "お預り".to_string(),
+                lr("", &zen_amount(10_000)),
+                "お  釣".to_string(),
+                lr("", &zen_amount(9_000)),
+            ],
+        ));
+
+        assert!(result.diagnostics.is_empty());
+        restored_one(&result.records[0], 1_000);
+    }
+
+    // G-T4 / IO-08-D5b / D6c: `合  計` も `現金` も無く、支払行 1 行の金額で照合する
+    #[test]
+    fn parse_ej_single_payment_line_without_total() {
+        for (n, label) in ["ｸﾚｼﾞｯﾄ電子M", "売掛", "商品券"].into_iter().enumerate()
+        {
+            let result = parse(&one_item_sale(
+                &format!("00041{n}"),
+                1_000,
+                &[wide(label, 1_000)],
+            ));
+            assert!(result.diagnostics.is_empty(), "{label}");
+            restored_one(&result.records[0], 1_000);
+
+            let result = parse(&one_item_sale(
+                &format!("00042{n}"),
+                1_000,
+                &[wide(label, 999)],
+            ));
+            assert_eq!(
+                reasons_of(&result.records[0]),
+                [InconsistentRecord],
+                "{label}"
+            );
+        }
+    }
+
+    // G-T5 / IO-08-D5b / D6c: `合  計` があれば支払行の併用でも照合は `合  計`
+    #[test]
+    fn parse_ej_total_with_mixed_payments() {
+        let lines = [
+            one_item_sale(
+                "000430",
+                1_000,
+                &[
+                    wide("合  計", 1_000),
+                    wide("ｸｰﾎﾟﾝﾎﾟｲﾝﾄ払", 100),
+                    wide("お預り", 1_000),
+                    wide("お  釣", 100),
+                ],
+            ),
+            one_item_sale(
+                "000431",
+                1_000,
+                &[
+                    wide("合  計", 1_000),
+                    wide("商品券", 500),
+                    wide("ｸﾚｼﾞｯﾄ電子M", 500),
+                ],
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        restored_one(&result.records[0], 1_000);
+        restored_one(&result.records[1], 1_000);
+    }
+
+    // G-T6 / IO-08-D6a / D6c: 合計域の訂正は直前の支払行を取り消し、明細に効かない
+    #[test]
+    fn parse_ej_total_region_correction_cancels_payment() {
+        let lines = [
+            one_item_sale(
+                "000440",
+                1_000,
+                &[
+                    wide("合  計", 1_000),
+                    wide("売掛", 1_000),
+                    lr("訂正", "-1,000"),
+                    wide("現金", 1_000),
+                ],
+            ),
+            one_item_sale(
+                "000441",
+                1_000,
+                &[
+                    wide("合  計", 1_000),
+                    wide("現金", 1_000),
+                    lr("訂正", "-1,000"),
+                    wide("現金", 1_000),
+                ],
+            ),
+            // `合  計` なし: 取り消されていない支払行は `現金` の 1 行
+            one_item_sale(
+                "000442",
+                100,
+                &[wide("売掛", 100), lr("訂正", "-100"), wide("現金", 100)],
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        restored_one(&result.records[0], 1_000);
+        restored_one(&result.records[1], 1_000);
+        restored_one(&result.records[2], 100);
+        assert_eq!(
+            result.records[2].body[4].kind,
+            EjLineKind::Correction { amount: -100 }
+        );
+    }
+
+    // G-T7 / IO-08-D5b: 軽減税率の行と `※` つきの明細
+    #[test]
+    fn parse_ej_reduced_tax_rate_lines() {
+        let lines = [
+            header("", AT, "000450"),
+            vec![
+                lr(NAME_A, "\\300※"),
+                sep(),
+                count(1),
+                lr("対象計※ 8.0%", "\\300"),
+                lr("内税※", "\\22"),
+                wide("現金", 300),
+                "注）※は軽減税率適用".to_string(),
+            ],
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert!(result.diagnostics.is_empty());
+        restored_one(&result.records[0], 300);
+        assert_eq!(
+            result.records[0].body[6].kind,
+            EjLineKind::Labeled {
+                label: "注）※は軽減税率適用"
+            }
+        );
+    }
+
+    // G-F9 / IO-08-D6c: `合  計` が無く支払行 2 行（和は明細の合計）は不一致、0 行は欠け
+    #[test]
+    fn parse_ej_payment_lines_without_total_are_not_summed() {
+        let lines = [
+            one_item_sale("000460", 1_000, &[wide("現金", 600), wide("売掛", 400)]),
+            one_item_sale(
+                "000461",
+                1_000,
+                &[lr("対象計", &yen(1_000)), lr("内税", &yen(90))],
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+        assert_eq!(reasons_of(&result.records[1]), [IncompleteRecord]);
+    }
+
+    // G-F10 / IO-08-D6a: 合計域の訂正の直前が支払行でない、金額が直前の支払行と合わない
+    #[test]
+    fn parse_ej_total_region_correction_mismatch_unresolves() {
+        let lines = [
+            one_item_sale(
+                "000470",
+                1_000,
+                &[
+                    lr("対象計", &yen(1_000)),
+                    lr("訂正", "-1,000"),
+                    wide("合  計", 1_000),
+                ],
+            ),
+            one_item_sale(
+                "000471",
+                1_000,
+                &[
+                    wide("合  計", 1_000),
+                    wide("売掛", 1_000),
+                    lr("訂正", "-900"),
+                    wide("現金", 1_000),
+                ],
+            ),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert_eq!(reasons_of(&result.records[0]), [InconsistentRecord]);
+        assert_eq!(reasons_of(&result.records[1]), [InconsistentRecord]);
+    }
+
+    // G-F15 / IO-08-D6a / D6c: `合  計` の無い取引の照合の金額の候補
+    #[test]
+    fn parse_ej_payment_candidate_selection_without_total() {
+        let lines = [
+            // (a) 取り消した支払行だけ: 候補 0 行
+            one_item_sale("000480", 100, &[wide("売掛", 100), lr("訂正", "-100")]),
+            // (b) 候補 2 行で、先頭だけが明細の和と一致
+            one_item_sale("000481", 100, &[wide("現金", 100), wide("売掛", 40)]),
+        ]
+        .concat();
+        let result = parse(&lines);
+
+        assert_eq!(reasons_of(&result.records[0]), [IncompleteRecord]);
+        assert_eq!(reasons_of(&result.records[1]), [InconsistentRecord]);
     }
 
     // -----------------------------------------------------------------------
