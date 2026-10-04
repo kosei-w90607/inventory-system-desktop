@@ -14,7 +14,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、本 lane の worktree、branch `agent/ej-grammar`）
-- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6.1 Sol、`.local/codex-orders/MODEL-SELECTION.md` の表）
+- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6.1 Sol、`.local/codex-orders/MODEL-SELECTION.md` の表。round 1〜3 とも同じ行）
 - Final Reviewer: Fable 5.1（fresh subagent）+ Codex（GPT-6.1 Sol）。互いに独立で、後の reviewer に先の結果を見せない
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -29,6 +29,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定 file に `scrip
 - plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus reject（P2 2・P3 5）・Codex reject（P2 3・P3 3）。Coordinator の裁定、相談役の反例探し、実データの確認を反映した。Plan Commit は pending のまま。
 - plan-gate（round 2 の是正、2026-10-04、起草役、本 commit）: round 2 の是正（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（round 3 の後の一括是正、2026-10-04、起草役、本 commit）: round 天井に達し、Coordinator の disposition（一括是正）を反映した（Review Response 参照）。Plan Commit は pending のまま。
+- plan-gate（Review Response の記入、2026-10-04、Coordinator、本 commit）: round 1〜3 と一括是正の裁定を Review Response に書いた。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -302,3 +303,20 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 ## Review Response
 
 review の後に記入する。
+
+- Plan Review round 1（2026-10-04、対象 `87c6c490`、互いに独立の 2 本）: fresh Opus 5.5 = reject（P2 2 / P3 5）、Codex GPT-6.1 Sol（発注 202）= reject（P2 3 / P3 3）。Coordinator が現物で裏取りして全件を採用し、相談役（Fable 5.1）の反例探しの後、起草役（Opus 5.5）が是正した（`03cbc27d`）。Phase は plan-gate のまま。
+  - Opus F1（P2、終わりの印字の無い精算票の扱いが IO-08-D4 と食い違う）: 採用。IO-08-D7a を「次のヘッダで閉じた記録は中断の NoItems、file の最後の記録は `ReportEnd` を必須行とし IncompleteRecord」にし、G-S4 に EOF 側の case を足した。
+  - Codex #1（P2、設定の記録の通貨記号の拒否が `Text` にだけ掛かり、先に判定する `Status` から抜けられる）・Opus F4（P3、設定の記録に紛れる取引の形）: 採用。設定の記録では行種の分類より前に、通貨記号の行と「半角空白 + 点」を含む行を `Unknown` にする（decode 後の文字列で判定）。G-O1・G-O2 に case を足した。
+  - Codex #2・Opus F2（P2、S2 の期待値の変更だけでは AC7 の既存 test 無変更が成り立たない。`mixed_file()` の `点検` の記録）: 採用。S2 に `mixed_file()` の `点検` → `ZZZ` を足した。
+  - Codex #3（P2、S3 が probe の assert の片方だけを外す）・Opus F7（P3、digest の形）: 採用。S3 で probe の assert を 2 つとも外し、digest は `adjustments` が空なら base と同じ式にした。
+  - Codex #4〜#6・Opus F3・F5・F6（P3）: 採用。小計の和にマイナスキーを含める、`Sale` の注釈、負の fixture の値、G-T8 の並び、互換の対象を実物と既存 fixture に揃えた。Contract Probe に round 1 の後の実データの確認 (a)〜(c) を形の事実として足した。
+- Plan Review round 2（2026-10-04、対象 `03cbc27d`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 6）、Codex GPT-6.1 Sol（発注 207）= reject（P2 1）。Coordinator が全件を採用し、起草役（Opus 5.5）が是正した（`bdb5bea5`）。Phase は plan-gate のまま。
+  - Codex #1（P2、`合  計` の無い取引で、照合の金額の候補の選び方を壊す誤実装を検出できない。G-T6 はすべて `合  計` 付きで、G-F9 の負例は和が明細の合計と一致する形なので「先頭の 1 行を選ぶ」誤実装も期待どおりの診断になる）: 採用。G-F15 を新設し（取り消した支払で候補 0 行 → IncompleteRecord、候補 2 行で先頭だけが一致 → InconsistentRecord）、G-T6 に `合  計` の無い差し替えの正の case を足した。
+  - Opus #1〜#6（P3）: 採用。練習・未知のモードの番号印字の行種を 1 通りにし、digest の区切りと `None` の表し方を S3 で固定し、AC9 の本文を G-F に揃え、構造所見の未知の行を「規則」と明記して AC11 に止まる条件を書き、S1 に既存 test 3 本が呼ぶ `parse_amount` / `parse_quantity` の signature を保つことを書き、`－ … *` の直前の項目の観測を Contract Probe に足した（持ち帰りデータの集計。件数は tracked に書かず、形の事実だけ）。
+- Plan Review round 3（上限）（2026-10-04、対象 `bdb5bea5`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 4）、Codex GPT-6.1 Sol（発注 210）= reject（P2 1 / P3 1）。round 天井に達したので次の round を起こさず、Coordinator が `docs/DEV_WORKFLOW.md` Review Rules の disposition で全件を「一括是正」とした（owner 2026-10-04 が「一括是正の後に plan-approved、独立の再確認は Final Review」を選んだ）。起草役（Opus 5.5）が是正し（`d3489d00`）、Coordinator が現物で確かめた。
+  - Codex #1（P2、`ItemName` の fallback が、`i64` に収まらない金額の明細の行の後に続きの行がある取引を架空の明細として受ける誤実装を test が見ていない）: 採用。G-F13 に case を足し（期待は先頭の行と続きの行が `Unknown` で `Unresolved`）、Mutation 節に 1 行。あわせて 29 :259 の `ItemName` の条件に「`i64` に収まらない桁で `Unknown` になる行は当たらない」を足し、:318 との食い違いを無くした（起草役が指摘し、Coordinator が採用。受理の経路を増やさない明文化）。
+  - Codex #2（P3、G-M9 の `現金 ￥0` が全角の通貨記号と半角の数字を混ぜる）: 採用。`wide("現金", 0)` と明記した。
+  - Opus #1（P3、取引の明細域の `＃ N` を見る行が無い）・Opus #2（P3、練習の記録の幅の違反を見る行が無い）: 採用。G-O6 と G-K3 に case を足し、Mutation 節に行を足した。
+  - Opus #3（P3、行の分類の表の「先頭の行」「最後の行」が番号印字の行を除くか書いていない）: 採用。29 の `CancelMark`・`ReportTitle`（Z / X）・`Cancelled` の条件に「番号印字の行を除いて数える」を足した。
+  - Opus #4（P3、Owner Effort Budget の表が Codex の起動を数えている）: 採用。relay を数えない形に直した。
+  - Final Review で独立に確かめる点: 一括是正の全体（G-F13・G-O6・G-K3・G-M9 の case と 29 の 5 箇所の句）。
