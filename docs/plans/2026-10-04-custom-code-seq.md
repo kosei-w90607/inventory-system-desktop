@@ -8,9 +8,9 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 90990977b33aecf717a8bd88a16f76db1821784a
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、worktree は本 lane の隔離 worktree、branch `agent/custom-code-seq`）
@@ -27,6 +27,7 @@ Final Review Minimum は規則どおり 1（R4 でない。予定の file に `s
 - plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `018f5197` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。Plan Reviewer の Codex を表の当てはめ（R3 の初回）で GPT-6.1 Sol に直した。
 - plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus approve（P3 2）・Codex reject（P1 1・P2 3・P3 1）。Coordinator の裁定と owner 決定 TD-108・TD-109 を反映した。Plan Commit は pending のまま。
 - plan-gate（round 2 の是正、2026-10-04、Coordinator、本 commit）: round 2 の是正（Review Response 参照）。P3 のみ。Plan Commit は pending のまま。
+- plan-gate → plan-approved（2026-10-04、Coordinator、本 commit）: Plan Review round 2（対象 `09418db6`）で 2 本とも P1 / P2 = 0。round 2 の後の是正（`90990977`、P3 のみ）を Coordinator が現物で確かめた（doc check の `--target plan` と full が ERROR 0、helper の `parse_packet` が通る、pre-push の PK5 と traceability が OK）。是正の独立の再確認は Final Review が兼ねる。owner の plan-approved の判断（2026-10-04）。Plan Commit は `90990977`。
 
 ## Owner Effort Budget
 
@@ -36,7 +37,7 @@ Final Review Minimum は規則どおり 1（R4 でない。予定の file に `s
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 3（起票の判断 TD-104〈本 lane を含む lane 選択〉、Plan Review round 1 の後の番号の振り方 TD-108〈抜けを埋めない〉・TD-109〈9999 を超えたら 5 桁以上〉） | 2（Ready、merge） | 1（この後に owner へ諮る事項が出たとき） | 6 = 3 + 2 + 1 |
+| 介入 | 6 | 4（起票の判断 TD-104〈本 lane を含む lane 選択〉、Plan Review round 1 の後の番号の振り方 TD-108〈抜けを埋めない〉・TD-109〈9999 を超えたら 5 桁以上〉、plan-approved 1〈2026-10-04、予備を使った〉） | 2（Ready、merge） | 0 | 6 = 4 + 2 + 0 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。Codex の起動（relay）は数えない。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
