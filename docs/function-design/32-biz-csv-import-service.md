@@ -141,7 +141,7 @@ src-tauri/src/
 #### ErrorSummary構造体
 
 - count: usize（エラー行の総数）
-- items: Vec\<ErrorRow\>（最大100件。超過時は件数のみ。UI表示の上限）
+- items: Vec\<ErrorRow\>（最大100件。UI表示の上限。選び方は§15.3 手順 5c: error_type が invalid_jan の行を先に選び、残りの枠を他の行で埋め、line_no の昇順で並べる。100件を超えた分は count にだけ数える）
 
 #### DuplicateCheck構造体
 
@@ -279,7 +279,8 @@ fn parse_and_validate(
       - 全件のIDを同じ順序で `CachedPreview.active_same_date_import_ids` に保持する
    c. PreviewData 構築
       - matched_summary: count = matched_rows.len(), total_amount = matched_rows.iter().map(|r| r.amount as i64).sum(), warnings
-      - error_summary: count = error_rows.len(), items = error_rows の先頭100件
+      - error_summary: count = error_rows.len()（全件）。items は最大100件で、error_rows のうち error_type が invalid_jan の行を line_no の昇順で先に選び、残りの枠を他の行から line_no の昇順で埋める。選んだ items は line_no の昇順で並べる。error_rows 自体（commit・csv_import_errors へ渡す全件）の内容と順は変えない
+      - 理由: 商品コードの無い枠の売上（SPEC-Z4A-D8、D-103）と売上のある非JANの行は、商品を登録しても在庫に入らず、Z004 の commit の停止中（SPEC-STOP-D1）は取込み記録の詳細にも届かないため、プレビューのエラー詳細が唯一の知らせ先になる。error_rows は 4b の unmatched_product の行が先に並ぶため、先頭から切ると未登録 JAN の行が100件を超えたときにこれらの行が items から落ちる。種別だけで選び、文言では判別しない
 6. **preview_token 生成**: UUID v4
 7. ParseValidateResult { preview_data, preview_token, matched_rows, error_rows } を返す
    - CMD層がこの戻り値を受け取り、preview_tokenをキーとしてAppState.preview_cacheに保存する（17.5節参照）

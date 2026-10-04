@@ -247,7 +247,7 @@ fn parse_data_line(line: &str, line_no: usize) -> Result<Option<ParsedRow>, Pars
 
 根拠: PLU の登録を消した（clear した）枠は、名前が空・コード全桁0のまま、精算の前の数量と金額を持って次の Z004 に残る（2026-09-28 の検証、持ち帰りデータの手元集計 2026-09-29）。従来の「全桁0 = 空スロット」は、この売上を数量・金額を見ずに捨て、在庫にもエラーにも出さなかった。owner 決定 TD-105（2026-10-04）で、エラーとして知らせ、元の商品へ戻すことはしない。8桁独自コード + EEEEEE の枠は 2026-07-06 以降の Z004 に毎回あり（持ち帰りデータの手元集計 2026-10-04）、従来は売上が無くても毎回 InvalidJan になり、取込みは毎回 completed_partial になっていた。売上の無い枠を毎回のエラーに出すと、本当に知らせたい行（上の表の右列）が同じ一覧に埋もれる。
 
-知らせ方: 既存の行エラーの経路をそのまま使う。BIZ-03 が `invalid_jan` の ErrorRow にし、取込みは completed_partial になり、`csv_import_errors` に残る。プレビューのエラー詳細と取込み記録の詳細の「メッセージ」「内容」列に上の文言が出る。normalized_jan は None（画面は「(不明)」「—」）、raw_quantity / raw_amount は元の文字列。
+知らせ方: 既存の行エラーの経路をそのまま使う。BIZ-03 が `invalid_jan` の ErrorRow にし、取込みは completed_partial になり、`csv_import_errors` に残る。プレビューのエラー詳細と取込み記録の詳細の「メッセージ」「内容」列に上の文言が出る。プレビューのエラー詳細（最大100件）では invalid_jan の行が他の種別の行より先に選ばれ、未登録 JAN の行が多くても落ちない（[32 §15.3 手順 5c](32-biz-csv-import-service.md)）。normalized_jan は None（画面は「(不明)」「—」）、raw_quantity / raw_amount は元の文字列。
 
 却下案:
 - 新しい error 種別（例 `cleared_slot`）: `csv_import_errors.error_type` の CHECK の migration、`CsvImportErrorType` の generated enum と bindings、画面の label 2 か所が要る。見分けは文言で足り、実データでもまれ。後続（例: ADR D5 の合計の照合）が種別で区別する必要が出たら足す
