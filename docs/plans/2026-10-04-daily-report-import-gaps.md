@@ -16,7 +16,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、worktree は本 lane のもの、branch `agent/daily-report-import-gaps`）
-- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6 Astra。`.local/codex-orders/MODEL-SELECTION.md` の表の「データの安全〈migration〉」の行）。互いに独立で Writer と別 context
+- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6 Astra、round 1〜3 とも。`.local/codex-orders/MODEL-SELECTION.md` の表の「データの安全〈migration〉」の行）。互いに独立で Writer と別 context
 - Final Reviewer: Fable 5.1（fresh subagent）+ Codex（GPT-6.1 Sol）。互いに独立で Writer・Plan Reviewer と別 context。後の reviewer に先の結果を見せない
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -33,6 +33,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定の path に `sc
 - plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus reject（P2 1・P3 4）・Codex reject（P1 1・P2 7）。Coordinator の裁定、相談役の反例探し、owner 決定 TD-110・TD-111 を反映した。Plan Commit は pending のまま。
 - plan-gate（round 2 の是正、2026-10-04、起草役、本 commit）: round 2 の是正（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate（round 3 の後の一括是正、2026-10-04、起草役、本 commit）: round 天井に達し、Coordinator の disposition（一括是正）を反映した（Review Response 参照）。Plan Commit は pending のまま。
+- plan-gate（一括是正の範囲の拡張と Review Response の記入、2026-10-04、Coordinator、本 commit）: 一括是正の範囲を部門の amount の合計に広げた（`130da5a1`）。round 1〜3 と一括是正の裁定を Review Response に書いた。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -306,3 +307,29 @@ R3 の外部前提。実データは `~/downloads/inventory-field-check/approved
 ## Review Response
 
 Review の後に書く。
+
+- Plan Review round 1（2026-10-04、対象 `d37767a8`、互いに独立の 2 本）: fresh Opus 5.5 = reject（P2 1 / P3 4）、Codex GPT-6 Astra（発注 201）= reject（P1 1 / P2 7）。Coordinator が現物で裏取りして全件を採用し、精算回数の扱いは owner 決定（TD-110・TD-111）で解いた。是正は相談役（Fable 5.1）の反例探しの後、起草役（Opus 5.5）が反映した（`f266f270`）。Phase は plan-gate のまま。
+  - Codex #1（P1、v7 に 100 倍の範囲検査が無く、件数・合計だけでは INTEGER の破壊を検出できない）: 採用。v7 に変換前の範囲検査（`i64::MAX / 100`）を足し、検証を件数・型・÷100 の合計と余りに改めた（22 §15、Matrix T15b・T16）。
+  - Codex #2（P2、Goal の無条件の混在拒否と、比べられないときの受理が両立しない）・Opus #5（P3、3 帳票の精算回数が一緒に進む前提）: 採用。混在を止める保証を「3 本とも精算回数を読める束」に揃え、読めないファイルの出所は確かめない受容リスク（TD-110・TD-111）を Goal・IO-07-D3・BIZ-08-D2・D-104 に書いた。
+  - Codex #3（P2、既存 test の追従の漏れ〈`import_internal_contract_test.rs`〉）・Opus #2（P3、「変えずに PASS」の既存 test の範囲）: 採用。IO-07-D2 の pin を Rust と Markdown の split pin にし、実装 PR で単一 pin に戻すことを S8 に書いた。Compatibility Checks の追従の範囲を直した。
+  - Codex #4・Opus #1（P2、AC5 の検索式が新しい列名にも当たる）: 採用。AC5 の検索式を直した。
+  - Codex #5（P2、AC7 の diff が生成先を検査しない経路）: 採用。AC7 の pathspec を直した。
+  - Codex #6（P2、「3 本とも読めるときだけ比べる」mutant を殺す case が無い）・Opus #3（P3、「2 本以上」の境界）: 採用。T8 (d) を足した。
+  - Codex #7（P2、T16 が実際の v7 の検証・rollback の経路を固定していない）: 採用。T16 を trigger で検証を失敗させる形にした。
+  - Codex #8（P2、Goal の失敗定義が S4 / S7 に要る DTO の変更を失敗にしている）・Opus #4（P3、24 の DB DTO の「同じ形」）: 採用。失敗定義の型の範囲と 24 の記述を直した。
+- Plan Review round 2（2026-10-04、対象 `f266f270`、互いに独立の 2 本）: fresh Opus 5.5 = reject（P2 1 / P3 2）、Codex GPT-6 Astra（発注 206。round 1 で Codex が P1 を出したので Astra）= reject（P1 1 / P2 1 / P3 4）。Coordinator が現物で裏取りして全件を採用し、起草役（Opus 5.5）が是正した（`02f437cb`）。Phase は plan-gate のまま。
+  - Codex #1（P1、日報を取り込んでいない DB〈行 0〉と全件 NULL の表で `SUM` が NULL になり、v7 の検証の `= 0` と合計の一致が成り立たない）: 採用。Coordinator が SQLite で再現した。手順 2 と手順 6 (c) の `SUM` を `COALESCE(…, 0)` で定義し、T17 と新しい test で行 0・全件 NULL の成功を固定した。
+  - Codex #2・Opus F1（P2、2 本が独立に指摘。選び直しの案内〈ファイル名の後ろが同じ 3 つ〉と、IO-07-D3・D-104 の「名前の後ろで組むと割れる組が手元の全期間にある」が食い違う）: 採用。Coordinator が持ち帰りデータを probe6 で数え直し、「中身の日付 + 名前の後ろ」で組んだ 142 組がすべて 3 本そろって精算回数が一致（同じ日に 2 回以上精算した 19 日・42 組も一致）。割れて見えたのは手元の整理の folder の分かれ方だった。案内の文は残し、IO-07-D3・D-104 の誤った 1 文を直し、P5 に probe6 の件数を足した。
+  - Codex #3（P3、T14 が wire からの逆変換の mutant を区別できない）: 採用。commit の前に preview の数量を書き換え、cache の値が保存されることを assert する形にした。
+  - Codex #4・Opus F2（P3、範囲検査を消す mutant が T15b (2) を red にしない）: 採用。範囲検査の message（`範囲検査` と表名）を assert する。
+  - Codex #5（P3、T22 は REQ の付け忘れを検出しない）: 採用。reviewer が照合する `rg` の手順を足した。
+  - Codex #6（P3、AC8 に `npm run generate:routes` が無い）: 採用。
+  - Opus F3（P3、前提が崩れたときの戻り道）: 採用。D-104 の Revisit に、診断ログを見て開発者に連絡する 1 文を足した。
+- Plan Review round 3（上限）（2026-10-04、対象 `02f437cb`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 3）、Codex GPT-6 Astra（発注 209）= reject（P2 2 / P3 1）。round 天井に達したので次の round を起こさず、Coordinator が `docs/DEV_WORKFLOW.md` Review Rules の disposition で全件を「一括是正」とした（owner 2026-10-04 が「一括是正の後に plan-approved、独立の再確認は Final Review」を選んだ）。起草役（Opus 5.5）が是正し（`e827213b`）、Coordinator が範囲を広げて仕上げた（`130da5a1`）。
+  - Codex #1（P2、v7 の行の範囲検査と日次・月次の集約がつながらず、範囲内の最大の 2 行で日次の集約が黙って負の値になる）: 採用。Coordinator が `sales_repo.rs` の `sum_optional_strict`（`sum + value`）を実読して確かめた（加算は v7 より前からあり、溢れる閾値が 100 分の 1 になった）。日次の集約の加算をすべて `checked_add` にし、溢れたら `DbError::QueryFailed`（24 §14.21 手順 7。月次の `SUM` の溢れも同じ error で止まる、§14.22）。起草役が `sum_optional_strict` を通らない部門の amount の合計（`group.3 += amount`）を報告し、Coordinator が対象に含めた。T18b（quantity の溢れと amount の溢れの 2 case）を足した。
+  - Codex #2（P2、T15b は `q.abs() > L` の mutant を検出できない）: 採用。T15b (2) に `i64::MIN` の行を足した。
+  - Codex #3（P3、T8 (c) の fixture でヘッダの境界の mutant が生き残る）: 採用。ヘッダの後に第 1 列 = `精算回数` の合成の行を置く形にした。
+  - Opus #1（P3、v7 の検証 (c) で符号の違う余りが打ち消し合う）: 採用。(c) の後半を `NOT EXISTS (… WHERE quantity_hundredths % 100 <> 0)` にし、T16 (2) で打ち消しの mutant を固定した。
+  - Opus #2（P3、helper の置き場所）・Opus #3（P3、T10 の Would fail if）: 採用。
+  - CV17 の静的解析（owner の持ち帰り資料 2026-10-04）から: layout B の小数の日・1 file = 1 精算かは未確認として Contract Probe P14 に、29 §29.4.1 の「改行を持たない」と書出しの CRLF の食い違いの候補を follow-up (8) に置いた。
+  - Final Review で独立に確かめる点: 一括是正の全体（24 §14.21 手順 7・§14.22、22 §15 手順 1 / 6 (c)、T8・T10・T15b・T16・T18b）。
