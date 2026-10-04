@@ -149,7 +149,9 @@ pub(crate) mod failpoint {
 
 /// 独自コードを生成する（FUNC-4.3）
 ///
-/// department の code_prefix + "-" + 4桁ゼロ埋め連番。
+/// department の code_prefix + "-" + 4 桁以上の 0 埋め連番（9999 の次は 10000）。
+/// 連番は、同じ接頭辞の既存の独自コードの番号の最大 + 1 と next_seq の大きい方で、
+/// 既存の番号を飛ばし、間の抜けは使わない（BIZ-01-D6）。
 /// 連番の更新を呼び出し元の TX に含めるため、借りた transaction だけを受け取る（31 §12.2 と同じ形）。
 fn generate_custom_code(
     conn: &rusqlite::Transaction<'_>,
@@ -162,15 +164,44 @@ fn generate_custom_code(
         BizError::ValidationFailed("この部門は独自コード発番に対応していません".to_string())
     })?;
 
+    // 3. 既存の番号の最大（部門を問わず全商品）。i64 の上限は next_seq の更新の前に止める
+    let head = format!("{prefix}-");
+    let max = product_repo::list_product_codes_by_prefix(conn, &head)?
+        .iter()
+        .filter_map(|code| custom_code_seq(code, &head))
+        .max();
+    let overflow =
+        || BizError::ValidationFailed("この部門の独自コードの番号を振れません".to_string());
+    let floor = match max {
+        Some(m) => m.checked_add(1).ok_or_else(overflow)?,
+        None => 1,
+    };
+    department
+        .next_seq
+        .max(floor)
+        .checked_add(1)
+        .ok_or_else(overflow)?;
+
+    // 4〜5. next_seq を floor まで上げてから 1 つ進める
+    product_repo::raise_next_seq(conn, department_id, floor)?;
     let seq = product_repo::increment_next_seq(conn, department_id)?;
     let code = format!("{}-{:04}", prefix, seq);
 
-    // 安全のため重複チェック（通常は起きない）
+    // 7. 重複チェック（step 3〜5 により起きないが、推論の誤りでデータを壊さないため残す）
     if product_repo::find_by_product_code(conn, &code)?.is_some() {
         return Err(BizError::DuplicateProductCode(code));
     }
 
     Ok(code)
+}
+
+/// `{接頭辞}-` の後ろが 1 文字以上の ASCII 数字だけで i64 に収まれば番号を返す（BIZ-01-D6 step 3b）
+fn custom_code_seq(code: &str, head: &str) -> Option<i64> {
+    let digits = code.strip_prefix(head)?;
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    digits.parse().ok()
 }
 
 /// 商品を新規登録する（FUNC-4.2）
@@ -1884,9 +1915,9 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_create_product_req101_duplicate_key_from_insert() {
-        // REQ-101: 商品登録 — INSERT時DuplicateKeyはDuplicateProductCodeに正規化
-        // INSERT 時の DuplicateKey → DuplicateProductCode に正規化
+    fn test_create_product_req101_skips_directly_inserted_custom_code() {
+        // REQ-101: 商品登録 — 直接入った独自コード HZ-0001 を飛ばして HZ-0002 を振る（BIZ-01-D6）
+        // 旧前提（既存の HZ-0001 で DuplicateProductCode）は BIZ-01-D6 で廃止。INSERT 時の DuplicateKey の正規化には元から届いていなかった
         let (_dir, mut conn) = setup_test_db();
 
         // 直接 IO 層で商品を挿入（BIZ 層の重複チェックをバイパス）
@@ -1910,14 +1941,195 @@ mod tests {
         };
         product_repo::insert_product(&conn, &p).unwrap();
 
-        // BIZ 層で同じ product_code になるリクエスト（独自コード発番で HZ-0001）
-        let req = default_create_request(); // department=2(HZ), next_seq=1 → HZ-0001
-        let result = create_product(&mut conn, req);
-        assert!(
-            matches!(result, Err(BizError::DuplicateProductCode(_))),
-            "INSERT時のDuplicateKeyがDuplicateProductCodeに正規化されるべき: {:?}",
-            result
+        // department=2(HZ), next_seq=1 でも既存の HZ-0001 を飛ばす
+        let result = create_product(&mut conn, default_create_request()).unwrap();
+        assert_eq!(result.product_code, "HZ-0002");
+    }
+
+    // ===== BIZ-01-D6: 既存の独自コードを飛ばす発番 =====
+
+    fn seed_code(conn: &DbConnection, code: &str, department_id: i64) {
+        product_repo::insert_product(
+            conn,
+            &NewProduct {
+                product_code: code.to_string(),
+                jan_code: None,
+                name: "合成".to_string(),
+                department_id,
+                supplier_id: None,
+                selling_price: 100,
+                cost_price: 50,
+                tax_rate: "10".to_string(),
+                maker_code: None,
+                stock_quantity: 0,
+                stock_unit: "pcs".to_string(),
+                is_discontinued: false,
+                plu_dirty: true,
+                plu_exported_at: None,
+                plu_target: true,
+                pos_stock_sync: true,
+            },
+        )
+        .unwrap();
+    }
+
+    fn next_seq_of(conn: &DbConnection, department_id: i64) -> i64 {
+        product_repo::find_department_by_id(conn, department_id)
+            .unwrap()
+            .unwrap()
+            .next_seq
+    }
+
+    fn product_count(conn: &DbConnection) -> i64 {
+        conn.query_row("SELECT COUNT(*) FROM products", [], |row| row.get(0))
+            .unwrap()
+    }
+
+    fn assert_seq_overflow_unchanged(conn: &mut DbConnection, expected_next_seq: i64) {
+        let tx = conn.transaction().unwrap();
+        let before = product_count(&tx);
+        let result = generate_custom_code(&tx, 2);
+        match result {
+            Err(BizError::ValidationFailed(msg)) => {
+                assert_eq!(msg, "この部門の独自コードの番号を振れません")
+            }
+            other => panic!("ValidationFailed であるべき: {other:?}"),
+        }
+        assert_eq!(product_count(&tx), before);
+        assert_eq!(next_seq_of(&tx, 2), expected_next_seq);
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_product_req101_custom_code_after_csv_import() {
+        // REQ-101 / REQ-104: T1 商品 CSV で HZ-0001・HZ-0002 を取り込んだ後も登録できる（BIZ-01-D6、§4.9 step 2c）
+        let (_dir, mut conn) = setup_test_db();
+        let csv = make_csv(
+            "商品コード,商品名,部門ID,売価,原価,税率",
+            &["HZ-0001,合成A,2,500,300,10", "HZ-0002,合成B,2,500,300,10"],
         );
+        let preview = preview_import(&conn, &csv).unwrap();
+        assert_eq!(preview.valid_rows.len(), 2);
+        commit_import(&mut conn, preview.valid_rows, vec![]).unwrap();
+        assert_eq!(next_seq_of(&conn, 2), 1, "取込みは next_seq を進めない");
+
+        let r1 = create_product(&mut conn, default_create_request()).unwrap();
+        assert_eq!(r1.product_code, "HZ-0003");
+        let r2 = create_product(&mut conn, default_create_request()).unwrap();
+        assert_eq!(r2.product_code, "HZ-0004");
+        assert_eq!(next_seq_of(&conn, 2), 5);
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_skips_gap_after_max() {
+        // REQ-101: T2 抜けた番号を使わず最大の次から振る（BIZ-01-D6、TD-108）
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        seed_code(&tx, "HZ-0001", 2);
+        seed_code(&tx, "HZ-0005", 2);
+        assert_eq!(generate_custom_code(&tx, 2).unwrap(), "HZ-0006");
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_keeps_next_seq_above_max() {
+        // REQ-101: T3 next_seq が最大 + 1 より大きければ next_seq を使う（下げない）
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        tx.execute("UPDATE departments SET next_seq = 10 WHERE id = 2", [])
+            .unwrap();
+        seed_code(&tx, "HZ-0003", 2);
+        assert_eq!(generate_custom_code(&tx, 2).unwrap(), "HZ-0010");
+        assert_eq!(next_seq_of(&tx, 2), 11);
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_ignores_non_numbered_codes() {
+        // REQ-101: T4 番号として数えるのは `HZ-` + ASCII 数字だけで i64 に収まるもの（BIZ-01-D6 step 3b）
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        for code in [
+            "HZ-00A1",
+            "HZ-0009X",
+            "HZ-",
+            "hz-0009",
+            "HZX-0009",
+            "SY-0009",
+            "HZ-+0009",
+            "HZ-99999999999999999999",
+        ] {
+            seed_code(&tx, code, 2);
+        }
+        assert_eq!(generate_custom_code(&tx, 2).unwrap(), "HZ-0001");
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_counts_codes_in_other_departments() {
+        // REQ-101: T5 別の部門の ID で入った HZ- のコードも飛ばす（部門を問わない）
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        seed_code(&tx, "HZ-0007", 1);
+        assert_eq!(generate_custom_code(&tx, 2).unwrap(), "HZ-0008");
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_product_req101_rollback_restores_raised_next_seq() {
+        // REQ-101: T6 登録の失敗で next_seq の引上げも戻り、再試行で同じ番号（§4.2 / §4.3 の注）
+        let (_dir, mut conn) = setup_test_db();
+        seed_code(&conn, "HZ-0003", 2);
+        {
+            let _guard = failpoint::arm(&failpoint::CREATE_PRODUCT_AFTER_INSERT);
+            assert!(create_product(&mut conn, default_create_request()).is_err());
+        }
+        assert_eq!(next_seq_of(&conn, 2), 1, "引上げも rollback で戻る");
+        let result = create_product(&mut conn, default_create_request()).unwrap();
+        assert_eq!(result.product_code, "HZ-0004");
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_rejects_seq_overflow() {
+        // REQ-101: T7a 既存の番号の最大が i64::MAX → 更新の前に ValidationFailed（step 3c）
+        let (_dir, mut conn) = setup_test_db();
+        seed_code(&conn, "HZ-9223372036854775807", 2);
+        assert_seq_overflow_unchanged(&mut conn, 1);
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_rejects_overflow_after_max() {
+        // REQ-101: T7b 最大の次が i64::MAX → cand + 1 が溢れるので更新の前に ValidationFailed（step 3d）
+        let (_dir, mut conn) = setup_test_db();
+        seed_code(&conn, "HZ-9223372036854775806", 2);
+        assert_seq_overflow_unchanged(&mut conn, 1);
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_rejects_overflow_from_next_seq() {
+        // REQ-101: T7c next_seq が i64::MAX → 更新の前に ValidationFailed（step 3d）
+        let (_dir, mut conn) = setup_test_db();
+        conn.execute(
+            "UPDATE departments SET next_seq = ?1 WHERE id = 2",
+            [i64::MAX],
+        )
+        .unwrap();
+        assert_seq_overflow_unchanged(&mut conn, i64::MAX);
+    }
+
+    #[test]
+    #[serial]
+    fn test_generate_custom_code_req101_continues_past_9999() {
+        // REQ-101: T8 HZ-9999 の次は HZ-10000（C-1、TD-109）
+        let (_dir, mut conn) = setup_test_db();
+        let tx = conn.transaction().unwrap();
+        seed_code(&tx, "HZ-9999", 2);
+        assert_eq!(generate_custom_code(&tx, 2).unwrap(), "HZ-10000");
+        assert_eq!(next_seq_of(&tx, 2), 10001);
     }
 
     #[test]
