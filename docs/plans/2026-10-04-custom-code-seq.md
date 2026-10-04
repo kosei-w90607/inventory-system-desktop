@@ -8,13 +8,13 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、worktree は本 lane の隔離 worktree、branch `agent/custom-code-seq`）
-- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`、Writer と別 context）+ Codex（GPT-6 Astra）
+- Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`、Writer と別 context）+ Codex（GPT-6.1 Sol、`.local/codex-orders/MODEL-SELECTION.md` の表。repo 外）
 - Final Reviewer: Fable 5.1（fresh subagent）+ Codex（GPT-6.1 Sol）。互いに独立で、後の reviewer に先の結果を見せない
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -24,6 +24,7 @@ Final Review Minimum は規則どおり 1（R4 でない。予定の file に `s
 
 遷移記録（append-only）:
 - kickoff → spec-check → design → plan-draft（本 commit、plan-first、2026-10-04、起草役）: Risk R3 を記録。Contract Probe で不具合の再現を確かめた後、設計正本が足りない（30-biz §4.3 の step 5 が既存の番号で止まる設計そのもの）ため design を経た。30-biz §4.2 / §4.3 / §4.9、20-io §2.3 / §2.4、`docs/db-design/master-tables.md` の departments、`docs/decision-log.md` の D-106 を同じ commit で更新し、未解決の設計の問いは無い。packet と Test Design Matrix を同じ commit に置く。decision-log の番号は D-106（Coordinator の割当て）。
+- plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `018f5197` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。Plan Reviewer の Codex を表の当てはめ（R3 の初回）で GPT-6.1 Sol に直した。
 
 ## Owner Effort Budget
 
