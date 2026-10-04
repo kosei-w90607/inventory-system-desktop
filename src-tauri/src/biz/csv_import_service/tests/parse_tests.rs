@@ -478,6 +478,120 @@ fn test_parse_and_validate_req401_error_summary_truncation() {
     assert_eq!(result.preview_data.error_summary.items.len(), 100);
 }
 
+/// inline の Z004（従来 shape）。カンマ付きの値を書くため文字列で受ける
+fn z004_text_bytes(data_lines: &[String]) -> Vec<u8> {
+    let text = format!(
+        "\"精算日\",\"2026-03-21\",\"\",\"\",\"\"\r\n\
+         \"No.\",\"スキャニングコード\",\"商品名\",\"個数\",\"金額\"\r\n{}",
+        data_lines.join("\r\n")
+    );
+    let (encoded, _, _) = encoding_rs::SHIFT_JIS.encode(&text);
+    encoded.into_owned()
+}
+
+fn parse_bytes(conn: &crate::db::DbConnection, bytes: Vec<u8>) -> ParseValidateResult {
+    parse::parse_and_validate(
+        conn,
+        CsvParseAndValidateRequest {
+            file_bytes: bytes,
+            filename: "Z004_260321".to_string(),
+        },
+    )
+    .unwrap()
+}
+
+#[test]
+fn test_parse_and_validate_req401_zero_code_sales_reported() {
+    // REQ-401 / SPEC-Z4A-D8 / 32 §15.3 4c: 商品コードの無い枠の売上は invalid_jan の ErrorRow（D-103）
+    let (_dir, conn) = setup_test_db();
+    create_test_product_with_jan(&conn, "TEST-001", "4912345678901", 10, true);
+    let bytes = z004_text_bytes(&[
+        "\"1\",\"4912345678901\",\"正常行\",\"3\",\"900\"".to_string(),
+        "\"2\",\"00000000000000\",\"\",\"2\",\"800\"".to_string(),
+        "\"3\",\"00000000000000\",\"\",\"1,000\",\"1,234\"".to_string(),
+    ]);
+    let result = parse_bytes(&conn, bytes);
+
+    assert_eq!(result.matched_rows.len(), 1);
+    assert_eq!(result.error_rows.len(), 2);
+    for e in &result.error_rows {
+        assert_eq!(e.error_type, CsvImportErrorType::InvalidJan);
+        assert_eq!(e.normalized_jan, None);
+        assert!(e.error_message.contains("商品コードの無い枠"));
+    }
+    let raws: Vec<(&str, &str)> = result
+        .error_rows
+        .iter()
+        .map(|e| (e.raw_quantity.as_str(), e.raw_amount.as_str()))
+        .collect();
+    assert_eq!(raws, vec![("2", "800"), ("1,000", "1,234")]);
+}
+
+#[test]
+fn test_parse_and_validate_req401_comma_amount_matched() {
+    // REQ-401 / SPEC-Z4A-D7: カンマ付きの金額が BIZ-03 のマスタ照合へ届く
+    let (_dir, conn) = setup_test_db();
+    create_test_product_with_jan(&conn, "TEST-001", "4912345678901", 10, true);
+    let bytes = z004_text_bytes(&["\"1\",\"4912345678901\",\"商品A\",\"1\",\"1,234\"".to_string()]);
+    let result = parse_bytes(&conn, bytes);
+
+    assert!(result.error_rows.is_empty());
+    assert_eq!(result.matched_rows.len(), 1);
+    assert_eq!(result.matched_rows[0].amount, 1234);
+    assert_eq!(result.preview_data.matched_summary.total_amount, 1234);
+}
+
+#[test]
+fn test_parse_and_validate_req401_non_jan_zero_rows_no_error() {
+    // REQ-401 / SPEC-Z4A-D8 / SPEC-Z4A-D5: 8桁独自コード + EEEEEE の0/0の枠は error_rows に入らない
+    let (_dir, conn) = setup_test_db();
+    create_test_product_with_jan(&conn, "TEST-001", "4912345678901", 10, true);
+    let bytes = make_z004_bytes(
+        "2026-03-21",
+        &[
+            ("4912345678901", "正常商品", 3, 900),
+            ("12345678EEEEEE", "独自1", 0, 0),
+            ("12345678EEEEEE", "独自2", 0, 0),
+        ],
+    );
+    let result = parse_bytes(&conn, bytes);
+
+    assert_eq!(result.matched_rows.len(), 1);
+    assert!(result.error_rows.is_empty());
+}
+
+#[test]
+fn test_parse_and_validate_req401_invalid_jan_rows_kept_in_preview_cap() {
+    // REQ-401 / 32 §15.2 ErrorSummary・§15.3 手順 5c: items は invalid_jan を先に選び line_no の昇順
+    let (_dir, conn) = setup_test_db();
+    let mut lines = vec!["\"1\",\"4900000000000\",\"小数\",\"1\",\"1.5\"".to_string()];
+    lines.extend((0..100).map(|i| {
+        format!(
+            "\"{}\",\"490000001{i:04}\",\"未登録{i}\",\"1\",\"100\"",
+            i + 2
+        )
+    }));
+    lines.push("\"102\",\"00000000000000\",\"\",\"1\",\"500\"".to_string());
+    let result = parse_bytes(&conn, z004_text_bytes(&lines));
+
+    let summary = &result.preview_data.error_summary;
+    assert_eq!(summary.count, 102);
+    assert_eq!(summary.items.len(), 100);
+    assert!(summary
+        .items
+        .iter()
+        .any(|e| e.error_type == CsvImportErrorType::InvalidJan
+            && e.error_message.contains("商品コードの無い枠")));
+    assert!(summary
+        .items
+        .iter()
+        .any(|e| e.error_type == CsvImportErrorType::InvalidNumber && e.line_no == 3));
+    assert!(summary
+        .items
+        .windows(2)
+        .all(|w| w[0].line_no < w[1].line_no));
+}
+
 #[test]
 fn test_parse_and_validate_req401_invalid_settlement_date() {
     // REQ-401: CSV取込み

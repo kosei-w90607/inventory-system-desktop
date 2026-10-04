@@ -198,7 +198,17 @@ pub fn parse_and_validate(
     // 5c. PreviewData 構築
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
 
-    let error_summary_items: Vec<_> = error_rows.iter().take(100).cloned().collect();
+    // items は最大100件。invalid_jan の行を line_no の昇順で先に選び、残りの枠を
+    // 他の行から line_no の昇順で埋め、選んだ items を line_no の昇順で並べる（§15.2 / §15.3 5c）
+    let mut error_summary_items = error_rows.clone();
+    error_summary_items.sort_by_key(|r| {
+        (
+            r.error_type != super::CsvImportErrorType::InvalidJan,
+            r.line_no,
+        )
+    });
+    error_summary_items.truncate(100);
+    error_summary_items.sort_by_key(|r| r.line_no);
 
     let preview_data = PreviewData {
         file_info: FileInfo {
