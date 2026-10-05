@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 116c118a391e95dd3a6d06d7076c75209ca99fb0
 - Amendments: e430d45c655bba0bd439a01066e947de947f7fd4, 559f6ae1320d6753890643089b4bf0653cbf98e0
@@ -300,7 +300,10 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 
 ## Implementation Results
 
-実装後に記入する。exact-HEAD SHA と test 件数は書かない（D-035 / D-038）。
+exact-HEAD SHA と test 件数は書かない（D-035 / D-038）。
+
+- 実装の要旨（closeout、2026-10-06）: `parse_ej` は記録の種類（`EjRecordKind`）を本文の行で決め、精算票（モード欄に依らない完了、ＰＬＵ Z・勤怠 Z、次のヘッダで閉じた中断）・点検票・設定・練習・入金 / 出金 / 替・領収書・取引中止を、明細を返さない記録として返す。取引の合計域（`対象計`・支払行・`お預り` / `お  釣` の折返し、`合  計` の無い取引の照合の金額）と明細域（訂正は直前の項目の取消、小計値引き・明細値引き・マイナスキーは `adjustments`、戻の印の明細）を読み、規則に合わない記録は今どおり `Unresolved` に倒す。Gated Amendment 1・2 の是正で、ほかの行種の形の行と `i64` に収まらない金額の行は `ItemName` にならず、数量行の単価は全角の `－` も拒み、合計域の `Continued` の受け手は正本の定義どおりになった（D-105）。
+- review・CI・merge: Final Review の是正（Gated Amendment 1・2）の後の closure と、Amendments が変わった後の Claude 側の broad の取り直しがともに approve で、記録した。AC11（Coordinator、実物の EJ、repo 外）は是正の前後とも (a)〜(d) が PASS。Draft の run は success で、helper 経由の squash merge（owner の Ready・merge、2026-10-05）。manual は not-required。検証の実測値は PR の body が持つ。PR: [#141](https://github.com/kosei-w90607/inventory-system-desktop/pull/141)（Writer = Opus 5.5 subagent）
 
 ### Gated Amendment 1（2026-10-05、Coordinator）
 
@@ -336,3 +339,5 @@ review の後に記入する。
   - Opus #3（P3、行の分類の表の「先頭の行」「最後の行」が番号印字の行を除くか書いていない）: 採用。29 の `CancelMark`・`ReportTitle`（Z / X）・`Cancelled` の条件に「番号印字の行を除いて数える」を足した。
   - Opus #4（P3、Owner Effort Budget の表が Codex の起動を数えている）: 採用。relay を数えない形に直した。
   - Final Review で独立に確かめる点: 一括是正の全体（G-F13・G-O6・G-K3・G-M9 の case と 29 の 5 箇所の句）。
+
+- Closeout（2026-10-06）: Final Review broad（互いに独立の 2 本、head `23b21a97`）は Fable 5.1 = approve（P3 4）、Codex GPT-6.1 Sol（発注 214）= reject。Codex は PR に summary の review を 2 本投稿していて、Coordinator は 1 本目の件数だけを record と Gated Amendment 1 に写し、2 本目の P1（EJ-2）を落とした。Gated Amendment 1（`e430d45c`）と是正 `1cad2187`、EJ-2 を Coordinator が見つけて再現した後の Gated Amendment 2（`559f6ae1`）と是正 `b3a8a497`、main（PR #140 の merge）の取込み `595e27f0`。closure（Fable 5.1、`b3a8a497`）= approve（前回の findings はすべて closed）。Amendments が変わったので helper は前の broad を引き継がず、Fable 5.1 の broad を `b3a8a497` で取り直した = approve（P3 1）。専用 record に pass で記録し、前の broad・closure は evidence に添えた。AC11（Coordinator、実物の EJ）は是正の後も、是正の前と記録の行が完全に一致して PASS（件数は tracked に書かない）。取り直しの broad の P3 のうち、29 の `ItemName` の除外の文は本 closeout で実装（`item_token_overflows`）に合わせて直した。`Item` の形から末尾の `*` だけが外れた行の件は `docs/backlog.md` の保留へ送った。同じ head の 2 本目の review の取りこぼしは PR #142（D-107 (4) の `--pr-reviews`）で record の前に止まる。`docs/backlog.md` の「EJ parser に、店がレジで普段使う値引き・訂正・取消の文法を足す」は解消の書式にした。本 packet の `## Follow-up` の 1〜7 は後続の design lane「実測と POS 系列の対応」への入力として本 packet に残る。PR #141 は helper 経由の squash merge（2026-10-05）で閉じた。

@@ -10,7 +10,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: c3d97d3e73c61d3800700544093cfbd633f446cf
 - Amendments: 71ce94b9f94a678fc92ac5f44b0b0afe2771f029
@@ -28,7 +28,7 @@ Final Review Minimum は規則どおり 1: R4 でなく、予定の path に `sc
 
 - kickoff → spec-check（2026-10-04、起草役）: owner の lane の選択（TD-104）。Risk = R3 を記録（下の Risk）。
 - spec-check → design（2026-10-04、起草役）: 設計正本（IO-07 §29.2〜§29.5、BIZ-08 §37.2〜§37.7、pos-tables §12c・§12e・B-2、BIZ-05 §19.2、IO の repo §14.21・§14.22、MNT-03）が小数の個数・精算回数の照合・「レコード」列の意味を決めておらず、実物と食い違う（§29.4.1 の行コード）。`docs/DEV_WORKFLOW.md` Design artifact selection の「BIZ / IO の振舞い」「table / column / migration」「CSV の形の互換」「durable な選択（decision-log）」の行に当たるので design を通す。
-- design → plan-draft（2026-10-04、起草役、本 commit）: design の出力 = IO-07-D2〜D4、BIZ-08-D2、MNT-03-D12、[D-104](../decision-log.md#d-104-日報の小数の個数別の精算の混在レコード列の対応2026-10-04) と、各正本の型・手順・表の更新（下の Design Readiness）。同じ plan-first の commit に置く。未解決の設計の問いは無い（owner の判断を待つ事項も無い。下の「判断点」）。packet と Test Design Matrix を同じ commit に置く。
+- design → plan-draft（2026-10-04、起草役、本 commit）: design の出力 = IO-07-D2〜D4、BIZ-08-D2、MNT-03-D12、[D-104](../../decision-log.md#d-104-日報の小数の個数別の精算の混在レコード列の対応2026-10-04) と、各正本の型・手順・表の更新（下の Design Readiness）。同じ plan-first の commit に置く。未解決の設計の問いは無い（owner の判断を待つ事項も無い。下の「判断点」）。packet と Test Design Matrix を同じ commit に置く。
 - plan-draft → plan-gate（2026-10-04、Coordinator）: packet と Test Design Matrix は plan-first commit `ffb42112` で揃い、doc check（`--target plan` と full）は Coordinator の再実行でも exit 0。Plan Reviewer の Codex を表の当てはめ（migration v7 を含む）で GPT-6 Astra に直した。
 - plan-gate（round 1 の是正、2026-10-04、起草役、本 commit）: Plan Review round 1 は Opus reject（P2 1・P3 4）・Codex reject（P1 1・P2 7）。Coordinator の裁定、相談役の反例探し、owner 決定 TD-110・TD-111 を反映した。Plan Commit は pending のまま。
 - plan-gate（round 2 の是正、2026-10-04、起草役、本 commit）: round 2 の是正（Review Response 参照）。Plan Commit は pending のまま。
@@ -304,7 +304,8 @@ R3 の外部前提。実データは `~/downloads/inventory-field-check/approved
 
 ## Implementation Results
 
-実装の後に書く。
+- 実装の要旨（closeout、2026-10-06）: 日報の parser は Z001 の総売の行と Z005 の個数を小数 2 桁までの 100 倍の整数（`quantity_hundredths`）で読み、件数は整数のまま。ヘッダより前の精算回数を読めたファイルが 2 本以上で値が違えば `settlement_mismatch` で止め、BIZ-08 は BIZ-08-D2 の文を出す。支払・総売・純売の行の鍵はラベルだけで決める。migration v7 は 2 表の `quantity` を `quantity_hundredths` に改名して既存値を 100 倍し（範囲検査、件数・型・÷100 の合計・余りの検証、失敗は rollback）、日次の集約の加算は溢れたら `DbError` で止まる。wire は単位の数（`number | null`）のままで bindings の差分は無く、traceability と ERD を更新した（D-104）。
+- review・CI・merge: Final Review broad は互いに独立の 2 本がともに approve。Amendments の SHA の書式の是正と main の取込みの後、Claude 側の broad を取り直して approve で記録した。AC9（実データ、Coordinator、repo 外）は 2026-09-29・09-30 の束が取り込め、別の精算の混在の束が `settlement_mismatch` で止まり、9 月の他の束は取り込めるまま。Draft の run は success で、helper 経由の squash merge（owner の Ready・merge、2026-10-05）。manual は not-required。検証の実測値は PR の body が持つ。PR: [#140](https://github.com/kosei-w90607/inventory-system-desktop/pull/140)（Writer = Opus 5.5 subagent）
 
 ### Gated Amendment 1（2026-10-04、Coordinator）
 
@@ -339,3 +340,5 @@ Review の後に書く。
   - Opus #2（P3、helper の置き場所）・Opus #3（P3、T10 の Would fail if）: 採用。
   - CV17 の静的解析（owner の持ち帰り資料 2026-10-04）から: layout B の小数の日・1 file = 1 精算かは未確認として Contract Probe P14 に、29 §29.4.1 の「改行を持たない」と書出しの CRLF の食い違いの候補を follow-up (8) に置いた。
   - Final Review で独立に確かめる点: 一括是正の全体（24 §14.21 手順 7・§14.22、22 §15 手順 1 / 6 (c)、T8・T10・T15b・T16・T18b）。
+
+- Closeout（2026-10-06）: Final Review broad（互いに独立の 2 本、head `73f36974`）は Fable 5.1 と Codex（発注 213、GPT-6 Astra）がともに approve（P1 / P2 = 0、各 P3 1）。Amendments を 8 桁で書いていたため helper の capture が止まり、40 桁に直して force push した（owner 承認）。続けて main（PR #139 の merge）を `e1e88215` で取り込み、`docs/decision-log.md` を番号順に並べ、`90-traceability.md` を再生成した。helper は記録する broad の監査 head が capture の head と一致することを求めるので、Fable 5.1 の broad を `e1e88215` で取り直した = approve（P1 / P2 / P3 = 0。AC1〜AC8・AC10 と T22 を再測し、mutant 7 本はすべて red、main の取込みの干渉も確かめた）。専用 record に pass で記録し、前の 2 本は evidence に添えた。P3 の 2 件（`docs/DB_DESIGN.md` の概要文の `quantity`、Matrix F20 の値 `i64::MAX / 100`）は本 closeout で直した。Final Review（Fable 5.1）の residual の `mnt::backup::tests::test_check_auto_backup_req901_scheduled_time` の深夜の flake は `docs/backlog.md` の保留へ送った。`docs/backlog.md` の「部門キーで小数の数量を売った日は、日報の取込みがその日全体で失敗する」は解消の書式にして本 packet へ導いた。Review Focus の後の follow-up (1)〜(8) は本 packet に残る。PR #140 は helper 経由の squash merge（2026-10-05）で閉じた。

@@ -8,7 +8,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 
 実装後の状態はPR native state / 専用record / CIが所有し、trackedに書かない。
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 90990977b33aecf717a8bd88a16f76db1821784a
 - Amendments: none
@@ -256,7 +256,8 @@ Probe は scratch の仮の test（`product_service.rs` の test module の末�
 
 ## Implementation Results
 
-Fill after implementation.
+- 実装の要旨（closeout、2026-10-06）: `generate_custom_code` は、同じ接頭辞の既存の独自コード（`{接頭辞}-` + ASCII 数字だけ、部門を問わない）の番号の最大 + 1 と部門の next_seq の大きい方から振り、抜けた番号は埋めない（TD-108）。9999 の次は 5 桁以上で続け（TD-109）、i64 の上限は next_seq の更新の前に `ValidationFailed` で止める。`product_repo` に `list_product_codes_by_prefix`（`LIKE` を使わない）と `raise_next_seq`（next_seq を下げない）を足し、引上げは登録と同じ TX で戻る。前提が BIZ-01-D6 と食い違う既存 test 1 本を改名して書き直し、traceability を再生成した（D-106）。
+- review・CI・merge: Final Review broad は互いに独立の 2 本がともに approve（Fable 5.1 は P3 1、Codex GPT-6.1 Sol は P 0）。Draft の run は success で、helper 経由の squash merge（owner の Ready・merge、2026-10-04）。manual は not-required。検証（AC1〜AC8、mutant M1〜M6）の実測値は PR の body が持つ。PR: [#138](https://github.com/kosei-w90607/inventory-system-desktop/pull/138)（Writer = Opus 5.5 subagent）
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
@@ -275,3 +276,5 @@ Fill after review.
 - Plan Review round 2（2026-10-04、対象 `09418db6`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 2）、Codex GPT-6 Astra（発注 203。round 1 で Codex が P1 を出したので MODEL-SELECTION の表で Astra）= approve（P1 0 / P2 0 / P3 0）。Ordinary Operation は 2 本とも成立。P3 は Coordinator が全件採用し、本 commit で反映した。独立の再確認は Final Review が兼ねる。
   - Opus #1（P3、T4 に符号付きの形が無く、ASCII 数字の判定を省いて `str::parse::<i64>` だけで読む実装〈`+` を受ける〉が green のまま通る）: 採用。Matrix の T4 の既存コードに `HZ-+0009` を足し、「Would fail if」にその近道を足した（期待値 `HZ-0001` は変えない）。
   - Opus #2（P3、`generate_custom_code` の doc comment「4桁ゼロ埋め連番」〈`product_service.rs:152`〉が TD-109 と食い違い、S1 に comment の更新が無い）: 採用。S1 に doc comment を §4.3 に合わせる一句を足した。
+
+- Closeout（2026-10-06）: Final Review broad（互いに独立の 2 本）は Fable 5.1 = approve（P1 / P2 = 0、P3 1）、Codex GPT-6.1 Sol = approve（P1 / P2 / P3 = 0）。2 本とも AC1〜AC8 と mutant M1〜M6 を独立に再測し、Matrix の予測どおり red になることを確かめた。専用 record に pass で記録した。P3（step 3d の上限の検査が値を捨てる式文で、正本の `cand` の名前が無い。可読性だけ）は採用しない（振舞いは 30-biz §4.3 のとおりで、M6b / M6c が red）。backlog へ送る follow-up は無い。PR #138 は helper 経由の squash merge（2026-10-04）で閉じた。
