@@ -11,7 +11,7 @@ Use the field definitions, enums, transition evidence, packet-selection rule, an
 - Phase: implementing
 - Risk: R3
 - Plan Commit: 116c118a391e95dd3a6d06d7076c75209ca99fb0
-- Amendments: e430d45c655bba0bd439a01066e947de947f7fd4
+- Amendments: e430d45c655bba0bd439a01066e947de947f7fd4, 559f6ae1320d6753890643089b4bf0653cbf98e0
 - Coordinator: Opus 5.5（Claude Code main session、effort high）
 - Writer: Opus 5.5 subagent（`subagent_type: writer`、本 lane の worktree、branch `agent/ej-grammar`）
 - Plan Reviewer: Opus 5.5（fresh `subagent_type: reviewer`）+ Codex（GPT-6.1 Sol、`.local/codex-orders/MODEL-SELECTION.md` の表。round 1〜3 とも同じ行）
