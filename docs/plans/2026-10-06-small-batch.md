@@ -104,7 +104,7 @@ Scope（owner の決定〈2026-10-06〉を反映済み）:
 
 1. 商品修正の操作ログの detail_json に、変えた全 field の変更前後を書く（候補 1、BIZ-01-D7）。
    - `src-tauri/src/biz/product_service.rs` の `update_product` の step 6（現物 `:392`〜`:406`、`detail` を `format!` で組む所）: `selling_changed || cost_changed` のときだけ価格 2 つを書く今の形を、BIZ-01-D7 の「変えた field ごとに `{"old","new"}`」へ替え、`serde_json` で組む。変えた field が無ければ `None`。step 1〜5・7 と `ProductUpdateRequest` / `ProductUpdateResult` の型は変えない。
-   - 同じ file の tests module に Matrix の T1〜T4 を足す。既存の `test_update_product_req102_detail_json_recorded`（`:2421`）は消さず、弱めない。
+   - 同じ file の tests module に Matrix の T1〜T5 を足す（T5 は操作ログの INSERT の失敗で TX ごと戻ることの guard）。既存の `test_update_product_req102_detail_json_recorded`（`:2421`）は消さず、弱めない。
    - `docs/function-design/90-traceability.md` を `cd src-tauri && cargo run --bin generate_traceability` で生成し直す（REQ-102 の test を足すため。Registration Obligations）。
 2. `docs/TOOLING_SKILL_COMMANDS.md:44` の見出し「Rust / DB（`CLAUDE.md` で推奨）」を、実在する参照先（`docs/DEV_WORKFLOW.md` の `## Verification Gates` の Rust/backend の行）を指す見出しに直す（候補 3）。本文の command の列は変えない。
 3. `.codex/README.md:246`（`## PR evidence helper`）から「github mode」と「legacyのstate-only/三点一致」の句を消し、helper の使い方（`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`）・status が read-only・capture の置き場・record/Ready/merge は既存の明示承認の範囲だけ・helper は設定と権限を変えない、の内容は残す（候補 4）。同じ file の `:99`・`:132` の「legacy tmux bar」は別の話で触らない。
@@ -146,7 +146,7 @@ Scope（owner の決定〈2026-10-06〉を反映済み）:
 ## Acceptance Criteria
 
 - AC1（候補 1 の新しい振舞い）: `cd src-tauri && cargo test --lib test_update_product_req102_detail_json` が exit 0 で、Matrix の T1〜T4 の test 名と既存の `test_update_product_req102_detail_json_recorded` がすべて `... ok` で出る。T1〜T4 は実装の前に red（Matrix の「Would fail if」）。
-- AC2（隣接の振舞いを保つ）: `cd src-tauri && cargo test --lib test_update_product_req102` が exit 0（price_history・plu_dirty・PLU 対象・rollback・validation の既存 test を含む）。
+- AC2（隣接の振舞いを保つ）: `cd src-tauri && cargo test --lib test_update_product_req102` が exit 0 で、Matrix の T5 `test_update_product_req102_log_failure_rolls_back_all` が `... ok` で出る（price_history・plu_dirty・PLU 対象・rollback・validation の既存 test を含む）。
 - AC3（Rust の gate）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` が exit 0。
 - AC4（traceability）: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0 で `traceability check: OK（ERROR 0 件 / WARN 0 件）`。
 - AC5（画面を変えない、owner の決定 Q1 = A）: `git diff --name-only origin/main...HEAD -- src/` の出力が空。
@@ -163,7 +163,7 @@ Scope（owner の決定〈2026-10-06〉を反映済み）:
 - AC5: `git diff --name-only origin/main...HEAD -- src/` → 出力なし（起点では差分が無い）。
 - AC6: ``rg -n 'CLAUDE.md` で推奨' docs/TOOLING_SKILL_COMMANDS.md`` → ``44:### Rust / DB（`CLAUDE.md` で推奨）``（一致 1 行）。`rg -c 'DEV_WORKFLOW.md' docs/TOOLING_SKILL_COMMANDS.md` → 出力なし・exit 1。
 - AC7: `rg -n 'github mode|state-only|三点一致' .codex/README.md` → `246:` の 1 行が一致。`rg -c 'pr-gate.py status' .codex/README.md` → `1`。
-- AC8: `bash scripts/doc-consistency-check.sh` → `exit=0`、ERROR なし（WARN は T1〜T4 の未作成の test 名の PK3 だけ）。
+- AC8: `bash scripts/doc-consistency-check.sh` → `exit=0`、ERROR なし（WARN は T1〜T5 の未作成の test 名の PK3 だけ）。
 
 ## Design Readiness
 
@@ -201,11 +201,11 @@ not applicable: 現場の調査・実機の確認・外部 tool・POS 連携・C
 
 Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026-10-06-small-batch.md)
 
-- targeted tests: Matrix の T1〜T4（`src-tauri/src/biz/product_service.rs` の tests module）と既存の `test_update_product_req102_detail_json_recorded`。
+- targeted tests: Matrix の T1〜T5（`src-tauri/src/biz/product_service.rs` の tests module）と既存の `test_update_product_req102_detail_json_recorded`。
 - negative tests: T3（値を持つが同じ field は書かない・全部同じなら NULL）、T4（`"`・`\` を含む名前）。
 - compatibility checks: 既存の `test_update_product_req102_detail_json_recorded`（売価の前後）を残す。画面は変えず（owner の決定 Q1 = A）、既存の `OperationLogsPage.test.tsx` の「expands one row, labels known fields, and renders hostile JSON as text」（`:661`）が未知 key の raw 表示を守る。
 - data safety checks: test の data は合成（`default_create_request` の「テスト商品」ほか）だけ。
-- main wiring/integration checks: T1〜T4 は `init_database` の実 DB に `update_product` を通し、`operation_logs` の行を SQL で読む（mock を通さない）。
+- main wiring/integration checks: T1〜T5 は `init_database` の実 DB に `update_product` を通し、`operation_logs` の行を SQL で読む（mock を通さない）。
 
 ## Review Focus
 
@@ -224,6 +224,7 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 | 30 §4.4 step 6（売価の変更前後、REQ-102） | 30 §4.4 step 6 | Scope 1 | `test_update_product_req102_detail_json_recorded`（既存） | — |
 | 30 §4.4 step 4・4b（price_history・plu_dirty・PLU の解放、隣接） | 30 §4.4 step 4・4b、BIZ-01-D3 | 変えない | `test_update_product_req102_price_change`・`test_update_product_req102_cost_only_no_plu_dirty`・`test_update_product_req102_sets_plu_dirty_when_plu_target_turns_on`（既存） | — |
 | 30 §4.4 step 3・7（TX、隣接） | 30 §4.4 | 変えない | `test_update_product_req102_rollback_after_price_history`（既存） | — |
+| 30 §4.4 step 6・7（操作ログは TX の中。ログの失敗で商品・price_history・ログが戻る、隣接） | 30 §4.4 | 変えない（step 6 の組み替えでログの INSERT を COMMIT の後へ出さない） | `test_update_product_req102_log_failure_rolls_back_all`（T5） | — |
 | UI-11c-D6（未知 key の raw 表示、読む側） | 74 §74.8 | 変えない（owner の決定 Q1 = A） | `OperationLogsPage.test.tsx:661` の「expands one row, labels known fields, and renders hostile JSON as text」（既存） | — |
 | tracking-system-tables §18（detail_json NULLABLE・変更前後） | `docs/db-design/tracking-system-tables.md` §18 | 変えない（既に合っている） | T1・T3 | — |
 | 候補 3（見出しの参照先） | `docs/backlog.md:67` | Scope 2 | AC6 の `rg` | — |
