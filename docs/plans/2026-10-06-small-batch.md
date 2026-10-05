@@ -4,7 +4,7 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -22,6 +22,7 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 2. spec-check → design（2026-10-06）: 候補 1 の設計正本 `docs/function-design/30-biz-product-service.md` §4.4 step 6 が「変更前後の値をJSON化」だけで、field・型・変更の判定が決まっていない。
 3. design → plan-draft（2026-10-06）: 同じ plan-first の commit で §4.4 に BIZ-01-D7 を足した。Scope に未解決の設計の問いは無い。
 4. plan-draft（owner の決定の反映、2026-10-06、起草役、本 commit）: 下の「owner の決定（2026-10-06）」を Scope・Non-scope・AC・Human Gate・Owner Effort Budget・Matrix と `docs/backlog.md` に反映した。Phase は plan-draft のまま。
+5. plan-draft → plan-gate（2026-10-06、Coordinator、本 commit）: packet と Test Design Matrix は plan-first commit `8519d643` と owner の決定の反映 `bea1361e` で揃い、Coordinator の再実行で doc check（`--target plan`・full）は ERROR 0、`bash scripts/check-workflow-git.sh` は exit 0。Plan Reviewer の Codex は `.local/codex-orders/MODEL-SELECTION.md` の表の「上に当たらない R3 の初回 review」の行で Sol（high）。
 
 ## Owner Effort Budget
 
