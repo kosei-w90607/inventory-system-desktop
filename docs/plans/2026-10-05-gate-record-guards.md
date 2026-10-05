@@ -4,7 +4,7 @@ wave に属さない単独の lane。PR #138・#139・#140・#141 の運用で�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -16,6 +16,7 @@ wave に属さない単独の lane。PR #138・#139・#140・#141 の運用で�
 - Human Gate: ready,merge
 - Branch: agent/gate-record-guards
 - kickoff → spec-check → design → plan-draft（2026-10-05、起草役、本 commit）: owner の起票承認と範囲（5 件すべて）。Risk R3（merge gate の変更）、classifier の `workflow=true` で Final Review Minimum 2。設計の出力は `docs/agent-guidance/merge-evidence.md`・`docs/DEV_WORKFLOW.md`（Workflow State の field 定義と PK5 の段落）・`docs/decision-log.md` D-107・`docs/backlog.md` の注記で、同じ plan-first の commit に入れた。未解決の設計の問いは無い
+- plan-draft → plan-gate（2026-10-05、Coordinator）: packet と Test Design Matrix は plan-first commit `7deeecac` で揃い、Coordinator の再実行で doc check の `--target plan`・full は ERROR 0、`bash scripts/check-workflow-git.sh` は exit 0。Plan Reviewer の Codex は `.local/codex-orders/MODEL-SELECTION.md` の表の「merge gate・helper・classifier・hook の合否を変える変更」の行で Sol（high）。
 
 ## Owner Effort Budget
 
