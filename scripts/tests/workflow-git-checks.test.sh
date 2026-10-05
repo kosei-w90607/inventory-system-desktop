@@ -240,6 +240,77 @@ assert_contains "$output" "Amendments が削除・変更されています" "ame
 assert_not_contains "$output" "祖先ではありません" "amendment removal failed for unrelated ancestry"
 
 # ============================================================================
+# D-107 (2) PK5-SHA40: 現在の Plan Commit・Amendments は 40 桁の小文字 hex だけを受理し、重複を拒む
+# ============================================================================
+SHA40_MSG="は 40 桁の小文字 hex の full SHA ではありません"
+sha40_repo() {
+    repo="$tmp/pk5-sha40-$1"
+    init_repo "$repo"
+    printf 'base\n' > "$repo/README.md"
+    commit_all "$repo" "base" > /dev/null
+    write_packet "$repo" "packet.md" "pending" "none"
+    a_sha="$(commit_all "$repo" "docs(plans): plan-first")"
+    write_packet "$repo" "packet.md" "$a_sha" "none"
+    commit_all "$repo" "docs(plans): Plan Commit を確定して implementing へ進める" > /dev/null
+    printf 'impl\n' > "$repo/impl.txt"
+    c_sha="$(commit_all "$repo" "feat: implement")"
+}
+
+# T3-1
+sha40_repo short
+write_packet "$repo" "packet.md" "$a_sha" "${c_sha:0:8}"
+commit_all "$repo" "docs(plans): short amendment" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "PK5-SHA40: short Amendments accepted: $output"
+assert_contains "$output" "Amendments SHA '${c_sha:0:8}' $SHA40_MSG" "PK5-SHA40: short Amendments reason missing"
+echo "PASS: PK5-SHA40: short Amendments"
+
+# T3-2: 41 桁・大文字・hex 以外の token
+sha40_repo malformed
+sha40_valid_head="$(git -C "$repo" rev-parse HEAD)"
+for token in "${c_sha}0" "${c_sha^^}" "abc1234"; do
+    git -C "$repo" switch -qc "malformed-${token:0:3}-${#token}" "$sha40_valid_head"
+    write_packet "$repo" "packet.md" "$a_sha" "${token},"
+    commit_all "$repo" "docs(plans): malformed amendment" > /dev/null
+    capture_check "$repo" output
+    [[ "$CHECK_STATUS" -ne 0 ]] || fail "PK5-SHA40: malformed Amendments token '$token' accepted: $output"
+    assert_contains "$output" "Amendments SHA '$token' $SHA40_MSG" "PK5-SHA40: malformed token '$token' reason missing"
+done
+echo "PASS: PK5-SHA40: malformed Amendments token"
+
+# T3-3
+sha40_repo duplicate
+write_packet "$repo" "packet.md" "$a_sha" "$c_sha, $c_sha"
+commit_all "$repo" "docs(plans): duplicate amendment" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "PK5-SHA40: duplicate Amendments accepted: $output"
+assert_contains "$output" "Amendments に重複する SHA '$c_sha' があります" "PK5-SHA40: duplicate reason missing"
+echo "PASS: PK5-SHA40: duplicate Amendments"
+
+# T3-4: 初回の確定値を短縮で commit した Plan Commit
+repo="$tmp/pk5-sha40-short-plan"
+init_repo "$repo"
+printf 'base\n' > "$repo/README.md"
+commit_all "$repo" "base" > /dev/null
+write_packet "$repo" "packet.md" "pending" "none"
+a_sha="$(commit_all "$repo" "docs(plans): plan-first")"
+write_packet "$repo" "packet.md" "${a_sha:0:8}" "none"
+commit_all "$repo" "docs(plans): short Plan Commit" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "PK5-SHA40: short Plan Commit accepted: $output"
+assert_contains "$output" "Plan Commit '${a_sha:0:8}' $SHA40_MSG" "PK5-SHA40: short Plan Commit reason missing"
+# 書式の ERROR の後も Amendments の照合へ進む（set -u の下で落ちない）
+printf 'impl\n' > "$repo/impl.txt"
+c_sha="$(commit_all "$repo" "feat: implement")"
+write_packet "$repo" "packet.md" "${a_sha:0:8}" "$c_sha"
+commit_all "$repo" "docs(plans): amendment after short Plan Commit" > /dev/null
+capture_check "$repo" output
+[[ "$CHECK_STATUS" -ne 0 ]] || fail "PK5-SHA40: short Plan Commit with an amendment accepted: $output"
+assert_contains "$output" "Plan Commit '${a_sha:0:8}' $SHA40_MSG" "PK5-SHA40: short Plan Commit with an amendment reason missing"
+assert_not_contains "$output" "unbound variable" "PK5-SHA40: amendment check aborted after a short Plan Commit"
+echo "PASS: PK5-SHA40: short Plan Commit"
+
+# ============================================================================
 # T-G2: Rebase Map 行は解釈しない。rebase で非 ancestor になった Plan Commit は、
 # patch-id 同値の Rebase Map 行を足しても ERROR のまま（escape hatch にしない）
 # ============================================================================
