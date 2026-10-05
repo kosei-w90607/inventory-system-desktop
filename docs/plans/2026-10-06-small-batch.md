@@ -24,6 +24,7 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 4. plan-draft（owner の決定の反映、2026-10-06、起草役、本 commit）: 下の「owner の決定（2026-10-06）」を Scope・Non-scope・AC・Human Gate・Owner Effort Budget・Matrix と `docs/backlog.md` に反映した。Phase は plan-draft のまま。
 5. plan-draft → plan-gate（2026-10-06、Coordinator、本 commit）: packet と Test Design Matrix は plan-first commit `8519d643` と owner の決定の反映 `bea1361e` で揃い、Coordinator の再実行で doc check（`--target plan`・full）は ERROR 0、`bash scripts/check-workflow-git.sh` は exit 0。Plan Reviewer の Codex は `.local/codex-orders/MODEL-SELECTION.md` の表の「上に当たらない R3 の初回 review」の行で Sol（high）。
 6. plan-gate（round 1 の是正、2026-10-06、起草役 `ae8cac5e` と Coordinator の Review Response、本 commit）: Plan Review round 1（Opus approve P3 1、Codex reject P2 1）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。
+7. plan-gate（round 2 の是正、2026-10-06、起草役 `c82fea3a` と Coordinator の Review Response の commit）: Plan Review round 2（Opus approve P3 3、Codex reject P2 1・P3 1）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。次の round 3 が天井。
 
 ## Owner Effort Budget
 
@@ -266,3 +267,7 @@ Fill after implementation.
 - Plan Review round 1（2026-10-06、対象 `f1c2d57c`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 1）、Codex GPT-6.1 Sol（発注 220）= reject（P2 1）。Coordinator が現物と packet で裏取りし、両方 accept。是正は起草役が `ae8cac5e` で行い、Coordinator が doc check（full・`--target plan`）ERROR 0 と `bash scripts/check-workflow-git.sh` exit 0 を確かめた。
   - F1（Codex P2）: 既存の rollback の test は failpoint がログの処理より前にあり、操作ログの INSERT の失敗も、ログを COMMIT の後へ動かすことも検出しない。Codex は写しで、ログの INSERT を COMMIT の後へ移しても AC2 が全件 PASS すること、ログの INSERT を trigger で失敗させると保存はエラーなのに売価が変わったまま残ることを実測した。採用: T5（`product_update` のログだけを失敗させる trigger。価格と名前を変える case と、名前だけを変える case で、商品・price_history・operation_logs がすべて rollback する）と Mutation M7（ログの INSERT を COMMIT の後へ動かす）を足し、Contract Ledger に「操作ログは TX の中」の行を足した。
   - F2（Opus P3）: T1 の fixture が JAN を書いておらず、部門 3 は接頭辞が無いので作成の段階で別の理由の red になる。採用: T1〜T5 の商品は既存の test と同じく合成の JAN を付けて作ると明記した。
+- Plan Review round 2（2026-10-06、対象 `9b5550e0`、互いに独立の 2 本。前 round の結果は読ませていない）: fresh Opus 5.5 = approve（P3 3。packet だけを読んで試作し、T1〜T5 と mutant をすべて実測）、Codex GPT-6.1 Sol（発注 222）= reject（P2 1 / P3 1）。Coordinator が全件 accept。是正は起草役が `c82fea3a` で行い、Coordinator が doc check（full・`--target plan`）ERROR 0 と `bash scripts/check-workflow-git.sh` exit 0 を確かめた。
+  - H1（Codex P2）: Mutation の実行 command が AC1 の filter で、M7 を検出する T5 を選ばない（Codex の probe: T5 相当を失敗させても AC1 は exit 0）。採用: mutant の実行を AC2 の command にし、AC1 の filter が T5 を選ばないことを明記。
+  - H2（Codex P3）: Impact Review Lenses を一括で `not applicable` にしていたが、本 lane は owner の L3 所感が起点。採用: 9 行の lens の表に替え、当たらない行に理由を書いた。
+  - H3〜H5（Opus P3）: T3 (ii) で clear できる field を `Some(None)` で送ること（M8 を足した）、Scope 3 の `.codex/README.md` の文頭の直し方、読む側の guard の test の引用（`:83`・`:746` を足した）。採用。
