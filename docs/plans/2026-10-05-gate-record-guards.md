@@ -257,6 +257,7 @@ Test Design Matrix: [test-matrices/2026-10-05-gate-record-guards.md](test-matric
 - S4: `scripts/doc-consistency-check.sh` の PK4 は、D-102 の重複の検査の呼び出しを helper の `parse_packet` の呼び出しに置き換えた（1 回の呼び出し）。`duplicate packet fields` は今の literal、それ以外の `GateError` は `PK4: <file> の Workflow State を helper（parse_packet）が拒否: <helper の文>`、`python3` か import の失敗は今の fail-closed の literal。`extract_workflow_field` と他の PK4 の検査は不変。fixture に `PKT_AMENDMENTS` を足した。test は T4-1〜T4-5（T4-6・T4-7 は既存の case が持つ）。
 - S5: 自己照合の message の末尾を `shlex.join(sys.argv[1:])` にした。test は T5-1。
 - S7: `docs/ci.md` の `ci()` の参照を実装後の行範囲に直した。
+- Final Review broad の是正（Codex P2 = Fable P3）: T2-1 は初回の audit を pass で試していたので、照合を書込みの後へ動かしても `broad audits below minimum` が書込みの前に止め、comment の照合が効いていなかった。T2-1 を `outcome='pending'` にし、「pending のときだけ照合を書込みの後へ動かす」mutant と M6 の両方で T2-1 が comment の照合で red になることを確かめた（修正前の test はこの mutant を全件 green で見逃していた）。
 - 検証（AC1〜AC9、Matrix の Mutation M1〜M13 の各 mutant）の実測値と Draft の run は PR の body が持つ。PR: [#142](https://github.com/kosei-w90607/inventory-system-desktop/pull/142)（Writer = Opus 5.5 subagent）
 
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.

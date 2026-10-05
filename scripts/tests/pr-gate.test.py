@@ -692,9 +692,9 @@ class ReviewedHead(unittest.TestCase):
         return (f'--pr-reviews {declared} but the reviewed head has {len(listed)} PR reviews with a body; read each before recording: '
                 +', '.join(f'id={i} submitted_at={t}' for i,t in listed))
     def test_pr_reviews_undercount_rejected(self):
-        # T2-1
+        # T2-1: a pending first audit reaches the write, so a count check moved after it would add a comment.
         self.put_reviews(self.item(101),self.item(102))
-        error=self.review('broad','sonnet',self.head,expected=1,pr_reviews=1)
+        error=self.review('broad','sonnet',self.head,expected=1,outcome='pending',pr_reviews=1)
         self.assertIn(self.mismatch(1,[(101,'2026-10-05T01:41:00Z'),(102,'2026-10-05T01:42:00Z')]),error)
         self.assertEqual(self.load()['comments'],[]);self.assertEqual(self.writes(),[])
     def test_pr_reviews_match_records(self):
