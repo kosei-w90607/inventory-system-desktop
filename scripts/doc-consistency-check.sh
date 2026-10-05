@@ -1267,24 +1267,26 @@ check_plan_packet_workflow_state() {
             fi
         done
 
-        # key の重複は helper の workflow_fields そのものに判定させる（D-102 D3。checker 側に判定を持たない）。
+        # Workflow State は helper の parse_packet そのものに判定させる（D-107 (1)。key の重複は D-102 D3 の文のまま）。
         # helper の path は cwd（repo root）相対。python3 か import が失敗すれば ERROR（fail-closed）。
-        local dup_check
-        dup_check=$(PYTHONDONTWRITEBYTECODE=1 python3 -c '
+        local helper_check
+        helper_check=$(PYTHONDONTWRITEBYTECODE=1 python3 -c '
 import importlib.util, sys
 s = importlib.util.spec_from_file_location("pr_gate", "scripts/pr-gate.py")
 m = importlib.util.module_from_spec(s)
 s.loader.exec_module(m)
 try:
-    m.workflow_fields(open(sys.argv[1], encoding="utf-8").read())
+    m.parse_packet(open(sys.argv[1], encoding="utf-8").read())
     print("ok")
 except m.GateError as e:
-    print(e)
-' "$file" 2>/dev/null) || dup_check=""
-        case "$dup_check" in
-            "duplicate packet fields")
+    print("rejected:", e)
+' "$file" 2>/dev/null) || helper_check=""
+        case "$helper_check" in
+            ok) ;;
+            "rejected: duplicate packet fields")
                 error "PK4: $file の Workflow State に重複する field があります（helper の workflow_fields が拒否）" ;;
-            ok | "packet Workflow State missing/ambiguous") ;;
+            "rejected: "*)
+                error "PK4: $file の Workflow State を helper（parse_packet）が拒否: ${helper_check#rejected: }" ;;
             *)
                 error "PK4: $file の Workflow State の重複の検査に python3 と scripts/pr-gate.py が必要です" ;;
         esac

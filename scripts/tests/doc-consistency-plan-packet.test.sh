@@ -274,6 +274,7 @@ reset_packet_defaults() {
     PKT_EVIDENCE_MODE=""
     PKT_EXEC_MODE=""
     PKT_PLAN_COMMIT="0123456789abcdef0123456789abcdef01234567"
+    PKT_AMENDMENTS="none"
     PKT_COORDINATOR="Fable 5（fixture coordinator）"
     PKT_WRITER="Codex（fixture writer）"
     PKT_PLAN_REVIEWER="Sonnet 5（fixture plan reviewer）"
@@ -329,7 +330,7 @@ write_packet() {
                 write_workflow_field "Execution Mode" "$PKT_EXEC_MODE"
             fi
             write_workflow_field "Plan Commit" "$PKT_PLAN_COMMIT"
-            write_workflow_field "Amendments" "none"
+            write_workflow_field "Amendments" "$PKT_AMENDMENTS"
             write_workflow_field "Coordinator" "$PKT_COORDINATOR"
             write_workflow_field "Writer" "$PKT_WRITER"
             write_workflow_field "Plan Reviewer" "$PKT_PLAN_REVIEWER"
@@ -1277,6 +1278,67 @@ write_plans_md_linking "2026-03-01-pk4-dup.md"
 run_check "docs/plans/2026-03-01-pk4-dup.md" || true
 assert_not_contains "$out" "重複する field"
 assert_not_contains "$out" "python3 と scripts/pr-gate.py が必要"
+
+# --- PK4-HELPER SPEC D-107 (1): Workflow State は helper の parse_packet が判定し、PK4 が ERROR にする ---
+PK4_HELPER_PACKET="docs/plans/2026-03-03-pk4-helper.md"
+PK4_HELPER_REJECT="PK4: $PK4_HELPER_PACKET の Workflow State を helper（parse_packet）が拒否: "
+pk4_helper_case() {
+    local label="$1" expect="$2" var="$3" value="$4"
+    setup_repo_dirs
+    reset_packet_defaults
+    printf -v "$var" '%s' "$value"
+    write_packet "$repo/$PK4_HELPER_PACKET"
+    write_plans_md_linking "2026-03-03-pk4-helper.md"
+    if [ "$expect" = reject ]; then
+        if run_check "$PK4_HELPER_PACKET"; then
+            fail "$label: $var='$value' was accepted"
+        fi
+        assert_contains "$out" "$PK4_HELPER_REJECT"
+    else
+        if ! run_check "$PK4_HELPER_PACKET"; then
+            cat "$out" >&2
+            fail "$label: $var='$value' was rejected"
+        fi
+        assert_contains "$out" "PK4: Workflow State machine 整合 OK"
+        assert_not_contains "$out" "helper（parse_packet）が拒否"
+    fi
+    echo "PASS: $label ($var)"
+}
+pk4_full_a="1111111111111111111111111111111111111111"
+pk4_full_b="2222222222222222222222222222222222222222"
+# T4-1: 値の末尾の空白・タブ
+for pk4_case in PKT_PHASE="implementing " PKT_WS_RISK="R3 " PKT_AMENDMENTS="none " \
+    PKT_FINAL_REVIEW_MINIMUM="2 " PKT_HUMAN_GATE="ready,merge " PKT_EVIDENCE_MODE="github " \
+    PKT_HUMAN_GATE=$'ready,merge\t'; do
+    pk4_helper_case "PK4-HELPER: trailing blank" reject "${pk4_case%%=*}" "${pk4_case#*=}"
+done
+# T4-2: enum の後ろの注記
+pk4_helper_case "PK4-HELPER: trailing note" reject PKT_PHASE "implementing（注記）"
+pk4_helper_case "PK4-HELPER: trailing note" reject PKT_WS_RISK "R3（注記）"
+# T4-3: Amendments の書式・重複、Human Gate の重複
+pk4_helper_case "PK4-HELPER: amendments and gate duplicates" reject PKT_AMENDMENTS "abcdef01"
+pk4_helper_case "PK4-HELPER: amendments and gate duplicates" reject PKT_AMENDMENTS "$pk4_full_a, $pk4_full_a"
+pk4_helper_case "PK4-HELPER: amendments and gate duplicates" reject PKT_HUMAN_GATE "ready,merge,ready"
+# T4-5: helper が受理する形（旧・新 template、役割の値の末尾の空白、40 桁の Amendments 2 件）は通す
+pk4_helper_case "PK4-HELPER: accepted shapes" accept PKT_TEMPLATE "old"
+pk4_helper_case "PK4-HELPER: accepted shapes" accept PKT_TEMPLATE "new"
+pk4_helper_case "PK4-HELPER: accepted shapes" accept PKT_COORDINATOR "Fable 5（fixture coordinator） "
+pk4_helper_case "PK4-HELPER: accepted shapes" accept PKT_AMENDMENTS "$pk4_full_a, $pk4_full_b"
+
+# T4-4: '## Workflow State' が 2 つは helper の missing/ambiguous で ERROR
+setup_repo_dirs
+reset_packet_defaults
+write_packet "$repo/$PK4_HELPER_PACKET"
+write_plans_md_linking "2026-03-03-pk4-helper.md"
+{
+    echo ""
+    sed -n '/^## Workflow State$/,/^## Owner Effort Budget$/p' "$repo/$PK4_HELPER_PACKET" | sed '$d'
+} >> "$repo/$PK4_HELPER_PACKET"
+if run_check "$PK4_HELPER_PACKET"; then
+    fail "PK4-HELPER: ambiguous section was accepted"
+fi
+assert_contains "$out" "${PK4_HELPER_REJECT}packet Workflow State missing/ambiguous"
+echo "PASS: PK4-HELPER: ambiguous section"
 
 # --- PK1-H2 SPEC D-102 D5: packet の節は `##` の見出しだけ。`###` の小見出しは節を満たさない ---
 setup_repo_dirs
