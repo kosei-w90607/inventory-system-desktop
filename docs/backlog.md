@@ -146,6 +146,7 @@
 - バックアップ一覧の肥大化 UX（保持日数で自然減のため優先度低）。
 - 定額値引きを商品として追うなら通常 PLU が第一候補。その場の値引きは既存の「％-」キーで足りるので、業務の要求が出るまで作らない（owner 判断 2026-07-06）。
 - **ECR+ のサービス終了後の精算**: CASIO の公式ページ（<https://web.casio.jp/ecr/ble/ecr.html>、2026-09-24 確認）では ECR+ のサービス提供は 2028年12月末に終了予定。店主は精算に ECR+ を要すると答えている（[project-memory](project-memory.md) Store Premises Facts）ため、ECR+ の終了後に精算を続けられるかと、ジャーナル閲覧の代替を確かめる。
+- **2026-10-04 の 4 lane の見送った follow-up**（PR #139・#140・#141 の closeout で集約。一覧と根拠は各 archive の packet が正本）: A Z004 の F1〜F6（[packet の `### Follow-up`](archive/plans/2026-10-04-z004-import-gaps.md)。時点証拠 ADR の clear 行の前提、`docs/project-memory.md` の訂正、55 の `invalid_jan` の行の既存の不一致など）、B 日報の (1)〜(8)（[packet の Implementation Results の follow-up の段落](archive/plans/2026-10-04-daily-report-import-gaps.md)。精算回数の保存・表示など）、D EJ の 1〜7（[packet の `## Follow-up`](archive/plans/2026-10-04-ej-grammar.md)）。着手するときは該当の項目をこの節へ 1 項目ずつ切り出す。
 - **EJ の `ItemName` の除外を範囲内の金額まで広げるか**（PR #141 の Final Review broad の取り直し〈Fable 5.1〉の P3）: `Item` の形から末尾の `*` だけが外れた行（名称 + 通貨記号つきの範囲内の金額 + `*`）は今も `ItemName` になり得る。`docs/function-design/29-io-ej-parser.md` の文面どおりで照合は閉じ、実物に無い形（PR #141 の AC11）。除外を範囲内の値まで広げるかを決める。
 
 #### workflow / test / lint / docs
