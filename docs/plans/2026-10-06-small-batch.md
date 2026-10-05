@@ -263,7 +263,15 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 
 ## Implementation Results
 
-Fill after implementation.
+2026-10-06、Writer（Opus 5.5 subagent）。exact-HEAD と test の件数は PR の evidence に置く（D-038）。
+
+- Scope 1: `update_product` の step 6 で、9 field それぞれについて request の値（clear の `Some(None)` は JSON null）と更新前の値を `serde_json::Value` にして比べ、違う field だけ `{"old","new"}` を `serde_json::Map` に入れる。空なら `None`。step 1〜5・7、ログの INSERT が COMMIT の前にあること、request / result の型は変えていない。tests module に Matrix の T1〜T5 を足し、既存の `test_update_product_req102_detail_json_recorded` は変えていない。`docs/function-design/90-traceability.md` は generator で生成し直した（REQ-102 の行の Rust テストの件数だけが変わった）。
+- 修正前 red: 実装の前に T1〜T5 を足して AC2 の command を実行し exit 101。T1・T2・T4 は detail が NULL で `expect("detail_json が記録されるべき")` が落ち、T3 は (i) で key が `["cost_price","selling_price"]`（`selling_price` が余分）で落ちた。T5 は修正前から ok（guard）。T3 (ii) は (i) より後にあるので修正前は単独では到達しない（Matrix の「今も通る guard」は M5・M8 の red で確かめた）。
+- 修正後 green: AC1〜AC4 は exit 0。
+- Mutation（Matrix の M1〜M9、AC2 の command）: 9 件すべて exit≠0 で、各回の復元の後 `git diff --exit-code` は 0。検出した test は M1 = T1、M2 = T1〜T4 と既存の `detail_json_recorded`、M3・M5・M8・M9 = T3、M4 = T2、M6 = T4、M7 = T5。M6 は「名前を escape せずに入れる」を、組んだ文字列の `\"`・`\\` を戻すことで注入した（`format!` で連結したときと同じ出力）。
+- Scope 2: `docs/TOOLING_SKILL_COMMANDS.md` の見出しを `DEV_WORKFLOW.md#verification-gates` の Rust/backend の行を指す形にした。本文の command は変えていない。
+- Scope 3: `.codex/README.md` の `## PR evidence helper` の文から「適用条件を満たしたgithub mode」と「個人recipeからlegacyのstate-only/三点一致を新modeへ追加しない」を消し、文頭を「merge-evidence の手順で helper を使う」にした。helper の command・status read-only・capture の置き場・承認の範囲・設定と権限を変えない、は残した。
+- packet との食い違い: なし。
 
 ## Review Response
 

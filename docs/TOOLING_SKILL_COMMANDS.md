@@ -41,7 +41,7 @@ npm run tauri
 - `npm run preview`: build成果物をローカルプレビュー
 - `npm run tauri`: Tauri CLI 実行
 
-### Rust / DB（`CLAUDE.md` で推奨）
+### Rust / DB（必須の組み合わせは [DEV_WORKFLOW.md](DEV_WORKFLOW.md#verification-gates) の Verification Gates の Rust/backend の行）
 - `cargo check`: コンパイル確認
 - `cargo test`: テスト実行
 - `cargo clippy --all-targets --all-features -- -D warnings`: 警告ゼロチェック
