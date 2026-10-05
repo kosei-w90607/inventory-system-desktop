@@ -310,6 +310,12 @@ Test Design Matrix: [2026-10-04-ej-grammar](test-matrices/2026-10-04-ej-grammar.
 - 合計域の `Continued` の受け手を、29 の定義どおりラベルだけの行（注記を除く）と `対象計` の率だけの行に限る（Claude 側の P3 #2）。
 - Matrix に G-F16〜G-F18・G-T9 と Mutation の 4 行を足す。Scope・AC・Goal は変えない（S1 の「IO-08-D5a〜D5d の実装」の範囲）。実装は本 Amendment の後の commit。
 
+### Gated Amendment 2（2026-10-05、Coordinator）
+
+- Final Review broad の Codex 側が PR に投稿した 2 本目の review（P1 EJ-2）を受けた是正。Gated Amendment 1 は 1 本目の review の件数（P1 1 / P2 1）だけを拾い、EJ-2 を落としていた。Coordinator が是正後の実装（`1cad2187`）の隔離 copy で再現した: `－ -9223372036854775809*` → ` ￥１００` → 区切り → ` 1 点` → `合  計` が、その行を名称とする架空の明細で診断 0 の `Restored` になる。
+- 契約は変えない。29 の `MinusKey` の行（`－` + 空白 + 金額 token + 任意の `*`）、金額 token の「収まらない桁は受理しない（その行は `Unknown`）」、`ItemName` の「`i64` に収まらない桁で `Unknown` になる行は当たらない」で既に決まっている。実装の範囲外の判定が末尾の `※` だけを外し `*` を外していなかった（P1）。
+- Matrix に G-F19 と Mutation の 1 行を足す。Scope・AC・Goal は変えない（S1 の範囲）。実装は本 Amendment の後の commit。
+
 ## Review Response
 
 review の後に記入する。
