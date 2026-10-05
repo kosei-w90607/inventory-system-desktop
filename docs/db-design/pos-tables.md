@@ -180,13 +180,14 @@ Z001由来の日計サマリを、アプリ内部の表示・照合に使える�
 | line_key | TEXT | NOT NULL | adapterが正規化した行キー（例: gross_sales, net_sales, tax_10） |
 | label | TEXT | NOT NULL | operator表示用ラベル |
 | amount | INTEGER | NULLABLE | 金額。該当しない行はNULL |
-| quantity | INTEGER | NULLABLE | 数量。該当しない行はNULL |
-| count | INTEGER | NULLABLE | 件数。該当しない行はNULL |
+| quantity_hundredths | INTEGER | NULLABLE | 個数の100倍の整数（`1.3` 個 → 130。小数 2 桁まで、IO-07-D2）。総売の行だけが持ち、該当しない行はNULL。migration v7 で `quantity` から改名し既存値を100倍した |
+| count | INTEGER | NULLABLE | 件数（整数）。該当しない行はNULL |
 | sort_order | INTEGER | NOT NULL | 表示順 |
 
 ### 設計意図
 - Z001の4列データや事前行はCASIO adapterの事実であり、app coreは日報サマリ行として扱う。
-- `amount` / `quantity` / `count` をNULL許容にすることで、レジ側の行意味が金額・数量・件数のどれかに偏っても同じ行モデルで保持できる。
+- `amount` / `quantity_hundredths` / `count` をNULL許容にすることで、レジ側の行意味が金額・数量・件数のどれかに偏っても同じ行モデルで保持できる。
+- **個数を100倍の整数で持つ理由（D-104）**: 部門キーで小数の数量（レジは小数 2 桁まで）を打った日は総売の個数が小数になる。整数のままだとその日の日報の取込みが丸ごと失敗していた。REAL は月次の `SUM` で誤差が積もり、TEXT は `SUM` できないので、固定小数の整数にする。列名に `_hundredths` を付け、単位の数として読む古い SQL が黙って100倍の値を出さないよう、改名で読み手を壊して直させる。wire へは BIZ が単位の数（`f64`）に戻して出す。
 
 ---
 
@@ -230,13 +231,14 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 | raw_department_name | TEXT | NOT NULL | Z005上の部門名または部門表示 |
 | normalized_department_name | TEXT | NULLABLE | adapterが正規化した部門名 |
 | amount | INTEGER | NOT NULL | 部門別売上金額 |
-| quantity | INTEGER | NULLABLE | 部門別数量。取得できない場合はNULL |
-| count | INTEGER | NULLABLE | 部門別件数。取得できない場合はNULL |
+| quantity_hundredths | INTEGER | NULLABLE | 部門別個数の100倍の整数（小数 2 桁まで、IO-07-D2）。取得できない場合はNULL。migration v7 で `quantity` から改名し既存値を100倍した |
+| count | INTEGER | NULLABLE | 部門別件数（整数）。取得できない場合はNULL |
 | sort_order | INTEGER | NOT NULL | 表示順 |
 
 ### 設計意図
 - `department_id` はNULL許容にする。レジ側部門名とアプリ部門マスタが一致しない日でも日報は取り込めるようにし、未対応は警告として表示する。
 - 部門別日報は公式日報集計の根拠だが、商品別数量・在庫減算を復元できない。`sale_records` への展開は禁止する。
+- `quantity_hundredths` は §12c と同じ100倍の整数（D-104）。月次の部門集計（`SUM`）も100倍の整数のまま足し、BIZ-05 が wire で単位の数に戻す。部門売りの小数は在庫に効かないので、単位の換算（cm 等）はしない。
 
 ---
 
@@ -259,7 +261,7 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 4. parse失敗時は `daily_report_imports` を作らず、operation_logsに `daily_report_parse_failed` を記録する。
 
 **Stage 2: Validate bundle**
-1. 3ファイルの対象日が一致することを確認する。
+1. 3ファイルの対象日が一致し、精算回数を読めたファイルどうしの精算回数が一致することを確認する（精算回数の比較は IO-07 が Stage 1 で行う。IO-07-D3。不一致は `settlement_mismatch` で commit 不可）。
 2. Z005の部門名を `departments.name` に照合する。未一致はエラーではなく警告にし、`department_id=NULL` でpreview可能にする。
 3. 必須集計行（総売上または純売上など、adapterが定義する最低限のサマリ）が欠ける場合はcommit不可エラーにする。
 4. `bundle_hash` でactive同一bundleを判定し、`report_date` でactive同日parent全件の追加確認snapshotを作る。

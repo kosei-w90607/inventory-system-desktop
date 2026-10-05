@@ -32,7 +32,7 @@ pub struct DailyReportSummaryLine {
     pub line_key: String,
     pub label: String,
     pub amount: Option<i64>,
-    pub quantity: Option<i64>,
+    pub quantity_hundredths: Option<i64>,
     pub count: Option<i64>,
     pub sort_order: i64,
 }
@@ -51,7 +51,7 @@ pub struct DailyReportDepartmentLine {
     pub raw_department_name: String,
     pub normalized_department_name: Option<String>,
     pub amount: i64,
-    pub quantity: Option<i64>,
+    pub quantity_hundredths: Option<i64>,
     pub count: Option<i64>,
     pub sort_order: i64,
 }
@@ -87,6 +87,8 @@ pub fn parse_daily_report_bundle(files: Vec<DailyReportSourceFile>) -> DailyRepo
 
     let mut seen_sources = HashSet::new();
     let mut source_dates: HashMap<DailyReportSourceKind, String> = HashMap::new();
+    let mut settlement_numbers: HashSet<u64> = HashSet::new();
+    let mut settlement_readable = 0;
 
     for file in files {
         let Some(source) = detect_source(&file.filename) else {
@@ -136,6 +138,11 @@ pub fn parse_daily_report_bundle(files: Vec<DailyReportSourceFile>) -> DailyRepo
             .replace("\u{2026}", "\n")
             .replace("\r\n", "\n")
             .replace('\r', "\n");
+
+        if let Some(number) = settlement_number(&normalized) {
+            settlement_readable += 1;
+            settlement_numbers.insert(number);
+        }
 
         if let Some(date) = extract_date(&normalized) {
             source_dates.insert(source, date);
@@ -203,7 +210,36 @@ pub fn parse_daily_report_bundle(files: Vec<DailyReportSourceFile>) -> DailyRepo
         ));
     }
 
+    // IO-07-D3: 精算回数を読めたファイルが 2 本以上で値が違えば別の精算の混在
+    if settlement_readable >= 2 && settlement_numbers.len() > 1 {
+        result.parse_errors.push(parse_error(
+            None,
+            None,
+            None,
+            "settlement_mismatch",
+            "Z001/Z002/Z005の精算回数が一致しません",
+        ));
+    }
+
     result
+}
+
+/// ヘッダより前の「精算回数」の行（第1列が `精算回数`、第2列が数字だけ）を整数で読む（IO-07-D3）
+fn settlement_number(text: &str) -> Option<u64> {
+    for line in text.split('\n') {
+        let fields = split_csv_fields(line);
+        if is_header_fields(&fields) {
+            return None;
+        }
+        if fields[0].trim() == "精算回数" {
+            let value = fields.get(1)?.trim();
+            if value.is_empty() || !value.bytes().all(|byte| byte.is_ascii_digit()) {
+                return None;
+            }
+            return value.parse().ok();
+        }
+    }
+    None
 }
 
 fn detect_source(filename: &str) -> Option<DailyReportSourceKind> {
@@ -237,7 +273,16 @@ fn parse_z001(
         if code.is_empty() && label.is_empty() {
             continue;
         }
-        let first_value = match parse_optional_i64(&fields[2]) {
+        let sort_order = (index + 1) as i64;
+        let line_key = summary_line_key(&label, sort_order);
+        let is_gross_sales = line_key == "gross_sales";
+        // IO-07-D2: 総売の行の第3列は個数（小数 2 桁まで）、他の行は件数（整数）
+        let first_value = if is_gross_sales {
+            parse_optional_hundredths(&fields[2])
+        } else {
+            parse_optional_i64(&fields[2])
+        };
+        let first_value = match first_value {
             Ok(value) => value,
             Err(()) => {
                 errors.push(parse_error(
@@ -263,9 +308,7 @@ fn parse_z001(
                 continue;
             }
         };
-        let sort_order = (index + 1) as i64;
-        let line_key = summary_line_key(code, &label, sort_order);
-        let (quantity, count) = if line_key == "gross_sales" {
+        let (quantity, count) = if is_gross_sales {
             (first_value, None)
         } else {
             (None, first_value)
@@ -274,7 +317,7 @@ fn parse_z001(
             line_key,
             label,
             amount,
-            quantity,
+            quantity_hundredths: quantity,
             count,
             sort_order,
         });
@@ -417,7 +460,7 @@ fn parse_z002(
         };
         let sort_order = (index + 1) as i64;
         rows.push(DailyReportPaymentLine {
-            payment_key: payment_key(code, &label, sort_order),
+            payment_key: payment_key(&label, sort_order),
             label,
             amount,
             count,
@@ -438,7 +481,7 @@ fn parse_z005(
         if code.is_empty() && raw_department_name.is_empty() {
             continue;
         }
-        let quantity = match parse_optional_i64(&fields[2]) {
+        let quantity = match parse_optional_hundredths(&fields[2]) {
             Ok(value) => value,
             Err(()) => {
                 errors.push(parse_error(
@@ -468,11 +511,16 @@ fn parse_z005(
             normalized_department_name: Some(raw_department_name.clone()),
             raw_department_name,
             amount,
-            quantity,
+            quantity_hundredths: quantity,
             count: None,
             sort_order: (index + 1) as i64,
         });
     }
+}
+
+/// 100 倍の整数の個数を単位の数へ戻す（IO-07-D2）
+pub fn quantity_hundredths_to_units(quantity_hundredths: i64) -> f64 {
+    quantity_hundredths as f64 / 100.0
 }
 
 fn parse_optional_i64(value: &str) -> Result<Option<i64>, ()> {
@@ -483,6 +531,35 @@ fn parse_optional_i64(value: &str) -> Result<Option<i64>, ()> {
     cleaned.parse::<i64>().map(Some).map_err(|_| ())
 }
 
+/// 個数を小数 2 桁までの 100 倍の整数で読む。浮動小数を通さない（IO-07-D2）
+fn parse_optional_hundredths(value: &str) -> Result<Option<i64>, ()> {
+    let cleaned = clean_number(value);
+    if cleaned.is_empty() {
+        return Ok(None);
+    }
+    let (integer, fraction) = match cleaned.split_once('.') {
+        Some((integer, fraction)) if (1..=2).contains(&fraction.len()) => (integer, fraction),
+        Some(_) => return Err(()),
+        None => (cleaned.as_str(), ""),
+    };
+    let (negative, digits) = match integer.strip_prefix('-') {
+        Some(digits) => (true, digits),
+        None => (false, integer),
+    };
+    let all_digits = |text: &str| text.bytes().all(|byte| byte.is_ascii_digit());
+    if digits.is_empty() || !all_digits(digits) || !all_digits(fraction) {
+        return Err(());
+    }
+    let fraction_hundredths: i64 = format!("{fraction:0<2}").parse().map_err(|_| ())?;
+    let magnitude = digits
+        .parse::<i64>()
+        .ok()
+        .and_then(|units| units.checked_mul(100))
+        .and_then(|hundredths| hundredths.checked_add(fraction_hundredths))
+        .ok_or(())?;
+    Ok(Some(if negative { -magnitude } else { magnitude }))
+}
+
 fn parse_required_i64(value: &str) -> Result<i64, ()> {
     parse_optional_i64(value)?.ok_or(())
 }
@@ -491,21 +568,21 @@ fn clean_number(value: &str) -> String {
     value.trim().replace([',', '￥', '¥', ' '], "")
 }
 
-fn summary_line_key(code: &str, label: &str, sort_order: i64) -> String {
-    if code == "101" || label.contains("総売") || label.eq_ignore_ascii_case("gross_sales") {
+/// 鍵はラベルだけで決める。「レコード」列は行の位置で鍵に使わない（IO-07-D4）
+fn summary_line_key(label: &str, sort_order: i64) -> String {
+    if label.contains("総売") || label.eq_ignore_ascii_case("gross_sales") {
         "gross_sales".to_string()
-    } else if code == "201" || label.contains("純売") || label.eq_ignore_ascii_case("net_sales") {
+    } else if label.contains("純売") || label.eq_ignore_ascii_case("net_sales") {
         "net_sales".to_string()
     } else {
         fallback_key("summary", sort_order)
     }
 }
 
-fn payment_key(code: &str, label: &str, sort_order: i64) -> String {
-    if code == "01" || label.contains("現金") || label.eq_ignore_ascii_case("cash") {
+fn payment_key(label: &str, sort_order: i64) -> String {
+    if label.contains("現金") || label.eq_ignore_ascii_case("cash") {
         "cash".to_string()
-    } else if code == "03" || label.contains("クレジット") || label.eq_ignore_ascii_case("credit")
-    {
+    } else if label.contains("クレジット") || label.eq_ignore_ascii_case("credit") {
         "credit".to_string()
     } else {
         fallback_key("payment", sort_order)
@@ -590,9 +667,54 @@ mod tests {
     }
 
     fn preamble(date: &str) -> String {
+        preamble_with_settlement_line(date, &settlement_line("0001"))
+    }
+
+    /// 精算回数の行（引用符付き）。省くときは空文字を渡す
+    fn settlement_line(number: &str) -> String {
+        format!("\"精算回数    \",\"{number}\",\"\",\"\"\r\n")
+    }
+
+    fn preamble_with_settlement_line(date: &str, settlement_line: &str) -> String {
         format!(
-            "\"マシンNo.   \",\"01\",\"\",\"\"\r\n\"ファイル    \",\"synthetic\",\"\",\"\"\r\n\"モード      \",\"精算\",\"\",\"\"\r\n\"精算回数    \",\"0001\",\"\",\"\"\r\n\"日付        \",\"{date}\",\"\",\"\"\r\n\"時刻        \",\"12:34\",\"\",\"\"\r\n\r\n\"レコード    \",\"キャラクター\",\"個数/件数   \",\"金額        \"\r\n"
+            "\"マシンNo.   \",\"01\",\"\",\"\"\r\n\"ファイル    \",\"synthetic\",\"\",\"\"\r\n\"モード      \",\"精算\",\"\",\"\"\r\n{settlement_line}\"日付        \",\"{date}\",\"\",\"\"\r\n\"時刻        \",\"12:34\",\"\",\"\"\r\n\r\n\"レコード    \",\"キャラクター\",\"個数/件数   \",\"金額        \"\r\n"
         )
+    }
+
+    /// 合成の 4 列の行を持つ日報ファイル（データの 1 行目は 9 行目。精算回数の行を省くと 8 行目）
+    fn report_file(
+        filename: &str,
+        date: &str,
+        settlement_line: &str,
+        rows: &[(&str, &str, &str, &str)],
+    ) -> DailyReportSourceFile {
+        let mut text = preamble_with_settlement_line(date, settlement_line);
+        for (code, label, value, amount) in rows {
+            text.push_str(&format!(
+                "\"{code}\",\"{label}\",\"{value}\",\"{amount}\"\r\n"
+            ));
+        }
+        source_file(filename, &text)
+    }
+
+    fn has_error(
+        result: &DailyReportParseResult,
+        error_type: &str,
+        source: Option<DailyReportSourceKind>,
+        line_no: Option<i64>,
+    ) -> bool {
+        result.parse_errors.iter().any(|error| {
+            error.error_type == error_type
+                && error.source_file == source
+                && error.line_no == line_no
+        })
+    }
+
+    fn has_error_type(result: &DailyReportParseResult, error_type: &str) -> bool {
+        result
+            .parse_errors
+            .iter()
+            .any(|error| error.error_type == error_type)
     }
 
     fn z001(date: &str) -> DailyReportSourceFile {
@@ -645,11 +767,11 @@ mod tests {
         assert_eq!(result.summary_lines.len(), 2);
         assert_eq!(result.summary_lines[0].line_key, "gross_sales");
         assert_eq!(result.summary_lines[0].amount, Some(12000));
-        assert_eq!(result.summary_lines[0].quantity, Some(8));
+        assert_eq!(result.summary_lines[0].quantity_hundredths, Some(800));
         assert_eq!(result.summary_lines[0].count, None);
         assert_eq!(result.summary_lines[1].line_key, "net_sales");
         assert_eq!(result.summary_lines[1].amount, Some(11000));
-        assert_eq!(result.summary_lines[1].quantity, None);
+        assert_eq!(result.summary_lines[1].quantity_hundredths, None);
         assert_eq!(result.summary_lines[1].count, Some(7));
         assert_eq!(result.payment_lines.len(), 2);
         assert_eq!(result.payment_lines[0].payment_key, "cash");
@@ -658,7 +780,7 @@ mod tests {
         assert_eq!(result.department_lines.len(), 2);
         assert_eq!(result.department_lines[0].raw_department_name, "その他小物");
         assert_eq!(result.department_lines[0].amount, 3000);
-        assert_eq!(result.department_lines[0].quantity, Some(4));
+        assert_eq!(result.department_lines[0].quantity_hundredths, Some(400));
         assert_eq!(result.department_lines[0].count, None);
     }
 
@@ -686,7 +808,7 @@ mod tests {
             .find(|line| line.line_key == "gross_sales")
             .expect("gross_sales must exist");
         assert_eq!(gross_sales.amount, Some(12000));
-        assert_eq!(gross_sales.quantity, Some(8));
+        assert_eq!(gross_sales.quantity_hundredths, Some(800));
         let cash = result
             .payment_lines
             .iter()
@@ -700,7 +822,7 @@ mod tests {
             .find(|line| line.raw_department_name == "その他小物")
             .expect("その他小物 must exist");
         assert_eq!(other_goods.amount, 3000);
-        assert_eq!(other_goods.quantity, Some(4));
+        assert_eq!(other_goods.quantity_hundredths, Some(400));
     }
 
     #[test]
@@ -854,7 +976,396 @@ mod tests {
         assert_eq!(result.payment_lines[0].count, Some(7));
         assert_eq!(result.payment_lines[0].amount, Some(11000));
         assert_eq!(result.department_lines.len(), 2);
-        assert_eq!(result.department_lines[0].quantity, Some(4));
+        assert_eq!(result.department_lines[0].quantity_hundredths, Some(400));
         assert_eq!(result.department_lines[0].amount, 3000);
+    }
+
+    #[test]
+    fn test_parse_daily_report_req401_decimal_quantity_hundredths() {
+        // REQ-401 / IO-07-D2: 個数（Z001 の総売・Z005）は小数 2 桁までを浮動小数を通さず 100 倍の整数にする
+        let s = settlement_line("0001");
+        let result = parse_daily_report_bundle(vec![
+            report_file(
+                "Z001_01.CSV",
+                "2026-09-29",
+                &s,
+                &[
+                    ("0001", "総売", "1.3", "12000"),
+                    ("0002", "純売", "7", "11000"),
+                ],
+            ),
+            report_file(
+                "Z002_01.CSV",
+                "2026-09-29",
+                &s,
+                &[("0001", "現金", "7", "11000")],
+            ),
+            report_file(
+                "Z005_01.CSV",
+                "2026-09-29",
+                &s,
+                &[
+                    ("0001", "部門A", "2.25", "100"),
+                    ("0002", "部門B", "-0.5", "-50"),
+                    ("0003", "部門C", "1,234.5", "5000"),
+                    ("0004", "部門D", "4", "400"),
+                    ("0005", "部門E", "1.13", "1"),
+                    ("0006", "部門F", "0.29", "1"),
+                    ("0007", "部門G", "9999.99", "1"),
+                    ("0008", "部門H", "0", "1"),
+                    ("0009", "部門I", "0.0", "1"),
+                    ("0010", "部門J", "1.05", "1"),
+                ],
+            ),
+        ]);
+
+        assert!(result.parse_errors.is_empty(), "{:?}", result.parse_errors);
+        assert_eq!(result.summary_lines[0].line_key, "gross_sales");
+        assert_eq!(result.summary_lines[0].quantity_hundredths, Some(130));
+        assert_eq!(result.summary_lines[0].count, None);
+        assert_eq!(result.summary_lines[1].quantity_hundredths, None);
+        assert_eq!(result.summary_lines[1].count, Some(7));
+        let quantities: Vec<Option<i64>> = result
+            .department_lines
+            .iter()
+            .map(|line| line.quantity_hundredths)
+            .collect();
+        assert_eq!(
+            quantities,
+            [225, -50, 123450, 400, 113, 29, 999999, 0, 0, 105].map(Some)
+        );
+    }
+
+    #[test]
+    fn test_parse_daily_report_req401_decimal_quantity_rejects_invalid_shapes() {
+        // REQ-401 / IO-07-D2: 小数 3 桁以上・`.5`・`1.`・`1.2.3` は丸めず invalid_number
+        let s = settlement_line("0001");
+        for invalid in ["1.234", ".5", "1.", "1.2.3", "-.5", "1.-5"] {
+            let result = parse_daily_report_bundle(vec![
+                report_file(
+                    "Z001_01.CSV",
+                    "2026-09-29",
+                    &s,
+                    &[
+                        ("0001", "総売", invalid, "12000"),
+                        ("0002", "純売", "7", "11000"),
+                    ],
+                ),
+                report_file(
+                    "Z002_01.CSV",
+                    "2026-09-29",
+                    &s,
+                    &[("0001", "現金", "7", "11000")],
+                ),
+                report_file(
+                    "Z005_01.CSV",
+                    "2026-09-29",
+                    &s,
+                    &[("0001", "部門A", invalid, "100")],
+                ),
+            ]);
+            assert!(
+                has_error(
+                    &result,
+                    "invalid_number",
+                    Some(DailyReportSourceKind::Z001),
+                    Some(9)
+                ),
+                "Z001 {invalid}: {:?}",
+                result.parse_errors
+            );
+            assert!(
+                has_error(
+                    &result,
+                    "invalid_number",
+                    Some(DailyReportSourceKind::Z005),
+                    Some(9)
+                ),
+                "Z005 {invalid}: {:?}",
+                result.parse_errors
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_daily_report_req401_count_column_stays_integer() {
+        // REQ-401 / IO-07-D2: 件数の列（Z001 の総売以外、Z002）は整数のまま。小数は invalid_number
+        let s = settlement_line("0001");
+        let result = parse_daily_report_bundle(vec![
+            report_file(
+                "Z001_01.CSV",
+                "2026-09-29",
+                &s,
+                &[("0001", "総売", "3", "100"), ("0002", "純売", "1.5", "90")],
+            ),
+            report_file(
+                "Z002_01.CSV",
+                "2026-09-29",
+                &s,
+                &[("0001", "現金", "1.5", "100")],
+            ),
+            report_file(
+                "Z005_01.CSV",
+                "2026-09-29",
+                &s,
+                &[("0001", "部門A", "3", "100")],
+            ),
+        ]);
+        assert!(
+            has_error(
+                &result,
+                "invalid_number",
+                Some(DailyReportSourceKind::Z001),
+                Some(10)
+            ),
+            "{:?}",
+            result.parse_errors
+        );
+        assert!(
+            has_error(
+                &result,
+                "invalid_number",
+                Some(DailyReportSourceKind::Z002),
+                Some(9)
+            ),
+            "{:?}",
+            result.parse_errors
+        );
+
+        let result = parse_daily_report_bundle(vec![
+            report_file(
+                "Z001_01.CSV",
+                "2026-09-29",
+                &s,
+                &[("0001", "総売", "3", "100"), ("0002", "純売", "7", "90")],
+            ),
+            report_file(
+                "Z002_01.CSV",
+                "2026-09-29",
+                &s,
+                &[("0001", "現金", "7", "100")],
+            ),
+            report_file(
+                "Z005_01.CSV",
+                "2026-09-29",
+                &s,
+                &[("0001", "部門A", "3", "100")],
+            ),
+        ]);
+        assert!(result.parse_errors.is_empty(), "{:?}", result.parse_errors);
+        assert_eq!(result.summary_lines[1].count, Some(7));
+        assert_eq!(result.summary_lines[1].quantity_hundredths, None);
+        assert_eq!(result.payment_lines[0].count, Some(7));
+        assert_eq!(result.department_lines[0].count, None);
+    }
+
+    #[test]
+    fn test_daily_report_req401_quantity_hundredths_to_units() {
+        // REQ-401 / IO-07-D2: 100 倍の整数を単位の数（f64）へ戻す
+        assert_eq!(quantity_hundredths_to_units(130), 1.3);
+        assert_eq!(quantity_hundredths_to_units(400), 4.0);
+        assert_eq!(quantity_hundredths_to_units(-50), -0.5);
+        assert_eq!(quantity_hundredths_to_units(125), 1.25);
+        assert_eq!(serde_json::to_string(&1.3_f64).unwrap(), "1.3");
+        assert_eq!(
+            serde_json::to_string(&quantity_hundredths_to_units(130)).unwrap(),
+            "1.3"
+        );
+    }
+
+    #[test]
+    fn test_parse_daily_report_req401_settlement_mismatch() {
+        // REQ-401 / IO-07-D3: 精算回数を読めた 2 本以上が違えば settlement_mismatch。日付の判定とは別
+        let rows = [("0001", "総売", "3", "100"), ("0002", "純売", "3", "90")];
+        let mismatched = parse_daily_report_bundle(vec![
+            report_file(
+                "Z001_28 _0001.CSV",
+                "2026-09-28",
+                &settlement_line("0001"),
+                &rows,
+            ),
+            report_file(
+                "Z002_28A_0002.CSV",
+                "2026-09-28",
+                &settlement_line("0002"),
+                &[("0001", "現金", "3", "90")],
+            ),
+            report_file(
+                "Z005_28A_0002.CSV",
+                "2026-09-28",
+                &settlement_line("0002"),
+                &[("0001", "部門A", "3", "90")],
+            ),
+        ]);
+        assert!(
+            has_error(&mismatched, "settlement_mismatch", None, None),
+            "{:?}",
+            mismatched.parse_errors
+        );
+        assert!(mismatched
+            .parse_errors
+            .iter()
+            .filter(|error| error.error_type == "settlement_mismatch")
+            .all(|error| !error.error_message.is_empty() && error.filename.is_none()));
+        assert!(!has_error_type(&mismatched, "invalid_date"));
+        assert_eq!(mismatched.report_date.as_deref(), Some("2026-09-28"));
+
+        // T9: 日付も精算回数も違えば両方を返す
+        let both = parse_daily_report_bundle(vec![
+            report_file(
+                "Z001_28 _0001.CSV",
+                "2026-09-28",
+                &settlement_line("0001"),
+                &rows,
+            ),
+            report_file(
+                "Z002_29 _0002.CSV",
+                "2026-09-29",
+                &settlement_line("0002"),
+                &[("0001", "現金", "3", "90")],
+            ),
+            report_file(
+                "Z005_28 _0001.CSV",
+                "2026-09-28",
+                &settlement_line("0001"),
+                &[("0001", "部門A", "3", "90")],
+            ),
+        ]);
+        assert!(
+            has_error_type(&both, "invalid_date"),
+            "{:?}",
+            both.parse_errors
+        );
+        assert!(
+            has_error_type(&both, "settlement_mismatch"),
+            "{:?}",
+            both.parse_errors
+        );
+    }
+
+    #[test]
+    fn test_parse_daily_report_req401_settlement_number_read_from_preamble_only() {
+        // REQ-401 / IO-07-D3: 精算回数はヘッダより前の行だけを整数で読み、読めた 2 本以上だけを比べる
+        let z001_rows = [("0001", "総売", "3", "100"), ("0002", "純売", "3", "90")];
+        let z002_rows = [("0001", "現金", "3", "90")];
+        let z005_rows = [("0001", "部門A", "3", "90")];
+        let date = "2026-09-28";
+
+        // (a) 引用符なしの `精算回数,5,,` と `"0005"`・`"5"` は同じ値
+        let a = parse_daily_report_bundle(vec![
+            report_file("Z001_a.CSV", date, "精算回数,5,,\r\n", &z001_rows),
+            report_file("Z002_a.CSV", date, &settlement_line("0005"), &z002_rows),
+            report_file("Z005_a.CSV", date, &settlement_line("5"), &z005_rows),
+        ]);
+        assert!(a.parse_errors.is_empty(), "(a) {:?}", a.parse_errors);
+
+        // (b) 精算回数の行の無い Z005 は比べない（読めた 2 本は一致）
+        let b = parse_daily_report_bundle(vec![
+            report_file("Z001_b.CSV", date, &settlement_line("0001"), &z001_rows),
+            report_file("Z002_b.CSV", date, &settlement_line("0001"), &z002_rows),
+            report_file("Z005_b.CSV", date, "", &z005_rows),
+        ]);
+        assert!(b.parse_errors.is_empty(), "(b) {:?}", b.parse_errors);
+
+        // (c) ヘッダの後の第1列 `精算回数` の行は精算回数として読まない（Z002 は読めない 1 本）
+        let c = parse_daily_report_bundle(vec![
+            report_file("Z001_c.CSV", date, &settlement_line("0001"), &z001_rows),
+            report_file(
+                "Z002_c.CSV",
+                date,
+                "",
+                &[
+                    ("0001", "現金", "3", "90"),
+                    ("精算回数", "0009", "1", "100"),
+                ],
+            ),
+            report_file("Z005_c.CSV", date, &settlement_line("0001"), &z005_rows),
+        ]);
+        assert!(c.parse_errors.is_empty(), "(c) {:?}", c.parse_errors);
+        let row = c
+            .payment_lines
+            .iter()
+            .find(|line| line.label == "0009")
+            .expect("ヘッダの後の行は Z002 の支払の行として残る");
+        assert_eq!(row.payment_key, "payment_2");
+
+        // (d) 読める 2 本が不一致で残り 1 本が読めない束は settlement_mismatch
+        let d = parse_daily_report_bundle(vec![
+            report_file("Z001_d.CSV", date, &settlement_line("0001"), &z001_rows),
+            report_file("Z002_d.CSV", date, &settlement_line("0002"), &z002_rows),
+            report_file("Z005_d.CSV", date, "", &z005_rows),
+        ]);
+        assert!(
+            has_error_type(&d, "settlement_mismatch"),
+            "(d) {:?}",
+            d.parse_errors
+        );
+    }
+
+    #[test]
+    fn test_parse_daily_report_req401_record_column_is_row_position() {
+        // REQ-401 / IO-07-D4: 「レコード」列は行の位置。鍵はラベルだけで決める
+        let s = settlement_line("0001");
+        let result = parse_daily_report_bundle(vec![
+            report_file(
+                "Z001_01.CSV",
+                "2026-09-28",
+                &s,
+                &[
+                    ("0001", "総売", "3", "100"),
+                    ("0002", "純売", "3", "90"),
+                    ("101", "合成項目甲", "1", "10"),
+                    ("201", "合成項目乙", "1", "10"),
+                ],
+            ),
+            report_file(
+                "Z002_01.CSV",
+                "2026-09-28",
+                &s,
+                &[
+                    ("0001", "現金", "3", "90"),
+                    ("0002", "合成支払甲", "1", "10"),
+                    ("0003", "合成支払乙", "1", "10"),
+                    ("03", "合成支払丙", "1", "10"),
+                    ("01", "合成支払丁", "1", "10"),
+                    ("0006", "合成ｸﾚｼﾞｯﾄ甲", "1", "10"),
+                    ("0007", "合成ｸﾚｼﾞｯﾄ乙", "1", "10"),
+                ],
+            ),
+            report_file(
+                "Z005_01.CSV",
+                "2026-09-28",
+                &s,
+                &[("0001", "部門A", "3", "90")],
+            ),
+        ]);
+
+        assert!(result.parse_errors.is_empty(), "{:?}", result.parse_errors);
+        let summary_keys: Vec<&str> = result
+            .summary_lines
+            .iter()
+            .map(|line| line.line_key.as_str())
+            .collect();
+        assert_eq!(
+            summary_keys,
+            ["gross_sales", "net_sales", "summary_3", "summary_4"]
+        );
+        let payment_keys: Vec<&str> = result
+            .payment_lines
+            .iter()
+            .map(|line| line.payment_key.as_str())
+            .collect();
+        assert_eq!(
+            payment_keys,
+            [
+                "cash",
+                "payment_2",
+                "payment_3",
+                "payment_4",
+                "payment_5",
+                "payment_6",
+                "payment_7"
+            ]
+        );
     }
 }

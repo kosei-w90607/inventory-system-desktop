@@ -324,7 +324,7 @@ mod tests {
                 raw_department_name: "その他小物".to_string(),
                 normalized_department_name: Some("その他小物".to_string()),
                 amount: 11000,
-                quantity: Some(7),
+                quantity_hundredths: Some(700),
                 count: Some(3),
                 sort_order: 1,
             }],

@@ -199,9 +199,9 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
 - DailyReportParseResult
   - report_date: String（YYYY-MM-DD）
   - source_files[]: source_file（Z001/Z002/Z005）, filename, file_hash, size_bytes
-  - summary_lines[]: line_key, label, amount?, quantity?, count?, sort_order
+  - summary_lines[]: line_key, label, amount?, quantity_hundredths?, count?, sort_order
   - payment_lines[]: payment_key, label, amount?, count?, sort_order
-  - department_lines[]: raw_department_name, normalized_department_name?, amount, quantity?, count?, sort_order
+  - department_lines[]: raw_department_name, normalized_department_name?, amount, quantity_hundredths?, count?, sort_order
   - parse_errors[]: source_file?, filename?, line_no?, error_type, error_message（BIZ-08の開発者向けdiagnostic logで消費し、利用者向けwire/operation logへraw detailを出さない）
 
 **【処理構造】**
@@ -214,7 +214,7 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
    - Z001 → summary_lines
    - Z002 → payment_lines
    - Z005 → department_lines
-6. 3 source で report_date が一致することを parse result に含める。一致しない場合は parse_errors にする
+6. 3 source で report_date が一致することを parse result に含める。一致しない場合は parse_errors にする。精算回数を読めたファイルが 2 本以上で値が違えば `settlement_mismatch` を parse_errors にする（IO-07-D3）
 7. 生バイトから個別hashとbundle_hash素材を作る。bundle_hashの確定はBIZ-08で安定順に束ねて行う
 
 summary/payment/departmentのsourceは格納先から一意に決まるため行ごとには重複保持しない。入力filenameはsource file metadataに加え、source判定前に失敗してmetadataへ入らないunknown fileを識別するparse error provenanceとして診断専用に保持する（IO-07-D1）。
@@ -222,7 +222,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 **【制御構造】**
 - ステートレス。DBを呼ばない
 - CASIO 固有の表記、列位置、メタ行、改行、文字コードはこの層で吸収する
-- app core が使う値は line_key / label / amount / quantity / count / department label に正規化して返す
+- app core が使う値は line_key / label / amount / quantity_hundredths（個数の100倍の整数、IO-07-D2）/ count / department label に正規化して返す。line_key / payment_key はラベルだけで決め、「レコード」列（行の位置）を鍵に使わない（IO-07-D4）
 
 ---
 
