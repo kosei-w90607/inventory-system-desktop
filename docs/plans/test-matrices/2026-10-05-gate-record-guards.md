@@ -32,7 +32,8 @@ Risk: R3
 | T1-1 | D-107 (3) | status が stale を先に出す | unit | `Records.test_plan_contract_change_reported_before_stale`（`scripts/tests/pr-gate.test.py`） | `nonci` に、broad の amendments が要件と違い head も古い record を渡して `FRESH_BROAD` の全文で `assertRaisesRegex`。今の code は `stale head/base in workflow record` で red |
 | T1-2 | D-107 (3) | CLI の status の blockers に出ない | CLI | `ReviewedHead.test_status_after_amendment_names_fresh_broad`（同） | broad を record した後に packet の Amendments を足して head を進め、`status --packet` の blockers に `FRESH_BROAD` が入り `stale head/base in workflow record` が入らない。今の code は stale で red |
 | T1-3 | D-107 (3) | closure の拒否が要る review を言わない | CLI | `ReviewedHead.test_closure_after_amendment_says_fresh_broad`（同） | T1-2 の状態で closure を record し exit 1・`FRESH_BROAD`・comment 不変。今の code は `server broad required for closure` だけで red |
-| T1-4 | MG-D8（判定不変）・D-107 (3) | 契約が同じで head だけ古いときに文が変わる、broad が無い closure の文 | unit / CLI | `Records.test_stale_without_contract_change_keeps_stale`、`RecordLifecycle.test_closure_without_server_broad_names_next_step`（同） | 契約が同じなら `stale head/base in workflow record` のまま（新しい順が判定を変えていない）。server に broad が無い closure は `SERVER_BROAD` の全文。今の code は後者が `server broad required for closure` の短文で red |
+| T1-4 | MG-D8（判定不変）・D-107 (3) | 契約が同じで head だけ古いときに文が変わる、broad が無い closure の文 | unit / CLI | `Records.test_stale_without_contract_change_keeps_stale`、`RecordLifecycle.test_closure_without_server_broad_names_next_step`（同） | 契約が同じなら `stale head/base in workflow record` のまま（新しい順が判定を変えていない）。server に broad が無い closure は `BROAD_REQUIRED` の全文。今の code は後者が `server broad required for closure` の文で red |
+| T1-5 | D-107 (3) | 契約の違いで broad を落とした record で、status が `review not passed` を先に出す | CLI | `ReviewedHead.test_status_after_amendment_and_manual_names_broad_required`（同） | Human Gate `ready,merge,manual` の packet で H1 の broad を Minimum 本 pass で record → packet の Amendments を足して H2 へ進める → H2 で manual を pass で record（record は旧 broad を持ち越さず `broad=None`〈`scripts/pr-gate.py:436-448`〉）→ `status --packet` の blockers の nonci の文が `BROAD_REQUIRED` の全文で、`review not passed` と `FRESH_BROAD` を含まない。今の code は `review not passed` で red |
 | T2-1 | D-107 (4) | 過少の申告で書く | CLI | `ReviewedHead.test_pr_reviews_undercount_rejected`（同） | reviewed head に本文のある review 2 件（id・submitted_at が別）を置き、`--pr-reviews 1` で exit 1、両方の `id=`・`submitted_at=` と数が message にあり、comment 不変・POST/PATCH の call 無し。今の code は argparse が引数を知らず exit 2 で red |
 | T2-2 | D-107 (4) | 一致しても通らない | CLI | `ReviewedHead.test_pr_reviews_match_records`（同） | 同じ置き方で `--pr-reviews 2` が exit 0 で record。今の code は exit 2 で red |
 | T2-3 | D-107 (4) | 本文が空・空白だけ・`null`、別の head の review を数える | CLI | `ReviewedHead.test_pr_reviews_count_only_body_on_reviewed_head`（同） | 本文あり 1 件 + 本文が空・空白だけ・`null` の各 1 件 + 別の head の本文あり 1 件で、`--pr-reviews 1` が通り `2` が拒まれる。今の code は exit 2 で red |
@@ -61,7 +62,7 @@ Risk: R3
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 専用 record の review（S1・S2） | record 無し | broad の 1 本目を pending で record | Minimum 本の broad で pass | Gated Amendment で Plan 契約が変わる → status が `FRESH_BROAD` | fresh capture | 同じ head の次の audit の record（`--pr-reviews` は同じ数） | — | `--pr-reviews` の不一致・取得失敗で何も書かない | 数を直して同じ capture で再実行（capture/server が変わっていれば既存の `fresh capture required`） | T1-1〜T1-4、T2-1〜T2-8 |
+| 専用 record の review（S1・S2） | record 無し | broad の 1 本目を pending で record | Minimum 本の broad で pass | Gated Amendment で Plan 契約が変わる → status が `FRESH_BROAD` | fresh capture | 同じ head の次の audit の record（`--pr-reviews` は同じ数） | — | `--pr-reviews` の不一致・取得失敗で何も書かない | 数を直して同じ capture で再実行（capture/server が変わっていれば既存の `fresh capture required`） | T1-1〜T1-5、T2-1〜T2-8 |
 | packet の Workflow State（S3・S4） | plan-draft | — | plan-approved で Plan Commit を 40 桁で記録 | Gated Amendment の登録 | — | — | — | 短縮・末尾の空白で PK4・PK5 が ERROR（push の前） | その commit を直す（未 push） | T3-1〜T3-6、T4-1〜T4-7 |
 
 capture/server の競合、stale head/base、broad/closure、manual/R4、hosted gate は既存の test（`RecordLifecycle`・`Records`・`CLI`）が持ち、本 lane はその判定を変えない。
@@ -127,7 +128,8 @@ capture/server の競合、stale head/base、broad/closure、manual/R4、hosted 
 | Mutant | 期待する red |
 |---|---|
 | M1: `nonci` の Plan 契約の照合を head/base の照合の後ろへ戻す | T1-1・T1-2 |
-| M2: closure の拒否を `server broad required for closure` の短文に戻す（契約の違いを見ない） | T1-3・T1-4 |
+| M2: closure の拒否を `server broad required for closure` の文に戻す（契約の違いを見ない） | T1-3・T1-4 |
+| M2a: `nonci` の broad が `None` の照合を外す（outcome の照合が先に `review not passed` を出す） | T1-5 |
 | M3: 数える条件から `commit_id` の照合を外す | T2-3 |
 | M4: 本文の空の判定を外す（全 review を数える） | T2-3 |
 | M5: 一致の照合を `>=` にする | T2-1・T2-4 |
@@ -135,7 +137,7 @@ capture/server の競合、stale head/base、broad/closure、manual/R4、hosted 
 | M7: 照合を reviewed head の照合の前へ動かす | T2-6 |
 | M7a: 先頭 page だけを数える（`pages[0]`） | T2-8 |
 | M7b: `submitted_at` を `r['submitted_at']` で引く（欠落を `not-submitted` にしない） | T2-7 |
-| M8: PK5 の現在値の切り出しを `[0-9a-f]{7,40}` に戻す | T3-1・T3-2 |
+| M8: PK5 の現在値の切り出しを `[0-9a-f]{7,40}` の部分一致に戻す（各 token の 40 桁の照合は残す） | T3-2 の 41 桁の case だけ（41 桁から 40 桁を切り出して照合を通る）。8 桁（T3-1）・大文字・`abc1234,` は切り出した token が 40 桁の照合で ERROR のままなので red にならない |
 | M9: PK5 の重複の照合を外す | T3-3 |
 | M10: PK5 の書式の ERROR で `return` して prefix の照合を飛ばす | T3-6 |
 | M11: PK4 の `parse_packet` の呼び出しの結果を無視する | T4-1〜T4-4 |
