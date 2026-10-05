@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 sys.dont_write_bytecode = True
@@ -606,6 +607,15 @@ class HelperVersion(unittest.TestCase):
         self.assertFalse([c for c in calls if c[0]=='pr' or 'POST' in c or 'PATCH' in c],calls)
         self.assertEqual(self.state['comments'],[])
         self.assertEqual(self.captures(),before)
+    def test_mismatch_command_is_complete(self):
+        # T5-1 / D-107 (5): the recovery command restores the original argv, quoted for the shell.
+        capture=self.run_cli('capture','--manual','required')['capture']
+        self.load();self.state['contents'][HELPER]=self.CHANGED;self.save()
+        extra=('record','--manual','required','--capture',capture,'--kind','manual','--outcome','pass','--evidence',"a b; touch x 'q'")
+        error=self.run_cli(*extra,expected=1)
+        self.assertNotIn('…',error)
+        tail=error.split('python3 "${TMPDIR:-/tmp}/pr-gate-base.py" ',1)[1]
+        self.assertEqual(shlex.split(tail),[extra[0],'--pr','7','--risk','R0','--manual','not-required','--json',*extra[1:]])
     def test_same_bytes_passes(self):
         self.assertEqual(self.run_cli('status')['blockers'],[])
     def test_base_fetch_failure_exit_2(self):

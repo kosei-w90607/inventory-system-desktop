@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -219,7 +220,7 @@ class Gate:
         # SPEC-WF-HARNESS5-D2: only the PR base's helper may judge the PR; a changed helper must not judge itself.
         require(self.contents('scripts/pr-gate.py', base).encode() == Path(__file__).read_bytes(),
                 f'helper differs from base {base}; run: git fetch origin && git show {base}:scripts/pr-gate.py'
-                f' > "${{TMPDIR:-/tmp}}/pr-gate-base.py" && python3 "${{TMPDIR:-/tmp}}/pr-gate-base.py" …')
+                f' > "${{TMPDIR:-/tmp}}/pr-gate-base.py" && python3 "${{TMPDIR:-/tmp}}/pr-gate-base.py" {shlex.join(sys.argv[1:])}')
         pages = api(f'{self.endpoint}/pulls/{self.args.pr}/files?per_page=100', pages=True)
         items = [item for page in pages for item in page]
         # GitHub lists at most 3000 files per PR; at the cap the diff may be truncated.
