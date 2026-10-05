@@ -390,15 +390,62 @@ pub fn update_product(
     }
 
     // 6. 操作ログ
-    // 変更前後をJSON記録（30-biz-product-service.md §4.4 ステップ6）
-    let detail = if selling_changed || cost_changed {
-        Some(format!(
-            r#"{{"selling_price":{{"old":{},"new":{}}},"cost_price":{{"old":{},"new":{}}}}}"#,
-            existing.product.selling_price, new_selling, existing.product.cost_price, new_cost
-        ))
-    } else {
-        None
+    // 変えた field ごとの変更前後をJSON記録（30-biz-product-service.md §4.4 ステップ6・BIZ-01-D7）
+    use serde_json::json;
+    let prev = &existing.product;
+    let mut changes = serde_json::Map::new();
+    let mut record = |key: &str, old: serde_json::Value, new: Option<serde_json::Value>| {
+        // request が値を持ち（clear の null を含む）、更新前と違うときだけ書く
+        if let Some(new) = new.filter(|new| *new != old) {
+            changes.insert(key.to_string(), json!({ "old": old, "new": new }));
+        }
     };
+    record(
+        "name",
+        json!(prev.name),
+        req.name.as_ref().map(|v| json!(v)),
+    );
+    record(
+        "department_id",
+        json!(prev.department_id),
+        req.department_id.map(|v| json!(v)),
+    );
+    record(
+        "supplier_id",
+        json!(prev.supplier_id),
+        req.supplier_id.map(|v| json!(v)),
+    );
+    record(
+        "selling_price",
+        json!(prev.selling_price),
+        req.selling_price.map(|v| json!(v)),
+    );
+    record(
+        "cost_price",
+        json!(prev.cost_price),
+        req.cost_price.map(|v| json!(v)),
+    );
+    record(
+        "tax_rate",
+        json!(prev.tax_rate.as_str()),
+        req.tax_rate.map(|v| json!(v.as_str())),
+    );
+    record(
+        "maker_code",
+        json!(prev.maker_code),
+        req.maker_code.as_ref().map(|v| json!(v)),
+    );
+    record(
+        "pos_stock_sync",
+        json!(prev.pos_stock_sync),
+        req.pos_stock_sync.map(|v| json!(v)),
+    );
+    record(
+        "plu_target",
+        json!(prev.plu_target),
+        req.plu_target.map(|v| json!(v)),
+    );
+    let detail = (!changes.is_empty()).then(|| serde_json::Value::Object(changes).to_string());
     let log = NewOperationLog {
         operation_type: "product_update".to_string(),
         summary: format!("商品を更新しました: {}", product_code),
@@ -2444,6 +2491,252 @@ mod tests {
         let json = detail.unwrap();
         assert!(json.contains("\"old\":500"), "変更前の売価が含まれるべき");
         assert!(json.contains("\"new\":999"), "変更後の売価が含まれるべき");
+    }
+
+    /// 最新の product_update の detail_json を JSON として読む（NULL なら None）。
+    fn latest_update_detail(conn: &DbConnection) -> Option<serde_json::Value> {
+        let detail: Option<String> = conn
+            .query_row(
+                "SELECT detail_json FROM operation_logs WHERE operation_type = 'product_update' ORDER BY id DESC LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        detail.map(|s| serde_json::from_str(&s).expect("detail_json は JSON として読めるべき"))
+    }
+
+    fn detail_keys(detail: &serde_json::Value) -> Vec<String> {
+        let mut keys: Vec<String> = detail.as_object().unwrap().keys().cloned().collect();
+        keys.sort();
+        keys
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_detail_json_non_price_fields() {
+        // REQ-102 / BIZ-01-D7: 価格以外の 5 field を変えると、それぞれの変更前後が記録される
+        let (_dir, mut conn) = setup_test_db();
+        let mut req = default_create_request();
+        req.jan_code = Some("2000000000091".to_string());
+        req.department_id = 3;
+        create_product(&mut conn, req).unwrap();
+
+        let update_req = ProductUpdateRequest {
+            name: Some("改名後の商品".to_string()),
+            department_id: Some(4),
+            tax_rate: Some(ProductTaxRate::Rate8),
+            pos_stock_sync: Some(false),
+            plu_target: Some(true),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000000091", &update_req).unwrap();
+
+        let detail = latest_update_detail(&conn).expect("detail_json が記録されるべき");
+        assert_eq!(
+            detail_keys(&detail),
+            [
+                "department_id",
+                "name",
+                "plu_target",
+                "pos_stock_sync",
+                "tax_rate"
+            ]
+        );
+        assert_eq!(
+            detail["name"],
+            serde_json::json!({"old": "テスト商品", "new": "改名後の商品"})
+        );
+        assert_eq!(
+            detail["department_id"],
+            serde_json::json!({"old": 3, "new": 4})
+        );
+        assert_eq!(
+            detail["tax_rate"],
+            serde_json::json!({"old": "10", "new": "8"})
+        );
+        assert_eq!(
+            detail["pos_stock_sync"],
+            serde_json::json!({"old": true, "new": false})
+        );
+        assert_eq!(
+            detail["plu_target"],
+            serde_json::json!({"old": false, "new": true})
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_detail_json_clearable_fields() {
+        // REQ-102 / BIZ-01-D7 / PRODUCT-PATCH-D1: 取引先・メーカー品番の設定と clear が null で記録される
+        let (_dir, mut conn) = setup_test_db();
+        let mut req = default_create_request();
+        req.jan_code = Some("2000000000091".to_string());
+        req.department_id = 3;
+        create_product(&mut conn, req).unwrap();
+        let supplier_id = seed_named_supplier(&conn, "T2取引先");
+
+        // (i) 無し → 値
+        let set_req = ProductUpdateRequest {
+            supplier_id: Some(Some(supplier_id)),
+            maker_code: Some(Some("MK-T2".to_string())),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000000091", &set_req).unwrap();
+        let detail = latest_update_detail(&conn).expect("detail_json が記録されるべき");
+        assert_eq!(detail_keys(&detail), ["maker_code", "supplier_id"]);
+        assert_eq!(
+            detail["supplier_id"],
+            serde_json::json!({"old": null, "new": supplier_id})
+        );
+        assert_eq!(
+            detail["maker_code"],
+            serde_json::json!({"old": null, "new": "MK-T2"})
+        );
+
+        // (ii) 値 → clear
+        let clear_req = ProductUpdateRequest {
+            supplier_id: Some(None),
+            maker_code: Some(None),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000000091", &clear_req).unwrap();
+        let detail = latest_update_detail(&conn).expect("clear も detail_json に記録されるべき");
+        assert_eq!(detail_keys(&detail), ["maker_code", "supplier_id"]);
+        assert_eq!(
+            detail["supplier_id"],
+            serde_json::json!({"old": supplier_id, "new": null})
+        );
+        assert_eq!(
+            detail["maker_code"],
+            serde_json::json!({"old": "MK-T2", "new": null})
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_detail_json_unchanged_fields_omitted() {
+        // REQ-102 / BIZ-01-D7: 値を持っても同じ field は書かず、変更が無ければ NULL
+        let (_dir, mut conn) = setup_test_db();
+        let mut req = default_create_request();
+        req.jan_code = Some("2000000000091".to_string());
+        req.department_id = 3;
+        create_product(&mut conn, req).unwrap();
+
+        // (i) 同じ売価・同じ名前・違う原価 → cost_price だけ
+        let req_i = ProductUpdateRequest {
+            selling_price: Some(500),
+            cost_price: Some(320),
+            name: Some("テスト商品".to_string()),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000000091", &req_i).unwrap();
+        let detail = latest_update_detail(&conn).expect("detail_json が記録されるべき");
+        assert_eq!(detail_keys(&detail), ["cost_price"]);
+        assert_eq!(
+            detail["cost_price"],
+            serde_json::json!({"old": 300, "new": 320})
+        );
+
+        // (ii) 全 field を更新前と同じ値で送る → NULL（clear 可能 field は Some(None)）
+        let req_ii = ProductUpdateRequest {
+            name: Some("テスト商品".to_string()),
+            department_id: Some(3),
+            supplier_id: Some(None),
+            selling_price: Some(500),
+            cost_price: Some(320),
+            tax_rate: Some(ProductTaxRate::Rate10),
+            maker_code: Some(None),
+            pos_stock_sync: Some(true),
+            plu_target: Some(false),
+        };
+        update_product(&mut conn, "2000000000091", &req_ii).unwrap();
+        assert_eq!(latest_update_detail(&conn), None, "変更が無ければ NULL");
+
+        // (iii) 売価だけ → selling_price だけ（cost_price を書かない）
+        let req_iii = ProductUpdateRequest {
+            selling_price: Some(999),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000000091", &req_iii).unwrap();
+        let detail = latest_update_detail(&conn).expect("detail_json が記録されるべき");
+        assert_eq!(detail_keys(&detail), ["selling_price"]);
+        assert_eq!(
+            detail["selling_price"],
+            serde_json::json!({"old": 500, "new": 999})
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_detail_json_escapes_name() {
+        // REQ-102 / BIZ-01-D7: `"` と `\` を含む名前でも壊れた JSON を作らない
+        let (_dir, mut conn) = setup_test_db();
+        let mut req = default_create_request();
+        req.jan_code = Some("2000000000091".to_string());
+        req.department_id = 3;
+        create_product(&mut conn, req).unwrap();
+
+        let new_name = "改名\"引用\\逆斜線";
+        let update_req = ProductUpdateRequest {
+            name: Some(new_name.to_string()),
+            ..Default::default()
+        };
+        update_product(&mut conn, "2000000000091", &update_req).unwrap();
+
+        let detail = latest_update_detail(&conn).expect("detail_json が記録されるべき");
+        assert_eq!(detail["name"]["new"], serde_json::json!(new_name));
+        assert_eq!(detail["name"]["old"], serde_json::json!("テスト商品"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_product_req102_log_failure_rolls_back_all() {
+        // REQ-102 / 30 §4.4 step 6・7: 操作ログの INSERT が失敗すると商品・price_history・ログが戻る
+        let (_dir, mut conn) = setup_test_db();
+        let mut req = default_create_request();
+        req.jan_code = Some("2000000000091".to_string());
+        req.department_id = 3;
+        create_product(&mut conn, req).unwrap();
+        conn.execute_batch(
+            "CREATE TRIGGER fail_product_update_log
+             BEFORE INSERT ON operation_logs
+             WHEN NEW.operation_type = 'product_update'
+             BEGIN SELECT RAISE(ABORT, 'synthetic operation log failure'); END;",
+        )
+        .unwrap();
+        let count = |conn: &DbConnection, sql: &str| -> i64 {
+            conn.query_row(sql, [], |row| row.get(0)).unwrap()
+        };
+        let ph_sql = "SELECT COUNT(*) FROM price_history WHERE product_code = '2000000000091'";
+        let log_sql = "SELECT COUNT(*) FROM operation_logs WHERE operation_type = 'product_update'";
+        let ph_before = count(&conn, ph_sql);
+
+        // (i) 売価と名前を変える
+        let req_i = ProductUpdateRequest {
+            selling_price: Some(999),
+            name: Some("改名後の商品".to_string()),
+            ..Default::default()
+        };
+        assert!(update_product(&mut conn, "2000000000091", &req_i).is_err());
+        let found = product_repo::find_by_product_code(&conn, "2000000000091")
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.product.selling_price, 500, "売価が元のまま");
+        assert_eq!(found.product.name, "テスト商品", "名前が元のまま");
+        assert_eq!(count(&conn, ph_sql), ph_before, "price_history が戻る");
+        assert_eq!(count(&conn, log_sql), 0, "product_update のログが残らない");
+
+        // (ii) 名前だけを変える
+        let req_ii = ProductUpdateRequest {
+            name: Some("改名後の商品".to_string()),
+            ..Default::default()
+        };
+        assert!(update_product(&mut conn, "2000000000091", &req_ii).is_err());
+        let found = product_repo::find_by_product_code(&conn, "2000000000091")
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.product.name, "テスト商品", "名前が元のまま");
+        assert_eq!(count(&conn, log_sql), 0, "product_update のログが残らない");
     }
 
     #[test]
