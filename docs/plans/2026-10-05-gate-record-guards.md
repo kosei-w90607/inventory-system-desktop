@@ -4,7 +4,7 @@ wave に属さない単独の lane。PR #138・#139・#140・#141 の運用で�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: dcd070f2a5c4aacd3347bfc44f99b3755d1f37c1
 - Amendments: none
@@ -21,6 +21,7 @@ wave に属さない単独の lane。PR #138・#139・#140・#141 の運用で�
 - plan-gate（round 2 の是正、2026-10-05、起草役 `9f2223e4` と Coordinator の Review Response、本 commit）: Plan Review round 2（Codex approve P 0、Opus reject P2 1・P3 3）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。次の round 3 が天井。
 - plan-gate（round 3 の P3 の是正、2026-10-05、Coordinator、本 commit）: Plan Review round 3（上限。Codex approve P 0、Opus approve P3 3）。P3 3 件を Coordinator が直した（Review Response 参照）。Plan Commit は pending のまま。
 - plan-gate → plan-approved（2026-10-05、Coordinator、本 commit）: Plan Review round 3（対象 `cff80973`）で独立の 2 本（fresh Opus 5.5、Codex GPT-6.1 Sol）がともに P1/P2 = 0。round 3 の P3 を `dcd070f2` で直し、Coordinator が doc check（`--target plan`）ERROR 0 を確かめた。Plan Commit は `dcd070f2`。
+- plan-approved → implementing（2026-10-05、Coordinator、state-only、本 commit）: Writer（Opus 5.5 subagent、`subagent_type: writer`）へ実装を発注する。発注の直前に AC1〜AC4・AC7 を逐語で再実行し、起票時実測と一致した（AC1〜AC4 exit 0、AC7 は `217:` の 1 行）。
 
 ## Owner Effort Budget
 
