@@ -23,6 +23,7 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 3. design → plan-draft（2026-10-06）: 同じ plan-first の commit で §4.4 に BIZ-01-D7 を足した。Scope に未解決の設計の問いは無い。
 4. plan-draft（owner の決定の反映、2026-10-06、起草役、本 commit）: 下の「owner の決定（2026-10-06）」を Scope・Non-scope・AC・Human Gate・Owner Effort Budget・Matrix と `docs/backlog.md` に反映した。Phase は plan-draft のまま。
 5. plan-draft → plan-gate（2026-10-06、Coordinator、本 commit）: packet と Test Design Matrix は plan-first commit `8519d643` と owner の決定の反映 `bea1361e` で揃い、Coordinator の再実行で doc check（`--target plan`・full）は ERROR 0、`bash scripts/check-workflow-git.sh` は exit 0。Plan Reviewer の Codex は `.local/codex-orders/MODEL-SELECTION.md` の表の「上に当たらない R3 の初回 review」の行で Sol（high）。
+6. plan-gate（round 1 の是正、2026-10-06、起草役 `ae8cac5e` と Coordinator の Review Response、本 commit）: Plan Review round 1（Opus approve P3 1、Codex reject P2 1）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -250,4 +251,6 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+- Plan Review round 1（2026-10-06、対象 `f1c2d57c`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 1）、Codex GPT-6.1 Sol（発注 220）= reject（P2 1）。Coordinator が現物と packet で裏取りし、両方 accept。是正は起草役が `ae8cac5e` で行い、Coordinator が doc check（full・`--target plan`）ERROR 0 と `bash scripts/check-workflow-git.sh` exit 0 を確かめた。
+  - F1（Codex P2）: 既存の rollback の test は failpoint がログの処理より前にあり、操作ログの INSERT の失敗も、ログを COMMIT の後へ動かすことも検出しない。Codex は写しで、ログの INSERT を COMMIT の後へ移しても AC2 が全件 PASS すること、ログの INSERT を trigger で失敗させると保存はエラーなのに売価が変わったまま残ることを実測した。採用: T5（`product_update` のログだけを失敗させる trigger。価格と名前を変える case と、名前だけを変える case で、商品・price_history・operation_logs がすべて rollback する）と Mutation M7（ログの INSERT を COMMIT の後へ動かす）を足し、Contract Ledger に「操作ログは TX の中」の行を足した。
+  - F2（Opus P3）: T1 の fixture が JAN を書いておらず、部門 3 は接頭辞が無いので作成の段階で別の理由の red になる。採用: T1〜T5 の商品は既存の test と同じく合成の JAN を付けて作ると明記した。
