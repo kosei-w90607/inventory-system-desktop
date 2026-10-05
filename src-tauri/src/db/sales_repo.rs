@@ -3314,20 +3314,21 @@ mod tests {
     #[test]
     fn test_completed_daily_report_aggregate_req501_summary_imports_keep_parent_sum_order() {
         // REQ-501 / 24 §14.21 手順 1・7: 取得は古い順でも gross / net は従来の新しい順で足す
+        // gross と net に同じ境界の値を入れ、どちらの列の加算順の取り違えも落とす
         let (_dir, conn) = setup_test_db();
-        let seed_day = |date: &str, gross: [Option<i64>; 3]| {
+        let seed_day = |date: &str, amounts: [Option<i64>; 3]| {
             let mut ids = Vec::new();
-            for (index, (at, gross)) in ["18:00:00", "19:00:00", "20:00:00"]
+            for (index, (at, amount)) in ["18:00:00", "19:00:00", "20:00:00"]
                 .into_iter()
-                .zip(gross)
+                .zip(amounts)
                 .enumerate()
             {
                 let id =
                     seed_daily_report_import(&conn, date, &format!("{date}-{index}"), "completed");
                 set_imported_at(&conn, id, &format!("{date}T{at}"));
                 conn.execute(
-                    "UPDATE daily_report_imports SET gross_amount = ?1, net_amount = 1 WHERE id = ?2",
-                    rusqlite::params![gross, id],
+                    "UPDATE daily_report_imports SET gross_amount = ?1, net_amount = ?1 WHERE id = ?2",
+                    rusqlite::params![amount, id],
                 )
                 .unwrap();
                 ids.push(id);
@@ -3341,7 +3342,7 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(report_a.gross_amount, Some(1));
-        assert_eq!(report_a.net_amount, Some(3));
+        assert_eq!(report_a.net_amount, Some(1));
         let ids_a: Vec<i64> = report_a
             .summary_imports
             .iter()
@@ -3353,6 +3354,7 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(report_b.gross_amount, None);
+        assert_eq!(report_b.net_amount, None);
         let ids_b: Vec<i64> = report_b
             .summary_imports
             .iter()
