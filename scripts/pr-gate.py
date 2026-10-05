@@ -462,6 +462,14 @@ class Gate:
             require(args.reviewed_head, 'review needs --reviewed-head', 2)
             require(sha(args.reviewed_head) == snap['head'],
                     'reviewed head differs from capture head; record the broad before pushing a fix, or audit the current head')
+            # D-107 (4): before any write, the declared count must equal the reviewed head's PR reviews with a body.
+            require(args.pr_reviews is not None and args.pr_reviews >= 0,
+                    'review needs --pr-reviews (count of PR reviews with a body on the reviewed head)', 2)
+            bodies = [r for page in api(f'{self.endpoint}/pulls/{args.pr}/reviews?per_page=100', pages=True) for r in page
+                      if r['commit_id'] == snap['head'] and (r['body'] or '').strip()]
+            require(len(bodies) == args.pr_reviews,
+                    f'--pr-reviews {args.pr_reviews} but the reviewed head has {len(bodies)} PR reviews with a body; read each before recording: '
+                    + ', '.join(f"id={r['id']} submitted_at={r.get('submitted_at') or 'not-submitted'}" for r in bodies))
             item=dict(model=pointer(args.pass_model),run_ref=pointer(args.run_ref),evidence=args.evidence)
             broad=record['review']['broad']
             if args.review_stage == 'broad':
@@ -538,6 +546,7 @@ def main():
     parser.add_argument('--pass-model')
     parser.add_argument('--run-ref')
     parser.add_argument('--reviewed-head')
+    parser.add_argument('--pr-reviews',type=int)
     parser.add_argument('--reuse-from')
     parser.add_argument('--reuse-approval')
     args=parser.parse_args()

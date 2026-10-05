@@ -33,7 +33,7 @@ def good_record():
 def args(**kw):
     value=dict(repo=g.REPO,pr=7,packet=None,risk='R0',manual='not-required',capture=None,
                kind='review',outcome='pass',review_stage='broad',pass_model='sonnet',run_ref='new',
-               evidence=['https://example.invalid/result'],reuse_from=None,reuse_approval=None,reviewed_head=H)
+               evidence=['https://example.invalid/result'],reuse_from=None,reuse_approval=None,reviewed_head=H,pr_reviews=0)
     return argparse.Namespace(**(value|kw))
 
 class Records(unittest.TestCase):
@@ -135,6 +135,7 @@ class RecordLifecycle(unittest.TestCase):
             state={'server':server}
             def transport(path,method='GET',payload=None,**kwargs):
                 if path=='user':return dict(login=g.OWNER)
+                if '/pulls/7/reviews' in path and method=='GET':return [[]]
                 self.assertIn('/comments',path)
                 match=payload['body'].split('```json\n')[1].split('\n```')[0]
                 state['server']=dict(id=1,body=payload['body'],updated_at='after',record=json.loads(match))
@@ -231,6 +232,7 @@ if method!='GET':
     save();print(json.dumps(s['comments'][0]));sys.exit(0)
 if path=='user':value={'login':s['owner']}
 elif '/pulls/7/files' in path:value=s['file_pages'] if 'file_pages' in s else [s['files']]
+elif '/pulls/7/reviews' in path:value=s['review_pages'] if 'review_pages' in s else [s.get('reviews',[])]
 elif path.endswith('/pulls/7'):
     s['reads']=s.get('reads',0)+1
     if s.get('head_race_at')==s['reads']:s['pr']['head']['sha']='e'*40
@@ -395,10 +397,10 @@ class CLI(unittest.TestCase):
         self.state['files']=[dict(filename='scripts/pr-gate.py',status='modified'),dict(filename=packet,status='added')];self.save()
         common=('--packet',packet)
         capture=self.run_cli('capture',*common)['capture']
-        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','sonnet','--run-ref','sonnet-audit','--evidence','https://example.invalid/sonnet','--outcome','pending','--reviewed-head',self.head)
+        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','sonnet','--run-ref','sonnet-audit','--evidence','https://example.invalid/sonnet','--outcome','pending','--reviewed-head',self.head,'--pr-reviews','0')
         self.assertIn('review not passed',self.run_cli('ready',*common,expected=1))
         capture=self.run_cli('capture',*common)['capture']
-        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','opus','--run-ref','opus-audit','--evidence','https://example.invalid/opus','--outcome','pass','--reviewed-head',self.head)
+        self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage','broad','--pass-model','opus','--run-ref','opus-audit','--evidence','https://example.invalid/opus','--outcome','pass','--reviewed-head',self.head,'--pr-reviews','0')
         self.run_cli('ready',*common)
         self.run_cli('status',*common,*common,expected=2)
         self.load()
@@ -622,10 +624,11 @@ class ReviewedHead(unittest.TestCase):
     # SPEC-WF-HARNESS5-D8: a review record binds to the head the reviewer audited.
     tearDown=CLI.tearDown;save=CLI.save;load=CLI.load;run_cli=CLI.run_cli
     packet_text=staticmethod(CLI.packet_text);configure_packet=CLI.configure_packet
-    def review(self,stage,run,reviewed,expected=0,outcome='pass'):
+    def review(self,stage,run,reviewed,expected=0,outcome='pass',pr_reviews=0):
         common=('--packet',self.packet)
         capture=self.run_cli('capture',*common)['capture']
         extra=('--reviewed-head',reviewed) if reviewed is not None else ()
+        extra+=('--pr-reviews',str(pr_reviews)) if pr_reviews is not None else ()
         return self.run_cli('record',*common,'--capture',capture,'--kind','review','--review-stage',stage,'--pass-model',run,
                             '--run-ref',run,'--evidence','https://example.invalid/'+run,'--outcome',outcome,*extra,expected=expected)
     def setUp(self):
@@ -670,6 +673,70 @@ class ReviewedHead(unittest.TestCase):
         # H3 with the record left at H2: the missing broad is still named before stale head/base.
         self.push()
         self.assertEqual(self.blockers()[0],BROAD_REQUIRED)
+    # D-107 (4): --pr-reviews must equal the PR reviews with a body on the reviewed head.
+    def item(self,id,body='summary',commit=None,**extra):
+        return dict(id=id,commit_id=commit or self.head,body=body,state='COMMENTED',submitted_at=f'2026-10-05T01:{id%60:02d}:00Z')|extra
+    def put_reviews(self,*reviews):self.load();self.state['reviews']=list(reviews);self.save()
+    def writes(self):return [c for c in self.load()['calls'] if 'POST' in c or 'PATCH' in c]
+    def mismatch(self,declared,listed):
+        return (f'--pr-reviews {declared} but the reviewed head has {len(listed)} PR reviews with a body; read each before recording: '
+                +', '.join(f'id={i} submitted_at={t}' for i,t in listed))
+    def test_pr_reviews_undercount_rejected(self):
+        # T2-1
+        self.put_reviews(self.item(101),self.item(102))
+        error=self.review('broad','sonnet',self.head,expected=1,pr_reviews=1)
+        self.assertIn(self.mismatch(1,[(101,'2026-10-05T01:41:00Z'),(102,'2026-10-05T01:42:00Z')]),error)
+        self.assertEqual(self.load()['comments'],[]);self.assertEqual(self.writes(),[])
+    def test_pr_reviews_match_records(self):
+        # T2-2
+        self.put_reviews(self.item(101),self.item(102))
+        self.review('broad','sonnet',self.head,pr_reviews=2,outcome='pending')
+        self.assertEqual(len(self.load()['comments']),1)
+    def test_pr_reviews_count_only_body_on_reviewed_head(self):
+        # T2-3: empty, blank and null bodies and another head's review are not counted.
+        self.put_reviews(self.item(101),self.item(102,body=''),self.item(103,body='  \n'),self.item(104,body=None),self.item(105,commit=OLD))
+        self.assertIn(self.mismatch(2,[(101,'2026-10-05T01:41:00Z')]),self.review('broad','sonnet',self.head,expected=1,pr_reviews=2))
+        self.assertEqual(self.load()['comments'],[])
+        self.review('broad','sonnet',self.head,pr_reviews=1,outcome='pending')
+        self.assertEqual(len(self.load()['comments']),1)
+    def test_pr_reviews_overcount_and_closure_rejected(self):
+        # T2-4
+        self.assertIn(self.mismatch(1,[]),self.review('broad','sonnet',self.head,expected=1,pr_reviews=1))
+        self.assertEqual(self.load()['comments'],[])
+        before=self.broad_then_push()
+        self.put_reviews(self.item(201))
+        self.assertIn(self.mismatch(0,[(201,'2026-10-05T01:21:00Z')]),self.review('closure','closure',self.head,expected=1,pr_reviews=0))
+        self.assertEqual(self.load()['comments'],before)
+        self.review('closure','closure',self.head,pr_reviews=1)
+        self.assertNotEqual(self.load()['comments'],before)
+    def test_pr_reviews_missing_negative_or_unavailable(self):
+        # T2-5
+        for value in (None,-1):
+            with self.subTest(value=value):
+                error=self.review('broad','sonnet',self.head,expected=2,pr_reviews=value)
+                self.assertIn('review needs --pr-reviews (count of PR reviews with a body on the reviewed head)',error)
+        self.load();self.state['http_error_path']='/reviews';self.save()
+        self.review('broad','sonnet',self.head,expected=2,pr_reviews=0)
+        self.assertEqual(self.load()['comments'],[]);self.assertEqual(self.writes(),[])
+    def test_reviewed_head_checked_before_pr_reviews(self):
+        # T2-6 / D-099 D8: the reviewed head is checked before the reviews are read.
+        self.put_reviews(self.item(101))
+        self.assertIn('reviewed head differs from capture head',self.review('broad','sonnet',OLD,expected=1,pr_reviews=5))
+        self.assertFalse([c for c in self.load()['calls'] if any('/reviews' in a for a in c)])
+    def test_pr_reviews_pending_review_listed(self):
+        # T2-7: a PENDING review has no submitted_at (or null) and is still counted and listed.
+        pending=self.item(302,state='PENDING');del pending['submitted_at']
+        self.put_reviews(self.item(301),pending,self.item(303,state='PENDING',submitted_at=None))
+        error=self.review('broad','sonnet',self.head,expected=1,pr_reviews=1)
+        self.assertIn(self.mismatch(1,[(301,'2026-10-05T01:01:00Z'),(302,'not-submitted'),(303,'not-submitted')]),error)
+        self.assertEqual(self.load()['comments'],[]);self.assertEqual(self.writes(),[])
+    def test_pr_reviews_counted_across_pages(self):
+        # T2-8: every page is counted, not only the first.
+        self.load();self.state['review_pages']=[[self.item(401)]+[self.item(500+i,body='') for i in range(99)],[self.item(402)]];self.save()
+        self.review('broad','sonnet',self.head,expected=1,pr_reviews=1)
+        self.assertEqual(self.load()['comments'],[])
+        self.review('broad','sonnet',self.head,pr_reviews=2,outcome='pending')
+        self.assertEqual(len(self.load()['comments']),1)
     def test_broad_mismatch_rejected(self):
         self.assertIn('reviewed head differs from capture head',self.review('broad','sonnet',OLD,expected=1))
         self.assertEqual(self.load()['comments'],[])
