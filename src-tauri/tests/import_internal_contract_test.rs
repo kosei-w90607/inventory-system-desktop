@@ -229,8 +229,20 @@ fn test_wire_contract_req401_i_w1_i_w2_i_w3_i_w5_generated_binding_is_atomic() {
             "payment_lines",
             "department_lines",
             "warnings",
+            "summary_imports",
         ],
         "OfficialDailyReportSummary must use source count without a singular import ID"
+    );
+    // REQ-501 / D-096 / 34 §19.2: Z001 の取込みごとの行（取込み ID は要素だけが持つ）
+    assert_eq!(
+        typescript_type_fields(&bindings, "OfficialDailySummaryImport"),
+        ["daily_report_import_id", "imported_at", "lines"],
+        "OfficialDailySummaryImport must match 34 §19.2"
+    );
+    assert_eq!(
+        typescript_type_fields(&bindings, "OfficialDailySummaryLine"),
+        ["label", "quantity", "count", "amount"],
+        "OfficialDailySummaryLine must match 34 §19.2 without line_key"
     );
 }
 
