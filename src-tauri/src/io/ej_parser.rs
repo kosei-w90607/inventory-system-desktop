@@ -1038,10 +1038,10 @@ fn is_other_line_shape(text: &str) -> bool {
         || is_training_display(text)
 }
 
-/// 最後の語が金額 token の形で、値が i64 に収まらない行（ItemName にしない）
+/// 最後の語が金額 token の形（末尾の `※` / `*` を除く）で、値が i64 に収まらない行（ItemName にしない）
 fn item_token_overflows(text: &str) -> bool {
     text.trim_end().rsplit_once(' ').is_some_and(|(_, token)| {
-        let token = token.strip_suffix('※').unwrap_or(token);
+        let token = token.strip_suffix(['※', '*']).unwrap_or(token);
         matches!(amount_token(token), Some((None, _)))
     })
 }
@@ -4204,6 +4204,32 @@ mod tests {
             control.records[0].body[4].kind,
             EjLineKind::Continued { amount: 100 }
         );
+    }
+
+    // G-F19 / IO-08-D5 / D5a: 範囲外の金額の `MinusKey` の形は名称の行にしない
+    #[test]
+    fn parse_ej_item_name_rejects_starred_overflow() {
+        for amount in ["-9223372036854775809*", "9223372036854775808*"] {
+            let result = parse(&sale_with(
+                "000567",
+                &[lr("－", amount), lr("", &yen(100))],
+                1,
+                100,
+            ));
+            let record = &result.records[0];
+            assert_eq!(
+                (&record.body[0].kind, &record.body[1].kind),
+                (&EjLineKind::Unknown, &EjLineKind::Unknown),
+                "{amount}"
+            );
+            assert_eq!(reasons_of(record), [UnknownLine], "{amount}");
+            let unknown_lines = result
+                .diagnostics
+                .iter()
+                .filter(|d| d.code == UnknownLine)
+                .count();
+            assert_eq!(unknown_lines, 2, "{amount}");
+        }
     }
 
     // G-T9 / IO-08-D6a / D6c: 合計域の訂正は折り返した支払行を取り消す
