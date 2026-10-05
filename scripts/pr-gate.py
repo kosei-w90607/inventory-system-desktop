@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,11 @@ MARKER = '<!-- inventory-workflow-v1 -->'
 POLICY = '.github/merge-gate-ruleset.json'
 SHA = re.compile(r'[0-9a-f]{40}\Z')
 OUTCOMES = {'pending', 'pass', 'fail', 'not-required'}
+# D-107 (3): blockers name the next review to record, not only the stale record.
+FRESH_BROAD = ('broad Plan contract changed; fresh broad required: record --review-stage broad at the current head'
+               ' (a closure cannot carry this broad)')
+BROAD_REQUIRED = ('broad required: record --review-stage broad at the current head until it has Final Review Minimum audits'
+                  ' (no usable broad on the server; a closure cannot replace it)')
 FIELDS = {'Phase', 'Risk', 'Plan Commit', 'Amendments', 'Coordinator', 'Writer', 'Plan Reviewer',
           'Final Reviewer', 'Final Review Minimum', 'Human Gate'}
 
@@ -214,7 +220,7 @@ class Gate:
         # SPEC-WF-HARNESS5-D2: only the PR base's helper may judge the PR; a changed helper must not judge itself.
         require(self.contents('scripts/pr-gate.py', base).encode() == Path(__file__).read_bytes(),
                 f'helper differs from base {base}; run: git fetch origin && git show {base}:scripts/pr-gate.py'
-                f' > "${{TMPDIR:-/tmp}}/pr-gate-base.py" && python3 "${{TMPDIR:-/tmp}}/pr-gate-base.py" …')
+                f' > "${{TMPDIR:-/tmp}}/pr-gate-base.py" && python3 "${{TMPDIR:-/tmp}}/pr-gate-base.py" {shlex.join(sys.argv[1:])}')
         pages = api(f'{self.endpoint}/pulls/{self.args.pr}/files?per_page=100', pages=True)
         items = [item for page in pages for item in page]
         # GitHub lists at most 3000 files per PR; at the cap the diff may be truncated.
@@ -316,8 +322,7 @@ class Gate:
         require(review['outcome'] == 'pass', 'review not passed')
         broad = review['broad']
         require(broad is not None and len(broad['audits']) >= req['minimum'], 'broad audits below minimum')
-        require(broad['plan_commit'] == req['plan_commit'] and broad['amendments'] == req['amendments'],
-                'broad Plan contract changed; fresh broad required')
+        require(broad['plan_commit'] == req['plan_commit'] and broad['amendments'] == req['amendments'], FRESH_BROAD)
         closure = review['closure']
         if (broad['head'], broad['base']) == (head, base):
             require(closure is None, 'current broad must have null closure')
@@ -340,6 +345,11 @@ class Gate:
             return
         require(server is not None, 'workflow record missing')
         record = server['record']
+        if req['minimum']:
+            # D-107 (3): the review to record outranks stale head/base and the outcome check.
+            broad = record['review']['broad']
+            require(broad is None or (broad['plan_commit'],broad['amendments']) == (req['plan_commit'],req['amendments']), FRESH_BROAD)
+            require(broad is not None, BROAD_REQUIRED)
         require((record['head'],record['base']) == (snap['head'],snap['base']), 'stale head/base in workflow record')
         self.validate_review(record, req, snap['head'], snap['base'])
         for kind in ('manual','r4'):
@@ -453,6 +463,14 @@ class Gate:
             require(args.reviewed_head, 'review needs --reviewed-head', 2)
             require(sha(args.reviewed_head) == snap['head'],
                     'reviewed head differs from capture head; record the broad before pushing a fix, or audit the current head')
+            # D-107 (4): before any write, the declared count must equal the reviewed head's PR reviews with a body.
+            require(args.pr_reviews is not None and args.pr_reviews >= 0,
+                    'review needs --pr-reviews (count of PR reviews with a body on the reviewed head)', 2)
+            bodies = [r for page in api(f'{self.endpoint}/pulls/{args.pr}/reviews?per_page=100', pages=True) for r in page
+                      if r['commit_id'] == snap['head'] and (r['body'] or '').strip()]
+            require(len(bodies) == args.pr_reviews,
+                    f'--pr-reviews {args.pr_reviews} but the reviewed head has {len(bodies)} PR reviews with a body; read each before recording: '
+                    + ', '.join(f"id={r['id']} submitted_at={r.get('submitted_at') or 'not-submitted'}" for r in bodies))
             item=dict(model=pointer(args.pass_model),run_ref=pointer(args.run_ref),evidence=args.evidence)
             broad=record['review']['broad']
             if args.review_stage == 'broad':
@@ -461,7 +479,10 @@ class Gate:
                 broad['audits']=[a for a in broad['audits'] if a['run_ref'] != args.run_ref] + [item]
                 record['review']=dict(outcome=args.outcome,broad=broad,closure=None)
             else:
-                require(server and broad and len(broad['audits']) >= req['minimum'], 'server broad required for closure')
+                old_broad = old and old['review']['broad']
+                require(not old_broad or (old_broad['plan_commit'],old_broad['amendments']) == (req['plan_commit'],req['amendments']),
+                        FRESH_BROAD)
+                require(server and broad and len(broad['audits']) >= req['minimum'], BROAD_REQUIRED)
                 require((broad['head'],broad['base']) != (snap['head'],snap['base']), 'closure needs changed candidate')
                 record['review']=dict(outcome=args.outcome,broad=broad,
                                       closure=dict(head=snap['head'],base=snap['base'],audit=item))
@@ -526,6 +547,7 @@ def main():
     parser.add_argument('--pass-model')
     parser.add_argument('--run-ref')
     parser.add_argument('--reviewed-head')
+    parser.add_argument('--pr-reviews',type=int)
     parser.add_argument('--reuse-from')
     parser.add_argument('--reuse-approval')
     args=parser.parse_args()

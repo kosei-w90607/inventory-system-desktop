@@ -57,29 +57,47 @@ check_plan_commit_ancestry() {
         return 0
     fi
 
-    if ! plan_commit_full="$(git rev-parse --verify "${plan_commit}^{commit}" 2>/dev/null)"; then
+    # D-107 (2): 現在の値は helper と同じ 40 桁の小文字 hex だけ。書式の ERROR でも return せず、
+    # 書き換えの検出と Amendments の照合（MG-D5 の prefix を含む）は続ける。
+    local sha40='^[0-9a-f]{40}$'
+    plan_commit_full=""
+    if [[ ! "$plan_commit" =~ $sha40 ]]; then
+        echo "❌ [workflow-git] PK5: $file の Plan Commit '$plan_commit' は 40 桁の小文字 hex の full SHA ではありません"
+        FAIL=1
+    elif ! plan_commit_full="$(git rev-parse --verify "${plan_commit}^{commit}" 2>/dev/null)"; then
         echo "❌ [workflow-git] PK5: $file の Plan Commit '$plan_commit' は解決できない SHA です"
         FAIL=1
         return 0
-    fi
-
-    if ! git merge-base --is-ancestor "$plan_commit_full" HEAD 2>/dev/null; then
+    elif ! git merge-base --is-ancestor "$plan_commit_full" HEAD 2>/dev/null; then
         echo "❌ [workflow-git] PK5: $file の Plan Commit '$plan_commit' は現在の HEAD の祖先ではありません"
         FAIL=1
     fi
 
     amendments="$(grep -m1 -E '^- Amendments:[[:space:]]*' "$file" 2>/dev/null \
         | sed -E 's/^- Amendments:[[:space:]]*//; s/[[:space:]]+$//')"
-    if [[ -n "$amendments" ]]; then
+    if [[ -n "$amendments" && "$amendments" != "none" ]]; then
+        local -A seen_amendments=()
+        # 区切りはカンマと ASCII の空白・タブだけ（helper の [,\s]+ より厳しい側、D-107 (2)）。
         while IFS= read -r amendment; do
             [[ -z "$amendment" ]] && continue
             amendment_shas+=("$amendment")
+            if [[ ! "$amendment" =~ $sha40 ]]; then
+                echo "❌ [workflow-git] PK5: $file の Amendments SHA '$amendment' は 40 桁の小文字 hex の full SHA ではありません"
+                FAIL=1
+                continue
+            fi
+            if [[ -n "${seen_amendments[$amendment]:-}" ]]; then
+                echo "❌ [workflow-git] PK5: $file の Amendments に重複する SHA '$amendment' があります"
+                FAIL=1
+                continue
+            fi
+            seen_amendments["$amendment"]=1
             if ! amendment_full="$(git rev-parse --verify "${amendment}^{commit}" 2>/dev/null)"; then
                 echo "❌ [workflow-git] PK5: $file の Amendments SHA '$amendment' は解決できません"
                 FAIL=1
                 continue
             fi
-            if ! git merge-base --is-ancestor "$plan_commit_full" "$amendment_full" 2>/dev/null; then
+            if [[ -n "$plan_commit_full" ]] && ! git merge-base --is-ancestor "$plan_commit_full" "$amendment_full" 2>/dev/null; then
                 echo "❌ [workflow-git] PK5: $file の Amendments SHA '$amendment' は Plan Commit '$plan_commit' の descendant ではありません"
                 FAIL=1
             fi
@@ -87,7 +105,7 @@ check_plan_commit_ancestry() {
                 echo "❌ [workflow-git] PK5: $file の Amendments SHA '$amendment' は現在の HEAD の祖先ではありません"
                 FAIL=1
             fi
-        done < <(printf '%s' "$amendments" | grep -oE '[0-9a-f]{7,40}' || true)
+        done < <(printf '%s\n' "$amendments" | tr ', \t' '\n\n\n')
     fi
 
     # Plan Commit 書き換え検出: ファイル履歴の全 diff から追加された
