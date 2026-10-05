@@ -108,7 +108,7 @@ Scope（owner の決定〈2026-10-06〉を反映済み）:
    - 同じ file の tests module に Matrix の T1〜T5 を足す（T5 は操作ログの INSERT の失敗で TX ごと戻ることの guard）。既存の `test_update_product_req102_detail_json_recorded`（`:2421`）は消さず、弱めない。
    - `docs/function-design/90-traceability.md` を `cd src-tauri && cargo run --bin generate_traceability` で生成し直す（REQ-102 の test を足すため。Registration Obligations）。
 2. `docs/TOOLING_SKILL_COMMANDS.md:44` の見出し「Rust / DB（`CLAUDE.md` で推奨）」を、実在する参照先（`docs/DEV_WORKFLOW.md` の `## Verification Gates` の Rust/backend の行）を指す見出しに直す（候補 3）。本文の command の列は変えない。
-3. `.codex/README.md:246`（`## PR evidence helper`）から「github mode」と「legacyのstate-only/三点一致」の句を消し、helper の使い方（`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`）・status が read-only・capture の置き場・record/Ready/merge は既存の明示承認の範囲だけ・helper は設定と権限を変えない、の内容は残す（候補 4）。同じ file の `:99`・`:132` の「legacy tmux bar」は別の話で触らない。
+3. `.codex/README.md:246`（`## PR evidence helper`）から「github mode」と「legacyのstate-only/三点一致」の句を消し、helper の使い方（`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`）・status が read-only・capture の置き場・record/Ready/merge は既存の明示承認の範囲だけ・helper は設定と権限を変えない、の内容は残す（候補 4）。消した後の文頭は「merge-evidence の手順で helper を使う」の形（merge-evidence は今の行の既存の link をそのまま使う）にし、「適用条件を満たした」の句も消す（`docs/agent-guidance/merge-evidence.md` に「適用条件」の語は無い。`rg -n '適用条件' docs/agent-guidance/merge-evidence.md` は一致なし）。同じ file の `:99`・`:132` の「legacy tmux bar」は別の話で触らない。
 4. `docs/backlog.md` の候補の 4 項目（`:67`・`:68`・`:81`・`:93`）: 着手の注記と owner の決定は plan の commit で書いた。完了の注記は merge の後の closeout で書き、実装の commit では書かない。
 
 呼出し側・読む側の全件（`rg` で数えた）:
@@ -185,7 +185,19 @@ Scope（owner の決定〈2026-10-06〉を反映済み）:
 
 ## Impact Review Lenses
 
-not applicable: 現場の調査・実機の確認・外部 tool・POS 連携・CSV 形式から始まった変更ではない（owner の L3 所感が起点だが、対象はアプリ内の監査ログの形）。Reporting / accounting semantics は、操作ログが業務記録の代替でない契約（`docs/db-design/tracking-system-tables.md:206`）を変えないため当たらない。
+owner の L3 所感（operator workflow の発見）を起点とする設計の変更なので表を置く。詳細は既存の節を参照する。
+
+| Lens | Question to answer | Evidence home | Applicability / finding | Follow-up artifact |
+|---|---|---|---|---|
+| Adapter / core boundary | template の同じ行 | Architecture, function design | 不該当: POS・CSV などの外部 adapter に触れない。producer と consumer はアプリ内（Boundary / Wire Contract） | なし |
+| Fact check / design decision split | template の同じ行 | Plan Packet, source design docs | 該当: 観測した事実 = owner の L3 所感 2026-09-10「更新したのに詳細情報なし」（`docs/backlog.md:93`）と現物（`src-tauri/src/biz/product_service.rs:394` は売価・原価の変更時だけ detail を書く）。アプリの判断 = BIZ-01-D7（30 §4.4）で、設計正本へ昇格済み | なし |
+| Lifecycle / retry | template の同じ行 | Function design, Test Matrix | 該当: 保存が失敗すれば商品・price_history・ログが残らない（Matrix T5）。変えずに保存し直すとログは NULL の detail（Matrix T3 (ii)） | なし |
+| Operator workflow | template の同じ行 | Plan Packet Ordinary Operation | 該当: 店主が商品修正の後に操作ログで変えた内容を確かめる列（Ordinary Operation の表）。読みやすい見せ方は owner の決定 Q1 で backlog の design-first の lane へ | `docs/backlog.md` の「操作ログ画面で商品修正の詳細を…」 |
+| Replacement path | template の同じ行 | Architecture | 不該当: 外部システムに依存しない | なし |
+| Data safety / evidence | template の同じ行 | Plan Packet Data Safety | 該当: test と probe は合成の data だけ（Data Safety の節） | なし |
+| Reporting / accounting semantics | template の同じ行 | DB design | 不該当: 操作ログは業務記録の代替でなく（`docs/db-design/tracking-system-tables.md:206`）、集計に使わない | なし |
+| Manual verification | template の同じ行 | Plan Packet Risk（Human Gate） | 該当（判定）: 画面の code を変えないので manual は要らない（Risk の節）。見せ方の L3 は backlog の lane が持つ | なし |
+| 環境・再現性 | template の同じ行 | repo-pinned config | 不該当: 新しい環境依存を足さない（serde_json は既存の依存、`src-tauri/Cargo.toml:27`） | なし |
 
 ## Boundary / Wire Contract
 
@@ -204,7 +216,7 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 
 - targeted tests: Matrix の T1〜T5（`src-tauri/src/biz/product_service.rs` の tests module）と既存の `test_update_product_req102_detail_json_recorded`。
 - negative tests: T3（値を持つが同じ field は書かない・全部同じなら NULL）、T4（`"`・`\` を含む名前）。
-- compatibility checks: 既存の `test_update_product_req102_detail_json_recorded`（売価の前後）を残す。画面は変えず（owner の決定 Q1 = A）、既存の `OperationLogsPage.test.tsx` の「expands one row, labels known fields, and renders hostile JSON as text」（`:661`）が未知 key の raw 表示を守る。
+- compatibility checks: 既存の `test_update_product_req102_detail_json_recorded`（売価の前後）を残す。画面は変えず（owner の決定 Q1 = A）、既存の `OperationLogsPage.test.tsx` の `:661`「expands one row, labels known fields, and renders hostile JSON as text」（既知 key の label と文字列の値を text で出す）、`:83`「⑰ SC2/SC6 / UIDISP-D2/D6: 長い JSON 要約の祖先で折り返し、日時は等幅にする」（配列の値を `JSON.stringify` で出す）、`:746` `test_operation_logs_req902_t11_keeps_generic_detail_for_other_operation_types`（未知 key `adjustments` を key のまま、配列の値を `JSON.stringify` で出す） が読む側の表示を守る。
 - data safety checks: test の data は合成（`default_create_request` の「テスト商品」ほか）だけ。
 - main wiring/integration checks: T1〜T5 は `init_database` の実 DB に `update_product` を通し、`operation_logs` の行を SQL で読む（mock を通さない）。
 
@@ -226,7 +238,7 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 | 30 §4.4 step 4・4b（price_history・plu_dirty・PLU の解放、隣接） | 30 §4.4 step 4・4b、BIZ-01-D3 | 変えない | `test_update_product_req102_price_change`・`test_update_product_req102_cost_only_no_plu_dirty`・`test_update_product_req102_sets_plu_dirty_when_plu_target_turns_on`（既存） | — |
 | 30 §4.4 step 3・7（TX、隣接） | 30 §4.4 | 変えない | `test_update_product_req102_rollback_after_price_history`（既存） | — |
 | 30 §4.4 step 6・7（操作ログは TX の中。ログの失敗で商品・price_history・ログが戻る、隣接） | 30 §4.4 | 変えない（step 6 の組み替えでログの INSERT を COMMIT の後へ出さない） | `test_update_product_req102_log_failure_rolls_back_all`（T5） | — |
-| UI-11c-D6（未知 key の raw 表示、読む側） | 74 §74.8 | 変えない（owner の決定 Q1 = A） | `OperationLogsPage.test.tsx:661` の「expands one row, labels known fields, and renders hostile JSON as text」（既存） | — |
+| UI-11c-D6（未知 key の raw 表示、読む側） | 74 §74.8 | 変えない（owner の決定 Q1 = A） | `OperationLogsPage.test.tsx` の `:661`・`:83`・`:746`（既存。中身は Test Plan の compatibility checks） | — |
 | tracking-system-tables §18（detail_json NULLABLE・変更前後） | `docs/db-design/tracking-system-tables.md` §18 | 変えない（既に合っている） | T1・T3 | — |
 | 候補 3（見出しの参照先） | `docs/backlog.md:67` | Scope 2 | AC6 の `rg` | — |
 | 候補 4（撤去済みの mode の句） | `docs/backlog.md:68`、`docs/DEV_WORKFLOW.md:75`（legacy の撤去） | Scope 3 | AC7 の `rg` | — |
