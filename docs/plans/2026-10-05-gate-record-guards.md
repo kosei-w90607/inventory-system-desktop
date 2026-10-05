@@ -17,6 +17,7 @@ wave に属さない単独の lane。PR #138・#139・#140・#141 の運用で�
 - Branch: agent/gate-record-guards
 - kickoff → spec-check → design → plan-draft（2026-10-05、起草役、本 commit）: owner の起票承認と範囲（5 件すべて）。Risk R3（merge gate の変更）、classifier の `workflow=true` で Final Review Minimum 2。設計の出力は `docs/agent-guidance/merge-evidence.md`・`docs/DEV_WORKFLOW.md`（Workflow State の field 定義と PK5 の段落）・`docs/decision-log.md` D-107・`docs/backlog.md` の注記で、同じ plan-first の commit に入れた。未解決の設計の問いは無い
 - plan-draft → plan-gate（2026-10-05、Coordinator）: packet と Test Design Matrix は plan-first commit `7deeecac` で揃い、Coordinator の再実行で doc check の `--target plan`・full は ERROR 0、`bash scripts/check-workflow-git.sh` は exit 0。Plan Reviewer の Codex は `.local/codex-orders/MODEL-SELECTION.md` の表の「merge gate・helper・classifier・hook の合否を変える変更」の行で Sol（high）。
+- plan-gate（round 1 の是正、2026-10-05、起草役 `98a898c1` と Coordinator の Review Response、本 commit）: Plan Review round 1（Opus approve P3 4、Codex reject P2 3）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -249,4 +250,9 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+- Plan Review round 1（2026-10-05、対象 `59fe8596`、互いに独立の 2 本）: fresh Opus 5.5 = approve（P3 4）、Codex GPT-6.1 Sol（発注 215）= reject（P2 3）。Coordinator が現物と packet で裏取りし、全件 accept。是正は起草役（Opus 5.5 subagent）が `98a898c1` で行い、Coordinator が doc check（full・`--target plan`）ERROR 0 と `bash scripts/check-workflow-git.sh` exit 0 を確かめた。
+  - F1（Codex #1 = Opus #2）: 本文のある PENDING の review も数えるのに、不一致 message の `submitted_at` が未提出の review で未定義だった。採用: 欠落・null は `not-submitted` と表示し数に含める契約（S2、Wire Contract、D-107 (4)、merge-evidence）と Matrix T2-7・M7b。GitHub の公式資料（docs.github.com の REST「Pull request reviews」: "Pull request reviews created in the PENDING state are not submitted and therefore do not include the submitted_at property in the response."）を Coordinator が読んで確かめた。
+  - F2（Codex #2 = Opus #1）: S6 の既存の review の record の対応が CLI の site だけで、`RecordLifecycle.exercise` の直接呼出し（共通の `args()`、`transport`）が漏れていた（2 本とも試作で再現）。採用: S6 を (a) CLI・(b) `RecordLifecycle` の 2 経路に書き直した。
+  - F3（Codex #3）: S2 の「全 page を数える」を固定する test が無かった。採用: Matrix T2-8（2 page の fixture）と M7a（先頭 page だけを数える）。
+  - F4（Opus #3）: `## Risk` が R0/R1 の packet は PK4 の対象外で、helper の `packet Risk section mismatch` で初めて止まる。採用: 挙動は変えず、D-107 の Guarantee range (1) と Design Readiness の絶対保証の行に除外として明記した。
+  - F5（Opus #4）: PK5 の区切りは ASCII だけ、helper は U+3000 も受ける（厳しい向きの差）。採用: S3・失敗定義・D-107 (2)・merge-evidence に「PK5 は helper より厳しい側」と明記し、失敗定義と食い違わない文にした。
