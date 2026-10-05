@@ -39,6 +39,8 @@ Risk: R3
 | T2-4 | D-107 (4) | 過大の申告・closure での照合漏れ | CLI | `ReviewedHead.test_pr_reviews_overcount_and_closure_rejected`（同） | 本文あり 0 件で `--pr-reviews 1` が exit 1。closure（`broad_then_push` の後、新しい head に本文あり 1 件）で `--pr-reviews 0` が exit 1、`1` が通る。今の code は exit 2 で red |
 | T2-5 | D-107 (4) | 欠落・負・取得失敗で書く | CLI | `ReviewedHead.test_pr_reviews_missing_negative_or_unavailable`（同） | 欠落と `-1` は exit 2、`http_error_path='/reviews'` は exit 2、どれも comment 不変。今の code は欠落が通る（exit 0）ので red |
 | T2-6 | D-099 D8・D-107 (4) | 数える照合が reviewed head の照合より前に走る | CLI | `ReviewedHead.test_reviewed_head_checked_before_pr_reviews`（同） | `--reviewed-head` が違い `--pr-reviews` も違うとき、文が `reviewed head differs from capture head`（先に reviewed head を照合）。fake gh の call に `/reviews` が無い。今の code は exit 2 で red |
+| T2-7 | D-107 (4) | 未提出の review の `submitted_at` の欠落で exit 2 になり識別情報が出ない | CLI | `ReviewedHead.test_pr_reviews_pending_review_listed`（同） | reviewed head に提出済みの本文あり 1 件と、`submitted_at` の property が無い本文ありの PENDING 1 件を置き、`--pr-reviews 1` で exit 1、両方の `id=` と `submitted_at=not-submitted` が message にあり、comment 不変・POST/PATCH の call 無し。`r['submitted_at']` で引くと KeyError で exit 2 になり red。今の code は exit 2（引数を知らない）で red |
+| T2-8 | D-107 (4) | 先頭 page だけを数える | CLI | `ReviewedHead.test_pr_reviews_counted_across_pages`（同） | fake gh の reviews を 2 page（page 1 = 本文あり 1 + 本文が空 99、page 2 = 本文あり 1）で返し、`--pr-reviews 1` は exit 1・comment 不変、`--pr-reviews 2` は exit 0 で record。先頭 page だけを数えると red。今の code は exit 2 で red |
 | T3-1 | D-107 (2) | 8 桁の Amendments を通す | regression | `PK5-SHA40: short Amendments`（`scripts/tests/workflow-git-checks.test.sh`） | 合成 repo で Amendments を 8 桁で commit し、exit≠0 と `40 桁の小文字 hex の full SHA ではありません`。今の code は exit 0（P3）で red |
 | T3-2 | D-107 (2) | 41 桁・大文字・hex 以外の token を通す | regression | `PK5-SHA40: malformed Amendments token`（同） | 41 桁（full + `0`）・大文字の full・`abc1234,` の各 case で ERROR。今の code は `{7,40}` の部分一致で 41 桁と大文字を通すので red |
 | T3-3 | D-107 (2) | 重複を通す | regression | `PK5-SHA40: duplicate Amendments`（同） | 同じ full SHA を 2 回で `重複する SHA`。今の code は exit 0 で red |
@@ -59,7 +61,7 @@ Risk: R3
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 専用 record の review（S1・S2） | record 無し | broad の 1 本目を pending で record | Minimum 本の broad で pass | Gated Amendment で Plan 契約が変わる → status が `FRESH_BROAD` | fresh capture | 同じ head の次の audit の record（`--pr-reviews` は同じ数） | — | `--pr-reviews` の不一致・取得失敗で何も書かない | 数を直して同じ capture で再実行（capture/server が変わっていれば既存の `fresh capture required`） | T1-1〜T1-4、T2-1〜T2-6 |
+| 専用 record の review（S1・S2） | record 無し | broad の 1 本目を pending で record | Minimum 本の broad で pass | Gated Amendment で Plan 契約が変わる → status が `FRESH_BROAD` | fresh capture | 同じ head の次の audit の record（`--pr-reviews` は同じ数） | — | `--pr-reviews` の不一致・取得失敗で何も書かない | 数を直して同じ capture で再実行（capture/server が変わっていれば既存の `fresh capture required`） | T1-1〜T1-4、T2-1〜T2-8 |
 | packet の Workflow State（S3・S4） | plan-draft | — | plan-approved で Plan Commit を 40 桁で記録 | Gated Amendment の登録 | — | — | — | 短縮・末尾の空白で PK4・PK5 が ERROR（push の前） | その commit を直す（未 push） | T3-1〜T3-6、T4-1〜T4-7 |
 
 capture/server の競合、stale head/base、broad/closure、manual/R4、hosted gate は既存の test（`RecordLifecycle`・`Records`・`CLI`）が持ち、本 lane はその判定を変えない。
@@ -74,7 +76,7 @@ capture/server の競合、stale head/base、broad/closure、manual/R4、hosted 
 
 ## Negative Paths
 
-- missing input: `--pr-reviews` の欠落（T2-5）、節の欠落（既存の欠落の ERROR、helper を呼ばない）
+- missing input: `--pr-reviews` の欠落（T2-5）、未提出の review の `submitted_at` の欠落（T2-7）、節の欠落（既存の欠落の ERROR、helper を呼ばない）
 - invalid input: 負の `--pr-reviews`（T2-5）、短縮・41 桁・大文字の SHA（T3-1・T3-2・T4-3）、末尾の空白・注記（T4-1・T4-2）
 - duplicate/ambiguous input: Amendments の重複（T3-3・T4-3）、Human Gate の重複（T4-3）、節が 2 つ（T4-4）、同じ head の review が 2 本（T2-1）
 - unknown reference: 解決できない SHA（既存の PK5 の文のまま）
@@ -85,7 +87,7 @@ capture/server の競合、stale head/base、broad/closure、manual/R4、hosted 
 ## Boundary Checks
 
 - threshold: `--pr-reviews` の 0（T2-4）、SHA の 39・40・41 桁（T3-2、既存 PR4-F7）
-- null/default: review の `body` が `null`（T2-3）
+- null/default: review の `body` が `null`（T2-3）、`submitted_at` の欠落（T2-7）
 - empty/non-empty: 本文が空・空白だけ（T2-3）
 - min/max: 0 以上の整数（T2-5）
 - status/policy enum: Phase・Risk の後ろの注記（T4-2）
@@ -131,6 +133,8 @@ capture/server の競合、stale head/base、broad/closure、manual/R4、hosted 
 | M5: 一致の照合を `>=` にする | T2-1・T2-4 |
 | M6: 照合を書き込みの後へ動かす | T2-1（comment 不変の確認） |
 | M7: 照合を reviewed head の照合の前へ動かす | T2-6 |
+| M7a: 先頭 page だけを数える（`pages[0]`） | T2-8 |
+| M7b: `submitted_at` を `r['submitted_at']` で引く（欠落を `not-submitted` にしない） | T2-7 |
 | M8: PK5 の現在値の切り出しを `[0-9a-f]{7,40}` に戻す | T3-1・T3-2 |
 | M9: PK5 の重複の照合を外す | T3-3 |
 | M10: PK5 の書式の ERROR で `return` して prefix の照合を飛ばす | T3-6 |

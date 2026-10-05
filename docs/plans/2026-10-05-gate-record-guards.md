@@ -68,7 +68,7 @@ Goal Invariant:
 
 ### 失敗定義
 
-- PK4・PK5 が helper の拒む値を通す経路が残る、または helper が受理する正当な packet（今の active packet）を PK4・PK5 が拒む。
+- PK4・PK5 が helper の拒む値を通す経路が残る、または今の active packet と template の書式（区切りはカンマと ASCII の空白・タブ）で書いた packet を PK4・PK5 が拒む。helper より厳しい側の差として PK5 は ASCII でない空白（例: U+3000 の全角の空白）を Amendments の区切りに受けない（helper は `scripts/pr-gate.py:176` の `[,\s]+` で受ける）。これは D-107 の筋 A の「同じか厳しい」の範囲で、失敗に数えない。
 - helper の判定（何を pass とするか）、exit code の意味、RecordV1 の wire が変わる。
 - 登録済みの Amendments の綴りの不変（MG-D5）が緩む。
 - `--pr-reviews` の照合が record の後に走る、または不一致でも comment を書く。
@@ -98,11 +98,11 @@ workflow の変更なので、Coordinator の操作列（capture → record → 
 ## Scope
 
 - S1（status と closure の拒否が次の一手を言う、D-107 (3)）: `scripts/pr-gate.py` の `nonci`（`:336-353`）で、review が要る（`req['minimum']`）とき record の broad の `plan_commit`・`amendments` が要件と違えば、head/base の照合（`:343`）より先に `FRESH_BROAD` で止める。`validate_review`（`:319-320`）の文も同じ `FRESH_BROAD` にする。`record` の closure（`:463-467`）は、server の旧 record の broad の Plan 契約が要件と違えば `FRESH_BROAD` で拒み、broad が無い・本数が足りなければ `SERVER_BROAD` で拒む。文は Boundary / Wire Contract のとおり。
-- S2（同じ head の review の数の申告、D-107 (4)）: `record` の `--kind review`（broad・closure とも）で `--pr-reviews N` を必須にする（無ければ exit 2、負なら exit 2）。reviewed head の照合（`:453-455`）の後、書き込みより前に `api(f'{endpoint}/pulls/{pr}/reviews?per_page=100', pages=True)` で全 page を取り、`commit_id == snap['head']` かつ `(body or '').strip()` が空でない review を数える。N と違えば exit 1、comment を書かない。取得の失敗は既存の `api` のとおり exit 2。argparse（`:512-531`）に `--pr-reviews`（`type=int`）を足す。`--kind manual|r4` では評価しない。
-- S3（PK5 の SHA の 40 桁、D-107 (2)）: `scripts/check-workflow-git.sh` の `check_plan_commit_ancestry` で、現在の `Plan Commit`（`:52-53`）が `^[0-9a-f]{40}$` でなければ ERROR にして ancestry を評価しない。現在の `Amendments`（`:71-72`、`:90`）は `none` 以外なら区切り `[, \t]+` で分けた各 token を `^[0-9a-f]{40}$` と照合し、外れた token は ERROR（ancestry を評価しない）、重複も ERROR。prefix の照合の履歴の読み方（`:110-119` の `grep -oE '[0-9a-f]{7,40}'`）は変えない。書式の ERROR があっても prefix の照合は走らせ、既存の `Amendments が削除・変更されています` の判定を落とさない（`scripts/tests/workflow-git-checks.test.sh:216-232` の spelling の case が両方の文を出す）。
+- S2（同じ head の review の数の申告、D-107 (4)）: `record` の `--kind review`（broad・closure とも）で `--pr-reviews N` を必須にする（無ければ exit 2、負なら exit 2）。reviewed head の照合（`:453-455`）の後、書き込みより前に `api(f'{endpoint}/pulls/{pr}/reviews?per_page=100', pages=True)` で全 page を取り（`api` の `pages=True` は `--paginate --slurp`、`scripts/pr-gate.py:62-63`。先頭 page だけを数えない）、`commit_id == snap['head']` かつ `(body or '').strip()` が空でない review を数える。review の状態は見ないので、本文のある未提出（PENDING）の review も数える。N と違えば exit 1、comment を書かない。不一致の message の `submitted_at` は、property が無いか `null` のとき `not-submitted` と出す（未提出の review は `submitted_at` を持たない。`r['submitted_at']` の KeyError で exit 2 にしない）。取得の失敗は既存の `api` のとおり exit 2。argparse（`:512-531`）に `--pr-reviews`（`type=int`）を足す。`--kind manual|r4` では評価しない。
+- S3（PK5 の SHA の 40 桁、D-107 (2)）: `scripts/check-workflow-git.sh` の `check_plan_commit_ancestry` で、現在の `Plan Commit`（`:52-53`）が `^[0-9a-f]{40}$` でなければ ERROR にして ancestry を評価しない。現在の `Amendments`（`:71-72`、`:90`）は `none` 以外なら区切り `[, \t]+`（カンマと ASCII の空白・タブだけ。helper の `[,\s]+`〈`scripts/pr-gate.py:176`〉は U+3000 の全角の空白も受けるので、PK5 は helper より厳しい側。D-107 (2)）で分けた各 token を `^[0-9a-f]{40}$` と照合し、外れた token は ERROR（ancestry を評価しない）、重複も ERROR。prefix の照合の履歴の読み方（`:110-119` の `grep -oE '[0-9a-f]{7,40}'`）は変えない。書式の ERROR があっても prefix の照合は走らせ、既存の `Amendments が削除・変更されています` の判定を落とさない（`scripts/tests/workflow-git-checks.test.sh:216-232` の spelling の case が両方の文を出す）。
 - S4（PK4 は helper の `parse_packet` で判定、D-107 (1)）: `scripts/doc-consistency-check.sh` の `check_plan_packet_workflow_state` で、R2+ の active packet ごとに helper の `parse_packet` を `python3` で呼ぶ（D-102 の重複の検査〈`:1270-1290`〉と同じ呼び方。1 回の呼び出しにまとめてもよい）。`GateError` は ERROR `PK4: <file> の Workflow State を helper（parse_packet）が拒否: <helper の文>`。ただし helper の文が `duplicate packet fields` なら今の重複の ERROR の literal だけを出し、節が無い（既存の `## Workflow State` の欠落の ERROR を出した）packet では helper を呼ばない。`python3` か import の失敗は今と同じく ERROR（fail-closed）。`extract_workflow_field` と他の PK4 の検査は変えない。
 - S5（自己照合の復帰 command、D-107 (5)）: `scripts/pr-gate.py:215-217` の message の末尾の `…` を `shlex.join(sys.argv[1:])` にする（`import shlex`）。
-- S6（test）: Matrix の行の test を既存の test file に足す。`scripts/tests/pr-gate.test.py` の fake gh（`:185-234`）に `/pulls/7/reviews` の route（state の `reviews` を返し、無ければ空）を足し、既存の review の record の呼び出し（`:377`・`:380` の `test_packet_double_audit_cli`、`:604-609` の `ReviewedHead.review`）に `--pr-reviews` を足す。`scripts/tests/doc-consistency-plan-packet.test.sh` の fixture に `Amendments` の値の変数を足す（今は `:332` で `none` 固定）。既存の assertion は弱めない。
+- S6（test）: Matrix の行の test を既存の test file に足す。`scripts/tests/pr-gate.test.py` の既存の review の record の経路は 2 種類あり、両方を新しい必須の引数と reviews の取得に対応させる。(a) CLI の経路: fake gh（`:185-234`）に `/pulls/7/reviews` の route（state の `reviews` を page として返し、無ければ空の page）を足し、CLI の呼び出し（`:377`・`:380` の `test_packet_double_audit_cli`、`:604-609` の `ReviewedHead.review`）に `--pr-reviews` を足す。(b) `gate.record()` の直接の呼び出し: `RecordLifecycle.exercise`（`:110-133`）は共通の `args()`（`:29-33`）で `kind='review'` の record も呼ぶので、`args()` の既定に `pr_reviews=0` を足し、`exercise` の `transport`（`:123-128`。`:125` の `assertIn('/comments', path)` が他の path を拒む）に `/pulls/7/reviews` の GET → 空の page（`[[]]`）を足す。既存の `/comments` の assertion は残す。`scripts/tests/doc-consistency-plan-packet.test.sh` の fixture に `Amendments` の値の変数を足す（今は `:332` で `none` 固定）。既存の assertion は弱めない。
 - S7（line 参照の同期）: `docs/ci.md:29` の `scripts/pr-gate.py:388-399`（`ci()` の範囲）を実装後の行に直す。
 - S8（記録）: 本 packet の `## Implementation Results`。merge 後の closeout で `docs/backlog.md:153`・`:178` (1) の注記を解消の書式にする（closeout の作業）。
 
@@ -121,7 +121,7 @@ workflow の変更なので、Coordinator の操作列（capture → record → 
 
 ## Acceptance Criteria
 
-- AC1: `PYTHONDONTWRITEBYTECODE=1 python3 scripts/tests/pr-gate.test.py` が exit 0（`OK`）。Matrix の T1-1〜T1-4・T2-1〜T2-6・T5-1〜T5-2 を含む。
+- AC1: `PYTHONDONTWRITEBYTECODE=1 python3 scripts/tests/pr-gate.test.py` が exit 0（`OK`）。Matrix の T1-1〜T1-4・T2-1〜T2-8・T5-1〜T5-2 を含む。
 - AC2: `bash scripts/tests/workflow-git-checks.test.sh` が exit 0。Matrix の T3-1〜T3-6 を含む。
 - AC3: `bash scripts/tests/doc-consistency-plan-packet.test.sh` が exit 0。Matrix の T4-1〜T4-7 を含む。
 - AC4: `PYTHONDONTWRITEBYTECODE=1 bash scripts/tests/run-workflow-tests.sh` が exit 0（`OK`）。
@@ -148,7 +148,7 @@ workflow の変更なので、Coordinator の操作列（capture → record → 
 - 必要な設計成果物: workflow gate change → `docs/decision-log.md` D-107（updated in this PR）。merge-evidence と DEV_WORKFLOW の該当文（updated in this PR、plan-first の commit）。CLI 引数と message の形 → 本 packet の Boundary / Wire Contract（updated in this PR）。
 - plan にしかない durable な判断の昇格先: D-107 の Decision・Alternatives・Guarantee range。message の literal は helper の code と test が持つ（merge-evidence は意味だけを書く）。
 - 前提・制約と、延期した design gap の follow-up: 本 lane の PR は helper 自体を変えるので、PR 自身の status・record は base の版で動く（D-099 D2）。`.local` の雛形の更新は Coordinator。延期は Non-scope の各項目。
-- 絶対保証の例外と escape hatch: 「helper の段階で初めて止まる形を無くす」は `parse_packet` の判定に限る（requirements の照合は範囲外、Guarantee range）。`--pr-reviews` は数の照合で、拒否 message から写せば通る（D-107 Guarantee range）。push 済みの短縮の綴りは今も履歴の書き直しが要る。
+- 絶対保証の例外と escape hatch: 「helper の段階で初めて止まる形を無くす」は `parse_packet` の判定に限り、PK4 が飛ばす `## Risk` が R0/R1 の packet（`scripts/doc-consistency-check.sh:1228-1232`）は含まない（requirements の照合も範囲外。D-107 Guarantee range）。`--pr-reviews` は数の照合で、拒否 message から写せば通る（D-107 Guarantee range）。push 済みの短縮の綴りは今も履歴の書き直しが要る。
 - 判定: ready。5 件それぞれの採った案・退けた案は D-107 にあり、未解決の設計の問いは無い。
 
 ## Registration / Generation Obligations
@@ -177,15 +177,15 @@ workflow の変更なので、Coordinator の操作列（capture → record → 
   - helper CLI: `record --kind review` に `--pr-reviews N`（10 進の整数、0 以上）を必須で足す。無い・負は exit 2、`--kind manual|r4` では評価しない。他の引数は不変。
   - `FRESH_BROAD` = `broad Plan contract changed; fresh broad required: record --review-stage broad at the current head (a closure cannot carry this broad)`。status の blockers（nonci）、`validate_review`、closure の record の拒否で同じ文。exit 1。
   - `SERVER_BROAD` = `server broad required for closure: record --review-stage broad at the current head until it has Final Review Minimum audits`。exit 1。
-  - `--pr-reviews` 不一致: `--pr-reviews {N} but the reviewed head has {M} PR reviews with a body; read each before recording: id={id} submitted_at={submitted_at}, …`（数えた review を API の順に `, ` で並べる。M=0 なら一覧は空）。exit 1。
+  - `--pr-reviews` 不一致: `--pr-reviews {N} but the reviewed head has {M} PR reviews with a body; read each before recording: id={id} submitted_at={submitted_at}, …`（数えた review を API の順に `, ` で並べる。M=0 なら一覧は空。`submitted_at` の property が無いか `null` の review〈未提出〉は `submitted_at=not-submitted`）。exit 1。
   - `--pr-reviews` 欠落: `review needs --pr-reviews (count of PR reviews with a body on the reviewed head)`。exit 2。
   - 自己照合: `helper differs from base {base}; run: git fetch origin && git show {base}:scripts/pr-gate.py > "${TMPDIR:-/tmp}/pr-gate-base.py" && python3 "${TMPDIR:-/tmp}/pr-gate-base.py" {shlex.join(sys.argv[1:])}`。exit 1（不変）。
   - PK4: `PK4: <file> の Workflow State を helper（parse_packet）が拒否: <GateError の文>`。重複は今の literal（`PK4: <file> の Workflow State に重複する field があります（helper の workflow_fields が拒否）`）。
   - PK5: `❌ [workflow-git] PK5: <file> の Plan Commit '<value>' は 40 桁の小文字 hex の full SHA ではありません`、`❌ [workflow-git] PK5: <file> の Amendments SHA '<token>' は 40 桁の小文字 hex の full SHA ではありません`、`❌ [workflow-git] PK5: <file> の Amendments に重複する SHA '<token>' があります`。
-- internal type: review は GitHub の `pulls/{n}/reviews` の object（`id`・`commit_id`・`body`・`submitted_at`。P2）。
+- internal type: review は GitHub の `pulls/{n}/reviews` の object（`id`・`commit_id`・`body`・`submitted_at`。P2）。未提出（PENDING）の review は `submitted_at` を持たない（GitHub の REST の Reviews API の公式の説明。P2 の PR #138〜#141 は全件 COMMENTED で、欠落の実物は未観測）。
 - precision/range: SHA は 40 桁の小文字 hex。`--pr-reviews` は 0 以上。
 - round-trip path: GitHub API → helper の数 → 申告と比較 → 不一致なら message に `id`・`submitted_at` を戻す。
-- invalid input: 引数の欠落・負・非整数は exit 2。API の失敗は exit 2（既存の `api`）。`body` が `null` は空として扱う。
+- invalid input: 引数の欠落・負・非整数は exit 2。API の失敗は exit 2（既存の `api`）。`body` が `null` は空として扱う。`submitted_at` の欠落・`null` は `not-submitted` と表示し、数には含める。
 - compatibility: RecordV1 は不変。既存の record・capture はそのまま読める。PR 自身が helper を変えるときは base の版が動く（D-099 D2）ので、`--pr-reviews` と新しい message は本 lane の merge の後の PR から効く。PK4・PK5 は archive に遡及しない。
 
 ## Test Plan
@@ -214,7 +214,7 @@ Test Design Matrix: [test-matrices/2026-10-05-gate-record-guards.md](test-matric
 | D-107 (1) PK4 は helper の parse_packet で判定 | decision-log D-107、`docs/DEV_WORKFLOW.md:114` | S4 | T4-1〜T4-7 | — |
 | D-107 (2) PK5 の SHA は 40 桁、重複を拒む | D-107、merge-evidence `:87`、DEV_WORKFLOW `:81-82`・`:114` | S3 | T3-1〜T3-6 | — |
 | D-107 (3) status・closure が fresh broad を言う | D-107、merge-evidence `:146` | S1 | T1-1〜T1-4 | — |
-| D-107 (4) `--pr-reviews` の照合 | D-107、merge-evidence `:146`・`:160-168`・`:173` | S2 | T2-1〜T2-6 | — |
+| D-107 (4) `--pr-reviews` の照合 | D-107、merge-evidence `:146`・`:160-168`・`:173` | S2 | T2-1〜T2-8 | — |
 | D-107 (5) 自己照合の完全な command | D-107、merge-evidence `:58` | S5 | T5-1〜T5-2 | — |
 | MG-D5 Amendments の不変（prefix・表記の置換を拒む） | merge-evidence `:87`、D-039 | S3（読み方を変えない） | T3-6（既存の reorder・replacement・removal・spelling） | — |
 | MG-D8 / §状態と非CI記録「Plan契約が変わった場合は新しいbroad」 | merge-evidence `:108` | S1（判定は不変、文と順だけ） | T1-4、既存 `test_changed_plan_requires_new_broad`・`test_broad_contract_and_minimum` | — |
