@@ -25,6 +25,7 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 5. plan-draft → plan-gate（2026-10-06、Coordinator、本 commit）: packet と Test Design Matrix は plan-first commit `8519d643` と owner の決定の反映 `bea1361e` で揃い、Coordinator の再実行で doc check（`--target plan`・full）は ERROR 0、`bash scripts/check-workflow-git.sh` は exit 0。Plan Reviewer の Codex は `.local/codex-orders/MODEL-SELECTION.md` の表の「上に当たらない R3 の初回 review」の行で Sol（high）。
 6. plan-gate（round 1 の是正、2026-10-06、起草役 `ae8cac5e` と Coordinator の Review Response、本 commit）: Plan Review round 1（Opus approve P3 1、Codex reject P2 1）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。
 7. plan-gate（round 2 の是正、2026-10-06、起草役 `c82fea3a` と Coordinator の Review Response の commit）: Plan Review round 2（Opus approve P3 3、Codex reject P2 1・P3 1）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。次の round 3 が天井。
+8. plan-gate（round 3 の P3 の是正、2026-10-06、Coordinator、本 commit）: Plan Review round 3（上限。Codex approve P 0、Opus approve P3 2）。P3 2 件を Coordinator が直した（Review Response 参照）。Plan Commit は pending のまま。
 
 ## Owner Effort Budget
 
@@ -271,3 +272,6 @@ Fill after implementation.
   - H1（Codex P2）: Mutation の実行 command が AC1 の filter で、M7 を検出する T5 を選ばない（Codex の probe: T5 相当を失敗させても AC1 は exit 0）。採用: mutant の実行を AC2 の command にし、AC1 の filter が T5 を選ばないことを明記。
   - H2（Codex P3）: Impact Review Lenses を一括で `not applicable` にしていたが、本 lane は owner の L3 所感が起点。採用: 9 行の lens の表に替え、当たらない行に理由を書いた。
   - H3〜H5（Opus P3）: T3 (ii) で clear できる field を `Some(None)` で送ること（M8 を足した）、Scope 3 の `.codex/README.md` の文頭の直し方、読む側の guard の test の引用（`:83`・`:746` を足した）。採用。
+- Plan Review round 3（上限、2026-10-06、対象 `903af90c`、互いに独立の 2 本。前 round の結果は読ませていない）: Codex GPT-6.1 Sol（発注 224）= approve（P 0）、fresh Opus 5.5 = approve（P3 2。T5 と M7 を隔離の写しで実測）。P1/P2 = 0 で plan-gate → plan-approved の条件が揃った。P3 2 件は Writer の選択が揺れないための補いで、Coordinator が accept し本 commit で直した（独立の再確認は Final Review が兼ねる）。
+  - I1: 売価だけを変えたときに `selling_price` だけが出ることを直接確かめる test が無く、片側だけ今の形を残す実装が通る。採用: T3 に (iii) と Mutation M9 を足した。
+  - I2: T1〜T5 の JAN の条件は「重ならない値」ではなく「チェックディジットが正しい値」（`jan_code::validate`、Coordinator が `jan_code.rs:18`・`:38`〜`:39` を実読、例 `2000000000114` の検算も済み）。採用: 条件を書き直した。
