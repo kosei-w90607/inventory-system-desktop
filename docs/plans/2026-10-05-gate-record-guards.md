@@ -18,6 +18,7 @@ wave に属さない単独の lane。PR #138・#139・#140・#141 の運用で�
 - kickoff → spec-check → design → plan-draft（2026-10-05、起草役、本 commit）: owner の起票承認と範囲（5 件すべて）。Risk R3（merge gate の変更）、classifier の `workflow=true` で Final Review Minimum 2。設計の出力は `docs/agent-guidance/merge-evidence.md`・`docs/DEV_WORKFLOW.md`（Workflow State の field 定義と PK5 の段落）・`docs/decision-log.md` D-107・`docs/backlog.md` の注記で、同じ plan-first の commit に入れた。未解決の設計の問いは無い
 - plan-draft → plan-gate（2026-10-05、Coordinator）: packet と Test Design Matrix は plan-first commit `7deeecac` で揃い、Coordinator の再実行で doc check の `--target plan`・full は ERROR 0、`bash scripts/check-workflow-git.sh` は exit 0。Plan Reviewer の Codex は `.local/codex-orders/MODEL-SELECTION.md` の表の「merge gate・helper・classifier・hook の合否を変える変更」の行で Sol（high）。
 - plan-gate（round 1 の是正、2026-10-05、起草役 `98a898c1` と Coordinator の Review Response、本 commit）: Plan Review round 1（Opus approve P3 4、Codex reject P2 3）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。
+- plan-gate（round 2 の是正、2026-10-05、起草役 `9f2223e4` と Coordinator の Review Response、本 commit）: Plan Review round 2（Codex approve P 0、Opus reject P2 1・P3 3）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。次の round 3 が天井。
 
 ## Owner Effort Budget
 
@@ -257,3 +258,8 @@ Fill after implementation.
   - F3（Codex #3）: S2 の「全 page を数える」を固定する test が無かった。採用: Matrix T2-8（2 page の fixture）と M7a（先頭 page だけを数える）。
   - F4（Opus #3）: `## Risk` が R0/R1 の packet は PK4 の対象外で、helper の `packet Risk section mismatch` で初めて止まる。採用: 挙動は変えず、D-107 の Guarantee range (1) と Design Readiness の絶対保証の行に除外として明記した。
   - F5（Opus #4）: PK5 の区切りは ASCII だけ、helper は U+3000 も受ける（厳しい向きの差）。採用: S3・失敗定義・D-107 (2)・merge-evidence に「PK5 は helper より厳しい側」と明記し、失敗定義と食い違わない文にした。
+- Plan Review round 2（2026-10-05、対象 `527c38e4`、互いに独立の 2 本。前 round の結果は読ませていない）: Codex GPT-6.1 Sol（発注 216）= approve（P 0）、fresh Opus 5.5 = reject（P2 1 / P3 3）。Coordinator が現物で裏取りし、全件 accept。是正は起草役が `9f2223e4` で行い、Coordinator が doc check（full・`--target plan`）ERROR 0 と `bash scripts/check-workflow-git.sh` exit 0 を確かめた。
+  - G1（P2）: head が変わり Plan 契約も違うと `record()` は旧 broad を持ち越さず broad が None の record を作る（`scripts/pr-gate.py:440-448`、Coordinator が実読）。manual を先に record する lane では status の最初の阻害理由が `review not passed` になり、S1 の「broad の契約が違えば」に当たらない。採用: broad が None のときの専用の文 `BROAD_REQUIRED` を新設し、nonci と closure の record の拒否の両方で使う（None からは初回と契約違いを区別できないので、原因でなく次の一手を言う）。照合の順は FRESH_BROAD → BROAD_REQUIRED → head/base → outcome。Matrix T1-5 と mutant を足した。
+  - G2（P3）: M8 の期待する red を、40 桁の照合が残る限り red になる T3-2 だけにした。
+  - G3（P3）: S6 (a) に fake gh の `review_pages`（既存の `file_pages` と同じ形）を書いた。
+  - G4（P3）: 負の `--pr-reviews` は欠落と同じ文で exit 2、整数でない値は argparse の文で exit 2 と Wire Contract に書いた。
