@@ -228,7 +228,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 
 ### IO-08: EJパーサー
 
-**タスク要求**: CASIO SR-S4000 が SD に保存する電子ジャーナル（EJ）1 file の生バイト列を受け取り、記録（取引・返品・入金 / 出金 / 替・設定書込み・精算）の列へ元 file の行番号つきで構造復元する。通常販売と返品の取引は、観測済みの形式に一致し記録内の照合がそろう場合に限り明細へ復元する。純粋なフォーマット変換のみ、業務ロジックなし
+**タスク要求**: CASIO SR-S4000 が SD に保存する電子ジャーナル（EJ）1 file の生バイト列を受け取り、記録（取引・取引中止・入金 / 出金 / 替・領収書・精算票・点検票・設定・練習）の列へ元 file の行番号つきで構造復元する。記録の種類は見出しのモード欄ではなく本文の行で決める。通常販売と返品の取引は、文法に一致し記録内の照合がそろう場合に限り明細と値引きへ復元する。純粋なフォーマット変換のみ、業務ロジックなし
 
 **理由**: EJ を PLU 販売の本番開始の前提にする（[ADR SPEC-STK-TIME-D5](../adr/2026-09-18-stocktake-time-evidence.md#spec-stk-time-d5-ejの完全と商品を判定可能を分ける)）。後続の BIZ が「この取引の明細は確かか」を判定する入口であり、誤復元は在庫の誤った増減に直結するため、一致しない取引を記録単位の復元不能として返す。レジ依存の固定幅・ラベル・モード欄を IO adapter に閉じる（D-023）
 
@@ -241,8 +241,9 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 - EjParseResult
   - file_hash: String（生バイトの SHA-256、小文字 hex 64 文字）
   - leading_lines[]: 最初の記録ヘッダより前の行（line_no, text, kind）
-  - records[]: header_line_no, mode（Normal / Return / Settlement / Program / Unrecognized）, printed_at（分精度の文字列）, number_prefix, number（先頭 0 を保つ文字列）, body[]（line_no, text, kind）, restoration（Restored { items[], item_count } / NoItems / Unresolved { reasons[] }）
-  - items[]: line_no, name, quantity, unit_price?, amount
+  - records[]: header_line_no, mode（見出しのモード欄: Normal / Return / Training / Settlement / Inspection / Program / Program1 / Program3 / Off / Unrecognized）, kind（本文で決める記録の種類: Sale / Cancelled / CashMovement / Receipt / Settlement { report, completed } / Inspection / Settings / Training / Unclassified）, printed_at（分精度の文字列）, number_prefix, number（先頭 0 を保つ文字列）, body[]（line_no, text, kind）, restoration（Restored { items[], item_count, adjustments[] } / NoItems / Unresolved { reasons[] }）
+  - items[]: line_no, name, quantity（戻の印の明細は -1）, unit_price?, amount（印字の符号のまま）
+  - adjustments[]: line_no, kind（ItemDiscount { item_line_no } / SubtotalDiscount / MinusKey）, amount
   - diagnostics[]: line_no?, code（7 種）, scope（Line / Record / File）, message（code ごとの固定文言。行の生の文字列を含めない）
 
 **【処理構造】**
@@ -251,8 +252,8 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 2. CRLF だけで行に分割する（改行を正規化しない）
 3. 各行を CP932 strict decode する。decode できない行があれば致命的エラー（幅の診断より先）
 4. 2 行の記録ヘッダ（モード欄 + 日時 / 番号行）で記録を区切る。最初のヘッダより前は先頭断片
-5. 記録の種類と記録内の位置（区切りの前 / 後）で行を分類する。24 バイトでない行、または 24 バイトの中に孤立した CR / LF を含む行と、最終改行なしは診断にし、どれにも当たらない行は Unknown として残す
-6. 通常・返品の記録は、数量×単価・点数・合計（無ければ現金）を記録内で照合し、そろえば明細を復元する。入金 / 出金 / 替・設定書込み・精算は明細なし
+5. 記録の種類を本文の行（精算票・点検票の題、トレーニングの表示、入金 / 出金 / 替・領収書・取引中止の形）で決め、本文に題が無いときだけ練習・設定をモード欄で決める。記録の種類と記録内の位置（区切りの前 / 後）で行を分類する。24 バイトでない行、または 24 バイトの中に孤立した CR / LF を含む行と、最終改行なしは診断にし、どれにも当たらない行は Unknown として残す
+6. 取引の記録は、訂正（直前の明細・値引き・支払行の取消）・値引き・折返しをまとめ、数量×単価・点数・合計（無ければ取り消されていない支払行 1 行）を記録内で照合し、そろえば明細と値引きを復元する。取引中止・入金 / 出金 / 替・領収書・精算票（次のヘッダで閉じた中断を含む。file の最後の記録で終わりの印字が無ければ復元不能）・点検票・設定・練習は明細なし
 7. 一致しない記録は、その記録だけを復元不能にして診断を積む
 
 詳細は [function-design/29-io-ej-parser.md](../function-design/29-io-ej-parser.md)（IO-08-D1〜D10）。
