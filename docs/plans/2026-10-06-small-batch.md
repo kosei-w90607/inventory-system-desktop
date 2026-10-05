@@ -4,9 +4,9 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: eb26ecb31ecd645a2dfb27e4879be7f54599af4f
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（`subagent_type: writer`）
@@ -26,6 +26,7 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 6. plan-gate（round 1 の是正、2026-10-06、起草役 `ae8cac5e` と Coordinator の Review Response、本 commit）: Plan Review round 1（Opus approve P3 1、Codex reject P2 1）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。
 7. plan-gate（round 2 の是正、2026-10-06、起草役 `c82fea3a` と Coordinator の Review Response の commit）: Plan Review round 2（Opus approve P3 3、Codex reject P2 1・P3 1）の全件を是正した（Review Response 参照）。Plan Commit は pending のまま。次の round 3 が天井。
 8. plan-gate（round 3 の P3 の是正、2026-10-06、Coordinator、本 commit）: Plan Review round 3（上限。Codex approve P 0、Opus approve P3 2）。P3 2 件を Coordinator が直した（Review Response 参照）。Plan Commit は pending のまま。
+9. plan-gate → plan-approved（2026-10-06、Coordinator、本 commit）: Plan Review round 3（対象 `903af90c`）で独立の 2 本（fresh Opus 5.5、Codex GPT-6.1 Sol）がともに P1/P2 = 0。round 3 の P3 を `eb26ecb3` で直し、Coordinator が doc check（`--target plan`）ERROR 0 を確かめた。Plan Commit は `eb26ecb3`。
 
 ## Owner Effort Budget
 
