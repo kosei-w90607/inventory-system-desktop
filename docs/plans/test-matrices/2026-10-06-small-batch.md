@@ -11,7 +11,7 @@ Risk: R3
 - BIZ-01-D7（`docs/function-design/30-biz-product-service.md` §4.4）: 商品修正の detail_json は、変えた field ごとに `{"old","new"}` を持つ JSON object。値を持っても更新前と同じ field は書かない。変えた field が無ければ NULL。serde_json で組む。
 - PRODUCT-PATCH-D1（同 §4.4）: clear 可能 field（`supplier_id`・`maker_code`）の JSON null は clear で、detail では `new: null`。
 - 30 §4.4 step 4・4b・3・7（隣接、変えない）: price_history・plu_dirty・PLU の解放・TX の rollback。
-- UI-11c-D6（74 §74.8、読む側、Q1 = A なら変えない）: 未知 key は key のまま、object の値は JSON 文字列で出す。
+- UI-11c-D6（74 §74.8、読む側、owner の決定 Q1 = A で変えない）: 未知 key は key のまま、object の値は JSON 文字列で出す。
 - docs: `docs/TOOLING_SKILL_COMMANDS.md` の見出しの参照先、`.codex/README.md` の撤去済みの mode の句。
 
 ## Failure Modes
@@ -38,13 +38,13 @@ Risk: R3
 | 30 §4.4 step 6 売価の前後（REQ-102、既存） | 売価の old/new が消える | integration（既存） | `test_update_product_req102_detail_json_recorded`（`:2421`） | 売価 500 → 999 の `"old":500`・`"new":999` が出なくなると落ちる。消さず弱めない |
 | 30 §4.4 step 4・4b（隣接、既存） | detail の組み替えで price_history・plu_dirty を壊す | integration（既存） | `test_update_product_req102_price_change`（`:2206`）・`test_update_product_req102_cost_only_no_plu_dirty`（`:2239`）・`test_update_product_req102_sets_plu_dirty_when_plu_target_turns_on`（`:2284`） | price_history の行・plu_dirty の値が変わると落ちる |
 | 30 §4.4 step 3・7 TX（隣接、既存） | log の書込みを TX の外へ出す | integration（既存） | `test_update_product_req102_rollback_after_price_history`（`:2522`） | failpoint の後に行が残ると落ちる |
-| UI-11c-D6 未知 key の raw 表示（読む側、既存） | 画面が未知 key を隠す | component（既存） | `OperationLogsPage.test.tsx:661`「expands one row, labels known fields, and renders hostile JSON as text」 | Q1 = A では画面を変えないので、既存の test が通り続けることだけを確かめる |
+| UI-11c-D6 未知 key の raw 表示（読む側、既存） | 画面が未知 key を隠す | component（既存） | `OperationLogsPage.test.tsx:661`「expands one row, labels known fields, and renders hostile JSON as text」 | 画面を変えない（owner の決定 Q1 = A）ので、既存の test が通り続けることだけを確かめる |
 | 候補 3 見出しの参照先 | 実在しない参照が残る | docs sweep | AC6 の ``rg -n 'CLAUDE.md` で推奨' docs/TOOLING_SKILL_COMMANDS.md`` | 旧い見出しが残ると一致する（起票時は `:44` で一致 1 行） |
 | 候補 4 撤去済みの mode の句 | 撤去済みの語が残る・helper の使い方まで消す | docs sweep | AC7 の `rg -n 'github mode\|state-only\|三点一致' .codex/README.md` と `rg -c 'pr-gate.py status' .codex/README.md` | 旧い句が残ると前者が一致する（起票時は `:246` の 1 行）。行ごと消すと後者が 0 になる |
 
 ## State Lifecycle Matrix
 
-not applicable: detail_json は 1 回の保存で 1 回書く追記のみのログで、画面の状態・cache・retry の遷移を変えない（操作ログ画面の lifecycle は Q1 = A では変わらない。B・C を選んだら 74 §74.12 の行を足す）。
+not applicable: detail_json は 1 回の保存で 1 回書く追記のみのログで、画面の状態・cache・retry の遷移を変えない（操作ログ画面は変えない、owner の決定 Q1 = A）。
 
 ## Adjacent Pattern Audit
 
@@ -116,5 +116,5 @@ not applicable: detail_json は 1 回の保存で 1 回書く追記のみのロ�
 ## Residual Test Gaps
 
 - 2^53 を超える価格の画面での丸め: 既存の形と同じ残りで、本 lane は扱わない。
-- 操作ログ画面に商品修正の detail が実際にどう見えるかの component test: Q1 = A では画面を変えないので足さない。B・C を選んだら `OperationLogsPage.test.tsx` に足す。
+- 操作ログ画面に商品修正の detail が実際にどう見えるかの component test: 画面を変えないので足さない（owner の決定 Q1 = A）。見せ方を変える `docs/backlog.md` の design-first の lane が足す。
 - `:494` の `format!` で組む別の種別の detail_json: Non-scope（Adjacent Pattern Audit）。

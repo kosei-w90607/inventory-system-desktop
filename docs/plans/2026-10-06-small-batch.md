@@ -20,9 +20,8 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 
 1. kickoff → spec-check（2026-10-06）: Scope を 4 候補から決め、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-06）: 候補 1 の設計正本 `docs/function-design/30-biz-product-service.md` §4.4 step 6 が「変更前後の値をJSON化」だけで、field・型・変更の判定が決まっていない。
-3. design → plan-draft（2026-10-06）: 同じ plan-first の commit で §4.4 に BIZ-01-D7 を足した。基本の Scope に未解決の設計の問いは無い。下の「owner に判断を求める点」の Q1・Q2 は Scope に足すかの判断で、足す場合の設計の差分も同じ節に書いた。
-
-plan-gate へは、Q1・Q2 の owner の答えを Scope・AC・Matrix に反映した commit の後に進む。
+3. design → plan-draft（2026-10-06）: 同じ plan-first の commit で §4.4 に BIZ-01-D7 を足した。Scope に未解決の設計の問いは無い。
+4. plan-draft（owner の決定の反映、2026-10-06、起草役、本 commit）: 下の「owner の決定（2026-10-06）」を Scope・Non-scope・AC・Human Gate・Owner Effort Budget・Matrix と `docs/backlog.md` に反映した。Phase は plan-draft のまま。
 
 ## Owner Effort Budget
 
@@ -32,18 +31,18 @@ plan-gate へは、Q1・Q2 の owner の答えを Scope・AC・Matrix に反映�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0（起票時） | 4（Q1・Q2 の 2 点を 1 回の問い合わせで、Ready 1、merge 1） | 2（Q1 で B か C を選べば manual の L3 が 1 round 足りる） | 6 = 0 + 4 + 2 |
+| 介入 | 6 | 2（2026-10-06 の 1 回の問い合わせで Q1・Q2 の 2 点を決めた） | 2（Ready 1、merge 1） | 2 | 6 = 2 + 2 + 2 |
 
 ## Risk
 
 Risk: R3
 
 Reason:
-候補 1 は `operation_logs.detail_json`（DB に残る監査ログの JSON）の形を変え、操作ログ画面が読む。出力の形の変更なので、DEV_WORKFLOW Risk Tiers の「R2 と R3 で迷えば、stable contract・output schema に触れるときは R3」に当たる。backup の復元・破壊的な data lifecycle には触れない（Q2 を含めると変わる。下の「owner に判断を求める点」）。
+候補 1 は `operation_logs.detail_json`（DB に残る監査ログの JSON）の形を変え、操作ログ画面が読む。出力の形の変更なので、DEV_WORKFLOW Risk Tiers の「R2 と R3 で迷えば、stable contract・output schema に触れるときは R3」に当たる。backup の復元・破壊的な data lifecycle には触れない（新しすぎる backup の復元の文言は owner の決定で外した。下の「owner の決定（2026-10-06）」）。
 
 `scripts/ci/classify-changes.sh` に予定の path を当てた出力（`printf '%s\n' <path...> | bash scripts/ci/classify-changes.sh --files-from-stdin`）:
 
-基本の Scope（`src-tauri/src/biz/product_service.rs` `docs/function-design/30-biz-product-service.md` `docs/function-design/90-traceability.md` `docs/TOOLING_SKILL_COMMANDS.md` `.codex/README.md` `docs/backlog.md` と本 packet・Matrix）:
+Scope の path（`src-tauri/src/biz/product_service.rs` `docs/function-design/30-biz-product-service.md` `docs/function-design/90-traceability.md` `docs/TOOLING_SKILL_COMMANDS.md` `.codex/README.md` `docs/backlog.md` と本 packet・Matrix）:
 
 ```
 rust=true
@@ -57,37 +56,9 @@ workflow=false
 unknown=false
 ```
 
-Q1 = B か C で足す path（`src/features/operation-logs/OperationLogsPage.tsx` `src/features/operation-logs/OperationLogsPage.test.tsx` `docs/function-design/74-ui-operation-logs.md`）:
-
-```
-rust=false
-rust_drift=true
-frontend=true
-docs=true
-env=false
-generated=false
-traceability=true
-workflow=false
-unknown=false
-```
-
-Q2 = 含める で足す path（`src-tauri/src/mnt/restore.rs` `src-tauri/src/cmd/settings_cmd.rs` `src-tauri/src/cmd/mod.rs` `src/lib/bindings.ts` `src/lib/invoke.ts` `src/features/backup-restore/BackupRestorePage.tsx` `docs/function-design/68-ui-backup-restore.md` `docs/function-design/71-mnt-backup.md`）:
-
-```
-rust=true
-rust_drift=true
-frontend=true
-docs=true
-env=false
-generated=true
-traceability=true
-workflow=false
-unknown=false
-```
-
 この変更でどれかの required gate の green / red が変わるか: 変わらない（workflow=false で gate の定義に触れず、要る job は rust・docs・generated・traceability の分類で回るだけ。`.codex/README.md` は `*.md` の docs に当たり、`.codex/bin/*` の full には当たらない〈`scripts/ci/classify-changes.sh:55`・`:67`〉）。
 
-Final Review Minimum = 1（R3 で workflow=false。R4 か workflow gate のときだけ 2、DEV_WORKFLOW Workflow State）。Human Gate = `ready,merge`: 基本の Scope は画面の code を変えず、操作ログ画面は新しい key を既存の UI-11c-D6（74 §74.8「辞書未収載の key は key 文字列そのものをラベル代わりに使う」）どおりに出すだけなので、Human Visual Confirmation の「operator-facing screen を作る・大きく変える」に当たらない。Q1 で B か C を選べば画面の文言・表示が変わり、`manual` を足す。
+Final Review Minimum = 1（R3 で workflow=false。R4 か workflow gate のときだけ 2、DEV_WORKFLOW Workflow State）。Human Gate = `ready,merge`: Scope は画面の code を変えず、操作ログ画面は新しい key を既存の UI-11c-D6（74 §74.8「辞書未収載の key は key 文字列そのものをラベル代わりに使う」）どおりに出すだけなので、Human Visual Confirmation の「operator-facing screen を作る・大きく変える」に当たらない（owner の決定 Q1 = A で画面を変えない）。
 
 ## Goal
 
@@ -95,7 +66,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 商品修正で売価・原価以外（商品名・部門・取引先・税率・メーカー品番・在庫連動・PLU 対象）を変えて保存すると、操作ログ画面の「商品修正」の行の詳細に、変えた項目の変更前と変更後が出る（owner の L3 所感 2026-09-10「更新したのに詳細情報なし」、`docs/backlog.md:92`）。
+- 商品修正で売価・原価以外（商品名・部門・取引先・税率・メーカー品番・在庫連動・PLU 対象）を変えて保存すると、操作ログ画面の「商品修正」の行の詳細に、変えた項目の変更前と変更後が出る（owner の L3 所感 2026-09-10「更新したのに詳細情報なし」、`docs/backlog.md:93`）。
 - `docs/TOOLING_SKILL_COMMANDS.md` の Rust の見出しが実在する参照先を指し、`.codex/README.md` の `## PR evidence helper` から撤去済みの mode の句が消える。
 
 ### 失敗定義
@@ -107,10 +78,10 @@ Goal Invariant:
 
 ### 非目的
 
-- 操作ログ画面の表示の作り替え（Q1 の B・C は owner の判断で足す場合だけ）。
+- 操作ログ画面の表示の作り替え（owner の決定 Q1 = A。「項目名 / 前 → 後」の一覧は次の design-first の lane、`docs/backlog.md` の「やると決めたもの」）。
 - 既に DB にある商品修正のログの書き換え。
 - `product_update` 以外の操作種別（例 `product_create`・`product_price_revise`）の detail_json。
-- 新しすぎる backup の復元の失敗の文言（Q2 で owner が含めると決めた場合だけ）。
+- 新しすぎる backup の復元の失敗の文言（owner の決定 Q2 = 外す。`docs/backlog.md` に残す）。
 
 Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や証跡作業が Goal Invariant を前進させない場合は、Goal を置き換えず簡略化・defer・削除する。
 
@@ -121,14 +92,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
 | 商品が登録済み | 商品修正の画面で商品名だけを変えて保存 | 保存が成功する（今と同じ）。画面は差分の field だけを送る（`src/features/products/lib/product-form-request.ts:155`〜`:169`） | 操作ログに「商品修正」の行が 1 行増える | なし |
-| 上の保存の後 | 操作ログ画面で「商品修正」の行の「詳細を表示」を押す | 要約に `name` の行が出て、値が `{"new":"新しい名前","old":"前の名前"}`（key の順は serde_json の既定で、契約にしない）。Q1 = B なら key の代わりに「商品名」、C なら「前の名前 → 新しい名前」 | 変えた項目と前後の値を読める | Q1 は owner の判断。key の並びは Contract Probe P1 |
+| 上の保存の後 | 操作ログ画面で「商品修正」の行の「詳細を表示」を押す | 要約に `name` の行が出て、値が `{"new":"新しい名前","old":"前の名前"}`（key の順は serde_json の既定で、契約にしない）。画面は変えない（owner の決定 Q1 = A） | 変えた項目と前後の値が記録に残り、詳細で確かめられる | key の並びは Contract Probe P1 |
 | 商品が登録済み | 売価だけを変えて保存 | 詳細に `selling_price` だけが出る（今は `cost_price` も前後同じ値で出る） | 価格の履歴（price_history）は今と同じく残る | なし |
 | 商品が登録済み | 何も変えずに保存（画面は空の request を送る） | 詳細は「詳細情報はありません」（今と同じ） | — | なし |
 | 商品名に `"` を含む商品 | 商品名を変えて保存し、詳細を開く | 要約に前後の名前が正しく出る | 「詳細情報を解析できませんでした」にならない | Contract Probe P1 |
 
 ## Scope
 
-基本の Scope（owner の判断なしで入れる）:
+Scope（owner の決定〈2026-10-06〉を反映済み）:
 
 1. 商品修正の操作ログの detail_json に、変えた全 field の変更前後を書く（候補 1、BIZ-01-D7）。
    - `src-tauri/src/biz/product_service.rs` の `update_product` の step 6（現物 `:392`〜`:406`、`detail` を `format!` で組む所）: `selling_changed || cost_changed` のときだけ価格 2 つを書く今の形を、BIZ-01-D7 の「変えた field ごとに `{"old","new"}`」へ替え、`serde_json` で組む。変えた field が無ければ `None`。step 1〜5・7 と `ProductUpdateRequest` / `ProductUpdateResult` の型は変えない。
@@ -136,7 +107,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
    - `docs/function-design/90-traceability.md` を `cd src-tauri && cargo run --bin generate_traceability` で生成し直す（REQ-102 の test を足すため。Registration Obligations）。
 2. `docs/TOOLING_SKILL_COMMANDS.md:44` の見出し「Rust / DB（`CLAUDE.md` で推奨）」を、実在する参照先（`docs/DEV_WORKFLOW.md` の `## Verification Gates` の Rust/backend の行）を指す見出しに直す（候補 3）。本文の command の列は変えない。
 3. `.codex/README.md:246`（`## PR evidence helper`）から「github mode」と「legacyのstate-only/三点一致」の句を消し、helper の使い方（`python3 scripts/pr-gate.py status|capture|record|ready|merge --pr NUMBER`）・status が read-only・capture の置き場・record/Ready/merge は既存の明示承認の範囲だけ・helper は設定と権限を変えない、の内容は残す（候補 4）。同じ file の `:99`・`:132` の「legacy tmux bar」は別の話で触らない。
-4. `docs/backlog.md` の候補の 4 項目（`:67`・`:68`・`:81`・`:92`）: 着手の注記は plan-first の commit で付けた。完了の注記は merge の後の closeout で書き、実装の commit では書かない。
+4. `docs/backlog.md` の候補の 4 項目（`:67`・`:68`・`:81`・`:93`）: 着手の注記と owner の決定は plan の commit で書いた。完了の注記は merge の後の closeout で書き、実装の commit では書かない。
 
 呼出し側・読む側の全件（`rg` で数えた）:
 
@@ -144,30 +115,27 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|
 | detail_json の producer（`"product_update"`） | `src-tauri/src/biz/product_service.rs:403` の 1 か所だけ（`rg -n '"product_update"' src-tauri/src`） | 変える |
 | BIZ の `update_product` を呼ぶ所 | `src-tauri/src/cmd/product_cmd.rs:44`、test の `src-tauri/src/biz/plu_export_service.rs:1824`・`:1840`・`:1868`（tests module は `:879` から）、`src-tauri/src/biz/product_service.rs` の tests（`:2218`・`:2262`・`:2303`・`:2328`・`:2353`・`:2372`・`:2395`・`:2434`・`:2537`） | 呼び方と戻り値は変わらない。detail_json を読む test は `:2434` の `test_update_product_req102_detail_json_recorded` だけ（`rg -n "operation_type = 'product_update'" src-tauri/src` が `:2438` の 1 件） |
-| detail_json を読む画面 | `src/features/operation-logs/OperationLogsPage.tsx` の `parseDetail`（`:76`）・`displayValue`（`:69`）・`KNOWN_KEYS`（`:45`）。商品修正に固有の分岐は無い | 基本の Scope では変えない（Q1） |
-| 画面の test の fixture | `src/features/operation-logs/OperationLogsPage.test.tsx` は `product_update` を種別の一覧（`:525`・`:597`）にだけ使い、商品修正の detail_json の fixture は無い | 基本の Scope では変えない |
+| detail_json を読む画面 | `src/features/operation-logs/OperationLogsPage.tsx` の `parseDetail`（`:76`）・`displayValue`（`:69`）・`KNOWN_KEYS`（`:45`）。商品修正に固有の分岐は無い | 変えない（owner の決定 Q1 = A） |
+| 画面の test の fixture | `src/features/operation-logs/OperationLogsPage.test.tsx` は `product_update` を種別の一覧（`:525`・`:597`）にだけ使い、商品修正の detail_json の fixture は無い | 変えない |
 | 型 | `OperationLog.detail_json` は文字列のまま（Tauri の DTO と `src/lib/bindings.ts` は変わらない） | 変えない |
 | 設計正本 | `docs/function-design/30-biz-product-service.md` §4.4 step 6 と BIZ-01-D7（本 plan-first の commit で更新）、`docs/db-design/tracking-system-tables.md` §18（`:205`「商品修正なら変更前後のフィールド名・値」。既に合っている）、`docs/architecture/biz-task-specs.md:71`（「detail_jsonに変更前後」。既に合っている） | 30 だけ更新 |
 
-### owner に判断を求める点（Scope に足すかを owner が決める）
+### owner の決定（2026-10-06）
 
-**Q1. 操作ログ画面で、商品修正の詳細の見せ方を変えるか**（候補 1 の画面側）
+**Q1 = A: 操作ログ画面は変えない。本 lane は記録を残すところまで。**
 
-- A（基本の Scope のまま）: 画面を変えない。詳細の要約は key（例 `name`）と `{"new":…,"old":…}` の JSON の文字列を出す（UI-11c-D6 の既存の契約、`OperationLogsPage.tsx:69`〜`:74`）。Human Gate は `ready,merge` のまま。
-- B: 既知 key の辞書（`KNOWN_KEYS`、`OperationLogsPage.tsx:45`）に商品の 9 field の日本語を足す。語は商品フォームのラベル（`src/features/products/components/ProductForm.tsx` の「商品名（必須）」`:251`、「メーカー品番」`:262`、「部門（必須）」`:280`、「取引先」`:303`、「売価（必須）」`:352`、「原価（必須）」`:364`、「税率」`:376`、「レジにバーコード登録する」`:236`）から取るかを owner が決める（在庫連動〈`pos_stock_sync`〉は画面のラベルを未確認）。値は JSON の文字列のまま、部門・取引先は ID のまま。Scope に `OperationLogsPage.tsx`・`OperationLogsPage.test.tsx`・`docs/function-design/74-ui-operation-logs.md` §74.8 と §74.19 を足し、Human Gate に `manual` を足す（画面の文言が変わる）。
-- C: 商品修正の詳細を、`integrity_fix` の補正内容（UI-11c-D14、`OperationLogsPage.tsx:172`〜`:194`）と同じように「項目名 / 前 → 後」の一覧で出し、部門・取引先は名前を引く。画面の設計（74 の新しい D と L3 の項目）が要り、1 PR の大きさを超えやすい。選ぶなら別の design-first の lane にするのを勧める。
-- 条件付きの推奨: A（precondition-dependent: owner の所感が「記録が無い」ことだけを指すなら A で目的に届く。英語の key が読めないことも指すなら B）。
+- 画面は新しい key を UI-11c-D6（74 §74.8）どおり、key（例 `name`）と `{"new":…,"old":…}` の JSON の文字列で出す（`OperationLogsPage.tsx:69`〜`:74`・`:162`）。
+- 「項目名 / 前 → 後」の一覧（部門・取引先は名前）は、owner の同意で次の design-first の小さな lane にする。`docs/backlog.md` の「やると決めたもの」に項目を足した（先例は `integrity_fix` の一覧の UI-11c-D14）。
 
-**Q2. 「保存と起動の守りの follow-up」の (2)（新しすぎる backup の復元の失敗を、画面で「新しい版のアプリが要る」と伝える）を本 lane に含めるか**（候補 2）
+**Q2 = 外す: 「保存と起動の守りの follow-up」の (2)（新しすぎる backup の復元の失敗を「新しい版のアプリが要る」と伝える）は backlog に残す。**
 
-- 現状（現物で確認）: (1)・(3) は PR #118 で完了済みで backlog の記述どおり（`src-tauri/src/db/migration.rs:160`〜`:168` の手順の番号 1〜6 が `docs/function-design/22-mnt-migration.md` §3.2 の step 1〜6〈`:28`〜`:38`〉と一致、`generate_custom_code` の第 1 引数は `&rusqlite::Transaction<'_>`〈`src-tauri/src/biz/product_service.rs:156`〜`:157`〉）。(2) は未着手: 画面は `restore_failed_recovered` の kind で固定の文言「…もう一度お試しください。」を出す（`src/features/backup-restore/BackupRestorePage.tsx:303`〜`:306`）。新しすぎる版は差し替え後の open で拒否され `RestoreError::Recovered` になる（`docs/function-design/71-mnt-backup.md:233`）。画面は kind で分け、文言の部分一致に頼らない契約（`docs/function-design/68-ui-backup-restore.md:129`）なので、伝えるには新しい kind か構造化した detail が要り、`src-tauri/src/mnt/restore.rs`・`src-tauri/src/cmd/settings_cmd.rs`（`:71`〜`:115`）・`CmdErrorKind`（`src/lib/bindings.ts:412`）・画面の文言が変わる。
-- 含める: Risk Tiers の R4 の「backup restore」に当たる見込みが高く、Final Review Minimum 2・Human Gate に `r4`・Contract Audit の 2 回が要る。新しい文言は owner が選ぶ。L3 は新しい版の backup を人が作る手順が要り、DEV_WORKFLOW の L3 Eligibility の条件 (3)（manual fault-injection-grade procedure を要しないこと。例に synthetic row insertion・config restore が挙がる）を満たしにくく、自動 test に寄せる。小口の lane の重さが大きく変わる。
-- 外す: backlog に残す（owner 決定 2026-09-27 で backlog に残した理由〈R3 以上〉が今も当たる）。本 lane は R3・Minimum 1 のまま。
-- 条件付きの推奨: 外す（confirmed: 含めると Risk・review の本数・Human Gate が変わる）。扱うなら restore の error 契約だけの別 lane にする。
+- 理由: 伝えるには restore の error kind か構造化した detail が要り（画面は kind で分け、文言の部分一致に頼らない契約、`docs/function-design/68-ui-backup-restore.md:129`）、Risk Tiers の R4「backup restore」に当たる。新しい版の backup を人が作る確認は DEV_WORKFLOW の L3 Eligibility の条件 (3)（manual fault-injection-grade procedure を要しないこと）を満たしにくい。
+- 同じ項目の (1)・(3) は PR #118 で完了済み（`src-tauri/src/db/migration.rs:160`〜`:168` の手順の番号 1〜6 が `docs/function-design/22-mnt-migration.md` §3.2 の step 1〜6〈`:28`〜`:38`〉と一致、`generate_custom_code` の第 1 引数は `&rusqlite::Transaction<'_>`〈`src-tauri/src/biz/product_service.rs:156`〜`:157`〉）。backlog の項目は (1)・(3) を解消の書式にし、(2) を残した。
 
 ## Non-scope
 
-- Q1 の B・C と Q2 の (2)（owner が含めると決めた場合は、Scope・AC・Matrix・Human Gate を同じ commit で直してから plan-gate へ出す）。
+- 操作ログ画面の変更（owner の決定 Q1 = A。「項目名 / 前 → 後」の一覧は backlog の次の design-first の lane）。
+- 新しすぎる backup の復元の失敗の文言（owner の決定 Q2 = 外す）。
 - 既に DB にある `product_update` のログの書き換え・移行。
 - `product_create`・`product_price_revise`・`product_discontinue` ほか他の種別の detail_json。
 - 部門・取引先の名前を detail に書くこと（BIZ-01-D7 で ID のまま）。
@@ -180,7 +148,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC2（隣接の振舞いを保つ）: `cd src-tauri && cargo test --lib test_update_product_req102` が exit 0（price_history・plu_dirty・PLU 対象・rollback・validation の既存 test を含む）。
 - AC3（Rust の gate）: `cd src-tauri && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test` が exit 0。
 - AC4（traceability）: `cd src-tauri && cargo run --bin generate_traceability -- --check` が exit 0 で `traceability check: OK（ERROR 0 件 / WARN 0 件）`。
-- AC5（画面を変えない、Q1 = A のとき）: `git diff --name-only origin/main...HEAD -- src/` の出力が空。
+- AC5（画面を変えない、owner の決定 Q1 = A）: `git diff --name-only origin/main...HEAD -- src/` の出力が空。
 - AC6（候補 3）: ``rg -n 'CLAUDE.md` で推奨' docs/TOOLING_SKILL_COMMANDS.md`` が一致なし（exit 1）。新しい見出しが `rg -c 'DEV_WORKFLOW.md' docs/TOOLING_SKILL_COMMANDS.md` で 1 以上。
 - AC7（候補 4）: `rg -n 'github mode|state-only|三点一致' .codex/README.md` が一致なし（exit 1）。`rg -c 'pr-gate.py status' .codex/README.md` が 1（helper の使い方を残す）。
 - AC8（docs）: `bash scripts/doc-consistency-check.sh` が exit 0（ERROR 0）。
@@ -199,11 +167,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Design Readiness
 
 - 引用する設計正本（節まで）: `docs/function-design/30-biz-product-service.md` §4.4（step 6、PRODUCT-PATCH-D1、BIZ-01-D7）、`docs/function-design/74-ui-operation-logs.md` §74.8（UI-11c-D6 の既知 key 要約・未知 key の raw 表示・ネストした値の JSON 文字列化）と §74.19、`docs/db-design/tracking-system-tables.md` §18（`:201` detail_json は NULLABLE、`:205` 商品修正は変更前後のフィールド名・値）。
-- 必要な設計成果物: 「New or changed BIZ … invariant」の行 = updated in this PR（30 §4.4 step 6 と BIZ-01-D7）。「JSON wire shape」の行 = updated in this PR（BIZ-01-D7 と本 packet の Boundary / Wire Contract。Tauri command と bindings は変わらない）。DB の表・列は変えない（existing sufficient: §18 が既に「変更前後のフィールド名・値」を持つ）。画面は Q1 = A なら existing sufficient（74 §74.8）。
+- 必要な設計成果物: 「New or changed BIZ … invariant」の行 = updated in this PR（30 §4.4 step 6 と BIZ-01-D7）。「JSON wire shape」の行 = updated in this PR（BIZ-01-D7 と本 packet の Boundary / Wire Contract。Tauri command と bindings は変わらない）。DB の表・列は変えない（existing sufficient: §18 が既に「変更前後のフィールド名・値」を持つ）。画面は existing sufficient（74 §74.8。owner の決定 Q1 = A で変えない）。
 - plan にしかない durable な判断の昇格先: BIZ-01-D7（30 §4.4）。decision-log には足さない（商品修正の 1 関数の局所の判断で、横断しない）。
-- 前提・制約と、延期した design gap の follow-up: 74 §74.19 の「商品修正等の変更前後フィールドの辞書化は実装時の棚卸し対象」は Q1 の答えで閉じるか残す。Q2 の (2) は backlog に残すか別 lane。
+- 前提・制約と、延期した design gap の follow-up: 74 §74.19 の「商品修正等の変更前後フィールドの辞書化は実装時の棚卸し対象」は本 lane では閉じず、backlog の「操作ログ画面で商品修正の詳細を…」の design-first の lane が扱う。新しすぎる backup の復元の文言は backlog に残す（owner の決定 Q2）。
 - 絶対保証の自己点検: 「変えた field が無ければ null」は、request のすべての field が None か更新前と同じ値のときだけ。clear 可能 field の null は、更新前が null なら変更なし、値があれば変更あり（PRODUCT-PATCH-D1 の missing と null の区別を `Option<Option<T>>` が保つ、30 §4.4 の部分更新 wire 契約）。「壊れた JSON を作らない」は serde_json で組むことに依る（Contract Probe P1）。
-- 判定: ready（基本の Scope）。Q1 で B・C、Q2 で含めるを選んだ場合は、その設計の差分を足すまで plan-gate に出さない。
+- 判定: ready（owner の決定〈2026-10-06〉を反映した Scope）。
 
 ## Registration / Generation Obligations
 
@@ -234,7 +202,7 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 
 - targeted tests: Matrix の T1〜T4（`src-tauri/src/biz/product_service.rs` の tests module）と既存の `test_update_product_req102_detail_json_recorded`。
 - negative tests: T3（値を持つが同じ field は書かない・全部同じなら NULL）、T4（`"`・`\` を含む名前）。
-- compatibility checks: 既存の `test_update_product_req102_detail_json_recorded`（売価の前後）を残す。画面は Q1 = A なら変えず、既存の `OperationLogsPage.test.tsx` の「expands one row, labels known fields, and renders hostile JSON as text」（`:661`）が未知 key の raw 表示を守る。
+- compatibility checks: 既存の `test_update_product_req102_detail_json_recorded`（売価の前後）を残す。画面は変えず（owner の決定 Q1 = A）、既存の `OperationLogsPage.test.tsx` の「expands one row, labels known fields, and renders hostile JSON as text」（`:661`）が未知 key の raw 表示を守る。
 - data safety checks: test の data は合成（`default_create_request` の「テスト商品」ほか）だけ。
 - main wiring/integration checks: T1〜T4 は `init_database` の実 DB に `update_product` を通し、`operation_logs` の行を SQL で読む（mock を通さない）。
 
@@ -242,7 +210,7 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 
 - BIZ-01-D7 の「変えた」の判定が、clear 可能 field（`supplier_id`・`maker_code`）の missing / null / 値の 3 つで正しいか。
 - 売価だけを変えたときに `cost_price` を書かなくなる変更（却下 (a) の裏）を、読む側・既存の test・owner の期待のどれも壊さないか。
-- Q1・Q2 の選択肢と推奨が、現物と規則（Risk Tiers・Human Visual Confirmation・L3 Eligibility）に合っているか。
+- owner の決定（Q1 = A で画面を変えない）の下で、Human Gate に `manual` を足さない判定（Human Visual Confirmation）が成り立つか。
 
 ## Contract Ledger
 
@@ -255,12 +223,12 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 | 30 §4.4 step 6（売価の変更前後、REQ-102） | 30 §4.4 step 6 | Scope 1 | `test_update_product_req102_detail_json_recorded`（既存） | — |
 | 30 §4.4 step 4・4b（price_history・plu_dirty・PLU の解放、隣接） | 30 §4.4 step 4・4b、BIZ-01-D3 | 変えない | `test_update_product_req102_price_change`・`test_update_product_req102_cost_only_no_plu_dirty`・`test_update_product_req102_sets_plu_dirty_when_plu_target_turns_on`（既存） | — |
 | 30 §4.4 step 3・7（TX、隣接） | 30 §4.4 | 変えない | `test_update_product_req102_rollback_after_price_history`（既存） | — |
-| UI-11c-D6（未知 key の raw 表示、読む側） | 74 §74.8 | Q1 = A なら変えない | `OperationLogsPage.test.tsx:661` の「expands one row, labels known fields, and renders hostile JSON as text」（既存） | 画面の見え方は Q1 の判断 |
+| UI-11c-D6（未知 key の raw 表示、読む側） | 74 §74.8 | 変えない（owner の決定 Q1 = A） | `OperationLogsPage.test.tsx:661` の「expands one row, labels known fields, and renders hostile JSON as text」（既存） | — |
 | tracking-system-tables §18（detail_json NULLABLE・変更前後） | `docs/db-design/tracking-system-tables.md` §18 | 変えない（既に合っている） | T1・T3 | — |
 | 候補 3（見出しの参照先） | `docs/backlog.md:67` | Scope 2 | AC6 の `rg` | — |
 | 候補 4（撤去済みの mode の句） | `docs/backlog.md:68`、`docs/DEV_WORKFLOW.md:75`（legacy の撤去） | Scope 3 | AC7 の `rg` | — |
 | 隣接で除外: `revise_product_price` の `product_price_revise` ログ | 30 §4.4.1 | 変えない（別の種別で、価格 4 値を持つ） | — | 非対象 |
-| 隣接で除外: 新しすぎる backup の復元の文言（候補 2 の (2)） | 68 §68 `:129`、71 `:233` | Q2 で owner が決める | — | 非対象（Q2） |
+| 隣接で除外: 新しすぎる backup の復元の文言（候補 2 の (2)） | 68 `:129`、71 `:233` | 変えない（owner の決定 Q2 = 外す、backlog に残す） | — | 非対象 |
 
 ## Contract Probe
 
