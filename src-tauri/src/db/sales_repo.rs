@@ -213,7 +213,7 @@ pub struct NewDailyReportSummaryLine {
     pub line_key: String,
     pub label: String,
     pub amount: Option<i64>,
-    pub quantity: Option<i64>,
+    pub quantity_hundredths: Option<i64>,
     pub count: Option<i64>,
     pub sort_order: i64,
 }
@@ -239,7 +239,7 @@ pub struct NewDailyReportDepartmentLine {
     pub raw_department_name: String,
     pub normalized_department_name: Option<String>,
     pub amount: i64,
-    pub quantity: Option<i64>,
+    pub quantity_hundredths: Option<i64>,
     pub count: Option<i64>,
     pub sort_order: i64,
 }
@@ -625,7 +625,7 @@ pub fn insert_daily_report_summary_lines(
     let mut stmt = conn.prepare(
         "INSERT INTO daily_report_summary_lines (
             daily_report_import_id, source_file, line_key, label,
-            amount, quantity, count, sort_order
+            amount, quantity_hundredths, count, sort_order
          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
     )?;
     for row in rows {
@@ -635,7 +635,7 @@ pub fn insert_daily_report_summary_lines(
             row.line_key,
             row.label,
             row.amount,
-            row.quantity,
+            row.quantity_hundredths,
             row.count,
             row.sort_order,
         ])?;
@@ -686,7 +686,7 @@ pub fn insert_daily_report_department_lines(
     let mut stmt = conn.prepare(
         "INSERT INTO daily_report_department_lines (
             daily_report_import_id, source_file, department_id, raw_department_name,
-            normalized_department_name, amount, quantity, count, sort_order
+            normalized_department_name, amount, quantity_hundredths, count, sort_order
          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
     )?;
     for row in rows {
@@ -697,7 +697,7 @@ pub fn insert_daily_report_department_lines(
             row.raw_department_name,
             row.normalized_department_name,
             row.amount,
-            row.quantity,
+            row.quantity_hundredths,
             row.count,
             row.sort_order,
         ])?;
@@ -959,7 +959,8 @@ pub struct OfficialDailyDepartmentRow {
     pub raw_department_name: String,
     pub normalized_department_name: Option<String>,
     pub amount: i64,
-    pub quantity: Option<i64>,
+    /// 個数の100倍の整数（IO-07-D2）。単位の数への変換は BIZ-05
+    pub quantity_hundredths: Option<i64>,
     pub count: Option<i64>,
 }
 
@@ -969,7 +970,8 @@ pub struct OfficialMonthlyDepartmentTotalRow {
     pub department_id: Option<i64>,
     pub label: String,
     pub amount: i64,
-    pub quantity: Option<i64>,
+    /// 個数の100倍の整数（IO-07-D2）。単位の数への変換は BIZ-05
+    pub quantity_hundredths: Option<i64>,
     pub count: Option<i64>,
 }
 
@@ -1040,8 +1042,8 @@ pub fn get_completed_daily_report_aggregate(
     }
     let parent_ids: Vec<_> = parents.iter().map(|parent| parent.0).collect();
     let report_date = parents[0].1.clone();
-    let gross_amount = sum_optional_strict(parents.iter().map(|parent| parent.2));
-    let net_amount = sum_optional_strict(parents.iter().map(|parent| parent.3));
+    let gross_amount = sum_optional_strict(parents.iter().map(|parent| parent.2))?;
+    let net_amount = sum_optional_strict(parents.iter().map(|parent| parent.3))?;
 
     let mut payment_stmt = conn
         .prepare(
@@ -1084,24 +1086,24 @@ pub fn get_completed_daily_report_aggregate(
     let mut payment_lines: Vec<_> = payment_groups
         .into_iter()
         .map(|(payment_key, (label, amounts, counts, sort_order, id))| {
-            (
+            Ok((
                 (sort_order, id),
                 OfficialDailyPaymentRow {
                     payment_key,
                     label,
-                    amount: sum_optional_strict(amounts),
-                    count: sum_optional_strict(counts),
+                    amount: sum_optional_strict(amounts)?,
+                    count: sum_optional_strict(counts)?,
                 },
-            )
+            ))
         })
-        .collect();
+        .collect::<Result<_, DbError>>()?;
     payment_lines.sort_by_key(|item| item.0);
     let payment_lines = payment_lines.into_iter().map(|item| item.1).collect();
 
     let mut department_stmt = conn
         .prepare(
             "SELECT l.department_id, l.raw_department_name, l.normalized_department_name,
-                    l.amount, l.quantity, l.count, l.sort_order, l.id
+                    l.amount, l.quantity_hundredths, l.count, l.sort_order, l.id
              FROM daily_report_department_lines l
              INNER JOIN daily_report_imports i ON i.id = l.daily_report_import_id
              WHERE i.report_date = ?1 AND i.status = 'completed'
@@ -1156,7 +1158,7 @@ pub fn get_completed_daily_report_aggregate(
                 id,
             )
         });
-        group.3 += amount;
+        group.3 = group.3.checked_add(amount).ok_or_else(aggregate_overflow)?;
         group.4.push(quantity);
         group.5.push(count);
         if (sort_order, id) < (group.6, group.7) {
@@ -1179,20 +1181,20 @@ pub fn get_completed_daily_report_aggregate(
                 sort_order,
                 id,
             )| {
-                (
+                Ok((
                     (sort_order, id),
                     OfficialDailyDepartmentRow {
                         department_id,
                         raw_department_name,
                         normalized_department_name,
                         amount,
-                        quantity: sum_optional_strict(quantities),
-                        count: sum_optional_strict(counts),
+                        quantity_hundredths: sum_optional_strict(quantities)?,
+                        count: sum_optional_strict(counts)?,
                     },
-                )
+                ))
             },
         )
-        .collect();
+        .collect::<Result<_, DbError>>()?;
     department_lines.sort_by_key(|item| item.0);
     let department_lines = department_lines.into_iter().map(|item| item.1).collect();
 
@@ -1206,10 +1208,23 @@ pub fn get_completed_daily_report_aggregate(
     }))
 }
 
-fn sum_optional_strict(values: impl IntoIterator<Item = Option<i64>>) -> Option<i64> {
+/// NULL を伝える合計。どれかが NULL なら NULL、i64 を溢れたら QueryFailed（24 §14.21 手順 7）
+fn sum_optional_strict(
+    values: impl IntoIterator<Item = Option<i64>>,
+) -> Result<Option<i64>, DbError> {
     values
         .into_iter()
-        .try_fold(0_i64, |sum, value| value.map(|value| sum + value))
+        .try_fold(Some(0_i64), |sum, value| match (sum, value) {
+            (Some(sum), Some(value)) => sum
+                .checked_add(value)
+                .map(Some)
+                .ok_or_else(aggregate_overflow),
+            _ => Ok(None),
+        })
+}
+
+fn aggregate_overflow() -> DbError {
+    DbError::QueryFailed("日報の集約で整数が溢れました".to_string())
 }
 
 /// 指定期間のcompleted日報から公式部門集計を取得する
@@ -1236,7 +1251,7 @@ pub fn get_monthly_official_department_totals(
             "SELECT l.department_id,
                     COALESCE(l.normalized_department_name, l.raw_department_name) AS label,
                     SUM(l.amount) AS amount,
-                    SUM(l.quantity) AS quantity,
+                    SUM(l.quantity_hundredths) AS quantity_hundredths,
                     SUM(l.count) AS count
              FROM daily_report_department_lines l
              INNER JOIN daily_report_imports i ON i.id = l.daily_report_import_id
@@ -1252,7 +1267,7 @@ pub fn get_monthly_official_department_totals(
                 department_id: row.get(0)?,
                 label: row.get(1)?,
                 amount: row.get(2)?,
-                quantity: row.get(3)?,
+                quantity_hundredths: row.get(3)?,
                 count: row.get(4)?,
             })
         })
@@ -1996,7 +2011,7 @@ mod tests {
                     line_key: "gross_sales".to_string(),
                     label: "総売上".to_string(),
                     amount: Some(12000),
-                    quantity: None,
+                    quantity_hundredths: None,
                     count: Some(8),
                     sort_order: 1,
                 },
@@ -2006,7 +2021,7 @@ mod tests {
                     line_key: "customer_count".to_string(),
                     label: "客数".to_string(),
                     amount: None,
-                    quantity: None,
+                    quantity_hundredths: None,
                     count: Some(8),
                     sort_order: 2,
                 },
@@ -2036,7 +2051,7 @@ mod tests {
                     raw_department_name: "その他小物".to_string(),
                     normalized_department_name: Some("その他小物".to_string()),
                     amount: 3000,
-                    quantity: Some(4),
+                    quantity_hundredths: Some(400),
                     count: None,
                     sort_order: 1,
                 },
@@ -2047,7 +2062,7 @@ mod tests {
                     raw_department_name: "未対応部門".to_string(),
                     normalized_department_name: Some("未対応部門".to_string()),
                     amount: 8000,
-                    quantity: None,
+                    quantity_hundredths: None,
                     count: None,
                     sort_order: 2,
                 },
@@ -2194,7 +2209,7 @@ mod tests {
                 raw_department_name: "その他小物".to_string(),
                 normalized_department_name: Some("その他小物".to_string()),
                 amount: 11000,
-                quantity: Some(7),
+                quantity_hundredths: Some(700),
                 count: Some(3),
                 sort_order: 1,
             }],
@@ -2269,7 +2284,7 @@ mod tests {
                     raw_department_name: "旧名".into(),
                     normalized_department_name: Some("その他小物".into()),
                     amount: 100,
-                    quantity: None,
+                    quantity_hundredths: None,
                     count: Some(1),
                     sort_order: 2,
                 },
@@ -2280,7 +2295,7 @@ mod tests {
                     raw_department_name: "新名".into(),
                     normalized_department_name: Some("その他小物".into()),
                     amount: 200,
-                    quantity: Some(2),
+                    quantity_hundredths: Some(200),
                     count: Some(2),
                     sort_order: 1,
                 },
@@ -2299,7 +2314,7 @@ mod tests {
         assert_eq!(report.payment_lines[0].count, Some(3));
         assert_eq!(report.department_lines[0].raw_department_name, "新名");
         assert_eq!(report.department_lines[0].amount, 300);
-        assert_eq!(report.department_lines[0].quantity, None);
+        assert_eq!(report.department_lines[0].quantity_hundredths, None);
         assert_eq!(report.department_lines[0].count, Some(3));
     }
 
@@ -2343,7 +2358,7 @@ mod tests {
                     raw_department_name: "既知部門 旧".into(),
                     normalized_department_name: Some("旧label".into()),
                     amount: 400,
-                    quantity: Some(4),
+                    quantity_hundredths: Some(400),
                     count: Some(4),
                     sort_order: 5,
                 },
@@ -2354,7 +2369,7 @@ mod tests {
                     raw_department_name: "既知部門 新".into(),
                     normalized_department_name: Some("新label".into()),
                     amount: 500,
-                    quantity: Some(5),
+                    quantity_hundredths: Some(500),
                     count: Some(5),
                     sort_order: 0,
                 },
@@ -2365,7 +2380,7 @@ mod tests {
                     raw_department_name: "生地 旧".into(),
                     normalized_department_name: Some("生地".into()),
                     amount: 100,
-                    quantity: Some(1),
+                    quantity_hundredths: Some(100),
                     count: Some(1),
                     sort_order: 4,
                 },
@@ -2376,7 +2391,7 @@ mod tests {
                     raw_department_name: "生地 新".into(),
                     normalized_department_name: Some("生地".into()),
                     amount: 200,
-                    quantity: Some(2),
+                    quantity_hundredths: Some(200),
                     count: Some(2),
                     sort_order: 1,
                 },
@@ -2387,7 +2402,7 @@ mod tests {
                     raw_department_name: "毛糸".into(),
                     normalized_department_name: None,
                     amount: 300,
-                    quantity: Some(3),
+                    quantity_hundredths: Some(300),
                     count: Some(3),
                     sort_order: 2,
                 },
@@ -2412,7 +2427,7 @@ mod tests {
         assert_eq!(known.raw_department_name, "既知部門 新");
         assert_eq!(known.normalized_department_name.as_deref(), Some("新label"));
         assert_eq!(known.amount, 900);
-        assert_eq!(known.quantity, Some(9));
+        assert_eq!(known.quantity_hundredths, Some(900));
         let fabric = report
             .department_lines
             .iter()
@@ -2465,7 +2480,7 @@ mod tests {
                 raw_department_name: "取消対象部門".into(),
                 normalized_department_name: Some("取消対象部門".into()),
                 amount: 100,
-                quantity: Some(1),
+                quantity_hundredths: Some(100),
                 count: Some(1),
                 sort_order: 1,
             }],
@@ -2500,7 +2515,7 @@ mod tests {
                 raw_department_name: "残存部門".into(),
                 normalized_department_name: Some("残存部門".into()),
                 amount: 600,
-                quantity: Some(6),
+                quantity_hundredths: Some(600),
                 count: Some(6),
                 sort_order: 1,
             }],
@@ -2541,7 +2556,7 @@ mod tests {
                 line_key: "net_sales".to_string(),
                 label: "純売上".to_string(),
                 amount: Some(11000),
-                quantity: None,
+                quantity_hundredths: None,
                 count: None,
                 sort_order: 1,
             }],
@@ -2815,7 +2830,7 @@ mod tests {
                     raw_department_name: "その他小物".to_string(),
                     normalized_department_name: Some("その他小物".to_string()),
                     amount: 1000,
-                    quantity: Some(2),
+                    quantity_hundredths: Some(200),
                     count: Some(1),
                     sort_order: 1,
                 },
@@ -2826,7 +2841,7 @@ mod tests {
                     raw_department_name: "その他小物".to_string(),
                     normalized_department_name: Some("その他小物".to_string()),
                     amount: 9000,
-                    quantity: Some(9),
+                    quantity_hundredths: Some(900),
                     count: Some(9),
                     sort_order: 1,
                 },
@@ -2837,7 +2852,7 @@ mod tests {
                     raw_department_name: "その他小物".to_string(),
                     normalized_department_name: Some("その他小物".to_string()),
                     amount: 3000,
-                    quantity: Some(4),
+                    quantity_hundredths: Some(400),
                     count: Some(2),
                     sort_order: 1,
                 },
@@ -2852,7 +2867,7 @@ mod tests {
         assert_eq!(rows[0].department_id, Some(1));
         assert_eq!(rows[0].label, "その他小物");
         assert_eq!(rows[0].amount, 4000);
-        assert_eq!(rows[0].quantity, Some(6));
+        assert_eq!(rows[0].quantity_hundredths, Some(600));
         assert_eq!(rows[0].count, Some(3));
     }
 
@@ -2883,7 +2898,7 @@ mod tests {
                 raw_department_name: "未対応部門".to_string(),
                 normalized_department_name: None,
                 amount: 800,
-                quantity: None,
+                quantity_hundredths: None,
                 count: Some(1),
                 sort_order: 1,
             }],
@@ -2897,7 +2912,104 @@ mod tests {
         assert_eq!(rows[0].department_id, None);
         assert_eq!(rows[0].label, "未対応部門");
         assert_eq!(rows[0].amount, 800);
-        assert_eq!(rows[0].quantity, None);
+        assert_eq!(rows[0].quantity_hundredths, None);
         assert_eq!(rows[0].count, Some(1));
+    }
+
+    fn department_line(
+        import_id: i64,
+        amount: i64,
+        quantity_hundredths: i64,
+    ) -> NewDailyReportDepartmentLine {
+        NewDailyReportDepartmentLine {
+            daily_report_import_id: import_id,
+            source_file: "Z005".to_string(),
+            department_id: Some(1),
+            raw_department_name: "その他小物".to_string(),
+            normalized_department_name: Some("その他小物".to_string()),
+            amount,
+            quantity_hundredths: Some(quantity_hundredths),
+            count: Some(1),
+            sort_order: 1,
+        }
+    }
+
+    #[test]
+    fn test_daily_report_repo_req401_quantity_hundredths_aggregates_as_integer() {
+        // REQ-401 / 24 §14.21 手順 4・§14.22 手順 2: 100 倍の整数のまま日次・月次で足す（1.1 + 0.2 = 1.3）
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report_import(&conn, "2026-09-29", "hundredths-a", "completed");
+        let second = seed_daily_report_import(&conn, "2026-09-29", "hundredths-b", "completed");
+        insert_daily_report_department_lines(
+            &conn,
+            &[
+                department_line(first, 100, 110),
+                department_line(second, 200, 20),
+            ],
+        )
+        .unwrap();
+
+        let daily = get_completed_daily_report_aggregate(&conn, "2026-09-29")
+            .unwrap()
+            .unwrap();
+        assert_eq!(daily.department_lines.len(), 1);
+        assert_eq!(daily.department_lines[0].quantity_hundredths, Some(130));
+        assert_eq!(daily.department_lines[0].amount, 300);
+
+        let monthly = get_monthly_official_department_totals(&conn, "2026-09-01", "2026-09-30")
+            .unwrap()
+            .unwrap();
+        assert_eq!(monthly[0].quantity_hundredths, Some(130));
+        let stored_type: String = conn
+            .query_row(
+                "SELECT typeof(SUM(quantity_hundredths)) FROM daily_report_department_lines",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(stored_type, "integer");
+    }
+
+    #[test]
+    fn test_get_completed_daily_report_aggregate_req501_aggregate_overflow_is_error() {
+        // REQ-501 / 24 §14.21 手順 7・§14.22 手順 2: 集約の加算が i64 を溢れたら panic も wrap もせず QueryFailed
+        // (1) v7 の範囲検査の内側の最大（i64::MAX / 100 を 100 倍した値）の 2 行
+        let limit = (i64::MAX / 100) * 100;
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report_import(&conn, "2026-09-29", "overflow-q-a", "completed");
+        let second = seed_daily_report_import(&conn, "2026-09-29", "overflow-q-b", "completed");
+        insert_daily_report_department_lines(
+            &conn,
+            &[
+                department_line(first, 1, limit),
+                department_line(second, 1, limit),
+            ],
+        )
+        .unwrap();
+        assert!(matches!(
+            get_completed_daily_report_aggregate(&conn, "2026-09-29"),
+            Err(DbError::QueryFailed(_))
+        ));
+        assert!(matches!(
+            get_monthly_official_department_totals(&conn, "2026-09-01", "2026-09-30"),
+            Err(DbError::QueryFailed(_))
+        ));
+
+        // (2) amount だけが溢れる（quantity_hundredths と count は小さい値）
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report_import(&conn, "2026-09-29", "overflow-a-a", "completed");
+        let second = seed_daily_report_import(&conn, "2026-09-29", "overflow-a-b", "completed");
+        insert_daily_report_department_lines(
+            &conn,
+            &[
+                department_line(first, i64::MAX / 2 + 1, 100),
+                department_line(second, i64::MAX / 2 + 1, 100),
+            ],
+        )
+        .unwrap();
+        assert!(matches!(
+            get_completed_daily_report_aggregate(&conn, "2026-09-29"),
+            Err(DbError::QueryFailed(_))
+        ));
     }
 }

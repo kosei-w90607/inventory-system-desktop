@@ -53,7 +53,7 @@ struct DailyReportDepartmentLinePreview {
     raw_department_name: String,
     normalized_department_name: Option<String>,
     amount: i64,
-    quantity: Option<i64>,
+    quantity: Option<f64>, // 単位の数（1.3 等）。IO-07 の quantity_hundredths を quantity_hundredths_to_units で戻した値
     count: Option<i64>,
     sort_order: i64,
 }
@@ -109,14 +109,24 @@ struct CachedDailyReportPreview {
     active_same_date_import_ids: Vec<i64>,
     summary_lines: Vec<CachedDailyReportSummaryLine>,
     payment_lines: Vec<DailyReportPaymentLinePreview>,
-    department_lines: Vec<DailyReportDepartmentLinePreview>,
+    department_lines: Vec<CachedDailyReportDepartmentLine>,
 }
 
 struct CachedDailyReportSummaryLine {
     line_key: String,
     label: String,
     amount: Option<i64>,
-    quantity: Option<i64>,
+    quantity_hundredths: Option<i64>,
+    count: Option<i64>,
+    sort_order: i64,
+}
+
+struct CachedDailyReportDepartmentLine {
+    department_id: Option<i64>,
+    raw_department_name: String,
+    normalized_department_name: Option<String>,
+    amount: i64,
+    quantity_hundredths: Option<i64>,
     count: Option<i64>,
     sort_order: i64,
 }
@@ -151,6 +161,8 @@ struct DailyReportImport {
 
 `DailyReportSourceKind` と `DailyReportSourceFile` は IO-07（§29.2）を所有元とする。CMD-12 はこの節のDTOを `specta::Type` 付きwire contractとして実装する。
 
+個数は commit まで 100 倍の整数（`quantity_hundredths`、IO-07-D2）で運び、wire DTO（`DailyReportDepartmentLinePreview.quantity`）だけを単位の数にする。commit は `CachedDailyReportPreview` の 100 倍の整数をそのまま保存し、wire の `f64` から戻さない（往復の丸めを作らない）。`DailyReportDepartmentLinePreview.quantity` の TypeScript の型は `number | null` のまま変わらない（specta は `i64` も `f64` も `number` にする）。
+
 ### 37.3 parse_and_validate_daily_report
 
 **関数要求**: 日報bundleをparse/validateし、commit前のpreviewを返す。
@@ -171,9 +183,11 @@ fn parse_and_validate_daily_report(
 3. `parse_errors` がある場合は `BizError::ImportError` として返す。
    - **BIZ-08-D1**: 各errorの `source_file` / `filename` / `line_no` / `error_type` / `error_message` を開発者向けdiagnostic WARNへ構造化して記録する。filenameはunknown sourceを含む入力識別用で、diagnostic専用とする。
    - 利用者向けerror messageと `operation_logs.summary` は汎用文言を維持し、raw parse detailをwireまたは `operation_logs.detail_json` へ載せない。
+   - **BIZ-08-D2**: ただし `parse_errors` に `settlement_mismatch`（IO-07-D3）が 1 件でもあれば、利用者向けの message と `operation_logs.summary` を次の文にする（他の error が同時にあってもこの文を優先する。選び直せば直る失敗で、汎用文では利用者が同じ 3 ファイルを選び直してしまう）: `別の精算の日報ファイルが混ざっています。ファイル名の「Z001」「Z002」「Z005」より後ろが同じ 3 つを選び直してください。` 文は error_type だけから作り、ファイル名・精算回数・行番号などの raw detail を含めない（BIZ-08-D1 は維持）。日付の不一致だけ（`invalid_date`）の文は変えない（3 本とも精算回数を読める束〈通常の layout A〉では、同じ日に 2 回以上精算した日の混在は精算回数で止まり、別の日の混在も精算回数が違えばこの文になる。読めないファイルの出所は確かめない〈TD-110・TD-111 の受容リスク、IO-07-D3〉）。
    - 返却前に `operation_logs.operation_type='daily_report_parse_failed'` を best-effort で記録する。
 4. `report_date` を検証する。
    - IO-07はCV17出力上の `YYYY/M/D` / `YYYY-MM-DD` を `YYYY-MM-DD` へ正規化する。BIZ-08では正規化後の日付がYYYY-MM-DD形式でない、暦日として不正、3 sourceで不一致ならエラー。
+   - 同じ精算の 3 ファイルか（精算回数の一致）は IO-07 が判定し（IO-07-D3）、手順 3 の `settlement_mismatch` で止まる。BIZ-08 は精算回数を保存しない。
 5. bundle_hashを作る。
    - source順（Z001→Z002→Z005）に `source:file_hash:size` を連結してSHA-256化する。
 6. 必須サマリを検証する。
@@ -283,6 +297,7 @@ fn list_daily_report_imports(
 | Z001/Z002/Z005欠損 | ImportError | 必要な3ファイルを選び直す |
 | CP932 decode失敗 | ImportError | PCツールから出力した元ファイルを確認する |
 | report_date不一致 | ImportError | 同じ営業日の3ファイルを選ぶ |
+| 精算回数不一致（`settlement_mismatch`） | ImportError（BIZ-08-D2 の文） | ファイル名の「Z001」「Z002」「Z005」より後ろが同じ 3 つを選び直す |
 | 同一bundle取込み済み | IdempotencyConflict | 取込み済みのため二重取込みしない |
 | 同日別bundleで追加確認なし / 不要なのに確認あり | ValidationFailed | previewの状態に従って追加確認をやり直す |
 | 同日active snapshot変更 | ImportError | 同日の取込み状況が変わったため再度previewする |
@@ -302,3 +317,4 @@ fn list_daily_report_imports(
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: AlreadyImportedを維持しつつ同日別bundleを追加取込みとし、全件summary、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
+| 2026-10-04 | daily-report-import-gaps（plan-first） | BIZ-08-D2: 精算回数の不一致の文。個数を 100 倍の整数で運ぶ cache の型（`CachedDailyReportDepartmentLine`）と wire の `quantity: Option<f64>`（IO-07-D2〜D4、D-104）。 |

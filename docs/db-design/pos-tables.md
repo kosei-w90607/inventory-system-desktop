@@ -108,8 +108,8 @@ CSV取込み時にスキップされた行（マスタ未登録、フォーマ�
 | source_line_no | INTEGER | NOT NULL | Z004のレコード番号 |
 | normalized_jan | TEXT | NULLABLE | 正規化後のJANコード（正規化前にエラーならNULL） |
 | raw_name | TEXT | NOT NULL | Z004上の商品名（そのまま保存） |
-| raw_quantity | TEXT | NOT NULL | Z004上の個数（数値変換前の生値） |
-| raw_amount | TEXT | NOT NULL | Z004上の金額（数値変換前の生値） |
+| raw_quantity | TEXT | NOT NULL | Z004上の個数（文字列。値の出どころは設計意図の「raw_quantity / raw_amountの値」） |
+| raw_amount | TEXT | NOT NULL | Z004上の金額（同上） |
 | error_type | TEXT | NOT NULL, CHECK(error_type IN ('unmatched_product','invalid_format','invalid_jan','invalid_number')) | エラー種別 |
 | error_message | TEXT | NOT NULL | エラー詳細（例: 「JAN 4973167064078 に該当する商品がありません」） |
 | created_at | TEXT | NOT NULL | 作成日時（YYYY-MM-DDTHH:MM:SS） |
@@ -120,11 +120,12 @@ CSV取込み時にスキップされた行（マスタ未登録、フォーマ�
 |---|------|---------|
 | unmatched_product | マスタ未登録商品 | Validate |
 | invalid_format | フィールド数不正等 | Parse |
-| invalid_jan | JAN正規化不能 | Parse |
+| invalid_jan | JAN正規化不能（売上のある行だけ）、または商品コードの無い枠（PLU の登録を消した枠、コードを持たない通常 PLU）の売上（D-103） | Parse |
 | invalid_number | 個数・金額が数値でない | Parse |
 
 ### 設計意図
 - **raw_quantity / raw_amountをTEXTで持つ理由**: 数値変換に失敗した行も保存するため。INTEGERだと変換失敗時に保存できない
+- **raw_quantity / raw_amountの値**: IO-02 の ParseError 由来の行（invalid_format / invalid_jan / invalid_number）は、取得できた field の元の文字列（数値変換前。カンマ付きのまま）。field が 5 未満の invalid_format で取得できなかった field は `""`。unmatched_product など BIZ-03 が整数から作る行は整数の文字列表現（金額 `1,234` の行は `"1234"`。[32 §15.3](../function-design/32-biz-csv-import-service.md) 手順 4b / 4c、D-103）
 - **normalized_janがNULLABLEな理由**: JAN正規化自体が失敗した場合（invalid_jan）は正規化後の値がない
 - **error_messageの理由**: 利用者向けの日本語メッセージをそのまま保存。画面表示時に再生成しなくて済む
 
@@ -179,13 +180,14 @@ Z001由来の日計サマリを、アプリ内部の表示・照合に使える�
 | line_key | TEXT | NOT NULL | adapterが正規化した行キー（例: gross_sales, net_sales, tax_10） |
 | label | TEXT | NOT NULL | operator表示用ラベル |
 | amount | INTEGER | NULLABLE | 金額。該当しない行はNULL |
-| quantity | INTEGER | NULLABLE | 数量。該当しない行はNULL |
-| count | INTEGER | NULLABLE | 件数。該当しない行はNULL |
+| quantity_hundredths | INTEGER | NULLABLE | 個数の100倍の整数（`1.3` 個 → 130。小数 2 桁まで、IO-07-D2）。総売の行だけが持ち、該当しない行はNULL。migration v7 で `quantity` から改名し既存値を100倍した |
+| count | INTEGER | NULLABLE | 件数（整数）。該当しない行はNULL |
 | sort_order | INTEGER | NOT NULL | 表示順 |
 
 ### 設計意図
 - Z001の4列データや事前行はCASIO adapterの事実であり、app coreは日報サマリ行として扱う。
-- `amount` / `quantity` / `count` をNULL許容にすることで、レジ側の行意味が金額・数量・件数のどれかに偏っても同じ行モデルで保持できる。
+- `amount` / `quantity_hundredths` / `count` をNULL許容にすることで、レジ側の行意味が金額・数量・件数のどれかに偏っても同じ行モデルで保持できる。
+- **個数を100倍の整数で持つ理由（D-104）**: 部門キーで小数の数量（レジは小数 2 桁まで）を打った日は総売の個数が小数になる。整数のままだとその日の日報の取込みが丸ごと失敗していた。REAL は月次の `SUM` で誤差が積もり、TEXT は `SUM` できないので、固定小数の整数にする。列名に `_hundredths` を付け、単位の数として読む古い SQL が黙って100倍の値を出さないよう、改名で読み手を壊して直させる。wire へは BIZ が単位の数（`f64`）に戻して出す。
 
 ---
 
@@ -229,13 +231,14 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 | raw_department_name | TEXT | NOT NULL | Z005上の部門名または部門表示 |
 | normalized_department_name | TEXT | NULLABLE | adapterが正規化した部門名 |
 | amount | INTEGER | NOT NULL | 部門別売上金額 |
-| quantity | INTEGER | NULLABLE | 部門別数量。取得できない場合はNULL |
-| count | INTEGER | NULLABLE | 部門別件数。取得できない場合はNULL |
+| quantity_hundredths | INTEGER | NULLABLE | 部門別個数の100倍の整数（小数 2 桁まで、IO-07-D2）。取得できない場合はNULL。migration v7 で `quantity` から改名し既存値を100倍した |
+| count | INTEGER | NULLABLE | 部門別件数（整数）。取得できない場合はNULL |
 | sort_order | INTEGER | NOT NULL | 表示順 |
 
 ### 設計意図
 - `department_id` はNULL許容にする。レジ側部門名とアプリ部門マスタが一致しない日でも日報は取り込めるようにし、未対応は警告として表示する。
 - 部門別日報は公式日報集計の根拠だが、商品別数量・在庫減算を復元できない。`sale_records` への展開は禁止する。
+- `quantity_hundredths` は §12c と同じ100倍の整数（D-104）。月次の部門集計（`SUM`）も100倍の整数のまま足し、BIZ-05 が wire で単位の数に戻す。部門売りの小数は在庫に効かないので、単位の換算（cm 等）はしない。
 
 ---
 
@@ -258,7 +261,7 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 4. parse失敗時は `daily_report_imports` を作らず、operation_logsに `daily_report_parse_failed` を記録する。
 
 **Stage 2: Validate bundle**
-1. 3ファイルの対象日が一致することを確認する。
+1. 3ファイルの対象日が一致し、精算回数を読めたファイルどうしの精算回数が一致することを確認する（精算回数の比較は IO-07 が Stage 1 で行う。IO-07-D3。不一致は `settlement_mismatch` で commit 不可）。
 2. Z005の部門名を `departments.name` に照合する。未一致はエラーではなく警告にし、`department_id=NULL` でpreview可能にする。
 3. 必須集計行（総売上または純売上など、adapterが定義する最低限のサマリ）が欠ける場合はcommit不可エラーにする。
 4. `bundle_hash` でactive同一bundleを判定し、`report_date` でactive同日parent全件の追加確認snapshotを作る。
@@ -331,18 +334,19 @@ COMMIT後に:
 
 **JAN正規化**:
 - scanning_code_rawが14桁かつ末尾がアルファベット（E等）→ 末尾を除去して13桁化
-- `00000000000000` → 未登録スロット扱い（除外、エラーにもカウントしない）
-- 正規化後が13桁でも全桁0埋め等の異常値 → 行エラー（error_type='invalid_jan'）
+- 個数・金額を先に読み、売上の有無で行を分ける（[23 §13.4.2](../function-design/23-io-z004-parser.md) SPEC-Z4A-D8、D-103）
+- コード全桁0（`00000000000000` / `0000000000000`）で個数・金額とも0 → 売上の無い枠（除外、エラーにもカウントしない）
+- コード全桁0で個数か金額が0でない（PLU の登録を消した枠、コードを持たない通常 PLU）→ 行エラー（error_type='invalid_jan'、商品コードの無い枠の売上）。黙って除外しない
+- 13桁JANにならないコード（8桁独自コード + `EEEEEE` 等）→ 個数・金額とも0なら除外、売上があれば行エラー（error_type='invalid_jan'）
 
 **数値変換**:
-- quantity_raw / amount_raw を整数にパース
+- quantity_raw / amount_raw を整数にパース。3桁区切りのカンマ（例 `1,234`）は受理する（23 §13.4.1 SPEC-Z4A-D7）
 - パース失敗 → 行エラー（error_type='invalid_number'）
 
 ### Stage 2: Validate（構造化データ → 処理対象の選別）
 
 **空レコード除外**（エラーにもカウントしない）:
-- normalized_jan = `0000000000000`（13桁ゼロ）→ 除外
-- quantity = 0 かつ amount = 0 → 除外（PLU登録あるが当日販売なし）
+- quantity = 0 かつ amount = 0 → 除外（PLU登録あるが当日販売なし。コード全桁0の行は Stage 1 で分類済みで、ここには来ない）
 
 **実データ判定**:
 - normalized_janが有効（非ゼロ）かつ（quantity ≠ 0 or amount ≠ 0）

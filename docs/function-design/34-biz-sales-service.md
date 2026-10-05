@@ -88,7 +88,7 @@ struct OfficialDailySummaryImport {
 ```
 struct OfficialDailySummaryLine {
     label: String,          // 保存されたZ001のラベルをそのまま
-    quantity: Option<i64>,  // 総売の行の個数（それ以外の行はNone）
+    quantity: Option<f64>,  // 総売の行の個数（単位の数、小数 2 桁まで。それ以外の行はNone）
     count: Option<i64>,     // 総売以外の行の件数（総売の行はNone）
     amount: Option<i64>,
 }
@@ -115,10 +115,12 @@ struct OfficialDailyDepartmentLine {
     raw_department_name: String,
     normalized_department_name: Option<String>,
     amount: i64,
-    quantity: Option<i64>,
+    quantity: Option<f64>,  // 単位の数（小数 2 桁まで）
     count: Option<i64>,
 }
 ```
+
+日報（Z001 / Z005）の個数は DB と IO の DB DTO では 100 倍の整数（`quantity_hundredths`）、wire（`OfficialDailySummaryLine` / `OfficialDailyDepartmentLine` / `OfficialMonthlyDepartmentTotal` の `quantity`）では単位の数（`f64`）とする。変換は BIZ-05 の写像（`map_official_daily_report` と月次の写像）で IO-07 の `quantity_hundredths_to_units` を呼ぶだけで、ほかの値は変えない（IO-07-D2、D-104）。TypeScript の型は `number | null` のまま変わらず、UI は今までどおり `toLocaleString("ja-JP")` で出す（`1.3` は `1.3`、整数は小数点なし。UI-09a-D16 の「数は `toLocaleString`」の前提を保つ）。件数（`count`）と金額は整数のまま。
 
 **MonthlySalesReport構造体**:
 
@@ -151,7 +153,7 @@ struct OfficialMonthlyDepartmentTotal {
     department_id: Option<i64>,
     label: String,
     amount: i64,
-    quantity: Option<i64>,
+    quantity: Option<f64>,  // 単位の数（月の SUM を 100 倍の整数で足してから戻す）
     count: Option<i64>,
 }
 ```
@@ -415,3 +417,4 @@ fn export_sales_csv(
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 商品別 `product_code + source` 集約、全completed日報親のNULL安全な日次集約、`source_import_count`、月次additive regressionを正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
+| 2026-10-04 | daily-report-import-gaps（plan-first） | 日報の個数の wire を単位の数（`f64`）にし、DB の 100 倍の整数から BIZ-05 で戻す（IO-07-D2、D-104）。 |

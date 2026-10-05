@@ -409,6 +409,42 @@ pub fn increment_next_seq(conn: &DbConnection, department_id: i64) -> Result<i64
     Ok(current_seq)
 }
 
+/// departments の next_seq が at_least より小さいときだけ at_least へ上げる（下げない）
+///
+/// 独自コード発番用（BIZ-01-D6）。トランザクション内で呼ばれることを前提とする。
+///
+/// 20-io-product-repo.md §2.4
+pub fn raise_next_seq(
+    conn: &DbConnection,
+    department_id: i64,
+    at_least: i64,
+) -> Result<(), DbError> {
+    let changed = conn.execute(
+        "UPDATE departments SET next_seq = MAX(next_seq, ?2) WHERE id = ?1",
+        rusqlite::params![department_id, at_least],
+    )?;
+    if changed == 0 {
+        return Err(DbError::NotFound);
+    }
+    Ok(())
+}
+
+/// product_code が prefix で始まる商品の product_code を全件返す（廃番を含む）
+///
+/// `LIKE` は大文字・小文字を同一視し `%` `_` を特殊文字にするため使わない（BIZ-01-D6）。
+///
+/// 20-io-product-repo.md §2.3
+pub fn list_product_codes_by_prefix(
+    conn: &DbConnection,
+    prefix: &str,
+) -> Result<Vec<String>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT product_code FROM products WHERE substr(product_code, 1, length(?1)) = ?1",
+    )?;
+    let rows = stmt.query_map(rusqlite::params![prefix], |row| row.get(0))?;
+    Ok(rows.collect::<Result<Vec<String>, _>>()?)
+}
+
 // ---------------------------------------------------------------------------
 // Supplier 関数
 // ---------------------------------------------------------------------------
@@ -1351,6 +1387,52 @@ mod tests {
             "存在しない部門IDで NotFound エラーが返るべき: {:?}",
             result
         );
+    }
+
+    #[test]
+    fn test_raise_next_seq_req101_raises_only() {
+        // REQ-101: 商品登録（独自コード発番）
+        // FUNC-2.4 / BIZ-01-D6: raise_next_seq — 上げるだけで下げない。部門が無ければ NotFound
+        let (_dir, conn) = setup_test_db();
+        raise_next_seq(&conn, 2, 5).unwrap();
+        assert_eq!(
+            find_department_by_id(&conn, 2).unwrap().unwrap().next_seq,
+            5
+        );
+        raise_next_seq(&conn, 2, 3).unwrap();
+        assert_eq!(
+            find_department_by_id(&conn, 2).unwrap().unwrap().next_seq,
+            5,
+            "小さい値では下げない"
+        );
+        assert!(matches!(
+            raise_next_seq(&conn, 9999, 5),
+            Err(DbError::NotFound)
+        ));
+    }
+
+    #[test]
+    fn test_list_product_codes_by_prefix_req101_exact_prefix() {
+        // REQ-101: 商品登録（独自コード発番）
+        // FUNC-2.3 / BIZ-01-D6: list_product_codes_by_prefix — 大文字・小文字を区別し、% を wildcard にしない。廃番を含む
+        let (_dir, conn) = setup_test_db();
+        for code in ["HZ-0001", "hz-0009", "HZX-0009", "H%-0001"] {
+            insert_product(&conn, &create_test_product(code, "合成", 2)).unwrap();
+        }
+        let mut discontinued = create_test_product("HZ-0002", "合成廃番", 2);
+        discontinued.is_discontinued = true;
+        insert_product(&conn, &discontinued).unwrap();
+
+        let mut codes = list_product_codes_by_prefix(&conn, "HZ-").unwrap();
+        codes.sort();
+        assert_eq!(codes, vec!["HZ-0001", "HZ-0002"]);
+        assert_eq!(
+            list_product_codes_by_prefix(&conn, "H%-").unwrap(),
+            vec!["H%-0001"]
+        );
+        assert!(list_product_codes_by_prefix(&conn, "QQ-")
+            .unwrap()
+            .is_empty());
     }
 
     // ===== FUNC-2.5: Supplier関数テスト =====

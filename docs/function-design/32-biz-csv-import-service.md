@@ -141,7 +141,7 @@ src-tauri/src/
 #### ErrorSummary構造体
 
 - count: usize（エラー行の総数）
-- items: Vec\<ErrorRow\>（最大100件。超過時は件数のみ。UI表示の上限）
+- items: Vec\<ErrorRow\>（最大100件。UI表示の上限。選び方は§15.3 手順 5c: error_type が invalid_jan の行を先に選び、残りの枠を他の行で埋め、line_no の昇順で並べる。100件を超えた分は count にだけ数える）
 
 #### DuplicateCheck構造体
 
@@ -258,14 +258,14 @@ fn parse_and_validate(
 4. **Stage 2: Validate**
    a. 空レコード除外（エラーにもカウントしない）
       - quantity == 0 かつ amount == 0（PLU登録あるが当日販売なしのスロット）
-      - ※ 全桁ゼロJAN（"0000000000000"）はIO-02 parse_data_lineで除外済み（Ok(None)返却）。BIZ-03では重複チェック不要
+      - ※ コードが全桁ゼロか13桁JANにならない行は、IO-02 parse_data_line が個数・金額とも0なら読み飛ばし（Ok(None)）、どちらかが0でなければ invalid_jan の行エラーにする（[23 §13.4.2](23-io-z004-parser.md) SPEC-Z4A-D8、D-103）。parsed_rows には13桁JANの行だけが来るため、BIZ-03では全桁ゼロの再判定は不要
    b. 実データ行のマスタ照合: 各行について
       - product_repo::find_by_jan_code(conn, &normalized_jan) を呼び出し
       - ヒット1件 → MatchedRow { line_no, product_code, quantity, amount, pos_stock_sync: product.pos_stock_sync }
       - ヒット0件 → ErrorRow { line_no, normalized_jan: Some(normalized_jan), name, raw_quantity: quantity.to_string(), raw_amount: amount.to_string(), error_type: "unmatched_product", error_message: "JAN {jan} に該当する商品がありません" }
       - ヒット複数件 → ORDER BY product_code ASC で先頭を採用。warnings に "JAN {jan} は複数商品に紐付いています（{code} を使用）" を追加
    c. parse_result.parse_errors を ErrorRow にマージ
-      - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"
+      - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"。商品コードの無い枠の売上（PLU の登録を消した枠、コードを持たない通常 PLU。SPEC-Z4A-D8）も IO-02 の InvalidJan として届き、"invalid_jan" の ErrorRow になる。取込みは completed_partial になり、文言で見分ける（新しい種別を足さない理由は 23 §13.4.2）
       - Option→String 変換規約: ParseError.raw_name/raw_quantity/raw_amount が None の場合、空文字列に変換する。None は error_type が invalid_format の場合にのみ発生する（フィールド分割前のエラーで値が取得できなかった）。Z004のフィールドは実運用で空文字にならないため、空文字はパース前エラーと判別可能。DB保存（csv_import_errors）は空文字のまま、UI表示時に error_type が invalid_format なら「(不明)」等に置換する
    d. 実質0件ガード
       - matched_rows.is_empty() && error_rows.is_empty() → BizError::ImportError("取込み対象のデータがありません")
@@ -279,7 +279,8 @@ fn parse_and_validate(
       - 全件のIDを同じ順序で `CachedPreview.active_same_date_import_ids` に保持する
    c. PreviewData 構築
       - matched_summary: count = matched_rows.len(), total_amount = matched_rows.iter().map(|r| r.amount as i64).sum(), warnings
-      - error_summary: count = error_rows.len(), items = error_rows の先頭100件
+      - error_summary: count = error_rows.len()（全件）。items は最大100件で、error_rows のうち error_type が invalid_jan の行を line_no の昇順で先に選び、残りの枠を他の行から line_no の昇順で埋める。選んだ items は line_no の昇順で並べる。error_rows 自体（commit・csv_import_errors へ渡す全件）の内容と順は変えない
+      - 理由: 商品コードの無い枠の売上（SPEC-Z4A-D8、D-103）と売上のある非JANの行は、商品を登録しても在庫に入らず、Z004 の commit の停止中（SPEC-STOP-D1）は取込み記録の詳細にも届かないため、プレビューのエラー詳細が唯一の知らせ先になる。error_rows は 4b の unmatched_product の行が先に並ぶため、先頭から切ると未登録 JAN の行が100件を超えたときにこれらの行が items から落ちる。種別だけで選び、文言では判別しない
 6. **preview_token 生成**: UUID v4
 7. ParseValidateResult { preview_data, preview_token, matched_rows, error_rows } を返す
    - CMD層がこの戻り値を受け取り、preview_tokenをキーとしてAppState.preview_cacheに保存する（17.5節参照）

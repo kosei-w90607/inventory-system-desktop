@@ -81,7 +81,8 @@ pub struct DailyReportDepartmentLinePreview {
     pub raw_department_name: String,
     pub normalized_department_name: Option<String>,
     pub amount: i64,
-    pub quantity: Option<i64>,
+    // 単位の数（IO-07-D2 の 100 倍の整数を戻した値）
+    pub quantity: Option<f64>,
     pub count: Option<i64>,
     pub sort_order: i64,
 }
@@ -122,7 +123,7 @@ pub struct CachedDailyReportPreview {
     pub preview_data: DailyReportPreviewData,
     pub summary_lines: Vec<CachedDailyReportSummaryLine>,
     pub payment_lines: Vec<DailyReportPaymentLinePreview>,
-    pub department_lines: Vec<DailyReportDepartmentLinePreview>,
+    pub department_lines: Vec<CachedDailyReportDepartmentLine>,
     pub active_same_date_import_ids: Vec<i64>,
 }
 
@@ -131,7 +132,19 @@ pub struct CachedDailyReportSummaryLine {
     pub line_key: String,
     pub label: String,
     pub amount: Option<i64>,
-    pub quantity: Option<i64>,
+    pub quantity_hundredths: Option<i64>,
+    pub count: Option<i64>,
+    pub sort_order: i64,
+}
+
+/// commit 用の部門の行。個数は 100 倍の整数のまま持つ（§37.2）
+#[derive(Debug, Clone)]
+pub struct CachedDailyReportDepartmentLine {
+    pub department_id: Option<i64>,
+    pub raw_department_name: String,
+    pub normalized_department_name: Option<String>,
+    pub amount: i64,
+    pub quantity_hundredths: Option<i64>,
     pub count: Option<i64>,
     pub sort_order: i64,
 }

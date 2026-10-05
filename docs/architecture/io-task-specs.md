@@ -4,7 +4,7 @@
 
 SPEC-STK-TIME-D1〜D8。IO-01は[20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md)の新契約で、kind・両cursor・request ID・(商品, 資料)単位のflag・受領を保存し、数量と版の不可分更新を強制する。TXの開始/確定と業務判断はBIZが所有する。24はsourceの受領と識別メタ（23のsettled_atを含む）を保存し、精算同一性の照合候補をBIZへ渡す。
 
-IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に抽出し、正常JANのゼロ行を証拠集合へ残す。時計・精算系列の信用や商品別のBefore/Afterは判断しない。既存のCP932・改行・符号・空スロットとPLU占有modeは維持する。新しいSQL/schemaは未実装で、[DB契約](../DB_DESIGN.md)をruntimeの移行・故障注入試験へ渡す。
+IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に抽出し、正常JANのゼロ行を証拠集合へ残す。時計・精算系列の信用や商品別のBefore/Afterは判断しない。既存のCP932・改行・符号・売上の無い枠の読み飛ばし（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）とPLU占有modeは維持する。新しいSQL/schemaは未実装で、[DB契約](../DB_DESIGN.md)をruntimeの移行・故障注入試験へ渡す。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）
@@ -74,8 +74,8 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
 4. 2行目スキップ（ヘッダ）
 5. 3行目以降を5フィールドCSVパース
    - フィールド数不正 → parse_errorsに追加、次の行へ
-   - JAN正規化（末尾アルファベット除去→13桁化）。全桁ゼロは除外（エラーにもしない）
-   - quantity/amountを整数パース。失敗 → parse_errorsに追加
+   - quantity/amountを整数パース（3桁区切りのカンマを受理）。失敗 → parse_errorsに追加
+   - JAN正規化（末尾アルファベット除去→13桁化）。コードが全桁ゼロか13桁JANにならない行は、個数・金額とも0なら除外、売上があれば parse_errors に追加（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）
 6. ParseResultを返す
 
 **【制御構造】**
@@ -199,9 +199,9 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
 - DailyReportParseResult
   - report_date: String（YYYY-MM-DD）
   - source_files[]: source_file（Z001/Z002/Z005）, filename, file_hash, size_bytes
-  - summary_lines[]: line_key, label, amount?, quantity?, count?, sort_order
+  - summary_lines[]: line_key, label, amount?, quantity_hundredths?, count?, sort_order
   - payment_lines[]: payment_key, label, amount?, count?, sort_order
-  - department_lines[]: raw_department_name, normalized_department_name?, amount, quantity?, count?, sort_order
+  - department_lines[]: raw_department_name, normalized_department_name?, amount, quantity_hundredths?, count?, sort_order
   - parse_errors[]: source_file?, filename?, line_no?, error_type, error_message（BIZ-08の開発者向けdiagnostic logで消費し、利用者向けwire/operation logへraw detailを出さない）
 
 **【処理構造】**
@@ -214,7 +214,7 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
    - Z001 → summary_lines
    - Z002 → payment_lines
    - Z005 → department_lines
-6. 3 source で report_date が一致することを parse result に含める。一致しない場合は parse_errors にする
+6. 3 source で report_date が一致することを parse result に含める。一致しない場合は parse_errors にする。精算回数を読めたファイルが 2 本以上で値が違えば `settlement_mismatch` を parse_errors にする（IO-07-D3）
 7. 生バイトから個別hashとbundle_hash素材を作る。bundle_hashの確定はBIZ-08で安定順に束ねて行う
 
 summary/payment/departmentのsourceは格納先から一意に決まるため行ごとには重複保持しない。入力filenameはsource file metadataに加え、source判定前に失敗してmetadataへ入らないunknown fileを識別するparse error provenanceとして診断専用に保持する（IO-07-D1）。
@@ -222,7 +222,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 **【制御構造】**
 - ステートレス。DBを呼ばない
 - CASIO 固有の表記、列位置、メタ行、改行、文字コードはこの層で吸収する
-- app core が使う値は line_key / label / amount / quantity / count / department label に正規化して返す
+- app core が使う値は line_key / label / amount / quantity_hundredths（個数の100倍の整数、IO-07-D2）/ count / department label に正規化して返す。line_key / payment_key はラベルだけで決め、「レコード」列（行の位置）を鍵に使わない（IO-07-D4）
 
 ---
 

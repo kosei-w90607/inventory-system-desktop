@@ -1,9 +1,10 @@
 use crate::biz::daily_report_import_service::{
-    source_kind_order, CachedDailyReportPreview, CachedDailyReportSummaryLine,
-    DailyReportDepartmentLinePreview, DailyReportDuplicateCheck, DailyReportDuplicateStatus,
-    DailyReportFileInfo, DailyReportInputFile, DailyReportParseValidateResult,
-    DailyReportPaymentLinePreview, DailyReportPreviewData, DailyReportSourceFileInfo,
-    DailyReportTotals, DailyReportWarning, SameDateDailyReportImportSummary,
+    source_kind_order, CachedDailyReportDepartmentLine, CachedDailyReportPreview,
+    CachedDailyReportSummaryLine, DailyReportDepartmentLinePreview, DailyReportDuplicateCheck,
+    DailyReportDuplicateStatus, DailyReportFileInfo, DailyReportInputFile,
+    DailyReportParseValidateResult, DailyReportPaymentLinePreview, DailyReportPreviewData,
+    DailyReportSourceFileInfo, DailyReportTotals, DailyReportWarning,
+    SameDateDailyReportImportSummary,
 };
 use crate::biz::BizError;
 use crate::constants;
@@ -15,6 +16,8 @@ use crate::io::daily_report_parser::{self, DailyReportSourceFile, DailyReportSou
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::Instant;
+
+const SETTLEMENT_MISMATCH_MESSAGE: &str = "別の精算の日報ファイルが混ざっています。ファイル名の「Z001」「Z002」「Z005」より後ろが同じ 3 つを選び直してください。";
 
 pub fn parse_and_validate_daily_report(
     conn: &DbConnection,
@@ -39,10 +42,18 @@ pub fn parse_and_validate_daily_report(
     let parse_result = daily_report_parser::parse_daily_report_bundle(source_files);
     if !parse_result.parse_errors.is_empty() {
         log_parse_diagnostics(&parse_result.parse_errors);
-        log_parse_failure(conn, "日報ファイルの解析に失敗しました");
-        return Err(BizError::ImportError(
-            "日報ファイルの解析に失敗しました".to_string(),
-        ));
+        // BIZ-08-D2: 別の精算の混在は選び直しで直るので、error_type だけから固定の文を作る
+        let message = if parse_result
+            .parse_errors
+            .iter()
+            .any(|error| error.error_type == "settlement_mismatch")
+        {
+            SETTLEMENT_MISMATCH_MESSAGE
+        } else {
+            "日報ファイルの解析に失敗しました"
+        };
+        log_parse_failure(conn, message);
+        return Err(BizError::ImportError(message.to_string()));
     }
 
     let report_date = parse_result.report_date.ok_or_else(|| {
@@ -84,7 +95,7 @@ pub fn parse_and_validate_daily_report(
         .map(|department| (department.name, department.id))
         .collect();
     let mut warnings = Vec::new();
-    let department_summary: Vec<DailyReportDepartmentLinePreview> = parse_result
+    let department_lines: Vec<CachedDailyReportDepartmentLine> = parse_result
         .department_lines
         .iter()
         .map(|line| {
@@ -100,15 +111,29 @@ pub fn parse_and_validate_daily_report(
                     line_no: None,
                 });
             }
-            DailyReportDepartmentLinePreview {
+            CachedDailyReportDepartmentLine {
                 department_id,
                 raw_department_name: line.raw_department_name.clone(),
                 normalized_department_name: line.normalized_department_name.clone(),
                 amount: line.amount,
-                quantity: line.quantity,
+                quantity_hundredths: line.quantity_hundredths,
                 count: line.count,
                 sort_order: line.sort_order,
             }
+        })
+        .collect();
+    let department_summary: Vec<DailyReportDepartmentLinePreview> = department_lines
+        .iter()
+        .map(|line| DailyReportDepartmentLinePreview {
+            department_id: line.department_id,
+            raw_department_name: line.raw_department_name.clone(),
+            normalized_department_name: line.normalized_department_name.clone(),
+            amount: line.amount,
+            quantity: line
+                .quantity_hundredths
+                .map(daily_report_parser::quantity_hundredths_to_units),
+            count: line.count,
+            sort_order: line.sort_order,
         })
         .collect();
 
@@ -155,7 +180,7 @@ pub fn parse_and_validate_daily_report(
             line_key: line.line_key.clone(),
             label: line.label.clone(),
             amount: line.amount,
-            quantity: line.quantity,
+            quantity_hundredths: line.quantity_hundredths,
             count: line.count,
             sort_order: line.sort_order,
         })
@@ -183,7 +208,7 @@ pub fn parse_and_validate_daily_report(
             net_amount,
         },
         payment_summary: payment_summary.clone(),
-        department_summary: department_summary.clone(),
+        department_summary,
         warnings: warnings.clone(),
         duplicate_check,
         preview_created_at: chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
@@ -193,7 +218,7 @@ pub fn parse_and_validate_daily_report(
         preview_data: preview_data.clone(),
         summary_lines,
         payment_lines: payment_summary,
-        department_lines: department_summary,
+        department_lines,
         active_same_date_import_ids: preview_data
             .duplicate_check
             .same_date_imports

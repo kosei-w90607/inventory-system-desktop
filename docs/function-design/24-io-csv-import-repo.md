@@ -63,7 +63,7 @@ sales_repo.rs に追加する（ARCHITECTURE.md: sales_repository は sale_recor
 - source_line_no: i64
 - normalized_jan: Option\<String\>（JAN正規化前にエラーならNone）
 - raw_name: String
-- raw_quantity: String（数値変換前の生値。TEXTで保持する理由は DB_DESIGN.md 12a 参照）
+- raw_quantity: String（値の出どころ〈ParseError 由来は元の文字列、unmatched_product は整数の文字列表現〉とTEXTで保持する理由は DB_DESIGN.md 12a 参照）
 - raw_amount: String（同上）
 - error_type: String（"unmatched_product" / "invalid_format" / "invalid_jan" / "invalid_number"）
 - error_message: String（利用者向け日本語メッセージ）
@@ -580,11 +580,12 @@ fn get_completed_daily_report_aggregate(conn: &DbConnection, report_date: &str) 
 1. `daily_report_imports` から `report_date=? AND status='completed'` の親を全件取得する。親がなければ `Ok(None)` を返す。
 2. `source_import_count` は対象親件数とする。親 `gross_amount` / `net_amount` はそれぞれ合計するが、いずれかの親で対象値が NULL なら集約値も NULL とする。
 3. `daily_report_payment_lines` は `payment_key` で集約する。amount / count は対象行のいずれかが NULL なら集約値も NULL とする。
-4. `daily_report_department_lines` は `department_id` がある行をその ID で、未対応行を `normalized_department_name`、それもなければ `raw_department_name` で集約する。amount は合計し、quantity / count は対象行のいずれかが NULL なら集約値も NULL とする。
+4. `daily_report_department_lines` は `department_id` がある行をその ID で、未対応行を `normalized_department_name`、それもなければ `raw_department_name` で集約する。amount は合計し、`quantity_hundredths` / count は対象行のいずれかが NULL なら集約値も NULL とする。`quantity_hundredths` は 100 倍の整数のまま足して DB DTO に入れ、単位の数への変換は BIZ-05 が行う（IO-07-D2）。
 5. label と sort は、各 group の最小 `sort_order`、同値なら最小 row ID の行を決定的な代表とする。未対応の部門は集約後の group として返し、import ごとに重複させない（警告の文は BIZ-05 が作る）。
-6. `daily_report_summary_lines`（Z001）を、手順 1 と同じ条件（`report_date=? AND status='completed'`、`rolled_back` の親の行は読まない）の親に join する 1 つの query で読み、親の `imported_at ASC, id ASC`、行の `sort_order ASC, id ASC` で並べる。行は合算しない（D-096）。手順 1 の親ごとに 1 件の取込み（親 `id`・`imported_at`・行の `label` / `quantity` / `count` / `amount`）を作り、行の無い親も空の行で残す（件数は `source_import_count` と等しい）。`line_key` は返さない。新しい repo 関数・schema・index は足さない（`idx_daily_report_summary_lines_import_id` を使う）。
-   取込みと行の型は、BIZ-05 の `OfficialDailySummaryImport` / `OfficialDailySummaryLine`（[34 §19.2](34-biz-sales-service.md#192-型定義)）と同じ形の DB DTO（IO の所有。既存の `OfficialDailyPaymentRow` と同じ命名で `OfficialDailySummaryImportRow` / `OfficialDailySummaryLineRow`）とし、`OfficialDailyReportRow` の field `summary_imports` に入れる。
-7. `OfficialDailyReportRow` を返す。支払・部門の集約では単一親 ID を返さない。Z001 の取込みごとの行（`summary_imports`）だけが親 ID と `imported_at` を持つ。BIZ-05 はこれを公開 DTO へ写し、並びと値を変えない。
+6. `daily_report_summary_lines`（Z001）を、手順 1 と同じ条件（`report_date=? AND status='completed'`、`rolled_back` の親の行は読まない）の親に join する 1 つの query で読み、親の `imported_at ASC, id ASC`、行の `sort_order ASC, id ASC` で並べる。行は合算しない（D-096）。手順 1 の親ごとに 1 件の取込み（親 `id`・`imported_at`・行の `label` / `quantity_hundredths` / `count` / `amount`）を作り、行の無い親も空の行で残す（件数は `source_import_count` と等しい）。`line_key` は返さない。新しい repo 関数・schema・index は足さない（`idx_daily_report_summary_lines_import_id` を使う）。
+   取込みと行の型は、BIZ-05 の `OfficialDailySummaryImport` / `OfficialDailySummaryLine`（[34 §19.2](34-biz-sales-service.md#192-型定義)）と同じ形の DB DTO（IO の所有。既存の `OfficialDailyPaymentRow` と同じ命名で `OfficialDailySummaryImportRow` / `OfficialDailySummaryLineRow`。ただし個数は `quantity_hundredths: Option<i64>`〈100 倍の整数〉で、単位の数への変換は BIZ-05）とし、`OfficialDailyReportRow` の field `summary_imports` に入れる。
+7. 手順 2〜4 の加算はすべて（NULL を伝える加算〈親の `gross_amount` / `net_amount`、支払の amount / count、部門の `quantity_hundredths` / count〉と、部門の amount の合計）溢れを検査して足し（`checked_add`）、`i64` を溢れたら黙って wrap せず `DbError::QueryFailed` を返す（月次の §14.22 の `SUM` の溢れと同じく error で止める）。100 倍の整数は範囲内の値（MNT-03-D12 の範囲検査、`i64::MAX / 100`）でも 2 行の和で溢れうる。返した `DbError` の上位の扱いは既存の DB 読み取りの失敗と同じで（[34 §19.3](34-biz-sales-service.md#193-get_daily_sales) のエラーハンドリング、[40 §5.3](40-cmd-product.md#53-cmd層のエラー返却方針) の `internal`、CMD-ERR-D2）、利用者には既存の文「データベースエラーが発生しました。もう一度お試しください」と error_id が出る。新しい文言は足さない。
+8. `OfficialDailyReportRow` を返す。支払・部門の集約では単一親 ID を返さない。Z001 の取込みごとの行（`summary_imports`）だけが親 ID と `imported_at` を持つ。BIZ-05 はこれを公開 DTO へ写し、並びと値を変えない。
 
 ---
 
@@ -603,7 +604,7 @@ fn get_monthly_official_department_totals(
 
 **処理ステップ**:
 1. `daily_report_imports.status='completed'` かつ `report_date BETWEEN ? AND ?` の親を対象にする。
-2. `daily_report_department_lines` を department_id / label 単位で集計する。
+2. `daily_report_department_lines` を department_id / label 単位で集計する。個数は `SUM(quantity_hundredths)`（100 倍の整数のまま。BIZ-05 が単位の数に戻す、IO-07-D2）。`SUM` が `i64` を溢れると SQLite は `integer overflow` の error を返し、既存の `map_err` で `DbError::QueryFailed` になる（黙って誤った値を返さない。BIZ-05 以降の経路は §14.21 手順 7 と同じ）。
 3. 対象日報が0件なら Ok(None)。
 4. 対象日報がある場合は Ok(Some(rows))。行が0件なら空Vecを返す。
 5. 同一日複数親もすべて加算対象とする。将来、取込み済み営業日数を返す場合は親件数ではなく `COUNT(DISTINCT report_date)` を使う。

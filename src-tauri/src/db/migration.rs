@@ -15,6 +15,7 @@ use super::schema_v3;
 use super::schema_v4;
 use super::schema_v5;
 use super::schema_v6;
+use super::schema_v7;
 use super::DbError;
 use rusqlite::Connection;
 
@@ -65,6 +66,11 @@ fn migrations() -> Vec<Migration> {
             version: 6,
             description: "suppliers.updated_at 追加",
             kind: MigrationKind::Custom(schema_v6::apply_v6_supplier_updated_at),
+        },
+        Migration {
+            version: 7,
+            description: "日報の個数を100倍の整数へ",
+            kind: MigrationKind::Custom(schema_v7::apply_v7_daily_report_quantity_hundredths),
         },
     ]
 }
@@ -196,7 +202,7 @@ mod tests {
     use crate::db::{
         init_database,
         migration_tx::{self, FailurePoint},
-        schema_v1, schema_v2, schema_v3, schema_v4, schema_v5, DbError,
+        schema_v1, schema_v2, schema_v3, schema_v4, schema_v5, schema_v6, DbError,
     };
     use rusqlite::Connection;
 
@@ -697,7 +703,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, 6);
+        assert_eq!(v1, 7);
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -707,15 +713,15 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v2, 6, "バージョンが変わってはいけない");
+        assert_eq!(v2, 7, "バージョンが変わってはいけない");
 
-        // schema_versionsにレコードが6件であること（v1 + v2 + v3 + v4 + v5 + v6）
+        // schema_versionsにレコードが7件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7）
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(
-            count, 6,
-            "マイグレーションレコードは6件（v1+v2+v3+v4+v5+v6）"
+            count, 7,
+            "マイグレーションレコードは7件（v1+v2+v3+v4+v5+v6+v7）"
         );
     }
 
@@ -749,7 +755,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 6);
+        assert_eq!(version, 7);
 
         let rows: Vec<(String, bool)> = {
             let mut stmt = conn
@@ -785,7 +791,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 6);
+        assert_eq!(version, 7);
 
         for table_name in &[
             "daily_report_imports",
@@ -849,7 +855,7 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
-        assert_eq!((max_version, version_count), (6, 6));
+        assert_eq!((max_version, version_count), (7, 7));
     }
 
     #[test]
@@ -865,7 +871,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 6);
+        assert_eq!(max_version, 7);
         assert_eq!(slot_count, 4_784);
     }
 
@@ -942,7 +948,7 @@ mod tests {
 
         conn.execute(
             "INSERT INTO daily_report_summary_lines (
-                daily_report_import_id, source_file, line_key, label, amount, quantity, count, sort_order
+                daily_report_import_id, source_file, line_key, label, amount, quantity_hundredths, count, sort_order
              ) VALUES (?1, 'Z001', 'gross_sales', '総売上', 12000, NULL, NULL, 1)",
             rusqlite::params![import_id],
         )
@@ -957,8 +963,8 @@ mod tests {
         conn.execute(
             "INSERT INTO daily_report_department_lines (
                 daily_report_import_id, source_file, department_id, raw_department_name,
-                normalized_department_name, amount, quantity, count, sort_order
-             ) VALUES (?1, 'Z005', 1, 'その他小物', 'その他小物', 3000, 4, NULL, 1)",
+                normalized_department_name, amount, quantity_hundredths, count, sort_order
+             ) VALUES (?1, 'Z005', 1, 'その他小物', 'その他小物', 3000, 400, NULL, 1)",
             rusqlite::params![import_id],
         )
         .unwrap();
@@ -1000,6 +1006,286 @@ mod tests {
             rusqlite::params![import_id],
         );
         assert!(invalid_department.is_err(), "department_id FK が必要");
+    }
+
+    // -----------------------------------------------------------------------
+    // MNT-03-D12: migration v7（日報の個数を100倍の整数へ）
+    // -----------------------------------------------------------------------
+
+    const V7_TABLES: [&str; 2] = [
+        "daily_report_summary_lines",
+        "daily_report_department_lines",
+    ];
+
+    fn setup_v6_only_db() -> (tempfile::TempDir, Connection) {
+        let (dir, conn) = setup_v4_only_db();
+        schema_v5::apply_v5_plu_slots(&conn, 5).unwrap();
+        schema_v6::apply_v6_supplier_updated_at(&conn, 6).unwrap();
+        (dir, conn)
+    }
+
+    /// v6 の列名 `quantity` で 2 表に合成の行を入れる（count は並び順の値）
+    fn seed_v6_daily_report_lines(
+        conn: &Connection,
+        summary: &[Option<i64>],
+        department: &[Option<i64>],
+    ) {
+        conn.execute(
+            "INSERT INTO daily_report_imports (
+                report_date, source_adapter, bundle_hash, source_files_json,
+                status, imported_at
+             ) VALUES ('2026-09-29', 'casio_sr_s4000', 'v7-hash', '[]', 'completed', '2026-09-29T18:00:00')",
+            [],
+        )
+        .unwrap();
+        let import_id = conn.last_insert_rowid();
+        for (index, quantity) in summary.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO daily_report_summary_lines (
+                    daily_report_import_id, source_file, line_key, label, amount, quantity, count, sort_order
+                 ) VALUES (?1, 'Z001', 'summary', '合成', NULL, ?2, ?3, ?3)",
+                rusqlite::params![import_id, quantity, index as i64 + 1],
+            )
+            .unwrap();
+        }
+        for (index, quantity) in department.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO daily_report_department_lines (
+                    daily_report_import_id, source_file, department_id, raw_department_name,
+                    normalized_department_name, amount, quantity, count, sort_order
+                 ) VALUES (?1, 'Z005', NULL, '合成部門', '合成部門', 0, ?2, ?3, ?3)",
+                rusqlite::params![import_id, quantity, index as i64 + 1],
+            )
+            .unwrap();
+        }
+    }
+
+    fn column_names(conn: &Connection, table: &str) -> Vec<String> {
+        let mut statement = conn
+            .prepare(&format!("PRAGMA table_info({table})"))
+            .unwrap();
+        statement
+            .query_map([], |row| row.get(1))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    fn column_values(conn: &Connection, table: &str, column: &str) -> Vec<Option<i64>> {
+        let mut statement = conn
+            .prepare(&format!("SELECT {column} FROM {table} ORDER BY id"))
+            .unwrap();
+        statement
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    fn has_v7(conn: &Connection) -> bool {
+        schema_version_rows(conn).contains(&7)
+    }
+
+    /// v7 が失敗したとき、2 表とも列名が `quantity`・値が不変・v7 が記録されないこと
+    fn assert_v7_untouched(conn: &Connection, summary: &[Option<i64>], department: &[Option<i64>]) {
+        for (table, expected) in V7_TABLES.into_iter().zip([summary, department]) {
+            let columns = column_names(conn, table);
+            assert!(
+                columns.contains(&"quantity".to_string()),
+                "{table}: {columns:?}"
+            );
+            assert!(
+                !columns.contains(&"quantity_hundredths".to_string()),
+                "{table}: {columns:?}"
+            );
+            assert_eq!(column_values(conn, table, "quantity"), expected, "{table}");
+        }
+        assert!(!has_v7(conn));
+        assert!(conn.is_autocommit());
+    }
+
+    #[test]
+    fn test_migration_req401_v7_scales_daily_report_quantity() {
+        // REQ-401 / MNT-03-D12: 既存の個数を改名して 100 倍（NULL は NULL、負も 100 倍）
+        let (_dir, conn) = setup_v6_only_db();
+        let values = [Some(7), None, Some(-2)];
+        seed_v6_daily_report_lines(&conn, &values, &values);
+
+        super::migrate(&conn).unwrap();
+
+        for table in V7_TABLES {
+            let columns = column_names(&conn, table);
+            assert!(
+                columns.contains(&"quantity_hundredths".to_string()),
+                "{columns:?}"
+            );
+            assert!(!columns.contains(&"quantity".to_string()), "{columns:?}");
+            assert_eq!(
+                column_values(&conn, table, "quantity_hundredths"),
+                vec![Some(700), None, Some(-200)],
+                "{table}"
+            );
+            assert_eq!(
+                column_values(&conn, table, "count"),
+                vec![Some(1), Some(2), Some(3)],
+                "{table}"
+            );
+        }
+        assert!(has_v7(&conn));
+
+        // 再実行で v7 を重複適用しない
+        super::migrate(&conn).unwrap();
+        assert_eq!(
+            schema_version_rows(&conn)
+                .iter()
+                .filter(|v| **v == 7)
+                .count(),
+            1
+        );
+        assert_eq!(
+            column_values(
+                &conn,
+                "daily_report_department_lines",
+                "quantity_hundredths"
+            ),
+            vec![Some(700), None, Some(-200)]
+        );
+    }
+
+    #[test]
+    fn test_migration_req401_v7_quantity_range_boundary() {
+        // REQ-401 / MNT-03-D12: 範囲内の最大 ±(i64::MAX / 100) は成功、範囲外と i64::MIN は範囲検査で止める
+        let limit = i64::MAX / 100;
+        let (_dir, conn) = setup_v6_only_db();
+        let values = [Some(limit), Some(limit), Some(-limit)];
+        seed_v6_daily_report_lines(&conn, &values, &values);
+        super::migrate(&conn).unwrap();
+        for table in V7_TABLES {
+            assert_eq!(
+                column_values(&conn, table, "quantity_hundredths"),
+                vec![Some(limit * 100), Some(limit * 100), Some(-limit * 100)],
+                "{table}"
+            );
+            let non_integer: i64 = conn
+                .query_row(
+                    &format!(
+                        "SELECT COUNT(*) FROM {table} WHERE typeof(quantity_hundredths) <> 'integer'"
+                    ),
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(non_integer, 0, "{table}");
+        }
+        assert!(has_v7(&conn));
+
+        for (bad_table, bad_value) in [
+            ("daily_report_summary_lines", limit + 1),
+            ("daily_report_department_lines", -limit - 1),
+            ("daily_report_summary_lines", i64::MIN),
+            ("daily_report_department_lines", i64::MIN),
+        ] {
+            let (_dir, conn) = setup_v6_only_db();
+            let mut summary = vec![Some(7)];
+            let mut department = vec![Some(7)];
+            if bad_table == "daily_report_summary_lines" {
+                summary.push(Some(bad_value));
+            } else {
+                department.push(Some(bad_value));
+            }
+            seed_v6_daily_report_lines(&conn, &summary, &department);
+
+            let error = super::migrate(&conn).unwrap_err();
+
+            let DbError::MigrationFailed(message) = error else {
+                panic!("MigrationFailedを期待: {bad_table} {bad_value}")
+            };
+            assert!(message.contains("範囲検査"), "{bad_value}: {message}");
+            assert!(message.contains(bad_table), "{bad_value}: {message}");
+            assert_v7_untouched(&conn, &summary, &department);
+        }
+    }
+
+    #[test]
+    fn test_migration_req401_v7_verification_failure_rolls_back() {
+        // REQ-401 / MNT-03-D12 / MNT-03-D1: v7 本体の検証が不一致を捕まえ、2 表・値・版を rollback する
+        for (trigger_step, department) in [
+            ("1", vec![Some(7), Some(5)]),
+            (
+                "CASE WHEN NEW.quantity >= 0 THEN 1 ELSE -1 END",
+                vec![Some(7), Some(-2)],
+            ),
+        ] {
+            let (_dir, conn) = setup_v6_only_db();
+            let summary = vec![Some(7)];
+            seed_v6_daily_report_lines(&conn, &summary, &department);
+            // 改名前の列名で書いた trigger は RENAME COLUMN で本文が書き換わり、100 倍の後に余りを作る
+            conn.execute_batch(&format!(
+                "CREATE TRIGGER v7_test_bump AFTER UPDATE ON daily_report_department_lines
+                 BEGIN
+                     UPDATE daily_report_department_lines
+                     SET quantity = quantity + {trigger_step} WHERE id = NEW.id;
+                 END;"
+            ))
+            .unwrap();
+
+            let error = super::migrate(&conn).unwrap_err();
+
+            let DbError::MigrationFailed(message) = error else {
+                panic!("MigrationFailedを期待")
+            };
+            assert!(message.contains("検証失敗"), "{message}");
+            assert!(!message.contains("範囲検査"), "{message}");
+            assert_v7_untouched(&conn, &summary, &department);
+
+            conn.execute_batch("DROP TRIGGER v7_test_bump;").unwrap();
+            super::migrate(&conn).unwrap();
+            assert!(has_v7(&conn));
+            assert_eq!(
+                column_values(
+                    &conn,
+                    "daily_report_department_lines",
+                    "quantity_hundredths"
+                ),
+                department
+                    .iter()
+                    .map(|value| value.map(|value| value * 100))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn test_migration_req401_v7_empty_and_all_null_tables() {
+        // REQ-401 / MNT-03-D12: 新規 DB・行 0・全行 NULL の表でも v7 が成功する
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let conn = init_database(db_path.to_str().unwrap()).unwrap();
+        assert!(has_v7(&conn));
+        for table in V7_TABLES {
+            let columns = column_names(&conn, table);
+            assert!(
+                columns.contains(&"quantity_hundredths".to_string()),
+                "{columns:?}"
+            );
+            assert!(!columns.contains(&"quantity".to_string()), "{columns:?}");
+        }
+
+        let (_dir, conn) = setup_v6_only_db();
+        super::migrate(&conn).unwrap();
+        assert!(has_v7(&conn));
+
+        let (_dir, conn) = setup_v6_only_db();
+        seed_v6_daily_report_lines(&conn, &[None, None], &[None, None]);
+        super::migrate(&conn).unwrap();
+        assert!(has_v7(&conn));
+        for table in V7_TABLES {
+            assert_eq!(
+                column_values(&conn, table, "quantity_hundredths"),
+                vec![None, None],
+                "{table}"
+            );
+        }
     }
 
     #[test]
