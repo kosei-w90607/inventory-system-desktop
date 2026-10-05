@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 sys.dont_write_bytecode = True
@@ -18,6 +19,9 @@ spec=importlib.util.spec_from_file_location('pr_gate', ROOT/'scripts/pr-gate.py'
 g=importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
 H='a'*40; B='b'*40; P='c'*40; OLD='d'*40
 REQ=dict(risk='R3',plan_commit=P,amendments=[],minimum=2,manual=True,r4=True)
+# D-107 (3): literals from the packet's Boundary / Wire Contract, not from the helper.
+FRESH_BROAD='broad Plan contract changed; fresh broad required: record --review-stage broad at the current head (a closure cannot carry this broad)'
+BROAD_REQUIRED='broad required: record --review-stage broad at the current head until it has Final Review Minimum audits (no usable broad on the server; a closure cannot replace it)'
 
 def good_record():
     return dict(version=1,repo=g.REPO,pr=7,head=H,base=B,
@@ -47,6 +51,15 @@ class Records(unittest.TestCase):
         for key in ('head','base'):
             data=copy.deepcopy(self.snap);data['server']['record'][key]=OLD
             with self.assertRaises(g.GateError):self.gate.nonci(data)
+    def test_plan_contract_change_reported_before_stale(self):
+        # T1-1 / D-107 (3): a changed Plan contract is named before stale head/base.
+        data=copy.deepcopy(self.snap);record=data['server']['record']
+        record['head']=OLD;record['review']['broad']['amendments']=[OLD]
+        with self.assertRaisesRegex(g.GateError,'^'+re.escape(FRESH_BROAD)+'$'):self.gate.nonci(data)
+    def test_stale_without_contract_change_keeps_stale(self):
+        # T1-4 / MG-D8: the same contract at an old head stays a stale record.
+        data=copy.deepcopy(self.snap);data['server']['record']['head']=OLD
+        with self.assertRaisesRegex(g.GateError,'^stale head/base in workflow record$'):self.gate.nonci(data)
     def test_broad_contract_and_minimum(self):
         for key,value in [('plan_commit',None),('plan_commit',OLD),('amendments',[OLD]),('audits',[])]:
             data=copy.deepcopy(self.snap);data['server']['record']['review']['broad'][key]=value
@@ -159,6 +172,14 @@ class RecordLifecycle(unittest.TestCase):
         # T-H7b: a capture made before the requirements lost 'mode' is rejected, not silently accepted.
         with self.assertRaisesRegex(g.GateError,'fresh capture required'):
             self.exercise(self.previous(),captured_requirements=REQ|dict(mode='codex-only'))
+    def test_closure_without_server_broad_names_next_step(self):
+        # T1-4 / D-107 (3): no usable broad (none recorded, or below minimum) names the broad to record.
+        empty=self.previous();empty['review']=dict(outcome='pending',broad=None,closure=None)
+        short=self.previous();short['review']['broad']['audits']=short['review']['broad']['audits'][:1]
+        for old in (None,empty,short):
+            with self.subTest(old=old and len((old['review']['broad'] or {}).get('audits',[]))):
+                with self.assertRaises(g.GateError) as caught:self.exercise(old,kind='review',source=None)
+                self.assertEqual(str(caught.exception),BROAD_REQUIRED)
     def test_changed_plan_requires_new_broad(self):
         old=self.previous();old['review']['broad']['plan_commit']=P.replace('c','f')
         with self.assertRaises(g.GateError):self.exercise(old,kind='review',source=None)
@@ -618,6 +639,37 @@ class ReviewedHead(unittest.TestCase):
         self.git('commit','--allow-empty','-qm','fix');self.head=self.git('rev-parse','HEAD')
         self.load();self.state['pr']['head']['sha']=self.head;self.state['runs'][0]['head_sha']=self.head;self.save()
         return copy.deepcopy(self.load()['comments'])
+    def amend(self):
+        # A Gated Amendment registered after the broad changes the Plan contract.
+        self.load();self.state['contents'][self.packet]=self.state['contents'][self.packet].replace('Amendments: none','Amendments: '+self.audited);self.save()
+    def push(self):
+        self.git('commit','--allow-empty','-qm','next');self.head=self.git('rev-parse','HEAD')
+        self.load();self.state['pr']['head']['sha']=self.head;self.state['runs'][0]['head_sha']=self.head;self.save()
+    def blockers(self):return self.run_cli('status','--packet',self.packet)['blockers']
+    def test_status_after_amendment_names_fresh_broad(self):
+        # T1-2 / D-107 (3)
+        self.broad_then_push();self.amend()
+        blockers=self.blockers()
+        self.assertIn(FRESH_BROAD,blockers);self.assertNotIn('stale head/base in workflow record',blockers)
+    def test_closure_after_amendment_says_fresh_broad(self):
+        # T1-3 / D-107 (3)
+        before=self.broad_then_push();self.amend()
+        self.assertIn(FRESH_BROAD,self.review('closure','closure',self.head,expected=1))
+        self.assertEqual(self.load()['comments'],before)
+    def test_status_after_amendment_and_manual_names_broad_required(self):
+        # T1-5 / D-107 (3): record() drops the old-contract broad (broad=None); status names the broad to record.
+        manual=lambda text:text.replace('- Human Gate: ready,merge\n','- Human Gate: ready,merge,manual\n')
+        self.state['contents'][self.packet]=manual(self.state['contents'][self.packet])
+        self.state['snapshots'][self.plan_ref][self.packet]=manual(self.state['snapshots'][self.plan_ref][self.packet]);self.save()
+        self.broad_then_push();self.amend()
+        capture=self.run_cli('capture','--packet',self.packet)['capture']
+        self.run_cli('record','--packet',self.packet,'--capture',capture,'--kind','manual','--outcome','pass','--evidence','https://example.invalid/manual')
+        blockers=self.blockers()
+        self.assertEqual(blockers[0],BROAD_REQUIRED)
+        self.assertFalse([b for b in blockers if b in ('review not passed',FRESH_BROAD)],blockers)
+        # H3 with the record left at H2: the missing broad is still named before stale head/base.
+        self.push()
+        self.assertEqual(self.blockers()[0],BROAD_REQUIRED)
     def test_broad_mismatch_rejected(self):
         self.assertIn('reviewed head differs from capture head',self.review('broad','sonnet',OLD,expected=1))
         self.assertEqual(self.load()['comments'],[])

@@ -18,6 +18,11 @@ MARKER = '<!-- inventory-workflow-v1 -->'
 POLICY = '.github/merge-gate-ruleset.json'
 SHA = re.compile(r'[0-9a-f]{40}\Z')
 OUTCOMES = {'pending', 'pass', 'fail', 'not-required'}
+# D-107 (3): blockers name the next review to record, not only the stale record.
+FRESH_BROAD = ('broad Plan contract changed; fresh broad required: record --review-stage broad at the current head'
+               ' (a closure cannot carry this broad)')
+BROAD_REQUIRED = ('broad required: record --review-stage broad at the current head until it has Final Review Minimum audits'
+                  ' (no usable broad on the server; a closure cannot replace it)')
 FIELDS = {'Phase', 'Risk', 'Plan Commit', 'Amendments', 'Coordinator', 'Writer', 'Plan Reviewer',
           'Final Reviewer', 'Final Review Minimum', 'Human Gate'}
 
@@ -316,8 +321,7 @@ class Gate:
         require(review['outcome'] == 'pass', 'review not passed')
         broad = review['broad']
         require(broad is not None and len(broad['audits']) >= req['minimum'], 'broad audits below minimum')
-        require(broad['plan_commit'] == req['plan_commit'] and broad['amendments'] == req['amendments'],
-                'broad Plan contract changed; fresh broad required')
+        require(broad['plan_commit'] == req['plan_commit'] and broad['amendments'] == req['amendments'], FRESH_BROAD)
         closure = review['closure']
         if (broad['head'], broad['base']) == (head, base):
             require(closure is None, 'current broad must have null closure')
@@ -340,6 +344,11 @@ class Gate:
             return
         require(server is not None, 'workflow record missing')
         record = server['record']
+        if req['minimum']:
+            # D-107 (3): the review to record outranks stale head/base and the outcome check.
+            broad = record['review']['broad']
+            require(broad is None or (broad['plan_commit'],broad['amendments']) == (req['plan_commit'],req['amendments']), FRESH_BROAD)
+            require(broad is not None, BROAD_REQUIRED)
         require((record['head'],record['base']) == (snap['head'],snap['base']), 'stale head/base in workflow record')
         self.validate_review(record, req, snap['head'], snap['base'])
         for kind in ('manual','r4'):
@@ -461,7 +470,10 @@ class Gate:
                 broad['audits']=[a for a in broad['audits'] if a['run_ref'] != args.run_ref] + [item]
                 record['review']=dict(outcome=args.outcome,broad=broad,closure=None)
             else:
-                require(server and broad and len(broad['audits']) >= req['minimum'], 'server broad required for closure')
+                old_broad = old and old['review']['broad']
+                require(not old_broad or (old_broad['plan_commit'],old_broad['amendments']) == (req['plan_commit'],req['amendments']),
+                        FRESH_BROAD)
+                require(server and broad and len(broad['audits']) >= req['minimum'], BROAD_REQUIRED)
                 require((broad['head'],broad['base']) != (snap['head'],snap['base']), 'closure needs changed candidate')
                 record['review']=dict(outcome=args.outcome,broad=broad,
                                       closure=dict(head=snap['head'],base=snap['base'],audit=item))
