@@ -251,7 +251,15 @@ Test Design Matrix: [test-matrices/2026-10-05-gate-record-guards.md](test-matric
 
 ## Implementation Results
 
-Fill after implementation.
+- S1: `scripts/pr-gate.py` の `nonci` は、review が要るとき head/base の照合より先に record の broad を見て、Plan 契約が違えば `FRESH_BROAD`、broad が無ければ `BROAD_REQUIRED` を出す。`validate_review` の契約違いの文も `FRESH_BROAD`。closure の record は server の旧 record の broad の契約が違えば `FRESH_BROAD`、使える broad が無い・本数が足りなければ `BROAD_REQUIRED` で拒む。判定と exit code は不変、minimum 0 では新しい文を出さない。test は Matrix T1-1〜T1-5。
+- S2: `record --kind review` に `--pr-reviews`（`type=int`）を必須にした。欠落・負は exit 2。reviewed head の照合の後、書込みより前に reviews の全 page を取り、`commit_id` が capture の head で本文（`strip` 後）が空でない review を数え、不一致は各 review の `id` と `submitted_at`（欠落・`null` は `not-submitted`）を並べて exit 1。test は T2-1〜T2-8。S6 の既存の review の record（CLI の `test_packet_double_audit_cli`・`ReviewedHead.review`、`RecordLifecycle` の `args()` と `transport`）を新しい引数と reviews の取得に追従させ、fake gh に `review_pages` / `reviews` の route を足した。既存の assertion は弱めていない。
+- S3: `scripts/check-workflow-git.sh` は現在の Plan Commit と Amendments の各 token（区切りはカンマと ASCII の空白・タブ）を 40 桁の小文字 hex と照合し、外れた値と重複を ERROR にする。書式の ERROR の後も書き換えの検出と MG-D5 の prefix の照合は続け、履歴の読み方は不変。Plan Commit が書式で外れたときは Amendments の descendant の照合だけを飛ばす。test は T3-1〜T3-4。T3-4 には「短縮の Plan Commit の後に full の Amendments」の段を足した（実装中、`set -u` の下で未代入の変数を参照する経路を見つけて直し、その段で固定した）。
+- S4: `scripts/doc-consistency-check.sh` の PK4 は、D-102 の重複の検査の呼び出しを helper の `parse_packet` の呼び出しに置き換えた（1 回の呼び出し）。`duplicate packet fields` は今の literal、それ以外の `GateError` は `PK4: <file> の Workflow State を helper（parse_packet）が拒否: <helper の文>`、`python3` か import の失敗は今の fail-closed の literal。`extract_workflow_field` と他の PK4 の検査は不変。fixture に `PKT_AMENDMENTS` を足した。test は T4-1〜T4-5（T4-6・T4-7 は既存の case が持つ）。
+- S5: 自己照合の message の末尾を `shlex.join(sys.argv[1:])` にした。test は T5-1。
+- S7: `docs/ci.md` の `ci()` の参照を実装後の行範囲に直した。
+- 検証（AC1〜AC9、Matrix の Mutation M1〜M13 の各 mutant）の実測値と Draft の run は PR の body が持つ。PR: [#142](https://github.com/kosei-w90607/inventory-system-desktop/pull/142)（Writer = Opus 5.5 subagent）
+
+Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
 
 ## Review Response
 

@@ -26,7 +26,7 @@ aggregate の if は `always()` だけ。Draft の判定は name 式だけが持
 
 CI-TRIGGER-D1: 同じHEADへ予防的なdispatchを重ねない。dispatchは常にfull。
 
-final run = 同じ head の latest の run が completed / success で、その check suite に `Merge gate` が success でちょうど 1 つある run（`scripts/pr-gate.py:388-399`）。Draft の run（`Draft (no merge evidence)`）は final run でなく、条件に数えない。
+final run = 同じ head の latest の run が completed / success で、その check suite に `Merge gate` が success でちょうど 1 つある run（`scripts/pr-gate.py:398-410`）。Draft の run（`Draft (no merge evidence)`）は final run でなく、条件に数えない。
 
 | HEADの状態 | 選ぶtrigger | dispatch前の確認 |
 |---|---|---|
