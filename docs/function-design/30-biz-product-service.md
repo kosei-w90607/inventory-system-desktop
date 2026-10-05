@@ -194,13 +194,19 @@ Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` �
    - ProductUpdatesを構築してproduct_repo::update_product()を呼ぶ
 6. **操作ログ記録**
    - operation_type = "product_update"
-   - detail_json = 変更前後の値をJSON化
+   - detail_json = 変更した field ごとの変更前後（BIZ-01-D7）。変更した field が 1 つも無ければ null（ログの行は書く）
 7. **COMMIT**
 
 **エラーハンドリング**:
 - 商品が見つからない → BizError::NotFound
 - バリデーション失敗 → BizError::ValidationFailed
 - DB操作失敗 → ROLLBACK → BizError::DatabaseError
+
+**設計判断（BIZ-01-D7、商品修正の操作ログの detail_json、2026-10-06）**: detail_json は JSON object で、変更した field ごとに key を 1 つ持ち、値は `{"old": 変更前, "new": 変更後}` とする。key は ProductUpdateRequest の field 名（`name` / `department_id` / `supplier_id` / `selling_price` / `cost_price` / `tax_rate` / `maker_code` / `pos_stock_sync` / `plu_target`）。「変更した」は、request の field が値を持ち（clear 可能 field の JSON null を含む。PRODUCT-PATCH-D1）、更新前の商品の値と違うこと。値を持っても更新前と同じ field は書かない。値の型: `name` は文字列、`maker_code` は文字列か null（clear）、`department_id`・`selling_price`・`cost_price` は整数、`supplier_id` は整数か null（clear）、`tax_rate` は DB と同じ文字列（`"10"` / `"8"` / `"0"`）、`pos_stock_sync`・`plu_target` は真偽値。部門・取引先は products 表が持つ ID のまま書き、名前を引かない。JSON は serde_json で組み立て、文字列を手で連結しない（商品名の `"` や `\` で壊れた JSON を作らない）。key の順序は契約にしない。読む側は操作ログ画面（74 §74.8 の既知 key 要約と技術情報の raw JSON）。この形より前に書かれた記録（売価・原価の片方だけが変わっても両方を持つ）は書き換えない。
+- 却下 (a) 売価・原価のどちらかが変わったら両方を書く今の形を残し、他の field だけを足す: field ごとに規則が違い、読む側が key の有無で「変えた field」を判断できない。
+- 却下 (b) request が値を持つ field を、変更の有無に関わらず全部書く: 変えていない値が並び、何を変えたかが読み取りにくい（owner の L3 所感 2026-09-10「更新したのに詳細情報なし」の起点は、何を変えたかが残らないこと）。
+- 却下 (c) 変更後の値だけを書く: step 6 の「変更前後」と `db-design/tracking-system-tables.md` §18 の「商品修正なら変更前後のフィールド名・値」に反する。
+- Revisit: ProductUpdateRequest に field を足すとき（同じ規則で detail に足す）。操作ログ画面に商品修正専用の表示（名前の解決や「旧 → 新」の整形）を作るとき。
 
 ---
 
