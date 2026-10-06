@@ -144,6 +144,7 @@ Z001/Z002/Z005 の1営業日分ファイル束を1つの日報取込みとして
 | report_date | TEXT | NOT NULL | 対象営業日（YYYY-MM-DD） |
 | source_adapter | TEXT | NOT NULL, CHECK(source_adapter IN ('casio_sr_s4000')) | 取込み元adapter。外部レジ差し替え時の境界 |
 | bundle_hash | TEXT | NOT NULL, INDEX | Z001/Z002/Z005の生バイトhashを安定順で束ねたSHA-256。重複取込み判定に使う |
+| settlement_no | INTEGER | NULLABLE | 束の精算回数（3 本とも読めてそろうときだけ。IO-07-D5）。同じ精算を別の bytes で二重に取り込まない照合に使う（BIZ-08-D4、D-111。追加の migration は runtime の lane。既存行は NULL） |
 | source_files_json | TEXT | NOT NULL | ファイル名、個別hash、サイズ、adapter内source名（Z001/Z002/Z005）のJSON。実CSV本文は保存しない |
 | gross_amount | INTEGER | NULLABLE | Z001/Z005から導出できる総売上額。未確定・欠損時はNULL |
 | net_amount | INTEGER | NULLABLE | 返品・値引等を反映した日報上の純売上額。未確定・欠損時はNULL |
@@ -160,6 +161,7 @@ Z001/Z002/Z005 の1営業日分ファイル束を1つの日報取込みとして
 ### 冪等性・同日追加方針
 - `bundle_hash` が一致し `status='completed'` の取込みがある場合はブロックする。
 - `report_date` が一致し別 `bundle_hash` の `completed` がある場合は、既存全件を提示して追加確認を要求する。承認後も既存parentを変更せず、新規取込みだけを作る。
+- `report_date` と `settlement_no` が一致し別 `bundle_hash` の `completed` がある場合はブロックする（追加確認で通さない。BIZ-08-D4）。`settlement_no` が NULL の行・束は照合しない。CV17 が SD の原本を移すときに bytes を作り直していても（未確認）、同じ精算を二重に数えないための照合。
 - `rolled_back` の同一bundleは再取込み可能。
 - `report_date` はgroup keyであってuniqueness keyではない。訂正は対象parent IDのrollbackと再取込みを明示した2操作で行う。
 
@@ -249,9 +251,10 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 **入力単位**:
 - 1営業日の日報取込みは `Z001`、`Z002`、`Z005` の3ファイルを必須束として扱う。
 - adapterはファイル名・内容からsourceを判定し、欠損、重複、未知sourceをPreview前にエラーにする。
-- CV17 1.1.1のZ001/Z002/Z005は、ツール内部ディレクトリ常在ファイルの layout A（7行プリアンブル、1行ヘッダ、4列データ行）と、エクスポート機能出力の layout B（先頭メタフィールド、ヘッダ、4列反復の連結）を両方サポートする。adapterはどちらも `record_code, label, quantity_or_count, amount` 系の4列行へ正規化してから内部行へ変換する。
+- CV17 1.1.1のZ001/Z002/Z005は、SD の `XZ_BKUP` とツール内部ディレクトリ常在ファイル（同じ bytes。取込み前の `XZ` の原本の形は未確認）の layout A（7行プリアンブル、1行ヘッダ、4列データ行）と、エクスポート機能出力の layout B（先頭メタフィールド、ヘッダ、4列反復の連結）を両方サポートする。adapterはどちらも `record_code, label, quantity_or_count, amount` 系の4列行へ正規化してから内部行へ変換する。
 - 日付はsource/layoutにより `YYYY/M/D` または `YYYY-MM-DD` で出力されるため、IO-07で `YYYY-MM-DD` に正規化してからBIZ-08へ渡す。
-- Excel帳票はsource of truthでも日別archiveでもない。SDからCV17へ取り込み、PC側`EcrDatas`から選択するZ001/Z002/Z005を同じExcelファイル群へ毎日ほぼそのまま貼り付けて上書きするため、日別履歴は印刷・バインダーだけに残る。layout A/Bの受理はadapter互換性であってoperatorの選択肢ではない。sanitized版のExcelは数値突合に使わず、列構成・ラベル・行の並びの参照に限定する。
+- 入力の標準はアプリがレジの SD から直接読む束（IO-09、BIZ-08 §37.9、D-111）。予備は利用者が選ぶ 3 ファイル（PC の `EcrDatas` の写しを含む。`XZ_BKUP` と同じ bytes）。
+- Excel帳票はsource of truthでも日別archiveでもない。店は今、SDからCV17へ取り込んだZ001/Z002/Z005を同じExcelファイル群へ毎日ほぼそのまま貼り付けて上書きするため、日別履歴は印刷・バインダーだけに残る。layout A/Bの受理はadapter互換性であってoperatorの選択肢ではない。sanitized版のExcelは数値突合に使わず、列構成・ラベル・行の並びの参照に限定する。
 - PCツール上には `Z006`（グループ）、`Z009`（時間帯別）、`Z011`（担当者）も存在するが、個人店の初期日報に必要な業務用途が未確認のため、初期DBモデルには保存しない。必要性が確認された場合は adapter 入力とDB保存先を別設計で追加する。
 
 **Stage 1: Parse bundle（IO-07に委譲）**
@@ -463,3 +466,4 @@ CSV取込み: 2026/03/21の精算データ
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | D-071 / SPEC-SDI-D1〜D8: business dateをgroup keyとし、両pipelineのinsert-only TX、active snapshot再検証、per-import rollbackを正本化。 |
+| 2026-10-06 | sd-direct-read（design、D-111） | `daily_report_imports.settlement_no` と同じ精算の二重取込みの拒否（BIZ-08-D4）。入力の標準をレジの SD の直読みにした。 |

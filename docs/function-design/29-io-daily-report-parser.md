@@ -71,6 +71,7 @@ struct DailyReportParseResult {
     payment_lines: Vec<DailyReportPaymentLine>,
     department_lines: Vec<DailyReportDepartmentLine>,
     parse_errors: Vec<DailyReportParseError>,
+    settlement_no: Option<i64>, // 束の精算回数（IO-07-D5）
 }
 ```
 
@@ -99,7 +100,7 @@ fn quantity_hundredths_to_units(quantity_hundredths: i64) -> f64
 
 - layout A の 7 行プリアンブルの「精算回数」の行（第1列を trim すると `精算回数`、第2列が数字だけ）から、ファイルごとの精算回数を整数で読む（先頭の 0 は値に影響しない。`0005` と `5` は同じ）。ヘッダより前の行だけを見る。
 - 精算回数を読めたファイルが 2 本以上あり、値が 1 つでも違えば `settlement_mismatch`（commit 不可）。日付の一致（§29.3 手順 6）とは別に判定し、両方が出てもよい。
-- 精算回数を読めたファイルが 1 本以下なら比べず、日付の一致だけで通す（layout B のエクスポート出力のメタに精算回数があるかは未確認。layout B の束は Z001 が layout A 系の形、Z002 / Z005 が連結型で出る〈§29.4.1〉ため、読めた 1 本だけでは比べられない）。通常の手順（`EcrDatas` から選ぶ layout A）では 3 本とも読める。
+- 精算回数を読めたファイルが 1 本以下なら比べず、日付の一致だけで通す（layout B のエクスポート出力のメタに精算回数があるかは未確認。layout B の束は Z001 が layout A 系の形、Z002 / Z005 が連結型で出る〈§29.4.1〉ため、読めた 1 本だけでは比べられない）。SD の `XZ_BKUP` と PC の `EcrDatas` にある layout A では 3 本とも読める（取込み前の `XZ` の原本も同じ形かは未確認。§29.7.2 の SD-23）。
 - 保証の範囲: 3 本とも精算回数を読める束（通常の layout A）では別の精算の混在を止める。読めないファイルの出所は確かめず、読めないファイルを含む束での別の精算の混入は見逃す（owner 決定 TD-110・TD-111 の受容リスク、D-104 Guarantee range）。比べられるのは、3 帳票の精算回数が一緒に進むから（手元の全期間で、同じ精算の 3 本の精算回数は一致し、番号が飛ぶときは 3 帳票とも同じに飛ぶ）。
 - 同じ日に 2 回以上精算すると、日付だけでは別の精算の Z001 / Z002 / Z005 を混ぜて選んでも通る（実データに同日 2 回・3 回の精算の日がある）。ファイル名は `Z001_{日}{接尾字}_{連番}.CSV` の形で、接尾字（空白・`A`・`B`）は精算の順を表さない。精算の順は中身の日時で並べる（名前の文字列で並べると順が入れ替わる所がある）。ファイル名の `Z00k_` より後ろが同じ 3 本は、手元の全期間で同じ精算だった（手元の整理の folder を外し、中身の日付とファイル名の `Z00k_` より後ろで組むと、各帳票 142 本が 142 組すべてで 3 本そろい、3 本の精算回数が一致した。同じ日に 2 回以上精算した 19 日・42 組も同じ）。このため利用者への選び直しの案内（BIZ-08-D2）は「`Z00k_` より後ろが同じ 3 つ」を手がかりにする。ただしファイル名は利用者が変えうるので、アプリは名前で組まず、同じ精算かは中身の精算回数で判定する（名前は案内にだけ使う）。ファイル名からは精算回数を推測しない（形の約束が無く、Excel で保存し直した形も受ける）。
 - 棄却案: 1 本以上が読めないなら拒む（layout B の束〈Z001 だけが読める〉が正規の形でも止まる）、ファイル名の連番を比べる（ファイル名は利用者が変えうる。中身の精算回数が正）、精算回数を保存して画面に出す（本 lane の Goal は混在を止めること。保存と表示は backlog の「layout A のプリアンブル（精算回数…）」の項で別に設計する）。
@@ -111,6 +112,12 @@ fn quantity_hundredths_to_units(quantity_hundredths: i64) -> f64
 - 罠: コードで対応づけ、先頭の 0 を正規化して比べると、Z002 の 3 行目（`0003`）がクレジットでない行なのに `credit` に、1 行目（`0001`）が `cash` になる。コードの比較は実データで 1 行も当たらず、正規化した瞬間に誤った鍵を作るので、比較そのものを持たない。
 - `credit` の鍵は全角の `クレジット` を含むラベルだけで、半角の `ｸﾚｼﾞｯﾄ` は `credit` にしない（並び順の `payment_N` のまま）。実データの Z002 には半角の `ｸﾚｼﾞｯﾄ` を含むラベルの行が 1 本の中に複数あり、全角の `クレジット` の行は無い。半角も `credit` にすると、1 本の中の複数の行が同じ鍵になり、BIZ-05 の支払の集約（`payment_key` で group 化、24 §14.21 手順 3）が別の項目を 1 行に足す。`credit` の鍵を読む業務の処理は無い（表示の行の鍵だけ）。支払の行の鍵の作り直しは backlog の「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」で扱う。
 - 棄却案: コードを先頭 0 を落として比べる（上の罠）、コードを位置として使う（帳票の行の並びがレジの設定で変わりうる。2022 年に精算の途中でラベルの並びが変わった日がある）、半角の `ｸﾚｼﾞｯﾄ` も `credit` にする（上の合算）。
+
+**IO-07-D5（束の精算回数を返す、[D-111](../decision-log.md#d-111-毎日の売上データはレジの-sd-から直接読むcv17-は-plu-の書込みだけ2026-10-06)）**:
+
+- 3 本とも精算回数を読め（IO-07-D3）、値がそろう束だけ `settlement_no = Some(値)` にする。1 本でも読めない束（layout B を含む）と、値が違う束（`settlement_mismatch`）は `None`。
+- 使い道は BIZ-08 の「同じ精算を別の bytes で二重に取り込まない」guard（BIZ-08-D4）だけ。IO は精算回数の意味（系列・リセット・欠番）を解釈しない。
+- 棄却案: 1 本でも読めた値を束の値にする（layout B の束では Z001 だけの値になり、ほかの 2 本の出所を確かめない値で guard が判定する）、文字列で返す（IO-07-D3 は先頭の 0 を落として整数で比べる。`0005` と `5` が別の値になる）。
 
 ### 29.3 parse_daily_report_bundle
 
@@ -153,7 +160,7 @@ fn parse_daily_report_bundle(files: Vec<DailyReportSourceFile>) -> DailyReportPa
 
 #### 29.4.1 匿名化済み実CSV shape（2026-07-04）
 
-CV17 1.1.1 では、SD取込み後にツール内部ディレクトリへ常在するファイル（layout A）と、レジスターツールのエクスポート機能出力（layout B）が確認されている。運用主経路は現地手順でなお確認中のため、IO-07 は両 layout を正式サポートし、layout 検出後に同じ4列行へ正規化する。gitに入れるfixtureは匿名化shapeを満たすsyntheticデータのみとし、実CSV本文・実店舗値は保存しない。
+CV17 1.1.1 では、SD取込み後にツール内部ディレクトリへ常在するファイル（layout A）と、レジスターツールのエクスポート機能出力（layout B）が確認されている。売上データの標準の入力元はレジの SD の原本で、アプリが SD を直接読む（§29.7、D-111。2026-08-01 の「SD → CV17 取込み → `EcrDatas` から選ぶ」を 2026-10-06 に置き換えた）。SD の `XZ_BKUP` の file は PC の `EcrDatas` の同じ相対 path の file と同じ bytes の layout A だった（§29.7.2）。layout B は CV17 の明示書出しだけが作り、通常の経路には現れないが、IO-07 は両 layout を受理し、layout 検出後に同じ4列行へ正規化する。gitに入れるfixtureは匿名化shapeを満たすsyntheticデータのみとし、実CSV本文・実店舗値は保存しない。
 
 **layout A: プリアンブル型**
 
@@ -201,3 +208,179 @@ CV17 1.1.1 では、SD取込み後にツール内部ディレクトリへ常在�
 - sale_recordsやinventory_movementsへの変換。
 - Excel帳票を読み込むこと。
 - `Z006`（グループ）、`Z009`（時間帯別）、`Z011`（担当者）のparse。個人店の初期日報用途が確認されるまでは対象外とし、必要になった時にadapter拡張として扱う。
+
+### 29.7 IO-09: レジの SD の列挙と読取り（D-111）
+
+#### 29.7.1 目的と置き場所
+
+`register_sd`（module `io::register_sd`、未実装）は、レジ（CASIO SR-S4000）の SD を探し、売上の file（Z・EJ）の名前を列挙し、指定された 1 file の生バイトを読取り専用で読む IO 層の関数群である。file の中身の解釈は IO-07（日報）・IO-02（Z004）・IO-08（EJ）が行い、どの file を取込みの候補にするか・取込み済みかの判断は BIZ（日報は BIZ-08 §37.9）が行う。DB を呼ばず、SD に書かない。
+
+本節は IO-09 の function-design の正本である。新しい function-design の file を作ると `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` への登録が要り、docs だけの設計 lane では行えないため、IO-07 の文書に置く。runtime の lane は同 map の `29-io-daily-report-parser.md` の行に `io::register_sd` を足す（登録義務）。
+
+#### 29.7.2 SD の配置と名前（adapter facts）
+
+2026-10-06 に店の PC で SD を読取り専用で 1 回だけ採取した結果（repo 外の SD 調査、名前・形・hash だけ。中身は読んでいない）と、CV17 の説明書（C p.16・19・26）から。件数は書かない（D-050）。分類の「観測」は設計が必ず扱う場合、「状態」はこの日・この期間の状態で、決め打ちにせず読込み時に検査する値、「未確認」は今回の範囲で決まらないこと。
+
+| ID | 事実 | 分類 |
+|---|---|---|
+| SD-01 | 機種の root は `<drive>:\CASIO\SR500_550_4000\`（機種名 `SR-S4000` と綴りが違う）。売上は `XZ`、CV17 で取り込んだ後の売上は `XZ_BKUP`。ほかに `AUTOPGM`・`LOGO` がある。`RESERVE` は無かった | 観測（root と `XZ` / `XZ_BKUP`）／状態（`RESERVE` の有無） |
+| SD-02 | 精算前の Z は `XZ\yyyy\mm\Znnn_dda.CSV`（`nnn` は系列、`dd` は日、`a` は半角空白か `A`〜`Z` の 1 文字。年・月の folder は精算した日の日付）。CV17 の取込み後は `XZ_BKUP\yyyy\mm\Znnn_dda_nnnn.CSV`（4 桁の連番つきに改名） | 観測 |
+| SD-03 | EJ は `XZ\EJyymmdd.TXT`（`XZ` の直下、年・月の folder なし）、取込み後は `XZ_BKUP\EJyymmdd_nnnn.TXT`。SD 上の綴りは大文字の `EJ`（説明書の綴りは `Ej`） | 観測 |
+| SD-04 | 系列は Z001・Z002・Z004・Z005 があり、Z006・Z009・Z011 は全期間で無かった（CV17 の設定で変わる） | 状態 |
+| SD-07 | 旧い `XZ\yyyy\mm\` に、既知の名前の規則に合わない file が残っている（正体は未確認）。中身が空の `XZ\yyyy\mm\` の folder も残る | 観測（未知の名前の file がある）／未確認（正体） |
+| SD-08 | 同じ日・同じ系列の Z が 2 本以上ある日がある。接尾字は空白・`A`・`B` を観測した。CV17 の改名で接尾字が空白に戻ることがあり、本数・接尾字は精算の順を表さない（IO-07-D3） | 観測 |
+| SD-09 | `XZ` 直下の EJ は、CV17 が移すまで同じ file に精算をまたいで追記されて伸びる（持ち帰りの EJ の集計で、1 file に複数の精算が入る file がある）。file 名の日付はその file の最後の精算の日 | 観測（推定を集計で裏付け） |
+| SD-11 | `XZ_BKUP` の Z・EJ はすべて `_nnnn` 付きの名前 | 観測 |
+| SD-14 | この日の `XZ` に取込み前の Z は無く、EJ は 1 本だった。取込み前の Z が何日分も溜まった状態は見ていない | 状態 |
+| SD-18 | 売上/EJ の保存の設定が有効なら、SD が無いとレジは精算できない（C p.4、E180） | 観測（説明書） |
+| SD-22 | SD の `XZ_BKUP` の Z・EJ は、PC の `EcrDatas` の同じ相対 path の file と全件で size・SHA-256 が一致した（PC にだけあったのは採取の後の精算の分） | 観測 |
+| SD-23 | 取込み前の `XZ` の原本と、取込み後の file が同じ bytes か（CV17 が移すときに作り直さないか） | 未確認（packet の Contract Probe、店の R-50） |
+| SD-24 | `XZ_BKUP` の Z・EJ は全件が CP932 strict・BOM 無し・CRLF だけ（孤立した CR / LF 無し）・最終改行あり。Z001 / Z002 / Z005 は layout A の形、Z004 は 5 列の固定長。系列ごとの行数・列数は全 file で同じだった | 観測（この形が全期間ある）／状態（いつもこの形であること）。取込み前の原本の形は SD-23 に依る |
+| SD-25 | 店の PC の reader で SD は取外し可能な volume として見え（その日は 1 つだけ）、読取り専用の採取の前後で SD の file の一覧・size・hash の差は 0 だった。SD には `System Volume Information` がある | 観測 |
+
+#### 29.7.3 型定義
+
+```rust
+struct RegisterSdRoot {
+    path: PathBuf,        // `<drive>:\CASIO\SR500_550_4000` の実 path
+    volume_label: String, // 表示用。ドライブ名（`G:` 等）
+}
+
+enum RegisterSdSelection {
+    Auto,               // 取外し可能な drive から探す（find_register_sd_roots）
+    Selected(PathBuf),  // 利用者が folder の選択で選んだ path（resolve_register_sd_root）
+}
+
+enum RegisterSdArea {
+    Pending,  // `XZ`（精算前。CV17 で取り込んでいない）
+    Imported, // `XZ_BKUP`（CV17 で取り込んだ後）
+}
+
+enum RegisterSdEntryKind {
+    Z { series: u16, day: u8, suffix: char, backup_seq: Option<u16> }, // suffix は ' ' か 'A'..='Z'
+    Ej { backup_seq: Option<u16> },
+    Unknown, // 名前の規則に合わない file。中身を読まない
+}
+
+struct RegisterSdEntry {
+    relative_path: String,   // root からの相対 path（区切りは `\`。例 `XZ\2026\10\Z001_06 .CSV`）
+    area: RegisterSdArea,
+    kind: RegisterSdEntryKind,
+    date: Option<NaiveDate>, // Z: folder の yyyy・mm と名前の dd、EJ: 名前の yymmdd（20yy）。Unknown は None
+    size_bytes: u64,
+}
+
+struct RegisterSdListing {
+    entries: Vec<RegisterSdEntry>,
+    imported_area_present: bool, // `XZ_BKUP` があるか（無いのは CV17 で一度も取り込んでいない SD）
+}
+
+struct RegisterSdFile {
+    relative_path: String,
+    bytes: Vec<u8>,
+    shape: RegisterSdShape,
+}
+
+struct RegisterSdShape {
+    cp932_strict: bool,   // 全体を CP932 で strict に decode できる
+    has_bom: bool,        // 先頭が UTF-8 の BOM（EF BB BF）
+    crlf_only: bool,      // 改行が CRLF だけ（孤立した CR・LF・NEL が無い）
+    ends_with_crlf: bool, // 最後が CRLF
+}
+
+enum RegisterSdError {
+    NotFound,                       // Auto で root が 1 つも無い
+    MultipleFound(Vec<String>),     // Auto で root が 2 つ以上（volume_label の列）
+    NotRegisterSd,                  // Selected の path から root を解決できない
+    MissingSalesArea,               // root に `XZ` が無い
+    InvalidPath,                    // read の相対 path が root の外を指す
+    TooLarge { relative_path: String },
+    Io { relative_path: String, kind: std::io::ErrorKind },
+}
+```
+
+#### 29.7.4 find_register_sd_roots / resolve_register_sd_root
+
+**関数要求**: SD の root を見つける（IO-09-D1）。
+
+**シグネチャ**:
+
+```rust
+fn find_register_sd_roots() -> Result<Vec<RegisterSdRoot>, RegisterSdError>
+fn resolve_register_sd_root(selected: &Path) -> Result<RegisterSdRoot, RegisterSdError>
+```
+
+**処理ステップ**:
+
+1. `find_register_sd_roots`: Windows では `GetLogicalDrives` の各 drive のうち `GetDriveTypeW` が `DRIVE_REMOVABLE` のものだけを見て、`<drive>:\CASIO\SR500_550_4000` が directory なら root にする（大文字小文字は区別しない）。network・固定 disk・CD の drive は見ない（応答しない network drive で止まらない）。依存は既存の `windows-sys`（`Win32_Storage_FileSystem`、`src-tauri/Cargo.toml` の `[target.'cfg(windows)'.dependencies]`）で、新しい crate を足さない。Windows 以外（開発機・CI）では空の列を返す。
+2. 0 件なら `Ok(vec![])`（BIZ が `NotFound` の案内にする）。2 件以上もそのまま返す（BIZ が選ばせずに止める）。
+3. `resolve_register_sd_root`: 選ばれた path が drive の root・`CASIO`・`SR500_550_4000` のどれかで、そこから `CASIO\SR500_550_4000` に当たる directory が見つかれば root にする。それ以外は `NotRegisterSd`。選ばれた path は取外し可能な drive でなくてよい（reader が固定 disk として見える PC と、SD の写しを読む復旧に使う）。
+
+**IO-09-D1（root の見つけ方）**: 自動で探すのは取外し可能な drive の中の決まった folder だけで、見つからない・2 つ以上のときは推測で選ばない。利用者が folder を選ぶ経路は自動の失敗時の予備として同じ IO で持つ。既定をどちらにするかは owner の判断（D-111 の未決、UI-07-D13）。
+
+#### 29.7.5 list_register_sd_entries
+
+**関数要求**: root の `XZ` と `XZ_BKUP` から、売上の file の名前を列挙する。中身は読まない（IO-09-D2）。
+
+**シグネチャ**:
+
+```rust
+fn list_register_sd_entries(root: &RegisterSdRoot, from: NaiveDate) -> Result<RegisterSdListing, RegisterSdError>
+```
+
+**処理ステップ**:
+
+1. `XZ` が無ければ `MissingSalesArea`。`XZ_BKUP` は無くてよい（`imported_area_present = false`）。
+2. `XZ` と `XZ_BKUP` のそれぞれで、4 桁の年・2 桁の月（01〜12）の名前の folder のうち (年, 月) が `from` の (年, 月) 以上のものだけに入り、その中の file を Z の規則で分類する。それ以外の名前の folder には入らない。
+3. `XZ` と `XZ_BKUP` の直下の file を EJ の規則で分類する。`XZ` 直下の EJ（伸び続ける file、SD-09）は `from` によらず返す。
+4. 名前の規則（大文字小文字を区別しない。FAT は区別せず、SD 上は大文字の `EJ`、説明書は `Ej`）:
+   - Z: `^Z(\d{3})_(\d{2})([ A-Z])(_(\d{4}))?\.CSV$`。`XZ` では連番なし、`XZ_BKUP` では連番ありだけを Z とする（逆は `Unknown`）。日付は folder の年・月と名前の日で、暦日として不正なら `Unknown`。
+   - EJ: `^EJ(\d{2})(\d{2})(\d{2})(_(\d{4}))?\.TXT$`。`XZ` では連番なし、`XZ_BKUP` では連番ありだけを EJ とする。日付は 20yy 年。
+   - どれにも当たらない file は `Unknown` として返す（名前と size だけ。中身を読まない）。SD-07 の旧い folder の未知の file はこれに当たる。
+5. `date` が `from` より前の Z・EJ（`XZ` 直下の EJ を除く）は返さない。系列番号（`nnn`）は決め打ちにせず、Z006・Z009・Z011 や未知の番号もそのまま返す（使うかは BIZ が決める）。
+6. 列挙の途中で読めなくなった（SD を抜いた等）ら `Io`。途中までの一覧を返さない。
+
+**IO-09-D2（名前で分類し、中身で判定する）**: 名前は列挙と組分けの手がかりにだけ使い、取込み済みか・同じ精算かは中身（hash と精算回数）で決める（IO-07-D3 と同じ線引き）。名前が規則に合わない file は読まずに `Unknown` で返し、推測で Z や EJ にしない。年・月の folder の絞り込みは、全期間の `XZ_BKUP` を毎回読まないための列挙の範囲で、取込み済みの判定には使わない。
+
+#### 29.7.6 read_register_sd_file
+
+**関数要求**: 列挙した 1 file の生バイトを読取り専用で読み、形を測る（IO-09-D3・D4）。
+
+**シグネチャ**:
+
+```rust
+fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: u64) -> Result<RegisterSdFile, RegisterSdError>
+```
+
+**処理ステップ**:
+
+1. `relative_path` を `\` で分け、空・`.`・`..`・drive 指定・絶対 path の要素があれば `InvalidPath`。root と結合した path が root の下でなければ `InvalidPath`。
+2. `std::fs::File::open`（読取り専用）で開き、`max_bytes + 1` byte まで読む。超えたら `TooLarge`（全体を読まない）。開けない・読めないは `Io`。読み終えたら handle を閉じる（関数の外へ handle を持ち出さない）。
+3. 形を測る: CP932 の strict decode の成否、先頭の UTF-8 BOM、改行が CRLF だけか、最後が CRLF か。測るだけで、直さない・捨てない。
+4. `RegisterSdFile` を返す。
+
+**IO-09-D3（SD を書き換えない）**: `io::register_sd` は SD への書込み・作成・改名・移動・削除・属性の変更・時刻の変更を行う関数を持たない（`std::fs::write` / `create_dir*` / `rename` / `remove_*` / `set_permissions` / `OpenOptions` の書込み・追記・作成の指定を module 内で使わない。runtime の lane が source の検査 test で確かめる）。file は読取り専用で開き、読んだら閉じる。Windows が読取りで FAT の最終アクセス日を変える・`System Volume Information` を作ることはアプリでは止められないが、店は CV17 の取込みのために毎日この PC で同じ SD を書込み可能なまま差してきており（SD-25）、新しい種類の副作用は増えない。CV17 と同じく `XZ` から `XZ_BKUP` へ移す案は採らない（D-111 の未決 1。移すことにするなら書込みの失敗と途中の抜去の設計が要り、本節に戻る）。
+
+**IO-09-D4（形は測って BIZ が止める）**: SD-24 の符号化・改行・BOM は「状態」なので IO は決め打ちにせず測って返し、外れた file を取込みの候補にしないのは BIZ（BIZ-08-D3）が決める。行数・列数は各 parser の構造の検査（IO-07 の `invalid_format`、IO-02、IO-08）に任せ、固定の行数を IO で求めない（Z004 の 5,000 枠も含め、レジの設定で変わりうる）。
+
+#### 29.7.7 エラーハンドリング
+
+| エラー | 発生条件 | BIZ での扱い |
+|---|---|---|
+| NotFound / 空の列 | 自動で root が無い | 「SD が見つかりません」と予備の経路（folder を選ぶ）を案内 |
+| MultipleFound | 自動で root が 2 つ以上 | 推測で選ばず、売上の SD だけを差すよう案内 |
+| NotRegisterSd | 選んだ folder がレジの SD でない | 選び直しを案内 |
+| MissingSalesArea | `XZ` が無い | 読まずに止める |
+| InvalidPath | 相対 path が root の外 | 内部の誤り。診断ログ |
+| TooLarge | 上限を超える | その束・file を候補にしない（読めない） |
+| Io | 列挙・読取りの途中の失敗 | 読み全体を失敗にし、途中の結果を使わない |
+
+#### 29.7.8 採らなかった案
+
+| 案 | 採らない理由 |
+|---|---|
+| すべての drive を探す | 応答しない network drive で止まる。SD は取外し可能な drive として見えた（SD-25） |
+| file 名の日付・接尾字・連番で取込み済みを決める | CV17 の改名で接尾字が戻り、連番は接尾字と無関係（SD-08）。SD と PC で名前が違う（SD-02） |
+| 改行を正規化して読む前提で形を測らない | SD の原本の形は取込み前の分が未観測（SD-23）。外れた file を黙って読む |
+| `XZ_BKUP` を読まない | CV17 の取込みを誰かが続けると、精算の分が `XZ_BKUP` にしか無い日ができる |
+| 全期間の `XZ_BKUP` を毎回読む | 全期間の Z004 を毎回読むことになり遅い。取込み済みは hash で分かるので、範囲は BIZ の窓で足りる |

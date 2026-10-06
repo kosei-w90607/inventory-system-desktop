@@ -52,6 +52,7 @@ SPEC-STK-TIME-D1〜D9のsource詳細を、各文書の同名節へ展開した�
 - IO-06: 画像ファイル管理（image_manager）
 - IO-07: POS日報bundleパーサー（daily_report_parser）
 - IO-08: EJパーサー（ej_parser）
+- IO-09: レジの SD の列挙と読取り（register_sd）
 - UI-01a: 商品検索・一覧（ProductListPage / patterns/SearchBar（旧 ProductSearchBar、PR-B で統合）/ ProductTable / patterns/Pagination）— Design Phase 更新済み。REQ-103、URL state、既存 `commands.searchProducts` 契約、`list_departments` CMD 設計、pagination、廃番表示、HID scanner 前提は [function-design/50-ui-product-list.md](function-design/50-ui-product-list.md) を参照
 - UI-01b: 商品登録・編集（ProductFormPage）— routes/ 系に更新済み。商品登録・修正 form 設計、generated command、supplier 候補、廃番確認、保存 toast は [function-design/51-ui-product-form.md](function-design/51-ui-product-form.md) を参照
 - UI-01c: 商品一括インポート（ProductImportPage）— Design Phase 更新済み。REQ-104、`/products/import` route、generated `previewImport` / `commitImport` 契約、共通 FilePicker（D-054、§6.5.4）、preview / duplicate / commit flow、Windows native L3 は [function-design/60-ui-product-import.md](function-design/60-ui-product-import.md) を参照
@@ -115,7 +116,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 - [IO-04: PLUフォーマッター](function-design/25-io-plu-formatter.md) — generate_plu_tsv（純関数、DB非依存。E-4確定仕様）
 - [IO-05: レポートCSVエクスポーター](function-design/27-io-report-csv-exporter.md) — export_csv（UTF-8 BOM付き、純関数）
 - [IO-06: 画像ファイル管理](function-design/28-io-image-manager.md) — save_receipt_image（レシート画像保存、相対パス管理）
-- [IO-07: POS日報bundleパーサー](function-design/29-io-daily-report-parser.md) — parse_daily_report_bundle（Z001/Z002/Z005、CP932/NEL、純関数）
+- [IO-07: POS日報bundleパーサー](function-design/29-io-daily-report-parser.md) — parse_daily_report_bundle（Z001/Z002/Z005、CP932/NEL、純関数）。同じ文書の §29.7 に IO-09: レジの SD の列挙と読取り（find_register_sd_roots / resolve_register_sd_root / list_register_sd_entries / read_register_sd_file、D-111）
 - [IO-08: EJパーサー](function-design/29-io-ej-parser.md) — parse_ej（EJ 1 file を取引単位の記録へ構造復元、24バイト固定幅・CP932・CRLF、純関数）
 
 ### MNT層（保守）
@@ -132,7 +133,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 - [BIZ-05: 売上集計ロジック](function-design/34-biz-sales-service.md) — get_daily_sales, get_monthly_sales
 - [BIZ-06: 棚卸しロジック](function-design/35-biz-stocktake-service.md) — start_stocktake, update_count, complete_stocktake
 - [BIZ-07: 整合性チェックロジック](function-design/36-biz-integrity-check.md) — run_integrity_check, fix_integrity
-- [BIZ-08: 日報取込みロジック](function-design/37-biz-daily-report-import-service.md) — parse_and_validate_daily_report, commit_daily_report_import, rollback_daily_report_import
+- [BIZ-08: 日報取込みロジック](function-design/37-biz-daily-report-import-service.md) — scan_register_sd_daily_reports, parse_and_validate_daily_report, commit_daily_report_import, rollback_daily_report_import
 
 ### CMD層（Tauriコマンド）
 - [CMD-01: 商品コマンド群](function-design/40-cmd-product.md) + 一括インポート
@@ -140,7 +141,7 @@ UI-06b は独立画面ではなく UI-06a への deep-link のため、専用の
 - [CMD-09/10/11部分: 売上集計・棚卸し・整合性コマンド群](function-design/42-cmd-sales-stocktake.md) — 売上(daily/monthly), 棚卸し(start/items/count/complete), 整合性(check/fix)
 - [CMD-02〜05: 入出庫コマンド群 / CMD-06: 在庫照会コマンド群](function-design/44-cmd-inventory.md) — 入庫/返品/手動販売/廃棄(create/list), 在庫照会(detail/low_stock/movements)
 - [CMD-11残り: 設定・ログ・バックアップ・画像コマンド群](function-design/43-cmd-settings-log.md) — settings CRUD, list_logs（UI-11c-D2/D3 期間拡張）, list_log_operation_types（新規、UI-11c-D4）, backup/restore, save_receipt_image
-- [CMD-12: 日報取込みコマンド群](function-design/45-cmd-daily-report-import.md) — Z001/Z002/Z005 daily report bundle parse/commit/rollback/list
+- [CMD-12: 日報取込みコマンド群](function-design/45-cmd-daily-report-import.md) — Z001/Z002/Z005 daily report bundle SD scan/parse/commit/rollback/list
 
 ### UI層（React）
 - [UI-12: 共通レイアウト](function-design/52-ui-shared-layout.md) — RootLayout, Sidebar, navigation 定数, ウィンドウタイトル動的更新機構（業務ロジックなし版テンプレ初導入）

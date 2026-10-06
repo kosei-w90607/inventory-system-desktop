@@ -203,6 +203,7 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
   - payment_lines[]: payment_key, label, amount?, count?, sort_order
   - department_lines[]: raw_department_name, normalized_department_name?, amount, quantity_hundredths?, count?, sort_order
   - parse_errors[]: source_file?, filename?, line_no?, error_type, error_message（BIZ-08の開発者向けdiagnostic logで消費し、利用者向けwire/operation logへraw detailを出さない）
+  - settlement_no?: 3 本とも精算回数を読め、そろうときだけの束の精算回数（IO-07-D5、BIZ-08-D4 の照合に使う）
 
 **【処理構造】**
 
@@ -263,3 +264,22 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 - 致命的エラーは 3 種（DecodeFailed / NoRecords / Empty）で部分結果を返さない。それ以外は記録単位の復元不能 + 診断
 - EOF を記録の閉じの根拠にしない。復元不能の記録から明細を読み出す API を持たない
 - 番号の連続・区間の完全性・分割 file の連結・Z004 との対応・商品同定・時刻の解釈は行わない（次の design lane と BIZ）
+
+---
+
+### IO-09: レジの SD の列挙と読取り
+
+**タスク要求**: レジ（CASIO SR-S4000）の SD を取外し可能な drive から探すか利用者が選んだ folder から解決し、`CASIO\SR500_550_4000\XZ` と `XZ_BKUP` の売上の file（Z・EJ）の名前を列挙し、指定された file の生バイトを読取り専用で読んで形（CP932 strict・BOM・CRLF だけ・最終改行）を測る。SD へは書かない。業務ロジックなし（function-design は [29 §29.7](../function-design/29-io-daily-report-parser.md#297-io-09-レジの-sd-の列挙と読取りd-111)）
+
+**理由**: 毎日の売上データは CV17 を開かずにアプリが SD から直接読む（D-111）。SD の配置・名前・読み方はレジ依存なので IO adapter に閉じる（D-023）。どの file を候補にするか・取込み済みかは BIZ-08（§37.9）が決める
+
+**【データ構造】**
+
+入力: なし（自動）または選ばれた path、窓の始まりの日付、相対 path と上限 byte 数
+
+出力: RegisterSdRoot（path, volume_label）、RegisterSdListing（entries[]{relative_path, area〈XZ / XZ_BKUP〉, kind〈Z{series, day, suffix, backup_seq?} / Ej{backup_seq?} / Unknown〉, date?, size_bytes}, imported_area_present）、RegisterSdFile（relative_path, bytes, shape）
+
+**【制御構造】**
+- 書込み・作成・改名・移動・削除の API を持たない（IO-09-D3）
+- 名前は分類と組分けにだけ使い、取込み済みの判定に使わない（IO-09-D2）
+- 列挙・読取りの途中の失敗は全体の失敗にする

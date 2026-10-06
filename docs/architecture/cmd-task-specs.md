@@ -78,13 +78,15 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 
 | コマンド名 | 入力 | 呼び出すBIZ | 出力 |
 |-----------|------|-----------|------|
+| scan_register_sd | selected_path?（None = 自動で探す） | BIZ-08 §37.9 | RegisterSdScanResponse（scan, scan_token）。読んだ bytes は AppState の scan cache（30 分）に置く（CMD-12-D1、D-111） |
+| parse_and_validate_daily_report_from_sd | scan_token, candidate_key | BIZ-08 Stage1+2 | DailyReportPreviewResponse（preview_data, preview_token） |
 | parse_and_validate_daily_report | DailyReportSourceFile[]（filename, file_bytes） | BIZ-08 Stage1+2 | DailyReportPreviewResponse（preview_data, preview_token） |
 | commit_daily_report_import | CommitDailyReportRequest（preview_token, additional_import_confirmed） | BIZ-08 Stage4 | DailyReportImportResult（daily_report_import_id, status, report_date, warning_count） |
 | rollback_daily_report_import | daily_report_import_id | BIZ-08 ロールバック | DailyReportRollbackResult（success, status） |
 | list_daily_report_imports | ListQuery（page, per_page, date_from?, date_to?） | BIZ-08経由 | PaginatedResult\<DailyReportImport\> |
 
 **CMD-12の責務境界**:
-- ファイルバイト列をBIZ-08へ中継する。Z001/Z002/Z005のsource判定や日報バリデーションはCMDで行わない。
+- ファイルバイト列をBIZ-08へ中継する。Z001/Z002/Z005のsource判定や日報バリデーションはCMDで行わない。SD の探し方・候補の規則・状態はBIZ-08が持ち、CMDは scan の snapshot を保持して渡すだけ（IO-09 を直接呼ばない）。
 - preview_token のUUID形式チェックとファイルサイズ上限の早期チェックだけを防御的入力チェックとして許可する。
 - BIZ-08の error は `CmdError.kind = "import_error"` または既存 `validation` / `not_found` / `internal` に変換する。
 - CMD-07（Z004商品別CSV）とCMD-12（日報）はpreview cacheの保管場所を共有してよいが、cache valueの型は分ける。

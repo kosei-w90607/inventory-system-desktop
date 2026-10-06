@@ -22,6 +22,7 @@ struct AppState {
     db: Mutex<Connection>,
     preview_cache: Mutex<HashMap<String, CachedPreview>>,
     daily_report_preview_cache: Mutex<HashMap<String, CachedDailyReportPreview>>,
+    register_sd_scan_cache: Mutex<HashMap<String, DailyReportSdScanSnapshot>>, // CMD-12-D1
 }
 ```
 
@@ -125,6 +126,48 @@ fn list_daily_report_imports(
 
 status filter は第1スライスでは公開しない。BIZ-08のquery型には内部拡張用に `status` を残し、CMD-12からは `None` を渡す。
 
+### 45.6a scan_register_sd（CMD-12-D1、D-111）
+
+**関数要求**: レジの SD を BIZ-08 §37.9 で読み、候補の一覧と scan_token を返す。
+
+```rust
+#[tauri::command]
+fn scan_register_sd(
+    state: State<AppState>,
+    selected_path: Option<String>, // None = 自動で探す。Some = 利用者が folder の選択で選んだ path
+) -> Result<RegisterSdScanResponse, CmdError>
+
+struct RegisterSdScanResponse {
+    scan: DailyReportSdScan, // 37 §37.9
+    scan_token: String,
+}
+```
+
+**処理ステップ**:
+1. `selected_path` を `RegisterSdSelection`（`None` → `Auto`、`Some` → `Selected(PathBuf)`）にする。空文字は `CmdError.kind="validation"`。
+2. DB接続を取得し、BIZ-08 `scan_register_sd_daily_reports(conn, selection, PC の今日の日付)` を呼ぶ。SD を読む間（窓の範囲の小さな file と照合。利用者は 1 人）は DB の Mutex を持ったままでよい。
+3. 成功時、UUID の scan_token を作り、`register_sd_scan_cache` を空にしてから snapshot を入れる（同時に持つ scan は最新の 1 つだけ）。
+4. response を返す。
+
+### 45.6b parse_and_validate_daily_report_from_sd（CMD-12-D1）
+
+```rust
+#[tauri::command]
+fn parse_and_validate_daily_report_from_sd(
+    state: State<AppState>,
+    scan_token: String,
+    candidate_key: String,
+) -> Result<DailyReportPreviewResponse, CmdError>
+```
+
+**処理ステップ**:
+1. scan_token の UUID 形式を検証する。
+2. `register_sd_scan_cache` から snapshot を取得する。miss または作成から 30 分超は `CmdError.kind="import_error"`、message `SD を読んでから時間がたちました。もう一度 SD を読んでください。`。
+3. `files_by_candidate[candidate_key]` が無ければ `CmdError.kind="validation"`（取り込めない候補）。
+4. 以降は §45.3 の手順 3〜6 と同じ（BIZ-08 `parse_and_validate_daily_report` に 3 本を渡し、preview_token を返す）。snapshot は消さない（同じ scan から別の候補を続けて取り込める）。
+
+**CMD-12-D1**: CMD は scan の snapshot を AppState に置いて渡すだけで、SD の探し方・候補の規則・状態の判定を持たない（BIZ-08-D3）。CMD は IO-09 を直接呼ばない（ARCHITECTURE のレイヤー間の呼び出し原則、`src-tauri/tests/architecture_test.rs`）。snapshot を AppState に置くのは、SD を読み終えたらすぐレジへ戻せるようにするため（SD-18）。棄却案: scan の結果の bytes を UI へ返して UI から §45.3 を呼ぶ（取り込まない Z004 等は持たないが、日報だけでも wire に生バイトを往復させ、UI が束を組める余地を作る）、preview のたびに SD を読み直す（SD を差したままにする必要がある）。
+
 ### 45.7 CmdError変換
 
 | BIZ-08 error | CmdError.kind | message |
@@ -137,7 +180,7 @@ status filter は第1スライスでは公開しない。BIZ-08のquery型には
 
 ### 45.8 生成bindings
 
-SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。
+SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の runtime では `scan_register_sd` / `parse_and_validate_daily_report_from_sd` を `lib.rs` の specta `collect_commands` に登録し、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は変えない（`settlement_no` は内部の cache と DB だけで、wire に出さない）。
 
 対象:
 - `parse_and_validate_daily_report`
@@ -150,3 +193,4 @@ SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Ty
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D3/D4: same-date summary DTO、`additional_import_confirmed`、snapshot mismatch時のtoken破棄、per-import rollback、bindings再生成義務を正本化。 |
+| 2026-10-06 | sd-direct-read（design、D-111） | CMD-12-D1: `scan_register_sd` と `parse_and_validate_daily_report_from_sd`、AppState の scan cache。 |
