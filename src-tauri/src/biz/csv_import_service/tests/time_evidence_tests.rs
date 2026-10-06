@@ -172,6 +172,15 @@ fn test_check_settlement_identity_req401_t13_conflict_with_any_received_source()
         assert_eq!(business_counts(&conn), before);
     }
 
+    // 同じ精算の A・B を受領した後に、先に受領した方を検査しても衝突する（照合は ID の前後に依らない）
+    let (_dir, mut conn) = setup_time_evidence_db();
+    let target = source(&conn, "hash-b", DATE, full("0042"));
+    source(&conn, "hash-a", DATE, full("0042"));
+    assert!(matches!(
+        check_settlement_identity(&mut conn, target, "t"),
+        Err(IdentityGuardError::Rejected(IdentityConflict))
+    ));
+
     // 対照: NULL どうし・report_kind だけ None・帳票種別の違いは衝突にしない（同日の active なし）
     let (_dir, mut conn) = setup_time_evidence_db();
     source(&conn, "hash-n1", DATE, (Some(KIND), None, None));
@@ -575,36 +584,43 @@ fn test_classify_stock_rows_req205_req401_t20_source_cursor_boundary_and_latest(
     // REQ-205 / REQ-401 / SPEC-STK-TIME-D4 / T20: source.id <= source_cursor が Before、時刻に依らない
     let (_dir, conn) = setup_time_evidence_db();
     product(&conn, "P-1", true);
+    // 分類する source は実在させ、時刻を前後に動かしても ID だけが Before を決めることを pin する
+    let k = source(&conn, "hash-k", DATE, (None, None, None));
+    let k1 = source(&conn, "hash-k1", DATE, (None, None, None));
     let active = header(&conn, "in_progress");
-    let measured_item = measured(&conn, active, "P-1", 5, 1);
+    let measured_item = measured(&conn, active, "P-1", k, 1);
     let unknown = StockEffect::Unknown(UnknownReason::SaleOrderUnknown);
-    assert_eq!(effect(&conn, 5, "P-1", 2, 200), StockEffect::Before);
-    assert_eq!(effect(&conn, 6, "P-1", 2, 200), unknown);
+    assert_eq!(effect(&conn, k, "P-1", 2, 200), StockEffect::Before);
+    assert_eq!(effect(&conn, k1, "P-1", 2, 200), unknown);
 
-    // 明細の時刻と source の settled_at を前後に入れ替えても同じ（分類の入力は source ID だけ）
+    // source の settled_at / received_at を計数の開始の前・後・無しに動かしても同じ
+    for (settled_at, received_at) in [
+        (Some("1999-01-01T00:00"), "1999-01-01T00:00:00"),
+        (Some("2099-01-01T00:00"), "2099-01-01T00:00:00"),
+        (None, "2026-03-20T21:00:00"),
+    ] {
+        conn.execute(
+            "UPDATE pos_import_sources SET settled_at = ?1, received_at = ?2",
+            rusqlite::params![settled_at, received_at],
+        )
+        .unwrap();
+        assert_eq!(
+            effect(&conn, k, "P-1", 2, 200),
+            StockEffect::Before,
+            "{settled_at:?}"
+        );
+        assert_eq!(effect(&conn, k1, "P-1", 2, 200), unknown, "{settled_at:?}");
+    }
+
+    // 明細の時刻を前後に入れ替えても同じ（分類の入力は source ID だけ）
     conn.execute(
         "UPDATE stocktake_items SET count_started_at = '2099-12-31T23:00:00', counted_at = '2000-01-01T00:00:00'
          WHERE id = ?1",
         [measured_item],
     )
     .unwrap();
-    for (n, settled_at) in [(1, "1999-01-01T00:00"), (2, "2099-01-01T00:00")] {
-        upsert_pos_import_source(
-            &conn,
-            &NewPosImportSource {
-                file_hash: format!("hash-t{n}"),
-                received_at: "2026-03-20T21:00:00".to_string(),
-                settlement_date: DATE.to_string(),
-                machine_no: None,
-                report_kind: None,
-                settlement_no: None,
-                settled_at: Some(settled_at.to_string()),
-            },
-        )
-        .unwrap();
-    }
-    assert_eq!(effect(&conn, 5, "P-1", 2, 200), StockEffect::Before);
-    assert_eq!(effect(&conn, 6, "P-1", 2, 200), unknown);
+    assert_eq!(effect(&conn, k, "P-1", 2, 200), StockEffect::Before);
+    assert_eq!(effect(&conn, k1, "P-1", 2, 200), unknown);
 
     let latest_cases: [(&str, BuildCase); 5] = [
         // (a) 完了済みの明細 版 2・cursor 7 → 後の recount 版 3・cursor 8 → source 8 は Before
@@ -655,6 +671,15 @@ fn test_classify_stock_rows_req205_req401_t20_source_cursor_boundary_and_latest(
     for (case, build) in latest_cases {
         let (_dir, conn) = setup_time_evidence_db();
         product(&conn, "P-1", true);
+        // 分類する source を実在させ、全 source の時刻を計数の後にする（ID だけが Before を決める）
+        for n in 1..=10 {
+            source(&conn, &format!("hash-{n}"), DATE, (None, None, None));
+        }
+        conn.execute(
+            "UPDATE pos_import_sources SET settled_at = '2099-01-01T00:00', received_at = '2099-01-01T00:00:00'",
+            [],
+        )
+        .unwrap();
         let source_id = build(&conn);
         assert_eq!(
             effect(&conn, source_id, "P-1", 2, 200),

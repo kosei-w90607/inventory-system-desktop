@@ -428,12 +428,15 @@ fn extract_settlement_metadata(metadata: &[&str], settlement_date: &str) -> Sett
                 .filter(|value| !value.is_empty())
         })
     };
-    let Some(report_kind) = value_of("ファイル") else {
-        return SettlementMetadata::default();
-    };
     let settled_at = value_of("時刻")
         .filter(|time| chrono::NaiveTime::parse_from_str(time, "%H:%M").is_ok() && time.len() == 5)
         .map(|time| format!("{settlement_date}T{time}"));
+    let Some(report_kind) = value_of("ファイル") else {
+        return SettlementMetadata {
+            settled_at,
+            ..SettlementMetadata::default()
+        };
+    };
     SettlementMetadata {
         machine_no: value_of("マシンNo."),
         report_kind: Some(report_kind),
@@ -619,11 +622,6 @@ mod tests {
         let result = parse_z004(&raw).unwrap();
         assert_eq!(result.settlement_date, "2026-03-21");
         assert_eq!(result.settlement_metadata, None);
-        let metadata = result.settlement_metadata.unwrap_or_default();
-        assert_eq!(metadata.machine_no, None);
-        assert_eq!(metadata.report_kind, None);
-        assert_eq!(metadata.settlement_no, None);
-        assert_eq!(metadata.settled_at, None);
     }
 
     #[test]
@@ -1359,6 +1357,7 @@ mod layout_a_tests {
         assert_eq!(metadata.report_kind, None);
         assert_eq!(metadata.machine_no, None);
         assert_eq!(metadata.settlement_no, None);
+        assert_eq!(metadata.settled_at.as_deref(), Some("2026-08-15T18:30"));
 
         // report_kind は「モード」行から作らない
         let metadata = metadata_of(&[
