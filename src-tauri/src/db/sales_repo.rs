@@ -943,6 +943,24 @@ pub struct OfficialDailyReportRow {
     pub net_amount: Option<i64>,
     pub payment_lines: Vec<OfficialDailyPaymentRow>,
     pub department_lines: Vec<OfficialDailyDepartmentRow>,
+    pub summary_imports: Vec<OfficialDailySummaryImportRow>,
+}
+
+/// Z001 の取込みごとの行（合算しない、D-096）
+#[derive(Debug, serde::Serialize)]
+pub struct OfficialDailySummaryImportRow {
+    pub daily_report_import_id: i64,
+    pub imported_at: String,
+    pub lines: Vec<OfficialDailySummaryLineRow>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct OfficialDailySummaryLineRow {
+    pub label: String,
+    /// 個数の100倍の整数（IO-07-D2）。単位の数への変換は BIZ-05
+    pub quantity_hundredths: Option<i64>,
+    pub count: Option<i64>,
+    pub amount: Option<i64>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -1018,10 +1036,10 @@ pub fn get_completed_daily_report_aggregate(
 ) -> Result<Option<OfficialDailyReportRow>, DbError> {
     let mut parent_stmt = conn
         .prepare(
-            "SELECT id, report_date, gross_amount, net_amount
+            "SELECT id, report_date, gross_amount, net_amount, imported_at
              FROM daily_report_imports
              WHERE report_date = ?1 AND status = 'completed'
-             ORDER BY imported_at DESC, id DESC",
+             ORDER BY imported_at ASC, id ASC",
         )
         .map_err(|e| DbError::QueryFailed(e.to_string()))?;
     let parents = parent_stmt
@@ -1031,6 +1049,7 @@ pub fn get_completed_daily_report_aggregate(
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
+                row.get::<_, String>(4)?,
             ))
         })
         .map_err(|e| DbError::QueryFailed(e.to_string()))?
@@ -1040,10 +1059,10 @@ pub fn get_completed_daily_report_aggregate(
     if parents.is_empty() {
         return Ok(None);
     }
-    let parent_ids: Vec<_> = parents.iter().map(|parent| parent.0).collect();
     let report_date = parents[0].1.clone();
-    let gross_amount = sum_optional_strict(parents.iter().map(|parent| parent.2))?;
-    let net_amount = sum_optional_strict(parents.iter().map(|parent| parent.3))?;
+    // 加算は従来の新しい順（溢れと NULL の伝播が順に依る、24 §14.21 手順 1）
+    let gross_amount = sum_optional_strict(parents.iter().rev().map(|parent| parent.2))?;
+    let net_amount = sum_optional_strict(parents.iter().rev().map(|parent| parent.3))?;
 
     let mut payment_stmt = conn
         .prepare(
@@ -1198,13 +1217,52 @@ pub fn get_completed_daily_report_aggregate(
     department_lines.sort_by_key(|item| item.0);
     let department_lines = department_lines.into_iter().map(|item| item.1).collect();
 
+    let mut summary_stmt = conn
+        .prepare(
+            "SELECT l.daily_report_import_id, l.label, l.quantity_hundredths, l.count, l.amount
+             FROM daily_report_summary_lines l
+             INNER JOIN daily_report_imports i ON i.id = l.daily_report_import_id
+             WHERE i.report_date = ?1 AND i.status = 'completed'
+             ORDER BY i.imported_at ASC, i.id ASC, l.sort_order ASC, l.id ASC",
+        )
+        .map_err(|e| DbError::QueryFailed(e.to_string()))?;
+    let mut summary_lines = summary_stmt
+        .query_map([report_date.as_str()], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                OfficialDailySummaryLineRow {
+                    label: row.get(1)?,
+                    quantity_hundredths: row.get(2)?,
+                    count: row.get(3)?,
+                    amount: row.get(4)?,
+                },
+            ))
+        })
+        .map_err(|e| DbError::QueryFailed(e.to_string()))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| DbError::QueryFailed(e.to_string()))?
+        .into_iter()
+        .peekable();
+    // 行は親と同じ並びなので、親ごとに先頭から取り分ける（行の無い親は空のまま）
+    let summary_imports = parents
+        .iter()
+        .map(|parent| OfficialDailySummaryImportRow {
+            daily_report_import_id: parent.0,
+            imported_at: parent.4.clone(),
+            lines: std::iter::from_fn(|| summary_lines.next_if(|line| line.0 == parent.0))
+                .map(|line| line.1)
+                .collect(),
+        })
+        .collect();
+
     Ok(Some(OfficialDailyReportRow {
-        source_import_count: parent_ids.len() as i64,
+        source_import_count: parents.len() as i64,
         report_date,
         gross_amount,
         net_amount,
         payment_lines,
         department_lines,
+        summary_imports,
     }))
 }
 
@@ -3011,5 +3069,297 @@ mod tests {
             get_completed_daily_report_aggregate(&conn, "2026-09-29"),
             Err(DbError::QueryFailed(_))
         ));
+    }
+
+    // -----------------------------------------------------------------------
+    // Z001 の取込みごとの行（24 §14.21 手順 1・6・8、D-096）
+    // -----------------------------------------------------------------------
+
+    fn set_imported_at(conn: &DbConnection, id: i64, imported_at: &str) {
+        conn.execute(
+            "UPDATE daily_report_imports SET imported_at = ?1 WHERE id = ?2",
+            rusqlite::params![imported_at, id],
+        )
+        .unwrap();
+    }
+
+    fn summary_line(
+        import_id: i64,
+        label: &str,
+        quantity_hundredths: Option<i64>,
+        count: Option<i64>,
+        amount: Option<i64>,
+        sort_order: i64,
+    ) -> NewDailyReportSummaryLine {
+        NewDailyReportSummaryLine {
+            daily_report_import_id: import_id,
+            source_file: "Z001".to_string(),
+            line_key: format!("summary_{sort_order}"),
+            label: label.to_string(),
+            amount,
+            quantity_hundredths,
+            count,
+            sort_order,
+        }
+    }
+
+    fn summary_labels(import: &OfficialDailySummaryImportRow) -> Vec<&str> {
+        import
+            .lines
+            .iter()
+            .map(|line| line.label.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_order_without_sum() {
+        // REQ-501 / 24 §14.21 手順 1・6 / D-096: 親は imported_at ASC, id ASC、行は sort_order ASC, id ASC、合算しない
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report_import(&conn, "2026-03-21", "order-a", "completed");
+        let second = seed_daily_report_import(&conn, "2026-03-21", "order-b", "completed");
+        set_imported_at(&conn, first, "2026-03-21T19:00:00");
+        set_imported_at(&conn, second, "2026-03-21T18:05:30");
+        for (id, amount) in [(first, 100), (second, 200)] {
+            insert_daily_report_summary_lines(
+                &conn,
+                &[
+                    summary_line(id, "部門", None, Some(3), Some(amount + 3), 3),
+                    summary_line(id, "部門", None, Some(2), Some(amount + 2), 2),
+                    summary_line(id, "部門", None, Some(1), Some(amount + 1), 1),
+                ],
+            )
+            .unwrap();
+        }
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        let ids: Vec<i64> = report
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids, vec![second, first]);
+        assert_eq!(report.summary_imports[0].imported_at, "2026-03-21T18:05:30");
+        assert_eq!(report.summary_imports[1].imported_at, "2026-03-21T19:00:00");
+        for (import, base) in report.summary_imports.iter().zip([200, 100]) {
+            assert_eq!(summary_labels(import), vec!["部門", "部門", "部門"]);
+            let values: Vec<(Option<i64>, Option<i64>)> = import
+                .lines
+                .iter()
+                .map(|line| (line.count, line.amount))
+                .collect();
+            assert_eq!(
+                values,
+                vec![
+                    (Some(1), Some(base + 1)),
+                    (Some(2), Some(base + 2)),
+                    (Some(3), Some(base + 3)),
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_same_imported_at_by_id() {
+        // REQ-501 / 24 §14.21 手順 1: imported_at が同値なら親 id の昇順
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report_import(&conn, "2026-03-21", "same-a", "completed");
+        let second = seed_daily_report_import(&conn, "2026-03-21", "same-b", "completed");
+        for id in [second, first] {
+            set_imported_at(&conn, id, "2026-03-21T18:05:00");
+            insert_daily_report_summary_lines(
+                &conn,
+                &[summary_line(
+                    id,
+                    &format!("行{id}"),
+                    None,
+                    Some(1),
+                    Some(1),
+                    1,
+                )],
+            )
+            .unwrap();
+        }
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        let ids: Vec<i64> = report
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids, vec![first, second]);
+        assert_eq!(
+            summary_labels(&report.summary_imports[0]),
+            vec![format!("行{first}")]
+        );
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_skip_rolled_back_parent() {
+        // REQ-501 / 24 §14.21 手順 6: rolled_back の親の行を読まず、残りの親だけを古い順に返す
+        let (_dir, conn) = setup_test_db();
+        let early = seed_daily_report_import(&conn, "2026-03-21", "rb-early", "completed");
+        let middle = seed_daily_report_import(&conn, "2026-03-21", "rb-middle", "completed");
+        let late = seed_daily_report_import(&conn, "2026-03-21", "rb-late", "completed");
+        for (id, at, label) in [
+            (early, "2026-03-21T18:00:00", "早い"),
+            (middle, "2026-03-21T19:00:00", "取消対象"),
+            (late, "2026-03-21T20:00:00", "遅い"),
+        ] {
+            set_imported_at(&conn, id, at);
+            insert_daily_report_summary_lines(
+                &conn,
+                &[
+                    summary_line(id, label, None, Some(1), Some(10), 1),
+                    summary_line(id, &format!("{label}2"), None, Some(2), Some(20), 2),
+                ],
+            )
+            .unwrap();
+        }
+        assert!(rollback_daily_report_import(&conn, middle, "2026-03-22T10:00:00").unwrap());
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report.source_import_count, 2);
+        let ids: Vec<i64> = report
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids, vec![early, late]);
+        assert_eq!(
+            summary_labels(&report.summary_imports[0]),
+            vec!["早い", "早い2"]
+        );
+        assert_eq!(
+            summary_labels(&report.summary_imports[1]),
+            vec!["遅い", "遅い2"]
+        );
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_keep_parent_without_lines() {
+        // REQ-501 / 24 §14.21 手順 6: 行の無い completed の親も空の行で残す（件数 = source_import_count）
+        let (_dir, conn) = setup_test_db();
+        let empty = seed_daily_report_import(&conn, "2026-03-21", "empty", "completed");
+        let filled = seed_daily_report_import(&conn, "2026-03-21", "filled", "completed");
+        set_imported_at(&conn, empty, "2026-03-21T18:00:00");
+        set_imported_at(&conn, filled, "2026-03-21T19:00:00");
+        insert_daily_report_summary_lines(
+            &conn,
+            &[summary_line(filled, "総売", Some(500), None, Some(500), 1)],
+        )
+        .unwrap();
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report.source_import_count, 2);
+        assert_eq!(report.summary_imports.len(), 2);
+        assert_eq!(report.summary_imports[0].daily_report_import_id, empty);
+        assert_eq!(report.summary_imports[0].imported_at, "2026-03-21T18:00:00");
+        assert!(report.summary_imports[0].lines.is_empty());
+        assert_eq!(report.summary_imports[1].daily_report_import_id, filled);
+        assert_eq!(report.summary_imports[1].imported_at, "2026-03-21T19:00:00");
+        assert_eq!(summary_labels(&report.summary_imports[1]), vec!["総売"]);
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_keep_nulls_and_zero_rows() {
+        // REQ-501 / 24 §14.21 手順 6: NULL と 0 の行をそのまま残し、個数は 100 倍の整数のまま
+        let (_dir, conn) = setup_test_db();
+        let id = seed_daily_report_import(&conn, "2026-03-21", "nulls", "completed");
+        insert_daily_report_summary_lines(
+            &conn,
+            &[
+                summary_line(id, "総売", Some(1250), None, Some(15800), 1),
+                summary_line(id, "純売", None, Some(14), Some(14600), 2),
+                summary_line(id, "部門03", None, Some(0), Some(0), 3),
+                summary_line(id, "部門11", None, None, None, 4),
+            ],
+        )
+        .unwrap();
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report.summary_imports.len(), 1);
+        let lines: Vec<_> = report.summary_imports[0]
+            .lines
+            .iter()
+            .map(|line| {
+                (
+                    line.label.as_str(),
+                    line.quantity_hundredths,
+                    line.count,
+                    line.amount,
+                )
+            })
+            .collect();
+        assert_eq!(
+            lines,
+            vec![
+                ("総売", Some(1250), None, Some(15800)),
+                ("純売", None, Some(14), Some(14600)),
+                ("部門03", None, Some(0), Some(0)),
+                ("部門11", None, None, None),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_keep_parent_sum_order() {
+        // REQ-501 / 24 §14.21 手順 1・7: 取得は古い順でも gross / net は従来の新しい順で足す
+        // gross と net に同じ境界の値を入れ、どちらの列の加算順の取り違えも落とす
+        let (_dir, conn) = setup_test_db();
+        let seed_day = |date: &str, amounts: [Option<i64>; 3]| {
+            let mut ids = Vec::new();
+            for (index, (at, amount)) in ["18:00:00", "19:00:00", "20:00:00"]
+                .into_iter()
+                .zip(amounts)
+                .enumerate()
+            {
+                let id =
+                    seed_daily_report_import(&conn, date, &format!("{date}-{index}"), "completed");
+                set_imported_at(&conn, id, &format!("{date}T{at}"));
+                conn.execute(
+                    "UPDATE daily_report_imports SET gross_amount = ?1, net_amount = ?1 WHERE id = ?2",
+                    rusqlite::params![amount, id],
+                )
+                .unwrap();
+                ids.push(id);
+            }
+            ids
+        };
+        let day_a = seed_day("2026-03-21", [Some(i64::MAX), Some(1), Some(-i64::MAX)]);
+        let day_b = seed_day("2026-03-22", [Some(i64::MAX), Some(1), None]);
+
+        let report_a = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report_a.gross_amount, Some(1));
+        assert_eq!(report_a.net_amount, Some(1));
+        let ids_a: Vec<i64> = report_a
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids_a, day_a);
+
+        let report_b = get_completed_daily_report_aggregate(&conn, "2026-03-22")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report_b.gross_amount, None);
+        assert_eq!(report_b.net_amount, None);
+        let ids_b: Vec<i64> = report_b
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids_b, day_b);
     }
 }

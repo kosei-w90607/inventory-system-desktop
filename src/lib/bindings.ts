@@ -1017,6 +1017,22 @@ export type OfficialDailyReportSummary = {
 	payment_lines: OfficialDailyPaymentLine[],
 	department_lines: OfficialDailyDepartmentLine[],
 	warnings: string[],
+	summary_imports: OfficialDailySummaryImport[],
+};
+
+// レジ日報由来の日計（Z001）の1回分の取込み
+export type OfficialDailySummaryImport = {
+	daily_report_import_id: number,
+	imported_at: string,
+	lines: OfficialDailySummaryLine[],
+};
+
+// レジ日報由来の日計（Z001）の行
+export type OfficialDailySummaryLine = {
+	label: string,
+	quantity: number | null,
+	count: number | null,
+	amount: number | null,
 };
 
 // レジ日報由来の月次公式部門集計行
