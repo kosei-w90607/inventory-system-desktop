@@ -83,6 +83,26 @@ pub struct OfficialDailyReportSummary {
     pub payment_lines: Vec<OfficialDailyPaymentLine>,
     pub department_lines: Vec<OfficialDailyDepartmentLine>,
     pub warnings: Vec<String>,
+    pub summary_imports: Vec<OfficialDailySummaryImport>,
+}
+
+/// レジ日報由来の日計（Z001）の1回分の取込み
+#[derive(Debug, serde::Serialize, specta::Type)]
+pub struct OfficialDailySummaryImport {
+    pub daily_report_import_id: i64,
+    // daily_report_imports.imported_at（秒までの日時）
+    pub imported_at: String,
+    pub lines: Vec<OfficialDailySummaryLine>,
+}
+
+/// レジ日報由来の日計（Z001）の行
+#[derive(Debug, serde::Serialize, specta::Type)]
+pub struct OfficialDailySummaryLine {
+    pub label: String,
+    // 単位の数（DB の 100 倍の整数を IO-07-D2 の変換で戻した値）
+    pub quantity: Option<f64>,
+    pub count: Option<i64>,
+    pub amount: Option<i64>,
 }
 
 /// レジ日報由来の支払集計行
@@ -494,6 +514,24 @@ fn map_official_daily_report(
             })
             .collect(),
         warnings,
+        summary_imports: row
+            .summary_imports
+            .into_iter()
+            .map(|import| OfficialDailySummaryImport {
+                daily_report_import_id: import.daily_report_import_id,
+                imported_at: import.imported_at,
+                lines: import
+                    .lines
+                    .into_iter()
+                    .map(|line| OfficialDailySummaryLine {
+                        label: line.label,
+                        quantity: line.quantity_hundredths.map(quantity_hundredths_to_units),
+                        count: line.count,
+                        amount: line.amount,
+                    })
+                    .collect(),
+            })
+            .collect(),
     }
 }
 
@@ -554,7 +592,7 @@ mod tests {
     use crate::db::product_repo::{self, NewProduct};
     use crate::db::sales_repo::{
         NewDailyReportDepartmentLine, NewDailyReportImport, NewDailyReportPaymentLine,
-        NewSaleRecord,
+        NewDailyReportSummaryLine, NewSaleRecord,
     };
 
     fn setup_test_db() -> (tempfile::TempDir, crate::db::DbConnection) {
@@ -1176,5 +1214,228 @@ mod tests {
             .official_daily_report
             .unwrap();
         assert_eq!(daily.department_lines[0].quantity, Some(1.3));
+    }
+
+    // -------------------------------------------------------------------
+    // 日計（Z001）の取込みごとの行（34 §19.2 / §19.3、D-096）
+    // -------------------------------------------------------------------
+
+    // (ラベル, 個数, 件数, 金額)
+    type SummaryValues<'a, Q> = (&'a str, Option<Q>, Option<i64>, Option<i64>);
+
+    fn seed_summary_lines(conn: &DbConnection, import_id: i64, lines: &[SummaryValues<'_, i64>]) {
+        let rows: Vec<NewDailyReportSummaryLine> = lines
+            .iter()
+            .enumerate()
+            .map(
+                |(index, (label, quantity_hundredths, count, amount))| NewDailyReportSummaryLine {
+                    daily_report_import_id: import_id,
+                    source_file: "Z001".to_string(),
+                    line_key: format!("summary_{index}"),
+                    label: label.to_string(),
+                    amount: *amount,
+                    quantity_hundredths: *quantity_hundredths,
+                    count: *count,
+                    sort_order: index as i64 + 1,
+                },
+            )
+            .collect();
+        sales_repo::insert_daily_report_summary_lines(conn, &rows).unwrap();
+    }
+
+    fn summary_values(import: &OfficialDailySummaryImport) -> Vec<SummaryValues<'_, f64>> {
+        import
+            .lines
+            .iter()
+            .map(|line| (line.label.as_str(), line.quantity, line.count, line.amount))
+            .collect()
+    }
+
+    #[test]
+    fn test_get_daily_sales_req501_summary_imports_in_units_and_order() {
+        // REQ-501 / 34 §19.2・§19.3 / D-104: 取込みごとの行を並びと値を変えずに写し、個数だけ単位の数にする
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report(&conn, "2026-03-21", "units-a");
+        let second = seed_daily_report(&conn, "2026-03-21", "units-b");
+        for (id, at) in [
+            (first, "2026-03-21T19:00:00"),
+            (second, "2026-03-21T18:05:30"),
+        ] {
+            conn.execute(
+                "UPDATE daily_report_imports SET imported_at = ?1 WHERE id = ?2",
+                rusqlite::params![at, id],
+            )
+            .unwrap();
+        }
+        seed_summary_lines(
+            &conn,
+            first,
+            &[
+                ("総売", Some(1250), None, Some(15800)),
+                ("純売", None, Some(14), Some(14600)),
+                ("部門11", None, None, None),
+            ],
+        );
+        seed_summary_lines(&conn, second, &[("総売", Some(100), None, Some(500))]);
+
+        let official = get_daily_sales(&conn, "2026-03-21")
+            .unwrap()
+            .official_daily_report
+            .unwrap();
+        assert_eq!(official.source_import_count, 2);
+        assert_eq!(official.summary_imports.len(), 2);
+        assert_eq!(official.summary_imports[0].daily_report_import_id, second);
+        assert_eq!(
+            official.summary_imports[0].imported_at,
+            "2026-03-21T18:05:30"
+        );
+        assert_eq!(
+            summary_values(&official.summary_imports[0]),
+            vec![("総売", Some(1.0), None, Some(500))]
+        );
+        assert_eq!(official.summary_imports[1].daily_report_import_id, first);
+        assert_eq!(
+            official.summary_imports[1].imported_at,
+            "2026-03-21T19:00:00"
+        );
+        assert_eq!(
+            summary_values(&official.summary_imports[1]),
+            vec![
+                ("総売", Some(12.5), None, Some(15800)),
+                ("純売", None, Some(14), Some(14600)),
+                ("部門11", None, None, None),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_export_sales_csv_req501_daily_ignores_summary_imports() {
+        // REQ-501 / 34 §19.5: 日次 CSV は商品別明細だけで、Z001 の行を出さない
+        let (_dir, conn) = setup_test_db();
+        seed_product(&conn, "P001", 1);
+        seed_product(&conn, "P002", 3);
+        seed_sale(&conn, "P001", "2026-03-21", 2, 1000, "auto");
+        seed_sale(&conn, "P002", "2026-03-21", 1, 500, "manual");
+        let import_id = seed_daily_report(&conn, "2026-03-21", "csv-z001");
+        seed_summary_lines(
+            &conn,
+            import_id,
+            &[
+                ("総売", Some(1250), None, Some(15800)),
+                ("純売", None, Some(14), Some(14600)),
+                ("合成Z001行", None, Some(7), Some(98765)),
+            ],
+        );
+
+        let result = export_sales_csv(&conn, &SalesReportType::Daily, "2026-03-21").unwrap();
+        assert_eq!(result.count, 2);
+        let csv_str = String::from_utf8(result.csv_bytes[3..].to_vec()).unwrap();
+        let lines: Vec<&str> = csv_str.lines().collect();
+        assert_eq!(lines[0], "商品コード,商品名,部門,数量,金額,記録元");
+        assert_eq!(lines.len(), 3);
+        assert!(lines[1].starts_with("P001,"));
+        assert!(lines[2].starts_with("P002,"));
+        assert!(!csv_str.contains("合成Z001行"));
+        assert!(!csv_str.contains("98765"));
+    }
+
+    #[test]
+    fn test_get_daily_sales_req501_summary_imports_from_fixture_bundles() {
+        // REQ-501 / D-096 / L3 fixture: 実 parser → 取込み → 日次の読み出しで Z001 の全行が取込みごとに出る
+        use crate::biz::daily_report_import_service::{
+            commit_daily_report_import, parse_and_validate_daily_report, DailyReportInputFile,
+        };
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../tests/fixtures/daily-report-z001");
+        let (_dir, mut conn) = setup_test_db();
+        for (suffix, additional) in [
+            ("260323_0001", false),
+            ("260324_0001", false),
+            ("260324_0002", true),
+        ] {
+            let files = ["Z001", "Z002", "Z005"]
+                .into_iter()
+                .map(|kind| {
+                    let filename = format!("{kind}_{suffix}.CSV");
+                    DailyReportInputFile {
+                        bytes: std::fs::read(dir.join(&filename)).unwrap(),
+                        filename,
+                    }
+                })
+                .collect();
+            let parsed = parse_and_validate_daily_report(&conn, files).unwrap();
+            commit_daily_report_import(&mut conn, parsed.cached_preview, additional).unwrap();
+        }
+        let labels = [
+            "総売",
+            "純売",
+            "部門01",
+            "部門02",
+            "部門03",
+            "部門04",
+            "部門05",
+            "部門06",
+            "部門07",
+            "部門08",
+            "部門09",
+            "部門10",
+            "現金在高",
+            "券在高",
+            "信用在高",
+            "税対象額",
+            "税額",
+            "非課税",
+            "高額券枚数",
+            "丸め",
+            "取引中止",
+            "戻モード",
+            "電卓",
+            "領収書",
+            "部門11",
+            "部門12",
+            "部門13",
+            "部門14",
+        ];
+        let find = |import: &OfficialDailySummaryImport, label: &str| {
+            let line = import
+                .lines
+                .iter()
+                .find(|line| line.label == label)
+                .unwrap();
+            (line.quantity, line.count, line.amount)
+        };
+
+        let day_a = get_daily_sales(&conn, "2026-03-23")
+            .unwrap()
+            .official_daily_report
+            .unwrap();
+        assert_eq!(day_a.summary_imports.len(), 1);
+        let a = &day_a.summary_imports[0];
+        let a_labels: Vec<&str> = a.lines.iter().map(|line| line.label.as_str()).collect();
+        assert_eq!(a_labels, labels);
+        assert_eq!(find(a, "総売"), (Some(12.5), None, Some(15800)));
+        assert_eq!(find(a, "税対象額").1, None);
+        assert_eq!(find(a, "領収書").2, None);
+        assert_eq!(find(a, "戻モード"), (None, Some(1), Some(-1200)));
+
+        let day_b = get_daily_sales(&conn, "2026-03-24")
+            .unwrap()
+            .official_daily_report
+            .unwrap();
+        assert_eq!(day_b.source_import_count, 2);
+        assert_eq!(day_b.summary_imports.len(), 2);
+        let (b1, b2) = (&day_b.summary_imports[0], &day_b.summary_imports[1]);
+        assert!(b1.daily_report_import_id < b2.daily_report_import_id);
+        for import in [b1, b2] {
+            let import_labels: Vec<&str> = import
+                .lines
+                .iter()
+                .map(|line| line.label.as_str())
+                .collect();
+            assert_eq!(import_labels, labels);
+        }
+        assert_eq!(find(b1, "部門06"), (None, Some(-1), Some(-1200)));
+        assert_eq!(find(b1, "総売").2, Some(7300));
+        assert_eq!(find(b2, "総売").2, Some(500));
     }
 }

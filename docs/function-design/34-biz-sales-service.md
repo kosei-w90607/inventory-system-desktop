@@ -62,8 +62,8 @@ struct GrandTotal {
 
 ```
 struct OfficialDailyReportSummary {
-    report_date: String,
     source_import_count: i64,
+    report_date: String,
     gross_amount: Option<i64>,
     net_amount: Option<i64>,
     payment_lines: Vec<OfficialDailyPaymentLine>,
@@ -95,6 +95,7 @@ struct OfficialDailySummaryLine {
 ```
 
 - `summary_imports` は `report_date=date AND status='completed'` の親ごとに1件で、件数は `source_import_count` と等しい。`line_key`（総売・純売以外は並び順から作る `summary_N`）は利用者に意味を持たないため返さない。
+- `OfficialDailyReportSummary` の field の並びは code の struct と生成 bindings の並びと同じとする。wire の field 列は `src-tauri/tests/import_internal_contract_test.rs` の wire 契約 test が完全一致で固定し、`summary_imports` は既存 7 field（`source_import_count` 〜 `warnings`）の後ろに足す。
 
 **OfficialDailyPaymentLine構造体**:
 
@@ -418,3 +419,4 @@ fn export_sales_csv(
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 商品別 `product_code + source` 集約、全completed日報親のNULL安全な日次集約、`source_import_count`、月次additive regressionを正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
 | 2026-10-04 | daily-report-import-gaps（plan-first） | 日報の個数の wire を単位の数（`f64`）にし、DB の 100 倍の整数から BIZ-05 で戻す（IO-07-D2、D-104）。 |
+| 2026-10-06 | z001-display（runtime、起票） | §19.2 の `OfficialDailyReportSummary` の field の並びを code（`sales_service.rs` の struct）と生成 bindings に合わせた（`source_import_count` を先頭へ。PR #114 Final Review の P3、[Plan Packet](../plans/2026-10-06-z001-display.md)）。 |

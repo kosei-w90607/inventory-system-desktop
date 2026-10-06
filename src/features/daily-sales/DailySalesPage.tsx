@@ -29,7 +29,7 @@ import { useDailySalesReport } from "./hooks/useDailySalesReport";
 import { useExportDailySalesCsv } from "./hooks/useExportDailySalesCsv";
 import { useTodayDate } from "./lib/date-nav";
 import { describeError } from "@/lib/describe-error";
-import type { OfficialDailyReportSummary } from "@/lib/bindings";
+import type { OfficialDailyReportSummary, OfficialDailySummaryImport } from "@/lib/bindings";
 import type { DailySalesSearch, SortColumn, SortDirection } from "./types";
 
 export type { DailySalesSearch } from "./types";
@@ -179,7 +179,9 @@ function OfficialDailyReportSection({ report }: { report: OfficialDailyReportSum
       ) : (
         <div className="space-y-4 rounded-md border p-4">
           <p className="text-sm font-medium">
-            {report.source_import_count.toLocaleString("ja-JP")}回の取込みを合算
+            {report.source_import_count >= 2
+              ? `総売上・純売上・支払集計・部門別集計は${report.source_import_count.toLocaleString("ja-JP")}回の取込みを合算しています。日計（Z001）は取込みごとに表示します。`
+              : `${report.source_import_count.toLocaleString("ja-JP")}回の取込みを合算`}
           </p>
           {report.warnings.length > 0 && (
             <Alert variant="warning">
@@ -200,9 +202,30 @@ function OfficialDailyReportSection({ report }: { report: OfficialDailyReportSum
             <OfficialMetric label="純売上" value={formatMoney(report.net_amount)} />
           </dl>
 
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">日計（Z001）</h3>
+            {report.source_import_count >= 2
+              ? report.summary_imports.map((summaryImport, index) => {
+                  const title = `${(index + 1).toLocaleString("ja-JP")}回目の取込み（取込み日時 ${summaryImport.imported_at.slice(0, 16).replace("T", " ")}）`;
+                  return (
+                    <div key={summaryImport.daily_report_import_id} className="space-y-2">
+                      <h4 className="text-sm text-muted-foreground">{title}</h4>
+                      <SummaryImportLines summaryImport={summaryImport} label={title} />
+                    </div>
+                  );
+                })
+              : report.summary_imports.map((summaryImport) => (
+                  <SummaryImportLines
+                    key={summaryImport.daily_report_import_id}
+                    summaryImport={summaryImport}
+                    label="日計（Z001）"
+                  />
+                ))}
+          </div>
+
           <div className="grid gap-4 lg:grid-cols-2">
             <OfficialLinesTable
-              title="支払集計"
+              title="支払集計（Z002）"
               rows={report.payment_lines.map((line) => ({
                 key: line.payment_key,
                 label: line.label,
@@ -212,7 +235,7 @@ function OfficialDailyReportSection({ report }: { report: OfficialDailyReportSum
               quantityLabel="件数"
             />
             <OfficialLinesTable
-              title="部門別集計"
+              title="部門別集計（Z005）"
               rows={report.department_lines.map((line, index) => ({
                 key: `${line.department_id === null ? "unmatched" : String(line.department_id)}-${String(index)}`,
                 label: line.normalized_department_name ?? line.raw_department_name,
@@ -238,20 +261,51 @@ function OfficialMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+// UI-09a-D16: 1 回分の取込みの Z001 の全行（返された順、合算しない）
+function SummaryImportLines({
+  summaryImport,
+  label,
+}: {
+  summaryImport: OfficialDailySummaryImport;
+  label: string;
+}) {
+  if (summaryImport.lines.length === 0) {
+    return <p className="text-sm">この取込みの日計（Z001）の行はありません。</p>;
+  }
+  return (
+    <OfficialLinesTable
+      label={label}
+      quantityLabel="個数/件数"
+      rows={summaryImport.lines.map((line, index) => {
+        const quantity = line.quantity ?? line.count;
+        return {
+          // 行に id が無く、同じラベルの行もありうるので取込みの中の位置を key にする
+          key: String(index),
+          label: line.label,
+          quantity: quantity === null ? "—" : quantity.toLocaleString("ja-JP"),
+          amount: line.amount === null ? "—" : formatMoney(line.amount),
+        };
+      })}
+    />
+  );
+}
+
 function OfficialLinesTable({
   title,
   rows,
   quantityLabel,
+  label,
 }: {
-  title: string;
+  title?: string;
   rows: { key: string; label: string; amount: string; quantity: string }[];
   quantityLabel: string;
+  label?: string;
 }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium">{title}</h3>
+      {title && <h3 className="text-sm font-medium">{title}</h3>}
       <div className="rounded-md border">
-        <Table>
+        <Table aria-label={label}>
           <TableHeader>
             <TableRow>
               <TableHead>名称</TableHead>
