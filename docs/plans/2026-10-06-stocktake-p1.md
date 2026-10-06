@@ -6,7 +6,7 @@ wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: df62d13b5814fc9afd218621c373d8331b5c6ee5
 - Amendments: none
@@ -26,6 +26,7 @@ wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起
 4. plan-draft（owner の決定の反映、2026-10-06、起草役、本 commit）: owner の決定 Q2 = (A)・Q3 = (i)（下の「owner の判断事項」）を packet・Matrix の G2b・D-109 に反映した。Q1 は本 lane が依らない design lane の判断として残す。
 5. plan-draft → plan-gate（2026-10-06、起草役、本 commit）: packet と Test Design Matrix は plan-first commit `02379046` と本 commit で揃い、本 lane に未決は無い。Plan Commit は Plan Reviewer が P1/P2 = 0 と報告するまで pending。
 6. plan-gate → plan-approved（2026-10-07、Coordinator）: Plan Review round 3（上限、`fe691b4b`）で 2 本の独立 reviewer がともに P1 / P2 = 0（Review Response）。Plan Commit は P3 を直した `df62d13b`。
+7. plan-approved → implementing（2026-10-07、Coordinator）: AC2・AC11 の baseline を発注の直前に逐語で再実行し一致（`rg -c 'version: [0-9]+,'` = 7、`#[ignore` = 2、診断 2 本 FAIL で `XFA_TEMPORAL_FAIL` と `XFA_LATE_IMPORT_FAIL`）。Writer へ発注する。
 
 ## Owner Effort Budget
 
