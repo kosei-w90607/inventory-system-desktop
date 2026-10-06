@@ -637,5 +637,5 @@ fn get_monthly_official_department_totals(
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別 hash の active import 全件取得、commit snapshot 再検証、per-import rollback、日報の日次・月次 additive read 契約を正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | §14.21 に Z001 の行を取込みごとに読む手順 6 を追加（D-096）。rename 済みの旧 symbol の「実装遷移義務」の段落を削除（[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
-| 2026-10-06 | z001-display（runtime、起票） | §14.21 手順 1 の取得列に `imported_at` と並び `imported_at ASC, id ASC` を書いた（手順 6 の行の無い親の取込み日時の出どころ。PR #114 Final Review の P3。[Plan Packet](../plans/2026-10-06-z001-display.md)）。 |
-| 2026-10-06 | z001-display（Plan Review round 1 の是正） | §14.21 手順 1 に、gross / net の加算は従来どおり新しい順で行うこと（溢れと NULL の伝播が順に依るため）を書いた（[Plan Packet](../plans/2026-10-06-z001-display.md)）。 |
+| 2026-10-06 | z001-display（runtime、起票） | §14.21 手順 1 の取得列に `imported_at` と並び `imported_at ASC, id ASC` を書いた（手順 6 の行の無い親の取込み日時の出どころ。PR #114 Final Review の P3。[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
+| 2026-10-06 | z001-display（Plan Review round 1 の是正） | §14.21 手順 1 に、gross / net の加算は従来どおり新しい順で行うこと（溢れと NULL の伝播が順に依るため）を書いた（[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
