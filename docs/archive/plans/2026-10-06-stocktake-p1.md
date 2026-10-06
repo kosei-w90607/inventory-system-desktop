@@ -2,11 +2,11 @@
 
 wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起票した。並走は `agent/z001-display`（PR #145、Final Review 中）、本日起票の `agent/sd-direct-read`・`agent/stocktake-p1`（本 lane）・`agent/plu-clear`、`agent/npm-audit-1006`（npm の開発用依存）。
 
-本 lane は [停止 ADR](../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) が定める ㉘ の runtime の列（① 停止と再現 fixture〈PR #95 で完了〉→ ② 受領・判定・保存の基盤 → ③ 計数と補正 → ④ 取込み・取消・回復 → ⑤ 一括切替、出典は `docs/archive/plans/2026-09-23-legacy-stocktake-z004-write-stop.md:3`）の ② だけを扱う（Wave Operation の 1 是正単位 = 1 packet）。③〜⑤ と、ADR が名指しする design lane「実測と POS 系列の対応を取得・保存する」は `docs/backlog.md` の entry が持つ。lane の選び方は [decision-log](../decision-log.md) の D-109。
+本 lane は [停止 ADR](../../adr/2026-09-23-legacy-stocktake-z004-write-stop.md) が定める ㉘ の runtime の列（① 停止と再現 fixture〈PR #95 で完了〉→ ② 受領・判定・保存の基盤 → ③ 計数と補正 → ④ 取込み・取消・回復 → ⑤ 一括切替、出典は `docs/archive/plans/2026-09-23-legacy-stocktake-z004-write-stop.md:3`）の ② だけを扱う（Wave Operation の 1 是正単位 = 1 packet）。③〜⑤ と、ADR が名指しする design lane「実測と POS 系列の対応を取得・保存する」は `docs/backlog.md` の entry が持つ。lane の選び方は [decision-log](../../decision-log.md) の D-109。
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: df62d13b5814fc9afd218621c373d8331b5c6ee5
 - Amendments: none
@@ -272,7 +272,10 @@ owner の決定（2026-10-06、確定）。本 lane の Scope は変わらない
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: 時点証拠の schema（試験 DB の helper でだけ当てる）・資料の受領・精算の同一性の検査（書込みの無い判定の core・自分で TX を開く証拠・その 2 つを使う wrapper）・前後の分類・在庫判定の行の集合（0/0 行を残す）を、通常の起動へ配線せずに追加した。新しい関数・型・module は `#[cfg(test)]` の中にあり、production から呼ぶと compile error になることを一時の変更で確かめた（AC10）。Z004 の parser は layout A のメタ行から識別メタ（machine_no・report_kind・settlement_no・settled_at）を文字列のまま抽出し、「ファイル」行が無ければ番号も None にする（settled_at は返す）。通常の起動の DB schema と既存の関数の signature は変えていない。
+- 既存の保護: 診断 2 本（`XFA_TEMPORAL_FAIL` / `XFA_LATE_IMPORT_FAIL`）は `#[ignore]` のまま FAIL で、green にするのは ③〜⑤（Matrix の「STK-1 / STK-2 の green の条件」）。既存 test は変えていない。
+- review・CI・merge（closeout、2026-10-07）: Final Review broad は互いに独立の 2 本（Fable 5.1 = approve、Codex GPT-6.1 Sol = reject〈P2 1〉）で、是正の後の closure（Fable 5.1）が approve。Ready の後の hosted run の `Merge gate` は pass で、owner の承認（2026-10-07）で helper 経由の squash merge。AC1〜AC12 と mutant の実測値は PR の body が持つ。PR: [#148](https://github.com/kosei-w90607/inventory-system-desktop/pull/148)
+- packet との食い違い: なし。
 
 ## Review Response
 
@@ -281,3 +284,5 @@ round 1（`f8af8681`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 4 / P3 5
 round 2（`8c6a0385`）: Claude 側 fresh Opus 5.5 = approve（P3 6）、Codex GPT-6.1 Sol（発注 231）= reject（P2 1）。相談役 Fable 5.1 が是正案の反例を探し、最小 crate で確かめた。裁定: P2（同一性の検査が自分で業務 TX を開き caller の TX の中から呼べない〈E0596〉。Opus P3-1 と同じ根）accept、書込みの無い判定の core・自分で TX を開く証拠の関数・その 2 つを使う wrapper に分け、④ は caller の TX の中で core を呼ぶ形を S4 (b) に書いた（T14b）。P3 6 件 accept（比較先の自己除外の述語、衝突は 3 つの識別が揃うときだけ、拒否 code の優先、T7 の COMMIT での注入、index の再作成と照合、Measured の cursor を型で必須に、`reconciliation_version` は DEFAULT 無しで `stocktakes` も再構築、生の SQL の fixture、T9 の error の名指し）。相談役の追加の反例 3 件 accept。
 
 round 3（上限、`fe691b4b`）: Claude 側 fresh Opus 5.5 = approve（P3 3）、Codex GPT-6.1 Sol（発注 233）= approve（P3 1）。P1 / P2 = 0 で Plan Gate を通過。P3 は Coordinator が直した: report_kind が無く番号だけがある file（parser は可変のメタを受理し各項目を独立に抽出する、Codex の実測）が衝突の検査とメタ不足の検査の両方をすり抜ける筋を、S3 が「report_kind が None なら番号も None」を強制する形で塞いだ（T24 に 1 形、2 本の P3 の共通の根）／T1 に再構築後の FK と `foreign_key_check` の 0 行を足した／S4 (d) に候補 0 件の行を在庫判定の行に入れないことを足した。
+
+Closeout（2026-10-07）: Final Review broad（互いに独立の 2 本）は Fable 5.1 = approve（P3 4）、Codex GPT-6.1 Sol = reject（P2 1 = T20 で分類する source の ID が実在せず、時刻を入力にする誤実装を検出できない。P3 1）。相談役が追加の穴（同一性の照合の SQL が取込み対象より先に受領した source だけと照合する誤りを T13 が検出しない）を見つけた。是正は test（T20 の source を実在させ時刻を前・後・無しに動かす、T13 に先に受領した source を後から検査する形）と、parser が「ファイル」行の無いときも settled_at を保持すること、`receive_source` の doc comment。closure（Fable 5.1）は approve（前回の 5 件 closed、新しい P1 / P2 = 0、P3 1）。helper に broad 2 本（pending・fail）と closure（pass）を record 済み。Ready の後の hosted run の `Merge gate` は pass で、owner の承認で helper 経由の squash merge（2026-10-07）。Final の P3 は Matrix の T20・T13 の行に反映し、`receive_source` の doc comment が行番号で指している件と kind と証拠の列の組の CHECK は backlog の ③〜⑤ の申し送りへ送った。
