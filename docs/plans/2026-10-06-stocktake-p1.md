@@ -58,7 +58,7 @@ Goal Invariant:
 
 - 通常の起動の DB に新しい列・表が入る、または旧 writer が新しい schema の上で動く中間版が生まれる（D-109 (2)、`docs/db-design/tracking-system-tables.md` の「移行と保存TX」の 1 項目め）。
 - 受領済みでない資料・計数を始めた後に受領した資料を「実測前」と分類する、legacy の実測を未実測へ読み替える、識別メタの欠けた同日の追加を通す（ADR D2〜D4）。
-- 新しい関数が production から呼ばれても検査で止まらない（D-109 (3) の機械検査が効かない）。
+- 新しい関数・型が production から呼べてしまう（D-109 (3) の `#[cfg(test)]` の隔離が効かない）。
 - 既存 test を削除・skip・弱体化する。診断 2 本を ignore を外すだけで green にする。
 
 ### 非目的
@@ -89,28 +89,49 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 予定 file（本 lane が書く全件。生成物を含む）:
 
-- S1（新規）`src-tauri/src/db/schema_time_evidence.rs`: 時点証拠 schema を当てる関数 `apply_time_evidence_schema(conn: &Connection, version: i64) -> Result<(), DbError>`（`MigrationKind::Custom` と同じ signature、`src-tauri/src/db/migration.rs:27`）。中身は `docs/db-design/master-tables.md`・`tracking-system-tables.md`・`pos-tables.md`・`transaction-tables.md` の proposed 節: `products.stock_revision`（NOT NULL DEFAULT 0、非負 INTEGER の CHECK）と `pos_sync_disabled_revision`、`stocktakes.reconciliation_version`（旧 header 0）、`stocktake_items` の `observation_kind`（DEFAULT なし、table 再構築で既存行を分類して埋める）と証拠の列、新表 `stocktake_recounts`・`stocktake_recount_flags`・`pos_import_sources`、`csv_imports.source_id`（旧 import は NULL のまま。backfill しない、D-109 (4)）、`inventory_movements.stocktake_adjustment_kind` / `stocktake_recount_id`、`app_settings` の `stocktake_legacy_movement_ceiling`。1 つの TX で当て、失敗は全部戻す。`schema_versions` には呼出し側が渡す `version` を記録する。`migrations()` には登録しない（⑤）。
-- S1（変更）`src-tauri/src/db/mod.rs`: `mod schema_time_evidence;` を足す（`schema_v1`〜`v7` と同じ private mod、`src-tauri/src/db/mod.rs:22-28`）。
-- S1（変更）`src-tauri/src/db/test_support.rs`: 時点証拠 schema を当てた試験 DB を作る helper（`setup_test_db` の後に `apply_time_evidence_schema(conn, migration::app_max_version() + 1)` を呼ぶ）。旧明細の 4 形と旧 import を v7 の上で作ってから当てる fixture の helper もここに置く（形は `src-tauri/src/biz/csv_import_service/tests/legacy_stop_tests.rs:303` の F3 と同じ）。
-- S2（変更）`src-tauri/src/db/inventory_repo.rs`: 新関数 `update_stock_quantity_with_revision(conn, product_code, new_quantity) -> Result<bool, DbError>`（数量と `stock_revision` の checked 増分を 1 つの UPDATE で。`docs/function-design/21-io-inventory-repo.md` の proposed 節）と `bump_stock_revision(conn, product_code) -> Result<i64, DbError>`。既存の `update_stock_quantity`（`inventory_repo.rs:151`）とその caller 4 か所（`inventory_service/common.rs:64`、`csv_import_service/commit.rs:274`、`stocktake_service.rs:571`、`integrity_service.rs:173`）は変えない（⑤ で置き換える）。
-- S2（変更）`src-tauri/src/db/sales_repo.rs`: `pos_import_sources` の受領の upsert（hash が既にあれば最初の ID と時刻を返す）、最大 source ID（空なら 0）、精算の同一性の照合候補（同じ帳票種別で machine_no / settlement_no が一致する全受領 source、未取込み・取消済みを含む）、active import の識別メタの取得（`csv_imports` を起点に source なし・メタ欠けの行も残す）、同一性の拒否の初回記録と照会（`docs/function-design/24-io-csv-import-repo.md` の proposed 節の表の 1〜5 行）。
-- S2（変更）`src-tauri/src/db/stocktake_repo.rs`: 商品の最新の有効な観測の読取り（kind・所属・`source_cursor`・`observation_revision`。superseded な旧 pending を除き、legacy を未実測へ落とさない。`docs/function-design/20-io-product-repo.md` の proposed 節「有効観測の列挙」）。
-- S3（変更）`src-tauri/src/io/z004_parser.rs`: `ParseResult` に `settlement_metadata: Option<SettlementMetadata>`（machine_no / report_kind / settlement_no / settled_at の各 `Option<String>`、番号は文字列のまま）を足し、layout A のメタ行から抽出する（`docs/function-design/23-io-z004-parser.md:5`、メタ行の並びは同 `:130`）。従来 shape は `None` の項目を持つ。`ParseResult` を作る所は `z004_parser.rs:210` だけ、読む所は `src-tauri/src/biz/csv_import_service/parse.rs:34` だけ（`rg -n 'ParseResult \{' src-tauri/src` と `rg -l 'parse_z004\(' src-tauri` で確認）。struct literal で `ParseResult` を作る test は無いので、既存の test の呼び方は変わらない。
-- S4（新規）`src-tauri/src/biz/csv_import_service/time_evidence.rs`: (a) 資料の受領（構文と種別を検証した後の短い独立 TX、ADR D2）、(b) 精算の同一性の検査と拒否の記録（同一精算の別 hash と、同じ精算日の active import があるときの識別メタの欠け。拒否は業務 write の前、拒否の証拠は独立 TX、ADR D3、`docs/function-design/32-biz-csv-import-service.md` の proposed 節「一つの分類関数とcommit」の後半 3 段落）、(c) 前後の分類（同節の 1〜5。`pos_stock_sync=false` は売上のみ、NeverObserved は After、LegacyObserved は Unknown、`source.id <= source_cursor` は Before、それ以外は Unknown。Unknown の flag の理由は数量が 0 でない行 = `sale_order_unknown`、数量 0・金額が 0 でない行 = `offset_lines_present`、LegacyObserved = `legacy_basis`、数量・金額とも 0 の行 = 「相殺の判定が要る」という印だけ返す〈判定は ④〉。共有 JAN の行は全在庫連動候補が Before のときだけ commit 可、他は file 全体を held）、(d) 在庫判定の行の集合（正常 JAN の全行を 0/0 行も含めて全候補と `pos_stock_sync` 付きで集める。売上の行の集合〈`parse.rs:94` の 0/0 除外〉は変えない、`23-io-z004-parser.md:9`）。時刻・精算日時を入力にしない。
-- S4（変更）`src-tauri/src/biz/csv_import_service/mod.rs`: `mod time_evidence;` を足す。
+- S1（新規）`src-tauri/src/db/schema_time_evidence.rs`: 時点証拠 schema を当てる関数 `apply_time_evidence_schema(conn: &Connection, version: i64) -> Result<(), DbError>`（`MigrationKind::Custom` と同じ signature、`src-tauri/src/db/migration.rs:27`）。中身は `docs/db-design/master-tables.md`・`tracking-system-tables.md`・`pos-tables.md`・`transaction-tables.md` の proposed 節: `products.stock_revision`（NOT NULL DEFAULT 0、非負 INTEGER の CHECK）と `pos_sync_disabled_revision`、`stocktakes.reconciliation_version`（旧 header 0）、`stocktake_items` の `observation_kind`（DEFAULT なし、table 再構築で既存行を分類して埋める）と証拠の列、新表 `stocktake_recounts`・`stocktake_recount_flags`・`pos_import_sources`、`csv_imports.source_id`（旧 import は NULL のまま。backfill しない、D-109 (4)）、`inventory_movements.stocktake_adjustment_kind` / `stocktake_recount_id`、`app_settings` の `stocktake_legacy_movement_ceiling`。1 つの TX で当て、失敗は全部戻す。`schema_versions` には呼出し側が渡す `version` を記録する。`migrations()` には登録しない（⑤）。file 全体が `#[cfg(test)]` の module（下の mod.rs の行）。
+- S1（変更）`src-tauri/src/db/mod.rs`: `#[cfg(test)] mod schema_time_evidence;` を足す（`schema_v1`〜`v7` と同じ private mod、`src-tauri/src/db/mod.rs:22-28`。`#[cfg(test)] pub(crate) mod test_support;` の `:30-31` と同じ形）。
+- S1（変更）`src-tauri/src/db/test_support.rs`: 時点証拠 schema を当てた試験 DB を作る helper（`setup_test_db` の後に `apply_time_evidence_schema(conn, migration::app_max_version() + 1)` を呼ぶ）。旧明細の各形（AC3）と旧 import を v7 の上で作ってから当てる fixture の helper もここに置く（形は `src-tauri/src/biz/csv_import_service/tests/legacy_stop_tests.rs:303` の F3 と同じ）。
+- S2（変更）`src-tauri/src/db/inventory_repo.rs`: 既存の `#[cfg(test)] mod tests`（`inventory_repo.rs:348`）の前に `#[cfg(test)] pub(crate) mod time_evidence { … }` を 1 群で置き、その中に新関数 `update_stock_quantity_with_revision(conn, product_code, new_quantity) -> Result<bool, DbError>`（数量と `stock_revision` の checked 増分を 1 つの UPDATE で。`docs/function-design/21-io-inventory-repo.md` の proposed 節）と `bump_stock_revision(conn, product_code) -> Result<i64, DbError>`。既存の `update_stock_quantity`（`inventory_repo.rs:151`）とその caller 4 か所（`inventory_service/common.rs:64`、`csv_import_service/commit.rs:274`、`stocktake_service.rs:571`、`integrity_service.rs:173`）は変えない（⑤ で置き換える）。
+- S2（変更）`src-tauri/src/db/sales_repo.rs`: 既存の `#[cfg(test)]` の module（`sales_repo.rs:1410`）の前の `#[cfg(test)] pub(crate) mod time_evidence { … }` に、`pos_import_sources` の受領の upsert（hash が既にあれば最初の ID と時刻を返す）、最大 source ID（空なら 0）、精算の同一性の照合候補（同じ帳票種別で machine_no / settlement_no が一致する全受領 source、未取込み・取消済みを含む）、active import の識別メタの取得（`csv_imports` を起点に source なし・メタ欠けの行も残す）、同一性の拒否の初回記録と照会（`docs/function-design/24-io-csv-import-repo.md` の proposed 節の表の 1〜5 行）。
+- S2（変更）`src-tauri/src/db/stocktake_repo.rs`: 既存の `#[cfg(test)]` の module（`stocktake_repo.rs:662`）の前の `#[cfg(test)] pub(crate) mod time_evidence { … }` に、商品の最新の有効な観測の読取り（kind・所属・`source_cursor`・`observation_revision`。`docs/function-design/20-io-product-repo.md` の proposed 節「有効観測の列挙」）。選び方: measured の明細（active / 完了済み）と `stocktake_recounts` の行を合わせ、`observation_revision` が最大の 1 件を返す（明細と recount の別や時刻の順では選ばない）。版を持つ観測が 1 つも無く legacy の明細があれば LegacyObserved。legacy は migration だけが作り版を持たないので、版を持つ観測があればそれが legacy より新しい。auto_filled と uncounted は観測にしない（前の観測を隠さない）。
+- S3（変更）`src-tauri/src/io/z004_parser.rs`: `ParseResult` に `settlement_metadata: Option<SettlementMetadata>`（machine_no / report_kind / settlement_no / settled_at の各 `Option<String>`、番号は文字列のまま）を足し、layout A のメタ行から抽出する（`docs/function-design/23-io-z004-parser.md:5`、メタ行の並びは同 `:130`）。machine_no は「マシンNo.」行、settlement_no は「精算回数」行、report_kind は「ファイル」行の値（前後の空白を除くだけ。「モード」行は抽出しない）、settled_at は抽出済みの精算日と「時刻」行の `HH:MM` を `YYYY-MM-DDTHH:MM` に結合する（分精度。秒を補わない。時刻行が無い・解釈できなければ `None`。日付だけから時刻を補わない、23:7）。従来 shape は各項目 `None`。S3 は production の parser に入るので `#[cfg(test)]` にしない。`SettlementMetadata` は `ParseResult` と同じ `pub struct`、抽出の関数は private の `fn`（Contract Probe P5）。`ParseResult` を作る所は `z004_parser.rs:210` だけ、読む所は `src-tauri/src/biz/csv_import_service/parse.rs:34` だけ（`rg -n 'ParseResult \{' src-tauri/src` と `rg -l 'parse_z004\(' src-tauri` で確認）。struct literal で `ParseResult` を作る test は無いので、既存の test の呼び方は変わらない。
+- S4（新規）`src-tauri/src/biz/csv_import_service/time_evidence.rs`（file 全体が `#[cfg(test)]` の module）: (a) 資料の受領（構文と種別を検証した後の短い独立 TX、ADR D2）、(b) 精算の同一性の検査と拒否の記録（同一精算の別 hash と、同じ精算日の active import があるときの識別メタの欠け。拒否は業務 write の前、拒否の証拠は独立 TX、ADR D3。rusqlite の `Transaction` は `&mut Connection` を借りるので、同じ接続で呼出し側の TX の中から独立の TX は開けない。(b) は `&mut DbConnection` を受け〈`src-tauri/src/biz/csv_import_service/commit.rs:40` の `legacy_commit_csv_import` と同じ形〉、自分で業務 TX を開いて検査し、拒否なら業務 TX を戻してから証拠 TX を commit して Err を返す、`docs/function-design/32-biz-csv-import-service.md` の proposed 節「一つの分類関数とcommit」の後半 3 段落）、(c) 前後の分類（同節の 1〜5。`pos_stock_sync=false` は売上のみ、NeverObserved は After、LegacyObserved は Unknown、`source.id <= source_cursor` は Before、それ以外は Unknown。Unknown の flag の理由は数量が 0 でない行 = `sale_order_unknown`、数量 0・金額が 0 でない行 = `offset_lines_present`、LegacyObserved = `legacy_basis`、数量・金額とも 0 の行 = 「相殺の判定が要る」という印だけ返す〈判定は ④〉。共有 JAN の行は全在庫連動候補が Before のときだけ commit 可、他は file 全体を held）、(d) 在庫判定の行の集合（正常 JAN の全行を 0/0 行も含めて全候補と `pos_stock_sync` 付きで集める。売上の行の集合〈`parse.rs:94` の 0/0 除外〉は変えない、`23-io-z004-parser.md:9`）。時刻・精算日時を入力にしない。
+- S4（変更）`src-tauri/src/biz/csv_import_service/mod.rs`: `#[cfg(test)] mod time_evidence;` を足す。
 - S5（test）上の各 file の `#[cfg(test)]` の test と、`src-tauri/src/biz/csv_import_service/tests/` に `time_evidence_tests.rs` を新設して `tests/mod.rs` に登録する（Matrix の T 行）。既存 test は変えない。
 - S6（生成物）`docs/function-design/90-traceability.md`: 新しい test の REQ 参照で `cargo run --bin generate_traceability` が再生成する（手で編集しない。他 lane と衝突したら取り込んだ後に再生成、D-098）。
 - S7（docs、本 commit）`docs/decision-log.md` の末尾に D-109、`docs/db-design/pos-tables.md` の proposed 節に backfill しない 1 文、`docs/backlog.md` の本 lane の entry（STK-1 / STK-2、design lane の着手条件の状態、診断 2 本、0/0 行、③〜⑤ の申し送り）。
 
-未配線の機械検査（D-109 (3)）: S1〜S4 の新しい関数の根（test 以外から呼ばれない入口）に `#[cfg_attr(not(test), expect(dead_code))]` を置く。`db` は `src-tauri/src/lib.rs:9` で `pub mod` なので、`db` の新しい関数は `pub(crate)` にする（`pub` だと公開 API として dead_code の対象外になり、production からの呼出しを検出できない。Contract Probe P1）。`biz`・`io` は private mod（`lib.rs:3`・`:13`）なので `pub` でよい。S3 の `settlement_metadata` は S4 の受領が読む（S4 の根の expect で live 扱い）。
+未配線の機械検査（D-109 (3)）: S1・S2・S4 の新しい関数・型・module は ② 〜 ④ の間 `#[cfg(test)]` の中に置き、⑤ で一括に外す。各 repo file では新しいものを `#[cfg(test)] pub(crate) mod time_evidence { … }` の 1 群にまとめ、⑤ の差分を数行にする。production の code から呼ぶと型の解決で compile error（`E0425` / `E0432` / `E0433`）になり、lint の設定に依らない（Contract Probe P1）。CI の command と lint の設定は変えない（`.github/workflows/ci.yml:116` の `cargo clippy --all-targets --all-features -- -D warnings` は lib の test target も lint する）。根だけに `#[cfg_attr(not(test), expect(dead_code))]` を置く形は採らない: 根の下の新しい repo 関数を production から直接呼ぶ変更を止められず、`src-tauri/src/lib.rs:2-14` が `biz`・`db`・`io` に module 単位の `#[allow(dead_code)]` を持つので未使用の `pub(crate)` も error にならない（P1 の A0〜A2）。新しい関数は層を問わず `pub(crate)` にする（`src-tauri/tests/design_compliance_test.rs:477-503`・`:726-737` が設計書の code block に無い `pub fn` を panic にする。`#[cfg(test)]` の module は走査から外れる〈同 `:489-493`〉が、⑤ で cfg を外した後も `pub(crate)` のまま通るようにする）。S3 は production の parser に入るので cfg(test) にせず、`ParseResult` の field と `SettlementMetadata`（`pub struct`）だけを足し、抽出の関数は private の `fn` にする。`settlement_metadata` を読むのは cfg(test) の S4 だけで、production では読まれないが `io` の module 単位の allow で警告にならない。
 
-型・関数の形を変える所の全件（kickoff の最終項目）: 形が変わる既存の型は `z004_parser::ParseResult` だけ（作る所 `z004_parser.rs:210`、読む所 `parse.rs:34`、struct literal の test なし）。既存の関数の signature は変えない。新しい関数は呼出し元が test だけ。wire（command・DTO・bindings）は変えない。
+S2 / S4 の内部 API（全て `pub(crate)`。型は同じ cfg(test) の module に置く。`DbError` / `BizError` は既存の型）:
 
-他 lane と重なる file: `src-tauri/src/io/z004_parser.rs` と `docs/function-design/23-io-z004-parser.md`（本 lane は 23 を編集しない）は `agent/plu-clear` が触る可能性がある（未確認）。本 lane は `ParseResult` に field を 1 つ足し、メタ行の抽出の関数を足すだけで、データ行の分類（`parse_data_line`・`normalize_jan`、SPEC-Z4A-D8）には触らない。`docs/decision-log.md`（末尾に D-109 だけ）・`docs/backlog.md`（本 lane の entry だけ）・`docs/function-design/90-traceability.md`（生成物）は全 lane と共有。#145 が触る `24-io-csv-import-repo.md`・`34-biz-sales-service.md`・`56-ui-daily-sales.md` は本 lane が引用するだけで編集しない（`sales_repo.rs` は S2 で触るが、#145 の `OfficialDailyReportRow` 周辺〈`sales_repo.rs:1019-1023`〉には触れず、新しい関数は既存の関数の後〈`#[cfg(test)]` の module の前〉に足す）。
+| 配置 | 名前 | 署名 → 返却 | cfg(test) |
+|---|---|---|---|
+| `db/schema_time_evidence.rs` | `apply_time_evidence_schema` | `(conn: &Connection, version: i64) -> Result<(), DbError>` | ○（module ごと） |
+| `db/inventory_repo.rs` `time_evidence` | `update_stock_quantity_with_revision` | `(conn: &Connection, product_code: &str, new_quantity: i64) -> Result<bool, DbError>`（対象なしは false） | ○ |
+| 同 | `bump_stock_revision` | `(conn: &Connection, product_code: &str) -> Result<i64, DbError>`（増分後の版） | ○ |
+| `db/sales_repo.rs` `time_evidence` | `upsert_pos_import_source` | `(conn: &Connection, new: &NewPosImportSource) -> Result<PosImportSource, DbError>`（同じ hash は既存の行をそのまま返す） | ○ |
+| 同 | `max_pos_import_source_id` | `(conn: &Connection) -> Result<i64, DbError>`（空は 0） | ○ |
+| 同 | `get_pos_import_source` | `(conn: &Connection, id: i64) -> Result<Option<PosImportSource>, DbError>` | ○ |
+| 同 | `find_settlement_identity_candidates` | `(conn: &Connection, report_kind: &str, machine_no: &str, settlement_no: &str, exclude_source_id: i64) -> Result<Vec<PosImportSource>, DbError>`（未取込み・取消済みを含む全受領） | ○ |
+| 同 | `list_active_import_identities` | `(conn: &Connection, settlement_date: Option<&str>) -> Result<Vec<ActiveImportIdentity>, DbError>`（`csv_imports` の completed / completed_partial を起点に LEFT JOIN） | ○ |
+| 同 | `record_identity_rejection` | `(conn: &Connection, source_id: i64, code: IdentityRejectionCode, rejected_at: &str) -> Result<bool, DbError>`（初回の保存なら true、既にあれば書かずに false） | ○ |
+| `db/stocktake_repo.rs` `time_evidence` | `find_latest_effective_observation` | `(conn: &Connection, product_code: &str) -> Result<Option<EffectiveObservation>, DbError>`（観測なしは None） | ○ |
+| `biz/csv_import_service/time_evidence.rs` | `receive_source` | `(conn: &mut DbConnection, parsed: &ParseResult, received_at: &str) -> Result<i64, BizError>`（source ID。短い独立 TX） | ○（module ごと） |
+| 同 | `check_settlement_identity` | `(conn: &mut DbConnection, source_id: i64, rejected_at: &str) -> Result<(), IdentityGuardError>`（`IdentityGuardError::Rejected(IdentityRejectionCode)` / `Db(BizError)`。wire の `source_identity_conflict` への変換は ④） | ○ |
+| 同 | `collect_stock_evidence_rows` | `(conn: &Connection, parsed: &ParseResult) -> Result<Vec<StockEvidenceRow>, BizError>` | ○ |
+| 同 | `classify_stock_rows` | `(conn: &Connection, source_id: i64, rows: &[StockEvidenceRow]) -> Result<StockClassification, BizError>`（時刻・精算日時を引数に持たない） | ○ |
+
+型: `NewPosImportSource { file_hash, received_at, settlement_date: String, machine_no, report_kind, settlement_no, settled_at: Option<String> }`、`PosImportSource { id: i64` + 同じ項目 + `identity_rejection_code: Option<IdentityRejectionCode>, identity_rejected_at: Option<String> }`、`IdentityRejectionCode { IdentityConflict, MissingIdentity }`、`ActiveImportIdentity { csv_import_id: i64, settlement_date: String, source_id: Option<i64>, machine_no, report_kind, settlement_no: Option<String> }`、`EffectiveObservation { kind: Measured | Legacy, owner: ActiveItem(i64) | CompletedItem(i64) | Recount(i64), source_cursor: Option<i64>, observation_revision: Option<i64> }`（Legacy は両 cursor・版が None）、`StockEvidenceRow { line_no: usize, normalized_jan: String, quantity: i32, amount: i32, candidates: Vec<(String, bool)> }`（product_code と `pos_stock_sync`）、`StockClassification { Committable(Vec<RowDecision>) | Held { line_nos: Vec<usize> } }`、`RowDecision { line_no, product_code, effect: SalesOnly | Before | After | Unknown(UnknownReason) }`、`UnknownReason { SaleOrderUnknown, OffsetLinesPresent, LegacyBasis, OffsetCheckRequired }`（最後は 0/0 行の「相殺の判定が要る」印で、flag の理由ではない）。
+
+型・関数の形を変える所の全件（kickoff の最終項目）: 形が変わる既存の型は `z004_parser::ParseResult` だけ（作る所 `z004_parser.rs:210`、読む所 `parse.rs:34`、struct literal の test なし）。既存の関数の signature は変えない。新しい関数は cfg(test) の中にあり、呼出し元は test だけ。wire（command・DTO・bindings）は変えない。
+
+他 lane と重なる file: `src-tauri/src/io/z004_parser.rs` と `docs/function-design/23-io-z004-parser.md`（本 lane は 23 を編集しない）は `agent/plu-clear` が触る可能性がある（未確認）。本 lane は `ParseResult` に field を 1 つ足し、メタ行の抽出の関数を足すだけで、データ行の分類（`parse_data_line`・`normalize_jan`、SPEC-Z4A-D8）には触らない。`docs/decision-log.md`（末尾に D-109 だけ）・`docs/backlog.md`（本 lane の entry だけ）・`docs/function-design/90-traceability.md`（生成物）は全 lane と共有。#145 が触る `24-io-csv-import-repo.md`・`34-biz-sales-service.md`・`56-ui-daily-sales.md` は本 lane が引用するだけで編集しない（`sales_repo.rs` は S2 で触るが、#145 の `OfficialDailyReportRow` 周辺〈#145 の merge 後の `sales_repo.rs:939`・`:1036-1258`〉には触れず、新しい関数は既存の test の module〈`:1410`〉の前の cfg(test) の 1 群に足す）。
 
 | 共有 file | 本 lane の範囲 | 他 lane の範囲 |
 |---|---|---|
-| `src-tauri/src/db/sales_repo.rs` | `pos_import_sources` と active import の識別メタの新関数（既存の関数の後に追加） | #145: 日報の公式の行の aggregate |
+| `src-tauri/src/db/sales_repo.rs` | `pos_import_sources` と active import の識別メタの新関数（`#[cfg(test)] pub(crate) mod time_evidence`、`:1410` の前に追加） | #145: 日報の公式の行の aggregate |
 | `src-tauri/src/io/z004_parser.rs` | `ParseResult` の field とメタ行の抽出 | `agent/plu-clear`（触るなら）: データ行の分類 |
 | `docs/decision-log.md` | 末尾の D-109 | `agent/npm-audit-1006` = D-108、C（`agent/plu-clear`）= D-110、A（`agent/sd-direct-read`）= D-111 |
 | `docs/backlog.md` | STK-1 / STK-2、design lane の項、診断 2 本、0/0 行、③〜⑤ | 各 lane の項 |
@@ -126,15 +147,15 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 ## Acceptance Criteria
 
 - AC1（schema の内容）: `apply_time_evidence_schema` を当てた試験 DB で、master / tracking / pos / transaction の proposed 節の列・表・CHECK・UNIQUE・FK がある（`PRAGMA table_info` / `sqlite_master` を test が照合する）。`stocktake_items.observation_kind` を省いた INSERT が失敗する。`products.stock_revision` が i64 上限から増やせず、REAL にならない（P3）。test 名は Matrix T1〜T3。
-- AC2（未配線）: 通常の `migrate()` の後の DB に新しい表・列が無く、`app_max_version()` は 7 のまま（baseline: `rg -c 'version: [0-9]+,' src-tauri/src/db/migration.rs` が `7`、起票時 `def86e19` で実行）。T4。
-- AC3（旧明細の分類と保全）: v7 の上で作った旧明細の 4 形（両 NULL / 0・0・時刻 NULL / 数量と時刻あり / 矛盾形）が uncounted / auto_filled / legacy / legacy になり、旧 header は `reconciliation_version=0`、`stocktake_legacy_movement_ceiling` が当てる前の movement 最大 ID（空なら 0）、在庫・movement・売上・取込みの行が当てる前後で一致する。途中で失敗させると新しい列・表・key・`schema_versions` の行が残らない。T5〜T7。
+- AC2（未配線）: 通常の `migrate()` の後の DB に新しい表・列が無く、`schema_versions` の最大が `app_max_version()` と同じ（test は版の literal を持たない。起票時の baseline の記録: `rg -c 'version: [0-9]+,' src-tauri/src/db/migration.rs` が `7`、`def86e19` で実行）。T4。
+- AC3（旧明細の分類と保全）: v7 の上で作った旧明細（両 NULL / 0・0・時刻 NULL / 数量と時刻あり / 矛盾形〈数量 NULL・時刻あり〉/ 数量あり・時刻 NULL で 0・0 でない 3 形〈actual 3・system 5、actual 0・system 5、actual 3・system 3〉）が uncounted / auto_filled / legacy / legacy / legacy になり、旧 header は `reconciliation_version=0`、`stocktake_legacy_movement_ceiling` が当てる前の movement 最大 ID（空なら 0）、在庫・movement・売上・取込みの行が当てる前後で一致する。途中で失敗させると新しい列・表・key・`schema_versions` の行が残らない。T5〜T7。
 - AC4（数量と版）: `update_stock_quantity_with_revision` が同じ数量でも版を 1 進め、対象なしは false で版を変えず、上限では数量も版も書かない。`bump_stock_revision` は増分後の版を返す。呼出し側の TX を rollback すると両方戻る。T8〜T10。
 - AC5（受領）: 同じ hash の受領は最初の ID と時刻を返し、別 hash は新しい ID。業務 TX を rollback しても受領は残る。最大 source ID は空で 0。T11・T12（`src-tauri/src/biz/csv_import_service/tests/time_evidence_tests.rs`）。
-- AC6（精算の同一性）: 同じ帳票種別で machine_no / settlement_no が一致する別 hash は、未取込み・取消済みの source が相手でも `source_identity_conflict` で業務 write の前に拒否し、拒否の初回の code と時刻を独立 TX で残す（2 回目で上書きしない）。同じ精算日の active import があり、どちらかの machine_no / settlement_no が欠けると拒否する（両方欠け・片方欠け・比較先の source なしの 3 形）。同日の active が無ければこの追加の拒否はしない。T13〜T16。
-- AC7（前後の分類）: 非連動 = 売上のみ、NeverObserved = After、LegacyObserved = Unknown（理由 `legacy_basis`）、`source.id <= source_cursor` = Before、`source.id > source_cursor` = Unknown（数量 ≠ 0 は `sale_order_unknown`、数量 0・金額 ≠ 0 は `offset_lines_present`、0/0 は相殺の判定が要る印）。auto_filled はそれより前の有効な観測を隠さない。分類の入力に時刻・精算日時が無い（関数の signature）。共有 JAN の行は全在庫連動候補が Before のときだけ commit 可、1 つでも Before でなければ file 全体が held。T17〜T22。
+- AC6（精算の同一性）: 同じ帳票種別で machine_no / settlement_no が一致する別 hash は、未取込み・取消済みの source が相手でも業務 write の前に拒否し（`IdentityGuardError::Rejected(IdentityConflict)`）、拒否の初回の code と時刻を独立 TX で残す（2 回目で上書きしない）。NULL どうし・帳票種別の違いは衝突にしない。同じ精算日の active import があり、取込み対象か比較先（複数なら全件）のどれかで machine_no / settlement_no が欠けると拒否する（取込み対象の両方欠け・片方欠け、比較先の片方欠け、比較先の source なし、2 件目だけの欠け）。同日の active が無いとき、または両方のメタが揃い settlement_no が違うときはこの追加の拒否はしない。T13〜T16。
+- AC7（前後の分類）: 非連動 = 売上のみ、NeverObserved = After、LegacyObserved = Unknown（理由 `legacy_basis`）、`source.id <= source_cursor` = Before、`source.id > source_cursor` = Unknown（数量 ≠ 0 は `sale_order_unknown`、数量 0・金額 ≠ 0 は `offset_lines_present`、0/0 は相殺の判定が要る印）。最新の有効な観測は measured の明細と recount を合わせた `observation_revision` の最大で選び、版を持つ観測があれば legacy より優先し、auto_filled はそれより前の有効な観測を隠さない。分類の入力に時刻・精算日時が無い（関数の signature）。共有 JAN の行は全在庫連動候補が Before のときだけ commit 可、1 つでも Before でなければ（NeverObserved の After を含む）file 全体が held。T17〜T22。
 - AC8（在庫判定の行）: 正常 JAN の 0/0 行が在庫判定の行の集合に全候補付きで入り、売上の行の集合（`parse_and_validate` の `matched_rows`）には入らない。既存の `test_parse_and_validate_req401_empty_records_excluded` は変えずに PASS。T23。
-- AC9（Z004 の識別メタ）: 合成の layout A で machine_no / settlement_no / settled_at / report_kind を文字列のまま（先頭の 0 を保って）返し、従来 shape は各項目 `None`。既存の z004 parser の test は変えずに PASS。T24・T25。
-- AC10（未配線の機械検査）: `cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings` が exit 0。新しい根を production から呼ぶ一時の変更で `unfulfilled_lint_expectations` が出ることを Writer が 1 回確かめて PR body に書く（commit しない）。T26。
+- AC9（Z004 の識別メタ）: 合成の layout A で machine_no（「マシンNo.」）/ settlement_no（「精算回数」）/ report_kind（「ファイル」）を文字列のまま（先頭の 0 を保って）、settled_at を `YYYY-MM-DDTHH:MM` で返し、従来 shape は各項目 `None`。既存の z004 parser の test は変えずに PASS。T24・T25。
+- AC10（未配線の機械検査）: `cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings` が exit 0。Writer が一時の変更で production の関数から S2 の新関数 1 つ（例 `sales_repo::time_evidence::upsert_pos_import_source`）を呼ぶと `cargo build` が `E0425` / `E0433` で失敗することを 1 回確かめ、戻して `git diff --exit-code` が exit 0（PR body に command と結果を書く。commit しない）。T26。
 - AC11（既存の保護）: `rg -c '#\[ignore' src-tauri/src/biz/csv_import_service/tests/cross_feature_tests.rs` が `2`（baseline `2`）。`cd src-tauri && cargo test --offline --lib cross_feature_tests -- --ignored --nocapture` は今と同じく 2 本 FAIL し、出力に `XFA_TEMPORAL_FAIL` と `XFA_LATE_IMPORT_FAIL` が出る（baseline: 起票時に同 command で exit 101、2 failed）。ignored を含めない `cargo test` は全 PASS。`legacy_stop_tests.rs` は変えずに PASS。
 - AC12（docs と生成物）: `bash scripts/doc-consistency-check.sh --target plan` と `bash scripts/doc-consistency-check.sh` が ERROR 0。traceability を再生成し、生成物の検査（L1 full の traceability）が通る。
 
@@ -144,7 +165,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 必要な設計成果物: BIZ / IO / repo の振舞い = existing sufficient（上の proposed 節）。DB = existing sufficient + updated in this PR（`pos-tables.md` に backfill しない 1 文）。durable な判断 = updated in this PR（D-109: lane の選び方、未配線の入れ方、機械検査、backfill しない）。command / DTO / UI = 該当なし（⑤）。
 - plan にしかない durable な判断の昇格先: D-109。
 - 前提・制約と、延期した design gap の follow-up: 相殺の判定（0/0 行）・EJ の interface・準備照会・在庫連動の有効化の拒否は ④、計数と補正は ③、切替は ⑤（`docs/backlog.md` の ③〜⑤ の申し送り）。精算系列・同一性の比較方法は design lane が見直し得るが、ADR D3 の保守的な拒否のまま作り、見直しは追加の変更になる（ADR :20、D-109 の Revisit）。
-- 絶対保証の自己点検: 「通常の起動で schema が変わらない」は registry に登録しないことと AC2 の test で守る。例外は test の helper だけ。「production から新関数を呼べない」は AC10 の clippy の expect で守る。`db` の `pub` 関数を足すと検出できない（P1）ので `pub(crate)` を AC10 と Review Focus で確かめる。
+- 絶対保証の自己点検: 「通常の起動で schema が変わらない」は registry に登録しないことと AC2 の test で守る。例外は test の helper だけ。「production から新関数を呼べない」は `#[cfg(test)]` の隔離で、呼べば compile error（AC10、P1 の B1〜B2）。例外: cfg(test) の中の code が `test_support` や dev-dependencies を参照しても ② では検出できない（P1 の B3。⑤ で cfg を外すときの compile で露見する）ので Review Focus で確かめる。
 - 判定: ready（② の実装に設計の問いは無い。owner の決定 Q2・Q3〈2026-10-06〉は ② の Scope を変えず、Q1 は本 lane が依らない）。
 
 ## Registration / Generation Obligations
@@ -156,7 +177,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | source / workflow doc 新設・改名・削除 | 該当なし |
 | REQ / coverage の追加 | 新しい test の REQ-205 / REQ-401 の参照で `cargo run --bin generate_traceability` を実行し `docs/function-design/90-traceability.md` を再生成（S6） |
 | route / operator 画面 | 該当なし |
-| Rust の module 登録（本 lane 固有） | `db/mod.rs` の `mod schema_time_evidence;`、`csv_import_service/mod.rs` の `mod time_evidence;`、`csv_import_service/tests/mod.rs` の `mod time_evidence_tests;`。migration の registry（`migration.rs` の `migrations()`）には登録しない（D-109 (2)） |
+| Rust の module 登録（本 lane 固有） | `db/mod.rs` の `#[cfg(test)] mod schema_time_evidence;`、`csv_import_service/mod.rs` の `#[cfg(test)] mod time_evidence;`、`csv_import_service/tests/mod.rs` の `mod time_evidence_tests;`、各 repo file の `#[cfg(test)] pub(crate) mod time_evidence`。`src-tauri/tests/design_compliance_test.rs` の対応表と設計書の code block は ⑤（cfg を外すとき）。migration の registry（`migration.rs` の `migrations()`）には登録しない（D-109 (2)） |
 
 ## Impact Review Lenses
 
@@ -181,7 +202,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - precision/range: 版・cursor・ID は非負 `i64`、増分は checked。番号は文字列（先頭の 0 を保つ）。
 - round-trip path: 該当なし（DB と BIZ の内部）。
 - invalid input: 識別メタの欠け = 同日の active があれば拒否、無ければ通す（AC6）。版の上限 = 書かずにエラー（AC4）。
-- compatibility: 通常起動の DB は v7 のまま。`ParseResult` への field の追加は既存の呼出しを壊さない。
+- compatibility: 通常起動の DB は registry の最大の版のまま（起票時 v7）。`ParseResult` への field の追加は既存の呼出しを壊さない。
 
 ## Test Plan
 
@@ -189,13 +210,14 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - targeted tests: `cd src-tauri && cargo test --offline --lib time_evidence`、`... --lib z004_parser`、`... --lib inventory_repo`、`... --lib sales_repo`、`... --lib stocktake_repo`、`... --lib db::`。
 - negative tests: 版の上限、kind を省いた INSERT、同一精算の別 hash、識別メタの欠け 3 形、migration の途中の失敗、共有 JAN の held。
-- compatibility checks: 通常の `migrate()` が v7 のまま（AC2）。既存の z004 parser・`parse_and_validate`・`legacy_stop_tests`・cross feature の通常 test が変えずに PASS（AC8・AC9・AC11）。
+- compatibility checks: 通常の `migrate()` の後に新しい表・列が無い（AC2）。既存の z004 parser・`parse_and_validate`・`legacy_stop_tests`・cross feature の通常 test が変えずに PASS（AC8・AC9・AC11）。
 - data safety checks: 合成 fixture だけ（Data Safety）。
 - main wiring/integration checks: 本 lane は配線しないことが契約（AC2・AC10）。
 
 ## Review Focus
 
-- 通常の起動の DB を変えないこと（registry に登録していない、`test_support` 以外から schema 関数を呼んでいない）と、`db` の新関数が `pub(crate)` で根に expect があること（P1）。
+- 通常の起動の DB を変えないこと（registry に登録していない、`test_support` 以外から schema 関数を呼んでいない）と、S1・S2・S4 の新しい関数・型・module が全て `#[cfg(test)]` の中にあり `pub(crate)` であること（P1）。
+- cfg(test) の中の production 予定の code（S1・S2・S4 の本体）が `test_support`・dev-dependencies（`tempfile` 等）を参照しないこと（⑤ で cfg を外すときの compile で露見するが、② では機械検査が無い。P1 の B3）。
 - 分類の関数が時刻・精算日時を入力に持たず、`source.id <= source_cursor` だけで Before を決めること。LegacyObserved を未実測に落とさないこと。auto_filled が前の観測を隠さないこと。
 - 受領と拒否の証拠が業務 TX の rollback で消えないこと。同一性の照合が未取込み・取消済みを含むこと、識別メタの欠けを候補 0 件へ落とさないこと。
 - `observation_kind` に恒久の DEFAULT を付けていないこと（table 再構築）。旧明細の分類が `tracking-system-tables.md` の表どおりで、現在の廃番 flag から逆算していないこと。
@@ -214,7 +236,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | SPEC-STK-TIME-D3 / IO-02（識別メタの抽出） | 23:5・:130 | S3 | T24・T25 | 画面に出さない |
 | SPEC-STK-TIME-D8（schema・旧明細の分類・legacy 上限・失敗で全部戻す・恒久 DEFAULT なし） | ADR :261-324、tracking / pos / master / transaction の proposed 節 | S1 | T1〜T3・T5〜T7 | registry 登録は ⑤ |
 | SPEC-STOP-D6 / D-109 (2)（⑤ まで通常起動へ入れない） | 停止 ADR D6、tracking「移行と保存TX」 | S1（registry に登録しない） | T4 | ⑤ |
-| D-109 (3)（test だけが呼ぶことの機械検査） | D-109、停止 ADR D3 の同じ仕組み | S1〜S4 の根の expect、`db` は `pub(crate)` | T26（clippy） | なし |
+| D-109 (3)（test だけが呼ぶことの機械検査） | D-109 | S1・S2・S4 を `#[cfg(test)]` の中に置く、全て `pub(crate)` | T26（clippy と一時の compile error の確認） | ⑤ で cfg を外す |
 | D-109 (4)（旧 import から受領を backfill しない） | pos-tables proposed（本 PR の 1 文）、32 proposed :15 | S1 | T7 | なし |
 | 隣接: 既存の診断と停止 | 停止 ADR D3・D5、cross-feature-verification | 変えない | AC11 | 正規回帰への移行は ⑤ |
 
@@ -222,10 +244,11 @@ adjacent-contract sweep: `update_stock_quantity` の既存 caller 4 か所（Sco
 
 ## Contract Probe
 
-- P1 `pub mod db` の `pub` 関数は dead_code の対象外: scratchpad の最小 crate（rustc 1.94.1、`pub mod db { pub(crate) fn …; pub fn …; #[cfg_attr(not(test), expect(dead_code))] pub(crate) fn root() { helper() } }` と private mod の `pub fn`）で `cargo clippy --offline --all-targets -- -D warnings` -> lib の build で `pub(crate)` の未使用と private mod の `pub fn` の未使用は error、`pub mod` の `pub fn` は報告なし、expect を置いた根とその根だけが使う helper は報告なし。根を `pub fn` から呼ぶと `this lint expectation is unfulfilled` で error。よって `db` の新関数は `pub(crate)`、根に expect（AC10）。
-- P2 SQLite は NOT NULL で DEFAULT の無い列を ALTER で足せない: Python の sqlite3（SQLite 3.51.3）で `ALTER TABLE t ADD COLUMN k TEXT NOT NULL` -> `Cannot add a NOT NULL column with default value NULL`。`observation_kind` は table 再構築で埋める（tracking「移行と保存TX」の 2 項目め）。bundled の SQLite（rusqlite 0.31）での同じ挙動は T3 が固定する。
+- P1 未配線の検査の形: `$TMPDIR` の最小 crate（rustc 1.94.1、実 crate と同じく module に `#[allow(dead_code)]` を付けた `pub mod db` と `mod biz`）で `cargo clippy --offline --all-targets -- -D warnings`。A 系 = 根だけに `#[cfg_attr(not(test), expect(dead_code))]`、新しい repo 関数は `pub(crate)`: A0 そのまま -> exit 0（未使用の `pub(crate)` も module の allow で報告なし）。A1 production の関数から根の下の repo 関数を直接呼ぶ -> exit 0（検出しない）。A2 production から根を呼ぶ -> `this lint expectation is unfulfilled` で exit 101（根だけ検出）。B 系 = 新しいものを `#[cfg(test)] pub(crate) mod time_evidence { … }` に置く: B0 そのまま -> exit 0（test は通る）。B1 production から `db::time_evidence::…` を呼ぶ -> `E0433` で exit 101。同じ module の cfg(test) の関数を名前で呼ぶ形は `E0425`。B2 `use crate::db::time_evidence::…` -> `E0432` で exit 101。B3 cfg(test) の関数が cfg(test) の `test_support` を呼ぶ -> clippy・`cargo test` とも exit 0（検出しない、Review Focus）。よって B の形を採る（AC10）。
+- P2 SQLite は既存行のある表に NOT NULL で DEFAULT の無い列を ALTER で足せない: Python の sqlite3（SQLite 3.51.3）で行のある表に `ALTER TABLE t ADD COLUMN k TEXT NOT NULL` -> `Cannot add a NOT NULL column with default value NULL`。空の表では成功する（bundled の SQLite 3.45.0〈`Cargo.lock` の libsqlite3-sys 0.28.0〉で Plan Review の Codex が実測）。`observation_kind` は table 再構築で埋める（tracking「移行と保存TX」の 2 項目め）。空の試験 DB では ALTER の書き方の誤りが出ないので、旧明細の行がある T5〜T7 が pin する。
 - P3 整数の上限を越える加算: 同じ環境で CHECK の無い INTEGER 列に `v=v+1`（v = i64 上限）-> `9.223372036854776e+18`（REAL）に化ける。`CHECK(typeof(v)='integer' AND v>=0)` があれば `CHECK constraint failed`。版の増分は Rust の checked 演算で上限を先に検査し、CHECK を併せて置く（T2・T9）。
 - P4 Z004 layout A のメタ行: 既存の観測（`23-io-z004-parser.md:130`、2026-08-17 の実ファイルの機械抽出: マシンNo. / ファイル / モード / 精算回数 / 日付 / 時刻）。本 lane は合成のメタ行で test し、実ファイルは使わない。新しい外部の probe は要らない。
+- P5 Z004 layout A のメタの値の形（local の持ち帰りデータを読むだけ、値と件数は tracked に写さない）: 手元の layout A の Z004 全本で「ファイル」行の値は 1 種類で帳票名を含まず、「モード」行も全本で同じ 1 つの値、時刻は全本 `HH:MM`（`.local/field-data/recount/mc-z/shape_z.out` の S1 と、2026-10-06 の起草役の数え直し）。よって report_kind を「ファイル」行にしても同じ精算の Z004 どうしで値が揃い、D3 の衝突の検査を素通りしない。「モード」は精算と点検の区別に使われうる値だが全本同じで、抽出しない。settled_at の `YYYY-MM-DDTHH:MM` は時刻行の形に合う。
 - Plan Gate の前に要る probe: なし。
 
 ## Data Safety
@@ -248,4 +271,4 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+round 1（`f8af8681`）: Claude 側 fresh Opus 5.5 = reject（P1 0 / P2 4 / P3 5）、Codex GPT-6.1 Sol（発注 229）= reject（P1 1 / P2 1 / P3 2）。相談役 Fable 5.1 が是正案の反例を探し、P1 の直し方 4 案を最小 crate で比べた。裁定: P1（根だけの expect で根の下の新関数の production 呼出しを止められない。Opus P2-1 と同じ根）accept、②〜④ の新しい関数・型・module を `#[cfg(test)]` で隔離し ⑤ で外す形に D-109 (3) と AC10 / T26 を改めた（production からの呼出しは compile error）。P2 4 件 accept、T5・T13・T15・T16・T19・T20・T22 に相談役が見つけた残りの mutant を落とす形を足した。P3 全件 accept。
