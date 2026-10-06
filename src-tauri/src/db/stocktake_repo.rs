@@ -655,6 +655,115 @@ pub fn get_stocktake_record_detail(
     })
 }
 
+/// 商品の最新の有効な観測（SPEC-STK-TIME-D4）。⑤ まで test だけが呼ぶ（D-109 (3)）。
+/// 20-io-product-repo.md「時点証拠契約（proposed）」の「有効観測の列挙」
+#[cfg(test)]
+pub(crate) mod time_evidence {
+    use crate::db::{DbConnection, DbError};
+    use rusqlite::OptionalExtension;
+
+    /// 観測の所属
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum ObservationOwner {
+        ActiveItem(i64),
+        CompletedItem(i64),
+        Recount(i64),
+    }
+
+    /// Measured は cursor と版を必ず持つ（無い形を型で作れない）
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum ObservationKind {
+        Measured {
+            source_cursor: i64,
+            observation_revision: i64,
+        },
+        Legacy,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) struct EffectiveObservation {
+        pub owner: ObservationOwner,
+        pub kind: ObservationKind,
+    }
+
+    fn item_owner(id: i64, status: &str) -> ObservationOwner {
+        if status == "in_progress" {
+            ObservationOwner::ActiveItem(id)
+        } else {
+            ObservationOwner::CompletedItem(id)
+        }
+    }
+
+    /// measured の明細（active / 完了済み）と recount を合わせ、`observation_revision` が最大の 1 件を返す
+    /// （明細と recount の別や時刻の順では選ばない）。版を持つ観測が無く legacy の明細があれば Legacy。
+    /// auto_filled と uncounted は観測にしない。measured の証拠が欠けた行はデータ破損として QueryFailed
+    pub(crate) fn find_latest_effective_observation(
+        conn: &DbConnection,
+        product_code: &str,
+    ) -> Result<Option<EffectiveObservation>, DbError> {
+        let mut stmt = conn.prepare(
+            "SELECT 0, si.id, st.status, si.source_cursor, si.observation_revision
+             FROM stocktake_items si JOIN stocktakes st ON st.id = si.stocktake_id
+             WHERE si.product_code = ?1 AND si.observation_kind = 'measured'
+             UNION ALL
+             SELECT 1, r.id, '', r.source_cursor, r.observation_revision
+             FROM stocktake_recounts r JOIN stocktake_items si ON si.id = r.stocktake_item_id
+             WHERE si.product_code = ?1",
+        )?;
+        let rows = stmt.query_map([product_code], |row| {
+            Ok((
+                row.get::<_, bool>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<i64>>(3)?,
+                row.get::<_, Option<i64>>(4)?,
+            ))
+        })?;
+        let mut latest: Option<EffectiveObservation> = None;
+        let mut latest_revision = i64::MIN;
+        for row in rows {
+            let (is_recount, id, status, cursor, revision) = row?;
+            let (Some(source_cursor), Some(observation_revision)) = (cursor, revision) else {
+                return Err(DbError::QueryFailed(format!(
+                    "measured の明細 {id} に source_cursor / observation_revision がありません"
+                )));
+            };
+            if latest.is_none() || observation_revision > latest_revision {
+                latest_revision = observation_revision;
+                latest = Some(EffectiveObservation {
+                    owner: if is_recount {
+                        ObservationOwner::Recount(id)
+                    } else {
+                        item_owner(id, &status)
+                    },
+                    kind: ObservationKind::Measured {
+                        source_cursor,
+                        observation_revision,
+                    },
+                });
+            }
+        }
+        if latest.is_some() {
+            return Ok(latest);
+        }
+        // legacy は migration だけが作り版を持たない。版を持つ観測が無いときだけ基準になる
+        Ok(conn
+            .query_row(
+                "SELECT si.id, st.status FROM stocktake_items si
+                 JOIN stocktakes st ON st.id = si.stocktake_id
+                 WHERE si.product_code = ?1 AND si.observation_kind = 'legacy'
+                 ORDER BY si.id DESC LIMIT 1",
+                [product_code],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?
+            .map(|(id, status)| EffectiveObservation {
+                owner: item_owner(id, &status),
+                kind: ObservationKind::Legacy,
+            }))
+    }
+}
+
 // ---------------------------------------------------------------------------
 // テスト
 // ---------------------------------------------------------------------------

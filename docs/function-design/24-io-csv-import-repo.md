@@ -577,7 +577,7 @@ fn get_completed_daily_report_aggregate(conn: &DbConnection, report_date: &str) 
 返り値の `OfficialDailyReportRow` は IO が所有する DB DTO（`sales_repo`）で、BIZ-05 が `map_official_daily_report` で公開 DTO `OfficialDailyReportSummary` へ写し、warning を作る。IO は BIZ の型を参照しない。
 
 **処理ステップ**:
-1. `daily_report_imports` から `report_date=? AND status='completed'` の親を全件取得する。親がなければ `Ok(None)` を返す。
+1. `daily_report_imports` から `report_date=? AND status='completed'` の親を全件、親の `id`・`report_date`・`gross_amount`・`net_amount`・`imported_at` を `imported_at ASC, id ASC` の順で取得する。親がなければ `Ok(None)` を返す。`imported_at` と並びは手順 6 の取込みごとの行（行の無い親を含む）が使う。手順 2 の gross / net の加算は、従来どおり新しい順（`imported_at DESC, id DESC`、手順 1 の並びの逆）で行う。`checked_add` の途中の溢れ（手順 7）と NULL の伝播（どれかが NULL なら NULL）は加算の順に依るため、取得の並びを変えても既存の結果（日次の数字と日次 CSV）を変えない（例: 古い順の gross が `i64::MAX`・`1`・`-i64::MAX` の 3 親は、新しい順で足すと `1`、古い順で足すと途中で溢れて `DbError::QueryFailed`）。
 2. `source_import_count` は対象親件数とする。親 `gross_amount` / `net_amount` はそれぞれ合計するが、いずれかの親で対象値が NULL なら集約値も NULL とする。
 3. `daily_report_payment_lines` は `payment_key` で集約する。amount / count は対象行のいずれかが NULL なら集約値も NULL とする。
 4. `daily_report_department_lines` は `department_id` がある行をその ID で、未対応行を `normalized_department_name`、それもなければ `raw_department_name` で集約する。amount は合計し、`quantity_hundredths` / count は対象行のいずれかが NULL なら集約値も NULL とする。`quantity_hundredths` は 100 倍の整数のまま足して DB DTO に入れ、単位の数への変換は BIZ-05 が行う（IO-07-D2）。
@@ -637,3 +637,5 @@ fn get_monthly_official_department_totals(
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別 hash の active import 全件取得、commit snapshot 再検証、per-import rollback、日報の日次・月次 additive read 契約を正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | §14.21 に Z001 の行を取込みごとに読む手順 6 を追加（D-096）。rename 済みの旧 symbol の「実装遷移義務」の段落を削除（[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
+| 2026-10-06 | z001-display（runtime、起票） | §14.21 手順 1 の取得列に `imported_at` と並び `imported_at ASC, id ASC` を書いた（手順 6 の行の無い親の取込み日時の出どころ。PR #114 Final Review の P3。[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
+| 2026-10-06 | z001-display（Plan Review round 1 の是正） | §14.21 手順 1 に、gross / net の加算は従来どおり新しい順で行うこと（溢れと NULL の伝播が順に依るため）を書いた（[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |

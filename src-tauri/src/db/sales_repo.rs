@@ -943,6 +943,24 @@ pub struct OfficialDailyReportRow {
     pub net_amount: Option<i64>,
     pub payment_lines: Vec<OfficialDailyPaymentRow>,
     pub department_lines: Vec<OfficialDailyDepartmentRow>,
+    pub summary_imports: Vec<OfficialDailySummaryImportRow>,
+}
+
+/// Z001 の取込みごとの行（合算しない、D-096）
+#[derive(Debug, serde::Serialize)]
+pub struct OfficialDailySummaryImportRow {
+    pub daily_report_import_id: i64,
+    pub imported_at: String,
+    pub lines: Vec<OfficialDailySummaryLineRow>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct OfficialDailySummaryLineRow {
+    pub label: String,
+    /// 個数の100倍の整数（IO-07-D2）。単位の数への変換は BIZ-05
+    pub quantity_hundredths: Option<i64>,
+    pub count: Option<i64>,
+    pub amount: Option<i64>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -1018,10 +1036,10 @@ pub fn get_completed_daily_report_aggregate(
 ) -> Result<Option<OfficialDailyReportRow>, DbError> {
     let mut parent_stmt = conn
         .prepare(
-            "SELECT id, report_date, gross_amount, net_amount
+            "SELECT id, report_date, gross_amount, net_amount, imported_at
              FROM daily_report_imports
              WHERE report_date = ?1 AND status = 'completed'
-             ORDER BY imported_at DESC, id DESC",
+             ORDER BY imported_at ASC, id ASC",
         )
         .map_err(|e| DbError::QueryFailed(e.to_string()))?;
     let parents = parent_stmt
@@ -1031,6 +1049,7 @@ pub fn get_completed_daily_report_aggregate(
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
+                row.get::<_, String>(4)?,
             ))
         })
         .map_err(|e| DbError::QueryFailed(e.to_string()))?
@@ -1040,10 +1059,10 @@ pub fn get_completed_daily_report_aggregate(
     if parents.is_empty() {
         return Ok(None);
     }
-    let parent_ids: Vec<_> = parents.iter().map(|parent| parent.0).collect();
     let report_date = parents[0].1.clone();
-    let gross_amount = sum_optional_strict(parents.iter().map(|parent| parent.2))?;
-    let net_amount = sum_optional_strict(parents.iter().map(|parent| parent.3))?;
+    // 加算は従来の新しい順（溢れと NULL の伝播が順に依る、24 §14.21 手順 1）
+    let gross_amount = sum_optional_strict(parents.iter().rev().map(|parent| parent.2))?;
+    let net_amount = sum_optional_strict(parents.iter().rev().map(|parent| parent.3))?;
 
     let mut payment_stmt = conn
         .prepare(
@@ -1198,13 +1217,52 @@ pub fn get_completed_daily_report_aggregate(
     department_lines.sort_by_key(|item| item.0);
     let department_lines = department_lines.into_iter().map(|item| item.1).collect();
 
+    let mut summary_stmt = conn
+        .prepare(
+            "SELECT l.daily_report_import_id, l.label, l.quantity_hundredths, l.count, l.amount
+             FROM daily_report_summary_lines l
+             INNER JOIN daily_report_imports i ON i.id = l.daily_report_import_id
+             WHERE i.report_date = ?1 AND i.status = 'completed'
+             ORDER BY i.imported_at ASC, i.id ASC, l.sort_order ASC, l.id ASC",
+        )
+        .map_err(|e| DbError::QueryFailed(e.to_string()))?;
+    let mut summary_lines = summary_stmt
+        .query_map([report_date.as_str()], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                OfficialDailySummaryLineRow {
+                    label: row.get(1)?,
+                    quantity_hundredths: row.get(2)?,
+                    count: row.get(3)?,
+                    amount: row.get(4)?,
+                },
+            ))
+        })
+        .map_err(|e| DbError::QueryFailed(e.to_string()))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| DbError::QueryFailed(e.to_string()))?
+        .into_iter()
+        .peekable();
+    // 行は親と同じ並びなので、親ごとに先頭から取り分ける（行の無い親は空のまま）
+    let summary_imports = parents
+        .iter()
+        .map(|parent| OfficialDailySummaryImportRow {
+            daily_report_import_id: parent.0,
+            imported_at: parent.4.clone(),
+            lines: std::iter::from_fn(|| summary_lines.next_if(|line| line.0 == parent.0))
+                .map(|line| line.1)
+                .collect(),
+        })
+        .collect();
+
     Ok(Some(OfficialDailyReportRow {
-        source_import_count: parent_ids.len() as i64,
+        source_import_count: parents.len() as i64,
         report_date,
         gross_amount,
         net_amount,
         payment_lines,
         department_lines,
+        summary_imports,
     }))
 }
 
@@ -1343,6 +1401,220 @@ pub fn get_monthly_sales_by_department(
 
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(|e| DbError::QueryFailed(e.to_string()))
+}
+
+/// 資料の受領と精算の同一性（SPEC-STK-TIME-D2 / D3）。⑤ まで test だけが呼ぶ（D-109 (3)）。
+/// 24-io-csv-import-repo.md「時点証拠契約（proposed）」の表の 1〜5 行。業務の判定は BIZ が行う
+#[cfg(test)]
+pub(crate) mod time_evidence {
+    use crate::db::{DbConnection, DbError};
+    use rusqlite::OptionalExtension;
+
+    /// 同一性の拒否の理由（pos_import_sources.identity_rejection_code の CHECK）
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum IdentityRejectionCode {
+        IdentityConflict,
+        MissingIdentity,
+    }
+
+    impl IdentityRejectionCode {
+        fn as_str(self) -> &'static str {
+            match self {
+                Self::IdentityConflict => "identity_conflict",
+                Self::MissingIdentity => "missing_identity",
+            }
+        }
+
+        fn parse(value: &str) -> Result<Self, DbError> {
+            match value {
+                "identity_conflict" => Ok(Self::IdentityConflict),
+                "missing_identity" => Ok(Self::MissingIdentity),
+                other => Err(DbError::QueryFailed(format!(
+                    "不明な identity_rejection_code: {other}"
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub(crate) struct NewPosImportSource {
+        pub file_hash: String,
+        pub received_at: String,
+        pub settlement_date: String,
+        pub machine_no: Option<String>,
+        pub report_kind: Option<String>,
+        pub settlement_no: Option<String>,
+        pub settled_at: Option<String>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) struct PosImportSource {
+        pub id: i64,
+        pub file_hash: String,
+        pub received_at: String,
+        pub settlement_date: String,
+        pub machine_no: Option<String>,
+        pub report_kind: Option<String>,
+        pub settlement_no: Option<String>,
+        pub settled_at: Option<String>,
+        pub identity_rejection_code: Option<IdentityRejectionCode>,
+        pub identity_rejected_at: Option<String>,
+    }
+
+    /// 同じ精算日の active import と、その source の識別メタ（source なしは各 None）
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) struct ActiveImportIdentity {
+        pub csv_import_id: i64,
+        pub settlement_date: String,
+        pub source_id: Option<i64>,
+        pub machine_no: Option<String>,
+        pub report_kind: Option<String>,
+        pub settlement_no: Option<String>,
+    }
+
+    const SOURCE_COLUMNS: &str = "id, file_hash, received_at, settlement_date, machine_no,
+        report_kind, settlement_no, settled_at, identity_rejection_code, identity_rejected_at";
+
+    fn row_to_source(row: &rusqlite::Row) -> rusqlite::Result<(PosImportSource, Option<String>)> {
+        Ok((
+            PosImportSource {
+                id: row.get(0)?,
+                file_hash: row.get(1)?,
+                received_at: row.get(2)?,
+                settlement_date: row.get(3)?,
+                machine_no: row.get(4)?,
+                report_kind: row.get(5)?,
+                settlement_no: row.get(6)?,
+                settled_at: row.get(7)?,
+                identity_rejection_code: None,
+                identity_rejected_at: row.get(9)?,
+            },
+            row.get(8)?,
+        ))
+    }
+
+    fn with_code(
+        (mut source, code): (PosImportSource, Option<String>),
+    ) -> Result<PosImportSource, DbError> {
+        source.identity_rejection_code = code
+            .as_deref()
+            .map(IdentityRejectionCode::parse)
+            .transpose()?;
+        Ok(source)
+    }
+
+    /// 受領の upsert。同じ hash が既にあれば最初の ID と受領時刻の行をそのまま返す（REPLACE・再採番しない）
+    pub(crate) fn upsert_pos_import_source(
+        conn: &DbConnection,
+        new: &NewPosImportSource,
+    ) -> Result<PosImportSource, DbError> {
+        conn.execute(
+            "INSERT INTO pos_import_sources (file_hash, received_at, settlement_date, machine_no,
+                report_kind, settlement_no, settled_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(file_hash) DO NOTHING",
+            rusqlite::params![
+                new.file_hash,
+                new.received_at,
+                new.settlement_date,
+                new.machine_no,
+                new.report_kind,
+                new.settlement_no,
+                new.settled_at
+            ],
+        )?;
+        let row = conn.query_row(
+            &format!("SELECT {SOURCE_COLUMNS} FROM pos_import_sources WHERE file_hash = ?1"),
+            [&new.file_hash],
+            row_to_source,
+        )?;
+        with_code(row)
+    }
+
+    /// 最大の source ID。空なら 0（cursor の空集合）
+    pub(crate) fn max_pos_import_source_id(conn: &DbConnection) -> Result<i64, DbError> {
+        Ok(conn.query_row(
+            "SELECT COALESCE(MAX(id), 0) FROM pos_import_sources",
+            [],
+            |row| row.get(0),
+        )?)
+    }
+
+    pub(crate) fn get_pos_import_source(
+        conn: &DbConnection,
+        id: i64,
+    ) -> Result<Option<PosImportSource>, DbError> {
+        conn.query_row(
+            &format!("SELECT {SOURCE_COLUMNS} FROM pos_import_sources WHERE id = ?1"),
+            [id],
+            row_to_source,
+        )
+        .optional()?
+        .map(with_code)
+        .transpose()
+    }
+
+    /// 同じ帳票種別で machine_no / settlement_no が一致する別の受領 source（未取込み・取消済みを含む）。
+    /// NULL は `=` で一致しない
+    pub(crate) fn find_settlement_identity_candidates(
+        conn: &DbConnection,
+        report_kind: &str,
+        machine_no: &str,
+        settlement_no: &str,
+        exclude_source_id: i64,
+    ) -> Result<Vec<PosImportSource>, DbError> {
+        let mut stmt = conn.prepare(&format!(
+            "SELECT {SOURCE_COLUMNS} FROM pos_import_sources
+             WHERE report_kind = ?1 AND machine_no = ?2 AND settlement_no = ?3 AND id <> ?4
+             ORDER BY id"
+        ))?;
+        let rows = stmt.query_map(
+            rusqlite::params![report_kind, machine_no, settlement_no, exclude_source_id],
+            row_to_source,
+        )?;
+        rows.map(|row| with_code(row?)).collect()
+    }
+
+    /// 同じ精算日の active import（completed / completed_partial）を csv_imports 起点で全件返す。
+    /// LEFT JOIN で source なし・メタ欠けの行も残す
+    pub(crate) fn list_active_import_identities(
+        conn: &DbConnection,
+        settlement_date: &str,
+    ) -> Result<Vec<ActiveImportIdentity>, DbError> {
+        let mut stmt = conn.prepare(
+            "SELECT ci.id, ci.settlement_date, ci.source_id, s.machine_no, s.report_kind, s.settlement_no
+             FROM csv_imports ci
+             LEFT JOIN pos_import_sources s ON s.id = ci.source_id
+             WHERE ci.settlement_date = ?1 AND ci.status IN ('completed', 'completed_partial')
+             ORDER BY ci.id",
+        )?;
+        let rows = stmt.query_map([settlement_date], |row| {
+            Ok(ActiveImportIdentity {
+                csv_import_id: row.get(0)?,
+                settlement_date: row.get(1)?,
+                source_id: row.get(2)?,
+                machine_no: row.get(3)?,
+                report_kind: row.get(4)?,
+                settlement_no: row.get(5)?,
+            })
+        })?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// 同一性の拒否を初回だけ 2 列一緒に保存する。保存したら true、既にあれば書かずに false
+    pub(crate) fn record_identity_rejection(
+        conn: &DbConnection,
+        source_id: i64,
+        code: IdentityRejectionCode,
+        rejected_at: &str,
+    ) -> Result<bool, DbError> {
+        let affected = conn.execute(
+            "UPDATE pos_import_sources SET identity_rejection_code = ?2, identity_rejected_at = ?3
+             WHERE id = ?1 AND identity_rejection_code IS NULL",
+            rusqlite::params![source_id, code.as_str(), rejected_at],
+        )?;
+        Ok(affected == 1)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -3011,5 +3283,297 @@ mod tests {
             get_completed_daily_report_aggregate(&conn, "2026-09-29"),
             Err(DbError::QueryFailed(_))
         ));
+    }
+
+    // -----------------------------------------------------------------------
+    // Z001 の取込みごとの行（24 §14.21 手順 1・6・8、D-096）
+    // -----------------------------------------------------------------------
+
+    fn set_imported_at(conn: &DbConnection, id: i64, imported_at: &str) {
+        conn.execute(
+            "UPDATE daily_report_imports SET imported_at = ?1 WHERE id = ?2",
+            rusqlite::params![imported_at, id],
+        )
+        .unwrap();
+    }
+
+    fn summary_line(
+        import_id: i64,
+        label: &str,
+        quantity_hundredths: Option<i64>,
+        count: Option<i64>,
+        amount: Option<i64>,
+        sort_order: i64,
+    ) -> NewDailyReportSummaryLine {
+        NewDailyReportSummaryLine {
+            daily_report_import_id: import_id,
+            source_file: "Z001".to_string(),
+            line_key: format!("summary_{sort_order}"),
+            label: label.to_string(),
+            amount,
+            quantity_hundredths,
+            count,
+            sort_order,
+        }
+    }
+
+    fn summary_labels(import: &OfficialDailySummaryImportRow) -> Vec<&str> {
+        import
+            .lines
+            .iter()
+            .map(|line| line.label.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_order_without_sum() {
+        // REQ-501 / 24 §14.21 手順 1・6 / D-096: 親は imported_at ASC, id ASC、行は sort_order ASC, id ASC、合算しない
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report_import(&conn, "2026-03-21", "order-a", "completed");
+        let second = seed_daily_report_import(&conn, "2026-03-21", "order-b", "completed");
+        set_imported_at(&conn, first, "2026-03-21T19:00:00");
+        set_imported_at(&conn, second, "2026-03-21T18:05:30");
+        for (id, amount) in [(first, 100), (second, 200)] {
+            insert_daily_report_summary_lines(
+                &conn,
+                &[
+                    summary_line(id, "部門", None, Some(3), Some(amount + 3), 3),
+                    summary_line(id, "部門", None, Some(2), Some(amount + 2), 2),
+                    summary_line(id, "部門", None, Some(1), Some(amount + 1), 1),
+                ],
+            )
+            .unwrap();
+        }
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        let ids: Vec<i64> = report
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids, vec![second, first]);
+        assert_eq!(report.summary_imports[0].imported_at, "2026-03-21T18:05:30");
+        assert_eq!(report.summary_imports[1].imported_at, "2026-03-21T19:00:00");
+        for (import, base) in report.summary_imports.iter().zip([200, 100]) {
+            assert_eq!(summary_labels(import), vec!["部門", "部門", "部門"]);
+            let values: Vec<(Option<i64>, Option<i64>)> = import
+                .lines
+                .iter()
+                .map(|line| (line.count, line.amount))
+                .collect();
+            assert_eq!(
+                values,
+                vec![
+                    (Some(1), Some(base + 1)),
+                    (Some(2), Some(base + 2)),
+                    (Some(3), Some(base + 3)),
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_same_imported_at_by_id() {
+        // REQ-501 / 24 §14.21 手順 1: imported_at が同値なら親 id の昇順
+        let (_dir, conn) = setup_test_db();
+        let first = seed_daily_report_import(&conn, "2026-03-21", "same-a", "completed");
+        let second = seed_daily_report_import(&conn, "2026-03-21", "same-b", "completed");
+        for id in [second, first] {
+            set_imported_at(&conn, id, "2026-03-21T18:05:00");
+            insert_daily_report_summary_lines(
+                &conn,
+                &[summary_line(
+                    id,
+                    &format!("行{id}"),
+                    None,
+                    Some(1),
+                    Some(1),
+                    1,
+                )],
+            )
+            .unwrap();
+        }
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        let ids: Vec<i64> = report
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids, vec![first, second]);
+        assert_eq!(
+            summary_labels(&report.summary_imports[0]),
+            vec![format!("行{first}")]
+        );
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_skip_rolled_back_parent() {
+        // REQ-501 / 24 §14.21 手順 6: rolled_back の親の行を読まず、残りの親だけを古い順に返す
+        let (_dir, conn) = setup_test_db();
+        let early = seed_daily_report_import(&conn, "2026-03-21", "rb-early", "completed");
+        let middle = seed_daily_report_import(&conn, "2026-03-21", "rb-middle", "completed");
+        let late = seed_daily_report_import(&conn, "2026-03-21", "rb-late", "completed");
+        for (id, at, label) in [
+            (early, "2026-03-21T18:00:00", "早い"),
+            (middle, "2026-03-21T19:00:00", "取消対象"),
+            (late, "2026-03-21T20:00:00", "遅い"),
+        ] {
+            set_imported_at(&conn, id, at);
+            insert_daily_report_summary_lines(
+                &conn,
+                &[
+                    summary_line(id, label, None, Some(1), Some(10), 1),
+                    summary_line(id, &format!("{label}2"), None, Some(2), Some(20), 2),
+                ],
+            )
+            .unwrap();
+        }
+        assert!(rollback_daily_report_import(&conn, middle, "2026-03-22T10:00:00").unwrap());
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report.source_import_count, 2);
+        let ids: Vec<i64> = report
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids, vec![early, late]);
+        assert_eq!(
+            summary_labels(&report.summary_imports[0]),
+            vec!["早い", "早い2"]
+        );
+        assert_eq!(
+            summary_labels(&report.summary_imports[1]),
+            vec!["遅い", "遅い2"]
+        );
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_keep_parent_without_lines() {
+        // REQ-501 / 24 §14.21 手順 6: 行の無い completed の親も空の行で残す（件数 = source_import_count）
+        let (_dir, conn) = setup_test_db();
+        let empty = seed_daily_report_import(&conn, "2026-03-21", "empty", "completed");
+        let filled = seed_daily_report_import(&conn, "2026-03-21", "filled", "completed");
+        set_imported_at(&conn, empty, "2026-03-21T18:00:00");
+        set_imported_at(&conn, filled, "2026-03-21T19:00:00");
+        insert_daily_report_summary_lines(
+            &conn,
+            &[summary_line(filled, "総売", Some(500), None, Some(500), 1)],
+        )
+        .unwrap();
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report.source_import_count, 2);
+        assert_eq!(report.summary_imports.len(), 2);
+        assert_eq!(report.summary_imports[0].daily_report_import_id, empty);
+        assert_eq!(report.summary_imports[0].imported_at, "2026-03-21T18:00:00");
+        assert!(report.summary_imports[0].lines.is_empty());
+        assert_eq!(report.summary_imports[1].daily_report_import_id, filled);
+        assert_eq!(report.summary_imports[1].imported_at, "2026-03-21T19:00:00");
+        assert_eq!(summary_labels(&report.summary_imports[1]), vec!["総売"]);
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_keep_nulls_and_zero_rows() {
+        // REQ-501 / 24 §14.21 手順 6: NULL と 0 の行をそのまま残し、個数は 100 倍の整数のまま
+        let (_dir, conn) = setup_test_db();
+        let id = seed_daily_report_import(&conn, "2026-03-21", "nulls", "completed");
+        insert_daily_report_summary_lines(
+            &conn,
+            &[
+                summary_line(id, "総売", Some(1250), None, Some(15800), 1),
+                summary_line(id, "純売", None, Some(14), Some(14600), 2),
+                summary_line(id, "部門03", None, Some(0), Some(0), 3),
+                summary_line(id, "部門11", None, None, None, 4),
+            ],
+        )
+        .unwrap();
+
+        let report = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report.summary_imports.len(), 1);
+        let lines: Vec<_> = report.summary_imports[0]
+            .lines
+            .iter()
+            .map(|line| {
+                (
+                    line.label.as_str(),
+                    line.quantity_hundredths,
+                    line.count,
+                    line.amount,
+                )
+            })
+            .collect();
+        assert_eq!(
+            lines,
+            vec![
+                ("総売", Some(1250), None, Some(15800)),
+                ("純売", None, Some(14), Some(14600)),
+                ("部門03", None, Some(0), Some(0)),
+                ("部門11", None, None, None),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_completed_daily_report_aggregate_req501_summary_imports_keep_parent_sum_order() {
+        // REQ-501 / 24 §14.21 手順 1・7: 取得は古い順でも gross / net は従来の新しい順で足す
+        // gross と net に同じ境界の値を入れ、どちらの列の加算順の取り違えも落とす
+        let (_dir, conn) = setup_test_db();
+        let seed_day = |date: &str, amounts: [Option<i64>; 3]| {
+            let mut ids = Vec::new();
+            for (index, (at, amount)) in ["18:00:00", "19:00:00", "20:00:00"]
+                .into_iter()
+                .zip(amounts)
+                .enumerate()
+            {
+                let id =
+                    seed_daily_report_import(&conn, date, &format!("{date}-{index}"), "completed");
+                set_imported_at(&conn, id, &format!("{date}T{at}"));
+                conn.execute(
+                    "UPDATE daily_report_imports SET gross_amount = ?1, net_amount = ?1 WHERE id = ?2",
+                    rusqlite::params![amount, id],
+                )
+                .unwrap();
+                ids.push(id);
+            }
+            ids
+        };
+        let day_a = seed_day("2026-03-21", [Some(i64::MAX), Some(1), Some(-i64::MAX)]);
+        let day_b = seed_day("2026-03-22", [Some(i64::MAX), Some(1), None]);
+
+        let report_a = get_completed_daily_report_aggregate(&conn, "2026-03-21")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report_a.gross_amount, Some(1));
+        assert_eq!(report_a.net_amount, Some(1));
+        let ids_a: Vec<i64> = report_a
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids_a, day_a);
+
+        let report_b = get_completed_daily_report_aggregate(&conn, "2026-03-22")
+            .unwrap()
+            .unwrap();
+        assert_eq!(report_b.gross_amount, None);
+        assert_eq!(report_b.net_amount, None);
+        let ids_b: Vec<i64> = report_b
+            .summary_imports
+            .iter()
+            .map(|import| import.daily_report_import_id)
+            .collect();
+        assert_eq!(ids_b, day_b);
     }
 }

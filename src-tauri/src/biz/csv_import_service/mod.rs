@@ -8,6 +8,9 @@ mod commit;
 mod list;
 mod parse;
 mod rollback;
+// 時点証拠の受領・同一性・分類（⑤ まで test だけが呼ぶ。D-109 (3)）
+#[cfg(test)]
+mod time_evidence;
 
 #[cfg(test)]
 mod test_support;
