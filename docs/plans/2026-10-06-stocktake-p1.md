@@ -6,9 +6,9 @@ wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: df62d13b5814fc9afd218621c373d8331b5c6ee5
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
@@ -25,6 +25,7 @@ wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起
 3. design → plan-draft（2026-10-06、起草役、`02379046`）: 同じ plan-first の commit で D-109 を足し、`docs/db-design/pos-tables.md` の proposed 節に backfill しないことを 1 文足した。② の実装に残る設計の問いは無い。owner の判断事項（下の「owner の判断事項」Q1〜Q3）は ② の Scope を変えないが、Q2 は ADR の Status の扱い、Q3 は Matrix の ⑤ の行の期待を決めるので、Plan Gate の前に owner へ諮る。Phase は plan-draft で止める。
 4. plan-draft（owner の決定の反映、2026-10-06、起草役、本 commit）: owner の決定 Q2 = (A)・Q3 = (i)（下の「owner の判断事項」）を packet・Matrix の G2b・D-109 に反映した。Q1 は本 lane が依らない design lane の判断として残す。
 5. plan-draft → plan-gate（2026-10-06、起草役、本 commit）: packet と Test Design Matrix は plan-first commit `02379046` と本 commit で揃い、本 lane に未決は無い。Plan Commit は Plan Reviewer が P1/P2 = 0 と報告するまで pending。
+6. plan-gate → plan-approved（2026-10-07、Coordinator）: Plan Review round 3（上限、`fe691b4b`）で 2 本の独立 reviewer がともに P1 / P2 = 0（Review Response）。Plan Commit は P3 を直した `df62d13b`。
 
 ## Owner Effort Budget
 
