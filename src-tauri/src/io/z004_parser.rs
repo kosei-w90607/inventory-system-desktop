@@ -26,6 +26,22 @@ pub struct ParseResult {
     pub total_data_lines: usize,
     /// SHA-256ハッシュ（raw bytes基準、hex小文字64文字。INV-6準拠）
     pub file_hash: String,
+    /// 精算の識別メタ（layout A のメタ行。従来 shape は None）。23-io-z004-parser.md 時点証拠契約
+    pub settlement_metadata: Option<SettlementMetadata>,
+}
+
+/// 精算の識別メタ。番号は意味が検証されるまで文字列のまま（先頭の 0 を保つ）。
+/// parser は精算系列・同一性・時計の信用を認定しない
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SettlementMetadata {
+    /// 「マシンNo.」行の値
+    pub machine_no: Option<String>,
+    /// 「ファイル」行の値（帳票種別）
+    pub report_kind: Option<String>,
+    /// 「精算回数」行の値
+    pub settlement_no: Option<String>,
+    /// 精算日と「時刻」行の `HH:MM` を結合した `YYYY-MM-DDTHH:MM`（分精度、秒や 0 時を補わない）
+    pub settled_at: Option<String>,
 }
 
 /// 正常にパースできた1データ行
@@ -145,10 +161,11 @@ pub fn parse_z004(raw_bytes: &[u8]) -> Result<ParseResult, Z004ParseError> {
     let is_conventional_shape =
         conventional_date.is_some() && is_conventional_header_line(lines[1]);
 
-    let (header_index, settlement_date) = if is_conventional_shape {
+    let (header_index, settlement_date, settlement_metadata) = if is_conventional_shape {
         (
             1,
             conventional_date.expect("従来 shape 判定済みの日付が存在する"),
+            None,
         )
     } else {
         const HEADER_SCAN_LIMIT: usize = 20;
@@ -181,7 +198,8 @@ pub fn parse_z004(raw_bytes: &[u8]) -> Result<ParseResult, Z004ParseError> {
             )
         })?;
 
-        (header_index, settlement_date)
+        let settlement_metadata = extract_settlement_metadata(metadata, &settlement_date);
+        (header_index, settlement_date, Some(settlement_metadata))
     };
 
     // Step 7: 検出したヘッダ行をスキップ
@@ -213,6 +231,7 @@ pub fn parse_z004(raw_bytes: &[u8]) -> Result<ParseResult, Z004ParseError> {
         parse_errors,
         total_data_lines,
         file_hash,
+        settlement_metadata,
     })
 }
 
@@ -398,6 +417,31 @@ fn parse_z004_int(raw: &str) -> Option<i32> {
     trimmed.replace(',', "").parse().ok()
 }
 
+/// layout A のメタ行から精算の識別メタを抽出する（ラベルは前後の空白を除いて完全一致）。
+/// 「ファイル」行が無い・空なら machine_no / settlement_no も None にする（帳票種別の無い番号だけの組を作らない）
+fn extract_settlement_metadata(metadata: &[&str], settlement_date: &str) -> SettlementMetadata {
+    let value_of = |label: &str| {
+        metadata.iter().find_map(|line| {
+            let fields = split_csv_fields(line);
+            (fields.len() >= 2 && fields[0].trim() == label)
+                .then(|| fields[1].trim().to_string())
+                .filter(|value| !value.is_empty())
+        })
+    };
+    let Some(report_kind) = value_of("ファイル") else {
+        return SettlementMetadata::default();
+    };
+    let settled_at = value_of("時刻")
+        .filter(|time| chrono::NaiveTime::parse_from_str(time, "%H:%M").is_ok() && time.len() == 5)
+        .map(|time| format!("{settlement_date}T{time}"));
+    SettlementMetadata {
+        machine_no: value_of("マシンNo."),
+        report_kind: Some(report_kind),
+        settlement_no: value_of("精算回数"),
+        settled_at,
+    }
+}
+
 /// 従来 shape の1行目から `YYYY-MM-DD` を抽出する。
 fn extract_iso_date(line: &str) -> Option<String> {
     let date_re = regex::Regex::new(r"\d{4}-\d{2}-\d{2}").expect("日付パターンのコンパイル失敗");
@@ -566,6 +610,20 @@ mod tests {
         assert_eq!(row.name, "ﾊﾏﾅｶ ｱﾐｱﾐ極太");
         assert_eq!(row.quantity, 3);
         assert_eq!(row.amount, 1782);
+    }
+
+    #[test]
+    fn test_parse_z004_req401_t25_conventional_shape_has_no_settlement_metadata() {
+        // REQ-401 / IO-02 / T25: 従来 shape は識別メタを作らない（各項目 None、日付は従来どおり）
+        let raw = make_valid_z004("\"1\",\"4976383262108\",\"テスト商品\",3,1782");
+        let result = parse_z004(&raw).unwrap();
+        assert_eq!(result.settlement_date, "2026-03-21");
+        assert_eq!(result.settlement_metadata, None);
+        let metadata = result.settlement_metadata.unwrap_or_default();
+        assert_eq!(metadata.machine_no, None);
+        assert_eq!(metadata.report_kind, None);
+        assert_eq!(metadata.settlement_no, None);
+        assert_eq!(metadata.settled_at, None);
     }
 
     #[test]
@@ -1248,6 +1306,66 @@ mod layout_a_tests {
             parse_z004(&raw).unwrap_err(),
             "ヘッダ行を検出できません。ファイル形式を確認してください",
         );
+    }
+
+    fn metadata_of(metadata: &[&str]) -> SettlementMetadata {
+        let raw = encode_cp932(&layout_a_text(
+            metadata,
+            &["\"1\",\"9999999999990E\",\"合成商品\",\"1\",\"100\""],
+        ));
+        parse_z004(&raw).unwrap().settlement_metadata.unwrap()
+    }
+
+    #[test]
+    fn test_parse_z004_req401_t24_layout_a_settlement_metadata() {
+        // REQ-401 / IO-02 / SPEC-STK-TIME-D3 / T24: 識別メタを文字列のまま（先頭の 0 を保って）返す
+        let raw = synthetic_layout_a_fixture();
+        let result = parse_z004(&raw).unwrap();
+        assert_eq!(result.settlement_date, "2026-08-15");
+        assert_eq!(
+            result.settlement_metadata,
+            Some(SettlementMetadata {
+                machine_no: Some("0001".to_string()),
+                report_kind: Some("Z004_SYNTH".to_string()),
+                settlement_no: Some("0042".to_string()),
+                settled_at: Some("2026-08-15T18:30".to_string()),
+            })
+        );
+
+        // 時刻行の値が壊れている → settled_at だけ None（日付・他のメタは返る）
+        for broken in ["18:3", "25:00", "18:30:00", "", "1:05"] {
+            let time_line = format!("\"時刻        \",\"{broken}\"");
+            let metadata = metadata_of(&[
+                "\"マシンNo.   \",\"0001\"",
+                "\"ファイル    \",\"Z004_SYNTH\"",
+                "\"モード      \",\"SYNTH\"",
+                "\"精算回数    \",\"0042\"",
+                "\"日付        \",\"2026-08-15\"",
+                &time_line,
+            ]);
+            assert_eq!(metadata.settled_at, None, "{broken}");
+            assert_eq!(metadata.machine_no.as_deref(), Some("0001"));
+            assert_eq!(metadata.settlement_no.as_deref(), Some("0042"));
+        }
+
+        // 「ファイル」行だけが無い → report_kind も番号も None（番号だけの組を作らない）
+        let metadata = metadata_of(&[
+            "\"マシンNo.   \",\"0001\"",
+            "\"モード      \",\"SYNTH\"",
+            "\"精算回数    \",\"0042\"",
+            "\"日付        \",\"2026-08-15\"",
+            "\"時刻        \",\"18:30\"",
+        ]);
+        assert_eq!(metadata.report_kind, None);
+        assert_eq!(metadata.machine_no, None);
+        assert_eq!(metadata.settlement_no, None);
+
+        // report_kind は「モード」行から作らない
+        let metadata = metadata_of(&[
+            "\"モード      \",\"SYNTH\"",
+            "\"日付        \",\"2026-08-15\"",
+        ]);
+        assert_eq!(metadata, SettlementMetadata::default());
     }
 }
 
