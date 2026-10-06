@@ -6,7 +6,7 @@ wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -22,7 +22,9 @@ wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起
 
 1. kickoff → spec-check（2026-10-06、起草役）: 依頼を ㉘ ② に絞り、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-06、起草役）: 設計正本（ADR D1〜D4 / D8、35 / 32 / 20 / 21 / 23 / 24 の proposed 節、db-design の tracking / pos / master の proposed 節）は ② の中身を定めているが、② の未配線の入れ方（registry に登録しない schema 関数、test だけが呼ぶことの機械検査、旧 writer と並ぶ新関数）と、旧 import から受領記録を backfill するかが正本に無い。
-3. design → plan-draft（2026-10-06、起草役、本 commit）: 同じ plan-first の commit で D-109 を足し、`docs/db-design/pos-tables.md` の proposed 節に backfill しないことを 1 文足した。② の実装に残る設計の問いは無い。owner の判断事項（下の「owner の判断事項」Q1〜Q3）は ② の Scope を変えないが、Q2 は ADR の Status の扱い、Q3 は Matrix の ⑤ の行の期待を決めるので、Plan Gate の前に owner へ諮る。Phase は plan-draft で止める。
+3. design → plan-draft（2026-10-06、起草役、`02379046`）: 同じ plan-first の commit で D-109 を足し、`docs/db-design/pos-tables.md` の proposed 節に backfill しないことを 1 文足した。② の実装に残る設計の問いは無い。owner の判断事項（下の「owner の判断事項」Q1〜Q3）は ② の Scope を変えないが、Q2 は ADR の Status の扱い、Q3 は Matrix の ⑤ の行の期待を決めるので、Plan Gate の前に owner へ諮る。Phase は plan-draft で止める。
+4. plan-draft（owner の決定の反映、2026-10-06、起草役、本 commit）: owner の決定 Q2 = (A)・Q3 = (i)（下の「owner の判断事項」）を packet・Matrix の G2b・D-109 に反映した。Q1 は本 lane が依らない design lane の判断として残す。
+5. plan-draft → plan-gate（2026-10-06、起草役、本 commit）: packet と Test Design Matrix は plan-first commit `02379046` と本 commit で揃い、本 lane に未決は無い。Plan Commit は Plan Reviewer が P1/P2 = 0 と報告するまで pending。
 
 ## Owner Effort Budget
 
@@ -32,9 +34,9 @@ wave に属さない単独の lane。owner の lane 選択（2026-10-06）で起
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0 | 4（Q2 ADR の Status、Q3 STK-2 の green の定義、Ready、merge） | 2 | 6 = 0 + 4 + 2 |
+| 介入 | 6 | 2（2026-10-06: Q2 ADR の Status、Q3 STK-2 の green の定義） | 2（Ready、merge） | 2 | 6 = 2 + 2 + 2 |
 
-Q1（design lane の着手条件 (4)）は design lane の判断で、本 change の介入に数えない（同じ問い合わせで得る場合も本 lane には計上しない）。manual（L3）は無い。
+Q1（design lane の着手条件 (4)）は design lane の判断で、本 change の介入に数えない（design lane の起票時に owner へ諮る）。manual（L3）は無い。
 
 ## Risk
 
@@ -110,12 +112,12 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 |---|---|---|
 | `src-tauri/src/db/sales_repo.rs` | `pos_import_sources` と active import の識別メタの新関数（既存の関数の後に追加） | #145: 日報の公式の行の aggregate |
 | `src-tauri/src/io/z004_parser.rs` | `ParseResult` の field とメタ行の抽出 | `agent/plu-clear`（触るなら）: データ行の分類 |
-| `docs/decision-log.md` | 末尾の D-109 | A = D-108（`agent/npm-audit-1006` が D-108 を予約したと Coordinator の補足にあり、番号の割当ては報告で確認）、C = D-110 |
+| `docs/decision-log.md` | 末尾の D-109 | `agent/npm-audit-1006` = D-108、C（`agent/plu-clear`）= D-110、A（`agent/sd-direct-read`）= D-111 |
 | `docs/backlog.md` | STK-1 / STK-2、design lane の項、診断 2 本、0/0 行、③〜⑤ | 各 lane の項 |
 
 ## Non-scope
 
-- `docs/Plans.md`（D-097）、`docs/project-memory.md`（SD の行は lane A、本 lane は触らない）、ADR 2 本の本文と Status（Q2 の owner 判断の後に扱う）、`docs/function-design/` の 20 / 21 / 23 / 24 / 32 / 35 の proposed 節（② の範囲では既存で足りる。Design Readiness）。
+- `docs/Plans.md`（D-097）、`docs/project-memory.md`（SD の行は lane A、本 lane は触らない）、ADR 2 本の本文と Status（owner 決定 Q2 = (A): 時点証拠 ADR は proposed のまま進め、⑤ で停止 ADR を superseded にするのと同時に accepted にする）、`docs/function-design/` の 20 / 21 / 23 / 24 / 32 / 35 の proposed 節（② の範囲では既存で足りる。Design Readiness）。
 - 通常起動の migration の registry 登録、`update_stock_quantity` と `ProductUpdates.stock_quantity`（`product_repo.rs:166`・`:1040`）の置換、旧 writer の kind 対応、`legacy_*` と停止の撤去、command / bindings / UI（⑤）。
 - 計数 context・保存・確定・独立再実測・flag の解消（③）、受領と分類の preview / commit への配線・flag の作成・相殺の判定・取消補償・legacy の取消の保留・準備照会・`ej_unverified`・在庫連動の有効化の拒否（④）。
 - EJ の日次取込みと相殺の判定、精算系列・番号 reset・同一性の比較方法の見直し（design lane / EJ の日次取込みの lane）。
@@ -143,7 +145,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - plan にしかない durable な判断の昇格先: D-109。
 - 前提・制約と、延期した design gap の follow-up: 相殺の判定（0/0 行）・EJ の interface・準備照会・在庫連動の有効化の拒否は ④、計数と補正は ③、切替は ⑤（`docs/backlog.md` の ③〜⑤ の申し送り）。精算系列・同一性の比較方法は design lane が見直し得るが、ADR D3 の保守的な拒否のまま作り、見直しは追加の変更になる（ADR :20、D-109 の Revisit）。
 - 絶対保証の自己点検: 「通常の起動で schema が変わらない」は registry に登録しないことと AC2 の test で守る。例外は test の helper だけ。「production から新関数を呼べない」は AC10 の clippy の expect で守る。`db` の `pub` 関数を足すと検出できない（P1）ので `pub(crate)` を AC10 と Review Focus で確かめる。
-- 判定: ready（② の実装に設計の問いは無い。owner の判断 Q1〜Q3 は ② の Scope を変えない）。
+- 判定: ready（② の実装に設計の問いは無い。owner の決定 Q2・Q3〈2026-10-06〉は ② の Scope を変えず、Q1 は本 lane が依らない）。
 
 ## Registration / Generation Obligations
 
@@ -234,11 +236,11 @@ adjacent-contract sweep: `update_stock_quantity` の既存 caller 4 か所（Sco
 
 ## owner の判断事項
 
-本 lane の Scope を変えない。Plan Gate の前に Coordinator が owner へ諮る（報告に選択肢と推奨）。
+owner の決定（2026-10-06、確定）。本 lane の Scope は変わらない。
 
-- Q1 未決（owner）: design lane「実測と POS 系列の対応を取得・保存する」の着手条件 (4)（棚卸し → アプリ終了 → OS 再起動 → 翌日の遅延取込み）を外すか。本 lane には影響しない。
-- Q2 未決（owner）: 時点証拠 ADR（Status proposed）を、② 〜 ④ の実装の間どう扱うか（proposed のまま ⑤ で accepted / ② の Plan Gate で accepted / 本 lane で改訂）。
-- Q3 未決（owner）: STK-2 の診断（`XFA_LATE_IMPORT_FAIL`）の green を、⑤ の時点で「計数を始めた後に受領した資料は、要再確認 → 数え直しで現物に戻る」と定義するか、「数え直しなしで現物に一致」まで求めて ⑤ を design lane の後にするか（Matrix の G2 の行）。
+- Q1 本 lane の外: design lane「実測と POS 系列の対応を取得・保存する」の着手条件 (4)（棚卸し → アプリ終了 → OS 再起動 → 翌日の遅延取込み）を外すか。owner は今は決めていない。本 lane は依らない。design lane の起票時に owner へ諮る（`docs/backlog.md` の同項）。
+- Q2 決定 (A)（owner 2026-10-06）: 時点証拠 ADR（`docs/adr/2026-09-18-stocktake-time-evidence.md`、Status proposed）は ② 〜 ④ の間 proposed のまま進め、⑤ で停止 ADR を superseded にするのと同時に accepted にする。本 lane は ADR を編集しない（D-109 の Compatibility）。
+- Q3 決定 (i)（owner 2026-10-06）: STK-2 の診断（`XFA_LATE_IMPORT_FAIL`）は、⑤ の時点で「計数を始めた後に受領した資料は、要再確認のあと数え直しで正しい数（例の 8）へ戻る」を green とする。数え直しなしでの一致は求めない（Matrix の G2b）。
 
 ## Implementation Results
 

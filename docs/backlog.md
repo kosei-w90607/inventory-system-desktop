@@ -190,7 +190,7 @@
 
 ### 記録目的（受容済みリスク・revisit 条件付き）
 
-- 横断検証の診断 test 2 本（`XFA_TEMPORAL_FAIL` / `XFA_LATE_IMPORT_FAIL`）は `#[ignore]` で意図的 FAIL（PR #69、[根拠](research/2026-09-16-diagram-audit.md)）。STK-1 / STK-2 の是正 lane で green にする。 green の条件（STK-1 の保存後の移動 4 本は ③、後着の 1 本と STK-2 は受領が計数より前か後かで分かれ、後の場合は数え直しの後に現物へ戻ることを green とするかが owner 判断）は `docs/plans/2026-10-06-stocktake-p1.md` の Matrix の G1〜G2b。
+- 横断検証の診断 test 2 本（`XFA_TEMPORAL_FAIL` / `XFA_LATE_IMPORT_FAIL`）は `#[ignore]` で意図的 FAIL（PR #69、[根拠](research/2026-09-16-diagram-audit.md)）。STK-1 / STK-2 の是正 lane で green にする。 green の条件（STK-1 の保存後の移動 4 本は ③、後着の 1 本と STK-2 は受領が計数より前か後かで分かれ、後の場合は数え直しの後に現物へ戻ることを green とする〈owner 決定 2026-10-06〉）は `docs/plans/2026-10-06-stocktake-p1.md` の Matrix の G1〜G2b。
 - smol-toml override（1.7.1）の撤去条件: markdownlint-cli2 が smol-toml ≥ 1.7.1 を pin する版を出したら override を外し、名指し通常更新へ戻して audit を再確認する。
 - 移植先の Cargo alert 2 件の dismiss 理由候補（実行は owner）: rand 0.7.3 は tauri-utils の build 時 hash 生成経路のみで runtime 露出なし → `tolerable_risk` 候補、glib 0.18.5 は Linux 用 gtk 経路で Windows 配布物に含まれない → `not_used` 候補。2026-09-15 に owner がいずれも dismiss 済み。
 - 40-cmd-product.md:279 の言い換えで field 名の明示が落ちた件（Opus P3-3、衛生 batch 4 Final Review round 2、2026-09-15）: per_page check の否定文脈検出を直す際に元の精度へ戻す。
