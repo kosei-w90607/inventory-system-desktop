@@ -4,7 +4,7 @@ wave に属さない単独の lane。owner 2026-10-06 の決定で、`docs/backl
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: eb26ecb31ecd645a2dfb27e4879be7f54599af4f
 - Amendments: none
@@ -272,6 +272,7 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 - Scope 2: `docs/TOOLING_SKILL_COMMANDS.md` の見出しを `DEV_WORKFLOW.md#verification-gates` の Rust/backend の行を指す形にした。本文の command は変えていない。
 - Scope 3: `.codex/README.md` の `## PR evidence helper` の文から「適用条件を満たしたgithub mode」と「個人recipeからlegacyのstate-only/三点一致を新modeへ追加しない」を消し、文頭を「merge-evidence の手順で helper を使う」にした。helper の command・status read-only・capture の置き場・承認の範囲・設定と権限を変えない、は残した。
 - packet との食い違い: なし。
+- review・CI・merge（closeout、2026-10-06）: Final Review broad は互いに独立の 2 本がともに approve（Fable 5.1 は P 0、Codex GPT-6.1 Sol は P 0）。Ready の後の hosted run の `Merge gate` は success で、helper 経由の squash merge（owner の Ready・merge、2026-10-06）。検証（AC1〜AC8、mutant M1〜M9）の実測値は PR の body が持つ。PR: [#144](https://github.com/kosei-w90607/inventory-system-desktop/pull/144)（Writer = Opus 5.5 subagent）
 
 ## Review Response
 
@@ -285,3 +286,5 @@ Test Design Matrix: [test-matrices/2026-10-06-small-batch.md](test-matrices/2026
 - Plan Review round 3（上限、2026-10-06、対象 `903af90c`、互いに独立の 2 本。前 round の結果は読ませていない）: Codex GPT-6.1 Sol（発注 224）= approve（P 0）、fresh Opus 5.5 = approve（P3 2。T5 と M7 を隔離の写しで実測）。P1/P2 = 0 で plan-gate → plan-approved の条件が揃った。P3 2 件は Writer の選択が揺れないための補いで、Coordinator が accept し本 commit で直した（独立の再確認は Final Review が兼ねる）。
   - I1: 売価だけを変えたときに `selling_price` だけが出ることを直接確かめる test が無く、片側だけ今の形を残す実装が通る。採用: T3 に (iii) と Mutation M9 を足した。
   - I2: T1〜T5 の JAN の条件は「重ならない値」ではなく「チェックディジットが正しい値」（`jan_code::validate`、Coordinator が `jan_code.rs:18`・`:38`〜`:39` を実読、例 `2000000000114` の検算も済み）。採用: 条件を書き直した。
+
+- Closeout（2026-10-06）: Final Review broad（互いに独立の 2 本）は Fable 5.1 = approve（P 0）、Codex GPT-6.1 Sol（発注 226）= approve（P 0）で、helper に `--pr-reviews` 付きで pass を記録した。Ready の後の hosted run の `Merge gate` は success で、owner の承認で helper の ready → merge を行い、PR #144 は helper 経由の squash merge（2026-10-06）で閉じた。Final の finding は 0 件で、closeout で直す P3 は無い。backlog の本 lane の 4 項目のうち 3 項目（TOOLING_SKILL_COMMANDS の見出し・`.codex/README.md` の句・商品修正の detail_json）を完了の書式にした。保存と起動の守りの follow-up は (1)・(3) が解消済み（PR #118）のまま、(2) の新しすぎる backup の復元の文言を残す。画面の「項目名 / 前 → 後」の一覧は backlog の「やると決めたもの」に残る。
