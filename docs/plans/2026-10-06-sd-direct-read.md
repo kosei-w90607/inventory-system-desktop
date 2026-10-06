@@ -137,7 +137,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 ## Acceptance Criteria
 
-- AC1（旧い標準手順の live な残り 0）: `rg -n "EcrDatas" docs --glob '!docs/archive/**' --glob '!docs/research/**'` の hit が、すべて「事実（`XZ_BKUP` と同じ bytes・layout A の観測）」「予備の経路」「2026-10-06 に置き換えた旨の履歴」「D-111」「参照の mockup 1 行（`docs/design-system/reference/mockup-d-import-export.html:131`）」のどれかで、`EcrDatas` を通常の入力元とする文が 0。`rg -n "所定フォルダ|CV17取込み後のPC側" docs --glob '!docs/archive/**' --glob '!docs/research/**'` が 0 件。
+- AC1（旧い標準手順の live な残り 0）: `rg -n "EcrDatas" docs --glob '!docs/archive/**' --glob '!docs/research/**'` の hit が、すべて「事実（`XZ_BKUP` と同じ bytes・layout A の観測）」「予備の経路」「2026-10-06 に置き換えた旨の履歴」「D-111」「参照の mockup 1 行（`docs/design-system/reference/mockup-d-import-export.html:131`）」のどれかで、`EcrDatas` を通常の入力元とする文が 0。`rg -n "所定フォルダ|CV17取込み後のPC側" docs --glob '!docs/archive/**' --glob '!docs/research/**'` の hit は、`55-ui-csv-import.md` の UI-07-D12 の「旧版（2026-08-01）の…は置き換えた」の履歴の 1 行と本 AC の行だけ（起草時の実測で 2 件）。
 - AC2（IO-09 の契約がある）: `docs/function-design/29-io-daily-report-parser.md` に `find_register_sd_roots`・`resolve_register_sd_root`・`list_register_sd_entries`・`read_register_sd_file` のシグネチャ（`rg -n "^fn (find|resolve|list|read)_register_sd" docs/function-design/29-io-daily-report-parser.md` が 4 行）と IO-09-D1〜D4 がある。
 - AC3（候補の規則と二重取込みの拒否）: `37-biz-daily-report-import-service.md` に §37.9（BIZ-08-D3）と §37.3 手順 8 の BIZ-08-D4、§37.4 手順 4a がある。`pos-tables.md` §12b に `settlement_no` の列がある。
 - AC4（command と画面）: `45-cmd-daily-report-import.md` に §45.6a・§45.6b（CMD-12-D1）、`55-ui-csv-import.md` に UI-07-D12（改訂）・D13・D14 がある。
