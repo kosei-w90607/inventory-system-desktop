@@ -1,6 +1,6 @@
 # 日計（Z001）表示 synthetic fixture
 
-日次売上の「レジ日報（公式）」に日計（Z001）の表を出す lane（[packet](../../../docs/plans/2026-10-06-z001-display.md)）の L3（Windows native の before / after）と、Rust の結合 test `test_get_daily_sales_req501_summary_imports_from_fixture_bundles`（`src-tauri/src/biz/sales_service.rs`）が使う入力物です。
+日次売上の「レジ日報（公式）」に日計（Z001）の表を出す lane（[packet](../../../docs/archive/plans/2026-10-06-z001-display.md)）の L3（Windows native の before / after）と、Rust の結合 test `test_get_daily_sales_req501_summary_imports_from_fixture_bundles`（`src-tauri/src/biz/sales_service.rs`）が使う入力物です。
 
 すべて合成の値です。実店舗の CSV 本文・売上・ラベルを含みません。ラベルは帳票仕様由来の種類の語（`docs/function-design/29-io-daily-report-parser.md`）と合成の番号（`部門01` 等）です。
 
@@ -16,7 +16,7 @@ A → B1 → B2 の順に取り込みます（B2 は「同じ日のデータを�
 
 ## 生成手順
 
-[Test Design Matrix](../../../docs/plans/test-matrices/2026-10-06-z001-display.md) の「L3 fixture」の節にある Python 3（標準ライブラリだけ）の script を file に保存し、repo の root で次を実行して 9 file を書き出します。
+[Test Design Matrix](../../../docs/archive/plans/test-matrices/2026-10-06-z001-display.md) の「L3 fixture」の節にある Python 3（標準ライブラリだけ）の script を file に保存し、repo の root で次を実行して 9 file を書き出します。
 
 ```sh
 python3 <script> tests/fixtures/daily-report-z001

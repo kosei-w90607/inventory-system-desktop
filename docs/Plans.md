@@ -14,7 +14,7 @@ active な lane の Plan Packet は `docs/plans/` の dated packet が正本（l
 
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。5 本すべて merge 済み: PR0（#92）・PR1（#97）・PR2（#113、座組と役割）・PR3（#117、入口と重複）・PR5（#127、gate の穴）・PR4（#128、手続きの軽量化）と、PR4・PR5 より先に起こした並走の摩擦を削る lane（PR #123、owner 2026-09-28 起票承認）。
 - 2026-10-04 の 4 lane（A Z004 取込みの穴・B 日報取込みの穴・D EJ の文法・E 独自コードの採番、owner の lane 選択 TD-104）と、その後に先に入れた helper の守りの lane（owner 2026-10-05）はすべて merge 済み（PR #138〜#142）。次の lane は未定（owner が決める）。
-- wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）は merge 済み。次 = 後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（R3、Human Gate `ready,merge,manual`）。着手は訪店（Issue #105）の後（owner 決定 2026-09-28。Z001 の表を足すと日次売上の画面が縦に伸び既存の並びが崩れうるため、実物の Z001 の行数を見てから作る）。起票の中身は [backlog](backlog.md) の該当項目。
+- wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）と後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（PR #145、2026-10-06）は merge 済み。
 
 次の着手順（owner決定2026-09-22）:
 
@@ -28,6 +28,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## 直近の完了
 
+- 2026-10-06 [PR #145](https://github.com/kosei-w90607/inventory-system-desktop/pull/145) 日次売上のレジ日報（公式）に日計（Z001）の全行を取込みごとの表で出す（単独の lane、R3）: 日次売上の「レジ日報（公式）」に Z001 の全行を保存したラベルと並びのまま出し、同じ日に 2 回以上取り込んだ日は取込みごとの表を古い順に並べ、既存の 2 表の見出しに出どころ（Z002・Z005）を添えた（UI-09a-D16、D-096。L3 は owner PASS で、見せ方はデザイン刷新への要求仕様として backlog へ送った）。[archive](archive/plans/2026-10-06-z001-display.md)・[Matrix](archive/plans/test-matrices/2026-10-06-z001-display.md)
 - 2026-10-06 [PR #144](https://github.com/kosei-w90607/inventory-system-desktop/pull/144) 商品修正の操作ログに売価・原価以外の項目の変更前後も残し、docs の古い参照を直す（小口のまとめ、単独の lane、R3）: 商品修正の detail_json に変えた field ごとの変更前後を serde_json で書き（BIZ-01-D7）、`docs/TOOLING_SKILL_COMMANDS.md` の見出しの参照先と `.codex/README.md` の撤去済みの mode の句を直した。操作ログ画面は変えていない。[archive](archive/plans/2026-10-06-small-batch.md)・[Matrix](archive/plans/test-matrices/2026-10-06-small-batch.md)
 - 2026-10-05 [PR #142](https://github.com/kosei-w90607/inventory-system-desktop/pull/142) helper と検査の守りを揃える（単独の lane、R3）: PK4 が Workflow State の値を helper の `parse_packet` で判定し、PK5 が `Plan Commit`・`Amendments` の 40 桁の SHA だけを受け、helper は Gated Amendment の後に要る broad を先に言い、review の record に同じ head の PR review の数の申告（`--pr-reviews`）を求めるようになった（D-107）。[archive](archive/plans/2026-10-05-gate-record-guards.md)・[Matrix](archive/plans/test-matrices/2026-10-05-gate-record-guards.md)
 - 2026-10-05 [PR #141](https://github.com/kosei-w90607/inventory-system-desktop/pull/141) EJ parser に店が普段使う文法を足す（2026-10-04 の 4 lane の lane D、R3）: 記録の種類を本文の行で決め、取引の合計域・明細域（訂正・値引き・マイナスキー・戻の印）と取引中止を読み、規則に合わない記録は今どおり復元不能に倒す（D-105）。[archive](archive/plans/2026-10-04-ej-grammar.md)・[Matrix](archive/plans/test-matrices/2026-10-04-ej-grammar.md)
@@ -37,7 +38,6 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 - 2026-10-01 [PR #136](https://github.com/kosei-w90607/inventory-system-desktop/pull/136) 検査 script と test の小口を整理する（単独の lane、R3）: PK4 が Workflow State の key の重複を push の前に止め、`check-workflow-git.sh` は Phase を `## Workflow State` の節だけから読み、PK1・PK3 の節の判定を `##` に限り、hook test が frontmatter の `permissionMode`・`mcpServers` を拒み、home の小文字化の残りを揃えた（D-102）。[archive](archive/plans/2026-10-01-checker-small-fixes.md)・[Matrix](archive/plans/test-matrices/2026-10-01-checker-small-fixes.md)
 - 2026-10-01 [PR #132](https://github.com/kosei-w90607/inventory-system-desktop/pull/132) ハーネスの残りの小口の整理（単独の lane、R2）: 直近の完了を 1 行 + link の短い行にして長文を完了履歴へ移し、closeout の書き方を変え（D-101）、AGENTS の Workspace Access と MANUAL §5.4 を今の運用に合わせ、使われない profiles・evals を削った。[archive](archive/plans/2026-09-30-harness-small-cleanup.md)
 - 2026-09-30 [PR #130](https://github.com/kosei-w90607/inventory-system-desktop/pull/130) CI の二重を削る（単独の lane、R3）: Draft の PR にも hosted CI が回り、merge の CI 根拠は Ready の後の run の `Merge gate` だけになり、`bash scripts/local-ci.sh full` は任意の道具になった。[archive](archive/plans/2026-09-30-ci-dedup.md)・[Matrix](archive/plans/test-matrices/2026-09-30-ci-dedup.md)
-- 2026-09-30 [PR #127](https://github.com/kosei-w90607/inventory-system-desktop/pull/127)・[PR #128](https://github.com/kosei-w90607/inventory-system-desktop/pull/128) ハーネス刷新 PR5・PR4（R3、並走の 2 本）: PR5 が gate の穴を塞ぎ、PR4 が止める理由を 1 文で言えない手続きを削り R3 の契約の追跡を Contract Ledger の 1 表にまとめた。[archive PR4](archive/plans/2026-09-29-harness-pr4-lightweight.md)・[Matrix](archive/plans/test-matrices/2026-09-29-harness-pr4-lightweight.md)・[archive PR5](archive/plans/2026-09-29-harness-pr5-gate-holes.md)・[Matrix](archive/plans/test-matrices/2026-09-29-harness-pr5-gate-holes.md)
 
 ### Wave Registry
 
@@ -45,7 +45,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## ブロッカー
 
-次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。日計（Z001）の表を出す runtime lane は訪店（Issue #105）の後に着手する（owner 決定 2026-09-28、実物の Z001 の行数を見てから作る）。
+次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。
 
 ## 製品の未決判断
 
