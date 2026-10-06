@@ -146,6 +146,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 | `commit_daily_report_import`（`app_data_dir` を足す） | BIZ-08-D5 | `biz/daily_report_import_service/commit.rs:14` | 呼出し: `cmd/daily_report_import_cmd.rs`（`rg -c` で 2）、`biz/sales_service.rs`（1）、`biz/daily_report_import_service/tests.rs`（29） |
 | `source_files_json` の要素（`sd_relative_path`・`copy_path` を足す） | BIZ-08-D5 | `biz/daily_report_import_service/commit.rs:83` | 読む所: `parse.rs:236`（`source_filenames`。無い field を許す） |
 | 新 module `io::pos_source_copy` | IO-10 | `src-tauri/src/io/pos_source_copy.rs`、`io/mod.rs` | `design_compliance_test.rs` の map の同じ行に `io::pos_source_copy` |
+| （後続の lane）`XZ_BKUP` へ移す操作 | D-111 (1) の (b)、TD-142 | 本 lane も SD 直読みの runtime の lane も作らない。`io::register_sd` に書込みの API を足さず、別の module に置く（IO-09-D3 の source の検査を保つ） | 後続の lane が起票時に Scope を決める |
 | 新 module `io::register_sd` | IO-09 | `src-tauri/src/io/register_sd.rs`、`io/mod.rs` | `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` の `29-io-daily-report-parser.md` の行に `io::register_sd` を足す |
 
 注: `sales_service.rs`・`sales_cmd.rs`・`sales_repo.rs` の test は #145（`34-biz-sales-service.md` の lane）の runtime と重なりうる。runtime の lane の起票時に所有表を書く。
@@ -153,7 +154,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 ## Non-scope
 
 - runtime の code・test・fixture・bindings・migration・`90-traceability.md`。
-- SD の file を移す設計（owner 決定 1 で採らない）。写しの保持期間・削除と、写しの backup・PC の外への持出し（未決 A・B）。
+- SD の file を移す設計（owner 決定 1 で本 lane では採らない）。アプリの「取り込み済みの Z・EJ を `XZ_BKUP` へ移す（片付ける）」操作は後続の lane（owner 2026-10-07 決定、TD-142）。まず読むだけを作り、その後に移す操作を作る。SD への書込みの設計（CV17 と同じ `_nnnn` の改名、途中の失敗、CV17 の取込みとの両立）はその lane で行う（D-111 の Decision (1)）。写しの保持期間・削除と、写しの backup・PC の外への持出し（未決 A・B）。
 - EJ の取込みの BIZ・DB・画面、Z004 の取込みの再開、欠けの検知、Excel 印刷の代替。
 - backlog の「日報取込み標準手順の残設計」の entry の書換え（他 entry。closeout に回す）。「Z004 layout B 対応」は注記を 1 つ足すだけで、本文は変えない。
 - 日報の手でのファイル選択で「1 つずつ選び足し・個別に外す」の backlog 化（#145 の closeout が行う。設計の要件としては UI-07-D14 に入れた）。
