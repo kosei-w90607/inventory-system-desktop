@@ -60,6 +60,14 @@ Risk: R3
 | BIZ-08-D4 | TX の間に入った同じ精算を通す | integration | `daily_report_import_service::commit_rechecks_same_settlement_in_tx` | preview の後に同じ精算の別の bytes を commit し、元の preview の commit が副作用なしで止まらない（`daily_report_imports` の行が増える） |
 | BIZ-08-D4 | 保存しない | integration | `daily_report_import_service::commit_stores_settlement_no` | commit した行の `settlement_no` が束の値でない |
 | BIZ-08-D4 | migration | integration | `migration::adds_daily_report_settlement_no_nullable` | 既存の DB を移行した後、既存行の `settlement_no` が NULL でない、列が無い |
+| IO-10 | 同じ path の違う bytes を上書きする | unit | `pos_source_copy::different_bytes_get_hash_suffixed_name` | 同じ相対 path に違う bytes を 2 回書くと、1 回目の file の内容が変わる、または 2 回目が `~` + hash 12 桁の名前にならない |
+| IO-10 | 同じ bytes を書き直す | unit | `pos_source_copy::same_bytes_not_rewritten` | 同じ bytes の 2 回目が `written: true` になる、更新時刻が変わる |
+| IO-10 | 半端な file を最終の名前に残す | unit | `pos_source_copy::writes_via_temp_and_rename` | 書込みの途中の失敗を注入したとき、最終の名前の file ができる |
+| IO-10 | app data の外に書く | unit | `pos_source_copy::rejects_escaping_paths` | `..\x`・`C:\x` の相対 path で書く |
+| BIZ-08-D5 | 写しの失敗でも取り込む | integration | `daily_report_import_service::copy_failure_aborts_commit` | 書けない app_data_dir（読取り専用の一時 directory）で commit が成功する、`daily_report_imports` の行が増える |
+| BIZ-08-D5 | 写しの path を記録しない | integration | `daily_report_import_service::commit_records_copy_paths` | SD の束の commit の `source_files_json` に `sd_relative_path`・`copy_path` が無い、`copy_path` の file の bytes が束と違う |
+| BIZ-08-D5 | 手で選んだ束も写す | integration | `daily_report_import_service::manual_bundle_has_no_copy` | `sd_relative_path` が None の束で `pos-sources/` に file ができる |
+| BIZ-08-D5 | 古い JSON を読めない | integration | `daily_report_import_service::source_filenames_accepts_missing_copy_fields` | `copy_path` の無い既存の `source_files_json` で同日の summary が失敗する |
 | CMD-12-D1 | 期限切れの scan を使う | unit | `daily_report_import_cmd::from_sd_rejects_expired_scan` | 31 分前の snapshot で preview を返す |
 | CMD-12-D1 | 取り込めない候補を受ける | unit | `daily_report_import_cmd::from_sd_rejects_unknown_candidate` | snapshot に無い candidate_key で preview を返す |
 | CMD-12-D1 | 新しい scan で古い snapshot が残る | unit | `daily_report_import_cmd::new_scan_replaces_cache` | 2 回目の scan の後に 1 回目の scan_token で preview を返す |

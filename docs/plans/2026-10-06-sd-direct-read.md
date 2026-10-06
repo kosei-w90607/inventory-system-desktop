@@ -20,7 +20,8 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 1. kickoff → spec-check（2026-10-06、起草役）: owner 決定（2026-10-06「毎日の売上データ〈Z001/Z002/Z004/Z005 と EJ〉は CV17 を開かずにアプリが SD から直接読む。CV17 は PLU の書込みだけ」、Coordinator の発注で受領）を Scope にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-06、起草役）: 標準手順の正本（`docs/project-memory.md` の決めた運用、`docs/function-design/55-ui-csv-import.md` UI-07-D12、`29-io-daily-report-parser.md` §29.4.1）が「SD → CV17 取込み → `EcrDatas` から選ぶ」で、SD を読む IO・候補の規則・二重取込みの照合が無い。同じ commit で設計正本を更新した（下の Design Readiness）。
-3. design のまま止める: owner の判断事項（下の「owner の判断事項」の 1〜5）が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさない。
+3. design のまま止める（起草の時点）: owner の判断事項 1〜5 が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさなかった。
+4. design（owner の決定の反映、2026-10-06、起草役、本 commit）: owner の判断 1〜5 の決定（下の「owner の判断事項」）を D-111・設計正本・本 packet・Matrix に反映し、写しの設計（IO-10、BIZ-08-D5）を足した。Phase は design のまま。理由: 決定 1（SD は動かさない）の前提 P2・P3（Contract Probe）を Plan Gate の前に店の経験で確かめる。写しの細部の未決 A・B は Non-scope にしたので design → plan-draft を止める問いではない。
 
 ## Owner Effort Budget
 
@@ -30,7 +31,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 10 | 0 | 9（判断 5、店の経験の確認 2、Ready 1、merge 1） | 1 | 10 = 0 + 9 + 1 |
+| 介入 | 10 | 5（2026-10-06 の 1 回の問い合わせで判断 1〜5 を決めた） | 4（店の経験の確認 2、Ready 1、merge 1）。写しの残る 2 点（A・B）は本 lane で諮らない（Non-scope） | 1 | 10 = 5 + 4 + 1 |
 
 ## Risk
 
@@ -47,7 +48,7 @@ Goal Invariant:
 
 - 後続の runtime lane の Writer が、チャットの履歴を見ずに source docs だけで「レジの SD を探す → 売上の file を列挙して読む → 精算ごとの束を取込み済みと照らす → 利用者が選んで preview → commit → SD をレジへ戻す」を実装できる（IO-09・BIZ-08-D3 / D4・CMD-12-D1・UI-07-D12〜D14・IO-07-D5・`daily_report_imports.settlement_no`）。
 - 旧い標準手順（`SD → CV17 取込み → EcrDatas から選ぶ` を通常の手順とする記述）の live な残りが 0（`rg` の結果を AC に書く）。
-- owner の判断事項が、確認済み事実 → 判断事項 → 全選択肢 → 条件付き推奨の形で並び、決めた場合に設計のどこが変わるかが書いてある。
+- owner の判断（2026-10-06 決定）が設計正本に反映され、SD は動かさず、取り込んだ原本の写しが PC に残る設計がある（IO-10、BIZ-08-D5）。残る未決（写しの保持・backup）は D-111 と packet に `未決（owner）` で並んでいる。
 
 ### 失敗定義
 
@@ -72,16 +73,33 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | --- | --- | --- | --- | --- |
 | 店は開いたまま、その日の精算前 | ECR+ かレジで精算する | レジが SD の `XZ\yyyy\mm\` に Z001/Z002/Z004/Z005、`XZ` 直下の EJ に記録を書く | SD に精算の file がある | 書込みの契機は精算の操作（説明書）。保存の設定は有効（`docs/project-memory.md` のレジの節） |
 | SD がレジに入っている | SD を抜いて PC に差す | Windows が SD を取外し可能な drive として見せる | drive が見える | 店の PC で観測済み（29 §29.7.2 SD-25） |
-| 売上データ取込み画面・日報取込みタブ | 「SD から読む」 | アプリが SD を探して読み、「読み終わりました。SD はレジに戻してください」と精算の一覧を出す | 一覧に「取り込めます」の行がある（無ければ「新しい精算はありません」） | 自動で探すか選ぶかは owner の判断 3（UI-07-D13） |
+| 売上データ取込み画面・日報取込みタブ | 「SD から読む」 | アプリが SD を探して読み、「読み終わりました。SD はレジに戻してください」と精算の一覧を出す | 一覧に「取り込めます」の行がある（無ければ「新しい精算はありません」） | owner 決定 3: 自動で探し、見つからなければ選ぶ（UI-07-D13） |
 | 一覧が出た | SD をレジへ戻す | 次の精算ができる（SD が無いと精算できない） | 読んだ内容はアプリが 30 分持つ | CMD-12-D1 |
 | 一覧に「取り込めます」がある | その行の「確認する」 | 既存のプレビュー（対象日・総売上・支払・部門・警告・同日追加の確認） | プレビューが出る | — |
 | プレビュー | 「取り込む」（同日追加なら確認） | 日報が保存され、「日次売上を見る」へ進める | 結果が出る | 同じ精算の別の bytes は BIZ-08-D4 で止まる |
+| 「取り込む」の中で | — | アプリが読んだ 3 本の写しを PC のアプリの folder に残す（利用者の操作なし）。残せないと取り込まずに固定の文を出す | 写しが書けた | BIZ-08-D5 |
 | 同じ日に 2 回目の精算をした | 同じ操作を繰り返す | 1 回目は「取込み済み」、2 回目は「取り込めます」 | — | 同じ日の複数の Z は観測済み（SD-08） |
 | CV17 の日次の取込みも続けている（移行期） | 「SD から読む」 | `XZ_BKUP` の分も読み、取込み済みは hash で「取込み済み」になる | — | `XZ_BKUP` = `EcrDatas`（SD-22）。取込み前の原本 = 取込み後かは未確認（P1）。違っても BIZ-08-D4 で二重に数えない |
-| 翌日 | SD を読まずに精算する | レジは精算を続け、`XZ` に前日の Z が残ったまま次の Z を書く | 精算できる | アプリが読むだけの場合の前提（P2・P3、owner の判断 1） |
-| SD が読めない・過去の分 | 「ファイルを選んで取り込む」で 1 つずつ選ぶ | 既存の 3 ファイルの経路でプレビューへ | 3 つそろう | 置き場所は owner の判断 4（UI-07-D14） |
+| 翌日 | SD を読まずに精算する | レジは精算を続け、`XZ` に前日の Z が残ったまま次の Z を書く | 精算できる | owner 決定 1（動かさない）の前提（P2・P3） |
+| SD が読めない・過去の分 | 「ファイルを選んで取り込む」で 1 つずつ選ぶ | 既存の 3 ファイルの経路でプレビューへ | 3 つそろう | owner 決定 4: 補助のリンク（UI-07-D14） |
 
 Plan Review は、この列が「正常な条件で目的を達成できるか」と「危険な結果を出さないか」を別々に答える（`docs/DEV_WORKFLOW.md` Review Rules）。
+
+## owner の判断事項（2026-10-06 決定）
+
+確認済み事実: `XZ_BKUP` と PC の `EcrDatas` は全件で同じ bytes（29 §29.7.2 SD-22）。SD は店の PC で取外し可能な drive として見える（SD-25）。SD が無いとレジは精算できない（SD-18）。
+
+| # | 判断事項 | 決定（owner 2026-10-06） | 設計への反映 |
+|---|---|---|---|
+| 1 | SD を読むだけにするか、`XZ_BKUP` へ移すか | 動かさない（読むだけ） | IO-09-D3（29:362）、D-111 (8)。前提 P2・P3 は Plan Gate の前に確かめる |
+| 2 | 読んだ原本の写しを PC に残すか | 残す | IO-10（29 §29.8）、BIZ-08-D5（37 §37.4 手順 2a、§37.9 の BIZ-08-D5）、pos-tables §12b の `source_files_json`、71 §71.1 の後の注記 |
+| 3 | SD の場所を自動で探すか、利用者が選ぶか | 自動で探し、見つからなければ利用者が選ぶ | IO-09-D1、UI-07-D13 |
+| 4 | ファイルを選ぶ経路の置き場所 | 同じ取込み画面の小さな補助のリンク（ひとまず。デザインの刷新で見直す） | UI-07-D14、D-111 の Revisit |
+| 5 | backlog「Z004 layout B 対応」の重み | 下げる（layout B は CV17 の明示書出しだけが作り、店は基本もう使わない） | `docs/backlog.md` の当該 entry の注記 |
+
+owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 での作業を利用者から隠す。
+
+残る未決（owner）: A 写しの保持期間と削除（既定は消さずに残す）。B 写しを backup に含めるか・PC の外へ出すか（今の backup は DB の 1 file だけ。backup の設計 lane の論点と一緒に決める）。どちらも本 lane の Non-scope で、runtime の既定（消さない・backup に入れない）で通常運用は成り立つ。
 
 ## Scope
 
@@ -89,8 +107,8 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 | file | 変更 | 他 lane・#145 との重なり |
 |---|---|---|
-| `docs/function-design/29-io-daily-report-parser.md` | IO-07-D5（`settlement_no`）、§29.4.1 の標準経路の文、IO-07-D3 の「通常の手順」の文、§29.7 IO-09 の新設 | なし |
-| `docs/function-design/37-biz-daily-report-import-service.md` | §37.1 の入力、`CachedDailyReportPreview.settlement_no`、§37.3 手順 8 の BIZ-08-D4、§37.4 手順 4a・6、§37.7 の行、§37.8 の非目的、§37.9 の新設（BIZ-08-D3）、更新履歴 | なし |
+| `docs/function-design/29-io-daily-report-parser.md` | IO-07-D5（`settlement_no`）、§29.4.1 の標準経路の文、IO-07-D3 の「通常の手順」の文、§29.7 IO-09 の新設、§29.8 IO-10（写し）の新設 | なし |
+| `docs/function-design/37-biz-daily-report-import-service.md` | §37.1 の入力、`DailyReportInputFile.sd_relative_path`、`CachedDailyReportPreview.settlement_no`・`sd_source_files`、§37.4 の signature（`app_data_dir`）と手順 2a（BIZ-08-D5）、§37.3 手順 8 の BIZ-08-D4、§37.4 手順 4a・6、§37.7 の行、§37.8 の非目的、§37.9 の新設（BIZ-08-D3）、更新履歴 | なし |
 | `docs/function-design/45-cmd-daily-report-import.md` | AppState の scan cache、§45.6a・§45.6b（CMD-12-D1）、§45.8、更新履歴 | なし |
 | `docs/function-design/55-ui-csv-import.md` | §55.0 の表の CMD、日報取込みの利用者フローの手順 2・4、UI-07-D12 の改訂、UI-07-D13・D14 の新設、§55.1 の `DailyReportImportPage.tsx` の行 | `agent/stocktake-p1` が冒頭の「時点証拠契約」節を触る可能性（未確認）。本 lane の所有は §55.0 の「画面構成」の表の日報の行・「日報取込みの利用者フロー」・「UI判断 ID」の D12〜D14・§55.1 の `DailyReportImportPage.tsx` の行だけ |
 | `docs/function-design/29-io-ej-parser.md` | IO-08.10 の事実・入力の経路・取込み済みの見分け・後続が決めること | なし |
@@ -106,7 +124,8 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 | `docs/project-memory.md` | POS Facts の layout の行、在るものの CV17 の行、決めた運用の標準手順の行、レジの節の SD の配置の行 | A だけが SD→CV17 の標準手順の行を直す（発注どおり） |
 | `docs/plu-export-and-real-csv-verification.md` | SDカード / PCツール保存領域の節、スマホアプリの扱いの文 | `agent/plu-clear` が PLU の節を触る可能性。本 lane は「SDカード / PCツール保存領域」の節と「スマホアプリの扱い」の最初の段落だけ |
 | `docs/decision-log.md` | 末尾に D-111 だけを追記 | 全 lane が末尾に追記（A = D-111、B = D-109、C = D-110、`agent/npm-audit-1006` = D-108）。merge 順で両方を残す |
-| `docs/backlog.md` | 着手対象に「SD 直読みの runtime」の entry を 1 つ足すだけ | 全 lane が自 lane の entry だけ |
+| `docs/backlog.md` | 着手対象に「SD 直読みの runtime」の entry を 1 つ足す。「Z004 layout B 対応」の entry に重みを下げる注記を 1 つ足す（owner 決定 5、Coordinator の許可） | 全 lane が自 lane の entry だけ |
+| `docs/function-design/71-mnt-backup.md` | §71.1 の後に、backup の対象が DB だけで写し・画像を含まない注記を 1 段落 | なし |
 | `docs/plans/2026-10-06-sd-direct-read.md`、`docs/plans/test-matrices/2026-10-06-sd-direct-read.md` | 新設 | なし |
 
 触らない: `docs/Plans.md`（D-097）、`docs/function-design/90-traceability.md`（生成物）、`docs/spec/requirements.md`（REQ-401 の行の部品の列に IO-09 を足すのは runtime の lane。traceability の再生成が要るため）、`docs/design-system/reference/mockup-d-import-export.html`（参照の mockup で正本でない。131 行の「CV17取込み後の PC 側 EcrDatas フォルダ」は残す）。
@@ -123,6 +142,10 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 | `daily_report_imports` の列 | migration（次の番号。v7 の次だが並走 lane の migration と番号を runtime の lane が決める） | `db/migration.rs`、新しい `db/schema_vN.rs` | `db/migration.rs:937`・`:973`・`:982`・`:1034`（INSERT の test）、`docs/function-design/22-mnt-migration.md` |
 | `DailyReportImport`（list の DTO） | 変えない（wire に出さない） | `db/sales_repo.rs:181`・`:888` | — |
 | 新 command 2 つと DTO 4 つ | CMD-12-D1 | `cmd/daily_report_import_cmd.rs`、`lib.rs` の `collect_commands` | `src/lib/bindings.ts`（再生成）、`src/features/daily-report-import/` |
+| `DailyReportInputFile`（`sd_relative_path`） | BIZ-08-D5 | `biz/daily_report_import_service/mod.rs:32`（定義）、`cmd/daily_report_import_cmd.rs:43`（構築） | test の構築: `biz/daily_report_import_service/tests.rs:15`、`biz/sales_service.rs:1137` |
+| `commit_daily_report_import`（`app_data_dir` を足す） | BIZ-08-D5 | `biz/daily_report_import_service/commit.rs:14` | 呼出し: `cmd/daily_report_import_cmd.rs`（`rg -c` で 2）、`biz/sales_service.rs`（1）、`biz/daily_report_import_service/tests.rs`（29） |
+| `source_files_json` の要素（`sd_relative_path`・`copy_path` を足す） | BIZ-08-D5 | `biz/daily_report_import_service/commit.rs:83` | 読む所: `parse.rs:236`（`source_filenames`。無い field を許す） |
+| 新 module `io::pos_source_copy` | IO-10 | `src-tauri/src/io/pos_source_copy.rs`、`io/mod.rs` | `design_compliance_test.rs` の map の同じ行に `io::pos_source_copy` |
 | 新 module `io::register_sd` | IO-09 | `src-tauri/src/io/register_sd.rs`、`io/mod.rs` | `src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` の `29-io-daily-report-parser.md` の行に `io::register_sd` を足す |
 
 注: `sales_service.rs`・`sales_cmd.rs`・`sales_repo.rs` の test は #145（`34-biz-sales-service.md` の lane）の runtime と重なりうる。runtime の lane の起票時に所有表を書く。
@@ -130,9 +153,9 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 ## Non-scope
 
 - runtime の code・test・fixture・bindings・migration・`90-traceability.md`。
-- SD の file を移す設計（owner の判断 1 で「移す」が選ばれたら design に戻る）。読んだ原本の写しを PC に残す設計（owner の判断 2 で「残す」が選ばれたら、置き場所・保持・backup との関係を足す）。
+- SD の file を移す設計（owner 決定 1 で採らない）。写しの保持期間・削除と、写しの backup・PC の外への持出し（未決 A・B）。
 - EJ の取込みの BIZ・DB・画面、Z004 の取込みの再開、欠けの検知、Excel 印刷の代替。
-- backlog の「Z004 layout B 対応」と「日報取込み標準手順の残設計」の entry の書換え（他 entry。owner の判断 5 と closeout に回す）。
+- backlog の「日報取込み標準手順の残設計」の entry の書換え（他 entry。closeout に回す）。「Z004 layout B 対応」は注記を 1 つ足すだけで、本文は変えない。
 - 日報の手でのファイル選択で「1 つずつ選び足し・個別に外す」の backlog 化（#145 の closeout が行う。設計の要件としては UI-07-D14 に入れた）。
 
 ## Acceptance Criteria
@@ -141,7 +164,8 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - AC2（IO-09 の契約がある）: `docs/function-design/29-io-daily-report-parser.md` に `find_register_sd_roots`・`resolve_register_sd_root`・`list_register_sd_entries`・`read_register_sd_file` のシグネチャ（`rg -n "^fn (find|resolve|list|read)_register_sd" docs/function-design/29-io-daily-report-parser.md` が 4 行）と IO-09-D1〜D4 がある。
 - AC3（候補の規則と二重取込みの拒否）: `37-biz-daily-report-import-service.md` に §37.9（BIZ-08-D3）と §37.3 手順 8 の BIZ-08-D4、§37.4 手順 4a がある。`pos-tables.md` §12b に `settlement_no` の列がある。
 - AC4（command と画面）: `45-cmd-daily-report-import.md` に §45.6a・§45.6b（CMD-12-D1）、`55-ui-csv-import.md` に UI-07-D12（改訂）・D13・D14 がある。
-- AC5（決定の記録）: `docs/decision-log.md` の末尾に `## D-111` があり、未決 1〜5 を挙げる。`rg -n '\bD-108\b' docs` の本 lane の hit が 0。
+- AC5（決定の記録）: `docs/decision-log.md` の末尾に `## D-111` があり、owner の決定 1〜5・Context（CV17 の作業を利用者から隠す）・未決 A・B を挙げる。
+- AC7（写し）: `29-io-daily-report-parser.md` に `fn save_pos_source_copy` のシグネチャと §29.8 があり、37 に BIZ-08-D5（§37.4 手順 2a）がある。`rg -n '\bD-108\b' docs` の本 lane の hit が 0。
 - AC6（検査）: `bash scripts/doc-consistency-check.sh --target plan` と `bash scripts/doc-consistency-check.sh` が ERROR 0（WARN は報告）。
 
 ## Design Readiness
@@ -151,7 +175,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - plan にしかない durable な判断の昇格先: すべて D-111 と上の正本へ置いた。packet にだけある判断は無い（owner の判断事項は D-111 の「未決」にも書いた）。
 - 前提・制約と、延期した design gap: SD-23（取込み前の原本と取込み後の bytes、P1）・SD-14（Z を溜めたときの精算、P2）・EJ を移さずに長く置いたときの追記（P3）は未確認。設計は P1 が不一致でも二重に数えない（BIZ-08-D4）。P2・P3 は owner の判断 1 の前提。欠けの検知・写しの保存・移す設計は延期（Non-scope）。
 - 絶対保証の自己点検: 「SD に書かない」の例外は Windows の FAT の最終アクセス日と `System Volume Information`（アプリでは止められない。IO-09-D3 に明記）。「二重に数えない」の例外は `settlement_no` が NULL・None の束（layout B と D-111 より前の取込み）で、前の取込みは hash で止まる（D-111 の Guarantee range）。精算回数が戻った場合は誤って拒む（安全側）。
-- 判定: not ready（plan-draft に進めない）。理由: owner の判断事項 1〜4 は製品の振舞いを変え、1 は「移す」なら書込みの設計が要る。5 は backlog の優先度。
+- 判定: not ready（plan-draft に進めない）。理由: owner の判断 1〜5 は決定済みだが、決定 1（SD は動かさない）の前提 P2・P3 が未確認。確かめて合格なら plan-draft へ進める。不合格なら決定 1 を owner に諮り直す（移す設計に戻る）。
 
 ## Registration / Generation Obligations
 
@@ -213,6 +237,8 @@ Test Design Matrix: [2026-10-06-sd-direct-read](test-matrices/2026-10-06-sd-dire
 | BIZ-08-D3 | 37 §37.9 | runtime: `biz/daily_report_import_service` | Matrix | 非対象 |
 | BIZ-08-D4 | 37 §37.3 手順 8・§37.4 手順 4a・6、pos-tables §12b | runtime: BIZ-08・`sales_repo.rs`・migration | Matrix | 非対象 |
 | CMD-12-D1 | 45 §45.2・§45.6a・§45.6b | runtime: `daily_report_import_cmd.rs`・`lib.rs` | Matrix | 非対象 |
+| IO-10 | 29 §29.8 | runtime: `io/pos_source_copy.rs` | Matrix | 非対象 |
+| BIZ-08-D5 | 37 §37.4 手順 2a・6、§37.9 の BIZ-08-D5、pos-tables §12b、71 §71.1 の注記 | runtime: BIZ-08 commit | Matrix | L3: 取り込んだ後に `pos-sources/` に 3 本がある |
 | UI-07-D12 | 55 UI-判断 ID | runtime: `features/daily-report-import` | Matrix | 目視の確認 |
 | UI-07-D13 | 55 UI-判断 ID | 同上 | Matrix | L3: 一覧の状態の文言と icon、SD を戻す案内 |
 | UI-07-D14 | 55 UI-判断 ID | 同上 | Matrix | 目視の確認 |

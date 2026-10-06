@@ -283,3 +283,11 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 - 書込み・作成・改名・移動・削除の API を持たない（IO-09-D3）
 - 名前は分類と組分けにだけ使い、取込み済みの判定に使わない（IO-09-D2）
 - 列挙・読取りの途中の失敗は全体の失敗にする
+
+---
+
+### IO-10: SD から読んだ原本の写しの保存
+
+**タスク要求**: 取り込む束の file の生バイトを、アプリのデータ folder の `pos-sources/casio-sr-s4000/sd/{SD の相対 path}` に書く。同じ bytes があれば書かず、違う bytes があれば上書きせずに hash を付けた名前にする。一時 file に書いて rename する。SD には書かない。業務ロジックなし（function-design は [29 §29.8](../function-design/29-io-daily-report-parser.md#298-io-10-sd-から読んだ原本の写しの保存d-111)）
+
+**理由**: SD は動かさず、CV17 の取込みをやめると PC 側に原本の写しが無くなるため（owner 決定 2026-10-06、D-111）。いつ書くか・失敗の扱いは BIZ-08-D5

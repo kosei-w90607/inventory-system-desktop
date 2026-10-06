@@ -164,7 +164,7 @@ fn parse_and_validate_daily_report_from_sd(
 1. scan_token の UUID 形式を検証する。
 2. `register_sd_scan_cache` から snapshot を取得する。miss または作成から 30 分超は `CmdError.kind="import_error"`、message `SD を読んでから時間がたちました。もう一度 SD を読んでください。`。
 3. `files_by_candidate[candidate_key]` が無ければ `CmdError.kind="validation"`（取り込めない候補）。
-4. 以降は §45.3 の手順 3〜6 と同じ（BIZ-08 `parse_and_validate_daily_report` に 3 本を渡し、preview_token を返す）。snapshot は消さない（同じ scan から別の候補を続けて取り込める）。
+4. 以降は §45.3 の手順 3〜6 と同じ（BIZ-08 `parse_and_validate_daily_report` に 3 本を `sd_relative_path` つきで渡し、preview_token を返す）。commit は §45.4 のまま。CMD は Tauri の `app_data_dir` を BIZ-08 `commit_daily_report_import` に渡す（写しの置き場所、BIZ-08-D5。CMD は書く規則を持たない）。snapshot は消さない（同じ scan から別の候補を続けて取り込める）。
 
 **CMD-12-D1**: CMD は scan の snapshot を AppState に置いて渡すだけで、SD の探し方・候補の規則・状態の判定を持たない（BIZ-08-D3）。CMD は IO-09 を直接呼ばない（ARCHITECTURE のレイヤー間の呼び出し原則、`src-tauri/tests/architecture_test.rs`）。snapshot を AppState に置くのは、SD を読み終えたらすぐレジへ戻せるようにするため（SD-18）。棄却案: scan の結果の bytes を UI へ返して UI から §45.3 を呼ぶ（取り込まない Z004 等は持たないが、日報だけでも wire に生バイトを往復させ、UI が束を組める余地を作る）、preview のたびに SD を読み直す（SD を差したままにする必要がある）。
 

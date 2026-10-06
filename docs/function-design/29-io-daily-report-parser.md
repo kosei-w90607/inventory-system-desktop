@@ -316,7 +316,7 @@ fn resolve_register_sd_root(selected: &Path) -> Result<RegisterSdRoot, RegisterS
 2. 0 件なら `Ok(vec![])`（BIZ が `NotFound` の案内にする）。2 件以上もそのまま返す（BIZ が選ばせずに止める）。
 3. `resolve_register_sd_root`: 選ばれた path が drive の root・`CASIO`・`SR500_550_4000` のどれかで、そこから `CASIO\SR500_550_4000` に当たる directory が見つかれば root にする。それ以外は `NotRegisterSd`。選ばれた path は取外し可能な drive でなくてよい（reader が固定 disk として見える PC と、SD の写しを読む復旧に使う）。
 
-**IO-09-D1（root の見つけ方）**: 自動で探すのは取外し可能な drive の中の決まった folder だけで、見つからない・2 つ以上のときは推測で選ばない。利用者が folder を選ぶ経路は自動の失敗時の予備として同じ IO で持つ。既定をどちらにするかは owner の判断（D-111 の未決、UI-07-D13）。
+**IO-09-D1（root の見つけ方）**: 自動で探すのは取外し可能な drive の中の決まった folder だけで、見つからない・2 つ以上のときは推測で選ばない。既定は自動で探し、見つからなければ利用者が folder を選ぶ（owner 決定 2026-10-06、D-111、UI-07-D13）。選ぶ経路も同じ IO で持つ。
 
 #### 29.7.5 list_register_sd_entries
 
@@ -359,7 +359,7 @@ fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: 
 3. 形を測る: CP932 の strict decode の成否、先頭の UTF-8 BOM、改行が CRLF だけか、最後が CRLF か。測るだけで、直さない・捨てない。
 4. `RegisterSdFile` を返す。
 
-**IO-09-D3（SD を書き換えない）**: `io::register_sd` は SD への書込み・作成・改名・移動・削除・属性の変更・時刻の変更を行う関数を持たない（`std::fs::write` / `create_dir*` / `rename` / `remove_*` / `set_permissions` / `OpenOptions` の書込み・追記・作成の指定を module 内で使わない。runtime の lane が source の検査 test で確かめる）。file は読取り専用で開き、読んだら閉じる。Windows が読取りで FAT の最終アクセス日を変える・`System Volume Information` を作ることはアプリでは止められないが、店は CV17 の取込みのために毎日この PC で同じ SD を書込み可能なまま差してきており（SD-25）、新しい種類の副作用は増えない。CV17 と同じく `XZ` から `XZ_BKUP` へ移す案は採らない（D-111 の未決 1。移すことにするなら書込みの失敗と途中の抜去の設計が要り、本節に戻る）。
+**IO-09-D3（SD を書き換えない）**: `io::register_sd` は SD への書込み・作成・改名・移動・削除・属性の変更・時刻の変更を行う関数を持たない（`std::fs::write` / `create_dir*` / `rename` / `remove_*` / `set_permissions` / `OpenOptions` の書込み・追記・作成の指定を module 内で使わない。runtime の lane が source の検査 test で確かめる）。file は読取り専用で開き、読んだら閉じる。Windows が読取りで FAT の最終アクセス日を変える・`System Volume Information` を作ることはアプリでは止められないが、店は CV17 の取込みのために毎日この PC で同じ SD を書込み可能なまま差してきており（SD-25）、新しい種類の副作用は増えない。CV17 と同じく `XZ` から `XZ_BKUP` へ移す案は採らない（owner 決定 2026-10-06、D-111。SD は動かさない）。読んだ原本の写しは PC 側のアプリの folder に書き（§29.8、IO-10）、書く module を `io::register_sd` と分けて、この module に書込みの API が無いことを保つ。
 
 **IO-09-D4（形は測って BIZ が止める）**: SD-24 の符号化・改行・BOM は「状態」なので IO は決め打ちにせず測って返し、外れた file を取込みの候補にしないのは BIZ（BIZ-08-D3）が決める。行数・列数は各 parser の構造の検査（IO-07 の `invalid_format`、IO-02、IO-08）に任せ、固定の行数を IO で求めない（Z004 の 5,000 枠も含め、レジの設定で変わりうる）。
 
@@ -384,3 +384,44 @@ fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: 
 | 改行を正規化して読む前提で形を測らない | SD の原本の形は取込み前の分が未観測（SD-23）。外れた file を黙って読む |
 | `XZ_BKUP` を読まない | CV17 の取込みを誰かが続けると、精算の分が `XZ_BKUP` にしか無い日ができる |
 | 全期間の `XZ_BKUP` を毎回読む | 全期間の Z004 を毎回読むことになり遅い。取込み済みは hash で分かるので、範囲は BIZ の窓で足りる |
+
+### 29.8 IO-10: SD から読んだ原本の写しの保存（D-111）
+
+#### 29.8.1 目的と置き場所
+
+`pos_source_copy`（module `io::pos_source_copy`、未実装）は、SD から読んで取り込んだ file の生バイトを、PC 側のアプリのデータ folder に写しとして書く IO 層の関数である。CV17 の取込みをやめると PC 側に原本の写しが無くなる（CV17 は `EcrDatas` に写しを置いていた）ための代わり（owner 決定 2026-10-06）。SD には書かない（書く先はアプリのデータ folder だけ）。どの file をいつ書くか・失敗したらどうするかは BIZ（日報は BIZ-08-D5）が決める。本節も §29.7.1 と同じ理由で IO-07 の文書に置き、runtime の lane は `design_compliance_test.rs` の map の `29-io-daily-report-parser.md` の行に `io::pos_source_copy` を足す。
+
+置き場所は既存の規則に合わせ、アプリのデータ folder（`app_data_dir`。DB の `inventory.db` と同じ folder、[71](71-mnt-backup.md) §71.7）の下の相対 path にする。レシート画像の `images/receipts/`（[28](28-io-image-manager.md) IO-06）と同じく、DB には app_data_dir からの相対 path を残す。
+
+```
+{app_data_dir}/pos-sources/casio-sr-s4000/sd/{SD の root からの相対 path}
+例: pos-sources/casio-sr-s4000/sd/XZ/2026/10/Z001_06 .CSV
+```
+
+#### 29.8.2 型とシグネチャ
+
+```rust
+struct PosSourceCopyResult {
+    relative_path: String, // app_data_dir からの相対 path（区切りは `/`）
+    written: bool,         // false = 同じ path に同じ bytes がすでにあり、書かなかった
+}
+
+fn save_pos_source_copy(
+    app_data_dir: &Path,
+    sd_relative_path: &str, // IO-09 の RegisterSdEntry.relative_path
+    bytes: &[u8],
+) -> Result<PosSourceCopyResult, std::io::Error>
+```
+
+#### 29.8.3 処理ステップ
+
+1. `sd_relative_path` を IO-09-D3 と同じ規則で検証し（`..`・drive・絶対 path・空の要素を拒む）、`\` を `/` に直して既定の path（§29.8.1）を作る。
+2. 既定の path に file が無ければ書く。同じ bytes（SHA-256 が同じ）の file があれば書かずに `written: false`。違う bytes の file があれば上書きせず、名前の拡張子の前に `~` と SHA-256 の先頭 12 桁を足した path（例 `Z001_06 ~1a2b3c4d5e6f.CSV`）にする。その path にも同じ bytes があれば `written: false`。
+   - 同じ相対 path に違う bytes が来るのは、CV17 で移した後に同じ日にもう一度精算し、レジが同じ名前（接尾字が空白に戻る、SD-08）で書いた場合。上書きすると前の精算の写しが消える。
+3. 書くときは同じ directory の一時 file に書いて flush・sync し、最終の名前へ rename する（途中で失敗しても最終の名前に半端な file を残さない）。既存の file を上書き・削除・改名しない。
+4. directory は `create_dir_all` で作る。
+
+#### 29.8.4 エラーと採らなかった案
+
+- 書けない（容量不足・権限・パス長）ときは `std::io::Error` を返す。BIZ が取込みを止める（BIZ-08-D5）。一時 file が残った場合は次回の書込みで別の一時名を使い、最終の名前の file だけを写しとみなす。
+- 採らなかった案: hash だけの名前で置く（店の人や開発者が日付・系列で探せない。CV17 の写しは名前で探せた）、同じ path を上書きする（前の精算の写しが消える）、scan の時にすべて書く（取り込まない束・形の外れた file まで残り、どれが取込みの原本か分からなくなる）、DB に bytes を入れる（DB と backup が大きくなり、日報の行の正本と原本の証拠が混ざる）。

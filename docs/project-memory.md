@@ -192,7 +192,7 @@ Keep it factual and stable.
 ### 決めた運用（このアプリの使い方について owner が決めたこと）
 
 - Product sales move to PLU gradually after go-live, not in a one-day all-product conversion — 2026-08-01 owner原文 — `docs/project-memory.md`
-- 毎日の売上データ（Z001/Z002/Z004/Z005 と EJ）の取込みは、CV17 を開かずにアプリがレジの SD から直接読む。CV17 は PLU をレジへ書き込むときだけ使う。2026-08-01 の「SD → CV17 取込み → EcrDatas から選ぶ」の標準手順を置き換えた — owner判断2026-10-06 — `docs/decision-log.md`（D-111）
+- 毎日の売上データ（Z001/Z002/Z004/Z005 と EJ）の取込みは、CV17 を開かずにアプリがレジの SD から直接読む。CV17 は PLU をレジへ書き込むときだけ使う。2026-08-01 の「SD → CV17 取込み → EcrDatas から選ぶ」の標準手順を置き換えた。SD の file は動かさず（`XZ_BKUP` へ移さない）、取り込んだ原本の写しをアプリが PC 側に残す。SD の場所はアプリが自動で探し、見つからなければ利用者が選ぶ。アプリが気を利かせて、CV17 での作業を利用者から隠す方向 — owner判断2026-10-06 — `docs/decision-log.md`（D-111）
 - v1.0 gates on including the Z004 automatic-inventory-sync path; the app will not ship v1.0 unfinished in that respect — 2026-08-16 owner裁定 — `docs/decision-log.md`（D-070）
 - Long-dormant no-code excluded items are not modeled as a system feature; they stay outside the product master and are re-registered at new price/cost if they come back — 2026-08-22 owner同意 — `docs/decision-log.md`（D-076）
 - The ~80 suppliers are not bulk pre-loaded; they get linked incrementally when chosen in flows like bulk price revision — 2026-08-21/22 owner同意 — `docs/decision-log.md`（D-075）
