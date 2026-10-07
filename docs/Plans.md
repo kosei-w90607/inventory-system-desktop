@@ -15,6 +15,7 @@ active な lane の Plan Packet は `docs/plans/` の dated packet が正本（l
 - ハーネス刷新は PR0 ∥ PR1 → (PR2 ∥ PR3) → (PR4 ∥ PR5) の 5 本（owner 2026-09-24）。5 本すべて merge 済み: PR0（#92）・PR1（#97）・PR2（#113、座組と役割）・PR3（#117、入口と重複）・PR5（#127、gate の穴）・PR4（#128、手続きの軽量化）と、PR4・PR5 より先に起こした並走の摩擦を削る lane（PR #123、owner 2026-09-28 起票承認）。
 - 2026-10-04 の 4 lane（A Z004 取込みの穴・B 日報取込みの穴・D EJ の文法・E 独自コードの採番、owner の lane 選択 TD-104）と、その後に先に入れた helper の守りの lane（owner 2026-10-05）はすべて merge 済み（PR #138〜#142）。次の lane は未定（owner が決める）。
 - wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）と後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（PR #145、2026-10-06）は merge 済み。
+- SD を直接読む設計（PR #150、2026-10-07）は merge 済み。次 = 後続の「SD 直読みの runtime」の lane の起票（R3、[backlog](backlog.md) の該当項目。起票時に Final Review の P3 4 件を直し、L3 の前に packet の Contract Probe の確認を行う）、その後に取込み済みを `XZ_BKUP` へ移す (b) の lane（D-111 (1)(b)、backlog の該当項目）。(b) の lane まで店は CV17 の取込みを今の運用のまま続ける（D-111 の運用の制約）。
 
 次の着手順（owner決定2026-09-22）:
 
@@ -28,6 +29,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## 直近の完了
 
+- 2026-10-07 [PR #150](https://github.com/kosei-w90607/inventory-system-desktop/pull/150) 毎日の売上データをレジの SD から直接読む設計（単独の lane、R3、docs だけ）: レジの SD を探して売上の file を読み、精算ごとの束を取込み済みと照らして同じ精算の二重取込みを拒み、読んだ原本の写しを PC に残す設計を設計正本に置いた（D-111。SD は動かさず、runtime と移す操作は後続の lane）。[archive](archive/plans/2026-10-06-sd-direct-read.md)・[Matrix](archive/plans/test-matrices/2026-10-06-sd-direct-read.md)
 - 2026-10-07 [PR #148](https://github.com/kosei-w90607/inventory-system-desktop/pull/148) 棚卸しの P1 を直す ㉘ ② 受領・判定・保存の基盤（単独の lane、R3）: 時点証拠の schema・資料の受領・精算の同一性の検査・前後の分類・在庫判定の行の集合を試験 DB の上で動く形で足し、通常の起動へは配線せず新しい関数を `#[cfg(test)]` の中に置き、Z004 の parser が精算の識別メタを抽出するようになった（D-109。STK-1 / STK-2 の診断 2 本は ③〜⑤ まで FAIL のまま）。[archive](archive/plans/2026-10-06-stocktake-p1.md)・[Matrix](archive/plans/test-matrices/2026-10-06-stocktake-p1.md)
 - 2026-10-06 [PR #145](https://github.com/kosei-w90607/inventory-system-desktop/pull/145) 日次売上のレジ日報（公式）に日計（Z001）の全行を取込みごとの表で出す（単独の lane、R3）: 日次売上の「レジ日報（公式）」に Z001 の全行を保存したラベルと並びのまま出し、同じ日に 2 回以上取り込んだ日は取込みごとの表を古い順に並べ、既存の 2 表の見出しに出どころ（Z002・Z005）を添えた（UI-09a-D16、D-096。L3 は owner PASS で、見せ方はデザイン刷新への要求仕様として backlog へ送った）。[archive](archive/plans/2026-10-06-z001-display.md)・[Matrix](archive/plans/test-matrices/2026-10-06-z001-display.md)
 - 2026-10-06 [PR #144](https://github.com/kosei-w90607/inventory-system-desktop/pull/144) 商品修正の操作ログに売価・原価以外の項目の変更前後も残し、docs の古い参照を直す（小口のまとめ、単独の lane、R3）: 商品修正の detail_json に変えた field ごとの変更前後を serde_json で書き（BIZ-01-D7）、`docs/TOOLING_SKILL_COMMANDS.md` の見出しの参照先と `.codex/README.md` の撤去済みの mode の句を直した。操作ログ画面は変えていない。[archive](archive/plans/2026-10-06-small-batch.md)・[Matrix](archive/plans/test-matrices/2026-10-06-small-batch.md)
@@ -37,7 +39,6 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 - 2026-10-04 [PR #139](https://github.com/kosei-w90607/inventory-system-desktop/pull/139) Z004 取込みの穴（4 lane の lane A、R3）: カンマ付きの金額を読み、コードの無い枠の売上を `invalid_jan` の行エラーで知らせ、売上の無い非 JAN の枠を読み飛ばす（D-103）。[archive](archive/plans/2026-10-04-z004-import-gaps.md)・[Matrix](archive/plans/test-matrices/2026-10-04-z004-import-gaps.md)
 - 2026-10-04 [PR #138](https://github.com/kosei-w90607/inventory-system-desktop/pull/138) 独自コードの自動採番が既存の番号と衝突して止まる（4 lane の lane E、R3）: 発番は既存の番号の最大の次から振り（抜けは埋めない）、9999 の次は 5 桁で続ける（D-106）。[archive](archive/plans/2026-10-04-custom-code-seq.md)・[Matrix](archive/plans/test-matrices/2026-10-04-custom-code-seq.md)
 - 2026-10-01 [PR #136](https://github.com/kosei-w90607/inventory-system-desktop/pull/136) 検査 script と test の小口を整理する（単独の lane、R3）: PK4 が Workflow State の key の重複を push の前に止め、`check-workflow-git.sh` は Phase を `## Workflow State` の節だけから読み、PK1・PK3 の節の判定を `##` に限り、hook test が frontmatter の `permissionMode`・`mcpServers` を拒み、home の小文字化の残りを揃えた（D-102）。[archive](archive/plans/2026-10-01-checker-small-fixes.md)・[Matrix](archive/plans/test-matrices/2026-10-01-checker-small-fixes.md)
-- 2026-10-01 [PR #132](https://github.com/kosei-w90607/inventory-system-desktop/pull/132) ハーネスの残りの小口の整理（単独の lane、R2）: 直近の完了を 1 行 + link の短い行にして長文を完了履歴へ移し、closeout の書き方を変え（D-101）、AGENTS の Workspace Access と MANUAL §5.4 を今の運用に合わせ、使われない profiles・evals を削った。[archive](archive/plans/2026-09-30-harness-small-cleanup.md)
 
 ### Wave Registry
 
@@ -54,6 +55,7 @@ L8-4は owner 決定済み（下記参照）。L8-2/L8-5は旧⑩laneからの�
 - L8-4 明細数列は owner 決定 2026-09-15 で (a) 撤去。runtime 反映は Backlog の表示小修正 batch 2 に同乗。
 - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数列 撤去決定）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
 - STK-1 / STK-2は[統合ADR](adr/2026-09-18-stocktake-time-evidence.md)へ設計を正本化済み（PR #85、2026-09-21 merge）。runtimeは㉘で未実装、恒常運用（日次の自動在庫連動）は実測とPOS系列の対応を取得・保存する次のdesign laneに依る。snapshot補正・商品単位の再実測・過去評価額の非遡及は引き継ぐ。旧日付比較や未検証の時刻補完を実装指示に使わない。㉘ ② は完了（PR #148）、③〜⑤ は backlog の申し送り。
+- SD 直読み（D-111）の未決 A（読んだ原本の写しの保持期間と削除）・B（写しを backup に含めるか・PC の外へ出すか）は owner の判断待ち。runtime の既定（消さない・backup に入れない）で通常運用は成り立つので、後続の「SD 直読みの runtime」の lane を止めない。
 
 元の文脈は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md)。関連する製品作業でownerの判断を得る。
 
