@@ -26,6 +26,7 @@
 6. plan-gate → plan-draft（round 1 の是正、2026-10-08、Coordinator、本 commit）: round 1 の reject の是正（起草役の `8981cbc9`・`a3b64f3f`）と owner の決定（数量を出す画面はすべて m〈TD-203〉、単位をまたぐ集計は個数の種類の「点」と長さの「m」の 2 本〈TD-206・TD-207〉）で Goal・Ordinary Operation・Scope の予定 file（34・56・57 を追加）と wire の型が変わった。`docs/DEV_WORKFLOW.md` Workflow State「a rejection that invalidates Scope or design returns to plan-draft or design」により plan-draft へ戻す（設計の出力は正本にあり、未解決の設計の問いは無いので design までは戻さない）。
 7. plan-draft → plan-gate（round 2 へ、2026-10-08、Coordinator、本 commit）: 是正後の packet と Matrix が commit されている（`a3b64f3f`）。AC1〜AC6 の期待は変わらず、起草役が逐語で再測して一致（`11`・`2`・`4`・`0`・`0`・`0`）。round 2 で再 review する。
 8. plan-gate のまま是正（round 2、2026-10-08、Coordinator）: round 2 の reject を起草役が `74125ea7` で直した（下の Review Response）。Goal・AC・Scope の予定 file は変えないので plan-gate に留め、round 3（上限）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
+9. plan-gate（round 3、上限、2026-10-08、Coordinator）: round 3 は Claude 側 approve・Codex 側 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal・Scope・AC と設計の方向を変えない）。起草役が `e6aead3d` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は owner の承認を待つ。reviewer の再確認は Final Review。
 
 ## Owner Effort Budget
 
@@ -361,3 +362,10 @@ round 2（`0b3dc340`）: Claude 側 fresh Opus 5.5 = reject（P2 2 / P3 4）、C
 - P2（Codex #5）原価の parser の oracle が浮動小数の誤りを落とせない。是正: `0.29→29`・`0.57→57`・`45035996273704.95` 等の境界を足した。
 - P3: m の入力の上限（Opus #3）、vC で止まったときに開ける版（Opus #4 の残り）、UI-04-D18 の求め直しの範囲（Opus #5）。
 - 起草役の判断で Coordinator が受けたもの: UI-04-D18 で数量に合わせて金額を求め直すのは長さの商品だけ（個数の商品の今の振舞いを変えない）。58 の現行の実装の説明に残る `300 cm` は今の正本として残し、変更後の契約は §58.6 の proposed の項に置く。
+
+round 3（上限、`5abaa7ed`）: Claude 側 fresh Opus 5.5 = approve（P3 5）、Codex GPT-6 Astra（発注 253）= reject（P2 2 / P3 2）。P1 は 0。round 天井に達したので次の round を開始せず、全件を disposition「同型指摘の一括是正」とした（Coordinator が採用。是正は起草役の `e6aead3d`、同型の穴の自己点検を含む）。Coordinator の確かめ: 10 の表の行 6 が `MovementTable` の 7 経路と `product_code → stock_unit` の対応を必須で渡す契約を持つ、Registration の U の義務が `src-tauri/tests/design_compliance_test.rs` の現物（`SKIP_DOCS` の `:25`〜`:26` に `10-common-rules.md` がある）に合わせて「`SKIP_DOCS` から外し対応付ける」になっている、を実読で確かめた。
+
+- P2（Codex #1）`MovementTable` の単位の渡し方が商品別の画面だけで、記録詳細の 6 経路が単位を持たない。是正: 上のとおり、混在した伝票の Matrix の oracle。
+- P2（Codex #2）新 module の登録が不要という記述が検査の実装と逆。是正: 上のとおり。
+- P3: 統合の fallback を今の動作どおり廃棄と返品で分けた（Codex #3）。網羅の行を表の全行に（Codex #4）。CSV の取込みの確かめを在庫照会で（Opus #1）。L3-6 の期待（Opus #2）。CSV の初期在庫の上限（Opus #3）。入庫・廃棄の原価の上限（Opus #4）。行番号（Opus #5）。
+- 自己点検で直したもの: 「enum にすると TS の型検査が全部止める」の言い過ぎを、止まる所と止まらない所に分けた。migration の新しい関数を `pub(crate)` に、既存の module に足す `pub fn` は設計書の code block に書く義務を足した。`generate_bindings` の対象に TD-203・TD-207 の field を足した。
