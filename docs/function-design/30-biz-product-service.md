@@ -20,9 +20,9 @@ SPEC-STK-TIME-D1 / D4 / D8。新方式では汎用ProductUpdatesのstock_quantit
 
 [共通規則](10-common-rules.md) SPEC-UNIT-D1・D5・D10・D11 の BIZ-01 の側。以下の本文は現行実装の契約である。
 
-- `stock_unit` は 12 個の code の `ProductStockUnit`（`ball` は `未決（owner、D-113 J1）`）。create の検証は wire の enum のまま。update で単位を変えない（`ProductUpdateRequest` に単位を足さない）。
-- 原価は `cost_price_centi`（1/100 円、`未決（owner、D-113 J2）`）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`9007199254740991` 以下」。上限を超えたら `ValidationFailed("原価が大きすぎます")`。price_history の原価も 1/100 円。BIZ-01-D7 の操作ログの detail_json は key `cost_price_centi`、値は 1/100 円の整数で書き、移行の前の記録（key `cost_price`、円）は書き換えない（読む側の [74](74-ui-operation-logs.md) §74.8 は両方の key を知る）。
-- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 12 個の code か表示の語（`個` `枚` `本` `袋` `箱` `巻` `組` `セット` `玉` `丁` `m` `cm`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（今は commit の DB CHECK で取込み全体が止まる）。`原価` の列は小数 2 桁までを 1/100 円にする（SPEC-UNIT-D5 の入力の規則。J2 を採らなければ整数のまま）。`売価` は整数のまま。
+- `stock_unit` は 12 個の code の `ProductStockUnit`（`ball` を含む。`決定（owner、D-113 J1）`）。create の検証は wire の enum のまま。update で単位を変えない（`ProductUpdateRequest` に単位を足さない）。
+- 原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`9007199254740991` 以下」。上限を超えたら `ValidationFailed("原価が大きすぎます")`。price_history の原価も 1/100 円。BIZ-01-D7 の操作ログの detail_json は key `cost_price_centi`、値は 1/100 円の整数で書き、移行の前の記録（key `cost_price`、円）は書き換えない（読む側の [74](74-ui-operation-logs.md) §74.8 は両方の key を知る）。
+- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 12 個の code か表示の語（`個` `枚` `本` `袋` `箱` `巻` `組` `セット` `玉` `丁` `m` `cm`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（今は commit の DB CHECK で取込み全体が止まる）。`原価` の列は小数 2 桁までを 1/100 円にする（SPEC-UNIT-D5 の入力の規則。原価の runtime の lane の前は整数のまま）。`売価` は整数のまま。
 - 在庫計数 Excel の売価・原価は税抜で、アプリの売価は税込（台帳 TD-166）。Excel から作る CSV の換算は初期投入の作業の範囲で、本契約は CSV の値をそのまま読む。
 
 ### 4.1 モジュール構成

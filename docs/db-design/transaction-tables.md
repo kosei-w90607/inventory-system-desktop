@@ -8,7 +8,7 @@
 
 ## 原価の 1/100 円と金額の丸め（proposed・未実装、D-113）
 
-`receiving_items.cost_price` と `disposal_items.cost_price` を `cost_price_centi`（1/100 円）へ改名して既存の値を 100 倍する（[master-tables](master-tables.md) の「単位と原価の精度の契約」、`未決（owner、D-113 J2）`）。入庫の原価小計・合計と廃棄のロス原価は、明細の `quantity` と原価と商品の単位の価格の基準数量から BIZ が求める（[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D6）。列は足さず、行の金額を保存しない。以下のカラム表は現行スキーマを記す。
+`receiving_items.cost_price` と `disposal_items.cost_price` を `cost_price_centi`（1/100 円）へ改名して既存の値を 100 倍する（[master-tables](master-tables.md) の「単位と原価の精度の契約」、`決定（owner、D-113 J2）`）。入庫の原価小計・合計と廃棄のロス原価は、明細の `quantity` と原価と商品の単位の価格の基準数量から BIZ が求める（[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D6）。列は足さず、行の金額を保存しない。以下のカラム表は現行スキーマを記す。
 
 ---
 

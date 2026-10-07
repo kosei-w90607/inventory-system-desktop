@@ -45,7 +45,7 @@ Risk: R4
 | SPEC-UNIT-D6 | IO が金額を計算し続ける | integration（Rust） | 入庫・廃棄の記録詳細: 長さの商品 2.5 m・原価 333 → 行 83250（1/100 円）・合計 833、個数の商品は今と同じ値 | `receiving_repo.rs:229` の `quantity * cost_price` が残る（長さで 100 倍） |
 | SPEC-UNIT-D6・D9 | 廃棄の入力画面の合計が BIZ と違う | unit（TS） | 廃棄の合計の twin を golden の表で（Rust と同じ例を独立に写す） | twin の丸めが BIZ と違う |
 | SPEC-UNIT-D7・UI-04-D18 | 手動販売の金額が 100 倍・数量に追従しない | unit（TS）+ RTL | m の商品を追加 → 数量 `1`・金額 700、数量 `1.3` → 金額 910、金額を 800 に直した後に数量 `2` → 金額 800 のまま、個数の商品の再追加 → 数量 +1・金額 + 売価、payload の数量は 130 | 初期値が `String(selling_price)` のまま長さで 100 倍、編集後も上書きする、payload に m の数を送る |
-| SPEC-UNIT-D7 | 割り切れない金額の丸め | unit（TS・Rust） | `sale_amount_yen`: 333×130÷100 = 432.9 → 433（J4 の推奨。J4 が切り上げなら 433、割り切れる 333×100÷100 = 333 は両案で同じ）、333×125÷100 = 416.25 → 416（切り上げなら 417） | 丸めの向きを J4 の決定と違えた |
+| SPEC-UNIT-D7 | 割り切れない金額の丸め | unit（TS・Rust） | `sale_amount_yen`（四捨五入、J4 の決定 2026-10-08・TD-195）: 333×130÷100 = 432.9 → 433、333×125÷100 = 416.25 → 416、割り切れる 333×100÷100 = 333、境界 1×50÷100 = 0.5 → 1 | 丸めの向きを J4 の決定と違えた（切り上げにすると 416.25 が 417、切り捨てにすると 432.9 が 432・0.5 が 0） |
 | SPEC-UNIT-D10 | 在庫少から単位が漏れる | integration（Rust） | `list_low_stock`: `ball` 2 個（一般の基準 3）→ 出る、`m` 400 cm（生地の基準 500）→ 出る、全 variant が一般か生地のどちらかに入る | SQL が `'pcs'` / `'cm'` のまま、並びを手で書いて 1 つ落とした |
 | SPEC-UNIT-D10・BIZ-01-D8 | 商品 CSV の単位の語 | unit（Rust） | preview: `玉`→`ball`、` m `→`m`、`pcs`→`pcs`、空→None（INSERT で `pcs`）、`kg`→行の error で他の行は valid | 表示の語を受けない、`kg` で取込み全体が止まる（今の `product_service.rs:3324` の期待を契約に合わせて書き換える） |
 | SPEC-UNIT-D11 | `stock_unit` が string のまま | type check（TS） | `npm run typecheck`（formatter の param が `ProductStockUnit`） | 記録詳細の 6 型か行の型が `string` のまま |

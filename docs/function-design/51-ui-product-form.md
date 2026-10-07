@@ -44,7 +44,7 @@ UIは `get_pos_stock_readiness` が `ej_unverified` を返す間、pcs商品の�
 | REQ-907 / SPEC-PLS-D7 | UI-01b-D19 | edit mode は `plu_memory_no` を「レジメモリNo.」として読取り専用表示する。未割当は `未割当`。廃番解除は `plu_target` を自動復帰させず、必要なら利用者が明示して再対象化する。 | slot identity と商品状態を operator が確認でき、廃番解除だけで意図せずレジ再登録されることを防ぐ。 |
 | REQ-102 / SPEC-PRV-D9 | UI-01b-D20 | edit mode に第 5 セクション「価格履歴」を置き、直近 10 件を表示する。「すべて表示」は limit 100 で再取得し、create mode ではセクション自体を出さない。空は「価格履歴はまだありません」、取得中は「読み込み中…」、取得失敗は inline error と「再試行」を表示する。 | 過去の価格を商品修正の文脈で確認し、紙の前年リスト参照を置き換える。price_history に契機カラムがないため変更契機の列は表示しない。 |
 | REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションの取引先ピッカー dialog（DSR-24）内に「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない。 |
-| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | （proposed・未実装、D-113）数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `未決（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync=false` の提案は「長さの単位（m・cm）にしたとき」に広げ、個数の単位へ戻したら `true` を復元する。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価は小数 2 桁までの円で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。` にする（原価の小数は `未決（owner、D-113 J2）`。J2 を採らなければ「原価も円の整数」のまま）。edit mode の単位は今どおり読取専用（SPEC-UNIT-D2）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。今の説明の `税抜の整数` は master-tables の売価〈税込〉と食い違う（D-113 の起票で見つけた。売価の税の扱いは変えず、文を正本に合わせる）。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
+| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | （proposed・未実装、D-113）数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `決定（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync=false` の提案は「長さの単位（m・cm）にしたとき」に広げ、個数の単位へ戻したら `true` を復元する。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価は小数 2 桁までの円で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。` にする（原価の小数は `決定（owner、D-113 J2）`。原価の runtime の lane の前は「原価も円の整数」のまま）。edit mode の単位は今どおり読取専用（SPEC-UNIT-D2）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。今の説明の `税抜の整数` は master-tables の売価〈税込〉と食い違う（D-113 の起票で見つけた。売価の税の扱いは変えず、文を正本に合わせる）。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
 
 ## 7.2 Component / Route 構成
 
@@ -226,6 +226,7 @@ Error recovery:
 
 | 日付 | 版 | 内容 |
 |---|---|---|
+| 2026-10-08 | 単位の拡張 design lane | UI-01b-D22 の `玉`・原価の小数を owner の決定（D-113 J1・J2、TD-195）に改めた。 |
 | 2026-10-07 | 単位の拡張 design lane | UI-01b-D22 を追加（proposed・未実装、D-113）: 数量単位 12 種、長さの単位の価格欄の `1 m あたり`、初期在庫の m 入力、価格の節の説明の文。 |
 | 2026-09-10 | PR #50 | 取引先ピッカー runtime を反映し、CreateSupplierDialog の canonical path を suppliers 配下へ統合。 |
 | 2026-09-10 | PR #49 取引先ピッカー design | 取引先選択を DSR-24 経由へ改訂。独立した 3 つ目の inline 実装の撤去と CreateSupplierDialog への validation 委譲を明記。 |

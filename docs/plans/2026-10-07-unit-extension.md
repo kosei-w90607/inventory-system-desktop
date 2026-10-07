@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: design
+- Phase: plan-draft
 - Risk: R4
 - Plan Commit: pending
 - Amendments: none
@@ -21,6 +21,7 @@
 1. kickoff → spec-check（2026-10-07、起草役）: Coordinator の発注（単位の拡張と、原価 × 数量の基準数量の残り (1)(2)(4)(5)。runtime は別 lane）を Scope にし、Risk を R4 と記録した（下の Risk）。
 2. spec-check → design（2026-10-07、起草役）: 正本（`docs/db-design/master-tables.md` の products、`docs/function-design/35-biz-stocktake-service.md` §20.5a SPEC-STK-VAL-D1、`31-biz-inventory-service.md`、`62-ui-manual-sale.md` UI-04-D6、`23-io-z004-parser.md` §13.4.1、`29-io-ej-parser.md` IO-08.5）は単位 2 値・原価の円の整数・数量の整数の parse で、12 単位・m の入力・原価の小数・小数の POS の数量の契約が無い。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design のまま止める（起草の時点）: owner の判断事項 J1〜J4 が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさない。
+4. design → plan-draft（2026-10-08、起草役）: owner が J1〜J4 をすべて推奨の案に決めた（repo 外の回答台帳 TD-195。下の owner の判断事項）。設計正本と D-113 の未決の記述を決定の文に直し（AC4）、設計の出力は正本にある。残る延期（Contract Probe P3、棚卸し記録詳細のロス原価を移す lane、`tracking-system-tables.md` の列の表）は本 lane の設計の値を変えず、runtime の lane の起票時に決めれば足りるので、未解決の設計の問いは無い（Design Readiness）。plan-gate へは Coordinator が進める。
 
 ## Owner Effort Budget
 
@@ -30,7 +31,7 @@
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 8 | 0（起票時点） | 7（判断 J1〜J4 の 4、R4 の承認 1、Ready 1、merge 1） | 1 | 8 = 0 + 7 + 1 |
+| 介入 | 8 | 4（2026-10-08、判断 J1〜J4 の 4 つの decision point。TD-195） | 3（R4 の承認 1、Ready 1、merge 1） | 1 | 8 = 4 + 3 + 1 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -52,7 +53,7 @@ Goal Invariant:
 
 - 後続の runtime の lane の Writer が、チャットの履歴を見ずに設計正本だけで「12 個の単位で商品を登録する → 長さの商品を m で入庫・販売・廃棄・棚卸しする → 在庫は cm の整数、表示は m → 入庫・廃棄・棚卸しの金額と手動販売の金額の初期値が 1 m あたりの価格で正しく出る → 1 個の原価を小数 2 桁で持つ」を実装できる（[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1〜D11、22 §16、UI-01b-D22、UI-04-D18、BIZ-01-D8）。
 - Z004・EJ の数量の型（小数 2 桁までの 100 倍の整数、BIZ で商品を引いた後に換算）が決まり、後続の Z004・EJ の lane へ申し送られている（SPEC-UNIT-D8）。
-- 「長さ商品で 100 倍になる」既知の不整合 (1)(2)(4)(5) の直し方が正本にあり、(3) の扱いが申し送られている。owner の判断 J1〜J4 が推奨つきで並んでいる。
+- 「長さ商品で 100 倍になる」既知の不整合 (1)(2)(4)(5) の直し方が正本にあり、(3) の扱いが申し送られている。owner の判断 J1〜J4 が決まり（2026-10-08、TD-195）、正本に決定として書かれている。
 
 ### 失敗定義
 
@@ -75,8 +76,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 |---|---|---|---|---|
 | 商品登録画面 | 反物を単位 `m`、売価 700・原価 400（どちらも 1 m あたりの label が付く）、初期在庫 `25` で登録する | 在庫 2,500 cm で保存され、在庫照会で `25 m` | 保存できる | UI-01b-D22、SPEC-UNIT-D3 |
-| 入庫画面 | 同じ反物を数量 `2.5`（m）・原価 333 で入庫する | 在庫 2,750 cm（`27.5 m`）。入庫記録詳細の原価小計 `832.50 円`、合計 `833 円`（J3 の推奨。切り捨ての案なら 832 円） | 保存できる | J3、SPEC-UNIT-D6 |
-| 手動販売画面（反物は JAN が無く PLU にしない） | 反物を追加して数量を `1.3` にする | 数量 1.3 m、金額の初期値 `910`（700 × 130 ÷ 100）。金額を直さず保存すると在庫 2,620 cm | 保存できる | J4（割り切れない値の丸め）、UI-04-D18 |
+| 入庫画面 | 同じ反物を数量 `2.5`（m）・原価 333 で入庫する | 在庫 2,750 cm（`27.5 m`）。入庫記録詳細の原価小計 `832.50 円`、合計 `833 円`（J3 の決定） | 保存できる | J3（決定）、SPEC-UNIT-D6 |
+| 手動販売画面（反物は JAN が無く PLU にしない） | 反物を追加して数量を `1.3` にする | 数量 1.3 m、金額の初期値 `910`（700 × 130 ÷ 100）。金額を直さず保存すると在庫 2,620 cm | 保存できる | J4（決定: 割り切れない値は四捨五入）、UI-04-D18 |
 | 廃棄画面 | 反物を `0.5` m、原価 333 で廃棄する | 入力画面の合計 `167 円`（166.5 の四捨五入）、記録詳細の行 `166.50 円` | 保存できる | TD-023 に合わせた案。runtime の L3 で owner が確かめる |
 | 棚卸し画面 | 反物の実数を `26.15`（m）と入れる | 2,615 cm を保存。評価額は 400 × 2,615 ÷ 100 = 10,460 円 | 確定できる | SPEC-STK-VAL（値は今と同じ規則） |
 | 原価の lane の後: 袋で仕入れてばらす商品（単位 `pcs`） | 1 袋 1,000 円・12 個入りを、原価 `83.33`・数量 36 で入庫する | 原価小計 `2,999.88 円`、合計 `3,000 円`（伝票の 3 袋 3,000 円と合う） | 保存できる | J2・J3、TD-058 |
@@ -87,14 +88,16 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 ## owner の判断事項
 
+**決定済み（2026-10-08、repo 外の回答台帳 TD-195）**: owner が J1〜J4 をすべて推奨の案 (a) に決めた。下の表の選択肢・推奨は起票時の経緯として残す。正本への反映は `決定（owner、D-113 Jn）` の記述と D-113 の「owner の決定」。
+
 確認済み事実（repo 外の回答台帳の番号と要旨）: 店は 12 種の数え方をすべて使う（L-215）。長さの商品は最小 10 cm、残り・仕入れ・値札は m、値札は 1 m あたり（L-214）。レジは数量に小数 1 桁を打て、数量 1 = 1 m（`project-memory.md`、2026-09-15）。PLU の商品を小数で売ると Z004・EJ・精算レシートとも小数 1 桁（TD-147）。袋で仕入れてばらす商品の 1 個の原価は小数第 2 位まで（TD-058）。棚卸しの評価額は商品別に小数第 3 位で四捨五入して第 2 位まで、最終合計で四捨五入（TD-023）。メーカーは小数点以下の切り捨てが多く、店の切り売りの端数は切り上げ（L-135）。レジは四捨五入（L-136）。毛糸の Excel の「個」は owner の入力の誤りで、数え方は「玉」（TD-192）。
 
-| # | 判断事項 | 選択肢 | 推奨（区分） | 根拠 |
-|---|---|---|---|---|
-| J1 | 単位の一覧に `玉`（`ball`）を入れるか | (a) 入れる（12 種） (b) 入れない（11 種、毛糸は `個`） | (a)（confirmed: 店の答え L-215・FC-072 に直接依る） | 店は 12 種すべてを使い、毛糸は玉で数える。TD-192 は Excel の入力の誤りの話で、外す理由にならない。code が 1 つ増えるだけで計算は `個` と同じ |
-| J2 | 原価を 1/100 円で持つか | (a) 持つ（6 列を `_centi` へ改名・100 倍、原価の runtime の lane を単位の lane の後に置く） (b) 円の整数のまま（83.33 は 83 で入れる） | (a)（candidate: 店の持ち方 TD-058 に合う。runtime の範囲が広い〈申し送りの表の原価の行〉ことを受け入れるかは owner） | (b) では 1,000 個で 330 円の評価額の差。(a) は Rust 28 file・TS 48 file（bindings を含む）の原価の参照を変える（2026-10-07、`rg -c` の file の数。下の申し送り） |
-| J3 | 入庫の原価小計・合計の丸め | (a) TD-023 と同じ（行を 1/100 円で四捨五入、合計を円で四捨五入） (b) 行ごとに円未満を切り捨て（メーカーの伝票、L-135） | (a)（candidate: 規則が 1 つにまとまり、ばらした商品の伝票と合う。長さの端数の伝票とは 1 円ずれうる） | ばらした商品 83.33 円 × 36 = 2,999.88 → (a) 3,000 円・(b) 2,999 円（伝票は 3,000 円）。長さ 2.5 m × 333 円 = 832.5 → (a) 833 円・(b) 832 円（伝票は切り捨てが多い）。長さの仕入れは m の整数が多く端数は稀 |
-| J4 | 手動販売の金額の初期値の丸め | (a) 四捨五入（レジ、L-136） (b) 切り上げ（店の切り売りの端数、L-135） | (a)（candidate: 手動販売はレジで打った売上の在庫の付け替えで、レジに数量 × 単価で打てば四捨五入になる。初期値は利用者が直せる） | L-135 は価格を決めるときの端数の話として `project-memory.md` が記録している。今の店は分類キーに計算機の金額を打つので、どちらに合わせるかは owner |
+| # | 判断事項 | 選択肢 | 推奨（起票時の区分） | 決定 | 根拠 |
+|---|---|---|---|---|---|
+| J1 | 単位の一覧に `玉`（`ball`）を入れるか | (a) 入れる（12 種） (b) 入れない（11 種、毛糸は `個`） | (a)（confirmed: 店の答え L-215・FC-072 に直接依る） | (a) 入れる（12 種）。2026-10-08、TD-195 | 店は 12 種すべてを使い、毛糸は玉で数える。TD-192 は Excel の入力の誤りの話で、外す理由にならない。code が 1 つ増えるだけで計算は `個` と同じ |
+| J2 | 原価を 1/100 円で持つか | (a) 持つ（6 列を `_centi` へ改名・100 倍、原価の runtime の lane を単位の lane の後に置く） (b) 円の整数のまま（83.33 は 83 で入れる） | (a)（candidate: 店の持ち方 TD-058 に合う。runtime の範囲が広い〈申し送りの表の原価の行〉ことを受け入れるかは owner） | (a) 持つ（原価の runtime の lane の範囲を受け入れた）。2026-10-08、TD-195 | (b) では 1,000 個で 330 円の評価額の差。(a) は Rust 28 file・TS 48 file（bindings を含む）の原価の参照を変える（2026-10-07、`rg -c` の file の数。下の申し送り） |
+| J3 | 入庫の原価小計・合計の丸め | (a) TD-023 と同じ（行を 1/100 円で四捨五入、合計を円で四捨五入） (b) 行ごとに円未満を切り捨て（メーカーの伝票、L-135） | (a)（candidate: 規則が 1 つにまとまり、ばらした商品の伝票と合う。長さの端数の伝票とは 1 円ずれうる） | (a) TD-023 と同じ。2026-10-08、TD-195 | ばらした商品 83.33 円 × 36 = 2,999.88 → (a) 3,000 円・(b) 2,999 円（伝票は 3,000 円）。長さ 2.5 m × 333 円 = 832.5 → (a) 833 円・(b) 832 円（伝票は切り捨てが多い）。長さの仕入れは m の整数が多く端数は稀 |
+| J4 | 手動販売の金額の初期値の丸め | (a) 四捨五入（レジ、L-136） (b) 切り上げ（店の切り売りの端数、L-135） | (a)（candidate: 手動販売はレジで打った売上の在庫の付け替えで、レジに数量 × 単価で打てば四捨五入になる。初期値は利用者が直せる） | (a) 四捨五入。2026-10-08、TD-195 | L-135 は価格を決めるときの端数の話として `project-memory.md` が記録している。今の店は分類キーに計算機の金額を打つので、どちらに合わせるかは owner |
 
 廃棄のロス原価の丸めは店の直接の答えが無いので TD-023 に合わせる（判断事項に数えず、runtime の lane の L3 で owner が確かめる）。
 
@@ -133,7 +136,9 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 ### runtime の lane への申し送り（形が変わる型と、作る所・読む所）
 
-本 lane は code を書かない。2026-10-07 に main `95c0aeb0` の現物で `rg` して数えた（行番号は定義・構築・呼出しの行）。runtime の lane は起票時の現物で数え直し、所有表を書く。lane の割当: **U** = 単位の lane（先）、**C** = 原価の lane（後、J2 を採るとき）、**P** = Z004 の取込みの再開・EJ の取込みの lane（CASIO 固有）。
+本 lane は code を書かない。2026-10-07 に main `95c0aeb0` の現物で `rg` して数えた（行番号は定義・構築・呼出しの行）。runtime の lane は起票時の現物で数え直し、所有表を書く。lane の割当: **U** = 単位の lane（先）、**C** = 原価の lane（後）、**P** = Z004 の取込みの再開・EJ の取込みの lane（CASIO 固有）。
+
+J2 が (a) に決まった（2026-10-08、TD-195）ので、下の表の lane C の行（原価の 6 列と migration vC、原価の Rust の型・wire・frontend、操作ログの原価の key）が原価の runtime の lane の範囲として確定した。
 
 | 型・関数・場所 | 変更 | lane | 作る所 | 読む所・test |
 |---|---|---|---|---|
@@ -185,21 +190,34 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 baseline は 2026-10-07 に本 worktree（HEAD `95c0aeb0`、編集前）で逐語に実行した出力。完了時の期待値と分けて書く。
 
 - AC1（共通規則がある）: `rg -c '^\*\*SPEC-UNIT-D[0-9]+ ' docs/function-design/10-common-rules.md` が `11`。baseline: `rg -n 'SPEC-UNIT-D[0-9]+' docs --glob '!docs/archive/**' | wc -l` → `0`。
-- AC2（決定の記録）: `rg -n '^## D-113' docs/decision-log.md` が 1 行で、その節に `未決（owner）` の J1〜J4 と `Revisit` がある。baseline: `rg -n '\bD-113\b' docs | wc -l` → `0`。
+- AC2（決定の記録）: `rg -n '^## D-113' docs/decision-log.md` が 1 行で、その節に `owner の決定（2026-10-08、TD-195` の J1〜J4 と `Revisit` がある（`sed -n '/^## D-113/,$p' docs/decision-log.md | rg -c '^- owner の決定（2026-10-08、TD-195|^- Revisit'` が `2`）。baseline: `rg -n '\bD-113\b' docs | wc -l` → `0`。
 - AC3（既知の不整合の pointer）: 既知の不整合を書いた 3 file（`docs/backlog.md`・`docs/db-design/master-tables.md`・`docs/function-design/35-biz-stocktake-service.md`）がどれも `D-113` を含む（`rg -c 'D-113' <file>` が 1 以上）。baseline: `rg -n '100 倍になる' docs --glob '!docs/archive/**' --glob '!docs/research/**'` → 3 行（`docs/backlog.md:86`・`docs/db-design/master-tables.md:56`・`docs/function-design/35-biz-stocktake-service.md:451`）。
-- AC4（判断事項が正本に見える）: `rg -o '未決（owner、D-113 J[1-4]）' docs --glob '!docs/archive/**' | sed 's/.*J/J/' | sort -u` が `J1）` `J2）` `J3）` `J4）` の 4 行。
+- AC4（決定が正本に見える）: `rg -o '決定（owner、D-113 J[1-4]）' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | sed 's/.*J/J/' | sort -u` が `J1）` `J2）` `J3）` `J4）` の 4 行で、`rg -n '未[決]（owner、D-113' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l` が `0`（2026-10-08 に J1〜J4 の決定で「未決の 4 つが正本に見える」から改めた）。
 - AC5（traceability の入力を変えない）: `git diff 95c0aeb04a2fe397bd4125a5be0e43739174670f -- docs | grep -c '^[-+]>.*対応仕様'` が `0`。
 - AC6（docs だけ）: `git diff --name-only 95c0aeb04a2fe397bd4125a5be0e43739174670f | grep -vc '^docs/'` が `0`。
 - AC7（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-07-unit-extension.md` が ERROR 0（WARN は報告）。
+
+再実行（2026-10-08、J1〜J4 の決定の反映。本 worktree で逐語に実行。左は編集前 HEAD `749b21fed5b03ccf66146977f68acee5e99572d4`、右は反映後の作業木）:
+
+| AC | command | 編集前 | 反映後 |
+|---|---|---|---|
+| AC1 | `rg -c '^\*\*SPEC-UNIT-D[0-9]+ ' docs/function-design/10-common-rules.md` | `11` | `11` |
+| AC2 | `rg -n '^## D-113' docs/decision-log.md` | `938:## D-113: …` の 1 行 | 同じ 1 行 |
+| AC2 | `sed -n '/^## D-113/,$p' docs/decision-log.md \| rg -c '^- owner の決定（2026-10-08、TD-195\|^- Revisit'` | `1`（Revisit だけ） | `2` |
+| AC3 | `rg -c 'D-113' <file>`（backlog・master-tables・35） | `2`・`4`・`1` | `2`・`4`・`1` |
+| AC4 | `rg -o '決定（owner、D-113 J[1-4]）' docs --glob '!docs/archive/**' --glob '!docs/plans/**' \| sed 's/.*J/J/' \| sort -u \| wc -l` | `0` | `4`（`J1）` `J2）` `J3）` `J4）`） |
+| AC4 | `rg -n '未[決]（owner、D-113' docs --glob '!docs/archive/**' --glob '!docs/plans/**' \| wc -l` | `19` | `0` |
+| AC5 | `git diff 95c0aeb04a2fe397bd4125a5be0e43739174670f -- docs \| grep -c '^[-+]>.*対応仕様'` | `0` | `0` |
+| AC6 | `git diff --name-only 95c0aeb04a2fe397bd4125a5be0e43739174670f \| grep -vc '^docs/'` | `0` | `0` |
 
 ## Design Readiness
 
 - 引用する設計正本（節まで）: `docs/function-design/10-common-rules.md` の「単位・数量・金額の共通規則」SPEC-UNIT-D1〜D11／`docs/db-design/master-tables.md` の「単位と原価の精度の契約」・products の設計意図の価格の基準数量／`docs/function-design/22-mnt-migration.md` §16（MNT-03-D13）・§15（v7、同じ形）／`35-biz-stocktake-service.md` §20.5a（SPEC-STK-VAL-D1〜D6、値は変えない）／`31-biz-inventory-service.md` の「単位と原価の精度の契約」・§12.6a・§12.8／`21-io-inventory-repo.md` §10.2・§10.5／`30-biz-product-service.md` BIZ-01-D7・D8、§4.8・§4.9／`51-ui-product-form.md` UI-01b-D5・D6・D22／`62-ui-manual-sale.md` UI-04-D6・D7・D18／`58-ui-stock-inquiry.md` §58.6／`23-io-z004-parser.md` §13.4.1／`29-io-ej-parser.md` IO-08.5・IO-08-D6／`77-ui-bulk-price-revision.md` SPEC-PRV-D4／`44-cmd-inventory.md` `list_low_stock`／`DB_DESIGN.md` CHECK 制約方針・D-4／decision-log D-061・D-064・D-104・D-113。
 - 必要な設計成果物: function-design（共通規則・BIZ-01・BIZ-02・IO-01 の repo・IO-02・IO-08・UI-01b・UI-04・UI-06a・UI-14） = updated in this PR（proposed）／DB（CHECK・原価の列・migration） = updated in this PR（migration の番号は runtime）／decision-log = D-113 を追加／SCREEN_DESIGN = existing sufficient（画面の構成・動線は変えず、欄の単位と文言は各 UI の function-design が持つ）。
 - plan にしかない durable な判断の昇格先: すべて D-113 と上の正本へ置いた。runtime の lane の分け方（U・C・P）は D-113 の Decision (8)。申し送りの表と L3 の表は runtime の lane の起票の出発点で、durable な判断ではない。
-- 前提・制約と、延期した design gap: 原価の 1/100 円（J2）・入庫の丸め（J3）・手動販売の丸め（J4）・玉（J1）は owner の判断待ちで、推奨の案で正本を書いた。どれが別の案になっても、変わるのは該当の SPEC-UNIT の 1 項目と申し送りの行で、ほかの契約は変わらない。延期: EJ の小数の数量の照合の丸め（レジの四捨五入）を実データで確かめること（P の lane の Plan Gate の前。下の Contract Probe P3）、棚卸し記録詳細のロス原価をどの lane が BIZ へ移すか（U か棚卸し ⑤）、`tracking-system-tables.md` の列の表の更新（C）。延期が安全な理由: どれも本 lane の設計の値を変えず、runtime の lane の起票時に決めれば足りる。
+- 前提・制約と、延期した design gap: 原価の 1/100 円（J2）・入庫の丸め（J3）・手動販売の丸め（J4）・玉（J1）は 2026-10-08 に owner が推奨の案に決めた（TD-195）。起票時に推奨の案で書いた正本の記述を決定の文に直した（値は変わらない）。延期: EJ の小数の数量の照合の丸め（レジの四捨五入）を実データで確かめること（P の lane の Plan Gate の前。下の Contract Probe P3）、棚卸し記録詳細のロス原価をどの lane が BIZ へ移すか（U か棚卸し ⑤）、`tracking-system-tables.md` の列の表の更新（C）。延期が安全な理由: どれも本 lane の設計の値を変えず、runtime の lane の起票時に決めれば足りる。
 - 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: 「在庫の数量は浮動小数を通らない」の例外は無い（入力は文字列から、表示は整数の演算から。D-104 の日報の wire の `f64` は在庫に効かない表示用で、本契約の外）。「既存の `cm` の行の値と意味を変えない」: vU は値を写すだけ、基準数量は今と同じ 100。「新しい単位が在庫少から漏れない」: SQL の並びを enum の全 variant から作り test で止める（SPEC-UNIT-D10）。「金額はどの画面でも同じ値」の例外: 入力中の見込み（廃棄の合計、手動販売の初期値）は TS の twin で、golden の表で BIZ と揃える（SPEC-UNIT-D9）。twin がずれた場合も保存された記録は BIZ の値。「原価の変換で値を失わない」: vC は範囲検査・件数・`typeof`・余りの検査で、外れれば何も変えない（22 §16）。
-- 判定（ready / not ready）と理由: not ready（design に留める）。設計の出力は上の正本にあるが、owner の判断 J1〜J4 が残る（design → plan-draft の条件「未解決の設計の問いが無い」を満たさない）。J1〜J4 が決まり、正本の `未決（owner、D-113 Jn）` を決定に書き換えれば plan-draft に進める。
+- 判定（ready / not ready）と理由: ready（2026-10-08、plan-draft へ進めた）。設計の出力は上の正本にあり、owner の判断 J1〜J4 は決まって正本と D-113 に決定として書いた（AC2・AC4）。上の延期は runtime の lane の起票時に決めれば足り、未解決の設計の問いは無い。起票時（2026-10-07）の判定は not ready（J1〜J4 が残っていた）。
 
 ## Registration / Generation Obligations
 
@@ -279,7 +297,7 @@ Test Design Matrix: [2026-10-07-unit-extension](test-matrices/2026-10-07-unit-ex
 
 - P1 SQLite で CHECK を変えるには表の作り直しが要り、列の改名は `RENAME COLUMN` でできるか: **repo の現物で確かめた（2026-10-07）**。表の作り直しの先例は `src-tauri/src/db/schema_time_evidence.rs:45`〜`:92`（`stocktakes_new`・`stocktake_items_new` を作って写し、`RENAME TO`）と `:143`〜`:158`（TX の外で `foreign_keys` を OFF にして戻す）。列の改名と 100 倍の先例は `src-tauri/src/db/schema_v7.rs:52`〜`:56`（`RENAME COLUMN quantity TO quantity_hundredths` と `* 100`）。同梱の SQLite は `libsqlite3-sys` 0.28.0（`src-tauri/Cargo.lock`。22 §15 が 3.45.0 と記録）。products に trigger と view は無い（`rg -n "CREATE TRIGGER|CREATE VIEW" src-tauri/src/db/` は migration の test の 1 行だけ）。index は 3 つ（`schema_v1.rs:251`〜`:253`）。
 - P2 レジの数量の小数の桁: **文書と店の答えで確かめた**。取説 S p.154 の乗算の数量は 0.01〜9999.99（repo 外の取説の検証記録、2026-10-06）。店の実例は Z004・EJ・精算レシートとも小数 1 桁（台帳 TD-147）。よって 100 倍の整数（小数 2 桁まで）で足りる。Z004 の数量欄の生の文字列の形（`1.3` か `1.30` か）は未確認で、どちらも受ける（SPEC-UNIT-D8）。
-- P3 レジは小数の数量 × 単価の端数を四捨五入するか（EJ の照合と J4 の推奨が依る）: **未確認（店の答え L-136 だけ）**。本 lane の設計の値は依らない（EJ の照合は P の lane、J4 は owner の判断）。確認: P の lane の Plan Gate の前に、持ち帰った EJ の小数の数量の明細で `四捨五入(数量 × 単価) = 金額` が成り立つかを数える（件数だけを出す。金額・商品名は出さない。`.local/checklists/field-data.md` の手順）。
+- P3 レジは小数の数量 × 単価の端数を四捨五入するか（EJ の照合が依る。J4 は店の答え L-136 で決めた）: **未確認（店の答え L-136 だけ）**。本 lane の設計の値は依らない（EJ の照合は P の lane、J4 は owner が決めた）。確認: P の lane の Plan Gate の前に、持ち帰った EJ の小数の数量の明細で `四捨五入(数量 × 単価) = 金額` が成り立つかを数える（件数だけを出す。金額・商品名は出さない。`.local/checklists/field-data.md` の手順）。
 - P4 JS の number で正確に運べる最大の整数は `9007199254740991`（ECMAScript の `Number.MAX_SAFE_INTEGER`）: 言語の定数で、probe は要らない。
 - 観測済みで probe の要らない前提: 店の 12 種・m・10 cm・数量 1 = 1 m・原価の小数第 2 位・評価額の丸め（台帳と `project-memory.md`）。今の評価額の関数の値（`stocktake_service.rs:1402`〜`:1482` の test）。
 

@@ -330,7 +330,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 ## 16. MNT-03 追加: 単位の拡張と原価の 1/100 円の migration（proposed・未実装、D-113）
 
-**MNT-03-D13 / D-113**: 単位を 12 個の code へ広げる migration（以下 vU）と、原価を 1/100 円へ改名する migration（以下 vC）を足す。意味の正本は [共通規則](10-common-rules.md) SPEC-UNIT-D1・D5 と [db-design/master-tables.md](../db-design/master-tables.md) の「単位と原価の精度の契約」。vU は単位の runtime の lane、vC は原価の runtime の lane（`未決（owner、D-113 J2）`）が実装し、番号はそれぞれの lane が起票時に決める（並走の lane〈時点証拠の migration 等〉と番号・順序を合わせる）。本 design-first の変更では schema を変えない。
+**MNT-03-D13 / D-113**: 単位を 12 個の code へ広げる migration（以下 vU）と、原価を 1/100 円へ改名する migration（以下 vC）を足す。意味の正本は [共通規則](10-common-rules.md) SPEC-UNIT-D1・D5 と [db-design/master-tables.md](../db-design/master-tables.md) の「単位と原価の精度の契約」。vU は単位の runtime の lane、vC は原価の runtime の lane（`決定（owner、D-113 J2）`）が実装し、番号はそれぞれの lane が起票時に決める（並走の lane〈時点証拠の migration 等〉と番号・順序を合わせる）。本 design-first の変更では schema を変えない。
 
 **vU の手順**（`MigrationKind::Custom`、表の作り直し。SQLite は CHECK を ALTER で変えられない）:
 
