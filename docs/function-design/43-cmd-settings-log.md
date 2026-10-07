@@ -202,6 +202,8 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 
 4 command とも MNT-01（71 §71.11・§71.12）を呼ぶだけの薄い入口で、規則を持たない（CMD → MNT の直接呼出しは backup 系の正規経路、D-060 (a)）。DB の Mutex は設定（`backup_path`）の読取りの間だけ持ち、媒体へ写す・file を開く前に放す（写しの数秒の間、他の command を止めない）。
 
+**実行の thread**: 4 command は `#[tauri::command(async)]` で定義し、main thread で copy・読み戻し・SHA-256・`quick_check`・drive の列挙をしない。Tauri v2 の公式資料: async の無い command は `#[tauri::command(async)]` で定義しない限り main thread で実行される（https://v2.tauri.app/develop/calling-rust/ ）。今の repo の command はすべて sync で main thread で動くので、既存の形に倣うと写しの間に画面が固まる。関数は sync のまま `(async)` を付ける形にし（`async fn` にして `State` の借用の制約を持ち込まない）、`#[specta::specta]` と `collect_commands!` / `generate_handler!` への登録は他の command と同じ。既存の `create_backup`・`check_auto_backup` の実行 thread は変えない（DB の Mutex の中で動く既存の契約。見直しは D-114 の範囲外）
+
 | § | command | 入力 → 出力 | 処理 |
 |---|---|---|---|
 | 43.8.2 | `prepare_offsite_medium` | `PrepareOffsiteMediumRequest { selected_path: String }` → `OffsiteMediumView` | `app_data_dir` を取り、`get_backup_dir` で `backup_dir` を読んで lock を放し、`mnt::offsite::prepare_offsite_medium(&app_data_dir, &backup_dir, Path::new(&selected_path))` を呼ぶ（`backup_dir` は 71 §71.11.2 手順 6 の写しの元）。空の `selected_path` は `validation` |
@@ -217,6 +219,7 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | `OffsiteError::RegisterSd` | `validation` | 「これはレジの SD カードです。控えは USB メモリに作ってください」 |
 | `OffsiteError::StorageFull` | `internal` | 「USB メモリの空きが足りません」 |
 | `OffsiteError::VerifyMismatch` / `Io` | `internal` | 「PC の外の控えを写せませんでした」 |
+| `OffsiteError::Redirected` | `validation` | 「この USB メモリの InventoryBackup フォルダは別の場所へのリンクのため使えません」 |
 | `OffsiteError::MarkerUnsupported` | `validation` | 「この USB メモリは新しい版のアプリで用意されています。新しい版のアプリを入れてください」 |
 | `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした」 |
 | `OffsiteError::SourceUnverified` | `internal` | 「PC の中の最新のバックアップを確かめられなかったため、PC の外へ写していません」 |

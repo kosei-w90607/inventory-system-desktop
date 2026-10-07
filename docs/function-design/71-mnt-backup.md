@@ -54,6 +54,8 @@ struct BackupInfo {
 
 例: `inventory_backup_20260413_130000.db`
 
+名前の解析（一覧・掃除・今日の判定・作業名の掃除・媒体の写しの並び、PC の中と媒体の上で同じ関数）は、規約外の名前を `None` にし、panic しない。日時の部分は ASCII の数字と `_` だけなので、長さ・`_` の位置・ASCII かの確認を文字列の slice より前に行う（今の `extract_datetime_from_backup` は長さ 15 bytes の確認の後に `&stem[..8]` を切るので、`inventory_backup_あああああ.db` のような 15 bytes の多バイトの名前で文字境界の panic になる。`extract_date_from_backup` は `_` の位置を先に見るので起きない。D-114 で作業名の掃除がこの関数を使うので、runtime の lane で直す）
+
 ---
 
 ### 71.4 create_backup
@@ -533,8 +535,10 @@ pub fn resolve_backup_dir(conn: &DbConnection, app_data: &Path) -> Result<PathBu
 | MNT-01-D10 | root に `CASIO\SR500_550_4000` がある一時 directory を `backup_dir` にした `create_backup` と、§71.11 の用意・写しが、何も書かずに失敗する |
 | MNT-01-D8 用意 | 取外し可能でない root・レジの SD の root を拒む。目印が既にある媒体は同じ `medium_id` を使い、写しの file を消さない |
 | MNT-01-D8 写し | 用意していない（`NotPrepared`）・媒体が見えない（`MediumMissing`）ときは何も書かず `last_success` を変えない。写しの成功で正式名の file・`last_success`（hash を含む）が残る。同じ名前・同じ size が既にあれば写さない。写す元が共有の検査に通らない（壊れた・空の・このアプリのものでない正式名）と、媒体に何も書かず `last_failure` が `source_unverified`、`last_success` は前後で同じ |
-| MNT-01-D8 中断 | copy・`sync_all`・公開・親 directory の sync の各点で失敗を注入し、正式名が無い（公開の前）か検査済みの正式名だけがある（公開の後）、`last_success` が前後で同じ、`last_failure` が `io` / `storage_full`、次の呼出しで作業名が消えて写る |
+| MNT-01-D8 中断 | 公開の前（copy・`sync_all`・公開そのもの）の失敗の注入: 正式名が無い、`last_success` が前後で同じ、`last_failure` が `io` / `storage_full`、次の呼出しで作業名が消えて写り `Copied`。公開の後（親 directory の sync）の失敗の注入: 検査済みの正式名が残り、`last_success` は前後で同じ、`last_failure` が `io`、次の呼出しは `UpToDate`（状態を変えない）、PC の中に新しい backup を置いた後の呼出しで `Copied` と `last_success` の更新 |
 | MNT-01-D8 媒体の固定 | 探した後に媒体の目印の `medium_id` を別の値に替える（注入）と、その媒体に以後書かず、正式名・掃除の変化が無い |
+| MNT-01-D8 reparse point | 媒体の `InventoryBackup` を別の一時 directory への symbolic link にすると、用意は `Redirected`、確認はその媒体を用意済みとしない。転送先の folder の一覧と bytes が前後で同じ |
+| MNT-01-D6 metadata の既存 test の移し替え | `test_create_backup_req901_metadata_error_propagates_without_success_log`（`mnt/backup.rs:1217`）は `fail_any_metadata()` で全部の metadata を失敗させるので、手順 4a の検査（作業名の size を読む）で先に失敗して作業名が消え、今の oracle（message の「サイズ」・dir に 1 file）が red になる。注入を作業名でない path（公開の後の正式名）だけに当てる形へ替え、oracle は変えない（弱めない）。4a の metadata の失敗は MNT-01-D7 作業名の行で見る |
 | MNT-01-D8 照合 | 読み戻しの bytes を注入で変え、作業名の file が消え、正式名の file が無く、`last_failure` が `verify_mismatch` |
 | MNT-01-D8 保持 | 正式名の写しが `OFFSITE_KEEP` を超えると古い順に消え、今写した file と作業名でない他の file（目印・名前の規約に合わない file）を消さない |
 | MNT-01-D8 状態 | 状態の file が壊れていると写さずに `StateUnreadable` を返し、状態は「控えが古い」側に倒れる（黙って `NotPrepared` にならない）。`OFFSITE_STALE_DAYS` の境界（2 日前は古くない・3 日前は古い） |
@@ -581,8 +585,14 @@ enum OffsiteFailureKind {   // wire は snake_case
     StateUnreadable,        // PC 側の状態の file が読めない・形が違う
     SourceUnverified,       // 写す元の backup が共有の検査（§71.12）に通らない
 }
-// 用意（§71.11.2）だけが返す失敗。状態に残さない（何も書かない）
-//   OffsiteError::MarkerUnsupported: 媒体の目印の format が 1 でない（新しい版のアプリが用意した媒体）
+// mnt::offsite の関数が返す失敗。上の 7 値と同じ名前の 7 つに、用意（§71.11.2）だけが返す 2 つを足す
+enum OffsiteError {
+    RegisterSd, NotRemovable, StorageFull, VerifyMismatch, Io, StateUnreadable, SourceUnverified,
+    MarkerUnsupported,      // 用意だけ: 媒体の目印の format が 1 でない（新しい版のアプリが用意した媒体）
+    Redirected,             // 用意だけ: 媒体の InventoryBackup・目印が reparse point（§71.11.3 の「reparse point を追わない」）
+}
+// OffsiteError::kind() -> Option<OffsiteFailureKind>: 同じ名前の 7 つは Some(同じ値)、MarkerUnsupported と Redirected は None
+// （用意の失敗で何も書かないので last_failure に残さない。CMD は 43 §43.8.2 の表の固定の文に写す）
 
 const OFFSITE_DIR_NAME: &str = "InventoryBackup";
 const OFFSITE_KEEP: usize = 30;        // 媒体ごとに残す写しの数（新しい順）
@@ -613,17 +623,21 @@ struct OffsiteMediumView { label: String, drive_root: String, newest_copy: Optio
 1. `selected` をその drive の root（`E:\` 等）にする（root の下の folder を選んでも root を使う）。以後の手順の読み書きは、その root の volume の識別（§71.11.3 の「媒体の固定」）を通して行う
 2. root の drive が取外し可能（Windows の `GetDriveTypeW` = `DRIVE_REMOVABLE`）でなければ `OffsiteError::NotRemovable`（固定 disk・network・PC の内蔵の drive は PC の外と言えない）
 3. root に `CASIO\SR500_550_4000` があれば `OffsiteError::RegisterSd`（MNT-01-D10）
+3a. PC 側の状態を読む。file が無ければ空の状態として続ける。読めなければ、媒体に何も書かずに `OffsiteError::StateUnreadable`（手順 4 の目印を書く前に止める。上書きで媒体の一覧を失わない）
+3b. `{root}\InventoryBackup` と目印の file が reparse point（junction・symbolic link・mounted folder）なら、追わずに何も書かず `OffsiteError::Redirected`（§71.11.3 の「reparse point を追わない」）
 4. `{root}\InventoryBackup\offsite-medium.json` を読む。`format` が 1 で `medium_id` と `label` が読めればそれを使い、目印を書き換えない（別の PC での登録し直し・入れ替えの後。知らない field は問わない）。`format` が 1 でない数（新しい版のアプリが用意した媒体）なら、目印・folder・状態を変えずに `OffsiteError::MarkerUnsupported`（新しい版のアプリが置いた目印を古い版が上書きしないため。field が読めても読めなくても作り直さない）。file が無い・JSON として読めない・`format` が無い・`format` が 1 で `medium_id` か `label` が無ければ folder を作り、新しい `medium_id` と `label` で目印を書く（§71.11.1 の公開の順）。`label` は「控え N」で、N は PC 側の状態の `media` の札の最大の N + 1（`media` が空なら 1。数 + 1 にすると、ある札の媒体を失った後に登録し直した札と重なる）。目印を置き換えても folder の写しは消さない
-5. PC 側の状態に媒体を足す（同じ `medium_id` があれば変えない）。状態の file が無ければ作る。読めなければ `OffsiteError::StateUnreadable`（上書きで媒体の一覧を失わない）
+5. 手順 3a で読んだ状態に媒体を足す（同じ `medium_id` があれば変えない）。状態の file が無ければ作る
 6. 続けて §71.11.4 を 1 回行い、用意した媒体へ最新の控えを写す（用意した直後に「写せた」まで見せる）。写しの失敗は用意を取り消さず、状態の `last_failure` に残す
 7. `OffsiteMediumView` を返す
 
-**エラーハンドリング**: `NotRemovable` / `RegisterSd` / `MarkerUnsupported` / `StateUnreadable` は何も書かない。folder・目印・状態の書込みの失敗は `OffsiteError::Io`（空きなしは `StorageFull`）。
+**エラーハンドリング**: `NotRemovable` / `RegisterSd` / `StateUnreadable` / `Redirected` / `MarkerUnsupported` は何も書かない（どれも手順 4 の書込みより前に判定する）。folder・目印・状態の書込みの失敗は `OffsiteError::Io`（空きなしは `StorageFull`）。
 
 #### 71.11.3 媒体を探す（内部）
 
 - `GetLogicalDrives` で drive 文字を並べ、`GetDriveTypeW` が `DRIVE_REMOVABLE` の root だけを見る。root に `CASIO\SR500_550_4000` があれば見ない（MNT-01-D10）。目印が `format` 1 で読めて、その `medium_id` が PC 側の状態の `media` にある root だけを「用意済みの媒体」とする（目印の無い媒体・別の PC で用意した媒体・`format` が 1 でない目印の媒体には書かない）
 - 媒体の入っていない読取り機・読めない root は黙って飛ばす（探すたびに error にしない）
+- **reparse point を追わない**（媒体の上の規則）: 媒体の `InventoryBackup` が reparse point なら、その媒体を「用意済みの媒体」としない（目印を読まず、何も書かない）。`InventoryBackup` の中の entry（目印・正式名・作業名）が reparse point なら、その entry を目印・写し・作業名として数えず、開かず、消さない。判定は Windows では `GetFileAttributesW` の `FILE_ATTRIBUTE_REPARSE_POINT`。Microsoft の資料: directory が reparse point かは `GetFileAttributes` の戻り値の `FILE_ATTRIBUTE_REPARSE_POINT` で見る。symbolic link を指す path には link 自身の属性を返す。junction は同じ PC の別の local volume の directory も指せる（https://learn.microsoft.com/en-us/windows/win32/fileio/determining-whether-a-directory-is-a-volume-mount-point 、https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileattributesw 、https://learn.microsoft.com/en-us/windows/win32/fileio/hard-links-and-junctions ）。volume GUID path への固定は root を固定するだけで、その下の junction の転送先を制限しないので、別に要る。Windows 以外（test）は `std::fs::symlink_metadata` の `file_type().is_symlink()`。`GetFileAttributesW` は既存の feature `Win32_Storage_FileSystem`。判定は目印の読み直しと同じ時点（作業名へ写す直前・公開の直前・掃除の直前）にも行う
+- PC の中の側（`backup_dir`・`app_data_dir`）の規則: `backup_dir` 自身が reparse point かは見ない（利用者が選んだ保存先で、既存の契約〈MNT-01-D10 の棄却案と同じく、選んだ設定を壊さない〉）。entry の名前は媒体と同じ完全一致の規則（§71.3、§71.4 手順 3）で扱う。消す操作（作業名の掃除・保持日数の掃除）は entry が symbolic link なら link だけを消し、指す先を消さない（Microsoft の `DeleteFileW` の資料: symbolic link を指す path では link が消え、target は消えない。https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-deletefilew ）。写す元は共有の検査（§71.12）が中身を確かめる
 - **error の dialog を出さない**: 媒体を探す・読み書きする間（§71.11.2〜§71.11.5 の各関数の本体）は、その thread の error mode を `SetThreadErrorMode(SEM_FAILCRITICALERRORS, &old)` にし、終わったら `old` へ戻す。Microsoft の資料: `SEM_FAILCRITICALERRORS` は critical-error-handler の message box を出さず error を呼んだ thread へ返す。`SetThreadErrorMode` は呼んだ thread だけの設定で（thread は process の error mode を継ぎ、process 全体の `SetErrorMode` より「system の通常の振舞いを乱さない」ので Windows 7 以降は推奨される）、Windows 7 以降（https://learn.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-setthreaderrormode 、https://learn.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-seterrormode ）。空の読取り機で dialog が出るかを前提にしない（packet の Contract Probe の P3）。`windows-sys` の `Win32::System::Diagnostics::Debug::SetThreadErrorMode` で、feature `Win32_System_Diagnostics_Debug` を既存の `windows-sys` に足す（新しい依存ではない。runtime の lane）
 - drive 文字は覚えない（入れ替えで変わる。MNT-01-D10 の Why）
 - **媒体の固定**: 探して照合した媒体への 1 回の確認の中の読み書きは、drive 文字ではなく volume の識別で行う。Windows は `GetVolumeNameForVolumeMountPointW("E:\")` で volume GUID path（`\\?\Volume{GUID}\`）を得て、以後その path の下の `InventoryBackup\` を使う。Microsoft の資料: drive 文字の割当ては volume の抜き差しで変わり、volume GUID path は 1 つの volume しか指さない（OS が volume の導入・format のときに割り当てる）（https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-volume）。途中で抜かれれば path が無くなって `Io` になり、同じ文字に別の媒体が割り当たってもそちらへ書かない。加えて、作業名へ写す直前・公開の直前・掃除の直前に目印を読み直し、`medium_id` が照合した値と違う・読めなければその媒体の残りをやめる（`Io`。Windows 以外の test は root の path を識別とし、この読み直しで入れ替わりを見る）。`GetVolumeNameForVolumeMountPointW` は既存の feature `Win32_Storage_FileSystem`
@@ -655,17 +669,25 @@ enum OffsiteCheckResult {
 3. 用意済みの媒体を探す（§71.11.3）。0 → `MediumMissing`（状態を変えない）
 3a. 見えている媒体のどれか 1 つにでも同じ名前・同じ size の正式名が無い（写す必要がある）ときだけ、写す元を共有の検査（§71.12 の「使える控え」）にかける。合格しなければ、どの媒体にも書かず、`last_failure = { at, kind: SourceUnverified, medium_id: None }` を書いて `Err`（`last_success` を変えない。壊れた・空の・このアプリのものでない正式名の file〈旧い実装の中断の残り等〉を、hash が一致するだけで「写せた」としない）
 4. 見えている媒体ごとに、その volume の識別（§71.11.3 の「媒体の固定」）の下の `InventoryBackup\` へ:
-   a. 同じ名前の正式名の file があり size が同じなら写さない（正式名は手順 f でしか作らないので、ある file は確かめ済み）
+   a. 同じ名前の正式名の file（reparse point でないもの）があり size が同じなら写さない（正式名は手順 f でしか作らないので、ある file は確かめ済み）。同じ名前の entry が reparse point なら写したことにせず、手順 f の公開が既存の名前で失敗して `Io` になる
    b. 残っている作業名を消す。消すのは `.partial` を除いた名前が §71.3 の規約に完全に合う file だけ（§71.4 手順 3 と同じ。`unrelated.partial` 等は消さない）
    c. 元の file の SHA-256 を計算する（既存の `sha2` crate）
-   d. 目印を読み直して照合し（§71.11.3）、`{ファイル名}.partial` へ copy し `sync_all`
+   d. 目印を読み直して照合し、`InventoryBackup` が reparse point でないことを確かめ（§71.11.3）、`{ファイル名}.partial` へ copy し `sync_all`
    e. 作業名の file を開き直して全部読み、SHA-256 を c と比べる。違えば作業名の file を消し `VerifyMismatch`
-   f. 目印を読み直して照合し、正式名へ上書きしない公開（§71.4.1）をして、親 directory を sync する。同じ名前の正式名が現れていれば既存を残し、作業名を消して `Io`
-   g. 掃除: 目印を読み直して照合し、正式名の写しを新しい順に並べ、`OFFSITE_KEEP` 本目より後を消す。今写した file・作業名でない他の file（目印、名前の規約に合わない file）は消さない。消せなければ `tracing::warn!` で続ける
+   f. 目印と reparse point を確かめ直し、正式名へ上書きしない公開（§71.4.1）をして、親 directory を sync する。同じ名前の正式名が現れていれば既存を残し、作業名を消して `Io`
+   g. 掃除: 目印と reparse point を確かめ直し、正式名の写し（reparse point の entry を除く）を新しい順に並べ、`OFFSITE_KEEP` 本目より後を消す。今写した file・作業名でない他の file（目印、名前の規約に合わない file）は消さない。消せなければ `tracing::warn!` で続ける
 5. 1 つ以上写せたら `last_success = { at: 今, file_name, medium_id: 最後に写した媒体, sha256 }`、`last_failure = None` を書き `Copied`。写すものが無ければ `UpToDate`（状態を変えない）
 6. 手順 4 のどれかが失敗したら、その媒体の残りを止め、`last_failure = { at, kind, medium_id }` を書いて `Err`（他の媒体へ写せていれば `last_success` も書く）
 
-**排他**: 用意（§71.11.2）と 60 秒の確認が重ならないよう、`mnt::offsite` の中の 1 つの `Mutex<()>` で直列にする（ponytail: process 全体の lock。媒体ごとの lock は複数の媒体を同時に扱う要件が出たとき）。DB の Mutex は持たない（CMD が設定の読取りの間だけ持ち、写す前に放す。43 §43.8.3）。
+**排他**: 用意（§71.11.2）と 60 秒の確認が重ならないよう、`mnt::offsite` の中の 1 つの `Mutex<()>` で直列にする（ponytail: process 全体の lock。媒体ごとの lock は複数の媒体を同時に扱う要件が出たとき）。DB の Mutex は持たない（CMD が設定の読取りの間だけ持ち、写す前に放す。43 §43.8.3）。60 秒の確認と競合しうる操作ごとの扱い:
+
+| 操作 | 競合 | 扱い |
+|---|---|---|
+| 復元（控えの確かめの開始から終わりまで） | 媒体の掃除・PC の中の保持日数の掃除が、選んでいる控えを消す。復元の間に写す | 画面が確かめの開始の前に共通の確認を止め、実行中の回の完了を待つ。取消・復元の終わりまで止めたまま（68 UI-11b-D15・D16） |
+| 用意（`prepare_offsite_medium`） | 同じ媒体へ同時に書く | 上の `Mutex<()>` |
+| 手動の backup・事前バックアップ（`create_backup`） | 写す元の一覧に作成途中の file が見える | 作業名へ書いて検査の後にだけ正式名を公開する（MNT-01-D7）ので、写す元は正式名の確かめ済みの file だけ。PC の中の保持日数の掃除は日付で古い file だけを消し、写す元の最新（今日の file）は消さない。`checkAutoBackup` とは DB の Mutex で直列 |
+| 設定の変更（`backup_path`） | 写しの途中で保存先が替わる | 確認は始めに読んだ `backup_dir` から写し終える（写す元は検査済みで、替わる前の保存先の file）。次の回から新しい保存先 |
+| 控えを選んで確かめる（短い確かめ、§71.13） | 確かめている控えを媒体の掃除が消す | 復元と同じ入口（UI-11b-D15）なので、同じく止める |
 
 **エラーハンドリング**:
 
@@ -673,7 +695,8 @@ enum OffsiteCheckResult {
 |---|---|---|
 | 状態の file が読めない | `StateUnreadable` | 変えない（読めないので書かない） |
 | 写す元が共有の検査に通らない | `SourceUnverified` | `last_failure`（どの媒体にも書かない、`last_success` は変えない） |
-| 媒体への copy・sync・公開・親 directory の sync（写す途中の抜去・目印の読み直しの不一致・同じ名前の正式名を含む） | `Io` / `StorageFull` | `last_failure`、作業名だけが残りうる（次の確認の手順 4b が消して写し直す）。公開の前の失敗では正式名を作らず、`last_success` は前後で同じ |
+| 公開の前の失敗: 媒体への copy・`sync_all`・公開そのもの（写す途中の抜去・目印や reparse point の確かめ直しの不一致・同じ名前の entry を含む） | `Io` / `StorageFull` | `last_failure`。正式名を作らず、作業名だけが残りうる（次の確認の手順 4b が消して写し直す）。`last_success` は前後で同じ |
+| 公開の後の失敗: 親 directory の sync | `Io` | `last_failure`。検査済みの正式名は残し、`last_success` は書かない。次の確認は同じ名前・同じ size の正式名があるので手順 4a で写さず `UpToDate`（状態を変えない）。`last_success` は、次に新しい backup を写せた時に直る（それまでの日数は `stale` の判定に入る。安全側） |
 | 読み戻しの不一致 | `VerifyMismatch` | `last_failure`、作業名の file を消す |
 | 掃除の失敗 | 成功のまま | `tracing::warn!` |
 | 状態の file の書込みの失敗 | `Io` | 写しは媒体に残る（次の確認で `UpToDate` になり、状態は次の成功で直る） |
@@ -721,7 +744,7 @@ struct OffsiteBackupStatus {
 - 写すのは確かめ済みの最新の backup で、その後の入力（その日の作業）は次の backup（起動時・設定時刻、§71.8）まで PC の中だけにある
 - 目印の無い媒体・別の PC で用意した媒体・`format` が 1 でない目印の媒体・レジの SD・固定 disk・network には書かない。媒体の上でも `InventoryBackup\` の外には書かない。探して照合した後に抜かれ、同じ drive 文字に別の媒体が割り当たっても、その媒体には書かない（volume の識別と目印の読み直し、§71.11.3）
 - 媒体の上の正式名は、共有の検査に通った写す元と同じ bytes で、既存の正式名を上書きしない（§71.4.1）
-- 用意した後に状態の file が壊れたら、写さずに知らせる（黙って止まらない）。用意の前（状態の file が無い）は何もせず、ホームも知らせない
+- 用意した後に状態の file が壊れたら、写さずに知らせる（黙って止まらない）。ホームとバックアップ画面は「記録を読めない」側の文を出す（UI-00-D12、68 §68.11）。owner の直し方: `{app_data_dir}\offsite-backup.json` を別の名前へ移し（消さない）、差してある控えを「この USB メモリを控えの保存先にする」で登録し直す（目印の `medium_id` と札を引き継ぐ。持ち帰りの控えは次の訪問で登録し直す）。用意の前（状態の file が無い）は何もせず、ホームも知らせない
 - 用意した媒体を登録から外す操作は持たない（D-114 の Non-scope。外すには状態の file を消す。見直し契機に置く）
 - 新しい PC で戻した直後は、その PC の起動時の自動 backup と復元の事前バックアップ（どちらも空の DB の控え）が今日の backup と数えられ、写す元の最新になる。アプリは空の DB の控えを区別しない（店の記録の有無を判定する業務の規則を backup に持たない）ので、§71.13 の本番の復元の手順で、媒体を登録し直す前に手動の backup を作る
 - 持ち帰った媒体の古さはアプリから見えない。店の型 C では、PC と差しっぱなしの 1 本を同時に失ったとき（盗難・火事）に戻れるのは最後の入れ替えの時点までで、訪問の間隔は決まっていない（TD-199）ので失う日数に上限は無い（§71.11.6、D-114 の Guarantee range）
@@ -788,7 +811,7 @@ PC の外の控えが「ある」だけでなく「戻せる」ことを、店�
 |---|---|---|---|---|
 | 短い確かめ | 媒体を入れ替えるたび（店の型は C、§71.11.6。差しっぱなしだけの A なら月に 1 回） | owner（店主でもできる） | (1) 持ち帰っていた媒体を差した直後、アプリが今日の控えを写す前（差してから 60 秒の確認の前）に、バックアップ画面の「控えを選んで確かめる」→ 差した媒体の `InventoryBackup` の最新の file を選ぶ（持ち帰っている間の媒体の記憶を、媒体から読ませて確かめる）。(2) card が「差してある控え: 控え N」と今日の日時になるのを待つ（60 秒以内）。A は (1) の代わりに、差してある媒体の最新の file を選ぶ | (1)「この控えは戻せます」と、作成日時がこの媒体を前に差していた最後の日（前回の入れ替えの日。A なら前の営業日）以降で、最後の記録がその日の作業と合う。(1) で 60 秒の写しが先に済んでいた場合は、最新が今日の控えになるので、2 番目に新しい file で (1) を見る。(2) card に今日の日時と、差した媒体の札 |
 | 通しの演習 | 運用を始める前（go-live の前）と、migration を含むアプリの更新の後 | owner | 店の PC とは別の PC に同じ版のアプリを入れ、「控えを選んで確かめる」で媒体の最新の控えを選び、確かめの結果を見てから 2 段の確認で戻し、ホーム・商品・日次売上の画面で最後の営業日の記録が見えることを確かめる。終わったらその PC のアプリのデータ folder を消す（店のデータを残さない） | 戻った後の画面で、最後の営業日の売上と商品の数が店の PC と合う |
-| 本番の復元（PC を失ったとき） | — | owner | 新しい PC にアプリを入れて起動 → バックアップ画面の「控えを選んで確かめる」→ 媒体の最新の控え → 確かめの結果を見る → 2 段の確認 → 戻る → **バックアップ画面の「今すぐバックアップを作成」を押す**（新しい PC の起動時の自動 backup と復元の事前バックアップは空の DB の控えで、今日の backup と数えられ、押さないと媒体へ写る最新が空の控えになる）→「この USB メモリを控えの保存先にする」で媒体を登録し直す（目印の `medium_id` と札の名前を引き継ぐ） | 戻った後、ホームの「PC の外の控え」の知らせが消える（次の確認で写る）。登録し直した後、「控えを選んで確かめる」で媒体の最新の控えを開き、商品の数と最後の記録の日時が戻した結果と合う（空の控えが写っていない） |
+| 本番の復元（PC を失ったとき） | — | owner | 新しい PC にアプリを入れて起動 → バックアップ画面の「控えを選んで確かめる」→ 媒体の最新の控え → 確かめの結果を見る → 2 段の確認 → 戻る → **バックアップ画面の「今すぐバックアップを作成」を押す**（新しい PC の起動時の自動 backup と復元の事前バックアップは空の DB の控えで、今日の backup と数えられ、押さないと媒体へ写る最新が空の控えになる）。押す前に「現在の保存先」が新しい PC の中の folder かを見て、古い PC の path（戻した DB の `backup_path`）なら「保存先を選ぶ」で選び直す →「この USB メモリを控えの保存先にする」で媒体を登録し直す（目印の `medium_id` と札の名前を引き継ぐ）。残っている控えはすべて登録し直してから、新しい USB メモリを用意する（先に新しい媒体を用意すると、後で登録し直す控えと札が重なる） | 戻った後、ホームの「PC の外の控え」の知らせが消える（次の確認で写る）。登録し直した後、「控えを選んで確かめる」で媒体の最新の控えを開き、商品の数と最後の記録の日時が戻した結果と合う（空の控えが写っていない） |
 
 - 店の PC で通しの演習（実際の復元）をしない: 復元は店の今のデータを控えの時点へ戻す破壊的な操作（UI-11b、D-032）で、演習のために店の記録を巻き戻さない
 - 別の PC に店のデータを置く間の扱い（消す時期）は owner の判断。repo に実データ・backup file を置かない（AGENTS.md の Safety）

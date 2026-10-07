@@ -212,7 +212,7 @@ D-3「独立 useQuery × 4」の直接の含意。1 クエリの失敗が他 3 �
 
 #### PC の外の控えの知らせ（UI-00-D12、D-114）
 
-- 決定: ホームは `getOffsiteBackupStatus`（71 §71.11.5）を独立の query で読み、`stale = true` のときだけ、前日未取込み警告と同じ段に warning の Alert を出す。文は「PC の外の控えが {N} 日写せていません。USB メモリが差してあるか確かめてください。」（N = `days_since_last_success`）、一度も写せていなければ「PC の外の控えがまだ写せていません。USB メモリが差してあるか確かめてください。」。Alert の中に `/settings/backup` への link「バックアップ画面へ」。`stale = false`・用意の前（`prepared = false`）は何も出さない。古さの判定（3 日）は MNT-01 が持ち、ホームは計算しない
+- 決定: ホームは `getOffsiteBackupStatus`（71 §71.11.5）を独立の query で読み、`stale = true` のときだけ、前日未取込み警告と同じ段に warning の Alert を出す。文は「PC の外の控えが {N} 日写せていません。USB メモリが差してあるか確かめてください。」（N = `days_since_last_success`）、一度も写せていなければ「PC の外の控えがまだ写せていません。USB メモリが差してあるか確かめてください。」、`last_failure_kind = state_unreadable`（記録の file が読めない、71 §71.11.5）なら「PC の外の控えの記録を読めません。バックアップ画面で確かめてください。」（USB を差し直しても直らないため。直し方は 71 §71.11.7）。Alert の中に `/settings/backup` への link「バックアップ画面へ」。`stale = false`・用意の前（`prepared = false`）は何も出さない。古さの判定（3 日）は MNT-01 が持ち、ホームは計算しない
 - Why: owner 決定（2026-10-07、repo 外の回答台帳 TD-190 の Q4）「確かめて画面に出す」。店主はバックアップ画面を普段開かないので、写せない日が続いたことを毎日開くホームで知らせる。toast は見落とす（UI-11b-D11 の L3 所感）。用意の前に出さないのは、用意が導入時の owner の作業で、店主に向けた知らせにならないため
 - Rejected alternatives: 共通レイアウトの全画面に帯を出す（営業中の入力の画面にも出続ける）／ toast で毎日知らせる（見落とす・営業中に出る）／ ホームで日数を計算する（業務の規則を UI に置く）
 - 見直し契機: 「3 日」を owner が変えるとき（MNT-01-D8 の `OFFSITE_STALE_DAYS`）。ホームのデザインを刷新するとき
