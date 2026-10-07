@@ -1403,6 +1403,220 @@ pub fn get_monthly_sales_by_department(
         .map_err(|e| DbError::QueryFailed(e.to_string()))
 }
 
+/// 資料の受領と精算の同一性（SPEC-STK-TIME-D2 / D3）。⑤ まで test だけが呼ぶ（D-109 (3)）。
+/// 24-io-csv-import-repo.md「時点証拠契約（proposed）」の表の 1〜5 行。業務の判定は BIZ が行う
+#[cfg(test)]
+pub(crate) mod time_evidence {
+    use crate::db::{DbConnection, DbError};
+    use rusqlite::OptionalExtension;
+
+    /// 同一性の拒否の理由（pos_import_sources.identity_rejection_code の CHECK）
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum IdentityRejectionCode {
+        IdentityConflict,
+        MissingIdentity,
+    }
+
+    impl IdentityRejectionCode {
+        fn as_str(self) -> &'static str {
+            match self {
+                Self::IdentityConflict => "identity_conflict",
+                Self::MissingIdentity => "missing_identity",
+            }
+        }
+
+        fn parse(value: &str) -> Result<Self, DbError> {
+            match value {
+                "identity_conflict" => Ok(Self::IdentityConflict),
+                "missing_identity" => Ok(Self::MissingIdentity),
+                other => Err(DbError::QueryFailed(format!(
+                    "不明な identity_rejection_code: {other}"
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub(crate) struct NewPosImportSource {
+        pub file_hash: String,
+        pub received_at: String,
+        pub settlement_date: String,
+        pub machine_no: Option<String>,
+        pub report_kind: Option<String>,
+        pub settlement_no: Option<String>,
+        pub settled_at: Option<String>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) struct PosImportSource {
+        pub id: i64,
+        pub file_hash: String,
+        pub received_at: String,
+        pub settlement_date: String,
+        pub machine_no: Option<String>,
+        pub report_kind: Option<String>,
+        pub settlement_no: Option<String>,
+        pub settled_at: Option<String>,
+        pub identity_rejection_code: Option<IdentityRejectionCode>,
+        pub identity_rejected_at: Option<String>,
+    }
+
+    /// 同じ精算日の active import と、その source の識別メタ（source なしは各 None）
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) struct ActiveImportIdentity {
+        pub csv_import_id: i64,
+        pub settlement_date: String,
+        pub source_id: Option<i64>,
+        pub machine_no: Option<String>,
+        pub report_kind: Option<String>,
+        pub settlement_no: Option<String>,
+    }
+
+    const SOURCE_COLUMNS: &str = "id, file_hash, received_at, settlement_date, machine_no,
+        report_kind, settlement_no, settled_at, identity_rejection_code, identity_rejected_at";
+
+    fn row_to_source(row: &rusqlite::Row) -> rusqlite::Result<(PosImportSource, Option<String>)> {
+        Ok((
+            PosImportSource {
+                id: row.get(0)?,
+                file_hash: row.get(1)?,
+                received_at: row.get(2)?,
+                settlement_date: row.get(3)?,
+                machine_no: row.get(4)?,
+                report_kind: row.get(5)?,
+                settlement_no: row.get(6)?,
+                settled_at: row.get(7)?,
+                identity_rejection_code: None,
+                identity_rejected_at: row.get(9)?,
+            },
+            row.get(8)?,
+        ))
+    }
+
+    fn with_code(
+        (mut source, code): (PosImportSource, Option<String>),
+    ) -> Result<PosImportSource, DbError> {
+        source.identity_rejection_code = code
+            .as_deref()
+            .map(IdentityRejectionCode::parse)
+            .transpose()?;
+        Ok(source)
+    }
+
+    /// 受領の upsert。同じ hash が既にあれば最初の ID と受領時刻の行をそのまま返す（REPLACE・再採番しない）
+    pub(crate) fn upsert_pos_import_source(
+        conn: &DbConnection,
+        new: &NewPosImportSource,
+    ) -> Result<PosImportSource, DbError> {
+        conn.execute(
+            "INSERT INTO pos_import_sources (file_hash, received_at, settlement_date, machine_no,
+                report_kind, settlement_no, settled_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(file_hash) DO NOTHING",
+            rusqlite::params![
+                new.file_hash,
+                new.received_at,
+                new.settlement_date,
+                new.machine_no,
+                new.report_kind,
+                new.settlement_no,
+                new.settled_at
+            ],
+        )?;
+        let row = conn.query_row(
+            &format!("SELECT {SOURCE_COLUMNS} FROM pos_import_sources WHERE file_hash = ?1"),
+            [&new.file_hash],
+            row_to_source,
+        )?;
+        with_code(row)
+    }
+
+    /// 最大の source ID。空なら 0（cursor の空集合）
+    pub(crate) fn max_pos_import_source_id(conn: &DbConnection) -> Result<i64, DbError> {
+        Ok(conn.query_row(
+            "SELECT COALESCE(MAX(id), 0) FROM pos_import_sources",
+            [],
+            |row| row.get(0),
+        )?)
+    }
+
+    pub(crate) fn get_pos_import_source(
+        conn: &DbConnection,
+        id: i64,
+    ) -> Result<Option<PosImportSource>, DbError> {
+        conn.query_row(
+            &format!("SELECT {SOURCE_COLUMNS} FROM pos_import_sources WHERE id = ?1"),
+            [id],
+            row_to_source,
+        )
+        .optional()?
+        .map(with_code)
+        .transpose()
+    }
+
+    /// 同じ帳票種別で machine_no / settlement_no が一致する別の受領 source（未取込み・取消済みを含む）。
+    /// NULL は `=` で一致しない
+    pub(crate) fn find_settlement_identity_candidates(
+        conn: &DbConnection,
+        report_kind: &str,
+        machine_no: &str,
+        settlement_no: &str,
+        exclude_source_id: i64,
+    ) -> Result<Vec<PosImportSource>, DbError> {
+        let mut stmt = conn.prepare(&format!(
+            "SELECT {SOURCE_COLUMNS} FROM pos_import_sources
+             WHERE report_kind = ?1 AND machine_no = ?2 AND settlement_no = ?3 AND id <> ?4
+             ORDER BY id"
+        ))?;
+        let rows = stmt.query_map(
+            rusqlite::params![report_kind, machine_no, settlement_no, exclude_source_id],
+            row_to_source,
+        )?;
+        rows.map(|row| with_code(row?)).collect()
+    }
+
+    /// 同じ精算日の active import（completed / completed_partial）を csv_imports 起点で全件返す。
+    /// LEFT JOIN で source なし・メタ欠けの行も残す
+    pub(crate) fn list_active_import_identities(
+        conn: &DbConnection,
+        settlement_date: &str,
+    ) -> Result<Vec<ActiveImportIdentity>, DbError> {
+        let mut stmt = conn.prepare(
+            "SELECT ci.id, ci.settlement_date, ci.source_id, s.machine_no, s.report_kind, s.settlement_no
+             FROM csv_imports ci
+             LEFT JOIN pos_import_sources s ON s.id = ci.source_id
+             WHERE ci.settlement_date = ?1 AND ci.status IN ('completed', 'completed_partial')
+             ORDER BY ci.id",
+        )?;
+        let rows = stmt.query_map([settlement_date], |row| {
+            Ok(ActiveImportIdentity {
+                csv_import_id: row.get(0)?,
+                settlement_date: row.get(1)?,
+                source_id: row.get(2)?,
+                machine_no: row.get(3)?,
+                report_kind: row.get(4)?,
+                settlement_no: row.get(5)?,
+            })
+        })?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// 同一性の拒否を初回だけ 2 列一緒に保存する。保存したら true、既にあれば書かずに false
+    pub(crate) fn record_identity_rejection(
+        conn: &DbConnection,
+        source_id: i64,
+        code: IdentityRejectionCode,
+        rejected_at: &str,
+    ) -> Result<bool, DbError> {
+        let affected = conn.execute(
+            "UPDATE pos_import_sources SET identity_rejection_code = ?2, identity_rejected_at = ?3
+             WHERE id = ?1 AND identity_rejection_code IS NULL",
+            rusqlite::params![source_id, code.as_str(), rejected_at],
+        )?;
+        Ok(affected == 1)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // テスト
 // ---------------------------------------------------------------------------

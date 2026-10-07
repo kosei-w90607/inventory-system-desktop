@@ -341,6 +341,137 @@ pub fn list_movements(
     })
 }
 
+/// 時点証拠（SPEC-STK-TIME-D1）の数量と版の更新。⑤ まで test だけが呼ぶ（D-109 (3)）。
+/// 21-io-inventory-repo.md「時点証拠契約（proposed）」
+#[cfg(test)]
+pub(crate) mod time_evidence {
+    use crate::db::{DbConnection, DbError};
+    use rusqlite::OptionalExtension;
+
+    /// 現在の版を読み、checked で 1 進めた値を返す。対象なしは None
+    fn next_revision(conn: &DbConnection, product_code: &str) -> Result<Option<i64>, DbError> {
+        let current: Option<i64> = conn
+            .query_row(
+                "SELECT stock_revision FROM products WHERE product_code = ?1",
+                [product_code],
+                |row| row.get(0),
+            )
+            .optional()?;
+        current
+            .map(|revision| {
+                revision.checked_add(1).ok_or_else(|| {
+                    DbError::QueryFailed("stock_revision が上限に達しています".to_string())
+                })
+            })
+            .transpose()
+    }
+
+    /// 数量と `stock_revision` を 1 つの UPDATE で更新する。同じ数量でも版を進める。
+    /// 対象なしは false。版が上限なら数量も版も書かずにエラー。TX は呼出し側が持つ
+    pub(crate) fn update_stock_quantity_with_revision(
+        conn: &DbConnection,
+        product_code: &str,
+        new_quantity: i64,
+    ) -> Result<bool, DbError> {
+        let Some(revision) = next_revision(conn, product_code)? else {
+            return Ok(false);
+        };
+        let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+        let affected = conn.execute(
+            "UPDATE products SET stock_quantity = ?1, stock_revision = ?2, updated_at = ?3
+             WHERE product_code = ?4",
+            rusqlite::params![new_quantity, revision, now, product_code],
+        )?;
+        Ok(affected == 1)
+    }
+
+    /// 数量を変えずに版だけを checked で 1 進め、増分後の版を返す。対象なしは NotFound
+    pub(crate) fn bump_stock_revision(
+        conn: &DbConnection,
+        product_code: &str,
+    ) -> Result<i64, DbError> {
+        let revision = next_revision(conn, product_code)?.ok_or(DbError::NotFound)?;
+        conn.execute(
+            "UPDATE products SET stock_revision = ?1 WHERE product_code = ?2",
+            rusqlite::params![revision, product_code],
+        )?;
+        Ok(revision)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::db::test_support::{seed_product, setup_time_evidence_db};
+
+        fn state(conn: &DbConnection, code: &str) -> (i64, i64) {
+            conn.query_row(
+                "SELECT stock_quantity, stock_revision FROM products WHERE product_code = ?1",
+                [code],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap()
+        }
+
+        #[test]
+        fn test_update_stock_quantity_with_revision_req205_t8_same_quantity_bumps() {
+            // REQ-205 / SPEC-STK-TIME-D1 / T8: 同じ数量でも版を 1 進める（ABA を見逃さない）
+            let (_dir, conn) = setup_time_evidence_db();
+            seed_product(&conn, "TE-1");
+            assert!(update_stock_quantity_with_revision(&conn, "TE-1", 0).unwrap());
+            assert_eq!(state(&conn, "TE-1"), (0, 1));
+            assert!(update_stock_quantity_with_revision(&conn, "TE-1", 5).unwrap());
+            assert_eq!(state(&conn, "TE-1"), (5, 2));
+        }
+
+        #[test]
+        fn test_update_stock_quantity_with_revision_req205_t9_ceiling_and_missing() {
+            // REQ-205 / SPEC-STK-TIME-D1 / T9: 上限では Rust 側の固定の文で拒否し、数量も版も書かない
+            let (_dir, conn) = setup_time_evidence_db();
+            seed_product(&conn, "TE-1");
+            conn.execute(
+                "UPDATE products SET stock_quantity = 7, stock_revision = ?1 WHERE product_code = 'TE-1'",
+                [i64::MAX],
+            )
+            .unwrap();
+            match update_stock_quantity_with_revision(&conn, "TE-1", 3) {
+                Err(DbError::QueryFailed(message)) => {
+                    assert_eq!(message, "stock_revision が上限に達しています")
+                }
+                other => panic!("上限の error を期待: {other:?}"),
+            }
+            match bump_stock_revision(&conn, "TE-1") {
+                Err(DbError::QueryFailed(message)) => {
+                    assert_eq!(message, "stock_revision が上限に達しています")
+                }
+                other => panic!("上限の error を期待: {other:?}"),
+            }
+            assert_eq!(state(&conn, "TE-1"), (7, i64::MAX));
+
+            // 対象なし: false で何も変えない
+            assert!(!update_stock_quantity_with_revision(&conn, "TE-NONE", 3).unwrap());
+            assert!(matches!(
+                bump_stock_revision(&conn, "TE-NONE"),
+                Err(DbError::NotFound)
+            ));
+            assert_eq!(state(&conn, "TE-1"), (7, i64::MAX));
+        }
+
+        #[test]
+        fn test_bump_stock_revision_req205_t10_caller_tx_rollback() {
+            // REQ-205 / SPEC-STK-TIME-D1 / T10: 増分後の版を返し、呼出し側 TX の rollback で両方戻る
+            let (_dir, mut conn) = setup_time_evidence_db();
+            seed_product(&conn, "TE-1");
+            let tx = conn.transaction().unwrap();
+            assert!(update_stock_quantity_with_revision(&tx, "TE-1", 4).unwrap());
+            assert_eq!(bump_stock_revision(&tx, "TE-1").unwrap(), 2);
+            assert_eq!(bump_stock_revision(&tx, "TE-1").unwrap(), 3);
+            assert_eq!(state(&tx, "TE-1"), (4, 3));
+            tx.rollback().unwrap();
+            assert_eq!(state(&conn, "TE-1"), (0, 0));
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // テスト
 // ---------------------------------------------------------------------------

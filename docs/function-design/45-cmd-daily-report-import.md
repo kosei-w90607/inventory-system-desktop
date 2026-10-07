@@ -22,6 +22,7 @@ struct AppState {
     db: Mutex<Connection>,
     preview_cache: Mutex<HashMap<String, CachedPreview>>,
     daily_report_preview_cache: Mutex<HashMap<String, CachedDailyReportPreview>>,
+    register_sd_scan_cache: Mutex<HashMap<String, DailyReportSdScanSnapshot>>, // CMD-12-D1
 }
 ```
 
@@ -47,8 +48,12 @@ fn parse_and_validate_daily_report(
 struct DailyReportSourceFileRequest {
     filename: String,
     file_bytes: Vec<u8>,
+    #[serde(default)]
+    source_path: Option<String>, // D-111 で足す。native dialog で選んだ file の path（UI-07-D16）。省略は None
 }
 ```
+
+`source_path` は BIZ-08 §37.3 手順 1a が、選んだ file がレジの SD の上にあるかを確かめるためだけに使う（CMD は path を解釈しない）。CMD は `DailyReportInputFile { filename, bytes, sd_relative_path: None, source_path: source_path.map(PathBuf::from) }` を作って渡す。空文字の `source_path` は `None` と同じに扱う。今の構築（`src-tauri/src/cmd/daily_report_import_cmd.rs:43`）と test の `request`（同 `:242`）に field を足す。
 
 **出力型**:
 
@@ -79,17 +84,21 @@ struct DailyReportPreviewResponse {
 #[tauri::command]
 fn commit_daily_report_import(
     state: State<AppState>,
+    app: tauri::AppHandle, // D-111 で足す。Tauri が注入し、wire（bindings の引数）は変わらない
     preview_token: String,
     additional_import_confirmed: bool,
 ) -> Result<DailyReportImportResult, CmdError>
 ```
 
+今の実装（`src-tauri/src/cmd/daily_report_import_cmd.rs` の `commit_daily_report_import`）は `State<AppState>` だけを受ける。runtime の lane で `app: tauri::AppHandle` を足し、test 用の `commit_daily_report_import_with_state` には解決済みの `app_data_dir: &Path` を引数で渡す（test は一時 directory を渡す）。
+
 **処理ステップ**:
 1. preview_tokenのUUID形式を検証する。
 2. `daily_report_preview_cache` からcached previewを取得する。
 3. cache miss / 期限切れは `CmdError.kind="import_error"`。
+3a. `app.path().app_data_dir()` で写しの置き場所を取る（`settings_cmd.rs` の `get_backup_dir` / `restore_backup` と同じ取り方）。失敗は `CmdError::internal("アプリデータの保存先を取得できませんでした", e)` で、cache は残す。
 4. DB接続を取得する。
-5. `additional_import_confirmed` をBIZ-08 `commit_daily_report_import` へ渡す。Rust wire名はこのsnake_case、TypeScript生成名は `additionalImportConfirmed` とする。
+5. `additional_import_confirmed` と手順 3a の `app_data_dir` をBIZ-08 `commit_daily_report_import` へ渡す（写しを書くかは BIZ-08-D5 が決め、CMD は書く規則を持たない）。Rust wire名はこのsnake_case、TypeScript生成名は `additionalImportConfirmed` とする。
 6. 成功時、cacheからtokenを削除する。
 7. 通常の失敗時はcacheを残して再試行可能にする。ただしBIZが `同日の取込み状況が変わりました。再度プレビューしてください` を返した場合はtokenを削除し、新しいpreview/tokenを要求する。
 
@@ -125,6 +134,48 @@ fn list_daily_report_imports(
 
 status filter は第1スライスでは公開しない。BIZ-08のquery型には内部拡張用に `status` を残し、CMD-12からは `None` を渡す。
 
+### 45.6a scan_register_sd（CMD-12-D1、D-111）
+
+**関数要求**: レジの SD を BIZ-08 §37.9 で読み、候補の一覧と scan_token を返す。
+
+```rust
+#[tauri::command]
+fn scan_register_sd(
+    state: State<AppState>,
+    selected_path: Option<String>, // None = 自動で探す。Some = 利用者が folder の選択で選んだ path
+) -> Result<RegisterSdScanResponse, CmdError>
+
+struct RegisterSdScanResponse {
+    scan: DailyReportSdScan, // 37 §37.9
+    scan_token: String,
+}
+```
+
+**処理ステップ**:
+1. `selected_path` を BIZ-08 の `DailyReportSdSelection`（37 §37.9。`None` → `Auto`、`Some` → `Selected(PathBuf)`）にする。CMD は IO-09 の型を使わない（`src-tauri/tests/architecture_test.rs` の LAYER_RULES で cmd → io は禁止）。空文字は `CmdError.kind="validation"`。
+2. DB接続を取得し、BIZ-08 `scan_register_sd_daily_reports(conn, selection, PC の今日の日付)` を呼ぶ。SD を読む間（窓の範囲の小さな file と照合。利用者は 1 人）は DB の Mutex を持ったままでよい。
+3. 成功時、UUID の scan_token を作り、`register_sd_scan_cache` を空にしてから snapshot を入れる（同時に持つ scan は最新の 1 つだけ）。
+4. response を返す。
+
+### 45.6b parse_and_validate_daily_report_from_sd（CMD-12-D1）
+
+```rust
+#[tauri::command]
+fn parse_and_validate_daily_report_from_sd(
+    state: State<AppState>,
+    scan_token: String,
+    candidate_key: String,
+) -> Result<DailyReportPreviewResponse, CmdError>
+```
+
+**処理ステップ**:
+1. scan_token の UUID 形式を検証する。
+2. `register_sd_scan_cache` から snapshot を取得する。miss または作成から 30 分超は `CmdError.kind="import_error"`、message `SD を読んでから時間がたちました。もう一度 SD を読んでください。`。UI はこの kind・message で分岐せず、SD から来たほかの失敗と同じく一覧（`sd_list`）へ戻し、一覧の「SD から読む」で読み直させる（55 UI-07-D15 (4)・(5)）。
+3. `files_by_candidate[candidate_key]` が無ければ `CmdError.kind="validation"`（取り込めない候補）。
+4. 以降は §45.3 の手順 3〜6 と同じ（BIZ-08 `parse_and_validate_daily_report` に 3 本を `sd_relative_path` つきで渡し、preview_token を返す）。commit は §45.4（手順 3a で取った `app_data_dir` を BIZ-08 に渡す。写しの置き場所、BIZ-08-D5）。snapshot は消さない（同じ scan から別の候補を続けて取り込める）。
+
+**CMD-12-D1**: CMD は scan の snapshot を AppState に置いて渡すだけで、SD の探し方・候補の規則・状態の判定を持たない（BIZ-08-D3）。CMD は IO-09 を直接呼ばない（ARCHITECTURE のレイヤー間の呼び出し原則、`src-tauri/tests/architecture_test.rs`）。snapshot を AppState に置くのは、SD を読み終えたらすぐレジへ戻せるようにするため（SD-18）。棄却案: scan の結果の bytes を UI へ返して UI から §45.3 を呼ぶ（取り込まない Z004 等は持たないが、日報だけでも wire に生バイトを往復させ、UI が束を組める余地を作る）、preview のたびに SD を読み直す（SD を差したままにする必要がある）。
+
 ### 45.7 CmdError変換
 
 | BIZ-08 error | CmdError.kind | message |
@@ -134,10 +185,13 @@ status filter は第1スライスでは公開しない。BIZ-08のquery型には
 | ValidationFailed(msg) | validation | msgをそのまま使用 |
 | NotFound(msg) | not_found | msgをそのまま使用 |
 | DatabaseError(_) | internal | データベースエラーが発生しました。もう一度お試しください |
+| SourceCopyFailed(kind)（D-111、BIZ-08-D5） | internal（`CmdError::internal`、`error_id` つき。io error の kind は診断にだけ出す） | SD から読んだファイルの写しを PC に保存できなかったため、取り込みませんでした。PC の空き容量を確かめて、もう一度取り込んでください。 |
+
+`SourceCopyFailed` を `import_error` にしない: UI は commit の `import_error` を最初へ戻す（`src/features/daily-report-import/hooks/useDailyReportImportFlow.ts:35` の `decideRecoverTo`）ので、`import_error` にすると preview と token を失う。`internal` なら `decideRecoverTo` が `preview` を返し、§45.4 手順 7 の「通常の失敗は cache を残す」で token も残るので、同じ preview・同じ token で再試行できる（55 の日報取込みの利用者フローの手順 2）。`impl From<BizError> for CmdError`（`src-tauri/src/cmd/mod.rs:130`）に分岐を足す。
 
 ### 45.8 生成bindings
 
-SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。
+SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の runtime では `scan_register_sd` / `parse_and_validate_daily_report_from_sd` を、`lib.rs` の specta の `collect_commands!`（今は `src-tauri/src/lib.rs:277`）と runtime の `tauri::generate_handler!`（同 `:1272`）の両方に登録し（どちらか一方だけだと、`scripts/check-command-drift.sh`〈`bash scripts/doc-consistency-check.sh` の Command registry drift、`D=` 宣言・`H=` generate_handler・`S=` collect_commands・`T=` bindings の 4 つの集合の一致〉が失敗する。件数は正本に書かず、この 4 つの集合が一致することだけを契約にする）、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（§45.3）を足すほかは変えない（足す field は `#[serde(default)]` で、省いた呼出しは今どおり PC 上の file として通る。`settlement_no` と `source_files_json` の `sd_relative_path`・`copy_path` は内部の cache と DB だけで、wire に出さない。37 §37.4 手順 6）。
 
 対象:
 - `parse_and_validate_daily_report`
@@ -150,3 +204,8 @@ SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Ty
 | 日付 | PR | 内容 |
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D3/D4: same-date summary DTO、`additional_import_confirmed`、snapshot mismatch時のtoken破棄、per-import rollback、bindings再生成義務を正本化。 |
+| 2026-10-06 | sd-direct-read（design、D-111） | CMD-12-D1: `scan_register_sd` と `parse_and_validate_daily_report_from_sd`、AppState の scan cache。 |
+| 2026-10-07 | sd-direct-read（Final Review の P3 の是正） | §45.6b 手順 2 の期限切れを UI が一覧へ戻す扱いを 55 UI-07-D15 に合わせた。§45.8 から command registry の件数を消し、4 つの集合の一致だけを契約にした。 |
+| 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §45.7 に `SourceCopyFailed` → `internal`（写しの失敗の後に UI が preview と token に戻れる）。§45.8 に新しい 2 command の `generate_handler!` への登録と command registry の gate。 |
+| 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | §45.3 の `DailyReportSourceFileRequest.source_path`（手で選んだ SD 上の file を SD の入力にする、37 §37.3 手順 1a）。§45.6a の選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。§45.8 の wire の契約を足す field に合わせた。 |
+| 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | §45.4 の commit に `app: tauri::AppHandle` と `app_data_dir` の取り方（手順 3a）を足した（BIZ-08-D5 の写しの置き場所）。 |

@@ -12,6 +12,8 @@ src-tauri/src/
   lib.rs          -- setup hook に check_auto_backup 呼び出しを追加
 ```
 
+バックアップの対象は DB の 1 file（`VACUUM INTO`）だけで、アプリのデータ folder のレシート画像（`images/`、IO-06）と SD から読んだ原本の写し（`pos-sources/`、IO-10・BIZ-08-D5、D-111）は入らない。restore はそれらの file を変えない。写しを backup に含めるか・PC の外へ出すかは D-111 の未決 B。
+
 ---
 
 ### 71.2 依存クレート
