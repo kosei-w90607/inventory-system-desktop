@@ -4,7 +4,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: dbe6626d030fbe80c54f0c8990ee3239b8ff10b6
 - Amendments: none
@@ -28,6 +28,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 8. plan-gate のまま是正（round 2、2026-10-07、Coordinator）: round 2 の reject を起草役が `f8c816f5`（指摘 1〜9）と `6d3880c6`（Contract Probe P1）で直した（下の Review Response）。Scope に `24-io-csv-import-repo.md` を足したが Goal と設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
 9. plan-gate（round 3、上限、2026-10-07、Coordinator）: round 3 は両者 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal と設計の方向を変えない）。起草役が `70387036` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は owner に諮り、reviewer の再確認は Final Review に回す（前例: `docs/archive/plans/2026-09-29-harness-pr5-gate-holes.md`）。
 10. plan-gate → plan-approved（2026-10-07、Coordinator、本 commit）: round 3 の disposition（同型指摘の一括是正）の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-180）。同じ問い合わせで介入の上限を 12 に（TD-181）、移行期の SD を戻す案内を「いつもの取込み」の文に（TD-182）決め、`dbe6626d` に反映した。Plan Commit = `dbe6626d`（承認した版）。reviewer の再確認は Final Review。
+11. plan-approved → implementing（2026-10-07、Coordinator、state-only）: 本 lane の成果物（Scope の設計正本）は plan-first の change に同乗済みで、implementing で書く runtime のコードは無い（runtime は後続の lane）。Draft PR #150 で Final Review（Claude 側 Fable 5.1 と Codex、互いに独立、Final Review Minimum 1）へ進む（前例: `docs/archive/plans/2026-09-27-daily-report-z-display.md`）。
 
 ## Owner Effort Budget
 
@@ -279,7 +280,7 @@ Test Design Matrix: [2026-10-06-sd-direct-read](test-matrices/2026-10-06-sd-dire
 
 ## Implementation Results
 
-Fill after implementation.
+本 lane は docs だけで、implementing で足す runtime の code・test・migration は無い。成果物は Scope の表の設計正本・D-111・Matrix で、plan-first の commit 列（Plan Commit `dbe6626d` まで）に同乗している。検証は `bash scripts/doc-consistency-check.sh` と `--target plan`（AC6）。runtime の実装・test・Windows の L3 は後続の「SD 直読みの runtime」の lane（`docs/backlog.md`）。
 
 ## Review Response
 
