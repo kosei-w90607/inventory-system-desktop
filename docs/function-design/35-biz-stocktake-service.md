@@ -33,7 +33,7 @@ CountContextはサーバー生成UUID、用途（in_progress / independent_recou
 
 complete_stocktakeのTX内で状態、未入力、legacy、flagを再検査する。確定対象の棚卸しに明細がある商品に、未解消の要再確認flag（計数と前後不明の販売・相殺の行あり・相殺の確認待ち・旧記録の実測のどれでも）か旧実測の再確認が残る間は、明細のkind（未計数・auto_filled〈廃番の開始時の自動入力を含む〉・measured）と最新の実測の所属によらず、force_fillでも確定を拒否し、その明細の計数へ案内する。measuredの補正は現在庫へ `N-L` を加算し、保存後の入出庫を残す。force_fillはkind=auto_filled、N=L=max(現在庫,0)、補正0。廃番の開始時自動入力もauto_filledで、過去の実測基準を上書きしない。
 
-新方式のtotal_costは、各明細の評価数量 `max(補正後現在庫,0)` と確定時評価原価から[§20.5a](#205a-評価額の計算価格の基準数量と店の丸め)の関数（SPEC-STK-VAL-D1〜D5）で求める。数量と積和はchecked演算とする。補正区分はcompletion。差0の確定も商品状態の版を進めて古いcontextを失効させる。確定後には独立再実測の入口を利用できる状態へ戻す。既存のTX外best-effortログ・確定後整合性チェックは維持する。
+新方式のtotal_costは、各明細の評価数量 `max(補正後現在庫,0)` と確定時評価原価（旧本体§20.5と同じく `update_stocktake_item_valuation` で各明細のvaluation_cost_priceへ固定保存する）から[§20.5a](#205a-評価額の計算価格の基準数量と店の丸め)の関数（SPEC-STK-VAL-D1〜D5）で求める。数量と積和はchecked演算とする。補正区分はcompletion。差0の確定も商品状態の版を進めて古いcontextを失効させる。確定後には独立再実測の入口を利用できる状態へ戻す。既存のTX外best-effortログ・確定後整合性チェックは維持する。
 
 legacyの取消の保留（[32](32-biz-csv-import-service.md)。legacy上限 `stocktake_legacy_movement_ceiling` 以下で適用済み吸収先が分からない商品）は、通常のbegin/saveで解除する。active明細があればその計数と棚卸しの確定、なければ完了済み明細を参照する独立再実測で新しい適用済み実測を作り、その後に取消を再試行する。取消のための用途・理由・付け替えは設けない。旧activeを新方式で確定する場合は、必要な再確認が解消した同じTXでreconciliation_version=1にする。通常の独立再実測からactiveを迂回する権限は与えない。
 
@@ -50,10 +50,10 @@ begin・save・確定の拒否は[40の回復型](40-cmd-product.md)のcodeとta
 | 場面 | 拒否の条件 | code | targets | message |
 |---|---|---|---|---|
 | begin | 用途と所有者が合わない（`in_progress` で親が完了済み、`independent_recount` で参照明細の親が進行中、または同じ商品にactive明細がある） | count_target_changed | 商品の回復先1件 | 数える対象の棚卸しが変わりました。表示し直してから数えてください |
-| save | 保存済みrequestでなく、contextがない・DB世代が違う | count_context_invalid | 商品の回復先1件（contextがなく商品が分からなければ空） | 最新の記録を確認してください |
+| save | 保存済みrequestでなく、contextがない・contextのtokenが引数のtokenと違う・DB世代が違う | count_context_invalid | 商品の回復先1件（contextがなく商品が分からなければ空） | 最新の記録を確認してください |
 | save | 商品revisionがbeginの値と違う | count_context_invalid | 商品の回復先1件 | 数えている間に記録が変わりました。もう一度数えてください |
 | save | 所有者・親状態がbeginの用途と合わなくなった | count_target_changed | 商品の回復先1件 | 数える対象の棚卸しが変わりました。表示し直してから数えてください |
-| 確定 | 明細がある商品に未解消のflagがある、またはkind=legacyの明細がある（force_fillでも） | recount_required | 該当する明細ごと（action `active_count`、`recount_reasons` は未解消のflagの理由、legacyだけなら空） | flagがあれば「取り込んだ後に数の再確認が必要です」、legacyだけなら「更新前の記録です。今の数を確認してください」 |
+| 確定 | 確定対象の棚卸しに明細がある商品に未解消のflagがある、または確定対象の棚卸しにkind=legacyの明細がある（完了済みの棚卸しの明細は数えない。force_fillでも） | recount_required | 該当する明細ごと（action `active_count`、`recount_reasons` は未解消のflagの理由、legacyだけなら空） | flagがあれば「取り込んだ後に数の再確認が必要です」、legacyだけなら「更新前の記録です。今の数を確認してください」 |
 
 - 回復型に載せない拒否: 負数・JavaScriptの安全な整数（2^53-1）を超えるN、補正後の在庫の範囲外は既存の `ValidationFailed`。同じrequest IDで違うNは既存の `IdempotencyConflict`。明細の不在は既存の `NotFound`。保存済みrequest IDがitemとrecountの両方に見つかる異常は `DatabaseError`（書込みなし）。
 - 理由: 失効（同じ対象をもう一度数える）と保存先の変更（別の明細・用途で数える）は次の操作が違う。1つのcodeにまとめるとUIが行き先をmessageから推測することになる。確定の拒否はflagとlegacyで次の操作が同じ（その明細を数える）なので1つのcodeにし、理由は `recount_reasons` で分ける。
@@ -146,7 +146,7 @@ src-tauri/src/
 - product_code: String
 - product_name: String
 - department_name: String
-- system_stock: i64（stocktake_items.system_stock。旧本体では明細を作った時点〈棚卸しの開始時〉の値。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）
+- system_stock: i64（stocktake_items.system_stock。旧本体では明細を作った時点〈棚卸しの開始時〉の値。新方式の保存でmeasuredにした明細は保存TXの帳簿。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）
 - current_stock: i64（現在のシステム在庫。products.stock_quantity。CSV取込み等で変動している可能性あり）
 - actual_count: Option\<i64\>（NULLなら未入力）
 - counted_at: Option\<String\>（YYYY-MM-DDTHH:MM:SS）
@@ -292,7 +292,7 @@ fn update_count(
 
 **設計判断 — 差異の動的計算**:
 - architecture/biz-task-specs.md BIZ-06「棚卸し中もCSV取込みで在庫が動くため」（SP-205-09修正）に基づき、差異は stocktake_items.system_stock ではなく現在の products.stock_quantity を使って動的に計算する
-- 旧本体の system_stock は明細を作った時点の参考値として記録するのみで、カウント時に更新しない。差異表示に使うのは常に最新の stock_quantity。新方式は保存TXで L を取り直す（時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）
+- 旧本体の system_stock は明細を作った時点の参考値として記録するのみで、カウント時に更新しない。差異表示に使うのは常に最新の stock_quantity。新方式の保存は、明細をmeasuredにするたびに（旧activeの明細を保存し直す場合も）保存TXで L を取り直す（時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）
 
 **設計判断 — 操作ログなし**:
 - カウント入力は1件ずつ頻繁に行われる操作（4000件の商品を順次カウント）。毎回 operation_log を記録すると大量のログが生成され、有用な操作ログが埋もれる。棚卸しの開始と確定のみ記録する

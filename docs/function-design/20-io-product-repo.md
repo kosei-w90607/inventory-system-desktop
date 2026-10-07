@@ -935,7 +935,7 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 
 **StocktakeRecordDetailItem構造体**（補正 movement 起点の JOIN 行）:
 - product_code: String, product_name: String, department_name: String, stock_unit: String
-- system_stock: i64（棚卸し開始時システム在庫の snapshot）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
+- system_stock: i64（旧本体では明細を作った時点〈棚卸しの開始時、または棚卸し中の商品登録時〉の帳簿。新方式の measured は保存TXの帳簿。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
 - adjustment_quantity: i64（補正 movement の quantity。確定時 live 在庫基準）, stock_after: i64（補正後在庫）
 
 **処理ステップ**:
