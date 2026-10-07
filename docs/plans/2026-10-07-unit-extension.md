@@ -25,6 +25,7 @@
 5. plan-draft → plan-gate（2026-10-08、Coordinator、本 commit）: packet と Matrix（`docs/plans/test-matrices/2026-10-07-unit-extension.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。AC1〜AC6 の command を plan-gate の直前に逐語で再測し、反映後の期待と一致（AC1 `11`、AC2 1 行と `2`、AC3 `2`・`4`・`1`、AC4 J1〜J4 の 4 行と `0`、AC5 `0`、AC6 `0`）。Draft PR で Plan Review（fresh Opus + Codex）に出す。
 6. plan-gate → plan-draft（round 1 の是正、2026-10-08、Coordinator、本 commit）: round 1 の reject の是正（起草役の `8981cbc9`・`a3b64f3f`）と owner の決定（数量を出す画面はすべて m〈TD-203〉、単位をまたぐ集計は個数の種類の「点」と長さの「m」の 2 本〈TD-206・TD-207〉）で Goal・Ordinary Operation・Scope の予定 file（34・56・57 を追加）と wire の型が変わった。`docs/DEV_WORKFLOW.md` Workflow State「a rejection that invalidates Scope or design returns to plan-draft or design」により plan-draft へ戻す（設計の出力は正本にあり、未解決の設計の問いは無いので design までは戻さない）。
 7. plan-draft → plan-gate（round 2 へ、2026-10-08、Coordinator、本 commit）: 是正後の packet と Matrix が commit されている（`a3b64f3f`）。AC1〜AC6 の期待は変わらず、起草役が逐語で再測して一致（`11`・`2`・`4`・`0`・`0`・`0`）。round 2 で再 review する。
+8. plan-gate のまま是正（round 2、2026-10-08、Coordinator）: round 2 の reject を起草役が `74125ea7` で直した（下の Review Response）。Goal・AC・Scope の予定 file は変えないので plan-gate に留め、round 3（上限）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
 
 ## Owner Effort Budget
 
@@ -349,3 +350,14 @@ round 1（`b99ef7f4`）: Claude 側 fresh Opus 5.5 = reject（P2 4 / P3 3）、C
 - P2（Opus F3）`product_price_revise` の操作ログの key の改名が漏れていた。P2（Opus F4）商品 CSV の m の行の `初期在庫` の読み方が無かった。是正: Coordinator が店の事実（台帳 L-214、残り・仕入れ・値札は m）から m の数として読むと決めた（`m,25` → 2500 cm）。介入に数えない。
 - P3: demo の seed の 2 か所（Opus F7）、原価の wire の型の数を 14 に（Codex #9）。
 - 起草役の判断で Coordinator が受けたもの: 67（PLU 書出し）と 53（ホーム）は並走 lane が触るので編集せず、10 の表と申し送りで持たせた。月次の CSV の部門別の行は `5 点・1.8 m` の文字列（個数だけの部門は今と同じ整数）。
+
+round 2（`0b3dc340`）: Claude 側 fresh Opus 5.5 = reject（P2 2 / P3 4）、Codex GPT-6 Astra（発注 251）= reject（P2 5）。P1 は 0。重なりは Opus #2 = Codex #2、Opus #4 = Codex #3、Opus #6 と Codex #1 は同じ所。Coordinator が採否を決め、全件を採用した。是正は起草役の `74125ea7`（自己点検で同型の穴も直した）。
+
+- P2（Codex #1・Opus #6）`cm` 単位の商品の表示が「長さはすべて m」と食い違っていた。Coordinator の決定: 数量の表示は長さの種類（m・cm）ともに m に揃える（TD-203 と TD-207〈長さは m・cm とも m で出す〉を延ばした解釈。入力の単位と保存値は変えない）。介入に数えない。
+- P2（Opus #1）棚卸しは今の build で停止中で、棚卸しの m 表示と L3-5 は ⑤ に依る。是正: Ordinary Operation の行 6 と L3-5 の依存に ⑤ を書き、L3-5 を ⑤ の L3 へ移した。新方式の確定は ⑤ が `unit_amount` と `stock_unit` で作ると申し送りと 35 §20.5a に足した。
+- P2（Opus #2・Codex #2）BIZ が文字列に埋め込む在庫警告・整合性チェックの補正結果・操作ログの補正の量が「表示する所」の表から漏れていた。是正: 表に行 10〜12、31 に在庫警告の 4 か所の整形の契約、記録済みの値は表の外と明記。
+- P2（Opus #4・Codex #3）migration の失敗で戻るのは失敗した migration の TX だけで、成功済みの版は残る。是正: 22 §16 の回復を `migrate` の現物（migration ごとの COMMIT）に合わせ、更新の前の backup へ戻す分岐と連続適用の失敗の Matrix の行を足した。
+- P2（Codex #4）vC の範囲外の値が画面で直せない履歴の列にある。是正: 更新保留・原本保全・管理者対応（R4 の判断として owner に諮る）の回復の分岐。
+- P2（Codex #5）原価の parser の oracle が浮動小数の誤りを落とせない。是正: `0.29→29`・`0.57→57`・`45035996273704.95` 等の境界を足した。
+- P3: m の入力の上限（Opus #3）、vC で止まったときに開ける版（Opus #4 の残り）、UI-04-D18 の求め直しの範囲（Opus #5）。
+- 起草役の判断で Coordinator が受けたもの: UI-04-D18 で数量に合わせて金額を求め直すのは長さの商品だけ（個数の商品の今の振舞いを変えない）。58 の現行の実装の説明に残る `300 cm` は今の正本として残し、変更後の契約は §58.6 の proposed の項に置く。
