@@ -271,6 +271,24 @@ fn safe(value: Option<i64>) -> Result<i64, BizError> {
         })
 }
 
+/// 利用者へ返す数（ID・在庫・N・L・差異・補正量・総額）は全て `safe` の範囲に収める
+fn safe_all(values: &[i64]) -> Result<(), BizError> {
+    values.iter().try_for_each(|v| safe(Some(*v)).map(drop))
+}
+
+/// 保存・再送の結果の全ての数を検査する（保存は commit の前に呼び、範囲外は TX ごと戻す）
+fn checked_save_result(result: CountSaveResult) -> Result<CountSaveResult, BizError> {
+    safe_all(&[
+        result.stocktake_item_id,
+        result.recount_id.unwrap_or(0),
+        result.system_stock,
+        result.actual_count,
+        result.difference,
+        result.stock_after,
+    ])?;
+    Ok(result)
+}
+
 // ---------------------------------------------------------------------------
 // 開始
 // ---------------------------------------------------------------------------
@@ -368,6 +386,7 @@ pub(crate) fn begin_stocktake_count(
         source_cursor,
         db_generation,
     };
+    safe_all(&[target.item_id, target.stock_quantity])?;
     let result = BeginCountResult {
         count_token,
         stocktake_item_id: target.item_id,
@@ -400,7 +419,7 @@ pub(crate) fn save_stocktake_count(
             )
             .into());
         }
-        return Ok(CountSaveResult {
+        return Ok(checked_save_result(CountSaveResult {
             status: CountSaveStatus::Replayed,
             stocktake_item_id: saved.item_id,
             recount_id: saved.recount_id,
@@ -412,7 +431,7 @@ pub(crate) fn save_stocktake_count(
             } else {
                 saved.stock_quantity
             },
-        });
+        })?);
     }
 
     // 2. context・token・DB 世代
@@ -545,9 +564,8 @@ pub(crate) fn save_stocktake_count(
         }
     };
 
-    // 8. commit
-    tx.commit()?;
-    Ok(CountSaveResult {
+    // 8. 返す数を検査してから commit（L が範囲外なら差異が安全でもここで TX ごと戻す）
+    let result = checked_save_result(CountSaveResult {
         status: CountSaveStatus::Saved,
         stocktake_item_id: target.item_id,
         recount_id,
@@ -555,7 +573,9 @@ pub(crate) fn save_stocktake_count(
         actual_count,
         difference,
         stock_after,
-    })
+    })?;
+    tx.commit()?;
+    Ok(result)
 }
 
 // ---------------------------------------------------------------------------
@@ -631,6 +651,7 @@ pub(crate) fn complete_stocktake(
                 let n = item.actual_count.ok_or_else(|| {
                     DbError::QueryFailed(format!("measured の明細 {} に数量がありません", item.id))
                 })?;
+                safe_all(&[item.system_stock, n])?;
                 let adjustment = safe(n.checked_sub(item.system_stock))?;
                 let after = safe(current.checked_add(adjustment))?;
                 if adjustment != 0 {
@@ -676,6 +697,7 @@ pub(crate) fn complete_stocktake(
                 .into())
             }
         };
+        safe(Some(stock_after))?;
         // 差 0 の商品も版を進めて古い context を失効させる
         bump_stock_revision(&tx, &item.product_code)?;
         update_stocktake_item_valuation(&tx, item.id, product.cost_price)?;
@@ -688,7 +710,7 @@ pub(crate) fn complete_stocktake(
     }
 
     // 5. header を completed・版 1 に
-    let total_cost = valuation_total_yen(&line_centis)?;
+    let total_cost = safe(Some(valuation_total_yen(&line_centis)?))?;
     repo::complete_stocktake_v1(&tx, stocktake_id, total_cost, completed_at)?;
     tx.commit()?;
     Ok(CompletionResult {

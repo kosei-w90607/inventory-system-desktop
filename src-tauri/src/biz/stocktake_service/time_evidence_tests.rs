@@ -673,10 +673,12 @@ fn test_save_stocktake_count_req205_c8_count_range() {
     // REQ-205 / SPEC-STK-TIME-D1 / ADR D8 / C8: N は 0〜2^53-1。補正の overflow と、差異・補正量が
     // 安全な整数（±2^53-1）を外れる保存・再送は書込み 0 の ValidationFailed
     let (_dir, mut conn) = setup_time_evidence_db();
-    product_full(&conn, "TE-A", 10, false, "pcs", 1);
+    // 原価 0: N = 2^53-1 を通しても総額が安全な整数の外にならない（総額の範囲は C21）
+    product_full(&conn, "TE-A", 10, false, "pcs", 0);
     product(&conn, "TE-B", 10);
     product(&conn, "TE-C", 10);
     product(&conn, "TE-N", -MAX_SAFE);
+    product(&conn, "TE-BIG", 0);
     let id = start(&mut conn);
     let item_a = item_of(&conn, id, "TE-A");
     let (_, ctx) = begin(&mut conn, item_a, CountPurpose::InProgress);
@@ -706,14 +708,50 @@ fn test_save_stocktake_count_req205_c8_count_range() {
     ));
     assert_eq!(snapshot(&conn), before);
 
+    // begin の book_at_start と保存の L も安全な整数の範囲（L = 2^53+4・N = 2^53-1 は差異 5 が安全でも L が範囲外）
+    let item_big = item_of(&conn, id, "TE-BIG");
+    let set_big = |conn: &DbConnection, value: i64| {
+        conn.execute(
+            "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TE-BIG'",
+            [value],
+        )
+        .unwrap();
+    };
+    set_big(&conn, MAX_SAFE + 1);
+    let before = snapshot(&conn);
+    assert!(matches!(
+        begin_stocktake_count(
+            &mut conn,
+            &BeginCountRequest {
+                stocktake_item_id: item_big,
+                purpose: CountPurpose::InProgress,
+            },
+            GEN,
+            T_BEGIN,
+        ),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+    set_big(&conn, 0);
+    let (_, ctx) = begin(&mut conn, item_big, CountPurpose::InProgress);
+    set_big(&conn, MAX_SAFE + 5);
+    let before = snapshot(&conn);
+    assert!(matches!(
+        save(&mut conn, &ctx, MAX_SAFE),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+    set_big(&conn, 0);
+
     complete(&mut conn, id, true).unwrap();
+    // L = i64::MIN + 1 は begin の book_at_start で拒否されるので、begin の後に生の SQL で置く（版は変えない）
     let item_b = item_of(&conn, id, "TE-B");
+    let (_, ctx) = begin(&mut conn, item_b, CountPurpose::IndependentRecount);
     conn.execute(
         "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TE-B'",
         [i64::MIN + 1],
     )
     .unwrap();
-    let (_, ctx) = begin(&mut conn, item_b, CountPurpose::IndependentRecount);
     let before = snapshot(&conn);
     assert!(matches!(
         save(&mut conn, &ctx, 1),
@@ -837,6 +875,35 @@ fn test_save_stocktake_count_req205_c10_replay_and_conflict() {
             "最新の記録を確認してください"
         )
     );
+    assert_eq!(snapshot(&conn), before);
+
+    // 再送: L・N が安全な整数の外の保存済みの行（生の SQL、差異は 0）を Replayed で返さない（明細と recount）
+    let big = MAX_SAFE + 2;
+    product(&conn, "TE-R", 0);
+    conn.execute(
+        "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count, counted_at,
+            observation_kind, count_started_at, observation_revision, ledger_cursor, source_cursor, request_id)
+         VALUES (?1, 'TE-R', ?2, ?2, ?3, 'measured', ?3, 1, 0, 0, 'req-big')",
+        rusqlite::params![id, big, T_SAVE],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO stocktake_recounts (stocktake_item_id, system_stock, actual_count, count_started_at,
+            counted_at, ledger_cursor, source_cursor, observation_revision, request_id)
+         VALUES (?1, ?2, ?2, ?3, ?3, 0, 0, 1, 'rc-big')",
+        rusqlite::params![item, big, T_SAVE],
+    )
+    .unwrap();
+    let before = snapshot(&conn);
+    for token in ["req-big", "rc-big"] {
+        assert!(
+            matches!(
+                save_stocktake_count(&mut conn, token, big, None, GEN, T_SAVE),
+                Err(CountError::Biz(BizError::ValidationFailed(_)))
+            ),
+            "{token}"
+        );
+    }
     assert_eq!(snapshot(&conn), before);
 
     // request ID が明細と recount の両方にある異常
@@ -1302,6 +1369,19 @@ fn test_complete_stocktake_req205_c21_adjusted_stock_range() {
         [MAX_SAFE],
     )
     .unwrap();
+    let before = snapshot(&conn);
+    assert!(matches!(
+        complete(&mut conn, id, false),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+
+    // 評価額の総額（原価 1,000 円 × 2^53-1）が安全な整数の外
+    let (_dir, mut conn) = setup_time_evidence_db();
+    product_full(&conn, "TE-A", 10, false, "pcs", 1000);
+    let id = start(&mut conn);
+    let item = item_of(&conn, id, "TE-A");
+    count(&mut conn, item, MAX_SAFE);
     let before = snapshot(&conn);
     assert!(matches!(
         complete(&mut conn, id, false),
