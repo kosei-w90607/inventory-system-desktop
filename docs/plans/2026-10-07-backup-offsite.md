@@ -294,8 +294,8 @@ round 2（`48698c68`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3 6）、C
 
 - P1（Codex #1）媒体の `InventoryBackup` が reparse point（junction 等）だと PC の中や別の媒体へ転送され、成功の表示のまま PC の外の控えにならない。是正: 71 §71.11.3 で reparse point を追わず、媒体の `InventoryBackup` が reparse point なら用意済みに数えず、中の entry が reparse point なら目印・写し・作業名に数えず開かず消さない。用意は `OffsiteError::Redirected` で拒む。
 - P2（Codex #2）規約外の多バイトの名前で名前の解析が文字境界の panic を起こす（今の `list_backups` にもある潜在の panic）。是正: 長さ・区切り・ASCII の確認を slice の前に置き、`extract_datetime_from_backup` を直す申し送りと回帰の行。
-- P2（Codex #3）復元の控えの確かめの間に 60 秒の確認の掃除が選んだ控えを消しうる。是正: UI-11b-D15 で確かめの前に確認を止めて実行中の回の完了を待ち、取消・復元の終わりまで止める。
+- P2（Codex #3）復元の控えの確かめの間に 定期の確認（71 §71.11.4）の掃除が選んだ控えを消しうる。是正: UI-11b-D15 で確かめの前に確認を止めて実行中の回の完了を待ち、取消・復元の終わりまで止める。
 - P2（Codex #4）公開の後の失敗の oracle が `UpToDate` と矛盾。是正: 公開の前と後で oracle を分けた。
 - P2（Opus #1）4 command が main thread で動き、写しの間に画面が固まる（Tauri v2 の公式資料）。是正: 43 §43.8.2 で `#[tauri::command(async)]` で定義し、Matrix に attribute の確かめの行。
 - P3: 既存の test の注入点の移し替え（Opus #2）、`OffsiteError` の 9 値の enum（Opus #3）、今写した file を残す保持の case（Opus #4）、P1 の確かめ方を PowerShell の 1 行に（Opus #5）、新しい PC で札が重ならない手順（Opus #6）、新しい PC の保存先と状態の file が読めないときの手順と文（Opus #7）。
-- 起草役の判断で Coordinator が受けたもの: 状態の file が読めないときのホームの文は店主向けに「バックアップ画面で確かめてください」とする。`backup_dir` 自身は reparse point かを見ない（既存の設定を壊さない）。自己点検で、用意が状態の file を読めないときに目印だけ書く順序の誤りを直し、60 秒の確認と競合しうる 5 つの操作の排他の表を 71 §71.11.4 に置いた。
+- 起草役の判断で Coordinator が受けたもの: 状態の file が読めないときのホームの文は店主向けに「バックアップ画面で確かめてください」とする。`backup_dir` 自身は reparse point かを見ない（既存の設定を壊さない）。自己点検で、用意が状態の file を読めないときに目印だけ書く順序の誤りを直し、定期の確認（71 §71.11.4）と競合しうる 5 つの操作の排他の表を 71 §71.11.4 に置いた。
