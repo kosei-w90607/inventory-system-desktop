@@ -26,6 +26,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 6. plan-draft → plan-gate（2026-10-07、Coordinator、本 commit）: packet と Matrix（`docs/plans/test-matrices/2026-10-06-sd-direct-read.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。Draft PR #150 で Plan Review（fresh Opus + Codex）に出す。
 7. plan-gate のまま是正（round 1、2026-10-07、Coordinator）: round 1 の reject を起草役が `d14cfacc` で直した（下の Review Response）。Scope と設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。遷移の記録 5 の「UI-07-D12〜D14」は round 1 の番号の振り直し（UI-07-D15・D16）より前の記録。
 8. plan-gate のまま是正（round 2、2026-10-07、Coordinator）: round 2 の reject を起草役が `f8c816f5`（指摘 1〜9）と `6d3880c6`（Contract Probe P1）で直した（下の Review Response）。Scope に `24-io-csv-import-repo.md` を足したが Goal と設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
+9. plan-gate（round 3、上限、2026-10-07、Coordinator）: round 3 は両者 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal と設計の方向を変えない）。起草役が `70387036` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は owner に諮り、reviewer の再確認は Final Review に回す（前例: `docs/archive/plans/2026-09-29-harness-pr5-gate-holes.md`）。
 
 ## Owner Effort Budget
 
@@ -300,3 +301,14 @@ round 2（`98aa7c24`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3 3）、C
 - P2（Codex #6）TX の中の D4 の test が既存の snapshot の再検査に失敗を代行されていた。是正: active な ID に一致する cache を直接作り、D4 だけが拒む行にした。
 - P2（Codex #7）UI-07-D15 で `Incomplete` / `Unreadable` だけが残るときにも「新しい精算はありません」が出た。是正: 状態の数で 3 つに分けた。
 - P3（Opus #2・#3・#4）`source_files_json` は内部の serialize 用の型で書き wire 型に field を足さない、§37.4 の手順を 2a（D6）・2b（D5）にして読む順と実行の順をそろえた（round 1 の記録の「手順 1a」は今の 2a）、`XZ` と `XZ_BKUP` に同じ bytes があるとき写しの path は `XZ` を優先する、を書いた。
+
+round 3（上限、`31c7bf7e`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3 4）、Codex GPT-6.1 Sol（発注 237）= reject（P2 2 / P3 1）。P1 は 0。round 天井に達したので次の round を開始せず、全件を disposition「同型指摘の一括是正」とした（Coordinator が現物で裏取りし採用。是正は起草役の `70387036`）。Claude 側は AC1 の `rg` で packet の生 file が検索の対象に入ったが、件数だけを出し、hit の中身は Review Response より前の 1 行だけだったと申告した。
+
+- P2（Opus #1）IO-09-D3 の「SD に書かない」の source 検査の禁止語が 8 個だけで、`File::create`・`fs::copy` 等が抜けていた。是正: IO-09-D3 を許可の列（`File::open`・`read_dir`・`metadata` 等の読取りだけ）にし、Matrix の検査を `module_uses_only_allowed_fs_api` にした。
+- P2（Codex #1）予備の経路で SD の file を読んだ後に SD を抜くと、PC の file として扱われ写しと D6 が黙って外れた。是正: `locate` が `None` の file は preview の時点で在るかを確かめ（`check_selected_file_present`）、無ければ固定の文で止める（§37.3 手順 1a）。
+- P2（Codex #2）写しの保存の失敗の後に UI が preview と token に戻れるかを検証していなかった。是正: 写しの失敗を `BizError::SourceCopyFailed`（kind `internal`）にし、現行の `decideRecoverTo`（`import_error` 以外は preview に戻る）と reducer を変えずに同じ preview・token に戻る契約を 55 に書き、flow の test の行を足した。
+- P3（Opus #2）(b) までの毎日の手順で CV17 の取込みの位置が無かった。是正: Ordinary Operation に足し、UI-07-D15 (2) の SD を戻す案内を CV17 の取込みと矛盾しない文にした（画面に CV17 の語を出すかは owner 確認、下の「owner の判断」）。
+- P3（Opus #3）「SD は動かさない」を範囲なしに書き D-111 (1)(b) と字面で食い違った。是正: (a) の段階に限ると足した。
+- P3（Opus #4）test の入口が root の取得の失敗を注入できなかった。是正: 内部の関数が root を取る closure を受ける形にした。
+- P3（Opus #5・Codex #3）登録の義務に `io::pos_source_copy` と `tauri::generate_handler!` が抜けていた、Scope の ARCHITECTURE の行が IO-01〜IO-09 だった。是正: 足し、IO-01〜IO-10 に直した。
+- 起草役の判断で Coordinator が受けたもの: 写しの失敗を新しい kind でなく既存の `internal` にした（hook を変えずに preview に戻れるため。表示は `error_id` つきになる。runtime の lane の L3 で見る）。IO-09-D3 の許可の列は今の設計が要る API だけにした（足すときは設計の改訂）。
