@@ -4,7 +4,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: design
+- Phase: plan-draft
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -22,6 +22,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 2. spec-check → design（2026-10-06、起草役）: 標準手順の正本（`docs/project-memory.md` の決めた運用、`docs/function-design/55-ui-csv-import.md` UI-07-D12、`29-io-daily-report-parser.md` §29.4.1）が「SD → CV17 取込み → `EcrDatas` から選ぶ」で、SD を読む IO・候補の規則・二重取込みの照合が無い。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design のまま止める（起草の時点）: owner の判断事項 1〜5 が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさなかった。
 4. design（owner の決定の反映、2026-10-06、起草役、本 commit）: owner の判断 1〜5 の決定（下の「owner の判断事項」）を D-111・設計正本・本 packet・Matrix に反映し、写しの設計（IO-10、BIZ-08-D5）を足した。Phase は design のまま。理由: 決定 1（SD は動かさない）の前提 P2・P3（Contract Probe）を Plan Gate の前に店の経験で確かめる。写しの細部の未決 A・B は Non-scope にしたので design → plan-draft を止める問いではない。
+5. design → plan-draft（2026-10-07、起草役、本 commit）: 条件「設計の出力が正本にある」は、IO-09・IO-10・IO-07-D5・BIZ-08-D3〜D5・CMD-12-D1・UI-07-D12〜D14・`daily_report_imports.settlement_no`・D-111 が下の Design Readiness の引く正本にあることで満たす。条件「未解決の設計の問いが無い」は、owner の判断 1〜5 が 2026-10-06 に決まり、決定 1 の前提 P2・P3 の扱いが 2026-10-07 に決まったことで満たす（P3 は店の実績〈TD-139〉で合格。P2 は試しを行わず〈owner 決定、TD-176〉、owner の承認した代わりの扱いと運用の制約〈D-111〉で閉じた。下の Contract Probe）。残る P1 は設計に依らず runtime の lane の L3 の前に確かめるもの、`XZ` の file が数千本になったときのレジの振舞いは (b) の lane の前提（D-111 の Revisit）、写しの未決 A・B は Non-scope で、どれも本 lane の設計の問いではない。
 
 ## Owner Effort Budget
 
@@ -31,7 +32,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 10 | 5（2026-10-06 の 1 回の問い合わせで判断 1〜5 を決めた） | 4（店の経験の確認 2、Ready 1、merge 1）。写しの残る 2 点（A・B）は本 lane で諮らない（Non-scope） | 1 | 10 = 5 + 4 + 1 |
+| 介入 | 10 | 9（2026-10-06: 判断 1〜5 の 5。2026-10-07: 移す操作を後続の lane にする判断〈TD-142〉1、P3 の店の経験〈TD-139〉1、P2 の店の経験〈TD-152・TD-175〉1、P2 の試しを行わず代わりの扱いと運用の制約を承認〈TD-176〉1） | 2（Ready 1、merge 1）。写しの残る 2 点（A・B）は本 lane で諮らない（Non-scope） | 0 | 11 = 9 + 2 + 0（上限を 1 超える見込み。上限の改定は Ready の問い合わせと同じ 1 回で諮る） |
 
 ## Risk
 
@@ -67,7 +68,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Ordinary Operation
 
-設計を含む変更なので、取込みの毎日の操作列を置く。本 lane は docs だけで、表の通常運用は runtime の lane の後に成り立つ。**この文書を完了できる**（設計正本がそろう）ことと、**通常運用を達成できる**（店で SD から取り込める）ことは別で、後者は本 lane では未達。
+設計を含む変更なので、取込みの毎日の操作列を置く。本 lane は docs だけで、表の通常運用は runtime の lane の後に成り立つ。**この文書を完了できる**（設計正本がそろう）ことと、**通常運用を達成できる**（店で SD から取り込める）ことは別で、後者は本 lane では未達。取込み済みを `XZ_BKUP` へ移す操作（D-111 (1) の (b)、後続の lane）ができるまで、店は CV17 の取込みを今の運用のまま続ける（日々の売上の Z は毎日、EJ は毎月末日。D-111 の運用の制約、owner 2026-10-07）。下の表はその間の列で、CV17 を開かずに済む運用は (b) の後に成り立つ。
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
@@ -79,8 +80,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | プレビュー | 「取り込む」（同日追加なら確認） | 日報が保存され、「日次売上を見る」へ進める | 結果が出る | 同じ精算の別の bytes は BIZ-08-D4 で止まる |
 | 「取り込む」の中で | — | アプリが読んだ 3 本の写しを PC のアプリの folder に残す（利用者の操作なし）。残せないと取り込まずに固定の文を出す | 写しが書けた | BIZ-08-D5 |
 | 同じ日に 2 回目の精算をした | 同じ操作を繰り返す | 1 回目は「取込み済み」、2 回目は「取り込めます」 | — | 同じ日の複数の Z は観測済み（SD-08） |
-| CV17 の日次の取込みも続けている（移行期） | 「SD から読む」 | `XZ_BKUP` の分も読み、取込み済みは hash で「取込み済み」になる | — | `XZ_BKUP` = `EcrDatas`（SD-22）。取込み前の原本 = 取込み後かは未確認（P1）。違っても BIZ-08-D4 で二重に数えない |
-| 翌日 | SD を読まずに精算する | レジは精算を続け、`XZ` に前日の Z が残ったまま次の Z を書く | 精算できる | owner 決定 1（動かさない）の前提（P2・P3） |
+| CV17 の日次の取込みも続けている（(b) の lane まで。D-111 の運用の制約） | 「SD から読む」 | `XZ_BKUP` の分も読み、取込み済みは hash で「取込み済み」になる | — | `XZ_BKUP` = `EcrDatas`（SD-22）。取込み前の原本 = 取込み後かは未確認（P1）。違っても BIZ-08-D4 で二重に数えない |
+| 翌日 | 精算する（前日までの Z は CV17 の毎日の取込みで `XZ_BKUP` へ移っている） | レジは精算を続け、その日の Z を `XZ` に書く。EJ は毎月末日の CV17 の取込みまで `XZ` 直下で伸びる | 精算できる | Z の名前は日付で決まり、別の日の Z とぶつからない（SD-02・SD-08）。Z が `XZ` に何日も溜まる状態は (b) まで生じない（P2 の扱い）。EJ の約 1 か月は店の実績（P3 合格） |
 | SD が読めない・過去の分 | 「ファイルを選んで取り込む」で 1 つずつ選ぶ | 既存の 3 ファイルの経路でプレビューへ | 3 つそろう | owner 決定 4: 補助のリンク（UI-07-D14） |
 
 Plan Review は、この列が「正常な条件で目的を達成できるか」と「危険な結果を出さないか」を別々に答える（`docs/DEV_WORKFLOW.md` Review Rules）。
@@ -91,7 +92,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 | # | 判断事項 | 決定（owner 2026-10-06） | 設計への反映 |
 |---|---|---|---|
-| 1 | SD を読むだけにするか、`XZ_BKUP` へ移すか | 動かさない（読むだけ） | IO-09-D3（29:362）、D-111 (8)。前提 P2・P3 は Plan Gate の前に確かめる |
+| 1 | SD を読むだけにするか、`XZ_BKUP` へ移すか | 動かさない（読むだけ） | IO-09-D3（29 §29.7.6）、D-111 (8)。前提 P2・P3 は 2026-10-07 に扱いを決めた（P3 合格、P2 は D-111 の運用の制約。Contract Probe） |
 | 2 | 読んだ原本の写しを PC に残すか | 残す | IO-10（29 §29.8）、BIZ-08-D5（37 §37.4 手順 2a、§37.9 の BIZ-08-D5）、pos-tables §12b の `source_files_json`、71 §71.1 の後の注記 |
 | 3 | SD の場所を自動で探すか、利用者が選ぶか | 自動で探し、見つからなければ利用者が選ぶ | IO-09-D1、UI-07-D13 |
 | 4 | ファイルを選ぶ経路の置き場所 | 同じ取込み画面の小さな補助のリンク（ひとまず。デザインの刷新で見直す） | UI-07-D14、D-111 の Revisit |
@@ -154,7 +155,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 ## Non-scope
 
 - runtime の code・test・fixture・bindings・migration・`90-traceability.md`。
-- SD の file を移す設計（owner 決定 1 で本 lane では採らない）。アプリの「取り込み済みの Z・EJ を `XZ_BKUP` へ移す（片付ける）」操作は後続の lane（owner 2026-10-07 決定、TD-142）。まず読むだけを作り、その後に移す操作を作る。SD への書込みの設計（CV17 と同じ `_nnnn` の改名、途中の失敗、CV17 の取込みとの両立）はその lane で行う（D-111 の Decision (1)）。写しの保持期間・削除と、写しの backup・PC の外への持出し（未決 A・B）。
+- SD の file を移す設計（owner 決定 1 で本 lane では採らない）。アプリの「取り込み済みの Z・EJ を `XZ_BKUP` へ移す（片付ける）」操作は後続の lane（owner 2026-10-07 決定、TD-142）。まず読むだけを作り、その後に移す操作を作る。SD への書込みの設計（CV17 と同じ `_nnnn` の改名、途中の失敗、CV17 の取込みとの両立）はその lane で行う（D-111 の Decision (1)）。その lane は起票時に、`XZ` の file が数千本になったときのレジの振舞い（P2 の残り）を前提として確かめる（D-111 の Revisit）。写しの保持期間・削除と、写しの backup・PC の外への持出し（未決 A・B）。
 - EJ の取込みの BIZ・DB・画面、Z004 の取込みの再開、欠けの検知、Excel 印刷の代替。
 - backlog の「日報取込み標準手順の残設計」の entry の書換え（他 entry。closeout に回す）。「Z004 layout B 対応」は注記を 1 つ足すだけで、本文は変えない。
 - 日報の手でのファイル選択で「1 つずつ選び足し・個別に外す」の backlog 化（#145 の closeout が行う。設計の要件としては UI-07-D14 に入れた）。
@@ -174,9 +175,9 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 - 引用する設計正本（節まで）: `docs/function-design/29-io-daily-report-parser.md` IO-07-D3・D5、§29.4.1、§29.7（IO-09-D1〜D4）／`37-biz-daily-report-import-service.md` §37.3 手順 5・8、§37.4、§37.9（BIZ-08-D3・D4）／`45-cmd-daily-report-import.md` §45.2・§45.6a・§45.6b（CMD-12-D1）／`55-ui-csv-import.md` §55.0、UI-07-D12〜D14／`29-io-ej-parser.md` IO-08.10／`db-design/pos-tables.md` §12b・B-2／`ARCHITECTURE.md` POS Adapter Boundary・レイヤー間の呼び出し原則／`docs/adr/2026-09-18-stocktake-time-evidence.md`（Z004 の精算同一性 guard、変えない）。
 - 必要な設計成果物: function-design（IO-09・BIZ-08・CMD-12・UI-07） = updated in this PR／DB（`settlement_no`） = updated in this PR（migration の番号は runtime）／SCREEN_DESIGN = updated in this PR／decision-log = D-111 を追加。
 - plan にしかない durable な判断の昇格先: すべて D-111 と上の正本へ置いた。packet にだけある判断は無い（owner の判断事項は D-111 の「未決」にも書いた）。
-- 前提・制約と、延期した design gap: SD-23（取込み前の原本と取込み後の bytes、P1）・SD-14（Z を溜めたときの精算、P2）・EJ を移さずに長く置いたときの追記（P3）は未確認。設計は P1 が不一致でも二重に数えない（BIZ-08-D4）。P2・P3 は owner の判断 1 の前提。欠けの検知・写しの保存・移す設計は延期（Non-scope）。
+- 前提・制約と、延期した design gap: SD-23（取込み前の原本と取込み後の bytes、P1）は未確認で、runtime の lane の L3 の前に確かめる。設計はこの前提に依らない（同じ bytes なら hash、違えば BIZ-08-D4 で二重に数えない）。owner の判断 1（SD は動かさない）の前提は 2026-10-07 に閉じた: P3（EJ を移さずに長く置いたときの追記）は店の実績で合格（TD-139）。P2（Z を `XZ` に溜めたときの精算）は試さず（TD-176）、Z の名前が日付で決まり別の日の Z とぶつからないこと（SD-02・SD-08）と、(b) の lane まで店が CV17 の取込みを今の運用のまま続ける制約（D-111）で扱う。制約の間、Z が `XZ` に何日も溜まる状態と、EJ が 1 か月を超えて `XZ` に残る状態は生じない。延期: `XZ` の file が数千本になったときのレジの振舞い（精算のときの処理時間、FAT32 の 1 directory の entry 数の上限）は (b) の lane（または CV17 の毎日の取込みをやめる時点）の前提に送る（D-111 の Revisit）。延期が安全な理由: 本 lane と runtime の lane は SD を読むだけで、CV17 の取込みが続く間 `XZ` の file の数は今と変わらない。欠けの検知・写しの保持と backup（未決 A・B）・移す設計も延期（Non-scope）。
 - 絶対保証の自己点検: 「SD に書かない」の例外は Windows の FAT の最終アクセス日と `System Volume Information`（アプリでは止められない。IO-09-D3 に明記）。「二重に数えない」の例外は `settlement_no` が NULL・None の束（layout B と D-111 より前の取込み）で、前の取込みは hash で止まる（D-111 の Guarantee range）。精算回数が戻った場合は誤って拒む（安全側）。
-- 判定: not ready（plan-draft に進めない）。理由: owner の判断 1〜5 は決定済みだが、決定 1（SD は動かさない）の前提 P2・P3 が未確認。確かめて合格なら plan-draft へ進める。不合格なら決定 1 を owner に諮り直す（移す設計に戻る）。
+- 判定: ready（plan-draft に進める）。理由: 設計の出力（IO-09・IO-10・IO-07-D5・BIZ-08-D3〜D5・CMD-12-D1・UI-07-D12〜D14・`settlement_no`・D-111）が上の正本にあり、owner の判断 1〜5 は 2026-10-06 に決まり、決定 1 の前提 P2・P3 は 2026-10-07 に扱いを決めた（Contract Probe）。残る P1・`XZ` の多数の file・未決 A・B は、上のとおりどれも本 lane の設計の問いではない。
 
 ## Registration / Generation Obligations
 
@@ -189,7 +190,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 | Adapter / core boundary | Which concepts belong to replaceable external adapters, and which concepts are stable app-core contracts? | Architecture, function design, decision-log, Plan Packet | SD の配置・名前・形は adapter（IO-09）。core は「精算ごとの束」「取込み済みの状態」「同じ精算の二重取込みを拒む」。BIZ-08-D3 の組分けは Z00k の名前に依るので CASIO 固有で、BIZ に置くのは日報の束の規則が BIZ-08 にあるため（D-023 の範囲内、D-111 Compatibility） | レジが替わったら IO-09 と §37.9 の組分けを取り替える |
 | Fact check / design decision split | Which claims are observed facts from hardware/tool/files, and which are app decisions that need source-doc promotion? | Investigation doc, source design docs, decision-log | 事実は 29 §29.7.2 の表（観測 / 状態 / 未確認の分類）。判断は D-111・IO-09-D1〜D4・BIZ-08-D3 / D4・CMD-12-D1・UI-07-D12〜D14 | — |
 | Lifecycle / retry | What happens before, during, after, and after failure for import/export, duplicate input, rollback, retry, cancellation, and re-run? | Function design, DB design, UI design, Test Matrix | 読取りの途中の失敗は全体の失敗（IO-09・§37.9 手順 3）。scan の snapshot は 30 分で、切れたら読み直し。取込み済みの再読みは「取込み済み」。取消の後は「取り込めます」に戻る。同じ精算の別の bytes は拒む | Matrix の State Lifecycle |
-| Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | 精算 → SD を PC → 読む → SD を戻す → 選ぶ → 取り込む。CV17 は PLU の書込みだけ。Excel 印刷の代替は別項目 | runtime の lane の L3 |
+| Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | 精算 → SD を PC → 読む → SD を戻す → 選ぶ → 取り込む。CV17 は PLU の書込みだけ（(b) の lane までは今の CV17 の取込みも続ける。D-111 の運用の制約）。Excel 印刷の代替は別項目 | runtime の lane の L3 |
 | Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | `io::register_sd`・29 §29.7・§37.9 の組分けを取り替え、preview / commit / 照合は残る | — |
 | Data safety / evidence | How can the claim be supported by anonymized shape/count/hash/procedure evidence without committing real store data? | Plan Packet Data Safety, investigation doc, review evidence | 事実は名前・形・hash の照合の質的な要約だけ（件数・実データは tracked に書かない）。SD に書かない（IO-09-D3） | Data Safety |
 | Reporting / accounting semantics | Are totals, summaries, item records, returns, corrections, and inventory movements modeled separately enough to avoid false business meaning? | DB design, function design, report design, Test Matrix | 日報の二重計上を BIZ-08-D4 で止める。日報は在庫を動かさない（D-025、変えない） | — |
@@ -219,7 +220,7 @@ Test Design Matrix: [2026-10-06-sd-direct-read](test-matrices/2026-10-06-sd-dire
 
 ## Review Focus
 
-- Ordinary Operation の列が、正常な条件で目的（CV17 を開かずに毎日取り込み、SD をレジへ戻す）を達成できるか。
+- Ordinary Operation の列が、正常な条件で目的（アプリが SD から毎日取り込み、SD をレジへ戻す。CV17 の取込みは (b) の lane まで並行して続く）を達成できるか。
 - BIZ-08-D4 が SD-23 の不一致の場合も二重取込みを止めるか、正常な同じ日の 2 回目の精算を誤って止めないか。
 - IO-09 の名前の規則（`XZ` は連番なし、`XZ_BKUP` は連番あり、大文字小文字を区別しない）が観測した場合をすべて覆い、未知の名前を読まないか。
 - 窓（最後の取込みの日と 30 日前の早い方）で、普段の運用の精算が候補から落ちないか。
@@ -251,8 +252,8 @@ Test Design Matrix: [2026-10-06-sd-direct-read](test-matrices/2026-10-06-sd-dire
 ## Contract Probe
 
 - P1 SD-23（取込み前の `XZ` の原本と CV17 の取込み後の file が同じ bytes か）: 手元の資料では決まらない（説明書は「移動」とだけ書く）。設計はこの前提に依らない（同じ bytes なら hash、違えば BIZ-08-D4）。**runtime の lane の L3 の前に要る**（Plan Gate の前には要らない）。手順: 精算の後、CV17 を開く前に SD の `XZ` の Z の size・SHA-256 を読取り専用で採り、CV17 で取り込んだ後の `XZ_BKUP` と `EcrDatas` の同じ file と比べる。合否: 全件一致なら「同じ bytes」、1 件でも違えば「作り直す」（設計は変えず、Guarantee range の記録を更新）。誰が: Codex が店の PC で metadata だけを採る（店の R-50。SD の採取は owner の別承認）。
-- P2 SD-14（Z を `XZ` に何日も残したとき、レジの精算と SD の保存が続くか）: 資料に実績が無い。owner の判断 1 で「読むだけ」を選ぶ前提。**Plan Gate の前に要る**（owner の判断 1 と同じ問い合わせ）。手順: まず店の経験を聞く（店の R-51「CV17 の日報の取込みを何日も空けたことがあるか。そのとき精算・SD の保存に異常は出たか」）。経験が無ければ、普段どおりの精算を 2 日続ける間 CV17 の日報の取込みをしないで、3 日目に SD の `XZ` の名前の一覧を読取り専用で採る。合否: 2 日分の Z が別の名前で残り、精算が止まらなければ合格。誰が: 経験は owner が店主に聞く。試す場合は owner の別承認（店の手順を 2 日変えるため）。
-- P3 EJ を CV17 で移さずに長く置いたとき（店の実績の約 1 か月を超えて）、レジが `XZ` 直下の EJ への追記を続けるか: 資料に無い。owner の判断 1 の前提（読むだけにすると EJ は移らない）。**Plan Gate の前に要る**（P2 と同じ問い合わせ）。手順: 店の経験を聞く（EJ の取込みを 1 か月より長く空けたことがあるか、そのとき異常は出たか）。合否: 経験上の異常が無ければ前提を受け入れ、runtime の lane の L3 の後の運用で `XZ` の EJ の size を見る。誰が: owner が店主に聞く。
+- P2 SD-14（Z を `XZ` に何日も残したとき、レジの精算と SD の保存が続くか）: **扱いを決めた（2026-10-07）**。結果: 店は日々の売上（Z001 等）の CV17 の取込みを休んだ経験が無い（repo 外の回答台帳 TD-152・TD-175）。起票時の代わりの手順（普段どおりの精算を 2 日続ける間に取込みをしない試し）は行わない（owner 決定 2026-10-07、TD-176。取込みを止めることは店の業務を止めるため）。代わりの扱い（owner 承認 2026-10-07）: Z は精算のときだけ SD に書かれ、名前は日付と、同じ日の精算ごとの接尾字の 1 文字で決まる（SD-02・SD-08、説明書 C p.16）ので、別の日の Z と名前はぶつからない。同じ日の 2 回目以降の Z が、1 回目の Z を `XZ` に残したまま別の名前で書かれることは観測済み（SD-08）。EJ は約 1 か月 `XZ` に残っても精算が続いている（SD-09、P3）。運用の制約: 取込み済みを `XZ_BKUP` へ移す操作（D-111 (1) の (b)、TD-142、後続の lane）ができるまで、店は CV17 の取込みを今の運用のまま続ける（D-111）。よって Z が `XZ` に何日も溜まる状態は、本 lane と SD 直読みの runtime の lane では生じない。残る未確認（名前の衝突ではない）: `XZ` の file が数千本になったときのレジの振舞い（精算のときに既存の file を見て名前を決めるとみられることによる処理時間、FAT32 の 1 directory の entry 数の上限）。owner の見立て（要旨）は、名前は年月日と回数で決まり中身も同じなので、何千本でも衝突しない。これは (b) の lane（または CV17 の毎日の取込みをやめる時点）の前提に引き継ぐ（D-111 の Revisit）。
+- P3 EJ を CV17 で移さずに長く置いたとき（店の実績の約 1 か月を超えて）、レジが `XZ` 直下の EJ への追記を続けるか: **合格（2026-10-07）**。結果: 店の EJ の取込みは毎月末日で、1 か月を超えて空けたことはなく、その間の異常は無い（repo 外の回答台帳 TD-139）。起票時の合否「経験上の異常が無ければ前提を受け入れ、runtime の lane の L3 の後の運用で `XZ` の EJ の size を見る」に当てて合格とする。扱い: (b) の lane まで店は CV17 の EJ の取込み（毎月末日）を続けるので（D-111 の運用の制約）、EJ が 1 か月を超えて `XZ` に残る状態は生じない。runtime の lane の L3 の後の運用で `XZ` の EJ の size を見る。
 - 観測済みで probe の要らない前提: SD が取外し可能な drive として見える（SD-25）、`XZ_BKUP` = `EcrDatas`（SD-22）、名前の形・大文字の `EJ`・同じ日の複数の Z・未知の名前の file（SD-02・03・07・08）、`windows-sys` に `Win32_Storage_FileSystem` の feature がある（`src-tauri/Cargo.toml`）。
 
 ## Data Safety
