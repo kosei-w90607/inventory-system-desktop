@@ -98,7 +98,7 @@ Risk: R3
 | CMD-12-D1 | CMD が IO を呼ぶ | 既存の構造 test | `src-tauri/tests/architecture_test.rs`（`rg -n "fn " src-tauri/tests/architecture_test.rs` で存在を確かめた。LAYER_RULES は `:44`〜`:47` で cmd → db・io を禁止） | `cmd` から `io::register_sd`（`RegisterSd*` の型を含む）を use する。選択は BIZ-08 の `DailyReportSdSelection` で渡す |
 | UI-07-D15 | 状態を色だけで示す・文言違い | component | `DailyReportImportPage.sd.test.tsx` の状態ごとの label | 5 状態の label（「取り込めます」「取込み済み」「同じ精算を取込み済み」「ファイルがそろっていません」「読めません」）と icon が出ない |
 | UI-07-D15 | 取り込めない精算を「無い」と出す | component | `DailyReportImportPage.sd.test.tsx` の一覧の上の文 | (a) `NotImported` 1 件と `Unreadable` 1 件で文が出る、(b) `Incomplete` 1 件・`Unreadable` 1 件だけで「取り込める精算はありません。取り込めない精算が 2 件あります（「ファイルがそろっていません」「読めません」の行）。」が出ない、または「新しい精算はありません」が出る、(c) 候補 0 件と、`Imported`・`SameSettlementImported` だけのときに「新しい精算はありません」が出ない |
-| UI-07-D15 | SD を戻す案内が出ない・CV17 の取込みの前に戻させる | component | 同上 | scan 成功の後に「読み終わりました。CV17 での取込みが済んでいれば、SD はレジに戻してください（次の精算に要ります）。」が出ない（「CV17 での取込みが済んでいれば、」の無い文も red） |
+| UI-07-D15 | SD を戻す案内が出ない・CV17 の取込みの前に戻させる | component | 同上 | scan 成功の後に「読み終わりました。いつもの取込みが済んでいれば、SD はレジに戻してください（次の精算に要ります）。」が出ない（「いつもの取込みが済んでいれば、」の無い文も red） |
 | UI-07-D15 | 見つからないときの予備が出ない | component | 同上 | 「SD が見つかりません」の error のとき「場所を選ぶ」が出ない |
 | UI-07-D15 | reducer の遷移 | unit | `reducer.test.ts`（既存 file、`src/features/daily-report-import/reducer.test.ts`） | `scanning` → `sd_list` → `parsing` → `preview` と、SD から来た parse 失敗の recoverTo `sd_list` が成り立たない |
 | UI-07-D16 | 1 つずつ選び足し・外す | component | `DailyReportImportPage.files.test.tsx` | Z001 → Z005 → Z002 の順に 1 つずつ足して「確認する」が有効にならない、1 つ外すと無効に戻らない |
