@@ -380,7 +380,7 @@ export function useStockInquiry(params: {
 
 - `formatStockDisplay` と `formatStockUnitLabel` は `unit: ProductStockUnit` を受け、12 個の code を全部 switch で扱う（[共通規則](10-common-rules.md) SPEC-UNIT-D9・D11。`default` の `"—"` を置かず、単位を足すと型検査で止まる。wire の `stock_unit` は enum になる）。
 - 数量を出す画面の全部（売上・在庫変動・棚卸し・整合性チェック・PLU 書出しを含む）と、単位を持たない wire に単位を渡す方法は SPEC-UNIT-D3 の「表示する所」の表（owner の決定 TD-203）。
-- 表示は SPEC-UNIT-D3: 個数の単位は `10 個`・`3 玉` 等、`cm` は `300 cm`、`m` は cm の整数を m で表す（`130` → `1.3 m`、`127` → `1.27 m`、`1234` → `12.34 m`）。m の表示は整数の演算で作り、`toLocaleString` に小数を渡さない。
+- 表示は SPEC-UNIT-D3: 個数の単位は `10 個`・`3 玉` 等、長さの単位は `m`・`cm` とも cm の整数を m で表す（`130` → `1.3 m`、`127` → `1.27 m`、`1234` → `12.34 m`。`cm` の商品の `300` も `3 m`。Coordinator が TD-203・TD-207 から決めた）。`formatStockUnitLabel`（数量を伴わない入力の単位欄）は D1 の語のまま（`cm` の商品は `cm`）。m の表示は整数の演算で作り、`toLocaleString` に小数を渡さない。
 
 #### format-last-date（[value: string | null] → string）
 

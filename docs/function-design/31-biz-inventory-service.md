@@ -16,6 +16,7 @@ list_inventory_recordsの棚卸し差異集計は[追跡の新契約](65-invento
 - 入庫・廃棄の明細の原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。§12.3 の原価の差分（CostDiff）は 1/100 円の値で完全一致を比べる。§12.8 の fingerprint の item 行の原価は 1/100 円の 10 進文字列にする。移行の前に保存した記録の fingerprint は書き換えない（同じ key の再送は移行をまたがない）。
 - §12.6a の入庫・廃棄の記録詳細は、明細の数量・原価・商品の単位から行の金額と合計を BIZ が求める（SPEC-UNIT-D6。`biz::unit_amount`）。IO は金額を計算しない（[21](21-io-inventory-repo.md) §10.2・§10.5 の手順 3 をやめる）。wire は行の金額を 1/100 円の整数の十進の文字列（`line_cost_centi`・`line_loss_cost_centi`。i128 の値を損失なく運ぶ。SPEC-UNIT-D6）、合計を円の整数（`total_cost`・`total_loss_cost`、今の型のまま）で返す。入庫の丸めは TD-023 と同じ（`決定（owner、D-113 J3）`）、廃棄も TD-023 に合わせる（runtime の lane の L3 で owner が確かめる）。
 - 記録詳細と入出庫の行の `stock_unit` は `ProductStockUnit`（SPEC-UNIT-D11）。
+- 入庫・返品・手動販売・廃棄の保存の結果の在庫警告 `stock_warnings`（今は `{商品コード}: 在庫がマイナスになりました（{stock_after}）` を `receiving.rs:209`・`returns.rs:264`・`manual_sale.rs:280`・`disposal.rs:201` の 4 か所が書く）は、長さの商品（`m`・`cm`）の `stock_after` を SPEC-UNIT-D3 の m の形に整形して入れる（-30 → `（-0.3 m）`）。個数の商品の文は今どおり `（-2）`。整形は TS の formatter と同じ規則の Rust の関数 1 つで行い、golden の表を共有する（SPEC-UNIT-D9）。owner の決定 TD-203（SPEC-UNIT-D3 の表示する所の表の 10）。
 
 ### 12.1 モジュール構成
 

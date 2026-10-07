@@ -293,7 +293,7 @@ export function useExportFile() {
 
 #### compute-summary（[items] → { totalAmount, totalQuantity }）
 
-- 単位の拡張の後（proposed・未実装、D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem.quantity` は `count_points`（個数の種類の和）と `length_cm`（長さの種類の和、cm）の 2 つになる。月間販売点数（`compute-summary` は 2 本それぞれに足す）・部門別は `5 点・1.8 m` の形で出す（owner の決定 TD-206・TD-207）。商品別の行はどちらか一方だけが値を持ち、長さの商品は `1.3 m`、個数の商品は今どおり `3 点`。数量の並べ替えは SPEC-UNIT-D3 の集計の規則の `(count_points, length_cm)` の順。
+- 単位の拡張の後（proposed・未実装、D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem.quantity` は `count_points`（個数の種類の和）と `length_cm`（長さの種類の和、cm）の 2 つになる。月間販売点数（`compute-summary` は 2 本それぞれに足す）・部門別は `5 点・1.8 m` の形で出す（owner の決定 TD-206・TD-207）。商品別の行はどちらか一方だけが値を持ち、長さの商品（`m`・`cm` とも）は `1.3 m`、個数の商品は今どおり `3 点`。数量の並べ替えは SPEC-UNIT-D3 の集計の規則の `(count_points, length_cm)` の順。
 
 - 空配列 → `{ totalAmount: 0, totalQuantity: 0 }`
 - 負数 amount（返品超過月）→ そのまま合計（純関数、業務判断は呼出側）
