@@ -295,10 +295,11 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
 **【データ構造】**
 
 入力データ:
-- DailyReportSourceFile[]（filename, bytes）
+- DailyReportSourceFile[]（filename, bytes）。標準はレジの SD から読んだ候補の束（IO-09 経由、§37.9 `scan_register_sd_daily_reports`、D-111）、予備は利用者が選んだ 3 ファイル（dialog の path を持ち、自動で見つけた SD の root の下の file は SD の入力として扱う。37 §37.3 手順 1a）。SD の探し方の選択は BIZ-08 の `DailyReportSdSelection`（CMD-12 が作る。IO-09 の型にしない）
 
 段階間受け渡しデータ:
-- DailyReportParseResult（IO-07出力）
+- DailyReportSdScan（SD の候補の一覧と状態〈取り込める / 取込み済み / 同じ精算を取込み済み / そろわない / 読めない〉、BIZ-08-D3）
+- DailyReportParseResult（IO-07出力。settlement_no? を含む）
 - DailyReportValidateResult: report_date, source_files, summary_lines, payment_lines, department_lines{department_id?}, warnings[], duplicate_check
 - DailyReportPreviewData: file_info{report_date, source_files, bundle_hash}, totals{gross_amount?, net_amount?}, payment_summary, department_summary, warnings, duplicate_check
 
@@ -328,7 +329,7 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
 4. Z005の部門名を departments.name に照合する
    - 一致 → department_id を付与
    - 不一致 → warning とし、department_id=NULL で続行可能
-5. bundle_hashでactive同一bundleを判定し、report_dateで同日別bundleの追加確認snapshotを作る
+5. SD の経路で settlement_no が None の束は止め（BIZ-08-D6）、bundle_hashでactive同一bundleを判定し、同じ report_date・settlement_no の別bundleの completed があれば止め（BIZ-08-D4、追加確認で通さない）、report_dateで同日別bundleの追加確認snapshotを作る
 
 **Stage 3: Preview**
 1. 対象日、3ファイル、総売上/純売上、支払集計、部門別集計、部門未対応warningを返す
@@ -337,8 +338,8 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
 4. preview_token を返し、CMD層cacheに30分保持する
 
 **Stage 4: Commit**
-1. preview statusと `additional_import_confirmed` の組合せを検証する
-2. トランザクション内で同一bundle_hashを再検査し、続けて同日active import ID snapshotを再取得する。不一致は「同日の取込み状況が変わりました。再度プレビューしてください」で副作用なく止める
+1. preview statusと `additional_import_confirmed` の組合せを検証する。SD の経路で settlement_no が None の cache は写しを書く前に止める（BIZ-08-D6）
+2. トランザクション内で同一bundle_hashと BIZ-08-D4 の照合を再検査し、続けて同日active import ID snapshotを再取得する。不一致は「同日の取込み状況が変わりました。再度プレビューしてください」で副作用なく止める
 3. 既存parentを変更せず、トランザクション内で新規分だけ実行
    - daily_report_importsにINSERT
    - summary/payment/department linesをINSERT
