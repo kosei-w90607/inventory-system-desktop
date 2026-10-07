@@ -4,7 +4,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: dbe6626d030fbe80c54f0c8990ee3239b8ff10b6
 - Amendments: 49f4d97c7eb1dc04a49305f8785d52740937e39c
@@ -30,16 +30,17 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 10. plan-gate → plan-approved（2026-10-07、Coordinator、本 commit）: round 3 の disposition（同型指摘の一括是正）の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-180）。同じ問い合わせで介入の上限を 12 に（TD-181）、移行期の SD を戻す案内を「いつもの取込み」の文に（TD-182）決め、`dbe6626d` に反映した。Plan Commit = `dbe6626d`（承認した版）。reviewer の再確認は Final Review。
 11. plan-approved → implementing（2026-10-07、Coordinator、state-only）: 本 lane の成果物（Scope の設計正本）は plan-first の change に同乗済みで、implementing で書く runtime のコードは無い（runtime は後続の lane）。Draft PR #150 で Final Review（Claude 側 Fable 5.1 と Codex、互いに独立、Final Review Minimum 1）へ進む（前例: `docs/archive/plans/2026-09-27-daily-report-z-display.md`）。
 12. implementing（Final Review の P3 の是正、2026-10-07、Coordinator、本 commit）: Final broad（`bc92d56b`）は両者 approve（P1/P2 0、P3 10）。owner の質優先の方針に合わせ Ready の前に P3 を全件直した（起草役の `49f4d97c`、Gated Amendment として `Amendments` に記録）。closure の review で確かめる。
+13. implementing → archive（2026-10-07、Coordinator の closeout、本 commit）: Codex の closure は approve（P 0）。Amendments の記録で Plan contract が変わったので fresh broad を Fable 5.1 で取り直して approve（P1 0 / P2 0 / P3 4）、helper の record は pass、owner が Ready を承認し（TD-183）、helper 経由の squash merge（PR #150、2026-10-07）。packet と Matrix を `docs/archive/plans/` へ移した。fresh broad の P3 4 件は後続の「SD 直読みの runtime」の lane の起票時に直す（`docs/backlog.md`）。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 12（owner 了承 2026-10-07、repo 外の回答台帳 TD-181。起票時は既定 6 から 10 に上げた。理由: 製品の振舞いの判断が 5 点〈owner の判断事項 1〜5〉と、店の経験の確認が 2 点〈Contract Probe の P2・P3〉ある。1 回の問い合わせにまとめても decision point の数で数える）
+- 介入回数上限: 15（owner 了承 2026-10-07、repo 外の回答台帳 TD-184。その前の 12 は TD-181。起票時は既定 6 から 10 に上げた。理由: 製品の振舞いの判断が 5 点〈owner の判断事項 1〜5〉と、店の経験の確認が 2 点〈Contract Probe の P2・P3〉ある。1 回の問い合わせにまとめても decision point の数で数える）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 12 | 12（2026-10-06: 判断 1〜5 の 5。2026-10-07: 移す操作を後続の lane にする判断〈TD-142〉1、P3 の店の経験〈TD-139〉1、P2 の店の経験〈TD-152・TD-175〉1、P2 の試しを行わず代わりの扱いと運用の制約を承認〈TD-176〉1、round 3 の後の plan-approved〈TD-180〉1、上限の改定〈TD-181〉1、移行期の SD を戻す案内の文〈TD-182〉1） | 3（Ready 1、上限の改定 1、merge 1） | 0 | 15 = 12 + 3 + 0（上限を 3 超える見込み。上限の改定は Ready の問い合わせと同じ 1 回で諮り、その改定も 1 つの decision point に数える〈`docs/DEV_WORKFLOW.md` の Owner Effort Budget〉。2026-10-07 の改定の問い合わせで Coordinator が同じ回の decision point を 1 つと数え違えた） |
+| 介入 | 15（TD-184） | 15（closeout 時点の実数。2026-10-06: 判断 1〜5 の 5。2026-10-07: 移す操作を後続の lane にする判断〈TD-142〉1、P3 の店の経験〈TD-139〉1、P2 の店の経験〈TD-152・TD-175〉1、P2 の試しを行わず代わりの扱いと運用の制約を承認〈TD-176〉1、round 3 の後の plan-approved〈TD-180〉1、上限の改定〈TD-181〉1、移行期の SD を戻す案内の文〈TD-182〉1、Ready〈TD-183〉1、上限の改定〈TD-184〉1、merge 1） | 0 | 0 | 15 = 15 + 0 + 0（起票時の見込みのとおり。上限の改定は Ready の問い合わせと同じ回で諮り、1 つの decision point に数えた〈`docs/DEV_WORKFLOW.md` の Owner Effort Budget〉） |
 
 ## Risk
 
@@ -282,7 +283,11 @@ Test Design Matrix: [2026-10-06-sd-direct-read](test-matrices/2026-10-06-sd-dire
 
 ## Implementation Results
 
-本 lane は docs だけで、implementing で足す runtime の code・test・migration は無い。成果物は Scope の表の設計正本・D-111・Matrix で、plan-first の commit 列（Plan Commit `dbe6626d` まで）に同乗している。検証は `bash scripts/doc-consistency-check.sh` と `--target plan`（AC6）。runtime の実装・test・Windows の L3 は後続の「SD 直読みの runtime」の lane（`docs/backlog.md`）。
+- 結果: レジの SD を探して売上の file を読み、精算ごとの束を取込み済みと照らし、選んだ束を既存の preview・commit に通し、読んだ原本の写しを PC に残す設計（IO-09・IO-10・IO-07-D5・BIZ-08-D3〜D6・CMD-12-D1・UI-07-D12・D15・D16・`daily_report_imports.settlement_no`）を設計正本に置き、判断を D-111 に記録した。旧い標準手順（CV17 の取込みの後に `EcrDatas` から選ぶ）を通常の手順とする live な記述を置き換えた。本 lane は docs だけで、runtime の code・test・migration は無い。
+- 既存の保護: 既存の取込みの経路（3 ファイルを選ぶ経路・同日追加の確認・取込みごとの取消）と wire は、`DailyReportSourceFileRequest` に省略可の `source_path` を足すほかは変えない設計にした。(b) の lane まで店は CV17 の取込みを今の運用のまま続ける（D-111 の運用の制約）。
+- review・CI・merge（closeout、2026-10-07）: Plan Review は 3 round（round 1・2 は reject で全件是正、round 3 は両者 reject〈P1 0〉で round 天井の disposition の後に owner が plan-approved を承認〈TD-180〉）。Final Review は broad が両者 approve、P3 を Ready の前に Gated Amendment で直し、Codex の closure と Fable 5.1 の fresh broad が approve。hosted CI の `Merge gate` は success で、owner の Ready の承認（TD-183）の後に helper 経由の squash merge。docs の検査の結果は PR の body が持つ。PR: [#150](https://github.com/kosei-w90607/inventory-system-desktop/pull/150)
+- 後続: runtime の実装・test・Windows の L3 は「SD 直読みの runtime」の lane、取込み済みを `XZ_BKUP` へ移す操作は (b) の lane（どちらも `docs/backlog.md`）。
+- packet との食い違い: なし。
 
 ## Review Response
 
@@ -318,3 +323,5 @@ round 3（上限、`31c7bf7e`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3
 - 起草役の判断で Coordinator が受けたもの: 写しの失敗を新しい kind でなく既存の `internal` にした（hook を変えずに preview に戻れるため。表示は `error_id` つきになる。runtime の lane の L3 で見る）。IO-09-D3 の許可の列は今の設計が要る API だけにした（足すときは設計の改訂）。
 
 Final Review broad（`bc92d56b`）: Codex GPT-6.1 Sol（発注 238）= approve（P3 4、PR review 5440745352）、Claude 側 Fable 5.1 = approve（P3 6）。P1/P2 は 0。P3 10 件を全件採用し、Ready の前に起草役の `49f4d97c` で直した（Gated Amendment）。内訳: 写しの失敗の分岐の文の範囲を限った・SD から来た失敗はすべて一覧（`sd_list`）へ戻すと 1 通りに決めた・Contract Ledger に 45 §45.3・§45.4 3a・§45.7 を足した・Matrix に固定の文・読まなかった file・選び直しの行を足した・IO-09 の置き場所を `RegisterSdArea::{Sales, Backup}` にし BIZ-08 の `Imported` と分けた・`candidate_key` を固定した（Fable #1〜#6）。Owner Effort Budget を見込み 15 に直した・申し送りに `AppState` の 15 site を足した・状態の要約を UI-07-D15 の参照にした・registry の件数を消し 4 集合の一致を契約にした（Codex #1〜#4）。
+
+Closeout（2026-10-07）: Codex の closure（GPT-6.1 Sol）は approve（P 0）。Amendments の記録で Plan contract が変わったので、fresh broad を Fable 5.1 で `460826e2` に取り直し approve（P1 0 / P2 0 / P3 4）。helper の record は pass で、owner が Ready を承認し（TD-183）、hosted CI の `Merge gate` success の後に helper 経由の squash merge（2026-10-07）。fresh broad の P3 4 件の disposition は backlog（後続の「SD 直読みの runtime」の lane の起票時に直す）: (1) 37 §37.3 手順 9 に `CachedDailyReportPreview.sd_source_files` を詰める手順（1a の後に `sd_relative_path` が Some の file）を足す、(2) BIZ-08-D5 の保証の範囲に「2b の後に 4a・手順 5 で拒んだ束の写しも `pos-sources/` に残りうる。取り込んだかは DB の `copy_path` が正本」を足す、(3) IO-09 `check_selected_file_present` の失敗を `Io { relative_path }` に入れるときの path の意味を明記するか専用の variant にする、(4) 本 packet の Scope の io-task-specs の行に IO-10 の task spec の新設が無く、Contract Ledger の IO-07-D5 の位置は §29.2 の末尾が正しい（archive の本 packet は直さず、runtime の packet の起票時に正しく書く）。
