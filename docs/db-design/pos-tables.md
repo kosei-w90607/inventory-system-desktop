@@ -145,7 +145,7 @@ Z001/Z002/Z005 の1営業日分ファイル束を1つの日報取込みとして
 | source_adapter | TEXT | NOT NULL, CHECK(source_adapter IN ('casio_sr_s4000')) | 取込み元adapter。外部レジ差し替え時の境界 |
 | bundle_hash | TEXT | NOT NULL, INDEX | Z001/Z002/Z005の生バイトhashを安定順で束ねたSHA-256。重複取込み判定に使う |
 | settlement_no | INTEGER | NULLABLE | 束の精算回数（3 本とも読めてそろうときだけ。IO-07-D5）。同じ精算を別の bytes で二重に取り込まない照合に使う（BIZ-08-D4、D-111。追加の migration は runtime の lane。既存行は NULL） |
-| source_files_json | TEXT | NOT NULL | ファイル名、個別hash、サイズ、adapter内source名（Z001/Z002/Z005）のJSON。SD から読んだ束は、各要素に SD の相対 path（`sd_relative_path`）と PC 側の写しの app data からの相対 path（`copy_path`、BIZ-08-D5）も持つ（無い要素も読む）。実CSV本文は保存しない（写しは DB の外の file） |
+| source_files_json | TEXT | NOT NULL | ファイル名、個別hash、サイズ、adapter内source名（Z001/Z002/Z005）のJSON。SD の file（SD の候補からの束と、手で選んだ SD 上の file）は、各要素に SD の相対 path（`sd_relative_path`）と PC 側の写しの app data からの相対 path（`copy_path`、BIZ-08-D5）も持つ（無い要素も読む）。BIZ-08 の内部の serialize 用の型で書き、wire 型 `DailyReportSourceFileInfo` に field を足さない（37 §37.4 手順 6）。実CSV本文は保存しない（写しは DB の外の file） |
 | gross_amount | INTEGER | NULLABLE | Z001/Z005から導出できる総売上額。未確定・欠損時はNULL |
 | net_amount | INTEGER | NULLABLE | 返品・値引等を反映した日報上の純売上額。未確定・欠損時はNULL |
 | status | TEXT | NOT NULL, CHECK(status IN ('completed','rolled_back')) | 状態 |

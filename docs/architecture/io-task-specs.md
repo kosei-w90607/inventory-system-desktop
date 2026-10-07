@@ -269,15 +269,15 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 
 ### IO-09: レジの SD の列挙と読取り
 
-**タスク要求**: レジ（CASIO SR-S4000）の SD を取外し可能な drive から探すか利用者が選んだ folder から解決し、`CASIO\SR500_550_4000\XZ` と `XZ_BKUP` の売上の file（Z・EJ）の名前を列挙し、指定された file の生バイトを読取り専用で読んで形（CP932 strict・BOM・CRLF だけ・最終改行）を測る。SD へは書かない。業務ロジックなし（function-design は [29 §29.7](../function-design/29-io-daily-report-parser.md#297-io-09-レジの-sd-の列挙と読取りd-111)）
+**タスク要求**: レジ（CASIO SR-S4000）の SD を取外し可能な drive から探すか利用者が選んだ folder から解決し、`CASIO\SR500_550_4000\XZ` と `XZ_BKUP` の売上の file（Z・EJ）の名前を列挙し、指定された file の生バイトを読取り専用で読んで形（CP932 strict・BOM・CRLF だけ・最終改行）を測る。手で選んだ file の path が自動で見つけた SD の root の下にあるかを path だけで決める（`locate_in_register_sd_roots`）。SD へは書かない。業務ロジックなし（function-design は [29 §29.7](../function-design/29-io-daily-report-parser.md#297-io-09-レジの-sd-の列挙と読取りd-111)）
 
 **理由**: 毎日の売上データは CV17 の取込みに依らずにアプリが SD から直接読む（D-111）。SD の配置・名前・読み方はレジ依存なので IO adapter に閉じる（D-023）。どの file を候補にするか・取込み済みかは BIZ-08（§37.9）が決める
 
 **【データ構造】**
 
-入力: なし（自動）または選ばれた path、窓の始まりの日付、相対 path と上限 byte 数
+入力: なし（自動）または選ばれた path、窓の始まりの日付、相対 path と上限 byte 数、手で選んだ file の path と root の列
 
-出力: RegisterSdRoot（path, volume_label）、RegisterSdListing（entries[]{relative_path, area〈XZ / XZ_BKUP〉, kind〈Z{series, day, suffix, backup_seq?} / Ej{backup_seq?} / Unknown〉, date?, size_bytes}, imported_area_present）、RegisterSdFile（relative_path, bytes, shape）
+出力: RegisterSdRoot（path, volume_label）、RegisterSdListing（entries[]{relative_path, area〈XZ / XZ_BKUP〉, kind〈Z{series, day, suffix, backup_seq?} / Ej{backup_seq?} / Unknown〉, date?, size_bytes}, imported_area_present）、RegisterSdFile（relative_path, bytes, shape）、RegisterSdLocatedFile（root, relative_path）。「自動か選んだ場所か」の選択は BIZ-08 の `DailyReportSdSelection` で、IO-09 の型ではない
 
 **【制御構造】**
 - 書込み・作成・改名・移動・削除の API を持たない（IO-09-D3）
@@ -288,6 +288,6 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 
 ### IO-10: SD から読んだ原本の写しの保存
 
-**タスク要求**: 取り込む束の file の生バイトを、アプリのデータ folder の `pos-sources/casio-sr-s4000/sd/{SD の相対 path}` に書く。同じ bytes があれば書かず、違う bytes があれば上書きせずに hash を付けた名前にする。一時 file に書いて rename する。SD には書かない。業務ロジックなし（function-design は [29 §29.8](../function-design/29-io-daily-report-parser.md#298-io-10-sd-から読んだ原本の写しの保存d-111)）
+**タスク要求**: 取り込む束の file の生バイトを、アプリのデータ folder の `pos-sources/casio-sr-s4000/sd/{SD の相対 path}` に書く。同じ bytes があれば書かず、違う bytes があれば上書きせずに hash を付けた名前にする。保存先の directory を作ってから一時 file に書いて rename する。SD には書かない。業務ロジックなし（function-design は [29 §29.8](../function-design/29-io-daily-report-parser.md#298-io-10-sd-から読んだ原本の写しの保存d-111)）
 
 **理由**: SD は動かさず、CV17 の取込みをやめると PC 側に原本の写しが無くなるため（owner 決定 2026-10-06、D-111）。いつ書くか・失敗の扱いは BIZ-08-D5

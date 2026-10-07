@@ -76,7 +76,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | --- | --- | --- | --- | --- |
 | 店は開いたまま、その日の精算前 | ECR+ かレジで精算する | レジが SD の `XZ\yyyy\mm\` に Z001/Z002/Z004/Z005、`XZ` 直下の EJ に記録を書く | SD に精算の file がある | 書込みの契機は精算の操作（説明書）。保存の設定は有効（`docs/project-memory.md` のレジの節） |
 | SD がレジに入っている | SD を抜いて PC に差す | Windows が SD を取外し可能な drive として見せる | drive が見える | 店の PC で観測済み（29 §29.7.2 SD-25） |
-| 売上データ取込み画面・日報取込みタブ | 「SD から読む」 | アプリが SD を探して読み、「読み終わりました。SD はレジに戻してください」と精算の一覧を出す | 一覧に「取り込めます」の行がある（無ければ「新しい精算はありません」） | owner 決定 3: 自動で探し、見つからなければ選ぶ（UI-07-D15） |
+| 売上データ取込み画面・日報取込みタブ | 「SD から読む」 | アプリが SD を探して読み、「読み終わりました。SD はレジに戻してください」と精算の一覧を出す | 一覧に「取り込めます」の行がある（無く、取り込めない精算があれば「取り込める精算はありません。取り込めない精算が N 件あります…」、それも無ければ「新しい精算はありません」。UI-07-D15 (3)） | owner 決定 3: 自動で探し、見つからなければ選ぶ（UI-07-D15） |
 | 一覧が出た | SD をレジへ戻す | 次の精算ができる（SD が無いと精算できない） | 読んだ内容はアプリが 30 分持つ | CMD-12-D1 |
 | 一覧に「取り込めます」がある | その行の「確認する」 | 既存のプレビュー（対象日・総売上・支払・部門・警告・同日追加の確認） | プレビューが出る | — |
 | プレビュー | 「取り込む」（同日追加なら確認） | 日報が保存され、「日次売上を見る」へ進める | 結果が出る | 同じ精算の別の bytes は BIZ-08-D4 で止まる |
@@ -84,7 +84,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 同じ日に 2 回目の精算をした | 同じ操作を繰り返す | 1 回目は「取込み済み」、2 回目は「取り込めます」 | — | 同じ日の複数の Z は観測済み（SD-08） |
 | CV17 の日次の取込みも続けている（(b) の lane まで。D-111 の運用の制約） | 「SD から読む」 | `XZ_BKUP` の分も読み、取込み済みは hash で「取込み済み」になる | — | `XZ_BKUP` = `EcrDatas`（SD-22）。取込み前の原本 = 取込み後かは未確認（P1）。SD から取り込む束は精算回数のある束だけ（BIZ-08-D6）なので、bytes が違っても後から来た方は BIZ-08-D4 で止まる |
 | 翌日 | 精算する（前日までの Z は CV17 の毎日の取込みで `XZ_BKUP` へ移っている） | レジは精算を続け、その日の Z を `XZ` に書く。EJ は毎月末日の CV17 の取込みまで `XZ` 直下で伸びる | 精算できる | Z の名前は日付で決まり、別の日の Z とぶつからない（SD-02・SD-08）。Z が `XZ` に何日も溜まる状態は (b) まで生じない（P2 の扱い）。EJ の約 1 か月は店の実績（P3 合格） |
-| SD が読めない・過去の分 | 「ファイルを選んで取り込む」で 1 つずつ選ぶ | 既存の 3 ファイルの経路でプレビューへ | 3 つそろう | owner 決定 4: 補助のリンク（UI-07-D16） |
+| SD が読めない・過去の分 | 「ファイルを選んで取り込む」で 1 つずつ選ぶ | 既存の 3 ファイルの経路でプレビューへ。選んだ file が自動で見つけた SD の上なら SD の入力として扱い、写しを残し、精算回数の無い束を止める（37 §37.3 手順 1a） | 3 つそろう | owner 決定 4: 補助のリンク（UI-07-D16） |
 
 Plan Review は、この列が「正常な条件で目的を達成できるか」と「危険な結果を出さないか」を別々に答える（`docs/DEV_WORKFLOW.md` Review Rules）。
 
@@ -95,7 +95,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 | # | 判断事項 | 決定（owner 2026-10-06） | 設計への反映 |
 |---|---|---|---|
 | 1 | SD を読むだけにするか、`XZ_BKUP` へ移すか | 動かさない（読むだけ） | IO-09-D3（29 §29.7.6）、D-111 (8)。前提 P2・P3 は 2026-10-07 に扱いを決めた（P3 合格、P2 は D-111 の運用の制約。Contract Probe） |
-| 2 | 読んだ原本の写しを PC に残すか | 残す | IO-10（29 §29.8）、BIZ-08-D5（37 §37.4 手順 2a、§37.9 の BIZ-08-D5）、pos-tables §12b の `source_files_json`、71 §71.1 の後の注記 |
+| 2 | 読んだ原本の写しを PC に残すか | 残す | IO-10（29 §29.8）、BIZ-08-D5（37 §37.4 手順 2b、§37.9 の BIZ-08-D5）、pos-tables §12b の `source_files_json`、71 §71.1 の後の注記 |
 | 3 | SD の場所を自動で探すか、利用者が選ぶか | 自動で探し、見つからなければ利用者が選ぶ | IO-09-D1、UI-07-D15 |
 | 4 | ファイルを選ぶ経路の置き場所 | 同じ取込み画面の小さな補助のリンク（ひとまず。デザインの刷新で見直す） | UI-07-D16、D-111 の Revisit |
 | 5 | backlog「Z004 layout B 対応」の重み | 下げる（layout B は CV17 の明示書出しだけが作り、店は基本もう使わない） | `docs/backlog.md` の当該 entry の注記 |
@@ -111,7 +111,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 | file | 変更 | 他 lane・#145 との重なり |
 |---|---|---|
 | `docs/function-design/29-io-daily-report-parser.md` | IO-07-D5（`settlement_no`）、§29.4.1 の標準経路の文、IO-07-D3 の「通常の手順」の文、§29.7 IO-09 の新設、§29.8 IO-10（写し）の新設 | なし |
-| `docs/function-design/37-biz-daily-report-import-service.md` | §37.1 の入力、`DailyReportInputFile.sd_relative_path`、`CachedDailyReportPreview.settlement_no`・`sd_source_files`、§37.4 の signature（`app_data_dir`）と手順 2a（BIZ-08-D5）、§37.3 手順 8 の BIZ-08-D4、§37.3 手順 4・§37.4 手順 1a・§37.9 手順 7 の BIZ-08-D6、§37.4 手順 4a・6、§37.7 の行、§37.8 の非目的、§37.9 の新設（BIZ-08-D3）、更新履歴 | なし |
+| `docs/function-design/37-biz-daily-report-import-service.md` | §37.1 の入力、`DailyReportInputFile.sd_relative_path`、`CachedDailyReportPreview.settlement_no`・`sd_source_files`、§37.4 の signature（`app_data_dir`）と手順 2b（BIZ-08-D5）、§37.3 手順 8 の BIZ-08-D4、§37.3 手順 4・§37.4 手順 2a・§37.9 手順 7 の BIZ-08-D6、§37.4 手順 4a・6、§37.7 の行、§37.8 の非目的、§37.9 の新設（BIZ-08-D3）、更新履歴 | なし |
 | `docs/function-design/45-cmd-daily-report-import.md` | AppState の scan cache、§45.4 の commit の `AppHandle` と `app_data_dir`、§45.6a・§45.6b（CMD-12-D1）、§45.8、更新履歴 | なし |
 | `docs/function-design/55-ui-csv-import.md` | §55.0 の表の CMD、日報取込みの利用者フローの手順 2・4、UI-07-D12 の改訂、UI-07-D15・D16 の新設、§55.1 の `DailyReportImportPage.tsx` の行 | `agent/stocktake-p1` は PR #148 で merge 済みで、本 file を触らなかった。本 lane の所有は §55.0 の「画面構成」の表の日報の行・「日報取込みの利用者フロー」・「UI判断 ID」の D12・D15・D16・§55.1 の `DailyReportImportPage.tsx` の行だけ |
 | `docs/function-design/29-io-ej-parser.md` | IO-08.10 の事実・入力の経路・取込み済みの見分け・後続が決めること | なし |
@@ -122,6 +122,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 | `docs/ARCHITECTURE.md` | adapter の表の行、IO の task 一覧の IO-09、依存の行、IO-01〜IO-09 | なし |
 | `docs/FUNCTION_DESIGN.md` | IO 一覧と索引の IO-07・BIZ-08・CMD-12 の行 | なし |
 | `docs/SCREEN_DESIGN.md` | 1 日の動線、売上データ取込み画面の節 | なし |
+| `docs/function-design/24-io-csv-import-repo.md` | `NewDailyReportImport.settlement_no`、§14.14 の INSERT の列、§14.18a `find_same_settlement_daily_report_import`（新設）、更新履歴 | なし（#145 の §14.21 の変更は merge 済みで、本 lane は §14.14・§14.18a と構造体の節だけ） |
 | `docs/db-design/pos-tables.md` | §12b の `settlement_no` の列と冪等性の行、B-2 の入力単位、更新履歴 | #145 は本 file を触らずに merge 済み。PR #148（stocktake-p1）は本 file の別の節を変えて merge 済みで、origin/main の取込みで解決した |
 | `docs/DB_DESIGN.md` | POS 日報の境界の文 | なし |
 | `docs/project-memory.md` | POS Facts の layout の行、在るものの CV17 の行、決めた運用の標準手順の行、レジの節の SD の配置の行 | A だけが SD→CV17 の標準手順の行を直す（発注どおり） |
@@ -141,11 +142,14 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 |---|---|---|---|
 | `DailyReportParseResult`（`settlement_no` を足す） | IO-07-D5 | `src-tauri/src/io/daily_report_parser.rs:69`（定義）・`:79`（構築は 1 か所） | `src-tauri/src/biz/daily_report_import_service/parse.rs`、同 file の test の helper（`daily_report_parser.rs:701`・`:713`） |
 | `CachedDailyReportPreview`（`settlement_no`） | BIZ-08-D4 | `biz/daily_report_import_service/mod.rs:121`（定義）・`parse.rs:216`（構築） | `commit.rs`、`cmd/daily_report_import_cmd.rs:250`（test の literal の構築は 1 か所。`:249` の helper `cached` の中で、`:281` の `cached_with_status` 等はその helper を呼ぶ） |
-| `NewDailyReportImport`（`settlement_no`） | BIZ-08-D4 | `db/sales_repo.rs:197`（定義）・`:596`（INSERT） | 構築: `biz/daily_report_import_service/commit.rs:102`、test: `db/sales_repo.rs:2222`（helper）・`:2509`・`:2518`、`biz/daily_report_import_service/tests.rs:293`、`biz/sales_service.rs:645`、`cmd/sales_cmd.rs:293`、`cmd/daily_report_import_cmd.rs:410` |
+| `NewDailyReportImport`（`settlement_no`） | BIZ-08-D4、24 §14.14 | `db/sales_repo.rs:197`（定義）・`:596`（INSERT） | 構築: `biz/daily_report_import_service/commit.rs:102`、test: `db/sales_repo.rs:2222`（helper）・`:2509`・`:2518`、`biz/daily_report_import_service/tests.rs:293`、`biz/sales_service.rs:645`、`cmd/sales_cmd.rs:293`、`cmd/daily_report_import_cmd.rs:410` |
+| 新 repository 関数 `find_same_settlement_daily_report_import` | BIZ-08-D4、24 §14.18a | `db/sales_repo.rs`（新設。`DailyReportImport` を返さず id だけ） | 呼出し: BIZ-08 §37.3 手順 8・§37.4 手順 4a・§37.9 手順 7。`DailyReportImport` を返す既存の SELECT（`sales_repo.rs:716`・`:735`・`:756`・`:830`）と `row_to_daily_report_import`（`:887`）は変えない |
 | `daily_report_imports` の列 | migration（次の番号。v7 の次だが並走 lane の migration と番号を runtime の lane が決める） | `db/migration.rs`、新しい `db/schema_vN.rs` | `db/migration.rs:937`・`:973`・`:982`・`:1034`（INSERT の test）、`docs/function-design/22-mnt-migration.md` |
 | `DailyReportImport`（list の DTO） | 変えない（wire に出さない） | `db/sales_repo.rs:181`・`:888` | — |
 | 新 command 2 つと DTO 4 つ | CMD-12-D1 | `cmd/daily_report_import_cmd.rs`、`lib.rs` の `collect_commands` | `src/lib/bindings.ts`（再生成）、`src/features/daily-report-import/` |
-| `DailyReportInputFile`（`sd_relative_path`） | BIZ-08-D5 | `biz/daily_report_import_service/mod.rs:32`（定義）、`cmd/daily_report_import_cmd.rs:43`（構築） | test の構築: `biz/daily_report_import_service/tests.rs:15`（helper `source_file`）、`biz/sales_service.rs:1175`（helper `file` の中）・`:1360` |
+| `DailyReportInputFile`（`sd_relative_path`・`source_path`） | BIZ-08-D5・D6、37 §37.3 手順 1a | `biz/daily_report_import_service/mod.rs:32`（定義）、`cmd/daily_report_import_cmd.rs:43`（構築） | test の構築: `biz/daily_report_import_service/tests.rs:15`（helper `source_file`）、`biz/sales_service.rs:1175`（helper `file` の中）・`:1360` |
+| `DailyReportSourceFileRequest`（省略可の `source_path` を足す） | 45 §45.3、UI-07-D16 | `cmd/daily_report_import_cmd.rs:17`（定義）・`:43`（`DailyReportInputFile` への写像） | test: `cmd/daily_report_import_cmd.rs:242`（helper `request`）。frontend: `src/features/daily-report-import/hooks/useDailyReportImportFlow.ts:82`・`:165`（payload を作る所。今は path を捨てる `:207` の `extractFilename`）、`useDailyReportImportFlow.test.tsx:395`〜`:397`・`DailyReportImportPage.flow.test.tsx:136`〜`:138`（期待の payload）、`src/lib/bindings.ts:565`（再生成） |
+| `DailyReportSdSelection`（BIZ-08 の enum、新設） | 37 §37.9、45 §45.6a | `biz/daily_report_import_service`（定義） | 構築: `cmd/daily_report_import_cmd.rs` の `scan_register_sd`。IO-09 の型にしない（`src-tauri/tests/architecture_test.rs:44`〜`:47` の LAYER_RULES、cmd → io は禁止） |
 | `commit_daily_report_import`（`app_data_dir` を足す） | BIZ-08-D5 | `biz/daily_report_import_service/commit.rs:14` | 呼出し: `cmd/daily_report_import_cmd.rs:114`（1。`:70` は同名の CMD の定義）、`biz/sales_service.rs:1199`・`:1367`（2）、`biz/daily_report_import_service/tests.rs`（29 行） |
 | `source_files_json` の要素（`sd_relative_path`・`copy_path` を足す） | BIZ-08-D5 | `biz/daily_report_import_service/commit.rs:83` | 読む所: `parse.rs:236`（`source_filenames`。無い field を許す） |
 | 新 module `io::pos_source_copy` | IO-10 | `src-tauri/src/io/pos_source_copy.rs`、`io/mod.rs` | `design_compliance_test.rs` の map の同じ行に `io::pos_source_copy` |
@@ -166,11 +170,11 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 
 - AC1（旧い標準手順の live な残り 0）: `rg -n "EcrDatas" docs --glob '!docs/archive/**' --glob '!docs/research/**'` の hit が、すべて「事実（`XZ_BKUP` と同じ bytes・layout A の観測）」「予備の経路」「2026-10-06 に置き換えた旨の履歴」「D-111」「参照の mockup 1 行（`docs/design-system/reference/mockup-d-import-export.html:131`）」のどれかで、`EcrDatas` を通常の入力元とする文が 0。`rg -n "所定フォルダ|CV17取込み後のPC側" docs --glob '!docs/archive/**' --glob '!docs/research/**'` の hit は、`55-ui-csv-import.md` の UI-07-D12 の「旧版（2026-08-01）の…は置き換えた」の履歴の 1 行と本 AC の行だけ（起草時の実測で 2 件）。
 - AC2（IO-09 の契約がある）: `docs/function-design/29-io-daily-report-parser.md` に `find_register_sd_roots`・`resolve_register_sd_root`・`list_register_sd_entries`・`read_register_sd_file` のシグネチャ（`rg -n "^fn (find|resolve|list|read)_register_sd" docs/function-design/29-io-daily-report-parser.md` が 4 行）と IO-09-D1〜D4 がある。
-- AC3（候補の規則と二重取込みの拒否）: `37-biz-daily-report-import-service.md` に §37.9（BIZ-08-D3）と §37.3 手順 8 の BIZ-08-D4、§37.4 手順 4a、§37.3 手順 4・§37.4 手順 1a・§37.9 手順 7 の BIZ-08-D6 がある。`pos-tables.md` §12b に `settlement_no` の列がある。
+- AC3（候補の規則と二重取込みの拒否）: `37-biz-daily-report-import-service.md` に §37.9（BIZ-08-D3）と §37.3 手順 8 の BIZ-08-D4、§37.4 手順 4a、§37.3 手順 4・§37.4 手順 2a・§37.9 手順 7 の BIZ-08-D6 がある。`pos-tables.md` §12b に `settlement_no` の列がある。
 - AC4（command と画面）: `45-cmd-daily-report-import.md` に §45.6a・§45.6b（CMD-12-D1）、`55-ui-csv-import.md` に UI-07-D12（改訂）・D15・D16 がある。
 - AC5（決定の記録）: `docs/decision-log.md` の末尾に `## D-111` があり、owner の決定 1〜5・Context（CV17 の作業を利用者から隠す）・未決 A・B を挙げる。
 - AC6（検査）: `bash scripts/doc-consistency-check.sh --target plan` と `bash scripts/doc-consistency-check.sh` が ERROR 0（WARN は報告）。
-- AC7（写し）: `29-io-daily-report-parser.md` に `fn save_pos_source_copy` のシグネチャと §29.8 があり、37 に BIZ-08-D5（§37.4 手順 2a）がある。`rg -n '\bD-108\b' docs --glob '!docs/archive/**' --glob '!docs/plans/2026-10-06-sd-direct-read.md'` の hit が 0（本 packet は並走 lane の D-108 を前文と Scope で名指しするので除く。2026-10-07 の実測で 0 件。`agent/npm-audit-1006` が先に merge したときの hit はその lane の D-108 で、本 lane の記述ではない）。
+- AC7（写し）: `29-io-daily-report-parser.md` に `fn save_pos_source_copy` のシグネチャと §29.8 があり、37 に BIZ-08-D5（§37.4 手順 2b）がある。`rg -n '\bD-108\b' docs --glob '!docs/archive/**' --glob '!docs/plans/2026-10-06-sd-direct-read.md'` の hit が 0（本 packet は並走 lane の D-108 を前文と Scope で名指しするので除く。2026-10-07 の実測で 0 件。`agent/npm-audit-1006` が先に merge したときの hit はその lane の D-108 で、本 lane の記述ではない）。
 
 ## Design Readiness
 
@@ -203,12 +207,12 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 
 - producer: BIZ-08 §37.9（`DailyReportSdScan`）、CMD-12 §45.6a・§45.6b
 - consumer: UI-07（`scanRegisterSd`・`parseAndValidateDailyReportFromSd`）
-- wire type: `RegisterSdScanResponse { scan: DailyReportSdScan, scan_token: String }`、`DailyReportSdCandidate { candidate_key, path_date, report_date?, source_filenames, status }`、`DailyReportSdCandidateStatus`（5 値）。既存の `DailyReportPreviewResponse` を返す
-- internal type: `DailyReportSdScanSnapshot`（AppState、wire にしない）、`settlement_no: Option<i64>`（IO-07 → cache → DB。wire に出さない）、IO-09 の型
+- wire type: `DailyReportSourceFileRequest` に省略可の `source_path: Option<String>`（手で選んだ file の dialog の path、45 §45.3）。`RegisterSdScanResponse { scan: DailyReportSdScan, scan_token: String }`、`DailyReportSdCandidate { candidate_key, path_date, report_date?, source_filenames, status }`、`DailyReportSdCandidateStatus`（5 値）。既存の `DailyReportPreviewResponse` を返す
+- internal type: `DailyReportSdScanSnapshot`（AppState、wire にしない）、`settlement_no: Option<i64>`（IO-07 → cache → DB。wire に出さない）、IO-09 の型（BIZ-08 の中だけ。CMD は BIZ-08 の `DailyReportSdSelection` を作り、IO-09 の型を使わない）、`source_files_json` の要素（BIZ-08 の内部の serialize 用の型。wire 型 `DailyReportSourceFileInfo` に field を足さない、37 §37.4 手順 6）
 - precision/range: `settlement_no` は i64（先頭 0 を落とした整数、IO-07-D3）。日付は YYYY-MM-DD
 - round-trip path: scan → candidate_key → snapshot の 3 本 → 既存の preview → commit（DB に `settlement_no`）
 - invalid input: 空の `selected_path` は validation。期限切れの scan_token は import_error。取り込めない candidate_key は validation
-- compatibility: 既存の command と DTO の wire は変えない。`daily_report_imports` に nullable の列を足し、既存行は NULL
+- compatibility: 既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（45 §45.3）を足すほかは変えない（省いた呼出しは今どおり PC 上の file として通る）。`daily_report_imports` に nullable の列を足し、既存行は NULL
 
 ## Test Plan
 
@@ -239,11 +243,11 @@ Test Design Matrix: [2026-10-06-sd-direct-read](test-matrices/2026-10-06-sd-dire
 | IO-09-D3 | 29 §29.7.6 | 同上 | Matrix（source の検査と前後の一覧の比較） | L3: 読んだ後に SD をレジへ戻して精算できる |
 | IO-09-D4 | 29 §29.7.6 | 同上 | Matrix | 非対象 |
 | BIZ-08-D3 | 37 §37.9 | runtime: `biz/daily_report_import_service` | Matrix | 非対象 |
-| BIZ-08-D4 | 37 §37.3 手順 8・§37.4 手順 4a・6、pos-tables §12b | runtime: BIZ-08・`sales_repo.rs`・migration | Matrix | 非対象 |
-| BIZ-08-D6 | 37 §37.3 手順 4・§37.4 手順 1a・§37.9 手順 7 | runtime: BIZ-08 の parse・commit・scan | Matrix | 非対象 |
+| BIZ-08-D4 | 37 §37.3 手順 8・§37.4 手順 4a・6、24 §14.14・§14.18a、pos-tables §12b | runtime: BIZ-08・`sales_repo.rs`・migration | Matrix | 非対象 |
+| BIZ-08-D6 | 37 §37.3 手順 4・§37.4 手順 2a・§37.9 手順 7 | runtime: BIZ-08 の parse・commit・scan | Matrix | 非対象 |
 | CMD-12-D1 | 45 §45.2・§45.6a・§45.6b | runtime: `daily_report_import_cmd.rs`・`lib.rs` | Matrix | 非対象 |
 | IO-10 | 29 §29.8 | runtime: `io/pos_source_copy.rs` | Matrix | 非対象 |
-| BIZ-08-D5 | 37 §37.4 手順 2a・6、§37.9 の BIZ-08-D5、pos-tables §12b、71 §71.1 の注記 | runtime: BIZ-08 commit | Matrix | L3: 取り込んだ後に `pos-sources/` に 3 本がある |
+| BIZ-08-D5 | 37 §37.4 手順 2b・6、§37.3 手順 1a、§37.9 の BIZ-08-D5、pos-tables §12b、71 §71.1 の注記 | runtime: BIZ-08 commit | Matrix | L3: 取り込んだ後に `pos-sources/` に 3 本がある |
 | UI-07-D12 | 55 UI-判断 ID | runtime: `features/daily-report-import` | Matrix | 目視の確認 |
 | UI-07-D15 | 55 UI-判断 ID | 同上 | Matrix | L3: 一覧の状態の文言と icon、SD を戻す案内 |
 | UI-07-D16 | 55 UI-判断 ID | 同上 | Matrix | 目視の確認 |

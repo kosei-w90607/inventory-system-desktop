@@ -10,6 +10,9 @@ Risk: R3
 
 - IO-07-D5（束の `settlement_no`）
 - IO-09-D1〜D4（root の発見、名前の分類、読取り専用・書込み API なし・path の封じ込め・上限、形の測定）
+- IO-09 §29.7.4 手順 4（手で選んだ file が SD の root の下か）と BIZ-08 §37.3 手順 1a（手で選んだ SD 上の file を SD の入力にする）
+- 24 §14.14・§14.18a（`settlement_no` の INSERT と、精算回数で照合の候補を取る repository 関数）
+- IO-10 §29.8.3（初回に保存先の directory を作ってから書く）
 - BIZ-08-D3（SD の候補: 窓、組分け、状態、snapshot）
 - BIZ-08-D4（同じ精算を別の bytes で取り込まない。preview と commit の TX）
 - BIZ-08-D6（SD の経路は精算回数のある束だけ。scan・preview・commit）
@@ -51,7 +54,7 @@ Risk: R3
 | IO-09-D4 | 形を直して返す・測らない | unit | `register_sd::read_measures_shape` | BOM 付き・孤立 LF・孤立 CR・最終改行なし・CP932 でない byte 列のそれぞれで、該当の flag が立たない、または bytes が元と違う |
 | BIZ-08-D3 | 窓の始まりを誤る | unit | `scan::window_from_latest_import_or_30_days` | completed の最大 report_date が 60 日前なら `from` がその日、昨日なら today − 30、取込みなしなら today − 30 にならない。rolled_back だけの日を最大に数える |
 | BIZ-08-D3 | 同じ日の 2 つの精算を 1 つにする | integration（一時 tree + DB） | `scan::same_day_two_settlements_are_two_candidates` | 接尾字が空白と `A` の 2 組（精算回数 5・6）が 2 つの `NotImported` にならない |
-| BIZ-08-D3 | `XZ` と `XZ_BKUP` の同じ bytes を 2 つ出す | integration | `scan::same_bytes_in_both_areas_collapse` | 同じ bytes の組が `XZ` と `XZ_BKUP` にあるとき候補が 2 つになる |
+| BIZ-08-D3 | `XZ` と `XZ_BKUP` の同じ bytes を 2 つ出す | integration | `scan::same_bytes_in_both_areas_collapse` | 同じ bytes の組が `XZ` と `XZ_BKUP` にあるとき候補が 2 つになる、またはまとめた候補の snapshot の 3 本の `sd_relative_path` が `XZ\` で始まらない（§37.9 手順 6。`XZ_BKUP` を先に列挙する tree でも `XZ` を残す。優先を消す mutant で red） |
 | BIZ-08-D3 | `EcrDatas` から取込み済みの分を取り込めると出す | integration | `scan::imported_by_hash` | 同じ bytes の束を既存の手でのファイル選択の経路で commit した後、scan でその束が `Imported` にならない |
 | BIZ-08-D3 | 取消の後に取り込めない | integration | `scan::rolled_back_is_not_imported` | rollback した束が `NotImported` に戻らない |
 | BIZ-08-D3 | そろわない束を読む | integration | `scan::incomplete_group` | Z002 の無い組が `Incomplete` にならない、またはその組の file が読まれる |
@@ -62,32 +65,42 @@ Risk: R3
 | BIZ-08-D3 | 取り込めない候補を snapshot に入れる | integration | `scan::snapshot_holds_only_not_imported` | `Imported`・`SameSettlementImported`・`Incomplete`・`Unreadable` の候補を 1 つずつ含む tree で、`files_by_candidate` の key が `NotImported` の候補だけにならない（手順 9 の絞り込みを消して全候補を入れる mutant で red）。続けて `Imported` の candidate_key で `parse_and_validate_daily_report_from_sd` が `validation` にならない |
 | BIZ-08-D6 | scan で精算回数の無い束を取り込めると出す | integration | `scan::bundle_without_settlement_no_is_unreadable` | Z001 だけ精算回数の行があり Z002 / Z005 に無い（形は layout A のまま）束が `Unreadable` にならない、または snapshot に入る（手順 7 の None の分岐を消す mutant で red） |
 | BIZ-08-D6 | preview で SD の None の束を通す | integration | `daily_report_import_service::sd_bundle_without_settlement_no_is_rejected` | 同じ束を `sd_relative_path` つきで `parse_and_validate_daily_report` に渡したとき、§37.3 手順 4 の固定の文の `ImportError` にならない（手順 4 の検査を消す mutant で red） |
-| BIZ-08-D6 | 手で選んだ None の束まで止める | integration | `daily_report_import_service::manual_bundle_without_settlement_no_still_previews` | 同じ bytes を `sd_relative_path` なしで渡したとき preview が成功しない（今の手で選ぶ経路の扱いを壊す） |
-| BIZ-08-D6 | commit で SD の None の cache を通す | integration | `daily_report_import_service::commit_rejects_sd_cache_without_settlement_no` | `sd_source_files` が空でなく `settlement_no` が None の cache を直接作って commit したとき、`ImportError` にならない、`daily_report_imports` の行が増える、または `pos-sources/` に写しができる（§37.4 手順 1a を消す mutant で red。preview の検査が残っていても落ちる） |
+| BIZ-08-D6 | 手で選んだ None の束まで止める | integration | `daily_report_import_service::manual_bundle_without_settlement_no_still_previews` | 同じ bytes を `sd_relative_path` なし・`source_path` が test の SD の root の外（`parse_and_validate_daily_report_with_sd_roots` に一時 directory の root を渡す）で渡したとき preview が成功しない（PC 上の file を手で選ぶ経路の扱いを壊す） |
+| BIZ-08-D6 | 手で選んだ SD 上の None の束を通す | integration | `daily_report_import_service::manual_sd_bundle_without_settlement_no_is_rejected` | 同じ bytes を `sd_relative_path` なし・`source_path` が test の SD の root の下で渡したとき、§37.3 手順 4 の固定の文の `ImportError` にならない（§37.3 手順 1a を消す mutant で red） |
+| §37.3 手順 1a | SD 上かを確かめられないのに PC の file として通す | integration | `daily_report_import_service::sd_root_lookup_failure_stops_preview` | root の列を返す処理の失敗を注入したとき、§37.3 手順 1a の固定の文の `ImportError` にならない（失敗を PC 扱いにする mutant で red） |
+| BIZ-08-D6 | commit で SD の None の cache を通す | integration | `daily_report_import_service::commit_rejects_sd_cache_without_settlement_no` | `sd_source_files` が空でなく `settlement_no` が None の cache を直接作って commit したとき、`ImportError` にならない、`daily_report_imports` の行が増える、または `pos-sources/` に写しができる（§37.4 手順 2a を消す mutant で red。preview の検査が残っていても落ちる） |
 | BIZ-08-D4 | 別の bytes の同じ精算を追加確認で通す | integration | `daily_report_import_service::same_settlement_different_bytes_is_rejected` | 同じ report_date・精算回数で 1 byte 違う束（Z002 の末尾の行の金額だけ違う）の preview が `ImportError`（固定の文）にならず `AdditionalImportConfirmationRequired` になる |
 | BIZ-08-D4 | 同じ日の正常な 2 回目を止める | integration | `daily_report_import_service::same_date_other_settlement_still_confirms` | 精算回数 6 の束（既存は 5）が `AdditionalImportConfirmationRequired` 以外になる |
 | BIZ-08-D4 | NULL・None を照合する | integration | `daily_report_import_service::null_settlement_no_is_not_compared` | `settlement_no` NULL の既存行、または layout B の束（None）で `ImportError` になる |
-| BIZ-08-D4 | TX の間に入った同じ精算を通す | integration | `daily_report_import_service::commit_rechecks_same_settlement_in_tx` | preview の後に同じ精算の別の bytes を commit し、元の preview の commit が副作用なしで止まらない（`daily_report_imports` の行が増える） |
+| BIZ-08-D4 | TX の間に入った同じ精算を通す | integration | `daily_report_import_service::commit_rechecks_same_settlement_in_tx` | 先に同じ日・精算回数 5・hash H1 の completed の行 A を repository で入れ、精算回数 5・hash H2 の cache を直接作る（`duplicate_check.status` = `AdditionalImportConfirmationRequired`、`active_same_date_import_ids` = [A の id] で TX の中の手順 5 の snapshot の再検査は通る形）。`additional_import_confirmed = true` で commit したとき、§37.3 手順 8 の BIZ-08-D4 の固定の文の `ImportError` にならない、または `daily_report_imports` の行が増える（§37.4 手順 4a を消す mutant で red。手順 5 は同じ snapshot なので先に拒まない） |
 | BIZ-08-D4 | 保存しない | integration | `daily_report_import_service::commit_stores_settlement_no` | commit した行の `settlement_no` が束の値でない |
+| BIZ-08-D4（24 §14.18a） | 照合の候補を誤って取る | integration（DB） | `sales_repo::find_same_settlement_daily_report_import_matches_only_completed_other_hash` | 同じ日・精算回数 5 の行が (H1, completed)・(H2, rolled_back)・(H3, completed、精算回数 NULL) のとき、hash H1 で呼んで `None` にならない、hash H9 で呼んで H1 の行の id にならない（rolled_back・NULL・同じ hash を除く条件のどれかを消す mutant で red） |
+| BIZ-08-D4（24 §14.14） | INSERT が精算回数を落とす | integration（DB） | `sales_repo::insert_daily_report_import_stores_settlement_no` | `settlement_no: Some(5)` で入れた行の列が 5 でない、`None` で入れた行が NULL でない |
 | BIZ-08-D4 | migration | integration | `migration::adds_daily_report_settlement_no_nullable` | 既存の DB を移行した後、既存行の `settlement_no` が NULL でない、列が無い |
 | IO-10 | 同じ path の違う bytes を上書きする | unit | `pos_source_copy::different_bytes_get_hash_suffixed_name` | 同じ相対 path に違う bytes を 2 回書くと、1 回目の file の内容が変わる、または 2 回目が `~` + hash 12 桁の名前にならない |
 | IO-10 | 同じ bytes を書き直す | unit | `pos_source_copy::same_bytes_not_rewritten` | 同じ bytes の 2 回目が `written: true` になる、更新時刻が変わる |
 | IO-10 | 半端な file を最終の名前に残す | unit | `pos_source_copy::writes_via_temp_and_rename` | 書込みの途中の失敗を注入したとき、最終の名前の file ができる |
+| IO-10 | 初回に保存先の directory が無いと書けない | unit | `pos_source_copy::creates_missing_directory_before_temp_file` | 空の一時 directory を app_data_dir にして `XZ\2026\10\Z001_06 .CSV` を書いたとき、`Ok` にならない、または `pos-sources/casio-sr-s4000/sd/XZ/2026/10/` の下に最終の名前の file ができない（`create_dir_all` を一時 file の後へ戻す mutant で red） |
 | IO-10 | app data の外に書く | unit | `pos_source_copy::rejects_escaping_paths` | `..\x`・`C:\x` の相対 path で書く |
 | BIZ-08-D5 | 写しの失敗でも取り込む | integration | `daily_report_import_service::copy_failure_aborts_commit` | 書けない app_data_dir（読取り専用の一時 directory）で commit が成功する、`daily_report_imports` の行が増える |
 | BIZ-08-D5 | 写しの失敗の後に同じ token で再試行できない | integration（CMD + 一時 directory） | `daily_report_import_cmd::copy_failure_keeps_preview_token_for_retry` | 読取り専用の app_data_dir で commit が `import_error` になった後、`daily_report_preview_cache` に同じ preview_token が残らない、または書ける directory に替えて同じ token で commit が成功しない（行が 1 つ増え、写しが 3 本できる）。失敗時に token を消す mutant で red |
 | BIZ-08-D5 | 写しの path を記録しない | integration | `daily_report_import_service::commit_records_copy_paths` | SD の束の commit の `source_files_json` に `sd_relative_path`・`copy_path` が無い、`copy_path` の file の bytes が束と違う |
-| BIZ-08-D5 | 手で選んだ束も写す | integration | `daily_report_import_service::manual_bundle_has_no_copy` | `sd_relative_path` が None の束で `pos-sources/` に file ができる |
+| BIZ-08-D5 | PC 上の file を手で選んだ束も写す | integration | `daily_report_import_service::pc_bundle_has_no_copy` | `source_path` が test の SD の root の外（または `None`）の束の commit で `pos-sources/` に file ができる |
+| BIZ-08-D5 | 手で選んだ SD 上の file を写さない | integration | `daily_report_import_service::manual_sd_files_are_copied` | `source_path` が test の SD の root の下の 3 本の commit で、`pos-sources/casio-sr-s4000/sd/` の下にその相対 path の写しが 3 本できない、または `source_files_json` に `sd_relative_path`・`copy_path` が無い（§37.3 手順 1a を消す mutant で red） |
+| BIZ-08-D5 | 保存先の無い初回で取り込めない | integration | `daily_report_import_service::first_commit_creates_copy_directory` | `pos-sources/` の無い app_data_dir（空の一時 directory）で SD の束を commit したとき、写し 3 本と `daily_report_imports` の 1 行ができない |
 | BIZ-08-D5 | 古い JSON を読めない | integration | `daily_report_import_service::source_filenames_accepts_missing_copy_fields` | `copy_path` の無い既存の `source_files_json` で同日の summary が失敗する |
 | CMD-12-D1 | 期限切れの scan を使う | unit | `daily_report_import_cmd::from_sd_rejects_expired_scan` | 31 分前の snapshot で preview を返す |
 | CMD-12-D1 | 取り込めない候補を受ける | unit | `daily_report_import_cmd::from_sd_rejects_unknown_candidate` | snapshot に無い candidate_key で preview を返す |
 | CMD-12-D1 | 新しい scan で古い snapshot が残る | unit | `daily_report_import_cmd::new_scan_replaces_cache` | 2 回目の scan の後に 1 回目の scan_token で preview を返す |
-| CMD-12-D1 | CMD が IO を呼ぶ | 既存の構造 test | `src-tauri/tests/architecture_test.rs`（`rg -n "fn " src-tauri/tests/architecture_test.rs` で存在を確かめた） | `cmd` から `io::register_sd` を use する |
+| CMD-12-D1 | CMD が IO を呼ぶ | 既存の構造 test | `src-tauri/tests/architecture_test.rs`（`rg -n "fn " src-tauri/tests/architecture_test.rs` で存在を確かめた。LAYER_RULES は `:44`〜`:47` で cmd → db・io を禁止） | `cmd` から `io::register_sd`（`RegisterSd*` の型を含む）を use する。選択は BIZ-08 の `DailyReportSdSelection` で渡す |
 | UI-07-D15 | 状態を色だけで示す・文言違い | component | `DailyReportImportPage.sd.test.tsx` の状態ごとの label | 5 状態の label（「取り込めます」「取込み済み」「同じ精算を取込み済み」「ファイルがそろっていません」「読めません」）と icon が出ない |
+| UI-07-D15 | 取り込めない精算を「無い」と出す | component | `DailyReportImportPage.sd.test.tsx` の一覧の上の文 | (a) `NotImported` 1 件と `Unreadable` 1 件で文が出る、(b) `Incomplete` 1 件・`Unreadable` 1 件だけで「取り込める精算はありません。取り込めない精算が 2 件あります（「ファイルがそろっていません」「読めません」の行）。」が出ない、または「新しい精算はありません」が出る、(c) 候補 0 件と、`Imported`・`SameSettlementImported` だけのときに「新しい精算はありません」が出ない |
 | UI-07-D15 | SD を戻す案内が出ない | component | 同上 | scan 成功の後に「SD はレジに戻してください」が出ない |
 | UI-07-D15 | 見つからないときの予備が出ない | component | 同上 | 「SD が見つかりません」の error のとき「場所を選ぶ」が出ない |
 | UI-07-D15 | reducer の遷移 | unit | `reducer.test.ts`（既存 file、`src/features/daily-report-import/reducer.test.ts`） | `scanning` → `sd_list` → `parsing` → `preview` と、SD から来た parse 失敗の recoverTo `sd_list` が成り立たない |
 | UI-07-D16 | 1 つずつ選び足し・外す | component | `DailyReportImportPage.files.test.tsx` | Z001 → Z005 → Z002 の順に 1 つずつ足して「確認する」が有効にならない、1 つ外すと無効に戻らない |
+| UI-07-D16 | dialog の path を捨てる | unit（hook） | `useDailyReportImportFlow.test.tsx` の payload | dialog が返した 3 つの path が、`parseAndValidateDailyReport` の各要素の `source_path` に入らない（今の `{ filename, file_bytes }` だけの payload のまま） |
+| IO-09（§29.7.4 手順 4） | SD の root の下かを誤る | unit | `register_sd::locate_in_roots_maps_paths` | root `E:\CASIO\SR500_550_4000` に対し、`e:\casio\sr500_550_4000\XZ\2026\10\Z001_06 .CSV` が `XZ\2026\10\Z001_06 .CSV` にならない。`E:\CASIO\SR500_550_4000X\a.CSV`（名前の前方一致だけ）・`C:\EcrDatas\a.CSV`・相対 path・`..` を含む path・空の root の列のどれかが `None` にならない |
 
 ## State Lifecycle Matrix
 
@@ -110,7 +123,7 @@ Risk: R3
 ## Negative Paths
 
 - missing input: SD が無い（`find_register_sd_roots` が空の列）、`XZ` が無い、Z002 の無い組
-- invalid input: 規則外の名前、暦日として不正な日付、BOM・孤立 LF / CR・CP932 でない bytes、parse_errors のある束、SD の経路で精算回数の無い束（BIZ-08-D6）
+- invalid input: SD の root の下かを確かめられない手で選んだ file（§37.3 手順 1a）、規則外の名前、暦日として不正な日付、BOM・孤立 LF / CR・CP932 でない bytes、parse_errors のある束、SD の経路で精算回数の無い束（BIZ-08-D6）
 - duplicate/ambiguous input: SD が 2 枚、同じ bytes が `XZ` と `XZ_BKUP`、同じ精算の別の bytes
 - unknown reference: snapshot に無い candidate_key、期限切れの scan_token
 - dependency missing: Windows 以外では自動の発見が空（予備の経路だけ）
@@ -121,7 +134,7 @@ Risk: R3
 
 - threshold: 窓の 30 日、scan cache の 30 分、1 file の 20MB
 - null/default: `settlement_no` None・NULL、`selected_path` None
-- empty/non-empty: 候補 0 件（「新しい精算はありません」）
+- empty/non-empty: 候補 0 件と全件取込み済み（「新しい精算はありません」）、取り込めない候補だけ（「取り込める精算はありません。取り込めない精算が N 件あります…」）
 - min/max: 接尾字 `A`〜`Z` と空白、連番 4 桁
 - status/policy enum: 候補の状態 5 値
 - wire type: `DailyReportSdCandidateStatus` は specta の string union
@@ -159,7 +172,7 @@ Risk: R3
 - BIZ-08-D4 の照合から `settlement_no` を外す（report_date だけ）と `same_date_other_settlement_still_confirms` が落ちる。
 - `XZ` / `XZ_BKUP` の連番の有無の規則を外すと `list_returns_unknown_without_reading` が落ちる。
 - 形の検査を外すと `shape_violation_is_unreadable` が落ちる。
-- BIZ-08-D6 の 3 つの検査（scan の手順 7、preview の §37.3 手順 4、commit の §37.4 手順 1a）は、どれか 1 つを消すとその段の行（`bundle_without_settlement_no_is_unreadable`・`sd_bundle_without_settlement_no_is_rejected`・`commit_rejects_sd_cache_without_settlement_no`）が落ちる。検査の条件を「SD の経路」でなく全部の束にすると `manual_bundle_without_settlement_no_still_previews` が落ちる。
+- BIZ-08-D6 の 3 つの検査（scan の手順 7、preview の §37.3 手順 4、commit の §37.4 手順 2a）は、どれか 1 つを消すとその段の行（`bundle_without_settlement_no_is_unreadable`・`sd_bundle_without_settlement_no_is_rejected`・`commit_rejects_sd_cache_without_settlement_no`）が落ちる。検査の条件を「SD の経路」でなく全部の束にすると `manual_bundle_without_settlement_no_still_previews` が落ちる。
 - 大文字小文字の無視を外すと `list_classifies_observed_names` の `ej261004.txt` が落ちる。
 
 ## Residual Test Gaps

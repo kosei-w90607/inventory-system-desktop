@@ -94,6 +94,9 @@ sales_repo.rs に追加する（ARCHITECTURE.md: sales_repository は sale_recor
 - net_amount: Option\<i64\>
 - status: String（"completed"）
 - note: Option\<String\>
+- settlement_no: Option\<i64\>（D-111 で足す。束の精算回数〈IO-07-D5〉、`None` は NULL。BIZ-08-D4 の照合に使う）
+
+`DailyReportImport`（上、`specta::Type` の行の DTO）には `settlement_no` を足さない（list の wire を変えない。`DailyReportImport` を返す既存の SELECT は列を名指しし、`row_to_daily_report_import` はその列の位置で読むので、表に列を足しても読み方は変わらない。2026-10-07 の `src-tauri/src/db/sales_repo.rs` で確認）。精算回数での照合は §14.18a の内部の関数だけが読む。
 
 **NewDailyReportSummaryLine / NewDailyReportPaymentLine / NewDailyReportDepartmentLine構造体**:
 - DB_DESIGN.md 12c〜12e のカラムに対応するinsert用構造体。`daily_report_import_id` は親INSERT後にBIZ-08が設定する。
@@ -455,7 +458,7 @@ fn insert_daily_report_import(conn: &DbConnection, record: &NewDailyReportImport
 ```
 
 **処理ステップ**:
-1. INSERT INTO daily_report_imports (...)
+1. INSERT INTO daily_report_imports (...)（`settlement_no` の列を含む。D-111）
 2. last_insert_rowid() を返す
 
 **注意**: bundle_hash / report_date の重複判定はBIZ-08の責務。本関数はSQL insertだけを行う。
@@ -523,6 +526,27 @@ fn find_daily_report_imports_by_report_date(conn: &DbConnection, report_date: &s
 `SELECT * FROM daily_report_imports WHERE report_date = ? AND status = 'completed' ORDER BY imported_at DESC, id DESC`
 
 `report_date` は group key であり uniqueness key ではない。呼出側は `source_files_json` を安全に解析して表示用 filename 一覧を作り、全 active ID の順序付き snapshot を保持する。
+
+---
+
+### 14.18a find_same_settlement_daily_report_import（D-111、BIZ-08-D4）
+
+**関数要求**: 同じ対象日・同じ精算回数で、bundle_hash の違う completed の日報取込みを探す。BIZ-08-D4 の照合（§37.3 手順 8・§37.4 手順 4a）と、SD の候補の状態（§37.9 手順 7 の `SameSettlementImported`）の専用。wire に出さない。
+
+**シグネチャ**:
+```
+fn find_same_settlement_daily_report_import(
+    conn: &DbConnection,
+    report_date: &str,
+    settlement_no: i64,
+    bundle_hash: &str,
+) -> Result<Option<i64>, DbError> // 一致した import の id
+```
+
+**SQL方針**:
+`SELECT id FROM daily_report_imports WHERE report_date = ? AND settlement_no = ? AND bundle_hash <> ? AND status = 'completed' ORDER BY id DESC LIMIT 1`
+
+`settlement_no` が NULL の行は `= ?` に当たらないので照合されない（D-111 より前の取込み・layout B）。呼出側は `settlement_no` が `None` の束で本関数を呼ばない。
 
 ---
 
@@ -638,4 +662,5 @@ fn get_monthly_official_department_totals(
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別 hash の active import 全件取得、commit snapshot 再検証、per-import rollback、日報の日次・月次 additive read 契約を正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | §14.21 に Z001 の行を取込みごとに読む手順 6 を追加（D-096）。rename 済みの旧 symbol の「実装遷移義務」の段落を削除（[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
 | 2026-10-06 | z001-display（runtime、起票） | §14.21 手順 1 の取得列に `imported_at` と並び `imported_at ASC, id ASC` を書いた（手順 6 の行の無い親の取込み日時の出どころ。PR #114 Final Review の P3。[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
+| 2026-10-07 | sd-direct-read（Plan Review round 2 の是正、D-111） | `NewDailyReportImport.settlement_no` と §14.14 の INSERT の列、§14.18a `find_same_settlement_daily_report_import`（BIZ-08-D4）。`DailyReportImport` の行の DTO と既存の SELECT は変えない。 |
 | 2026-10-06 | z001-display（Plan Review round 1 の是正） | §14.21 手順 1 に、gross / net の加算は従来どおり新しい順で行うこと（溢れと NULL の伝播が順に依るため）を書いた（[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |

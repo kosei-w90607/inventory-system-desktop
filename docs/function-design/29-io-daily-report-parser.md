@@ -246,9 +246,12 @@ struct RegisterSdRoot {
     volume_label: String, // 表示用。ドライブ名（`G:` 等）
 }
 
-enum RegisterSdSelection {
-    Auto,               // 取外し可能な drive から探す（find_register_sd_roots）
-    Selected(PathBuf),  // 利用者が folder の選択で選んだ path（resolve_register_sd_root）
+// 「自動で探すか、選んだ場所か」の選択の enum は BIZ-08 が持つ（`DailyReportSdSelection`、37 §37.9）。
+// CMD は IO の型を使えない（`src-tauri/tests/architecture_test.rs` の LAYER_RULES: cmd → io は禁止）ので、IO-09 の関数はこの選択を引数に取らない。
+
+struct RegisterSdLocatedFile {
+    root: RegisterSdRoot,
+    relative_path: String, // root からの相対 path（区切りは `\`。RegisterSdEntry.relative_path と同じ形）
 }
 
 enum RegisterSdArea {
@@ -307,6 +310,7 @@ enum RegisterSdError {
 ```rust
 fn find_register_sd_roots() -> Result<Vec<RegisterSdRoot>, RegisterSdError>
 fn resolve_register_sd_root(selected: &Path) -> Result<RegisterSdRoot, RegisterSdError>
+fn locate_in_register_sd_roots(roots: &[RegisterSdRoot], path: &Path) -> Option<RegisterSdLocatedFile> // 純関数（file system を見ない）
 ```
 
 **処理ステップ**:
@@ -314,6 +318,7 @@ fn resolve_register_sd_root(selected: &Path) -> Result<RegisterSdRoot, RegisterS
 1. `find_register_sd_roots`: Windows では `GetLogicalDrives` の各 drive のうち `GetDriveTypeW` が `DRIVE_REMOVABLE` のものだけを見て、`<drive>:\CASIO\SR500_550_4000` が directory なら root にする（大文字小文字は区別しない）。network・固定 disk・CD の drive は見ない（応答しない network drive で止まらない）。依存は既存の `windows-sys`（`Win32_Storage_FileSystem`、`src-tauri/Cargo.toml` の `[target.'cfg(windows)'.dependencies]`）で、新しい crate を足さない。Windows 以外（開発機・CI）では空の列を返す。
 2. 0 件なら `Ok(vec![])`、2 件以上もそのまま `Ok` で返す（IO は件数で error にしない。0 件の「SD が見つかりません」と 2 件以上の「売上を読む SD だけを差してください」は BIZ-08 §37.9 手順 1 が決める）。
 3. `resolve_register_sd_root`: 選ばれた path が drive の root・`CASIO`・`SR500_550_4000` のどれかで、そこから `CASIO\SR500_550_4000` に当たる directory が見つかれば root にする。それ以外は `NotRegisterSd`。選ばれた path は取外し可能な drive でなくてよい（reader が固定 disk として見える PC と、SD の写しを読む復旧に使う）。
+4. `locate_in_register_sd_roots`: 手でファイルを選ぶ経路（UI-07-D16）の file が、`find_register_sd_roots` の返した root（取外し可能な drive の `CASIO\SR500_550_4000`、IO-09-D1 と同じ規則）の下にあるかを、path の文字列だけで決める。`path` が絶対 path で、`.`・`..` の要素を持たず、要素の列が `roots` のどれかの `path` の要素の列で始まる（大文字小文字は区別しない）なら、その root と残りの要素を `\` でつないだ `relative_path` を返す。それ以外（root の外、相対 path、`..` を含む、`roots` が空）は `None`。file を開かず、名前の規則（IO-09-D2）でも分けない（root の下なら名前に依らず SD の file として扱う）。BIZ が `find_register_sd_roots` を 1 回呼んでその結果を渡す（test は一時 directory の root を渡す）。
 
 **IO-09-D1（root の見つけ方）**: 自動で探すのは取外し可能な drive の中の決まった folder だけで、見つからない・2 つ以上のときは推測で選ばない。既定は自動で探し、見つからなければ利用者が folder を選ぶ（owner 決定 2026-10-06、D-111、UI-07-D15）。選ぶ経路も同じ IO で持つ。
 
@@ -415,10 +420,10 @@ fn save_pos_source_copy(
 #### 29.8.3 処理ステップ
 
 1. `sd_relative_path` を IO-09-D3 と同じ規則で検証し（`..`・drive・絶対 path・空の要素を拒む）、`\` を `/` に直して既定の path（§29.8.1）を作る。
-2. 既定の path に file が無ければ書く。同じ bytes（SHA-256 が同じ）の file があれば書かずに `written: false`。違う bytes の file があれば上書きせず、名前の拡張子の前に `~` と SHA-256 の先頭 12 桁を足した path（例 `Z001_06 ~1a2b3c4d5e6f.CSV`）にする。その path にも同じ bytes があれば `written: false`。
+2. 書く先の path を決める（ここではまだ書かない）: 既定の path に file が無ければ既定の path に書く（手順 3・4）。同じ bytes（SHA-256 が同じ）の file があれば書かずに `written: false`。違う bytes の file があれば上書きせず、名前の拡張子の前に `~` と SHA-256 の先頭 12 桁を足した path（例 `Z001_06 ~1a2b3c4d5e6f.CSV`）にする。その path にも同じ bytes があれば `written: false`。
    - 同じ相対 path に違う bytes が来るのは、CV17 で移した後に同じ日にもう一度精算し、レジが同じ名前（接尾字が空白に戻る、SD-08）で書いた場合。上書きすると前の精算の写しが消える。
-3. 書くときは同じ directory の一時 file に書いて flush・sync し、最終の名前へ rename する（途中で失敗しても最終の名前に半端な file を残さない）。既存の file を上書き・削除・改名しない。
-4. directory は `create_dir_all` で作る。
+3. 書く前に、書く file の親の directory を `create_dir_all` で作る（初回で `pos-sources/…/XZ/yyyy/mm/` が無いとき。あれば何もしない。失敗は `std::io::Error`）。
+4. 書くときは手順 3 の directory の一時 file に書いて flush・sync し、最終の名前へ rename する（途中で失敗しても最終の名前に半端な file を残さない）。既存の file を上書き・削除・改名しない。
 
 #### 29.8.4 エラーと採らなかった案
 
