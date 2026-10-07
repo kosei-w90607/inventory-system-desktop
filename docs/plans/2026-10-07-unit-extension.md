@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R4
 - Plan Commit: pending
 - Amendments: none
@@ -22,6 +22,7 @@
 2. spec-check → design（2026-10-07、起草役）: 正本（`docs/db-design/master-tables.md` の products、`docs/function-design/35-biz-stocktake-service.md` §20.5a SPEC-STK-VAL-D1、`31-biz-inventory-service.md`、`62-ui-manual-sale.md` UI-04-D6、`23-io-z004-parser.md` §13.4.1、`29-io-ej-parser.md` IO-08.5）は単位 2 値・原価の円の整数・数量の整数の parse で、12 単位・m の入力・原価の小数・小数の POS の数量の契約が無い。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design のまま止める（起草の時点）: owner の判断事項 J1〜J4 が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさない。
 4. design → plan-draft（2026-10-08、起草役）: owner が J1〜J4 をすべて推奨の案に決めた（repo 外の回答台帳 TD-195。下の owner の判断事項）。設計正本と D-113 の未決の記述を決定の文に直し（AC4）、設計の出力は正本にある。残る延期（Contract Probe P3、棚卸し記録詳細のロス原価を移す lane、`tracking-system-tables.md` の列の表）は本 lane の設計の値を変えず、runtime の lane の起票時に決めれば足りるので、未解決の設計の問いは無い（Design Readiness）。plan-gate へは Coordinator が進める。
+5. plan-draft → plan-gate（2026-10-08、Coordinator、本 commit）: packet と Matrix（`docs/plans/test-matrices/2026-10-07-unit-extension.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。AC1〜AC6 の command を plan-gate の直前に逐語で再測し、反映後の期待と一致（AC1 `11`、AC2 1 行と `2`、AC3 `2`・`4`・`1`、AC4 J1〜J4 の 4 行と `0`、AC5 `0`、AC6 `0`）。Draft PR で Plan Review（fresh Opus + Codex）に出す。
 
 ## Owner Effort Budget
 
