@@ -101,7 +101,7 @@ migrationは履歴・評価額・数量を変更せず、旧証拠を捏造し�
 ### CHECK制約方針（指摘#17対応）
 以下の列挙値カラムにCHECK制約を設定する。有限集合の IPC 露出値は D-061 / D-064 により Rust の generated enum を SSOT とする literal union 契約であり、本 CHECK 制約は**同一の値集合を防御として二重化したまま維持する**（DB 層は TEXT のまま schema 不変。DB CHECK と wire enum の対応関係の正本は decision-log D-061 / D-064）:
 - products.tax_rate: CHECK(tax_rate IN ('10','8','0'))
-- products.stock_unit: CHECK(stock_unit IN ('pcs','cm'))
+- products.stock_unit: CHECK(stock_unit IN ('pcs','cm'))（D-113 で 12 個の code へ広げる予定。proposed・未実装、[master-tables](db-design/master-tables.md) の「単位と原価の精度の契約」）
 - sale_records.source: CHECK(source IN ('auto','manual'))
 - inventory_movements.movement_type: CHECK(movement_type IN ('sale_auto','sale_manual','receiving','return','disposal','stocktake'))
 - inventory_movements.reference_type: CHECK(reference_type IN ('csv_import','manual_sale','receiving_record','return_record','disposal_record','stocktake') OR reference_type IS NULL)
@@ -185,6 +185,7 @@ jan_codeとfile_hash以外に、以下のインデックスを初期設定する
 ### D-4: 在庫少閾値の初期値（2026-03-29 確定）
 - **初期値**: stock_low_threshold=3（一般商品: 3個以下）、stock_low_threshold_fabric=500（生地: 500cm=5m以下）
 - **適用ルール**: products.stock_unit='cm'の商品にはstock_low_threshold_fabricを適用、それ以外にはstock_low_thresholdを適用
+  - D-113（proposed・未実装）: 単位が 12 種になった後は、長さの単位（`m`・`cm`）に stock_low_threshold_fabric、個数の単位（ほかの 10 種）に stock_low_threshold を適用する（[共通規則](function-design/10-common-rules.md) SPEC-UNIT-D10）
 - **設定画面**: 利用者が変更可能。入力バリデーションで0以下の値は拒否（最小値=1）
 - **商品個別閾値**: 初期バージョンでは全商品一律。将来拡張でproductsにcustom_low_thresholdカラムを追加する余地を残す
 

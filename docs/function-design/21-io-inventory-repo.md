@@ -101,6 +101,7 @@ fn get_receiving_record_detail(conn: &DbConnection, record_id: i64) -> Result<Re
 1. receiving_records のヘッダを record_id で取得する。存在しない場合は DbError::NotFound
 2. receiving_items を products / departments と JOIN し、商品名・部門名・単位を付ける
 3. 各明細の `quantity * cost_price` を line_cost とし、合計を total_cost にする
+   - proposed・未実装（D-113）: 長さの商品で 100 倍になる（価格の基準数量で割らない）ため、IO は金額を計算せず明細の数量・原価・単位だけを返し、BIZ が [共通規則](10-common-rules.md) SPEC-UNIT-D6 で求める（[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」）
 4. inventory_movements から `reference_type='receiving_record'` かつ `reference_id=record_id` かつ `is_voided=0` の行を取得する
 5. movements は BIZ 層で source link を補完するため、IO 層では `source=None` のまま返す
 
@@ -352,6 +353,7 @@ fn get_disposal_record_detail(
 1. disposal_records のヘッダを record_id で取得する。存在しない場合は DbError::NotFound
 2. disposal_items を products / departments と JOIN し、商品名・部門名・単位を付ける
 3. 各明細の `quantity * cost_price` を line_loss_cost とし、合計を total_loss_cost にする
+   - proposed・未実装（D-113）: 同上。廃棄のロス原価も BIZ が SPEC-UNIT-D6 で求める
 4. inventory_movements から `reference_type='disposal_record'` かつ `reference_id=record_id` かつ `is_voided=0` の行を取得する
 5. movements は BIZ 層で source link を補完するため、IO 層では `source=None` のまま返す
 

@@ -327,3 +327,31 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 既存の DB の日報の個数は今まで整数でしか保存できなかった（小数の日は取込み自体が失敗していた）ので、100 倍は値を変えずに単位だけを変える。v7 を適用した DB は v7 を知らない旧版のアプリでは開けない（MNT-03-D11 の `SchemaNewerThanApp`）。v6 以前の backup を復元すると、open の migrate が v7 を適用する。
 
 **MIGRATIONS 登録順**: `migration.rs` の migrations() は v1 → … → v6 → v7 の順に登録する。v7 の description は `日報の個数を100倍の整数へ` とし、kind は `MigrationKind::Custom(schema_v7::apply_v7_daily_report_quantity_hundredths)` とする。実装は、既存行の 100 倍（NULL は NULL のまま、負の値も 100 倍）、改名後の列名、再実行時に v7 を重複適用しないこと、v6 の DB に日報の行がある状態からの適用、範囲の境界（範囲内の最大 `i64::MAX / 100` の 2 行は成功、範囲外の 1 行は範囲検査の message で失敗して何も変わらず v7 が記録されない）、行が 0 の表と全行が NULL の表で v7 が成功すること、手順 6 の検証の失敗（符号の違う余りが打ち消し合う形を含む）で 2 表・値・版が rollback されることを検証する。
+
+## 16. MNT-03 追加: 単位の拡張と原価の 1/100 円の migration（proposed・未実装、D-113）
+
+**MNT-03-D13 / D-113**: 単位を 12 個の code へ広げる migration（以下 vU）と、原価を 1/100 円へ改名する migration（以下 vC）を足す。意味の正本は [共通規則](10-common-rules.md) SPEC-UNIT-D1・D5 と [db-design/master-tables.md](../db-design/master-tables.md) の「単位と原価の精度の契約」。vU は単位の runtime の lane、vC は原価の runtime の lane（`未決（owner、D-113 J2）`）が実装し、番号はそれぞれの lane が起票時に決める（並走の lane〈時点証拠の migration 等〉と番号・順序を合わせる）。本 design-first の変更では schema を変えない。
+
+**vU の手順**（`MigrationKind::Custom`、表の作り直し。SQLite は CHECK を ALTER で変えられない）:
+
+1. TX の外で `PRAGMA foreign_keys` の値を読み、OFF にする（v2・時点証拠の migration と同じ形。TX の中の `PRAGMA foreign_keys` は no-op）
+2. BEGIN。`products` の行数を読む
+3. `products_new` を、vU を適用する時点の `products` と同じ列・同じ順・同じ制約で作り、`stock_unit` の CHECK だけを 12 個の code（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho` `m` `cm`）にする。既定値 `'pcs'` は変えない。列の並びは vU の直前の版の schema から写す（先に時点証拠の migration が `products` に列を足していれば、その列も含める）
+4. 全列を列名で並べて `INSERT INTO products_new (…) SELECT … FROM products`。値は変えない
+5. `DROP TABLE products`、`ALTER TABLE products_new RENAME TO products`、`idx_products_jan_code`・`idx_products_department_id`・`idx_products_is_discontinued`（と vU の時点で `products` にあるほかの index）を作り直す
+6. 同じ TX の中で確かめる: (a) 行数が手順 2 と同じ、(b) `PRAGMA foreign_key_check` が 0 行、(c) `stock_unit` の値ごとの件数が作り直しの前と同じ。違えば rollback して `DbError::MigrationFailed`
+7. schema_versions に記録して COMMIT。TX が閉じた後に `PRAGMA foreign_keys` を手順 1 の値に戻す（MNT-03-D1 の COMMIT 失敗の扱いに従う）
+
+**vC の手順**（`MigrationKind::Custom`、1 つの transaction、§15 の v7 と同じ形）: 対象は 6 列（`products.cost_price`、`receiving_items.cost_price`、`disposal_items.cost_price`、`stocktake_items.valuation_cost_price`、`price_history.old_cost`・`new_cost`）。
+
+1. 範囲検査: 各列で NULL でない値のうち `> ?1 OR < -?1`（`?1 = i64::MAX / 100`）が 1 件でもあれば、何も変えず版も記録せず `DbError::MigrationFailed`（message に `範囲検査` と表名・列名）
+2. 各列の NULL でない行の件数と合計（`COUNT`・`COALESCE(SUM(…), 0)`）を読む。`SUM` の溢れも `MigrationFailed`
+3. 各列を `ALTER TABLE … RENAME COLUMN … TO …_centi`（master-tables の表の名前）にし、`UPDATE … SET … = … * 100 WHERE … IS NOT NULL`
+4. 各列で §15 手順 6 の (a)〜(c) と同じ 3 つを確かめる（件数・`typeof = 'integer'`・`SUM(… / 100)` が手順 2 の合計と同じで余りの行が無い）。違えば rollback して `MigrationFailed`
+5. schema_versions に記録して COMMIT
+
+列は改名だけで表を作り直さないので foreign_keys の手順は要らない（同梱の SQLite 3.45.0 の `RENAME COLUMN`）。時点証拠の migration（`schema_time_evidence.rs`、未配線）は `stocktake_items` を作り直して `valuation_cost_price` を列名で写すので、vC と後に適用される方が、その時点の列名で SQL を書く（後に入る lane の義務）。
+
+**回復**（R4）: どちらも 1 つの transaction で、失敗すれば何も変わらず版も記録されない（§3.2）。適用した DB は vU・vC を知らない旧版のアプリでは開けない（MNT-03-D11）。旧版へ戻すには、更新の前の backup を旧版のアプリで復元する（[71](71-mnt-backup.md)）。更新の前の版の backup を新しい版で復元すると、open の migrate が vU・vC を適用する。値の変換は vC の 100 倍だけで、逆変換の migration は作らない。
+
+**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。

@@ -957,6 +957,8 @@ WHERE ((p.stock_unit = 'pcs' AND p.stock_quantity <= ?1)
 ORDER BY p.stock_quantity ASC, p.name ASC
 ```
 
+proposed・未実装（D-113）: 単位が 12 種になった後は `p.stock_unit = 'pcs'` を個数の単位の 10 個の code の `IN (…)`、`p.stock_unit = 'cm'` を `IN ('m','cm')` にする。code の並びは `ProductStockUnit` の全 variant から作り、どちらにも入らない単位が在庫少から漏れないことを test で止める（[共通規則](10-common-rules.md) SPEC-UNIT-D10）。
+
 **ページング不要の理由**: 閾値以下の商品は通常少数（数十件程度）。4000商品中、在庫少は一覧で全件表示する（architecture/ui-task-specs.md UI-06b仕様）。
 
 ---

@@ -106,6 +106,7 @@ Keep it factual and stable.
 - About 80 supplier relationships total: ~5 direct wholesalers/makers, ~43 handicraft makers via wholesaler, ~31 others; the set shrinks over time as suppliers close or merge — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - Slip retention duty was 5 years, is now 7 years; about 4 years ago a tax accountant's cost inquiry required checking every retained slip individually — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - Register numeric keypad has a decimal point, so quantity × unit price with one decimal digit (e.g. 1.3 × 70円/m) can be entered — 2026-09-15 owner伝聞 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`（追記）
+  - PLU に登録した商品を小数の数量で売ると、Z004 の個数は小数 1 桁で出て、EJ と精算レシートにも小数で残る — 店主回答（フォーム）2026-10-07
 - Excluded long-dormant items（単品コードなし）are sold via department key + amount, tracked only in the owner's memory — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - Of 216 normal PLU slots, only 2 have real store-entered data; the remaining 214 are factory-default `PLU####` placeholders — see also「レジ・レジスターツール」節の訂正事実 — 2026-08-17 実機機械抽出 — `docs/plu-export-and-real-csv-verification.md`
 - 10 existing products use an 8-digit custom code + `EEEEEE` padding scheme (non-handicraft goods) — 2026-08-17 実機機械抽出 — `docs/plu-export-and-real-csv-verification.md`
@@ -115,6 +116,7 @@ Keep it factual and stable.
 - Purchase orders are written on one sheet per wholesaler, grouped by wholesaler — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Owner already knows almost all discontinued items and defunct suppliers from memory — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Counting words differ by category: 毛糸=玉, 布=枚, ファスナー=本, はさみ=丁, スナップ=枚, 刺繍糸=本, otherwise mostly 個 — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
+  - 在庫計数 Excel では毛糸の単位が「個」になっているが、owner の入力の誤りで、数え方は「玉」。Excel は意味が通るのでそのままでよい — owner 2026-10-07
 - The store never sources the same product from two different suppliers — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
   - 訂正: 発注書を分ける「取引先」は注文先（問屋・仕入先）。同じ商品を 2 つ以上の注文先から仕入れるのは緊急時だけ（お客様に約束した日に、通常の仕入れ先の納品が間に合わないとき）。上の行の「never」は「通常は 1 つの注文先だけ」の意味 — 店主回答（owner 経由の質問票）2026-09-29
   - この「取引先」は問屋・仕入先を指し、D-075 (6) が `suppliers` に持たせたメーカー/ブランドとは別の軸。見直しは `docs/backlog.md` の取引先の項目で扱い、決定はまだ変えていない

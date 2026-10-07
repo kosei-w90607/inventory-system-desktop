@@ -237,6 +237,8 @@ fn parse_data_line(line: &str, line_no: usize) -> Result<Option<ParsedRow>, Pars
 - カンマ付きの値を InvalidNumber のまま残す（従来）: 1,000 円以上の PLU の売上が在庫に反映されない
 - 小数の受理: 単位の拡張（backlog「単位の拡張」）で数量の型ごと決める。本書では InvalidNumber のまま
 
+単位の拡張の後（proposed・未実装、D-113）: 個数（第 4 欄）は、上の 2 つの形の整数部に任意の `.` + ASCII 数字 1〜2 桁を続けた形を受け、小数 2 桁までの 100 倍の整数（`quantity_hundredths: i64`、`ParsedRow.quantity` を置き換える）にする（[共通規則](10-common-rules.md) SPEC-UNIT-D8。浮動小数を通さない）。金額（第 5 欄）は今の整数の規則のまま。IO は商品を引かず、在庫の数量への換算（個数の商品で 100 で割り切れない値は在庫に効かせない、長さの商品は 100 倍の整数がそのまま cm）は BIZ-03 が行う。型の変更は Z004 の取込みを再開する lane（CASIO 固有）が `csv_import_service` の `quantity: i32`・時点証拠の受領の型と一緒に行い、それまで上の規則が実装の正本である。
+
 #### 13.4.2 売上の有無による行の分類（SPEC-Z4A-D8、D-103）
 
 | コード欄 | 個数・金額とも0 | 個数か金額が0でない |
