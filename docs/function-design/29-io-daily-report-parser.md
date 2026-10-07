@@ -254,9 +254,9 @@ struct RegisterSdLocatedFile {
     relative_path: String, // root からの相対 path（区切りは `\`。RegisterSdEntry.relative_path と同じ形）
 }
 
-enum RegisterSdArea {
-    Pending,  // `XZ`（精算前。CV17 で取り込んでいない）
-    Imported, // `XZ_BKUP`（CV17 で取り込んだ後）
+enum RegisterSdArea { // SD 上の置き場所の名前。アプリで取り込んだか（BIZ-08 の `DailyReportSdCandidateStatus::Imported`）とは別の語にする
+    Sales,  // `XZ`（レジが精算で書く場所。CV17 で移していない）
+    Backup, // `XZ_BKUP`（CV17 が取込みで移した先）
 }
 
 enum RegisterSdEntryKind {
@@ -275,7 +275,7 @@ struct RegisterSdEntry {
 
 struct RegisterSdListing {
     entries: Vec<RegisterSdEntry>,
-    imported_area_present: bool, // `XZ_BKUP` があるか（無いのは CV17 で一度も取り込んでいない SD）
+    backup_area_present: bool, // `XZ_BKUP` があるか（無いのは CV17 で一度も取り込んでいない SD）
 }
 
 struct RegisterSdFile {
@@ -336,7 +336,7 @@ fn list_register_sd_entries(root: &RegisterSdRoot, from: NaiveDate) -> Result<Re
 
 **処理ステップ**:
 
-1. `XZ` が無ければ `MissingSalesArea`。`XZ_BKUP` は無くてよい（`imported_area_present = false`）。
+1. `XZ` が無ければ `MissingSalesArea`。`XZ_BKUP` は無くてよい（`backup_area_present = false`）。
 2. `XZ` と `XZ_BKUP` のそれぞれで、4 桁の年・2 桁の月（01〜12）の名前の folder のうち (年, 月) が `from` の (年, 月) 以上のものだけに入り、その中の file を Z の規則で分類する。それ以外の名前の folder には入らない。
 3. `XZ` と `XZ_BKUP` の直下の file を EJ の規則で分類する。`XZ` 直下の EJ（伸び続ける file、SD-09）は `from` によらず返す。
 4. 名前の規則（大文字小文字を区別しない。FAT は区別せず、SD 上は大文字の `EJ`、説明書は `Ej`）:

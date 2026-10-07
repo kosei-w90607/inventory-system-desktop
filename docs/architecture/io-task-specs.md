@@ -277,7 +277,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 
 入力: なし（自動）または選ばれた path、窓の始まりの日付、相対 path と上限 byte 数、手で選んだ file の path と root の列
 
-出力: RegisterSdRoot（path, volume_label）、RegisterSdListing（entries[]{relative_path, area〈XZ / XZ_BKUP〉, kind〈Z{series, day, suffix, backup_seq?} / Ej{backup_seq?} / Unknown〉, date?, size_bytes}, imported_area_present）、RegisterSdFile（relative_path, bytes, shape）、RegisterSdLocatedFile（root, relative_path）。「自動か選んだ場所か」の選択は BIZ-08 の `DailyReportSdSelection` で、IO-09 の型ではない
+出力: RegisterSdRoot（path, volume_label）、RegisterSdListing（entries[]{relative_path, area〈Sales = XZ / Backup = XZ_BKUP〉, kind〈Z{series, day, suffix, backup_seq?} / Ej{backup_seq?} / Unknown〉, date?, size_bytes}, backup_area_present）、RegisterSdFile（relative_path, bytes, shape）、RegisterSdLocatedFile（root, relative_path）。「自動か選んだ場所か」の選択は BIZ-08 の `DailyReportSdSelection` で、IO-09 の型ではない
 
 **【制御構造】**
 - 使う file system の API を読取りの許可の列（`File::open`・`read_dir`・`metadata` 等）に限り、書く系（`OpenOptions`・`File::create`・`fs::copy`・`fs::write` 等）を使わない（IO-09-D3）

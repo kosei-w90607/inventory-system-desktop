@@ -60,6 +60,7 @@ Risk: R3
 | BIZ-08-D3 | そろわない束を読む | integration | `scan::incomplete_group` | Z002 の無い組が `Incomplete` にならない、またはその組の file が読まれる |
 | BIZ-08-D3 | 形の外れた束を取り込める | integration | `scan::shape_violation_is_unreadable` | Z005 だけ BOM 付き（または孤立 LF）の組が `Unreadable` にならない、snapshot に入る |
 | BIZ-08-D3 | 途中の失敗で一部を返す | integration | `scan::io_failure_returns_error_without_candidates` | 2 組目の読取りで IO error を注入したとき `Ok` を返す |
+| BIZ-08-D3（§37.9 手順 1・3） | root と読取りの失敗を別の文・推測の選択にする | integration（一時 tree、root を返す処理を test で差し替える） | `scan::root_and_read_failures_use_fixed_texts` | 次のどれかで、`BizError::ImportError` の文が右の固定の文と完全に一致しない、または `Ok` を返す: 自動で root が 0 件 →「SD が見つかりません。レジの SD をこの PC に差してから、もう一度読んでください。」、2 件 →「SD が 2 枚以上見つかりました。売上を読む SD だけを差してください。」、`Selected` が `NotRegisterSd` →「選んだ場所はレジの SD ではありません。SD の中の CASIO の folder か、SD そのものを選んでください。」、`XZ` の無い root →「SD に売上の folder（XZ）がありません。レジの SD か確かめてください。」、列挙の途中の `Io` →「SD を読めませんでした。SD を差し直して、もう一度読んでください。」。2 件のときに 1 つ目を選んで続ける mutant、文を io error の詳細から作る mutant で red |
 | BIZ-08-D3 | 並びが新しい順でない | unit | `scan::candidates_sorted_newest_first` | 10-05 と 10-06、同じ日の精算回数 6 と 5 の並びが 10-06(6)・10-06(5)・10-05 にならない |
 | BIZ-08-D3 | 同じ精算の別の bytes の束を「取り込めます」と出す | integration（一時 tree + DB） | `scan::same_settlement_other_bytes_is_same_settlement_imported` | DB に report_date・精算回数 5 の completed（hash H1）があり、SD に同じ日・精算回数 5 で 1 byte 違う束があるとき、状態が `SameSettlementImported` にならない、または snapshot に入る（手順 7 の照合を消す mutant で red） |
 | BIZ-08-D3 | 取り込めない候補を snapshot に入れる | integration | `scan::snapshot_holds_only_not_imported` | `Imported`・`SameSettlementImported`・`Incomplete`・`Unreadable` の候補を 1 つずつ含む tree で、`files_by_candidate` の key が `NotImported` の候補だけにならない（手順 9 の絞り込みを消して全候補を入れる mutant で red）。続けて `Imported` の candidate_key で `parse_and_validate_daily_report_from_sd` が `validation` にならない |
@@ -100,6 +101,9 @@ Risk: R3
 | UI-07-D15 | 取り込めない精算を「無い」と出す | component | `DailyReportImportPage.sd.test.tsx` の一覧の上の文 | (a) `NotImported` 1 件と `Unreadable` 1 件で文が出る、(b) `Incomplete` 1 件・`Unreadable` 1 件だけで「取り込める精算はありません。取り込めない精算が 2 件あります（「ファイルがそろっていません」「読めません」の行）。」が出ない、または「新しい精算はありません」が出る、(c) 候補 0 件と、`Imported`・`SameSettlementImported` だけのときに「新しい精算はありません」が出ない |
 | UI-07-D15 | SD を戻す案内が出ない・CV17 の取込みの前に戻させる | component | 同上 | scan 成功の後に「読み終わりました。いつもの取込みが済んでいれば、SD はレジに戻してください（次の精算に要ります）。」が出ない（「いつもの取込みが済んでいれば、」の無い文も red） |
 | UI-07-D15 | 見つからないときの予備が出ない | component | 同上 | 「SD が見つかりません」の error のとき「場所を選ぶ」が出ない |
+| UI-07-D15 (3) | 読まなかった file の数を出さない・誤る | component | `DailyReportImportPage.sd.test.tsx` の補足 | `skipped_unknown_count` = 3 の scan で「読まなかったファイル 3 件」が出ない、0 の scan でその補足が出る（0 の分岐を消す mutant で red） |
+| UI-07-D15 (4) | 「ファイルを選び直す」で最初へ戻る | component（flow） | `DailyReportImportPage.sd.test.tsx` の選び直し | `sd_list` →「確認する」→ preview →「ファイルを選び直す」で `sd_list`（同じ一覧と「SD から読む」）に戻らない、または `idle` に戻る（SD から来たかの分岐を消す mutant で red）。UI は期限を確かめないので、期限の判定を UI に足す mutant も、30 分を過ぎた時刻の mock で一覧に戻らず最初へ行くので red |
+| UI-07-D15 (5) | 期限切れの scan で最初へ戻る・message で分岐する | component（flow） | `DailyReportImportPage.sd.test.tsx` の期限切れ | `parseAndValidateDailyReportFromSd` を kind `import_error`・固定の文「SD を読んでから時間がたちました。もう一度 SD を読んでください。」で失敗させたとき、error に固定の文が出ない、「戻る」で `sd_list` に戻らない、または一覧の上の「SD から読む」で `scanRegisterSd` が呼ばれない。kind `validation`（取り込めない候補）でも同じ `sd_list` に戻らない（kind・message で分岐する mutant で red） |
 | UI-07-D15 | reducer の遷移 | unit | `reducer.test.ts`（既存 file、`src/features/daily-report-import/reducer.test.ts`） | `scanning` → `sd_list` → `parsing` → `preview` と、SD から来た parse 失敗の recoverTo `sd_list` が成り立たない |
 | UI-07-D16 | 1 つずつ選び足し・外す | component | `DailyReportImportPage.files.test.tsx` | Z001 → Z005 → Z002 の順に 1 つずつ足して「確認する」が有効にならない、1 つ外すと無効に戻らない |
 | UI-07-D16 | dialog の path を捨てる | unit（hook） | `useDailyReportImportFlow.test.tsx` の payload | dialog が返した 3 つの path が、`parseAndValidateDailyReport` の各要素の `source_path` に入らない（今の `{ filename, file_bytes }` だけの payload のまま） |
@@ -125,9 +129,9 @@ Risk: R3
 
 ## Negative Paths
 
-- missing input: SD が無い（`find_register_sd_roots` が空の列）、`XZ` が無い、Z002 の無い組
+- missing input: SD が無い（`find_register_sd_roots` が空の列、`scan::root_and_read_failures_use_fixed_texts`）、`XZ` が無い（同）、Z002 の無い組
 - invalid input: SD の root の下かを確かめられない手で選んだ file（§37.3 手順 1a）、規則外の名前、暦日として不正な日付、BOM・孤立 LF / CR・CP932 でない bytes、parse_errors のある束、SD の経路で精算回数の無い束（BIZ-08-D6）
-- duplicate/ambiguous input: SD が 2 枚、同じ bytes が `XZ` と `XZ_BKUP`、同じ精算の別の bytes
+- duplicate/ambiguous input: SD が 2 枚（`scan::root_and_read_failures_use_fixed_texts`）、同じ bytes が `XZ` と `XZ_BKUP`、同じ精算の別の bytes
 - unknown reference: snapshot に無い candidate_key、期限切れの scan_token
 - dependency missing: Windows 以外では自動の発見が空（予備の経路だけ）
 - permission/write failure: 読取りの途中の IO error（全体の失敗）。書込みは無い

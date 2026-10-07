@@ -38,7 +38,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 12 | 12（2026-10-06: 判断 1〜5 の 5。2026-10-07: 移す操作を後続の lane にする判断〈TD-142〉1、P3 の店の経験〈TD-139〉1、P2 の店の経験〈TD-152・TD-175〉1、P2 の試しを行わず代わりの扱いと運用の制約を承認〈TD-176〉1、round 3 の後の plan-approved〈TD-180〉1、上限の改定〈TD-181〉1、移行期の SD を戻す案内の文〈TD-182〉1） | 2（Ready 1、merge 1） | 0 | 14 = 12 + 2 + 0（上限を 2 超える見込み。上限の改定は Ready の問い合わせと同じ 1 回で諮る。2026-10-07 の改定の問い合わせで Coordinator が同じ回の decision point を 1 つと数え違えた） |
+| 介入 | 12 | 12（2026-10-06: 判断 1〜5 の 5。2026-10-07: 移す操作を後続の lane にする判断〈TD-142〉1、P3 の店の経験〈TD-139〉1、P2 の店の経験〈TD-152・TD-175〉1、P2 の試しを行わず代わりの扱いと運用の制約を承認〈TD-176〉1、round 3 の後の plan-approved〈TD-180〉1、上限の改定〈TD-181〉1、移行期の SD を戻す案内の文〈TD-182〉1） | 3（Ready 1、上限の改定 1、merge 1） | 0 | 15 = 12 + 3 + 0（上限を 3 超える見込み。上限の改定は Ready の問い合わせと同じ 1 回で諮り、その改定も 1 つの decision point に数える〈`docs/DEV_WORKFLOW.md` の Owner Effort Budget〉。2026-10-07 の改定の問い合わせで Coordinator が同じ回の decision point を 1 つと数え違えた） |
 
 ## Risk
 
@@ -151,6 +151,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 | 新 repository 関数 `find_same_settlement_daily_report_import` | BIZ-08-D4、24 §14.18a | `db/sales_repo.rs`（新設。`DailyReportImport` を返さず id だけ） | 呼出し: BIZ-08 §37.3 手順 8・§37.4 手順 4a・§37.9 手順 7。`DailyReportImport` を返す既存の SELECT（`sales_repo.rs:716`・`:735`・`:756`・`:830`）と `row_to_daily_report_import`（`:887`）は変えない |
 | `daily_report_imports` の列 | migration（次の番号。v7 の次だが並走 lane の migration と番号を runtime の lane が決める） | `db/migration.rs`、新しい `db/schema_vN.rs` | `db/migration.rs:937`・`:973`・`:982`・`:1034`（INSERT の test）、`docs/function-design/22-mnt-migration.md` |
 | `DailyReportImport`（list の DTO） | 変えない（wire に出さない） | `db/sales_repo.rs:181`・`:888` | — |
+| `AppState`（`register_sd_scan_cache` を足す） | CMD-12-D1、45 §45.2 | `src-tauri/src/cmd/mod.rs:34`（定義） | literal の構築 15 か所（2026-10-07、`rg -n "AppState \{" src-tauri/src` から定義の行と `-> AppState {` の helper の signature の行を除いた数）。本番: `lib.rs:1264`（`app.manage`）。test: `cmd/product_cmd.rs:273`・`:293`、`cmd/settings_cmd.rs:358`、`cmd/plu_export_cmd.rs:231`、`cmd/stocktake_cmd.rs:201`、`cmd/csv_import_cmd.rs:308`・`:362`・`:438`・`:489`、`cmd/integrity_cmd.rs:56`、`cmd/daily_report_import_cmd.rs:291`、`cmd/sales_cmd.rs:117`・`:333`・`:352`。どの構築にも field を足す（`Default` にするなら定義 1 か所と構築の書き方を runtime の lane が決める） |
 | 新 command 2 つと DTO 4 つ | CMD-12-D1 | `cmd/daily_report_import_cmd.rs`、`lib.rs` の `collect_commands` | `src/lib/bindings.ts`（再生成）、`src/features/daily-report-import/` |
 | `DailyReportInputFile`（`sd_relative_path`・`source_path`） | BIZ-08-D5・D6、37 §37.3 手順 1a | `biz/daily_report_import_service/mod.rs:32`（定義）、`cmd/daily_report_import_cmd.rs:43`（構築） | test の構築: `biz/daily_report_import_service/tests.rs:15`（helper `source_file`）、`biz/sales_service.rs:1175`（helper `file` の中）・`:1360` |
 | `DailyReportSourceFileRequest`（省略可の `source_path` を足す） | 45 §45.3、UI-07-D16 | `cmd/daily_report_import_cmd.rs:17`（定義）・`:43`（`DailyReportInputFile` への写像） | test: `cmd/daily_report_import_cmd.rs:242`（helper `request`）。frontend: `src/features/daily-report-import/hooks/useDailyReportImportFlow.ts:82`・`:165`（payload を作る所。今は path を捨てる `:207` の `extractFilename`）、`useDailyReportImportFlow.test.tsx:395`〜`:397`・`DailyReportImportPage.flow.test.tsx:136`〜`:138`（期待の payload）、`src/lib/bindings.ts:565`（再生成） |
@@ -195,7 +196,7 @@ owner の方向（D-111 の Context）: アプリが気を利かせて、CV17 �
 
 ## Registration / Generation Obligations
 
-本 lane（docs だけ）は該当なし（function-design の新しい file・REQ の増減・route・画面の新設をしない）。runtime の lane の義務: 新しい 2 command（`scan_register_sd`・`parse_and_validate_daily_report_from_sd`）に `#[tauri::command]` + `#[specta::specta]` を付け、`lib.rs` の specta の `collect_commands!`（`src-tauri/src/lib.rs:277`）と runtime の `tauri::generate_handler!`（同 `:1272`）の両方に登録する（`scripts/check-command-drift.sh` は宣言 `D`・`generate_handler` `H`・`collect_commands` `S`・bindings `T` の 4 つの集合の一致を `bash scripts/doc-consistency-check.sh` の中で確かめ、今は 68 ずつ。一方だけの登録は red。45 §45.8）、`cargo run --bin generate_bindings`、`design_compliance_test.rs` の `build_doc_to_modules_map()` の `29-io-daily-report-parser.md` の行に `io::register_sd` と `io::pos_source_copy` の両方（29 §29.7.1・§29.8.1）、`docs/spec/requirements.md` の REQ-401 の部品の列に IO-09 を足すなら `cargo run --bin generate_traceability`、migration と `22-mnt-migration.md`。
+本 lane（docs だけ）は該当なし（function-design の新しい file・REQ の増減・route・画面の新設をしない）。runtime の lane の義務: 新しい 2 command（`scan_register_sd`・`parse_and_validate_daily_report_from_sd`）に `#[tauri::command]` + `#[specta::specta]` を付け、`lib.rs` の specta の `collect_commands!`（`src-tauri/src/lib.rs:277`）と runtime の `tauri::generate_handler!`（同 `:1272`）の両方に登録する（`scripts/check-command-drift.sh` は宣言 `D`・`generate_handler` `H`・`collect_commands` `S`・bindings `T` の 4 つの集合の一致を `bash scripts/doc-consistency-check.sh` の中で確かめる。一方だけの登録は red。件数は書かない。45 §45.8）、`cargo run --bin generate_bindings`、`design_compliance_test.rs` の `build_doc_to_modules_map()` の `29-io-daily-report-parser.md` の行に `io::register_sd` と `io::pos_source_copy` の両方（29 §29.7.1・§29.8.1）、`docs/spec/requirements.md` の REQ-401 の部品の列に IO-09 を足すなら `cargo run --bin generate_traceability`、migration と `22-mnt-migration.md`。
 
 ## Impact Review Lenses
 
@@ -253,9 +254,9 @@ Test Design Matrix: [2026-10-06-sd-direct-read](test-matrices/2026-10-06-sd-dire
 | BIZ-08-D3 | 37 §37.9 | runtime: `biz/daily_report_import_service` | Matrix | 非対象 |
 | BIZ-08-D4 | 37 §37.3 手順 8・§37.4 手順 4a・6、24 §14.14・§14.18a、pos-tables §12b | runtime: BIZ-08・`sales_repo.rs`・migration | Matrix | 非対象 |
 | BIZ-08-D6 | 37 §37.3 手順 4・§37.4 手順 2a・§37.9 手順 7 | runtime: BIZ-08 の parse・commit・scan | Matrix | 非対象 |
-| CMD-12-D1 | 45 §45.2・§45.6a・§45.6b | runtime: `daily_report_import_cmd.rs`・`lib.rs` | Matrix | 非対象 |
+| CMD-12-D1 | 45 §45.2・§45.3（`DailyReportSourceFileRequest.source_path`）・§45.4 手順 3a（`app_data_dir` の取り方）・§45.6a・§45.6b | runtime: `daily_report_import_cmd.rs`・`lib.rs` | Matrix | 非対象 |
 | IO-10 | 29 §29.8 | runtime: `io/pos_source_copy.rs` | Matrix | 非対象 |
-| BIZ-08-D5 | 37 §37.4 手順 2b・6、§37.3 手順 1a、§37.9 の BIZ-08-D5、pos-tables §12b、71 §71.1 の注記 | runtime: BIZ-08 commit | Matrix | L3: 取り込んだ後に `pos-sources/` に 3 本がある |
+| BIZ-08-D5 | 37 §37.4 手順 2b・6、§37.3 手順 1a、§37.9 の BIZ-08-D5、45 §45.7（`SourceCopyFailed` → `internal`）、pos-tables §12b、71 §71.1 の注記 | runtime: BIZ-08 commit | Matrix | L3: 取り込んだ後に `pos-sources/` に 3 本がある |
 | UI-07-D12 | 55 UI-判断 ID | runtime: `features/daily-report-import` | Matrix | 目視の確認 |
 | UI-07-D15 | 55 UI-判断 ID | 同上 | Matrix | L3: 一覧の状態の文言と icon、SD を戻す案内 |
 | UI-07-D16 | 55 UI-判断 ID | 同上 | Matrix | 目視の確認 |

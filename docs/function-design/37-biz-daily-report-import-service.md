@@ -385,7 +385,7 @@ struct DailyReportSdScan {
 }
 
 struct DailyReportSdCandidate {
-    candidate_key: String,                 // 束の識別。読めた束は bundle_hash、読めない・そろわない束は "sd:" + Z001 の相対 path 等の名前由来の値
+    candidate_key: String,                 // 束の識別（scan の中で一意）。手順 5 で bundle_hash を作れた束（`NotImported`・`Imported`・`SameSettlementImported` と、精算回数の無い `Unreadable`）は bundle_hash（64 桁の hex）。作れなかった束（`Incomplete` と、形・大きさ・parse で外れた `Unreadable`）は "sd:" + その組に在る最初の系列（Z001 → Z002 → Z005 の順）の file の root からの相対 path（IO-09 の `relative_path`、区切りは `\`。area の folder 名を含むので `XZ` と `XZ_BKUP` の組はぶつからない）
     path_date: String,                     // folder と名前の日付（YYYY-MM-DD）
     report_date: Option<String>,           // 中身の日付（読めた束だけ）
     source_filenames: Vec<String>,         // 3 本の file 名（Z001→Z002→Z005。そろわない束はある分）
@@ -451,6 +451,7 @@ struct DailyReportSdScanSnapshot {
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: AlreadyImportedを維持しつつ同日別bundleを追加取込みとし、全件summary、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
 | 2026-10-04 | daily-report-import-gaps（plan-first） | BIZ-08-D2: 精算回数の不一致の文。個数を 100 倍の整数で運ぶ cache の型（`CachedDailyReportDepartmentLine`）と wire の `quantity: Option<f64>`（IO-07-D2〜D4、D-104）。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | BIZ-08-D3: SD から読む候補（§37.9）。BIZ-08-D4: 同じ精算を別の bytes で取り込まない照合と `settlement_no` の保存。BIZ-08-D5: 読んだ原本の写しを commit の前に PC に残す。 |
+| 2026-10-07 | sd-direct-read（Final Review の P3 の是正） | `DailyReportSdCandidate.candidate_key` の bundle_hash を作れない束の値を、組に在る最初の系列（Z001 → Z002 → Z005）の相対 path に固定した。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §37.3 手順 1a に SD を抜いた後の file の在否の確認（(iii)）と、root を取る処理を受ける内部関数 `_with_sd_lookup`。写しの失敗を `BizError::SourceCopyFailed` にして UI が preview に戻れる形にした。§37.8 と D5 の「動かさない」を (a) の段階に限った。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | 選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。手で選んだ SD 上の file を SD の入力にする §37.3 手順 1a。BIZ-08-D4 の照合の repository 関数（24 §14.18a）。§37.4 の手順を 2a（D6）・2b（D5）の順に直した。`source_files_json` を内部の serialize 用の型で書く。同じ bytes の組で `XZ` の path を残す。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | BIZ-08-D6: SD の経路は精算回数のある束だけを取り込む（scan・preview・commit）。§37.3 手順 4 の精算回数の保存の文を IO-07-D5 → cache → DB の契約に直した。 |

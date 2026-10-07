@@ -223,7 +223,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 
 **【状態管理】**
 - 取込み種別（'daily_report' / 'product_sales'）。current operation の既定は 'daily_report'
-- 日報取込み段階（'idle' / 'parsing' / 'preview' / 'importing' / 'result' / 'error'）。Z001/Z002/Z005の3ファイルbundleを扱う
+- 日報取込み段階（状態の一覧は [55](../function-design/55-ui-csv-import.md) UI-07-D15 (5) が正本。SD から読む `scanning`・`sd_list` を含む）。Z001/Z002/Z005の3ファイルbundleを扱う
 - 日報プレビューデータ（report_date, source_files, totals, payment_summary, department_summary, warnings, duplicate_check）
 - Z004商品別CSV取込み段階（既存実装の 'idle' / 'parsing' / 'preview' / 'importing' / 'result' / 'error'）。PLU確認後の別トラックとして扱う
 - インポート実行中フラグ（排他制御用、D-3対応）— Phase 2 8-2 で `useBlocker` 常時 block + 状態バナーに昇格（確認ダイアログ廃止、page unmount 後の state 喪失問題回避）
