@@ -12,8 +12,9 @@ Risk: R3
 - IO-09-D1〜D4（root の発見、名前の分類、読取り専用・書込み API なし・path の封じ込め・上限、形の測定）
 - BIZ-08-D3（SD の候補: 窓、組分け、状態、snapshot）
 - BIZ-08-D4（同じ精算を別の bytes で取り込まない。preview と commit の TX）
+- BIZ-08-D6（SD の経路は精算回数のある束だけ。scan・preview・commit）
 - CMD-12-D1（scan cache、2 command）
-- UI-07-D12〜D14（SD から読む画面、状態の表示、SD を戻す案内、予備のファイル選択）
+- UI-07-D12・D15・D16（SD から読む画面、状態の表示、SD を戻す案内、予備のファイル選択）
 
 ## Failure Modes
 
@@ -22,6 +23,9 @@ Risk: R3
 - 取込み済みを名前で判定し、`EcrDatas` から取り込み済みの分を「取り込めます」と出す
 - 取込み前の原本と取込み後の bytes が違うとき、同じ精算を 2 回取り込める
 - 同じ日の 2 回目の精算を誤って「取込み済み」にする
+- SD の経路で精算回数の無い束（`settlement_no` が None）を取り込み、後で別の bytes の同じ精算が照合をすり抜ける
+- 取込み済み・取り込めない候補を snapshot に入れ、選べてしまう
+- 写しの失敗の後に preview token を失い、同じ preview で再試行できない
 - SD に書く、または root の外を読む
 - 読取りの途中の失敗で途中までの一覧を出す
 - CMD が IO を直接呼ぶ、規則が CMD / UI にある
@@ -54,6 +58,12 @@ Risk: R3
 | BIZ-08-D3 | 形の外れた束を取り込める | integration | `scan::shape_violation_is_unreadable` | Z005 だけ BOM 付き（または孤立 LF）の組が `Unreadable` にならない、snapshot に入る |
 | BIZ-08-D3 | 途中の失敗で一部を返す | integration | `scan::io_failure_returns_error_without_candidates` | 2 組目の読取りで IO error を注入したとき `Ok` を返す |
 | BIZ-08-D3 | 並びが新しい順でない | unit | `scan::candidates_sorted_newest_first` | 10-05 と 10-06、同じ日の精算回数 6 と 5 の並びが 10-06(6)・10-06(5)・10-05 にならない |
+| BIZ-08-D3 | 同じ精算の別の bytes の束を「取り込めます」と出す | integration（一時 tree + DB） | `scan::same_settlement_other_bytes_is_same_settlement_imported` | DB に report_date・精算回数 5 の completed（hash H1）があり、SD に同じ日・精算回数 5 で 1 byte 違う束があるとき、状態が `SameSettlementImported` にならない、または snapshot に入る（手順 7 の照合を消す mutant で red） |
+| BIZ-08-D3 | 取り込めない候補を snapshot に入れる | integration | `scan::snapshot_holds_only_not_imported` | `Imported`・`SameSettlementImported`・`Incomplete`・`Unreadable` の候補を 1 つずつ含む tree で、`files_by_candidate` の key が `NotImported` の候補だけにならない（手順 9 の絞り込みを消して全候補を入れる mutant で red）。続けて `Imported` の candidate_key で `parse_and_validate_daily_report_from_sd` が `validation` にならない |
+| BIZ-08-D6 | scan で精算回数の無い束を取り込めると出す | integration | `scan::bundle_without_settlement_no_is_unreadable` | Z001 だけ精算回数の行があり Z002 / Z005 に無い（形は layout A のまま）束が `Unreadable` にならない、または snapshot に入る（手順 7 の None の分岐を消す mutant で red） |
+| BIZ-08-D6 | preview で SD の None の束を通す | integration | `daily_report_import_service::sd_bundle_without_settlement_no_is_rejected` | 同じ束を `sd_relative_path` つきで `parse_and_validate_daily_report` に渡したとき、§37.3 手順 4 の固定の文の `ImportError` にならない（手順 4 の検査を消す mutant で red） |
+| BIZ-08-D6 | 手で選んだ None の束まで止める | integration | `daily_report_import_service::manual_bundle_without_settlement_no_still_previews` | 同じ bytes を `sd_relative_path` なしで渡したとき preview が成功しない（今の手で選ぶ経路の扱いを壊す） |
+| BIZ-08-D6 | commit で SD の None の cache を通す | integration | `daily_report_import_service::commit_rejects_sd_cache_without_settlement_no` | `sd_source_files` が空でなく `settlement_no` が None の cache を直接作って commit したとき、`ImportError` にならない、`daily_report_imports` の行が増える、または `pos-sources/` に写しができる（§37.4 手順 1a を消す mutant で red。preview の検査が残っていても落ちる） |
 | BIZ-08-D4 | 別の bytes の同じ精算を追加確認で通す | integration | `daily_report_import_service::same_settlement_different_bytes_is_rejected` | 同じ report_date・精算回数で 1 byte 違う束（Z002 の末尾の行の金額だけ違う）の preview が `ImportError`（固定の文）にならず `AdditionalImportConfirmationRequired` になる |
 | BIZ-08-D4 | 同じ日の正常な 2 回目を止める | integration | `daily_report_import_service::same_date_other_settlement_still_confirms` | 精算回数 6 の束（既存は 5）が `AdditionalImportConfirmationRequired` 以外になる |
 | BIZ-08-D4 | NULL・None を照合する | integration | `daily_report_import_service::null_settlement_no_is_not_compared` | `settlement_no` NULL の既存行、または layout B の束（None）で `ImportError` になる |
@@ -65,6 +75,7 @@ Risk: R3
 | IO-10 | 半端な file を最終の名前に残す | unit | `pos_source_copy::writes_via_temp_and_rename` | 書込みの途中の失敗を注入したとき、最終の名前の file ができる |
 | IO-10 | app data の外に書く | unit | `pos_source_copy::rejects_escaping_paths` | `..\x`・`C:\x` の相対 path で書く |
 | BIZ-08-D5 | 写しの失敗でも取り込む | integration | `daily_report_import_service::copy_failure_aborts_commit` | 書けない app_data_dir（読取り専用の一時 directory）で commit が成功する、`daily_report_imports` の行が増える |
+| BIZ-08-D5 | 写しの失敗の後に同じ token で再試行できない | integration（CMD + 一時 directory） | `daily_report_import_cmd::copy_failure_keeps_preview_token_for_retry` | 読取り専用の app_data_dir で commit が `import_error` になった後、`daily_report_preview_cache` に同じ preview_token が残らない、または書ける directory に替えて同じ token で commit が成功しない（行が 1 つ増え、写しが 3 本できる）。失敗時に token を消す mutant で red |
 | BIZ-08-D5 | 写しの path を記録しない | integration | `daily_report_import_service::commit_records_copy_paths` | SD の束の commit の `source_files_json` に `sd_relative_path`・`copy_path` が無い、`copy_path` の file の bytes が束と違う |
 | BIZ-08-D5 | 手で選んだ束も写す | integration | `daily_report_import_service::manual_bundle_has_no_copy` | `sd_relative_path` が None の束で `pos-sources/` に file ができる |
 | BIZ-08-D5 | 古い JSON を読めない | integration | `daily_report_import_service::source_filenames_accepts_missing_copy_fields` | `copy_path` の無い既存の `source_files_json` で同日の summary が失敗する |
@@ -72,18 +83,18 @@ Risk: R3
 | CMD-12-D1 | 取り込めない候補を受ける | unit | `daily_report_import_cmd::from_sd_rejects_unknown_candidate` | snapshot に無い candidate_key で preview を返す |
 | CMD-12-D1 | 新しい scan で古い snapshot が残る | unit | `daily_report_import_cmd::new_scan_replaces_cache` | 2 回目の scan の後に 1 回目の scan_token で preview を返す |
 | CMD-12-D1 | CMD が IO を呼ぶ | 既存の構造 test | `src-tauri/tests/architecture_test.rs`（`rg -n "fn " src-tauri/tests/architecture_test.rs` で存在を確かめた） | `cmd` から `io::register_sd` を use する |
-| UI-07-D13 | 状態を色だけで示す・文言違い | component | `DailyReportImportPage.sd.test.tsx` の状態ごとの label | 5 状態の label（「取り込めます」「取込み済み」「同じ精算を取込み済み」「ファイルがそろっていません」「読めません」）と icon が出ない |
-| UI-07-D13 | SD を戻す案内が出ない | component | 同上 | scan 成功の後に「SD はレジに戻してください」が出ない |
-| UI-07-D13 | 見つからないときの予備が出ない | component | 同上 | 「SD が見つかりません」の error のとき「場所を選ぶ」が出ない |
-| UI-07-D13 | reducer の遷移 | unit | `reducer.test.ts`（既存 file、`src/features/daily-report-import/reducer.test.ts`） | `scanning` → `sd_list` → `parsing` → `preview` と、SD から来た parse 失敗の recoverTo `sd_list` が成り立たない |
-| UI-07-D14 | 1 つずつ選び足し・外す | component | `DailyReportImportPage.files.test.tsx` | Z001 → Z005 → Z002 の順に 1 つずつ足して「確認する」が有効にならない、1 つ外すと無効に戻らない |
+| UI-07-D15 | 状態を色だけで示す・文言違い | component | `DailyReportImportPage.sd.test.tsx` の状態ごとの label | 5 状態の label（「取り込めます」「取込み済み」「同じ精算を取込み済み」「ファイルがそろっていません」「読めません」）と icon が出ない |
+| UI-07-D15 | SD を戻す案内が出ない | component | 同上 | scan 成功の後に「SD はレジに戻してください」が出ない |
+| UI-07-D15 | 見つからないときの予備が出ない | component | 同上 | 「SD が見つかりません」の error のとき「場所を選ぶ」が出ない |
+| UI-07-D15 | reducer の遷移 | unit | `reducer.test.ts`（既存 file、`src/features/daily-report-import/reducer.test.ts`） | `scanning` → `sd_list` → `parsing` → `preview` と、SD から来た parse 失敗の recoverTo `sd_list` が成り立たない |
+| UI-07-D16 | 1 つずつ選び足し・外す | component | `DailyReportImportPage.files.test.tsx` | Z001 → Z005 → Z002 の順に 1 つずつ足して「確認する」が有効にならない、1 つ外すと無効に戻らない |
 
 ## State Lifecycle Matrix
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
 | SD の scan（snapshot） | idle | scanning（ボタン disabled、離脱は block しない） | sd_list と scan_token、SD を戻す案内 | 新しい scan で置き換え、30 分で失効 | 「SD から読む」をもう一度 | 画面を離れて戻ると idle（snapshot は 30 分残るが UI は持たない） | アプリの再起動で失効 | 見つからない・2 つ以上・読めない → 固定の文と予備の操作、候補は出さない | もう一度読む | CMD-12-D1 の 3 行、UI の状態 test |
-| 候補の状態 | — | — | NotImported / Imported / SameSettlementImported / Incomplete / Unreadable | commit で NotImported → Imported（再 scan で反映） | 再 scan | — | — | — | rollback で Imported → NotImported | BIZ-08-D3 の行 |
+| 候補の状態 | — | — | NotImported / Imported / SameSettlementImported / Incomplete / Unreadable（精算回数の無い束を含む、BIZ-08-D6） | commit で NotImported → Imported（再 scan で反映） | 再 scan | — | — | — | rollback で Imported → NotImported | BIZ-08-D3 の行 |
 | 日報の取込み | preview | importing（既存の block） | result | rollback | 既存 | 既存 | 既存 | BIZ-08-D4 の拒否 | 前の取込みを取り消してから読み直す | BIZ-08-D4 の行 |
 
 ## Adjacent Pattern Audit
@@ -93,13 +104,13 @@ Risk: R3
 | preview cache（AppState、30 分、UUID token） | `45-cmd-daily-report-import.md` §45.2・§45.3・§45.4 | scan cache（§45.6a・§45.6b）に同じ 30 分・UUID | scan は commit しないので「失敗時に残す」の規則は不要。新しい scan で置き換える | CMD-12-D1 の行 |
 | 重複判定（bundle_hash の AlreadyImported、同日追加の確認） | 37 §37.3 手順 8、§37.4 手順 4〜5 | SD の候補の状態（§37.9 手順 7）が同じ hash の照合を使う | — | BIZ-08-D3 の imported_by_hash |
 | 利用者向けの固定の文（BIZ-08-D1・D2） | 37 §37.3 手順 3 | BIZ-08-D4 と §37.9 の文も raw detail を含めない固定の文 | — | BIZ-08-D4 の行 |
-| UI の入力エラーの 1 スロット表示（destructive テキスト + icon、ボタン直下） | 55 §55.0 手順 2 | 「SD から読む」の直下の error | 上部 Alert 帯はデータ安全系だけのまま | UI-07-D13 の行 |
-| 前回選択フォルダの記憶 | 55 §55.1 `useDailyReportImportFlow.ts` | 予備の経路だけに残す | SD の経路は場所を記憶しない（自動で探す） | UI-07-D14 |
+| UI の入力エラーの 1 スロット表示（destructive テキスト + icon、ボタン直下） | 55 §55.0 手順 2 | 「SD から読む」の直下の error | 上部 Alert 帯はデータ安全系だけのまま | UI-07-D15 の行 |
+| 前回選択フォルダの記憶 | 55 §55.1 `useDailyReportImportFlow.ts` | 予備の経路だけに残す | SD の経路は場所を記憶しない（自動で探す） | UI-07-D16 |
 
 ## Negative Paths
 
-- missing input: SD が無い（NotFound）、`XZ` が無い、Z002 の無い組
-- invalid input: 規則外の名前、暦日として不正な日付、BOM・孤立 LF / CR・CP932 でない bytes、parse_errors のある束
+- missing input: SD が無い（`find_register_sd_roots` が空の列）、`XZ` が無い、Z002 の無い組
+- invalid input: 規則外の名前、暦日として不正な日付、BOM・孤立 LF / CR・CP932 でない bytes、parse_errors のある束、SD の経路で精算回数の無い束（BIZ-08-D6）
 - duplicate/ambiguous input: SD が 2 枚、同じ bytes が `XZ` と `XZ_BKUP`、同じ精算の別の bytes
 - unknown reference: snapshot に無い candidate_key、期限切れの scan_token
 - dependency missing: Windows 以外では自動の発見が空（予備の経路だけ）
@@ -148,6 +159,7 @@ Risk: R3
 - BIZ-08-D4 の照合から `settlement_no` を外す（report_date だけ）と `same_date_other_settlement_still_confirms` が落ちる。
 - `XZ` / `XZ_BKUP` の連番の有無の規則を外すと `list_returns_unknown_without_reading` が落ちる。
 - 形の検査を外すと `shape_violation_is_unreadable` が落ちる。
+- BIZ-08-D6 の 3 つの検査（scan の手順 7、preview の §37.3 手順 4、commit の §37.4 手順 1a）は、どれか 1 つを消すとその段の行（`bundle_without_settlement_no_is_unreadable`・`sd_bundle_without_settlement_no_is_rejected`・`commit_rejects_sd_cache_without_settlement_no`）が落ちる。検査の条件を「SD の経路」でなく全部の束にすると `manual_bundle_without_settlement_no_still_previews` が落ちる。
 - 大文字小文字の無視を外すと `list_classifies_observed_names` の `ej261004.txt` が落ちる。
 
 ## Residual Test Gaps

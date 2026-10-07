@@ -271,7 +271,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 
 **タスク要求**: レジ（CASIO SR-S4000）の SD を取外し可能な drive から探すか利用者が選んだ folder から解決し、`CASIO\SR500_550_4000\XZ` と `XZ_BKUP` の売上の file（Z・EJ）の名前を列挙し、指定された file の生バイトを読取り専用で読んで形（CP932 strict・BOM・CRLF だけ・最終改行）を測る。SD へは書かない。業務ロジックなし（function-design は [29 §29.7](../function-design/29-io-daily-report-parser.md#297-io-09-レジの-sd-の列挙と読取りd-111)）
 
-**理由**: 毎日の売上データは CV17 を開かずにアプリが SD から直接読む（D-111）。SD の配置・名前・読み方はレジ依存なので IO adapter に閉じる（D-023）。どの file を候補にするか・取込み済みかは BIZ-08（§37.9）が決める
+**理由**: 毎日の売上データは CV17 の取込みに依らずにアプリが SD から直接読む（D-111）。SD の配置・名前・読み方はレジ依存なので IO adapter に閉じる（D-023）。どの file を候補にするか・取込み済みかは BIZ-08（§37.9）が決める
 
 **【データ構造】**
 

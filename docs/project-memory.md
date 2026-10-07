@@ -97,7 +97,7 @@ Keep it factual and stable.
 
 - Register is `CASIO SR-S4000` — 2026-06-30 field-check — `docs/project-memory.md`（本文書 POS Facts）
 - Store has `カシオレジスターツール for SR-S500/SR-C550/SR-S4000/SR-S200`（CV-17 1.1.1.0）installed on the PC — 2026-06 field-check — `docs/project-memory.md`
-- SD card → CV17 import is the existing data-recovery route from register to PC — 2026-08-01 owner判断 — `docs/plu-export-and-real-csv-verification.md`。2026-10-06 から、アプリ導入後の毎日の売上データ（Z・EJ）はアプリが SD を直接読み、CV17 は PLU の書込みだけに使う — owner判断2026-10-06 — `docs/decision-log.md`（D-111）
+- SD card → CV17 import is the existing data-recovery route from register to PC — 2026-08-01 owner判断 — `docs/plu-export-and-real-csv-verification.md`。2026-10-06 から、アプリ導入後の毎日の売上データ（Z・EJ）はアプリが SD を直接読み、CV17 は PLU の書込みだけに使う — owner判断2026-10-06 — `docs/decision-log.md`（D-111）。ただし取込み済みを `XZ_BKUP` へ移すアプリの操作ができるまでは CV17 の取込みも今の運用のまま続ける（`### 決めた運用` の D-111 の運用の制約の行）
 - Store also uses CASIO ECR+（スマホアプリ）daily, but it will not be the long-term primary POS integration because it has a planned service end — 2026-06-30 field-check — `docs/plu-export-and-real-csv-verification.md`（decision-log D-022 でも同じ懸念を記録）
   - 店主は 2026-03 のヒアリングで、ECR+（スマホ）が無いと精算できないと答えている — 店主回答（2026-03 ヒアリング）
 - Daily report files (Z001/Z002/Z005) are pasted into an Excel file group almost as-is and overwritten/printed each day; printed pages are filed in a binder — 2026-06-30 field-check — `docs/project-memory.md`

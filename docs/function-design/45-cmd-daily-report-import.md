@@ -80,17 +80,21 @@ struct DailyReportPreviewResponse {
 #[tauri::command]
 fn commit_daily_report_import(
     state: State<AppState>,
+    app: tauri::AppHandle, // D-111 で足す。Tauri が注入し、wire（bindings の引数）は変わらない
     preview_token: String,
     additional_import_confirmed: bool,
 ) -> Result<DailyReportImportResult, CmdError>
 ```
 
+今の実装（`src-tauri/src/cmd/daily_report_import_cmd.rs` の `commit_daily_report_import`）は `State<AppState>` だけを受ける。runtime の lane で `app: tauri::AppHandle` を足し、test 用の `commit_daily_report_import_with_state` には解決済みの `app_data_dir: &Path` を引数で渡す（test は一時 directory を渡す）。
+
 **処理ステップ**:
 1. preview_tokenのUUID形式を検証する。
 2. `daily_report_preview_cache` からcached previewを取得する。
 3. cache miss / 期限切れは `CmdError.kind="import_error"`。
+3a. `app.path().app_data_dir()` で写しの置き場所を取る（`settings_cmd.rs` の `get_backup_dir` / `restore_backup` と同じ取り方）。失敗は `CmdError::internal("アプリデータの保存先を取得できませんでした", e)` で、cache は残す。
 4. DB接続を取得する。
-5. `additional_import_confirmed` をBIZ-08 `commit_daily_report_import` へ渡す。Rust wire名はこのsnake_case、TypeScript生成名は `additionalImportConfirmed` とする。
+5. `additional_import_confirmed` と手順 3a の `app_data_dir` をBIZ-08 `commit_daily_report_import` へ渡す（写しを書くかは BIZ-08-D5 が決め、CMD は書く規則を持たない）。Rust wire名はこのsnake_case、TypeScript生成名は `additionalImportConfirmed` とする。
 6. 成功時、cacheからtokenを削除する。
 7. 通常の失敗時はcacheを残して再試行可能にする。ただしBIZが `同日の取込み状況が変わりました。再度プレビューしてください` を返した場合はtokenを削除し、新しいpreview/tokenを要求する。
 
@@ -164,7 +168,7 @@ fn parse_and_validate_daily_report_from_sd(
 1. scan_token の UUID 形式を検証する。
 2. `register_sd_scan_cache` から snapshot を取得する。miss または作成から 30 分超は `CmdError.kind="import_error"`、message `SD を読んでから時間がたちました。もう一度 SD を読んでください。`。
 3. `files_by_candidate[candidate_key]` が無ければ `CmdError.kind="validation"`（取り込めない候補）。
-4. 以降は §45.3 の手順 3〜6 と同じ（BIZ-08 `parse_and_validate_daily_report` に 3 本を `sd_relative_path` つきで渡し、preview_token を返す）。commit は §45.4 のまま。CMD は Tauri の `app_data_dir` を BIZ-08 `commit_daily_report_import` に渡す（写しの置き場所、BIZ-08-D5。CMD は書く規則を持たない）。snapshot は消さない（同じ scan から別の候補を続けて取り込める）。
+4. 以降は §45.3 の手順 3〜6 と同じ（BIZ-08 `parse_and_validate_daily_report` に 3 本を `sd_relative_path` つきで渡し、preview_token を返す）。commit は §45.4（手順 3a で取った `app_data_dir` を BIZ-08 に渡す。写しの置き場所、BIZ-08-D5）。snapshot は消さない（同じ scan から別の候補を続けて取り込める）。
 
 **CMD-12-D1**: CMD は scan の snapshot を AppState に置いて渡すだけで、SD の探し方・候補の規則・状態の判定を持たない（BIZ-08-D3）。CMD は IO-09 を直接呼ばない（ARCHITECTURE のレイヤー間の呼び出し原則、`src-tauri/tests/architecture_test.rs`）。snapshot を AppState に置くのは、SD を読み終えたらすぐレジへ戻せるようにするため（SD-18）。棄却案: scan の結果の bytes を UI へ返して UI から §45.3 を呼ぶ（取り込まない Z004 等は持たないが、日報だけでも wire に生バイトを往復させ、UI が束を組める余地を作る）、preview のたびに SD を読み直す（SD を差したままにする必要がある）。
 
@@ -194,3 +198,4 @@ SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Ty
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D3/D4: same-date summary DTO、`additional_import_confirmed`、snapshot mismatch時のtoken破棄、per-import rollback、bindings再生成義務を正本化。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | CMD-12-D1: `scan_register_sd` と `parse_and_validate_daily_report_from_sd`、AppState の scan cache。 |
+| 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | §45.4 の commit に `app: tauri::AppHandle` と `app_data_dir` の取り方（手順 3a）を足した（BIZ-08-D5 の写しの置き場所）。 |

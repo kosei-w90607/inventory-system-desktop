@@ -329,7 +329,7 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
 4. Z005の部門名を departments.name に照合する
    - 一致 → department_id を付与
    - 不一致 → warning とし、department_id=NULL で続行可能
-5. bundle_hashでactive同一bundleを判定し、同じ report_date・settlement_no の別bundleの completed があれば止め（BIZ-08-D4、追加確認で通さない）、report_dateで同日別bundleの追加確認snapshotを作る
+5. SD の経路で settlement_no が None の束は止め（BIZ-08-D6）、bundle_hashでactive同一bundleを判定し、同じ report_date・settlement_no の別bundleの completed があれば止め（BIZ-08-D4、追加確認で通さない）、report_dateで同日別bundleの追加確認snapshotを作る
 
 **Stage 3: Preview**
 1. 対象日、3ファイル、総売上/純売上、支払集計、部門別集計、部門未対応warningを返す
@@ -338,7 +338,7 @@ SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、�
 4. preview_token を返し、CMD層cacheに30分保持する
 
 **Stage 4: Commit**
-1. preview statusと `additional_import_confirmed` の組合せを検証する
+1. preview statusと `additional_import_confirmed` の組合せを検証する。SD の経路で settlement_no が None の cache は写しを書く前に止める（BIZ-08-D6）
 2. トランザクション内で同一bundle_hashと BIZ-08-D4 の照合を再検査し、続けて同日active import ID snapshotを再取得する。不一致は「同日の取込み状況が変わりました。再度プレビューしてください」で副作用なく止める
 3. 既存parentを変更せず、トランザクション内で新規分だけ実行
    - daily_report_importsにINSERT

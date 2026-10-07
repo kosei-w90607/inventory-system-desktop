@@ -161,7 +161,7 @@ Z001/Z002/Z005 の1営業日分ファイル束を1つの日報取込みとして
 ### 冪等性・同日追加方針
 - `bundle_hash` が一致し `status='completed'` の取込みがある場合はブロックする。
 - `report_date` が一致し別 `bundle_hash` の `completed` がある場合は、既存全件を提示して追加確認を要求する。承認後も既存parentを変更せず、新規取込みだけを作る。
-- `report_date` と `settlement_no` が一致し別 `bundle_hash` の `completed` がある場合はブロックする（追加確認で通さない。BIZ-08-D4）。`settlement_no` が NULL の行・束は照合しない。CV17 が SD の原本を移すときに bytes を作り直していても（未確認）、同じ精算を二重に数えないための照合。
+- `report_date` と `settlement_no` が一致し別 `bundle_hash` の `completed` がある場合はブロックする（追加確認で通さない。BIZ-08-D4）。`settlement_no` が NULL の行・束は照合しない。SD から取り込む束は `settlement_no` を持つ束だけなので（BIZ-08-D6）、SD の経路の行は NULL にならない。CV17 が SD の原本を移すときに bytes を作り直していても（未確認）、同じ精算を二重に数えないための照合。
 - `rolled_back` の同一bundleは再取込み可能。
 - `report_date` はgroup keyであってuniqueness keyではない。訂正は対象parent IDのrollbackと再取込みを明示した2操作で行う。
 

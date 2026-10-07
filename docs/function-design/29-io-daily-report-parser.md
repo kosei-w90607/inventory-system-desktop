@@ -116,7 +116,7 @@ fn quantity_hundredths_to_units(quantity_hundredths: i64) -> f64
 **IO-07-D5（束の精算回数を返す、[D-111](../decision-log.md#d-111-毎日の売上データはレジの-sd-から直接読むcv17-は-plu-の書込みだけ2026-10-06)）**:
 
 - 3 本とも精算回数を読め（IO-07-D3）、値がそろう束だけ `settlement_no = Some(値)` にする。1 本でも読めない束（layout B を含む）と、値が違う束（`settlement_mismatch`）は `None`。
-- 使い道は BIZ-08 の「同じ精算を別の bytes で二重に取り込まない」guard（BIZ-08-D4）だけ。IO は精算回数の意味（系列・リセット・欠番）を解釈しない。
+- 使い道は BIZ-08 の「同じ精算を別の bytes で二重に取り込まない」guard（BIZ-08-D4）と、SD の経路で `None` の束を取り込まない guard（BIZ-08-D6）だけ。IO は精算回数の意味（系列・リセット・欠番）を解釈しない。
 - 棄却案: 1 本でも読めた値を束の値にする（layout B の束では Z001 だけの値になり、ほかの 2 本の出所を確かめない値で guard が判定する）、文字列で返す（IO-07-D3 は先頭の 0 を落として整数で比べる。`0005` と `5` が別の値になる）。
 
 ### 29.3 parse_daily_report_bundle
@@ -289,8 +289,7 @@ struct RegisterSdShape {
 }
 
 enum RegisterSdError {
-    NotFound,                       // Auto で root が 1 つも無い
-    MultipleFound(Vec<String>),     // Auto で root が 2 つ以上（volume_label の列）
+    // 自動で探して 0 件・2 件以上は error にせず `Ok(vec)` で返す（§29.7.4 手順 2。止めて案内するのは BIZ-08 §37.9 手順 1）
     NotRegisterSd,                  // Selected の path から root を解決できない
     MissingSalesArea,               // root に `XZ` が無い
     InvalidPath,                    // read の相対 path が root の外を指す
@@ -313,10 +312,10 @@ fn resolve_register_sd_root(selected: &Path) -> Result<RegisterSdRoot, RegisterS
 **処理ステップ**:
 
 1. `find_register_sd_roots`: Windows では `GetLogicalDrives` の各 drive のうち `GetDriveTypeW` が `DRIVE_REMOVABLE` のものだけを見て、`<drive>:\CASIO\SR500_550_4000` が directory なら root にする（大文字小文字は区別しない）。network・固定 disk・CD の drive は見ない（応答しない network drive で止まらない）。依存は既存の `windows-sys`（`Win32_Storage_FileSystem`、`src-tauri/Cargo.toml` の `[target.'cfg(windows)'.dependencies]`）で、新しい crate を足さない。Windows 以外（開発機・CI）では空の列を返す。
-2. 0 件なら `Ok(vec![])`（BIZ が `NotFound` の案内にする）。2 件以上もそのまま返す（BIZ が選ばせずに止める）。
+2. 0 件なら `Ok(vec![])`、2 件以上もそのまま `Ok` で返す（IO は件数で error にしない。0 件の「SD が見つかりません」と 2 件以上の「売上を読む SD だけを差してください」は BIZ-08 §37.9 手順 1 が決める）。
 3. `resolve_register_sd_root`: 選ばれた path が drive の root・`CASIO`・`SR500_550_4000` のどれかで、そこから `CASIO\SR500_550_4000` に当たる directory が見つかれば root にする。それ以外は `NotRegisterSd`。選ばれた path は取外し可能な drive でなくてよい（reader が固定 disk として見える PC と、SD の写しを読む復旧に使う）。
 
-**IO-09-D1（root の見つけ方）**: 自動で探すのは取外し可能な drive の中の決まった folder だけで、見つからない・2 つ以上のときは推測で選ばない。既定は自動で探し、見つからなければ利用者が folder を選ぶ（owner 決定 2026-10-06、D-111、UI-07-D13）。選ぶ経路も同じ IO で持つ。
+**IO-09-D1（root の見つけ方）**: 自動で探すのは取外し可能な drive の中の決まった folder だけで、見つからない・2 つ以上のときは推測で選ばない。既定は自動で探し、見つからなければ利用者が folder を選ぶ（owner 決定 2026-10-06、D-111、UI-07-D15）。選ぶ経路も同じ IO で持つ。
 
 #### 29.7.5 list_register_sd_entries
 
@@ -367,8 +366,8 @@ fn read_register_sd_file(root: &RegisterSdRoot, relative_path: &str, max_bytes: 
 
 | エラー | 発生条件 | BIZ での扱い |
 |---|---|---|
-| NotFound / 空の列 | 自動で root が無い | 「SD が見つかりません」と予備の経路（folder を選ぶ）を案内 |
-| MultipleFound | 自動で root が 2 つ以上 | 推測で選ばず、売上の SD だけを差すよう案内 |
+| （error でない）空の列 | 自動で root が無い | 「SD が見つかりません」と予備の経路（folder を選ぶ）を案内 |
+| （error でない）2 つ以上の列 | 自動で root が 2 つ以上 | 推測で選ばず、売上の SD だけを差すよう案内 |
 | NotRegisterSd | 選んだ folder がレジの SD でない | 選び直しを案内 |
 | MissingSalesArea | `XZ` が無い | 読まずに止める |
 | InvalidPath | 相対 path が root の外 | 内部の誤り。診断ログ |

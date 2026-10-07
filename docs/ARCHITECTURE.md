@@ -100,7 +100,7 @@ POS連携は、レジ固有の adapter とアプリ内共通モデルの境界�
 | Product-sales import | `Z004` after PLU registration | 商品別売上、`pos_stock_sync`に基づく在庫増減・rollback（実装済み。店舗採取layout Aは二形状対応済み） |
 | Optional report tabs | `Z006` / `Z009` / `Z011` | 初期非スコープ。グループ、時間帯別、担当者別の具体的な個人店ニーズが出た時だけ追加 |
 | Operation procedure | SDカード、PCツール、バックアップ、実機確認 | operator workflow、証跡、安全手順 |
-| Register SD source | SD の `CASIO\SR500_550_4000\XZ` / `XZ_BKUP` の配置と名前（IO-09） | 取込みの候補の束（BIZ-08 §37.9）。毎日の売上はアプリが SD を直接読み、CV17 は PLU の書込みだけに使う（D-111） |
+| Register SD source | SD の `CASIO\SR500_550_4000\XZ` / `XZ_BKUP` の配置と名前（IO-09） | 取込みの候補の束（BIZ-08 §37.9）。毎日の売上はアプリが SD を直接読む。CV17 を PLU の書込みだけに使うのは取込み済みを `XZ_BKUP` へ移すアプリの操作（後続の lane）の後で、それまでは店の CV17 の取込みも続く（D-111 の運用の制約） |
 
 `Z001` / `Z002` / `Z004` / `Z005` / `Z006` / `Z009` / `Z011`、CV17、SR-S4000 は CASIO adapter details として扱う。BIZ/CMD/UI の安定 contract へ直接漏らす場合は、該当 source design doc に理由、代替案、将来レジ変更時の影響を記録する。
 
