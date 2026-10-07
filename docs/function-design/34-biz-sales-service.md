@@ -2,6 +2,14 @@
 
 > **2026-06-30 REQ-401 redesign note**: 既存BIZ-05は `sale_records` 由来の商品別売上を日次/月次レポートとして返す。current operation の公式日報入力は Z001/Z002/Z005 であり、これは `daily_report_imports` / `daily_report_*_lines` 由来の集計データである。BIZ-05は今後、公式日報集計と商品別売上明細を分けて返す。日報集計を `sale_records` に擬似展開しない。
 
+### 単位の拡張の後の数量（proposed・未実装、D-113）
+
+[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」（owner の決定 TD-203: 長さの商品の数量は m、単価は 1 m あたり）の BIZ-05 の側。以下の本文は現行実装の契約である。
+- `DailySaleItem` に `stock_unit: ProductStockUnit` を足す（`quantity` は今どおり在庫の数量、長さは cm）。`MonthlySaleItem` は `quantity` を `quantity_hundredths`（レジの数量の 100 倍の整数）に改名し、`stock_unit: ProductStockUnit | null`（商品別だけ値）を足す。`DeptSubtotal`・`GrandTotal` の `quantity` も `quantity_hundredths` に改名する（SPEC-UNIT-D11）。
+- 単位の違う商品を足す所（部門小計・総合計・月次の部門別）は、明細ごとに `biz::unit_amount::pos_quantity_hundredths`（数量 × 100 ÷ 基準数量）で揃えてから足す（SPEC-UNIT-D3 の集計の規則。3 個 + 130 cm = 430）。月次の部門別は、商品の単位を引いてこの規則で足す（SQL の `SUM(sr.quantity)` のままにしない）。和は checked で、溢れは `ValidationFailed`。
+- §19.5 の CSV の `数量` の列は、レジの数量を小数 2 桁まで・末尾の 0 を落とした十進で書く（個数の商品の行は今と同じ整数、長さの商品の行は `1.3`、部門別は和の `4.3`）。
+- レジの日報（公式日報）の数量（D-104）は変えない。
+
 ### 19.1 モジュール構成
 
 ```
@@ -419,4 +427,5 @@ fn export_sales_csv(
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 商品別 `product_code + source` 集約、全completed日報親のNULL安全な日次集約、`source_import_count`、月次additive regressionを正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
 | 2026-10-04 | daily-report-import-gaps（plan-first） | 日報の個数の wire を単位の数（`f64`）にし、DB の 100 倍の整数から BIZ-05 で戻す（IO-07-D2、D-104）。 |
+| 2026-10-08 | 単位の拡張 design lane | 冒頭に単位の拡張の後の数量（proposed・未実装、D-113 / SPEC-UNIT-D3・D11、owner の決定 TD-203）を追加: 売上の wire の単位と、単位の違う商品の数量をレジの数量で足す規則。 |
 | 2026-10-06 | z001-display（runtime、起票） | §19.2 の `OfficialDailyReportSummary` の field の並びを code（`sales_service.rs` の struct）と生成 bindings に合わせた（`source_import_count` を先頭へ。PR #114 Final Review の P3、[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |

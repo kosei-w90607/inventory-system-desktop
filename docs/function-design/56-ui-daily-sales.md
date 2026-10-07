@@ -501,6 +501,7 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 - 返品行（quantity<0 + amount<0）も絶対値で正数表示（「単価の大きさ」として読みやすい）
 - `quantity=0` → `null` → 「—」placeholder + ソート時末尾配置
 - 厳密な業務意味（販売単価 / 値引前単価 / レシート単価）が必要になった場合は BIZ-05 DTO 拡張 or sale_records への `unit_price` 系カラム追加で別 PR 検討（Backlog 「REQ-501 単価列の意味精査」）
+- 単位の拡張の後（proposed・未実装、D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: 単価は `|金額| × 基準数量 ÷ |数量|` を整数の演算で四捨五入し、長さの商品は 1 m あたり（`¥700/m`）。明細の数量は `formatStockDisplay(quantity, stock_unit)`（`1.3 m`）。部門小計・合計・販売点数のカードは `quantity_hundredths` を `点` で出す（`4.3 点`）。画面で部門小計を足す所（`group-items.ts`）と数量の並べ替えも、レジの数量（SPEC-UNIT-D3 の集計の規則、TS の twin）で行う。
 
 #### 前日比符号
 
@@ -575,3 +576,4 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: `source_import_count` の「N回の取込みを合算」表示、NULL安全表示、同日複数active importの加算済み表示契約を正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | UI-09a-D16: 公式セクションに日計（Z001）の全行の表を足し、同日複数取込みの日は取込みごとに並べる。既存 2 表の見出しに出どころ（Z002 / Z005）を添える（[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)、D-096）。 |
 | 2026-10-06 | z001-display（runtime、起票） | UI-09a-D16 の「値」に負の数の書き方（金額 `¥-1,234`、件数 `-1`、同じ section の既存の 2 表と同じ）を補った（owner 決定 2026-10-06、[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
+| 2026-10-08 | 単位の拡張 design lane | §56.10 の単価派生に単位の拡張の後（proposed・未実装、D-113 / SPEC-UNIT-D3、owner の決定 TD-203）を追加: 長さの商品の数量は m、単価は 1 m あたり、小計・合計はレジの数量。 |

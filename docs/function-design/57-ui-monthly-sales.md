@@ -292,6 +292,9 @@ export function useExportFile() {
 ### 57.6 純関数（テスト対象 6 + factory 2 + format-month-label 1 = 9 個）
 
 #### compute-summary（[items] → { totalAmount, totalQuantity }）
+
+- 単位の拡張の後（proposed・未実装、D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem.quantity` は `quantity_hundredths`（レジの数量の 100 倍）になる。月間販売点数・部門別・数量の並べ替えはこの値で、`点` を付けて小数 2 桁まで出す（`4.3 点`）。商品別の長さの商品は `stock_unit` から m で出す（`1.3 m`）。
+
 - 空配列 → `{ totalAmount: 0, totalQuantity: 0 }`
 - 負数 amount（返品超過月）→ そのまま合計（純関数、業務判断は呼出側）
 
@@ -500,3 +503,4 @@ function MonthlySalesPage() {
 | 2026-06-08 | selection-tone follow-up | TabsHeader と ModeTabs の active tone を shared stone selection tone に統一し、Sidebar / StatusChips と同じ選択状態の視覚言語へ寄せた。日次/月次と商品別ランキング/部門別構成比の二択切替は `SegmentedControl` primitive を共有する |
 | 2026-07-29 | 監査是正 順21a plan-first | UI-TABLE-D1として月次Department 3列 / Ranking 4列のheader implementation ownerを`src/components/sales/SortableHeader.tsx`へ正本化。列集合・sort callback・URL state・表示は不変 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 同日複数active importの月次加算、per-import取消後の減算、series分離、将来coverageのdistinct-date契約を正本化。 |
+| 2026-10-08 | 単位の拡張 design lane | §57.6 compute-summary に単位の拡張の後（proposed・未実装、D-113 / SPEC-UNIT-D3、owner の決定 TD-203）を追加: `quantity_hundredths` とレジの数量の点数、商品別の m。 |

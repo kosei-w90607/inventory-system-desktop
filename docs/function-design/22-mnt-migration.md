@@ -344,7 +344,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 **vC の手順**（`MigrationKind::Custom`、1 つの transaction、§15 の v7 と同じ形）: 対象は 6 列（`products.cost_price`、`receiving_items.cost_price`、`disposal_items.cost_price`、`stocktake_items.valuation_cost_price`、`price_history.old_cost`・`new_cost`）。
 
-1. 範囲検査: 各列で NULL でない値のうち `> ?1 OR < -?1`（`?1 = i64::MAX / 100`）が 1 件でもあれば、何も変えず版も記録せず `DbError::MigrationFailed`（message に `範囲検査` と表名・列名）
+1. 範囲検査: 各列で NULL でない値のうち `> ?1 OR < -?1`（`?1 = 9007199254740991 / 100 = 90071992547409`。100 倍の後が [共通規則](10-common-rules.md) SPEC-UNIT-D5 の上限〈JS の number で正確に運べる最大の整数〉の中に入る最大の円）が 1 件でもあれば、何も変えず版も記録せず `DbError::MigrationFailed`（message に `範囲検査` と表名・列名）。i64 の範囲（`i64::MAX / 100`）で止めると、`9007199254740991` 円の原価が通って `900719925474099100` になり、JS の number では値が `900719925474099072` になる（`BigInt(900719925474099100)` で確かめた）。今の BIZ は原価に上限を持たない（負だけを拒む）ので、範囲外の値は今の DB にありうる。止まった DB は版が変わらないので旧版のアプリでそのまま開け、原価を直してから新しい版を入れ直す
 2. 各列の NULL でない行の件数と合計（`COUNT`・`COALESCE(SUM(…), 0)`）を読む。`SUM` の溢れも `MigrationFailed`
 3. 各列を `ALTER TABLE … RENAME COLUMN … TO …_centi`（master-tables の表の名前）にし、`UPDATE … SET … = … * 100 WHERE … IS NOT NULL`
 4. 各列で §15 手順 6 の (a)〜(c) と同じ 3 つを確かめる（件数・`typeof = 'integer'`・`SUM(… / 100)` が手順 2 の合計と同じで余りの行が無い）。違えば rollback して `MigrationFailed`
@@ -352,6 +352,15 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 列は改名だけで表を作り直さないので foreign_keys の手順は要らない（同梱の SQLite 3.45.0 の `RENAME COLUMN`）。時点証拠の migration（`schema_time_evidence.rs`、未配線）は `stocktake_items` を作り直して `valuation_cost_price` を列名で写すので、vC と後に適用される方が、その時点の列名で SQL を書く（後に入る lane の義務）。
 
-**回復**（R4）: どちらも 1 つの transaction で、失敗すれば何も変わらず版も記録されない（§3.2）。適用した DB は vU・vC を知らない旧版のアプリでは開けない（MNT-03-D11）。旧版へ戻すには、更新の前の backup を旧版のアプリで復元する（[71](71-mnt-backup.md)）。更新の前の版の backup を新しい版で復元すると、open の migrate が vU・vC を適用する。値の変換は vC の 100 倍だけで、逆変換の migration は作らない。
+**回復**（R4）: どちらも 1 つの transaction で、失敗すれば何も変わらず版も記録されない（§3.2。旧版のアプリでそのまま開ける）。成功した後に旧版へ戻す経路は、アプリの中の復元（[71](71-mnt-backup.md) §71.7）では作れない: 旧版のアプリは vU・vC を適用した DB で起動を中止し（MNT-03-D11、§12.4 の文言）、復元の画面に届かない。新しい版のアプリで更新の前の backup を復元すると、open の migrate が vU・vC を適用し直す（71 §71.7 のとおり。これは新しい版のまま古い時点のデータへ戻す経路で、旧版へ戻す経路ではない）。旧版へ戻すのは、管理者がアプリの外で行う次の手順だけにする（店の利用者の操作にしない。runtime の lane が L3 の前に手順書へ写す）。71 の restore の契約（退避・manifest・reconcile）は変えず、この手順はアプリが止まっている間の file の置き換えで、71 の遺物を作らない。
 
-**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。
+1. 更新の前に、旧版のアプリで backup を作っておく（71 §71.4）。起動時の自動の backup は migrate の後に作られるので（71 §71.9）、新しい版で作った backup は旧版で使えない
+2. アプリを止める（窓を全部閉じ、プロセスが残っていないことを確かめる）
+3. 今の DB を保全する: `{db_path}` と、あれば `{db_path}-wal`・`{db_path}-shm` を、消さずに日付の付いた別の folder へ移す（更新の後に入れたデータはここにだけ残る）。`{db_path}.restore_manifest`・`{db_path}.restore_manifest.tmp`・`*.restore_backup` のどれかがあれば手順を止める（復元の中断の遺物で、起動の reconcile〈71 MNT-01-D5〉が扱う状態。手で消さない）
+4. 戻す backup を確かめる: backup の写しを読み取りだけで開き、`SELECT MAX(version) FROM schema_versions` が旧版のアプリの最大の版以下（vU・vC の前の版）で、`PRAGMA integrity_check` が `ok`。違えば別の backup を選ぶ
+5. 確かめた backup の写しを `{db_path}` に置く（backup は `VACUUM INTO` の 1 file なので `-wal`・`-shm` は置かない）
+6. 旧版のアプリを入れて起動する。遺物が無いので reconcile は何もせず、版が旧版の最大以下なので migrate は開ける
+
+更新の後に入れたデータは戻らない（手順 3 で保全した file にだけ残る）。値の変換は vC の 100 倍だけで、逆変換の migration は作らない。
+
+**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界〈`90071992547409` と `-90071992547409` は成功して `9007199254740900`・`-9007199254740900`、`90071992547410` と `-90071992547410` の 1 行は範囲検査で失敗して何も変わらない〉、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。
