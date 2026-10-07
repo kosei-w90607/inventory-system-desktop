@@ -4,9 +4,9 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: dbe6626d030fbe80c54f0c8990ee3239b8ff10b6
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
@@ -27,6 +27,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 7. plan-gate のまま是正（round 1、2026-10-07、Coordinator）: round 1 の reject を起草役が `d14cfacc` で直した（下の Review Response）。Scope と設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。遷移の記録 5 の「UI-07-D12〜D14」は round 1 の番号の振り直し（UI-07-D15・D16）より前の記録。
 8. plan-gate のまま是正（round 2、2026-10-07、Coordinator）: round 2 の reject を起草役が `f8c816f5`（指摘 1〜9）と `6d3880c6`（Contract Probe P1）で直した（下の Review Response）。Scope に `24-io-csv-import-repo.md` を足したが Goal と設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
 9. plan-gate（round 3、上限、2026-10-07、Coordinator）: round 3 は両者 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal と設計の方向を変えない）。起草役が `70387036` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は owner に諮り、reviewer の再確認は Final Review に回す（前例: `docs/archive/plans/2026-09-29-harness-pr5-gate-holes.md`）。
+10. plan-gate → plan-approved（2026-10-07、Coordinator、本 commit）: round 3 の disposition（同型指摘の一括是正）の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-180）。同じ問い合わせで介入の上限を 12 に（TD-181）、移行期の SD を戻す案内を「いつもの取込み」の文に（TD-182）決め、`dbe6626d` に反映した。Plan Commit = `dbe6626d`（承認した版）。reviewer の再確認は Final Review。
 
 ## Owner Effort Budget
 
