@@ -4,6 +4,10 @@
 //! 期待値は ADR の数値例・35 proposed・R1 の表・② の Matrix の G 行から決め、実装の出力から決めない。
 
 use super::time_evidence::*;
+use crate::biz::csv_import_service::time_evidence::{
+    classify_stock_rows, receive_source, RowDecision, StockClassification, StockEffect,
+    StockEvidenceRow, UnknownReason,
+};
 use crate::biz::BizError;
 use crate::db::inventory_repo::time_evidence::{
     bump_stock_revision, update_stock_quantity_with_revision,
@@ -18,6 +22,7 @@ use crate::db::test_support::{
     apply_time_evidence, seed_legacy_fixture, setup_test_db, setup_time_evidence_db,
 };
 use crate::db::{DbConnection, DbError};
+use crate::io::z004_parser::parse_z004;
 use rusqlite::types::Value;
 
 const GEN: u64 = 7;
@@ -518,9 +523,34 @@ fn test_save_stocktake_count_req205_req401_c6_cursor_fixed_at_begin() {
     let item = item_of(&conn, id, "TE-A");
     let (_, ctx) = begin(&mut conn, item, CountPurpose::InProgress);
     assert_eq!(ctx.source_cursor, 0);
-    let late = source(&conn, "hash-late");
+    // begin の後・保存の前に ② の receive_source で資料を受領する
+    let text = [
+        "\"精算日\",\"2026-12-01\",\"\",\"\",\"\"",
+        "\"No.\",\"スキャニングコード\",\"商品名\",\"個数\",\"金額\"",
+        "\"1\",\"2900000040001\",\"合成商品\",\"2\",\"200\"",
+    ]
+    .join("\r\n");
+    let parsed = parse_z004(&encoding_rs::SHIFT_JIS.encode(&text).0).unwrap();
+    let late = receive_source(&mut conn, &parsed, "2026-12-01T21:00:00").unwrap();
     flag(&conn, "TE-A", late, "sale_order_unknown");
     save(&mut conn, &ctx, 10).unwrap();
+
+    // ② の classify_stock_rows: 保存の後もその資料は Unknown のまま（Before でない）
+    let rows = [StockEvidenceRow {
+        line_no: 1,
+        normalized_jan: "2900000040001".to_string(),
+        quantity: 2,
+        amount: 200,
+        candidates: vec![("TE-A".to_string(), true)],
+    }];
+    assert_eq!(
+        classify_stock_rows(&conn, late, &rows).unwrap(),
+        StockClassification::Committable(vec![RowDecision {
+            line_no: 1,
+            product_code: "TE-A".to_string(),
+            effect: StockEffect::Unknown(UnknownReason::SaleOrderUnknown),
+        }])
+    );
 
     assert_eq!(
         item_row(&conn, item).6,
