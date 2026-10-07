@@ -10,6 +10,8 @@ SPEC-STK-TIME-D1 / D6 / D8。`update_stock_quantity(conn, product_code, new_quan
 - NewMovement / MovementRecordへstocktake_adjustment_kindとstocktake_recount_idを伝播する。保存意味は[tracking](../db-design/tracking-system-tables.md)の新契約。既存のmovement_type、符号、stock_afterのBIZ算出責任は変えない。
 - 入出庫履歴の棚卸し差異母集団は新方式でcompletionだけ。recount/rollback_compensationを差異件数・代表商品へ足さない。商品別movement一覧は各区分を隠さず、日本語の種類と元記録へ渡す。
 
+- 一括切替（⑤）までの置き方（[D-109](../decision-log.md) (2)(3)）: 上の版の強制は、既存の `update_stock_quantity` を変えずに `inventory_repo::time_evidence::update_stock_quantity_with_revision`（署名は同じ、`#[cfg(test)]`）と共通のchecked版更新 `bump_stock_revision` に置き、⑤で既存のcaller 4か所を切り替えて1つの `update_stock_quantity` にする。棚卸しの補正movementの区分の保存も⑤までは同じmoduleの新しい関数に置き、⑤でNewMovementへ移す。
+
 旧API本文は現行実装を記す。単体試験は数量/版の同時成功・同量更新・overflow・TX rollback、結合試験は全callerによる古いcontextの拒否を検証する。
 
 ### 10.1 inventory_repo — 共通型

@@ -39,6 +39,26 @@ legacyの取消の保留（[32](32-biz-csv-import-service.md)。legacy上限 `st
 
 非連動化後の回復も同じbegin/saveを使う。pos_sync_disabled_revisionより後の観測の版を持つ適用済み新方式実測が未調整解消の証拠になる。独立再実測（差0含む）は保存後、active measuredは確定後に解消と判定する。active保存だけやauto_filledは解消しない。案内は32と同じ版の条件で分け、切替後のmeasured pendingなら確定、切替前/同版/版なしなら切替後の数え直しを指す。切替前のpendingを確定しても観測の版を更新せず、未調整は残る。既存import flagは従来の受領条件で別に検査し、商品側issueのみを理由に確定を循環拒否しない。
 
+#### 新方式の開始と明細のkind
+
+新方式のstartはheaderを `reconciliation_version=1` で作り、明細を2種で作る。廃番かつ在庫0の商品はauto_filled（N=L=0、counted_atはNULL）、それ以外はuncounted（L=作成時の帳簿、Nとcounted_atはNULL）。進行中の棚卸しがあれば `StocktakeInProgress`、対象0件は `ValidationFailed`（旧本体§20.3と同じ文言）。棚卸し中の商品登録・商品一括importが足す明細もuncountedで作る（BIZ-01の呼出しの切替は一括切替の⑤）。force_fillが作るauto_filledもcounted_atをNULLにする。kindと証拠の組は[trackingのSPEC-STK-TIME-D8-K1](../db-design/tracking-system-tables.md)のCHECKが拒否する。
+
+#### 拒否の回復型（SPEC-STK-TIME-D1-R1）
+
+begin・save・確定の拒否は[40の回復型](40-cmd-product.md)のcodeとtargetsで返し、UIはmessageを解析しない。回復先（target）は商品ごとに、active明細があればaction `active_count`、なければ最新の完了済み明細を参照する `independent_recount`、どちらもなければ `no_count_target`（参照IDはnull）とする。
+
+| 場面 | 拒否の条件 | code | targets | message |
+|---|---|---|---|---|
+| begin | 用途と所有者が合わない（`in_progress` で親が完了済み、`independent_recount` で参照明細の親が進行中、または同じ商品にactive明細がある） | count_target_changed | 商品の回復先1件 | 数える対象の棚卸しが変わりました。表示し直してから数えてください |
+| save | 保存済みrequestでなく、contextがない・DB世代が違う | count_context_invalid | 商品の回復先1件（contextがなく商品が分からなければ空） | 最新の記録を確認してください |
+| save | 商品revisionがbeginの値と違う | count_context_invalid | 商品の回復先1件 | 数えている間に記録が変わりました。もう一度数えてください |
+| save | 所有者・親状態がbeginの用途と合わなくなった | count_target_changed | 商品の回復先1件 | 数える対象の棚卸しが変わりました。表示し直してから数えてください |
+| 確定 | 明細がある商品に未解消のflagがある、またはkind=legacyの明細がある（force_fillでも） | recount_required | 該当する明細ごと（action `active_count`、`recount_reasons` は未解消のflagの理由、legacyだけなら空） | flagがあれば「取り込んだ後に数の再確認が必要です」、legacyだけなら「更新前の記録です。今の数を確認してください」 |
+
+- 回復型に載せない拒否: 負数・JavaScriptの安全な整数（2^53-1）を超えるN、補正後の在庫の範囲外は既存の `ValidationFailed`。同じrequest IDで違うNは既存の `IdempotencyConflict`。明細の不在は既存の `NotFound`。保存済みrequest IDがitemとrecountの両方に見つかる異常は `DatabaseError`（書込みなし）。
+- 理由: 失効（同じ対象をもう一度数える）と保存先の変更（別の明細・用途で数える）は次の操作が違う。1つのcodeにまとめるとUIが行き先をmessageから推測することになる。確定の拒否はflagとlegacyで次の操作が同じ（その明細を数える）なので1つのcodeにし、理由は `recount_reasons` で分ける。
+- 見直す条件: 回復型のcodeを増やす（④の取込み・取消の拒否を足す）とき、この表に行を足す。
+
 #### 読取り・失敗・検証
 
 一覧はN/Lに基づく保存差異と現在庫を別の情報として返し、未計数・自動補完・旧入力・要再確認をkind/flagで区別する。record detailは補正kind、再実測のN/L・差・時刻・参照元を返す。差0商品の訂正対象も既存のitem一覧/検索から選べるようにし、差異movementがある商品だけに入口を限定しない。
@@ -126,7 +146,7 @@ src-tauri/src/
 - product_code: String
 - product_name: String
 - department_name: String
-- system_stock: i64（棚卸し開始時のシステム在庫。stocktake_items.system_stock）
+- system_stock: i64（stocktake_items.system_stock。旧本体では明細を作った時点〈棚卸しの開始時〉の値。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）
 - current_stock: i64（現在のシステム在庫。products.stock_quantity。CSV取込み等で変動している可能性あり）
 - actual_count: Option\<i64\>（NULLなら未入力）
 - counted_at: Option\<String\>（YYYY-MM-DDTHH:MM:SS）
@@ -272,7 +292,7 @@ fn update_count(
 
 **設計判断 — 差異の動的計算**:
 - architecture/biz-task-specs.md BIZ-06「棚卸し中もCSV取込みで在庫が動くため」（SP-205-09修正）に基づき、差異は stocktake_items.system_stock ではなく現在の products.stock_quantity を使って動的に計算する
-- system_stock は「開始時点の参考値」として記録するのみ。差異表示に使うのは常に最新の stock_quantity
+- 旧本体の system_stock は明細を作った時点の参考値として記録するのみで、カウント時に更新しない。差異表示に使うのは常に最新の stock_quantity。新方式は保存TXで L を取り直す（時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）
 
 **設計判断 — 操作ログなし**:
 - カウント入力は1件ずつ頻繁に行われる操作（4000件の商品を順次カウント）。毎回 operation_log を記録すると大量のログが生成され、有用な操作ログが埋もれる。棚卸しの開始と確定のみ記録する
