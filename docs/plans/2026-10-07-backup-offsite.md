@@ -4,7 +4,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R4
 - Plan Commit: pending
 - Amendments: none
@@ -22,6 +22,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 2. spec-check → design（2026-10-07、起草役）: 正本（`docs/function-design/71-mnt-backup.md`、`68-ui-backup-restore.md`）に、PC の外の保存先・書けたかの照合・PC の外の成功の表示・復元の予行演習・新しすぎる版の文言が無く、`VACUUM INTO` が正式名へ直接書くので作成途中の file を成功の世代に数えうる。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design のまま止めた（起草の時点、2026-10-07）: owner の判断事項 1〜3（下の「owner の判断事項」）が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさない。アプリの仕組みは判断事項 1 の選択肢のどれでも同じに設計したので、決定が設計正本を変えるのは D-114 の Status・71 §71.11.6 の採った型・本 packet の Ordinary Operation と Data Safety だけの見込み（判断事項 2 で写しを含めると決めた場合は 71 §71.1・§71.11 の写す対象も変わる）。
 4. design → plan-draft（2026-10-08、起草役）: owner が判断事項 1〜3 に答え（repo 外の回答台帳 TD-196・TD-197）、聞く事実 P5・P6 にも答えた（TD-198・TD-199）。決定を設計正本（71 §71.1・§71.11.6・§71.11.7・§71.13、68 UI-11b-L3-8、`docs/SCREEN_DESIGN.md` の 1 日の動線）、D-114、D-111（未決 B の決着の追記）、`docs/backlog.md` に反映した。条件（`docs/DEV_WORKFLOW.md` Workflow State の表: design の出力が source docs にあり、未解決の設計の問いが無い）を満たす。P6 の帰結を和らげる画面の振舞い（持ち帰りの 1 本の古さを出す）は設計に足さず、owner に諮る提案として Coordinator へ渡した。今の設計はその振舞いを持たないと明記してあり（71 §71.11.6・§71.11.7、D-114 の Guarantee range と Revisit）、未解決の問いではなく範囲の追加の提案として扱う。owner が採れば design へ戻る。plan-gate へは Coordinator が進める。
+5. plan-draft → plan-gate（2026-10-08、Coordinator、本 commit）: 起草役が最終報告で owner に諮る提案とした「持ち帰りの 1 本の古さを和らげる画面の振舞い」（(a) 足さない／(b) 媒体ごとの最後に写した日を出す／(c) 注意も出す）を owner に諮り、(a) 足さないに決まった（repo 外の回答台帳 TD-202。差し込めば 60 秒の確認で写す今の設計〈71 §71.11.4〉のままでよい）。設計は変えず、Non-scope と D-114 の Revisit の記述のとおり。packet と Matrix（`docs/plans/test-matrices/2026-10-07-backup-offsite.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。AC1〜AC6 を plan-gate の直前に逐語で再測し一致（AC1 `103:`・`111:`・`706:`・`747:`、AC2 68 `114:`〜`116:` と 53 `213:`、AC3 `207:`〜`210:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし）。Draft PR で Plan Review（fresh Opus + Codex）に出す。
 
 ## Owner Effort Budget
 
@@ -31,7 +32,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 8 | 4（2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉と機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない） | 3（R4 の承認 1、Ready 1、merge 1） | 1（持ち帰りの 1 本の古さの表示の提案を owner に諮るなら、ここから使う） | 8 = 4 + 3 + 1 |
+| 介入 | 8 | 5（2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉、機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉、持ち帰りの 1 本の古さを扱う仕組みの提案 1〈予備から、TD-202〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない） | 3（R4 の承認 1、Ready 1、merge 1） | 0 | 8 = 5 + 3 + 0 |
 
 ## Risk
 
