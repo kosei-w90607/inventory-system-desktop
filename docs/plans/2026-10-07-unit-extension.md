@@ -23,6 +23,8 @@
 3. design のまま止める（起草の時点）: owner の判断事項 J1〜J4 が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさない。
 4. design → plan-draft（2026-10-08、起草役）: owner が J1〜J4 をすべて推奨の案に決めた（repo 外の回答台帳 TD-195。下の owner の判断事項）。設計正本と D-113 の未決の記述を決定の文に直し（AC4）、設計の出力は正本にある。残る延期（Contract Probe P3、棚卸し記録詳細のロス原価を移す lane、`tracking-system-tables.md` の列の表）は本 lane の設計の値を変えず、runtime の lane の起票時に決めれば足りるので、未解決の設計の問いは無い（Design Readiness）。plan-gate へは Coordinator が進める。
 5. plan-draft → plan-gate（2026-10-08、Coordinator、本 commit）: packet と Matrix（`docs/plans/test-matrices/2026-10-07-unit-extension.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。AC1〜AC6 の command を plan-gate の直前に逐語で再測し、反映後の期待と一致（AC1 `11`、AC2 1 行と `2`、AC3 `2`・`4`・`1`、AC4 J1〜J4 の 4 行と `0`、AC5 `0`、AC6 `0`）。Draft PR で Plan Review（fresh Opus + Codex）に出す。
+6. plan-gate → plan-draft（round 1 の是正、2026-10-08、Coordinator、本 commit）: round 1 の reject の是正（起草役の `8981cbc9`・`a3b64f3f`）と owner の決定（数量を出す画面はすべて m〈TD-203〉、単位をまたぐ集計は個数の種類の「点」と長さの「m」の 2 本〈TD-206・TD-207〉）で Goal・Ordinary Operation・Scope の予定 file（34・56・57 を追加）と wire の型が変わった。`docs/DEV_WORKFLOW.md` Workflow State「a rejection that invalidates Scope or design returns to plan-draft or design」により plan-draft へ戻す（設計の出力は正本にあり、未解決の設計の問いは無いので design までは戻さない）。
+7. plan-draft → plan-gate（round 2 へ、2026-10-08、Coordinator、本 commit）: 是正後の packet と Matrix が commit されている（`a3b64f3f`）。AC1〜AC6 の期待は変わらず、起草役が逐語で再測して一致（`11`・`2`・`4`・`0`・`0`・`0`）。round 2 で再 review する。
 
 ## Owner Effort Budget
 
@@ -331,4 +333,17 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+round 1（`b99ef7f4`）: Claude 側 fresh Opus 5.5 = reject（P2 4 / P3 3）、Codex GPT-6 Astra（発注 246）= reject（P2 8 / P3 1）。P1 は 0。重なりは 3 件（Opus F1 = Codex #3、F5 = #4、F6 = #7）。Coordinator が採否を決め、全件を採用した。是正は起草役の `8981cbc9`・`a3b64f3f`。Scope が広がったので plan-draft へ戻し、plan-gate へ出し直した（遷移の記録 6・7）。
+
+- P2（Opus F2）m で出す範囲が在庫の数の表示だけで、日次売上・在庫変動・棚卸しの確定結果などが cm の数のままだった（L3-2 で数量 `130`・単価 `¥7`）。owner に諮り、数量を出す画面はすべて m・単価は 1 m あたり（repo 外の回答台帳 TD-203）。是正: 10 の SPEC-UNIT-D3 に表示する所の表、D11 に単位を持たない wire への `stock_unit` の追加、34・56・57・58・73 に注記、申し送りに 6 行。単位をまたぐ集計は owner に諮り、個数の種類の 10 単位を「点」でまとめ、長さ（m・cm）を別に m で出す 2 本（TD-206・TD-207。例 `5 点・1.8 m`。レジの数量のまま足す `4.3 点` は採らない。日報の点数との照合はレジ日報〈公式〉の節が受け持つ）。wire は `count_points`・`length_cm` の 2 field。
+- P2（Opus F1・Codex #3）評価額の原価の引数が 1/100 円の i64 で、今の test の範囲と両立しない。是正: 引数を i128 にし、U の間の 100 倍と乗算を checked で行う。今の test は原価を 100 倍して同じ期待で回す。
+- P2（Codex #1）CSV の上書きで単位を変えられる。是正: preview と commit の再検証で既存の商品と違う単位を拒む。
+- P2（Codex #2）旧版のアプリで更新前の backup を戻す経路に到達できない。是正: 22 §16 に管理者が行う 6 手順のオフラインの回復を書いた（71 の restore の契約は変えない）。
+- P2（Opus F5・Codex #4）vC の範囲検査の上限が JS の安全な整数とつながっていない。是正: 100 倍の後が安全な整数に入ることを移行の前に検査する。
+- P2（Codex #5）新設する行金額の wire が i128 の結果を損失なく運べない。是正: 1/100 円の整数の十進の文字列にした（合計の円は number のまま、残る制約として明記）。
+- P2（Codex #6）入庫・返品・廃棄の数量の再追加・統合の helper が整数。是正: cm の整数で足す契約と `1.3→2.3`・`0.5+0.3→0.8` の操作の test を申し送りと Matrix に。
+- P2（Opus F6・Codex #7）Ordinary Operation と L3-1 に原価差分のダイアログの選択が無く、L3-5 の期待が一意でない。是正: 「見送って閉じる」でマスタ原価 400 を保つ操作を書いた。
+- P2（Codex #8）SPEC-PRV-D4 の原価案・掛率の Matrix の行が無い。是正: `8333,100,110 → 9100`・掛率 83.3%・現売価 0 の fallback の行と、既存の `price-revision-math.test.ts` を対象に。
+- P2（Opus F3）`product_price_revise` の操作ログの key の改名が漏れていた。P2（Opus F4）商品 CSV の m の行の `初期在庫` の読み方が無かった。是正: Coordinator が店の事実（台帳 L-214、残り・仕入れ・値札は m）から m の数として読むと決めた（`m,25` → 2500 cm）。介入に数えない。
+- P3: demo の seed の 2 か所（Opus F7）、原価の wire の型の数を 14 に（Codex #9）。
+- 起草役の判断で Coordinator が受けたもの: 67（PLU 書出し）と 53（ホーム）は並走 lane が触るので編集せず、10 の表と申し送りで持たせた。月次の CSV の部門別の行は `5 点・1.8 m` の文字列（個数だけの部門は今と同じ整数）。
