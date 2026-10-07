@@ -101,15 +101,15 @@
 |---|---|---|---|---|
 | 1 | 在庫照会・商品一覧・入出庫の候補・業務記録詳細（今の formatter の呼出し） | 在庫・明細の数量 | `27.5 m` | 今の `stock_unit`（D11 で enum） |
 | 2 | 日次売上の商品の明細 | 数量・単価 | `1.3 m`・`¥700/m` | `DailySaleItem` に `stock_unit` を足す |
-| 3 | 日次売上の部門小計・合計、販売点数のカード（日次売上・ホーム） | レジの数量の和（下の集計の規則） | `4.3 点` | `DeptSubtotal`・`GrandTotal` の `quantity` を `quantity_hundredths` に改名 |
-| 4 | 月次売上の商品別・部門別、月間販売点数 | 商品別は数量、部門別と合計はレジの数量の和 | 商品別 `1.3 m`、部門別 `4.3 点` | `MonthlySaleItem` の `quantity` を `quantity_hundredths` に改名し、`stock_unit: ProductStockUnit \| null`（商品別だけ値、部門別は null）を足す |
-| 5 | 売上の CSV 出力（日次・月次の商品別・部門別） | `数量` の列 | m の数 `1.3`、部門別はレジの数量の和 `4.3`（個数の商品だけの行は今と同じ整数） | 上の 2〜4 の wire |
+| 3 | 日次売上の部門小計・合計、販売点数のカード（日次売上・ホーム） | 数量の種類ごとの和（下の集計の規則） | `5 点・1.8 m` | `DeptSubtotal`・`GrandTotal` の `quantity` を `count_points`・`length_cm` の 2 つに置き換える |
+| 4 | 月次売上の商品別・部門別、月間販売点数 | 数量の種類ごとの和（商品別の行はどちらか一方だけ） | 商品別 `1.3 m`・`3 点`、部門別 `5 点・1.8 m` | `MonthlySaleItem` の `quantity` を `count_points`・`length_cm` の 2 つに置き換える |
+| 5 | 売上の CSV 出力（日次・月次の商品別・部門別） | `数量` の列 | 商品の行は m の数 `1.3`（個数の商品の行は今と同じ整数）。集計の行（月次の部門別）は画面と同じ文字列 `5 点・1.8 m`（個数の商品だけの部門は今と同じ整数） | 上の 2〜4 の wire |
 | 6 | 在庫変動 | 変動の数量・変動後の在庫 | `+2.5 m`・`27.5 m` | 画面が既に読む商品の `stock_unit` を表へ渡す（`MovementRecord` は変えない） |
 | 7 | 棚卸しの計数（一覧と入力欄の現在在庫・実数・差異）と確定の結果の一覧 | 現在在庫・実数・差異 | `27.5 m`・`-1.35 m` | `StocktakeItemDetail` と `AdjustedItem` に `stock_unit` を足す |
 | 8 | 整合性チェック | 在庫・変動の合計・差異 | `27.5 m`・`+0.5 m` | `IntegrityMismatch` に `stock_unit` を足す |
 | 9 | PLU 書出しの未書出しの一覧 | 在庫 | `27.5 m` | `ProductResponse` に `stock_unit` を足す |
 
-- 集計の規則: 単位の違う商品の数量を足す所（表の 3・4・5 の部門別と合計、並べ替えの「数量」）は、明細ごとに「レジの数量」（D4: 個数の商品は数量、長さの商品は m）の 100 倍の整数 `pos_quantity_hundredths = 数量 × 100 ÷ 基準数量`（個数は数量 × 100、長さは cm の値そのもの。割り切れる）にして足し、`点` を付けて小数 2 桁まで・末尾の 0 を落として出す（3 個 + 1.3 m = 300 + 130 = 430 → `4.3 点`）。レジの日報の点数（D-104、小数の数量を小数のまま足す）と同じ数え方。個数の商品だけなら値は今と同じ。改名するのは、名前を変えずに意味を 100 倍にすると古い画面が黙って 100 倍を出すから（D5・D-104 と同じ理由）。不採用: cm の値をそのまま足す（今の形。1.3 m が 130 点に数えられる）、長さの商品を 1 行 1 点に数える（レジの点数と合わない）。
+- 集計の規則（owner の決定、2026-10-08、repo 外の回答台帳 TD-206・TD-207）: 単位の違う商品をまたいだ点数・数量の集計（表の 3・4・5 の部門小計・合計・販売点数・月次の部門別、CSV の集計の行）は、数量の種類（D1）ごとの 2 本に分ける。個数の種類の 10 単位（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho`）は単位をまたいでそのまま足して `点` で出す（3 個 + 2 枚 = `5 点`。個数の単位は広い意味で点で括れる）。長さの種類（`m`・`cm`）は点に入れず、cm の整数で足して m で出す（1.3 m + 50 cm = 180 cm = `1.8 m`。長さが点に混ざると情報がごちゃまぜになる）。wire は 2 つの整数 `count_points: i64`（個数の種類の数量の和）と `length_cm: i64`（長さの種類の数量の和、cm）。和は checked で、溢れは `ValidationFailed`。表示は、`count_points ≠ 0` か両方 0 なら `N 点`、`length_cm ≠ 0` なら D3 の形の m を出し、両方あれば `・` でつなぐ（3 個 + 2 枚 + 1.3 m + 50 cm の日は `5 点・1.8 m`、長さだけの日は `1.3 m`、明細 0 行は今どおり `0 点`）。個数の商品だけの日は値も表示も今と同じ。レジの日報の点数との照合は日次売上の「レジ日報（公式）」の節（Z001 の表）が受け持ち、アプリの集計はレジに合わせない。数量の列の並べ替えは `(count_points, length_cm)` の組を辞書順で比べる（商品別の行では長さの商品〈count_points 0〉が個数の商品の前に、それぞれの中で数量の順）。`quantity` の名前を残さず 2 つの field に分けるのは、意味が変わる古い読み手を TS の型検査で止めるため。不採用: 単位ごとに 12 本に分ける（TD-206 の最初の案。TD-207 で 2 本に精密化）、レジの数量で足す（3 個 + 1.3 m = 4.3 点、TD-206 で不採用）、cm の値をそのまま点に足す（今の形。1.3 m が 130 点に数えられる）。
 - 単価（表の 2）: `|金額| × 基準数量 ÷ |数量|` を整数の演算で円未満で四捨五入する（D7 と同じ規則。`910 × 100 ÷ 130 = 700`）。長さの商品は `¥700/m`、個数の商品は今どおり `¥700`。数量 0 は今どおり `—`。
 - 表の外: レジの日報（Z001・Z005）の部門の数量（D-104、今のまま）。在庫変動の `note` に保存済みの文字列（書き換えない）。在庫少の基準の画面（D10）。
 - 入力の error の文（`m` の商品）: `数量は0.01以上で、小数は2桁までの m で入力してください`。0 を受ける欄（棚卸しの実数）は `数量は0以上で、小数は2桁までの m で入力してください`。
@@ -139,11 +139,11 @@
 - EJ の明細の金額の照合（今は `数量 × 単価 = 金額`）は、小数の数量では `quantity_hundredths × 単価 ÷ 100` を円未満で四捨五入した値と金額を比べる（レジの丸め、台帳 L-136）。実データでの確認は EJ の lane の Plan Gate の前。
 - 金額は円の整数のまま。file の hash は raw bytes のまま（正規化した値で作り直さない）。日報（Z001・Z005）は D-104 のまま。
 
-**SPEC-UNIT-D9 UI の twin と formatter**: UI の数量の換算・表示（D3。集計の規則で画面が足す所〈日次売上の部門の小計〉と単価を含む）と、入力中の見込みの金額（廃棄の入力画面の合計、手動販売の金額の初期値）は TS の純関数で持つ。BIZ の関数と同じ意味の意図的な二重実装とし、同じ例の表（golden）を Rust と TS の両方の test に独立に写して意味のずれを止める（BIZ-01-D2 と同じ形）。保存された記録の金額は BIZ が返した値を表示する。formatter は `ProductStockUnit` を受けて全 variant を網羅する（wildcard を置かない。単位を足すと compile error）。
+**SPEC-UNIT-D9 UI の twin と formatter**: UI の数量の換算・表示（D3。集計の規則で画面が数量の種類ごとに足す所〈日次売上の部門の小計、月次の合計〉と単価を含む）と、入力中の見込みの金額（廃棄の入力画面の合計、手動販売の金額の初期値）は TS の純関数で持つ。BIZ の関数と同じ意味の意図的な二重実装とし、同じ例の表（golden）を Rust と TS の両方の test に独立に写して意味のずれを止める（BIZ-01-D2 と同じ形）。保存された記録の金額は BIZ が返した値を表示する。formatter は `ProductStockUnit` を受けて全 variant を網羅する（wildcard を置かない。単位を足すと compile error）。
 
 **SPEC-UNIT-D10 在庫少の判定と商品 CSV**: 在庫少は、個数の単位（10 個の code）を一般の基準、長さの単位（`m`・`cm`）を生地の基準で比べる（今の `stock_unit = 'pcs'` / `'cm'` の 2 分岐を数量の種類の分岐にする。SQL の code の並びは `ProductStockUnit` の全 variant から作り、どちらにも入らない単位が在庫少から黙って漏れることを test で止める）。基準の画面の語と cm の入力は変えない。商品 CSV の任意列 `在庫単位` は code（`pcs` 等）か表示の語（`個` 等。D1 の表の 12 語）を受け、code に正規化する。空は `pcs`（今どおり）。それ以外は preview の行の error（今は commit の DB CHECK で取込み全体が止まる）。`原価` の列は D5 の後は小数 2 桁まで。
 
-**SPEC-UNIT-D11 wire の単位の型**: wire に出る `stock_unit` はすべて generated enum `ProductStockUnit` にする（今 `string` の記録詳細の明細 6 種〈入庫・返品・手動販売・廃棄・CSV 取込み・棚卸し〉も）。棚卸しの計数の明細 `StocktakeItemDetail` は単位を持たないので足す（m の実数の入力に要る。[73](73-ui-stocktake.md)）。repo は DB の値を `parse_stock_unit` で読み、一覧に無い値は読取りの error。file 由来の商品 CSV の行（`ImportRow.stock_unit`）は `String` のまま（D-061 / D-064 の二層）。D3 の「表示する所」のために、単位を持たない wire の `DailySaleItem`・`AdjustedItem`・`IntegrityMismatch`・`ProductResponse` に `stock_unit: ProductStockUnit`、`MonthlySaleItem` に `stock_unit: ProductStockUnit | null` を必須の field として足し（optional にしない）、`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `quantity` を `quantity_hundredths`（D3 の集計の規則）に改名する。`MovementRecord` は変えない（在庫変動の画面は商品を 1 つ読んでから表を出す）。
+**SPEC-UNIT-D11 wire の単位の型**: wire に出る `stock_unit` はすべて generated enum `ProductStockUnit` にする（今 `string` の記録詳細の明細 6 種〈入庫・返品・手動販売・廃棄・CSV 取込み・棚卸し〉も）。棚卸しの計数の明細 `StocktakeItemDetail` は単位を持たないので足す（m の実数の入力に要る。[73](73-ui-stocktake.md)）。repo は DB の値を `parse_stock_unit` で読み、一覧に無い値は読取りの error。file 由来の商品 CSV の行（`ImportRow.stock_unit`）は `String` のまま（D-061 / D-064 の二層）。D3 の「表示する所」のために、単位を持たない wire の `DailySaleItem`・`AdjustedItem`・`IntegrityMismatch`・`ProductResponse` に `stock_unit: ProductStockUnit` を必須の field として足し（optional にしない）、`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `quantity: i64` を `count_points: i64`・`length_cm: i64`（D3 の集計の規則、TD-206・TD-207）の 2 つの必須の field に置き換える。`MovementRecord` は変えない（在庫変動の画面は商品を 1 つ読んでから表を出す）。
 
 **シグネチャ**（BIZ の新しい module `biz::unit_amount`。35 §20.5a の 3 関数をここへ移し、棚卸し・入出庫・手動販売の詳細が共有する）:
 ```
@@ -154,7 +154,6 @@ pub fn cost_line_centi(cost_price_centi: i128, quantity: i64, basis: i64, produc
 pub fn cost_total_yen(lines: &[i128]) -> Result<i64, BizError>
 pub fn sale_amount_yen(selling_price: i64, quantity: i64, basis: i64) -> Result<i64, BizError>
 pub fn stock_quantity_from_pos(quantity_hundredths: i64, unit: ProductStockUnit) -> Result<i64, PosQuantityError>
-pub fn pos_quantity_hundredths(quantity: i64, unit: ProductStockUnit) -> Result<i64, BizError> // D3 の集計の規則。個数の × 100 は checked
 ```
 
 ---
@@ -198,4 +197,4 @@ Pagination upper-bound policy is intentionally module-specific. D-031 introduced
 | 2026-08-16 | PR #79 | D-071 / SPEC-SDI-D1〜D4: CSV取込みの自然冪等性を同日別hashの追加取込みとper-import訂正へ改訂。 |
 | 2026-10-07 | 単位の拡張 design lane | D-113 / SPEC-UNIT-D1〜D11（proposed・未実装）: 単位を 12 種へ、長さの m の入力と表示、価格の基準数量と POS の数量 1、原価の 1/100 円、原価 × 数量・売価 × 数量の丸め、POS の数量の 100 倍の整数、在庫少と商品 CSV の単位、wire の単位の enum を追加。 |
 | 2026-10-08 | 単位の拡張 design lane | D-113 の owner の判断 J1〜J4 の決定（TD-195）を SPEC-UNIT-D1・D5・D6・D7 に反映（`ball` を入れる、原価は 1/100 円、入庫の丸めは TD-023 と同じ、手動販売の金額の初期値は四捨五入）。 |
-| 2026-10-08 | 単位の拡張 design lane（Plan Review round 1） | SPEC-UNIT-D3 に表示する所の表と集計・単価の規則（owner の決定 TD-203）、商品 CSV の `初期在庫` の m（Coordinator の決定、L-214）、入力の行の数量の加算を追加。D2 に CSV の上書きで単位を変えないこと、D6 に原価の引数の i128 と行の金額の wire の十進の文字列、D11 に表示のための wire の field を追加。 |
+| 2026-10-08 | 単位の拡張 design lane（Plan Review round 1） | SPEC-UNIT-D3 に表示する所の表（owner の決定 TD-203）と、数量の種類ごとの 2 本に分ける集計の規則（owner の決定 TD-206・TD-207）・単価の規則、商品 CSV の `初期在庫` の m（Coordinator の決定、L-214）、入力の行の数量の加算を追加。D2 に CSV の上書きで単位を変えないこと、D6 に原価の引数の i128 と行の金額の wire の十進の文字列、D11 に表示のための wire の field を追加。 |

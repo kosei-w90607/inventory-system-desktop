@@ -9,7 +9,7 @@ Risk: R4
 ## Contracts Under Test
 
 - SPEC-UNIT-D1 単位の 12 個の code と、数量の種類・価格の基準数量の導出（U）
-- SPEC-UNIT-D2・D3 在庫の数量は整数（長さは cm）、m の入力と表示、表示する所の表と売上の集計・単価（owner の決定 TD-203）、入力の行の数量の加算（U）
+- SPEC-UNIT-D2・D3 在庫の数量は整数（長さは cm）、m の入力と表示、表示する所の表（owner の決定 TD-203）と数量の種類ごとの 2 本（点と m）に分ける売上の集計（同 TD-206/207）・単価、入力の行の数量の加算（U）
 - SPEC-UNIT-D4 レジの数量 1 = 価格の基準数量、PLU の単価は売価のまま（U、回帰）
 - SPEC-UNIT-D5 原価の 1/100 円の入力・保存・表示（C）
 - SPEC-UNIT-D6 原価 × 数量の行と合計の丸め（U。C の後は 1/100 円の原価で）
@@ -44,8 +44,8 @@ Risk: R4
 | SPEC-UNIT-D3 | m の文字列 → cm の誤り | unit（TS） | m の入力の純関数: `1.3`→130、`1.27`→127、`2`→200、`0.01`→1、`0.29`→29、`1.300`・`1e2`・`-1`・`.5`・空 → error | 浮動小数で掛けた（`0.29`→28）、3 桁目を丸めた、符号を受けた |
 | SPEC-UNIT-D3 | cm → m の表示の誤り | unit（TS） | formatter: 130→`1.3 m`、127→`1.27 m`、200→`2 m`、-30→`-0.3 m`、123456→`1,234.56 m`、`cm` の 130→`130 cm`、`ball` の 3→`3 玉` | 小数 1 桁に丸めた、末尾の 0 を残した、負の値の符号を落とした |
 | SPEC-UNIT-D3（TD-203） | 売上の明細・単価が cm のまま | unit（TS）+ RTL | 日次売上: `m` の商品の明細（数量 130・金額 910）→ 数量 `1.3 m`・単価 `¥700/m`・金額 `¥910`、`pcs` の明細（数量 3・金額 2100）→ `3`・`¥700`（今どおり）、数量 0 → 単価 `—`、返品（-130・-910）→ 単価 `¥700/m`。単価の twin: 910×100÷130 → 700、1000×100÷130 = 769.2 → 769、1×100÷200 = 0.5 → 1 | 単価が `¥7`（基準数量を掛けない）、数量が `130`、四捨五入でない |
-| SPEC-UNIT-D3（TD-203） | 単位の違う商品の数量を cm のまま足す | unit（Rust）+ unit（TS） | BIZ-05: 同じ部門に `pcs` 3 と `m` 130 の日 → 部門小計・総合計の `quantity_hundredths` = 430、画面 `4.3 点`（部門小計・合計・販売点数のカード〈日次・ホーム〉）。`pcs` だけの日 → 300 → `3 点`（今と同じ点数）。月次の部門別は同じ商品を月に 2 回（130・120）→ 250 + 個数 → 和。月次の商品別は `m` の商品が `1.3 m`、`stock_unit` が部門別で null。TS の `group-items.ts` の小計と数量の並べ替えも同じ値（数量の昇順で `m` の 1.3〈130〉が `pcs` の 2〈200〉より前。今は 2 < 130 で逆） | 和が 133（cm を点に数えた）、改名せず `quantity` のまま意味を変えた、画面の小計だけ cm で足した |
-| SPEC-UNIT-D3（TD-203） | 売上の CSV の数量が cm のまま | unit（Rust） | `export_sales_csv`: 日次の `m` の行の `数量` が `1.3`、`pcs` の行が `3`（今どおり）、月次の部門別が `4.3`、`1.30` と書かない | `130` を書いた、小数の末尾の 0 を残した |
+| SPEC-UNIT-D3（TD-206/207） | 単位の違う商品の数量を足す | unit（Rust）+ unit（TS） | BIZ-05: 同じ部門に `pcs` 3・`sheet` 2・`m` 130・`cm` 50 の日 → 部門小計・総合計の `count_points` 5・`length_cm` 180、画面 `5 点・1.8 m`（部門小計・合計・販売点数のカード〈日次・ホーム〉）。`pcs` 3・`ball` 2 だけ → 5・0 → `5 点`（今と同じ値と表示）。`m` 130 だけ → 0・130 → `1.3 m`。明細 0 行 → 0・0 → `0 点`。月次の部門別は同じ `m` の商品を月に 2 回（130・120）と `pcs` 5 → 5・250 → `5 点・2.5 m`。月次の商品別は `m` の商品が 0・130 → `1.3 m`、`pcs` の商品が 3・0 → `3 点`。TS の `group-items.ts` の小計・`compute-summary` の合計も同じ値。数量の並べ替え（昇順）: `pcs` 2・`pcs` 5・`m` 130 → `m` 130（0・130）、`pcs` 2、`pcs` 5 | 長さを点に足した（135 点、または 4.3 点）、個数の単位を単位ごとに分けた（`3 個・2 枚`）、画面の小計だけ cm を点に足した、`quantity` の名前のまま意味を変えた |
+| SPEC-UNIT-D3（TD-203） | 売上の CSV の数量が cm のまま | unit（Rust） | `export_sales_csv`: 日次の `m` の行の `数量` が `1.3`、`pcs` の行が `3`（今どおり）、月次の部門別の集計の行が `5 点・1.8 m`（長さは点に入れない）、個数の商品だけの部門は今と同じ整数、`1.30` と書かない | `130` を書いた、長さを点に足した、小数の末尾の 0 を残した |
 | SPEC-UNIT-D3（TD-203） | 在庫変動・棚卸し・整合性チェック・PLU 書出しが cm のまま | RTL | 在庫変動: `m` の商品の変動 +250・変動後 2750 → `+2.5 m`・`27.5 m`。棚卸し: 計数の一覧の現在在庫 2570・実数 2615・差異 -45 → `25.7 m`・`26.15 m`・`-0.45 m`、確定の結果の一覧（`AdjustedItem`）も同じ。整合性チェック: 在庫 2750・変動の合計 2700・差異 50 → `27.5 m`・`27 m`・`+0.5 m`。PLU 書出しの未書出しの一覧: 2750 → `27.5 m`。`pcs` の商品はどれも今どおり | 単位を渡さず整数で出した、`AdjustedItem` に単位が無い |
 | SPEC-UNIT-D6 | 基準数量で割らない・丸めの誤り | unit（Rust） | `cost_line_centi`（原価は i128 の 1/100 円）・`cost_total_yen`: 33300×250÷100 → 83250・合計 833、33300×50÷100 → 16650・合計 167、8333×36÷1 → 299988・合計 3000、境界 `2r = basis`（100×1÷200 → 1）と `2r < basis`（100×1÷201 → 0）、`i128::from(i64::MAX) * 100`×1÷1 → `i64::MAX × 100` | 割らない（100 倍）、四捨五入を切り捨てにした、合計を行ごとに円へ丸めてから足した、関数の中で原価をもう一度 100 倍した（境界が 100 倍ずれる） |
 | SPEC-UNIT-D6 | 今の評価額の値が変わる | unit（Rust、回帰） | 今の `stocktake_service.rs:1402`〜`:1482` の test を `unit_amount` へ移し、原価の引数を `i128::from(円) * 100` にして同じ期待で回す（`valuation_line_centi(a, q, b)` → `cost_line_centi(i128::from(a) * 100, q, b)`。`i64::MAX`・`92_233_720_368_547_759` の円の原価の成功と、`1 << 62` の原価の overflow を含む） | 関数を移すときに値・境界・overflow の扱いを変えた、原価の引数を i64 の 1/100 円にして `i64::MAX` 円を渡せなくした |
@@ -108,7 +108,7 @@ Risk: R4
 - empty/non-empty: 明細 0 行の記録詳細の合計 0。
 - min/max: m の最小 0.01（1 cm）、原価の上限 `9007199254740991`、vC の範囲 `90071992547409`（100 倍の後が原価の上限の中）。行の金額の wire は十進の文字列で、`9007199254740993` を正確に運ぶ。
 - status/policy enum: `ProductStockUnit` の 12 値。
-- wire type: 数量は整数、売上の集計の数量はレジの数量の 100 倍の整数（`quantity_hundredths`）、原価は 1/100 円の整数、行の金額は 1/100 円の整数の十進の文字列、合計は円の整数。
+- wire type: 数量は整数、売上の集計の数量は数量の種類ごとの 2 つの整数（`count_points`・`length_cm`）、原価は 1/100 円の整数、行の金額は 1/100 円の整数の十進の文字列、合計は円の整数。
 - internal type: i128 の中間、`quantity_hundredths: i64`。
 - producer/consumer: BIZ が金額を返し、UI は保存済みの値を計算しない。
 - round-trip token: 127 cm → `1.27 m` → 入力欄に戻しても 127（表示の文字列を保存し直さない）。
@@ -120,8 +120,8 @@ Risk: R4
 - old schema/input: 前の版の DB を vU・vC で移す。旧版のアプリは新しい DB を開かない。操作ログの `cost_price`（円）の記録を書き換えない。
 - new schema/input: 12 個の code、`_centi` の列。
 - output order: 変えない。
-- optional field behavior: `StocktakeItemDetail`・`DailySaleItem`・`AdjustedItem`・`IntegrityMismatch`・`ProductResponse` の `stock_unit` は必須の field として足す（optional にしない）。`MonthlySaleItem.stock_unit` は必須の field で値が null を取りうる（部門別）。
-- old wire: CSV の上書きは既存の商品の単位を変えない。売上の集計の `quantity` は `quantity_hundredths` に改名し、古い名前を残さない（TS の型検査が全部の読み手を止める）。
+- optional field behavior: `StocktakeItemDetail`・`DailySaleItem`・`AdjustedItem`・`IntegrityMismatch`・`ProductResponse` の `stock_unit` は必須の field として足す（optional にしない）。`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `count_points`・`length_cm` は必須の field（明細 0 行なら 0）。
+- old wire: CSV の上書きは既存の商品の単位を変えない。売上の集計の `quantity` は `count_points`・`length_cm` に置き換え、古い名前を残さない（TS の型検査が全部の読み手を止める）。
 
 ## Data Safety Checks
 

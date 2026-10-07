@@ -5,9 +5,9 @@
 ### 単位の拡張の後の数量（proposed・未実装、D-113）
 
 [共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」（owner の決定 TD-203: 長さの商品の数量は m、単価は 1 m あたり）の BIZ-05 の側。以下の本文は現行実装の契約である。
-- `DailySaleItem` に `stock_unit: ProductStockUnit` を足す（`quantity` は今どおり在庫の数量、長さは cm）。`MonthlySaleItem` は `quantity` を `quantity_hundredths`（レジの数量の 100 倍の整数）に改名し、`stock_unit: ProductStockUnit | null`（商品別だけ値）を足す。`DeptSubtotal`・`GrandTotal` の `quantity` も `quantity_hundredths` に改名する（SPEC-UNIT-D11）。
-- 単位の違う商品を足す所（部門小計・総合計・月次の部門別）は、明細ごとに `biz::unit_amount::pos_quantity_hundredths`（数量 × 100 ÷ 基準数量）で揃えてから足す（SPEC-UNIT-D3 の集計の規則。3 個 + 130 cm = 430）。月次の部門別は、商品の単位を引いてこの規則で足す（SQL の `SUM(sr.quantity)` のままにしない）。和は checked で、溢れは `ValidationFailed`。
-- §19.5 の CSV の `数量` の列は、レジの数量を小数 2 桁まで・末尾の 0 を落とした十進で書く（個数の商品の行は今と同じ整数、長さの商品の行は `1.3`、部門別は和の `4.3`）。
+- `DailySaleItem` に `stock_unit: ProductStockUnit` を足す（`quantity` は今どおり在庫の数量、長さは cm）。`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `quantity: i64` を `count_points: i64`（個数の種類の数量の和）と `length_cm: i64`（長さの種類の数量の和、cm）に置き換える。`MonthlySaleItem` の商品別の行はどちらか一方だけが値を持つ（SPEC-UNIT-D11）。
+- 部門小計・総合計・月次の部門別は、数量の種類ごとに 2 本に分けて足す（SPEC-UNIT-D3 の集計の規則、owner の決定 TD-206・TD-207）。個数の種類の 10 単位は単位をまたいで `count_points` に足し、`m`・`cm` は `length_cm` に足す（`pcs` 3・`sheet` 2・`m` 130・`cm` 50 の日は `count_points` 5・`length_cm` 180）。種類は `biz::unit_amount::stock_unit_kind` で決める。月次の部門別は、SQL を部門と商品の単位で GROUP BY して BIZ で種類ごとに足すか、SQL の `SUM(CASE …)` の単位の並びを `ProductStockUnit` の全 variant から作る（SPEC-UNIT-D10 と同じ。`SUM(sr.quantity)` を部門だけで足したままにしない）。和は checked で、溢れは `ValidationFailed`。
+- §19.5 の CSV の `数量` の列: 商品の行（日次・月次の商品別）は在庫の数量を表示の単位の数で書く（個数の商品は今と同じ整数、`m` の商品は m の数 `1.3`、`cm` の商品は cm の整数）。集計の行（月次の部門別）は画面と同じ文字列（`5 点・1.8 m`。個数の商品だけの部門は今と同じ整数）。
 - レジの日報（公式日報）の数量（D-104）は変えない。
 
 ### 19.1 モジュール構成
@@ -427,5 +427,5 @@ fn export_sales_csv(
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 商品別 `product_code + source` 集約、全completed日報親のNULL安全な日次集約、`source_import_count`、月次additive regressionを正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
 | 2026-10-04 | daily-report-import-gaps（plan-first） | 日報の個数の wire を単位の数（`f64`）にし、DB の 100 倍の整数から BIZ-05 で戻す（IO-07-D2、D-104）。 |
-| 2026-10-08 | 単位の拡張 design lane | 冒頭に単位の拡張の後の数量（proposed・未実装、D-113 / SPEC-UNIT-D3・D11、owner の決定 TD-203）を追加: 売上の wire の単位と、単位の違う商品の数量をレジの数量で足す規則。 |
+| 2026-10-08 | 単位の拡張 design lane | 冒頭に単位の拡張の後の数量（proposed・未実装、D-113 / SPEC-UNIT-D3・D11、owner の決定 TD-203）を追加: 売上の wire の単位と、単位の違う商品の数量を数量の種類ごとの 2 本（点と m）に分けて出す規則（TD-206・TD-207）。 |
 | 2026-10-06 | z001-display（runtime、起票） | §19.2 の `OfficialDailyReportSummary` の field の並びを code（`sales_service.rs` の struct）と生成 bindings に合わせた（`source_import_count` を先頭へ。PR #114 Final Review の P3、[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
