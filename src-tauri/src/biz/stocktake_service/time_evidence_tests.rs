@@ -670,10 +670,13 @@ fn test_save_stocktake_count_req205_c7_guards_write_nothing() {
 
 #[test]
 fn test_save_stocktake_count_req205_c8_count_range() {
-    // REQ-205 / SPEC-STK-TIME-D1 / C8: N は 0〜2^53-1、補正の overflow は書込み 0 の ValidationFailed
+    // REQ-205 / SPEC-STK-TIME-D1 / ADR D8 / C8: N は 0〜2^53-1。補正の overflow と、差異・補正量が
+    // 安全な整数（±2^53-1）を外れる保存・再送は書込み 0 の ValidationFailed
     let (_dir, mut conn) = setup_time_evidence_db();
     product_full(&conn, "TE-A", 10, false, "pcs", 1);
     product(&conn, "TE-B", 10);
+    product(&conn, "TE-C", 10);
+    product(&conn, "TE-N", -MAX_SAFE);
     let id = start(&mut conn);
     let item_a = item_of(&conn, id, "TE-A");
     let (_, ctx) = begin(&mut conn, item_a, CountPurpose::InProgress);
@@ -693,6 +696,16 @@ fn test_save_stocktake_count_req205_c8_count_range() {
         MAX_SAFE
     );
 
+    // 進行中: L = -(2^53-1)・N = 2 は L も N も安全だが差異 L − N が範囲外
+    let item_n = item_of(&conn, id, "TE-N");
+    let (_, ctx) = begin(&mut conn, item_n, CountPurpose::InProgress);
+    let before = snapshot(&conn);
+    assert!(matches!(
+        save(&mut conn, &ctx, 2),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+
     complete(&mut conn, id, true).unwrap();
     let item_b = item_of(&conn, id, "TE-B");
     conn.execute(
@@ -707,6 +720,34 @@ fn test_save_stocktake_count_req205_c8_count_range() {
         Err(CountError::Biz(BizError::ValidationFailed(_)))
     ));
     assert_eq!(snapshot(&conn), before);
+
+    // 独立再実測: L = -(2^53-1)・N = 2 は補正後の在庫 2 が安全でも補正量 N − L が範囲外
+    let item_c = item_of(&conn, id, "TE-C");
+    conn.execute(
+        "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TE-C'",
+        [-MAX_SAFE],
+    )
+    .unwrap();
+    let (_, ctx) = begin(&mut conn, item_c, CountPurpose::IndependentRecount);
+    let before = snapshot(&conn);
+    assert!(matches!(
+        save(&mut conn, &ctx, 2),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+
+    // 再送: 範囲外の差異を持つ保存済みの行（生の SQL）を Replayed で返さない
+    conn.execute(
+        "INSERT INTO stocktake_recounts (stocktake_item_id, system_stock, actual_count, count_started_at,
+            counted_at, ledger_cursor, source_cursor, observation_revision, request_id)
+         VALUES (?1, ?2, 2, ?3, ?3, 0, 0, 1, 'rc-out-of-range')",
+        rusqlite::params![item_c, -MAX_SAFE, T_SAVE],
+    )
+    .unwrap();
+    assert!(matches!(
+        save_stocktake_count(&mut conn, "rc-out-of-range", 2, None, GEN, T_SAVE),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
 }
 
 #[test]
@@ -908,36 +949,57 @@ fn test_complete_stocktake_req205_c12_stk1_four_moves() {
         let (_dir, mut conn) = setup_time_evidence_db();
         product(&conn, "TE-A", 10);
         product(&conn, "TE-B", 5);
+        product(&conn, "TE-C", 10);
         let id = start(&mut conn);
         let item = item_of(&conn, id, "TE-A");
         count(&mut conn, item, 10);
         let item = item_of(&conn, id, "TE-B");
         count(&mut conn, item, 7);
+        let item = item_of(&conn, id, "TE-C");
+        count(&mut conn, item, 12);
         move_stock(&conn, "TE-A", delta, movement_type);
+        // 保存の後に動き、差も 0 でない商品: 10 → 保存 N=12 → 同じ移動 → 確定で (10 + delta) + 2
+        move_stock(&conn, "TE-C", delta, movement_type);
         let result = complete(&mut conn, id, false).unwrap();
         assert_eq!(stock(&conn, "TE-A").0, expected, "{movement_type:?}");
         assert_eq!(stock(&conn, "TE-B").0, 7);
-        assert_eq!(
-            stocktake_movements(&conn),
-            vec![(
-                "TE-B".to_string(),
-                2,
-                7,
+        assert_eq!(stock(&conn, "TE-C").0, expected + 2, "{movement_type:?}");
+        let completion = |code: &str, quantity, after| {
+            (
+                code.to_string(),
+                quantity,
+                after,
                 Some("completion".to_string()),
                 None,
-                Some(id)
-            )],
+                Some(id),
+            )
+        };
+        assert_eq!(
+            stocktake_movements(&conn),
+            vec![
+                completion("TE-B", 2, 7),
+                completion("TE-C", 2, expected + 2)
+            ],
             "補正 0 の TE-A に movement を作らない"
         );
         assert_eq!(
             result.corrections,
-            vec![CompletionCorrection {
-                product_code: "TE-B".to_string(),
-                system_stock: 5,
-                actual_count: 7,
-                adjustment: 2,
-                stock_after: 7,
-            }]
+            vec![
+                CompletionCorrection {
+                    product_code: "TE-B".to_string(),
+                    system_stock: 5,
+                    actual_count: 7,
+                    adjustment: 2,
+                    stock_after: 7,
+                },
+                CompletionCorrection {
+                    product_code: "TE-C".to_string(),
+                    system_stock: 10,
+                    actual_count: 12,
+                    adjustment: 2,
+                    stock_after: expected + 2,
+                }
+            ]
         );
     }
 }
@@ -1229,7 +1291,7 @@ fn test_complete_stocktake_req205_c20_tx_failure_rolls_back() {
 
 #[test]
 fn test_complete_stocktake_req205_c21_adjusted_stock_range() {
-    // REQ-205 / SPEC-STK-TIME-D8 / C21: 補正後の在庫が安全な整数を超える確定は書込み 0 の ValidationFailed
+    // REQ-205 / SPEC-STK-TIME-D8 / ADR D8 / C21: 補正後の在庫か補正量が安全な整数を外れる確定は書込み 0 の ValidationFailed
     let (_dir, mut conn) = setup_time_evidence_db();
     product(&conn, "TE-A", 10);
     let id = start(&mut conn);
@@ -1238,6 +1300,30 @@ fn test_complete_stocktake_req205_c21_adjusted_stock_range() {
     conn.execute(
         "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TE-A'",
         [MAX_SAFE],
+    )
+    .unwrap();
+    let before = snapshot(&conn);
+    assert!(matches!(
+        complete(&mut conn, id, false),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+
+    // 補正後の在庫 2 が安全でも、補正量 N − L = 2^53 + 1 が範囲外（L = 在庫 = -(2^53-1)、N = 2。生の SQL）
+    let (_dir, mut conn) = setup_time_evidence_db();
+    product(&conn, "TE-A", 0);
+    let id = start(&mut conn);
+    let item = item_of(&conn, id, "TE-A");
+    conn.execute(
+        "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TE-A'",
+        [-MAX_SAFE],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE stocktake_items SET observation_kind = 'measured', actual_count = 2, system_stock = ?1,
+            count_started_at = ?2, counted_at = ?2, ledger_cursor = 0, source_cursor = 0,
+            observation_revision = 1, request_id = 'req-out-of-range' WHERE id = ?3",
+        rusqlite::params![-MAX_SAFE, T_SAVE, item],
     )
     .unwrap();
     let before = snapshot(&conn);

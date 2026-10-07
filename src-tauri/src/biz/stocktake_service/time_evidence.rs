@@ -260,12 +260,15 @@ fn owner_matches(
     })
 }
 
-fn out_of_range() -> BizError {
-    BizError::ValidationFailed("補正後の在庫が扱える範囲を超えます".to_string())
-}
-
-fn within_safe_range(value: i64) -> bool {
-    (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&value)
+/// 差異・補正量・補正後の在庫は JavaScript の安全な整数（±2^53-1）に収める（ADR D8）。i64 の overflow（None）も同じ拒否
+fn safe(value: Option<i64>) -> Result<i64, BizError> {
+    value
+        .filter(|v| (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(v))
+        .ok_or_else(|| {
+            BizError::ValidationFailed(
+                "差異・補正量・補正後の在庫が扱える範囲を超えます".to_string(),
+            )
+        })
 }
 
 // ---------------------------------------------------------------------------
@@ -403,10 +406,7 @@ pub(crate) fn save_stocktake_count(
             recount_id: saved.recount_id,
             system_stock: saved.system_stock,
             actual_count: saved.actual_count,
-            difference: saved
-                .system_stock
-                .checked_sub(saved.actual_count)
-                .ok_or_else(out_of_range)?,
+            difference: safe(saved.system_stock.checked_sub(saved.actual_count))?,
             stock_after: if saved.recount_id.is_some() {
                 saved.actual_count
             } else {
@@ -487,12 +487,8 @@ pub(crate) fn save_stocktake_count(
     // 5. L と ledger の上限（補正の INSERT より前）
     let system_stock = target.stock_quantity;
     let ledger_cursor = max_movement_id(&tx, &ctx.product_code)?;
-    let adjustment = actual_count
-        .checked_sub(system_stock)
-        .ok_or_else(out_of_range)?;
-    let difference = system_stock
-        .checked_sub(actual_count)
-        .ok_or_else(out_of_range)?;
+    let adjustment = safe(actual_count.checked_sub(system_stock))?;
+    let difference = safe(system_stock.checked_sub(actual_count))?;
     let evidence = |observation_revision| MeasuredEvidence {
         actual_count,
         system_stock,
@@ -635,11 +631,8 @@ pub(crate) fn complete_stocktake(
                 let n = item.actual_count.ok_or_else(|| {
                     DbError::QueryFailed(format!("measured の明細 {} に数量がありません", item.id))
                 })?;
-                let adjustment = n.checked_sub(item.system_stock).ok_or_else(out_of_range)?;
-                let after = current
-                    .checked_add(adjustment)
-                    .filter(|v| within_safe_range(*v))
-                    .ok_or_else(out_of_range)?;
+                let adjustment = safe(n.checked_sub(item.system_stock))?;
+                let after = safe(current.checked_add(adjustment))?;
                 if adjustment != 0 {
                     update_stock_quantity_with_revision(&tx, &item.product_code, after)?;
                     insert_stocktake_movement(
