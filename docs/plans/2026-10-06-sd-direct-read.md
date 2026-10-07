@@ -24,6 +24,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 4. design（owner の決定の反映、2026-10-06、起草役、本 commit）: owner の判断 1〜5 の決定（下の「owner の判断事項」）を D-111・設計正本・本 packet・Matrix に反映し、写しの設計（IO-10、BIZ-08-D5）を足した。Phase は design のまま。理由: 決定 1（SD は動かさない）の前提 P2・P3（Contract Probe）を Plan Gate の前に店の経験で確かめる。写しの細部の未決 A・B は Non-scope にしたので design → plan-draft を止める問いではない。
 5. design → plan-draft（2026-10-07、起草役、本 commit）: 条件「設計の出力が正本にある」は、IO-09・IO-10・IO-07-D5・BIZ-08-D3〜D5・CMD-12-D1・UI-07-D12〜D14・`daily_report_imports.settlement_no`・D-111 が下の Design Readiness の引く正本にあることで満たす。条件「未解決の設計の問いが無い」は、owner の判断 1〜5 が 2026-10-06 に決まり、決定 1 の前提 P2・P3 の扱いが 2026-10-07 に決まったことで満たす（P3 は店の実績〈TD-139〉で合格。P2 は試しを行わず〈owner 決定、TD-176〉、owner の承認した代わりの扱いと運用の制約〈D-111〉で閉じた。下の Contract Probe）。残る P1 は設計に依らず runtime の lane の L3 の前に確かめるもの、`XZ` の file が数千本になったときのレジの振舞いは (b) の lane の前提（D-111 の Revisit）、写しの未決 A・B は Non-scope で、どれも本 lane の設計の問いではない。
 6. plan-draft → plan-gate（2026-10-07、Coordinator、本 commit）: packet と Matrix（`docs/plans/test-matrices/2026-10-06-sd-direct-read.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。Draft PR #150 で Plan Review（fresh Opus + Codex）に出す。
+7. plan-gate のまま是正（round 1、2026-10-07、Coordinator）: round 1 の reject を起草役が `d14cfacc` で直した（下の Review Response）。Scope と設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。遷移の記録 5 の「UI-07-D12〜D14」は round 1 の番号の振り直し（UI-07-D15・D16）より前の記録。
 
 ## Owner Effort Budget
 
@@ -271,4 +272,11 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+round 1（`3ea4d25c`）: Claude 側 fresh Opus 5.5 = reject（P2 2 / P3 5）、Codex GPT-6.1 Sol（発注 235）= reject（P1 1 / P2 2 / P3 3）。Coordinator が現物で裏取りし、全件を採用した。是正は起草役の `d14cfacc`。
+
+- P1（Codex #1、Opus #1 と同じ筋）SD の経路で精算回数の読めない束（`settlement_no = None`）を取り込めると、CV17 が後で書いた別 bytes・精算回数ありの同じ精算が hash と BIZ-08-D4 をすり抜け、追加確認だけで二重に保存される。重大度は P1 とした（運用の制約で CV17 の取込みが毎日続くので、この筋は毎日開く）。是正: BIZ-08-D6 を新設し、SD の経路は 3 本とも精算回数が読め値がそろう束だけを scan・preview・commit で受ける。予備の「ファイルを選んで取り込む」の扱いは変えない（D-111 の Guarantee range）。P1（SD-23）の合否に「原本の 3 本とも精算回数が読め、取込み後と同じ値」を足した。正規の SD の束はレジの原本で、CV17 の書出し（layout B）ではないので、本 guard で止まらない見込み（runtime の L3 の前の P1 で確かめる）。
+- P2（両者）画面と手順の正本が CV17 の取込みを無条件に「要らない」としていた。是正: D-111 の運用の制約（(b) まで CV17 の取込みを今の運用のまま続ける）を 55・SCREEN_DESIGN・ARCHITECTURE・io-task-specs・plu-export・project-memory に条件付きで同期した。
+- P2（Codex #3）新設の UI-07-D13 / D14 が既存の同日追加確認（UI-07-D13）・per-import 取消（UI-07-D14）と衝突していた（55:229・:244 で裏取り）。是正: 新設の 2 つを未使用の UI-07-D15・D16 に振り直し、本 lane の参照を同期した。
+- P3: 申し送りの表の file:line と site 数を `6b765f75` で数え直し、merge 済みの lane を並走と書く文を直した（Opus #3・Codex #5）。`RegisterSdError` の使われない variant を消した（Opus #4）。§45.4 の commit の signature に `AppHandle` を足した（Opus #5）。Matrix に 3 行を足した（Opus #6）。D-111 の Decision の番号と AC の並びを直した（Opus #7）。AC7 の検索に除外と実測の期待を足した（Codex #6）。37 の「BIZ-08 は精算回数を保存しない」を保存の契約の文に置き換えた（Codex #4）。
+- 起草役の判断で Coordinator が受けたもの: D6 の commit の検査を TX の前（手順 1a）と写しの前に置いた（束だけで決まる検査で DB の状態に依らないため、TX の中と同値で、拒む束の写しを先に書かない）。D6 で止めたとき予備の経路へ案内しない（同じ SD の file を手で選び直して穴を開け直さないため）。
+- round 1 の後に足した事実: 2026-10-07 にレジ本体で精算した際のスマホ送信の失敗と SD への「バックアップ」（repo 外の回答台帳 TD-179）を Contract Probe の P4 に足した（Plan Gate の前提ではない）。
