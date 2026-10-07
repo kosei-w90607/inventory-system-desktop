@@ -7,7 +7,7 @@
 - Phase: implementing
 - Risk: R4
 - Plan Commit: 2fc7c022d1c1480868e02ca08c375703bcb0f131
-- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95
+- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -30,6 +30,7 @@
 10. plan-gate → plan-approved（2026-10-08、Coordinator、本 commit）: round 3 の disposition（同型指摘の一括是正）の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-210）。同じ問い合わせで介入の上限を 12 に（TD-211）決め、`2fc7c022` に反映した。Plan Commit = `2fc7c022`（承認した版）。reviewer の再確認は Final Review。
 11. plan-approved → implementing（2026-10-08、Coordinator、本 commit。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R4、Minimum 2）に出す。
 12. implementing のまま Gated Amendment 1（2026-10-08、Coordinator）: Final Review broad（head `c4f9822e`）の Claude 側 Fable 5.1 の reject（P2 1 / P3 1）と Codex GPT-6 Astra（発注 255）の reject（P2 4）を全件採用し、起草役が `9a6929fc` で直した（設計正本 10・34・36・51・53・57・66・67・74・75 と、packet の Scope の表・申し送り・Registration・Wire Contract、Matrix の Test Matrix の表）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本（R4 の Minimum 2）取り直す。
+13. implementing のまま Gated Amendment 2（2026-10-08、Coordinator）: fresh broad（head `1c64fc5a`）の Codex GPT-6 Astra（発注 257）の reject（P2 2）と Claude 側 Fable 5.1 の approve（P3 1）を採用した。正本だけで閉じる 2 件（日次・月次の商品別の各段の安全な整数の検査、44・20・40 の proposed の pointer）は起草役の `fe662ef6`（packet・Matrix に触れない）。旧版へ戻す回復の手順で確かめを file の移動の前に置く 1 件は、同じ手順が packet の Impact Review Lenses と Matrix の MNT-03-D13 の行にもあるので、22 §16 と合わせて `eaba9918` で直した（本 Amendment）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
 
 ## Owner Effort Budget
 
@@ -383,3 +384,9 @@ Final broad（`c4f9822e`）: Claude 側 Fable 5.1 = reject（P2 1 / P3 1）、Co
 - P2（Codex #4）合計の丸めの順序を誤る実装を落とす golden が無い。是正: `[16650, 50, 600]` centi → 173 円の golden を `cost_total_yen` を通る全経路の行に。
 - P3（Fable）TD-203 の表示する所の表の行を持つ 66・67・75・53・74・36 に proposed の pointer を足した。
 - 自己点検で直したもの: 部門別・合計の行が両方 0 なら `0 点` と明記、`cost_total_yen` を通る全経路で同じ golden を回す。
+
+fresh broad（`1c64fc5a`）: Codex GPT-6 Astra（発注 257、PR review 5447378114）= reject（P2 2）、Claude 側 Fable 5.1（新しい context）= approve（P3 1）。P1 は 0。Coordinator が全件を採用した。helper に 2 本とも pending で記録済み（1 本目の run_ref は同じ run の本文の無い inline の review を指し、2 本目の evidence で訂正した）。
+
+- P2（Codex #1）日次の商品別の数量に wire の安全な整数の範囲の検査が無い（合計が範囲内でも商品別の行が範囲外になりうる）。是正: 34 と 10 D3 で、商品別・部門・合計・月次の各段を wire にする前に検査する（`fe662ef6`）。
+- P2（Codex #2）旧版へ戻す回復の手順で、DB を退避した後に遺物と backup を確かめる順序。是正: 確かめを `{db_path}` を動かす前に置き、止まったときに元の file が変わらない（Gated Amendment 2、`eaba9918`）。
+- P3（Fable）wire の DTO を定義する 44・20・40 に proposed の pointer（`fe662ef6`）。
