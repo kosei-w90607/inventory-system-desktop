@@ -5,10 +5,11 @@
 ### 単位の拡張の後の数量（proposed・未実装、D-113）
 
 [共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」（owner の決定 TD-203: 長さの商品の数量は m、単価は 1 m あたり）の BIZ-05 の側。以下の本文は現行実装の契約である。
-- `DailySaleItem` に `stock_unit: ProductStockUnit` を足す（`quantity` は今どおり在庫の数量、長さは cm）。`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `quantity: i64` を `count_points: i64`（個数の種類の数量の和）と `length_cm: i64`（長さの種類の数量の和、cm）に置き換える。`MonthlySaleItem` の商品別の行はどちらか一方だけが値を持ち、`stock_unit: ProductStockUnit | null`（商品別だけ値）で数量の種類を運ぶ（販売と返品が相殺して `(0, 0)` になった長さの商品の行を `0 m` で出すため。SPEC-UNIT-D11）。`count_points`・`length_cm` は `±9007199254740991` を超えれば `ValidationFailed`（SPEC-UNIT-D3 の集計の規則）。
+- `DailySaleItem` に `stock_unit: ProductStockUnit` を足す（`quantity` は今どおり在庫の数量、長さは cm）。`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `quantity: i64` を `count_points: i64`（個数の種類の数量の和）と `length_cm: i64`（長さの種類の数量の和、cm）に置き換える。`MonthlySaleItem` の商品別の行はどちらか一方だけが値を持ち、`stock_unit: ProductStockUnit | null`（商品別だけ値）で数量の種類を運ぶ（販売と返品が相殺して `(0, 0)` になった長さの商品の行を `0 m` で出すため。SPEC-UNIT-D11）。wire に出す数量は、集計の段ごとに wire にする前に `-9007199254740991` 以上 `9007199254740991` 以下を検査し、外れれば `ValidationFailed`（SPEC-UNIT-D3 の集計の規則）: 日次の商品別の行（`DailySaleItem.quantity`、SQL の `SUM(sr.quantity)` を i64 で読んだ値）、月次の商品別の行・部門別の行（`count_points`・`length_cm`）、部門小計・総合計。合計だけを検査すると、行の値が範囲外でも合計が相殺で範囲内に戻る（下のテスト）。CSV（§19.5）は検査を通った同じ値から書く。
 - 部門小計・総合計・月次の部門別は、数量の種類ごとに 2 本に分けて足す（SPEC-UNIT-D3 の集計の規則、owner の決定 TD-206・TD-207）。個数の種類の 10 単位は単位をまたいで `count_points` に足し、`m`・`cm` は `length_cm` に足す（`pcs` 3・`sheet` 2・`m` 130・`cm` 50 の日は `count_points` 5・`length_cm` 180）。種類は `biz::unit_amount::stock_unit_kind` で決める。月次の部門別は、SQL を部門と商品の単位で GROUP BY して BIZ で種類ごとに足すか、SQL の `SUM(CASE …)` の単位の並びを `ProductStockUnit` の全 variant から作る（SPEC-UNIT-D10 と同じ。`SUM(sr.quantity)` を部門だけで足したままにしない）。和は checked で、溢れは `ValidationFailed`。
 - §19.5 の CSV の `数量` の列: 商品の行（日次・月次の商品別）は在庫の数量を表示の単位の数で書く（個数の商品は今と同じ整数、`m`・`cm` の商品はどちらも m の数 `1.3`〈SPEC-UNIT-D3、長さは m・cm とも m で出す〉）。集計の行（月次の部門別）は画面と同じ文字列（`5 点・1.8 m`。個数の商品だけの部門は今と同じ整数）。
 - レジの日報（公式日報）の数量（D-104）は変えない。
+- テスト（単位の lane の完了条件）: 同じ日・同じ部門の長さの商品 A の明細の和が `-9007199254740991`、B が `9007199254740991` と `2`（B の商品別の和 `9007199254740993`）→ 部門小計と総合計は 2 で範囲内でも、B の行の検査で `get_daily_sales` が `ValidationFailed`（JSON の number で B が `9007199254740992` に丸まり、画面の再集計が 1 になる誤りを出さない）。境界ちょうど（A `-9007199254740991`、B `9007199254740991`）は成功。月次の商品別・部門別も同じ形で 1 つずつ。
 
 ### 19.1 モジュール構成
 

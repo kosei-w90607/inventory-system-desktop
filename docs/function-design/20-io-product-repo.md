@@ -937,6 +937,7 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 - product_code: String, product_name: String, department_name: String, stock_unit: String
 - system_stock: i64（棚卸し開始時システム在庫の snapshot）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
 - adjustment_quantity: i64（補正 movement の quantity。確定時 live 在庫基準）, stock_after: i64（補正後在庫）
+- （proposed・未実装、D-113）: `stock_unit` は repo が `parse_stock_unit` で読む `ProductStockUnit`、`valuation_cost_price` は `valuation_cost_price_centi`（1/100 円、原価の lane）。[共通規則](10-common-rules.md) SPEC-UNIT-D5・D11、[master-tables](../db-design/master-tables.md) の「単位と原価の精度の契約」。
 
 **処理ステップ**:
 1. stocktakes のヘッダを stocktake_id で取得する。存在しない場合は DbError::NotFound

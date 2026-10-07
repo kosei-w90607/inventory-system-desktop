@@ -540,6 +540,8 @@ struct ReceivingRecordDetail {
 }
 ```
 
+（proposed・未実装、D-113）: 明細の `stock_unit` は `ProductStockUnit`、行の金額は 1/100 円の十進の文字列 `line_cost_centi`、原価は `cost_price_centi`（原価の lane）、合計の `total_cost` は円の整数のまま。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
+
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
 2. biz::inventory_service::get_receiving_record(&conn, record_id) を呼ぶ
@@ -652,6 +654,8 @@ struct DisposalRecordDetailItem {
     line_loss_cost: i64,
 }
 ```
+
+（proposed・未実装、D-113）: `DisposalRecordDetailItem.stock_unit` は `ProductStockUnit`、`line_loss_cost` は 1/100 円の十進の文字列 `line_loss_cost_centi`、`cost_price` は `cost_price_centi`（原価の lane）、`total_loss_cost` は円の整数のまま。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
 
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
