@@ -59,6 +59,8 @@ struct StockAdjustment {
 }
 ```
 
+（proposed・未実装、D-113）: `IntegrityMismatch` と `StockAdjustment` に `stock_unit: ProductStockUnit` を足し（`find_all_stock_quantities` に単位を足す）、`integrity_fix` の detail_json の各 adjustment にも `stock_unit` を書く。長さの商品の数量を m で出すため（[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 8・11・12 行目、SPEC-UNIT-D11）。
+
 ---
 
 ### 21.3 run_integrity_check

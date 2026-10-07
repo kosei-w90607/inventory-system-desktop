@@ -62,7 +62,7 @@ export function useStockMovements(args: {
 | UI-06c-D2 | 検索条件の search params は `dateFrom` / `dateTo` / `type` / `page` とし、戻り先の `returnTo` を別途保持する（UI-06c-D9）。 | perPage は既定 50 + `Select`（50 / 100 / 200、owner 直回答 E10、2026-09-05）。perPage はローカル state（L3-D3）。`returnTo` は検索 query に渡さない。 |
 | UI-06c-D3 | product header と movement list は 2 useQuery とし、部分障害を許容する。 | movement が失敗しても商品名・現在庫を表示して対象商品を確認できる。商品詳細が失敗しても movement は商品コード単位で取得できる。 |
 | UI-06c-D4 | movement 種別は frontend で日本語ラベルへ変換し、未知種別は元文字列を表示する。 | backend contract は string。表示不能にせず調査可能性を優先する。未知値で落とす案は legacy/corrupt row の追跡を妨げるため棄却。 |
-| UI-06c-D5 | 増減数量は `+N` / `-N` と日本語の「増加」「減少」ラベルで示し、色だけに頼らない。 | DSR-08。業務上の意味を非IT利用者が判別できる必要がある。 |
+| UI-06c-D5 | 増減数量は `+N` / `-N` と日本語の「増加」「減少」ラベルで示し、色だけに頼らない。（proposed・未実装、D-113: 長さの商品は `+2.5 m` の形。表は `product_code → stock_unit` の対応を受ける。[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 6 行目） | DSR-08。業務上の意味を非IT利用者が判別できる必要がある。 |
 | UI-06c-D6 | `MovementRecord.source` がある行だけ「元記録」リンクを出し、ない行は「元記録なし」と表示する。 | PR #112 の source-link contract を使う。初期在庫や legacy 行は movement 自体を表示し、リンク欠落だけを明示する。 |
 | UI-06c-D7 | 元記録 route がまだ未実装でも link URL は `source.route` をそのまま表示対象にする。 | UI-06c の責務は movement から元記録へ戻るための contract 表示。未実装詳細 route の完成は後続スライスで扱う。 |
 | UI-06c-D8 | Windows native L3 は必要。 | 新規 operator-facing 調査画面であり、表の密度、数量符号、元記録リンク、戻り導線の視認性を確認する必要がある。 |

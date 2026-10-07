@@ -37,7 +37,7 @@ export function IntegrityCheckPage(): JSX.Element;
 |---|---|---|
 | UI-13-D1 | routeは`/settings/integrity`。URL search stateは持たず、check result、page、選択、fix resultは画面ローカルの一時状態とする。mount時は必ずidle。 | 結果はその場のDB状態を検証した実行セッション限り。URLへpage/resultを置くと古い結果を再現可能に見せるため棄却。 |
 | UI-13-D2 | 直近確認日時は`listLogs({ page: 1, per_page: 1, operation_type: "integrity_check", start_date: null, end_date: null })`の最新行から導出する。 | 専用setting keyはbackend変更とlogとの二重管理を生む。`integrity_fix`は対象に含めない。 |
-| UI-13-D3 | 差異行ごとに「補正する」checkboxを置く。select-allは置かず、未選択時は確定disabled。確認dialogへ商品コードと`stock_quantity → movements_sum`を列挙し、confirm時だけ選択codeを送る。 | 「1件ずつ確認」は盲目的な全件補正を防ぐ意図。明示列挙付き複数選択は反復modalより確認しやすい。 |
+| UI-13-D3 | 差異行ごとに「補正する」checkboxを置く。select-allは置かず、未選択時は確定disabled。確認dialogへ商品コードと`stock_quantity → movements_sum`を列挙し、confirm時だけ選択codeを送る。（proposed・未実装、D-113: 長さの商品の在庫・差異・補正の結果は m。[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 8・11 行目） | 「1件ずつ確認」は盲目的な全件補正を防ぐ意図。明示列挙付き複数選択は反復modalより確認しやすい。 |
 | UI-13-D4 | check/fix中は画面内overlay、Progress、処理中文言を出す。pending中は実行・選択・確定・retryを無効にし、handlerでも二重発火を防ぐ。 | 旧結果・選択と新結果の混入を防ぐ。cancel可能には見せない。 |
 | UI-13-D5 | fix成功後は自動再チェックしない。`fixed_count` / `adjustments` summaryと「補正済み」Badgeを表示し、「再度チェック」でのみ新checkを始める。 | checkは重い処理であり、利用者の意図なく暗黙実行しない。 |
 | UI-13-D6 | `skipped_count > 0`は独立warningで表示する。CmdErrorは日本語messageとretryを表示し、fix失敗時の選択を保持する。 | 部分未補正と再選択負担を成功表示へ埋没させない。 |
