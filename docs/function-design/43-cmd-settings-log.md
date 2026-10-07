@@ -198,6 +198,34 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 
 ---
 
+### 43.8.2〜43.8.5 PC の外の控えと控えの確かめ（D-114、MNT-01-D8・D9）
+
+4 command とも MNT-01（71 §71.11・§71.12）を呼ぶだけの薄い入口で、規則を持たない（CMD → MNT の直接呼出しは backup 系の正規経路、D-060 (a)）。DB の Mutex は設定（`backup_path`）の読取りの間だけ持ち、媒体へ写す・file を開く前に放す（写しの数秒の間、他の command を止めない）。
+
+| § | command | 入力 → 出力 | 処理 |
+|---|---|---|---|
+| 43.8.2 | `prepare_offsite_medium` | `PrepareOffsiteMediumRequest { selected_path: String }` → `OffsiteMediumView` | `app_data_dir` を取り、`get_backup_dir` で `backup_dir` を読んで lock を放し、`mnt::offsite::prepare_offsite_medium(&app_data_dir, &backup_dir, Path::new(&selected_path))` を呼ぶ（`backup_dir` は 71 §71.11.2 手順 6 の写しの元）。空の `selected_path` は `validation` |
+| 43.8.3 | `check_offsite_backup` | なし → `OffsiteCheckResult` | `backup_dir` を読んで lock を放し、`mnt::offsite::check_offsite_backup(&app_data_dir, &backup_dir)`。共通レイアウトの確認（UI-11b-D16）が `checkAutoBackup` の後に呼ぶ |
+| 43.8.4 | `get_offsite_backup_status` | なし → `OffsiteBackupStatus` | `mnt::offsite::offsite_status(&app_data_dir, 今日のローカル日付)`。DB を使わない（lock を取らない） |
+| 43.8.5 | `inspect_backup` | `InspectBackupRequest { backup_path: String }` → `BackupInspection` | `mnt::backup::inspect_backup(Path::new(&backup_path))`。DB を使わない。空の `backup_path` は `validation` |
+
+**エラーの写像**（`CmdError.kind` の値は既存の `validation` / `internal` だけを使い、`CmdErrorKind` に値を足さない）:
+
+| MNT の失敗 | `CmdError` | 固定の文（UI が出す。UI-11b-D14〜D16） |
+|---|---|---|
+| `OffsiteError::NotRemovable` | `validation` | 「USB メモリを選んでください（この場所は PC の外の控えに使えません）」 |
+| `OffsiteError::RegisterSd` | `validation` | 「これはレジの SD カードです。控えは USB メモリに作ってください」 |
+| `OffsiteError::StorageFull` | `internal` | 「USB メモリの空きが足りません」 |
+| `OffsiteError::VerifyMismatch` / `Io` | `internal` | 「PC の外の控えを写せませんでした」 |
+| `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした」 |
+| `inspect_backup` の `DbError` | `validation` | 「この控えを読めませんでした。別の控えを選んでください。」 |
+
+`check_offsite_backup` の失敗の種類は、UI が文言を分けるために `OffsiteBackupStatus.last_failure_kind`（43.8.4）から読む。`CmdError.message` の文字列で分けない（MNT-01-D4 と同じ方針）。
+
+**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field は件数・日数・版で、JS の安全な整数の範囲に収まる）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（6 値）・`BackupInspection` は 71 §71.11.1・§71.11.4・§71.11.5・§71.12 の定義のまま。
+
+---
+
 ### 43.9 restore_backup
 
 **シグネチャ**:
@@ -267,6 +295,8 @@ PR #164で`list_log_operation_types`を含む10コマンドすべてを `#[spect
     cmd::settings_cmd::save_receipt_image,
 ])
 ```
+
+D-114 の 4 command（§43.8.2〜§43.8.5）は後続の runtime の lane で、`#[tauri::command]` + `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
 
 ---
 
