@@ -25,6 +25,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 5. plan-draft → plan-gate（2026-10-08、Coordinator、本 commit）: 起草役が最終報告で owner に諮る提案とした「持ち帰りの 1 本の古さを和らげる画面の振舞い」（(a) 足さない／(b) 媒体ごとの最後に写した日を出す／(c) 注意も出す）を owner に諮り、(a) 足さないに決まった（repo 外の回答台帳 TD-202。差し込めば 60 秒の確認で写す今の設計〈71 §71.11.4〉のままでよい）。設計は変えず、Non-scope と D-114 の Revisit の記述のとおり。packet と Matrix（`docs/plans/test-matrices/2026-10-07-backup-offsite.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。AC1〜AC6 を plan-gate の直前に逐語で再測し一致（AC1 `103:`・`111:`・`706:`・`747:`、AC2 68 `114:`〜`116:` と 53 `213:`、AC3 `207:`〜`210:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし）。Draft PR で Plan Review（fresh Opus + Codex）に出す。
 6. plan-gate のまま是正（round 1、2026-10-08、Coordinator）: round 1 の reject を起草役が `7168aae9` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。Contract Probe の P1 の結果を記録するまで plan-approved へ進めない。
 7. plan-gate のまま是正（round 2、2026-10-08、Coordinator）: round 2 の reject を起草役が `f3120ed4` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。Contract Probe の P1 の結果を記録するまで plan-approved へ進めない。
+8. plan-gate（round 3、上限、2026-10-08、Coordinator）: round 3 は両者 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal と設計の方向を変えない）。起草役が `b4c77d98` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は Contract Probe の P1 の結果の記録と owner の承認を待つ。reviewer の再確認は Final Review。
 
 ## Owner Effort Budget
 
@@ -299,3 +300,10 @@ round 2（`48698c68`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3 6）、C
 - P2（Opus #1）4 command が main thread で動き、写しの間に画面が固まる（Tauri v2 の公式資料）。是正: 43 §43.8.2 で `#[tauri::command(async)]` で定義し、Matrix に attribute の確かめの行。
 - P3: 既存の test の注入点の移し替え（Opus #2）、`OffsiteError` の 9 値の enum（Opus #3）、今写した file を残す保持の case（Opus #4）、P1 の確かめ方を PowerShell の 1 行に（Opus #5）、新しい PC で札が重ならない手順（Opus #6）、新しい PC の保存先と状態の file が読めないときの手順と文（Opus #7）。
 - 起草役の判断で Coordinator が受けたもの: 状態の file が読めないときのホームの文は店主向けに「バックアップ画面で確かめてください」とする。`backup_dir` 自身は reparse point かを見ない（既存の設定を壊さない）。自己点検で、用意が状態の file を読めないときに目印だけ書く順序の誤りを直し、定期の確認（71 §71.11.4）と競合しうる 5 つの操作の排他の表を 71 §71.11.4 に置いた。
+
+round 3（上限、`7a38423c`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3 4）、Codex GPT-6 Astra（発注 254）= reject（P2 2 / P3 1）。P1 は 0。重なりは Opus #1 = Codex #2。round 天井に達したので次の round を開始せず、全件を disposition「同型指摘の一括是正」とした（Coordinator が採用。是正は起草役の `b4c77d98`、同型の穴の自己点検を含む）。Coordinator の確かめ: 68 UI-11b-D15 の unmount の再開が「復元の実行中でも fatal の 2 種の後でもないとき」に限られている、71 §71.13 の短い確かめの (1) と (2) の間に「詳細を閉じて `ready` に戻す（確認が再開する）」がある、43 の新しい 4 command の attribute がすべて `#[tauri::command(async)]`（43 に残る `#[tauri::command]` は既存の command の §43.1〜§43.10 だけ）、71 D7 の Compatibility が公開の後の失敗で検査済みの正式名が残りうることと合っている、を実読で確かめた。
+
+- P2（Codex #1）入れ替えの短い確かめの後に定期の確認を再開する操作が無い。是正: 71 §71.13・Ordinary Operation・Matrix に「詳細を閉じて ready に戻す」遷移。
+- P2（Opus #1・Codex #2）unmount で無条件に再開し、D13 の停止と衝突する。是正: 上のとおり限り、Matrix に fatal の各 kind・復元の実行中の離脱の停止の oracle。
+- P3: `stale` を写した日と写した控えの日付の古い方から数える（Opus #2、文と wire は変えない）。状態の file の直し方に先に手動の backup（Opus #3）。lock は公開関数の入口で 1 回（Opus #4）。登録の節の attribute を async に（Opus #5）。D7 の Compatibility（Codex #3）。
+- 自己点検で直したもの: 定期の確認の停止と再開の組を全経路で並べて閉じた。§71.11.7 の bytes の一致の例外 2 つ、Non-scope・Contract Ledger・D-114 の「UI-11b-D11〜D13 は変えない」の言い切り（D15 が停止の始まりを早める）を直した。
