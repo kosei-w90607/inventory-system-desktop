@@ -217,12 +217,14 @@ fn get_effective_backup_dir(state: State<AppState>, app_handle: tauri::AppHandle
 | `OffsiteError::RegisterSd` | `validation` | 「これはレジの SD カードです。控えは USB メモリに作ってください」 |
 | `OffsiteError::StorageFull` | `internal` | 「USB メモリの空きが足りません」 |
 | `OffsiteError::VerifyMismatch` / `Io` | `internal` | 「PC の外の控えを写せませんでした」 |
+| `OffsiteError::MarkerUnsupported` | `validation` | 「この USB メモリは新しい版のアプリで用意されています。新しい版のアプリを入れてください」 |
 | `OffsiteError::StateUnreadable` | `internal` | 「PC の外の控えの記録を読めませんでした」 |
+| `OffsiteError::SourceUnverified` | `internal` | 「PC の中の最新のバックアップを確かめられなかったため、PC の外へ写していません」 |
 | `inspect_backup` の `DbError` | `validation` | 「この控えを読めませんでした。別の控えを選んでください。」 |
 
 `check_offsite_backup` の失敗の種類は、UI が文言を分けるために `OffsiteBackupStatus.last_failure_kind`（43.8.4）から読む。`CmdError.message` の文字列で分けない（MNT-01-D4 と同じ方針）。
 
-**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field は件数・日数・版で、JS の安全な整数の範囲に収まる）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（6 値）・`BackupInspection` は 71 §71.11.1・§71.11.4・§71.11.5・§71.12 の定義のまま。
+**DTO の形**（`#[derive(serde::Serialize, specta::Type)]`、field は snake_case、日時は `YYYY-MM-DD HH:MM:SS` の文字列。`i64` の field は件数・日数・版で、JS の安全な整数の範囲に収まる）: `OffsiteMediumView`・`OffsiteCheckResult`（`kind` で分ける tagged enum: `not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied { file_name, labels }`）・`OffsiteBackupStatus`・`OffsiteFailureKind`（7 値）・`BackupInspection` は 71 §71.11.1・§71.11.4・§71.11.5・§71.12 の定義のまま。
 
 ---
 

@@ -8,9 +8,9 @@ Risk: R4
 
 ## Contracts Under Test
 
-- MNT-01-D7: backup は作業名へ書き、`quick_check` と版の読取りで確かめてから正式名にする。今日の backup の判定・一覧・掃除・PC の外の控えは正式名だけを見る。
-- MNT-01-D8: PC の外の控えは、目印と PC 側の状態の両方で見分けた取外し可能な媒体の `InventoryBackup\` へ、確かめ済みの最新の backup を作業名へ写し、読み戻しの SHA-256 で照合してから正式名にする。媒体ごとに新しい 30 本を残す。状態は DB の外。最後に写せた日から 3 日以上で `stale`。
-- MNT-01-D9: `inspect_backup` は file と folder を変えずに、版（アプリより新しいか）・`quick_check`・商品の数・最後の記録を返す。復元の詳細は確かめで止めた控えを確認の手順へ進めない。
+- MNT-01-D7: backup は作業名へ書き、共有の検査（このアプリの backup・版・`quick_check`、71 §71.12）に通してから、既存を上書きしない公開（71 §71.4.1）で正式名にする。今日の backup の判定・一覧・掃除・PC の外の控えは正式名（規約の完全一致）だけを見る。
+- MNT-01-D8: PC の外の控えは、目印と PC 側の状態の両方で見分け、1 回の確認の中は volume の識別に固定した取外し可能な媒体の `InventoryBackup\` へ、共有の検査に通った最新の backup を作業名へ写し、読み戻しの SHA-256 で照合してから正式名にする。媒体ごとに新しい 30 本を残す。状態は DB の外。最後に写せた日から 3 日以上で `stale`。
+- MNT-01-D9: `inspect_backup` は file と folder を変えずに、版（アプリより新しいか）・`quick_check`・商品の数・最後の記録を返し、このアプリの backup でない file（空・別用途・版 0・必須の表なし）を `Err` にする。復元の詳細は確かめで止めた控えを確認の手順へ進めない。
 - MNT-01-D10: backup の file を、root に `CASIO\SR500_550_4000` がある drive に書かない。
 - 43 §43.8.2〜§43.8.5: 4 command は MNT を呼ぶだけで、DB の Mutex を写す前に放し、失敗を `validation` / `internal` の固定の文へ写す。
 - UI-11b-D14〜D16、UI-00-D12: card の状態の文、確かめの止める文言、共通の確認の順と停止、ホームの知らせの条件。
@@ -18,7 +18,9 @@ Risk: R4
 ## Failure Modes
 
 - `VACUUM INTO` の途中で止まった file・壊れた file が正式名で残り、今日の backup と数えられる・復元の候補に出る・PC の外へ写される。
-- drive 文字の変化で、レジの SD・目印の無い媒体・別の PC で用意した媒体に書く。
+- 公開が同じ名前の既存の正式名を上書きする。作業名の掃除が別用途の `*.partial` を消す。
+- 空の DB・別用途の SQLite の file を「戻せます」と出す。
+- drive 文字の変化で、レジの SD・目印の無い媒体・別の PC で用意した媒体に書く。探した後に抜かれ、同じ文字に割り当たった別の媒体に書く。新しい版の目印を作り直す。
 - 写した file を読み戻さずに成功とする。照合の失敗の file が正式名で残る。
 - 媒体の上の掃除が、今写した file・目印・規約外の file を消す。久しぶりに差した媒体の古い控えを一度に消す。
 - 状態を DB に置いて復元で巻き戻る。状態の file が壊れたときに黙って `NotPrepared` になる。
@@ -31,22 +33,32 @@ Risk: R4
 
 - 既存の test を回帰の証跡に挙げる前に `rg` で実在を確かめる（下の Adjacent Pattern Audit の「既存」は 2026-10-07 に `rg -n` で確かめた名前）。
 - 媒体の発見は root の列を受ける内部関数に一時 directory を渡して通し、production と test で別の判定を作らない（71 §71.11.3）。drive の種類の判定（`GetDriveTypeW`）は Windows の L3 で確かめる。
-- 写しの失敗の注入は、restore の `RestoreFileOps` と同じ形の file 操作の差し替えで行う（copy・sync・rename・読み戻しの bytes）。
+- 写しの失敗の注入は、restore の `RestoreFileOps` と同じ形の file 操作の差し替えで行う（copy・sync・上書きしない公開・親 directory の sync・読み戻しの bytes・目印の読み直し）。差し替えは呼ばれた操作の順を記録し（restore の test の注入の型の `record`、`mnt/restore.rs:1062`）、`sync_all` や親 directory の sync を省くと順の oracle で red になる（正常系の結果だけでは省いても green になるため）。
 
 | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|
 | MNT-01-D7 | `VACUUM INTO` の失敗で正式名の file が残る | unit（`mnt::backup`、注入） | `test_create_backup_req901_d7_vacuum_failure_leaves_no_published_file` | 作業名を使わず正式名へ直接書く、または失敗後に作業名の file を消さない |
 | MNT-01-D7 | 壊れた作業名の file を公開する | unit（注入: 作業名の file を検査の前に壊す） | `test_create_backup_req901_d7_quick_check_failure_removes_partial_without_success_log` | 手順 4a の `quick_check` を飛ばす、失敗でも rename する、成功の操作ログを書く |
-| MNT-01-D7 | 作業名を今日の backup と数える | unit | `test_check_auto_backup_req901_d7_partial_not_counted_as_today` | 今日の判定が `.db` の後方一致・規約の完全一致をやめる（作業名 `…_{HHMMSS}.db.partial` だけの dir で backup を作らない） |
-| MNT-01-D7 | 前回の残りの作業名が溜まる | unit | `test_create_backup_req901_d7_removes_stale_partial_before_write` | 手順 3 の残りの作業名の削除を消す |
+| MNT-01-D7 | 作業名・規約外の名前を今日の backup と数える | unit（`collect_today_backup_names` を通す） | `test_check_auto_backup_req901_d7_partial_and_nonconforming_not_counted_as_today` | 今日の判定が規約の完全一致（`extract_datetime_from_backup`）をやめる（作業名 `…_{HHMMSS}.db.partial` だけ・`inventory_backup_{今日}_manual.db` だけの dir で backup を作らない。今の前方一致の実装では後者が red） |
+| MNT-01-D7 | 前回の残りの作業名が溜まる・別用途の `*.partial` を消す | unit（規約に合う `.db.partial` と `notes.db.partial`） | `test_create_backup_req901_d7_removes_only_conforming_stale_partial` | 手順 3 の削除を消す（前者が残る）、`*.partial` の glob で消す（後者が消える） |
+| MNT-01-D7 | 公開が既存の正式名を上書きする | unit（同じ正式名を先に置く。時刻を固定するか公開の名前を注入する） | `test_create_backup_req901_d7_publish_does_not_replace_existing` | `std::fs::rename` で公開する（既存の bytes が変わる）、衝突を成功にする（`DbError::QueryFailed` でない・作業名が残る） |
+| MNT-01-D7 | 公開の順・永続化を省く | unit（注入、操作の記録） | `test_create_backup_req901_d7_publish_order_and_failure_points` | 記録が `sync_file` → `publish_no_replace` → `sync_parent` の順でない。sync・公開・親 directory の sync の各点の失敗で、成功の操作ログがある・公開の前の失敗で正式名がある |
 | MNT-01-D10 | レジの SD に backup を書く | unit（一時 dir の root に `CASIO\SR500_550_4000`） | `test_create_backup_req901_d10_refuses_register_sd_root` | 手順 0 の判定を消す（dir の一覧が前後で同じ、`DbError::QueryFailed`） |
 | MNT-01-D10 / D8 | 用意・写しがレジの SD に書く | unit | `test_offsite_req901_d10_prepare_and_copy_refuse_register_sd_root` | §71.11.2 手順 3・§71.11.3 の判定を消す |
 | MNT-01-D8 用意 | 取外し可能でない drive を用意する | unit（drive の種類を返す関数を差し替え） | `test_prepare_offsite_req901_d8_rejects_non_removable` | 手順 2 を消す |
 | MNT-01-D8 用意 | 既存の目印を作り直して `medium_id` が変わる・写しを消す | unit | `test_prepare_offsite_req901_d8_reuses_existing_marker_and_keeps_copies` | 読める目印を書き換える、folder を作り直す |
+| MNT-01-D8 用意 | 新しい版の目印を古い版が作り直す | unit（`format: 2` で `label` の形を変えた目印、`medium_id` だけの `format: 2` の目印） | `test_prepare_offsite_req901_d8_unknown_marker_format_is_refused` | `format` が 1 でないのに目印を書き換える（目印の bytes・folder・状態が前後で同じでない）、`MarkerUnsupported` でない |
+| MNT-01-D8 用意 | 札が重なる | unit（状態の `media` が「控え 2」だけ） | `test_prepare_offsite_req901_d8_label_is_max_plus_one` | 新しい札が「控え 2」になる（数 + 1）。期待は「控え 3」 |
+| MNT-01-D8 用意・状態 | 目印・状態の公開の永続化を省く | unit（注入、操作の記録） | `test_offsite_req901_d8_marker_and_state_publish_order` | 記録が `write` → `sync_file` → `replace` → `sync_parent` の順でない |
 | MNT-01-D8 用意 | 状態が読めないのに上書きして媒体の一覧を失う | unit | `test_prepare_offsite_req901_d8_state_unreadable_does_not_overwrite` | 手順 5 で壊れた状態の file を新しい内容で上書きする |
 | MNT-01-D8 写し | 用意の前・媒体が見えないときに書く・`last_success` を変える | unit | `test_check_offsite_req901_d8_not_prepared_and_medium_missing_write_nothing` | 手順 1・3 の後に書く（状態の file の bytes と媒体の一覧が前後で同じでない） |
 | MNT-01-D8 写し | 目印の無い媒体・別の PC で用意した媒体に書く | unit（root の列に、目印なし・未登録の `medium_id` の 2 つ） | `test_check_offsite_req901_d8_ignores_unmarked_and_foreign_media` | §71.11.3 の目印・状態の照合を消す |
 | MNT-01-D8 写し | 成功で正式名・`last_success`（hash）が残らない | unit | `test_check_offsite_req901_d8_copy_publishes_verified_copy_and_records_success` | 正式名・`last_success.sha256`（元の file の SHA-256 と一致、oracle は test が別に計算）が無い |
+| MNT-01-D8 写し | 壊れた・空の・このアプリのものでない写す元を「写せた」にする | unit（PC の中の最新の正式名に、page を壊した DB・0 byte の file・別用途の表だけの DB の 3 つ） | `test_check_offsite_req901_d8_unverified_source_is_not_copied` | 手順 3a を消す（媒体に正式名ができる・`last_success` が変わる）、`last_failure.kind` が `source_unverified` でない |
+| MNT-01-D8 写し | 写す途中の抜去・`Io`・`StorageFull` で成功にする・残りが溜まる | unit（注入: copy の途中・`sync_all`・公開・親 directory の sync の各点で `Io`、copy で `StorageFull`） | `test_check_offsite_req901_d8_interruption_points` | 各点で: 公開の前の失敗で正式名がある、`last_success` が前後で同じでない、`last_failure.kind` が `io` / `storage_full` でない、次の呼出しで作業名が消えて写らない（手順 4b） |
+| MNT-01-D8 写し | 探した後に入れ替わった媒体へ書く | unit（注入: 照合の後、copy の直前・公開の直前に目印の `medium_id` を別の値に替える） | `test_check_offsite_req901_d8_medium_swap_after_discovery_writes_nothing` | 目印の読み直しを消す（入れ替わった媒体に作業名・正式名ができる・掃除で消える） |
+| MNT-01-D8 写し | 公開が媒体の既存の正式名を上書きする | unit（同じ名前で size の違う正式名を媒体に置く） | `test_check_offsite_req901_d8_publish_does_not_replace_existing_copy` | 既存の bytes が変わる、`Io` でない |
+| MNT-01-D8 写し | 媒体の作業名の掃除が別用途の `*.partial` を消す | unit（媒体に `unrelated.partial`） | `test_check_offsite_req901_d8_removes_only_conforming_partial` | 手順 4b を `*.partial` の glob で消す |
 | MNT-01-D8 照合 | 読み戻しの不一致を成功にする | unit（読み戻しの bytes を 1 byte 変える注入） | `test_check_offsite_req901_d8_verify_mismatch_removes_partial_and_records_failure` | 手順 4e の比較を消す、作業名を rename する、`last_failure.kind` が `verify_mismatch` でない |
 | MNT-01-D8 写し | 同じ file を毎回写す | unit | `test_check_offsite_req901_d8_up_to_date_skips_copy` | 手順 4a を消す（2 回目の呼出しで `UpToDate`、媒体の file の更新時刻が変わらない） |
 | MNT-01-D8 保持 | 今写した file・規約外の file を消す、30 本を超えて残す | unit（31 本の正式名 + 目印 + 規約外の 1 file） | `test_check_offsite_req901_d8_retention_keeps_newest_and_foreign_files` | 掃除の数・並び・対象の判定がずれる（30 本・目印・規約外の file が残り、最も古い 1 本だけが消える） |
@@ -55,15 +67,17 @@ Risk: R4
 | MNT-01-D8 状態 | 状態を DB に置いて復元で巻き戻る | integration（`restore_backup` の前後で `offsite-backup.json` の bytes が同じ） | `test_restore_req901_d8_does_not_touch_offsite_state` | 状態を `app_settings` に置く、restore が app data の他の file を触る |
 | MNT-01-D9 | 新しすぎる版を戻せると返す | unit（`app_max_version() + 1` の DB。既存の test helper `db/test_support.rs:16` の形） | `test_inspect_backup_req901_d9_newer_than_app` | 版の比較を消す・`migrate` と別の判定を書く |
 | MNT-01-D9 | 壊れた控えを戻せると返す | unit（page を壊した file） | `test_inspect_backup_req901_d9_quick_check_failure` | `quick_check` を飛ばす |
-| MNT-01-D9 | 確かめが file・folder を変える | unit（前後の SHA-256 と folder の一覧） | `test_inspect_backup_req901_d9_leaves_file_and_folder_unchanged` | `immutable=1`・読取り専用をやめる（journal の file ができる） |
+| MNT-01-D9 | 確かめが file・folder を変える | unit（WAL mode にして閉じた DB〈file の header が WAL を示す〉を使い、前後の SHA-256 と folder の一覧を比べる。普通に閉じた rollback mode の DB では読取り専用の open でも何も作らず、`immutable=1` を外しても green のままなので使わない） | `test_inspect_backup_req901_d9_leaves_file_and_folder_unchanged` | `immutable=1` をやめる（WAL の DB を開くと `-wal`・`-shm` ができる見込み）。runtime の lane は `immutable=1` を外すと red になることを一度確かめ、green のままなら fixture を替える |
 | MNT-01-D9 | 読めない file を `Ok` にする | unit | `test_inspect_backup_req901_d9_unreadable_is_error` | open・版の読取りの失敗を既定値に倒す |
+| MNT-01-D9 | 空の・別用途の DB を戻せると返す | unit（0 byte の file、`schema_versions` の無い別用途の表だけの DB、`schema_versions` が空の DB、版 1 で `products` の無い DB の 4 つ） | `test_inspect_backup_req901_d9_non_app_database_is_error` | 手順 2a を消す（版 0 を `Ok` で返す、必須の表を見ない） |
 | 43 §43.8.2〜§43.8.5 | 失敗の写像が message の文字列に依る・kind を足す | unit（CMD） | `test_offsite_cmd_req901_maps_errors_to_fixed_kinds` | `NotRemovable` / `RegisterSd` が `validation` でない、`CmdErrorKind` に値が増える |
 | 43 §43.8.3 | 写す間 DB の Mutex を持つ | integration（写しの途中で別の command が DB を読める。注入で copy を止めて確かめる） | `test_check_offsite_cmd_req901_releases_db_lock_before_copy` | CMD が lock を持ったまま MNT を呼ぶ |
 | UI-11b-D14 | 状態の文が設計とずれる | component（`OffsiteBackupPanel`） | `OffsiteBackupPanel` の UI-11b-D14 の各状態（用意の前・写せた・まだ・`stale`・媒体なし・失敗の種類） | 文言・日数・札の名前の表示が設計の文と違う（mock の日時・札は設計の例と違う値を使う） |
 | UI-11b-D15 | 止めた控えで事前バックアップ・確認へ進む | flow（`BackupRestorePage.flow.test.tsx`） | 新しすぎる版・壊れた・読めないの 3 つで `createBackup` が呼ばれず、復元の button が無く、固有の文言が出る | `restore_inspecting` を飛ばす、`restore_blocked` で button を出す |
 | UI-11b-D15 | 選んだ file が復元の流れに入らない | flow | file picker で選んだ path が `inspectBackup` と `restoreBackup({ backup_path })` に同じ値で渡る | 一覧の `BackupInfo` しか受けない |
 | UI-11b-D16 | 復元の間に写す・古い結果で invalidate する | hook（`useAutoBackupCheck.test.tsx`） | 停止中は `checkOffsiteBackup` を呼ばない、停止の前に始まった結果を捨てる、`checkAutoBackup` の後に呼ぶ、mount で 1 回だけ呼ぶ | 世代番号・停止を共有しない、順が逆、mount で呼ばない・毎 render 呼ぶ |
-| UI-11b-D16 | 媒体なしで毎分 toast | hook | `medium_missing` で toast も invalidate も無い、失敗は連続の最初の 1 回だけ toast（id `backup-offsite-error`） | 結果ごとに toast を出す |
+| UI-11b-D16 | 媒体なしで毎分 toast | hook | `medium_missing` で toast が無い、失敗は連続の最初の 1 回だけ toast（id `backup-offsite-error`） | 結果ごとに toast を出す |
+| UI-11b-D16 | 抜き差しの後に差してある媒体の表示が変わらない | hook（`not_prepared`・`no_local_backup`・`medium_missing`・`up_to_date`・`copied`・失敗の 6 つ） | どの結果でも status の query が invalidate される。世代番号が違って捨てた結果では invalidate しない | `copied` と失敗のときだけ invalidate する（`medium_missing`・`up_to_date` で red） |
 | UI-00-D12 | 用意の前に知らせる・境界の判定をホームでする | component（`HomePage.test.tsx`、実 hook + QueryClient） | `prepared = false` と `stale = false` で Alert なし、`stale = true` で日数の文（mock の日数は設計の例の 3 と違う 5）と「バックアップ画面へ」の link、写せていないときの文、query 失敗で Alert なしと toast | ホームが日数を計算する、`stale` 以外を見て出す |
 
 ## State Lifecycle Matrix
@@ -72,9 +86,9 @@ Risk: R4
 |---|---|---|---|---|---|---|---|---|---|---|
 | PC の中の backup の file | 無し | 作業名 `.partial` | 確かめ → 正式名 | — | 一覧の再取得 | 一覧は正式名だけ | 次の `create_backup` が残りの作業名を消す | 作業名を消す（消せなければ次回） | 次の確認・手動 | MNT-01-D7 の行 |
 | 媒体の写し | 無し | 媒体の作業名 `.partial` | 照合 → 正式名、`last_success` | status の invalidate（UI-11b-D16） | 画面・ホームの status | 入れ替えで別の媒体（目印で見分ける） | 起動直後の確認で写す | 作業名を消し `last_failure` | 60 秒後の確認 | MNT-01-D8 の行 |
-| PC 側の状態の file | 無し（`NotPrepared`） | 作業名 → rename | 用意で `media`、写しで `last_success` | — | `offsite_status` は毎回 file から | 復元で変わらない | そのまま残る | 読めない → `StateUnreadable`・`stale` | 利用者が直す（上書きしない） | MNT-01-D8 状態の行 |
+| PC 側の状態の file | 無し（`NotPrepared`） | 作業名 → `sync_all` → 置き換え → 親 dir の sync | 用意で `media`、写しで `last_success` | — | `offsite_status` は毎回 file から | 復元で変わらない | そのまま残る | 読めない → `StateUnreadable`・`stale` | 利用者が直す（上書きしない） | MNT-01-D8 状態の行 |
 | 復元の詳細 | 未選択 | `restore_inspecting` | `restore_detail`（確かめの結果つき） | — | — | 一覧へ戻って別の控え | — | `restore_blocked`（固有の文言） | 別の控えを選ぶ | UI-11b-D15 の行 |
-| 共通の確認 | mount | 実行中の guard | `copied` → invalidate | 世代番号が違えば捨てる | — | — | mount で 1 回 | 連続の最初の 1 回だけ toast | 60 秒後 | UI-11b-D16 の行 |
+| 共通の確認 | mount | 実行中の guard | 結果の種類に依らず status を invalidate | 世代番号が違えば捨てる | — | — | mount で 1 回 | 連続の最初の 1 回だけ toast | 60 秒後 | UI-11b-D16 の行 |
 | ホームの知らせ | query | — | `stale` なら Alert | status の invalidate で消える | — | ホームへ戻るたび | 起動直後の確認の後 | query 失敗は Alert なし + toast | query の再取得 | UI-00-D12 の行 |
 
 ## Adjacent Pattern Audit
@@ -93,10 +107,10 @@ Risk: R4
 ## Negative Paths
 
 - missing input: 空の `selected_path` / `backup_path` は `validation`。PC の中に backup が無ければ `NoLocalBackup`。
-- invalid input: 取外し可能でない drive は `NotRemovable`。`medium_id` か `label` の読めない目印は作り直す。`format` が 1 でない状態の file は `StateUnreadable`。
-- duplicate/ambiguous input: 同じ `medium_id` の媒体が 2 本見えれば両方へ写す。同じ名前の写しが既にあれば写さない。
+- invalid input: 取外し可能でない drive は `NotRemovable`。`format` が 1 で `medium_id` か `label` の読めない目印・JSON として読めない目印は作り直す。`format` が 1 でない目印は `MarkerUnsupported`（作り直さない）。`format` が 1 でない状態の file は `StateUnreadable`。空の・別用途の DB は `inspect_backup` が `Err`、写す元なら `SourceUnverified`。
+- duplicate/ambiguous input: 同じ `medium_id` の媒体が 2 本見えれば両方へ写す。同じ名前・同じ size の写しが既にあれば写さない。同じ名前で size の違う正式名は上書きせず `Io`。PC の中で同じ秒に 2 回作ると 2 回目は `DbError::QueryFailed`（既存を残す）。
 - unknown reference: 目印の `medium_id` が状態に無い媒体には書かない。
-- dependency missing: 媒体が見えない（`MediumMissing`）、空の読取り機（P3、黙って飛ばす）。
+- dependency missing: 媒体が見えない（`MediumMissing`）、空の読取り機（黙って飛ばす。dialog は thread の error mode で抑える、71 §71.11.3）。
 - permission/write failure: 媒体の空きなし（`StorageFull`）、書込み禁止の媒体（`Io`）、状態の file の書込みの失敗（写しは残る）。
 - dry-run side effect: `offsite_status` と `inspect_backup` は書かない（MNT-01-D9 の行、MNT-01-D8 状態の行）。
 
@@ -106,7 +120,7 @@ Risk: R4
 - null/default: `last_success` が無い → `stale = true`（用意の後）。状態の file が無い → `prepared = false`、`stale = false`。
 - empty/non-empty: 媒体の `InventoryBackup\` が空（用意の直後）。
 - min/max: 版 = `app_max_version()` は戻せる、`+ 1` は止める。
-- status/policy enum: `OffsiteCheckResult` の 5 値、`OffsiteFailureKind` の 6 値の wire の snake_case。
+- status/policy enum: `OffsiteCheckResult` の 5 値、`OffsiteFailureKind` の 7 値の wire の snake_case。
 - wire type: `BackupInspection`・`OffsiteBackupStatus` の optional field は bindings で `null` を許す。
 - internal type: 目印・状態の JSON は wire に出さない。
 - producer/consumer: MNT → CMD → bindings → UI-11b・UI-00。
@@ -116,7 +130,7 @@ Risk: R4
 
 ## Compatibility Checks
 
-- old schema/input: 既存の backup の file（正式名、`VACUUM INTO` 製）はそのまま一覧・復元・写しの対象。作業名の file は今は存在しない。
+- old schema/input: 既存の backup の file（正式名、`VACUUM INTO` 製）はそのまま一覧・復元の候補。写しは共有の検査に通ったものだけ（旧い実装の中断で壊れた正式名は `SourceUnverified`）。作業名の file は今は存在しない。
 - new schema/input: DB の schema は変えない。DB の外に `offsite-backup.json`、媒体に `InventoryBackup\offsite-medium.json`。
 - output order: 媒体の写しは名前（日時）の新しい順で掃除する。
 - optional field behavior: `BackupInspection.product_count`・`last_operation_at` は取れないとき `null`（確かめの結果を変えない）。
@@ -139,7 +153,7 @@ Risk: R4
 ## Mutation-style Adequacy Questions
 
 - mock の値を設計の例と違えたとき: card とホームの日数・札の名前は mock に設計の例（3 日・控え 1）と違う値（5 日・控え 2）を使い、表示が mock から来たことを確かめる（UI-11b-D14・UI-00-D12 の行）。
-- invalidate の順: `checkOffsiteBackup` の `copied` の後に status が invalidate され、停止の前に始まった結果は捨てる（UI-11b-D16 の行）。
+- invalidate の順: `checkOffsiteBackup` の結果（種類に依らず）の後に status が invalidate され、停止の前に始まった結果は捨てる（UI-11b-D16 の 2 つの行）。
 - 分岐を反転したとき: `stale` の条件を反転すると UI-00-D12 の行と 3 日の境界の行が落ちる。
 - 閾値の比較を変えたとき: `>=` → `>` で 3 日の境界の行が落ちる。保持の 30 → 31 で保持の行が落ちる。
 - guard を消したとき: MNT-01-D10 の判定を消すと 2 つの D10 の行が落ちる。目印・状態の照合を消すと「目印の無い媒体」の行が落ちる。読み戻しの比較を消すと照合の行が落ちる。
@@ -151,7 +165,7 @@ Risk: R4
 
 ## Residual Test Gaps
 
-- Windows の drive の種類の判定（P1）・空の読取り機（P3）・実 USB の抜き差しと drive 文字の変化は自動 test で通さない（Windows の L3、68 UI-11b-L3-6〜9）。
+- Windows の drive の種類の判定（P1）・空の読取り機で dialog が出ないこと（設計で thread の error mode を常に設定する、71 §71.11.3）・volume GUID path での読み書き・実 USB の抜き差しと drive 文字の変化は自動 test で通さない（Windows の L3、68 UI-11b-L3-6〜9）。
 - 読み戻しが file cache から返るか（P2）は test しない（保証の範囲を狭めた）。
 - 3 日の知らせ・新しすぎる版の控えの実機の目視は L3 Eligibility の条件 (3) に当たり、自動 test と runtime の lane の human visual confirmation（試しの DB と状態の file を用意して画面を見る）で扱う。
 - 通しの演習（別の PC での復元）は運用の手順で、test にしない（71 §71.13）。
