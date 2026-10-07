@@ -82,7 +82,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 営業中 | 何もしない | 設定時刻の backup ができれば、60 秒以内に控え 1 へ写る | — | 店を閉める前に PC を閉じる日は、その日の入力は翌朝の backup まで PC の中だけ（71 §71.11.7） |
 | 控え 1 が抜けた・壊れた | 何もしない | 写せない。媒体が見えないだけなら toast は出ない。最後に写せた日から 3 日でホームに「PC の外の控えが 3 日写せていません。USB メモリが差してあるか確かめてください。」 | 店主が差し直す、または owner に連絡 | 写す処理の失敗（空きなし・照合の不一致）は toast を 1 回（UI-11b-D16） |
 | ホームに知らせが出ている | 店主が控え 1 を差し直す | 60 秒以内に写り、知らせが消える | — | — |
-| owner の訪問 | owner が控え 1 を抜き、持ち帰っていた控え 2 を差す。差した直後（今日の控えが写る前）に控え 2 の最新の file を「控えを選んで確かめる」で見る。写しが先に済んでいたら 2 番目に新しい file を見る | 控え 2 が前回の入れ替えの時点まで読めることが分かり（短い確かめの (1)、71 §71.13）、60 秒以内に今日の控えが控え 2 へ写る（同 (2)）。控え 1 を持ち帰る | card に「差してある控え: 控え 2」と今日の日時 | drive 文字が変わっても目印で見つかる（MNT-01-D8）。同じ口で抜いてから差す（P5）。訪問の間隔は決まっていない（P6、TD-199） |
+| owner の訪問 | owner が控え 1 を抜き、持ち帰っていた控え 2 を差す。差した直後（今日の控えが写る前）に控え 2 の最新の file を「控えを選んで確かめる」で見る。写しが先に済んでいたら 2 番目に新しい file を見る | 控え 2 が前回の入れ替えの時点まで読めることが分かり（短い確かめの (1)、71 §71.13。確かめの間は 60 秒の確認が止まる）、詳細を閉じて画面を戻すと確認が再開し、60 秒以内に今日の控えが控え 2 へ写る（同 (2)）。控え 1 を持ち帰る | card に「差してある控え: 控え 2」と今日の日時 | drive 文字が変わっても目印で見つかる（MNT-01-D8）。同じ口で抜いてから差す（P5）。訪問の間隔は決まっていない（P6、TD-199） |
 | 新しすぎる版の控え・壊れた控えを選んだ | 一覧の行か「控えを選んで確かめる」 | 確認の手順へ進まずに固有の文言（UI-11b-D15）。事前バックアップも作らない | 別の控えを選ぶ | — |
 | PC を失った（故障・盗難・火事） | owner が新しい PC にアプリを入れ、「控えを選んで確かめる」で持ち帰っていた控えを選び、2 段の確認で戻し、「今すぐバックアップを作成」を押してから、媒体を用意し直す（71 §71.13 の本番の復元） | 最後の入れ替えの時点（店に残った控えが無事なら前日）まで戻り、媒体の最新が戻した内容の控えになる（新しい PC の空の DB の控えを写さない） | 媒体の最新の控えを確かめ、商品の数が戻した結果と合う | 盗難・火事で失う期間は最後の入れ替えからの日数で、上限が無い（P6、下の残るリスク） |
 
@@ -156,7 +156,7 @@ owner に聞いた事実（判断ではない、2026-10-08 に 1 回で）: P5 �
 | レジの SD の root の判定（`CASIO\SR500_550_4000`） | MNT-01-D10 | SD 直読みの runtime の lane（IO-09、`io::register_sd`）と同じ定数・関数を使う。先に入る lane が置き、後の lane が使う（文字列を二重に持たない） | `create_backup` の手順 0、`mnt::offsite` |
 | 新 command 4 つと request DTO 2 つ（`PrepareOffsiteMediumRequest`・`InspectBackupRequest`） | 43 §43.8.2〜§43.8.5。4 つとも `#[tauri::command(async)]`（main thread で写さない。既存の command は全部 `#[tauri::command]` の sync、`cmd/settings_cmd.rs:124` 等） | `cmd/settings_cmd.rs`、`lib.rs` の `collect_commands!`（`:277`、restore は `:356`）と `generate_handler!`（`:1272`、restore は `:1352`） | `src/lib/bindings.ts`（再生成。今の backup 系は `:311`・`:317`・`:333`） |
 | `useAutoBackupCheck` | `checkAutoBackup` の後に `checkOffsiteBackup`、mount 時に 1 回、結果の種類に依らず status を invalidate（UI-11b-D16）。新しい export `suspendAutoBackupCheckAndWait(): Promise<void>`（停止して世代番号を進め、実行中の回の完了を待つ。UI-11b-D15） | `src/features/backup-restore/useAutoBackupCheck.ts:33`（hook）・`:23`（`suspendAutoBackupCheck`）・`:29`（`resumeAutoBackupCheck`） | mount: `src/components/layout/RootLayout.tsx:48`。test: `src/features/backup-restore/useAutoBackupCheck.test.tsx`（停止の test は `:131`〜`:141`）。module を mock する test は新しい export も mock に足す: `src/features/inventory-records/OtherRecordDetailRoutes.test.tsx:9`〜`:12`、`src/lib/app-router.test.tsx:37`（どちらも `vi.mock` で export を置き換える）。実物を import する test: `RootLayout.test.tsx:13`、`BackupRestorePage.flow.test.tsx:29`。`BackupRestorePage.test.tsx:17`・`:175` は実物を import する |
-| `BackupRestorePage` の復元の選択（`selected: BackupInfo \| null`） | 選んだ file（`BackupInfo` でない）も詳細に入る。確かめの結果を持つ。控えを選んだ時点で `suspendAutoBackupCheckAndWait()` を待ってから `inspectBackup`、`ready` へ戻る・unmount で `resumeAutoBackupCheck()`（UI-11b-D15） | `src/features/backup-restore/BackupRestorePage.tsx:93`（型）・`:227`（`selectRestoreBackup`）。今の停止・再開の呼出しは `:273`・`:279`・`:303`（import は `:56`） | test: `BackupRestorePage.test.tsx`・`BackupRestorePage.flow.test.tsx` |
+| `BackupRestorePage` の復元の選択（`selected: BackupInfo \| null`） | 選んだ file（`BackupInfo` でない）も詳細に入る。確かめの結果を持つ。控えを選んだ時点で `suspendAutoBackupCheckAndWait()` を待ってから `inspectBackup`、`ready` へ戻る・unmount（復元の実行中でも fatal の後でもないときだけ）で `resumeAutoBackupCheck()`（UI-11b-D15） | `src/features/backup-restore/BackupRestorePage.tsx:93`（型）・`:227`（`selectRestoreBackup`）。今の停止・再開の呼出しは `:273`・`:279`・`:303`（import は `:56`） | test: `BackupRestorePage.test.tsx`・`BackupRestorePage.flow.test.tsx` |
 | ホームの知らせ | UI-00-D12 | 新 `src/features/home/components/OffsiteBackupWarning.tsx`、`src/features/home/HomePage.tsx`（前日未取込みの Alert は `:78`） | `HomePage.test.tsx`、`src/lib/query-keys.ts:116`（`backupRestore` の key に status を足す） |
 
 ## Non-scope
@@ -166,7 +166,7 @@ owner に聞いた事実（判断ではない、2026-10-08 に 1 回で）: P5 �
 - 更新・migration の前の保全（`docs/backlog.md` の同項の残り。MSI 配布手順と一緒に）。
 - `pos-sources/`・`images/` を控えに含めること（判断事項 2 で含めないと決めた、TD-197。見直しは D-114 の Revisit）。
 - `backup_path` に取外し可能な drive を選ばせない変更（MNT-01-D10 の棄却案。レジの SD の上だけを止める）。
-- 既存の restore の契約（MNT-01-D1〜D6、UI-11b-D2〜D5・D11〜D13）の変更。
+- 既存の restore の契約（MNT-01-D1〜D6、UI-11b-D2〜D5・D11〜D13）の変更。ただし UI-11b-D13 の共通の確認の停止は、UI-11b-D15 が控えの確かめの開始の時点へ早める（復元の結果での再開・fatal の後の停止は変えない）。
 
 ## Acceptance Criteria
 
@@ -177,7 +177,7 @@ baseline は本 worktree（起草の時点の HEAD は `95c0aeb0` の上の未 c
 - AC3（command がある）: `rg -n '^\| 43\.8\.[2-5] \|' docs/function-design/43-cmd-settings-log.md` が 4 行（`prepare_offsite_medium`・`check_offsite_backup`・`get_offsite_backup_status`・`inspect_backup`）。起草時の実測: `207:`〜`210:` の 4 行。2026-10-08 の再実行: 同じ。 Plan Review round 2 の是正の後の再実行: `209:`〜`212:` の 4 行（§43.8.2〜§43.8.5 の前文に「実行の thread」を足したため）。
 - AC4（決定の記録）: `rg -n '^## D-114' docs/decision-log.md` が 1 行で、D-114 が owner の決定 1〜3・Guarantee range・Revisit を持つ。起草時の実測: `938:## D-114: …` の 1 行。2026-10-08 の再実行: `939:## D-114: …` の 1 行（D-111 に未決 B の決着を 1 行追記したため）。
 - AC5（旧い記述・未決の書き方の live な残り 0）: `rg -c 'restore に版の事前検査は足さない（同じ判定の二重化）' docs -g '!docs/archive/**' -g '!docs/plans/2026-10-07-backup-offsite.md'`、`rg -c 'PC の外へのコピーを1日のどの時点で行うかは決めていない' docs -g '!docs/archive/**' -g '!docs/plans/2026-10-07-backup-offsite.md'`、`rg -c 'D-114 の owner の判断事項|owner の判断事項（未決|決まるまでは含めない|D-114 の判断事項' docs -g '!docs/archive/**' -g '!docs/plans/2026-10-07-backup-offsite.md'` の 3 つが出力なし（0 件、exit 1）。packet を除くのは、この AC の文自身が検索語を含むため（2026-10-07 の起草時の「出力なし」は packet 自身の 1 件を見落としていた。2026-10-08 に除外を足した）。2026-10-08 の再実行（plan-draft の commit の前の worktree）: 3 つとも出力なし・exit 1。main の値: 1 つ目は 22 に 1、2 つ目は SCREEN_DESIGN に 1。3 つ目は起票の commit（`3c2df223`）で SCREEN_DESIGN に 1・71 に 4・decision-log に 1（owner の判断を待つ書き方。2026-10-08 に決定の文へ直した）。新しい文は 22 の「restore の中に版の事前検査は足さない」と SCREEN_DESIGN の「PC の外の控えは、用意した USB メモリが差してある間に」で、それぞれ `rg -c` で 1 件。
-- AC6（code を変えない）: `git diff --name-only 95c0aeb0 -- src src-tauri` が出力なし。起草時の実測: 出力なし。2026-10-08 の再実行: 出力なし。 Plan Review round 1 の是正の後の再実行: AC2〜AC6 は値が同じ（AC2 68 `114:`〜`116:` と 53 `213:`、AC3 `207:`〜`210:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし・exit 0）。 Plan Review round 2 の是正の後の再実行: AC2 は 68 `114:`〜`116:` と 53 `213:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし・exit 0（AC1・AC3 は上）。
+- AC6（code を変えない）: `git diff --name-only 95c0aeb0 -- src src-tauri` が出力なし。起草時の実測: 出力なし。2026-10-08 の再実行: 出力なし。 Plan Review round 1 の是正の後の再実行: AC2〜AC6 は値が同じ（AC2 68 `114:`〜`116:` と 53 `213:`、AC3 `207:`〜`210:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし・exit 0）。 Plan Review round 2 の是正の後の再実行: AC2 は 68 `114:`〜`116:` と 53 `213:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし・exit 0（AC1・AC3 は上）。 Plan Review round 3 の後の是正の後の再実行: AC1 `106:`・`114:`・`752:`・`796:`、AC2 68 `114:`〜`116:` と 53 `213:`、AC3 `209:`〜`212:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし・exit 0（どれも round 2 の後と同じ）。
 - AC7（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-07-backup-offsite.md` が ERROR 0（WARN は報告）。
 
 ## Design Readiness
@@ -191,7 +191,7 @@ baseline は本 worktree（起草の時点の HEAD は `95c0aeb0` の上の未 c
 
 ## Registration / Generation Obligations
 
-本 lane（docs だけ）は該当なし（function-design の新しい file・REQ の増減・route・画面の新設をしない）。runtime の lane の義務: 新しい 4 command に `#[tauri::command]` + `#[specta::specta]` を付け、`lib.rs` の `collect_commands!` と `generate_handler!` の両方に登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）、`cd src-tauri && cargo run --bin generate_bindings`、`src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` の `71-mnt-backup.md` の行（`:281`）に `mnt::offsite` を足す、test に REQ-901 と決定 ID を付けて `cargo run --bin generate_traceability`（REQ-901 の coverage は既に required、`docs/spec/requirements.md:38`）。画面の新設は無い（既存の `/settings/backup` とホームの中）。
+本 lane（docs だけ）は該当なし（function-design の新しい file・REQ の増減・route・画面の新設をしない）。runtime の lane の義務: 新しい 4 command に `#[tauri::command(async)]`（43 §43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`lib.rs` の `collect_commands!` と `generate_handler!` の両方に登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）、`cd src-tauri && cargo run --bin generate_bindings`、`src-tauri/tests/design_compliance_test.rs` の `build_doc_to_modules_map()` の `71-mnt-backup.md` の行（`:281`）に `mnt::offsite` を足す、test に REQ-901 と決定 ID を付けて `cargo run --bin generate_traceability`（REQ-901 の coverage は既に required、`docs/spec/requirements.md:38`）。画面の新設は無い（既存の `/settings/backup` とホームの中）。
 
 ## Impact Review Lenses
 
@@ -253,7 +253,7 @@ Test Design Matrix: [2026-10-07-backup-offsite](test-matrices/2026-10-07-backup-
 | UI-11b-F10・D16 | 68 §68.5、§68.10 | runtime: `useAutoBackupCheck` | Matrix | 非対象 |
 | UI-00-D12 | 53 §53.5 | runtime: `features/home` | Matrix | 目視の確認（3 日の状態は fixture、L3 Eligibility の条件 (3) により自動 test） |
 | MNT-03-D11（改めた文） | 22 §3.2 の MNT-03-D11「復元への波及」 | 版の判定の関数を共有するだけ。restore の中は変えない | 既存の MNT-03-D11 の test（runtime が回帰で回す） | 非対象 |
-| 隣接の除外: MNT-01-D1〜D6、UI-11b-D2〜D5・D11〜D13、D-032 | 71 §71.4〜§71.8、68 §68.5 | 変えない（確かめは restore の前に足すだけ。共通の確認の停止・世代番号を共有する） | 既存の test（runtime が回帰で回す） | 非対象 |
+| 隣接の除外: MNT-01-D1〜D6、UI-11b-D2〜D5・D11〜D13、D-032 | 71 §71.4〜§71.8、68 §68.5 | 変えない（確かめは restore の前に足すだけ。共通の確認の停止・世代番号を共有する）。UI-11b-D13 の停止の始まりだけ、UI-11b-D15 が控えの確かめの開始へ早める（結果での再開・fatal の後の停止は D13 のまま、unmount でも D13 が優先） | 既存の test（runtime が回帰で回す） | 非対象 |
 | 隣接の除外: UI-11b-D8（`backup_path` は picker だけ） | 68 §68.5 | 変えない（取外し可能な drive を選ばせない変更は Non-scope） | 既存 | 非対象 |
 | 隣接の除外: D-111 の (8)・残りの判断 A・B、IO-09-D3 | D-111、29 §29.7.6 | 変えない。残りの判断 B は判断事項 2 で「含めない」と決め、D-111 に決着を追記した（TD-197）。A は変えない。MNT-01-D10 は IO-09-D3 と同じ folder で SD を見分ける | — | 非対象 |
 

@@ -9,7 +9,7 @@ Risk: R4
 ## Contracts Under Test
 
 - MNT-01-D7: backup は作業名へ書き、共有の検査（このアプリの backup・版・`quick_check`、71 §71.12）に通してから、既存を上書きしない公開（71 §71.4.1）で正式名にする。今日の backup の判定・一覧・掃除・PC の外の控えは正式名（規約の完全一致）だけを見る。
-- MNT-01-D8: PC の外の控えは、目印と PC 側の状態の両方で見分け、1 回の確認の中は volume の識別に固定した取外し可能な媒体の `InventoryBackup\` へ、共有の検査に通った最新の backup を作業名へ写し、読み戻しの SHA-256 で照合してから正式名にする。媒体ごとに新しい 30 本を残す。状態は DB の外。最後に写せた日から 3 日以上で `stale`。
+- MNT-01-D8: PC の外の控えは、目印と PC 側の状態の両方で見分け、1 回の確認の中は volume の識別に固定した取外し可能な媒体の `InventoryBackup\` へ、共有の検査に通った最新の backup を作業名へ写し、読み戻しの SHA-256 で照合してから正式名にする。媒体ごとに新しい 30 本を残す。状態は DB の外。最後に写せた日（写した控えの日付の方が古ければその日付）から 3 日以上で `stale`。
 - MNT-01-D9: `inspect_backup` は file と folder を変えずに、版（アプリより新しいか）・`quick_check`・商品の数・最後の記録を返し、このアプリの backup でない file（空・別用途・版 0・必須の表なし）を `Err` にする。復元の詳細は確かめで止めた控えを確認の手順へ進めない。
 - MNT-01-D10: backup の file を、root に `CASIO\SR500_550_4000` がある drive に書かない。
 - 43 §43.8.2〜§43.8.5: 4 command は MNT を呼ぶだけで、DB の Mutex を写す前に放し、失敗を `validation` / `internal` の固定の文へ写す。
@@ -67,7 +67,7 @@ Risk: R4
 | MNT-01-D8 写し | 同じ file を毎回写す | unit | `test_check_offsite_req901_d8_up_to_date_skips_copy` | 手順 4a を消す（2 回目の呼出しで `UpToDate`、媒体の file の更新時刻が変わらない） |
 | MNT-01-D8 保持 | 今写した file・規約外の file を消す、30 本を超えて残す | unit（case 1: 31 本の正式名 + 目印 + 規約外の 1 file。case 2: 今写す file より名前の新しい正式名を 30 本置く〈PC の時計が遅れた場合〉） | `test_check_offsite_req901_d8_retention_keeps_newest_and_foreign_files` | case 1: 掃除の数・並び・対象の判定がずれる（30 本・目印・規約外の file が残り、最も古い 1 本だけが消える）。case 2: 「今写した file は消さない」の除外を消す（今写した file が消える） |
 | MNT-01-D8 状態 | 状態の file の破損で黙って止まる | unit | `test_offsite_status_req901_d8_state_unreadable_is_stale_not_unprepared` | `offsite_status` が破損を `prepared = false` にする |
-| MNT-01-D8 状態 | 3 日の境界がずれる | unit（today を渡す） | `test_offsite_status_req901_d8_stale_boundary_three_days` | `>=` を `>` にする（2 日前 = false、3 日前 = true、写せていない = true） |
+| MNT-01-D8 状態 | 3 日の境界がずれる | unit（today を渡す） | `test_offsite_status_req901_d8_stale_boundary_three_days` | `>=` を `>` にする（2 日前 = false、3 日前 = true、写せていない = true）。日数を写した日だけで数える（今日写した 10 日前の控え〈`last_success.file_name` の日付が 10 日前〉で `days_since_last_success = 10`・`stale = true` にならない） |
 | MNT-01-D8 状態 | 状態を DB に置いて復元で巻き戻る | integration（`restore_backup` の前後で `offsite-backup.json` の bytes が同じ） | `test_restore_req901_d8_does_not_touch_offsite_state` | 状態を `app_settings` に置く、restore が app data の他の file を触る |
 | MNT-01-D9 | 新しすぎる版を戻せると返す | unit（`app_max_version() + 1` の DB。既存の test helper `db/test_support.rs:16` の形） | `test_inspect_backup_req901_d9_newer_than_app` | 版の比較を消す・`migrate` と別の判定を書く |
 | MNT-01-D9 | 壊れた控えを戻せると返す | unit（page を壊した file） | `test_inspect_backup_req901_d9_quick_check_failure` | `quick_check` を飛ばす |
@@ -81,7 +81,7 @@ Risk: R4
 | UI-11b-D14 | 状態の文が設計とずれる | component（`OffsiteBackupPanel`） | `OffsiteBackupPanel` の UI-11b-D14 の各状態（用意の前・写せた・まだ・`stale`・媒体なし・失敗の種類） | 文言・日数・札の名前の表示が設計の文と違う（mock の日時・札は設計の例と違う値を使う） |
 | UI-11b-D15 | 止めた控えで事前バックアップ・確認へ進む | flow（`BackupRestorePage.flow.test.tsx`） | 新しすぎる版・壊れた・読めないの 3 つで `createBackup` が呼ばれず、復元の button が無く、固有の文言が出る | `restore_inspecting` を飛ばす、`restore_blocked` で button を出す |
 | UI-11b-D15 | 選んだ file が復元の流れに入らない | flow | file picker で選んだ path が `inspectBackup` と `restoreBackup({ backup_path })` に同じ値で渡る | 一覧の `BackupInfo` しか受けない |
-| UI-11b-D15・D16 | 確かめ・詳細・最終確認の間に 60 秒の確認の掃除が選んだ控えを消す | flow（`BackupRestorePage.flow.test.tsx` と `useAutoBackupCheck.test.tsx`。mock の `checkOffsiteBackup` を解決しない promise で止めておく） | 控えを選ぶと `inspectBackup` の前に共通の確認が止まり、実行中の回の解決を待ってから `inspectBackup` を呼ぶ。止めている間は interval が進んでも `checkAutoBackup`・`checkOffsiteBackup` を呼ばない。取消・`restore_blocked` から一覧へ・画面の unmount で再開し、復元の結果では UI-11b-D13 の規則で再開・停止を続ける | 停止を `restoreBackup` の直前まで遅らせる（詳細の間に interval の tick で `checkOffsiteBackup` が呼ばれる）、実行中の回を待たずに `inspectBackup` を呼ぶ、取消で再開しない |
+| UI-11b-D15・D16 | 確かめ・詳細・最終確認の間に 60 秒の確認の掃除が選んだ控えを消す | flow（`BackupRestorePage.flow.test.tsx` と `useAutoBackupCheck.test.tsx`。mock の `checkOffsiteBackup` を解決しない promise で止めておく） | 控えを選ぶと `inspectBackup` の前に共通の確認が止まり、実行中の回の解決を待ってから `inspectBackup` を呼ぶ。止めている間は interval が進んでも `checkAutoBackup`・`checkOffsiteBackup` を呼ばない。取消・`restore_blocked` から一覧へ・詳細を閉じる・（復元の実行中でも fatal の後でもない）画面の unmount で再開し、次の tick で `checkOffsiteBackup` が呼ばれる（短い確かめの (1) → 閉じる → (2)、71 §71.13）。復元の結果では UI-11b-D13 の規則で再開・停止を続ける。`restore_failed_unrecoverable` の後と `restore_durability_unknown` の後のそれぞれで unmount しても、interval が進んでも `checkAutoBackup`・`checkOffsiteBackup` を呼ばない。復元の実行中（`restoreBackup` が未解決）に unmount しても再開せず、その後 `restoreBackup` が成功・fatal でない Err で解決したら再開、fatal で解決したら止めたまま | 停止を `restoreBackup` の直前まで遅らせる（詳細の間に interval の tick で `checkOffsiteBackup` が呼ばれる）、実行中の回を待たずに `inspectBackup` を呼ぶ、取消・閉じるで再開しない、unmount で無条件に再開する（fatal の後・復元の実行中の離脱で確認が呼ばれる） |
 | UI-11b-D16 | 復元の間に写す・古い結果で invalidate する | hook（`useAutoBackupCheck.test.tsx`） | 停止中は `checkOffsiteBackup` を呼ばない、停止の前に始まった結果を捨てる、`checkAutoBackup` の後に呼ぶ、mount で 1 回だけ呼ぶ | 世代番号・停止を共有しない、順が逆、mount で呼ばない・毎 render 呼ぶ |
 | UI-11b-D16 | 媒体なしで毎分 toast | hook | `medium_missing` で toast が無い、失敗は連続の最初の 1 回だけ toast（id `backup-offsite-error`） | 結果ごとに toast を出す |
 | UI-11b-D16 | 抜き差しの後に差してある媒体の表示が変わらない | hook（`not_prepared`・`no_local_backup`・`medium_missing`・`up_to_date`・`copied`・失敗の 6 つ） | どの結果でも status の query が invalidate される。世代番号が違って捨てた結果では invalidate しない | `copied` と失敗のときだけ invalidate する（`medium_missing`・`up_to_date` で red） |

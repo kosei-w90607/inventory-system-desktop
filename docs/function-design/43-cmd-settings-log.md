@@ -301,7 +301,7 @@ PR #164で`list_log_operation_types`を含む10コマンドすべてを `#[spect
 ])
 ```
 
-D-114 の 4 command（§43.8.2〜§43.8.5）は後続の runtime の lane で、`#[tauri::command]` + `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
+D-114 の 4 command（§43.8.2〜§43.8.5）は後続の runtime の lane で、`#[tauri::command(async)]`（§43.8.2 の「実行の thread」）+ `#[specta::specta]` を付け、`generate_handler!` と `collect_commands!` の両方へ登録する（`scripts/check-command-drift.sh` が 4 つの集合の一致を見る）。
 
 ---
 
