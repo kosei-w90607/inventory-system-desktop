@@ -185,10 +185,13 @@ fn parse_and_validate_daily_report_from_sd(
 | ValidationFailed(msg) | validation | msgをそのまま使用 |
 | NotFound(msg) | not_found | msgをそのまま使用 |
 | DatabaseError(_) | internal | データベースエラーが発生しました。もう一度お試しください |
+| SourceCopyFailed(kind)（D-111、BIZ-08-D5） | internal（`CmdError::internal`、`error_id` つき。io error の kind は診断にだけ出す） | SD から読んだファイルの写しを PC に保存できなかったため、取り込みませんでした。PC の空き容量を確かめて、もう一度取り込んでください。 |
+
+`SourceCopyFailed` を `import_error` にしない: UI は commit の `import_error` を最初へ戻す（`src/features/daily-report-import/hooks/useDailyReportImportFlow.ts:35` の `decideRecoverTo`）ので、`import_error` にすると preview と token を失う。`internal` なら `decideRecoverTo` が `preview` を返し、§45.4 手順 7 の「通常の失敗は cache を残す」で token も残るので、同じ preview・同じ token で再試行できる（55 の日報取込みの利用者フローの手順 2）。`impl From<BizError> for CmdError`（`src-tauri/src/cmd/mod.rs:130`）に分岐を足す。
 
 ### 45.8 生成bindings
 
-SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の runtime では `scan_register_sd` / `parse_and_validate_daily_report_from_sd` を `lib.rs` の specta `collect_commands` に登録し、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（§45.3）を足すほかは変えない（足す field は `#[serde(default)]` で、省いた呼出しは今どおり PC 上の file として通る。`settlement_no` と `source_files_json` の `sd_relative_path`・`copy_path` は内部の cache と DB だけで、wire に出さない。37 §37.4 手順 6）。
+SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Type` deriveを維持し、`DailyReportDuplicateStatus` / `DailyReportDuplicateCheck` / `SameDateDailyReportImportSummary` / commit引数を含む `src/lib/bindings.ts` をgeneratorで再生成する。生成物の手編集は禁止する。D-111 の runtime では `scan_register_sd` / `parse_and_validate_daily_report_from_sd` を、`lib.rs` の specta の `collect_commands!`（今は `src-tauri/src/lib.rs:277`）と runtime の `tauri::generate_handler!`（同 `:1272`）の両方に登録し（どちらか一方だけだと、`scripts/check-command-drift.sh`〈`bash scripts/doc-consistency-check.sh` の Command registry drift、`D=` 宣言・`H=` generate_handler・`S=` collect_commands・`T=` bindings の 4 つの集合の一致〉が失敗する。今は 68 ずつで、足すと 70 ずつ）、`DailyReportSdScan` / `DailyReportSdCandidate` / `DailyReportSdCandidateStatus` / `RegisterSdScanResponse` を含めて再生成する。既存の command と DTO の wire は、`DailyReportSourceFileRequest` に省略可の `source_path`（§45.3）を足すほかは変えない（足す field は `#[serde(default)]` で、省いた呼出しは今どおり PC 上の file として通る。`settlement_no` と `source_files_json` の `sd_relative_path`・`copy_path` は内部の cache と DB だけで、wire に出さない。37 §37.4 手順 6）。
 
 対象:
 - `parse_and_validate_daily_report`
@@ -202,5 +205,6 @@ SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Ty
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D3/D4: same-date summary DTO、`additional_import_confirmed`、snapshot mismatch時のtoken破棄、per-import rollback、bindings再生成義務を正本化。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | CMD-12-D1: `scan_register_sd` と `parse_and_validate_daily_report_from_sd`、AppState の scan cache。 |
+| 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §45.7 に `SourceCopyFailed` → `internal`（写しの失敗の後に UI が preview と token に戻れる）。§45.8 に新しい 2 command の `generate_handler!` への登録と command registry の gate。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | §45.3 の `DailyReportSourceFileRequest.source_path`（手で選んだ SD 上の file を SD の入力にする、37 §37.3 手順 1a）。§45.6a の選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。§45.8 の wire の契約を足す field に合わせた。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | §45.4 の commit に `app: tauri::AppHandle` と `app_data_dir` の取り方（手順 3a）を足した（BIZ-08-D5 の写しの置き場所）。 |

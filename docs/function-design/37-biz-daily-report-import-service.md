@@ -187,18 +187,22 @@ fn parse_and_validate_daily_report(
     files: Vec<DailyReportInputFile>,
 ) -> Result<DailyReportParseValidateResult, BizError>
 
-// test 用の内部関数。手順 1a の root の列を引数で受ける（一時 directory の root を渡す）。公開の関数は IO-09 find_register_sd_roots の結果を渡してこれを呼ぶ
-fn parse_and_validate_daily_report_with_sd_roots(
+// 内部関数。手順 1a で root の列を取る処理を引数で受ける。公開の関数は IO-09 `find_register_sd_roots` を渡してこれを呼ぶ。
+// test は一時 directory の root を返す closure か、失敗を返す closure を渡す（root を取る処理の失敗を注入できる）
+fn parse_and_validate_daily_report_with_sd_lookup(
     conn: &DbConnection,
     files: Vec<DailyReportInputFile>,
-    sd_roots: &[RegisterSdRoot],
+    find_sd_roots: impl FnOnce() -> Result<Vec<RegisterSdRoot>, RegisterSdError>,
 ) -> Result<DailyReportParseValidateResult, BizError>
 ```
 
 **処理ステップ**:
 
 1. ファイルサイズ上限を検証する。
-1a. 手で選んだ file の出所を決める（D-111、UI-07-D16）: `sd_relative_path` が `None` で `source_path` が `Some` の file が 1 本でもあれば、IO-09 `find_register_sd_roots` を 1 回呼び、各 file を IO-09 `locate_in_register_sd_roots(roots, source_path)` で確かめる（29 §29.7.4 手順 4）。`Some` ならその `relative_path` を `sd_relative_path` に入れ、以降はその file を SD の file として扱う（写し BIZ-08-D5、精算回数の検査 BIZ-08-D6）。`None` なら今どおり PC 上の file（`EcrDatas` の写し等）。`find_register_sd_roots` の失敗は、SD 上かを確かめられないので `BizError::ImportError("選んだファイルがレジの SD の上にあるかを確かめられませんでした。もう一度選んでください。")` で止める（PC の file として通さない）。`source_path` が `None` の file（SD の候補から作る入力、`sd_relative_path` がすでに `Some`）は確かめない。
+1a. 手で選んだ file の出所を決める（D-111、UI-07-D16）。判定は preview のこの手順の 1 回だけで、commit では確かめ直さない（commit は cache の bytes と `sd_relative_path` を使い、SD を読まない）。`source_path` が `None` の file（SD の候補から作る入力。`sd_relative_path` はすでに `Some`）は確かめない。`sd_relative_path` が `None` で `source_path` が `Some` の file が 1 本でもあれば:
+   - (i) `find_sd_roots` を 1 回呼ぶ（公開の関数では IO-09 `find_register_sd_roots`）。失敗は、SD 上かを確かめられないので `BizError::ImportError("選んだファイルがレジの SD の上にあるかを確かめられませんでした。もう一度選んでください。")` で止める（PC の file として通さない）。
+   - (ii) 各 file を IO-09 `locate_in_register_sd_roots(roots, source_path)`（29 §29.7.4 手順 4）で確かめる。`Some` ならその `relative_path` を `sd_relative_path` に入れ、以降はその file を SD の file として扱う（写し BIZ-08-D5、精算回数の検査 BIZ-08-D6）。
+   - (iii) `None` の file は、IO-09 `check_selected_file_present(source_path)`（29 §29.7.4 手順 5）でその時点で在り通常の file かを確かめる。`Ok` なら今どおり PC 上の file（`EcrDatas` の写し等）。`Err` なら `BizError::ImportError("選んだファイルが見つからなくなりました。SD から選んだときは、SD をこの PC に差したまま、もう一度選んでください。")` で止める。理由: SD の上の file を選んで読んだ後、この手順の前に SD を抜くと、(i) の root の列が空になって (ii) が `None` を返す。そのまま PC 上の file にすると、写し（BIZ-08-D5）と精算回数の検査（BIZ-08-D6）が黙って外れるため。
 2. IO-07 `parse_daily_report_bundle(files)` を呼ぶ。
 3. `parse_errors` がある場合は `BizError::ImportError` として返す。
    - **BIZ-08-D1**: 各errorの `source_file` / `filename` / `line_no` / `error_type` / `error_message` を開発者向けdiagnostic WARNへ構造化して記録する。filenameはunknown sourceを含む入力識別用で、diagnostic専用とする。
@@ -249,7 +253,7 @@ fn commit_daily_report_import(
    - AlreadyImported → `BizError::IdempotencyConflict`。
    - NoDuplicate は `additional_import_confirmed=false`、AdditionalImportConfirmationRequired は `true` のみ許可し、不一致は `BizError::ValidationFailed`。
 2a. **BIZ-08-D6** の再検査: `sd_source_files` が空でない（SD の経路）のに `settlement_no` が `None` なら、写しを書かず DB を変えずに §37.3 手順 4 と同じ文の `BizError::ImportError` を返す（preview を経ずに作られた cache でも通さない。DB の状態に依らない検査なので、写しを書く手順 2b と TX の前に置く）。
-2b. **BIZ-08-D5**: `sd_source_files` が空でなければ、TX の前に 3 本の写しを IO-10 `save_pos_source_copy(app_data_dir, sd_relative_path, bytes)` で書く（[29 §29.8](29-io-daily-report-parser.md#298-io-10-sd-から読んだ原本の写しの保存d-111)）。1 本でも失敗したら DB を変えずに `BizError::ImportError("SD から読んだファイルの写しを PC に保存できなかったため、取り込みませんでした。PC の空き容量を確かめて、もう一度取り込んでください。")` を返す（preview token は残し、同じ preview で再試行できる。診断 WARN に io error の種類を記録）。書けた写しの相対 path を手順 6 の `source_files_json` に入れる。
+2b. **BIZ-08-D5**: `sd_source_files` が空でなければ、TX の前に 3 本の写しを IO-10 `save_pos_source_copy(app_data_dir, sd_relative_path, bytes)` で書く（[29 §29.8](29-io-daily-report-parser.md#298-io-10-sd-から読んだ原本の写しの保存d-111)）。1 本でも失敗したら DB を変えずに `BizError::SourceCopyFailed(std::io::ErrorKind)` を返す（BIZ-08 が `BizError`〈`src-tauri/src/biz/mod.rs:54`〉に足す variant。wire に出さない。CMD-12 は 45 §45.7 で `CmdError` の kind `internal`・固定の文 `SD から読んだファイルの写しを PC に保存できなかったため、取り込みませんでした。PC の空き容量を確かめて、もう一度取り込んでください。` に変える。`import_error` にしないのは、UI が `import_error` を最初へ戻す扱い〈`useDailyReportImportFlow.ts:35` の `decideRecoverTo`〉にしているため。preview token は CMD の cache に残り〈45 §45.4 手順 7〉、UI は preview に戻って同じ token で再試行できる〈55 の日報取込みの利用者フローの手順 2〉。診断 WARN に io error の種類を記録）。書けた写しの相対 path を手順 6 の `source_files_json` に入れる。
 3. トランザクション開始。
 4. TX内で `bundle_hash` のactive一致を最初に再検査する。一致があれば `BizError::IdempotencyConflict` として副作用なしで止める。
 4a. TX内で BIZ-08-D4 の照合（同じ `report_date`・同じ `settlement_no`・別 `bundle_hash` の `completed`、24 §14.18a `find_same_settlement_daily_report_import`）を再検査する。`settlement_no` が `None` なら照合しない。一致があれば副作用なしで §37.3 手順 8 と同じ文の `BizError::ImportError` を返す。
@@ -326,6 +330,9 @@ fn list_daily_report_imports(
 | 精算回数不一致（`settlement_mismatch`） | ImportError（BIZ-08-D2 の文） | ファイル名の「Z001」「Z002」「Z005」より後ろが同じ 3 つを選び直す |
 | 同一bundle取込み済み | IdempotencyConflict | 取込み済みのため二重取込みしない |
 | 同じ精算（同じ対象日・同じ精算回数）を別の bytes で取込み済み（BIZ-08-D4） | ImportError（固定の文） | 二重に数えない。取り込み直すなら前の取込みを取り消してから |
+| 手で選んだ file が SD 上かを確かめられない（§37.3 手順 1a (i)） | ImportError（固定の文） | もう一度選ぶ |
+| 手で選んだ file が preview の時に見つからない（SD を抜いた等、§37.3 手順 1a (iii)） | ImportError（固定の文） | SD を差したまま、もう一度選ぶ |
+| 写しを PC に保存できない（BIZ-08-D5） | SourceCopyFailed（CMD で `internal`・固定の文、45 §45.7） | preview に戻り、同じ token でもう一度取り込む |
 | SD の束で精算回数を確かめられない（BIZ-08-D6） | ImportError（固定の文） | SD からは取り込まない（一覧では「読めません」） |
 | SD が見つからない・2 つ以上・`XZ` が無い・読めない（BIZ-08-D3） | ImportError（固定の文、§37.9） | SD を差し直す・売上の SD だけを差す・場所を選ぶ |
 | 同日別bundleで追加確認なし / 不要なのに確認あり | ValidationFailed | previewの状態に従って追加確認をやり直す |
@@ -339,7 +346,7 @@ fn list_daily_report_imports(
 - 商品別ランキングの生成。
 - Excel帳票のparse。
 - ECR+や他レジ形式の直接取込み。
-- SD への書込み（CV17 と同じく `XZ_BKUP` へ移すこと。owner 決定で SD は動かさない、IO-09-D3）。
+- (a) の段階（本書の SD 直読み）での SD への書込み（CV17 と同じく `XZ_BKUP` へ移すこと。owner 決定 2026-10-06 でこの段階では SD は動かさない、IO-09-D3。移す操作は D-111 (1) の (b) の後続の lane）。
 - 写しの保持期間・削除と、PC の外への backup（D-111 の未決 A・B）。
 - `Z006`（グループ）、`Z009`（時間帯別）、`Z011`（担当者）の保存・集計。個人店の初期運用では使わない前提とし、必要性が確認された場合は後続設計で追加する。
 
@@ -431,9 +438,9 @@ struct DailyReportSdScanSnapshot {
 **BIZ-08-D5（読んだ原本の写しを PC に残す、owner 決定 2026-10-06）**:
 
 - 決定: SD から読んで取り込む束の 3 本を、commit の TX の前にアプリのデータ folder の `pos-sources/casio-sr-s4000/sd/` の下へ SD の相対 path を保った名前で書く（IO-10）。書くのは取り込む束だけで、scan の時には書かない。写しを書けなければ取り込まない。
-- 理由: SD は動かさないので SD にも原本は残るが、SD は静電気等で消えることがあり、CV17 をやめると PC 側に写しが無くなる。取り込んだ精算ごとに PC 側に原本の bytes があれば、日報の行の根拠を後から確かめられる。写しの無い取込みを作らないため、写しの失敗で止める（SD は動かしていないので、直してから同じ preview かもう一度読んで取り込める）。TX が失敗して写しだけが残っても、同じ bytes の写しなので害は無く、次の commit では `written: false` になる。
+- 理由: (a) の段階では SD は動かさないので SD にも原本は残るが、SD は静電気等で消えることがあり、CV17 をやめると PC 側に写しが無くなる。取り込んだ精算ごとに PC 側に原本の bytes があれば、日報の行の根拠を後から確かめられる。写しの無い取込みを作らないため、写しの失敗で止める（SD は動かしていないので、直してから同じ preview かもう一度読んで取り込める）。TX が失敗して写しだけが残っても、同じ bytes の写しなので害は無く、次の commit では `written: false` になる。
 - 棄却案: scan の時に読んだ全部を書く（取り込まない束・読めない file まで残る）、写しの失敗を警告にして取り込む（写しの無い取込みができ、利用者が警告を見落とすと気づけない）、commit の TX の後に書く（DB は取込み済みなのに写しが無い状態ができる）。
-- 保証の範囲: 写しは D-111 の後に取り込んだ SD の file だけ（SD の候補からの束と、手で選んだ file のうち自動で見つけた SD の root の下にあるもの〈§37.3 手順 1a〉）。PC 上の file を手で選んだ束（`EcrDatas` 等、すでに PC にある file）は写さない。SD が固定 disk として見える reader では自動で root を見つけないので、その SD の file を手で選ぶと PC 上の file として扱われ、写しも BIZ-08-D6 も効かない（SD を読む経路は「場所を選ぶ」で使える。UI-07-D15）。写しは DB の backup（[71](71-mnt-backup.md) の `VACUUM INTO`、DB の 1 file だけ）に入らず、restore は写しを変えない（レシート画像と同じ扱い）。restore で DB が戻ると、DB に無い取込みの写しが残ることがあるが、写しは原本の bytes で、取込みの状態は DB が正本。
+- 保証の範囲: 写しは D-111 の後に取り込んだ SD の file だけ（SD の候補からの束と、手で選んだ file のうち自動で見つけた SD の root の下にあるもの〈§37.3 手順 1a〉）。PC 上の file を手で選んだ束（`EcrDatas` 等、すでに PC にある file）は写さない。SD が固定 disk として見える reader では自動で root を見つけないので、その SD の file を手で選ぶと PC 上の file として扱われ、写しも BIZ-08-D6 も効かない（SD を読む経路は「場所を選ぶ」で使える。UI-07-D15）。SD の上の file を選んだ後、preview の前に SD を抜いたときは、その file が見つからないので §37.3 手順 1a (iii) で止まり、PC 上の file としては通らない。preview の後に SD を抜いても、cache の bytes と `sd_relative_path` で写しを書くので外れない。写しは DB の backup（[71](71-mnt-backup.md) の `VACUUM INTO`、DB の 1 file だけ）に入らず、restore は写しを変えない（レシート画像と同じ扱い）。restore で DB が戻ると、DB に無い取込みの写しが残ることがあるが、写しは原本の bytes で、取込みの状態は DB が正本。
 
 **Z004 と EJ への引継ぎ**: Z004（BIZ-03）と EJ の取込みの lane は IO-09 の列挙と読取り、同じ窓と scan の snapshot の形を使う。取込み済みの見分けは、Z004 は file の hash と ADR SPEC-STK-TIME の精算同一性 guard（[32](32-biz-csv-import-service.md) の時点証拠契約、machine_no・settlement_no）、EJ は記録の番号（IO-08 の `number_prefix` + `number`）で行い、EJ を file の hash では見分けない（`XZ` 直下の EJ は精算をまたいで伸びる。SD-09、[IO-08.10](29-io-ej-parser.md#io-0810-日次取込みとの接続io-08-d10設計の申し送り)）。
 
@@ -444,5 +451,6 @@ struct DailyReportSdScanSnapshot {
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: AlreadyImportedを維持しつつ同日別bundleを追加取込みとし、全件summary、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
 | 2026-10-04 | daily-report-import-gaps（plan-first） | BIZ-08-D2: 精算回数の不一致の文。個数を 100 倍の整数で運ぶ cache の型（`CachedDailyReportDepartmentLine`）と wire の `quantity: Option<f64>`（IO-07-D2〜D4、D-104）。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | BIZ-08-D3: SD から読む候補（§37.9）。BIZ-08-D4: 同じ精算を別の bytes で取り込まない照合と `settlement_no` の保存。BIZ-08-D5: 読んだ原本の写しを commit の前に PC に残す。 |
+| 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §37.3 手順 1a に SD を抜いた後の file の在否の確認（(iii)）と、root を取る処理を受ける内部関数 `_with_sd_lookup`。写しの失敗を `BizError::SourceCopyFailed` にして UI が preview に戻れる形にした。§37.8 と D5 の「動かさない」を (a) の段階に限った。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | 選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。手で選んだ SD 上の file を SD の入力にする §37.3 手順 1a。BIZ-08-D4 の照合の repository 関数（24 §14.18a）。§37.4 の手順を 2a（D6）・2b（D5）の順に直した。`source_files_json` を内部の serialize 用の型で書く。同じ bytes の組で `XZ` の path を残す。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | BIZ-08-D6: SD の経路は精算回数のある束だけを取り込む（scan・preview・commit）。§37.3 手順 4 の精算回数の保存の文を IO-07-D5 → cache → DB の契約に直した。 |
