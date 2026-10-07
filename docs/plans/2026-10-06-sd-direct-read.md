@@ -7,7 +7,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 - Phase: implementing
 - Risk: R3
 - Plan Commit: dbe6626d030fbe80c54f0c8990ee3239b8ff10b6
-- Amendments: none
+- Amendments: 49f4d97c7eb1dc04a49305f8785d52740937e39c
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -29,6 +29,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 9. plan-gate（round 3、上限、2026-10-07、Coordinator）: round 3 は両者 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal と設計の方向を変えない）。起草役が `70387036` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は owner に諮り、reviewer の再確認は Final Review に回す（前例: `docs/archive/plans/2026-09-29-harness-pr5-gate-holes.md`）。
 10. plan-gate → plan-approved（2026-10-07、Coordinator、本 commit）: round 3 の disposition（同型指摘の一括是正）の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-180）。同じ問い合わせで介入の上限を 12 に（TD-181）、移行期の SD を戻す案内を「いつもの取込み」の文に（TD-182）決め、`dbe6626d` に反映した。Plan Commit = `dbe6626d`（承認した版）。reviewer の再確認は Final Review。
 11. plan-approved → implementing（2026-10-07、Coordinator、state-only）: 本 lane の成果物（Scope の設計正本）は plan-first の change に同乗済みで、implementing で書く runtime のコードは無い（runtime は後続の lane）。Draft PR #150 で Final Review（Claude 側 Fable 5.1 と Codex、互いに独立、Final Review Minimum 1）へ進む（前例: `docs/archive/plans/2026-09-27-daily-report-z-display.md`）。
+12. implementing（Final Review の P3 の是正、2026-10-07、Coordinator、本 commit）: Final broad（`bc92d56b`）は両者 approve（P1/P2 0、P3 10）。owner の質優先の方針に合わせ Ready の前に P3 を全件直した（起草役の `49f4d97c`、Gated Amendment として `Amendments` に記録）。closure の review で確かめる。
 
 ## Owner Effort Budget
 
@@ -315,3 +316,5 @@ round 3（上限、`31c7bf7e`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3
 - P3（Opus #4）test の入口が root の取得の失敗を注入できなかった。是正: 内部の関数が root を取る closure を受ける形にした。
 - P3（Opus #5・Codex #3）登録の義務に `io::pos_source_copy` と `tauri::generate_handler!` が抜けていた、Scope の ARCHITECTURE の行が IO-01〜IO-09 だった。是正: 足し、IO-01〜IO-10 に直した。
 - 起草役の判断で Coordinator が受けたもの: 写しの失敗を新しい kind でなく既存の `internal` にした（hook を変えずに preview に戻れるため。表示は `error_id` つきになる。runtime の lane の L3 で見る）。IO-09-D3 の許可の列は今の設計が要る API だけにした（足すときは設計の改訂）。
+
+Final Review broad（`bc92d56b`）: Codex GPT-6.1 Sol（発注 238）= approve（P3 4、PR review 5440745352）、Claude 側 Fable 5.1 = approve（P3 6）。P1/P2 は 0。P3 10 件を全件採用し、Ready の前に起草役の `49f4d97c` で直した（Gated Amendment）。内訳: 写しの失敗の分岐の文の範囲を限った・SD から来た失敗はすべて一覧（`sd_list`）へ戻すと 1 通りに決めた・Contract Ledger に 45 §45.3・§45.4 3a・§45.7 を足した・Matrix に固定の文・読まなかった file・選び直しの行を足した・IO-09 の置き場所を `RegisterSdArea::{Sales, Backup}` にし BIZ-08 の `Imported` と分けた・`candidate_key` を固定した（Fable #1〜#6）。Owner Effort Budget を見込み 15 に直した・申し送りに `AppState` の 15 site を足した・状態の要約を UI-07-D15 の参照にした・registry の件数を消し 4 集合の一致を契約にした（Codex #1〜#4）。
