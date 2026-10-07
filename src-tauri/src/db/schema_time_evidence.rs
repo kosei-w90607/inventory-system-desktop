@@ -16,6 +16,14 @@ macro_rules! nonneg_int {
     };
 }
 
+/// 実測の証拠の 5 項目が全て NULL（SPEC-STK-TIME-D8-K1）
+macro_rules! no_evidence {
+    () => {
+        "count_started_at IS NULL AND observation_revision IS NULL AND ledger_cursor IS NULL
+            AND source_cursor IS NULL AND request_id IS NULL"
+    };
+}
+
 const SCHEMA_SQL: &str = concat!(
     "
 CREATE TABLE pos_import_sources (
@@ -75,7 +83,22 @@ CREATE TABLE stocktake_items_new (
     source_cursor INTEGER CHECK(source_cursor IS NULL OR (",
     nonneg_int!("source_cursor"),
     ")),
-    request_id TEXT UNIQUE
+    request_id TEXT UNIQUE,
+    -- SPEC-STK-TIME-D8-K1: kind と証拠の組。4 値の外の kind は列の CHECK だけで落とす（ELSE 1）
+    CHECK (CASE observation_kind
+        WHEN 'measured' THEN actual_count IS NOT NULL AND counted_at IS NOT NULL
+            AND count_started_at IS NOT NULL AND observation_revision IS NOT NULL
+            AND ledger_cursor IS NOT NULL AND source_cursor IS NOT NULL AND request_id IS NOT NULL
+        WHEN 'uncounted' THEN actual_count IS NULL AND counted_at IS NULL AND ",
+    no_evidence!(),
+    "
+        WHEN 'auto_filled' THEN actual_count IS NOT NULL AND counted_at IS NULL AND ",
+    no_evidence!(),
+    "
+        WHEN 'legacy' THEN ",
+    no_evidence!(),
+    "
+        ELSE 1 END)
 );
 -- 旧明細の分類（tracking「移行と保存TX」）。現在の廃番フラグから逆算しない
 INSERT INTO stocktake_items_new
@@ -459,27 +482,51 @@ mod tests {
             ["csv_import_id"]
         );
 
-        // CHECK の値の集合と UNIQUE
-        for kind in ["uncounted", "measured", "auto_filled", "legacy"] {
+        // CHECK の値の集合と UNIQUE（各 kind は SPEC-STK-TIME-D8-K1 を満たす形で入れる）
+        for (kind, actual, counted) in [
+            ("uncounted", None, None),
+            ("measured", Some(0), Some("2026-03-02T10:05:00")),
+            ("auto_filled", Some(0), None),
+            ("legacy", None, None),
+        ] {
+            let measured = kind == "measured";
             conn.execute(
-                "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, observation_kind)
-                 VALUES (2, 'LG-UNC', 0, ?1)",
-                [kind],
+                "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count,
+                    counted_at, observation_kind, count_started_at, observation_revision, ledger_cursor,
+                    source_cursor, request_id)
+                 VALUES (2, 'LG-UNC', 0, ?1, ?2, ?3, ?4, ?5, ?5, ?5, ?6)",
+                rusqlite::params![
+                    actual,
+                    counted,
+                    kind,
+                    measured.then_some("2026-03-02T10:00:00"),
+                    measured.then_some(1),
+                    measured.then_some("req-loop")
+                ],
             )
             .unwrap();
         }
-        assert!(fails(
+        let error = fails(
             &conn,
             "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, observation_kind)
-             VALUES (2, 'LG-UNC', 0, 'other')"
-        )
-        .contains("CHECK constraint failed"));
-        assert!(fails(
+             VALUES (2, 'LG-UNC', 0, 'other')",
+        );
+        assert!(
+            error.contains("CHECK constraint failed") && error.contains("observation_kind IN"),
+            "{error}"
+        );
+        // 他の 6 項目を揃え source_cursor だけ負（K1 を通り、列の非負の CHECK だけで落ちる形）
+        let error = fails(
             &conn,
-            "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, observation_kind, source_cursor)
-             VALUES (2, 'LG-UNC', 0, 'measured', -1)"
-        )
-        .contains("CHECK constraint failed"));
+            "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count, counted_at,
+                observation_kind, count_started_at, observation_revision, ledger_cursor, source_cursor, request_id)
+             VALUES (2, 'LG-UNC', 0, 0, '2026-03-02T10:05:00', 'measured', '2026-03-02T10:00:00', 1, 0, -1,
+                'req-neg')",
+        );
+        assert!(
+            error.contains("CHECK constraint failed") && error.contains("source_cursor IS NULL OR"),
+            "{error}"
+        );
         assert!(fails(
             &conn,
             "INSERT INTO stocktakes (started_at, status, reconciliation_version)
@@ -489,8 +536,10 @@ mod tests {
         conn.execute_batch(
             "INSERT INTO pos_import_sources (file_hash, received_at, settlement_date)
              VALUES ('h1', '2026-03-20T21:00:00', '2026-03-20');
-             INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, observation_kind, request_id)
-             VALUES (2, 'LG-UNC', 0, 'measured', 'req-1');",
+             INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count, counted_at,
+                observation_kind, count_started_at, observation_revision, ledger_cursor, source_cursor, request_id)
+             VALUES (2, 'LG-UNC', 0, 0, '2026-03-02T10:05:00', 'measured', '2026-03-02T10:00:00', 1, 0, 0,
+                'req-1');",
         )
         .unwrap();
         assert!(fails(
@@ -501,8 +550,10 @@ mod tests {
         .contains("UNIQUE"));
         assert!(fails(
             &conn,
-            "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, observation_kind, request_id)
-             VALUES (2, 'LG-UNC', 0, 'measured', 'req-1')"
+            "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count, counted_at,
+                observation_kind, count_started_at, observation_revision, ledger_cursor, source_cursor, request_id)
+             VALUES (2, 'LG-UNC', 0, 0, '2026-03-02T10:05:00', 'measured', '2026-03-02T10:00:00', 1, 0, 0,
+                'req-1')"
         )
         .contains("UNIQUE"));
         // 拒否の証拠は 2 列とも NULL か 2 列とも必須
@@ -732,6 +783,89 @@ mod tests {
             .unwrap();
         apply_time_evidence(&flipped);
         assert_eq!(kinds(&flipped), expected);
+    }
+
+    /// measured の 7 項目（列, SQL の値）
+    const MEASURED_EVIDENCE: [(&str, &str); 7] = [
+        ("actual_count", "3"),
+        ("counted_at", "'2026-03-02T10:05:00'"),
+        ("count_started_at", "'2026-03-02T10:00:00'"),
+        ("observation_revision", "1"),
+        ("ledger_cursor", "0"),
+        ("source_cursor", "0"),
+        ("request_id", "'req-c1'"),
+    ];
+
+    /// (ラベル, kind, 入れる列)
+    type RejectedCase = (String, &'static str, Vec<(&'static str, &'static str)>);
+
+    fn insert_item(conn: &Connection, kind: &str, cols: &[(&str, &str)]) -> rusqlite::Result<()> {
+        let names: String = cols.iter().map(|(c, _)| format!(", {c}")).collect();
+        let values: String = cols.iter().map(|(_, v)| format!(", {v}")).collect();
+        conn.execute_batch(&format!(
+            "INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, observation_kind{names})
+             VALUES (2, 'LG-UNC', 0, '{kind}'{values})"
+        ))
+    }
+
+    #[test]
+    fn test_apply_time_evidence_schema_req205_c1_kind_evidence_check() {
+        // REQ-205 / SPEC-STK-TIME-D8-K1 / C1: kind と証拠の組を table の CHECK が拒否し、旧明細の分類は変わらない
+        let (_dir, conn) = legacy_db();
+        apply_time_evidence(&conn);
+        let expected: Vec<(String, i64, String)> = LEGACY_ITEM_KINDS
+            .iter()
+            .map(|(p, s, k)| (p.to_string(), *s, k.to_string()))
+            .collect();
+        assert_eq!(kinds(&conn), expected, "② の T5 と同じ分類");
+
+        let mut rejected: Vec<RejectedCase> = (0..MEASURED_EVIDENCE.len())
+            .map(|skip| {
+                let mut cols = MEASURED_EVIDENCE.to_vec();
+                let (missing, _) = cols.remove(skip);
+                (format!("measured の {missing} 欠け"), "measured", cols)
+            })
+            .collect();
+        let uncounted_time = vec![("counted_at", "'2026-03-02T10:05:00'")];
+        let auto_time = vec![
+            ("actual_count", "0"),
+            ("counted_at", "'2026-03-02T10:05:00'"),
+        ];
+        let auto_cursor = vec![("actual_count", "0"), ("source_cursor", "0")];
+        let legacy_revision = vec![("actual_count", "3"), ("observation_revision", "1")];
+        rejected.extend([
+            (
+                "uncounted の数量".to_string(),
+                "uncounted",
+                vec![("actual_count", "0")],
+            ),
+            ("uncounted の時刻".to_string(), "uncounted", uncounted_time),
+            ("auto_filled の時刻".to_string(), "auto_filled", auto_time),
+            (
+                "auto_filled の cursor".to_string(),
+                "auto_filled",
+                auto_cursor,
+            ),
+            ("auto_filled の数量 NULL".to_string(), "auto_filled", vec![]),
+            ("legacy の版".to_string(), "legacy", legacy_revision),
+        ]);
+        for (label, kind, cols) in &rejected {
+            let error = insert_item(&conn, kind, cols).expect_err(label).to_string();
+            assert!(
+                error.contains("CHECK constraint failed"),
+                "{label}: {error}"
+            );
+        }
+
+        let before = int(&conn, "SELECT COUNT(*) FROM stocktake_items");
+        insert_item(&conn, "measured", &MEASURED_EVIDENCE).unwrap();
+        insert_item(&conn, "auto_filled", &[("actual_count", "2")]).unwrap();
+        insert_item(&conn, "legacy", &[("counted_at", "'2026-03-02T10:05:00'")]).unwrap();
+        insert_item(&conn, "uncounted", &[]).unwrap();
+        assert_eq!(
+            int(&conn, "SELECT COUNT(*) FROM stocktake_items"),
+            before + 4
+        );
     }
 
     #[test]

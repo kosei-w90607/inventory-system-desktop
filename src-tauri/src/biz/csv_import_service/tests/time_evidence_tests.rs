@@ -567,12 +567,28 @@ fn test_classify_stock_rows_req205_req401_t19_legacy_basis() {
     let measured_item = measured(&conn, later, "P-1", 4, 1);
     assert_eq!(effect(&conn, 4, "P-1", 2, 200), StockEffect::Before);
 
-    // measured の source_cursor が NULL（データ破損）→ QueryFailed（Legacy・未実測に落とさない）
-    conn.execute(
-        "UPDATE stocktake_items SET source_cursor = NULL WHERE id = ?1",
-        [measured_item],
-    )
-    .unwrap();
+    // measured の source_cursor を NULL にする UPDATE は K1 の CHECK が拒否し、行は変わらない
+    let set_null = "UPDATE stocktake_items SET source_cursor = NULL WHERE id = ?1";
+    let error = conn
+        .execute(set_null, [measured_item])
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("CHECK constraint failed"), "{error}");
+    let cursor: Option<i64> = conn
+        .query_row(
+            "SELECT source_cursor FROM stocktake_items WHERE id = ?1",
+            [measured_item],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(cursor, Some(4));
+
+    // CHECK を素通りさせて壊れた行を作っても → QueryFailed（Legacy・未実測に落とさない）
+    conn.execute_batch("PRAGMA ignore_check_constraints = ON")
+        .unwrap();
+    conn.execute(set_null, [measured_item]).unwrap();
+    conn.execute_batch("PRAGMA ignore_check_constraints = OFF")
+        .unwrap();
     assert!(matches!(
         classify_stock_rows(&conn, 4, &[row(1, 2, 200, &[("P-1", true)])]),
         Err(BizError::DatabaseError(DbError::QueryFailed(_)))
