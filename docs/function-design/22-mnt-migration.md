@@ -356,11 +356,12 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 1. 更新の前に、旧版のアプリで backup を作っておく（71 §71.4）。起動時の自動の backup は migrate の後に作られるので（71 §71.9）、新しい版で作った backup は旧版で使えない
 2. アプリを止める（窓を全部閉じ、プロセスが残っていないことを確かめる）
-3. 今の DB を保全する: `{db_path}` と、あれば `{db_path}-wal`・`{db_path}-shm` を、消さずに日付の付いた別の folder へ移す（更新の後に入れたデータはここにだけ残る）。`{db_path}.restore_manifest`・`{db_path}.restore_manifest.tmp`・`*.restore_backup` のどれかがあれば手順を止める（復元の中断の遺物で、起動の reconcile〈71 MNT-01-D5〉が扱う状態。手で消さない）
-4. 戻す backup を確かめる: backup の写しを読み取りだけで開き、`SELECT MAX(version) FROM schema_versions` が旧版のアプリの最大の版以下（vU・vC の前の版）で、`PRAGMA integrity_check` が `ok`。違えば別の backup を選ぶ
-5. 確かめた backup の写しを `{db_path}` に置く（backup は `VACUUM INTO` の 1 file なので `-wal`・`-shm` は置かない）
-6. 旧版のアプリを入れて起動する。遺物が無いので reconcile は何もせず、版が旧版の最大以下なので migrate は開ける
+3. 何も動かす前に、復元の中断の遺物が無いことを確かめる: `{db_path}.restore_manifest`・`{db_path}.restore_manifest.tmp`・`*.restore_backup` のどれかがあれば手順を止める（起動の reconcile〈71 MNT-01-D5〉が扱う状態。手で消さず、file も動かさない）
+4. 何も動かす前に、戻す backup を確かめる: backup の写しを別の場所に作り、写しを読み取りだけで開いて、`SELECT MAX(version) FROM schema_versions` が旧版のアプリの最大の版以下（vU・vC の前の版）で、`PRAGMA integrity_check` が `ok`。違えば別の backup で確かめ直し、合う backup が無ければ手順を止める（ここまでは `{db_path}` と `-wal`・`-shm` を動かさない）
+5. 今の DB を保全する: `{db_path}` と、あれば `{db_path}-wal`・`{db_path}-shm` を、消さずに日付の付いた別の folder へ移す（更新の後に入れたデータはここにだけ残る）
+6. 手順 4 で確かめた backup の写しを `{db_path}` に置く（backup は `VACUUM INTO` の 1 file なので `-wal`・`-shm` は置かない）
+7. 旧版のアプリを入れて起動する。遺物が無いので reconcile は何もせず、版が旧版の最大以下なので migrate は開ける
 
-更新の後に入れたデータは戻らない（手順 3 で保全した file にだけ残る）。値の変換は vC の 100 倍だけで、逆変換の migration は作らない。
+更新の後に入れたデータは戻らない（手順 5 で保全した file にだけ残る）。値の変換は vC の 100 倍だけで、逆変換の migration は作らない。
 
-**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。連続適用の失敗: v7 の DB に範囲外の原価を置き、vU と vC を同じ `migrate` で当てる → vU の版が記録されて vC の変更と版は戻り、`migrate` は `MigrationFailed`、DB の版は vU、app_max が 7 の `migrate` は `SchemaNewerThanApp`。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界〈`90071992547409` と `-90071992547409` は成功して `9007199254740900`・`-9007199254740900`、`90071992547410` と `-90071992547410` の 1 行は範囲検査で失敗して何も変わらない〉、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。
+**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。回復の手順（管理者の手順書を合成の DB で 1 度通す）: 手順 3 で遺物（`.restore_manifest` か `.restore_backup`）がある状態、手順 4 で版が新しすぎる backup・`integrity_check` が `ok` でない backup しか無い状態のどちらで止まっても、元の名前の `{db_path}`・`-wal`・`-shm` と遺物の file は中身も名前も変わらない（手順 5 の移動の前に止まる）。連続適用の失敗: v7 の DB に範囲外の原価を置き、vU と vC を同じ `migrate` で当てる → vU の版が記録されて vC の変更と版は戻り、`migrate` は `MigrationFailed`、DB の版は vU、app_max が 7 の `migrate` は `SchemaNewerThanApp`。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界〈`90071992547409` と `-90071992547409` は成功して `9007199254740900`・`-9007199254740900`、`90071992547410` と `-90071992547410` の 1 行は範囲検査で失敗して何も変わらない〉、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。
