@@ -59,7 +59,7 @@ struct StockAdjustment {
 }
 ```
 
-（proposed・未実装、D-113）: `IntegrityMismatch` と `StockAdjustment` に `stock_unit: ProductStockUnit` を足し（`find_all_stock_quantities` に単位を足す）、`integrity_fix` の detail_json の各 adjustment にも `stock_unit` を書く。長さの商品の数量を m で出すため（[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 8・11・12 行目、SPEC-UNIT-D11）。
+（proposed・未実装、D-113）: `IntegrityMismatch` と `StockAdjustment` に `stock_unit: ProductStockUnit` を足し（`find_all_stock_quantities` に単位を足す）、`integrity_fix` の detail_json の各 adjustment と、`integrity_check` の detail_json の各 mismatch にも `stock_unit` を書く（`integrity_check` の表示は今のまま）。wire・detail_json・DB に出す数（`stock_quantity`・`movements_sum`・`difference`・`old_stock`・`new_stock`・`adjustment`）は、出す前に安全な整数の範囲で検査する（共通規則の「安全な整数の範囲」の表の 4）。長さの商品の数量を m で出すため（[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 8・11・12 行目、SPEC-UNIT-D11）。
 
 ---
 

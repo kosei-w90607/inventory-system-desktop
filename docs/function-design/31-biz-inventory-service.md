@@ -12,7 +12,7 @@ list_inventory_recordsの棚卸し差異集計は[追跡の新契約](65-invento
 
 [共通規則](10-common-rules.md) SPEC-UNIT-D2・D5・D6・D11 の BIZ-02 の側。以下の本文は現行実装の契約である。
 
-- 入庫・返品・手動販売・廃棄の Request の `quantity` は今どおり在庫の数量の正の整数（長さの商品は cm）。m の入力は UI が cm に直して送る（SPEC-UNIT-D3）。BIZ の検証（INV-1a）と apply_stock_change は変えない。
+- 入庫・返品・手動販売・廃棄の Request の `quantity` は今どおり在庫の数量の正の整数（長さの商品は cm）。m の入力は UI が cm に直して送る（SPEC-UNIT-D3）。BIZ の検証（INV-1a）は変えない。`apply_stock_change` は、受け取った `quantity` と計算後の `stock_after` を書く前に安全な整数の範囲で検査する（[共通規則](10-common-rules.md) の「安全な整数の範囲」の表の 1。範囲外は `ValidationFailed` で TX 全体を戻す。初期在庫 9007199254740991 cm の商品に 2 cm を入庫すると、i64 では通るが number で 1 cm ずれるため）。記録詳細の合計（円）は wire にする前に同じ検査をする（表の 8）。
 - 入庫・廃棄の明細の原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。BIZ は明細の原価も 0 以上・`9007199254740991` 以下を検査し、超えれば `ValidationFailed("原価が大きすぎます")`（SPEC-UNIT-D5。UI を通らない IPC でも上限を超える値を保存しない）。§12.3 の原価の差分（CostDiff）は 1/100 円の値で完全一致を比べる。§12.8 の fingerprint の item 行の原価は 1/100 円の 10 進文字列にする。移行の前に保存した記録の fingerprint は書き換えない（同じ key の再送は移行をまたがない）。
 - §12.6a の入庫・廃棄の記録詳細は、明細の数量・原価・商品の単位から行の金額と合計を BIZ が求める（SPEC-UNIT-D6。`biz::unit_amount`）。IO は金額を計算しない（[21](21-io-inventory-repo.md) §10.2・§10.5 の手順 3 をやめる）。wire は行の金額を 1/100 円の整数の十進の文字列（`line_cost_centi`・`line_loss_cost_centi`。i128 の値を損失なく運ぶ。SPEC-UNIT-D6）、合計を円の整数（`total_cost`・`total_loss_cost`、今の型のまま）で返す。入庫の丸めは TD-023 と同じ（`決定（owner、D-113 J3）`）、廃棄も TD-023 に合わせる（runtime の lane の L3 で owner が確かめる）。
 - 記録詳細と入出庫の行の `stock_unit` は `ProductStockUnit`（SPEC-UNIT-D11）。

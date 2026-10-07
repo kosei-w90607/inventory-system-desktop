@@ -91,7 +91,7 @@
 **SPEC-UNIT-D2 在庫の数量の表現**: 在庫・明細・変動の数量は今までどおり整数（INV-1a・INV-3）。個数の単位は 1 単位、長さの単位は 1 cm を 1 とする。m は入力と表示の換算だけ（1 m = 100 cm）。10 cm 刻みを DB・BIZ で強制しない（実測の残り 1.27 m = 127 cm を保てる。返品・廃棄・棚卸しで端数が出うる）。商品の単位は登録の後に変えない（今の UI-01b-D5 と `ProductUpdateRequest` のまま）。商品 CSV の上書き（[30](30-biz-product-service.md) §4.9）でも変えない（既存の商品と違う `在庫単位` は preview の行の error、commit は TX の中で再検証して拒む。BIZ-01-D8）。数量の整数の意味は単位で決まるので、単位を変えると在庫と過去の明細（入庫の明細は今の単位を JOIN して金額を求める）の意味が黙って変わる。
 
 **SPEC-UNIT-D3 長さの入力と表示**:
-- 入力: `m` の商品の数量欄は文字列を `^[0-9]+(\.[0-9]{1,2})?$` に全体で一致するときだけ受け、浮動小数を通さず cm の整数にする（整数部 × 100 + 小数部を右に 0 を埋めた 2 桁）。例: `1.3` → 130、`1.27` → 127、`2` → 200。小数 3 桁以上・指数表記・符号・空は入力の error で、丸めない。cm にした値が `9007199254740991`（JS の number で正確に運べる最大の整数）を超えれば入力の error（TS は整数部と小数部を `BigInt` か桁の比較で組み、number の掛け算を通さない。`90071992547409.91` → 9007199254740991 は受け、`90071992547409.92` は error。`1.15` → 115・`4.35` → 435 は number の `× 100` では 114・434 になる値）。`cm` と個数の単位の数量欄は今の整数の規則のまま。wire には cm の整数を送る（DTO の数量の型は変えない）。適用する数量欄は、商品登録の初期在庫（[51](51-ui-product-form.md) UI-01b-D22）、入庫（[61](61-ui-receiving.md)）、返品・交換（[63](63-ui-return-exchange.md)）、手動販売（[62](62-ui-manual-sale.md) UI-04-D18）、廃棄（[64](64-ui-disposal.md)）、棚卸しの実数（[73](73-ui-stocktake.md)）と、商品 CSV の `初期在庫`（下の項）で全部。在庫少の基準の欄（[69](69-ui-threshold-settings.md)）は cm のまま（D10）。
+- 入力: `m` の商品の数量欄は、前後の空白を除いた文字列（今の整数の欄の `parseRequiredSafeInteger` と同じ `trim`）が `^[0-9]+(\.[0-9]{1,2})?$` に全体で一致するときだけ受け、浮動小数を通さず cm の整数にする（整数部 × 100 + 小数部を右に 0 を埋めた 2 桁）。例: `1.3` → 130、`1.27` → 127、`2` → 200。小数 3 桁以上・指数表記・符号・空は入力の error で、丸めない。cm にした値が `9007199254740991`（JS の number で正確に運べる最大の整数）を超えれば入力の error（TS は整数部と小数部を `BigInt` か桁の比較で組み、number の掛け算を通さない。`90071992547409.91` → 9007199254740991 は受け、`90071992547409.92` は error。`1.15` → 115・`4.35` → 435 は number の `× 100` では 114・434 になる値）。`cm` と個数の単位の数量欄は今の整数の規則のまま。wire には cm の整数を送る（DTO の数量の型は変えない）。適用する数量欄は、商品登録の初期在庫（[51](51-ui-product-form.md) UI-01b-D22）、入庫（[61](61-ui-receiving.md)）、返品・交換（[63](63-ui-return-exchange.md)）、手動販売（[62](62-ui-manual-sale.md) UI-04-D18）、廃棄（[64](64-ui-disposal.md)）、棚卸しの実数（[73](73-ui-stocktake.md)）と、商品 CSV の `初期在庫`（下の項）で全部。在庫少の基準の欄（[69](69-ui-threshold-settings.md)）は cm のまま（D10）。
 - 商品 CSV の `初期在庫`（[30](30-biz-product-service.md) BIZ-01-D8）: 同じ行の `在庫単位` が `m` の行は、値を m の数として上の規則で cm にする（`25` → 2500、`26.15` → 2615。0 は受ける〈今の初期在庫と同じ〉。小数 3 桁以上・指数・符号は行の error `初期在庫の値が不正です: '{値}'`〈今の文〉で、丸めない。Rust は文字列の整数部と小数部を `i64` の checked の演算で組み、`f64` を通さない。cm にした値が `9007199254740991` を超えれば（上の UI の入力と同じ上限。i64 の溢れより手前）同じ行の error。10 cm 未満も上の規則どおり受ける）。`cm` と個数の単位の行は今の整数の規則のまま。Coordinator が店の事実（repo 外の回答台帳 L-214: 残り・仕入れ・値札は m）から決めた（2026-10-08）: 在庫計数 Excel の長さの商品は m で数えてあり、cm の整数で読むと `25` が 0.25 m で黙って入る。
 - 入力の行の数量の加算: 同じ商品を入力の行へ再追加したときの加算（入庫・返品・手動販売・廃棄）と、行の統合（返品の方向の切替え・廃棄の種別と理由が同じ行）は、入力の文字列をこの規則で cm の整数（個数と `cm` の単位は今の整数）にしてから整数で足し、表示の規則と同じ形（3 桁区切りなし）の入力の文字列に戻す。再追加で足す量は、その画面で商品を追加したときの数量の初期値（`m` の商品は `1` = 100 cm。手動販売は UI-04-D18）。例: `m` の `1.3` に再追加 → `2.3`、廃棄の `0.5` と `0.3` の統合 → `0.8`。文字列が規則に合わないときは今の fallback のまま（再追加はどの画面も初期値。統合は、廃棄は元の値〈統合先の文字列〉、返品の方向の切替えの合算は `"1"`〈今の `sumQuantities`〉）。今の helper は `Number.isInteger` で `1.3` を整数でないと見て初期値に戻す（申し送りの表）。
 - 表示: 長さの数量を m で表すとき、符号・整数部（3 桁区切り）・小数部 2 桁を整数の演算で作り、小数部の末尾の 0 を落とす（130 → `1.3 m`、127 → `1.27 m`、200 → `2 m`、-30 → `-0.3 m`、123456 → `1,234.56 m`）。長さの単位は `m`・`cm` ともこの m の形で出す（`cm` の商品の 130 も `1.3 m`。Coordinator が owner の決定 TD-203〈長さの商品の数量は m〉と TD-207〈長さは m・cm とも m で出す〉から決めた、2026-10-08。入力の単位〈`cm` の商品は cm の整数〉と保存値は変えない）。個数の単位は `10 個` `3 玉` の形（数と語の間に半角空白。今の `formatStockDisplay` と同じ）。数量を伴わない単位の表示（入力の行の単位欄）は D1 の表示の語（`cm` の商品の入力欄は `cm` のまま。入力の単位を示すため）。
@@ -148,6 +148,25 @@
 
 **SPEC-UNIT-D11 wire の単位の型**: wire に出る `stock_unit` はすべて generated enum `ProductStockUnit` にする（今 `string` の記録詳細の明細 6 種〈入庫・返品・手動販売・廃棄・CSV 取込み・棚卸し〉も）。棚卸しの計数の明細 `StocktakeItemDetail` は単位を持たないので足す（m の実数の入力に要る。[73](73-ui-stocktake.md)）。repo は DB の値を `parse_stock_unit` で読み、一覧に無い値は読取りの error。file 由来の商品 CSV の行（`ImportRow.stock_unit`）は `String` のまま（D-061 / D-064 の二層）。D3 の「表示する所」のために、単位を持たない wire の `DailySaleItem`・`AdjustedItem`・`IntegrityMismatch`・`StockAdjustment`・`ProductResponse` に `stock_unit: ProductStockUnit` を必須の field として足し（optional にしない）、`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `quantity: i64` を `count_points: i64`・`length_cm: i64`（D3 の集計の規則、TD-206・TD-207）の 2 つの必須の field に置き換え、`MonthlySaleItem` に `stock_unit: ProductStockUnit | null`（商品別の行だけ値。部門別は null）を足す。`MovementRecord` は変えない（在庫変動の画面は商品を 1 つ読んでから表を出す）。
 
+**安全な整数の範囲**（SPEC-UNIT-D11 の続き、2026-10-08）: 単位の lane と原価の lane の後に DB へ書く値、wire に出す値、画面に出す値のうち、cm・1/100 円・点の整数と、本 lane が計算を足す円の合計（表の 8・9）は、どれも `-9007199254740991` 以上 `9007199254740991` 以下（JS の number で正確に運べる範囲）に入る。入力の検査だけでなく、計算の後の値を次の表の「保証する所」が守る。検査は `biz::unit_amount::check_safe_integer` 1 つで行い、範囲外は書く前に `ValidationFailed`（書込みの経路は TX 全体を戻して DB を変えない、読取りの経路は error を返す）。表は 2026-10-08 に `rg -n 'apply_stock_change|update_stock_quantity|insert_movement|stock_quantity: initial' src-tauri/src --glob '!*test*'` と、売上・記録詳細・操作ログの数の field を当てて作った。
+
+| # | 値 | どの計算から来るか | 保証する所 |
+|---|---|---|---|
+| 1 | 在庫（`products.stock_quantity`）と変動の `quantity`・`stock_after`（入庫・返品・手動販売・廃棄・商品別売上 CSV の取込みの販売） | 今の在庫 + 明細の数量 | 共通の `apply_stock_change`（`inventory_service/common.rs:40`）が、受け取った `quantity` と計算後の `stock_after` を書く前に検査する（5 つの経路が通る 1 か所。今は i64 の `checked_add` だけ） |
+| 2 | 在庫（商品登録・商品 CSV の新しい行の初期在庫） | 入力 | BIZ の create（`product_service.rs:957` の隣）と CSV の preview・commit が初期在庫を検査する（UI の入力の規則〈D3〉と同じ上限を、UI を通らない command でも守る） |
+| 3 | 在庫（商品別売上 CSV の取込みの取消の補正） | 今の在庫 − 取り消す変動の和（`csv_import_service/commit.rs:257`〜`:274`、今は `+` で溢れも見ない） | 和と補正後の在庫を checked で求め、書く前に検査する |
+| 4 | 在庫（整合性の補正）と `IntegrityMismatch`・`StockAdjustment`・`integrity_check`/`integrity_fix` の detail_json の数（`stock_quantity`・`movements_sum`・`difference`・`old_stock`・`new_stock`・`adjustment`） | 変動の和と、在庫との差（範囲内の 2 値の差でも 2 倍まで広がる） | `run_integrity_check`・`fix_integrity` が wire・detail_json・DB に出す前に各値を検査する |
+| 5 | 在庫（棚卸しの補正）と棚卸しの差異（`current_difference`・`AdjustedItem.difference`・記録詳細の `adjustment_quantity`・`stock_after`） | 実数（入力）と在庫の差 | 実数は D3 の入力と BIZ の `update_count` が検査する。差と補正後の在庫は、棚卸しの確定の新方式（⑤）が書く前に検査する |
+| 6 | 原価（1/100 円。products・明細・price_history、`CostDiff`、操作ログの `cost_price_centi`） | 入力、vC の 100 倍 | BIZ の create・update・revise・CSV・入庫・廃棄の上限の検査（D5、[31](31-biz-inventory-service.md)）と vC の範囲検査（[22](22-mnt-migration.md) §16） |
+| 7 | 行の金額（1/100 円） | 原価 × 数量 ÷ 基準数量（i128） | 範囲を問わない（十進の文字列、D6） |
+| 8 | 合計（円）: 入庫の `total_cost`、廃棄の `total_loss_cost`、棚卸しの `stocktakes.total_cost`、棚卸し記録詳細のロス原価の合計、廃棄の入力画面の合計 | `cost_total_yen` | 呼ぶ所が wire・DB に出す前に検査する（`cost_total_yen` 自身には検査を足さない。今の test の境界〈`i64::MAX`〉を保つため）。TS の twin は `BigInt` で計算し、範囲外なら合計の欄に `—` |
+| 9 | 手動販売の金額の初期値 | 売価 × 数量 ÷ 基準数量 | BIZ の `sale_amount_yen` が検査する。TS の twin は `BigInt` で計算し、範囲外なら初期値を空にする（保存は金額の欄の今の整数の検査で止まる） |
+| 10 | 売上の集計（`DailySaleItem.quantity`、`count_points`・`length_cm`、部門小計・合計、CSV） | SQL の和、種類ごとの和 | 段ごとに検査する（D3 の集計の規則、[34](34-biz-sales-service.md)）。TS の再集計は `Number.isSafeInteger` を外れたら `—` |
+| 11 | POS の数量（後続の Z004・EJ の lane） | file の文字列 | parser は i64 で読み、在庫へは 1 の `apply_stock_change` を通る。EJ の照合の積は i128 の中だけで、wire に出ない |
+| 12 | 画面の数量の表示（formatter） | 上の wire の値 | 上の各行で範囲内。formatter は整数の演算だけで作る（D3） |
+
+- 表の外: 売上の金額・売価の円（今の wire。本 lane は計算を変えない。D6 の残余）。
+
 **シグネチャ**（BIZ の新しい module `biz::unit_amount`。35 §20.5a の 3 関数をここへ移し、棚卸し・入出庫・手動販売の詳細が共有する）:
 ```
 pub enum StockUnitKind { Count, Length }
@@ -157,6 +176,7 @@ pub fn cost_line_centi(cost_price_centi: i128, quantity: i64, basis: i64, produc
 pub fn cost_total_yen(lines: &[i128]) -> Result<i64, BizError>
 pub fn sale_amount_yen(selling_price: i64, quantity: i64, basis: i64) -> Result<i64, BizError>
 pub fn stock_quantity_from_pos(quantity_hundredths: i64, unit: ProductStockUnit) -> Result<i64, PosQuantityError>
+pub fn check_safe_integer(value: i128, what: &str) -> Result<i64, BizError> // 安全な整数の範囲の表。±9007199254740991 の外は ValidationFailed
 pub fn format_length_m(quantity_cm: i64) -> String // D3 の m の表示（-30 → "-0.3 m"）。在庫警告の長さの商品だけで使う
 ```
 
