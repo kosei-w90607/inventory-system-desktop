@@ -7,7 +7,7 @@
 - Phase: implementing
 - Risk: R4
 - Plan Commit: 2fc7c022d1c1480868e02ca08c375703bcb0f131
-- Amendments: none
+- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -29,6 +29,7 @@
 9. plan-gate（round 3、上限、2026-10-08、Coordinator）: round 3 は Claude 側 approve・Codex 側 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal・Scope・AC と設計の方向を変えない）。起草役が `e6aead3d` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は owner の承認を待つ。reviewer の再確認は Final Review。
 10. plan-gate → plan-approved（2026-10-08、Coordinator、本 commit）: round 3 の disposition（同型指摘の一括是正）の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-210）。同じ問い合わせで介入の上限を 12 に（TD-211）決め、`2fc7c022` に反映した。Plan Commit = `2fc7c022`（承認した版）。reviewer の再確認は Final Review。
 11. plan-approved → implementing（2026-10-08、Coordinator、本 commit。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R4、Minimum 2）に出す。
+12. implementing のまま Gated Amendment 1（2026-10-08、Coordinator）: Final Review broad（head `c4f9822e`）の Claude 側 Fable 5.1 の reject（P2 1 / P3 1）と Codex GPT-6 Astra（発注 255）の reject（P2 4）を全件採用し、起草役が `9a6929fc` で直した（設計正本 10・34・36・51・53・57・66・67・74・75 と、packet の Scope の表・申し送り・Registration・Wire Contract、Matrix の Test Matrix の表）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本（R4 の Minimum 2）取り直す。
 
 ## Owner Effort Budget
 
@@ -372,3 +373,13 @@ round 3（上限、`5abaa7ed`）: Claude 側 fresh Opus 5.5 = approve（P3 5）�
 - P2（Codex #2）新 module の登録が不要という記述が検査の実装と逆。是正: 上のとおり。
 - P3: 統合の fallback を今の動作どおり廃棄と返品で分けた（Codex #3）。網羅の行を表の全行に（Codex #4）。CSV の取込みの確かめを在庫照会で（Opus #1）。L3-6 の期待（Opus #2）。CSV の初期在庫の上限（Opus #3）。入庫・廃棄の原価の上限（Opus #4）。行番号（Opus #5）。
 - 自己点検で直したもの: 「enum にすると TS の型検査が全部止める」の言い過ぎを、止まる所と止まらない所に分けた。migration の新しい関数を `pub(crate)` に、既存の module に足す `pub fn` は設計書の code block に書く義務を足した。`generate_bindings` の対象に TD-203・TD-207 の field を足した。
+
+Final broad（`c4f9822e`）: Claude 側 Fable 5.1 = reject（P2 1 / P3 1）、Codex GPT-6 Astra（発注 255、PR review 5447043067）= reject（P2 4）。P1 は 0。Coordinator が全件を採用し、起草役が `9a6929fc`（Gated Amendment 1）で直した。broad は helper に pending で記録済み。
+
+- P2（Fable）m の商品の初期在庫 0 を D3 が受けない。是正: 0 を受ける欄に商品登録の初期在庫を足し、51 §7.6 と Matrix の UI-01b-D22 の行に。
+- P2（Codex #1）個数の単位へ替えたときの在庫連動の提案が `ej_unverified` の保存の検査に当たる。是正: 51 UI-01b-D22 の提案を全 12 単位で 1 つの規則に（`ej_unverified` の間は全単位で false）。
+- P2（Codex #2）月次の商品別の数量が相殺で 0 になると種類を失う。是正: `MonthlySaleItem` に `stock_unit` を足し、行の単位で `0 m` / `0 点` を出す。
+- P2（Codex #3）新しい数量の集計の wire に安全な整数の境界が無い。是正: `count_points`・`length_cm` の ±9007199254740991 の検査と、TS の再集計の `Number.isSafeInteger`。
+- P2（Codex #4）合計の丸めの順序を誤る実装を落とす golden が無い。是正: `[16650, 50, 600]` centi → 173 円の golden を `cost_total_yen` を通る全経路の行に。
+- P3（Fable）TD-203 の表示する所の表の行を持つ 66・67・75・53・74・36 に proposed の pointer を足した。
+- 自己点検で直したもの: 部門別・合計の行が両方 0 なら `0 点` と明記、`cost_total_yen` を通る全経路で同じ golden を回す。
