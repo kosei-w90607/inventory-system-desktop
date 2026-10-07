@@ -4,7 +4,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -23,6 +23,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 3. design のまま止める（起草の時点）: owner の判断事項 1〜5 が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさなかった。
 4. design（owner の決定の反映、2026-10-06、起草役、本 commit）: owner の判断 1〜5 の決定（下の「owner の判断事項」）を D-111・設計正本・本 packet・Matrix に反映し、写しの設計（IO-10、BIZ-08-D5）を足した。Phase は design のまま。理由: 決定 1（SD は動かさない）の前提 P2・P3（Contract Probe）を Plan Gate の前に店の経験で確かめる。写しの細部の未決 A・B は Non-scope にしたので design → plan-draft を止める問いではない。
 5. design → plan-draft（2026-10-07、起草役、本 commit）: 条件「設計の出力が正本にある」は、IO-09・IO-10・IO-07-D5・BIZ-08-D3〜D5・CMD-12-D1・UI-07-D12〜D14・`daily_report_imports.settlement_no`・D-111 が下の Design Readiness の引く正本にあることで満たす。条件「未解決の設計の問いが無い」は、owner の判断 1〜5 が 2026-10-06 に決まり、決定 1 の前提 P2・P3 の扱いが 2026-10-07 に決まったことで満たす（P3 は店の実績〈TD-139〉で合格。P2 は試しを行わず〈owner 決定、TD-176〉、owner の承認した代わりの扱いと運用の制約〈D-111〉で閉じた。下の Contract Probe）。残る P1 は設計に依らず runtime の lane の L3 の前に確かめるもの、`XZ` の file が数千本になったときのレジの振舞いは (b) の lane の前提（D-111 の Revisit）、写しの未決 A・B は Non-scope で、どれも本 lane の設計の問いではない。
+6. plan-draft → plan-gate（2026-10-07、Coordinator、本 commit）: packet と Matrix（`docs/plans/test-matrices/2026-10-06-sd-direct-read.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。Draft PR #150 で Plan Review（fresh Opus + Codex）に出す。
 
 ## Owner Effort Budget
 
