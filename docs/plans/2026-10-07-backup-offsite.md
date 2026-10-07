@@ -23,16 +23,17 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 3. design のまま止めた（起草の時点、2026-10-07）: owner の判断事項 1〜3（下の「owner の判断事項」）が残り、design → plan-draft の条件「未解決の設計の問いが無い」を満たさない。アプリの仕組みは判断事項 1 の選択肢のどれでも同じに設計したので、決定が設計正本を変えるのは D-114 の Status・71 §71.11.6 の採った型・本 packet の Ordinary Operation と Data Safety だけの見込み（判断事項 2 で写しを含めると決めた場合は 71 §71.1・§71.11 の写す対象も変わる）。
 4. design → plan-draft（2026-10-08、起草役）: owner が判断事項 1〜3 に答え（repo 外の回答台帳 TD-196・TD-197）、聞く事実 P5・P6 にも答えた（TD-198・TD-199）。決定を設計正本（71 §71.1・§71.11.6・§71.11.7・§71.13、68 UI-11b-L3-8、`docs/SCREEN_DESIGN.md` の 1 日の動線）、D-114、D-111（未決 B の決着の追記）、`docs/backlog.md` に反映した。条件（`docs/DEV_WORKFLOW.md` Workflow State の表: design の出力が source docs にあり、未解決の設計の問いが無い）を満たす。P6 の帰結を和らげる画面の振舞い（持ち帰りの 1 本の古さを出す）は設計に足さず、owner に諮る提案として Coordinator へ渡した。今の設計はその振舞いを持たないと明記してあり（71 §71.11.6・§71.11.7、D-114 の Guarantee range と Revisit）、未解決の問いではなく範囲の追加の提案として扱う。owner が採れば design へ戻る。plan-gate へは Coordinator が進める。
 5. plan-draft → plan-gate（2026-10-08、Coordinator、本 commit）: 起草役が最終報告で owner に諮る提案とした「持ち帰りの 1 本の古さを和らげる画面の振舞い」（(a) 足さない／(b) 媒体ごとの最後に写した日を出す／(c) 注意も出す）を owner に諮り、(a) 足さないに決まった（repo 外の回答台帳 TD-202。差し込めば 60 秒の確認で写す今の設計〈71 §71.11.4〉のままでよい）。設計は変えず、Non-scope と D-114 の Revisit の記述のとおり。packet と Matrix（`docs/plans/test-matrices/2026-10-07-backup-offsite.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。AC1〜AC6 を plan-gate の直前に逐語で再測し一致（AC1 `103:`・`111:`・`706:`・`747:`、AC2 68 `114:`〜`116:` と 53 `213:`、AC3 `207:`〜`210:`、AC4 `939:`、AC5 3 本とも出力なし・exit 1、AC6 出力なし）。Draft PR で Plan Review（fresh Opus + Codex）に出す。
+6. plan-gate のまま是正（round 1、2026-10-08、Coordinator）: round 1 の reject を起草役が `7168aae9` で直した（下の Review Response）。設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。Contract Probe の P1 の結果を記録するまで plan-approved へ進めない。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 8（既定 6 から上げた。理由: 製品の運用の判断が 3 点〈owner の判断事項 1〜3〉と、owner に聞く機器・訪問の事実が 1 点〈Contract Probe の P5・P6、1 回の問い合わせにまとめる〉ある。1 回の問い合わせにまとめても decision point の数で数える）
+- 介入回数上限: 10（2026-10-08 に 8 から上げた、owner 承認〈repo 外の回答台帳 TD-205〉。理由: Plan Review round 1 で Contract Probe の P1 を Plan Gate の前に owner が確かめることになり、上限 8 を超えるため）。起票時: 8（既定 6 から上げた。理由: 製品の運用の判断が 3 点〈owner の判断事項 1〜3〉と、owner に聞く機器・訪問の事実が 1 点〈Contract Probe の P5・P6、1 回の問い合わせにまとめる〉ある。1 回の問い合わせにまとめても decision point の数で数える）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 8 | 5（2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉、機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉、持ち帰りの 1 本の古さを扱う仕組みの提案 1〈予備から、TD-202〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない） | 3（R4 の承認 1、Ready 1、merge 1） | 0 | 8 = 5 + 3 + 0 |
+| 介入 | 10 | 7（2026-10-08: 判断事項 1〜3 の 3〈TD-196・TD-197〉、機器・訪問の事実 1〈P5・P6、TD-198・TD-199〉、持ち帰りの 1 本の古さを扱う仕組みの提案 1〈TD-202〉、Contract Probe の P1 の依頼 1〈TD-204。結果の受領は同じ decision point〉、上限の改定 1〈TD-205〉。TD-190 の Q4 は lane の選択の前の決定で本 lane に数えない） | 3（R4 の承認 1、Ready 1、merge 1） | 0 | 10 = 7 + 3 + 0 |
 
 ## Risk
 
@@ -278,4 +279,12 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+round 1（`76eed0a4`）: Claude 側 fresh Opus 5.5 = reject（P2 2 / P3 6）、Codex GPT-6 Astra（発注 248）= reject（P1 4 / P2 8 / P3 1）。重なりは 4 件（Opus #1 = Codex #6、Opus #3 = Codex #9、Opus #5 = Codex #3、Opus #7 = Codex #13）。Coordinator が採否を決め、全件を採用した。是正は起草役の `7168aae9`。設計の方向（新しい module・command）は変えず、runtime の lane の Scope に `collect_today_backup_names` の完全一致・上書きしない公開・既存の `windows-sys` の feature の追加・失敗の種類の値の追加が加わる（packet の申し送りの表）ので、plan-gate に留める。
+
+- P1（Codex #1）正式名への rename が同じ秒の既存の backup を上書きする。是正: 71 §71.4.1「上書きしない公開」を新設（Windows は `MOVEFILE_REPLACE_EXISTING` を付けない `MoveFileExW`、衝突は既存を残して失敗）。
+- P1（Codex #2・#3、Opus #5）写す元を検査せず、空・別用途の DB を「戻せます」と判定する。是正: §71.12 に「このアプリの backup である」検査（版 0・必須の表の欠けを拒否）を足し、作成・PC の外へ写す元・復元の詳細の 3 つで共有する。不合格の写す元は `SourceUnverified` で、写しの公開・成功の記録・掃除へ進まない。
+- P1（Codex #4）媒体の検査と書込みが drive 文字でしか結び付かない。是正: §71.11.3 で 1 回の確認の中の読み書きを volume GUID path に固定し、copy・公開・掃除の直前に目印の `medium_id` を読み直す。
+- P2（Codex #5〜#11、Opus #1・#2）: 目印・状態の file の公開に親 directory の sync を足した（#5）。確認の結果に依らず status を invalidate する（#6・Opus #1）。未知の `format` の目印を作り直さず `MarkerUnsupported`（#7）。`.partial` の削除を規約に合う名前だけに（#8）。今日の判定を完全一致に（#9・Opus #3）。入れ替え時の短い確かめを 2 段に分けた（#10）。中断点ごとの Matrix の行と WAL の fixture（#11）。新しい PC での復元の後、媒体を登録し直す前に手動の backup を入れ、合格に「媒体の最新が戻した結果と合う」を足した（Opus #2）。
+- P2（Codex #12）外部前提の probe を Plan Gate の後に送っていた。是正: P1（USB メモリが `DRIVE_REMOVABLE`）を Plan Gate の前に owner が確かめる前提にした。owner は新しい USB メモリを用意してから確かめる（repo 外の回答台帳 TD-204）。結果を記録するまで plan-approved へ進めない。P3（空の読取り機の dialog）は、媒体を探す間は常に `SetThreadErrorMode(SEM_FAILCRITICALERRORS)` を設定する設計にして前提から外した。
+- P3: 目印の札を最大の N + 1 に（Opus #4）。抜去の途中・`Io`・`StorageFull` の行（Opus #6）。Design Readiness の決定済みの書き方（Opus #7・Codex #13）。Risk に Rollback / recovery notes（Opus #8）。
+- 起草役の判断で Coordinator が受けたもの: 空の DB の控えを「今日の backup あり」と数えない設計は採らない（店の記録の有無の経験則を backup に持ち込み、復元の時に自動で backup を作る案は restore の契約〈Non-scope〉を変えるため）。`windows-sys` の feature 名は module path から推した未確認の事実で、runtime の lane の build で確かめる。
