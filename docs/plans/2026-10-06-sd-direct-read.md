@@ -25,6 +25,7 @@ wave に属さない単独の lane（design-first、docs だけ。runtime は後
 5. design → plan-draft（2026-10-07、起草役、本 commit）: 条件「設計の出力が正本にある」は、IO-09・IO-10・IO-07-D5・BIZ-08-D3〜D5・CMD-12-D1・UI-07-D12〜D14・`daily_report_imports.settlement_no`・D-111 が下の Design Readiness の引く正本にあることで満たす。条件「未解決の設計の問いが無い」は、owner の判断 1〜5 が 2026-10-06 に決まり、決定 1 の前提 P2・P3 の扱いが 2026-10-07 に決まったことで満たす（P3 は店の実績〈TD-139〉で合格。P2 は試しを行わず〈owner 決定、TD-176〉、owner の承認した代わりの扱いと運用の制約〈D-111〉で閉じた。下の Contract Probe）。残る P1 は設計に依らず runtime の lane の L3 の前に確かめるもの、`XZ` の file が数千本になったときのレジの振舞いは (b) の lane の前提（D-111 の Revisit）、写しの未決 A・B は Non-scope で、どれも本 lane の設計の問いではない。
 6. plan-draft → plan-gate（2026-10-07、Coordinator、本 commit）: packet と Matrix（`docs/plans/test-matrices/2026-10-06-sd-direct-read.md`）が揃い commit されている（`docs/DEV_WORKFLOW.md` Workflow State の表）。Draft PR #150 で Plan Review（fresh Opus + Codex）に出す。
 7. plan-gate のまま是正（round 1、2026-10-07、Coordinator）: round 1 の reject を起草役が `d14cfacc` で直した（下の Review Response）。Scope と設計の方向は変えないので plan-gate に留め、round 2 で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。遷移の記録 5 の「UI-07-D12〜D14」は round 1 の番号の振り直し（UI-07-D15・D16）より前の記録。
+8. plan-gate のまま是正（round 2、2026-10-07、Coordinator）: round 2 の reject を起草役が `f8c816f5`（指摘 1〜9）と `6d3880c6`（Contract Probe P1）で直した（下の Review Response）。Scope に `24-io-csv-import-repo.md` を足したが Goal と設計の方向は変えないので plan-gate に留め、round 3（上限）で再 review する。
 
 ## Owner Effort Budget
 
@@ -284,3 +285,14 @@ round 1（`3ea4d25c`）: Claude 側 fresh Opus 5.5 = reject（P2 2 / P3 5）、C
 - P3: 申し送りの表の file:line と site 数を `6b765f75` で数え直し、merge 済みの lane を並走と書く文を直した（Opus #3・Codex #5）。`RegisterSdError` の使われない variant を消した（Opus #4）。§45.4 の commit の signature に `AppHandle` を足した（Opus #5）。Matrix に 3 行を足した（Opus #6）。D-111 の Decision の番号と AC の並びを直した（Opus #7）。AC7 の検索に除外と実測の期待を足した（Codex #6）。37 の「BIZ-08 は精算回数を保存しない」を保存の契約の文に置き換えた（Codex #4）。
 - 起草役の判断で Coordinator が受けたもの: D6 の commit の検査を TX の前（手順 1a）と写しの前に置いた（束だけで決まる検査で DB の状態に依らないため、TX の中と同値で、拒む束の写しを先に書かない）。D6 で止めたとき予備の経路へ案内しない（同じ SD の file を手で選び直して穴を開け直さないため）。
 - round 1 の後に足した事実: 2026-10-07 にレジ本体で精算した際のスマホ送信の失敗と SD への「バックアップ」（repo 外の回答台帳 TD-179）を Contract Probe の P4 に足した（Plan Gate の前提ではない）。
+
+round 2（`98aa7c24`）: Claude 側 fresh Opus 5.5 = reject（P2 1 / P3 3）、Codex GPT-6 Astra（発注 236）= reject（P2 7）。Coordinator が現物で裏取りし、全件を採用した。是正は起草役の `f8c816f5`・`6d3880c6`。Claude 側は旧前提の語の `rg` で packet の生 file を対象にし、本節の round 1 の 1 行（UI-07 の番号の衝突）を出力で見たと申告した（同じ内容は遷移の記録 7 にもあり、判定には使っていないと申告）。
+
+- P2（Opus #1・Codex #2 同じ筋）CMD が IO-09 の型 `RegisterSdSelection` を作ると `src-tauri/tests/architecture_test.rs:44-47` の `LAYER_RULES`（cmd → io 禁止）に反する（裏取り済み）。是正: 選択の enum を BIZ-08 の `DailyReportSdSelection` にした。
+- P2（Codex #1）IO-10 が一時 file を書いた後に `create_dir_all` する順で、初回に失敗する。是正: path を決める → `create_dir_all` → 一時 file → rename の順にし、Matrix に初回の行を足した。
+- P2（Codex #3）repository の契約（24）に `settlement_no` と精算回数で照合の候補を取る検索が無く、24 が Scope に無かった。是正: 24 を Scope に足し、`NewDailyReportImport.settlement_no` と §14.18a `find_same_settlement_daily_report_import` を書いた（wire の DTO は変えない）。
+- P2（Codex #4）予備の「ファイルを選んで取り込む」で SD 上の file を選ぶと出所が捨てられ、写し（D5）も D6 も効かなかった。是正: IO-09 `locate_in_register_sd_roots` で自動で見つけたレジの SD 上の file なら SD の入力として扱う。`DailyReportSourceFileRequest` に省略できる `source_path` を足す（新しい command は作らない。wire の契約を「この field を足すほかは変えない」に直した）。SD が固定 disk に見える reader の残余は D-111 の Guarantee range に書いた。
+- P2（Codex #5）D6・D4 が依る「SD の原本の精算回数が読め、CV17 の取込み後と同じ値」は R3 が依る未確認の外部前提で、Plan Gate の前の Contract Probe に当たる（DEV_WORKFLOW `## Plan Packet Rules`）。是正: Coordinator が CV17 Ver.2.0.1 の `CV17ST.dll` を静的に解析し（install・実行・ロードなし）、SD 取込みが原本を `MoveFileExA` で `XZ_BKUP` へ移し、移動後の file を `CopyFileA` で `EcrDatas` へ複製するだけで、中身を書く API を持たないことを確かめた（推定・強、SD-22 と合う）。P1 の行と依る文を書き直した。実機の前後比較と店の 1.1.1 との差は runtime の lane の L3 の前の確認として残す。
+- P2（Codex #6）TX の中の D4 の test が既存の snapshot の再検査に失敗を代行されていた。是正: active な ID に一致する cache を直接作り、D4 だけが拒む行にした。
+- P2（Codex #7）UI-07-D15 で `Incomplete` / `Unreadable` だけが残るときにも「新しい精算はありません」が出た。是正: 状態の数で 3 つに分けた。
+- P3（Opus #2・#3・#4）`source_files_json` は内部の serialize 用の型で書き wire 型に field を足さない、§37.4 の手順を 2a（D6）・2b（D5）にして読む順と実行の順をそろえた（round 1 の記録の「手順 1a」は今の 2a）、`XZ` と `XZ_BKUP` に同じ bytes があるとき写しの path は `XZ` を優先する、を書いた。
