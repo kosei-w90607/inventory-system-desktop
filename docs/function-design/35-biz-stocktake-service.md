@@ -50,7 +50,7 @@ begin・save・確定の拒否は[40の回復型](40-cmd-product.md)のcodeとta
 | 場面 | 拒否の条件 | code | targets | message |
 |---|---|---|---|---|
 | begin | 用途と所有者が合わない（`in_progress` で親が完了済み、`independent_recount` で参照明細の親が進行中、または同じ商品にactive明細がある） | count_target_changed | 商品の回復先1件 | 数える対象の棚卸しが変わりました。表示し直してから数えてください |
-| save | 保存済みrequestでなく、contextがない・contextのtokenが引数のtokenと違う・DB世代が違う・進行中の明細が別のrequestで保存し直されている（ADR D8の置き換わった古い要求） | count_context_invalid | 商品の回復先1件（contextがなく商品が分からなければ空） | 最新の記録を確認してください |
+| save | 保存済みrequestでなく、contextがない・contextのtokenが引数のtokenと違う・DB世代が違う・進行中の明細がこのbeginの後に別のrequestで保存し直されている（measuredで、request IDが引数のtokenと違い、observation_revisionがcontextの版より大きい。ADR D8の置き換わった古い要求） | count_context_invalid | 商品の回復先1件（contextがなく商品が分からなければ空） | 最新の記録を確認してください |
 | save | 商品revisionがbeginの値と違う | count_context_invalid | 商品の回復先1件 | 数えている間に記録が変わりました。もう一度数えてください |
 | save | 所有者・親状態がbeginの用途と合わなくなった | count_target_changed | 商品の回復先1件 | 数える対象の棚卸しが変わりました。表示し直してから数えてください |
 | 確定 | 確定対象の棚卸しに明細がある商品に未解消のflagがある、または確定対象の棚卸しにkind=legacyの明細がある（完了済みの棚卸しの明細は数えない。force_fillでも） | recount_required | 該当する明細ごと（action `active_count`、`recount_reasons` は未解消のflagの理由、legacyだけなら空） | flagがあれば「取り込んだ後に数の再確認が必要です」、legacyだけなら「更新前の記録です。今の数を確認してください」 |
