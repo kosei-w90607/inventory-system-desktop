@@ -59,7 +59,7 @@ fn migrate(conn: &DbConnection) -> Result<(), DbError>
 - 何を書かないか: DB の論理内容（表・行）・`schema_versions`・操作ログ・自動バックアップ。起動では操作ログの削除・起動時の自動バックアップ・復元後処理の補完が `prepare_database` の後にあるため、拒否すればどれも走らない。起こり得る物理的な書込みは SQLite の open / close によるもの（残った `-wal` の取込みと `-wal` / `-shm` の消去〈checkpoint〉と、rollback-journal mode の file〈`VACUUM INTO` で作った backup を復元した直後、legacy 移行の出力〉の `journal_mode` の header の書換え）で、どちらも論理内容を変えない
 - 同じ接続で DDL の前に読む理由: 別の read-only 接続は DB file が無い初回起動で開けない。同じ接続なら `schema_versions` が無い DB を版 0 と読み、最新版まで migrate できる。`schema_versions` が無いときだけ版 0 とし、その他の読取り失敗を版 0 に倒さない（新しすぎる DB を空の DB と誤認して書き込まないため）
 - 起動の文言: lib.rs は `SchemaNewerThanApp` だけを `StartupDatabaseError::SchemaNewerThanApp` へ写し、§12.4 の固有の文言で dialog を出して setup を Err で終える。`DatabaseInit` の「再起動してもう一度」は再起動で直らないため文言を分ける。他の init 失敗は `DatabaseInit` のまま
-- 復元への波及: 復元は差し替えた file を `open_existing_database`（= `configure_database` → `migrate`）で開くため、新しすぎる版の backup は差し替え後の open で拒否され、既存の「開けなければ現在の DB に戻す」経路で `RestoreError::Recovered` になる（71 §71.7）。restore に版の事前検査は足さない（同じ判定の二重化）
+- 復元への波及: 復元は差し替えた file を `open_existing_database`（= `configure_database` → `migrate`）で開くため、新しすぎる版の backup は差し替え後の open で拒否され、既存の「開けなければ現在の DB に戻す」経路で `RestoreError::Recovered` になる（71 §71.7）。restore の中に版の事前検査は足さない（同じ判定の二重化）。復元の前の確かめ（71 §71.12 `inspect_backup`、MNT-01-D9、D-114 で 2026-10-07 に追加）は step 1 の版の読取り（`read_current_version_without_ddl`）を同じ関数として共有し、利用者への固有の文言と、確認の手順へ進む前の停止だけを受け持つ。差し替え後の open の拒否は最後の守りとして残る
 - 回復: 新しい版のアプリを入れ直せば、拒否された DB はそのまま開ける（論理内容は不変）
 - Why: 旧版のアプリが新しい DB に書くと、旧版の知らない列・表・制約を無視した書込みでデータを傷める。書込みの前に止めるのが最も安全
 - Rejected alternatives: 読み取り専用で起動（画面ごとの書込み禁止が要り範囲が大きい）/ 警告して続行（書込みが起きる）/ 別の read-only 接続で先に版を読む（初回起動で開けない）

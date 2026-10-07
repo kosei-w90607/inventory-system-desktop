@@ -35,6 +35,7 @@ UI 層関数設計書の 2 段階テンプレ（業務ロジック有無で使�
 | `src/features/home/components/InventoryActionGrid.tsx` | 「入庫・出庫」2×2: 入庫記録 / 返品・交換 / 手動販売出庫 / 廃棄・破損 |
 | `src/features/home/components/MiscActionRow.tsx` | 「その他」3 card（2 列折返し）: 棚卸し / バックアップ / 設定 |
 | `src/features/home/components/ActionButton.tsx` | 引数: `navItemId: NavItem["id"]` と `variant?: "default" \| "primary"`。内部で `navigation.ts` を参照して `status / to / label / icon / description` を取得し、icon + 題名 + 1 行説明の card を描画。pending 時 Tooltip + `aria-disabled` + `onClick preventDefault` + `cursor-not-allowed`（D-2 採用、HTML disabled は pointer-events ブロックで Tooltip hover が起動しないため不採用、prop drilling 回避で navigation が SSOT） |
+| `src/features/home/components/OffsiteBackupWarning.tsx`（D-114、runtime は後続の lane） | PC の外の控えが古いときの warning Alert（UI-00-D12）。`useHomeSummary` の 4 query とは別の独立 query（`getOffsiteBackupStatus`、UI-11b と同じ query key） |
 | `src/features/home/hooks/useHomeSummary.ts` | 4 useQuery 束ね、`{ sales, lowStock, pluDirty, csvImports }` を返す（D-3） |
 | `src/features/home/hooks/useYesterdayDate.ts` | JST 昨日の `YYYY-MM-DD` + Visibility API listener（24:00 またぎで再計算 → setState → queryKey 変化で再 fetch、D-9 / P2-A 反映） |
 | `src/features/home/lib/count-stock-status.ts` | `ProductWithRelations[]` → `{ outOfStock, lowStock }` 純関数（D-1） |
@@ -207,6 +208,14 @@ D-3「独立 useQuery × 4」の直接の含意。1 クエリの失敗が他 3 �
 | lowStock クエリ失敗 | 在庫切れカード + 在庫少カード両方が「取得失敗」（同一 query 由来）。他は正常 |
 | pluDirty クエリ失敗 | PLU バー非表示（誤検知より沈黙を選ぶ）+ Sonner トースト「PLU 通知の取得に失敗しました」（既存） |
 | csvImports クエリ失敗 | 前日未取込み警告 UI 非表示（誤検知より沈黙を選ぶ）+ Sonner トースト「取込み履歴の取得に失敗しました」 |
+| PC の外の控えの status クエリ失敗（UI-00-D12） | 知らせの Alert 非表示 + Sonner トースト「PC の外の控えの状態を取得できませんでした」。他の表示は正常 |
+
+#### PC の外の控えの知らせ（UI-00-D12、D-114）
+
+- 決定: ホームは `getOffsiteBackupStatus`（71 §71.11.5）を独立の query で読み、`stale = true` のときだけ、前日未取込み警告と同じ段に warning の Alert を出す。文は「PC の外の控えが {N} 日写せていません。USB メモリが差してあるか確かめてください。」（N = `days_since_last_success`）、一度も写せていなければ「PC の外の控えがまだ写せていません。USB メモリが差してあるか確かめてください。」、`last_failure_kind = state_unreadable`（記録の file が読めない、71 §71.11.5）なら「PC の外の控えの記録を読めません。バックアップ画面で確かめてください。」（USB を差し直しても直らないため。直し方は 71 §71.11.7）。Alert の中に `/settings/backup` への link「バックアップ画面へ」。`stale = false`・用意の前（`prepared = false`）は何も出さない。古さの判定（3 日）は MNT-01 が持ち、ホームは計算しない
+- Why: owner 決定（2026-10-07、repo 外の回答台帳 TD-190 の Q4）「確かめて画面に出す」。店主はバックアップ画面を普段開かないので、写せない日が続いたことを毎日開くホームで知らせる。toast は見落とす（UI-11b-D11 の L3 所感）。用意の前に出さないのは、用意が導入時の owner の作業で、店主に向けた知らせにならないため
+- Rejected alternatives: 共通レイアウトの全画面に帯を出す（営業中の入力の画面にも出続ける）／ toast で毎日知らせる（見落とす・営業中に出る）／ ホームで日数を計算する（業務の規則を UI に置く）
+- 見直し契機: 「3 日」を owner が変えるとき（MNT-01-D8 の `OFFSITE_STALE_DAYS`）。ホームのデザインを刷新するとき
 
 **retry 戦略**:
 
@@ -313,3 +322,4 @@ UI-00 の回帰 test は、表示 component 用の手組み `UseQueryResult` fix
 | 2026-07-29 | 監査是正 順10 / P8b-2 | §53.10 `UI-00-D11` を追加し、実hook / QueryClientを通る4 query・派生値・部分障害、visibility日付またぎ、HomePage warning / toastのtest ownerとmock境界を確定。Vitest未着手の旧非目的を削除 |
 | 2026-09-16 | ㉔ mockup-c 採用 | 入口 card を icon + 題名 + 1 行説明（`NavItem.description`）にし、売上データ取込みを primary 強調。summary に PLU 未反映 card を追加（4 枚）。補助文言は状態の説明（D-089） |
 | 2026-09-16 | ㉔ GA4 | owner L3 round 1: PLU 未反映 card を撤去し summary 3 枚へ、入口 card の icon / 題名の揃えと上下余白、在庫切れ・在庫少の件数に状態色 |
+| 2026-10-07 | D-114（backup の PC の外の控え、design lane） | §53.1 に `OffsiteBackupWarning`、§53.5 に PC の外の控えの知らせ（UI-00-D12）と query 失敗の行を追加（runtime は後続の lane） |

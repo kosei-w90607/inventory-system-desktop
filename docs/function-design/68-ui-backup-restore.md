@@ -2,7 +2,7 @@
 
 > 親文書: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
 > 対応REQ: QR-05 / REQ-901
-> Design Phase: 2026-07-06。PR #141 で settings / log / backup 系 command bindings は配線済み。実効保存先常時表示（PR #144 L3 / Fable 裁定起源の follow-up）を追記。
+> Design Phase: 2026-07-06。PR #141 で settings / log / backup 系 command bindings は配線済み。実効保存先常時表示（PR #144 L3 / Fable 裁定起源の follow-up）を追記。2026-10-07: PC の外の控えと復元の前の確かめ（D-114、UI-11b-F8〜F10・D14〜D16）を追記（runtime は後続の lane）。
 
 UI-11b は、ローカル SQLite DB の手動バックアップ、バックアップ設定、バックアップ一覧、復元を operator が 1 画面で扱うための画面である。backend 契約の正本は [71-mnt-backup.md](71-mnt-backup.md) と [43-cmd-settings-log.md](43-cmd-settings-log.md) に置き、本書は UI 側の状態遷移、文言、安全確認、query cache の扱い、Windows native L3 を固定する。
 
@@ -24,6 +24,9 @@ UI-11b は、ローカル SQLite DB の手動バックアップ、バックア�
 | UI-11b-F5 | 自動バックアップ確認は実装済み。共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）から `commands.checkAutoBackup()` を呼び、`true` の時は backup list を invalidate/refetch して完了 toast を表示する（UI-11b-D13）。 |
 | UI-11b-F6 | 復元は、事前バックアップ作成、詳細提示、最終確認、`commands.restoreBackup({ backup_path })`、cache clear、ホーム遷移、結果 Alert の順で扱う。 |
 | UI-11b-F7 | 復元失敗時は CMD 層の再接続契約に合わせ、recoverable failure と double failure を UI 状態として分ける。 |
+| UI-11b-F8 | 「PC の外の控え」の card で、用意の状態・最後に PC の外へ写せた日時・差してある媒体・最後の失敗を出し、USB メモリを保存先として用意できる（UI-11b-D14、71 §71.11）。 |
+| UI-11b-F9 | 復元の詳細へ進む前に `commands.inspectBackup` で控えを確かめ、新しすぎる版・壊れた控え・読めない控えを固有の文言で止める。一覧の行に加え、「控えを選んで確かめる」で選んだ file（USB メモリの上の控え・新しい PC での復元）も同じ流れに入る（UI-11b-D15、71 §71.12・§71.13）。 |
+| UI-11b-F10 | 共通レイアウトの確認（UI-11b-D13）が `checkAutoBackup` の後に `checkOffsiteBackup` を呼び、写せなかったときに知らせる（UI-11b-D16）。 |
 
 ## 68.3 シグネチャ
 
@@ -39,6 +42,10 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 | `commands.listBackups()` | バックアップ一覧。 | `BackupInfo[]` |
 | `commands.getEffectiveBackupDir()` | `backup_path` 未設定時の実効保存先（アプリ既定フォルダ）常時表示。 | `String` |
 | `commands.restoreBackup(request)` | 選択バックアップへの復元。 | `RestoreBackupRequest { backup_path }` -> `null` |
+| `commands.getOffsiteBackupStatus()` | 「PC の外の控え」の card とホームの知らせ（D-114）。 | `OffsiteBackupStatus` |
+| `commands.prepareOffsiteMedium(request)` | USB メモリを保存先として用意（D-114）。 | `PrepareOffsiteMediumRequest { selected_path }` -> `OffsiteMediumView` |
+| `commands.checkOffsiteBackup()` | 共通レイアウトの確認から PC の外へ写す（D-114、UI-11b-D16）。 | `OffsiteCheckResult` |
+| `commands.inspectBackup(request)` | 復元の前の確かめと「控えを選んで確かめる」（D-114、UI-11b-D15）。 | `InspectBackupRequest { backup_path }` -> `BackupInspection` |
 
 ## 68.4 処理ステップ
 
@@ -69,10 +76,17 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 3. 取得失敗時は表示行そのものを出さない。手動バックアップ・復元等の他機能は取得失敗の影響を受けない。
 4. `backup_path` 保存成功後は本 query を invalidate し、新しい実効保存先へ表示を追随させる。
 
+### PC の外の控え（D-114、UI-11b-D14）
+
+1. 画面表示時に `getOffsiteBackupStatus` を読み、「PC の外の控え」の card に状態を出す（§68.9 の文言）。
+2. 「この USB メモリを控えの保存先にする」は native directory picker を開き、選んだ path を `prepareOffsiteMedium` に渡す。cancel は何もしない。成功時は status を invalidate し、「控え N を PC の外の控えの保存先にしました」を success Alert で出す。失敗は `CmdError` の固定の文（43 §43.8.2〜§43.8.5）を card の中に出し、status は変えない。
+3. 取得失敗時は card の中に「PC の外の控えの状態を取得できませんでした」と再読込 button を出す。手動バックアップ・復元等の他機能は影響を受けない。
+
 ### 復元
 
-1. 一覧行から復元対象を選ぶ。
-2. 詳細提示で日時・サイズ・補助的なファイル名 / パスを表示し、「この時点の状態に戻ります。この控えより後に記録した内容は消えます」を表示する。
+1. 一覧行から復元対象を選ぶ。または「控えを選んで確かめる」で native file picker（`.db`）から file を選ぶ（USB メモリの上の控え、新しい PC での復元。UI-11b-D15）。
+1a. 選んだ控えに `inspectBackup` を行う（`restore_inspecting`）。`newer_than_app`・`quick_check_ok = false`・`Err` なら `restore_blocked` で固有の文言を出し、復元へ進む button を出さない（UI-11b-D15）。
+2. 詳細提示で日時・サイズ・補助的なファイル名 / パスと、確かめの結果（「この控えは戻せます」・商品の数・最後の記録の日時）を表示し、「この時点の状態に戻ります。この控えより後に記録した内容は消えます」を表示する。
 3. 第一段として `createBackup` を自動実行する。成功しない限り通常経路では復元へ進めない。
 4. 事前バックアップ自体が失敗した場合だけ、break-glass checkbox「今の状態は保存できませんが、復元を続けます」を表示する。operator が自分でチェックした時だけ最終確認へ進める。
 5. 最終確認 AlertDialog で「元に戻せません」と対象日時を再掲し、実行ボタンのラベルに対象日時を含める。
@@ -95,7 +109,11 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 | UI-11b-D10 | Windows native L3 で、手動バックアップファイル、復元によるデータ切替、復元前自動バックアップ、backup_path 変更後出力を目視確認する。double failure は自動テスト + 文言目視のみ。 | ファイル実体と DB 入れ替わりは native runtime でしか最終確認できない。 |
 | UI-11b-D11 | 復元成功の success Alert はホーム遷移後に表示する one-shot 通知とし、受け渡しは frontend の in-memory flag で行う。router / history state・URL search param は使わない。ホーム component は **mount 時に一度だけ** flag を component-local 表示 state へ取り込み（取り込みと同時に flag を消去）、**その mount 中は Alert を表示し続ける**（他 query の更新や再 render で消さない）。非表示になるのは unmount 後の再訪・reload・アプリ再起動・通常到達（flag なし）のみ。React StrictMode の二重 mount でも表示される Alert は 1 個。navigate が reject された場合は flag を消去し、次回ホーム到達で誤表示しない。復元失敗時は flag を set しない。 | history.state 経由は reload / 履歴再訪で残存し one-shot 性の証明が実装依存になる。in-memory は消滅が構造的に保証される。render 中の module read で consume する実装は StrictMode の discard render が flag を消費し Alert 不可視になり得るため、mount 時取り込み + mount 中表示維持を契約とする（表示寿命を規定しないと PR #144 L3「toast 見落とし」問題を再生産する）。D4 / F6 の「遷移先で success Alert」契約の実装機構を固定する。 |
 | UI-11b-D12 | 復元成功 Alert を表示する mount effect は、D11 の one-shot flag を component-local state へ取り込んだ時に `scrollPageToTop()` を呼び、Alert の初期可視性を保証する。flag なしの通常 Home 到達では scroll しない。後続の実装 PR はこの negative test を完了条件とする（DSR-17 分類③）。 | 成功 Alert が下部 scroll 位置のまま画面外になる owner Windows native L3 P2（2026-08-29）。D11 の Alert 表示契約に可視性保証が欠けていた。 |
-| UI-11b-D13 | 自動バックアップの確認（71 §71.8 のフロントエンドタイマー）は `useAutoBackupCheck`（backup-restore feature）が持ち、共通レイアウト（UI-12 `RootLayout`）が 1 回 mount する。mount 時に 60 秒の interval を 1 本張り、unmount で外す。mount の瞬間には呼ばない（起動時の確認は Rust の setup hook が持つ）。バックアップ画面は自分の interval を持たない。**実行中の guard**: 前の回の `checkAutoBackup` が解決するまで次の回は呼ばない（backend の Mutex は DB 処理を直列にするが、command の呼出しの積み上がりは防がない）。**通知**（owner 決定 2026-09-25 = (a)）: `true` なら backup list を invalidate し成功 toast `自動バックアップを作成しました`（当日のバックアップが無いときの即時作成を含め、1 日に数回まで）。`false` は何もしない。失敗は連続失敗の最初の 1 回だけ toast `自動バックアップ確認に失敗しました`（id `backup-auto-check-error`）、`true` / `false` が返れば連続失敗を解く。**復元の間の停止**: `BackupRestorePage` は `commands.restoreBackup` を呼ぶ前に `suspendAutoBackupCheck()` を呼ぶ（実行中の確認の解決は待たない）。停止の flag と世代番号は module scope の in-memory state（UI-11b-D11 と同じ形、reload / 再起動で初期値）で、停止のたびに世代番号を 1 進める。確認は呼ぶ時点の世代を控え、結果（`true` / `false` / 失敗）が届いた時点の世代と違えばその結果を捨てる（invalidate・toast・連続失敗の更新をしない。捨てたときも実行中の guard は解く）。停止の前に始まった確認の結果は、停止中に届いても、停止 → 復元 → 再開の後に届いても捨てられる。復元の結果が `restore_failed_unrecoverable` / `restore_durability_unknown` の 2 種なら止めたまま（再起動まで）、それ以外（成功・`restore_failed_recovered` などの fatal でない Err・IPC の例外）は `resumeAutoBackupCheck()` で再開する（世代番号は戻さない）。 | 71 §71.8 は画面に依らない 60 秒ごとの確認を定めるが、確認がバックアップ画面を開いている間しか動かず、設定時刻のバックアップが取れない日が残っていた。全 route の親である共通レイアウトに置けば test で配線を確かめられる。結果が届いた時点で停止中かだけを見ると、再開の後に届いた古い `true` が成功 toast と一覧の invalidate を起こすため世代番号で比べる。棄却: §71.8 を実装に合わせて弱める / `main.tsx` に置く（配線を source 文字列でしか確かめられない）/ 実行中の確認の解決を待ってから復元する（待機中の確認は lock を取るまで file に触れず、結果を捨てれば足りる）/ 失敗を毎分 toast（売上の入力中などに毎分出る）。 |
+| UI-11b-D13 | 自動バックアップの確認（71 §71.8 のフロントエンドタイマー）は `useAutoBackupCheck`（backup-restore feature）が持ち、共通レイアウト（UI-12 `RootLayout`）が 1 回 mount する。mount 時に 60 秒の interval を 1 本張り、unmount で外す。mount の瞬間には呼ばない（起動時の確認は Rust の setup hook が持つ）。バックアップ画面は自分の interval を持たない。**実行中の guard**: 前の回の `checkAutoBackup` が解決するまで次の回は呼ばない（backend の Mutex は DB 処理を直列にするが、command の呼出しの積み上がりは防がない）。**通知**（owner 決定 2026-09-25 = (a)）: `true` なら backup list を invalidate し成功 toast `自動バックアップを作成しました`（当日のバックアップが無いときの即時作成を含め、1 日に数回まで）。`false` は何もしない。失敗は連続失敗の最初の 1 回だけ toast `自動バックアップ確認に失敗しました`（id `backup-auto-check-error`）、`true` / `false` が返れば連続失敗を解く。**復元の間の停止**: `BackupRestorePage` は `commands.restoreBackup` を呼ぶ前に `suspendAutoBackupCheck()` を呼ぶ（実行中の確認の解決は待たない）。D-114 の後は、控えの確かめの開始の時点で UI-11b-D15 の停止（実行中の回の完了を待つ）が先に効き、ここでの呼出しは止めたままの状態に重ねるだけになる（世代番号は進む）。停止の flag と世代番号は module scope の in-memory state（UI-11b-D11 と同じ形、reload / 再起動で初期値）で、停止のたびに世代番号を 1 進める。確認は呼ぶ時点の世代を控え、結果（`true` / `false` / 失敗）が届いた時点の世代と違えばその結果を捨てる（invalidate・toast・連続失敗の更新をしない。捨てたときも実行中の guard は解く）。停止の前に始まった確認の結果は、停止中に届いても、停止 → 復元 → 再開の後に届いても捨てられる。復元の結果が `restore_failed_unrecoverable` / `restore_durability_unknown` の 2 種なら止めたまま（再起動まで）、それ以外（成功・`restore_failed_recovered` などの fatal でない Err・IPC の例外）は `resumeAutoBackupCheck()` で再開する（世代番号は戻さない）。 | 71 §71.8 は画面に依らない 60 秒ごとの確認を定めるが、確認がバックアップ画面を開いている間しか動かず、設定時刻のバックアップが取れない日が残っていた。全 route の親である共通レイアウトに置けば test で配線を確かめられる。結果が届いた時点で停止中かだけを見ると、再開の後に届いた古い `true` が成功 toast と一覧の invalidate を起こすため世代番号で比べる。棄却: §71.8 を実装に合わせて弱める / `main.tsx` に置く（配線を source 文字列でしか確かめられない）/ 実行中の確認の解決を待ってから復元する（待機中の確認は lock を取るまで file に触れず、結果を捨てれば足りる）/ 失敗を毎分 toast（売上の入力中などに毎分出る）。 |
+
+| UI-11b-D14 | 「PC の外の控え」の card を設定の card の後に置く（D-114）。主情報は状態の 1 行: 用意の前「PC の外の控えはまだ用意されていません。USB メモリを差して「この USB メモリを控えの保存先にする」を押してください。」／ 写せた後「最後に PC の外へ写した控え: 10月7日 9:01（控え 1、確かめ済み）」／ 用意したがまだ写せていない「まだ PC の外へ写せていません」。`stale` なら warning の Alert「PC の外の控えが {N} 日写せていません。USB メモリが差してあるか確かめてください。」（一度も写せていなければ「PC の外の控えがまだ写せていません。USB メモリが差してあるか確かめてください。」。`last_failure_kind = state_unreadable` なら USB の文の代わりに「PC の外の控えの記録を読めません。バックアップ画面で確かめてください。」、§68.11）。副情報: 差してある媒体（「差してある控え: 控え 2」／「用意した USB メモリが差さっていません」）と、`last_failure_kind` の固定の文（43 §43.8.2〜§43.8.5 の表）。button は「この USB メモリを控えの保存先にする」と「控えを選んで確かめる」。媒体の path は補助テキスト | owner 決定（2026-10-07、repo 外の回答台帳 TD-190 の Q4）「確かめて画面に出す」。PC の中の backup の成功と PC の外の保全の成功を分けて見せる（同じ「最新」Badge にまとめると、USB が抜けていても安心して見える）。札の名前（控え N）は入れ替えの運用で、どの媒体が差してあるかを目で合わせるため。棄却: PC の中の一覧に PC の外の列を足す（行は PC の中の file で、PC の外の写しと 1 対 1 でない）／ 媒体の file の一覧を出す（運用者の判断は「最後に写せた日」だけで足りる） |
+| UI-11b-D15 | 復元の詳細へ進む前に `inspectBackup` で控えを確かめる（71 MNT-01-D9）。入口は一覧の行と「控えを選んで確かめる」（native file picker、`.db`）の 2 つで、後は同じ state machine（§68.7）を通る。止める文言: 新しすぎる版「この控えは、より新しい版のアプリで作られています。この版のアプリでは戻せません。新しい版のアプリを入れてから戻してください（今のデータは変わっていません）。」／ 壊れた控え「この控えは壊れているため戻せません。別の控えを選んでください。」／ 読めない控え「この控えを読めませんでした。別の控えを選んでください。」。戻せる控えは「この控えは戻せます」と、商品の数・最後の記録の日時（取れたときだけ）を詳細に添える。止めた控えでは事前バックアップを作らず、復元の button を出さない。確かめた後の差し替えの失敗（MNT-03-D11 の最後の守り）は今の `restore_failed_recovered` の表示のまま。**共通の確認の停止**: 控えを選んだ（file picker なら選び終えた）時点で、`inspectBackup` を呼ぶ前に `suspendAutoBackupCheckAndWait()`（停止して世代番号を進め、実行中の回〈`checkAutoBackup` と `checkOffsiteBackup` の両方〉の完了を待つ promise）を呼ぶ。止めたまま、`restore_blocked` / `restore_detail` / 事前バックアップ / 最終確認を通る。`ready` へ戻る（取消・閉じる・`restore_blocked` から一覧へ戻る）と `resumeAutoBackupCheck()`。画面を離れた（unmount）ときは、復元の実行中（`restoring`、`restoreBackup` の結果を待っている）でも、fatal の 2 種（`restore_failed_unrecoverable` / `restore_durability_unknown`）の後でもないときだけ `resumeAutoBackupCheck()` を呼ぶ。復元の実行中に離れたときは、`restoreBackup` の結果が届いた時点で UI-11b-D13 の規則（fatal でなければ再開、fatal なら再起動まで止めたまま）が決める。fatal の後は、離れても再起動まで止めたまま（UI-11b-D13 が優先）。Why: 媒体の掃除（71 §71.11.4 手順 g）と PC の中の保持日数の掃除が、詳細・最終確認の間に選んだ控えを消しうる（30 本の媒体で最も古い控えを選び、確認の間に 60 秒の確認が新しい控えを写すと、選んだ控えが消えて復元の対象が無くなる。Plan Review round 2）。D13 の「解決を待たない」は DB の lock を取るまで file に触れない `checkAutoBackup` だけの前提で、DB の lock を持たずに媒体の file を消す `checkOffsiteBackup` には成り立たない | 新しすぎる版の backup の復元が「もう一度お試しください」になり、何度試しても失敗する理由が伝わらなかった（`docs/backlog.md` の「保存と起動の守りの follow-up」の (2)）。新しい PC での復元（71 §71.13）は今の一覧（PC の中の保存先）に媒体の控えが出ないので、file を選ぶ入口が要る。「控えを選んで確かめる」と「戻す」を 1 つの入口にし、確かめるだけなら詳細を見て閉じればよい（復元は 2 段の確認〈UI-11b-D3〉が守る）。棄却: 新しい error kind で復元の後に知らせる（MNT-01-D9 の棄却案）／ 「確かめる」と「ファイルから戻す」を別の button にする（同じ選択と確かめを 2 か所に置く） |
+| UI-11b-D16 | 共通レイアウトの確認（UI-11b-D13 の `useAutoBackupCheck`）は、`checkAutoBackup` の結果が届いた後（成否に依らず）に同じ回の中で `checkOffsiteBackup` を呼ぶ。mount の瞬間にも 1 回だけ `checkOffsiteBackup` を呼ぶ（起動直後に写し、ホームの知らせが連休明けに出続けないため。`checkAutoBackup` は mount で呼ばない UI-11b-D13 のまま）。実行中の guard・停止・世代番号は UI-11b-D13 と同じものを使う（復元の間は写さない）。結果: 結果の種類に依らず（`not_prepared` / `no_local_backup` / `medium_missing` / `up_to_date` / `copied` と失敗のどれでも。世代番号が違って捨てた結果は除く）PC の外の控えの status を invalidate する（差してある媒体の表示は媒体の抜き差しで変わり、`medium_missing`・`up_to_date` でも変わりうる。日をまたいだ日数も 60 秒ごとに読み直る）。成功の toast は出さない（画面とホームの日時が知らせる）。失敗は連続失敗の最初の 1 回だけ toast「PC の外の控えを写せませんでした」（id `backup-offsite-error`）。`medium_missing` などの失敗でない結果は toast を出さない | 自動バックアップの確認と同じ場所・同じ停止の仕組みに置けば、復元との競合の守りを二重に持たない。毎日の成功を toast にすると営業中に毎朝出る（UI-11b-D13 の成功 toast は自動バックアップの作成に限る）。媒体が抜けているだけでは toast にせず、日数で知らせる（ホーム UI-00-D12、本書 D14）。棄却: 自動バックアップの command の中で写す（DB の Mutex を持ったまま数秒の copy をする）／ 別の interval を張る（停止と世代番号を二重に持つ）／ `copied` と失敗のときだけ invalidate する（抜いた・差し戻した媒体の表示が 60 秒たっても変わらない、Plan Review round 1） |
 
 ## 68.6 Route / Components
 
@@ -103,19 +121,22 @@ UI は PR #141 で生成済みの `commands.*` だけを使う。
 |---|---|
 | Route | `/settings/backup` は実装済み。`src/config/navigation.ts` の `ui-11b` も active 化済み。 |
 | Page | `BackupRestorePage` |
-| Components | `BackupSettingsPanel`, `ManualBackupPanel`, `BackupListTable`, `RestoreDetailPanel`, `RestoreConfirmDialog`, `BackupPathPicker`, `RestoreFatalAlert` |
-| Query hooks | `useBackupSettings`, `useBackupList`, `useEffectiveBackupDir`, `useCreateBackup`, `useUpdateBackupSetting`, `useRestoreBackup`, `useAutoBackupCheck` |
-| Native API | `@tauri-apps/plugin-dialog` の directory picker。自由入力 path は置かない。 |
+| Components | `BackupSettingsPanel`, `ManualBackupPanel`, `BackupListTable`, `RestoreDetailPanel`, `RestoreConfirmDialog`, `BackupPathPicker`, `RestoreFatalAlert`, `OffsiteBackupPanel`（D-114） |
+| Query hooks | `useBackupSettings`, `useBackupList`, `useEffectiveBackupDir`, `useCreateBackup`, `useUpdateBackupSetting`, `useRestoreBackup`, `useAutoBackupCheck`, `useOffsiteBackupStatus`・`usePrepareOffsiteMedium`・`useInspectBackup`（D-114） |
+| Native API | `@tauri-apps/plugin-dialog` の directory picker（保存先・USB メモリ）と file picker（「控えを選んで確かめる」、`.db`）。自由入力 path は置かない。 |
 
 ## 68.7 State Machine
 
 | State | Entry / action | Next | UI behavior |
 |---|---|---|---|
 | `loading` | `getSettings` + `listBackups` | `ready` / `load_error` | skeleton または progress を表示。 |
-| `ready` | 初期表示完了 | `creating_backup` / `path_selecting` / `restore_detail` | 設定、手動作成、一覧、復元導線を操作可能。 |
+| `ready` | 初期表示完了 | `creating_backup` / `path_selecting` / `restore_inspecting` / `offsite_preparing` | 設定、手動作成、一覧、復元導線、PC の外の控えを操作可能。 |
+| `offsite_preparing` | directory picker → `prepareOffsiteMedium` | `ready` | cancel は state 変更なし。成功・失敗とも `ready` へ戻り、結果を card の中に出す（D-114、UI-11b-D14）。 |
+| `restore_inspecting` | 一覧行の選択、または「控えを選んで確かめる」の file picker → 共通の確認を止めて実行中の回の完了を待つ → `inspectBackup` | `restore_detail` / `restore_blocked` / `ready` | file picker の cancel は `ready`（止めない）。確かめの間は復元の導線を disabled（D-114、UI-11b-D15）。 |
+| `restore_blocked` | 新しすぎる版・壊れた控え・読めない控え | `ready` / `restore_inspecting` | 固有の文言（UI-11b-D15）。復元の button を出さず、事前バックアップを作らない。 |
 | `creating_backup` | 手動 `createBackup` | `ready` / `backup_error` | 画面内の destructive ではない操作を一時 disabled。 |
 | `path_selecting` | directory picker | `ready` / `path_update_error` | cancel は state 変更なし。 |
-| `restore_detail` | 一覧行選択 | `pre_restore_backup` / `ready` | 対象日時・サイズ・「この控えより後に記録した内容は消えます」を表示。 |
+| `restore_detail` | 確かめで戻せると分かった控え（一覧行・選んだ file） | `pre_restore_backup` / `ready` | 対象日時・サイズ・確かめの結果・「この控えより後に記録した内容は消えます」を表示。 |
 | `pre_restore_backup` | 自動 `createBackup` | `restore_confirm` / `pre_backup_failed` | 成功しない限り通常復元へ進めない。 |
 | `pre_backup_failed` | 事前バックアップ失敗 | `restore_confirm` / `restore_detail` | break-glass checkbox を表示。checkbox 未チェックでは進行不可。 |
 | `restore_confirm` | 最終 AlertDialog | `restoring` / `restore_detail` | 「元に戻せません」と日時を再掲。実行ボタンに日時を含める。 |
@@ -157,7 +178,8 @@ restore_* 3 kind の表示（recoverable の定型 message、fatal Alert）に�
 - 最終確認 title: `元に戻せません`
 - 復元実行 button: `7月3日 21:00 の控えに戻す`
 - double failure: `アプリを閉じて、もう一度開いてください`
-- 状態は色だけで表さない。`最新`、`保存先`、`復元できません`、`再起動が必要です` の日本語ラベルを主情報にする。
+- PC の外の控え（D-114、UI-11b-D14〜D16）: card の見出し `PC の外の控え`、button `この USB メモリを控えの保存先にする`・`控えを選んで確かめる`、用意の成功 `控え N を PC の外の控えの保存先にしました`、状態の文と止める文言は UI-11b-D14・D15、写せなかった toast `PC の外の控えを写せませんでした`、取得失敗 `PC の外の控えの状態を取得できませんでした`。
+- 状態は色だけで表さない。`最新`、`保存先`、`復元できません`、`再起動が必要です` の日本語ラベルを主情報にする。PC の外の控えの古さも日数の文で表す（warning の色だけにしない）。
 
 ## 68.10 Query Invalidation
 
@@ -166,6 +188,9 @@ restore_* 3 kind の表示（recoverable の定型 message、fatal Alert）に�
 | 設定保存成功 | backup settings query を invalidate。`backup_path` 変更時は backup list と実効保存先（`getEffectiveBackupDir`）も invalidate。 |
 | 手動 `createBackup` 成功 | backup list を invalidate/refetch。 |
 | `checkAutoBackup` が `true` | backup list を invalidate/refetch し、成功 toast を出す（共通レイアウトが mount する `useAutoBackupCheck` の 60 秒 interval（画面に依らない）、UI-11b-D13）。 |
+| `checkOffsiteBackup` の結果（種類に依らず、成功・失敗とも。世代番号が違って捨てた結果を除く） | PC の外の控えの status（`getOffsiteBackupStatus`）を invalidate（ホームの知らせも同じ query key。UI-11b-D16）。 |
+| `prepareOffsiteMedium` 成功 | 同じ status を invalidate。 |
+| 復元成功 | PC の外の控えの status も `queryClient.clear()` で消える（status は DB の外の file から読み直すので、復元で値は変わらない。71 §71.11.1）。 |
 | 復元成功 | React Query cache を `queryClient.clear()` で全消去。DB が丸ごと変わるため invalidate ではなく clear。 |
 | 復元成功後 | home route へ遷移し、遷移先で success Alert を出す。 |
 | 復元失敗 recovered | cache 全消去はしない。backup settings/list を refetch し、再試行可能なエラーとして表示する。 |
@@ -180,6 +205,10 @@ restore_* 3 kind の表示（recoverable の定型 message、fatal Alert）に�
 | backup_path 保存失敗 | 選択した path は未保存として扱い、現在の保存先表示を維持する。 |
 | 実効保存先取得失敗 | 「現在の保存先」表示行のみ非表示。手動バックアップ・復元等の他機能は継続して操作できる。 |
 | backup list 空 | `まだバックアップはありません` と表示し、手動作成導線を残す。 |
+| PC の外の控えの status 取得失敗 | card の中だけに取得失敗と再読込 button。他の card は操作できる。 |
+| PC の外の控えの記録の file が読めない（`last_failure_kind = state_unreadable`） | card に「PC の外の控えの記録を読めませんでした」。owner の直し方は 71 §71.11.7（`offsite-backup.json` を別の名前へ移し、差してある控えを登録し直す）。差し直しでは直らないので、USB を確かめる文にしない |
+| USB メモリの用意の失敗 | card の中に固定の文（43 §43.8.2〜§43.8.5 の表。レジの SD・USB メモリでない・新しい版のアプリで用意された媒体・空きなし・写せない・記録を読めない）。status は変えない。 |
+| 控えの確かめで止めた（新しすぎる版・壊れた・読めない） | `restore_blocked` の固有の文言（UI-11b-D15）。一覧へ戻って別の控えを選べる。 |
 | 事前バックアップ失敗 | 通常復元は block。DB 破損復旧シナリオとして break-glass checkbox を明示した時だけ進める。 |
 | restore 失敗 recovered | `バックアップの復元に失敗しました。現在のデータには戻しています。もう一度お試しください。` を表示し、操作可能状態へ戻す。 |
 | restore 失敗 unrecoverable | full-page destructive Alert。`バックアップの復元に失敗し、DB接続の復旧もできませんでした。アプリを閉じて、もう一度開いてください。` と表示し、画面内操作を disabled。 |
@@ -196,6 +225,10 @@ restore_* 3 kind の表示（recoverable の定型 message、fatal Alert）に�
 | UI-11b-L3-3 | 復元前自動バックアップ | 復元操作の第一段で新しい backup file が作成され、そのファイル実体を保存先で確認できる。 |
 | UI-11b-L3-4 | backup_path 変更 | native directory picker で新パスを選び、以降の手動バックアップが新パスへ出力される。 |
 | UI-11b-L3-5 | double failure path | 自動テストで状態分岐・文言・操作 disabled・60秒 interval 停止（UI-11b-D13 の停止を指す。共通レイアウトの確認が再起動まで止まったままになる）を担保する。実機での誘発は求めない。 |
+| UI-11b-L3-6 | USB メモリの用意と写し（D-114） | 用意の前の文が出る → USB メモリを差して用意 → card に「最後に PC の外へ写した控え: 今日の日時（控え 1、確かめ済み）」が出て、USB メモリの `InventoryBackup` に目印と正式名の `inventory_backup_YYYYMMDD_HHMMSS.db` がある（`.partial` が残らない）。 |
+| UI-11b-L3-7 | レジの SD を選んだとき（D-114、MNT-01-D10） | レジの SD（または `CASIO\SR500_550_4000` を置いた試しの媒体）を選ぶと「これはレジの SD カードです…」が出て、SD に何も書かれない（前後で SD の一覧が同じ）。 |
+| UI-11b-L3-8 | 2 本目の用意と入れ替え（D-114） | 1 本目を抜いてから 2 本目を差し、「控え 2」として用意する（店の PC は空きの USB の口が 1 つで、2 本を同時に差さない。repo 外の回答台帳 TD-198）→「差してある控え: 控え 2」と今日の日時。2 本目を抜いた状態では「用意した USB メモリが差さっていません」。1 本目を差し直すと 60 秒以内に「差してある控え: 控え 1」（drive 文字が変わってもよい）。 |
+| UI-11b-L3-9 | 控えを選んで確かめる（D-114、UI-11b-D15） | USB メモリを差し直した後、その最新の控えを選ぶと「この控えは戻せます」と商品の数・最後の記録の日時が出る。閉じても DB は変わらない。 |
 
 L3 証跡に実店舗 DB、実 JAN、実商品名、価格、backup file、log file は入れない。必要な差分確認は synthetic / test DB で行う。
 
@@ -203,7 +236,9 @@ L3 証跡に実店舗 DB、実 JAN、実商品名、価格、backup file、log f
 
 - UI-11a 閾値設定画面。
 - UI-11c 操作ログ一覧画面。
-- backend `check_auto_backup` の仕様変更。
+- backend `check_auto_backup` の仕様変更（D-114 は今日の backup の判定を正式名だけにした〈MNT-01-D7〉が、画面の契約は変えない）。
 - backup retention days の cleanup logic 変更。
-- restore_backup 契約の変更。
+- restore_backup 契約の変更（D-114 の確かめ〈UI-11b-D15〉は restore の前に足し、restore の command・error kind・2 段の確認は変えない）。
+- 新しすぎる版・壊れた控えを実機で作る manual gate（自動テストで担保。`docs/DEV_WORKFLOW.md` の L3 Eligibility の条件 (3)）。
+- PC の外の控えの「古い」の知らせを実機で 3 日待って見る manual gate（状態の file の日時を変える fixture は L3 Eligibility の条件 (3) に当たるので自動テストで担保。文言の目視は runtime の lane の human visual confirmation で扱う）。
 - DB 破損状態を実機で意図的に作る manual gate。
