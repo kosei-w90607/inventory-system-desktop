@@ -4,9 +4,9 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R4
-- Plan Commit: pending
+- Plan Commit: 2fc7c022d1c1480868e02ca08c375703bcb0f131
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
@@ -27,6 +27,7 @@
 7. plan-draft → plan-gate（round 2 へ、2026-10-08、Coordinator、本 commit）: 是正後の packet と Matrix が commit されている（`a3b64f3f`）。AC1〜AC6 の期待は変わらず、起草役が逐語で再測して一致（`11`・`2`・`4`・`0`・`0`・`0`）。round 2 で再 review する。
 8. plan-gate のまま是正（round 2、2026-10-08、Coordinator）: round 2 の reject を起草役が `74125ea7` で直した（下の Review Response）。Goal・AC・Scope の予定 file は変えないので plan-gate に留め、round 3（上限）で再 review する（`docs/DEV_WORKFLOW.md` Workflow State「a plan-gate rejection corrected in place stays at plan-gate」）。
 9. plan-gate（round 3、上限、2026-10-08、Coordinator）: round 3 は Claude 側 approve・Codex 側 reject（P1 0）。`docs/DEV_WORKFLOW.md` Review Rules の round 天井に達したので round 4 は回さず、残った findings を disposition「同型指摘の一括是正」とした（どれも正本の書き足りない所を埋める是正で、Goal・Scope・AC と設計の方向を変えない）。起草役が `e6aead3d` で直し、Coordinator が現物で確かめた（下の Review Response）。plan-approved は owner の承認を待つ。reviewer の再確認は Final Review。
+10. plan-gate → plan-approved（2026-10-08、Coordinator、本 commit）: round 3 の disposition（同型指摘の一括是正）の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-210）。同じ問い合わせで介入の上限を 12 に（TD-211）決め、`2fc7c022` に反映した。Plan Commit = `2fc7c022`（承認した版）。reviewer の再確認は Final Review。
 
 ## Owner Effort Budget
 
