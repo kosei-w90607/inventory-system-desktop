@@ -345,6 +345,7 @@ pub fn list_movements(
 /// 21-io-inventory-repo.md「時点証拠契約（proposed）」
 #[cfg(test)]
 pub(crate) mod time_evidence {
+    use super::NewMovement;
     use crate::db::{DbConnection, DbError};
     use rusqlite::OptionalExtension;
 
@@ -398,10 +399,84 @@ pub(crate) mod time_evidence {
         Ok(revision)
     }
 
+    /// 商品の movement の最大 ID（void 済みを含む、空は 0）。ledger 上限取得
+    pub(crate) fn max_movement_id(conn: &DbConnection, product_code: &str) -> Result<i64, DbError> {
+        Ok(conn.query_row(
+            "SELECT COALESCE(MAX(id), 0) FROM inventory_movements WHERE product_code = ?1",
+            [product_code],
+            |row| row.get(0),
+        )?)
+    }
+
+    /// 棚卸しの補正区分（`completion` / `recount`）付きの movement を INSERT し ID を返す。
+    /// ⑤ で `NewMovement` へ移すまで `insert_movement` と別の関数（21 proposed）
+    pub(crate) fn insert_stocktake_movement(
+        conn: &DbConnection,
+        movement: &NewMovement,
+        adjustment_kind: &str,
+        recount_id: Option<i64>,
+    ) -> Result<i64, DbError> {
+        let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+        conn.execute(
+            "INSERT INTO inventory_movements (
+                product_code, movement_type, quantity, stock_after, reference_type, reference_id,
+                note, is_voided, created_at, stocktake_adjustment_kind, stocktake_recount_id
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10)",
+            rusqlite::params![
+                movement.product_code,
+                movement.movement_type.as_str(),
+                movement.quantity,
+                movement.stock_after,
+                movement.reference_type.map(|r| r.as_str()),
+                movement.reference_id,
+                movement.note,
+                now,
+                adjustment_kind,
+                recount_id,
+            ],
+        )?;
+        Ok(conn.last_insert_rowid())
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::db::inventory_repo::{MovementType, ReferenceType};
         use crate::db::test_support::{seed_product, setup_time_evidence_db};
+
+        #[test]
+        fn test_max_movement_id_req205_ledger_cursor_includes_voided() {
+            // REQ-205 / SPEC-STK-TIME-D1 / 20 proposed「ledger上限取得」: 空は 0、void 済みも数え、他の商品は数えない
+            let (_dir, conn) = setup_time_evidence_db();
+            seed_product(&conn, "TE-1");
+            seed_product(&conn, "TE-2");
+            assert_eq!(max_movement_id(&conn, "TE-1").unwrap(), 0);
+            let movement = |code: &str| NewMovement {
+                product_code: code.to_string(),
+                movement_type: MovementType::Stocktake,
+                quantity: 2,
+                stock_after: 2,
+                reference_type: Some(ReferenceType::Stocktake),
+                reference_id: Some(1),
+                note: None,
+            };
+            let id = insert_stocktake_movement(&conn, &movement("TE-1"), "recount", None).unwrap();
+            conn.execute(
+                "UPDATE inventory_movements SET is_voided = 1 WHERE id = ?1",
+                [id],
+            )
+            .unwrap();
+            insert_stocktake_movement(&conn, &movement("TE-2"), "completion", None).unwrap();
+            assert_eq!(max_movement_id(&conn, "TE-1").unwrap(), id);
+            let kind: String = conn
+                .query_row(
+                    "SELECT stocktake_adjustment_kind FROM inventory_movements WHERE id = ?1",
+                    [id],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(kind, "recount");
+        }
 
         fn state(conn: &DbConnection, code: &str) -> (i64, i64) {
             conn.query_row(
