@@ -225,8 +225,8 @@ baseline は 2026-10-07 に本 worktree（HEAD `95c0aeb0`、編集前）で逐�
 - AC2（決定の記録）: `rg -n '^## D-113' docs/decision-log.md` が 1 行で、その節に `owner の決定（2026-10-08、TD-195` の J1〜J4 と `Revisit` がある（`sed -n '/^## D-113/,$p' docs/decision-log.md | rg -c '^- owner の決定（2026-10-08、TD-195|^- Revisit'` が `2`）。baseline: `rg -n '\bD-113\b' docs | wc -l` → `0`。
 - AC3（既知の不整合の pointer）: 既知の不整合を書いた 3 file（`docs/backlog.md`・`docs/db-design/master-tables.md`・`docs/function-design/35-biz-stocktake-service.md`）がどれも `D-113` を含む（`rg -c 'D-113' <file>` が 1 以上）。baseline: `rg -n '100 倍になる' docs --glob '!docs/archive/**' --glob '!docs/research/**'` → 3 行（`docs/backlog.md:86`・`docs/db-design/master-tables.md:56`・`docs/function-design/35-biz-stocktake-service.md:451`）。
 - AC4（決定が正本に見える）: `rg -o '決定（owner、D-113 J[1-4]）' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | sed 's/.*J/J/' | sort -u` が `J1）` `J2）` `J3）` `J4）` の 4 行で、`rg -n '未[決]（owner、D-113' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l` が `0`（2026-10-08 に J1〜J4 の決定で「未決の 4 つが正本に見える」から改めた）。
-- AC5（traceability の入力を変えない）: `git diff 95c0aeb04a2fe397bd4125a5be0e43739174670f -- docs | grep -c '^[-+]>.*対応仕様'` が `0`。
-- AC6（docs だけ）: `git diff --name-only 95c0aeb04a2fe397bd4125a5be0e43739174670f | grep -vc '^docs/'` が `0`。
+- AC5（traceability の入力を変えない）: `git diff "$(git merge-base origin/main HEAD)" -- docs | grep -c '^[-+]>.*対応仕様'` が `0`。
+- AC6（docs だけ）: `git diff --name-only "$(git merge-base origin/main HEAD)" | grep -vc '^docs/'` が `0`。
 - AC7（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan docs/plans/2026-10-07-unit-extension.md` が ERROR 0（WARN は報告）。
 
 再実行（2026-10-08、J1〜J4 の決定の反映。本 worktree で逐語に実行。左は編集前 HEAD `749b21fed5b03ccf66146977f68acee5e99572d4`、右は反映後の作業木）:
@@ -239,8 +239,8 @@ baseline は 2026-10-07 に本 worktree（HEAD `95c0aeb0`、編集前）で逐�
 | AC3 | `rg -c 'D-113' <file>`（backlog・master-tables・35） | `2`・`4`・`1` | `2`・`4`・`1` |
 | AC4 | `rg -o '決定（owner、D-113 J[1-4]）' docs --glob '!docs/archive/**' --glob '!docs/plans/**' \| sed 's/.*J/J/' \| sort -u \| wc -l` | `0` | `4`（`J1）` `J2）` `J3）` `J4）`） |
 | AC4 | `rg -n '未[決]（owner、D-113' docs --glob '!docs/archive/**' --glob '!docs/plans/**' \| wc -l` | `19` | `0` |
-| AC5 | `git diff 95c0aeb04a2fe397bd4125a5be0e43739174670f -- docs \| grep -c '^[-+]>.*対応仕様'` | `0` | `0` |
-| AC6 | `git diff --name-only 95c0aeb04a2fe397bd4125a5be0e43739174670f \| grep -vc '^docs/'` | `0` | `0` |
+| AC5 | `git diff "$(git merge-base origin/main HEAD)" -- docs \| grep -c '^[-+]>.*対応仕様'` | `0` | `0` |
+| AC6 | `git diff --name-only "$(git merge-base origin/main HEAD)" \| grep -vc '^docs/'` | `0` | `0` |
 
 ## Design Readiness
 
