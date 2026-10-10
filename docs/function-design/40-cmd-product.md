@@ -186,6 +186,8 @@ struct PriceRevisionResult {
 }
 ```
 
+（proposed・未実装、D-113）: `new_cost_price` は 1/100 円の `new_cost_price_centi`（原価の lane。上限は `99999999` = `999999.99` 円で、原価が円の間は単位の lane が `999999` 円を掛ける）。`new_selling_price` の上限は `999999`（単位の lane）。下の `PriceHistoryEntry` の `old_cost_price`・`new_cost_price` も同じく `_centi`。[共通規則](10-common-rules.md) SPEC-UNIT-D5、[30](30-biz-product-service.md) BIZ-01-D8。
+
 CMD は DB 接続を取得し、BIZ-01 `revise_product_price` を呼んで結果をそのまま返す。負値は validation、不存在 `product_code` / `assign_supplier_id` は not-found の既存 `CmdErrorKind` へ正規化し、価格更新・履歴・操作ログ・supplier 紐付けの判断を CMD に持たない。
 
 #### create_supplier コマンド（SPEC-PRV-D6 / REQ-106）

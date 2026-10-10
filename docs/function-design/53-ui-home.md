@@ -233,7 +233,7 @@ D-3「独立 useQuery × 4」の直接の含意。1 クエリの失敗が他 3 �
 
 | UI 要素 | Skeleton |
 |---|---|
-| 昨日売上カード | `<Skeleton className="h-8 w-32" />`（金額）+ `<Skeleton className="h-4 w-16" />`（点数） |
+| 昨日売上カード | `<Skeleton className="h-8 w-32" />`（金額）+ `<Skeleton className="h-4 w-16" />`（点数。proposed・未実装、D-113: 点数は `count_points`・`length_cm` の 2 本〈`5 点・1.8 m`〉。[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 3 行目） |
 | 在庫切れカード | `<Skeleton className="h-8 w-12" />` |
 | 在庫少カード | `<Skeleton className="h-8 w-12" />` |
 | PLU 通知バー | **非表示**（`isLoading` 中はバー判定不可） |

@@ -6,6 +6,10 @@
 
 在庫を動かす既存TXは、header/item・products.stock_quantity・inventory_movementsに加えproducts.stock_revisionを一括確定する。版は[専用repo更新](../function-design/21-io-inventory-repo.md)内で強制し、movement・必須ログ・版更新のいずれかの失敗でTX全体を戻す。レジ処理済み返品など在庫を動かさない経路を、架空のmovementで失効通知することはしない。既存冪等要求の再送は新しい移動でも版更新でもない。
 
+## 原価の 1/100 円と金額の丸め（proposed・未実装、D-113）
+
+`receiving_items.cost_price` と `disposal_items.cost_price` を `cost_price_centi`（1/100 円）へ改名して既存の値を 100 倍する（[master-tables](master-tables.md) の「単位と原価の精度の契約」、`決定（owner、D-113 J2）`）。入庫の原価小計・合計と廃棄のロス原価は、明細の `quantity` と原価と商品の単位の価格の基準数量から BIZ が求める（[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D6）。列は足さず、行の金額を保存しない。以下のカラム表は現行スキーマを記す。
+
 ---
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)

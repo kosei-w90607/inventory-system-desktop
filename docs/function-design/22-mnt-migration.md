@@ -327,3 +327,57 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 既存の DB の日報の個数は今まで整数でしか保存できなかった（小数の日は取込み自体が失敗していた）ので、100 倍は値を変えずに単位だけを変える。v7 を適用した DB は v7 を知らない旧版のアプリでは開けない（MNT-03-D11 の `SchemaNewerThanApp`）。v6 以前の backup を復元すると、open の migrate が v7 を適用する。
 
 **MIGRATIONS 登録順**: `migration.rs` の migrations() は v1 → … → v6 → v7 の順に登録する。v7 の description は `日報の個数を100倍の整数へ` とし、kind は `MigrationKind::Custom(schema_v7::apply_v7_daily_report_quantity_hundredths)` とする。実装は、既存行の 100 倍（NULL は NULL のまま、負の値も 100 倍）、改名後の列名、再実行時に v7 を重複適用しないこと、v6 の DB に日報の行がある状態からの適用、範囲の境界（範囲内の最大 `i64::MAX / 100` の 2 行は成功、範囲外の 1 行は範囲検査の message で失敗して何も変わらず v7 が記録されない）、行が 0 の表と全行が NULL の表で v7 が成功すること、手順 6 の検証の失敗（符号の違う余りが打ち消し合う形を含む）で 2 表・値・版が rollback されることを検証する。
+
+## 16. MNT-03 追加: 単位の拡張と原価の 1/100 円の migration（proposed・未実装、D-113）
+
+**MNT-03-D13 / D-113**: 単位を 12 個の code へ広げる migration（以下 vU）と、原価を 1/100 円へ改名する migration（以下 vC）を足す。意味の正本は [共通規則](10-common-rules.md) SPEC-UNIT-D1・D5 と [db-design/master-tables.md](../db-design/master-tables.md) の「単位と原価の精度の契約」。vU は単位の runtime の lane、vC は原価の runtime の lane（`決定（owner、D-113 J2）`）が実装し、番号はそれぞれの lane が起票時に決める（並走の lane〈時点証拠の migration 等〉と番号・順序を合わせる）。本 design-first の変更では schema を変えない。
+
+**vU の手順**（`MigrationKind::Custom`、表の作り直し。SQLite は CHECK を ALTER で変えられない）:
+
+1. TX の外で `PRAGMA foreign_keys` の値を読み、OFF にする（v2・時点証拠の migration と同じ形。TX の中の `PRAGMA foreign_keys` は no-op）
+2. BEGIN。`products` の行数を読む。続けて下の「vU の上限の検査」を行う（読取りだけ）。上限の外の値が 1 件でもあれば ROLLBACK し、`PRAGMA foreign_keys` を手順 1 の値に戻して、何も変えず版も記録せず `DbError::MigrationFailed`（message に `上限の検査` と表名・列名）
+3. `products_new` を、vU を適用する時点の `products` と同じ列・同じ順・同じ制約で作り、`stock_unit` の CHECK だけを 12 個の code（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho` `m` `cm`）にする。既定値 `'pcs'` は変えない。列の並びは vU の直前の版の schema から写す（先に時点証拠の migration が `products` に列を足していれば、その列も含める）
+4. 全列を列名で並べて `INSERT INTO products_new (…) SELECT … FROM products`。値は変えない
+5. `DROP TABLE products`、`ALTER TABLE products_new RENAME TO products`、`idx_products_jan_code`・`idx_products_department_id`・`idx_products_is_discontinued`（と vU の時点で `products` にあるほかの index）を作り直す
+6. 同じ TX の中で確かめる: (a) 行数が手順 2 と同じ、(b) `PRAGMA foreign_key_check` が 0 行、(c) `stock_unit` の値ごとの件数が作り直しの前と同じ。違えば rollback して `DbError::MigrationFailed`
+7. schema_versions に記録して COMMIT。TX が閉じた後に `PRAGMA foreign_keys` を手順 1 の値に戻す（MNT-03-D1 の COMMIT 失敗の扱いに従う）
+
+**vU の上限の検査**（手順 2。[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）: 単位の lane は BIZ の検証に数量・在庫・売価・原価（円の整数）の上限を入れる。今の BIZ はどれにも上限を持たない（数量は 1 以上、初期在庫・売価・原価は 0 以上、在庫の計算は i64 の溢れだけ）ので、上限の外の値は今の DB にありうる。vU は、何かを変える前に、保存済みの値が上限に入っているかを 1 回確かめる。通して以後の書込みだけを縛る案は採らない: 本番の DB はまだ無い（`docs/project-memory.md` の「無いもの」、owner 回答 2026-09-19）ので止めても失うものが無く、通った DB では「数量・在庫・売価・原価・円の合計の全値が上限の中」が初日からの不変条件になる（通すと、共通規則の「上限から導ける範囲」に旧データの例外が付く）。対象は次の表で全部（列名は `schema_v1.rs` の CREATE 文と `docs/db-design/` の各表のカラム定義で確かめた、2026-10-11）。
+
+| 上限（絶対値で比べる。NULL の行は除く） | 列 |
+|---|---|
+| 1 明細の数量 `9999999` | `receiving_items.quantity`、`return_items.quantity`、`manual_sale_items.quantity`、`disposal_items.quantity`、`sale_records.quantity` |
+| 在庫 `999999999` | `products.stock_quantity`、`inventory_movements.stock_after`、`stocktake_items.system_stock`・`actual_count` |
+| 変動の数量 `1999999998`（在庫の上限の 2 倍） | `inventory_movements.quantity`（棚卸しの補正の変動は実数と在庫の差で、初期在庫の変動は在庫の上限まである〈`product_service.rs:272`〜`:282`〉ので、1 明細の数量の上限では比べない） |
+| 売価 `999999` | `products.selling_price`、`price_history.old_selling`・`new_selling` |
+| 原価 `999999`（円。vU の時点の列名） | `products.cost_price`、`receiving_items.cost_price`、`disposal_items.cost_price`、`stocktake_items.valuation_cost_price`、`price_history.old_cost`・`new_cost`（vC が改名する 6 列と同じ） |
+| 円の合計 `9007199254740991` | `stocktakes.total_cost`、入庫の記録ごと・廃棄の記録ごとの明細の `quantity × cost_price` の和（`receiving_items` を `receiving_record_id`、`disposal_items` を `disposal_record_id` でまとめる） |
+
+- 記録ごとの和は、基準数量で割る前の値で比べる（[共通規則](10-common-rules.md) SPEC-UNIT-D6 の合計はこの値以下なので、通った記録の合計は必ず範囲内。長さの商品の記録は実際の合計の 100 倍まで厳しく止まる）。積か和が i64 を溢れる記録も上限の外にする（SQLite は整数の積の溢れを REAL にし、整数の `SUM` の溢れを error にする。python の sqlite3 で確かめた、2026-10-11）。
+- 検査は値の範囲だけを見る。型（`typeof`）と 100 倍の後の余りは vC の手順 4 が確かめる。
+- vU を適用する時点で、時点証拠の migration が数量の列を足していれば（`stocktake_recounts.system_stock`・`actual_count`。`schema_time_evidence.rs:97`〜`:101`）、同じ在庫の上限で含める（手順 3 と同じ扱いで、後に入る lane の義務）。
+- 止まった後の進め方: DB は何も変わっていない。vU がその起動の最初の migration なら版も変わらず、旧版のアプリでそのまま開ける（先に別の migration が COMMIT していれば、下の回復の手順）。上限の外の値はアプリの画面では消せないことがある（商品の原価や在庫を直しても、価格の履歴・明細・変動の列に値が残る。記録は書き換えない契約）ので、更新を保留して新しい版を起動せず（起動のたびに同じ所で止まる）、管理者が対応を決める（上限の外の表名・列名は message にあるので、値を直す SQL を当てるか、上限の契約を見直すか。どちらも R4 の判断で owner に諮る）。
+
+**vC の手順**（`MigrationKind::Custom`、1 つの transaction、§15 の v7 と同じ形）: 対象は 6 列（`products.cost_price`、`receiving_items.cost_price`、`disposal_items.cost_price`、`stocktake_items.valuation_cost_price`、`price_history.old_cost`・`new_cost`）。
+
+1. 範囲検査: 各列で NULL でない値のうち `> ?1 OR < -?1`（`?1 = 999999`。100 倍の後が [共通規則](10-common-rules.md) SPEC-UNIT-D5 の原価の上限 `99999999`〈`999999.99` 円〉の中に入る最大の円: `999999 × 100 = 99999900` は上限の中、`1000000 × 100 = 100000000` は外）が 1 件でもあれば、何も変えず版も記録せず `DbError::MigrationFailed`（message に `範囲検査` と表名・列名）。同じ 6 列は vU の上限の検査が同じ `999999` 円で確かめ、単位の lane の BIZ が同じ上限で拒むので、アプリの操作で作った DB ではこの検査は通る。vU と vC の間に DB を直接書き換えた場合の外側の守りとして残す（100 倍の前に止めないと、上限の外の値が `_centi` の列に入る）。vC が失敗すると（この検査でも、手順 4 の検証でも）戻るのは vC の TX だけで、同じ起動で先に COMMIT した migration（vU ほか）の版は残る。更新を保留して新しい版を起動せず（起動のたびに同じ所で止まる）、下の回復の手順で更新の前の版と backup に戻して DB の原本を保全し、管理者が対応を決める（R4 の判断で owner に諮る）
+2. 各列の NULL でない行の件数と合計（`COUNT`・`COALESCE(SUM(…), 0)`）を読む。`SUM` の溢れも `MigrationFailed`
+3. 各列を `ALTER TABLE … RENAME COLUMN … TO …_centi`（master-tables の表の名前）にし、`UPDATE … SET … = … * 100 WHERE … IS NOT NULL`
+4. 各列で §15 手順 6 の (a)〜(c) と同じ 3 つを確かめる（件数・`typeof = 'integer'`・`SUM(… / 100)` が手順 2 の合計と同じで余りの行が無い）。違えば rollback して `MigrationFailed`
+5. schema_versions に記録して COMMIT
+
+列は改名だけで表を作り直さないので foreign_keys の手順は要らない（同梱の SQLite 3.45.0 の `RENAME COLUMN`）。時点証拠の migration（`schema_time_evidence.rs`、未配線）は `stocktake_items` を作り直して `valuation_cost_price` を列名で写すので、vC と後に適用される方が、その時点の列名で SQL を書く（後に入る lane の義務）。
+
+**回復**（R4）: vU・vC はそれぞれ 1 つの transaction で、失敗すれば失敗した migration の変更と版だけが戻る。`migrate` は migration ごとに COMMIT する（§3 の処理ステップ 5、`migration.rs` の `migrate`）ので、同じ起動で先に成功した migration の版は残る。例: v7 の DB に U と C を含む版を入れて vU（仮に 8）が COMMIT し、vC（仮に 9）が失敗すると（例: 手順 4 の検証）、DB は版 8 になり、v7 までのアプリ（app_max 7）は `SchemaNewerThanApp` で開けない。旧版でそのまま開けるのは、残った版が旧版のアプリの最大以下のとき（その起動の最初の migration で止まったとき）だけで、それ以外は下の手順で更新の前の backup に戻す。成功した後に旧版へ戻す経路も、アプリの中の復元（[71](71-mnt-backup.md) §71.7）では作れない: 旧版のアプリは vU・vC を適用した DB で起動を中止し（MNT-03-D11、§12.4 の文言）、復元の画面に届かない。新しい版のアプリで更新の前の backup を復元すると、open の migrate が vU・vC を適用し直す（71 §71.7 のとおり。これは新しい版のまま古い時点のデータへ戻す経路で、旧版へ戻す経路ではない）。旧版へ戻すのは、管理者がアプリの外で行う次の手順だけにする（店の利用者の操作にしない。runtime の lane が L3 の前に手順書へ写す）。71 の restore の契約（退避・manifest・reconcile）は変えず、この手順はアプリが止まっている間の file の置き換えで、71 の遺物を作らない。
+
+1. 更新の前に、旧版のアプリで backup を作っておく（71 §71.4）。起動時の自動の backup は migrate の後に作られるので（71 §71.9）、新しい版で作った backup は旧版で使えない
+2. アプリを止める（窓を全部閉じ、プロセスが残っていないことを確かめる）
+3. 何も動かす前に、復元の中断の遺物が無いことを確かめる: `{db_path}.restore_manifest`・`{db_path}.restore_manifest.tmp`・`*.restore_backup` のどれかがあれば手順を止める（起動の reconcile〈71 MNT-01-D5〉が扱う状態。手で消さず、file も動かさない）
+4. 何も動かす前に、戻す backup を確かめる: backup の写しを別の場所に作り、写しを読み取りだけで開いて、`SELECT MAX(version) FROM schema_versions` が旧版のアプリの最大の版以下（vU・vC の前の版）で、`PRAGMA integrity_check` が `ok`。違えば別の backup で確かめ直し、合う backup が無ければ手順を止める（ここまでは `{db_path}` と `-wal`・`-shm` を動かさない）
+5. 今の DB を保全する: `{db_path}` と、あれば `{db_path}-wal`・`{db_path}-shm` を、消さずに日付の付いた別の folder へ移す（更新の後に入れたデータはここにだけ残る）
+6. 手順 4 で確かめた backup の写しを `{db_path}` に置く（backup は `VACUUM INTO` の 1 file なので `-wal`・`-shm` は置かない）
+7. 旧版のアプリを入れて起動する。遺物が無いので reconcile は何もせず、版が旧版の最大以下なので migrate は開ける
+
+更新の後に入れたデータは戻らない（手順 5 で保全した file にだけ残る）。値の変換は vC の 100 倍だけで、逆変換の migration は作らない。
+
+**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。vU の上限の検査: 各列が端の値（数量 `9999999`・`-9999999`〈`sale_records.quantity`〉、在庫 `999999999`・`-999999999`、変動 `1999999998`、売価 `999999`、原価 `999999`・`-999999`・NULL〈`valuation_cost_price`〉、`stocktakes.total_cost` `9007199254740991`）の旧 DB は通って vU が成功し、どれか 1 列が 1 つ外（数量 `10000000`、在庫 `1000000000`、変動 `1999999999`、売価 `1000000`、原価 `1000000`、`total_cost` `9007199254740992`）の旧 DB は、表・値・版・foreign_keys が何も変わらず `MigrationFailed`（message に表名・列名）。上限の外が明細・履歴の列（`inventory_movements.stock_after`、`price_history.old_selling`、`price_history.old_cost`）だけにある DB も同じく止まる。記録ごとの和: 上限の明細（数量 `9999999`、原価 `999999`）900 行の入庫は通り（和 `8999990100000900`）、901 行（`9009990089000901`）は止まる。行 0 の表で成功。回復の手順（管理者の手順書を合成の DB で 1 度通す）: 手順 3 で遺物（`.restore_manifest` か `.restore_backup`）がある状態、手順 4 で版が新しすぎる backup・`integrity_check` が `ok` でない backup しか無い状態のどちらで止まっても、元の名前の `{db_path}`・`-wal`・`-shm` と遺物の file は中身も名前も変わらない（手順 5 の移動の前に止まる）。連続適用の失敗: v7 の DB の `price_history` に範囲内の原価の行（`old_cost` 100）と、改名の前の列名で書いた trigger（`AFTER UPDATE ON price_history` で `old_cost = old_cost + 1`。今の v7 の test `migration.rs:1210`〜`:1249` と同じ形）を置き、vU と vC を同じ `migrate` で当てる → vU の上限の検査は値を読むだけなので通り（値は 100）、vU の版が記録される。vC は手順 1 を通り、手順 3 の `RENAME COLUMN` が trigger の本文を新しい列名に書き換え、100 倍の `UPDATE` で trigger が `old_cost_centi` に 100 で割り切れない値を作るので、手順 4 の余りの検査で失敗して vC の変更と版は戻り、`migrate` は `MigrationFailed`（`範囲検査` を含まない）、DB の版は vU、app_max が 7 の `migrate` は `SchemaNewerThanApp`。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界〈`999999` と `-999999` は成功して `99999900`・`-99999900`、vU の版の DB に直接 seed した `1000000` と `-1000000` の 1 行は範囲検査で失敗して何も変わらない〉、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。

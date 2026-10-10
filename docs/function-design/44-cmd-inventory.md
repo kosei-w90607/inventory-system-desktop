@@ -540,6 +540,8 @@ struct ReceivingRecordDetail {
 }
 ```
 
+（proposed・未実装、D-113）: 明細の `stock_unit` は `ProductStockUnit`、行の金額は 1/100 円の十進の文字列 `line_cost_centi`、原価は `cost_price_centi`（原価の lane）、合計の `total_cost` は円の整数のまま。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
+
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
 2. biz::inventory_service::get_receiving_record(&conn, record_id) を呼ぶ
@@ -652,6 +654,8 @@ struct DisposalRecordDetailItem {
     line_loss_cost: i64,
 }
 ```
+
+（proposed・未実装、D-113）: `DisposalRecordDetailItem.stock_unit` は `ProductStockUnit`、`line_loss_cost` は 1/100 円の十進の文字列 `line_loss_cost_centi`、`cost_price` は `cost_price_centi`（原価の lane）、`total_loss_cost` は円の整数のまま。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
 
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
@@ -956,6 +960,8 @@ WHERE ((p.stock_unit = 'pcs' AND p.stock_quantity <= ?1)
   [AND p.is_discontinued = 0]  -- include_discontinued=false の場合
 ORDER BY p.stock_quantity ASC, p.name ASC
 ```
+
+proposed・未実装（D-113）: 単位が 12 種になった後は `p.stock_unit = 'pcs'` を個数の単位の 10 個の code の `IN (…)`、`p.stock_unit = 'cm'` を `IN ('m','cm')` にする。code の並びは `ProductStockUnit` の全 variant から作り、どちらにも入らない単位が在庫少から漏れないことを test で止める（[共通規則](10-common-rules.md) SPEC-UNIT-D10）。
 
 **ページング不要の理由**: 閾値以下の商品は通常少数（数十件程度）。4000商品中、在庫少は一覧で全件表示する（architecture/ui-task-specs.md UI-06b仕様）。
 

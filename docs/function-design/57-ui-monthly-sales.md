@@ -68,7 +68,7 @@ export type SalesReportType =
 export type MonthlySaleItem = {
   key: string;            // by_product = product_code、by_department = department_id 文字列
   label: string;          // by_product = 商品名、by_department = 部門名
-  quantity: number;
+  quantity: number;       // proposed・未実装、D-113: count_points・length_cm の 2 つと stock_unit になる（共通規則 SPEC-UNIT-D3・D11、§57.6 の「単位の拡張の後」）
   amount: number;
   ranking: number;        // BIZ-05 row_number、1-based、同順位なし前提
 };
@@ -292,6 +292,9 @@ export function useExportFile() {
 ### 57.6 純関数（テスト対象 6 + factory 2 + format-month-label 1 = 9 個）
 
 #### compute-summary（[items] → { totalAmount, totalQuantity }）
+
+- 単位の拡張の後（proposed・未実装、D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem.quantity` は `count_points`（個数の種類の和）と `length_cm`（長さの種類の和、cm）の 2 つになる。月間販売点数（`compute-summary` は 2 本それぞれに足す）・部門別は `5 点・1.8 m` の形で出す（owner の決定 TD-206・TD-207）。商品別の行はどちらか一方だけが値を持ち、表示は行の `stock_unit` で決める（長さの商品〈`m`・`cm` とも〉は `1.3 m`、相殺して 0 なら `0 m`。個数の商品は今どおり `3 点`）。`compute-summary` の和が `Number.isSafeInteger` を外れたら `—`。数量の並べ替えは SPEC-UNIT-D3 の集計の規則の `(count_points, length_cm)` の順。
+
 - 空配列 → `{ totalAmount: 0, totalQuantity: 0 }`
 - 負数 amount（返品超過月）→ そのまま合計（純関数、業務判断は呼出側）
 
@@ -500,3 +503,4 @@ function MonthlySalesPage() {
 | 2026-06-08 | selection-tone follow-up | TabsHeader と ModeTabs の active tone を shared stone selection tone に統一し、Sidebar / StatusChips と同じ選択状態の視覚言語へ寄せた。日次/月次と商品別ランキング/部門別構成比の二択切替は `SegmentedControl` primitive を共有する |
 | 2026-07-29 | 監査是正 順21a plan-first | UI-TABLE-D1として月次Department 3列 / Ranking 4列のheader implementation ownerを`src/components/sales/SortableHeader.tsx`へ正本化。列集合・sort callback・URL state・表示は不変 |
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: 同日複数active importの月次加算、per-import取消後の減算、series分離、将来coverageのdistinct-date契約を正本化。 |
+| 2026-10-08 | 単位の拡張 design lane | §57.6 compute-summary に単位の拡張の後（proposed・未実装、D-113 / SPEC-UNIT-D3、owner の決定 TD-203）を追加: `count_points`・`length_cm` の 2 本の集計（TD-206・TD-207）、商品別の m。 |

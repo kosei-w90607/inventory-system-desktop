@@ -59,6 +59,8 @@ struct StockAdjustment {
 }
 ```
 
+（proposed・未実装、D-113）: `IntegrityMismatch` と `StockAdjustment` に `stock_unit: ProductStockUnit` を足し（`find_all_stock_quantities` に単位を足す）、`integrity_fix` の detail_json の各 adjustment と、`integrity_check` の detail_json の各 mismatch にも `stock_unit` を書く（`integrity_check` の表示は今のまま）。差（`stock_quantity - movements_sum`）と補正量は checked で求め、i64 の溢れは `ValidationFailed`（今は plain の `-`: `integrity_service.rs:77`・`:165`・`:172`）。`fix_integrity` は、補正の後の在庫（= 変動の和）の絶対値が在庫の上限 `999999999` を越えれば、書く前に `ValidationFailed` で補正の TX 全体を戻す（`integrity_service.rs:173` の書込みの前。その商品を対象から外せば、ほかの商品は補正できる）。`run_integrity_check` の読取りは範囲で拒まない: 在庫と変動の和がどちらも在庫の上限の中なら差は `1999999998` 以下で、上限の外の値は DB を直接書き換えたか壊れたときだけ（共通規則の「入力の上限と安全な整数の範囲」の (b)(d)(e)）。長さの商品の数量を m で出すため（[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 8・11・12 行目、SPEC-UNIT-D11）。
+
 ---
 
 ### 21.3 run_integrity_check

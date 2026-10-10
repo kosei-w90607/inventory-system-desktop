@@ -110,7 +110,7 @@ UI-00 ホーム同型の「簡潔版 = useState + useQuery + 純関数」を採�
 **snake_case 維持 (specta-typescript デフォルト)**:
 
 - Rust 側 BIZ-05 DTO（`DailySaleItem` / `DailySalesReport` / `DeptSubtotal` / `GrandTotal`）は specta-typescript のデフォルト設定で **snake_case のまま** `src/lib/bindings.ts` 経由で TypeScript 側に flow する（serde rename 等は未付与）。camelCase 変換が必要になったら別 PR で specta 設定を検討
-- `DailySaleItem` の 7 field（`product_code` / `name` / `department_name` / `department_id` / `quantity` / `amount` / `source`）は snake_case のまま生成され、`source` は `DailySaleSource`（`"auto" | "manual"`）literal union で型検査される
+- `DailySaleItem` の 7 field（`product_code` / `name` / `department_name` / `department_id` / `quantity` / `amount` / `source`）は snake_case のまま生成され、`source` は `DailySaleSource`（`"auto" | "manual"`）literal union で型検査される（proposed・未実装、D-113: `stock_unit: ProductStockUnit` を足して 8 field になる。[共通規則](10-common-rules.md) SPEC-UNIT-D3・D11、§56.10 の「単位の拡張の後」）
 
 **`SearchParams` 型 export**（`src/routes/reports/daily.tsx`）:
 
@@ -333,7 +333,7 @@ export function calculateEffectiveUnitPrice(item: DailySaleItem): number | null 
 
 **`computeSalesLineSummary` 根拠**（BIZ-05 で source 別集計未提供のため UI 派生）:
 
-- BIZ-05 `DailySalesReport` の `GrandTotal` は `{ quantity, amount }` のみ、source 別 count を返さない
+- BIZ-05 `DailySalesReport` の `GrandTotal` は `{ quantity, amount }` のみ、source 別 count を返さない（proposed・未実装、D-113: `quantity` は `count_points`・`length_cm` の 2 つになる。[共通規則](10-common-rules.md) SPEC-UNIT-D3・D11、§56.10 の「単位の拡張の後」）
 - UI で `items` 配列を再走査して `auto / manual` カウントを派生計算
 - 将来 BIZ-05 を拡張して `GrandTotal.auto_count` / `manual_count` を追加すれば本関数は削除可能（Backlog 候補）
 - `source: string` に対する防御的 if-else 実装（`compute-summary.ts:14-17`）で `"auto"` / `"manual"` を識別、未知値は内訳に含めない（防御的設計、bindings.ts では literal union 化されていない）
@@ -501,6 +501,7 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 - 返品行（quantity<0 + amount<0）も絶対値で正数表示（「単価の大きさ」として読みやすい）
 - `quantity=0` → `null` → 「—」placeholder + ソート時末尾配置
 - 厳密な業務意味（販売単価 / 値引前単価 / レシート単価）が必要になった場合は BIZ-05 DTO 拡張 or sale_records への `unit_price` 系カラム追加で別 PR 検討（Backlog 「REQ-501 単価列の意味精査」）
+- 単位の拡張の後（proposed・未実装、D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: 単価は `|金額| × 基準数量 ÷ |数量|` を整数の演算で四捨五入し、長さの商品は 1 m あたり（`¥700/m`）。明細の数量は `formatStockDisplay(quantity, stock_unit)`（`1.3 m`）。部門小計・合計・販売点数のカードは `count_points`（個数の種類の和、`点`）と `length_cm`（長さの種類の和、m）の 2 本で出す（`5 点・1.8 m`。owner の決定 TD-206・TD-207。レジの点数との照合は「レジ日報（公式）」の節の Z001 の表が受け持つ）。画面で部門小計を足す所（`group-items.ts`）も同じ 2 本に足し（SPEC-UNIT-D3 の集計の規則、TS の twin）、数量の並べ替えは明細を `(count_points, length_cm)` に当てた値の順。
 
 #### 前日比符号
 
@@ -575,3 +576,4 @@ export function makeMockItem(overrides: Partial<DailySaleItem> = {}): DailySaleI
 | 2026-08-16 | PR #79 | SPEC-SDI-D6: `source_import_count` の「N回の取込みを合算」表示、NULL安全表示、同日複数active importの加算済み表示契約を正本化。 |
 | 2026-09-27 | daily-report-z-display（design） | UI-09a-D16: 公式セクションに日計（Z001）の全行の表を足し、同日複数取込みの日は取込みごとに並べる。既存 2 表の見出しに出どころ（Z002 / Z005）を添える（[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)、D-096）。 |
 | 2026-10-06 | z001-display（runtime、起票） | UI-09a-D16 の「値」に負の数の書き方（金額 `¥-1,234`、件数 `-1`、同じ section の既存の 2 表と同じ）を補った（owner 決定 2026-10-06、[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
+| 2026-10-08 | 単位の拡張 design lane | §56.10 の単価派生に単位の拡張の後（proposed・未実装、D-113 / SPEC-UNIT-D3、owner の決定 TD-203）を追加: 長さの商品の数量は m、単価は 1 m あたり、小計・合計は点と m の 2 本（TD-206・TD-207）。 |

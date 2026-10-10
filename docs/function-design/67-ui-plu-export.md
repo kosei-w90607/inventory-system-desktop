@@ -61,7 +61,7 @@ function PluExportPage(): JSX.Element
 - `PluDirtySummary`: 差分件数、最終書出し目安、0件空状態
 - `PluRegisterSnapshotPanel`: Z004 FilePicker、最終読込み日時、占有要約、conflict warning（above the fold）
 - `PluExportModePanel`: Diff / Full の二択、対象 / clear 件数、Full バックアップ注意
-- `PluDirtyProductTable`: 差分対象商品一覧（`plu_target=1` の商品のみが対象。対象外商品はここに現れない）。商品コード、JANコード、商品名、売価、在庫を表示し、JAN未登録は `未登録` と出す
+- `PluDirtyProductTable`: 差分対象商品一覧（`plu_target=1` の商品のみが対象。対象外商品はここに現れない）。商品コード、JANコード、商品名、売価、在庫を表示し、JAN未登録は `未登録` と出す（proposed・未実装、D-113: 長さの商品の在庫は m。[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 9 行目）
 - `PluExcludedTable`: prepare 結果の要修正一覧（D-028）。商品コードと理由（JAN未登録 / 13桁でない / チェックディジット不正 / 同一JAN内の価格・税率不一致）を表示し、商品マスタ編集への導線を出す
 - `PluExportResultPanel`: ページ上部の状態表示。保存結果、confirm導線、外部手順、未反映解除結果を注意文直下に出す
 

@@ -376,6 +376,12 @@ export function useStockInquiry(params: {
 - 単位列（入庫等）や数量 input に添える単位（廃棄 / 返品交換 / 手動販売）の unit code を日本語ラベルへ変換する
 - `unit === "pcs"` → `"個"`、`unit === "cm"` → `"cm"`、上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
 
+#### 単位の拡張の後（proposed・未実装、D-113）
+
+- `formatStockDisplay` と `formatStockUnitLabel` は `unit: ProductStockUnit` を受け、12 個の code を全部 switch で扱う（[共通規則](10-common-rules.md) SPEC-UNIT-D9・D11。`default` の `"—"` を置かず、単位を足すと型検査で止まる。wire の `stock_unit` は enum になる）。
+- 数量を出す画面の全部（売上・在庫変動・棚卸し・整合性チェック・PLU 書出しを含む）と、単位を持たない wire に単位を渡す方法は SPEC-UNIT-D3 の「表示する所」の表（owner の決定 TD-203）。
+- 表示は SPEC-UNIT-D3: 個数の単位は `10 個`・`3 玉` 等、長さの単位は `m`・`cm` とも cm の整数を m で表す（`130` → `1.3 m`、`127` → `1.27 m`、`1234` → `12.34 m`。`cm` の商品の `300` も `3 m`。Coordinator が TD-203・TD-207 から決めた）。`formatStockUnitLabel`（数量を伴わない入力の単位欄）は D1 の語のまま（`cm` の商品は `cm`）。m の表示は整数の演算で作り、`toLocaleString` に小数を渡さない。
+
 #### format-last-date（[value: string | null] → string）
 
 - `value === null` → `"—"`（None 表示、Q-2）
@@ -676,6 +682,7 @@ function StockInquiryPage() {
 
 | 日付 | PR | 内容 |
 |------|-----|------|
+| 2026-10-07 | 単位の拡張 design lane | §58.6 に単位の拡張の後の formatter の契約を追加（proposed・未実装、D-113 / SPEC-UNIT-D3・D9・D11）。 |
 | 2026-09-16 | ㉖ | UI-06a-D7 追加: `StockDetailContent` の「在庫変動履歴」link が現在の `/stock` URL を `returnTo` として送る（監査 NAV-1、66 UI-06c-D9 と対） |
 | 2026-09-15 | 表示小修正 batch 2 | 在庫照会の副題、絞り込み後の「全 N 件」、在庫状態 Badge「在庫あり」を反映。 |
 | 2026-08-26 | stale 実装状況表記一括是正 | `StockDetailContent` の「商品修正」「入庫記録」を既存画面への active link に変更し、遷移先と `returnTo` 非付与の契約を現況化 |
