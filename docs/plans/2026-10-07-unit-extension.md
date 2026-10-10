@@ -7,7 +7,7 @@
 - Phase: implementing
 - Risk: R4
 - Plan Commit: 2fc7c022d1c1480868e02ca08c375703bcb0f131
-- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4, 8a2481d302c447c3f03152dd82855a462864f38e
+- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4, 8a2481d302c447c3f03152dd82855a462864f38e, 8fdda36494ee20c974c4348c6355728393476c87
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -32,6 +32,7 @@
 12. implementing のまま Gated Amendment 1（2026-10-08、Coordinator）: Final Review broad（head `c4f9822e`）の Claude 側 Fable 5.1 の reject（P2 1 / P3 1）と Codex GPT-6 Astra（発注 255）の reject（P2 4）を全件採用し、起草役が `9a6929fc` で直した（設計正本 10・34・36・51・53・57・66・67・74・75 と、packet の Scope の表・申し送り・Registration・Wire Contract、Matrix の Test Matrix の表）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本（R4 の Minimum 2）取り直す。
 13. implementing のまま Gated Amendment 2（2026-10-08、Coordinator）: fresh broad（head `1c64fc5a`）の Codex GPT-6 Astra（発注 257）の reject（P2 2）と Claude 側 Fable 5.1 の approve（P3 1）を採用した。正本だけで閉じる 2 件（日次・月次の商品別の各段の安全な整数の検査、44・20・40 の proposed の pointer）は起草役の `fe662ef6`（packet・Matrix に触れない）。旧版へ戻す回復の手順で確かめを file の移動の前に置く 1 件は、同じ手順が packet の Impact Review Lenses と Matrix の MNT-03-D13 の行にもあるので、22 §16 と合わせて `eaba9918` で直した（本 Amendment）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
 14. implementing のまま Gated Amendment 3（2026-10-11、Coordinator。起草役の commit は 2026-10-08）: fresh broad（head `12959e48`）の Codex GPT-6 Astra（発注 258）の reject（P2 1 / P3 2）と Claude 側 Fable 5.1 の approve（P3 4）を全件採用し、起草役が `8a2481d3` で直した（設計正本 10・29・31・36・SCREEN_DESIGN と、packet の Scope の表・申し送りの表・Contract Ledger、Matrix の Test Matrix の表）。P2 は入庫の後の在庫の 1 経路の指摘だったが、同じ型の指摘が 3 回続いたので、DB・wire・画面に出す値ごとに「保証する所」を 10 の「安全な整数の範囲」の表にまとめ、lane 全体で塞いだ（この lane の中で塞ぐのは owner の決定、repo 外の回答台帳 TD-212）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
+15. implementing のまま Gated Amendment 4（2026-10-11、Coordinator）: Gated Amendment 3 の記録（`ce904618`）の後に origin/main（`afccc1d0`）を取り込んだ（`2f628124`、競合なし）。取り込んだ後の head で AC を回すと、AC6 の `git diff --name-only 95c0aeb0…` が `4` を返した（main 側の `.prettierignore`・`package.json`・`package-lock.json`・`src/hooks/useUnsavedChangesWarning.router.test.tsx` を数える。本 lane の差分は docs だけのまま）。AC5・AC6 の command が diff の基点を起票の時の main の SHA に固定していたためで、基点を `"$(git merge-base origin/main HEAD)"` に直した（`8fdda364`。同じ形の先例は `docs/archive/plans/2026-10-06-z001-display.md` の AC8）。確かめる中身（traceability の入力を変えない・docs だけ）と期待値 `0` は変えない。直した command の実測は AC5 `0`・AC6 `0`（2026-10-11、`2f628124` に本修正を重ねた作業 tree）。Goal・Scope・Risk・Human Gate は変えない。fresh broad の 2 本は本 Amendment を含む head で取る（Gated Amendment 3 の取り直しと同じ 2 本で、本数は増えない）。
 
 ## Owner Effort Budget
 
@@ -405,3 +406,4 @@ fresh broad（`12959e48`）: Codex GPT-6 Astra（発注 258、PR review 54477088
 - P3（Fable #3）`integrity_check` の detail_json の mismatch に `stock_unit` が無い。是正: 36 の proposed の注記に足した（表示は今のまま）。
 - P3（Fable #4）m の入力の `trim`。是正: 10 SPEC-UNIT-D3 の入力の文に前後の空白を除くことを足し、Matrix の m の入力の行に前後の空白の例を足した。
 - Coordinator が現物で確かめたもの（2026-10-11）: 10 の表の前文の `rg` を回し、在庫を書く test 以外の site が表の 1〜5 のどれかに入ること（`apply_stock_change` の呼出しは入庫・返品・手動販売・廃棄・商品別売上 CSV の取込みの 5 か所、取消の補正 `csv_import_service/commit.rs:274`、整合性の補正 `integrity_service.rs:173`、初期在庫 `product_service.rs:247`・`:1416`、今の方式の棚卸しの確定 `stocktake_service.rs:571` は表の 5 の対象で保証は ⑤ の新方式）。表と申し送りが引く行番号（`inventory_service/common.rs:40`、`product_service.rs:957`・`:1204`〜`:1213`、`commit.rs:257`〜`:274`、`integrity_service.rs:77`・`:98`〜`:99`・`:165`・`:173`・`:191`〜`:192`、`sales_service.rs:203`・`:224`〜`:245`・`:549`・`:561`、`receiving_repo.rs:250`、`disposal_repo.rs:670`、`disposal-request.ts:40`）が現物と合うこと。
+- Gated Amendment 4（`8fdda364`、Coordinator）: reviewer の指摘ではなく、base 同期の後に AC を回して見つけた。AC5・AC6 の diff の基点を固定の SHA から merge-base に直した（上の遷移の記録 15）。
