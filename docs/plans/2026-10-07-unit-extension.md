@@ -7,7 +7,7 @@
 - Phase: implementing
 - Risk: R4
 - Plan Commit: 2fc7c022d1c1480868e02ca08c375703bcb0f131
-- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4, 8a2481d302c447c3f03152dd82855a462864f38e, 8fdda36494ee20c974c4348c6355728393476c87
+- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4, 8a2481d302c447c3f03152dd82855a462864f38e, 8fdda36494ee20c974c4348c6355728393476c87, 66c360196cce0bef292cb3550176fd6c84a2d33d
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -33,6 +33,7 @@
 13. implementing のまま Gated Amendment 2（2026-10-08、Coordinator）: fresh broad（head `1c64fc5a`）の Codex GPT-6 Astra（発注 257）の reject（P2 2）と Claude 側 Fable 5.1 の approve（P3 1）を採用した。正本だけで閉じる 2 件（日次・月次の商品別の各段の安全な整数の検査、44・20・40 の proposed の pointer）は起草役の `fe662ef6`（packet・Matrix に触れない）。旧版へ戻す回復の手順で確かめを file の移動の前に置く 1 件は、同じ手順が packet の Impact Review Lenses と Matrix の MNT-03-D13 の行にもあるので、22 §16 と合わせて `eaba9918` で直した（本 Amendment）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
 14. implementing のまま Gated Amendment 3（2026-10-11、Coordinator。起草役の commit は 2026-10-08）: fresh broad（head `12959e48`）の Codex GPT-6 Astra（発注 258）の reject（P2 1 / P3 2）と Claude 側 Fable 5.1 の approve（P3 4）を全件採用し、起草役が `8a2481d3` で直した（設計正本 10・29・31・36・SCREEN_DESIGN と、packet の Scope の表・申し送りの表・Contract Ledger、Matrix の Test Matrix の表）。P2 は入庫の後の在庫の 1 経路の指摘だったが、同じ型の指摘が 3 回続いたので、DB・wire・画面に出す値ごとに「保証する所」を 10 の「安全な整数の範囲」の表にまとめ、lane 全体で塞いだ（この lane の中で塞ぐのは owner の決定、repo 外の回答台帳 TD-212）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
 15. implementing のまま Gated Amendment 4（2026-10-11、Coordinator）: Gated Amendment 3 の記録（`ce904618`）の後に origin/main（`afccc1d0`）を取り込んだ（`2f628124`、競合なし）。取り込んだ後の head で AC を回すと、AC6 の `git diff --name-only 95c0aeb0…` が `4` を返した（main 側の `.prettierignore`・`package.json`・`package-lock.json`・`src/hooks/useUnsavedChangesWarning.router.test.tsx` を数える。本 lane の差分は docs だけのまま）。AC5・AC6 の command が diff の基点を起票の時の main の SHA に固定していたためで、基点を `"$(git merge-base origin/main HEAD)"` に直した（`8fdda364`。同じ形の先例は `docs/archive/plans/2026-10-06-z001-display.md` の AC8）。確かめる中身（traceability の入力を変えない・docs だけ）と期待値 `0` は変えない。直した command の実測は AC5 `0`・AC6 `0`（2026-10-11、`2f628124` に本修正を重ねた作業 tree）。Goal・Scope・Risk・Human Gate は変えない。fresh broad の 2 本は本 Amendment を含む head で取る（Gated Amendment 3 の取り直しと同じ 2 本で、本数は増えない）。
+16. implementing のまま Gated Amendment 5（2026-10-11、Coordinator）: fresh broad（head `5d039c84`）の Codex GPT-6 Astra（発注 261）の reject（P2 4）と Claude 側 Fable 5.1 の reject（P2 1 / P3 3）を全件採用した。P2 の 5 件はどれも Gated Amendment 3 で足した「安全な整数の範囲」の表の中か、その例で、同じ型の指摘が 5 回続いた。経路ごとに保証する所を書き足すのをやめ、入力に現実的な上限を掛けて範囲に届く筋を消す形に変えた（owner の決定、repo 外の回答台帳 TD-213。上限の数字は TD-217。介入の上限 12 → 14 は TD-214）。是正の前に相談役（Fable 5.1）に反例探しを頼み、その結果（円の合計は上限からは言えないので保存の前に 1 回検査する、売価・原価の上限は 6 桁にする、集計の読取りの拒否はやめる、移行の前に保存済みの値を確かめる）を採った。起草役が `0e4ab7bb` と `66c36019` で直した（設計正本 10・22・29・30・31・34・36・40・56・57・73、decision-log の D-113、packet の Owner Effort Budget・Scope の表・申し送りの表・Boundary / Wire Contract・Impact Review Lenses・Contract Ledger・Registration、Matrix）。Goal・Non-scope・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
 
 ## Owner Effort Budget
 
@@ -411,3 +412,16 @@ fresh broad（`12959e48`）: Codex GPT-6 Astra（発注 258、PR review 54477088
 - P3（Fable #4）m の入力の `trim`。是正: 10 SPEC-UNIT-D3 の入力の文に前後の空白を除くことを足し、Matrix の m の入力の行に前後の空白の例を足した。
 - Coordinator が現物で確かめたもの（2026-10-11）: 10 の表の前文の `rg` を回し、在庫を書く test 以外の site が表の 1〜5 のどれかに入ること（`apply_stock_change` の呼出しは入庫・返品・手動販売・廃棄・商品別売上 CSV の取込みの 5 か所、取消の補正 `csv_import_service/commit.rs:274`、整合性の補正 `integrity_service.rs:173`、初期在庫 `product_service.rs:247`・`:1416`、今の方式の棚卸しの確定 `stocktake_service.rs:571` は表の 5 の対象で保証は ⑤ の新方式）。表と申し送りが引く行番号（`inventory_service/common.rs:40`、`product_service.rs:957`・`:1204`〜`:1213`、`commit.rs:257`〜`:274`、`integrity_service.rs:77`・`:98`〜`:99`・`:165`・`:173`・`:191`〜`:192`、`sales_service.rs:203`・`:224`〜`:245`・`:549`・`:561`、`receiving_repo.rs:250`、`disposal_repo.rs:670`、`disposal-request.ts:40`）が現物と合うこと。
 - Gated Amendment 4（`8fdda364`、Coordinator）: reviewer の指摘ではなく、base 同期の後に AC を回して見つけた。AC5・AC6 の diff の基点を固定の SHA から merge-base に直した（上の遷移の記録 15）。
+
+fresh broad（`5d039c84`）: Codex GPT-6 Astra（発注 261、PR review 5480376565）= reject（P2 4）、Claude 側 Fable 5.1（新しい context）= reject（P2 1 / P3 3）。P1 は 0。Coordinator が全件を採用した。helper に 2 本とも pending で記録済み。是正は Gated Amendment 5（起草役の `0e4ab7bb`・`66c36019`）で、経路ごとの検査の表を、入力の上限の形に書き直した（上の遷移の記録 16）。
+
+- P2（Codex F1）在庫を動かさない明細の数量が検査を通らない。是正: 1 明細の数量の上限を、在庫を動かす分岐より前の検証で掛ける（返品は `validate_return_request_shape`）。POS の非連動の行は取込みの preview で行の error。
+- P2（Codex F2）移行の前に保存済みの範囲外の値が未検査。是正: vU が何かを変える前に、数量・在庫・売価・原価・円の合計の保存済みの値を上限で確かめ、外れた DB は無変更で止める（22 §16）。
+- P2（Codex F3）・P3（Fable #4）読取りを範囲で拒んだ後の回復の契約が無い。是正: 読取りを範囲で拒む契約そのものをやめた。集計は上限 × 件数では届かない根拠を書き、演算は checked のまま。
+- P2（Fable #1）入庫・廃棄の合計の検査が保存の前に無い。是正: 入庫・廃棄の create と棚卸しの確定が、保存の前に合計を検査する（上限からは範囲内と言えない所）。
+- P2（Codex F4）Matrix の取込みの取消の境界の例の符号が逆。是正: 在庫の上限の例に置き換えた（在庫 999999999 で、数量 1 の販売の取込みを取り消す）。Coordinator は Gated Amendment 3 の照合でこの行の言い方の曖昧さに気付いたが、括弧書きで足りると判断して通していた。
+- P3（Fable #2）m の入力の `0`・`0.00` の扱い。是正: 10 SPEC-UNIT-D3 に 1 文、Matrix に例。
+- P3（Fable #3）56・57・29 の旧前提の文に proposed の pointer。是正: 括弧書きを足した。
+- 起草役の判断で Coordinator が受けたもの: 変動の数量の移行の上限は在庫の上限の 2 倍（初期在庫と棚卸しの補正の変動が 1 明細の数量の上限を越えうる）。vU の検査に売価の列・`stocktakes.total_cost`・入庫と廃棄の記録ごとの合計を足す。POS 由来の上限外は取込み全体でなく行の error。合計が届く行数は確定した上限で計算し直した値（入庫・廃棄 901 行、棚卸し 10 商品）。
+- Coordinator が差し戻して直させたもの: 原価の上限を原価の lane で入れる形（単位の lane だけの間は原価に上限が無い）を、単位の lane で円の上限を入れ、vU が原価の列も確かめる形に。これに合わせて、連続適用の失敗の例を、範囲外の原価から、vC の手順 4 の検証で止まる例に作り直した。
+- Coordinator が現物で確かめたもの（2026-10-11）: vU の上限の検査が挙げる列名が schema の CREATE 文に全部あること、上限から導ける範囲の式のうち 1 行の金額・合計の 900 行と 901 行・棚卸しの 9 商品と 10 商品・集計の件数・価格改定の積を計算し直して一致すること。
