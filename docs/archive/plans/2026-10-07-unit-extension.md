@@ -4,7 +4,7 @@
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R4
 - Plan Commit: 2fc7c022d1c1480868e02ca08c375703bcb0f131
 - Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4, 8a2481d302c447c3f03152dd82855a462864f38e, 8fdda36494ee20c974c4348c6355728393476c87, 66c360196cce0bef292cb3550176fd6c84a2d33d
@@ -63,7 +63,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 後続の runtime の lane の Writer が、チャットの履歴を見ずに設計正本だけで「12 個の単位で商品を登録する → 長さの商品を m で入庫・販売・廃棄・棚卸しする → 在庫は cm の整数、数量を出す画面はすべて m・単価は 1 m あたり（売上・在庫変動・棚卸しの確定の結果を含む。TD-203） → 入庫・廃棄・棚卸しの金額と手動販売の金額の初期値が 1 m あたりの価格で正しく出る → 1 個の原価を小数 2 桁で持つ」を実装できる（[共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1〜D11、22 §16、UI-01b-D22、UI-04-D18、BIZ-01-D8）。
+- 後続の runtime の lane の Writer が、チャットの履歴を見ずに設計正本だけで「12 個の単位で商品を登録する → 長さの商品を m で入庫・販売・廃棄・棚卸しする → 在庫は cm の整数、数量を出す画面はすべて m・単価は 1 m あたり（売上・在庫変動・棚卸しの確定の結果を含む。TD-203） → 入庫・廃棄・棚卸しの金額と手動販売の金額の初期値が 1 m あたりの価格で正しく出る → 1 個の原価を小数 2 桁で持つ」を実装できる（[共通規則](../../function-design/10-common-rules.md) SPEC-UNIT-D1〜D11、22 §16、UI-01b-D22、UI-04-D18、BIZ-01-D8）。
 - Z004・EJ の数量の型（小数 2 桁までの 100 倍の整数、BIZ で商品を引いた後に換算）が決まり、後続の Z004・EJ の lane へ申し送られている（SPEC-UNIT-D8）。
 - 「長さ商品で 100 倍になる」既知の不整合 (1)(2)(4)(5) の直し方が正本にあり、(3) の扱いが申し送られている。owner の判断 J1〜J4 が決まり（2026-10-08、TD-195）、正本に決定として書かれている。
 
@@ -348,7 +348,11 @@ Test Design Matrix: [2026-10-07-unit-extension](test-matrices/2026-10-07-unit-ex
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: 単位を 12 種へ広げ（m は在庫を cm の整数で持ち、1 m あたりで値付けする）、数量・原価の精度（原価を 1/100 円で持つ）と金額の丸めを共通規則 SPEC-UNIT-D1〜D11 として決め、D-113 に記録した。数量・在庫・売価・原価の入力に上限を掛け（1 明細の数量 9,999,999、在庫 999,999,999、売価 999,999 円、原価 999,999.99 円）、上限からは言えない円の合計は保存の前に検査する。移行（vU・vC）の手順、移行の前の上限の検査、途中で失敗したときの回復の手順を 22 §16 に決めた。本 lane は docs だけで、code・migration・bindings は変えていない（runtime は後続の lane）。
+- 既存の保護: 実装は変えていないので、店の動作は今のまま（単位は `個` / `cm` の 2 つ、原価は円の整数）。SPEC-UNIT-D1〜D11 は proposed・未実装で、runtime の lane が入るまで各文書の現行の記述が実装の正本（上の Ordinary Operation のとおり、12 単位と m の通常運用は本 lane では未達）。
+- 未検証: 移行の「連続適用の失敗」の例の probe は sqlite 3.51.3 で確かめた。同梱の SQLite 3.45.0 と Rust の実装では回していない（runtime の lane の test が確かめる）。
+- review・CI・merge（closeout、2026-10-11）: Plan Review は round 3（上限）までで、round 3 は Claude 側 approve・Codex 側 reject（P1 0）、残りを disposition「同型指摘の一括是正」とした後に owner が plan-approved を承認した。Final Review は毎回 Codex GPT-6 Astra と Claude 側 Fable 5.1 の独立 2 本で 5 回（下の Review Response の Closeout の段落）。helper の record は review = pass、manual = not-required、r4 = pass（owner の R4 の承認 2026-10-11。docs だけで DB には触れない。DB を書き換える runtime の lane はそれぞれの R4 を別に取る）。Ready の後の hosted run の `Merge gate` は success で、owner の R4・Ready・merge の承認（2026-10-11、介入 14 回 / 予算 14 回）の後に helper 経由の squash merge。検査の結果は PR と GitHub が持つ。PR: [#154](https://github.com/kosei-w90607/inventory-system-desktop/pull/154)
+- 後続: runtime は単位の lane（U）→ 原価の lane（C）、Z004・EJ の数量は CASIO 固有の lane（P）（上の「runtime の lane への申し送り」の表）。Final Review の 5 回目の P3 は `docs/backlog.md` の「単位の拡張」の項の「後続の lane の起票の入力（Final Review の P3）」。
 
 ## Review Response
 
@@ -425,3 +429,5 @@ fresh broad（`5d039c84`）: Codex GPT-6 Astra（発注 261、PR review 54803765
 - 起草役の判断で Coordinator が受けたもの: 変動の数量の移行の上限は在庫の上限の 2 倍（初期在庫と棚卸しの補正の変動が 1 明細の数量の上限を越えうる）。vU の検査に売価の列・`stocktakes.total_cost`・入庫と廃棄の記録ごとの合計を足す。POS 由来の上限外は取込み全体でなく行の error。合計が届く行数は確定した上限で計算し直した値（入庫・廃棄 901 行、棚卸し 10 商品）。
 - Coordinator が差し戻して直させたもの: 原価の上限を原価の lane で入れる形（単位の lane だけの間は原価に上限が無い）を、単位の lane で円の上限を入れ、vU が原価の列も確かめる形に。これに合わせて、連続適用の失敗の例を、範囲外の原価から、vC の手順 4 の検証で止まる例に作り直した。
 - Coordinator が現物で確かめたもの（2026-10-11）: vU の上限の検査が挙げる列名が schema の CREATE 文に全部あること、上限から導ける範囲の式のうち 1 行の金額・合計の 900 行と 901 行・棚卸しの 9 商品と 10 商品・集計の件数・価格改定の積を計算し直して一致すること。
+
+Closeout（2026-10-11）: Final Review は 5 回で、毎回 Codex GPT-6 Astra と Claude 側 Fable 5.1 の独立 2 本。1 回目 = 2 本とも reject（Gated Amendment 1）、2 回目 = Codex reject・Fable approve（Gated Amendment 2）、3 回目 = Codex reject・Fable approve（Gated Amendment 3・4）、4 回目 = 2 本とも reject（Gated Amendment 5）、5 回目（head `7be82eec`）= 2 本とも approve（Codex P3 2、Fable P3 5。P1 / P2 は 0）。P1 は全回 0。3 回目・4 回目の P2 は、計算の後の値が JavaScript の安全な整数の範囲を越える経路の指摘で、同じ型が続いた。4 回目の後、owner の決定（2026-10-11）で、経路ごとに検査を書き足す形をやめ、入力に現実的な上限を掛けて範囲に届く筋を消す形に変えた（D-113 に記録済み）。5 回目の P3 は全件を本 lane では直さず、後続の lane の起票の入力として `docs/backlog.md` の「単位の拡張」の項へ送った: 61〜64 の明細表の「生地は cm 単位を主表示」の文への SPEC-UNIT-D3 の proposed の pointer、価格改定の既存の test（大きな値の保存の成功を固定）を新しい上限の中の保存と上限の外の拒否へ書き換えること、22 §16 の `schema_time_evidence.rs` の行番号のずれ、棚卸し記録詳細のロス原価の合計の範囲の検査と ⑤ の Matrix の fixture、棚卸しの実数の上限の担当を ⑤ に揃えることと範囲の検査の関数の共有（棚卸し ③ の実数 N の上限の書き換えを含む）、在庫少の基準（`app_settings`）を 10 の「表の外」に足すこと。helper の record は review = pass、manual = not-required、r4 = pass。Ready の後の `Merge gate` は success で、owner の承認（2026-10-11）で helper 経由の squash merge（PR #154）。

@@ -63,7 +63,7 @@
 
 ## 単位・数量・金額の共通規則（proposed・未実装、D-113）
 
-契約 ID: SPEC-UNIT-D1〜D11（2026-10-07、[decision-log](../decision-log.md) D-113）。今の実装は単位が `pcs` / `cm` の 2 値、原価が円の整数で、本節はその後の契約である。実装は後続の runtime の lane（単位の lane と原価の lane。Plan Packet `2026-10-07-unit-extension` の申し送りの表）が行い、それまで下の各文書の現行の記述が実装の正本である。owner の判断 J1〜J4 は 2026-10-08 にすべて推奨の案に決まり（repo 外の回答台帳 TD-195）、該当の項目に `決定（owner、D-113 Jn）` と書いた。
+契約 ID: SPEC-UNIT-D1〜D11（2026-10-07、[decision-log](../decision-log.md) D-113）。今の実装は単位が `pcs` / `cm` の 2 値、原価が円の整数で、本節はその後の契約である。実装は後続の runtime の lane（単位の lane と原価の lane。Plan Packet `docs/archive/plans/2026-10-07-unit-extension.md` の申し送りの表）が行い、それまで下の各文書の現行の記述が実装の正本である。owner の判断 J1〜J4 は 2026-10-08 にすべて推奨の案に決まり（repo 外の回答台帳 TD-195）、該当の項目に `決定（owner、D-113 Jn）` と書いた。
 
 **SPEC-UNIT-D1 単位の一覧と数量の種類**: 商品の単位（`products.stock_unit`、wire は generated enum `ProductStockUnit`）は次の 12 個の code に限る。code は ASCII で、一度決めた code の意味を変えない。表示の語は code から UI が引き、DB と wire には日本語を入れない。
 
@@ -95,7 +95,7 @@
 - 商品 CSV の `初期在庫`（[30](30-biz-product-service.md) BIZ-01-D8）: 同じ行の `在庫単位` が `m` の行は、値を m の数として上の規則で cm にする（`25` → 2500、`26.15` → 2615。0 は受ける〈今の初期在庫と同じ〉。小数 3 桁以上・指数・符号は行の error `初期在庫の値が不正です: '{値}'`〈今の文〉で、丸めない。Rust は文字列の整数部と小数部を `i64` の checked の演算で組み、`f64` を通さない。cm にした値が在庫の上限 `999999999` を超えれば（上の UI の初期在庫の欄と同じ上限。`9999999.99` は受け、`10000000` は error）同じ行の error。10 cm 未満も上の規則どおり受ける）。`cm` と個数の単位の行は今の整数の規則のまま。Coordinator が店の事実（repo 外の回答台帳 L-214: 残り・仕入れ・値札は m）から決めた（2026-10-08）: 在庫計数 Excel の長さの商品は m で数えてあり、cm の整数で読むと `25` が 0.25 m で黙って入る。
 - 入力の行の数量の加算: 同じ商品を入力の行へ再追加したときの加算（入庫・返品・手動販売・廃棄）と、行の統合（返品の方向の切替え・廃棄の種別と理由が同じ行）は、入力の文字列をこの規則で cm の整数（個数と `cm` の単位は今の整数）にしてから整数で足し、表示の規則と同じ形（3 桁区切りなし）の入力の文字列に戻す。再追加で足す量は、その画面で商品を追加したときの数量の初期値（`m` の商品は `1` = 100 cm。手動販売は UI-04-D18）。例: `m` の `1.3` に再追加 → `2.3`、廃棄の `0.5` と `0.3` の統合 → `0.8`。文字列が規則に合わないときは今の fallback のまま（再追加はどの画面も初期値。統合は、廃棄は元の値〈統合先の文字列〉、返品の方向の切替えの合算は `"1"`〈今の `sumQuantities`〉）。今の helper は `Number.isInteger` で `1.3` を整数でないと見て初期値に戻す（申し送りの表）。
 - 表示: 長さの数量を m で表すとき、符号・整数部（3 桁区切り）・小数部 2 桁を整数の演算で作り、小数部の末尾の 0 を落とす（130 → `1.3 m`、127 → `1.27 m`、200 → `2 m`、-30 → `-0.3 m`、123456 → `1,234.56 m`）。長さの単位は `m`・`cm` ともこの m の形で出す（`cm` の商品の 130 も `1.3 m`。Coordinator が owner の決定 TD-203〈長さの商品の数量は m〉と TD-207〈長さは m・cm とも m で出す〉から決めた、2026-10-08。入力の単位〈`cm` の商品は cm の整数〉と保存値は変えない）。個数の単位は `10 個` `3 玉` の形（数と語の間に半角空白。今の `formatStockDisplay` と同じ）。数量を伴わない単位の表示（入力の行の単位欄）は D1 の表示の語（`cm` の商品の入力欄は `cm` のまま。入力の単位を示すため）。
-- 表示する所（owner の決定、2026-10-08、repo 外の回答台帳 TD-203）: 長さの商品の数量を出す画面はすべて m で出し、単価は 1 m あたりで出す。在庫を cm の整数で持つ契約（D2）は変えない。次の表で全部（2026-10-08 に main `95c0aeb0` の現物で `rg -n '\b(quantity|stock_quantity|actual_count|system_stock|difference|stock_after|adjustment_quantity|current_stock)\b' src --glob '*.tsx' --glob '!*.test.*'` と bindings の数量の field を持つ型を当てて作った。site の file:line は Plan Packet `2026-10-07-unit-extension` の申し送りの表）。
+- 表示する所（owner の決定、2026-10-08、repo 外の回答台帳 TD-203）: 長さの商品の数量を出す画面はすべて m で出し、単価は 1 m あたりで出す。在庫を cm の整数で持つ契約（D2）は変えない。次の表で全部（2026-10-08 に main `95c0aeb0` の現物で `rg -n '\b(quantity|stock_quantity|actual_count|system_stock|difference|stock_after|adjustment_quantity|current_stock)\b' src --glob '*.tsx' --glob '!*.test.*'` と bindings の数量の field を持つ型を当てて作った。site の file:line は Plan Packet `docs/archive/plans/2026-10-07-unit-extension.md` の申し送りの表）。
 
 | # | 画面 | 出す値 | 長さの商品の表示（例） | 単位の渡し方 |
 |---|---|---|---|---|
