@@ -55,7 +55,7 @@ begin・save・確定の拒否は[40の回復型](40-cmd-product.md)のcodeとta
 | save | 所有者・親状態がbeginの用途と合わなくなった | count_target_changed | 商品の回復先1件 | 数える対象の棚卸しが変わりました。表示し直してから数えてください |
 | 確定 | 確定対象の棚卸しに明細がある商品に未解消のflagがある、または確定対象の棚卸しにkind=legacyの明細がある（完了済みの棚卸しの明細は数えない。force_fillでも） | recount_required | 該当する明細ごと（action `active_count`、`recount_reasons` は未解消のflagの理由、legacyだけなら空） | flagがあれば「取り込んだ後に数の再確認が必要です」、legacyだけなら「更新前の記録です。今の数を確認してください」 |
 
-- 回復型に載せない拒否: 負数・JavaScriptの安全な整数（2^53-1）を超えるN、補正後の在庫の範囲外は既存の `ValidationFailed`。同じrequest IDで違うNは既存の `IdempotencyConflict`。明細の不在は既存の `NotFound`。保存済みrequest IDがitemとrecountの両方に見つかる異常は `DatabaseError`（書込みなし）。
+- 回復型に載せない拒否: 負数・JavaScriptの安全な整数（2^53-1）を超えるN、補正後の在庫の範囲外は既存の `ValidationFailed`。開始・begin・保存・同じ値の再送・確定の成功の応答に載る整数（棚卸し・明細・recountのID、L、N、差異、補正量、補正後の在庫、評価額の総額）と、確定が評価に使う各明細の在庫も、絶対値が2^53-1を超えれば同じ `ValidationFailed` で、書込みは0（TXごと戻す。違うNの再送の `IdempotencyConflict` はこの検査より先）。同じrequest IDで違うNは既存の `IdempotencyConflict`。明細の不在は既存の `NotFound`。保存済みrequest IDがitemとrecountの両方に見つかる異常は `DatabaseError`（書込みなし）。
 - 理由: 失効（同じ対象をもう一度数える）と保存先の変更（別の明細・用途で数える）は次の操作が違う。1つのcodeにまとめるとUIが行き先をmessageから推測することになる。確定の拒否はflagとlegacyで次の操作が同じ（その明細を数える）なので1つのcodeにし、理由は `recount_reasons` で分ける。
 - 見直す条件: 回復型のcodeを増やす（④の取込み・取消の拒否を足す）とき、この表に行を足す。
 
