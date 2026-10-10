@@ -335,16 +335,31 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 **vU の手順**（`MigrationKind::Custom`、表の作り直し。SQLite は CHECK を ALTER で変えられない）:
 
 1. TX の外で `PRAGMA foreign_keys` の値を読み、OFF にする（v2・時点証拠の migration と同じ形。TX の中の `PRAGMA foreign_keys` は no-op）
-2. BEGIN。`products` の行数を読む
+2. BEGIN。`products` の行数を読む。続けて下の「vU の上限の検査」を行う（読取りだけ）。上限の外の値が 1 件でもあれば ROLLBACK し、`PRAGMA foreign_keys` を手順 1 の値に戻して、何も変えず版も記録せず `DbError::MigrationFailed`（message に `上限の検査` と表名・列名）
 3. `products_new` を、vU を適用する時点の `products` と同じ列・同じ順・同じ制約で作り、`stock_unit` の CHECK だけを 12 個の code（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho` `m` `cm`）にする。既定値 `'pcs'` は変えない。列の並びは vU の直前の版の schema から写す（先に時点証拠の migration が `products` に列を足していれば、その列も含める）
 4. 全列を列名で並べて `INSERT INTO products_new (…) SELECT … FROM products`。値は変えない
 5. `DROP TABLE products`、`ALTER TABLE products_new RENAME TO products`、`idx_products_jan_code`・`idx_products_department_id`・`idx_products_is_discontinued`（と vU の時点で `products` にあるほかの index）を作り直す
 6. 同じ TX の中で確かめる: (a) 行数が手順 2 と同じ、(b) `PRAGMA foreign_key_check` が 0 行、(c) `stock_unit` の値ごとの件数が作り直しの前と同じ。違えば rollback して `DbError::MigrationFailed`
 7. schema_versions に記録して COMMIT。TX が閉じた後に `PRAGMA foreign_keys` を手順 1 の値に戻す（MNT-03-D1 の COMMIT 失敗の扱いに従う）
 
+**vU の上限の検査**（手順 2。[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）: 単位の lane は BIZ の入口に数量・在庫・売価の上限を入れる。今の BIZ はどれにも上限を持たない（数量は 1 以上、初期在庫・売価は 0 以上、在庫の計算は i64 の溢れだけ）ので、上限の外の値は今の DB にありうる。vU は、何かを変える前に、保存済みの値が上限に入っているかを 1 回確かめる。通して以後の書込みだけを縛る案は採らない: 本番の DB はまだ無い（`docs/project-memory.md` の「無いもの」、owner 回答 2026-09-19）ので止めても失うものが無く、通った DB では「数量・在庫・売価・円の合計の全値が上限の中」が初日からの不変条件になる（通すと、共通規則の「上限から導ける範囲」に旧データの例外が付く）。対象は次の表で全部（列名は `schema_v1.rs` の CREATE 文と `docs/db-design/` の各表のカラム定義で確かめた、2026-10-11）。
+
+| 上限（絶対値で比べる。NULL の行は除く） | 列 |
+|---|---|
+| 1 明細の数量 `9999999` | `receiving_items.quantity`、`return_items.quantity`、`manual_sale_items.quantity`、`disposal_items.quantity`、`sale_records.quantity` |
+| 在庫 `999999999` | `products.stock_quantity`、`inventory_movements.stock_after`、`stocktake_items.system_stock`・`actual_count` |
+| 変動の数量 `1999999998`（在庫の上限の 2 倍） | `inventory_movements.quantity`（棚卸しの補正の変動は実数と在庫の差で、初期在庫の変動は在庫の上限まである〈`product_service.rs:272`〜`:282`〉ので、1 明細の数量の上限では比べない） |
+| 売価 `999999` | `products.selling_price`、`price_history.old_selling`・`new_selling` |
+| 円の合計 `9007199254740991` | `stocktakes.total_cost`、入庫の記録ごと・廃棄の記録ごとの明細の `quantity × cost_price` の和（`receiving_items` を `receiving_record_id`、`disposal_items` を `disposal_record_id` でまとめる） |
+
+- 記録ごとの和は、基準数量で割る前の値で比べる（[共通規則](10-common-rules.md) SPEC-UNIT-D6 の合計はこの値以下なので、通った記録の合計は必ず範囲内。長さの商品の記録は実際の合計の 100 倍まで厳しく止まる）。積か和が i64 を溢れる記録も上限の外にする（SQLite は整数の積の溢れを REAL にし、整数の `SUM` の溢れを error にする。python の sqlite3 で確かめた、2026-10-11）。
+- 原価の 6 列は、vC の範囲検査（下の手順 1）が同じ形で確かめる。
+- vU を適用する時点で、時点証拠の migration が数量の列を足していれば（`stocktake_recounts.system_stock`・`actual_count`。`schema_time_evidence.rs:97`〜`:101`）、同じ在庫の上限で含める（手順 3 と同じ扱いで、後に入る lane の義務）。
+- 止まった後の進め方は、vC の範囲検査で止まったときと同じ（下の手順 1 と回復）。vU がその起動の最初の migration なら DB の版は変わらず、旧版のアプリでそのまま開ける。
+
 **vC の手順**（`MigrationKind::Custom`、1 つの transaction、§15 の v7 と同じ形）: 対象は 6 列（`products.cost_price`、`receiving_items.cost_price`、`disposal_items.cost_price`、`stocktake_items.valuation_cost_price`、`price_history.old_cost`・`new_cost`）。
 
-1. 範囲検査: 各列で NULL でない値のうち `> ?1 OR < -?1`（`?1 = 9007199254740991 / 100 = 90071992547409`。100 倍の後が [共通規則](10-common-rules.md) SPEC-UNIT-D5 の上限〈JS の number で正確に運べる最大の整数〉の中に入る最大の円）が 1 件でもあれば、何も変えず版も記録せず `DbError::MigrationFailed`（message に `範囲検査` と表名・列名）。i64 の範囲（`i64::MAX / 100`）で止めると、`9007199254740991` 円の原価が通って `900719925474099100` になり、JS の number では値が `900719925474099072` になる（`BigInt(900719925474099100)` で確かめた）。今の BIZ は原価に上限を持たない（負だけを拒む）ので、範囲外の値は今の DB にありうる。範囲検査で止まると戻るのは vC の TX だけで、同じ起動で先に COMMIT した migration（vU ほか）の版は残る（下の回復）。範囲外の値はアプリの画面では消せない: 商品の原価を直しても、価格の履歴（`price_history.old_cost`）と入庫・廃棄・棚卸しの明細の原価に範囲外の値が残り（記録は書き換えない契約）、vC は毎回同じ列で止まる。よって範囲検査で止まったら、更新を保留して新しい版を起動しない（起動のたびに同じ所で止まる）、下の回復の手順で更新の前の版と backup に戻して DB の原本を保全する、管理者が対応を決める（範囲外の行の数と列は message にあるので、値を直す SQL を当てるか、vC の範囲の契約を見直すか。どちらも R4 の判断で owner に諮る）、の順に進む。原価の lane は起票時に、更新の前に範囲外の値を見つける手段（例: 先の版で原価の上限を BIZ に入れる、更新の前に件数を数える）を決める
+1. 範囲検査: 各列で NULL でない値のうち `> ?1 OR < -?1`（`?1 = 999999`。100 倍の後が [共通規則](10-common-rules.md) SPEC-UNIT-D5 の原価の上限 `99999999`〈`999999.99` 円〉の中に入る最大の円: `999999 × 100 = 99999900` は上限の中、`1000000 × 100 = 100000000` は外）が 1 件でもあれば、何も変えず版も記録せず `DbError::MigrationFailed`（message に `範囲検査` と表名・列名）。原価の lane の前の BIZ は原価に上限を持たない（負だけを拒む。`product_service.rs:952` ほか）ので、範囲外の値は今の DB にありうる。範囲検査で止まると戻るのは vC の TX だけで、同じ起動で先に COMMIT した migration（vU ほか）の版は残る（下の回復）。範囲外の値はアプリの画面では消せない: 商品の原価を直しても、価格の履歴（`price_history.old_cost`）と入庫・廃棄・棚卸しの明細の原価に範囲外の値が残り（記録は書き換えない契約）、vC は毎回同じ列で止まる。よって範囲検査で止まったら、更新を保留して新しい版を起動しない（起動のたびに同じ所で止まる）、下の回復の手順で更新の前の版と backup に戻して DB の原本を保全する、管理者が対応を決める（範囲外の行の数と列は message にあるので、値を直す SQL を当てるか、vC の範囲の契約を見直すか。どちらも R4 の判断で owner に諮る）、の順に進む。原価の lane は起票時に、更新の前に範囲外の値を見つける手段（例: 先の版で原価の上限を BIZ に入れる、更新の前に件数を数える）を決める
 2. 各列の NULL でない行の件数と合計（`COUNT`・`COALESCE(SUM(…), 0)`）を読む。`SUM` の溢れも `MigrationFailed`
 3. 各列を `ALTER TABLE … RENAME COLUMN … TO …_centi`（master-tables の表の名前）にし、`UPDATE … SET … = … * 100 WHERE … IS NOT NULL`
 4. 各列で §15 手順 6 の (a)〜(c) と同じ 3 つを確かめる（件数・`typeof = 'integer'`・`SUM(… / 100)` が手順 2 の合計と同じで余りの行が無い）。違えば rollback して `MigrationFailed`
@@ -364,4 +379,4 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 更新の後に入れたデータは戻らない（手順 5 で保全した file にだけ残る）。値の変換は vC の 100 倍だけで、逆変換の migration は作らない。
 
-**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。回復の手順（管理者の手順書を合成の DB で 1 度通す）: 手順 3 で遺物（`.restore_manifest` か `.restore_backup`）がある状態、手順 4 で版が新しすぎる backup・`integrity_check` が `ok` でない backup しか無い状態のどちらで止まっても、元の名前の `{db_path}`・`-wal`・`-shm` と遺物の file は中身も名前も変わらない（手順 5 の移動の前に止まる）。連続適用の失敗: v7 の DB に範囲外の原価を置き、vU と vC を同じ `migrate` で当てる → vU の版が記録されて vC の変更と版は戻り、`migrate` は `MigrationFailed`、DB の版は vU、app_max が 7 の `migrate` は `SchemaNewerThanApp`。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界〈`90071992547409` と `-90071992547409` は成功して `9007199254740900`・`-9007199254740900`、`90071992547410` と `-90071992547410` の 1 行は範囲検査で失敗して何も変わらない〉、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。
+**テスト**（runtime の lane の完了条件）: vU は、12 個の code がすべて入り一覧に無い値（`kg`）が CHECK で拒まれること、作り直しの前後で全列の値・index・FK が同じこと、手順 6 の失敗で表・版が戻り foreign_keys が元の値に戻ること。vU の上限の検査: 各列が端の値（数量 `9999999`・`-9999999`〈`sale_records.quantity`〉、在庫 `999999999`・`-999999999`、変動 `1999999998`、売価 `999999`、`stocktakes.total_cost` `9007199254740991`、記録ごとの和が `9007199254740991` ちょうど）の旧 DB は通って vU が成功し、どれか 1 列が 1 つ外（`10000000`、`1000000000`、`1999999999`、`1000000`、`9007199254740992`）の旧 DB は、表・値・版・foreign_keys が何も変わらず `MigrationFailed`（message に表名・列名）。上限の外が明細・履歴の列（`inventory_movements.stock_after`、`price_history.old_selling`）だけにある DB も同じく止まる。記録ごとの和: 1 行の入庫（数量 1、原価 `9007199254740992` 円）は止まり、積が i64 を溢れる明細（数量 `9999999`、原価 `i64::MAX`）も止まる。行 0 の表で成功。回復の手順（管理者の手順書を合成の DB で 1 度通す）: 手順 3 で遺物（`.restore_manifest` か `.restore_backup`）がある状態、手順 4 で版が新しすぎる backup・`integrity_check` が `ok` でない backup しか無い状態のどちらで止まっても、元の名前の `{db_path}`・`-wal`・`-shm` と遺物の file は中身も名前も変わらない（手順 5 の移動の前に止まる）。連続適用の失敗: v7 の DB の `price_history.old_cost` に範囲外の原価（`1000000`）を置き（vU の上限の検査は原価の列を見ないので通る）、vU と vC を同じ `migrate` で当てる → vU の版が記録されて vC の変更と版は戻り、`migrate` は `MigrationFailed`、DB の版は vU、app_max が 7 の `migrate` は `SchemaNewerThanApp`。vC は §15 の v7 のテストの観点（NULL は NULL、負の値も 100 倍、範囲の境界〈`999999` と `-999999` は成功して `99999900`・`-99999900`、`1000000` と `-1000000` の 1 行は範囲検査で失敗して何も変わらない〉、行 0 の表、全行 NULL の `valuation_cost_price_centi`、手順 4 の失敗での rollback、再実行で重複適用しない）。

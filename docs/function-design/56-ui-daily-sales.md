@@ -110,7 +110,7 @@ UI-00 ホーム同型の「簡潔版 = useState + useQuery + 純関数」を採�
 **snake_case 維持 (specta-typescript デフォルト)**:
 
 - Rust 側 BIZ-05 DTO（`DailySaleItem` / `DailySalesReport` / `DeptSubtotal` / `GrandTotal`）は specta-typescript のデフォルト設定で **snake_case のまま** `src/lib/bindings.ts` 経由で TypeScript 側に flow する（serde rename 等は未付与）。camelCase 変換が必要になったら別 PR で specta 設定を検討
-- `DailySaleItem` の 7 field（`product_code` / `name` / `department_name` / `department_id` / `quantity` / `amount` / `source`）は snake_case のまま生成され、`source` は `DailySaleSource`（`"auto" | "manual"`）literal union で型検査される
+- `DailySaleItem` の 7 field（`product_code` / `name` / `department_name` / `department_id` / `quantity` / `amount` / `source`）は snake_case のまま生成され、`source` は `DailySaleSource`（`"auto" | "manual"`）literal union で型検査される（proposed・未実装、D-113: `stock_unit: ProductStockUnit` を足して 8 field になる。[共通規則](10-common-rules.md) SPEC-UNIT-D3・D11、§56.10 の「単位の拡張の後」）
 
 **`SearchParams` 型 export**（`src/routes/reports/daily.tsx`）:
 
@@ -333,7 +333,7 @@ export function calculateEffectiveUnitPrice(item: DailySaleItem): number | null 
 
 **`computeSalesLineSummary` 根拠**（BIZ-05 で source 別集計未提供のため UI 派生）:
 
-- BIZ-05 `DailySalesReport` の `GrandTotal` は `{ quantity, amount }` のみ、source 別 count を返さない
+- BIZ-05 `DailySalesReport` の `GrandTotal` は `{ quantity, amount }` のみ、source 別 count を返さない（proposed・未実装、D-113: `quantity` は `count_points`・`length_cm` の 2 つになる。[共通規則](10-common-rules.md) SPEC-UNIT-D3・D11、§56.10 の「単位の拡張の後」）
 - UI で `items` 配列を再走査して `auto / manual` カウントを派生計算
 - 将来 BIZ-05 を拡張して `GrandTotal.auto_count` / `manual_count` を追加すれば本関数は削除可能（Backlog 候補）
 - `source: string` に対する防御的 if-else 実装（`compute-summary.ts:14-17`）で `"auto"` / `"manual"` を識別、未知値は内訳に含めない（防御的設計、bindings.ts では literal union 化されていない）

@@ -68,7 +68,7 @@ export type SalesReportType =
 export type MonthlySaleItem = {
   key: string;            // by_product = product_code、by_department = department_id 文字列
   label: string;          // by_product = 商品名、by_department = 部門名
-  quantity: number;
+  quantity: number;       // proposed・未実装、D-113: count_points・length_cm の 2 つと stock_unit になる（共通規則 SPEC-UNIT-D3・D11、§57.6 の「単位の拡張の後」）
   amount: number;
   ranking: number;        // BIZ-05 row_number、1-based、同順位なし前提
 };
