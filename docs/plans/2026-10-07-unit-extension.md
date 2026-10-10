@@ -7,7 +7,7 @@
 - Phase: implementing
 - Risk: R4
 - Plan Commit: 2fc7c022d1c1480868e02ca08c375703bcb0f131
-- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4
+- Amendments: 9a6929fce0262a422828f39e3aa7d7442a7e1d95, eaba9918f85a1b272afeb94ff295fbe1bd40d0b4, 8a2481d302c447c3f03152dd82855a462864f38e
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -31,6 +31,7 @@
 11. plan-approved → implementing（2026-10-08、Coordinator、本 commit。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R4、Minimum 2）に出す。
 12. implementing のまま Gated Amendment 1（2026-10-08、Coordinator）: Final Review broad（head `c4f9822e`）の Claude 側 Fable 5.1 の reject（P2 1 / P3 1）と Codex GPT-6 Astra（発注 255）の reject（P2 4）を全件採用し、起草役が `9a6929fc` で直した（設計正本 10・34・36・51・53・57・66・67・74・75 と、packet の Scope の表・申し送り・Registration・Wire Contract、Matrix の Test Matrix の表）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本（R4 の Minimum 2）取り直す。
 13. implementing のまま Gated Amendment 2（2026-10-08、Coordinator）: fresh broad（head `1c64fc5a`）の Codex GPT-6 Astra（発注 257）の reject（P2 2）と Claude 側 Fable 5.1 の approve（P3 1）を採用した。正本だけで閉じる 2 件（日次・月次の商品別の各段の安全な整数の検査、44・20・40 の proposed の pointer）は起草役の `fe662ef6`（packet・Matrix に触れない）。旧版へ戻す回復の手順で確かめを file の移動の前に置く 1 件は、同じ手順が packet の Impact Review Lenses と Matrix の MNT-03-D13 の行にもあるので、22 §16 と合わせて `eaba9918` で直した（本 Amendment）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
+14. implementing のまま Gated Amendment 3（2026-10-11、Coordinator。起草役の commit は 2026-10-08）: fresh broad（head `12959e48`）の Codex GPT-6 Astra（発注 258）の reject（P2 1 / P3 2）と Claude 側 Fable 5.1 の approve（P3 4）を全件採用し、起草役が `8a2481d3` で直した（設計正本 10・29・31・36・SCREEN_DESIGN と、packet の Scope の表・申し送りの表・Contract Ledger、Matrix の Test Matrix の表）。P2 は入庫の後の在庫の 1 経路の指摘だったが、同じ型の指摘が 3 回続いたので、DB・wire・画面に出す値ごとに「保証する所」を 10 の「安全な整数の範囲」の表にまとめ、lane 全体で塞いだ（この lane の中で塞ぐのは owner の決定、repo 外の回答台帳 TD-212）。Goal・AC・Risk・Human Gate は変えない。Plan contract が変わったので、本 Amendment を含む head で fresh broad を 2 本取り直す。
 
 ## Owner Effort Budget
 
@@ -393,3 +394,14 @@ fresh broad（`1c64fc5a`）: Codex GPT-6 Astra（発注 257、PR review 54473781
 - P2（Codex #1）日次の商品別の数量に wire の安全な整数の範囲の検査が無い（合計が範囲内でも商品別の行が範囲外になりうる）。是正: 34 と 10 D3 で、商品別・部門・合計・月次の各段を wire にする前に検査する（`fe662ef6`）。
 - P2（Codex #2）旧版へ戻す回復の手順で、DB を退避した後に遺物と backup を確かめる順序。是正: 確かめを `{db_path}` を動かす前に置き、止まったときに元の file が変わらない（Gated Amendment 2、`eaba9918`）。
 - P3（Fable）wire の DTO を定義する 44・20・40 に proposed の pointer（`fe662ef6`）。
+
+fresh broad（`12959e48`）: Codex GPT-6 Astra（発注 258、PR review 5447708867）= reject（P2 1 / P3 2）、Claude 側 Fable 5.1（新しい context）= approve（P3 4）。P1 は 0。Coordinator が全件を採用し、起草役が `8a2481d3`（Gated Amendment 3）で直した。helper に 2 本とも pending で記録済み。
+
+- P2（Codex #1）m の入力の安全な整数の検査が、入庫の後の在庫につながらない（初期在庫 `90071992547409.91` m に `0.02` m を入庫すると number で 1 cm ずれる）。是正: 10 に「安全な整数の範囲」の表を足し、在庫の 5 経路が通る `apply_stock_change` が `quantity` と計算後の `stock_after` を書く前に検査する（31）。同じ型の穴を残さないよう、初期在庫・CSV の取込みの取消の補正・整合性の補正と detail_json・円の合計・手動販売の金額の初期値・売上の集計も同じ表に入れ、Matrix に 4 行を足した。
+- P3（Codex #2）EJ の暗黙の数量・末尾の点数・記録全体の照合が申し送りに無い。是正: 29 の proposed の注記、申し送りの EJ の行、Matrix の SPEC-UNIT-D8 の行に、同じ 100 倍に揃える site と照合の例を足した。
+- P3（Codex #3）Matrix の個数の商品の日次の明細の期待が `3`。是正: `3 個`（formatter の形）。
+- P3（Fable #1）Gated Amendment 1 で触った正本の契約が Contract Ledger に無い。是正: SPEC-UNIT-D3 の行に 36・53・66・67・74・75 と SCREEN_DESIGN を足し、UI-02-D7・UI-03-D12・UI-05-D8・UI-06c-D5・UI-13-D3・UI-11c-D14 の行を足した。
+- P3（Fable #2）SCREEN_DESIGN の生地の cm の記述 4 行に D-113 の pointer が無い。是正: proposed の括弧書きを足し、Scope の表に行を足した。
+- P3（Fable #3）`integrity_check` の detail_json の mismatch に `stock_unit` が無い。是正: 36 の proposed の注記に足した（表示は今のまま）。
+- P3（Fable #4）m の入力の `trim`。是正: 10 SPEC-UNIT-D3 の入力の文に前後の空白を除くことを足し、Matrix の m の入力の行に前後の空白の例を足した。
+- Coordinator が現物で確かめたもの（2026-10-11）: 10 の表の前文の `rg` を回し、在庫を書く test 以外の site が表の 1〜5 のどれかに入ること（`apply_stock_change` の呼出しは入庫・返品・手動販売・廃棄・商品別売上 CSV の取込みの 5 か所、取消の補正 `csv_import_service/commit.rs:274`、整合性の補正 `integrity_service.rs:173`、初期在庫 `product_service.rs:247`・`:1416`、今の方式の棚卸しの確定 `stocktake_service.rs:571` は表の 5 の対象で保証は ⑤ の新方式）。表と申し送りが引く行番号（`inventory_service/common.rs:40`、`product_service.rs:957`・`:1204`〜`:1213`、`commit.rs:257`〜`:274`、`integrity_service.rs:77`・`:98`〜`:99`・`:165`・`:173`・`:191`〜`:192`、`sales_service.rs:203`・`:224`〜`:245`・`:549`・`:561`、`receiving_repo.rs:250`、`disposal_repo.rs:670`、`disposal-request.ts:40`）が現物と合うこと。
