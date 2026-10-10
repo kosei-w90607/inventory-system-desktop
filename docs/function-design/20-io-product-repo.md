@@ -15,7 +15,7 @@ SPEC-STK-TIME-D1 / D6 / D8。以下の既存APIは現行契約であり、新し
 | 再実測INSERT（tx, N/L/S/E・両cursor・版・request IDを含む保存型） | 新しいrecount IDを返す。import IDは入力に要求しない。差0もINSERTし、既存recountは上書きしない |
 | 保存要求照会（conn, request_id） | itemとrecountの保存済みN・保存先を返す。両方に公開IDが一致する異常を区別する。失効tokenより先にBIZがこの結果を評価する |
 | flag保存/変更/解消（tx, product_code, source_id, import_id, reason） | 未解消の(商品, 資料)を一意に保存し、同じ組の重複追加で行を増やさない。理由の変更（相殺の確認待ち〈EJ待ち〉→相殺の行あり・相殺の確認待ち〈登録の変化〉、直前のZ004が未受領の間の相殺の確認待ち〈登録の変化〉→相殺の確認待ち〈EJ待ち〉・相殺の行あり・ほかの登録の変化）と解消（行の削除）はBIZの指示だけで行い、解消対象はBIZが受領証拠・取消元・EJと前回のZ004による再評価で選ぶ。商品単位の未解消flagの読取りは確定・準備照会・一覧に使う。商品非連動への変更で一括削除しない |
-| 有効観測の列挙（conn, product_code） | supersededな旧pendingは除き、現在のmeasured itemと独立recountを商品内の観測順で返す。auto_filledを吸収先にせず、legacyは不明な証拠として返す |
+| 有効観測の列挙（conn, product_code） | supersededな旧pendingは除き、現在のmeasured itemと独立recountを商品内の観測順で返す。auto_filledを吸収先にせず、legacyは不明な証拠として返す。最新の有効な観測（前後の判定の基準、ADR D4）は、measuredの明細（active・完了済み）とrecountを合わせた `observation_revision` の最大の1件で選び、明細とrecountの別や時刻の順では選ばない。版を持つ観測が1つもなくlegacyの明細があればlegacyを返す（legacyは移行だけが作り版を持たないので、版を持つ観測があればそれが新しい）。auto_filledとuncountedは観測にせず、前の観測を隠さない（㉘ ② で実装、`docs/archive/plans/2026-10-06-stocktake-p1.md` S2） |
 | pending snapshot補正（tx, item_id, delta） | system_stockだけをchecked更新。N/S/E/cursor/observation_revisionは変えない。商品revisionの更新は同TXで必須 |
 
 既存get_stocktake_items/find_stocktake_itemはkind・要再確認理由・現在の復旧先を読めるよう拡張し、全商品一覧と検索の両経路へ同じ列を伝播する。complete用の内部型はNだけでなくL・kind・flag・証拠の有効性を渡す。record detailは明示的な補正区分とrecountを取得し、確定差異件数へ再実測を混ぜない。SQL失敗・整数範囲外・FK違反はDbErrorとして返し、IOでbefore/afterや復旧の可否を決めない。
@@ -935,7 +935,7 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 
 **StocktakeRecordDetailItem構造体**（補正 movement 起点の JOIN 行）:
 - product_code: String, product_name: String, department_name: String, stock_unit: String
-- system_stock: i64（棚卸し開始時システム在庫の snapshot）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
+- system_stock: i64（旧本体では明細を作った時点〈棚卸しの開始時、または棚卸し中の商品登録時〉の帳簿。新方式の measured は保存TXの帳簿。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
 - adjustment_quantity: i64（補正 movement の quantity。確定時 live 在庫基準）, stock_after: i64（補正後在庫）
 
 **処理ステップ**:

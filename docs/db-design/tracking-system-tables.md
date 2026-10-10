@@ -10,10 +10,24 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 |---|---|---|
 | stocktakes | reconciliation_version INTEGER | NOT NULL、0/1のCHECK。移行済み旧headerは0、新規headerは1。旧activeは再確認を終えて新式で確定するTXで1へ変更。完了済み0は変更しない |
 | stocktake_items | observation_kind TEXT | NOT NULL、DEFAULTなし、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
-| stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点 |
+| stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点。kindと証拠の組はtableのCHECKで固定する（下のSPEC-STK-TIME-D8-K1） |
 | stocktake_recounts（新設） | id INTEGER PK AUTOINCREMENT、stocktake_item_id INTEGER FK、system_stock INTEGER、actual_count INTEGER、count_started_at TEXT、counted_at TEXT、ledger_cursor INTEGER、source_cursor INTEGER、observation_revision INTEGER、request_id TEXT | 参照明細・N/L・時点証拠・版・要求IDはNOT NULL。request_idはUNIQUE。値はappend-only、actual_countは非負。importへのFKは置かない |
 | stocktake_recount_flags（新設） | product_code TEXT FK、source_id INTEGER FK → pos_import_sources.id、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL。未解消のflagを(product_code, source_id)で一意にする。csv_import_idはflagを作成したimport。reasonはsale_order_unknown（計数と前後不明の販売）/ offset_lines_present（相殺の行あり）/ offset_check_pending（相殺の確認待ち・EJ待ち）/ offset_mapping_changed（相殺の確認待ち・登録の変化）/ legacy_basis（旧記録の実測）のCHECK。解消で行を削除し、実測・取消による解消の根拠はその記録、再評価による解消の根拠は対応する保存済みの資料とEJの証拠に残る |
 | stocktake_recount_flags | previous_recheck_pending INTEGER | NOT NULL、0/1のCHECK。1はreason=offset_mapping_changedの場合だけ許可する（CHECK）。直前のZ004の未受領を原因に作る登録の変化（最初の区間・受領済みの最小より小さい番号・settlement_noの戻り）では1、それ以外では0をwriterが明示する。直前のZ004の受領だけでは変えず、そのZ004を使った再評価を業務TXで確定するとき、残すflagを0にする。業務TXの失敗では元の値を保つ。flagの解消では行とともに削除する。理由の追加や公開DTOへの露出は行わない |
+
+**SPEC-STK-TIME-D8-K1 kindと証拠の組のCHECK**（2026-10-07、㉘ ③ の packet `docs/plans/2026-10-07-stocktake-p1-3.md`）: stocktake_itemsにtable単位のCHECKを1つ置く。以下の「5項目」はcount_started_at・observation_revision・ledger_cursor・source_cursor・request_id。
+
+| observation_kind | actual_count | counted_at | 5項目 |
+|---|---|---|---|
+| measured | NOT NULL | NOT NULL | 全てNOT NULL |
+| uncounted | NULL | NULL | 全てNULL |
+| auto_filled（廃番の開始時自動入力とforce_fillの両方） | NOT NULL | NULL | 全てNULL |
+| legacy | 制約しない | 制約しない | 全てNULL |
+
+- 理由: ADR D8の「新しいmeasured行では…一式で保存」「auto_filledやuncountedの行へ実測cursorを作らない」を、全writerの実装の注意ではなくDBが拒否する形にする。証拠の欠けたmeasuredは前後の判定（D4）で計数前の受領を証明できない行になり、読み取り側の検査（20の有効観測の列挙）だけでは書いた後にしか分からない。legacyのactual_count・counted_atを制約しないのは、矛盾形（数量NULL・時刻あり等）もlegacyへ移すため（下の移行の表）。新しいauto_filledのcounted_atをNULLにするのは、移行で作るauto_filled（時刻NULL）と同じ形にし、実測の時刻と取り違えないため。
+- 棄却: 読み取り側の検査だけにする（壊れた行を書けてしまい、保存TXの誤りが後の取込みの判定まで露見しない）。kindごとの別tableにする（明細の一覧・確定・記録詳細の全readerを分ける費用に見合わない）。
+- 移行との関係: 下の「移行と保存TX」の分類で作る行（uncounted・auto_filled・legacy、5項目は全てNULL）はこのCHECKを満たす。同じ再構築のTXで当てる。
+- 見直す条件: 新しいkindを足すとき、またはauto_filledに時刻を残す要求が出たとき。
 
 要再確認flagの規則（[ADR D4](../adr/2026-09-18-stocktake-time-evidence.md)）:
 
@@ -158,13 +172,20 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 | id | INTEGER | PK AUTOINCREMENT | 明細ID |
 | stocktake_id | INTEGER | FK → stocktakes.id, NOT NULL | 親ヘッダ |
 | product_code | TEXT | FK → products.product_code, NOT NULL | 商品コード |
-| system_stock | INTEGER | NOT NULL | カウント時点のシステム在庫 |
+| system_stock | INTEGER | NOT NULL | 明細の帳簿 L。時点はkindで決まる（下の設計意図の SPEC-STK-TIME-D8-L1） |
 | actual_count | INTEGER | NULLABLE | 実カウント数。NULLなら未入力 |
 | valuation_cost_price | INTEGER | NULLABLE | 確定時の評価原価（円、価格の基準数量あたり。[master-tables](master-tables.md) products の価格の基準数量） |
 | counted_at | TEXT | NULLABLE | カウント日時（YYYY-MM-DDTHH:MM:SS）。NULLなら未入力 |
 
 ### 設計意図
-- **system_stockを明細に持つ理由**: 棚卸し中もCSV取込みで在庫が動く（SP-205-09修正）。差異の表示は「現在のproducts.stock_quantity - actual_count」で動的計算。system_stockは「カウントした時点のシステム在庫」を参考値として記録
+- **system_stockを明細に持つ理由**: 棚卸し中もCSV取込みで在庫が動く（SP-205-09修正）。
+- **SPEC-STK-TIME-D8-L1 system_stockの時点**（2026-10-07、DOC-2 の解消。㉘ ③ の packet `docs/plans/2026-10-07-stocktake-p1-3.md`）: 意味の正本は本節とし、[35](../function-design/35-biz-stocktake-service.md) はこれに従う。
+  - 時点は明細の作成時期やheaderのreconciliation_versionでなく、kindで決まる。
+  - measured: 計数の保存TXで読んだ帳簿L（[ADR D1](../adr/2026-09-18-stocktake-time-evidence.md)、確定の補正は `N-L`）。新方式の明細も、旧active（reconciliation_version=0のheader）のuncounted・legacyの明細を新方式の保存でmeasuredにし直したものも同じで、保存のたびにLを取り直す。取消のpending snapshot補正（ADR D6）はmeasuredのLだけを同じ向きに直す。
+  - uncounted: 明細を作った時点（棚卸しの開始時、または棚卸し中の商品登録時）の帳簿で、差異の計算に使わない参考値。
+  - auto_filled: N=L（廃番の開始時自動入力と移行の分類は0、force_fillは `max(現在庫,0)`）。
+  - 現行build（旧本体）の明細と、measuredになる前のlegacy: 明細を作った時点の値で、旧本体のカウント（35 §20.4 の update_count）では更新しない。差異の表示は「現在のproducts.stock_quantity - actual_count」で動的計算する（35 §20.4）。完了済み（reconciliation_version=0）の明細は独立再実測でも書き換えない（再実測はstocktake_recountsへ書く）ので、この意味のまま残る。
+  - 理由: 以前の本表は「カウント時点のシステム在庫」とだけ書き、35と旧本体の「開始時の参考値」と食い違っていた（[DOC-2](../research/2026-09-16-diagram-audit.md#doc-2-残る文書の意味の不一致)）。新方式は保存TXでLを取り直すので、同じ列がkindで別の時点を持つ。列を分ける案は、旧明細の値をどちらにも移せず、全readerを2列にする費用に見合わないため採らない。
 - **actual_countがNULLABLE**: 4000商品中、まだカウントしていない商品はNULL。NULLの件数が「未入力」の件数として進捗バーに使われる
 - **valuation_cost_priceの理由（指摘#4対応）**: 棚卸し確定時の原価を固定保存。商品マスタの原価が後から変わってもtotal_costがブレない。棚卸し確定時にproducts.cost_priceの値をコピーしてくる
 - **total_costの理由**: 棚卸し確定時に、全商品の商品別の金額（valuation_cost_price・数量・価格の基準数量から1/100円で求める）を合計し、円未満を四捨五入した仕入原価総額を算出（SP-205-08、税理士報告用、店の端数の規則。35 §20.5a）。1/100円の商品別の金額は保存しない（報告するのは総額だけ）
