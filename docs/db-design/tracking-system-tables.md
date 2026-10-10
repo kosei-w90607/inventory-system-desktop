@@ -15,7 +15,7 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 | stocktake_recount_flags（新設） | product_code TEXT FK、source_id INTEGER FK → pos_import_sources.id、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL。未解消のflagを(product_code, source_id)で一意にする。csv_import_idはflagを作成したimport。reasonはsale_order_unknown（計数と前後不明の販売）/ offset_lines_present（相殺の行あり）/ offset_check_pending（相殺の確認待ち・EJ待ち）/ offset_mapping_changed（相殺の確認待ち・登録の変化）/ legacy_basis（旧記録の実測）のCHECK。解消で行を削除し、実測・取消による解消の根拠はその記録、再評価による解消の根拠は対応する保存済みの資料とEJの証拠に残る |
 | stocktake_recount_flags | previous_recheck_pending INTEGER | NOT NULL、0/1のCHECK。1はreason=offset_mapping_changedの場合だけ許可する（CHECK）。直前のZ004の未受領を原因に作る登録の変化（最初の区間・受領済みの最小より小さい番号・settlement_noの戻り）では1、それ以外では0をwriterが明示する。直前のZ004の受領だけでは変えず、そのZ004を使った再評価を業務TXで確定するとき、残すflagを0にする。業務TXの失敗では元の値を保つ。flagの解消では行とともに削除する。理由の追加や公開DTOへの露出は行わない |
 
-**SPEC-STK-TIME-D8-K1 kindと証拠の組のCHECK**（2026-10-07、㉘ ③ の packet `docs/plans/2026-10-07-stocktake-p1-3.md`）: stocktake_itemsにtable単位のCHECKを1つ置く。以下の「5項目」はcount_started_at・observation_revision・ledger_cursor・source_cursor・request_id。
+**SPEC-STK-TIME-D8-K1 kindと証拠の組のCHECK**（2026-10-07、㉘ ③ の packet `docs/archive/plans/2026-10-07-stocktake-p1-3.md`）: stocktake_itemsにtable単位のCHECKを1つ置く。以下の「5項目」はcount_started_at・observation_revision・ledger_cursor・source_cursor・request_id。
 
 | observation_kind | actual_count | counted_at | 5項目 |
 |---|---|---|---|
@@ -179,7 +179,7 @@ sale_recordsとinventory_movementsで符号の意味が異なる。混同防止�
 
 ### 設計意図
 - **system_stockを明細に持つ理由**: 棚卸し中もCSV取込みで在庫が動く（SP-205-09修正）。
-- **SPEC-STK-TIME-D8-L1 system_stockの時点**（2026-10-07、DOC-2 の解消。㉘ ③ の packet `docs/plans/2026-10-07-stocktake-p1-3.md`）: 意味の正本は本節とし、[35](../function-design/35-biz-stocktake-service.md) はこれに従う。
+- **SPEC-STK-TIME-D8-L1 system_stockの時点**（2026-10-07、DOC-2 の解消。㉘ ③ の packet `docs/archive/plans/2026-10-07-stocktake-p1-3.md`）: 意味の正本は本節とし、[35](../function-design/35-biz-stocktake-service.md) はこれに従う。
   - 時点は明細の作成時期やheaderのreconciliation_versionでなく、kindで決まる。
   - measured: 計数の保存TXで読んだ帳簿L（[ADR D1](../adr/2026-09-18-stocktake-time-evidence.md)、確定の補正は `N-L`）。新方式の明細も、旧active（reconciliation_version=0のheader）のuncounted・legacyの明細を新方式の保存でmeasuredにし直したものも同じで、保存のたびにLを取り直す。取消のpending snapshot補正（ADR D6）はmeasuredのLだけを同じ向きに直す。
   - uncounted: 明細を作った時点（棚卸しの開始時、または棚卸し中の商品登録時）の帳簿で、差異の計算に使わない参考値。
