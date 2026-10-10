@@ -260,15 +260,11 @@ fn owner_matches(
     })
 }
 
-/// 差異・補正量・補正後の在庫は JavaScript の安全な整数（±2^53-1）に収める（ADR D8）。i64 の overflow（None）も同じ拒否
+/// 利用者へ返す数と、確定が評価に使う在庫は JavaScript の安全な整数（±2^53-1）に収める（ADR D8）。i64 の overflow（None）も同じ拒否
 fn safe(value: Option<i64>) -> Result<i64, BizError> {
     value
         .filter(|v| (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(v))
-        .ok_or_else(|| {
-            BizError::ValidationFailed(
-                "差異・補正量・補正後の在庫が扱える範囲を超えます".to_string(),
-            )
-        })
+        .ok_or_else(|| BizError::ValidationFailed("数が扱える範囲を超えます".to_string()))
 }
 
 /// 利用者へ返す数（ID・在庫・N・L・差異・補正量・総額）は全て `safe` の範囲に収める
@@ -337,6 +333,8 @@ pub(crate) fn start_stocktake(
             )?;
         }
     }
+    // 返す ID を検査してから commit（範囲外なら header と明細の INSERT を TX ごと戻す）
+    safe(Some(stocktake_id))?;
     tx.commit()
         .map_err(|e| BizError::DatabaseError(DbError::from(e)))?;
     Ok(StartStocktakeResult {

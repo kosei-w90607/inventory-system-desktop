@@ -342,6 +342,28 @@ fn test_start_stocktake_req205_c3_new_header_and_kinds() {
         Err(BizError::StocktakeInProgress(_))
     ));
     assert_eq!(snapshot(&conn), before, "進行中があれば書込み 0");
+
+    // 開始が返す棚卸しの ID も安全な整数の範囲（端の 2^53-1 は通り、2^53 は書込み 0 の ValidationFailed。生の SQL）
+    let (_dir, mut conn) = setup_time_evidence_db();
+    product(&conn, "TE-A", 5);
+    conn.execute(
+        "INSERT INTO stocktakes (id, started_at, completed_at, status, total_cost, reconciliation_version)
+         VALUES (?1, ?2, ?2, 'completed', 0, 1)",
+        rusqlite::params![MAX_SAFE - 1, T_START],
+    )
+    .unwrap();
+    assert_eq!(start(&mut conn), MAX_SAFE);
+    conn.execute(
+        "UPDATE stocktakes SET status = 'completed' WHERE id = ?1",
+        [MAX_SAFE],
+    )
+    .unwrap();
+    let before = snapshot(&conn);
+    assert!(matches!(
+        start_stocktake(&mut conn, T_START),
+        Err(BizError::ValidationFailed(_))
+    ));
+    assert_eq!(snapshot(&conn), before, "ID が範囲外の開始は書込み 0");
 }
 
 // ---------------------------------------------------------------------------
@@ -1409,6 +1431,42 @@ fn test_complete_stocktake_req205_c21_adjusted_stock_range() {
     let before = snapshot(&conn);
     assert!(matches!(
         complete(&mut conn, id, false),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+
+    // 補正量 1・補正後の在庫 1 が安全でも、応答に載る L = 2^53 + 2・N = 2^53 + 3 が範囲外（確定の直前の在庫は 0。生の SQL）
+    let (_dir, mut conn) = setup_time_evidence_db();
+    product(&conn, "TE-A", 0);
+    let id = start(&mut conn);
+    let item = item_of(&conn, id, "TE-A");
+    conn.execute(
+        "UPDATE stocktake_items SET observation_kind = 'measured', actual_count = ?1, system_stock = ?2,
+            count_started_at = ?3, counted_at = ?3, ledger_cursor = 0, source_cursor = 0,
+            observation_revision = 1, request_id = 'req-out-of-range' WHERE id = ?4",
+        rusqlite::params![MAX_SAFE + 3, MAX_SAFE + 2, T_SAVE, item],
+    )
+    .unwrap();
+    let before = snapshot(&conn);
+    assert!(matches!(
+        complete(&mut conn, id, false),
+        Err(CountError::Biz(BizError::ValidationFailed(_)))
+    ));
+    assert_eq!(snapshot(&conn), before);
+
+    // force_fill: 未計数の明細の商品の在庫 2^53 が範囲外（N=L に写す書込みも TX ごと戻す。
+    // 原価 0 で総額は 0 なので、拒否するのは在庫の検査だけ。生の SQL）
+    let (_dir, mut conn) = setup_time_evidence_db();
+    product_full(&conn, "TE-A", 0, false, "pcs", 0);
+    let id = start(&mut conn);
+    conn.execute(
+        "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TE-A'",
+        [MAX_SAFE + 1],
+    )
+    .unwrap();
+    let before = snapshot(&conn);
+    assert!(matches!(
+        complete(&mut conn, id, true),
         Err(CountError::Biz(BizError::ValidationFailed(_)))
     ));
     assert_eq!(snapshot(&conn), before);
