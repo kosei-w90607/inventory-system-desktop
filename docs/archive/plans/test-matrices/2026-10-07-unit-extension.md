@@ -1,6 +1,6 @@
 # Test Design Matrix: 単位の拡張と、原価 × 数量の価格の基準数量
 
-Plan Packet: [2026-10-07-unit-extension](../2026-10-07-unit-extension.md)。本 lane は docs だけで、下の test は後続の runtime の lane（U = 単位、C = 原価、P = Z004・EJ）が実装する。契約の正本は [共通規則](../../function-design/10-common-rules.md) SPEC-UNIT-D1〜D11 と [22](../../function-design/22-mnt-migration.md) §16。oracle の値は正本の例と店の事実（台帳の番号）から独立に写し、実装の出力から作らない。
+Plan Packet: [2026-10-07-unit-extension](../2026-10-07-unit-extension.md)。本 lane は docs だけで、下の test は後続の runtime の lane（U = 単位、C = 原価、P = Z004・EJ）が実装する。契約の正本は [共通規則](../../../function-design/10-common-rules.md) SPEC-UNIT-D1〜D11 と [22](../../../function-design/22-mnt-migration.md) §16。oracle の値は正本の例と店の事実（台帳の番号）から独立に写し、実装の出力から作らない。
 
 ## Risk
 

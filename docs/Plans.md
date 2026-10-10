@@ -16,6 +16,7 @@ active な lane の Plan Packet は `docs/plans/` の dated packet が正本（l
 - 2026-10-04 の 4 lane（A Z004 取込みの穴・B 日報取込みの穴・D EJ の文法・E 独自コードの採番、owner の lane 選択 TD-104）と、その後に先に入れた helper の守りの lane（owner 2026-10-05）はすべて merge 済み（PR #138〜#142）。次の lane は未定（owner が決める）。
 - wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）と後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（PR #145、2026-10-06）は merge 済み。
 - SD を直接読む設計（PR #150、2026-10-07）は merge 済み。次 = 後続の「SD 直読みの runtime」の lane の起票（R3、[backlog](backlog.md) の該当項目。起票時に Final Review の P3 4 件を直し、L3 の前に packet の Contract Probe の確認を行う）、その後に取込み済みを `XZ_BKUP` へ移す (b) の lane（D-111 (1)(b)、backlog の該当項目）。(b) の lane まで店は CV17 の取込みを今の運用のまま続ける（D-111 の運用の制約）。
+- 単位の拡張と数量・原価の精度の設計（PR #154、2026-10-11、D-113）は merge 済み。次 = 後続の runtime の lane の起票（単位の lane → 原価の lane、R4。[backlog](backlog.md) の「単位の拡張」の項目。起票時に「後続の lane の起票の入力（Final Review の P3）」を拾う）。それまで店は今の `個` / `cm` の 2 つで登録する。
 
 次の着手順（owner決定2026-09-22）:
 
@@ -29,6 +30,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## 直近の完了
 
+- 2026-10-11 [PR #154](https://github.com/kosei-w90607/inventory-system-desktop/pull/154) 単位の拡張と数量・原価の精度の設計（単独の lane、R4、docs だけ）: 単位を 12 種へ広げ（m は在庫を cm の整数で持ち 1 m あたりで値付け）、数量・原価の精度（原価を 1/100 円で持つ）と金額の丸めを共通規則 SPEC-UNIT-D1〜D11 に決め、入力の上限と、移行の手順・移行の前の上限の検査・失敗したときの回復を設計正本に置いた（D-113。code・migration・bindings は変えず、runtime は後続の lane）。[archive](archive/plans/2026-10-07-unit-extension.md)・[Matrix](archive/plans/test-matrices/2026-10-07-unit-extension.md)
 - 2026-10-11 [PR #152](https://github.com/kosei-w90607/inventory-system-desktop/pull/152) 棚卸しの P1 を直す ㉘ ③ 計数と補正（単独の lane、R3）: 時点証拠 schema に kind と証拠の組の CHECK（SPEC-STK-TIME-D8-K1）を入れ、新方式の棚卸しの開始・計数 context（begin）・1 商品 1 TX の保存・独立再実測・確定を `#[cfg(test)]` の中に置き、確定は確定の直前の在庫へ N − L を加えて保存の後の入出庫を打ち消さない形にした（`system_stock` の時点の正本は tracking の SPEC-STK-TIME-D8-L1。店の画面と今の棚卸しは変わらず、配線は ⑤）。[archive](archive/plans/2026-10-07-stocktake-p1-3.md)・[Matrix](archive/plans/test-matrices/2026-10-07-stocktake-p1-3.md)
 - 2026-10-08 [PR #146](https://github.com/kosei-w90607/inventory-system-desktop/pull/146) npm の依存（開発用・runtime）の high・critical を名指しの更新で消す（単独の lane、R3、Issue #135）: TanStack の router 系と推移依存を名指しの更新で修正版へ上げ、修正版の無い経路は使っていない markdownlint-cli2 を外して消し、`npm audit --audit-level=high` が通るようになった（app の code は変えず、実 router で離脱防止を確かめる test を足した。zod の更新は backlog の follow-up）。[archive](archive/plans/2026-10-06-npm-audit.md)・[Matrix](archive/plans/test-matrices/2026-10-06-npm-audit.md)
 - 2026-10-07 [PR #150](https://github.com/kosei-w90607/inventory-system-desktop/pull/150) 毎日の売上データをレジの SD から直接読む設計（単独の lane、R3、docs だけ）: レジの SD を探して売上の file を読み、精算ごとの束を取込み済みと照らして同じ精算の二重取込みを拒み、読んだ原本の写しを PC に残す設計を設計正本に置いた（D-111。SD は動かさず、runtime と移す操作は後続の lane）。[archive](archive/plans/2026-10-06-sd-direct-read.md)・[Matrix](archive/plans/test-matrices/2026-10-06-sd-direct-read.md)
@@ -38,7 +40,6 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 - 2026-10-05 [PR #142](https://github.com/kosei-w90607/inventory-system-desktop/pull/142) helper と検査の守りを揃える（単独の lane、R3）: PK4 が Workflow State の値を helper の `parse_packet` で判定し、PK5 が `Plan Commit`・`Amendments` の 40 桁の SHA だけを受け、helper は Gated Amendment の後に要る broad を先に言い、review の record に同じ head の PR review の数の申告（`--pr-reviews`）を求めるようになった（D-107）。[archive](archive/plans/2026-10-05-gate-record-guards.md)・[Matrix](archive/plans/test-matrices/2026-10-05-gate-record-guards.md)
 - 2026-10-05 [PR #141](https://github.com/kosei-w90607/inventory-system-desktop/pull/141) EJ parser に店が普段使う文法を足す（2026-10-04 の 4 lane の lane D、R3）: 記録の種類を本文の行で決め、取引の合計域・明細域（訂正・値引き・マイナスキー・戻の印）と取引中止を読み、規則に合わない記録は今どおり復元不能に倒す（D-105）。[archive](archive/plans/2026-10-04-ej-grammar.md)・[Matrix](archive/plans/test-matrices/2026-10-04-ej-grammar.md)
 - 2026-10-05 [PR #140](https://github.com/kosei-w90607/inventory-system-desktop/pull/140) 日報（Z001 / Z002 / Z005）取込みの穴（4 lane の lane B、R3）: 小数の個数を 100 倍の整数で受け（migration v7）、別の精算の混在を精算回数で止め、行の鍵をラベルで決めた（D-104）。[archive](archive/plans/2026-10-04-daily-report-import-gaps.md)・[Matrix](archive/plans/test-matrices/2026-10-04-daily-report-import-gaps.md)
-- 2026-10-04 [PR #139](https://github.com/kosei-w90607/inventory-system-desktop/pull/139) Z004 取込みの穴（4 lane の lane A、R3）: カンマ付きの金額を読み、コードの無い枠の売上を `invalid_jan` の行エラーで知らせ、売上の無い非 JAN の枠を読み飛ばす（D-103）。[archive](archive/plans/2026-10-04-z004-import-gaps.md)・[Matrix](archive/plans/test-matrices/2026-10-04-z004-import-gaps.md)
 
 ### Wave Registry
 
@@ -46,7 +47,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## ブロッカー
 
-次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃った（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）。design lane は起票可だが、wave 10 の後に並べる（owner 2026-09-15 合意）。
+次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃い（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）、設計は merge 済み（PR #154、2026-10-11、D-113）。runtime の lane は起票可（上の「次の行動」）。
 
 ## 製品の未決判断
 
