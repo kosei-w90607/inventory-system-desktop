@@ -478,8 +478,21 @@ fn csv_total_quantity(count_points: i64, length_cm: i64) -> String {
     match (count_points, length_cm) {
         (count, 0) => count.to_string(),
         (0, length) => format_length_m(length),
-        (count, length) => format!("{count} 点・{}", format_length_m(length)),
+        (count, length) => format!("{} 点・{}", group_thousands(count), format_length_m(length)),
     }
+}
+
+/// 整数に 3 桁区切りを付ける（符号は先頭、区切りは絶対値の桁。X9 の `N 点` の `N`）
+fn group_thousands(value: i64) -> String {
+    let digits = value.unsigned_abs().to_string();
+    let mut out = String::from(if value < 0 { "-" } else { "" });
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// 売上記録元の日本語変換（CSV出力用）
@@ -1813,5 +1826,38 @@ mod tests {
             .map(|line| line.split(',').nth(2).unwrap())
             .collect();
         assert_eq!(quantities, vec!["5 点・1.8 m", "5", "0", "1.3 m"]);
+    }
+
+    #[test]
+    fn test_export_sales_csv_req502_total_quantity_groups_thousands() {
+        // REQ-502 / SPEC-UNIT-D3 の表の 5（X9）: 集計の行の `N 点` の `N` は 3 桁区切り（画面と同じ golden）。
+        // `length_cm` が 0 の部門は区切りも語も付けない整数、`count_points` が 0 の部門は m の形
+        for (count, length, expected) in [
+            (5, 180, "5 点・1.8 m"),
+            (999, 180, "999 点・1.8 m"),
+            (1000, 180, "1,000 点・1.8 m"),
+            (1234, 180, "1,234 点・1.8 m"),
+            (-1234, 180, "-1,234 点・1.8 m"),
+            (1_234_567, 123_456, "1,234,567 点・1,234.56 m"),
+            (1234, 0, "1234"),
+            (-1234, 0, "-1234"),
+            (0, 0, "0"),
+            (0, 123_456, "1,234.56 m"),
+        ] {
+            assert_eq!(csv_total_quantity(count, length), expected);
+        }
+
+        // CSV の行: `,` を含む field は exporter が `"…"` で括る
+        let (_dir, conn) = setup_test_db();
+        seed_product_unit(&conn, "G1-PCS", 1, "pcs");
+        seed_product_unit(&conn, "G1-M", 1, "m");
+        seed_product_unit(&conn, "G2-PCS", 2, "pcs");
+        seed_sale(&conn, "G1-PCS", "2026-03-21", 1234, 5000, "auto");
+        seed_sale(&conn, "G1-M", "2026-03-21", 180, 0, "manual");
+        seed_sale(&conn, "G2-PCS", "2026-03-21", 1234, 3000, "auto");
+        let lines = csv_lines(&conn, SalesReportType::MonthlyByDepartment, "2026-03");
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        assert!(lines[0].contains(",\"1,234 点・1.8 m\","), "{lines:?}");
+        assert!(lines[1].contains(",1234,"), "{lines:?}");
     }
 }

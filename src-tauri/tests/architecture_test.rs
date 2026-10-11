@@ -285,6 +285,11 @@ const DB_IO_REEXPORT_ALLOWLIST: &[(&str, &str, &str)] = &[
     ), // :21
     (
         "biz/mod.rs",
+        "ProductStockUnit",
+        "crate::db::product_repo::ProductStockUnit",
+    ), // :21（SPEC-UNIT-D11: CMD の ProductResponse.stock_unit）
+    (
+        "biz/mod.rs",
         "CsvImport",
         "crate::db::sales_repo::CsvImport",
     ), // :23

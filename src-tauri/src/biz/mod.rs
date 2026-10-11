@@ -19,7 +19,9 @@ pub mod unit_amount;
 #[allow(unused_imports)]
 pub use crate::db::product_repo::{Department, Supplier};
 #[allow(unused_imports)]
-pub use crate::db::product_repo::{ProductBulkFilter, ProductSearchQuery, ProductWithRelations};
+pub use crate::db::product_repo::{
+    ProductBulkFilter, ProductSearchQuery, ProductStockUnit, ProductWithRelations,
+};
 #[allow(unused_imports)]
 pub use crate::db::sales_repo::CsvImport;
 #[allow(unused_imports)]
