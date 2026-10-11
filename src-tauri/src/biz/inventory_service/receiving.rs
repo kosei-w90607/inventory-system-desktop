@@ -1,6 +1,10 @@
 //! 入庫記録（create_receiving）
 
+use crate::biz::unit_amount::{
+    check_safe_integer, cost_line_centi, cost_total_yen, price_basis_quantity,
+};
 use crate::biz::BizError;
+use crate::constants::{MAX_COST_PRICE, MAX_LINE_QUANTITY};
 use crate::db::inventory_repo::{MovementType, ReferenceType};
 use crate::db::product_repo;
 use crate::db::receiving_repo;
@@ -108,10 +112,17 @@ pub fn create_receiving(
     }
 
     // バリデーション（DB参照あり）
+    let mut line_centis = Vec::with_capacity(req.items.len());
     for (i, item) in req.items.iter().enumerate() {
         if item.quantity <= 0 {
             return Err(BizError::ValidationFailed(format!(
                 "明細{}: 数量は1以上必要です",
+                i + 1
+            )));
+        }
+        if item.quantity > MAX_LINE_QUANTITY {
+            return Err(BizError::ValidationFailed(format!(
+                "明細{}: 数量が大きすぎます",
                 i + 1
             )));
         }
@@ -121,13 +132,25 @@ pub fn create_receiving(
                 i + 1
             )));
         }
-        if product_repo::find_by_product_code(conn, &item.product_code)?.is_none() {
-            return Err(BizError::NotFound(format!(
-                "商品が見つかりません: {}",
-                item.product_code
+        if item.cost_price > MAX_COST_PRICE {
+            return Err(BizError::ValidationFailed(format!(
+                "明細{}: 原価が大きすぎます",
+                i + 1
             )));
         }
+        let product =
+            product_repo::find_by_product_code(conn, &item.product_code)?.ok_or_else(|| {
+                BizError::NotFound(format!("商品が見つかりません: {}", item.product_code))
+            })?;
+        line_centis.push(cost_line_centi(
+            i128::from(item.cost_price) * 100,
+            item.quantity,
+            price_basis_quantity(product.product.stock_unit),
+            &item.product_code,
+        )?);
     }
+    // 円の合計は最初の書込みの前に安全な整数の範囲で確かめる（共通規則 (c)、X8）
+    check_safe_integer(i128::from(cost_total_yen(&line_centis)?), "合計金額")?;
     if let Some(sid) = req.supplier_id {
         if product_repo::find_supplier_by_id(conn, sid)?.is_none() {
             return Err(BizError::NotFound(format!(
@@ -703,5 +726,165 @@ mod tests {
             )
             .unwrap();
         assert_eq!(log_count, 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // 入力の上限と安全な整数の範囲（共通規則 SPEC-UNIT-D11 の続き、X1・X3・X6・X8）
+    // -----------------------------------------------------------------------
+
+    const RECEIVING_TABLES: [&str; 4] = [
+        "receiving_records",
+        "receiving_items",
+        "inventory_movements",
+        "operation_logs",
+    ];
+
+    #[test]
+    fn test_create_receiving_req201_quantity_and_cost_limits() {
+        // REQ-201 / X1・X6: 1 明細の数量は 9999999、原価は 999999 まで。1 つ外は何も書かない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "LIM-R", 0);
+        create_receiving(
+            &mut conn,
+            make_receiving_req(
+                "lim-r-ok",
+                vec![receiving_item("LIM-R", 9_999_999, 999_999)],
+            ),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "LIM-R"), 9_999_999);
+
+        for (key, quantity, cost, message) in [
+            ("lim-r-qty", 10_000_000, 300, "明細2: 数量が大きすぎます"),
+            ("lim-r-cost", 1, 1_000_000, "明細2: 原価が大きすぎます"),
+        ] {
+            let before = write_surface(&conn, &RECEIVING_TABLES);
+            let result = create_receiving(
+                &mut conn,
+                make_receiving_req(
+                    key,
+                    vec![
+                        receiving_item("LIM-R", 1, 300),
+                        receiving_item("LIM-R", quantity, cost),
+                    ],
+                ),
+            );
+            assert_rejected_without_writes(&conn, &RECEIVING_TABLES, &before, result, message);
+        }
+    }
+
+    #[test]
+    fn test_create_receiving_req201_stock_limit_rolls_back_whole_tx() {
+        // REQ-201 / X3: 計算の後の在庫が 999999999 を超えたら TX 全体を戻す
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "STK-FULL", 999_999_999);
+        create_test_product(&conn, "STK-NEAR", 999_999_998);
+        create_test_product(&conn, "STK-OTHER", 0);
+        let before = write_surface(&conn, &RECEIVING_TABLES);
+        let result = create_receiving(
+            &mut conn,
+            make_receiving_req(
+                "stk-over",
+                vec![
+                    receiving_item("STK-OTHER", 5, 300),
+                    receiving_item("STK-FULL", 1, 300),
+                ],
+            ),
+        );
+        assert_rejected_without_writes(
+            &conn,
+            &RECEIVING_TABLES,
+            &before,
+            result,
+            "在庫数が大きすぎます",
+        );
+        assert_eq!(stock_of(&conn, "STK-OTHER"), 0);
+
+        create_receiving(
+            &mut conn,
+            make_receiving_req("stk-edge", vec![receiving_item("STK-NEAR", 1, 300)]),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "STK-NEAR"), 999_999_999);
+    }
+
+    /// X8 の fixture: 上限の明細（原価 999999・数量 9999999）を A1〜A9 に 100 行ずつ（900 行、8999990100000900 円）
+    fn limit_lines_900() -> Vec<(String, i64, i64)> {
+        (1..=9)
+            .flat_map(|product| {
+                std::iter::repeat((format!("X8-A{product}"), 9_999_999, 999_999)).take(100)
+            })
+            .collect()
+    }
+
+    fn receiving_items_from(lines: &[(String, i64, i64)]) -> Vec<ReceivingItemInput> {
+        lines
+            .iter()
+            .map(|(code, quantity, cost)| receiving_item(code, *quantity, *cost))
+            .collect()
+    }
+
+    fn setup_total_limit_db() -> (tempfile::TempDir, DbConnection) {
+        let (dir, conn) = setup_test_db();
+        for product in 1..=9 {
+            create_test_product(&conn, &format!("X8-A{product}"), 0);
+        }
+        create_test_product(&conn, "X8-B", 0);
+        (dir, conn)
+    }
+
+    #[test]
+    fn test_create_receiving_req201_total_cost_safe_integer_limit() {
+        // REQ-201 / X8: 円の合計は最初の書込みの前に ±9007199254740991 で確かめる
+        // 900 行（8999990100000900 円）は成功
+        let (_dir, mut conn) = setup_total_limit_db();
+        let lines = limit_lines_900();
+        let result = create_receiving(
+            &mut conn,
+            make_receiving_req("x8-900", receiving_items_from(&lines)),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "X8-A1"), 999_999_900);
+        assert_eq!(stock_of(&conn, "X8-A9"), 999_999_900);
+        let detail =
+            crate::biz::inventory_service::get_receiving_record(&conn, result.record_id).unwrap();
+        assert_eq!(detail.total_cost, 8_999_990_100_000_900);
+
+        // 902 行でちょうど 9007199254740991 円は成功し、記録詳細も同じ合計を返す
+        let (_dir, mut conn) = setup_total_limit_db();
+        let mut edge = limit_lines_900();
+        edge.push(("X8-B".to_string(), 7_209_161, 999_999));
+        edge.push(("X8-B".to_string(), 1, 949_252));
+        let result = create_receiving(
+            &mut conn,
+            make_receiving_req("x8-edge", receiving_items_from(&edge)),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "X8-B"), 7_209_162);
+        let detail =
+            crate::biz::inventory_service::get_receiving_record(&conn, result.record_id).unwrap();
+        assert_eq!(detail.total_cost, 9_007_199_254_740_991);
+
+        // 1 円外（最後の行の原価 949253）と、上限の明細 901 行は拒み、何も書かない
+        let mut one_over = limit_lines_900();
+        one_over.push(("X8-B".to_string(), 7_209_161, 999_999));
+        one_over.push(("X8-B".to_string(), 1, 949_253));
+        let mut lines_901 = limit_lines_900();
+        lines_901.push(("X8-B".to_string(), 9_999_999, 999_999));
+        for (key, lines) in [("x8-over", one_over), ("x8-901", lines_901)] {
+            let (_dir, mut conn) = setup_total_limit_db();
+            let before = write_surface(&conn, &RECEIVING_TABLES);
+            let result = create_receiving(
+                &mut conn,
+                make_receiving_req(key, receiving_items_from(&lines)),
+            );
+            assert_rejected_without_writes(
+                &conn,
+                &RECEIVING_TABLES,
+                &before,
+                result,
+                "合計金額が大きすぎます",
+            );
+        }
     }
 }

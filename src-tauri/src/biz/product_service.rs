@@ -470,15 +470,10 @@ pub fn revise_product_price(
     let existing = product_repo::find_by_product_code(conn, &input.product_code)?
         .ok_or_else(|| BizError::NotFound("商品が見つかりません".to_string()))?;
 
-    if input.new_selling_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "売価は0以上で入力してください".to_string(),
-        ));
-    }
-    if input.new_cost_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "原価は0以上で入力してください".to_string(),
-        ));
+    if let Some(message) =
+        selling_and_cost_range_error(input.new_selling_price, input.new_cost_price)
+    {
+        return Err(BizError::ValidationFailed(message));
     }
 
     if let Some(supplier_id) = input.assign_supplier_id {
@@ -1061,20 +1056,16 @@ fn validate_create_request(
     if req.name.trim().is_empty() {
         return Err(BizError::ValidationFailed("商品名は必須です".to_string()));
     }
-    if req.selling_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "売価は0以上で入力してください".to_string(),
-        ));
-    }
-    if req.cost_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "原価は0以上で入力してください".to_string(),
-        ));
+    if let Some(message) = selling_and_cost_range_error(req.selling_price, req.cost_price) {
+        return Err(BizError::ValidationFailed(message));
     }
     if req.initial_stock < 0 {
         return Err(BizError::ValidationFailed(
             "初期在庫は0以上で入力してください".to_string(),
         ));
+    }
+    if req.initial_stock > MAX_STOCK_QUANTITY {
+        return Err(BizError::ValidationFailed(MSG_STOCK_TOO_LARGE.to_string()));
     }
     // department 存在チェック
     if product_repo::find_department_by_id(conn, req.department_id)?.is_none() {
@@ -1107,19 +1098,15 @@ fn validate_update_request(
             return Err(BizError::ValidationFailed("商品名は必須です".to_string()));
         }
     }
-    if let Some(price) = req.selling_price {
-        if price < 0 {
-            return Err(BizError::ValidationFailed(
-                "売価は0以上で入力してください".to_string(),
-            ));
-        }
-    }
-    if let Some(cost) = req.cost_price {
-        if cost < 0 {
-            return Err(BizError::ValidationFailed(
-                "原価は0以上で入力してください".to_string(),
-            ));
-        }
+    if let Some(message) = req
+        .selling_price
+        .and_then(|price| price_range_error("売価", price, MAX_SELLING_PRICE))
+        .or_else(|| {
+            req.cost_price
+                .and_then(|cost| price_range_error("原価", cost, MAX_COST_PRICE))
+        })
+    {
+        return Err(BizError::ValidationFailed(message));
     }
     if let Some(dept_id) = req.department_id {
         if product_repo::find_department_by_id(conn, dept_id)?.is_none() {
@@ -4814,14 +4801,15 @@ mod tests {
 
     #[test]
     fn test_revise_product_price_req105_persists_large_values_exactly() {
+        // REQ-105 / 共通規則 (a)（X5・X6）: 上限の端は商品と履歴に正確に保存され、1 つ外は何も変えない
         let (_dir, mut conn) = setup_test_db();
         let code = create_price_revision_product(&mut conn);
         revise_product_price(
             &mut conn,
             PriceRevisionInput {
                 product_code: code.clone(),
-                new_selling_price: 9_999_999,
-                new_cost_price: 9_999_998,
+                new_selling_price: 999_999,
+                new_cost_price: 999_999,
                 assign_supplier_id: None,
             },
         )
@@ -4830,10 +4818,126 @@ mod tests {
             .unwrap()
             .unwrap();
         let history = product_repo::list_price_history(&conn, &code, 10).unwrap();
-        assert_eq!(product.product.selling_price, 9_999_999);
-        assert_eq!(product.product.cost_price, 9_999_998);
-        assert_eq!(history[0].new_selling_price, 9_999_999);
-        assert_eq!(history[0].new_cost_price, 9_999_998);
+        assert_eq!(product.product.selling_price, 999_999);
+        assert_eq!(product.product.cost_price, 999_999);
+        assert_eq!(history[0].new_selling_price, 999_999);
+        assert_eq!(history[0].new_cost_price, 999_999);
+
+        let before_logs = price_revision_log_count(&conn);
+        for (new_selling_price, new_cost_price, message) in [
+            (1_000_000, 300, "売価が大きすぎます"),
+            (500, 1_000_000, "原価が大きすぎます"),
+        ] {
+            let result = revise_product_price(
+                &mut conn,
+                PriceRevisionInput {
+                    product_code: code.clone(),
+                    new_selling_price,
+                    new_cost_price,
+                    assign_supplier_id: None,
+                },
+            );
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref m)) if m == message),
+                "{message}: {result:?}"
+            );
+            let product = product_repo::find_by_product_code(&conn, &code)
+                .unwrap()
+                .unwrap();
+            assert_eq!(product.product.selling_price, 999_999);
+            assert_eq!(product.product.cost_price, 999_999);
+            assert_eq!(
+                product_repo::list_price_history(&conn, &code, 10)
+                    .unwrap()
+                    .len(),
+                history.len()
+            );
+            assert_eq!(price_revision_log_count(&conn), before_logs);
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_update_product_req101_req102_price_and_initial_stock_limits() {
+        // REQ-101 / REQ-102 / 共通規則 (a)（X3・X5・X6）: 売価・原価は 999999、初期在庫は 999999999 まで
+        let (_dir, mut conn) = setup_test_db();
+        let edge = create_product(
+            &mut conn,
+            ProductCreateRequest {
+                selling_price: 999_999,
+                cost_price: 999_999,
+                initial_stock: 999_999_999,
+                ..default_create_request()
+            },
+        )
+        .unwrap();
+        let stored = product_repo::find_by_product_code(&conn, &edge.product_code)
+            .unwrap()
+            .unwrap()
+            .product;
+        assert_eq!(
+            (
+                stored.selling_price,
+                stored.cost_price,
+                stored.stock_quantity
+            ),
+            (999_999, 999_999, 999_999_999)
+        );
+
+        let product_count = |conn: &DbConnection| -> i64 {
+            conn.query_row("SELECT COUNT(*) FROM products", [], |row| row.get(0))
+                .unwrap()
+        };
+        for (selling_price, cost_price, initial_stock, message) in [
+            (1_000_000, 300, 0, "売価が大きすぎます"),
+            (500, 1_000_000, 0, "原価が大きすぎます"),
+            (500, 300, 1_000_000_000, "在庫数が大きすぎます"),
+        ] {
+            let before = product_count(&conn);
+            let result = create_product(
+                &mut conn,
+                ProductCreateRequest {
+                    selling_price,
+                    cost_price,
+                    initial_stock,
+                    ..default_create_request()
+                },
+            );
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref m)) if m == message),
+                "{message}: {result:?}"
+            );
+            assert_eq!(product_count(&conn), before);
+        }
+
+        for (selling_price, cost_price, message) in [
+            (Some(1_000_000), None, "売価が大きすぎます"),
+            (None, Some(1_000_000), "原価が大きすぎます"),
+        ] {
+            let result = update_product(
+                &mut conn,
+                &edge.product_code,
+                &ProductUpdateRequest {
+                    selling_price,
+                    cost_price,
+                    ..Default::default()
+                },
+            );
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref m)) if m == message),
+                "{message}: {result:?}"
+            );
+        }
+        update_product(
+            &mut conn,
+            &edge.product_code,
+            &ProductUpdateRequest {
+                selling_price: Some(999_999),
+                cost_price: Some(999_999),
+                ..Default::default()
+            },
+        )
+        .unwrap();
     }
 
     #[test]

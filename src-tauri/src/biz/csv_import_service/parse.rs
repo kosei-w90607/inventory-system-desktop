@@ -95,6 +95,20 @@ pub fn parse_and_validate(
             continue;
         }
 
+        // POS 由来の数量は絶対値の上限まで（共通規則 (a)、X2）。在庫を動かさない行も同じ検査を通る
+        if i64::from(row.quantity).abs() > constants::MAX_LINE_QUANTITY {
+            error_rows.push(ErrorRow {
+                line_no: row.line_no,
+                normalized_jan: Some(row.normalized_jan.clone()),
+                name: row.name.clone(),
+                raw_quantity: row.quantity.to_string(),
+                raw_amount: row.amount.to_string(),
+                error_type: super::CsvImportErrorType::InvalidNumber,
+                error_message: "数量が大きすぎます".to_string(),
+            });
+            continue;
+        }
+
         let products = product_repo::find_by_jan_code(conn, &row.normalized_jan)?;
         match products.len() {
             0 => {

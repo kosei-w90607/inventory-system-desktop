@@ -1,6 +1,7 @@
 //! 手動販売出庫（create_manual_sale）
 
 use crate::biz::BizError;
+use crate::constants::MAX_LINE_QUANTITY;
 use crate::db::inventory_repo::{MovementType, ReferenceType};
 use crate::db::manual_sale_repo;
 use crate::db::manual_sale_repo::ManualSaleReason;
@@ -131,6 +132,12 @@ pub fn create_manual_sale(
         if item.quantity <= 0 {
             return Err(BizError::ValidationFailed(format!(
                 "明細{}: 数量は1以上必要です",
+                i + 1
+            )));
+        }
+        if item.quantity > MAX_LINE_QUANTITY {
+            return Err(BizError::ValidationFailed(format!(
+                "明細{}: 数量が大きすぎます",
                 i + 1
             )));
         }
@@ -642,5 +649,76 @@ mod tests {
         let req = make_manual_sale_req("ms-key-12", vec![manual_sale_item("MS-012", 1, -1)]);
         let result = create_manual_sale(&mut conn, req);
         assert!(matches!(result, Err(BizError::ValidationFailed(_))));
+    }
+
+    // -----------------------------------------------------------------------
+    // 入力の上限（共通規則 SPEC-UNIT-D11 の続き、X1・X3）
+    // -----------------------------------------------------------------------
+
+    const MANUAL_SALE_TABLES: [&str; 5] = [
+        "manual_sales",
+        "manual_sale_items",
+        "sale_records",
+        "inventory_movements",
+        "operation_logs",
+    ];
+
+    #[test]
+    fn test_create_manual_sale_req203_quantity_limit() {
+        // REQ-203 / X1: 1 明細の数量は 9999999 まで。1 つ外は何も書かない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "LIM-MS", 0);
+        create_manual_sale(
+            &mut conn,
+            make_manual_sale_req(
+                "lim-ms-ok",
+                vec![manual_sale_item("LIM-MS", 9_999_999, 500)],
+            ),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "LIM-MS"), -9_999_999);
+
+        let before = write_surface(&conn, &MANUAL_SALE_TABLES);
+        let result = create_manual_sale(
+            &mut conn,
+            make_manual_sale_req(
+                "lim-ms-over",
+                vec![manual_sale_item("LIM-MS", 10_000_000, 500)],
+            ),
+        );
+        assert_rejected_without_writes(
+            &conn,
+            &MANUAL_SALE_TABLES,
+            &before,
+            result,
+            "明細1: 数量が大きすぎます",
+        );
+    }
+
+    #[test]
+    fn test_create_manual_sale_req203_stock_limit_rolls_back_whole_tx() {
+        // REQ-203 / X3: 計算の後の在庫が -999999999 を下回ったら TX 全体を戻す
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "STK-FULL", -999_999_999);
+        create_test_product(&conn, "STK-NEAR", -999_999_998);
+        let before = write_surface(&conn, &MANUAL_SALE_TABLES);
+        let result = create_manual_sale(
+            &mut conn,
+            make_manual_sale_req("stk-over", vec![manual_sale_item("STK-FULL", 1, 500)]),
+        );
+        assert_rejected_without_writes(
+            &conn,
+            &MANUAL_SALE_TABLES,
+            &before,
+            result,
+            "在庫数が大きすぎます",
+        );
+
+        create_manual_sale(
+            &mut conn,
+            make_manual_sale_req("stk-edge", vec![manual_sale_item("STK-NEAR", 1, 500)]),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "STK-NEAR"), -999_999_999);
     }
 }

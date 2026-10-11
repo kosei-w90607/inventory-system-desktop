@@ -67,3 +67,64 @@ pub(super) fn create_test_supplier(conn: &DbConnection) -> i64 {
         .unwrap()
         .id
 }
+
+/// 単位を指定して商品を作るヘルパー
+pub(super) fn create_test_product_with_unit(
+    conn: &DbConnection,
+    code: &str,
+    stock: i64,
+    unit: &str,
+) {
+    create_test_product(conn, code, stock);
+    conn.execute(
+        "UPDATE products SET stock_unit = ?1 WHERE product_code = ?2",
+        rusqlite::params![unit, code],
+    )
+    .unwrap();
+}
+
+pub(super) fn stock_of(conn: &DbConnection, code: &str) -> i64 {
+    conn.query_row(
+        "SELECT stock_quantity FROM products WHERE product_code = ?1",
+        [code],
+        |row| row.get(0),
+    )
+    .unwrap()
+}
+
+/// 表ごとの行数と在庫の合計（保存を拒んだときに何も書かれていないことの比較に使う）
+pub(super) fn write_surface(conn: &DbConnection, tables: &[&str]) -> Vec<i64> {
+    let mut surface: Vec<i64> = tables
+        .iter()
+        .map(|table| {
+            conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                row.get(0)
+            })
+            .unwrap()
+        })
+        .collect();
+    surface.push(
+        conn.query_row(
+            "SELECT COALESCE(SUM(stock_quantity), 0) FROM products",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap(),
+    );
+    surface
+}
+
+/// `ValidationFailed` で、文が一致し、何も書かれていないことを確かめる
+pub(super) fn assert_rejected_without_writes<T: std::fmt::Debug>(
+    conn: &DbConnection,
+    tables: &[&str],
+    before: &[i64],
+    result: Result<T, crate::biz::BizError>,
+    message: &str,
+) {
+    assert!(
+        matches!(result, Err(crate::biz::BizError::ValidationFailed(ref m)) if m == message),
+        "{message}: {result:?}"
+    );
+    assert_eq!(write_surface(conn, tables), before, "{message}");
+}

@@ -1,6 +1,7 @@
 //! 共通ヘルパー: apply_stock_change + fingerprint 計算
 
 use crate::biz::BizError;
+use crate::constants::MAX_STOCK_QUANTITY;
 use crate::db::inventory_repo::{self, MovementType, NewMovement, ReferenceType};
 use crate::db::product_repo;
 use sha2::{Digest, Sha256};
@@ -31,6 +32,19 @@ pub(super) fn compute_fingerprint(header: &str, items: &[String]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
+/// 在庫（計算の後の値を含む）が絶対値の上限の中かを確かめる（共通規則「入力の上限と安全な整数の範囲」(a)、X3）
+///
+/// 在庫を書く所が書く前に通す。TX の中で外れたら、呼び出し元が TX 全体を戻す。
+pub(crate) fn check_stock_range(stock: i64) -> Result<i64, BizError> {
+    if (-MAX_STOCK_QUANTITY..=MAX_STOCK_QUANTITY).contains(&stock) {
+        Ok(stock)
+    } else {
+        Err(BizError::ValidationFailed(
+            "在庫数が大きすぎます".to_string(),
+        ))
+    }
+}
+
 /// 商品の在庫数を変動させ、inventory_movements に履歴を記録する
 ///
 /// 引数の型（借りた transaction）で TX の内側に限る。TX は呼び出し元の create_* が管理する。
@@ -56,6 +70,7 @@ pub(crate) fn apply_stock_change(
         .stock_quantity
         .checked_add(quantity)
         .ok_or_else(|| BizError::ValidationFailed("在庫数計算オーバーフロー".to_string()))?;
+    let stock_after = check_stock_range(stock_after)?;
 
     // 3. 負在庫警告（INV-3: 処理は止めない）
     let negative_stock_warning = stock_after < 0;

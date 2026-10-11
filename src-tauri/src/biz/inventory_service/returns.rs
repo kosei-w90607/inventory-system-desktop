@@ -1,6 +1,7 @@
 //! 返品・交換記録（create_return）
 
 use crate::biz::BizError;
+use crate::constants::MAX_LINE_QUANTITY;
 use crate::db::inventory_repo::{MovementType, ReferenceType};
 use crate::db::product_repo;
 use crate::db::return_repo;
@@ -89,6 +90,12 @@ fn validate_return_request_shape(req: &ReturnCreateRequest) -> Result<(), BizErr
         if item.quantity <= 0 {
             return Err(BizError::ValidationFailed(format!(
                 "明細{}: 数量は1以上必要です",
+                i + 1
+            )));
+        }
+        if item.quantity > MAX_LINE_QUANTITY {
+            return Err(BizError::ValidationFailed(format!(
+                "明細{}: 数量が大きすぎます",
                 i + 1
             )));
         }
@@ -670,5 +677,97 @@ mod tests {
         let req = make_return_req("ret-key-11", vec![return_item("RTN-011", "in", 0)]);
         let result = create_return(&mut conn, req);
         assert!(matches!(result, Err(BizError::ValidationFailed(_))));
+    }
+
+    // -----------------------------------------------------------------------
+    // 入力の上限（共通規則 SPEC-UNIT-D11 の続き、X1・X3）
+    // -----------------------------------------------------------------------
+
+    const RETURN_TABLES: [&str; 4] = [
+        "return_records",
+        "return_items",
+        "inventory_movements",
+        "operation_logs",
+    ];
+
+    #[test]
+    fn test_create_return_req202_quantity_limit() {
+        // REQ-202 / X1: 1 明細の数量は 9999999 まで。1 つ外は何も書かない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "LIM-RT", 0);
+        create_return(
+            &mut conn,
+            make_return_req("lim-rt-ok", vec![return_item("LIM-RT", "in", 9_999_999)]),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "LIM-RT"), 9_999_999);
+
+        let before = write_surface(&conn, &RETURN_TABLES);
+        let result = create_return(
+            &mut conn,
+            make_return_req("lim-rt-over", vec![return_item("LIM-RT", "in", 10_000_000)]),
+        );
+        assert_rejected_without_writes(
+            &conn,
+            &RETURN_TABLES,
+            &before,
+            result,
+            "明細1: 数量が大きすぎます",
+        );
+    }
+
+    #[test]
+    fn test_create_return_req202_quantity_limit_applies_to_register_processed() {
+        // REQ-202 / X1: 在庫を動かさない明細（レジ処理済みの返品）も同じ上限の検査を通る
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "LIM-RP", 7);
+        let before = write_surface(&conn, &RETURN_TABLES);
+        let mut over =
+            make_return_req("lim-rp-over", vec![return_item("LIM-RP", "in", 10_000_000)]);
+        over.register_processed = true;
+        let result = create_return(&mut conn, over);
+        assert_rejected_without_writes(
+            &conn,
+            &RETURN_TABLES,
+            &before,
+            result,
+            "明細1: 数量が大きすぎます",
+        );
+
+        let mut edge = make_return_req("lim-rp-edge", vec![return_item("LIM-RP", "in", 9_999_999)]);
+        edge.register_processed = true;
+        create_return(&mut conn, edge).unwrap();
+        let saved: i64 = conn
+            .query_row("SELECT quantity FROM return_items", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(saved, 9_999_999);
+        assert_eq!(stock_of(&conn, "LIM-RP"), 7, "在庫は変わらない");
+    }
+
+    #[test]
+    fn test_create_return_req202_stock_limit_rolls_back_whole_tx() {
+        // REQ-202 / X3: 計算の後の在庫が 999999999 を超えたら TX 全体を戻す
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "STK-FULL", 999_999_999);
+        create_test_product(&conn, "STK-NEAR", 999_999_998);
+        let before = write_surface(&conn, &RETURN_TABLES);
+        let result = create_return(
+            &mut conn,
+            make_return_req("stk-over", vec![return_item("STK-FULL", "in", 1)]),
+        );
+        assert_rejected_without_writes(
+            &conn,
+            &RETURN_TABLES,
+            &before,
+            result,
+            "在庫数が大きすぎます",
+        );
+
+        create_return(
+            &mut conn,
+            make_return_req("stk-edge", vec![return_item("STK-NEAR", "in", 1)]),
+        )
+        .unwrap();
+        assert_eq!(stock_of(&conn, "STK-NEAR"), 999_999_999);
     }
 }

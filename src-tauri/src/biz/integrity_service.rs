@@ -5,6 +5,7 @@
 //!
 //! docs/function-design/36-biz-integrity-check.md に基づく実装。
 
+use crate::biz::inventory_service::check_stock_range;
 use crate::biz::BizError;
 use crate::db::{inventory_repo, product_repo, system_repo, DbConnection, NewOperationLog};
 use std::collections::HashMap;
@@ -52,6 +53,10 @@ pub struct StockAdjustment {
 // 関数
 // ---------------------------------------------------------------------------
 
+fn difference_overflow() -> BizError {
+    BizError::ValidationFailed("在庫数計算オーバーフロー".to_string())
+}
+
 /// 全商品の整合性をチェックする（読み取り専用、TX不要）
 ///
 /// 36-biz-integrity-check.md §21.3
@@ -74,7 +79,9 @@ pub fn run_integrity_check(conn: &DbConnection) -> Result<IntegrityResult, BizEr
             .get(product_code.as_str())
             .copied()
             .unwrap_or(0);
-        let difference = stock_quantity - movements_sum;
+        let difference = stock_quantity
+            .checked_sub(movements_sum)
+            .ok_or_else(difference_overflow)?;
         if difference != 0 {
             mismatches.push(IntegrityMismatch {
                 product_code: product_code.clone(),
@@ -162,15 +169,21 @@ pub fn fix_integrity(
 
         // 3c. 差異計算
         let stock_quantity = product.product.stock_quantity;
-        let difference = stock_quantity - movements_sum;
+        let difference = stock_quantity
+            .checked_sub(movements_sum)
+            .ok_or_else(difference_overflow)?;
         if difference == 0 {
             skipped_count += 1;
             continue;
         }
 
         // 3e. D-051 / BIZ-07-D2: movement を追加せず、派生 cache を原本の合計へ直接補正する。
-        let adjustment = movements_sum - stock_quantity;
-        inventory_repo::update_stock_quantity(&tx, product_code, movements_sum)?;
+        // 補正の後の在庫は上限の中（共通規則 (a)、X3）。外れたら TX 全体を戻す
+        let adjustment = movements_sum
+            .checked_sub(stock_quantity)
+            .ok_or_else(difference_overflow)?;
+        let new_stock = check_stock_range(movements_sum)?;
+        inventory_repo::update_stock_quantity(&tx, product_code, new_stock)?;
 
         adjustments.push(StockAdjustment {
             product_code: product_code.clone(),
@@ -769,5 +782,58 @@ mod tests {
             )
             .unwrap();
         assert_eq!(stock, -3, "負のmovements_sumに合わせる");
+    }
+
+    #[test]
+    fn test_fix_integrity_req904_stock_limit_rolls_back_whole_tx() {
+        // REQ-904 / 共通規則 (a)（X3・X10）: 補正の後の在庫が上限の外なら TX 全体を戻す。読取りは拒まない
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "INT-OVER", 5);
+        add_movement(&conn, "INT-OVER", 1_000_000_000);
+        seed_product(&conn, "INT-EDGE", 5);
+        add_movement(&conn, "INT-EDGE", 999_999_999);
+        seed_product(&conn, "INT-OTHER", 5);
+        add_movement(&conn, "INT-OTHER", 8);
+        let log_count = |conn: &DbConnection| -> i64 {
+            conn.query_row(
+                "SELECT COUNT(*) FROM operation_logs WHERE operation_type = 'integrity_fix'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap()
+        };
+        let stock = |conn: &DbConnection, code: &str| -> i64 {
+            product_repo::find_by_product_code(conn, code)
+                .unwrap()
+                .unwrap()
+                .product
+                .stock_quantity
+        };
+
+        // 読取りは範囲で拒まず、不一致を返す
+        let check = run_integrity_check(&conn).unwrap();
+        assert_eq!(check.mismatch_count, 3);
+
+        let result = fix_integrity(
+            &mut conn,
+            &["INT-OTHER".to_string(), "INT-OVER".to_string()],
+        );
+        assert!(
+            matches!(result, Err(BizError::ValidationFailed(ref m)) if m == "在庫数が大きすぎます"),
+            "{result:?}"
+        );
+        assert_eq!(stock(&conn, "INT-OVER"), 5);
+        assert_eq!(stock(&conn, "INT-OTHER"), 5, "同じ補正のほかの商品も戻る");
+        assert_eq!(log_count(&conn), 0);
+
+        // その商品を対象から外せば、ほかの商品は補正できる。上限の端は成功する
+        let result = fix_integrity(
+            &mut conn,
+            &["INT-OTHER".to_string(), "INT-EDGE".to_string()],
+        )
+        .unwrap();
+        assert_eq!(result.fixed_count, 2);
+        assert_eq!(stock(&conn, "INT-OTHER"), 8);
+        assert_eq!(stock(&conn, "INT-EDGE"), 999_999_999);
     }
 }

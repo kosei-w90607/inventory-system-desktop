@@ -3,7 +3,7 @@
 use crate::biz::csv_import_service::{
     CommitRequest, DuplicateStatus, ImportResult, StockCorrection,
 };
-use crate::biz::inventory_service::apply_stock_change;
+use crate::biz::inventory_service::{apply_stock_change, check_stock_range};
 use crate::biz::BizError;
 use crate::db::inventory_repo;
 use crate::db::inventory_repo::{MovementType, ReferenceType};
@@ -255,14 +255,16 @@ pub(super) fn apply_void_stock_corrections(
 
     // product_code でグループ化して quantity を合算
     let mut corrections_map: HashMap<String, i64> = HashMap::with_capacity(voided_movements.len());
+    let overflow = || BizError::ValidationFailed("在庫数計算オーバーフロー".to_string());
     for vm in voided_movements {
-        *corrections_map.entry(vm.product_code.clone()).or_insert(0) += vm.quantity;
+        let sum = corrections_map.entry(vm.product_code.clone()).or_insert(0);
+        *sum = sum.checked_add(vm.quantity).ok_or_else(overflow)?;
     }
 
     let mut stock_corrections = Vec::new();
     for (product_code, sum_quantity) in &corrections_map {
         // correction = -SUM(voided.quantity)
-        let correction = -sum_quantity;
+        let correction = sum_quantity.checked_neg().ok_or_else(overflow)?;
         let product = product_repo::find_by_product_code(conn, product_code)?.ok_or_else(|| {
             BizError::NotFound(format!(
                 "在庫補正対象の商品が見つかりません: {}",
@@ -270,7 +272,8 @@ pub(super) fn apply_void_stock_corrections(
             ))
         })?;
         let old_stock = product.product.stock_quantity;
-        let new_stock = old_stock + correction;
+        // 補正の後の在庫も上限の中（共通規則 (a)、X3）。外れたら呼び出し元が TX 全体を戻す
+        let new_stock = check_stock_range(old_stock.checked_add(correction).ok_or_else(overflow)?)?;
         inventory_repo::update_stock_quantity(conn, product_code, new_stock)?;
         stock_corrections.push(StockCorrection {
             product_code: product_code.clone(),
