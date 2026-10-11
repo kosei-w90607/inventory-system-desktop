@@ -1259,6 +1259,8 @@ export type ProductResponse = {
 	department_id: number,
 	selling_price: number,
 	cost_price: number,
+	// 商品の単位。`stock_quantity` は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3 の表の 9）
+	stock_unit: ProductStockUnit,
 	stock_quantity: number,
 	plu_dirty: boolean,
 	plu_exported_at: string | null,
