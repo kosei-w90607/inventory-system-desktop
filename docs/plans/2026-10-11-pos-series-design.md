@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -26,6 +26,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 4. design（owner の決定の反映、2026-10-11、起草役）: owner が J1 を A（番号印字を採らない）に決めた（repo 外の回答台帳 TD-224）。ADR D10・D-116・本 packet・Matrix に反映し、同じ問い合わせで出た懸念（設計が SD に寄る）に対して、表・列・用語から媒体の名前を外し（`pos_source_scans`・`source_scan_cursor`・「全数読取り」）、判定を有効にする・外す出口を D10 に定めた。SD のエラーで締められなかった日（TD-160・TD-161）を入力列で確かめ、媒体の入替とファイルを選ぶ経路の資料が根拠に混ざる列を見つけたので、全部実測後の条件を「同じ置き場の 2 回の全数読取りの間に現れた資料」に改めた。
 5. design → plan-draft（2026-10-11、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本で満たす。条件「未解決の設計の問いが無い」は、J1 の決定（TD-224）で owner の判断事項が無くなったことで満たす。残る Contract Probe の P1・P3・P7（持ち帰りデータの集計中）と P10 は設計の問いではなく、Plan Gate の前と D10 を有効にする lane の前に確かめる外部前提で、結果に依らず設計は安全側（判定不能）に倒れる。plan-gate への遷移は Coordinator。
 6. plan-draft のまま（集計の反映、2026-10-11、起草役）: 持ち帰りデータの集計（独立の数え直し済み）が戻り、Contract Probe の P1・P3・P5・P7 を結果で書き直した。集計で、精算票と Z004 を「題の末尾 + 1」の番号で対応づける起票時の D5a が、番号の差がずれると 1 つ後の精算の記録を黙って拾うと分かったので、対応づけを精算の日時の同一性（同じ分か 1 分前、ちょうど 1 件）に改めた。D10 の条件 3 の日付の比較に 1 日の余裕を足した。Goal と設計の方向は変えず、owner の判断が要る事項は増えていないので plan-draft に留める。
+7. plan-draft → plan-gate（2026-10-11、Coordinator）: packet と Matrix は commit 済み。Coordinator は ADR の SPEC-STK-TIME-D10（全数読取りと全部実測後の条件、有効にする・外す）と D5a（区間の終端・開始）を実読し、持ち帰りデータの集計（独立の数え直し済み）が Contract Probe の P1・P3・P5・P7 に反映されていることを確かめた。P1 のうち保存が異常終了した精算の資料の残り方と、P2・P10 は未観測のまま残り、D10 を有効にする変更の owner-operated gate に置いてある（本 lane は判定を有効にしない）。
 
 ## Owner Effort Budget
 
