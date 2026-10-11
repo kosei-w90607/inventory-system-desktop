@@ -21,7 +21,7 @@
 ### 57.1 概要
 
 - **対応 REQ**: REQ-502（SP-502-01〜06）
-- **対応 task**: UI-09b（[ARCHITECTURE.md §UI-09b](../architecture/ui-task-specs.md#ui-09b-月次売上)）
+- **対応 task**: UI-09b（[ARCHITECTURE.md §UI-09b](../architecture/ui-task-specs.md#ui-09a09b-売上レポート画面群)）
 - **呼び出す CMD**: `get_monthly_sales(month, mode)` + `export_sales_csv(reportType, target)`（8-7 共通化先 `useExportFile` 経由）
 - **route**: `/reports/monthly`（TabsHeader 共通化で `/reports/daily` ⇄ `/reports/monthly` を `<Link>` 切替、router-driven）
 - **主動線**: TabsHeader「日次」←→「月次」切替、UI-00 ホームの「月次売上」ボタンから遷移
