@@ -14,7 +14,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 - Phase: implementing
 - Risk: R4
 - Plan Commit: 211233182811a777153e1f6392b55224ffed4cf6
-- Amendments: none
+- Amendments: 7bbecac1e3abb4e5b0fcaf5a21bb50ad62c172f9
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -34,6 +34,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 7. plan-gate（round 3 の是正、2026-10-12）: Plan Review round 3 の是正（Review Response 参照）。
 8. plan-gate → plan-approved（2026-10-12、Coordinator、本 commit）: 独立の Plan Reviewer 2 本（Writer と別の context）が round 3 で P1・P2 が無いと報告した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。実装の commit はまだ無い。
 9. plan-approved → implementing（2026-10-12、Coordinator、本 commit。state だけ）: Writer への発注の開始 HEAD を本 commit にする。実装は Scope の S1〜S7 の順。
+10. implementing のまま Gated Amendment 1（2026-10-12、Coordinator）: Scope と Matrix の「既存 test の書換え」の表の漏れ 2 つと、正本と packet が決めていなかった表示の 1 点を足した（Review Response の「Gated Amendment 1」）。Goal・AC・設計の値は変えない。`Plan Commit` は変えず、起草役の commit を `Amendments` に足した。
 
 ## Owner Effort Budget
 
@@ -449,5 +450,22 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - R3-1 の関連: [34](../function-design/34-biz-sales-service.md) の「部門IDの昇順でソート」は日次の部門小計の文で、現物（数値の昇順）と合う。月次の同額の並びは正本に書かれておらず、食い違いではない（起草役が実読、Coordinator が `sales_service.rs:562` を確認）。
 - R3-3 で L3-3 に返品・交換の 1 手順（数量 `0.3` の返品の保存と記録詳細・在庫照会の確認）が増えた。L3 の round の数と Owner Effort Budget の上限は変えない。
 - 是正は起草役の commit「単位の runtime の計画の文を現物に合わせる（同額の並び・円の合計の fixture・L3 の当て先・棚卸しの一覧）」。round 3 で 2 本とも P1・P2 が無いので、次の round は開始せず plan-approved へ進む。是正の後の文の再確認は Final Review（R4、独立 2 本）が行う。
+
+### Gated Amendment 1（2026-10-12、実装の 1 段目の Writer が編集せずに止めた項目から）
+
+- 経緯: 実装を 2 段に分けて発注した（1 段目 = S1〜S4 の Rust と bindings の再生成、2 段目 = S4 の残り・S5〜S7・全 gate）。1 段目の Writer は、S4 の「PLU 書出しの未書出しの一覧」（`ProductResponse` に `stock_unit`）を編集せずに止めて返した。packet の指示どおり `ProductStockUnit` を `src-tauri/src/biz/mod.rs` の `pub use` に足すと、`src-tauri/tests/architecture_test.rs` の `biz_mnt_direct_db_io_reexport_allowlist`（D-083 の allow list）が落ち、allow list に足す必要があるが、その file が Scope にも「既存 test の書換え」の表にも無かった（`docs/AGENT_OPERATING_MANUAL.md` §5.6「Writer が編集前に止まったとき」の 5 に当たり、発注の訂正では通せない）。1 段目のほかの分は commit 済みで、Coordinator が同じ終点で `cargo fmt --check`・`cargo clippy`・`cargo test` を回し直して通ることを確かめた。
+- 相談役（Fable 5.1）に、書く前の反例探しと、同じ型の残り（Scope にも書換えの表にも無い機械検査の期待値）の洗い出しを頼んだ。allow list への追加が最小で、D-083 の Impact が定める経路であること（cmd の本体から `crate::db` を引く許された経路はほかに無い）を確かめ、同じ型の残りを 1 つ挙げた（下の GA1-2）。1 段目の Writer が報告した packet との食い違いの候補は、どれも packet に規定が無く Writer の裁量の範囲と判定した。
+- 足したもの（起草役の commit「単位の runtime の packet と Matrix に allow list・呼出し件数の test・集計の点の桁区切りを足す」）:
+
+| ID | 内容 | 置いた所 |
+|---|---|---|
+| GA1-1 | D-083 の allow list に `ProductStockUnit` の re-export を足す（re-export と同じ commit） | Scope S4 の PLU 書出しの行、Registration / Generation Obligations、Test Plan、Matrix の書換えの表 |
+| GA1-2 | `src/lib/request-helpers.test.ts` が request module ごとに固定している `parseRequiredSafeInteger(` の件数は、数量の parse を S5 の新しい関数に替えると変わる。`parseRequiredSafeInteger` 自体の契約は変えない | Scope S5、Matrix の書換えの表 |
+| GA1-3 | 集計の数量の表示（`N 点`・`N 点・L m`）の `N` は 3 桁区切りを付ける（正本と packet に規定が無く、今の画面は所によって違った。長さの部分の形と同じ向き）。見た目が変わるのは 1,000 点以上のときだけ（販売点数のカード 3 つと、売上の CSV の集計の行の文字列） | 横断の約束 X9、Scope S4・S5・S7、Test Plan の compatibility checks、Matrix の集計・売上の CSV・Boundary・Mutation・書換えの表 |
+| GA1-4 | 原価の lane（C）への申し送り: v8 が履歴として持つ上限と runtime の定数の一致を止める test は、C が原価の上限を変えると落ちる | `docs/backlog.md` の単位の拡張の項目 |
+
+- GA1-3 は Coordinator が決め、owner が賛成した（repo 外の回答台帳 TD-235）。
+- Goal・AC・設計の値・Risk・Final Review Minimum・Human Gate は変えていない。broad の Final Review はまだ取っていないので、Gated Amendment 1 を含む版を Final Review（R4、独立 2 本）が見る。
+- 実装: 2 段目の Writer が GA1-1〜GA1-3 を含めて行う。
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
