@@ -35,7 +35,7 @@ function buildReport(overrides: Partial<DailySalesReport> = {}): DailySalesRepor
     date: "2026-03-21",
     items: [],
     department_subtotals: [],
-    grand_total: { quantity: 0, amount: 0 },
+    grand_total: { count_points: 0, length_cm: 0, amount: 0 },
     official_daily_report: null,
     ...overrides,
   };
@@ -75,15 +75,22 @@ describe("DailySalesPage REQ-501 official daily report", () => {
             name: "商品別だけの売上",
             department_name: "その他小物",
             department_id: 1,
+            stock_unit: "pcs",
             quantity: 2,
             amount: 3000,
             source: "auto",
           },
         ],
         department_subtotals: [
-          { department_id: 1, department_name: "その他小物", quantity: 2, amount: 3000 },
+          {
+            department_id: 1,
+            department_name: "その他小物",
+            count_points: 2,
+            length_cm: 0,
+            amount: 3000,
+          },
         ],
-        grand_total: { quantity: 2, amount: 3000 },
+        grand_total: { count_points: 2, length_cm: 0, amount: 3000 },
         official_daily_report: {
           source_import_count: 2,
           report_date: "2026-03-21",

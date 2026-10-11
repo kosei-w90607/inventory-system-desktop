@@ -1,23 +1,10 @@
 import type { ProductWithRelations } from "@/lib/bindings";
+import { addToQuantityInput, entryQuantityStep, sumQuantityInputs } from "@/lib/unit-quantity";
 import type { ReturnDirection, ReturnExchangeRow } from "../types";
 
-function nextQuantity(value: string): string {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 1 ? String(parsed + 1) : "1";
-}
-
-function sumQuantities(left: string, right: string): string {
-  const leftNumber = Number(left);
-  const rightNumber = Number(right);
-  if (
-    Number.isInteger(leftNumber) &&
-    Number.isInteger(rightNumber) &&
-    leftNumber >= 1 &&
-    rightNumber >= 1
-  ) {
-    return String(leftNumber + rightNumber);
-  }
-  return "1";
+// 再追加と方向の切替えの合算は在庫の数量の整数で足す。規則に合わない文字列は "1"（SPEC-UNIT-D3）
+function nextQuantity(row: ReturnExchangeRow): string {
+  return addToQuantityInput(row.quantity, row.stockUnit, entryQuantityStep(row.stockUnit)) ?? "1";
 }
 
 export function productToReturnRow(
@@ -46,7 +33,7 @@ export function addProductToReturnRows(
   if (existingIndex === -1) return [...rows, productToReturnRow(product, direction)];
 
   return rows.map((row, index) =>
-    index === existingIndex ? { ...row, quantity: nextQuantity(row.quantity) } : row,
+    index === existingIndex ? { ...row, quantity: nextQuantity(row) } : row,
   );
 }
 
@@ -88,7 +75,10 @@ export function changeReturnRowDirection(
   return rows
     .map((row) =>
       row.productCode === productCode && row.direction === toDirection
-        ? { ...row, quantity: sumQuantities(row.quantity, sourceRow.quantity) }
+        ? {
+            ...row,
+            quantity: sumQuantityInputs(row.quantity, sourceRow.quantity, row.stockUnit) ?? "1",
+          }
         : row,
     )
     .filter((row) => row.productCode !== productCode || row.direction !== fromDirection);

@@ -2,7 +2,8 @@
 //
 // REQ-303 / UI-06c-D4-D5: movement 種別と増減の operator-facing 表示。
 
-import type { MovementType } from "@/lib/bindings";
+import { formatLengthOrPlain } from "@/features/stock-inquiry/lib/format-stock-display";
+import type { MovementType, ProductStockUnit } from "@/lib/bindings";
 
 const movementTypeLabels: Record<MovementType, string> = {
   receiving: "入庫",
@@ -17,14 +18,19 @@ export function formatMovementType(movementType: MovementType): string {
   return movementTypeLabels[movementType];
 }
 
-export function formatMovementQuantity(quantity: number): { value: string; label: string } {
+// 長さの商品は m の形、個数の商品と単位の分からない行は今どおり整数（SPEC-UNIT-D3 の表の 6）
+export function formatMovementQuantity(
+  quantity: number,
+  unit?: ProductStockUnit,
+): { value: string; label: string } {
+  const value = formatLengthOrPlain(quantity, unit);
   if (quantity > 0) {
-    return { value: `+${String(quantity)}`, label: "増加" };
+    return { value: `+${value}`, label: "増加" };
   }
   if (quantity < 0) {
-    return { value: String(quantity), label: "減少" };
+    return { value, label: "減少" };
   }
-  return { value: "0", label: "変動なし" };
+  return { value, label: "変動なし" };
 }
 
 export function formatMovementDateTime(value: string): string {

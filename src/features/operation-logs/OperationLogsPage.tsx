@@ -29,7 +29,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
-import { commands, type OperationLog } from "@/lib/bindings";
+import {
+  STOCK_UNIT_LABELS,
+  formatLengthOrPlain,
+} from "@/features/stock-inquiry/lib/format-stock-display";
+import { commands, type OperationLog, type ProductStockUnit } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -85,11 +89,17 @@ function parseDetail(raw: string | null) {
   }
 }
 
+function groupedNumber(value: number): string {
+  return value.toLocaleString("ja-JP");
+}
+
 interface IntegrityAdjustment {
   productCode: string;
   oldStock: number;
   newStock: number;
   adjustment: number;
+  /// 新しく書かれた log だけが持つ（key の無い記録済みの log は整数で出す。SPEC-UNIT-D3 の表の 12）
+  stockUnit: ProductStockUnit | undefined;
 }
 
 function parseIntegrityAdjustments(
@@ -119,6 +129,11 @@ function parseIntegrityAdjustments(
       oldStock: candidate.old_stock,
       newStock: candidate.new_stock,
       adjustment: candidate.adjustment,
+      stockUnit:
+        typeof candidate.stock_unit === "string" &&
+        Object.keys(STOCK_UNIT_LABELS).includes(candidate.stock_unit)
+          ? (candidate.stock_unit as ProductStockUnit)
+          : undefined,
     });
   }
   return adjustments;
@@ -179,12 +194,14 @@ function Detail({ log, returnTo }: { log: OperationLog; returnTo: string }) {
               >
                 <span className="font-mono font-medium break-all">{adjustment.productCode}</span>
                 <span className="tabular-nums">
-                  旧在庫 {adjustment.oldStock.toLocaleString("ja-JP")} → 新在庫{" "}
-                  {adjustment.newStock.toLocaleString("ja-JP")}
+                  旧在庫{" "}
+                  {formatLengthOrPlain(adjustment.oldStock, adjustment.stockUnit, groupedNumber)} →
+                  新在庫{" "}
+                  {formatLengthOrPlain(adjustment.newStock, adjustment.stockUnit, groupedNumber)}
                 </span>
                 <span className="tabular-nums">
                   差分 {adjustment.adjustment > 0 ? "+" : ""}
-                  {adjustment.adjustment.toLocaleString("ja-JP")}
+                  {formatLengthOrPlain(adjustment.adjustment, adjustment.stockUnit, groupedNumber)}
                 </span>
               </li>
             ))}

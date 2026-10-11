@@ -4,9 +4,12 @@
 // 設計: docs/function-design/56-ui-daily-sales.md §56.6
 
 import type { DailySaleItem } from "@/lib/bindings";
+import { addSafeInteger, isLengthUnit } from "@/lib/unit-quantity";
 import type { GroupedSection } from "../types";
 
 /// 商品行を部門ごとに section 化し、各 section に小計を付与する。
+/// 数量の小計は種類ごとの 2 本（個数は点、長さは cm）で、長さを点に足さない。
+/// 和が安全な整数を外れた欄は null（表示は「—」。SPEC-UNIT-D3 の集計の規則）。
 /// 部門順は `department_id` 昇順固定（BIZ-05 順を尊重）。
 /// 入力が空配列なら空配列を返す。
 export function groupItemsByDepartment(items: DailySaleItem[]): GroupedSection[] {
@@ -27,7 +30,12 @@ export function groupItemsByDepartment(items: DailySaleItem[]): GroupedSection[]
   for (const id of sortedKeys) {
     const g = groups.get(id);
     if (g === undefined) continue;
-    const subtotalQuantity = g.items.reduce((acc, i) => acc + i.quantity, 0);
+    let countPoints: number | null = 0;
+    let lengthCm: number | null = 0;
+    for (const item of g.items) {
+      if (isLengthUnit(item.stock_unit)) lengthCm = addSafeInteger(lengthCm, item.quantity);
+      else countPoints = addSafeInteger(countPoints, item.quantity);
+    }
     const subtotalAmount = g.items.reduce((acc, i) => acc + i.amount, 0);
     sections.push({
       departmentId: id,
@@ -36,7 +44,8 @@ export function groupItemsByDepartment(items: DailySaleItem[]): GroupedSection[]
       subtotal: {
         department_id: id,
         department_name: g.name,
-        quantity: subtotalQuantity,
+        count_points: countPoints,
+        length_cm: lengthCm,
         amount: subtotalAmount,
       },
     });

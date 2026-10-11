@@ -78,3 +78,23 @@ describe("sortDailyItems", () => {
     ]);
   });
 });
+
+describe("sortDailyItems の数量の並べ替え（SPEC-UNIT-D3）", () => {
+  it("SPEC-UNIT-D3: 数量は行の単位で (count_points, length_cm) の組に当てて辞書順に並べる", () => {
+    const items = [
+      makeMockItem({ product_code: "PCS-2", stock_unit: "pcs", quantity: 2 }),
+      makeMockItem({ product_code: "M-130", stock_unit: "m", quantity: 130 }),
+      makeMockItem({ product_code: "PCS-5", stock_unit: "pcs", quantity: 5 }),
+    ];
+    expect(sortDailyItems(items, "quantity", "asc").map((i) => i.product_code)).toEqual([
+      "M-130",
+      "PCS-2",
+      "PCS-5",
+    ]);
+    expect(sortDailyItems(items, "quantity", "desc").map((i) => i.product_code)).toEqual([
+      "PCS-5",
+      "PCS-2",
+      "M-130",
+    ]);
+  });
+});

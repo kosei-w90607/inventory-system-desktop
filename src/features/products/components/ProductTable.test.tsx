@@ -107,7 +107,7 @@ describe("ProductTable (UI-01a-D6 / UI-01a-D8)", () => {
     const row = screen.getByText("F-0001").closest("tr");
     if (row === null) throw new Error("row not found");
 
-    expect(within(row).getByText("350 cm")).toBeInTheDocument();
+    expect(within(row).getByText("3.5 m")).toBeInTheDocument();
     // UI-01a-D8: 廃番は商品名セル内の text badge で示す（専用状態列なし）
     expect(within(row).getByText("廃番")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "状態" })).not.toBeInTheDocument();

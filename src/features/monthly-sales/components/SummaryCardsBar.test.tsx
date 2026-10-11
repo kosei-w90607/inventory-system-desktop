@@ -13,12 +13,29 @@ import { SummaryCardsBar } from "./SummaryCardsBar";
 
 const mockSummary: MonthlySummary = {
   totalAmount: 150000,
-  totalQuantity: 63,
+  totalCountPoints: 63,
+  totalLengthCm: 0,
 };
 
 const mockPrevComparison: MonthlySaleItem[] = [
-  { key: "P001", label: "商品A", quantity: 10, amount: 60000, ranking: 1 },
-  { key: "P002", label: "商品B", quantity: 5, amount: 40000, ranking: 2 },
+  {
+    key: "P001",
+    label: "商品A",
+    count_points: 10,
+    length_cm: 0,
+    stock_unit: "pcs",
+    amount: 60000,
+    ranking: 1,
+  },
+  {
+    key: "P002",
+    label: "商品B",
+    count_points: 5,
+    length_cm: 0,
+    stock_unit: "pcs",
+    amount: 40000,
+    ranking: 2,
+  },
 ];
 
 describe("SummaryCardsBar (monthly, REQ-502) B0 characterization (D-B1 Non-scope)", () => {
@@ -145,7 +162,17 @@ it.each([
       <SummaryCardsBar
         summary={{ ...mockSummary, totalAmount: current }}
         periodLabel="2026/06"
-        prevComparison={[{ key: "P001", label: "商品A", quantity: 1, amount: 100, ranking: 1 }]}
+        prevComparison={[
+          {
+            key: "P001",
+            label: "商品A",
+            count_points: 1,
+            length_cm: 0,
+            stock_unit: "pcs",
+            amount: 100,
+            ranking: 1,
+          },
+        ]}
         isLoading={false}
       />,
     );
@@ -171,3 +198,25 @@ it.each([
   expect(screen.getByText(sub, { exact: true }).textContent).toBe(sub);
   expect(screen.getByText(value, { exact: true }).textContent).toBe(value);
 });
+
+// REQ-502 / SPEC-UNIT-D3 の集計の規則（X9）: 月間販売点数は点と長さの 2 本、N は 3 桁区切り
+it.each([
+  [1234, 0, "1,234 点"],
+  [5, 250, "5 点・2.5 m"],
+  [0, 130, "1.3 m"],
+  [null, 130, "—"],
+] as const)(
+  "REQ-502: 月間販売点数のカード (%s 点, %s cm) は %s",
+  (totalCountPoints, totalLengthCm, expected) => {
+    render(
+      <SummaryCardsBar
+        summary={{ totalAmount: 150000, totalCountPoints, totalLengthCm }}
+        periodLabel="2026/06"
+        prevComparison={null}
+        isLoading={false}
+      />,
+    );
+    const card = screen.getByText("月間販売点数").closest('[data-slot="card"]');
+    expect(card).toHaveTextContent(expected);
+  },
+);

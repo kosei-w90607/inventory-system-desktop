@@ -2,6 +2,7 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { StockUnitField } from "./StockUnitField";
@@ -233,4 +234,94 @@ describe("StockUnitField (UI-01b-D6)", () => {
     const posSyncCheckbox = screen.getByLabelText("POS販売で在庫を減らす");
     expect(posSyncCheckbox).not.toHaveClass("bg-control-surface");
   });
+});
+
+// UI-01b-D22 / REQ-101: 単位は 12 個の表示の語、在庫連動の提案は長さの単位で false・個数の単位で true
+describe("StockUnitField (UI-01b-D22)", () => {
+  function renderField(props: Partial<React.ComponentProps<typeof StockUnitField>> = {}) {
+    const onStockUnitChange = vi.fn();
+    const onPosStockSyncSuggest = vi.fn();
+    const onPosStockSyncChange = vi.fn();
+    render(
+      <StockUnitField
+        mode="create"
+        stockUnit="pcs"
+        posStockSync
+        posSyncTouched={false}
+        onStockUnitChange={onStockUnitChange}
+        onPosStockSyncChange={onPosStockSyncChange}
+        onPosStockSyncSuggest={onPosStockSyncSuggest}
+        {...props}
+      />,
+    );
+    return { onStockUnitChange, onPosStockSyncSuggest, onPosStockSyncChange };
+  }
+
+  it("UI-01b-D22: select に 12 個の表示の語が正本の表の順で出る", async () => {
+    const user = userEvent.setup();
+    renderField();
+    await user.click(screen.getByLabelText("数量単位"));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "個",
+      "枚",
+      "本",
+      "袋",
+      "箱",
+      "巻",
+      "組",
+      "セット",
+      "玉",
+      "丁",
+      "m",
+      "cm",
+    ]);
+  });
+
+  it.each([
+    ["pcs", "m", "m", false],
+    ["pcs", "cm", "cm", false],
+    ["pcs", "玉", "ball", true],
+    ["m", "玉", "ball", true],
+    ["ball", "m", "m", false],
+    ["cm", "枚", "sheet", true],
+  ] as const)(
+    "UI-01b-D22: 未操作で %s から「%s」へ替えると %s を選び、在庫連動は %s を提案する",
+    async (from, label, code, suggested) => {
+      const user = userEvent.setup();
+      const { onStockUnitChange, onPosStockSyncSuggest, onPosStockSyncChange } = renderField({
+        stockUnit: from,
+      });
+      await user.click(screen.getByLabelText("数量単位"));
+      await user.click(await screen.findByRole("option", { name: label }));
+      expect(onStockUnitChange).toHaveBeenCalledWith(code);
+      expect(onPosStockSyncSuggest).toHaveBeenCalledWith(suggested);
+      expect(onPosStockSyncChange).not.toHaveBeenCalled();
+    },
+  );
+
+  it("UI-01b-D22: checkbox を触った後と edit では、単位を替えても提案しない", async () => {
+    const user = userEvent.setup();
+    const touched = renderField({ posSyncTouched: true });
+    await user.click(screen.getByLabelText("数量単位"));
+    await user.click(await screen.findByRole("option", { name: "m" }));
+    expect(touched.onStockUnitChange).toHaveBeenCalledWith("m");
+    expect(touched.onPosStockSyncSuggest).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["m", "create", true],
+    ["cm", "create", true],
+    ["ball", "create", false],
+    ["pcs", "create", false],
+    ["m", "edit", false],
+  ] as const)(
+    "UI-01b-D22: 提案の案内は create の %s（%s）で出るか = %s",
+    (stockUnit, mode, shown) => {
+      renderField({ stockUnit, mode, readOnly: mode === "edit" });
+      const note = screen.queryByText(/在庫同期しない設定を提案します/);
+      if (shown) expect(note).toBeInTheDocument();
+      else expect(note).toBeNull();
+    },
+  );
 });

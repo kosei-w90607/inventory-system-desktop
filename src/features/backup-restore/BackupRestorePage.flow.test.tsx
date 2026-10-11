@@ -107,7 +107,7 @@ function makeDailySales(): DailySalesReport {
     date: "2026-07-28",
     items: [],
     department_subtotals: [],
-    grand_total: { quantity: 0, amount: 0 },
+    grand_total: { count_points: 0, length_cm: 0, amount: 0 },
     official_daily_report: null,
   };
 }
@@ -146,6 +146,7 @@ function makePluDirty(): ProductResponse {
     department_id: 1,
     selling_price: 100,
     cost_price: 50,
+    stock_unit: "pcs",
     stock_quantity: 1,
     plu_dirty: true,
     plu_exported_at: null,

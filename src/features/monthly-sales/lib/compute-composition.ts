@@ -25,6 +25,8 @@ export function computeDeptComposition(
     return {
       key: item.key,
       label: item.label,
+      count_points: item.count_points,
+      length_cm: item.length_cm,
       amount: item.amount,
       ratio: grandTotal === 0 ? 0 : item.amount / grandTotal,
       prev_month_diff: prevDiff,

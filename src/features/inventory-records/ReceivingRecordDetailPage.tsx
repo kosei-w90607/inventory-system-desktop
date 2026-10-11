@@ -22,8 +22,11 @@ import { EmptyState } from "@/components/patterns/EmptyState";
 import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 // 数量の桁区切りと単位名は共通formatterに揃える。
-import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
-import { MovementTable } from "@/features/stock-movements/components/MovementTable";
+import {
+  formatCentiYen,
+  formatStockDisplay,
+} from "@/features/stock-inquiry/lib/format-stock-display";
+import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -161,7 +164,7 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
                   {formatYen(item.cost_price)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatYen(item.line_cost)}
+                  {formatCentiYen(item.line_cost_centi)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Link
@@ -187,7 +190,10 @@ export function ReceivingRecordDetailPage({ recordId, returnTo }: ReceivingRecor
             description="この記録に紐づく在庫変動は見つかりません"
           />
         ) : (
-          <MovementTable movements={detail.movements} />
+          <MovementTable
+            movements={detail.movements}
+            stockUnitByProductCode={stockUnitMap(detail.items)}
+          />
         )}
       </section>
     </PageShell>

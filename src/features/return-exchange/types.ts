@@ -1,4 +1,9 @@
-import type { ProductWithRelations, ReturnDirection, ReturnExchangeType } from "@/lib/bindings";
+import type {
+  ProductStockUnit,
+  ProductWithRelations,
+  ReturnDirection,
+  ReturnExchangeType,
+} from "@/lib/bindings";
 import type { PickedFile } from "@/components/FilePicker";
 
 export type { ReturnDirection, ReturnExchangeType };
@@ -7,7 +12,7 @@ export interface ReturnExchangeRow {
   productCode: string;
   productName: string;
   departmentName: string;
-  stockUnit: string;
+  stockUnit: ProductStockUnit;
   currentStockQuantity: number;
   direction: ReturnDirection;
   quantity: string;

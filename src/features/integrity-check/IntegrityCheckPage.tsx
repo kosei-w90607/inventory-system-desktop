@@ -44,6 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Pagination, PaginationSummary } from "@/components/patterns/Pagination";
+import { formatLengthOrPlain } from "@/features/stock-inquiry/lib/format-stock-display";
 import { commands, type IntegrityFixResult, type IntegrityResult } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
@@ -57,6 +58,11 @@ type PendingOperation = "check" | "fix" | null;
 interface OperationError {
   operation: "check" | "fix";
   message: string;
+}
+
+// 個数の商品は今どおり 3 桁区切りの数、長さの商品は m の形（SPEC-UNIT-D3 の表の 8）
+function groupedNumber(value: number): string {
+  return value.toLocaleString("ja-JP");
 }
 
 function differenceLabel(difference: number): string {
@@ -293,7 +299,8 @@ export function IntegrityCheckPage() {
                         >
                           <span className="font-mono font-medium">{adjustment.product_code}</span>
                           <span>
-                            {adjustment.old_stock} → {adjustment.new_stock}
+                            {formatLengthOrPlain(adjustment.old_stock, adjustment.stock_unit)} →{" "}
+                            {formatLengthOrPlain(adjustment.new_stock, adjustment.stock_unit)}
                           </span>
                         </li>
                       ))}
@@ -365,10 +372,18 @@ export function IntegrityCheckPage() {
                           </TableCell>
                           <TableCell>{item.name}</TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {item.stock_quantity.toLocaleString("ja-JP")}
+                            {formatLengthOrPlain(
+                              item.stock_quantity,
+                              item.stock_unit,
+                              groupedNumber,
+                            )}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {item.movements_sum.toLocaleString("ja-JP")}
+                            {formatLengthOrPlain(
+                              item.movements_sum,
+                              item.stock_unit,
+                              groupedNumber,
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex flex-col items-end gap-1">
@@ -382,7 +397,11 @@ export function IntegrityCheckPage() {
                                 }
                               >
                                 {item.difference > 0 ? "+" : ""}
-                                {item.difference.toLocaleString("ja-JP")}
+                                {formatLengthOrPlain(
+                                  item.difference,
+                                  item.stock_unit,
+                                  groupedNumber,
+                                )}
                               </span>
                               <Badge variant="outline">{differenceLabel(item.difference)}</Badge>
                             </div>
@@ -457,7 +476,8 @@ export function IntegrityCheckPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-mono font-medium">{item.product_code}</span>
                       <span className="font-medium tabular-nums">
-                        {item.stock_quantity} → {item.movements_sum}
+                        {formatLengthOrPlain(item.stock_quantity, item.stock_unit)} →{" "}
+                        {formatLengthOrPlain(item.movements_sum, item.stock_unit)}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">{item.name}</p>

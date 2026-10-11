@@ -23,6 +23,7 @@ function mismatch(code: string, stock = 10, movements = 7): IntegrityMismatch {
   return {
     product_code: code,
     name: `合成商品 ${code}`,
+    stock_unit: "pcs",
     stock_quantity: stock,
     movements_sum: movements,
     difference: stock - movements,
@@ -57,6 +58,7 @@ function fixResult(
           ? [
               {
                 product_code: code,
+                stock_unit: "pcs" as const,
                 old_stock: oldStock,
                 new_stock: newStock,
                 adjustment: newStock - oldStock,
@@ -617,4 +619,62 @@ it("SPEC-FILTER-LABEL-RT-1 D-RT6: 差異の見出し行の下に説明を全幅�
   expect(heading.parentElement?.nextElementSibling).toBe(description);
   expect(description.parentElement).toHaveClass("space-y-1");
   expect(screen.getByRole("button", { name: "補正を確定" })).toHaveClass("shrink-0");
+});
+
+// UI-13-D3 / REQ-904 / SPEC-UNIT-D3 の表の 8・11: 長さの商品は m の形、個数の商品は今どおり語を付けない数
+it("UI-13-D3: m の商品の不一致は 27.5 m・27 m・+0.5 m、補正の結果は 27.5 m → 27 m", async () => {
+  runIntegrityCheck.mockResolvedValue(
+    checkResult([
+      { ...mismatch("SYN-M", 2750, 2700), stock_unit: "m" },
+      { ...mismatch("SYN-CM", 100, 150), stock_unit: "cm" },
+      mismatch("SYN-PCS", 1234, 1230),
+    ]),
+  );
+  fixIntegrity.mockResolvedValue({
+    status: "ok",
+    data: {
+      fixed_count: 2,
+      skipped_count: 0,
+      adjustments: [
+        {
+          product_code: "SYN-M",
+          stock_unit: "m",
+          old_stock: 2750,
+          new_stock: 2700,
+          adjustment: -50,
+        },
+        {
+          product_code: "SYN-PCS",
+          stock_unit: "pcs",
+          old_stock: 1234,
+          new_stock: 1230,
+          adjustment: -4,
+        },
+      ],
+    },
+  });
+  renderPage();
+  await runCheck();
+
+  const cells = (code: string) =>
+    Array.from((screen.getByText(code).closest("tr") ?? document.body).querySelectorAll("td")).map(
+      (cell) => cell.textContent,
+    );
+  await screen.findByText("合成商品 SYN-M");
+  expect(cells("SYN-M").slice(2, 4)).toEqual(["27.5 m", "27 m"]);
+  expect(cells("SYN-M")[4]).toContain("+0.5 m");
+  expect(cells("SYN-CM").slice(2, 4)).toEqual(["1 m", "1.5 m"]);
+  expect(cells("SYN-CM")[4]).toContain("-0.5 m");
+  expect(cells("SYN-PCS").slice(2, 4)).toEqual(["1,234", "1,230"]);
+  expect(cells("SYN-PCS")[4]).toContain("+4");
+
+  await selectForFix("SYN-M");
+  await selectForFix("SYN-PCS");
+  await openFixDialog();
+  const dialog = screen.getByRole("alertdialog");
+  expect(within(dialog).getByText("27.5 m → 27 m")).toBeInTheDocument();
+  expect(within(dialog).getByText("1234 → 1230")).toBeInTheDocument();
+  await confirmFix();
+  expect(await screen.findByText("27.5 m → 27 m")).toBeInTheDocument();
+  expect(screen.getByText("1234 → 1230")).toBeInTheDocument();
 });

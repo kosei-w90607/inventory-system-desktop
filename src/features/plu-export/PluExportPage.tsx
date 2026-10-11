@@ -16,6 +16,7 @@ import {
   type PluExportPrepareResponse,
   type PluPreparedRow,
 } from "@/lib/bindings";
+import { formatLengthOrPlain } from "@/features/stock-inquiry/lib/format-stock-display";
 import { formatDateTime } from "@/lib/date-time";
 import { describeError } from "@/lib/describe-error";
 import { invalidateByContract, invalidationContract } from "@/lib/invalidation-contract";
@@ -673,7 +674,11 @@ export function PluExportPage() {
                           {product.selling_price.toLocaleString()} 円
                         </td>
                         <td className="py-2 text-right">
-                          {product.stock_quantity.toLocaleString()}
+                          {formatLengthOrPlain(
+                            product.stock_quantity,
+                            product.stock_unit,
+                            (quantity) => quantity.toLocaleString(),
+                          )}
                         </td>
                       </tr>
                     ))}

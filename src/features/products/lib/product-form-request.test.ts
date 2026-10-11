@@ -209,3 +209,104 @@ describe("buildUpdateProductRequest (UI-01b-D5)", () => {
     ).toEqual({ plu_target: true });
   });
 });
+
+// UI-01b-D22 / SPEC-UNIT-D3（X3・X5・X6）: 12 個の単位、m の初期在庫、売価・原価・初期在庫の上限
+describe("product form request の単位と上限（UI-01b-D22 / REQ-101）", () => {
+  const create = (overrides: Partial<ProductFormValues>) =>
+    buildCreateProductRequest(validValues(overrides), [prefixDepartment]);
+
+  it("UI-01b-D22: m の初期在庫は m で受けて cm にする（既定の 0 も登録できる）", () => {
+    expect(create({ stockUnit: "m", initialStock: "0" }).request).toMatchObject({
+      stock_unit: "m",
+      initial_stock: 0,
+    });
+    expect(create({ stockUnit: "m", initialStock: "25" }).request?.initial_stock).toBe(2500);
+    expect(create({ stockUnit: "m", initialStock: "26.15" }).request?.initial_stock).toBe(2615);
+    expect(create({ stockUnit: "m", initialStock: "0.005" }).errors.initialStock).toBe(
+      "数量は0以上で、小数は2桁までの m で入力してください",
+    );
+    // cm と個数の単位は今の整数の規則のまま
+    expect(create({ stockUnit: "cm", initialStock: "25" }).request?.initial_stock).toBe(25);
+    expect(create({ stockUnit: "ball", initialStock: "3" }).request).toMatchObject({
+      stock_unit: "ball",
+      initial_stock: 3,
+    });
+    expect(create({ stockUnit: "cm", initialStock: "25.5" }).errors.initialStock).toBe(
+      "初期在庫は0以上の整数で入力してください",
+    );
+  });
+
+  it("UI-01b-D22: 売価・原価・初期在庫は上限の端まで受け、1 つ外は欄の error で request を作らない", () => {
+    expect(
+      create({ sellingPrice: "999999", costPrice: "999999", initialStock: "999999999" }).request,
+    ).toMatchObject({ selling_price: 999999, cost_price: 999999, initial_stock: 999999999 });
+    expect(create({ stockUnit: "m", initialStock: "9999999.99" }).request?.initial_stock).toBe(
+      999999999,
+    );
+    const over = create({
+      sellingPrice: "1000000",
+      costPrice: "1000000",
+      initialStock: "1000000000",
+    });
+    expect(over.request).toBeNull();
+    expect(over.errors).toMatchObject({
+      sellingPrice: "売価が大きすぎます",
+      costPrice: "原価が大きすぎます",
+      initialStock: "在庫数が大きすぎます",
+    });
+    expect(create({ stockUnit: "m", initialStock: "10000000" }).errors.initialStock).toBe(
+      "在庫数が大きすぎます",
+    );
+  });
+
+  it("UI-01b-D22: 修正の画面は 12 個の単位をそのまま出し、現在庫を単位つきで出す", () => {
+    for (const unit of [
+      "pcs",
+      "sheet",
+      "hon",
+      "bag",
+      "box",
+      "roll",
+      "kumi",
+      "set",
+      "ball",
+      "cho",
+      "m",
+      "cm",
+    ] as const) {
+      expect(
+        productToFormValues(makeMockProductWithRelations({ stock_unit: unit })).stockUnit,
+      ).toBe(unit);
+    }
+    const stock = (stock_unit: "m" | "pcs", stock_quantity: number) =>
+      productToFormValues(makeMockProductWithRelations({ stock_unit, stock_quantity }))
+        .initialStock;
+    expect(stock("m", 2750)).toBe("27.5 m");
+    expect(stock("pcs", 20)).toBe("20 個");
+    expect(stock("m", 0)).toBe("0 m");
+    expect(stock("pcs", 0)).toBe("0 個");
+    expect(stock("m", -30)).toBe("-0.3 m");
+  });
+
+  it("UI-01b-D22: 修正では現在庫を検証も送信もせず、売価・原価には上限を掛ける", () => {
+    const original = makeMockProductWithRelations({ stock_unit: "m", stock_quantity: 2750 });
+    const unchanged = buildUpdateProductRequest(productToFormValues(original), original);
+    expect(unchanged.errors).toEqual({});
+    expect(unchanged.request).toEqual({});
+    const over = buildUpdateProductRequest(
+      { ...productToFormValues(original), sellingPrice: "1000000", costPrice: "1000000" },
+      original,
+    );
+    expect(over.request).toBeNull();
+    expect(over.errors).toEqual({
+      sellingPrice: "売価が大きすぎます",
+      costPrice: "原価が大きすぎます",
+    });
+    expect(
+      buildUpdateProductRequest(
+        { ...productToFormValues(original), sellingPrice: "999999", costPrice: "999999" },
+        original,
+      ).request,
+    ).toEqual({ selling_price: 999999, cost_price: 999999 });
+  });
+});

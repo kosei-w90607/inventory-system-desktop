@@ -1,12 +1,13 @@
 // src/features/monthly-sales/components/DepartmentTable.tsx
 //
-// 部門別構成比テーブル (4 列: 部門 / 売上 / 構成比 (数値 + Progress バー) / 前月比、
+// 部門別構成比テーブル (5 列: 部門 / 数量 / 売上 / 構成比 (数値 + Progress バー) / 前月比、
 // Q-4 BIZ-05 DTO に商品数 field 不在のため非対応、Plans.md Backlog 参照)。
 // 設計: docs/function-design/57-ui-monthly-sales.md §57.7
 
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { SortableHeader } from "@/components/sales/SortableHeader";
 import { Progress } from "@/components/ui/progress";
+import { formatQuantityTotal } from "@/features/stock-inquiry/lib/format-stock-display";
 import {
   Table,
   TableBody,
@@ -56,7 +57,7 @@ export function DepartmentTable({
       <Table>
         <TableHeader>
           <TableRow>
-            {sortDescriptors.slice(0, 2).map((descriptor) => (
+            {sortDescriptors.slice(0, 3).map((descriptor) => (
               <SortableHeader
                 key={descriptor.value}
                 column={descriptor.value}
@@ -68,7 +69,7 @@ export function DepartmentTable({
               />
             ))}
             <TableHead>構成比</TableHead>
-            {sortDescriptors.slice(2).map((descriptor) => (
+            {sortDescriptors.slice(3).map((descriptor) => (
               <SortableHeader
                 key={descriptor.value}
                 column={descriptor.value}
@@ -88,6 +89,9 @@ export function DepartmentTable({
             return (
               <TableRow key={row.key}>
                 <TableCell className="font-medium">{row.label}</TableCell>
+                <TableCell className="text-right">
+                  {formatQuantityTotal(row.count_points, row.length_cm)}
+                </TableCell>
                 <TableCell className="text-right">¥{row.amount.toLocaleString("ja-JP")}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">

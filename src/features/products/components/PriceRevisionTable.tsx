@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PriceRevisionInput } from "@/lib/bindings";
+import { MAX_COST_PRICE, MAX_SELLING_PRICE } from "@/lib/unit-quantity";
 import type { PriceRevisionRow } from "../hooks/usePriceRevisionList";
 import { useReviseProductPrice } from "../hooks/useReviseProductPrice";
 import { deriveProposedCost, formatMarkupRate, isRevisedToday } from "../lib/price-revision-math";
@@ -46,6 +47,9 @@ function PriceRevisionRowView({
   const [error, setError] = useState<string | null>(null);
   const sellingPrice = parsePrice(selling);
   const costPrice = parsePrice(cost);
+  // 上限を越えた欄は error を出し、直すまで確定できない（自動で入る案も同じ。X5・X6）
+  const sellingTooLarge = sellingPrice !== null && sellingPrice > MAX_SELLING_PRICE;
+  const costTooLarge = costPrice !== null && costPrice > MAX_COST_PRICE;
   const sellingInvalid = selling !== "" && sellingPrice === null;
   const costInvalid = cost !== "" && costPrice === null;
 
@@ -66,7 +70,7 @@ function PriceRevisionRowView({
   });
 
   const payload = (): PriceRevisionInput | null => {
-    if (sellingPrice === null || costPrice === null) return null;
+    if (sellingPrice === null || costPrice === null || sellingTooLarge || costTooLarge) return null;
     return {
       product_code: product.product_code,
       new_selling_price: sellingPrice,
@@ -118,7 +122,7 @@ function PriceRevisionRowView({
           aria-label={`${product.product_code} 新売価`}
           value={selling}
           disabled={mutation.isPending}
-          aria-invalid={sellingInvalid}
+          aria-invalid={sellingInvalid || sellingTooLarge}
           onChange={(event) => {
             const value = event.target.value;
             setSelling(value);
@@ -136,6 +140,9 @@ function PriceRevisionRowView({
         {sellingInvalid ? (
           <p className="mt-1 text-xs text-destructive">0以上の整数で入力してください</p>
         ) : null}
+        {sellingTooLarge ? (
+          <p className="mt-1 text-xs text-destructive">売価が大きすぎます</p>
+        ) : null}
       </TableCell>
       <TableCell className="min-w-32 align-top">
         <Input
@@ -145,7 +152,7 @@ function PriceRevisionRowView({
           aria-label={`${product.product_code} 新原価（案）`}
           value={cost}
           disabled={mutation.isPending}
-          aria-invalid={costInvalid}
+          aria-invalid={costInvalid || costTooLarge}
           onChange={(event) => {
             setCost(event.target.value);
             setCostTouched(true);
@@ -155,6 +162,7 @@ function PriceRevisionRowView({
         {costInvalid ? (
           <p className="mt-1 text-xs text-destructive">0以上の整数で入力してください</p>
         ) : null}
+        {costTooLarge ? <p className="mt-1 text-xs text-destructive">原価が大きすぎます</p> : null}
       </TableCell>
       <TableCell className="min-w-44 align-top">
         <Button

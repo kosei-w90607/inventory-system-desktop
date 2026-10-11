@@ -24,7 +24,9 @@ function makeMovement(overrides: Partial<MovementRecord> = {}): MovementRecord {
 
 describe("MovementTable (REQ-303 / REQ-207)", () => {
   it("REQ-303: movement rows show type quantity stock source and note", async () => {
-    renderWithRouter(<MovementTable movements={[makeMovement()]} />);
+    renderWithRouter(
+      <MovementTable movements={[makeMovement()]} stockUnitByProductCode={new Map()} />,
+    );
 
     const row = (await screen.findByText("入庫記録 #42")).closest("tr");
     if (row === null) throw new Error("movement row not found");
@@ -53,6 +55,7 @@ describe("MovementTable (REQ-303 / REQ-207)", () => {
             note: null,
           }),
         ]}
+        stockUnitByProductCode={new Map()}
       />,
     );
 
@@ -71,6 +74,7 @@ describe("MovementTable (REQ-303 / REQ-207)", () => {
             source: { label: "廃棄・破損 #7", route: "/inventory/disposal/records/7" },
           }),
         ]}
+        stockUnitByProductCode={new Map()}
         returnTo="/stock/BT0002/movements?type=disposal&page=2"
       />,
     );
@@ -105,7 +109,9 @@ it.each([
 ])(
   "⑮ SC12: movement備考=%s を折り返し本文がある時だけtitleを持つ",
   async (note, expected, title) => {
-    renderWithRouter(<MovementTable movements={[makeMovement({ note })]} />);
+    renderWithRouter(
+      <MovementTable movements={[makeMovement({ note })]} stockUnitByProductCode={new Map()} />,
+    );
     const cell = await screen.findByText(expected);
     expect(cell).toHaveClass("whitespace-normal", "break-words");
     expect(cell).not.toHaveClass("truncate");
@@ -113,3 +119,42 @@ it.each([
     else expect(cell).toHaveAttribute("title", title);
   },
 );
+
+// REQ-303 / UI-06c-D5 / SPEC-UNIT-D3 の表の 6: 行の商品の単位で数量と変動後の在庫を出す
+describe("MovementTable の単位（REQ-303 / UI-06c-D5）", () => {
+  it("REQ-303: 長さの商品は m の形、個数の商品と対応に無い商品コードの行は今どおり整数", async () => {
+    renderWithRouter(
+      <MovementTable
+        movements={[
+          makeMovement({ id: 1, product_code: "M-1", quantity: 250, stock_after: 2750 }),
+          makeMovement({ id: 2, product_code: "CM-1", quantity: -50, stock_after: -30 }),
+          makeMovement({ id: 3, product_code: "PCS-1", quantity: 3, stock_after: 13 }),
+          makeMovement({ id: 4, product_code: "UNKNOWN", quantity: 250, stock_after: 2750 }),
+          makeMovement({ id: 5, product_code: "M-1", quantity: 0, stock_after: 2750 }),
+        ]}
+        stockUnitByProductCode={
+          new Map([
+            ["M-1", "m"],
+            ["CM-1", "cm"],
+            ["PCS-1", "pcs"],
+          ])
+        }
+      />,
+    );
+    await screen.findAllByText("入庫記録 #42");
+    const cells = screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => {
+        const tds = row.querySelectorAll("td");
+        return [tds[2].textContent, tds[3].textContent];
+      });
+    expect(cells).toEqual([
+      ["+2.5 m増加", "27.5 m"],
+      ["-0.5 m減少", "-0.3 m"],
+      ["+3増加", "13"],
+      ["+250増加", "2750"],
+      ["0 m変動なし", "27.5 m"],
+    ]);
+  });
+});

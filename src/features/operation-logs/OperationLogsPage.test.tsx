@@ -672,6 +672,67 @@ describe("UI-11c REQ-902", () => {
     expect(screen.getByText("技術情報（JSON）")).toBeInTheDocument();
   });
 
+  it("UI-11c-D14 / REQ-902: stock_unit の key がある補正は長さの商品を m で出し、key の無い記録済みの log は整数のまま", async () => {
+    const detail = {
+      fixed_count: 4,
+      skipped_count: 0,
+      adjustments: [
+        {
+          product_code: "SYN-M",
+          stock_unit: "m",
+          old_stock: 2750,
+          new_stock: 2700,
+          adjustment: -50,
+        },
+        {
+          product_code: "SYN-CM",
+          stock_unit: "cm",
+          old_stock: 2700,
+          new_stock: 2750,
+          adjustment: 50,
+        },
+        { product_code: "SYN-OLD", old_stock: 2750, new_stock: 2700, adjustment: -50 },
+        {
+          product_code: "SYN-PCS",
+          stock_unit: "pcs",
+          old_stock: 2750,
+          new_stock: 2700,
+          adjustment: -50,
+        },
+        {
+          product_code: "SYN-BAD",
+          stock_unit: "kg",
+          old_stock: 2750,
+          new_stock: 2700,
+          adjustment: -50,
+        },
+      ],
+    };
+    listLogs.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [{ ...log(JSON.stringify(detail)), operation_type: "integrity_fix" }],
+        total_count: 1,
+        page: 1,
+        per_page: 20,
+      },
+    });
+    renderPage();
+    await userEvent.setup().click(await screen.findByRole("button", { name: "詳細を表示" }));
+
+    const rows = within(screen.getByRole("region", { name: "整合性補正の内容" })).getAllByRole(
+      "listitem",
+    );
+    expect(rows[0]).toHaveTextContent("旧在庫 27.5 m → 新在庫 27 m");
+    expect(rows[0]).toHaveTextContent("差分 -0.5 m");
+    expect(rows[1]).toHaveTextContent("旧在庫 27 m → 新在庫 27.5 m");
+    expect(rows[1]).toHaveTextContent("差分 +0.5 m");
+    for (const row of rows.slice(2)) {
+      expect(row).toHaveTextContent("旧在庫 2,750 → 新在庫 2,700");
+      expect(row).toHaveTextContent("差分 -50");
+    }
+  });
+
   it("test_operation_logs_req902_t9_renders_integrity_adjustments_as_scoped_plain_text", async () => {
     const detail = {
       fixed_count: 2,

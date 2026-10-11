@@ -4,6 +4,7 @@
 // 前月比カードは `hasPrevComparison === false` で「比較不可」灰表示（Q-5 失敗 4 状態 #3）。
 // 設計: docs/function-design/57-ui-monthly-sales.md §57.7
 
+import { formatQuantityTotal } from "@/features/stock-inquiry/lib/format-stock-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,10 @@ export function SummaryCardsBar({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <SimpleCard title="月間売上合計" value={`¥${summary.totalAmount.toLocaleString("ja-JP")}`} />
-      <SimpleCard title="月間販売点数" value={`${String(summary.totalQuantity)} 点`} />
+      <SimpleCard
+        title="月間販売点数"
+        value={formatQuantityTotal(summary.totalCountPoints, summary.totalLengthCm)}
+      />
       <SimpleCard title="期間" value={periodLabel} />
       <SimpleCard
         title="前月比"

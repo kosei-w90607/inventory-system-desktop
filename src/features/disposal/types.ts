@@ -1,4 +1,4 @@
-import type { DisposalType, ProductWithRelations } from "@/lib/bindings";
+import type { DisposalType, ProductStockUnit, ProductWithRelations } from "@/lib/bindings";
 
 export type { DisposalType };
 
@@ -7,7 +7,7 @@ export interface DisposalRow {
   productCode: string;
   productName: string;
   departmentName: string;
-  stockUnit: string;
+  stockUnit: ProductStockUnit;
   currentStockQuantity: number;
   defaultCostPrice: number;
   disposalType: DisposalType;

@@ -33,6 +33,7 @@ import {
   SupplierPickerDialog,
   supplierCurrentLabel,
 } from "@/features/suppliers/components/SupplierPickerDialog";
+import { isLengthUnit } from "@/lib/unit-quantity";
 import { suggestPluTarget } from "../lib/jan-code";
 import type { ProductFormValues, ProductTaxRate } from "../lib/product-form-request";
 import { DiscontinueConfirmDialog } from "./DiscontinueConfirmDialog";
@@ -122,6 +123,9 @@ export function ProductForm({
   const update = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) => {
     onValuesChange((prev) => ({ ...prev, [key]: value }));
   };
+
+  // 長さの単位の価格は 1 m あたり（UI-01b-D22）
+  const perMeter = isLengthUnit(values.stockUnit) ? "、1 m あたり" : "";
 
   const handleToggleClick = () => {
     if (isDiscontinued) {
@@ -346,10 +350,13 @@ export function ProductForm({
         </div>
       </FormSection>
 
-      <FormSection title="価格" description="売価と原価は税抜の整数で入力します。">
+      <FormSection
+        title="価格"
+        description="売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。"
+      >
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-1">
-            <Label htmlFor="selling-price">売価（必須）</Label>
+            <Label htmlFor="selling-price">売価（必須{perMeter}）</Label>
             <Input
               id="selling-price"
               inputMode="numeric"
@@ -361,7 +368,7 @@ export function ProductForm({
             <FieldError message={errors.sellingPrice} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cost-price">原価（必須）</Label>
+            <Label htmlFor="cost-price">原価（必須{perMeter}）</Label>
             <Input
               id="cost-price"
               inputMode="numeric"
@@ -406,7 +413,7 @@ export function ProductForm({
           <Input
             id="initial-stock"
             className={mode === "edit" ? "bg-muted" : undefined}
-            inputMode="numeric"
+            inputMode={mode === "create" && values.stockUnit === "m" ? "decimal" : "numeric"}
             value={values.initialStock}
             readOnly={mode === "edit"}
             onChange={(event) => {
