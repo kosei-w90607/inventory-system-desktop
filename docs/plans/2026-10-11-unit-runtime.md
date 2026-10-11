@@ -31,6 +31,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 4. plan-draft → plan-gate（2026-10-11、Coordinator）: packet と Matrix は起票の commit にある。Coordinator は起草役の割当て（1 lane のまま、棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ、回復の手順書を本 lane の Scope に置く）を packet と現物（`src-tauri/src/biz/product_service.rs:1199`〜`:1202`・`:1402`）で確かめて採った。前文の A / B の切れ目（条件 (a) を外す形）は採らない（A だけの main の「`cm` の商品は cm で入力し m で表示する」状態は Ordinary Operation に無く、その状態の L3 と Ready・merge が 1 周増える）。Contract Probe の P3（同梱の SQLite と v7 の列での作り直し）は、plan-approved の前に Coordinator が実測して P3 に結果を書く。
 5. plan-gate（round 1 の是正、2026-10-11）: Plan Review round 1 の是正（Review Response 参照）。
 6. plan-gate（round 2 の是正、2026-10-11）: Plan Review round 2 の是正（Review Response 参照）。
+7. plan-gate（round 3 の是正、2026-10-12）: Plan Review round 3 の是正（Review Response 参照）。
 
 ## Owner Effort Budget
 
@@ -429,5 +430,22 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - 相談役（Fable 5.1）に、同じ型の残りの洗い出し（数量を文字にする所、期待が変わる既存 test、UI を通らない書込みの入口）と是正方針の反例探しを頼んだ。方針への反例は無く、残りとして操作ログの補正の量の行、行の金額の formatter の不正な入力、使われていない在庫の書込みの field（`ProductUpdates.stock_quantity`。X3 に「到達経路なし」と書き、消すのは時点証拠の契約どおり ⑤）が挙がり、採用した。v7 の backup を v8 のアプリへ復元する経路は、起草役が現物を読んで「復元の中で v8 が当たり、止まれば今の巻き戻しの経路に入る」と確かめ、実行は `未実測` として Contract Probe と回復の手順書の Scope に置いた。
 - 起草役は仕上げとして、「全部」「今と同じ」と書いた文と L3 の期待の文字列を現物で読み直し、言い過ぎと誤りを直した（`common.rs` の test の主張、`migration.rs` の既存 test の説明、「金額はどの画面でも同じ」の例外）。
 - 是正は起草役の commit「単位の runtime の計画に、商品修正の画面の現在庫と、取込みの確定の上書きの行の検証を足す」。round 3（上限）へ進む。
+
+### Plan Review round 3（上限、2026-10-12、対象は round 2 の是正と記録の後の版）
+
+- Codex（GPT-6 Astra / high）: approve、P1 0 / P2 0 / P3 1。Claude 側（fresh Opus 5.5、fork でなく round 1・round 2 とも別の context）: approve、P1 0 / P2 0 / P3 3。Ordinary Operation は 2 本とも「成立」。
+- 実測の分担: Codex は隔離 worktree で cargo の全 test・frontend の全検査・`cargo check --release`・bindings と traceability の生成の検査を回し、同梱の SQLite と v7 の DB で `products` の作り直しを独立に実測して通した。Claude 側は Coordinator の指示で cargo と npm を回さず（同じ時刻に Codex が同じ tree を build していて、host のメモリが逼迫した）、cargo が要る確認を claim として扱い、実読と `rg` の全数照合・数値の独立計算・python の SQLite での最小の作り直しで見た。
+- 裁定（Coordinator）: P3 の 4 行を現物で裏取りし、全て採用した。どれも文を現物に合わせる直しで、Goal・Scope・AC・設計の値を変えない。
+
+| ID | 出どころ | 要旨 | 採否 |
+|---|---|---|---|
+| R3-1 | Claude 側 | 月次の部門別の同額の並びを「部門 ID の昇順」と書くが、現物は `key`（部門 ID の文字列）の昇順（`src-tauri/src/biz/sales_service.rs:562`・`:574`） | 採用（本 lane は並びを変えず、文を現物に合わせる） |
+| R3-2 | Claude 側 | X8 の成功の端の fixture が商品の数を書かず、1 つの商品に積むと在庫の上限（X3）が先に拒む | 採用（在庫 0 の商品 10 個に 100 行以下ずつ分ける） |
+| R3-3 | Claude 側 | Contract Ledger が、L3 の到達手順の通らない画面（返品・交換、操作ログ、整合性チェック）を L3 に当てている | 採用（当て先を通る画面だけにし、通らない契約は RTL のみと理由。返品・交換は L3-3 に 1 手順足す） |
+| R3-4 | Codex | 棚卸しの計数を ⑤ へ送る理由の「計数の画面に行が出る状態を今の build で作れない」は、進行中の棚卸しを持つ既存の DB では成り立たない | 採用（止まっているのは開始・保存・確定で、既存の一覧は出ると書く。店は初導入で本番の DB は無い） |
+
+- R3-1 の関連: [34](../function-design/34-biz-sales-service.md) の「部門IDの昇順でソート」は日次の部門小計の文で、現物（数値の昇順）と合う。月次の同額の並びは正本に書かれておらず、食い違いではない（起草役が実読、Coordinator が `sales_service.rs:562` を確認）。
+- R3-3 で L3-3 に返品・交換の 1 手順（数量 `0.3` の返品の保存と記録詳細・在庫照会の確認）が増えた。L3 の round の数と Owner Effort Budget の上限は変えない。
+- 是正は起草役の commit「単位の runtime の計画の文を現物に合わせる（同額の並び・円の合計の fixture・L3 の当て先・棚卸しの一覧）」。round 3 で 2 本とも P1・P2 が無いので、次の round は開始せず plan-approved へ進む。是正の後の文の再確認は Final Review（R4、独立 2 本）が行う。
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
