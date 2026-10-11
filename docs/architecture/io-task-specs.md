@@ -263,7 +263,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 - ステートレス。DBを呼ばない
 - 致命的エラーは 3 種（DecodeFailed / NoRecords / Empty）で部分結果を返さない。それ以外は記録単位の復元不能 + 診断
 - EOF を記録の閉じの根拠にしない。復元不能の記録から明細を読み出す API を持たない
-- 番号の連続・区間の完全性・分割 file の連結・Z004 との対応・商品同定・時刻の解釈は行わない（次の design lane と BIZ）
+- 番号の連続・区間の完全性・分割 file の連結・Z004 との対応・商品同定・時刻の解釈は行わない（BIZ。区間の対応づけと欠けの定義は ADR SPEC-STK-TIME-D5a）
 
 ---
 

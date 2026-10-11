@@ -11,6 +11,7 @@ SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、s
 | pos_import_sources | settlement_date TEXT NOT NULL | parserが検証した精算日。拒否資料の日付表示にも使用。旧importからの受領backfillは行わない（[decision-log](../decision-log.md) D-109 (4)） |
 | pos_import_sources | identity_rejection_code TEXT、identity_rejected_at TEXT | 両方NULLまたは両方必須。codeはidentity_conflict / missing_identityのCHECK。BIZが初回の拒否時に証拠TXで保存し、取消/再実測で削除しない。raw明細は格納しない |
 | csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない。時点証拠schemaのmigrationは旧importからsourceをbackfillせず、旧importのsource_idはNULLのまま残す（NULLを許す列とし、新importの必須はBIZが守る。[decision-log](../decision-log.md) D-109 (4)） |
+| pos_sd_observations（新設、[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)） | id INTEGER PK AUTOINCREMENT、observed_at TEXT、window_from TEXT、source_cursor INTEGER | observed_atはNOT NULL。window_fromとsource_cursorは両方NULL（未完了）か両方NOT NULL（完了）のCHECK。SDを読む操作ごとに、fileの列挙を始める前に未完了の行を1つ置く。SDの全数受領（窓の中のZ004を全て受領し終え、直前に受領済みの最新のZ004がそのSDにある読取り）になったときだけ、その行へwindow_from（窓の始まりの日付、YYYY-MM-DD）とsource_cursor（受領を終えた後のpos_import_sourcesの最大ID。空なら0、非負、IDへのFKにしない）を書いて完了にする。未完了の行は判定に使わず、後から完了にしない。完了した行は更新しない。行は削除しない。observed_atはアプリの時計の表示用で判定に使わない。売上値・file名・file本体は持たない |
 
 同sourceの再取込み可否はactive hash拒否だけでなく、BIZの同一精算別hash guardにも従う。受領済みの別hashとの関係が未解決なら、元importを取り消しても自動で解除しない。
 
