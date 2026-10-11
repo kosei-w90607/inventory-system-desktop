@@ -51,6 +51,22 @@ pub const CSV_IMPORT_LINE_LIMIT: usize = 10_000;
 /// zod `.max(100)` と同じ数え方で、登録できる商品コードは在庫照会でも選べる。
 pub const PRODUCT_CODE_MAX_LEN: usize = 100;
 
+// --- 入力の上限と安全な整数の範囲（10-common-rules.md SPEC-UNIT-D11 の続き (a)） ---
+/// 1 明細の数量の上限（入庫・返品・手動販売・廃棄・POS 由来の数量。長さは cm）
+pub const MAX_LINE_QUANTITY: i64 = 9_999_999;
+
+/// 在庫の絶対値の上限（計算の後の値を含む。長さは cm）
+pub const MAX_STOCK_QUANTITY: i64 = 999_999_999;
+
+/// 売価の上限（円）
+pub const MAX_SELLING_PRICE: i64 = 999_999;
+
+/// 原価の上限（円）
+pub const MAX_COST_PRICE: i64 = 999_999;
+
+/// JavaScript の number で正確に運べる整数の絶対値の上限（2^53 - 1）
+pub const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
+
 // --- プレビューキャッシュ ---
 /// preview_cache の最大エントリ数（FIFO: 上限超過時に最古を削除）
 pub const PREVIEW_CACHE_LIMIT: usize = 10;

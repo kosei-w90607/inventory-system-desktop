@@ -5,6 +5,7 @@
 //!
 //! docs/function-design/35-biz-stocktake-service.md に基づく実装。
 
+use crate::biz::unit_amount::{cost_line_centi, cost_total_yen, price_basis_quantity};
 use crate::biz::BizError;
 use crate::db::{
     inventory_repo, product_repo, stocktake_repo, system_repo, DbConnection, NewOperationLog,
@@ -433,60 +434,6 @@ pub(crate) fn legacy_start_stocktake(
     })
 }
 
-// ---------------------------------------------------------------------------
-// 評価額の計算（35 §20.5a SPEC-STK-VAL-D1〜D5）
-// ---------------------------------------------------------------------------
-
-/// 価格の基準数量（SPEC-STK-VAL-D1）。単位を足したら compile error で基準数量を決めさせるため wildcard を置かない
-fn price_basis_quantity(unit: product_repo::ProductStockUnit) -> i64 {
-    match unit {
-        product_repo::ProductStockUnit::Pcs => 1,
-        product_repo::ProductStockUnit::Cm => 100,
-    }
-}
-
-fn valuation_overflow() -> BizError {
-    BizError::ValidationFailed("仕入原価総額の計算でオーバーフローが発生しました".to_string())
-}
-
-/// 商品別の金額（1/100 円）。`原価 × 数量 × 100 ÷ 基準数量` の正確な値を四捨五入する（SPEC-STK-VAL-D3 / D5）
-fn valuation_line_centi(
-    cost_price: i64,
-    quantity: i64,
-    basis: i64,
-    product_code: &str,
-) -> Result<i128, BizError> {
-    if cost_price < 0 || quantity < 0 {
-        return Err(BizError::ValidationFailed(format!(
-            "評価額を計算できません。原価か数量が負の値です（商品 {product_code}）"
-        )));
-    }
-    // i64 × i64 の積は i128 に必ず収まるので検査しない
-    let yen_times_basis = i128::from(cost_price) * i128::from(quantity);
-    let centi_times_basis = yen_times_basis
-        .checked_mul(100)
-        .ok_or_else(valuation_overflow)?;
-    let basis = i128::from(basis);
-    let (quotient, remainder) = (centi_times_basis / basis, centi_times_basis % basis);
-    // 余りが基準数量の半分以上なら切り上げる（r < basis ≤ i64::MAX なので 2r は溢れない）
-    Ok(if 2 * remainder >= basis {
-        quotient + 1
-    } else {
-        quotient
-    })
-}
-
-/// 総額（円）。商品別の金額（1/100 円）の合計を円未満で四捨五入する（SPEC-STK-VAL-D2 / D4 / D5）
-fn valuation_total_yen(lines: &[i128]) -> Result<i64, BizError> {
-    let total = lines
-        .iter()
-        .try_fold(0_i128, |sum, &line| sum.checked_add(line))
-        .ok_or_else(valuation_overflow)?;
-    let (yen, centi) = (total / 100, total % 100);
-    let yen = if centi >= 50 { yen + 1 } else { yen };
-    i64::try_from(yen).map_err(|_| valuation_overflow())
-}
-
 /// 旧本体: 棚卸しを確定する（最高リスク。TX + operation_log TX外）。呼出し元は test だけ（SPEC-STOP-D3）
 ///
 /// 35-biz-stocktake-service.md §20.5
@@ -558,8 +505,8 @@ pub(crate) fn legacy_complete_stocktake(
         let valuation_cost_price = product.product.cost_price;
         stocktake_repo::update_stocktake_item_valuation(&tx, item.id, valuation_cost_price)?;
 
-        line_centis.push(valuation_line_centi(
-            valuation_cost_price,
+        line_centis.push(cost_line_centi(
+            i128::from(valuation_cost_price) * 100,
             item.actual_count,
             price_basis_quantity(product.product.stock_unit),
             &item.product_code,
@@ -596,7 +543,7 @@ pub(crate) fn legacy_complete_stocktake(
     }
 
     // 6. 棚卸しヘッダ確定
-    let total_cost = valuation_total_yen(&line_centis)?;
+    let total_cost = cost_total_yen(&line_centis)?;
     stocktake_repo::complete_stocktake(&tx, req.stocktake_id, total_cost, &now)?;
 
     // 7. COMMIT
@@ -1398,94 +1345,6 @@ mod tests {
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .unwrap()
-    }
-
-    #[test]
-    fn test_valuation_req205_price_basis_by_unit() {
-        // REQ-205 / SPEC-STK-VAL-D1: 基準数量は在庫単位で決まる（pcs = 1、cm = 100）
-        use crate::db::product_repo::ProductStockUnit;
-        assert_eq!(price_basis_quantity(ProductStockUnit::Pcs), 1);
-        assert_eq!(price_basis_quantity(ProductStockUnit::Cm), 100);
-    }
-
-    #[test]
-    fn test_valuation_req205_line_rounds_half_up() {
-        // REQ-205 / SPEC-STK-VAL-D3: 正確な値を 1/100 円で四捨五入する
-        assert_eq!(valuation_line_centi(1000, 5, 12, "L").unwrap(), 41667); // 416.666… 円
-        assert_eq!(valuation_line_centi(385, 153, 100, "L").unwrap(), 58905); // 589.05 円
-        assert_eq!(valuation_line_centi(1, 1, 200, "L").unwrap(), 1); // 0.005 円（境界ちょうど）
-        assert_eq!(valuation_line_centi(1, 1, 201, "L").unwrap(), 0); // 0.004975… 円
-        assert_eq!(valuation_line_centi(300, 5, 1, "L").unwrap(), 150000);
-        assert_eq!(valuation_line_centi(385, 0, 100, "L").unwrap(), 0);
-    }
-
-    #[test]
-    fn test_valuation_req205_total_rounds_half_up_to_yen() {
-        // REQ-205 / SPEC-STK-VAL-D4: 合計を円未満で四捨五入する（50・250 で偶数丸めと区別）
-        assert_eq!(valuation_total_yen(&[58950]).unwrap(), 590);
-        assert_eq!(valuation_total_yen(&[58949]).unwrap(), 589);
-        assert_eq!(valuation_total_yen(&[50]).unwrap(), 1);
-        assert_eq!(valuation_total_yen(&[250]).unwrap(), 3);
-        assert_eq!(valuation_total_yen(&[0]).unwrap(), 0);
-    }
-
-    #[test]
-    fn test_valuation_req205_two_stage_rounding() {
-        // REQ-205 / SPEC-STK-VAL-D3・D4: 丸めは商品別と最終合計の 2 段
-        let line = valuation_line_centi(1, 1, 250, "L").unwrap(); // 0.004 円
-        assert_eq!(line, 0);
-        // 合計してから丸めると 0.8 円 → 1 円になる。商品別に丸めるので 0 円
-        assert_eq!(valuation_total_yen(&[line; 200]).unwrap(), 0);
-    }
-
-    #[test]
-    fn test_valuation_req205_negative_input_rejected() {
-        // REQ-205 / SPEC-STK-VAL-D5: 負の原価・数量は商品コード入りの ValidationFailed
-        for result in [
-            valuation_line_centi(-1, 1, 1, "NEG-001"),
-            valuation_line_centi(1, -1, 1, "NEG-001"),
-        ] {
-            assert!(
-                matches!(result, Err(BizError::ValidationFailed(ref msg)) if msg.contains("NEG-001")),
-                "負の入力は ValidationFailed（商品コード入り）: {:?}",
-                result
-            );
-        }
-    }
-
-    #[test]
-    fn test_valuation_req205_line_overflow_rejected() {
-        // REQ-205 / SPEC-STK-VAL-D2・D5: × 100 の i128 の桁あふれは error、旧式が通る最大付近は通す
-        let result = valuation_line_centi(1 << 62, 737_869_762_948_382_065, 100, "L");
-        assert!(is_overflow(&result), "× 100 の桁あふれ: {:?}", result);
-        assert_eq!(
-            valuation_line_centi(i64::MAX, 1, 1, "L").unwrap(),
-            i128::from(i64::MAX) * 100
-        );
-        assert_eq!(
-            valuation_line_centi(i64::MAX, 1, 100, "L").unwrap(),
-            i128::from(i64::MAX)
-        );
-    }
-
-    #[test]
-    fn test_valuation_req205_total_bounds() {
-        // REQ-205 / SPEC-STK-VAL-D2・D5: i64 の上限付近の丸め、合計の桁あふれ、旧式が確定できた値
-        let max_centi = i128::from(i64::MAX) * 100;
-        assert_eq!(valuation_total_yen(&[max_centi + 49]).unwrap(), i64::MAX);
-        let result = valuation_total_yen(&[max_centi + 50]);
-        assert!(is_overflow(&result), "円額が i64 を越える: {:?}", result);
-        assert_eq!(valuation_total_yen(&[]).unwrap(), 0);
-        // 中間を i64 に限ると × 100 で桁あふれする値。pcs では旧式と一致する
-        let line = valuation_line_centi(92_233_720_368_547_759, 1, 1, "L").unwrap();
-        assert_eq!(
-            valuation_total_yen(&[line]).unwrap(),
-            92_233_720_368_547_759
-        );
-        // 合計の i128 の桁あふれ（2 本では wrap が負になり変換の error に紛れるため 3 本）
-        let big = valuation_line_centi(1 << 60, 983_826_350_597_842_753, 1, "L").unwrap();
-        let result = valuation_total_yen(&[big, big, big]);
-        assert!(is_overflow(&result), "合計の桁あふれ: {:?}", result);
     }
 
     #[test]

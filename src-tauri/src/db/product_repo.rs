@@ -59,7 +59,7 @@ fn parse_tax_rate(value: String) -> rusqlite::Result<ProductTaxRate> {
     }
 }
 
-fn parse_stock_unit(value: String) -> rusqlite::Result<ProductStockUnit> {
+pub(crate) fn parse_stock_unit(value: String) -> rusqlite::Result<ProductStockUnit> {
     match value.as_str() {
         "pcs" => Ok(ProductStockUnit::Pcs),
         "cm" => Ok(ProductStockUnit::Cm),

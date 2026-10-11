@@ -4,9 +4,8 @@
 //! （`stocktake_service.rs` で `#[cfg(test)]`、D-109 (3)）。TX の外の操作ログ・整合性検査と、
 //! token の保管・DB 世代の採番は ⑤ の公開の入口（CMD）が持つ。時刻は引数で受ける。
 
-use super::{
-    price_basis_quantity, valuation_line_centi, valuation_total_yen, StartStocktakeResult,
-};
+use super::StartStocktakeResult;
+use crate::biz::unit_amount::{cost_line_centi, cost_total_yen, price_basis_quantity};
 use crate::biz::BizError;
 use crate::db::inventory_repo::time_evidence::{
     bump_stock_revision, insert_stocktake_movement, max_movement_id,
@@ -699,8 +698,8 @@ pub(crate) fn complete_stocktake(
         // 差 0 の商品も版を進めて古い context を失効させる
         bump_stock_revision(&tx, &item.product_code)?;
         update_stocktake_item_valuation(&tx, item.id, product.cost_price)?;
-        line_centis.push(valuation_line_centi(
-            product.cost_price,
+        line_centis.push(cost_line_centi(
+            i128::from(product.cost_price) * 100,
             stock_after.max(0),
             price_basis_quantity(product.stock_unit),
             &item.product_code,
@@ -708,7 +707,7 @@ pub(crate) fn complete_stocktake(
     }
 
     // 5. header を completed・版 1 に
-    let total_cost = safe(Some(valuation_total_yen(&line_centis)?))?;
+    let total_cost = safe(Some(cost_total_yen(&line_centis)?))?;
     repo::complete_stocktake_v1(&tx, stocktake_id, total_cost, completed_at)?;
     tx.commit()?;
     Ok(CompletionResult {

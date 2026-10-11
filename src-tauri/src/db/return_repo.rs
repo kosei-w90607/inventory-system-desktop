@@ -4,6 +4,7 @@
 
 use super::inventory_common::{validate_and_offset, ListQuery};
 use super::inventory_repo::MovementRecord;
+use super::product_repo::{parse_stock_unit, ProductStockUnit};
 use super::{DbConnection, DbError, PaginatedResult};
 
 // ---------------------------------------------------------------------------
@@ -107,7 +108,7 @@ pub struct ReturnRecordDetailItem {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
-    pub stock_unit: String,
+    pub stock_unit: ProductStockUnit,
     pub direction: ReturnDirection,
     pub quantity: i64,
 }
@@ -291,7 +292,7 @@ pub fn get_return_record_detail(
                 product_code: row.get(1)?,
                 product_name: row.get(2)?,
                 department_name: row.get(3)?,
-                stock_unit: row.get(4)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 direction: parse_return_direction(row.get(5)?)?,
                 quantity: row.get(6)?,
             })

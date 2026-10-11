@@ -13,6 +13,7 @@ pub mod product_service;
 pub mod sales_service;
 pub mod stocktake_service;
 pub mod system_service;
+pub mod unit_amount;
 
 // CMD層がBIZ経由で直接使用するDB型の re-export（CMD→db直接依存を避けるために維持）
 #[allow(unused_imports)]

@@ -23,7 +23,6 @@ const RUST_SRC_DIR: &str = "src";
 
 /// 除外する設計書ファイル（型定義のみ / UI 層）
 const SKIP_DOCS: &[&str] = &[
-    "10-common-rules.md",
     "50-ui-product-list.md",
     "51-ui-product-form.md",
     "52-ui-shared-layout.md",
@@ -162,6 +161,8 @@ fn build_doc_to_modules_map() -> HashMap<&'static str, Vec<&'static str>> {
     map.insert("29-io-ej-parser.md", vec!["io::ej_parser"]);
 
     map.insert("25-io-plu-formatter.md", vec!["io::plu_formatter"]);
+
+    map.insert("10-common-rules.md", vec!["biz::unit_amount"]);
 
     map.insert("30-biz-product-service.md", vec!["biz::product_service"]);
 

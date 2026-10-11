@@ -3,6 +3,7 @@
 //! 21-io-inventory-repo.md §11 に基づく実装。
 //! IO-01: SQLiteデータアクセス層（sales_repository）
 
+use super::product_repo::{parse_stock_unit, ProductStockUnit};
 use super::{DbConnection, DbError};
 
 // ---------------------------------------------------------------------------
@@ -131,7 +132,7 @@ pub struct CsvImportRecordDetailItem {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
-    pub stock_unit: String,
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub amount: i64,
     pub is_voided: bool,
@@ -509,7 +510,7 @@ pub fn get_csv_import_record_detail(
                 product_code: row.get(1)?,
                 product_name: row.get(2)?,
                 department_name: row.get(3)?,
-                stock_unit: row.get(4)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(5)?,
                 amount: row.get(6)?,
                 is_voided: row.get(7)?,
