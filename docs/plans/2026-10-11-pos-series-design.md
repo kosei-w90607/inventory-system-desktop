@@ -27,6 +27,9 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 5. design → plan-draft（2026-10-11、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本で満たす。条件「未解決の設計の問いが無い」は、J1 の決定（TD-224）で owner の判断事項が無くなったことで満たす。残る Contract Probe の P1・P3・P7（持ち帰りデータの集計中）と P10 は設計の問いではなく、Plan Gate の前と D10 を有効にする lane の前に確かめる外部前提で、結果に依らず設計は安全側（判定不能）に倒れる。plan-gate への遷移は Coordinator。
 6. plan-draft のまま（集計の反映、2026-10-11、起草役）: 持ち帰りデータの集計（独立の数え直し済み）が戻り、Contract Probe の P1・P3・P5・P7 を結果で書き直した。集計で、精算票と Z004 を「題の末尾 + 1」の番号で対応づける起票時の D5a が、番号の差がずれると 1 つ後の精算の記録を黙って拾うと分かったので、対応づけを精算の日時の同一性（同じ分か 1 分前、ちょうど 1 件）に改めた。D10 の条件 3 の日付の比較に 1 日の余裕を足した。Goal と設計の方向は変えず、owner の判断が要る事項は増えていないので plan-draft に留める。
 7. plan-draft → plan-gate（2026-10-11、Coordinator）: packet と Matrix は commit 済み。Coordinator は ADR の SPEC-STK-TIME-D10（全数読取りと全部実測後の条件、有効にする・外す）と D5a（区間の終端・開始）を実読し、持ち帰りデータの集計（独立の数え直し済み）が Contract Probe の P1・P3・P5・P7 に反映されていることを確かめた。P1 のうち保存が異常終了した精算の資料の残り方と、P2・P10 は未観測のまま残り、D10 を有効にする変更の owner-operated gate に置いてある（本 lane は判定を有効にしない）。
+8. plan-gate → design（2026-10-12、Coordinator）: Plan Review round 1 の是正（Review Response 参照）が設計正本の条件・保存する値と、本 lane の Scope（区間の対応づけをどこまで決めるか）を変えるので、design へ戻して歩き直す（`docs/DEV_WORKFLOW.md` Workflow State の「Scope か design を無効にする差し戻しは design か plan-draft へ戻す」）。owner の決定（repo 外の回答台帳 TD-228・TD-229・TD-230）を起草役の commit で正本・packet・Matrix に反映した。
+9. design → plan-draft（2026-10-12、Coordinator、同じ commit）: 設計の出力は正本にある（Design Readiness）。owner の判断事項は残っていない（区間の対応づけを確定する条件の細部は、TD-230 で日次の EJ 取込みの lane の設計へ送った。本 lane の設計の問いではない）。
+10. plan-draft → plan-gate（2026-10-12、Coordinator、同じ commit）: packet と Matrix は起草役の commit にある。Coordinator は ADR の SPEC-STK-TIME-D10（全数読取り、資料の初回受領の読取り、全部実測後の条件、限界、有効にする・外す）を実読し、AC の検索式と docs の検査が通ることを確かめた。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
@@ -36,7 +39,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 1（2026-10-11: J1 の判断〈TD-224〉。TD-221・TD-222・TD-223 は起票の前の lane 選択で、本 lane の介入に数えない） | 2（Ready 1、merge 1） | 3（Plan Review の round 天井に達したときの disposition、外部前提の集計の結果の扱い、店主への問いの中継） | 6 = 1 + 2 + 3 |
+| 介入 | 6 | 3（2026-10-11: J1 の判断〈TD-224〉、限界の受け入れ〈TD-228〉。2026-10-12: 区間の対応づけを本 lane でどこまで決めるかの判断〈TD-230〉。TD-221・TD-222・TD-223 は起票の前の lane 選択で、TD-229 は owner の問いなので、本 lane の介入に数えない） | 2（Ready 1、merge 1） | 1（Plan Review の round 天井に達したときの disposition） | 6 = 3 + 2 + 1 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -365,4 +368,28 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
 
 ## Review Response
 
-（review の後に書く）
+### Plan Review round 1（2026-10-11、対象は plan-gate へ進めた版）
+
+- Codex（GPT-6.1 Sol / high）: reject、P1 4 / P2 3 / P3 0。Ordinary Operation は「具体的な反例あり」。Claude 側（fresh Opus 5.5、fork でない）: reject、P1 0 / P2 4 / P3 4。Ordinary Operation は「外部前提が未確認」。
+- 裁定（Coordinator）: 2 本の全行を採用した。是正の形は、相談役（Fable 5.1）の反例探しと owner の決定を受けて下のとおり決めた。
+
+| ID | 出どころ | 要旨 | 採否と是正の形 |
+|---|---|---|---|
+| C1 | Codex（P1） | 数え直しのたびに基準が動き、連日売れる商品は自動へ移れない | 採用。仕組みは変えず、限界として正本・Goal・Ordinary Operation・Matrix に書く（owner が限界を一旦受け入れた: repo 外の回答台帳 TD-228） |
+| C2・F1 | Codex（P1）・Claude 側（P2） | 資料の ID の区間は「その読取りで受領した」証拠にならない（読取りの途中の別経路の受領） | 採用。資料に初回受領の読取りの ID（`first_scan_id`）を持たせ、条件はその値を直接見る。`pos_source_scans` の区間の 2 列は外し、完了の印（`completed_at`）に置き換える |
+| C3 | Codex（P1） | 日時の合う精算票がただ一つあることは、区間の同一性の証明にならない | 採用。区間の対応づけ（D5a）は骨と、後続の設計へ送る項目の一覧に書き直し、確定する条件の細部は日次の EJ 取込みの lane の設計へ送る（owner の決定: TD-230）。決まるまで、EJ の完全性に依る判定は EJ 待ち・要再確認に倒れる |
+| C4・F3 | Codex（P1）・Claude 側（P3） | 番号の reset をまたいで、別の系列の資料が直前の番号で結ばれる | 採用。条件 3 を「直前の資料と当の資料の両方が、同じ置き場の完了した読取りの中で初めて受領された」に直す |
+| C5・F4・F8 | Codex（P2）・Claude 側（P2・P3） | 「時刻は対応づけに使わない」と D5a が食い違う、言い過ぎ | 採用。「レジの日時は区間の終端の候補の抽出にだけ使い、欠けの判定と実測との前後の判定には使わない」に統一 |
+| C6・F5 | Codex（P2）・Claude 側（P2） | 無効の間の保存の不具合の世代を、後から判定の対象から外す出口が無い | 採用。migration で全ての実測の `source_scan_cursor` を引き上げる出口と、有効にする変更の merge 条件を足す |
+| C7・F2 | Codex（P2）・Claude 側（P2） | 当の資料をファイルを選ぶ経路で受領した日の結果が、条件と操作表・Matrix で食い違う | 採用。C4 の条件で決まる（その日の資料と次の精算の資料は判定不能、その次から戻る）。正本・操作表・Matrix をそろえる |
+| F6 | Claude 側（P3） | backlog の入力の数が文の中で突き合わない | 採用。集計の出力にある数で突き合わせ、出力に無い内訳は `未実測` |
+| F7 | Claude 側（P3） | Matrix の AC の範囲の誤りと、足りない行 | 採用。AC の全部に直し、行を足す |
+
+- 相談役（Fable 5.1）に、是正の前に方針への反例探しと同じ型の残りの洗い出しを頼んだ（合成モデルの総当たりと名指しの列）。採ったもの: `first_scan_id` に置き換えて区間の 2 列を外す形、「Z004 と精算票を結ぶ値は現物では日時しか無い」（起草役が `src-tauri/src/io/z004_parser.rs`・`ej_parser.rs` の型で確かめた）、EJ の評価の順を「欠け → 前回の証明」にすること、限界を保証として書いている所と、直前の資料の経路しか書いていない所の一括の是正。採らなかったもの: 途中で失敗した読取りの中の初回受領を認める緩和（条件を増やさず、限界として書く）。相談役の整合の条件の案（1 記録 1 Z004、番号順の整合）は決定にせず、未決の例として書いた。
+- owner の決定（repo 外の回答台帳）: TD-228（限界の受け入れ）、TD-229（番号印字を後から足すなら任意で使える形。D-116 の Revisit に書いた）、TD-230（D5a は骨だけ書き、細部は日次の EJ 取込みの lane の設計へ送る）。
+- Goal・Scope・AC の変更（TD-230 と是正による。前半の節に反映済み）: 最小完了条件の 2 つ目を「区間の端を決める」から「骨と未決の一覧を読める。決まるまでの帰結が正本にある」へ縮めた。保存する値に `first_scan_id` を足し、D10 は本 lane で決め切ると書いた。失敗定義に 2 行足した。AC4・AC11 を変え、AC12 の幅の検査を外し（幅は未決）、AC13（D5a の骨）と AC14（限界の段）を足した。Scope の表に `docs/project-memory.md` を足した。
+- 起草役が表の指示のほかで決め、Coordinator が確かめて採ったもの: (1) 条件 3 に当の資料の日付（窓の始まりの翌日以降）を足した（窓の外にあって列挙されなかった古い資料が、後の読取りで初めて受領されて通る列を塞ぐ。安全側で、普通の運用の結果は変えない）。(2) 番号の reset を挟む列が 1 つ残る（当の資料の精算の後に reset があり、同じ直前の番号の精算までが、続く二つの完了した読取りの間に起き、本当の直前の資料が窓の外か別の置き場にある形）。系列の識別子を足さない限り塞げず、D-116 は足さないと決めているので、限界として ADR・D-116・Matrix の Residual Test Gaps に書き、reset が実際に起きる前に決め直す（Revisit Trigger）。精算の番号が大きい今のレジでは、reset の後に同じ番号まで精算を重ねる間に一度も読まないことが要る。
+- Z004 の中身の集計（独立の数え直し済み）と、交換を差額だけで打つ運用の要旨（TD-225）を、Plan Review とは別に正本・backlog・Contract Probe に入れた。
+- 是正は起草役の commit「全部実測後の条件を資料の初回受領の読取りで書き直し、限界と D5a の骨・未決を正本に書く」。設計と Scope を変えたので design へ戻して歩き直し（遷移の記録 8〜10）、round 2 へ進む（round 天井 3）。
+
+先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
