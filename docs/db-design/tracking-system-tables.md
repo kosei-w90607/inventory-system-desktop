@@ -12,7 +12,7 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 | stocktake_items | observation_kind TEXT | NOT NULL、DEFAULTなし、uncounted / measured / auto_filled / legacyのCHECK。最新の入力を上書きする。N=actual_count、L=system_stock、E=counted_atは既存列を利用 |
 | stocktake_items | count_started_at TEXT、observation_revision INTEGER、ledger_cursor INTEGER、source_cursor INTEGER、request_id TEXT | measuredは一式必須。日時は既存のJST形式、版/cursorは非負整数、request_idはUNIQUE。source_cursorは開始時、ledger_cursorは保存TXのsnapshotと同時点。kindと証拠の組はtableのCHECKで固定する（下のSPEC-STK-TIME-D8-K1） |
 | stocktake_recounts（新設） | id INTEGER PK AUTOINCREMENT、stocktake_item_id INTEGER FK、system_stock INTEGER、actual_count INTEGER、count_started_at TEXT、counted_at TEXT、ledger_cursor INTEGER、source_cursor INTEGER、observation_revision INTEGER、request_id TEXT | 参照明細・N/L・時点証拠・版・要求IDはNOT NULL。request_idはUNIQUE。値はappend-only、actual_countは非負。importへのFKは置かない |
-| stocktake_items、stocktake_recounts（[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)、2026-10-11 追加。今の `schema_time_evidence` には無い） | sd_observation_cursor INTEGER | 実測の保存TXの時点のpos_sd_observationsの最大ID（未完了の行を含む。無ければ0）。非負整数、IDへのFKにしない。measuredは必須、uncounted・auto_filled・legacyはNULL（下のSPEC-STK-TIME-D8-K1の組に6つ目の項目として入れる）。recountはNOT NULL。開始時には採らない |
+| stocktake_items、stocktake_recounts（[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)、2026-10-11 追加。今の `schema_time_evidence` には無い） | source_scan_cursor INTEGER | 実測の保存TXの時点のpos_source_scansの最大ID（未完了の行を含む。無ければ0）。非負整数、IDへのFKにしない。measuredは必須、uncounted・auto_filled・legacyはNULL（下のSPEC-STK-TIME-D8-K1の組に6つ目の項目として入れる）。recountはNOT NULL。開始時には採らない。全部実測後の判定の有効・無効に依らず保存する |
 | stocktake_recount_flags（新設） | product_code TEXT FK、source_id INTEGER FK → pos_import_sources.id、csv_import_id INTEGER FK、reason TEXT | 全てNOT NULL。未解消のflagを(product_code, source_id)で一意にする。csv_import_idはflagを作成したimport。reasonはsale_order_unknown（計数と前後不明の販売）/ offset_lines_present（相殺の行あり）/ offset_check_pending（相殺の確認待ち・EJ待ち）/ offset_mapping_changed（相殺の確認待ち・登録の変化）/ legacy_basis（旧記録の実測）のCHECK。解消で行を削除し、実測・取消による解消の根拠はその記録、再評価による解消の根拠は対応する保存済みの資料とEJの証拠に残る |
 | stocktake_recount_flags | previous_recheck_pending INTEGER | NOT NULL、0/1のCHECK。1はreason=offset_mapping_changedの場合だけ許可する（CHECK）。直前のZ004の未受領を原因に作る登録の変化（最初の区間・受領済みの最小より小さい番号・settlement_noの戻り）では1、それ以外では0をwriterが明示する。直前のZ004の受領だけでは変えず、そのZ004を使った再評価を業務TXで確定するとき、残すflagを0にする。業務TXの失敗では元の値を保つ。flagの解消では行とともに削除する。理由の追加や公開DTOへの露出は行わない |
 
@@ -29,7 +29,7 @@ SPEC-STK-TIME-D1 / D6〜D8の追加予定。以下はmigration設計の論理カ
 - 棄却: 読み取り側の検査だけにする（壊れた行を書けてしまい、保存TXの誤りが後の取込みの判定まで露見しない）。kindごとの別tableにする（明細の一覧・確定・記録詳細の全readerを分ける費用に見合わない）。
 - 移行との関係: 下の「移行と保存TX」の分類で作る行（uncounted・auto_filled・legacy、5項目は全てNULL）はこのCHECKを満たす。同じ再構築のTXで当てる。
 - 見直す条件: 新しいkindを足すとき、またはauto_filledに時刻を残す要求が出たとき。
-- ADR D10のsd_observation_cursor（2026-10-11、[decision-log](../decision-log.md) D-116）: D10を実装するruntime laneが、上の「5項目」に6つ目として足し、同じCHECKで measured は NOT NULL、uncounted・auto_filled・legacy は NULL にする。時点証拠schemaをmigrationのregistryへ登録する（㉘ ⑤）より前に足す。
+- ADR D10のsource_scan_cursor（2026-10-11、[decision-log](../decision-log.md) D-116）: D10を実装するruntime laneが、上の「5項目」に6つ目として足し、同じCHECKで measured は NOT NULL、uncounted・auto_filled・legacy は NULL にする。時点証拠schemaをmigrationのregistryへ登録する（㉘ ⑤）より前に足す。
 
 要再確認flagの規則（[ADR D4](../adr/2026-09-18-stocktake-time-evidence.md)）:
 
