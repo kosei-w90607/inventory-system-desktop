@@ -30,6 +30,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 8. plan-gate → design（2026-10-12、Coordinator）: Plan Review round 1 の是正（Review Response 参照）が設計正本の条件・保存する値と、本 lane の Scope（区間の対応づけをどこまで決めるか）を変えるので、design へ戻して歩き直す（`docs/DEV_WORKFLOW.md` Workflow State の「Scope か design を無効にする差し戻しは design か plan-draft へ戻す」）。owner の決定（repo 外の回答台帳 TD-228・TD-229・TD-230）を起草役の commit で正本・packet・Matrix に反映した。
 9. design → plan-draft（2026-10-12、Coordinator、同じ commit）: 設計の出力は正本にある（Design Readiness）。owner の判断事項は残っていない（区間の対応づけを確定する条件の細部は、TD-230 で日次の EJ 取込みの lane の設計へ送った。本 lane の設計の問いではない）。
 10. plan-draft → plan-gate（2026-10-12、Coordinator、同じ commit）: packet と Matrix は起草役の commit にある。Coordinator は ADR の SPEC-STK-TIME-D10（全数読取り、資料の初回受領の読取り、全部実測後の条件、限界、有効にする・外す）を実読し、AC の検索式と docs の検査が通ることを確かめた。Plan Review round 2 へ出す。
+11. plan-gate（round 2 の是正、2026-10-12）: Plan Review round 2 の是正（Review Response 参照）。D10 の条件の式・保存する表と列・Scope の範囲（区間の対応づけは骨まで）は変えず、その場で直したので plan-gate に留める。
 
 ## Owner Effort Budget
 
@@ -406,5 +407,29 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
 - 起草役が表の指示のほかで決め、Coordinator が確かめて採ったもの: (1) 条件 3 に当の資料の日付（窓の始まりの翌日以降）を足した（窓の外にあって列挙されなかった古い資料が、後の読取りで初めて受領されて通る列を塞ぐ。安全側で、普通の運用の結果は変えない）。(2) 番号の reset を挟む列が 1 つ残る（当の資料の精算の後に reset があり、同じ直前の番号の精算までが、続く二つの完了した読取りの間に起き、本当の直前の資料が窓の外か別の置き場にある形）。系列の識別子を足さない限り塞げず、D-116 は足さないと決めているので、限界として ADR・D-116・Matrix の Residual Test Gaps に書き、reset が実際に起きる前に決め直す（Revisit Trigger）。精算の番号が大きい今のレジでは、reset の後に同じ番号まで精算を重ねる間に一度も読まないことが要る。
 - Z004 の中身の集計（独立の数え直し済み）と、交換を差額だけで打つ運用の要旨（TD-225）を、Plan Review とは別に正本・backlog・Contract Probe に入れた。
 - 是正は起草役の commit「全部実測後の条件を資料の初回受領の読取りで書き直し、限界と D5a の骨・未決を正本に書く」。設計と Scope を変えたので design へ戻して歩き直し（遷移の記録 8〜10）、round 2 へ進む（round 天井 3）。
+
+### Plan Review round 2（2026-10-12、対象は round 1 の是正と記録の後の版）
+
+- Codex（GPT-6 Astra / high）: reject、P1 2 / P2 1 / P3 0。Claude 側（fresh Opus 5.5、fork でなく round 1 とも別の context）: reject、P1 0 / P2 1 / P3 6。Ordinary Operation は 2 本とも「外部前提が未確認」。2 本とも、読取りが重ならず外部前提が成り立つ範囲では、D10 の条件から誤った全部実測後を出す列を見つけていない（合成モデルの総当たりと乱択）。区間の対応づけを後続の設計へ送ったことと、番号の reset を挟む列を限界に置いたことは、2 本とも finding にしていない。
+- 裁定（Coordinator）: 2 本の全行を採用した。どれも「暗黙に置いていた前提を契約として書いていなかった」型なので、条件の式と保存する値を増やさず、範囲を狭める・手順をそろえる・限界として書く向きで直した。
+
+| ID | 出どころ | 要旨 | 採否と是正の形 |
+|---|---|---|---|
+| R2-C1 | Codex（P1） | 重なる全数読取りが逆順に完了すると、実測前の販売を含む資料が全部実測後になる | 採用。全数読取りは、行を置く前から完了・失敗まで同じ DB に対する唯一の操作、と契約にした（runtime は DB の接続の排他を持ち続ける） |
+| R2-C2 | Codex（P1） | 保存の不具合の出口が cursor だけを引き上げ、壊れた `first_scan_id` が残って後日誤った判定が戻る | 採用。下の R2-F4・R2-F6 とまとめて、「有効にする」と「保存の不具合の出口」を同じ migration にした（cursor の引上げと、全ての `first_scan_id` の NULL 化） |
+| R2-C3 | Codex（P2） | EJ の再評価の順が、32 の手順の本文と tracking-system-tables で旧い順のまま | 採用。ADR の順（欠け・読めない記録 → 対応づけの確定 → 前回の証明）に同期した（`docs/architecture/biz-task-specs.md` の同じ漏れも直した） |
+| R2-F1 | Claude 側（P2） | 利用者が場所を選んだ root（SD の写しの folder）でも行を置くと、別々の写しが同じ識別子になり誤る | 採用。行を置くのは自動で見つけた取外し可能な drive の root の読取りだけにした |
+| R2-F2 | Claude 側（P3） | 同じ識別子の別の媒体は、gate の時点の店の SD でしか確かめられない | 採用（条件は足さない）。reviewer の案を接続の runtime lane への申し送りと Residual Test Gaps に候補として置いた |
+| R2-F3 | Claude 側（P3） | 窓の始まりを読取りの当日にすると、同じ日の後の精算が成り立たない | 採用。窓の始まりは読取りの日の前日以前、と書いた |
+| R2-F4 | Claude 側（P3） | 無効の間に保存した値を後から使う設計は、無効の間の保存の code の正しさに依る | 採用。無効の間の行と値は、有効にした後の判定に使わない（有効にする migration で失効する） |
+| R2-F5 | Claude 側（P3） | 「完全な EJ」の条件に settlement_no の一致が残る | 採用。D5a に合わせた |
+| R2-F6 | Claude 側（P3） | NOT NULL の列なのに「NULL の行」と書く。後から列を足す migration の値が決まらない | 採用。「実測でない kind の行は対象にしない」と言い換え、後から足す migration の値も同じ規則にした |
+| R2-F7 | Claude 側（P3） | packet の引用の行番号のずれ | 採用 |
+
+- 相談役（Fable 5.1）に、是正の前に方針への反例探しと同じ型の残りの洗い出しを頼んだ（合成モデルの総当たりと乱択、正本が既に扱っている重なりの実読）。採ったもの: 排他の契約を「読取り同士」でなく「同じ DB に対する唯一の操作」と広く書く形（読取りの途中の restore も 1 文で覆う）、条件 3 に「指す行が無い資料」を足すこと、限界 3 つ（SD が固定の disk として見える reader の PC では行が置かれず D10 は働かない／SD を 2 枚交互に使うと全部実測後に戻らない／SD の写しを取外し可能な媒体に置いて差すとアプリは置き場と区別できず、外部前提の違反で D10 は守れない）、37 §37.9 の 2 つの文の食い違いの是正。相談役は、cursor を引き上げた時点でそれ以前の `first_scan_id` はどれも条件 3 を満たせなくなっているので、NULL にして新しく失うものは無い、と確かめた。
+- 捨てたもの: round 1 の設計の「無効の間に保存した行と値を、後から有効にしたときそのまま判定に使ってよい」。有効にした時点からやり直すので、有効にした直後の精算の資料は限界と同じ形で判定不能になる（Ordinary Operation に行を足した）。
+- Goal・Scope・AC の変更（前半の節に反映済み）: 失敗定義に、行を置く読取り・排他・有効にするときの既存の行と値の扱いと、限界の列挙を足した。Scope の表に `docs/architecture/biz-task-specs.md` を足した。AC15（排他の段、不変の例外の箇条、削った文が残っていないこと）を足した。D10 の条件の式と保存する表・列は変えていない（起草役の報告と、Coordinator の ADR の該当の段の実読）。
+- 起草役が確かめていないと報告したもの: 店が SD を 2 枚交互に使うか（正本には「確かめていない・本 lane は決めない」と書いた）。packet の Scope の表の「他 lane との重なり」の列の再確認。
+- 是正は起草役の commit「全数読取りの排他と行を置く読取りを契約にし、判定を有効にする migration で既存の行と値を失効させる」。round 3（上限）へ進む。
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
