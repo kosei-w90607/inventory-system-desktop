@@ -11,7 +11,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R4
 - Plan Commit: pending
 - Amendments: none
@@ -28,6 +28,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 1. kickoff → spec-check（2026-10-11、起草役）: Coordinator の発注（単位 U の runtime。C・P・⑤ は別 lane）を Scope にし、規模を実測して 1 lane のままと決め、Risk を R4 と記録した（下の Risk）。
 2. spec-check → design（2026-10-11、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D1〜D11、[22](../function-design/22-mnt-migration.md) §16、各 function-design の D-113 の proposed の注記（下の Design Readiness）。設計 lane の Final Review の P3 のうち U の分（61〜64 の明細表の pointer、22 §16 の行番号、共通規則の「表の外」の 1 行）は正本の更新が要るので、本 packet と同じ commit で直した。
 3. design → plan-draft（2026-10-11、起草役）: 上の 3 点は正本にあり、設計の値を変えない。owner の判断事項は残っていない（下の「owner の判断事項」）。起票時に決めた lane の割当て（棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ）は設計の値を変えず、`docs/backlog.md` に申し送った。未解決の設計の問いは無い。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-11、Coordinator）: packet と Matrix は起票の commit にある。Coordinator は起草役の割当て（1 lane のまま、棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ、回復の手順書を本 lane の Scope に置く）を packet と現物（`src-tauri/src/biz/product_service.rs:1199`〜`:1202`・`:1402`）で確かめて採った。前文の A / B の切れ目（条件 (a) を外す形）は採らない（A だけの main の「`cm` の商品は cm で入力し m で表示する」状態は Ordinary Operation に無く、その状態の L3 と Ready・merge が 1 周増える）。Contract Probe の P3（同梱の SQLite と v7 の列での作り直し）は、plan-approved の前に Coordinator が実測して P3 に結果を書く。
 
 ## Owner Effort Budget
 
