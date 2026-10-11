@@ -199,6 +199,7 @@
 
 - 売上の金額と、その集計（POS の金額、手動販売の金額欄の値。今の円の wire で、本 lane は計算を変えない）。
 - レジの日報（Z001・Z005）の数量（D-104、今のまま）。
+- 在庫少の基準（`app_settings` の `stock_low_threshold`・`stock_low_threshold_fabric`）。画面の入力は 1〜99999 の整数で（[69](69-ui-threshold-settings.md) UI-11a-D3）、BIZ は読んだ値を在庫の数量と比べるだけで、足し算・掛け算に入れない（`product_service.rs:914`〜`:925`、`product_repo.rs:1258`〜`:1259`）。基準の単位は D10 のまま（一般は個数の単位の数、生地は cm）で、本節の上限と検査は足さない。
 - 上限の外の値を持つ DB（DB を直接書き換えた、壊れた）。移行は上限の外の保存済みの値を通さず（[22](22-mnt-migration.md) §16）、その後の書込みは (a)(c) が拒むので、アプリの操作では作られない。この状態では、演算の溢れは既存の error を返し、溢れない値はそのまま出る（number で正確に運べる保証は無い）。
 
 **シグネチャ**（BIZ の新しい module `biz::unit_amount`。35 §20.5a の 3 関数をここへ移し、棚卸し・入出庫・手動販売の詳細が共有する）:
@@ -257,3 +258,4 @@ Pagination upper-bound policy is intentionally module-specific. D-031 introduced
 | 2026-10-08 | 単位の拡張 design lane | D-113 の owner の判断 J1〜J4 の決定（TD-195）を SPEC-UNIT-D1・D5・D6・D7 に反映（`ball` を入れる、原価は 1/100 円、入庫の丸めは TD-023 と同じ、手動販売の金額の初期値は四捨五入）。 |
 | 2026-10-08 | 単位の拡張 design lane（Plan Review round 1） | SPEC-UNIT-D3 に表示する所の表（owner の決定 TD-203）と、数量の種類ごとの 2 本に分ける集計の規則（owner の決定 TD-206・TD-207）・単価の規則、商品 CSV の `初期在庫` の m（Coordinator の決定、L-214）、入力の行の数量の加算を追加。D2 に CSV の上書きで単位を変えないこと、D6 に原価の引数の i128 と行の金額の wire の十進の文字列、D11 に表示のための wire の field を追加。 |
 | 2026-10-11 | 単位の拡張 design lane（Final Review、Gated Amendment 5） | SPEC-UNIT-D11 の続きの「安全な整数の範囲」（経路ごとに保証する所を並べた 12 行の表）を「入力の上限と安全な整数の範囲」に書き直した（owner の決定 TD-213）: 1 明細の数量・在庫・売価・原価の上限、上限から導ける範囲、円の合計の保存の前の検査（入庫・廃棄・棚卸しの確定）、集計の読取りを範囲で拒まないこと、表の外。SPEC-UNIT-D3 の m の入力に 0 の扱いと欄ごとの上限、D5 の原価の上限、D6 の行の金額の例を合わせた。 |
+| 2026-10-11 | 単位の runtime の lane の起票 | 「入力の上限と安全な整数の範囲」の (e) 表の外に、在庫少の基準（`app_settings`）を 1 行足した（設計 lane の Final Review の P3）。契約の値は変えない。 |

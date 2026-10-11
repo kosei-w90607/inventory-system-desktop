@@ -355,7 +355,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 - 記録ごとの和は、基準数量で割る前の値で比べる（[共通規則](10-common-rules.md) SPEC-UNIT-D6 の合計はこの値以下なので、通った記録の合計は必ず範囲内。長さの商品の記録は実際の合計の 100 倍まで厳しく止まる）。積か和が i64 を溢れる記録も上限の外にする（SQLite は整数の積の溢れを REAL にし、整数の `SUM` の溢れを error にする。python の sqlite3 で確かめた、2026-10-11）。
 - 検査は値の範囲だけを見る。型（`typeof`）と 100 倍の後の余りは vC の手順 4 が確かめる。
-- vU を適用する時点で、時点証拠の migration が数量の列を足していれば（`stocktake_recounts.system_stock`・`actual_count`。`schema_time_evidence.rs:97`〜`:101`）、同じ在庫の上限で含める（手順 3 と同じ扱いで、後に入る lane の義務）。
+- vU を適用する時点で、時点証拠の migration が数量の列を足していれば（`stocktake_recounts.system_stock`・`actual_count`。`schema_time_evidence.rs:120`〜`:124`）、同じ在庫の上限で含める（手順 3 と同じ扱いで、後に入る lane の義務）。
 - 止まった後の進め方: DB は何も変わっていない。vU がその起動の最初の migration なら版も変わらず、旧版のアプリでそのまま開ける（先に別の migration が COMMIT していれば、下の回復の手順）。上限の外の値はアプリの画面では消せないことがある（商品の原価や在庫を直しても、価格の履歴・明細・変動の列に値が残る。記録は書き換えない契約）ので、更新を保留して新しい版を起動せず（起動のたびに同じ所で止まる）、管理者が対応を決める（上限の外の表名・列名は message にあるので、値を直す SQL を当てるか、上限の契約を見直すか。どちらも R4 の判断で owner に諮る）。
 
 **vC の手順**（`MigrationKind::Custom`、1 つの transaction、§15 の v7 と同じ形）: 対象は 6 列（`products.cost_price`、`receiving_items.cost_price`、`disposal_items.cost_price`、`stocktake_items.valuation_cost_price`、`price_history.old_cost`・`new_cost`）。
