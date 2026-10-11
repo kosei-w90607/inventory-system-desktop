@@ -30,6 +30,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 3. design → plan-draft（2026-10-11、起草役）: 上の 3 点は正本にあり、設計の値を変えない。owner の判断事項は残っていない（下の「owner の判断事項」）。起票時に決めた lane の割当て（棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ）は設計の値を変えず、`docs/backlog.md` に申し送った。未解決の設計の問いは無い。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-11、Coordinator）: packet と Matrix は起票の commit にある。Coordinator は起草役の割当て（1 lane のまま、棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ、回復の手順書を本 lane の Scope に置く）を packet と現物（`src-tauri/src/biz/product_service.rs:1199`〜`:1202`・`:1402`）で確かめて採った。前文の A / B の切れ目（条件 (a) を外す形）は採らない（A だけの main の「`cm` の商品は cm で入力し m で表示する」状態は Ordinary Operation に無く、その状態の L3 と Ready・merge が 1 周増える）。Contract Probe の P3（同梱の SQLite と v7 の列での作り直し）は、plan-approved の前に Coordinator が実測して P3 に結果を書く。
 5. plan-gate（round 1 の是正、2026-10-11）: Plan Review round 1 の是正（Review Response 参照）。
+6. plan-gate（round 2 の是正、2026-10-11）: Plan Review round 2 の是正（Review Response 参照）。
 
 ## Owner Effort Budget
 
@@ -412,5 +413,21 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - scope の追加・除外の照合（Review Rules）: E の追加は正本 57 の D-113 の注記（部門別は点と m の 2 本。owner の決定 TD-206・TD-207）、H の追加は共通規則「入力の上限と安全な整数の範囲」の (a)、F の除外は `docs/backlog.md` の「㉘ ③ 〜 ⑤ の申し送り」と時点証拠 ADR の「㉘ への引継ぎ」の割当てと照合した。
 - Contract Probe の P3 は、同梱の SQLite（3.45.0）と v7 の DB で実測して 7 点とも通った（Contract Probe の節）。round 1 の 2 本も、それぞれ独立に同じ作り直しが通ることを確かめた。
 - 是正は起草役の commit「単位の runtime の計画を、読む所の漏れと正本の値の写し漏れについて直す」。round 2 へ進む（round 天井 3）。
+
+### Plan Review round 2（2026-10-11、対象は round 1 の是正と記録の後の版）
+
+- Codex（GPT-6 Astra / high）: approve、P1 0 / P2 0 / P3 2。Claude 側（fresh Opus 5.5、fork でなく round 1 とも別の context）: reject、P1 0 / P2 3 / P3 6。Ordinary Operation は 2 本とも「成立」。round 1 の指摘は 2 本とも閉じた。
+- 裁定（Coordinator）: Claude 側の P2 の 3 行を現物で裏取りし、P3 も含めて全て採用した。
+
+| ID | 出どころ | 要旨 | 採否 |
+|---|---|---|---|
+| F1 | Claude 側 | 商品修正の画面の read-only の「現在庫」が、長さの商品でも cm の整数のまま出る | 採用（12 単位とも `formatStockDisplay` の形で出す） |
+| F2 | Claude 側 | 期待が変わる既存 test が書換えの表に無い所がある（入庫記録詳細の行の金額、月次の並べ替えの定義、部門別の見出し） | 採用 |
+| F3 | Claude 側 | 商品 CSV の commit の上書きの行で、売価・原価の上限の再検証が抜ける読み方ができる | 採用（売価・原価は新規と上書きの全行、初期在庫は新規の行） |
+| P3 | Claude 側・Codex | 合計の表記、`m` の数量欄の属性、cmd が単位の型を引く経路、売上 CSV の長さの数の形、作り直しの前後の列の定義の比較、「今と同じ」の言い過ぎ、BIZ の checked の加算の test、Design Readiness に残った「未実測」 | 全て採用 |
+
+- 相談役（Fable 5.1）に、同じ型の残りの洗い出し（数量を文字にする所、期待が変わる既存 test、UI を通らない書込みの入口）と是正方針の反例探しを頼んだ。方針への反例は無く、残りとして操作ログの補正の量の行、行の金額の formatter の不正な入力、使われていない在庫の書込みの field（`ProductUpdates.stock_quantity`。X3 に「到達経路なし」と書き、消すのは時点証拠の契約どおり ⑤）が挙がり、採用した。v7 の backup を v8 のアプリへ復元する経路は、起草役が現物を読んで「復元の中で v8 が当たり、止まれば今の巻き戻しの経路に入る」と確かめ、実行は `未実測` として Contract Probe と回復の手順書の Scope に置いた。
+- 起草役は仕上げとして、「全部」「今と同じ」と書いた文と L3 の期待の文字列を現物で読み直し、言い過ぎと誤りを直した（`common.rs` の test の主張、`migration.rs` の既存 test の説明、「金額はどの画面でも同じ」の例外）。
+- 是正は起草役の commit「単位の runtime の計画に、商品修正の画面の現在庫と、取込みの確定の上書きの行の検証を足す」。round 3（上限）へ進む。
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
