@@ -29,6 +29,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 2. spec-check → design（2026-10-11、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D1〜D11、[22](../function-design/22-mnt-migration.md) §16、各 function-design の D-113 の proposed の注記（下の Design Readiness）。設計 lane の Final Review の P3 のうち U の分（61〜64 の明細表の pointer、22 §16 の行番号、共通規則の「表の外」の 1 行）は正本の更新が要るので、本 packet と同じ commit で直した。
 3. design → plan-draft（2026-10-11、起草役）: 上の 3 点は正本にあり、設計の値を変えない。owner の判断事項は残っていない（下の「owner の判断事項」）。起票時に決めた lane の割当て（棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ）は設計の値を変えず、`docs/backlog.md` に申し送った。未解決の設計の問いは無い。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-11、Coordinator）: packet と Matrix は起票の commit にある。Coordinator は起草役の割当て（1 lane のまま、棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ、回復の手順書を本 lane の Scope に置く）を packet と現物（`src-tauri/src/biz/product_service.rs:1199`〜`:1202`・`:1402`）で確かめて採った。前文の A / B の切れ目（条件 (a) を外す形）は採らない（A だけの main の「`cm` の商品は cm で入力し m で表示する」状態は Ordinary Operation に無く、その状態の L3 と Ready・merge が 1 周増える）。Contract Probe の P3（同梱の SQLite と v7 の列での作り直し）は、plan-approved の前に Coordinator が実測して P3 に結果を書く。
+5. plan-gate（round 1 の是正、2026-10-11）: Plan Review round 1 の是正（Review Response 参照）。
 
 ## Owner Effort Budget
 
@@ -388,5 +389,28 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（2026-10-11、対象は plan-gate へ進めた版）
+
+- Claude 側（fresh Opus 5.5、fork でない）: reject、P1 0 / P2 4 / P3 4。Codex（GPT-6 Astra / high）: reject、P1 0 / P2 7 / P3 1。Ordinary Operation は 2 本とも「成立」。1 lane のままという手法、Risk・Human Gate・Final Review Minimum は 2 本とも妥当と判定した。
+- 裁定（Coordinator）: 2 本の指摘の重なりをまとめると、下の表の A〜I（P2）と P3 の行になる。全ての行を現物で裏取りし、採用した。
+
+| ID | 出どころ | 要旨 | 採否 |
+|---|---|---|---|
+| A | Claude 側・Codex | 最新の版を 7 と固定する既存 test と、月次の集計の test が書換えの表に無い。作れない test の前提がある | 採用 |
+| B | Claude 側・Codex | 手動販売の `cm` の商品の数量の初期値と再追加が、正本 UI-04-D18 と Matrix で逆 | 採用 |
+| C | Claude 側 | 在庫少の SQL の並びを repo の中で作ると db → biz の依存になる | 採用（BIZ が並びを渡す形） |
+| D | Claude 側 | 初期在庫が負を通す。正本は 0 以上 | 採用 |
+| E | Codex | 月次売上の部門別の数量の表示が Scope に無い | 採用（数量の列を足し、並べ替えの対象にする） |
+| F | Codex | 商品フォームの在庫連動の提案が、現物に無い準備照会に依る | 採用（準備照会に依る分岐は ㉘ ④ へ送る） |
+| G | Codex | 「v8 が失敗したら何も変わらない」が、COMMIT の後の `foreign_keys` の復元の失敗と合わない | 採用（TX の中の失敗と分けて書く） |
+| H | Codex | 一括価格改定の画面に上限の検証が無い | 採用（Claude 側は「BIZ の error に任せ非対象と明記」を提案したが、共通規則の「画面も同じ定数で先に止める」に合わせた） |
+| I | Codex | `integrity_check` の detail_json の `stock_unit` が Scope に無い | 採用 |
+| P3 | Claude 側 4・Codex 1 | 記録詳細の型の置き場、AC8 の式で見えない行、画面の上限超えの error の文、L3 の追加、57 の切れた anchor | 全件採用 |
+
+- 相談役（Fable 5.1）に、是正を書く前の反例探しを頼んだ。方針のうち E（57 が「数量の列なし」を固定している行も直す範囲に入れる）・F（送り先は ⑤ ではなく ㉘ ④）・G（22 §16 の回復の冒頭の文を S7 で直す）に直しが入った。相談役の案のうち採らなかったもの: `migrate` を割る変更（読み替えで足り、MNT-03-D11 の機構は既存の test が持つ）、`FailurePoint` への注入点の追加（親の無い子の行で手順 6 の (b) を落とせる）、在庫少の `CASE … ELSE` の形（正本の SQL の形のまま `IN` を選んだ）。
+- 指摘は「変わる型・値を読む所の漏れ」と「正本の値の写し漏れ・逆」の 2 つの型だったので、個別の是正に加えて、型ごとに全体を見直した。追加で直した主なもの: 月次の `quantity` を作る TS の test の列挙（12 → 20 file）、`prev_month_comparison`、PLU 書出しの fixture（3 → 5 file）、整合性の補正の「対象から外せば、ほかの商品は補正できる」、「`在庫単位` が行の error の行は `初期在庫` を読まない」、日次の明細の並べ替え、売上の CSV の部門の行の境界、手動販売の数量が error の間の金額欄。
+- scope の追加・除外の照合（Review Rules）: E の追加は正本 57 の D-113 の注記（部門別は点と m の 2 本。owner の決定 TD-206・TD-207）、H の追加は共通規則「入力の上限と安全な整数の範囲」の (a)、F の除外は `docs/backlog.md` の「㉘ ③ 〜 ⑤ の申し送り」と時点証拠 ADR の「㉘ への引継ぎ」の割当てと照合した。
+- Contract Probe の P3 は、同梱の SQLite（3.45.0）と v7 の DB で実測して 7 点とも通った（Contract Probe の節）。round 1 の 2 本も、それぞれ独立に同じ作り直しが通ることを確かめた。
+- 是正は起草役の commit「単位の runtime の計画を、読む所の漏れと正本の値の写し漏れについて直す」。round 2 へ進む（round 天井 3）。
+
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
