@@ -11,9 +11,9 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R4
-- Plan Commit: pending
+- Plan Commit: 211233182811a777153e1f6392b55224ffed4cf6
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
@@ -32,6 +32,8 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 5. plan-gate（round 1 の是正、2026-10-11）: Plan Review round 1 の是正（Review Response 参照）。
 6. plan-gate（round 2 の是正、2026-10-11）: Plan Review round 2 の是正（Review Response 参照）。
 7. plan-gate（round 3 の是正、2026-10-12）: Plan Review round 3 の是正（Review Response 参照）。
+8. plan-gate → plan-approved（2026-10-12、Coordinator、本 commit）: 独立の Plan Reviewer 2 本（Writer と別の context）が round 3 で P1・P2 が無いと報告した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。実装の commit はまだ無い。
+9. plan-approved → implementing（2026-10-12、Coordinator、本 commit。state だけ）: Writer への発注の開始 HEAD を本 commit にする。実装は Scope の S1〜S7 の順。
 
 ## Owner Effort Budget
 
