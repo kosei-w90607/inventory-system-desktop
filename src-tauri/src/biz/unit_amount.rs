@@ -113,7 +113,7 @@ pub fn format_length_m(quantity_cm: i64) -> String {
     let digits = (abs / 100).to_string();
     let mut whole = String::new();
     for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             whole.push(',');
         }
         whole.push(c);

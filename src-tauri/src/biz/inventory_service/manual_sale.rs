@@ -13,7 +13,10 @@ use sha2::{Digest, Sha256};
 
 use std::collections::BTreeMap;
 
-use super::common::{apply_stock_change, compute_fingerprint, IDEMPOTENCY_KEY_MAX_LEN};
+use super::common::{
+    apply_stock_change, compute_fingerprint, negative_stock_warning_message,
+    IDEMPOTENCY_KEY_MAX_LEN,
+};
 
 /// 手動販売出庫リクエスト（31-biz-inventory-service.md §12.5）
 #[derive(Debug, Clone, serde::Deserialize, specta::Type)]
@@ -283,10 +286,7 @@ pub fn create_manual_sale(
         if outcome.negative_stock_warning {
             stock_warnings_map.insert(
                 item.product_code.clone(),
-                format!(
-                    "{}: 在庫がマイナスになりました（{}）",
-                    item.product_code, outcome.stock_after
-                ),
+                negative_stock_warning_message(&item.product_code, &outcome),
             );
         }
     }
@@ -720,5 +720,34 @@ mod tests {
         )
         .unwrap();
         assert_eq!(stock_of(&conn, "STK-NEAR"), -999_999_999);
+    }
+
+    #[test]
+    fn test_create_manual_sale_req203_stock_warning_formats_length_in_meters() {
+        // REQ-203 / SPEC-UNIT-D3 の表の 10: 在庫警告の文は、長さの商品（m・cm）の在庫を m の形で入れる
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product_with_unit(&conn, "W-M", 100, "m");
+        create_test_product_with_unit(&conn, "W-CM", 100, "cm");
+        create_test_product_with_unit(&conn, "W-PCS", 1, "pcs");
+        let result = create_manual_sale(
+            &mut conn,
+            make_manual_sale_req(
+                "warn-len",
+                vec![
+                    manual_sale_item("W-M", 130, 910),
+                    manual_sale_item("W-CM", 130, 910),
+                    manual_sale_item("W-PCS", 3, 1500),
+                ],
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            result.stock_warnings,
+            vec![
+                "W-CM: 在庫がマイナスになりました（-0.3 m）".to_string(),
+                "W-M: 在庫がマイナスになりました（-0.3 m）".to_string(),
+                "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
+            ]
+        );
     }
 }

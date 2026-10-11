@@ -3714,8 +3714,28 @@ mod tests {
         let (_dir, mut conn) = setup_test_db();
         let mut existing = make_import_row("OU-M", "合成の反物");
         existing.stock_unit = Some("m".to_string());
-        existing.initial_stock = Some(100);
         commit_import(&mut conn, vec![existing], vec![]).unwrap();
+        // 在庫 100 cm は入庫の明細（数量 100・原価 333）から。単位が変わると、この明細の金額の意味も変わる
+        let received = crate::biz::inventory_service::create_receiving(
+            &mut conn,
+            serde_json::from_value(serde_json::json!({
+                "idempotency_key": "ou-m-receiving",
+                "supplier_id": null,
+                "receiving_date": "2026-10-01",
+                "note": null,
+                "items": [{"product_code": "OU-M", "quantity": 100, "cost_price": 333}],
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let line_cost = |conn: &DbConnection| -> String {
+            crate::biz::inventory_service::get_receiving_record(conn, received.record_id)
+                .unwrap()
+                .items[0]
+                .line_cost_centi
+                .clone()
+        };
+        assert_eq!(line_cost(&conn), "33300");
 
         let csv = make_csv(
             UNIT_CSV_HEADERS,
@@ -3745,6 +3765,7 @@ mod tests {
             product_stock_and_unit(&conn, "OU-M"),
             (100, "m".to_string())
         );
+        assert_eq!(line_cost(&conn), "33300");
 
         // 同じ単位と空の上書きは成功し、単位は m のまま。上書きは初期在庫を使わない
         for (unit_cell, stock_cell) in [("m", "5"), ("", "")] {

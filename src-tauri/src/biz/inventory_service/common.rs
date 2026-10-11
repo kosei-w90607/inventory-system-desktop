@@ -1,9 +1,10 @@
 //! 共通ヘルパー: apply_stock_change + fingerprint 計算
 
+use crate::biz::unit_amount::{format_length_m, stock_unit_kind, StockUnitKind};
 use crate::biz::BizError;
 use crate::constants::MAX_STOCK_QUANTITY;
 use crate::db::inventory_repo::{self, MovementType, NewMovement, ReferenceType};
-use crate::db::product_repo;
+use crate::db::product_repo::{self, ProductStockUnit};
 use sha2::{Digest, Sha256};
 
 /// 冪等性キーの最大長（UUID v4 = 36文字だが、余裕を持って255）
@@ -14,6 +15,19 @@ pub(super) const IDEMPOTENCY_KEY_MAX_LEN: usize = 255;
 pub struct StockChangeOutcome {
     pub stock_after: i64,
     pub negative_stock_warning: bool,
+    pub stock_unit: ProductStockUnit,
+}
+
+/// 保存の結果の在庫警告の文。長さの商品の在庫は m の形で入れる（SPEC-UNIT-D3 の表の 10）
+pub(super) fn negative_stock_warning_message(
+    product_code: &str,
+    outcome: &StockChangeOutcome,
+) -> String {
+    let stock = match stock_unit_kind(outcome.stock_unit) {
+        StockUnitKind::Length => format_length_m(outcome.stock_after),
+        StockUnitKind::Count => outcome.stock_after.to_string(),
+    };
+    format!("{product_code}: 在庫がマイナスになりました（{stock}）")
 }
 
 /// request_fingerprint を計算する（31-biz-inventory-service.md §12.8）
@@ -101,6 +115,7 @@ pub(crate) fn apply_stock_change(
     Ok(StockChangeOutcome {
         stock_after,
         negative_stock_warning,
+        stock_unit: product.product.stock_unit,
     })
 }
 

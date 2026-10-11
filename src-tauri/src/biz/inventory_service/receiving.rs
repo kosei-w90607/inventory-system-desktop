@@ -13,7 +13,10 @@ use crate::db::{DbConnection, DbError};
 
 use std::collections::BTreeMap;
 
-use super::common::{apply_stock_change, compute_fingerprint, IDEMPOTENCY_KEY_MAX_LEN};
+use super::common::{
+    apply_stock_change, compute_fingerprint, negative_stock_warning_message,
+    IDEMPOTENCY_KEY_MAX_LEN,
+};
 
 /// 入庫記録リクエスト（31-biz-inventory-service.md §12.3）
 #[derive(Debug, Clone, serde::Deserialize, specta::Type)]
@@ -228,10 +231,7 @@ pub fn create_receiving(
         if outcome.negative_stock_warning {
             stock_warnings_map.insert(
                 item.product_code.clone(),
-                format!(
-                    "{}: 在庫がマイナスになりました（{}）",
-                    item.product_code, outcome.stock_after
-                ),
+                negative_stock_warning_message(&item.product_code, &outcome),
             );
         }
     }
@@ -812,7 +812,7 @@ mod tests {
     fn limit_lines_900() -> Vec<(String, i64, i64)> {
         (1..=9)
             .flat_map(|product| {
-                std::iter::repeat((format!("X8-A{product}"), 9_999_999, 999_999)).take(100)
+                std::iter::repeat_n((format!("X8-A{product}"), 9_999_999, 999_999), 100)
             })
             .collect()
     }
@@ -886,5 +886,34 @@ mod tests {
                 "合計金額が大きすぎます",
             );
         }
+    }
+
+    #[test]
+    fn test_create_receiving_req201_stock_warning_formats_length_in_meters() {
+        // REQ-201 / SPEC-UNIT-D3 の表の 10: 在庫警告の文は、長さの商品（m・cm）の在庫を m の形で入れる
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product_with_unit(&conn, "W-M", -130, "m");
+        create_test_product_with_unit(&conn, "W-CM", -130, "cm");
+        create_test_product_with_unit(&conn, "W-PCS", -3, "pcs");
+        let result = create_receiving(
+            &mut conn,
+            make_receiving_req(
+                "warn-len",
+                vec![
+                    receiving_item("W-M", 100, 300),
+                    receiving_item("W-CM", 100, 300),
+                    receiving_item("W-PCS", 1, 300),
+                ],
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            result.stock_warnings,
+            vec![
+                "W-CM: 在庫がマイナスになりました（-0.3 m）".to_string(),
+                "W-M: 在庫がマイナスになりました（-0.3 m）".to_string(),
+                "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
+            ]
+        );
     }
 }

@@ -7,6 +7,7 @@
 
 use crate::biz::inventory_service::check_stock_range;
 use crate::biz::BizError;
+use crate::db::product_repo::ProductStockUnit;
 use crate::db::{inventory_repo, product_repo, system_repo, DbConnection, NewOperationLog};
 use std::collections::HashMap;
 
@@ -27,6 +28,8 @@ pub struct IntegrityResult {
 pub struct IntegrityMismatch {
     pub product_code: String,
     pub name: String,
+    /// 商品の単位。数量は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3）
+    pub stock_unit: ProductStockUnit,
     pub stock_quantity: i64,
     pub movements_sum: i64,
     pub difference: i64,
@@ -44,6 +47,8 @@ pub struct IntegrityFixResult {
 #[derive(Debug, serde::Serialize, specta::Type)]
 pub struct StockAdjustment {
     pub product_code: String,
+    /// 商品の単位（SPEC-UNIT-D3 の表の 11）
+    pub stock_unit: ProductStockUnit,
     pub old_stock: i64,
     pub new_stock: i64,
     pub adjustment: i64,
@@ -74,7 +79,7 @@ pub fn run_integrity_check(conn: &DbConnection) -> Result<IntegrityResult, BizEr
 
     // 3. 突合
     let mut mismatches = Vec::new();
-    for (product_code, name, stock_quantity) in &products {
+    for (product_code, name, stock_quantity, stock_unit) in &products {
         let movements_sum = movements_map
             .get(product_code.as_str())
             .copied()
@@ -86,6 +91,7 @@ pub fn run_integrity_check(conn: &DbConnection) -> Result<IntegrityResult, BizEr
             mismatches.push(IntegrityMismatch {
                 product_code: product_code.clone(),
                 name: name.clone(),
+                stock_unit: *stock_unit,
                 stock_quantity: *stock_quantity,
                 movements_sum,
                 difference,
@@ -102,6 +108,7 @@ pub fn run_integrity_check(conn: &DbConnection) -> Result<IntegrityResult, BizEr
         "mismatches": mismatches.iter().map(|m| {
             serde_json::json!({
                 "product_code": m.product_code,
+                "stock_unit": m.stock_unit,
                 "stock_quantity": m.stock_quantity,
                 "movements_sum": m.movements_sum,
                 "difference": m.difference,
@@ -187,6 +194,7 @@ pub fn fix_integrity(
 
         adjustments.push(StockAdjustment {
             product_code: product_code.clone(),
+            stock_unit: product.product.stock_unit,
             old_stock: stock_quantity,
             new_stock: movements_sum,
             adjustment,
@@ -201,6 +209,7 @@ pub fn fix_integrity(
         "adjustments": adjustments.iter().map(|a| {
             serde_json::json!({
                 "product_code": a.product_code,
+                "stock_unit": a.stock_unit,
                 "old_stock": a.old_stock,
                 "new_stock": a.new_stock,
                 "adjustment": a.adjustment,
@@ -534,10 +543,10 @@ mod tests {
         assert_eq!(
             detail["adjustments"],
             serde_json::json!([
-                {"product_code": "T2-DOWN", "old_stock": 10, "new_stock": 7, "adjustment": -3},
-                {"product_code": "T2-UP", "old_stock": 3, "new_stock": 8, "adjustment": 5},
-                {"product_code": "T2-VOID", "old_stock": 6, "new_stock": 4, "adjustment": -2},
-                {"product_code": "T2-ZERO", "old_stock": 5, "new_stock": 0, "adjustment": -5}
+                {"product_code": "T2-DOWN", "stock_unit": "pcs", "old_stock": 10, "new_stock": 7, "adjustment": -3},
+                {"product_code": "T2-UP", "stock_unit": "pcs", "old_stock": 3, "new_stock": 8, "adjustment": 5},
+                {"product_code": "T2-VOID", "stock_unit": "pcs", "old_stock": 6, "new_stock": 4, "adjustment": -2},
+                {"product_code": "T2-ZERO", "stock_unit": "pcs", "old_stock": 5, "new_stock": 0, "adjustment": -5}
             ])
         );
     }
@@ -835,5 +844,91 @@ mod tests {
         assert_eq!(result.fixed_count, 2);
         assert_eq!(stock(&conn, "INT-OTHER"), 8);
         assert_eq!(stock(&conn, "INT-EDGE"), 999_999_999);
+    }
+
+    fn set_unit(conn: &DbConnection, product_code: &str, unit: &str) {
+        conn.execute(
+            "UPDATE products SET stock_unit = ?1 WHERE product_code = ?2",
+            rusqlite::params![unit, product_code],
+        )
+        .unwrap();
+    }
+
+    fn latest_log_detail(conn: &DbConnection, operation_type: &str) -> serde_json::Value {
+        let detail_json: String = conn
+            .query_row(
+                "SELECT detail_json FROM operation_logs WHERE operation_type = ?1
+                 ORDER BY id DESC LIMIT 1",
+                [operation_type],
+                |row| row.get(0),
+            )
+            .unwrap();
+        serde_json::from_str(&detail_json).unwrap()
+    }
+
+    #[test]
+    fn test_integrity_req904_stock_unit_in_response_and_operation_logs() {
+        // REQ-904 / SPEC-UNIT-D3 の表の 8・11・12（X10）: 応答と、新しく書く 2 つの操作ログに行ごとの単位を運ぶ
+        let (_dir, mut conn) = setup_test_db();
+        seed_product(&conn, "IU-M", 2750);
+        set_unit(&conn, "IU-M", "m");
+        add_movement(&conn, "IU-M", 2700);
+        seed_product(&conn, "IU-PCS", 5);
+        add_movement(&conn, "IU-PCS", 8);
+
+        let check = run_integrity_check(&conn).unwrap();
+        let units: Vec<(&str, ProductStockUnit, i64)> = check
+            .mismatches
+            .iter()
+            .map(|m| (m.product_code.as_str(), m.stock_unit, m.difference))
+            .collect();
+        assert_eq!(
+            units,
+            vec![
+                ("IU-M", ProductStockUnit::M, 50),
+                ("IU-PCS", ProductStockUnit::Pcs, -3)
+            ]
+        );
+        // integrity_check の JSON は応答の DTO と別に組むので、JSON を直接確かめる
+        assert_eq!(
+            latest_log_detail(&conn, "integrity_check"),
+            serde_json::json!({
+                "checked_count": 2,
+                "mismatch_count": 2,
+                "mismatches": [
+                    {"product_code": "IU-M", "stock_unit": "m", "stock_quantity": 2750, "movements_sum": 2700, "difference": 50},
+                    {"product_code": "IU-PCS", "stock_unit": "pcs", "stock_quantity": 5, "movements_sum": 8, "difference": -3}
+                ]
+            })
+        );
+
+        let fixed = fix_integrity(&mut conn, &["IU-M".to_string(), "IU-PCS".to_string()]).unwrap();
+        let adjustments: Vec<(&str, ProductStockUnit, i64, i64, i64)> = fixed
+            .adjustments
+            .iter()
+            .map(|a| {
+                (
+                    a.product_code.as_str(),
+                    a.stock_unit,
+                    a.old_stock,
+                    a.new_stock,
+                    a.adjustment,
+                )
+            })
+            .collect();
+        assert_eq!(
+            adjustments,
+            vec![
+                ("IU-M", ProductStockUnit::M, 2750, 2700, -50),
+                ("IU-PCS", ProductStockUnit::Pcs, 5, 8, 3)
+            ]
+        );
+        assert_eq!(
+            latest_log_detail(&conn, "integrity_fix")["adjustments"],
+            serde_json::json!([
+                {"product_code": "IU-M", "stock_unit": "m", "old_stock": 2750, "new_stock": 2700, "adjustment": -50},
+                {"product_code": "IU-PCS", "stock_unit": "pcs", "old_stock": 5, "new_stock": 8, "adjustment": 3}
+            ])
+        );
     }
 }

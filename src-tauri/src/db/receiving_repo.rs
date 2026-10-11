@@ -53,7 +53,9 @@ pub struct ReceivingRecordDetailItem {
     pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub cost_price: i64,
-    pub line_cost: i64,
+    /// 行の金額（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
+    // repo は空で返し、BIZ が必ず埋める
+    pub line_cost_centi: String,
 }
 
 /// 入庫記録詳細
@@ -67,6 +69,8 @@ pub struct ReceivingRecordDetail {
     pub status: String,
     pub created_at: String,
     pub items: Vec<ReceivingRecordDetailItem>,
+    /// 原価合計（円。行の金額の和を円未満で四捨五入した値。SPEC-UNIT-D6）
+    // repo は 0 で返し、BIZ が必ず埋める
     pub total_cost: i64,
     pub movements: Vec<MovementRecord>,
 }
@@ -226,8 +230,7 @@ pub fn get_receiving_record_detail(
             d.name,
             p.stock_unit,
             ri.quantity,
-            ri.cost_price,
-            ri.quantity * ri.cost_price AS line_cost
+            ri.cost_price
          FROM receiving_items ri
          JOIN products p ON p.product_code = ri.product_code
          JOIN departments d ON d.id = p.department_id
@@ -244,11 +247,10 @@ pub fn get_receiving_record_detail(
                 stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(5)?,
                 cost_price: row.get(6)?,
-                line_cost: row.get(7)?,
+                line_cost_centi: String::new(),
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
-    let total_cost = items.iter().map(|item| item.line_cost).sum();
 
     let mut movement_stmt = conn.prepare(
         "SELECT id, product_code, movement_type, quantity, stock_after,
@@ -285,7 +287,7 @@ pub fn get_receiving_record_detail(
         status: "active".to_string(),
         created_at,
         items,
-        total_cost,
+        total_cost: 0,
         movements,
     })
 }
@@ -601,8 +603,10 @@ mod tests {
         assert_eq!(detail.status, "active");
         assert_eq!(detail.items.len(), 1);
         assert_eq!(detail.items[0].product_code, "RCV-DET");
-        assert_eq!(detail.items[0].line_cost, 1000);
-        assert_eq!(detail.total_cost, 1000);
+        // 金額は BIZ が求める（SPEC-UNIT-D6）。repo は数量・原価・単位を返す
+        assert_eq!(detail.items[0].quantity, 4);
+        assert_eq!(detail.items[0].cost_price, 250);
+        assert_eq!(detail.items[0].stock_unit, ProductStockUnit::Pcs);
         assert_eq!(detail.movements.len(), 1);
         assert_eq!(
             detail.movements[0].reference_type,

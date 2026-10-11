@@ -1176,20 +1176,22 @@ pub fn list_price_history(
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// 全商品の product_code, name, stock_quantity を取得する（BIZ-07 整合性チェック用）
+/// 全商品の product_code, name, stock_quantity, stock_unit を取得する（BIZ-07 整合性チェック用）
 ///
 /// 20-io-product-repo.md §2.11
 pub fn find_all_stock_quantities(
     conn: &DbConnection,
-) -> Result<Vec<(String, String, i64)>, DbError> {
+) -> Result<Vec<(String, String, i64, ProductStockUnit)>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT product_code, name, stock_quantity FROM products ORDER BY product_code ASC",
+        "SELECT product_code, name, stock_quantity, stock_unit
+         FROM products ORDER BY product_code ASC",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
             row.get::<_, i64>(2)?,
+            parse_stock_unit(row.get(3)?)?,
         ))
     })?;
     let mut items = Vec::new();
@@ -2577,8 +2579,24 @@ mod tests {
         let result = find_all_stock_quantities(&conn).unwrap();
         assert_eq!(result.len(), 2);
         // ORDER BY product_code ASC
-        assert_eq!(result[0], ("ASQ-001".to_string(), "商品A".to_string(), 0));
-        assert_eq!(result[1], ("ASQ-002".to_string(), "商品B".to_string(), 15));
+        assert_eq!(
+            result[0],
+            (
+                "ASQ-001".to_string(),
+                "商品A".to_string(),
+                0,
+                ProductStockUnit::Pcs
+            )
+        );
+        assert_eq!(
+            result[1],
+            (
+                "ASQ-002".to_string(),
+                "商品B".to_string(),
+                15,
+                ProductStockUnit::Pcs
+            )
+        );
     }
 
     #[test]

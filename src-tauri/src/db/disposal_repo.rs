@@ -114,7 +114,9 @@ pub struct DisposalRecordDetailItem {
     pub quantity: i64,
     pub cost_price: i64,
     pub reason: String,
-    pub line_loss_cost: i64,
+    /// 行のロス原価（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
+    // repo は空で返し、BIZ が必ず埋める
+    pub line_loss_cost_centi: String,
 }
 
 /// 廃棄・破損詳細
@@ -125,6 +127,8 @@ pub struct DisposalRecordDetail {
     pub status: String,
     pub created_at: String,
     pub items: Vec<DisposalRecordDetailItem>,
+    /// ロス原価合計（円。行のロス原価の和を円未満で四捨五入した値。SPEC-UNIT-D6）
+    // repo は 0 で返し、BIZ が必ず埋める
     pub total_loss_cost: i64,
     pub movements: Vec<MovementRecord>,
 }
@@ -644,8 +648,7 @@ pub fn get_disposal_record_detail(
             di.disposal_type,
             di.quantity,
             di.cost_price,
-            di.reason,
-            di.quantity * di.cost_price AS line_loss_cost
+            di.reason
          FROM disposal_items di
          JOIN products p ON p.product_code = di.product_code
          JOIN departments d ON d.id = p.department_id
@@ -664,11 +667,10 @@ pub fn get_disposal_record_detail(
                 quantity: row.get(6)?,
                 cost_price: row.get(7)?,
                 reason: row.get(8)?,
-                line_loss_cost: row.get(9)?,
+                line_loss_cost_centi: String::new(),
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
-    let total_loss_cost = items.iter().map(|item| item.line_loss_cost).sum();
 
     let mut movement_stmt = conn.prepare(
         "SELECT id, product_code, movement_type, quantity, stock_after,
@@ -702,7 +704,7 @@ pub fn get_disposal_record_detail(
         status: "active".to_string(),
         created_at,
         items,
-        total_loss_cost,
+        total_loss_cost: 0,
         movements,
     })
 }
@@ -1092,11 +1094,15 @@ mod tests {
         assert_eq!(detail.disposal_date, "2026-06-27");
         assert_eq!(detail.status, "active");
         assert_eq!(detail.items.len(), 2);
-        assert_eq!(detail.total_loss_cost, 480);
         assert_eq!(detail.movements.len(), 2);
         assert_eq!(detail.items[0].product_code, "DSP-DET-1");
         assert_eq!(detail.items[0].product_name, "テスト商品");
-        assert_eq!(detail.items[0].line_loss_cost, 240);
+        // 金額は BIZ が求める（SPEC-UNIT-D6）。repo は数量・原価・単位を返す
+        assert_eq!(detail.items[0].quantity, 2);
+        assert_eq!(detail.items[0].cost_price, 120);
+        assert_eq!(detail.items[0].stock_unit, ProductStockUnit::Pcs);
+        assert_eq!(detail.items[1].quantity, 3);
+        assert_eq!(detail.items[1].cost_price, 80);
     }
 
     #[test]

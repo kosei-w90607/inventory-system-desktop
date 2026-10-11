@@ -13,7 +13,10 @@ use crate::io::image_manager;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use super::common::{apply_stock_change, compute_fingerprint, IDEMPOTENCY_KEY_MAX_LEN};
+use super::common::{
+    apply_stock_change, compute_fingerprint, negative_stock_warning_message,
+    IDEMPOTENCY_KEY_MAX_LEN,
+};
 
 const ALLOWED_RECEIPT_IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp"];
 
@@ -267,10 +270,7 @@ pub fn create_return(
             if outcome.negative_stock_warning {
                 stock_warnings_map.insert(
                     item.product_code.clone(),
-                    format!(
-                        "{}: 在庫がマイナスになりました（{}）",
-                        item.product_code, outcome.stock_after
-                    ),
+                    negative_stock_warning_message(&item.product_code, &outcome),
                 );
             }
         }
@@ -769,5 +769,34 @@ mod tests {
         )
         .unwrap();
         assert_eq!(stock_of(&conn, "STK-NEAR"), 999_999_999);
+    }
+
+    #[test]
+    fn test_create_return_req202_stock_warning_formats_length_in_meters() {
+        // REQ-202 / SPEC-UNIT-D3 の表の 10: 在庫警告の文は、長さの商品（m・cm）の在庫を m の形で入れる
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product_with_unit(&conn, "W-M", -130, "m");
+        create_test_product_with_unit(&conn, "W-CM", -130, "cm");
+        create_test_product_with_unit(&conn, "W-PCS", -3, "pcs");
+        let result = create_return(
+            &mut conn,
+            make_return_req(
+                "warn-len",
+                vec![
+                    return_item("W-M", "in", 100),
+                    return_item("W-CM", "in", 100),
+                    return_item("W-PCS", "in", 1),
+                ],
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            result.stock_warnings,
+            vec![
+                "W-CM: 在庫がマイナスになりました（-0.3 m）".to_string(),
+                "W-M: 在庫がマイナスになりました（-0.3 m）".to_string(),
+                "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
+            ]
+        );
     }
 }
