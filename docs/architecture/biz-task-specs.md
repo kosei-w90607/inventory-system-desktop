@@ -2,7 +2,7 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-SPEC-STK-TIME-D1〜D9。詳細契約は下記sourceの同名節を正とし、既存の処理を新方式実装済みとは扱わない。
+SPEC-STK-TIME-D1〜D10。詳細契約は下記sourceの同名節を正とし、既存の処理を新方式実装済みとは扱わない。
 
 - BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。非連動化は単一の共通repo書込み経路で商品に版を記録し、適用済み再実測まで未調整を保持する。準備照会が `ej_unverified` を返す間は在庫連動の有効化を拒否し、既定値をfalseにする。
 - BIZ-02/BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。専用repoが数量/版を同時更新し、必須ログを含む既存TX境界を維持。
