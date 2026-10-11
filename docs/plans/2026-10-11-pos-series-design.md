@@ -49,7 +49,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 Risk: R3
 
 Reason:
-POS の入力（Z004・EJ）と棚卸しの実測の前後の判定、その証拠の保存先（DB の表と列）、operator の数え直しの頻度を決める設計。本 lane は docs だけだが、後続の runtime が写す契約を決めるので R3。データの破壊・実店舗データの露出・不可逆な操作は無い（設計は SD に書かず、既存の数量・履歴を変える migration を持たない。tracked には件数の細部・商品名・金額を書かない）ので R4 ではない。この変更で required gate の green / red は変わらない（docs だけで、function-design の新しい file・REQ の増減・code の変更が無い）。Scope の予定 path を `scripts/ci/classify-changes.sh` の workflow の一覧（`AGENTS.md`・`CLAUDE.md`・`docs/DEV_WORKFLOW.md`・`docs/ci.md`・`docs/AGENT_OPERATING_MANUAL.md`・`docs/code_review.md`・`docs/quality/review-checklist.md`・`docs/project-profile.md`・`docs/agent-guidance/*`・`docs/templates/*`・`.agents/*`・`.claude/{rules,commands,skills}/*`・PR template と、full に倒す `scripts/*`・`.github/*` の列）に当てて、当たる file は無い。Final Review Minimum 1。
+POS の入力（Z004・EJ）と棚卸しの実測の前後の判定、その証拠の保存先（DB の表と列）、operator の数え直しの頻度を決める設計。本 lane は docs だけだが、後続の runtime が写す契約を決めるので R3。データの破壊・実店舗データの露出・不可逆な操作は無い（設計は SD に書かず、既存の数量・履歴を変える migration を持たない。D10 を有効にする migration は、実測の `source_scan_cursor` と資料の `first_scan_id` だけを判定不能が増える向きへ変え、数量・在庫・売上は変えない。tracked には件数の細部・商品名・金額を書かない）ので R4 ではない。この変更で required gate の green / red は変わらない（docs だけで、function-design の新しい file・REQ の増減・code の変更が無い）。Scope の予定 path を `scripts/ci/classify-changes.sh` の workflow の一覧（`AGENTS.md`・`CLAUDE.md`・`docs/DEV_WORKFLOW.md`・`docs/ci.md`・`docs/AGENT_OPERATING_MANUAL.md`・`docs/code_review.md`・`docs/quality/review-checklist.md`・`docs/project-profile.md`・`docs/agent-guidance/*`・`docs/templates/*`・`.agents/*`・`.claude/{rules,commands,skills}/*`・PR template と、full に倒す `scripts/*`・`.github/*` の列）に当てて、当たる file は無い。Final Review Minimum 1。
 
 ## Goal
 
@@ -65,12 +65,13 @@ Goal Invariant:
 ### 失敗定義
 
 - 設計が、数える前の販売をもう一度引く・数えた後の販売を引かない結果を、要再確認を付けずに通す経路を持つ。
-- runtime の Writer が、読取りの行をいつ置くか・資料の初回受領の読取りをいつ・どう書くか・実測のどの時点の値を保存するか・直前の精算の資料の選び方・判定の有効と無効の決まり方・欠けの判定の単位のどれかを推測しないと書けない。
-- 媒体の入替、別の媒体の読取り、ファイルを選ぶ経路で取った資料、読取りの途中の別の経路の受領、途中で失敗した読取り、締められなかった日のどれかを含む入力列で、数える前の販売を含む資料が全部実測後になる。
+- runtime の Writer が、読取りの行をどの読取りがいつ置くか・読取りの間ほかの操作とどう排他するか・資料の初回受領の読取りをいつ・どう書くか・実測のどの時点の値を保存するか・直前の精算の資料の選び方・判定の有効と無効の決まり方・有効にするときに既にある行と値の扱い・欠けの判定の単位のどれかを推測しないと書けない。
+- 媒体の入替、別の媒体の読取り、利用者が場所を選んだ root（SD の写しの folder を含む）の読取り、重なる全数読取り、ファイルを選ぶ経路で取った資料、読取りの途中の別の経路の受領、途中で失敗した読取り、締められなかった日のどれかを含む入力列で、数える前の販売を含む資料が全部実測後になる。
+- 無効の間に保存した行と値、保存の不具合のあった間の行と値（指す行が無い ID を持つ `first_scan_id` を含む）が、有効にした後・直した後に全部実測後の根拠になる。
 - 日時の合う精算票が 1 件あることだけで EJ の区間を完全にし、売れて戻った商品を見逃す経路を持つ。
-- 限界（数えた後の 2 つの精算、数え直しのたびの 2 つの精算、ファイルで選んだ日と読取りが失敗した日、区間の対応づけが確定しない間の EJ 待ち）を、起きないこと・保証として正本に書く。
+- 限界（数えた後の 2 つの精算、数え直しのたびの 2 つの精算、有効にした直後の 2 つの精算、ファイルで選んだ日・場所を選んで読んだ日・読取りが失敗した日、SD が固定の disk として見える reader、SD を 2 枚交互に使う運用、区間の対応づけが確定しない間の EJ 待ち）を、起きないこと・保証として正本に書く。
 - 未検証の外部前提（番号印字の桁・位置、精算の書込みの時点）を、確かめた事実として正本に書く。
-- 設計が安全側へ倒れすぎて、普通の日（数えない日、最後に数えて〈数え直して〉から 3 つ目以降の精算。どちらも、前回と今回の締めの資料を SD の完了した読取りで受領している場合）に要再確認を付ける。
+- 設計が安全側へ倒れすぎて、普通の日（数えない日、最後に数えて〈数え直して〉から 3 つ目以降の精算。どちらも、前回と今回の締めの資料を、自動で見つけた SD の完了した読取りで受領している場合。D10 を有効にした直後の 2 つの精算は限界として除く）に要再確認を付ける。
 
 ### 非目的
 
@@ -89,7 +90,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| 数えない普通の日。在庫連動商品に実測の履歴が無い、または最後に数えて（数え直して）から精算を 3 回以上済ませていて、前回と今回の締めの資料を SD の完了した読取りで受領している | 締め: 精算 → SD を PC に差す → 「SD から読む」→ 取り込む | 売れた分が在庫から一度だけ減る。要再確認は出ない | 取込みの結果が出る | Z004 を SD から読む経路は接続の runtime lane。P1・P2・P3・P10 |
+| 数えない普通の日。在庫連動商品に実測の履歴が無い、または最後に数えて（数え直して）からも、D10 を有効にする変更の配布からも、精算を 3 回以上済ませていて、前回と今回の締めの資料を、自動で見つけた SD の完了した読取りで受領している | 締め: 精算 → SD を PC に差す → 「SD から読む」→ 取り込む | 売れた分が在庫から一度だけ減る。要再確認は出ない | 取込みの結果が出る | Z004 を SD から読む経路は接続の runtime lane。P1・P2・P3・P10 |
 | 棚卸しの日（営業中）。前日の締めで精算 m − 1 まで取込み済み | 商品ごとに「今から数える」→ 数える → 「数を保存」 | 数と、その時点の読取りの位置がアプリに残る | 保存済みの表示 | ADR D1（既存） |
 | 同じ日の締め | 精算（m）→ SD を読む → 取り込む | 数えた商品のうち、その日に売れた商品だけに「取り込んだ後に数の再確認が必要です」。売れなかった数えた商品と、数えていない商品には出ない（売れて同じ日に戻った商品は EJ の相殺の判定） | 要再確認の商品を数え直して保存すると消える（数え直すと、その保存から 2 つの精算の資料が改めて判定できなくなる。下の「連日売れる商品」の行） | 相殺の判定は日次の EJ 取込みの後（それまでは下の「EJ の対応づけが確定しない間」の行）。ADR D4（既存） |
 | 翌営業日の締め | 精算（m + 1）→ SD を読む → 取り込む | 前日に数えた商品のうち、この日に売れた商品に要再確認。ほかは出ない | 同上 | 精算 m + 1 の区間は、前日の読取りより前の販売を含みうるので判定不能のまま（D10 の限界）。owner はこの「翌日」の分が数え直しになることを聞いた上で決めた（TD-224） |
@@ -100,11 +101,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 数えた後、アプリを終了し、PC を再起動し、何日か取り込まなかった | 後日の締めで SD を読み、溜まった精算を古い順に取り込む。その後も毎日取り込む | 溜まっていた精算と、その次の精算の資料で売れた数えた商品に要再確認。その次の精算から自動。保存済みの数と読取りの位置は再起動で消えない | 同上 | ADR の「㉘ への引継ぎ」の合格条件（TD-223）。接続の runtime lane の L3 |
 | レジに SD カードのエラーが出て、その日は締められなかった（店に実例がある。repo 外の回答台帳 TD-160・TD-161）。その日に数えた商品もある | 後日、精算をして SD を読み、取り込む。その後も毎日取り込む | 締められなかった日の販売は後日の精算の資料に入る。その資料と次の精算の資料で売れた数えた商品に要再確認。その次の精算から自動。読めない資料が SD に残っている間は、読取りが完了せず、数えた商品が売れるたびに要再確認が続く（自動に戻らない） | 読めない資料が窓から外れるか、読めるようになる | 精算をせずに終わった日か、精算は済んで保存だけ失敗した日かは分かっていない（P1）。後者で資料が後からまとめて書かれるなら D10 の外部前提が崩れるので、確かめるまで D10 を有効にしない |
 | SD の読取りが途中で失敗した（読めない file があった、途中で抜いた）。その読取りで受領済みの資料がある | 読み直して完了する → 取り込む | 失敗した読取りの中で受領した資料と、その次の精算の資料は、数えた商品（数えてから日が経った商品を含む）が売れていれば要再確認 | その次の精算の資料から自動に戻る | 完了していない読取りの中の初回受領は根拠にしない（D10 の条件 3） |
-| SD を別の 1 枚に替えた（SD カードのエラーの後に替えた場合を含む） | 新しい SD で締めて読む、を続ける | 新しい SD の 1 回目と 2 回目の読取りで受領した精算の資料は、数えた商品が売れていれば要再確認。3 回目の読取りの資料から自動。古い SD にだけある資料や、ファイルを選ぶ経路で取った資料は取り込めるが、数えた商品が売れていれば要再確認になる | 新しい SD の 3 回目の読取り | 置き場の識別子（P10）。D10 の条件 3 |
+| SD を別の 1 枚に替えた（SD カードのエラーの後に替えた場合を含む） | 新しい SD で締めて読む、を続ける | 新しい SD の 1 回目と 2 回目の読取りで受領した精算の資料は、数えた商品が売れていれば要再確認。3 回目の読取りの資料から自動。古い SD にだけある資料や、ファイルを選ぶ経路で取った資料は取り込めるが、数えた商品が売れていれば要再確認になる | 新しい SD の 3 回目の読取り | 置き場の識別子（P10）。D10 の条件 3。SD を 2 枚交互に使うと、直前の精算の資料と当の資料の置き場が常に違い、自動に戻らない（安全側。本 lane は決めない） |
 | 年末の棚卸し（何日もかけて数え、最後に確定） | 毎日: 数える → 締めで取り込む → 要再確認が出た商品を数え直す。最終日の締めの取込みの後に、要再確認の商品を数え直してから確定する | 確定できる。棚卸しの期間に続けて売れる商品は、毎日数え直す（上の「連日売れる商品」の行。今の ADR と同じ）。確定の後に取り込む資料で売れた商品は、上の「確定済み」の行と同じ扱い | 未解消の要再確認が 0 | ADR D4 の確定の拒否（既存） |
-| SD を読めない日（ファイルを選ぶ経路だけで取り込む） | 「ファイルを選んで取り込む」 | その日の資料は全部実測後にならず、数えた商品（数えてから日が経った商品を含む）が売れていれば要再確認 | 次の精算の資料も要再確認になり（直前の精算の資料がファイルで選んだ資料のため）、その次の精算の資料から自動に戻る | 資料と直前の精算の資料の両方に、SD の完了した読取りの中の初回受領を求める（D10 の条件 3）。ファイルを選ぶ経路は全数読取りを作らない |
+| SD を読めない日（ファイルを選ぶ経路か、SD の写しの folder を「場所を選ぶ」で読んで取り込む。SD カードのエラーで別の方法でデータを取った日を含む） | 「ファイルを選んで取り込む」か、場所を選んで読む | その日の資料は全部実測後にならず、数えた商品（数えてから日が経った商品を含む）が売れていれば要再確認 | 次の精算の資料も要再確認になり（直前の精算の資料がファイルで選んだ資料のため）、その次の精算の資料から自動に戻る | 資料と直前の精算の資料の両方に、SD の完了した読取りの中の初回受領を求める（D10 の条件 3）。ファイルを選ぶ経路と、利用者が場所を選んだ読取りは、全数読取りを作らない（行を置かない）。SD の写しを取外し可能な媒体に置いて差すと、アプリはレジの SD と区別できず行を置くので、D10 は守れない（P4） |
+| SD が固定の disk として見える reader の PC（店の PC の reader では取外し可能に見えた。29 の日報 parser の SD-25） | 毎回、場所を選んで読む | 数えた商品が売れるたびに要再確認（D10 は働かない。今の ADR と同じ） | 自動には移らない（本 lane は決めない） | 行を置くのは自動で見つけた取外し可能な drive の root の読取りだけ（IO-09-D1、D10 の限界） |
 | EJ の対応づけが確定しない間（日次の EJ 取込みの lane の設計と runtime が入る前。ADR D5a） | いつもの締め | 判定できない 2 つの精算の資料では、数えた商品のうち売れなかった商品（数量・金額とも 0 の行）にも相殺の確認待ちが付き、数え直しでしか消えない（売れて同じ精算で戻った商品を EJ で見分けられないため）。在庫連動は有効にできない（`ej_unverified`）ので、店の本番はこの状態では始まらない | 日次の EJ 取込みの lane の設計が対応づけを確定する条件を決め、その runtime が入る | ADR D5a が日次の EJ 取込みの lane の設計へ送った項目、D4 の在庫連動の有効化の条件 |
 | D10 を有効にする前、または外した後の build | いつもの締め | 数えた商品が売れるたびに要再確認（今の ADR と同じ）。読取りと実測の位置の保存は続く | D10 を有効にする変更の配布 | D10 の「有効にする・外す」 |
+| D10 を有効にする変更を配布した直後 | いつもの締め | 有効にする前に保存した読取りと実測の位置は使われない。配布の後の 2 つの精算の資料で売れた数えた商品（数えてから日が経った商品を含む）に要再確認 | その次の精算の資料から自動 | D10 の「有効にする・外す」の migration。待ちは「数えた後の 2 つの精算」と同じ形 |
 
 Plan Review は、この列が「正常な条件で目的を達成できるか」と「危険な結果を出さないか」を別々に答える（`docs/DEV_WORKFLOW.md` Review Rules）。
 
@@ -115,7 +118,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 確認済み事実（起票時に示したもの）:
 
 - 今の ADR のままでは、数えた商品は数えた後に売れるたびに毎日要再確認になる（ADR Consequences）。本 lane の D10 は、店の操作を増やさずに、これを「数えた日の精算と次の精算の資料で売れた商品」に限る（Ordinary Operation）。
-- レジの番号印字は、取引の外で打つと EJ に行として残り、売上・現金・Z 帳票に影響しない（訪店の確認 2026-09-28、Issue #105 の A7。`docs/backlog.md` の同項目の着手条件 (2)）。独自の記録ヘッダと番号を持たず、直前の記録の本文の後ろか、続く記録の本文の中に現れる（`docs/function-design/29-io-ej-parser.md:474`）。
+- レジの番号印字は、取引の外で打つと EJ に行として残り、売上・現金・Z 帳票に影響しない（訪店の確認 2026-09-28、Issue #105 の A7。`docs/backlog.md` の同項目の着手条件 (2)）。独自の記録ヘッダと番号を持たず、直前の記録の本文の後ろか、続く記録の本文の中に現れる（`docs/function-design/29-io-ej-parser.md:477`）。
 - 番号印字で判定不能をさらに狭めるには、EJ の取込み（日次の EJ 取込みの lane）が先に要る。D10 は EJ が無くても働く。
 - 店は今、紙の棚卸しで、数え終わった商品が売れたらその場で数を直している（repo 外の回答台帳 L-069）。D10 の後に残る数え直しは、この今の作業より範囲が狭い。
 - 着手条件 4 の筋書き（TD-223）のうち「翌日」の分は、A では満たさない。A で数え直しなしになるのは、取込みを再開した時点で置き場にあった精算より 2 つ以上後の精算から。
@@ -152,13 +155,14 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 | file | 変更する節 | 他 lane との重なり |
 |---|---|---|
-| `docs/adr/2026-09-18-stocktake-time-evidence.md` | Status、適用範囲の但し書きの最終段落（決めたことの表）、D1 の S / E の 1 文、D4 の表と前後の文・clear 行の箇条、D5 の時刻の箇条・合計の照合の除外・戻りの箇条・外部前提の段落、D5a（新設。骨と、後続の設計へ送った項目の一覧）、D4 の EJ 待ちの箇条・再評価の順・在庫連動の有効化の条件の各 1 文、D8 の表と 1 文、D10（新設。考え方・全数読取り・資料の初回受領の読取り・実測側の保存・全部実測後の条件・限界・読取りが途中で失敗した日・締められなかった日と媒体の入替・外部前提・有効にする・外す〈保存の不具合の出口を含む〉・番号印字は採らない）、Rejected Options の追記と 1 箇条、Consequences の 3 か所、㉘ への引継ぎ（依存の表と合格条件）、Evidence の 1 文、Revisit Trigger の最終段落 | なし |
-| `docs/function-design/32-biz-csv-import-service.md` | 時点証拠契約の「一つの分類関数とcommit」の入力の文と手順 4、手順 6 の冒頭の 2 文、外部 probe 表の「精算の書込み」の行と表の後の観測の段落 | なし（`agent/unit-runtime` は Z004 の小数の配線をしない。D-113 (8)） |
+| `docs/adr/2026-09-18-stocktake-time-evidence.md` | Status、適用範囲の但し書きの最終段落（決めたことの表）、D1 の S / E の 1 文、D4 の表と前後の文・clear 行の箇条、D5 の時刻の箇条・完全な EJ の条件の括弧・合計の照合の除外・戻りの箇条・帰属できない行の箇条の 1 文・外部前提の段落、D5a（新設。骨と、後続の設計へ送った項目の一覧）、D4 の EJ 待ちの箇条・再評価の順・在庫連動の有効化の条件の各 1 文、D8 の表と 1 文、D10（新設。考え方・全数読取り・読取りの排他・資料の初回受領の読取り・実測側の保存・全部実測後の条件・限界・読取りが途中で失敗した日・締められなかった日と媒体の入替・外部前提・有効にする・外す〈有効にする migration、保存の不具合の出口、不変の例外を含む〉・番号印字は採らない）、Rejected Options の追記と 1 箇条、Consequences の 3 か所、㉘ への引継ぎ（依存の表と合格条件、接続の runtime lane への申し送り）、Evidence の 1 文、Revisit Trigger の最終段落 | なし |
+| `docs/function-design/32-biz-csv-import-service.md` | 時点証拠契約の「一つの分類関数とcommit」の入力の文と手順 4、手順 6 の冒頭の 2 文と登録の変化の判定の 1 文、EJ の証拠の段落の再評価の順、外部 probe 表の EJ完全性の行の括弧と「精算の書込み」の行、表の後の観測の段落 | なし（`agent/unit-runtime` は Z004 の小数の配線をしない。D-113 (8)） |
 | `docs/function-design/29-io-ej-parser.md` | IO-08.9 の表の 3 行、IO-08.10 の「欠け」の箇条と、後続の設計が先に決めること・小数の数量の取引の 2 箇条 | なし |
 | `docs/architecture/io-task-specs.md` | IO-08 の「行わない」の 1 行 | なし |
-| `docs/function-design/37-biz-daily-report-import-service.md` | §37.9 の「Z004 と EJ への引継ぎ」の末尾に 2 文 | なし |
-| `docs/db-design/pos-tables.md` | 時点証拠契約の表に `pos_source_scans` の 1 行と `pos_import_sources.first_scan_id` の 1 行 | `agent/plu-clear` は `plu-tables.md` で別 file |
-| `docs/db-design/tracking-system-tables.md` | 時点証拠契約の表に `source_scan_cursor` の 1 行、SPEC-STK-TIME-D8-K1 の箇条に 1 つ | なし |
+| `docs/function-design/37-biz-daily-report-import-service.md` | §37.9 の「Z004 と EJ への引継ぎ」の後半の文 | なし |
+| `docs/architecture/biz-task-specs.md` | BIZ-03 の箇条の再評価の順の 1 文 | なし |
+| `docs/db-design/pos-tables.md` | 時点証拠契約の表に `pos_source_scans` の 1 行と `pos_import_sources.first_scan_id` の 1 行、表の後の「初回受領は不変」の文に 1 句 | `agent/plu-clear` は `plu-tables.md` で別 file |
+| `docs/db-design/tracking-system-tables.md` | 時点証拠契約の表に `source_scan_cursor` の 1 行、SPEC-STK-TIME-D8-K1 の箇条に 1 つ、理由の決め方の箇条の再評価の順 | なし |
 | `docs/decision-log.md` | 末尾に D-116 だけを追記 | 全 lane が末尾に追記（`agent/backup-offsite` = D-114 と D-111 の中の 1 行、`agent/plu-clear` = D-110）。merge 順で両方を残す |
 | `docs/backlog.md` | 「実測とPOS系列の対応を取得・保存する」の項目（現在の状態・入力 3・入力 4 の箇条を足し、日付つきの 2 箇条に 2026-10-11 の結果を足す）、「㉘ ③ 〜 ⑤ の申し送り」の箇条の 2 か所と、その下の「㉘ ④ と日次の EJ 取込みへの申し送り」の箇条（新設） | `agent/unit-runtime` は「単位の拡張」の項目だけ。`agent/backup-offsite` は backup の項目と「保存と起動の守りの follow-up」。行は重ならない |
 | `docs/Plans.md` | 「次の着手順」の 1 の末尾の 1 句、その下の 2 段落の各 1 文、「次の行動」の後ろの製品の判断の節の STK-1 / STK-2 の行の 1 文。lane の行は足さない（D-097） | closeout の PR が「直近の完了」を触る。行は重ならない |
@@ -173,12 +177,12 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 | 値 | 範囲 | 0・空の意味 | 失敗の時点と順序 | 種類の混在 | 保証する所 |
 |---|---|---|---|---|---|
-| `pos_source_scans.id` | 正の整数（AUTOINCREMENT） | 取らない | 置き場の file の列挙より前に行を置く。置けなければ読取りを全数読取りにせず、その読取りの中の受領の `first_scan_id` は NULL | 商品別売上の資料の読取りだけ | 接続の runtime lane の BIZ（ADR D10） |
+| `pos_source_scans.id` | 正の整数（AUTOINCREMENT） | 取らない | 行を置くのは、自動で見つけた取外し可能な drive の root の読取りだけ（利用者が場所を選んだ root の読取りは置かない）。置き場の file の列挙より前に置く。置かない・置けない読取りは全数読取りにせず、その読取りの中の受領の `first_scan_id` は NULL。行を置く前から完了・失敗まで DB の接続の排他を持ち続け、失敗・中止・アプリの異常終了の後は未完了のまま残す | 商品別売上の資料の読取りだけ | 接続の runtime lane の BIZ（ADR D10） |
 | `pos_source_scans.medium_id` | 空でない文字列 | 空は許さない（取れなければ行を置かない） | 行を置く前に adapter から取る | 等しいかどうかだけを比べる（大小・部分一致を使わない）。別の種類の置き場の識別子と重ならない形は adapter が決める | DB の CHECK（pos-tables）と adapter（IO-09） |
 | `pos_source_scans.window_from` | YYYY-MM-DD、未完了は NULL | 取らない | 条件 2 を満たして受領を終えた後に、`completed_at` と一緒に書く。途中の失敗・中止は NULL のまま | 資料の `settlement_date`（YYYY-MM-DD）と日付として比べる。形が違えば条件不成立。窓は終わりを持たない | BIZ（ADR D10 の条件 3）と DB の CHECK |
 | `pos_source_scans.completed_at` | アプリの時計の日時（既存の表記）、未完了は NULL | NULL は未完了（判定に使わない行）。空文字列は取らない | 同上。完了した行は更新しない。未完了の行を後から完了にしない | `window_from` と両方 NULL か両方 NOT NULL。判定には NULL かどうかだけを使い、値の新旧を比べない | DB の CHECK（pos-tables）と BIZ |
-| `pos_import_sources.first_scan_id` | 正の整数か NULL | NULL は、`pos_source_scans` に行を置いた読取りの外の受領（ファイルを選ぶ経路の受領。読取りの途中に別の経路で受領した場合を含む）。0 は取らない | source を INSERT する TX の中でだけ書く。同じ hash の再受領・取消・同一性拒否・再読取り・DB の restore の後の業務で変えない。受領の時点では指す行は未完了で、完了したかは判定のときに行を読む | 商品別売上の資料の読取りの行の ID だけ。資料の ID の範囲や受領時刻から推さない。未完了の行を指す値は条件不成立 | 資料の受領の BIZ（ADR D10）と DB の CHECK（pos-tables） |
-| `source_scan_cursor`（実測の証拠） | 0 以上の整数 | 読取りの行が 1 つも無い | 実測の保存 TX の中で採る（開始時には採らない）。採れなければ保存 TX 全体が失敗 | measured は必須、uncounted・auto_filled・legacy は NULL、recount は NOT NULL。表と列が入る前の実測は値を持たず、判定を受けない。保存の後は変えない（例外は、保存の不具合の出口の migration による引上げだけ。値を大きくする向きで、NULL の行は変えない） | DB の CHECK（SPEC-STK-TIME-D8-K1 の 6 つ目）と保存の BIZ |
+| `pos_import_sources.first_scan_id` | 正の整数か NULL | NULL は、`pos_source_scans` に行を置いた読取りの外の受領（ファイルを選ぶ経路の受領、利用者が場所を選んだ root の読取りの中の受領。読取りの途中に別の経路で受領した場合を含む）と、有効にする migration の時点で既にあった資料。0 は取らない | source を INSERT する TX の中でだけ書く。同じ hash の再受領・取消・同一性拒否・再読取り・DB の restore の後の業務で変えない。例外は、有効にする migration（保存の不具合が分かったときの再適用を含む）が全ての資料の値を NULL にすることだけ。受領の時点では指す行は未完了で、完了したかは判定のときに行を読む | 商品別売上の資料の読取りの行の ID だけ。資料の ID の範囲や受領時刻から推さない。未完了の行を指す値と、指す行が無い値は条件不成立 | 資料の受領の BIZ（ADR D10）と DB の CHECK（pos-tables） |
+| `source_scan_cursor`（実測の証拠） | 0 以上の整数 | 読取りの行が 1 つも無い | 実測の保存 TX の中で採る（開始時には採らない）。採れなければ保存 TX 全体が失敗 | measured は必須、uncounted・auto_filled・legacy は NULL、recount は NOT NULL。列は registry への登録より前に足す（後から足す migration は、既存の実測にその時点の読取りの最大 ID を入れる）。保存の後は変えない（例外は、有効にする migration〈保存の不具合が分かったときの再適用を含む〉による引上げだけ。値を大きくする向きで、実測でない kind の行は対象にしない） | DB の CHECK（SPEC-STK-TIME-D8-K1 の 6 つ目）と保存の BIZ |
 | settlement_no の比較 | ASCII 数字だけの文字列を i64 として比べる | 0 の直前（−1）の資料は無いので条件不成立 | 比べられない値（数字以外・空・NULL・桁あふれ）は成り立たない側 | 同じ帳票種別・同じ machine_no の間だけ。精算票の題の末尾の番号とは比べない | BIZ（ADR D5a の番号の比べ方） |
 | 区間の終端の候補の抽出（Z004 の精算日時と EJ の記録の日時） | 分の精度の日時。候補に入れる幅は後続の設計が決める（観測は、Z004 が記録と同じ分か 1 分後） | 日時の無い Z004 は候補 0 件 | 候補 0 件は EJ が届いていない扱い（EJ 待ち）。候補が 1 件でも、それだけでは対応づけを確定しない（確定の条件は後続の設計が決める。決まるまで EJ 待ち） | どちらもレジの時計の値。同じ machine_no の間だけ。アプリの時計と比べない。欠けの判定と前後の判定に使わない | 日次の EJ 取込みの lane の設計と BIZ（ADR D5a の骨と、後続の設計へ送った項目） |
 
@@ -197,7 +201,11 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 表のほかの申し送り:
 
-- 保存の契約の test（Matrix の D10-3・D10-4・D10-5・D10-16・D8-1）は、保存を入れる変更と同じ変更で入れる。D10 を有効にする変更の merge 条件が、保存を入れた変更からその test が main で green であることを含む（ADR D10 の「有効にする・外す」）。保存の code の不具合が分かったときの出口（migration で全ての実測の `source_scan_cursor` を引き上げる）は、不具合を直す変更が持つ。
+- 保存の契約の test（Matrix の D10-3・D10-4・D10-5・D10-16・D10-27・D10-28・D8-1）は、保存を入れる変更と同じ変更で入れる。D10 を有効にする変更の merge 条件が、保存を入れた変更からその test が main で green であることを含む（ADR D10 の「有効にする・外す」）。D10 を有効にする変更は、有効にする migration（1 つの TX で、全ての実測の `source_scan_cursor` をその時点の `pos_source_scans` の最大 ID〈無ければ 0〉へ引き上げ、全ての `pos_import_sources.first_scan_id` を NULL にする）を同じ変更に入れる。有効にする前に保存した行と値は判定に使わない。保存の code の不具合が分かったときは、不具合を直す変更が同じ migration をもう一度当てる。
+- 全数読取りは、行を置く前から完了・失敗まで、同じ DB に対する唯一の操作にする（別の全数読取り・実測の保存・読取りの外の受領・取込みの commit と取消・backup・restore と重ならない）。DB の接続の排他を読取りの間持ち続ける（`docs/function-design/45-cmd-daily-report-import.md` §45.6a 手順 2 の日報の scan と同じ持ち方を必須にする）。失敗・中止・アプリの異常終了の後、行は未完了のまま残し、次の読取りは新しい行から始める。
+- 行を置くのは、IO-09 が自動で見つけた取外し可能な drive の root の読取りだけ。利用者が場所を選んだ root（SD の写しの folder を含む）の読取りは行を置かず、受領に読取りの行の ID を渡さない。窓の始まりは読取りの日の前日以前にする（37 §37.9 手順 2 の窓なら満たす）。
+- 接続の runtime lane への候補（採っていない）: 完了にする条件に「同じ識別子の直前の完了した読取りが窓の中で見た資料が、今回の窓の中に無ければ、別の媒体として完了にしない」を足すと、識別子が別の媒体と重なる場合を条件で落とせる。採らない理由は、条件が 1 つ増え、窓の始まりが動く日に完了できないこと。置き場の識別子の安定を確かめた結果で、その lane が見直す（ADR の「㉘ への引継ぎ」）。
+- 接続の runtime lane の L3 の筋書きの候補: SD の写しを取外し可能な媒体に置いて差す（アプリはレジの置き場と区別できず行を置く。P4）、SD が固定の disk として見える reader で場所を選んで読む（行を置かない）、読取りの途中でアプリを終了して起動し直す（行は未完了のまま）。
 - EJ の期間の証拠を受け取る BIZ の interface（㉘ ④）は、「区間の対応づけが確定しない」を不完全（EJ 待ち）として受け取る形にする。日次の EJ 取込みの lane の設計が ADR D5a の未決を決めて merge するまで、区間の対応づけは確定せず、EJ の完全性に依る判定（相殺の判定、在庫連動の有効化の条件のうち EJ の完全性）は働かない（`ej_unverified` は外れない）。再評価は、欠けと読めない記録 → 対応づけの確定 → 前回の証明の順に見る（ADR D4・D5a）。
 - 小数の数量の取引は今の EJ parser では復元不能で、その取引を含む区間は完全にならない（Contract Probe の P13）。小数を読む変更は、単位の拡張の runtime と日次の EJ 取込みで扱う。
 
@@ -222,10 +230,11 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - AC6（clear 行の段が実物に合う）: `rg -c 'Z004から落ち' docs/adr/2026-09-18-stocktake-time-evidence.md` が hit なし（開始 HEAD の実測: 3）。
 - AC7（古い状態の文）: `rg -n 'Square か CASIO かの判断待ち）|実機確認が着手条件のまま' docs/Plans.md docs/backlog.md` の hit が 0（開始 HEAD の実測: Plans.md 2、backlog 1）。`docs/Plans.md` に lane の行を足していない（`git diff "$(git merge-base origin/main HEAD)" HEAD -- docs/Plans.md` の `+` の行に branch 名・PR 番号・Phase が無い）。
 - AC10（媒体の名前を core の名前から外した）: `rg -n 'pos_sd_observations|sd_observation_cursor|SD ?の全数受領' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` の hit が、`docs/decision-log.md` の D-116 の Alternatives の 1 行（旧い名前を不採用の案として挙げる行）だけ。`rg -c '番号印字は採らない' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1 以上、`rg -n '採否はownerの判断を待つ' docs/adr/2026-09-18-stocktake-time-evidence.md` が hit なし。
-- AC11（有効にする・外す出口）: `rg -c '^\*\*有効にする・外す\*\*' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1 で、その段が、決める所（code だけ）・無効の間の保存・後から有効にしたときの扱い・保存の不具合が分かったときの出口・外したときの適用済みの取込みの扱いを持つ。`rg -c '^- 保存の不具合が分かったとき: ' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1（前の版 `997bfeb7` では hit なし）。
+- AC11（有効にする・外す出口）: `rg -c '^\*\*有効にする・外す\*\*' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1 で、その段が、決める所（code だけ）・有効にする migration・無効の間の保存と、その間の行と値を有効にした後に使わないこと・保存の不具合が分かったときの出口・不変の例外・外したときの適用済みの取込みの扱いを持つ。`rg -c '^- 保存の不具合が分かったとき: ' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1（前の版 `997bfeb7` では hit なし）。
 - AC12（対応づけに番号の差を使わない）: `rg -c '題の末尾の番号に1を足した値' docs/adr/2026-09-18-stocktake-time-evidence.md` が hit なし（前の版 `c46e7418` の実測: 1）、`rg -c 'の翌日以降' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1 以上。
 - AC13（D5a は骨と未決の一覧で、候補 1 件だけでは確定しない）: `rg -c '^- \*\*候補が1件であることだけでは対応づけを確定しない\*\*' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1、`rg -c '^- \*\*未決（日次のEJ取込みのlaneの設計が決める）\*\*' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1、`rg -c '^- \*\*決まるまでの帰結\*\*' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1（前の版 `997bfeb7` ではどれも hit なし）。`rg -c 'ちょうど1件あるとき対応づく' docs/adr/2026-09-18-stocktake-time-evidence.md` が hit なし（前の版 `997bfeb7` の実測: 1）。
 - AC14（限界が正本にある）: `rg -c '^\*\*限界（数えた後の2つの精算の資料は判定できない）\*\*' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1（前の版 `997bfeb7` では hit なし）、`rg -c '毎日は続かない' docs/adr/2026-09-18-stocktake-time-evidence.md` が hit なし（前の版 `997bfeb7` の実測: 1）。
+- AC15（読取りの排他と不変の例外が正本にあり、無効の間の値を使う文と旧い再評価の順が残らない）: `rg -c '^\*\*読取りの排他\*\*' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1、`rg -c '^- 不変の例外: ' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1（前の版 `1e08f9f5` ではどちらも hit なし）。`rg -n '判定に使ってよい' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` が hit なし（前の版 `1e08f9f5` の実測: 2 行〈ADR 1、decision-log 1〉）。`rg -n '前回の証明を先に判定' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` が hit なし（前の版 `1e08f9f5` の実測: 2 行〈32 に 1、biz-task-specs に 1〉）。
 - AC8（docs だけ）: `git diff --name-only "$(git merge-base origin/main HEAD)" HEAD -- src src-tauri scripts package.json package-lock.json` の出力が空。
 - AC9（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0・WARN 0。
 
@@ -233,11 +242,11 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 設計の完了条件は `docs/DEV_WORKFLOW.md` Design Phase Rules の Design completion criteria。
 
-- 引用する設計正本（節まで）: `docs/adr/2026-09-18-stocktake-time-evidence.md` 適用範囲の但し書き・D4 の表・D5 の外部前提・D5a・D8・D10・㉘ への引継ぎ・Revisit Trigger／`docs/function-design/32-biz-csv-import-service.md` 時点証拠契約の「一つの分類関数とcommit」と「外部probeと本番条件」／`docs/function-design/29-io-ej-parser.md` IO-08.9・IO-08.10／`docs/function-design/29-io-daily-report-parser.md` §29.7.2（SD-02・SD-18・SD-22・SD-23。変えない）／`docs/function-design/37-biz-daily-report-import-service.md` §37.9 の引継ぎ／`docs/db-design/pos-tables.md`・`tracking-system-tables.md` の時点証拠契約／`docs/decision-log.md` D-103・D-105・D-109・D-111（変えない）・D-116。
+- 引用する設計正本（節まで）: `docs/adr/2026-09-18-stocktake-time-evidence.md` 適用範囲の但し書き・D4 の表・D5 の外部前提・D5a・D8・D10・㉘ への引継ぎ・Revisit Trigger／`docs/function-design/32-biz-csv-import-service.md` 時点証拠契約の「一つの分類関数とcommit」と「外部probeと本番条件」／`docs/function-design/29-io-ej-parser.md` IO-08.9・IO-08.10／`docs/function-design/29-io-daily-report-parser.md` §29.7.2（SD-02・SD-18・SD-22・SD-23・SD-25。変えない）と §29.7.4（root の見つけ方。変えない）／`docs/function-design/45-cmd-daily-report-import.md` §45.6a 手順 2（日報の scan の DB の排他の持ち方。変えない）／`docs/function-design/37-biz-daily-report-import-service.md` §37.9 の引継ぎ／`docs/db-design/pos-tables.md`・`tracking-system-tables.md` の時点証拠契約／`docs/decision-log.md` D-103・D-105・D-109・D-111（変えない）・D-116。
 - 必要な設計成果物（Design artifact selection の当たる行）: BIZ の判定の変更 = updated in this PR（ADR D10、32 手順 4）／表と列 = updated in this PR（pos-tables、tracking-system-tables。migration の番号と index は runtime）／EJ の入力の互換の規則（欠けと、区間の対応づけの骨）= updated in this PR（ADR D5a、29 の EJ parser）。対応づけを確定する条件 = defer（日次の EJ 取込みの lane の設計。TD-230）／durable な横断の決定 = D-116 と ADR／operator の流れ = existing sufficient（画面・文言・操作は増えない。ADR D9 を変えない）／Tauri command・DTO = 該当なし（wire に出す値が無い）。
 - plan にしかない durable な判断の昇格先: 決めたことは全て ADR と D-116 に置いた（J1 の決定は D-116 の「owner の決定」と ADR D10 の番号印字の段）。packet にだけあるのは、J1 の選択肢の表（決定の記録）と、runtime の lane への行番号の申し送り。
 - 前提・制約と、延期した design gap の follow-up: D10 は外部前提 P1〜P4・P10（Contract Probe）に依り、owner-operated gate の証拠がそろうまで全部実測後の枝を code に入れない（ADR D10 の「有効にする・外す」、32 の外部 probe 表の行）。延期: (a) 窓の決め方と、読み直さずに受領済みと対応づけてよい条件（接続の runtime lane。ADR D10 が「条件 2 を弱めない根拠を Contract Probe で示す」と縛る）。(b) 置き場の識別子を IO-09 のどの関数が返すか（接続の runtime lane。D10 が要件〈同じ媒体で変わらない・別の媒体と違う・読取り専用・取れなければ行を置かない〉を縛る）。(c) EJ の記録の保存と file の絞り方（日次の EJ 取込みの lane。D5a が欠けの判定を縛る）。(e) 精算票と Z004 の対応づけを確定する条件（ADR D5a の未決の 4 項目。日次の EJ 取込みの lane の設計。D5a の骨が、日時の候補が 1 件であることだけでは確定しないこと・評価の順を縛る）。(d) SD カード保存が異常終了した精算の Z004 の残り方（資料に例が無く確かめられない。D10 を有効にする変更の owner-operated gate に残す。証拠を得る手段が無いと分かった場合は、残る危険を受け入れて有効にするかを、その変更の lane が owner に諮る）。延期が安全な理由: どれも、決まるまで判定不能・EJ 待ち（数え直し）へ倒れ、在庫を黙って誤らせない。(e) の間は EJ の完全性に依る判定が働かず、`ej_unverified` が外れないので、在庫連動の本番は始まらない。
-- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: 「全部実測後と判定した資料の販売は実測の後」の例外は、外部前提が崩れた場合（P1: 資料が精算の後でまとめて書かれる、P2: 精算で PLU の集計が 0 に戻らない、P3: path の日付と中身の精算日が違う、P4: 人が置き場に file を足す・消す、P10: 識別子が同じ媒体で変わる・別の媒体と重なる）だけで、ADR D10 の外部前提に全て書いた。媒体の入替・別の媒体の読取り・ファイルを選ぶ経路の資料・読取りの途中の別の経路の受領・途中で失敗した読取りの中の受領・後から受領した古い資料は、条件 3（資料と直前の精算の資料の両方が、実測の保存より後の完了した読取りより後に、同じ置き場の完了した読取りの中で初めて受領された）が成り立たないので例外にならない。条件は精算の系列を証明しないので、番号の reset を挟む列の全てを塞がない（reset は資料に現れておらず、起きる前に決め直す。ADR の Revisit Trigger）。「数えた後は数え直しなしで減る」は保証ではなく、数えた（数え直した）後の 2 つの精算の資料、ファイルで選んだ日と読取りが失敗した日の資料とその次の精算の資料は判定できない（ADR D10 の限界）。外部前提が崩れたと分かった後の出口は ADR D10 の「有効にする・外す」の「外す」（枝を外す。適用済みは再判定せず、新しい実測で戻す）、保存の code の不具合が分かった後の出口は同じ段の「保存の不具合が分かったとき」（migration で全ての実測の cursor を引き上げる）。「EJ がそろえば相殺の確認待ちが解ける」の例外は、区間の対応づけが確定しない間（ADR D5a の未決が決まるまでは全ての区間）と、小数の数量の取引を含む区間。「D4 の出口は変えない」は、D10 の条件を満たさない資料の全てが今までどおり判定不能になることで保つ（D10 は After を足すだけで、Before・Unknown・flag の理由・解消の規則を変えない）。「実測開始前に受領済み」と D10 の条件が同時に成り立つ場合は、D4 の表の文で前者を先に見る。共有 JAN の行は、D10 の実測後でも未実測と同じく保留の対象のまま。
+- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: 「全部実測後と判定した資料の販売は実測の後」の例外は、外部前提が崩れた場合（P1: 資料が精算の後でまとめて書かれる、P2: 精算で PLU の集計が 0 に戻らない、P3: path の日付と中身の精算日が違う、P4: 人が置き場に file を足す・消す〈SD の写しを取外し可能な媒体に置いて差すことを含む〉、P10: 識別子が同じ媒体で変わる・別の媒体と重なる）だけで、ADR D10 の外部前提に全て書いた。媒体の入替・別の媒体の読取り・利用者が場所を選んだ root の読取り・ファイルを選ぶ経路の資料・読取りの途中の別の経路の受領・途中で失敗した読取りの中の受領・後から受領した古い資料は、条件 3（資料と直前の精算の資料の両方が、実測の保存より後の完了した読取りより後に、同じ置き場の完了した読取りの中で初めて受領された）が成り立たないので例外にならない。重なる全数読取りは、読取りの排他（runtime が DB の接続の排他を、行を置く前から完了・失敗まで持ち続ける契約）で起きない。条件は精算の系列を証明しないので、番号の reset を挟む列の全てを塞がない（reset は資料に現れておらず、起きる前に決め直す。ADR の Revisit Trigger）。「数えた後は数え直しなしで減る」は保証ではなく、数えた（数え直した）後の 2 つの精算の資料、D10 を有効にした直後の 2 つの精算の資料、ファイルで選んだ日・場所を選んで読んだ日・読取りが失敗した日の資料とその次の精算の資料は判定できず、SD が固定の disk として見える reader の PC と SD を 2 枚交互に使う運用では D10 が働かない（ADR D10 の限界）。外部前提が崩れたと分かった後の出口は ADR D10 の「有効にする・外す」の「外す」（枝を外す。適用済みは再判定せず、新しい実測で戻す）、保存の code の不具合が分かった後の出口は同じ段の「保存の不具合が分かったとき」（有効にする migration と同じ migration をもう一度当て、全ての実測の cursor を引き上げ、全ての資料の `first_scan_id` を NULL にする）。「保存の後は変えない」（`source_scan_cursor`）・「INSERT の後は変えない」（`first_scan_id`）・append-only（`stocktake_recounts`）の例外は、この migration だけ。「EJ がそろえば相殺の確認待ちが解ける」の例外は、区間の対応づけが確定しない間（ADR D5a の未決が決まるまでは全ての区間）と、小数の数量の取引を含む区間。「D4 の出口は変えない」は、D10 の条件を満たさない資料の全てが今までどおり判定不能になることで保つ（D10 は After を足すだけで、Before・Unknown・flag の理由・解消の規則を変えない）。「実測開始前に受領済み」と D10 の条件が同時に成り立つ場合は、D4 の表の文で前者を先に見る。共有 JAN の行は、D10 の実測後でも未実測と同じく保留の対象のまま。
 - 判定（ready / not ready）と理由: ready（plan-draft に進める）。理由: 設計の出力（D10・D5a の骨と未決の一覧・D4 の表・D8 の表と列・外部前提の観測・後続の依存の表と合格条件・D-116）が上の正本にあり、owner の判断事項 J1 は 2026-10-11 に決まった（TD-224）。限界の受け入れ（TD-228）と、対応づけを確定する条件を日次の EJ 取込みの lane の設計へ送ること（TD-230）も owner が決めた。残る P1 の異常終了・P2・P10 の確認は、設計の問いではなく D10 を有効にする前の外部前提の確認で、結果がどちらでも正本の設計は変わらない（崩れれば D10 を有効にしない、だけ）。
 
 ## Registration / Generation Obligations
@@ -252,7 +261,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 |---|---|---|---|---|
 | Adapter / core boundary | Which concepts belong to replaceable external adapters, and which concepts are stable app-core contracts? | Architecture, function design, decision-log, Plan Packet | core: 「同じ置き場の 2 回の全数読取りの間に現れた資料の精算は、その間に行われた」と「実測の保存の順」で実測後を決める考え方、`pos_source_scans`・`pos_import_sources.first_scan_id`・`source_scan_cursor`・判定の条件。名前に媒体を入れていない。adapter（CASIO 固有）: 置き場が SD の `XZ` / `XZ_BKUP` であること、Z004 の名前、置き場の識別子の取り方（ボリュームの通し番号）、Z004 を書く精算票の種類（日計明細とＰＬＵ）と、精算日時が記録の日時と同じ分か 1 分後という対応、記録ヘッダの 4 桁の欄 = machine_no、取引一連番号。D5a は CASIO の形に依る節で、レジが替わると D5a と IO-09・EJ parser を取り替える。D10 は、精算のたびに資料を書く置き場をアプリが読めるレジでだけ働く（ADR Consequences） | レジの入替が決まったとき（D-116 の Revisit） |
 | Fact check / design decision split | Which claims are observed facts from hardware/tool/files, and which are app decisions that need source-doc promotion? | Investigation doc, source design docs, decision-log | 観測は ADR D5 の「観測したもの」と 32 の観測の段落に分けて書き、gate の通過と区別した。未観測は「まだ観測していない外部前提」と D10 の外部前提。判断は D10・D5a・D-116 | Contract Probe |
-| Lifecycle / retry | What happens before, during, after, and after failure for import/export, duplicate input, rollback, retry, cancellation, and re-run? | Function design, DB design, UI design, Test Matrix | 読取りの途中の失敗・中止は未完了の行で、判定に使わない。締められなかった日・媒体の入替・ファイルを選ぶ経路は判定不能に倒れる（Ordinary Operation）。判定そのものを外す出口は code の変更 1 通り（ADR D10）。読取りの途中で失敗した後に読み直しても、先に受領した資料の初回受領の読取り（未完了の行）は変わらず、その資料と次の精算の資料は判定不能になる。再起動の後も行と cursor は DB に残る。同じ資料の再選択は最初の受領 ID と初回受領の読取りのまま（D2・D10）。DB の restore では資料・読取り・実測が同じ時点へ戻る。取消の後の再取込みは同じ判定をやり直す。同一性拒否が後から付くと実測後から判定不能へ変わる（安全側） | Matrix の State Lifecycle |
+| Lifecycle / retry | What happens before, during, after, and after failure for import/export, duplicate input, rollback, retry, cancellation, and re-run? | Function design, DB design, UI design, Test Matrix | 読取りの途中の失敗・中止・アプリの異常終了は未完了の行で、判定に使わない。読取りは、行を置く前から完了・失敗まで、同じ DB に対するほかの操作（別の読取り・実測の保存・受領・取込みと取消・backup・restore）と重ならない。締められなかった日・媒体の入替・ファイルを選ぶ経路は判定不能に倒れる（Ordinary Operation）。判定そのものを外す出口は code の変更 1 通り（ADR D10）。読取りの途中で失敗した後に読み直しても、先に受領した資料の初回受領の読取り（未完了の行）は変わらず、その資料と次の精算の資料は判定不能になる。再起動の後も行と cursor は DB に残る。同じ資料の再選択は最初の受領 ID と初回受領の読取りのまま（D2・D10）。DB の restore では資料・読取り・実測が同じ時点へ戻る。取消の後の再取込みは同じ判定をやり直す。同一性拒否が後から付くと実測後から判定不能へ変わる（安全側） | Matrix の State Lifecycle |
 | Operator workflow | What does the operator do in the real sequence across app, external tool, media, print/export, backup, and recovery? | Screen/UI design, function design, Plan Packet manual checks | 操作は増えない（番号印字は採らない。TD-224）。数えた（数え直した）日の精算と次の精算の資料で売れた商品の数え直しが残り、続けて売れる商品は数え直しが続きうる（TD-228 で受け入れた限界。Ordinary Operation） | 接続の runtime lane の L3（ADR の合格条件） |
 | Replacement path | If the external system changes, which files/modules/docs are replaced and which app-core contracts remain stable? | Architecture, function design, decision-log | レジが替わると、D5a の対応づけの規則、置き場の読み方と識別子（IO-09）、D10 の外部前提の確認を取り替える。`pos_source_scans`・`first_scan_id`・`source_scan_cursor`・D10 の条件・D4 の表は名前も形も残る。新しいレジが置き場を持たない場合は D10 が働かず、要再確認へ戻る（D-116 の Revisit） | D-116 の Revisit |
 | Data safety / evidence | How can the claim be supported by anonymized shape/count/hash/procedure evidence without committing real store data? | Plan Packet Data Safety, investigation doc, review evidence | 観測は形と規則だけを書き、件数は `docs/backlog.md` の同項目の入力 3・入力 4（独立に数え直した集計の、件数・日付・番号だけ）に置いて、ほかの file はそこを参照する。新しい表は売上値・file 名・file 本体を持たない | Data Safety |
@@ -269,8 +278,8 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - wire type: 無し（DB の中だけ。UI・command に出さない）
 - internal type: 行の ID・`first_scan_id`・cursor は i64（`first_scan_id` は NULL あり）、`window_from` は YYYY-MM-DD の文字列、`completed_at` は既存の表記の日時の文字列（NULL かどうかだけを読む）、`medium_id` は adapter が返す文字列（等しいかどうかだけを比べる）
 - precision/range: Scope の「値ごとの保証の表」
-- round-trip path: 読取りの開始で識別子を持つ行を置く → 新しく受領する資料の `first_scan_id` にその行の ID を書く → 完了で `window_from`・`completed_at` を書く → 実測の保存で読取りの最大 ID を cursor に採る → 取込みの分類が、資料と直前の精算の資料の `first_scan_id` が指す完了した行と、それより前の同じ識別子の完了した行を読む
-- invalid input: 未完了の行、`first_scan_id` が NULL の資料・未完了の行を指す資料、識別子の違う行の組、形の違う日付、比べられない settlement_no は、条件不成立（判定不能）
+- round-trip path: 読取りの開始で DB の接続の排他を取り、識別子を持つ行を置く（自動で見つけた取外し可能な drive の root の読取りだけ）→ 新しく受領する資料の `first_scan_id` にその行の ID を書く → 完了で `window_from`・`completed_at` を書く → 実測の保存で読取りの最大 ID を cursor に採る → 取込みの分類が、資料と直前の精算の資料の `first_scan_id` が指す完了した行と、それより前の同じ識別子の完了した行を読む
+- invalid input: 未完了の行、`first_scan_id` が NULL の資料・未完了の行を指す資料・指す行が無い資料、識別子の違う行の組、形の違う日付、比べられない settlement_no は、条件不成立（判定不能）
 - compatibility: 既存の表の列は変えない。時点証拠 schema は migration の registry に未登録（D-109）なので、登録の前に足せば既存の DB の移行は要らない
 
 ## Test Plan
@@ -286,26 +295,26 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
 ## Review Focus
 
 - Ordinary Operation の列が、正常な条件で目的（数えた商品を数え直さずに置けば、数えた日の精算と次の精算を過ぎた後は数え直しなしで減る）を達成できるか。限界（数え直しのたびの 2 つの精算、ファイルで選んだ日、読取りが失敗した日、EJ の対応づけが確定しない間）が、保証の形で書かれずに全部並んでいるか。
-- D10 の条件が、数える前の販売を含む資料を全部実測後と判定する入力・順序を持たないか（読取りの行を列挙の前に置く規則、資料の初回受領の読取り、保存の時点の cursor、直前の精算の資料がちょうど 1 つ、窓の日付、資料と直前の精算の資料の両方の初回受領、媒体の入替、ファイルを選ぶ経路、読取りの途中の別の経路の受領、途中で失敗した読取り、締められなかった日、後から受領した古い資料）。
+- D10 の条件が、数える前の販売を含む資料を全部実測後と判定する入力・順序を持たないか（行を置く読取り、読取りの排他、読取りの行を列挙の前に置く規則、資料の初回受領の読取り、保存の時点の cursor、直前の精算の資料がちょうど 1 つ、窓の日付、資料と直前の精算の資料の両方の初回受領、媒体の入替、ファイルを選ぶ経路、読取りの途中の別の経路の受領、途中で失敗した読取り、締められなかった日、後から受領した古い資料）。
 - D5a の骨（終端の候補の抽出、候補が 1 件であることだけでは確定しない、評価の順）が、未決が決まるまでの間、誤った区間を完全にする経路を持たないか。日時を候補の抽出のほかに使っていないか。未決の一覧と、決まるまでの帰結が正本の全部で同じか。
 - D5a の区間の終端・開始・欠けの定義が、ADR D4・D5 の既存の分岐（EJ 待ち・登録の変化・前回を証明できない・開始の証拠がない）と矛盾しないか。
 - 観測と書いた前提が、tracked の出典（`docs/backlog.md` の入力 1・2、29 の構造所見、D-103・D-105・D-111）で裏づくか。観測を gate の通過と書いていないか。
-- D10 の「有効にする・外す」が 1 通りに読めるか（決める所、無効の間の保存、後から有効にしたときの扱い、保存の不具合が分かったときの出口、外したときの適用済みの取込み）。新しい設定・flag・画面を足していないか。
+- D10 の「有効にする・外す」が 1 通りに読めるか（決める所、有効にする migration、無効の間の保存とその間の行と値を使わないこと、保存の不具合が分かったときの出口、不変の例外、外したときの適用済みの取込み）。新しい設定・flag・画面を足していないか。
 - core の名前（表・列・用語）に媒体やレジの名前が残っていないか。名前を変えて意味が曖昧になっていないか。
 
 ## Contract Ledger
 
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
-| SPEC-STK-TIME-D10（考え方・全数読取り・置き場の識別子・資料の初回受領の読取り・実測側の保存・全部実測後の条件・限界・読取りが途中で失敗した日・締められなかった日と媒体の入替・外部前提・有効にする・外す〈保存の不具合の出口〉・番号印字は採らない） | ADR D10 | 本 lane は設計の記録。runtime は接続の runtime lane と ㉘ ④ か ⑤ | runtime（Matrix の D10 の行） | L3: ADR の「㉘ への引継ぎ」の合格条件 |
+| SPEC-STK-TIME-D10（考え方・全数読取り・行を置く読取り・読取りの排他・置き場の識別子・資料の初回受領の読取り・実測側の保存・全部実測後の条件・限界・読取りが途中で失敗した日・締められなかった日と媒体の入替・外部前提・有効にする・外す〈有効にする migration・保存の不具合の出口・不変の例外〉・番号印字は採らない） | ADR D10 | 本 lane は設計の記録。runtime は接続の runtime lane と ㉘ ④ か ⑤ | runtime（Matrix の D10 の行） | L3: ADR の「㉘ への引継ぎ」の合格条件 |
 | SPEC-STK-TIME-D5a（番号の比べ方・区間の終端の候補・候補が 1 件であることだけでは確定しない・区間の開始・区切りにしない記録・欠け・読めない記録・評価の順・日時・「前回」の候補・同一性の比較と系列・後続の設計へ送った項目・決まるまでの帰結） | ADR D5a | 本 lane は設計の記録。送った項目は日次の EJ 取込みの lane の設計、runtime はその lane と ㉘ ④ | runtime（Matrix の D5a の行。送った項目の分は Residual Test Gaps） | 非対象 |
 | SPEC-STK-TIME-D4（判定の表に全部実測後の行、clear 行の箇条の事実の更新、再評価で欠けと対応づけの確定を前回の証明より先に見る順、対応づけが確定しない区間を EJ 待ちに含める文。出口・flag・解消は変えない） | ADR D4 | 同上 | runtime（Matrix の D4 の行） | 非対象 |
-| SPEC-STK-TIME-D5（外部前提を観測と未観測に分ける。合計の照合の除外の理由、戻りの箇条の文。条件そのものは変えない） | ADR D5 | 本 lane の docs | 本 lane の AC5・AC6 | 非対象 |
+| SPEC-STK-TIME-D5（外部前提を観測と未観測に分ける。合計の照合の除外の理由、戻りの箇条の文、完全な EJ の条件の括弧と帰属できない行の判定の時点を D5a・D4 の文に合わせる言い換え。条件そのものは変えない） | ADR D5 | 本 lane の docs | 本 lane の AC5・AC6 | 非対象 |
 | SPEC-STK-TIME-D8（`source_scan_cursor`・`pos_source_scans`・`pos_import_sources.first_scan_id` の行）、SPEC-STK-TIME-D8-K1（6 つ目の項目） | ADR D8、pos-tables・tracking-system-tables の時点証拠契約 | runtime: `schema_time_evidence.rs` | runtime（Matrix の D8 の行） | 非対象 |
 | ㉘ への引継ぎ（依存の表、接続の runtime lane の合格条件。TD-223） | ADR ㉘ への引継ぎ | 後続の lane の起票 | runtime（Matrix の通しの行） | L3: 通しの筋書き |
 | BIZ-03 の分類の手順 4 と入力（資料の受領が初回受領の読取りを書くことを含む）、手順 6 の対応づけと評価の順の文、外部 probe 表の「精算の書込み」の行と観測の段落 | 32 時点証拠契約 | runtime: `biz/csv_import_service/time_evidence.rs` | runtime（Matrix の D10 の行） | 非対象 |
 | IO-08-D9（IO が判断しないことの表の 3 行）、IO-08-D10（欠けの定義の箇条、後続の設計が先に決めること、小数の数量の取引） | 29 の EJ parser IO-08.9・IO-08.10、io-task-specs の IO-08 | 変えない（parser の出力は今のまま。責務の持ち主の記述だけ） | 既存の parser の test を変えない | 非対象 |
-| BIZ-08-D3 の引継ぎ（Z004 を SD から読む経路が D10 を満たす） | 37 §37.9 の末尾 | 接続の runtime lane | runtime | 非対象 |
+| BIZ-08-D3 の引継ぎ（Z004 を SD から読む経路が D10 を満たす。行を置く root、読取りの排他、窓の始まり） | 37 §37.9 の末尾 | 接続の runtime lane | runtime | 非対象 |
 | D-116 | `docs/decision-log.md` | 本 lane の記録 | 本 lane の AC3 | 非対象 |
 | 隣接の除外: SPEC-STK-TIME-D1（S / E の 1 文の言い換えだけ。context・保存・再送の契約は変えない）・D2（`source_cursor` を保存時に取り直さない）・D3（同一性 guard と拒否）・D6・D7・D9 | ADR | 変えない | 既存（㉘ ②・③ の test） | 非対象 |
 | 隣接の除外: SPEC-STOP-D1〜D6（停止）、IO-09-D1〜D4・BIZ-08-D3〜D6（SD の読取りと日報）、IO-08-D1〜D8（EJ parser の文法と型）、SPEC-Z4A-D8（D-103） | 停止 ADR、29 の日報 parser、37、29 の EJ parser、23 | 変えない（参照だけ） | 非対象 | 非対象 |
@@ -317,13 +326,13 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
 - P1 商品別売上の資料（Z004）が置き場へ書かれるのは、その精算の操作の時点である（D10 の根拠）: 正常に保存された精算では観測した。2022-08-13 以降の完了した日計明細・ＰＬＵの精算票の全てが SD の Z004 の更新時刻の順位と 1 対 1 で、記録の日付と path の日付が全て同じ、更新時刻は記録の時刻の後で、後の精算でまとめて書かれた例は無い（入力 3 の (b)。`rg -c '後の精算でまとめて書かれた例は 0' docs/backlog.md` が 1）。完了した精算票の SD カード保存の状態は全て正常終了で、異常終了した精算の Z004 の残り方は資料に例が無く確かめられない（入力 3 の (c)）。店には SD カードのエラーで締められなかった日がある（repo 外の回答台帳 TD-160・TD-161）が、その日が精算をせずに終わった日か、保存だけ失敗した日かは分からず、資料の中の異常終了の行はスマートフォン送信と設定の書込みだけで、売上の保存の異常終了は無い。-> 正常な保存は観測、異常終了は未観測（確かめられない）。設計への効き方: 異常終了の項目は 32 の外部 probe 表の「精算の書込み」の行に残り、D10 を有効にする変更の owner-operated gate で扱う。証拠を得る手段（説明書・製造元の記載、実機）が無ければ、その変更の lane が残る危険の受け入れを owner に諮る。確かめるまで枝を入れない
 - P2 資料の個数・金額は、直前の精算より後の販売・返品だけを持つ: 観測した（強さに限りがある）。EJ の区間の名称ごとの符号付き合計と Z004 の行を比べられた区間の全てで個数・金額が一致し、区間の合計と EJ の先頭からの累積が違う値になって差分か累積かを区別できる組は、全て区間の合計の側と一致した。2 つが同じ値で区別できない組もある（入力 4 の (a)。`rg -c '「累積と合う組は無い」とは言えない' docs/backlog.md` が 1）。PLU を 1 件登録して売ると個数の列に出ること、締めの後の新しい Z004 が開始時と整合したことは店の確認（repo 外の回答台帳 L-012・L-030）。-> 観測（PLU で売った実例が少ない。owner-operated gate の通過ではない）。ADR D5 の「EJ完全性」の owner-operated gate と同じ確認で、D10 を有効にする変更の merge 条件に残す（32 の外部 probe 表）
 - P3 Z004 の path の日付（年・月の folder と名前の日）は、中身の精算日と同じ: 観測した。手元に中身のある Z004 の全てで同じ（入力 3 の (b)。`rg -c 'path の日付 = 中身の精算日' docs/backlog.md` が 1）。日付をまたぐ時刻の精算は資料に無く、その場合のずれは未観測。-> 観測（日付をまたぐ精算は未観測。D10 の条件 3 を「窓の始まりの翌日以降」にして 1 日のずれを受ける）
-- P4 置き場の file を人が足さない・消さない・書き換えない: 店の運用の前提として ADR D10 に明記。SD を別の 1 枚に替えること・古い SD を後から読むこと・ファイルを選ぶ経路で取ることは、この前提に含めない（D10 の条件 3 がどれも判定不能に倒す。下の入力列）。-> 前提
+- P4 置き場の file を人が足さない・消さない・書き換えない: 店の運用の前提として ADR D10 に明記。SD を別の 1 枚に替えること・古い SD を後から読むこと・ファイルを選ぶ経路で取ることは、この前提に含めない（D10 の条件 3 がどれも判定不能に倒す。下の入力列）。SD の写しを取外し可能な媒体に置いて差すことは、この前提の違反に当たる（アプリはその媒体をレジの置き場と区別できず行を置くので、D10 は守れない。古い写しの後に新しい写しを置く形で、数える前の販売を含む資料が全部実測後になりうる。接続の runtime lane の L3 の筋書きの候補）。写しの folder を利用者が選んで読む復旧は、行を置かないので判定不能に倒れる。-> 前提
 - P5 精算票と Z004 の対応: 起票時に観測済みとした「題の末尾 + 1 = Z004 の settlement_no」は、0011 以降では成り立つが規則としては使えないと分かった。Z004 の settlement_no は Z004 を書いた精算の通し番号で、題の末尾とは別の番号で進み、差はＰＬＵだけの精算のたびに変わる（入力 3 の (a)。`rg -c '対応づけに番号の差を使わない' docs/backlog.md` が 1）。使い始めの 0001〜0010 は規則が外れ、うち 9 個は別の記録に 1 件として当たった。代わりに観測したのは、Z004 の中身の時刻が精算票の記録の時刻と同じ分か 1 分後であること（手元に中身のある Z004 の全て。入力 3 の (b)）。-> D5a の終端の候補を日時で抽出する形にした。Z004 と精算票の記録を結べる値は日時のほかに無い（現物の型: `rg -n 'pub (machine_no|report_kind|settlement_no|settled_at):' src-tauri/src/io/z004_parser.rs` が 4 行、`rg -n 'pub (printed_at|number_prefix|number):' src-tauri/src/io/ej_parser.rs` が 3 行〈実測 2026-10-12〉。題の末尾の番号は上のとおり別の番号で、Z004 の本文は商品の行だけ）ので、候補が 1 件であることだけでは対応づけを確定しない。確定の条件は日次の EJ 取込みの lane の設計が決める（未決）。決まるまで、どの区間も EJ 待ち（数え直し）に倒れる
 - P6 EJ の 6 桁の番号は記録ごとに +1 で file と精算をまたいでも戻らない、記録ヘッダの 4 桁の欄 = machine_no: 観測済み。出典 `rg -n '全期間 8,624 件が \+1 で連続' docs/backlog.md` の行と `rg -n '6 桁の番号は記録ごとに \+1' docs/function-design/29-io-ej-parser.md` の行、`rg -n 'EJ の見出しの 4 桁 = machine_no' docs/backlog.md` の行。-> 観測
 - P7 ＰＬＵの精算票: 完了したＰＬＵの精算票は Z004 を 1 本ずつ書き、題の末尾は対応する Z004 の番号と同じだった（入力 3 の (a)。母数は 3 で、最後は 2022-08 。規則として確かめるには足りない）。D5a は番号を使わず、ＰＬＵの精算票も日計明細と同じく日時で終端の候補にする（手元に中身のある Z004 のうち相手がＰＬＵのものも日時が合った。`rg -c 'Daily. か .Plu' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1）。-> 観測（母数が小さい）。外れれば候補が無く、EJ 待ちに倒れる
 - P8 番号印字の残る桁数・行数の内訳・取引の途中で打ったときの位置: 番号印字を採らない（TD-224）ので確かめない。EJ に残り売上・現金・Z 帳票に影響しないことは観測済み（Issue #105 の A7、`rg -n '番号印字（EJ の記録と取引番号・時刻との並び）= 2026-09-28 確認済み' docs/backlog.md` の行）。-> 不要
 - P9 IO-09 が窓の始まりの日付で SD の entry を列挙する設計である: `rg -c 'fn list_register_sd_entries' docs/function-design/29-io-daily-report-parser.md` が 1（実測、2026-10-11）。runtime は未実装（`src-tauri/src/io/` に `register_sd.rs` が無い）。-> D10 は窓つきの読取りで成り立つ形（条件 3 の `window_from`）にした
-- P10 置き場の識別子（SD のボリュームの通し番号）を読取り専用で取れ、同じ SD では読取りをまたいで同じ、別の SD では違う: 取得の API を含む feature が依存にあること（`rg -n 'Win32_Storage_FileSystem' src-tauri/Cargo.toml` が 1 行、実測 2026-10-11）だけ確かめた。店の reader と SD での値の安定は未実測。設計の `RegisterSdRoot` は識別子を持たない（`rg -n 'volume_label' docs/function-design/29-io-daily-report-parser.md` の行は表示用の名前）。-> 未実測（接続の runtime lane の Contract Probe と L3。取れない間は行を置かず、何も全部実測後にならない）
+- P10 置き場の識別子（SD のボリュームの通し番号）を読取り専用で取れ、同じ SD では読取りをまたいで同じ、別の SD では違う: 取得の API を含む feature が依存にあること（`rg -n 'Win32_Storage_FileSystem' src-tauri/Cargo.toml` が 1 行、実測 2026-10-11）だけ確かめた。店の reader と SD での値の安定は未実測。設計の `RegisterSdRoot` は識別子を持たない（`rg -n 'volume_label' docs/function-design/29-io-daily-report-parser.md` の行は表示用の名前）。店の PC の reader で SD が取外し可能な volume として見えたことは観測済み（`rg -c '^\| SD-25 \| 店の PC の reader で SD は取外し可能な volume として見え' docs/function-design/29-io-daily-report-parser.md` が 1、実測 2026-10-12）。SD が固定の disk として見える reader の PC では、自動で root を見つけず行が置かれないので、D10 は働かない（要再確認に戻る）。-> 未実測（接続の runtime lane の Contract Probe と L3。取れない間は行を置かず、何も全部実測後にならない）
 - P11 PLU で売った分は部門別の集計（Z005）にも入る: 観測した。Z005 の個数の合計は同じ区間の EJ の全明細の符号付き合計と手元の全てで一致し、Z004 に 0 でない行がある区間では、PLU の行を除いた EJ の合計とは一致しない（入力 4 の (c)）。-> 観測。Z004 の商品別の売上と日報の部門別の合計を足し合わせない（既存の「sale_records と日報の分離」のまま。設計は変えない）
 - P12 部門名と同じ名称の PLU の枠がある: 観測した。EJ の明細の行にコードは印字されず、名称だけでは PLU の販売と部門キーの販売を分けられない。その名称の EJ の明細の大半は、Z004 の行が 0 の区間（部門キーの販売）にある（入力 4 の (d)）。効く所は ADR D5 の商品別の符号付き合計の照合と行の分類で、その名称を含む単位は照合せず、その名称の行が区間に 1 つでもあれば、その名称の数えた商品（数量・金額とも 0）が相殺の行ありになる。-> 観測。見逃さない側（数え直しが増える側）に倒れる。名称の重なりの検知と登録名の付け直しの支援を PLU の本番より前に要る（ADR D4 の在庫連動の有効化の条件。変えない）
 - P13 小数の数量の取引: Z004 の個数の欄と EJ の数量の行に小数の値がある（入力 4 の (e)）。今の EJ parser は小数の数量・点数の行を受理しない（`rg -c '小数の数量・点数を受理する' docs/function-design/29-io-ej-parser.md` が 1。不採用の表の行）ので、その取引は復元不能で、その取引を含む区間は ADR D5a の読めない記録により完全にならない。-> 観測。後続の lane（単位の拡張の runtime、日次の EJ 取込み）への申し送り。それまで EJ 待ち（数え直し）に倒れる
@@ -340,6 +349,11 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
   - 列 9（読取りが途中で失敗した日）: 読取り S が精算 k の資料を受領した後に失敗 → 同じ日に読み直して完了 → 翌日以降は毎日完了。結果: k は自分の初回受領が未完了の S で不成立、k + 1 は P（k）が未完了の S で不成立、k + 2 は成立
   - 列 10（連日売れる商品を毎日数え直す）: C₀ → 精算 m・読取り・取込み（判定不能）→ 数え直し C₁ → 精算 m + 1・読取り・取込み → 数え直し C₂ → 精算 m + 2・読取り・取込み。結果: m + 1 は C₁ から見て 1 つ目、m + 2 は C₂ から見て 1 つ目の精算で、どれも不成立（各 C の `source_scan_cursor` が直前の読取りの ID 以上になり、それより後の完了した読取りが 1 つしか無い）。数え直さなければ m + 2 は C₀ に対して成立する。限界として ADR D10 に書いた（TD-228）
   - 列 11（DB の restore）: C → 読取り O → backup → 精算・読取り → restore → 読取り。結果: 資料・読取りの行・実測が backup の時点へ戻り、restore の後の読取りで受領する資料はその読取りを初回受領にする。戻した DB の O の時点でその資料が置き場に無かったことは変わらないので、条件が成り立つ資料は実測の後の精算のもの。backup の後に保存して失われた実測は基準にならない（DB に無い）
+  - 列 12（重なる全数読取り。排他が無い場合の列）: 精算 P → 販売 → C → 精算 F（C より前の販売を含む）→ 読取り O が行を置く → 別の読取り O′ が行を置き、P・F を受領して完了 → O が P・F を受領済みと対応づけて完了。結果: `C.source_scan_cursor < O.id < O′.id`、P・F の `first_scan_id` が O′ で条件 3 が成り立ち、F が全部実測後になる。読取りの排他（行を置く前から完了・失敗まで、同じ DB に対する唯一の操作）により、O′ は O の完了・失敗まで行を置けず、この列は起きない。契約として ADR D10 に書いた理由
+  - 列 13（利用者が場所を選んだ root）: 精算 41（未読）→ 販売 → C → 古い写しの folder（41 より前の写し）を場所を選んで読む → 精算 42（C より前の販売を含む）→ SD を写した別の folder を場所を選んで読み、41 と 42 を初めて受領。結果: 選んだ root の読取りは行を置かないので、41・42 の `first_scan_id` は NULL で不成立。選んだ root で行を置く形では、2 つの folder の識別子がどちらも PC の disk の値で同じになり、条件 3 が成り立って 42 が全部実測後になった
+  - 列 14（保存の不具合で、指す行が無い先の ID を持つ `first_scan_id`）: P・F の `first_scan_id` が 4・5 で、実在する読取りの行の最大 ID は 2 → 不具合を直す変更の migration（全ての実測の cursor を 2 へ、全ての `first_scan_id` を NULL へ）→ 読取り 3・4・5 が完了。結果: P・F は NULL で不成立。cursor だけを引き上げる形では、行 3・4・5 がそろった時点で `2 < 3 < 4 <= 5` が成り立ち、F が全部実測後に戻った
+  - 列 15（D10 を有効にした直後）: 有効にする migration → 精算 a・読取り → 精算 b・読取り → 精算 c・読取り。結果: a は直前の精算の資料が NULL で不成立、b は a の初回受領の読取りより前に、migration より後の完了した読取りが無く不成立、c は成立。migration の直後に読取りを一度済ませていれば b から成立
+  - 列 16（SD を 2 枚交互に使う）: 毎日 2 枚を入れ替える。結果: 直前の精算の資料と当の資料の初回受領の読取りの識別子が常に違い、どの資料も不成立（安全側。店がそうしているかは確かめていない。本 lane は決めない）
 - D5a の終端の候補の入力列（机上で骨に当てた。番号と日付は入力 3 の集計のもの。候補をひとつに絞って確定する条件は決めていないので、結果は「候補に入るか」までを書く）:
   - 使い始めの 0001〜0010: 番号の規則では 0001 に当たる記録が無く、0002〜0010 は別の記録ひとつに当たる。日時による抽出では、集計が「実際の相手」とした記録（日付と時刻が合う記録）が候補に入り、題の末尾の番号が合うだけの別の記録は入らない
   - Z004 を書かなかった精算（使い始めの日計明細。入力 3 の日付ごとの件数が違う日）: どの Z004 の日時とも合わず、候補にならない
@@ -353,6 +367,7 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
   - レジの時計が戻った日に精算した資料（P でも F でも同じ）: 精算日が窓の始まりより前になれば条件 3 が成り立たず、その資料と次の資料は判定不能。精算日が窓の中なら、O の時点で置き場にあれば列挙されて受領されているので、「O に無く O′ にある」は時計に依らず正しい
   - 時計が進められていた間の資料: path の日付が先の日付でも、窓は始まりだけを持つ（終わりを持たないと ADR D10 に書いた）ので列挙に入り、受領される。窓に終わりを付ける実装では、この資料が列挙されず、後の読取りで「置き場に無かった」と数えられる（Matrix の D10-22）
   - 日付をまたぐ時刻の精算（未観測）: path の日付が中身の精算日の前日で、窓の始まりの前日に当たると、置き場にあっても列挙されない。起票時の条件（精算日が窓の始まり以降）では、この資料が後の読取りで初めて受領されると「置き場に無かった」と数えた。条件を「窓の始まりの翌日以降」に改め、この列を成り立たなくした
+  - 窓の始まりを読取りの当日にする: 同じ日の O より後の精算の資料の精算日が `O.window_from` の翌日以降にならず、その資料と次の資料が不成立になる（安全側。同じ日に 2 回精算する日のたびに要再確認が増える）。ADR D10 は窓の始まりを読取りの日の前日以前と決めた。37 §37.9 手順 2 の窓は最後の日報取込みの日付と今日の 30 日前の早い方で、常に 30 日以上前（`rg -c 'その `report_date` の最大と `today` − 30 日の早い方' docs/function-design/37-biz-daily-report-import-service.md` が 1、実測 2026-10-12）
   - 窓の始まりを決めるアプリの時計が狂っている: 窓が動くだけで、条件 3 は列挙の範囲と同じ値で比べるので、列挙されなかった資料を根拠にしない
 - 観測済みで probe の要らない前提: SD の原本・取込み後の file・PC 側の複製が同じ bytes（29 の日報 parser の SD-22 の観測と SD-23 の推定）、戻の行に商品名が載る・締めで同じ日の EJ を SD から取れる・レジが clear を受け付ける（`docs/backlog.md` の同項目の 2026-10-06 の再確認）、clear した枠の行の残り方（D-103）。
 
