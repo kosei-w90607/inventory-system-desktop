@@ -26,6 +26,7 @@ mod schema_v4;
 mod schema_v5;
 mod schema_v6;
 mod schema_v7;
+mod schema_v8;
 
 // 時点証拠 schema（⑤ まで registry に登録せず test の helper だけが当てる。D-109 (2)(3)）
 #[cfg(test)]

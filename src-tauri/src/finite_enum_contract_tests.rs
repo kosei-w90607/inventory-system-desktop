@@ -8,6 +8,64 @@ use crate::db::product_repo::{ProductStockUnit, ProductTaxRate};
 use crate::db::return_repo::{ReturnDirection, ReturnExchangeType};
 use crate::db::sales_repo::CsvImportStatus;
 
+/// `ProductStockUnit` の variant と wire の文字列の対（SPEC-UNIT-D1 の表の順）
+const PRODUCT_STOCK_UNIT_WIRE: [(ProductStockUnit, &str); 12] = [
+    (ProductStockUnit::Pcs, "pcs"),
+    (ProductStockUnit::Sheet, "sheet"),
+    (ProductStockUnit::Hon, "hon"),
+    (ProductStockUnit::Bag, "bag"),
+    (ProductStockUnit::Box, "box"),
+    (ProductStockUnit::Roll, "roll"),
+    (ProductStockUnit::Kumi, "kumi"),
+    (ProductStockUnit::Set, "set"),
+    (ProductStockUnit::Ball, "ball"),
+    (ProductStockUnit::Cho, "cho"),
+    (ProductStockUnit::M, "m"),
+    (ProductStockUnit::Cm, "cm"),
+];
+
+/// wildcard の無い match で次の variant を引く（variant を足すと compile error でここを直させる）
+fn next_product_stock_unit(unit: ProductStockUnit) -> Option<ProductStockUnit> {
+    use ProductStockUnit as U;
+    match unit {
+        U::Pcs => Some(U::Sheet),
+        U::Sheet => Some(U::Hon),
+        U::Hon => Some(U::Bag),
+        U::Bag => Some(U::Box),
+        U::Box => Some(U::Roll),
+        U::Roll => Some(U::Kumi),
+        U::Kumi => Some(U::Set),
+        U::Set => Some(U::Ball),
+        U::Ball => Some(U::Cho),
+        U::Cho => Some(U::M),
+        U::M => Some(U::Cm),
+        U::Cm => None,
+    }
+}
+
+#[test]
+fn test_product_stock_unit_all_req101_lists_every_variant_once() {
+    // REQ-101 / SPEC-UNIT-D1・D10（X12）: ALL は 12 個・重複なしで、対の表の variant の並びと一致する
+    let all = ProductStockUnit::ALL;
+    assert_eq!(all.len(), 12);
+    let by_match: Vec<ProductStockUnit> =
+        std::iter::successors(Some(ProductStockUnit::Pcs), |unit| {
+            next_product_stock_unit(*unit)
+        })
+        .collect();
+    assert_eq!(by_match, all, "match で数えた variant と ALL が一致する");
+    let codes: std::collections::HashSet<&str> = all.iter().map(|unit| unit.as_str()).collect();
+    assert_eq!(codes.len(), all.len(), "重複なし");
+    assert_eq!(all, PRODUCT_STOCK_UNIT_WIRE.map(|(unit, _)| unit));
+    // 一覧に無い kg は wire で受けない
+    assert!(serde_json::from_str::<ProductStockUnit>("\"kg\"").is_err());
+    assert_eq!(ProductStockUnit::from_code("kg"), None);
+    assert_eq!(
+        ProductStockUnit::from_code("ball"),
+        Some(ProductStockUnit::Ball)
+    );
+}
+
 fn assert_roundtrip<T>(value: T, wire: &str)
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq + std::fmt::Debug,
@@ -60,8 +118,9 @@ fn test_request_response_enum_wire_roundtrip_req202_req203_req204_req401_req502(
     ] {
         assert_roundtrip(value, wire);
     }
-    for (value, wire) in [(ProductStockUnit::Pcs, "pcs"), (ProductStockUnit::Cm, "cm")] {
+    for (value, wire) in PRODUCT_STOCK_UNIT_WIRE {
         assert_roundtrip(value, wire);
+        assert_eq!(value.as_str(), wire);
     }
     for (value, wire) in [(ExportMode::Full, "full"), (ExportMode::Diff, "diff")] {
         assert_roundtrip(value, wire);
@@ -132,6 +191,7 @@ fn test_request_enum_invalid_literals_are_rejected_req202_req203_req204_req303_r
     rejects!(ManualSaleReason);
     rejects!(ProductTaxRate);
     rejects!(ProductStockUnit);
+    assert!(serde_json::from_str::<ProductStockUnit>("\"kg\"").is_err());
     rejects!(ExportMode);
     rejects!(SalesMode);
     rejects!(MovementType);
@@ -185,8 +245,9 @@ fn test_canonical_wire_matches_serde_req202_req203_req204_req303_req401() {
     parity!(ProductTaxRate::Rate10);
     parity!(ProductTaxRate::Rate8);
     parity!(ProductTaxRate::Rate0);
-    parity!(ProductStockUnit::Pcs);
-    parity!(ProductStockUnit::Cm);
+    for (unit, _) in PRODUCT_STOCK_UNIT_WIRE {
+        parity!(unit);
+    }
     parity!(MovementType::SaleAuto);
     parity!(MovementType::SaleManual);
     parity!(MovementType::Receiving);

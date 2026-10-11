@@ -17,8 +17,17 @@ pub enum StockUnitKind {
 /// 単位の数量の種類（SPEC-UNIT-D1）。単位を足したら compile error で種類を決めさせるため wildcard を置かない
 pub fn stock_unit_kind(unit: ProductStockUnit) -> StockUnitKind {
     match unit {
-        ProductStockUnit::Pcs => StockUnitKind::Count,
-        ProductStockUnit::Cm => StockUnitKind::Length,
+        ProductStockUnit::Pcs
+        | ProductStockUnit::Sheet
+        | ProductStockUnit::Hon
+        | ProductStockUnit::Bag
+        | ProductStockUnit::Box
+        | ProductStockUnit::Roll
+        | ProductStockUnit::Kumi
+        | ProductStockUnit::Set
+        | ProductStockUnit::Ball
+        | ProductStockUnit::Cho => StockUnitKind::Count,
+        ProductStockUnit::M | ProductStockUnit::Cm => StockUnitKind::Length,
     }
 }
 
@@ -133,11 +142,28 @@ mod tests {
 
     #[test]
     fn test_valuation_req205_price_basis_by_unit() {
-        // REQ-205 / SPEC-STK-VAL-D1 / SPEC-UNIT-D1: 種類と基準数量は在庫単位で決まる
-        assert_eq!(stock_unit_kind(ProductStockUnit::Pcs), StockUnitKind::Count);
-        assert_eq!(stock_unit_kind(ProductStockUnit::Cm), StockUnitKind::Length);
-        assert_eq!(price_basis_quantity(ProductStockUnit::Pcs), 1);
-        assert_eq!(price_basis_quantity(ProductStockUnit::Cm), 100);
+        // REQ-205 / SPEC-STK-VAL-D1 / SPEC-UNIT-D1: 種類と基準数量は在庫単位で決まる（正本の 12 個の表）
+        use ProductStockUnit as U;
+        use StockUnitKind::{Count, Length};
+        let table = [
+            (U::Pcs, Count, 1),
+            (U::Sheet, Count, 1),
+            (U::Hon, Count, 1),
+            (U::Bag, Count, 1),
+            (U::Box, Count, 1),
+            (U::Roll, Count, 1),
+            (U::Kumi, Count, 1),
+            (U::Set, Count, 1),
+            (U::Ball, Count, 1),
+            (U::Cho, Count, 1),
+            (U::M, Length, 100),
+            (U::Cm, Length, 100),
+        ];
+        assert_eq!(table.map(|(unit, _, _)| unit), ProductStockUnit::ALL);
+        for (unit, kind, basis) in table {
+            assert_eq!(stock_unit_kind(unit), kind, "{unit:?}");
+            assert_eq!(price_basis_quantity(unit), basis, "{unit:?}");
+        }
     }
 
     #[test]

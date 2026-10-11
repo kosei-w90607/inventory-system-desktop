@@ -34,15 +34,56 @@ impl ProductTaxRate {
 #[serde(rename_all = "snake_case")]
 pub enum ProductStockUnit {
     Pcs,
+    Sheet,
+    Hon,
+    Bag,
+    Box,
+    Roll,
+    Kumi,
+    Set,
+    Ball,
+    Cho,
+    M,
     Cm,
 }
 
 impl ProductStockUnit {
+    /// 全 variant（SPEC-UNIT-D1 の表の順）。在庫少の並びと DB の読取りがここから作る
+    pub const ALL: [Self; 12] = [
+        Self::Pcs,
+        Self::Sheet,
+        Self::Hon,
+        Self::Bag,
+        Self::Box,
+        Self::Roll,
+        Self::Kumi,
+        Self::Set,
+        Self::Ball,
+        Self::Cho,
+        Self::M,
+        Self::Cm,
+    ];
+
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Pcs => "pcs",
+            Self::Sheet => "sheet",
+            Self::Hon => "hon",
+            Self::Bag => "bag",
+            Self::Box => "box",
+            Self::Roll => "roll",
+            Self::Kumi => "kumi",
+            Self::Set => "set",
+            Self::Ball => "ball",
+            Self::Cho => "cho",
+            Self::M => "m",
             Self::Cm => "cm",
         }
+    }
+
+    /// code から variant を引く。一覧に無い値は `None`
+    pub(crate) fn from_code(code: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|unit| unit.as_str() == code)
     }
 }
 
@@ -60,15 +101,13 @@ fn parse_tax_rate(value: String) -> rusqlite::Result<ProductTaxRate> {
 }
 
 pub(crate) fn parse_stock_unit(value: String) -> rusqlite::Result<ProductStockUnit> {
-    match value.as_str() {
-        "pcs" => Ok(ProductStockUnit::Pcs),
-        "cm" => Ok(ProductStockUnit::Cm),
-        _ => Err(rusqlite::Error::FromSqlConversionFailure(
+    ProductStockUnit::from_code(&value).ok_or_else(|| {
+        rusqlite::Error::FromSqlConversionFailure(
             0,
             rusqlite::types::Type::Text,
             format!("unknown product stock_unit: {value}").into(),
-        )),
-    }
+        )
+    })
 }
 
 /// 商品マスタの行マッピング（products テーブル全18カラム）
@@ -164,7 +203,6 @@ pub struct ProductUpdates {
     pub tax_rate: Option<String>,
     pub maker_code: Option<Option<String>>,
     pub stock_quantity: Option<i64>,
-    pub stock_unit: Option<String>,
     pub is_discontinued: Option<bool>,
     pub plu_dirty: Option<bool>,
     pub plu_exported_at: Option<Option<String>>,
@@ -1042,11 +1080,6 @@ pub fn update_product(
         params.push(Box::new(qty));
         idx += 1;
     }
-    if let Some(ref unit) = updates.stock_unit {
-        set_clauses.push(format!("stock_unit = ?{}", idx));
-        params.push(Box::new(unit.clone()));
-        idx += 1;
-    }
     if let Some(disc) = updates.is_discontinued {
         set_clauses.push(format!("is_discontinued = ?{}", idx));
         params.push(Box::new(disc));
@@ -1226,11 +1259,14 @@ pub fn get_stock_detail(conn: &DbConnection, product_code: &str) -> Result<Stock
 
 /// 在庫が閾値以下の商品を一覧取得する
 ///
-/// 44-cmd-inventory.md §23.9 list_low_stock_products
+/// 44-cmd-inventory.md §23.9 list_low_stock_products。個数の単位は一般の基準、長さの単位は生地の基準で比べる
+/// （SPEC-UNIT-D10）。単位の 2 つの並びは BIZ が作って渡す（db の層は数量の種類を知らない）
 pub fn list_low_stock_products(
     conn: &DbConnection,
-    threshold_pcs: i64,
-    threshold_cm: i64,
+    count_units: &[ProductStockUnit],
+    threshold_count: i64,
+    length_units: &[ProductStockUnit],
+    threshold_length: i64,
     include_discontinued: bool,
 ) -> Result<Vec<ProductWithRelations>, DbError> {
     let discontinued_clause = if include_discontinued {
@@ -1238,6 +1274,20 @@ pub fn list_low_stock_products(
     } else {
         "AND p.is_discontinued = 0"
     };
+    let placeholders = |units: &[ProductStockUnit]| vec!["?"; units.len()].join(",");
+    let mut params: Vec<rusqlite::types::Value> = Vec::new();
+    params.extend(
+        count_units
+            .iter()
+            .map(|unit| unit.as_str().to_string().into()),
+    );
+    params.push(threshold_count.into());
+    params.extend(
+        length_units
+            .iter()
+            .map(|unit| unit.as_str().to_string().into()),
+    );
+    params.push(threshold_length.into());
     let sql = format!(
         "SELECT p.product_code, p.jan_code, p.name, p.department_id, p.supplier_id,
                 p.selling_price, p.cost_price, p.tax_rate, p.maker_code,
@@ -1255,14 +1305,16 @@ pub fn list_low_stock_products(
          FROM products p
          LEFT JOIN departments d ON p.department_id = d.id
          LEFT JOIN suppliers s ON p.supplier_id = s.id
-         WHERE ((p.stock_unit = 'pcs' AND p.stock_quantity <= ?1)
-             OR (p.stock_unit = 'cm' AND p.stock_quantity <= ?2))
+         WHERE ((p.stock_unit IN ({}) AND p.stock_quantity <= ?)
+             OR (p.stock_unit IN ({}) AND p.stock_quantity <= ?))
          {}
          ORDER BY p.stock_quantity ASC, p.name ASC",
+        placeholders(count_units),
+        placeholders(length_units),
         discontinued_clause
     );
     let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(rusqlite::params![threshold_pcs, threshold_cm], |row| {
+    let rows = stmt.query_map(rusqlite::params_from_iter(params), |row| {
         row_to_product_with_relations(row)
     })?;
     let mut items = Vec::new();

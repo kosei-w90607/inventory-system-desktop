@@ -219,6 +219,49 @@ mod tests {
         assert!(!codes.contains(&"LS-OK"));
     }
 
+    /// list_low_stock: 数量の種類の分岐（個数の単位は一般の基準、長さの単位は生地の基準）
+    #[test]
+    fn test_list_low_stock_req302_branches_by_unit_kind() {
+        // REQ-302 / SPEC-UNIT-D10: 新しい単位が在庫少から漏れない
+        let conn = setup_db();
+        seed_product_with_stock(&conn, "LK-BALL", 2, "ball"); // 一般の基準 3 以下 → 出る
+        seed_product_with_stock(&conn, "LK-M-LOW", 400, "m"); // 生地の基準 500 以下 → 出る
+        seed_product_with_stock(&conn, "LK-M-OK", 600, "m"); // 生地の基準を超える → 出ない
+        seed_product_with_stock(&conn, "LK-PCS-OK", 4, "pcs"); // 一般の基準を超える → 出ない
+        seed_product_with_stock(&conn, "LK-BALL-OK", 400, "ball"); // 長さの基準で比べない → 出ない
+
+        let result = crate::biz::product_service::list_low_stock(&conn, false).unwrap();
+        let mut codes: Vec<&str> = result
+            .iter()
+            .map(|p| p.product.product_code.as_str())
+            .collect();
+        codes.sort_unstable();
+        assert_eq!(codes, vec!["LK-BALL", "LK-M-LOW"]);
+    }
+
+    /// list_low_stock: 12 個の単位を 1 つずつ在庫 0 で置くと 12 個とも出る
+    #[test]
+    fn test_list_low_stock_req302_every_unit_is_listed() {
+        // REQ-302 / SPEC-UNIT-D10
+        let conn = setup_db();
+        for unit in crate::db::product_repo::ProductStockUnit::ALL {
+            seed_product_with_stock(&conn, &format!("LA-{}", unit.as_str()), 0, unit.as_str());
+        }
+
+        let result = crate::biz::product_service::list_low_stock(&conn, false).unwrap();
+        let mut units: Vec<&str> = result
+            .iter()
+            .map(|p| p.product.stock_unit.as_str())
+            .collect();
+        units.sort_unstable();
+        let mut expected: Vec<&str> = crate::db::product_repo::ProductStockUnit::ALL
+            .iter()
+            .map(|unit| unit.as_str())
+            .collect();
+        expected.sort_unstable();
+        assert_eq!(units, expected);
+    }
+
     /// list_low_stock: include_discontinued=false で廃番除外
     #[test]
     fn test_list_low_stock_req302_exclude_discontinued() {
