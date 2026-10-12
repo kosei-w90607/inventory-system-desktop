@@ -540,7 +540,7 @@ struct ReceivingRecordDetail {
 }
 ```
 
-（proposed・未実装、D-113）: 明細の `stock_unit` は `ProductStockUnit`、行の金額は 1/100 円の十進の文字列 `line_cost_centi`、原価は `cost_price_centi`（原価の lane）、合計の `total_cost` は円の整数のまま。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
+明細の `stock_unit` は `ProductStockUnit`、行の金額は 1/100 円の十進の文字列 `line_cost_centi`、合計の `total_cost` は円の整数（D-113）。原価を `cost_price_centi` にするのは proposed・未実装（原価の lane、D-113）。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
 
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
@@ -646,16 +646,16 @@ struct DisposalRecordDetailItem {
     product_code: String,
     product_name: String,
     department_name: String,
-    stock_unit: String,
+    stock_unit: ProductStockUnit,
     disposal_type: DisposalType,
     quantity: i64,
     cost_price: i64,
     reason: String,
-    line_loss_cost: i64,
+    line_loss_cost_centi: String, // 1/100 円の整数の十進の文字列
 }
 ```
 
-（proposed・未実装、D-113）: `DisposalRecordDetailItem.stock_unit` は `ProductStockUnit`、`line_loss_cost` は 1/100 円の十進の文字列 `line_loss_cost_centi`、`cost_price` は `cost_price_centi`（原価の lane）、`total_loss_cost` は円の整数のまま。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
+`line_loss_cost_centi` は BIZ が求め、`total_loss_cost` は円の整数（D-113）。`cost_price` を `cost_price_centi` にするのは proposed・未実装（原価の lane、D-113）。[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」と [共通規則](10-common-rules.md) SPEC-UNIT-D5・D6・D11。
 
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
@@ -729,7 +729,7 @@ struct StockDetail {
 
 #### list_low_stock
 
-**関数要求**: 在庫が閾値以下の商品を一覧取得する。stock_unit別に異なる閾値を適用する
+**関数要求**: 在庫が閾値以下の商品を一覧取得する。数量の種類（個数・長さ）ごとに異なる閾値を適用する
 
 **シグネチャ（Tauriコマンド）**:
 ```
@@ -748,8 +748,8 @@ include_discontinued: bool   // true=廃番含む、false=廃番除外
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得（`&conn`）
 2. biz::product_service::list_low_stock(&conn, include_discontinued) を呼ぶ
-   - BIZ層内部で system_repo::get_setting で `stock_low_threshold`（pcs用）と `stock_low_threshold_fabric`（cm用）を取得
-   - product_repo::list_low_stock_products に閾値を渡す
+   - BIZ層内部で system_repo::get_setting で `stock_low_threshold`（個数の単位用）と `stock_low_threshold_fabric`（長さの単位用）を取得
+   - product_repo::list_low_stock_products に、単位の 2 つの並びと閾値を渡す
 3. Ok → Vec<ProductWithRelations> をそのまま返す
 4. Err(BizError) → CmdError に変換して返す
 
@@ -943,8 +943,10 @@ WHERE p.product_code = ?1
 ```
 fn list_low_stock_products(
     conn: &DbConnection,
-    threshold_pcs: i64,
-    threshold_cm: i64,
+    count_units: &[ProductStockUnit],
+    threshold_count: i64,
+    length_units: &[ProductStockUnit],
+    threshold_length: i64,
     include_discontinued: bool,
 ) -> Result<Vec<ProductWithRelations>, DbError>
 ```
@@ -955,13 +957,13 @@ SELECT p.*, d.name AS dept_name, s.name AS supplier_name
 FROM products p
 LEFT JOIN departments d ON p.department_id = d.id
 LEFT JOIN suppliers s ON p.supplier_id = s.id
-WHERE ((p.stock_unit = 'pcs' AND p.stock_quantity <= ?1)
-    OR (p.stock_unit = 'cm' AND p.stock_quantity <= ?2))
+WHERE ((p.stock_unit IN (…count_units) AND p.stock_quantity <= ?)   -- 個数の単位、threshold_count
+    OR (p.stock_unit IN (…length_units) AND p.stock_quantity <= ?))  -- 長さの単位、threshold_length
   [AND p.is_discontinued = 0]  -- include_discontinued=false の場合
 ORDER BY p.stock_quantity ASC, p.name ASC
 ```
 
-proposed・未実装（D-113）: 単位が 12 種になった後は `p.stock_unit = 'pcs'` を個数の単位の 10 個の code の `IN (…)`、`p.stock_unit = 'cm'` を `IN ('m','cm')` にする。code の並びは `ProductStockUnit` の全 variant から作り、どちらにも入らない単位が在庫少から漏れないことを test で止める（[共通規則](10-common-rules.md) SPEC-UNIT-D10）。
+2 つの `IN (…)` の code は bind で渡す。並びは BIZ が `ProductStockUnit::ALL` を数量の種類で分けて作って渡し（個数の 10 個の code と、`m`・`cm`）、repo は受けた並びで SQL を組むだけ（db の層は数量の種類を知らない）。どちらにも入らない単位が在庫少から漏れないことを test で止める（D-113、[共通規則](10-common-rules.md) SPEC-UNIT-D10）。
 
 **ページング不要の理由**: 閾値以下の商品は通常少数（数十件程度）。4000商品中、在庫少は一覧で全件表示する（architecture/ui-task-specs.md UI-06b仕様）。
 
@@ -1082,9 +1084,10 @@ fn list_low_stock(
 ```
 
 list_low_stock の処理:
-1. system_repo::get_setting(conn, "stock_low_threshold") で pcs 閾値を取得（デフォルト3）
-2. system_repo::get_setting(conn, "stock_low_threshold_fabric") で cm 閾値を取得（デフォルト500）
-3. product_repo::list_low_stock_products(conn, threshold_pcs, threshold_cm, include_discontinued) を呼び出し
+1. system_repo::get_setting(conn, "stock_low_threshold") で個数の単位の閾値を取得（デフォルト3）
+2. system_repo::get_setting(conn, "stock_low_threshold_fabric") で長さの単位の閾値（cm）を取得（デフォルト500）
+3. `ProductStockUnit::ALL` を数量の種類で個数と長さの 2 つの並びに分ける
+4. product_repo::list_low_stock_products(conn, count_units, threshold_count, length_units, threshold_length, include_discontinued) を呼び出し
 
 ---
 

@@ -2,14 +2,14 @@
 
 > **2026-06-30 REQ-401 redesign note**: 既存BIZ-05は `sale_records` 由来の商品別売上を日次/月次レポートとして返す。current operation の公式日報入力は Z001/Z002/Z005 であり、これは `daily_report_imports` / `daily_report_*_lines` 由来の集計データである。BIZ-05は今後、公式日報集計と商品別売上明細を分けて返す。日報集計を `sale_records` に擬似展開しない。
 
-### 単位の拡張の後の数量（proposed・未実装、D-113）
+### 数量と単位（D-113）
 
-[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」（owner の決定 TD-203: 長さの商品の数量は m、単価は 1 m あたり）の BIZ-05 の側。以下の本文は現行実装の契約である。
-- `DailySaleItem` に `stock_unit: ProductStockUnit` を足す（`quantity` は今どおり在庫の数量、長さは cm）。`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` の `quantity: i64` を `count_points: i64`（個数の種類の数量の和）と `length_cm: i64`（長さの種類の数量の和、cm）に置き換える。`MonthlySaleItem` の商品別の行はどちらか一方だけが値を持ち、`stock_unit: ProductStockUnit | null`（商品別だけ値）で数量の種類を運ぶ（販売と返品が相殺して `(0, 0)` になった長さの商品の行を `0 m` で出すため。SPEC-UNIT-D11）。集計の読取りを安全な整数の範囲で検査して拒むことはしない（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」の (d): 1 明細の数量の上限 `9999999` の下では、1 つの集計が `9007199254740991` を越えるのに 900,720,016 件の明細が要る）。CSV（§19.5）は画面と同じ値から書く。
-- 部門小計・総合計・月次の部門別は、数量の種類ごとに 2 本に分けて足す（SPEC-UNIT-D3 の集計の規則、owner の決定 TD-206・TD-207）。個数の種類の 10 単位は単位をまたいで `count_points` に足し、`m`・`cm` は `length_cm` に足す（`pcs` 3・`sheet` 2・`m` 130・`cm` 50 の日は `count_points` 5・`length_cm` 180）。種類は `biz::unit_amount::stock_unit_kind` で決める。月次の部門別は、SQL を部門と商品の単位で GROUP BY して BIZ で種類ごとに足すか、SQL の `SUM(CASE …)` の単位の並びを `ProductStockUnit` の全 variant から作る（SPEC-UNIT-D10 と同じ。`SUM(sr.quantity)` を部門だけで足したままにしない）。和は checked で足し、i64 の溢れは `ValidationFailed`（範囲の契約ではなく溢れの扱い。今の部門小計と総合計は plain の `+=` と `sum()`: `sales_service.rs:229`・`:244`）。SQL の `SUM` の溢れは SQLite の error のまま。
-- §19.5 の CSV の `数量` の列: 商品の行（日次・月次の商品別）は在庫の数量を表示の単位の数で書く（個数の商品は今と同じ整数、`m`・`cm` の商品はどちらも m の数 `1.3`〈SPEC-UNIT-D3、長さは m・cm とも m で出す〉）。集計の行（月次の部門別）は画面と同じ文字列（`5 点・1.8 m`。個数の商品だけの部門は今と同じ整数）。
+[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」（owner の決定 TD-203: 長さの商品の数量は m、単価は 1 m あたり）の BIZ-05 の側。
+- `DailySaleItem` は `stock_unit: ProductStockUnit` を持つ（`quantity` は在庫の数量、長さは cm）。`DeptSubtotal`・`GrandTotal`・`MonthlySaleItem` は数量を `count_points: i64`（個数の種類の数量の和）と `length_cm: i64`（長さの種類の数量の和、cm）の 2 つで持つ。`MonthlySaleItem` の商品別の行はどちらか一方だけが値を持ち、`stock_unit: ProductStockUnit | null`（商品別だけ値）で数量の種類を運ぶ（販売と返品が相殺して `(0, 0)` になった長さの商品の行を `0 m` で出すため。SPEC-UNIT-D11）。集計の読取りを安全な整数の範囲で検査して拒むことはしない（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」の (d): 1 明細の数量の上限 `9999999` の下では、1 つの集計が `9007199254740991` を越えるのに 900,720,016 件の明細が要る）。CSV（§19.5）は画面と同じ値から書く。
+- 部門小計・総合計・月次の部門別は、数量の種類ごとに 2 本に分けて足す（SPEC-UNIT-D3 の集計の規則、owner の決定 TD-206・TD-207）。個数の種類の 10 単位は単位をまたいで `count_points` に足し、`m`・`cm` は `length_cm` に足す（`pcs` 3・`sheet` 2・`m` 130・`cm` 50 の日は `count_points` 5・`length_cm` 180）。種類は `biz::unit_amount::stock_unit_kind` で決める。月次の部門別は、repo が部門と商品の単位で GROUP BY した行を返し、BIZ が部門ごとに種類で分けて足す（金額も。repo は種類を知らず、`SUM(sr.quantity)` を部門だけで足さない）。和は checked で足し、i64 の溢れは `ValidationFailed`（範囲の契約ではなく溢れの扱い）。SQL の `SUM` の溢れは SQLite の error のまま。
+- §19.5 の CSV の `数量` の列: 商品の行（日次・月次の商品別）は在庫の数量を表示の単位の数で書く（個数の商品は今と同じ整数、`m`・`cm` の商品はどちらも、単位の語と桁区切りを付けない m の数 `1.3`・`1234.56`〈SPEC-UNIT-D3、長さは m・cm とも m で出す〉）。集計の行（月次の部門別）は、`length_cm` が 0 の部門は整数（`count_points`。区切りも語も付けない `1234`）、0 でなければ画面と同じ文字列（`5 点・1.8 m`・`1.8 m`。`N 点` の `N` は 3 桁区切りで `1,234 点・1.8 m`）。
 - レジの日報（公式日報）の数量（D-104）は変えない。
-- テスト（単位の lane の完了条件）: 上限の端の数量の集計が正確に出る。同じ日・同じ部門の長さの商品 A の明細 `9999999`（cm）が 2 件、B の明細 `-9999999` が 1 件 → A の行 `19999998`、B の行 `-9999999`、部門小計と総合計の `length_cm` は `9999999`、`count_points` は 0 で、`get_daily_sales` は成功する。月次の商品別・部門別も同じ形で 1 つずつ。
+- テスト: 上限の端の数量の集計が正確に出る。同じ日・同じ部門の長さの商品 A の明細 `9999999`（cm）が 2 件、B の明細 `-9999999` が 1 件 → A の行 `19999998`、B の行 `-9999999`、部門小計と総合計の `length_cm` は `9999999`、`count_points` は 0 で、`get_daily_sales` は成功する。月次の商品別・部門別も同じ形で 1 つずつ。
 
 ### 19.1 モジュール構成
 
@@ -41,7 +41,8 @@ struct DailySaleItem {
     name: String,
     department_name: String,
     department_id: i64,
-    quantity: i64,       // 売上帳票視点（+販売/-返品）
+    stock_unit: ProductStockUnit, // 商品の単位（表示は単位で決める）
+    quantity: i64,       // 売上帳票視点（+販売/-返品）。在庫の数量（長さは cm）
     amount: i64,         // 金額（円）
     source: DailySaleSource, // "auto" / "manual"
 }
@@ -53,7 +54,8 @@ struct DailySaleItem {
 struct DeptSubtotal {
     department_id: i64,
     department_name: String,
-    quantity: i64,
+    count_points: i64,   // 個数の種類の数量の和
+    length_cm: i64,      // 長さの種類の数量の和（cm）
     amount: i64,
 }
 ```
@@ -62,7 +64,8 @@ struct DeptSubtotal {
 
 ```
 struct GrandTotal {
-    quantity: i64,
+    count_points: i64,
+    length_cm: i64,
     amount: i64,
 }
 ```
@@ -150,7 +153,9 @@ struct MonthlySalesReport {
 struct MonthlySaleItem {
     key: String,            // 商品別: product_code / 部門別: department_id の文字列
     label: String,          // 商品別: 商品名 / 部門別: 部門名
-    quantity: i64,
+    count_points: i64,      // 商品別の行は、長さの商品なら 0
+    length_cm: i64,         // 商品別の行は、個数の商品なら 0
+    stock_unit: Option<ProductStockUnit>, // 商品別の行だけ値。部門別は None
     amount: i64,
     ranking: u32,           // amount降順のランキング（1始まり）
 }
@@ -214,11 +219,11 @@ fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, 
 
 4. **部門小計の計算**
    - items を department_id でグルーピング
-   - 各グループの quantity, amount を合計 → Vec<DeptSubtotal>
+   - 各グループの quantity を数量の種類ごと（count_points / length_cm）に、amount を合計 → Vec<DeptSubtotal>
    - 部門IDの昇順でソート
 
 5. **総合計の計算**
-   - 全 items の quantity, amount を合計 → GrandTotal
+   - 全 items の quantity を数量の種類ごとに、amount を合計 → GrandTotal
 
 6. **結果返却**
    - DailySalesReport { date, items, department_subtotals, grand_total, official_daily_report }
@@ -246,14 +251,14 @@ date: "2026-03-21"
 Ok(DailySalesReport {
     date: "2026-03-21",
     items: [
-        DailySaleItem { product_code: "4976383262108", name: "ﾊﾏﾅｶ ｱﾐｱﾐ極太", department_name: "毛糸", quantity: 3, amount: 1782, source: "auto" },
-        DailySaleItem { product_code: "HZ-0099", name: "ヘアゴムA", department_name: "ヘア雑貨", quantity: 1, amount: 880, source: "manual" },
+        DailySaleItem { product_code: "4976383262108", name: "ﾊﾏﾅｶ ｱﾐｱﾐ極太", department_name: "毛糸", stock_unit: "ball", quantity: 3, amount: 1782, source: "auto" },
+        DailySaleItem { product_code: "HZ-0099", name: "ヘアゴムA", department_name: "ヘア雑貨", stock_unit: "pcs", quantity: 1, amount: 880, source: "manual" },
     ],
     department_subtotals: [
-        DeptSubtotal { department_id: 2, department_name: "ヘア雑貨", quantity: 1, amount: 880 },
-        DeptSubtotal { department_id: 3, department_name: "毛糸", quantity: 3, amount: 1782 },
+        DeptSubtotal { department_id: 2, department_name: "ヘア雑貨", count_points: 1, length_cm: 0, amount: 880 },
+        DeptSubtotal { department_id: 3, department_name: "毛糸", count_points: 3, length_cm: 0, amount: 1782 },
     ],
-    grand_total: GrandTotal { quantity: 4, amount: 2662 },
+    grand_total: GrandTotal { count_points: 4, length_cm: 0, amount: 2662 },
 })
 ```
 
@@ -286,11 +291,11 @@ fn get_monthly_sales(
 
 3. **モード別集計（商品別売上明細）**
    - ByProduct:
-     - sales_repo::get_monthly_sales_by_product(conn, date_from, date_to) → Vec<(product_code, name, quantity, amount)>
-     - key = product_code, label = name
+     - sales_repo::get_monthly_sales_by_product(conn, date_from, date_to) → Vec<(product_code, name, stock_unit, quantity, amount)>
+     - key = product_code, label = name。quantity は単位の種類で count_points か length_cm に入れ、stock_unit を運ぶ
    - ByDepartment:
-     - sales_repo::get_monthly_sales_by_department(conn, date_from, date_to) → Vec<(department_id, department_name, quantity, amount)>
-     - key = department_id.to_string(), label = department_name
+     - sales_repo::get_monthly_sales_by_department(conn, date_from, date_to) → Vec<(department_id, department_name, stock_unit, quantity, amount)>（部門と商品の単位ごとの行）
+     - 部門ごとに、数量を種類で分けて count_points / length_cm に、amount を足す。key = department_id.to_string(), label = department_name、stock_unit = None
 
 4. **ランキング付与（商品別売上明細）**
    - amount の降順でソート
@@ -370,17 +375,17 @@ fn export_sales_csv(
    - Daily:
      - get_daily_sales(conn, target) を呼ぶ
      - ヘッダ: `["商品コード", "商品名", "部門", "数量", "金額", "記録元"]`
-     - rows: items → [product_code, name, department_name, quantity, amount, translate_source(source)]
+     - rows: items → [product_code, name, department_name, 数量（冒頭の「数量と単位」の商品の行）, amount, translate_source(source)]
      - suggested_filename: `sales_daily_{target}.csv`
    - MonthlyByProduct:
      - get_monthly_sales(conn, target, SalesMode::ByProduct) を呼ぶ
      - ヘッダ: `["ランク", "商品コード", "商品名", "数量", "金額"]`
-     - rows: items → [ranking, key, label, quantity, amount]
+     - rows: items → [ranking, key, label, 数量（同、商品の行）, amount]
      - suggested_filename: `sales_monthly_product_{target}.csv`
    - MonthlyByDepartment:
      - get_monthly_sales(conn, target, SalesMode::ByDepartment) を呼ぶ
      - ヘッダ: `["ランク", "部門名", "数量", "金額"]`
-     - rows: items → [ranking, label, quantity, amount]
+     - rows: items → [ranking, label, 数量（同、集計の行）, amount]
      - suggested_filename: `sales_monthly_dept_{target}.csv`
 
 2. **CSV生成**
