@@ -68,7 +68,9 @@ export type SalesReportType =
 export type MonthlySaleItem = {
   key: string;            // by_product = product_code、by_department = department_id 文字列
   label: string;          // by_product = 商品名、by_department = 部門名
-  quantity: number;       // proposed・未実装、D-113: count_points・length_cm の 2 つと stock_unit になる（共通規則 SPEC-UNIT-D3・D11、§57.6 の「単位の拡張の後」）
+  count_points: number;   // 個数の種類の数量の和（共通規則 SPEC-UNIT-D3・D11、§57.6 の「単位と数量」）
+  length_cm: number;      // 長さの種類の数量の和（cm）
+  stock_unit: ProductStockUnit | null; // by_product の行だけ値。by_department は null
   amount: number;
   ranking: number;        // BIZ-05 row_number、1-based、同順位なし前提
 };
@@ -102,7 +104,7 @@ export type MonthlySalesReport = {
 | 新規 | `src/features/monthly-sales/components/MonthNavigator.tsx` | 前月 button + `<input type="month">` + 翌月 button | 60-80 |
 | 新規 | `src/features/monthly-sales/components/ModeTabs.tsx` | mode 切替（`?mode=by_product\|by_department`）。`SegmentedControl` で商品別ランキング / 部門別構成比の二択を描画し、active tone は shared stone selection tone | 40-55 |
 | 新規 | `src/features/monthly-sales/components/SummaryCardsBar.tsx` | 4 カード（売上合計 / 販売点数 / 期間表示 / 前月比） | 100-140 |
-| 新規 | `src/features/monthly-sales/components/DepartmentTable.tsx` | shadcn Table 4 列 + `<Progress>` 構成比バー + 前月比色分け（Q-4 商品数列は `MonthlySaleItem` DTO 不在で非対応、Plans.md Backlog 参照） | 110-150 |
+| 新規 | `src/features/monthly-sales/components/DepartmentTable.tsx` | shadcn Table 5 列（部門・数量・売上・構成比・前月比）+ `<Progress>` 構成比バー + 前月比色分け（Q-4 商品数列は `MonthlySaleItem` DTO 不在で非対応、Plans.md Backlog 参照） | 110-150 |
 | 新規 | `src/features/monthly-sales/components/ProductRankingTable.tsx` | 上位 10 + 1 位は琥珀の pill と行の地（`item.ranking === 1` 追従、G-3） | 90-120 |
 | 新規 | `src/features/monthly-sales/components/ExportBar.tsx` | CSV 出力 button（active）+ 印刷 button（aria-disabled + Tooltip） | 50-70 |
 
@@ -154,10 +156,10 @@ SummaryCardsBar + ModeTabs + DepartmentTable | ProductRankingTable + ExportBar
 ```
 
 **派生 6 純関数の責務分担**:
-1. `compute-summary` → `{ totalAmount, totalQuantity }`
+1. `compute-summary` → `{ totalAmount, totalCountPoints, totalLengthCm }`（数量は種類ごとの 2 本。安全な整数を外れた欄は null）
 2. `compute-period-label` → `"YYYY/MM/DD-MM/DD"` 固定文言（month の月初〜月末を派生、Q-1 B 案）
 3. `compute-comparison` → `Map<key, { prevAmount, diff, ratio | null, isComparable: boolean }>`（key 突合 + `prev_amount <= 0` 比較不可ガード）
-4. `compute-composition` → `{ key, label, amount, ratio }[]`（部門別構成比、`grand_total === 0` ガード）
+4. `compute-composition` → `{ key, label, count_points, length_cm, amount, ratio }[]`（部門別構成比、`grand_total === 0` ガード）
 5. `pick-top-ranking` → `MonthlySaleItem[]` 上位 10（BIZ-05 row_number 順、同順位なし前提）
 6. `sort-items` → 列ソート + null 末尾配置（4 列 + `item.ranking === 1` バッジ追従）。**sort 適用先: `ranking` + `composition` 双方** (raw `items` 非適用)。理由は (a) `ranking` 順位列の `ranking` field 保持で badge 追従 (G-3、sort-items.test.ts:79-90 で検証済)、(b) `composition` 部門別 sort 軸は ranking と独立 (利用者は順位 sort と部門集計 sort を別操作)。UI-09a (フラット → グルーピング) vs UI-09b (multi-derived) の派生木差異に対応する非対称設計
 
@@ -191,7 +193,7 @@ const searchSchema = z.object({
 - `mode` undefined → `"by_product"` fallback
 - 不正値（例: `?month=2026-13`、`?mode=invalid`）→ zod `.catch(undefined)` で吸収、ユーザに通知せず黙って fallback（UI-09a 同方針）
 - BIZ-05 `validate_month` が月番号 1-12 + 年範囲を保証（G-9）
-- `sortBy` enum 4 値のうち `"quantity"` は ProductRankingTable のみ UI 露出 (商品ランキング数量列)、DepartmentTable では UI 露出しない (構成比列はソート対象外、quantity 列なし)。URL paste で `?sortBy=quantity&mode=department` 注入時は `DeptCompositionRow.quantity` field 不在のため `sortMonthlyItems extractValue` が `null` fallback → 全行 `null` → 入力順保持 (BIZ row_number/department_id 由来順序) で table 破綻なし (defensive 動作、test `DepartmentTable.test.tsx` (c) で検証済)
+- `sortBy` enum 4 値のうち `"quantity"` は ProductRankingTable と DepartmentTable の両方で UI 露出する（数量の列。構成比列はソート対象外）。数量の並べ替えは両 mode とも `(count_points, length_cm)` の辞書順（共通規則 SPEC-UNIT-D3 の集計の規則）で、`?sortBy=quantity&mode=by_department` もこの順で並ぶ
 
 ### 57.5 hook 設計
 
@@ -291,11 +293,11 @@ export function useExportFile() {
 
 ### 57.6 純関数（テスト対象 6 + factory 2 + format-month-label 1 = 9 個）
 
-#### compute-summary（[items] → { totalAmount, totalQuantity }）
+#### compute-summary（[items] → { totalAmount, totalCountPoints, totalLengthCm }）
 
-- 単位の拡張の後（proposed・未実装、D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem.quantity` は `count_points`（個数の種類の和）と `length_cm`（長さの種類の和、cm）の 2 つになる。月間販売点数（`compute-summary` は 2 本それぞれに足す）・部門別は `5 点・1.8 m` の形で出す（owner の決定 TD-206・TD-207）。商品別の行はどちらか一方だけが値を持ち、表示は行の `stock_unit` で決める（長さの商品〈`m`・`cm` とも〉は `1.3 m`、相殺して 0 なら `0 m`。個数の商品は今どおり `3 点`）。`compute-summary` の和が `Number.isSafeInteger` を外れたら `—`。数量の並べ替えは SPEC-UNIT-D3 の集計の規則の `(count_points, length_cm)` の順。
+- 単位と数量（D-113、owner の決定 TD-203。[共通規則](10-common-rules.md) SPEC-UNIT-D3）: `MonthlySaleItem` の数量は `count_points`（個数の種類の和）と `length_cm`（長さの種類の和、cm）の 2 つ。月間販売点数（`compute-summary` は 2 本それぞれに足す）・部門別は `5 点・1.8 m` の形で出す（`N 点` の `N` は 3 桁区切りで `1,234 点`。owner の決定 TD-206・TD-207）。商品別の行はどちらか一方だけが値を持ち、表示は行の `stock_unit` で決める（長さの商品〈`m`・`cm` とも〉は `1.3 m`、相殺して 0 なら `0 m`。個数の商品は `3 点`）。`compute-summary` の和が `Number.isSafeInteger` を外れたら `—`。数量の並べ替えは SPEC-UNIT-D3 の集計の規則の `(count_points, length_cm)` の順。
 
-- 空配列 → `{ totalAmount: 0, totalQuantity: 0 }`
+- 空配列 → `{ totalAmount: 0, totalCountPoints: 0, totalLengthCm: 0 }`
 - 負数 amount（返品超過月）→ そのまま合計（純関数、業務判断は呼出側）
 
 #### compute-period-label（[month: "YYYY-MM"] → string）
@@ -388,14 +390,14 @@ function MonthlySalesPage() {
 
 #### SummaryCardsBar（4 カード）
 - カード 1: 月間売上合計（`summary.totalAmount` 円表記）
-- カード 2: 月間販売点数（`summary.totalQuantity` 点）
+- カード 2: 月間販売点数（`summary.totalCountPoints`・`summary.totalLengthCm` を `5 点・1.8 m` の形で。範囲外は `—`）
 - カード 3: 期間表示「YYYY/MM/DD-MM/DD」固定文言（Q-1 B 案、`periodLabel`）
 - カード 4: 前月比（`prev_month_comparison === null` または `[]` 空配列 → 「比較不可」灰、通常 BIZ contract は `Some(空Vec)` で空配列ケース、`null` は specta `Option<Vec<T>>` 境界の defensive guard）
 - **カード溢れ対策（PR-3 (f)）**: `Card` は `flex flex-col` のため grid item の `min-width:auto` で縮まず、長い金額・期間ラベル（「2026/05/01-05/31」等）で `lg:grid-cols-4` のカードが溢れる（B2/B3、CSS 起因で論理バグでない）。`Card` + `CardContent` 両方に `min-w-0` を付与し（CardContent は flex child なので min-w-0 が確定で必須）、value div を `truncate` する。日次版 `daily-sales/components/SummaryCardsBar.tsx`（SimpleCard + CardWithTooltip）も同方針
 
-#### DepartmentTable（4 列 + Progress バー、Q-4 商品数非対応）
-- 列: 部門 / 売上 / 構成比（数値 + `<Progress>` バー）/ 前月比（商品数列は `MonthlySaleItem` DTO に `product_count` field 不在のため非対応、Plans.md Backlog 参照）
-- **SortableHeader 適用列 (3 列、構成比列はソート対象外)**: 共通owner `src/components/sales/SortableHeader.tsx`（UI-TABLE-D1）を使い、部門名 (`name`) / 売上 (`amount`) / 前月比 (`prev_month_diff`)を結線する。click で `onSortChange(column)` 発火 → MonthlySalesPage の `handleSortChange` が `sortBy/sortDir` 切替 (同列再 click → desc toggle / 別列 → asc) を `onSearchChange` 経由で URL state 更新
+#### DepartmentTable（5 列 + Progress バー、Q-4 商品数非対応）
+- 列: 部門 / 数量（`5 点・1.8 m`）/ 売上 / 構成比（数値 + `<Progress>` バー）/ 前月比（商品数列は `MonthlySaleItem` DTO に `product_count` field 不在のため非対応、Plans.md Backlog 参照）
+- **SortableHeader 適用列 (4 列、構成比列はソート対象外)**: 共通owner `src/components/sales/SortableHeader.tsx`（UI-TABLE-D1）を使い、部門名 (`name`) / 数量 (`quantity`) / 売上 (`amount`) / 前月比 (`prev_month_diff`)を結線する。click で `onSortChange(column)` 発火 → MonthlySalesPage の `handleSortChange` が `sortBy/sortDir` 切替 (同列再 click → desc toggle / 別列 → asc) を `onSearchChange` 経由で URL state 更新
 - 前月比色分け（F-15 ±1.0% 閾値 + Q-7 prev <= 0 ガード。地の chip を持たない役割色の文字 + 記号、`text-sm font-medium`。design-system 00「役割色の文字だけの表示」、decision-log D-094）:
   - 緑（`text-success-strong`）: `ratio >= 0.01`
   - 灰（`text-muted-foreground`）: `-0.01 < ratio < 0.01`

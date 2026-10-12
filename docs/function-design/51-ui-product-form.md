@@ -44,7 +44,7 @@ UIは `get_pos_stock_readiness` が `ej_unverified` を返す間、pcs商品の�
 | REQ-907 / SPEC-PLS-D7 | UI-01b-D19 | edit mode は `plu_memory_no` を「レジメモリNo.」として読取り専用表示する。未割当は `未割当`。廃番解除は `plu_target` を自動復帰させず、必要なら利用者が明示して再対象化する。 | slot identity と商品状態を operator が確認でき、廃番解除だけで意図せずレジ再登録されることを防ぐ。 |
 | REQ-102 / SPEC-PRV-D9 | UI-01b-D20 | edit mode に第 5 セクション「価格履歴」を置き、直近 10 件を表示する。「すべて表示」は limit 100 で再取得し、create mode ではセクション自体を出さない。空は「価格履歴はまだありません」、取得中は「読み込み中…」、取得失敗は inline error と「再試行」を表示する。 | 過去の価格を商品修正の文脈で確認し、紙の前年リスト参照を置き換える。price_history に契機カラムがないため変更契機の列は表示しない。 |
 | REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションの取引先ピッカー dialog（DSR-24）内に「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない。 |
-| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | （proposed・未実装、D-113）数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `決定（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync` の自動提案は全 12 単位で 1 つの規則にする: `get_pos_stock_readiness` が `ej_unverified` を返す間は全単位で `false`（冒頭の規則を `pcs` から個数の全単位へ広げる。30 の BIZ は新規の `true` を拒むので、`true` を提案すると単位を選んだだけの既定の状態で保存できない）、それ以外は長さの単位（m・cm）で `false`・個数の単位で `true`。利用者が checkbox を触った後（touched）は提案で値を変えない（今の UI-01b-D6 と冒頭の規則のまま）。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価は小数 2 桁までの円で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。` にする（原価の小数は `決定（owner、D-113 J2）`。原価の runtime の lane の前は「原価も円の整数」のまま）。edit mode の単位は今どおり読取専用（SPEC-UNIT-D2）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。今の説明の `税抜の整数` は master-tables の売価〈税込〉と食い違う（D-113 の起票で見つけた。売価の税の扱いは変えず、文を正本に合わせる）。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
+| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | 数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `決定（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync` の自動提案は、長さの単位（m・cm）で `false`・個数の単位で `true`。`get_pos_stock_readiness` が `ej_unverified` を返す間は全単位で `false` にする分岐は proposed・未実装（Z004・EJ の lane〈㉘ ④〉、D-113。冒頭の規則を `pcs` から個数の全単位へ広げる。30 の BIZ は新規の `true` を拒むので、`true` を提案すると単位を選んだだけの既定の状態で保存できない）。利用者が checkbox を触った後（touched）は提案で値を変えない（今の UI-01b-D6 と冒頭の規則のまま）。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。`（`原価は小数 2 桁までの円` にするのは proposed・未実装、原価の lane、D-113。`決定（owner、D-113 J2）`）。売価・原価は `999999`、初期在庫は `999999999`（m の商品は cm にした値）を上限にする。edit mode の単位は読取専用（SPEC-UNIT-D2）で、現在庫は単位つきで出す（`27.5 m`・`20 個`。SPEC-UNIT-D3 の表示する所の表の 13）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。説明を `税抜の整数` と書くと master-tables の売価〈税込〉と食い違う。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
 
 ## 7.2 Component / Route 構成
 
@@ -126,7 +126,7 @@ UI-01b は以下の generated binding を使用する。
    - JAN欄が空で、選択部門に `code_prefix` がない場合は保存しない。
    - JAN 欄の全角数字は UI-01b-D16 に従い半角へ正規化する（composition 中でない onChange と onCompositionEnd の 2 点で適用、paste 経由を含む。composition 中は不加工）。
 3. 必須項目を入力する。
-4. `stock_unit='cm'` に変更した場合、`pos_stock_sync=false` を提案する。`stock_unit='pcs'` に戻した場合は既定の `true` を復元する。自動提案は `onPosStockSyncSuggest`（touched を立てない）経路を使い、利用者の checkbox 操作（touched を立てる `onPosStockSyncChange`）と区別する。利用者が toggle を触った後（touched=true）はどちらの単位変更でも提案を発火しない。
+4. 長さの単位（`m`・`cm`）に変えた場合、`pos_stock_sync=false` を提案する。個数の単位に変えた場合は既定の `true` を復元する。自動提案は `onPosStockSyncSuggest`（touched を立てない）経路を使い、利用者の checkbox 操作（touched を立てる `onPosStockSyncChange`）と区別する。利用者が toggle を触った後（touched=true）はどちらの単位変更でも提案を発火しない。
 4b. `plu_target`（レジにバーコード登録する）は JAN 欄の値から初期値を提案する: 13 桁数字なら on、それ以外（空・不正形式）は off。利用者は変更できる。自動提案は pos_stock_sync と同じ touched 区別パターンを使う（D-028。詳細仕様と実装は後続 R3 PR / UI-01b 実装 PR で確定）。判定の candidate は UI-01b-D18 に従い trim + 正規化適用後の値とする（全角 13 桁も正規化後に on 提案）。
 5. 保存時に `commands.createProduct(req)` を呼ぶ。
 6. 成功時は保存された `product_code` を含む成功 toast（`toast.success`、`id: "product-save-success"`、`duration: 5000`）を navigate より前に発火し、safe な `returnTo` または `/products` へ遷移する。safe な `returnTo` は `/products` 一覧 route とその search params のみ（UI-01b-D14）。
@@ -171,13 +171,12 @@ Frontend validation:
 
 - `name`: 空文字 → `商品名を入力してください`
 - `department_id`: 未選択 → `部門を選択してください`
-- `selling_price`: 0 未満または整数でない → `売価は0以上の整数で入力してください`
-- `cost_price`: 0 未満または整数でない → `原価は0以上の整数で入力してください`
+- `selling_price`: 0 未満または整数でない → `売価は0以上の整数で入力してください`。`999999` を越える → `売価が大きすぎます`
+- `cost_price`: 0 未満または整数でない → `原価は0以上の整数で入力してください`。`999999` を越える → `原価が大きすぎます`
 - `initial_stock`: create mode で 0 未満または整数でない → `初期在庫は0以上の整数で入力してください`
-  - proposed・未実装（D-113）: `m` の商品は m で小数 2 桁まで受けて cm に直す（0 は受ける、既定の `0` のまま登録できる）。error の文は [共通規則](10-common-rules.md) SPEC-UNIT-D3 の 0 を受ける欄の文 `数量は0以上で、小数は2桁までの m で入力してください`。個数と `cm` の商品は今の文のまま。
+  - `m` の商品は m で小数 2 桁まで受けて cm に直す（0 は受ける、既定の `0` のまま登録できる）。error の文は [共通規則](10-common-rules.md) SPEC-UNIT-D3 の 0 を受ける欄の文 `数量は0以上で、小数は2桁までの m で入力してください`。個数と `cm` の商品は上の文。在庫の数量が `999999999` を越える → `在庫数が大きすぎます`
 - `tax_rate`: `"10" | "8" | "0"` 以外 → `税率を選択してください`
-- `stock_unit`: create mode で `"pcs" | "cm"` 以外 → `数量単位を選択してください`
-  - proposed・未実装（D-113）: 12 個の code（UI-01b-D22）以外 → 同じ文
+- `stock_unit`: create mode で 12 個の code（UI-01b-D22）以外 → `数量単位を選択してください`
 - `jan_code` blank + `department.code_prefix == null` → `JANコードを入力するか、独自コード発番対象の部門を選択してください`
 - `jan_code` 非 null（create のみ、UI-01b-D17）: trim と正規化を適用した後の値が ASCII 数字 8 桁または 13 桁でない → `JANコードは13桁または8桁で入力してください`
 - `jan_code` 非 null（create のみ、UI-01b-D17）: 桁数を満たすがモジュラス 10 チェックディジット整合でない → `JANコードのチェックディジットが一致しません。入力値を確認してください`
