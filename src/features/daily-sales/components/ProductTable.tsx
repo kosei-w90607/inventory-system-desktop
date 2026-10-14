@@ -15,7 +15,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { DailySaleItem } from "@/lib/bindings";
+import {
+  formatQuantityTotal,
+  formatStockDisplay,
+  formatUnitPrice,
+} from "@/features/stock-inquiry/lib/format-stock-display";
+import type { DailySaleItem, GrandTotal } from "@/lib/bindings";
 import { calculateEffectiveUnitPrice } from "../lib/calculate-unit-price";
 import {
   DAILY_SORT_DESCRIPTORS,
@@ -30,7 +35,7 @@ export interface ProductTableProps {
   sortDir: SortDirection;
   onSortChange: (column: SortColumn) => void;
   /// 全 items の合計 (department_subtotals の総和)。空テーブル時は表示しない。
-  grandTotal: { quantity: number; amount: number } | null;
+  grandTotal: GrandTotal | null;
   emptyTitle?: string;
   emptyDescription?: string;
 }
@@ -87,7 +92,7 @@ export function ProductTable({
             <TableRow className="bg-stone-100 font-medium dark:bg-stone-800">
               <TableCell colSpan={3}>合計</TableCell>
               <TableCell className="text-right">
-                {grandTotal.quantity.toLocaleString("ja-JP")}
+                {formatQuantityTotal(grandTotal.count_points, grandTotal.length_cm)}
               </TableCell>
               <TableCell />
               <TableCell className="text-right">
@@ -107,7 +112,7 @@ function SectionRows({ section }: { section: GroupedSection }) {
       <TableRow className="bg-stone-50 font-medium dark:bg-stone-900">
         <TableCell colSpan={3}>{section.departmentName}</TableCell>
         <TableCell className="text-right">
-          {section.subtotal.quantity.toLocaleString("ja-JP")}
+          {formatQuantityTotal(section.subtotal.count_points, section.subtotal.length_cm)}
         </TableCell>
         <TableCell />
         <TableCell className="text-right">
@@ -133,9 +138,11 @@ function ItemRow({ item }: { item: DailySaleItem }) {
         </div>
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">{item.department_name}</TableCell>
-      <TableCell className="text-right">{item.quantity.toLocaleString("ja-JP")}</TableCell>
       <TableCell className="text-right">
-        {unitPrice === null ? "—" : `¥${unitPrice.toLocaleString("ja-JP")}`}
+        {formatStockDisplay(item.quantity, item.stock_unit)}
+      </TableCell>
+      <TableCell className="text-right">
+        {unitPrice === null ? "—" : formatUnitPrice(unitPrice, item.stock_unit)}
       </TableCell>
       <TableCell className="text-right">¥{item.amount.toLocaleString("ja-JP")}</TableCell>
     </TableRow>

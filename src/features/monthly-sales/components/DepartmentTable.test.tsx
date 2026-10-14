@@ -1,20 +1,22 @@
 // src/features/monthly-sales/components/DepartmentTable.test.tsx
 //
-// REQ-502 P2-2: DepartmentTable の SortableHeader 結線テスト (3 列: name/amount/
+// REQ-502 P2-2: DepartmentTable の SortableHeader 結線テスト (4 列: name/quantity/amount/
 // prev_month_diff の click → onSortChange call、aria-sort 属性 active 検証、
-// 構成比列はソート対象外)。defensive case: sortBy='quantity' URL paste 注入時
-// (DeptCompositionRow に quantity field 不在) で table render が破綻しない。
+// 構成比列はソート対象外)。数量の列は点と長さの 2 本を出し、`(count_points, length_cm)` の
+// 順に並べ替えられる（SPEC-UNIT-D3 の集計の規則）。
 // 設計: docs/plans/2026-05-19-pr-66-codex-r1-p2-fixes.md §2 commit 2
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import { DepartmentTable } from "./DepartmentTable";
+import { sortMonthlyItems } from "../lib/sort-items";
 import { makeMockDeptCompositionRow } from "../lib/test-fixtures";
 import type { SortColumn } from "../types";
 
 const EXPECTED_DEPARTMENT_SORT_HEADERS = [
   { value: "name", label: "部門" },
+  { value: "quantity", label: "数量" },
   { value: "amount", label: "売上" },
   { value: "prev_month_diff", label: "前月比" },
 ] as const;
@@ -49,7 +51,7 @@ describe("DepartmentTable (B0 empty-state characterization)", () => {
 });
 
 describe("DepartmentTable (REQ-502 sort 結線)", () => {
-  it("REQ-502: SortableHeader 3 列 click で onSortChange が name/amount/prev_month_diff を順に call、構成比列はソート対象外", () => {
+  it("REQ-502: SortableHeader 4 列 click で onSortChange が name/quantity/amount/prev_month_diff を順に call、構成比列はソート対象外", () => {
     const onSortChange = vi.fn<(column: SortColumn) => void>();
     render(
       <DepartmentTable
@@ -112,22 +114,61 @@ describe("DepartmentTable (REQ-502 sort 結線)", () => {
     expect(["none", null]).toContain(ratioHeader?.getAttribute("aria-sort") ?? null);
   });
 
-  it("REQ-502 defensive: sortBy='quantity' URL paste 注入時に DeptCompositionRow 不在 field でも render 破綻しない", () => {
-    // Q-4 と zod schema 4 値の不整合論点: URL `?sortBy=quantity&mode=department` を paste されたとき、
-    // DeptCompositionRow に quantity field 不在 → sortMonthlyItems extractValue null fallback →
-    // 全行 null → 入力順保持で table 破綻なし。本 test は DepartmentTable が型互換に props を
-    // 受け取って 2 行 render することを確認する unit crash test。
+  it("REQ-502: sortBy='quantity'（URL `?sortBy=quantity&mode=by_department`）は (count_points, length_cm) の順に並び、表が壊れない", () => {
+    // 部門別の行が数量（点と長さの 2 本）を持つので、数量の列は並べ替えの対象になる。
+    // page（hook）が並べた行を表がその順で出すことを、同じ sort 関数を通して確かめる。
+    const rows = sortMonthlyItems(
+      [
+        makeMockDeptCompositionRow({ key: "1", label: "毛糸", count_points: 5, length_cm: 250 }),
+        makeMockDeptCompositionRow({ key: "2", label: "布", count_points: 3, length_cm: 0 }),
+        makeMockDeptCompositionRow({ key: "3", label: "反物", count_points: 0, length_cm: 130 }),
+      ],
+      "quantity",
+      "asc",
+    );
     render(
       <DepartmentTable
-        rows={sampleRows}
+        rows={rows}
         comparisonMap={new Map()}
-        sortBy={"quantity" as SortColumn}
+        sortBy="quantity"
         sortDir="asc"
         onSortChange={vi.fn()}
       />,
     );
-    expect(screen.getByText("毛糸")).toBeDefined();
-    expect(screen.getByText("布")).toBeDefined();
+    const bodyRows = screen.getAllByRole("row").slice(1);
+    expect(bodyRows.map((row) => row.querySelector("td")?.textContent)).toEqual([
+      "反物",
+      "布",
+      "毛糸",
+    ]);
+    const quantityHeader = screen.getByRole("button", { name: "数量" }).closest("th");
+    expect(quantityHeader).toHaveAttribute("aria-sort", "ascending");
+  });
+
+  it("REQ-502: 数量の列は部門ごとの点と長さの 2 本を出す（5 列: 部門・数量・売上・構成比・前月比）", () => {
+    render(
+      <DepartmentTable
+        rows={[
+          makeMockDeptCompositionRow({ key: "1", label: "毛糸", count_points: 5, length_cm: 250 }),
+          makeMockDeptCompositionRow({ key: "2", label: "布", count_points: 3, length_cm: 0 }),
+          makeMockDeptCompositionRow({ key: "3", label: "反物", count_points: 0, length_cm: 130 }),
+          makeMockDeptCompositionRow({ key: "4", label: "相殺", count_points: 0, length_cm: 0 }),
+          makeMockDeptCompositionRow({ key: "5", label: "大口", count_points: 1234, length_cm: 0 }),
+        ]}
+        comparisonMap={new Map()}
+        sortBy={null}
+        sortDir="asc"
+        onSortChange={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("columnheader").map((header) => header.textContent?.trim())).toEqual(
+      ["部門", "数量", "売上", "構成比", "前月比"],
+    );
+    const quantities = screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => row.querySelectorAll("td")[1].textContent);
+    expect(quantities).toEqual(["5 点・2.5 m", "3 点", "1.3 m", "0 点", "1,234 点"]);
   });
 });
 

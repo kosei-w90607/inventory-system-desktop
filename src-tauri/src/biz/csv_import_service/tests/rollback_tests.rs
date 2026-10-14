@@ -288,3 +288,45 @@ fn test_import_rollback_req401_logs_exact_selected_id_and_preserves_commit_on_lo
     assert!(summary.contains(&format!("ID {}", second.csv_import_id)));
     assert!(detail.contains(&format!(r#""csv_import_id":{}"#, second.csv_import_id)));
 }
+
+#[test]
+fn test_rollback_req401_stock_limit_rolls_back_whole_tx() {
+    // REQ-401 / 共通規則 (a)（X3）: 取込みの取消の補正の後の在庫が上限の外なら、取消を TX 全体で戻す
+    let (_dir, mut conn) = setup_test_db();
+    create_test_product_with_jan(&conn, "TEST-001", "4912345678901", 10, true);
+    let bytes = make_z004_bytes("2026-03-21", &[("4912345678901", "商品A", 1, 100)]);
+    let import_result = commit_import(&mut conn, bytes, "Z004_260321");
+    let set_stock = |conn: &crate::db::DbConnection, stock: i64| {
+        conn.execute(
+            "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TEST-001'",
+            [stock],
+        )
+        .unwrap();
+    };
+    let state = |conn: &crate::db::DbConnection| -> (i64, i64, i64) {
+        conn.query_row(
+            "SELECT (SELECT stock_quantity FROM products WHERE product_code = 'TEST-001'),
+                    (SELECT COUNT(*) FROM sale_records WHERE is_voided = 1),
+                    (SELECT COUNT(*) FROM inventory_movements WHERE is_voided = 1)",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .unwrap()
+    };
+
+    set_stock(&conn, 999_999_999);
+    let result = rollback::legacy_rollback_csv_import(&mut conn, import_result.csv_import_id);
+    assert!(
+        matches!(result, Err(BizError::ValidationFailed(ref m)) if m == "在庫数が大きすぎます"),
+        "{result:?}"
+    );
+    assert_eq!(state(&conn), (999_999_999, 0, 0));
+    let import = sales_repo::find_csv_import_by_id(&conn, import_result.csv_import_id)
+        .unwrap()
+        .unwrap();
+    assert_ne!(import.status, sales_repo::CsvImportStatus::RolledBack);
+
+    set_stock(&conn, 999_999_998);
+    rollback::legacy_rollback_csv_import(&mut conn, import_result.csv_import_id).unwrap();
+    assert_eq!(state(&conn), (999_999_999, 1, 1));
+}

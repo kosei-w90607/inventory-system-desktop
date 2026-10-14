@@ -1,5 +1,6 @@
 import type { ManualSaleCreateRequest } from "@/lib/bindings";
 import { createPrefixedIdempotencyKey, parseRequiredSafeInteger } from "@/lib/request-helpers";
+import { ITEM_QUANTITY_FIELD, parseQuantityInput } from "@/lib/unit-quantity";
 import type { ManualSaleFormErrors, ManualSaleFormValues, ManualSaleRow } from "../types";
 
 export { getLocalDateString } from "@/lib/request-helpers";
@@ -49,16 +50,16 @@ export function buildManualSaleRequest(
   }
 
   const items = values.rows.map((row, index) => {
-    const quantity = parseRequiredSafeInteger(row.quantity, 1);
+    const quantity = parseQuantityInput(row.quantity, row.stockUnit, ITEM_QUANTITY_FIELD);
     const amount = parseRequiredSafeInteger(row.amount, 0);
     const messages = [];
-    if (quantity === null) messages.push("数量は1以上の整数で入力してください");
+    if (quantity.error !== null) messages.push(quantity.error);
     if (amount === null) messages.push("販売金額は0以上の整数で入力してください");
     if (messages.length > 0) rowErrors[row.productCode] = messages.join(" / ");
 
     return {
       product_code: row.productCode,
-      quantity: quantity ?? 0,
+      quantity: quantity.value ?? 0,
       amount: amount ?? 0,
       index,
     };

@@ -1,5 +1,6 @@
 import type { ReturnCreateRequest } from "@/lib/bindings";
-import { createPrefixedIdempotencyKey, parseRequiredSafeInteger } from "@/lib/request-helpers";
+import { createPrefixedIdempotencyKey } from "@/lib/request-helpers";
+import { ITEM_QUANTITY_FIELD, parseQuantityInput } from "@/lib/unit-quantity";
 import type {
   ReturnExchangeFormErrors,
   ReturnExchangeFormValues,
@@ -71,12 +72,12 @@ export function buildReturnExchangeRequest(
   }
 
   const items = values.rows.map((row) => {
-    const quantity = parseRequiredSafeInteger(row.quantity, 1);
-    if (quantity === null) rowErrors[rowKey(row)] = "数量は1以上の整数で入力してください";
+    const quantity = parseQuantityInput(row.quantity, row.stockUnit, ITEM_QUANTITY_FIELD);
+    if (quantity.error !== null) rowErrors[rowKey(row)] = quantity.error;
     return {
       product_code: row.productCode,
       direction: row.direction,
-      quantity: quantity ?? 0,
+      quantity: quantity.value ?? 0,
     };
   });
 

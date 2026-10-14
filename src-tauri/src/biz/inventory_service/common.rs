@@ -1,8 +1,10 @@
 //! 共通ヘルパー: apply_stock_change + fingerprint 計算
 
+use crate::biz::unit_amount::{format_length_m, stock_unit_kind, StockUnitKind};
 use crate::biz::BizError;
+use crate::constants::MAX_STOCK_QUANTITY;
 use crate::db::inventory_repo::{self, MovementType, NewMovement, ReferenceType};
-use crate::db::product_repo;
+use crate::db::product_repo::{self, ProductStockUnit};
 use sha2::{Digest, Sha256};
 
 /// 冪等性キーの最大長（UUID v4 = 36文字だが、余裕を持って255）
@@ -13,6 +15,19 @@ pub(super) const IDEMPOTENCY_KEY_MAX_LEN: usize = 255;
 pub struct StockChangeOutcome {
     pub stock_after: i64,
     pub negative_stock_warning: bool,
+    pub stock_unit: ProductStockUnit,
+}
+
+/// 保存の結果の在庫警告の文。長さの商品の在庫は m の形で入れる（SPEC-UNIT-D3 の表の 10）
+pub(super) fn negative_stock_warning_message(
+    product_code: &str,
+    outcome: &StockChangeOutcome,
+) -> String {
+    let stock = match stock_unit_kind(outcome.stock_unit) {
+        StockUnitKind::Length => format_length_m(outcome.stock_after),
+        StockUnitKind::Count => outcome.stock_after.to_string(),
+    };
+    format!("{product_code}: 在庫がマイナスになりました（{stock}）")
 }
 
 /// request_fingerprint を計算する（31-biz-inventory-service.md §12.8）
@@ -29,6 +44,19 @@ pub(super) fn compute_fingerprint(header: &str, items: &[String]) -> String {
         hasher.update(item.as_bytes());
     }
     format!("{:x}", hasher.finalize())
+}
+
+/// 在庫（計算の後の値を含む）が絶対値の上限の中かを確かめる（共通規則「入力の上限と安全な整数の範囲」(a)、X3）
+///
+/// 在庫を書く所が書く前に通す。TX の中で外れたら、呼び出し元が TX 全体を戻す。
+pub(crate) fn check_stock_range(stock: i64) -> Result<i64, BizError> {
+    if (-MAX_STOCK_QUANTITY..=MAX_STOCK_QUANTITY).contains(&stock) {
+        Ok(stock)
+    } else {
+        Err(BizError::ValidationFailed(
+            "在庫数が大きすぎます".to_string(),
+        ))
+    }
 }
 
 /// 商品の在庫数を変動させ、inventory_movements に履歴を記録する
@@ -56,6 +84,7 @@ pub(crate) fn apply_stock_change(
         .stock_quantity
         .checked_add(quantity)
         .ok_or_else(|| BizError::ValidationFailed("在庫数計算オーバーフロー".to_string()))?;
+    let stock_after = check_stock_range(stock_after)?;
 
     // 3. 負在庫警告（INV-3: 処理は止めない）
     let negative_stock_warning = stock_after < 0;
@@ -86,6 +115,7 @@ pub(crate) fn apply_stock_change(
     Ok(StockChangeOutcome {
         stock_after,
         negative_stock_warning,
+        stock_unit: product.product.stock_unit,
     })
 }
 

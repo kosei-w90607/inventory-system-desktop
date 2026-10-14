@@ -34,3 +34,25 @@ describe("receiving-row-utils (UI-02-D6 / REQ-201)", () => {
     expect(twice[0].quantity).toBe("2");
   });
 });
+
+describe("receiving-row-utils の単位ごとの数量（REQ-201 / UI-02-D7 / SPEC-UNIT-D3）", () => {
+  const readd = (stockUnit: "m" | "cm" | "pcs", quantity: string) => {
+    const product = makeMockProductWithRelations({ product_code: "P-U", stock_unit: stockUnit });
+    const [row] = addProductToRows([], product);
+    expect(row.quantity).toBe("1");
+    return addProductToRows([{ ...row, quantity }], product)[0]?.quantity;
+  };
+
+  it("REQ-201: 再追加は m が +1 m（1.3 → 2.3、1.27 → 2.27）、cm は今どおり +1（130 → 131）", () => {
+    expect(readd("m", "1.3")).toBe("2.3");
+    expect(readd("m", "1.27")).toBe("2.27");
+    expect(readd("cm", "130")).toBe("131");
+    expect(readd("pcs", "3")).toBe("4");
+  });
+
+  it("REQ-201: 規則に合わない文字列の再追加は初期値の 1", () => {
+    expect(readd("m", "abc")).toBe("1");
+    expect(readd("m", "1.234")).toBe("1");
+    expect(readd("pcs", "1.3")).toBe("1");
+  });
+});

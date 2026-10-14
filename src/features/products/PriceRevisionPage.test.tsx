@@ -503,6 +503,79 @@ describe("PriceRevisionPage UI-14 / REQ-105", () => {
     expect(within(row).getByRole("button", { name: "P-001 を確定" })).toBeEnabled();
   });
 
+  it("REQ-105 / X5・X6: 新売価・新原価は上限 999999 まで確定でき、1 つ外は欄の error で確定できない", async () => {
+    const user = userEvent.setup();
+    renderStateful();
+    const row = await screen.findByTestId("price-row-P-001");
+    const selling = within(row).getByLabelText("P-001 新売価");
+    const cost = within(row).getByLabelText("P-001 新原価（案）");
+    const confirm = within(row).getByRole("button", { name: "P-001 を確定" });
+
+    await user.type(selling, "1000000");
+    expect(within(row).getByText("売価が大きすぎます")).toBeInTheDocument();
+    expect(selling).toHaveAttribute("aria-invalid", "true");
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(mockReviseProductPrice).not.toHaveBeenCalled();
+
+    await user.clear(selling);
+    await user.type(selling, "999999");
+    expect(within(row).queryByText("売価が大きすぎます")).toBeNull();
+    await user.clear(cost);
+    await user.type(cost, "1000000");
+    expect(within(row).getByText("原価が大きすぎます")).toBeInTheDocument();
+    expect(confirm).toBeDisabled();
+    expect(mockReviseProductPrice).not.toHaveBeenCalled();
+
+    await user.clear(cost);
+    await user.type(cost, "999999");
+    expect(within(row).queryByText("原価が大きすぎます")).toBeNull();
+    await user.click(confirm);
+    await waitFor(() => {
+      expect(mockReviseProductPrice).toHaveBeenCalledTimes(1);
+    });
+    expect(mockReviseProductPrice).toHaveBeenCalledWith({
+      product_code: "P-001",
+      new_selling_price: 999999,
+      new_cost_price: 999999,
+      assign_supplier_id: null,
+    });
+  });
+
+  it("REQ-105 / X6: 自動で入る新原価（案）が上限を越えたら、案はそのまま出して欄の error にし、直せば確定できる", async () => {
+    const user = userEvent.setup();
+    arrangeList([
+      makeMockProductWithRelations({
+        product_code: "P-BIG",
+        name: "案が上限を越える商品",
+        selling_price: 1,
+        cost_price: 999999,
+      }),
+    ]);
+    renderStateful();
+    const row = await screen.findByTestId("price-row-P-BIG");
+    const cost = within(row).getByLabelText("P-BIG 新原価（案）");
+    const confirm = within(row).getByRole("button", { name: "P-BIG を確定" });
+    await user.type(within(row).getByLabelText("P-BIG 新売価"), "2");
+    expect(cost).toHaveValue(1999998);
+    expect(within(row).getByText("原価が大きすぎます")).toBeInTheDocument();
+    expect(confirm).toBeDisabled();
+    expect(mockReviseProductPrice).not.toHaveBeenCalled();
+
+    await user.clear(cost);
+    await user.type(cost, "999999");
+    expect(within(row).queryByText("原価が大きすぎます")).toBeNull();
+    await user.click(confirm);
+    await waitFor(() => {
+      expect(mockReviseProductPrice).toHaveBeenCalledWith({
+        product_code: "P-BIG",
+        new_selling_price: 2,
+        new_cost_price: 999999,
+        assign_supplier_id: null,
+      });
+    });
+  });
+
   it("本日の changed_at を持つ行だけ「最近改定」badge を icon + text で表示する", async () => {
     arrangeList([
       ...DEFAULT_PRODUCTS,

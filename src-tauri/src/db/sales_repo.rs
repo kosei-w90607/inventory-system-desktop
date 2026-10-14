@@ -3,6 +3,7 @@
 //! 21-io-inventory-repo.md §11 に基づく実装。
 //! IO-01: SQLiteデータアクセス層（sales_repository）
 
+use super::product_repo::{parse_stock_unit, ProductStockUnit};
 use super::{DbConnection, DbError};
 
 // ---------------------------------------------------------------------------
@@ -131,7 +132,7 @@ pub struct CsvImportRecordDetailItem {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
-    pub stock_unit: String,
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub amount: i64,
     pub is_voided: bool,
@@ -509,7 +510,7 @@ pub fn get_csv_import_record_detail(
                 product_code: row.get(1)?,
                 product_name: row.get(2)?,
                 department_name: row.get(3)?,
-                stock_unit: row.get(4)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(5)?,
                 amount: row.get(6)?,
                 is_voided: row.get(7)?,
@@ -911,6 +912,7 @@ pub struct DailySaleRow {
     pub name: String,
     pub department_name: String,
     pub department_id: i64,
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub amount: i64,
     pub source: String,
@@ -921,15 +923,17 @@ pub struct DailySaleRow {
 pub struct MonthlySaleProductRow {
     pub product_code: String,
     pub name: String,
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub amount: i64,
 }
 
-/// 月次売上集計（部門別）
+/// 月次売上集計（部門と商品の単位ごと）。数量の種類で分けて足すのは BIZ-05（SPEC-UNIT-D3 の集計の規則）
 #[derive(Debug, serde::Serialize)]
 pub struct MonthlySaleDeptRow {
     pub department_id: i64,
     pub department_name: String,
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub amount: i64,
 }
@@ -1001,12 +1005,13 @@ pub fn get_daily_sales_records(
     let mut stmt = conn
         .prepare(
             "SELECT sr.product_code, p.name, d.name as department_name,
-                    d.id as department_id, SUM(sr.quantity), SUM(sr.amount), sr.source
+                    d.id as department_id, SUM(sr.quantity), SUM(sr.amount), sr.source,
+                    p.stock_unit
              FROM sale_records sr
              INNER JOIN products p ON sr.product_code = p.product_code
              INNER JOIN departments d ON p.department_id = d.id
              WHERE sr.sale_date = ?1 AND sr.is_voided = 0
-             GROUP BY sr.product_code, p.name, d.name, d.id, sr.source
+             GROUP BY sr.product_code, p.name, d.name, d.id, sr.source, p.stock_unit
              ORDER BY d.id ASC, sr.product_code ASC, sr.source ASC",
         )
         .map_err(|e| DbError::QueryFailed(e.to_string()))?;
@@ -1018,6 +1023,7 @@ pub fn get_daily_sales_records(
                 name: row.get(1)?,
                 department_name: row.get(2)?,
                 department_id: row.get(3)?,
+                stock_unit: parse_stock_unit(row.get(7)?)?,
                 quantity: row.get(4)?,
                 amount: row.get(5)?,
                 source: row.get(6)?,
@@ -1345,11 +1351,11 @@ pub fn get_monthly_sales_by_product(
     let mut stmt = conn
         .prepare(
             "SELECT sr.product_code, p.name,
-                    SUM(sr.quantity) as quantity, SUM(sr.amount) as amount
+                    SUM(sr.quantity) as quantity, SUM(sr.amount) as amount, p.stock_unit
              FROM sale_records sr
              INNER JOIN products p ON sr.product_code = p.product_code
              WHERE sr.sale_date >= ?1 AND sr.sale_date <= ?2 AND sr.is_voided = 0
-             GROUP BY sr.product_code, p.name
+             GROUP BY sr.product_code, p.name, p.stock_unit
              ORDER BY SUM(sr.amount) DESC",
         )
         .map_err(|e| DbError::QueryFailed(e.to_string()))?;
@@ -1359,6 +1365,7 @@ pub fn get_monthly_sales_by_product(
             Ok(MonthlySaleProductRow {
                 product_code: row.get(0)?,
                 name: row.get(1)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(2)?,
                 amount: row.get(3)?,
             })
@@ -1369,7 +1376,7 @@ pub fn get_monthly_sales_by_product(
         .map_err(|e| DbError::QueryFailed(e.to_string()))
 }
 
-/// 指定期間の部門別売上集計を取得する
+/// 指定期間の売上集計を、部門と商品の単位ごとに取得する（1 つの部門が単位の数だけ行を持つ）
 pub fn get_monthly_sales_by_department(
     conn: &DbConnection,
     date_from: &str,
@@ -1378,12 +1385,12 @@ pub fn get_monthly_sales_by_department(
     let mut stmt = conn
         .prepare(
             "SELECT d.id as department_id, d.name as department_name,
-                    SUM(sr.quantity) as quantity, SUM(sr.amount) as amount
+                    SUM(sr.quantity) as quantity, SUM(sr.amount) as amount, p.stock_unit
              FROM sale_records sr
              INNER JOIN products p ON sr.product_code = p.product_code
              INNER JOIN departments d ON p.department_id = d.id
              WHERE sr.sale_date >= ?1 AND sr.sale_date <= ?2 AND sr.is_voided = 0
-             GROUP BY d.id, d.name
+             GROUP BY d.id, d.name, p.stock_unit
              ORDER BY SUM(sr.amount) DESC",
         )
         .map_err(|e| DbError::QueryFailed(e.to_string()))?;
@@ -1393,6 +1400,7 @@ pub fn get_monthly_sales_by_department(
             Ok(MonthlySaleDeptRow {
                 department_id: row.get(0)?,
                 department_name: row.get(1)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(2)?,
                 amount: row.get(3)?,
             })

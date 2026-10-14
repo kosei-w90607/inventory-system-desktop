@@ -3,6 +3,7 @@
 //! 21-io-inventory-repo.md §10.4 に基づく実装。
 
 use super::inventory_repo::MovementRecord;
+use super::product_repo::{parse_stock_unit, ProductStockUnit};
 use super::{DbConnection, DbError};
 
 // ---------------------------------------------------------------------------
@@ -65,7 +66,7 @@ pub struct ManualSaleRecordDetailItem {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
-    pub stock_unit: String,
+    pub stock_unit: ProductStockUnit,
     pub quantity: i64,
     pub amount: i64,
 }
@@ -177,7 +178,7 @@ pub fn get_manual_sale_record_detail(
                 product_code: row.get(1)?,
                 product_name: row.get(2)?,
                 department_name: row.get(3)?,
-                stock_unit: row.get(4)?,
+                stock_unit: parse_stock_unit(row.get(4)?)?,
                 quantity: row.get(5)?,
                 amount: row.get(6)?,
             })

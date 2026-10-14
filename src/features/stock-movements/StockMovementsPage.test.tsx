@@ -596,3 +596,28 @@ describe("StockMovementsPage SPEC-NAV-RETURN-TYPES-2026-09-25 C4（detailReturnT
     },
   );
 });
+
+// REQ-303 / UI-06c-D5 / SPEC-UNIT-D3 の表の 6: 読んだ商品 1 つから単位の対応を作り、表が m で出す
+it("UI-06c-D5: m の商品の在庫変動は増減 +2.5 m・変動後在庫 27.5 m、現在庫 27.5 m で出す", async () => {
+  const detail = makeStockDetail();
+  mockGetStockDetail.mockResolvedValue({
+    status: "ok",
+    data: { ...detail, product: { ...detail.product, stock_unit: "m", stock_quantity: 2750 } },
+  });
+  mockListMovements.mockResolvedValue({
+    status: "ok",
+    data: {
+      items: [makeMovement({ quantity: 250, stock_after: 2750 })],
+      total_count: 1,
+      page: 1,
+      per_page: 50,
+    },
+  });
+  renderWithClient(
+    <StockMovementsPage productCode="BT0002" search={{}} onSearchChange={vi.fn()} />,
+  );
+
+  expect(await screen.findByText("+2.5 m")).toBeInTheDocument();
+  // 現在庫（商品の欄）と変動後在庫（表）の 2 か所
+  expect(screen.getAllByText("27.5 m")).toHaveLength(2);
+});

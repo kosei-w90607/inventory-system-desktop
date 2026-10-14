@@ -39,7 +39,7 @@ function makeDetail(): DisposalRecordDetail {
         quantity: 2,
         cost_price: 440,
         reason: "L3確認: 袋破れ",
-        line_loss_cost: 880,
+        line_loss_cost_centi: "88000",
       },
       {
         id: 2,
@@ -51,7 +51,7 @@ function makeDetail(): DisposalRecordDetail {
         quantity: 120,
         cost_price: 60,
         reason: "L3確認: 汚れ",
-        line_loss_cost: 7200,
+        line_loss_cost_centi: "720000",
       },
     ],
     movements: [],

@@ -40,6 +40,7 @@ import {
   formatStockDisplay,
   formatStockUnitLabel,
 } from "@/features/stock-inquiry/lib/format-stock-display";
+import { quantityInputAttributes } from "@/lib/unit-quantity";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { commands, type DisposalCreateResult, type ProductWithRelations } from "@/lib/bindings";
 import { formatDateTime } from "@/lib/date-time";
@@ -318,7 +319,7 @@ export function DisposalPage() {
             </div>
             <div>
               <span className="text-muted-foreground">ロス原価合計</span>
-              <div className="font-medium">{formatYen(lossTotal)}</div>
+              <div className="font-medium">{lossTotal === null ? "—" : formatYen(lossTotal)}</div>
             </div>
             <div>
               <span className="text-muted-foreground">在庫警告</span>
@@ -548,8 +549,7 @@ export function DisposalPage() {
                       <div className="flex items-center gap-1">
                         <Input
                           type="number"
-                          inputMode="numeric"
-                          min="1"
+                          {...quantityInputAttributes(row.stockUnit)}
                           value={row.quantity}
                           disabled={isFormLocked}
                           aria-label={`${row.productCode} の数量`}

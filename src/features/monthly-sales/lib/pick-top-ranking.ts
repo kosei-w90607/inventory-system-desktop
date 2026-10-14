@@ -23,7 +23,9 @@ export function pickTopRanking(
       return {
         key: item.key,
         label: item.label,
-        quantity: item.quantity,
+        count_points: item.count_points,
+        length_cm: item.length_cm,
+        stock_unit: item.stock_unit,
         amount: item.amount,
         ranking: item.ranking,
         prev_month_diff: prevDiff,

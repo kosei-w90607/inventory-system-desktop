@@ -365,22 +365,19 @@ export function useStockInquiry(params: {
 
 #### format-stock-display（[quantity, unit] → string）
 
-- 数量は `toLocaleString("ja-JP")` で桁区切り表示する（例: `1,234 個` / `1,234 cm`）。
-
-- `unit === "pcs"` → `"10 個"`（数量 + 「個」）
-- `unit === "cm"` → `"300 cm"`（数量 + 「cm」、生地、SCREEN_DESIGN.md L131）
-- 上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
+- `unit: ProductStockUnit` を受け、12 個の code を型で網羅する（fallback の `"—"` を置かず、単位を足すと型検査で止まる。[共通規則](10-common-rules.md) SPEC-UNIT-D9・D11）。
+- 個数の単位 → `"10 個"`・`"3 玉"`（数量 + D1 の表示の語。数量は `toLocaleString("ja-JP")` で桁区切り: `1,234 個`）
+- 長さの単位（`m`・`cm` とも）→ cm の整数を m で表す（`130` → `1.3 m`、`127` → `1.27 m`、`1234` → `12.34 m`、`cm` の商品の `300` も `3 m`。SPEC-UNIT-D3。整数の演算で作り、`toLocaleString` に小数を渡さない）
 
 #### formatStockUnitLabel（[unit] → string、Gated Amendment 6 S45）
 
 - 単位列（入庫等）や数量 input に添える単位（廃棄 / 返品交換 / 手動販売）の unit code を日本語ラベルへ変換する
-- `unit === "pcs"` → `"個"`、`unit === "cm"` → `"cm"`、上記以外（unexpected）→ `"—"`（fallback、Q-4 網羅）
+- SPEC-UNIT-D1 の表示の語を返す（`pcs` → `"個"`、`ball` → `"玉"`、`m` → `"m"`。`cm` の商品は入力の単位の `"cm"`）
 
-#### 単位の拡張の後（proposed・未実装、D-113）
+#### 数量を出すほかの画面と formatter（D-113）
 
-- `formatStockDisplay` と `formatStockUnitLabel` は `unit: ProductStockUnit` を受け、12 個の code を全部 switch で扱う（[共通規則](10-common-rules.md) SPEC-UNIT-D9・D11。`default` の `"—"` を置かず、単位を足すと型検査で止まる。wire の `stock_unit` は enum になる）。
-- 数量を出す画面の全部（売上・在庫変動・棚卸し・整合性チェック・PLU 書出しを含む）と、単位を持たない wire に単位を渡す方法は SPEC-UNIT-D3 の「表示する所」の表（owner の決定 TD-203）。
-- 表示は SPEC-UNIT-D3: 個数の単位は `10 個`・`3 玉` 等、長さの単位は `m`・`cm` とも cm の整数を m で表す（`130` → `1.3 m`、`127` → `1.27 m`、`1234` → `12.34 m`。`cm` の商品の `300` も `3 m`。Coordinator が TD-203・TD-207 から決めた）。`formatStockUnitLabel`（数量を伴わない入力の単位欄）は D1 の語のまま（`cm` の商品は `cm`）。m の表示は整数の演算で作り、`toLocaleString` に小数を渡さない。
+- 数量を出す画面の全部（売上・在庫変動・整合性チェック・PLU 書出しを含む）と、単位を持たない wire に単位を渡す方法は SPEC-UNIT-D3 の「表示する所」の表（owner の決定 TD-203）。
+- 同じ file の `formatQuantityTotal`（集計の `5 点・1.8 m`）・`formatUnitQuantityTotal`（月次の商品別の行）・`formatUnitPrice`（`¥700/m`）・`formatCentiYen`（行の金額 `832.50 円`）・`formatLengthOrPlain`（長さの商品だけ m、個数の商品と単位の分からない行は語を付けない数）は、SPEC-UNIT-D3・D6 の形を 1 か所で持つ。
 
 #### format-last-date（[value: string | null] → string）
 

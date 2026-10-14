@@ -96,14 +96,13 @@ fn get_receiving_record_detail(conn: &DbConnection, record_id: i64) -> Result<Re
 - movements: Vec<MovementRecord>
 
 **ReceivingRecordDetailItem構造体**:
-- id: i64, product_code: String, product_name: String, department_name: String, stock_unit: String
-- quantity: i64, cost_price: i64, line_cost: i64
+- id: i64, product_code: String, product_name: String, department_name: String, stock_unit: ProductStockUnit
+- quantity: i64, cost_price: i64, line_cost_centi: String（IO は空の文字列で返し、BIZ が埋める）
 
 **処理ステップ**:
 1. receiving_records のヘッダを record_id で取得する。存在しない場合は DbError::NotFound
 2. receiving_items を products / departments と JOIN し、商品名・部門名・単位を付ける
-3. 各明細の `quantity * cost_price` を line_cost とし、合計を total_cost にする
-   - proposed・未実装（D-113）: 長さの商品で 100 倍になる（価格の基準数量で割らない）ため、IO は金額を計算せず明細の数量・原価・単位だけを返し、BIZ が [共通規則](10-common-rules.md) SPEC-UNIT-D6 で求める（[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」）
+3. IO は金額を計算しない。明細の数量・原価・単位だけを返し（`line_cost_centi` は空、`total_cost` は 0）、BIZ が [共通規則](10-common-rules.md) SPEC-UNIT-D6 で行の金額と合計を求めて埋める（[31](31-biz-inventory-service.md) の「単位と原価の精度の契約」。`quantity * cost_price` は長さの商品で 100 倍になる）
 4. inventory_movements から `reference_type='receiving_record'` かつ `reference_id=record_id` かつ `is_voided=0` の行を取得する
 5. movements は BIZ 層で source link を補完するため、IO 層では `source=None` のまま返す
 
@@ -163,7 +162,7 @@ fn get_return_record_detail(conn: &DbConnection, record_id: i64) -> Result<Retur
 - movements: Vec<MovementRecord>
 
 **ReturnRecordDetailItem構造体**:
-- id: i64, product_code: String, product_name: String, department_name: String, stock_unit: String
+- id: i64, product_code: String, product_name: String, department_name: String, stock_unit: ProductStockUnit
 - direction: ReturnDirection, quantity: i64
 
 **処理ステップ**:
@@ -217,7 +216,7 @@ fn get_manual_sale_record_detail(conn: &DbConnection, record_id: i64) -> Result<
 - movements: Vec<MovementRecord>
 
 **ManualSaleRecordDetailItem構造体**:
-- id: i64, product_code: String, product_name: String, department_name: String, stock_unit: String
+- id: i64, product_code: String, product_name: String, department_name: String, stock_unit: ProductStockUnit
 - quantity: i64, amount: i64
 
 **処理ステップ**:
@@ -344,18 +343,17 @@ fn get_disposal_record_detail(
 - product_code: String
 - product_name: String
 - department_name: String
-- stock_unit: String
+- stock_unit: ProductStockUnit
 - disposal_type: DisposalType
 - quantity: i64
 - cost_price: i64
 - reason: String
-- line_loss_cost: i64
+- line_loss_cost_centi: String（IO は空の文字列で返し、BIZ が埋める）
 
 **処理ステップ**:
 1. disposal_records のヘッダを record_id で取得する。存在しない場合は DbError::NotFound
 2. disposal_items を products / departments と JOIN し、商品名・部門名・単位を付ける
-3. 各明細の `quantity * cost_price` を line_loss_cost とし、合計を total_loss_cost にする
-   - proposed・未実装（D-113）: 同上。廃棄のロス原価も BIZ が SPEC-UNIT-D6 で求める
+3. IO は金額を計算しない（入庫の §10.2 と同じ）。`line_loss_cost_centi` は空、`total_loss_cost` は 0 で返し、BIZ が SPEC-UNIT-D6 で求めて埋める
 4. inventory_movements から `reference_type='disposal_record'` かつ `reference_id=record_id` かつ `is_voided=0` の行を取得する
 5. movements は BIZ 層で source link を補完するため、IO 層では `source=None` のまま返す
 

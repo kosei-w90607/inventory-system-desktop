@@ -48,8 +48,14 @@ export interface GroupedSection {
   departmentId: number;
   departmentName: string;
   items: DailySaleItem[];
-  subtotal: DeptSubtotal;
+  subtotal: SectionSubtotal;
 }
+
+/// 画面が再集計した部門小計。和が安全な整数を外れた数量の欄は null（表示は「—」）
+export type SectionSubtotal = Omit<DeptSubtotal, "count_points" | "length_cm"> & {
+  count_points: number | null;
+  length_cm: number | null;
+};
 
 /// 売上明細数サマリ（user Option 1.5、items.length + source 別内訳）
 export interface SalesLineSummary {

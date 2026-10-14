@@ -18,6 +18,10 @@
 //! - 商品JANは CV17 1.1.1 のスキャニングPLU検証に使える13桁EANを生成する。JANなし商品の
 //!   業務フローは UI-01b で扱うが、デモseedは UI-08 L3 を阻害しないデータにする。
 
+use crate::biz::unit_amount::{
+    price_basis_quantity, sale_amount_yen, stock_unit_kind, StockUnitKind,
+};
+use crate::db::product_repo::ProductStockUnit;
 use crate::db::DbError;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -183,6 +187,7 @@ pub struct ProductSpec {
     pub product_code: String,
     pub selling_price: i64,
     pub stock_quantity: i64,
+    pub stock_unit: ProductStockUnit,
 }
 
 fn seed_products(
@@ -222,6 +227,13 @@ fn seed_products(
     )?;
 
     for (dept_id, count, prefix, stock_unit, name_label) in DEPARTMENT_SEED_PLAN {
+        let unit = ProductStockUnit::from_code(stock_unit).ok_or_else(|| {
+            SeedError::Db(DbError::QueryFailed(format!(
+                "seed の在庫単位が一覧にありません: {stock_unit}"
+            )))
+        })?;
+        // 数量の種類で在庫の桁と在庫少の基準が変わる（SPEC-UNIT-D10）
+        let is_length = stock_unit_kind(unit) == StockUnitKind::Length;
         for i in 1..=*count {
             let product_code = format!("{}{:04}", prefix, i);
             let jan_code = gen_ean13(&mut rng);
@@ -234,7 +246,7 @@ fn seed_products(
             // drawn_stock は normal 件 (i>=3) で実際に使うことで rng カーソルを保持し、
             // 後続の jan_code/selling_price の rng 列を不変に保つ
             // (seed_uses_deterministic_rng が無変更で pass)。
-            let drawn_stock: i64 = if *stock_unit == "cm" {
+            let drawn_stock: i64 = if is_length {
                 rng.gen_range(500..=5000)
             } else {
                 rng.gen_range(10..=200)
@@ -243,7 +255,7 @@ fn seed_products(
             let stock_quantity: i64 = match i {
                 1 => 0, // 在庫切れ (stockout、cm/pcs 共通)
                 2 => {
-                    if *stock_unit == "cm" {
+                    if is_length {
                         300 // 在庫少 (cm 300 <= 閾値 500、D-4 stock_low_threshold_fabric)
                     } else {
                         2 // 在庫少 (pcs 2 <= 閾値 3、D-4 stock_low_threshold)
@@ -274,6 +286,7 @@ fn seed_products(
                 product_code,
                 selling_price,
                 stock_quantity,
+                stock_unit: unit,
             });
         }
     }
@@ -455,6 +468,7 @@ fn seed_sales(
     for _ in 0..SALES_RECORDS {
         let spec_idx = rng.gen_range(0..specs.len());
         let product_code = specs[spec_idx].product_code.clone();
+        let basis = price_basis_quantity(specs[spec_idx].stock_unit);
         let selling_price = price_lookup.get(&product_code).copied().ok_or_else(|| {
             SeedError::Db(DbError::QueryFailed(format!(
                 "price_lookup に {} が無い",
@@ -466,7 +480,9 @@ fn seed_sales(
         let sale_date = date_plus_days(day_offset);
         let created_at = format!("{}T12:00:00", sale_date);
         let quantity: i64 = rng.gen_range(1..=5);
-        let amount: i64 = selling_price * quantity;
+        // 売価は基準数量ぶんの値（長さは 1 m あたり。SPEC-UNIT-D7）
+        let amount: i64 = sale_amount_yen(selling_price, quantity, basis)
+            .map_err(|e| SeedError::Db(DbError::QueryFailed(e.to_string())))?;
 
         let stock_entry = current_stock.entry(product_code.clone()).or_insert(0);
         let new_stock = *stock_entry - quantity;

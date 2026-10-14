@@ -1,9 +1,9 @@
-import type { ProductWithRelations } from "@/lib/bindings";
+import type { ProductStockUnit, ProductWithRelations } from "@/lib/bindings";
 
 export interface ReceivingRow {
   productCode: string;
   productName: string;
-  stockUnit: string;
+  stockUnit: ProductStockUnit;
   quantity: string;
   costPrice: string;
 }

@@ -6,6 +6,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatQuantityTotal } from "@/features/stock-inquiry/lib/format-stock-display";
 import { cn } from "@/lib/utils";
 import type { DailySalesReport } from "@/lib/bindings";
 import type { SalesLineSummary } from "../types";
@@ -51,7 +52,10 @@ export function SummaryCardsBar({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <SimpleCard title="売上合計" value={`¥${today.grand_total.amount.toLocaleString("ja-JP")}`} />
-      <SimpleCard title="販売点数" value={`${String(today.grand_total.quantity)} 点`} />
+      <SimpleCard
+        title="販売点数"
+        value={formatQuantityTotal(today.grand_total.count_points, today.grand_total.length_cm)}
+      />
       <CardWithTooltip
         title="売上明細数"
         value={`${String(summary.total)} 件`}

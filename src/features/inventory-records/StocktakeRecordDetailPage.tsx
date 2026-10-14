@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/table";
 // 数量の桁区切りと単位名は共通formatterに揃える。
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
-import { MovementTable } from "@/features/stock-movements/components/MovementTable";
-import type { StocktakeStatus } from "@/lib/bindings";
+import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
+import type { ProductStockUnit, StocktakeStatus } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -41,12 +41,12 @@ const STATUS_LABELS: Record<StocktakeStatus, string> = {
   completed: "完了",
 };
 
-function formatSignedQuantity(value: number, unit: string): string {
+function formatSignedQuantity(value: number, unit: ProductStockUnit): string {
   const sign = value > 0 ? "+" : "";
   return `${sign}${formatStockDisplay(value, unit)}`;
 }
 
-function formatOptionalQuantity(value: number | null, unit: string): string {
+function formatOptionalQuantity(value: number | null, unit: ProductStockUnit): string {
   return value === null ? "—" : formatStockDisplay(value, unit);
 }
 
@@ -230,7 +230,10 @@ export function StocktakeRecordDetailPage({
             description="この記録に紐づく有効な在庫変動は見つかりません"
           />
         ) : (
-          <MovementTable movements={detail.movements} />
+          <MovementTable
+            movements={detail.movements}
+            stockUnitByProductCode={stockUnitMap(detail.items)}
+          />
         )}
       </section>
     </PageShell>

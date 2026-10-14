@@ -19,7 +19,11 @@ vi.mock("@/features/stock-movements/StockMovementsPage", async () => {
   const { MovementTable } = await vi.importActual<
     typeof import("@/features/stock-movements/components/MovementTable")
   >("@/features/stock-movements/components/MovementTable");
-  return { StockMovementsPage: () => <MovementTable movements={[makeMovement()]} /> };
+  return {
+    StockMovementsPage: () => (
+      <MovementTable movements={[makeMovement()]} stockUnitByProductCode={new Map()} />
+    ),
+  };
 });
 
 vi.mock("@/lib/bindings", () => ({
@@ -213,23 +217,40 @@ describe("StocktakeRecordDetailPage (REQ-206 / REQ-207)", () => {
 
 it.each([
   ["pcs", "1,234 個", "0 個"],
-  ["cm", "1,234 cm", "0 cm"],
-])("⑮ SC19: 棚卸し詳細の %s と未入力・補正ゼロを表示する", async (unit, expected, zero) => {
+  ["cm", "12.34 m", "0 m"],
+] as const)(
+  "⑮ SC19: 棚卸し詳細の %s と未入力・補正ゼロを表示する",
+  async (unit, expected, zero) => {
+    const detail = makeDetail();
+    detail.items = [
+      {
+        ...detail.items[0],
+        stock_unit: unit,
+        system_stock: 1234,
+        actual_count: null,
+        adjustment_quantity: 0,
+      },
+    ];
+    mockGetStocktakeRecord.mockResolvedValue({ status: "ok", data: detail });
+    renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
+    const row = (await screen.findByText(expected)).closest("tr");
+    if (row === null) throw new Error("expected table structure");
+    expect(within(row).getByText("—")).toBeInTheDocument();
+    expect(within(row).getByText(zero)).toBeInTheDocument();
+    expect(within(row).queryByText("+" + zero)).not.toBeInTheDocument();
+  },
+);
+
+// REQ-205 / UI-06c-D5 / SPEC-UNIT-D3 の表の 6: 棚卸しの記録詳細の関連する在庫変動も明細の単位で出す
+it("REQ-205: m の商品の棚卸しの関連する在庫変動は -0.02 m・0.08 m", async () => {
   const detail = makeDetail();
-  detail.items = [
-    {
-      ...detail.items[0],
-      stock_unit: unit,
-      system_stock: 1234,
-      actual_count: null,
-      adjustment_quantity: 0,
-    },
-  ];
+  const [item] = detail.items;
+  detail.items = [{ ...item, stock_unit: "m" }];
   mockGetStocktakeRecord.mockResolvedValue({ status: "ok", data: detail });
   renderWithClient(<StocktakeRecordDetailPage stocktakeId={51} />);
-  const row = (await screen.findByText(expected)).closest("tr");
-  if (row === null) throw new Error("expected table structure");
-  expect(within(row).getByText("—")).toBeInTheDocument();
-  expect(within(row).getByText(zero)).toBeInTheDocument();
-  expect(within(row).queryByText("+" + zero)).not.toBeInTheDocument();
+
+  const heading = await screen.findByRole("heading", { name: "関連する在庫変動" });
+  const section = within(heading.closest("section") ?? document.body);
+  expect(section.getByText("-0.02 m")).toBeInTheDocument();
+  expect(section.getByText("0.08 m")).toBeInTheDocument();
 });

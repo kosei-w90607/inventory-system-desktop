@@ -20,7 +20,9 @@ vi.mock("@/features/stock-movements/StockMovementsPage", async () => {
     typeof import("@/features/stock-movements/components/MovementTable")
   >("@/features/stock-movements/components/MovementTable");
   return {
-    StockMovementsPage: () => <MovementTable movements={[makeMovement()]} />,
+    StockMovementsPage: () => (
+      <MovementTable movements={[makeMovement()]} stockUnitByProductCode={new Map()} />
+    ),
   };
 });
 
@@ -312,11 +314,27 @@ it.each([
 
 it.each([
   ["pcs", "1,234 個"],
-  ["cm", "1,234 cm"],
-])("⑮ SC19: CSV詳細の %s を単位付き表示する", async (unit, expected) => {
+  ["cm", "12.34 m"],
+] as const)("⑮ SC19: CSV詳細の %s を単位付き表示する", async (unit, expected) => {
   const detail = makeDetail();
   detail.items = [{ ...detail.items[0], stock_unit: unit, quantity: 1234 }];
   mockGetCsvImportRecord.mockResolvedValue({ status: "ok", data: detail });
   renderWithClient(<CsvImportRecordDetailPage importId={41} />);
   expect(await screen.findByText(expected)).toBeInTheDocument();
+});
+
+// REQ-401 / UI-06c-D5 / SPEC-UNIT-D3 の表の 6: CSV 取込みの記録詳細の関連する在庫変動も明細の単位で出す
+it("REQ-401: m の商品の取込みは 1.3 m、関連する在庫変動は -1.3 m・26.2 m", async () => {
+  const detail = makeDetail();
+  const [item] = detail.items;
+  detail.items = [{ ...item, product_code: "CSV-M", stock_unit: "m", quantity: 130 }];
+  detail.movements = [
+    { ...makeMovement(), product_code: "CSV-M", quantity: -130, stock_after: 2620 },
+  ];
+  mockGetCsvImportRecord.mockResolvedValue({ status: "ok", data: detail });
+  renderWithClient(<CsvImportRecordDetailPage importId={41} />);
+
+  expect(await screen.findByText("1.3 m")).toBeInTheDocument();
+  expect(screen.getByText("-1.3 m")).toBeInTheDocument();
+  expect(screen.getByText("26.2 m")).toBeInTheDocument();
 });

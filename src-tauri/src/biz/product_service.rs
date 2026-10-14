@@ -7,7 +7,9 @@ use crate::db::product_repo::{self, NewPriceHistory, NewProduct, ProductUpdates}
 use crate::db::system_repo::{self, NewOperationLog};
 use crate::db::{inventory_repo, stocktake_repo, DbConnection, DbError, PaginatedResult};
 
+use super::unit_amount::{stock_unit_kind, StockUnitKind};
 use super::{jan_code, BizError};
+use crate::constants::{MAX_COST_PRICE, MAX_SELLING_PRICE, MAX_STOCK_QUANTITY};
 use crate::db::inventory_repo::{MovementType, NewMovement};
 use crate::db::product_repo::{
     ProductBulkFilter, ProductSearchQuery, ProductStockUnit, ProductTaxRate, ProductWithRelations,
@@ -468,15 +470,10 @@ pub fn revise_product_price(
     let existing = product_repo::find_by_product_code(conn, &input.product_code)?
         .ok_or_else(|| BizError::NotFound("商品が見つかりません".to_string()))?;
 
-    if input.new_selling_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "売価は0以上で入力してください".to_string(),
-        ));
-    }
-    if input.new_cost_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "原価は0以上で入力してください".to_string(),
-        ));
+    if let Some(message) =
+        selling_and_cost_range_error(input.new_selling_price, input.new_cost_price)
+    {
+        return Err(BizError::ValidationFailed(message));
     }
 
     if let Some(supplier_id) = input.assign_supplier_id {
@@ -911,18 +908,29 @@ pub fn list_low_stock(
     conn: &DbConnection,
     include_discontinued: bool,
 ) -> Result<Vec<ProductWithRelations>, BizError> {
-    let threshold_pcs = system_repo::get_setting(conn, "stock_low_threshold")?
+    let threshold_count = system_repo::get_setting(conn, "stock_low_threshold")?
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(3);
-    let threshold_cm = system_repo::get_setting(conn, "stock_low_threshold_fabric")?
+    let threshold_length = system_repo::get_setting(conn, "stock_low_threshold_fabric")?
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(500);
+    // 個数の単位は一般の基準、長さの単位は生地の基準（SPEC-UNIT-D10）。全 variant をどちらかに入れる
+    let (count_units, length_units) = low_stock_unit_groups();
     Ok(product_repo::list_low_stock_products(
         conn,
-        threshold_pcs,
-        threshold_cm,
+        &count_units,
+        threshold_count,
+        &length_units,
+        threshold_length,
         include_discontinued,
     )?)
+}
+
+/// 全単位を数量の種類で個数と長さの 2 つの並びに分ける（在庫少の SQL に渡す）
+fn low_stock_unit_groups() -> (Vec<ProductStockUnit>, Vec<ProductStockUnit>) {
+    ProductStockUnit::ALL
+        .into_iter()
+        .partition(|unit| stock_unit_kind(*unit) == StockUnitKind::Count)
 }
 
 // ---------------------------------------------------------------------------
@@ -937,6 +945,110 @@ fn is_plu_target_eligible_jan(jan_code: Option<&str>) -> bool {
     jan_code.is_some_and(|jan| jan.len() == 13 && jan_code::validate(jan).is_ok())
 }
 
+/// 売価・原価の範囲（共通規則「入力の上限と安全な整数の範囲」(a)）。外れたら利用者向けの文を返す
+fn price_range_error(label: &str, value: i64, max: i64) -> Option<String> {
+    if value < 0 {
+        Some(format!("{label}は0以上で入力してください"))
+    } else if value > max {
+        Some(format!("{label}が大きすぎます"))
+    } else {
+        None
+    }
+}
+
+/// 売価と原価を範囲で確かめ、最初に外れた 1 つの文を返す
+fn selling_and_cost_range_error(selling_price: i64, cost_price: i64) -> Option<String> {
+    price_range_error("売価", selling_price, MAX_SELLING_PRICE)
+        .or_else(|| price_range_error("原価", cost_price, MAX_COST_PRICE))
+}
+
+const MSG_STOCK_TOO_LARGE: &str = "在庫数が大きすぎます";
+
+/// 単位の表示の語（SPEC-UNIT-D1 の表）。商品 CSV の `在庫単位` の語と error の文に使う
+fn stock_unit_label(unit: ProductStockUnit) -> &'static str {
+    match unit {
+        ProductStockUnit::Pcs => "個",
+        ProductStockUnit::Sheet => "枚",
+        ProductStockUnit::Hon => "本",
+        ProductStockUnit::Bag => "袋",
+        ProductStockUnit::Box => "箱",
+        ProductStockUnit::Roll => "巻",
+        ProductStockUnit::Kumi => "組",
+        ProductStockUnit::Set => "セット",
+        ProductStockUnit::Ball => "玉",
+        ProductStockUnit::Cho => "丁",
+        ProductStockUnit::M => "m",
+        ProductStockUnit::Cm => "cm",
+    }
+}
+
+/// 商品 CSV の `在庫単位`（code か表示の語）を単位にする（SPEC-UNIT-D10）
+fn normalize_stock_unit(value: &str) -> Option<ProductStockUnit> {
+    ProductStockUnit::from_code(value).or_else(|| {
+        ProductStockUnit::ALL
+            .into_iter()
+            .find(|unit| stock_unit_label(*unit) == value)
+    })
+}
+
+fn stock_unit_changed_message(existing: ProductStockUnit, csv_value: &str) -> String {
+    format!(
+        "在庫単位は登録の後に変えられません（登録: {}、CSV: {}）",
+        stock_unit_label(existing),
+        csv_value
+    )
+}
+
+/// m の数（`^[0-9]+(\.[0-9]{1,2})?$`）を cm の整数にする（SPEC-UNIT-D3。浮動小数を通さない）
+///
+/// 規則に合わなければ `None`、i64 に収まらなければ `Some(None)`。
+fn parse_meters_to_cm(value: &str) -> Option<Option<i64>> {
+    let (whole, fraction) = match value.split_once('.') {
+        Some((whole, fraction)) if (1..=2).contains(&fraction.len()) => (whole, fraction),
+        Some(_) => return None,
+        None => (value, ""),
+    };
+    let all_digits = |text: &str| text.bytes().all(|byte| byte.is_ascii_digit());
+    if whole.is_empty() || !all_digits(whole) || !all_digits(fraction) {
+        return None;
+    }
+    // 小数部は右に 0 を埋めた 2 桁（"3" → 30、"" → 0）
+    let fraction_cm = format!("{fraction:0<2}").parse::<i64>().ok()?;
+    Some(
+        whole
+            .parse::<i64>()
+            .ok()
+            .and_then(|meters| meters.checked_mul(100))
+            .and_then(|cm| cm.checked_add(fraction_cm)),
+    )
+}
+
+/// 商品 CSV の commit の再検証（wire の行を信頼しない。BIZ-01-D8）。外れた最初の 1 件の文を返す
+fn import_row_commit_error(
+    row: &ImportRow,
+    existing_unit: Option<ProductStockUnit>,
+) -> Option<String> {
+    if let Some(message) = selling_and_cost_range_error(row.selling_price, row.cost_price) {
+        return Some(message);
+    }
+    match (existing_unit, row.stock_unit.as_deref()) {
+        // 上書きの行: 単位は登録の後に変えない。初期在庫は読まない
+        (Some(existing), Some(code)) if code != existing.as_str() => {
+            Some(stock_unit_changed_message(existing, code))
+        }
+        (Some(_), _) => None,
+        // 新規の行: 単位は 12 個の code、初期在庫は 0 以上で上限まで
+        (None, Some(code)) if ProductStockUnit::from_code(code).is_none() => {
+            Some(format!("在庫単位が正しくありません: {code}"))
+        }
+        (None, _) => match row.initial_stock {
+            Some(stock) if stock < 0 => Some(format!("初期在庫の値が不正です: '{stock}'")),
+            Some(stock) if stock > MAX_STOCK_QUANTITY => Some(MSG_STOCK_TOO_LARGE.to_string()),
+            _ => None,
+        },
+    }
+}
+
 fn validate_create_request(
     req: &ProductCreateRequest,
     conn: &DbConnection,
@@ -944,20 +1056,16 @@ fn validate_create_request(
     if req.name.trim().is_empty() {
         return Err(BizError::ValidationFailed("商品名は必須です".to_string()));
     }
-    if req.selling_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "売価は0以上で入力してください".to_string(),
-        ));
-    }
-    if req.cost_price < 0 {
-        return Err(BizError::ValidationFailed(
-            "原価は0以上で入力してください".to_string(),
-        ));
+    if let Some(message) = selling_and_cost_range_error(req.selling_price, req.cost_price) {
+        return Err(BizError::ValidationFailed(message));
     }
     if req.initial_stock < 0 {
         return Err(BizError::ValidationFailed(
             "初期在庫は0以上で入力してください".to_string(),
         ));
+    }
+    if req.initial_stock > MAX_STOCK_QUANTITY {
+        return Err(BizError::ValidationFailed(MSG_STOCK_TOO_LARGE.to_string()));
     }
     // department 存在チェック
     if product_repo::find_department_by_id(conn, req.department_id)?.is_none() {
@@ -990,19 +1098,15 @@ fn validate_update_request(
             return Err(BizError::ValidationFailed("商品名は必須です".to_string()));
         }
     }
-    if let Some(price) = req.selling_price {
-        if price < 0 {
-            return Err(BizError::ValidationFailed(
-                "売価は0以上で入力してください".to_string(),
-            ));
-        }
-    }
-    if let Some(cost) = req.cost_price {
-        if cost < 0 {
-            return Err(BizError::ValidationFailed(
-                "原価は0以上で入力してください".to_string(),
-            ));
-        }
+    if let Some(message) = req
+        .selling_price
+        .and_then(|price| price_range_error("売価", price, MAX_SELLING_PRICE))
+        .or_else(|| {
+            req.cost_price
+                .and_then(|cost| price_range_error("原価", cost, MAX_COST_PRICE))
+        })
+    {
+        return Err(BizError::ValidationFailed(message));
     }
     if let Some(dept_id) = req.department_id {
         if product_repo::find_department_by_id(conn, dept_id)?.is_none() {
@@ -1178,15 +1282,13 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
         let selling_price = row.fields.get("売価").and_then(|v| v.parse::<i64>().ok());
         match selling_price {
             None => errors.push("売価が不正です".to_string()),
-            Some(p) if p < 0 => errors.push("売価は0以上で入力してください".to_string()),
-            _ => {}
+            Some(p) => errors.extend(price_range_error("売価", p, MAX_SELLING_PRICE)),
         }
 
         let cost_price = row.fields.get("原価").and_then(|v| v.parse::<i64>().ok());
         match cost_price {
             None => errors.push("原価が不正です".to_string()),
-            Some(p) if p < 0 => errors.push("原価は0以上で入力してください".to_string()),
-            _ => {}
+            Some(p) => errors.extend(price_range_error("原価", p, MAX_COST_PRICE)),
         }
 
         let tax_rate = row.fields.get("税率").cloned().unwrap_or_default();
@@ -1196,19 +1298,40 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
 
         // オプション項目（R2-5: None のまま保持、デフォルト化しない）
         // #3 (P2): 値あり+parse失敗をサイレント None にせずエラー化
-        let stock_unit =
-            row.fields
-                .get("在庫単位")
-                .and_then(|v| if v.is_empty() { None } else { Some(v.clone()) });
+        // 在庫単位: code か表示の語を code に正規化する。空は None（INSERT で pcs）。SPEC-UNIT-D10
+        let raw_stock_unit = row
+            .fields
+            .get("在庫単位")
+            .map(String::as_str)
+            .unwrap_or_default();
+        let unit = normalize_stock_unit(raw_stock_unit);
+        let unit_invalid = !raw_stock_unit.is_empty() && unit.is_none();
+        if unit_invalid {
+            errors.push(format!("在庫単位が正しくありません: {raw_stock_unit}"));
+        }
+        let stock_unit = unit.map(|unit| unit.as_str().to_string());
 
+        // 初期在庫: 0 以上で在庫の上限まで。m の行だけ m の数として cm にする（SPEC-UNIT-D3、X3）。
+        // 単位が決まらない行では読まない
         let initial_stock = match row.fields.get("初期在庫") {
-            Some(v) if !v.is_empty() => match v.parse::<i64>() {
-                Ok(n) => Some(n),
-                Err(_) => {
-                    errors.push(format!("初期在庫の値が不正です: '{}'", v));
-                    None
+            Some(v) if !v.is_empty() && !unit_invalid => {
+                let parsed = if unit == Some(ProductStockUnit::M) {
+                    parse_meters_to_cm(v)
+                } else {
+                    v.parse::<i64>().ok().filter(|n| *n >= 0).map(Some)
+                };
+                match parsed {
+                    Some(Some(n)) if n <= MAX_STOCK_QUANTITY => Some(n),
+                    Some(_) => {
+                        errors.push(MSG_STOCK_TOO_LARGE.to_string());
+                        None
+                    }
+                    None => {
+                        errors.push(format!("初期在庫の値が不正です: '{}'", v));
+                        None
+                    }
                 }
-            },
+            }
             _ => None,
         };
 
@@ -1274,6 +1397,21 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
             }
         }
 
+        // 既存の商品の行（上書きの候補）は単位を変えられない（SPEC-UNIT-D2）
+        let existing = if product_code.is_empty() {
+            None
+        } else {
+            product_repo::find_by_product_code(conn, &product_code)?
+        };
+        if let (Some(existing), Some(unit)) = (&existing, unit) {
+            if unit != existing.product.stock_unit {
+                errors.push(stock_unit_changed_message(
+                    existing.product.stock_unit,
+                    raw_stock_unit,
+                ));
+            }
+        }
+
         if !errors.is_empty() {
             error_rows.push(ImportErrorRow {
                 line_no,
@@ -1302,7 +1440,7 @@ pub fn preview_import(conn: &DbConnection, file_bytes: &[u8]) -> Result<ImportPr
         };
 
         // 4. 重複チェック
-        match product_repo::find_by_product_code(conn, &product_code)? {
+        match existing {
             Some(_) => {
                 duplicate_rows.push(ImportDuplicateRow {
                     line_no,
@@ -1360,6 +1498,12 @@ pub fn commit_import(
     for row in &valid_rows {
         if overwrite_set.contains(&row.product_code) {
             let existing = product_repo::find_by_product_code(&tx, &row.product_code)?;
+            // 上書きの対象が無い行は下で skip する（書かない）ので、再検証は対象がある行だけ
+            if let Some(message) = existing.as_ref().and_then(|existing| {
+                import_row_commit_error(row, Some(existing.product.stock_unit))
+            }) {
+                return Err(BizError::ValidationFailed(message));
+            }
             let old_jan = existing
                 .as_ref()
                 .and_then(|existing| existing.product.jan_code.clone());
@@ -1374,7 +1518,6 @@ pub fn commit_import(
                 selling_price: Some(row.selling_price),
                 cost_price: Some(row.cost_price),
                 tax_rate: Some(row.tax_rate.clone()),
-                stock_unit: row.stock_unit.clone(),
                 supplier_id: row.supplier_id.map(Some),
                 maker_code: row.maker_code.clone().map(Some),
                 pos_stock_sync: row.pos_stock_sync,
@@ -1398,6 +1541,9 @@ pub fn commit_import(
                 skipped_count += 1;
             }
         } else {
+            if let Some(message) = import_row_commit_error(row, None) {
+                return Err(BizError::ValidationFailed(message));
+            }
             // INSERT: デフォルト化は INSERT 時のみ（R2-5対応）
             let stock_unit = row.stock_unit.clone().unwrap_or_else(|| "pcs".to_string());
             let initial_stock = row.initial_stock.unwrap_or(0);
@@ -3319,22 +3465,439 @@ mod tests {
         assert_eq!(units, vec!["pcs", "pcs"]);
     }
 
+    const UNIT_CSV_HEADERS: &str = "商品コード,商品名,部門ID,売価,原価,税率,在庫単位,初期在庫";
+
+    /// `在庫単位,初期在庫` の組を 1 行ずつの CSV にして preview する（商品コードは `{prefix}-{行番号}`）
+    fn preview_unit_rows(conn: &DbConnection, prefix: &str, cells: &[&str]) -> ImportPreview {
+        let rows: Vec<String> = cells
+            .iter()
+            .enumerate()
+            .map(|(index, cell)| format!("{prefix}-{index},合成の商品,1,500,300,10,{cell}"))
+            .collect();
+        let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
+        preview_import(conn, &make_csv(UNIT_CSV_HEADERS, &rows)).unwrap()
+    }
+
+    /// 商品・価格の履歴・変動・操作ログが変わらないことの比較に使う
+    fn import_side_effects(conn: &DbConnection) -> (Vec<String>, i64, i64, i64) {
+        let mut statement = conn
+            .prepare(
+                "SELECT product_code || '|' || name || '|' || selling_price || '|' || cost_price
+                        || '|' || stock_quantity || '|' || stock_unit
+                 FROM products ORDER BY product_code",
+            )
+            .unwrap();
+        let products = statement
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<String>, _>>()
+            .unwrap();
+        let count = |table: &str| -> i64 {
+            conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                row.get(0)
+            })
+            .unwrap()
+        };
+        (
+            products,
+            count("price_history"),
+            count("inventory_movements"),
+            count("operation_logs"),
+        )
+    }
+
+    fn assert_commit_rejected(
+        conn: &mut DbConnection,
+        rows: Vec<ImportRow>,
+        overwrite_codes: &[&str],
+        expected_message: &str,
+    ) {
+        let before = import_side_effects(conn);
+        let overwrite_codes = overwrite_codes
+            .iter()
+            .map(|code| code.to_string())
+            .collect();
+        let result = commit_import(conn, rows, overwrite_codes);
+        assert!(
+            matches!(result, Err(BizError::ValidationFailed(ref message)) if message.starts_with(expected_message)),
+            "{expected_message}: {result:?}"
+        );
+        assert_eq!(import_side_effects(conn), before, "{expected_message}");
+    }
+
+    fn product_stock_and_unit(conn: &DbConnection, product_code: &str) -> (i64, String) {
+        conn.query_row(
+            "SELECT stock_quantity, stock_unit FROM products WHERE product_code = ?1",
+            [product_code],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap()
+    }
+
     #[test]
     #[serial]
     fn test_commit_import_req104_nonempty_invalid_stock_unit_rolls_back() {
+        // REQ-104 / SPEC-UNIT-D10 / BIZ-01-D8: 一覧に無い単位は preview の行の error。
+        // preview を通さない commit は ValidationFailed で TX 全体を戻す
         let (_dir, mut conn) = setup_test_db();
+        let preview = preview_unit_rows(&conn, "SU", &["kg,25.155", "pcs,1"]);
+        assert_eq!(preview.valid_rows.len(), 1, "他の行は valid");
+        assert_eq!(preview.error_rows.len(), 1);
+        // 単位が決まらない行の初期在庫は読まない（error は単位の 1 つだけ）
+        assert_eq!(
+            preview.error_rows[0].errors,
+            vec!["在庫単位が正しくありません: kg".to_string()]
+        );
+
         let mut invalid = make_import_row("SU-KG", "不正単位");
         invalid.stock_unit = Some("kg".to_string());
-
-        assert!(commit_import(&mut conn, vec![invalid], vec![]).is_err());
+        assert_commit_rejected(
+            &mut conn,
+            vec![make_import_row("SU-OK", "同じ取込みの行"), invalid],
+            &[],
+            "在庫単位が正しくありません: kg",
+        );
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM products WHERE product_code = 'SU-KG'",
+                "SELECT COUNT(*) FROM products WHERE product_code IN ('SU-KG', 'SU-OK')",
                 [],
                 |row| row.get(0),
             )
             .unwrap();
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_stock_unit_code_and_label_normalized() {
+        // REQ-104 / SPEC-UNIT-D10 / BIZ-01-D8（X12）: code か表示の語を code に正規化する。空は None
+        let (_dir, mut conn) = setup_test_db();
+        let preview = preview_unit_rows(&conn, "UL", &["玉,", " m ,", "pcs,", "セット,", ","]);
+        assert!(preview.error_rows.is_empty(), "{:?}", preview.error_rows);
+        let units: Vec<Option<&str>> = preview
+            .valid_rows
+            .iter()
+            .map(|row| row.stock_unit.as_deref())
+            .collect();
+        assert_eq!(
+            units,
+            vec![Some("ball"), Some("m"), Some("pcs"), Some("set"), None]
+        );
+        // 12 個の code と 12 個の表示の語がすべて通る
+        let labels = [
+            ("pcs", "個"),
+            ("sheet", "枚"),
+            ("hon", "本"),
+            ("bag", "袋"),
+            ("box", "箱"),
+            ("roll", "巻"),
+            ("kumi", "組"),
+            ("set", "セット"),
+            ("ball", "玉"),
+            ("cho", "丁"),
+            ("m", "m"),
+            ("cm", "cm"),
+        ];
+        for (code, label) in labels {
+            for cell in [code, label] {
+                let preview = preview_unit_rows(&conn, "UL12", &[&format!("{cell},")]);
+                assert_eq!(
+                    preview.valid_rows[0].stock_unit.as_deref(),
+                    Some(code),
+                    "{cell}"
+                );
+            }
+        }
+
+        // commit: 正規化した code で入り、空は pcs
+        commit_import(&mut conn, preview.valid_rows, vec![]).unwrap();
+        assert_eq!(product_stock_and_unit(&conn, "UL-0").1, "ball");
+        assert_eq!(product_stock_and_unit(&conn, "UL-4").1, "pcs");
+    }
+
+    #[test]
+    #[serial]
+    fn test_preview_import_req104_initial_stock_in_meters_for_m_rows() {
+        // REQ-104 / SPEC-UNIT-D3 / BIZ-01-D8（X3）: m の行だけ初期在庫を m の数として cm にする
+        let (_dir, mut conn) = setup_test_db();
+        let accepted = [
+            ("m,25", 2500),
+            ("m,26.15", 2615),
+            ("m,0", 0),
+            ("m,0.05", 5),
+            ("m,1.15", 115), // f64 で掛けると 114
+            ("m,9999999.99", 999_999_999),
+            ("cm,25", 25),
+            ("pcs,25", 25),
+            (",25", 25),
+            ("pcs,999999999", 999_999_999),
+            ("pcs,0", 0),
+        ];
+        let cells: Vec<&str> = accepted.iter().map(|(cell, _)| *cell).collect();
+        let preview = preview_unit_rows(&conn, "IM", &cells);
+        assert!(preview.error_rows.is_empty(), "{:?}", preview.error_rows);
+        let stocks: Vec<Option<i64>> = preview
+            .valid_rows
+            .iter()
+            .map(|row| row.initial_stock)
+            .collect();
+        let expected: Vec<Option<i64>> = accepted.iter().map(|(_, cm)| Some(*cm)).collect();
+        assert_eq!(stocks, expected);
+
+        let rejected = [
+            ("m,10000000", "在庫数が大きすぎます"),
+            ("m,25.155", "初期在庫の値が不正です: '25.155'"),
+            ("m,-1", "初期在庫の値が不正です: '-1'"),
+            ("m,1e2", "初期在庫の値が不正です: '1e2'"),
+            ("m,.5", "初期在庫の値が不正です: '.5'"),
+            ("m,1.", "初期在庫の値が不正です: '1.'"),
+            ("cm,25.5", "初期在庫の値が不正です: '25.5'"),
+            ("pcs,25.5", "初期在庫の値が不正です: '25.5'"),
+            (",25.5", "初期在庫の値が不正です: '25.5'"),
+            ("pcs,-1", "初期在庫の値が不正です: '-1'"),
+            ("cm,-5", "初期在庫の値が不正です: '-5'"),
+            ("pcs,1000000000", "在庫数が大きすぎます"),
+        ];
+        let mut cells: Vec<&str> = rejected.iter().map(|(cell, _)| *cell).collect();
+        cells.push("pcs,3");
+        let preview = preview_unit_rows(&conn, "IR", &cells);
+        assert_eq!(preview.valid_rows.len(), 1, "他の行は valid");
+        let errors: Vec<Vec<String>> = preview
+            .error_rows
+            .iter()
+            .map(|row| row.errors.clone())
+            .collect();
+        let expected: Vec<Vec<String>> = rejected
+            .iter()
+            .map(|(_, message)| vec![message.to_string()])
+            .collect();
+        assert_eq!(errors, expected);
+
+        // commit: m の 25 は在庫 2500 cm で入る
+        let preview = preview_unit_rows(&conn, "IC", &["m,25", "pcs,25"]);
+        commit_import(&mut conn, preview.valid_rows, vec![]).unwrap();
+        assert_eq!(
+            product_stock_and_unit(&conn, "IC-0"),
+            (2500, "m".to_string())
+        );
+        assert_eq!(
+            product_stock_and_unit(&conn, "IC-1"),
+            (25, "pcs".to_string())
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_revalidates_initial_stock_of_new_rows() {
+        // REQ-104 / BIZ-01-D8（X3）: commit は preview を信頼せず、新規の行の初期在庫を 0 以上で上限までと確かめる
+        let (_dir, mut conn) = setup_test_db();
+        for (stock, message) in [
+            (-1, "初期在庫の値が不正です: '-1'"),
+            (1_000_000_000, "在庫数が大きすぎます"),
+        ] {
+            let mut bad = make_import_row("IS-BAD", "初期在庫が範囲外");
+            bad.initial_stock = Some(stock);
+            let mut good = make_import_row("IS-GOOD", "同じ取込みの行");
+            good.initial_stock = Some(5);
+            assert_commit_rejected(&mut conn, vec![good, bad], &[], message);
+        }
+        let mut edge = make_import_row("IS-EDGE", "上限の端");
+        edge.initial_stock = Some(999_999_999);
+        commit_import(&mut conn, vec![edge], vec![]).unwrap();
+        assert_eq!(product_stock_and_unit(&conn, "IS-EDGE").0, 999_999_999);
+    }
+
+    #[test]
+    #[serial]
+    fn test_import_req104_overwrite_cannot_change_stock_unit() {
+        // REQ-104 / SPEC-UNIT-D2 / BIZ-01-D8（X12）: 上書きで単位は変えられない。preview は行の error、commit は再検証する
+        let (_dir, mut conn) = setup_test_db();
+        let mut existing = make_import_row("OU-M", "合成の反物");
+        existing.stock_unit = Some("m".to_string());
+        commit_import(&mut conn, vec![existing], vec![]).unwrap();
+        // 在庫 100 cm は入庫の明細（数量 100・原価 333）から。単位が変わると、この明細の金額の意味も変わる
+        let received = crate::biz::inventory_service::create_receiving(
+            &mut conn,
+            serde_json::from_value(serde_json::json!({
+                "idempotency_key": "ou-m-receiving",
+                "supplier_id": null,
+                "receiving_date": "2026-10-01",
+                "note": null,
+                "items": [{"product_code": "OU-M", "quantity": 100, "cost_price": 333}],
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let line_cost = |conn: &DbConnection| -> String {
+            crate::biz::inventory_service::get_receiving_record(conn, received.record_id)
+                .unwrap()
+                .items[0]
+                .line_cost_centi
+                .clone()
+        };
+        assert_eq!(line_cost(&conn), "33300");
+
+        let csv = make_csv(
+            UNIT_CSV_HEADERS,
+            &[
+                "OU-M,合成の反物,1,500,300,10,玉,",
+                "OU-NEW,合成の商品,1,500,300,10,玉,",
+            ],
+        );
+        let preview = preview_import(&conn, &csv).unwrap();
+        assert_eq!(preview.valid_rows.len(), 1, "他の行は valid");
+        assert!(preview.duplicate_rows.is_empty());
+        assert_eq!(
+            preview.error_rows[0].errors,
+            vec!["在庫単位は登録の後に変えられません（登録: m、CSV: 玉）".to_string()]
+        );
+
+        // preview を通さない wire
+        let mut changed = make_import_row("OU-M", "合成の反物");
+        changed.stock_unit = Some("ball".to_string());
+        assert_commit_rejected(
+            &mut conn,
+            vec![make_import_row("OU-OTHER", "同じ取込みの行"), changed],
+            &["OU-M"],
+            "在庫単位は登録の後に変えられません",
+        );
+        assert_eq!(
+            product_stock_and_unit(&conn, "OU-M"),
+            (100, "m".to_string())
+        );
+        assert_eq!(line_cost(&conn), "33300");
+
+        // 同じ単位と空の上書きは成功し、単位は m のまま。上書きは初期在庫を使わない
+        for (unit_cell, stock_cell) in [("m", "5"), ("", "")] {
+            let csv = make_csv(
+                UNIT_CSV_HEADERS,
+                &[&format!(
+                    "OU-M,上書きの後,1,600,300,10,{unit_cell},{stock_cell}"
+                )],
+            );
+            let preview = preview_import(&conn, &csv).unwrap();
+            assert!(preview.error_rows.is_empty(), "{:?}", preview.error_rows);
+            let rows: Vec<ImportRow> = preview
+                .duplicate_rows
+                .into_iter()
+                .map(|row| row.import_row)
+                .collect();
+            let result = commit_import(&mut conn, rows, vec!["OU-M".to_string()]).unwrap();
+            assert_eq!(result.updated_count, 1);
+            assert_eq!(
+                product_stock_and_unit(&conn, "OU-M"),
+                (100, "m".to_string())
+            );
+        }
+
+        // 上書きの行の初期在庫も preview は新規の行と同じ規則で読む（負は行の error）
+        let csv = make_csv(UNIT_CSV_HEADERS, &["OU-M,上書きの後,1,600,300,10,,-1"]);
+        let preview = preview_import(&conn, &csv).unwrap();
+        assert_eq!(
+            preview.error_rows[0].errors,
+            vec!["初期在庫の値が不正です: '-1'".to_string()]
+        );
+        // commit は上書きの行の初期在庫を読まない
+        let mut ignored = make_import_row("OU-M", "上書きの後");
+        ignored.initial_stock = Some(-1);
+        commit_import(&mut conn, vec![ignored], vec!["OU-M".to_string()]).unwrap();
+        assert_eq!(
+            product_stock_and_unit(&conn, "OU-M"),
+            (100, "m".to_string())
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_import_req104_price_limits_in_preview_and_commit() {
+        // REQ-104 / 共通規則 (a)（X5・X6）/ BIZ-01-D8: 売価・原価は 0 以上 999999。commit は新規と上書きの全行を再検証する
+        let (_dir, mut conn) = setup_test_db();
+        let csv = make_csv(
+            "商品コード,商品名,部門ID,売価,原価,税率",
+            &[
+                "PL-EDGE,上限の端,1,999999,999999,10",
+                "PL-SELL,売価が外,1,1000000,300,10",
+                "PL-COST,原価が外,1,500,1000000,10",
+            ],
+        );
+        let preview = preview_import(&conn, &csv).unwrap();
+        assert_eq!(preview.valid_rows.len(), 1);
+        let errors: Vec<Vec<String>> = preview
+            .error_rows
+            .iter()
+            .map(|row| row.errors.clone())
+            .collect();
+        assert_eq!(
+            errors,
+            vec![
+                vec!["売価が大きすぎます".to_string()],
+                vec!["原価が大きすぎます".to_string()]
+            ]
+        );
+        commit_import(&mut conn, preview.valid_rows, vec![]).unwrap();
+
+        let with_prices = |code: &str, selling_price: i64, cost_price: i64| ImportRow {
+            selling_price,
+            cost_price,
+            ..make_import_row(code, "再検証の行")
+        };
+        // (i) 新規の行 (ii)〜(v) 上書きの行。どれも同じ取込みのほかの行を含めて何も変わらない
+        for (code, selling_price, cost_price, overwrite, message) in [
+            ("PL-NEW", 1_000_000, 300, false, "売価が大きすぎます"),
+            ("PL-NEW", 500, 1_000_000, false, "原価が大きすぎます"),
+            ("PL-NEW", -1, 300, false, "売価は0以上で入力してください"),
+            ("PL-NEW", 500, -1, false, "原価は0以上で入力してください"),
+            ("PL-EDGE", 1_000_000, 300, true, "売価が大きすぎます"),
+            ("PL-EDGE", 500, 1_000_000, true, "原価が大きすぎます"),
+            ("PL-EDGE", -1, 300, true, "売価は0以上で入力してください"),
+            ("PL-EDGE", 500, -1, true, "原価は0以上で入力してください"),
+        ] {
+            let overwrite_codes: &[&str] = if overwrite { &["PL-EDGE"] } else { &[] };
+            assert_commit_rejected(
+                &mut conn,
+                vec![
+                    make_import_row("PL-OTHER", "同じ取込みの行"),
+                    with_prices(code, selling_price, cost_price),
+                ],
+                overwrite_codes,
+                message,
+            );
+        }
+
+        // 上書きの行の上限の端は成功して保存される
+        commit_import(
+            &mut conn,
+            vec![with_prices("PL-EDGE", 999_999, 999_999)],
+            vec!["PL-EDGE".to_string()],
+        )
+        .unwrap();
+        let prices: (i64, i64) = conn
+            .query_row(
+                "SELECT selling_price, cost_price FROM products WHERE product_code = 'PL-EDGE'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(prices, (999_999, 999_999));
+    }
+
+    #[test]
+    fn test_list_low_stock_req302_unit_groups_cover_every_unit_once() {
+        // REQ-302 / SPEC-UNIT-D10: BIZ が repo へ渡す 2 つの並びは合わせて 12 個で重なりが無い（個数 10・長さ 2）
+        let (count_units, length_units) = low_stock_unit_groups();
+        assert_eq!(count_units.len(), 10);
+        assert_eq!(
+            length_units,
+            vec![ProductStockUnit::M, ProductStockUnit::Cm]
+        );
+        let mut all: Vec<&str> = count_units
+            .iter()
+            .chain(&length_units)
+            .map(|unit| unit.as_str())
+            .collect();
+        all.sort_unstable();
+        all.dedup();
+        assert_eq!(all.len(), ProductStockUnit::ALL.len());
     }
 
     #[test]
@@ -4259,14 +4822,15 @@ mod tests {
 
     #[test]
     fn test_revise_product_price_req105_persists_large_values_exactly() {
+        // REQ-105 / 共通規則 (a)（X5・X6）: 上限の端は商品と履歴に正確に保存され、1 つ外は何も変えない
         let (_dir, mut conn) = setup_test_db();
         let code = create_price_revision_product(&mut conn);
         revise_product_price(
             &mut conn,
             PriceRevisionInput {
                 product_code: code.clone(),
-                new_selling_price: 9_999_999,
-                new_cost_price: 9_999_998,
+                new_selling_price: 999_999,
+                new_cost_price: 999_999,
                 assign_supplier_id: None,
             },
         )
@@ -4275,10 +4839,126 @@ mod tests {
             .unwrap()
             .unwrap();
         let history = product_repo::list_price_history(&conn, &code, 10).unwrap();
-        assert_eq!(product.product.selling_price, 9_999_999);
-        assert_eq!(product.product.cost_price, 9_999_998);
-        assert_eq!(history[0].new_selling_price, 9_999_999);
-        assert_eq!(history[0].new_cost_price, 9_999_998);
+        assert_eq!(product.product.selling_price, 999_999);
+        assert_eq!(product.product.cost_price, 999_999);
+        assert_eq!(history[0].new_selling_price, 999_999);
+        assert_eq!(history[0].new_cost_price, 999_999);
+
+        let before_logs = price_revision_log_count(&conn);
+        for (new_selling_price, new_cost_price, message) in [
+            (1_000_000, 300, "売価が大きすぎます"),
+            (500, 1_000_000, "原価が大きすぎます"),
+        ] {
+            let result = revise_product_price(
+                &mut conn,
+                PriceRevisionInput {
+                    product_code: code.clone(),
+                    new_selling_price,
+                    new_cost_price,
+                    assign_supplier_id: None,
+                },
+            );
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref m)) if m == message),
+                "{message}: {result:?}"
+            );
+            let product = product_repo::find_by_product_code(&conn, &code)
+                .unwrap()
+                .unwrap();
+            assert_eq!(product.product.selling_price, 999_999);
+            assert_eq!(product.product.cost_price, 999_999);
+            assert_eq!(
+                product_repo::list_price_history(&conn, &code, 10)
+                    .unwrap()
+                    .len(),
+                history.len()
+            );
+            assert_eq!(price_revision_log_count(&conn), before_logs);
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_update_product_req101_req102_price_and_initial_stock_limits() {
+        // REQ-101 / REQ-102 / 共通規則 (a)（X3・X5・X6）: 売価・原価は 999999、初期在庫は 999999999 まで
+        let (_dir, mut conn) = setup_test_db();
+        let edge = create_product(
+            &mut conn,
+            ProductCreateRequest {
+                selling_price: 999_999,
+                cost_price: 999_999,
+                initial_stock: 999_999_999,
+                ..default_create_request()
+            },
+        )
+        .unwrap();
+        let stored = product_repo::find_by_product_code(&conn, &edge.product_code)
+            .unwrap()
+            .unwrap()
+            .product;
+        assert_eq!(
+            (
+                stored.selling_price,
+                stored.cost_price,
+                stored.stock_quantity
+            ),
+            (999_999, 999_999, 999_999_999)
+        );
+
+        let product_count = |conn: &DbConnection| -> i64 {
+            conn.query_row("SELECT COUNT(*) FROM products", [], |row| row.get(0))
+                .unwrap()
+        };
+        for (selling_price, cost_price, initial_stock, message) in [
+            (1_000_000, 300, 0, "売価が大きすぎます"),
+            (500, 1_000_000, 0, "原価が大きすぎます"),
+            (500, 300, 1_000_000_000, "在庫数が大きすぎます"),
+        ] {
+            let before = product_count(&conn);
+            let result = create_product(
+                &mut conn,
+                ProductCreateRequest {
+                    selling_price,
+                    cost_price,
+                    initial_stock,
+                    ..default_create_request()
+                },
+            );
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref m)) if m == message),
+                "{message}: {result:?}"
+            );
+            assert_eq!(product_count(&conn), before);
+        }
+
+        for (selling_price, cost_price, message) in [
+            (Some(1_000_000), None, "売価が大きすぎます"),
+            (None, Some(1_000_000), "原価が大きすぎます"),
+        ] {
+            let result = update_product(
+                &mut conn,
+                &edge.product_code,
+                &ProductUpdateRequest {
+                    selling_price,
+                    cost_price,
+                    ..Default::default()
+                },
+            );
+            assert!(
+                matches!(result, Err(BizError::ValidationFailed(ref m)) if m == message),
+                "{message}: {result:?}"
+            );
+        }
+        update_product(
+            &mut conn,
+            &edge.product_code,
+            &ProductUpdateRequest {
+                selling_price: Some(999_999),
+                cost_price: Some(999_999),
+                ..Default::default()
+            },
+        )
+        .unwrap();
     }
 
     #[test]

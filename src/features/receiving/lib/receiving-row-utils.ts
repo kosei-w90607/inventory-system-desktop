@@ -1,9 +1,10 @@
 import type { ProductWithRelations } from "@/lib/bindings";
+import { addToQuantityInput, entryQuantityStep } from "@/lib/unit-quantity";
 import type { ReceivingRow } from "../types";
 
-function nextQuantity(value: string): string {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 1 ? String(parsed + 1) : "1";
+// 再追加は在庫の数量の整数で足す（`m` は +1 m）。規則に合わない文字列は初期値（SPEC-UNIT-D3）
+function nextQuantity(row: ReceivingRow): string {
+  return addToQuantityInput(row.quantity, row.stockUnit, entryQuantityStep(row.stockUnit)) ?? "1";
 }
 
 export function productToReceivingRow(product: ProductWithRelations): ReceivingRow {
@@ -24,7 +25,7 @@ export function addProductToRows(
   if (existingIndex === -1) return [...rows, productToReceivingRow(product)];
 
   return rows.map((row, index) =>
-    index === existingIndex ? { ...row, quantity: nextQuantity(row.quantity) } : row,
+    index === existingIndex ? { ...row, quantity: nextQuantity(row) } : row,
   );
 }
 

@@ -16,16 +16,16 @@ SPEC-STK-TIME-D1 / D4 / D8。新方式では汎用ProductUpdatesのstock_quantit
 
 既存の価格改定・supplier・slot解放・初期在庫の意味は不変。BIZの拒否理由と復旧対象は[共通errorの新契約](40-cmd-product.md)で型付きに渡し、DB/数量範囲外は従来の失敗経路でTX全体を戻す。
 
-### 単位と原価の精度の契約（proposed・未実装、D-113、BIZ-01-D8）
+### 単位と原価の精度の契約（D-113、BIZ-01-D8）
 
-[共通規則](10-common-rules.md) SPEC-UNIT-D1・D5・D10・D11 の BIZ-01 の側。以下の本文は現行実装の契約である。
+[共通規則](10-common-rules.md) SPEC-UNIT-D1・D5・D10・D11 の BIZ-01 の側。単位・上限・商品 CSV の単位と初期在庫は現行の契約で、原価の 1/100 円の分だけ注記のとおり未実装。
 
 - `stock_unit` は 12 個の code の `ProductStockUnit`（`ball` を含む。`決定（owner、D-113 J1）`）。create の検証は wire の enum のまま。update で単位を変えない（`ProductUpdateRequest` に単位を足さない）。
-- 原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`99999999`（`999999.99` 円）以下」（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）。上限を超えたら `ValidationFailed("原価が大きすぎます")`（CSV は preview の行の error）。price_history の原価も 1/100 円。原価を書く操作ログは 2 つで全部: BIZ-01-D7 の商品修正のログと、`revise_product_price` の `product_price_revise` のログ（一括の価格改定と入庫の原価差分のダイアログ〈UI-02-D15〉から書く。今は `format!` で `"cost_price":{"old":…,"new":…}` を書く）。どちらも detail_json の原価の key を `cost_price_centi`、値を 1/100 円の整数にし、移行の前の記録（key `cost_price`、円）は書き換えない（読む側の [74](74-ui-operation-logs.md) §74.8 は両方の key を知る）。同じ key に円と 1/100 円が混ざると、後から区別できない（ログは書き換えない契約）。
-- 売価・原価・初期在庫に上限を足す（同じ節の上限。単位の lane）: create・update・revise_product_price・CSV 取込みの売価は 0 以上 `999999`（越えれば `売価が大きすぎます`）、原価は円の整数で 0 以上 `999999`（越えれば `原価が大きすぎます`。原価の lane が上の `99999999`〈1/100 円〉へ書き換える）、create と CSV 取込みの初期在庫は 0 以上 `999999999`（越えれば `在庫数が大きすぎます`。`m` の行は cm にした後の値で比べる）。CSV は preview の行の error にし、commit は wire の行を信頼せず TX の中で同じ上限を確かめて、越えれば `ValidationFailed` で TX 全体を戻す。今はどれも負だけを拒む（売価 `product_service.rs:947`・`:994`・`:471`・`:1178`〜`:1183`、原価 `:952`・`:1001`・`:476`・`:1185`〜`:1190`、初期在庫 `:957`・`:1204`〜`:1213`）。
-- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 12 個の code か表示の語（`個` `枚` `本` `袋` `箱` `巻` `組` `セット` `玉` `丁` `m` `cm`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（今は commit の DB CHECK で取込み全体が止まる）。
-- 上書き（§4.9 の `overwrite_codes`）では単位を変えない（SPEC-UNIT-D2）。preview は、既存の商品の行（duplicate_rows）で正規化した `在庫単位` が既存の商品の単位と違えば行の error `在庫単位は登録の後に変えられません（登録: {登録の語}、CSV: {値}）` にする。空は今の単位のまま（今どおり）。commit は wire の行を信頼せず（BIZ-01-D5 と同じ）、TX の中で上書きの行ごとに既存の商品の単位と比べ、`Some` で違えば `ValidationFailed` で TX 全体を戻す。上書きの `ProductUpdates.stock_unit` は常に `None`（単位の列を UPDATE しない）。今の `commit_import` は `stock_unit: row.stock_unit.clone()` を渡すので、`m` の商品を `ball` で上書きすると在庫の 100 が 100 cm から 100 玉に、過去の入庫の明細（今の単位を JOIN して金額を求める）の意味も変わる。
-- `初期在庫` は、同じ行の正規化した `在庫単位` が `m` なら m の数として SPEC-UNIT-D3 の入力の規則で cm にする（`25` → 2500、`26.15` → 2615、`25.155` は行の error `初期在庫の値が不正です: '25.155'`）。それ以外の単位と空は今の整数の parse のまま。`在庫単位` が行の error の行は `初期在庫` を読まない（単位が決まらない）。Coordinator が店の事実（台帳 L-214）から決めた（2026-10-08）。`原価` の列は小数 2 桁までを 1/100 円にする（SPEC-UNIT-D5 の入力の規則。原価の runtime の lane の前は整数のまま）。`売価` は整数のまま。
+- （proposed・未実装、原価の lane、D-113）原価は `cost_price_centi`（1/100 円、`決定（owner、D-113 J2）`）。create・update・revise_product_price・CSV 取込みの検証は「0 以上、`99999999`（`999999.99` 円）以下」（[共通規則](10-common-rules.md) の「入力の上限と安全な整数の範囲」）。上限を超えたら `ValidationFailed("原価が大きすぎます")`（CSV は preview の行の error）。price_history の原価も 1/100 円。原価を書く操作ログは 2 つで全部: BIZ-01-D7 の商品修正のログと、`revise_product_price` の `product_price_revise` のログ（一括の価格改定と入庫の原価差分のダイアログ〈UI-02-D15〉から書く。今は `format!` で `"cost_price":{"old":…,"new":…}` を書く）。どちらも detail_json の原価の key を `cost_price_centi`、値を 1/100 円の整数にし、移行の前の記録（key `cost_price`、円）は書き換えない（読む側の [74](74-ui-operation-logs.md) §74.8 は両方の key を知る）。同じ key に円と 1/100 円が混ざると、後から区別できない（ログは書き換えない契約）。
+- 売価・原価・初期在庫の上限（共通規則の同じ節）: create・update・revise_product_price・CSV 取込みの売価は 0 以上 `999999`（越えれば `売価が大きすぎます`）、原価は円の整数で 0 以上 `999999`（越えれば `原価が大きすぎます`。原価の lane が上の `99999999`〈1/100 円〉へ書き換える）、create と CSV 取込みの初期在庫は 0 以上 `999999999`（越えれば `在庫数が大きすぎます`。`m` の行は cm にした後の値で比べる）。CSV は preview の行の error にし、commit は wire の行を信頼せず TX の中で同じ上限を確かめて、越えれば `ValidationFailed` で TX 全体を戻す。初期在庫の負は、create が `初期在庫は0以上で入力してください`、商品 CSV（preview の行の error と commit）が `初期在庫の値が不正です: '{値}'`。
+- 一括インポート（§4.8・§4.9）の任意列 `在庫単位` は、前後の空白を除いた値が 12 個の code か表示の語（`個` `枚` `本` `袋` `箱` `巻` `組` `セット` `玉` `丁` `m` `cm`）なら code に直す。空は `None`（INSERT で `pcs`、今どおり）。それ以外は preview の行の error `在庫単位が正しくありません: {値}`（commit も新規の行の単位を 12 個の code と確かめる）。
+- 上書き（§4.9 の `overwrite_codes`）では単位を変えない（SPEC-UNIT-D2）。preview は、既存の商品の行（duplicate_rows）で正規化した `在庫単位` が既存の商品の単位と違えば行の error `在庫単位は登録の後に変えられません（登録: {登録の語}、CSV: {値}）` にする。空は今の単位のまま（今どおり）。commit は wire の行を信頼せず（BIZ-01-D5 と同じ）、TX の中で上書きの行ごとに既存の商品の単位と比べ、`Some` で違えば `ValidationFailed` で TX 全体を戻す。`ProductUpdates` は単位の field を持たない（単位の列を UPDATE しない）。単位を上書きできると、`m` の商品を `ball` で上書きしたときに在庫の 100 が 100 cm から 100 玉に、過去の入庫の明細（今の単位を JOIN して金額を求める）の意味も変わる。
+- `初期在庫` は、同じ行の正規化した `在庫単位` が `m` なら m の数として SPEC-UNIT-D3 の入力の規則で cm にする（`25` → 2500、`26.15` → 2615、`25.155` は行の error `初期在庫の値が不正です: '25.155'`）。それ以外の単位と空は今の整数の parse のまま。`在庫単位` が行の error の行は `初期在庫` を読まない（単位が決まらない）。Coordinator が店の事実（台帳 L-214）から決めた（2026-10-08）。`原価` の列は整数（小数 2 桁までを 1/100 円にするのは proposed・未実装、原価の lane、D-113。SPEC-UNIT-D5 の入力の規則）。`売価` は整数のまま。
 - 在庫計数 Excel の売価・原価は税抜で、アプリの売価は税込（台帳 TD-166）。Excel から作る CSV の換算は初期投入の作業の範囲で、本契約は CSV の値をそのまま読む。
 
 ### 4.1 モジュール構成
@@ -53,7 +53,7 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
 - selling_price: i64
 - cost_price: i64
 - tax_rate: ProductTaxRate（"10" / "8" / "0"）
-- stock_unit: ProductStockUnit（"pcs" / "cm"）
+- stock_unit: ProductStockUnit（12 個の code。共通規則 SPEC-UNIT-D1）
 - initial_stock: i64（0なら在庫なし）
 - maker_code: Option<String>
 - supplier_id: Option<i64>
@@ -74,7 +74,7 @@ fn create_product(conn: &mut DbConnection, req: ProductCreateRequest) -> Result<
    f. supplier_idがSomeの場合 → 存在チェック。None → BizError::ValidationFailed("指定された取引先が存在しません")
    g. jan_codeがSomeの場合 → BIZ-01-D1 の JAN 形式検証（ASCII 数字 8/13 桁 + チェックディジット。違反は ValidationFailed）
 
-**enum 契約化（D-061 / D-064、二層化）**: wire 経路（CMD 境界の request/response）は tax_rate/stock_unit を generated enum で型検査する。一方、file 由来の `ImportRow.tax_rate: String` / `stock_unit: Option<String>` は維持する。file 経路の値域 guard が実在するのは tax_rate のみ。stock_unit は missing / 空文字を preview で `None` のまま保持して INSERT 時に `"pcs"` へデフォルト化し、非空の不正値は commit の DB CHECK で拒否する。
+**enum 契約化（D-061 / D-064、二層化）**: wire 経路（CMD 境界の request/response）は tax_rate/stock_unit を generated enum で型検査する。一方、file 由来の `ImportRow.tax_rate: String` / `stock_unit: Option<String>` は維持する。file 経路の値域 guard は BIZ が持つ: tax_rate と stock_unit（preview が code か表示の語を code に正規化し、missing / 空文字は `None` のまま保持して INSERT 時に `"pcs"`、一覧に無い値は行の error。BIZ-01-D8）。
 
 **設計判断（BIZ-01-D1、JAN 形式 validation、2026-08-11）**: step 1g として jan_code が Some の場合の形式検証を追加する。適用は手入力 create 経路のみ。CSV/Z004 import 経路と既存 DB 行は対象外（実店舗データ互換のため寛容性を意図的に維持し、preview_import / commit_import は検証を追加しない）。edit は jan_code 変更不可（product_repo 契約）のため対象外。検証対象は受領済みの正規化後 wire 値であり、trim と全角→半角正規化は 51 UI-01b-D17（frontend）が実行済み、BIZ は再正規化しない。検証内容 = ASCII 数字 8 桁または 13 桁、かつモジュラス 10 チェックディジット整合。違反は `ValidationFailed`（文言は 51 UI-01b-D17 の 2 文言と完全一致）。チェックディジット判定は BIZ 所有の core validator（新設 module）が行い、CASIO adapter（io/plu_formatter）の CV17 出力検証関数は共有しない — adapter 詳細を core 契約へ昇格しない（[ARCHITECTURE.md POS Adapter Boundary](../ARCHITECTURE.md) / D-023）。EAN-8 は 7 桁データ部の先頭桁（idx 0）に重み 3 を割り当てる交互配分（idx 偶数 = 3 / 奇数 = 1）で、EAN-13（idx 偶数 = 1 / 奇数 = 3）とは重み配分の偶奇が逆である（既存 adapter 関数のコピー実装禁止）。core validator（BIZ）/ frontend validator（51 の `jan-code.ts`）/ adapter validator（io、不変）は同一 GS1 標準の意図的独立実装とし、golden 独立転記 oracle は 2 profile で拘束する: EAN-13 は三側共通（valid `4901234567887` / invalid `4901234567890`、偶奇反転 mutation の kill case = `4901234567887`）、EAN-8（GS1 公表例 `96385074` / synthetic `49123456`、kill case = `49123456`）は core/frontend の二側のみ（adapter は EAN-13 専用のため置かない）。ISBN-10 は許容しない（本は 13 桁 JAN で登録 = owner 裁定 2026-08-11）。
 

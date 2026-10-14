@@ -1107,3 +1107,39 @@ it("UI-02-D3: refetches suppliers after creating one from the picker", async () 
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(mockCreateReceiving).not.toHaveBeenCalled();
 });
+
+// REQ-201 / UI-02-D7 / SPEC-UNIT-D3: 数量欄の属性は m の商品の行だけ小数 2 桁の入力にする
+it.each([
+  ["m", { inputmode: "decimal", min: "0.01", step: "0.01" }],
+  ["cm", { inputmode: "numeric", min: "1", step: null }],
+  ["pcs", { inputmode: "numeric", min: "1", step: null }],
+] as const)("UI-02-D7: %s の商品の数量欄の属性", async (unit, expected) => {
+  const user = userEvent.setup();
+  mockSearchProducts.mockResolvedValue({
+    status: "ok",
+    data: {
+      items: [
+        makeMockProductWithRelations({
+          product_code: "ATTR-001",
+          name: "属性確認A",
+          stock_unit: unit,
+        }),
+        makeMockProductWithRelations({ product_code: "ATTR-002", name: "属性確認B" }),
+      ],
+      total_count: 2,
+      page: 1,
+      per_page: 10,
+    },
+  });
+  renderWithClient(<ReceivingPage />);
+  await user.type(await screen.findByLabelText("入庫商品検索"), "属性{enter}");
+  const candidate = (await screen.findByText("ATTR-001")).closest("tr");
+  if (candidate === null) throw new Error("expected table structure");
+  await user.click(within(candidate).getByRole("button", { name: "入庫に追加" }));
+  const input = await screen.findByLabelText("ATTR-001 の数量");
+  expect(input).toHaveValue(1);
+  expect(input).toHaveAttribute("type", "number");
+  expect(input.getAttribute("inputmode")).toBe(expected.inputmode);
+  expect(input.getAttribute("min")).toBe(expected.min);
+  expect(input.getAttribute("step")).toBe(expected.step);
+});

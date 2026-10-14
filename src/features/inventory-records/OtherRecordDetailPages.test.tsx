@@ -52,7 +52,7 @@ function makeReceivingDetail(): ReceivingRecordDetail {
         stock_unit: "pcs",
         quantity: 2,
         cost_price: 111,
-        line_cost: 222,
+        line_cost_centi: "22200",
       },
       {
         id: 2,
@@ -62,7 +62,7 @@ function makeReceivingDetail(): ReceivingRecordDetail {
         stock_unit: "pcs",
         quantity: 3,
         cost_price: 333,
-        line_cost: 999,
+        line_cost_centi: "99900",
       },
     ],
     movements: [
@@ -180,11 +180,11 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
     const firstItem = screen.getByRole("row", { name: /RCV-001/ });
     expect(within(firstItem).getByText("入庫テスト商品 A")).toBeInTheDocument();
     expect(within(firstItem).getByText("¥111")).toBeInTheDocument();
-    expect(within(firstItem).getByText("¥222")).toBeInTheDocument();
+    expect(within(firstItem).getByText("222.00 円")).toBeInTheDocument();
     const secondItem = screen.getByRole("row", { name: /RCV-002/ });
     expect(within(secondItem).getByText("入庫テスト商品 B")).toBeInTheDocument();
     expect(within(secondItem).getByText("¥333")).toBeInTheDocument();
-    expect(within(secondItem).getByText("¥999")).toBeInTheDocument();
+    expect(within(secondItem).getByText("999.00 円")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "RCV-001 の在庫変動履歴" })).toHaveAttribute(
       "href",
       "/stock/RCV-001/movements",
@@ -311,8 +311,8 @@ describe("other inventory record detail pages (REQ-201 / REQ-202 / REQ-203 / REQ
 
 it.each([
   ["pcs", "1,234 個"],
-  ["cm", "1,234 cm"],
-])("⑮ SC19: 入庫・返品・手動販売詳細の %s を単位付き表示する", async (unit, expected) => {
+  ["cm", "12.34 m"],
+] as const)("⑮ SC19: 入庫・返品・手動販売詳細の %s を単位付き表示する", async (unit, expected) => {
   const receiving = makeReceivingDetail();
   receiving.items = [{ ...receiving.items[0], stock_unit: unit, quantity: 1234 }];
   mockGetReceivingRecord.mockResolvedValue({ status: "ok", data: receiving });
@@ -330,4 +330,101 @@ it.each([
   mockGetManualSaleRecord.mockResolvedValue({ status: "ok", data: sales });
   renderWithClient(<ManualSaleRecordDetailPage recordId={32} />);
   expect(await screen.findByText(expected)).toBeInTheDocument();
+});
+
+// REQ-207 / UI-06c-D5 / SPEC-UNIT-D3 の表の 1・6、SPEC-UNIT-D6: 記録詳細は行ごとの単位で数量と
+// 「関連する在庫変動」を出し、行の金額は BIZ が返した 1/100 円の文字列を出す
+describe("記録詳細の単位つきの数量と在庫変動（REQ-207 / UI-06c-D5）", () => {
+  const movementCells = () =>
+    within(
+      screen.getByRole("heading", { name: "関連する在庫変動" }).closest("section") ?? document.body,
+    )
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => {
+        const tds = row.querySelectorAll("td");
+        return [tds[2].textContent, tds[3].textContent];
+      });
+
+  it("REQ-201: 入庫の記録詳細は m の行が 2.5 m・832.50 円、関連する在庫変動は行ごとの単位", async () => {
+    const detail = makeReceivingDetail();
+    const [first, second] = detail.items;
+    const [movement] = detail.movements;
+    detail.total_cost = 833;
+    detail.items = [
+      {
+        ...first,
+        product_code: "RCV-M",
+        stock_unit: "m",
+        quantity: 250,
+        cost_price: 333,
+        line_cost_centi: "83250",
+      },
+      {
+        ...second,
+        product_code: "RCV-PCS",
+        stock_unit: "pcs",
+        quantity: 3,
+        cost_price: 0,
+        line_cost_centi: "0",
+      },
+    ];
+    detail.movements = [
+      { ...movement, id: 1, product_code: "RCV-M", quantity: 250, stock_after: 2750 },
+      { ...movement, id: 2, product_code: "RCV-PCS", quantity: 3, stock_after: 13 },
+    ];
+    mockGetReceivingRecord.mockResolvedValue({ status: "ok", data: detail });
+    renderWithClient(<ReceivingRecordDetailPage recordId={12} />);
+
+    const row = await screen.findByRole("row", { name: /RCV-M/ });
+    expect(within(row).getByText("2.5 m")).toBeInTheDocument();
+    expect(within(row).getByText("¥333")).toBeInTheDocument();
+    expect(within(row).getByText("832.50 円")).toBeInTheDocument();
+    expect(screen.getByText("¥833")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("row", { name: /RCV-PCS/ })).getByText("0.00 円"),
+    ).toBeInTheDocument();
+    expect(movementCells()).toEqual([
+      ["+2.5 m増加", "27.5 m"],
+      ["+3増加", "13"],
+    ]);
+  });
+
+  it("REQ-201: BIZ が行の金額を埋め忘れた空の文字列は 0.00 円ではなく —", async () => {
+    const detail = makeReceivingDetail();
+    const [first] = detail.items;
+    detail.items = [{ ...first, line_cost_centi: "" }];
+    mockGetReceivingRecord.mockResolvedValue({ status: "ok", data: detail });
+    renderWithClient(<ReceivingRecordDetailPage recordId={12} />);
+    const row = await screen.findByRole("row", { name: /RCV-001/ });
+    expect(within(row).getByText("—")).toBeInTheDocument();
+    expect(within(row).queryByText("0.00 円")).toBeNull();
+  });
+
+  it("REQ-202 / REQ-203: 返品・手動販売の記録詳細の関連する在庫変動も明細の単位で出す", async () => {
+    const returns = makeReturnDetail();
+    const [returnItem] = returns.items;
+    const [returnMovement] = returns.movements;
+    returns.items = [{ ...returnItem, product_code: "RET-M", stock_unit: "m", quantity: 30 }];
+    returns.movements = [
+      { ...returnMovement, product_code: "RET-M", quantity: 30, stock_after: 2600 },
+    ];
+    mockGetReturnRecord.mockResolvedValue({ status: "ok", data: returns });
+    const rendered = renderWithClient(<ReturnRecordDetailPage recordId={22} />);
+    expect(await screen.findByText("0.3 m")).toBeInTheDocument();
+    expect(movementCells()).toEqual([["+0.3 m増加", "26 m"]]);
+    rendered.unmount();
+
+    const sales = makeManualSaleDetail();
+    const [saleItem] = sales.items;
+    const [saleMovement] = sales.movements;
+    sales.items = [{ ...saleItem, product_code: "MS-M", stock_unit: "m", quantity: 130 }];
+    sales.movements = [
+      { ...saleMovement, product_code: "MS-M", quantity: -130, stock_after: 2620 },
+    ];
+    mockGetManualSaleRecord.mockResolvedValue({ status: "ok", data: sales });
+    renderWithClient(<ManualSaleRecordDetailPage recordId={32} />);
+    expect(await screen.findByText("1.3 m")).toBeInTheDocument();
+    expect(movementCells()).toEqual([["-1.3 m減少", "26.2 m"]]);
+  });
 });

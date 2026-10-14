@@ -15,7 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { MovementRecord } from "@/lib/bindings";
+import { formatLengthOrPlain } from "@/features/stock-inquiry/lib/format-stock-display";
+import type { MovementRecord, ProductStockUnit } from "@/lib/bindings";
 import {
   formatMovementDateTime,
   formatMovementQuantity,
@@ -24,7 +25,16 @@ import {
 
 export interface MovementTableProps {
   movements: MovementRecord[];
+  /// 行の商品の単位（`product_code → stock_unit`）。対応に無い商品コードの行は整数で出す
+  stockUnitByProductCode: ReadonlyMap<string, ProductStockUnit>;
   returnTo?: string;
+}
+
+/// 商品か記録詳細の明細から、表に渡す単位の対応を作る
+export function stockUnitMap(
+  items: readonly { product_code: string; stock_unit: ProductStockUnit }[],
+): ReadonlyMap<string, ProductStockUnit> {
+  return new Map(items.map((item) => [item.product_code, item.stock_unit]));
 }
 
 function QuantityDirectionIcon({ quantity }: { quantity: number }) {
@@ -44,7 +54,7 @@ function sourceLinkProps(
   return { to: route, search: { returnTo } };
 }
 
-export function MovementTable({ movements, returnTo }: MovementTableProps) {
+export function MovementTable({ movements, stockUnitByProductCode, returnTo }: MovementTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -59,7 +69,8 @@ export function MovementTable({ movements, returnTo }: MovementTableProps) {
       </TableHeader>
       <TableBody>
         {movements.map((movement) => {
-          const quantity = formatMovementQuantity(movement.quantity);
+          const unit = stockUnitByProductCode.get(movement.product_code);
+          const quantity = formatMovementQuantity(movement.quantity, unit);
           return (
             <TableRow key={movement.id}>
               <TableCell className="font-mono tabular-nums">
@@ -76,7 +87,7 @@ export function MovementTable({ movements, returnTo }: MovementTableProps) {
                 </div>
               </TableCell>
               <TableCell className="text-right font-mono tabular-nums">
-                {movement.stock_after}
+                {formatLengthOrPlain(movement.stock_after, unit)}
               </TableCell>
               <TableCell>
                 {movement.source ? (

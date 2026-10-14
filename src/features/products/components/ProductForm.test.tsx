@@ -968,3 +968,80 @@ describe("ProductForm SC8a/SC8b/SC8c 部門・税率 select と取引先 picker�
     expect(afterTen(createProductFormDefaults)).toEqual(expect.objectContaining({ taxRate: "10" }));
   });
 });
+
+// UI-01b-D22 / REQ-101: 長さの単位の価格欄は 1 m あたり、m の初期在庫は小数の入力、修正の現在庫は単位つき
+describe("ProductForm (UI-01b-D22)", () => {
+  function renderForm(mode: "create" | "edit", values: ProductFormValues) {
+    render(
+      <ProductForm
+        mode={mode}
+        values={values}
+        departments={[makeMockDepartment()]}
+        suppliers={[makeMockSupplier()]}
+        errors={{}}
+        saveError={null}
+        supplierWarning={null}
+        productCodeLabel={mode === "edit" ? "P-001" : undefined}
+        isSaving={false}
+        posSyncTouched={false}
+        onValuesChange={vi.fn()}
+        onPosSyncTouchedChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+  }
+
+  it.each(["m", "cm"] as const)(
+    "UI-01b-D22: 単位 %s では売価・原価の label に「1 m あたり」が付く",
+    (stockUnit) => {
+      renderForm("create", { ...createProductFormDefaults, stockUnit });
+      expect(screen.getByLabelText("売価（必須、1 m あたり）")).toBeInTheDocument();
+      expect(screen.getByLabelText("原価（必須、1 m あたり）")).toBeInTheDocument();
+    },
+  );
+
+  it("UI-01b-D22: 個数の単位では「1 m あたり」を出さず、価格の節の説明は税込の円の整数と書く", () => {
+    renderForm("create", { ...createProductFormDefaults, stockUnit: "ball" });
+    expect(screen.getByLabelText("売価（必須）")).toBeInTheDocument();
+    expect(screen.getByLabelText("原価（必須）")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["create", "m", "decimal"],
+    ["create", "cm", "numeric"],
+    ["create", "pcs", "numeric"],
+  ] as const)(
+    "UI-01b-D22: %s で単位 %s の初期在庫の欄の inputMode は %s",
+    (mode, stockUnit, inputMode) => {
+      renderForm(mode, { ...createProductFormDefaults, stockUnit });
+      expect(screen.getByLabelText("初期在庫（必須）")).toHaveAttribute("inputmode", inputMode);
+    },
+  );
+
+  it.each([
+    ["m", 2750, "27.5 m", "m"],
+    ["pcs", 20, "20 個", "個"],
+    ["m", 0, "0 m", "m"],
+    ["pcs", 0, "0 個", "個"],
+    ["sheet", 3, "3 枚", "枚"],
+  ] as const)(
+    "UI-01b-D22: 修正の画面は %s・在庫 %s の現在庫を %s、単位を「%s」で出す",
+    (stock_unit, stock_quantity, expected, unitLabel) => {
+      renderForm(
+        "edit",
+        productToFormValues(makeMockProductWithRelations({ stock_unit, stock_quantity })),
+      );
+      const stock = screen.getByLabelText("現在庫");
+      expect(stock).toHaveValue(expected);
+      expect(stock).toHaveAttribute("readonly");
+      expect(stock).toHaveAttribute("inputmode", "numeric");
+      expect(screen.getByLabelText("数量単位")).toHaveTextContent(unitLabel);
+    },
+  );
+});

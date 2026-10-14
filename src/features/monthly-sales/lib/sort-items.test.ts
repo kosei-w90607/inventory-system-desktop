@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from "vitest";
 import { sortMonthlyItems } from "./sort-items";
-import { makeMockProductRankingRow } from "./test-fixtures";
+import { makeMockDeptCompositionRow, makeMockProductRankingRow } from "./test-fixtures";
 
 describe("sortMonthlyItems", () => {
   it("returns empty array for empty input", () => {
@@ -29,11 +29,13 @@ describe("sortMonthlyItems", () => {
 
   it("sorts by quantity descending", () => {
     const items = [
-      makeMockProductRankingRow({ key: "A", quantity: 1 }),
-      makeMockProductRankingRow({ key: "B", quantity: 10 }),
-      makeMockProductRankingRow({ key: "C", quantity: 5 }),
+      makeMockProductRankingRow({ key: "A", count_points: 1 }),
+      makeMockProductRankingRow({ key: "B", count_points: 10 }),
+      makeMockProductRankingRow({ key: "C", count_points: 5 }),
     ];
-    expect(sortMonthlyItems(items, "quantity", "desc").map((r) => r.quantity)).toEqual([10, 5, 1]);
+    expect(sortMonthlyItems(items, "quantity", "desc").map((r) => r.count_points)).toEqual([
+      10, 5, 1,
+    ]);
   });
 
   it("sorts by amount ascending", () => {
@@ -87,5 +89,30 @@ describe("sortMonthlyItems", () => {
     expect(sorted.map((r) => r.ranking)).toEqual([2, 1, 3]);
     // ranking === 1 の row は依然として識別可能
     expect(sorted.find((r) => r.ranking === 1)?.key).toBe("A");
+  });
+});
+
+describe("sortMonthlyItems の数量の並べ替え（SPEC-UNIT-D3）", () => {
+  it("SPEC-UNIT-D3: 商品別は (count_points, length_cm) の辞書順（長さの商品が個数の商品の前）", () => {
+    const items = [
+      makeMockProductRankingRow({ key: "PCS-2", count_points: 2, length_cm: 0 }),
+      makeMockProductRankingRow({ key: "PCS-5", count_points: 5, length_cm: 0 }),
+      makeMockProductRankingRow({ key: "M-130", count_points: 0, length_cm: 130, stock_unit: "m" }),
+    ];
+    expect(sortMonthlyItems(items, "quantity", "asc").map((r) => r.key)).toEqual([
+      "M-130",
+      "PCS-2",
+      "PCS-5",
+    ]);
+  });
+
+  it("SPEC-UNIT-D3: 部門別も同じ規則（(5, 250)・(3, 0)・(0, 130) → (0, 130)、(3, 0)、(5, 250)）", () => {
+    const items = [
+      makeMockDeptCompositionRow({ key: "1", count_points: 5, length_cm: 250 }),
+      makeMockDeptCompositionRow({ key: "2", count_points: 3, length_cm: 0 }),
+      makeMockDeptCompositionRow({ key: "3", count_points: 0, length_cm: 130 }),
+    ];
+    expect(sortMonthlyItems(items, "quantity", "asc").map((r) => r.key)).toEqual(["3", "2", "1"]);
+    expect(sortMonthlyItems(items, "quantity", "desc").map((r) => r.key)).toEqual(["1", "2", "3"]);
   });
 });

@@ -16,6 +16,7 @@ use super::schema_v4;
 use super::schema_v5;
 use super::schema_v6;
 use super::schema_v7;
+use super::schema_v8;
 use super::DbError;
 use rusqlite::Connection;
 
@@ -71,6 +72,11 @@ fn migrations() -> Vec<Migration> {
             version: 7,
             description: "日報の個数を100倍の整数へ",
             kind: MigrationKind::Custom(schema_v7::apply_v7_daily_report_quantity_hundredths),
+        },
+        Migration {
+            version: 8,
+            description: "単位を12種へ（products.stock_unit の CHECK、保存済みの値の上限の検査）",
+            kind: MigrationKind::Custom(schema_v8::apply_v8_stock_units),
         },
     ]
 }
@@ -202,7 +208,7 @@ mod tests {
     use crate::db::{
         init_database,
         migration_tx::{self, FailurePoint},
-        schema_v1, schema_v2, schema_v3, schema_v4, schema_v5, schema_v6, DbError,
+        schema_v1, schema_v2, schema_v3, schema_v4, schema_v5, schema_v6, schema_v7, DbError,
     };
     use rusqlite::Connection;
 
@@ -370,16 +376,22 @@ mod tests {
             .split("#[cfg(test)]")
             .next()
             .unwrap();
-        for source in [migration, schema_v2, schema_v3] {
+        let schema_v8 = include_str!("schema_v8.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        for source in [migration, schema_v2, schema_v3, schema_v8] {
             assert!(!source.contains("execute_batch(\"ROLLBACK;\").ok()"));
             assert!(!source.contains("execute_batch(\"COMMIT;\")"));
         }
         assert_eq!(migration.matches("rollback_after_error").count(), 2);
         assert_eq!(schema_v2.matches("rollback_after_error").count(), 4);
         assert_eq!(schema_v3.matches("rollback_after_error").count(), 2);
+        assert_eq!(schema_v8.matches("rollback_after_error").count(), 1);
         assert_eq!(migration.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v2.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v3.matches("commit_transaction").count(), 1);
+        assert_eq!(schema_v8.matches("commit_transaction").count(), 1);
     }
 
     // -----------------------------------------------------------------------
@@ -703,7 +715,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, 7);
+        assert_eq!(v1, 8);
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -713,15 +725,15 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v2, 7, "バージョンが変わってはいけない");
+        assert_eq!(v2, 8, "バージョンが変わってはいけない");
 
-        // schema_versionsにレコードが7件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7）
+        // schema_versionsにレコードが8件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8）
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(
-            count, 7,
-            "マイグレーションレコードは7件（v1+v2+v3+v4+v5+v6+v7）"
+            count, 8,
+            "マイグレーションレコードは8件（v1+v2+v3+v4+v5+v6+v7+v8）"
         );
     }
 
@@ -755,7 +767,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 7);
+        assert_eq!(version, 8);
 
         let rows: Vec<(String, bool)> = {
             let mut stmt = conn
@@ -791,7 +803,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 7);
+        assert_eq!(version, 8);
 
         for table_name in &[
             "daily_report_imports",
@@ -855,7 +867,7 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
-        assert_eq!((max_version, version_count), (7, 7));
+        assert_eq!((max_version, version_count), (8, 8));
     }
 
     #[test]
@@ -871,7 +883,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 7);
+        assert_eq!(max_version, 8);
         assert_eq!(slot_count, 4_784);
     }
 
@@ -1285,6 +1297,609 @@ mod tests {
                 vec![None, None],
                 "{table}"
             );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // MNT-03-D13: migration v8（単位を 12 個の code へ。products の作り直しと上限の検査）
+    // -----------------------------------------------------------------------
+
+    const V8_UNIT_CODES: [&str; 12] = [
+        "pcs", "sheet", "hon", "bag", "box", "roll", "kumi", "set", "ball", "cho", "m", "cm",
+    ];
+
+    /// v8 の上限の検査が読む表（値が変わらないことの比較に使う）
+    const V8_CHECKED_TABLES: [&str; 11] = [
+        "products",
+        "receiving_items",
+        "return_items",
+        "manual_sale_items",
+        "disposal_items",
+        "sale_records",
+        "inventory_movements",
+        "price_history",
+        "stocktakes",
+        "stocktake_items",
+        "schema_versions",
+    ];
+
+    fn setup_v7_only_db() -> (tempfile::TempDir, Connection) {
+        let (dir, conn) = setup_v6_only_db();
+        schema_v7::apply_v7_daily_report_quantity_hundredths(&conn, 7).unwrap();
+        (dir, conn)
+    }
+
+    fn dump(conn: &Connection, sql: &str) -> Vec<Vec<rusqlite::types::Value>> {
+        let mut statement = conn.prepare(sql).unwrap();
+        let columns = statement.column_count();
+        statement
+            .query_map([], |row| (0..columns).map(|i| row.get(i)).collect())
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    fn foreign_keys(conn: &Connection) -> i64 {
+        conn.query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .unwrap()
+    }
+
+    /// `products` の定義（列の名前・順・型・notnull・既定値・pk、自身の FK、index）
+    fn products_definition(conn: &Connection) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+        vec![
+            dump(conn, "SELECT * FROM pragma_table_info('products')"),
+            dump(conn, "SELECT * FROM pragma_foreign_key_list('products')"),
+            dump(
+                conn,
+                "SELECT name, sql FROM sqlite_master
+                 WHERE type = 'index' AND tbl_name = 'products' ORDER BY name",
+            ),
+        ]
+    }
+
+    /// v8 が読む全表の全行と `products` の定義（失敗で何も変わらないことの比較に使う）
+    fn v8_snapshot(conn: &Connection) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+        let mut snapshot = products_definition(conn);
+        for table in V8_CHECKED_TABLES {
+            snapshot.push(dump(conn, &format!("SELECT * FROM {table} ORDER BY 1")));
+        }
+        snapshot
+    }
+
+    /// `ball`（v8 で足す code）の商品を INSERT できるか（CHECK が 2 code か 12 code かの判定）
+    fn can_insert_unit(conn: &Connection, product_code: &str, unit: &str) -> bool {
+        conn.execute(
+            "INSERT INTO products (product_code, name, department_id, selling_price, cost_price,
+                                   stock_unit, created_at, updated_at)
+             VALUES (?1, '合成の商品', 1, 100, 50, ?2, '2026-10-01T00:00:00', '2026-10-01T00:00:00')",
+            rusqlite::params![product_code, unit],
+        )
+        .is_ok()
+    }
+
+    /// 全列に値のある商品（pcs・cm・負の在庫・discontinued・plu_target=1）と、8 つの子の表の行
+    fn seed_v7_products_with_children(conn: &Connection) {
+        conn.execute_batch(
+            "INSERT INTO suppliers (id, name, created_at, updated_at)
+                 VALUES (1, '合成の取引先', '2026-10-01T00:00:00', '2026-10-01T00:00:00');
+             INSERT INTO products (product_code, jan_code, name, department_id, supplier_id,
+                 selling_price, cost_price, tax_rate, maker_code, stock_quantity, stock_unit,
+                 is_discontinued, plu_dirty, plu_exported_at, pos_stock_sync, created_at, updated_at,
+                 plu_target) VALUES
+                 ('V8-PCS', '4900000000017', '合成の個数の商品', 1, 1, 700, 400, '10', 'MK-1', 20, 'pcs',
+                  0, 0, '2026-10-02T09:00:00', 1, '2026-10-01T00:00:00', '2026-10-03T00:00:00', 1),
+                 ('V8-CM', '4900000000024', '合成の長さの商品', 8, 1, 980, 385, '8', 'MK-2', -30, 'cm',
+                  1, 1, '2026-10-02T10:00:00', 0, '2026-10-01T01:00:00', '2026-10-03T01:00:00', 0),
+                 ('V8-CM2', '4900000000031', '合成の長さの商品 2', 8, 1, 1200, 600, '0', 'MK-3', 2750, 'cm',
+                  0, 1, '2026-10-02T11:00:00', 1, '2026-10-01T02:00:00', '2026-10-03T02:00:00', 1);
+             INSERT INTO receiving_records (id, supplier_id, receiving_date, note, idempotency_key,
+                 request_fingerprint, created_at)
+                 VALUES (1, 1, '2026-10-01', NULL, 'v8-rcv', 'fp', '2026-10-01T00:00:00');
+             INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+                 VALUES (1, 'V8-PCS', 4, 250);
+             INSERT INTO return_records (id, return_type, return_date, register_processed,
+                 idempotency_key, request_fingerprint, created_at)
+                 VALUES (1, 'return', '2026-10-01', 0, 'v8-ret', 'fp', '2026-10-01T00:00:00');
+             INSERT INTO return_items (return_record_id, product_code, direction, quantity)
+                 VALUES (1, 'V8-CM', 'in', 30);
+             INSERT INTO manual_sales (id, sale_date, reason, idempotency_key, request_fingerprint,
+                 created_at) VALUES (1, '2026-10-01', 'other', 'v8-ms', 'fp', '2026-10-01T00:00:00');
+             INSERT INTO manual_sale_items (manual_sale_id, product_code, quantity, amount)
+                 VALUES (1, 'V8-CM2', 130, 1560);
+             INSERT INTO disposal_records (id, disposal_date, idempotency_key, request_fingerprint,
+                 created_at) VALUES (1, '2026-10-01', 'v8-dsp', 'fp', '2026-10-01T00:00:00');
+             INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity,
+                 cost_price, reason) VALUES (1, 'V8-PCS', 'damage', 2, 120, '合成の理由');
+             INSERT INTO sale_records (product_code, sale_date, quantity, amount, source, created_at)
+                 VALUES ('V8-PCS', '2026-10-01', 3, 2100, 'manual', '2026-10-01T00:00:00');
+             INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after,
+                 created_at) VALUES ('V8-CM', 'disposal', -30, -30, '2026-10-01T00:00:00');
+             INSERT INTO price_history (product_code, old_selling, new_selling, old_cost, new_cost,
+                 changed_at) VALUES ('V8-PCS', 650, 700, 380, 400, '2026-10-01T00:00:00');
+             INSERT INTO stocktakes (id, started_at, completed_at, status, total_cost)
+                 VALUES (1, '2026-10-01T00:00:00', '2026-10-01T01:00:00', 'completed', 8000);
+             INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count,
+                 valuation_cost_price, counted_at)
+                 VALUES (1, 'V8-PCS', 20, 20, 400, '2026-10-01T00:30:00');",
+        )
+        .unwrap();
+    }
+
+    fn max_version_and_count(conn: &Connection) -> (i64, i64) {
+        conn.query_row(
+            "SELECT MAX(version), COUNT(*) FROM schema_versions",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap()
+    }
+
+    fn migration_failed_message(error: DbError) -> String {
+        match error {
+            DbError::MigrationFailed(message) => message,
+            other => panic!("MigrationFailedを期待: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_migration_req903_v8_rebuild_keeps_rows_definition_indexes_and_fk() {
+        // REQ-903 / MNT-03-D13 vU / Contract Probe P3: 作り直しの前後で行・列の定義・index・FK が同じ
+        let (_dir, conn) = setup_v7_only_db();
+        seed_v7_products_with_children(&conn);
+        let rows_before = dump(&conn, "SELECT * FROM products ORDER BY product_code");
+        let definition_before = products_definition(&conn);
+        let units_before = dump(
+            &conn,
+            "SELECT stock_unit, COUNT(*) FROM products GROUP BY stock_unit ORDER BY stock_unit",
+        );
+        let counts_before = table_row_counts(&conn);
+        assert_eq!(rows_before.len(), 3);
+        assert_eq!(rows_before[0].len(), 18, "v7 の products は 18 列");
+        assert!(!can_insert_unit(&conn, "V8-BALL-BEFORE", "ball"));
+
+        super::migrate(&conn).unwrap();
+
+        assert_eq!(
+            dump(&conn, "SELECT * FROM products ORDER BY product_code"),
+            rows_before
+        );
+        // 定義の違いは stock_unit の CHECK だけ（pragma_table_info は CHECK を含まない）
+        assert_eq!(products_definition(&conn), definition_before);
+        assert_eq!(
+            dump(
+                &conn,
+                "SELECT stock_unit, COUNT(*) FROM products GROUP BY stock_unit ORDER BY stock_unit"
+            ),
+            units_before
+        );
+        let mut counts_after = table_row_counts(&conn);
+        let mut counts_expected = counts_before;
+        for counts in [&mut counts_after, &mut counts_expected] {
+            counts.retain(|(table, _)| table != "schema_versions");
+        }
+        assert_eq!(counts_after, counts_expected);
+        assert!(dump(&conn, "SELECT * FROM pragma_foreign_key_check").is_empty());
+        assert!(dump(
+            &conn,
+            "SELECT name FROM sqlite_master WHERE name = 'products_new'"
+        )
+        .is_empty());
+        assert_eq!(foreign_keys(&conn), 1, "foreign_keys は元の値");
+        assert_eq!(max_version_and_count(&conn), (8, 8));
+
+        // 12 個の code をすべて INSERT でき、一覧に無い kg は CHECK で拒む
+        for code in V8_UNIT_CODES {
+            assert!(
+                can_insert_unit(&conn, &format!("V8-NEW-{code}"), code),
+                "{code}"
+            );
+        }
+        assert!(!can_insert_unit(&conn, "V8-NEW-kg", "kg"));
+        // 子の表の FK が効く（子のある商品の DELETE が拒まれる）
+        assert!(conn
+            .execute("DELETE FROM products WHERE product_code = 'V8-PCS'", [])
+            .is_err());
+        for child in [
+            "receiving_items",
+            "return_items",
+            "manual_sale_items",
+            "disposal_items",
+            "sale_records",
+            "inventory_movements",
+            "price_history",
+            "stocktake_items",
+        ] {
+            let parents = dump(
+                &conn,
+                &format!("SELECT \"table\" FROM pragma_foreign_key_list('{child}') WHERE \"table\" = 'products'"),
+            );
+            assert_eq!(parents.len(), 1, "{child} は products を参照する");
+        }
+
+        // 再実行で v8 を 2 度当てない
+        super::migrate(&conn).unwrap();
+        assert_eq!(max_version_and_count(&conn), (8, 8));
+    }
+
+    #[test]
+    fn test_migration_req903_v8_fresh_database_and_empty_tables() {
+        // REQ-903 / MNT-03-D13: 新規の DB（v1 から v8）と行 0 の v7 の DB で成功する
+        let dir = tempfile::tempdir().unwrap();
+        let conn = init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
+        assert_eq!(max_version_and_count(&conn), (8, 8));
+        for code in V8_UNIT_CODES {
+            assert!(
+                can_insert_unit(&conn, &format!("V8-FRESH-{code}"), code),
+                "{code}"
+            );
+        }
+        assert!(!can_insert_unit(&conn, "V8-FRESH-kg", "kg"));
+
+        let (_dir, conn) = setup_v7_only_db();
+        let definition_before = products_definition(&conn);
+        super::migrate(&conn).unwrap();
+        assert_eq!(max_version_and_count(&conn), (8, 8));
+        assert_eq!(products_definition(&conn), definition_before);
+    }
+
+    #[test]
+    fn test_migration_req903_v8_fk_check_failure_rolls_back() {
+        // REQ-903 / MNT-03-D13 手順 6 (b): foreign_key_check が 0 行でなければ表・値・版を戻し、foreign_keys を元の値に戻す
+        for original_fk in [1_i64, 0] {
+            let (_dir, conn) = setup_v7_only_db();
+            seed_v7_products_with_children(&conn);
+            conn.execute_batch("PRAGMA foreign_keys = OFF;").unwrap();
+            conn.execute(
+                "INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, created_at)
+                 VALUES ('V8-NO-PARENT', 'receiving', 1, 1, '2026-10-01T00:00:00')",
+                [],
+            )
+            .unwrap();
+            conn.execute_batch(&format!("PRAGMA foreign_keys = {original_fk};"))
+                .unwrap();
+            let before = v8_snapshot(&conn);
+
+            let message = migration_failed_message(super::migrate(&conn).unwrap_err());
+
+            assert!(message.contains("FK整合性エラー"), "{message}");
+            assert_eq!(v8_snapshot(&conn), before);
+            assert_eq!(max_version_and_count(&conn), (7, 7));
+            assert_eq!(foreign_keys(&conn), original_fk);
+            assert!(conn.is_autocommit());
+            conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+            assert!(
+                !can_insert_unit(&conn, "V8-BALL", "ball"),
+                "CHECK は 2 code のまま"
+            );
+        }
+    }
+
+    #[test]
+    fn test_migration_req903_v8_commit_and_fk_restore_failures() {
+        // REQ-903 / MNT-03-D13 / MNT-03-D1: COMMIT・ROLLBACK・foreign_keys の復元の失敗の扱い
+        // (1) COMMIT が失敗し ROLLBACK は成功: 何も変わらない
+        {
+            let (_dir, conn) = setup_v7_only_db();
+            seed_v7_products_with_children(&conn);
+            let before = v8_snapshot(&conn);
+            let failures = migration_tx::fail_operations(&[FailurePoint::Commit]);
+            let message = migration_failed_message(super::migrate(&conn).unwrap_err());
+            drop(failures);
+            assert!(message.contains("v8 COMMIT失敗"), "{message}");
+            assert_eq!(v8_snapshot(&conn), before);
+            assert_eq!(max_version_and_count(&conn), (7, 7));
+            assert_eq!(foreign_keys(&conn), 1);
+            assert!(
+                !can_insert_unit(&conn, "V8-BALL", "ball"),
+                "CHECK は 2 code のまま"
+            );
+        }
+        // (2) COMMIT も ROLLBACK も失敗: transaction の状態が不明で、foreign_keys を戻そうとしない
+        {
+            let (_dir, conn) = setup_v7_only_db();
+            let failures =
+                migration_tx::fail_operations(&[FailurePoint::Commit, FailurePoint::Rollback]);
+            let message = migration_failed_message(super::migrate(&conn).unwrap_err());
+            drop(failures);
+            assert!(message.contains("transaction 状態不明"), "{message}");
+            assert!(message.contains("接続破棄必須"), "{message}");
+            assert!(!conn.is_autocommit());
+            assert_eq!(foreign_keys(&conn), 0, "復元を試みていない");
+        }
+        // (3) COMMIT の後で foreign_keys の復元が効かない: 版 8 は残り、DB は新しい版として完全
+        {
+            let (dir, conn) = setup_v7_only_db();
+            seed_v7_products_with_children(&conn);
+            let failures = migration_tx::fail_operations(&[FailurePoint::ForeignKeyRestoreNoop]);
+            let message = migration_failed_message(super::migrate(&conn).unwrap_err());
+            drop(failures);
+            assert!(message.contains("foreign_keys復元検証失敗"), "{message}");
+            assert!(message.contains("expected=1"), "{message}");
+            assert!(message.contains("actual=0"), "{message}");
+            assert_eq!(max_version_and_count(&conn), (8, 8));
+            assert!(
+                can_insert_unit(&conn, "V8-BALL", "ball"),
+                "CHECK は 12 code"
+            );
+            drop(conn);
+
+            // 接続を破棄して同じ file を開き直すと、v8 を当て直さずに開ける
+            let conn = init_database(dir.path().join("test.db").to_str().unwrap()).unwrap();
+            assert_eq!(foreign_keys(&conn), 1);
+            assert_eq!(max_version_and_count(&conn), (8, 8));
+        }
+        // (4) COMMIT の後で foreign_keys の復元が error: 版 8 は残る
+        {
+            let (_dir, conn) = setup_v7_only_db();
+            let failures = migration_tx::fail_operations(&[FailurePoint::ForeignKeyRestore]);
+            let message = migration_failed_message(super::migrate(&conn).unwrap_err());
+            drop(failures);
+            assert!(message.contains("foreign_keys復元失敗"), "{message}");
+            assert_eq!(max_version_and_count(&conn), (8, 8));
+        }
+    }
+
+    /// 上限の明細（数量 9999999・原価 999999）を `rows` 行持つ入庫と廃棄の記録を 1 つずつ足す
+    fn seed_v8_limit_line_records(conn: &Connection, record_id: i64, rows: i64) {
+        conn.execute_batch(&format!(
+            "INSERT INTO receiving_records (id, receiving_date, idempotency_key, request_fingerprint, created_at)
+                 VALUES ({record_id}, '2026-10-01', 'v8-rcv-{record_id}', 'fp', '2026-10-01T00:00:00');
+             INSERT INTO disposal_records (id, disposal_date, idempotency_key, request_fingerprint, created_at)
+                 VALUES ({record_id}, '2026-10-01', 'v8-dsp-{record_id}', 'fp', '2026-10-01T00:00:00');
+             WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < {rows})
+             INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+                 SELECT {record_id}, 'V8-PCS', 9999999, 999999 FROM n;
+             WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < {rows})
+             INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price, reason)
+                 SELECT {record_id}, 'V8-PCS', 'other', 9999999, 999999, '合成' FROM n;"
+        ))
+        .unwrap();
+    }
+
+    #[test]
+    fn test_migration_req903_v8_limit_check_accepts_boundary_values() {
+        // REQ-903 / MNT-03-D13 vU の上限の検査（X13）: 各列の端の値は通り、値が変わらない
+        let (_dir, conn) = setup_v7_only_db();
+        seed_v7_products_with_children(&conn);
+        conn.execute_batch(
+            "UPDATE products SET stock_quantity = 999999999, selling_price = 999999, cost_price = 999999
+                 WHERE product_code = 'V8-PCS';
+             UPDATE products SET stock_quantity = -999999999, cost_price = -999999
+                 WHERE product_code = 'V8-CM';
+             UPDATE receiving_items SET quantity = 9999999, cost_price = 999999;
+             INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+                 VALUES (1, 'V8-CM', 1, -999999);
+             UPDATE return_items SET quantity = 9999999;
+             UPDATE manual_sale_items SET quantity = 9999999;
+             UPDATE disposal_items SET quantity = 9999999, cost_price = 999999;
+             INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price, reason)
+                 VALUES (1, 'V8-CM', 'other', 1, -999999, '合成');
+             UPDATE sale_records SET quantity = 9999999;
+             INSERT INTO sale_records (product_code, sale_date, quantity, amount, source, created_at)
+                 VALUES ('V8-PCS', '2026-10-01', -9999999, -1, 'manual', '2026-10-01T00:00:00');
+             UPDATE inventory_movements SET quantity = -1999999998, stock_after = -999999999;
+             INSERT INTO inventory_movements (product_code, movement_type, quantity, stock_after, created_at)
+                 VALUES ('V8-PCS', 'stocktake', 1999999998, 999999999, '2026-10-01T00:00:00');
+             UPDATE price_history SET old_selling = 999999, new_selling = 999999,
+                 old_cost = 999999, new_cost = -999999;
+             INSERT INTO price_history (product_code, old_selling, new_selling, old_cost, new_cost, changed_at)
+                 VALUES ('V8-CM', 0, 0, -999999, 999999, '2026-10-01T00:00:00');
+             UPDATE stocktakes SET total_cost = 9007199254740991;
+             INSERT INTO stocktakes (id, started_at, status, total_cost)
+                 VALUES (2, '2026-10-02T00:00:00', 'in_progress', NULL);
+             UPDATE stocktake_items SET system_stock = 999999999, actual_count = 999999999,
+                 valuation_cost_price = 999999;
+             INSERT INTO stocktake_items (stocktake_id, product_code, system_stock, actual_count, valuation_cost_price)
+                 VALUES (2, 'V8-CM', -999999999, NULL, NULL), (2, 'V8-CM2', 0, 0, -999999);",
+        )
+        .unwrap();
+        // 上限の明細 900 行の記録（和 8999990100000900）
+        seed_v8_limit_line_records(&conn, 2, 900);
+        let total: i64 = conn
+            .query_row(
+                "SELECT SUM(quantity * cost_price) FROM receiving_items WHERE receiving_record_id = 2",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(total, 8_999_990_100_000_900);
+        let mut before = v8_snapshot(&conn);
+
+        super::migrate(&conn).unwrap();
+
+        let mut after = v8_snapshot(&conn);
+        // schema_versions（最後の要素）だけ 1 行増える
+        assert_eq!(after.pop().unwrap().len(), 8);
+        assert_eq!(before.pop().unwrap().len(), 7);
+        assert_eq!(after, before);
+        assert_eq!(foreign_keys(&conn), 1);
+    }
+
+    #[test]
+    fn test_migration_req903_v8_limit_check_rejects_out_of_range_values() {
+        // REQ-903 / MNT-03-D13 vU の上限の検査（X13）: どれか 1 つが 1 つ外なら、何も変えずに止まる
+        let cases: [(&str, &str, &str); 24] = [
+            (
+                "receiving_items",
+                "quantity",
+                "UPDATE receiving_items SET quantity = 10000000",
+            ),
+            (
+                "return_items",
+                "quantity",
+                "UPDATE return_items SET quantity = 10000000",
+            ),
+            (
+                "manual_sale_items",
+                "quantity",
+                "UPDATE manual_sale_items SET quantity = 10000000",
+            ),
+            (
+                "disposal_items",
+                "quantity",
+                "UPDATE disposal_items SET quantity = 10000000",
+            ),
+            (
+                "sale_records",
+                "quantity",
+                "UPDATE sale_records SET quantity = 10000000",
+            ),
+            (
+                "sale_records",
+                "quantity",
+                "UPDATE sale_records SET quantity = -10000000",
+            ),
+            (
+                "products",
+                "stock_quantity",
+                "UPDATE products SET stock_quantity = 1000000000 WHERE product_code = 'V8-PCS'",
+            ),
+            (
+                "products",
+                "stock_quantity",
+                "UPDATE products SET stock_quantity = -1000000000 WHERE product_code = 'V8-CM'",
+            ),
+            (
+                "inventory_movements",
+                "stock_after",
+                "UPDATE inventory_movements SET stock_after = 1000000000",
+            ),
+            (
+                "stocktake_items",
+                "system_stock",
+                "UPDATE stocktake_items SET system_stock = -1000000000",
+            ),
+            (
+                "stocktake_items",
+                "actual_count",
+                "UPDATE stocktake_items SET actual_count = 1000000000",
+            ),
+            (
+                "inventory_movements",
+                "quantity",
+                "UPDATE inventory_movements SET quantity = 1999999999",
+            ),
+            (
+                "inventory_movements",
+                "quantity",
+                "UPDATE inventory_movements SET quantity = -1999999999",
+            ),
+            (
+                "products",
+                "selling_price",
+                "UPDATE products SET selling_price = 1000000 WHERE product_code = 'V8-CM2'",
+            ),
+            (
+                "price_history",
+                "old_selling",
+                "UPDATE price_history SET old_selling = 1000000",
+            ),
+            (
+                "price_history",
+                "new_selling",
+                "UPDATE price_history SET new_selling = 1000000",
+            ),
+            (
+                "products",
+                "cost_price",
+                "UPDATE products SET cost_price = 1000000 WHERE product_code = 'V8-CM2'",
+            ),
+            (
+                "receiving_items",
+                "cost_price",
+                "UPDATE receiving_items SET cost_price = 1000000",
+            ),
+            (
+                "disposal_items",
+                "cost_price",
+                "UPDATE disposal_items SET cost_price = -1000000",
+            ),
+            (
+                "stocktake_items",
+                "valuation_cost_price",
+                "UPDATE stocktake_items SET valuation_cost_price = 1000000",
+            ),
+            (
+                "price_history",
+                "old_cost",
+                "UPDATE price_history SET old_cost = 1000000",
+            ),
+            (
+                "price_history",
+                "new_cost",
+                "UPDATE price_history SET new_cost = 1000000",
+            ),
+            (
+                "stocktakes",
+                "total_cost",
+                "UPDATE stocktakes SET total_cost = 9007199254740992",
+            ),
+            (
+                "stocktakes",
+                "total_cost",
+                "UPDATE stocktakes SET total_cost = -9007199254740992",
+            ),
+        ];
+        for (table, column, sql) in cases {
+            let (_dir, conn) = setup_v7_only_db();
+            seed_v7_products_with_children(&conn);
+            conn.execute_batch(sql).unwrap();
+            let before = v8_snapshot(&conn);
+
+            let message = migration_failed_message(super::migrate(&conn).unwrap_err());
+
+            assert!(message.contains("上限の検査"), "{sql}: {message}");
+            assert!(
+                message.contains(&format!("{table}.{column}")),
+                "{sql}: {message}"
+            );
+            assert_eq!(v8_snapshot(&conn), before, "{sql}");
+            assert_eq!(max_version_and_count(&conn), (7, 7), "{sql}");
+            assert_eq!(foreign_keys(&conn), 1, "{sql}");
+            assert!(conn.is_autocommit(), "{sql}");
+        }
+    }
+
+    #[test]
+    fn test_migration_req903_v8_limit_check_rejects_record_total_over_safe_integer() {
+        // REQ-903 / MNT-03-D13 vU の上限の検査（X13）: 記録ごとの和。上限の明細 901 行（9009990089000901）は止まる
+        for (table, record_column, extra_row) in [
+            (
+                "receiving_items",
+                "receiving_record_id",
+                "INSERT INTO receiving_items (receiving_record_id, product_code, quantity, cost_price)
+                     VALUES (2, 'V8-PCS', 9999999, 999999)",
+            ),
+            (
+                "disposal_items",
+                "disposal_record_id",
+                "INSERT INTO disposal_items (disposal_record_id, product_code, disposal_type, quantity, cost_price, reason)
+                     VALUES (2, 'V8-PCS', 'other', 9999999, 999999, '合成')",
+            ),
+        ] {
+            let (_dir, conn) = setup_v7_only_db();
+            seed_v7_products_with_children(&conn);
+            seed_v8_limit_line_records(&conn, 2, 900);
+            conn.execute_batch(extra_row).unwrap();
+            let total: i64 = conn
+                .query_row(
+                    &format!("SELECT SUM(quantity * cost_price) FROM {table} WHERE {record_column} = 2"),
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(total, 9_009_990_089_000_901);
+            let before = v8_snapshot(&conn);
+
+            let message = migration_failed_message(super::migrate(&conn).unwrap_err());
+
+            assert!(message.contains("上限の検査"), "{message}");
+            for word in [table, record_column, "quantity", "cost_price"] {
+                assert!(message.contains(word), "{word}: {message}");
+            }
+            assert_eq!(v8_snapshot(&conn), before);
+            assert_eq!(max_version_and_count(&conn), (7, 7));
+            assert_eq!(foreign_keys(&conn), 1);
         }
     }
 

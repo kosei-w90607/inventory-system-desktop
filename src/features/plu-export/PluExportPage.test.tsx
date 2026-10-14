@@ -122,6 +122,7 @@ function mockDefaultCommands() {
         department_id: 1,
         selling_price: 550,
         cost_price: 300,
+        stock_unit: "pcs",
         stock_quantity: 12,
         plu_dirty: true,
         plu_exported_at: null,
@@ -200,6 +201,7 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
           department_id: 1,
           selling_price: 550,
           cost_price: 300,
+          stock_unit: "pcs",
           stock_quantity: 12,
           plu_dirty: true,
           plu_exported_at: null,
@@ -211,6 +213,7 @@ describe("PluExportPage (UI-08 / REQ-402)", () => {
           department_id: 1,
           selling_price: 330,
           cost_price: 180,
+          stock_unit: "pcs",
           stock_quantity: 4,
           plu_dirty: true,
           plu_exported_at: null,
@@ -944,4 +947,36 @@ it("⑮ SC4: 確定済みの操作説明を全文表示する", () => {
       "レジのPLU登録状況を書き出すページです。『レジ登録状況を読み込む』でレジのCSV（Z004）を読み込み、空き・外部登録・アプリ管理・競合の件数を確認します。『差分を書き出す』（未反映の商品だけ）か『全件を書き出す』を選んで保存し、『この書出しを未反映から外す』を押して確定します。",
     ),
   ).toBeInTheDocument();
+});
+
+// UI-08 / REQ-402 / SPEC-UNIT-D3 の表の 9: 未書出しの一覧の在庫は、長さの商品だけ m の形
+it("REQ-402: 未書出しの一覧は m の商品の在庫 2750 を 27.5 m、個数の商品は今どおりの数で出す", async () => {
+  mockDefaultCommands();
+  const base = {
+    jan_code: "4900000000001",
+    department_id: 1,
+    selling_price: 550,
+    cost_price: 300,
+    plu_dirty: true,
+    plu_exported_at: null,
+  };
+  mockListPluDirty.mockResolvedValue({
+    status: "ok",
+    data: [
+      { ...base, product_code: "PLU-M", name: "合成の反物", stock_unit: "m", stock_quantity: 2750 },
+      {
+        ...base,
+        product_code: "PLU-PCS",
+        name: "合成の小物",
+        stock_unit: "pcs",
+        stock_quantity: 12,
+      },
+    ],
+  });
+  renderWithClient(<PluExportPage />);
+
+  const meterRow = (await screen.findByText("合成の反物")).closest("tr");
+  const pieceRow = screen.getByText("合成の小物").closest("tr");
+  expect(meterRow?.querySelector("td:last-child")).toHaveTextContent(/^27\.5 m$/);
+  expect(pieceRow?.querySelector("td:last-child")).toHaveTextContent(/^12$/);
 });

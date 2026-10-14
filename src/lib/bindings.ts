@@ -467,7 +467,7 @@ export type CsvImportRecordDetailItem = {
 	product_code: string,
 	product_name: string,
 	department_name: string,
-	stock_unit: string,
+	stock_unit: ProductStockUnit,
 	quantity: number,
 	amount: number,
 	is_voided: boolean,
@@ -587,6 +587,8 @@ export type DailySaleItem = {
 	name: string,
 	department_name: string,
 	department_id: number,
+	// 商品の単位。`quantity` は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3）
+	stock_unit: ProductStockUnit,
 	quantity: number,
 	amount: number,
 	source: DailySaleSource,
@@ -621,7 +623,10 @@ export type Department = {
 export type DeptSubtotal = {
 	department_id: number,
 	department_name: string,
-	quantity: number,
+	// 個数の種類の数量の和
+	count_points: number,
+	// 長さの種類の数量の和（cm）
+	length_cm: number,
 	amount: number,
 };
 
@@ -655,6 +660,7 @@ export type DisposalRecordDetail = {
 	status: string,
 	created_at: string,
 	items: DisposalRecordDetailItem[],
+	// ロス原価合計（円。行のロス原価の和を円未満で四捨五入した値。SPEC-UNIT-D6）
 	total_loss_cost: number,
 	movements: MovementRecord[],
 };
@@ -665,12 +671,13 @@ export type DisposalRecordDetailItem = {
 	product_code: string,
 	product_name: string,
 	department_name: string,
-	stock_unit: string,
+	stock_unit: ProductStockUnit,
 	disposal_type: DisposalType,
 	quantity: number,
 	cost_price: number,
 	reason: string,
-	line_loss_cost: number,
+	// 行のロス原価（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
+	line_loss_cost_centi: string,
 };
 
 // 廃棄記録一覧表示用
@@ -735,7 +742,10 @@ export type FileInfo = {
 
 // 総合計
 export type GrandTotal = {
-	quantity: number,
+	// 個数の種類の数量の和
+	count_points: number,
+	// 長さの種類の数量の和（cm）
+	length_cm: number,
 	amount: number,
 };
 
@@ -804,6 +814,8 @@ export type IntegrityFixResult = {
 export type IntegrityMismatch = {
 	product_code: string,
 	name: string,
+	// 商品の単位。数量は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3）
+	stock_unit: ProductStockUnit,
 	stock_quantity: number,
 	movements_sum: number,
 	difference: number,
@@ -912,7 +924,7 @@ export type ManualSaleRecordDetailItem = {
 	product_code: string,
 	product_name: string,
 	department_name: string,
-	stock_unit: string,
+	stock_unit: ProductStockUnit,
 	quantity: number,
 	amount: number,
 };
@@ -931,7 +943,12 @@ export type MatchedSummary = {
 export type MonthlySaleItem = {
 	key: string,
 	label: string,
-	quantity: number,
+	// 個数の種類の数量の和（商品別の行は、長さの商品なら 0）
+	count_points: number,
+	// 長さの種類の数量の和（cm。商品別の行は、個数の商品なら 0）
+	length_cm: number,
+	// 商品別の行だけ値を持つ（相殺して 0 になった行も種類を失わない）。部門別は null
+	stock_unit: ProductStockUnit | null,
 	amount: number,
 	ranking: number,
 };
@@ -1242,6 +1259,8 @@ export type ProductResponse = {
 	department_id: number,
 	selling_price: number,
 	cost_price: number,
+	// 商品の単位。`stock_quantity` は在庫の数量（長さは cm）で、表示は単位で決める（SPEC-UNIT-D3 の表の 9）
+	stock_unit: ProductStockUnit,
 	stock_quantity: number,
 	plu_dirty: boolean,
 	plu_exported_at: string | null,
@@ -1269,7 +1288,7 @@ export type ProductSearchQuery = {
 	per_page: number,
 };
 
-export type ProductStockUnit = "pcs" | "cm";
+export type ProductStockUnit = "pcs" | "sheet" | "hon" | "bag" | "box" | "roll" | "kumi" | "set" | "ball" | "cho" | "m" | "cm";
 
 export type ProductTaxRate = "10" | "8" | "0";
 
@@ -1352,6 +1371,7 @@ export type ReceivingRecordDetail = {
 	status: string,
 	created_at: string,
 	items: ReceivingRecordDetailItem[],
+	// 原価合計（円。行の金額の和を円未満で四捨五入した値。SPEC-UNIT-D6）
 	total_cost: number,
 	movements: MovementRecord[],
 };
@@ -1362,10 +1382,11 @@ export type ReceivingRecordDetailItem = {
 	product_code: string,
 	product_name: string,
 	department_name: string,
-	stock_unit: string,
+	stock_unit: ProductStockUnit,
 	quantity: number,
 	cost_price: number,
-	line_cost: number,
+	// 行の金額（1/100 円の整数の十進の文字列。SPEC-UNIT-D6）
+	line_cost_centi: string,
 };
 
 // 入庫記録一覧表示用（supplier_name JOIN済み）
@@ -1434,7 +1455,7 @@ export type ReturnRecordDetailItem = {
 	product_code: string,
 	product_name: string,
 	department_name: string,
-	stock_unit: string,
+	stock_unit: ProductStockUnit,
 	direction: ReturnDirection,
 	quantity: number,
 };
@@ -1540,6 +1561,8 @@ export type StartStocktakeResult = {
 // 在庫補正詳細
 export type StockAdjustment = {
 	product_code: string,
+	// 商品の単位（SPEC-UNIT-D3 の表の 11）
+	stock_unit: ProductStockUnit,
 	old_stock: number,
 	new_stock: number,
 	adjustment: number,
@@ -1632,7 +1655,7 @@ export type StocktakeRecordDetailItem = {
 	product_code: string,
 	product_name: string,
 	department_name: string,
-	stock_unit: string,
+	stock_unit: ProductStockUnit,
 	system_stock: number,
 	actual_count: number | null,
 	counted_at: string | null,

@@ -28,7 +28,7 @@ import { returnToLinkProps } from "@/lib/return-to";
 import type { StockMovementsSearch } from "./types";
 import { MOVEMENT_TYPE_OPTIONS, normalizeStockMovementsSearch } from "./types";
 import { useStockMovements } from "./hooks/useStockMovements";
-import { MovementTable } from "./components/MovementTable";
+import { MovementTable, stockUnitMap } from "./components/MovementTable";
 
 export interface StockMovementsPageProps {
   productCode: string;
@@ -258,7 +258,13 @@ export function StockMovementsPage({
               totalCount={movementsQuery.data.total_count}
             />
           )}
-          <MovementTable movements={movementsQuery.data.items} returnTo={detailReturnTo} />
+          <MovementTable
+            movements={movementsQuery.data.items}
+            stockUnitByProductCode={stockUnitMap(
+              productQuery.data ? [productQuery.data.product] : [],
+            )}
+            returnTo={detailReturnTo}
+          />
           <Pagination
             page={movementsQuery.data.page}
             perPage={movementsQuery.data.per_page}

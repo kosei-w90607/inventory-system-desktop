@@ -3,6 +3,7 @@
 // 3 サマリカード束ね（昨日売上 / 在庫切れ / 在庫少）。
 // 設計: docs/function-design/53-ui-home.md §53.1 / §53.5 / §53.6 (per-card Skeleton 仕様)
 
+import { formatQuantityTotal } from "@/features/stock-inquiry/lib/format-stock-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { HomeSummaryState } from "../types";
@@ -40,7 +41,12 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
             {sales.data ? yenFormatter.format(sales.data.grand_total.amount) : "—"}
           </div>
           <div className="text-sm text-muted-foreground">
-            {sales.data ? `${String(sales.data.grand_total.quantity)} 点` : ""}
+            {sales.data
+              ? formatQuantityTotal(
+                  sales.data.grand_total.count_points,
+                  sales.data.grand_total.length_cm,
+                )
+              : ""}
           </div>
         </div>
       </SummaryCard>

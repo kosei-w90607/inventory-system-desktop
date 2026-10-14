@@ -3,6 +3,7 @@
 //! 20-io-product-repo.md §2.9 に基づく実装。
 //! IO-01: SQLiteデータアクセス層（stocktake_repository）
 
+use super::product_repo::{parse_stock_unit, ProductStockUnit};
 use super::{DbConnection, DbError};
 use crate::constants::PAGINATION_MAX_PER_PAGE;
 
@@ -113,7 +114,7 @@ pub struct StocktakeRecordDetailItem {
     pub product_code: String,
     pub product_name: String,
     pub department_name: String,
-    pub stock_unit: String,
+    pub stock_unit: ProductStockUnit,
     pub system_stock: i64,
     pub actual_count: Option<i64>,
     pub counted_at: Option<String>,
@@ -610,7 +611,7 @@ pub fn get_stocktake_record_detail(
                 product_code: row.get(0)?,
                 product_name: row.get(1)?,
                 department_name: row.get(2)?,
-                stock_unit: row.get(3)?,
+                stock_unit: parse_stock_unit(row.get(3)?)?,
                 system_stock: row.get(4)?,
                 actual_count: row.get(5)?,
                 counted_at: row.get(6)?,

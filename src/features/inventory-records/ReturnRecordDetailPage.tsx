@@ -23,7 +23,7 @@ import { PageHeader } from "@/components/patterns/PageHeader";
 import { PageShell } from "@/components/patterns/PageShell";
 // 数量の桁区切りと単位名は共通formatterに揃える。
 import { formatStockDisplay } from "@/features/stock-inquiry/lib/format-stock-display";
-import { MovementTable } from "@/features/stock-movements/components/MovementTable";
+import { MovementTable, stockUnitMap } from "@/features/stock-movements/components/MovementTable";
 import { commands } from "@/lib/bindings";
 import { describeError } from "@/lib/describe-error";
 import { unwrapResult } from "@/lib/invoke";
@@ -231,7 +231,10 @@ export function ReturnRecordDetailPage({ recordId, returnTo }: ReturnRecordDetai
             description="レジ戻し済みの返品・交換はこの画面では在庫を動かしません"
           />
         ) : (
-          <MovementTable movements={detail.movements} />
+          <MovementTable
+            movements={detail.movements}
+            stockUnitByProductCode={stockUnitMap(detail.items)}
+          />
         )}
       </section>
     </PageShell>
