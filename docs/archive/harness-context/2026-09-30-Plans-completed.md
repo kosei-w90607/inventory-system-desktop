@@ -5,6 +5,7 @@
 
 ## 直近の完了
 
+- 2026-10-05 [PR #141](https://github.com/kosei-w90607/inventory-system-desktop/pull/141) EJ parser に店が普段使う文法を足す（2026-10-04 の 4 lane の lane D、R3）: 記録の種類を本文の行で決め、取引の合計域・明細域（訂正・値引き・マイナスキー・戻の印）と取引中止を読み、規則に合わない記録は今どおり復元不能に倒す（D-105）。[archive](../plans/2026-10-04-ej-grammar.md)・[Matrix](../plans/test-matrices/2026-10-04-ej-grammar.md)
 - 2026-10-05 [PR #140](https://github.com/kosei-w90607/inventory-system-desktop/pull/140) 日報（Z001 / Z002 / Z005）取込みの穴（4 lane の lane B、R3）: 小数の個数を 100 倍の整数で受け（migration v7）、別の精算の混在を精算回数で止め、行の鍵をラベルで決めた（D-104）。[archive](../plans/2026-10-04-daily-report-import-gaps.md)・[Matrix](../plans/test-matrices/2026-10-04-daily-report-import-gaps.md)
 - 2026-10-04 [PR #139](https://github.com/kosei-w90607/inventory-system-desktop/pull/139) Z004 取込みの穴（4 lane の lane A、R3）: カンマ付きの金額を読み、コードの無い枠の売上を `invalid_jan` の行エラーで知らせ、売上の無い非 JAN の枠を読み飛ばす（D-103）。[archive](../plans/2026-10-04-z004-import-gaps.md)・[Matrix](../plans/test-matrices/2026-10-04-z004-import-gaps.md)
 - 2026-10-04 [PR #138](https://github.com/kosei-w90607/inventory-system-desktop/pull/138) 独自コードの自動採番が既存の番号と衝突して止まる（4 lane の lane E、R3）: 発番は既存の番号の最大の次から振り（抜けは埋めない）、9999 の次は 5 桁で続ける（D-106）。[archive](../plans/2026-10-04-custom-code-seq.md)・[Matrix](../plans/test-matrices/2026-10-04-custom-code-seq.md)
