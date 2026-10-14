@@ -5,6 +5,7 @@
 
 ## 直近の完了
 
+- 2026-10-05 [PR #140](https://github.com/kosei-w90607/inventory-system-desktop/pull/140) 日報（Z001 / Z002 / Z005）取込みの穴（4 lane の lane B、R3）: 小数の個数を 100 倍の整数で受け（migration v7）、別の精算の混在を精算回数で止め、行の鍵をラベルで決めた（D-104）。[archive](../plans/2026-10-04-daily-report-import-gaps.md)・[Matrix](../plans/test-matrices/2026-10-04-daily-report-import-gaps.md)
 - 2026-10-04 [PR #139](https://github.com/kosei-w90607/inventory-system-desktop/pull/139) Z004 取込みの穴（4 lane の lane A、R3）: カンマ付きの金額を読み、コードの無い枠の売上を `invalid_jan` の行エラーで知らせ、売上の無い非 JAN の枠を読み飛ばす（D-103）。[archive](../plans/2026-10-04-z004-import-gaps.md)・[Matrix](../plans/test-matrices/2026-10-04-z004-import-gaps.md)
 - 2026-10-04 [PR #138](https://github.com/kosei-w90607/inventory-system-desktop/pull/138) 独自コードの自動採番が既存の番号と衝突して止まる（4 lane の lane E、R3）: 発番は既存の番号の最大の次から振り（抜けは埋めない）、9999 の次は 5 桁で続ける（D-106）。[archive](../plans/2026-10-04-custom-code-seq.md)・[Matrix](../plans/test-matrices/2026-10-04-custom-code-seq.md)
 - 2026-10-01 [PR #136](https://github.com/kosei-w90607/inventory-system-desktop/pull/136) 検査 script と test の小口を整理する（単独の lane、R3）: PK4 が Workflow State の key の重複を push の前に止め、`check-workflow-git.sh` は Phase を `## Workflow State` の節だけから読み、PK1・PK3 の節の判定を `##` に限り、hook test が frontmatter の `permissionMode`・`mcpServers` を拒み、home の小文字化の残りを揃えた（D-102）。[archive](../plans/2026-10-01-checker-small-fixes.md)・[Matrix](../plans/test-matrices/2026-10-01-checker-small-fixes.md)
