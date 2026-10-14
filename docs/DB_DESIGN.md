@@ -2,7 +2,7 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-[時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9の保存契約を詳細化した。現行ER図・以下のテーブル一覧は実装済みschemaであり、新契約のmigration適用を示さない。
+[時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D10の保存契約を詳細化した。現行ER図・以下のテーブル一覧は実装済みschemaであり、新契約のmigration適用を示さない。
 
 - 商品の単調版・非連動化後の未調整記録・在庫連動の既定値と数量更新: [master](db-design/master-tables.md)。既存入出庫TXとの接続: [transaction](db-design/transaction-tables.md)。
 - 売上commit前のhash一意な資料受領、精算の識別メタ、同一性拒否証拠、import参照: [POS](db-design/pos-tables.md)。

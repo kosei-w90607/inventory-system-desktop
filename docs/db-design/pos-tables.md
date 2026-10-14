@@ -10,7 +10,9 @@ SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、s
 | pos_import_sources | machine_no TEXT、report_kind TEXT、settlement_no TEXT、settled_at TEXT | 全てNULL可。IOが抽出したメタの意味を保持し、番号のleading zero・resetを推測で消さない。日時不明はNULL。日付から日時へ勝手な0時を補わない。settled_atは識別と表示のメタで、実測との前後判定に使わない |
 | pos_import_sources | settlement_date TEXT NOT NULL | parserが検証した精算日。拒否資料の日付表示にも使用。旧importからの受領backfillは行わない（[decision-log](../decision-log.md) D-109 (4)） |
 | pos_import_sources | identity_rejection_code TEXT、identity_rejected_at TEXT | 両方NULLまたは両方必須。codeはidentity_conflict / missing_identityのCHECK。BIZが初回の拒否時に証拠TXで保存し、取消/再実測で削除しない。raw明細は格納しない |
+| pos_import_sources（[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)、2026-10-11 追加。今の `schema_time_evidence` には無い） | first_scan_id INTEGER | NULL可。NULLでなければ正の整数のCHECK。pos_source_scansに行を置いた読取りの中でこのsourceを初めて受領した（sourceの行をINSERTした）とき、その読取りの行のID。行を置かない読取り（利用者が場所を選んだrootの読取りを含む）の中の受領と、読取りの外の受領（今ある経路ではファイルを選ぶ経路の受領。読取りの途中に別の経路で受領した場合を含む）はNULL。INSERTのときだけ書き、同hashの再受領・取込みの取消・同一性拒否・再読取りで変えない。例外は、ADR D10の有効にするmigration（全部実測後の枝を入れる変更と、保存の不具合が分かったときの再適用）が、全てのsourceのこの値をNULLにすることだけ。途中で失敗した読取りの中で受領したsourceは、その未完了の行のIDを持ち続ける。行を消さないので、IDへのFKにしない（指す行が無い値は、未完了の行を指す値と同じく判定に使わない）。全部実測後の判定（ADR D10の条件3）が、PとFの初回受領の読取りとして直接読む。判定の有効・無効に依らず保存する |
 | csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない。時点証拠schemaのmigrationは旧importからsourceをbackfillせず、旧importのsource_idはNULLのまま残す（NULLを許す列とし、新importの必須はBIZが守る。[decision-log](../decision-log.md) D-109 (4)） |
+| pos_source_scans（新設、[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)） | id INTEGER PK AUTOINCREMENT、scanned_at TEXT、medium_id TEXT、window_from TEXT、completed_at TEXT | scanned_at・medium_idはNOT NULL、medium_idは空文字列を許さないCHECK。window_fromとcompleted_atは両方NULL（未完了）か両方NOT NULL（完了）のCHECK。資料の置き場（今のレジではSD）を読む操作ごとに、fileの列挙を始める前に未完了の行を1つ置く。行を置くのは、adapterが自動で見つけた置き場の読取りだけ（SDでは自動で見つけた取外し可能なdriveのroot。利用者が場所を選んだrootの読取りは行を置かない）。medium_idはadapterが返す置き場の識別子（SDではボリュームの通し番号）で、取れなければ行を置かない。読取りは、行を置く前から完了・失敗まで、同じDBに対する唯一の操作で、DBの接続の排他を持ち続ける（ADR D10の読取りの排他）。全数読取り（窓の中の商品別売上の資料を全て受領し終え、移動元〈SDでは `XZ`〉を移動先〈`XZ_BKUP`〉より先に列挙し、読取りの終わりに取り直した置き場の識別子が始めの値と同じだった読取り。値が違う・終わりに取れない読取りは未完了のまま。ADR D10の全数読取りの2〜4）になったときだけ、その行へwindow_from（窓の始まりの日付、YYYY-MM-DD。窓は終わりを持たない）とcompleted_at（完了の時刻）を書いて完了にする。未完了の行は判定に使わず、後から完了にしない。完了した行は更新しない。行は削除しない。scanned_atとcompleted_atはアプリの時計の値で、判定にはcompleted_atがNULLかどうかだけを使う。この読取りの中で初めて受領したsourceは、pos_import_sourcesのfirst_scan_idにこの行のIDを持つ。売上値・file名・file本体は持たない。判定の有効・無効に依らず保存する |
 
 同sourceの再取込み可否はactive hash拒否だけでなく、BIZの同一精算別hash guardにも従う。受領済みの別hashとの関係が未解決なら、元importを取り消しても自動で解除しない。
 
@@ -20,7 +22,7 @@ SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、s
 
 構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
 
-原本メタと初回受領は不変。raw売上・商品名・JAN・file本体は格納しない。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含める。精算系列（番号のリセット区間）を証明する手段はないため、同じ帳票種別でmachine_no・settlement_noが一致する別hashは常に衝突とする。それでも(machine_no, settlement_no)へ一律UNIQUEは張らない。衝突した資料も受領して拒否証拠を残すためで、衝突の判定と拒否はBIZが行う。
+原本メタと初回受領は不変（初回受領の読取りのIDをNULLへ戻す例外は、上の表のその列の行）。raw売上・商品名・JAN・file本体は格納しない。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含める。精算系列（番号のリセット区間）を証明する手段はないため、同じ帳票種別でmachine_no・settlement_noが一致する別hashは常に衝突とする。それでも(machine_no, settlement_no)へ一律UNIQUEは張らない。衝突した資料も受領して拒否証拠を残すためで、衝突の判定と拒否はBIZが行う。
 
 欠落表示の保存根拠はidentity_rejection_code/identity_rejected_atであり、保留集合ではない。BIZのread-only準備照会は拒否記録ありかつ当該sourceのactive importなしを抽出し、settlement_missingへ渡す。成功取込み後も証拠自体は保持し、取消でactiveがなくなれば再び表示対象とする。未提出/欠番の推測行を作らない。
 

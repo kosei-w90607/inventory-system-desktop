@@ -2,7 +2,7 @@
 
 ## 時点証拠契約（proposed・未実装）
 
-[時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D9の詳細化。以下の現行タスク構成・依存関係を実装済みの新方式として読み替えない。
+[時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D10の詳細化。以下の現行タスク構成・依存関係を実装済みの新方式として読み替えない。
 
 | 所有層 | 新契約の責務 / 詳細 |
 |---|---|
