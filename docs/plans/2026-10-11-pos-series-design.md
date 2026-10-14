@@ -6,9 +6,9 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: c9623cc469517c7079be116325649e3797321140
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
@@ -32,16 +32,18 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 10. plan-draft → plan-gate（2026-10-12、Coordinator、同じ commit）: packet と Matrix は起草役の commit にある。Coordinator は ADR の SPEC-STK-TIME-D10（全数読取り、資料の初回受領の読取り、全部実測後の条件、限界、有効にする・外す）を実読し、AC の検索式と docs の検査が通ることを確かめた。Plan Review round 2 へ出す。
 11. plan-gate（round 2 の是正、2026-10-12）: Plan Review round 2 の是正（Review Response 参照）。D10 の条件の式・保存する表と列・Scope の範囲（区間の対応づけは骨まで）は変えず、その場で直したので plan-gate に留める。
 12. plan-gate（round 3 の是正、2026-10-12）: Plan Review round 3（上限）の後の是正（Review Response 参照）。次の round は開始しない（`docs/DEV_WORKFLOW.md` Review Rules の round 天井）。
+13. plan-gate（訪店の結果の反映、2026-10-15、Coordinator）: 持ち帰り資料で、Z004 と精算票の記録を日時のほかに番号でも結べる観測が得られ、正本の「結べる値は日時だけ」が狭いと分かったので、その場で事実の文を訂正した（Review Response 参照）。D10 の条件の式・保存する表と列・Scope の範囲は変えていない。
+14. plan-gate → plan-approved（2026-10-15、Coordinator、本 commit）: round 3 の disposition と 13 の訂正の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-255。round 3 で Codex 側に P1 が残ったので owner の承認による。先例 archive の `2026-10-07-unit-extension.md` の遷移の記録 10）。Plan Commit = `c9623cc4`（承認した版）。reviewer の再確認は Final Review。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 6（既定）
+- 介入回数上限: 8（2026-10-12 に既定 6 から上げた、owner 承認〈repo 外の回答台帳 TD-239〉。理由: Plan Review が round 天井に達し、plan-approved を owner に諮るため）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 3（2026-10-11: J1 の判断〈TD-224〉、限界の受け入れ〈TD-228〉。2026-10-12: 区間の対応づけを本 lane でどこまで決めるかの判断〈TD-230〉。TD-221・TD-222・TD-223 は起票の前の lane 選択で、TD-229 は owner の問いなので、本 lane の介入に数えない） | 2（Ready 1、merge 1） | 1（Plan Review の round 天井に達したときの disposition） | 6 = 3 + 2 + 1 |
+| 介入 | 8 | 5（2026-10-11: J1 の判断〈TD-224〉、限界の受け入れ〈TD-228〉。2026-10-12: 区間の対応づけを本 lane でどこまで決めるかの判断〈TD-230〉、round 3 の disposition と上限の改定〈TD-236・TD-239〉。2026-10-15: 訂正を本 lane に入れてから plan-approved にする判断と、その承認〈TD-254・TD-255、1 つの decision point〉。TD-221・TD-222・TD-223 は起票の前の lane 選択で、TD-229 は owner の問いなので、本 lane の介入に数えない） | 2（Ready 1、merge 1） | 1 | 8 = 5 + 2 + 1 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -464,5 +466,13 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
 - 起草役が直さずに報告したもの: `docs/architecture/cmd-task-specs.md` の索引の 1 行も D1〜D9 のまま（発注が名指しした範囲の外）。Final Review の後の是正か follow-up で扱う。
 - 限界・外部前提として残るもの（安全側に倒れない）: 読取りの間に媒体を差し替えて、終わるまでに元の媒体へ戻した場合。レジスターツールが資料を移動先から移動元へ戻すことがあった場合（無いと推定、未確認）。置き場の file を人が改名・追加した場合。どれも D10 を有効にする前に、接続の runtime lane と有効にする lane の gate で扱う。
 - 是正は起草役の commit「全数読取りの完了に識別子の取り直しと列挙の順を足し、有効にする migration の cursor を最大 ID への置換えに統一する」。是正の後の版の再確認は Final Review が行う。
+
+### plan-gate での訂正（2026-10-15、対象は round 3 の是正の後の版）
+
+- 持ち帰り資料の集計（前の集計を見ない別の担当の数え直し済み。repo 外の回答台帳 TD-252〜TD-254）で、Z004 → 同じ精算の Z001 → 精算回数 → 題の末尾が等しい完了した日計明細、の鎖が、手元に中身のある Z004 の全てで精算票を 1 件に決め、日時で結んだ相手と全て同じだった（数は ADR D5 の外部前提。`rg -c '日時で結んだ相手と全て同じだった' docs/adr/2026-09-18-stocktake-time-evidence.md` が 1）。owner は訂正を本 lane に入れてから plan-approved にすると決め、設計を継ぎ足しで歪ませないよう求めた（TD-254）
+- 起草役が「結べる値は日時だけ／日時のほかに無い」を観測の文に置き換えた（`f5979e31`、6 file の同じ事実の文を 1 対 1 で置換え。理由を失った型の列挙と出典の検索式を削った）。対応づけを確定する条件・鎖を採るか・Z004 を Z001 と組にする方法は決めず、D5a の未決 (1) の例を置き換えた。D10・D5a の欠け・評価の順・区間の開始・D3 は変えていない
+- 再確認（fresh Opus 5.5、本 lane の各 round と別の context）: approve、P1 0 / P2 0 / P3 4（数え直しの書式の条件、母数 1 の観測の断定、P7 の文の継ぎ足し、D-116 の未決の書き方）。全件採用し、起草役が `c9623cc4` で直した。同じ reviewer の closure は closed（P 0）
+- 直さずに残したもの: 同じ趣旨の観測の文が ADR・29・32・D-116・packet の 5 か所にある（元の「日時だけ」の文を 1 対 1 で置き換えた結果）。32 の「差は今は 1 だが」（事実として正しく、番号の差を使わない規則と一緒に書かれている）
+- 後続の lane へ送るもの: 鎖を採るなら、EJ の精算票の題の末尾と、Z001 の精算回数・メタの時刻の保存が要る（今の `EjRecordKind::Settlement` は題の末尾を持たない）
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
