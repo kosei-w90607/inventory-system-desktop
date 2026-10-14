@@ -194,3 +194,4 @@ Risk: R3
 - 番号の reset を挟む列のうち、資料と直前の番号の資料の両方が実測の保存より後の完了した読取りより後に同じ置き場へ現れる形（同じ 2 回の読取りの間に reset と精算が重なる）は、D10 の条件で落ちない。reset は資料に現れておらず、起きる前に決め直す（ADR の Revisit Trigger）。D10-20 は、後から受領した古い資料の列だけを固定する。
 - 小数の数量の取引を含む区間（今の EJ parser では復元不能）の扱いは、単位の拡張の runtime と日次の EJ 取込みの lane が決める。本 Matrix は「読めない記録があれば完全にしない」（D5a-4）だけを固定する。
 - 合成のモデル（`scripts/probes/stocktake_time_model.py`）に D10 は無い。D10 を実装する runtime lane が足す。
+- tracking の `source_scan_cursor` の「registry への登録より後にこの列を足す migration にする場合は、既存の実測に同じ規則の値（その時点の最大 ID。無ければ 0）を入れる」経路の行は本 Matrix に無い。列を足す形は接続の runtime lane が決め、その lane の Matrix が行で固定する。
