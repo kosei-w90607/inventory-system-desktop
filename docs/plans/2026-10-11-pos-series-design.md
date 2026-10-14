@@ -9,7 +9,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 - Phase: implementing
 - Risk: R3
 - Plan Commit: c9623cc469517c7079be116325649e3797321140
-- Amendments: none
+- Amendments: b67c94b13f5d2fae7df190c818877befbc8131e7
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -34,7 +34,8 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 12. plan-gate（round 3 の是正、2026-10-12）: Plan Review round 3（上限）の後の是正（Review Response 参照）。次の round は開始しない（`docs/DEV_WORKFLOW.md` Review Rules の round 天井）。
 13. plan-gate（訪店の結果の反映、2026-10-15、Coordinator）: 持ち帰り資料で、Z004 と精算票の記録を日時のほかに番号でも結べる観測が得られ、正本の「結べる値は日時だけ」が狭いと分かったので、その場で事実の文を訂正した（Review Response 参照）。D10 の条件の式・保存する表と列・Scope の範囲は変えていない。
 14. plan-gate → plan-approved（2026-10-15、Coordinator、本 commit）: round 3 の disposition と 13 の訂正の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-255。round 3 で Codex 側に P1 が残ったので owner の承認による。先例 archive の `2026-10-07-unit-extension.md` の遷移の記録 10）。Plan Commit = `c9623cc4`（承認した版）。reviewer の再確認は Final Review。
-15. plan-approved → implementing（2026-10-15、Coordinator、本 commit。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R3、Minimum 1）に出す。
+15. plan-approved → implementing（2026-10-15、Coordinator。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R3、Minimum 1）に出す。
+16. implementing のまま Gated Amendment 1（2026-10-15、Coordinator）: Final Review broad（head `e482ad2a`）の是正（Review Response 参照）。起草役が `ae2d9abf` と `b67c94b1` で直し、Coordinator が差分を読んだ。D10 の条件の式・保存する表と列・全数読取りの条件・D5a・D3 は変えていない。Amendments = `b67c94b1`（GA1 の最後の commit）。次は現在の head の Final Review broad 2 本。
 
 ## Owner Effort Budget
 
@@ -476,5 +477,20 @@ docs だけ。設計正本の更新は Scope の表のとおり。runtime の実
 - 再確認（fresh Opus 5.5、本 lane の各 round と別の context）: approve、P1 0 / P2 0 / P3 4（数え直しの書式の条件、母数 1 の観測の断定、P7 の文の継ぎ足し、D-116 の未決の書き方）。全件採用し、起草役が `c9623cc4` で直した。同じ reviewer の closure は closed（P 0）
 - 直さずに残したもの: 同じ趣旨の観測の文が ADR・29・32・D-116・packet の 5 か所にある（元の「日時だけ」の文を 1 対 1 で置き換えた結果）。32 の「差は今は 1 だが」（事実として正しく、番号の差を使わない規則と一緒に書かれている）
 - 後続の lane へ送るもの: 鎖を採るなら、EJ の精算票の題の末尾と、Z001 の精算回数・メタの時刻の保存が要る（今の `EjRecordKind::Settlement` は題の末尾を持たない）
+
+### Final Review broad 1（2026-10-15、head `e482ad2a`）
+
+- Claude 側（Fable 5.1、fresh context）: approve、P1 0 / P2 0 / P3 3。Codex（GPT-6 Astra / high）: reject、P1 1 / P2 0 / P3 0。Ordinary Operation は Claude 側が成立、Codex が具体的な反例あり。AC は 2 本とも全て一致
+- record: Codex を pending、Claude 側と裁定を fail（`--pr-reviews 1`）。Coordinator は全件採用し、是正の前に相談役（Fable 5.1）へ直し方の反例探しを頼んだ
+
+| ID | 出どころ | 要旨 | 是正の形 |
+|---|---|---|---|
+| F1-C1 | Codex（P1） | 全部実測後を相殺の判定の対象外にしたことで、PLU の clear で未精算の売上ごと code が消えた数えた商品の判定（D4）まで外れ、帳簿と現物の差が要再確認なしで残る | 相談役の結論で範囲を定義し直した: D10 が決めるのは資料の行に載った販売・返品の前後だけで、売上がその商品の行に載っているか（clear 行の規則〈code の単位。今回に別の code の行があっても〉と、前回の code が分からない区間の規則）は全部実測前でなければ分類によらず当てる。相談役が最初の案（範囲 =「今回に行のある商品」）の穴〈code を変える書出し〉を示し、起草役が前回の code が分からない区間の穴〈code を変えた商品に今回の行がある〉を報告したので、区間の規則の対象を今回の行の有無によらない形にした。Matrix D10-13 を置き換え、D10-31・D10-32 を足した。Ordinary Operation に書出しの日の行を足した |
+| F1-F1 | Claude 側（P3） | 2026-10-15 の件数を ADR に直接書き、件数の置き場の規則（backlog の入力）と食い違う | backlog に入力 5 を足して件数を移し、ADR と P5・P7 は参照に置き換えた |
+| F1-F2 | Claude 側（P3） | D-116 の Status と Implementation Results の状態の文が古い | Status の句を削り（proposed のまま）、Implementation Results を現在の状態に置き換えた |
+| F1-F3 | Claude 側（P3） | Matrix の D10-19 の欠番 | 欠番の旨を注記した（ID は詰めない） |
+
+- あわせて直したもの（起草役の sweep）: ADR の観測の段の「同じ集計」の指す先、tracking-system-tables の clear 行と区間全体の文を ADR と揃えた
+- 是正は Gated Amendment 1（`ae2d9abf`・`b67c94b1`）。現在の head の Final Review broad 2 本で確かめる
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
