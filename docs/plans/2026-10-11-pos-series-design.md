@@ -9,7 +9,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 - Phase: implementing
 - Risk: R3
 - Plan Commit: c9623cc469517c7079be116325649e3797321140
-- Amendments: b67c94b13f5d2fae7df190c818877befbc8131e7
+- Amendments: b67c94b13f5d2fae7df190c818877befbc8131e7, ec178d317202532cfceb485c210a8b674579f673
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
 - Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
@@ -36,6 +36,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 14. plan-gate → plan-approved（2026-10-15、Coordinator、本 commit）: round 3 の disposition と 13 の訂正の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-255。round 3 で Codex 側に P1 が残ったので owner の承認による。先例 archive の `2026-10-07-unit-extension.md` の遷移の記録 10）。Plan Commit = `c9623cc4`（承認した版）。reviewer の再確認は Final Review。
 15. plan-approved → implementing（2026-10-15、Coordinator。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R3、Minimum 1）に出す。
 16. implementing のまま Gated Amendment 1（2026-10-15、Coordinator）: Final Review broad（head `e482ad2a`）の是正（Review Response 参照）。起草役が `ae2d9abf` と `b67c94b1` で直し、Coordinator が差分を読んだ。D10 の条件の式・保存する表と列・全数読取りの条件・D5a・D3 は変えていない。Amendments = `b67c94b1`（GA1 の最後の commit）。次は現在の head の Final Review broad 2 本。
+17. implementing のまま Gated Amendment 2（2026-10-15、Coordinator）: Final Review broad 2（head `c472650e`）の是正（Review Response 参照）。起草役が `e0c984fe` と `ec178d31` で直し、Coordinator が差分を読んだ。D10 の条件の式・保存する表と列・全数読取りの条件・D5a・D3 は変えていない。Amendments に `ec178d31`（GA2 の最後の commit）を足した。次は現在の head の Final Review broad 2 本。
 
 ## Owner Effort Budget
 
@@ -492,5 +493,23 @@ docs だけ。設計正本の更新は Scope の表のとおり。runtime の実
 
 - あわせて直したもの（起草役の sweep）: ADR の観測の段の「同じ集計」の指す先、tracking-system-tables の clear 行と区間全体の文を ADR と揃えた
 - 是正は Gated Amendment 1（`ae2d9abf`・`b67c94b1`）。現在の head の Final Review broad 2 本で確かめる
+
+### Final Review broad 2（2026-10-15、head `c472650e`）
+
+- Claude 側（Fable 5.1、1 回目と別の fresh context）: reject、P1 0 / P2 1 / P3 4。Codex（GPT-6 Astra / high）: reject、P1 0 / P2 1 / P3 0。Ordinary Operation は Claude 側が成立、Codex が具体的な反例あり。AC は 2 本とも全て一致
+- record: Codex を pending、Claude 側と裁定を fail（`--pr-reviews 1`）。2 本の P2 は同じ根（GA1 の範囲の定義が、flag を判定不能に結ぶ古い言い方に届いていない）と裁定した
+
+| ID | 出どころ | 要旨 | 是正の形 |
+|---|---|---|---|
+| F2-C1 | Codex（P2） | 32 の出力契約が「Unknown の場合の flag」のままで、全部実測後の商品の flag を返せない | 分類と flag の理由を別々に返す形に置き換えた |
+| F2-F1 | Claude 側（P2） | 区間全体の規則の括弧が全部実測後の商品に及ぶか読めない | 「判定不能か全部実測後かによらず含む」と置き換えた（ADR・32） |
+| F2-F2 | Claude 側（P3） | D4 の表の「分類によらず」が全部実測前の除外とぶつかる | 「判定不能のときと同じく」に置き換えた |
+| F2-F3 | Claude 側（P3） | 場所を選んだ root を識別子なしとする理由が規則の範囲より狭い | 理由を「媒体そのものか写しかを区別できない」に置き換えた |
+| F2-F4 | Claude 側（P3） | 締められなかった日と媒体の入替の段に 8 つの状況が連結 | 文言を変えずに箇条に分けた |
+| F2-F5 | Claude 側（P3） | 全数読取りの規則が 6 か所に全文で複製 | 見送り。縮める置換えは別の層の 3 file に及ぶので、runtime の lane がそれらを触るときに参照へ縮める（PR の Follow-up） |
+| F2-F6 | Claude 側（Negative-space） | tracking の列を後から足す migration の経路に Matrix の行が無い | Matrix の Residual Test Gaps に 1 行 |
+
+- 同じ根の残りとして、起草役が flag を判定不能に結ぶ言い方を sweep し、flag の保存の規則の主語（ADR・32・tracking）と 32 の通常適用の文の After の括弧を置き換えた（`ec178d31`）
+- 是正は Gated Amendment 2（`e0c984fe`・`ec178d31`）。現在の head の Final Review broad 2 本で確かめる
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
