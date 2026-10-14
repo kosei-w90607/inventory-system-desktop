@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: c9623cc469517c7079be116325649e3797321140
 - Amendments: b67c94b13f5d2fae7df190c818877befbc8131e7, ec178d317202532cfceb485c210a8b674579f673
@@ -164,8 +164,8 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 | file | 変更する節 | 他 lane との重なり |
 |---|---|---|
-| `docs/adr/2026-09-18-stocktake-time-evidence.md` | Status、適用範囲の但し書きの最終段落（決めたことの表）、D1 の S / E の 1 文、D4 の表と前後の文・相殺の段の冒頭の対象の文・clear 行の箇条・区間全体の箇条の対象の文、D5 の時刻の箇条・完全な EJ の条件の括弧・合計の照合の除外・戻りの箇条・帰属できない行の箇条の 1 文・外部前提の段落、D5a（新設。骨と、後続の設計へ送った項目の一覧）、D4 の EJ 待ちの箇条・再評価の順・在庫連動の有効化の条件の各 1 文、D8 の表と 1 文、D10（新設。考え方・全数読取り〈完了にする条件の列挙の順と識別子の取り直しを含む〉・読取りの排他・資料の初回受領の読取り・実測側の保存・全部実測後の条件・限界・読取りが途中で失敗した日・締められなかった日と媒体の入替・読取りの間の置き場の変化・外部前提・有効にする・外す〈有効にする migration、保存の不具合の出口、不変の例外を含む〉・番号印字は採らない）、Rejected Options の追記と 1 箇条、Consequences の 3 か所、㉘ への引継ぎ（依存の表と合格条件、接続の runtime lane への申し送り）、Evidence の 1 文、Revisit Trigger の最終段落 | なし |
-| `docs/function-design/32-biz-csv-import-service.md` | 時点証拠契約の「一つの分類関数とcommit」の入力の文と手順 4、手順 6 の冒頭の 2 文・clear 行の文・区間全体の対象の文と登録の変化の判定の 1 文、EJ の証拠の段落の再評価の順、外部 probe 表の EJ完全性の行の括弧と「精算の書込み」の行、表の後の観測の段落 | なし（`agent/unit-runtime` は Z004 の小数の配線をしない。D-113 (8)） |
+| `docs/adr/2026-09-18-stocktake-time-evidence.md` | Status、適用範囲の但し書きの最終段落（決めたことの表）、D1 の S / E の 1 文、D4 の表と前後の文・相殺の段の冒頭の対象の文・clear 行の箇条・区間全体の箇条の対象の文、D5 の時刻の箇条・完全な EJ の条件の括弧・合計の照合の除外・戻りの箇条・帰属できない行の箇条の 1 文・外部前提の段落、D5a（新設。骨と、後続の設計へ送った項目の一覧）、D4 の EJ 待ちの箇条・再評価の順・在庫連動の有効化の条件の各 1 文、D8 の表と 1 文、D10（新設。考え方・全数読取り〈完了にする条件の列挙の順と識別子の取り直しを含む〉・読取りの排他・資料の初回受領の読取り・実測側の保存・全部実測後の条件・限界・読取りが途中で失敗した日・締められなかった日と媒体の入替・読取りの間の置き場の変化・外部前提・有効にする・外す〈有効にする migration、保存の不具合の出口、不変の例外を含む〉・番号印字は採らない）、Rejected Options の追記と 1 箇条、Consequences の 3 か所、㉘ への引継ぎ（依存の表と合格条件、接続の runtime lane への申し送り）、Evidence の 1 文、Revisit Trigger の最終段落、判定不能からの復旧の 1 箇条、D8 の表の flags の行 | なし |
+| `docs/function-design/32-biz-csv-import-service.md` | 時点証拠契約の「一つの分類関数とcommit」の入力の文と手順 4、手順 5、手順 6 の冒頭の 2 文・clear 行の文・区間全体の対象の文と登録の変化の判定の 1 文、EJ の証拠の段落の再評価の順、外部 probe 表の EJ完全性の行の括弧と「精算の書込み」の行、表の後の観測の段落 | なし（`agent/unit-runtime` は Z004 の小数の配線をしない。D-113 (8)） |
 | `docs/function-design/29-io-ej-parser.md` | IO-08.9 の表の 3 行、IO-08.10 の「欠け」の箇条と、後続の設計が先に決めること・小数の数量の取引の 2 箇条 | なし |
 | `docs/architecture/io-task-specs.md` | IO-08 の「行わない」の 1 行 | なし |
 | `docs/function-design/37-biz-daily-report-import-service.md` | §37.9 の「Z004 と EJ への引継ぎ」の後半の文 | なし |
@@ -173,7 +173,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 | `docs/architecture/biz-task-specs.md` | 時点証拠契約の冒頭の範囲の 1 語（D1〜D10）、BIZ-03 の箇条の再評価の順の 1 文 | なし |
 | `docs/DB_DESIGN.md`・`docs/ARCHITECTURE.md`・`docs/FUNCTION_DESIGN.md` | 時点証拠契約の冒頭の範囲の 1 語（D1〜D10） | なし |
 | `docs/db-design/pos-tables.md` | 時点証拠契約の表に `pos_source_scans` の 1 行と `pos_import_sources.first_scan_id` の 1 行、表の後の「初回受領は不変」の文に 1 句 | `agent/plu-clear` は `plu-tables.md` で別 file |
-| `docs/db-design/tracking-system-tables.md` | 時点証拠契約の表に `source_scan_cursor` の 1 行、SPEC-STK-TIME-D8-K1 の箇条に 1 つ、理由の決め方の箇条の再評価の順・clear 行と区間全体の対象 | なし |
+| `docs/db-design/tracking-system-tables.md` | 時点証拠契約の表に `source_scan_cursor` の 1 行、SPEC-STK-TIME-D8-K1 の箇条に 1 つ、理由の決め方の箇条の再評価の順・clear 行と区間全体の対象、要再確認 flag の規則の 1 箇条 | なし |
 | `docs/decision-log.md` | 末尾に D-116 だけを追記 | 全 lane が末尾に追記（`agent/backup-offsite` = D-114 と D-111 の中の 1 行、`agent/plu-clear` = D-110）。merge 順で両方を残す |
 | `docs/backlog.md` | 「実測とPOS系列の対応を取得・保存する」の項目（現在の状態・入力 3・入力 4・入力 5 の箇条を足し、日付つきの 2 箇条に 2026-10-11 の結果を足す）、「㉘ ③ 〜 ⑤ の申し送り」の箇条の 2 か所と、その下の「㉘ ④ と日次の EJ 取込みへの申し送り」の箇条（新設） | `agent/unit-runtime` は「単位の拡張」の項目だけ。`agent/backup-offsite` は backup の項目と「保存と起動の守りの follow-up」。行は重ならない |
 | `docs/Plans.md` | 「次の着手順」の 1 の末尾の 1 句、その下の 2 段落の各 1 文、「次の行動」の後ろの製品の判断の節の STK-1 / STK-2 の行の 1 文。lane の行は足さない（D-097） | closeout の PR が「直近の完了」を触る。行は重ならない |
@@ -398,7 +398,11 @@ Test Design Matrix: [2026-10-11-pos-series-design](test-matrices/2026-10-11-pos-
 
 ## Implementation Results
 
-docs だけ。設計正本の更新は Scope の表のとおり。runtime の実装は無い。
+- 結果: 実測の後に行われた精算を、資料の置き場の全数読取りの順で見分ける規則（時点証拠 ADR SPEC-STK-TIME-D10。判定は外部前提の確認が済むまで有効にしない）と、EJ の区間の対応づけの骨・欠け・「前回」の候補（D5a）を設計正本に置き、D-116 に記録した。番号印字は採らない（repo 外の回答台帳 TD-224）。区間の終端の対応づけを確定する条件の細部は日次の EJ 取込みの lane の設計へ送った（TD-230）。本 lane は docs だけで、code・migration・bindings は変えていない（runtime は後続の lane）。
+- 既存の保護: 実装は変えていないので、店の動作は今のまま（棚卸しは停止のまま、Z004 の在庫連動は今の運用）。D10・D5a は proposed・未実装。
+- 未検証: Contract Probe の外部前提のうち未観測のもの（保存が異常終了した精算の資料の残り方、P2、P10）は、D10 を有効にする lane の owner-operated gate に置いた。
+- review・CI・merge（closeout、2026-10-15）: Plan Review は round 3（上限）までで、round 3 で Codex 側に P1 が残り、plan-gate での事実の訂正（Z004 と精算票を結ぶ観測を、同じ精算の Z001 の精算回数を介した番号まで広げた）と再確認の後、owner の承認で plan-approved（TD-255）。Final Review は broad 3 回（下の Review Response の Closeout の段落）。helper の record は review = pass。hosted の `Merge gate` は success で、owner の Ready・merge の承認（TD-257）の後に helper 経由の squash merge。PR: [#159](https://github.com/kosei-w90607/inventory-system-desktop/pull/159)
+- 後続: runtime の依存は ADR の「㉘ への引継ぎ」の表。Final Review broad 3 の P3 と後続の lane への申し送りは `docs/backlog.md` の「実測とPOS系列の対応を取得・保存する」の項目の「㉘ ④ と日次の EJ 取込みへの申し送り」と、その下の正本の文の整理の follow-up。次は owner の方針（TD-258）で、棚卸しの時点証拠と POS の取込みの領域の設計の見直しを先に行い、日次の EJ 取込みの lane の起票はその後。
 
 ## Review Response
 
@@ -513,3 +517,5 @@ docs だけ。設計正本の更新は Scope の表のとおり。runtime の実
 - 是正は Gated Amendment 2（`e0c984fe`・`ec178d31`）。現在の head の Final Review broad 2 本で確かめる
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+Closeout（2026-10-15）: Final Review は broad 3 回で、毎回 Codex と Claude 側（Fable 5.1）の独立 2 本。1 回目 = Codex reject（P1 1）・Claude 側 approve（P3 3）→ Gated Amendment 1（D10 が決めるのは行の販売・返品の前後だけで、売上がその商品の行に載っているか〈clear 行の規則・前回の code が分からない区間の規則〉は分類によらず確かめる、と範囲を定義し直した）。2 回目 = 2 本とも reject（P2 1 ずつ。同じ根: flag を判定不能に結ぶ古い言い方の残り）→ Gated Amendment 2。3 回目（head `db4d3f4e`）= 2 本とも approve（Codex P3 1、Claude 側 P3 5。P1 / P2 は 0）。3 回目の P3 6 件は本 lane では直さず全件 follow-up とし、`docs/backlog.md` へ送った: ㉘ ④ への 2 件（分類の出力の形が変わること、D-116 Decision (1) の「全数読取りを残す」の読み方）は「㉘ ④ と日次の EJ 取込みへの申し送り」へ、正本の文の整理の 3 件（D10 の条件 3 の式を AC で pin していない、全数読取りの保存の契約の複製、ADR D5a と D-116 の「決まるまでの帰結」の要約の範囲）は 1 項目の follow-up へ。残る 1 件 F-P3-4（Scope の表の節名に Gated Amendment で触った 4 か所が無い）は、この closeout で Scope の表に節名を足して閉じた。merge は owner の Ready・merge の承認（TD-257）の後に helper 経由。
