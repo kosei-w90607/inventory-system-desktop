@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: c9623cc469517c7079be116325649e3797321140
 - Amendments: none
@@ -34,6 +34,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 12. plan-gate（round 3 の是正、2026-10-12）: Plan Review round 3（上限）の後の是正（Review Response 参照）。次の round は開始しない（`docs/DEV_WORKFLOW.md` Review Rules の round 天井）。
 13. plan-gate（訪店の結果の反映、2026-10-15、Coordinator）: 持ち帰り資料で、Z004 と精算票の記録を日時のほかに番号でも結べる観測が得られ、正本の「結べる値は日時だけ」が狭いと分かったので、その場で事実の文を訂正した（Review Response 参照）。D10 の条件の式・保存する表と列・Scope の範囲は変えていない。
 14. plan-gate → plan-approved（2026-10-15、Coordinator、本 commit）: round 3 の disposition と 13 の訂正の後、owner が plan-approved を承認した（repo 外の回答台帳 TD-255。round 3 で Codex 側に P1 が残ったので owner の承認による。先例 archive の `2026-10-07-unit-extension.md` の遷移の記録 10）。Plan Commit = `c9623cc4`（承認した版）。reviewer の再確認は Final Review。
+15. plan-approved → implementing（2026-10-15、Coordinator、本 commit。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R3、Minimum 1）に出す。
 
 ## Owner Effort Budget
 
