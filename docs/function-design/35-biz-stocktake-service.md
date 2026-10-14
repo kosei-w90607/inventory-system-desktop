@@ -22,7 +22,7 @@ CountContextはサーバー生成UUID、用途（in_progress / independent_recou
 2. 開始時source上限とDB世代をcontextへ固定し、UIへ開始時帳簿と対象を返す。UIが開始応答を受けてから実測する。商品検索だけではcontextを作らない。
 3. save入口で保存済みrequest IDをDB照会する。同ID/同Nは書込みなしのreplayed、異なるNはidempotency_conflict。保存先が複数一致する異常は拒否する。未保存の場合だけcontextの存在・用途・世代・所有者・revisionを要求する。
 4. 数量の整数/非負/表現範囲を検査し、1商品1TX内で対象・親状態・所有者・商品revision・DB世代を再確認する。不一致は書込み0で拒否し、[40の回復型](40-cmd-product.md)で返す。S/Eの前後や経過時間では拒否しない。
-5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revisionをitemへ保存する。source_cursorはbeginの値のまま。
+5. 同じsnapshotの現在帳簿Lと当該商品movement上限を取得する。Nは入力、Eは保存時刻。activeへの保存はN/L/S/E・両cursor・request ID・新しいobservation_revisionをitemへ保存する。source_cursorはbeginの値のまま。source_scan_cursorは保存TXで、その時点のpos_source_scansの最大ID（未完了の行を含む。無ければ0）を採る（[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)。計数の開始時には採らない。採れなければ保存TX全体が失敗する。wireには出さない）。
 6. 独立再実測は同じ証拠をrecountへINSERTし、N-Lが非0なら現在庫へ補正movementを同TXで適用する。数量更新後に観測の版を採番する。差0でも実測行を保存する。過去のheaderや評価額は変更しない。
 7. 保存で解消できるflagは、その商品の未解消flagのうち、資料を開始前に受領していた（`source_id <= source_cursor`）ものだけ。active明細へのmeasured保存も独立再実測も同じTXで解消する。条件を満たさないflagを消さない（ほかの解消は当該importの取消と、[32](32-biz-csv-import-service.md)の業務TXによる相殺の確認待ちの再評価である。EJ待ちと直前資料待ちの印を持つ登録の変化を対象とし、中止・失敗・再起動の後も再試行する。previewと受領TXではflagを解消しない）。保存失敗ではN/L・movement・flag・revisionの全てを戻す。
 8. commit後に保存先とsaved/replayedを返す。応答喪失は同tokenで照会を兼ねたsaveを再送する。既に別の保存へ置換された古いitem要求を、期限切れcontextから復元して新規適用しない。
