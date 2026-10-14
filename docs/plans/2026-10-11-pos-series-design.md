@@ -496,7 +496,7 @@ docs だけ。設計正本の更新は Scope の表のとおり。runtime の実
 
 ### Final Review broad 2（2026-10-15、head `c472650e`）
 
-- Claude 側（Fable 5.1、1 回目と別の fresh context）: reject、P1 0 / P2 1 / P3 4。Codex（GPT-6 Astra / high）: reject、P1 0 / P2 1 / P3 0。Ordinary Operation は Claude 側が成立、Codex が具体的な反例あり。AC は 2 本とも全て一致
+- Claude 側（Fable 5.1、前回と別の fresh context）: reject、P1 0 / P2 1 / P3 4。Codex（GPT-6 Astra / high）: reject、P1 0 / P2 1 / P3 0。Ordinary Operation は Claude 側が成立、Codex が具体的な反例あり。AC は 2 本とも全て一致
 - record: Codex を pending、Claude 側と裁定を fail（`--pr-reviews 1`）。2 本の P2 は同じ根（GA1 の範囲の定義が、flag を判定不能に結ぶ古い言い方に届いていない）と裁定した
 
 | ID | 出どころ | 要旨 | 是正の形 |
