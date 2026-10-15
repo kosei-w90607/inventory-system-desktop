@@ -16,13 +16,12 @@ active な lane の Plan Packet は `docs/plans/` の dated packet が正本（l
 - 2026-10-04 の 4 lane（A Z004 取込みの穴・B 日報取込みの穴・D EJ の文法・E 独自コードの採番、owner の lane 選択 TD-104）と、その後に先に入れた helper の守りの lane（owner 2026-10-05）はすべて merge 済み（PR #138〜#142）。次の lane は未定（owner が決める）。
 - wave 14（owner 2026-09-27「Issue の範囲を避けて片っ端から並列で」。owner 決定 2026-09-24「規則は環境が変わるたびに変える」により wave 13 と同じく Wave Registry でなく「次の行動」に置く）lane D の design（PR #114）と後続 runtime lane「日次売上の「レジ日報（公式）」に日計（Z001）の表を出す」（PR #145、2026-10-06）は merge 済み。
 - SD を直接読む設計（PR #150、2026-10-07）は merge 済み。次 = 後続の「SD 直読みの runtime」の lane の起票（R3、[backlog](backlog.md) の該当項目。起票時に Final Review の P3 4 件を直し、L3 の前に packet の Contract Probe の確認を行う）、その後に取込み済みを `XZ_BKUP` へ移す (b) の lane（D-111 (1)(b)、backlog の該当項目）。(b) の lane まで店は CV17 の取込みを今の運用のまま続ける（D-111 の運用の制約）。
-- 単位の拡張と数量・原価の精度の設計（PR #154、2026-10-11、D-113）は merge 済み。次 = 後続の runtime の lane の起票（単位の lane → 原価の lane、R4。[backlog](backlog.md) の「単位の拡張」の項目。起票時に「後続の lane の起票の入力（Final Review の P3）」を拾う）。それまで店は今の `個` / `cm` の 2 つで登録する。
 
 次の着手順（owner決定2026-09-22）:
 
 1. ㉘ runtimeの最初のlane = 既存の危険な操作（旧棚卸しの開始・入力・確定、POSの業務commit・取消）の停止と再現fixture。並走でEJ（電子ジャーナル）parserのcoreを合成データで進める。本laneの起票はworkflowの軽量化1段目文書部分（PR #90）のdogfood対象: templateの `Ordinary Operation` 節を書き、Plan Reviewの冒頭でreviewerが `成立 / 具体的な反例あり / 外部前提が未確認` の3値を返すかを観測する。 → 完了（EJ parser core = PR #94、㉘ の最初の lane = PR #95、2026-09-25）。㉘ はその後 ② 受領・判定・保存の基盤（PR #148、2026-10-07）と ③ 計数と補正（PR #152、2026-10-11）まで merge 済みで、どちらも通常の起動へは配線していない（店の棚卸しは停止のまま）。㉘ の次は ④ 取込み・取消・回復（Square か CASIO かの判断待ちは 2026-10-11 に解けた: しばらくは CASIO のレジでいく。repo 外の回答台帳 TD-221）と ⑤ 一括切替（通常の起動・画面・command・bindings への配線）で、中身は [backlog](backlog.md) の「㉘ ③ 〜 ⑤ の申し送り」。次の着手順は未決（owner が決める）。
 
-実測と POS の系列の対応の設計（PR #159、2026-10-15、D-116）は merge 済み。次 = 設計の見直し（事実だけを集め、白紙の骨組みと今の設計を突き合わせる。まず棚卸しの時点証拠と POS の取込み。repo 外の回答台帳 TD-258）。日次の EJ 取込みの lane の起票はこの見直しの後（申し送りは [backlog](backlog.md) の「実測とPOS系列の対応を取得・保存する」の項目）。
+実測と POS の系列の対応の設計（PR #159、2026-10-15、D-116）は merge 済み。設計の見直し（事実だけを集め、白紙の骨組みと今の設計を突き合わせる）のうち、棚卸しの時点証拠と POS の取込みは見直しの 1〜3 段と owner の採否まで済んだ（repo 外の回答台帳 TD-258〜TD-268）。次は (a) 設計の見直しの続き（PLU の書出しの領域。repo 外の回答台帳 TD-269）と、(b) 棚卸しの時点証拠と POS の取込みの見直しの結果を正本へ置き換える lane の起票（置き換えは時点証拠 ADR・D-116・関係する function-design・db-design と、在庫数を記録から求め直す形〈D-051 の原則〉に及ぶ R2 以上）。(a) と (b) の順は owner が決める。日次の EJ 取込みの lane の起票はこの見直しの後（申し送りは [backlog](backlog.md) の「実測とPOS系列の対応を取得・保存する」の項目）。
 
 D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: owner 2026-09-22の再確認。店は当面、用意済みのExcelシートで大まかな在庫管理を続けられるため、アプリのv1.0は自動在庫連動の完成まで待つ（先行導入版は出さない）。実機確認（番号印字が電子ジャーナルに載るか）は 2026-09-28 の訪店で済み、番号印字が電子ジャーナルに載り売上に影響しないことを確かめた。owner は 2026-10-11 に番号印字を採らないと決めた（[decision-log](decision-log.md) D-116）ので、番号印字は v1.0 の条件ではない。v1.0 の自動在庫連動に残る条件は、時点証拠 ADR の D10 の外部前提の gate と後続の runtime（[backlog](backlog.md) の同項目）。
 
@@ -30,6 +29,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## 直近の完了
 
+- 2026-10-15 [PR #158](https://github.com/kosei-w90607/inventory-system-desktop/pull/158) 単位を 12 種へ広げ、長さの商品を m で入力・表示する（単位の lane、単独の lane、R4）: migration v8 で単位を 12 種へ広げ、長さの商品は在庫を cm の整数のまま m で入力・表示し、入庫・廃棄・手動販売の金額を 1 m あたりの価格から BIZ の共通の丸めで求め、数量・在庫・売価・原価の入力に上限と保存の前の検査を掛けた（D-113 の単位の分。原価の 1/100 円・Z004 と EJ の数量・棚卸しの再開は後続の lane）。[archive](archive/plans/2026-10-11-unit-runtime.md)・[Matrix](archive/plans/test-matrices/2026-10-11-unit-runtime.md)
 - 2026-10-15 [PR #159](https://github.com/kosei-w90607/inventory-system-desktop/pull/159) 実測と POS の系列の対応を取得・保存する設計（単独の lane、R3、docs だけ）: 実測の後に行われた精算を資料の置き場の全数読取りの順で見分ける規則（SPEC-STK-TIME-D10、外部前提の確認まで判定は有効にしない）と、EJ の区間の対応づけの骨・欠け・「前回」の候補（D5a）を設計正本に置き、番号印字は採らないと決めた（D-116。code・migration・bindings は変えず、runtime は後続の lane）。[archive](archive/plans/2026-10-11-pos-series-design.md)・[Matrix](archive/plans/test-matrices/2026-10-11-pos-series-design.md)
 - 2026-10-11 [PR #154](https://github.com/kosei-w90607/inventory-system-desktop/pull/154) 単位の拡張と数量・原価の精度の設計（単独の lane、R4、docs だけ）: 単位を 12 種へ広げ（m は在庫を cm の整数で持ち 1 m あたりで値付け）、数量・原価の精度（原価を 1/100 円で持つ）と金額の丸めを共通規則 SPEC-UNIT-D1〜D11 に決め、入力の上限と、移行の手順・移行の前の上限の検査・失敗したときの回復を設計正本に置いた（D-113。code・migration・bindings は変えず、runtime は後続の lane）。[archive](archive/plans/2026-10-07-unit-extension.md)・[Matrix](archive/plans/test-matrices/2026-10-07-unit-extension.md)
 - 2026-10-11 [PR #152](https://github.com/kosei-w90607/inventory-system-desktop/pull/152) 棚卸しの P1 を直す ㉘ ③ 計数と補正（単独の lane、R3）: 時点証拠 schema に kind と証拠の組の CHECK（SPEC-STK-TIME-D8-K1）を入れ、新方式の棚卸しの開始・計数 context（begin）・1 商品 1 TX の保存・独立再実測・確定を `#[cfg(test)]` の中に置き、確定は確定の直前の在庫へ N − L を加えて保存の後の入出庫を打ち消さない形にした（`system_stock` の時点の正本は tracking の SPEC-STK-TIME-D8-L1。店の画面と今の棚卸しは変わらず、配線は ⑤）。[archive](archive/plans/2026-10-07-stocktake-p1-3.md)・[Matrix](archive/plans/test-matrices/2026-10-07-stocktake-p1-3.md)
@@ -39,7 +39,6 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 - 2026-10-06 [PR #145](https://github.com/kosei-w90607/inventory-system-desktop/pull/145) 日次売上のレジ日報（公式）に日計（Z001）の全行を取込みごとの表で出す（単独の lane、R3）: 日次売上の「レジ日報（公式）」に Z001 の全行を保存したラベルと並びのまま出し、同じ日に 2 回以上取り込んだ日は取込みごとの表を古い順に並べ、既存の 2 表の見出しに出どころ（Z002・Z005）を添えた（UI-09a-D16、D-096。L3 は owner PASS で、見せ方はデザイン刷新への要求仕様として backlog へ送った）。[archive](archive/plans/2026-10-06-z001-display.md)・[Matrix](archive/plans/test-matrices/2026-10-06-z001-display.md)
 - 2026-10-06 [PR #144](https://github.com/kosei-w90607/inventory-system-desktop/pull/144) 商品修正の操作ログに売価・原価以外の項目の変更前後も残し、docs の古い参照を直す（小口のまとめ、単独の lane、R3）: 商品修正の detail_json に変えた field ごとの変更前後を serde_json で書き（BIZ-01-D7）、`docs/TOOLING_SKILL_COMMANDS.md` の見出しの参照先と `.codex/README.md` の撤去済みの mode の句を直した。操作ログ画面は変えていない。[archive](archive/plans/2026-10-06-small-batch.md)・[Matrix](archive/plans/test-matrices/2026-10-06-small-batch.md)
 - 2026-10-05 [PR #142](https://github.com/kosei-w90607/inventory-system-desktop/pull/142) helper と検査の守りを揃える（単独の lane、R3）: PK4 が Workflow State の値を helper の `parse_packet` で判定し、PK5 が `Plan Commit`・`Amendments` の 40 桁の SHA だけを受け、helper は Gated Amendment の後に要る broad を先に言い、review の record に同じ head の PR review の数の申告（`--pr-reviews`）を求めるようになった（D-107）。[archive](archive/plans/2026-10-05-gate-record-guards.md)・[Matrix](archive/plans/test-matrices/2026-10-05-gate-record-guards.md)
-- 2026-10-05 [PR #141](https://github.com/kosei-w90607/inventory-system-desktop/pull/141) EJ parser に店が普段使う文法を足す（2026-10-04 の 4 lane の lane D、R3）: 記録の種類を本文の行で決め、取引の合計域・明細域（訂正・値引き・マイナスキー・戻の印）と取引中止を読み、規則に合わない記録は今どおり復元不能に倒す（D-105）。[archive](archive/plans/2026-10-04-ej-grammar.md)・[Matrix](archive/plans/test-matrices/2026-10-04-ej-grammar.md)
 
 ### Wave Registry
 
@@ -47,7 +46,7 @@ D-070（Z004の自動在庫連動をv1.0の必須にした裁定）は維持: ow
 
 ## ブロッカー
 
-次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃い（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）、設計は merge 済み（PR #154、2026-10-11、D-113）。runtime の lane は起票可（上の「次の行動」）。
+次 lane を止める製品側のblockerはない。単位の拡張の店回答は 2026-09-15 に揃い（POS 数量 1 = 1 m、小数 1 桁で打てる。[聞き取り記録](evidence/hearing-2026-09-14-stock-units.sanitized.md)）、設計（PR #154、2026-10-11、D-113）と単位の runtime（PR #158、2026-10-15）は merge 済み。残る原価の lane（C）・Z004 と EJ の数量（P）・棚卸しの再開（⑤）は [backlog](backlog.md) の「単位の拡張」の項目。
 
 ## 製品の未決判断
 
@@ -55,7 +54,7 @@ L8-4は owner 決定済み（下記参照）。L8-2/L8-5は旧⑩laneからの�
 
 - L8-4 明細数列は owner 決定 2026-09-15 で (a) 撤去。runtime 反映は Backlog の表示小修正 batch 2 に同乗。
 - L8-2（badge 無色、⑦ 待ち）・L8-4（明細数列 撤去決定）・L8-5（記録日時 font 差、④ C5 追跡中）は対象外（参照のみ）
-- STK-1 / STK-2は[統合ADR](adr/2026-09-18-stocktake-time-evidence.md)へ設計を正本化済み（PR #85、2026-09-21 merge）。runtimeは㉘で未実装、恒常運用（日次の自動在庫連動）は design lane「実測とPOS系列の対応を取得・保存する」の結論（PR #159、2026-10-15 merge、D-116）を実装する後続の runtime に依る。snapshot補正・商品単位の再実測・過去評価額の非遡及は引き継ぐ。旧日付比較や未検証の時刻補完を実装指示に使わない。㉘ ②・③ は完了（PR #148・PR #152。通常の起動へは配線していないので、店の動作としては ⑤ まで直らない）、④・⑤ は backlog の申し送り。
+- STK-1 / STK-2は[統合ADR](adr/2026-09-18-stocktake-time-evidence.md)へ設計を正本化済み（PR #85、2026-09-21 merge）。runtimeは㉘で未実装、恒常運用（日次の自動在庫連動）は design lane「実測とPOS系列の対応を取得・保存する」の結論（PR #159、2026-10-15 merge、D-116）を実装する後続の runtime に依る。snapshot補正・商品単位の再実測・過去評価額の非遡及は引き継ぐ。旧日付比較や未検証の時刻補完を実装指示に使わない。㉘ ②・③ は完了（PR #148・PR #152。通常の起動へは配線していないので、店の動作としては ⑤ まで直らない）、④・⑤ は backlog の申し送り。設計の見直しの決定（repo 外の回答台帳 TD-258〜TD-268）で、この設計の置き換えは「次の行動」の (b) の lane が扱う。
 - SD 直読み（D-111）の未決 A（読んだ原本の写しの保持期間と削除）・B（写しを backup に含めるか・PC の外へ出すか）は owner の判断待ち。runtime の既定（消さない・backup に入れない）で通常運用は成り立つので、後続の「SD 直読みの runtime」の lane を止めない。
 
 元の文脈は [移送前のPlans](archive/harness-context/2026-09-14-Plans.md)。関連する製品作業でownerの判断を得る。

@@ -1,6 +1,6 @@
 # Test Design Matrix: 単位を 12 種へ広げる runtime（単位の lane、U）
 
-Plan Packet: [2026-10-11-unit-runtime](../2026-10-11-unit-runtime.md)。契約の正本は [共通規則](../../function-design/10-common-rules.md) SPEC-UNIT-D1〜D4・D6・D7・D9〜D11 と「入力の上限と安全な整数の範囲」、[22](../../function-design/22-mnt-migration.md) §16。出発点は設計 lane の Matrix（`docs/archive/plans/test-matrices/2026-10-07-unit-extension.md`）で、U の行を取り、行番号と既存 test の名前を 2026-10-11 の HEAD `7070382f` の現物で確かめ直した。C（原価）・P（Z004・EJ）・⑤（棚卸しの再開）の行は写していない。oracle の値は正本の例と整数の計算から独立に写し、実装の出力から作らない。`X1`〜`X13` は packet の「横断の約束」の表の行。
+Plan Packet: [2026-10-11-unit-runtime](../2026-10-11-unit-runtime.md)。契約の正本は [共通規則](../../../function-design/10-common-rules.md) SPEC-UNIT-D1〜D4・D6・D7・D9〜D11 と「入力の上限と安全な整数の範囲」、[22](../../../function-design/22-mnt-migration.md) §16。出発点は設計 lane の Matrix（`docs/archive/plans/test-matrices/2026-10-07-unit-extension.md`）で、U の行を取り、行番号と既存 test の名前を 2026-10-11 の HEAD `7070382f` の現物で確かめ直した。C（原価）・P（Z004・EJ）・⑤（棚卸しの再開）の行は写していない。oracle の値は正本の例と整数の計算から独立に写し、実装の出力から作らない。`X1`〜`X13` は packet の「横断の約束」の表の行。
 
 ## Risk
 

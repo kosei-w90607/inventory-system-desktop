@@ -1,6 +1,6 @@
 # Plan Packet: 単位を 12 種へ広げる runtime（単位の lane、U）
 
-wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択は repo 外の回答台帳 TD-222）。設計は merge 済み（PR #154、[decision-log](../decision-log.md) D-113）で、本 lane は [共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1〜D11 のうち単位の分（U）を実装する。原価の 1/100 円（C）・Z004 と EJ の数量（P）・棚卸しの再開（⑤）は別 lane。branch は `agent/unit-runtime`（main `7070382f` から）。並走は `agent/pos-series-design`（実測と POS 系列の対応の design）、ほかに `agent/backup-offsite`（PR #155 Draft、D-114、docs）・`agent/plu-clear`（D-110、docs）。D 番号は使わない（新しい durable な決定が無い。D-115 は Coordinator の予約のまま）。
+wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択は repo 外の回答台帳 TD-222）。設計は merge 済み（PR #154、[decision-log](../../decision-log.md) D-113）で、本 lane は [共通規則](../../function-design/10-common-rules.md) SPEC-UNIT-D1〜D11 のうち単位の分（U）を実装する。原価の 1/100 円（C）・Z004 と EJ の数量（P）・棚卸しの再開（⑤）は別 lane。branch は `agent/unit-runtime`（main `7070382f` から）。並走は `agent/pos-series-design`（実測と POS 系列の対応の design）、ほかに `agent/backup-offsite`（PR #155 Draft、D-114、docs）・`agent/plu-clear`（D-110、docs）。D 番号は使わない（新しい durable な決定が無い。D-115 は Coordinator の予約のまま）。
 
 **規模と手法（1 lane のまま。横断の約束は下の 1 つの表に置く）**: 2026-10-11 に本 worktree（HEAD `7070382f`）で数えた。触る既存の Rust は 41 file（`{ rg -l 'stock_unit|StockUnit' src-tauri/src src-tauri/tests; ls <単位を持たないが変える 14 file>; } | sort -u | wc -l` → `41`。うち `rg -l 'stock_unit|StockUnit' src-tauri/src src-tauri/tests | wc -l` → `28`）に新設 2（`biz/unit_amount.rs`・`db/schema_v8.rs`）、TS は 100 file（`rg -l 'stock_unit|stockUnit|StockUnit|grand_total|\bsubtotal\b|DailySaleItem|MonthlySaleItem|DeptSubtotal|GrandTotal|MovementTable|formatMovementQuantity|line_cost|line_loss_cost|parseRequiredSafeInteger|parseNonNegativeInteger|old_stock|new_stock|movements_sum|calculateUnitPrice|computeSummary|ProductRankingRow' src | wc -l` → `100`。test・fixture 45、それ以外 55）、D-113 を引く設計正本は 35 file（`rg -l 'D-113|SPEC-UNIT' docs --glob '!docs/archive/**' --glob '!docs/research/**' | wc -l` → `35`）。migration 1（v8）、wire の型の変更 13 種、横断の約束（範囲・0・失敗の順序・単位の混在）がかかる経路は在庫を書く 4 か所（`rg -n 'update_stock_quantity\(' src-tauri/src --glob '!*test*' | rg -v 'fn update_stock_quantity|db/inventory_repo.rs' | wc -l` → `4`: `common.rs:64`・`commit.rs:274`・`integrity_service.rs:173`・`stocktake_service.rs:571`。除いたのは定義と、同じ file の test の呼出し）と初期在庫 2 か所、数量を検証する 5 か所、売価・原価を検証する 10 か所（下の表の X5・X6）、数量を出す画面 11 行（共通規則 SPEC-UNIT-D3 の「表示する所」の表の 7 を除く）。分ける条件（1 段目だけが merge された main で (a) 店の画面の振舞いが今と変わらない (b) 新しい単位の商品を登録・取込みできる経路が開かない (c) 全 gate が緑）を現物に当てた結果:
 
@@ -11,7 +11,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R4
 - Plan Commit: 211233182811a777153e1f6392b55224ffed4cf6
 - Amendments: 7bbecac1e3abb4e5b0fcaf5a21bb50ad62c172f9
@@ -26,7 +26,7 @@ wave に属さない単独の lane（2026-10-11 起票、owner の lane 選択�
 遷移の記録:
 
 1. kickoff → spec-check（2026-10-11、起草役）: Coordinator の発注（単位 U の runtime。C・P・⑤ は別 lane）を Scope にし、規模を実測して 1 lane のままと決め、Risk を R4 と記録した（下の Risk）。
-2. spec-check → design（2026-10-11、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D1〜D11、[22](../function-design/22-mnt-migration.md) §16、各 function-design の D-113 の proposed の注記（下の Design Readiness）。設計 lane の Final Review の P3 のうち U の分（61〜64 の明細表の pointer、22 §16 の行番号、共通規則の「表の外」の 1 行）は正本の更新が要るので、本 packet と同じ commit で直した。
+2. spec-check → design（2026-10-11、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D1〜D11、[22](../../function-design/22-mnt-migration.md) §16、各 function-design の D-113 の proposed の注記（下の Design Readiness）。設計 lane の Final Review の P3 のうち U の分（61〜64 の明細表の pointer、22 §16 の行番号、共通規則の「表の外」の 1 行）は正本の更新が要るので、本 packet と同じ commit で直した。
 3. design → plan-draft（2026-10-11、起草役）: 上の 3 点は正本にあり、設計の値を変えない。owner の判断事項は残っていない（下の「owner の判断事項」）。起票時に決めた lane の割当て（棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ）は設計の値を変えず、`docs/backlog.md` に申し送った。未解決の設計の問いは無い。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-11、Coordinator）: packet と Matrix は起票の commit にある。Coordinator は起草役の割当て（1 lane のまま、棚卸しの計数の画面と型・棚卸し記録詳細のロス原価・棚卸しの実数の上限を ⑤ へ、回復の手順書を本 lane の Scope に置く）を packet と現物（`src-tauri/src/biz/product_service.rs:1199`〜`:1202`・`:1402`）で確かめて採った。前文の A / B の切れ目（条件 (a) を外す形）は採らない（A だけの main の「`cm` の商品は cm で入力し m で表示する」状態は Ordinary Operation に無く、その状態の L3 と Ready・merge が 1 周増える）。Contract Probe の P3（同梱の SQLite と v7 の列での作り直し）は、plan-approved の前に Coordinator が実測して P3 に結果を書く。
 5. plan-gate（round 1 の是正、2026-10-11）: Plan Review round 1 の是正（Review Response 参照）。
@@ -247,7 +247,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 - 上の「C・P・⑤ へ送るもの」の全部。
 - 売価の小数、重さの単位、箱と、ばらした個数を別々に数える model、巻と m の換算、商品の単位の登録後の変更、在庫少の基準の画面の語と m の表示、10 cm 刻みの検査（D-113 の非目的のまま）。
-- レジの日報（Z001・Z005）の数量（D-104）、PLU の単価（SPEC-UNIT-D4、[25](../function-design/25-io-plu-formatter.md)）。
+- レジの日報（Z001・Z005）の数量（D-104）、PLU の単価（SPEC-UNIT-D4、[25](../../function-design/25-io-plu-formatter.md)）。
 - 記録済みの文字列と値の書換え（在庫変動の `note`、操作ログの detail_json・summary）。
 - 依存の追加・更新（`package.json`・`Cargo.toml`・lockfile は変えない）。
 
@@ -388,9 +388,11 @@ L3（owner が Windows の実機で確かめる。fixture は Coordinator が Re
 
 ## Implementation Results
 
-Fill after implementation.
-
-Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+- 結果: 単位を 12 種へ広げ（migration v8、Rust の enum と bindings の `ProductStockUnit`、在庫少が全単位を分ける）、長さの商品を在庫は cm の整数のまま m で入力・表示し、単価を 1 m あたりで出すようにした（共通規則 SPEC-UNIT-D1〜D3）。入庫の原価小計・廃棄のロス原価・手動販売の金額の初期値を BIZ の共通の丸め（SPEC-UNIT-D6・D7）で求め、長さの商品で金額が 100 倍になる既知の不整合 (1)(2)(4)(5) を解いた。数量・在庫・売価・原価（円）と入庫・廃棄の円の合計に入力の上限と保存の前の検査を掛け、v8 が移行の前の DB の値も同じ範囲かを確かめる。集計は数量の種類ごとに分け（点と m、点の 3 桁区切りは GA1-3）、商品 CSV の `在庫単位` は 12 個の単位を受け、不正な単位と単位の変更を行の error にする（SPEC-UNIT-D10、BIZ-01-D8）。設計正本の単位の分は proposed の注記を外して現行の記述にし（S7）、旧版へ戻す管理者の手順を `docs/migration-recovery-runbook.md` に置いた。原価の 1/100 円（C）・Z004 と EJ の数量（P）・棚卸しの計数の画面と確定（⑤）は含めない。
+- 既存の保護: 既存の `pcs`・`cm` の商品の値と意味は変えていない（v8 の前後で `products` の全列の値と定義が同じ）。既存 test の期待を変えたのは Matrix の「既存 test の書換え」の表の行だけ。棚卸しは停止のまま（m の棚卸しは ⑤ の後）。
+- 未検証: 回復の手順（22 §16）は合成の DB で 1 度通したが、「旧版のアプリ」は同じ `init_database` を通る開発用の bin で代え、Windows の実機での installer の入替えは通していない。S7 は packet の表が挙げる節・行だけを直したので、同じ file の表の外に 2 単位だった頃の例が残る所がある（`docs/backlog.md` の follow-up）。
+- review・L3・CI・merge（closeout、2026-10-15）: Plan Review は round 3（上限）で 2 本とも approve、実装の途中に Gated Amendment 1。Final Review は broad 2 本（Codex GPT-6 Astra と Claude 側 Fable 5.1）がどちらも approve（P1 / P2 0）。base の同期（docs だけの衝突の解消）は delta ack で閉じた。L3 は owner が Windows の実機で L3-1〜L3-4 を PASS とし、廃棄の丸めを受け入れた。helper の record は review = pass、manual = pass、r4 = pass（owner の R4 の承認 2026-10-15）。Ready の後の hosted run の `Merge gate` は success で、owner の承認の後に helper 経由の squash merge。検査の結果は PR と GitHub が持つ。PR: [#158](https://github.com/kosei-w90607/inventory-system-desktop/pull/158)
+- 後続: 原価の lane（C）・Z004 と EJ の lane（P）・棚卸しの再開（⑤）への申し送りは上の「C・P・⑤ へ送るもの」と `docs/backlog.md` の「単位の拡張」の項目。Final Review の P3 と未確認事項、作りの重複の整理は同じ項目の「単位の runtime の lane の follow-up」。
 
 ## Review Response
 
@@ -447,7 +449,7 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 | R3-3 | Claude 側 | Contract Ledger が、L3 の到達手順の通らない画面（返品・交換、操作ログ、整合性チェック）を L3 に当てている | 採用（当て先を通る画面だけにし、通らない契約は RTL のみと理由。返品・交換は L3-3 に 1 手順足す） |
 | R3-4 | Codex | 棚卸しの計数を ⑤ へ送る理由の「計数の画面に行が出る状態を今の build で作れない」は、進行中の棚卸しを持つ既存の DB では成り立たない | 採用（止まっているのは開始・保存・確定で、既存の一覧は出ると書く。店は初導入で本番の DB は無い） |
 
-- R3-1 の関連: [34](../function-design/34-biz-sales-service.md) の「部門IDの昇順でソート」は日次の部門小計の文で、現物（数値の昇順）と合う。月次の同額の並びは正本に書かれておらず、食い違いではない（起草役が実読、Coordinator が `sales_service.rs:562` を確認）。
+- R3-1 の関連: [34](../../function-design/34-biz-sales-service.md) の「部門IDの昇順でソート」は日次の部門小計の文で、現物（数値の昇順）と合う。月次の同額の並びは正本に書かれておらず、食い違いではない（起草役が実読、Coordinator が `sales_service.rs:562` を確認）。
 - R3-3 で L3-3 に返品・交換の 1 手順（数量 `0.3` の返品の保存と記録詳細・在庫照会の確認）が増えた。L3 の round の数と Owner Effort Budget の上限は変えない。
 - 是正は起草役の commit「単位の runtime の計画の文を現物に合わせる（同額の並び・円の合計の fixture・L3 の当て先・棚卸しの一覧）」。round 3 で 2 本とも P1・P2 が無いので、次の round は開始せず plan-approved へ進む。是正の後の文の再確認は Final Review（R4、独立 2 本）が行う。
 
@@ -469,3 +471,5 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 - 実装: 2 段目の Writer が GA1-1〜GA1-3 を含めて行う。
 
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+Closeout（2026-10-15）: Final Review は broad 1 回で、Codex GPT-6 Astra と Claude 側 Fable 5.1 の独立 2 本（head `c36b0d00`）がどちらも approve（P1 / P2 0）。P3 と未確認事項は本 lane では直さず、`docs/backlog.md` の「単位の拡張」の項目へ送った（S7 の対象の行の外に残る古い型・SQL・表示例の同期、手動販売の金額〈円〉に上限が無いこと、手動販売の長さの商品の金額の求め直しの基準の違い〈未確認事項〉、over-engineering の読みで出た作りの重複の整理〈振舞いを変えない〉）。2026-10-15 に #159・#161 の merge で `docs/backlog.md` の 1 行が衝突し、`origin/main` の単段 merge で両側を残して解消した（head `ce116f51`、差は docs だけ）。docs だけの解消なので delta ack（Claude 側 Sonnet 5.5）で可とし、closure を record した。L3（owner、2026-10-15、head `ce116f51` の Windows native）は L3-1〜L3-4 が PASS で、廃棄の丸め（行 166.50 円 → 合計 ¥167）を owner が受け入れた。L3-3 の返品は、1 回目に既定の「レジ戻し済み」のまま保存されて在庫が動かなかった（設計どおり）ため、「レジ未処理」で返品だけを再実施して PASS。R4 は owner が承認した（2026-10-15）。review・manual・R4 を record し、helper の `ready` → `Merge gate` pass → helper の `merge`。
