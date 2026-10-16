@@ -8,7 +8,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-- 22 §16 の作り直しの手順: (a) `{app_data}` の DB 一式、(b) `.migrating`、(c) 復元の遺物、(d) 起動の作業フォルダの旧 DB の全部を移すと、次の起動は空の DB で vB まで当たる
+- 22 §16 の作り直しの手順: アプリの識別子の名前の folder を丸ごとと、folder の外の 2 か所（作業フォルダの旧 DB、設定した backup の保存先）を移すと、次の起動は空の DB で vB まで当たり、旧 DB の復元の補完は新しい DB に書かれない
 - MNT-03-D14（vB）: 原価の列を持つ 5 つの表に行の無い DB にだけ当たり、6 列を `_centi` に改名し値を変えない。行のある DB では何も変えずに `MigrationFailed`（`作り直し` と表名）。前提が確かめられたときだけ `stock_unit` の CHECK を 10 個にする
 - SPEC-UNIT-D1: 巻・cm は作り直しの起点でだけ外す（今の DB に新しい migration で外さない）
 - SPEC-UNIT-D2 / BIZ-01-D8 / UI-01b-D23: 単位の変更は個数の単位どうしだけ（商品修正・商品 CSV の上書き・UI を通らない command）。在庫・明細・価格は変えない。単位だけの変更は `plu_dirty` を変えない（商品 CSV の上書きを含む）。操作ログに `stock_unit` の前後（商品 CSV の上書きは単位を変えた商品ごとに TX の中の `product_update`）
@@ -24,7 +24,7 @@ Risk: R3
 - FM5: 個数 ↔ 長さの単位の変更が、商品フォーム・商品 CSV の上書き・command のどれかで通る（在庫 100 が 100 cm から 100 個に変わる）
 - FM6: 個数の単位どうしの変更で、在庫・明細・価格・`plu_dirty` が変わる、または操作ログに残らない
 - FM7: 商品 CSV の preview は拒むが commit が TX の中で再検証せず、wire の行を信じて種類をまたぐ変更を書く
-- FM11: 作り直しで起動の作業フォルダの旧 DB（§12.2 の取込みの元）を残し、次の起動で `migrate_legacy_db` が取り込んで空の DB にならない
+- FM11: 作り直しで、アプリが起動のときに読む DB まわりの状態（作業フォルダの旧 DB、確定済みの復元の manifest など）を 1 つでも元の場所に残し、次の起動で取り込まれる・補完される（空の DB にならない、または旧 DB の復元の記録が新しい DB の操作ログに書かれる）
 - FM12: 商品 CSV の上書きで単位だけを変えた行が `plu_dirty=1` になる、または単位を変えた商品の元の単位がログに残らない
 - FM8: 原価の補助の割り算を浮動小数で行い、四捨五入を誤る（`1000` 円 ÷ 12 が 83.34 になる、`.5` の境界で切り捨てる）
 - FM9: 原価の補助が入り数・袋の値段を DB か wire に出す
@@ -39,7 +39,7 @@ Risk: R3
 | MNT-03-D14 / SPEC-UNIT-D1 | FM4 | migration | `test_vb_unit_check_drops_roll_and_cm` | 手順 4 を行う build で、CHECK が `roll`・`cm`・`kg` のどれかを受ける、または巻・cm を外した後の一覧（個数の単位 9 個と `m`）のどれかを拒む |
 | MNT-03-D14 | FM3 | migration（失敗の注入） | `test_vb_failure_rolls_back_and_restores_foreign_keys` | 手順 5 の検証を失敗させたとき、改名・CHECK・版のどれかが残るか、`PRAGMA foreign_keys` が手順 1 の値に戻らない |
 | MNT-03-D14 | — | migration | `test_vb_not_reapplied` | vB を記録した DB で `migrate` を再実行すると、vB が 2 度当たる |
-| 22 §16 の作り直しの手順 | FM11 | integration（`lib.rs` の `prepare_database_with_init` に一時の `app_data` と作業フォルダを渡す） | `test_rebuild_moves_legacy_cwd_db_and_starts_empty` | 作業フォルダに行のある旧 `inventory.db` を置き `app_data` に DB が無い状態で、手順どおり (a)〜(d) を移してから起動すると、取込みが起きる（`migrate_legacy_db` が `Ok(true)`）、DB に行がある、または vB が止まる。期待: 取込みなし、空の DB で vB まで記録。対照: (d) を移さずに起動すると取り込まれて vB が `作り直し` で止まる（手順の (d) が要ることを示す非空の期待） |
+| 22 §16 の作り直しの手順 | FM11 | integration（`lib.rs` の `prepare_database_with_init` に一時の `{app_data}` と作業フォルダを渡す） | `test_rebuild_moves_app_data_folder_and_starts_empty` | (i) 作業フォルダに行のある旧 DB、`{app_data}` に行のある DB がある状態、(ii) `{app_data}` に確定済み（phase = committed）の manifest と行のある DB がある状態のそれぞれから、手順 3 のとおり `{app_data}` を丸ごとと作業フォルダの旧 DB を移して起動すると、取込みが起きる（`migrate_legacy_db` が `Ok(true)`）、DB に行がある、vB が止まる、または新しい DB の `operation_logs` に `backup_restore` の行がある。期待: 取込みなし、空の DB で vB まで記録、`backup_restore` の行なし。対照: 作業フォルダの旧 DB を移し忘れると取り込まれて vB が `作り直し` で止まり、(ii) で `{app_data}` を移さずに DB だけを移すと manifest が残る（folder ごと移すことが要ることを示す非空の期待） |
 | SPEC-UNIT-D2 / BIZ-01-D8 | FM5 | unit（BIZ-01、試験 DB） | `test_update_product_rejects_unit_kind_change` | `pcs` の商品を `m` に、`m` の商品を `pcs` に、`m` の商品を `cm` に変える `update_product` が通る。期待: `ValidationFailed("在庫単位は個数の単位どうしでだけ変えられます")`、商品の行と操作ログは変わらない |
 | SPEC-UNIT-D2 / BIZ-01-D8 | FM6 | unit | `test_update_product_changes_count_unit_word_only` | `pcs` → `ball` の変更で、`stock_quantity`・明細・`selling_price`・`cost_price`・`plu_dirty`・price_history のどれかが変わる、または操作ログの detail_json に `stock_unit` の `{"old":"pcs","new":"ball"}` が無い |
 | SPEC-UNIT-D2 / BIZ-01-D8 | — | unit | `test_update_product_same_unit_is_no_change` | 今と同じ単位を送ると操作ログの detail_json に `stock_unit` が書かれる（BIZ-01-D7 の「値を持っても更新前と同じ field は書かない」） |
@@ -63,7 +63,7 @@ Risk: R3
 |---|---|---|---|---|
 | 原価の値の変換（vC・100 倍・範囲検査・旧版へ戻す手順） | `rg -n 'vC\|範囲検査\|100 倍する\|既存の値を 100 倍\|移行の前の記録\|両方の key\|連続適用' docs --glob '!docs/archive/**' --glob '!docs/research/**' --glob '!docs/plans/**'` の全 hit（22・10・master-tables・transaction-tables・30・31・decision-log・backlog） | 22 §16、10 の掛ける lane、master-tables、transaction-tables、30 の操作ログ、31 の fingerprint、backlog の「U から C へ送るもの」 | decision-log の D-113 の本文（決定の記録。Superseded in part の行で置換えを書いた）と D-119（撤去の記録）。22 の v7 の範囲検査と回復の手順（vU の旧版へ戻す手順。原価に関係しない） | packet の AC1 |
 | 単位を登録の後に変えない | `rg -n '登録の後に変え\|単位を変えない\|単位は読取専用\|stock_unit.*読取専用\|ProductUpdateRequest.*単位' docs --glob '!docs/archive/**'` | 10 SPEC-UNIT-D2、30 BIZ-01-D8・§4.4、51 UI-01b-D5・D23 | 51 UI-01b-D22 の末尾（PR #167 が同じ行を書き換えるので触らず、D5 の行に置き換えを書いた。merge の後に揃える）、`docs/archive/` の packet（履歴） | packet の AC4 |
-| 12 の語を店の答えとして引く | `rg -n '12 種すべて\|すべて使う\|12 unit words\|店は 12' docs --glob '!docs/archive/**'` | 10 SPEC-UNIT-D1 の出典、project-memory、decision-log（D-113 の前提の訂正の行） | 聞き取りの記録 `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`（その時点の答えの記録で、正しい）、D-113 の本文 | packet の AC7 |
+| 12 の語を店の答えとして引く | `rg -n '12 種すべて\|すべて使う\|12 unit words\|店は 12' docs --glob '!docs/archive/**'` | 10 SPEC-UNIT-D1 の出典、project-memory、decision-log（D-113 の前提の訂正の行）、backlog:56（「問う側が示した 12 の語への答え。D-119 (9)」を足した） | 聞き取りの記録 `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`（その時点の答えの記録で、正しい）、D-113 の本文（決定の記録。前提の訂正の行で直した）、backlog:56 の原文の語（2026-09-14 の答えの要約として残し、同じ行に訂正を足した） | packet の AC7・AC15 |
 | 10 cm を最小と刻みの両方に読む | `rg -n '最小 10 cm\|minimum 10 cm\|10 cm 刻み' docs --glob '!docs/archive/**'` | project-memory、backlog、10 SPEC-UNIT-D2 | 聞き取りの記録の Coordinator の読み取り（その時点の記録）、10 の「10 cm 刻みを強制しない」（決定の文） | packet の AC7 |
 
 ## Negative Paths
@@ -128,6 +128,6 @@ Risk: R3
 ## Residual Test Gaps
 
 - 最新の在庫 Excel の巻・cm の行の数は自動 test で確かめられない（Contract Probe の P1。原価の lane の起票の前に owner が持ち帰りで確かめる）。
-- 作り直しの手順のうち、自動 test は (d) の取込みの元を移したときに空の DB に着くことだけを止める（`test_rebuild_moves_legacy_cwd_db_and_starts_empty`）。実際の PC での file の移動（ショートカットごとの作業フォルダの確かめを含む）は開発者が原価の lane で 1 度通し、手順の記録を packet に残す。
+- 作り直しの手順のうち、自動 test は `{app_data}` を丸ごとと作業フォルダの旧 DB を移したときに空の DB に着き、旧 DB の復元の補完が書かれないことだけを止める（`test_rebuild_moves_app_data_folder_and_starts_empty`）。実際の PC での folder の移動（識別子の名前の folder の Roaming と Local の両方、ショートカットごとの作業フォルダ、設定した backup の保存先）と、WebView の保存の置き場（packet の Contract Probe の P7）は、開発者が原価の lane で 1 度通して手順の記録を packet に残す。
 - 商品フォームの単位の select の 1 文と原価の補助の見た目は、後続の lane の Windows native L3（human visual confirmation）。
 - U5・U6 の店の答えで変わる所は、答えが出たときの lane の Matrix で設計する。
