@@ -75,7 +75,7 @@ pub fn refresh_plu_register_snapshot_from_sd(
 ```
 
 1. 各 bytes の精算の識別メタ（IO-02 の `settlement_metadata` の `settlement_no`。[23](23-io-z004-parser.md) の時点証拠契約。23 の型は文字列のまま変えない）を読み、BIZ-04 の中で 10 進の整数として読む（ASCII の数字だけで、`i64` に収まる値。前の 0 は許す）。読めない bytes・読めない値は使わない。
-2. 読めた中で `settlement_no` が最大の 1 本を選ぶ（同じ値が 2 本以上あれば、bytes が同じならどれでもよく、違えば照合しない。`tracing::warn!` で記録する）。精算日時や file 名の日付では選ばない（レジの時計に依らない）。選んだ 1 本の精算回数を、`app_settings` の key `plu_register_snapshot_settlement_no`（最後に照合した Z004 の精算回数、10 進の整数の文字列）と比べる: key が無ければ照合する。key の値より小さければ照合しない（`tracing::warn!`、前回の照合を保つ。古い SD を読んだとき）。等しければ照合する（同じ観測の照合は同じ結果になる）。大きければ照合する。key の値が整数として読めなければ照合しない（`tracing::warn!`）。
+2. 読めた中で `settlement_no` が最大の 1 本を選ぶ（同じ値が 2 本以上あれば、bytes が同じならどれでもよく、違えば照合しない。`tracing::warn!` で記録する）。精算日時や file 名の日付では選ばない（レジの時計に依らない）。選んだ 1 本の精算回数を、`app_settings` の key `plu_register_snapshot_settlement_no`（最後に照合した Z004 の精算回数、10 進の整数の文字列）と比べる: key が無ければ照合する。key の値より大きいときだけ照合する。小さければ照合しない（`tracing::warn!`、前回の照合を保つ。古い SD を読んだとき）。等しければ照合しない（既に写した観測。warn しない。同じ日に SD を読み直したとき、書込みの前のレジを写した Z004 で、confirm したばかりの枠を `missing_on_register` で未反映へ戻さないため）。key の値が整数として読めなければ照合しない（`tracing::warn!`）。
 3. 照合しないとき・使える Z004 が無いときは `Ok(None)`（何も変えない。前回の照合を保つ）。照合するときは下の `import_plu_register_snapshot` に bytes と精算回数を渡し、その結果を `Some` で返す。
 4. CMD-12 は `Err` を scan の失敗にしない（日報の候補の一覧は返す）。`tracing::warn!` で記録し、前回の照合を保つ。利用者に見えるのは UI-08 の最終照合日時（照合が古いときの警告を含む。UI-08-D11）だけである。
 
@@ -103,12 +103,12 @@ IO-02 の全スロット占有読取り mode が返す `(memory_no, raw_code)` �
 | 同一コード | reserved | active。activated_at を更新 |
 | 同一コード | active / external | 現 status を維持 |
 | occupied | free | 対象の JAN と一致し、その JAN に `reserved` / `active` slot が無ければ active として採用（activated_at）。その JAN が `reserved` / `active` slot を既に持つなら、観測した枠は external（観測コードを保持。アプリの枠と memory No. は変えない。`duplicate_on_register`）。それ以外は external |
-| 別コード | reserved | 観測値を external とし `reservation_dropped`。その JAN は次の prepare で新しい空き枠を予約する |
+| 別コード | reserved | 観測値を external とし `reservation_dropped`。その JAN は次の prepare で枠を取り直す |
 | 別コード | active（その JAN に対象の商品がある） | app の active を維持し conflict。その JAN の `plu_target=1` の商品を dirty |
-| 別コード | active（その JAN に対象の商品が無い。売るのをやめた商品・JAN を直した商品の前の JAN の枠、別名だけの枠を含む） | 観測値を external とし、`alias_product_code` を NULL にする（`slot_released_on_register`）。アプリが書く商品が無いので、レジ側の登録を書き直さない |
+| 別コード | active（その JAN に対象の商品が無い。売るのをやめた商品・JAN を直した商品の前の JAN の枠） | 観測値を external とする（`slot_released_on_register`）。アプリが書く商品が無いので、レジ側の登録を書き直さない |
 | 別コード | external | 観測値で external を更新 |
 
-free slot 上で同一の対象の JAN が複数観測され、その JAN に `reserved` / `active` slot が無い場合は、最小 memory No. だけを active として採用し、残りを external にする（観測コードを保持。`plu_slots` の partial UNIQUE は `reserved` / `active` だけにかかるので、同じコードの external は複数あってよい。[plu-tables](../db-design/plu-tables.md)）。
+表の判定は、どの枠も照合の前の状態（今の TX が始まる前の `plu_slots`）で行い、同じ照合の中で先に変えた枠の結果を後の枠の判定に使わない。ただし同じ Z004 の中で同じ JAN を複数の枠で観測したときの扱いは、次の最小番号の規則が 1 つに決める。free slot 上で同一の対象の JAN が複数観測され、その JAN に `reserved` / `active` slot が無い場合は、最小 memory No. だけを active として採用し、残りを external にする（観測コードを保持。`plu_slots` の partial UNIQUE は `reserved` / `active` だけにかかるので、同じコードの external は複数あってよい。[plu-tables](../db-design/plu-tables.md)）。
 
 照合の規則は、割当て後・反映前のレジ側の変化（予約中の枠に別のコードが入る、アプリが持つ JAN をレジが別の枠に持つ）を含めて D-117 (4) で残す。アプリはレジ側の重複を消さない（clear 行を持たない）。売上は JAN で商品へたどるので在庫は誤らないが、レジがどちらの枠で売るかによってレジの値段が前の値段になりうる（D-117 の Guarantee range）。
 
@@ -169,16 +169,9 @@ prepare が返した exact `memory_no` / product_code set を **1 transaction** 
 |---|---|---|
 | `plu_target: 1 -> 0`、廃番化（同時に `plu_target=0`） | 状態を変えない（`reserved` / `active` のまま）。Diff / Full に出さない。レジには前の登録が残る | — |
 | `plu_target: 0 -> 1`（廃番解除の後の再対象化を含む） | その JAN の枠があれば次の prepare で同じ枠を使う | `plu_dirty=1` |
-| `plu_target=1` の商品の `jan_code` の変更（CSV の上書き。商品フォームは JAN を変えない〈BIZ-01-D1〉） | 前の JAN の枠は状態を変えず残す。新しい JAN は次の prepare で枠を予約する。前の JAN の枠の別名は下の「前の番号の現物」の問いで決める | `plu_dirty=1` |
-| 「前の番号の現物」が「ある」 | 前の JAN の枠に `alias_product_code` = その商品を書く（別名）。その枠で売れた分は取込みで同じ商品へたどる（[32](32-biz-csv-import-service.md) §15.3 Stage 2 b） | — |
-| 「前の番号の現物」が「ない」（CSV の上書きの既定） | 別名を書かない（使わない扱い）。その枠で売れたら、取込みは `unmatched_product` の行エラーで知らせる | — |
-| 別名を持つ枠の JAN を、どれかの商品が再び持つ（その商品の JAN を前の値へ戻した、別の商品にその JAN を入れた） | 同じ TX で `alias_product_code` を NULL にする。その JAN を持つ商品が普通に引き当たる（その商品が `plu_target=1` なら、次の prepare で同じ枠を使う） | — |
-| 別名を持つ商品の JAN をもう一度直す | 前の別名はそのまま残す（古い番号の現物は同じ商品）。新しく前の JAN になった値の枠について、同じ問いを 1 回聞く | `plu_dirty=1` |
-| 別名を持つ枠に、照合でレジ側の別のコード・空を観測した | 別コードは §16.3 の「別コード × active（対象の商品が無い）」で external になり、別名を消す。空は active のまま別名を保つ（レジの枠は空なので売れない） | — |
+| `plu_target=1` の商品の `jan_code` の変更 | 前の JAN の枠は状態を変えず残す（対象の商品を持たない JAN の枠になる）。新しい JAN は次の prepare で枠を予約する | `plu_dirty=1` |
 
-**前の番号の現物の問い（owner 決定、repo 外の回答台帳 TD-284）**: 商品の JAN を変えるとき、前の JAN が `reserved` / `active` の枠を持ち、変えた後にその JAN を持つ商品が 1 つも無いときだけ、「前の番号のバーコードが付いた現物は店にありますか」を 1 回聞く（それ以外は聞かない）。今 JAN を変える経路は CSV の上書き（UI-01c）だけで、preview で問いの条件に当たる行（`asks_old_jan_stock`）ごとに問いを出し、既定は「ない」。答えは `commit_import` の `old_jan_on_hand_codes` に載せ、BIZ-01 が同じ TX で条件を確かめ直して別名を書く（[30](30-biz-product-service.md) §4.8 の d.）。商品フォームは JAN を変えない（BIZ-01-D1）。変えられるようにするときは同じ問いを保存の前に出す。「ある」は入力の誤りの訂正では古い番号の現物が無く、メーカーの番号の変更では古い在庫が古いバーコードのまま残る、を分けるための問いで、黙って誤った商品へ付ける経路を作らない（前の JAN が別の実在の商品の JAN だったときは、その商品が JAN を持つので別名は引かれない）。
-
-前の JAN の枠のバーコードでレジが売った分は、次の Z004 にその JAN の行で出る。その JAN を持つ商品も別名も無ければ、取込みは `unmatched_product` の行エラーで知らせる（32 §15.3 Stage 2 b。黙って在庫を誤らない）。廃番解除は `plu_target` を自動復帰させない。
+前の JAN の枠のバーコードでレジが売った分は、次の Z004 にその JAN の行で出る。その JAN を持つ商品が無ければ、取込みは `unmatched_product` の行エラーで知らせる（[32](32-biz-csv-import-service.md) §15.3 手順 4 b〈Stage 2〉。黙って誤った商品へ付けない）。同じ商品へたどる経路は TD-284 の別の小さな設計 lane で扱う（D-117 の owner の決定 TD-286、backlog）。廃番解除は `plu_target` を自動復帰させない。
 
 撤去の対象（D-117 (1)。runtime の lane が code と一緒にこの signature を消す。それまでは設計照合 test〈`src-tauri/tests/design_compliance_test.rs`〉が code の pub fn と突き合わせるので signature だけを残す）:
 
@@ -210,7 +203,7 @@ fn list_plu_dirty(conn: &DbConnection) -> Result<Vec<Product>, BizError>
 - 保存キャンセル・保存失敗: 同じ mode を再 prepare すると予約済み memory No. を再利用する。
 - CV17 取込み失敗: 保存済みファイルを再投入するか、Diff / Full を再書出しする。両 mode とも memory No. が永続しているため投入可能。
 - snapshot conflict: active slot を勝手に external / free へ変えず、商品を dirty にする（次の書出しでアプリのコードを書き直す）。
-- 占有の照合の失敗（Z004 が読めない・形が外れた）: 前回の照合を保ち、CMD-12 の scan は失敗にしない（§16.3）。
+- 占有の照合の失敗: BIZ-08 は IO-09-D4 の形の検査で外れた Z004 と読めない Z004 を除いて渡す（37 §37.9 手順 10）。行数と中身の検査は IO-02 `parse_plu_register_snapshot` が行い、`ImportError` なら照合しない。どちらも前回の照合を保ち、CMD-12 の scan は失敗にしない（§16.3）。
 - `NoFreeSlot`: 該当 JAN だけを excluded とし、既存 slot と他の生成行を保持する。
 
 ### 16.9 対応不変条件

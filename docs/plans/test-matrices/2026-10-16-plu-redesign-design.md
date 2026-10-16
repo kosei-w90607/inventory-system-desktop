@@ -15,8 +15,8 @@ Risk: R3
 - SPEC-PLS-D5 / IO-04: clear 行を出力しない（IO-04-D3 の撤去）
 - SPEC-PLS-D6・D7: 一括の対象化・移行状態の列と絞り込み・memory No. の表示の撤去
 - BIZ-08 §37.9 手順 10 / CMD-12 §45.6a 手順 2a: SD の読取りから照合への配線、照合の失敗で scan を失敗にしない
-- D-117 (8) / TD-284: 前の番号の現物の問い、別名（`plu_slots.alias_product_code`）の書込み・消去、Z004 の取込みの別名の引き当て（32 §15.3 Stage 2 b）
-- 33 §16.3 手順 2: 古い SD（key より小さい精算回数）を照合しない
+- 33 §16.6: JAN を直した商品の前の JAN の枠で売れた分は、その JAN を持つ商品が無ければ `unmatched_product` の行エラーで知らせる（32 §15.3 手順 4 b は変えない。同じ商品へたどるのは TD-284 の lane）
+- 33 §16.3 手順 2: key 以下の精算回数（小さい = 古い SD、等しい = 既に写した観測）を照合しない
 - UI-08-D11・D5・D7: 最終照合日時の表示、未照合の導線、件数の要約と上限の警告の撤去、復帰状態の旧形
 
 ## Failure Modes
@@ -28,7 +28,7 @@ Risk: R3
 - FM5: 売るのをやめた商品・前の JAN の枠が Full に出て、レジの前の登録を書き直す
 - FM6: JAN を変えた商品が未反映にならず、新しい JAN がレジに書かれない
 - FM7: 照合の失敗や Z004 の読取りの失敗（`Io`）で SD の読取り（日報の候補）まで失敗し、締めの取込みが止まる
-- FM11: JAN を直した商品の前の JAN の枠で売れた分が、黙って誤った商品へ付く（別名を問わずに書く・前の JAN が別の実在の商品の JAN だった）、または「ある」と答えたのに同じ商品へたどれない
+- FM11: JAN を直した商品の前の JAN の枠で売れた分が、黙って誤った商品へ付く（前の JAN を持つ商品が無いのに、どれかの商品へ付ける）
 - FM12: 対象の商品を持たない JAN の active な枠にレジ側の別のコードを観測しても active を保ち、後でその JAN を再び持つ商品の書出しがレジ側の登録を上書きする
 - FM13: 照合が何日も止まっているのに UI-08 で見えない
 - FM8: migration が `release_pending` の行を落とし、再対象化で別の枠を予約する
@@ -46,16 +46,14 @@ Risk: R3
 | SPEC-PLS-D5 / IO-04 | FM1 | golden（IO-04） | `test_generate_plu_tsv_has_no_clear_row` | 出力に 14 桁ゼロのコードの行が現れる。期待: product 行だけ（`row_kind` の入力が無い） |
 | SPEC-PLS-D2 / §16.3 | FM2 | unit | `test_prepare_rejects_without_snapshot_req907` | `plu_register_snapshot_at` が無い DB で prepare が Ok を返すか予約する。期待: `register_snapshot_required`、slot は全部 free のまま |
 | SPEC-PLS-D2 / §16.3 | FM3 | unit | `test_refresh_snapshot_picks_max_settlement_no_req907` | 精算回数の違う合成 Z004 を 3 本（file の順と精算回数の順を変えて）渡すと、最大でない 1 本で照合する。期待: 最大の 1 本の占有。精算回数の読めない bytes だけなら `Ok(None)` で何も変えない |
-| SPEC-PLS-D2 / §16.3 手順 2 | FM3 | unit | `test_refresh_snapshot_rejects_older_settlement_after_newer_req907` | 精算回数 N の Z004 で照合した後に N − 1 だけの Z004 を渡すと照合する（往復の回帰）。期待: `Ok(None)`、`plu_slots` と 2 つの key が N の照合の後のまま。N を再び渡すと照合する（等しいは冪等）。key が整数として読めなければ照合しない |
-| SPEC-PLS-D2 / §16.3 | FM12 | unit | `test_snapshot_orphan_active_other_code_becomes_external_req907` | 対象の商品を持たない JAN の active な枠（別名を持つ枠を含む）に別のコードを観測しても active のまま、または `alias_product_code` が残る。期待: external、観測コード、別名 NULL。対象の商品がある JAN の active は conflict のまま（非空の対照） |
-| D-117 (8) / §16.6 | FM11 | unit（BIZ-01 + BIZ-04） | `test_csv_jan_change_old_jan_alias_only_when_answered_req907` | `asks_old_jan_stock` の行で `old_jan_on_hand_codes` に無い（既定）のに別名を書く、ある のに書かない、条件を満たさない行（前の JAN を別の商品が持つ）で別名を書く |
-| D-117 (8) / 32 §15.3 Stage 2 b | FM11 | unit（BIZ-03） | `test_z004_match_uses_alias_only_when_no_product_req907` | 別名の枠の JAN の行が `unmatched_product` になる、またはその JAN を持つ商品があるのに別名の商品へ付く。期待: 商品が無いときだけ別名、無ければ `unmatched_product` |
-| D-117 (8) / §16.6 | FM11 | unit | `test_alias_cleared_when_jan_held_again_req907` | 別名の JAN を別の商品に入れた（または元の商品へ戻した）後も別名が残る |
+| SPEC-PLS-D2 / §16.3 手順 2 | FM3 | unit | `test_refresh_snapshot_rejects_older_settlement_after_newer_req907` | 精算回数 N の Z004 で照合した後に N − 1 だけの Z004 を渡すと照合する（往復の回帰）。期待: `Ok(None)`、`plu_slots` と 2 つの key が N の照合の後のまま。N を再び渡しても `Ok(None)`（等しい精算回数は照合しない。confirm したばかりの枠を `missing_on_register` に戻さない）。N + 1 なら照合する。key が整数として読めなければ照合しない |
+| SPEC-PLS-D2 / §16.3 | FM12 | unit | `test_snapshot_orphan_active_other_code_becomes_external_req907` | 対象の商品を持たない JAN の active な枠に別のコードを観測しても active のまま。期待: external、観測コード、`slot_released_on_register` を log。対象の商品がある JAN の active は conflict のまま（非空の対照） |
+| 33 §16.6 / 32 §15.3 手順 4 b | FM11 | unit（BIZ-03、既存） | `test_parse_and_validate_req401_unmatched_product` | JAN を持つ商品が無い行が `unmatched_product` にならない（既存の test。D-117 で変えない） |
 | SPEC-PLS-D2 / §16.3 | FM3 | unit | `test_refresh_snapshot_skips_conflicting_same_settlement_req907` | 最大の精算回数の bytes が 2 本で違うのに照合する。期待: 照合しない（前回を保つ） |
 | SPEC-PLS-D2 / §16.3 | FM4 | unit | `test_snapshot_duplicate_jan_on_register_is_external_req907` | アプリが active で持つ JAN を空きの枠で観測したとき、TX が UNIQUE 違反で失敗するか、アプリの枠の memory No. が変わる。期待: 観測した枠は external（コードを保持）、アプリの枠は不変、`duplicate_on_register` を log |
 | SPEC-PLS-D2 / §16.3 | FM10 | unit | `test_snapshot_reserved_other_code_drops_reservation_req907` | 予約中の枠に別のコードを観測しても reserved を保つ。期待: external + `reservation_dropped`、次の prepare で別の最小の空き枠 |
 | SPEC-PLS-D2 / §16.3 | FM10 | unit | `test_snapshot_active_other_code_marks_dirty_req907` | 反映済みの枠に別のコード・空を観測しても商品が dirty にならない。期待: active を保ち、`plu_target=1` の商品だけ dirty |
-| SPEC-PLS-D2 / §16.3 | — | unit | `test_snapshot_same_input_is_idempotent_req907` | 同じ Z004 を 2 回照合すると状態が変わる。期待: 2 回目の後の `plu_slots` が 1 回目の後と同じ |
+| SPEC-PLS-D2 / §16.3 | — | unit | `test_snapshot_same_input_is_idempotent_req907` | 同じ Z004 を BIZ の `import_plu_register_snapshot` へ 2 回直接渡すと状態が変わる。期待: 2 回目の後の `plu_slots` が 1 回目の後と同じ（照合の本体の性質。`refresh_plu_register_snapshot_from_sd` は等しい精算回数を照合しないので、この経路では 2 回目は呼ばれない） |
 | SPEC-PLS-D1 | FM4 | schema（migration） | `test_plu_slots_unique_only_reserved_active` | 同じコードの external を 2 行入れると拒否される、または reserved / active を同じコードで 2 行入れられる |
 | SPEC-PLS-D1 | FM8 | migration | `test_migration_release_pending_becomes_external` | migration の後に `release_pending` の行が消える・`scanning_code` が変わる・status の CHECK が 5 値のまま。期待: external、`released_at` の列が無い、`plu_register_snapshot_summary` の key が無い |
 | BIZ-08 §37.9 手順 10 / CMD-12 §45.6a | FM7 | integration（CMD-12 + 合成の SD の tree） | `test_scan_register_sd_refreshes_plu_snapshot` | SD の読取りの後に `plu_register_snapshot_at` が更新されない、または Z004 の形が外れているとき scan が Err になる。期待: 照合の失敗でも日報の候補が返り、前回の照合を保つ |
@@ -112,7 +110,7 @@ Risk: R3
 
 ## Compatibility Checks
 
-- old schema/input: migration v5 の DB（`release_pending` の行あり）→ migration の後 `external`、`alias_product_code` は NULL、`plu_register_snapshot_settlement_no` は無い（次の照合で書く）。旧形の復帰状態（`overLimitWarning`）→ 消して通常の画面
+- old schema/input: migration v5 の DB（`release_pending` の行あり）→ migration の後 `external`、`plu_register_snapshot_settlement_no` は無い（次の照合で書く）。旧形の復帰状態（`overLimitWarning`）→ 消して通常の画面
 - new schema/input: status 4 値、partial UNIQUE は `reserved` / `active`
 - output order: PLU の file の行の順は今のまま（memory No. の順を変えない）
 - optional field behavior: 古い URL の `plu` の search param は絞り込みに使わない
