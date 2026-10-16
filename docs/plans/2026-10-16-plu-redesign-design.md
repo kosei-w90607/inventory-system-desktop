@@ -27,6 +27,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 5. plan-gate（round 1 の是正、2026-10-16、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5 = reject P2 2・P3 5、Codex GPT-6.1 Sol = reject P1 1・P2 3・P3 2）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `27e44499` で直し、Coordinator が差分を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。owner の決定 2 つ（repo 外の回答台帳 TD-284 = JAN を直すときに前の番号の現物を 1 回聞く、TD-285 = clear を外したまま、戻す条件を Revisit に書く）を同じ commit に入れた。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-16、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5 = reject P2 2・P3 4、Codex GPT-6.1 Astra = reject P2 3）の是正（Review Response 参照）。P2 5 件のうち 4 件が round 1 で足した別名（TD-284）の継ぎ目だったため、owner が別名をこの lane から外し別の小さな設計 lane で扱うと決めた（repo 外の回答台帳 TD-286）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `0a012655` で直し、Coordinator が差分を読んだ。別名の撤去は round 1 の前の文への復元で、Scope の範囲と設計の方向は変えないので plan-gate に留める。Plan Review round 3（上限）へ出す。
 7. plan-gate（round 3 の是正、2026-10-16、Coordinator）: Plan Review round 3（上限。Claude 側 fresh Opus 5.5 = approve P3 4、Codex GPT-6 Astra = reject P1 1・P3 1）。round の天井に達したので、残りの findings を Review Rules の disposition に従って owner に上げ、owner は「是正し、是正の差分だけを Codex の closure で確かめる」と決めた（repo 外の回答台帳 TD-287。天井を 1 回越える）。是正の形も owner が決めた（TD-288）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `8f71acf0` で直し、Coordinator が差分を読んだ。Scope の範囲と設計の方向は変えないので plan-gate に留める。closure の approve の後に plan-approved を owner に諮る。
+8. plan-gate（closure の残りの是正、2026-10-16、Coordinator）: Plan Review closure（Codex GPT-6.1 Sol、head `20803362`）は reject（P1 1・P3 2）だったが、是正の中身は全て PASS で、新しい P1 / P2 は無かった。残りは C1 を固定する Matrix の行と AC11 の数で、起草役が `47aed1b9` で直した（Review Response 参照）。owner の決定（repo 外の回答台帳 TD-289）で、この確認も Codex の closure（2 回目）で行う。
 
 ## Owner Effort Budget
 
@@ -306,3 +307,13 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra
 | O4 | Opus #4（P3） | 採用 | restore の後に照合の記録を消す扱いが D-117 と backlog にしか無い | 33 §16.8 に 1 行（71 §71.7 に足すのは runtime の lane）と Matrix に test の行 |
 
 新しい契約の文は足していない（起草役の報告。Coordinator が差分を読んで確かめた。O4 は D-117 の Guarantee range と backlog の写し）。
+
+### Plan Review closure（2026-10-16、head `20803362`）
+
+Codex GPT-6.1 Sol（reject、P1 1・P2 0・P3 2）。C2・O1〜O4 の是正は閉じ、C1 の是正の中身（書き出し直すだけにする）も通った。新しい P1 / P2 は無い。
+
+| # | 出所 | 裁定 | 要旨 | 是正 |
+|---|---|---|---|---|
+| C1 の固定 | Codex（P1、未 closure） | 採用 | C1 の是正を固定する Matrix の行が無い | Matrix に 2 行（取込みに失敗したときの案内の RTL、予約が照合で外れた後の confirm の拒否と再 prepare の unit）。AC14（保存した file を取り込む回復の案内が 0） |
+| N1 | Codex（P3） | 採用 | round 3 の O4 で 33 の `plu_register_snapshot_settlement_no` の数が変わり、AC11 が合わない | AC11 の期待を今の数に直し、AC の全行を今の版で実行し直した |
+| C2 の検索の hit | Codex（P3） | 不採用（発注の誤り） | `docs/research/audit-2026-09/drift-audit.md` に古い型名が 1 行残る | 過去の監査の記録なので直さない。closure の発注の検索の範囲が research を除いていなかった |
