@@ -1,13 +1,13 @@
 # タスク仕様（MNT層）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D8。新しい業務判断をMNTへ移さない。MNTは計数contextに何も供給せず、OSの通知の登録や時計の検査を持たない（ADR D1）。
+SPEC-STK-CNT-D9・D10（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。新しい業務判断を MNT へ移さない。
 
-- DB接続交換のorchestrationは[43](../function-design/43-cmd-settings-log.md)でcontextを先に失効する。MNT-01のbackup/復旧規則は変更しない。
-- MNT-03は[DBの新契約](../DB_DESIGN.md)の分類・内部上限・列/表追加を1TXで適用し、履歴・数量・評価額を変更しない。旧実測を推定時刻やcursorで補完しない。
+- MNT-03 は [DB の新契約](../DB_DESIGN.md) の列と表を 1 TX で足し、既存の movement の並びの鍵を埋めて写しを求め直す。棚卸しか Z004 の取込みを持つ DB では何も変えずに失敗する（開発・試験 DB の作り直しは別の承認）。旧行を推定の位置で新しい軸へ移さない。
+- MNT-01 の backup / 復旧の規則は変えない。計数の context を持たないので、DB 接続の交換で失効させるものは無い（[43](../function-design/43-cmd-settings-log.md)）。
 
-本番有効化前の外部probeは[32](../function-design/32-biz-csv-import-service.md)に置き、operatorへ手動のDB故障注入を依頼しない。
+旧 ADR（時点証拠）の分類・legacy の上限・context の失効は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）

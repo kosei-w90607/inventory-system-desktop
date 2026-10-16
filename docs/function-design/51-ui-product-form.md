@@ -1,14 +1,13 @@
 ## 7. UI-01b: 商品登録・修正
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D4 / D8のmaster write guardを[30](30-biz-product-service.md)と[40](40-cmd-product.md)から受ける。create/updateでstocktake_guard + shared_jan_unresolvedになった場合は「同じJANを複数の商品で使う場合、在庫連動は設定できません」と対象の商品コード・名称をform-level Alertに表示する。kind名を利用者へ露出せず、入力値・dirty状態を保持し、成功toastや一覧への成功遷移を行わない。在庫連動の自動提案/checkboxは維持するが、BIZ検査に通らない設定は保存できない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の商品フォームの側。拒否と回復先は [30](30-biz-product-service.md) と [40](40-cmd-product.md) から受ける。旧 ADR（時点証拠）の `ej_unverified` の間の在庫連動の提案値 false と拒否の文言、非連動化の警告と「在庫数は未調整です」の案内は持たない（置き換えた）。
 
-UIは `get_pos_stock_readiness` が `ej_unverified` を返す間、pcs商品の在庫連動の提案値をfalseにする（既存のcm商品のfalse提案と同じtouchedを立てない自動提案経路）。在庫連動をfalseからtrueへ変える保存、または新規登録でtrueを保存しようとしてvalidation（field `pos_stock_sync`）で拒否された場合は、在庫連動のcheckboxの近くに「電子ジャーナルの毎日の取込みが使えるようになるまで、在庫連動は有効にできません」を表示し、入力値・dirty状態を保持して自動で再送しない。既存の有効設定のままの保存（true→true）は拒否されない。
-
-確認dialogの同意でguardを解除せず、在庫連動を自動でoffにして再送しない。利用者が許可された設定変更を行うか、商品同定を確認してから保存を再試行する。editのJAN読取り専用をこの拒否のために解除しない。再有効化に現物確認が必要な場合も40のcode/actionで案内し、参照明細なしは解除不可と表示する。inline/Alert・focus・非色表示は既存フォームに揃える。runtimeのUI oracleは拒否後の値保持・DB不変・自動再送なしを確認する。
-
-既存商品の在庫連動をonからoffへ変更した時点で「在庫連動をやめても、画面の在庫数は直りません。取り込めていない売上がある可能性があります。あとで今の数を確認してください」をcheckbox付近のAlertに表示する。切替は禁止しない。保存後の未調整状態はBIZの型付き結果を保持して案内し、再訪時も商品取得から「在庫数は未調整です」と「今の数を確認する」を表示する。active明細へ、なければ独立再実測へ案内し、no_count_targetなら「この商品を確認できる棚卸し記録がありません。棚卸しを始めると、この商品を数えられます」と示す。案内はget_pos_stock_readinessの当該商品issueから取得する。切替後の版を持つmeasured pendingだけは「棚卸しを確定すると、在庫数に反映されます。それまでは未調整です」、切替前/同版/版なし・未計数/auto_filled/legacyは「在庫連動をやめた後に、もう一度この商品を数えてください」を表示する。UIで版や説明文を解析して分岐せず、BIZの説明を表示する。説明の取得中/失敗時は未調整を維持し、確定で解消すると断定せず再試行を案内する。新規登録の初期offは切替警告の対象外。商品取得・設定変更・計数保存/確定後・再訪では当該準備issueも再取得する。既存の保存成功遷移は維持し、再訪/取込み準備にも残る表示をtoastだけで代替しない。
+- 共有 JAN: create / update が `stocktake_guard` + `shared_jan_unresolved` で拒否されたら、「同じ JAN の商品が複数あるため、在庫連動にできません」と対象の商品コード・名称を form-level の Alert に出す。kind 名を利用者へ出さず、入力値と dirty の状態を保ち、成功の toast や一覧への遷移をしない。在庫連動を自動で off にして再送しない。
+- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫連動の checkbox の近くに「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と、回復先（`active_count` なら棚卸しの明細、`count_now` なら [73](73-ui-stocktake.md) の「数を入れる」）への導線を出す。入力値を保つ。
+- 在庫連動をやめる（true → false）は警告も確認も出さない。
+- 在庫数の表示: 写しが要再確認（`stock_recheck`）なら、在庫数の欄に範囲（例「4〜5」）と「要再確認」の文字を出し、色だけで示さない（[40](40-cmd-product.md) の商品の結果の列）。
 
 > 対応仕様: REQ-101 / REQ-102 / REQ-106 / UI-01b
 >
@@ -44,7 +43,7 @@ UIは `get_pos_stock_readiness` が `ej_unverified` を返す間、pcs商品の�
 | REQ-402 / D-117 | UI-01b-D19 | edit mode は memory No.（「レジメモリNo.」）を表示しない（D-117 (5) で撤去。runtime の lane が表示・DTO の `plu_memory_no`・test を外す）。廃番解除は `plu_target` を自動復帰させず、必要なら利用者が明示して再対象化する（再対象化すると前と同じ PLU の枠を使う）。 | 店主が番号を見る場面が無い（売上は JAN で商品へたどる）。廃番解除だけで意図せずレジ再登録されることを防ぐ。 |
 | REQ-102 / SPEC-PRV-D9 | UI-01b-D20 | edit mode に第 5 セクション「価格履歴」を置き、直近 10 件を表示する。「すべて表示」は limit 100 で再取得し、create mode ではセクション自体を出さない。空は「価格履歴はまだありません」、取得中は「読み込み中…」、取得失敗は inline error と「再試行」を表示する。 | 過去の価格を商品修正の文脈で確認し、紙の前年リスト参照を置き換える。price_history に契機カラムがないため変更契機の列は表示しない。 |
 | REQ-106 / SPEC-PRV-D6 | UI-01b-D21 | 「分類と取引先」セクションの取引先ピッカー dialog（DSR-24）内に「新しい取引先を追加」導線を置く。name は trim、空文字を拒否し、同名は既存行を返したうえで complete master data を再取得する。 | `suppliers` はメーカー/ブランドを漸進補完する。改名・統合は UI-15（[78-ui-supplier-management.md](78-ui-supplier-management.md)）で扱う。約 80 社の事前一括投入は扱わない。 |
-| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | 数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `決定（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync` の自動提案は、長さの単位（m・cm）で `false`・個数の単位で `true`。`get_pos_stock_readiness` が `ej_unverified` を返す間は全単位で `false` にする分岐は proposed・未実装（Z004・EJ の lane〈㉘ ④〉、D-113。冒頭の規則を `pcs` から個数の全単位へ広げる。30 の BIZ は新規の `true` を拒むので、`true` を提案すると単位を選んだだけの既定の状態で保存できない）。利用者が checkbox を触った後（touched）は提案で値を変えない（今の UI-01b-D6 と冒頭の規則のまま）。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。`（`原価は小数 2 桁までの円` にするのは proposed・未実装、原価の lane、D-113。`決定（owner、D-113 J2）`）。売価・原価は `999999`、初期在庫は `999999999`（m の商品は cm にした値）を上限にする。edit mode の単位は読取専用（SPEC-UNIT-D2）で、現在庫は単位つきで出す（`27.5 m`・`20 個`。SPEC-UNIT-D3 の表示する所の表の 13）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。説明を `税抜の整数` と書くと master-tables の売価〈税込〉と食い違う。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
+| REQ-101 / REQ-102 / D-113 | UI-01b-D22 | 数量単位の select は [共通規則](10-common-rules.md) SPEC-UNIT-D1 の 12 個を表示の語で並べる（個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm。`玉` は `決定（owner、D-113 J1）`）。既定は `pcs`（個）。UI-01b-D6 の `pos_stock_sync` の自動提案は、長さの単位（m・cm）で `false`・個数の単位で `true`。（D-113 で予定した「`get_pos_stock_readiness` が `ej_unverified` を返す間は全単位で `false`」の分岐は、D-118 で準備照会と `ej_unverified` を持たなくなったので作らない。）利用者が checkbox を触った後（touched）は提案で値を変えない（今の UI-01b-D6 と冒頭の規則のまま）。長さの単位のとき、売価・原価の label に `（1 m あたり）` を添える（例: `売価（必須、1 m あたり）`）。初期在庫は m の商品では m で受けて cm に直す（SPEC-UNIT-D3）。価格の節の説明は `売価は税込の円の整数、原価も円の整数で入力します。長さ（m・cm）の商品は 1 m あたりの値段です。`（`原価は小数 2 桁までの円` にするのは proposed・未実装、原価の lane、D-113。`決定（owner、D-113 J2）`）。売価・原価は `999999`、初期在庫は `999999999`（m の商品は cm にした値）を上限にする。edit mode の単位は読取専用（SPEC-UNIT-D2）で、現在庫は単位つきで出す（`27.5 m`・`20 個`。SPEC-UNIT-D3 の表示する所の表の 13）。 | 店の数え方は 12 種（Store Premises Facts）。長さの商品の値札・伝票は 1 m あたりで、価格欄に基準が無いと 1 cm あたりと読み違える（Backlog「原価 × 数量の式が価格の基準数量を持たない残り」(4)）。説明を `税抜の整数` と書くと master-tables の売価〈税込〉と食い違う。不採用: 単位を 2 段の select（種類 → 語）にする（12 個は 1 段で選べる）。 |
 
 ## 7.2 Component / Route 構成
 

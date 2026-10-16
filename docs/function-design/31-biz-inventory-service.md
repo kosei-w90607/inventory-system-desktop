@@ -1,12 +1,14 @@
 ## 12. BIZ-02: 在庫変動ロジック
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D8。apply_stock_changeの引数・符号・結果型は維持し、呼出し先update_stock_quantityが数量とstock_revisionを不可分に更新する契約へ接続する。版の増分をこのBIZ helperだけへ置くと、取消・棚卸し確定・fix_integrityの別callerを保護できないため採らない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D3）の BIZ の中心。旧 ADR（時点証拠）の版（`stock_revision`）の契約は置き換えた。
 
-quantityのchecked計算→専用repoの数量/版更新→movement INSERTを元の業務TX内で行い、どの段の失敗でもまとめて戻す。冪等要求の再送は新しいmovement/版を作らない。入庫・廃棄・手動販売・レジ未処理返品によるABAも古い計数contextを失効させる。レジ処理済み返品をアプリ内の架空移動に変えない。
-
-list_inventory_recordsの棚卸し差異集計は[追跡の新契約](65-inventory-record-traceability.md)に従い、補正区分をproducerからDTOへ伝播する。旧確定済み評価額を現在庫訂正と一緒に更新する処理は加えない。
+- 求め直しの関数（新しい module `biz::stock_ledger`）: `recompute_stock(tx: &Transaction, product_code: &str) -> Result<DerivedStock, BizError>`。`DerivedStock` は `stock`（写しの値）、`range: Option<(i64, i64)>`（要再確認のときの最小と最大）、`recheck_reasons: Vec<RecheckReason>`（`undetermined_settlement` / `same_date_movement` / `conflicting_counts`。ADR D3 の 1〜3）。中で、その商品の計数（`stock_counts`）と `is_voided=0` の movement と取り込み済みの精算の一覧（`csv_imports` の active の `settlement_date`・`settlement_no`）を並びの鍵の順に読み、効く計数 + それより後の和、決まらない記録の判定、範囲を求め、写し（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）を同じ TX で書く。写しを書くのはこの関数だけ（[21](21-io-inventory-repo.md) の `update_stock_quantity` を呼ぶのはこの関数 1 つ）。
+- 決まらない精算の行の判定（ADR D3 の 1）は、その精算の取込みの `sale_records`（`csv_import_id` 付き、`is_voided=0`）にその商品の行があり、個数 ≠ 0 または金額 ≠ 0 であること。在庫連動でない商品は Z004 の movement を持たないので、決まらない精算の判定もしない（計数と入出庫だけで求める）。
+- `apply_stock_change` は「保存した数 + 差分」をやめ、movement を並びの鍵（`business_date` = 呼ぶ側が渡す業務記録の日付、`phase=0`）付きで INSERT してから `recompute_stock` を呼ぶ。署名に業務の日付を足し、入庫・返品交換（レジ未処理）・手動販売・廃棄の 4 つの `create_*` が header の日付を渡す。`stock_after` は求め直した写しの値。在庫の上限の検査（`999999999`）は `recompute_stock` が写しを書く直前の 1 か所に置く（求めた値と範囲の両端に当てる）。
+- 冪等な要求の再送は新しい movement を作らない（今のまま）。レジ処理済みの返品は movement を作らない（今のまま）。
+- list_inventory_records の棚卸し差異の集計は [65](65-inventory-record-traceability.md) の新契約に従う（計数は movement を作らない）。
 
 ### 単位と原価の精度の契約（D-113）
 

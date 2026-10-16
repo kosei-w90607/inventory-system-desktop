@@ -1,24 +1,16 @@
 ## 2. IO-01: SQLiteデータアクセス層
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D6 / D8。以下の既存APIは現行契約であり、新しい保存型へ切替済みではない。保存列・CHECK/FKは[trackingの新契約](../db-design/tracking-system-tables.md)を正とする。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。以下の既存 API は現行の契約で、新しい保存の形へ切り替え済みではない。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
 
-| repo操作の入出力 | 処理・返却契約 |
+| repo 操作 | 処理・返却の契約 |
 |---|---|
-| product_repoの更新型 | ProductUpdatesからstock_quantityを除く。数量更新SQLの分岐を残さない。NewProductの初期数量は維持。商品内部読取りにはstock_revisionを加え、UIへ生の版を渡さない |
-| 非連動化記録の保存/読取り | pos_stock_syncの書込みは、変更前値を同TXで読んでtrue→falseを判定する単一の共通更新経路に限定する。変更時は同じ呼出しで版を進め、true→falseの場合だけpos_sync_disabled_revisionへ変更後の版を保存する。汎用更新から直接setできる分岐を残さない。商品内部読取り/準備照会は非連動・廃番も除外せず、最新の適用済み新方式実測の版と現在の回復先を返す。BIZが未調整を判定し、IOがflagを一括削除しない |
-| stocktake_repoの計数開始用読取り（conn, item_id） | item・親status・productのL/revision・最新の有効観測・現在のactive所有者を同じDB snapshotで取得。不在はNone。measuredの新旧はobservation_revision、legacyの存在を未実測へ落とさない |
-| source上限取得（conn） | pos_import_sourcesの最大ID、空なら0。begin時にだけcontextへ固定する。保存時の値へ差し替えない |
-| ledger上限取得（conn, product_code） | 呼出し時点の当該商品movement最大ID、空なら0。void済みもIDを再利用しない。通常の実測と独立再実測は補正INSERT前に取得し、snapshotと同じTXで保存 |
-| measured保存（tx, item_id, 新しいN/L/S/E・両cursor・版・request ID） | 親の進行中を条件に既存itemを更新。BIZがbeginで固定しsaveで検証した証拠だけを受ける。更新0行はNotFound/状態競合としてBIZへ返し、autocommitで数量だけ保存しない |
-| 再実測INSERT（tx, N/L/S/E・両cursor・版・request IDを含む保存型） | 新しいrecount IDを返す。import IDは入力に要求しない。差0もINSERTし、既存recountは上書きしない |
-| 保存要求照会（conn, request_id） | itemとrecountの保存済みN・保存先を返す。両方に公開IDが一致する異常を区別する。失効tokenより先にBIZがこの結果を評価する |
-| flag保存/変更/解消（tx, product_code, source_id, import_id, reason） | 未解消の(商品, 資料)を一意に保存し、同じ組の重複追加で行を増やさない。理由の変更（相殺の確認待ち〈EJ待ち〉→相殺の行あり・相殺の確認待ち〈登録の変化〉、直前のZ004が未受領の間の相殺の確認待ち〈登録の変化〉→相殺の確認待ち〈EJ待ち〉・相殺の行あり・ほかの登録の変化）と解消（行の削除）はBIZの指示だけで行い、解消対象はBIZが受領証拠・取消元・EJと前回のZ004による再評価で選ぶ。商品単位の未解消flagの読取りは確定・準備照会・一覧に使う。商品非連動への変更で一括削除しない |
-| 有効観測の列挙（conn, product_code） | supersededな旧pendingは除き、現在のmeasured itemと独立recountを商品内の観測順で返す。auto_filledを吸収先にせず、legacyは不明な証拠として返す。最新の有効な観測（前後の判定の基準、ADR D4）は、measuredの明細（active・完了済み）とrecountを合わせた `observation_revision` の最大の1件で選び、明細とrecountの別や時刻の順では選ばない。版を持つ観測が1つもなくlegacyの明細があればlegacyを返す（legacyは移行だけが作り版を持たないので、版を持つ観測があればそれが新しい）。auto_filledとuncountedは観測にせず、前の観測を隠さない（㉘ ② で実装、`docs/archive/plans/2026-10-06-stocktake-p1.md` S2） |
-| pending snapshot補正（tx, item_id, delta） | system_stockだけをchecked更新。N/S/E/cursor/observation_revisionは変えない。商品revisionの更新は同TXで必須 |
+| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
+| stocktake_repo の明細の読取り | `get_stocktake_items`・`find_stocktake_item` は、明細を参照する計数（`stock_counts.stocktake_item_id`）の効く値と置き場の日付、写しの在庫・範囲を返す。差異と要再確認の理由は BIZ が求める |
+| 計数の読取り・保存 | [21](21-io-inventory-repo.md) の新契約（`insert_stock_count` と、商品の計数の鍵の順の一覧） |
 
-既存get_stocktake_items/find_stocktake_itemはkind・要再確認理由・現在の復旧先を読めるよう拡張し、全商品一覧と検索の両経路へ同じ列を伝播する。complete用の内部型はNだけでなくL・kind・flag・証拠の有効性を渡す。record detailは明示的な補正区分とrecountを取得し、確定差異件数へ再実測を混ぜない。SQL失敗・整数範囲外・FK違反はDbErrorとして返し、IOでbefore/afterや復旧の可否を決めない。
+SQL の失敗・整数の範囲外・FK 違反は DbError として返し、IO で前後や回復の可否を決めない。
 
 ---
 
@@ -899,9 +891,7 @@ fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<(String, String,
 
 ### 2.11a stocktake_repo — 棚卸し記録詳細取得（65 slice 4c 用）
 
-本節の開始時snapshot・確定時live在庫基準の補正は、現行実装および移行後の完了済みreconciliation_version=0の旧記録の表示契約である。新方式は冒頭のproposed節を正とし、completionのadjustment_quantity=N-L、表示差異=L-N、stock_after=確定直前現在庫+(N-L)とする。recount/rollback_compensationは別区分で、確定差異との同値関係を全movementへ一般化しない。
-
-新しい詳細queryはheader.reconciliation_versionもcore型へ取得し、BIZのwire DTOまで保持する。版をUIが日時やkindの有無から推定する仕様にはしない。
+本節の開始時snapshot・確定時live在庫基準の補正は、現行実装の表示契約である。D-118 の新方式は冒頭の proposed 節を正とし、完了は補正の movement を作らず、差異は [35](35-biz-stocktake-service.md) の新契約の「読取り」（効く計数の値 − その計数の直前の鍵までの帳簿）で返す。
 
 #### get_stocktake_record_detail
 
@@ -920,7 +910,7 @@ fn get_stocktake_record_detail(conn: &DbConnection, stocktake_id: i64) -> Result
 
 **StocktakeRecordDetailItem構造体**（補正 movement 起点の JOIN 行）:
 - product_code: String, product_name: String, department_name: String, stock_unit: ProductStockUnit
-- system_stock: i64（旧本体では明細を作った時点〈棚卸しの開始時、または棚卸し中の商品登録時〉の帳簿。新方式の measured は保存TXの帳簿。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の SPEC-STK-TIME-D8-L1）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
+- system_stock: i64（旧本体では明細を作った時点〈棚卸しの開始時、または棚卸し中の商品登録時〉の帳簿。D-118 の新方式でも同じ参考値。時点の正本は [tracking §16-17](../db-design/tracking-system-tables.md) の「system_stockの時点」）, actual_count: Option\<i64\>, counted_at: Option\<String\>, valuation_cost_price: Option\<i64\>
 - adjustment_quantity: i64（補正 movement の quantity。確定時 live 在庫基準）, stock_after: i64（補正後在庫）
 - `stock_unit` は repo が `parse_stock_unit` で読む `ProductStockUnit`（D-113）。`valuation_cost_price` を `valuation_cost_price_centi`（1/100 円）にするのは proposed・未実装（原価の lane、D-113）。[共通規則](10-common-rules.md) SPEC-UNIT-D5・D11、[master-tables](../db-design/master-tables.md) の「単位と原価の精度の契約」。
 

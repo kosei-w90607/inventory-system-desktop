@@ -1,12 +1,8 @@
 # タスク仕様（CMD層）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1〜D9。CMD-10は[42](../function-design/42-cmd-sales-stocktake.md)のbegin_stocktake_count / save_stocktake_count / abandon_stocktake_countへ切替え、無検査update_countの公開登録を外す。CMD-07は[41](../function-design/41-cmd-pos.md)の準備照会とstock_reviewを追加し、source/全候補はprivate cacheへ保持する。
-
-CMDはDB接続の交換でDB世代を進めて計数のBIZへ渡す。時刻や環境の値を計数・準備照会・分類のBIZへ渡さず、UIからも受けない。CMD-01の未調整商品結果とCMD-07のsettlement_missing/source_ids・sync_disabled_unreconciledを説明と対象の組を保ったまま生成型で透過する。準備照会の `ej_unverified` を外すcommandや設定は公開しない。
-
-共通の回復payloadは[40](../function-design/40-cmd-product.md)、DB接続交換前のcontext失効は[43](../function-design/43-cmd-settings-log.md)。BIZの生成・検査済み内部contextを保管/復元するだけで、CMDに在庫分類・所有者guard・数量補正式を置かない。tauri/specta属性・collect_commands・bindings・全callerの同期はruntimeで行い、このdocs同期では生成しない。
+SPEC-STK-CNT-D4〜D6（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。CMD-10 は [42](../function-design/42-cmd-sales-stocktake.md) の `save_stock_count` / `preview_stock_count_placement` / `zero_uncounted_items` / `list_recheck_products` を足し、無検査の update_count の公開登録を外す。CMD-07 は [41](../function-design/41-cmd-pos.md) の知らせと要再確認の一覧を透過し、Z004 では追加確認の入力を使わない。CMD は PC の今日を BIZ へ渡し、業務条件を置かない。共通の回復 payload は [40](../function-design/40-cmd-product.md)。tauri / specta 属性・collect_commands・bindings・全 caller の同期は runtime で行い、この docs の同期では生成しない。旧 ADR（時点証拠）の token・context の保管・DB 世代・準備照会は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 

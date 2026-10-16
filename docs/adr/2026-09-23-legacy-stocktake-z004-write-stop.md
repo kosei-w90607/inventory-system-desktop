@@ -6,11 +6,13 @@ accepted — 2026-09-24、㉘ runtime ①（packet `docs/archive/plans/2026-09-2
 
 対象は REQ-205 / REQ-401。停止は現行 build に固定し、⑤（一括切替）で本 ADR を superseded にして解除する。
 
+改訂（2026-10-16、[decision-log](../decision-log.md) D-118）: 時点証拠 ADR は [棚卸しの数の置き場と在庫の求め直しの ADR](2026-10-16-stocktake-count-placement.md) に置き換わった。本 ADR の「⑤」は、置き換えた ADR の runtime が、棚卸しの計数・完了と Z004 の確定・取消を新しい経路で置き換えるのと同じ配布の単位を指す（同 ADR の SPEC-STK-CNT-D12）。停止の範囲・停止 error・解除を部分的に行わないこと（SPEC-STOP-D6）は変えない。
+
 ## Context
 
 現行の棚卸し確定は、保存済みの実カウントへ在庫を上書きする。カウント後の入出庫があると、その増減を打ち消す（[STK-1](../research/2026-09-16-diagram-audit.md#stk-1-カウント後の入出庫を棚卸し確定が打ち消す)）。Z004 の業務 commit は、棚卸しに含まれた過去の販売を後から再び減算する（[STK-2](../research/2026-09-16-diagram-audit.md#stk-2-棚卸し確定後に届く過去販売を二重に減算する)）。取消は、その二重減算を戻す経路の一部である。どちらも合成 DB で再現済みである（[XFA-T1 / XFA-T2](../diagrams/cross-feature-verification.md#実行結果)）。
 
-正しい計数・受領・判定・取消は[時点証拠 ADR](2026-09-18-stocktake-time-evidence.md) を ② 〜 ④ で実装し、⑤ で一括して切り替える。それまでの間、現行の入口を使うと在庫・売上を誤らせる。店は未導入で本番 DB が無いため、停止が効くのは開発・demo・試験 DB である。
+正しい計数・完了・取込み・取消は[棚卸しの数の置き場と在庫の求め直しの ADR](2026-10-16-stocktake-count-placement.md)（2026-10-16 の改訂。それより前は[時点証拠 ADR](2026-09-18-stocktake-time-evidence.md) の ② 〜 ④）で実装し、⑤ で一括して切り替える。それまでの間、現行の入口を使うと在庫・売上を誤らせる。店は未導入で本番 DB が無いため、停止が効くのは開発・demo・試験 DB である。
 
 ## Decision
 
@@ -26,7 +28,7 @@ BIZ-06 は `BizError::ValidationFailed(<BIZ-06 停止文言>)`、BIZ-03 は `Biz
 
 ### SPEC-STOP-D3: 旧本体は crate 内部に残し、test だけが呼ぶ
 
-現行の処理本体は `legacy_start_stocktake` / `legacy_update_count` / `legacy_complete_stocktake` / `legacy_commit_csv_import` / `legacy_rollback_csv_import`（`pub(crate)`）として残す。呼出し元は `#[cfg(test)]` の test・診断・fixture だけとする。非 test build の dead_code 警告は旧本体に `#[cfg_attr(not(test), expect(dead_code))]` を置いて抑える。production から旧本体を呼ぶ変更が入ると期待が満たされず、CI と local-ci の必須 gate `cargo clippy --all-targets --all-features -- -D warnings` が `unfulfilled_lint_expectations` で失敗する（通常の `cargo build` は warning に留まる）。これで呼出し元が test だけであることを機械検査する。既存の BIZ test と `#[ignore]` 診断 2 本は旧本体を呼び、既知の不具合を再現し続ける。③ / ④ が新処理へ移すときの回帰の対照に使い、⑤ で撤去する。
+現行の処理本体は `legacy_start_stocktake` / `legacy_update_count` / `legacy_complete_stocktake` / `legacy_commit_csv_import` / `legacy_rollback_csv_import`（`pub(crate)`）として残す。呼出し元は `#[cfg(test)]` の test・診断・fixture だけとする。非 test build の dead_code 警告は旧本体に `#[cfg_attr(not(test), expect(dead_code))]` を置いて抑える。production から旧本体を呼ぶ変更が入ると期待が満たされず、CI と local-ci の必須 gate `cargo clippy --all-targets --all-features -- -D warnings` が `unfulfilled_lint_expectations` で失敗する（通常の `cargo build` は warning に留まる）。これで呼出し元が test だけであることを機械検査する。既存の BIZ test と `#[ignore]` 診断 2 本は旧本体を呼び、既知の不具合を再現し続ける。新処理へ移すときの回帰の対照に使い（診断 2 本は新しい経路で PASS する回帰 test に変える）、⑤ で旧本体を撤去する。
 
 ### SPEC-STOP-D4: 画面は案内を出し、書く入口を無効にする
 
@@ -38,7 +40,7 @@ BIZ-06 は `BizError::ValidationFailed(<BIZ-06 停止文言>)`、BIZ-03 は `Biz
 
 ### SPEC-STOP-D6: 解除は ⑤ だけで行う
 
-停止は ⑤（migration 登録・共通 writer・新 command / bindings / 画面の一括切替）でだけ外す。部分的な解除（例: 開始だけ許可、同日 import がなければ commit を許可）をしない。解除時に本 ADR を superseded にして記録する。
+停止は ⑤（migration 登録・共通 writer・新 command / bindings / 画面の一括切替。2026-10-16 の改訂からは、置き換えた ADR の SPEC-STK-CNT-D12 の配布の単位）でだけ外す。部分的な解除（例: 開始だけ許可、同日 import がなければ commit を許可）をしない。解除時に本 ADR を superseded にして記録する。
 
 ## Rejected Options
 
@@ -70,4 +72,4 @@ BIZ-06 は `BizError::ValidationFailed(<BIZ-06 停止文言>)`、BIZ-03 は `Biz
 
 ## Revisit Trigger
 
-⑤（migration・新 writer・新 command・新 UI の一括切替）の実装 lane。解除時に本 ADR を superseded にし、旧本体 `legacy_*` と停止の定数・案内を撤去する。
+⑤（migration・新 writer・新 command・新 UI の一括切替。2026-10-16 の改訂からは、[棚卸しの数の置き場と在庫の求め直しの ADR](2026-10-16-stocktake-count-placement.md) の runtime のうち SPEC-STK-CNT-D12 の配布の単位）の実装 lane。解除時に本 ADR を superseded にし、旧本体 `legacy_*` と停止の定数・案内を撤去する。

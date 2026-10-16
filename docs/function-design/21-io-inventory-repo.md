@@ -1,18 +1,14 @@
 ## 10. IO-01 追加: 在庫変動リポジトリ（BIZ-02 用）
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D6 / D8。`update_stock_quantity(conn, product_code, new_quantity) -> Result<bool, DbError>`の数量更新成功時に、stock_revisionのchecked増分を同関数内で強制する。署名の数量入力に版を任意指定させない。呼出し側のTXを使い、自分で別TXをcommitしない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9）の IO の側。保存の意味は [tracking](../db-design/tracking-system-tables.md) の同名の契約。旧 ADR（時点証拠）の版の強制（`update_stock_quantity_with_revision`・`bump_stock_revision`、D-109 で `#[cfg(test)]` に置いたもの）は置き換え、runtime の lane が外す。
 
-- 対象商品なしはfalse。対象ありで版がi64上限なら数量も版も書き込まずエラー。同値の数量指定でも版を進める。Rustのchecked演算またはSQLの型・上限ガードで、SQLiteのREAL化を拒否する。
-- 数量を変えない基準・flag・状態更新用にも、共通のchecked版更新操作 `(conn, product_code) -> Result<i64, DbError>` を用意する。増分後の版を返し、観測順の採番に使う。BIZは業務更新と同じTXで呼び、追加増分は許すが再利用はしない。
-- 対象callerは共通入出庫、CSV取消戻し、棚卸し確定補正、整合性補正。ProductUpdatesでの数量UPDATEは廃止する。movementや必須ログの失敗は版も含めて呼出し元TXがrollbackする。
-- NewMovement / MovementRecordへstocktake_adjustment_kindとstocktake_recount_idを伝播する。保存意味は[tracking](../db-design/tracking-system-tables.md)の新契約。既存のmovement_type、符号、stock_afterのBIZ算出責任は変えない。
-- 入出庫履歴の棚卸し差異母集団は新方式でcompletionだけ。recount/rollback_compensationを差異件数・代表商品へ足さない。商品別movement一覧は各区分を隠さず、日本語の種類と元記録へ渡す。
-
-- 一括切替（⑤）までの置き方（[D-109](../decision-log.md) (2)(3)）: 上の版の強制は、既存の `update_stock_quantity` を変えずに `inventory_repo::time_evidence::update_stock_quantity_with_revision`（署名は同じ、`#[cfg(test)]`）と共通のchecked版更新 `bump_stock_revision` に置き、⑤で既存のcaller 4か所を切り替えて1つの `update_stock_quantity` にする。棚卸しの補正movementの区分の保存も⑤までは同じmoduleの新しい関数に置き、⑤でNewMovementへ移す。
-
-旧API本文は現行実装を記す。単体試験は数量/版の同時成功・同量更新・overflow・TX rollback、結合試験は全callerによる古いcontextの拒否を検証する。
+- `NewMovement` に並びの鍵（`business_date: String`〈YYYY-MM-DD〉、`phase: i64`〈0 / 1〉、`settlement_no: Option<i64>`〈phase=1 だけ〉）を足し、`insert_movement` が保存する。`MovementRecord` も同じ列を返す。
+- 求め直しの読取り（BIZ の `recompute_stock` が同じ TX で呼ぶ）: 商品の計数の一覧（`stock_counts`、鍵の順）、商品の `is_voided=0` の movement（鍵の順、quantity と鍵）、active な Z004 の取込みの精算の一覧（`csv_imports` の `settlement_date`・`settlement_no`・`id`）、決まらない精算の行（その取込みの `sale_records` の商品の個数・金額）。
+- 写しの書込み: `update_stock_quantity` は数量に加えて `stock_recheck`・`stock_range_low`・`stock_range_high` を書く形に変え、呼ぶのは `recompute_stock` だけにする（今の呼出し元 4 か所〈共通入出庫・Z004 の取消・旧棚卸しの確定・整合性の補正〉は全て `recompute_stock` に寄せる）。`ProductUpdates` の数量の分岐は使わない（今も production で `Some` を渡す呼出しは無い）。
+- 計数の保存: `insert_stock_count`（`stock_counts` へ 1 行 INSERT。UPDATE・DELETE の関数は持たない）。
+- 入出庫の一覧の棚卸し差異の集計は [65](65-inventory-record-traceability.md) の新契約（計数は movement を作らない）。
 
 ### 10.1 inventory_repo — 共通型
 

@@ -74,12 +74,12 @@ pub fn refresh_plu_register_snapshot_from_sd(
 ) -> Result<Option<PluRegisterSnapshotSummary>, BizError>
 ```
 
-1. 各 bytes の精算の識別メタ（IO-02 の `settlement_metadata` の `settlement_no`。[23](23-io-z004-parser.md) の時点証拠契約。23 の型は文字列のまま変えない）を読み、BIZ-04 の中で 10 進の整数として読む（ASCII の数字だけで、`i64` に収まる値。前の 0 は許す）。読めない bytes・読めない値は使わない。
+1. 各 bytes の精算の識別メタ（IO-02 の `settlement_metadata` の `settlement_no`。[23](23-io-z004-parser.md) の「精算の識別メタ」。23 の型は文字列のまま変えない）を読み、BIZ-04 の中で 10 進の整数として読む（ASCII の数字だけで、`i64` に収まる値。前の 0 は許す）。読めない bytes・読めない値は使わない。
 2. 読めた中で `settlement_no` が最大の 1 本を選ぶ（同じ値が 2 本以上あれば、bytes が同じならどれでもよく、違えば照合しない。`tracing::warn!` で記録する）。精算日時や file 名の日付では選ばない（レジの時計に依らない）。選んだ 1 本の精算回数を、`app_settings` の key `plu_register_snapshot_settlement_no`（最後に照合した Z004 の精算回数、10 進の整数の文字列）と比べる: key が無ければ照合する。key の値より大きいときだけ照合する。小さければ照合しない（`tracing::warn!`、前回の照合を保つ。古い SD を読んだとき）。等しければ照合しない（既に写した観測。warn しない。同じ日に SD を読み直したとき、書込みの前のレジを写した Z004 で、confirm したばかりの枠を `missing_on_register` で未反映へ戻さないため）。key の値が整数として読めなければ照合しない（`tracing::warn!`）。
 3. 照合しないとき・使える Z004 が無いときは `Ok(None)`（何も変えない。前回の照合を保つ）。照合するときは下の `import_plu_register_snapshot` に bytes と精算回数を渡し、その結果を `Some` で返す。
 4. CMD-12 は `Err` を scan の失敗にしない（日報の候補の一覧は返す）。`tracing::warn!` で記録し、前回の照合を保つ。利用者に見えるのは UI-08 の最終照合日時（照合が古いときの警告を含む。UI-08-D11）だけである。
 
-照合済みの記録は、最後に照合した Z004 の精算回数（上の key）だけを持つ。レジの初期化・修理で精算回数が戻ると、その後の Z004 は key より小さいので照合が止まる。UI-08 の最終照合日時が古くなって警告で見え、開発者が key を消して照合を戻す（D-117 の Revisit。自動の脱出は持たない）。占有の照合は資料の受領（`pos_import_sources`）を作らず、全数読取り（`pos_source_scans`、[時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D10）の行も置かない。Z004 の業務の取込みが SD の全数読取りを持つようになったら（後続の lane）、占有の照合はその全数読取りが完了・失敗した後の別の TX で行い、全数読取りの「同じ DB に対する唯一の操作」を崩さない。停止 ADR の Z004 の業務 commit の停止（SPEC-STOP-D1）は、売上・在庫を作らない占有の照合に及ばない。
+照合済みの記録は、最後に照合した Z004 の精算回数（上の key）だけを持つ。レジの初期化・修理で精算回数が戻ると、その後の Z004 は key より小さいので照合が止まる。UI-08 の最終照合日時が古くなって警告で見え、開発者が key を消して照合を戻す（D-117 の Revisit。自動の脱出は持たない）。占有の照合は Z004 の取込み（`csv_imports`・売上・在庫）を作らない（D-118 で、旧 ADR〈時点証拠〉の資料の受領と全数読取りは作らないことになった）。Z004 の業務の取込みを同じ SD の読取りで行うようになったら（後続の lane。[backlog](../backlog.md) の「売上の SD からの一括取込みと EJ の控えの閲覧」）、占有の照合と取込みの順と TX の分け方はその lane が決める。停止 ADR の Z004 の業務 commit の停止（SPEC-STOP-D1）は、売上・在庫を作らない占有の照合に及ばない。
 
 #### import_plu_register_snapshot
 

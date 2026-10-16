@@ -1,18 +1,18 @@
 # 在庫管理システム アーキテクチャ設計書
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-[時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D10の詳細化。以下の現行タスク構成・依存関係を実装済みの新方式として読み替えない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。以下の現行のタスク構成・依存関係を実装済みの新方式として読み替えない。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
 
 | 所有層 | 新契約の責務 / 詳細 |
 |---|---|
-| UI | 明示begin→実測→商品単位save、保留/訂正の回復、未保存入力の失効。[UI task](architecture/ui-task-specs.md)、55/65/73 |
-| CMD | opaque token/cacheの保管・lock調停・生成wire・error変換。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42/43 |
-| BIZ | contextの意味・数量/版/所有者の再検査、Before/After/Unknown、TX、復旧・評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
-| IO | 正規化メタと全候補を返すparser、受領・cursor・kind・版の原子的保存。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
-| MNT | 非破壊的migration（分類・legacy上限・列/表追加）。計数contextには何も供給しない。DB接続交換時の失効はCMD（43）とBIZのDB世代が行う。[MNT task](architecture/mnt-task-specs.md) |
+| UI | 商品ごとの即保存（日付 D を常に出す、前の日の分の選択、日付の変わり目の確認）、要再確認の一覧と入れ直し、範囲の表示、完了の拒否の一覧と「0 にする」。[UI task](architecture/ui-task-specs.md)、51/55/58/65/66/73 |
+| CMD | 生成 wire・error の変換、PC の今日を BIZ へ渡す。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42 |
+| BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
+| IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込み。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
+| MNT | 列と表を足す migration（棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB の作り直しは別の承認）。[MNT task](architecture/mnt-task-specs.md) |
 
-資料受領と売上commitを分離し、現在庫の復旧・過去売上の欠落・確定済み評価額を別の結果にする。レジ固有の形式はadapter、証拠の信用と時点判定はBIZが所有する。時刻で前後を判定せず、外部probeなしのPLU本番可の宣言は行わない。
+レジ固有の形式は adapter、精算の並びと要再確認の判定は BIZ が所有する。時刻で前後を判定しない。EJ は在庫に使わない。
 
 > **現行構造の図**: [層・画面遷移・業務データフロー](diagrams/current-system.md)、[ER図](inventory_system_erd.html)。実装の照合結果と設計上の懸念は [図面監査](research/2026-09-16-diagram-audit.md) を参照。
 > **入力ドキュメント**: `docs/spec/requirements.md`（REQ inventory）、`docs/spec/requirements-coverage.md`（公開要求 coverage）、DB_DESIGN.md（テーブル定義書）、SCREEN_DESIGN.md（画面設計書）、screen_mockups.html（モックアップ）

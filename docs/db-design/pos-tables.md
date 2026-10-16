@@ -1,36 +1,19 @@
 # テーブル定義（POS連携）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D2〜D5 / D8の追加予定。既存csv_importsのstatus集合、sale_recordsと日報の分離は維持する。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。
 
-| 保存先 | 項目 | 制約と意味 |
+| 保存先 | 足す列 | 制約と意味 |
 |---|---|---|
-| pos_import_sources（新設） | id INTEGER PK AUTOINCREMENT、file_hash TEXT、received_at TEXT | hashはNOT NULL UNIQUE、受領日時はNOT NULL。同hashは最初のID/受領時刻を維持。正のID、空集合cursorは0 |
-| pos_import_sources | machine_no TEXT、report_kind TEXT、settlement_no TEXT、settled_at TEXT | 全てNULL可。IOが抽出したメタの意味を保持し、番号のleading zero・resetを推測で消さない。日時不明はNULL。日付から日時へ勝手な0時を補わない。settled_atは識別と表示のメタで、実測との前後判定に使わない |
-| pos_import_sources | settlement_date TEXT NOT NULL | parserが検証した精算日。拒否資料の日付表示にも使用。旧importからの受領backfillは行わない（[decision-log](../decision-log.md) D-109 (4)） |
-| pos_import_sources | identity_rejection_code TEXT、identity_rejected_at TEXT | 両方NULLまたは両方必須。codeはidentity_conflict / missing_identityのCHECK。BIZが初回の拒否時に証拠TXで保存し、取消/再実測で削除しない。raw明細は格納しない |
-| pos_import_sources（[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)、2026-10-11 追加。今の `schema_time_evidence` には無い） | first_scan_id INTEGER | NULL可。NULLでなければ正の整数のCHECK。pos_source_scansに行を置いた読取りの中でこのsourceを初めて受領した（sourceの行をINSERTした）とき、その読取りの行のID。行を置かない読取り（利用者が場所を選んだrootの読取りを含む）の中の受領と、読取りの外の受領（今ある経路ではファイルを選ぶ経路の受領。読取りの途中に別の経路で受領した場合を含む）はNULL。INSERTのときだけ書き、同hashの再受領・取込みの取消・同一性拒否・再読取りで変えない。例外は、ADR D10の有効にするmigration（全部実測後の枝を入れる変更と、保存の不具合が分かったときの再適用）が、全てのsourceのこの値をNULLにすることだけ。途中で失敗した読取りの中で受領したsourceは、その未完了の行のIDを持ち続ける。行を消さないので、IDへのFKにしない（指す行が無い値は、未完了の行を指す値と同じく判定に使わない）。全部実測後の判定（ADR D10の条件3）が、PとFの初回受領の読取りとして直接読む。判定の有効・無効に依らず保存する |
-| csv_imports | source_id INTEGER FK → pos_import_sources.id | 新importは必須。同じsourceから取消後の再取込みは別import行になり得るのでUNIQUEにはしない。旧importからhash単位でbackfillしても過去の実測cursorを補完しない。時点証拠schemaのmigrationは旧importからsourceをbackfillせず、旧importのsource_idはNULLのまま残す（NULLを許す列とし、新importの必須はBIZが守る。[decision-log](../decision-log.md) D-109 (4)） |
-| pos_source_scans（新設、[ADR D10](../adr/2026-09-18-stocktake-time-evidence.md)） | id INTEGER PK AUTOINCREMENT、scanned_at TEXT、medium_id TEXT、window_from TEXT、completed_at TEXT | scanned_at・medium_idはNOT NULL、medium_idは空文字列を許さないCHECK。window_fromとcompleted_atは両方NULL（未完了）か両方NOT NULL（完了）のCHECK。資料の置き場（今のレジではSD）を読む操作ごとに、fileの列挙を始める前に未完了の行を1つ置く。行を置くのは、adapterが自動で見つけた置き場の読取りだけ（SDでは自動で見つけた取外し可能なdriveのroot。利用者が場所を選んだrootの読取りは行を置かない）。medium_idはadapterが返す置き場の識別子（SDではボリュームの通し番号）で、取れなければ行を置かない。読取りは、行を置く前から完了・失敗まで、同じDBに対する唯一の操作で、DBの接続の排他を持ち続ける（ADR D10の読取りの排他）。全数読取り（窓の中の商品別売上の資料を全て受領し終え、移動元〈SDでは `XZ`〉を移動先〈`XZ_BKUP`〉より先に列挙し、読取りの終わりに取り直した置き場の識別子が始めの値と同じだった読取り。値が違う・終わりに取れない読取りは未完了のまま。ADR D10の全数読取りの2〜4）になったときだけ、その行へwindow_from（窓の始まりの日付、YYYY-MM-DD。窓は終わりを持たない）とcompleted_at（完了の時刻）を書いて完了にする。未完了の行は判定に使わず、後から完了にしない。完了した行は更新しない。行は削除しない。scanned_atとcompleted_atはアプリの時計の値で、判定にはcompleted_atがNULLかどうかだけを使う。この読取りの中で初めて受領したsourceは、pos_import_sourcesのfirst_scan_idにこの行のIDを持つ。売上値・file名・file本体は持たない。判定の有効・無効に依らず保存する |
+| csv_imports | machine_no TEXT | NOT NULL（新しい取込み）。IO-02 が Z004 のメタから読んだマシンNo.（leading zero を保つ文字列） |
+| csv_imports | settlement_no INTEGER | NOT NULL（新しい取込み）。IO-02 が読んだ精算回数を 10 進の整数にした値（0 以上） |
 
-同sourceの再取込み可否はactive hash拒否だけでなく、BIZの同一精算別hash guardにも従う。受領済みの別hashとの関係が未解決なら、元importを取り消しても自動で解除しない。
-
-識別メタのNULL許容は同日追加の許可ではない。同じsettlement_dateのactive import（completed / completed_partial）をcsv_imports起点で取得し、sourceが取得できない行やmachine_no / settlement_noの片方・両方がNULLの行も除外しない。同日activeが存在し、取込み対象側または比較先側の識別メタが不足すれば、BIZは追加確認によらずsource_identity_conflictで拒否する。同日activeなしはこの追加guardの対象外だが、全受領sourceとの別hash衝突検査等は維持する。NULLを仮キーや衝突なしへ読み替えない。
-
-初導入の本番は[ADR D3 / D8](../adr/2026-09-18-stocktake-time-evidence.md)の新形式で開始し、旧Z004試験取込みを持ち込まない。現行csv_importsのimported_atはアプリ取込み日時であり、精算日時や識別メタのbackfill元にはできない。原本がlayout Aでも旧importの保存情報は不足し得る。sourceなし/メタ不足のactive importが存在すれば、本番前preflight用に全日付を列挙できるよう行を保持し、比較先としての拒否も維持する。DB列追加だけで本番準備完了にせず、抽出→保存の実装を必須とする。過去日を理由に取込みを拒否する新しい日付制約は置かない。migrationは売上・在庫移動・履歴を削除せず、開発/試験DBの整合した作り直しは別作業とする。
-
-構文・種別・サイズ/行数の検証を通った資料だけ受領する。preview時の短い受領TXは売上commit TXと独立し、保留・中止・業務TX失敗・取込み取消でもsourceを消さない。既存のactive hash重複拒否はcsv_importsで継続する。受領済みを取込み完了件数へ含めない。
-
-原本メタと初回受領は不変（初回受領の読取りのIDをNULLへ戻す例外は、上の表のその列の行）。raw売上・商品名・JAN・file本体は格納しない。同じ精算の別hashはBIZがpreview/commit TXの両方でsource_identity_conflictとして拒否する。照合候補は取消済み・未取込みsourceを含める。精算系列（番号のリセット区間）を証明する手段はないため、同じ帳票種別でmachine_no・settlement_noが一致する別hashは常に衝突とする。それでも(machine_no, settlement_no)へ一律UNIQUEは張らない。衝突した資料も受領して拒否証拠を残すためで、衝突の判定と拒否はBIZが行う。
-
-欠落表示の保存根拠はidentity_rejection_code/identity_rejected_atであり、保留集合ではない。BIZのread-only準備照会は拒否記録ありかつ当該sourceのactive importなしを抽出し、settlement_missingへ渡す。成功取込み後も証拠自体は保持し、取消でactiveがなくなれば再び表示対象とする。未提出/欠番の推測行を作らない。
-
-共有JAN行の保留集合はDBに新しい表やcsv_importsの仮行を作らず、同fileの再選択・再previewで再生成する。sourceだけでは元明細を復元できない。全行0でも再確認・相殺の判定の用途がある資料は受領し、解消後も売上0のimportとして完了できる。sale_recordsに0/0行を新設する理由にはしない。
-
----
-
-計画中の改訂: [時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) D2〜D5 / D8（proposed）。資料受領記録と売上取込み状態を分離する。以下は現行スキーマであり、新列・新表は未実装。
+- 精算回数・マシンNo. を読めない Z004（従来の形）は取り込まない（preview で拒む。[32](../function-design/32-biz-csv-import-service.md) の新契約）。
+- 同じ machine_no・settlement_no の active な取込み（completed / completed_partial）は 1 つだけ（BIZ が preview と確定の TX で検査する。取り消した取込みは比べない）。DB の UNIQUE は張らない（取消の後の取り込み直しで同じ番号の行が複数になる）。
+- 精算日と精算回数の順の食い違い、別の machine_no、欠けた精算回数の知らせは BIZ が active な取込みの `settlement_date`・`settlement_no`・`machine_no` から判定する（新しい表を持たない）。
+- 確定で作る Z004 の movement は `business_date = settlement_date`、`phase = 1`、`settlement_no` を持つ（[tracking](tracking-system-tables.md) の同名の契約）。
+- 移行: 既存の取込みがある DB では runtime の migration は止まる（tracking の「移行」。開発・試験 DB の作り直しは別の承認）。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 
@@ -82,6 +65,7 @@ Z004ファイルの取込み履歴。重複取込み防止、ロールバック�
 - settlement_dateが同じ ＋ 別のfile_hash ＋ 既存がcompleted/completed_partial → 既存分を残す追加取込みとして確認する
 - 確認時は同日のactive importを全件表示し、承認後は新規分だけINSERTする
 - byte違いで同内容の復旧用ファイル等を選んでいないかをoperatorが確認し、キャンセル時は何もしない
+- D-118 の runtime からは、Z004 のケース2・3は精算回数で決める（上の「計数の置き場と在庫の求め直しの契約」）: 同じ machine_no・settlement_no の active があれば別 hash でも拒否し、別の精算回数なら確認なしに追加する。利用者確認は日報の側（§12b 以降）だけに残る（D-071 の Superseded in part の行）
 
 **ケース3: ファイル名が同じだが中身が違う（同じ日に2回精算した等）**
 - file_hashが異なるためケース2として処理される
@@ -214,7 +198,7 @@ Z002由来の取引キー・支払・現金等の集計行を保存する。日�
 | sort_order | INTEGER | NOT NULL | 表示順 |
 
 ### 設計意図
-- Z002はNEL / raw 0x85 を含む可能性があるため、改行・文字コード処理はIO parserで閉じる。
+- 改行・文字コード処理はIO parserで閉じる。持ち帰った Z 帳票と SD の file は CRLF だけで、NEL / raw 0x85 の行終端の実例は無い（2026-10 の見直しの事実の一覧。0x85 は CP932 の 2 バイト文字の中にだけ現れる）。正規化は防御として残す。
 - 支払・取引キーはreporting/accounting意味を持つが、在庫引落しの根拠にはならない。
 
 ---
@@ -380,7 +364,7 @@ validate_result
 
 **画面表示内容**:
 - ファイル名、精算日
-- 冪等性チェック結果（同一hashブロック/同日別hash追加確認/問題なし）
+- 冪等性チェック結果（同一hashブロック/同日別hash追加確認/問題なし。D-118 の runtime からは、同一hashブロック/同じ精算の別版の拒否/精算回数の無い file の拒否/問題なし）
 - 「○○件の売上を取り込みます（合計 ¥○○○）」
 - error_rowsがある場合: 「以下の○件はスキップされます」（JAN・商品名・個数・金額・理由を一覧表示）
 
