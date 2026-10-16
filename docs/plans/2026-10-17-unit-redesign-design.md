@@ -24,6 +24,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 2. spec-check → design（2026-10-17、起草役）: 触る正本（共通規則 SPEC-UNIT-D1・D2・D4・D5 と「入力の上限と安全な整数の範囲」の掛ける lane、22 §16、master-tables・transaction-tables の「単位と原価の精度の契約」、30 BIZ-01-D8・§4.4、31 の原価の段、51 UI-01b-D5）が、vC の変換・範囲の検査・旧版へ戻す手順と、単位を登録の後に一切変えない規則を契約として持ち、前提の文の一部が事実と合わない。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-119 で満たす。条件「未解決の設計の問いが無い」は、owner の判断事項（U1〜U8）が決まり、U5・U6 は店に聞く問いとして答えが無い間の既定を正本に書いたことで満たす。DB の作り直しの順は既定（原価の lane を先）を 22 §16 に書き、逆の順になるときに owner に諮る条件も書いた。残る外部前提（Contract Probe の P1）は原価の lane の起票の前に確かめるもので、設計の問いではない。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet と Matrix は起草役の commit（`17a2157a`・`e9151990`）にある。Coordinator は packet の全文（Goal・Ordinary Operation・Scope と PR #167 との所有表・AC・Design Readiness・Boundary / Wire Contract・Contract Ledger・Contract Probe・Data Safety）と Matrix の節の構成を読み、owner の決定（repo 外の回答台帳 TD-297）の写しに食い違いが無いこと、差分が docs だけであること（AC11）、追加の行に新しい実データが無いことを確かめた。DB の作り直しを原価の lane で 1 回にする順を採る。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `f4d0db64` で直し、Coordinator が差分（22 §16 の作り直しの手順と DB を見つける場所の表、30 の上書きの段の今と後の分割・`plu_dirty`・操作ログ）を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
