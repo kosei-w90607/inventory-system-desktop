@@ -891,7 +891,7 @@ fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<(String, String,
 
 ### 2.11a stocktake_repo — 棚卸し記録詳細取得（65 slice 4c 用）
 
-本節の開始時snapshot・確定時live在庫基準の補正は、現行実装の表示契約である。D-118 の新方式は冒頭の proposed 節を正とし、完了は補正の movement を作らず、差異は [35](35-biz-stocktake-service.md) の新契約の「読取り」（効く計数の値 − その計数の直前の鍵までの帳簿）で返す。
+本節の開始時snapshot・確定時live在庫基準の補正は、現行実装の表示契約である。D-118 の新方式は冒頭の proposed 節を正とし、完了は補正の movement を作らず、差異は [35](35-biz-stocktake-service.md) の新契約の「読取り」（効く計数の値 − その計数に入っている記録だけから求めた帳簿）で返す。
 
 #### get_stocktake_record_detail
 

@@ -2,37 +2,37 @@
 
 ## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の形。以下は runtime の migration の論理の列と制約で、今の schema にあるという記述ではない。migration の番号・index 名は runtime が registry と照合して採る。旧 ADR（時点証拠）の `stocktake_recounts`・`stocktake_recount_flags`・`reconciliation_version`・observation_kind 以下の証拠の列・`stocktake_adjustment_kind`・`stocktake_recount_id`・`stocktake_legacy_movement_ceiling` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D3・D9・D10）の保存の形。以下は runtime の migration の論理の列と制約で、今の schema にあるという記述ではない。migration の番号・index 名は runtime が registry と照合して採る。旧 ADR（時点証拠）の `stocktake_recounts`・`stocktake_recount_flags`・`reconciliation_version`・observation_kind 以下の証拠の列・`stocktake_adjustment_kind`・`stocktake_recount_id`・`stocktake_legacy_movement_ceiling` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。
 
-### 並びの鍵（SPEC-STK-CNT-D1）
+### 並びの鍵と計数（SPEC-STK-CNT-D1・D3）
 
 | 保存先 | 足す列 | 制約と意味 |
 |---|---|---|
-| inventory_movements | business_date TEXT | NOT NULL、YYYY-MM-DD。入出庫は header の日付（`receiving_date`・`return_date`・`sale_date`・`disposal_date`）、Z004 は `csv_imports.settlement_date`、初期在庫は登録日。取消で足す逆向きの movement は元の業務記録の日付 |
+| inventory_movements | business_date TEXT | NOT NULL、YYYY-MM-DD。入出庫は header の日付（`receiving_date`・`return_date`・`sale_date`・`disposal_date`）、Z004 は `csv_imports.settlement_date`、初期在庫（`reference_type` が NULL）は登録日。取消で足す逆向きの movement は元の業務記録の日付 |
 | inventory_movements | phase INTEGER | NOT NULL、0/1 の CHECK。Z004 の movement は 1、ほかは 0 |
 | inventory_movements | settlement_no INTEGER | phase=1 なら NOT NULL（`csv_imports.settlement_no`）、phase=0 なら NULL（table の CHECK） |
-| stock_counts（新設） | id INTEGER PK AUTOINCREMENT、product_code TEXT FK、count_value INTEGER、business_date TEXT、phase INTEGER、settlement_no INTEGER、stocktake_item_id INTEGER FK NULL、counted_at TEXT | append-only（UPDATE・DELETE しない）。count_value は 0 以上の整数（在庫の数量の単位。長さは cm）。phase=0（「前」）なら settlement_no は NULL、phase=1（「後」= 精算 settlement_no の直後）なら NOT NULL（table の CHECK）。stocktake_item_id は棚卸しの画面から保存した計数だけが持つ。counted_at は保存の時刻（表示用。前後の判定に使わない）。id は同じ鍵の中の表示の順にだけ使う |
+| stock_counts（新設） | id INTEGER PK AUTOINCREMENT、product_code TEXT FK、count_value INTEGER、count_kind TEXT、business_date TEXT、settlement_no INTEGER、seen_movement_id INTEGER、stocktake_item_id INTEGER FK NULL、counted_at TEXT | append-only（UPDATE・DELETE しない）。count_value は 0 以上の整数（在庫の数量の単位。長さは cm）。count_kind は `default`（「数を保存」「0 にする」）/ `fresh`（「入れ直す」）の CHECK。`fresh` なら settlement_no（保存の時点で取り込み済みの active な Z004 の最大の精算回数、無ければ 0）と seen_movement_id（保存の時点の `MAX(inventory_movements.id)`、無ければ 0）が NOT NULL、`default` なら両方 NULL（table の CHECK）。fresh の business_date は保存の日（今日）。stocktake_item_id は棚卸しの画面から保存した計数だけが持つ。counted_at は保存の時刻（表示用。窓の判定に使わない）。id は保存の順で、fresh な計数が先に保存された計数を置き換える判定と表示に使う |
 
-- 並びの鍵は `(business_date, phase, settlement_no, after_settlement, id)` の辞書順。movement の after_settlement は 0、stock_counts は phase=1 なら 1、phase=0 なら 0。
-- index: stock_counts の `(product_code, business_date, phase, settlement_no)`、inventory_movements の `(product_code, business_date, phase, settlement_no)`。
+- 鍵は ADR D1 の表（movement は `(business_date, phase, settlement_no, 0)`、初期在庫は 4 つ目を −1 とみなす、既定の計数は `(business_date, 0, NULL, 0)`、fresh な計数は `(business_date, 1, settlement_no, 1)`）。記録が計数に入っているかは鍵の大小でなく ADR D3 の窓で決める。
+- index: stock_counts の `(product_code, id)`、inventory_movements の `(product_code, business_date, phase, settlement_no)`。
 
 ### 求め直しと写し（SPEC-STK-CNT-D2・D3）
 
 - 写しは [master](master-tables.md) の `products.stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`。BIZ の求め直しの関数だけが書く（[31](../function-design/31-biz-inventory-service.md) の同名の節）。
-- 求め方: 効く計数（最も後の鍵の計数。同じ鍵に値の違う計数があれば単独では効かせない）の値 + それより後の鍵の `is_voided=0` の movement の quantity の和。計数が無ければ全ての `is_voided=0` の movement の和。決まらない記録（ADR D3 の 1〜3）は写しの値では適用し、範囲は適用する・しないの最小と最大。
-- `stock_after` は、その movement を保存した TX で求め直した写しの値（後入力で前に記録が入っても書き換えない）。在庫推移を鍵の順で見せる要求は持たない（[65](../function-design/65-inventory-record-traceability.md)）。
+- 求め方: 効く計数（ADR D3 の「計数どうし」）の値 + ADR D3 でその計数に「入っていない」`is_voided=0` の movement の quantity の和。計数が無ければ全ての `is_voided=0` の movement の和。決まらない記録は写しの値では適用し、範囲は適用する・しないの最小と最大。計数の衝突は、計数値が最小のものを写しの土台にする。
+- `stock_after` は、その movement を保存した TX で求め直した写しの値（後入力で前に記録が入っても書き換えない）。在庫推移を鍵の順で求め直して見せる要求は持たない（[65](../function-design/65-inventory-record-traceability.md)）。
 - 計数は movement を作らない（棚卸しの補正の movement〈`movement_type='stocktake'`〉は新しく作らない。既存の行は D10 の作り直しで無くなる）。
 
 ### 棚卸し（SPEC-STK-CNT-D6）
 
 - `stocktakes` と `stocktake_items` は対象の一覧と評価の保存に残す。`stocktake_items.actual_count`・`counted_at` は、その明細の効く計数を表示のために写す（計数の値の正本は stock_counts）。`system_stock` は明細を作った時点の帳簿で、差異の計算に使わない参考値（表示する差異は 35 の新契約）。
-- 完了の TX で `valuation_cost_price`（その時点の原価）と `total_cost` を固定する（今のまま。評価数量は `max(その時点の在庫, 0)`）。足す列: `stocktake_items.valuation_quantity INTEGER NULL`（完了の TX で評価数量を保存。完了の前は NULL）、`stocktakes.cutoff_settlement_no INTEGER NULL`（完了の時点で取り込み済みの最後の精算回数。無ければ NULL）。どちらも完了の後に書き換えない。完了の後に入った記録による差は読取りで求め、保存しない（[35](../function-design/35-biz-stocktake-service.md) の新契約、owner の決定 TD-296）。
+- 完了の TX で `valuation_cost_price`（その時点の原価）と `total_cost` を固定する（今のまま。評価数量は `max(その時点の在庫, 0)`）。足す列: `stocktake_items.valuation_quantity INTEGER NULL`（完了の TX で評価数量を保存。完了の前は NULL）と、stocktakes の完了の時点のカーソル `cutoff_settlement_no`・`cutoff_movement_id`・`cutoff_count_id`（INTEGER NULL。完了の時点の取り込み済みの最大の精算回数・`inventory_movements` の最大 id・`stock_counts` の最大 id。無ければ 0。完了の前は NULL）。どれも完了の後に書き換えない。完了の後に入った記録による差は読取りで求め、保存しない（[35](../function-design/35-biz-stocktake-service.md) の新契約、owner の決定 TD-296）。
 - 自動の 0 の入力（auto_filled・force_fill）を持たない。完了の時点で廃番かつ在庫 0 の商品の明細は、未計数でも完了を止めない（計数の記録を作らない）。
 
 ### 移行（SPEC-STK-CNT-D10）
 
 - 棚卸し（`stocktakes`）か Z004 の取込み（`csv_imports`）を 1 件でも持つ DB では、migration は何も変えずに失敗する（開発・試験 DB の作り直しは別の承認）。
-- 持たない DB では、同じ TX で列と表を足し、既存の movement の business_date を参照先の業務記録の日付（`reference_type` が NULL の初期在庫は `created_at` の日付）で埋め、phase=0 にし、全商品を求め直して写しを書く。失敗は全体を戻す。
+- 持たない DB では、同じ TX で列と表を足し、既存の movement の business_date を参照先の業務記録の日付（`reference_type` が NULL の初期在庫は `created_at` の日付）で埋め、phase=0 にし、全商品を求め直して写しを書く。求め直した値が移行の前の `stock_quantity` と違う商品は、件数と商品ごとの old / new を同じ TX の `operation_logs`（`integrity_fix` と同じ detail の形）に残し、起動の後に整合性の画面で知らせる。失敗は全体を戻す。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 

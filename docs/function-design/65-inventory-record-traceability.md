@@ -4,7 +4,7 @@
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D6）の追跡の側。旧 ADR（時点証拠）の補正区分（completion / rollback_compensation / recount）・独立再実測の記録・移行の版の表示は持たない（置き換えた）。一般の業務記録の取消機能は同時に実装しない。
 
-- 計数は movement を作らない（D-118 の runtime から、棚卸しの確定の補正の movement〈`movement_type='stocktake'`〉は新しく作らない）。商品別の在庫変動の履歴には、計数を「数を確認（{数}、{日付}）」の行として movement と並びの鍵の順に混ぜて出す（読取りの合成。計数は `stock_counts` から読む）。
+- 計数は movement を作らない（D-118 の runtime から、棚卸しの確定の補正の movement〈`movement_type='stocktake'`〉は新しく作らない）。商品別の在庫変動の履歴には、計数を「数を確認（{数}、{日付}）」・「数を入れ直し（{数}、{日付}）」の行として movement と並びの鍵の順に混ぜて出す（読取りの合成。計数は `stock_counts` から読む）。
 - `stock_after` は記録を保存した時点の写しの値で、後入力で前に記録が入っても書き換えない（[tracking](../db-design/tracking-system-tables.md) の同名の契約）。鍵の順に並べ直した推移を求めて見せる機能は持たない。
 - 棚卸し詳細 `/stocktake/records/$stocktakeId` の商品行は、効く計数の値と日付・差（[35](35-biz-stocktake-service.md) の新契約の「読取り」）を出し、「今の数を入れ直す」から [73](73-ui-stocktake.md) の計数へ進める（過去の数の直接の編集は置かない）。完了した評価額は変わらないと明示し（非遡及）、完了の後に入った記録による差のある明細と評価額の差の合計を参考として出す（[35](35-biz-stocktake-service.md) の新契約の「完了」、owner の決定 TD-296）。
 - 確定の差異件数は、完了の時点で計数のある明細のうち差が 0 でないものの数（movement からは数えない）。

@@ -4,7 +4,7 @@
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2）と D-051 の Superseded in part（D-118）。以下の §21.3〜§21.7 の「SUM との突合」は現行の実装契約で、runtime で次に置き換える。
 
-- `run_integrity_check` は、各商品の写し（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）と、[31](31-biz-inventory-service.md) の `recompute_stock` が求める値（写しを書かない読取りの版）を比べ、違う商品を返す。写しは在庫を動かす全ての TX で求め直すので、違いは不具合か DB の外からの編集でだけ起きる。
+- `run_integrity_check` は、各商品の写し（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）と、[31](31-biz-inventory-service.md) の `derive_stock`（`recompute_stock` と同じ規則で、写しを書かない読取りの関数）が求める値を比べ、違う商品を返す。写しは在庫を動かす全ての TX で求め直すので、違いは不具合か DB の外からの編集でだけ起きる。
 - `fix_integrity` は、違う商品について `recompute_stock` の結果を写しへ書く（movement を作らない）。同じ TX の `integrity_fix` 操作ログ（old / new、D-051 の Audit）の必須と、確認の操作は変えない。
 - 計数は movement を作らないので、「SUM と一致」は計数のある商品では成り立たない。突合の相手を SUM にしない。
 - 整合性の補正を計数の証拠にしない（計数を作らない）。

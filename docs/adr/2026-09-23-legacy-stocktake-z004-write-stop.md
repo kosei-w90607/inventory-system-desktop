@@ -6,7 +6,7 @@ accepted — 2026-09-24、㉘ runtime ①（packet `docs/archive/plans/2026-09-2
 
 対象は REQ-205 / REQ-401。停止は現行 build に固定し、⑤（一括切替）で本 ADR を superseded にして解除する。
 
-改訂（2026-10-16、[decision-log](../decision-log.md) D-118）: 時点証拠 ADR は [棚卸しの数の置き場と在庫の求め直しの ADR](2026-10-16-stocktake-count-placement.md) に置き換わった。本 ADR の「⑤」は、置き換えた ADR の runtime が、棚卸しの計数・完了と Z004 の確定・取消を新しい経路で置き換えるのと同じ配布の単位を指す（同 ADR の SPEC-STK-CNT-D12）。停止の範囲・停止 error・解除を部分的に行わないこと（SPEC-STOP-D6）は変えない。
+改訂（2026-10-16、[decision-log](../decision-log.md) D-118）: 時点証拠 ADR は [棚卸しの数の置き場と在庫の求め直しの ADR](2026-10-16-stocktake-count-placement.md) に置き換わった。本 ADR の「⑤」は、置き換えた ADR の runtime が、棚卸しの計数・完了と Z004 の確定・取消を新しい経路で置き換えるのと同じ配布の単位を指す（同 ADR の SPEC-STK-CNT-D12 の (b)。停止に触れない (a) の単位は先に入れてよく、停止を外さない）。停止の範囲・停止 error・解除を部分的に行わないこと（SPEC-STOP-D6）は変えない。
 
 ## Context
 
@@ -40,7 +40,7 @@ BIZ-06 は `BizError::ValidationFailed(<BIZ-06 停止文言>)`、BIZ-03 は `Biz
 
 ### SPEC-STOP-D6: 解除は ⑤ だけで行う
 
-停止は ⑤（migration 登録・共通 writer・新 command / bindings / 画面の一括切替。2026-10-16 の改訂からは、置き換えた ADR の SPEC-STK-CNT-D12 の配布の単位）でだけ外す。部分的な解除（例: 開始だけ許可、同日 import がなければ commit を許可）をしない。解除時に本 ADR を superseded にして記録する。
+停止は ⑤（migration 登録・共通 writer・新 command / bindings / 画面の一括切替。2026-10-16 の改訂からは、置き換えた ADR の SPEC-STK-CNT-D12 の (b) の配布の単位）でだけ外す。部分的な解除（例: 開始だけ許可、同日 import がなければ commit を許可）をしない。解除時に本 ADR を superseded にして記録する。
 
 ## Rejected Options
 
@@ -72,4 +72,4 @@ BIZ-06 は `BizError::ValidationFailed(<BIZ-06 停止文言>)`、BIZ-03 は `Biz
 
 ## Revisit Trigger
 
-⑤（migration・新 writer・新 command・新 UI の一括切替。2026-10-16 の改訂からは、[棚卸しの数の置き場と在庫の求め直しの ADR](2026-10-16-stocktake-count-placement.md) の runtime のうち SPEC-STK-CNT-D12 の配布の単位）の実装 lane。解除時に本 ADR を superseded にし、旧本体 `legacy_*` と停止の定数・案内を撤去する。
+⑤（migration・新 writer・新 command・新 UI の一括切替。2026-10-16 の改訂からは、[棚卸しの数の置き場と在庫の求め直しの ADR](2026-10-16-stocktake-count-placement.md) の runtime のうち SPEC-STK-CNT-D12 の (b) の配布の単位）の実装 lane。解除時に本 ADR を superseded にし、旧本体 `legacy_*` と停止の定数・案内を撤去する。

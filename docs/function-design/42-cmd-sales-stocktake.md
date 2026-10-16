@@ -6,15 +6,15 @@
 
 | command | wire 入力 | wire 出力 |
 |---|---|---|
-| save_stock_count | request: SaveStockCountRequest（`product_code`・`count_value: i64`・`business_date: String`・`from_recheck_list: bool`・`stocktake_item_id: Option<i64>`） | Result<StockCountSaveResult, CmdError> |
-| preview_stock_count_placement | `product_code`・`business_date`・`from_recheck_list` | Result<CountPlacementPreview, CmdError>（`phase`・`settlement_no`・`later_count_exists`） |
+| save_stock_count | request: SaveStockCountRequest（`product_code`・`count_value: i64`・`fresh: bool`・`business_date: String`・`stocktake_item_id: Option<i64>`） | Result<StockCountSaveResult, CmdError> |
+| preview_stock_count_placement | `product_code`・`business_date` | Result<CountPlacementPreview, CmdError>（`later_count_exists`） |
 | zero_uncounted_items | `stocktake_id`・`product_codes: Vec<String>` | Result<Vec<StockCountSaveResult>, CmdError> |
 | list_recheck_products | なし | Result<Vec<CountRecoveryTarget>, CmdError> |
 
 - CMD は PC の今日（`today`、ローカルの日付）を BIZ へ渡す（[35](35-biz-stocktake-service.md) の新契約。BIZ は時計を読まない）。UI から today を受けない。
-- StockCountSaveResult は保存した計数の `id`・`phase`・`settlement_no`、求め直しの後の `stock`・`stock_range_low`・`stock_range_high`・`recount_reasons`（[40](40-cmd-product.md) の enum）、`later_count_exists`。
+- StockCountSaveResult は保存した計数の `id`・`count_kind`（`default` / `fresh`）、求め直しの後の `stock`・`stock_range_low`・`stock_range_high`・`recount_reasons`（[40](40-cmd-product.md) の enum）、`later_count_exists`。
 - `complete_stocktake` の入力から `force_fill` を外す。拒否は [40 の回復型](40-cmd-product.md) の `completion_blocked`。
-- get_stocktake_items / get_stocktake_record は、明細ごとに効く計数の値・置き場の日付、写しの在庫と範囲、要再確認の理由、差異（35 の新契約の「読取り」）を BIZ から透過する。
+- get_stocktake_items / get_stocktake_record は、明細ごとに効く計数の値・種類・日付、写しの在庫と範囲、要再確認の理由、差異（35 の新契約の「読取り」）を BIZ から透過する。get_stocktake_record は完了の後の差（差のある明細と差の合計。35 の新契約の「完了」）も透過する。
 - runtime では新しい command の tauri / specta 属性、collect_commands への登録、旧 update_count の公開登録の削除、bindings の生成と全 caller / mock の切替を一緒に行う。
 
 ### 22.1 モジュール構成

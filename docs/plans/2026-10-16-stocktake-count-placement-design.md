@@ -42,7 +42,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9（TD-296） | 1（TD-296、起草中の owner の決定 6 点。TD-261〜TD-268 は起票の前の見直しの採否で、本 lane の介入に数えない） | 3（Q-A の確認 1、Ready 1、merge 1） | 5 | 9 = 1 + 3 + 5 |
+| 介入 | 9（TD-296） | 7（判断点ごとに数えた。TD-296 の本 lane に効く判断点 6〈共有 JAN、停止の一括の解除、入れ直しを省く操作を置かない、範囲の表示、完了の後の差、POS の sample は合成だけ〉と Q-A 1〈TD-298〉。TD-261〜TD-268 は起票の前の見直しの採否で、本 lane の介入に数えない。round 1 の是正、Review Response 参照） | 2（Ready 1、merge 1） | 0 | 9 = 7 + 2 + 0 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -87,23 +87,27 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 ## Ordinary Operation
 
-設計を含む変更なので、棚卸しの期間と普段の日の操作列を置く。本 lane は docs だけで、表の通常運用は後続の runtime（本 lane の runtime の 2 つの配布の単位と、Z004 を SD から読む経路〈D-111 の runtime・lane 2〉）の後に成り立つ。**この文書を完了できる**（設計正本がそろう）ことと、**通常運用を達成できる**（店で計数と取込みが動く）ことは別で、後者は本 lane では未達。下の「S_D」は日付 D の最初の精算、「後」は要再確認の一覧からの同じ日の入れ直しの置き場。
+設計を含む変更なので、棚卸しの期間と普段の日の操作列を置く。本 lane は docs だけで、表の通常運用は後続の runtime（本 lane の runtime の 2 つの配布の単位と、Z004 を SD から読む経路〈D-111 の runtime・lane 2〉）の後に成り立つ。**この文書を完了できる**（設計正本がそろう）ことと、**通常運用を達成できる**（店で計数と取込みが動く）ことは別で、後者は本 lane では未達。各行の結果は ADR D3 の窓の判定表から導いた（round 1 の是正、Review Response 参照）。「既定の計数」は「数を保存」、「fresh な計数」は「入れ直す」。
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| 棚卸しの期間の営業中（日付 D）。棚卸しは開始済み | 商品を数えて「数を保存」（日付は既定の今日） | 在庫 = 数えた数 + それより後の記録。S_D の Z004 は決まらない精算になる | — | ADR D1・D5 |
-| 同じ日の締め | 精算 → SD を差す → Z004 を取り込む | 取込みの結果に「数え直しが必要な商品」の一覧（数えた日に S_D でその商品が売れた・戻った〈個数 ≠ 0 か金額 ≠ 0〉、または同じ日付の入出庫があった商品）。在庫は範囲で出る | — | ADR D3。Z004 を SD から読むのは D-111 の runtime・lane 2（それまではファイルを選ぶ経路） |
-| 一覧がある | 棚で見て一覧から「入れ直す」 | 「後」（S_D の直後）に置かれ、要再確認が解ける | — | ADR D5 |
-| 翌日の営業中に入れ直す | 一覧から入れ直す（今日は S_D の日付と違う） | 今日の「前」に置かれ解ける（今日売れれば今日の分だけまた要再確認） | — | ADR D3 |
-| 紙やメモに数えて翌日に入れる | 「前の日の分を入れる」で日付 D を選んで保存 | D の「前」に置かれ、D の精算が決まらない精算になる。後の置き場に数があれば「後の数が既にあり、そちらが効きます」 | — | ADR D5。日付の選び忘れは受け入れた穴（R6） |
-| 休業日に数えた | 保存 | 次の営業日の精算が決まらない精算になり、取り込んだ後の入れ直しで解ける | 次の精算の取込み | ADR D3 |
-| 締めの取込みの後に客へ売り、その日にもう一度精算した | 2 回目の精算を取り込む | 「後」の計数にとって同じ日の次の精算は決まらない精算で、売れた商品は要再確認 | — | 店の回答（TD-279）。2 回目の精算をしない日は受け入れた穴（R1） |
-| 大晦日 | 締め → 取込み → 入れ直し → 「棚卸しを完了」 | 決まらない精算の未取込み・要再確認・未計数があれば一覧で拒まれる。未計数は「0 にする」（選んだ商品・まとめて）。全て片付くと評価額（総額）が固定される | 締めが翌日なら完了も翌日 | ADR D6 |
+| 棚卸しの期間の営業中（日付 D）。棚卸しは開始済み | 商品を数えて「数を保存」（既定の計数、日付は既定の今日） | 在庫 = 数えた数 + 計数に入っていない記録。D の全ての精算と D の日付の入出庫は決まらない | — | ADR D3・D5 |
+| 同じ日の締め（D の 1 回目の精算） | 精算 → SD を差す → Z004 を取り込む | 計数を持つ全ての商品が求め直され、取込みの結果に「数え直しが必要な商品」の一覧（この取込みで求め直した商品のうち要再確認の商品。D の精算でその商品が売れた・戻った〈個数 ≠ 0 か金額 ≠ 0〉、または D の日付の入出庫があった商品）。在庫は範囲で出る | — | ADR D3。Z004 を SD から読むのは D-111 の runtime・lane 2（それまではファイルを選ぶ経路） |
+| 一覧がある | 棚で見て一覧から「入れ直す」（fresh な計数） | 先に保存した計数を置き換え、取り込み済みの精算と保存の前に入れた入出庫を含む数になり、要再確認が解ける。今日のこれからの精算（2 回目）と、保存の後に今日の日付で入れる入出庫だけが決まらない | — | ADR D3・D5 |
+| 締めの取込みの後に客へ売り、その日にもう一度精算した | 2 回目・3 回目の精算を取り込む | fresh な計数にとって同じ日の n より後の全ての精算が決まらない精算で、売れた商品は要再確認（3 回目も二重に引かない） | 入れ直し | 店の回答（TD-279）。その日にもう一度精算しない日は受け入れた穴（A1） |
+| 翌日の営業中に入れ直す | 一覧から「入れ直す」（今日は D と違う） | 今日の fresh な計数。今日の精算だけが決まらない（今日売れれば今日の分だけまた要再確認） | — | ADR D3 |
+| 誤って入れた数を直す | 商品の「入れ直す」 | 先に保存した計数（同じ日の既定の計数を含む）を置き換える | — | ADR D3・D5 |
+| 紙やメモに数えて翌日に入れる | 「前の日の分を入れる」で日付 D を選んで保存（既定の計数） | D の全ての精算と D の日付の入出庫が決まらない。それより後の計数（D3 の「計数どうし」）が既にあれば「後の数が既にあり、そちらが効きます」 | — | ADR D5。日付の選び忘れは受け入れた穴（R6） |
+| 同じ日に紙の古い数を後から入れた（棚の数を入れ直した後） | 「前の日の分」ではなく今日の日付で「数を保存」 | fresh な計数の後に保存した今日の既定の計数は fresh と重なり、値が違えば要再確認（衝突）。写しは小さい方の数を土台にする | 入れ直す | ADR D3 の「計数どうし」 |
+| 休業日（その日に精算が無い日）に数えた | 「数を保存」 | 次の精算日の精算の全体が決まらない精算になる（過剰側、H4）。取り込んだ後の入れ直しで解ける | 次の精算の取込み | ADR D3 |
+| 精算の欠けがある（取り込み済み 100・102 が D、101 が未取込み） | 「棚卸しを完了」 | D の計数があれば `settlement_pending` で拒まれる（d_100 ≤ D ≤ d_102） | 101 を取り込む | ADR D6 の 1 |
+| 大晦日 | 締め → 取込み → 入れ直し → 「棚卸しを完了」 | 未取込みの精算・要再確認・未計数があれば一覧で拒まれる。未計数は「0 にする」（選んだ商品・まとめて）。確認の文で「今日の最後の精算を取り込みましたか」を確かめる。全て片付くと評価額（総額）が固定される | 締めが翌日なら完了も翌日 | ADR D6（最後の精算の取込み忘れは H2） |
 | 年明けに 12/31 の納品書を入れる | 入庫を日付 12/31 で保存 | 12/31 に数えた商品なら要再確認になり在庫は範囲で出る。完了した評価額は変わらず、棚卸しの記録に差（参考）が出る | 入れ直し | ADR D6（TD-296） |
-| Z004 の取込みで精算回数が飛んだ | 取り込む | 「精算 n が取り込まれていません」。後から n を取り込めば、その位置に入る | — | ADR D4 |
+| 正常な行が全て 0 の Z004（その精算で PLU の売上が無い） | 取り込む | 売上も在庫の変動も無いが、精算として記録され、欠けにも決まらない精算の判定にも入る | — | ADR D4 |
+| Z004 の取込みで精算回数が飛んだ | 取り込む | 「精算 n が取り込まれていません」。後から n を取り込めば、計数を持つ全ての商品が求め直される | — | ADR D4・D2 |
 | 精算回数の無い file・同じ精算の別の資料・レジの日付か番号が合わない file を選んだ | preview | 拒まれ、理由が出る | 正しい file を選び直す | ADR D4 |
-| 取込みを取り消した | 取消 | 売上と在庫の変動が無効になり、在庫は求め直され、要再確認の一覧が出る | 正しい file を取り込み直す | ADR D7 |
-| 色違いで同じ JAN の商品がスキャンで売れた | Z004 を取り込む | 売上だけが記録され（先頭の商品）、どの候補の在庫も動かない。在庫連動にしようとすると「同じ JAN の商品が複数あるため、在庫連動にできません」 | 店内コードの lane | ADR D4（TD-296） |
+| 取込みを取り消した | 取消 | 売上と在庫の変動が無効になり、計数を持つ全ての商品とその取込みの商品が求め直され、要再確認の一覧が出る | 正しい file を取り込み直す | ADR D7 |
+| 色違いで同じ JAN の商品がスキャンで売れた | Z004 を取り込む | 売上だけが記録され（先頭の商品）、どの候補の在庫も動かない。在庫連動にしようとすると「同じ JAN の商品（{商品コード}）があるため、在庫連動にできません」（`validation`） | 店内コードの lane | ADR D4（TD-296） |
 | 連動していなかった商品を在庫連動にする（その間に Z004 の売上がある） | 商品フォームで在庫連動を on | 「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」で拒まれる | 数を入れてから on | ADR D8 |
 
 ## Scope
@@ -131,7 +135,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - code・migration・bindings・test（runtime の lane。backlog「棚卸しの数の置き場と在庫数の求め直しの runtime」）。
 - lane 2（売上の SD からの一括取込み・EJ の控えの閲覧・日報の同日追加の守り）、lane 3（日報の紙と意味づけ）。
-- preview → commit の 2 段、`completed_partial`、`pos_stock_sync` の切替の撤去（owner の決定が無い。Q9 = c の読みは下の Q-A）。
+- preview → commit の 2 段、`completed_partial`（owner の決定が無い）、`pos_stock_sync` の切替の撤去（owner が TD-298 で切替を残すと確かめた）。
 - 共有 JAN の商品群（Q5、店内バーコードの lane）。
 - D-111・D-117 の段、PLU の書出し（33 は旧 ADR を引く 1 段だけ直した）。
 - `docs/Plans.md`（closeout）、`docs/diagrams/`（現行の実装の図）、`docs/research/`、archive、`docs/project-profile.md`・`docs/code_review.md`（workflow の file。NEL の文は parser の振舞いとして今も正しい）。
@@ -149,6 +153,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC6（前提の訂正）: `rg -c 'line separators may include' docs/project-memory.md`・`rg -c 'or external/tax submissions' docs/project-memory.md`・`rg -c 'ECR\+ の終了後に精算を続けられるかは未確認' docs/project-memory.md`・`rg -c '最大 31 日の遅れ）を覆う値' docs/function-design/37-biz-daily-report-import-service.md`・`rg -c '取扱説明書の「精算ごとにリセット」と一致しない。意味は' docs/function-design/29-io-ej-parser.md`・`rg -c 'Z002はNEL / raw 0x85 を含む可能性があるため' docs/db-design/pos-tables.md` がどれも 0（開始はどれも 1）。
 - AC7（backlog）: `rg -c '^- \*\*棚卸しの数の置き場と在庫数の求め直しの runtime\*\*' docs/backlog.md`・`rg -c '^- \*\*売上の SD からの一括取込みと EJ の控えの閲覧\*\*' docs/backlog.md`・`rg -c '^- \*\*日報の紙と意味づけ\*\*' docs/backlog.md` がどれも 1（開始はどれも 0）。
 - AC8（docs だけ、D-111・D-117 の段）: `git diff --name-only ea15360d HEAD -- src src-tauri scripts package.json package-lock.json` の出力が空。`diff <(awk '/^## D-111/,/^## D-113/' "$OLD/docs/decision-log.md") <(awk '/^## D-111/,/^## D-113/' docs/decision-log.md)` と `diff <(awk '/^## D-117/,/^## D-118/' "$OLD/docs/decision-log.md") <(awk '/^## D-117/,/^## D-118/' docs/decision-log.md)` は、後者の末尾に `## D-118` の見出しの行が増えるだけ（`$OLD` は開始 HEAD の展開先。開始の版には D-118 が無く awk が file の終わりまで読む）。
+- AC10（round 1 の是正: 窓の原理と帰結。開始は `ef5debeb`）: `rg -c '^\*\*原理\*\*: 記録 R と計数 C' docs/adr/2026-10-16-stocktake-count-placement.md` が 1（開始 0）。`rg -c 'seen_movement_id' docs/db-design/tracking-system-tables.md` が 1（開始 0）。`rg -c 'd_a ≤ X ≤ d_b' docs/function-design/35-biz-stocktake-service.md` が 1（開始 0）。`rg -c 'derive_stock\(conn: &Connection, product_code: &str\)' docs/function-design/31-biz-inventory-service.md` が 1（開始 0）。`rg -l 'shared_jan_unresolved' docs --glob '!docs/archive/**' | wc -l` が 0（開始 2: 40・51）。`rg -c '^- 同じ鍵の中の順（保存の連番）は、D3 の判定には使わない' docs/adr/2026-10-16-stocktake-count-placement.md` と `rg -c '精算 n\+1 の精算日が d_n と同じ日' docs/adr/2026-10-16-stocktake-count-placement.md` がどちらも 0（開始はどちらも 1）。
 - AC9（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0・WARN 0。`cd src-tauri && cargo run --bin generate_traceability -- --check` が OK（ERROR 0・WARN 0）。`cd src-tauri && cargo test --test design_compliance_test` が pass。
 
 ## Design Readiness
@@ -159,7 +164,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - 必要な設計成果物（Design artifact selection の当たる行）: BIZ・IO・CMD の振舞い = updated in this PR（31・32・35・36・30・20・21・23・24）／command・DTO = updated in this PR（40・41・42。wire の変更は runtime の lane、下の Boundary / Wire Contract）／表・migration = updated in this PR（tracking・pos-tables・master-tables・transaction-tables・DB_DESIGN。migration の番号と実装は runtime）／operator workflow・文言 = updated in this PR（73・55・51・58・60・65・66・SCREEN_DESIGN・UI_TECH_STACK）／POS CSV の取り込む条件 = updated in this PR（32・23・pos-tables）／durable な判断 = updated in this PR（新しい ADR・D-118・D-051・D-071・D-109・D-116 の行・停止 ADR の改訂）。
 - plan にしかない durable な判断の昇格先: 決めたことは全て新しい ADR・D-118・各文書の新契約に置いた。packet にだけあるのは、規模と手法の数え、3 lane の分け方の提案、runtime への file の申し送り（Scope の末尾）、AC の数。
 - 前提・制約と、延期した design gap の follow-up:
-  - owner に確かめたい 2 点（答えが無いときは既定のまま。設計を止めない）: **Q-A** Q9 = c（「ファイルの経路は残し、精算回数の無い file は受けない」）は、商品ごとの在庫連動の切替（`pos_stock_sync`）を外す意味を含むか。a = 含まない（切替を残す。既定。今の振舞い）／b = 含む（切替を外し、全商品を在庫連動にする。後続の lane で設計）。推奨 a（突き合わせの Q9 の選択肢 (c) は「ファイルの経路だけ残す」で切替に触れず、台帳 TD-261 の写しも切替に触れない）。（もう 1 点の「完了の後の要再確認の評価額」は、owner が TD-296 で「評価額を変えず差を示す」と決めた。ADR D6・35・65・73・tracking に反映した。）
+  - owner に確かめた点: **Q-A** Q9 = c（「ファイルの経路は残し、精算回数の無い file は受けない」）は、商品ごとの在庫連動の切替（`pos_stock_sync`）を外す意味を含むか → owner が 2026-10-17 に a（含まない。切替を残す）と確かめた（repo 外の回答台帳 TD-298）。ADR D8 に反映した。完了の後の要再確認の評価額は、owner が TD-296 で「評価額を変えず差を示す」と決めた（ADR D6・35・65・73・tracking）。
   - 延期: lane 2・lane 3（backlog）、共有 JAN（Q5、店内バーコードの lane）、runtime（backlog。2 つの配布の単位）。延期が安全な理由: どれも今の code の振舞いを変えず、本 lane の決定と矛盾しない（lane 2 は本 lane の Z004 の契約を使い、lane 3 は在庫を動かさない日報だけを扱う）。今の店の棚卸しと Z004 の取込みは停止 ADR のとおり止まったまま（本 lane は停止を解かない）。
   - 外部前提: 下の Contract Probe。
 - 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検:
@@ -167,7 +172,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
   - 「STK-1・STK-2・取消の補償は構造上起きない」: 計数が movement を作らず、確定が在庫を動かさず、取消は無効にして求め直すことに依る。完了の評価数量は完了の時点の写しで、計数の時点の値ではない（owner 2026-09-16 の「いつ数えても年末時点へ繰り越す」）。
   - 「黙ってずれない」: 例外は ADR の Consequences の受け入れた穴（締めの後の販売で 2 回目の精算をしない場合、同じ精算で個数・金額とも 0 に打ち消し合う売りと戻り、部門キーの販売、日付の選び忘れ、日付のずれのうち PC の日付が前に寄った場合）で、owner が受け入れた（TD-266・TD-267）。
   - 「精算日と精算回数の順の食い違いは取り込まない」: レジの reset・入替・時計の戻りで、その後の Z004 が取り込めなくなる（止まる側）。Revisit で切替の前に決め直す。
-- 判定（ready / not ready）と理由: ready（plan-draft に進める）。理由: 設計の出力が上の正本と D-118 にあり、owner の判断事項は TD-261・TD-263〜TD-268 で決まり、素描の未決 3 つは owner の既存の原則から正本で決め、Q-A は既定が今の振舞いで設計を止めない。共有 JAN・停止の解除・入れ直しを省く操作・範囲の表示・完了の後の差は owner の決定 TD-296 で決まった。
+- 判定（ready / not ready）と理由: ready（plan-draft に進める）。理由: 設計の出力が上の正本と D-118 にあり、owner の判断事項は TD-261・TD-263〜TD-268 で決まり、素描の未決 3 つは owner の既存の原則から正本で決め、Q-A は TD-298 で確かめた。round 1 の是正で、計数が記録を含むかを 1 つの原理（ADR D3 の窓）から導き直した（Review Response 参照）。共有 JAN・停止の解除・入れ直しを省く操作・範囲の表示・完了の後の差は owner の決定 TD-296 で決まった。
 
 ## Registration / Generation Obligations
 
@@ -193,10 +198,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - producer: CMD-10（`save_stock_count`・`preview_stock_count_placement`・`zero_uncounted_items`・`list_recheck_products`・`complete_stocktake`・`get_stocktake_items`・`get_stocktake_record`）、CMD-07（`parse_and_validate_csv`・`commit_csv_import`・`rollback_csv_import`）、CMD-01（商品の get / search / create / update）、共通の CmdError
 - consumer: UI-10（73）、UI-07 の Z004 の flow（55）、UI-01b（51）、UI-06a（58）、UI-06c（66）、UI-01c（60）
-- wire type: 新しい command 4 つの入出力（42）。`complete_stocktake` の入力から `force_fill` を外す。`commit_csv_import` の入力から `additionalImportConfirmed` を外す（Z004）。preview と `ImportResult` に `notices`、`ImportResult`・`RollbackResult` に `recheck_targets`（41）。商品の結果に `stock_recheck`・`stock_range_low`・`stock_range_high`（40）。CmdErrorKind に `stocktake_guard`、`StocktakeRecovery`（code 3 値）と `CountRecoveryTarget`（action 2 値・`block_reason` 3 値・`recount_reasons` 3 値）（40）
+- wire type: 新しい command 4 つの入出力（42）。`complete_stocktake` の入力から `force_fill` を外す。`commit_csv_import` の入力から `additionalImportConfirmed` を外す（Z004）。preview と `ImportResult` に `notices`、`ImportResult`・`RollbackResult` に `recheck_targets`（41）。商品の結果に `stock_recheck`・`stock_range_low`・`stock_range_high`（40）。CmdErrorKind に `stocktake_guard`、`StocktakeRecovery`（code 2 値。共有 JAN の拒否は `validation`）と `CountRecoveryTarget`（action 2 値・`block_reason` 3 値・`recount_reasons` 3 値）（40）
 - internal type: `DerivedStock`（31）、`NewMovement` の並びの鍵（21）、`csv_imports` の `machine_no: String`・`settlement_no: i64`（24）
 - precision/range: 計数の値は 0 以上で在庫の上限 `999999999` 以下（長さは cm）。範囲の 2 値と写しは在庫の上限の検査を通す（31）。精算回数は `i64` に収まる 10 進の整数だけ（23 の文字列を BIZ が整数にする）。日付は YYYY-MM-DD
-- round-trip path: 計数の保存 → BIZ が `stock_counts` に INSERT → 求め直し → 写し → UI が商品・棚卸しの一覧を取り直す。Z004 の preview → 検査と知らせ → 確定 → movement（並びの鍵）→ 求め直し → 結果の要再確認の一覧 → 73 の入れ直し（`from_recheck_list=true`）
+- round-trip path: 計数の保存 → BIZ が `stock_counts` に INSERT → 求め直し → 写し → UI が商品・棚卸しの一覧を取り直す。Z004 の preview → 検査と知らせ → 確定 → movement（並びの鍵）→ 求め直し → 結果の要再確認の一覧 → 73 の入れ直し（`fresh=true`。保存の時点の精算回数と movement の id を残す）
 - invalid input: 未来の日付の計数は `ValidationFailed`。負の数・上限超えは `ValidationFailed`。精算回数の無い file・別の machine_no・同じ精算の別版・精算の順の食い違いは `import_error`。完了の拒否は `stocktake_guard` の `completion_blocked`
 - compatibility: 本番の DB は無い。棚卸しか Z004 の取込みを持つ開発・試験 DB では runtime の migration が止まり、作り直しは別の承認（ADR D10）。旧い UI と新しい backend の混在は無い（1 つの build）。停止中の入口は新しい経路と同じ配布の単位で開く（ADR D12）
 
@@ -247,7 +252,7 @@ Test Design Matrix: [2026-10-16-stocktake-count-placement-design](test-matrices/
 - P1 精算回数は machine_no ごとに減少・重複せず、飛びは SD の本数の差と一致する: 持ち帰った EJ と Z 帳票の全期間の手元集計（事実の一覧 F-057・F-062・F-069、確かめた）→ 成立。reset と再出力は資料に現れていない（F-070・F-073・F-199 は取説と回答）→ 未観測。設計は reset を検知して取り込まない（ADR D4）側に倒した。
 - P2 精算は日付をまたがない時刻に行われる（精算日で手入力の置き場を決めてよい）: 全期間の精算の時刻の範囲（事実の一覧 `F-085`、確かめた）→ 成立。時計が戻ったのは 4 年で 1 回（事実の一覧 `F-079`、EJ の記録の日時の全期間の走査）→ 精算日と精算回数の順の食い違いは取り込まない（ADR D4）。
 - P3 店のレジは 1 台（machine_no は 1 種類）: EJ の 4 桁の欄と Z004 のマシンNo. が全期間で 1 種類（F-056・X-14）→ 成立。別の machine_no は取り込まない（ADR D4）。
-- P4 Z004 は精算ごとの差分で、時刻を持たない: F-017（確かめた）→ 成立（同じ精算の中の前後が決まらない根拠）。
+- P4 Z004 は精算ごとの差分で、精算の日時は持つが商品別の取引の時刻を持たない: F-017（確かめた）→ 成立（同じ精算の中の前後が決まらない根拠。精算の窓の根拠）。
 - P5 1 商品の求め直しは書くたびに行っても遅くない: repo 外の Q8 の範囲の調査 §5 の合成データの実測（Python 3 の `sqlite3`、SQLite 3.51.3、WSL、メモリ上の DB、4,000 商品・10 年・1 日 60 件の記録で 1 商品 0.004 ms）→ 成立（WSL の合成データ）。店の Windows の PC での値は**未実測**（runtime の lane が測る）。
 
 ## Data Safety
@@ -267,3 +272,25 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 Fill after review.
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+### Plan Review round 1（2026-10-17、head `ef5debeb`）
+
+- 判定: Claude 側 fresh Opus 5.5 = reject（P1 1・P2 5・P3 6）、Codex GPT-6 Astra = reject（P1 4・P2 7・P3 1）。
+- 是正の方針（Coordinator の裁定。owner の方針 TD-296 の 5a「個別の穴埋めでなく、1 つの原理から導き直す」）: findings の多くが「計数がどの記録を含むと分かるか」と「どの商品を求め直すか」の定め方に集まったので、相談役（Fable 5.1）の答えを採り、ADR D3 を 1 つの原理（記録と計数の窓の重なり）で書き直し、各 finding をその帰結として直した。受け入れた近似は A1（計数の日付に精算がある日は、それより後の日付の精算を入っていないとみなす。TD-266）だけ。
+- finding ごとの採否と直した所（番号は相談の relay の表の R1〜R13・H1〜H5・P3）:
+  - R1（P1、採る）: 入れ直し（fresh な計数）は保存の前に保存した同じ日付の入出庫を含む。保存の時点の `seen_movement_id` を 1 列持つ（tracking の `stock_counts`、ADR D3 の判定表・D5・D9、35）。吸収した集合を保存する案は採らない（ADR の Rejected）。
+  - R2・H1（P1、採る）: 既定の計数の決まらない精算 = その日付の全ての精算（無ければ後の最初の 1 本）。fresh な計数 = 同じ日の n より後の全ての精算（ADR D3 の判定表。同じ日の 3 本目の精算の二重の引きを塞ぐ）。
+  - R3・H3（P1・P2、採る）: D2 に求め直しの原理（入力が変わる TX はそれに依る全ての商品を求め直す）を置き、横断の表の「求め直す商品」の列で、精算の一覧が変わる TX は計数を持つ全ての商品とその取込みの商品（連動の on / off を問わない）にした（ADR、31、32）。
+  - R4（P1、採る）: 正常な行が全て 0 の Z004 は精算のメタだけの取込みとして受ける（ADR D4、32）。
+  - R5（P2、採る）: `settlement_pending` を欠けの隣の精算日で判定する式にした（ADR D6、35）。
+  - R6・R7（P2、採る）: fresh な計数は先に保存された計数を全て置き換え、既定の計数どうしと fresh の後の同じ日付の既定の計数は重なれば衝突（写しの土台は最小値）。商品の「入れ直す」を出した（ADR D3 の「計数どうし」・D1・D5、35、42、73）。置換えの記録・UPDATE の案と、締めの取込みの後に入れ直す案内は採らない。
+  - R8（P2、採る）: 初期在庫はどの計数より前で、決まらない入出庫に入れない（ADR D1・D3、tracking）。
+  - R9（P2、採る）: 完了の後の差は凍結した原価で旧数量と求め直した数量をそれぞれ評価し、丸めた総額を差し引く（ADR D6、35）。
+  - R10（P2、採る）: 共有 JAN の在庫連動の拒否は既存の `validation`（field `pos_stock_sync` か `jan_code`）に揃え、`shared_jan_unresolved` を外した（ADR D4、30、40、51）。現物の `src-tauri/src/cmd/mod.rs` の `CmdErrorKind` と 40 §5.3 の `ValidationFailedAt` で足りる。
+  - R11・R12（P2、採る）: Matrix の Negative Paths の共有 JAN を直し、writer ごとの後入力の行（`backdated_record_before_count_does_not_change_copy_per_writer`）を足した。
+  - R13（P2、採る）: 介入を判断点ごとに数え直した（消費 7、残り 2、予備 0、上限 9）。Q-A は TD-298 で確かめた。
+  - H2（採る）: 最後の精算の取込み忘れは受け入れた穴として Consequences に置き、73 の完了の確認の文に足した。
+  - H4・H5（採る）: 過剰側で安全な記録として Consequences に 1 行ずつ。入出庫を事象の前に入力した場合を受け入れた穴として Consequences に足し、店への問いを backlog に置いた。
+  - P3（採る）: 停止 ADR の D6 の括弧を ADR D12 の (b) に揃えた。読取りの求め直し `derive_stock` を 31 に置き 36 が使う。完了の後の差は完了の時点のカーソル（精算回数・movement・計数の id）で、完了日の完了の後の記録を入れない。migration は写しの不一致を黙って書き換えず操作ログに残し知らせる。取込みの結果の要再確認の一覧の範囲を 32・55・packet で「この取込みで求め直した商品のうち要再確認の商品」に揃えた。「Z004 は時刻を持たない」を「精算の日時は持つが商品別の取引の時刻を持たない」に直した（ADR Context、D-118、packet の Contract Probe P4）。
+- round 1 の反例を新しい D3 に当てた結果は、Ordinary Operation の各行と Matrix の D3・D6 の行（`fresh_count_all_later_same_day_settlements_are_undetermined`・`fresh_count_absorbs_movements_saved_before_it`・`settlement_pending_detects_gap_between_imported`・`fresh_count_supersedes_earlier_counts`・`default_count_after_fresh_same_day_conflicts`・`settlement_list_change_recomputes_all_counted_products`・`all_zero_z004_is_imported_as_settlement_only`）に置いた。
+

@@ -2,16 +2,17 @@
 
 ## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の棚卸し画面の側。既存の検索 / HID・候補の確認・一覧・確定の結果を保ち、計数は商品ごとに「数を保存」で即保存する（今の Excel と同じく、数えたら入れる）。旧 ADR（時点証拠）の「今から数える」（begin）・token・失効・応答不明の照会・legacy / auto_filled / force_fill の表示・非連動化の未調整の案内は持たない（置き換えた）。旧 UI-10-D10・§73.6 / §73.10 / §73.12 の current_stock の差異と「現在在庫」の主列、UI-10-F5・UI-10-D4 ほか以下の本文の force_fill の確認 dialog と再送信、とそれらのテストの oracle は、runtime の切替で本節に置き換える（以下の本文は現行の画面の契約）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D3・D5・D6）の棚卸し画面の側。既存の検索 / HID・候補の確認・一覧・確定の結果を保ち、計数は商品ごとに「数を保存」で即保存する（今の Excel と同じく、数えたら入れる。既定の計数）。棚を今見た数で直すときは「入れ直す」（fresh な計数。ADR D3・D5）。旧 ADR（時点証拠）の「今から数える」（begin）・token・失効・応答不明の照会・legacy / auto_filled / force_fill の表示・非連動化の未調整の案内は持たない（置き換えた）。旧 UI-10-D10・§73.6 / §73.10 / §73.12 の current_stock の差異と「現在在庫」の主列、UI-10-F5・UI-10-D4 ほか以下の本文の force_fill の確認 dialog と再送信、とそれらのテストの oracle は、runtime の切替で本節に置き換える（以下の本文は現行の画面の契約）。
 
 | 場面 | 表示・入力・focus |
 |---|---|
 | 商品を特定 | 商品名・コード・単位、写しの在庫（要再確認なら範囲と「要再確認」）、前に保存した数（読取り）。数量欄は空で focus。保存の日付 D を常に出す（既定は今日） |
-| 「前の日の分を入れる」 | 日付を選ぶ（今日より後は選べない）。選んだ日付と商品で後の鍵に計数が既にあれば、保存の前に「後の数が既にあり、そちらが効きます」（保存は拒まない。[42](42-cmd-sales-stocktake.md) の `preview_stock_count_placement`） |
+| 「前の日の分を入れる」 | 日付を選ぶ（今日より後は選べない）。選んだ日付の計数より後の計数が既にあれば、保存の前に「後の数が既にあり、そちらが効きます」（保存は拒まない。[42](42-cmd-sales-stocktake.md) の `preview_stock_count_placement`） |
+| 商品の「入れ直す」 | 前に保存した数があり、棚を今見て直すとき（打ち直しを含む）。日付は今日だけで選べない。保存は `fresh=true`（それより先に保存した数を置き換え、保存の前に入れた今日の入出庫を含む数になる） |
 | 保存 | 保存した数・在庫（写し・範囲）・差（35 の新契約の「読取り」）を反映し、保存済みの feedback を出して検索欄へ戻る。要再確認になれば理由を文字で出す |
 | 日付の変わり目 | 画面を開いたまま PC の日付が前の保存から変わったら、保存の前に「日付が変わりました（{前} → {今日}）。今日の分として保存しますか」を確かめる |
-| 要再確認の一覧 | 棚卸しの有無にかかわらず、画面の上部に「数え直しが必要な商品」の一覧（[35](35-biz-stocktake-service.md) の `list_recheck_products`）。各行に「入れ直す」。一覧からの保存は `from_recheck_list=true`（締めの取込みと同じ日なら「後」の計数になる。ADR D5） |
-| 完了 | 既存の常時の確認 dialog と取消不可の警告を保つ。`completion_blocked` なら、`block_reason` ごとに「数え直しが必要」「まだ数えていない」「取り込んでいない精算がある」の一覧を出す。未計数の一覧に「0 にする」（選んだ商品）と「残りをまとめて 0 にする」（確認 dialog を挟む）。帳簿の数とみなす選択は置かない |
+| 要再確認の一覧 | 棚卸しの有無にかかわらず、画面の上部に「数え直しが必要な商品」の一覧（[35](35-biz-stocktake-service.md) の `list_recheck_products`）。各行に「入れ直す」（`fresh=true`。ADR D5） |
+| 完了 | 既存の常時の確認 dialog と取消不可の警告を保ち、確認の文に「今日の最後の精算（締め）を取り込みましたか。取り込む前に完了すると、その精算の売上は棚卸しに入りません」を足す（アプリが判定できない最後の精算の取込み忘れ。ADR D6 の H2）。`completion_blocked` なら、`block_reason` ごとに「数え直しが必要」「まだ数えていない」「取り込んでいない精算がある」の一覧を出す。未計数の一覧に「0 にする」（選んだ商品）と「残りをまとめて 0 にする」（確認 dialog を挟む）。帳簿の数とみなす選択は置かない |
 | 完了の結果 | 評価額（総額）と明細の数。完了は在庫を動かさない（保存のたびに在庫へ入っている）と分かる文言 |
 | 完了の後 | 棚卸しの記録の詳細に、完了の後に入った記録による差のある明細と評価額の差の合計を「参考（評価額は変わりません）」として出す（[65](65-inventory-record-traceability.md)） |
 
@@ -19,7 +20,7 @@
 
 - 要再確認・未計数・保存済みは日本語の label と icon を併用し、色だけで示さない。範囲は「4〜5」の形。
 - UI の状態は未保存の入力だけで、保存済みの正は DB / query。D-052 の SSOT から、計数の保存・0 にする・完了・Z004 の取込みと取消・入出庫の保存で、写し（在庫・要再確認）を読む consumer を invalidate する（runtime で列挙する）。
-- Windows L3 の対象（runtime）: (a) 検索 → 数 → 保存 → 次の商品、(b) 前の日の分の保存と「後の数が既にあり」の表示、(c) 締めの取込みの後の要再確認 → 一覧から入れ直して解消、(d) 完了の拒否の一覧 → 0 にする → 完了、(e) 日付の変わり目の確認。
+- Windows L3 の対象（runtime）: (a) 検索 → 数 → 保存 → 次の商品、(b) 前の日の分の保存と「後の数が既にあり」の表示、(c) 締めの取込みの後の要再確認 → 一覧から入れ直して解消、(c2) 商品の「入れ直す」で打ち直し、(d) 完了の拒否の一覧 → 0 にする → 完了、(e) 日付の変わり目の確認。
 
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
 > **入力ドキュメント**: [architecture/ui-task-specs.md](../architecture/ui-task-specs.md) UI-10、[DB_DESIGN.md](../DB_DESIGN.md)、[db-design/tracking-system-tables.md](../db-design/tracking-system-tables.md) §16-17（stocktakes / stocktake_items）、[35-biz-stocktake-service.md](35-biz-stocktake-service.md)、[42-cmd-sales-stocktake.md](42-cmd-sales-stocktake.md) §22.5、[UI_TECH_STACK.md](../UI_TECH_STACK.md) §7.2（10-4a）、[59-ui-shared-patterns.md](59-ui-shared-patterns.md)、[68-ui-backup-restore.md](68-ui-backup-restore.md) / [69-ui-threshold-settings.md](69-ui-threshold-settings.md)（構成の手本）
