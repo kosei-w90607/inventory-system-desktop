@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R3
 - Plan Commit: 7e63dd0d29bd88ad21c04f1e1ca8d53ca4ab0c72
 - Amendments: none
@@ -27,7 +27,8 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `f4d0db64` で直し、Coordinator が差分（22 §16 の作り直しの手順と DB を見つける場所の表、30 の上書きの段の今と後の分割・`plu_dirty`・操作ログ）を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-17、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 1・2 と同じ型（作り直しの手順の挙げ漏れ）が続いたので、移す file を挙げる形をやめ、アプリの data の folder を丸ごと移す形に組み直させた。起草役が `23b44fae` で直し、Coordinator が差分（22 §16 の作り直しの手順）を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の一括是正、2026-10-17、Coordinator）: Plan Review round 3（天井。Claude 側 fresh Opus 5.5 = approve、Codex GPT-6 Astra = reject P2 1）の残りを Coordinator が一括是正に振り分けた（DEV_WORKFLOW Review Rules。Review Response 参照）。owner は是正の差分だけを Codex の closure で確かめ、P1/P2 = 0 なら Coordinator が plan-approved に進めると決めた（repo 外の回答台帳 TD-299、天井を 1 回越える）。起草役が `498de52d` で直し、Coordinator が差分（22 §16 の作り直しの手順 1 の 2 つの分岐）を読んだ。Plan Review closure へ出す。
-8. plan-gate → plan-approved（2026-10-17、Coordinator、本 commit）: Plan Review closure（Codex GPT-6.1 Sol、head `7e63dd0d`）が approve（P1 0・P2 0・P3 0）。独立の Plan Reviewer が P1 / P2 = 0 を報告し、owner の決定（repo 外の回答台帳 TD-299: closure が P1/P2 = 0 なら Coordinator が plan-approved に進める。TD-296 の 4a）により Coordinator が進める。Plan Commit = `7e63dd0d`（承認した版）。
+8. plan-gate → plan-approved（2026-10-17、Coordinator、`2bcbf472`）: Plan Review closure（Codex GPT-6.1 Sol、head `7e63dd0d`）が approve（P1 0・P2 0・P3 0）。独立の Plan Reviewer が P1 / P2 = 0 を報告し、owner の決定（repo 外の回答台帳 TD-299: closure が P1/P2 = 0 なら Coordinator が plan-approved に進める。TD-296 の 4a）により Coordinator が進める。Plan Commit = `7e63dd0d`（承認した版）。
+9. plan-approved → implementing（2026-10-17、Coordinator、本 commit。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R3、Minimum 1）に出す。Final Review broad は先に plan-approved の版（`2bcbf472`）で 2 本行い、どちらも approve（P1 0・P2 0）。本 commit はこの遷移の記録だけで、正本・Matrix は変えない。
 
 ## Owner Effort Budget
 
