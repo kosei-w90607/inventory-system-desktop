@@ -78,7 +78,7 @@ Risk: R3
 | D3 | F20 | unit | `default_count_after_fresh_same_day_conflicts` | fresh な計数（T）5 → 既定の計数（T）7（紙の古い数）: 衝突で要再確認。既定の計数（T−1）7 なら fresh が効き衝突しない |
 | D3 | — | unit | `closed_day_count_resolves_after_next_settlement` | 休業日 D の計数で次の精算 k（D+1）が決まらない: k を取り込んだ後の fresh な計数で解ける |
 | D2 | F6・F13 | unit | `count_does_not_create_movement_and_complete_does_not_move_stock` | 計数の保存で `inventory_movements` の行数が変わらない。完了の前後で写しが同じ |
-| D2 | F13 | unit | `copy_equals_sum_when_no_count` | 計数の無い商品で、入出庫 4 業務と Z004 と取消を混ぜた後の写しが `SUM(is_voided=0 の quantity)` と等しい（求め直しの関数を通らない writer があると違う） |
+| D2 | F13 | unit | `copy_equals_sum_when_no_count` | 計数の無い商品で、入出庫 4 業務と Z004 と取消を混ぜた後の写しが `SUM(is_voided=0 の quantity)` と等しい（求め直しの写しと SUM の一致を見る。旧 writer の「保存した数 + 差分」も計数の無い商品では SUM と一致するので、writer の切替の検出には使わない。検出先は `backdated_record_before_count_does_not_change_copy_per_writer`） |
 | D2 | F21 | unit | `settlement_list_change_recomputes_all_counted_products` | 計数（D）のある商品 A（Z004 の file に行が無い）と B: 精算の欠け k の後追いで、A の決まらない精算が変わり写しと要再確認が変わる（file に行がある商品だけを求め直すと A が古いまま）。取消でも同じ |
 | D2 | F23 | unit | `backdated_record_before_count_does_not_change_copy_per_writer` | 既定の計数（D）の後に、日付 D−1 の入庫・返品交換・手動販売・廃棄・Z004 の精算（精算日 D−1）・商品の登録の初期在庫をそれぞれ入れる: どの writer でも写しが増減しない（入っている）。整合性の補正の後も同じ |
 | D2 | — | unit | `stock_after_is_not_rewritten_by_backdated_record` | 後入力で前に記録が入っても、既存の movement の `stock_after` が変わらない |
@@ -96,12 +96,12 @@ Risk: R3
 | D5 | — | unit | `future_business_date_is_rejected` | 既定の計数の `business_date` > today: `ValidationFailed`、DB は不変 |
 | D5 | — | unit | `preview_placement_reports_later_count` | fresh な計数がある商品の前の日の分の既定の計数: `later_count_exists = true`、保存は拒まない |
 | D6 | F11 | unit | `complete_blocked_by_pending_settlement_recheck_uncounted` | 3 つの条件をそれぞれ 1 つだけ満たさない棚卸し: `completion_blocked`、`block_reason` がそれぞれ `settlement_pending`・`recheck`・`uncounted`、DB は不変 |
-| D6 | F19 | unit | `settlement_pending_when_no_settlement_before_count_date` | 導入の初めに、精算日 D の 2 本目の精算だけを取り込み（D より前の取込みが無い）、既定の計数（D）: `settlement_pending`（(iii)。1 本目の抜けを見逃さない）。D−1 の精算を取り込むと解ける |
+| D6 | F19 | unit | `settlement_pending_when_no_settlement_before_count_date` | 導入の初めに、精算日 D の 2 本目の精算だけを取り込み（D より前の取込みが無い）、既定の計数（D）: `settlement_pending`（(iii)。1 本目の抜けを見逃さない）。D−1 の精算を取り込むと (iii) は解ける。D−1 の精算 100 と D の 102 を取り込み、101 が欠けたままなら (ii) の `settlement_pending` が続き、101 を取り込むと解ける |
 | D6 | F19 | unit | `settlement_pending_detects_gap_between_imported` | 取り込み済み 100・102（どちらも精算日 D）、101 が未取込み、計数（D）: `settlement_pending`。「D 以上の精算が取り込まれていない」だけでは通ってしまう。fresh な計数（n = 102）なら k > n でないので pending にしない |
 | D6 | — | unit | `zero_uncounted_with_selected_date` | 「0 にする」の日付に前の営業日を選ぶ: その日付の既定の計数になる。今日より後は `ValidationFailed` |
 | D5 | — | unit（BIZ-06） | `stocktake_item_of_other_product_is_rejected` | 商品 A の `product_code` に商品 B の `stocktake_item_id` を付けて保存: 書く前に `ValidationFailed`、`stock_counts` と明細は不変 |
 | D9 | — | schema | `movement_reference_type_null_with_phase_1_is_rejected` | `reference_type` が NULL で phase=1 の movement の INSERT は CHECK で拒まれる（`IS` の比べ方）。`reference_type='csv_import'` で phase=0 も拒まれる |
-| D6 | — | unit | `post_completion_difference_of_undetermined_record_is_range` | 12/31 に入荷（入力）→ 午後に既定の計数（12/31、入荷を含む数）→ 完了 → 年明けに日付 12/31 の別の納品書（+5）を入力: 差は確定の差に入らず、「要再確認」と範囲（0〜+5、評価額も同じ 2 端）で出る |
+| D6 | — | unit | `post_completion_difference_of_undetermined_record_is_range` | 12/31 の入荷を入力し、12/31 の精算を取り込んだ後に、その商品を fresh な計数（「入れ直す」、12/31）で保存 → 要再確認が無いので完了できる → 年明けに日付 12/31 の別の納品書（+5）を後入力（fresh の後に保存した同じ日付の movement なので決まらない）: 差は確定の差の合計に入らず、「要再確認」の印と範囲（0〜+5、評価額も同じ 2 端）で出る |
 | D6 | — | unit | `zero_uncounted_then_complete_fixes_valuation` | 未計数を「0 にする」→ 完了: 0 の既定の計数が今日に入り、評価額 = §20.5a の関数（評価数量 `max(写し, 0)`） |
 | D6 | — | unit | `discontinued_zero_stock_item_does_not_block` | 廃番かつ写し 0 の未計数の明細: 完了を止めない |
 | D6 | F12 | unit | `valuation_not_changed_by_backdated_record_after_completion` | 完了の後に棚卸しの期間の日付の入庫: 写しと要再確認は変わり、`total_cost`・`valuation_cost_price`・`valuation_quantity` は変わらない |
@@ -142,7 +142,7 @@ Risk: R3
 
 | Source pattern / contract | Repository sites inspected | Ported sites | Explicit exclusions and reason | Test / evidence |
 |---|---|---|---|---|
-| 写しの書込み（`update_stock_quantity` の呼出し） | repo 外の Q8 の範囲の調査 §2.1 の W1〜W7・T1（`rg -n "stock_quantity" -g '*.rs' src-tauri/src` の書込みの行） | 31・21・30・36 の新契約で、全て求め直しの関数へ寄せる | `seed_demo.rs`（開発用の bin。runtime の lane が求め直しを呼ぶ形にするか判断） | D2 の `copy_equals_sum_when_no_count` |
+| 写しの書込み（`update_stock_quantity` の呼出し） | repo 外の Q8 の範囲の調査 §2.1 の W1〜W7・T1（`rg -n "stock_quantity" -g '*.rs' src-tauri/src` の書込みの行） | 31・21・30・36 の新契約で、全て求め直しの関数へ寄せる | `seed_demo.rs`（開発用の bin。runtime の lane が求め直しを呼ぶ形にするか判断） | D2 の `backdated_record_before_count_does_not_change_copy_per_writer`（writer の切替）。`copy_equals_sum_when_no_count` は写しと SUM の一致だけ |
 | 停止 ADR の 5 入口 | 停止 ADR SPEC-STOP-D1、32 §15.0、35 §20.0、55・73 の停止の節 | ADR D12・停止 ADR の改訂の段 | — | D12 の行 |
 | 旧 ADR の契約の節 | `rg -l '^#+ 時点証拠契約' docs`（開始 32 file） | 31 file は新契約の節、23 は「精算の識別メタ」 | 旧 ADR 本文（superseded の記録） | packet の AC2 |
 | 同日追加の確認（D-071） | pos-tables §12 のケース 2・3、32 の型（`additional_import_confirmed`）、41、55 | Z004 の側（精算回数の照合） | 日報の側（lane 2） | D4 の `same_date_other_settlement_needs_no_confirmation` |
@@ -188,7 +188,7 @@ Risk: R3
 
 ## Main Wiring / Integration Checks
 
-- helper connected to main path: 求め直しの関数が入出庫 4 業務・Z004 の確定と取消・商品の登録と一括 import・計数の保存・整合性の補正から呼ばれる（D2 の `copy_equals_sum_when_no_count` と D12 の行）。
+- helper connected to main path: 求め直しの関数が入出庫 4 業務・Z004 の確定と取消・商品の登録と一括 import・計数の保存・整合性の補正から呼ばれる（D2 の `backdated_record_before_count_does_not_change_copy_per_writer` と D12 の行。`copy_equals_sum_when_no_count` は写しと SUM の一致だけを見る）。
 - output reaches manifest/report: 取込みの結果の `recheck_targets` と `notices` が UI に届く（55 の L3）。
 - effective config reaches runtime: CMD が渡す PC の今日が BIZ の fresh な計数の日付と未来の日付の検査に届く（D5 の行）。
 - CLI arg reaches implementation: 該当なし。

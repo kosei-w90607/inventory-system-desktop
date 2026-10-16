@@ -105,7 +105,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 休業日（その日に精算が無い日）に数えた | 「数を保存」 | 次の精算日の精算の全体が決まらない精算になる（過剰側、H4）。取り込んだ後の入れ直しで解ける | 次の精算の取込み | ADR D3 |
 | 精算の欠けがある（取り込み済み 100・102 が D、101 が未取込み） | 「棚卸しを完了」 | D の計数があれば `settlement_pending` で拒まれる（d_100 ≤ D ≤ d_102） | 101 を取り込む | ADR D6 の 1 |
 | 大晦日 | 締め → 取込み → 入れ直し → 「棚卸しを完了」 | 未取込みの精算・要再確認・未計数があれば一覧で拒まれる。未計数は「0 にする」（選んだ商品・まとめて）。確認の文で「今日の最後の精算を取り込みましたか」を確かめる。全て片付くと評価額（総額）が固定される | 締めが翌日なら完了も翌日 | ADR D6（最後の精算の取込み忘れは H2） |
-| 年明けに 12/31 の納品書を入れる | 入庫を日付 12/31 で保存 | 12/31 に数えた商品なら要再確認になり在庫は範囲で出る。完了した評価額は変わらず、棚卸しの記録に差（参考）が出る | 入れ直し | ADR D6（TD-296） |
+| 年明けに 12/31 の納品書を入れる（12/31 に締めの取込みの後で「入れ直す」をして完了した商品） | 入庫を日付 12/31 で保存 | fresh な計数の後に保存した同じ日付の入庫なので決まらず、要再確認になり在庫は範囲で出る。完了した評価額は変わらず、棚卸しの記録に差が「要再確認」と範囲で出る（確定の差の合計には入らない） | 入れ直し | ADR D3・D6（TD-296、closure の是正） |
 | 正常な行が全て 0 の Z004（その精算で PLU の売上が無い） | 取り込む | 売上も在庫の変動も無いが、精算として記録され、欠けにも決まらない精算の判定にも入る | — | ADR D4 |
 | Z004 の取込みで精算回数が飛んだ | 取り込む | 「精算 n が取り込まれていません」。後から n を取り込めば、計数を持つ全ての商品が求め直される | — | ADR D4・D2 |
 | 精算回数の無い file・同じ精算の別の資料・レジの日付か番号が合わない file を選んだ | preview | 拒まれ、理由が出る | 正しい file を選び直す | ADR D4 |
@@ -335,4 +335,12 @@ Fill after review.
   9. P3 `stock_after`: 同じ TX で求め直した値を、その TX の新しい movement に書く（Z004 の同じ商品の複数の行も同じ値）と 31 に 1 文で決めた。
   10. P3 Matrix の test の名前: Residual Test Gaps の名前を `fresh_count_next_day_settlement_is_not_undetermined` に揃え、既定の計数の A1 を固定する `default_count_next_day_settlement_is_not_undetermined` を足した。
   11. P3 Matrix の mutation の説明: 旧 writer の残りの検出先を `backdated_record_before_count_does_not_change_copy_per_writer` にし、計数なしの SUM の一致では検出しない理由を書いた。
+
+### Plan Review closure（2026-10-17、head `0217ee50`、Codex GPT-6.1 Sol）
+
+- 判定: reject（P1 0・P2 1・P3 2）。S1・S3・S4・S5・S7〜S10 は closed。正本の設計の是正は妥当で、残りは Matrix の書き方。全て採った。
+- 直した所:
+  1. P2（S2）: Matrix の `post_completion_difference_of_undetermined_record_is_range` の手順を、取込みの後に fresh な計数で保存 → 完了 → 同じ日付の入庫 +5 を後入力、に直した（既定の計数で同じ日の入庫を先に入れると、その時点で要再確認になり完了できず差の検査に届かなかった）。期待は差の範囲 0〜+5、要再確認の印、確定の差の合計に入らない。Ordinary Operation の 12/31 の行も同じ手順（締めの取込みの後の「入れ直す」で完了した商品）に揃えた。
+  2. P3（S6）: ADR D6 の (iii) の回復の説明を「(iii) は解ける。欠けた精算があれば (ii) の pending はそれを取り込むまで続く」に限り、Matrix の `settlement_pending_when_no_settlement_before_count_date` に (ii) が続く期待を書いた。
+  3. P3（S11）: Matrix の `copy_equals_sum_when_no_count` の用途を写しと SUM の一致に限り、Adjacent Pattern Audit と Main Wiring の writer の切替の検出先を `backdated_record_before_count_does_not_change_copy_per_writer` に揃えた。`rg -n 'SUM|copy_equals_sum'` で Matrix を洗い、ほかに同じ説明は無かった（BIZ-07 の行の SUM は「SUM と違っても不一致に出ない」の対照）。
 
