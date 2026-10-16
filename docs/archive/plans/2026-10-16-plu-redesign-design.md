@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: a59411c3b887fc5fa6875bc2c9dde7b5c5581660
 - Amendments: none
@@ -33,13 +33,13 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Owner Effort Budget
 
-- 介入回数上限: 6（既定）
+- 介入回数上限: 9（既定の 6 から owner が改定、TD-291）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 0（TD-267・TD-273・TD-274・TD-277 は起票の前の見直しの採否で、本 lane の介入に数えない） | 2（Ready 1、merge 1） | 4 | 6 = 0 + 2 + 4 |
+| 介入 | 9（owner の改定、repo 外の回答台帳 TD-291。round 2 以降の別名の撤去と round の天井の越え方で既定の 6 を越えたため） | 9（closeout 時点。TD-284・TD-285・TD-286・TD-287・TD-288・TD-289・TD-290 の 7 回と、Ready 1・merge 1。TD-267・TD-273・TD-274・TD-277 は起票の前の見直しの採否で、本 lane の介入に数えない） | 0 | 0 | 9 = 9 + 0 + 0 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -105,10 +105,10 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は docs だけ。下の file の、下の節を書き換えた（全部 plan-first の commit）。
 
-1. clear と解放の撤去（D-117 (1)、突き合わせの O-1）: [33](../function-design/33-biz-plu-export-service.md) §16.2（status 4 値、`PluPreparedRowKind` と件数を外す）・§16.3（照合の表から `release_pending` を外し、重複の観測を `external` にする）・§16.4 step 4〜6（再対象化は sticky、Full は対象の JAN だけ、clear 行なし）・§16.5（clear 行の confirm と `PLU_CLEAR_ROW_ENABLED` を外し、2 段を残す理由）・§16.6（商品の状態の変化と枠の表。撤去する `release_plu_slot_for_jan` は signature だけ残す）・§16.8・§16.9（使い回さない不変条件）。[plu-tables](../db-design/plu-tables.md)（status の CHECK、`released_at` を外す、partial UNIQUE、runtime の migration の手順、状態遷移の表）。[25](../function-design/25-io-plu-formatter.md) §12.2・§12.3（`row_kind` と clear 行）。[30](../function-design/30-biz-product-service.md) §4.4 の 4b・廃番化・CSV の d.（解放しない、JAN の変更で `plu_dirty=1`）。[20](../function-design/20-io-product-repo.md)（`plu_memory_no` の `release_pending` の tie-break）。[22](../function-design/22-mnt-migration.md) §13 の注記。`docs/DB_DESIGN.md` D-2。architecture の biz・io・ui の task spec。残る論点（空き枠と商品の数の食い違い、JAN の変更）は D-117 の Revisit と 33 §16.6 に書いた。
-2. 段階導入の道具の撤去（D-117 (2)、O-6）: [30](../function-design/30-biz-product-service.md) §4.9.1・[40](../function-design/40-cmd-product.md) の `bulk_set_plu_target`（signature だけ残す）、40 の `search_products` の `plu`、[20](../function-design/20-io-product-repo.md) の `PluMigrationFilter` と WHERE、`find_products_for_bulk_plu_target`（signature だけ残す）、[50](../function-design/50-ui-product-list.md) UI-01a-D10〜D12・URL の `plu`・文言・test の観点、architecture の cmd・ui の task spec。REQ-907 の文と担当の task（`docs/spec/requirements.md`・`docs/spec/requirements-coverage.md`、生成物 90-traceability の再生成）。2026-08-01 の段階導入の前提（`docs/project-memory.md`、`docs/plu-export-and-real-csv-verification.md` の「店舗運用から導いた公開設計前提」）を D-117 で置き換えたと書いた。
-3. 占有の自動取得（D-117 (3)、O-4）: 33 §16.3 の入力の経路と `refresh_plu_register_snapshot_from_sd`、[37](../function-design/37-biz-daily-report-import-service.md) §37.9 の関数要求・snapshot の型・手順 4・手順 10、[45](../function-design/45-cmd-daily-report-import.md) §45.6a 手順 2a、[23](../function-design/23-io-z004-parser.md) §13.3.1 の入力、[41](../function-design/41-cmd-pos.md) の `import_plu_register_snapshot`（撤去。signature だけ残す）、[67](../function-design/67-ui-plu-export.md) UI-08-D11・§67.4 手順 3・§67.6・§67.8・§67.9・§67.10・§67.11・§67.12、`docs/SCREEN_DESIGN.md` の PLU 書出し画面、`docs/FUNCTION_DESIGN.md` の UI-08 の行、architecture の cmd・ui の task spec。依存: SD を直接読む runtime（D-111 の後続の lane）の後に入れる（D-117 (3)、backlog）。
-4. 小さい過剰の撤去（D-117 (5)、O-5・O-7・O-8）: 33 §16.2 の summary、41 の `PluExportPrepareResponse`・`PluPreparedRow`・`get_plu_slot_summary`、67 UI-08-D5・§67.8.1（復帰状態の `overLimitWarning`）、[51](../function-design/51-ui-product-form.md) UI-01b-D19、40 の `get_product`、20 の `ProductWithRelations`、architecture の cmd・ui の task spec。
+1. clear と解放の撤去（D-117 (1)、突き合わせの O-1）: [33](../../function-design/33-biz-plu-export-service.md) §16.2（status 4 値、`PluPreparedRowKind` と件数を外す）・§16.3（照合の表から `release_pending` を外し、重複の観測を `external` にする）・§16.4 step 4〜6（再対象化は sticky、Full は対象の JAN だけ、clear 行なし）・§16.5（clear 行の confirm と `PLU_CLEAR_ROW_ENABLED` を外し、2 段を残す理由）・§16.6（商品の状態の変化と枠の表。撤去する `release_plu_slot_for_jan` は signature だけ残す）・§16.8・§16.9（使い回さない不変条件）。[plu-tables](../../db-design/plu-tables.md)（status の CHECK、`released_at` を外す、partial UNIQUE、runtime の migration の手順、状態遷移の表）。[25](../../function-design/25-io-plu-formatter.md) §12.2・§12.3（`row_kind` と clear 行）。[30](../../function-design/30-biz-product-service.md) §4.4 の 4b・廃番化・CSV の d.（解放しない、JAN の変更で `plu_dirty=1`）。[20](../../function-design/20-io-product-repo.md)（`plu_memory_no` の `release_pending` の tie-break）。[22](../../function-design/22-mnt-migration.md) §13 の注記。`docs/DB_DESIGN.md` D-2。architecture の biz・io・ui の task spec。残る論点（空き枠と商品の数の食い違い、JAN の変更）は D-117 の Revisit と 33 §16.6 に書いた。
+2. 段階導入の道具の撤去（D-117 (2)、O-6）: [30](../../function-design/30-biz-product-service.md) §4.9.1・[40](../../function-design/40-cmd-product.md) の `bulk_set_plu_target`（signature だけ残す）、40 の `search_products` の `plu`、[20](../../function-design/20-io-product-repo.md) の `PluMigrationFilter` と WHERE、`find_products_for_bulk_plu_target`（signature だけ残す）、[50](../../function-design/50-ui-product-list.md) UI-01a-D10〜D12・URL の `plu`・文言・test の観点、architecture の cmd・ui の task spec。REQ-907 の文と担当の task（`docs/spec/requirements.md`・`docs/spec/requirements-coverage.md`、生成物 90-traceability の再生成）。2026-08-01 の段階導入の前提（`docs/project-memory.md`、`docs/plu-export-and-real-csv-verification.md` の「店舗運用から導いた公開設計前提」）を D-117 で置き換えたと書いた。
+3. 占有の自動取得（D-117 (3)、O-4）: 33 §16.3 の入力の経路と `refresh_plu_register_snapshot_from_sd`、[37](../../function-design/37-biz-daily-report-import-service.md) §37.9 の関数要求・snapshot の型・手順 4・手順 10、[45](../../function-design/45-cmd-daily-report-import.md) §45.6a 手順 2a、[23](../../function-design/23-io-z004-parser.md) §13.3.1 の入力、[41](../../function-design/41-cmd-pos.md) の `import_plu_register_snapshot`（撤去。signature だけ残す）、[67](../../function-design/67-ui-plu-export.md) UI-08-D11・§67.4 手順 3・§67.6・§67.8・§67.9・§67.10・§67.11・§67.12、`docs/SCREEN_DESIGN.md` の PLU 書出し画面、`docs/FUNCTION_DESIGN.md` の UI-08 の行、architecture の cmd・ui の task spec。依存: SD を直接読む runtime（D-111 の後続の lane）の後に入れる（D-117 (3)、backlog）。
+4. 小さい過剰の撤去（D-117 (5)、O-5・O-7・O-8）: 33 §16.2 の summary、41 の `PluExportPrepareResponse`・`PluPreparedRow`・`get_plu_slot_summary`、67 UI-08-D5・§67.8.1（復帰状態の `overLimitWarning`）、[51](../../function-design/51-ui-product-form.md) UI-01b-D19、40 の `get_product`、20 の `ProductWithRelations`、architecture の cmd・ui の task spec。
 5. 前提の食い違いの訂正（D-117 (7)）: F-1（D-011 の前提の訂正の行、67 §67.1・UI-08-D2、`docs/DB_DESIGN.md` D-2、master-tables の `plu_exported_at` の理由、project-memory、PLUV の参照と UI-08 着手時の判断 2）。F-3・F-4（25 の冒頭・試験の観点・手動の gate、67 UI-08-D3、PLUV の UI-08 readiness と 2026-07-06 の確定事項、project-memory の CV17 の profile）。F-6（PLUV の Z004 の構造、project-memory）。F-7（PLUV の PLU-05）。F-8（PLUV の結論・PLU-21・PLU-25）。F-9（51 UI-01b-D18 の理由）。F-10（PLUV の参照、project-memory）。F-2 は D6 と、F-5 は D9 と一緒に backlog。
 6. U-1・U-2・U-3 の確かめ（D8 = a）: U-3 は、前の JAN を持つ商品が無ければ `unmatched_product` の行エラーで知らせる形で閉じた（33 §16.6、32 §15.3 手順 4 b は変えない）。同じ商品へたどる仕組みは TD-284 の lane へ外した（TD-286、backlog）。古い SD の照合は 33 §16.3 手順 2 の精算回数の key で止める（round 1 の R1）。 撤去の後の規則を 33 §16.3（予約中の枠に別のコード、アプリの JAN の重複の観測、反映済みの枠の別コード・空）と §16.4 step 7（要修正中の既存の枠は維持して出さない）に書いた。U-1 の重複の観測は、`release_pending` の代わりに `external` で持つ（partial UNIQUE を `reserved` / `active` だけにして保存できるようにした）。U-2 は今の規則で塞がる（枠は残り出力しない。解放の trigger が無くなったので、JAN の誤りを直した商品は U-3 の扱いになる）。U-3 は JAN の変更で `plu_dirty=1` を足した（新しい JAN を書くため）。
 7. D-117 を `docs/decision-log.md` に足した。D-072 に「Superseded in part by」の行、D-011 に前提の訂正の行を足した。D-111 の段は変えていない。
@@ -253,7 +253,11 @@ Test Design Matrix: [2026-10-16-plu-redesign-design](test-matrices/2026-10-16-pl
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: PLU の書出しの見直し（repo 外の回答台帳 TD-258・TD-269）で owner が採った結果を設計正本へ置き換え、D-117 に記録した。clear 行・`release_pending`・解放の trigger を外し、枠は JAN ごとに永続してアプリは消さず・使い回さない形にした。段階導入の道具（一括の対象化・移行状態の列と絞り込み）と件数の要約・上限の警告・`row_kind`・`plu_memory_no` を外した。占有は締めの SD の読取りで窓の中の Z004 を読んで毎日照合し（前に照合した精算回数以下の Z004 では照合しない）、UI-08 の FilePicker の step を外した。CV17 の取込みに失敗したときは差分か全件を書き出し直すだけにした（TD-288）。売るのをやめた商品がレジに前の値段で残る限界は受け入れ、clear を戻す条件を D-117 の Revisit に書いた（TD-285）。JAN を直した商品の前の JAN の枠で売れた分を同じ商品へたどる別名は本 lane から外し、別の小さな設計 lane へ送った（TD-286）。本 lane は docs だけで、code・migration・bindings は変えていない（runtime は後続の lane）。
+- 既存の保護: 実装は変えていないので、店の動作は今のまま（UI-08 の書出しと商品一覧は今の版のまま動く）。撤去する pub fn の signature は設計に残したので、設計照合 test は green のまま。
+- 未検証: Contract Probe の P1（Diff の部分取込みでレジの他の枠が保たれること、PLU-21）と P2（取込みの失敗からの回復、PLU-25）は、runtime の lane の Windows native L3 で確かめる。
+- review・CI・merge（closeout、2026-10-16）: Plan Review は round 3（上限）までで、round 2 で owner が別名を本 lane から外し（TD-286）、round 3 で Codex 側に残った P1 を owner の決定で是正し、天井を越えて Codex の closure 2 回で確かめた（TD-287・TD-288・TD-289）。closure 2 の approve の後、owner の承認で plan-approved（TD-290）。Final Review は broad 1 回（下の Review Response の Closeout の段落）。helper の record は review = pass。hosted の `Merge gate` は success で、owner の Ready・merge の承認（TD-291）の後に helper 経由の squash merge。PR: [#163](https://github.com/kosei-w90607/inventory-system-desktop/pull/163)
+- 後続: `docs/backlog.md` の「PLU の書出しの見直しの runtime」（Final Review の P3 6 件の follow-up を含む）と「JAN を直した商品の前の JAN の枠で売れた分を同じ商品へたどる（TD-284 の lane）」。順は SD を直接読む runtime → PLU の書出しの見直しの runtime で、TD-284 の lane は PLU の書出しの見直しの runtime より前に置く（SD を直接読む runtime と並べてよい）。設計の見直しの置換えの次は、棚卸しの時点証拠と POS の取込みの lane（TD-275）。
 
 ## Review Response
 
@@ -319,3 +323,5 @@ Codex GPT-6.1 Sol（reject、P1 1・P2 0・P3 2）。C2・O1〜O4 の是正は�
 | C1 の固定 | Codex（P1、未 closure） | 採用 | C1 の是正を固定する Matrix の行が無い | Matrix に 2 行（取込みに失敗したときの案内の RTL、予約が照合で外れた後の confirm の拒否と再 prepare の unit）。AC14（保存した file を取り込む回復の案内が 0） |
 | N1 | Codex（P3） | 採用 | round 3 の O4 で 33 の `plu_register_snapshot_settlement_no` の数が変わり、AC11 が合わない | AC11 の期待を今の数に直し、AC の全行を今の版で実行し直した |
 | C2 の検索の hit | Codex（P3） | 不採用（発注の誤り） | `docs/research/audit-2026-09/drift-audit.md` に古い型名が 1 行残る | 過去の監査の記録なので直さない。closure の発注の検索の範囲が research を除いていなかった |
+
+Closeout（2026-10-16）: Final Review は broad 1 回（head `dd3d2039`）で、Codex（Astra）と Claude 側（Fable 5.1）の独立 2 本がともに approve（Codex P3 2、Claude 側 P3 5。P1 / P2 は 0）。P3 7 件は本 lane では直さず全件 follow-up とした（Coordinator の裁定）。6 件は `docs/backlog.md` の「PLU の書出しの見直しの runtime」の項目へ送り、runtime の lane の Writer が正本を読むときに直す: 締めの SD を読む前に confirm した商品が後の SD の読取りで未反映に戻る（Fable #1）、精算回数だけを読む IO-02 の関数の名前（Fable #2）、restore の後に消す key（Fable #3）、照合はコードだけを比べるのに「コードと名称」と書く文（Fable #4）、毎日の scan で読む Z004 の本数（Fable #5）、67 UI-08-D5 が指す既存の Alert の名前（Codex #1）。Codex #2（Owner Effort Budget の表が起票時の 0 のまま）は、この closeout で上の表を直して閉じた（介入の上限を owner の改定〈TD-291〉の 9 に、消費を 9 に）。Coordinator は承認の依頼に介入の数を書き忘れていた（PR #163 の body の Validation に記録済み）。
