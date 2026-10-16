@@ -1,10 +1,14 @@
 ## 21. BIZ-07: 整合性チェックロジック
 
-### 時点証拠契約（proposed・未実装）
+### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D8。fix_integrityの署名・確認操作・D-051のcache直接補正・同TX必須の操作ログは維持する。専用repoのupdate_stock_quantityが数量とstock_revisionを同時更新するため、movementを作らないこの経路でも開いていた計数contextは保存時に拒否される。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2）と D-051 の Superseded in part（D-118）。以下の §21.3〜§21.7 の「SUM との突合」は現行の実装契約で、runtime で次に置き換える。
 
-版overflow・数量更新失敗・操作ログ失敗は全補正TXをrollbackする。差異なしでスキップした商品やread-onlyのrun_integrity_checkでは版を進めない。整合性補正を実測やEJの証拠にしない。結合試験は計数開始→fix_integrity成功→旧token保存拒否、およびログ失敗で数量/版とも不変を確認する。
+- `run_integrity_check` は、各商品の写し（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）と、[31](31-biz-inventory-service.md) の `derive_stock`（`recompute_stock` と同じ規則で、写しを書かない読取りの関数）が求める値を比べ、違う商品を返す。写しは在庫を動かす全ての TX で求め直すので、違いは不具合か DB の外からの編集でだけ起きる。
+- 比べる項目は 4 つ（数 `stock_quantity`、印 `stock_recheck`、範囲 `stock_range_low`・`stock_range_high`）で、どれか 1 つでも違えば不一致とする。`IntegrityMismatch` は、今の `stock_quantity`・`movements_sum`・`difference` の代わりに、写しの 4 項目（`copy_*`）と求めた 4 項目（`derived_*`）と、違う項目の一覧（`differing_fields`: `quantity` / `recheck` / `range` の generated enum）を持つ。数が同じで印や範囲だけ違う商品も一覧に出る（「差異なし」と出さない）。
+- `fix_integrity` は、違う商品について `recompute_stock` の結果を写しへ書く（movement を作らない）。`StockAdjustment` と同じ TX の `integrity_fix` 操作ログ（D-051 の Audit）は、4 項目の old / new を持つ。確認の操作は変えない。画面の表し方は [75](75-ui-integrity-check.md) の新契約。
+- 計数は movement を作らないので、「SUM と一致」は計数のある商品では成り立たない。突合の相手を SUM にしない。
+- 整合性の補正を計数の証拠にしない（計数を作らない）。
 
 ### 21.1 モジュール構成
 

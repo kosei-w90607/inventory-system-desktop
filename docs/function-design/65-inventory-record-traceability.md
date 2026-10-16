@@ -1,17 +1,14 @@
 # 65. 入出庫記録・在庫変動追跡 完成形
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D6〜D9。棚卸しの現在庫訂正は、下記の一般的な取消/訂正完成形とは区別し、確定headerを取り消さず新しい現物確認を追記する。新方式はここに記す差分だけを導入し、一般業務記録の取消機能を同時実装しない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D6）の追跡の側。旧 ADR（時点証拠）の補正区分（completion / rollback_compensation / recount）・独立再実測の記録・移行の版の表示は持たない（置き換えた）。一般の業務記録の取消機能は同時に実装しない。
 
-- 棚卸し詳細 `/stocktake/records/$stocktakeId` の商品行に「今の数を確認して直す」を置く。差異movementだけの既存一覧とは別に、既存get_stocktake_items/find_stocktake_itemで参照明細を選べる入口を持ち、差0・自動入力の商品も訂正対象から落とさない。
-- 現在のactive明細がある商品は、その明細の計数へ案内する。なければ独立再実測のbegin/saveを使用する。過去Nの直接編集や、保存日時だけ付け直す操作は置かない。
-- DTOのstocktake_adjustment_kindはcompletion / rollback_compensation / recountを区別し、「確定時の補正」「取消の打ち消し」「現物再確認」と表示する。区分をcreated_atとcompleted_atの大小やnoteから推定しない。確定差異件数・代表明細はcompletionに限定する。
-- recountは補正前L・実数N・差・S/E・保存順序・参照明細を保持し、差0でも表示する。movementがある場合はrecountへの関連も辿れる。importを取り消しても独立recountとその補正は残す。
-- 旧headerのreconciliation_version=0と既存NULL区分の表示は保存する。新しい再実測/補償を旧確定差異へ混ぜない。header.total_costと評価原価は非遡及で、「現在庫の再確認。確定時の評価額は変更していません」と明示する。
-- 詳細への到達と復帰は既存の入出庫履歴・商品別movement・returnToを使う。検索条件を保持し、保存後の再取得はDBの結果を反映する。新しい汎用取消routeや新しいSidebar項目は作らない。
-
-IO/BIZは[20](20-io-product-repo.md)・[21](21-io-inventory-repo.md)・[35](35-biz-stocktake-service.md)、wireは[42](42-cmd-sales-stocktake.md)、操作の失効とfocusは[73](73-ui-stocktake.md)の新契約に従う。見た目の新規部品ではなく、既存の詳細表・補助文・保存feedbackで区別する。
+- 計数は movement を作らない（D-118 の runtime から、棚卸しの確定の補正の movement〈`movement_type='stocktake'`〉は新しく作らない）。商品別の在庫変動の履歴には、計数を「数を確認（{数}、{日付}）」・「数を入れ直し（{数}、{日付}）」の行として movement と並びの鍵の順に混ぜて出す（読取りの合成。計数は `stock_counts` から読む）。
+- `stock_after` は記録を保存した時点の写しの値で、後入力で前に記録が入っても書き換えない（[tracking](../db-design/tracking-system-tables.md) の同名の契約）。鍵の順に並べ直した推移を求めて見せる機能は持たない。
+- 棚卸し詳細 `/stocktake/records/$stocktakeId` の商品行は、効く計数の値と日付・差（[35](35-biz-stocktake-service.md) の新契約の「読取り」）を出し、「今の数を入れ直す」から [73](73-ui-stocktake.md) の計数へ進める（過去の数の直接の編集は置かない）。完了した評価額は変わらないと明示し（非遡及）、完了の後に入った記録による差のある明細と評価額の差の合計を参考として出し、決まらない記録による差は要再確認の印と範囲で分けて出す（[35](35-biz-stocktake-service.md) の新契約の「完了」、owner の決定 TD-296）。
+- 確定の差異件数は、完了の時点で計数のある明細のうち差が 0 でないものの数（movement からは数えない）。
+- 詳細への到達と復帰は既存の入出庫履歴・商品別 movement・returnTo を使う。新しい route や Sidebar の項目は作らない。
 
 > 対応仕様: REQ-201 / REQ-202 / REQ-203 / REQ-204 / REQ-205 / REQ-303 / REQ-902 / REQ-206 / REQ-207 / REQ-208
 >
@@ -266,7 +263,7 @@ CSV は UTF-8 BOM 付きとし、既存 report export 方針に合わせる。�
 
 ## 65.10 実装スライス
 
-下記slice 4cの「snapshot差では定義しない」は現行実装/完了済みreconciliation_version=0の旧表示契約に限定する。新方式では冒頭proposed節を正とし、completionの補正量=N-L、表示差異=L-N、stock_afterは後続移動を含む。recount/rollback_compensationを確定補正と同値扱いしない。新方式のschemaとwriter/CMD/UIは同じ配布単位とし、この一般スライス順を根拠にDBだけ先行稼働させない。
+下記slice 4cの「snapshot差では定義しない」は現行実装の表示契約に限定する。D-118 の新方式では冒頭の proposed 節を正とし、計数は movement を作らず、差は 35 の新契約の「読取り」で求める。
 
 完成形は一度に実装しない。source docs は完成形を保持し、実装 PR は次の順で小さく切る。
 

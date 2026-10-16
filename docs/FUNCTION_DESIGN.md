@@ -1,19 +1,17 @@
 # 在庫管理システム 関数設計書
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1〜D10のsource詳細を、各文書の同名節へ展開した。現行API本文と新契約案を区別し、以下の既存機能一覧を新方式の実装完了として扱わない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の詳細を、各文書の同名の節へ展開した。現行の API の本文と新しい契約の案を区別し、以下の既存機能の一覧を新方式の実装完了として扱わない。旧 ADR（時点証拠、superseded）の節は置き換えた。
 
-| 境界 | 詳細source |
+| 境界 | 詳細の source |
 |---|---|
-| 保存・数量/版・受領・parser | [20](function-design/20-io-product-repo.md)、[21](function-design/21-io-inventory-repo.md)、[23](function-design/23-io-z004-parser.md)、[24](function-design/24-io-csv-import-repo.md) |
-| 設定・入出庫・取込み・計数・整合性 | [30](function-design/30-biz-product-service.md)、[31](function-design/31-biz-inventory-service.md)、[32](function-design/32-biz-csv-import-service.md)、[35](function-design/35-biz-stocktake-service.md)、[36](function-design/36-biz-integrity-check.md) |
-| 共通回復wire・POS・計数・DB交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
-| 商品設定拒否・保留・記録詳細・実測操作 | [51](function-design/51-ui-product-form.md)、[60](function-design/60-ui-product-import.md)、[55](function-design/55-ui-csv-import.md)、[65](function-design/65-inventory-record-traceability.md)、[73](function-design/73-ui-stocktake.md) |
+| 保存・写し・parser | [20](function-design/20-io-product-repo.md)、[21](function-design/21-io-inventory-repo.md)、[23](function-design/23-io-z004-parser.md)、[24](function-design/24-io-csv-import-repo.md) |
+| 商品の設定・入出庫・求め直し・取込み・計数と完了・整合性 | [30](function-design/30-biz-product-service.md)、[31](function-design/31-biz-inventory-service.md)、[32](function-design/32-biz-csv-import-service.md)、[35](function-design/35-biz-stocktake-service.md)、[36](function-design/36-biz-integrity-check.md) |
+| 回復型・POS・計数の wire・DB の交換 | [40](function-design/40-cmd-product.md)、[41](function-design/41-cmd-pos.md)、[42](function-design/42-cmd-sales-stocktake.md)、[43](function-design/43-cmd-settings-log.md) |
+| 画面 | [51](function-design/51-ui-product-form.md)、[55](function-design/55-ui-csv-import.md)、[58](function-design/58-ui-stock-inquiry.md)、[60](function-design/60-ui-product-import.md)、[65](function-design/65-inventory-record-traceability.md)、[66](function-design/66-ui-stock-movements.md)、[73](function-design/73-ui-stocktake.md) |
 
-外部証拠の成立条件と在庫連動の有効化の条件は32、command登録義務は42、永続化は[DB設計](DB_DESIGN.md)へ集約する。これらの実装・SQL migration・binding生成は後続runtimeで行い、本docs同期では行わない。
-
-進行中の設計: [棚卸しと後着売上の時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md)（proposed、㉗）。上記の機能文書へ保存・関数・wire・回復導線の詳細を展開した。現行の関数・wireが変更済みであることを意味しない。
+永続化は [DB 設計](DB_DESIGN.md) へ集約する。実装・SQL migration・binding の生成は後続の runtime で行い、本 docs の同期では行わない。
 
 > **最終更新**: 2026-07-29 / UI request builder shared primitives 追加
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、DB_DESIGN.md（テーブル定義書）

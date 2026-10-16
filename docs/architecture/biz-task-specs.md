@@ -1,15 +1,15 @@
 # タスク仕様（BIZ層）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1〜D10。詳細契約は下記sourceの同名節を正とし、既存の処理を新方式実装済みとは扱わない。
+SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とし、既存の処理を新方式の実装済みとは扱わない。旧 ADR（時点証拠）の契約は置き換えた。
 
-- BIZ-01: [30](../function-design/30-biz-product-service.md)。商品更新・一括importで曖昧な在庫連動設定を検査し、版を更新する。汎用数量書込みを廃止。非連動化は単一の共通repo書込み経路で商品に版を記録し、適用済み再実測まで未調整を保持する。準備照会が `ej_unverified` を返す間は在庫連動の有効化を拒否し、既定値をfalseにする。
-- BIZ-02/BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。専用repoが数量/版を同時更新し、必須ログを含む既存TX境界を維持。
-- BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。受領の証拠と業務importを分離。受領順と実測の種別による一つの分類を使い、Unknownは所属によらず通常適用と(商品, 資料)単位の要再確認flagへ、共有JAN行だけをfile全体の保留へ。売上と返品の相殺をEJの証拠で判定し、名称が重なる行は候補の商品に局所化し、合計を候補でつながる名称と商品の単位で照合する。最初の区間・受領済みの最小より小さいsettlement_no・settlement_noの戻り（同じ番号の別の精算）をZ004の取込みの時点で判定し、欠番を埋める後追いのZ004は通常の受領として扱い、相殺の確認待ち（EJ待ち）を後から取り込むEJか前回のZ004で、直前のZ004が未受領の間の相殺の確認待ち（登録の変化。最初の区間・受領済みの最小より小さいsettlement_no・settlement_noの戻り）を直前のZ004で、区間のEJの欠けと読めない記録・対応づけの確定を先に確かめ、その後に帰属できない行と前回の証明を判定する順で再評価する（ADR D4・D5a）。準備照会はEJの日次取込みを実装するlaneまで `ej_unverified` を常に返し、商品単位の要再確認をrecount_after_importで返す。同一性拒否証拠からsource単位のsettlement_missing、商品の切替記録から商品単位のsync_disabled_unreconciledを準備照会へ返す。切替と実測の版に合わせた説明も同じissueで返す。取消は最初の有効な吸収先を補正し、legacyを吸収なしと解釈しない。
-- BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。開始context（商品revision・所有者・DB世代・source_cursor）・1商品1TX・再送・N-L確定・独立再実測・要再確認flagの解消・legacyの取消の保留の通常の実測による解除。保存済み評価額は不変。
+- BIZ-01: [30](../function-design/30-biz-product-service.md)。共有 JAN の在庫連動の拒否、在庫連動を始めるときの連動しない間の売上の検査、初期在庫の movement と求め直し。
+- BIZ-02 / BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。並びの鍵付きの movement、求め直しの関数（写しを書く唯一の経路）、要再確認の判定。整合性は写しと求め直しの比較で、補正は求め直しを写しへ書く（操作ログの必須は変えない）。
+- BIZ-03: [32](../function-design/32-biz-csv-import-service.md)。Z004 の machine_no・精算回数による識別・順の検査・欠けの知らせ、精算回数の無い file の拒否、確定と取消の後の求め直し、取込みの結果の要再確認の一覧。
+- BIZ-06: [35](../function-design/35-biz-stocktake-service.md)。計数の即保存（日付と置き場）、要再確認の一覧、完了の条件（決まらない精算の取込み・要再確認 0・未計数の片付け）と評価額の非遡及。
 
-日報BIZ-08、売上レポート、PLU書出しの意味と記録は変更しない。相殺の判定の対応が変わった名称はZ004どうしのスキャニングコードと名称の組で求め、PLU書出しの確認に記録を加えない。名称の重なりの検知と登録名の付け直しの支援はPLU書出し側の別の変更で扱い、在庫連動の有効化より前に入れる（`ej_unverified` を外す条件、32）。EJ parser実装は別laneで、32の外部probeと本番条件を引き継ぐ。
+日報 BIZ-08、売上レポート、PLU 書出しの意味と記録は変えない。EJ は在庫に使わない。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）
