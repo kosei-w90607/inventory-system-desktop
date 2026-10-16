@@ -154,6 +154,7 @@ struct RegisterSdScanResponse {
 **処理ステップ**:
 1. `selected_path` を BIZ-08 の `DailyReportSdSelection`（37 §37.9。`None` → `Auto`、`Some` → `Selected(PathBuf)`）にする。CMD は IO-09 の型を使わない（`src-tauri/tests/architecture_test.rs` の LAYER_RULES で cmd → io は禁止）。空文字は `CmdError.kind="validation"`。
 2. DB接続を取得し、BIZ-08 `scan_register_sd_daily_reports(conn, selection, PC の今日の日付)` を呼ぶ。SD を読む間（窓の範囲の小さな file と照合。利用者は 1 人）は DB の Mutex を持ったままでよい。
+2a. 成功時、同じ DB 接続を持ったまま BIZ-04 `refresh_plu_register_snapshot_from_sd(conn, &snapshot.plu_register_z004s)` を呼ぶ（PLU の占有の照合、[33 §16.3](33-biz-plu-export-service.md)、D-117 (3)）。`Err` は scan の失敗にせず、`tracing::warn!` で記録して手順 3 へ進む（response は変えない）。照合の後、`plu_register_z004s` を空にしてから手順 3 で snapshot を cache に入れる（Z004 の bytes を cache に残さない）。
 3. 成功時、UUID の scan_token を作り、`register_sd_scan_cache` を空にしてから snapshot を入れる（同時に持つ scan は最新の 1 つだけ）。
 4. response を返す。
 

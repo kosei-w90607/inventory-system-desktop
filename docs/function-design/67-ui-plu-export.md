@@ -2,13 +2,13 @@
 
 > **親文書**: [FUNCTION_DESIGN.md](../FUNCTION_DESIGN.md)
 > **対応REQ**: REQ-402
-> **Design Phase**: 2026-08-18 D-072 / REQ-907 PLU slot 永続割当・Z004 占有読込み・段階導入へ更新（SPEC-PLS-D2、D5、D7。実装は後続 R3 PR）
+> **Design Phase**: 2026-08-18 D-072 / REQ-907 PLU slot 永続割当・Z004 占有読込みへ更新（SPEC-PLS-D2、D5、D7）。2026-10-16 D-117: 占有は毎日の締めの SD の読取りで自動で照合し、Z004 を選ぶ step・占有の件数の要約・clear 行の解除待ち・`over_limit_warning` を外す（runtime は後続の lane。占有の自動の照合は SD を直接読む runtime に依り、それまで code は今の FilePicker の step を残す）
 
 ## 67.1 目的
 
 UI-08 は、商品マスタから CASIO PCツール用 PLUタブ区切りテキストを作成し、利用者が保存したファイルを PCツール / SDカード / レジへ手動投入できるようにする operator-facing flow である。
 
-アプリが保証するのは「対象商品からCP932 PLUファイルを生成し、利用者が保存済みとして扱う対象を記録する」までである。CV17の受理、SDカード書出し、SR-S4000への反映は外部手順であり、アプリから自動確認できない。
+アプリが保証するのは「対象商品からCP932 PLUファイルを生成し、利用者が保存済みとして扱う対象を記録する」までである。CV17の受理、SDカード書出し、SR-S4000への反映は外部手順で、アプリはその場では確かめられない。レジに入ったコードと名称は、次の締めで SD を読んだときの Z004 の照合に現れる（[33 §16.3](33-biz-plu-export-service.md)）が、単価・課税方式・部門リンクの反映は Z004 に無い（D-117 (7)、D-011 の前提の訂正）。店主は PLU を変えるとき（新商品・値段の変更）にこの画面と CV17 を開き、溜まった未反映をまとめて 1 回で書き出す（D-117 (6)）。
 
 ## 67.2 関数要求
 
@@ -24,9 +24,9 @@ function PluExportPage(): JSX.Element
 
 ## 67.4 処理ステップ
 
-1. `commands.listPluDirty()` で未反映商品を取得し、`getPluSlotSummary` の `release_pending_count` と合算して Diff 対象件数を表示する。解除待ちは商品一覧と別に説明文を表示する
+1. `commands.listPluDirty()` で未反映商品を取得し、その件数を Diff 対象件数として表示する
 2. 利用者がDiffまたはFullを選ぶ
-3. `getPluSlotSummary` を読み、snapshot 未読込みなら共通 FilePicker（D-054）で Z004 を選ぶ「レジ登録状況を読み込む」step を先に表示する。`importPluRegisterSnapshot({ fileBytes })` 成功後は D-052-C17 の SSOT helper を適用し、最終読込み日時と占有要約を above the fold に表示する。最終読込み日時は `snapshot_at`（DB の時差なしの `YYYY-MM-DDTHH:MM:SS`）を `Date` に通さず、共有 `formatDateTime`（`src/lib/date-time.ts`）で `YYYY-MM-DD HH:mm:ss` にして出す
+3. `getPluSlotSummary` を読み、`snapshot_at` があれば「レジの登録状況: {日時}（売上データ取込みで SD を読んだとき）」を above the fold に 1 行で出す。日時は `snapshot_at`（DB の時差なしの `YYYY-MM-DDTHH:MM:SS`）を `Date` に通さず、共有 `formatDateTime`（`src/lib/date-time.ts`）で `YYYY-MM-DD HH:mm:ss` にして出す。`snapshot_at` が無ければ、書出しの前に warning の Alert で「レジの登録状況がまだ読まれていません。売上データ取込みでレジの SD を一度読んでください。」と売上データ取込み（`/csv-import`）への導線を出す（UI-08-D11）。画面を開いたとき（prepare の前）に、今日の日付と `snapshot_at` の日付の差（暦日）が UI の定数 `PLU_SNAPSHOT_STALE_DAYS = 3` を超えていれば、その行を warning の見た目（icon + 文言。色だけにしない）にし、「最後にレジの登録状況を読んでから日がたっています。売上データ取込みでレジの SD を読んでから書き出してください。」を添える（書出しは拒まない。wire・BIZ・DB は変えない。精算回数が戻って照合が止まったときもこれで見える、33 §16.3）。占有の件数は出さない
 4. `commands.preparePluExport({ mode })` を呼び、`bytes_base64`、memory No. 付き prepared rows、`target_product_codes`、`excluded`（要修正一覧）を受け取る。成功後は slot 状態が変わり得るため D-052-C18 の SSOT helper を適用する。`excluded` が空でなければ理由付き一覧を表示し、商品マスタ修正へ誘導する
 5. native save dialogで保存先を選び、CP932 PLUファイルバイト列を書き込む
 6. 保存キャンセルまたは保存失敗では `confirm_plu_export_saved` を呼ばず、未反映を残す
@@ -39,17 +39,17 @@ function PluExportPage(): JSX.Element
 
 | Root | Decision ID | Decision | Why |
 |---|---|---|---|
-| REQ-402 / D-072 | UI-08-D1 | PLUファイル生成とPLU未反映解除を分離する。`prepare_plu_export` は slot 予約を永続化するが商品を反映済みにせず、`confirm_plu_export_saved` が reserved→active / release_pending→free と `plu_dirty=false` を同時確定する。 | 生成成功だけでは外部投入成功を意味しない一方、再 prepare でも同じ memory No. を使う必要がある。 |
-| REQ-402 / adapter boundary | UI-08-D2 | UI文言では「アプリで確認できるのはPLUファイル保存まで」と明示し、レジ反映済みとは書かない。 | D-011/D-023。レジ側APIがなく、誤って反映確認済みに見せると運用リスクになる。 |
-| REQ-402 / CV17 1.1.1 | UI-08-D3 | UI-08 は CV17 1.1.1 `スキャニングPLU(商品)` adapter profile の `.txt` タブ区切りテキストを保存する。ヘッダは11列、memory No. は通常PLU使用数 + 1 始まり、スキャニングコードは13桁JAN必須とし、product_code fallbackは禁止する。工場出荷時配分（SR-S4000 取説確認済み: PLU総枠 5,000 = 通常 216 + スキャニング 4,784）により217始まり。 | 2026-07-03 field gate で、同形状の `.txt` は `CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の流れで反映できることを確認した。CV17 import成功だけでは完了扱いにせず、実際のgateはレジ側バーコード確認までとする。 |
-| REQ-402 / recovery | UI-08-D4 | 保存キャンセル・保存失敗では `plu_dirty` と予約を残し、再保存または再生成を案内する。CV17取込み失敗以降は保存済みファイルの再投入、または Diff / Full の再書出しで回復する。 | memory No. は永続しており両 mode を安全に投入できる。confirm 後も slot identity は変わらない。 |
-| REQ-402 / safety | UI-08-D5 | Full書出しでは既存PLUバックアップ確認を画面内 Alert として出す。実バックアップファイルはrepoに入れない。217〜5000 の **4,784 slot** は固定件数上限との比較ではなく、snapshot と永続状態で空き・管理範囲を判定する。 | Full投入は app 管理 slot 全体と解放分を扱うため、操作手順上の注意が必要。 |
+| REQ-402 / D-072 / D-027 | UI-08-D1 | PLUファイル生成とPLU未反映解除を分離する。`prepare_plu_export` は slot 予約を永続化するが商品を反映済みにせず、`confirm_plu_export_saved` が reserved→active と `plu_dirty=false` を同時確定する（D-117 (6) で 2 段を残す）。 | 生成成功だけでは外部投入成功を意味しない一方、再 prepare でも同じ memory No. を使う必要がある。CV17 の取込みに失敗しても、外すまでは同じ商品が差分に残る（D-027）。 |
+| REQ-402 / adapter boundary | UI-08-D2 | UI文言では「アプリで確認できるのはPLUファイル保存まで」と明示し、レジ反映済みとは書かない。 | D-011/D-023。アプリはその場では反映を確かめられず、次の締めの Z004 の照合で分かるのもコードと名称だけ（単価・課税方式・部門リンクは分からない。D-117 (7)）。誤って反映確認済みに見せると運用リスクになる。 |
+| REQ-402 / CV17 1.1.1 | UI-08-D3 | UI-08 は CV17 1.1.1 `スキャニングPLU(商品)` adapter profile の `.txt` タブ区切りテキストを保存する。ヘッダは11列、memory No. は通常PLU の最大登録数 216 の次の 217 始まり、スキャニングコードは13桁JAN必須とし、product_code fallbackは禁止する。工場出荷時配分（SR-S4000 取説確認済み: PLU総枠 5,000 = 通常 216 + スキャニング 4,784）により217始まり。開始は CV17 の設定で変えられるが、店は 217 のまま（D-117 (7)）。 | 2026-07-03 field gate で、同形状の `.txt` は `CV17 TXT import -> PC tool SD settings write -> SR-S4000 設定読み -> barcode/register behavior confirmation` の流れで反映できることを確認した。CV17 import成功だけでは完了扱いにせず、実際のgateはレジ側バーコード確認までとする。 |
+| REQ-402 / recovery | UI-08-D4 | 保存キャンセル・保存失敗では `plu_dirty` と予約を残し、再保存または再生成を案内する。CV17取込み失敗以降は Diff / Full の書出し直しだけで回復する（前に保存した file は取り込まない）。 | 書き出し直しは memory No. が永続しているので同じ枠を使い、保存の後の照合で枠が変わっていれば新しい枠を取る。前に保存した file は、その間にレジ側で変わった枠を上書きしうる（33 §16.8）。`plu_dirty` は confirm まで残る（D-027）。 |
+| REQ-402 / safety | UI-08-D5 | Diff / Full とも、書出しの前に画面内 Alert（既存の「既存PLUバックアップ確認」の Alert を言い換えたもの。新しい Alert は作らない）で手順を案内する: 「レジスターツールで読む前に、レジで SD 設定書込みをし、その同じ SD をレジスターツールで読んでください。レジでの設定読込みまでを、次の締めの前に終えてください。」（CV17 の取説: レジで設定書込みをした SD を読まないと、レジ側で設定した内容が消える。事実の一覧 P-044・P-046）。実バックアップファイルはrepoに入れない。217〜5000 の **4,784 slot** は固定件数上限との比較ではなく、snapshot と永続状態で空き・管理範囲を判定する。件数の上限の警告は出さない（`over_limit_warning` は D-117 (5) で撤去）。 | CV17 はレジの設定を保持せず、読んだ SD の設定にファイルの行を重ねてレジへ書く。古い SD を読むとレジ側で変えた設定を失うので、Diff でも同じ手順が要る。次の締めの前に読込みまで終えると、次の締めの照合がその反映を写す。 |
 | REQ-402 / D-028 | UI-08-D8 | PLU書出し対象は三分バケットで表示する。対象外（`plu_target=0`）は差分一覧・書出しに現れない。要修正（`plu_target=1` かつ JAN不備・同一JAN価格不一致）は prepare 結果の `excluded` として理由付き一覧で表示し、商品マスタ修正へ誘導する。生成はブロックしない。 | JANなし商品が1件あるだけでPLU書出し全体が止まる構造（Full恒久失敗・Diff恒久残留・通知汚染）を解消する。decision-log D-028。 |
-| REQ-402 / D-072 | UI-08-D9 | Diff / Full とも CV17 へ投入できる。Full は app 管理 slot 全体の再同期、Diff は未反映対象 + 解放分と説明する。旧設計で生成した memory No. 永続化前の Full 書出しファイルは再投入しない。 | `plu_slots` により memory No. が固定され、部分 import の暫定リスクを解消した。旧 file にはこの保証がない。 |
+| REQ-402 / D-072 | UI-08-D9 | Diff / Full とも CV17 へ投入できる。Full は対象の商品の app 管理 slot 全体の再同期、Diff は未反映の対象と説明する。前に保存した file は取り込まない（UI-08-D4）。 | `plu_slots` により memory No. が固定され、部分 import の暫定リスクを解消した。旧 file にはこの保証がない。 |
 | REQ-402 / status visibility | UI-08-D6 | PLUファイル保存、保存失敗、キャンセル、未反映解除結果はページ上部の注意文直下に表示し、状態遷移後はページ先頭へスクロールする。ページ全体は既存業務画面と同じ内側余白を持つ。confirm失敗は成功色の保存済み表示に混ぜず、失敗タイトルと再試行導線を持つ別 Alert にする。 | 保存後の `この書出しを未反映から外す` は次操作の要であり、下部に出すと利用者が見落とす。confirm失敗が成功表示に混ざると未反映解除に失敗した事実を見落とす。UI-02/03/04/05 の保存結果 visibility follow-up と DSR-01 の共通レイアウト継承に合わせる。 |
 | REQ-402 / D-028 L3 | UI-08-D10 | 注意情報はページ上部圏に集約する: 要修正一覧（excluded）は状態表示 section の直後・コンテンツ 2 カラムより前に置き、見出しに warning アイコン + 説明 1 行を添える。CV17 回復手順文言は保存完了の成功 Alert に埋めず、warning トーンの独立 Alert（タイトル `PCツールに取り込めなかった場合の回復手順`）とし、restored pending Alert 内にも同文を強調表示する。 | PR #124 L3 の owner 指摘（要修正一覧が最下部でスクロールしないと見えない / 事故防止文言が埋もれている）。安全側の案内は視線が最初に通る場所 + 強調（色のみ不可）で初めて効く。memory feedback-operator-ui-critical-notes-placement、DSR-03（データ安全系 = 上部 Alert 帯）整合。 |
 | REQ-402 / recovery | UI-08-D7 | PLUファイル保存後、未反映解除前に画面遷移・アプリ終了・PC再起動が起きても復帰できるよう、保存済み未確認状態を軽量 `localStorage` に残す。保存するのは `version`、mode、保存先、保存日時、推奨ファイル名、件数、文字コード、exact product_code / memory_no set だけで、ファイル本文や実ファイル内容は保存しない。confirm成功または `破棄して再書出し` で削除する。 | PCツール、SDカード、レジ操作はアプリ外の時間が長く、画面を開きっぱなしにする前提は実運用に合わない。履歴/監査ではないためDBテーブルは作らず、未完了作業の復帰に必要な最小状態だけを保持する。 |
-| REQ-907 / D-072 | UI-08-D11 | 「レジ登録状況を読み込む」で共通 FilePicker（D-054）から Z004 を選び、最終読込み日時と free / external / app managed / conflict の占有要約をページ上部に表示する。summary は app managed の内数として `release_pending_count` も返し、0 より大きければ解除待ち説明を出す。Diff 件数は `listPluDirty` 件数 + `release_pending_count` とし、両方 0 のときだけ Diff を無効化する。snapshot 未読込みは書出しより先に step と導線を出す。 | 既存登録を空きと推測せず、operator が現在の占有 source を確認してから予約できるようにする。商品側 dirty が 0 でも解除 clear 行だけを Diff 出力できる必要がある（SPEC-PLS-D2、D5、D7）。 |
+| REQ-907 / D-117 | UI-08-D11 | 占有は毎日の締めの売上データ取込みで SD を読んだときに自動で照合する（[33 §16.3](33-biz-plu-export-service.md)）。この画面は Z004 を選ぶ step と占有の件数の要約を持たず、最終照合日時を 1 行で出す。一度も照合していなければ、書出しより先に売上データ取込みへの導線を出す。Diff 件数は `listPluDirty` 件数とし、0 のときだけ Diff を無効化する。 | 店は締めで毎日 SD を PC に差して読む（D-111）ので、店主の操作を 1 つ増やさずに、既存登録を空きと推測しない gate を保てる（SPEC-PLS-D2、D5、D7）。件数の表示を要する反例は無く、競合は商品を未反映に戻す規則が受け持つ（D-117 (5)）。旧形（FilePicker の step、件数の要約、解除待ちの説明）は D-117 で置き換えた。 |
 
 ## 67.6 Route / Components
 
@@ -59,8 +59,8 @@ function PluExportPage(): JSX.Element
 
 - `PluExportPage`: page orchestration、query/mutation、save dialog、状態分岐
 - `PluDirtySummary`: 差分件数、最終書出し目安、0件空状態
-- `PluRegisterSnapshotPanel`: Z004 FilePicker、最終読込み日時、占有要約、conflict warning（above the fold）
-- `PluExportModePanel`: Diff / Full の二択、対象 / clear 件数、Full バックアップ注意
+- `PluRegisterSnapshotPanel`: 最終照合日時の 1 行と、未照合のときの売上データ取込みへの導線（above the fold）
+- `PluExportModePanel`: Diff / Full の二択、対象件数、SD 設定書込みの手順の案内（UI-08-D5、Diff / Full とも）
 - `PluDirtyProductTable`: 差分対象商品一覧（`plu_target=1` の商品のみが対象。対象外商品はここに現れない）。商品コード、JANコード、商品名、売価、在庫を表示し、JAN未登録は `未登録` と出す。長さの商品の在庫は m で出す（[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 9 行目）
 - `PluExcludedTable`: prepare 結果の要修正一覧（D-028）。商品コードと理由（JAN未登録 / 13桁でない / チェックディジット不正 / 同一JAN内の価格・税率不一致）を表示し、商品マスタ編集への導線を出す
 - `PluExportResultPanel`: ページ上部の状態表示。保存結果、confirm導線、外部手順、未反映解除結果を注意文直下に出す
@@ -85,9 +85,8 @@ function PluExportPage(): JSX.Element
 | Command | Input | Output | UI handling |
 |---|---|---|---|
 | `commands.listPluDirty()` | none | `ProductResponse[]` | 差分対象一覧（`plu_target=1` かつ `plu_dirty=1`、D-028）。0件は空状態でエラーではない |
-| `commands.getPluSlotSummary()` | なし | `snapshot_at`, free / external / app managed / conflict counts, `release_pending_count` | snapshot 状態を above the fold に表示。解除待ちは app managed の内数として Diff 件数へ加算 |
-| `commands.importPluRegisterSnapshot({ fileBytes })` | Z004 の bytes（FilePicker `PickedFile.bytes` を `number[]` へ） | snapshot summary | FilePicker D-054 で選択（path は渡らない）。実コードは UI に一覧表示しない。成功後は D-052-C17 の SSOT helper を適用 |
-| `commands.preparePluExport({ mode })` | `"diff"` / `"full"` | `bytes_base64`, `suggested_filename`, `content_type`, `encoding`, `count`, `target_product_codes`, `prepared_rows[memory_no]`, `excluded` | snapshot 未読込みは `register_snapshot_required`。`no_free_slot` を含む要修正は生成から除外。slot 予約・再対象化復元は永続化し、成功後は D-052-C18 の SSOT helper を適用 |
+| `commands.getPluSlotSummary()` | なし | `snapshot_at` | 最終照合日時を above the fold に表示。null なら売上データ取込みへの導線 |
+| `commands.preparePluExport({ mode })` | `"diff"` / `"full"` | `bytes_base64`, `suggested_filename`, `content_type`, `encoding`, `count`, `target_product_codes`, `prepared_rows[memory_no]`, `excluded` | 未照合は `register_snapshot_required`。`no_free_slot` を含む要修正は生成から除外。slot 予約・external の採用は永続化し、成功後は D-052-C18 の SSOT helper を適用 |
 | `commands.confirmPluExportSaved({ product_codes, prepared_rows })` | prepare結果の `target_product_codes` / `prepared_rows` | `updated_count`, `confirmed_at` | 保存済み確認。成功後は D-052-C14 の SSOT helper を適用 |
 
 `target_product_codes` はprepare時のexact setである。confirm時にUIが現在の差分一覧から再計算しない。
@@ -108,26 +107,28 @@ function PluExportPage(): JSX.Element
   "count": 1,
   "encoding": "CP932",
   "targetProductCodes": ["BT0001"],
-  "overLimitWarning": false
+  "preparedRows": [{ "memory_no": 217, "target_product_codes": ["BT0001"] }]
 }
 ```
 
 - 保存しないもの: `bytes_base64`、PLUファイル本文、JAN、商品名、価格、実PLUファイル、PCツール/SDカード/レジ側の結果
-- 読込み時にJSON不正、schema不一致、対象コード空なら削除して通常の `idle` として扱う
+- 読込み時にJSON不正、schema不一致、対象コード空なら削除して通常の `idle` として扱う。D-117 の前の形（`overLimitWarning` を持つ）は schema 不一致として消え、通常の画面に戻る（memory No. は永続なので、書き出し直せば同じ番号になる）
 - 復帰状態の confirm は `targetProductCodes` を使い、画面上の現在の差分一覧や再prepare結果から対象を再計算しない
 - confirm成功時と `破棄して再書出し` 実行時に削除する。confirm失敗時は保持し、再試行できるようにする
 
 ## 67.9 UI / Wording
 
 - ページタイトル: `PLU書出し`
-- ページ説明（① 説明セクション使用パターン、[02-component-catalog.md](../design-system/02-component-catalog.md) ①）: レジのPLU登録状況を書き出すページです。『レジ登録状況を読み込む』でレジのCSV（Z004）を読み込み、空き・外部登録・アプリ管理・競合の件数を確認します。『差分を書き出す』（未反映の商品だけ）か『全件を書き出す』を選んで保存し、『この書出しを未反映から外す』を押して確定します。
+- ページ説明（① 説明セクション使用パターン、[02-component-catalog.md](../design-system/02-component-catalog.md) ①）: レジに登録する商品のファイルを作るページです。レジの登録状況は、毎日の売上データ取込みでレジの SD を読むと自動で読み込まれます。『差分を書き出す』（未反映の商品だけ）か『全件を書き出す』を選んで保存し、レジスターツールで取り込んでレジへ反映した後、『この書出しを未反映から外す』を押して確定します。
 - Diff mode label: `差分を書き出す`
 - Full mode label: `全件を書き出す`
 - confirm button: `この書出しを未反映から外す`
 - result note: `アプリで確認できるのはPLUファイル保存までです。PCツールへの取込み、SDカード書出し、レジ読込みは手動で確認してください。`
-- snapshot required: `レジ設定の読込みが必要です` / action `Z004を選んでレジ登録状況を読み込む`
-- failure note before confirm: `PCツールに取り込めなかった場合は、保存済みファイルを再投入するか、差分または全件を書き出し直してください。`（UI-08-D10: 独立 warning Alert）
-- legacy file warning: `メモリNo.を永続化する前に作成した全件ファイルは再投入しないでください。`
+- snapshot status: `レジの登録状況: {YYYY-MM-DD HH:mm:ss}（売上データ取込みで SD を読んだとき）`
+- snapshot stale（暦日の差が 3 を超える）: `最後にレジの登録状況を読んでから日がたっています。売上データ取込みでレジの SD を読んでから書き出してください。`
+- SD 設定書込みの案内（Diff / Full とも、UI-08-D5）: `レジスターツールで読む前に、レジで SD 設定書込みをし、その同じ SD をレジスターツールで読んでください。レジでの設定読込みまでを、次の締めの前に終えてください。`
+- snapshot required: `レジの登録状況がまだ読まれていません。売上データ取込みでレジの SD を一度読んでください。` / action `売上データ取込みへ`
+- failure note before confirm: `PCツールに取り込めなかった場合は、差分または全件を書き出し直してください。前に保存したファイルは取り込まないでください（保存の後にレジの登録状況が変わっていると、レジの登録を上書きします）。`（UI-08-D10: 独立 warning Alert と restored pending Alert の両方に出る 1 つの文字列）
 - excluded list lead: `これらの商品は今回のPLUファイルに含めていません。商品マスタでJANコード・売価・税率を修正すると、次回の書出しから含まれます。`（UI-08-D10 L3 P3: 修正対象を除外理由の全種（JAN不備 / 同一JANの売価・税率不一致）と一致させ、後半の行動文を強調表示して muted 一色の見落としを防ぐ）
 - format validation note: `JANコードが未登録または不正な商品は、スキャニングPLU書出しに含められません。商品マスタで13桁JANを確認してください。`
 - excluded list title: `書出しに含めなかった商品（要修正）`
@@ -142,15 +143,16 @@ function PluExportPage(): JSX.Element
 
 ## 67.10 Query Invalidation
 
-- prepare成功: D-052-C18 の SSOT helper で slot summary を invalidate する。`plu_dirty` は変わらないが、予約・external採用・再対象化復元で slot status が変わり得る
+- prepare成功: D-052-C18 の SSOT helper で slot summary を invalidate する。`plu_dirty` は変わらないが、予約・external採用で slot status が変わり得る
+- 売上データ取込みの SD の読取り（CMD-12 `scan_register_sd`）成功: 占有の照合で `snapshot_at` と、missing・conflict の商品の `plu_dirty` が変わり得るので slot summary と未反映一覧を stale 化する。D-052 の C17（Z004 を選ぶ snapshot の取込み）はこの規則に置き換わり、runtime の lane が D-052 の Contract 行・production SSOT・独立 oracle を同じ PR で直す（D-117 の Compatibility）
 - save cancel / save failure: invalidateしない
 - 商品 update / 廃番 toggle 成功: D-052-C2、confirm成功: D-052-C14 を適用し、いずれも slot summary を stale 化する。具体的な query key 集合と除外判断は本書へ複製しない。
 
 ## 67.11 Error / Recovery
 
-- Diff対象0件: `listPluDirty` と `release_pending_count` がともに 0 なら prepareを呼ばず、空状態で「差分はありません」を表示する。Full書出しは選べる。app managed が 1 以上でも解除待ち 0 なら Diff を有効化しない
+- Diff対象0件: `listPluDirty` が 0 なら prepareを呼ばず、空状態で「差分はありません」を表示する。Full書出しは選べる
 - prepare validation error: Alertで表示し、差分一覧へ戻れる
-- snapshot 未読込み: `register_snapshot_required` を表示し、Z004 FilePicker へフォーカスを戻す
+- 未照合: `register_snapshot_required` を表示し、売上データ取込みへの導線へフォーカスを移す
 - JANなし / 13桁以外 / チェックディジット不正 / 同一JAN価格不一致 / `no_free_slot`: prepareは失敗せず、該当商品を `excluded`（要修正一覧）として理由付きで表示する。既存 slot は維持し、今回のファイルには含めない
 - save cancel: dirtyは残る。トーストだけで済ませず、画面上に再保存導線を残す
 - save failure: Alert + 再保存 / 再生成
@@ -167,10 +169,8 @@ UI-08 implementation PRでは Windows native L3 と外部手順確認を必須�
 - Diff 0件 / Diffあり / Full の表示差
 - native save dialogで推奨ファイル名 `PLU_{YYYYMMDD}.txt` が出る
 - 保存キャンセル時に未反映が消えない
-- Z004 FilePicker、snapshot_required 分岐、最終読込み日時と占有要約が above the fold で読める
-- external / app managed / conflict の区別が色以外の label / icon / text でも読める
+- 締めの売上データ取込みで SD を読んだ後、この画面の最終照合日時がその読取りの時刻になる。未照合の DB では売上データ取込みへの導線が出て、書出しが拒まれる
 - 保存後、confirm前なら同じ memory No. で Diff / Full を再書出しでき、どちらも CV17 へ投入できる
-- memory No. 永続化前に作成した旧 Full file の再投入禁止文言が読める
 - 保存後確認ボタンと保存失敗時の再保存導線がページ上部に見える
 - 保存後、画面遷移またはアプリ再起動相当の再表示でも `保存済みで未確認のPLU書出しがあります` がページ上部に出て、保存先・件数・文字コードを確認できる
 - 復帰Alertから `この書出しを未反映から外す` と `破棄して再書出し` の両方を選べる

@@ -469,16 +469,19 @@ struct PluExportPrepareResponse {
     encoding: String,                // PluFileOutput.encoding
     count: usize,                    // 書出し行数（dedup 後）
     target_product_codes: Vec<String>,  // confirm対象。dedup 群の全メンバーを含むため count と長さが一致しないことがある（D-028）
-    prepared_rows: Vec<PluPreparedRowResponse>, // memory_no、row_kind、exact product set
+    prepared_rows: Vec<PluPreparedRow>, // memory_no、exact product set（BIZ の型をそのまま wire に出す）
     excluded: Vec<PluExcludedProductResponse>,  // 要修正一覧（D-028）
-    over_limit_warning: bool,        // PLU上限超過警告（互換維持フィールド。BIZ-04側は常に false を返し、実際の上限超過は excluded 経由で表現する）
 }
 
-struct PluPreparedRowResponse {
+struct PluPreparedRow {
     memory_no: i64,
-    row_kind: PluPreparedRowKind, // product | clear（generated enum）
     target_product_codes: Vec<String>,
 }
+```
+
+D-117 (1)・(5) で `over_limit_warning`（常に false の互換 field）と `row_kind`（`PluPreparedRowKind` の product | clear）を外した。runtime の lane が code・bindings・UI・test と一緒に外す（wire の変更）。
+
+```
 
 // 要修正一覧の1件（BIZ-04のPluExcludedProductをフロントエンド向けに変換）
 struct PluExcludedProductResponse {
@@ -499,7 +502,7 @@ struct PluExcludedProductResponse {
 2. state.db.lock() でDB接続を取得
 3. PluExportPrepareRequest { mode: export_mode } を構築
 4. biz::plu_export_service::prepare_plu_export(&mut conn, req) を呼ぶ（slot 予約 TX を BIZ-04 が所有）
-   - snapshot 未読込みは `register_snapshot_required`。JAN不備、同一JAN価格不一致、空きなしは BizError にならず `excluded`（要修正リスト）として Ok で返る。固定件数との比較は行わない
+   - 一度も照合していなければ `register_snapshot_required`。JAN不備、同一JAN価格不一致、空きなしは BizError にならず `excluded`（要修正リスト）として Ok で返る。固定件数との比較は行わない
 5. Ok → PluExportPreparedResult を PluExportPrepareResponse に変換（bytes → base64エンコード）して返す
 6. Err(BizError) → CmdError に変換して返す
 
@@ -541,14 +544,14 @@ struct PluExcludedProductResponse {
 fn confirm_plu_export_saved(
     state: State<AppState>,
     product_codes: Vec<String>,
-    prepared_rows: Vec<PluPreparedRowResponse>,
+    prepared_rows: Vec<PluPreparedRow>,
 ) -> Result<PluExportConfirmResponse, CmdError>
 ```
 
 **入力型**:
 ```
 product_codes: Vec<String>   // prepare_plu_exportが返したtarget_product_codes
-prepared_rows: Vec<PluPreparedRowResponse> // prepare が返した exact memory_no / row_kind / product set
+prepared_rows: Vec<PluPreparedRow> // prepare が返した exact memory_no / product set
 ```
 
 **出力型**:
@@ -573,7 +576,9 @@ struct PluExportConfirmResponse {
 
 ---
 
-#### import_plu_register_snapshot（CMD-08-D4 / SPEC-PLS-D2）
+#### import_plu_register_snapshot（CMD-08-D4。撤去の対象、D-117 (3)）
+
+占有は毎日の締めの SD の読取り（CMD-12 [§45.6a](45-cmd-daily-report-import.md) `scan_register_sd`）が BIZ-04 `refresh_plu_register_snapshot_from_sd` を呼んで照合する（[33 §16.3](33-biz-plu-export-service.md)）。店主が FilePicker で Z004 を選ぶこの command は撤去する。runtime の lane が code・specta の登録・bindings・UI・test と一緒に消す（SD を直接読む runtime の後。それまで code は今の形のまま）。設計照合 test（`src-tauri/tests/design_compliance_test.rs`）が code の pub fn と突き合わせるので、撤去までは signature だけを残す。
 
 ```rust
 #[tauri::command]
@@ -581,10 +586,8 @@ struct PluExportConfirmResponse {
 fn import_plu_register_snapshot(
     state: State<AppState>,
     file_bytes: Vec<u8>,
-) -> Result<PluRegisterSnapshotSummaryResponse, CmdError>
+) -> Result<PluRegisterSnapshotSummary, CmdError>
 ```
-
-共通 FilePicker（D-054）が返す Z004 の bytes（`PickedFile.bytes`、wire は `fileBytes: number[]`）を受け、`CSV_IMPORT_FILE_SIZE_LIMIT` 超過は `parse_and_validate_csv` と同じ Validation error で止め、BIZ-04 の snapshot 取込みを呼ぶ。path は受け取らない（D-054 は path を公開しない。設計時の `path: String` は gated amendment で改訂、2026-08-18）。実コードを response や operation log に複製せず、`snapshot_at`, `free_count`, `external_count`, `app_managed_count`, `conflict_count`, `release_pending_count` の要約だけを返す。`release_pending_count` は app 管理総数の内数で、次回 Diff / Full の clear 行候補件数である。
 
 #### get_plu_slot_summary（CMD-08-D5 / SPEC-PLS-D2、D7）
 
@@ -593,10 +596,10 @@ fn import_plu_register_snapshot(
 #[specta::specta]
 fn get_plu_slot_summary(
     state: State<AppState>,
-) -> Result<PluRegisterSnapshotSummaryResponse, CmdError>
+) -> Result<PluRegisterSnapshotSummary, CmdError>
 ```
 
-`app_settings` と `plu_slots` から最後の読込み日時と占有要約を read-only で返す。snapshot 未読込みは null timestamp と全件数 zero の summary で表し、prepare の gate 判定は BIZ-04 が行う。`release_pending_count` は `app_managed_count` と別集計し、UI は解除待ち件数を app 管理総数から推測しない。
+`app_settings` から最後に照合した日時（`snapshot_at`）だけを read-only で返す。未照合は null。BIZ の `PluRegisterSnapshotSummary` をそのまま wire に出し、件数の field（free / external / app managed / conflict / `release_pending_count`）を外す（D-117 (5)。wire の変更は runtime の lane）。prepare の gate 判定は BIZ-04 が行う。
 
 ---
 
@@ -628,7 +631,7 @@ Vec<ProductResponse>
 
 **設計判断 — 戻り値の型**: BIZ層が返す `Vec<Product>` をそのままフロントエンドに返さず、`ProductResponse` に変換する。CMD-01と同じ商品レスポンス型を使うことで、フロントエンドの型定義を統一する。
 
-`import_plu_register_snapshot` / `get_plu_slot_summary`、prepare / confirm の `memory_no` DTO、`no_free_slot`、`plu_memory_no` は後続実装 A/B で specta 登録と bindings 再生成を行う。本 design-first PR は `src/lib/bindings.ts` を変更しない。
+D-117 の撤去（`import_plu_register_snapshot`、summary の件数、`over_limit_warning`、`row_kind`、`plu_memory_no`）は runtime の lane が specta 登録と bindings 再生成を行う。本 design PR（D-117）は `src/lib/bindings.ts` を変更しない。
 
 **入力例**: なし（引数なし）
 

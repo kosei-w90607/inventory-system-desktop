@@ -95,7 +95,6 @@ fn search_products(conn: &DbConnection, query: &ProductSearchQuery) -> Result<Pa
 - supplier_id: Option<i64>（`None` なら取引先条件なし）
 - include_unassigned: bool（`supplier_id` 指定時だけ有効。true なら未設定商品も含める）
 - is_discontinued: Option<bool>（Noneなら全件、Some(false)なら現行品のみ）
-- plu: Option<PluMigrationFilter>（All / Target / Pending / Synced / Excluded。UI search param `plu` から BIZ-01 が変換）
 - sort_key: SortKey（Name / ProductCode / StockQuantity / SellingPrice）
 - sort_order: SortOrder（Asc / Desc）
 - page: u32（1始まり）
@@ -108,34 +107,20 @@ fn search_products(conn: &DbConnection, query: &ProductSearchQuery) -> Result<Pa
    - department_idがSome → `p.department_id = ?`
    - supplier_idがSome → include_unassigned が true なら `(p.supplier_id = ? OR p.supplier_id IS NULL)`、false なら `p.supplier_id = ?`。supplier_id が None なら flag を無視して条件を加えない（SPEC-PRVB-D1）
    - is_discontinuedがSome → `p.is_discontinued = ?`
-   - plu が Target → `p.plu_target=1`、Pending → `p.plu_target=1 AND p.plu_dirty=1`、Synced → `p.plu_target=1 AND p.plu_dirty=0`、Excluded → `p.plu_target=0`。All は条件を加えない
 2. COUNT(*) でtotal_countを取得
 3. ORDER BY句の構築（sort_key + sort_order）
 4. LIMIT clamped_per_page OFFSET (page - 1) * clamped_per_page で取得
 5. PaginatedResult { items, total_count, page, per_page: clamped_per_page } を返す
 
-`ProductWithRelations` には `plu_slots` を JAN で LEFT JOIN した読取り専用 `plu_memory_no` を追加する。対象 status は `reserved` / `active` / `release_pending` とし、product_code を slot identity に使わない（**IO-01-D4 / SPEC-PLS-D1、D7**）。同一 JAN に複数行が該当する場合（重複解消後の `active` + `release_pending`、`release_pending` 複数行）は `reserved` / `active` を優先し、`release_pending` のみなら最小 memory No. の 1 行に絞る（商品 1 行につき `plu_memory_no` は 1 値、行を増やさない）。
+PLU の移行 filter（`plu: Option<PluMigrationFilter>` と WHERE の PLU 条件）と、`ProductWithRelations` の `plu_slots` を JAN で LEFT JOIN した読取り専用 `plu_memory_no`（IO-01-D4 / SPEC-PLS-D7）は D-117 (2)・(5) で撤去した。runtime の lane が code・bindings・UI・test と一緒に外す。
 
-一括 PLU 対象更新では、同じ keyword / department / discontinued / plu 条件をページングなしで返す `find_products_for_bulk_plu_target(conn, filter)` を使う。`ProductBulkFilter` は `PluMigrationFilter` と同じ db 層 `product_repo` 所有で、BIZ が再 export する。BIZ-01 が 1 transaction 内で eligibility 判定、slot 解放、product 更新を行えるよう、repo は SQL 抽出・更新だけを担当する（SPEC-PLS-D6）。
+一括 PLU 対象更新の抽出（SPEC-PLS-D6）も撤去の対象（D-117 (2)）。設計照合 test（`src-tauri/tests/design_compliance_test.rs`）が code の pub fn と突き合わせるので、撤去までは signature だけを残す。
 
 ```rust
 pub fn find_products_for_bulk_plu_target(
     conn: &DbConnection,
     filter: &ProductBulkFilter,
 ) -> Result<Vec<Product>, DbError>
-```
-
-#### db::plu_slot_repo（IO-01-D4 / SPEC-PLS-D1）
-
-`plu_slots` の ordered lookup と状態遷移だけを担当し、transaction は呼出側 BIZ-04 が所有する。
-
-```rust
-pub fn list_slots(conn: &DbConnection) -> Result<Vec<PluSlot>, DbError>
-pub fn find_slots_by_scanning_code(conn: &DbConnection, scanning_code: &str) -> Result<Vec<PluSlot>, DbError>
-pub fn find_slots_by_status(conn: &DbConnection, status: PluSlotStatus) -> Result<Vec<PluSlot>, DbError>
-pub fn find_slot_by_memory_no(conn: &DbConnection, memory_no: i64) -> Result<Option<PluSlot>, DbError>
-pub fn find_min_free_slot(conn: &DbConnection) -> Result<Option<PluSlot>, DbError>
-pub fn update_slot(conn: &DbConnection, update: PluSlotUpdate<'_>) -> Result<(), DbError>
 ```
 
 #### db::plu_slot_repo（IO-01-D4 / SPEC-PLS-D1）
