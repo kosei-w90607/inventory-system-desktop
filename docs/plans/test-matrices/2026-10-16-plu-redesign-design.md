@@ -52,6 +52,7 @@ Risk: R3
 | SPEC-PLS-D2 / §16.3 | FM3 | unit | `test_refresh_snapshot_skips_conflicting_same_settlement_req907` | 最大の精算回数の bytes が 2 本で違うのに照合する。期待: 照合しない（前回を保つ） |
 | SPEC-PLS-D2 / §16.3 | FM4 | unit | `test_snapshot_duplicate_jan_on_register_is_external_req907` | アプリが active で持つ JAN を空きの枠で観測したとき、TX が UNIQUE 違反で失敗するか、アプリの枠の memory No. が変わる。期待: 観測した枠は external（コードを保持）、アプリの枠は不変、`duplicate_on_register` を log |
 | SPEC-PLS-D2 / §16.3 | FM10 | unit | `test_snapshot_reserved_other_code_drops_reservation_req907` | 予約中の枠に別のコードを観測しても reserved を保つ。期待: external + `reservation_dropped`、次の prepare で別の最小の空き枠 |
+| SPEC-PLS-D2・D3・D4 / §16.3・§16.4・§16.5 | FM10 | unit（BIZ-04、試験 DB） | `test_confirm_rejects_rows_of_dropped_reservation_req907` | 予約した枠が照合で `reservation_dropped` になった後、再 prepare が同じ JAN に外れた枠の memory No. を返す、前の `prepared_rows`（外れた枠の memory No.）での confirm が通る（一部でも）、または `plu_dirty` が 0 になる。期待: 再 prepare は別の枠を返し、前の `prepared_rows` での confirm は全体を拒み、`plu_dirty` は 1 のまま |
 | SPEC-PLS-D2 / §16.3 | FM10 | unit | `test_snapshot_active_other_code_marks_dirty_req907` | 反映済みの枠に別のコード・空を観測しても商品が dirty にならない。期待: active を保ち、`plu_target=1` の商品だけ dirty |
 | SPEC-PLS-D2 / §16.3 | — | unit | `test_snapshot_same_input_is_idempotent_req907` | 同じ Z004 を BIZ の `import_plu_register_snapshot` へ 2 回直接渡すと状態が変わる。期待: 2 回目の後の `plu_slots` が 1 回目の後と同じ（照合の本体の性質。`refresh_plu_register_snapshot_from_sd` は等しい精算回数を照合しないので、この経路では 2 回目は呼ばれない） |
 | SPEC-PLS-D2 / §16.8 | FM3 | integration（MNT の restore + BIZ-04） | `test_restore_clears_plu_snapshot_keys_and_blocks_prepare_req907` | restore の後に `plu_register_snapshot_at`・`plu_register_snapshot_settlement_no` が残り、prepare が `register_snapshot_required` で止まらない（runtime の lane が 71 §71.7 `restore_backup` に足すまで red の期待）。期待: 2 つの key が無く、次の SD の読取りの照合で戻る |
@@ -65,6 +66,7 @@ Risk: R3
 | UI-08-D11 | FM2 | RTL（UI-08） | `PluExportPage.test.tsx` の「未照合の導線」 | `snapshot_at` が null のとき売上データ取込みへの導線と warning が出ない、または FilePicker の step が出る |
 | UI-08-D7 | — | RTL | `PluExportPage.test.tsx` の「旧形の復帰状態」 | `overLimitWarning` を持つ旧形の復帰状態で画面が壊れる。期待: 消して通常の画面 |
 | UI-08-D11 | FM13 | RTL | `PluExportPage.test.tsx` の「照合が古い」 | 今日と `snapshot_at` の暦日の差が 4 で警告の見た目と 1 文が出ない、差が 3 で出る、書出しが拒まれる |
+| UI-08-D4・D10・§67.9 | FM3 | RTL | `PluExportPage.test.tsx` の「取込みに失敗したときの案内」 | 独立の warning Alert と restored pending の Alert のどちらかで、failure note が「差分または全件を書き出し直す」と「前に保存したファイルは取り込まない」を出さない、または保存した file の入れ直しを案内する |
 | UI-08-D5 | — | RTL | `PluExportPage.test.tsx` の「SD 設定書込みの案内」 | 案内の Alert が Full だけに出て Diff に出ない |
 | UI-08-D11 | — | RTL | `PluExportPage.test.tsx` の「Diff の件数」 | Diff の件数が `listPluDirty` の件数と違う（解除待ちを足す） |
 
