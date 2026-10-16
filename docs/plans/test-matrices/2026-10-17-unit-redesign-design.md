@@ -8,9 +8,10 @@ Risk: R3
 
 ## Contracts Under Test
 
+- 22 §16 の作り直しの手順: (a) `{app_data}` の DB 一式、(b) `.migrating`、(c) 復元の遺物、(d) 起動の作業フォルダの旧 DB の全部を移すと、次の起動は空の DB で vB まで当たる
 - MNT-03-D14（vB）: 原価の列を持つ 5 つの表に行の無い DB にだけ当たり、6 列を `_centi` に改名し値を変えない。行のある DB では何も変えずに `MigrationFailed`（`作り直し` と表名）。前提が確かめられたときだけ `stock_unit` の CHECK を 10 個にする
 - SPEC-UNIT-D1: 巻・cm は作り直しの起点でだけ外す（今の DB に新しい migration で外さない）
-- SPEC-UNIT-D2 / BIZ-01-D8 / UI-01b-D23: 単位の変更は個数の単位どうしだけ（商品修正・商品 CSV の上書き・UI を通らない command）。在庫・明細・価格・PLU の状態は変えない。操作ログに `stock_unit` の前後
+- SPEC-UNIT-D2 / BIZ-01-D8 / UI-01b-D23: 単位の変更は個数の単位どうしだけ（商品修正・商品 CSV の上書き・UI を通らない command）。在庫・明細・価格は変えない。単位だけの変更は `plu_dirty` を変えない（商品 CSV の上書きを含む）。操作ログに `stock_unit` の前後（商品 CSV の上書きは単位を変えた商品ごとに TX の中の `product_update`）
 - SPEC-UNIT-D5 / UI-01b-D24: 袋の値段 ÷ 入り数を 1/100 円未満で四捨五入して原価の欄に入れる。袋の値段と入り数は保存しない
 - 22 §16 の「DB の作り直しを 1 回にまとめる順」: 作り直した DB では棚卸しの runtime の migration が止まらない
 
@@ -23,6 +24,8 @@ Risk: R3
 - FM5: 個数 ↔ 長さの単位の変更が、商品フォーム・商品 CSV の上書き・command のどれかで通る（在庫 100 が 100 cm から 100 個に変わる）
 - FM6: 個数の単位どうしの変更で、在庫・明細・価格・`plu_dirty` が変わる、または操作ログに残らない
 - FM7: 商品 CSV の preview は拒むが commit が TX の中で再検証せず、wire の行を信じて種類をまたぐ変更を書く
+- FM11: 作り直しで起動の作業フォルダの旧 DB（§12.2 の取込みの元）を残し、次の起動で `migrate_legacy_db` が取り込んで空の DB にならない
+- FM12: 商品 CSV の上書きで単位だけを変えた行が `plu_dirty=1` になる、または単位を変えた商品の元の単位がログに残らない
 - FM8: 原価の補助の割り算を浮動小数で行い、四捨五入を誤る（`1000` 円 ÷ 12 が 83.34 になる、`.5` の境界で切り捨てる）
 - FM9: 原価の補助が入り数・袋の値段を DB か wire に出す
 - FM10: 作り直した DB で棚卸しの runtime の migration が止まり、作り直しが 2 回になる
@@ -33,15 +36,16 @@ Risk: R3
 |---|---|---|---|---|
 | MNT-03-D14 | FM1・FM2 | migration（合成の DB） | `test_vb_stops_when_any_cost_table_has_rows`（5 つの表ごとに 1 case） | 5 つの表のどれか 1 つに 1 行だけある DB で vB が成功するか、schema（`pragma_table_info` の列名・CHECK）・`schema_versions`・`PRAGMA foreign_keys` のどれかが変わる。期待: `MigrationFailed`、message に `作り直し` とその表名、何も変わらない。非空の期待として、どの表にも行が無い DB では成功する（下の行） |
 | MNT-03-D14 | FM1 | migration | `test_vb_renames_cost_columns_on_empty_db` | 空の DB に v1 から vB までを当てた後、6 列のどれかが古い名前のまま、または `_centi` の名前が無い |
-| MNT-03-D14 / SPEC-UNIT-D1 | FM4 | migration | `test_vb_unit_check_has_ten_codes` | 手順 4 を行う build で、CHECK が `roll`・`cm`・`kg` のどれかを受ける、または 10 個のどれかを拒む |
+| MNT-03-D14 / SPEC-UNIT-D1 | FM4 | migration | `test_vb_unit_check_drops_roll_and_cm` | 手順 4 を行う build で、CHECK が `roll`・`cm`・`kg` のどれかを受ける、または巻・cm を外した後の一覧（個数の単位 9 個と `m`）のどれかを拒む |
 | MNT-03-D14 | FM3 | migration（失敗の注入） | `test_vb_failure_rolls_back_and_restores_foreign_keys` | 手順 5 の検証を失敗させたとき、改名・CHECK・版のどれかが残るか、`PRAGMA foreign_keys` が手順 1 の値に戻らない |
 | MNT-03-D14 | — | migration | `test_vb_not_reapplied` | vB を記録した DB で `migrate` を再実行すると、vB が 2 度当たる |
+| 22 §16 の作り直しの手順 | FM11 | integration（`lib.rs` の `prepare_database_with_init` に一時の `app_data` と作業フォルダを渡す） | `test_rebuild_moves_legacy_cwd_db_and_starts_empty` | 作業フォルダに行のある旧 `inventory.db` を置き `app_data` に DB が無い状態で、手順どおり (a)〜(d) を移してから起動すると、取込みが起きる（`migrate_legacy_db` が `Ok(true)`）、DB に行がある、または vB が止まる。期待: 取込みなし、空の DB で vB まで記録。対照: (d) を移さずに起動すると取り込まれて vB が `作り直し` で止まる（手順の (d) が要ることを示す非空の期待） |
 | SPEC-UNIT-D2 / BIZ-01-D8 | FM5 | unit（BIZ-01、試験 DB） | `test_update_product_rejects_unit_kind_change` | `pcs` の商品を `m` に、`m` の商品を `pcs` に、`m` の商品を `cm` に変える `update_product` が通る。期待: `ValidationFailed("在庫単位は個数の単位どうしでだけ変えられます")`、商品の行と操作ログは変わらない |
 | SPEC-UNIT-D2 / BIZ-01-D8 | FM6 | unit | `test_update_product_changes_count_unit_word_only` | `pcs` → `ball` の変更で、`stock_quantity`・明細・`selling_price`・`cost_price`・`plu_dirty`・price_history のどれかが変わる、または操作ログの detail_json に `stock_unit` の `{"old":"pcs","new":"ball"}` が無い |
 | SPEC-UNIT-D2 / BIZ-01-D8 | — | unit | `test_update_product_same_unit_is_no_change` | 今と同じ単位を送ると操作ログの detail_json に `stock_unit` が書かれる（BIZ-01-D7 の「値を持っても更新前と同じ field は書かない」） |
-| SPEC-UNIT-D2 / BIZ-01-D8 | FM5・FM7 | unit（商品 CSV の preview と commit） | `test_import_overwrite_unit_kind_change_is_row_error` | 上書きの行で `在庫単位` を種類をまたいで変えると preview が行の error にしない、または preview を通さずに組んだ wire の行で commit が書く。期待: preview の行の error `在庫単位は個数の単位どうしでだけ変えられます（登録: …、CSV: …）`、commit は TX 全体を戻す。非空の対照: 個数の単位どうし（`個` → `玉`）の上書きは preview も commit も通り、単位が変わる |
+| SPEC-UNIT-D2 / BIZ-01-D8 | FM5・FM7・FM12 | unit（商品 CSV の preview と commit） | `test_import_overwrite_unit_kind_change_is_row_error` | 上書きの行で `在庫単位` を種類をまたいで変えると preview が行の error にしない、または preview を通さずに組んだ wire の行で commit が書く。期待: preview の行の error `在庫単位は個数の単位どうしでだけ変えられます（登録: …、CSV: …）`、commit は TX 全体を戻す。非空の対照（成功例）: `plu_dirty=0` の個数の商品を、`在庫単位` だけが違う行（`個` → `玉`、他の列は既存の値と同じ）で上書きすると、単位が `ball` になり `plu_dirty` は 0 のまま、同じ TX の `product_update` のログの detail_json が `{"stock_unit":{"old":"pcs","new":"ball"}}`。単位と売価を一緒に変えた行は今どおり `plu_dirty=1` で、同じ形の `stock_unit` のログも残る |
 | UI-01b-D23 | FM5 | RTL（`ProductForm` の edit mode。mock の境界は後続の lane の起票で対象 test の `vi.mock` を読んで決める） | `ProductForm edit unit select shows count units only` | 個数の商品の select に長さの単位が出る、長さの商品で select が操作できる、単位を変えないのに `stock_unit` を送る |
-| SPEC-UNIT-D5 / UI-01b-D24 | FM8 | unit（TS の純関数） | `unitCostFromPack` の golden（`1000` 円 ÷ 12 → 8333、`1` 円 ÷ 3 → 33、`0.05` 円 ÷ 2 → 3〈2.5 の切り上げ〉、`0.04` 円 ÷ 3 → 1、`999999.99` 円 ÷ 1 → 99999999） | 割り算を number の小数で行う、四捨五入の境界（`2r >= n`）を `>` にする、結果が袋の値段を越える |
+| SPEC-UNIT-D5 / UI-01b-D24 | FM8 | unit（TS。入力の文字列の解析〈SPEC-UNIT-D5 の入力の規則〉から補助の関数までを通す） | `unitCostFromPack` の golden（文字列の入力で `"1000"` 円 ÷ `"12"` → 8333、`"0.29"` 円 ÷ `"2"` → 15、`"1"` 円 ÷ `"3"` → 33、`"0.05"` 円 ÷ `"2"` → 3〈2.5 の切り上げ〉、`"0.04"` 円 ÷ `"3"` → 1、`"999999.99"` 円 ÷ `"1"` → 99999999。結果は 1/100 円の整数） | mutant「円の小数（number）で割る」（`Math.round(Number(price) / n * 100)` 等、円の number を n で割ってから 100 倍して丸める実装）で `"0.29"` ÷ `"2"` が 14 になって red になる。四捨五入の境界（`2r >= n`）を `>` にすると `"0.05"` ÷ `"2"` が 2 になって red。結果が袋の値段を越えても red |
 | SPEC-UNIT-D5 / UI-01b-D24 | FM9 | RTL | `ProductForm cost helper fills cost only` | 「原価に入れる」の後に保存の request に袋の値段か入り数が入る、入り数 0・`1.5`・空で原価の欄が変わる |
 | D-119 (8) | FM10 | migration（棚卸しの runtime の lane の test に足す） | 棚卸しの runtime の migration の「棚卸しと Z004 の取込みの無い DB で当たる」test に、vB の後の DB（商品あり、棚卸しの明細・Z004 の取込みなし）の case を足す | vB の後の DB で棚卸しの runtime の migration が止まる |
 
@@ -89,7 +93,7 @@ Risk: R3
 ## Compatibility Checks
 
 - old schema/input: 行のある v8 以降の DB → vB が止まる（作り直す）。商品 CSV の今の行の error の文 `在庫単位は登録の後に変えられません` は、単位の語の直しの lane の後は種類をまたぐときの新しい文に変わる（test の期待を書き換える）
-- new schema/input: `_centi` の 6 列、前提つきで 10 個の単位の CHECK
+- new schema/input: `_centi` の 6 列、前提つきで巻・cm を外した後の一覧（個数の単位 9 個と `m`）の CHECK
 - output order: 変えない
 - optional field behavior: `stock_unit` を送らない `updateProduct` は今と同じ
 
@@ -113,7 +117,7 @@ Risk: R3
 - If a mock value is changed so it differs from the design-doc expected value, which assertion proves the implementation used the correct source and not the mock's accidental constant? → 原価の補助の golden（`1000` ÷ 12 → 8333）は設計正本の例から写す
 - If invalidate/refetch changes the value before versus after the operation, which test proves the lifecycle order and preserved snapshot are correct? → 該当なし（単位の変更は今の `updateProduct` の invalidation を使う）
 - If a key branch is inverted, which test fails? → 個数の種類の判定を反転すると `test_update_product_rejects_unit_kind_change` と `test_update_product_changes_count_unit_word_only`
-- If a threshold comparison changes, which test fails? → 四捨五入の `2r >= n` を `>` にすると golden の `0.05` 円 ÷ 2
+- If a threshold comparison changes, which test fails? → 四捨五入の `2r >= n` を `>` にすると golden の `"0.05"` 円 ÷ `"2"`。円の小数（number）で割る mutant は golden の `"0.29"` 円 ÷ `"2"`（期待 15）で red
 - If a guard is removed, which test fails? → vB の起点の検査を外すと `test_vb_stops_when_any_cost_table_has_rows`。commit の再検証を外すと `test_import_overwrite_unit_kind_change_is_row_error`
 - If an output field is omitted, which test fails? → 操作ログの `stock_unit` を落とすと `test_update_product_changes_count_unit_word_only`
 - If output order changes, which test fails? → 該当なし
@@ -124,6 +128,6 @@ Risk: R3
 ## Residual Test Gaps
 
 - 最新の在庫 Excel の巻・cm の行の数は自動 test で確かめられない（Contract Probe の P1。原価の lane の起票の前に owner が持ち帰りで確かめる）。
-- 作り直しの手順（DB の file を移して空の DB から起動する）は開発者が原価の lane で 1 度通し、手順の記録を packet に残す。自動 test にしない。
+- 作り直しの手順のうち、自動 test は (d) の取込みの元を移したときに空の DB に着くことだけを止める（`test_rebuild_moves_legacy_cwd_db_and_starts_empty`）。実際の PC での file の移動（ショートカットごとの作業フォルダの確かめを含む）は開発者が原価の lane で 1 度通し、手順の記録を packet に残す。
 - 商品フォームの単位の select の 1 文と原価の補助の見た目は、後続の lane の Windows native L3（human visual confirmation）。
 - U5・U6 の店の答えで変わる所は、答えが出たときの lane の Matrix で設計する。

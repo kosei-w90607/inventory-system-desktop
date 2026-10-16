@@ -71,7 +71,7 @@ Goal Invariant:
 ### 非目的
 
 - code・migration・bindings・test の変更（原価の lane と単位の語の直しの lane）。
-- 単位の一覧の今の 12 個の記述を各文書で 10 個に書き換えること（外すのは作り直しの起点で、各文書の現行の記述は原価の lane が実装と一緒に直す。backlog の原価の lane の範囲に列挙した）。
+- 単位の一覧の今の 12 個の記述と個数の単位の数（今 10 個）の記述を、各文書で巻・cm を外した後の形に書き換えること（外すのは作り直しの起点で、各文書の現行の記述は原価の lane が実装と一緒に直す。backlog の原価の lane の範囲に列挙した）。
 - U5・U6 の決定、P（Z004・EJ の数量の配線）と ⑤（棚卸しの runtime）の設計の変更。
 - 行の金額の wire（十進の文字列、SPEC-UNIT-D6）と v8 の保存済みの値の上限の検査を外すこと（突き合わせの C-27・C-34。下の Scope の 1）。
 - 入力の上限の数字を変えること（突き合わせの G8）。
@@ -85,8 +85,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
 | 原価の lane の起票の前。U6 の答えと最新の在庫 Excel がまだ無い | owner が店に原価の税を聞き、Excel を持ち帰る | 原価の lane を起票できるか（U6）と、巻・cm を外すか（U1）が決まる | U6 の答えが出た | P1（Excel の巻・cm）、U6 |
-| 原価の lane を入れた版。開発・試験 DB（owner の PC の L3 用を含む）に商品がある | 新しい版のアプリを起動する | vB が `作り直し` と表名の message で止まり、DB は何も変わらない。旧版のアプリでそのまま開ける | 開発者が作り直す | 22 §16 の vB の手順 2 |
-| 同じ DB | 開発者がアプリを止め、DB の file 一式を消さずに日付の付いた folder へ移し、新しい版を起動する | 空の DB が作られ、v1 から vB までが当たる。原価の列は `_centi`、単位は前提が確かめられていれば 10 個 | 初期投入をやり直す | P2（空の表の `RENAME COLUMN`） |
+| 原価の lane を入れた版。開発・試験 DB（owner の PC の L3 用を含む）に商品がある。起動の作業フォルダに過去の移行の旧 DB が残っていることがある | 新しい版のアプリを起動する | 復元の遺物があれば reconcile が先に解く。vB が `作り直し` と表名の message で止まり、DB は何も変わらない。旧版のアプリでそのまま開ける | 開発者が作り直す | 22 §16 の vB の手順 2、作り直しの手順の (c) |
+| 同じ DB | 開発者がアプリを止め、22 §16 の作り直しの手順で、起動のときに DB を見つける場所の全部（(a) `{app_data}` の DB 一式、(b) `.migrating`、(d) 起動の方法ごとの作業フォルダの旧 DB 一式。(c) の遺物は先に reconcile が解いた）を消さずに日付の付いた 1 つの folder へ移し、どれも残っていないことを確かめてから新しい版を起動する | (a) も (d) も無いので旧 DB の取込みは起きず、空の DB が作られ、v1 から vB までが当たる。原価の列は `_centi`、単位は前提が確かめられていれば巻・cm を外した後の一覧（個数の単位 9 個と `m`） | 初期投入をやり直す | P2（空の表の `RENAME COLUMN`）、P6（起動の DB の場所） |
 | 作り直した DB | 商品 CSV か商品フォームで商品を登録する。ばらす商品は原価の欄の「袋の値段から出す」で袋の値段と入り数を入れる | 原価が 1/100 円で入る（`1000` 円 ÷ 12 → `83.33` 円）。袋の値段と入り数は残らない | — | UI-01b-D24 |
 | その後、棚卸しの runtime（D-118）を入れた版 | 新しい版を起動する | 作り直した DB には棚卸しの明細も Z004 の取込みも無い（停止 ADR が止めている）ので、棚卸しの runtime の migration は止まらずに当たる。作り直しは 2 回目が要らない | — | P3（停止の範囲） |
 | 単位の語の直しの lane の後。毛糸の商品が「個」で登録されている | 商品修正で数量単位を「玉」にして保存する | 単位の語が「玉」になり、在庫の数と過去の記録の数は変わらない（過去の記録も「玉」で出る）。操作ログに `stock_unit` の前後が残る | — | UI-01b-D23 |
@@ -98,16 +98,16 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は docs だけ。下の file の、下の節を書き換えた（全部 plan-first の commit）。
 
-1. 過剰の候補の撤去と外す時点（突き合わせの §4）: C-21（vC）= [22](../function-design/22-mnt-migration.md) §16 の題・MNT-03-D13 の vC の文・vU の上限の検査の「vC の手順 4」の文と表の「vC が改名する」を直し、vC の手順と列の改名の注記の段を、MNT-03-D14 の vB（起点の検査・6 列の改名・前提つきの単位の CHECK・確かめ・止まった後の作り直し）と「DB の作り直しを 1 回にまとめる順」に置き換えた。回復の段は vU だけの文にし、テストの段から vC と連続適用の失敗の case を外して vB の case を足した。[共通規則](../function-design/10-common-rules.md) の掛ける lane の「vC の範囲検査は外側の守り」、[master-tables](../db-design/master-tables.md)・[transaction-tables](../db-design/transaction-tables.md) の「既存の値を 100 倍する」、[30](../function-design/30-biz-product-service.md) の操作ログの円の key の互換、[31](../function-design/31-biz-inventory-service.md) の fingerprint の移行の前の記録の文を、D-119 の帰結に合わせた。C-02（巻）・C-03（cm）= 共通規則 SPEC-UNIT-D1 に作り直しの起点で外す項と前提を足し、`cm` の「値も意味も変えない」を外すまでの文にした。master-tables の CHECK の行と 30 の単位の契約に同じ時点を書いた。C-27（行の金額の wire の十進の文字列）は外さない: 突き合わせの判定は「上限を変えない限り再び起きる」で、U4 = b は値の変換の有無を変えるだけで棚卸しの行の範囲を変えない。C-34（v8 の上限の検査）は外さない: migration 済みで、突き合わせの判定は「外す対象にならない」。vU の上限の検査の原価の行は、vB の前の DB を守るので残した。
+1. 過剰の候補の撤去と外す時点（突き合わせの §4。round 1 の是正、Review Response 参照）: C-21（vC）= [22](../function-design/22-mnt-migration.md) §16 の題・MNT-03-D13 の vC の文・vU の上限の検査の「vC の手順 4」の文と表の「vC が改名する」を直し、vC の手順と列の改名の注記の段を、MNT-03-D14 の vB（起点の検査・6 列の改名・前提つきの単位の CHECK・確かめ・止まった後の作り直し）と「DB の作り直しを 1 回にまとめる順」に置き換えた。回復の段は vU だけの文にし、テストの段から vC と連続適用の失敗の case を外して vB の case を足した。[共通規則](../function-design/10-common-rules.md) の掛ける lane の「vC の範囲検査は外側の守り」、[master-tables](../db-design/master-tables.md)・[transaction-tables](../db-design/transaction-tables.md) の「既存の値を 100 倍する」、[30](../function-design/30-biz-product-service.md) の操作ログの円の key の互換、[31](../function-design/31-biz-inventory-service.md) の fingerprint の移行の前の記録の文を、D-119 の帰結に合わせた。C-02（巻）・C-03（cm）= 共通規則 SPEC-UNIT-D1 に作り直しの起点で外す項と前提を足し、`cm` の「値も意味も変えない」を外すまでの文にした。master-tables の CHECK の行と 30 の単位の契約に同じ時点を書いた。C-27（行の金額の wire の十進の文字列）は外さない: 突き合わせの判定は「上限を変えない限り再び起きる」で、U4 = b は値の変換の有無を変えるだけで棚卸しの行の範囲を変えない。C-34（v8 の上限の検査）は外さない: migration 済みで、突き合わせの判定は「外す対象にならない」。vU の上限の検査の原価の行は、vB の前の DB を守るので残した。
 2. 前提の食い違いと文書の食い違いの訂正: C-09 = 共通規則 SPEC-UNIT-D2 の 10 cm 刻みを強制しない理由を事実（10 cm が最小か刻みか決まらない、店は棚卸しで cm までは数えない）に置き換え、`project-memory.md` の「最小 10 cm 刻み」の行と backlog の同じ語を直した。C-16 = 今の既定（長さの単位は在庫連動の自動提案が `false`、手動販売で記録）を U5 の未決として SPEC-UNIT-D4 に書いた。C-18 = 骨組みの側の取り違え（売価は税込で正しい）で、正本を変えない。文書の食い違い 1（12 の語の出典）= SPEC-UNIT-D1 の出典、`project-memory.md` の 2026-09-14 の行、D-113 の前提の訂正の行。2（話し手）= `project-memory.md` の 2 行を店主回答（owner が転記）に直した。3（backlog の現状）= backlog の単位の拡張の項に「起票時の」と PR #158 の後の値を書いた。4（日報の parser）= PR #167 が `project-memory.md` の同じ行を直すので本 lane は触らない（下の「PR #167 と重なる file」）。5（毛糸の「個」）= U2 で直せるようにし、SPEC-UNIT-D1 の出典と `project-memory.md` の毛糸の行に書いた。
-3. 不足の候補（突き合わせの §3）: C-06（U2）= 共通規則 SPEC-UNIT-D2 に個数の単位どうしの変更の項、30 BIZ-01-D8 に BIZ の検査・`ProductUpdateRequest.stock_unit`・操作ログの key、§4.4 の構造体に field、商品 CSV の上書きの行の error の規則、51 に UI-01b-D23（select と 1 文）を足し、UI-01b-D5 に D23 が置き換えると書いた。C-23（U7）= SPEC-UNIT-D5 の入力の補助と 51 UI-01b-D24。他の不足の候補: C-19（原価の税）は U6 の未決として SPEC-UNIT-D5・master-tables の `cost_price` の行・backlog に書いた（決めない）。C-36（保存の前の確かめの画面）は U8 = a で足さない（D-119 (7)）。C-26（手動販売の丸める前の値を見せる）と C-30（棚卸し記録詳細のロス原価の基準数量）は owner の決定の範囲に無いので入れない（C-30 は既に backlog の「原価 × 数量の式が価格の基準数量を持たない残り」の (3) で ⑤ にある。C-26 は報告に書いた）。
+3. 不足の候補（突き合わせの §3。round 1 の是正、Review Response 参照）: C-06（U2）= 共通規則 SPEC-UNIT-D2 に個数の単位どうしの変更の項、30 BIZ-01-D8 に BIZ の検査・`ProductUpdateRequest.stock_unit`・操作ログの key、§4.4 の構造体に field、商品 CSV の上書きの行の error の規則、51 に UI-01b-D23（select と 1 文）を足し、UI-01b-D5 に D23 が置き換えると書いた。C-23（U7）= SPEC-UNIT-D5 の入力の補助と 51 UI-01b-D24。他の不足の候補: C-19（原価の税）は U6 の未決として SPEC-UNIT-D5・master-tables の `cost_price` の行・backlog に書いた（決めない）。C-36（保存の前の確かめの画面）は U8 = a で足さない（D-119 (7)）。C-26（手動販売の丸める前の値を見せる）と C-30（棚卸し記録詳細のロス原価の基準数量）は owner の決定の範囲に無いので入れない（C-30 は既に backlog の「原価 × 数量の式が価格の基準数量を持たない残り」の (3) で ⑤ にある。C-26 は報告に書いた）。
 4. DB の作り直しの一本化: 22 §16 の「DB の作り直しを 1 回にまとめる順」に、原価の lane（vB）を棚卸しの runtime の最初の配布の単位より先に入れ、作り直しを原価の lane で 1 回にする順と理由（作り直した DB には停止 ADR が止めている棚卸しと Z004 の確定の記録が作られない）、逆の順になるときに owner に諮る条件を書いた。backlog の原価の lane の項と D-119 (8) はそこを引く。PR #167 の正本（ADR の SPEC-STK-CNT-D10、backlog の棚卸しの runtime の項）は書き換えない。
 5. 後続の lane の範囲と Risk（backlog）: 「原価の lane（C）」（R3、R4 → R3 の理由）、「単位の語の直しの lane」（R3）、「店に聞く: 長さの商品の在庫の減らし方と原価の税」を足し、単位の拡張の項の下に P・⑤ の範囲の書き直しを足した。単位の拡張の項の「U から C へ送るもの」の vC の手順 1 の参照を vB に直した。
 6. D-119 を `docs/decision-log.md` に足した（Decision (1)〜(10)、Why、Alternatives、Guarantee range、Compatibility、owner の決定、Revisit）。D-113 に「Superseded in part by: D-119」と前提の訂正の行を足した。D-113 の本文は変えていない。
 
 ついでに直したもの: 無し。
 
-対象を使う呼出し側・隣接 test・helper / mock・生成物（後続の lane が触る。本 lane は変えない）: 原価の lane = `src-tauri/src/db/migration.rs`（registry）と新しい schema の file、`src-tauri/src/constants.rs` の `MAX_COST_PRICE`、`src-tauri/src/db/schema_v8.rs` の `test_v8_req903_limits_match_runtime_constants` の原価の行、原価を読む Rust・TS の file（2026-10-16 の突き合わせの数え: Rust 32・TS 49。起票の時に `rg -l` で数え直す）、`src-tauri/src/db/product_repo.rs` の `ProductStockUnit` と `src/lib/bindings.ts`、`src-tauri/src/biz/unit_amount.rs`、`src/features/stock-inquiry/lib/format-stock-display.ts`・`src/lib/unit-quantity.ts`（cm の入力の分岐）、`src-tauri/src/bin/seed_demo.rs`、`finite_enum_contract_tests.rs`、cm を fixture にする test（突き合わせの §4 C-03 の一覧）、商品フォームの原価の欄。単位の語の直しの lane = `src-tauri/src/biz/product_service.rs`（update と商品 CSV の上書きの検査）、`src-tauri/src/cmd/product_cmd.rs`、`src-tauri/src/db/product_repo.rs` の `ProductUpdates`、`src/lib/bindings.ts`（`ProductUpdateRequest_Deserialize`）、`src/features/products/components/ProductForm.tsx`、`docs/function-design/20-io-product-repo.md` の `ProductUpdates.stock_unit` の型。
+対象を使う呼出し側・隣接 test・helper / mock・生成物（後続の lane が触る。本 lane は変えない）: 原価の lane = `src-tauri/src/db/migration.rs`（registry）と新しい schema の file、`src-tauri/src/constants.rs` の `MAX_COST_PRICE`、`src-tauri/src/db/schema_v8.rs` の `test_v8_req903_limits_match_runtime_constants` の原価の行、原価を読む Rust・TS の file（2026-10-16 の突き合わせの数え: Rust 32・TS 49。起票の時に `rg -l` で数え直す）、`src-tauri/src/db/product_repo.rs` の `ProductStockUnit` と `src/lib/bindings.ts`、`src-tauri/src/biz/unit_amount.rs`、`src/features/stock-inquiry/lib/format-stock-display.ts`・`src/lib/unit-quantity.ts`（cm の入力の分岐）、`src-tauri/src/seed_demo.rs`、`finite_enum_contract_tests.rs`、cm を fixture にする test（突き合わせの §4 C-03 の一覧）、商品フォームの原価の欄。単位の語の直しの lane = `src-tauri/src/biz/product_service.rs`（update と商品 CSV の上書きの検査）、`src-tauri/src/cmd/product_cmd.rs`、`src-tauri/src/db/product_repo.rs` の `ProductUpdates`、`src/lib/bindings.ts`（`ProductUpdateRequest_Deserialize`）、`src/features/products/components/ProductForm.tsx`、`docs/function-design/20-io-product-repo.md` の `ProductUpdates.stock_unit` の型。
 
 PR #167 と重なる file と行・節の所有（D-055 の所有表）:
 
@@ -140,7 +140,9 @@ PR #167 の ADR の SPEC-STK-CNT-D10（作り直しは「対象と保全の範�
 
 - AC1（vC の撤去）: `rg -c 'vC' docs/function-design/22-mnt-migration.md` が 0（開始 10）、`rg -c 'vC' docs/function-design/10-common-rules.md` が 0（開始 1）、`rg -c '100 倍する' docs/db-design/master-tables.md` が 0（開始 1）、`rg -c '既存の値を 100 倍' docs/db-design/transaction-tables.md` が 0（開始 1）、`rg -c '連続適用の失敗' docs/function-design/22-mnt-migration.md` が 0（開始 1）、`rg -c '両方の key を知る' docs/function-design/30-biz-product-service.md` が 0（開始 1）、`rg -c '移行の前に保存した記録の fingerprint' docs/function-design/31-biz-inventory-service.md` が 0（開始 1）。
 - AC2（vB と作り直しの順）: `rg -c 'MNT-03-D14' docs/function-design/22-mnt-migration.md` が 2（開始 0）、`rg -c 'message に \`作り直し\`' docs/function-design/22-mnt-migration.md` が 2（開始 0。手順 2 とテスト）、`rg -c 'DB の作り直しを 1 回にまとめる順' docs/function-design/22-mnt-migration.md` が 1（開始 0）。
-- AC3（巻・cm を外す時点）: `rg -c '10 個の code' docs/function-design/10-common-rules.md` が 2（開始 1。D10 の既存の 1 行と D1 の新しい項）、`rg -c '10 個の code' docs/function-design/22-mnt-migration.md` が 2（開始 0。vB の手順 4 とテスト）、`rg -c '外し、10 個にする' docs/db-design/master-tables.md` が 1（開始 0）。
+- AC3（巻・cm を外す時点。round 1 の是正、Review Response 参照）: `rg -c '個数の単位 9 個と \`m\`'` が 10-common-rules で 1、22 で 2（vB の手順 4 とテスト）、master-tables で 1（開始はどれも 0）。`rg -c '10 個の code' docs/function-design/10-common-rules.md` が 0（開始 1。D10 は「今 10 個、巻を外すと 9 個」に直した）。
+- AC13（作り直しの手順。round 1 の是正、Review Response 参照）: `rg -c '作り直しの手順' docs/function-design/22-mnt-migration.md` が 3（開始 0）、`rg -c 'migrate_legacy_db' docs/function-design/22-mnt-migration.md` が 6（開始 3。§12 の 3 と §16 の表・手順 6・テスト）。`rg -c '元の版のまま' docs/function-design/22-mnt-migration.md` が 0。
+- AC14（商品 CSV の上書きの PLU とログ。round 1 の是正、Review Response 参照）: `rg -c '単位だけの変更' docs/function-design/30-biz-product-service.md` が 1（開始 0）、`rg -c '商品の単位も変えない' docs/function-design/10-common-rules.md` が 0（開始 1）。
 - AC4（U2）: `rg -c 'UI-01b-D23' docs/function-design/51-ui-product-form.md` が 3（開始 0。D5 の行・D23 の行・変更履歴）、`rg -c '在庫単位は個数の単位どうしでだけ変えられます' docs/function-design/30-biz-product-service.md` が 2（開始 0。update と商品 CSV）、`rg -c 'stock_unit（通常 field' docs/function-design/30-biz-product-service.md` が 1（開始 0）。
 - AC5（U7）: `rg -c 'UI-01b-D24' docs/function-design/51-ui-product-form.md` が 2（開始 0）、`rg -c '袋の値段 ÷ 入り数' docs/function-design/10-common-rules.md` が 3（開始 1。D5 の理由の既存の 1 行）。
 - AC6（U5・U6 の未決と既定）: `rg -c '未決（店に聞いてから決める' docs/function-design/10-common-rules.md` が 2（開始 0）、`rg -c '^- \*\*店に聞く: 長さの商品の在庫の減らし方と原価の税\*\*' docs/backlog.md` が 1（開始 0）。
@@ -217,10 +219,10 @@ Test Design Matrix: [2026-10-17-unit-redesign-design](test-matrices/2026-10-17-u
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
 | SPEC-UNIT-D1（作り直しの起点で巻・cm を外す、前提） | 共通規則 SPEC-UNIT-D1、master-tables の CHECK の行、30 の単位の契約 | 原価の lane: vB の手順 4、enum・bindings・formatter・CSV の語 | 原価の lane（Matrix の D1 の行） | 非対象 |
-| SPEC-UNIT-D2（10 cm 刻みを強制しない理由、単位の変更は個数の単位どうし） | 共通規則 SPEC-UNIT-D2、30 BIZ-01-D8・§4.4、51 UI-01b-D5・D23 | 単位の語の直しの lane: `product_service.rs`・`product_cmd.rs`・`product_repo.rs`・`ProductForm.tsx` | 単位の語の直しの lane（Matrix の D2 の行） | L3: 商品フォームの単位の select と 1 文 |
+| SPEC-UNIT-D2（10 cm 刻みを強制しない理由、単位の変更は個数の単位どうし、単位だけの変更は `plu_dirty` を変えない、商品 CSV の上書きは商品ごとに TX の中のログ） | 共通規則 SPEC-UNIT-D2、30 BIZ-01-D8・§4.4・§4.9 の d.、51 UI-01b-D5・D23 | 単位の語の直しの lane: `product_service.rs`・`product_cmd.rs`・`product_repo.rs`・`ProductForm.tsx` | 単位の語の直しの lane（Matrix の D2 の行） | L3: 商品フォームの単位の select と 1 文 |
 | SPEC-UNIT-D4 の店に聞く問い（U5）と答えが無い間の既定 | 共通規則 SPEC-UNIT-D4、backlog | 変えない（答えが無い間の既定は今の振舞い） | 既存（UI-01b-D6 の自動提案の test） | 非対象 |
 | SPEC-UNIT-D5（入れ方、店に聞く問い U6 と既定、入力の補助） | 共通規則 SPEC-UNIT-D5、master-tables、transaction-tables、30、31、51 UI-01b-D24 | 原価の lane | 原価の lane（Matrix の D5 の行） | L3: 原価の補助の画面 |
-| MNT-03-D14（vB） | 22 §16 | 原価の lane: 新しい schema の file、`migration.rs` | 原価の lane（Matrix の vB の行） | 非対象（作り直しの手順は開発者が 1 度通す） |
+| MNT-03-D14（vB）と作り直しの手順（起動のときに DB を見つける (a)〜(d)） | 22 §16 | 原価の lane: 新しい schema の file、`migration.rs` | 原価の lane（Matrix の vB の行と作り直しの手順の行） | 非対象（実際の PC での作り直しは開発者が 1 度通す） |
 | DB の作り直しを 1 回にまとめる順（D-119 (8)） | 22 §16、backlog の原価の lane | 順の運用（Coordinator） | 原価の lane の後の棚卸しの runtime の migration の test（作り直した DB で通る） | 非対象 |
 | BIZ-01-D7（操作ログの key `stock_unit`） | 30 BIZ-01-D8 | 単位の語の直しの lane | 単位の語の直しの lane | 非対象 |
 | D-119、D-113 の Superseded in part と前提の訂正 | decision-log | 本 lane の記録 | AC8 | 非対象 |
@@ -236,6 +238,7 @@ Test Design Matrix: [2026-10-17-unit-redesign-design](test-matrices/2026-10-17-u
 - P2（空の表の 6 列を `ALTER TABLE … RENAME COLUMN` で改名できる）: 同梱の SQLite は 3.45.0（22 §15 の v7 の記録、`libsqlite3-sys` 0.28.0）で、`RENAME COLUMN` は 3.25 以降。v7 が同じ操作で日報の列を改名している。→ 観測（tracked の記録と実装済みの v7）。
 - P3（停止 ADR が棚卸しの開始・保存・確定と Z004 の確定・取消を BIZ の入口で止め、停止は棚卸しの runtime の配布の単位がまとめて外すまで続く）: 停止 ADR の SPEC-STOP-D1（5 つの BIZ 入口が最初の文で停止する、PR #95 で実装）と SPEC-STOP-D6（部分的に外さない）、D-118 の SPEC-STK-CNT-D12（PR #167。まとめて外す）。→ 観測（tracked の記録）。作り直した DB に棚卸しと Z004 の確定の記録が作られないことはここに依る。
 - P4（本番の DB は無い）: `docs/project-memory.md` の「無いもの」（owner 回答 2026-09-19）。→ 回答。
+- P6（起動のときに DB を見つけて開くか取り込む場所）: 現物の `src-tauri/src/lib.rs:114`〜`:123`（`prepare_database`、作業フォルダを `std::env::current_dir()` で取る）・`:150`〜`:199`（`prepare_database_with_init`: `:161` の `{app_data}/inventory.db`、`:162` の `reconcile_restore`、`:165`〜`:183` の新 DB が無いときの `migrate_legacy_db`、`:188` の `init`）、`src-tauri/src/db/mod.rs:291`〜`:330`（`migrate_legacy_db_with_ops`: `:296` の作業フォルダの `inventory.db`、`:298` の `.migrating`）、`src-tauri/src/mnt/restore.rs:11`〜`:13`・`:64`〜`:88`（復元の遺物の名前）を読んだ。→ 観測（code）。4 か所 (a)〜(d) を 22 §16 の作り直しの手順の表に書いた。
 - P5（2026-09-14 の答えの話し手と問いの形）: 聞き取りの記録（`docs/evidence/hearing-2026-09-14-stock-units.sanitized.md` の問い 1・5 と source の行）と事実の一覧の U-002・U-017・X-U04・X-U07。→ 記録。
 
 ## Data Safety
@@ -250,4 +253,16 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（2026-10-17、head `db801d52`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 4）と Codex GPT-6 Astra（reject、P1 1・P2 2・P3 2）。全て採った（Coordinator の裁定）。owner の方針（repo 外の回答台帳 TD-296 の 5a）に従い、個別の継ぎ当てでなく 1 通りに読める形に直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R1 | Codex #1（P1） | 採る | 作り直しの手順が、旧 DB の自動取込み（22 §12.2 の `migrate_legacy_db`）を考えていない。作業フォルダに旧 DB が残ると、`{db_path}` 一式を移しても次の起動で取り込まれ、vB がまた止まる | 22 §16 に「作り直しの手順」を足し、起動のときに DB を見つける場所の全部（(a) `{app_data}` の DB 一式、(b) `.migrating`、(c) 復元の遺物、(d) 起動の作業フォルダの旧 DB 一式。現物の file:line つき）を対象に、消さずに日付の付いた 1 つの folder へ移す 1 つの手順にした（(c) は reconcile に先に解かせる）。vB の「止まった後の進め方」はこの手順を引く。Matrix に `test_rebuild_moves_legacy_cwd_db_and_starts_empty`（(d) を移さない対照つき）と FM11 を足した。Ordinary Operation の作り直しの 2 行、Contract Probe の P6、Contract Ledger、AC13 |
+| R2 | Codex #3・Opus #1（P2） | 採る | 原価の補助の golden が浮動小数の誤った実装を落とせない | Matrix の golden に `"0.29"` 円 ÷ `"2"` → 15 を足し、入力の文字列の解析から補助の関数までを通す case にした。mutant の文を「円の小数（number）で割る」に直し、その mutant が `"0.29"` ÷ `"2"` で 14 になって red になることを求めた |
+| R3 | Codex #2（P2）・Opus #3・#4（P3） | 採る | 商品 CSV の上書きで単位を変えたときの PLU と操作ログが、BIZ-01-D8（PLU の状態の保持、前後の記録）と §4.9（上書きは常に `plu_dirty=1`、ログは TX の外の件数の要約）で食い違う | 30 の上書きの段を「今の規則」と「単位の語の直しの lane の後の規則」の 2 つの bullet に分け、括弧の差込みをやめた。単位の変更は `plu_dirty` の理由にならない（update の段と同じ）、上書きで単位だけを変える行は `plu_dirty` を変えず、それ以外は §4.9 の d. のとおり。ログは単位を変えた商品ごとに同じ TX の中で `product_update`（BIZ-01-D7 の形、key `stock_unit` だけ）を書く（理由: 商品修正と同じ形で読み方が 1 つ、TX の中なので commit と一緒に必ず残り、商品ごとに元の単位を追える。件数の要約に一覧を入れる案は TX の外で失いうる）。§4.9 の d. に pointer を足した。Matrix の CSV の成功例に dirty の保持とログの期待を足した（FM12）。AC14 |
+| R4 | Codex #4（P3） | 採る | 10-common-rules の「商品の単位も変えない」が U2 と食い違う | 「許す単位の変更（D2 の個数の単位どうし）では価格の基準数量が変わらない」に直した |
+| R5 | Codex #5（P3） | 採る | packet の `src-tauri/src/bin/seed_demo.rs` が実在しない | `src-tauri/src/seed_demo.rs`（現物で確かめた。`src-tauri/src/bin/seed_demo_data.rs` は起動の入口）に直した |
+| R6 | Opus #2（P3） | 採る | 22 の「保全した file は元の版のまま残る」が、先に COMMIT した migration があるときに誤る | 「移した file は止まった時点の版で残る（同じ起動で先に COMMIT した migration があれば旧版のアプリでは開けない。データは失われない）」に直した |
+| R7 | Opus #5（P3） | 採る | 「10 個の code」が個数の単位と巻・cm を外した後の一覧の 2 つの意味で使われる | 外した後の一覧は「個数の単位 9 個と `m`」、個数の単位は「今 10 個、巻を外すと 9 個」と書き分けた（10・22・master-tables、Matrix の test 名を `test_vb_unit_check_drops_roll_and_cm` に）。backlog の原価の lane の範囲に、個数の単位の数（10 → 9）の記述の場所（SPEC-UNIT-D3 の集計の規則と D10、35:473、44:966、DB_DESIGN:187 ほか）を足した。AC3 を数え直した |

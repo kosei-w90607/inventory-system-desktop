@@ -15,7 +15,7 @@
 
 [共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D1・D5 の DB の側。単位は現行のスキーマ（migration v8）。原価の改名は proposed・未実装（原価の lane、D-113・D-119）で、以下の既存カラム表の原価の列は現行スキーマを記す。migration の手順は [22](../function-design/22-mnt-migration.md) §16（原価の改名は vB）、vB の番号は原価の lane が起票時に決める。
 
-- `products.stock_unit` の CHECK は 12 個の code（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho` `m` `cm`）。既定値は `pcs`。v8 は既存の行の値を変えない。`ball` を含める（`決定（owner、D-113 J1）`、2026-10-08、TD-195）。`roll`・`cm` は開発・試験 DB の作り直しの起点（22 §16 の vB の手順 4）で外し、10 個にする（proposed・未実装、原価の lane、D-119。前提は共通規則 SPEC-UNIT-D1 の同じ項）。
+- `products.stock_unit` の CHECK は 12 個の code（`pcs` `sheet` `hon` `bag` `box` `roll` `kumi` `set` `ball` `cho` `m` `cm`）。既定値は `pcs`。v8 は既存の行の値を変えない。`ball` を含める（`決定（owner、D-113 J1）`、2026-10-08、TD-195）。`roll`・`cm` は開発・試験 DB の作り直しの起点（22 §16 の vB の手順 4）で外し、個数の単位 9 個と `m` の一覧にする（proposed・未実装、原価の lane、D-119。前提は共通規則 SPEC-UNIT-D1 の同じ項）。
 - 原価の列を 1/100 円の整数へ改名する（proposed・未実装、原価の lane、D-113。`決定（owner、D-113 J2）`、2026-10-08、TD-195）。既存の値は変換せず、原価の列を持つ表に行の無い DB（開発・試験 DB を作り直した起点）にだけ当てる（22 §16 の vB、D-119）。対象は次の 6 列で全部:
 
 | 表 | 今の列 | 後の列 | 意味 |
