@@ -24,6 +24,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 2. spec-check → design（2026-10-16、起草役）: 触る正本（33 §16.3〜§16.9、plu-tables、25 §12、41 §17.6、67、30 §4、40、20、50、51、37 §37.9、45 §45.6a、23 §13.3.1、REQ-907）が、clear と解放・段階導入の道具・Z004 を選ぶ step・件数の要約を契約として持ち、前提の文の一部が事実と合わない。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-16、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-117 で満たす。条件「未解決の設計の問いが無い」は、owner の判断事項（D5〜D8・D10、TD-273・TD-274、CV17 の役目 TD-277）が決まり、D6・D9 を本 lane に入れない（backlog）と決まっていることで満たす。残る外部前提（Contract Probe の P1・P2）は runtime の lane の L3 で確かめるもので、設計の問いではない。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-16、Coordinator）: packet と Matrix は起草役の commit（`ad3f5a83`・`9b51a434`）にある。Coordinator は packet の全文（Goal・Ordinary Operation・Scope・AC・Contract Ledger・Contract Probe）と Matrix の節の構成を読み、owner の決定（repo 外の回答台帳 TD-267・TD-273・TD-274・TD-277）の写しに食い違いが無いこと、差分が docs だけであること（AC9）、差分に新しい実データが無いこと（25 §12.3 の出力例の行は初期の公開 snapshot からある例で、`単品売り` の 1 列だけを直した）を確かめた。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-16、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5 = reject P2 2・P3 5、Codex GPT-6.1 Sol = reject P1 1・P2 3・P3 2）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `27e44499` で直し、Coordinator が差分を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。owner の決定 2 つ（repo 外の回答台帳 TD-284 = JAN を直すときに前の番号の現物を 1 回聞く、TD-285 = clear を外したまま、戻す条件を Revisit に書く）を同じ commit に入れた。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
@@ -250,4 +251,23 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（2026-10-16、head `2de61ddb`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 5）と Codex GPT-6.1 Sol（reject、P1 1・P2 3・P3 2）。重なる指摘は 1 件にまとめ、重い方の重大度で裁定した。是正の前に相談役（Fable 5.1）が是正の方向の反例と同じ型の穴を探した（古い観測を精算回数で拒む案に代わる同じ強さの単純な案は無い、`external` を空の観測で `free` に戻さない案は古い観測で `external` のコードが動く経路が残る、照合を拒むと黙って止まるので古さの知らせが組で要る、設定読込みの前に締めが来る順序と DB の restore の直後が同じ型）。是正 = `27e44499`（起草役）。
+
+| # | 出所 | 裁定 | 要旨 | 是正 |
+|---|---|---|---|---|
+| R1 | Codex #1（P1）・Opus #1（P2） | P1、採用 | 照合は 1 回の読取りの中で精算回数が最大の Z004 を選ぶだけで、前に照合した精算より古いかを見ない。古い SD で `external` の枠が `free` に戻り、新しい JAN が予約され、CV17 の書込みでレジ側の登録が黙って置き換わる | 最後に照合した精算回数を `app_settings` に持ち、それより小さい Z004 では照合しない（33 §16.3 手順 1〜3、plu-tables、D-117 Guarantee range）。精算回数は BIZ-04 の中で 10 進の整数として読む（Opus #4 も同じ所）。Matrix FM3 に前回より古い精算を後から読む往復の test |
+| R2 | Codex #2・Opus #2（P2） | P2、採用 | 37 §37.9 手順 10 は Z004 の `Io` で読取り全体を失敗にし、33 §16.8 と逆。PLU のための 1 本で締めの取込みが止まる | Z004 の `Io` はその file を除いて続ける（37 §37.9 手順 10。Z001・Z002・Z005 の規則は変えない）。Matrix FM7 |
+| R3 | Codex #3（P2）・Opus #5 の前半（P3） | P2、採用 | 通常運用の前提に D-111 の運用の制約（取込み済みを移す (b) の lane までは毎日 CV17 で取り込む）が無く、D-117 (6) の文が誤り | D-117 (6)・owner の決定の行・Goal・Ordinary Operation の前文・project-memory |
+| R4 | Codex #4（P2）・Opus #3（P3） | P2、採用 | ui-task-specs の UI-01a の手順 6 に一括の対象化が残る | 削除。言い換え（まとめて・一括・全件）の sweep で biz-task-specs の BIZ-01 の残りも削除 |
+| K1 | Coordinator（P2） | 採用 | 普段の操作列に、CV17 の前にレジで SD 設定書込みをする手順（取説、事実の一覧 P-044・P-046）が無い | Ordinary Operation の「PLU を変える日」に同じ SD で SD 設定書込み → CV17 と、設定読込みまでを締めの前に終える順序。67 UI-08-D5 の既存の Alert を言い換え Diff にも出す |
+| K2 | Coordinator（P3）・相談役 | 採用 | R1 で照合が黙って止まりうる（取り違え・レジの初期化・Z004 の出力の設定の変更） | 67 §67.4 手順 3・§67.9: 最終照合日が 3 日より前なら警告の見た目と 1 文（拒まない。UI の定数 1 つ） |
+| P3-1 | Codex #5 | 採用 | 通常の confirm で既に `active` なのに「次の締めで `reserved → active`」と書く | 33 §16.5、Ordinary Operation |
+| P3-2 | Codex #6 | 採用 | 「枠が別のコードになる例外は 2 つだけ」が `external` の観測の更新と合わない | 33 §16.9 をアプリ管理の枠の保全に限定 |
+| P3-3 | Opus #5 の後半 | 採用 | 前回の照合の後にレジで空き枠へ手で登録した分が次の CV17 の書込みで上書きされうることが限界に無い | D-117 Guarantee range、Ordinary Operation に「締めの SD の読取りの直後に同じ SD で続ける」 |
+| P3-4 | Opus #6 | 採用 | 対象の商品を持たない JAN の `active` な枠が別コードの観測でも `active` のまま | 33 §16.3 の表に 1 行（`external` にし別名を消す） |
+| P3-5 | Opus #7 | 採用 | BIZ と CMD の同名の `import_plu_register_snapshot` | 33 に BIZ は残し CMD は撤去の 1 文 |
+| P3-6 | 相談役 | 採用 | DB の restore の直後は占有が古いまま書出しできる | D-117 Guarantee range と backlog の runtime の項目（restore の完了時に照合の記録を消す。71 は本 lane で触らない） |
+
+owner の決定（本 round の中、repo 外の回答台帳）: TD-284（JAN を直すときに「前の番号のバーコードが付いた現物は店にあるか」を 1 回聞き、ある → 別名、ない → 使わない扱い。33 §16.6、plu-tables の `alias_product_code`、30・32・60・20、D-117 (8)）、TD-285（売るのをやめた商品がレジに前の値段で残る限界を受け入れる。clear を戻す条件を Revisit に書き、そのときの事実で新しく設計する）。
