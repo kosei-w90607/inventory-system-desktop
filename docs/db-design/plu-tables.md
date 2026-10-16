@@ -22,6 +22,7 @@ SR-S4000 のスキャニング PLU 領域について、レジで観測した占
 | status | TEXT | NOT NULL, CHECK(status IN ('free','external','reserved','active')) | スロット状態 |
 | reserved_at | TEXT | NULLABLE | 予約日時 |
 | activated_at | TEXT | NULLABLE | slot が active になった日時。アプリ側の記録で、書くのは reserved の保存済み確認（confirm）、照合での観測による採用（reserved → active、free → active）、prepare での external の採用。実レジへの反映完了は証明しない（UI-08-D2、D-011 / D-023） |
+| alias_product_code | TEXT | NULLABLE, REFERENCES products(product_code) | 別名の商品。その JAN を持つ商品が無い `reserved` / `active` の枠で、JAN を直した商品の前の番号の現物が店にある（TD-284）とき、その商品の product_code を持つ。売上の取込みは JAN で商品が引き当たらないときだけこれを引く（[32](../function-design/32-biz-csv-import-service.md) §15.3 Stage 2 b）。書く・消す規則は [33 §16.6](../function-design/33-biz-plu-export-service.md)。`external` / `free` の行は NULL |
 | updated_at | TEXT | NOT NULL | 最終更新日時 |
 
 `scanning_code` には `status IN ('reserved','active')` の行だけを対象とする partial UNIQUE index を置く。同じ JAN をアプリ管理の複数スロットへ割り当てる状態は DB が拒否する。`external` は対象外とし、同じコードの `external` が複数行あること、`external` と `reserved` / `active` が同じコードを持つこと（レジがアプリの JAN を別の枠にも持つ観測。[33 §16.3](../function-design/33-biz-plu-export-service.md)）を許す。
@@ -34,6 +35,7 @@ migration v5 は table と partial UNIQUE index を作り、memory No. 217〜500
 2. 既存の `release_pending` の行を `external` にする（`scanning_code`・`reserved_at`・`activated_at` は変えない）。この行はレジに登録が残っていてアプリが書かない枠で、その JAN を再び対象にすると prepare の step 5 が同じ memory No. を採用する。
 3. partial UNIQUE index を `status IN ('reserved','active')` で作り直す。
 4. `app_settings` の key `plu_register_snapshot_summary` を消す（もう書かない・読まない）。
+5. `alias_product_code`（NULL 可、`products(product_code)` を参照）を足す。既存の行は NULL。`status IN ('external','free')` の行は NULL であることを CHECK で縛る。
 
 本番の DB は無い（店は未導入）ので、対象は開発・demo・試験の DB と owner の PC の DB である。数量・在庫・売上・商品は変えない。
 
@@ -61,7 +63,10 @@ migration v5 は table と partial UNIQUE index を作り、memory No. 217〜500
 | reserved / active | 商品の対象外化・廃番化・JAN の変更 | 変えない | 対象の商品を持たない JAN の枠として残し、書き出さない（33 §16.6） |
 | active | 照合: レジ空 | active | missing 報告、その JAN の対象の商品を dirty |
 | active | 照合: レジ有・同一コード | active | 維持 |
-| active | 照合: レジ有・別コード | active | conflict 報告、その JAN の対象の商品を dirty |
+| active | 照合: レジ有・別コード（その JAN に対象の商品がある） | active | conflict 報告、その JAN の対象の商品を dirty |
+| active | 照合: レジ有・別コード（その JAN に対象の商品が無い。別名だけの枠を含む） | external | 観測コードを保持、`alias_product_code` を NULL（33 §16.3） |
+| reserved / active | JAN を直した商品の前の番号の現物が「ある」 | 変えない | `alias_product_code` を書く（33 §16.6） |
+| reserved / active | その JAN をどれかの商品が再び持つ | 変えない | `alias_product_code` を NULL |
 
 別コード衝突、同一 JAN 重複、要修正商品の扱いを含む照合表の正本は [33-biz-plu-export-service.md](../function-design/33-biz-plu-export-service.md) §16.3 とする（**BIZ-04-D3 / SPEC-PLS-D2〜D4**）。
 
@@ -78,6 +83,7 @@ migration v5 は table と partial UNIQUE index を作り、memory No. 217〜500
 | key | value | 説明 |
 |---|---|---|
 | plu_register_snapshot_at | ISO 8601 timestamp | 最後に Z004 全スロット占有を照合した日時 |
+| plu_register_snapshot_settlement_no | 10 進の整数の文字列 | 最後に照合した Z004 の精算回数。これより小さい精算回数の Z004 は照合しない（古い SD。33 §16.3 手順 2）。照合の TX で更新する |
 
 一度も照合していない状態では prepare を `register_snapshot_required` で拒否する。照合は毎日の締めの SD の読取りで行い、店主が別に読む操作は無い（**BIZ-04-D3 / SPEC-PLS-D2、D-117 (3)**）。占有の件数は app_settings に置かず、照合の operation_logs にだけ残す。
 

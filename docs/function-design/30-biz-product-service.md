@@ -201,7 +201,7 @@ Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` �
 4b. **plu_target / JAN 遷移チェック**（BIZ-01-D3 / SPEC-PLS-D4、D-117 (1)）
    - plu_target が Some で既存値 0 → 1 に変わる場合 → updatesにplu_dirty=trueを追加（レジ登録が新たに必要になったため）
    - 1 → 0 の場合は PLU の枠を変えない（BIZ-04 を呼ばない。枠は残り、書出しに出なくなる。[33 §16.6](33-biz-plu-export-service.md)）
-   - CSV 上書き等の許可された経路で jan_code が変わる場合も、旧 JAN の枠を変えない。変更後の plu_target が 1 なら updatesにplu_dirty=trueを追加（新しい JAN のレジ登録が要るため）
+   - CSV 上書きの経路で jan_code が変わる場合も、旧 JAN の枠を変えない。変更後の plu_target が 1 なら plu_dirty=true（新しい JAN のレジ登録が要るため）。前の番号の現物の問い（33 §16.6、D-117 (8)）は §4.8 の d. が扱う。edit は jan_code を変えない（BIZ-01-D1）ので、商品フォームではこの問いを出さない（edit で JAN を変えられるようにするときは、同じ問いを保存の前に出す）
 5. **productsをUPDATE**
    - ProductUpdatesを構築してproduct_repo::update_product()を呼ぶ
 6. **操作ログ記録**
@@ -473,7 +473,7 @@ struct ImportRow {
 
 5. **重複チェック**
    - product_code で product_repo::find_by_product_code(conn, code) を検索
-   - 既存あり → duplicate_rows に追加
+   - 既存あり → duplicate_rows に追加。その行の JAN が既存の商品の JAN と違い、前の JAN が `reserved` / `active` の PLU の枠を持ち、上書きの後にその JAN を持つ商品が無くなるとき、`ImportDuplicateRow.asks_old_jan_stock = true` にする（前の番号の現物の問い、[33 §16.6](33-biz-plu-export-service.md)、D-117 (8)）
    - 既存なし → valid_rows に追加
 
 5. **結果返却**
@@ -496,6 +496,7 @@ fn commit_import(
     conn: &mut DbConnection,
     valid_rows: Vec<ImportRow>,
     overwrite_codes: Vec<String>,
+    old_jan_on_hand_codes: Vec<String>, // 前の番号の現物が「ある」と答えた上書きの行の product_code（既定は空 =「ない」。D-117 (8)）
 ) -> Result<ImportResult, BizError>
 ```
 
@@ -526,7 +527,7 @@ struct ImportResult {
       - `PLU対象` が `1` / `0` ならその値を適用する。ただし `1` で JAN 不備なら preview warning 済みの `0` を使う。列なし / 空欄は `is_discontinued=0 かつ jan_code が 13 桁数字なら 1、それ以外 0` の既存導出規則を使う
       - initial_stock > 0 → inventory_repo::insert_movement に receiving として記録
       - 進行中の棚卸し → stocktake_repo::insert_stocktake_item に自動追加
-   d. 上書き更新の場合: `PLU対象` 列に `1` / `0` がある行だけ plu_target を更新する。列なし / 空欄は既存値を保持する。1→0 と JAN 変更は §4.4 の 4b と同じく PLU の枠を変えない（0→1 と、更新後の plu_target が 1 の JAN 変更は plu_dirty=1）
+   d. 上書き更新の場合: `PLU対象` 列に `1` / `0` がある行だけ plu_target を更新する。列なし / 空欄は既存値を保持する。1→0 と JAN 変更は §4.4 の 4b と同じく PLU の枠を変えない（0→1 と、更新後の plu_target が 1 の JAN 変更は plu_dirty=1）。JAN を変えた行の product_code が `old_jan_on_hand_codes` にあれば、TX の中で前の番号の現物の問いの条件（33 §16.6）を確かめ直し、満たせば前の JAN の枠に別名を書く（満たさなければ書かない）。どの行でも、変えた後の JAN を持つ別名の枠は別名を消す（33 §16.6）
 
 3. **COMMIT**（tx.commit()）
 

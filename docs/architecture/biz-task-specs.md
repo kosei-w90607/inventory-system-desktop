@@ -29,7 +29,6 @@ SPEC-STK-TIME-D1〜D10。詳細契約は下記sourceの同名節を正とし、�
 - 商品修正: product_code（変更不可）, 変更対象フィールド群
 - 廃番切替: product_code, is_discontinued
 - 一括インポート: CSVファイルバイト列（任意列 `PLU対象`）
-- PLU 一括更新: 商品一覧 filter と plu_target
 - 価格改定: product_code, new_selling_price, new_cost_price, assign_supplier_id（任意）
 - 取引先追加: name
 - 価格履歴参照: product_code, limit
@@ -101,10 +100,9 @@ SPEC-STK-TIME-D1〜D10。詳細契約は下記sourceの同名節を正とし、�
 7. 各商品について初期在庫ありならinventory_movementsにINSERT
 8. operation_logsに記録
 
-**PLU 対象一括更新 / CSV 任意列（BIZ-01-D4 / SPEC-PLS-D6）:**
+**CSV 任意列 `PLU対象`（SPEC-PLS-D6。filter 一致全件の一括更新〈BIZ-01-D4〉は D-117 で撤去）:**
 - `PLU対象` は `1` / `0` / 空欄。新規行の列なし / 空欄は既存導出、更新行は明示値がある場合だけ適用する。不正 JAN の `1` は warning + `0`
-- filter 一致全件を 1 transaction で更新する。ON は有効 JAN・未廃番だけ、OFF は全件。1→0 / JAN 変更 / 廃番化は BIZ-04 の slot 解放を呼ぶ
-- operation_logs に filter 要約と更新 / skip 件数を残す
+- 1→0 / JAN 変更 / 廃番化で PLU の枠を変えない（解放しない。D-117）。JAN 変更で前の JAN がレジの枠を持つ行は、前の番号の現物の問い（既定は「ない」）の答えで別名を書く（33 §16.6、D-117 (8)）
 
 **【制御構造】**
 - 独自コード発番はトランザクション内でnext_seqのread→increment→writeを行い排他制御（SQLiteの暗黙ロックで十分）

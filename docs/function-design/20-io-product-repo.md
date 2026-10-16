@@ -136,6 +136,12 @@ pub fn find_min_free_slot(conn: &DbConnection) -> Result<Option<PluSlot>, DbErro
 pub fn update_slot(conn: &DbConnection, update: PluSlotUpdate<'_>) -> Result<(), DbError>
 ```
 
+```rust
+fn find_alias_product_for_jan(conn: &DbConnection, jan_code: &str) -> Result<Option<String>, DbError>
+```
+
+`find_alias_product_for_jan`（公開する repo 関数）は `scanning_code = jan_code` かつ status が `reserved` / `active` の行の `alias_product_code` を返す（無ければ `None`。D-117 (8)、32 §15.3 Stage 2 b）。
+
 **エラーハンドリング**:
 - SQL実行失敗 → DbError::QueryFailed(詳細)
 

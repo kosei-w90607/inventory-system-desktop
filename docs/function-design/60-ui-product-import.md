@@ -43,6 +43,7 @@ SPEC-STK-TIME-D4 / D8。商品マスタのcommit_importでstocktake_guard + shar
 | REQ-104 / UI-01c | UI-01c-D13 | Windows native L3 は owner 目視確認を必須にする。確認対象は FilePicker（native dialog + 任意 drop、D-054/UI-01c-D14）、エラー行と重複行の区別、上書き確認、日本語文言、結果サマリ、商品一覧への戻り導線。 | 新規 operator-facing screen であり、CSV 作業は初期導入時に失敗影響が大きい。CI / unit test だけでは視認性と操作の分かりやすさを判断できない。 |
 | REQ-104 / UI-01c | UI-01c-D14 | ファイル選択を共通 FilePicker（native dialog + 任意 drop、D-054）へ移行し、UI-01c-D3 の plain input 方式を supersede する。`dragDropEnabled: false` は drop 維持のため据え置き。 | D3 の却下理由（plugin-dialog 未導入・scope 増）は foundation PR（2026-06-26）と日報 PR #125 の path-based 実証で解消済み。WebView2 白画面バグの再発面を picker 一箇所へ集約する。 |
 | REQ-104 / limit | UI-01c-D15 | 商品 import は CMD 早期拒否 + BIZ（`preview_import`）安全網の**二重**で `CSV_IMPORT_FILE_SIZE_LIMIT`（constants.rs）超過を validation error で拒否する（D-054）。 | UI だけが拒否する未仕様上限は直接 IPC で bypass 可能。売上 / 日報が持つ CMD 早期拒否 + BIZ 安全網の既存二重防御パターン（ARCHITECTURE resource-safety 例外）と同型に揃える。 |
+| REQ-907 / D-117 | UI-01c-D17 | 上書きの行で JAN が変わり、BIZ が `asks_old_jan_stock = true` を返した行に「前の番号のバーコードが付いた現物は店にありますか」の選択（`ある` / `ない`、既定は `ない`）を出し、`ある` の行の product_code を commit の `old_jan_on_hand_codes` に送る。 | owner 決定（repo 外の回答台帳 TD-284）。入力の誤りの訂正（現物は無い）とメーカーの番号の変更（古いバーコードの在庫が残る）を分け、古い番号のレジの枠で売れた分を同じ商品へたどる（[33 §16.6](33-biz-plu-export-service.md)）。既定を `ない` にして、黙って誤った商品へ付けない。runtime は D-117 の lane。 |
 | REQ-104 / SPEC-PLS-D6 | UI-01c-D16 | 任意列 `PLU対象` を preview に表示し、`1` / `0` / 空欄の意味を説明する。`1` だが JAN が不正な行は warning + 実適用値 `対象外` を同じ行に表示する。 | CSV を commit する前に operator が自動補正と更新対象を確認できる。warning を色だけで表さない。 |
 
 ## 60.2 Component / Route 構成

@@ -265,7 +265,7 @@ fn parse_and_validate(
    b. 実データ行のマスタ照合: 各行について
       - product_repo::find_by_jan_code(conn, &normalized_jan) を呼び出し
       - ヒット1件 → MatchedRow { line_no, product_code, quantity, amount, pos_stock_sync: product.pos_stock_sync }
-      - ヒット0件 → ErrorRow { line_no, normalized_jan: Some(normalized_jan), name, raw_quantity: quantity.to_string(), raw_amount: amount.to_string(), error_type: "unmatched_product", error_message: "JAN {jan} に該当する商品がありません" }
+      - ヒット0件 → `plu_slot_repo::find_alias_product_for_jan(conn, &normalized_jan)` で PLU の枠の別名（`plu_slots.alias_product_code`。`scanning_code` がその JAN で status が `reserved` / `active` の行。[33 §16.6](33-biz-plu-export-service.md) の前の番号の現物の問いで「ある」と答えた商品、D-117 (8)）を引く。別名があればその商品で MatchedRow（ヒット 1 件と同じ形）。無ければ ErrorRow { line_no, normalized_jan: Some(normalized_jan), name, raw_quantity: quantity.to_string(), raw_amount: amount.to_string(), error_type: "unmatched_product", error_message: "JAN {jan} に該当する商品がありません" }。別名を引くのはこの段だけで、時点証拠の分類など後の段は、この段の引き当ての結果をそのまま使う
       - ヒット複数件 → ORDER BY product_code ASC で先頭を採用。warnings に "JAN {jan} は複数商品に紐付いています（{code} を使用）" を追加
    c. parse_result.parse_errors を ErrorRow にマージ
       - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"。商品コードの無い枠の売上（PLU の登録を消した枠、コードを持たない通常 PLU。SPEC-Z4A-D8）も IO-02 の InvalidJan として届き、"invalid_jan" の ErrorRow になる。取込みは completed_partial になり、文言で見分ける（新しい種別を足さない理由は 23 §13.4.2）

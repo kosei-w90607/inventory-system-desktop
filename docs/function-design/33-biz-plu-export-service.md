@@ -74,12 +74,12 @@ pub fn refresh_plu_register_snapshot_from_sd(
 ) -> Result<Option<PluRegisterSnapshotSummary>, BizError>
 ```
 
-1. 各 bytes の精算の識別メタ（IO-02 の `settlement_metadata` の `settlement_no`。[23](23-io-z004-parser.md) の時点証拠契約）を読む。`settlement_no` が読めない bytes は使わない。
-2. `settlement_no` が最大の 1 本を選ぶ（同じ値が 2 本以上あれば、bytes が同じならどれでもよく、違えば照合しない。`tracing::warn!` で記録する）。精算日時や file 名の日付では選ばない（レジの時計に依らない）。
-3. 使える Z004 が無ければ `Ok(None)`（何も変えない。前回の照合を保つ）。あれば下の `import_plu_register_snapshot` に渡し、その結果を `Some` で返す。
-4. CMD-12 は `Err` を scan の失敗にしない（日報の候補の一覧は返す）。`tracing::warn!` で記録し、前回の照合を保つ。利用者に見えるのは UI-08 の最終照合日時だけである。
+1. 各 bytes の精算の識別メタ（IO-02 の `settlement_metadata` の `settlement_no`。[23](23-io-z004-parser.md) の時点証拠契約。23 の型は文字列のまま変えない）を読み、BIZ-04 の中で 10 進の整数として読む（ASCII の数字だけで、`i64` に収まる値。前の 0 は許す）。読めない bytes・読めない値は使わない。
+2. 読めた中で `settlement_no` が最大の 1 本を選ぶ（同じ値が 2 本以上あれば、bytes が同じならどれでもよく、違えば照合しない。`tracing::warn!` で記録する）。精算日時や file 名の日付では選ばない（レジの時計に依らない）。選んだ 1 本の精算回数を、`app_settings` の key `plu_register_snapshot_settlement_no`（最後に照合した Z004 の精算回数、10 進の整数の文字列）と比べる: key が無ければ照合する。key の値より小さければ照合しない（`tracing::warn!`、前回の照合を保つ。古い SD を読んだとき）。等しければ照合する（同じ観測の照合は同じ結果になる）。大きければ照合する。key の値が整数として読めなければ照合しない（`tracing::warn!`）。
+3. 照合しないとき・使える Z004 が無いときは `Ok(None)`（何も変えない。前回の照合を保つ）。照合するときは下の `import_plu_register_snapshot` に bytes と精算回数を渡し、その結果を `Some` で返す。
+4. CMD-12 は `Err` を scan の失敗にしない（日報の候補の一覧は返す）。`tracing::warn!` で記録し、前回の照合を保つ。利用者に見えるのは UI-08 の最終照合日時（照合が古いときの警告を含む。UI-08-D11）だけである。
 
-同じ Z004 を何度照合しても結果は同じ（照合は観測を写すだけで、同じ観測からは同じ状態になる）ので、照合済みかの記録は持たない。占有の照合は資料の受領（`pos_import_sources`）を作らず、全数読取り（`pos_source_scans`、[時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D10）の行も置かない。Z004 の業務の取込みが SD の全数読取りを持つようになったら（後続の lane）、占有の照合はその全数読取りが完了・失敗した後の別の TX で行い、全数読取りの「同じ DB に対する唯一の操作」を崩さない。停止 ADR の Z004 の業務 commit の停止（SPEC-STOP-D1）は、売上・在庫を作らない占有の照合に及ばない。
+照合済みの記録は、最後に照合した Z004 の精算回数（上の key）だけを持つ。レジの初期化・修理で精算回数が戻ると、その後の Z004 は key より小さいので照合が止まる。UI-08 の最終照合日時が古くなって警告で見え、開発者が key を消して照合を戻す（D-117 の Revisit。自動の脱出は持たない）。占有の照合は資料の受領（`pos_import_sources`）を作らず、全数読取り（`pos_source_scans`、[時点証拠 ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D10）の行も置かない。Z004 の業務の取込みが SD の全数読取りを持つようになったら（後続の lane）、占有の照合はその全数読取りが完了・失敗した後の別の TX で行い、全数読取りの「同じ DB に対する唯一の操作」を崩さない。停止 ADR の Z004 の業務 commit の停止（SPEC-STOP-D1）は、売上・在庫を作らない占有の照合に及ばない。
 
 #### import_plu_register_snapshot
 
@@ -87,8 +87,11 @@ pub fn refresh_plu_register_snapshot_from_sd(
 fn import_plu_register_snapshot(
     conn: &mut DbConnection,
     raw_bytes: &[u8],
+    settlement_no: i64,
 ) -> Result<PluRegisterSnapshotSummary, BizError>
 ```
+
+BIZ の `import_plu_register_snapshot` は照合の本体として残し、`refresh_plu_register_snapshot_from_sd` だけが呼ぶ。同名の CMD（[41 §17.6](41-cmd-pos.md)、店主が FilePicker で選んだ Z004 を渡す command）は撤去する。
 
 IO-02 の全スロット占有読取り mode が返す `(memory_no, raw_code)` を、**1 transaction** で `plu_slots` と照合する。途中失敗時は slot、app_settings、operation_logs をまとめて rollback する。
 
@@ -101,14 +104,15 @@ IO-02 の全スロット占有読取り mode が返す `(memory_no, raw_code)` �
 | 同一コード | active / external | 現 status を維持 |
 | occupied | free | 対象の JAN と一致し、その JAN に `reserved` / `active` slot が無ければ active として採用（activated_at）。その JAN が `reserved` / `active` slot を既に持つなら、観測した枠は external（観測コードを保持。アプリの枠と memory No. は変えない。`duplicate_on_register`）。それ以外は external |
 | 別コード | reserved | 観測値を external とし `reservation_dropped`。その JAN は次の prepare で新しい空き枠を予約する |
-| 別コード | active | app の active を維持し conflict。その JAN の `plu_target=1` の商品を dirty |
+| 別コード | active（その JAN に対象の商品がある） | app の active を維持し conflict。その JAN の `plu_target=1` の商品を dirty |
+| 別コード | active（その JAN に対象の商品が無い。売るのをやめた商品・JAN を直した商品の前の JAN の枠、別名だけの枠を含む） | 観測値を external とし、`alias_product_code` を NULL にする（`slot_released_on_register`）。アプリが書く商品が無いので、レジ側の登録を書き直さない |
 | 別コード | external | 観測値で external を更新 |
 
 free slot 上で同一の対象の JAN が複数観測され、その JAN に `reserved` / `active` slot が無い場合は、最小 memory No. だけを active として採用し、残りを external にする（観測コードを保持。`plu_slots` の partial UNIQUE は `reserved` / `active` だけにかかるので、同じコードの external は複数あってよい。[plu-tables](../db-design/plu-tables.md)）。
 
 照合の規則は、割当て後・反映前のレジ側の変化（予約中の枠に別のコードが入る、アプリが持つ JAN をレジが別の枠に持つ）を含めて D-117 (4) で残す。アプリはレジ側の重複を消さない（clear 行を持たない）。売上は JAN で商品へたどるので在庫は誤らないが、レジがどちらの枠で売るかによってレジの値段が前の値段になりうる（D-117 の Guarantee range）。
 
-照合後、`app_settings` の key `plu_register_snapshot_at` を更新し、件数（free / external / app 管理 / conflict / missing / dropped / duplicate）を operation_logs（`plu_register_snapshot_import`）に記録する。実コード・名称・単価は log に含めない。
+照合後、同じ TX で `app_settings` の key `plu_register_snapshot_at` と `plu_register_snapshot_settlement_no`（渡された精算回数）を更新し、件数（free / external / app 管理 / conflict / missing / dropped / duplicate / released）を operation_logs（`plu_register_snapshot_import`）に記録する。実コード・名称・単価は log に含めない。
 
 一度も照合していない状態の `prepare_plu_export` は `BizError::ValidationFailed`（reason=`register_snapshot_required`、文言「レジの登録状況がまだ読まれていません。売上データ取込みでレジの SD を一度読んでください」）で拒否する（読む前に空きを仮定しない gate。D-117 (3)）。
 
@@ -155,7 +159,7 @@ prepare が返した exact `memory_no` / product_code set を **1 transaction** 
 - retry: 既に同じ結果へ遷移済みなら idempotent success とする。別 JAN / 別 status への変化は拒否する。
 - operation_logs: mode、product 件数、confirmed_at を記録し、実コードを記録しない。
 
-書出しと「未反映から外す」の 2 段は D-027 の理由で残す（CV17 の取込みに失敗しても、外すまでは同じ商品が差分に残る）。コードと名称の反映は次の締めの照合（§16.3）で `reserved -> active` に現れるが、単価・課税方式・部門リンクの反映は Z004 に無く、精算の前には分からないので、照合を「未反映から外す」の代わりにしない（D-117 (6)・(7)）。
+書出しと「未反映から外す」の 2 段は D-027 の理由で残す（CV17 の取込みに失敗しても、外すまでは同じ商品が差分に残る）。通常の経路では confirm で既に `active` なので、次の締めの照合は「同一コード × active」（維持）になり、反映したコードと名称が観測で裏づく。confirm をしなかった枠だけが、照合の「同一コード × reserved」で `reserved -> active` になる。単価・課税方式・部門リンクの反映は Z004 に無く、精算の前には分からないので、照合を「未反映から外す」の代わりにしない（D-117 (6)・(7)）。
 
 ### 16.6 商品の状態が変わったときの枠（BIZ-04-D6 / SPEC-PLS-D4、D-117 (1)）
 
@@ -165,9 +169,16 @@ prepare が返した exact `memory_no` / product_code set を **1 transaction** 
 |---|---|---|
 | `plu_target: 1 -> 0`、廃番化（同時に `plu_target=0`） | 状態を変えない（`reserved` / `active` のまま）。Diff / Full に出さない。レジには前の登録が残る | — |
 | `plu_target: 0 -> 1`（廃番解除の後の再対象化を含む） | その JAN の枠があれば次の prepare で同じ枠を使う | `plu_dirty=1` |
-| `plu_target=1` の商品の `jan_code` の変更 | 前の JAN の枠は状態を変えず残す（対象の商品を持たない JAN の枠になる）。新しい JAN は次の prepare で枠を予約する | `plu_dirty=1` |
+| `plu_target=1` の商品の `jan_code` の変更（CSV の上書き。商品フォームは JAN を変えない〈BIZ-01-D1〉） | 前の JAN の枠は状態を変えず残す。新しい JAN は次の prepare で枠を予約する。前の JAN の枠の別名は下の「前の番号の現物」の問いで決める | `plu_dirty=1` |
+| 「前の番号の現物」が「ある」 | 前の JAN の枠に `alias_product_code` = その商品を書く（別名）。その枠で売れた分は取込みで同じ商品へたどる（[32](32-biz-csv-import-service.md) §15.3 Stage 2 b） | — |
+| 「前の番号の現物」が「ない」（CSV の上書きの既定） | 別名を書かない（使わない扱い）。その枠で売れたら、取込みは `unmatched_product` の行エラーで知らせる | — |
+| 別名を持つ枠の JAN を、どれかの商品が再び持つ（その商品の JAN を前の値へ戻した、別の商品にその JAN を入れた） | 同じ TX で `alias_product_code` を NULL にする。その JAN を持つ商品が普通に引き当たる（その商品が `plu_target=1` なら、次の prepare で同じ枠を使う） | — |
+| 別名を持つ商品の JAN をもう一度直す | 前の別名はそのまま残す（古い番号の現物は同じ商品）。新しく前の JAN になった値の枠について、同じ問いを 1 回聞く | `plu_dirty=1` |
+| 別名を持つ枠に、照合でレジ側の別のコード・空を観測した | 別コードは §16.3 の「別コード × active（対象の商品が無い）」で external になり、別名を消す。空は active のまま別名を保つ（レジの枠は空なので売れない） | — |
 
-廃番解除は `plu_target` を自動復帰させない。前の JAN の枠のバーコードでレジが売った分は、次の Z004 にその JAN の行で出る。その JAN を持つ商品が無ければ、取込みは未登録の JAN の行エラーで知らせる（D-103。黙って在庫を誤らない）。
+**前の番号の現物の問い（owner 決定、repo 外の回答台帳 TD-284）**: 商品の JAN を変えるとき、前の JAN が `reserved` / `active` の枠を持ち、変えた後にその JAN を持つ商品が 1 つも無いときだけ、「前の番号のバーコードが付いた現物は店にありますか」を 1 回聞く（それ以外は聞かない）。今 JAN を変える経路は CSV の上書き（UI-01c）だけで、preview で問いの条件に当たる行（`asks_old_jan_stock`）ごとに問いを出し、既定は「ない」。答えは `commit_import` の `old_jan_on_hand_codes` に載せ、BIZ-01 が同じ TX で条件を確かめ直して別名を書く（[30](30-biz-product-service.md) §4.8 の d.）。商品フォームは JAN を変えない（BIZ-01-D1）。変えられるようにするときは同じ問いを保存の前に出す。「ある」は入力の誤りの訂正では古い番号の現物が無く、メーカーの番号の変更では古い在庫が古いバーコードのまま残る、を分けるための問いで、黙って誤った商品へ付ける経路を作らない（前の JAN が別の実在の商品の JAN だったときは、その商品が JAN を持つので別名は引かれない）。
+
+前の JAN の枠のバーコードでレジが売った分は、次の Z004 にその JAN の行で出る。その JAN を持つ商品も別名も無ければ、取込みは `unmatched_product` の行エラーで知らせる（32 §15.3 Stage 2 b。黙って在庫を誤らない）。廃番解除は `plu_target` を自動復帰させない。
 
 撤去の対象（D-117 (1)。runtime の lane が code と一緒にこの signature を消す。それまでは設計照合 test〈`src-tauri/tests/design_compliance_test.rs`〉が code の pub fn と突き合わせるので signature だけを残す）:
 
@@ -206,7 +217,7 @@ fn list_plu_dirty(conn: &DbConnection) -> Result<Vec<Product>, BizError>
 
 - 同一 JAN は同一 memory No. を sticky に使い、prepare 順序や画面 filter で番号を変えない。
 - app は Z004 snapshot なしに空き slot を仮定しない。
-- app は枠を消さず、ある JAN の枠を別の JAN に使い回さない。枠が別のコードに変わるのは、レジ側の観測による `reservation_dropped` と、レジで空になった `external` が `free` に戻るときだけである。
+- app は枠を消さず、アプリ管理の枠（`reserved` / `active`）の JAN をアプリの操作で別の JAN に変えない（使い回さない）。アプリ管理の枠が別のコードの枠になるのは、照合でレジ側に別のコードを観測したとき（予約中の枠の `reservation_dropped`、対象の商品を持たない JAN の枠の external 化）だけである。`external` と `free` の観測の更新は §16.3 の照合の表に従う。
 - `external` / `free` と対象の商品を持たない JAN の slot は出力しない。要修正中の既存 slot は維持して出力しない。
 - Diff / Full とも CV17 投入可能。Full は対象の JAN の app 管理 slot 全体、Diff は未反映の対象。
 - slot 状態は売上、在庫、会計集計へ影響させない（SPEC-PLS-D8）。
