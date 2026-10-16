@@ -14,7 +14,7 @@ SPEC-STK-TIME-D1 / D4 / D8。新方式では汎用ProductUpdatesのstock_quantit
 
 商品get/update結果へsync_disabled_recovery: Option<CountRecoveryTarget>、商品一括importのpreview/結果へ同対象のVecを返す。判定はBIZ-03の準備照会と同じ規則を共用する（IOやUIで独自判断しない）。UI-01bはtrue→falseの操作時に警告し、保存後/再訪も未調整と回復先を表示する。商品一括importも非連動化を含む場合はpreviewと結果で同じ案内を返す。
 
-既存の価格改定・supplier・slot解放・初期在庫の意味は不変。BIZの拒否理由と復旧対象は[共通errorの新契約](40-cmd-product.md)で型付きに渡し、DB/数量範囲外は従来の失敗経路でTX全体を戻す。
+既存の価格改定・supplier・PLU の枠（D-117 で解放しない。[33 §16.6](33-biz-plu-export-service.md)）・初期在庫の意味は不変。BIZの拒否理由と復旧対象は[共通errorの新契約](40-cmd-product.md)で型付きに渡し、DB/数量範囲外は従来の失敗経路でTX全体を戻す。
 
 ### 単位と原価の精度の契約（D-113、BIZ-01-D8）
 
@@ -198,10 +198,10 @@ Rustでは通常fieldを `Option<T>`、clear可能fieldを `Option<Option<T>>` �
      - old_selling = existing.selling_price, new_selling = req.selling_price.unwrap_or(existing.selling_price)
      - old_cost, new_costも同様
    - selling_priceが変わった場合 → updatesにplu_dirty=trueを追加
-4b. **plu_target / JAN 遷移チェック**（BIZ-01-D3 / SPEC-PLS-D4）
+4b. **plu_target / JAN 遷移チェック**（BIZ-01-D3 / SPEC-PLS-D4、D-117 (1)）
    - plu_target が Some で既存値 0 → 1 に変わる場合 → updatesにplu_dirty=trueを追加（レジ登録が新たに必要になったため）
-   - 1 → 0 の場合は BIZ-04 の共通解放 trigger を呼ぶ。reserved は free、active は release_pending とする
-   - CSV 上書き等の許可された経路で jan_code が変わる場合も、旧 JAN について同じ解放 trigger を呼ぶ
+   - 1 → 0 の場合は PLU の枠を変えない（BIZ-04 を呼ばない。枠は残り、書出しに出なくなる。[33 §16.6](33-biz-plu-export-service.md)）
+   - CSV 上書き等の許可された経路で jan_code が変わる場合も、旧 JAN の枠を変えない。変更後の plu_target が 1 なら updatesにplu_dirty=trueを追加（新しい JAN のレジ登録が要るため）
 5. **productsをUPDATE**
    - ProductUpdatesを構築してproduct_repo::update_product()を呼ぶ
 6. **操作ログ記録**
@@ -263,7 +263,7 @@ fn toggle_discontinue(conn: &mut DbConnection, product_code: &str) -> Result<boo
    - None → BizError::NotFound
 2. new_status = !existing.is_discontinued
 3. **トランザクション開始**
-4. 廃番化（new_status=true）は `plu_target=0` も同時更新し、旧 JAN の共通解放 trigger を呼ぶ。廃番解除は `plu_target` を自動で 1 に戻さない
+4. 廃番化（new_status=true）は `plu_target=0` も同時更新する。PLU の枠は変えない（D-117 (1)）。廃番解除は `plu_target` を自動で 1 に戻さない
 5. product_repo::update_product() を呼ぶ。廃番解除時は `plu_dirty` / `plu_target` の既存値を尊重する
 6. system_repo::insert_operation_log(operation_type="product_discontinue")
 7. **COMMIT**
@@ -526,7 +526,7 @@ struct ImportResult {
       - `PLU対象` が `1` / `0` ならその値を適用する。ただし `1` で JAN 不備なら preview warning 済みの `0` を使う。列なし / 空欄は `is_discontinued=0 かつ jan_code が 13 桁数字なら 1、それ以外 0` の既存導出規則を使う
       - initial_stock > 0 → inventory_repo::insert_movement に receiving として記録
       - 進行中の棚卸し → stocktake_repo::insert_stocktake_item に自動追加
-   d. 上書き更新の場合: `PLU対象` 列に `1` / `0` がある行だけ plu_target を更新する。列なし / 空欄は既存値を保持する。1→0 または JAN 変更では §4.4 の共通解放 trigger を同一 TX 内で呼ぶ
+   d. 上書き更新の場合: `PLU対象` 列に `1` / `0` がある行だけ plu_target を更新する。列なし / 空欄は既存値を保持する。1→0 と JAN 変更は §4.4 の 4b と同じく PLU の枠を変えない（0→1 と、更新後の plu_target が 1 の JAN 変更は plu_dirty=1）
 
 3. **COMMIT**（tx.commit()）
 
@@ -545,7 +545,9 @@ struct ImportResult {
 
 ---
 
-### 4.9.1 bulk_set_plu_target（BIZ-01-D4 / SPEC-PLS-D6）
+### 4.9.1 bulk_set_plu_target（BIZ-01-D4。撤去の対象、D-117 (2)）
+
+商品一覧の絞り込みに一致する全件を「PLU 対象にする / 外す」段階導入の道具は撤去する。どの商品をレジで売るかは、商品ごとの `plu_target`（UI-01b）と商品 CSV の任意列 `PLU対象`（§4.8、UI-01c）で決める。runtime の lane が code・command・bindings・UI・test と一緒に消す。設計照合 test（`src-tauri/tests/design_compliance_test.rs`）が code の pub fn と突き合わせるので、撤去までは signature だけを残す。
 
 ```rust
 fn bulk_set_plu_target(
@@ -554,17 +556,6 @@ fn bulk_set_plu_target(
     plu_target: bool,
 ) -> Result<BulkPluTargetResult, BizError>
 ```
-
-現在 filter（keyword / department / discontinued / plu）に一致する**全件**をページングなしで対象にし、1 transaction で更新する。`ProductBulkFilter` は db 層 `product_repo` 所有で、BIZ が再 export する。
-
-SPEC-PRV-D2 により keyword は商品名 / product_code / jan_code / maker_code の部分一致を共有する。maker_code 追加で一括 PLU 対象化の母集団も意図的に広がり、UI-01a で見えている filter 一致集合と一致させる。
-
-- ON: `plu_target=0` のうち未廃番かつ有効な 13 桁 JAN の商品だけを `plu_target=1`, `plu_dirty=1` にする。既に `plu_target=1` の行は `plu_dirty` を含め無変更とする。JAN 不備と廃番はそれぞれ skip 件数へ積む
-- OFF: filter 一致全件を `plu_target=0` にし、1→0 の商品は BIZ-04 解放 trigger を呼ぶ
-- result: `matched_count`, `updated_count`, `invalid_jan_skipped_count`, `discontinued_skipped_count`
-- operation_logs: filter の正規化要約、要求値、各件数を記録する。対象 product の実 JAN 一覧は記録しない
-
-途中失敗は商品更新・slot 解放・operation log をまとめて rollback する。
 
 ### 4.10 BizError列挙型（Phase 5 拡張）
 

@@ -92,22 +92,21 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 
 ### UI-01a: 商品検索・一覧
 
-**タスク要求**: 商品の検索・絞込み・並替え・一覧表示、PLU 段階移行状態の可視化と filter 全件一括更新
+**タスク要求**: 商品の検索・絞込み・並替え・一覧表示（PLU の移行状態の列・絞り込み・一括更新は D-117 で撤去）
 
 **【状態管理】**
-- 検索条件（keyword, department_id, is_discontinued, plu, sort_key, sort_order）
+- 検索条件（keyword, department_id, is_discontinued, sort_key, sort_order）
 - ページング状態（current_page, per_page, total_count）
 - 商品一覧データ
 
 **【CMD呼び出し】**
 - 画面表示時 / 検索実行時 / ページ遷移時 → CMD-01 search_products
 - 商品行クリック → CMD-01 get_product → UI-01bへ遷移
-- PLU 対象一括操作 → CMD-01 bulk_set_plu_target
 
 **【利用者操作フロー】**
 1. 検索バーにキーワード入力（商品名/商品コード/JANコード/メーカー品番、SPEC-PRV-D2）
 2. 部門フィルタ、廃番表示ON/OFF
-3. 一覧表示（商品コード/商品名/売価/原価/在庫数/部門/廃番状態/PLU移行状態）。原価は売価の右隣（UI-01a-D13）。`対象外` / `未反映` / `反映済み` を色以外の text / icon でも示す
+3. 一覧表示（商品コード/商品名/売価/原価/在庫数/部門/廃番状態）。原価は売価の右隣（UI-01a-D13）
 4. 行クリックで商品編集画面へ遷移
 5. 「新規登録」ボタンでUI-01bへ遷移（新規モード）
 6. 現在 filter に一致する全件を対象に、件数確認後「PLU 対象にする / 対象から外す」を実行し結果件数を確認する
@@ -137,7 +136,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 3. 任意項目入力（取引先、メーカー品番、初期在庫、pos_stock_sync）
 4. pos_stock_sync: stock_unit='cm'なら初期値OFFを提案、利用者が変更可能
 5. 保存 → バリデーション → 成功トースト → 一覧に戻る
-6. edit は `plu_memory_no` を読取り専用表示する。廃番解除で plu_target を自動復帰しない
+6. edit は memory No. を表示しない（D-117）。廃番解除で plu_target を自動復帰しない
 7. edit は第 5 セクション「価格履歴」で直近 10 件を表示し、「すべて表示」で 100 件を取得する。create では表示しない
 
 ### UI-14: 一括価格改定
@@ -261,20 +260,20 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 
 **【状態管理】**
 - 書出しモード（'diff' / 'full'）。既定は 'diff'
-- レジ登録状況 snapshot（未読込み / 最終読込み日時 / free・external・app managed・conflict 要約）
+- レジ登録状況（未照合 / 最終照合日時。照合は売上データ取込みの SD の読取りで自動、D-117）
 - 差分対象商品（CMD-08 list_plu_dirty）
 - 書出し準備結果（bytes_base64, suggested_filename, target_product_codes, prepared_rows[memory_no], count, excluded）
 - 保存状態（'idle' / 'preparing' / 'save_dialog' / 'saved' / 'confirming_exported' / 'confirmed' / 'error'）
 
 **【CMD呼び出し】**
 - 画面表示時 → CMD-08 list_plu_dirty（差分対象の一覧）
-- 画面表示時 → CMD-08 get_plu_slot_summary。Z004 選択後 → import_plu_register_snapshot
+- 画面表示時 → CMD-08 get_plu_slot_summary
 - 「差分を書き出す」/「全件を書き出す」→ CMD-08 prepare_plu_export
 - TSV保存後、利用者が「この書出しを未反映から外す」を明示実行 → CMD-08 confirm_plu_export_saved
 
 **【利用者操作フロー】**
-1. snapshot 未読込みなら共通 FilePicker（D-054）で Z004 を選ぶ step を先に出す。最終読込み日時と占有要約は above the fold に表示する
-2. Diff / Full を選び、対象 / clear 件数、Full バックアップ注意、保存後に必要なPCツール/SDカード/レジ操作を確認する
+1. 未照合なら売上データ取込みで SD を一度読む導線を先に出す。最終照合日時は above the fold に 1 行で表示する
+2. Diff / Full を選び、対象件数、Full バックアップ注意、保存後に必要なPCツール/SDカード/レジ操作を確認する
 3. `prepare_plu_export` でTSVを生成し、Tauri native save dialog で保存先を選ぶ
 4. 保存失敗またはキャンセル時は `plu_dirty` を変更せず、再保存・再生成できる
 5. 保存成功後、画面上に「PCツールへ投入できない場合はこのまま再書出しできます」と表示する
@@ -284,7 +283,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 **【制御構造】**
 - TSV生成と未反映解除は分離する。生成成功だけでは `plu_dirty` を落とさない
 - `target_product_codes` は prepare 結果から保持し、confirm ではその exact set だけを送る
-- prepare は slot 予約を永続化し、再 prepare でも同じ memory No. を使う。confirm は reserved→active / release_pending→free を exact memory No. で確定する
+- prepare は slot 予約を永続化し、再 prepare でも同じ memory No. を使う。confirm は reserved→active を exact memory No. で確定する
 - Diff / Full とも CV17 へ投入できる。失敗時は保存済みTSVを再投入するか、どちらかを再生成する。memory No. 永続化前の旧 Full file は再投入しない
 
 ### UI-09a/09b: 売上レポート画面群

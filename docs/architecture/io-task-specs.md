@@ -122,13 +122,12 @@ IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に
 
 ### IO-04: PLUフォーマッター
 
-**タスク要求**: `plu_slots` 由来の memory No. を持つ product / clear 行を、CV17 1.1.1 が受理する CP932・タブ区切り **11 列**へ変換する（IO-04-D2〜D4 / SPEC-PLS-D3〜D5）。
+**タスク要求**: `plu_slots` 由来の memory No. を持つ product 行を、CV17 1.1.1 が受理する CP932・タブ区切り **11 列**へ変換する（IO-04-D2、D4 / SPEC-PLS-D3、D5。clear 行は D-117 で撤去）。
 
-**データ構造**: `PluExportRow` は `memory_no` と `row_kind=product|clear` を持つ。memory No. は 217〜5000 の入力値を 6 桁ゼロ埋めし、行順から生成しない。
+**データ構造**: `PluExportRow` は `memory_no` を持つ。memory No. は 217〜5000 の入力値を 6 桁ゼロ埋めし、行順から生成しない。
 
 **処理構造**:
 - product 行は 13 桁 JAN、加工済み名称、単価、課税方式、固定列、部門リンクを既存 adapter 規則で出力する
-- clear 行は memory No.、14 桁ゼロ code、空名称、`\0`、`税1(内税)`、`いいえ`×4、`無し`、`ノンリンク` の exact 11 field とする
 - external / free slot は入力・出力しない
 - header / 列順、CP932、CRLF、商品名加工、tax mapping は [25-io-plu-formatter.md](../function-design/25-io-plu-formatter.md) を正本とする
 

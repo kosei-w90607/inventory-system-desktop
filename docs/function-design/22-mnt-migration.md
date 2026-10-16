@@ -290,6 +290,8 @@ fixture / 注入の必須条件は 71 §71.10「fixture / 注入の必須条件�
 4. row count、範囲端、既定 status を同一 transaction 内で検証し、失敗時は §3.2 / MNT-03-D1 に従って rollback する。
 5. schema_versions に v5 を記録して commit する。v3 の `plu_target` backfill と v4 の日報 table は変更しない。
 
+v5 は適用済みの履歴として残す。D-117（2026-10-16）の後の表（status の 4 値、`released_at` を外す、partial UNIQUE を `reserved` / `active` だけ、既存の `release_pending` を `external`）は、D-117 の runtime の lane が足す migration で作る（手順は [db-design/plu-tables.md](../db-design/plu-tables.md) の「migration（D-117、runtime の lane）」。番号と本節への追記はその lane が行う）。
+
 ## 14. MNT-03 追加: migration v6（suppliers.updated_at）
 
 **MNT-03-D10 / SPEC-SUP-D5**: migration v6 を schema_versions に追加し、`suppliers.updated_at` を改名日時として導入する。実装と migration map 登録は後続実装 PR の義務であり、本 design-first PR では schema を変更しない。

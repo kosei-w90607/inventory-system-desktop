@@ -25,9 +25,7 @@
 | REQ-103 / UI-01a | UI-01a-D7 | 部門フィルタ候補は `list_departments` CMD で departments 全件を取得する。 | `search_products` の現在ページから候補を派生すると、検索条件・ページング・廃番状態で候補が欠ける。既存 IO `product_repo::list_departments` を BIZ/CMD 経由で公開する設計を採用する。 |
 | REQ-103 / UI-01a | UI-01a-D8 | 廃番状態は専用「状態」列を持たず、廃番商品のみ商品名セル内に `廃番` text badge を出し、行を `text-muted-foreground` にする。「表示中」badge は出さない。 | 表示中が大多数の一覧で全行に状態 badge を出すと密度が上がり、注目すべき廃番が埋もれる。色だけで符号化しない（[design-system/00-foundations.md §業務ステータスの視認性](../design-system/00-foundations.md)）ため text badge を併用する。部門列は維持し、L3 で密度過多なら次候補とする。 |
 | REQ-103 / UI-01a | UI-01a-D9 | 検索欄を在庫照会と同型の live 型へ統一する（`debounceMs=200` / `type="search"` + native clear / 可視 Label「商品を検索」あり / 検索ボタン・`aria-label` なし）。 | Why = commit 型維持の業務理由が owner 調査で確認できず、共通化時の既存挙動温存だった。live 型でも HID スキャナの Enter 即時確定・IME 変換確定 Enter の誤発火防止・条件変更時の `page` reset は維持される。Rejected = commit 型の維持（画面間の操作一貫性を損なう理由が説明できない）（owner L3 判断 2026-08-03、gated amendment）。 |
-| REQ-907 / SPEC-PLS-D7 | UI-01a-D10 | PLU 移行状態を独立列「PLU」に置き、`plu_target=0 -> 対象外`、`plu_target=1 && plu_dirty=1 -> 未反映`、`plu_target=1 && plu_dirty=0 -> 反映済み` の 3 語彙で導出する。`plu=all|target|pending|synced|excluded` を URL search param に持つ。 | DSR-04: この画面では PLU 移行状態が filter / 一括操作の主情報であり、全行に値があるため商品名セル内へ詰め込まない。badge は text / icon を併用し、色だけで状態を符号化しない。PLU 状態による行減衰は行わない。 |
-| REQ-907 / SPEC-PLS-D6 | UI-01a-D11 | 現在の q / dept / discontinued / plu filter に一致する全件を「PLU 対象にする / 対象から外す」で更新する。実行前に件数付き dialog、実行後に更新 / JAN 不備 skip / 廃番 skip の結果を表示する。 | page 内だけ、または PLU filter を落とした更新は operator が見ている集合とずれる。BIZ-01 の 1 TX command に判断を集約する。 |
-| REQ-907 / D-052 | UI-01a-D12 | 一括操作成功後は D-052 C19（`productList.root / pluDirty / productForm.root / pluSlotSummary`）を invalidate する。 | 一覧 badge、ホーム未反映件数、商品詳細、slot 要約の stale を同じ production SSOT から解消する。 |
+| REQ-907 / D-117 | UI-01a-D10〜D12（撤去） | PLU の移行状態の列「PLU」（`対象外` / `未反映` / `反映済み`）、URL の `plu` 絞り込み、絞り込みに一致する全件の「PLU 対象にする / 対象から外す」と、その invalidation（D-052 C19）を持たない。どの商品をレジで売るかは商品フォームの「レジにバーコード登録する」と商品 CSV の `PLU対象` 列で決め、未反映はホームの通知バーと PLU 書出し画面が示す。 | 段階導入の道具を外す（D-117 (2)、owner 決定 TD-274）。本番の DB は無く、商品ごとの欄と CSV の列で対象を決められる。道具を作ったときの指摘はどれも道具の欠陥だった。runtime の lane が code・route の search・test を外す。 |
 | REQ-103 / SP-103-04 / SPEC-PRV-D10 | UI-01a-D13 | 原価列を基本列に追加し、売価の右隣に置く（owner 裁定 2026-08-22）。 | 聞き取り第 3 陣 Q4 により PC 画面は通常客から見えず、店主の棚卸し・税理士対応・値付けは原価中心と確認できた。列密度より日常の参照性を優先する。 |
 
 ## 50.3 画面構成
@@ -52,13 +50,12 @@ src/components/patterns/Pagination.tsx                  # 旧 features/products/
 | `q` | string | `""` | trim 後に空なら `keyword = null`、非空なら `keyword = q` |
 | `dept` | number or absent | absent | absent なら `department_id = null` |
 | `discontinued` | `active` / `all` / `discontinued` | `active` | `active -> false`, `all -> null`, `discontinued -> true` |
-| `plu` | `all` / `target` / `pending` / `synced` / `excluded` | `all` | 同名の `PluMigrationFilter`。無効値は `all` へ正規化 |
 | `sort` | `product_code` / `name` / `stock_quantity` / `selling_price` | `product_code` | `product_code -> ProductCode`, `name -> Name`, `stock_quantity -> StockQuantity`, `selling_price -> SellingPrice` |
 | `dir` | `asc` / `desc` | `asc` | `asc -> Asc`, `desc -> Desc` |
 | `page` | number >= 1 | `1` | `page` |
 | `perPage` | `50` / `100` / `200` | `100` | `per_page` |
 
-検索語、部門、廃番モード、PLU 移行 filter、並替え、`perPage` が変わったときは `page=1` に戻す。ページ移動だけは現在の検索条件を維持する。
+検索語、部門、廃番モード、並替え、`perPage` が変わったときは `page=1` に戻す。ページ移動だけは現在の検索条件を維持する。
 
 **2026-09-03 更新履歴（UI 一覧の背骨 D Lane 2）**: `perPage` の既定値を `50` → `100` へ変更（`src/features/products/search.ts` `normalizePerPage`、1 件探索が主動線のため。URL 明示値が優先される挙動・共有定数 `LIST_PER_PAGE_OPTIONS` は不変）。
 
@@ -94,23 +91,12 @@ per_page: number  // 上限 200。UI は 50 / 100 / 200 のみ送信し、200 �
 - テーブル列は 商品コード、商品名、部門、売価、原価、在庫数、操作導線を基本にする。原価は売価の右隣に置く（SPEC-PRV-D10）。廃番状態は専用列を持たず、商品名セル内に表す（UI-01a-D8）。
 - 商品コードと商品名は並べて見せ、商品コード単独で利用者判断を強制しない。
 - 廃番状態は色だけで表さず、廃番商品のみ商品名セル内に `廃番` text badge を出し、行を muted 表示にする。「表示中」badge は出さない（UI-01a-D8）。
-- PLU 移行状態は独立列「PLU」で `対象外` / `未反映` / `反映済み` の text badge と補助 icon で示す。filter 一致全件の一括操作は件数付き確認 dialog を通し、成功は toast、失敗は destructive Alert で示す（UI-01a-D10〜D12）。
-
-| 用途 | 文言 |
-|---|---|
-| badge | `対象外` / `未反映` / `反映済み` |
-| ボタン | `PLU 対象にする` / `PLU 対象から外す` |
-| toolbar caption | (a)(b)(c) の 3 文 |
-| dialog title | `絞り込みに一致する商品をPLU対象にしますか` / `絞り込みに一致する商品をPLU対象から外しますか` |
-| dialog description | `現在の絞り込み条件に一致する {n} 件が対象です。現在の絞り込みに一致しない商品は変更されません。レジへの反映には PLU 書出しと PC ツールの取込みが別途必要です。` |
-| 成功 toast | `{updated} 件を更新しました（JAN 不備 {a} 件 / 廃番 {b} 件は対象外）` |
-- toolbar caption の (a)(b)(c) は `totalCount` で分岐する: (a) `絞り込みに一致する {n} 件すべてが対象です。他のページの商品も含みます。押すと確認画面が開きます。` (b) `絞り込みに一致する商品がないため実行できません。` (c) `件数を読み込んでいます。読み込みが終わると操作できます。`
 - 行クリックは商品修正へ遷移する。新規登録ボタンは商品登録へ遷移する。正確な UI-01b route は UI-01b Design Phase で確定し、UI-01a 実装時は `navigation.ts` と UI-01b 設計に合わせる。
 
 ## 50.7 Loading / Empty / Error
 
 - Loading: 検索条件エリアは残し、一覧領域で loading を示す。
-- Empty: 条件に一致する商品がない場合は、検索条件を維持したまま空状態を表示する。絞り込み（`q` / `dept` / `discontinued` / `plu`）が既定値以外かつ 0 件のときは、既存の「商品を登録する」action を常設のまま維持し、`action` slot 内に「絞り込みを解除」ボタンを横並び併置する。押下で `q` / `dept` / `discontinued` / `plu` と `page` を既定値へ戻す。`sort` / `dir` / `perPage` は変更しない。絞り込みが既定値のまま 0 件（真にデータなし）のときは reset ボタンを出さない。
+- Empty: 条件に一致する商品がない場合は、検索条件を維持したまま空状態を表示する。絞り込み（`q` / `dept` / `discontinued`）が既定値以外かつ 0 件のときは、既存の「商品を登録する」action を常設のまま維持し、`action` slot 内に「絞り込みを解除」ボタンを横並び併置する。押下で `q` / `dept` / `discontinued` と `page` を既定値へ戻す。`sort` / `dir` / `perPage` は変更しない。絞り込みが既定値のまま 0 件（真にデータなし）のときは reset ボタンを出さない。
 - Error: CMD 呼び出し失敗時は一覧領域にエラーを表示し、検索条件を編集できる状態を維持する。DB / CMD の失敗を UI 側で業務成功扱いにしない。
 - Recovery: 条件変更または再試行で同じ `searchProducts` を再実行できるようにする。
 
@@ -127,8 +113,7 @@ UI-01a 実装時は、以下を trace ID 付きで検証する。
 - UI-01a-D7: 部門候補は `listDepartments` 由来で全件表示され、現在ページの検索結果から欠落しない。
 - UI-01a-D8: 専用「状態」列がなく、廃番商品のみ商品名セル内に `廃番` text badge が出て行が muted になる。「表示中」badge は出ない。
 - UI-01a-D9: 検索欄が live 型（`debounceMs=200`）で動作し、Enter は debounce を待たず即時反映、IME 変換確定中の Enter は発火しない。`q` の変更・クリアで `page` が既定へ戻る。可視 Label「商品を検索」が input と結線され、検索ボタン・`aria-label` は持たない。
-- UI-01a-D10: 3 語彙の導出式、`plu` URL 復元、色以外の符号が一致する。
-- UI-01a-D11: page 外も含む filter 全件の件数確認と、現在の絞り込みに一致しない商品は変更されない旨、更新 / JAN 不備 skip / 廃番 skip の結果を表示する。
+- UI-01a-D10〜D12（撤去）: 一覧に「PLU」列・`plu` の絞り込み・一括の PLU 対象化の操作が無い（URL の `plu` は無視される）。
 - SPEC-PRV-D10: 「原価」列ヘッダが「売価」の右隣に存在し、値が基本列として表示される。
 
 ## 50.9 Deferred

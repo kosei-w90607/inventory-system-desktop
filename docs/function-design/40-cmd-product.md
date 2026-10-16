@@ -119,7 +119,7 @@ fn toggle_discontinue(state: State<AppState>, product_code: String) -> Result<bo
 
 #### search_products コマンド
 
-**処理ステップ**: biz::product_service::search_products()を呼ぶ。`ProductSearchQuery.plu` は `all|target|pending|synced|excluded` を受け、商品一覧の PLU 移行 filter として IO-01 の WHERE へ渡す。`supplier_id` / `include_unassigned` は UI-14 の取引先 filter としてそのまま BIZ-01 wrapper を通し、抽出判断は IO-01 が所有する（SPEC-PRVB-D1）。
+**処理ステップ**: biz::product_service::search_products()を呼ぶ。PLU の移行 filter（`ProductSearchQuery.plu`）は D-117 (2) で撤去した（runtime の lane が DTO・bindings・UI と一緒に外す）。`supplier_id` / `include_unassigned` は UI-14 の取引先 filter としてそのまま BIZ-01 wrapper を通し、抽出判断は IO-01 が所有する（SPEC-PRVB-D1）。
 
 #### list_departments コマンド
 
@@ -280,9 +280,11 @@ struct PriceHistoryEntry {
 
 #### get_product コマンド
 
-**処理ステップ**: product_repo::find_by_product_code()を呼ぶ。None → CmdError { kind: CmdErrorKind::NotFound }。応答型 `ProductWithRelations`（[20-io](20-io-product-repo.md) の JOIN 結果。`41-cmd` の `ProductResponse` は PLU dirty 一覧用の別型）に JAN 結合した読取り専用 `plu_memory_no: Option<i64>` を含める（**CMD-01-D3 / SPEC-PLS-D7**）。
+**処理ステップ**: product_repo::find_by_product_code()を呼ぶ。None → CmdError { kind: CmdErrorKind::NotFound }。応答型 `ProductWithRelations`（[20-io](20-io-product-repo.md) の JOIN 結果。`41-cmd` の `ProductResponse` は PLU dirty 一覧用の別型）は memory No. を含めない（CMD-01-D3 の `plu_memory_no` は D-117 (5) で撤去。runtime の lane が DTO・bindings・UI と一緒に外す）。
 
-#### bulk_set_plu_target コマンド（CMD-01-D4 / SPEC-PLS-D6）
+#### bulk_set_plu_target コマンド（CMD-01-D4。撤去の対象、D-117 (2)）
+
+商品一覧の絞り込みに一致する全件の PLU 対象化（段階導入の道具）は撤去する（[30 §4.9.1](30-biz-product-service.md)）。runtime の lane が code・specta の登録・bindings・UI・test と一緒に消す。設計照合 test（`src-tauri/tests/design_compliance_test.rs`）が code の pub fn と突き合わせるので、撤去までは signature だけを残す。
 
 ```rust
 #[tauri::command]
@@ -293,7 +295,3 @@ fn bulk_set_plu_target(
     plu_target: bool,
 ) -> Result<BulkPluTargetResult, CmdError>
 ```
-
-`ProductBulkFilter` は商品一覧の `keyword` / `department_id` / `is_discontinued` / `plu` と同じ意味を持ち、ページング引数を持たない。型は db 層所有、BIZ 再 export とし、CMD は BIZ 経由で参照する。戻り値は BIZ-01 の `BulkPluTargetResult` をそのまま返す（`create_product` の `ProductCreateResult` と同じ慣行、別の CMD 層 DTO を作らない。PR #86 gated amendment 1）。response は `matched_count`, `updated_count`, `invalid_jan_skipped_count`, `discontinued_skipped_count` を返す。CMD は generated DTO を BIZ-01 へ渡し、1 transaction の所有権や slot 解放判定を持たない。
-
-`plu_memory_no` を含む response は実装 A で `tauri-specta` 登録と `src/lib/bindings.ts` 再生成を行う。`bulk_set_plu_target` と関連 enum / DTO は後続実装 B の責務とする。
