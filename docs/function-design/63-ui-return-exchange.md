@@ -1,5 +1,7 @@
 # 63. UI-03: 返品・交換
 
+> **計数の置き場と在庫の求め直し（proposed・未実装、D-118）**: この画面の日付の欄の意味は「品が動いた日」（返品・交換は品が戻った・渡った日）。在庫が計数に入っているかは、この日付で ADR D3 の窓（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）を決める（[31](31-biz-inventory-service.md)）。欄の見出し・説明の文言の細部は runtime の lane。
+
 > 対応仕様: REQ-202 / UI-03
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-03、`docs/architecture/cmd-task-specs.md` CMD-03、`docs/architecture/biz-task-specs.md` BIZ-02、`docs/function-design/28-io-image-manager.md`、`docs/function-design/31-biz-inventory-service.md`、`docs/function-design/43-cmd-settings-log.md`、`docs/function-design/44-cmd-inventory.md`、`docs/SCREEN_DESIGN.md`、`docs/UI_TECH_STACK.md` §5.3 / §6.7

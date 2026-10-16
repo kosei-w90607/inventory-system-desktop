@@ -87,10 +87,13 @@ Risk: R3
 | D4 | F9 | unit | `same_settlement_other_hash_is_rejected_unless_rolled_back` | 同じ machine_no・精算回数の active な取込みがあり hash が違う: 拒否。その取込みを取り消した後は取り込める |
 | D4 | F10 | unit | `settlement_order_contradiction_is_rejected` | 取り込み済みの精算 n（精算日 D）に対し、精算回数 n+1 で精算日 D−1 の file、精算回数 n−1 で精算日 D+1 の file: どちらも拒否 |
 | D4 | F10 | unit | `different_machine_no_is_rejected` | active な取込みと machine_no が違う file: 拒否 |
-| D4 | — | unit | `gap_notice_lists_missing_settlement_numbers` | 取り込み済み n と n+3: `notices` に n+1・n+2（昇順）。n+1 を取り込むと n+2 だけになる |
+| D4 | — | unit | `gap_notice_lists_missing_settlement_ranges` | 取り込み済み n と n+3: `notices` に区間 n+1〜n+2 が 1 つ。n+1 を取り込むと区間 n+2（from = to）だけになる。取り込み済み n と n+2 と n+5: 区間 n+1 と n+3〜n+4 の 2 つ（昇順） |
+| D4 | — | unit | `gap_notice_with_huge_settlement_no_is_bounded` | 精算 1 の後に精算回数が i64 の最大の Z004 を preview: 知らせは区間 2〜(最大 − 1) の 1 つで、preview が返る（番号を 1 つずつ並べると返らない） |
 | D4 | — | unit | `future_settlement_date_is_notice_not_reject` | 精算日が today より後: 取り込める、`notices` に日付のずれ |
 | D4 | — | unit | `same_date_other_settlement_needs_no_confirmation` | 同じ精算日で精算回数の違う file: `additional_import_confirmed` なしで確定できる |
 | D4 | — | unit | `shared_jan_row_records_sales_only` | JAN を 2 商品が持つ行（1 つが在庫連動の場合と、どちらも連動でない場合）: 先頭の商品に売上だけを記録し、どの候補にも movement を作らず、全候補の写しが変わらない。行エラーにしない（TD-296） |
+| D4 | — | unit（BIZ-01） | `shared_jan_change_from_linked_product_is_rejected` | 在庫連動の商品 A が自分の JAN を非連動の C と同じ値に変える update: `validation`（field `jan_code`）で拒む。C が A と同じ JAN に変える update、一括 import で同じ組を作る行も拒む |
+| D10 | — | integration（migration） | `migration_reports_existing_shared_jan_violation` | 移行の前に在庫連動の商品と同じ JAN を持つ別の商品がある DB: 自動では変えず、件数と商品コードが `operation_logs` に残る |
 | D4 | — | unit（BIZ-01） | `shared_jan_sync_enable_is_validation_error` | 別の商品と JAN を共有する商品の在庫連動の有効化: `validation`（field `pos_stock_sync`）、`stocktake_guard` にしない |
 | D5 | — | unit（BIZ-06） | `fresh_count_stores_cursors_and_today` | fresh な計数: `business_date` = today、`settlement_no` = 取り込み済みの最大（取込みが無ければ NULL）、`seen_movement_id` = movement の最大 id（無ければ 0）。`business_date` が today と違えば `ValidationFailed` |
 | D5 | — | unit | `future_business_date_is_rejected` | 既定の計数の `business_date` > today: `ValidationFailed`、DB は不変 |
@@ -175,7 +178,7 @@ Risk: R3
 
 - old schema/input: 棚卸しか Z004 の取込みを持つ DB は migration が止まる（作り直しは別の承認）。従来の形の Z004 は取り込まない。
 - new schema/input: 入出庫と初期在庫だけの DB は移行の後も写しが同じ。
-- output order: 要再確認の一覧と欠けの知らせは昇順（31・32）。在庫変動の履歴は鍵の順（66）。
+- output order: 要再確認の一覧と欠けの知らせの区間は昇順（31・32）。在庫変動の履歴は鍵の順（66）。
 - optional field behavior: `stocktake_item_id` の無い計数（棚卸しの外の入れ直し）。
 
 ## Data Safety Checks

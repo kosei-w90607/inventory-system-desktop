@@ -6,7 +6,7 @@
 
 - `additionalImportConfirmed` は Z004 では使わない（同じ精算日の別の精算は確認なしに入る。[32](32-biz-csv-import-service.md) の新契約）。runtime で入力から外し、bindings と UI-07 を同じ変更で直す。
 - preview の拒否（精算回数の無い file・別の machine_no・同じ精算の別版・精算の順の食い違い）は既存の `import_error` kind と BIZ の message で返す（回復型に載せない）。
-- preview と ImportResult に知らせ（`notices`: 欠けた精算回数の一覧と、精算日が PC の今日より後の知らせ。32 の新契約）を足す。ImportResult と RollbackResult に、求め直しの後に要再確認になった商品の一覧（`recheck_targets: Vec<CountRecoveryTarget>`、[40](40-cmd-product.md)）を足す。売上 0 の正常な完了を失敗に変えない。
+- preview と ImportResult に知らせ（`notices`: 欠けた精算回数の区間〈`{ from: i64, to: i64 }`。1 つなら from = to〉の一覧と、精算日が PC の今日より後の知らせ。32 の新契約）を足す。ImportResult と RollbackResult に、求め直しの後に要再確認になった商品の一覧（`recheck_targets: Vec<CountRecoveryTarget>`、[40](40-cmd-product.md)）を足す。売上 0 の正常な完了を失敗に変えない。
 - CMD は PC の今日（ローカルの日付）を BIZ へ渡す（精算日が今日より後の知らせのため）。
 - commit と rollback は停止 ADR の 5 つの入口を外すのと同じ runtime の配布の単位で新しい経路に繋ぐ（SPEC-STK-CNT-D12）。bindings の生成と UI-07 の分岐・preview の mock の更新は runtime で同時に行う。
 

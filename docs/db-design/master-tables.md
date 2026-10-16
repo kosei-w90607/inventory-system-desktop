@@ -7,7 +7,7 @@
 - products へ写しの列を足す: `stock_recheck INTEGER NOT NULL DEFAULT 0`（0/1 の CHECK。要再確認なら 1）、`stock_range_low INTEGER NULL`・`stock_range_high INTEGER NULL`（`stock_recheck=1` なら両方 NOT NULL で low ≤ high、0 なら両方 NULL。table の CHECK）。`stock_quantity` と合わせて、BIZ の求め直しの関数だけが書く（[tracking](tracking-system-tables.md) の同名の契約）。
 - `stock_quantity` は記録から求め直した写しで、既存の行の更新は求め直しの関数だけを通す（`update_stock_quantity` の呼出し元はこの関数 1 つ）。新しい商品の INSERT の初期数量は、同じ TX で作る初期在庫の movement から求め直した値と等しい。
 - `pos_stock_sync` の `DEFAULT 1` は変えない。在庫連動を始める（false → true）ときの検査は [30](../function-design/30-biz-product-service.md) の新契約（連動しない間の Z004 の売上が効く計数より後にあれば拒否）。
-- 共有 JAN は DB に存在できる。BIZ-01 は、別の商品と JAN を共有する商品の在庫連動の有効化と、在庫連動の商品と JAN を共有する変更を拒む（30 の新契約）。jan_code への全件 UNIQUE と既存の pos_stock_sync の一括変更はしない。
+- 共有 JAN は DB に存在できる。BIZ-01 の不変条件は、変更の後に在庫連動の商品と同じ JAN を持つ別の商品があってはならない、の 1 つ（どの経路・どちらの商品を変える場合でも拒む。30 の新契約）。jan_code への全件 UNIQUE と既存の pos_stock_sync の一括変更はしない。
 
 ## 単位と原価の精度の契約
 
