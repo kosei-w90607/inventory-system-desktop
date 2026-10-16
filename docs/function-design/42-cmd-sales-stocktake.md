@@ -8,9 +8,10 @@
 |---|---|---|
 | save_stock_count | request: SaveStockCountRequest（`product_code`・`count_value: i64`・`fresh: bool`・`business_date: String`・`stocktake_item_id: Option<i64>`） | Result<StockCountSaveResult, CmdError> |
 | preview_stock_count_placement | `product_code`・`business_date` | Result<CountPlacementPreview, CmdError>（`later_count_exists`） |
-| zero_uncounted_items | `stocktake_id`・`product_codes: Vec<String>` | Result<Vec<StockCountSaveResult>, CmdError> |
+| zero_uncounted_items | `stocktake_id`・`product_codes: Vec<String>`・`business_date: String` | Result<Vec<StockCountSaveResult>, CmdError> |
 | list_recheck_products | なし | Result<Vec<CountRecoveryTarget>, CmdError> |
 
+- `save_stock_count` の `stocktake_item_id` は明細の商品と `product_code` が同じでなければ BIZ が書く前に `ValidationFailed`（35）。
 - CMD は PC の今日（`today`、ローカルの日付）を BIZ へ渡す（[35](35-biz-stocktake-service.md) の新契約。BIZ は時計を読まない）。UI から today を受けない。
 - StockCountSaveResult は保存した計数の `id`・`count_kind`（`default` / `fresh`）、求め直しの後の `stock`・`stock_range_low`・`stock_range_high`・`recount_reasons`（[40](40-cmd-product.md) の enum）、`later_count_exists`。
 - `complete_stocktake` の入力から `force_fill` を外す。拒否は [40 の回復型](40-cmd-product.md) の `completion_blocked`。

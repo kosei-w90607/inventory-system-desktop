@@ -63,6 +63,7 @@ Risk: R3
 | D3 | F17 | unit | `fresh_count_absorbs_movements_saved_before_it` | 入庫（今日 T、保存）→ fresh な計数（T）: 入庫は入っている、要再確認なし。fresh の後に入庫（T）を保存すると決まらない（`same_date_movement`）、範囲 = 計数〜計数 + 入庫 |
 | D3 | F17 | unit | `default_count_same_date_movement_is_recheck` | 入庫（D、保存）→ 既定の計数（D）: 決まらない（既定の計数の窓は日付 D の全体）、範囲 = 計数〜計数 + 入庫、写し = 計数 + 入庫 |
 | D3 | F18 | unit | `fresh_count_all_later_same_day_settlements_are_undetermined` | 精算 n（日付 T）取込み → fresh な計数 → 精算 n+1・n+2（どちらも日付 T）で売れた: どちらも決まらない（要再確認）。n+1 だけを決まらないとすると n+2 の売上を黙って引く |
+| D3 | — | unit | `default_count_next_day_settlement_is_not_undetermined` | 既定の計数（D）、D に精算 n があり、精算 n+1（日付 D+1）で売れた: n だけ決まらない、n+1 は入っていない（A1 の固定。要再確認は n の行だけで判定） |
 | D3 | — | unit | `fresh_count_next_day_settlement_is_not_undetermined` | 精算 n（日付 T）→ fresh → 精算 n+1（日付 T+1）で売れた: 要再確認なし、在庫 = 計数 − 売上（A1 の固定） |
 | D3 | — | unit | `fresh_count_includes_late_older_settlement` | 精算 n（日付 T−2）だけ取込み → fresh な計数（T）→ 精算 n+1（日付 T−1）を後から取り込む: n+1 は入っている（引かない）。精算回数だけで後とすると引いてしまう |
 | D3 | F7 | unit | `default_count_includes_late_older_settlement` | 既定の計数（D）の後に、精算 n−1（日付 D−1）を遅れて取り込む: 引かない（入っている） |
@@ -91,11 +92,16 @@ Risk: R3
 | D4 | — | unit | `same_date_other_settlement_needs_no_confirmation` | 同じ精算日で精算回数の違う file: `additional_import_confirmed` なしで確定できる |
 | D4 | — | unit | `shared_jan_row_records_sales_only` | JAN を 2 商品が持つ行（1 つが在庫連動の場合と、どちらも連動でない場合）: 先頭の商品に売上だけを記録し、どの候補にも movement を作らず、全候補の写しが変わらない。行エラーにしない（TD-296） |
 | D4 | — | unit（BIZ-01） | `shared_jan_sync_enable_is_validation_error` | 別の商品と JAN を共有する商品の在庫連動の有効化: `validation`（field `pos_stock_sync`）、`stocktake_guard` にしない |
-| D5 | — | unit（BIZ-06） | `fresh_count_stores_cursors_and_today` | fresh な計数: `business_date` = today、`settlement_no` = 取り込み済みの最大（無ければ 0）、`seen_movement_id` = movement の最大 id（無ければ 0）。`business_date` が today と違えば `ValidationFailed` |
+| D5 | — | unit（BIZ-06） | `fresh_count_stores_cursors_and_today` | fresh な計数: `business_date` = today、`settlement_no` = 取り込み済みの最大（取込みが無ければ NULL）、`seen_movement_id` = movement の最大 id（無ければ 0）。`business_date` が today と違えば `ValidationFailed` |
 | D5 | — | unit | `future_business_date_is_rejected` | 既定の計数の `business_date` > today: `ValidationFailed`、DB は不変 |
 | D5 | — | unit | `preview_placement_reports_later_count` | fresh な計数がある商品の前の日の分の既定の計数: `later_count_exists = true`、保存は拒まない |
 | D6 | F11 | unit | `complete_blocked_by_pending_settlement_recheck_uncounted` | 3 つの条件をそれぞれ 1 つだけ満たさない棚卸し: `completion_blocked`、`block_reason` がそれぞれ `settlement_pending`・`recheck`・`uncounted`、DB は不変 |
+| D6 | F19 | unit | `settlement_pending_when_no_settlement_before_count_date` | 導入の初めに、精算日 D の 2 本目の精算だけを取り込み（D より前の取込みが無い）、既定の計数（D）: `settlement_pending`（(iii)。1 本目の抜けを見逃さない）。D−1 の精算を取り込むと解ける |
 | D6 | F19 | unit | `settlement_pending_detects_gap_between_imported` | 取り込み済み 100・102（どちらも精算日 D）、101 が未取込み、計数（D）: `settlement_pending`。「D 以上の精算が取り込まれていない」だけでは通ってしまう。fresh な計数（n = 102）なら k > n でないので pending にしない |
+| D6 | — | unit | `zero_uncounted_with_selected_date` | 「0 にする」の日付に前の営業日を選ぶ: その日付の既定の計数になる。今日より後は `ValidationFailed` |
+| D5 | — | unit（BIZ-06） | `stocktake_item_of_other_product_is_rejected` | 商品 A の `product_code` に商品 B の `stocktake_item_id` を付けて保存: 書く前に `ValidationFailed`、`stock_counts` と明細は不変 |
+| D9 | — | schema | `movement_reference_type_null_with_phase_1_is_rejected` | `reference_type` が NULL で phase=1 の movement の INSERT は CHECK で拒まれる（`IS` の比べ方）。`reference_type='csv_import'` で phase=0 も拒まれる |
+| D6 | — | unit | `post_completion_difference_of_undetermined_record_is_range` | 12/31 に入荷（入力）→ 午後に既定の計数（12/31、入荷を含む数）→ 完了 → 年明けに日付 12/31 の別の納品書（+5）を入力: 差は確定の差に入らず、「要再確認」と範囲（0〜+5、評価額も同じ 2 端）で出る |
 | D6 | — | unit | `zero_uncounted_then_complete_fixes_valuation` | 未計数を「0 にする」→ 完了: 0 の既定の計数が今日に入り、評価額 = §20.5a の関数（評価数量 `max(写し, 0)`） |
 | D6 | — | unit | `discontinued_zero_stock_item_does_not_block` | 廃番かつ写し 0 の未計数の明細: 完了を止めない |
 | D6 | F12 | unit | `valuation_not_changed_by_backdated_record_after_completion` | 完了の後に棚卸しの期間の日付の入庫: 写しと要再確認は変わり、`total_cost`・`valuation_cost_price`・`valuation_quantity` は変わらない |
@@ -154,7 +160,7 @@ Risk: R3
 ## Boundary Checks
 
 - threshold: 在庫の上限 `999999999`（写しと範囲の両端）。精算日と PC の今日の比較（今日より後で知らせ）。
-- null/default: 計数の `settlement_no`・`seen_movement_id` は既定の計数で NULL、fresh な計数で NOT NULL（取込み・movement が無ければ 0）。範囲は要再確認のときだけ NOT NULL。
+- null/default: 計数の `settlement_no`・`seen_movement_id` は既定の計数で NULL。fresh な計数の `seen_movement_id` は NOT NULL（movement が無ければ 0）、`settlement_no` は取込みが無ければ NULL（精算回数 0 と区別する）。範囲は要再確認のときだけ NOT NULL。
 - empty/non-empty: 計数の無い商品（全ての和）、記録の無い商品（0）、要再確認の一覧の空。
 - min/max: 計数 0（売り切れ・「0 にする」）、精算回数の最小と最大の間の欠け。
 - status/policy enum: `block_reason` 3 値、`recount_reasons` 3 値、action 2 値、StocktakeRecovery の code 2 値（`recount_required`・`completion_blocked`）。
@@ -198,12 +204,12 @@ Risk: R3
 - 精算を到着の順・精算回数だけで判定すると → `fresh_count_includes_late_older_settlement` と `default_count_includes_late_older_settlement` が fail。
 - 完了の検査の 1 つを外すと → `complete_blocked_by_pending_settlement_recheck_uncounted` の該当の case が fail。
 - 取消で補償の movement を作ると → `rollback_voids_and_recomputes_without_compensation` が fail。
-- 入出庫の 1 業務が求め直しを呼ばないと → `copy_equals_sum_when_no_count` が fail（その業務の後で写しと和が違う）。
+- 入出庫の 1 業務が求め直しの規則を通らない（旧 writer が残る）と → `backdated_record_before_count_does_not_change_copy_per_writer` が fail（計数より前の日付の記録でその writer だけ写しが増減する）。計数の無い商品の SUM の一致（`copy_equals_sum_when_no_count`）では、旧 writer の「保存した数 + 差分」も SUM と一致するので検出しない。
 - 精算日と精算回数の順の検査の不等号を逆にすると → `settlement_order_contradiction_is_rejected` が fail（両向きの case を持つ）。
 
 ## Residual Test Gaps
 
 - 店の Windows の PC での求め直しの速さ（合成データの WSL の値だけ。runtime の lane が測る）。
-- 受け入れた穴（締めの後の販売で 2 回目の精算をしない、打ち消し合い、部門キー、日付の選び忘れ）は test で塞がない（固定の case で「要再確認が出ない」ことを pin する: `after_count_next_day_settlement_is_not_undetermined`）。
+- 受け入れた穴（締めの後の販売で 2 回目の精算をしない、打ち消し合い、部門キー、日付の選び忘れ）は test で塞がない（固定の case で「要再確認が出ない」ことを pin する: `fresh_count_next_day_settlement_is_not_undetermined`・`default_count_next_day_settlement_is_not_undetermined`）。
 - レジの reset・入替は実物が無く、合成の file で拒否だけを確かめる。
 - Windows L3（73 の (a)〜(e)、55 の拒否と知らせ、51 の拒否の表示）は runtime の lane。

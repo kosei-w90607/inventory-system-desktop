@@ -5,7 +5,7 @@
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8）の商品フォームの側。拒否と回復先は [30](30-biz-product-service.md) と [40](40-cmd-product.md) から受ける。旧 ADR（時点証拠）の `ej_unverified` の間の在庫連動の提案値 false と拒否の文言、非連動化の警告と「在庫数は未調整です」の案内は持たない（置き換えた）。
 
 - 共有 JAN: create / update が `validation`（field `pos_stock_sync` か `jan_code`）で拒否されたら、BIZ の message（「同じ JAN の商品（{商品コード}）があるため、在庫連動にできません」）を該当の欄の近くに出す（今の field 付きの validation の出し方。message を解析しない）。入力値と dirty の状態を保ち、成功の toast や一覧への遷移をしない。在庫連動を自動で off にして再送しない。
-- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫連動の checkbox の近くに「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と、回復先（`active_count` なら棚卸しの明細、`count_now` なら [73](73-ui-stocktake.md) の「数を入れる」）への導線を出す。入力値を保つ。
+- 在庫連動を始める（false → true）の保存が `recount_required` で拒否されたら、在庫連動の checkbox の近くに「連動しない間の売上があります。今の数を入れてから在庫連動にしてください」と、回復先（`active_count` なら棚卸しの明細、`count_now` なら [73](73-ui-stocktake.md) の「今の数を入れる」へ商品コードと returnTo を渡す）への導線を出す。入力値を保つ。
 - 在庫連動をやめる（true → false）は警告も確認も出さない。
 - 在庫数の表示: 写しが要再確認（`stock_recheck`）なら、在庫数の欄に範囲（例「4〜5」）と「要再確認」の文字を出し、色だけで示さない（[40](40-cmd-product.md) の商品の結果の列）。
 
