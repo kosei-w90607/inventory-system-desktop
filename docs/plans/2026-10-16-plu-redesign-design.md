@@ -26,6 +26,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 4. plan-draft → plan-gate（2026-10-16、Coordinator）: packet と Matrix は起草役の commit（`ad3f5a83`・`9b51a434`）にある。Coordinator は packet の全文（Goal・Ordinary Operation・Scope・AC・Contract Ledger・Contract Probe）と Matrix の節の構成を読み、owner の決定（repo 外の回答台帳 TD-267・TD-273・TD-274・TD-277）の写しに食い違いが無いこと、差分が docs だけであること（AC9）、差分に新しい実データが無いこと（25 §12.3 の出力例の行は初期の公開 snapshot からある例で、`単品売り` の 1 列だけを直した）を確かめた。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-16、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5 = reject P2 2・P3 5、Codex GPT-6.1 Sol = reject P1 1・P2 3・P3 2）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `27e44499` で直し、Coordinator が差分を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。owner の決定 2 つ（repo 外の回答台帳 TD-284 = JAN を直すときに前の番号の現物を 1 回聞く、TD-285 = clear を外したまま、戻す条件を Revisit に書く）を同じ commit に入れた。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-16、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5 = reject P2 2・P3 4、Codex GPT-6.1 Astra = reject P2 3）の是正（Review Response 参照）。P2 5 件のうち 4 件が round 1 で足した別名（TD-284）の継ぎ目だったため、owner が別名をこの lane から外し別の小さな設計 lane で扱うと決めた（repo 外の回答台帳 TD-286）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `0a012655` で直し、Coordinator が差分を読んだ。別名の撤去は round 1 の前の文への復元で、Scope の範囲と設計の方向は変えないので plan-gate に留める。Plan Review round 3（上限）へ出す。
+7. plan-gate（round 3 の是正、2026-10-16、Coordinator）: Plan Review round 3（上限。Claude 側 fresh Opus 5.5 = approve P3 4、Codex GPT-6 Astra = reject P1 1・P3 1）。round の天井に達したので、残りの findings を Review Rules の disposition に従って owner に上げ、owner は「是正し、是正の差分だけを Codex の closure で確かめる」と決めた（repo 外の回答台帳 TD-287。天井を 1 回越える）。是正の形も owner が決めた（TD-288）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `8f71acf0` で直し、Coordinator が差分を読んだ。Scope の範囲と設計の方向は変えないので plan-gate に留める。closure の approve の後に plan-approved を owner に諮る。
 
 ## Owner Effort Budget
 
@@ -289,3 +290,18 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 4）と Codex GPT-6.1 Astr
 | S5 | Opus #6（P3） | P3、採用 | 照合の中で枠ごとの判定を照合の前と後のどちらの状態で行うかが無い。AC11 の最後の検査は開始も 0 で何も確かめない | 33 §16.3 に判定は照合の前の状態で行い、同じ Z004 の中の同じ JAN の重複は最小番号の規則が決める、の 1 文。AC11 を肯定形の 2 つの検査に置き換えた |
 
 新しい契約の文は足していない（起草役の報告。Coordinator が差分の追加行を読んで確かめた）。
+
+### Plan Review round 3（2026-10-16、head `229d76be`、天井）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra（reject、P1 1・P2 0・P3 1）。round の天井（3）に達したので次の round は開かず、残りを owner に上げた。owner は全部を是正し、是正の差分だけを Codex の closure で確かめると決めた（repo 外の回答台帳 TD-287）。C1 の是正の形は owner が選んだ（TD-288）。是正の前に相談役（Fable 5.1）が反例を探した（境目を「締め」と書くと同じ日にもう一度精算して SD を読んだときに穴が残る、Full の file でも同じ型が起きる、保存した file を入れ直す選択肢そのものを外す方が文が少なく型ごと消える、O1〜O4・C2 に採るべきでないものは無い）。
+
+| # | 出所 | 裁定 | 要旨 | 是正 |
+|---|---|---|---|---|
+| C1 | Codex #1（P1） | P1 として是正（Coordinator は、害が受け入れ済みの限界と同じ種類〈レジ側の別コードの登録が上書きされ、レジで未登録になって気付く〉なので P2 相当と見たが、照合で観測した後の上書きなので是正する） | CV17 の取込みに失敗した後、前に保存した file の入れ直しを無条件に許す。予約が照合で外れた（`reservation_dropped`）後に入れ直すと、レジ側で手で登録した別コードを上書きする | 入れ直しを回復の選択肢から外し、差分か全件を書き出し直すだけにした（TD-288。33 §16.8、67 UI-08-D4・D9・§67.9 の failure note、architecture の 2 file、DB_DESIGN、PLUV の PLU-25、Ordinary Operation、Contract Probe P2、D-117）。memory No. の永続化の前の全件 file の警告は、新しい failure note が全ての前の file を覆うので消した |
+| C2 | Codex #2（P3） | 採用 | 41 §17.6・packet の wire の型名が現物と違う | `PluPreparedRow` / `PluRegisterSnapshotSummary` に揃え、「型名は変えず」の句を消した |
+| O1 | Opus #1（P3） | 採用 | 30 §4.8 d. の括弧が CSV の上書きで `plu_dirty` を立てる条件の全部と読める | 上書きは今どおり `plu_target` の値によらず `plu_dirty=1` |
+| O2 | Opus #2（P3） | 採用 | 67 の復帰状態の例に `preparedRows` が無い | 例に 1 行 |
+| O3 | Opus #3（P3） | 採用 | Contract Probe P1 の「崩れたら Full だけにする」は代わりにならない | 崩れたら file に無い枠の扱いを設計し直す |
+| O4 | Opus #4（P3） | 採用 | restore の後に照合の記録を消す扱いが D-117 と backlog にしか無い | 33 §16.8 に 1 行（71 §71.7 に足すのは runtime の lane）と Matrix に test の行 |
+
+新しい契約の文は足していない（起草役の報告。Coordinator が差分を読んで確かめた。O4 は D-117 の Guarantee range と backlog の写し）。
