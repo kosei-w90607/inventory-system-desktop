@@ -6,9 +6,9 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: a59411c3b887fc5fa6875bc2c9dde7b5c5581660
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
@@ -28,6 +28,8 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 6. plan-gate（round 2 の是正、2026-10-16、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5 = reject P2 2・P3 4、Codex GPT-6.1 Astra = reject P2 3）の是正（Review Response 参照）。P2 5 件のうち 4 件が round 1 で足した別名（TD-284）の継ぎ目だったため、owner が別名をこの lane から外し別の小さな設計 lane で扱うと決めた（repo 外の回答台帳 TD-286）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `0a012655` で直し、Coordinator が差分を読んだ。別名の撤去は round 1 の前の文への復元で、Scope の範囲と設計の方向は変えないので plan-gate に留める。Plan Review round 3（上限）へ出す。
 7. plan-gate（round 3 の是正、2026-10-16、Coordinator）: Plan Review round 3（上限。Claude 側 fresh Opus 5.5 = approve P3 4、Codex GPT-6 Astra = reject P1 1・P3 1）。round の天井に達したので、残りの findings を Review Rules の disposition に従って owner に上げ、owner は「是正し、是正の差分だけを Codex の closure で確かめる」と決めた（repo 外の回答台帳 TD-287。天井を 1 回越える）。是正の形も owner が決めた（TD-288）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `8f71acf0` で直し、Coordinator が差分を読んだ。Scope の範囲と設計の方向は変えないので plan-gate に留める。closure の approve の後に plan-approved を owner に諮る。
 8. plan-gate（closure の残りの是正、2026-10-16、Coordinator）: Plan Review closure（Codex GPT-6.1 Sol、head `20803362`）は reject（P1 1・P3 2）だったが、是正の中身は全て PASS で、新しい P1 / P2 は無かった。残りは C1 を固定する Matrix の行と AC11 の数で、起草役が `47aed1b9` で直した（Review Response 参照）。owner の決定（repo 外の回答台帳 TD-289）で、この確認も Codex の closure（2 回目）で行う。
+9. plan-gate → plan-approved（2026-10-16、Coordinator、本 commit）: Plan Review closure 2（Codex GPT-6.1 Sol、head `a59411c3`）が approve（P1 0・P2 0・P3 0）。独立の Plan Reviewer が P1 / P2 = 0 を報告し、owner が plan-approved を承認した（repo 外の回答台帳 TD-290）。Plan Commit = `a59411c3`（承認した版）。
+10. plan-approved → implementing（2026-10-16、Coordinator、本 commit。state だけ）: 本 lane は docs だけで、実装の段で足す code は無い。設計の正本は plan-first の commit にあるので、このまま Final Review（R3、Minimum 1）に出す。
 
 ## Owner Effort Budget
 
