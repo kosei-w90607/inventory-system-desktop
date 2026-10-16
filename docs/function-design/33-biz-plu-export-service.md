@@ -201,7 +201,8 @@ fn list_plu_dirty(conn: &DbConnection) -> Result<Vec<Product>, BizError>
 ### 16.8 Error / Recovery
 
 - 保存キャンセル・保存失敗: 同じ mode を再 prepare すると予約済み memory No. を再利用する。
-- CV17 取込み失敗: 保存済みファイルを再投入するか、Diff / Full を再書出しする。両 mode とも memory No. が永続しているため投入可能。
+- CV17 取込み失敗: Diff か Full を書き出し直す（前に保存した file は使わない。保存の後の SD の読取りの照合で枠が変わりうるため〈予約中の枠の `reservation_dropped`、対象の商品を持たない JAN の枠の external 化。§16.3〉。書き出し直しは sticky で同じ memory No. を使い、照合で枠が変わっていれば新しい枠を取る。`plu_dirty` は confirm まで残る〈D-027〉）。
+- DB の restore の後: 2 つの key（`plu_register_snapshot_at`・`plu_register_snapshot_settlement_no`）を消し、既存の gate（§16.3 の `register_snapshot_required`）で次の SD の読取りまで書出しを止める。runtime の lane が 71 §71.7 `restore_backup` に足す（本 lane は 71 を触らない。D-117 の Guarantee range と backlog の runtime の項目の写し）。
 - snapshot conflict: active slot を勝手に external / free へ変えず、商品を dirty にする（次の書出しでアプリのコードを書き直す）。
 - 占有の照合の失敗: BIZ-08 は IO-09-D4 の形の検査で外れた Z004 と読めない Z004 を除いて渡す（37 §37.9 手順 10）。行数と中身の検査は IO-02 `parse_plu_register_snapshot` が行い、`ImportError` なら照合しない。どちらも前回の照合を保ち、CMD-12 の scan は失敗にしない（§16.3）。
 - `NoFreeSlot`: 該当 JAN だけを excluded とし、既存 slot と他の生成行を保持する。

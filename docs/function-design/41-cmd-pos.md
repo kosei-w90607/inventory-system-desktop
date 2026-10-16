@@ -469,11 +469,11 @@ struct PluExportPrepareResponse {
     encoding: String,                // PluFileOutput.encoding
     count: usize,                    // 書出し行数（dedup 後）
     target_product_codes: Vec<String>,  // confirm対象。dedup 群の全メンバーを含むため count と長さが一致しないことがある（D-028）
-    prepared_rows: Vec<PluPreparedRowResponse>, // memory_no、exact product set
+    prepared_rows: Vec<PluPreparedRow>, // memory_no、exact product set（BIZ の型をそのまま wire に出す）
     excluded: Vec<PluExcludedProductResponse>,  // 要修正一覧（D-028）
 }
 
-struct PluPreparedRowResponse {
+struct PluPreparedRow {
     memory_no: i64,
     target_product_codes: Vec<String>,
 }
@@ -544,14 +544,14 @@ struct PluExcludedProductResponse {
 fn confirm_plu_export_saved(
     state: State<AppState>,
     product_codes: Vec<String>,
-    prepared_rows: Vec<PluPreparedRowResponse>,
+    prepared_rows: Vec<PluPreparedRow>,
 ) -> Result<PluExportConfirmResponse, CmdError>
 ```
 
 **入力型**:
 ```
 product_codes: Vec<String>   // prepare_plu_exportが返したtarget_product_codes
-prepared_rows: Vec<PluPreparedRowResponse> // prepare が返した exact memory_no / product set
+prepared_rows: Vec<PluPreparedRow> // prepare が返した exact memory_no / product set
 ```
 
 **出力型**:
@@ -586,7 +586,7 @@ struct PluExportConfirmResponse {
 fn import_plu_register_snapshot(
     state: State<AppState>,
     file_bytes: Vec<u8>,
-) -> Result<PluRegisterSnapshotSummaryResponse, CmdError>
+) -> Result<PluRegisterSnapshotSummary, CmdError>
 ```
 
 #### get_plu_slot_summary（CMD-08-D5 / SPEC-PLS-D2、D7）
@@ -596,10 +596,10 @@ fn import_plu_register_snapshot(
 #[specta::specta]
 fn get_plu_slot_summary(
     state: State<AppState>,
-) -> Result<PluRegisterSnapshotSummaryResponse, CmdError>
+) -> Result<PluRegisterSnapshotSummary, CmdError>
 ```
 
-`app_settings` から最後に照合した日時（`snapshot_at`）だけを read-only で返す。未照合は null。型名は変えず、件数の field（free / external / app managed / conflict / `release_pending_count`）を外す（D-117 (5)。wire の変更は runtime の lane）。prepare の gate 判定は BIZ-04 が行う。
+`app_settings` から最後に照合した日時（`snapshot_at`）だけを read-only で返す。未照合は null。BIZ の `PluRegisterSnapshotSummary` をそのまま wire に出し、件数の field（free / external / app managed / conflict / `release_pending_count`）を外す（D-117 (5)。wire の変更は runtime の lane）。prepare の gate 判定は BIZ-04 が行う。
 
 ---
 

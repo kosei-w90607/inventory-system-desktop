@@ -389,7 +389,7 @@ SPEC-STK-TIME-D1〜D10。詳細契約は下記sourceの同名節を正とし、�
 
 **制御構造**:
 - snapshot / prepare / confirm は各 1 transaction。途中失敗は slot と product を部分更新しない
-- Diff / Full とも CV17 へ投入できる。失敗時は保存済み file の再投入、またはどちらかの mode で再書出しする
+- Diff / Full とも CV17 へ投入できる。失敗時はどちらかの mode で書き出し直す（前に保存した file は取り込まない。保存の後の照合で枠が変わりうる）
 - アプリは枠を別の JAN に使い回さない（D-117）
 - slot 状態を売上・在庫・会計集計へ混ぜない
 

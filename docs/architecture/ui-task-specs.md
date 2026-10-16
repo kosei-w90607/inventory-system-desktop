@@ -283,7 +283,7 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 - TSV生成と未反映解除は分離する。生成成功だけでは `plu_dirty` を落とさない
 - `target_product_codes` は prepare 結果から保持し、confirm ではその exact set だけを送る
 - prepare は slot 予約を永続化し、再 prepare でも同じ memory No. を使う。confirm は reserved→active を exact memory No. で確定する
-- Diff / Full とも CV17 へ投入できる。失敗時は保存済みTSVを再投入するか、どちらかを再生成する。memory No. 永続化前の旧 Full file は再投入しない
+- Diff / Full とも CV17 へ投入できる。失敗時はどちらかを書き出し直す（前に保存した file は取り込まない。保存の後の照合で枠が変わりうる）
 
 ### UI-09a/09b: 売上レポート画面群
 
