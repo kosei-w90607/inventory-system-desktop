@@ -25,6 +25,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 3. design → plan-draft（2026-10-16、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-117 で満たす。条件「未解決の設計の問いが無い」は、owner の判断事項（D5〜D8・D10、TD-273・TD-274、CV17 の役目 TD-277）が決まり、D6・D9 を本 lane に入れない（backlog）と決まっていることで満たす。残る外部前提（Contract Probe の P1・P2）は runtime の lane の L3 で確かめるもので、設計の問いではない。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-16、Coordinator）: packet と Matrix は起草役の commit（`ad3f5a83`・`9b51a434`）にある。Coordinator は packet の全文（Goal・Ordinary Operation・Scope・AC・Contract Ledger・Contract Probe）と Matrix の節の構成を読み、owner の決定（repo 外の回答台帳 TD-267・TD-273・TD-274・TD-277）の写しに食い違いが無いこと、差分が docs だけであること（AC9）、差分に新しい実データが無いこと（25 §12.3 の出力例の行は初期の公開 snapshot からある例で、`単品売り` の 1 列だけを直した）を確かめた。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-16、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5 = reject P2 2・P3 5、Codex GPT-6.1 Sol = reject P1 1・P2 3・P3 2）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `27e44499` で直し、Coordinator が差分を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。owner の決定 2 つ（repo 外の回答台帳 TD-284 = JAN を直すときに前の番号の現物を 1 回聞く、TD-285 = clear を外したまま、戻す条件を Revisit に書く）を同じ commit に入れた。Plan Review round 2 へ出す。
+6. plan-gate（round 2 の是正、2026-10-16、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5 = reject P2 2・P3 4、Codex GPT-6.1 Astra = reject P2 3）の是正（Review Response 参照）。P2 5 件のうち 4 件が round 1 で足した別名（TD-284）の継ぎ目だったため、owner が別名をこの lane から外し別の小さな設計 lane で扱うと決めた（repo 外の回答台帳 TD-286）。是正の前に相談役（Fable 5.1）が反例を探した。起草役が `0a012655` で直し、Coordinator が差分を読んだ。別名の撤去は round 1 の前の文への復元で、Scope の範囲と設計の方向は変えないので plan-gate に留める。Plan Review round 3（上限）へ出す。
 
 ## Owner Effort Budget
 
@@ -271,3 +272,20 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 5）と Codex GPT-6.1 Sol�
 | P3-6 | 相談役 | 採用 | DB の restore の直後は占有が古いまま書出しできる | D-117 Guarantee range と backlog の runtime の項目（restore の完了時に照合の記録を消す。71 は本 lane で触らない） |
 
 owner の決定（本 round の中、repo 外の回答台帳）: TD-284（JAN を直すときに「前の番号のバーコードが付いた現物は店にあるか」を 1 回聞き、ある → 別名、ない → 使わない扱い。33 §16.6、plu-tables の `alias_product_code`、30・32・60・20、D-117 (8)）、TD-285（売るのをやめた商品がレジに前の値段で残る限界を受け入れる。clear を戻す条件を Revisit に書き、そのときの事実で新しく設計する）。
+
+### Plan Review round 2（2026-10-16、head `785f35ff`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 4）と Codex GPT-6.1 Astra（reject、P1 0・P2 3・P3 0）。重なる指摘は 1 件にまとめ、重い方の重大度で裁定した。P2 のうち 4 件は round 1 の是正で足した別名（TD-284、`alias_product_code`）と、既存の CHECK・照合の表・BIZ-01 の経路・CMD の境界との継ぎ目にあった。owner は別名をこの lane から外し、PLU runtime の lane より前の別の小さな設計 lane で、売上の取込み・CSV・商品フォームとの継ぎ目まで含めて最初から設計すると決めた（repo 外の回答台帳 TD-286）。是正の前に相談役（Fable 5.1）が是正の方向の反例を探した（別名の撤去で宙に浮く文の一覧、JAN を直した商品の前の枠が黙って誤る・二重に割り当たる経路が無いこと、等しい精算回数で照合して時刻だけ進めない案の反例〈下の S3〉、照合の前の状態で判定する案に反例が無いこと）。
+
+| # | 出所 | 裁定 | 要旨 | 是正 |
+|---|---|---|---|---|
+| S1-a | Opus #1（P2） | P2、別名の撤去で解消 | 別名は `reserved` の枠にも書けるが、「別コード × reserved → external」は別名を消さず、CHECK に反して照合の TX が毎回 rollback する | 別名を撤去（TD-286）。33 §16.3・plu-tables・30・20・32・60・51・biz-task-specs・D-117 (8)・Matrix・AC12 |
+| S1-b | Opus #2（P2） | P2、同上 | 別名の JAN を別の商品が再び持つときに別名を消す処理が CSV の上書きの行にしか無く、古い別名が生き返る | 同上 |
+| S1-c | Codex #1（P2） | P2、同上 | 同じ旧 JAN を共有する複数の商品の同時の JAN 変更で、問いと別名の宛先が 1 つに決まらない | 同上 |
+| S1-d | Codex #2（P2） | P2、同上 | 「ある」の回答の引数が BIZ にだけあり、CMD の signature・UI の DTO・generated の呼出しと合わない | 同上（42 §22.6 は変えていないので撤去で一致する） |
+| S2 | Codex #3（P2）・Opus #3（P3） | P2、採用 | 「PLU を変える日」の行は締めの SD の読取りの直後から始まるのに、「その日の締めの前に終える」と案内する | 「次の締めの前」に統一（packet の Ordinary Operation、67 UI-08-D5・§67.9、SCREEN_DESIGN、D-117 (6)） |
+| S3 | Opus #4（P3） | P3、方向を変えて採用 | 等しい精算回数でも照合して `plu_register_snapshot_at` を進めるので、レジが Z004 を書かなくなっても古さの警告が出ない | 等しければ照合しない（33 §16.3 手順 2、D-117 (3)、Boundary、Matrix FM3）。Coordinator の当初案（照合はして時刻だけ進めない）は、相談役の反例で採らない: 締めの読取り → PLU を変えて confirm → 同じ日に SD を読み直すと、書込みの前のレジを写す Z004 で confirm したばかりの枠が `missing_on_register` で未反映に戻る |
+| S4 | Opus #5（P3） | P3、採用 | 37 §37.9 手順 10 の「形の外れた file」がどの検査かを 1 通りに決められない | 手順 5 と同じ形の検査（IO-09-D4）と明記し、行数と中身は BIZ-04 の IO-02 が見る、と分けた（37・33 §16.8・Boundary） |
+| S5 | Opus #6（P3） | P3、採用 | 照合の中で枠ごとの判定を照合の前と後のどちらの状態で行うかが無い。AC11 の最後の検査は開始も 0 で何も確かめない | 33 §16.3 に判定は照合の前の状態で行い、同じ Z004 の中の同じ JAN の重複は最小番号の規則が決める、の 1 文。AC11 を肯定形の 2 つの検査に置き換えた |
+
+新しい契約の文は足していない（起草役の報告。Coordinator が差分の追加行を読んで確かめた）。
