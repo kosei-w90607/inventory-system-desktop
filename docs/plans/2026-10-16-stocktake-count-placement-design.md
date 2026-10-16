@@ -35,16 +35,17 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet と Matrix は起草役の commit（`1f2ab8f3`・`ccdc38ff`）にある。Coordinator は packet の全文（Goal・Ordinary Operation・Scope・AC・Design Readiness・Boundary / Wire Contract・Contract Ledger・Contract Probe・Data Safety）と Matrix の節の構成を読み、owner の決定（repo 外の回答台帳 TD-261・TD-263〜TD-268・TD-296）の写しに食い違いが無いこと、差分が docs だけであること（AC8）、追加の行に新しい実データが無いことを確かめた。3 lane に分ける提案を採る（lane 3 は本 lane と file がほぼ分かれ並走でき、lane 2 は本 lane の Z004 の契約に依る）。介入の上限を TD-296 で 9 に改めた。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）が反例を探し、計数が記録を含むかを 1 つの原理（窓の重なり）から導き直す方向を出した。起草役が `150aa677` で直し、Coordinator が差分（ADR D2・D3 の窓の表と判定の表、D4 の全行 0 の Z004）を読んだ。Scope の範囲と設計の方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-17、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。原理（窓の重なり）への反例は無く、当て方の抜けを直したうえで、記録が計数に入るかの判定・求めた値の届き先・設定に依る判定の 3 つを全文書で洗い直させた。起草役が `5f96bdfd` で直し、Coordinator が差分（ADR D3 の理由 1 と判定の表、pos-tables の `stock_linked`）を読んだ。Scope に 75 を足したほかは範囲と設計の方向を変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
+7. plan-gate（round 3 の一括是正、2026-10-17、Coordinator）: Plan Review round 3（天井。Claude 側 fresh Opus 5.5 = reject P2 2・P3 5、Ordinary Operation は成立、Codex GPT-6 Astra = reject P2 4・P3 1）の残りを Coordinator が一括是正に振り分けた（DEV_WORKFLOW Review Rules。Review Response 参照）。owner は是正の差分だけを Codex の closure で確かめ、P1/P2 = 0 なら Coordinator が plan-approved に進めると決め、介入の上限を 11 に改めた（repo 外の回答台帳 TD-299、天井を 1 回越える）。起草役が `ae076826` で直し、Coordinator が差分の要所を読んだ。Plan Review closure へ出す。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 9（既定の 6 から owner が改定、repo 外の回答台帳 TD-296。介入の時点で全体を顧みずに対症療法へ寄っていないかを考え直してから計画を仕上げる、という条件つき）
+- 介入回数上限: 11（既定の 6 から owner が 9 に改定〈repo 外の回答台帳 TD-296〉、round 3 の後に 11 に改定〈TD-299〉。介入の時点で全体を顧みずに対症療法へ寄っていないかを考え直してから計画を仕上げる、という条件つき）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9（TD-296） | 7（判断点ごとに数えた。TD-296 の本 lane に効く判断点 6〈共有 JAN、停止の一括の解除、入れ直しを省く操作を置かない、範囲の表示、完了の後の差、POS の sample は合成だけ〉と Q-A 1〈TD-298〉。TD-261〜TD-268 は起票の前の見直しの採否で、本 lane の介入に数えない。round 1 の是正、Review Response 参照） | 2（Ready 1、merge 1） | 0 | 9 = 7 + 2 + 0 |
+| 介入 | 11（TD-296・TD-299） | 8（判断点ごとに数えた。TD-296 の本 lane に効く判断点 6〈共有 JAN、停止の一括の解除、入れ直しを省く操作を置かない、範囲の表示、完了の後の差、POS の sample は合成だけ〉、Q-A 1〈TD-298〉、round 3 の後の closure の扱いと予算の改定 1〈TD-299〉。TD-261〜TD-268 は起票の前の見直しの採否で、本 lane の介入に数えない。round の是正は Review Response 参照） | 2（Ready 1、merge 1） | 1 | 11 = 8 + 2 + 1 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
