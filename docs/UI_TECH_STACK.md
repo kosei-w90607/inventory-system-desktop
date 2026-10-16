@@ -1,12 +1,10 @@
 # UI技術スタック選定書
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1 / D8 / D9。既存スタックを変えず、[42の生成wire](function-design/42-cmd-sales-stocktake.md)と[73の計数状態](function-design/73-ui-stocktake.md)へ接続する。未保存token/数量はfeature-local state、保存済み実測/flag/履歴はDBとQueryを正とし、永続化した画面draftから古い数量を復活させない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md) の UI の側。既存のスタックを変えず、[42 の生成 wire](function-design/42-cmd-sales-stocktake.md) と [73 の計数の状態](function-design/73-ui-stocktake.md) へ接続する。未保存の数量は feature-local state、保存済みの計数・写し・履歴は DB と Query を正とし、永続化した画面の draft から古い数量を復活させない。旧 ADR（時点証拠）の token・begin の focus 制御・準備照会の consumer は置き換えた。
 
-保存成功とreplayedでは保存先に応じたconsumerをD-052のSSOTで再取得する。snapshot保存、独立再実測、flag更新、確定/取消、受領・要再確認flagの作成/理由の変更/解消・同一性拒否証拠・非連動化の未調整で変わる列をruntimeで列挙し、現行C16の狭い集合を新saveへ無検証で流用しない。準備照会は55に加え51/73の版別案内もconsumeし、計数保存/確定・商品設定変更・棚卸し開始・再訪で同じqueryを再取得する。集合の複製や新しい手書きinvalidationを画面へ置かない。新commandの登録、generated error union・bindings・unwrapResultが保持する回復payload・mock/testを同時に同期する。
-
-開始前は数量入力を空にし、明示begin成功で入力欄へfocus、save成功で検索欄へ戻す。IME確定Enter、同じスキャンEnterでの二重実行、遅延応答による商品取り違えを防ぐ。save pendingの間は商品切替/離脱を抑止し、未保存contextの破棄と保存済み記録の取消を混同しない。日本語状態・非色表示・Windows受入条件は既存のdesign-systemを維持する。
+計数の保存・0 にする・完了・Z004 の取込みと取消・入出庫の保存は、写し（在庫・要再確認・範囲）を読む consumer（在庫照会・商品一覧と詳細・棚卸しの一覧と要再確認の一覧・在庫変動）を D-052 の SSOT で再取得する（runtime で列挙する）。数量の入力は IME 確定の Enter で送信せず、同じスキャンの Enter で二重に保存しない。保存中は商品の切替と離脱を抑止する。日本語の状態・非色表示・Windows の受入の条件は既存の design-system を保つ。
 
 > **親文書**: [ARCHITECTURE.md](ARCHITECTURE.md)
 > **入力ドキュメント**: ARCHITECTURE.md（タスク仕様）、SCREEN_DESIGN.md（画面設計）、FUNCTION_DESIGN.md（関数設計）

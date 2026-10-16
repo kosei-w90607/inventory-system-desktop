@@ -6,6 +6,8 @@
 >
 > 入力ドキュメント: `docs/architecture/ui-task-specs.md` UI-01a、`docs/SCREEN_DESIGN.md` 商品検索・一覧画面、`docs/function-design/20-io-product-repo.md` `search_products`、`docs/function-design/30-biz-product-service.md` `search_products`、`docs/function-design/40-cmd-product.md` `search_products`
 
+> **計数の置き場と在庫の求め直し（proposed・未実装、D-118）**: 一覧の在庫の列は写し（`stock_quantity`）のまま。要再確認（`stock_recheck`）の商品は、在庫の欄に範囲（例「4〜5」）と「要再確認」を文字で出す（[40](40-cmd-product.md) の商品の結果の列。owner の決定 TD-296 の「範囲で見せる」）。並べ替えと絞り込みは写しの値で行う（今のまま）。ホーム（[53](53-ui-home.md)）の在庫切れ・在庫少の件数も写しの値で数える（今のまま。要再確認は棚卸しの画面の一覧で扱う）。
+
 ## 50.1 位置付け
 
 商品検索・一覧は、商品管理の入口画面である。商品名 / 商品コード / JAN コード / メーカー品番検索、部門絞込み、廃番状態の切替、並替え、ページングを扱い、商品登録・修正画面への導線を提供する（SPEC-PRV-D2）。

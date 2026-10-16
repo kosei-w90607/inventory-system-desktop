@@ -1,15 +1,13 @@
 # テーブル定義（マスタ）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-[時点証拠ADR](../adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1 / D4 / D8の追加予定。以下の既存カラム表は現行スキーマを記す。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8・D9）の商品の側。以下の既存カラム表は現行スキーマを記す。旧 ADR（時点証拠）の `stock_revision`・`pos_sync_disabled_revision` は足さない。
 
-- productsへ `stock_revision INTEGER NOT NULL DEFAULT 0` を追加する。非負・INTEGER型をCHECKし、i64上限を越える加算は更新せずエラーにする。SQLiteの整数overflowによるREAL化を成功扱いしない。
-- productsへ `pos_sync_disabled_revision INTEGER NULL` を追加する。NULLまたは非負INTEGERかつstock_revision以下をCHECK。BIZ-01が既存商品のtrue→falseと同TXで変更後の版を保存する（新規false/false→falseでは作らない）。同商品にこの版より後の適用済みmeasured/recountがあるかで未調整を判定し、解消時にも記録を削除しない。移行時はNULL、過去の切替を捏造しない。
-- 既存商品のstock_quantity更新はinventory_repoの専用関数だけを通し、数量とrevisionを同一更新・同一TXで進める。同量UPDATEでも増分する。初期INSERTの数量・revision=0は別で、既存行の更新へ流用しない。
-- 実測保存、snapshot補正、flag変更、pos_stock_sync変更、差0確定・純量0取消でも共通のchecked版更新を同じTXで行う。商品の表示名や価格だけの更新を物理移動とみなす仕様は追加しない。
-- `pos_stock_sync` の `DEFAULT 1` は変えない。準備照会が `ej_unverified` を返す間（EJの日次取込みがない㉘のbuildでは常に）、新規作成の商品・商品一括importの省略時の既定値falseはBIZ-01が与え、在庫連動の有効化（false→true、新規のtrue）はBIZ-01が拒否する（[商品BIZの新契約](../function-design/30-biz-product-service.md)）。
-- 共有JANは引き続きDBに存在できるが、先頭商品への在庫配賦を安全とみなす旧説明は新方式には適用しない。連動有効化と曖昧さを新設する更新の拒否、既存設定のpreflightは[商品BIZの新契約](../function-design/30-biz-product-service.md)で行う。jan_codeへの全件UNIQUE追加や既存pos_stock_syncの一括変更はしない。
+- products へ写しの列を足す: `stock_recheck INTEGER NOT NULL DEFAULT 0`（0/1 の CHECK。要再確認なら 1）、`stock_range_low INTEGER NULL`・`stock_range_high INTEGER NULL`（`stock_recheck=1` なら両方 NOT NULL で low ≤ high、0 なら両方 NULL。table の CHECK）。`stock_quantity` と合わせて、BIZ の求め直しの関数だけが書く（[tracking](tracking-system-tables.md) の同名の契約）。
+- `stock_quantity` は記録から求め直した写しで、既存の行の更新は求め直しの関数だけを通す（`update_stock_quantity` の呼出し元はこの関数 1 つ）。新しい商品の INSERT の初期数量は、同じ TX で作る初期在庫の movement から求め直した値と等しい。
+- `pos_stock_sync` の `DEFAULT 1` は変えない。在庫連動を始める（false → true）ときの検査は [30](../function-design/30-biz-product-service.md) の新契約（連動しない間の Z004 の売上が効く計数より後にあれば拒否）。
+- 共有 JAN は DB に存在できる。BIZ-01 の不変条件は、変更の後に在庫連動の商品と同じ JAN を持つ別の商品があってはならない、の 1 つ（どの経路・どちらの商品を変える場合でも拒む。30 の新契約）。jan_code への全件 UNIQUE と既存の pos_stock_sync の一括変更はしない。
 
 ## 単位と原価の精度の契約
 

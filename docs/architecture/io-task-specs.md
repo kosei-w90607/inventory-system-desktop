@@ -1,10 +1,10 @@
 # タスク仕様（IO層）
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-SPEC-STK-TIME-D1〜D8。IO-01は[20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md)の新契約で、kind・両cursor・request ID・(商品, 資料)単位のflag・受領を保存し、数量と版の不可分更新を強制する。TXの開始/確定と業務判断はBIZが所有する。24はsourceの受領と識別メタ（23のsettled_atを含む）を保存し、精算同一性の照合候補をBIZへ渡す。
+SPEC-STK-CNT-D1・D2・D4・D9（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。IO-01 は [20](../function-design/20-io-product-repo.md) / [21](../function-design/21-io-inventory-repo.md) / [24](../function-design/24-io-csv-import-repo.md) の新契約で、並びの鍵付きの movement と計数（`stock_counts`）を保存し、写しの列を書く（呼ぶのは BIZ の求め直しの関数だけ）。TX の開始と確定と業務の判断は BIZ が所有する。24 は Z004 の取込みに machine_no・settlement_no を保存し、active な精算の一覧を BIZ へ渡す。
 
-IO-02は[23](../function-design/23-io-z004-parser.md)の任意メタを純粋に抽出し、正常JANのゼロ行を証拠集合へ残す。時計・精算系列の信用や商品別のBefore/Afterは判断しない。既存のCP932・改行・符号・売上の無い枠の読み飛ばし（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）とPLU占有modeは維持する。新しいSQL/schemaは未実装で、[DB契約](../DB_DESIGN.md)をruntimeの移行・故障注入試験へ渡す。
+IO-02 は [23](../function-design/23-io-z004-parser.md) の精算の識別メタを純粋に抽出する（D-109 で実装済み）。時計・精算の系列の信用は判断しない。既存の CP932・改行・符号・売上の無い枠の読み飛ばし（[23 §13.4.2](../function-design/23-io-z004-parser.md)、D-103）と PLU の占有の mode は保つ。新しい SQL / schema は未実装で、[DB 契約](../DB_DESIGN.md) を runtime へ渡す。旧 ADR（時点証拠）の受領・cursor・kind・flag・版の保存は置き換えた。
 
 > **親文書**: [ARCHITECTURE.md](../ARCHITECTURE.md)
 > **入力ドキュメント**: `docs/spec/requirements.md`、`docs/spec/requirements-coverage.md`、DB_DESIGN.md（テーブル定義書）
@@ -230,7 +230,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 
 **タスク要求**: CASIO SR-S4000 が SD に保存する電子ジャーナル（EJ）1 file の生バイト列を受け取り、記録（取引・取引中止・入金 / 出金 / 替・領収書・精算票・点検票・設定・練習）の列へ元 file の行番号つきで構造復元する。記録の種類は見出しのモード欄ではなく本文の行で決める。通常販売と返品の取引は、文法に一致し記録内の照合がそろう場合に限り明細と値引きへ復元する。純粋なフォーマット変換のみ、業務ロジックなし
 
-**理由**: EJ を PLU 販売の本番開始の前提にする（[ADR SPEC-STK-TIME-D5](../adr/2026-09-18-stocktake-time-evidence.md#spec-stk-time-d5-ejの完全と商品を判定可能を分ける)）。後続の BIZ が「この取引の明細は確かか」を判定する入口であり、誤復元は在庫の誤った増減に直結するため、一致しない取引を記録単位の復元不能として返す。レジ依存の固定幅・ラベル・モード欄を IO adapter に閉じる（D-023）
+**理由**: もとは EJ を PLU 販売の本番開始の前提にするため（[時点証拠 ADR SPEC-STK-TIME-D5](../adr/2026-09-18-stocktake-time-evidence.md#spec-stk-time-d5-ejの完全と商品を判定可能を分ける)、superseded）。D-118（2026-10-16）で EJ は在庫に使わず、レシートの控えの閲覧に使う（[ADR SPEC-STK-CNT-D11](../adr/2026-10-16-stocktake-count-placement.md)）。閲覧でも誤った明細を見せないため、一致しない取引を記録単位の復元不能として返す。レジ依存の固定幅・ラベル・モード欄を IO adapter に閉じる（D-023）
 
 **【データ構造】**
 
@@ -262,7 +262,7 @@ summary/payment/departmentのsourceは格納先から一意に決まるため行
 - ステートレス。DBを呼ばない
 - 致命的エラーは 3 種（DecodeFailed / NoRecords / Empty）で部分結果を返さない。それ以外は記録単位の復元不能 + 診断
 - EOF を記録の閉じの根拠にしない。復元不能の記録から明細を読み出す API を持たない
-- 番号の連続・区間の完全性・分割 file の連結・Z004 との対応・商品同定・時刻の解釈は行わない（BIZ。区間の対応づけと欠けの定義は ADR SPEC-STK-TIME-D5a）
+- 番号の連続・区間の完全性・分割 file の連結・Z004 との対応・商品同定・時刻の解釈は行わない（BIZ。区間の対応づけと欠けの定義の記録は時点証拠 ADR SPEC-STK-TIME-D5a〈superseded。D-118 で在庫には使わない〉）
 
 ---
 

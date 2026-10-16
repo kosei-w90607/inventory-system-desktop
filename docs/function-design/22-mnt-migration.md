@@ -357,7 +357,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 
 - 記録ごとの和は、基準数量で割る前の値で比べる（[共通規則](10-common-rules.md) SPEC-UNIT-D6 の合計はこの値以下なので、通った記録の合計は必ず範囲内。長さの商品の記録は実際の合計の 100 倍まで厳しく止まる）。積か和が i64 を溢れる記録も上限の外にする（SQLite は整数の積の溢れを REAL にし、整数の `SUM` の溢れを error にする。python の sqlite3 で確かめた、2026-10-11）。
 - 検査は値の範囲だけを見る。型（`typeof`）と 100 倍の後の余りは vC の手順 4 が確かめる。
-- vU を適用する時点で、時点証拠の migration が数量の列を足していれば（`stocktake_recounts.system_stock`・`actual_count`。`schema_time_evidence.rs:120`〜`:124`）、同じ在庫の上限で含める（手順 3 と同じ扱いで、後に入る lane の義務）。
+- vU を適用する時点で、時点証拠の migration が数量の列を足していれば（`stocktake_recounts.system_stock`・`actual_count`。`schema_time_evidence.rs:120`〜`:124`）、同じ在庫の上限で含める（手順 3 と同じ扱いで、後に入る lane の義務）。（2026-10-16 の D-118 で時点証拠の migration は作らないことになり、この段は当たらない。代わりに足す `stock_counts.count_value` と写しの範囲の列は、それを足す runtime の lane が同じ在庫の上限で検査する）
 - 止まった後の進め方: DB は何も変わっていない。vU がその起動の最初の migration なら版も変わらず、旧版のアプリでそのまま開ける（先に別の migration が COMMIT していれば、下の回復の手順）。上限の外の値はアプリの画面では消せないことがある（商品の原価や在庫を直しても、価格の履歴・明細・変動の列に値が残る。記録は書き換えない契約）ので、更新を保留して新しい版を起動せず（起動のたびに同じ所で止まる）、管理者が対応を決める（上限の外の表名・列名は message にあるので、値を直す SQL を当てるか、上限の契約を見直すか。どちらも R4 の判断で owner に諮る）。
 
 **vC の手順**（`MigrationKind::Custom`、1 つの transaction、§15 の v7 と同じ形）: 対象は 6 列（`products.cost_price`、`receiving_items.cost_price`、`disposal_items.cost_price`、`stocktake_items.valuation_cost_price`、`price_history.old_cost`・`new_cost`）。
@@ -368,7 +368,7 @@ SQLite の `ALTER TABLE ADD COLUMN` 制約により、NOT NULL + 非定数 defau
 4. 各列で §15 手順 6 の (a)〜(c) と同じ 3 つを確かめる（件数・`typeof = 'integer'`・`SUM(… / 100)` が手順 2 の合計と同じで余りの行が無い）。違えば rollback して `MigrationFailed`
 5. schema_versions に記録して COMMIT
 
-列は改名だけで表を作り直さないので foreign_keys の手順は要らない（同梱の SQLite 3.45.0 の `RENAME COLUMN`）。時点証拠の migration（`schema_time_evidence.rs`、未配線）は `stocktake_items` を作り直して `valuation_cost_price` を列名で写すので、vC と後に適用される方が、その時点の列名で SQL を書く（後に入る lane の義務）。
+列は改名だけで表を作り直さないので foreign_keys の手順は要らない（同梱の SQLite 3.45.0 の `RENAME COLUMN`）。時点証拠の migration（`schema_time_evidence.rs`、未配線。2026-10-16 の D-118 で作らないことになった）は `stocktake_items` を作り直して `valuation_cost_price` を列名で写すので、vC と後に適用される方が、その時点の列名で SQL を書く（後に入る lane の義務）。
 
 **回復**（R4）: vU・vC はそれぞれ 1 つの transaction で、TX の中の失敗（COMMIT の失敗で transaction を戻せた場合を含む）は、失敗した migration の変更と版だけが戻る。COMMIT が成功した後の `foreign_keys` の復元・再読取の失敗（§3.2 MNT-03-D1）は `MigrationFailed`（接続破棄必須）を返すが、版は記録済みで DB は新しい版として完全であり、接続を破棄して再起動すれば開ける（旧版のアプリでは開けない）。`migrate` は migration ごとに COMMIT する（§3 の処理ステップ 5、`migration.rs` の `migrate`）ので、同じ起動で先に成功した migration の版は残る。例: v7 の DB に U と C を含む版を入れて vU（8）が COMMIT し、vC（仮に 9）が失敗すると（例: 手順 4 の検証）、DB は版 8 になり、v7 までのアプリ（app_max 7）は `SchemaNewerThanApp` で開けない。旧版でそのまま開けるのは、残った版が旧版のアプリの最大以下のとき（その起動の最初の migration で止まったとき）だけで、それ以外は下の手順で更新の前の backup に戻す。成功した後に旧版へ戻す経路も、アプリの中の復元（[71](71-mnt-backup.md) §71.7）では作れない: 旧版のアプリは vU・vC を適用した DB で起動を中止し（MNT-03-D11、§12.4 の文言）、復元の画面に届かない。新しい版のアプリで更新の前の backup を復元すると、open の migrate が vU・vC を適用し直す（71 §71.7 のとおり。これは新しい版のまま古い時点のデータへ戻す経路で、旧版へ戻す経路ではない）。旧版へ戻すのは、管理者がアプリの外で行う次の手順だけにする（店の利用者の操作にしない。管理者の手順書は [migration-recovery-runbook](../migration-recovery-runbook.md) で、本節が正本）。71 の restore の契約（退避・manifest・reconcile）は変えず、この手順はアプリが止まっている間の file の置き換えで、71 の遺物を作らない。
 

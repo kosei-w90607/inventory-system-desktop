@@ -1,14 +1,14 @@
 # 在庫管理システム テーブル定義書
 
-## 時点証拠契約（proposed・未実装）
+## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
 
-[時点証拠ADR](adr/2026-09-18-stocktake-time-evidence.md) SPEC-STK-TIME-D1〜D10の保存契約を詳細化した。現行ER図・以下のテーブル一覧は実装済みschemaであり、新契約のmigration適用を示さない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。現行の ER 図・以下のテーブル一覧は実装済みの schema であり、新しい契約の migration の適用を示さない。
 
-- 商品の単調版・非連動化後の未調整記録・在庫連動の既定値と数量更新: [master](db-design/master-tables.md)。既存入出庫TXとの接続: [transaction](db-design/transaction-tables.md)。
-- 売上commit前のhash一意な資料受領、精算の識別メタ、同一性拒否証拠、import参照: [POS](db-design/pos-tables.md)。
-- 実測kind・両cursor・要求ID・再実測・(商品, 資料)単位の要再確認flag・補正区分・旧DBの移行: [tracking](db-design/tracking-system-tables.md)。
+- 写しの列（`stock_recheck`・範囲）と在庫連動・共有 JAN: [master](db-design/master-tables.md)。入出庫の TX との接続: [transaction](db-design/transaction-tables.md)。
+- Z004 の取込みの machine_no・settlement_no: [POS](db-design/pos-tables.md)。
+- 並びの鍵（`business_date`・`phase`・`settlement_no`）・計数の表（`stock_counts`）・求め直し・棚卸し・移行: [tracking](db-design/tracking-system-tables.md)。
 
-migrationは履歴・評価額・数量を変更せず、旧証拠を捏造しない。新表の作成・分類・移行時上限・schema versionを単一TXで適用する。実測の前後は資料の受領順と実測の種別で判定し、保存する時刻を前後判定に使わない。受領後の新しい実測による復旧を維持する。runtimeのSQL、CHECK/FK/index・故障注入試験は未実施。
+`products.stock_quantity` は記録から求め直した写しで、書くのは BIZ の求め直しの関数だけ（D-051 の原則、D-118）。migration は棚卸しか Z004 の取込みを持つ DB では止まり（開発・試験 DB の作り直しは別の承認）、持たない DB では列と表を足して既存の movement の鍵を埋め、写しを求め直す。runtime の SQL・CHECK / FK / index・故障注入の試験は未実施。
 
 > **現行スキーマの入口**: [ER図](inventory_system_erd.html)、[業務データフロー](diagrams/current-system.md)。適用順序は `src-tauri/src/db/migration.rs` と `schema_v*.rs` を照合する。
 > **図と本文の位置付け**: 現行構造と完成形の将来設計を区別する。[図面監査](research/2026-09-16-diagram-audit.md) に、実装と設計の不一致・再検討事項を記録する。
