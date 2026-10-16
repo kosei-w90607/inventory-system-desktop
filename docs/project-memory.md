@@ -110,13 +110,13 @@ Keep it factual and stable.
 - Excluded long-dormant items（単品コードなし）are sold via department key + amount, tracked only in the owner's memory — 2026-08-22 owner原文 — `docs/evidence/issue-90/hearing-2026-08-21-22.sanitized.md`
 - Of 216 normal PLU slots, only 2 have real store-entered data; the remaining 214 are factory-default `PLU####` placeholders — see also「レジ・レジスターツール」節の訂正事実 — 2026-08-17 実機機械抽出 — `docs/plu-export-and-real-csv-verification.md`
 - 10 scanning PLU slots hold an 8-digit code + `EEEEEE` padding; the owner rewrote them for a test and left them because PLU is unused (correcting the earlier "non-handicraft goods" description; the app treats them as `external` either way) — 2026-08-17 実機機械抽出 / owner回答 2026-10-07 — `docs/plu-export-and-real-csv-verification.md`
-- Fabric/ribbon/string receiving slips record quantity in `m`; the store's counting vocabulary covers all 12 unit words in use (個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm) — 2026-09-14 owner原文 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
+- Fabric/ribbon/string receiving slips record quantity in `m`. Shown a list of 12 unit words prepared by the asking side (個・枚・本・袋・箱・巻・組・セット・玉・丁・m・cm), the store owner answered that none of them is unused and added no other word; this is not a record that the store counts items in each of the 12 (the words the store owner named unprompted on 2026-08-15 were 個・玉・枚・本・丁, and the 2026-09-12 version of the stock Excel had 0 rows in 巻 and cm; D-119) — 2026-09-14 店主回答（LINE の返信を owner が転記。旧記載の「owner原文」を訂正）— `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
 - Some items are received boxed and sold individually after unboxing (e.g. one sewing-notion item) — 2026-09-14 owner原文 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
   - 箱・袋で仕入れてばらす商品は、伝票が 1 袋いくらで、在庫はばらした 1 個あたりで数える（粒で数えるものも、詰め直した小袋もある）。1 個の原価は 1 袋の値段 ÷ 入り数を、小数第 3 位で四捨五入して小数第 2 位まで持つ。切り売りのひも類も同様の商品 — 店主回答（owner 経由の質問票）2026-09-29
 - Purchase orders are written on one sheet per wholesaler, grouped by wholesaler — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Owner already knows almost all discontinued items and defunct suppliers from memory — 2026-09-05 owner原文 — `docs/evidence/hearing-2026-09-05-stock-inquiry.sanitized.md`
 - Counting words differ by category: 毛糸=玉, 布=枚, ファスナー=本, はさみ=丁, スナップ=枚, 刺繍糸=本, otherwise mostly 個 — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
-  - 在庫計数 Excel では毛糸の単位が「個」になっているが、owner の入力の誤りで、数え方は「玉」。Excel は意味が通るのでそのままでよい — owner 2026-10-07
+  - 在庫計数 Excel では毛糸の単位が「個」になっているが、owner の入力の誤りで、数え方は「玉」。Excel は意味が通るのでそのままでよい — owner 2026-10-07。Excel から「個」で初期投入した毛糸は、登録の後に個数の単位どうしの変更で「玉」へ直せる（D-119。単位の語の直しの lane の後）
 - The store never sources the same product from two different suppliers — 2026-08-15 owner原文 — `docs/evidence/issue-76/form-response-2026-08-15.sanitized.md`
   - 訂正: 発注書を分ける「取引先」は注文先（問屋・仕入先）。同じ商品を 2 つ以上の注文先から仕入れるのは緊急時だけ（お客様に約束した日に、通常の仕入れ先の納品が間に合わないとき）。上の行の「never」は「通常は 1 つの注文先だけ」の意味 — 店主回答（owner 経由の質問票）2026-09-29
   - この「取引先」は問屋・仕入先を指し、D-075 (6) が `suppliers` に持たせたメーカー/ブランドとは別の軸。見直しは `docs/backlog.md` の取引先の項目で扱い、決定はまだ変えていない
@@ -200,7 +200,7 @@ Keep it factual and stable.
 - Long-dormant no-code excluded items are not modeled as a system feature; they stay outside the product master and are re-registered at new price/cost if they come back — 2026-08-22 owner同意 — `docs/decision-log.md`（D-076）
 - The ~80 suppliers are not bulk pre-loaded; they get linked incrementally when chosen in flows like bulk price revision — 2026-08-21/22 owner同意 — `docs/decision-log.md`（D-075）
 - Weight-based units（g・kg）are not used in this app — 2026-09-13 owner原文 — `docs/backlog.md`（単位の拡張 項）
-- Length items use a minimum 10 cm increment; remaining stock, purchasing, and price tags are all expressed in `m`（値札は 1 m あたり） — 2026-09-14 owner回答 — `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
+- For the question "from how many cm at the shortest do you sell", the store owner chose the option "10 cm 単位"; whether 10 cm is the minimum or the increment is not determined by the answer (in 2026-03 the store owner said length items are also sold in 10 cm units). Remaining stock, purchasing, and price tags are all expressed in `m`（値札は 1 m あたり）. The app accepts lengths to 1 cm and does not enforce a 10 cm increment (D-119) — 2026-09-14 店主回答（LINE の返信を owner が転記。旧記載の最小と刻みの混同と「owner回答」を訂正）— `docs/evidence/hearing-2026-09-14-stock-units.sanitized.md`
 - Scanning-PLU の「単品売り」setting must always be `いいえ`; setting it to `はい` was confirmed on real hardware to make the register auto-settle and print a receipt on scan-call alone — 2026-08-19 Windows native L3実機確認 — `docs/project-memory.md`
 - 人は間違える前提で、間違えたときに検知・停止・訂正できる仕組み（起きても補える・実行前に止める・そもそも操作できない）で守り、設計で防げるものを運用に任せない — owner 判断 2026-09-18〜2026-09-23
 - 毎日の精算の作業に EJ（電子ジャーナル）の取込みを足すことを owner が了承した（SD からファイルを取るだけなので負担は小さい、という owner の判断で、店主本人には未確認）。アプリがどう支援するかは EJ の設計 lane で決める — owner判断2026-09-23
