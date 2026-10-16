@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -23,6 +23,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 1. kickoff → spec-check（2026-10-16、起草役）: owner の決定（repo 外の回答台帳 TD-267・TD-273・TD-274・TD-277）と見直しの成果物（repo 外。事実の一覧・白紙の骨組み・突き合わせ）の置換えを Scope にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-16、起草役）: 触る正本（33 §16.3〜§16.9、plu-tables、25 §12、41 §17.6、67、30 §4、40、20、50、51、37 §37.9、45 §45.6a、23 §13.3.1、REQ-907）が、clear と解放・段階導入の道具・Z004 を選ぶ step・件数の要約を契約として持ち、前提の文の一部が事実と合わない。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-16、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-117 で満たす。条件「未解決の設計の問いが無い」は、owner の判断事項（D5〜D8・D10、TD-273・TD-274、CV17 の役目 TD-277）が決まり、D6・D9 を本 lane に入れない（backlog）と決まっていることで満たす。残る外部前提（Contract Probe の P1・P2）は runtime の lane の L3 で確かめるもので、設計の問いではない。plan-gate への遷移は Coordinator。
+4. plan-draft → plan-gate（2026-10-16、Coordinator）: packet と Matrix は起草役の commit（`ad3f5a83`・`9b51a434`）にある。Coordinator は packet の全文（Goal・Ordinary Operation・Scope・AC・Contract Ledger・Contract Probe）と Matrix の節の構成を読み、owner の決定（repo 外の回答台帳 TD-267・TD-273・TD-274・TD-277）の写しに食い違いが無いこと、差分が docs だけであること（AC9）、差分に新しい実データが無いこと（25 §12.3 の出力例の行は初期の公開 snapshot からある例で、`単品売り` の 1 列だけを直した）を確かめた。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
