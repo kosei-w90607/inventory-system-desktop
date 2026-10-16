@@ -15,7 +15,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
@@ -32,16 +32,17 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 1. kickoff → spec-check（2026-10-16、起草役）: owner の決定（repo 外の回答台帳 TD-261・TD-263〜TD-268・TD-279・TD-280）と見直しの成果物（repo 外。事実の一覧・白紙の骨組み・突き合わせ・Q1 の素描 第 3 版・Q2 の第二意見・Q8 の範囲の調査・鮮度の監査）の置換えを Scope にし、規模を数えて 3 lane に分ける案を立て、最初の lane の Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-16、起草役）: 触る正本（時点証拠 ADR、停止 ADR、D-051・D-071・D-109・D-116、tracking・pos-tables・master-tables・transaction-tables、20・21・22・23・24・29E・30・31・32・33・35・36・37・40・41・42・43・51・55・58・60・65・66・73、architecture の 5、索引の 5）が、旧 ADR の計数 context・受領順の判定・全数読取り・EJ の完全性・legacy 互換・在庫数の保存を契約として持ち、前提の文の一部が事実と合わない。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-16、起草役、同じ commit）: 条件「設計の出力が正本にある」は新しい ADR（SPEC-STK-CNT-D1〜D12）と D-118 と各文書の「計数の置き場と在庫の求め直しの契約」の節で満たす。条件「未解決の設計の問いが無い」は、owner の判断事項（Q1〜Q4・Q7〜Q9・Q11・Q12）が決まり、素描の §6 の 3 つの未決を正本で決めた（入れ直しを省く操作は置かない〈TD-261 の「約束より警告」〉、要再確認の在庫は範囲で見せる、完了の後の要再確認で評価額は変えず差を示す。いずれも owner の決定 TD-296 で確認・決定）ことで満たす。owner に確かめたい 1 点（下の Design Readiness の「前提・制約」の Q-A）は、答えが無いときの既定が今の振舞いで、設計を止めない。plan-gate への遷移は Coordinator。
+4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet と Matrix は起草役の commit（`1f2ab8f3`・`ccdc38ff`）にある。Coordinator は packet の全文（Goal・Ordinary Operation・Scope・AC・Design Readiness・Boundary / Wire Contract・Contract Ledger・Contract Probe・Data Safety）と Matrix の節の構成を読み、owner の決定（repo 外の回答台帳 TD-261・TD-263〜TD-268・TD-296）の写しに食い違いが無いこと、差分が docs だけであること（AC8）、追加の行に新しい実データが無いことを確かめた。3 lane に分ける提案を採る（lane 3 は本 lane と file がほぼ分かれ並走でき、lane 2 は本 lane の Z004 の契約に依る）。介入の上限を TD-296 で 9 に改めた。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
-- 介入回数上限: 6（既定）
+- 介入回数上限: 9（既定の 6 から owner が改定、repo 外の回答台帳 TD-296。介入の時点で全体を顧みずに対症療法へ寄っていないかを考え直してから計画を仕上げる、という条件つき）
 - 実働時間上限: 30 分（既定）
 - Plan Review round 天井: 3（既定）
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 6 | 1（TD-296、起草中の owner の決定 6 点。TD-261〜TD-268 は起票の前の見直しの採否で、本 lane の介入に数えない） | 3（Q-A の確認 1、Ready 1、merge 1） | 2 | 6 = 1 + 3 + 2 |
+| 介入 | 9（TD-296） | 1（TD-296、起草中の owner の決定 6 点。TD-261〜TD-268 は起票の前の見直しの採否で、本 lane の介入に数えない） | 3（Q-A の確認 1、Ready 1、merge 1） | 5 | 9 = 1 + 3 + 5 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
