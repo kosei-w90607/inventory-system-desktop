@@ -1,6 +1,6 @@
 # Test Design Matrix: 棚卸しの数の置き場と在庫数の求め直しを設計正本へ置き換える
 
-Packet: [2026-10-16-stocktake-count-placement-design](../2026-10-16-stocktake-count-placement-design.md)。本 lane は docs だけで、下の Test Matrix は後続の runtime の lane が実装する test の設計（oracle は [ADR](../../adr/2026-10-16-stocktake-count-placement.md) と各文書の「計数の置き場と在庫の求め直しの契約」）。本 lane が実行する検査は「本 lane の検査」の表。
+Packet: [2026-10-16-stocktake-count-placement-design](../2026-10-16-stocktake-count-placement-design.md)。本 lane は docs だけで、下の Test Matrix は後続の runtime の lane が実装する test の設計（oracle は [ADR](../../../adr/2026-10-16-stocktake-count-placement.md) と各文書の「計数の置き場と在庫の求め直しの契約」）。本 lane が実行する検査は「本 lane の検査」の表。
 
 ## Risk
 

@@ -6,7 +6,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 7e63dd0d29bd88ad21c04f1e1ca8d53ca4ab0c72
 - Amendments: none
@@ -38,7 +38,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9（owner の改定、TD-296） | 1（TD-299: round 3 の後の closure の扱い。TD-297 は起票の前の見直しの採否で、本 lane の介入に数えない） | 2（Ready 1・merge 1。plan-approved は TD-296 の 4a で Coordinator が進める） | 6 | 9 = 1 + 2 + 6 |
+| 介入 | 9（owner の改定、TD-296） | 3（closeout 時点。TD-299: round 3 の後の closure の扱い 1、Ready 1・merge 1〈TD-301〉。plan-approved は TD-296 の 4a で Coordinator が進めた。TD-297 は起票の前の見直しの採否で、本 lane の介入に数えない） | 0 | 6 | 9 = 3 + 0 + 6 |
 
 既定値・数え方・上限に届くときの扱いは `docs/DEV_WORKFLOW.md` `Owner Effort Budget` 参照。
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
@@ -103,7 +103,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は docs だけ。下の file の、下の節を書き換えた（全部 plan-first の commit）。
 
-1. 過剰の候補の撤去と外す時点（突き合わせの §4。round 1 の是正、Review Response 参照）: C-21（vC）= [22](../function-design/22-mnt-migration.md) §16 の題・MNT-03-D13 の vC の文・vU の上限の検査の「vC の手順 4」の文と表の「vC が改名する」を直し、vC の手順と列の改名の注記の段を、MNT-03-D14 の vB（起点の検査・6 列の改名・前提つきの単位の CHECK・確かめ・止まった後の作り直し）と「DB の作り直しを 1 回にまとめる順」に置き換えた。回復の段は vU だけの文にし、テストの段から vC と連続適用の失敗の case を外して vB の case を足した。[共通規則](../function-design/10-common-rules.md) の掛ける lane の「vC の範囲検査は外側の守り」、[master-tables](../db-design/master-tables.md)・[transaction-tables](../db-design/transaction-tables.md) の「既存の値を 100 倍する」、[30](../function-design/30-biz-product-service.md) の操作ログの円の key の互換、[31](../function-design/31-biz-inventory-service.md) の fingerprint の移行の前の記録の文を、D-119 の帰結に合わせた。C-02（巻）・C-03（cm）= 共通規則 SPEC-UNIT-D1 に作り直しの起点で外す項と前提を足し、`cm` の「値も意味も変えない」を外すまでの文にした。master-tables の CHECK の行と 30 の単位の契約に同じ時点を書いた。C-27（行の金額の wire の十進の文字列）は外さない: 突き合わせの判定は「上限を変えない限り再び起きる」で、U4 = b は値の変換の有無を変えるだけで棚卸しの行の範囲を変えない。C-34（v8 の上限の検査）は外さない: migration 済みで、突き合わせの判定は「外す対象にならない」。vU の上限の検査の原価の行は、vB の前の DB を守るので残した。
+1. 過剰の候補の撤去と外す時点（突き合わせの §4。round 1 の是正、Review Response 参照）: C-21（vC）= [22](../../function-design/22-mnt-migration.md) §16 の題・MNT-03-D13 の vC の文・vU の上限の検査の「vC の手順 4」の文と表の「vC が改名する」を直し、vC の手順と列の改名の注記の段を、MNT-03-D14 の vB（起点の検査・6 列の改名・前提つきの単位の CHECK・確かめ・止まった後の作り直し）と「DB の作り直しを 1 回にまとめる順」に置き換えた。回復の段は vU だけの文にし、テストの段から vC と連続適用の失敗の case を外して vB の case を足した。[共通規則](../../function-design/10-common-rules.md) の掛ける lane の「vC の範囲検査は外側の守り」、[master-tables](../../db-design/master-tables.md)・[transaction-tables](../../db-design/transaction-tables.md) の「既存の値を 100 倍する」、[30](../../function-design/30-biz-product-service.md) の操作ログの円の key の互換、[31](../../function-design/31-biz-inventory-service.md) の fingerprint の移行の前の記録の文を、D-119 の帰結に合わせた。C-02（巻）・C-03（cm）= 共通規則 SPEC-UNIT-D1 に作り直しの起点で外す項と前提を足し、`cm` の「値も意味も変えない」を外すまでの文にした。master-tables の CHECK の行と 30 の単位の契約に同じ時点を書いた。C-27（行の金額の wire の十進の文字列）は外さない: 突き合わせの判定は「上限を変えない限り再び起きる」で、U4 = b は値の変換の有無を変えるだけで棚卸しの行の範囲を変えない。C-34（v8 の上限の検査）は外さない: migration 済みで、突き合わせの判定は「外す対象にならない」。vU の上限の検査の原価の行は、vB の前の DB を守るので残した。
 2. 前提の食い違いと文書の食い違いの訂正: C-09 = 共通規則 SPEC-UNIT-D2 の 10 cm 刻みを強制しない理由を事実（10 cm が最小か刻みか決まらない、店は棚卸しで cm までは数えない）に置き換え、`project-memory.md` の「最小 10 cm 刻み」の行と backlog の同じ語を直した。C-16 = 今の既定（長さの単位は在庫連動の自動提案が `false`、手動販売で記録）を U5 の未決として SPEC-UNIT-D4 に書いた。C-18 = 骨組みの側の取り違え（売価は税込で正しい）で、正本を変えない。文書の食い違い 1（12 の語の出典）= SPEC-UNIT-D1 の出典、`project-memory.md` の 2026-09-14 の行、D-113 の前提の訂正の行。2（話し手）= `project-memory.md` の 2 行を店主回答（owner が転記）に直した。3（backlog の現状）= backlog の単位の拡張の項に「起票時の」と PR #158 の後の値を書いた。4（日報の parser）= PR #167 が `project-memory.md` の同じ行を直すので本 lane は触らない（下の「PR #167 と重なる file」）。5（毛糸の「個」）= U2 で直せるようにし、SPEC-UNIT-D1 の出典と `project-memory.md` の毛糸の行に書いた。
 3. 不足の候補（突き合わせの §3。round 1 の是正、Review Response 参照）: C-06（U2）= 共通規則 SPEC-UNIT-D2 に個数の単位どうしの変更の項、30 BIZ-01-D8 に BIZ の検査・`ProductUpdateRequest.stock_unit`・操作ログの key、§4.4 の構造体に field、商品 CSV の上書きの行の error の規則、51 に UI-01b-D23（select と 1 文）を足し、UI-01b-D5 に D23 が置き換えると書いた。C-23（U7）= SPEC-UNIT-D5 の入力の補助と 51 UI-01b-D24。他の不足の候補: C-19（原価の税）は U6 の未決として SPEC-UNIT-D5・master-tables の `cost_price` の行・backlog に書いた（決めない）。C-36（保存の前の確かめの画面）は U8 = a で足さない（D-119 (7)）。C-26（手動販売の丸める前の値を見せる）と C-30（棚卸し記録詳細のロス原価の基準数量）は owner の決定の範囲に無いので入れない（C-30 は既に backlog の「原価 × 数量の式が価格の基準数量を持たない残り」の (3) で ⑤ にある。C-26 は報告に書いた）。
 4. DB の作り直しの一本化: 22 §16 の「DB の作り直しを 1 回にまとめる順」に、原価の lane（vB）を棚卸しの runtime の最初の配布の単位より先に入れ、作り直しを原価の lane で 1 回にする順と理由（作り直した DB には停止 ADR が止めている棚卸しと Z004 の確定の記録が作られない）、逆の順になるときに owner に諮る条件を書いた。backlog の原価の lane の項と D-119 (8) はそこを引く。PR #167 の正本（ADR の SPEC-STK-CNT-D10、backlog の棚卸しの runtime の項）は書き換えない。
@@ -257,7 +257,12 @@ Test Design Matrix: [2026-10-17-unit-redesign-design](test-matrices/2026-10-17-u
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: 単位・数量・原価の精度の見直し（repo 外の回答台帳 TD-258・TD-295）で owner が採った結果（TD-297 の U1〜U8）を設計正本へ置き換え、D-119 に記録した。原価の 1/100 円は既存の DB を変換する migration（vC）をやめ、開発・試験 DB の作り直しの起点で行の無い DB にだけ当たる migration（vB）で入れる形にし、巻・cm はその起点で単位から外す（前提つき）。単位の語は個数の単位どうしで直せるようにし、単位だけの変更は `plu_dirty` を変えず、商品 CSV の上書きは単位を変えた商品ごとに同じ TX の中で操作ログを書く。原価の入力の補助（袋の値段 ÷ 入り数）は個数の単位の商品だけに出す。作り直しはアプリの data の folder を丸ごと消さずに移す手順にし、DB の作り直しを 1 回にするため原価の lane を棚卸しの runtime の最初の配布の単位より先に入れる順を 22 §16 に置いた。店に聞く問い（U5・U6）は答えが無い間の既定を正本に書いた。D-113 は Superseded in part。本 lane は docs だけで、code・migration・bindings は変えていない（runtime は後続の lane）。
+- 既存の保護: 実装は変えていないので、店の動作は今のまま（単位は登録の後に変えられず、原価は円の整数のまま）。設計照合 test と traceability の検査は green のまま。
+- 記録して閉じる食い違い（Final Review の Fable の P3 #2）: Contract Ledger の「隣接の除外」の行（SPEC-UNIT-D6 の金額の wire・v8 の上限の検査・入力の上限の数字・D3・D7〜D11）に、本 lane の差分で文を書き換えた SPEC-UNIT-D10 と共通規則の「入力の上限と安全な整数の範囲」の 2 段が紛れる。書き換えは単位の数（個数の単位の数と巻・cm を外した後の一覧）と vC の文を外すことに合わせた言い換えで、契約の意味は変えていない。行は書き換えず、ここに記録する。
+- 未検証: Contract Probe の P1（原価の lane の起票の前に確かめる外部前提）と、作り直しの手順が実際の PC で通ること（開発者が 1 度通す）は、原価の lane で確かめる。
+- review・CI・merge（closeout、2026-10-17）: Plan Review は round 3（天井）までで、round 1・2 と同じ型（作り直しの手順の挙げ漏れ）が続いたので round 2 の是正で作り直しを data の folder ごと移す形に組み直し、round 3 の後に owner の決定で天井を越えて closure 1 回で確かめた（TD-299）。Final Review は broad 1 回（下の Review Response の Closeout の段落）。helper の record は review = pass。owner の Ready・merge の承認（TD-301）の後、PR #167 の merge を取り込んで所有表の「merge の後に揃える所」を揃え、独立の reviewer の delta の確認を経て、hosted の `Merge gate` の success の後に helper 経由の squash merge。PR: [#168](https://github.com/kosei-w90607/inventory-system-desktop/pull/168)
+- 後続: `docs/backlog.md` の「原価の lane（C）」（店の答え U6 を待つ。Final Review の P3 2 件の follow-up を含む）、「単位の語の直しの lane」（Final Review の P3 1 件の follow-up を含む。DB の作り直しに依らず先に入れてよい）、「店に聞く: 長さの商品の在庫の減らし方と原価の税」。
 
 ## Review Response
 
@@ -297,3 +302,4 @@ Claude 側 fresh Opus 5.5（approve、P3 4）と Codex GPT-6 Astra（reject、P2
 | T3 | Opus #2（P3） | 採る | vB を登録すると、行を入れてから最新まで `migrate()` する既存の test が vB で止まる | 22 §16 のテストの段に「それらの test は版の上限を取る test 用の migrate に替え、期待は変えない」を足した。対象を現物の `rg -n 'migrate\(&conn\)' src-tauri/src` で全部挙げ、vB の起点の検査の 5 つの表に行を入れてから成功を期待する test（`migration.rs` の `:763`・`:1460`・`:1520`・`:1528`〜`:1541`・`:1708`、`schema_v2.rs` の `:452`）と、最新の版を `(8, 8)` と期待する行を backlog の原価の lane の項に書いた。AC16 |
 | T4 | Opus #3（P3） | 採る | 原価の入力の補助は、`m` の商品では入り数の意味が決まらず、誤った原価が黙って入る | 補助は数量の種類が個数の単位の商品だけに出すと、共通規則 SPEC-UNIT-D5 と 51 UI-01b-D24（create mode で長さの単位に変えたら補助を閉じて隠し、原価の欄は変えない）に揃えた。Matrix の補助の RTL の行に `m` の商品で補助が出ない case を足した。AC16 |
 
+Closeout（2026-10-17）: round 3 の後の Plan Review closure（Codex GPT-6.1 Sol、head `7e63dd0d`）は approve（P1 0・P2 0・P3 0。遷移の記録 8）。Final Review は broad 1 回で、Codex（Astra、head `2bcbf472`）= approve（P3 2）、Claude 側（Fable 5.1、head `2bcbf472` と、state の行だけを足した `a085e869`）= approve（P3 2）。Coordinator が plan-approved のまま Final Review に出した（helper は implementing の head でしか record しない）ので、implementing への遷移（`a085e869`）の後に Fable が監査し直して record した（手順の漏れで、Coordinator の checklist に入れた）。helper の record は review = pass。owner の Ready・merge の承認（TD-301）の後、PR #167 の merge を取り込み（`4ef6ee95`）、所有表の「merge の後に揃える所」を `89105911` で揃え、独立の reviewer（Sonnet 5.5）の delta の確認 = 可を closure として record した。P3 4 件は全件 follow-up（Coordinator の裁定）: Fable #1（51 UI-01b-D23 が商品フォームの在庫の節の説明文をどう変えるかを書いていない）は `docs/backlog.md` の「単位の語の直しの lane」へ、Codex #1（Matrix の補助の再表示の空欄の期待が Matrix にだけある）と Codex #2（22 §16 の作り直しの手順の「下の確かめていない前提」の参照先が無い）は「原価の lane（C）」へ送った。Fable #2（Contract Ledger の隣接の除外の行に、差分で文を書き換えた 2 段が紛れる）は、この closeout で上の Implementation Results に記録して閉じた（意味は変えていない）。Owner Effort Budget の表は closeout の時点の値（上限 9、消費 3）に直した。
