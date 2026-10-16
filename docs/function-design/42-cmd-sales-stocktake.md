@@ -15,6 +15,7 @@
 - StockCountSaveResult は保存した計数の `id`・`count_kind`（`default` / `fresh`）、求め直しの後の `stock`・`stock_range_low`・`stock_range_high`・`recount_reasons`（[40](40-cmd-product.md) の enum）、`later_count_exists`。
 - `complete_stocktake` の入力から `force_fill` を外す。拒否は [40 の回復型](40-cmd-product.md) の `completion_blocked`。
 - get_stocktake_items / get_stocktake_record は、明細ごとに効く計数の値・種類・日付、写しの在庫と範囲、要再確認の理由、差異（35 の新契約の「読取り」）を BIZ から透過する。get_stocktake_record は完了の後の差（差のある明細と差の合計。35 の新契約の「完了」）も透過する。
+- `run_integrity_check` / `fix_integrity` の command の署名は変えず、結果の型（`IntegrityMismatch`・`StockAdjustment`）は [36](36-biz-integrity-check.md) の新契約の 4 項目と `differing_fields` を透過する（[75](75-ui-integrity-check.md)）。
 - runtime では新しい command の tauri / specta 属性、collect_commands への登録、旧 update_count の公開登録の削除、bindings の生成と全 caller / mock の切替を一緒に行う。
 
 ### 22.1 モジュール構成

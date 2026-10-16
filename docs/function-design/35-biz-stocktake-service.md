@@ -9,7 +9,7 @@
 `save_stock_count(tx, SaveStockCountRequest) -> Result<StockCountSaveResult, BizError>`。
 
 - 入力: `product_code`、`count_value`（0 以上の整数。長さの商品は cm。上限は [共通規則](10-common-rules.md) の在庫の上限 `999999999`）、`fresh: bool`（「入れ直す」なら true、「数を保存」なら false）、`business_date`（YYYY-MM-DD。`fresh=false` のとき使う。UI の既定は PC の今日、「前の日の分を入れる」で選んだ日。`fresh=true` では today を使い、入力の値と違えば `ValidationFailed`）、`stocktake_item_id: Option<i64>`（棚卸しの画面から保存したとき）、`today`（CMD が渡す PC の今日。BIZ は時計を読まない）。
-- 保存の形（[tracking](../db-design/tracking-system-tables.md) の `stock_counts`）: `fresh=false` は `count_kind='default'`。`fresh=true` は `count_kind='fresh'`、`business_date=today`、`settlement_no` = 同じ TX で読んだ active な Z004 の取込みの最大の精算回数（無ければ 0）、`seen_movement_id` = 同じ TX で読んだ `MAX(inventory_movements.id)`（無ければ 0）。`business_date` が today より後なら `ValidationFailed`（「未来の日付には保存できません」）。
+- 保存の形（[tracking](../db-design/tracking-system-tables.md) の `stock_counts`）: `fresh=false` は `count_kind='default'`。`fresh=true` は `count_kind='fresh'`、`business_date=today`、`settlement_no` = 同じ TX で読んだ active な Z004 の取込みの最大の精算回数（取込みが無ければ NULL。0 は実在しうる精算回数なので使わない）、`seen_movement_id` = 同じ TX で読んだ `MAX(inventory_movements.id)`（無ければ 0）。`business_date` が today より後なら `ValidationFailed`（「未来の日付には保存できません」）。
 - 1 商品 1 TX で `stock_counts` へ INSERT し、[31](31-biz-inventory-service.md) の `recompute_stock` で写しを書き、`stocktake_item_id` があれば明細の `actual_count`・`counted_at`（表示用の写し）を効く計数に合わせる。明細が進行中の棚卸しのものでなければ `ValidationFailed`。
 - 結果: 保存した計数の id・種類、求め直しの後の在庫（写しの値と範囲）、要再確認の理由（[40](40-cmd-product.md) の `recount_reasons` と同じ enum）、`later_count_exists: bool`。
 - 後入力の確認（ADR D5）: 既定の計数の保存の前に UI が `preview_stock_count_placement(conn, product_code, business_date, today) -> CountPlacementPreview`（読取りだけ）を呼び、ADR D3 の「計数どうし」でその計数より後の計数が既にあるか（`later_count_exists`）を受ける（「後の数が既にあり、そちらが効きます」。保存は拒まない）。
@@ -26,19 +26,19 @@
 
 | block_reason | 条件 |
 |---|---|
-| `settlement_pending` | 明細の効く計数（日付 X。fresh なら保存の時点の精算回数 n）について、(i) 精算日が X 以上の取り込み済みの精算が無い、または (ii) 取り込まれていない精算回数 k（fresh なら k > n）で、隣の取り込み済みの精算 a < k < b の精算日が d_a ≤ X ≤ d_b のものがある |
+| `settlement_pending` | 明細の効く計数（日付 X。fresh なら保存の時点の精算回数 n）について、(i) 精算日が X 以上の取り込み済みの精算が無い、または (ii) 取り込まれていない精算回数 k（fresh で n が NULL でなければ k > n）で、隣の取り込み済みの精算 a < k < b の精算日が d_a ≤ X ≤ d_b のものがある |
 | `recheck` | 明細の商品の写しが要再確認（`stock_recheck=1`） |
 | `uncounted` | 明細を参照する計数が無い。ただし、その時点で廃番かつ在庫（写し）が 0 の商品は対象外 |
 
 - message: 「棚卸しを完了できません。数え直し・未計数・取り込んでいない精算のある商品があります」。UI は `block_reason` ごとに一覧を出す。その日の最後の精算を取り込んでいないことは判定できない（ADR D6 の H2）ので、UI の完了の確認の文で確かめる（[73](73-ui-stocktake.md)）。
 - 未計数を片付ける操作: 「数を入れる」は通常の計数の保存。「0 にする」は `count_value=0`・`fresh=false`・`business_date=today` の計数の保存（`zero_uncounted_items(tx, stocktake_id, product_codes, today)` でまとめて保存できる。1 TX、商品ごとに求め直す）。帳簿の数とみなす操作（force_fill）は持たない。
-- 通れば、各明細の `valuation_cost_price` にその時点の原価を、`valuation_quantity` に評価数量 `max(写しの在庫, 0)` を固定し、[§20.5a](#205a-評価額の計算価格の基準数量と店の丸め) の関数（SPEC-STK-VAL-D1〜D6）で `total_cost` を求め、stocktakes の完了の時点のカーソル（`cutoff_settlement_no`・`cutoff_movement_id`・`cutoff_count_id`）を保存し、header を completed にする。完了は在庫を動かさず、movement を作らない。数量と積和は checked 演算。
-- 完了した評価額は、後から入った記録（棚卸しの期間の日付を選んだ入出庫・後入力の計数・遅れて取り込んだ Z004）で変えない（非遡及）。差は示す（ADR SPEC-STK-CNT-D6、owner の決定 TD-296）: `get_stocktake_record` が、明細ごとに「完了の時点の在庫」を [31](31-biz-inventory-service.md) の `derive_stock` と同じ規則で今の記録から求め直す（計数は id ≤ `cutoff_count_id`、movement は日付 < 完了日のものと、日付 = 完了日で id ≤ `cutoff_movement_id` のもの、精算は精算日 < 完了日のものと、精算日 = 完了日で精算回数 ≤ `cutoff_settlement_no` のもの。完了日より後の日付の記録は入れない）。その `max(…, 0)` と `valuation_quantity` を、凍結した `valuation_cost_price` でそれぞれ §20.5a の関数で評価し、丸めた後の総額を差し引いて参考の差とする（負の数量を関数に渡さない。読取りで求め、保存しない）。差のある明細の一覧と差の合計を返す。完了した `total_cost`・`valuation_cost_price`・`valuation_quantity` は書き換えない。
+- 通れば、各明細の `valuation_cost_price` にその時点の原価を、`valuation_quantity` に評価数量 `max(写しの在庫, 0)` を固定し、[§20.5a](#205a-評価額の計算価格の基準数量と店の丸め) の関数（SPEC-STK-VAL-D1〜D6）で `total_cost` を求め、stocktakes の完了の時点のカーソル（`cutoff_settlement_no`〈取込みが無ければ NULL〉・`cutoff_count_id`）を保存し、header を completed にする。完了は在庫を動かさず、movement を作らない。数量と積和は checked 演算。
+- 完了した評価額は、後から入った記録（棚卸しの期間の日付を選んだ入出庫・後入力の計数・遅れて取り込んだ Z004）で変えない（非遡及）。差は示す（ADR SPEC-STK-CNT-D6、owner の決定 TD-296）: `get_stocktake_record` が、明細ごとに「完了の時点の在庫」を [31](31-biz-inventory-service.md) の `derive_stock` と同じ規則で今の記録から求め直す（計数は id ≤ `cutoff_count_id`、入出庫の movement は業務日 ≤ 完了日の全て〈カーソルで切らない。完了の前に保存した完了日の記録は `valuation_quantity` にも入っているので差に効かず、完了の後に入れた完了日以前の日付の記録が差になる〉、精算は精算日 < 完了日のものと、精算日 = 完了日で精算回数 ≤ `cutoff_settlement_no` のもの。完了日より後の日付の記録は入れない）。その `max(…, 0)` と `valuation_quantity` を、凍結した `valuation_cost_price` でそれぞれ §20.5a の関数で評価し、丸めた後の総額を差し引いて参考の差とする（負の数量を関数に渡さない。読取りで求め、保存しない）。差のある明細の一覧と差の合計を返す。完了した `total_cost`・`valuation_cost_price`・`valuation_quantity` は書き換えない。
 
 #### 読取り
 
 - 明細の一覧は、明細ごとに効く計数の値・種類・日付、写しの在庫と範囲、要再確認の理由、差異（効く計数の値 − その計数に入っている記録だけから求めた帳簿。計数が無ければ NULL）を返す。差異は表示用で、在庫を動かさない。
-- 要再確認の一覧 `list_recheck_products(conn) -> Vec<CountRecoveryTarget>`（`stock_recheck=1` の商品。進行中の棚卸しに明細があれば action `active_count`、なければ `count_now`）。棚卸しが無いときも読める（取込みの結果と同じ一覧を棚卸しの画面に出す。[73](73-ui-stocktake.md)）。一覧からの保存は fresh な計数。
+- 要再確認の一覧 `list_recheck_products(conn) -> Vec<CountRecoveryTarget>`（`stock_recheck=1` の商品。進行中の棚卸しに明細があれば action `active_count` と `stocktake_item_id`、なければ `count_now`）。棚卸しが無いときも読める（取込みの結果と同じ一覧を棚卸しの画面に出す。[73](73-ui-stocktake.md)）。一覧からの保存は fresh な計数で、`stocktake_item_id` があれば渡す（明細の `actual_count`・`counted_at` を置き換わった計数に揃える）。
 
 ### 20.0 現行buildの一時停止
 

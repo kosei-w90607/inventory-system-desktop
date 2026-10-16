@@ -45,6 +45,11 @@ Risk: R3
 - F21 精算の一覧が変わる TX（確定・取消・欠けの後追い）で、その取込みに行が無い計数のある商品を求め直さず、写しが古いまま（round 1 の R3・H3）。
 - F22 正常な行が全て 0 の Z004 を拒み、その精算が欠けとして残る（round 1 の R4）。
 - F23 計数より前の日付の記録を後入力して、writer の 1 つが写しを増減させる（round 1 の R12）。
+- F24 要再確認の間に在庫連動を切ると、連動中の movement が残るのに理由と範囲が消え、完了できる（round 2 の 1）。
+- F25 取込みの無い状態の fresh な計数のカーソル 0 が精算回数 0 とぶつかり、精算 0 の売上を入っているとみなす（round 2 の 2）。
+- F26 連動しない間の売上が計数にとって決まらないのに在庫連動を始められる（round 2 の 3）。
+- F27 同じ値で重なる既定の計数と fresh な計数で、どちらの窓で判定するかが定まらない（round 2 の 4）。
+- F28 整合性の検査が数だけを比べ、印や範囲だけ違う商品を「差異なし」とする（round 2 の 6）。
 
 ## Test Matrix
 
@@ -94,7 +99,12 @@ Risk: R3
 | D6 | — | unit | `zero_uncounted_then_complete_fixes_valuation` | 未計数を「0 にする」→ 完了: 0 の既定の計数が今日に入り、評価額 = §20.5a の関数（評価数量 `max(写し, 0)`） |
 | D6 | — | unit | `discontinued_zero_stock_item_does_not_block` | 廃番かつ写し 0 の未計数の明細: 完了を止めない |
 | D6 | F12 | unit | `valuation_not_changed_by_backdated_record_after_completion` | 完了の後に棚卸しの期間の日付の入庫: 写しと要再確認は変わり、`total_cost`・`valuation_cost_price`・`valuation_quantity` は変わらない |
-| D6 | — | unit | `post_completion_difference_is_shown_not_saved` | 同じ入庫の後、棚卸しの記録の詳細の差が入庫の数と等しい。評価額の差 = 凍結した原価で求め直した数量と `valuation_quantity` をそれぞれ §20.5a で評価して丸めた総額の差（負の数量を関数に渡さない）。完了日より後の日付の入庫と、完了日の日付で完了の後に保存した入庫（id > `cutoff_movement_id`）は差に入らない。DB には差を保存しない（TD-296） |
+| D6 | — | unit | `post_completion_difference_is_shown_not_saved` | 同じ入庫の後、棚卸しの記録の詳細の差が入庫の数と等しい。評価額の差 = 凍結した原価で求め直した数量と `valuation_quantity` をそれぞれ §20.5a で評価して丸めた総額の差（負の数量を関数に渡さない）。完了日より後の日付の入庫は差に入らない。完了日の日付で完了の後に保存した入庫は差に入る（入出庫は業務日だけで切る。完了の前に保存した完了日の入庫は評価数量にも入っているので差 0）。DB には差を保存しない（TD-296） |
+| D3・D8 | F24 | unit | `sync_off_keeps_recheck_and_range` | 連動中に計数（D）→ D の精算でその商品が売れて要再確認 → 在庫連動を切る: 理由（`undetermined_settlement`）と範囲が残り、完了は `recheck` で拒まれる。今の `pos_stock_sync` で理由 1 を判定すると消える |
+| D3 | F25 | unit | `fresh_count_with_no_imports_then_settlement_zero` | 取込みの無い状態で fresh な計数 5（`settlement_no` は NULL）→ 同じ日に 2 売れる → 精算回数 0（精算日 = 今日）を取り込む: 精算 0 は決まらない（要再確認、範囲 3〜5）。カーソルを 0 にすると `k ≤ n` で入るとみなし写し 5・要再確認なし |
+| D8 | F26 | unit（BIZ-01） | `enable_sync_rejected_when_unsynced_sale_is_undetermined` | 連動しない商品で既定の計数 10（D）→ D に 2 売れて精算を取り込む（`stock_linked=0`）→ 在庫連動を on: 売上が計数にとって決まらないので `recount_required`。fresh な計数を入れた後は通る |
+| D3 | F27 | unit | `equal_default_and_fresh_counts_use_fresh_window` | 既定の計数（T）5 と fresh な計数（T）5 が重なる: 1 つとみなし、fresh の窓とカーソルで判定する（fresh より先に保存した今日の入出庫は入っている、要再確認なし） |
+| BIZ-07 | F28 | unit | `integrity_detects_recheck_or_range_only_difference` | 写しの数は同じで `stock_recheck` だけ（または範囲だけ）を書き換えた商品: 不一致に出て、`differing_fields` が `recheck`（`range`）。補正のログに 4 項目の old / new |
 | D7 | F8 | unit | `rollback_voids_and_recomputes_without_compensation` | 計数の後の精算の取込みを取り消す: 在庫 = 計数 + 残りの入っていない記録の和。計数に入っている精算の取込みを取り消す: 在庫は変わらない。補償の movement が無い |
 | D8 | F16 | unit（BIZ-01） | `enable_sync_rejected_when_unsynced_sales_not_in_count` | 連動しない間の売上が効く計数に入っていない: `recount_required`。fresh な計数を入れた後は通る。計数が無く売上が 1 件でもあれば拒否 |
 | D10 | F15 | integration（migration） | `migration_stops_when_stocktakes_or_csv_imports_exist` | `stocktakes` か `csv_imports` が 1 行でもある DB: 失敗、schema と行は不変 |

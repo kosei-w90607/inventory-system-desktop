@@ -8,6 +8,7 @@
 |---|---|---|
 | csv_imports | machine_no TEXT | NOT NULL（新しい取込み）。IO-02 が Z004 のメタから読んだマシンNo.（leading zero を保つ文字列） |
 | csv_imports | settlement_no INTEGER | NOT NULL（新しい取込み）。IO-02 が読んだ精算回数を 10 進の整数にした値（0 以上） |
+| sale_records | stock_linked INTEGER | NOT NULL、0/1 の CHECK。確定の TX で、その行の商品の取込みのときの `pos_stock_sync` を写す（共有 JAN の行と商品の無い行は 0）。後から書き換えない。ADR D3 の理由 1 と D8 の在庫連動を始める検査が、今の設定でなくこの値で判定する |
 
 - 精算回数・マシンNo. を読めない Z004（従来の形）は取り込まない（preview で拒む。[32](../function-design/32-biz-csv-import-service.md) の新契約）。
 - 同じ machine_no・settlement_no の active な取込み（completed / completed_partial）は 1 つだけ（BIZ が preview と確定の TX で検査する。取り消した取込みは比べない）。DB の UNIQUE は張らない（取消の後の取り込み直しで同じ番号の行が複数になる）。

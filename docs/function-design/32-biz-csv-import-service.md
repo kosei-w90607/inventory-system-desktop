@@ -18,12 +18,13 @@
 
 - 取り消した取込み（rolled_back）は比べる先にしない（誤った版を取り消して正しい版を取り込める。SPEC-STK-CNT-D7）。
 - 同じ精算日の別の精算（settlement_no が違う）は、利用者の追加確認なしに preview から確定へ進める（D-071 の Z004 の側の置換え。`additional_import_confirmed` は Z004 では使わない）。
+- 今の「精算日が未来の日付です」の拒否（`src-tauri/src/biz/csv_import_service/parse.rs:63-77`）は外し、下の知らせ (b) に変える（レジと PC の日付のずれで取り込めなくなるのを避け、知らせて取り込む。ADR D4）。
 - 知らせ（拒否しない。preview と結果に出す）: (a) 欠け: active な取込みと、この file を合わせた settlement_no の最小から最大の間に、取り込まれていない番号があれば「精算 {n} が取り込まれていません」（番号ごと、昇順。欠けた精算の売上は在庫に入っていない）。(b) 精算日が PC の今日より後なら「レジと PC の日付がずれている可能性があります」。
 - 理由: 精算回数は 4 年分の資料で減少・重複が無く、欠けは SD の本数の差と一致した（owner TD-261 の Q3 = a）。精算日と番号の食い違いは reset・レジの入替・時計の戻りのどれでも起き、精算の窓（ADR D3）が 1 つに決まらないので取り込まない（レジの日時は検知と窓の日付にだけ使い、PC の時計と比べない）。
 
 #### 確定（commit）
 
-- 確定の TX は、上の検査・JAN の候補・連動の設定を取り直し、売上（`sale_records`）と、在庫連動の商品の movement（`business_date = settlement_date`、`phase = 1`、`settlement_no`）を書き、取り込み済みの精算の一覧が変わるので、計数を持つ全ての商品と、その取込みの売上か movement を持つ全ての商品（在庫連動の on / off を問わない）を [31](31-biz-inventory-service.md) の `recompute_stock` で求め直す（ADR の横断の表と D2 の原理）。売上と在庫を動かす行の対応は今のまま（計数の前か後かで在庫の適用を分けない。前後は求め直しの並びの鍵が決める）。
+- 確定の TX は、上の検査・JAN の候補・連動の設定を取り直し、売上（`sale_records`）と、在庫連動の商品の movement（`business_date = settlement_date`、`phase = 1`、`settlement_no`）を書き、取り込み済みの精算の一覧が変わるので、計数を持つ全ての商品と、その取込みの売上か movement を持つ全ての商品（在庫連動の on / off を問わない）を [31](31-biz-inventory-service.md) の `recompute_stock` で求め直す（ADR の横断の表と D2 の原理）。売上と在庫を動かす行の対応は今のまま（計数に入っているかで在庫の適用を分けない。入っているかは求め直しが ADR D3 の窓の判定表で決める）。売上の各行に、その商品の取込みのときの `pos_stock_sync` を `stock_linked` として写す（pos-tables。共有 JAN の行と商品の無い行は 0）。
 - 結果（`ImportResult`）に、求め直しの後に要再確認になった商品の一覧（`recheck_targets`: この TX で求め直した商品のうち、求め直しの後に `stock_recheck=1` の商品。[40](40-cmd-product.md) の CountRecoveryTarget。`recount_reasons` 付き）と、上の知らせを足す。要再確認は取込みを止めない。
 - 同じ JAN を複数の商品が持つ行（SPEC-STK-CNT-D4、owner の決定 TD-296）: 店内コードの lane ができるまで在庫連動の外に置き、売上を今の規則（先頭の商品）で記録し、どの候補の movement も作らない（候補に在庫連動の商品があっても同じ。行エラーにしない）。
 - 数量・金額とも 0 の行（日計 0）は今のまま売上も movement も作らない（相殺の判定に使わないので保持しない）。数量 0 で金額が 0 でない行の売上の記録は今のまま。

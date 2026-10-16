@@ -5,7 +5,7 @@
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2）との接続。以下の入庫・返品交換・手動販売・廃棄の header / item の列と符号規約は変えない。
 
 - 在庫を動かす TX は、header / item・inventory_movements（並びの鍵 `business_date` = header の日付〈`receiving_date`・`return_date`・`sale_date`・`disposal_date`〉、`phase` = 0）を書き、同じ TX で触れた商品を求め直して写し（`products.stock_quantity` ほか）を書く。どれかの失敗で TX 全体を戻す。
-- header の日付は業務の日付 D で、計数との前後を決める（同じ日付の計数があれば要再確認。ADR D3 の 2）。日付を計数より前にした入力は、計数のある商品の在庫に足されない（数えた数に入っているとみなす。ADR の Consequences）。
+- header の日付は業務の日付 D で、計数に入っているかは ADR D3 の窓の判定表で決まる（既定の計数と同じ日付なら決まらない、fresh な計数より先に保存したものは入っている、など）。日付を計数の日付より前にした入力は、計数のある商品の在庫に足されない（数えた数に入っているとみなす。ADR の Consequences）。
 - レジ処理済みの返品など在庫を動かさない経路は movement を作らない（今のまま）。冪等な要求の再送は新しい movement を作らない（今のまま）。
 
 ## 金額の丸めと、原価の 1/100 円
