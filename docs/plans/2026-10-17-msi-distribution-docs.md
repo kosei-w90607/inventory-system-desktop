@@ -28,6 +28,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Astra）の是正（Review Response 参照）。Risk を R3 に上げた。起草役が `c68f6504` で直し、Coordinator が差分（初回の導入の条件、流れ 4 の照合と起動が止まったとき、流れ 5 の今の DB の版の知り方と表と 1・2、予行演習の片付け、Risk・Contract Ledger・Matrix の新設）を読んだ。流れ 4・5 は今の DB の版を正とする 1 つの筋に書き直され、店の DB に作り直しが当たる経路が無いことを確かめた。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「全件を直し、指摘と差分だけを確かめる round を 1 回足す」と決めた（repo 外の回答台帳 TD-315、介入 1 回目 / 予算 9 回）。起草役が `4dcd4a45` で直し、Coordinator が差分（流れ 5 の場面と表、アプリが起動しないときの保全と前進、予行演習の順と LOCALAPPDATA、M6 の合格条件、写しの SHA-256、診断ログの文）を読んだ。流れ 4・5 は「場面を決める → 表の行で決める」の 1 つの筋で、決めるまで今の DB を動かさない。確認の round（closure）へ出す。
 8. plan-gate（確認の round の是正、2026-10-18、Coordinator）: 確認の round（Codex GPT-6.1 Sol）の是正（Review Response 参照）。owner が「直して、Claude 側と Codex の両方で確認する」と決めた（repo 外の回答台帳 TD-316、介入 2 回目 / 予算 9 回）。起草役が `f4f13ad6` で直し、Coordinator が差分（流れ 5 の「前の版と入力の基準」の 1 か所の定義とそれを引く場面・表・1〜3、前へ進むときの照合、Matrix の C13・FM19・FM20）と、起草役の組の一巡の表を読んだ。2 回目の確認（Claude 側・Codex）へ出す。
+9. plan-gate（2 回目の確認の是正、2026-10-18、Coordinator）: 2 回目の確認（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。owner が「直して、追加の確認なしで plan-approved」と決めた（repo 外の回答台帳 TD-318、介入 3 回目 / 予算 9 回）。起草役が `140a11fe` で直し、Coordinator が差分（流れ 5 の「前の版と入力の基準」の条件、流れ 3 の手順 5 の追加の写し、MSI の選び方、Matrix の C10・C13・FM21・FM22）を読み、起草役が発注の文言から変えた 2 点を具体的な組で追って採った。
 
 ## Owner Effort Budget
 
@@ -319,3 +320,12 @@ Codex GPT-6.1 Sol（reject、P1 0・P2 2）。round 3 の 8 件のうち 7 件�
 | R29 | Codex N2（P2） | 採る | 入力の後は一律に在庫の照合を外している | 修正版の照合も全項目の一致を求め、流れ 3 をし直せる場合はその控えと比べる。owner が在庫の数を見て決めるのは、今入っている版が起動せず入力の後の経路だけ |
 
 起草役の問いの Coordinator の裁定（2026-10-18）: 起動はできるが照合が合わない版で流れ 3 をし直すと、その版が「前の版」になり、さらに修正版も止まると戻す先はその版の backup になる（さらに前の版へ戻す手順は持たない）。失うものの説明は事実と合い、戻す先の backup より前の状態へ戻す必要は今の範囲に無いので、変えない。
+
+### 2 回目の確認（2026-10-18、head `2320900a`）
+
+Codex GPT-6.1 Sol（approve、P1 0・P2 0・P3 0。round 3 の 8 件と N1・N2 の 10 件が全部閉じた）と Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 1。10 件は全部閉じた）。全て採った（Coordinator の裁定）。Claude 側の R1 は、確認の round で起草役が挙げた問いを Coordinator が確かめずに「変えない」と裁定していた点で、裁定の誤り（教訓を Coordinator の手順に入れた）。owner に諮り、「直して、追加の確認なしで plan-approved（跡は Final Review）」と決まった（repo 外の回答台帳 TD-318）。起草役が `140a11fe` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R30 | Claude R1（P2） | 採る | 照合の合わない新しい版で流れ 3 をし直すと、前の版と戻す先の backup がその版のもの（照合の合わなかった状態）に替わり、戻すと説明と食い違う | 「前の版と入力の基準」に、流れ 4 で入れた版のうち入力を始めてよいと 1 度も決まっていない版で流れ 3 をし直しても、前の版と戻す先の backup は変えない（そのとき作った backup は追加の写し）を足した。起草役は発注の「照合が 1 度も全部合っていない」を「入力を始めてよいと決まっていない」に、対象を「流れ 4 で入れた版」に変えた。Coordinator が、起動しない版で owner が入力を始めると決めた組と、戻した前の版で入力した組を追い、発注の文言では入力を要らずに失うことを確かめて起草役の形を採った |
+| R31 | Claude R2（P3） | 採る | 「より新しい版」で止まったときの MSI の候補が複数あるときの選び方が無い | 扱える DB の版がデータの版と同じで、照合が全部合ったことのある版から選び、入れ直した後に照合する、とした |
