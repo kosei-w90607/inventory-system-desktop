@@ -30,6 +30,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 3. design → plan-draft（2026-10-17、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本（30・51・20・74）に置いた。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本の直しは起草役の commit（`d6f57bbd`）にある。Coordinator は正本の差分（30 の上書きの段の `plu_dirty` の比べる列と操作ログの summary、51 UI-01b-D23 の送る判定と説明文、20・74 の行）と packet の前文・Workflow State・Owner Effort Budget を読み、D-119 の U2 = b の範囲を越えていないこと、366 との節の所有表があること、code・migration に触れていないことを確かめた。起草役が決めた 4 点（操作ログの既知の key に足さない、「現在庫」の欄の語、無効化の範囲の外の画面の古い語、spec-check の穴の追記）はそのまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、test の穴 3 つ（長さどうしの preview・commit、ログの全行の mutant、L3 の記録詳細を開く順）を是正に入れた。起草役が `5fe0eae1` で直し、Coordinator が差分（30:18、51 の D11・§7.8・D23、DSR の実例、Matrix の T5・T7・T8・T10・T11・T14、AC6 の glob、L3 の fixture）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
+6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。起草役が `ca7bdcc6` で直し、Coordinator が差分（Matrix の Failure Modes・T1・T4・T9 と Mutation の節、packet の前文の数・Ordinary Operation の 3 行目・S5・AC6 と baseline・L3-1・L3-2 の入力物）を読んだ。直したのは検証の計画と数と字面で、Scope の設計は変えていないので plan-gate に留める。Plan Review round 3（天井）へ出す。
 
 ## Owner Effort Budget
 
@@ -390,3 +391,16 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 3）と Codex GPT-6.1 Sol�
 | R7 | Codex #6・Claude #4（P3） | 採る | 長さの行は error に入り上書きの対象にできない。L3 の CSV を一意に作れない | 長さの行は preview の error を確かめ、個数の行だけを上書きにする手順と CSV の行を書いた（JAN の列を入れる。無いと上書きが JAN を消す） |
 | R8 | Codex #7・Claude #5（P3） | 採る | 現状の事実の誤記 | test の単位の UPDATE は 5 か所、ProductForm の既存の read-only の test の fixture は `cm`、行番号を直した |
 | R9 | 相談役 | 採る | 長さどうしの変更が preview・commit の test に無い／「全行にログ」の mutant が残る／L3 で記録詳細を先に開くと旧い語が出る | T7・T8 に `m`→`cm` の行、T11 の「変えない商品」を商品名を変える行に、L3-1 の開く順を明記。Writer への助言の節を Scope に足した |
+
+### Plan Review round 2（2026-10-18、head `17ae3d11`）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 3）と Codex GPT-6.1 Sol（reject、P1 0・P2 2・P3 1）。どちらも Ordinary Operation は成立と判定した。全て採った（Coordinator の裁定）。起草役が `ca7bdcc6` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R10 | Codex #1（P2） | 採る | Failure Modes と T4 が、null の update でログ行が書かれることを失敗としている。§4.4 の手順 6 と本 packet の 30:18・T5 は、変更が無くてもログ行を書き detail を NULL にする | Coordinator が `update_product` の操作ログの記録で、値が違うときだけ key を足しログ行は書くことを確かめた。Failure Modes と T4 を「単位は変わらず、ログ行は足され、detail は NULL」に揃えた |
+| R11 | Codex #2（P2） | 採る | T9 が初期 `plu_dirty=0` だけで、維持と 0 への強制を区別できない | T9 を `plu_target=1` の商品の初期 `plu_dirty` 0 と 1 の表駆動にし、両方で前の値を保つ期待にした。Mutation の節にも足した |
+| R12 | Codex #3（P3） | 採る | 前文の test の file の数と matcher の件数が現物と違う | 数え直し、command と出力を併記した |
+| R13 | Claude #1（P3） | 採る | 操作ログの要約の JSON を字面で書いているが、key の順は serde_json の既定で変わる | 「old が `pcs`・new が `ball` の JSON（key の順は契約にしない）」にし、T1 も JSON として比べる形にした |
+| R14 | Claude #2（P3） | 採る | 30 BIZ-01-D7 の行の未実装の注記 2 つのうち、2 つ目が S5 と AC6 に当たらない | S5 に 2 つ目も外すことを足し、AC6 に 3 本目の `rg` を足した |
+| R15 | Claude #3（P3） | 採る | L3 の入力物の部門が ID だけで、画面では名前で選ぶ | 「部門 毛糸（ID 3）」にした |
