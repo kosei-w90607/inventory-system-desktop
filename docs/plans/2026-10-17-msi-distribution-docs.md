@@ -6,9 +6,9 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 85d9b45e7dce840f76caa067de958f84db008792
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
@@ -29,6 +29,8 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「全件を直し、指摘と差分だけを確かめる round を 1 回足す」と決めた（repo 外の回答台帳 TD-315、介入 1 回目 / 予算 9 回）。起草役が `4dcd4a45` で直し、Coordinator が差分（流れ 5 の場面と表、アプリが起動しないときの保全と前進、予行演習の順と LOCALAPPDATA、M6 の合格条件、写しの SHA-256、診断ログの文）を読んだ。流れ 4・5 は「場面を決める → 表の行で決める」の 1 つの筋で、決めるまで今の DB を動かさない。確認の round（closure）へ出す。
 8. plan-gate（確認の round の是正、2026-10-18、Coordinator）: 確認の round（Codex GPT-6.1 Sol）の是正（Review Response 参照）。owner が「直して、Claude 側と Codex の両方で確認する」と決めた（repo 外の回答台帳 TD-316、介入 2 回目 / 予算 9 回）。起草役が `f4f13ad6` で直し、Coordinator が差分（流れ 5 の「前の版と入力の基準」の 1 か所の定義とそれを引く場面・表・1〜3、前へ進むときの照合、Matrix の C13・FM19・FM20）と、起草役の組の一巡の表を読んだ。2 回目の確認（Claude 側・Codex）へ出す。
 9. plan-gate（2 回目の確認の是正、2026-10-18、Coordinator）: 2 回目の確認（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。owner が「直して、追加の確認なしで plan-approved」と決めた（repo 外の回答台帳 TD-318、介入 3 回目 / 予算 9 回）。起草役が `140a11fe` で直し、Coordinator が差分（流れ 5 の「前の版と入力の基準」の条件、流れ 3 の手順 5 の追加の写し、MSI の選び方、Matrix の C10・C13・FM21・FM22）を読み、起草役が発注の文言から変えた 2 点を具体的な組で追って採った。
+10. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Codex が 2 回目の確認で P1・P2 が無いと報告し、Claude 側の P2 1 件は owner の決定（repo 外の回答台帳 TD-318）どおり直した（Review Response 参照）。Plan Commit は 2 回目の確認の是正と記録の後の版。
+11. plan-approved → implementing（2026-10-18、Coordinator、本 commit）: docs だけの lane で、手順書は Plan Commit までに置いてある。状態だけを進め、Final Review（Minimum 1）へ出す。
 
 ## Owner Effort Budget
 
