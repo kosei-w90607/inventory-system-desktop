@@ -307,6 +307,10 @@ UI層の仕様は [画面設計書](../SCREEN_DESIGN.md) と各function-design�
 - 印刷ボタン: 仕様未定のため Phase 2 では disabled（aria-disabled + Tooltip + cursor-not-allowed）
 - 失敗 4 状態: API fail = 画面全体 Alert / items 空 = 「当月データなし」/ prev_month_comparison 空 = サマリ「比較不可」+ 各行「—」/ 前月だけ fail = 構造的不可能（1 useQuery 設計、Q-5）
 
+**UI-09c レシートの控え（proposed・未実装、D-121）:**
+- 決定は [SCREEN_DESIGN](../SCREEN_DESIGN.md) の「レシートの控え画面」（UI-09c-D1〜D5）。BIZ は BIZ-08 §37.11、CMD は CMD-12 §45.6c。function-design の文書は runtime の lane が作る
+- 日付と番号で EJ の記録を探し、控えの文を等幅で見せる。読むだけ。欠けを知らせ、EJ のファイルを手で選んで埋められる
+
 ### UI-10: 棚卸し画面
 
 **【状態管理】**

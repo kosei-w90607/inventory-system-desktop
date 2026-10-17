@@ -446,6 +446,222 @@ struct DailyReportSdScanSnapshot {
 
 **Z004 と EJ への引継ぎ**（2026-10-16 に D-118 で改めた）: Z004（BIZ-03）と EJ の取込みの lane は IO-09 の列挙と読取り、同じ窓と scan の snapshot の形を使う。取込み済みの見分けは、Z004 は file の hash と、machine_no・精算回数の照合（[32](32-biz-csv-import-service.md) の「計数の置き場と在庫の求め直しの契約」。同じ精算の別の版は取り込まず、精算回数の無い file は取り込まない）、EJ は記録の番号（IO-08 の `number_prefix` + `number`）で行い、EJ を file の hash では見分けない（`XZ` 直下の EJ は精算をまたいで伸びる。SD-09、[IO-08.10](29-io-ej-parser.md#io-0810-日次取込みとの接続io-08-d10設計の申し送り)）。D-116 の全数読取り（`pos_source_scans`・`first_scan_id`・置き場の識別子・読取りの排他）は D-118 で置き換えたので作らない。Z004・日報・EJ を SD から一度に取り込む形（repo 外の回答台帳 TD-265）と EJ の控えの閲覧（TD-264）の設計は後続の lane（[backlog](../backlog.md) の「売上の SD からの一括取込みと EJ の控えの閲覧」）が決める。
 
+### 37.10 SD の締めの一括取込み（BIZ-08-D7・D8・D10、D-121、proposed・未実装）
+
+本節と §37.11 は D-121 の設計で、runtime は後続の lane（[backlog](../backlog.md) の「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」）。§37.3〜§37.9 の D-111 の契約（SD 直読みの runtime が実装する）は書き換えない。後続の runtime が §37.9 の snapshot と CMD-12 の scan に足すものは下の「§37.9 に足すもの」に置く（SD 直読みの runtime の merge の後に足す）。
+
+**関数要求**: 1 回の SD の読取り（§37.9 の scan）で見つけた取り込める日報の束・Z004・EJ を、利用者の 1 回の操作でまとめて取り込む（CV17 の代替、repo 外の回答台帳 TD-265）。各項目は今の取込みの関数（日報は §37.3・§37.4、Z004 は [32](32-biz-csv-import-service.md) の D-118 の新契約、EJ は §37.11）をそのまま順に呼び、項目ごとの結果を返す。
+
+**シグネチャ**:
+
+```rust
+fn commit_register_sd_bulk_import(
+    conn: &mut DbConnection,
+    snapshot: &DailyReportSdScanSnapshot, // §37.9 の snapshot（下の「§37.9 に足すもの」を含む）
+    app_data_dir: &Path,                  // 写しの置き場所（BIZ-08-D5、IO-10）
+) -> Result<RegisterSdBulkResult, BizError>
+```
+
+**型**:
+
+```rust
+// §37.9 に足すもの（後続の runtime。SD 直読みの runtime の契約は変えず、その merge の後に足す）
+// (A) §37.9 の scan は手順 10 の後に、IO-09 で EJ を読む（`XZ` 直下は全部、`XZ_BKUP` は窓の中。上限は手順 5 と同じ）。
+//     形の検査（下の measure_register_sd_shape）で外れた file と `Io`・`TooLarge` の file は ej_files に入れず数えるだけにし、
+//     残りで §37.11 plan_ej_records を呼ぶ
+// (A) IO-09 に bytes を受ける純関数 `measure_register_sd_shape(bytes: &[u8]) -> RegisterSdShape` を足し、
+//     29 §29.7.6 read_register_sd_file の手順 3 と §37.11 手順 1（手で選んだ EJ）がこれを共用する（形の測り方を 2 本にしない。
+//     29 §29.7.6 の文は SD 直読みの runtime の merge の後に (A) が直す）
+// DailyReportSdScan（wire）に足す field:
+//   ej: Option<RegisterSdEjSummary>, // (A) EJ の file が 1 本も無ければ None
+//   z004_new_count: i64,             // (B) 窓の中の Z004 のうち、同じ hash の active な取込み（completed / completed_partial）が無い file の数（24 の `find_blocking_import_by_file_hash`、INV-6 で決める。32 の新契約の検査は scan で回さない）
+// DailyReportSdScanSnapshot に足す field:
+//   ej_files: Vec<SdSourceFile>,    // (A) 上で読んだ形の検査を通った EJ
+//   z004_files: Vec<SdSourceFile>,  // (B) 手順 10 で読んだ Z004 を相対 path つきで持つ（PLU の照合の後も残す）
+struct RegisterSdEjSummary {
+    new_count: i64,             // plan_ej_records の new_records の数（保留した記録を含まない）
+    conflict_count: i64,        // plan_ej_records の conflict_count
+    unreadable_file_count: i64, // scan で外した EJ の file の数（形・Io・TooLarge）+ plan_ej_records の unreadable_files の数
+}
+struct SdSourceFile {
+    sd_relative_path: String, // IO-09 の RegisterSdEntry.relative_path
+    bytes: Vec<u8>,
+}
+
+struct RegisterSdBulkResult {     // BIZ の内部の型。wire は 45 §45.6c の RegisterSdBulkResponse（CMD が変える）
+    items: Vec<RegisterSdBulkItem>, // 処理の順（日報 → Z004 → EJ）。止まったかは Failed の item の有無で決まる
+}
+
+struct RegisterSdBulkItem {
+    source: RegisterSdBulkSource,
+    outcome: RegisterSdBulkOutcome,
+}
+
+enum RegisterSdBulkSource {
+    DailyReport { candidate_key: String, report_date: Option<String> },
+    Z004 { sd_relative_path: String },  // (B)
+    Ej,                                 // EJ の file 全部で 1 項目。ej_files が空なら項目を作らない
+}
+
+enum RegisterSdBulkOutcome {
+    ImportedDailyReport(DailyReportImportResult),
+    ImportedZ004(ImportResult),          // (B)。32 の新契約の知らせと要再確認の一覧を含む
+    ImportedEj(EjImportResult),          // §37.11。新しい記録が 0 件でも ImportedEj（件数で示す）
+    Skipped { message: String },         // 業務の検査で取り込まない。message は各 BIZ の固定の文のまま
+    NeedsIndividualConfirmation,         // 日報の同日追加の確認が要る（BIZ-08-D8 の外）
+    Failed(BizError),                    // 確定の段の失敗。ここで止まる。CMD が 45 §45.7 の変換を当てて wire の文にする
+    NotAttempted,                        // 止まった後の項目
+}
+```
+
+**処理ステップ**:
+
+1. 項目を並べる。(a) 日報: `snapshot.files_by_candidate` の束（§37.9 の `NotImported`）を、IO-07 `parse_daily_report_bundle`（純関数、DB を見ない）で取った中身の `report_date` の昇順、同じ日は精算回数の昇順にする（SD の束は精算回数を持つ。BIZ-08-D6。parse の失敗した束は先頭に置き、手順 2 の §37.3 で Skipped になる）。§37.3 は並べるために先に呼ばない（同じ日の 2 つ目の束の cache が 1 つ目の確定の前の同日の一覧を持ち、§37.4 手順 5 で止まるため）。(b) Z004（runtime B）: `snapshot.z004_files` を IO-02 の精算の識別メタの精算回数の昇順（メタの読めない file は先頭に置き、手順 3 の preview で Skipped になる）。(c) EJ: `snapshot.ej_files` が空でなければ、その全部を 1 項目（`RegisterSdBulkSource::Ej`）。空なら EJ の項目を作らない。順は (a) → (b) → (c)。
+2. 日報の各束（並べた順に 1 束ずつ、前の束の確定の後に）: §37.3 `parse_and_validate_daily_report`（3 本を `sd_relative_path` つき・`source_path` 無しで渡す）を呼ぶ。`Err(BizError::DatabaseError)` は `Failed(err)` にして止める。ほかの `Err`（`ImportError`・`IdempotencyConflict`・`ValidationFailed`）は Skipped（message は BIZ の文のまま）にして次へ進む。`Ok` で `AlreadyImported` は Skipped（`取込み済みです`）、`AdditionalImportConfirmationRequired` は NeedsIndividualConfirmation にして次へ進む。`NoDuplicate` はすぐに §37.4 `commit_daily_report_import(conn, cached_preview, false, app_data_dir)` を呼び、`Ok` は ImportedDailyReport、`Err`（`SourceCopyFailed`・`DatabaseError`・TX の中の再検査の `ImportError`・`IdempotencyConflict` を含む全て）は `Failed(err)` にして止める。
+3. Z004 の各 file（runtime B、1 file ずつ）: [32](32-biz-csv-import-service.md) の `parse_and_validate`（`CsvParseAndValidateRequest { file_bytes, filename: 相対 path の最後の要素 }`）を呼ぶ。32 の新契約の表の拒否と重複の拒否（`ImportError`）は Skipped（message は表の文）。`DatabaseError` は `Failed(err)` にして止める。通れば IO-10 `save_pos_source_copy(app_data_dir, sd_relative_path, bytes)` で写しを書き（BIZ-08-D5 の引継ぎ。失敗は `Failed(BizError::SourceCopyFailed(kind))` で止め、DB を変えない）、32 の確定（D-118 の新契約）を呼ぶ。`Ok` は ImportedZ004、`Err` は `Failed(err)` にして止める。
+4. EJ の項目があれば: §37.11 `import_ej_records(conn, files, app_data_dir)`（各 file を `EjSourceFile { filename, sd_relative_path: Some(..), bytes }` にする）。`Ok` は ImportedEj、`Err`（`SourceCopyFailed`・`DatabaseError`）は `Failed(err)`。
+5. 止まったら、残りの項目（EJ の項目を含む）を NotAttempted にして返す。関数の `Err` は snapshot の形の内部の誤りだけで、項目の失敗は `Ok` の中の outcome で返す。
+6. 各項目の操作ログは呼んだ関数が今どおり書く（日報の `daily_report_import`、Z004 の取込みのログ、EJ の `ej_import`）。一括の操作そのもののログは足さない。
+
+**BIZ-08-D7（締めの一括取込みの順・TX・失敗）**:
+
+- 決定: 項目ごとに今の関数の TX で確定し、全体を 1 つの TX にしない。順は日報 → Z004 → EJ、それぞれの中は精算の順（古い方から）。業務の検査で取り込めない項目（拒否・取込み済み・同日追加の確認が要る）は飛ばして続け、確定の段の失敗（DB の失敗・写しの失敗・TX の中の再検査で状況が変わった）で止める。止まる前に確定した項目は残る。
+- 理由: 日報・Z004・EJ は互いに依らない記録で、どれも今の関数が 1 項目 1 TX で確定し、項目ごとに取り消せる（日報は D-071 の per-import の取消、Z004 は D-118 の SPEC-STK-CNT-D7、EJ は取り消すものが無い）。全体を 1 TX にすると、写し（TX の前に書く、BIZ-08-D5）と Z004 の求め直しを 1 つの TX へ組み直すことになり、1 項目の拒否でその日の全部が入らない。飛ばして続けるのは、拒否が次の読取りでも同じに起きる種類（同じ精算の別の版、レジの番号が合わない、日付と番号の順が合わない）で、止めると以後の項目と EJ が毎回入らなくなるため。確定の段の失敗で止めるのは、同じ原因（容量不足・DB）で続く項目も失敗するため。古い精算から入れるのは、Z004 の欠けの知らせと順の検査（32 の新契約の表の 5）が、取り込み済みの精算との比べで決まるため（新しい方から入れると、入れ終わるまで欠けの知らせが途中で出る）。
+- 棄却案: 全体を 1 TX にする（上の理由）。どの失敗でも続ける（容量不足で全項目が同じに失敗し、結果が長くなるだけ）。業務の拒否でも止める（拒否される項目が 1 つ残ると、以後の項目と EJ が毎回入らない）。同じ精算の日報と Z004 を名前で組にして並べる（Z004 の精算回数は日報と別に進み〈backlog の実測と POS 系列の対応の入力 3〉、Z004 と日報の名前の組は確かめていない）。
+- 保証の範囲: 確定した項目は、それぞれの今の取込みと同じ記録・同じ取消の経路を持つ。項目の中の途中の状態は残らない（各関数の TX）。TX の前に書いた写しが残っても、同じ bytes の写しで害は無い（次は `written: false`）。やり直しは、同じ scan（30 分以内、CMD-12 の scan cache）か SD の読み直しで同じ操作をする。確定済みの項目は日報が `AlreadyImported`、Z004 が同じ hash の拒否、EJ が記録の番号で、飛ばすか数えるだけになる。TX の中の再検査で拒まれた項目は、読み直すと一覧で取り込めない状態に出る。
+- 再検討: 同じ精算の日報と Z004 を 1 つの単位で扱う要件が出たとき。1 回の締めで項目が多くなり、1 項目ずつの確定が遅いと分かったとき。
+
+**BIZ-08-D8（日報の同日追加の確認を精算回数の照合で置き換える）**:
+
+- 決定: §37.3 手順 8 の「`report_date` が同じ別 completed import あり → AdditionalImportConfirmationRequired」を次に置き換える。この束の `settlement_no` が `Some` で、同じ `report_date` の active な completed import（手順 8 の同日の全件）が全て `settlement_no` を持つなら `NoDuplicate`（追加の確認なし）。値の等しいものは同じ手順 8 の BIZ-08-D4 で先に止まっている。それ以外（この束の `settlement_no` が `None`、または同じ日に `settlement_no` が NULL の import が 1 件でもある）は今どおり `AdditionalImportConfirmationRequired`。NULL の有無は 24 §14.18b `exists_same_date_daily_report_import_without_settlement_no`（同じ日の completed に `settlement_no IS NULL` があるか。取り消した取込みは数えない）で決める（`DailyReportImport` の行の DTO は `settlement_no` を持たないので、同日の一覧からは決めない）。SD の経路と手で選んだ経路で同じ規則（値の有無で決め、経路で分けない）。`same_date_imports`・`active_same_date_import_ids` と §37.4 手順 5 の TX の中の同日の再検査は変えない（preview の後に同じ日の取込みが増えたら止まる）。
+- 理由: D-071 の確認は、bytes の違う同じ内容の file（復旧用の書出し等）の二重の計上を利用者が見つけるための残りの守りだった。精算回数がそろう束どうしなら、同じ精算の別の bytes は BIZ-08-D4 が拒み、精算回数の違う束は別の精算である（Z001 / Z002 / Z005 の精算回数は一緒に進み〈D-104〉、日計明細の精算票の題の末尾と 1 対 1 で、使い始めの後は重複が無い〈backlog の実測と POS 系列の対応の入力 1・3・5〉）。確認を残すと、締めの後に売ってもう一度精算した日（店で月に数回、repo 外の回答台帳 TD-279）に、一括取込みが毎回止まる。Z004 の側は D-118 が同じ形に置き換えた。
+- 棄却案: 確認を全部残す（上の理由）。確認を全部外す（`settlement_no` が NULL の取込み〈D-111 より前・layout B〉とは別の精算かを決められない）。精算回数の大小で順を検査する（日報は在庫に効かず、順の食い違いを拒む理由が無い。レジの初期化は BIZ-08-D4 と Z004 の側の検査が拾う）。
+- 保証の範囲: 精算回数が戻り、同じ日に同じ回数の別の精算が起きた場合は BIZ-08-D4 が拒む（安全側）。別の日に同じ回数が出ても、別の精算として入る（正しい）。`settlement_no` が NULL の取込みが同じ日にある間は確認が残る。
+- 後続の runtime が直す所: §37.3 手順 8、pos-tables §12b の「冪等性・同日追加方針」の 2 行目、[55](55-ui-csv-import.md) UI-07-D13（日報の側は状態が `AdditionalImportConfirmationRequired` のときだけ）、`src-tauri/src/biz/daily_report_import_service/parse.rs:159` の分岐、`tests.rs:275`・`:481`・`:536` の期待（精算回数のそろう束どうしなら `NoDuplicate`。起票時に `rg -n 'AdditionalImportConfirmationRequired' src-tauri/src/biz/daily_report_import_service` で数え直す）。wire の enum `DailyReportDuplicateStatus` は変えない。
+- 再検討: 精算回数を読めない日報が SD に現れたとき。日報の精算回数の重複が観測されたとき。
+
+**BIZ-08-D10（CV17 の取込みとの併存と、`XZ_BKUP` へ移す lane を妨げない約束）**:
+
+- 決定: `XZ_BKUP` へ移すアプリの操作（D-111 (1) の (b)）ができるまで店は CV17 の取込みを続ける（D-111 の運用の制約）。その間、同じ精算を CV17 とアプリの両方が読む前提で、次の表のとおり二重に数えない。一括取込みは SD に書かない（IO-09-D3 のまま）。
+
+| 資料 | CV17 が先に移した後に読む（今の順） | アプリが先に読み、後で CV17 が移す | 守り |
+|---|---|---|---|
+| 日報 | `XZ_BKUP` の束を読む。前日までに入れた分は同じ hash で `Imported` | 次の読取りで `XZ_BKUP` の同じ束が同じ hash で `Imported` | hash と BIZ-08-D4（SD-23 が外れて bytes が違っても精算回数で止まる） |
+| Z004（runtime B） | 同じ | 同じ | hash と 32 の新契約の表の 4（同じ machine_no・精算回数の別の hash を拒む） |
+| EJ | 月末までは `XZ` 直下の伸びる file、月末の CV17 の取込みの後は `XZ_BKUP` の file を読む | 同じ記録が `XZ` と `XZ_BKUP` の両方に出る | 記録の番号（§37.11）。file の hash・名前では見分けない |
+
+- (b) の lane への約束: 取込み済みかは中身（日報は active な〈completed の〉取込みの束の hash と各 file の hash〈`source_files_json`〉、Z004 は active な〈completed / completed_partial の〉取込みの hash、EJ は記録の番号と文）で決め、SD の上の名前・置き場所に依らないので、(b) が file を移しても見分けは変わらない。(b) は、移す file が取込み済みかをこの記録で決められる。EJ の file は、§37.11 `plan_ej_records` をその file だけに当てて `new_records` が 0・`conflict_count` が 0・`unreadable_files` が空のとき（全記録の番号と文が保存済みと一致する。比べ方を 2 本にしない）だけ移し、移した file は `XZ_BKUP` の file として取り込む（`XZ` 直下の最後の記録の保留〈§37.11 手順 2a〉がそこで解ける）。conflict を含む `XZ` 直下の EJ はこの条件で移せず `XZ` に残り続けるので、その扱い（移さずに知らせる等）は (b) が決める。EJ の取込み（§37.11）が入る前に (b) を入れるなら、EJ の file は移さない（移すと CV17 と違い、アプリが控えを持たないまま `XZ` から消える）。
+- 理由: CV17 の取込みの有無・順でアプリの結果が変わらないようにする。D-111 の運用の制約と (b) の lane の設計（`_nnnn` の改名・途中の失敗）を本 lane で先取りしない。
+- 保証の範囲: アプリが先に読み、CV17 の取込みで原本の bytes が変わった場合（SD-23 の前提が外れた場合）も、日報・Z004 は精算回数で止まり、EJ は記録の文が違えば保存済みを上書きせず知らせる（§37.11 の conflict）。
+
+### 37.11 EJ の記録の取込みと閲覧（BIZ-08-D9、D-121、proposed・未実装）
+
+**関数要求**: EJ の file（SD の `XZ` 直下・`XZ_BKUP`、または利用者が選んだ file）を IO-08 `parse_ej` で記録に分け、まだ保存していない記録の文を `ej_records`（[pos-tables](../db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」）に保存する。保存した記録を日付と記録の番号で引き、レシートの控えとして見せる（UI-09c、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の「レシートの控え画面」）。EJ は在庫に使わない（ADR SPEC-STK-CNT-D11）。
+
+**シグネチャ**:
+
+```rust
+fn import_ej_records(
+    conn: &mut DbConnection,
+    files: Vec<EjSourceFile>,
+    app_data_dir: &Path,
+) -> Result<EjImportResult, BizError>
+
+fn plan_ej_records(conn: &DbConnection, files: &[EjSourceFile]) -> Result<EjImportPlan, BizError> // DB へ書かない。scan の数え（「新しい控え N 件」）と import の手順 1〜3
+
+fn list_ej_records(conn: &DbConnection, date: Option<String>) -> Result<EjRecordDay, BizError>
+
+fn find_ej_records_by_no(conn: &DbConnection, record_no: String) -> Result<Vec<EjRecordRef>, BizError>
+
+fn get_ej_record(conn: &DbConnection, id: i64) -> Result<EjRecordDetail, BizError>
+```
+
+**型**:
+
+```rust
+struct EjSourceFile {
+    filename: String,                 // 表示用（file 名だけ）
+    sd_relative_path: Option<String>, // SD から読んだ file だけ Some（写しを書く）
+    bytes: Vec<u8>,
+}
+
+struct EjImportPlan {
+    new_records: Vec<NewEjRecord>,    // まだ保存していない記録（24 の insert の入力）
+    files_with_new: Vec<usize>,       // new_records を 1 つ以上持つ file の添字（写しを書く file）
+    already_count: i64,               // 同じ番号・同じ文で保存済み
+    conflict_count: i64,              // 同じ番号で文の違う記録・同じ file に 2 回出た番号（保存しない）
+    held_count: i64,                  // 保存を保留した最後の記録の数（手順 2a）
+    unreadable_files: Vec<String>,    // 形の検査か parse の致命的エラーで読まなかった file の名前
+}
+
+struct EjImportResult {
+    inserted_count: i64,
+    already_count: i64,               // TX の中の比べ（手順 5）の時点で数え直した値
+    conflict_count: i64,              // 同上
+    conflict_numbers: Vec<String>,    // conflict の記録の番号（4 桁の欄 + "-" + 6 桁、昇順、最大 100 件。画面で名指しする。TD-310）
+    held_count: i64,
+    unreadable_files: Vec<String>,
+    gaps: Vec<EjNumberGap>,           // 保存の後の欠け（手順 7）
+}
+
+struct EjNumberGap {
+    machine_prefix: String, // 4 桁の欄
+    from_no: String,        // 6 桁（先頭 0 を保つ）
+    to_no: String,          // 6 桁。from_no と同じなら 1 つの番号
+}
+
+struct EjRecordSummary {
+    id: i64,
+    machine_prefix: String,
+    record_no: String,          // 6 桁
+    printed_at: String,         // `YYYY-MM-DD HH:MM`（記録のまま）
+    kind: String,               // ej_records.kind の code
+    mode: String,               // ej_records.mode の code
+    total_amount: Option<i64>,  // 円。復元できた取引だけ（手順 2）
+}
+
+struct EjRecordDay {
+    date: Option<String>,       // 見せる日（YYYY-MM-DD）。記録が 1 件も無ければ None
+    prev_date: Option<String>,  // 記録のある前の日
+    next_date: Option<String>,  // 記録のある次の日
+    records: Vec<EjRecordSummary>, // 記録の番号の順
+    truncated: bool,            // 1 日 1000 件を超えた（先頭 1000 件だけを返した）
+    gaps: Vec<EjNumberGap>,     // 全期間の欠け
+}
+
+struct EjRecordRef { id: i64, date: String }
+
+struct EjRecordDetail {
+    summary: EjRecordSummary,
+    body_text: String,          // file の bytes を CRLF で分けた行のうち header_line_no と +1 の見出し 2 行と、本文の行（EjLine.text）を、decode したまま（行末の空白を保つ）"\n" でつないだもの
+}
+```
+
+**処理ステップ（`plan_ej_records`・`import_ej_records`）**:
+
+1. 各 file の形を確かめる: CP932 strict・BOM 無し・CRLF だけ（IO-09-D4 と同じ。SD の file も手で選んだ file も、§37.10 の「§37.9 に足すもの」の IO-09 `measure_register_sd_shape` で測る）。外れた file は `unreadable_files` に入れ、読まない。最終改行が無いことだけでは file を外さず、手順 2a で最後の記録を外す。IO-08 `parse_ej` の `Err`（`Empty`・`DecodeFailed`・`NoRecords`）も `unreadable_files` に入れ、BIZ-08-D1 と同じく診断 WARN に code だけを記録する。
+2. 各記録（`EjParseResult.records`。先頭断片は記録に入らないので保存しない）を `NewEjRecord` にする: `machine_prefix` = `number_prefix`、`record_no` = `number`、`printed_at`、`mode`・`kind`（`EjMode`・`EjRecordKind` を pos-tables の code にする。精算票は `settlement_report`・`settlement_completed` も）、`body_text`（`EjRecordDetail.body_text` と同じ作り方）、`total_amount` = 種類が `Sale` で `Restored` のときだけ、`items` の金額の和 + `adjustments` の金額の和（IO-08-D6c の照合の金額と同じ値。照合が合わない記録は `Restored` にならない）。安全な整数の範囲（絶対値 2^53 − 1 以下）を外れたら NULL。それ以外の記録（復元できない取引と、取引以外の全ての種類）は NULL。復元できない記録も文は保存する（控えを見るのに明細の復元は要らない。小数の数量の取引もこれに当たる）。
+2a. 最後の記録の保留: (i) `XZ` 直下の file（`sd_relative_path` の最初の要素が `XZ` で、要素が 2 つ）の最後の記録は、診断の有無に依らず常に保存しない（`held_count` に数える）。レジが追記し続ける file で、最後の記録が書きかけかを形からは決められないため（取引は必須行の欠けで `IncompleteRecord` になるが、設定・領収書・入金などの記録は途中で切れても診断の無い `NoItems` になる。`src-tauri/src/io/ej_parser.rs:678`〜`:689`。`IncompleteRecord` は file の途中の記録にも出るので鍵にしない）。普段の最後の記録は締めの精算票なので、遅れるのは 1 件で、CV17 か `XZ_BKUP` へ移す lane が移した後に `XZ_BKUP` の file として保存される。(ii) 最終改行の無い file（parser が最後の行に `MissingFinalNewline` を出す）の最後の記録は保存しない（`held_count` に数える。その記録は途中で切れている）。(iii) `XZ_BKUP` の file と手で選んだ file は二度と伸びないので、(ii) のほかは保留しない（保留すると最後の記録が永久に欠け、最大の番号の後なので欠けの区間にも出ない）。
+3. 番号（`machine_prefix`, `record_no`）で比べる: 同じ file の中に同じ番号が 2 回以上出たときは、文が同じでも conflict に数えてどれも保存しない（観測の外。IO-08 の構造所見では番号は記録ごとに +1）。同じ呼出しの中で同じ番号が別の file に出たとき（`XZ` と `XZ_BKUP`）、`body_text` が同じなら 1 つにし、違えば conflict に数えてどちらも保存しない。保存済み（24 §14.25 `find_ej_record_texts`）と比べ、無ければ `new_records`、同じ文なら `already_count`、違う文なら `conflict_count`（保存済みを上書きしない）。conflict は診断 WARN に番号だけを記録する（文を載せない）。
+4. （`import_ej_records` だけ）`files_with_new` の file のうち `sd_relative_path` が `Some` のものを、IO-10 `save_pos_source_copy` で TX の前に書く。1 本でも失敗したら DB を変えずに `BizError::SourceCopyFailed` を返す（BIZ-08-D5 と同じ）。手で選んだ file は写さない。
+5. TX を始め、手順 3 の保存済みとの比べを TX の中でやり直す（plan の後に別の取込みが入った場合）。まだ無い記録を 24 §14.25 `insert_ej_record` で入れ、結果の `already_count`・`conflict_count` はこの TX の中の比べで数え直した値にする（plan の値を写さない）。COMMIT。COMMIT の前の失敗は ROLLBACK で何も入れず、`DatabaseError` を返す（手順 4 の写しは残るが、同じ bytes の写しで害は無い）。
+6. 操作ログ `ej_import` を best-effort で書く（件数だけ。番号・文・file 名を載せない）。
+7. 欠けを 24 §14.25 `list_ej_number_gaps` で求めて返す。COMMIT の後のこの読取りが失敗しても取込みは失敗にせず、`gaps` を空にして診断 WARN を記録する（保存は済んでいる。控えの画面を開くと欠けを求め直して出す〈UI-09c-D5〉）。
+
+**処理ステップ（閲覧）**:
+
+- `list_ej_records`: `date` が `None` なら記録のある最も新しい日（無ければ `date: None`・空の一覧）。`Some` は `YYYY-MM-DD` の暦日でなければ `BizError::ValidationFailed("日付の形が正しくありません")`。その日（`printed_at` の先頭 10 文字）の記録を記録の番号の順に最大 1000 件返し、超えたら `truncated = true`。`prev_date`・`next_date` は記録のある隣の日。`gaps` は手順 7 と同じ。
+- `find_ej_records_by_no`: 1〜6 桁の ASCII 数字でなければ `BizError::ValidationFailed("記録の番号は 6 桁までの数字で入れてください")`。先頭を 0 で埋めて 6 桁にし、同じ番号の記録を全ての 4 桁の欄から返す（レジが 1 台なら 0 件か 1 件）。
+- `get_ej_record`: 無ければ `BizError::NotFound`。
+
+**BIZ-08-D9（EJ の記録の取込みと閲覧）**:
+
+- 決定: EJ は記録の番号（4 桁の欄 + 6 桁の番号）を鍵に、記録の文（見出しと本文の行）をそのまま保存し、レシートの控えとして見せる。明細の復元の結果は保存せず、取引の合計だけを一覧の手がかりに持つ。同じ番号で文の違う記録は保存済みを上書きせず知らせる。`XZ` 直下の file の最後の記録は保存を保留し、移された後の `XZ_BKUP` の file で保存する（手順 2a。書きかけの記録を保存すると、後の完全な記録が永久に conflict になるため）。欠けは番号の連続で決め、区間で知らせる。EJ を在庫・売上の集計・Z004 との照合に使わない。
+- 理由: 店が見たいのはレシートの控え（repo 外の回答台帳 TD-162・TD-264）で、明細の復元が要るのは在庫に使うときだけだった。文を保存すれば、復元できない形（小数の数量、未知の行）の取引も控えとして見える。番号は記録ごとに +1 で、file と精算をまたいで戻らず（IO-08 の構造所見）、`XZ` 直下の file は伸び同じ記録が `XZ` と `XZ_BKUP` に入りうるので、file の hash では見分けられない（IO-08.10）。EJ を在庫に使わないのは、D-118（ADR SPEC-STK-CNT-D11、owner の決定 TD-265 の Q2 = A＋B）で在庫を記録の窓と精算の並びで決めることにしたからで、EJ は商品コードを持たず、名称だけでは PLU の販売と部門キーの販売を分けられない（backlog の実測と POS 系列の対応の入力 4 の (d)）。
+- 棄却案: 明細（名称・数量・金額）を表に分けて保存する（控えを見るだけなら文で足り、復元できない取引が見えなくなる）。EJ の file を丸ごと DB に入れて見るときに parse する（伸びる file の同じ記録が重複し、番号で引けない）。同じ番号の新しい文で上書きする（レジの記録は変わらないはずで、違いは読み違いか異常の印。上書きすると前の控えが消える）。最後の記録を `IncompleteRecord` のときだけ保留する（設定・領収書・入金などは切れても診断が出ず、`IncompleteRecord` は file の途中の記録にも出る）。`XZ_BKUP` と手で選んだ file の最後の記録も保留する（二度と伸びないので永久に欠け、欠けの区間にも出ない）。欠けを file の有無・名前の日付で決める（精算の後の販売は次の精算の file に入る。IO-08.10）。
+- 保証の範囲: 保存するのは形の検査を通った file の、見出しのある記録だけ。先頭断片（最初の file の見出しの形に当たらない記録）は保存しない。欠けの知らせは保存した番号の最小から最大の間だけで、アプリを使い始める前の記録は欠けに数えない。窓（§37.9 手順 2）は日報の最後の取込みの日まで戻るが、日報だけを 1 件ずつの経路（行の「確認する」か手で選ぶ経路）で取り込み、一括取込み（EJ）を 30 日より長く使わなかった後は、窓より前の `XZ_BKUP` の EJ を読まないので欠けとして出る（手で file を選んで埋める。UI-09c）。`XZ` 直下の最後の記録の保留（手順 2a）は最大の番号の後なので欠けに出ない。`XZ` 直下の EJ は新しい記録のある日ごとに file 全体を写す（IO-10 は違う bytes を別の名前で足す）ので、写しは約 1 か月分の file が日ごとに 1 本ずつ増える（保持と削除は D-111 の未決 A）。同じ番号の記録が別の 4 桁の欄（別のレジ）にあれば別の記録として持つ。
+- 再検討: レジの設定で記録の番号が精算ごとに戻るようになったとき（鍵に日付か精算を足す）。控えを金額・商品名で探す要望が出たとき（repo 外の回答台帳の問い。UI-09c の Open Questions）。レジの機種が変わるとき（IO-08 を取り替え、`ej_records` の鍵を見直す）。
+
 ### 更新履歴
 
 | 日付 | PR | 内容 |
@@ -457,3 +673,4 @@ struct DailyReportSdScanSnapshot {
 | 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §37.3 手順 1a に SD を抜いた後の file の在否の確認（(iii)）と、root を取る処理を受ける内部関数 `_with_sd_lookup`。写しの失敗を `BizError::SourceCopyFailed` にして UI が preview に戻れる形にした。§37.8 と D5 の「動かさない」を (a) の段階に限った。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | 選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。手で選んだ SD 上の file を SD の入力にする §37.3 手順 1a。BIZ-08-D4 の照合の repository 関数（24 §14.18a）。§37.4 の手順を 2a（D6）・2b（D5）の順に直した。`source_files_json` を内部の serialize 用の型で書く。同じ bytes の組で `XZ` の path を残す。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | BIZ-08-D6: SD の経路は精算回数のある束だけを取り込む（scan・preview・commit）。§37.3 手順 4 の精算回数の保存の文を IO-07-D5 → cache → DB の契約に直した。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | §37.10（BIZ-08-D7 締めの一括取込みの順・TX・失敗、BIZ-08-D8 日報の同日追加の確認を精算回数の照合で置き換える、BIZ-08-D10 CV17 との併存と (b) を妨げない約束）と §37.11（BIZ-08-D9 EJ の記録の取込みと閲覧）を proposed で足した。§37.3〜§37.9 は変えていない。Plan Review round 1 の是正で、内部の結果の `Failed(BizError)` と EJ の項目、日報の並べる鍵、同日の NULL の判定の repo、`XZ` 直下の最後の記録の保留、`body_text` の見出しの取り方、EJ の移動の条件を直した。 |

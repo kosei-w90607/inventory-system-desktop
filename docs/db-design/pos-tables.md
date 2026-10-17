@@ -231,6 +231,34 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 
 ---
 
+## SD の一括取込みと EJ の控えの契約（proposed・未実装、D-121）
+
+EJ の記録の文をレシートの控えとして持つ表（BIZ-08-D9、[37 §37.11](../function-design/37-biz-daily-report-import-service.md)）。migration は後続の runtime の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」）が、その時点の版の番号で足す。`sale_records`・`inventory_movements`・日報の表と結ばない（EJ は在庫と売上の集計に使わない。ADR SPEC-STK-CNT-D11）。原価の列を持たないので、原価の lane の vB の起点の検査（[22 §16](../function-design/22-mnt-migration.md)）の対象の表にならない。DB の 1 file に入るので backup・restore の対象になる。
+
+### ej_records カラム定義
+
+| カラム名 | 型 | 制約 | 説明 |
+|---------|---|----|------|
+| id | INTEGER | PK AUTOINCREMENT | 記録の ID |
+| machine_prefix | TEXT | NOT NULL, CHECK(length(machine_prefix) = 4) | 記録の見出しの 4 桁の欄（IO-08 の `number_prefix`。Z004 の machine_no と同じ値を観測） |
+| record_no | TEXT | NOT NULL, CHECK(length(record_no) = 6) | 記録の 6 桁の番号（IO-08 の `number`。先頭 0 を保つ）。UNIQUE(machine_prefix, record_no) |
+| printed_at | TEXT | NOT NULL, INDEX | 記録の日時（`YYYY-MM-DD HH:MM`、レジの時計のまま） |
+| mode | TEXT | NOT NULL, CHECK(mode IN ('normal','return','training','settlement','inspection','program','program1','program3','off','unrecognized')) | 見出しのモード欄（IO-08 の `EjMode`） |
+| kind | TEXT | NOT NULL, CHECK(kind IN ('sale','cancelled','cash_movement','receipt','settlement','inspection','settings','training','unclassified')) | 記録の種類（IO-08 の `EjRecordKind`） |
+| settlement_report | TEXT | NULLABLE, CHECK(settlement_report IN ('daily','plu','attendance')) | 精算票の帳票（kind = settlement だけ） |
+| settlement_completed | INTEGER | NULLABLE, CHECK(settlement_completed IN (0,1)) | 精算票の終わりの印字の有無（kind = settlement だけ） |
+| total_amount | INTEGER | NULLABLE | 取引の合計（円）。kind = sale で明細を復元できた記録だけ（37 §37.11 手順 2） |
+| body_text | TEXT | NOT NULL | 見出し 2 行と本文の行を decode したまま "\n" でつないだ文（レシートの控え） |
+| imported_at | TEXT | NOT NULL | 保存の日時（YYYY-MM-DDTHH:MM:SS） |
+
+### 設計意図
+- 鍵は記録の番号で、file の hash・名前ではない（`XZ` 直下の EJ は伸び、同じ記録が `XZ` と `XZ_BKUP` に入る。IO-08.10）。
+- 明細を表に分けない。控えを見るには文で足り、復元できない記録（小数の数量・未知の行）も見える。`total_amount` は一覧で探す手がかりだけ。
+- insert-only。UPDATE・DELETE しない（同じ番号で文の違う記録は上書きせず知らせる。BIZ-08-D9）。取消の操作は持たない。
+- 店の実データ（品名・金額）を持つ表なので、tracked の fixture は合成の EJ だけにする。
+
+---
+
 ## B-2: Z001/Z002/Z005日報取込み仕様（2026-06-30 設計）
 
 ### 処理パイプライン: Parse bundle → Validate bundle → Preview → Commit
@@ -454,3 +482,4 @@ CSV取込み: 2026/03/21の精算データ
 |---|---|---|
 | 2026-08-16 | PR #79 | D-071 / SPEC-SDI-D1〜D8: business dateをgroup keyとし、両pipelineのinsert-only TX、active snapshot再検証、per-import rollbackを正本化。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | `daily_report_imports.settlement_no` と同じ精算の二重取込みの拒否（BIZ-08-D4）。入力の標準をレジの SD の直読みにした。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | 「SD の一括取込みと EJ の控えの契約」（`ej_records`）を proposed で足した。 |
