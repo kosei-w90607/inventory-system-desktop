@@ -12,7 +12,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R4
 - Plan Commit: pending
 - Amendments: none
@@ -29,6 +29,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 1. kickoff → spec-check（2026-10-18、起草役）: Coordinator の発注（D-118 の runtime の (a)）を Scope にし、規模を数えて 1 lane・1 PR のままと決め、Risk を R4 と記録した（下の Risk）。
 2. spec-check → design（2026-10-18、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1〜D3・D9・D10・D12、tracking・master・transaction の「計数の置き場と在庫の求め直しの契約」、[21](../function-design/21-io-inventory-repo.md)・[30](../function-design/30-biz-product-service.md)・[31](../function-design/31-biz-inventory-service.md)・[36](../function-design/36-biz-integrity-check.md)・[75](../function-design/75-ui-integrity-check.md) の同名の節、[22 §16](../function-design/22-mnt-migration.md)。設計の更新が要る点が 7 つあった（下の Design Readiness の「必要な設計成果物」）。
 3. design → plan-draft（2026-10-18、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本に置いた（D-123 と D-118・D-119 の Superseded in part の行、22 §16 の順の段と §19、ADR D10・D12、tracking・pos・ARCHITECTURE・DB_DESIGN・mnt-task-specs の作り直しの文、21・31・36・75 の (a) の細部、backlog の 2 項目、Plans.md の順の 1 文）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-18、Coordinator）: packet・Matrix と正本は起草役の commit（`82d6b030`）にある。Coordinator は Risk（R4 の理由は作り直しでなく、行のある `inventory_movements` の作り直しと写しの書換え）・Goal と失敗定義・Ordinary Operation・owner の判断事項・横断の約束 Y1〜Y8・Contract Probe P1〜P6・Data Safety・残りの危険を読み、TD-311 の写しが D-123 として置かれ D-118・D-119 に Superseded in part の行があること、作り直しが「消さずに移す」で閉じていること、止まる DB で原因と直し方を名指しすること（TD-310）、並走の lane の節（22 §17・§18、30）を書き換えていないことを確かめた。(a) と (b) の境の細部（Z004 の phase の CHECK ほかを (b) へ）と、1 lane・1 PR の判断は起草役の判断のまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
