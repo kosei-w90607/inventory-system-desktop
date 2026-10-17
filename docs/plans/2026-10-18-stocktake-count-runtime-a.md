@@ -31,6 +31,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 3. design → plan-draft（2026-10-18、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本に置いた（D-123 と D-118・D-119 の Superseded in part の行、22 §16 の順の段と §19、ADR D10・D12、tracking・pos・ARCHITECTURE・DB_DESIGN・mnt-task-specs の作り直しの文、21・31・36・75 の (a) の細部、backlog の 2 項目、Plans.md の順の 1 文）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-18、Coordinator）: packet・Matrix と正本は起草役の commit（`82d6b030`）にある。Coordinator は Risk（R4 の理由は作り直しでなく、行のある `inventory_movements` の作り直しと写しの書換え）・Goal と失敗定義・Ordinary Operation・owner の判断事項・横断の約束 Y1〜Y8・Contract Probe P1〜P6・Data Safety・残りの危険を読み、TD-311 の写しが D-123 として置かれ D-118・D-119 に Superseded in part の行があること、作り直しが「消さずに移す」で閉じていること、止まる DB で原因と直し方を名指しすること（TD-310）、並走の lane の節（22 §17・§18、30）を書き換えていないことを確かめた。(a) と (b) の境の細部（Z004 の phase の CHECK ほかを (b) へ）と、1 lane・1 PR の判断は起草役の判断のまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `3523401a` で直し、Coordinator が差分（Matrix の「既存の test の移し方」T1〜T6 と、S1・S2・S4・S6 がそれを引く形、22 §19 の手順 2 の暦日の検査と手順 2・8 の作り直しの案内、Contract Probe P7、S1〜S6 の検証の単位、L3-1 の控えと合格基準、`per_page`、数の集計、ADR の Context の注記）を読んだ。Scope の範囲と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
+6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `c3f98aa6` で直し、Coordinator が差分（31 の業務日の形と暦の検査を書く側の 1 か所にしたこと、22 §19 の手順 2 の拒む 3 つの条件と手順 8・9、21・31 の新しい関数のシグネチャ、Contract Probe P6・P7 の実測、Matrix の M4・M6・W1・W5・W7・T2）を読んだ。Scope と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 
 ## Owner Effort Budget
 
@@ -461,3 +462,18 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 5）と Codex GPT-6 Astra�
 | R10 | Codex #8・Claude #4（P3） | 採る | ADR の Context に旧い承認の条件が注記なしで残る | D-123 で置き換えた旨を足した |
 
 起草役の問いの Coordinator の裁定（2026-10-18）: 業務日の DB の CHECK は形だけのまま（暦日は書く側の検査と vL の手順 2 が守る。CHECK に `date()` を入れると、作り直しの起点の判定が SQLite の関数に依る）。開き直しの test は発注どおり棚卸しの行を消して vL の版を確かめる形を採る。ADR の注記の形は起草役のとおり。
+
+### Plan Review round 2（2026-10-18、head `3548771f`）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra（reject、P1 0・P2 2）。全て採った（Coordinator の裁定）。日付の検査を個別に塞がず、書く側（31）と移行（22 §19）の各 1 か所に置かせた（owner の決定 TD-296 の 5a）。起草役が `c3f98aa6` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R11 | Codex #1（P2） | 採る | vL の暦日の検査式の NULL の扱いが決まっておらず、暦にない日付が新しい表へ写りうる | 22 §19 の手順 2 を、参照先の行が無い・形が外れる・`date(d) IS NOT d` の 3 つで拒む形にした。Contract Probe P7 で同梱の SQLite の振舞いを測り、M4 に暦にない日付の case を足した |
+| R12 | Codex #2（P2） | 採る | chrono の読み書きの一致だけでは `YYYY-MM-DD` の形を保証しない | 31 の業務日の検査を「形（長さと ASCII の数字）→ 暦（chrono）」の 2 段にし、レジ処理済みの返品・交換の保存も同じ検査を通ると書いた。P6 と W の入力に足した |
+| R13 | Claude #1（P3） | 採る | 新しい関数が設計書に code block の形で無く、compliance の test が red になる | 21・31 に `rust` の code block のシグネチャを置き、`pub(crate)` で足りるものはそうした |
+| R14 | Claude #2（P3） | 採る | demo の初期データの販売の記録の業務日 | 売上ごとの日付を業務日にすると分けて書いた |
+| R15 | Claude #3（P3） | 採る | 手順 1 (b) の条件を M4 が試さない | case を足した |
+| R16 | Claude #4（P3） | 採る | 手順 9 の失敗に原因と直し方が無い。手順 8 の操作ログの値が決まっていない | 手順 9 に作り直しの案内を足し、手順 8 の書き方と値を決めた |
+
+起草役の問いの Coordinator の裁定（2026-10-18）: demo の初期データの販売の記録は参照先の種類が NULL で、計数が入った後の窓の判定で初期在庫と見分けられない。(a) では計数が無いので値は変わらず、(b) の起票で扱う（(b) の起票の発注に入れる）。計数の一覧の順を id の順にしたこと、`sales_service` の日付の誤りの文の出し分けが変わることは採る。
