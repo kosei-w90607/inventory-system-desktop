@@ -6,9 +6,9 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 8dd4ec52dc118a2f84213fa6b46cfd9821a5855d
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
@@ -27,6 +27,8 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `253ef96c` で直し、Coordinator が差分（37 §37.10 の内部の結果と手順 1〜5・BIZ-08-D8・D10、§37.11 の手順 1・2a・3・5・7 と `body_text`・保証の範囲、24 §14.18b、45 §45.6c、55 UI-07-D17、backlog の申し送り、Matrix の追加の行）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `f4f5faf9` で直し、Coordinator が差分（37 §37.11 の保存の規則を形と日付の検査 → 伸びうるかの判定と保留 → 番号と文の比べ → 保存 → 数と名指しの 1 つの筋に書き直したこと、伸びうるかを file の名前の規則で決めること、§37.10 の scan で外した名前・移す条件・Z004 の error の振り分け、45 の生成 enum、24 の型の所有、55 の知らせの文）と、起草役の組の一巡の表を読んだ。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-317、介入 1 回目 / 予算 9 回）。起草役が `23be816e` で直し、Coordinator が差分（UI-07-D17 の Z004 の部分成功と保留・食い違い・読めない file だけのときのボタンの条件、§37.11 手順 3 (d) の保留した記録の確かめ直しを正本 1 か所にしたこと、控えの query の key、並べる鍵、番号の一周）を読んだ。
+8. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側が round 3 で P1・P2 が無いと報告し、Codex の P2 2 件は owner の決定（repo 外の回答台帳 TD-317）どおり直した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。
+9. plan-approved → implementing（2026-10-18、Coordinator、本 commit）: docs だけの design lane で、設計の出力は Plan Commit までに正本にある。状態だけを進め、Final Review（Minimum 1）へ出す。
 
 ## Owner Effort Budget
 
