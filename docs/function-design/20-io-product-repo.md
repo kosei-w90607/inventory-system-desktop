@@ -219,8 +219,10 @@ fn insert_jan_alias(conn: &DbConnection, old_jan: &str, product_code: &str) -> R
 - `insert_product`・`update_product` は別名を扱わない。`products.jan_code` を書くと、DB の trigger が同じ JAN の別名を同じ transaction の中で消す（master-tables §1a。IO の関数は何もしない）。
 
 **エラーハンドリング**:
-- 別名の表の trigger の拒否（その JAN を持つ商品がある）・外部キー違反・SQL 実行失敗 → DbError::QueryFailed(詳細)（BIZ-01 が先に条件を確かめるので、trigger の拒否は通常は起きない）
-- PRIMARY KEY 重複 → DbError::DuplicateKey(old_jan)（不変条件により、その JAN を持つ商品が直前まであった別名は無いので、通常は起きない）
+既存の `From<rusqlite::Error>`（`src-tauri/src/db/mod.rs` の DbError の変換）のまま、新しい変換を足さない:
+- 別名の表の trigger の拒否（`RAISE(ABORT)`、その JAN を持つ商品がある）・SQL 実行失敗 → DbError::QueryFailed(詳細)（BIZ-01 が先に条件を確かめるので、trigger の拒否は通常は起きない）
+- 外部キー違反（787、商品が無い）→ DbError::ForeignKeyViolation(SQLite の message)
+- PRIMARY KEY 重複（1555）→ DbError::DuplicateKey(SQLite の message)（不変条件により、その JAN を持つ商品が直前まであった別名は無いので、通常は起きない）
 
 #### find_plu_dirty_products
 

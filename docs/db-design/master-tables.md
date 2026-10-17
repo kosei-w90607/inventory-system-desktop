@@ -156,7 +156,7 @@
 | `product_jan_aliases_reject_held` | `BEFORE INSERT ON product_jan_aliases`（`products` にその JAN を持つ行がある） | `RAISE(ABORT, 'jan_alias_held_by_product')` |
 
 - 商品がその JAN を持った時点で別名は消える（商品フォームの新規、商品 CSV の新規・上書き、将来の経路、test の fixture のどれでも）。消えた別名は戻らない（その後にその商品が JAN を手放しても、前の別名は生き返らない）。
-- 別名の行は書き換えない（repo に更新の関数を置かない。消すのは上の trigger だけ）。商品は物理削除しない（INV-8）ので、`product_code` の参照は切れない。
+- 別名の行は書き換えない（repo に更新の関数を置かない。消すのは上の trigger だけ）。別名の UPDATE は DB では拒まない（trigger は INSERT だけを縛る）。別名を更新する経路を足すときは、同じ不変条件の `BEFORE UPDATE` の拒否の trigger を同じ migration の規則（22 §18）で足す。商品は物理削除しない（INV-8）ので、`product_code` の参照は切れない。
 - 書く経路は BIZ-01 の商品 CSV の上書き（[30](../function-design/30-biz-product-service.md) BIZ-01-D9）だけ。読む経路は BIZ-03 の商品の引き当て（32 §15.3 手順 4 b）と BIZ-01 の問いの判定だけ。
 
 ### migration（D-122、runtime の lane）
