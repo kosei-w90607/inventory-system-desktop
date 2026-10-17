@@ -11,9 +11,9 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 290c8baa57ad74742bf122e40086316f81254377
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
@@ -32,6 +32,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、test の穴 3 つ（長さどうしの preview・commit、ログの全行の mutant、L3 の記録詳細を開く順）を是正に入れた。起草役が `5fe0eae1` で直し、Coordinator が差分（30:18、51 の D11・§7.8・D23、DSR の実例、Matrix の T5・T7・T8・T10・T11・T14、AC6 の glob、L3 の fixture）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。起草役が `ca7bdcc6` で直し、Coordinator が差分（Matrix の Failure Modes・T1・T4・T9 と Mutation の節、packet の前文の数・Ordinary Operation の 3 行目・S5・AC6 と baseline・L3-1・L3-2 の入力物）を読んだ。直したのは検証の計画と数と字面で、Scope の設計は変えていないので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-315、介入 1 回目 / 予算 9 回）。起草役が `9cb6ac2c` で直し、Coordinator が差分（S5 と所有表の §7.5、AC3 の subshell と baseline、S1〜S3 の compile の単位、Writer への助言の定義、Matrix の anchor、comment の一覧）を読んだ。
+8. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側が round 3 で P1・P2 が無いと報告し、Codex の P2 1 件は owner の決定（repo 外の回答台帳 TD-315）どおり直した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。実装の commit はまだ無い。
 
 ## Owner Effort Budget
 
