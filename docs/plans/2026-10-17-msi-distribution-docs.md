@@ -26,6 +26,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet と手順書は起草役の commit（`1ef45cbd`）にある。Coordinator は手順書の全文と packet の全文（Goal の失敗定義・Ordinary Operation・Scope と所有表・AC・Design Readiness・Contract Probe・Data Safety）を読み、流れ 5 が DB の版の上がり方と入力の前後で分かれていること、未確認の振舞いが M1〜M9 に揃っていること、差分が docs の 4 file だけで店の運用の細部や実データが無いことを確かめた。手順書を plan-first の commit に置く形は docs だけの lane の先例どおりとして採る。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、「22 §16 の回復の番号が無い段は置かない」の原理と予行演習の DB の隔離を是正に入れた。起草役が `356663cd` で直し、Coordinator が差分（流れ 5 の表と 1・2、保管の規則、予行演習の準備と片付け、AC6）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Astra）の是正（Review Response 参照）。Risk を R3 に上げた。起草役が `c68f6504` で直し、Coordinator が差分（初回の導入の条件、流れ 4 の照合と起動が止まったとき、流れ 5 の今の DB の版の知り方と表と 1・2、予行演習の片付け、Risk・Contract Ledger・Matrix の新設）を読んだ。流れ 4・5 は今の DB の版を正とする 1 つの筋に書き直され、店の DB に作り直しが当たる経路が無いことを確かめた。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
+7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「全件を直し、指摘と差分だけを確かめる round を 1 回足す」と決めた（repo 外の回答台帳 TD-315、介入 1 回目 / 予算 9 回）。起草役が `4dcd4a45` で直し、Coordinator が差分（流れ 5 の場面と表、アプリが起動しないときの保全と前進、予行演習の順と LOCALAPPDATA、M6 の合格条件、写しの SHA-256、診断ログの文）を読んだ。流れ 4・5 は「場面を決める → 表の行で決める」の 1 つの筋で、決めるまで今の DB を動かさない。確認の round（closure）へ出す。
 
 ## Owner Effort Budget
 
@@ -288,3 +289,20 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 5）と Codex GPT-6.1 Astr
 - TD-311 の durable な記録: 並走の棚卸しの runtime の lane（D-123 の予定）が D-119 (8)・22 §16 を TD-311 に合わせて直す。本 lane は台帳の ID を引くだけにする。先に merge した側の 22 §16 の文に、後の側が参照を合わせる。
 - 初回の導入（リリース）が原価の lane と棚卸しの runtime の配布の後になる帰結: owner に確かめる（本 round の review が通った後に他の packet の問いとまとめて聞く）。答えが無い間は手順書のとおり（作り直しの起点を全部含む版まで店の PC に入れない）。
 - 前の版の拒否の文言を実機で見る組が予行演習に無いこと: Residual Test Gaps のまま残す（拒否の文言は自動 test が固定している）。round 3 で reviewer が足すべきと判断すれば足す。
+
+### Plan Review round 3（2026-10-18、head `5416a14f`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 3）と Codex GPT-6 Astra（reject、P1 0・P2 3・P3 1）。全て採った（Coordinator の裁定）。round の天井で P2 が残ったので owner に諮り、「全件を直し、指摘と差分だけを確かめる round を 1 回足す」と決まった（repo 外の回答台帳 TD-315）。起草役が `4dcd4a45` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R20 | Claude #1（P2） | 採る | 流れ 5 の版の知り方の場面が最初の起動に限られず、入力の後に止まった場合も表を通らずに DB を移す手順へ進む | 流れ 5 を「場面を決める → 表の行で決める」に書き直した。場面 1 = 1 度でも起動の後の照合まで進んだ版、場面 2 = 最初の起動が止まった版。決めるまで今の DB を動かさないことをどの場面にも掛けた |
+| R21 | Codex #1（P2） | 採る | 起動できないときの前進が、起動したアプリを前提にする流れ 3 を指す | 「アプリが起動しないときの保全」（元の file を残して写し、SHA-256 を照らす）と、流れ 5 の 3（保全 → backup と前の版の MSI を保つ → 修正版を流れ 4 の手順 2 から）を足した |
+| R22 | Codex #2（P2） | 採る | 予行演習で作業フォルダーの旧 DB の確かめが最初の起動より後 | 確かめを版 A の最初の起動の前へ移し、あれば起動しない |
+| R23 | Codex #3（P2） | 採る | M6・M7 が戻した後の DB の中身を判定しない | M6 の合格条件に、版 B で控えた商品・在庫・履歴が版 A で同じであることを足した |
+| R24 | Claude #2（P3） | 採る | 「より新しい版」で止まったときの MSI の選び方が今入れた MSI を指しうる | 「扱える DB の版」が「データの版: *N*」以上の MSI にし、記録に無ければ止める |
+| R25 | Claude #3（P3） | 採る | 2 か所への写しを確かめる方法が無い | 元と写しの SHA-256 を照らして記録し、違えば更新を始めない |
+| R26 | Claude #4（P3） | 採る | 予行演習の退避が `%APPDATA%` 側だけ | `%LOCALAPPDATA%\com.kosei.inventory` を退避・復帰に足した |
+| R27 | Codex #4（P3） | 採る | 起動を止めた文言が診断ログに必ず残ると書いている | 「診断ログが使えれば記録される。画面の文言は必ず全文控える」に揃えた |
+
+起草役の問いの Coordinator の裁定（2026-10-18）: 修正版で入力の後に照合するとき、在庫の数は owner が見て入力を始めると決める形を採る（比べる控えが無い失敗の経路だけで、介入が増えるのはその場合だけ）。`%LOCALAPPDATA%` の folder を開発中のアプリも使うかは 22 §16 の未確認の前提のまま、予行演習の項目に足すかは後続の項目で決める。
