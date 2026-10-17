@@ -115,7 +115,7 @@ fn quantity_hundredths_to_units(quantity_hundredths: i64) -> f64
 
 **IO-07-D5（束の精算回数を返す、[D-111](../decision-log.md#d-111-毎日の売上データはレジの-sd-から直接読むcv17-は-plu-の書込みだけ2026-10-06)）**:
 
-- 3 本とも精算回数を読め（IO-07-D3）、値がそろう束だけ `settlement_no = Some(値)` にする。1 本でも読めない束（layout B を含む）と、値が違う束（`settlement_mismatch`）は `None`。
+- 3 本とも精算回数を読め（IO-07-D3）、値がそろう束だけ `settlement_no = Some(値)` にする。1 本でも読めない束（layout B を含む）と、値が違う束（`settlement_mismatch`）は `None`。そろった値が `i64` に収まらない束も `None`（DB の INTEGER と照合の型は `i64`。読めないのと同じ扱いで、SD の経路では BIZ-08-D6 が止める。IO-07-D3 の一致の判定はこの変換の前の値で行い、変えない）。`0000` は `Some(0)`。
 - 使い道は BIZ-08 の「同じ精算を別の bytes で二重に取り込まない」guard（BIZ-08-D4）と、SD の経路で `None` の束を取り込まない guard（BIZ-08-D6）だけ。IO は精算回数の意味（系列・リセット・欠番）を解釈しない。
 - 棄却案: 1 本でも読めた値を束の値にする（layout B の束では Z001 だけの値になり、ほかの 2 本の出所を確かめない値で guard が判定する）、文字列で返す（IO-07-D3 は先頭の 0 を落として整数で比べる。`0005` と `5` が別の値になる）。
 
@@ -297,7 +297,7 @@ enum RegisterSdError {
     MissingSalesArea,               // root に `XZ` が無い
     InvalidPath,                    // read の相対 path が root の外を指す
     TooLarge { relative_path: String },
-    Io { relative_path: String, kind: std::io::ErrorKind },
+    Io { relative_path: String, kind: std::io::ErrorKind }, // relative_path は root からの相対 path。ただし `check_selected_file_present`（§29.7.4 手順 5）だけは選んだ file の path の文字列そのもの（root が無いので相対にできない）。どちらも診断にだけ使い、利用者向けの文に入れない（BIZ は固定の文にする）
 }
 ```
 

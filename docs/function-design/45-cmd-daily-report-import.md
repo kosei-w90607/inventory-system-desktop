@@ -154,7 +154,7 @@ struct RegisterSdScanResponse {
 **処理ステップ**:
 1. `selected_path` を BIZ-08 の `DailyReportSdSelection`（37 §37.9。`None` → `Auto`、`Some` → `Selected(PathBuf)`）にする。CMD は IO-09 の型を使わない（`src-tauri/tests/architecture_test.rs` の LAYER_RULES で cmd → io は禁止）。空文字は `CmdError.kind="validation"`。
 2. DB接続を取得し、BIZ-08 `scan_register_sd_daily_reports(conn, selection, PC の今日の日付)` を呼ぶ。SD を読む間（窓の範囲の小さな file と照合。利用者は 1 人）は DB の Mutex を持ったままでよい。
-2a. 成功時、同じ DB 接続を持ったまま BIZ-04 `refresh_plu_register_snapshot_from_sd(conn, &snapshot.plu_register_z004s)` を呼ぶ（PLU の占有の照合、[33 §16.3](33-biz-plu-export-service.md)、D-117 (3)）。`Err` は scan の失敗にせず、`tracing::warn!` で記録して手順 3 へ進む（response は変えない）。照合の後、`plu_register_z004s` を空にしてから手順 3 で snapshot を cache に入れる（Z004 の bytes を cache に残さない）。
+2a. 成功時、同じ DB 接続を持ったまま BIZ-04 `refresh_plu_register_snapshot_from_sd(conn, &snapshot.plu_register_z004s)` を呼ぶ（PLU の占有の照合、[33 §16.3](33-biz-plu-export-service.md)、D-117 (3)）。`Err` は scan の失敗にせず、`tracing::warn!` で記録して手順 3 へ進む（response は変えない）。照合の後、`plu_register_z004s` を空にしてから手順 3 で snapshot を cache に入れる（Z004 の bytes を cache に残さない）。本手順は PLU の書出しの見直しの runtime の lane が実装する（37 §37.9 手順 10 と同じ lane）。SD 直読みの runtime の lane（D-111）は手順 1・2・3・4 を実装し、手順 2 の後に手順 3 へ進む。
 3. 成功時、UUID の scan_token を作り、`register_sd_scan_cache` を空にしてから snapshot を入れる（同時に持つ scan は最新の 1 つだけ）。
 4. response を返す。
 
@@ -206,6 +206,7 @@ SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Ty
 |---|---|---|
 | 2026-08-16 | PR #79 | SPEC-SDI-D3/D4: same-date summary DTO、`additional_import_confirmed`、snapshot mismatch時のtoken破棄、per-import rollback、bindings再生成義務を正本化。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | CMD-12-D1: `scan_register_sd` と `parse_and_validate_daily_report_from_sd`、AppState の scan cache。 |
+| 2026-10-17 | sd-direct-read-runtime（起票） | §45.6a 手順 2a（D-117 の占有の照合）の実装の lane を明記した。 |
 | 2026-10-07 | sd-direct-read（Final Review の P3 の是正） | §45.6b 手順 2 の期限切れを UI が一覧へ戻す扱いを 55 UI-07-D15 に合わせた。§45.8 から command registry の件数を消し、4 つの集合の一致だけを契約にした。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §45.7 に `SourceCopyFailed` → `internal`（写しの失敗の後に UI が preview と token に戻れる）。§45.8 に新しい 2 command の `generate_handler!` への登録と command registry の gate。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | §45.3 の `DailyReportSourceFileRequest.source_path`（手で選んだ SD 上の file を SD の入力にする、37 §37.3 手順 1a）。§45.6a の選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。§45.8 の wire の契約を足す field に合わせた。 |
