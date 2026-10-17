@@ -215,7 +215,7 @@ fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, 
    - labelとsortはgroup内の最小 `sort_order`、同値なら最小row IDの行を決定的な代表とする
    - 日報未取込みでも正常。`official_daily_report=None` とし、UIは「日報未取込み」と表示できる
    - SALES2-D5: 集約後の `department_id IS NULL` groupが n 件ある場合、`warnings` に「部門マスタと対応していない部門が n 件あります（部門名のまま表示しています）」を1件だけ追加する。importごとに警告を重複させない。NULL groupがなければ空配列
-   - IO が支払を SALES-SHEET-D2 の 3 で返した日（`OfficialDailyReportRow.payment_lines_unsummed`、24 §14.21 手順 3）は、`warnings` に「支払集計（Z002）は、この日の精算の間で行の名称か並びが変わり、1 回の精算の中に同じ名称の行が 2 行以上あるため、足さずに取込みの古い順に並べています」を 1 件足す（部門の warning の後。proposed・未実装、D-120。wire の型は変えない）
+   - IO が支払を SALES-SHEET-D2 の 3 で返した日（`OfficialDailyReportRow.payment_lines_unsummed`、24 §14.21 手順 3）は、`warnings` に「支払集計（Z002）は、この日の精算の間で行の名称か並びが変わり、1 回の精算の中に同じ名称の行が 2 行以上あるため、足さずに取込みの古い順に並べています。紙（日報を印刷）で取込みごとに見られます」を 1 件足す（部門の warning の後。proposed・未実装、D-120。wire の型は変えない）
    - Z001の行は合算しない。IO が同じ親の集合について親ごとに返す取込み（`OfficialDailyReportRow.summary_imports`）を、並びと値を変えずに `OfficialDailySummaryImport` / `OfficialDailySummaryLine` へ写し、`summary_imports` に取込みの古い順で返す（D-096、[24 §14.21](24-io-csv-import-repo.md#1421-get_completed_daily_report_aggregate)）
 
 4. **部門小計の計算**
@@ -275,7 +275,7 @@ Ok(DailySalesReport {
 - **SALES-SHEET-D2（足し方と保証の範囲）**: Z001・Z002・Z005 のそれぞれ（以下、帳票）で、行を「位置（`sort_order`）と名称（`label` の前後の空白を除いた文字列）の組」で見分け、帳票ごとに次の 3 つのどれか 1 つで載せる。日次売上の画面の支払集計（[24 §14.21](24-io-csv-import-repo.md) 手順 3）も Z002 にこの規則を当てる（紙と画面で足し方を変えない）。
   1. その日の取込みの間で組の集合が一致する帳票（取込みが 1 つの日を含む）: 組ごとに足す。
   2. 組の集合が一致せず、どの取込みにも同じ名称（空でない）の行が 2 行以上無い帳票: 組ごとに足し、`label_changed_sources` に入れる。名称の差し替えの日は同じ位置に名称ごとの行が、行の入れ替わり・行の数の違いの日は同じ名称が位置ごとの行が載る（その日の合計は人が見て足す）。
-  3. 組の集合が一致せず、どれかの取込みに同じ名称（空でない）の行が 2 行以上ある帳票: 足さず、取込みごとに全部の行を値を変えずに載せ（行の `import_seq` に、その日の完了した取込みの古い順〈`imported_at ASC, id ASC`〉の番号を 1 から入れる）、`label_changed_sources` と `unsummed_sources` の両方に入れる。行がずれた日に位置と名称の組でも別の項目を足すのを避ける（例: 取込み 1 の位置 1・2 が同じ名称 A〈10・20〉、取込み 2 で先頭に 1 行入り A が位置 2・3〈30・40〉に来ると、組で足すと位置 2 が取込み 1 の 2 行目と取込み 2 の 1 つ目の A の和 50 になる）。
+  3. 組の集合が一致せず、どれかの取込みに同じ名称（空でない）の行が 2 行以上ある帳票: 足さず、取込みごとに全部の行を値を変えずに載せ（行の `import_seq` に、その行の取込みが IO の返す取込みの id の並び〈[24 §14.21a](24-io-csv-import-repo.md) の `import_ids`。その日の完了した取込みの `imported_at ASC, id ASC`〉の何番目か〈1 から〉を入れる。その帳票の行の無い取込みも番号を 1 つ使う）、`label_changed_sources` と `unsummed_sources` の両方に入れる。行がずれた日に位置と名称の組でも別の項目を足すのを避ける（例: 取込み 1 の位置 1・2 が同じ名称 A〈10・20〉、取込み 2 で先頭に 1 行入り A が位置 2・3〈30・40〉に来ると、組で足すと位置 2 が取込み 1 の 2 行目と取込み 2 の 1 つ目の A の和 50 になる）。
   - 保証の範囲: 名称のある行で、別の項目の値を 1 行に足すことは無い。1 では、各位置の行は取込みごとに 1 つなので、組の集合が同じなら各位置の名称が全部の取込みで同じ。2 では、各取込みの中で名称が 1 行だけなので、同じ組の行は全部の取込みでその名称の 1 行。3 は足さない。名称が空の行は名称で見分けられず位置だけで見分けるので、2 で行がずれた日には別の枠の値を足しうる（同じ名称の判定に空の名称を含めない。手元の Z 帳票の 2026-09-30 版での集計で名称が空の行は Z002 の 39〜50 行目だけで、全本で値は 0。Contract Probe の P3・P4）。同じ精算を二重に取り込んだ束は二重に足す（D-120 の Guarantee range）。
   - 足す値（1・2）: 足す値のどれかの行が NULL なら、その組のその値は NULL（未取得を 0 に見せない。24 §14.21 と同じ）。個数は 100 倍の整数のまま足し、最後に IO-07 の `quantity_hundredths_to_units` で単位の数へ戻す（IO-07-D2。3 の行も同じ関数で戻す）。足し算は溢れを検査し（`checked_add`）、溢れたら `BizError::ValidationFailed`（本書冒頭の「数量と単位」の溢れの扱いと同じ。範囲の契約ではない）。
   - 並び: 1・2 は位置の昇順、同じ位置に名称が 2 つ以上ある帳票は、その位置の中で名称が最初に現れた取込みの古い順。3 は取込みの古い順、各取込みの中は位置の昇順。`import_seq` は 1・2 の行では無い（`None`）。
@@ -293,7 +293,7 @@ Ok(DailySalesReport {
 ```
 struct DailyReportSheet {
     date: String,                                // 対象日（YYYY-MM-DD）
-    import_count: i64,                           // その日の完了した日報の取込みの数。0 なら行は空
+    import_count: i64,                           // その日の完了した日報の取込みの数（24 §14.21a の `import_ids` の長さ）。0 なら行は空
     summary_rows: Vec<DailyReportSheetRow>,      // Z001（SALES-SHEET-D2・D3）
     payment_rows: Vec<DailyReportSheetRow>,      // Z002
     department_rows: Vec<DailyReportSheetRow>,   // Z005
@@ -309,7 +309,7 @@ struct DailyReportSheetRow {
     quantity: Option<f64>,  // 個数（単位の数、小数 2 桁まで）。Z001 の総売の行と Z005 の行だけ
     count: Option<i64>,     // 件数。Z001 の総売以外の行と Z002 の行
     amount: Option<i64>,
-    import_seq: Option<i64>, // SALES-SHEET-D2 の 3 の帳票の行だけ、取込みの古い順の番号（1 から）。足した行は None
+    import_seq: Option<i64>, // SALES-SHEET-D2 の 3 の帳票の行だけ、その行の取込みの `import_ids` の中の位置（1 から）。足した行は None
 }
 
 struct DailyReportSheetPluImport {
@@ -330,7 +330,7 @@ fn get_daily_report_sheet(conn: &DbConnection, date: &str) -> Result<DailyReport
 **処理ステップ**:
 
 1. **日付バリデーション**: §19.3 の手順 1 と同じ検査と文言。
-2. **読取り**（SALES-SHEET-D5 の順）: `sales_repo::get_daily_report_sheet_lines(conn, date)`（[24 §14.21a](24-io-csv-import-repo.md)）で、その日の完了した取込みの数と、Z001・Z002・Z005 の全行（取込みの古い順・位置の順）を得る。続けて `sales_repo::get_daily_sales_records(conn, date)`（§19.3 の手順 2 と同じ IO 関数）と `sales_repo::get_active_z004_import_totals(conn, date)`（[24 §14.21b](24-io-csv-import-repo.md)）を読む。どれかの失敗で止まる。
+2. **読取り**（SALES-SHEET-D5 の順）: `sales_repo::get_daily_report_sheet_lines(conn, date)`（[24 §14.21a](24-io-csv-import-repo.md)）で、その日の完了した取込みの id の並び（`import_ids`）と、Z001・Z002・Z005 の全行（取込みの古い順・位置の順）を得る。続けて `sales_repo::get_daily_sales_records(conn, date)`（§19.3 の手順 2 と同じ IO 関数）と `sales_repo::get_active_z004_import_totals(conn, date)`（[24 §14.21b](24-io-csv-import-repo.md)）を読む。どれかの失敗で止まる。
 3. **足す**: 日報の取込みが 0 件なら行を空にする（SALES-SHEET-D5）。1 件以上なら帳票ごとに SALES-SHEET-D2 の 1〜3 のどれかを決めて行を作り（1・2 は組で足し、3 は取込みごとに写す）、SALES-SHEET-D3 で載せる行を選ぶ。溢れで止まる。
 4. **PLU の部分**: 手順 2 の商品別売上から `source='auto'` で数量か金額が 0 でない行を残し、Z004 の取込みの数から `plu_import` を作る。
 5. **結果返却**: `DailyReportSheet` を返す。
@@ -340,7 +340,7 @@ fn get_daily_report_sheet(conn: &DbConnection, date: &str) -> Result<DailyReport
 - 足し算の溢れ → `BizError::ValidationFailed`（本書冒頭の「数量と単位」の溢れと同じ扱い）
 - DB読み取り失敗 → `BizError::DatabaseError(DbError)`
 
-**テスト（runtime の lane）**: 同じ日の 2 取込みで、位置と名称が同じ行が足される（Z001 の総売の個数 `1.3` + `2` → `3.3`）。一方の取込みで金額が NULL の組は NULL。同じ位置で名称が違う 2 行は別の行に残り、`label_changed_sources` にその帳票が入る。行が 1 つずれた 2 取込み（片方だけ途中に 1 行多い）では、同じ名称が位置ごとに 2 行に分かれ、`label_changed_sources` にその帳票が入る。2 取込みの組の集合が同じ日は `label_changed_sources` が空で、1 本の中に同じ名称が 2 行あっても組で足す。行がずれ、片方の取込みに同じ名称が 2 行ある日（SALES-SHEET-D2 の 3 の例）は、その帳票だけ足さずに取込みごとの行（`import_seq` 1・2）で返し、`unsummed_sources` と `label_changed_sources` にその帳票が入り、ほかの帳票は足す。組の集合が一致せず、同じ名称の 2 行が名称の空の行だけの日は 2 のまま足す。名称が空で値が 0 の行は載らず、名称が空で値のある行は載る。取込みが 0 件の日は `import_count = 0` で行が空。取り消した取込みの行は入らない。PLU の部分に手動販売の行と数量・金額とも 0 の行が入らない。足し算の溢れは `ValidationFailed` で、紙の内容を返さない。
+**テスト（runtime の lane）**: 同じ日の 2 取込みで、位置と名称が同じ行が足される（Z001 の総売の個数 `1.3` + `2` → `3.3`）。一方の取込みで金額が NULL の組は NULL。同じ位置で名称が違う 2 行は別の行に残り、`label_changed_sources` にその帳票が入る。行が 1 つずれた 2 取込み（片方だけ途中に 1 行多い）では、同じ名称が位置ごとに 2 行に分かれ、`label_changed_sources` にその帳票が入る。2 取込みの組の集合が同じ日は `label_changed_sources` が空で、1 本の中に同じ名称が 2 行あっても組で足す。行がずれ、片方の取込みに同じ名称が 2 行ある日（SALES-SHEET-D2 の 3 の例）は、その帳票だけ足さずに取込みごとの行（`import_seq` 1・2）で返し、`unsummed_sources` と `label_changed_sources` にその帳票が入り、ほかの帳票は足す。同じ日の 3 取込みの 2 本目にその帳票の行が無いとき、3 本目の行の `import_seq` は 3。組の集合が一致せず、同じ名称の 2 行が名称の空の行だけの日は 2 のまま足す。名称が空で値が 0 の行は載らず、名称が空で値のある行は載る。取込みが 0 件の日は `import_count = 0` で行が空。取り消した取込みの行は入らない。PLU の部分に手動販売の行と数量・金額とも 0 の行が入らない。足し算の溢れは `ValidationFailed` で、紙の内容を返さない。
 
 ---
 

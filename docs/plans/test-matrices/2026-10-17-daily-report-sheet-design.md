@@ -24,9 +24,11 @@ Risk: R3
 - 名称の空の枠（値 0）を載せる、または名称が空で値のある行を落とす（D3）。
 - 手動販売の行や数量・金額とも 0 の行が PLU の部分に出る。取り込んでいない日を「売れなかった」と出す（D4）。
 - 溢れで一部だけの紙を返す（D5）。取消した取込みが紙に入る（D1・D6）。
-- 支払集計の鍵の変更で、互換の範囲（位置と名称の組の集合が同じで、1 取込みの中に同じ `payment_key` が無い日）の値や行が変わる。同じ `payment_key` の 2 行で画面の行の key が重なり、1 行が消える（14.21、UI-09a）。
+- 支払集計の鍵の変更で、互換の範囲（24 §14.21 手順 3）の日の値や行が変わる。範囲の外の日（1 取込みの中に同じ `payment_key` の行がある日、同じ組の保存済みの `payment_key` が取込みで違う日）が新しい規則の値にならない。同じ `payment_key` の 2 行で画面の行の key が重なり、1 行が消える（14.21、UI-09a）。
 - `credit` の規則を外すときに、`cash`・`gross_sales`・`net_sales` の鍵も変わる（D4a）。
-- 印刷ボタンが取込みの無い日に押せる、押せない理由が Tooltip だけ（D17）。
+- 支払集計を足さない日（D2 の 3）に、画面の 2 回以上の日の文・warning の注記の見出し・紙の題が「合算」「部門確認」のままで事実と合わない（UI-09a-D16・D17）。
+- `import_seq` を、その帳票の行がある取込みだけで数え、行の無い取込みを飛ばして番号がずれる（D2 の 3、24 §14.21a）。
+- 印刷ボタンが取込みの無い日に押せる、押せない理由が Tooltip だけ（D17）。紙の内容の読込みに失敗した後、日付を選び直す以外に読み直せない（D17）。
 - 紙の上の文字が 9 pt を割る、色を使う、画面に紙の内容が出る（D17）。
 - 印刷を押したときに古い内容で印刷する。読み直しの失敗・`import_count` 0 でも印刷する（D6・D17）。
 - 代わりの道で HTML の書込みか `open_path` が失敗したのに成功と扱う。名称を escape せずに HTML に入れる（D18）。
@@ -40,6 +42,7 @@ Risk: R3
 | SALES-SHEET-D2 | 名称の差し替えの日に別の行を足す | unit（BIZ の足し算の関数） | `test_sheet_rows_keep_same_position_different_label_separate` | 位置 4 の名称が取込み 1 で `項目A`（金額 10）、取込み 2 で `項目B`（金額 20）のとき、結果が `(4, 項目A, 10)` と `(4, 項目B, 20)` の 2 行にならない。`label_changed_sources` が `[Z002]` でない |
 | SALES-SHEET-D2 | 行が 1 つずれた日 | unit | `test_sheet_rows_split_by_position_when_rows_shift` | 取込み 1 が `(15, 項目A, 10)`・`(16, 項目B, 20)`、取込み 2 が `(15, 項目X, 5)`・`(16, 項目A, 30)`・`(17, 項目B, 40)` のとき、結果が `(15, 項目A, 10)`・`(15, 項目X, 5)`・`(16, 項目B, 20)`・`(16, 項目A, 30)`・`(17, 項目B, 40)` の 5 行（並びもこの順）にならない。`label_changed_sources` にその帳票が入らない。`unsummed_sources` が空でない、または行の `import_seq` が `None` でない |
 | SALES-SHEET-D2 | 行がずれ、1 本の中に同じ名称の行がある日（D2 の 3） | unit | `test_sheet_rows_unsummed_when_rows_shift_with_duplicate_label` | Z002 の取込み 1 が `(1, 項目A, 10)`・`(2, 項目A, 20)`、取込み 2 が `(1, 項目X, 5)`・`(2, 項目A, 30)`・`(3, 項目A, 40)`、Z001 は 2 取込みで組の集合が同じ（`(1, 総売, 100)` を 2 回）のとき、`payment_rows` が `(import_seq 1: (1, 項目A, 10), (2, 項目A, 20))`・`(import_seq 2: (1, 項目X, 5), (2, 項目A, 30), (3, 項目A, 40))` の 5 行（並びもこの順）にならない（位置 2 が 50 の行が出る）。`unsummed_sources` が `[Z002]` でない、`label_changed_sources` に Z002 が無い。Z001 の行が `(1, 総売, 200)` の 1 行（`import_seq` が `None`）でない |
+| SALES-SHEET-D2 | `import_seq` は取込みの id の並びの位置 | unit | `test_sheet_rows_import_seq_follows_import_ids` | `import_ids` が `[11, 12, 13]` で、Z002 の行が取込み 11 の `(1, 項目A, 10)`・`(2, 項目A, 20)` と取込み 13 の `(1, 項目X, 5)`・`(2, 項目A, 30)`・`(3, 項目A, 40)` だけ（取込み 12 に Z002 の行が無い）のとき、取込み 13 の行の `import_seq` が 3 でない（2 になる）、または `import_count` が 3 でない |
 | SALES-SHEET-D2 | 名称が空の同じ行は 3 にしない | unit | `test_sheet_rows_blank_labels_do_not_trigger_unsummed` | 取込み 1 が `(1, 項目A, 10)`・`(2, "", 0)`・`(3, "", 0)`、取込み 2 が `(1, 項目X, 5)`・`(2, 項目A, 30)`・`(3, "", 0)`・`(4, "", 0)` のとき、`unsummed_sources` が空でない（名称が空の行を同じ名称に数えた）、または `label_changed_sources` にその帳票が無い、または `(1, 項目A, 10)`・`(1, 項目X, 5)`・`(2, 項目A, 30)` が組ごとの行として出ない |
 | SALES-SHEET-D2 | 組の集合が同じ日の知らせ | unit | `test_sheet_rows_no_notice_when_label_sets_match` | 2 取込みの位置と名称の組の集合が同じ日に `label_changed_sources` が空でない、または各行の金額が 2 取込みの和でない |
 | SALES-SHEET-D2 | 名称だけで足す | unit | `test_sheet_rows_do_not_merge_same_label_at_different_positions` | 1 本の中の位置 7（金額 10）と位置 33（金額 20）の完全一致の同じ名称の 2 行が、2 取込みで足して `(7, 名称, 20)`・`(33, 名称, 40)` の 2 行にならない。組の集合が同じなので `unsummed_sources` が空でない |
@@ -52,20 +55,23 @@ Risk: R3
 | SALES-SHEET-D4 | 取り込んでいない日 | integration | `test_daily_report_sheet_plu_import_counts` | Z004 の取込みが無い日に `plu_import.import_count` が 0 でない。`completed_partial` の取込みの `skipped_count` が和に入らない。`rolled_back` の取込みが数に入る |
 | SALES-SHEET-D5 | 空の日 | integration | `test_daily_report_sheet_empty_day_returns_zero_imports` | 取込みの無い日に error になる、または行が空でない |
 | SALES-SHEET-D5 | 日付の誤り | unit | `test_daily_report_sheet_rejects_invalid_date` | `2026-02-30` で §19.3 と同じ文言の `ValidationFailed` にならない |
-| 24 §14.21a | 読む範囲 | integration（`sales_repo.rs` の test） | `test_get_daily_report_sheet_lines_reads_completed_only_in_order` | `rolled_back` の親の行を読む。`import_count` が completed の親の数でない。帳票・取込み・位置の順に並ばない。保存した `label` の前後の空白（`  項目A `）が除かれる。NULL の `amount`・`count` が 0 になる。Z005 の行の `label` が `raw_department_name` でなく `normalized_department_name` になる（2 つを違う値にした fixture） |
+| 24 §14.21a | 読む範囲 | integration（`sales_repo.rs` の test） | `test_get_daily_report_sheet_lines_reads_completed_only_in_order` | `rolled_back` の親の行を読む。`import_ids` が completed の親の `id` を `imported_at ASC, id ASC` の順に持たない（`rolled_back` の親の `id` が入る、行の無い completed の親の `id` が落ちる）。帳票・取込み・位置の順に並ばない。保存した `label` の前後の空白（`  項目A `）が除かれる。NULL の `amount`・`count` が 0 になる。Z005 の行の `label` が `raw_department_name` でなく `normalized_department_name` になる（2 つを違う値にした fixture） |
 | 24 §14.21 手順 3 | 互換の範囲の日 | integration | `test_payment_aggregate_unchanged_when_labels_stable` | 位置と名称の組の集合が同じで 1 取込みの中に同じ `payment_key` が無い 2 取込み（`(1, 現金, cash, 金額 100・件数 2)`・`(2, 項目B, payment_2, 金額 30・件数 1)` を 2 回）で、返る行が `(cash, 現金, 200, 4)`・`(payment_2, 項目B, 60, 2)` の 2 行（行ごとに `payment_key`・`label`・`amount`・`count` を assert）にならない |
 | 24 §14.21 手順 3 | 1 取込みの中に同じ `payment_key` の 2 行 | integration | `test_payment_aggregate_splits_duplicate_payment_key_by_position` | 位置 1 と位置 2 の名称がどちらも `現金`（`payment_key` はどちらも `cash`、金額 10・20）の取込みを 2 回入れたとき、結果が `(cash, 現金, 20)` と `(cash, 現金, 40)` の 2 行にならない（今の実装は 1 行 60。新しい規則の期待値。組の集合が同じ日なので足す側〈D2 の 1〉） |
-| 24 §14.21 手順 3・34 §19.3 手順 3 | 紙と画面の食い違い（D2 の 3） | integration（実 DB、`sales_service.rs` の test。紙の test と同じ fixture） | `test_daily_sales_payment_unsummed_matches_sheet_rule` | `test_sheet_rows_unsummed_when_rows_shift_with_duplicate_label` と同じ Z002 の 2 取込みを入れた日に、`get_daily_sales` の `payment_lines` が取込みの古い順の 5 行（`label`・`amount` の順が `項目A 10`・`項目A 20`・`項目X 5`・`項目A 30`・`項目A 40`）でない（位置 2 が 50 の行が出る）、`warnings` に `支払集計（Z002）は、この日の精算の間で行の名称か並びが変わり、1 回の精算の中に同じ名称の行が 2 行以上あるため、足さずに取込みの古い順に並べています` が 1 件無い。組の集合が同じ日（上の互換の範囲の test の fixture）にこの warning が出る |
+| 24 §14.21 手順 3 | 同じ組の保存済みの `payment_key` が取込みで違う日（互換の範囲の外） | integration | `test_payment_aggregate_merges_pair_with_mixed_stored_payment_key` | 位置 1・名称 `項目C` の行を、取込み 1 は `payment_key` `credit`（金額 10）、取込み 2 は `payment_1`（金額 20）で保存した日に、結果が `(credit, 項目C, 30)` の 1 行にならない（今の実装は `credit` 10 と `payment_1` 20 の 2 行。新しい規則の期待値。`payment_key` は手順 5 の代表の行〈取込み 1 の行〉の保存値） |
+| 24 §14.21 手順 3・34 §19.3 手順 3 | 紙と画面の食い違い（D2 の 3） | integration（実 DB、`sales_service.rs` の test。紙の test と同じ fixture） | `test_daily_sales_payment_unsummed_matches_sheet_rule` | `test_sheet_rows_unsummed_when_rows_shift_with_duplicate_label` と同じ Z002 の 2 取込みを入れた日に、`get_daily_sales` の `payment_lines` が取込みの古い順の 5 行（`label`・`amount` の順が `項目A 10`・`項目A 20`・`項目X 5`・`項目A 30`・`項目A 40`）でない（位置 2 が 50 の行が出る）、`warnings` に `支払集計（Z002）は、この日の精算の間で行の名称か並びが変わり、1 回の精算の中に同じ名称の行が 2 行以上あるため、足さずに取込みの古い順に並べています。紙（日報を印刷）で取込みごとに見られます` が 1 件無い。組の集合が同じ日（上の互換の範囲の test の fixture）にこの warning が出る |
 | 24 §14.21 手順 3 | 名称の差し替えの日 | integration | `test_payment_aggregate_splits_rows_when_label_changes` | 同じ位置で名称の違う 2 取込み（`項目A` 金額 10、`項目B` 金額 20）の結果が `(項目A, 10)`・`(項目B, 20)` の 2 行にならない |
-| UI-09a 支払集計の行の key | 同じ `payment_key` の 2 行 | component（`DailySalesPage` の test） | `DailySalesPage shows both payment rows with same payment_key (UI-09a)` | `payment_lines` に `payment_key` が同じ `cash` で金額の違う 2 行（`¥20`・`¥40`）を渡したとき、表に 2 行とも出ない（React の key の重なりで 1 行になる） |
+| UI-09a 支払集計の行の key | 同じ `payment_key` の 2 行 | component（`DailySalesPage` の test） | `DailySalesPage shows both payment rows with same payment_key (UI-09a)` | `payment_lines` に `payment_key` が同じ `cash` で金額の違う 2 行（`¥20`・`¥40`）を渡したとき、表に 2 行とも出ない。同じ test で、応答を `項目X ¥5（payment_1）`・`項目B ¥40（cash）` の 2 行へ更新して再描画した後に、支払集計の表の行が 2 行で `¥5`・`¥40` でない（前の `¥20` の行が残る。行の key を `payment_key` だけにすると、初回の描画は通っても更新の後に古い行が残りうる） |
+| UI-09a-D16・REQ-401 | 支払集計を足さない日の画面の文 | component（`DailySalesPage` の test） | `DailySalesPage texts stay true on unsummed payment day (UI-09a)` | `source_import_count` 2 で `warnings` に上の D2 の 3 の文を入れた応答のとき、文が `総売上・純売上・支払集計・部門別集計は2回の取込みを合算しています（注記で足していないと示した表を除く）。日計（Z001）は取込みごとに表示します。` でない、warning の注記の見出しが `日報の確認が必要です` でない（`日報の部門確認が必要です` が出る）、または D2 の 3 の文が注記に出ない |
 | IO-07-D4a | `credit` の規則を外す | unit（`daily_report_parser.rs` の test） | `test_payment_key_has_no_credit_rule` | 全角の `クレジット` を含む名称の行の `payment_key` が `credit` になる。`現金` の行が `cash` でない。総売・純売の `line_key` が変わる |
 | CMD | 登録 | drift / bindings | `scripts/check-command-drift.sh`、bindings の clean diff | `get_daily_report_sheet` が `collect_commands` か `invoke_handler` に無い、bindings が再生成されていない |
 | UI-09a-D17 | 押せない状態 | component（Vitest + RTL、`ExportBar` の test） | `ExportBar disables print with reason when no imports (UI-09a)` | `import_count` 0 で `日報を印刷` が押せる、`この日のレジ日報は未取込みのため、印刷できません。` が文で出ない、またはリンク `売上データ取込みを開く` の行き先が `/csv-import` でない |
 | UI-09a-D17 | 数えていない PLU の行を画面でも示す | component | `ExportBar shows skipped PLU rows with link (UI-09a)` | `plu_import.skipped_count` 3 で、画面に `数えていない PLU の行が 3 行あります` とリンク `取込みの記録を開く` が出ない、リンクの行き先が `/inventory/records` で search が `recordType: "csv_import"`・`status: "active"`・`dateFrom` と `dateTo` がその日（例 `2026-03-21`）でない、またはボタンが押せなくなる |
 | UI-09a-D17・SALES-SHEET-D6 | 古い内容で印刷 | component | `print waits refetch and prints new values (UI-09a)` | 画面を開いたときの応答が総売 `100`、押した後の読み直しの応答を遅らせて総売 `600` にしたとき、(a) 読み直しの解決の前に `window.print` が呼ばれる、(b) `window.print` の spy の中で読んだ紙の DOM の総売が `600` でない（`100` のまま）、(c) 紙の印刷の時刻が押した時刻（fake timer で進めた値）でない |
-| UI-09a-D17 | 読み直しの失敗・取消の直後 | component | `print is skipped when refetch fails or no imports (UI-09a)` | 読み直しが失敗したとき、または読み直しの応答が `import_count` 0 のときに `window.print` が呼ばれる。ボタンの下にその状態の文（失敗は CmdError の文、0 は `この日のレジ日報は未取込みのため、印刷できません。`）が出ない |
+| UI-09a-D17 | 読み直しの失敗・取消の直後 | component | `print is skipped when refetch fails or no imports (UI-09a)` | 読み直しが失敗したとき、または読み直しの応答が `import_count` 0 のときに `window.print` が呼ばれる。ボタンの下にその状態の文（失敗は CmdError の文、0 は `この日のレジ日報は未取込みのため、印刷できません。`）が出ない。失敗のときに `再試行` が出ない、または `再試行` を押しても紙の内容を読み直さない（次の応答 `import_count` 1 でボタンが押せるようにならない） |
 | UI-09a-D18 | 代わりの道の失敗 | unit（Rust の CMD の test、書込みと開く処理を差し替える） | `test_print_fallback_reports_error_when_open_fails` | 書込みか `open_path` を失敗させたときに CMD が `Ok` を返す。名称に `<b>&"` を入れたとき、書いた HTML にその文字が escape されずに出る（runtime の lane が代わりの道を採り、42 に command を足す Gated Amendment で名前・引数・返り値を決めた後だけ。test 名もその時に直す） |
 | UI-09a-D17 | 紙の文と表 | component | `DailyReportSheet renders tables, notices and no yen sign (UI-09a)` | 各表の `thead` の 1 行目が `日計（Z001）　2026年3月21日（土）` / `支払集計（Z002）　…` / `部門別集計（Z005）　…` / `PLU の売上（Z004）　…` の形でない、`thead` の 2 行目が列の見出しでない、`label_changed_sources` が `[Z002]` のとき支払集計の見出しの下に `この日の精算の間で、帳票の行の名称か並びが変わっています。同じ名称の行が 2 行あれば、別々に足しています。` が出ない（ほかの表の下に出る）、`unsummed_sources` が `[Z002]` で `import_seq` 1・2 の行のとき、支払集計が 2 つの表（1 行目が `支払集計（Z002）　1回目の取込み　2026年3月21日（土）` と `… 2回目の取込み …`）に分かれない、最初の表の下に D2 の 3 の文が出ない、または D2 の 2 の文も出る、金額 `1234` が `1,234` でない（`¥` が付く）、名称が空の行が `（名前なし）` でない |
+| UI-09a-D17 | 支払集計を足さない日の紙の題 | component | `DailyReportSheet title on unsummed day (UI-09a)` | `import_count` 2 で `unsummed_sources` が `[Z002]` のとき題の行に `2回の取込みを合算（取込みごとに載せた帳票を除く）` が出ない、`unsummed_sources` が空のとき `2回の取込みを合算` でない（括弧の文が出る） |
 | UI-09a-D17 | PLU の知らせ | component | `DailyReportSheet PLU notices by import state (UI-09a)` | `plu_import.import_count` 0 で `この日の PLU の売上は取り込まれていません。` が出ない、取込みがあって行が無い日に `この日に売れた PLU の商品はありません。` が出ない、`skipped_count` 3 で `数えていない PLU の行が 3 行あります（入出庫履歴の CSV取込みの記録で見られます）。` が出ない |
 | UI-09a-D17 | 画面に出さない・下限 | component（class の検査） | `DailyReportSheet is print-only and min 9pt (UI-09a)` | 紙の root に画面で隠す class（`hidden print:block` 相当）が無い、文字の大きさの class が 9 pt を割る |
 
@@ -75,7 +81,7 @@ oracle（期待値）は 34・56 の正本の文と数から転記し、producti
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 紙の内容（query `["daily-sales", "sheet", { date }]`） | 日次売上を開くと読む | ボタン disabled | `import_count` 1 以上で押せる | 日報・Z004 の取込みと取消の成功 | 押したときに読み直す | 日付を変えると別の key | アプリを開き直すと読み直す（保存しない） | ボタン disabled と CmdError の文 | 日付を選び直す | component test、L3 |
+| 紙の内容（query `["daily-sales", "sheet", { date }]`） | 日次売上を開くと読む | ボタン disabled | `import_count` 1 以上で押せる | 日報・Z004 の取込みと取消の成功 | 押したときに読み直す | 日付を変えると別の key | アプリを開き直すと読み直す（保存しない） | ボタン disabled と CmdError の文 | `再試行`（`refetch()`）か、日付を選び直す | component test、L3 |
 | 印刷の dialog | — | dialog 表示中 | 印刷される | — | — | 何度でも印刷できる | — | dialog の取消は何も残さない | もう一度押す | L3（P1） |
 | 紙の切替え | 店は Excel を続ける | 並びの決定と実際の 1 日の確かめ | 切替えの日から紙を印刷 | — | — | — | — | 不都合が見つかる | 翌日から Excel に戻す | 運用（UI-09a-D19） |
 
@@ -117,7 +123,7 @@ oracle（期待値）は 34・56 の正本の文と数から転記し、producti
 
 - old schema/input: DB の列を変えない。既存の取込み（`payment_key` が `cash`・`payment_N`）もそのまま足せる（鍵に使わない）。
 - new schema/input: 無し。
-- output order: 支払集計は名称の変わらない日は今と同じ並び。
+- output order: 支払集計は互換の範囲（24 §14.21 手順 3）の日は今と同じ行・値・並び。範囲の外の日は上の 14.21 の行の新しい規則の値。
 - optional field behavior: 既存の DTO に field を足さない。
 
 ## Data Safety Checks
@@ -156,6 +162,9 @@ L3 の前に Writer が `cargo check --release` を通す（`docs/DEV_WORKFLOW.m
 - 読み直しの失敗・0 件の分岐を外したら: `print is skipped when refetch fails or no imports (UI-09a)` が落ちる。
 - D2 の 3 の条件（組の集合の不一致かつ 1 本の中の同じ名称）を外して常に組で足したら: `test_sheet_rows_unsummed_when_rows_shift_with_duplicate_label` と `test_daily_sales_payment_unsummed_matches_sheet_rule` が落ちる。同じ名称の判定に空の名称を含めたら: `test_sheet_rows_blank_labels_do_not_trigger_unsummed` が落ちる。
 - 支払集計の鍵から位置を外したら: `test_payment_aggregate_splits_duplicate_payment_key_by_position` と `test_sheet_rows_split_by_position_when_rows_shift` が落ちる。
+- 支払集計の鍵に保存済みの `payment_key` を残したら: `test_payment_aggregate_merges_pair_with_mixed_stored_payment_key` が落ちる。
+- 支払集計の表の行の key を `payment_key` だけに戻したら: `DailySalesPage shows both payment rows with same payment_key (UI-09a)` の更新の後の確かめが落ちる。
+- `import_seq` を行のある取込みだけで数えたら: `test_sheet_rows_import_seq_follows_import_ids` が落ちる。
 - 押せない状態の条件を反転したら: `ExportBar disables print with reason when no imports (UI-09a)` が落ちる。
 
 ## Residual Test Gaps
