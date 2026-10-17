@@ -27,6 +27,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、「22 §16 の回復の番号が無い段は置かない」の原理と予行演習の DB の隔離を是正に入れた。起草役が `356663cd` で直し、Coordinator が差分（流れ 5 の表と 1・2、保管の規則、予行演習の準備と片付け、AC6）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Astra）の是正（Review Response 参照）。Risk を R3 に上げた。起草役が `c68f6504` で直し、Coordinator が差分（初回の導入の条件、流れ 4 の照合と起動が止まったとき、流れ 5 の今の DB の版の知り方と表と 1・2、予行演習の片付け、Risk・Contract Ledger・Matrix の新設）を読んだ。流れ 4・5 は今の DB の版を正とする 1 つの筋に書き直され、店の DB に作り直しが当たる経路が無いことを確かめた。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「全件を直し、指摘と差分だけを確かめる round を 1 回足す」と決めた（repo 外の回答台帳 TD-315、介入 1 回目 / 予算 9 回）。起草役が `4dcd4a45` で直し、Coordinator が差分（流れ 5 の場面と表、アプリが起動しないときの保全と前進、予行演習の順と LOCALAPPDATA、M6 の合格条件、写しの SHA-256、診断ログの文）を読んだ。流れ 4・5 は「場面を決める → 表の行で決める」の 1 つの筋で、決めるまで今の DB を動かさない。確認の round（closure）へ出す。
+8. plan-gate（確認の round の是正、2026-10-18、Coordinator）: 確認の round（Codex GPT-6.1 Sol）の是正（Review Response 参照）。owner が「直して、Claude 側と Codex の両方で確認する」と決めた（repo 外の回答台帳 TD-316、介入 2 回目 / 予算 9 回）。起草役が `f4f13ad6` で直し、Coordinator が差分（流れ 5 の「前の版と入力の基準」の 1 か所の定義とそれを引く場面・表・1〜3、前へ進むときの照合、Matrix の C13・FM19・FM20）と、起草役の組の一巡の表を読んだ。2 回目の確認（Claude 側・Codex）へ出す。
 
 ## Owner Effort Budget
 
@@ -307,3 +308,14 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 3）と Codex GPT-6 Astra�
 | R27 | Codex #4（P3） | 採る | 起動を止めた文言が診断ログに必ず残ると書いている | 「診断ログが使えれば記録される。画面の文言は必ず全文控える」に揃えた |
 
 起草役の問いの Coordinator の裁定（2026-10-18）: 修正版で入力の後に照合するとき、在庫の数は owner が見て入力を始めると決める形を採る（比べる控えが無い失敗の経路だけで、介入が増えるのはその場合だけ）。`%LOCALAPPDATA%` の folder を開発中のアプリも使うかは 22 §16 の未確認の前提のまま、予行演習の項目に足すかは後続の項目で決める。
+
+### 確認の round（2026-10-18、head `306d11da`）
+
+Codex GPT-6.1 Sol（reject、P1 0・P2 2）。round 3 の 8 件のうち 7 件は閉じ、1 件（round 3 の R20）は下の N1 と同じ原因で閉じていなかった。Claude 側はこの版では回さず、是正の後の版で確かめる（owner の決定 TD-316）。全て採った（Coordinator の裁定）。起草役が `f4f13ad6` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R28 | Codex N1（P2） | 採る | 修正版の最初の起動も止まったときに場面 2（入力は無い）へ戻り、前の版の backup の後の入力が引き継がれない | 「前の版と入力の基準」を流れ 5 に 1 か所で定義した（前の版 = 最後に流れ 3 を行った版、入力の有無 = その backup より後に入力したか）。場面・表・1〜3 はそれを引く |
+| R29 | Codex N2（P2） | 採る | 入力の後は一律に在庫の照合を外している | 修正版の照合も全項目の一致を求め、流れ 3 をし直せる場合はその控えと比べる。owner が在庫の数を見て決めるのは、今入っている版が起動せず入力の後の経路だけ |
+
+起草役の問いの Coordinator の裁定（2026-10-18）: 起動はできるが照合が合わない版で流れ 3 をし直すと、その版が「前の版」になり、さらに修正版も止まると戻す先はその版の backup になる（さらに前の版へ戻す手順は持たない）。失うものの説明は事実と合い、戻す先の backup より前の状態へ戻す必要は今の範囲に無いので、変えない。
