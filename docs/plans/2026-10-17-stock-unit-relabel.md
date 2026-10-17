@@ -11,13 +11,13 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
-- Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める。座組表どおり）
+- Plan Reviewer: fresh Opus 5.5 + Codex（GPT-6.1 Sol / high。`.local` の model の選び方の「R3 で複数の層にまたがる契約の初回」の行）。座組表どおり
 - Final Reviewer: Fable 5.1（Claude 側、R3 以上）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge,manual
@@ -28,6 +28,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 1. kickoff → spec-check（2026-10-17、起草役）: Coordinator の発注（D-119 の U2 = b の runtime）を Scope にし、規模を数えて 1 lane のままと決め、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-17、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D2、[30](../function-design/30-biz-product-service.md) BIZ-01-D7・BIZ-01-D8・§4.4・§4.9、[51](../function-design/51-ui-product-form.md) UI-01b-D5・D22・D23、[20](../function-design/20-io-product-repo.md) §2.3、[74](../function-design/74-ui-operation-logs.md) §74.8。正本と code を突き合わせ、実装の前に決めておく穴が 7 つあった（下の Design Readiness の「本 commit で正本に足したもの」）。
 3. design → plan-draft（2026-10-17、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本（30・51・20・74）に置いた。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
+4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本の直しは起草役の commit（`d6f57bbd`）にある。Coordinator は正本の差分（30 の上書きの段の `plu_dirty` の比べる列と操作ログの summary、51 UI-01b-D23 の送る判定と説明文、20・74 の行）と packet の前文・Workflow State・Owner Effort Budget を読み、D-119 の U2 = b の範囲を越えていないこと、366 との節の所有表があること、code・migration に触れていないことを確かめた。起草役が決めた 4 点（操作ログの既知の key に足さない、「現在庫」の欄の語、無効化の範囲の外の画面の古い語、spec-check の穴の追記）はそのまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
