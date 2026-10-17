@@ -26,6 +26,7 @@
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`412d2a36`）にある。並走の 367（`agent/sd-direct-read-runtime`）も 22 に §17・MNT-03-D15 を新設していたので、本 lane の節を §18・MNT-03-D16 に振り直した（本 commit。22・master-tables・decision-log・backlog・本 packet・Matrix の参照、計 20 行）。Coordinator は D-122 の決定・置き場（商品の側の表と trigger 3 つ）・問いを出す条件・`commit_import` の確かめ直しを読み、owner の決定（TD-284 の c、TD-286 の β、TD-296 の 6b）の写しに食い違いが無いこと、D-117 の round 1 で崩れた継ぎ目（reserved の枠の別名、経路ごとの消し方、共有の同時変更、CMD・UI の境界）がそれぞれ置き場か条件で塞がれていること、code・migration に触れていないことを確かめた。owner に聞く Q1（前の JAN の枠の値段）は既定 a（D-117 の受け入れ済みの限界）で進める。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `f50d0bfd` で直し、Coordinator が差分（30 §4.9 の手順 0b・2 e. と §4.9.2 の preview の判定・答えの運び方・commit の判定の表・回復・そのほかの限界、42 §22.6、60 UI-01c-D17、20 の DbError の対応、master-tables の別名の UPDATE の段、Matrix の追加の行）を読んだ。置き場（商品の側の表と trigger）と Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `dd2df899` で直し、Coordinator が差分（30 §4.9.2 の commit の判定表 J1〜J7 と、§4.9・42 §22.6・60 UI-01c-D17 がそれを引く形、問いの条件と成立の条件の分け方、backlog の runtime の順と依存、Matrix の T4・T5・T8）を読んだ。判定・error・回復の置き場は判定表の 1 か所になった。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
+7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-317、介入 1 回目 / 予算 9 回）。起草役が `8f050ee6` で直し、Coordinator が差分（60 UI-01c-D17 の warning の全件のまとめと問いの出し入れの範囲、30 の J4 の回復、32 の引き当ての結果の 3 つの区別、master-tables の読む経路、Matrix の追加の行）を読んだ。
 
 owner への確かめ（設計を止めない。答えが無い間は既定で進む）:
 
@@ -315,3 +316,15 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 3・P3 3）と Codex GPT-6 Astra�
 | R10 | Claude #5（P3） | 採る | warning の照らし方が一意でない | J5 を「今の別名の商品で作った warning の文と一致する要素がある」にした |
 | R11 | Claude #6（P3） | 採る | Mutation の節が表に無い test 名を指す | 表の名前に揃えた |
 | R12 | Codex #3（P3） | 採る | AC4 の baseline が現物と合わない | base で測り直して直した |
+
+### Plan Review round 3（2026-10-18、head `a8f2ebdf`）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 3）と Codex GPT-6.1 Sol（reject、P1 0・P2 2・P3 1）。Codex #2 と Claude #1 は同じ件で、重い方の P2 とした。全て採った（Coordinator の裁定）。round の天井で P2 が残ったので owner に諮り、「直して、追加の round なしで plan-approved（跡は Final Review）」と決まった（repo 外の回答台帳 TD-317）。起草役が `8f050ee6` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R13 | Codex #1（P2） | 採る | 別名の warning を見せた証拠（J5）にしているが、preview の一覧の表示の制限の外の行の warning は見えないまま commit に届く | UI-01c-D17 に、warning を持つ行を表示の制限と別に一覧の上へ全件まとめて出す契約を置き、Matrix に制限の外の行の表示の検査を足した |
+| R14 | Codex #2（P2）・Claude #1（P3） | 採る | 「その行で上書きを選んだときだけ問いを出す」と「上書きの選択に応じて出し入れしない」が食い違う | 後者を「ほかの重複行の上書きの選択から判定し直さない」に限り、60・30・Matrix を揃えた |
+| R15 | Codex #3（P3） | 採る | J4 の回復の説明が引き当ての規則と違う | 「問いは出なくなり、売上は 32 の既存の共有と単独のヒットの規則に従う」にした |
+| R16 | Claude #2（P3） | 採る | 引き当ての関数の返す形が決まっていない | ヒットなし・単独（別名を含む）・複数（先頭と件数）を区別して返すと書いた |
+| R17 | Claude #3（P3） | 採る | 読む経路の一覧に warning と J5 が無い | 足した。あわせて、問いの判定は別名の表を読まないので一覧から外した（起草役が発注を越えて直し、Coordinator が問いの条件と J3・J4・J6・J7 が別名を読まないことを確かめて採った） |
