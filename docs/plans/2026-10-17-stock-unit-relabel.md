@@ -91,11 +91,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| 毛糸が単位「個」・在庫 12 で登録済み（在庫 Excel から初期投入） | 商品修正の画面で数量単位の select を開く | 個数の単位（個・枚・本・袋・箱・巻・組・セット・玉・丁）だけが並び、m・cm は出ない。select の下に `単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。` | select が押せる | UI-01b-D23 |
-| 同じ商品 | 「玉」を選んで保存する | 商品一覧へ戻り、保存の toast。在庫照会・商品一覧で `12 玉`。入庫の記録詳細も「玉」で出る（数は同じ） | 保存できる | SPEC-UNIT-D2。記録詳細は次の再取得の後（UI-01b-D23 の末尾） |
+| 毛糸を単位「個」・初期在庫 0 で登録し、入庫画面で 12 を入庫した後（在庫 Excel から「個」で入った状態の再現） | 商品修正の画面で数量単位の select を開く | 個数の単位（個・枚・本・袋・箱・巻・組・セット・玉・丁）だけが選べ、m・cm は選べない。select の下に `単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。` | select が押せる | UI-01b-D23 |
+| 同じ商品 | 「玉」を選んで保存する | 商品一覧へ戻り、保存の toast。在庫照会・商品一覧で `12 玉`。単位を直した後に初めて開く入庫の記録詳細も「玉」で出る（数は同じ） | 保存できる | SPEC-UNIT-D2。前に開いて cache にある記録詳細は次の再取得の後（UI-01b-D23 の末尾）。CSV の初期在庫は参照の無い在庫変動だけを作り入庫の記録を作らない（`product_service.rs:1574` 付近）ので、記録詳細を見るには入庫画面で記録した商品を使う |
 | 同じ商品 | 操作ログ画面で直近の「商品を更新しました」を開く | 要約に `stock_unit` と `{"old":"pcs","new":"ball"}` | — | 74 §74.8（key は訳さない） |
 | 反物が単位 m で登録済み | 商品修正の画面を開く | 数量単位は読取専用、在庫の節の説明は `現在庫と数量単位は登録後に変更できません。` | — | UI-01b-D23 |
-| 毛糸（個）と反物（m）が登録済み | 商品 CSV で毛糸の行を `在庫単位` = `玉`、反物の行を `玉` にして読み、両方を「上書き」にする | 毛糸の行は重複行（上書きできる）、反物の行は preview のエラー行 `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）`。毛糸だけを上書きすると単位が「玉」になり、他の列が同じなら PLU の未反映にならない | 取り込める | BIZ-01-D8 の上書きの段 |
+| 毛糸（個）と反物（m）が登録済み | 商品 CSV で毛糸の行を `在庫単位` = `玉`、反物の行を `玉` にして読み、反物の行のエラーを確かめてから毛糸の行だけを「上書き」にする | 毛糸の行は重複行（上書きを選べる）、反物の行は preview のエラー行 `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）`（エラー行には上書きの選択が出ない）。毛糸を上書きすると単位が「玉」になり、他の列が同じなら PLU の未反映にならない | 取り込める | BIZ-01-D8 の上書きの段 |
 
 失敗と再試行: 種類をまたぐ変更を UI から選ぶ道は無い（長さの商品の select は読取専用、個数の商品の select は個数の単位だけ）。UI を通らない command で送られたときは BIZ が拒み、何も書かない。商品 CSV のエラー行は直して読み直す。commit の再検証で外れたときは TX 全体を戻し、どの行も書かない（今の BIZ-01-D5・D8 の型）。
 
@@ -132,24 +132,32 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - commit の UPDATE（`:1514`〜`:1529`、`..Default::default()` を持たない literal）: `stock_unit` を足し、wire の行の単位が既存と違うときだけ `Some(unit)`。`plu_dirty` は「単位だけの変更」なら `None`（変えない）、それ以外は今どおり `Some(true)`。「単位だけの変更」の判定は 30 BIZ-01-D8 の列の一覧（JAN・商品名・部門・売価・原価・税率は必ず比べ、取引先・メーカー品番・在庫連動・PLU対象は wire の行が `Some` のときだけ比べる）を既存の商品（`existing`、`:1500`）と比べる。単位が同じか空の行は「単位だけの変更」に当たらない（今どおり `plu_dirty=1`）。
 - 単位を変えた商品ごとに、UPDATE が 1 行に当たった（`updated == true`）後、同じ TX の中で `system_repo::insert_operation_log` を呼ぶ（`operation_type` = `product_update`、summary = `商品を更新しました: {商品コード}`、detail_json = `{"stock_unit":{"old":code,"new":code}}` を serde_json で組む）。TX の外の件数の要約のログ（`:1618` の `product_import`）は変えない。
 
+### Writer への助言（Plan Review round 1 の相談役の反例探しから。契約は増やさない）
+
+- 上書きの「単位だけの変更」は、列の一覧を code に別に書かず、UPDATE に渡す `updates` の `Some` の field を `existing` の値と比べて求める（`stock_unit` と `plu_dirty` を除く `Some` が全部既存と同じなら単位だけ）。こうすると 30 BIZ-01-D8 の列の一覧と UPDATE が書く列が 1 か所で一致する。JAN は `updates.jan_code` が常に `Some`（CSV の JAN が空なら `Some(None)`）なので、既存に JAN がある商品の空の JAN の行は「単位だけ」にならない。
+- 判定は `stock_unit_change_allowed(existing, new) -> bool` の 1 つ（同じか、どちらも個数）。commit は先に `ProductStockUnit::from_code` で未知の code を `在庫単位が正しくありません: {code}` で落とし、その後に判定を呼ぶ。
+- commit の商品ごとの `product_update` のログは TX の中で `?` で返す（失敗すれば TX 全体が戻る）。TX の外の件数の要約のログの `tracing::warn!` で握りつぶす型（`product_service.rs:1626`）を真似ない。
+
 ### S3 IO: `src-tauri/src/db/product_repo.rs`
 
-- `ProductUpdates`（`:196`〜`:211`）に `pub stock_unit: Option<ProductStockUnit>` を足し、`update_product`（`:1024`〜）の SET の動的構築に `stock_unit = ?n`（`unit.as_str()`）を足す。repo は値を検査しない（BIZ-01-D8）。CHECK は 12 個の code なので、enum から来る値は CHECK を満たす。
+- `ProductUpdates`（`:196`〜`:211`）に `pub stock_unit: Option<ProductStockUnit>` を足し、`update_product`（`:1023`〜）の SET の動的構築に `stock_unit = ?n`（`unit.as_str()`）を足す。repo は値を検査しない（BIZ-01-D8）。CHECK は 12 個の code なので、enum から来る値は CHECK を満たす。
 
 ### S4 bindings と frontend
 
 - `cd src-tauri && cargo run --bin generate_bindings` で `src/lib/bindings.ts` を再生成する（`ProductUpdateRequest_Deserialize` に `stock_unit?: ProductStockUnit | null`、`_Serialize` に `stock_unit: ProductStockUnit | null`）。手で編集しない。
-- `src/features/products/lib/product-form-request.ts` の `buildUpdateProductRequest`（`:166`〜`:202`）: `isLengthUnit(original.stock_unit)` が偽で、`values.stockUnit !== original.stock_unit` のときだけ `request.stock_unit = values.stockUnit`（UI-01b-D23 の「送る判定は登録の単位で行う」）。`isLengthUnit` は既存（`src/lib/unit-quantity`）。
-- `src/features/products/components/StockUnitField.tsx`: edit mode で個数の単位の商品は select を押せ、選択肢を個数の単位だけ（`STOCK_UNIT_LABELS` の順から長さの単位を除く）にする。長さの単位の商品は今どおり `disabled`（全 12 個のまま。読取専用で選べないので並びは変えない）。edit の個数の単位の商品だけ select の下に UI-01b-D23 の 1 文を出す。在庫連動の自動提案（create だけ）は変えない。
+- `src/features/products/lib/product-form-request.ts` の `buildUpdateProductRequest`（`:166`〜`:201`）: `isLengthUnit(original.stock_unit)` が偽で、`values.stockUnit !== original.stock_unit` のときだけ `request.stock_unit = values.stockUnit`（UI-01b-D23 の「送る判定は登録の単位で行う」）。`isLengthUnit` は既存（`src/lib/unit-quantity`）。
+- `src/features/products/components/StockUnitField.tsx`: edit mode で個数の単位の商品は select を押せ、選択肢を個数の単位だけ（`STOCK_UNIT_LABELS` の順から長さの単位を除く）にする。長さの単位の商品は今どおり `disabled`（押せず、今の語が読める。disabled の select の選択肢の並びは正本も本 packet も決めない）。edit の個数の単位の商品だけ select の下に UI-01b-D23 の 1 文を出す。在庫連動の自動提案（create だけ）は変えない。
 - `src/features/products/components/ProductForm.tsx`: StockUnitField に渡す `readOnly={mode === "edit"}`（`:431`。`:418` の現在庫の input の readOnly は変えない）を「edit かつ長さの単位」にする。在庫の節の説明文（`:404`〜`:409`）を UI-01b-D23 の 3 つにする（edit は `isLengthUnit(values.stockUnit)` で分ける。edit の個数の商品の select は個数の単位しか出さないので、form の値で分けても登録の単位で分けても同じ）。
 - `ProductFormPage.tsx` は変えない（保存は `buildUpdateProductRequest` の結果を渡すだけ。BIZ の拒否は今の `describeError` → form の alert で出る。`isDirty` は form の値の全 field を比べる〈`:183`〜`:185`〉ので単位の変更も離脱の警告に入る）。
 
 ### S5 正本の同期と生成物（実装の commit と同じ PR）
 
 - 実装した契約の `proposed・未実装` を外し、今の規則の文を新しい規則に置き換える。外す・置き換える文（2026-10-17 の main で `rg` した。着手時に数え直す）:
-  - `rg -n 'proposed・未実装.{0,2}単位の語の直しの lane' docs --glob '!docs/archive/**'` → 8 行: `10-common-rules.md:94`、`20-io-product-repo.md:173`、`30-biz-product-service.md:18`・`:23`・`:178`・`:184`・`:216`、`51-ui-product-form.md:29`。
-  - `rg -n '単位の語の直しの lane の後|今は単位を一切変えない|今は update で単位を変えない|`stock_unit` 変更は在庫履歴|上書き（§4.9 の `overwrite_codes`）の今の規則' docs --glob '!docs/archive/**'` → 8 行: `10-common-rules.md:93`（今の規則の文。「種類をまたぐ変更は許さない」は残し、「今は単位を一切変えない」以下を置き換える）、`30-biz-product-service.md:17`・`:22`（今の上書きの規則の段を消し、`:23` の段を今の規則にする）・`:23`・`:528`（§4.9 の手順 2 d. の括弧の単位の分）、`51-ui-product-form.md:48`（UI-01b-D22 の末尾）、`SCREEN_DESIGN.md:334`（edit mode の読取専用の行）、`project-memory.md:119`（「単位の語の直しの lane の後」）。
+  - `rg -n 'proposed・未実装.{0,2}単位の語の直しの lane' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` → 12 行: `10-common-rules.md:94`、`20-io-product-repo.md:173`、`30-biz-product-service.md:18`・`:23`・`:178`・`:184`・`:216`、`51-ui-product-form.md:29`・`:37`（UI-01b-D11）・`:218`（§7.8 の UI-01b-D11 の箇条）、`design-system/01-decision-rules.md:184`（DSR-05 の実例の 1 文だけ。規則の本体は変えない）、`design-system/02-component-catalog.md:253`（disabled の例の句だけ）。UI-01b-D11 と §7.8 は「個数の単位の商品は個数の単位だけの候補で変更でき、長さの単位の商品は押せず今の語が読める」に、design-system の 2 つは「長さの単位の商品の数量単位 select は `disabled`」にする。
+  - `rg -n '単位の語の直しの lane の後|今は単位を一切変えない|今は update で単位を変えない|`stock_unit` 変更は在庫履歴|上書き（§4.9 の `overwrite_codes`）の今の規則' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` → 8 行: `10-common-rules.md:93`（今の規則の文。「種類をまたぐ変更は許さない」は残し、「今は単位を一切変えない」以下を置き換える）、`30-biz-product-service.md:17`・`:22`（今の上書きの規則の段を消し、`:23` の段を今の規則にする）・`:23`・`:528`（§4.9 の手順 2 d. の括弧の単位の分）、`51-ui-product-form.md:48`（UI-01b-D22 の末尾）、`SCREEN_DESIGN.md:334`（edit mode の読取専用の行）、`project-memory.md:119`（「単位の語の直しの lane の後」）。
   - `rg` の型に当たらない 51 の文: UI-01b-D5 の理由の列（`ProductUpdateRequest` は `stock_unit` / `stock_quantity` を更新しない）、§7.3 の「表示のみ」の列挙（`stock_unit`）、§7.4 の手順 2 の field の列挙（`stock_unit` を足す）と手順 3 の read-only の列挙、§7.6 の `stock_unit` の検査（create だけの文はそのまま、edit は select が個数の単位だけを出すことを足す）、§7.7 の Non-scope「edit mode での `stock_unit` / `stock_quantity` 変更」（`stock_quantity` だけにする）、§7.8 の edit payload（`stock_unit` は個数の単位どうしの変更だけ送る）。
+  - `rg` の型に当たらない 10 の文: `10-common-rules.md:66` の契約 ID の段のうち D2 の句（「単位の語は登録の後に個数の単位どうしで直せるようにした（D2）。どれも proposed・未実装で」の D2 の分だけを今の契約にする。D1・D5 の句は原価の lane の所有なので触らない）。
+  - code の comment（実装の commit で直す。正本の sweep の `rg` には当たらない）: `product_service.rs:1035`（「上書きの行: 単位は登録の後に変えない」）・`:1400`（「既存の商品の行（上書きの候補）は単位を変えられない」）、`StockUnitField.tsx` 冒頭の comment（edit の個数の単位の候補を足す）、`ProductForm.tsx:5` と `ProductForm.test.tsx:68`（「数量単位 select は disabled 維持」を長さの単位の商品に限る）。
   - 30 §4.4 の部分更新 wire 契約の表と BIZ-01-D7 の key の列挙（`stock_unit` の注記を外す）。30 §4.9 の手順 2 d.（単位だけの行は `plu_dirty` を変えず、単位を変えた商品ごとに log）。
 - 履歴の節（51 §7.9 の表、10 の変更履歴の表、decision-log の D-113・D-119、`docs/Plans.md:32`、`docs/backlog.md` の D-119 の段）は書き換えない。
 - `docs/backlog.md` の「単位の語の直しの lane」の項目は closeout が消す（本 lane の実装の commit では触らない）。
@@ -161,8 +169,8 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 |---|---|---|
 | 定義 | `product_service.rs:52`（`ProductUpdateRequest`）、`product_repo.rs:196`（`ProductUpdates`） | field を足す（S1・S3） |
 | 作る所（production） | `product_service.rs:371`（`update_product`）、`:523`（`revise_product_price`）、`:571`（`toggle_discontinue`）、`:664`・`:677`（bulk の PLU 対象）、`:1514`（`commit_import`）、`plu_export_service.rs:659` | `:371` と `:1514` だけ値を入れる。他は `..Default::default()` のまま（単位を変えない） |
-| 読む所 | `cmd/product_cmd.rs:38`（command の入力。薄いまま変えない）、`product_repo.rs:1026`（`update_product`）、`src/lib/bindings.ts:10`・`:1296`〜`:1323`（生成物） | S3・S4 |
-| frontend の作る所 | `src/features/products/lib/product-form-request.ts:169`〜`:202` | S4 |
+| 読む所 | `cmd/product_cmd.rs:35`（command の関数。入力の型は `:38`、BIZ の呼出しは `:44`。薄いまま変えない）、`product_repo.rs:1023`（`update_product`）、`src/lib/bindings.ts:10`・`:1296`〜`:1323`（生成物） | S3・S4 |
+| frontend の作る所 | `src/features/products/lib/product-form-request.ts:166`〜`:201` | S4 |
 | test の呼び方（Rust、`..Default::default()` あり） | `product_service.rs` の test 22 か所（`:2407`〜`:4955`）、`plu_export_service.rs:1827`・`:1843`・`:1871`・`:2413`、`product_repo.rs` の test 8 か所（`:2199`〜`:2526`） | 変えない（field の追加で壊れない） |
 | test の呼び方（Rust、literal） | `product_service.rs:2787`（`test_update_product_req102_detail_json_unchanged_fields_omitted` の `req_ii`、全 field を更新前と同じ値で送る） | `stock_unit: Some(<更新前の単位>)` を足す（「全 field を同じ値で送ると log は NULL」の意図を保つ。`None` にすると全 field の意図が欠ける） |
 | test の呼び方（Rust、JSON） | `product_service.rs:2891`〜`:2953`（serde の omitted / null の test） | 変えない。`stock_unit` の omitted / null / value の行を足す（Matrix の T4） |
@@ -175,7 +183,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 | test | 今の期待 | 書換え | 理由 |
 |---|---|---|---|
 | `product_service.rs` `test_import_req104_overwrite_cannot_change_stock_unit`（`:3712`） | m の商品を `玉` で上書きすると preview の error `在庫単位は登録の後に変えられません（登録: m、CSV: 玉）`、commit は拒む | 名前を種類をまたぐ変更の拒否を表す名前（例: `test_import_req104_overwrite_rejects_cross_kind_stock_unit`）にし、文を新しい文 `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）` にする。在庫・明細の金額が変わらない assert は残す | 長さ → 個数の拒否は新しい規則でも成り立つ。文だけが変わる（BIZ-01-D8） |
-| `ProductForm.test.tsx:68`〜`:71`（edit の `数量単位` が `toBeDisabled()`、fixture は `pcs`） | 個数の単位の商品でも select は押せない | fixture を `m` にした商品で `toBeDisabled()` を確かめる行と、`pcs` の商品で押せる行に分ける | UI-01b-D23（個数の単位の商品は押せる、長さは読取専用） |
+| `ProductForm.test.tsx:44`〜`:71`（edit の `数量単位` が `toBeDisabled()`、fixture は `stock_unit: "cm"`） | 長さの単位の商品の select は押せない | 変えない（長さの単位の商品は読取専用のまま。`:68` の comment だけ S5 で直す）。`pcs` の商品で select が押せる test を別に足す（Matrix の F3） | UI-01b-D23（個数の単位の商品は押せる、長さは読取専用） |
 | `StockUnitField.test.tsx` の edit の行（`:300`〜`:325`、`readOnly: mode === "edit"` で渡す） | edit は readOnly | 渡し方を「edit かつ長さの単位」に合わせる。edit の `m` で提案の案内が出ない期待は残す | 同上 |
 | `product-form-request.test.ts:128`〜`:158`（cm の商品の form 値を `pcs` にしても `stock_unit` を送らない） | 送らない | 変えない（UI-01b-D23 の「登録の単位が長さなら送らない」がこの期待を正本にした） | — |
 | `product-update-patch-contract.test.ts` の 2 つの「nine」の test | 9 field | 10 field | wire の型の変更 |
@@ -194,7 +202,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 |---|---|---|
 | `docs/function-design/30-biz-product-service.md` | 冒頭の「単位と原価の精度の契約（BIZ-01-D8）」のうち単位の変更の段（`stock_unit` の段・update の段・上書きの段）、§4.4 の `ProductUpdateRequest` の field の列挙・部分更新 wire 契約の表・手順 2・BIZ-01-D7 の key の列挙、§4.9 の手順 2 d. の括弧のうち単位の句（「単位の語の直しの lane の後は …」） | §4.4 の手順 4b（JAN の遷移）、§4.9 の手順 2 d. の JAN の句（「1→0 と JAN 変更は …」「JAN の変更もこれで未反映になる」）、§4.8・§4.9 の JAN の検査、別名の新しい節 |
 | `docs/function-design/20-io-product-repo.md` | §2.3 の `ProductUpdates` の `stock_unit` の行だけ | `ProductUpdates` の `jan_code` の行（今の文書に無い。code にはある〈`product_repo.rs:197`〉。足すかは JAN の側の判断）と別名の repo の節 |
-| `docs/function-design/51-ui-product-form.md` | UI-01b-D5 の `stock_unit` の句、UI-01b-D22 の末尾、UI-01b-D23、§7.3・§7.4・§7.6・§7.7・§7.8 の `stock_unit` の句、§7.9 の表の本 lane の行 | UI-01b-D5 の `jan_code` の句、JAN の入力・検査（UI-01b-D17・D18）、別名の問いの UI |
+| `docs/function-design/51-ui-product-form.md` | UI-01b-D5 の `stock_unit` の句、UI-01b-D11 と §7.8 の数量単位 select の句、UI-01b-D22 の末尾、UI-01b-D23、§7.3・§7.4・§7.6・§7.7・§7.8 の `stock_unit` の句、§7.9 の表の本 lane の行 | UI-01b-D5 の `jan_code` の句、JAN の入力・検査（UI-01b-D17・D18）、別名の問いの UI |
 | `docs/backlog.md` | 「単位の語の直しの lane」の項目、「原価の lane（C）」の項目の下に足した 1 行 | 「TD-284 の lane」の項目 |
 
 ほかの 4 本（`agent/daily-report-sheet-design`・`agent/sd-bulk-import-design`・`agent/sd-direct-read-runtime`・`agent/msi-distribution-docs`）は、発注書の Scope の file（32・37・29・pos-tables・io の SD・MSI の手順の docs）が本 lane の Scope の file と重ならない（発注書 363・364・367・368 の Scope を読んで当てた）。`docs/decision-log.md` は本 lane で触らない。原価の lane（未起票）は `ProductUpdateRequest` を触るので、本 lane が先に入る前提を `docs/backlog.md` の原価の lane の項目に書いた。
@@ -205,23 +213,24 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - `ProductUpdates` の `jan_code` を 20 に足すこと（上の所有表。JAN の側）。
 - 商品 CSV の preview の重複行に、単位が変わることを示す表示を足すこと（正本に無い。上書きの確認ダイアログは今のまま）。
 - `src/components/patterns/FormSection.test.tsx` の例の文字列の更新。
+- `docs/design-system/reference/mockup-d-forms-a.html:201`・`:203` の数量単位 select の disabled の表示（静的な mock で、正本の契約ではない）。
 
 ## Acceptance Criteria
 
-- AC1（BIZ の商品修正と商品 CSV）: `cd src-tauri && cargo test --lib biz::product_service` が exit 0 で、Matrix の T1〜T12 の test（名前は Matrix）が通る。種類をまたぐ変更・長さどうしの変更・未知の code の wire を拒む test と、個数どうしの変更が在庫・明細・売価・原価・price_history を変えない test を含む。
+- AC1（BIZ の商品修正と商品 CSV）: `cd src-tauri && cargo test --lib biz::product_service` が exit 0 で、Matrix の T1〜T12・T14 の test（名前は Matrix）が通る。種類をまたぐ変更・長さどうしの変更・未知の code の wire を拒む test と、個数どうしの変更が在庫・明細・売価・原価・price_history を変えない test を含む。
 - AC2（IO）: `cd src-tauri && cargo test --lib db::product_repo` が exit 0 で、`ProductUpdates.stock_unit` が SET に出る test（Matrix の T13）が通る。
 - AC3（bindings）: `cd src-tauri && cargo run --bin generate_bindings` の後に `git diff --exit-code src/lib/bindings.ts` が exit 0（commit 済みの生成物と一致）。`rg -c 'stock_unit\?: ProductStockUnit \| null' src/lib/bindings.ts` が 1 以上（`ProductUpdateRequest_Deserialize` の行）。
 - AC4（frontend）: `npm test -- src/features/products/lib/product-form-request.test.ts src/features/products/lib/product-update-patch-contract.test.ts src/features/products/components/StockUnitField.test.tsx src/features/products/components/ProductForm.test.tsx src/features/products/ProductFormPage.test.tsx src/components/patterns/FormSection.test.tsx` が exit 0。
 - AC5（旧い文の削除と新しい文）: `rg -n '在庫単位は登録の後に変えられません' src-tauri/src src` が 0 行。`rg -c '在庫単位は個数の単位どうしでだけ変えられます' src-tauri/src/biz/product_service.rs` が 1 以上。
-- AC6（正本の同期）: S5 の 2 つの `rg`（`proposed・未実装.{0,2}単位の語の直しの lane` と `単位の語の直しの lane の後|今は単位を一切変えない|…`）が docs（archive を除く）で 0 行。
+- AC6（正本の同期）: S5 の 2 つの `rg`（`proposed・未実装.{0,2}単位の語の直しの lane` と `単位の語の直しの lane の後|今は単位を一切変えない|…`）が docs（archive と `docs/plans/` を除く）で 0 行。
 - AC7（docs と生成物の検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が exit 0（ERROR 0）。`cd src-tauri && cargo run --bin generate_traceability -- --check` と `cargo test --test design_compliance_test` が exit 0。
 - AC8（全体の gate）: `docs/DEV_WORKFLOW.md` Verification Gates の Rust/backend と Frontend の行の command が exit 0。L3 を含むので Writer は `cargo check --release` を通す（`docs/DEV_WORKFLOW.md` Implementation Rules）。
 
-baseline（2026-10-17、本 worktree の HEAD `f5d7aaf4`、起票の直前に逐語で実行。実装の前の観測値）:
+baseline（2026-10-17、Plan Review round 1 の是正の commit の直前に本 worktree〈HEAD `734671ed` に是正の docs の変更を載せた状態。code は `f5d7aaf4` と同じ〉で逐語で測り直した。実装の前の観測値。AC6 の 1 本目は是正で正本に proposed の注記を 4 つ足したので 12 行）:
 
 ```
 $ cd src-tauri && CARGO_TARGET_DIR=<tmp> cargo test --lib biz::product_service
-test result: ok. 125 passed; 0 failed; 0 ignored; 0 measured; 1114 filtered out; finished in 13.14s
+test result: ok. 125 passed; 0 failed; 0 ignored; 0 measured; 1114 filtered out; finished in 43.53s
 $ npm test -- <AC4 の 6 file>
  Test Files  6 passed (6)
       Tests  96 passed (96)
@@ -231,9 +240,9 @@ $ rg -c '在庫単位は個数の単位どうしでだけ変えられます' src
 exit=1
 $ rg -c 'stock_unit\?: ProductStockUnit \| null' src/lib/bindings.ts; echo "exit=$?"
 exit=1
-$ rg -n 'proposed・未実装.{0,2}単位の語の直しの lane' docs --glob '!docs/archive/**' | wc -l
-8
-$ rg -n '単位の語の直しの lane の後|今は単位を一切変えない|今は update で単位を変えない|`stock_unit` 変更は在庫履歴|上書き（§4.9 の `overwrite_codes`）の今の規則' docs --glob '!docs/archive/**' | wc -l
+$ rg -n 'proposed・未実装.{0,2}単位の語の直しの lane' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l
+12
+$ rg -n '単位の語の直しの lane の後|今は単位を一切変えない|今は update で単位を変えない|`stock_unit` 変更は在庫履歴|上書き（§4.9 の `overwrite_codes`）の今の規則' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l
 8
 ```
 
@@ -258,7 +267,7 @@ test の本数は AC にしない（参考の観測値。完了の判定は exit
   7. 74 §74.8: 商品修正の key（`stock_unit` を含む）を辞書に入れない（発注の項目）。
 - plan にしかない durable な判断の昇格先: 上の 7 つは正本に置いた。packet にだけある判断は無い。
 - 前提・制約と、延期した design gap の follow-up: 前提は共通規則 SPEC-UNIT-D2 の「個数の単位は価格の基準数量がどれも 1」（`src-tauri/src/biz/unit_amount.rs:34`〜`:39` の `price_basis_quantity` で確かめた: `Count => 1`、`Length => 100`。出所 = 正本と実物の観測、2026-10-17）。productUpdate の無効化の範囲の外の画面は次の再取得まで古い語（UI-01b-D23 の末尾、受容した制約）。操作ログの key の整形は BIZ-01-D7 の Revisit へ延期（74 §74.8）。
-- 絶対保証の例外と escape hatch の自己点検: 「種類をまたぐ変更は保存されない」の入口は 3 つ（`update_product` の command、商品 CSV の preview、commit）で、どれも BIZ の 1 つの判定を通す。単位の列を UPDATE する他の経路は無い（2026-10-17 の main で `rg -n 'stock_unit\s*=' src-tauri/src --glob '!**/schema_v*.rs' --glob '!**/migration*.rs'` を当て、production の SET は無い。当たる UPDATE は test の fixture の 4 か所〈`integrity_service.rs:851`・`sales_service.rs:1560`・`stocktake_service.rs:954`・`inventory_service/list.rs:817`〉で、どれも `mod tests` の中。`ProductUpdates` は今 `stock_unit` を持たない）。backup の restore は DB 全体を戻すので単位の変更の経路ではない。「過去の記録も新しい語で出る」の例外は上の cache（受容）。
+- 絶対保証の例外と escape hatch の自己点検: 「種類をまたぐ変更は保存されない」の入口は 3 つ（`update_product` の command、商品 CSV の preview、commit）で、どれも BIZ の 1 つの判定を通す。単位の列を UPDATE する他の経路は無い（2026-10-17 の main で `rg -n 'stock_unit\s*=' src-tauri/src --glob '!**/schema_v*.rs' --glob '!**/migration*.rs'` を当て、production の SET は無い。当たる UPDATE は test の fixture の 5 か所〈`integrity_service.rs:851`・`sales_service.rs:1560`・`stocktake_service.rs:954`・`inventory_service/list.rs:817`・`inventory_service/test_support.rs:80`〉で、どれも `mod tests` か `#[cfg(test)] mod test_support` の中。`ProductUpdates` は今 `stock_unit` を持たない）。backup の restore は DB 全体を戻すので単位の変更の経路ではない。「過去の記録も新しい語で出る」の例外は上の cache（受容）。
 - 判定: ready。上の 7 つの穴は正本に置き、未解決の設計の問いは無い。
 
 ## Registration / Generation Obligations
@@ -299,9 +308,9 @@ L3（Windows の実機。owner の手が戻った後に他の lane の L3 と 1 
 
 | 項目 | 到達経路 | 入力物 | 依存する既知 backlog | 合格（PASS / FAIL） |
 |---|---|---|---|---|
-| L3-1 商品修正で単位を直す | 商品一覧 → 個数の単位の商品の「修正」 → 数量単位の select → 「玉」 → 保存 → 在庫照会・操作ログ | 単位「個」の商品 1 件（画面から登録できる。初期在庫 12） | 無し | select に個数の単位だけが並ぶ、select の下の文と在庫の節の説明が読める、保存の後に在庫照会で `12 玉`、操作ログに `stock_unit` の前後 |
-| L3-2 長さの商品は直せない | 商品一覧 → 単位 m の商品の「修正」 | 単位 m の商品 1 件（画面から登録できる） | 無し | 数量単位が押せない、在庫の節の説明が `現在庫と数量単位は登録後に変更できません。` |
-| L3-3 商品 CSV の上書き | 商品一括インポート → CSV を選ぶ → preview → 毛糸の行を「上書き」 → 取込み → 在庫照会 | L3-1・L3-2 の 2 商品と、合成の CSV 1 本（CP932。個数の商品の行は `在庫単位` = `袋`、m の商品の行は `玉`、他の列は登録と同じ。Coordinator が Ready の依頼と同時に渡す） | 無し | m の商品の行が preview のエラー行で文が `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）`、個数の商品の行は上書きでき、取込みの後に在庫照会で単位が「袋」 |
+| L3-1 商品修正で単位を直す | 商品登録 → 入庫画面 → 商品一覧 → 商品 A の「修正」 → 数量単位の select → 「玉」 → 保存 → 在庫照会 → 入庫の記録詳細（単位を直した後に初めて開く） → 操作ログ | 画面から登録する商品 A（固定の合成の値: JAN `2000000009018`、商品名 `L3 合成の糸`、部門 ID 3、売価 500、原価 300、税率 10%、単位「個」、初期在庫 0）。入庫画面で商品 A を数量 12・原価 300 で記録する | 無し | select に個数の単位だけが選べる、select の下の文と在庫の節の説明が読める、保存の後に在庫照会で `12 玉`、入庫の記録詳細の数量が `12` で単位が「玉」、操作ログに `stock_unit` の前後 |
+| L3-2 長さの商品は直せない | 商品登録 → 商品一覧 → 商品 B の「修正」 | 画面から登録する商品 B（固定の合成の値: JAN `2000000009025`、商品名 `L3 合成の布`、部門 ID 3、売価 700、原価 400、税率 10%、単位 m、初期在庫 `25`） | 無し | 数量単位が押せず今の語（m）が読める、在庫の節の説明が `現在庫と数量単位は登録後に変更できません。` |
+| L3-3 商品 CSV の上書き | 商品一括インポート → CSV を選ぶ → preview（商品 B の行のエラーを確かめる） → 商品 A の行だけを「上書き」 → 取込み → 在庫照会 | L3-1・L3-2 の後の商品 A（単位「玉」）・商品 B と、合成の CSV 1 本（CP932。列は 商品コード・商品名・部門ID・売価・原価・税率・在庫単位・JANコード。商品 A の行 = `2000000009018,L3 合成の糸,3,500,300,10,袋,2000000009018`、商品 B の行 = `2000000009025,L3 合成の布,3,700,400,10,玉,2000000009025`。JANコードの列を必ず入れる〈上書きは JAN を CSV の値で書き、空なら JAN を消す。§4.9 の手順 2 a.〉。Coordinator が上の固定の値で作り、Ready の依頼と同時に渡す） | 無し | 商品 B の行が preview のエラー行で文が `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）`（エラー行には上書きの選択が出ない）、商品 A の行は上書きを選べ、取込みの後に在庫照会で商品 A の単位が「袋」・在庫は 12 のまま |
 
 `plu_dirty` が変わらないことは L3 にしない（PLU の書出しを済ませた商品の用意が要り、L3 Eligibility の (3) に近い。自動 test の T9・T10 が受け持つ）。種類をまたぐ変更の command からの拒否も UI から到達しないので自動 test（T3）が受け持つ。
 
@@ -321,13 +330,14 @@ L3（Windows の実機。owner の手が戻った後に他の lane の L3 と 1 
 |---|---|---|---|---|
 | SPEC-UNIT-D2（個数どうしだけを許す） | 10 の単位の変更の段 | S1・S2 の判定 | T1・T2・T3・T6・T7・T8 | L3-1・L3-3 |
 | BIZ-01-D8（update の段: field・検査・順序・同じ単位） | 30 の単位と原価の精度の契約 | S1 | T1・T2・T3・T4・T5 | L3-1 |
-| BIZ-01-D8（上書きの段: preview・commit・未知の code・`plu_dirty`・log） | 同上 | S2 | T6・T7・T8・T9・T10・T11・T12 | L3-3 |
+| BIZ-01-D8（上書きの段: preview・commit・未知の code・`plu_dirty`・log） | 同上 | S2 | T6・T7・T8・T9・T10・T11・T12・T14 | L3-3 |
 | BIZ-01-D7（key `stock_unit`、変えたときだけ） | 30 §4.4 | S1 | T1・T4・T5 | L3-1 |
 | PRODUCT-PATCH-D1（omitted / null は更新しない） | 30 §4.4 | S1・S4 | T4・F5 | — |
 | `plu_dirty` の規則（単位は理由にならない） | 30 BIZ-01-D8・§4.4 手順 4・4b・§4.9 手順 2 d. | S1・S2 | T1・T9・T10 | 非対象（自動 test） |
 | 20 §2.3 `ProductUpdates.stock_unit` | 20 §2.3 | S3 | T13 | — |
 | UI-01b-D23（select・文・送る判定・説明文・現在庫の語） | 51 | S4 | F1・F2・F3・F4・F6 | L3-1・L3-2 |
 | UI-01b-D5・D22 の読取専用の置き換え | 51 | S4・S5 | F2・F3 | L3-2 |
+| UI-01b-D11・§7.8 と DSR-05 の実例（disabled は長さの単位の商品だけ） | 51、`design-system/01-decision-rules.md` DSR-05、`02-component-catalog.md` | S4・S5 | F3（`ProductForm.test.tsx` の既存の `cm` の disabled の test と、`pcs` の有効化の test） | L3-1・L3-2 |
 | 74 §74.8（key を辞書に入れない） | 74 | 変えない（`OperationLogsPage.tsx` の `KNOWN_KEYS` を触らない） | 非対象（変更が無い） | L3-1（raw key で出る） |
 | bindings の生成物 | 30 §4.4、本 packet の Boundary | S4 | AC3・F5 | — |
 
