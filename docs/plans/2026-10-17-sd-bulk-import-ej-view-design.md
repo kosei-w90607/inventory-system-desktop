@@ -111,7 +111,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 型・関数の形の変更（後続の lane が触る。本 lane は変えない）。`rg` で数えた作る所・読む所（2026-10-17、起点 `f5d7aaf4`）:
 - `DailyReportSdScan` / `DailyReportSdScanSnapshot`（§37.9、未実装。SD 直読みの runtime が作る）: `rg -n 'DailyReportSdScan' src src-tauri/src` は 0 件（未実装）。(A) が `ej`・`ej_files`、(B) が `z004_files` を足す。bindings は (A) で再生成。
 - `DailyReportDuplicateStatus`（変えない）の分岐: 作る所 `src-tauri/src/biz/daily_report_import_service/parse.rs:159`、読む所 `commit.rs:37`・`src-tauri/src/cmd/daily_report_import_cmd.rs:446`・`src/features/daily-report-import/DailyReportImportPage.tsx:139`、test `src-tauri/src/biz/daily_report_import_service/tests.rs:275`・`:481`・`:536`、`src/features/daily-report-import/DailyReportImportPage.test.tsx`（`:61`・`:156`・`:258`・`:277`・`:418`・`:455`）、`src/features/daily-report-import/hooks/useDailyReportImportFlow.test.tsx:437`（`rg -n 'AdditionalImportConfirmationRequired' src-tauri/src src`、Z004 の側の hit は除く）。BIZ-08-D8 で値の意味が変わるのは BIZ の分岐と backend の test の期待だけで、frontend は status を見て描くだけなので変わらない（fixture の status は文字列のまま）。
-- 新しい型・関数（37 §37.10・§37.11、24 §14.18b・§14.25、45 §45.6c。round 1 の是正で、既存の `EjRecord`〈`ej_parser.rs`〉に当たらない式に限った）: `rg -c 'RegisterSdBulk|RegisterSdEjSummary|EjImportResult|EjImportPlan|EjRecordDay|EjRecordSummary|EjRecordDetail|EjRecordRef|EjNumberGap|NewEjRecord|EjSourceFile|SdSourceFile|ej_records|commit_register_sd_bulk_import|import_ej_records|exists_same_date_daily_report_import_without_settlement_no|measure_register_sd_shape' src src-tauri/src` の出力は空（exit 1、新規。2026-10-17、HEAD `39dd2f14` の上の作業 tree で測った）。
+- 新しい型・関数（37 §37.10・§37.11、24 §14.18b・§14.25、45 §45.6c。round 1 の是正で、既存の `EjRecord`〈`ej_parser.rs`〉に当たらない式に限った。round 2 の是正で `EjConflict`・`EjRecordKindCode`・`EjRecordModeCode`・`ej_unreadable_files` を足した）: `rg -c 'RegisterSdBulk|RegisterSdEjSummary|EjImportResult|EjImportPlan|EjRecordDay|EjRecordSummary|EjRecordDetail|EjRecordRef|EjNumberGap|NewEjRecord|EjSourceFile|SdSourceFile|EjConflict|EjRecordKindCode|EjRecordModeCode|ej_unreadable_files|ej_records|commit_register_sd_bulk_import|import_ej_records|exists_same_date_daily_report_import_without_settlement_no|measure_register_sd_shape' src src-tauri/src` の出力は空（exit 1、新規。2026-10-18、HEAD `7d65f6b6` の上の作業 tree で測った）。
 
 並走の lane と重なる file と節の所有（D-055 の所有表）:
 
@@ -129,7 +129,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | `docs/backlog.md` | 本項目の sub-bullet、直後の 3 項目、`XZ_BKUP` へ移す項目の sub-bullet | 「SD 直読みの runtime」の項目 | 「日報の紙と意味づけ」の項目 | 無し（項目が別） |
 | `docs/function-design/24-io-csv-import-repo.md`・`32-biz-csv-import-service.md` | 24 §14.25（新設）と更新履歴の末尾、32 の「SD の一括取込み」（新設） | 24 は §14.14・§14.18a の同期の見込み | 34 と隣の 24 §14.21〜§14.22 の見込み | 更新履歴は両方を残す |
 
-367 の契約に後から足すもの（正本の §37.9・§45.6a は変えていない。D-121 の Compatibility）: §37.9 の `DailyReportSdScan` に `ej`、`DailyReportSdScanSnapshot` に `ej_files`・`z004_files`、§37.9 の scan の手順 10 の後に EJ の読取り、§45.6a 手順 2a の「Z004 の bytes を cache に残さない」を (B) で「相対 path つきで残す」に変え、`DailyReportSdScan` に `z004_new_count` を足す。IO-09 に bytes を受ける純関数 `measure_register_sd_shape` を足し、29 §29.7.6 の手順 3 もそれを使う形に直す（(A)）。§37.9 の旧い 2 文を §37.10・§37.11 への参照に直す（(A)、上の表）。どれも 367 の merge の後の (A)・(B) が足す。
+367 の契約に後から足すもの（正本の §37.9・§45.6a は変えていない。D-121 の Compatibility）: §37.9 の `DailyReportSdScan` に `ej`、`DailyReportSdScanSnapshot` に `ej_files`・`ej_unreadable_files`・`z004_files`、§37.9 の scan の手順 10 の後に EJ の読取り、§45.6a 手順 2a の「Z004 の bytes を cache に残さない」を (B) で「相対 path つきで残す」に変え、`DailyReportSdScan` に `z004_new_count` を足す。IO-09 に bytes を受ける純関数 `measure_register_sd_shape` を足し、29 §29.7.6 の手順 3 もそれを使う形に直す（(A)）。§37.9 の旧い 2 文を §37.10・§37.11 への参照に直す（(A)、上の表）。どれも 367 の merge の後の (A)・(B) が足す。
 
 ## Non-scope
 
@@ -153,7 +153,95 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC9（D-120 の節を触らない）: `git diff --name-only f5d7aaf4 HEAD -- docs/function-design/34-biz-sales-service.md docs/function-design/56-ui-daily-sales.md` の出力が空。
 - AC10（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0（WARN は開始 HEAD の 0 から増えない）。`cd src-tauri && cargo run --bin generate_traceability -- --check` が OK。`cd src-tauri && cargo test --test design_compliance_test` が pass。
 - AC11（docs だけ）: `git diff --name-only f5d7aaf4 HEAD -- src src-tauri scripts package.json package-lock.json` の出力が空。
-- AC12（Plan Review round 1 の是正。開始 `39dd2f14` ではどれも 0）: `rg -c '^fn exists_same_date_daily_report_import_without_settlement_no' docs/function-design/24-io-csv-import-repo.md` が 1、`rg -c '最後の記録の保留' docs/function-design/37-biz-daily-report-import-service.md` が 4、`rg -c 'Failed\(BizError\)' docs/function-design/37-biz-daily-report-import-service.md` が 2、`rg -c 'measure_register_sd_shape' docs/function-design/37-biz-daily-report-import-service.md` が 3、`rg -c 'test_ej_xz_last_record_is_held' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md` が 1。AC1〜AC11 の数は是正の後に測り直して変わらない。
+- AC12（Plan Review round 1 の是正。開始 `39dd2f14` ではどれも 0）: `rg -c '^fn exists_same_date_daily_report_import_without_settlement_no' docs/function-design/24-io-csv-import-repo.md` が 1、`rg -c '最後の記録の保留' docs/function-design/37-biz-daily-report-import-service.md` が 1（round 1 の是正の後は 4。round 2 の是正で §37.11 を 1 つの筋に書き直し、この語は更新履歴の round 1 の行だけに残る。保留の規則は §37.11 手順 2）、`rg -c 'Failed\(BizError\)' docs/function-design/37-biz-daily-report-import-service.md` が 2、`rg -c 'measure_register_sd_shape' docs/function-design/37-biz-daily-report-import-service.md` が 2（同じく 3 から。形の検査を §37.11 手順 1 の 1 か所にした）、`rg -c 'test_ej_xz_last_record_is_held' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md` が 1。AC1〜AC11 の数は是正の後に測り直して変わらない。
+- AC13（Plan Review round 2 の是正。開始 `7d65f6b6` ではどれも 0）: `rg -c -F '^EJ\d{6}_\d{4}\.TXT$' docs/function-design/37-biz-daily-report-import-service.md` が 1（裁定 1、伸びうるかの名前の判定）、`rg -c 'held_count. が 0' docs/function-design/37-biz-daily-report-import-service.md` が 1（裁定 2）、`rg -c 'ej_unreadable_files' docs/function-design/37-biz-daily-report-import-service.md` が 7（裁定 3）、`rg -c 'saved: bool' docs/function-design/37-biz-daily-report-import-service.md` が 1（裁定 4）、`rg -c 'NaiveDateTime::parse_from_str' docs/function-design/37-biz-daily-report-import-service.md` が 1（裁定 6）、`rg -c '^enum EjRecord(Kind|Mode)Code' docs/function-design/37-biz-daily-report-import-service.md` が 2（裁定 8）、`rg -c -F '（手順 2 と同じ形）' docs/function-design/37-biz-daily-report-import-service.md` が 1（裁定 10）、`rg -c 'Failed \{ kind: CmdErrorKind' docs/function-design/45-cmd-daily-report-import.md` が 1（裁定 8）、`rg -c '^型の所有: ' docs/function-design/24-io-csv-import-repo.md` が 1（裁定 11）、`rg -c 'test_ej_hand_picked_growable_file_holds_last_record|test_ej_plan_full_match_requires_no_held|test_ej_invalid_calendar_datetime_file_is_unreadable|test_bulk_import_names_scan_unreadable_ej_files|test_ej_wire_enums_serialize_as_fixed_values|残る有効な値引き' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md` が 11（裁定 1・2・3・6・7・8 の行と mutation の問い）、`rg -c 'RegisterSdBulkResult\.ej' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md` の出力が空（0、裁定 9）。裁定 5 は Matrix の `test_ej_grown_file_adds_only_new_records`・`test_bulk_import_after_cv17_moved_counts_nothing_twice` の期待の書換えで、数でなく本文で確かめる。
+
+実測（round 2 の是正の後、commit の前の作業 tree、2026-10-18。AC の command を逐語で回し、AC8・AC9・AC11 だけは commit の前なので `f5d7aaf4 HEAD --` を `f5d7aaf4 --`〈作業 tree と比べる〉にした。commit の後に逐語の形で回し直した結果は Coordinator への報告に書く）:
+
+```text
+AC1  rg -c 'BIZ-08-D7' docs/function-design/37-biz-daily-report-import-service.md
+  => 3
+AC1  rg -c '^fn commit_register_sd_bulk_import' docs/function-design/37-biz-daily-report-import-service.md
+  => 1
+AC1  rg -c '^fn commit_register_sd_bulk_import' docs/function-design/45-cmd-daily-report-import.md
+  => 1
+AC2  rg -c 'BIZ-08-D8' docs/function-design/37-biz-daily-report-import-service.md
+  => 3
+AC2  rg -c '^- Superseded in part by: D-121' docs/decision-log.md
+  => 1
+AC3  rg -c 'BIZ-08-D9' docs/function-design/37-biz-daily-report-import-service.md
+  => 3
+AC3  rg -c '^### ej_records カラム定義' docs/db-design/pos-tables.md
+  => 1
+AC3  rg -c '^fn (insert_ej_record|list_ej_number_gaps)' docs/function-design/24-io-csv-import-repo.md
+  => 2
+AC3  rg -c 'UI-09c-D[1-5]' docs/SCREEN_DESIGN.md
+  => 5
+AC3  rg -c 'D-121' docs/function-design/29-io-ej-parser.md
+  => 1
+AC4  rg -c 'BIZ-08-D10' docs/function-design/37-biz-daily-report-import-service.md
+  => 2
+AC4  rg -c 'D-121 からの申し送り' docs/backlog.md
+  => 1
+AC5  rg -c 'UI-07-D17' docs/function-design/55-ui-csv-import.md
+  => 2
+AC5  rg -c 'CMD-12-D2' docs/function-design/45-cmd-daily-report-import.md
+  => 3
+AC6  rg -c '^- \*\*SD の一括取込みと EJ の控えの runtime（A）\*\*' docs/backlog.md
+  => 1
+AC6  rg -c '^- \*\*Z004 を SD の一括取込みに入れる runtime（B）\*\*' docs/backlog.md
+  => 1
+AC6  rg -c '^- \*\*店に聞く: レシートの控えの探し方と昔の控え\*\*' docs/backlog.md
+  => 1
+AC7  rg -c '^## D-121: ' docs/decision-log.md
+  => 1
+AC8  git diff -U0 f5d7aaf4 -- docs/function-design/29-io-daily-report-parser.md
+  => (出力なし)
+AC8  git diff f5d7aaf4 -- docs/function-design/37-biz-daily-report-import-service.md docs/function-design/45-cmd-daily-report-import.md docs/function-design/55-ui-csv-import.md docs/db-design/pos-tables.md | grep -c '^-[^-]'
+  => 0
+AC9  git diff --name-only f5d7aaf4 -- docs/function-design/34-biz-sales-service.md docs/function-design/56-ui-daily-sales.md
+  => (出力なし)
+AC11  git diff --name-only f5d7aaf4 -- src src-tauri scripts package.json package-lock.json
+  => (出力なし)
+AC12  rg -c '^fn exists_same_date_daily_report_import_without_settlement_no' docs/function-design/24-io-csv-import-repo.md
+  => 1
+AC12  rg -c '最後の記録の保留' docs/function-design/37-biz-daily-report-import-service.md
+  => 1
+AC12  rg -c 'Failed\(BizError\)' docs/function-design/37-biz-daily-report-import-service.md
+  => 2
+AC12  rg -c 'measure_register_sd_shape' docs/function-design/37-biz-daily-report-import-service.md
+  => 2
+AC12  rg -c 'test_ej_xz_last_record_is_held' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md
+  => 1
+AC13  rg -c -F '^EJ\d{6}_\d{4}\.TXT$' docs/function-design/37-biz-daily-report-import-service.md
+  => 1
+AC13  rg -c 'held_count. が 0' docs/function-design/37-biz-daily-report-import-service.md
+  => 1
+AC13  rg -c 'ej_unreadable_files' docs/function-design/37-biz-daily-report-import-service.md
+  => 7
+AC13  rg -c 'saved: bool' docs/function-design/37-biz-daily-report-import-service.md
+  => 1
+AC13  rg -c 'NaiveDateTime::parse_from_str' docs/function-design/37-biz-daily-report-import-service.md
+  => 1
+AC13  rg -c '^enum EjRecord(Kind|Mode)Code' docs/function-design/37-biz-daily-report-import-service.md
+  => 2
+AC13  rg -c -F '（手順 2 と同じ形）' docs/function-design/37-biz-daily-report-import-service.md
+  => 1
+AC13  rg -c 'Failed \{ kind: CmdErrorKind' docs/function-design/45-cmd-daily-report-import.md
+  => 1
+AC13  rg -c '^型の所有: ' docs/function-design/24-io-csv-import-repo.md
+  => 1
+AC13  rg -c 'test_ej_hand_picked_growable_file_holds_last_record|test_ej_plan_full_match_requires_no_held|test_ej_invalid_calendar_datetime_file_is_unreadable|test_bulk_import_names_scan_unreadable_ej_files|test_ej_wire_enums_serialize_as_fixed_values|残る有効な値引き' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md
+  => 11
+AC13  rg -c 'RegisterSdBulkResult\.ej' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md
+  => (出力なし)
+AC10  bash scripts/doc-consistency-check.sh / --target plan
+  => どちらも exit=0、ERROR 0・WARN 0（「全チェック通過」）
+AC10  cargo run --bin generate_traceability -- --check
+  => traceability check: OK（ERROR 0 件 / WARN 0 件）
+AC10  cargo test --test design_compliance_test
+  => test result: ok. 1 passed; 0 failed
+```
 
 ## Design Readiness
 
@@ -190,11 +278,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - producer: CMD-12 `commit_register_sd_bulk_import`・`import_ej_files`・`list_ej_records`・`find_ej_records_by_no`・`get_ej_record`（45 §45.6c）、`scan_register_sd` の応答の `DailyReportSdScan.ej`（37 §37.10）
 - consumer: UI-07 の日報取込みタブ（UI-07-D17）、UI-09c
-- wire type: `RegisterSdBulkResponse`・`RegisterSdBulkItemDto`・`RegisterSdBulkSource`（`DailyReport`・`Z004`・`Ej`）・`RegisterSdBulkOutcomeDto`（`Failed { kind, message }` は CMD が BIZ の `Failed(BizError)` に 45 §45.7 を当てて作る。round 1 の是正）、`DailyReportSdScan` の `z004_new_count`、`RegisterSdEjSummary`、`EjImportResult`・`EjNumberGap`、`EjRecordDay`・`EjRecordSummary`・`EjRecordRef`・`EjRecordDetail`、request `EjFileRequest { filename, file_bytes }`
-- internal type: BIZ の `RegisterSdBulkResult`・`RegisterSdBulkOutcome`（`Failed(BizError)`）、`DailyReportSdScanSnapshot` の `ej_files`・`z004_files`、`SdSourceFile`、`EjSourceFile`、`EjImportPlan`、`NewEjRecord`
+- wire type: `RegisterSdBulkResponse`・`RegisterSdBulkItemDto`・`RegisterSdBulkSource`（`DailyReport`・`Z004`・`Ej`）・`RegisterSdBulkOutcomeDto`（`Failed { kind: CmdErrorKind, message }` は CMD が BIZ の `Failed(BizError)` に 45 §45.7 を当てて作る。round 1 の是正、kind の enum は round 2 の是正）、`DailyReportSdScan` の `z004_new_count`、`RegisterSdEjSummary`、`EjImportResult`（`conflicts: Vec<EjConflict>`）・`EjConflict`（`saved`）・`EjNumberGap`、`EjRecordDay`・`EjRecordSummary`（`kind: EjRecordKindCode`・`mode: EjRecordModeCode`。response だけの生成 enum、D-061・D-064）・`EjRecordRef`・`EjRecordDetail`、request `EjFileRequest { filename, file_bytes }`
+- internal type: BIZ の `RegisterSdBulkResult`・`RegisterSdBulkOutcome`（`Failed(BizError)`）、`DailyReportSdScanSnapshot` の `ej_files`・`ej_unreadable_files`・`z004_files`、`SdSourceFile`、`EjSourceFile`、`EjImportPlan`、`NewEjRecord`
 - precision/range: 記録の番号は 6 桁の文字列（先頭 0 を保つ。数値にしない）、4 桁の欄も文字列。`total_amount` は円の整数で絶対値 2^53 − 1 以下（外れたら NULL）。件数・ID は i64（JavaScript の number で扱える範囲。件数は記録の数以下）。日付は `YYYY-MM-DD`、日時は `YYYY-MM-DD HH:MM` の文字列
 - round-trip path: SD → IO-09 → BIZ-08 scan（snapshot の bytes）→ CMD の scan cache → `commit_register_sd_bulk_import(scan_token)` → BIZ の結果 → UI。控えは `list_ej_records(date)` → 一覧の `id` → `get_ej_record(id)`。番号は UI の入力の文字列 → `find_ej_records_by_no` → `{ id, date }` → URL の `date`・`no`
-- invalid input: scan_token の形の誤り・期限切れ（§45.6b と同じ）、日付の形の誤り（`ValidationFailed`）、番号が 1〜6 桁の数字でない（`ValidationFailed`）、無い id（`NotFound`）、EJ の file が 20MB 超（`validation`）、読めない EJ の file（`unreadable_files` に名前、取込みは続ける）
+- invalid input: scan_token の形の誤り・期限切れ（§45.6b と同じ）、日付の形の誤り（`ValidationFailed`）、番号が 1〜6 桁の数字でない（`ValidationFailed`）、無い id（`NotFound`）、EJ の file が 20MB 超（`validation`）、読めない EJ の file（形・parse・暦の外れた見出しの日時。`unreadable_files` に名前、取込みは続ける。scan で bytes を得られなかった file も一括の結果の `unreadable_files` に入る）
 - compatibility: 既存の command と DTO は変えない（`DailyReportSdScan` は SD 直読みの runtime が作る型で、(A) が field を足す。古い UI は無い〈1 つの build〉）。`DailyReportDuplicateStatus` の値は変えず、`NoDuplicate` になる場合が増える（BIZ-08-D8）
 
 ## Test Plan
@@ -242,10 +330,11 @@ Test Design Matrix: [2026-10-17-sd-bulk-import-ej-view-design](test-matrices/202
 - P1（`XZ` 直下の EJ は精算をまたいで追記されて伸び、同じ記録が `XZ` と `XZ_BKUP` に入りうる）: 29 §29.7.2 の SD-03・SD-09（2026-10-06 の SD の採取の版と持ち帰りの EJ の集計）、IO-08.10。→ 観測（tracked の記録）。今の版での確かめ直しはしていない。
 - P2（EJ の記録の番号は記録ごとに +1 で、file と精算をまたいで戻らない。4 桁の欄は 1 種類）: IO-08 の構造所見（2026-08 の実物 6 本の版）と backlog の実測と POS 系列の対応の入力 3（2026-10-06 の SD の一覧と、その時点の手元の EJ の版での集計: 6 桁の番号は +1 で連続、重なり 0、4 桁の欄は 1 種類）。→ 観測（その版での）。番号が戻る設定は取説では選べる（初期は戻らない）ので、BIZ-08-D9 の再検討に置いた。
 - P3（`Restored` の取引の合計 = 有効な明細の金額の和 + 有効な値引きの金額の和）: 29E IO-08.6 の照合の条件 4 と、現物の `src-tauri/src/io/ej_parser.rs:717`（照合の金額と `amount_sum` が一致しなければ `Restored` にしない）・`:729`〜`:733`（`amount_sum` は items と adjustments の和）・`:832`〜`:834`（正の訂正で取り消した値引きを `adjustments` から外す）。→ 観測（code）。
-- P4（EJ の file は CP932 strict・BOM 無し・CRLF だけ・最終改行あり。round 1 の是正で、最終改行が無いときは file でなく最後の記録だけを外す〈37 §37.11 手順 2a〉）: 29 §29.7.2 の SD-24（`XZ_BKUP` の全件、2026-10-06 の採取の版）と IO-08 の全期間の構造所見（2026-09-29・09-30 の持ち帰りの版）。`XZ` 直下の原本の形は SD-23 と同じく未確認の前提。→ 形を外れた file は読まずに知らせる（BIZ-08-D9）ので、前提が外れても誤った記録は入らない。
+- P4（EJ の file は CP932 strict・BOM 無し・CRLF だけ・最終改行あり。round 1 の是正で、最終改行が無いときは file でなく最後の記録だけを保留する〈37 §37.11 手順 2〉）: 29 §29.7.2 の SD-24（`XZ_BKUP` の全件、2026-10-06 の採取の版）と IO-08 の全期間の構造所見（2026-09-29・09-30 の持ち帰りの版）。`XZ` 直下の原本の形は SD-23 と同じく未確認の前提。→ 形を外れた file は読まずに知らせる（BIZ-08-D9）ので、前提が外れても誤った記録は入らない。
 - P5（SD-23: 取込み前の `XZ` の原本と取込み後の file は同じ bytes）: 未確認の前提（D-111、SD 直読みの runtime の L3 の前に確かめる）。本 lane の契約は、日報・Z004 では D-111 の精算回数の照合で、EJ では記録の番号で受けるので、前提が外れても二重に数えない（BIZ-08-D10 の保証の範囲）。EJ では記録の文が変われば conflict として知らせる。
 - P6（日報の精算回数は Z001 / Z002 / Z005 で一緒に進み、日計明細の精算票と 1 対 1 で、使い始めの後は重複しない）: D-104 の Guarantee range（手元の全期間での確認）と backlog の実測と POS 系列の対応の入力 1（2026-09-29 の持ち帰りの版）・入力 3（2026-10-06 の SD の一覧の版）・入力 5（2026-10-15 の集計、その時点の手元の版）。→ 観測（その版での）。BIZ-08-D8 はこれに依り、外れた（重複が出た）ときは BIZ-08-D4 が拒む側に倒れる（安全側）。
-- P8（レジは `XZ` 直下の EJ の書きかけの記録を、次に続きから書くか、記録ごと書き直すか）: repo に事実が無い。→ 未確認の前提。37 §37.11 手順 2a は、どちらでも `XZ` 直下の最後の記録を保存しないので、書きかけを保存して完全な記録が conflict になる経路を持たない（round 1 の是正）。
+- P8（レジは `XZ` 直下の EJ の書きかけの記録を、次に続きから書くか、記録ごと書き直すか）: repo に事実が無い。→ 未確認の前提。37 §37.11 手順 2 は、どちらでも伸びうる file（名前に連番 `_nnnn` の無い EJ。SD から読んだか手で選んだかに依らない。round 2 の是正）の最後の記録を保存しないので、書きかけを保存して完全な記録が conflict になる経路を持たない（round 1 の是正）。
+- P10（連番 `_nnnn` の名前は CV17 が `XZ_BKUP` へ移すときだけ付き、その後レジはその file に書かない。`EcrDatas` の写しは同じ名前）: 29 §29.7.2 の SD-03・SD-11・SD-22（2026-10-06 の SD の採取の版）。→ 観測（その版での）。37 §37.11 手順 2 の伸びうるかの判定はこれに依る。名前の規則に当たらない file は伸びうるに倒す。前提が外れて連番つきの file にもレジが書く場合と、利用者が伸びうる file に連番つきの名前を付けた場合は、書きかけを保存しうる（BIZ-08-D9 の保証の範囲）。
 - P9（`XZ` 直下の file の最後の記録は普段は締めの精算票）: IO-08 の全期間の構造所見（2026-09-29・09-30 の持ち帰りの版: file の最後の記録はどれも終わりの印字のある精算票）。→ 観測（その版での）。保留で遅れるのは普段 1 件。
 - P7（24 バイトの CP932 の行を、WebView で半角 1・全角 2 の幅の等幅で並べられる）: Windows の和文の等幅の字形の振舞いで、本 run は確かめていない。→ 未確認。(A) の L3 で字形と大きさを決める（UI-09c-D4）。
 

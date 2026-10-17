@@ -179,7 +179,7 @@ fn parse_and_validate_daily_report_from_sd(
 
 ### 45.6c 一括取込みと EJ の控えのコマンド（CMD-12-D2、D-121、proposed・未実装）
 
-後続の runtime の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」）が足す。§45.6a・§45.6b（D-111、SD 直読みの runtime が実装する）は変えず、その merge の後に scan に次を足す: (A) BIZ-08 の scan が EJ も読み、`DailyReportSdScan` の `ej`（`RegisterSdEjSummary`）と snapshot の `ej_files` を返す（37 §37.10 の「§37.9 に足すもの」）。CMD は今どおり scan の結果を返し snapshot を cache に置くだけで、EJ を読まない。(B) §45.6a 手順 2a の後に Z004 の bytes を空にせず、相対 path つきで snapshot の `z004_files` に残す（PLU の照合は今どおり）。`DailyReportSdScan` の `z004_new_count`（hash が active な取込みに無い Z004 の数。37 §37.10）を UI のボタンの有効化に使う。32 の新契約の検査は scan では回さない（数が多めに出て、押しても何も入らない側に倒れるだけで害が無い）。
+後続の runtime の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」）が足す。§45.6a・§45.6b（D-111、SD 直読みの runtime が実装する）は変えず、その merge の後に scan に次を足す: (A) BIZ-08 の scan が EJ も読み、`DailyReportSdScan` の `ej`（`RegisterSdEjSummary`）と snapshot の `ej_files`・`ej_unreadable_files` を返す（37 §37.10 の「§37.9 に足すもの」）。CMD は今どおり scan の結果を返し snapshot を cache に置くだけで、EJ を読まない。(B) §45.6a 手順 2a の後に Z004 の bytes を空にせず、相対 path つきで snapshot の `z004_files` に残す（PLU の照合は今どおり）。`DailyReportSdScan` の `z004_new_count`（hash が active な取込みに無い Z004 の数。37 §37.10）を UI のボタンの有効化に使う。32 の新契約の検査は scan では回さない（数が多めに出て、押しても何も入らない側に倒れるだけで害が無い）。
 
 ```rust
 #[tauri::command]
@@ -197,7 +197,7 @@ enum RegisterSdBulkOutcomeDto {
     ImportedEj(EjImportResult),
     Skipped { message: String },
     NeedsIndividualConfirmation,
-    Failed { kind: String, message: String }, // BizError に §45.7 の変換を当てた CmdError の kind と message
+    Failed { kind: CmdErrorKind, message: String }, // BizError に §45.7 の変換を当てた CmdError の kind（生成 enum、D-061 (d)）と message
     NotAttempted,
 }
 
@@ -224,9 +224,9 @@ fn get_ej_record(state: State<AppState>, id: i64) -> Result<EjRecordDetail, CmdE
 3. DB の接続を取り、BIZ-08 `commit_register_sd_bulk_import(conn, &snapshot, app_data_dir)` を呼ぶ。項目の成否は response の中で返し、`Err` だけを §45.7 で変える。
 4. 成功の後、日報・Z004 の取込みの成功と同じ invalidation の対象（D-052 の daily / product / monthly / list / detail）を UI が無効にする（UI-07-D17）。snapshot は消さない（やり直しで同じ token を使える。確定済みの項目は飛ばされる。BIZ-08-D7）。
 
-**処理ステップ（`import_ej_files`）**: 各 file の大きさを検証し（20MB を超えたら `validation`）、`EjSourceFile { filename, sd_relative_path: None, bytes }` にして BIZ-08 `import_ej_records` を呼ぶ。手で選んだ file は写さない（37 §37.11 手順 4）。
+**処理ステップ（`import_ej_files`）**: 各 file の大きさを検証し（20MB を超えたら `validation`）、`EjSourceFile { filename, sd_relative_path: None, bytes }` にして BIZ-08 `import_ej_records` を呼ぶ。手で選んだ file は写さない（37 §37.11 手順 4）。SD の上の file かを確かめない（最後の記録を保留するかは BIZ が file 名で決める。37 §37.11 手順 2）。
 
-**CMD-12-D2**: 一括取込みと EJ の控えの command も CMD-12 に置く（同じ scan cache と SD の経路を使うため。閲覧の 3 command は読むだけ）。CMD は項目の順・飛ばす規則・EJ の比べ方を持たない（BIZ-08-D7・D9）。BIZ の `RegisterSdBulkOutcome::Failed(BizError)` は、CMD が §45.7 の `impl From<BizError> for CmdError` を 1 か所で当てて `Failed { kind, message }` にする（`SourceCopyFailed` は §45.7 の固定の文、`DatabaseError` は固定の文、`ImportError` などは BIZ の文のまま。io error の kind は診断にだけ出す。文字列の照合で種類を決めない）。登録は §45.8 と同じく `collect_commands!` と `generate_handler!` の両方。
+**CMD-12-D2**: 一括取込みと EJ の控えの command も CMD-12 に置く（同じ scan cache と SD の経路を使うため。閲覧の 3 command は読むだけ）。CMD は項目の順・飛ばす規則・EJ の比べ方を持たない（BIZ-08-D7・D9）。BIZ の `RegisterSdBulkOutcome::Failed(BizError)` は、CMD が §45.7 の `impl From<BizError> for CmdError` を 1 か所で当てて `Failed { kind, message }` にする（`SourceCopyFailed` は §45.7 の固定の文、`DatabaseError` は固定の文、`ImportError` などは BIZ の文のまま。io error の kind は診断にだけ出す。文字列の照合で種類を決めない）。有限の値は wire でも生成 enum にする（D-061・D-064）: `Failed` の `kind` は `CmdErrorKind`、`EjRecordSummary` の `kind`・`mode` は 37 §37.11 の `EjRecordKindCode`・`EjRecordModeCode`（response だけ）。`String` に戻さない。登録は §45.8 と同じく `collect_commands!` と `generate_handler!` の両方。
 
 ### 45.7 CmdError変換
 
@@ -261,4 +261,4 @@ SPEC-SDI-D3を実装する同一commitでは `#[specta::specta]` と `specta::Ty
 | 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §45.7 に `SourceCopyFailed` → `internal`（写しの失敗の後に UI が preview と token に戻れる）。§45.8 に新しい 2 command の `generate_handler!` への登録と command registry の gate。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | §45.3 の `DailyReportSourceFileRequest.source_path`（手で選んだ SD 上の file を SD の入力にする、37 §37.3 手順 1a）。§45.6a の選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。§45.8 の wire の契約を足す field に合わせた。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | §45.4 の commit に `app: tauri::AppHandle` と `app_data_dir` の取り方（手順 3a）を足した（BIZ-08-D5 の写しの置き場所）。 |
-| 2026-10-17 | sd-bulk-import-design（design、D-121） | §45.6c（CMD-12-D2）: 一括取込みと EJ の控えの command と、scan に後から足す EJ の数え・Z004 の bytes を proposed で足した。§45.6a・§45.6b は変えていない。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | §45.6c（CMD-12-D2）: 一括取込みと EJ の控えの command と、scan に後から足す EJ の数え・Z004 の bytes を proposed で足した。§45.6a・§45.6b は変えていない。Plan Review round 2 の是正で、`Failed` の kind と EJ の kind・mode を生成 enum にし、scan の `ej_unreadable_files` と手で選んだ EJ の保留の判定の置き場を書いた。 |

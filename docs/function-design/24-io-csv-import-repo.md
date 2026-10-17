@@ -668,13 +668,15 @@ fn get_monthly_official_department_totals(
 
 `ej_records`（[pos-tables](../db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」）を読み書きする。呼ぶのは BIZ-08 §37.11 だけ。TX は BIZ-08 が持つ。runtime（後続の lane A）は置き場の module を決め、`design_compliance_test.rs` の本書の行に足す。
 
+型の所有: repo が受け返しする型（下の `NewEjRecord` と、37 §37.11 に形を書いた `EjRecordSummary`・`EjRecordDetail`・`EjRecordRef`・`EjNumberGap`・`EjRecordModeCode`・`EjRecordKindCode`）は db の module に定義し、`src-tauri/src/biz/mod.rs` で re-export する（既存の形: `CsvImport`〈`src-tauri/src/biz/mod.rs:26`〉、`Stocktake` ほか〈同 `:28`〜`:30`〉）。CMD は BIZ の re-export を使い db を直接参照しない。BIZ だけが組み立てる型（`EjImportPlan`・`EjImportResult`・`EjConflict`・`EjRecordDay`・`EjSourceFile`）は BIZ-08 に置く。mode・kind は db の列では TEXT + CHECK のまま、型では enum で持ち、書くときは enum の文字列、読むときは明示の match で変える（外れた値は `DbError`。D-061 (c)、先例 `CsvImportStatus`〈`src-tauri/src/db/sales_repo.rs:13`〜`:19`・`:862`〜`:873`〉）。
+
 ```rust
 struct NewEjRecord {
     machine_prefix: String,
     record_no: String,
     printed_at: String,
-    mode: String,
-    kind: String,
+    mode: EjRecordModeCode,
+    kind: EjRecordKindCode,
     settlement_report: Option<String>,
     settlement_completed: Option<bool>,
     total_amount: Option<i64>,
@@ -720,4 +722,4 @@ fn list_ej_number_gaps(conn: &DbConnection) -> Result<Vec<EjNumberGap>, DbError>
 | 2026-10-06 | z001-display（runtime、起票） | §14.21 手順 1 の取得列に `imported_at` と並び `imported_at ASC, id ASC` を書いた（手順 6 の行の無い親の取込み日時の出どころ。PR #114 Final Review の P3。[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正、D-111） | `NewDailyReportImport.settlement_no` と §14.14 の INSERT の列、§14.18a `find_same_settlement_daily_report_import`（BIZ-08-D4）。`DailyReportImport` の行の DTO と既存の SELECT は変えない。 |
 | 2026-10-06 | z001-display（Plan Review round 1 の是正） | §14.21 手順 1 に、gross / net の加算は従来どおり新しい順で行うこと（溢れと NULL の伝播が順に依るため）を書いた（[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
-| 2026-10-17 | sd-bulk-import-design（design、D-121） | §14.25 EJ の記録の保存と照会と、§14.18b 同じ日の精算回数の無い取込みの有無（BIZ-08-D8。Plan Review round 1 の是正）を proposed で足した。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | §14.25 EJ の記録の保存と照会と、§14.18b 同じ日の精算回数の無い取込みの有無（BIZ-08-D8。Plan Review round 1 の是正）を proposed で足した。Plan Review round 2 の是正で、§14.25 に型の所有（db で定義し biz で re-export）と mode・kind の enum を書いた。 |
