@@ -30,6 +30,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 2. spec-check → design（2026-10-18、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1〜D3・D9・D10・D12、tracking・master・transaction の「計数の置き場と在庫の求め直しの契約」、[21](../function-design/21-io-inventory-repo.md)・[30](../function-design/30-biz-product-service.md)・[31](../function-design/31-biz-inventory-service.md)・[36](../function-design/36-biz-integrity-check.md)・[75](../function-design/75-ui-integrity-check.md) の同名の節、[22 §16](../function-design/22-mnt-migration.md)。設計の更新が要る点が 7 つあった（下の Design Readiness の「必要な設計成果物」）。
 3. design → plan-draft（2026-10-18、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本に置いた（D-123 と D-118・D-119 の Superseded in part の行、22 §16 の順の段と §19、ADR D10・D12、tracking・pos・ARCHITECTURE・DB_DESIGN・mnt-task-specs の作り直しの文、21・31・36・75 の (a) の細部、backlog の 2 項目、Plans.md の順の 1 文）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-18、Coordinator）: packet・Matrix と正本は起草役の commit（`82d6b030`）にある。Coordinator は Risk（R4 の理由は作り直しでなく、行のある `inventory_movements` の作り直しと写しの書換え）・Goal と失敗定義・Ordinary Operation・owner の判断事項・横断の約束 Y1〜Y8・Contract Probe P1〜P6・Data Safety・残りの危険を読み、TD-311 の写しが D-123 として置かれ D-118・D-119 に Superseded in part の行があること、作り直しが「消さずに移す」で閉じていること、止まる DB で原因と直し方を名指しすること（TD-310）、並走の lane の節（22 §17・§18、30）を書き換えていないことを確かめた。(a) と (b) の境の細部（Z004 の phase の CHECK ほかを (b) へ）と、1 lane・1 PR の判断は起草役の判断のまま Plan Review の判定に出す。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `3523401a` で直し、Coordinator が差分（Matrix の「既存の test の移し方」T1〜T6 と、S1・S2・S4・S6 がそれを引く形、22 §19 の手順 2 の暦日の検査と手順 2・8 の作り直しの案内、Contract Probe P7、S1〜S6 の検証の単位、L3-1 の控えと合格基準、`per_page`、数の集計、ADR の Context の注記）を読んだ。Scope の範囲と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
@@ -423,5 +424,23 @@ Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Owner
 
 ## Review Response
 
-Fill after review.
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+### Plan Review round 1（2026-10-18、head `f8306208`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 5）と Codex GPT-6 Astra（reject、P1 0・P2 6・P3 2）。どちらも Ordinary Operation は成立と判定した。Claude #1 と Codex #2、Claude #2 と Codex #4、Claude #6 と Codex #6、Claude #7 と Codex #7、Claude #4 と Codex #8 は同じ件。全て採った（Coordinator の裁定）。既存の test の移し方の指摘が重なったので、個別に塞がず Matrix の 1 つの節にまとめさせた（owner の決定 TD-296 の 5a）。起草役が `3523401a` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R1 | Codex #2・Claude #1（P2） | 採る | 版の期待を書き換える一覧に 8 のままが正しい行が入り、棚卸しの行を持つ DB の開き直しと空 DB の列の一覧の test を見落としている | Matrix の「既存の test の移し方」T1 で版の期待を 4 つに分類し、開き直しと列の一覧の test の期待の変え方を決めた |
+| R2 | Codex #4・Claude #2（P2） | 採る | test helper が初期在庫の movement を足すと、商品で絞って movement を読む既存の test が落ちる | T5 で数える command と全部の所を分類し、業務の参照先で絞る形にした（値の期待は変えない） |
+| R3 | Codex #1（P2） | 採る | vL が業務日の書式だけを検査し、実在しない日付を通す | 22 §19 の手順 2 に暦日の検査を足し、Contract Probe P7 で同梱の SQLite の振舞いを確かめた。M4 に case を足した |
+| R4 | Codex #3（P2） | 採る | 棚卸しの test の商品の作り方を「変えない」に分けているが、写しだけで商品を作るので求め直しで値が変わる | T3 で helper の定義を全部分類し、初期在庫の movement を作る対象に入れた。意図して食い違わせる fixture は除外の理由を書いた |
+| R5 | Codex #5（P2） | 採る | S1→S7 の各段で test が通らない | S1〜S6 を 1 つの検証の単位にした |
+| R6 | Codex #6・Claude #6（P2・P3） | 採る | L3-1 の合格基準が vL の許された補正と矛盾し、前の値を控える手順が無い | 更新の前に控える段を足し、差異の無い商品と補正した商品で基準を分けた |
+| R7 | Claude #3（P3） | 採る | vL の手順 2・8 で止まったときに直し方を出さない | 作り直しの案内を足し、M4・M5 で確かめる |
+| R8 | Claude #5（P3） | 採る | 移行の知らせを探す `listLogs` の件数が決まっていない | 最新 100 行にし、U8 に移行の行の後に別の行がある case を足した |
+| R9 | Codex #7・Claude #7（P3） | 採る | site の数の集計の誤り | hit の数と直す対象の数を分け、同じ測定から表を直した |
+| R10 | Codex #8・Claude #4（P3） | 採る | ADR の Context に旧い承認の条件が注記なしで残る | D-123 で置き換えた旨を足した |
+
+起草役の問いの Coordinator の裁定（2026-10-18）: 業務日の DB の CHECK は形だけのまま（暦日は書く側の検査と vL の手順 2 が守る。CHECK に `date()` を入れると、作り直しの起点の判定が SQLite の関数に依る）。開き直しの test は発注どおり棚卸しの行を消して vL の版を確かめる形を採る。ADR の注記の形は起草役のとおり。
