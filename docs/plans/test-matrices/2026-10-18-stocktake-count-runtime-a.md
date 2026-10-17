@@ -34,9 +34,9 @@ Risk: R4
 | M1 | MNT-03-D17 手順 4・5、D1・D9 | 列・index の欠け | integration（migration） | `test_migration_req903_vl_fresh_database_has_keys_counts_and_copy_columns` | 空の DB に最新まで当てた後、`pragma_table_info('inventory_movements')` に `business_date`・`phase`・`settlement_no`、`products` に 3 列、`stock_counts` の表、`idx_inventory_movements_ledger` と `stock_counts` の `(product_code, id)` の index のどれかが無い |
 | M2 | MNT-03-D17 手順 2〜5、Y1・Y8 | 業務日の埋め方・id・sequence | integration | `test_migration_req201_vl_backfills_business_date_and_keeps_ids_and_sequence` | 直前の版の DB（入庫・返品交換・手動販売・廃棄の記録と、`reference_type` NULL の初期在庫の movement、末尾の movement を 1 つ消して sequence が最大の id より大きい）で、各行の `business_date` が header の日付（初期在庫は `created_at` の先頭 10 文字）でない、`phase` が 0 でない、`settlement_no` が NULL でない、ほかの列・id が変わる、`sqlite_sequence` が前の値でない（次の INSERT の id が消した id と同じになる） |
 | M3 | MNT-03-D17 手順 1 (a)、D10 | 止まる DB で書く | integration | `test_migration_req205_vl_stops_on_stocktakes_or_csv_imports_without_changes` | `stocktakes` に 1 行だけの DB と `csv_imports` に 1 行だけの DB（表ごと 1 case）で、`MigrationFailed` でない、message に `作り直し` と表名が無い、schema・全表の値・版のどれかが変わる |
-| M4 | MNT-03-D17 手順 1 (b)・手順 2 | 参照先の無い行・形の違う日付・旧の補正の movement を通す | integration | `test_migration_req903_vl_stops_on_unmappable_movements` | `reference_type = 'csv_import'` の movement（取込みの行なし）、`movement_type = 'stocktake'` の movement、参照先の header の無い `receiving_record` の movement、header の日付が `2026/10/01` の記録の movement、header の日付が `2026-02-30`（形は合うが実在しない）の記録の movement の 5 case で、止まらない・schema・全表の値・版のどれかが変わる・message に `inventory_movements` か `作り直し`（直し方の案内）が無い |
+| M4 | MNT-03-D17 手順 1 (b)・手順 2 | 参照先の無い行・形か暦の外れる日付・旧の補正の movement を通す | integration | `test_migration_req903_vl_stops_on_unmappable_movements` | 手順 1 (b): `reference_type = 'csv_import'` の movement（取込みの行なし）、`movement_type = 'receiving'` で `reference_type = 'stocktake'` の movement（参照先の条件だけで止まるか）、`movement_type = 'stocktake'` の movement。手順 2: 参照先の header の無い `receiving_record` の movement、header の日付が `2026/10/01`（形が外れる）、`2026-02-30`（`date()` が `2026-03-02` に繰り上げる）、`2026-02-32` と `2026-13-01`（`date()` が NULL を返す。拒む条件を `NOT (date(d) = d)` にすると通ってしまう。Contract Probe P7）の記録の movement。計 8 case で、止まらない・schema・全表の値・版のどれかが変わる・message に `inventory_movements` か `作り直し`（直し方の案内）が無い |
 | M5 | MNT-03-D17 手順 8、Y2 | 上限の外の和で書く | integration | `test_migration_req903_vl_stops_when_recomputed_stock_out_of_range` | movement の和が `1000000000` の商品のある DB で止まらない・schema・全表の値・版のどれかが変わる・message に `products`・`stock_quantity`・`作り直し`（直し方の案内）のどれかが無い（境界: 和が `999999999` と `-999999999` の DB は通る） |
-| M6 | MNT-03-D17 手順 8、Y7、D2 | 写しの直し方・知らせの記録 | integration | `test_migration_req904_vl_fixes_copy_and_logs_trigger_migration` | 写し 7・和 5 の商品と写し＝和の商品のある DB で、前者の `stock_quantity` が 5 にならない、後者が変わる、`operation_logs` に `integrity_fix` の 1 行（`trigger: migration`、before 7・after 5、36 の形）が無い。写し＝和だけの DB で行が書かれる。vL の後の全商品で `derive_stock` が写しと同じでない |
+| M6 | MNT-03-D17 手順 8、Y7、D2 | 写しの直し方・知らせの記録 | integration | `test_migration_req904_vl_fixes_copy_and_logs_trigger_migration` | 写し 7・和 5 の商品と写し＝和の商品のある DB で、前者の `stock_quantity` が 5 にならない、後者が変わる、`operation_logs` に `integrity_fix` の 1 行（`trigger: migration`、`fixed_count` 1、`skipped_count` 0、`adjustments` の 1 要素の before 7・after 5〈印 0・範囲 NULL〉、36 の形。`created_at` が `%Y-%m-%dT%H:%M:%S` の形〈22 §19 手順 8〉）が無い。写し＝和だけの DB で行が書かれる。vL の後の全商品で `derive_stock` が写しと同じでない |
 | M7 | D9（stock_counts の CHECK） | 計数の表の縛りの欠け | schema | `test_migration_req205_vl_stock_counts_checks` | `count_value = -1`、`count_kind = 'other'`、`default` に `seen_movement_id` あり、`fresh` に `seen_movement_id` なし、存在しない商品・明細の FK のどれかが受け入れられる |
 | M8 | D9（写しの列の CHECK）、Y3 | 印と範囲の不一致を受ける | schema | `test_migration_req903_vl_copy_columns_check` | 印 1・範囲なし、印 1・low > high、印 0・範囲あり のどれかが受け入れられる、または印 1・low ≤ high と既定の INSERT が拒まれる（同梱の SQLite を下げて列の追加の CHECK が効かなくなっても red） |
 | M9 | MNT-03-D1、手順 9・10 | TX の中の失敗で一部が残る | integration（故障の注入） | `test_migration_req903_vl_commit_failure_rolls_back_everything` | 今の `FailurePoint::Commit` を vL に当てたとき、`inventory_movements` の旧い表・`products` の列・`stock_counts`・版のどれかが変わる（`db/migration_tx.rs` は変えない） |
@@ -54,12 +54,13 @@ Risk: R4
 | L12 | Y8（phase = 1 は誤り） | 黙って入出庫として扱う | unit | `test_stock_ledger_req401_phase_one_movement_is_error_until_b` | `phase = 1` の movement（test の直の INSERT）のある商品で、`derive_stock` が `Ok` を返す、`recompute_stock` が写しを書く |
 | L13 | Y2・Y3（上限は書く直前、TX 全体を戻す） | 上限の外を書く | unit | `test_stock_ledger_req903_recompute_rejects_out_of_range_value_and_range_end` | 求めた値が `1000000000`、または範囲の端が `-1000000000` のとき、`ValidationFailed("在庫数が大きすぎます")` でない、写しが変わる。端の `999999999` は通る |
 | L14 | D2（`recompute_stock` が 4 項目を書く） | 印・範囲を書かない | unit | `test_stock_ledger_req205_recompute_writes_quantity_flag_and_range` | 衝突のある商品で `recompute_stock` の後の `stock_recheck`・`stock_range_low`・`stock_range_high` が求めた値でない。計数を足して解けた後に 0・NULL に戻らない |
-| W1 | Y1・31（業務日の形） | 形の違う日付を通す | unit | `test_create_receiving_req201_rejects_noncanonical_date` | `2026-4-7`・` 2026-04-07`・`+2026-04-07`・`2026/04/07`・空で `ValidationFailed("日付の形式が不正です（YYYY-MM-DD）")` でない、何かが書かれる（`write_surface` の比較） |
+| W1 | Y1・31（業務日の形） | 形の違う日付を通す | unit | `test_create_receiving_req201_rejects_noncanonical_date` | `2026-4-7`・` 2026-04-07`・`+2026-04-07`・`-0001-04-07`・`+10000-04-07`（chrono が読んで同じ文字列に書き戻す 2 つ。Contract Probe P6）・`2026/04/07`・空で `ValidationFailed("日付の形式が不正です（YYYY-MM-DD）")` でない、何かが書かれる（`write_surface` の比較） |
 | W2 | Y1（実在） | 実在しない日付 | unit | `test_create_receiving_req201_rejects_nonexistent_date` | `2026-02-30` で `ValidationFailed("存在しない日付です")` でない、何かが書かれる |
 | W3 | Y1（4 業務の全部） | 1 つの業務だけ検査が抜ける | unit | `test_create_return_req202_rejects_noncanonical_date`・`test_create_manual_sale_req203_rejects_noncanonical_date`・`test_create_disposal_req204_rejects_noncanonical_date` | 返品交換・手動販売・廃棄のどれかが `2026-4-7` を受ける |
 | W4 | Y1（DB の CHECK） | DB が形を拒まない | schema | `test_inventory_repo_req201_business_date_check_rejects_noncanonical` | `insert_movement` に `2026-4-7` を渡して INSERT が成功する |
-| W5 | Y1（sales_service の共有の検証） | 共有に移した後の退行 | unit | 既存の `sales_service` の日付の test（`rg -n 'validate_date' src-tauri/src/biz/sales_service.rs` の test）＋ `test_validate_business_date_req301_canonical_roundtrip` | `2026-04-07` が拒まれる、`2026-4-7` が通る、2 つの message の出し分けが変わる |
+| W5 | Y1（sales_service と共有の検査） | 共有に替えた後の退行 | unit | 既存の `sales_service` の日付の test（`sales_service.rs:817`・`:826`）＋ `test_validate_business_date_req301_shape_then_calendar` | `2026-04-07`・`0000-01-01` が拒まれる、`2026-4-7`・`-0001-04-07`・`+10000-04-07`・`２０２６-04-07` が通る、`2026/04/07`・`2026-ab-07` が「日付の形式が不正です（YYYY-MM-DD）」でない、`2026-02-30` が「存在しない日付です」でない |
 | W6 | 31（業務日を movement に書く） | header と違う日付を書く | unit | `test_create_receiving_req201_movement_business_date_is_header_date` | 入庫日 `2026-05-03` の入庫の movement の `business_date` が `2026-05-03` でない（今日の日付になる） |
+| W7 | Y1・31（movement を作らない保存も同じ検査） | レジ処理済みの返品だけ検査が抜ける | unit | `test_create_return_req202_register_processed_rejects_noncanonical_date` | `register_processed = true` の返品で `2026-4-7` と `2026-02-30` が `ValidationFailed`（文は W1・W2 と同じ）でない、何かが書かれる（`return_records` が増える） |
 | E1 | D2・Y4（入出庫 4 業務の値が今と同じ） | 値の変化、`stock_after` の書き方 | integration（BIZ の入口） | `test_inventory_req201_req204_recompute_matches_previous_stock_and_stock_after` | 初期在庫 5 の商品に、入庫（同じ商品の明細 2 行: +2・+3）→ 手動販売 −1 → 廃棄 −1 → 返品交換（レジ未処理）+1 → 返品交換（レジ処理済み）を順に行い、各 movement の `stock_after` が `7, 10, 9, 8, 9`（入庫の 2 行は途中の値）でない、写しが 9 でない、レジ処理済みで movement が増える |
 | E2 | 負の在庫の警告（INV-3） | 警告の判定が求め直しの値でない | unit | 既存の 4 業務の負の警告の test（`rg -n 'negative_stock_warning' src-tauri/src/biz/inventory_service` の test）| 期待を変えずに通らない |
 | E3 | 30（初期在庫の movement と求め直し） | 登録の写しと movement の食い違い | integration | `test_create_product_req101_initial_stock_movement_and_copy_match`・`test_commit_import_req104_initial_stock_movement_and_copy_match` | 初期在庫 5 の登録・商品 CSV の新規行で、写しが 5 でない、初期在庫の movement（`reference_type` NULL、業務日 = 今日、`stock_after` 5）が無い。初期在庫 0 で movement ができる。上書きの行で在庫が変わる |
@@ -179,7 +180,7 @@ raw の `INSERT INTO inventory_movements` の hit 32:
 | 分類 | 所 | 数 | 直し方 |
 |---|---|---|---|
 | 書き換える（production の定義） | `inventory_repo.rs:127`（`insert_movement`） | 1 | S2 の本体 |
-| 書き換える（demo の seed） | `seed_demo.rs:398`・`:462` | 2 | `BASE_TIMESTAMP` の日付を業務日にする |
+| 書き換える（demo の seed） | `seed_demo.rs:398`・`:462` | 2 | `:398`（`seed_initial_receiving` の初期在庫）は `BASE_TIMESTAMP` の日付、`:462`（`seed_sales` の `sale_auto`）は売上ごとの `sale_date`（`:480`。`created_at` の先頭 10 文字と同じ）を業務日にする |
 | 書き換える（時点証拠の `#[cfg(test)]` の code） | `inventory_repo.rs:421`（`insert_stocktake_movement`） | 1 | 業務日 = PC の今日、`phase` 0 |
 | 書き換える（test・test の support） | `stocktake_repo.rs` 4・`sales_repo.rs` 4・`disposal_repo.rs` 3・`inventory_repo.rs` 2（`:835`・`:927`）・`schema_time_evidence.rs` 2・`cmd/inventory_cmd.rs` 2・`inventory_service/list.rs` 2・`db/test_support.rs` 1（`:122`、`seed_legacy_fixture`。時点証拠の test が vL の後の DB に入れる）・`return_repo.rs` 1・`receiving_repo.rs` 1・`manual_sale_repo.rs` 1・`stocktake_service.rs` 1・`csv_import_service/tests/list_tests.rs` 1 | 25 | 列に `business_date`（固定の日付）と `phase`（`0`。NOT NULL で既定値が無い）を足す。`reference_type` が `csv_import`・`stocktake` の行も (a) の間は `phase = 0` |
 | 変えない | `migration.rs:1415`・`:1553`・`:1681` | 3 | vL の前の版の DB に入れる行（vL が埋める） |
@@ -309,13 +310,13 @@ src-tauri/src/biz/inventory_service/manual_sale.rs:456:            .query_row("S
 | 写しを書く経路（`update_stock_quantity`） | `rg -n 'update_stock_quantity\(' src-tauri/src --glob '!*test*'` の 4 か所と定義 | 4 か所とも `recompute_stock` へ | `update_stock_quantity_with_revision`（時点証拠の `#[cfg(test)]`、(b) で外す） | AC4 |
 | 在庫を動かす書込み（`apply_stock_change` の呼出し） | `rg -n 'apply_stock_change\(' src-tauri/src` の production 5（4 業務・旧 Z004） | 5 とも業務日を渡す | — | E1・E4・W6 |
 | 初期在庫の movement（`reference_type` NULL） | `product_service.rs:273`〜`:285`・`:1574`〜`:1590`、`seed_demo.rs:398`、在庫つきの商品の fixture（下の T3・T4） | production と demo は業務日を付ける。fixture は T3・T4 の「書き換える」 | T3・T4 の「変えない」（`integrity_service.rs:256` の写しと記録をわざと食い違わせる fixture ほか、理由は表） | E3、M2、T3〜T5 |
-| 業務日の検査（`validate_date`） | `sales_service.rs:507` と 4 業務の `create_*` | 共有の関数へ | — | W1〜W5 |
+| 業務日の検査（`validate_date`） | `sales_service.rs:507` と 4 業務の `create_*`（movement を作らないレジ処理済みの返品・交換を含む） | 31 の「業務日の形と暦の検査」の共有の関数 1 つへ | — | W1〜W5・W7 |
 | 操作ログの `integrity_fix` の読取り | `OperationLogsPage.tsx:96`〜`:139` | 新しい形を足し、記録済みの形を残す | `integrity_check` の画面の表示は今のまま（74 に専用の表示が無い） | U6 |
 
 ## Negative Paths
 
 - missing input: header の日付が空（W1）。
-- invalid input: 形の違う日付・実在しない日付（W1〜W4。vL が写す既存の記録の日付は M4）、`count_value` の負・`count_kind` の外（M7）、印と範囲の食い違い（M8）。
+- invalid input: 形の違う日付・実在しない日付（W1〜W4・W7。vL が写す既存の記録の日付は M4）、`count_value` の負・`count_kind` の外（M7）、印と範囲の食い違い（M8）。
 - duplicate/ambiguous input: 同じ日付の既定の計数の衝突（L8）と同値（L9）、同じ要求の同じ商品の明細 2 行（E1）。
 - unknown reference: 参照先の無い movement（M4）、存在しない商品・明細の FK（M7）。
 - dependency missing: `phase = 1` の求め直し（L12）。
@@ -332,7 +333,7 @@ src-tauri/src/biz/inventory_service/manual_sale.rs:456:            .query_row("S
 - wire type: `StockCopy` の bool と Option（U7）。
 - internal type: `DerivedStock.range` の (lo, hi) の順（L10）。
 - producer/consumer: 36 の型 → bindings → 画面（U7）、操作ログの JSON → parser（U6）。
-- round-trip token: 業務日の文字列の書き戻し（W1・W5）。
+- round-trip token: 業務日の形の検査（W1・W5。chrono が読んで同じ文字列に書き戻す `-0001-04-07`・`+10000-04-07` を形で拒む）。
 - precision/range: i64 の和の `checked_add`（L13 に和の溢れの case）。
 - cross-language parse: 操作ログの数は `Number.isSafeInteger`（U6、今の型）。
 
@@ -364,7 +365,7 @@ src-tauri/src/biz/inventory_service/manual_sale.rs:456:            .query_row("S
 - If invalidate/refetch changes the value before versus after the operation, which test proves the lifecycle order and preserved snapshot are correct? → E1（`stock_after` の途中の値）、I4（補正の前後）。
 - If a key branch is inverted, which test fails? → L2（`E < D` と `E > D` の入替え）、L3（`i ≤ m` を `i < m` に）、L7。
 - If a threshold comparison changes, which test fails? → L13・M5（`<=` と `<`）。
-- If a guard is removed, which test fails? → L12（phase=1）、W1（形の書き戻し）、M3・M4（止まる検査）。
+- If a guard is removed, which test fails? → L12（phase=1）、W1・W7（形の検査）、M3・M4（止まる検査）。
 - If an output field is omitted, which test fails? → I5・I6・M6（ログの key）、U1。
 - If output order changes, which test fails? → I3・L11。
 - If dry-run performs a side effect, which test fails? → I1（`derive_stock` の後の写しの不変）。
