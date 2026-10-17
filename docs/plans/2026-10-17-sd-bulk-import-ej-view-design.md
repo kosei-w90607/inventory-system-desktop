@@ -24,6 +24,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 2. spec-check → design（2026-10-17、起草役）: 触る正本（37 §37.9 の「Z004 と EJ への引継ぎ」が設計を後続へ送っている、29E IO-08.10 の申し送り、D-071 の日報の側、UI-07）に一括取込み・EJ の保存と閲覧・CV17 との併存の契約が無い。同じ commit で設計正本に足した（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-121 で満たす。条件「未解決の設計の問いが無い」は、店に聞く 2 つの問い（控えの探し方・昔の控え）に答えが無い間の既定を正本（UI-09c-D2・D3・D5）と backlog に書いたことで満たす。owner に聞く設計の問いは残っていない。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`8470fa65`）にある。Coordinator は D-121 の Context・Decision と、37 §37.10・§37.11 を新設して §37.3〜§37.9（並走の 367 の所有）を変えていないこと、所有表（37・45・55・pos-tables で 363・367 と節が分かれる）、owner の決定（TD-264・TD-265・TD-277・TD-296 の 11a・TD-304）の写しを確かめた。発注書の「TD-264 に ECR+ の終了の後も」は Coordinator の要約の誤りで、起草役が原文に当たって出所を TD-162・TD-020 に直したことを確かめた。店に聞く 2 つは答えが無い間の既定で進められる。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `253ef96c` で直し、Coordinator が差分（37 §37.10 の内部の結果と手順 1〜5・BIZ-08-D8・D10、§37.11 の手順 1・2a・3・5・7 と `body_text`・保証の範囲、24 §14.18b、45 §45.6c、55 UI-07-D17、backlog の申し送り、Matrix の追加の行）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
@@ -269,4 +270,22 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（2026-10-17、head `39dd2f14`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 5）と Codex GPT-6.1 Sol（reject、P1 1・P2 4・P3 1）。Claude #1 と Codex #3 は同じ件。全て採った（Coordinator の裁定）。是正の前に相談役（Fable 5.1）に反例探しを頼み、保留は `XZ` 直下の最後の記録だけにする方針にした。起草役が `253ef96c` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R1 | Codex #1（P1） | 採る | 書きかけの EJ の記録を保存すると、後の完全な記録が永久に conflict になる | `XZ` 直下の file の最後の記録は診断に依らず常に保存を保留し（`held_count`）、移された後の `XZ_BKUP` の file で保存する。最終改行の無い file は最後の記録だけを外す。同じ file に同じ番号が 2 回出たら conflict（37 §37.11 手順 2a・3）。Matrix に途中版 → 完全版ほかの行を足した |
+| R2 | Claude #1（P2）・Codex #3（P2） | 採る | 一括取込みの結果に失敗の種類が無く、EJ の失敗の行き先も無い | 内部の結果を `Failed(BizError)` と EJ の項目（`RegisterSdBulkSource::Ej`）にし、CMD が 45 §45.7 を当てて wire の文にする |
+| R3 | Codex #2（P2） | 採る | 同じ日の全取込みが精算回数を持つかを判定する IO が無い | 24 §14.18b `exists_same_date_daily_report_import_without_settlement_no` を足し、BIZ-08-D8 から呼ぶ |
+| R4 | Codex #4（P2） | 採る | Z004 だけが取り込める状態を UI が判定できない | (B) で scan の応答に `z004_new_count` を足し、ボタンの有効化に使う |
+| R5 | Codex #5（P2） | 採る | 後続の移動の lane へ渡す EJ の条件が番号の存在だけ | 番号と文が保存済みと一致すること（`plan_ej_records` で新しい記録・conflict・読めない file が無い）にし、backlog の申し送りも揃えた |
+| R6 | Claude #2（P3） | 採る | 日報の束を並べる鍵の出所が無い | IO-07 `parse_daily_report_bundle`（純関数）で取り、§37.3 を並べるために先に呼ばない理由を書いた |
+| R7 | Claude #3（P3） | 採る | 長く使わなかった後の欠けの場面が窓の規則と合わない | 欠けが出る場面を「日報だけを個別の経路（行の「確認する」か手で選ぶ経路）で取り込み、一括取込みを窓の日数より長く使わなかった後」に直し、その場の「EJ のファイルを選んで取り込む」を書いた |
+| R8 | Claude #4（P3） | 採る | §37.9 に旧い前提の live な文が残る（並走の 367 の所有の節） | 所有表の「merge の後に揃える所」と backlog に、(A) の起票で直す文として足した |
+| R9 | Claude #5（P3） | 採る | `body_text` の見出しの取り方が 2 通りある。手で選んだ file の形の検査の関数が無い | 見出しは file の bytes を CRLF で分けた行から取ると決め、IO-09 に純関数 `measure_register_sd_shape` を足して 2 経路で共用する |
+| R10 | Claude #6（P3） | 採る（後続の lane へ） | conflict を含む `XZ` 直下の EJ は移せず残り続け、写しが毎日増える | 扱い（移さずに知らせる等）は移動の lane（(b)）が決めると backlog の申し送りに書いた。写しの保持は D-111 の A の項目で扱う |
+| R11 | Codex #6（P3） | 採る | 新しい型の baseline の検索式が既存の `EjRecord` に当たる | 新設の名前に限った式に直し、実測を更新した |
+
+あわせて owner の設計の原則（repo 外の回答台帳 TD-310）で、EJ の欠け・保留・conflict をその場で名指しし、欠けは「EJ のファイルを選んで取り込む」で直せる形にした。conflict にはその場で直す操作が無く、「開発者に知らせて」の文になっている。これは owner に諮る候補で、本 round の review が通った後に他の packet の問いとまとめて聞く。
