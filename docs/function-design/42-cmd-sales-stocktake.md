@@ -370,12 +370,15 @@ fn commit_import(
     state: State<AppState>,
     valid_rows: Vec<ImportRow>,
     overwrite_codes: Vec<String>,
+    old_jan_alias_codes: Vec<String>, // proposed・未実装（JAN の別名の runtime の lane、D-122）
 ) -> Result<ImportResult, CmdError>
 ```
 
+`old_jan_alias_codes` は、前の JAN の問い（[30](30-biz-product-service.md) BIZ-01-D9）に「ある」と答えた上書きの行の product_code。省略できる引数にはしない（UI は 1 つの build で常に送る。空の一覧が全て「ない」）。generated の呼出しは `commands.commitImport(validRows, overwriteCodes, oldJanAliasCodes)`。CMD は検査を持たず BIZ に渡すだけ（形の検査と commit の判定は BIZ の §4.9 手順 0b・2 e.）。
+
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得
-2. biz::product_service::commit_import(&mut conn, valid_rows, overwrite_codes) を呼ぶ
+2. biz::product_service::commit_import(&mut conn, valid_rows, overwrite_codes, old_jan_alias_codes) を呼ぶ
 3. Ok → ImportResult を返す
 4. Err(BizError) → CmdError に変換
 

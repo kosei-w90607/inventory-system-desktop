@@ -39,7 +39,7 @@ migration v5 は table と partial UNIQUE index を作り、memory No. 217〜500
 
 ### products との結合
 
-`plu_slots.scanning_code = products.jan_code` を JAN 単位の結合キーとする。product_code は slot identity に使わない。同一 JAN の商品群は 1 スロットを共有する。商品一覧・商品詳細は memory No. を返さない（D-117 (5)。UI-01b-D19 の撤去）。
+`plu_slots.scanning_code = products.jan_code` を JAN 単位の結合キーとする。product_code は slot identity に使わない。同一 JAN の商品群は 1 スロットを共有する。前の JAN の別名（[master-tables](master-tables.md) §1a、D-122）は結合キーに入れない（別名の JAN の枠は「対象の商品を持たない JAN の枠」のまま。枠の遷移は別名を読まず書かない）。商品一覧・商品詳細は memory No. を返さない（D-117 (5)。UI-01b-D19 の撤去）。
 
 ### 状態遷移
 

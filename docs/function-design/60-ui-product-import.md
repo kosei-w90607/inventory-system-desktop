@@ -17,7 +17,7 @@
 
 **関数要求**: UI-01c は frontend page / reducer / component 群として、商品マスタ CSV の file bytes を generated CMD へ渡し、preview 結果を表示し、利用者が選んだ import target だけを commit する。
 
-**シグネチャ**: frontend の境界は `commands.previewImport(fileBytes)` と `commands.commitImport(validRows, overwriteCodes)` である。React component の詳細 props は §60.2 で定義し、Rust command / DTO の詳細は §60.4 で定義する。
+**シグネチャ**: frontend の境界は `commands.previewImport(fileBytes)` と `commands.commitImport(validRows, overwriteCodes)` である（proposed・未実装、D-122: JAN の別名の runtime の lane で `commands.commitImport(validRows, overwriteCodes, oldJanAliasCodes)` になる。UI-01c-D17）。React component の詳細 props は §60.2 で定義し、Rust command / DTO の詳細は §60.4 で定義する。
 
 **処理ステップ**: 画面全体の状態遷移は §60.3、利用者操作と表示分岐は §60.5、エラー復旧は §60.6 に定義する。
 
@@ -41,6 +41,7 @@
 | REQ-104 / UI-01c | UI-01c-D14 | ファイル選択を共通 FilePicker（native dialog + 任意 drop、D-054）へ移行し、UI-01c-D3 の plain input 方式を supersede する。`dragDropEnabled: false` は drop 維持のため据え置き。 | D3 の却下理由（plugin-dialog 未導入・scope 増）は foundation PR（2026-06-26）と日報 PR #125 の path-based 実証で解消済み。WebView2 白画面バグの再発面を picker 一箇所へ集約する。 |
 | REQ-104 / limit | UI-01c-D15 | 商品 import は CMD 早期拒否 + BIZ（`preview_import`）安全網の**二重**で `CSV_IMPORT_FILE_SIZE_LIMIT`（constants.rs）超過を validation error で拒否する（D-054）。 | UI だけが拒否する未仕様上限は直接 IPC で bypass 可能。売上 / 日報が持つ CMD 早期拒否 + BIZ 安全網の既存二重防御パターン（ARCHITECTURE resource-safety 例外）と同型に揃える。 |
 | REQ-104 / SPEC-PLS-D6 | UI-01c-D16 | 任意列 `PLU対象` を preview に表示し、`1` / `0` / 空欄の意味を説明する。`1` だが JAN が不正な行は warning + 実適用値 `対象外` を同じ行に表示する。 | CSV を commit する前に operator が自動補正と更新対象を確認できる。warning を色だけで表さない。 |
+| REQ-104 / D-122 | UI-01c-D17 | （proposed・未実装、JAN の別名の runtime の lane）重複行の `old_jan_question` が `Some(前の JAN)` で、その行に `上書き` を選んだときだけ、同じ行に「前の番号（{前の JAN}）のバーコードが付いた現物は店にありますか」と `ある` / `ない` の二択を出す（既定 `ない`。radio と文字で示し、色だけで示さない）。`ある` を選び、かつ `上書き` のままの行の product_code だけを `oldJanAliasCodes` に入れて commit に送る。`スキップ` に戻した行の答えは送らない（選択は保持してよい）。`ImportRow.warnings` は新規登録候補の行と重複行の両方で、行の中に text + icon で出す（別名の warning を含む。[30](30-biz-product-service.md) BIZ-01-D9）。commit が「商品の JAN が確認の後に変わりました」で失敗したら §60.6 の commit の失敗と同じく preview を保ったまま Alert を出し、ファイルを選び直して preview し直す導線を出す。 | owner の決定（repo 外の回答台帳 TD-284・TD-286）。入力の誤りの訂正（前の番号の現物は無い）とメーカーの番号の変更（前のバーコードの在庫が残る）を分け、前の番号で売れた分を同じ商品へたどる。既定を `ない` にして黙って誤った商品へ付けない。問いを上書きを選んだ行にだけ出すのは、上書きしない行は JAN が変わらないため。答えを wire の別の一覧にするのは、`overwriteCodes` と同じ「選んだ行の product_code」の形にそろえるため（`ImportRow` に field を足すと新規行にも意味の無い欄ができる）。 |
 
 ## 60.2 Component / Route 構成
 
@@ -75,7 +76,7 @@ src/
 | `result` | commit 完了 | 新規/更新/スキップ件数、次の導線 | `reset` / `/products` へ遷移 |
 | `error` | ファイル全体エラーまたは commit 失敗 | Alert + 再試行 / ファイル選択へ戻る | `reset` / `retry_preview` |
 
-`preview` state は `preview: ImportPreview` と `overwriteCodes: string[]` を持つ。`overwriteCodes` は重複行の `product_code` だけを含める。`commit` payload は以下で組み立てる。
+`preview` state は `preview: ImportPreview` と `overwriteCodes: string[]` を持つ。`overwriteCodes` は重複行の `product_code` だけを含める。（proposed・未実装、D-122）前の JAN の問いに `ある` と答えた重複行の `product_code` を `oldJanAliasCodes: string[]` として持つ（既定は空 = 全て `ない`。UI-01c-D17）。`commit` payload は以下で組み立てる。
 
 ```text
 validRows = [
@@ -85,6 +86,7 @@ validRows = [
     .map(row => row.import_row)
 ]
 overwriteCodes = Array.from(overwriteCodes)
+oldJanAliasCodes = Array.from(oldJanAliasCodes).filter(code => overwriteCodes.has(code))  // proposed・未実装、D-122
 ```
 
 ## 60.4 Command / DTO Contract
@@ -94,10 +96,10 @@ UI-01c 実装 PR では以下を generated binding に出す。
 | Command / Type | Existing backend | UI-01c usage |
 |---|---|---|
 | `commands.previewImport(fileBytes)` | Rust command は既存、generated 未対応 | file bytes を preview し、行分類を表示 |
-| `commands.commitImport(validRows, overwriteCodes)` | Rust command は既存、generated 未対応 | 新規行 + 上書き選択済み重複行を commit |
+| `commands.commitImport(validRows, overwriteCodes)` | Rust command は既存、generated 未対応 | 新規行 + 上書き選択済み重複行を commit。（proposed・未実装、D-122）3 つ目の引数 `oldJanAliasCodes` に前の JAN の問いの `ある` の行を載せる（[42](42-cmd-sales-stocktake.md) §22.6） |
 | `ImportRow` | Rust type は既存、`specta::Type` 未対応 | commit payload、preview table |
 | `ImportErrorRow` | Rust type は既存、`specta::Type` 未対応 | error table |
-| `ImportDuplicateRow` | Rust type は既存、`specta::Type` 未対応 | duplicate table、overwrite 選択 |
+| `ImportDuplicateRow` | Rust type は既存、`specta::Type` 未対応 | duplicate table、overwrite 選択。（proposed・未実装、D-122）`old_jan_question: string \| null` で前の JAN の問いを出す行を示す（UI-01c-D17） |
 | `ImportPreview` | Rust type は既存、`specta::Type` 未対応 | preview state |
 | `ProductImportResult` | 現 Rust 名 `ImportResult` を実装 PR で rename | generated では sales CSV import の `ImportResult` と衝突しない名前にする |
 
@@ -155,9 +157,11 @@ UI-01c 実装 PR では以下を generated binding に出す。
 - UI-01c-D12: committing 中は操作が disabled になり、cancel 可能に見せない。
 - UI-01c-D13: Windows native L3 で FilePicker（native dialog + 任意 drop）、エラー・重複の見分け、上書き確認、結果導線を確認する。
 - UI-01c-D16: `PLU対象` の 1 / 0 / 空欄と、不正 JAN の warning + 対象外補正が preview で読める。
+- UI-01c-D17（proposed・未実装、D-122）: `old_jan_question` のある重複行で `上書き` を選んだときだけ問いが出て既定が `ない`、`ある` の行だけが `oldJanAliasCodes` に入り、`スキップ` に戻した行は入らない。warning が重複行にも出る。
 
 ## 60.10 変更履歴
 
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-06-25 | UI-01c Design Phase | route、generated command 方針、file input 例外、reducer state、preview/duplicate/commit UX、query invalidation、Windows native L3 を整理。 |
+| 2026-10-17 | JAN の別名の design lane（D-122） | UI-01c-D17（前の JAN の問い、`oldJanAliasCodes`、重複行の warning）を追加。実装は JAN の別名の runtime の lane。 |

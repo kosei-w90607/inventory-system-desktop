@@ -20,7 +20,7 @@ SQL の失敗・整数の範囲外・FK 違反は DbError として返し、IO �
 src-tauri/src/
   db/
     mod.rs          -- DB接続管理、初期化
-    product_repo.rs -- products, departments, suppliers, price_history
+    product_repo.rs -- products, product_jan_aliases（proposed、D-122）, departments, suppliers, price_history
     inventory_repo.rs -- inventory_movements, receiving_*, return_*, manual_sale_*, disposal_*
     sales_repo.rs   -- sale_records, csv_imports, csv_import_errors
     stocktake_repo.rs -- stocktakes, stocktake_items
@@ -204,6 +204,23 @@ fn find_by_jan_code(conn: &DbConnection, jan_code: &str) -> Result<Vec<Product>,
 
 **エラーハンドリング**:
 - SQL実行失敗 → DbError::QueryFailed(詳細)
+
+#### 前の JAN の別名（IO-01-D5、proposed・未実装、D-122）
+
+`product_jan_aliases`（[master-tables](../db-design/master-tables.md) §1a）の読取りと追加。transaction は呼出側（BIZ-01 の商品 CSV の上書き、BIZ-03 の引き当て）が所有する。
+
+```rust
+fn find_jan_alias(conn: &DbConnection, jan_code: &str) -> Result<Option<String>, DbError>
+fn insert_jan_alias(conn: &DbConnection, old_jan: &str, product_code: &str) -> Result<(), DbError>
+```
+
+- `find_jan_alias`: `SELECT product_code FROM product_jan_aliases WHERE old_jan = ?1`。比べ方は `find_by_jan_code` と同じ文字列の一致（JAN を数に変えない）。無ければ `None`。
+- `insert_jan_alias`: `created_at` に現在日時を入れて 1 行 INSERT する。更新・削除の関数は置かない（消すのは `products` の trigger だけ）。
+- `insert_product`・`update_product` は別名を扱わない。`products.jan_code` を書くと、DB の trigger が同じ JAN の別名を同じ transaction の中で消す（master-tables §1a。IO の関数は何もしない）。
+
+**エラーハンドリング**:
+- 別名の表の trigger の拒否（その JAN を持つ商品がある）・外部キー違反・SQL 実行失敗 → DbError::QueryFailed(詳細)（BIZ-01 が先に条件を確かめるので、trigger の拒否は通常は起きない）
+- PRIMARY KEY 重複 → DbError::DuplicateKey(old_jan)（不変条件により、その JAN を持つ商品が直前まであった別名は無いので、通常は起きない）
 
 #### find_plu_dirty_products
 

@@ -446,6 +446,16 @@ struct ImportRow {
 }
 ```
 
+**ImportDuplicateRow構造体**:
+```
+struct ImportDuplicateRow {
+    line_no: usize,
+    import_row: ImportRow,
+    existing_product_code: String,
+    old_jan_question: Option<String>, // proposed・未実装（JAN の別名の runtime の lane、D-122）。前の JAN の問いを出す行だけ Some(前の JAN)。§4.9.2
+}
+```
+
 **処理ステップ**:
 
 1. **入力バリデーション**
@@ -474,6 +484,7 @@ struct ImportRow {
    - product_code で product_repo::find_by_product_code(conn, code) を検索
    - 既存あり → duplicate_rows に追加
    - 既存なし → valid_rows に追加
+   - （proposed・未実装、JAN の別名の runtime の lane、D-122）全行の分類の後に、duplicate_rows の各行の `old_jan_question` を §4.9.2 の preview の判定で決め、JAN が別の商品の別名に当たる行（valid_rows と duplicate_rows）に §4.9.2 の warning を足す
 
 5. **結果返却**
    - ImportPreview { valid_rows, error_rows, duplicate_rows }
@@ -495,6 +506,7 @@ fn commit_import(
     conn: &mut DbConnection,
     valid_rows: Vec<ImportRow>,
     overwrite_codes: Vec<String>,
+    old_jan_alias_codes: Vec<String>, // proposed・未実装（JAN の別名の runtime の lane、D-122）。前の JAN の問いに「ある」と答えた上書きの行の product_code。空 = 全て「ない」。§4.9.2
 ) -> Result<ImportResult, BizError>
 ```
 
@@ -513,6 +525,8 @@ struct ImportResult {
    - TX を開く前に valid_rows の全行を §4.8 step 4 と同じ判定で調べる（wire から来る行を信頼しない）
    - 1 行でも 100 文字（UTF-16 code unit）を超えれば BizError::ValidationFailed("商品コードは100文字以内で入力してください") を返し、DB を変えない（正常な行も登録しない）
 
+0b. （proposed・未実装、D-122）**前の JAN の答えの形の検査**: `old_jan_alias_codes` の各 code が `overwrite_codes` にあることを TX を開く前に確かめる（重複は 1 つとして扱う）。無い code があれば BizError::ValidationFailed("前の番号の答えは、上書きする行にだけ付けられます") を返し、DB を変えない（§4.9.2）
+
 1. **TX開始**（conn.transaction()）
 
 2. **各行を処理**（TX内で直接 repo 関数を呼ぶ。create_product / update_product の BIZ 関数は内部でTXを開始するため、ネストTX回避のために呼ばない）
@@ -526,6 +540,7 @@ struct ImportResult {
       - initial_stock > 0 → inventory_repo::insert_movement に receiving として記録
       - 進行中の棚卸し → stocktake_repo::insert_stocktake_item に自動追加
    d. 上書き更新の場合: `PLU対象` 列に `1` / `0` がある行だけ plu_target を更新する。列なし / 空欄は既存値を保持する。1→0 と JAN 変更は §4.4 の 4b と同じく PLU の枠を変えない（上書きは今どおり plu_target の値によらず plu_dirty=1。JAN の変更もこれで未反映になる。単位の語の直しの lane の後は、単位だけを変える行は plu_dirty を変えず、単位を変えた商品ごとに TX の中で `product_update` のログを書く。BIZ-01-D8 の上書きの段、D-119）
+   e. （proposed・未実装、D-122）前の JAN の別名: 全行を処理した後、COMMIT の前に、`old_jan_alias_codes` の商品ごとに §4.9.2 の commit の判定をやり直し、満たせば `product_repo::insert_jan_alias` で前の JAN の別名を書く。1 つでも満たさなければ BizError::ValidationFailed("商品の JAN が確認の後に変わりました。もう一度プレビューしてください") を返し、TX 全体を戻す。JAN を持った商品の別名は、DB の trigger が手順 a〜c の INSERT / UPDATE の中で消す（BIZ は消さない）
 
 3. **COMMIT**（tx.commit()）
 
@@ -539,6 +554,7 @@ struct ImportResult {
 **エラーハンドリング**:
 - TX内でのDB操作失敗 → BizError::DatabaseError（TX自動ロールバック）
 - 個別行のバリデーションエラー → preview_import で事前に検出済みのため通常到達しない。商品コードの上限だけは step 0 で再検証する（BIZ-01-D5）
+- （proposed・未実装、D-122）前の JAN の答えが上書きしない行にある → step 0b の ValidationFailed（DB を変えない）。答えた商品が commit の判定を満たさない → step 2 e. の ValidationFailed（TX 全体を戻す）
 
 **設計判断（BIZ-01-D5、商品コードの長さ上限、2026-09-25）**: 商品コードの上限は 100 文字（owner 決定 2026-09-25）。在庫照会の route search `selected` / `q` の zod `.max(100)` と揃え、「登録できるのに照会で選べない」食い違いを消す。数え方は zod `.max()` と同じ UTF-16 code unit（Rust は `encode_utf16().count()`、定数 `constants::PRODUCT_CODE_MAX_LEN`）。文字数（`chars().count()`）では BMP 外の文字で照会より多く通し、byte 数（`len()`）ではかなで照会より少なく通すため採らない。判定は BIZ に置き、任意の文字列が入る唯一の経路である商品 CSV の取込み（preview_import の行検証と commit_import の TX 前の再検証）で閉じる。手入力の create_product は JAN（BIZ-01-D1）か §4.3 の発番で上限に届かず、update_product は product_code を変えないため判定を置かない。DB CHECK は置かない: `products.product_code` を外部キーで参照する定義が 8 あり、SQLite は CHECK の追加に `products` の再作成が要る一方、上の BIZ の判定で入口が閉じるため。
 
@@ -555,6 +571,34 @@ fn bulk_set_plu_target(
     plu_target: bool,
 ) -> Result<BulkPluTargetResult, BizError>
 ```
+
+### 4.9.2 前の JAN の別名（BIZ-01-D9、proposed・未実装、D-122）
+
+**関数要求**: 商品の JAN を直すときに「前の番号のバーコードが付いた現物は店にありますか」を 1 回聞き、「ある」と答えた商品だけ、前の JAN をその商品の別名として残す（owner の決定、repo 外の回答台帳 TD-284・TD-286）。「ない」（既定）なら別名を作らず、前の JAN で売れた分は売上の取込みの `unmatched_product` の行エラーで知らせる（[32](32-biz-csv-import-service.md) §15.3 手順 4 b。黙って誤った商品へ付けない）。別名の表と不変条件は [master-tables](../db-design/master-tables.md) §1a。
+
+**問いの条件**（3 つ全てを満たす商品にだけ聞く。それ以外は聞かず、別名を作らない）:
+
+1. 直す前の JAN（`A`）が空でない。
+2. 直す前に `A` を持つ商品がその商品 1 つだけ（`find_by_jan_code(A)` が 1 件）。共有 JAN（同じ JAN を複数の商品が持つ）の商品は、たどる先が 1 つに決まらないので聞かない（共有 JAN は店内コードまで在庫連動の外。owner の決定 TD-296 の 6b、[32](32-biz-csv-import-service.md) の D-118 の確定の段）。
+3. 直した後に `A` を持つ商品が無い（同じ取込みの他の行が `A` を持つなら聞かない。その行の商品が `A` で引き当たる）。
+
+JAN を空にする変更（`A` → なし）も「直す」に入る。PLU の枠の有無・状態（`reserved` / `active` / `external` / 無し）は条件にしない（D-122 (2)。レジがアプリの JAN を別の枠にも持つ観測〈`external`〉があり、アプリはレジの枠を全部は知らない）。
+
+**経路**: 今 JAN を変える経路は商品 CSV の上書き（§4.9）だけ（商品フォームの edit は JAN を読取専用にする。UI-01b-D11）。JAN を変える経路を新しく作るときは、同じ問いの条件・答えの運び方・commit の判定をその経路に入れ、入れるまでは別名を作らない（答えの無い経路の既定は「ない」）。商品が JAN を持つ全ての経路（商品フォームの新規〈§4.2〉、商品 CSV の新規と上書き、将来の経路）で、その JAN の別名は DB の trigger が消す（BIZ は消さない。master-tables §1a）。
+
+**preview の判定**（§4.8 手順 5）: duplicate_rows の行 `r`（既存の商品 `P`）について、`P.jan_code = Some(A)`、`r.import_row.jan_code ≠ Some(A)`、DB で `A` を持つ商品が `P` だけ、取込みの他の行（valid_rows と、`r` を除く duplicate_rows。error_rows は取り込まないので数えない）が `A` を持たない、の全てを満たせば `old_jan_question = Some(A)`、それ以外は `None`。他の重複行を上書きするかは preview の時点で分からないので、全ての重複行を上書きすると見なして判定する（見なしは安全側: `Some` の行は、どの組合せで上書きしても条件 3 を満たす。`None` にした行は聞かないので別名を作らない）。
+
+**preview の warning**（§4.8 手順 5）: 行の JAN が別名の表にあり、その別名の商品が行の商品と違うとき、`ImportRow.warnings` に「JAN {A} は商品 {別名の商品コード} の前の番号として売上をたどっています。取り込むと、この番号の売上はこの行の商品へ入ります」を足す（取込みは拒まない。DB の trigger が別名を消す）。行の商品が別名の商品と同じ（前の JAN へ戻した）ときは出さない。
+
+**答えの運び方**: UI-01c は `old_jan_question` が `Some` の重複行に問いを出し（既定「ない」）、上書きを選んだ行のうち「ある」と答えた行の product_code を `commit_import` の `old_jan_alias_codes` に載せる（[60](60-ui-product-import.md) UI-01c-D17、[42](42-cmd-sales-stocktake.md) §22.6）。空の一覧は全て「ない」。
+
+**commit の判定**（§4.9 手順 0b・2 e.）: 0b で code が `overwrite_codes` に無ければ拒む。TX の中で、行を処理する前に各 code の商品 `P` の `A`（`P.jan_code`）と「`A` を持つ商品が `P` だけ」を確かめて控え、全行を処理した後に「`A` を持つ商品が無い」を確かめ、満たせば `insert_jan_alias(A, P)`。どれかを満たさなければ（商品が無い、JAN が空、共有だった、直していない、他の行が `A` を持った）TX 全体を戻す（preview の後に DB が変わった場合。もう一度 preview する）。答えを黙って捨てない。
+
+**共有 JAN との関係**: 別名は D-118 の共有 JAN の不変条件（変更の後に在庫連動の商品と同じ JAN を持つ別の商品があってはならない）の「同じ JAN を持つ別の商品」に数えない。不変条件（どの商品も持たない JAN だけが別名）により、別名で引き当てる JAN を商品が持つことは無いので、引き当てで別名と商品が競らない。
+
+**理由と却下**（詳細は decision-log D-122）: 問いを JAN を変える経路の 1 か所に置き、消すのは DB の trigger に任せる。却下: 前の JAN の枠（`plu_slots`）の列に別名を持たせる（D-117 の round 1 の形。枠の状態の CHECK と照合の遷移に継ぎ目ができる）、JAN を書く経路ごとに別名を消す（経路の挙げ漏れで古い別名が生き返る）、`product_repo` の INSERT / UPDATE の関数の中で消す（`products.jan_code` を別の SQL で書く将来の経路・migration が漏れる）、答えの合わない commit で別名を書かずに続ける（「ある」の答えが黙って消え、その番号の売上が行エラーになる理由が分からない）。
+
+**Revisit**: 商品フォームの edit で JAN を変えられるようにするとき（同じ問いを足す）。別名の一覧・削除の画面が要る事情が出たとき（誤って「ある」と答えた別名を消すには、今はその JAN を持つ商品を登録するか開発者が消す）。売上の引き当て以外（商品検索・棚卸し・入庫のバーコードの読取り）でも前の JAN を引きたい事情が出たとき。
 
 ### 4.10 BizError列挙型（Phase 5 拡張）
 
