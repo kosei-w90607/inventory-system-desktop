@@ -29,6 +29,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 2. spec-check → design（2026-10-17、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D2、[30](../function-design/30-biz-product-service.md) BIZ-01-D7・BIZ-01-D8・§4.4・§4.9、[51](../function-design/51-ui-product-form.md) UI-01b-D5・D22・D23、[20](../function-design/20-io-product-repo.md) §2.3、[74](../function-design/74-ui-operation-logs.md) §74.8。正本と code を突き合わせ、実装の前に決めておく穴が 7 つあった（下の Design Readiness の「本 commit で正本に足したもの」）。
 3. design → plan-draft（2026-10-17、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本（30・51・20・74）に置いた。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本の直しは起草役の commit（`d6f57bbd`）にある。Coordinator は正本の差分（30 の上書きの段の `plu_dirty` の比べる列と操作ログの summary、51 UI-01b-D23 の送る判定と説明文、20・74 の行）と packet の前文・Workflow State・Owner Effort Budget を読み、D-119 の U2 = b の範囲を越えていないこと、366 との節の所有表があること、code・migration に触れていないことを確かめた。起草役が決めた 4 点（操作ログの既知の key に足さない、「現在庫」の欄の語、無効化の範囲の外の画面の古い語、spec-check の穴の追記）はそのまま Plan Review の判定に出す。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、test の穴 3 つ（長さどうしの preview・commit、ログの全行の mutant、L3 の記録詳細を開く順）を是正に入れた。起草役が `5fe0eae1` で直し、Coordinator が差分（30:18、51 の D11・§7.8・D23、DSR の実例、Matrix の T5・T7・T8・T10・T11・T14、AC6 の glob、L3 の fixture）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
@@ -357,4 +358,18 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（2026-10-17、head `734671ed`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 3）と Codex GPT-6.1 Sol（reject、P1 0・P2 5・P3 2）。重なりは AC6 の自己一致（Codex #4 = Claude #1）と disabled の旧い文（Codex #2 = Claude #3）。全て採った（Coordinator の裁定）。是正の前に相談役（Fable 5.1）に反例探しを頼み、裁定どおり全受理でよいとの結果と、test の穴 3 つを是正に入れた。新しい契約は足さず、言い回しの限定・旧い文の sweep・test の網羅・事実の訂正で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R1 | Codex #1（P2） | 採る | 30:18 の「同じ単位なら UPDATE も log も書かない」が request 全体の no-op と読め、§4.4・T5 と衝突する | 省くのは `stock_unit` の SET と detail の key だけ、通常の UPDATE とログ行は今の契約のまま、に限定。Matrix の Contracts Under Test と T5 も揃え、同じ単位と新しい商品名の行を足した |
+| R2 | Codex #2（P2）・Claude #3（P3） | 採る | UI-01b-D11・§7.8 の「数量単位の select は disabled を維持」が D23 と食い違い、sweep と所有表から漏れていた | 51 の D11・§7.8、DSR-05 の実例、component catalog の同じ型の例に、本 lane の後の規則を proposed の注記で添えた。D23 は「長さの単位の商品は読取専用（押せず、今の語が読める）」に。所有表・Ledger・S5 に足し、code の comment 5 か所は実装の commit で直す所として S5 に。mockup は Non-scope |
+| R3 | Codex #3（P2） | 採る | CSV の上書きでログの INSERT が失敗したときに全部戻ることを確かめる test が無い | T14（既存の `fail_product_update_log` trigger で上書きのログだけを失敗させ、商品・同じ取込みの新規の行・ログが全部戻る）を足した |
+| R4 | Codex #4・Claude #1（P2） | 採る | AC6 の 2 本目の `rg` が packet 自身に当たり、0 にならない | 2 本の `rg` に `--glob '!docs/plans/**'` を足し、baseline を測り直した。Matrix の anchor の旧い文は数える範囲を `src/features/products` に絞った |
+| R5 | Claude #2（P2）・相談役 | 採る | 上書きの「単位だけ」を 10 列で比べる契約に、T10 が 2 列しか当てていない | T10 を 10 列の表駆動に。JAN の行は「既存に JAN あり・CSV の JAN が空」 |
+| R6 | Codex #5（P2） | 採る | 過去の記録の表示を確かめる入庫の記録が fixture に無い | L3 の fixture を「初期在庫 0 で登録 → 入庫画面で記録 → 単位を直す → 入庫の記録詳細を初めて開く」にし、合成の値を固定で書いた。Ordinary Operation も揃えた |
+| R7 | Codex #6・Claude #4（P3） | 採る | 長さの行は error に入り上書きの対象にできない。L3 の CSV を一意に作れない | 長さの行は preview の error を確かめ、個数の行だけを上書きにする手順と CSV の行を書いた（JAN の列を入れる。無いと上書きが JAN を消す） |
+| R8 | Codex #7・Claude #5（P3） | 採る | 現状の事実の誤記 | test の単位の UPDATE は 5 か所、ProductForm の既存の read-only の test の fixture は `cm`、行番号を直した |
+| R9 | 相談役 | 採る | 長さどうしの変更が preview・commit の test に無い／「全行にログ」の mutant が残る／L3 で記録詳細を先に開くと旧い語が出る | T7・T8 に `m`→`cm` の行、T11 の「変えない商品」を商品名を変える行に、L3-1 の開く順を明記。Writer への助言の節を Scope に足した |
