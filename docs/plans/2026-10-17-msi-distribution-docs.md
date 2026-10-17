@@ -24,6 +24,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 2. spec-check → design（2026-10-17、起草役）: 引く正本（22 §3.2 MNT-03-D11、22 §16 の回復、71 §71.4・§71.5・§71.9、68 §68.4）は振舞いの契約として足りるが、配布・更新・戻す流れを 1 つに並べた管理者の手順が無い（`docs/migration-recovery-runbook.md` は v8 から戻す手順だけ）。手順書を新しく置く。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は、手順書 `docs/msi-distribution-runbook.md` を同じ plan-first の変更に置いて満たす（docs だけの lane の先例 `docs/archive/plans/2026-10-17-unit-redesign-design.md` と同じ形）。条件「未解決の設計の問いが無い」は、実機でしか分からない点（M1〜M9）を手順書に「未確認」と書き、結果で変わる所を表に置いたことと、製品名と upgrade code の固定を初回の導入の前提として本 lane の外の項目（backlog）に出したことで満たす。製品名を何にするかは owner の問い（下の Review Focus の Q1）で、本 lane の手順書は名を引かずに書いてあるので答えを待たない。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet と手順書は起草役の commit（`1ef45cbd`）にある。Coordinator は手順書の全文と packet の全文（Goal の失敗定義・Ordinary Operation・Scope と所有表・AC・Design Readiness・Contract Probe・Data Safety）を読み、流れ 5 が DB の版の上がり方と入力の前後で分かれていること、未確認の振舞いが M1〜M9 に揃っていること、差分が docs の 4 file だけで店の運用の細部や実データが無いことを確かめた。手順書を plan-first の commit に置く形は docs だけの lane の先例どおりとして採る。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、「22 §16 の回復の番号が無い段は置かない」の原理と予行演習の DB の隔離を是正に入れた。起草役が `356663cd` で直し、Coordinator が差分（流れ 5 の表と 1・2、保管の規則、予行演習の準備と片付け、AC6）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
@@ -197,4 +198,20 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（2026-10-17、head `3e132095`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 6）と Codex GPT-6.1 Sol（reject、P1 1・P2 2・P3 2）。Claude #1 と Codex #1 は同じ件で、重い方の P1 とした。全て採った（Coordinator の裁定）。是正の前に相談役（Fable 5.1）に反例探しを頼み、是正の原理を「手順書に新しい安全の契約を足さず、22 §16 の回復の番号が無い段は置かない」にした（相談役は、案にあった「決める前に写しを作る段」も 22 §16 に無いと指摘し、外した）。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R1 | Codex #1（P1）・Claude #1（P2） | 採る | 入力の後の枝が、回復の方針を決める前・止める前・遺物を確かめる前に DB を移させる。版が同じ後退では空の DB ができ、データが 2 つに分かれる | 流れ 5 を「DB の版が同じ／上がった」×「入力の前／後」の表にし、決めるまで今の DB を動かさない形にした。保全は runbook の手順 5 だけ。AC6（「移す」「置く」が runbook の手順 5・6 の外に出ない）を足した |
+| R2 | Codex #2（P2） | 採る | 更新の前の backup の写しの保持が起動の後の確認までで終わり、数日後に戻せない | 前の版の MSI と更新の前の backup の写しを、owner が「その版へ戻す可能性を閉じる」と決めるまで一緒に保つと書いた |
+| R3 | Codex #3（P2）・相談役 | 採る | 予行演習の試験データの投入先が決まっておらず、MSI のアプリと開発中のアプリが同じ DB を共有するので開発の DB に当たる。版 B の commit で投入すると版 A が起動しない | 準備と片付け（データの folder の退避と復帰、版 A の commit で `--db` を明示して投入、`--reset` を使わない、作業フォルダに `inventory.db` を置かない）を足した |
+| R4 | 相談役 | 採る | 開発 PC で確かめた写しと店 PC に置く写しが別物になり得る | 確かめた写しそのものを写し戻し、SHA-256 の一致を確かめてから置くと書いた |
+| R5 | Claude #3（P3） | 採る | 入力の前後と DB の版の 2 つの枝が掛け合わされていない | R1 の表 |
+| R6 | Claude #4（P3） | 採る | 流れ 1・2 に止まったときの行き先が無い | `light.exe` の失敗は VBSCRIPT を有効に（Tauri の公式の資料、2026-10-17）、SHA-256 が違えば入れない、起動しなければ止めて文言を控える |
+| R7 | Claude #5（P3） | 採る | M9 の場所が食い違う | M1〜M8 は開発機、M9 は店の PC で初回の導入の前、に揃えた |
+| R8 | Claude #6・Codex #5（P3） | 採る | 「何も書かずに」が MNT-03-D11 より強い | 「論理内容を変えずに」 |
+| R9 | Claude #7（P3） | 採る | `identifier` を変えないことと、在庫の数の比べる相手が無い | 初回の導入の前に決めることに 1 文、流れ 3 で代表の商品の在庫の数を控える |
+| R10 | Codex #4（P3） | 採る | 新しい版で作った backup が旧版で開けないことを無条件に書いている | DB の版が前の版の扱える版を超えたときに限った（流れ 3 は毎回のまま、22 の文は変えない） |
+| R11 | Claude #2（P3） | 採る | R2 と R3 の境 | Risk の Reason に、新しい手順の順序が 22 §16 の 2〜5 を崩していないことを Final Review が確かめる旨を足した |
