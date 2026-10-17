@@ -171,7 +171,7 @@ prepare が返した exact `memory_no` / product_code set を **1 transaction** 
 | `plu_target: 0 -> 1`（廃番解除の後の再対象化を含む） | その JAN の枠があれば次の prepare で同じ枠を使う | `plu_dirty=1` |
 | `plu_target=1` の商品の `jan_code` の変更 | 前の JAN の枠は状態を変えず残す（対象の商品を持たない JAN の枠になる）。新しい JAN は次の prepare で枠を予約する | `plu_dirty=1` |
 
-前の JAN の枠のバーコードでレジが売った分は、次の Z004 にその JAN の行で出る。その JAN を持つ商品が無ければ、取込みは `unmatched_product` の行エラーで知らせる（[32](32-biz-csv-import-service.md) §15.3 手順 4 b〈Stage 2〉。黙って誤った商品へ付けない）。同じ商品へたどる経路は TD-284 の別の小さな設計 lane で扱う（D-117 の owner の決定 TD-286、backlog）。廃番解除は `plu_target` を自動復帰させない。
+前の JAN の枠のバーコードでレジが売った分は、次の Z004 にその JAN の行で出る。その JAN を持つ商品が無ければ、取込みは `unmatched_product` の行エラーで知らせる（[32](32-biz-csv-import-service.md) §15.3 手順 4 b〈Stage 2〉。黙って誤った商品へ付けない）。同じ商品へたどる経路は前の JAN の別名（D-122、proposed・未実装。[30](30-biz-product-service.md) BIZ-01-D9、[master-tables](../db-design/master-tables.md) §1a）: JAN を直すときに前の番号の現物が「ある」と答えた商品だけ、取込みがその JAN の行を別名で同じ商品へ入れる。別名は枠と独立で、本節の枠の扱い（状態を変えず残し、書き出さない）・§16.3 の照合・prepare・confirm は別名を読まず書かない。前の JAN の枠の値段はレジに残った前の値段のまま（売るのをやめた商品と同じ受け入れ済みの限界、D-117 の Guarantee range）。廃番解除は `plu_target` を自動復帰させない。
 
 撤去の対象（D-117 (1)。runtime の lane が code と一緒にこの signature を消す。それまでは設計照合 test〈`src-tauri/tests/design_compliance_test.rs`〉が code の pub fn と突き合わせるので signature だけを残す）:
 
