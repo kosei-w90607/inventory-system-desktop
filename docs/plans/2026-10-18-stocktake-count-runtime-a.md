@@ -32,6 +32,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 4. plan-draft → plan-gate（2026-10-18、Coordinator）: packet・Matrix と正本は起草役の commit（`82d6b030`）にある。Coordinator は Risk（R4 の理由は作り直しでなく、行のある `inventory_movements` の作り直しと写しの書換え）・Goal と失敗定義・Ordinary Operation・owner の判断事項・横断の約束 Y1〜Y8・Contract Probe P1〜P6・Data Safety・残りの危険を読み、TD-311 の写しが D-123 として置かれ D-118・D-119 に Superseded in part の行があること、作り直しが「消さずに移す」で閉じていること、止まる DB で原因と直し方を名指しすること（TD-310）、並走の lane の節（22 §17・§18、30）を書き換えていないことを確かめた。(a) と (b) の境の細部（Z004 の phase の CHECK ほかを (b) へ）と、1 lane・1 PR の判断は起草役の判断のまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `3523401a` で直し、Coordinator が差分（Matrix の「既存の test の移し方」T1〜T6 と、S1・S2・S4・S6 がそれを引く形、22 §19 の手順 2 の暦日の検査と手順 2・8 の作り直しの案内、Contract Probe P7、S1〜S6 の検証の単位、L3-1 の控えと合格基準、`per_page`、数の集計、ADR の Context の注記）を読んだ。Scope の範囲と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `c3f98aa6` で直し、Coordinator が差分（31 の業務日の形と暦の検査を書く側の 1 か所にしたこと、22 §19 の手順 2 の拒む 3 つの条件と手順 8・9、21・31 の新しい関数のシグネチャ、Contract Probe P6・P7 の実測、Matrix の M4・M6・W1・W5・W7・T2）を読んだ。Scope と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
+7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-319、介入 1 回目 / 予算 9 回）。起草役が `390e29f5` で直し、Coordinator が差分（S6 の補正の操作ログを 75 の 4 項目の前後に揃えたこと、U6、demo の seed の写しを和へ揃えること、S7 の DB_DESIGN の節、L3-1 の (iii)、T5・T6 の局所変数名、backlog の (b) への申し送り）を読んだ。
 
 ## Owner Effort Budget
 
@@ -477,3 +478,16 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra
 | R16 | Claude #4（P3） | 採る | 手順 9 の失敗に原因と直し方が無い。手順 8 の操作ログの値が決まっていない | 手順 9 に作り直しの案内を足し、手順 8 の書き方と値を決めた |
 
 起草役の問いの Coordinator の裁定（2026-10-18）: demo の初期データの販売の記録は参照先の種類が NULL で、計数が入った後の窓の判定で初期在庫と見分けられない。(a) では計数が無いので値は変わらず、(b) の起票で扱う（(b) の起票の発注に入れる）。計数の一覧の順を id の順にしたこと、`sales_service` の日付の誤りの文の出し分けが変わることは採る。
+
+### Plan Review round 3（2026-10-18、head `9914dd9c`）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra（reject、P1 0・P2 1・P3 1）。どちらも Ordinary Operation は成立と判定した。全て採った（Coordinator の裁定）。round の天井で P2 が残ったので owner に諮り、「直して、追加の round なしで plan-approved（R4 の承認は実装の前に別に諮る。跡は Final Review 2 本）」と決まった（repo 外の回答台帳 TD-319）。起草役が `390e29f5` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R17 | Codex #1（P2） | 採る | 補正の操作ログの表示が数量の前後に範囲を片側だけ付ける指定で、75 の前後の 4 項目を満たさず、範囲だけの補正で前の範囲が消える | S6 を 75 を正本として前と後をそれぞれ数量・印・範囲つきで出す形にし、U6 に範囲だけが変わる例で両側の表示を確かめる条件を足した |
+| R18 | Codex #2（P3） | 採る | 既存の関数の戻り値の説明の誤り | 単位を含む組に直した |
+| R19 | Claude #1（P3） | 採る | demo の seed の写しと和が食い違ったまま残る | seed の終わりに写しを和へ揃える。参照先の種類が NULL の販売の記録の扱いを backlog の (b) に申し送った |
+| R20 | Claude #2（P3） | 採る | DB_DESIGN に整合性の古い文が残り、同期の対象に名指しされていない | S7 の対象に名指しで足した |
+| R21 | Claude #3（P3） | 採る | L3-1 の合格基準に別の止まりの場合が無い | 止まりの文の写しを返してもらい Coordinator が判定する場合を足した |
+| R22 | Claude #4（P3） | 採る | 「変えない」とした test の局所変数名が AC6 に当たる | 局所変数名だけ直し、期待は変えないと書いた |
