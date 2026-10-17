@@ -6,14 +6,14 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R2
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
-- Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
-- Final Reviewer: fresh Opus 5.5（Claude 側、R2。本 lane を design lane とみなすなら Fable 5.1 で、Coordinator が発注時に決める）+ Codex（GPT-6.1 Sol 既定）。座組表どおり
+- Plan Reviewer: fresh Opus 5.5 + Codex（GPT-6.1 Sol / high。`.local` の model の選び方の「R2 以下の Plan Review」の行）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
+- Final Reviewer: fresh Opus 5.5（Claude 側、R2。本 lane は設計の判断を足さない手順書の lane で design lane に当たらないと Coordinator が判断した）+ Codex（GPT-6.1 Sol 既定）。座組表どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge
 - Branch: agent/msi-distribution-docs
@@ -23,6 +23,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 1. kickoff → spec-check（2026-10-17、起草役）: 発注書 368 の Scope（手順書の置き場と 4 つの流れ、更新のときの DB の安全、未確認の点の確かめ方）を範囲にし、Risk を R2 と記録した（下の Risk）。
 2. spec-check → design（2026-10-17、起草役）: 引く正本（22 §3.2 MNT-03-D11、22 §16 の回復、71 §71.4・§71.5・§71.9、68 §68.4）は振舞いの契約として足りるが、配布・更新・戻す流れを 1 つに並べた管理者の手順が無い（`docs/migration-recovery-runbook.md` は v8 から戻す手順だけ）。手順書を新しく置く。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は、手順書 `docs/msi-distribution-runbook.md` を同じ plan-first の変更に置いて満たす（docs だけの lane の先例 `docs/archive/plans/2026-10-17-unit-redesign-design.md` と同じ形）。条件「未解決の設計の問いが無い」は、実機でしか分からない点（M1〜M9）を手順書に「未確認」と書き、結果で変わる所を表に置いたことと、製品名と upgrade code の固定を初回の導入の前提として本 lane の外の項目（backlog）に出したことで満たす。製品名を何にするかは owner の問い（下の Review Focus の Q1）で、本 lane の手順書は名を引かずに書いてあるので答えを待たない。
+4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet と手順書は起草役の commit（`1ef45cbd`）にある。Coordinator は手順書の全文と packet の全文（Goal の失敗定義・Ordinary Operation・Scope と所有表・AC・Design Readiness・Contract Probe・Data Safety）を読み、流れ 5 が DB の版の上がり方と入力の前後で分かれていること、未確認の振舞いが M1〜M9 に揃っていること、差分が docs の 4 file だけで店の運用の細部や実データが無いことを確かめた。手順書を plan-first の commit に置く形は docs だけの lane の先例どおりとして採る。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
