@@ -542,6 +542,23 @@ fn find_same_settlement_daily_report_import(
 
 ---
 
+### 14.18b exists_same_date_daily_report_import_without_settlement_no（D-121、BIZ-08-D8、proposed・未実装）
+
+**関数要求**: 同じ対象日の completed の日報取込みに、精算回数の無い（`settlement_no IS NULL`）ものがあるかを返す。BIZ-08-D8（37 §37.10）が同日追加の確認を残すかを決める専用。wire に出さない。後続の runtime（A）が足す。
+
+**シグネチャ**:
+```
+fn exists_same_date_daily_report_import_without_settlement_no(
+    conn: &DbConnection,
+    report_date: &str,
+) -> Result<bool, DbError>
+```
+
+**SQL方針**:
+`SELECT EXISTS (SELECT 1 FROM daily_report_imports WHERE report_date = ? AND status = 'completed' AND settlement_no IS NULL)`。`status` の条件は §14.18 の同日の一覧（`src-tauri/src/db/sales_repo.rs:760` の `status = 'completed'`）と同じで、取り消した（`rolled_back`）取込みは数えない。
+
+---
+
 ### 14.19 rollback_daily_report_import
 
 **関数要求**: `daily_report_imports` を `rolled_back` に更新する。
@@ -703,4 +720,4 @@ fn list_ej_number_gaps(conn: &DbConnection) -> Result<Vec<EjNumberGap>, DbError>
 | 2026-10-06 | z001-display（runtime、起票） | §14.21 手順 1 の取得列に `imported_at` と並び `imported_at ASC, id ASC` を書いた（手順 6 の行の無い親の取込み日時の出どころ。PR #114 Final Review の P3。[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正、D-111） | `NewDailyReportImport.settlement_no` と §14.14 の INSERT の列、§14.18a `find_same_settlement_daily_report_import`（BIZ-08-D4）。`DailyReportImport` の行の DTO と既存の SELECT は変えない。 |
 | 2026-10-06 | z001-display（Plan Review round 1 の是正） | §14.21 手順 1 に、gross / net の加算は従来どおり新しい順で行うこと（溢れと NULL の伝播が順に依るため）を書いた（[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |
-| 2026-10-17 | sd-bulk-import-design（design、D-121） | §14.25 EJ の記録の保存と照会を proposed で足した。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | §14.25 EJ の記録の保存と照会と、§14.18b 同じ日の精算回数の無い取込みの有無（BIZ-08-D8。Plan Review round 1 の是正）を proposed で足した。 |

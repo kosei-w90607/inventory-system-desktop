@@ -90,7 +90,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | やり直し | 「まとめて取り込む」 | 取り込み済みの項目は「取り込みませんでした（取込み済みです）」、残りが入る。EJ は保存済みの番号を数えるだけ | — | BIZ-08-D7・D9 |
 | アプリが先に読み、その後で店が CV17 の取込みをした（順の入れ替わり） | 翌日「SD から読む」 | `XZ_BKUP` の同じ束は「取込み済み」、EJ の同じ記録は数えない。二重に数えない | — | BIZ-08-D10 の表 |
 | お客様からレシートの問合せ | 「レシートの控え」を開き、日付を選ぶか番号を入れる | その日の控えの一覧（時刻・番号・種類・合計）と、選んだ控えの文（等幅、紙のレシートと同じ並び） | — | P7（等幅の字形）、店に聞く問い (1) |
-| アプリを 30 日より長く使わなかった後 | 「SD から読む」→「まとめて取り込む」 | 窓より前の `XZ_BKUP` の EJ は読まず、控えの画面に「記録 n〜m の控えがありません」 | 「EJ のファイルを選んで取り込む」で `XZ_BKUP` か PC の CV17 の写しの file を選ぶと欠けが消える | UI-09c-D5 |
+| 日報だけを 1 件ずつの経路で取り込み、一括取込み（EJ）を 30 日より長く使わなかった後（round 1 の是正） | 「SD から読む」→「まとめて取り込む」 | 窓は日報の最後の取込みの日までしか戻らず、それより前の `XZ_BKUP` の EJ は読まない。一括取込みの結果と控えの画面に「記録 n〜m の控えがありません」と、その場の「EJ のファイルを選んで取り込む」 | 「EJ のファイルを選んで取り込む」で `XZ_BKUP` か PC の CV17 の写しの file を選ぶと欠けが消える | UI-09c-D5 |
 | (B) の後（棚卸しの runtime の (b) の後） | 「まとめて取り込む」 | 日報の後に Z004 を精算回数の昇順に取り込み、32 の新契約の知らせと要再確認の一覧を出す。拒まれた Z004 は飛ばして EJ まで進む | 要再確認の商品を棚で数え直す（73） | 32 の新契約 |
 
 ## Scope
@@ -110,13 +110,13 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 型・関数の形の変更（後続の lane が触る。本 lane は変えない）。`rg` で数えた作る所・読む所（2026-10-17、起点 `f5d7aaf4`）:
 - `DailyReportSdScan` / `DailyReportSdScanSnapshot`（§37.9、未実装。SD 直読みの runtime が作る）: `rg -n 'DailyReportSdScan' src src-tauri/src` は 0 件（未実装）。(A) が `ej`・`ej_files`、(B) が `z004_files` を足す。bindings は (A) で再生成。
 - `DailyReportDuplicateStatus`（変えない）の分岐: 作る所 `src-tauri/src/biz/daily_report_import_service/parse.rs:159`、読む所 `commit.rs:37`・`src-tauri/src/cmd/daily_report_import_cmd.rs:446`・`src/features/daily-report-import/DailyReportImportPage.tsx:139`、test `src-tauri/src/biz/daily_report_import_service/tests.rs:275`・`:481`・`:536`、`src/features/daily-report-import/DailyReportImportPage.test.tsx`（`:61`・`:156`・`:258`・`:277`・`:418`・`:455`）、`src/features/daily-report-import/hooks/useDailyReportImportFlow.test.tsx:437`（`rg -n 'AdditionalImportConfirmationRequired' src-tauri/src src`、Z004 の側の hit は除く）。BIZ-08-D8 で値の意味が変わるのは BIZ の分岐と backend の test の期待だけで、frontend は status を見て描くだけなので変わらない（fixture の status は文字列のまま）。
-- 新しい型（`RegisterSdBulkResult` ほか 37 §37.10・§37.11、45 §45.6c）: `rg -n 'RegisterSdBulk|EjRecord|ej_records' src src-tauri/src` は 0 件（新規）。
+- 新しい型・関数（37 §37.10・§37.11、24 §14.18b・§14.25、45 §45.6c。round 1 の是正で、既存の `EjRecord`〈`ej_parser.rs`〉に当たらない式に限った）: `rg -c 'RegisterSdBulk|RegisterSdEjSummary|EjImportResult|EjImportPlan|EjRecordDay|EjRecordSummary|EjRecordDetail|EjRecordRef|EjNumberGap|NewEjRecord|EjSourceFile|SdSourceFile|ej_records|commit_register_sd_bulk_import|import_ej_records|exists_same_date_daily_report_import_without_settlement_no|measure_register_sd_shape' src src-tauri/src` の出力は空（exit 1、新規。2026-10-17、HEAD `39dd2f14` の上の作業 tree で測った）。
 
 並走の lane と重なる file と節の所有（D-055 の所有表）:
 
 | file | 本 lane が触る所 | SD 直読みの runtime（367）が触る見込みの所 | 日報の紙と意味づけ（363）が触る見込みの所 | merge の後に揃える所 |
 |---|---|---|---|---|
-| `docs/function-design/37-biz-daily-report-import-service.md` | §37.10・§37.11（新設、§37.9 の後）と更新履歴の末尾の行 | §37.3・§37.4・§37.9（D-111 の実装との同期と P3 の是正。backlog の「起票時に直す」(1)(2)） | §37.3 手順 7 の部門の照合など項目の意味 | 更新履歴は両方を残す。(A) の起票のときに §37.3 手順 8 を BIZ-08-D8 の形に直す（367 の merge の後） |
+| `docs/function-design/37-biz-daily-report-import-service.md` | §37.10・§37.11（新設、§37.9 の後）と更新履歴の末尾の行 | §37.3・§37.4・§37.9（D-111 の実装との同期と P3 の是正。backlog の「起票時に直す」(1)(2)） | §37.3 手順 7 の部門の照合など項目の意味 | 更新履歴は両方を残す。(A) の起票のときに、§37.3 手順 8 を BIZ-08-D8 の形に、§37.9 手順 4 の「Z004 は PLU の占有の照合のためだけに手順 10 で読む」と「Z004 と EJ への引継ぎ」の末文（一度に取り込む形の設計は後続の lane が決める）を §37.10・§37.11 への参照に直す（367 の merge の後。round 1 の是正） |
 | `docs/function-design/45-cmd-daily-report-import.md` | §45.6c（新設）と更新履歴の末尾 | §45.6a・§45.6b・§45.8 | 無し | 更新履歴は両方を残す |
 | `docs/function-design/55-ui-csv-import.md` | UI 判断 ID の末尾の UI-07-D17 と更新履歴の末尾 | UI-07-D12・D15・D16 と §55.1 の module の表 | 無し | 無し |
 | `docs/function-design/29-io-ej-parser.md` | IO-08.10 の冒頭の注記 | 無し | 無し | 無し |
@@ -128,7 +128,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | `docs/backlog.md` | 本項目の sub-bullet、直後の 3 項目、`XZ_BKUP` へ移す項目の sub-bullet | 「SD 直読みの runtime」の項目 | 「日報の紙と意味づけ」の項目 | 無し（項目が別） |
 | `docs/function-design/24-io-csv-import-repo.md`・`32-biz-csv-import-service.md` | 24 §14.25（新設）と更新履歴の末尾、32 の「SD の一括取込み」（新設） | 24 は §14.14・§14.18a の同期の見込み | 34 と隣の 24 §14.21〜§14.22 の見込み | 更新履歴は両方を残す |
 
-367 の契約に後から足すもの（正本の §37.9・§45.6a は変えていない。D-121 の Compatibility）: §37.9 の `DailyReportSdScan` に `ej`、`DailyReportSdScanSnapshot` に `ej_files`・`z004_files`、§37.9 の scan の手順 10 の後に EJ の読取り、§45.6a 手順 2a の「Z004 の bytes を cache に残さない」を (B) で「相対 path つきで残す」に変える。どれも 367 の merge の後の (A)・(B) が足す。
+367 の契約に後から足すもの（正本の §37.9・§45.6a は変えていない。D-121 の Compatibility）: §37.9 の `DailyReportSdScan` に `ej`、`DailyReportSdScanSnapshot` に `ej_files`・`z004_files`、§37.9 の scan の手順 10 の後に EJ の読取り、§45.6a 手順 2a の「Z004 の bytes を cache に残さない」を (B) で「相対 path つきで残す」に変え、`DailyReportSdScan` に `z004_new_count` を足す。IO-09 に bytes を受ける純関数 `measure_register_sd_shape` を足し、29 §29.7.6 の手順 3 もそれを使う形に直す（(A)）。§37.9 の旧い 2 文を §37.10・§37.11 への参照に直す（(A)、上の表）。どれも 367 の merge の後の (A)・(B) が足す。
 
 ## Non-scope
 
@@ -152,6 +152,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC9（D-120 の節を触らない）: `git diff --name-only f5d7aaf4 HEAD -- docs/function-design/34-biz-sales-service.md docs/function-design/56-ui-daily-sales.md` の出力が空。
 - AC10（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0（WARN は開始 HEAD の 0 から増えない）。`cd src-tauri && cargo run --bin generate_traceability -- --check` が OK。`cd src-tauri && cargo test --test design_compliance_test` が pass。
 - AC11（docs だけ）: `git diff --name-only f5d7aaf4 HEAD -- src src-tauri scripts package.json package-lock.json` の出力が空。
+- AC12（Plan Review round 1 の是正。開始 `39dd2f14` ではどれも 0）: `rg -c '^fn exists_same_date_daily_report_import_without_settlement_no' docs/function-design/24-io-csv-import-repo.md` が 1、`rg -c '最後の記録の保留' docs/function-design/37-biz-daily-report-import-service.md` が 4、`rg -c 'Failed\(BizError\)' docs/function-design/37-biz-daily-report-import-service.md` が 2、`rg -c 'measure_register_sd_shape' docs/function-design/37-biz-daily-report-import-service.md` が 3、`rg -c 'test_ej_xz_last_record_is_held' docs/plans/test-matrices/2026-10-17-sd-bulk-import-ej-view-design.md` が 1。AC1〜AC11 の数は是正の後に測り直して変わらない。
 
 ## Design Readiness
 
@@ -188,8 +189,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - producer: CMD-12 `commit_register_sd_bulk_import`・`import_ej_files`・`list_ej_records`・`find_ej_records_by_no`・`get_ej_record`（45 §45.6c）、`scan_register_sd` の応答の `DailyReportSdScan.ej`（37 §37.10）
 - consumer: UI-07 の日報取込みタブ（UI-07-D17）、UI-09c
-- wire type: `RegisterSdBulkResult`・`RegisterSdBulkItem`・`RegisterSdBulkSource`・`RegisterSdBulkOutcome`、`RegisterSdEjSummary`、`EjImportResult`・`EjNumberGap`、`EjRecordDay`・`EjRecordSummary`・`EjRecordRef`・`EjRecordDetail`、request `EjFileRequest { filename, file_bytes }`
-- internal type: `DailyReportSdScanSnapshot` の `ej_files`・`z004_files`、`SdSourceFile`、`EjSourceFile`、`EjImportPlan`、`NewEjRecord`
+- wire type: `RegisterSdBulkResponse`・`RegisterSdBulkItemDto`・`RegisterSdBulkSource`（`DailyReport`・`Z004`・`Ej`）・`RegisterSdBulkOutcomeDto`（`Failed { kind, message }` は CMD が BIZ の `Failed(BizError)` に 45 §45.7 を当てて作る。round 1 の是正）、`DailyReportSdScan` の `z004_new_count`、`RegisterSdEjSummary`、`EjImportResult`・`EjNumberGap`、`EjRecordDay`・`EjRecordSummary`・`EjRecordRef`・`EjRecordDetail`、request `EjFileRequest { filename, file_bytes }`
+- internal type: BIZ の `RegisterSdBulkResult`・`RegisterSdBulkOutcome`（`Failed(BizError)`）、`DailyReportSdScanSnapshot` の `ej_files`・`z004_files`、`SdSourceFile`、`EjSourceFile`、`EjImportPlan`、`NewEjRecord`
 - precision/range: 記録の番号は 6 桁の文字列（先頭 0 を保つ。数値にしない）、4 桁の欄も文字列。`total_amount` は円の整数で絶対値 2^53 − 1 以下（外れたら NULL）。件数・ID は i64（JavaScript の number で扱える範囲。件数は記録の数以下）。日付は `YYYY-MM-DD`、日時は `YYYY-MM-DD HH:MM` の文字列
 - round-trip path: SD → IO-09 → BIZ-08 scan（snapshot の bytes）→ CMD の scan cache → `commit_register_sd_bulk_import(scan_token)` → BIZ の結果 → UI。控えは `list_ej_records(date)` → 一覧の `id` → `get_ej_record(id)`。番号は UI の入力の文字列 → `find_ej_records_by_no` → `{ id, date }` → URL の `date`・`no`
 - invalid input: scan_token の形の誤り・期限切れ（§45.6b と同じ）、日付の形の誤り（`ValidationFailed`）、番号が 1〜6 桁の数字でない（`ValidationFailed`）、無い id（`NotFound`）、EJ の file が 20MB 超（`validation`）、読めない EJ の file（`unreadable_files` に名前、取込みは続ける）
@@ -222,7 +223,7 @@ Test Design Matrix: [2026-10-17-sd-bulk-import-ej-view-design](test-matrices/202
 | BIZ-08-D8（同日追加の確認の置換え） | 37 §37.10、D-071 の注記 | (A): `parse.rs` の分岐、§37.3 手順 8・pos-tables §12b・UI-07-D13 の文 | (A)（Matrix の D8 の行、既存 `tests.rs` の 3 か所の期待の書換え） | 非対象 |
 | BIZ-08-D9（EJ の保存・比べ・欠け・閲覧） | 37 §37.11、24 §14.25、pos-tables の `ej_records` | (A) | (A)（Matrix の D9 の行） | L3: 控えの画面 |
 | BIZ-08-D10（CV17 との併存、(b) への約束） | 37 §37.10、backlog の (b) の項目 | (A)・(B) は守りを今の関数に任せる。(b) の lane が約束を使う | (A)（Matrix の併存の行） | 非対象 |
-| §37.9 に足すもの（`ej`・`ej_files`・`z004_files`） | 37 §37.10、45 §45.6c | (A)・(B) | (A)・(B) | 非対象 |
+| §37.9 に足すもの（`ej`・`z004_new_count`・`ej_files`・`z004_files`・`measure_register_sd_shape`） | 37 §37.10、45 §45.6c | (A)・(B) | (A)・(B) | 非対象 |
 | CMD-12-D2（5 command、登録） | 45 §45.6c | (A) | (A)（command registry drift、cmd の test） | 非対象 |
 | UI-07-D17（一括取込みの画面） | 55 | (A)、(B) は Z004 の行 | (A)（RTL） | L3: 押せる・押せない、結果 |
 | UI-09c-D1〜D5（レシートの控え画面） | SCREEN_DESIGN、ui-task-specs | (A) | (A)（RTL、到達の test） | L3: 等幅の並び、探し方、欠けの Alert |
@@ -240,9 +241,11 @@ Test Design Matrix: [2026-10-17-sd-bulk-import-ej-view-design](test-matrices/202
 - P1（`XZ` 直下の EJ は精算をまたいで追記されて伸び、同じ記録が `XZ` と `XZ_BKUP` に入りうる）: 29 §29.7.2 の SD-03・SD-09（2026-10-06 の SD の採取の版と持ち帰りの EJ の集計）、IO-08.10。→ 観測（tracked の記録）。今の版での確かめ直しはしていない。
 - P2（EJ の記録の番号は記録ごとに +1 で、file と精算をまたいで戻らない。4 桁の欄は 1 種類）: IO-08 の構造所見（2026-08 の実物 6 本の版）と backlog の実測と POS 系列の対応の入力 3（2026-10-06 の SD の一覧と、その時点の手元の EJ の版での集計: 6 桁の番号は +1 で連続、重なり 0、4 桁の欄は 1 種類）。→ 観測（その版での）。番号が戻る設定は取説では選べる（初期は戻らない）ので、BIZ-08-D9 の再検討に置いた。
 - P3（`Restored` の取引の合計 = 有効な明細の金額の和 + 有効な値引きの金額の和）: 29E IO-08.6 の照合の条件 4 と、現物の `src-tauri/src/io/ej_parser.rs:717`（照合の金額と `amount_sum` が一致しなければ `Restored` にしない）・`:729`〜`:733`（`amount_sum` は items と adjustments の和）・`:832`〜`:834`（正の訂正で取り消した値引きを `adjustments` から外す）。→ 観測（code）。
-- P4（EJ の file は CP932 strict・BOM 無し・CRLF だけ・最終改行あり）: 29 §29.7.2 の SD-24（`XZ_BKUP` の全件、2026-10-06 の採取の版）と IO-08 の全期間の構造所見（2026-09-29・09-30 の持ち帰りの版）。`XZ` 直下の原本の形は SD-23 と同じく未確認の前提。→ 形を外れた file は読まずに知らせる（BIZ-08-D9）ので、前提が外れても誤った記録は入らない。
+- P4（EJ の file は CP932 strict・BOM 無し・CRLF だけ・最終改行あり。round 1 の是正で、最終改行が無いときは file でなく最後の記録だけを外す〈37 §37.11 手順 2a〉）: 29 §29.7.2 の SD-24（`XZ_BKUP` の全件、2026-10-06 の採取の版）と IO-08 の全期間の構造所見（2026-09-29・09-30 の持ち帰りの版）。`XZ` 直下の原本の形は SD-23 と同じく未確認の前提。→ 形を外れた file は読まずに知らせる（BIZ-08-D9）ので、前提が外れても誤った記録は入らない。
 - P5（SD-23: 取込み前の `XZ` の原本と取込み後の file は同じ bytes）: 未確認の前提（D-111、SD 直読みの runtime の L3 の前に確かめる）。本 lane の契約は、日報・Z004 では D-111 の精算回数の照合で、EJ では記録の番号で受けるので、前提が外れても二重に数えない（BIZ-08-D10 の保証の範囲）。EJ では記録の文が変われば conflict として知らせる。
 - P6（日報の精算回数は Z001 / Z002 / Z005 で一緒に進み、日計明細の精算票と 1 対 1 で、使い始めの後は重複しない）: D-104 の Guarantee range（手元の全期間での確認）と backlog の実測と POS 系列の対応の入力 1（2026-09-29 の持ち帰りの版）・入力 3（2026-10-06 の SD の一覧の版）・入力 5（2026-10-15 の集計、その時点の手元の版）。→ 観測（その版での）。BIZ-08-D8 はこれに依り、外れた（重複が出た）ときは BIZ-08-D4 が拒む側に倒れる（安全側）。
+- P8（レジは `XZ` 直下の EJ の書きかけの記録を、次に続きから書くか、記録ごと書き直すか）: repo に事実が無い。→ 未確認の前提。37 §37.11 手順 2a は、どちらでも `XZ` 直下の最後の記録を保存しないので、書きかけを保存して完全な記録が conflict になる経路を持たない（round 1 の是正）。
+- P9（`XZ` 直下の file の最後の記録は普段は締めの精算票）: IO-08 の全期間の構造所見（2026-09-29・09-30 の持ち帰りの版: file の最後の記録はどれも終わりの印字のある精算票）。→ 観測（その版での）。保留で遅れるのは普段 1 件。
 - P7（24 バイトの CP932 の行を、WebView で半角 1・全角 2 の幅の等幅で並べられる）: Windows の和文の等幅の字形の振舞いで、本 run は確かめていない。→ 未確認。(A) の L3 で字形と大きさを決める（UI-09c-D4）。
 
 ## Data Safety

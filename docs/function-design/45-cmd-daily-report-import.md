@@ -179,7 +179,7 @@ fn parse_and_validate_daily_report_from_sd(
 
 ### 45.6c 一括取込みと EJ の控えのコマンド（CMD-12-D2、D-121、proposed・未実装）
 
-後続の runtime の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」）が足す。§45.6a・§45.6b（D-111、SD 直読みの runtime が実装する）は変えず、その merge の後に scan に次を足す: (A) BIZ-08 の scan が EJ も読み、`DailyReportSdScan` の `ej`（`RegisterSdEjSummary`）と snapshot の `ej_files` を返す（37 §37.10 の「§37.9 に足すもの」）。CMD は今どおり scan の結果を返し snapshot を cache に置くだけで、EJ を読まない。(B) §45.6a 手順 2a の後に Z004 の bytes を空にせず、相対 path つきで snapshot の `z004_files` に残す（PLU の照合は今どおり）。
+後続の runtime の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」「Z004 を SD の一括取込みに入れる runtime（B）」）が足す。§45.6a・§45.6b（D-111、SD 直読みの runtime が実装する）は変えず、その merge の後に scan に次を足す: (A) BIZ-08 の scan が EJ も読み、`DailyReportSdScan` の `ej`（`RegisterSdEjSummary`）と snapshot の `ej_files` を返す（37 §37.10 の「§37.9 に足すもの」）。CMD は今どおり scan の結果を返し snapshot を cache に置くだけで、EJ を読まない。(B) §45.6a 手順 2a の後に Z004 の bytes を空にせず、相対 path つきで snapshot の `z004_files` に残す（PLU の照合は今どおり）。`DailyReportSdScan` の `z004_new_count`（hash が active な取込みに無い Z004 の数。37 §37.10）を UI のボタンの有効化に使う。32 の新契約の検査は scan では回さない（数が多めに出て、押しても何も入らない側に倒れるだけで害が無い）。
 
 ```rust
 #[tauri::command]
@@ -187,7 +187,19 @@ fn commit_register_sd_bulk_import(
     app: tauri::AppHandle,
     state: State<AppState>,
     scan_token: String,
-) -> Result<RegisterSdBulkResult, CmdError> // 37 §37.10 の型を specta で公開する
+) -> Result<RegisterSdBulkResponse, CmdError> // 下の wire の型。37 §37.10 の内部の型から CMD が変える
+
+struct RegisterSdBulkResponse { items: Vec<RegisterSdBulkItemDto> }
+struct RegisterSdBulkItemDto { source: RegisterSdBulkSource, outcome: RegisterSdBulkOutcomeDto } // source は 37 の enum をそのまま公開
+enum RegisterSdBulkOutcomeDto {
+    ImportedDailyReport(DailyReportImportResult),
+    ImportedZ004(ImportResult),   // (B)
+    ImportedEj(EjImportResult),
+    Skipped { message: String },
+    NeedsIndividualConfirmation,
+    Failed { kind: String, message: String }, // BizError に §45.7 の変換を当てた CmdError の kind と message
+    NotAttempted,
+}
 
 #[tauri::command]
 fn import_ej_files(
@@ -214,7 +226,7 @@ fn get_ej_record(state: State<AppState>, id: i64) -> Result<EjRecordDetail, CmdE
 
 **処理ステップ（`import_ej_files`）**: 各 file の大きさを検証し（20MB を超えたら `validation`）、`EjSourceFile { filename, sd_relative_path: None, bytes }` にして BIZ-08 `import_ej_records` を呼ぶ。手で選んだ file は写さない（37 §37.11 手順 4）。
 
-**CMD-12-D2**: 一括取込みと EJ の控えの command も CMD-12 に置く（同じ scan cache と SD の経路を使うため。閲覧の 3 command は読むだけ）。CMD は項目の順・飛ばす規則・EJ の比べ方を持たない（BIZ-08-D7・D9）。`RegisterSdBulkOutcome` の `Failed` の message は BIZ の文のまま返し、`SourceCopyFailed` だけ §45.7 の固定の文に置き換えて item の message に入れる（io error の kind は診断にだけ出す）。登録は §45.8 と同じく `collect_commands!` と `generate_handler!` の両方。
+**CMD-12-D2**: 一括取込みと EJ の控えの command も CMD-12 に置く（同じ scan cache と SD の経路を使うため。閲覧の 3 command は読むだけ）。CMD は項目の順・飛ばす規則・EJ の比べ方を持たない（BIZ-08-D7・D9）。BIZ の `RegisterSdBulkOutcome::Failed(BizError)` は、CMD が §45.7 の `impl From<BizError> for CmdError` を 1 か所で当てて `Failed { kind, message }` にする（`SourceCopyFailed` は §45.7 の固定の文、`DatabaseError` は固定の文、`ImportError` などは BIZ の文のまま。io error の kind は診断にだけ出す。文字列の照合で種類を決めない）。登録は §45.8 と同じく `collect_commands!` と `generate_handler!` の両方。
 
 ### 45.7 CmdError変換
 
