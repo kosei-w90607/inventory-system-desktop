@@ -55,7 +55,7 @@ Risk: R3
 
 F6 の mock 境界: `ProductFormPage.test.tsx:27` の `vi.mock("@/lib/bindings", …)` で `commands.updateProduct` を置き換える（実 BIZ は通らない。BIZ の拒否は T2 が受け持つ）。F3・F4 の `ProductForm.test.tsx:20` も `@/lib/bindings` を mock する（select の選択肢は `STOCK_UNIT_LABELS` から出るので mock の影響を受けない）。
 
-oracle の anchor（定義文にしか現れない literal。実装の後に file ごとに `rg -c` で 1 件を確かめる）: `単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。`（`StockUnitField.tsx`）、`現在庫は変更できません。数量単位は個数の単位どうしでだけ変更できます。`（`ProductForm.tsx`）、`在庫単位は個数の単位どうしでだけ変えられます`（`product_service.rs` の production の部分。test の部分にも出るので、`#[cfg(test)]` より前の範囲で数える）。旧い文 `在庫単位は登録の後に変えられません`（`src-tauri/src` と `src`）と `登録後は数量単位を変更できません。`（`src/features/products` に限る。Non-scope で残す `src/components/patterns/FormSection.test.tsx:40` を数えない）は 0 件。
+oracle の anchor（定義文にしか現れない literal。実装の後に file ごとに `rg -c` で件数を確かめる。下の 2 つの UI の文は 1 件）: `単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。`（`StockUnitField.tsx`）、`現在庫は変更できません。数量単位は個数の単位どうしでだけ変更できます。`（`ProductForm.tsx`）、`在庫単位は個数の単位どうしでだけ変えられます`（`product_service.rs` の production の部分で 1 件以上〈定数にまとめるなら 1 件〉。update の拒否と CSV の行の error の 2 か所に literal で書けば 2 件になる。test の部分にも出るので、`#[cfg(test)]` より前の範囲で数える）。旧い文 `在庫単位は登録の後に変えられません`（`src-tauri/src` と `src`）と `登録後は数量単位を変更できません。`（`src/features/products` に限る。Non-scope で残す `src/components/patterns/FormSection.test.tsx:40` を数えない）は 0 件。
 
 ## State Lifecycle Matrix
 
