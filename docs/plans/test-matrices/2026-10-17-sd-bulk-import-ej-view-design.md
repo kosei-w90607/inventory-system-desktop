@@ -8,7 +8,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-- BIZ-08-D7: 一括取込みは日報（対象日・精算回数の昇順）→ Z004（精算回数の昇順、(B)）→ EJ の順に、今の関数で 1 項目 1 TX。業務の拒否・取込み済み・同日追加の確認が要るは飛ばして続け、確定の段の失敗で止め、残りは NotAttempted。確定済みは残り、同じ操作のやり直しで二重に数えない
+- BIZ-08-D7: 一括取込みは日報（対象日・精算回数の昇順、同じ値なら `XZ` の束を先にして `candidate_key` の順）→ Z004（精算回数の昇順、(B)）→ EJ の順に、今の関数で 1 項目 1 TX。業務の拒否・取込み済み・同日追加の確認が要るは飛ばして続け、確定の段の失敗で止め、残りは NotAttempted。確定済みは残り、同じ操作のやり直しで二重に数えない
 - BIZ-08-D8: 同じ日の active な取込みが全て精算回数を持ち、束も持つときは `NoDuplicate`。どれかが NULL か束が None なら `AdditionalImportConfirmationRequired`
 - BIZ-08-D9: EJ は形と日時（暦）の検査を通った file の記録を、番号を鍵に文のまま保存。伸びうる file（名前に連番 `_nnnn` の無い EJ。出所に依らない）と最終改行の無い file の最後の記録は保留。同じ呼出しの中・保存済みとの文の違いは保存しない（conflict。保存済みの有無を返す）。SD の file で新しい記録を持つものだけを TX の前に写す。`total_amount` は `Restored` の取引だけ。欠けは番号の連続で区間に。移してよい EJ は新しい記録・conflict・保留・読めない file が全部 0 のときだけ
 - BIZ-08-D10: CV17 の取込みの前後・順の入れ替わりで二重に数えない
@@ -34,6 +34,10 @@ Risk: R3
 - FM15: 暦の外れた日時（`2026-02-30 12:00` 等）の記録を保存し、閲覧の日付の引きで拒まれる・見えない
 - FM16: conflict の知らせが事実と合わない（保存済みが無いのに「前の控えを残しました」とリンクを出す）、scan で読めなかった EJ の file を一括の結果で名指ししない
 - FM17: 有限の wire の値（失敗の kind、EJ の kind・mode）が `string` で、片側の値の変更が型の誤りにならない
+- FM18: Z004 の部分成功（取り込まなかった行がある `completed_partial`）が一括取込みの結果で件数だけの「取り込みました」になり、入らなかった行が黙って消える（読み直しでは取込み済みになり二度と出ない）
+- FM19: EJ の新しい控えが 0 件で、保留・conflict・読めない file だけがあるとき、ボタンが押せず、番号・file 名・直し方に届かない
+- FM20: 一括取込み・手で選ぶ EJ の取込みの後も控えの query が古いまま残り、控えの画面に新しい控えが出ない
+- FM21: 同じ日・同じ精算回数の 2 束（SD-23 が外れた場合）の順が決まらず、どちらの bytes が入るかが実行ごとに変わる
 
 ## Test Matrix
 
@@ -48,7 +52,7 @@ Risk: R3
 | BIZ-08-D7 | — | unit | `test_bulk_import_no_ej_item_when_no_ej_files` | `ej_files` と `ej_unreadable_files` がどちらも空の snapshot で、items に `source = Ej` の item がある |
 | BIZ-08-D7 | FM16 | integration | `test_bulk_import_names_scan_unreadable_ej_files` | `ej_files` が空で `ej_unreadable_files` に 1 本ある snapshot で EJ の item が無い、または `ImportedEj` の `unreadable_files` にその file 名が無い。`ej_files` に形の外れた 1 本もある snapshot で、2 本の名前の両方が無い |
 | BIZ-08-D7 | FM3 | integration | `test_bulk_import_rerun_on_same_snapshot_is_idempotent` | 同じ snapshot で 2 回呼んだ後、`daily_report_imports` の completed の行数か `ej_records` の行数が 1 回目と違う、または 2 回目の日報が Skipped（取込み済み）でない |
-| BIZ-08-D7 | FM4 | unit（並べる関数） | `test_bulk_import_orders_by_report_date_then_settlement_no` | snapshot の束が新しい順で入っているとき、処理の順が (対象日, 精算回数) の昇順にならない |
+| BIZ-08-D7 | FM4・FM21 | unit（並べる関数） | `test_bulk_import_orders_by_report_date_then_settlement_no` | snapshot の束が新しい順で入っているとき、処理の順が (対象日, 精算回数) の昇順にならない。同じ対象日・同じ精算回数の `XZ` の束と `XZ_BKUP` の束で `XZ` が先にならない、同じ area の 2 束が `candidate_key` の辞書順にならない、または `files_by_candidate` への入れ順を変えると処理の順が変わる |
 | BIZ-08-D7 | FM2 | integration | `test_bulk_import_needs_confirmation_is_not_a_stop` | 同じ日に精算回数の NULL の取込みがある束が NeedsIndividualConfirmation 以外になる、または以後の項目が NotAttempted になる |
 | BIZ-08-D8 | FM6 | unit（§37.3） | `test_same_date_bundles_with_settlement_no_need_no_confirmation` | 同じ日に精算回数 41 の completed があり、精算回数 42 の束を preview したとき `NoDuplicate` でない |
 | BIZ-08-D8 | FM5 | unit | `test_same_date_with_null_settlement_import_still_needs_confirmation` | 同じ日に精算回数 NULL の completed（D-111 より前の形）があり、精算回数 42 の束で `AdditionalImportConfirmationRequired` でない |
@@ -81,9 +85,11 @@ Risk: R3
 | CMD-12-D2 | — | cmd | `test_bulk_item_source_copy_failed_message_is_fixed` | BIZ の `Failed(SourceCopyFailed)` の item が、wire で kind `internal` と §45.7 の固定の文にならない（io error の kind が message に出る） |
 | CMD-12-D2 | FM17 | wire（response の serialize 出力の固定、D-064 (iv)） | `test_ej_wire_enums_serialize_as_fixed_values` | `EjRecordKindCode`・`EjRecordModeCode` の各値の serialize が pos-tables の `ej_records.kind`・`mode` の CHECK の値と 1 対 1 で一致しない、`RegisterSdBulkOutcomeDto::Failed` の `kind` が `CmdErrorKind` の値でない（bindings で `string` になる）、DB の未知の kind・mode の値が `DbError` にならず読める |
 | UI-07-D17 | — | RTL | `bulk import button enabled by z004_new_count`（(B)） | 日報・EJ が 0 件で `z004_new_count` が 1 のとき「まとめて取り込む」が押せない |
-| UI-07-D17 | FM16 | RTL | `bulk result names gaps held unreadable conflicts with in-place action` | EJ の結果に欠けの区間と「EJ のファイルを選んで取り込む」、保留の件数の文、読めない file 名、conflict の番号のどれかが出ない（TD-310）。`saved: false` の conflict に「前の控えを残しました」か控えの画面へのリンクが出る、`saved: true` にリンクが無い。件数 0 の項目に行が出る |
-| UI-07-D17 | — | RTL | `bulk import button enabled only with importable items` | 日報の `NotImported` 0 件・EJ の新しい控え 0 件で「まとめて取り込む」が押せる、または片方が 1 件で押せない |
+| UI-07-D17 | FM18 | RTL | `bulk result shows z004 partial with skipped rows and detail link`（(B)） | 正常の行 1 行と未登録の商品の行 1 行の Z004 の結果（`ImportedZ004`、`status` が `completed_partial`・`skipped_count` が 1）で、label が「一部を取り込みました」でない、「取り込まなかった行が 1 件あります」が無い、または `/csv-import/records/{csv_import_id}` へのリンクが無い |
+| UI-07-D17 | FM16 | RTL | `bulk result names gaps held unreadable conflicts with in-place action` | EJ の結果に欠けの区間と「EJ のファイルを選んで取り込む」、保留の件数と「次に SD を読んだときにもう一度確かめます」の文、読めない file 名、conflict の番号のどれかが出ない（TD-310）。`saved: false` の conflict に「前の控えを残しました」か控えの画面へのリンクが出る、`saved: true` にリンクが無い。件数 0 の項目に行が出る |
+| UI-07-D17 | FM19 | RTL | `bulk import button enabled only with importable items` | 日報の `NotImported` 0 件で `ej` の `new_count`・`held_count`・`conflict_count`・`unreadable_file_count` が全て 0 のとき「まとめて取り込む」が押せる、日報の `NotImported` か `new_count` の片方が 1 件で押せない、または `new_count` 0 で `held_count`・`conflict_count`・`unreadable_file_count` のどれか 1 つだけが 1 のとき押せない |
 | UI-07-D17 | — | RTL | `bulk import result shows label per outcome and stop notice` | 結果の 5 つの outcome の label が文字で出ない、止まったときに「途中で止まりました」の文が無い |
+| CMD-12-D2 | FM20 | unit（D-052 の invalidation の oracle） | `bulk import and ej file import invalidate ej records` | 一括取込みの成功で `["ej-records"]` が無効にならない、または手で選ぶ EJ の取込みの成功で `["ej-records"]` 以外（日報・在庫・売上の key）を無効にする |
 | UI-09c-D2 | FM14 | RTL | `receipt list shows zero yen and dash distinctly` | `total_amount` 0 の行と NULL の行がどちらも同じ表示になる、番号 `000123` が `123` と出る、種類の label が無い |
 | UI-09c-D3 | — | RTL | `receipt search by number moves to the day and selects` | 番号を入れて Enter で、その日に移って行が選ばれない、IME の変換中の Enter で探す、無い番号で「その番号の控えはありません」が出ない |
 | UI-09c-D5 | — | RTL | `gap alert shown only with gaps` | 欠けが無いのに Alert が出る、欠けがあるのに区間の文が無い |
@@ -93,9 +99,9 @@ Risk: R3
 
 | State / subject | Initial | Pending | Success | Invalidate | Refetch | Revisit | Restart | Failure | Retry | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 一括取込み（UI-07-D17） | `sd_list`（scan の結果、ボタンは条件で押せる） | 取込み中（ボタン disabled、離脱を block） | 結果（項目ごとの label） | 日報・Z004 の取込みと同じ D-052 の対象と、控えの一覧の query | 日次売上・控えの画面を開いたときに読み直す | 結果から一覧へ戻ると scan の一覧のまま（状態の数は古い。読み直しで新しくなる） | アプリを閉じると scan cache が消え、読み直しが要る | 止まった項目と NotAttempted を出す。確定済みは残る | 同じ token で再実行（30 分以内）か読み直し。確定済みは飛ばされる | Matrix の D7 の行、RTL |
+| 一括取込み（UI-07-D17） | `sd_list`（scan の結果、ボタンは条件で押せる） | 取込み中（ボタン disabled、離脱を block） | 結果（項目ごとの label） | 45 §45.6c 手順 4 の対象（日報・Z004 の取込みと同じ D-052 の対象と、控えの `queryKeys.ejRecords.root()`） | 日次売上・控えの画面を開いたときに読み直す | 結果から一覧へ戻ると scan の一覧のまま（状態の数は古い。読み直しで新しくなる） | アプリを閉じると scan cache が消え、読み直しが要る | 止まった項目と NotAttempted を出す。確定済みは残る | 同じ token で再実行（30 分以内）か読み直し。確定済みは飛ばされる | Matrix の D7 の行、RTL |
 | scan の snapshot（CMD の cache） | 無し | scan 中 | snapshot と token | 新しい scan で置き換わる（最新の 1 つ） | — | 同じ token で一括取込みを何度でも | 再起動で消える | 期限切れ（30 分）で import_error | 読み直し | `test_commit_register_sd_bulk_import_rejects_expired_token` |
-| `ej_records` | 空 | 一括取込み・手で選ぶ取込みの TX | 新しい記録が入る（insert-only） | 控えの一覧の query | 画面を開く・日付を変える | 同じ番号は数えるだけ | DB に残る（backup に入る） | 写し・TX の失敗で何も入らない | 同じ file でやり直せる | Matrix の D9 の行 |
+| `ej_records` | 空 | 一括取込み・手で選ぶ取込みの TX | 新しい記録が入る（insert-only） | `queryKeys.ejRecords.root()`（一括取込みと手で選ぶ取込みの成功。45 §45.6c 手順 4） | 画面を開く・日付を変える | 同じ番号は数えるだけ | DB に残る（backup に入る） | 写し・TX の失敗で何も入らない | 同じ file でやり直せる | Matrix の D9 の行 |
 | 控えの画面（UI-09c） | 最も新しい日（記録が無ければ空の状態） | 読込み中 | 一覧と選んだ控え | 取込みの成功で無効にする | 日付・番号の変更 | URL の `date`・`no` で同じ控えに戻る | 再起動の後も URL から | 読めないとき画面の error | 再試行 | RTL |
 
 ## Adjacent Pattern Audit
@@ -177,4 +183,5 @@ Risk: R3
 
 - 控えの文の等幅の並び（半角カナと全角の混じる行）は自動 test で確かめられない。(A) の Windows L3（UI-09c-D4）。
 - 実際の SD での一括取込み（`XZ` と `XZ_BKUP` の両方、CV17 の取込みの前後）は (A) の L3 と SD 直読みの runtime の Contract Probe（SD-23）。
+- 締めのたびに出る EJ の保留の文が雑音にならないか（UI-07-D17 の出し方）は (A) の Windows L3。
 - (B) の Z004 の行の test は、棚卸しの runtime の (b) の確定の経路が入った後に (B) の Matrix で足す。
