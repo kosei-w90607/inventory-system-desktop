@@ -24,7 +24,7 @@ Risk: R3
 - 単位だけの変更で `plu_dirty=1` になる。単位と他の列の変更で `plu_dirty` が立たない。
 - log の key が無い・余分・TX の外（失敗の commit に log だけが残る）。
 - 長さの商品の form で select が押せる、または `stock_unit` が送られる。
-- `stock_unit` が `null` のときに単位が変わるか、log が書かれる。
+- `stock_unit` が `null` のときに単位が変わるか、ログ行が足されないか、その detail に `stock_unit` の key が出る（null は「更新しない」。ログ行は §4.4 の手順 6 のとおり書き、変更した field が無ければ detail は NULL）。
 
 ## Test Matrix
 
@@ -32,15 +32,15 @@ Risk: R3
 
 | ID | Contract | Failure Mode | Test Type | Test Name | Would fail if... |
 |---|---|---|---|---|---|
-| T1 | SPEC-UNIT-D2・BIZ-01-D7・`plu_dirty` | 個数どうしが通らない、数・価格・`plu_dirty` が変わる、log が無い | unit（実 DB） | `test_update_product_req102_stock_unit_between_count_units`（新） | 単位 `pcs`・在庫 12・入庫の明細 1 行・`plu_dirty=0` の商品に `stock_unit: ball` を送り、単位が `ball`、在庫 12・売価・原価・明細の数量・price_history の行数が前と同じ、`plu_dirty` が 0、最新の `product_update` の detail が `{"stock_unit":{"old":"pcs","new":"ball"}}` でないとき |
+| T1 | SPEC-UNIT-D2・BIZ-01-D7・`plu_dirty` | 個数どうしが通らない、数・価格・`plu_dirty` が変わる、log が無い | unit（実 DB） | `test_update_product_req102_stock_unit_between_count_units`（新） | 単位 `pcs`・在庫 12・入庫の明細 1 行・`plu_dirty=0` の商品に `stock_unit: ball` を送り、単位が `ball`、在庫 12・売価・原価・明細の数量・price_history の行数が前と同じ、`plu_dirty` が 0、最新の `product_update` の detail を JSON として読んだ値が `{"stock_unit":{"old":"pcs","new":"ball"}}` と等しくないとき（文字列の字面で比べない。key の順は契約にしない、BIZ-01-D7。serde_json は `preserve_order` を持たず〈`src-tauri/Cargo.toml:27`〉、文字列にすると key は名前の順に出る） |
 | T2 | SPEC-UNIT-D2・BIZ-01-D8 | 種類をまたぐ変更が保存される | unit | `test_update_product_req102_rejects_cross_kind_stock_unit`（新） | `pcs` → `m` と `m` → `pcs`（m の商品）のどちらかが `ValidationFailed("在庫単位は個数の単位どうしでだけ変えられます")` 以外を返すか、単位・`updated_at`・`product_update` の log の件数が変わるとき |
 | T3 | BIZ-01-D8（長さどうし・失敗の順序） | `m` → `cm` が通る、検査の順が違う | unit | `test_update_product_req102_rejects_length_to_length_and_checks_unit_last`（新） | `m` → `cm` が拒まれないとき。存在しない取引先と `pcs` → `m` を同時に送って `指定された取引先が存在しません` 以外が返るとき（単位の検査は手順 2 の今の検査の後） |
-| T4 | PRODUCT-PATCH-D1 | null で単位が変わる | unit（serde + 実 DB） | 既存の serde の test（`product_service.rs:2891`〜`:2953`）に `stock_unit` の行を足す | JSON `{}`・`{"stock_unit":null}` が `None` にならないか、`{"stock_unit":"ball"}` が `Some(Ball)` にならないとき。`null` を送った update で単位か log が変わるとき |
+| T4 | PRODUCT-PATCH-D1 | null で単位が変わる | unit（serde + 実 DB） | 既存の serde の test（`product_service.rs:2891`〜`:2953`）に `stock_unit` の行を足す | JSON `{}`・`{"stock_unit":null}` が `None` にならないか、`{"stock_unit":"ball"}` が `Some(Ball)` にならないとき。`{"stock_unit":null}` だけを送った update（実 DB）の後に、単位が変わっているか、`product_update` のログ行が 1 行足されていないか、その detail が NULL でない（`stock_unit` の key がある）とき（30 §4.4 の手順 6・BIZ-01-D8 の update の段。`record` は値が違うときだけ key を足し、ログ行そのものは書く〈`product_service.rs:395`〜`:456`〉） |
 | T5 | BIZ-01-D8（同じ単位）・BIZ-01-D7 | 同じ単位で `stock_unit` の SET か key が出る、または同じ単位を理由に通常の UPDATE・ログ行まで省く | unit | `test_update_product_req102_detail_json_unchanged_fields_omitted`（既存、`req_ii` に `stock_unit: Some(<更新前>)` を足す）＋ 同じ単位と商品名の変更を送る行を足す | 全 field を更新前と同じ値で送ったときにログ行が書かれないか、その detail が NULL でなくなるとき（`stock_unit` の比べ方の漏れ）。同じ単位と新しい商品名を送ったとき、商品名が更新されないか、detail の key が `name` だけでないとき |
 | T6 | BIZ-01-D8（preview、個数どうし） | 個数どうしの上書きが行の error になる | unit | `test_preview_import_req104_overwrite_allows_count_unit_change`（新） | 単位 `pcs` の既存の商品の行を `在庫単位` = `玉`（語）と `ball`（code）で読み、どちらも `duplicate_rows` に入り `import_row.stock_unit` が `Some("ball")` でないとき |
 | T7 | SPEC-UNIT-D2・BIZ-01-D8（preview、種類をまたぐ・長さどうし） | 長さ ↔ 個数・長さどうしが通る、文が旧い | unit | `test_import_req104_overwrite_rejects_cross_kind_stock_unit`（既存 `test_import_req104_overwrite_cannot_change_stock_unit` を改名し文を差し替え）＋ 個数の商品の行を `m` で読む行と、m の商品の行を `cm` で読む行を足す | m の商品を `玉` で読んだ行の error が `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）` でないとき。`pcs` の商品を `m` で読んだ行と、m の商品を `cm` で読んだ行（文は `…（登録: m、CSV: cm）`）が error にならないとき。入庫の明細の金額の assert（`line_cost` が `33300`）が変わるとき |
 | T8 | BIZ-01-D8（commit の再検証・未知の code・長さどうし） | preview を通らない wire で保存される、一部の行だけ書かれる | unit | `test_commit_import_req104_overwrite_revalidates_stock_unit_wire`（新。T7 の既存の wire の段も残す） | 上書きの行の wire の単位が `m`（既存 `pcs`）・`cm`（既存 `m`）・`kg`（未知）のとき、`ValidationFailed` の文がそれぞれ `在庫単位は個数の単位どうしでだけ変えられます（登録: 個、CSV: m）`・`在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: cm）`・`在庫単位が正しくありません: kg` を含まないか、同じ取込みの他の行（新規 1・個数どうしの上書き 1）・単位・`product_update` の log のどれかが書かれているとき |
-| T9 | BIZ-01-D8（上書きの `plu_dirty`、単位だけ） | 単位だけの上書きで `plu_dirty=1` | unit | `test_commit_import_req104_unit_only_overwrite_keeps_plu_dirty`（新） | `plu_dirty=0` にした `pcs` の商品を、他の列を登録と同じにして `在庫単位` = `玉` で上書きした後、単位が `ball` で `plu_dirty` が 0 のままでないとき。CSV が `取引先ID` 等の任意列を空にした行（書かない列）でも同じでないとき |
+| T9 | BIZ-01-D8（上書きの `plu_dirty`、単位だけ） | 単位だけの上書きで `plu_dirty=1` | unit | `test_commit_import_req104_unit_only_overwrite_keeps_plu_dirty`（新、表駆動） | `plu_target=1` の `pcs` の商品を初期 `plu_dirty` = `0` と `1`（PLU の未反映の商品）の 2 行で用意し、それぞれ他の列を登録と同じにして `在庫単位` = `玉` で上書きした後、単位が `ball` で `plu_dirty` が更新前の値のまま（0 は 0、1 は 1）でないとき。初期 1 の行は、単位だけの行で `plu_dirty` を `Some(false)` にする誤実装で 0 に消え、差分 PLU の候補（`plu_dirty = 1 AND plu_target = 1`、`product_repo.rs:754`）から漏れると red。CSV が `取引先ID` 等の任意列を空にした行（書かない列）でも同じでないとき |
 | T10 | BIZ-01-D8（上書きの `plu_dirty`、他の列も変わる・単位が同じ） | 上書きで比べる列のどれかを比べ落とし、単位とその列の変更で `plu_dirty` が立たない | unit（表駆動） | `test_commit_import_req104_overwrite_with_other_changes_sets_plu_dirty`（新） | 30 BIZ-01-D8 の 10 列（JAN・商品名・部門・売価・原価・税率・取引先・メーカー品番・在庫連動・PLU対象）それぞれについて、`plu_dirty=0` にした `pcs` の商品を「単位 `玉` + その 1 列だけが登録と違う」行で上書きした後に `plu_dirty` が 1 でないとき（任意の 4 列は CSV がその列に値を持つ行。JAN の行は「既存に JAN があり CSV の JAN が空」）。加えて (b) 単位が空で他の列が登録と同じ行、(c) 単位が同じで売価が違う行で `plu_dirty` が 1 にならないとき（(b) は今の §4.9 手順 2 d. の「上書きは plu_dirty=1」） |
 | T11 | BIZ-01-D7・BIZ-01-D8（上書きの log） | log が無い・余分・形が違う、単位を変えない行にも log が出る | unit | `test_commit_import_req104_overwrite_logs_stock_unit_change_per_product`（新） | 3 行（単位を変える 2 商品〈うち 1 つは商品名も変える〉、単位は同じで商品名だけを変える 1 商品）を上書きした後、`product_update` の行が単位を変えた 2 商品の分の 2 行でないとき（商品名だけの商品に行がある、または 3 行になる）。それぞれの summary が `商品を更新しました: {商品コード}`、detail の key が `stock_unit` だけで前後の code が合わないとき。`product_import` の件数の要約の行が無いとき |
 | T12 | BIZ-01-D8（log は TX の中） | 失敗した commit に log が残る | unit | T8 の中で確かめる（単位を変える正しい行を失敗の行より前に置く） | TX が戻った後に `product_update` の行が 1 行でも増えているとき |
@@ -129,7 +129,7 @@ oracle の anchor（定義文にしか現れない literal。実装の後に fil
 - If output order changes: 該当なし（key の順は契約でない）。
 - If dry-run performs a side effect: preview が単位を書くと T6 の後の確かめが red。
 - If a mock value differs from the design-doc expected value: F6 の拒否の文は 30 BIZ-01-D8 から転記し、mock は文をそのまま返すだけ。BIZ の文が正本から外れると T2 が red（F6 だけでは検出しない。役割を分けた）。
-- `plu_dirty`: 上書きの「単位だけ」の判定を「単位が変わった」だけにすると T10 (a) が red。判定を外して常に `Some(true)` にすると T9 が red。10 列のどれかを比べ落とすと T10 のその列の行が red。上書きの全行に log を書くと T11 が red（商品名だけの商品の行）。判定の「どちらも個数」を「同じ種類」にすると T3・T7・T8 の `m` → `cm` が red。
+- `plu_dirty`: 上書きの「単位だけ」の判定を「単位が変わった」だけにすると T10 (a) が red。判定を外して常に `Some(true)` にすると T9 の初期 0 の行が red、単位だけの行で `Some(false)` にすると T9 の初期 1 の行が red。10 列のどれかを比べ落とすと T10 のその列の行が red。上書きの全行に log を書くと T11 が red（商品名だけの商品の行）。判定の「どちらも個数」を「同じ種類」にすると T3・T7・T8 の `m` → `cm` が red。
 - If a JSON number crosses JavaScript safe integer range / state token round-trip: 該当なし。
 
 ## Residual Test Gaps

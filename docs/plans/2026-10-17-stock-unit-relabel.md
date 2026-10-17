@@ -5,7 +5,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 **規模と手法（1 lane のまま。横断の約束の表は作らない）**: 2026-10-17 に本 worktree（HEAD `f5d7aaf4`）で数えた。
 
 - 触る Rust は 2 file（`src-tauri/src/biz/product_service.rs`・`src-tauri/src/db/product_repo.rs`）。`ProductUpdateRequest` / `ProductUpdates` の struct literal を `rg -n 'ProductUpdates \{|ProductUpdateRequest \{' src-tauri/src` で全部挙げ、`..Default::default()` を持たないのは 2 か所（`product_service.rs:1514` の `commit_import` の UPDATE、`product_service.rs:2787` の test `req_ii`）。ほかの 40 か所は `..Default::default()` で足りる（`product_service.rs` 27・`plu_export_service.rs` 5・`product_repo.rs` 8。数えた script は scratchpad の使い捨てで、結果だけを書く）。
-- 触る TS は 4 file（`product-form-request.ts`・`ProductForm.tsx`・`StockUnitField.tsx`・生成物 `src/lib/bindings.ts`）と test 4 file（下の Scope の S4）。
+- 触る TS は 4 file（`product-form-request.ts`・`ProductForm.tsx`・`StockUnitField.tsx`・生成物 `src/lib/bindings.ts`）と test 5 file（`product-form-request.test.ts`・`product-update-patch-contract.test.ts`・`StockUnitField.test.tsx`・`ProductForm.test.tsx`・`ProductFormPage.test.tsx`。2026-10-18 に本 worktree〈HEAD `17ae3d11`、code は `f5d7aaf4` と同じ〉で Matrix の F1〜F6 の行から数えた: `rg '^\| F[1-6] ' docs/plans/test-matrices/2026-10-17-stock-unit-relabel.md | rg -o '[A-Za-z-]+\.test\.tsx?' | sort -u` → `ProductForm.test.tsx`・`ProductFormPage.test.tsx`・`StockUnitField.test.tsx`・`product-form-request.test.ts`・`product-update-patch-contract.test.ts` の 5 行。S4 と下の「既存 test の書換え」）。
 - wire の型の変更は 1 つ（`ProductUpdateRequest` に `stock_unit: Option<ProductStockUnit>`）。migration は無い（`products.stock_unit` の CHECK は 12 個の code のまま）。
 - 横断の約束（範囲・0・失敗の順序・単位の混在）がかかる経路は 3 つ（商品修正の command、商品 CSV の preview、商品 CSV の commit）。数量・金額を変えない（個数の単位の価格の基準数量はどれも 1。共通規則 SPEC-UNIT-D2）ので、範囲と 0 は当たらず、効くのは失敗の順序と単位の種類の混在だけ。3 経路は 1 つの判定（今の単位と新しい単位がどちらも個数の種類か）を共有するので、BIZ に判定を 1 つ置き、3 経路から呼ぶ（下の Scope の S1）。1 lane・1 判定で足り、表は作らない。
 
@@ -94,7 +94,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | --- | --- | --- | --- | --- |
 | 毛糸を単位「個」・初期在庫 0 で登録し、入庫画面で 12 を入庫した後（在庫 Excel から「個」で入った状態の再現） | 商品修正の画面で数量単位の select を開く | 個数の単位（個・枚・本・袋・箱・巻・組・セット・玉・丁）だけが選べ、m・cm は選べない。select の下に `単位の語だけが変わり、在庫の数は変わりません。過去の記録も新しい語で表示されます。` | select が押せる | UI-01b-D23 |
 | 同じ商品 | 「玉」を選んで保存する | 商品一覧へ戻り、保存の toast。在庫照会・商品一覧で `12 玉`。単位を直した後に初めて開く入庫の記録詳細も「玉」で出る（数は同じ） | 保存できる | SPEC-UNIT-D2。前に開いて cache にある記録詳細は次の再取得の後（UI-01b-D23 の末尾）。CSV の初期在庫は参照の無い在庫変動だけを作り入庫の記録を作らない（`product_service.rs:1574` 付近）ので、記録詳細を見るには入庫画面で記録した商品を使う |
-| 同じ商品 | 操作ログ画面で直近の「商品を更新しました」を開く | 要約に `stock_unit` と `{"old":"pcs","new":"ball"}` | — | 74 §74.8（key は訳さない） |
+| 同じ商品 | 操作ログ画面で直近の「商品を更新しました」を開く | 要約に `stock_unit` と、old が `pcs`・new が `ball` の JSON（key の順は契約にしない。BIZ-01-D7） | — | 74 §74.8（key は訳さない） |
 | 反物が単位 m で登録済み | 商品修正の画面を開く | 数量単位は読取専用、在庫の節の説明は `現在庫と数量単位は登録後に変更できません。` | — | UI-01b-D23 |
 | 毛糸（個）と反物（m）が登録済み | 商品 CSV で毛糸の行を `在庫単位` = `玉`、反物の行を `玉` にして読み、反物の行のエラーを確かめてから毛糸の行だけを「上書き」にする | 毛糸の行は重複行（上書きを選べる）、反物の行は preview のエラー行 `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）`（エラー行には上書きの選択が出ない）。毛糸を上書きすると単位が「玉」になり、他の列が同じなら PLU の未反映にならない | 取り込める | BIZ-01-D8 の上書きの段 |
 
@@ -159,7 +159,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
   - `rg` の型に当たらない 51 の文: UI-01b-D5 の理由の列（`ProductUpdateRequest` は `stock_unit` / `stock_quantity` を更新しない）、§7.3 の「表示のみ」の列挙（`stock_unit`）、§7.4 の手順 2 の field の列挙（`stock_unit` を足す）と手順 3 の read-only の列挙、§7.6 の `stock_unit` の検査（create だけの文はそのまま、edit は select が個数の単位だけを出すことを足す）、§7.7 の Non-scope「edit mode での `stock_unit` / `stock_quantity` 変更」（`stock_quantity` だけにする）、§7.8 の edit payload（`stock_unit` は個数の単位どうしの変更だけ送る）。
   - `rg` の型に当たらない 10 の文: `10-common-rules.md:66` の契約 ID の段のうち D2 の句（「単位の語は登録の後に個数の単位どうしで直せるようにした（D2）。どれも proposed・未実装で」の D2 の分だけを今の契約にする。D1・D5 の句は原価の lane の所有なので触らない）。
   - code の comment（実装の commit で直す。正本の sweep の `rg` には当たらない）: `product_service.rs:1035`（「上書きの行: 単位は登録の後に変えない」）・`:1400`（「既存の商品の行（上書きの候補）は単位を変えられない」）、`StockUnitField.tsx` 冒頭の comment（edit の個数の単位の候補を足す）、`ProductForm.tsx:5` と `ProductForm.test.tsx:68`（「数量単位 select は disabled 維持」を長さの単位の商品に限る）。
-  - 30 §4.4 の部分更新 wire 契約の表と BIZ-01-D7 の key の列挙（`stock_unit` の注記を外す）。30 §4.9 の手順 2 d.（単位だけの行は `plu_dirty` を変えず、単位を変えた商品ごとに log）。
+  - 30 §4.4 の部分更新 wire 契約の表と BIZ-01-D7（30:216）の `stock_unit` の注記 2 つを外す: key の列挙の `proposed・未実装〈単位の語の直しの lane、D-119〉`（上の 1 本目の `rg` に当たる）と、値の型の列挙の `` `stock_unit`（proposed・未実装、D-119） ``（lane の名前が無く 1 本目の `rg` に当たらない。AC6 の 3 本目）。lane の名前の無い同じ形の注記は、2026-10-18 に `rg -n 'proposed・未実装、D-119' docs --glob '!docs/archive/**' --glob '!docs/plans/**'` で洗い、30:216 の他は 51 §7.9 の変更履歴の表の 2 行（`:230`・`:231`、履歴なので書き換えない）だけ。30 §4.9 の手順 2 d.（単位だけの行は `plu_dirty` を変えず、単位を変えた商品ごとに log）。
 - 履歴の節（51 §7.9 の表、10 の変更履歴の表、decision-log の D-113・D-119、`docs/Plans.md:32`、`docs/backlog.md` の D-119 の段）は書き換えない。
 - `docs/backlog.md` の「単位の語の直しの lane」の項目は closeout が消す（本 lane の実装の commit では触らない）。
 - REQ の増減は無い見込み（既存の REQ-102・REQ-104 の test を足す）。test に REQ を書いたら `cd src-tauri && cargo run --bin generate_traceability` で `docs/function-design/90-traceability.md` を再生成する（AUTO-GENERATED、手で編集しない）。
@@ -193,7 +193,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 ### 表示の文言と test の matcher の衝突（`.local/checklists/kickoff.md` の行）
 
-2026-10-17 の main で確かめた: `rg -F '単位の語だけが変わり' src --glob '*.test.*'` → 0、`rg -F '個数の単位どうし' src --glob '*.test.*'` → 0、`rg -F '在庫の数は変わりません' src` → 0、`rg -n 'getByText\(/|queryByText\(/|findByText\(/' src/features/products --glob '*.test.*'` の正規表現 matcher は `/現在の絞り込みに一致しない商品は変更されません/`・`/在庫同期しない設定を提案します/`・`/商品「在庫商品」は商品一覧の通常表示から外れます/` の 3 つで、新しい文（`変更できます`・`変更できません`・`変わりません`）のどれにも当たらない。`rg -n '登録後に変更できません|登録後は数量単位' src` は `ProductForm.tsx:177`（商品の識別の節。変えない）・`:407`・`:408` と `FormSection.test.tsx:11`・`:17`・`:40`・`:41`（上の段落）だけ。
+2026-10-17 の main で確かめた: `rg -F '単位の語だけが変わり' src --glob '*.test.*'` → 0、`rg -F '個数の単位どうし' src --glob '*.test.*'` → 0、`rg -F '在庫の数は変わりません' src` → 0、`rg -n 'getByText\(/|queryByText\(/|findByText\(/' src/features/products --glob '*.test.*'` の正規表現 matcher は 7 件（2026-10-18 に本 worktree〈code は `f5d7aaf4` と同じ〉で数え直した。`… | wc -l` → `7`）: `ProductFormPage.test.tsx:123` `/独自コード発番対象/`、`ProductListPage.test.tsx:149` `/現在の絞り込み条件に一致する 37 件が対象です/`・`:150` `/現在の絞り込みに一致しない商品は変更されません/`・`:151` `/PLU 書出しと PC ツールの取込みが別途必要です/`、`components/ProductTable.test.tsx:215` `/pcs/`、`components/StockUnitField.test.tsx:322` `/在庫同期しない設定を提案します/`、`components/ProductForm.test.tsx:117` `/商品「在庫商品」は商品一覧の通常表示から外れます/`。新しい文（`変更できます`・`変更できません`・`変わりません`・`単位の語だけが変わり`）のどれにも当たらない（`/pcs/` は表の行の中の語の検査で、新しい文は `pcs` を含まない）。`rg -n '登録後に変更できません|登録後は数量単位' src` は `ProductForm.tsx:177`（商品の識別の節。変えない）・`:407`・`:408` と `FormSection.test.tsx:11`・`:17`・`:40`・`:41`（上の段落）だけ。
 
 ## 節の所有表（他の lane と重なる file）
 
@@ -223,7 +223,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 - AC3（bindings）: `cd src-tauri && cargo run --bin generate_bindings` の後に `git diff --exit-code src/lib/bindings.ts` が exit 0（commit 済みの生成物と一致）。`rg -c 'stock_unit\?: ProductStockUnit \| null' src/lib/bindings.ts` が 1 以上（`ProductUpdateRequest_Deserialize` の行）。
 - AC4（frontend）: `npm test -- src/features/products/lib/product-form-request.test.ts src/features/products/lib/product-update-patch-contract.test.ts src/features/products/components/StockUnitField.test.tsx src/features/products/components/ProductForm.test.tsx src/features/products/ProductFormPage.test.tsx src/components/patterns/FormSection.test.tsx` が exit 0。
 - AC5（旧い文の削除と新しい文）: `rg -n '在庫単位は登録の後に変えられません' src-tauri/src src` が 0 行。`rg -c '在庫単位は個数の単位どうしでだけ変えられます' src-tauri/src/biz/product_service.rs` が 1 以上。
-- AC6（正本の同期）: S5 の 2 つの `rg`（`proposed・未実装.{0,2}単位の語の直しの lane` と `単位の語の直しの lane の後|今は単位を一切変えない|…`）が docs（archive と `docs/plans/` を除く）で 0 行。
+- AC6（正本の同期）: S5 の 2 つの `rg`（`proposed・未実装.{0,2}単位の語の直しの lane` と `単位の語の直しの lane の後|今は単位を一切変えない|…`）が docs（archive と `docs/plans/` を除く）で 0 行。`` rg -n '`stock_unit`（proposed・未実装、D-119）' docs/function-design/30-biz-product-service.md `` が 0 行（baseline 1 行、30:216 の値の型の列挙）。
 - AC7（docs と生成物の検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が exit 0（ERROR 0）。`cd src-tauri && cargo run --bin generate_traceability -- --check` と `cargo test --test design_compliance_test` が exit 0。
 - AC8（全体の gate）: `docs/DEV_WORKFLOW.md` Verification Gates の Rust/backend と Frontend の行の command が exit 0。L3 を含むので Writer は `cargo check --release` を通す（`docs/DEV_WORKFLOW.md` Implementation Rules）。
 
@@ -245,6 +245,23 @@ $ rg -n 'proposed・未実装.{0,2}単位の語の直しの lane' docs --glob '!
 12
 $ rg -n '単位の語の直しの lane の後|今は単位を一切変えない|今は update で単位を変えない|`stock_unit` 変更は在庫履歴|上書き（§4.9 の `overwrite_codes`）の今の規則' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l
 8
+```
+
+Plan Review round 2 の是正（2026-10-18、本 worktree〈HEAD `17ae3d11` に是正の docs の変更を載せた状態〉）で、`rg` の AC（AC3 の `rg`・AC5・AC6 の 3 本）を逐語で測り直した。code は `f5d7aaf4` と同じ（`git diff --stat f5d7aaf4 -- src src-tauri | wc -l` → `0`）なので、AC1・AC4 の test は上の round 1 の観測のまま測り直していない:
+
+```
+$ rg -n '在庫単位は登録の後に変えられません' src-tauri/src src | wc -l
+3
+$ rg -c '在庫単位は個数の単位どうしでだけ変えられます' src-tauri/src/biz/product_service.rs; echo "exit=$?"
+exit=1
+$ rg -c 'stock_unit\?: ProductStockUnit \| null' src/lib/bindings.ts; echo "exit=$?"
+exit=1
+$ rg -n 'proposed・未実装.{0,2}単位の語の直しの lane' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l
+12
+$ rg -n '単位の語の直しの lane の後|今は単位を一切変えない|今は update で単位を変えない|`stock_unit` 変更は在庫履歴|上書き（§4.9 の `overwrite_codes`）の今の規則' docs --glob '!docs/archive/**' --glob '!docs/plans/**' | wc -l
+8
+$ rg -n '`stock_unit`（proposed・未実装、D-119）' docs/function-design/30-biz-product-service.md | wc -l
+1
 ```
 
 test の本数は AC にしない（参考の観測値。完了の判定は exit と Matrix の test の PASS）。AC2・AC3 の generate_bindings と AC7・AC8 は起票の時点で回していない（変更の前は意味が無い、または doc の検査は下の検証で回した）。
@@ -309,8 +326,8 @@ L3（Windows の実機。owner の手が戻った後に他の lane の L3 と 1 
 
 | 項目 | 到達経路 | 入力物 | 依存する既知 backlog | 合格（PASS / FAIL） |
 |---|---|---|---|---|
-| L3-1 商品修正で単位を直す | 商品登録 → 入庫画面 → 商品一覧 → 商品 A の「修正」 → 数量単位の select → 「玉」 → 保存 → 在庫照会 → 入庫の記録詳細（単位を直した後に初めて開く） → 操作ログ | 画面から登録する商品 A（固定の合成の値: JAN `2000000009018`、商品名 `L3 合成の糸`、部門 ID 3、売価 500、原価 300、税率 10%、単位「個」、初期在庫 0）。入庫画面で商品 A を数量 12・原価 300 で記録する | 無し | select に個数の単位だけが選べる、select の下の文と在庫の節の説明が読める、保存の後に在庫照会で `12 玉`、入庫の記録詳細の数量が `12` で単位が「玉」、操作ログに `stock_unit` の前後 |
-| L3-2 長さの商品は直せない | 商品登録 → 商品一覧 → 商品 B の「修正」 | 画面から登録する商品 B（固定の合成の値: JAN `2000000009025`、商品名 `L3 合成の布`、部門 ID 3、売価 700、原価 400、税率 10%、単位 m、初期在庫 `25`） | 無し | 数量単位が押せず今の語（m）が読める、在庫の節の説明が `現在庫と数量単位は登録後に変更できません。` |
+| L3-1 商品修正で単位を直す | 商品登録 → 入庫画面 → 商品一覧 → 商品 A の「修正」 → 数量単位の select → 「玉」 → 保存 → 在庫照会 → 入庫の記録詳細（単位を直した後に初めて開く） → 操作ログ | 画面から登録する商品 A（固定の合成の値: JAN `2000000009018`、商品名 `L3 合成の糸`、部門 毛糸（ID 3。`src-tauri/src/db/schema_v1.rs:269` の seed。画面は名前で選ぶ）、売価 500、原価 300、税率 10%、単位「個」、初期在庫 0）。入庫画面で商品 A を数量 12・原価 300 で記録する | 無し | select に個数の単位だけが選べる、select の下の文と在庫の節の説明が読める、保存の後に在庫照会で `12 玉`、入庫の記録詳細の数量が `12` で単位が「玉」、操作ログに `stock_unit` の前後 |
+| L3-2 長さの商品は直せない | 商品登録 → 商品一覧 → 商品 B の「修正」 | 画面から登録する商品 B（固定の合成の値: JAN `2000000009025`、商品名 `L3 合成の布`、部門 毛糸（ID 3）、売価 700、原価 400、税率 10%、単位 m、初期在庫 `25`） | 無し | 数量単位が押せず今の語（m）が読める、在庫の節の説明が `現在庫と数量単位は登録後に変更できません。` |
 | L3-3 商品 CSV の上書き | 商品一括インポート → CSV を選ぶ → preview（商品 B の行のエラーを確かめる） → 商品 A の行だけを「上書き」 → 取込み → 在庫照会 | L3-1・L3-2 の後の商品 A（単位「玉」）・商品 B と、合成の CSV 1 本（CP932。列は 商品コード・商品名・部門ID・売価・原価・税率・在庫単位・JANコード。商品 A の行 = `2000000009018,L3 合成の糸,3,500,300,10,袋,2000000009018`、商品 B の行 = `2000000009025,L3 合成の布,3,700,400,10,玉,2000000009025`。JANコードの列を必ず入れる〈上書きは JAN を CSV の値で書き、空なら JAN を消す。§4.9 の手順 2 a.〉。Coordinator が上の固定の値で作り、Ready の依頼と同時に渡す） | 無し | 商品 B の行が preview のエラー行で文が `在庫単位は個数の単位どうしでだけ変えられます（登録: m、CSV: 玉）`（エラー行には上書きの選択が出ない）、商品 A の行は上書きを選べ、取込みの後に在庫照会で商品 A の単位が「袋」・在庫は 12 のまま |
 
 `plu_dirty` が変わらないことは L3 にしない（PLU の書出しを済ませた商品の用意が要り、L3 Eligibility の (3) に近い。自動 test の T9・T10 が受け持つ）。種類をまたぐ変更の command からの拒否も UI から到達しないので自動 test（T3）が受け持つ。
