@@ -60,7 +60,7 @@ Goal Invariant:
 ### 失敗定義
 
 - 紙が精算ごとに分かれる、または今の Excel の横長の並び（4 つの帳票を横に並べて縮小する形）を写す。
-- 足す鍵が並び順だけか名称だけで、名称の変わった日に別の行を足すか、1 本の中の同じ文字を含む行を 1 つにまとめる。
+- 足す鍵が並び順だけか名称だけで、名称の差し替えの日に別の行を足すか、1 本の中の完全一致の同じ名称の行を 1 つにまとめる。
 - 収まらないときに 9 pt を割って縮める契約になる。
 - 半角カナを正規化して `credit` を効かせる（4 つの行が同じ鍵になる）。
 - 紙の値がレジスターツールの日報と同じであることを確かめたように書く（未確認の前提を確かめた事実として書く）。
@@ -87,6 +87,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 同じ | `日報を印刷` を押す | 紙の内容を読み直し、OS の印刷の dialog が出る。プレビューに A4 縦の 1 枚（上に日付、左に日計と部門、右に支払、下に PLU） | 印刷先を選んで印刷 | P1（WebView2 の印刷） |
 | 同じ日に 2 回精算して 2 回取り込んだ日 | `日報を印刷` | 2 回分を位置と名称の組で足した 1 枚。上に `2回の取込みを合算` | — | P2（レジスターツールの日報と同じ値か） |
 | まだ取り込んでいない日 | 日次売上を開く | ボタンは押せず、下に `この日のレジ日報は未取込みのため、印刷できません。` | 取り込む | — |
+| 画面を開いた後に、別の画面でその日の取込みを取り消した | `日報を印刷` を押す | 読み直しで `import_count` が 0 になり、印刷せずにボタンの下に未取込みの文が出る（古い内容で印刷しない） | 取り込み直す | — |
 | Z004 の取込みが止まっている間（停止 ADR） | `日報を印刷` | PLU の部分は `この日の PLU の売上は取り込まれていません。` の 1 行。日報の部分は出る | — | P6 |
 | runtime の lane の L3 | owner が並びの案 a・b・c を実機のプリンタで印刷して並べる | 案を選ぶ（答えが無ければ a） | 選んだ案が既定と違えば Gated Amendment で UI-09a-D17 を直す | P5（1 枚に収まるか） |
 | 店のアプリの運用が始まった後の実際の 1 日 | アプリの紙と今の Excel の紙を並べる（同じ日に 2 回以上精算した日があればその日も） | 値が同じことを確かめる（UI-09a-D13 の受入と一緒） | 同じなら切替えの日を決める | P2 |
@@ -100,7 +101,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 1. 紙の内容と足し方（Scope の 1、発注の Scope 1）: [34](../function-design/34-biz-sales-service.md) に §19.3a `get_daily_report_sheet`（SALES-SHEET-D1〜D6、型 `DailyReportSheet`・`DailyReportSheetRow`・`DailyReportSheetPluImport`、処理ステップ、エラー、runtime の lane のテスト）を足し、§19.3 の手順 3 の支払の集約の鍵と「設計判断」の Z001 の段に紙の例外を書いた。[24](../function-design/24-io-csv-import-repo.md) の §14.21 手順 3 を位置と名称の組にし、§14.21a `get_daily_report_sheet_lines`・§14.21b `get_active_z004_import_totals` を足した。[42](../function-design/42-cmd-sales-stocktake.md) に CMD `get_daily_report_sheet` を足した。
 2. 紙の並びと印刷の手段（発注の Scope 1）: [56](../function-design/56-ui-daily-sales.md) に「日報の紙」の節（UI-09a-D17 = 印刷ボタンと押せない状態の文、並びの既定、表と値の書き方、紙の上の知らせ、文字の大きさの下限 9 pt、色なし、画面に出さない。UI-09a-D18 = WebView の印刷と代わりの道）を足し、ファイル構成の `ExportBar` の行・component の `Tooltip` の行・非目的の「印刷ボタンの本実装」の行・更新履歴を直した。[UI_TECH_STACK](../UI_TECH_STACK.md) に §6.5.5 印刷、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の日次売上の利用者配慮に 1 行、[ui-task-specs](../architecture/ui-task-specs.md) の UI-09a の印刷ボタンの行に設計の参照を足した。
 3. 意味づけの見直し（発注の Scope 2）: [29](../function-design/29-io-daily-report-parser.md) に IO-07-D4a（意味の鍵は `gross_sales`・`net_sales`・`cash` だけ、`credit` の規則を外す、半角カナの正規化を入れない、`payment_key`・`line_key` は足す鍵に使わない。根拠は手元の Z 帳票の 2026-09-30 版での集計の数と位置だけ）を足し、§29.4.1 の layout A の表の Z002 の行と「行の構成と性質」の段に紙の扱いを書いた。[pos-tables](../db-design/pos-tables.md) §12d の設計意図に足す鍵の段を足した（列・制約は変えない）。
-4. 紙の切替えの時期（発注の Scope 3）: 56 の UI-09a-D19（切替えまで店は今の Excel を続ける、切り替える前の 2 つの確かめ、月の初めか元日、既定、戻し方）を足し、UI-09a-D13 の紙の用途を事実（店の控えと店の外へ渡す用を兼ねる、`docs/project-memory.md` の日報の紙の行）に直して受入を D19 と一緒にした。[plu-export-and-real-csv-verification](../plu-export-and-real-csv-verification.md) の「印刷機能の要否はこの受入結果で決め」に D-120 の決定を足した。
+4. 紙の切替えの時期（発注の Scope 3）: 56 の UI-09a-D19（切替えまで店は今の Excel を続ける、切り替える前の 2 つの確かめ、月の初めか元日、既定、戻し方）を足し、UI-09a-D13 の紙の用途を事実（店の控えと店の外の提出先へ渡す用を兼ねる、2026-09-29 の店主の答え、repo 外の回答台帳 TD-059・TD-060）に直して受入を D19 と一緒にした。[plu-export-and-real-csv-verification](../plu-export-and-real-csv-verification.md) の「税理士等への外部提出用途ではない」（2026-08 の旧い記述）を UI-09a-D13 と D-120 への参照に直し、「印刷機能の要否はこの受入結果で決め」に D-120 の決定を足した。
 5. 後続と決定（発注の Scope 4）: [backlog](../backlog.md) の「日報の紙と意味づけ」に設計 lane の起票と決めたことを足し、その下に「日報の紙の runtime」（R3、範囲・L3・依存）を足した。「日報画面の Excel 印刷・バインダー代替受入判定」と「既存の支払集計（Z002）で異なる項目が 1 行に合算されうる」に D-120 の決定を足した。[decision-log](../decision-log.md) の末尾に D-120 を足し、D-096 の Revisit の後に紙の行を 1 行足した（D-096 の本文は変えていない）。
 6. owner に聞く見た目の問い（発注の Scope 5）: 下の Open Questions と、Matrix の Manual の L3 の項目。
 
@@ -108,8 +109,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 対象を使う呼出し側・隣接 test・helper / mock・生成物（後続の runtime の lane が触る。本 lane は変えない。`rg` で 2026-10-17 に確かめた）:
 
-- 支払の合算の鍵（24 §14.21 手順 3）を作る所: `src-tauri/src/db/sales_repo.rs` の `get_completed_daily_report_aggregate`（`:1039`、支払の集約は `:1075` の query と `:1113` の group）。読む所: `src-tauri/src/biz/sales_service.rs`（`:584` の写像）、`src/features/daily-sales/DailySalesPage.tsx`（`:223` の行の key に `payment_key` を使う。鍵を変えると同じ `payment_key` の 2 行が出うるので、行の key を位置と名称から作る）。test の fixture・呼び方: `src-tauri/src/biz/sales_service.rs` の test（`:769`・`:892` の `payment_key: "cash"`）、`src-tauri/src/db/sales_repo.rs` の test（`:2291` 付近）、`src/features/daily-sales/DailySalesPage.test.tsx`（`:99`・`:225`）。
-- `credit` の規則（29 IO-07-D4a）: `src-tauri/src/io/daily_report_parser.rs` の `payment_key`（`:582`〜`:590`）とその test。`credit` を読む処理は無い（`rg -n '"credit"' src src-tauri/src` は parser の中だけ）。
+- 支払の合算の鍵（24 §14.21 手順 3）を作る所: `src-tauri/src/db/sales_repo.rs` の `get_completed_daily_report_aggregate`（`:1039`、支払の集約は `:1075` の query と `:1113` の group）。読む所: `src-tauri/src/biz/sales_service.rs`（`:584` の写像）、`src/features/daily-sales/DailySalesPage.tsx`（`:223` の行の key に `payment_key` を使う。鍵を変えると同じ `payment_key` の 2 行が出うるので、行の key を部門別集計〈同じ file の `:233`〉と同じ形の `${payment_key}-${index}` にする。wire は変えない。56 の支払集計の鍵の行）。test の fixture・呼び方: `src-tauri/src/biz/sales_service.rs` の test（`:769`・`:892` の `payment_key: "cash"`）、`src-tauri/src/db/sales_repo.rs` の test（`:2291` 付近、支払の集約の test の `:2465` の `payment_key: "credit"` の fixture と `:2507` の assert）、`src/features/daily-sales/DailySalesPage.test.tsx`（`:99`・`:225`）。
+- `credit` の規則（29 IO-07-D4a）: `src-tauri/src/io/daily_report_parser.rs` の `payment_key`（`:582`〜`:590`）とその test。production で `credit` を読む処理は無い（2026-10-17 に `rg -n '"credit"' src src-tauri/src` を実行: parser の 2 行〈`:585`・`:586`〉と `src-tauri/src/db/sales_repo.rs` の test の 2 行〈`:2465` の fixture、`:2507` の assert〉に当たる。test の 2 行は保存済みの鍵を集約に通す test で、規則を外しても fixture の値として残せる）。
 - 紙の新しい関数と型: IO = `src-tauri/src/db/sales_repo.rs`（24 の設計書は `db::csv_import_repo` と `db::sales_repo` の 2 つに対応づけられている。`src-tauri/tests/design_compliance_test.rs:151`）、BIZ = `src-tauri/src/biz/sales_service.rs`、CMD = `src-tauri/src/cmd/sales_cmd.rs` と `src-tauri/src/lib.rs` の登録、`src/lib/bindings.ts`（再生成）、UI = `src/features/daily-sales/components/ExportBar.tsx`（今の印刷ボタンは `aria-disabled`、`:3`〜`:4` と `:44`）・`DailySalesPage.tsx`・新しい紙の component と hook。日次売上の取込み・取消の後の invalidate の所（56 の主動線、`["daily-sales"]`）。
 - 新しい表示文言の test との衝突: `rg -F '日報を印刷' src --glob '*.test.*'` は 0 件、`rg -n '印刷' src` は 2 つの `ExportBar.tsx` だけ（2026-10-17）。
 
@@ -135,7 +136,7 @@ SD 直読みの runtime の lane は D-111 の既決の契約の実装で、本 
 - 日次売上の画面の Z001 の表示（D-096 のまま）、部門の照合と月次の部門集計（変えない）。
 - 月次の印刷、プリンタの設定の画面。
 - Z004 の取込みの再開（停止 ADR と D-118・D-121 の後続）。
-- `docs/Plans.md`（lane の行を足さない。D-097）、`docs/project-memory.md`（紙の用途の行はすでに事実どおり）。
+- `docs/Plans.md`（lane の行を足さない。D-097）、`docs/project-memory.md`（紙の用途は `:41` に店主の答えが既にある。本 lane の出典は台帳の TD-059・TD-060 を直接引くので、足さない）。
 
 ## Acceptance Criteria
 
@@ -145,8 +146,8 @@ SD 直読みの runtime の lane は D-111 の既決の契約の実装で、本 
 - AC2（紙の IO と支払の合算の鍵）: `rg -c -F 'fn get_daily_report_sheet_lines(' docs/function-design/24-io-csv-import-repo.md` と `rg -c -F 'fn get_active_z004_import_totals(' docs/function-design/24-io-csv-import-repo.md` がどちらも 1（開始 0）。`rg -c -F 'は `payment_key` で集約する' docs/function-design/24-io-csv-import-repo.md` が 0（開始 1）。
 - AC3（CMD）: `rg -c -F 'fn get_daily_report_sheet(' docs/function-design/42-cmd-sales-stocktake.md` が 1（開始 0）。
 - AC4（紙の画面と印刷）: `docs/function-design/56-ui-daily-sales.md` で `rg -c -F 'UI-09a-D17'` が 6、`'UI-09a-D18'` が 2、`'UI-09a-D19'` が 2、``'`日報を印刷`'`` が 3、`'9 pt 以上'` が 1（開始はどれも 0）。`rg -c -F '#### 6.5.5 印刷' docs/UI_TECH_STACK.md` が 1、`rg -c -F 'UI-09a-D17〜D19' docs/SCREEN_DESIGN.md` が 1（開始 0）。
-- AC5（古い記述の撤去）: `rg -c -F 'バインダーは外部提出帳票ではなく' docs/function-design/56-ui-daily-sales.md` が 0（開始 1）、`rg -c -F '印刷機能は受入結果から必要性を決め、' docs/function-design/56-ui-daily-sales.md` が 0（開始 1）。
-- AC6（意味づけ）: `rg -c -F 'IO-07-D4a' docs/function-design/29-io-daily-report-parser.md` が 2（開始 0）、`rg -c -F 'TD-305' docs/function-design/29-io-daily-report-parser.md` が 1（開始 0）、`rg -c -F '同じ日の取込みをまたいで足す鍵' docs/db-design/pos-tables.md` が 1（開始 0）。
+- AC5（古い記述の撤去）: `rg -c -F 'バインダーは外部提出帳票ではなく' docs/function-design/56-ui-daily-sales.md` が 0（開始 1）、`rg -c -F '印刷機能は受入結果から必要性を決め、' docs/function-design/56-ui-daily-sales.md` が 0（開始 1）、`rg -c -F '税理士等への外部提出用途ではない' docs/plu-export-and-real-csv-verification.md` が 0（開始 1）、`rg -c -F '名称だけの鍵では、1 本の中に同じ文字を含む行' docs/function-design/34-biz-sales-service.md` が 0（plan-gate の版 1）、`rg -c -F 'opener:default`）で OS の既定のブラウザに開き' docs/UI_TECH_STACK.md` が 0（plan-gate の版 1）。
+- AC6（意味づけ）: `rg -c -F 'IO-07-D4a' docs/function-design/29-io-daily-report-parser.md` が 4（開始 0。round 1 の是正で D4 の 2 行に参照を足した）、`rg -c -F 'TD-305' docs/function-design/29-io-daily-report-parser.md` が 1（開始 0）、`rg -c -F '同じ日の取込みをまたいで足す鍵' docs/db-design/pos-tables.md` が 1（開始 0）。
 - AC7（決定の記録）: `rg -c -F '## D-120: ' docs/decision-log.md` が 1、`rg -c -F -- '- 紙（2026-10-17、D-120）' docs/decision-log.md` が 1（開始 0）。D-096 の本文が変わっていない: `awk '/^## D-096/,/^- Revisit/'` を開始の版と今の版の `docs/decision-log.md` に当てた出力を `cmp` して同じ。
 - AC8（backlog）: `rg -c -F -- '- **日報の紙の runtime**' docs/backlog.md`、`rg -c -F '2026-10-17: D-120 で直し方を決めた' docs/backlog.md`、`rg -c -F '→ 2026-10-17: 印刷機能は作ると決めた（D-120' docs/backlog.md` がどれも 1（開始 0）。
 - AC9（並走の lane の節を触らない）: `git diff --name-only f5d7aaf4 HEAD -- docs/function-design/37-biz-daily-report-import-service.md docs/function-design/45-cmd-daily-report-import.md docs/function-design/55-ui-csv-import.md` の出力が空。`git diff -U0 f5d7aaf4 HEAD -- docs/function-design/29-io-daily-report-parser.md | grep '^@@'` の hunk がどれも 212 行目（§29.7 の見出し）より前。`git diff -U0 f5d7aaf4 HEAD -- docs/db-design/pos-tables.md | grep '^@@'` の hunk が §12d の設計意図（開始の版の 201〜203 行目の直後）だけ。
@@ -194,7 +195,7 @@ SD 直読みの runtime の lane は D-111 の既決の契約の実装で、本 
 - precision/range: 金額・件数は i64 を checked で足し、溢れは `ValidationFailed`。安全な整数の範囲での拒否はしない（1 日の取込みは数回で、1 行の金額はレジの桁に収まる。34 冒頭の「数量と単位」の (d) と同じ考え）。個数は小数 2 桁まで
 - round-trip path: 取込み（`daily_report_*_lines`）→ IO の読取り → BIZ の足し算 → CMD → UI の描画 → `window.print()`。保存も往復もしない（片道）
 - invalid input: 日付の形式・暦の誤り → `ValidationFailed`（§19.3 と同じ文言）。取込みが 0 件の日は error でなく `import_count = 0`
-- compatibility: 新しい command を足すだけで、既存の command・DTO・DB は変えない。支払集計の合算の鍵の変更は、名称が変わらない日は今と同じ行と値。`payment_key` の列は残す
+- compatibility: 新しい command を足すだけで、既存の command・DTO・DB は変えない。支払集計の合算の鍵の変更で今と同じ行と値になるのは、その日の全取込みで位置と名称の組の集合が同じで、1 取込みの中に同じ `payment_key` の行が無い入力（24 §14.21 手順 3）。返す `payment_key` の意味は変えず、画面の行の key を `${payment_key}-${index}` にする。`payment_key` の列は残す
 
 ## Test Plan
 
@@ -210,7 +211,7 @@ Test Design Matrix: [2026-10-17-daily-report-sheet-design](test-matrices/2026-10
 ## Review Focus
 
 - Ordinary Operation の列が、正常な条件で目的（締めの後にアプリから 1 日 1 枚の紙を印刷し、手で写す作業を無くす）を達成できるか。切替えの前後で店が迷わず、戻せるか。
-- 位置と名称の組の鍵が、名称の変わった日と 1 本の中の同じ文字を含む行の両方で正しく足すか。画面の支払集計の鍵の変更が、名称の変わらない日の値を変えないか。
+- 位置と名称の組の鍵が、名称の差し替えの日、行の数か並びが変わった日、1 本の中の完全一致の同じ名称の行のどれでも別の項目を足さないか。画面の支払集計の鍵の変更が、互換の範囲（位置と名称の組の集合が同じで、1 取込みの中に同じ `payment_key` が無い日）の値を変えないか。
 - 紙の行の選び方（SALES-SHEET-D3）と PLU の部分（D4）が、取り込んでいない日・売れなかった日・数えていない行を取り違えずに出すか。手動販売を載せないことが妥当か。
 - 未確認の前提（P1・P2・P5）を確かめた事実のように書いていないか。手元の資料の数に版の時点が付いているか。
 - 並走の lane（D-121）の節を触っていないか（AC9、所有表）。D-096・D-111・D-025 と矛盾しないか。
@@ -262,11 +263,11 @@ agent 側で解く問い（設計の問いではない。runtime の lane で確
 
 - P1（Windows の WebView2 で `window.print()` が OS の印刷の dialog を出し、`@page` の A4 縦と余白が効く）: 未確認（本 run は Windows で動かしていない。出所は起草役の推測）。→ runtime の lane が実装の前に開発の build で確かめる。効かなければ UI-09a-D18 の代わりの道（HTML を既定のブラウザで開く。`tauri-plugin-opener` は導入済み: `src-tauri/Cargo.toml:25`、`src-tauri/src/lib.rs:1209`、`src-tauri/capabilities/default.json:14`、2026-10-17 に `rg` で確かめた）。
 - P2（Z001・Z002・Z005 をその日の精算で足した値が、行ごとにレジスターツールの日報の値と同じ）: 店主の答えで、複数回精算してもレジスターツールの日報は合算で表示される（repo 外の回答台帳 TD-280・TD-305、2026-10-16〜17）。足すことがレジスターツールの仕様か、行ごとに同じ値かは未確認の前提（owner は「多分仕様」と述べた。推測）。取扱説明書は日計明細の精算が集計をクリアすると書く（29 §29.4.1、tracked の記録）。→ 行ごとの照合は未実測。runtime の lane の L3 で、同じ日に 2 回以上精算した日を含む実際の日に比べる。違えば D-120 の Revisit。
-- P3（同じ位置の名称が同じ日の精算の間で変わるのは稀）: 手元の Z 帳票の 2026-09-30 版での集計（2026-10-04 に数えた repo 外の出力 `recount-2026-10-04/z_rc.out` の N3・N8 の行、日の数は同じ数え直しの報告の z N2、2026-10-17 に読んだ）で、Z002 の名称の並びは全期間で 3 種類（139 本・2 本・1 本。1 本は Excel で保存し直した形）、Z005 は 2 種類（140 本・2 本）。変わったのは 2022 年の 1 日の精算の間（Z002 の 3 つの位置、Z005 の 4 つの位置）だけで、同じ日に 2 回以上精算した 19 日のうち 1 日。→ 観測（数と位置だけ）。並び順だけの鍵では、その日に別の行を足す。
+- P3（同じ位置の名称が同じ日の精算の間で変わるのは稀）: 手元の Z 帳票の 2026-09-30 版での集計（2026-10-04 に数えた repo 外の出力 `recount-2026-10-04/z_rc.out` の N3・N8 の行、日の数は同じ数え直しの報告の z N2、2026-10-17 に読んだ）で、Z002 の名称の並びは全期間で 3 種類（139 本・2 本・1 本。1 本は Excel で保存し直した形）、Z005 は 2 種類（140 本・2 本）。Z001 は 1 種類（142/142 本）で、同じ日に 2 回以上精算した 19 日のすべてで行の数・名称・並びが精算の間で同じ。行の数は Z001 28・Z002 50・Z005 21 で全本同じ。変わったのは 2022 年の 1 日の精算の間の同じ位置での名称の差し替え（Z002 の 3 つの位置、Z005 の 4 つの位置）だけで、同じ日に 2 回以上精算した 19 日のうち 1 日。1 本の中で名称（空を除く）・コードが重なる例は 0（Z002 の 39〜50 行目は名称が空で、位置で分かれる）。出典は同じ数え直しの報告（repo 外の `material-check-2026-10-04/z.md` の「行の並び」と Z001・Z002 の節）。→ 観測（数と位置だけ）。並び順だけの鍵では、差し替えの日に別の行を足す。行の数か並びが変わる日は観測に無いが、来たら同じ名称が位置ごとに分かれて載り、知らせが出る（SALES-SHEET-D2 の保証の範囲）。
 - P4（意味の鍵の実データの当たり方）: 同じ集計で、`総売` を含む名称は Z001 の 1 行目だけ（142/142 本）、`純売` は 2 行目だけ、`現金` は Z002 の 1 行目だけ（142/142）、全角の `クレジット` は 0 行、半角の `ｸﾚｼﾞｯﾄ` を含む名称は Z002 の 4 つの位置に全本（ほかに 2022 年の 2 本で 1 つの位置）。Z002 の 39〜50 行目は全本で名称が空で値が 0。→ 観測。`credit` の規則を外しても実データの鍵は変わらず、正規化すると 1 本の中の 4 行が同じ鍵になる。
 - P5（既定の並び〈案 a〉が、PLU の行が少ない日に A4 縦 1 枚に 9 pt で収まる）: 未実測（出所は起草役の見積り: 名称のある行は Z001 28・Z002 38・Z005 21〈2026-09-29 版の店の Excel の写しでの数。repo 外の事実の一覧 F-158、`docs/project-memory.md` の締めの Excel の行も同じ数〉で、左の段 49 行・右の段 38 行）。→ runtime の lane の L3 で実機の印刷で確かめる。収まらなくても字を小さくせず次の紙へ続ける（UI-09a-D17）。
 - P6（Z004 の取込みは停止 ADR が止めている）: `docs/adr/2026-09-23-legacy-stocktake-z004-write-stop.md`、32 §15.0・35 §20.0 の「現行buildの一時停止」の見出し（2026-10-17 に `rg` で在ることを確かめた。本文の読みは 2026-10 の見直しの突き合わせ O-19 の引用に依る）。→ 記録。PLU の部分は停止を外す lane までは「取り込まれていません」と出る。
-- P7（紙は店の控えと店の外へ渡す用を兼ねる）: `docs/project-memory.md` の日報の紙の行（店主の回答 2026-09-29）。→ 回答。UI-09a-D13 の旧い記述を直した根拠。
+- P7（紙は店の控えと店の外の提出先へ渡す用を兼ね、提出先は紙を全部求める）: repo 外の回答台帳 TD-059・TD-060（2026-09-29 の店主の答え。2026-10-17 に台帳の行を読んだ）。→ 回答。UI-09a-D13・D-120 の Context と、`docs/plu-export-and-real-csv-verification.md` の旧い記述を直した根拠。
 
 ## Data Safety
 
