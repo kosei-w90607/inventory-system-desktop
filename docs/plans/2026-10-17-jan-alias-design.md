@@ -6,9 +6,9 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: af1479a5ff3c8605c7794bb61a113f70dc4a8b29
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
@@ -27,6 +27,8 @@
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `f50d0bfd` で直し、Coordinator が差分（30 §4.9 の手順 0b・2 e. と §4.9.2 の preview の判定・答えの運び方・commit の判定の表・回復・そのほかの限界、42 §22.6、60 UI-01c-D17、20 の DbError の対応、master-tables の別名の UPDATE の段、Matrix の追加の行）を読んだ。置き場（商品の側の表と trigger）と Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `dd2df899` で直し、Coordinator が差分（30 §4.9.2 の commit の判定表 J1〜J7 と、§4.9・42 §22.6・60 UI-01c-D17 がそれを引く形、問いの条件と成立の条件の分け方、backlog の runtime の順と依存、Matrix の T4・T5・T8）を読んだ。判定・error・回復の置き場は判定表の 1 か所になった。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-317、介入 1 回目 / 予算 9 回）。起草役が `8f050ee6` で直し、Coordinator が差分（60 UI-01c-D17 の warning の全件のまとめと問いの出し入れの範囲、30 の J4 の回復、32 の引き当ての結果の 3 つの区別、master-tables の読む経路、Matrix の追加の行）を読んだ。
+8. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側が round 3 で P1・P2 が無いと報告し、Codex の P2 2 件は owner の決定（repo 外の回答台帳 TD-317）どおり直した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。
+9. plan-approved → implementing（2026-10-18、Coordinator、本 commit）: docs だけの design lane で、設計の出力は Plan Commit までに正本にある。状態だけを進め、Final Review（Minimum 1）へ出す。
 
 owner への確かめ（設計を止めない。答えが無い間は既定で進む）:
 
