@@ -211,7 +211,7 @@ fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, 
    - sales_repo::get_completed_daily_report_aggregate(conn, date) → Option<OfficialDailyReportRow>（IO の DB DTO）を、`map_official_daily_report` で `OfficialDailyReportSummary` へ写す。warning は BIZ がここで作る
    - `report_date=date AND status='completed'` の親を全件対象とし、`source_import_count` に親件数を返す。単一parent IDはwireへ返さない（`summary_imports` の要素の取込み ID は除く、D-096）
    - 親gross/netは合計する。ただし対象親のいずれかがNULLなら集約値もNULLとし、不完全値を確定値に見せない
-   - paymentは `payment_key` で、departmentは `department_id`、未対応行は `normalized_department_name` fallback `raw_department_name` で集約する。amountは合計し、optional quantity/countは対象行のいずれかがNULLなら集約値もNULLとする
+   - paymentは位置（`sort_order`）と名称（`label` の前後の空白を除いた文字列）の組で（proposed・未実装、D-120。今の実装は `payment_key` で集約し、並び順から作る `payment_N` が名称の違う行を 1 行に足しうる。SALES-SHEET-D2 と同じ鍵）、departmentは `department_id`、未対応行は `normalized_department_name` fallback `raw_department_name` で集約する。amountは合計し、optional quantity/countは対象行のいずれかがNULLなら集約値もNULLとする
    - labelとsortはgroup内の最小 `sort_order`、同値なら最小row IDの行を決定的な代表とする
    - 日報未取込みでも正常。`official_daily_report=None` とし、UIは「日報未取込み」と表示できる
    - SALES2-D5: 集約後の `department_id IS NULL` groupが n 件ある場合、`warnings` に「部門マスタと対応していない部門が n 件あります（部門名のまま表示しています）」を1件だけ追加する。importごとに警告を重複させない。NULL groupがなければ空配列
@@ -234,7 +234,7 @@ fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, 
 - Z001/Z002/Z005は商品別明細を持たないため、`items` を水増ししない。
 - UIは、日報集計と商品別明細の差を「日報集計」「商品別（PLU/Z004・手動販売）」のように日本語で分けて表示する。
 - 公式日報seriesと商品別seriesは別の正本であり、互いを加算して一つの売上値にしない。
-- 公式日報seriesの中でも、Z001の行は足してよいと確かめていないため取込みごとに返し、支払・部門のように合算しない（D-096）。
+- 公式日報seriesの中でも、Z001の行は足してよいと確かめていないため取込みごとに返し、支払・部門のように合算しない（D-096）。日報の紙は §19.3a で Z001 も足す（D-120）。
 
 **エラーハンドリング**:
 - 日付形式不正 → BizError::ValidationFailed(メッセージ)
@@ -261,6 +261,75 @@ Ok(DailySalesReport {
     grand_total: GrandTotal { count_points: 4, length_cm: 0, amount: 2662 },
 })
 ```
+
+---
+
+### 19.3a get_daily_report_sheet（日報の紙、proposed・未実装、D-120）
+
+**関数要求**: 指定日のレジの日報を、印刷する 1 枚の紙の内容にして返す。その日の完了した日報の取込みを全部足し、PLU の売上はその日に売れた行だけを付ける。読み取りだけで、何も保存しない。
+
+紙を作る規則（決定の理由と棄却案は [D-120](../decision-log.md)）:
+
+- **SALES-SHEET-D1（1 日 1 枚）**: 紙はその日（`report_date`）の完了した（`status='completed'`）日報の取込みを全部足した 1 枚の内容とする。精算ごとの紙は作らない（repo 外の回答台帳 TD-280）。取り消した取込みは入らない。
+- **SALES-SHEET-D2（足し方）**: Z001・Z002・Z005 のそれぞれで、行を「位置（`sort_order`）と名称（`label` の前後の空白を除いた文字列）の組」で分け、組ごとに個数・件数・金額を足す。足す値のどれかの行が NULL なら、その組のその値は NULL（未取得を 0 に見せない。24 §14.21 と同じ）。個数は 100 倍の整数のまま足し、最後に IO-07 の `quantity_hundredths_to_units` で単位の数へ戻す（IO-07-D2）。足し算は溢れを検査し（`checked_add`）、溢れたら `BizError::ValidationFailed`（本書冒頭の「数量と単位」の溢れの扱いと同じ。範囲の契約ではない）。行の並びは位置の昇順、同じ位置に名称が 2 つ以上ある帳票は、その位置の中で名称が最初に現れた取込みの古い順（`imported_at ASC, id ASC`）。同じ位置に名称が 2 つ以上あった帳票を `label_changed_sources` で返す。Z005 は部門マスタと照合せず、レジの名称のまま足す（部門の照合と月次の部門集計は画面の側で、変えない）。
+  - 鍵を「位置と名称の組」にする理由: 1 回の精算の中で同じ名称の行は無い前提に頼らず、名称が変わった日に別の行を足さない（手元の Z 帳票の 2026-09-30 版での集計（2026-10-04 に数えた、repo 外。数と位置だけ）で、同日に 2 回以上精算した日のうち 1 日だけ、精算の間で Z002 と Z005 の一部の位置の名称が変わった。Contract Probe の P3）。並び順だけの鍵（今の `payment_N`）では、その日に別の項目を 1 行に足す。名称だけの鍵では、1 本の中に同じ文字を含む行があると足してしまう。
+  - 精算をまたいで足してよい根拠: 取扱説明書で日計明細の精算は対象の集計をクリアするので、各精算の行は前の精算から後の分（29 §29.4.1 の「行の構成と性質」）。レジスターツールも、その日の精算を全部足した日報を表示している（店主の答え、TD-280・TD-305。足すことがレジスターツールの仕様かは未確認の前提）。行ごとにレジスターツールの足した値と同じになるかは未確認の前提で、runtime の lane の L3 で確かめる（Contract Probe の P2）。
+- **SALES-SHEET-D3（載せる行）**: 足した後の全部の組を載せ、値が 0 の行も 0 として載せる。名称が空で、足した値が全部 0 か NULL の組は載せない（Z002 の名称の無い枠。今の紙もラベルのある行だけ）。名称が空で値のある組は載せ、名称の表示は画面の側（UI-09a-D17）で決める。値が全部 0 の行を外す形は owner の見た目の判断で変えうる（D-120 の Revisit）。
+- **SALES-SHEET-D4（PLU の売上の部分）**: 紙の PLU の部分は、その日の Z004 由来の商品別売上（`get_daily_sales` の手順 2 と同じ集約〈`product_code + source`、同日の全 Z004 取込み〉の `source='auto'` の行）のうち、数量か金額が 0 でない行を、手順 2 と同じ並びで載せる。売れた商品だけが出るので、店が今している「その日に売ったものを指定して部分的に印刷する」作業が要らない（TD-279）。手動販売の行（`source='manual'`）はレジの日報ではないので載せない。あわせて、その日の active な Z004 の取込みの数と、商品に当たらず数えなかった行の数（`csv_imports.skipped_count` の和）を `plu_import` で返す（取り込んでいない日と売れなかった日を紙の上で分け、数えていない行があることを隠さない）。
+- **SALES-SHEET-D5（失敗と空の日）**: 失敗の順は、日付の検査 → 読取り（`DbError`）→ 足し算（溢れ）。どれかで失敗したら紙の内容を返さない（一部だけの紙を作らない）。完了した日報の取込みが 0 件の日は error にせず、`import_count = 0` と空の行で返す（UI は印刷を止める。UI-09a-D17）。
+- **SALES-SHEET-D6（保存しない）**: 紙の内容は DB に保存せず、呼ぶたびにその時点の取込みから作る。印刷した後に取込みを取り消すか追加すると、次に作る紙は変わる（紙の印刷日時で見分ける。UI-09a-D17）。
+
+**型定義（proposed）**:
+
+```
+struct DailyReportSheet {
+    date: String,                                // 対象日（YYYY-MM-DD）
+    import_count: i64,                           // その日の完了した日報の取込みの数。0 なら行は空
+    summary_rows: Vec<DailyReportSheetRow>,      // Z001（SALES-SHEET-D2・D3）
+    payment_rows: Vec<DailyReportSheetRow>,      // Z002
+    department_rows: Vec<DailyReportSheetRow>,   // Z005
+    label_changed_sources: Vec<DailyReportSourceKind>, // 同じ位置に名称が 2 つ以上あった帳票。Z001 → Z002 → Z005 の順、重複なし
+    plu_rows: Vec<DailySaleItem>,                // SALES-SHEET-D4。§19.2 の型をそのまま使う
+    plu_import: DailyReportSheetPluImport,
+}
+
+struct DailyReportSheetRow {
+    position: i64,          // 帳票の行の位置（sort_order）
+    label: String,          // 前後の空白を除いた名称。空のこともある
+    quantity: Option<f64>,  // 個数（単位の数、小数 2 桁まで）。Z001 の総売の行と Z005 の行だけ
+    count: Option<i64>,     // 件数。Z001 の総売以外の行と Z002 の行
+    amount: Option<i64>,
+}
+
+struct DailyReportSheetPluImport {
+    import_count: i64,      // その日の active な Z004 の取込みの数
+    skipped_count: i64,     // その取込みの skipped_count の和
+}
+```
+
+`DailyReportSourceKind` は IO-07 の型（`Z001` / `Z002` / `Z005`、[29 §29.2](29-io-daily-report-parser.md#292-型定義)）で、wire にはすでに `DailyReportSourceFileInfo.source` として出ている。
+
+**シグネチャ（proposed）**:
+```
+fn get_daily_report_sheet(conn: &DbConnection, date: &str) -> Result<DailyReportSheet, BizError>
+```
+
+**前提条件**: conn は &DbConnection（autocommit）。読み取り専用のためTX不要（3 つの読取りの間に取込みが確定・取消されると、日報の部分と PLU の部分が別の時点の値になりうる。単一店舗・単一利用者で、取込みと印刷を同時に行わない。印刷の直前に読み直すので、次の印刷で揃う）。
+
+**処理ステップ**:
+
+1. **日付バリデーション**: §19.3 の手順 1 と同じ検査と文言。
+2. **日報の行の取得**: `sales_repo::get_daily_report_sheet_lines(conn, date)`（[24 §14.21a](24-io-csv-import-repo.md)）で、その日の完了した取込みの数と、Z001・Z002・Z005 の全行（取込みの古い順・位置の順）を得る。取込みが 0 件なら手順 5 へ進み、行を空にする（SALES-SHEET-D5）。
+3. **足す**: 帳票ごとに SALES-SHEET-D2 で組に分けて足し、SALES-SHEET-D3 で載せる組を選ぶ。
+4. **PLU の部分**: `sales_repo::get_daily_sales_records(conn, date)`（§19.3 の手順 2 と同じ IO 関数）から `source='auto'` で数量か金額が 0 でない行を残す。`sales_repo::get_active_z004_import_totals(conn, date)`（[24 §14.21b](24-io-csv-import-repo.md)）で `plu_import` を作る。
+5. **結果返却**: `DailyReportSheet` を返す。
+
+**エラーハンドリング**:
+- 日付形式不正・暦妥当性エラー → `BizError::ValidationFailed`（§19.3 と同じ文言）
+- 足し算の溢れ → `BizError::ValidationFailed`（本書冒頭の「数量と単位」の溢れと同じ扱い）
+- DB読み取り失敗 → `BizError::DatabaseError(DbError)`
+
+**テスト（runtime の lane）**: 同じ日の 2 取込みで、位置と名称が同じ行が足される（Z001 の総売の個数 `1.3` + `2` → `3.3`）。一方の取込みで金額が NULL の組は NULL。同じ位置で名称が違う 2 行は別の行に残り、`label_changed_sources` にその帳票が入る。名称が空で値が 0 の行は載らず、名称が空で値のある行は載る。取込みが 0 件の日は `import_count = 0` で行が空。取り消した取込みの行は入らない。PLU の部分に手動販売の行と数量・金額とも 0 の行が入らない。足し算の溢れは `ValidationFailed` で、紙の内容を返さない。
 
 ---
 
@@ -434,4 +503,5 @@ fn export_sales_csv(
 | 2026-09-27 | daily-report-z-display（design） | `OfficialDailyReportSummary.summary_imports` と `OfficialDailySummaryImport` / `OfficialDailySummaryLine` を追加。Z001の行は取込みごとに返し合算しない（D-096、[Plan Packet](../archive/plans/2026-09-27-daily-report-z-display.md)）。 |
 | 2026-10-04 | daily-report-import-gaps（plan-first） | 日報の個数の wire を単位の数（`f64`）にし、DB の 100 倍の整数から BIZ-05 で戻す（IO-07-D2、D-104）。 |
 | 2026-10-08 | 単位の拡張 design lane | 冒頭に単位の拡張の後の数量（proposed・未実装、D-113 / SPEC-UNIT-D3・D11、owner の決定 TD-203）を追加: 売上の wire の単位と、単位の違う商品の数量を数量の種類ごとの 2 本（点と m）に分けて出す規則（TD-206・TD-207）。 |
+| 2026-10-17 | 日報の紙と意味づけ（design） | §19.3a `get_daily_report_sheet`（日報の紙、proposed・未実装）と SALES-SHEET-D1〜D6 を追加: 1 日 1 枚、Z001・Z002・Z005 を位置と名称の組で足す、PLU は売れた行だけ（D-120）。§19.3 の手順 3 の支払の集約の鍵を位置と名称の組にした。 |
 | 2026-10-06 | z001-display（runtime、起票） | §19.2 の `OfficialDailyReportSummary` の field の並びを code（`sales_service.rs` の struct）と生成 bindings に合わせた（`source_import_count` を先頭へ。PR #114 Final Review の P3、[Plan Packet](../archive/plans/2026-10-06-z001-display.md)）。 |

@@ -593,6 +593,14 @@ CMD層の `CmdError` は `kind: string` / `message: string` / `field?` / `error_
 
 **cross-language validation 定数（D-054）**: file サイズ上限等、frontend と backend が同値を要する validation 定数は `src-tauri/src/constants.rs` を SSOT とし、bindings 生成で `bindings.ts` に export された値を frontend が import する。frontend 側の local 複製は禁止（静的 sweep test で検出）。L1 の bindings clean diff 検査が cross-language 同期の機械検査を兼ねる。
 
+#### 6.5.5 印刷（proposed・未実装、D-120）
+
+- **手段**: WebView の印刷（`window.print()`）と CSS の `@page { size: A4 portrait; margin: 10mm }`・`@media print` で、紙に出す部分だけを印刷する。印刷先・枚数・用紙は OS の印刷の dialog で選び、アプリにプリンタの設定の画面を作らない。最初の利用は日次売上の日報の紙（[56](function-design/56-ui-daily-sales.md) の UI-09a-D17・D18）
+- **未確認の前提**: Windows の WebView2（§6.5.1）で `window.print()` が OS の印刷の dialog を出し、`@page` の用紙の向きと余白の指定が効くこと。日報の紙の runtime の lane が実装の前に、開発の build を Windows で動かして確かめる
+- **効かないときの代わり**: 同じ紙の内容を 1 つの HTML の file にしてアプリの data の folder に書き、導入済みの `tauri-plugin-opener`（capability `opener:default`）で OS の既定のブラウザに開き、そこで印刷する。新しい依存は足さない
+- **採らない**: PDF を作る依存の追加、Excel の file の出力（店が開いて印刷する手順が残る）、OS の印刷の API を Rust から呼ぶこと（OS ごとの code が要る）
+- **文字と色**: 紙の上の文字は 9 pt 以上、色は使わない（意味のある色が無い）。紙ごとの並びは各画面の設計書が持つ
+
 ### 6.6 ダークモード見送り
 
 **決定**: Phase 1〜4 で**ダークモード対応はしない**。
