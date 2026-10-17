@@ -6,13 +6,13 @@
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
-- Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
+- Plan Reviewer: fresh Opus 5.5 + Codex（GPT-6.1 Sol / high。`.local` の model の選び方の「R3 で複数の層にまたがる契約の初回」の行）
 - Final Reviewer: Fable 5.1（Claude 側、R3・design lane）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -23,6 +23,7 @@
 1. kickoff → spec-check（2026-10-17、起草役）: owner の決定（repo 外の回答台帳 TD-260・TD-280・TD-296 の 15）と店主の答え（TD-279・TD-305）、2026-10 の見直しの突き合わせ O-18（repo 外）を Scope にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-17、起草役）: 触る正本（34 §19.3、24 §14.21、29 IO-07-D4・§29.4.1、56 UI-09a-D13・ExportBar・非目的、pos-tables §12d、SCREEN_DESIGN の日次売上、UI_TECH_STACK §6.5）が印刷を「仕様未定」とし、紙の用途を「外部提出帳票ではなく」と事実に合わない形で書き、支払の合算を並び順の鍵で持つ。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-120 で満たす。条件「未解決の設計の問いが無い」は、owner に聞く見た目の問い（紙の並びの案、切替えの日）に答えが無い間の既定を正本（UI-09a-D17・D19）に書いたことで満たす。残る外部前提（Contract Probe の P1・P2・P5）は runtime の lane の実装の前と L3 で確かめるもので、設計の問いではない。plan-gate への遷移は Coordinator。
+4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`2a615820`）にある。Coordinator は D-120 の全文と、29 §29.4.1・56 UI-09a-D13・D17・D19・34 SALES-SHEET-D2 の追加の行を読み、owner の決定（TD-260・TD-280・TD-296 の 15）と店主の答え（TD-279・TD-305）の写しに食い違いが無いこと、手元の資料の数に版の時点が付いていること、追加の行に実値・実ラベルが無いこと、37・45・55（並走の 364・367 の所有）に触れていないことを確かめた。owner に聞く 2 つ（紙の並びの案、切替えの日）は既定（案 a）で進められ、並びは runtime の lane の L3 で実機の印刷で並べて決める形を採る。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
