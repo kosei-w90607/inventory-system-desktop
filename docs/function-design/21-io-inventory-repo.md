@@ -4,7 +4,8 @@
 
 [棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9）の IO の側。保存の意味は [tracking](../db-design/tracking-system-tables.md) の同名の契約。旧 ADR（時点証拠）の版の強制（`update_stock_quantity_with_revision`・`bump_stock_revision`、D-109 で `#[cfg(test)]` に置いたもの）は置き換え、runtime の lane が外す。
 
-- `NewMovement` に並びの鍵（`business_date: String`〈YYYY-MM-DD〉、`phase: i64`〈0 / 1〉、`settlement_no: Option<i64>`〈phase=1 だけ〉）を足し、`insert_movement` が保存する。`MovementRecord` も同じ列を返す。
+- `NewMovement` に並びの鍵（`business_date: String`〈YYYY-MM-DD〉、`settlement_no: Option<i64>`）を足し、`insert_movement` が保存する。`phase` は field に持たず、`insert_movement` が `settlement_no` から決めて書く（`Some` なら 1、`None` なら 0。phase と settlement_no の食い違いを型で作れないようにする。2026-10-18、D-118 の runtime の (a) の起票で決めた。DB の CHECK も同じ対を縛る）。`MovementRecord` に同じ列を返させるのは (b)（在庫推移に計数を混ぜる [65](65-inventory-record-traceability.md) の新契約と同じ配布の単位。ADR SPEC-STK-CNT-D12）。
+- (a) の間の書込みの関数: `update_movement_stock_after(tx, movement_id, stock_after)`（その TX で INSERT した movement の `stock_after` を、求め直しの後の写しの値に書く。[31](31-biz-inventory-service.md) の `apply_stock_change`）。
 - 求め直しの読取り（BIZ の `recompute_stock` が同じ TX で呼ぶ）: 商品の計数の一覧（`stock_counts`、鍵の順）、商品の `is_voided=0` の movement（鍵の順、quantity と鍵）、active な Z004 の取込みの精算の一覧（`csv_imports` の `settlement_date`・`settlement_no`・`id`）、決まらない精算の行（その取込みの `sale_records` の商品の個数・金額・`stock_linked`）。
 - 写しの書込み: `update_stock_quantity` は数量に加えて `stock_recheck`・`stock_range_low`・`stock_range_high` を書く形に変え、呼ぶのは `recompute_stock` だけにする（今の呼出し元 4 か所〈共通入出庫・Z004 の取消・旧棚卸しの確定・整合性の補正〉は全て `recompute_stock` に寄せる）。`ProductUpdates` の数量の分岐は使わない（今も production で `Some` を渡す呼出しは無い）。
 - 計数の保存: `insert_stock_count`（`stock_counts` へ 1 行 INSERT。UPDATE・DELETE の関数は持たない）。

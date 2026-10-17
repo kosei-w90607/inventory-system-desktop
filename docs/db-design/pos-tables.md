@@ -14,7 +14,7 @@
 - 同じ machine_no・settlement_no の active な取込み（completed / completed_partial）は 1 つだけ（BIZ が preview と確定の TX で検査する。取り消した取込みは比べない）。DB の UNIQUE は張らない（取消の後の取り込み直しで同じ番号の行が複数になる）。
 - 精算日と精算回数の順の食い違い、別の machine_no、欠けた精算回数の知らせは BIZ が active な取込みの `settlement_date`・`settlement_no`・`machine_no` から判定する（新しい表を持たない）。
 - 確定で作る Z004 の movement は `business_date = settlement_date`、`phase = 1`、`settlement_no` を持つ（[tracking](tracking-system-tables.md) の同名の契約）。
-- 移行: 既存の取込みがある DB では runtime の migration は止まる（tracking の「移行」。開発・試験 DB の作り直しは別の承認）。
+- 移行: 既存の取込みがある DB では runtime の migration は止まる（tracking の「移行」。開発・試験 DB はリリースの前まで作り直してよい。D-123）。`csv_imports` の 2 列と `sale_records.stock_linked` は (b) の配布の単位の migration が足す（ADR SPEC-STK-CNT-D12）。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 

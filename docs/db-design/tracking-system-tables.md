@@ -8,9 +8,9 @@
 
 | 保存先 | 足す列 | 制約と意味 |
 |---|---|---|
-| inventory_movements | business_date TEXT | NOT NULL、YYYY-MM-DD。入出庫は header の日付（`receiving_date`・`return_date`・`sale_date`・`disposal_date`）、Z004 は `csv_imports.settlement_date`、初期在庫（`reference_type` が NULL）は登録日。業務記録の取消は今は無い（65）。足すときは、逆向きの movement に元の業務記録の日付を持たせる |
+| inventory_movements | business_date TEXT | NOT NULL、YYYY-MM-DD（CHECK: 長さ 10 で `[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]` に合う。窓の判定は日付を文字列の大小で比べるので、`2026-4-7` のような形を DB に入れない。実在する日付かは BIZ が書く前に確かめる〈[31](../function-design/31-biz-inventory-service.md) の同名の節〉）。入出庫は header の日付（`receiving_date`・`return_date`・`sale_date`・`disposal_date`）、Z004 は `csv_imports.settlement_date`、初期在庫（`reference_type` が NULL）は登録日。業務記録の取消は今は無い（65）。足すときは、逆向きの movement に元の業務記録の日付を持たせる |
 | inventory_movements | phase INTEGER | NOT NULL、0/1 の CHECK。Z004 の movement は 1、ほかは 0 |
-| inventory_movements | settlement_no INTEGER | phase=1 なら NOT NULL（`csv_imports.settlement_no`）、phase=0 なら NULL（table の CHECK）。`reference_type='csv_import'` と phase=1 は同じ行で揃う（table の CHECK: `(reference_type IS 'csv_import') = (phase = 1)`。`=` で比べると `reference_type` が NULL のとき NULL になり CHECK が通るので、`IS` で比べる） |
+| inventory_movements | settlement_no INTEGER | phase=1 なら NOT NULL（`csv_imports.settlement_no`）、phase=0 なら NULL（table の CHECK）。`reference_type='csv_import'` と phase=1 は同じ行で揃う（table の CHECK: `(reference_type IS 'csv_import') = (phase = 1)`。`=` で比べると `reference_type` が NULL のとき NULL になり CHECK が通るので、`IS` で比べる）。列と phase・settlement_no の対の CHECK は (a) の migration（[22 §19](../function-design/22-mnt-migration.md)）、`reference_type` と phase を結ぶ CHECK は (b) の migration が足す（ADR SPEC-STK-CNT-D12） |
 | stock_counts（新設） | id INTEGER PK AUTOINCREMENT、product_code TEXT FK、count_value INTEGER、count_kind TEXT、business_date TEXT、settlement_no INTEGER、seen_movement_id INTEGER、stocktake_item_id INTEGER FK NULL、counted_at TEXT | append-only（UPDATE・DELETE しない）。count_value は 0 以上の整数（在庫の数量の単位。長さは cm）。count_kind は `default`（「数を保存」「0 にする」）/ `fresh`（「入れ直す」）の CHECK。`fresh` なら seen_movement_id（保存の時点の `MAX(inventory_movements.id)`、無ければ 0。id は 1 から始まる）が NOT NULL で、settlement_no は保存の時点で取り込み済みの active な Z004 の最大の精算回数（取込みが無ければ NULL。精算回数 0 は実在しうるので 0 を印に使わない）。`default` なら両方 NULL（table の CHECK: `count_kind='default'` なら両方 NULL、`count_kind='fresh'` なら seen_movement_id が NOT NULL）。比べ方は ADR D3（settlement_no が NULL の fresh な計数には、どの精算も「k ≤ n」に当たらない）。fresh の business_date は保存の日（今日）。stocktake_item_id は棚卸しの画面から保存した計数だけが持つ。counted_at は保存の時刻（表示用。窓の判定に使わない）。id は保存の順で、fresh な計数が先に保存された計数を置き換える判定と表示に使う |
 
 - 鍵は ADR D1 の表（movement は `(business_date, phase, settlement_no, 0)`、初期在庫は 4 つ目を −1 とみなす、既定の計数は `(business_date, 0, NULL, 0)`、fresh な計数は `(business_date, 1, settlement_no, 1)` で settlement_no が NULL なら 3 つ目を −1 とみなす）。記録が計数に入っているかは鍵の大小を使わず ADR D3 の窓の判定表で決める。
@@ -31,8 +31,8 @@
 
 ### 移行（SPEC-STK-CNT-D10）
 
-- 棚卸し（`stocktakes`）か Z004 の取込み（`csv_imports`）を 1 件でも持つ DB では、migration は何も変えずに失敗する（開発・試験 DB の作り直しは別の承認）。
-- 持たない DB では、同じ TX で列と表を足し、既存の movement の business_date を参照先の業務記録の日付（`reference_type` が NULL の初期在庫は `created_at` の日付）で埋め、phase=0 にし、全商品を求め直して写しを書く。求め直した値が移行の前の `stock_quantity` と違う商品は、件数と商品ごとの old / new を同じ TX の `operation_logs`（`integrity_fix` と同じ detail の形）に残し、起動の後に整合性の画面で知らせる。失敗は全体を戻す。
+- 棚卸し（`stocktakes`）か Z004 の取込み（`csv_imports`）を 1 件でも持つ DB では、migration は何も変えずに失敗する（そうした開発・試験 DB はリリースの前まで作り直してよい。古い file は消さずに移す。D-123）。
+- 持たない DB では、同じ TX で列と表を足し、既存の movement の business_date を参照先の業務記録の日付（`reference_type` が NULL の初期在庫は `created_at` の日付）で埋め、phase=0 にし、全商品を求め直して写しを書く。求め直した値が移行の前の `stock_quantity` と違う商品は、件数と商品ごとの old / new を同じ TX の `operation_logs`（`integrity_fix` と同じ detail の形に `"trigger": "migration"` を足す）に残し、起動の後に整合性の画面で知らせる。失敗は全体を戻す。手順・止まる条件・`sqlite_sequence` の扱いは [22 §19](../function-design/22-mnt-migration.md)。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 

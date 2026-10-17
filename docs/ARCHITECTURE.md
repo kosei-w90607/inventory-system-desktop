@@ -10,7 +10,7 @@
 | CMD | 生成 wire・error の変換、PC の今日を BIZ へ渡す。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42 |
 | BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
 | IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込み。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
-| MNT | 列と表を足す migration（棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB の作り直しは別の承認）。[MNT task](architecture/mnt-task-specs.md) |
+| MNT | 列と表を足す migration（棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
 
 レジ固有の形式は adapter、精算の並びと要再確認の判定は BIZ が所有する。時刻で前後を判定しない。EJ は在庫に使わない。
 
