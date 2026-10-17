@@ -24,6 +24,7 @@
 2. spec-check → design（2026-10-17、起草役）: 触る正本（34 §19.3、24 §14.21、29 IO-07-D4・§29.4.1、56 UI-09a-D13・ExportBar・非目的、pos-tables §12d、SCREEN_DESIGN の日次売上、UI_TECH_STACK §6.5）が印刷を「仕様未定」とし、紙の用途を「外部提出帳票ではなく」と事実に合わない形で書き、支払の合算を並び順の鍵で持つ。同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-120 で満たす。条件「未解決の設計の問いが無い」は、owner に聞く見た目の問い（紙の並びの案、切替えの日）に答えが無い間の既定を正本（UI-09a-D17・D19）に書いたことで満たす。残る外部前提（Contract Probe の P1・P2・P5）は runtime の lane の実装の前と L3 で確かめるもので、設計の問いではない。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`2a615820`）にある。Coordinator は D-120 の全文と、29 §29.4.1・56 UI-09a-D13・D17・D19・34 SALES-SHEET-D2 の追加の行を読み、owner の決定（TD-260・TD-280・TD-296 の 15）と店主の答え（TD-279・TD-305）の写しに食い違いが無いこと、手元の資料の数に版の時点が付いていること、追加の行に実値・実ラベルが無いこと、37・45・55（並走の 364・367 の所有）に触れていないことを確かめた。owner に聞く 2 つ（紙の並びの案、切替えの日）は既定（案 a）で進められ、並びは runtime の lane の L3 で実機の印刷で並べて決める形を採る。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `41c7210f` で直し、Coordinator が差分（34 SALES-SHEET-D2 の鍵の理由と保証の範囲・D5 と処理ステップの順、56 UI-09a-D13 の出典・D17 の押したときの順と画面の知らせとリンク・D18 の代わりの道、24 §14.21 の互換の範囲、29 IO-07-D4 の D4a への参照、plu-export の旧い記述、Matrix の追加の行）を読んだ。鍵（位置と名称の組）と Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 
 ## Owner Effort Budget
 
@@ -281,5 +282,29 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
 先行 round の結果・評価（判定・件数・採否・reviewer の意見）はこの節にだけ書く。前半の節と遷移記録には「round N の是正（Review Response 参照）」だけを書く（独立 review は `## Review Response` より前だけを読む）。
+
+### Plan Review round 1（2026-10-17、head `204b3992`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 2・P3 6）と Codex GPT-6.1 Sol（reject、P1 0・P2 4・P3 3）。全て採った（Coordinator の裁定）。是正の前に相談役（Fable 5.1）に反例探しを頼み、鍵は位置と名称の組のままにし、保証の範囲と知らせの条件を正本に書く方針にした。起草役が `41c7210f` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R1 | Claude F1（P2） | 採る（鍵は変えない） | 行の数か並びが精算の間で変わると同じ名称の行が位置ごとに割れる。名称だけの鍵の棄却の理由が `contains()` の話になっている | 棄却の理由を「1 本の中の完全一致の同じ名称」に直した。P3 に Z001 の数と行の数（全本同じ）、1 本の中の同じ名称の例 0 を足した。保証の範囲（行がずれた日は同じ名称が位置ごとに分かれて載り、知らせが出る。別の項目を足すことは無い）を SALES-SHEET-D2 に書き、知らせの条件を「組の集合の不一致」にした。Matrix に行がずれた日と組の集合が同じ日の 2 行を足した |
+| R2 | Claude F2・Codex #5（P3） | 採る | 紙の用途の出典が project-memory に無く、plu-export に逆の live な文が残る | 出典を repo 外の回答台帳 TD-059・TD-060 にし、plu-export の文を UI-09a-D13・D-120 への参照に直した。AC5 に旧い文の撤去の検査を足した |
+| R3 | Claude F3・Codex #2（P2） | 採る | 代わりの道の `opener:default` は local の file を開く許可を含まない。書く場所と escape が無い | Rust 側の CMD が app data の固定の file に書き、Rust の API `open_path` で開く（capability を足さない）、値は HTML escape、と UI-09a-D18・§6.5.5 に書いた。Matrix に失敗を成功と扱わない・escape の行を足した |
+| R4 | Claude F4・Codex #1（P2） | 採る | wire に位置が無いので「位置と名称から行の key を作る」は実行できない | 返す `payment_key` の意味と wire は変えず、画面の行の key を部門別集計と同じ `${payment_key}-${index}` にした。Matrix に同じ `payment_key` の 2 行の component test を足した |
+| R5 | Codex #3（P2）・Claude F5（P3） | 採る | 押したときの読み直しの test が呼出しの順だけで、旧い値で印刷しても通る。読み直しの失敗と 0 件の扱いが無い | 押したときの順を (1) `await refetch()` (2) 失敗か `import_count` 0 なら印刷せず文を出す (3) 描画の後に print、に固定した。Matrix を遅延応答で新旧の値を見分ける形にし、失敗・0 件の行を足した |
+| R6 | Codex #4（P2） | 採る | 「名称が変わらない日は今と同じ」が、1 取込みの中に同じ名称の 2 行がある入力と両立しない | 互換の範囲を「組の集合が同じで、1 取込みの中に同じ `payment_key` が無い日」に限り、同じ `payment_key` の 2 行は新しい規則どおり分かれる期待値を Matrix に足した |
+| R7 | Codex #6（P3） | 採る | D5 の失敗の順（読取り → 足し算）と処理ステップ（足し算 → PLU の読取り）が逆 | 処理ステップの読取りを 3 つまとめて足し算の前にした |
+| R8 | Claude F6（P3） | 採る | `skipped_count` は商品に当たらない行のほかに形式の誤りも数える | 文を `数えていない PLU の行が {N} 行あります` にした |
+| R9 | Claude F7（P3） | 採る | Z005 の `label` の列が書かれていない | `raw_department_name` と書き、Matrix に 2 つを違う値にした fixture の行を足した |
+| R10 | Claude F8（P3） | 採る | IO-07-D4 の live な文が旧い鍵と旧い 24 への参照のまま | D4 の 2 行に D4a への参照を足した |
+| R11 | Codex #7（P3） | 採る | `"credit"` の検索の現物の説明が不正確 | 実測どおり（parser 2 行と DB の test 2 行）に書いた |
+
+あわせて owner の設計の原則（repo 外の回答台帳 TD-310、2026-10-17）で、画面に知らせとその場で直せるリンクを足した（未取込みの日 → `売上データ取込みを開く`、数えていない PLU の行 → `取込みの記録を開く`。どちらも `/csv-import`）。
+
+起草役が残した判断 2 つの Coordinator の裁定（2026-10-18）:
+
+- 行の数か並びが変わった日に、同じ名称の行の合計の行を紙に足すか: 足さない。手元の集計（P3）で起きておらず、起きた日は知らせが出て黙って通らない。足すと紙の様式が変わり、L3 の並びの判断の前に形を決めることになる。実際に起きたら D-120 の Revisit で扱う。
+- リンクの行き先を取込みの記録の詳細まで直接にするか: 一覧（`/csv-import`）のままにする。詳細へ直接行くには `plu_import` に取込みの ID が要り、wire が増える。一覧からその日の Z004 の記録へ 1 操作で進める。runtime の lane の L3 で手間が大きいと分かれば足す。
