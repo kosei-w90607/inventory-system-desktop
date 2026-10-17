@@ -26,6 +26,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`8470fa65`）にある。Coordinator は D-121 の Context・Decision と、37 §37.10・§37.11 を新設して §37.3〜§37.9（並走の 367 の所有）を変えていないこと、所有表（37・45・55・pos-tables で 363・367 と節が分かれる）、owner の決定（TD-264・TD-265・TD-277・TD-296 の 11a・TD-304）の写しを確かめた。発注書の「TD-264 に ECR+ の終了の後も」は Coordinator の要約の誤りで、起草役が原文に当たって出所を TD-162・TD-020 に直したことを確かめた。店に聞く 2 つは答えが無い間の既定で進められる。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `253ef96c` で直し、Coordinator が差分（37 §37.10 の内部の結果と手順 1〜5・BIZ-08-D8・D10、§37.11 の手順 1・2a・3・5・7 と `body_text`・保証の範囲、24 §14.18b、45 §45.6c、55 UI-07-D17、backlog の申し送り、Matrix の追加の行）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `f4f5faf9` で直し、Coordinator が差分（37 §37.11 の保存の規則を形と日付の検査 → 伸びうるかの判定と保留 → 番号と文の比べ → 保存 → 数と名指しの 1 つの筋に書き直したこと、伸びうるかを file の名前の規則で決めること、§37.10 の scan で外した名前・移す条件・Z004 の error の振り分け、45 の生成 enum、24 の型の所有、55 の知らせの文）と、起草役の組の一巡の表を読んだ。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
+7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-317、介入 1 回目 / 予算 9 回）。起草役が `23be816e` で直し、Coordinator が差分（UI-07-D17 の Z004 の部分成功と保留・食い違い・読めない file だけのときのボタンの条件、§37.11 手順 3 (d) の保留した記録の確かめ直しを正本 1 か所にしたこと、控えの query の key、並べる鍵、番号の一周）を読んだ。
 
 ## Owner Effort Budget
 
@@ -422,3 +423,18 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 2）と Codex GPT-6 Astra�
 | R22 | Claude #3（P3） | 採る | 閲覧の型の所有が書かれていない | db で定義して `biz/mod.rs` で re-export する形を書いた |
 
 起草役の問いの Coordinator の裁定（2026-10-18）: 連番の名前に改名した伸びうる file の書きかけを保存しうることは、保証の範囲に書いたとおり round 3 の判定に出す。保存済みと文の違う保留の記録に別の数は足さない（知らせの文で事実と合う）。conflict にその場で直す操作が無いことは owner に諮る候補のまま。
+
+### Plan Review round 3（2026-10-18、head `08918379`）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 4）と Codex GPT-6 Astra（reject、P1 0・P2 2・P3 1）。Codex #2 と Claude #1 は同じ件で、重い方の P2 とした。全て採った（Coordinator の裁定）。round の天井で P2 が残ったので owner に諮り、「直して、追加の round なしで plan-approved（跡は Final Review）」と決まった（repo 外の回答台帳 TD-317）。起草役が `23be816e` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R23 | Codex #1（P2） | 採る | 一括取込みの結果に Z004 の部分成功と取り込まなかった行の知らせが無い | UI-07-D17 に部分成功の label、取り込まなかった行の数、既存の取込みの詳細へのリンクを書き、Matrix に検査を足した |
+| R24 | Codex #2（P2）・Claude #1（P3） | 採る | 新しい控えが無いと、保留・食い違い・読めない file の詳細へ進めない。保留した記録がいつ入るかの文が正本と合わない | scan の要約に保留の数を足し、どれかがあればボタンから結果へ進める。保留した記録は次の読取りでもう一度確かめる規則を §37.11 の 1 か所に置き、画面の文・D-121・Ordinary Operation はそれを引く。毎日出る保留の文は注意の知らせと分けた補足とし、雑音かを (A) の L3 で確かめる |
+| R25 | Codex #3（P3） | 採る | AC13 の開始の値の説明が実測と違う | 直した |
+| R26 | Claude #2（P3） | 採る | 一括取込みの後に控えの query を無効にしない | §45.6c 手順 4 を key の置き場にし、手で選ぶ取込みと UI-09c はそこを引く |
+| R27 | Claude #3（P3） | 採る | 同じ日と精算回数の 2 束の順が決まらない | `XZ` の束を先、次に候補の鍵の辞書順を足した |
+| R28 | Claude #4（P3） | 採る | 番号の一周を再検討に挙げていない | BIZ-08-D9 の再検討に足した |
+
+起草役の問いの Coordinator の裁定（2026-10-18）: 保留をボタンの条件に入れると、締めのたびにボタンが押せる状態になる。雑音かは (A) の L3 で確かめ、雑音なら保留を文とボタンの条件の両方から外す形が正本にあるので、この形を採る。食い違いにその場で直す操作が無いことは owner に諮る候補のまま。
