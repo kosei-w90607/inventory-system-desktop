@@ -25,6 +25,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は、手順書 `docs/msi-distribution-runbook.md` を同じ plan-first の変更に置いて満たす（docs だけの lane の先例 `docs/archive/plans/2026-10-17-unit-redesign-design.md` と同じ形）。条件「未解決の設計の問いが無い」は、実機でしか分からない点（M1〜M9）を手順書に「未確認」と書き、結果で変わる所を表に置いたことと、製品名と upgrade code の固定を初回の導入の前提として本 lane の外の項目（backlog）に出したことで満たす。製品名を何にするかは owner の問い（下の Review Focus の Q1）で、本 lane の手順書は名を引かずに書いてあるので答えを待たない。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet と手順書は起草役の commit（`1ef45cbd`）にある。Coordinator は手順書の全文と packet の全文（Goal の失敗定義・Ordinary Operation・Scope と所有表・AC・Design Readiness・Contract Probe・Data Safety）を読み、流れ 5 が DB の版の上がり方と入力の前後で分かれていること、未確認の振舞いが M1〜M9 に揃っていること、差分が docs の 4 file だけで店の運用の細部や実データが無いことを確かめた。手順書を plan-first の commit に置く形は docs だけの lane の先例どおりとして採る。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、「22 §16 の回復の番号が無い段は置かない」の原理と予行演習の DB の隔離を是正に入れた。起草役が `356663cd` で直し、Coordinator が差分（流れ 5 の表と 1・2、保管の規則、予行演習の準備と片付け、AC6）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
+6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Astra）の是正（Review Response 参照）。Risk を R3 に上げた。起草役が `c68f6504` で直し、Coordinator が差分（初回の導入の条件、流れ 4 の照合と起動が止まったとき、流れ 5 の今の DB の版の知り方と表と 1・2、予行演習の片付け、Risk・Contract Ledger・Matrix の新設）を読んだ。流れ 4・5 は今の DB の版を正とする 1 つの筋に書き直され、店の DB に作り直しが当たる経路が無いことを確かめた。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 
 ## Owner Effort Budget
 
@@ -264,3 +265,24 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 6）と Codex GPT-6.1 Sol�
 | R9 | Claude #7（P3） | 採る | `identifier` を変えないことと、在庫の数の比べる相手が無い | 初回の導入の前に決めることに 1 文、流れ 3 で代表の商品の在庫の数を控える |
 | R10 | Codex #4（P3） | 採る | 新しい版で作った backup が旧版で開けないことを無条件に書いている | DB の版が前の版の扱える版を超えたときに限った（流れ 3 は毎回のまま、22 の文は変えない） |
 | R11 | Claude #2（P3） | 採る | R2 と R3 の境 | Risk の Reason に、新しい手順の順序が 22 §16 の 2〜5 を崩していないことを Final Review が確かめる旨を足した |
+
+### Plan Review round 2（2026-10-18、head `ad57008c`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 5）と Codex GPT-6.1 Astra（reject、P1 0・P2 4）。Codex #1 と Claude #5 は同じ件で、重い方の P2 とした。Codex #4 と Claude #6 は同じ件で、R3 へ上げた。全て採った（Coordinator の裁定）。起草役が `c68f6504` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R12 | Claude #1（P2） | 採る | 店の PC へ初めて入れる版が作り直しの起点の migration を含まないと、後の更新がそこで止まり、店の DB を作り直す経路になる | 初回の導入の前に決めることに、初回の導入をリリースとし、その版は作り直しの起点の migration を全部含む（owner の決定、repo 外の回答台帳 TD-311）を足した。流れ 4 に「作り直しは開発・試験 DB の手順で、店の DB に当てない」。backlog にも同じ前提 |
+| R13 | Codex #1（P2）・Claude #5（P3） | 採る | 戻し方を配布の記録の最大の版で決めていて、migration が失敗して DB の版が変わらなかったときに不要な差替えへ誘導する | 流れ 4 の起動が止まったときと流れ 5 を、今の DB の版を正とする形に段落ごと書き直した。版の知り方（起動できた／止まった → 前の版を起動して決める／分からない → 記録の版で安全側）を書き、表の行 1 に前の版を入れる前の手動バックアップを足した |
+| R14 | Codex #2（P2） | 採る | 予行演習の後、試験用の folder が元の名を占めたまま退避した folder を戻させる | 全プロセスの停止 → 試験用の folder を別名で保全 → 元の名が空いていることを確かめる → 戻して確かめる、の順にした |
+| R15 | Codex #3（P2） | 採る | 起動の後の照合が合わないときの停止と行き先が無い | 全部が合ったときだけ業務の入力を始め、合わなければ控えて止める、を流れ 4 の手順 5 に書いた |
+| R16 | Codex #4（P2）・Claude #6（P3） | 採る（R3 へ上げる） | 手順書は正本に無い店の DB の安全の判断を足しており、`docs/DEV_WORKFLOW.md` の「R2 と R3 で迷えば data safety boundary に触れるなら R3」に当たる | Risk を R3 にし、Contract Ledger と Test Design Matrix を足した。Review Focus に D-119 の前提との整合を足した |
+| R17 | Claude #2（P3） | 採る | M4 の後半は upgrade code の固定の後では製品名の見込みを確かめない | M4 を固定が効くことを見る形にし、見込みの出所を公式の資料にした |
+| R18 | Claude #3（P3） | 採る | 流れ 1 の手順 1 に変更があったときの行動が無い。MSI の場所が未確認なのに事実として書いてある | `package-lock.json` だけなら戻す、それ以外なら配布しない。場所に（M1） |
+| R19 | Claude #4（P3） | 採る | 作業フォルダーの確かめが起動の後に読める | 独立した手順にし、あれば起動せずに止める（ショートカットは MSI を入れた後にできるので、入れた後・起動の前に置く）。M2 にショートカットの作業フォルダーを見ることを足した |
+
+起草役が出した問いの Coordinator の裁定（2026-10-18）:
+
+- TD-311 の durable な記録: 並走の棚卸しの runtime の lane（D-123 の予定）が D-119 (8)・22 §16 を TD-311 に合わせて直す。本 lane は台帳の ID を引くだけにする。先に merge した側の 22 §16 の文に、後の側が参照を合わせる。
+- 初回の導入（リリース）が原価の lane と棚卸しの runtime の配布の後になる帰結: owner に確かめる（本 round の review が通った後に他の packet の問いとまとめて聞く）。答えが無い間は手順書のとおり（作り直しの起点を全部含む版まで店の PC に入れない）。
+- 前の版の拒否の文言を実機で見る組が予行演習に無いこと: Residual Test Gaps のまま残す（拒否の文言は自動 test が固定している）。round 3 で reviewer が足すべきと判断すれば足す。
