@@ -25,6 +25,7 @@
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-122 で満たす。条件「未解決の設計の問いが無い」は、owner の決定（TD-284・TD-286・TD-296 の 6b）で方向が決まり、境界の 4 件を正本の規則で閉じ、残る owner への確かめ（下の「owner への確かめ」の Q1）は答えが無い間の既定を D-117 の受け入れ済みの限界に置いたことで満たす。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`412d2a36`）にある。並走の 367（`agent/sd-direct-read-runtime`）も 22 に §17・MNT-03-D15 を新設していたので、本 lane の節を §18・MNT-03-D16 に振り直した（本 commit。22・master-tables・decision-log・backlog・本 packet・Matrix の参照、計 20 行）。Coordinator は D-122 の決定・置き場（商品の側の表と trigger 3 つ）・問いを出す条件・`commit_import` の確かめ直しを読み、owner の決定（TD-284 の c、TD-286 の β、TD-296 の 6b）の写しに食い違いが無いこと、D-117 の round 1 で崩れた継ぎ目（reserved の枠の別名、経路ごとの消し方、共有の同時変更、CMD・UI の境界）がそれぞれ置き場か条件で塞がれていること、code・migration に触れていないことを確かめた。owner に聞く Q1（前の JAN の枠の値段）は既定 a（D-117 の受け入れ済みの限界）で進める。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `f50d0bfd` で直し、Coordinator が差分（30 §4.9 の手順 0b・2 e. と §4.9.2 の preview の判定・答えの運び方・commit の判定の表・回復・そのほかの限界、42 §22.6、60 UI-01c-D17、20 の DbError の対応、master-tables の別名の UPDATE の段、Matrix の追加の行）を読んだ。置き場（商品の側の表と trigger）と Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
+6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `dd2df899` で直し、Coordinator が差分（30 §4.9.2 の commit の判定表 J1〜J7 と、§4.9・42 §22.6・60 UI-01c-D17 がそれを引く形、問いの条件と成立の条件の分け方、backlog の runtime の順と依存、Matrix の T4・T5・T8）を読んだ。判定・error・回復の置き場は判定表の 1 か所になった。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 
 owner への確かめ（設計を止めない。答えが無い間は既定で進む）:
 
@@ -297,3 +298,17 @@ Codex #2 の経緯: Coordinator は当初「限界として書く」（業務規
 - 締めの前に JAN を直すと、その日の売上が行エラーになる（今は操作の順に頼る）。
 - 「ない」と答えた後に「ある」にする手段が無い。
 - 商品フォームの新規作成で、別名の JAN が警告なしに消える。
+
+### Plan Review round 2（2026-10-18、head `9b163cd3`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 3・P3 3）と Codex GPT-6 Astra（reject、P1 0・P2 2・P3 1）。Claude #2 と Codex #2、Claude #4 と Codex #1 は同じ件。全て採った（Coordinator の裁定）。起草役が `dd2df899` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R6 | Codex #1（P2）・Claude #4（P3） | 採る | 手順 2 e. とエラーハンドリングが一律の型と件数を書き、§4.9.2 の表と食い違う（競合は field つき）。後からできた別名の検査が手順と表に無い | §4.9.2 の commit の判定を J1〜J7 の表（時点・条件・error の型と field と message・回復）にし、§4.9・42 §22.6・60 UI-01c-D17 は表を引くだけにした。後からできた別名の検査を J5 に移した |
+| R7 | Claude #2・Codex #2（P2） | 採る | 撤回した前の問いの条件が packet・biz-task-specs・D-122・Matrix T5 に残る | 問いの条件（選択に依らない）と成立の条件（commit が実際の選択で判定）を分けて書き、T5 の期待を「両方に問いが出る」に直した。同じ型の文を全文書で洗った |
+| R8 | Claude #1（P2） | 採る | backlog の後続の項目に撤回した答えの形が残る | `old_jan_aliases` / `oldJanAliases` に直し、AC3 の検索の対象に backlog を足した |
+| R9 | Claude #3（P2） | 採る（runtime の順を直す） | 別名の runtime を PLU の書出しの見直しの runtime より前に入れると、その間は JAN を直すと前の枠が消え、問いの約束が果たされない | owner の決定（repo 外の回答台帳 TD-284・TD-286）の「より前」は設計の lane の順の話と読み（起草役が原文を読み、Coordinator も同じ読み）、backlog の別名の runtime を PLU の書出しの見直しの runtime と同じ lane かその後にし、依存を書いた |
+| R10 | Claude #5（P3） | 採る | warning の照らし方が一意でない | J5 を「今の別名の商品で作った warning の文と一致する要素がある」にした |
+| R11 | Claude #6（P3） | 採る | Mutation の節が表に無い test 名を指す | 表の名前に揃えた |
+| R12 | Codex #3（P3） | 採る | AC4 の baseline が現物と合わない | base で測り直して直した |
