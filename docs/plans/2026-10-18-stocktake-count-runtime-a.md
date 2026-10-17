@@ -12,9 +12,9 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: plan-approved
 - Risk: R4
-- Plan Commit: pending
+- Plan Commit: 1928f836d2bb04f0fe493b27eaebf28aa85caf00
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（subagent_type: writer）
@@ -33,6 +33,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `3523401a` で直し、Coordinator が差分（Matrix の「既存の test の移し方」T1〜T6 と、S1・S2・S4・S6 がそれを引く形、22 §19 の手順 2 の暦日の検査と手順 2・8 の作り直しの案内、Contract Probe P7、S1〜S6 の検証の単位、L3-1 の控えと合格基準、`per_page`、数の集計、ADR の Context の注記）を読んだ。Scope の範囲と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `c3f98aa6` で直し、Coordinator が差分（31 の業務日の形と暦の検査を書く側の 1 か所にしたこと、22 §19 の手順 2 の拒む 3 つの条件と手順 8・9、21・31 の新しい関数のシグネチャ、Contract Probe P6・P7 の実測、Matrix の M4・M6・W1・W5・W7・T2）を読んだ。Scope と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-319、介入 1 回目 / 予算 9 回）。起草役が `390e29f5` で直し、Coordinator が差分（S6 の補正の操作ログを 75 の 4 項目の前後に揃えたこと、U6、demo の seed の写しを和へ揃えること、S7 の DB_DESIGN の節、L3-1 の (iii)、T5・T6 の局所変数名、backlog の (b) への申し送り）を読んだ。
+8. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側が round 3 で P1・P2 が無いと報告し、Codex の P2 1 件は owner の決定（repo 外の回答台帳 TD-319）どおり直した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。実装の commit はまだ無い。R4 の承認（Human Gate `r4`）は実装に入る前に owner に諮る。
 
 ## Owner Effort Budget
 
