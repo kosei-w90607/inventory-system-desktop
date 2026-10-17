@@ -595,13 +595,49 @@ fn get_completed_daily_report_aggregate(conn: &DbConnection, report_date: &str) 
 **処理ステップ**:
 1. `daily_report_imports` から `report_date=? AND status='completed'` の親を全件、親の `id`・`report_date`・`gross_amount`・`net_amount`・`imported_at` を `imported_at ASC, id ASC` の順で取得する。親がなければ `Ok(None)` を返す。`imported_at` と並びは手順 6 の取込みごとの行（行の無い親を含む）が使う。手順 2 の gross / net の加算は、従来どおり新しい順（`imported_at DESC, id DESC`、手順 1 の並びの逆）で行う。`checked_add` の途中の溢れ（手順 7）と NULL の伝播（どれかが NULL なら NULL）は加算の順に依るため、取得の並びを変えても既存の結果（日次の数字と日次 CSV）を変えない（例: 古い順の gross が `i64::MAX`・`1`・`-i64::MAX` の 3 親は、新しい順で足すと `1`、古い順で足すと途中で溢れて `DbError::QueryFailed`）。
 2. `source_import_count` は対象親件数とする。親 `gross_amount` / `net_amount` はそれぞれ合計するが、いずれかの親で対象値が NULL なら集約値も NULL とする。
-3. `daily_report_payment_lines` は `payment_key` で集約する。amount / count は対象行のいずれかが NULL なら集約値も NULL とする。
+3. `daily_report_payment_lines` は [34](34-biz-sales-service.md) の SALES-SHEET-D2 の規則で返す（proposed・未実装、[D-120](../decision-log.md)。規則の正本は SALES-SHEET-D2 で、ここに写さない。今の実装は `payment_key` で集約し、並び順から作る `payment_N` が、同日の取込みの間で名称の違う行を 1 行に足しうる。`payment_key` は保存を続けるが集約の鍵に使わない）。D2 の 1・2 の日は位置と名称の組で集約し、`OfficialDailyReportRow` の内部の field `payment_lines_unsummed` を false にする。D2 の 3 の日は足さずに、全取込みの行を親の `imported_at ASC, id ASC`・行の `sort_order ASC, id ASC` の順にそのまま返し（1 行が 1 件。手順 5 の代表は各行自身）、`payment_lines_unsummed` を true にする（BIZ-05 が warning の文を足す。34 §19.3 手順 3。wire の型は変えない）。判定のため、支払の行の読取りに親の `id`・`imported_at` を加える。返す `OfficialDailyPaymentLine.payment_key` は group の代表の行（手順 5）の保存値のままで、wire の型と意味は変えない（同じ `payment_key` の group が 2 つ返りうる。画面は行の key を `payment_key` と配列の index から作る、56）。今と同じ行と値になるのは、その日の全取込みで「位置と前後の空白を除いた名称の組」の集合が同じで、1 取込みの中に同じ `payment_key` の行が無い入力に限る（1 取込みの中に同じ `payment_key` の行が 2 つある入力は、今は 1 行に足され、新しい規則では位置ごとの 2 行に分かれる。D2 の 3 は組の集合が一致しない日だけなので、この範囲の日には起きない）。amount / count は対象行のいずれかが NULL なら集約値も NULL とする。
 4. `daily_report_department_lines` は `department_id` がある行をその ID で、未対応行を `normalized_department_name`、それもなければ `raw_department_name` で集約する。amount は合計し、`quantity_hundredths` / count は対象行のいずれかが NULL なら集約値も NULL とする。`quantity_hundredths` は 100 倍の整数のまま足して DB DTO に入れ、単位の数への変換は BIZ-05 が行う（IO-07-D2）。
 5. label と sort は、各 group の最小 `sort_order`、同値なら最小 row ID の行を決定的な代表とする。未対応の部門は集約後の group として返し、import ごとに重複させない（警告の文は BIZ-05 が作る）。
 6. `daily_report_summary_lines`（Z001）を、手順 1 と同じ条件（`report_date=? AND status='completed'`、`rolled_back` の親の行は読まない）の親に join する 1 つの query で読み、親の `imported_at ASC, id ASC`、行の `sort_order ASC, id ASC` で並べる。行は合算しない（D-096）。手順 1 の親ごとに 1 件の取込み（親 `id`・`imported_at`・行の `label` / `quantity_hundredths` / `count` / `amount`）を作り、行の無い親も空の行で残す（件数は `source_import_count` と等しい）。`line_key` は返さない。新しい repo 関数・schema・index は足さない（`idx_daily_report_summary_lines_import_id` を使う）。
    取込みと行の型は、BIZ-05 の `OfficialDailySummaryImport` / `OfficialDailySummaryLine`（[34 §19.2](34-biz-sales-service.md#192-型定義)）と同じ形の DB DTO（IO の所有。既存の `OfficialDailyPaymentRow` と同じ命名で `OfficialDailySummaryImportRow` / `OfficialDailySummaryLineRow`。ただし個数は `quantity_hundredths: Option<i64>`〈100 倍の整数〉で、単位の数への変換は BIZ-05）とし、`OfficialDailyReportRow` の field `summary_imports` に入れる。
 7. 手順 2〜4 の加算はすべて（NULL を伝える加算〈親の `gross_amount` / `net_amount`、支払の amount / count、部門の `quantity_hundredths` / count〉と、部門の amount の合計）溢れを検査して足し（`checked_add`）、`i64` を溢れたら黙って wrap せず `DbError::QueryFailed` を返す（月次の §14.22 の `SUM` の溢れと同じく error で止める）。100 倍の整数は範囲内の値（MNT-03-D12 の範囲検査、`i64::MAX / 100`）でも 2 行の和で溢れうる。返した `DbError` の上位の扱いは既存の DB 読み取りの失敗と同じで（[34 §19.3](34-biz-sales-service.md#193-get_daily_sales) のエラーハンドリング、[40 §5.3](40-cmd-product.md#53-cmd層のエラー返却方針) の `internal`、CMD-ERR-D2）、利用者には既存の文「データベースエラーが発生しました。もう一度お試しください」と error_id が出る。新しい文言は足さない。
 8. `OfficialDailyReportRow` を返す。支払・部門の集約では単一親 ID を返さない。Z001 の取込みごとの行（`summary_imports`）だけが親 ID と `imported_at` を持つ。BIZ-05 はこれを公開 DTO へ写し、並びと値を変えない。
+
+---
+
+### 14.21a get_daily_report_sheet_lines
+
+（proposed・未実装、D-120。日報の紙〈[34 §19.3a](34-biz-sales-service.md)〉の読取り）
+
+**関数要求**: 指定日の全 completed 日報取込みの数と、配下の Z001・Z002・Z005 の全行を、足さずに返す。足し方は BIZ-05 の SALES-SHEET-D2 が持つ。
+
+**シグネチャ**:
+```
+fn get_daily_report_sheet_lines(conn: &DbConnection, report_date: &str) -> Result<DailyReportSheetLinesRow, DbError>
+```
+
+返り値は IO が所有する DB DTO（`DailyReportSheetLinesRow { import_count: i64, lines: Vec<DailyReportSheetLineRow> }`、`DailyReportSheetLineRow { source: DailyReportSourceKind, daily_report_import_id: i64, sort_order: i64, label: String, quantity_hundredths: Option<i64>, count: Option<i64>, amount: Option<i64> }`）。`label` は Z001・Z002 の `label`、Z005 の `raw_department_name`（`normalized_department_name` は使わない。紙はレジの名称のまま、34 SALES-SHEET-D2）。Z002 の行は `quantity_hundredths` を持たない（NULL）。
+
+**処理ステップ**:
+1. `daily_report_imports` から `report_date=? AND status='completed'` の親の数を `import_count` にする。0 なら `lines` を空にして返す。
+2. 3 つの行の表（`daily_report_summary_lines`・`daily_report_payment_lines`・`daily_report_department_lines`）を、手順 1 と同じ条件の親に join して読み、帳票（Z001 → Z002 → Z005）・親の `imported_at ASC, id ASC`・行の `sort_order ASC, id ASC` で並べる。`rolled_back` の親の行は読まない。
+3. 値は保存されたまま返す（足さない、名称の空白も除かない）。新しい schema・index は足さない（各行の表の `daily_report_import_id` の index を使う）。
+
+---
+
+### 14.21b get_active_z004_import_totals
+
+（proposed・未実装、D-120。日報の紙の PLU の部分〈34 SALES-SHEET-D4〉の読取り）
+
+**関数要求**: 指定の精算日の active な Z004 の取込みの数と、その `skipped_count` の和を返す。
+
+**シグネチャ**:
+```
+fn get_active_z004_import_totals(conn: &DbConnection, settlement_date: &str) -> Result<(i64, i64), DbError>
+```
+
+**処理ステップ**:
+1. `csv_imports` から `settlement_date=? AND status IN ('completed','completed_partial')` の行の数と `skipped_count` の和を 1 つの query で読む（行が無ければ `(0, 0)`）。和の溢れは SQLite の error のまま `DbError::QueryFailed`（§14.22 の `SUM` と同じ）。
 
 ---
 

@@ -83,6 +83,28 @@ fn get_daily_sales(
 3. Ok → DailySalesReport をそのまま返す
 4. Err(BizError) → CmdError に変換して返す
 
+#### get_daily_report_sheet（proposed・未実装、D-120）
+
+**関数要求**: 指定日の日報の紙の内容（1 日 1 枚）を取得する。内容と規則は BIZ-05 の [34 §19.3a](34-biz-sales-service.md) の SALES-SHEET-D1〜D6 が持ち、CMD は変換だけを行う。
+
+**シグネチャ（Tauriコマンド）**:
+```
+#[tauri::command]
+#[specta::specta]
+fn get_daily_report_sheet(
+    state: State<AppState>,
+    date: String,
+) -> Result<DailyReportSheet, CmdError>
+```
+
+**処理ステップ**:
+1. state.db.lock() でDB接続を取得
+2. biz::sales_service::get_daily_report_sheet(&conn, &date) を呼ぶ
+3. Ok → DailyReportSheet をそのまま返す
+4. Err(BizError) → CmdError に変換して返す（§22.3 の既存の変換。新しい kind・文言は足さない）
+
+登録（runtime の lane）: `lib.rs` の specta `collect_commands` と `invoke_handler` に足し、`cargo run --bin generate_bindings` で `src/lib/bindings.ts` を再生成する（§22.8）。
+
 #### get_monthly_sales
 
 **関数要求**: 指定月の売上レポートを取得する
