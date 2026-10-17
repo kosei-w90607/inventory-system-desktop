@@ -24,6 +24,7 @@
 2. spec-check → design（2026-10-17、起草役）: 触る正本（32 §15.3 手順 4 b の引き当て、30 §4.8・§4.9 の商品 CSV の preview と commit、42 §22.6 の `commit_import`、60 UI-01c、20 の product_repo、master-tables、22、33 §16.6）は別名を持たず、「前の JAN を持つ商品が無ければ `unmatched_product`」で閉じている。別名の表・不変条件・問い・答えの wire・引き当ての段が無いので、同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-122 で満たす。条件「未解決の設計の問いが無い」は、owner の決定（TD-284・TD-286・TD-296 の 6b）で方向が決まり、境界の 4 件を正本の規則で閉じ、残る owner への確かめ（下の「owner への確かめ」の Q1）は答えが無い間の既定を D-117 の受け入れ済みの限界に置いたことで満たす。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`412d2a36`）にある。並走の 367（`agent/sd-direct-read-runtime`）も 22 に §17・MNT-03-D15 を新設していたので、本 lane の節を §18・MNT-03-D16 に振り直した（本 commit。22・master-tables・decision-log・backlog・本 packet・Matrix の参照、計 20 行）。Coordinator は D-122 の決定・置き場（商品の側の表と trigger 3 つ）・問いを出す条件・`commit_import` の確かめ直しを読み、owner の決定（TD-284 の c、TD-286 の β、TD-296 の 6b）の写しに食い違いが無いこと、D-117 の round 1 で崩れた継ぎ目（reserved の枠の別名、経路ごとの消し方、共有の同時変更、CMD・UI の境界）がそれぞれ置き場か条件で塞がれていること、code・migration に触れていないことを確かめた。owner に聞く Q1（前の JAN の枠の値段）は既定 a（D-117 の受け入れ済みの限界）で進める。Plan Review round 1 へ出す。
+5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `f50d0bfd` で直し、Coordinator が差分（30 §4.9 の手順 0b・2 e. と §4.9.2 の preview の判定・答えの運び方・commit の判定の表・回復・そのほかの限界、42 §22.6、60 UI-01c-D17、20 の DbError の対応、master-tables の別名の UPDATE の段、Matrix の追加の行）を読んだ。置き場（商品の側の表と trigger）と Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 
 owner への確かめ（設計を止めない。答えが無い間は既定で進む）:
 
@@ -256,4 +257,25 @@ Fill after implementation.
 
 ## Review Response
 
-Fill after review.
+### Plan Review round 1（2026-10-17、head `7f331023`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 3）と Codex GPT-6.1 Sol（reject、P1 1・P2 1）。Claude #1 と Codex #1 は同じ件で、重い方の P1 とした。全て採った（Coordinator の裁定。Codex #2 は下の経緯）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `f50d0bfd` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R1 | Codex #1（P1）・Claude #1（P2） | 採る | 答えが商品コードだけで、commit は前の JAN を DB の今の値から取り直す。preview の後に別の取込みで JAN が A → C に変わると、問いで見せていない C を別名にする | 答えを `old_jan_aliases`（`{product_code, old_jan}`、`old_jan` は問いで見せた値をそのまま返す）で運び、commit は行を処理する前に `P.jan_code = old_jan` を確かめ、違えば原因を名指しする message で TX 全体を戻す。30・42・60・cmd-task-specs・Matrix を揃えた |
+| R2 | Codex #2（P2） | 採る（是正の形は owner の決定 TD-309） | 全ての重複行を上書きすると見なす preview の判定が、スキップした行まで理由にして問いを消す | preview の問いは上書きの選択に依らない条件だけで出す（広めに出る）。上書きを選んだ別の行が前の JAN を持つ場合は、commit が実際の選択で判定し、field `old_jan_aliases` の名指しの error で戻す。利用者は preview・答え・選択を保ったまま、答えを「ない」に直すかその行をスキップして確定し直せる |
+| R3 | Claude #2（P3） | 採る | 別名の UPDATE は trigger を経ない | master-tables §1a に、別名の UPDATE は DB では拒まず、更新の経路を足すときは `BEFORE UPDATE` の拒否の trigger を同じ migration の規則で足す、と書いた |
+| R4 | Claude #3（P3） | 採る | DbError の対応が現物の変換と違う | 既存の `From<rusqlite::Error>` のまま（外部キー違反 → `ForeignKeyViolation`、PRIMARY KEY 重複 → `DuplicateKey`）に直した |
+| R5 | Claude #4（P3） | 採る | UI の擬似コードが配列に `.has` を呼ぶ | Set で filter する形に直した |
+
+Codex #2 の経緯: Coordinator は当初「限界として書く」（業務規則を UI に置かない）と裁定したが、owner が「システム側でサポートしないと無理筋」と否定し（repo 外の回答台帳 TD-309、2026-10-17）、上の R2 の形に差し替えた。
+
+あわせて owner の設計の原則（repo 外の回答台帳 TD-310）で、preview の後に別の取込みでできた別名を commit が名指しして戻す形（warning を見せずに別名を消さない）を足した。
+
+起草役が TD-310 に照らして見つけ、本 lane の範囲を越える次の件（owner に諮る候補。本 round の review が通った後に他の packet の問いとまとめて聞く。答えが無い間は D-122 の Guarantee range の受け入れ済みの限界のまま）:
+
+- 「ない」と答えた後の前の JAN の売上が、後の Z004 の preview で初めて行エラーになる。
+- 締めの前に JAN を直すと、その日の売上が行エラーになる（今は操作の順に頼る）。
+- 「ない」と答えた後に「ある」にする手段が無い。
+- 商品フォームの新規作成で、別名の JAN が警告なしに消える。
