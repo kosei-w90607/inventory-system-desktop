@@ -35,7 +35,7 @@ wave に属さない単独の lane（2026-10-17 に同時に起票した 6 本�
 |---|---|---|---|---|---|
 | 介入 | 9 | 0（2026-10-17、起票の時点） | 2（Ready 1・merge 1） | 7 | 9 = 0 + 2 + 7 |
 
-Q1（製品名）は本 lane の完了に要らない（後続の設定の lane の問い）ので、本 lane の介入に数えない。予行演習（M1〜M9）の L3 は後続の項目で、本 lane の介入に数えない。
+Q1（製品名）は本 lane の完了に要らない（後続の設定の lane の問い）ので、本 lane の介入に数えない。予行演習（M1〜M8）と店の PC の M9 の L3 は後続の項目で、本 lane の介入に数えない。
 
 承認依頼フォーマット: `この change での介入 N 回目 / 予算 M 回` + `承認すると利用者から見て何が完了するか1文`。
 
@@ -44,7 +44,7 @@ Q1（製品名）は本 lane の完了に要らない（後続の設定の lane 
 Risk: R2
 
 Reason:
-`docs/DEV_WORKFLOW.md` Risk Tiers の R2 の行「docs change that affects maintainability but not runtime contracts」に当たる。code・設定（`src-tauri/tauri.conf.json` を含む）・DB・command の DTO・画面・merge gate を変えない。R3 との境の規則（stable contract・data safety boundary に触れるなら R3）も見た: 手順書は DB の file を動かす手順（前の版へ戻す）を含むが、その手順は 22 §16 の回復と `docs/migration-recovery-runbook.md`（R4 の lane で review 済み）を引くだけで、新しい data safety の契約を足さない。v8 より後の migration から戻す手順は一般化せず、「その migration の 22 の節に戻す手順が無ければ DB を戻さない」と安全側に倒した。required gate の green / red は変わらない（docs だけで、`scripts/ci/classify-changes.sh` の workflow の一覧〈AGENTS・CLAUDE・DEV_WORKFLOW・ci・MANUAL・code_review・review-checklist・project-profile・agent-guidance・templates ほか〉に当たる path が無い）。Final Review Minimum は 1。
+`docs/DEV_WORKFLOW.md` Risk Tiers の R2 の行「docs change that affects maintainability but not runtime contracts」に当たる。code・設定（`src-tauri/tauri.conf.json` を含む）・DB・command の DTO・画面・merge gate を変えない。R3 との境の規則（stable contract・data safety boundary に触れるなら R3）も見た: 手順書は DB の file を動かす手順（前の版へ戻す）を含むが、その手順は 22 §16 の回復と `docs/migration-recovery-runbook.md`（R4 の lane で review 済み）を引くだけで、新しい data safety の契約を足さない。v8 より後の migration から戻す手順は一般化せず、「その migration の 22 の節に戻す手順が無ければ DB を戻さない」と安全側に倒した。DB の file を動かすのは 22 §16 の回復の手順 5・6（runbook の手順 5・6）の中だけで、手順書はその外で DB を動かす段を足さない（AC6）。新しい手順の順序が引く正本（22 §16 の 2〜5）を崩していないことを Final Review が確かめる。required gate の green / red は変わらない（docs だけで、`scripts/ci/classify-changes.sh` の workflow の一覧〈AGENTS・CLAUDE・DEV_WORKFLOW・ci・MANUAL・code_review・review-checklist・project-profile・agent-guidance・templates ほか〉に当たる path が無い）。Final Review Minimum は 1。
 
 ## Goal
 
@@ -60,12 +60,15 @@ Goal Invariant:
 - 新しい版で migration が当たった後に、前の版の MSI を入れるだけで戻せるように読める（前の版は起動を止める。MNT-03-D11）。
 - 起動時の自動の backup や新しい版で作った backup で前の版へ戻せるように読める（71 §71.9）。
 - 実機で確かめていない MSI の振舞い（更新でデータが残る、古い版で上書きできる、アンインストールでデータが残る等）を確かめた事実として書く。
+- 前へ進むか戻すかを決める前や、22 §16 の回復の手順 5・6 の外で、今の DB を動かすように読める。
+- 前の版へ戻す可能性があるうちに、前の版の MSI か更新の前の backup を手放すように読める。
+- 予行演習が開発に使っている DB に当たる、または試験用のデータが版 A で開けない版で入る。
 - 店の運用の細部や店のデータを repo に書く。
 
 ### 非目的
 
 - `tauri.conf.json` の設定（製品名・upgrade code・版・署名・WebView2 の導入方法）を変える（後続の lane）。
-- 予行演習（M1〜M9）を本 lane で行う（owner の手が要り、後続の項目で 1 回にまとめる）。
+- 予行演習（M1〜M8）と店の PC の M9 を本 lane で行う（owner の手が要り、後続の項目で 1 回にまとめる）。
 - 自動更新・署名の導入・Windows の CI build。
 - `docs/migration-recovery-runbook.md` と 22 §16 を一般化する・書き換える。
 
@@ -81,7 +84,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 店の PC にアプリが無い。製品名と upgrade code が固定済み、予行演習済み | 流れ 2（写す → SHA-256 を照らす → 入れる → 起動 → 手動バックアップ） | 店の PC でアプリが起動し、DB と backup ができている | ホームが出て backup が 1 つある | M2（UAC・入る場所）、M3（SmartScreen）、M9（WebView2） |
 | 前の版が動いている | 流れ 3（前の版で手動バックアップ → 2 か所へ写す → アプリを閉じる） | 前の版で開ける backup が PC の内と外にある | 写しが 2 か所にある。失敗したら更新しない | なし（既存の 68・71 の機能） |
 | 流れ 3 が済んだ | 流れ 4（新しい MSI を照らす → 入れる → 起動 → 確認） | 新しい版で前のデータが見える | 起動の後の確認が済んだ | M4（置き換えとデータの残り）、M8（動いたままの更新） |
-| 翌日以降に不具合が見つかった | 流れ 5（入力の前か後か、DB の版が上がったかで分け、MSI を入れ直すか runbook の 7 手順） | 前の版で、更新の前のデータが開ける。入力の後なら owner が前進か入れ直しかを決める | 前の版が起動する | M6（古い版の上書き）、M7（アンインストール） |
+| 翌日以降に不具合が見つかった | 流れ 5（入力の前か後か、DB の版が上がったかで分け、MSI を入れ直すか runbook の 7 手順） | 前の版で開ける。DB の版が同じなら入力も残る。DB の版が上がって入力の後なら、owner が前進か戻すかを決め、決めるまで今の DB を動かさない | 前の版が起動する | M6（古い版の上書き）、M7（アンインストール） |
 
 この lane で完了するのは「手順書が置かれ、owner が辿れる」まで。店の PC への初回の導入は、製品名と upgrade code の固定と予行演習（backlog の 2 項目）の後で、v1.0 の通常運用の達成はそれらを含む。
 
@@ -116,14 +119,15 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - AC3: `rg -n 'msi-distribution-runbook.md' docs/PROJECT_HANDOFF.md docs/backlog.md` が両 file で hit する。baseline（起点 `f5d7aaf4`）: hit 無し（`rg exit=1`）。
 - AC4: `rg -n '^## ' docs/msi-distribution-runbook.md` が「今の事実」「初回の導入の前に決めること」「配布の記録」「流れ 1」〜「流れ 5」「確かめる項目」を出す。baseline: file が無い（`rg exit=2`）。
 - AC5（読んで確かめる）: 手順書の「未確認（M*n*）」がすべて「確かめる項目」の表の行を指し、表の各行に確かめ方と結果で変わる所がある。流れ 5 が「新しい版で DB の版が上がったら MSI の入れ直しだけでは戻せない」と「前の版で作った backup を使う」を書いている（Goal の失敗定義の 1・2 行）。
+- AC6: `rg -n '移す|移し|置く|置き|置いて|置か' docs/msi-distribution-runbook.md | rg -v 'runbook の手順 [56]'` が何も出さない（後ろの `rg` の exit 1）。DB を動かす語が 22 §16 の回復の手順 5・6 の引用の外に出ないことを見る（Goal の失敗定義の 4 行目）。baseline（`3e132095`、是正の前）: 5・22・72・82・97・102・117 行の 7 行が出た（97 行は「入力した後」に決める前に移す段で、Plan Review round 1 の P1 の箇所）。予行演習の開発機の folder の退避は「退避」と書き、この検査の対象の外（開発機の DB で、店の DB ではない）。
 
 ## Design Readiness
 
 - 引く設計正本（節まで）: 22 §3.2 MNT-03-D11（新しすぎる DB の拒否と回復）、22 §16 の「回復」7 手順と vU・vB の「止まった後の進め方」、`docs/migration-recovery-runbook.md`（22 §16 の写し）、71 §71.4（backup の file 名）・§71.5（保持日数での削除）・§71.9（起動時の自動の backup が migration の後）、68 §68.4（手動バックアップ・実効保存先）。
 - 必要な設計成果物: Design artifact selection の当たる行は無い（振舞い・command・DB・画面・format を変えない）。管理者の手順書を新しく置く（updated in this PR、`docs/msi-distribution-runbook.md`）。
-- plan にしかない durable な判断の昇格先: 無い。手順書の安全側の手順（予行演習の後に初回の導入、backup が失敗したら更新しない、v8 より後の戻す手順が無ければ DB を戻さない）は手順書に置く。
-- 前提・制約と延期した gap: 実機の MSI の振舞い M1〜M9 は未確認で、予行演習（backlog）へ延期する。延期しても安全な理由: 手順書は未確認の点を手順の前提にせず、予行演習の前に店の PC へ入れないと書いている。製品名と upgrade code の固定は設定の lane へ延期（初回の導入の前提）。
-- 絶対保証の自己点検: 手順書の「データは変わっていない」は MNT-03-D11 の「論理内容を変えない」を引く（SQLite の open による物理的な書込みは 22 §3.2 の同じ節が扱う）。「前の版は今の DB を開けない」は DB の版が上がった場合に限って書いた。
+- plan にしかない durable な判断の昇格先: 無い。手順書の安全側の手順（予行演習の後に初回の導入、backup が失敗したら更新しない、v8 より後の戻す手順が無ければ DB を戻さない、前の版の MSI と更新の前の backup を戻す可能性を閉じるまで保つ、DB の版が上がって入力の後は決めるまで今の DB を動かさない）は手順書に置く。
+- 前提・制約と延期した gap: 実機の MSI の振舞い M1〜M9 は未確認で、予行演習（backlog）へ延期する。延期しても安全な理由: 手順書は未確認の点を手順の前提にせず、予行演習（M1〜M8）と店の PC の M9 の前に店の PC へ入れないと書いている。製品名と upgrade code の固定は設定の lane へ延期（初回の導入の前提）。
+- 絶対保証の自己点検: 手順書の「データは変わっていない」は MNT-03-D11 の「論理内容を変えない」を引く（SQLite の open による物理的な書込みは 22 §3.2 の同じ節が扱う。手順書の表も「論理内容を変えずに」と書く）。「前の版は今の DB を開けない」と「新しい版で作った backup は前の版で開けない」は DB の版が前の版の扱える版を超えた場合に限って書いた。
 - 判定: ready。
 
 ## Registration / Generation Obligations
@@ -185,7 +189,7 @@ R2 なので必須ではないが、発注書が未確認の点の確かめ方�
 
 - commit しない: 店の DB・backup・MSI・配布の記録・ログ。
 - repo の外にだけ置く: 配布の記録（管理者の保管場所）。
-- 試験用だけ: 予行演習のデータは `seed_demo_data` の決定的な試験データ。
+- 試験用だけ: 予行演習のデータは `seed_demo_data` の決定的な試験データ。開発機の `%APPDATA%\com.kosei.inventory` を先に別名へ退避し、版 A と同じ commit で `--db` を明示して投入する（手順書の「確かめる項目」の準備）。
 
 ## Implementation Results
 

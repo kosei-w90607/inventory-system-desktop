@@ -90,7 +90,7 @@
 - MSI 配布手順 docs 化（v1.0 gate。「次の行動」⑤と対応）。
   - 手順書の lane を起票した（2026-10-17、R2、branch `agent/msi-distribution-docs`。packet `docs/plans/2026-10-17-msi-distribution-docs.md`）。手順は [msi-distribution-runbook.md](msi-distribution-runbook.md)。この lane の merge で docs 化は済み、次の 2 つが残る。
   - 製品名と upgrade code の固定（初回の導入の前に要る。設定の変更の lane）: `src-tauri/tauri.conf.json` の `productName` は雛形の名（`inventory-system-tauri-scaffold`）のままで、MSI の upgrade code はこの名から作られる。製品名を決め、`bundle.windows.wix.upgradeCode` に固定する。製品名は owner が決める（店の PC のスタートメニューに出る名）。
-  - 予行演習（手順書の M1〜M9）: 開発用の Windows で試験用のデータだけで確かめ、手順書の「未確認」を結果で書き換える。owner の手が要るので 1 回にまとめる。製品名の固定の後に行う（M4 の結果が製品名に依る）。
+  - 予行演習（手順書の M1〜M8。M9 は店の PC で初回の導入の前）: 開発用の Windows で、開発の DB を退避した上で試験用のデータだけで確かめ、手順書の「未確認」を結果で書き換える。owner の手が要るので 1 回にまとめる。製品名の固定の後に行う（M4 の結果が製品名に依る）。
 - Z004 layout B 対応 + 混在期間の非 PLU 商品 end-to-end 再検証（layout A は PR #81 で消化済み、PLU スロット永続割当 design-first は PR #84 で正本化済み。残 = layout B 対応、混在期間の非 PLU 商品 end-to-end 検証）。
   - 重みを下げる（owner 決定 2026-10-06、D-111）: 毎日の売上はアプリが SD を直接読み、layout B を作るのは CV17 の明示書出しだけで、店は基本もう使わない。layout B の対応は CV17 の書出しを使う理由が出たときに見直す。混在期間の非 PLU 商品の end-to-end 検証はこの注記の対象外で、重みは変えない。
 - CSV 出力・印刷の実挙動確認（owner run 3 原文「まともにテストしたことがない」「印刷は中身を作っていない」）: end-to-end で叩いて紙面 / 出力 file の実態を証跡化してから要否を裁定
