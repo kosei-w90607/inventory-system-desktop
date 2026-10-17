@@ -374,7 +374,7 @@ fn commit_import(
 ) -> Result<ImportResult, CmdError>
 ```
 
-`old_jan_aliases` は、前の JAN の問い（[30](30-biz-product-service.md) BIZ-01-D9）に「ある」と答えた上書きの行の `{ product_code, old_jan }` の組（`OldJanAliasAnswer`、30 §4.8。`old_jan` は preview の `old_jan_question` の値をそのまま返す）。省略できる引数にはしない（UI は 1 つの build で常に送る。空の一覧が全て「ない」）。generated の呼出しは `commands.commitImport(validRows, overwriteCodes, oldJanAliases)`。CMD は検査を持たず BIZ に渡すだけ（形の検査と commit の判定は BIZ の §4.9 手順 0b・2 e.）。error の対応（既存の変換のまま）: 上書きを選んだ別の行が前の JAN を持つ → `BizError::ValidationFailedAt { field: "old_jan_aliases" }` → kind `validation`、field `"old_jan_aliases"`（UI は preview を保ったまま答えを直して確定し直す。増える wire はこの field の値だけ）。そのほかの判定・形の失敗 → `ValidationFailed` → kind `validation`、field null（preview し直す）。
+`old_jan_aliases` は、前の JAN の問い（[30](30-biz-product-service.md) BIZ-01-D9）に「ある」と答えた上書きの行の `{ product_code, old_jan }` の組（`OldJanAliasAnswer`、30 §4.8。`old_jan` は preview の `old_jan_question` の値をそのまま返す）。省略できる引数にはしない（UI は 1 つの build で常に送る。空の一覧が全て「ない」）。generated の呼出しは `commands.commitImport(validRows, overwriteCodes, oldJanAliases)`。CMD は検査を持たず BIZ に渡すだけ（形の検査と commit の判定は BIZ の §4.9 手順 0b・2 e.）。error の型・field・message・回復は 30 §4.9.2 の判定表（J1〜J7）が持ち、CMD は既存の変換（§22.3 の `ValidationFailedAt` の行と、40 §5.3 の `ValidationFailed → "validation"`）でそのまま写す: `ValidationFailedAt { message, field }` は kind `validation` で field を保ち（現物 `src-tauri/src/cmd/mod.rs` の `impl From<BizError> for CmdError` の `field: Some(field)`、test `test_cmd_error_req205_from_validation_failed_at_preserves_field`）、`ValidationFailed` は kind `validation`・field null になる。field `"old_jan_aliases"` が付くのは判定表の J6 だけ（増える wire はこの field の値だけ）。
 
 **処理ステップ**:
 1. state.db.lock() でDB接続を取得

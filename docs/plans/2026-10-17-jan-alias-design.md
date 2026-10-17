@@ -57,15 +57,15 @@ Goal Invariant:
 ### 最小完了条件
 
 - 後続の runtime の lane（backlog の「JAN の別名の runtime」）の Writer が、チャットの履歴と repo 外の台帳を見ずに、source docs だけで次を実装できる: 表 `product_jan_aliases` と 3 つの trigger の migration（master-tables §1a、22 §18 MNT-03-D16）、`products` を作り直す migration の規則、IO-01-D5 の 2 関数、BIZ-03 の引き当ての関数（ヒット 0 件の行で別名を引き、preview と D-118 の確定の TX の取り直しが共有する。32 §15.3 手順 4 b）、BIZ-01 の preview の `old_jan_question` と別名の warning、`commit_import` の `old_jan_aliases` と手順 0b・2 e.（30 §4.8・§4.9・§4.9.2 BIZ-01-D9）、CMD の引数（42 §22.6）、UI-01c-D17。
-- D-117 の Plan Review round 2 の 4 件が、正本の規則で閉じている: (1) 別名は枠と独立で枠の CHECK に関わらない、(2) 消すのは trigger だけで JAN を書く全経路を覆う、(3) 共有 JAN と同じ取込みで別の商品が持つ JAN には聞かず、たどる先は PRIMARY KEY で 1 つ、(4) 答えは CMD・BIZ・UI・generated の呼出しの正本に同じ名前で書かれ、既定は空 =「ない」。
+- D-117 の Plan Review round 2 の 4 件が、正本の規則で閉じている: (1) 別名は枠と独立で枠の CHECK に関わらない、(2) 消すのは trigger だけで JAN を書く全経路を覆う、(3) 共有 JAN には聞かず、同じ取込みで別の商品が持つ JAN は別名にせず（新規の行が持つなら preview が聞かず、上書きを選んだ別の行が持つなら commit が名指しの error で戻す。30 §4.9.2 の判定表）、たどる先は PRIMARY KEY で 1 つ、(4) 答えは CMD・BIZ・UI・generated の呼出しの正本に同じ名前で書かれ、既定は空 =「ない」。
 - 「ない」（既定）と別名の無い全ての行は、今の設計どおり `unmatched_product` の行エラーで知らせる（黙って誤った商品へ付けない）。
-- D-122 が decision-log にあり、D-117 の Revisit から本決定を指す 1 行がある。後続の runtime の lane の範囲・順（PLU の書出しの見直しの runtime の前）・Risk が backlog にある。
+- D-122 が decision-log にあり、D-117 の Revisit から本決定を指す 1 行がある。後続の runtime の lane の範囲・順（PLU の書出しの見直しの runtime と同じ lane かその後。その runtime が clear 行を撤去するまでは「ある」と答えても前の JAN の枠がレジから消える）・Risk が backlog にある。
 
 ### 失敗定義
 
 - 別名を PLU の枠の列・状態・照合・書出しのどれかと結びつける（枠の遷移が別名を読む・書く、問いの条件が枠の状態に依る）。
 - 商品がその JAN を持った後も別名が残る経路、または消えた別名が生き返る経路が残る（JAN を書く経路のどれか、将来の経路、`products` の作り直し）。
-- 共有 JAN、または同じ取込みで別の商品が前の JAN を持つ場合に問いを出す、または 1 つの前の JAN が複数の商品を指しうる。
+- 共有 JAN に問いを出す、同じ取込みで別の商品が前の JAN を持つ場合に別名を作る（問いは上書きの選択に依らない条件で出し、選択に依る条件は commit が判定する）、または 1 つの前の JAN が複数の商品を指しうる。
 - 答えの field が CMD・BIZ・UI・generated の呼出しのどれかの正本に無い、または名前・既定が食い違う。答えの合わない commit が答えを黙って捨てる。
 - 「ない」の行、別名の無い行の扱い（`unmatched_product`）を変える。ヒット 1 件・共有 JAN の行の引き当てを変える。
 - 設計照合 test・traceability の検査を red にする変更を入れる。
@@ -88,8 +88,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 | 初期状態 | 操作 | 利用者が得る結果 | 次へ進む条件 | 未確認の前提／probe参照 |
 | --- | --- | --- | --- | --- |
-| JAN の別名の runtime を入れた版。商品 P は JAN A でレジの枠を持つ。メーカーが番号を B に変え、B の入荷がある。A のバーコードの在庫が棚に残る。その日の締めの取込みは済んでいる | 店主が P の JAN を B にした商品 CSV を選び、preview する | P の重複行に「スキップ / 上書き」。上書きを選ぶと同じ行に「前の番号（A）のバーコードが付いた現物は店にありますか」と `ある` / `ない`（既定 `ない`）が出る | `ある` を選んで「選択した内容で取り込む」→ 上書きの確認 | UI-01c-D17、BIZ-01-D9 |
-| 同じ | 取り込む | P の JAN が B になり、A が P の別名になる（commit の TX の中で問いの条件を確かめ直す）。P は未反映になり、次の PLU の差分で B が新しい枠に書かれる。A の枠はレジに前の値段のまま残る（Q1 の既定 a） | 次の PLU の書出し | P3（レジは前の JAN の枠の登録で売り、Z004 にその JAN の行が出る） |
+| JAN の別名の runtime を入れた版（PLU の書出しの見直しの runtime と同じ lane かその後。backlog の依存）。商品 P は JAN A でレジの枠を持つ。メーカーが番号を B に変え、B の入荷がある。A のバーコードの在庫が棚に残る。その日の締めの取込みは済んでいる | 店主が P の JAN を B にした商品 CSV を選び、preview する | P の重複行に「スキップ / 上書き」。上書きを選ぶと同じ行に「前の番号（A）のバーコードが付いた現物は店にありますか」と `ある` / `ない`（既定 `ない`）が出る | `ある` を選んで「選択した内容で取り込む」→ 上書きの確認 | UI-01c-D17、BIZ-01-D9 |
+| 同じ | 取り込む | P の JAN が B になり、A が P の別名になる（別名が成り立つかは commit の TX の中で 30 §4.9.2 の判定表が確かめる）。P は未反映になり、次の PLU の差分で B が新しい枠に書かれる。A の枠はレジに前の値段のまま残る（Q1 の既定 a） | 次の PLU の書出し | P3（レジは前の JAN の枠の登録で売り、Z004 にその JAN の行が出る） |
 | 締めの SD の読取り（または Z004 の取込み） | Z004 を preview する | A の行（前のバーコードの在庫）も B の行も P に引き当たる。A の行は行エラーにならない | 確定（停止の解除の後） | 32 §15.3 手順 4 b |
 | 商品 P の JAN を打ち間違えて A で登録していた（現物のバーコードは B） | 商品 CSV で P の JAN を B に直し、問いに `ない`（既定）のまま取り込む | 別名は作られない。A の枠で売れる行が出たら（A を本当に持つ別の品物がレジで A の枠の登録で売れた等）、Z004 の preview の `unmatched_product` の行エラーで知らせる | 店主が行エラーを見て確かめる | TD-284 の c の理由 |
 | 色違いの商品 P1・P2 が JAN A を共有する | 商品 CSV で P1・P2 の JAN を別々の値に直す | 問いは出ない（たどる先が 1 つに決まらない）。A の行は行エラーで知らせる | — | BIZ-01-D9 の条件 2、TD-296 の 6b |
@@ -106,7 +106,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 1. 別名の持ち方（D-122 (1)(3)）: [master-tables](../db-design/master-tables.md) に「1a. product_jan_aliases」（役割・カラム・不変条件と 3 つの trigger・migration・設計意図）を足し、[DB_DESIGN](../DB_DESIGN.md) のテーブル一覧と詳細の対応表に行を足した。[22](../function-design/22-mnt-migration.md) に §18（MNT-03-D16。表と trigger の migration、`products` を作り直す migration の規則、テスト）を足した。[20](../function-design/20-io-product-repo.md) に IO-01-D5（`find_jan_alias`・`insert_jan_alias`、`insert_product`・`update_product` は別名を扱わない）とモジュール構成の行を足した。
 2. 作る経路・使う経路（D-122 (4)(5)(7)）: [30](../function-design/30-biz-product-service.md) の §4.8 に `ImportDuplicateRow` の構造体（`old_jan_question`）と手順 5 の判定の行、§4.9 に引数 `old_jan_aliases` と `OldJanAliasAnswer` の構造体・手順 0b・手順 2 e.・エラーハンドリングの行、新しい §4.9.2（BIZ-01-D9: 問いの条件・経路・preview の判定・warning・答えの運び方・commit の判定・共有 JAN との関係・理由と却下・Revisit）を足した。[32](../function-design/32-biz-csv-import-service.md) §15.3 手順 4 b に、ヒット 0 件の行で別名を引く段と、引き当ての規則を preview と D-118 の確定の取り直しで共有する文、更新履歴の行を足した。[42](../function-design/42-cmd-sales-stocktake.md) §22.6 の `commit_import` の signature と手順、[60](../function-design/60-ui-product-import.md) の UI-01c-D17・§60.0・§60.3・§60.4・§60.9・§60.10、[51](../function-design/51-ui-product-form.md) の UI-01b-D25 と変更履歴、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の商品一括インポート画面、architecture の [biz-task-specs](../architecture/biz-task-specs.md)（BIZ-01 の一括インポートと BIZ-03 の Stage 2）と [cmd-task-specs](../architecture/cmd-task-specs.md)（`commit_import` の行）、[pos-tables](../db-design/pos-tables.md) の B-1 のマスタ照合の行を、同じ規則に揃えた。
 3. PLU の枠との関係（D-122 (2)）: [33](../function-design/33-biz-plu-export-service.md) §16.6 の「同じ商品へたどる経路は TD-284 の別の小さな設計 lane で扱う」を、別名は枠と独立で §16.3 の照合・prepare・confirm は別名を読まず書かない、前の JAN の枠の値段は前の値段のまま（D-117 の受け入れ済みの限界）に置き換えた。[plu-tables](../db-design/plu-tables.md) の「products との結合」に、別名を結合キーに入れない 1 文を足した。D-117 の枠の規則・照合の表は変えていない。
-4. 後続の lane の範囲・順・Risk: [backlog](../backlog.md) の「TD-284 の lane」の項目に本 lane で置いた設計の要約を足し、その直後に「JAN の別名の runtime」（R3、PLU の書出しの見直しの runtime より前、触る file と L3）を足した。
+4. 後続の lane の範囲・順・Risk: [backlog](../backlog.md) の「TD-284 の lane」の項目に本 lane で置いた設計の要約を足し、その直後に「JAN の別名の runtime」（R3、PLU の書出しの見直しの runtime と同じ lane かその後〈round 2 の是正〉、触る file と L3）を足した。
 5. 決定の記録: `docs/decision-log.md` の末尾に D-122（Decision (1)〜(8)、Why、Alternatives、Guarantee range、Compatibility、owner の決定、Revisit）を足し、D-117 の Revisit の次に本決定を指す 1 行を足した。D-117 の本文は変えていない。
 
 ついでに直したもの: 無し。
@@ -149,14 +149,32 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 - AC1（表と trigger と migration）: `rg -c '^## 1a\. product_jan_aliases' docs/db-design/master-tables.md` が 1、`rg -c 'product_jan_aliases_reject_held' docs/db-design/master-tables.md` が 2、`rg -c 'MNT-03-D16' docs/function-design/22-mnt-migration.md` が 1、`rg -c 'DROP TRIGGER product_jan_aliases_reject_held' docs/function-design/22-mnt-migration.md` が 1、`rg -c 'product_jan_aliases' docs/DB_DESIGN.md` が 2（開始はどれも 0）。
 - AC2（IO と引き当て）: `rg -c '^fn find_jan_alias\(' docs/function-design/20-io-product-repo.md`・`rg -c '^fn insert_jan_alias\(' docs/function-design/20-io-product-repo.md`・`rg -c 'find_jan_alias' docs/function-design/32-biz-csv-import-service.md` がどれも 1（開始 0）。`rg -c '前の JAN の別名' docs/db-design/pos-tables.md` が 1、`rg -c '前の JAN の別名' docs/architecture/biz-task-specs.md` が 2（開始 0）。
-- AC3（BIZ の問いと commit。round 1 の是正、Review Response 参照）: `rg -c 'BIZ-01-D9' docs/function-design/30-biz-product-service.md` が 1、`rg -c 'old_jan_aliases' docs/function-design/30-biz-product-service.md` が 5、`rg -c 'old_jan_question' docs/function-design/30-biz-product-service.md` が 5、`rg -c 'OldJanAliasAnswer' docs/function-design/30-biz-product-service.md` が 3、`rg -cF 'P.jan_code = A' docs/function-design/30-biz-product-service.md` が 1、`rg -c '共有になりました' docs/function-design/30-biz-product-service.md` が 1、`rg -cF 'field: "old_jan_aliases"' docs/function-design/30-biz-product-service.md` が 1、`rg -c '別名になりました' docs/function-design/30-biz-product-service.md` が 1（開始はどれも 0）。`rg -c 'old_jan_alias_codes|全ての重複行を上書き|問いを出したい商品の行だけ' docs/function-design/30-biz-product-service.md docs/decision-log.md` の出力が空（旧い答えの形と、撤回した限界の文が残らない）。
-- AC4（wire と UI。round 1 の是正、Review Response 参照）: `rg -c 'old_jan_aliases' docs/function-design/42-cmd-sales-stocktake.md` が 3、`rg -c 'old_jan_aliases' docs/architecture/cmd-task-specs.md` が 1、`rg -c 'UI-01c-D17' docs/function-design/60-ui-product-import.md` が 6、`rg -c 'oldJanAliases' docs/function-design/60-ui-product-import.md` が 6、`rg -c 'old_jan_aliases' docs/function-design/60-ui-product-import.md` が 2、`rg -c 'overwriteCodeSet' docs/function-design/60-ui-product-import.md` が 4、`rg -c 'oldJanAliasCodes' docs/function-design/60-ui-product-import.md` が 0、`rg -c 'UI-01c-D17' docs/SCREEN_DESIGN.md` が 1、`rg -c 'UI-01b-D25' docs/function-design/51-ui-product-form.md` が 2（開始はどれも 0）。P3 の是正: `rg -c 'BEFORE UPDATE' docs/db-design/master-tables.md` が 1、`rg -c 'ForeignKeyViolation' docs/function-design/20-io-product-repo.md` が 2、`rg -c 'D-122 からの申し送り' docs/backlog.md` が 1（開始 0）。
+- AC3（BIZ の問いと commit。round 1 の是正、Review Response 参照）: `rg -c 'BIZ-01-D9' docs/function-design/30-biz-product-service.md` が 1、`rg -c 'old_jan_aliases' docs/function-design/30-biz-product-service.md` が 5、`rg -c 'old_jan_question' docs/function-design/30-biz-product-service.md` が 5、`rg -c 'OldJanAliasAnswer' docs/function-design/30-biz-product-service.md` が 3、`rg -cF 'P.jan_code = A' docs/function-design/30-biz-product-service.md` が 1、`rg -c '共有になりました' docs/function-design/30-biz-product-service.md` が 1、`rg -cF 'field: "old_jan_aliases"' docs/function-design/30-biz-product-service.md` が 1、`rg -c '別名になりました' docs/function-design/30-biz-product-service.md` が 1（開始はどれも 0）。`rg -c 'old_jan_alias_codes|oldJanAliasCodes|全ての重複行を上書き|問いを出したい商品の行だけ' docs/function-design/30-biz-product-service.md docs/decision-log.md docs/backlog.md` の出力が空（旧い答えの形と、撤回した限界の文が残らない。backlog は round 2 の是正で足した。round 1 の是正の後の版 `9b163cd3` の backlog は 2）。round 2 の是正（判定表を唯一の置き場にする）: `rg -c '^\| J[1-7] \|' docs/function-design/30-biz-product-service.md` が 7、`rg -c '3 つの message' docs/function-design/30-biz-product-service.md` の出力が空、`rg -c '確認の後に変わりました|共有になりました|別名になりました|取込みの後も持つ' docs/function-design/60-ui-product-import.md docs/function-design/42-cmd-sales-stocktake.md` の出力が空（message は 30 §4.9.2 の表だけ）、`rg -n '取込みの後に誰も持たない|誰も持たない商品にだけ出す|どちらにも問いは出ない' docs --glob '!docs/archive/**' --glob '!docs/plans/2026-10-17-jan-alias-design.md'` の出力が空（撤回した問いの条件が正本・Matrix に残らない。この packet は AC の式そのものを含むので外す）。
+- AC4（wire と UI。round 1 の是正、Review Response 参照）: `rg -c 'old_jan_aliases' docs/function-design/42-cmd-sales-stocktake.md` が 3、`rg -c 'old_jan_aliases' docs/architecture/cmd-task-specs.md` が 1、`rg -c 'UI-01c-D17' docs/function-design/60-ui-product-import.md` が 6、`rg -c 'oldJanAliases' docs/function-design/60-ui-product-import.md` が 6、`rg -c 'old_jan_aliases' docs/function-design/60-ui-product-import.md` が 2、`rg -c 'overwriteCodeSet' docs/function-design/60-ui-product-import.md` が 4、`rg -c 'oldJanAliasCodes' docs/function-design/60-ui-product-import.md` が 0、`rg -c 'UI-01c-D17' docs/SCREEN_DESIGN.md` が 1、`rg -c 'UI-01b-D25' docs/function-design/51-ui-product-form.md` が 2（開始はどれも 0）。P3 の是正: `rg -c 'BEFORE UPDATE' docs/db-design/master-tables.md` が 1、`rg -c 'ForeignKeyViolation' docs/function-design/20-io-product-repo.md` が 2（開始 1）、`rg -c 'D-122 からの申し送り' docs/backlog.md` が 1（開始 0）。`BEFORE UPDATE` の開始も 0。
 - AC5（PLU の枠と独立）: `rg -c 'TD-284 の別の小さな設計 lane' docs/function-design/33-biz-plu-export-service.md` が 0（開始 1）、`rg -c 'D-122' docs/function-design/33-biz-plu-export-service.md` が 1、`rg -c '別名' docs/db-design/plu-tables.md` が 1（開始 0）。D-117 の round 1 の名前を枠の側へ戻していない: `rg -l 'alias_product_code|asks_old_jan_stock|old_jan_on_hand_codes' docs --glob '!docs/archive/**' --glob '!docs/plans/**' --glob '!docs/decision-log.md'` の出力が空（開始も空）。`docs/decision-log.md` の hit は D-122 の Context の履歴の 1 行だけ（`rg -c 'alias_product_code' docs/decision-log.md` が 1、開始 0）。
 - AC6（決定の記録）: `rg -c '^## D-122: ' docs/decision-log.md` が 1、`rg -c '^- Revisit への追記（2026-10-17、D-122）' docs/decision-log.md` が 1（開始 0）。D-117 の本文が変わっていない: `diff <(awk '/^## D-117/,/^- Revisit/' "$TMPDIR/old/docs/decision-log.md") <(awk '/^## D-117/,/^- Revisit/' docs/decision-log.md)` の出力が空。
-- AC7（backlog の後続）: `rg -c '^- \*\*JAN の別名の runtime\*\*' docs/backlog.md` が 1（開始 0）。
+- AC7（backlog の後続）: `rg -c '^- \*\*JAN の別名の runtime\*\*' docs/backlog.md` が 1（開始 0）。runtime の順（round 2 の是正）: `rg -c '「PLU の書出しの見直しの runtime」より前に入れる' docs/backlog.md` の出力が空、`rg -c '「PLU の書出しの見直しの runtime」と同じ lane か、その後に入れる' docs/backlog.md` が 1（開始 0）。
 - AC8（並走の lane の節を書き換えない）: `git diff f5d7aaf4 HEAD -- <file> | grep -c '^-[^-]'`（削除の行の数）が、`docs/function-design/30-biz-product-service.md`・`51-ui-product-form.md`・`32-biz-csv-import-service.md` でどれも 0、`60-ui-product-import.md` で 6（§60.0 の signature の文・§60.3 の state の文・§60.4 の 2 行を、同じ行の後ろに D-122 の文を足す形で置き換えた分と、round 1 の是正〈Claude #4〉で §60.3 の payload の block の Set の filter と配列化の 2 行を直した分）、`20-io-product-repo.md` で 1（§2.1 のモジュール構成の行）。
 - AC9（docs だけ）: `git diff --name-only f5d7aaf4 HEAD -- src src-tauri scripts package.json package-lock.json` の出力が空。
 - AC10（検査）: `bash scripts/doc-consistency-check.sh` と `bash scripts/doc-consistency-check.sh --target plan` が ERROR 0・WARN 0（起票の版で実測。開始 HEAD の数は未実測）。`cd src-tauri && cargo run --bin generate_traceability -- --check` が OK。`cd src-tauri && cargo test --test design_compliance_test` が pass。
+
+実測（Plan Review round 2 の是正、2026-10-18、commit の前の作業 tree。上の command を逐語で実行し、出力をそのまま並べた。空は「空」）:
+
+```text
+AC1: 1 / 2 / 1 / 1 / 2
+AC2: 1 / 1 / 1 / 1 / 2
+AC3: BIZ-01-D9 1 / old_jan_aliases 5 / old_jan_question 5 / OldJanAliasAnswer 3 / P.jan_code = A 1 / 共有になりました 1 / field: "old_jan_aliases" 1 / 別名になりました 1
+AC3（撤回語、30・decision-log・backlog）: 空
+AC3（round 2）: ^| J[1-7] | 7 / 3 つの message 空 / 60・42 の message 空 / 撤回した問いの条件 空
+AC4: 42 old_jan_aliases 3 / cmd-task-specs 1 / UI-01c-D17 6 / oldJanAliases 6 / 60 old_jan_aliases 2 / overwriteCodeSet 4 / oldJanAliasCodes 空 / SCREEN_DESIGN 1 / UI-01b-D25 2
+AC4（P3）: BEFORE UPDATE 1（f5d7aaf4 は 0）/ ForeignKeyViolation 2（f5d7aaf4 は 1）/ D-122 からの申し送り 1（f5d7aaf4 は 0）
+AC5: TD-284 の別の小さな設計 lane 空 / 33 D-122 1 / plu-tables 別名 1 / rg -l 空 / decision-log alias_product_code 1
+AC6: ^## D-122: 1 / Revisit への追記 1 / D-117 の diff 空
+AC7: JAN の別名の runtime 1 / より前に入れる 空 / 同じ lane か、その後に入れる 1
+AC8: 30 0 / 51 0 / 32 0 / 60 6 / 20 1
+AC9: 空
+AC10: doc-consistency-check exit=0 WARN 0 ERROR 0「結果: 全チェック通過」/ --target plan exit=0 WARN 0 ERROR 0「結果: 全チェック通過」/ traceability check: OK（ERROR 0 件 / WARN 0 件）/ design_compliance_test: test result: ok. 1 passed; 0 failed
+```
 
 ## Design Readiness
 
@@ -196,8 +214,8 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 - wire type: `ImportDuplicateRow.old_jan_question: Option<String>`（TS `string | null`。Serialize だけ）。`commit_import(valid_rows, overwrite_codes, old_jan_aliases: Vec<OldJanAliasAnswer>)`、`OldJanAliasAnswer { product_code: String, old_jan: String }`（TS `commitImport(validRows, overwriteCodes, oldJanAliases: OldJanAliasAnswer[])`。省略できる引数にしない）。増える error は field `old_jan_aliases` の validation error の 1 種類（既存の `ValidationFailedAt` の変換）
 - internal type: `product_jan_aliases(old_jan TEXT PK, product_code TEXT FK, created_at TEXT)`。IO-01-D5 の `find_jan_alias` は `Option<String>`（商品コード）
 - precision/range: JAN は文字列のまま（数に変えない。先頭の 0 と 8 桁・13 桁を保つ）。別名の照合は `products.jan_code` と同じ文字列の一致で、Z004 の 13 桁の `normalized_jan` との比べ方は今の商品の照合と同じ（JAN-8 の扱いを変えない）。`old_jan_aliases` は組の一覧（数・件数の上限を足さない。同じ組の重複は 1 つとして扱う）
-- round-trip path: preview の `old_jan_question` → UI の問い（既定「ない」）→ `oldJanAliases`（「`ある` ∩ 上書きを選んだ ∩ 問いが出ている」の 1 式。`old_jan` は `old_jan_question` の値のまま）→ CMD → BIZ の手順 0b → TX の中の判定（行の前に `P.jan_code = old_jan`、全行の後に実際の選択で条件 3）→ `insert_jan_alias` → Z004 の preview の引き当て（`find_jan_alias`）→ MatchedRow の商品コード
-- invalid input: 形の合わない組（上書きしない行・空の `old_jan`・同じ商品に違う `old_jan`）→ 手順 0b の `ValidationFailed`（TX の前、DB を変えない）。commit の判定の失敗 → 原因を名指しする message（30 §4.9.2 の表）で TX 全体を戻す。そのうち上書きを選んだ別の行が前の JAN を持つ場合だけ `ValidationFailedAt { field: "old_jan_aliases" }`（UI は preview・答え・選択を保ち、答えを直して確定し直せる）、ほかは field null（preview し直す）。どれも既存の `validation` kind
+- round-trip path: preview の `old_jan_question` → UI の問い（既定「ない」）→ `oldJanAliases`（「`ある` ∩ 上書きを選んだ ∩ 問いが出ている」の 1 式。`old_jan` は `old_jan_question` の値のまま）→ CMD → BIZ の手順 0b → TX の中の判定（30 §4.9.2 の判定表の J3〜J7。行の前に `P.jan_code = old_jan`、全行の後に実際の選択で条件 3）→ `insert_jan_alias` → Z004 の preview の引き当て（`find_jan_alias`）→ MatchedRow の商品コード
+- invalid input: 形の合わない組と commit の判定の失敗は、30 §4.9.2 の判定表（J1〜J7）の行の error（型・field・message・回復は表が持つ。J1・J2 は TX の前で DB を変えず、J3〜J7 は TX 全体を戻す）。field `old_jan_aliases` は J6 だけで、ほかは field null。どれも既存の `validation` kind（42 §22.3 の変換が field を保つ）
 - compatibility: 1 つの build で古い UI は無い。商品 CSV の列は変えない。Z004 の形は変えない。`old_jan_question` は既存の field の後に足す（読む側は field 名で読む）。別名の表が無い版の DB は migration で空の表を得るだけ
 
 ## Test Plan

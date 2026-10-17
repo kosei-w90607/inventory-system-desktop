@@ -15,7 +15,7 @@ Risk: R3
 - C5 32 §15.3 手順 4 b: ヒット 0 件の行だけ別名を引き、別名があればヒット 1 件と同じ形の MatchedRow（その商品の `pos_stock_sync`、warning なし）、無ければ `unmatched_product`。ヒット 1 件・複数件の行は変えない。preview と D-118 の確定の TX の取り直しが同じ関数を使う。
 - C6 30 BIZ-01-D9 問いの条件と preview の判定: 直す前の JAN が空でなく、直す前にその JAN を持つ商品がその商品だけで、その商品の行が JAN を直し、新規の行（valid_rows）がその JAN を持たない重複行だけ `old_jan_question = Some(前の JAN)`。上書きの選択に依る条件（ほかの重複行の新しい JAN）は見ない（問いは広めに出る）。JAN を空にする変更を含む。PLU の枠の有無・状態を見ない。
 - C7 30 BIZ-01-D9 warning: 行の JAN が別の商品の別名なら `ImportRow.warnings` に足して取り込む。前の JAN へ戻す行（別名の商品と同じ）には出さない。
-- C8 30 §4.9 手順 0b・2 e.: 答えは `{product_code, old_jan}` の組。形の合わない組（上書きしない行、空の `old_jan`、同じ商品に違う `old_jan`）は TX の前に拒み DB を変えない。TX の中で、行を処理する前に `P.jan_code = old_jan` と「その JAN を持つ商品が P だけ」、全行の後に実際の `overwrite_codes` で条件 3 を確かめ、満たせば別名を書き、満たさなければ原因を名指しする message で TX 全体を戻す。上書きを選んだ別の行 Q が前の JAN を持つときは field `old_jan_aliases` の error。空の一覧は全て「ない」。同じ組の重複は 1 つとして扱う。
+- C8 30 §4.9 手順 0b・2 e. と §4.9.2 の判定表（J1〜J7）: 答えは `{product_code, old_jan}` の組。表の行を上から順に確かめ、最初に満たさない行の error（型・field・message）を返す。J1・J2（形の合わない組）は TX の前に拒み DB を変えない。J3〜J7 は TX 全体を戻す。J5（warning の無い別名の行）は答えの有無に依らない。field `old_jan_aliases` は J6 だけ。全て満たせば別名を書く。空の一覧は全て「ない」。同じ組の重複は 1 つとして扱う。
 - C9 42 §22.6: CMD は引数を BIZ にそのまま渡し、generated の呼出しは 3 つの引数。
 - C10 60 UI-01c-D17: 問いは `old_jan_question` のある重複行で `上書き` を選んだときだけ出て既定は `ない`。UI は選択に応じて問いを出し入れしない。送る集合は「`ある` ∩ 上書きを選んだ ∩ 問いが出ている」の 1 式で、`old_jan` は `old_jan_question` の値のまま。warning は新規の行と重複行の両方に出る。field `old_jan_aliases` の error は preview・答え・選択を保ち、答えを直して確定し直せる。ほかの失敗は preview を保って preview し直す導線。
 - C11 D-122 (2): PLU の枠の照合・prepare・confirm・書出しは別名を読まず書かない。別名の JAN の枠は「対象の商品を持たない JAN の枠」のまま。
@@ -24,7 +24,7 @@ Risk: R3
 
 - FM1: 商品がその JAN を持った後も別名が残り、その JAN の売上が別名の商品へ入る（商品フォームの新規、商品 CSV の新規・上書き、test の fixture のどれかの経路）
 - FM2: 商品がその JAN を手放した後に、前に消えたはずの別名が生き返る（D-117 の round 2 の指摘の型）
-- FM3: 共有 JAN、または同じ取込みで別の商品が持つ JAN に問いを出し、別名を作る（たどる先が誤る・2 つになる）
+- FM3: 共有 JAN に問いを出す、または同じ取込みで別の商品が持つ JAN を別名にする（たどる先が誤る・2 つになる）
 - FM4: 答えが上書きしない行・判定を満たさない行に付いたのに、別名を書く、または答えを黙って捨てて続ける
 - FM5: 別名がヒット 1 件・共有 JAN の行の引き当てを変える、または別名の行が warning・別の形になる
 - FM6: preview と確定で引き当ての規則が違い、preview で P に引き当たった行が確定で行エラーになる（またはその逆）
@@ -63,7 +63,7 @@ Risk: R3
 | C8 | FM3 | BIZ（commit、選択に依る条件 3） | `test_commit_import_alias_with_skipped_other_row_req104`（DB で P = A、Q = C、CSV で P → B、Q → A、Q を `スキップ`） | P に問いが出ない（preview）、または P に「ある」で確定した後に A→P が無い |
 | C8 | FM3 | BIZ（commit、選択に依る条件 3） | `test_commit_import_alias_conflicts_with_overwritten_other_row_req104`（同じ CSV で Q も `上書き`、P に「ある」） | Ok になる、商品・別名のどれかが変わる、error が `ValidationFailedAt { field: "old_jan_aliases" }` でない、message に Q・A・P が無い |
 | C8 | FM3 | BIZ（commit、直した後の確定） | `test_commit_import_succeeds_after_answer_changed_to_no_req104`（上の失敗の後、同じ `valid_rows`・`overwrite_codes` で空の `old_jan_aliases`） | Err になる、P の JAN が B・Q の JAN が A にならない、別名ができる |
-| C7 | FM11 | BIZ（commit、preview の後にできた別名） | `test_commit_import_rejects_row_taking_new_alias_without_warning_req104`（preview の後に別の取込みで A→P ができ、この取込みの新規の行 Q が A を持ち、Q の `warnings` に別名の warning が無い） | Ok になる、A→P が消える、message が「前の番号 A が確認の後に商品 P の別名になりました」でない。`warnings` に別名の warning がある行は Ok で A の行が Q になる |
+| C7 | FM11 | BIZ（commit、preview の後にできた別名） | `test_commit_import_rejects_row_taking_new_alias_without_warning_req104`（preview の後に別の取込みで A→P ができ、この取込みの新規の行 Q が A を持ち、Q の `warnings` に別名の warning が無い） | Ok になる、A→P が消える、message が「前の番号 A が確認の後に商品 P の別名になりました」でない。`warnings` に、A と今の別名の商品 P で作った warning の文と一致する要素がある行は Ok で A の行が Q になる。`warnings` の文が別の商品コード（preview の時点の別名の商品）で作られている行は J5 で戻る（判定表の J5） |
 | C9 | FM4 | CMD / bindings | `bindings.ts` の `commitImport` が 3 つの引数（`oldJanAliases: OldJanAliasAnswer[]`）を持ち、field `old_jan_aliases` の validation error が既存の変換で届く（generate_bindings の差分の確かめと CMD の test） | generated の呼出しが 2 つの引数のまま、3 つ目が optional、または error の field が null になる |
 | C10 | FM10 | RTL（`ProductImportPreview.test.tsx`） | `UI-01c-D17: 上書きを選んだ行だけに前の番号の問いが出て既定はない` | `old_jan_question` が null の行に問いが出る、`スキップ` の行に出る、既定が `ある` |
 | C10 | FM10 | reducer / hook（`reducer.test.ts`、`ProductImportPage.test.tsx`） | `UI-01c-D17: ある かつ 上書き かつ 問いが出ている 行だけを oldJanAliases に送る` | `スキップ` に戻した行、`ない` の行、問いの出ていない行が `commitImport` の 3 つ目の引数に入る、`ある` かつ `上書き` の行が入らない、`old_jan` が `old_jan_question` の値と違う |
@@ -86,11 +86,11 @@ Risk: R3
 | T1 | P が A を単独で持つ → 商品 CSV で A→B、`ある` → Z004 に A の行 | A の行は P | BIZ-01-D9、32 §15.3 手順 4 b |
 | T2 | 同じで `ない` → Z004 に A の行 | `unmatched_product` | BIZ-01-D9 |
 | T3 | P1・P2 が A を共有 → 同じ CSV で両方の JAN を直す | 問いは出ない。A の行は `unmatched_product` | 条件 2 |
-| T4 | P1・P2 が A を共有 → P1 だけを直す | 問いは出ない。A の行は P2（共有でなくなった後の 1 件のヒット） | 条件 3 |
-| T5 | P1 が A、P2 が C → 同じ CSV で P1 を A→C、P2 を C→A（入れ替え） | どちらにも問いは出ない（直した後に他の行が持つ）。A の行は P2、C の行は P1 | 条件 3 |
+| T4 | P1・P2 が A を共有 → P1 だけを直す | 問いは出ない（直す前に A を 2 つの商品が持つ）。A の行は P2（共有でなくなった後の 1 件のヒット） | 条件 2 |
+| T5 | P1 が A、P2 が C → 同じ CSV で P1 を A→C、P2 を C→A（入れ替え） | 両方に問いが出る（preview は上書きの選択に依らない条件だけで判定する）。既定の `ない` なら別名は無く、A の行は P2、C の行は P1。両方を `上書き` にして `ある` と答えると field `old_jan_aliases` の error（判定表の J6）で何も変わらない | preview の判定、判定表の J6 |
 | T6 | P1 が A → 同じ CSV で P1 を A→B、新規の行 Q が A | P1 に問いは出ない。Q の行は warning なし（別名がまだ無い）。A の行は Q | 条件 3 |
 | T7 | T1 の後 → 商品 Q を A で登録（商品フォームか CSV） | CSV なら Q の行に warning。登録の後は A の行は Q。Q の JAN を後で C に変えても A→P は戻らない（A の行は `unmatched_product`） | master-tables §1a、C1・FM2 |
-| T8 | T1 の後 → P の JAN を B→A に戻す | 問いは B について出る（P だけが B を持ち、戻した後に誰も持たないとき）。A→P は trigger が消す（P が A を持つ）。warning は出ない | BIZ-01-D9 の warning |
+| T8 | T1 の後 → P の JAN を B→A に戻す | 問いは B について出る（DB で P だけが B を持ち、新規の行が B を持たないとき。上書きを選んだ別の行が B を持つかは commit の J6 が判定する）。A→P は trigger が消す（P が A を持つ）。warning は出ない | BIZ-01-D9 の warning |
 | T9 | T1 の後 → P の JAN を B→D に直し `ある` | 別名は A→P と B→P の 2 つ | C2 |
 | T10 | preview（P に A の問いが出る）→ 別の CSV を先に取り込んで P の JAN が A → C に変わる → 最初の preview のまま `ある` で取り込む | 「商品 P の JAN が確認の後に変わりました。もう一度プレビューしてください」で何も変わらない（C→P を作らない） | C8 |
 | T10b | P = A、Q = C。CSV で P → B、Q → A。Q を `スキップ`、P に `ある` | P に問いが出て、確定で A→P ができる。Q は C のまま | C8（選択に依る条件 3） |
@@ -135,11 +135,11 @@ Risk: R3
 - precision/range: JAN の先頭の 0 を保つ（C4）。
 - cross-language parse: TS は code と JAN を文字列のまま扱う（数に変えない）。
 
-境界の 4 観点の一巡（今回足した契約の文: 表と 3 つの trigger、`products` を作り直す規則、IO の 2 関数、引き当ての段と関数の共有、問いの 3 条件、preview の判定（選択に依らない条件だけ）、warning、`old_jan_question`、`old_jan_aliases` と `OldJanAliasAnswer`、手順 0b の 2 つの message、手順 2 e. の 4 つの message と field `old_jan_aliases`、UI の問いと送る 1 式と回復の分け方、別名の UPDATE の扱い、UI-01b-D25、枠との独立、D-118 の runtime への申し送り）:
+境界の 4 観点の一巡（今回足した契約の文: 表と 3 つの trigger、`products` を作り直す規則、IO の 2 関数、引き当ての段と関数の共有、問いの 3 条件、preview の判定（選択に依らない条件だけ）、warning、`old_jan_question`、`old_jan_aliases` と `OldJanAliasAnswer`、30 §4.9.2 の判定表（J1〜J7 の条件・順・error・回復）と field `old_jan_aliases`（J6）、UI の問いと送る 1 式と回復の分け方、別名の UPDATE の扱い、UI-01b-D25、枠との独立、D-118 の runtime への申し送り）:
 
 - 安全な整数の範囲: 足した契約に数の値は無い（JAN と商品コードは文字列、件数を返さない）。`created_at` は日時の文字列。
 - 0 の表示: 結果（`ProductImportResult`）に別名の件数を足さない。空の答えの一覧は「全て `ない`」で、0 件の別名を特別に表示しない。
-- 失敗の時点と順序: preview は読むだけ。commit は手順 0（商品コードの長さ）→ 0b（答えの形、TX の前、DB を変えない）→ TX → 行を処理する前の検査（`P.jan_code = old_jan`、単独で持つ）→ 全行の処理（trigger が別名を消す）→ 全行の後の検査（上書きを選んだ別の行 → field `old_jan_aliases` の error、そのほか → preview し直す error）→ 別名の INSERT → COMMIT の順で、0b の後の失敗は全て TX 全体を戻す。Z004 の引き当ての DB の失敗は今の `find_by_jan_code` と同じ DatabaseError。
+- 失敗の時点と順序: preview は読むだけ。commit は手順 0（商品コードの長さ）→ 0b（判定表の J1・J2、TX の前、DB を変えない）→ TX → 行を処理する前の J3（`P.jan_code = old_jan`）・J4（単独で持つ）・J5（warning の無い別名の行）→ 全行の処理（trigger が別名を消す）→ 全行の後の J6（上書きを選んだ別の行 → field `old_jan_aliases` の error）・J7（そのほか → preview し直す error）→ 別名の INSERT → COMMIT の順で、表の上の行から最初に満たさない行の error を返し、TX の中の失敗は全て TX 全体を戻す。組と行は送られた順に見て、名指す商品が複数なら valid_rows の順で最初の行の商品。Z004 の引き当ての DB の失敗は今の `find_by_jan_code` と同じ DatabaseError。
 - 単位や種類の混在: JAN-8 と 13 桁の混在は今の商品の照合と同じ扱い（別名は `products.jan_code` の文字列をそのまま持ち、Z004 の 13 桁と文字列で比べる。比べ方を変えない）。共有 JAN と別名は不変条件で混ざらない（別名の JAN を商品が持たない）。
 
 ## Compatibility Checks
@@ -170,7 +170,7 @@ Risk: R3
 - If invalidate/refetch changes the value before versus after the operation, which test proves the lifecycle order and preserved snapshot are correct? → `test_commit_rematch_uses_same_alias_rule`（preview の後の別名の変化）。
 - If a key branch is inverted, which test fails? → 「ヒット 0 件の行だけ別名を引く」を「ヒット 1 件以上でも引く」にすると `test_parse_and_validate_req401_shared_jan_ignores_alias`。条件 2 の `== 1` を `>= 1` にすると C6 (iii)。
 - If a threshold comparison changes, which test fails? → C6 (iii)・(iv)・(v)。
-- If a guard is removed, which test fails? → 手順 0b を外すと `test_commit_import_rejects_alias_code_not_in_overwrite`。2 e. の後の確かめを外すと `test_commit_import_rolls_back_when_alias_condition_changed`。trigger を外すと C1 の各行。
+- If a guard is removed, which test fails? → 手順 0b を外すと `test_commit_import_rejects_malformed_alias_answers`。2 e. の後の確かめを外すと `test_commit_import_rolls_back_when_alias_condition_changed`。trigger を外すと C1 の各行。
 - If an output field is omitted, which test fails? → `old_jan_question` を常に null にすると C6 (i)・C10。
 - If output order changes, which test fails? → 2 e. の「全行の後の検査」を行の処理の前の状態で行う mutant は、上書きを選んだ別の行 Q が A を持つ case で検査を通り、別名の INSERT が trigger に拒まれて DbError になる。`test_commit_import_alias_conflicts_with_overwritten_other_row_req104` は `ValidationFailedAt { field: "old_jan_aliases" }` を確かめるので落ちる。
 - If dry-run performs a side effect, which test fails? → preview の後に `product_jan_aliases` の行数が変わらないことを C6・C7 で確かめる。
