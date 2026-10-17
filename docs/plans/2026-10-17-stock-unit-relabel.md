@@ -31,6 +31,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本の直しは起草役の commit（`d6f57bbd`）にある。Coordinator は正本の差分（30 の上書きの段の `plu_dirty` の比べる列と操作ログの summary、51 UI-01b-D23 の送る判定と説明文、20・74 の行）と packet の前文・Workflow State・Owner Effort Budget を読み、D-119 の U2 = b の範囲を越えていないこと、366 との節の所有表があること、code・migration に触れていないことを確かめた。起草役が決めた 4 点（操作ログの既知の key に足さない、「現在庫」の欄の語、無効化の範囲の外の画面の古い語、spec-check の穴の追記）はそのまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、test の穴 3 つ（長さどうしの preview・commit、ログの全行の mutant、L3 の記録詳細を開く順）を是正に入れた。起草役が `5fe0eae1` で直し、Coordinator が差分（30:18、51 の D11・§7.8・D23、DSR の実例、Matrix の T5・T7・T8・T10・T11・T14、AC6 の glob、L3 の fixture）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。起草役が `ca7bdcc6` で直し、Coordinator が差分（Matrix の Failure Modes・T1・T4・T9 と Mutation の節、packet の前文の数・Ordinary Operation の 3 行目・S5・AC6 と baseline・L3-1・L3-2 の入力物）を読んだ。直したのは検証の計画と数と字面で、Scope の設計は変えていないので plan-gate に留める。Plan Review round 3（天井）へ出す。
+7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-315、介入 1 回目 / 予算 9 回）。起草役が `9cb6ac2c` で直し、Coordinator が差分（S5 と所有表の §7.5、AC3 の subshell と baseline、S1〜S3 の compile の単位、Writer への助言の定義、Matrix の anchor、comment の一覧）を読んだ。
 
 ## Owner Effort Budget
 
@@ -415,3 +416,16 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 3）と Codex GPT-6.1 Sol
 | R13 | Claude #1（P3） | 採る | 操作ログの要約の JSON を字面で書いているが、key の順は serde_json の既定で変わる | 「old が `pcs`・new が `ball` の JSON（key の順は契約にしない）」にし、T1 も JSON として比べる形にした |
 | R14 | Claude #2（P3） | 採る | 30 BIZ-01-D7 の行の未実装の注記 2 つのうち、2 つ目が S5 と AC6 に当たらない | S5 に 2 つ目も外すことを足し、AC6 に 3 本目の `rg` を足した |
 | R15 | Claude #3（P3） | 採る | L3 の入力物の部門が ID だけで、画面では名前で選ぶ | 「部門 毛糸（ID 3）」にした |
+
+### Plan Review round 3（2026-10-18、head `a3753d16`）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 3）と Codex GPT-6.1 Sol（reject、P1 0・P2 1・P3 2）。どちらも Ordinary Operation は成立と判定した。全て採った（Coordinator の裁定）。round の天井で P2 が残ったので owner に諮り、「直して、追加の round なしで plan-approved」と決まった（repo 外の回答台帳 TD-315）。起草役が `9cb6ac2c` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R16 | Codex #1（P2） | 採る | S5 と節の所有表が editable / read-only の列挙の直し先を `51-ui-product-form.md` §7.4 としているが、その句は §7.5 の Edit の手順 2・3 にある | S5 の参照と所有表を §7.5 の Edit の手順 2・3 に直し、その句を S5 の sweep に入れた |
+| R17 | Codex #2（P3） | 採る | AC3 の生成の後の cwd が書かれていない | cargo の実行を subshell に閉じ、後の検査は repo の root で行うと書いた（S4 も同じ形） |
+| R18 | Codex #3（P3） | 採る | 「各段で test を通して次へ」と S1〜S3 の型の依存が合わない | S1〜S3 を 1 つの compile の単位にした |
+| R19 | Claude #1（P3） | 採る | Writer への助言の「単位だけの変更」の定義に、単位が実際に変わる前提が無い | 定義の頭に「`updates.stock_unit` が `Some` で、かつ」を足した |
+| R20 | Claude #2（P3） | 採る | oracle の anchor の文の production の件数を単数に決め打ちしている | 複数の literal を許す形（定数にまとめるなら単数）にした |
+| R21 | Claude #3（P3） | 採る | 改名する test の comment が直す一覧に無い | 一覧に `product_service.rs:3713` を足した |
