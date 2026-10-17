@@ -12,7 +12,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
-- Plan Reviewer: fresh Opus 5.5 + Codex（GPT-6.1 Sol / high。`.local` の model の選び方の「R3 で複数の層にまたがる契約の初回」の行）
+- Plan Reviewer: fresh Opus 5.5 + Codex（model は round ごとに `.local` の model の選び方で決める。round 1 は GPT-6.1 Sol / high〈「R3 で複数の層にまたがる契約の初回」〉、round 2 以降は GPT-6 Astra / high〈「前の round で Codex が P1 を出した lane の再 review」〉）
 - Final Reviewer: Fable 5.1（Claude 側、R3・design lane）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -25,6 +25,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-121 で満たす。条件「未解決の設計の問いが無い」は、店に聞く 2 つの問い（控えの探し方・昔の控え）に答えが無い間の既定を正本（UI-09c-D2・D3・D5）と backlog に書いたことで満たす。owner に聞く設計の問いは残っていない。plan-gate への遷移は Coordinator。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`8470fa65`）にある。Coordinator は D-121 の Context・Decision と、37 §37.10・§37.11 を新設して §37.3〜§37.9（並走の 367 の所有）を変えていないこと、所有表（37・45・55・pos-tables で 363・367 と節が分かれる）、owner の決定（TD-264・TD-265・TD-277・TD-296 の 11a・TD-304）の写しを確かめた。発注書の「TD-264 に ECR+ の終了の後も」は Coordinator の要約の誤りで、起草役が原文に当たって出所を TD-162・TD-020 に直したことを確かめた。店に聞く 2 つは答えが無い間の既定で進められる。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `253ef96c` で直し、Coordinator が差分（37 §37.10 の内部の結果と手順 1〜5・BIZ-08-D8・D10、§37.11 の手順 1・2a・3・5・7 と `body_text`・保証の範囲、24 §14.18b、45 §45.6c、55 UI-07-D17、backlog の申し送り、Matrix の追加の行）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
+6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `f4f5faf9` で直し、Coordinator が差分（37 §37.11 の保存の規則を形と日付の検査 → 伸びうるかの判定と保留 → 番号と文の比べ → 保存 → 数と名指しの 1 つの筋に書き直したこと、伸びうるかを file の名前の規則で決めること、§37.10 の scan で外した名前・移す条件・Z004 の error の振り分け、45 の生成 enum、24 の型の所有、55 の知らせの文）と、起草役の組の一巡の表を読んだ。Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 
 ## Owner Effort Budget
 
@@ -378,3 +379,23 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 5）と Codex GPT-6.1 Sol�
 | R11 | Codex #6（P3） | 採る | 新しい型の baseline の検索式が既存の `EjRecord` に当たる | 新設の名前に限った式に直し、実測を更新した |
 
 あわせて owner の設計の原則（repo 外の回答台帳 TD-310）で、EJ の欠け・保留・conflict をその場で名指しし、欠けは「EJ のファイルを選んで取り込む」で直せる形にした。conflict にはその場で直す操作が無く、「開発者に知らせて」の文になっている。これは owner に諮る候補で、本 round の review が通った後に他の packet の問いとまとめて聞く。
+
+### Plan Review round 2（2026-10-18、head `7d65f6b6`）
+
+Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 2）と Codex GPT-6 Astra（reject、P1 1・P2 7・P3 1）。Claude #1 と Codex #1 は同じ件で、重い方の P1 とした。全て採った（Coordinator の裁定）。round 1・2 で EJ の保存の規則に指摘が続いたので、個別に塞がず §37.11 を 1 つの筋として書き直させた（owner の決定 TD-296 の 5a）。起草役が `f4f5faf9` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R12 | Codex #1（P1）・Claude #1（P2） | 採る | 手で選んだ伸び続ける EJ の file では最後の記録の保留が効かず、書きかけの記録が保存されて完全な記録が永久に conflict になる | 伸びうるかを出所によらず file の名前の規則（連番の付いた名前だけが伸びない）で決め、手で選んだ file にも保留を当てた |
+| R13 | Codex #2（P2） | 採る | 移してよい EJ の条件が、保留した記録を外すので全件の一致を証明しない | 保留が 0 であることも条件に足し、保留した記録の確定と移動の順は後続 (b) の事項として申し送った |
+| R14 | Codex #3（P2） | 採る | scan で外した EJ の名前を一括の結果で名指しできない | snapshot に外した名前を持ち、一括の結果の読めない file の一覧へ引き継ぐ |
+| R15 | Codex #4（P2） | 採る | conflict の案内が保存済みの控えの有無によらず「残しました」と言う | conflict ごとに保存済みかを持たせ、無ければ「保存していません」とし、リンクを出さない |
+| R16 | Codex #5（P2） | 採る | Matrix の期待が最後の記録の保留と両立しない | 伸びた file と移された file の期待を、保留した記録が 1 度だけ入る形に直した |
+| R17 | Codex #6（P2） | 採る | 保存の時に日時の暦の妥当性を検査しない | 暦にない日時を含む file を読めない file として扱う |
+| R18 | Codex #7（P2） | 採る | 値引きの加算を消す mutation を fixture が検出できない | 有効な値引きが残る fixture と合計の assertion を足した |
+| R19 | Codex #8（P2） | 採る | 有限の IPC の値を文字列に戻している | 失敗の kind は `CmdErrorKind`、EJ の kind・mode は response の enum にした |
+| R20 | Codex #9（P3） | 採る | Matrix が存在しない field を検査する | EJ の file が無いときに EJ の項目が無いことの検査にした |
+| R21 | Claude #2（P3） | 採る | Z004 の段のほかの error の行き先が無い | 日報の段と同じく、`DatabaseError` 以外は Skipped とした |
+| R22 | Claude #3（P3） | 採る | 閲覧の型の所有が書かれていない | db で定義して `biz/mod.rs` で re-export する形を書いた |
+
+起草役の問いの Coordinator の裁定（2026-10-18）: 連番の名前に改名した伸びうる file の書きかけを保存しうることは、保証の範囲に書いたとおり round 3 の判定に出す。保存済みと文の違う保留の記録に別の数は足さない（知らせの文で事実と合う）。conflict にその場で直す操作が無いことは owner に諮る候補のまま。
