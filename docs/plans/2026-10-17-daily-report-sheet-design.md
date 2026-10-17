@@ -6,9 +6,9 @@
 
 ## Workflow State
 
-- Phase: plan-gate
+- Phase: implementing
 - Risk: R3
-- Plan Commit: pending
+- Plan Commit: 94c8fb01263caad5ab12854ace49bafe47ed9f7f
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
@@ -27,6 +27,8 @@
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `41c7210f` で直し、Coordinator が差分（34 SALES-SHEET-D2 の鍵の理由と保証の範囲・D5 と処理ステップの順、56 UI-09a-D13 の出典・D17 の押したときの順と画面の知らせとリンク・D18 の代わりの道、24 §14.21 の互換の範囲、29 IO-07-D4 の D4a への参照、plu-export の旧い記述、Matrix の追加の行）を読んだ。鍵（位置と名称の組）と Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。起草役が `a305f187` で直し、Coordinator が差分（34 SALES-SHEET-D2 の 3 つの場合分けと保証の範囲、24 §14.21 手順 3 が D2 を引く形、56 のリンクの行き先・受入の順・代わりの道・続け方、Matrix の追加の行）を読んだ。鍵（位置と名称の組）は変えず、別の項目を足しうる日だけ足さない形にした。その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-317、介入 1 回目 / 予算 9 回）。起草役が `09e8e91c` で直し、Coordinator が差分（足さない日の画面と紙の文、24 §14.21 の互換の範囲を正本 1 か所に置いたこと、`import_ids` と `import_seq`、行の key の test の更新の確かめ、backlog の印刷の要否、再試行）を読んだ。
+8. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側が round 3 で P1・P2 が無いと報告し、Codex の P2 3 件は owner の決定（repo 外の回答台帳 TD-317）どおり直した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。
+9. plan-approved → implementing（2026-10-18、Coordinator、本 commit）: docs だけの design lane で、設計の出力は Plan Commit までに正本にある。状態だけを進め、Final Review（Minimum 1）へ出す。
 
 ## Owner Effort Budget
 
