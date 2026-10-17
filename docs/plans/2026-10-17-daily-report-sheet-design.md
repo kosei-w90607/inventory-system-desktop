@@ -26,6 +26,7 @@
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`2a615820`）にある。Coordinator は D-120 の全文と、29 §29.4.1・56 UI-09a-D13・D17・D19・34 SALES-SHEET-D2 の追加の行を読み、owner の決定（TD-260・TD-280・TD-296 の 15）と店主の答え（TD-279・TD-305）の写しに食い違いが無いこと、手元の資料の数に版の時点が付いていること、追加の行に実値・実ラベルが無いこと、37・45・55（並走の 364・367 の所有）に触れていないことを確かめた。owner に聞く 2 つ（紙の並びの案、切替えの日）は既定（案 a）で進められ、並びは runtime の lane の L3 で実機の印刷で並べて決める形を採る。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼んだ。起草役が `41c7210f` で直し、Coordinator が差分（34 SALES-SHEET-D2 の鍵の理由と保証の範囲・D5 と処理ステップの順、56 UI-09a-D13 の出典・D17 の押したときの順と画面の知らせとリンク・D18 の代わりの道、24 §14.21 の互換の範囲、29 IO-07-D4 の D4a への参照、plu-export の旧い記述、Matrix の追加の行）を読んだ。鍵（位置と名称の組）と Scope の範囲は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。起草役が `a305f187` で直し、Coordinator が差分（34 SALES-SHEET-D2 の 3 つの場合分けと保証の範囲、24 §14.21 手順 3 が D2 を引く形、56 のリンクの行き先・受入の順・代わりの道・続け方、Matrix の追加の行）を読んだ。鍵（位置と名称の組）は変えず、別の項目を足しうる日だけ足さない形にした。その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
+7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-317、介入 1 回目 / 予算 9 回）。起草役が `09e8e91c` で直し、Coordinator が差分（足さない日の画面と紙の文、24 §14.21 の互換の範囲を正本 1 か所に置いたこと、`import_ids` と `import_seq`、行の key の test の更新の確かめ、backlog の印刷の要否、再試行）を読んだ。
 
 ## Owner Effort Budget
 
@@ -336,3 +337,19 @@ Claude 側 fresh Opus 5.5（reject、P1 0・P2 1・P3 2）と Codex GPT-6.1 Sol�
 | R17 | Claude #3（P3） | 採る | 2 枚目へ続けるときの作り方が決まっていない | 表の見出しの行を紙ごとに繰り返す既定と、行の高さの前提を添えた見積りを書いた |
 
 起草役が出した判断の Coordinator の裁定（2026-10-18）: 画面の知らせの形 `{帳票の見出し}：{文}` は起草役の判断のまま採る（帳票ごとに文が違うため）。足さない日も紙の上の取込みの回数の文は変えない（その帳票の見出しの下に足さない旨の知らせが出る）。名称が空の行の例外は保証の範囲に書いたとおり round 3 の判定に出す。
+
+### Plan Review round 3（2026-10-18、head `bf82ea2a`）
+
+Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 5）と Codex GPT-6.1 Sol（reject、P1 0・P2 3）。Claude #3 と Codex #1 は同じ件。全て採った（Coordinator の裁定）。round の天井で P2 が残ったので owner に諮り、「直して、追加の round なしで plan-approved（跡は Final Review）」と決まった（repo 外の回答台帳 TD-317）。起草役が `09e8e91c` で直した。
+
+| # | 出所 | 裁定 | 要旨 | 直した所 |
+|---|---|---|---|---|
+| R18 | Codex #1（P2）・Claude #3（P3） | 採る | 足さない日にも画面の「支払集計を合算」の文、紙の題、部門に限った warning の見出しが残る | 画面の 2 回以上の日の文を足さない表を除く中立の文にし、warning の見出しを `日報の確認が必要です` にし、紙の題は足さない帳票がある日だけ変える。Matrix に画面と紙の検査を足した |
+| R19 | Codex #2（P2） | 採る | 互換の範囲に古い保存の鍵と新しい保存の鍵が混ざる日を含めている | 範囲に「各組の保存済みの `payment_key` も全取込みで同じ」を足し、24 §14.21 を範囲の正本にした。混ざる日の値（組で足した 1 行）を Matrix に足した |
+| R20 | Codex #3（P2） | 採る | 行の key の test が直しを外しても通る | 更新して再描画した後に 2 行で古い行が残らない確かめを足した |
+| R21 | Claude #1（P3） | 採る | backlog に印刷の要否の旧い live な行が残る | 日次は作ると決めた（D-120）旨を足し、月次は後の判断のままと書いた |
+| R22 | Claude #2（P3） | 採る | `import_seq` を導く方法が無い | IO の DTO の取込みの数を、取込みの id の並び `import_ids` に置き換え、`import_seq` はその位置とした |
+| R23 | Claude #4（P3） | 採る | 足さない日の画面に取込みの区切りが無い | warning に紙で取込みごとに見られる旨を添えた |
+| R24 | Claude #5（P3） | 採る | 紙の内容の読込みの失敗に再試行が無い | 既存と同じ `再試行` を置いた |
+
+起草役の判断の Coordinator の裁定（2026-10-18）: IO の DTO の取込みの数を `import_ids` に置き換えたこと（数を 2 か所に分けない）、画面の 2 回以上の日の文を条件で切り替えない中立の文にしたこと（wire を変えない）、§14.21a の読む親を `import_ids` に限ったことは採る。画面の文と見出しの変更は 2 回以上取り込んだ全部の日に及ぶので、owner の好み（壊さない優先）に照らして runtime の lane の L3 で owner が読み違えないかを見る。
