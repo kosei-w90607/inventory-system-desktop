@@ -4,7 +4,7 @@
 
 SPEC-STK-CNT-D9・D10（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。新しい業務判断を MNT へ移さない。
 
-- MNT-03 は [DB の新契約](../DB_DESIGN.md) の列と表を 1 TX で足し、既存の movement の並びの鍵を埋めて写しを求め直す。棚卸しか Z004 の取込みを持つ DB では何も変えずに失敗する（開発・試験 DB の作り直しは別の承認）。旧行を推定の位置で新しい軸へ移さない。
+- MNT-03 は [DB の新契約](../DB_DESIGN.md) の列と表を 1 TX で足し、既存の movement の並びの鍵を埋めて写しを求め直す。棚卸しか Z004 の取込みを持つ DB では何も変えずに失敗する（開発・試験 DB はリリースの前まで作り直してよい。D-123。手順は [22 §19](../function-design/22-mnt-migration.md)）。旧行を推定の位置で新しい軸へ移さない。
 - MNT-01 の backup / 復旧の規則は変えない。計数の context を持たないので、DB 接続の交換で失効させるものは無い（[43](../function-design/43-cmd-settings-log.md)）。
 
 旧 ADR（時点証拠）の分類・legacy の上限・context の失効は置き換えた。

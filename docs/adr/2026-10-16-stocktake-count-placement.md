@@ -151,7 +151,7 @@ owner の決定（repo 外の回答台帳。要旨）: 約束ではなく、ア�
 ### SPEC-STK-CNT-D10: 移行（legacy 互換を持たない）
 
 - legacy 互換（旧方式の実測を区別する kind・上限・再確認の状態機械）は持たない（owner TD-261 の Q11 = b）。本番の DB は無い。
-- runtime の migration は、棚卸しの明細か Z004 の取込みを 1 件でも持つ DB では止まる（失敗にして何も変えない）。そうした開発・試験 DB（owner の PC の L3 用の DB を含む）は、対象と保全の範囲を決めた別の承認のうえで作り直す。作り直しは原価の lane の vB と 1 回にまとめ、原価の lane を本 runtime の最初の配布の単位より先に入れる（D-119 (8)、[22 §16](../function-design/22-mnt-migration.md) の「DB の作り直しを 1 回にまとめる順」）。棚卸しと Z004 の取込みが無い DB では、既存の movement の `business_date` を参照先の業務記録の日付（初期在庫は登録日）から埋め、求め直しで写しを書く。求め直した値が移行の前の `stock_quantity` と違う商品は、黙って書き換えず、件数と商品ごとの old / new を操作ログ（`integrity_fix` と同じ形）に残し、起動の後に整合性の画面で知らせる。D4 の共有 JAN の不変条件に既に違反している組（在庫連動の商品と同じ JAN を持つ別の商品）は、自動では変えず、件数と商品コードを同じ操作ログに残し、整合性の画面で知らせる。
+- runtime の migration は、棚卸しの明細か Z004 の取込みを 1 件でも持つ DB では止まる（失敗にして何も変えない）。そうした開発・試験 DB（owner の PC の L3 用の DB を含む）は作り直す（リリースの前まで包括で承認済み。古い file は消さずに移す。[decision-log](../decision-log.md) D-123、[22 §16](../function-design/22-mnt-migration.md) の作り直しの手順。対象と保全の範囲は作り直しを伴う配布の単位の packet が書く。2026-10-18 に D-119 (8) の「作り直しを 1 回にまとめる順」を置き換えた）。棚卸しと Z004 の取込みが無い DB では、既存の movement の `business_date` を参照先の業務記録の日付（初期在庫は登録日）から埋め、求め直しで写しを書く。求め直した値が移行の前の `stock_quantity` と違う商品は、黙って書き換えず、件数と商品ごとの old / new を操作ログ（`integrity_fix` と同じ形）に残し、起動の後に整合性の画面で知らせる。D4 の共有 JAN の不変条件に既に違反している組（在庫連動の商品と同じ JAN を持つ別の商品）は、自動では変えず、件数と商品コードを同じ操作ログに残し、整合性の画面で知らせる。
 - 理由: 旧行を新しい軸へ黙って移す規則を持たない（旧行の位置は時刻からしか推せない）。
 
 ### SPEC-STK-CNT-D11: EJ は在庫に使わない
@@ -165,6 +165,7 @@ owner の決定（repo 外の回答台帳。要旨）: 約束ではなく、ア�
 
 - (a) 停止に触れない単位: 並びの鍵・求め直しの関数・入出庫と商品登録の切替・整合性の突合の相手の変更。計数が無い間は値が今と同じ。(b) の前に入れてよい。
 - (b) 停止を外す単位: 計数・完了・Z004 の確定と取消を新しい経路で置き換え、[停止 ADR](2026-09-23-legacy-stocktake-z004-write-stop.md) の 5 つの入口（棚卸しの開始・保存・確定、Z004 の確定・取消）をまとめて外す（SPEC-STOP-D6 のとおり部分的に外さない。owner の決定 TD-296 で確認）。停止 ADR の「⑤」は、この (b) の単位を指すと改めた。
+- (a) と (b) の境の細部（2026-10-18、(a) の起票〈Plan Packet `docs/plans/2026-10-18-stocktake-count-runtime-a.md`〉で決めた）: (a) は精算（Z004、`phase = 1`）を含まない記録の全部を持つ。並びの鍵の 3 列（`business_date`・`phase`・`settlement_no` と `phase` と `settlement_no` の対の CHECK）・`stock_counts`・写しの 3 列の migration（[22 §19](../function-design/22-mnt-migration.md)）、求め直しの関数のうち計数・入出庫・初期在庫の窓（D3 の判定表の「入出庫」「初期在庫」の行と「計数どうし」、要再確認の理由 2・3）、入出庫 4 業務と商品登録・一括 import の切替、整合性の突合の相手と画面。(b) へ回すもの: Z004 の movement と `phase = 1` を結ぶ CHECK（`inventory_movements` の 2 回目の作り直し）、`csv_imports` の machine_no・settlement_no と `sale_records.stock_linked`、棚卸しの完了の列（`valuation_quantity`・カーソル）、求め直しの「精算 k」の行と要再確認の理由 1、D4 の共有 JAN の不変条件と、移行の前から違反している組の知らせ（D10 の最後の文）、D8 の在庫連動を始める検査、商品の結果・在庫推移の要再確認と範囲の表示、`MovementRecord` の並びの鍵。理由: 停止中の旧本体（test だけが呼ぶ Z004 の確定と取消。SPEC-STOP-D3）の fixture は精算回数を持たず、(a) で Z004 と phase を結ぶ CHECK を入れると、旧本体の回帰 test が (b) で旧本体ごと外れるまで書けない。(a) の間、`phase = 1` の movement を作る経路は無い（Z004 の確定は停止中。旧本体は `phase = 0` で書く）ので、求め直しは `phase = 1` の行を見たら誤りで止まる。
 
 ## Rejected Options
 
