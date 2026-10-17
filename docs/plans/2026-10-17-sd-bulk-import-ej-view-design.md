@@ -6,13 +6,13 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
-- Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
+- Plan Reviewer: fresh Opus 5.5 + Codex（GPT-6.1 Sol / high。`.local` の model の選び方の「R3 で複数の層にまたがる契約の初回」の行）
 - Final Reviewer: Fable 5.1（Claude 側、R3・design lane）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -23,6 +23,7 @@ wave に属さない単独の lane（design lane、docs だけ。runtime は後�
 1. kickoff → spec-check（2026-10-17、起草役）: owner の決定（repo 外の回答台帳 TD-264・TD-265・TD-277・TD-296 の 11a・TD-304）と backlog の「売上の SD からの一括取込みと EJ の控えの閲覧」の要件を Scope にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-17、起草役）: 触る正本（37 §37.9 の「Z004 と EJ への引継ぎ」が設計を後続へ送っている、29E IO-08.10 の申し送り、D-071 の日報の側、UI-07）に一括取込み・EJ の保存と閲覧・CV17 との併存の契約が無い。同じ commit で設計正本に足した（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-121 で満たす。条件「未解決の設計の問いが無い」は、店に聞く 2 つの問い（控えの探し方・昔の控え）に答えが無い間の既定を正本（UI-09c-D2・D3・D5）と backlog に書いたことで満たす。owner に聞く設計の問いは残っていない。plan-gate への遷移は Coordinator。
+4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`8470fa65`）にある。Coordinator は D-121 の Context・Decision と、37 §37.10・§37.11 を新設して §37.3〜§37.9（並走の 367 の所有）を変えていないこと、所有表（37・45・55・pos-tables で 363・367 と節が分かれる）、owner の決定（TD-264・TD-265・TD-277・TD-296 の 11a・TD-304）の写しを確かめた。発注書の「TD-264 に ECR+ の終了の後も」は Coordinator の要約の誤りで、起草役が原文に当たって出所を TD-162・TD-020 に直したことを確かめた。店に聞く 2 つは答えが無い間の既定で進められる。Plan Review round 1 へ出す。
 
 ## Owner Effort Budget
 
