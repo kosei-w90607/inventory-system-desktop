@@ -2,17 +2,17 @@
 
 2026-10-17 に同時に起票した 6 本の lane（repo 外の回答台帳 TD-304・TD-295）の 1 本で、wave に属さない単独の lane として扱う（design lane、docs だけ。runtime は後続の lane）。owner の決定（repo 外の回答台帳 TD-284・TD-286）を、売上の取込み・商品 CSV・商品フォームとの継ぎ目まで含めて最初から設計する。並走の lane は「単位の語の直し」の runtime（branch `agent/stock-unit-relabel`）と「売上の SD からの一括取込みと EJ の控えの閲覧」の design（branch `agent/sd-bulk-import-design`）ほか 4 本で、重なる file は下の「節の所有表」で分ける。本 lane の branch は `agent/jan-alias-design`（起点 main `f5d7aaf4`）。
 
-規模と手法（起票の最初に数えた。file の数は `git diff --name-only f5d7aaf4 HEAD -- docs ':(exclude)docs/plans'` の 17 file）: 触る設計正本は 15 file（db-design の master-tables・plu-tables・pos-tables、`DB_DESIGN.md`、function-design の 20・22・30・32・33・42・51・60、architecture の biz-task-specs・cmd-task-specs、`SCREEN_DESIGN.md`）と decision-log・backlog。画面 1（UI-01c 商品一括インポートの重複行の問い。UI-01b は振舞いを変えず 1 行の決定だけ）。migration 1（表 1 つと trigger 3 つ。後続の runtime の lane が足す。22 §17）。wire の型 2（`ImportDuplicateRow.old_jan_question` と `commit_import` の 3 つ目の引数 `old_jan_alias_codes`）。横断の約束がかかる経路は 3 つ: (a) 商品が JAN を持つ経路（商品フォームの新規、商品 CSV の新規・上書き、将来の経路）、(b) 売上の引き当て（Z004 の preview と D-118 の確定の TX の取り直し）、(c) `products` を作り直す migration（vB・D-118 の写しの列の migration・後の全て）。**1 lane のまま進め、横断の約束は各 1 か所に置く**: (a) は DB の trigger 1 か所（master-tables §1a）、(b) は引き当ての関数 1 つ（32 §15.3 手順 4 b）、(c) は 22 §17 の規則 1 つと最新の版での trigger の存在の test。分ける案（表と trigger の lane と、問いと UI の lane）は採らない: 問いの条件と不変条件は同じ規則の両面で、分けると片方の lane が他方の未設計の前提に依る。前の lane（D-117）の教訓（別名を枠の列に置き、消す処理を経路ごとに書いた形が round 2 で 4 件の継ぎ目を出した）に従い、別名の置き場（枠 → 商品の側の表）と消し方（経路ごと → trigger）の両方の形を変えた。
+規模と手法（起票の最初に数えた。file の数は `git diff --name-only f5d7aaf4 HEAD -- docs ':(exclude)docs/plans'` の 17 file）: 触る設計正本は 15 file（db-design の master-tables・plu-tables・pos-tables、`DB_DESIGN.md`、function-design の 20・22・30・32・33・42・51・60、architecture の biz-task-specs・cmd-task-specs、`SCREEN_DESIGN.md`）と decision-log・backlog。画面 1（UI-01c 商品一括インポートの重複行の問い。UI-01b は振舞いを変えず 1 行の決定だけ）。migration 1（表 1 つと trigger 3 つ。後続の runtime の lane が足す。22 §18）。wire の型 2（`ImportDuplicateRow.old_jan_question` と `commit_import` の 3 つ目の引数 `old_jan_alias_codes`）。横断の約束がかかる経路は 3 つ: (a) 商品が JAN を持つ経路（商品フォームの新規、商品 CSV の新規・上書き、将来の経路）、(b) 売上の引き当て（Z004 の preview と D-118 の確定の TX の取り直し）、(c) `products` を作り直す migration（vB・D-118 の写しの列の migration・後の全て）。**1 lane のまま進め、横断の約束は各 1 か所に置く**: (a) は DB の trigger 1 か所（master-tables §1a）、(b) は引き当ての関数 1 つ（32 §15.3 手順 4 b）、(c) は 22 §18 の規則 1 つと最新の版での trigger の存在の test。分ける案（表と trigger の lane と、問いと UI の lane）は採らない: 問いの条件と不変条件は同じ規則の両面で、分けると片方の lane が他方の未設計の前提に依る。前の lane（D-117）の教訓（別名を枠の列に置き、消す処理を経路ごとに書いた形が round 2 で 4 件の継ぎ目を出した）に従い、別名の置き場（枠 → 商品の側の表）と消し方（経路ごと → trigger）の両方の形を変えた。
 
 ## Workflow State
 
-- Phase: plan-draft
+- Phase: plan-gate
 - Risk: R3
 - Plan Commit: pending
 - Amendments: none
 - Coordinator: Opus 5.5 main session
 - Writer: Opus 5.5 subagent（本 run の起草役）
-- Plan Reviewer: fresh Opus 5.5 + Codex（model は発注時に決める）
+- Plan Reviewer: fresh Opus 5.5 + Codex（GPT-6.1 Sol / high。`.local` の model の選び方の「R3 で複数の層にまたがる契約の初回」の行）
 - Final Reviewer: Fable 5.1（Claude 側、R3・design lane）+ Codex（GPT-6.1 Sol 既定）。座組表（docs/AGENT_OPERATING_MANUAL.md ## 座組）どおり
 - Final Review Minimum: 1
 - Human Gate: ready,merge
@@ -23,6 +23,7 @@
 1. kickoff → spec-check（2026-10-17、起草役）: owner の決定（repo 外の回答台帳 TD-284 の c、TD-286 の β、TD-296 の 6b）と、D-117 の Plan Review round 2 の 4 件（`docs/backlog.md` の「TD-284 の lane」の項目の (1)〜(4)）を Scope にし、Risk を R3 と記録した（下の Risk）。
 2. spec-check → design（2026-10-17、起草役）: 触る正本（32 §15.3 手順 4 b の引き当て、30 §4.8・§4.9 の商品 CSV の preview と commit、42 §22.6 の `commit_import`、60 UI-01c、20 の product_repo、master-tables、22、33 §16.6）は別名を持たず、「前の JAN を持つ商品が無ければ `unmatched_product`」で閉じている。別名の表・不変条件・問い・答えの wire・引き当ての段が無いので、同じ commit で設計正本を更新した（下の Design Readiness）。
 3. design → plan-draft（2026-10-17、起草役、同じ commit）: 条件「設計の出力が正本にある」は Design Readiness の引く正本と D-122 で満たす。条件「未解決の設計の問いが無い」は、owner の決定（TD-284・TD-286・TD-296 の 6b）で方向が決まり、境界の 4 件を正本の規則で閉じ、残る owner への確かめ（下の「owner への確かめ」の Q1）は答えが無い間の既定を D-117 の受け入れ済みの限界に置いたことで満たす。plan-gate への遷移は Coordinator。
+4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本は起草役の commit（`412d2a36`）にある。並走の 367（`agent/sd-direct-read-runtime`）も 22 に §17・MNT-03-D15 を新設していたので、本 lane の節を §18・MNT-03-D16 に振り直した（本 commit。22・master-tables・decision-log・backlog・本 packet・Matrix の参照、計 20 行）。Coordinator は D-122 の決定・置き場（商品の側の表と trigger 3 つ）・問いを出す条件・`commit_import` の確かめ直しを読み、owner の決定（TD-284 の c、TD-286 の β、TD-296 の 6b）の写しに食い違いが無いこと、D-117 の round 1 で崩れた継ぎ目（reserved の枠の別名、経路ごとの消し方、共有の同時変更、CMD・UI の境界）がそれぞれ置き場か条件で塞がれていること、code・migration に触れていないことを確かめた。owner に聞く Q1（前の JAN の枠の値段）は既定 a（D-117 の受け入れ済みの限界）で進める。Plan Review round 1 へ出す。
 
 owner への確かめ（設計を止めない。答えが無い間は既定で進む）:
 
@@ -54,7 +55,7 @@ Goal Invariant:
 
 ### 最小完了条件
 
-- 後続の runtime の lane（backlog の「JAN の別名の runtime」）の Writer が、チャットの履歴と repo 外の台帳を見ずに、source docs だけで次を実装できる: 表 `product_jan_aliases` と 3 つの trigger の migration（master-tables §1a、22 §17 MNT-03-D15）、`products` を作り直す migration の規則、IO-01-D5 の 2 関数、BIZ-03 の引き当ての関数（ヒット 0 件の行で別名を引き、preview と D-118 の確定の TX の取り直しが共有する。32 §15.3 手順 4 b）、BIZ-01 の preview の `old_jan_question` と別名の warning、`commit_import` の `old_jan_alias_codes` と手順 0b・2 e.（30 §4.8・§4.9・§4.9.2 BIZ-01-D9）、CMD の引数（42 §22.6）、UI-01c-D17。
+- 後続の runtime の lane（backlog の「JAN の別名の runtime」）の Writer が、チャットの履歴と repo 外の台帳を見ずに、source docs だけで次を実装できる: 表 `product_jan_aliases` と 3 つの trigger の migration（master-tables §1a、22 §18 MNT-03-D16）、`products` を作り直す migration の規則、IO-01-D5 の 2 関数、BIZ-03 の引き当ての関数（ヒット 0 件の行で別名を引き、preview と D-118 の確定の TX の取り直しが共有する。32 §15.3 手順 4 b）、BIZ-01 の preview の `old_jan_question` と別名の warning、`commit_import` の `old_jan_alias_codes` と手順 0b・2 e.（30 §4.8・§4.9・§4.9.2 BIZ-01-D9）、CMD の引数（42 §22.6）、UI-01c-D17。
 - D-117 の Plan Review round 2 の 4 件が、正本の規則で閉じている: (1) 別名は枠と独立で枠の CHECK に関わらない、(2) 消すのは trigger だけで JAN を書く全経路を覆う、(3) 共有 JAN と同じ取込みで別の商品が持つ JAN には聞かず、たどる先は PRIMARY KEY で 1 つ、(4) 答えは CMD・BIZ・UI・generated の呼出しの正本に同じ名前で書かれ、既定は空 =「ない」。
 - 「ない」（既定）と別名の無い全ての行は、今の設計どおり `unmatched_product` の行エラーで知らせる（黙って誤った商品へ付けない）。
 - D-122 が decision-log にあり、D-117 の Revisit から本決定を指す 1 行がある。後続の runtime の lane の範囲・順（PLU の書出しの見直しの runtime の前）・Risk が backlog にある。
@@ -99,7 +100,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 本 lane は docs だけ。下の file の、下の節を書き換えた（全部 plan-first の commit）。
 
-1. 別名の持ち方（D-122 (1)(3)）: [master-tables](../db-design/master-tables.md) に「1a. product_jan_aliases」（役割・カラム・不変条件と 3 つの trigger・migration・設計意図）を足し、[DB_DESIGN](../DB_DESIGN.md) のテーブル一覧と詳細の対応表に行を足した。[22](../function-design/22-mnt-migration.md) に §17（MNT-03-D15。表と trigger の migration、`products` を作り直す migration の規則、テスト）を足した。[20](../function-design/20-io-product-repo.md) に IO-01-D5（`find_jan_alias`・`insert_jan_alias`、`insert_product`・`update_product` は別名を扱わない）とモジュール構成の行を足した。
+1. 別名の持ち方（D-122 (1)(3)）: [master-tables](../db-design/master-tables.md) に「1a. product_jan_aliases」（役割・カラム・不変条件と 3 つの trigger・migration・設計意図）を足し、[DB_DESIGN](../DB_DESIGN.md) のテーブル一覧と詳細の対応表に行を足した。[22](../function-design/22-mnt-migration.md) に §18（MNT-03-D16。表と trigger の migration、`products` を作り直す migration の規則、テスト）を足した。[20](../function-design/20-io-product-repo.md) に IO-01-D5（`find_jan_alias`・`insert_jan_alias`、`insert_product`・`update_product` は別名を扱わない）とモジュール構成の行を足した。
 2. 作る経路・使う経路（D-122 (4)(5)(7)）: [30](../function-design/30-biz-product-service.md) の §4.8 に `ImportDuplicateRow` の構造体（`old_jan_question`）と手順 5 の判定の行、§4.9 に引数 `old_jan_alias_codes`・手順 0b・手順 2 e.・エラーハンドリングの行、新しい §4.9.2（BIZ-01-D9: 問いの条件・経路・preview の判定・warning・答えの運び方・commit の判定・共有 JAN との関係・理由と却下・Revisit）を足した。[32](../function-design/32-biz-csv-import-service.md) §15.3 手順 4 b に、ヒット 0 件の行で別名を引く段と、引き当ての規則を preview と D-118 の確定の取り直しで共有する文、更新履歴の行を足した。[42](../function-design/42-cmd-sales-stocktake.md) §22.6 の `commit_import` の signature と手順、[60](../function-design/60-ui-product-import.md) の UI-01c-D17・§60.0・§60.3・§60.4・§60.9・§60.10、[51](../function-design/51-ui-product-form.md) の UI-01b-D25 と変更履歴、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の商品一括インポート画面、architecture の [biz-task-specs](../architecture/biz-task-specs.md)（BIZ-01 の一括インポートと BIZ-03 の Stage 2）と [cmd-task-specs](../architecture/cmd-task-specs.md)（`commit_import` の行）、[pos-tables](../db-design/pos-tables.md) の B-1 のマスタ照合の行を、同じ規則に揃えた。
 3. PLU の枠との関係（D-122 (2)）: [33](../function-design/33-biz-plu-export-service.md) §16.6 の「同じ商品へたどる経路は TD-284 の別の小さな設計 lane で扱う」を、別名は枠と独立で §16.3 の照合・prepare・confirm は別名を読まず書かない、前の JAN の枠の値段は前の値段のまま（D-117 の受け入れ済みの限界）に置き換えた。[plu-tables](../db-design/plu-tables.md) の「products との結合」に、別名を結合キーに入れない 1 文を足した。D-117 の枠の規則・照合の表は変えていない。
 4. 後続の lane の範囲・順・Risk: [backlog](../backlog.md) の「TD-284 の lane」の項目に本 lane で置いた設計の要約を足し、その直後に「JAN の別名の runtime」（R3、PLU の書出しの見直しの runtime より前、触る file と L3）を足した。
@@ -127,7 +128,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | `docs/function-design/32-biz-csv-import-service.md` | SD 一括取込み（364）: 取込みの単位・順・失敗の扱い（§15.3 の手順 1〜3・5〜7、§15.4・§15.5、D-118 の節の取込みの流れ） | §15.3 の手順 4 b の「ヒット0件」の下の行と「引き当ての規則」の行、更新履歴の最後の行 | 364 が引き当てを呼ぶ順を変えるなら、引き当ては手順 4 b の関数を使う（本 lane の文） |
 | `docs/db-design/pos-tables.md` | 364・日報の紙（363）: 日報・取込みの流れの節 | B-1 の「マスタ照合」の「ヒット0件」の行 | 無し |
 | `docs/architecture/biz-task-specs.md` | 364・365: それぞれの節 | BIZ-01 の一括インポートの「前の JAN の別名」の段、BIZ-03 の Stage 2 の「ヒット0件」の行 | 無し |
-| `docs/function-design/22-mnt-migration.md` | SD 直読みの runtime（367）: D-111 の migration の節（足すなら末尾） | 末尾の §17 | 末尾は両方を残す（節の番号は後に merge する側が直す） |
+| `docs/function-design/22-mnt-migration.md` | SD 直読みの runtime（367）: D-111 の migration の節（足すなら末尾） | 末尾の §18（§17・MNT-03-D15 は 367 の `settlement_no` の migration。Coordinator が 2026-10-17 に振り分けた） | 末尾は両方を残す（§17 = 367、§18 = 本 lane） |
 | `docs/decision-log.md` | 363・364・365・367: 末尾の D-120・D-121・D-123・D-124 | D-117 の Revisit の次の 1 行、末尾の D-122 | 末尾は番号の順に並べる |
 | `docs/backlog.md` | 各 lane の自分の項目 | 「TD-284 の lane」の項目の末尾の文と、直後の「JAN の別名の runtime」の項目 | 無し |
 
@@ -143,7 +144,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 数は開始 HEAD `f5d7aaf4`（`git archive f5d7aaf4 docs` を `$TMPDIR/old` に展開した版）と起票後の版を同じ数え方（その file の中で式に当たる行の数、`rg -c`）で測った。出力が無いのは 0。
 
-- AC1（表と trigger と migration）: `rg -c '^## 1a\. product_jan_aliases' docs/db-design/master-tables.md` が 1、`rg -c 'product_jan_aliases_reject_held' docs/db-design/master-tables.md` が 2、`rg -c 'MNT-03-D15' docs/function-design/22-mnt-migration.md` が 1、`rg -c 'DROP TRIGGER product_jan_aliases_reject_held' docs/function-design/22-mnt-migration.md` が 1、`rg -c 'product_jan_aliases' docs/DB_DESIGN.md` が 2（開始はどれも 0）。
+- AC1（表と trigger と migration）: `rg -c '^## 1a\. product_jan_aliases' docs/db-design/master-tables.md` が 1、`rg -c 'product_jan_aliases_reject_held' docs/db-design/master-tables.md` が 2、`rg -c 'MNT-03-D16' docs/function-design/22-mnt-migration.md` が 1、`rg -c 'DROP TRIGGER product_jan_aliases_reject_held' docs/function-design/22-mnt-migration.md` が 1、`rg -c 'product_jan_aliases' docs/DB_DESIGN.md` が 2（開始はどれも 0）。
 - AC2（IO と引き当て）: `rg -c '^fn find_jan_alias\(' docs/function-design/20-io-product-repo.md`・`rg -c '^fn insert_jan_alias\(' docs/function-design/20-io-product-repo.md`・`rg -c 'find_jan_alias' docs/function-design/32-biz-csv-import-service.md` がどれも 1（開始 0）。`rg -c '前の JAN の別名' docs/db-design/pos-tables.md` が 1、`rg -c '前の JAN の別名' docs/architecture/biz-task-specs.md` が 2（開始 0）。
 - AC3（BIZ の問いと commit）: `rg -c 'BIZ-01-D9' docs/function-design/30-biz-product-service.md` が 1、`rg -c 'old_jan_alias_codes' docs/function-design/30-biz-product-service.md` が 4、`rg -c 'old_jan_question' docs/function-design/30-biz-product-service.md` が 4（開始はどれも 0）。
 - AC4（wire と UI）: `rg -c 'old_jan_alias_codes' docs/function-design/42-cmd-sales-stocktake.md` が 3、`rg -c 'old_jan_alias_codes' docs/architecture/cmd-task-specs.md` が 1、`rg -c 'UI-01c-D17' docs/function-design/60-ui-product-import.md` が 6、`rg -c 'oldJanAliasCodes' docs/function-design/60-ui-product-import.md` が 7、`rg -c 'UI-01c-D17' docs/SCREEN_DESIGN.md` が 1、`rg -c 'UI-01b-D25' docs/function-design/51-ui-product-form.md` が 2（開始はどれも 0）。
@@ -158,11 +159,11 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 
 設計の完了条件は `docs/DEV_WORKFLOW.md` Design Phase Rules の Design completion criteria。
 
-- 引用する設計正本（節まで）: master-tables §1a（役割・カラム・不変条件と trigger・migration・設計意図）／22 §17（MNT-03-D15、`products` を作り直す migration の規則、テスト）／20 IO-01-D5／30 §4.8（`ImportDuplicateRow`、手順 5）・§4.9（signature、手順 0b・2 e.、エラーハンドリング）・§4.9.2（BIZ-01-D9）／32 §15.3 手順 4 b／42 §22.6 `commit_import`／60 UI-01c-D17・§60.3・§60.4／51 UI-01b-D25／33 §16.6／plu-tables の「products との結合」／D-117・D-118（共有 JAN の不変条件と確定の段）・D-122。
-- 必要な設計成果物（Design artifact selection の当たる行）: BIZ・IO の振舞い = updated in this PR（30・32・20）／command・DTO = updated in this PR（42 §22.6、30 §4.8・§4.9。wire の変更は後続の lane、下の Boundary / Wire Contract）／表・migration = updated in this PR（master-tables §1a、22 §17。番号と実装は後続の lane）／operator workflow・文言 = updated in this PR（60 UI-01c-D17、SCREEN_DESIGN、51 UI-01b-D25）／durable な判断 = updated in this PR（D-122、D-117 の Revisit への追記）。
+- 引用する設計正本（節まで）: master-tables §1a（役割・カラム・不変条件と trigger・migration・設計意図）／22 §18（MNT-03-D16、`products` を作り直す migration の規則、テスト）／20 IO-01-D5／30 §4.8（`ImportDuplicateRow`、手順 5）・§4.9（signature、手順 0b・2 e.、エラーハンドリング）・§4.9.2（BIZ-01-D9）／32 §15.3 手順 4 b／42 §22.6 `commit_import`／60 UI-01c-D17・§60.3・§60.4／51 UI-01b-D25／33 §16.6／plu-tables の「products との結合」／D-117・D-118（共有 JAN の不変条件と確定の段）・D-122。
+- 必要な設計成果物（Design artifact selection の当たる行）: BIZ・IO の振舞い = updated in this PR（30・32・20）／command・DTO = updated in this PR（42 §22.6、30 §4.8・§4.9。wire の変更は後続の lane、下の Boundary / Wire Contract）／表・migration = updated in this PR（master-tables §1a、22 §18。番号と実装は後続の lane）／operator workflow・文言 = updated in this PR（60 UI-01c-D17、SCREEN_DESIGN、51 UI-01b-D25）／durable な判断 = updated in this PR（D-122、D-117 の Revisit への追記）。
 - plan にしかない durable な判断の昇格先: 決めたことは全て正本と D-122 に置いた。packet にだけあるのは、規模と手法の数え、後続の lane への file の申し送り（Scope の「型・JSON・関数の形を変えるもの」）、所有表、AC の数、Q1。
 - 前提・制約と、延期した design gap の follow-up: レジが前の JAN の枠の登録で売り、Z004 にその JAN の行が出ること（Contract Probe の P3。D-117 の正本の前提）。前の JAN の枠の値段は Q1（既定 a）。商品フォームの edit の JAN の変更・別名の一覧と削除・引き当て以外の前の JAN は D-122 の Revisit。延期が安全な理由: どれも今の code の振舞いを変えず、既定は今の振舞い（行エラーで知らせる）のまま。
-- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: 「どの商品も持たない JAN だけが別名」は、商品の側の書込み（INSERT と `jan_code` の UPDATE）の trigger と別名の表の INSERT の trigger で両方向を縛る。escape hatch は (i) `products` を作り直す migration（DROP TABLE で trigger が消える）で、22 §17 の規則と最新の版での trigger の存在の test で塞ぐ（忘れると改名が失敗する側に倒れる。Contract Probe P2）、(ii) trigger を経ない書込み（`PRAGMA` で trigger を止める等）は repo の code に無く、足さない。「別名でたどるのは JAN を持つ商品が無い行だけ」は不変条件から従う（別名の JAN を商品が持つ状態が無い）。「答えを黙って捨てない」は手順 0b と 2 e. の 2 つの拒否で、どちらも DB を変えない（0b は TX の前、2 e. は TX 全体を戻す）。
+- 絶対保証（cannot happen / always happens）の例外と escape hatch の自己点検: 「どの商品も持たない JAN だけが別名」は、商品の側の書込み（INSERT と `jan_code` の UPDATE）の trigger と別名の表の INSERT の trigger で両方向を縛る。escape hatch は (i) `products` を作り直す migration（DROP TABLE で trigger が消える）で、22 §18 の規則と最新の版での trigger の存在の test で塞ぐ（忘れると改名が失敗する側に倒れる。Contract Probe P2）、(ii) trigger を経ない書込み（`PRAGMA` で trigger を止める等）は repo の code に無く、足さない。「別名でたどるのは JAN を持つ商品が無い行だけ」は不変条件から従う（別名の JAN を商品が持つ状態が無い）。「答えを黙って捨てない」は手順 0b と 2 e. の 2 つの拒否で、どちらも DB を変えない（0b は TX の前、2 e. は TX 全体を戻す）。
 - 判定（ready / not ready）と理由: ready（plan-draft に進める）。理由: 設計の出力が上の正本と D-122 にあり、owner の判断事項は TD-284・TD-286・TD-296 の 6b で決まり、Q1 は答えが無い間の既定（D-117 の受け入れ済みの限界）を持ち、残る外部前提（P3）は D-117 の正本の前提で本 lane の設計の分岐を変えない。
 
 ## Registration / Generation Obligations
@@ -210,7 +211,7 @@ Test Design Matrix: [2026-10-17-jan-alias-design](test-matrices/2026-10-17-jan-a
 
 - Ordinary Operation の列が、正常な条件で目的（メーカーの番号の変更で前のバーコードの在庫の売上が同じ商品へ入り、入力の誤りの訂正では入らない）を達成できるか。
 - D-117 の round 2 の 4 件が、正本の規則で閉じているか（枠と独立・trigger・共有と同じ取込みの条件・wire の 4 か所）。同じ型の穴（別名が生き返る、たどる先が 2 つ、答えが消える）が別の経路に残っていないか。
-- 不変条件の escape hatch（`products` を作り直す migration、trigger を経ない書込み）が塞がっているか。22 §17 の規則が vB・D-118 の runtime の migration に効くか。
+- 不変条件の escape hatch（`products` を作り直す migration、trigger を経ない書込み）が塞がっているか。22 §18 の規則が vB・D-118 の runtime の migration に効くか。
 - preview の判定（全ての重複行を上書きすると見なす）が、どの上書きの組合せでも commit の判定と食い違わないか。commit の判定の「前」と「後」の状態の取り方が 1 通りに読めるか。
 - 引き当ての関数を preview と D-118 の確定の取り直しで共有する文が、D-118 の節（参照だけ）と矛盾しないか。
 - 公開 repo に実データを書いていないか。並走の lane の節を触っていないか（AC8、所有表）。
@@ -220,7 +221,7 @@ Test Design Matrix: [2026-10-17-jan-alias-design](test-matrices/2026-10-17-jan-a
 | 契約 ID | 設計正本の節 | 実装（Scope） | 自動 test | L3 / 非対象 |
 |---|---|---|---|---|
 | master-tables §1a（表・不変条件・3 つの trigger） | master-tables §1a、DB_DESIGN の一覧 | runtime の lane: migration、`schema` の SQL | runtime の lane（Matrix の C1・C2） | 非対象 |
-| MNT-03-D15（migration）と `products` を作り直す migration の規則 | 22 §17 | runtime の lane: migration の registry、`expected_tables` | runtime の lane（Matrix の C3） | 非対象 |
+| MNT-03-D16（migration）と `products` を作り直す migration の規則 | 22 §18 | runtime の lane: migration の registry、`expected_tables` | runtime の lane（Matrix の C3） | 非対象 |
 | IO-01-D5（`find_jan_alias`・`insert_jan_alias`） | 20 | runtime の lane: `product_repo.rs` | runtime の lane（Matrix の C4） | 非対象 |
 | BIZ-03 の引き当て（ヒット 0 件の行で別名、関数の共有） | 32 §15.3 手順 4 b、pos-tables B-1、biz-task-specs の BIZ-03 | runtime の lane: `csv_import_service/parse.rs`（D-118 の runtime が先なら確定の取り直しも） | runtime の lane（Matrix の C5） | L3: 前のバーコードの Z004 の preview |
 | BIZ-01-D9（問いの条件・preview の判定・warning） | 30 §4.8・§4.9.2、biz-task-specs の BIZ-01 | runtime の lane: `product_service.rs` の `preview_import` | runtime の lane（Matrix の C6・C7） | 非対象 |
@@ -237,7 +238,7 @@ Test Design Matrix: [2026-10-17-jan-alias-design](test-matrices/2026-10-17-jan-a
 本 run は実機・持ち帰りデータの新しい集計を行っていない。前提ごとに確かめた結果を書く。
 
 - P1（SQLite の trigger で不変条件を両方向に縛れる: `AFTER INSERT` / `AFTER UPDATE OF jan_code` で別名を消し、別名の表の `BEFORE INSERT` の `RAISE(ABORT)` で商品が持つ JAN を拒み、TX を戻すと消した別名も戻る）: `$TMPDIR` の合成の in-memory の DB（Python の `sqlite3`、SQLite 3.51.3）で、商品が持つ JAN の別名の INSERT が `jan_alias_held_by_product` で拒まれ、JAN を変えた後は入り、`jan_code` を同じ値で SET しても別名が残り、別の商品の INSERT と UPDATE で消え、TX の rollback で戻り、空文字が CHECK で拒まれることを観測した。→ 観測（本 run の probe）。同梱の SQLite（3.45.0、`libsqlite3-sys` 0.28.0、22 §15 の記録）と同じ版では確かめていない。repo は同じ rusqlite の bundled で `RAISE(ABORT, …)` の trigger を test に使っている（`src-tauri/src/biz/product_service.rs:2847`）。runtime の lane の migration の test が同梱の版で確かめる。
-- P2（`products` を作り直すと trigger が消え、別名の表の側の trigger が残ると改名が失敗する）: 同じ probe で、`products_new` を作って移し `DROP TABLE products` すると `products` の 2 つの trigger が消え、`ALTER TABLE products_new RENAME TO products` が `error in trigger …: no such table: main.products` で失敗し、別名の表の側の trigger を先に消すと作り直しが通る（その後は 3 つとも無い）こと、`RENAME COLUMN` は 3 つの trigger を保つことを観測した。→ 観測（本 run の probe）。22 §17 の規則はこれに依る。
+- P2（`products` を作り直すと trigger が消え、別名の表の側の trigger が残ると改名が失敗する）: 同じ probe で、`products_new` を作って移し `DROP TABLE products` すると `products` の 2 つの trigger が消え、`ALTER TABLE products_new RENAME TO products` が `error in trigger …: no such table: main.products` で失敗し、別名の表の側の trigger を先に消すと作り直しが通る（その後は 3 つとも無い）こと、`RENAME COLUMN` は 3 つの trigger を保つことを観測した。→ 観測（本 run の probe）。22 §18 の規則はこれに依る。
 - P3（レジは JAN を直した商品の前の JAN の枠の登録で前のバーコードを売り、その売上は Z004 に前の JAN の行で出る）: D-117 の正本（33 §16.6「前の JAN の枠のバーコードでレジが売った分は、次の Z004 にその JAN の行で出る」）の前提。本 run は実機で確かめていない。→ 未確認の前提（D-117 の正本の文）。別名の設計はこの前提が崩れても誤らない（前の JAN の行が出なければ、別名は使われないだけ）。
 - P4（店で JAN を直す場面の頻度とどちらの場面が多いか）: 台帳と open-questions に記録が無い（2026-10-17 に `rg` で確かめた）。→ 未確認。設計の分岐を変えない（問いは場面を問わず 1 回）。
 

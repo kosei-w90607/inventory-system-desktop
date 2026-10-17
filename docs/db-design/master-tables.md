@@ -161,7 +161,7 @@
 
 ### migration（D-122、runtime の lane）
 
-表と 3 つの trigger を作る migration を 1 本足す（番号はその lane が決める。既存の表を変えないので DB の作り直しは要らない。[22 §17](../function-design/22-mnt-migration.md)）。`products` を作り直す migration は、作り直しの前に `product_jan_aliases_reject_held` を消し、作り直しの後に 3 つの trigger を作り直す（22 §17 の規則。`DROP TABLE products` は `products` の 2 つの trigger を消し、残った別名の表の側の trigger が `products` を参照するため `ALTER TABLE products_new RENAME TO products` が失敗する）。
+表と 3 つの trigger を作る migration を 1 本足す（番号はその lane が決める。既存の表を変えないので DB の作り直しは要らない。[22 §18](../function-design/22-mnt-migration.md)）。`products` を作り直す migration は、作り直しの前に `product_jan_aliases_reject_held` を消し、作り直しの後に 3 つの trigger を作り直す（22 §18 の規則。`DROP TABLE products` は `products` の 2 つの trigger を消し、残った別名の表の側の trigger が `products` を参照するため `ALTER TABLE products_new RENAME TO products` が失敗する）。
 
 ### 設計意図
 

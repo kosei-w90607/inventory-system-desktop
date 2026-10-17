@@ -1,6 +1,6 @@
 # Test Design Matrix: JAN を直した商品の前の JAN の別名
 
-本 lane は docs だけで、自動 test を足さない。下の行は後続の lane（backlog の「JAN の別名の runtime」）が実装する test の設計で、設計正本の節（master-tables §1a、22 §17、20 IO-01-D5、30 §4.8・§4.9・§4.9.2 BIZ-01-D9、32 §15.3 手順 4 b、42 §22.6、60 UI-01c-D17）と D-122 から導いた。本 lane が自分で回す検査は packet の AC。test 名は後続の lane の Writer が現物の命名に合わせて変えてよい（契約と Would fail if は変えない）。
+本 lane は docs だけで、自動 test を足さない。下の行は後続の lane（backlog の「JAN の別名の runtime」）が実装する test の設計で、設計正本の節（master-tables §1a、22 §18、20 IO-01-D5、30 §4.8・§4.9・§4.9.2 BIZ-01-D9、32 §15.3 手順 4 b、42 §22.6、60 UI-01c-D17）と D-122 から導いた。本 lane が自分で回す検査は packet の AC。test 名は後続の lane の Writer が現物の命名に合わせて変えてよい（契約と Would fail if は変えない）。
 
 ## Risk
 
@@ -10,7 +10,7 @@ Risk: R3
 
 - C1 master-tables §1a 不変条件: どの商品も持たない JAN だけが別名。商品の INSERT と `jan_code` の UPDATE がその JAN の別名を消し（消えた別名は戻らない）、商品が持つ JAN の別名の INSERT は拒まれる。
 - C2 master-tables §1a 形: `old_jan` は PRIMARY KEY で空文字を拒み、1 つの前の JAN は 1 つの商品だけを指す。1 つの商品は複数の別名を持てる。
-- C3 22 §17 MNT-03-D15: 空の DB と商品のある DB の両方に当たり、行を作らない。最新の版までの migrate の後に 3 つの trigger がある。`products` を作り直す migration は作り直しの前に別名の表の側の trigger を消し、後に 3 つを作り直す。
+- C3 22 §18 MNT-03-D16: 空の DB と商品のある DB の両方に当たり、行を作らない。最新の版までの migrate の後に 3 つの trigger がある。`products` を作り直す migration は作り直しの前に別名の表の側の trigger を消し、後に 3 つを作り直す。
 - C4 20 IO-01-D5: `find_jan_alias` は文字列の一致で商品コードを返し、`insert_jan_alias` は 1 行を足す。更新・削除の関数は無い。
 - C5 32 §15.3 手順 4 b: ヒット 0 件の行だけ別名を引き、別名があればヒット 1 件と同じ形の MatchedRow（その商品の `pos_stock_sync`、warning なし）、無ければ `unmatched_product`。ヒット 1 件・複数件の行は変えない。preview と D-118 の確定の TX の取り直しが同じ関数を使う。
 - C6 30 BIZ-01-D9 問いの条件と preview の判定: 直す前の JAN が空でなく、直す前にその JAN を持つ商品がその商品だけで、取込みの他の行（error_rows を除く）がその JAN を持たない重複行だけ `old_jan_question = Some(前の JAN)`。JAN を空にする変更を含む。PLU の枠の有無・状態を見ない。
@@ -92,7 +92,7 @@ Risk: R3
 | T11 | JAN を直す前の売上の Z004 を、直して `ない` と答えた後に取り込む | 前の JAN の行は `unmatched_product`（受け入れ済みの限界。JAN を直すのは締めの取込みの後） | D-122 の Guarantee range |
 | T12 | A の行を含む Z004 を取り込む（別名で P）→ その取込みを取り消す → Q が A を持った後に取り込み直す | 取消は記録の商品コード（P）で戻す。取り込み直しは今の規則で A の行を Q に入れる | 32 §15.3 手順 4 b の最後の文、D-118 の取消 |
 | T13 | 別名 A→P があり、レジの照合で A の枠に別のコードを観測 | 枠は D-117 の規則どおり `external`。別名は残る（レジが A で売らなくなるだけ） | C11 |
-| T14 | 別名を作った後に、`products` を作り直す migration を含む版へ更新 | 別名の行は残り、3 つの trigger がある（作り直しの規則） | 22 §17、C3 |
+| T14 | 別名を作った後に、`products` を作り直す migration を含む版へ更新 | 別名の行は残り、3 つの trigger がある（作り直しの規則） | 22 §18、C3 |
 
 ## Adjacent Pattern Audit
 
@@ -101,7 +101,7 @@ Risk: R3
 | 「選んだ行の product_code の一覧」を commit の引数にする（`overwrite_codes`） | 30 §4.9、42 §22.6、60 §60.3、`src/features/products/import/reducer.ts`・`useProductImportFlow.ts` | `old_jan_alias_codes`（同じ形・既定は空） | `ImportRow` に field を足す案は採らない（新規の行に意味の無い欄） | C8・C10 |
 | preview の行の `warnings`（UI-01c-D16 の JAN 不備） | 30 §4.8 の `ImportRow.warnings`、60 UI-01c-D16 | 別名の warning（同じ field。重複行にも表示） | wire に新しい field を足さない | C7・C10 |
 | commit の TX の中の確かめ直し（BIZ-01-D5 の手順 0、D-118 の確定の検査のやり直し、32 §15.4 の同日 snapshot の再検証） | 30 §4.9 手順 0、32 の D-118 の節、32 §15.4 手順 4 | 手順 0b（TX の前）と 2 e.（TX の中、全行の後） | 答えの合わない commit を続ける案は採らない（32 §15.4 の「再度プレビューしてください」と同じ扱い） | C8 |
-| 表の作り直しの migration の index の作り直し（22 §16 の vU の手順 5） | 22 §16 の vU・vB | trigger の作り直し（22 §17 の規則） | 列の改名・追加だけの migration は対象外（probe P2 で trigger が残る） | C3 |
+| 表の作り直しの migration の index の作り直し（22 §16 の vU の手順 5） | 22 §16 の vU・vB | trigger の作り直し（22 §18 の規則） | 列の改名・追加だけの migration は対象外（probe P2 で trigger が残る） | C3 |
 | JAN の文字列の一致（`find_by_jan_code`） | 20 `find_by_jan_code`、`src-tauri/src/db/product_repo.rs:727` | `find_jan_alias` | JAN を数に変える比べ方は採らない | C4 |
 
 ## Negative Paths
