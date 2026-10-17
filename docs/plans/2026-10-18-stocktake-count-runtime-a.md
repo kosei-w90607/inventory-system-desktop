@@ -160,7 +160,7 @@ D-123（`docs/decision-log.md` の末尾）と D-118・D-119 の Superseded in p
 | 対象 | 変更 | 作る所 | 読む所・test |
 |---|---|---|---|
 | `NewMovement` | `business_date: String`・`settlement_no: Option<i64>` を足す。`insert_movement` が `business_date`・`phase`（`settlement_no` から）・`settlement_no` を書く | `src-tauri/src/db/inventory_repo.rs:104`〜`:112`（型）・`:123`〜`:143`（INSERT） | 作る所は Matrix の T2（`NewMovement {` の hit 23 = 型の定義 1 + literal 22〈production の code 4・時点証拠の `#[cfg(test)]` の code 2・test 16〉）。production の 4 は 31・30 の業務日、時点証拠の 2 は PC の今日、test の 16 は固定の日付（例 `"2026-04-01"`）と `settlement_no: None` を足すだけ |
-| raw の `INSERT INTO inventory_movements`（test・seed・時点証拠の code） | 列の並びに `business_date` を足す（`phase` は NOT NULL で既定値が無いので `0` も足す） | Matrix の T2（hit 32 = `insert_movement` の定義 1〈`:127`〉・demo の seed 2〈`src-tauri/src/seed_demo.rs:398` の初期在庫は `BASE_TIMESTAMP` の日付、`:462` の `sale_auto` は売上ごとの `sale_date`〈`:480`〉を業務日にする〉・その他 29。その他 29 のうち書き換えるのは時点証拠の `#[cfg(test)]` の code 1〈`inventory_repo.rs:421`〉と test・test の support 25、変えないのは vL の前の版の DB に入れる `migration.rs` の 3） | `db/test_support.rs:122` の legacy の fixture は `seed_legacy_fixture`（時点証拠の test が vL の後の DB に入れる）なので足す。`sales_repo.rs`・`stocktake_repo.rs` の `reference_type = 'csv_import'`・`'stocktake'` の行も (a) の間は `phase = 0`（Z004 と phase を結ぶ CHECK は (b)） |
+| raw の `INSERT INTO inventory_movements`（test・seed・時点証拠の code） | 列の並びに `business_date` を足す（`phase` は NOT NULL で既定値が無いので `0` も足す） | Matrix の T2（hit 32 = `insert_movement` の定義 1〈`:127`〉・demo の seed 2〈`src-tauri/src/seed_demo.rs:398` の初期在庫は `BASE_TIMESTAMP` の日付、`:462` の `sale_auto` は売上ごとの `sale_date`〈`:480`〉を業務日にする。seed の終わりに写しを和へ揃える〉・その他 29。その他 29 のうち書き換えるのは時点証拠の `#[cfg(test)]` の code 1〈`inventory_repo.rs:421`〉と test・test の support 25、変えないのは vL の前の版の DB に入れる `migration.rs` の 3） | `db/test_support.rs:122` の legacy の fixture は `seed_legacy_fixture`（時点証拠の test が vL の後の DB に入れる）なので足す。`sales_repo.rs`・`stocktake_repo.rs` の `reference_type = 'csv_import'`・`'stocktake'` の行も (a) の間は `phase = 0`（Z004 と phase を結ぶ CHECK は (b)） |
 | `update_stock_quantity` | 引数を `(conn, product_code, stock: i64, range: Option<(i64, i64)>)` にし、`stock_recheck`（`range.is_some()`）・`stock_range_low`・`stock_range_high` も書く。呼ぶのは `recompute_stock` だけ | `inventory_repo.rs:151`〜`:163` | repo の test `:768`・`:786`・`:807` を新しい引数に。呼出し元の 4 か所（`common.rs:93`・`integrity_service.rs:193`・`csv_import_service/commit.rs:277`・`stocktake_service.rs:518`）は S4・S6 で `recompute_stock` に寄せる |
 | `update_movement_stock_after` | 新設。`pub(crate)`、シグネチャは 21 の code block | `inventory_repo.rs` | `apply_stock_change` だけが呼ぶ |
 | 求め直しの読取り | `list_stock_counts_for_product`（`stock_counts` の id・値・種類・業務日・settlement_no・seen_movement_id、id の順）と `list_ledger_movements_for_product`（`is_voided = 0` の id・quantity・business_date・phase・settlement_no・`reference_type IS NULL`、id の順）。どちらも `pub(crate)`、シグネチャは 21 の code block | `inventory_repo.rs` | `stock_ledger` だけが呼ぶ |
@@ -198,12 +198,12 @@ S4 で入出庫・旧本体の 3 か所（`common.rs:93`・`csv_import_service/c
 | `fix_integrity` | 選んだ商品ごとに、写しと `derive_stock` が同じなら skip、違えば `recompute_stock` で書き、`before`（写し）・`after`（求めた値）を返す。`integrity_fix` の操作ログも同じ形（`trigger` は書かない） | `integrity_service.rs:141`〜`:236` | `integrity_service.rs:524`〜`:527` の完全一致の期待を新しい形の同じ値に |
 | 型 | 36 の `StockCopy`・`IntegrityField`・`IntegrityMismatch`・`StockAdjustment`（`specta::Type`、generated enum は snake_case） | `integrity_service.rs:19`〜`:52` | bindings `src/lib/bindings.ts:807`〜`:829`・`:1562`〜`:1569`（再生成） |
 | 整合性の画面 | 差異の一覧: 列「商品コード」「商品名」「違う項目」「保存している値」「記録から求め直した値」。違う項目の語は `quantity` →「在庫数」、`recheck` →「要再確認」、`range` →「範囲」を「・」でつなぐ。値は在庫数（今の `formatLengthOrPlain` で単位どおり）と、要再確認なら後ろに「（要再確認 {low}〜{high}）」。今の差の Badge（「システム在庫が多い」「入出庫の合計が多い」）と差の列は消す。補正の確認 dialog と結果は商品ごとに「保存している値 → 記録から求め直した値」。移行の知らせ（75 の注記）: 開いたときに `listLogs({ page: 1, per_page: 100, operation_type: "integrity_fix", start_date: null, end_date: null })` を 1 回読み（新しい順の最新 100 行。`per_page` の上限は `PAGINATION_MAX_PER_PAGE` 200〈`src-tauri/src/constants.rs:6`〉）、その中に `detail_json` の `trigger` が `migration` の行があれば（その後に別の `integrity_fix` の行があっても）、最新のその行で「更新のときに在庫数を記録から求め直し、{N}商品の在庫数を直しました（{日時}）。直した前後は操作ログで見られます。」と「操作ログを開く」（`/settings/logs`）を Alert で出す（読取りに失敗したら知らせを出さず、チェックの操作は止めない） | `src/features/integrity-check/IntegrityCheckPage.tsx:68`〜`:72`（差の語）・`:293`〜`:310`（補正の結果）・`:326`〜`:490`（一覧と dialog）・`:91`〜`:95`（ログの読取り） | test `src/features/integrity-check/IntegrityCheckPage.test.tsx`: 差の語（`rg -F -c 'システム在庫が多い'` 2・`'入出庫の合計が多い'` 2・`'入出庫の合計'` 7）と `movements_sum`（1）を期待する行を新しい語と形へ（契約の変更、75。Matrix の T6）。新しい語は今の test に無い（`rg -F -c` で `記録から求め直した`・`違う項目`・`保存している`・`直した前後` が `src` の test で 0。`範囲` は 6 file にあるが整合性の画面の外） |
-| 操作ログの画面 | `integrity_fix` の detail の読取り（`OperationLogsPage.tsx:96`〜`:139` の `parseIntegrityAdjustments`）が、新しい形（`before`・`after` の入れ子）と記録済みの形（`old_stock`・`new_stock`・`adjustment`）の両方を読む。新しい形は「{商品コード}: {before の在庫数} → {after の在庫数}」と、印か範囲が違えば「（要再確認 {low}〜{high}）」を後ろに。どちらにも合わない要素は今どおり技術情報（JSON）へ回す。`trigger: migration` の行の要約は summary の文のまま | `src/features/operation-logs/OperationLogsPage.tsx` | test `OperationLogsPage.test.tsx` の `integrity_fix` の行（記録済みの形は期待を変えない）に新しい形の行を足す |
+| 操作ログの画面 | `integrity_fix` の detail の読取り（`OperationLogsPage.tsx:96`〜`:139` の `parseIntegrityAdjustments`）が、新しい形（`before`・`after` の入れ子）と記録済みの形（`old_stock`・`new_stock`・`adjustment`）の両方を読む。新しい形は 75 の冒頭の注記の「4 項目の old / new」を正本とし、「{商品コード}: {before} → {after}」の before と after をそれぞれ数量・印・範囲つきで出す（各側の書き方は上の整合性の画面の値と同じ: 在庫数〈`formatLengthOrPlain` で単位どおり〉と、その側の印が 1 なら後ろに「（要再確認 {low}〜{high}）」。印 0 の側は在庫数だけで、範囲は DB の CHECK で NULL）。例: 在庫数 5・要再確認・範囲 4〜6 を範囲 3〜7 に補正した要素は「{商品コード}: 5（要再確認 4〜6） → 5（要再確認 3〜7）」。どちらにも合わない要素は今どおり技術情報（JSON）へ回す。`trigger: migration` の行の要約は summary の文のまま | `src/features/operation-logs/OperationLogsPage.tsx` | test `OperationLogsPage.test.tsx` の `integrity_fix` の行（記録済みの形は期待を変えない）に新しい形の行を足す（Matrix の U6。範囲だけが変わる要素で両側の表示を確かめる） |
 | 正本の同期 | 75 §75.4〜§75.7 の数量だけの表示と test の oracle の記述を上の形へ、[74](../function-design/74-ui-operation-logs.md) の UI-11c-D14 に新しい形を足す（実装と同じ PR） | `docs/function-design/75-ui-integrity-check.md`・`docs/function-design/74-ui-operation-logs.md` | — |
 
 ### S7 正本の proposed の注記を現行の記述へ（実装と同じ PR）
 
-(a) の分の「proposed・未実装」の注記を、実装した範囲だけ現行の記述に直す（tracking・master・transaction の並びの鍵・写し・移行、21・30・31・36・75 の (a) の分、22 §19、`DB_DESIGN.md`・`ARCHITECTURE.md`・`architecture/*-task-specs.md` の該当の行）。(b) の分は proposed のまま残し、どこまでが (a) で入ったかを各節に 1 文で書く。`docs/function-design/90-traceability.md` は `cargo run --bin generate_traceability` で再生成する（手で直さない）。
+(a) の分の「proposed・未実装」の注記を、実装した範囲だけ現行の記述に直す（tracking・master・transaction の並びの鍵・写し・移行、21・30・31・36・75 の (a) の分、22 §19、`DB_DESIGN.md`・`ARCHITECTURE.md`・`architecture/*-task-specs.md` の該当の行）。`DB_DESIGN.md` の「stock_quantity整合性チェック」の節（`:137`〜`:143`）も対象に入れ、「SUM と突合」「自動上書きはしない」「入出庫の合計に合わせて補正」「movements_sum へ直接更新」の今の文を、36 の新契約（記録から求め直した値と写しの 4 項目を比べ、補正は求め直しの結果を書く）と vL の手順 8（写しを直して操作ログと整合性の画面で知らせる）に揃える。(b) の分は proposed のまま残し、どこまでが (a) で入ったかを各節に 1 文で書く。`docs/function-design/90-traceability.md` は `cargo run --bin generate_traceability` で再生成する（手で直さない）。
 
 ### 節の所有表（並走の lane と重なる file）
 
@@ -241,14 +241,14 @@ S4 で入出庫・旧本体の 3 か所（`common.rs:93`・`csv_import_service/c
 - AC9（既存の test の移し方）: Matrix の T1〜T5 の command を実装の後に逐語で回し、出力の各行を T1〜T5 の分類（と本 lane で足した test）に当てた表を PR の本文に貼る。T1〜T5 の「書き換える」「変えない」の所で値の期待（`assert` の右辺・件数・message）が変わっていない。T5 の「書き換える」3 か所（`common.rs:296`・`disposal.rs:369`・`returns.rs:461`）が `reference_type` でも絞る。
 - AC10（新しい関数のシグネチャ）: 正本の `rg -n '^pub\(crate\) fn (derive_stock|recompute_stock)\(' docs/function-design/31-biz-inventory-service.md` が 2 行、`rg -n '^pub\(crate\) fn (update_movement_stock_after|list_stock_counts_for_product|list_ledger_movements_for_product)\(' docs/function-design/21-io-inventory-repo.md` が 3 行（本 packet の commit で済み）。実装の後に `rg -n 'pub\(crate\) fn (derive_stock|recompute_stock|update_movement_stock_after|list_stock_counts_for_product|list_ledger_movements_for_product)\(' src-tauri/src` が 5 行、`rg -c 'derive_stock|recompute_stock|update_movement_stock_after|list_stock_counts_for_product|list_ledger_movements_for_product' src-tauri/tests/design_compliance_test.rs` が 0 件（allowlist に足さない）。
 
-AC の数の baseline（round 2 の是正〈Review Response 参照〉で AC10 を足し、全部を逐語で実行し直した。2026-10-18、本 worktree〈code は main `f5d7aaf4` と同じ: `git diff --stat f5d7aaf4 HEAD -- src-tauri src` が空〉。rg の file の順は実行ごとに変わる）:
+AC の数の baseline（AC は AC1〜AC10 の 10。round 2 の是正で AC10 を足し、round 3 の是正〈どちらも Review Response 参照〉では AC を変えず、全部を逐語で実行し直した。2026-10-18、本 worktree〈code は main `f5d7aaf4` と同じ: `git diff --stat f5d7aaf4 HEAD -- src-tauri src` が空〉。rg の file の順は実行ごとに変わる）:
 
 ```
 $ rg -n 'update_stock_quantity\(' src-tauri/src --glob '!*test*' | rg -v 'db/inventory_repo.rs'
-src-tauri/src/biz/integrity_service.rs:193:        inventory_repo::update_stock_quantity(&tx, product_code, new_stock)?;
-src-tauri/src/biz/inventory_service/common.rs:93:    let updated = inventory_repo::update_stock_quantity(conn, product_code, stock_after)?;
-src-tauri/src/biz/stocktake_service.rs:518:            inventory_repo::update_stock_quantity(&tx, &item.product_code, item.actual_count)?;
 src-tauri/src/biz/csv_import_service/commit.rs:277:        inventory_repo::update_stock_quantity(conn, product_code, new_stock)?;
+src-tauri/src/biz/stocktake_service.rs:518:            inventory_repo::update_stock_quantity(&tx, &item.product_code, item.actual_count)?;
+src-tauri/src/biz/inventory_service/common.rs:93:    let updated = inventory_repo::update_stock_quantity(conn, product_code, stock_after)?;
+src-tauri/src/biz/integrity_service.rs:193:        inventory_repo::update_stock_quantity(&tx, product_code, new_stock)?;
 exit=0
 $ rg -n 'stock_quantity: Option<i64>' src-tauri/src/db/product_repo.rs
 205:    pub stock_quantity: Option<i64>,
@@ -275,10 +275,10 @@ $ rg -n 'fn apply_stock_change' -A8 src-tauri/src/biz/inventory_service/common.r
 exit=1
 $ rg -c 'movements_sum' src src-tauri/src
 src-tauri/src/biz/integrity_service.rs:24
-src/features/integrity-check/IntegrityCheckPage.test.tsx:1
-src/features/integrity-check/IntegrityCheckPage.tsx:2
 src/lib/bindings.ts:1
 src-tauri/src/db/inventory_repo.rs:6
+src/features/integrity-check/IntegrityCheckPage.test.tsx:1
+src/features/integrity-check/IntegrityCheckPage.tsx:2
 exit=0
 $ rg -n 'export type (StockCopy|IntegrityField)' src/lib/bindings.ts
 exit=1
@@ -366,7 +366,7 @@ L3（Human Gate `manual`。owner は 2026-10-20 から右手が使えず左手�
 
 | # | 到達経路 | 入力物 | 観測可能な合格基準 | 依存する既知 backlog |
 |---|---|---|---|---|
-| L3-1 | (0) 更新の前に、今の版で (a) 在庫照会で代表の商品 3 つの在庫を控え、(b) 整合性検証の「チェック」の結果（「差異はありません」か、差異の一覧の商品コード・「システム在庫」・「入出庫の合計」）を控える（どちらも画面の写しでよい）。(1) 新しい版（MSI）を入れて起動する | owner の今の L3 用の DB（`%APPDATA%\com.kosei.inventory`）。棚卸しか Z004 の取込みの記録を持つかは未確認 | (i) 持つ場合: 起動が止まり、「データベースの準備に失敗」の文の下に「棚卸しか商品別売上（Z004）の取込みの記録がある DB はこの版へ移せません。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）」と表名が出る。作り直し（下の Data Safety の手順）の後に起動すると空の DB で開く。(ii) 持たない場合: 起動できる。(0)(b) で差異の無かった商品（(0)(a) の代表の商品のうち差異の一覧に無いもの）の在庫は (0)(a) の値と同じ。(0)(b) の差異の一覧の商品は、在庫が控えた「入出庫の合計」になり、操作ログの `integrity_fix`（更新のときの補正）の前後の値と、整合性検証の画面の移行の知らせの商品の数が、その差異の一覧と一致する。差異が無かったときは、補正の操作ログも移行の知らせも出ない | 作り直しの手順は 22 §16（D-123） |
+| L3-1 | (0) 更新の前に、今の版で (a) 在庫照会で代表の商品 3 つの在庫を控え、(b) 整合性検証の「チェック」の結果（「差異はありません」か、差異の一覧の商品コード・「システム在庫」・「入出庫の合計」）を控える（どちらも画面の写しでよい）。(1) 新しい版（MSI）を入れて起動する | owner の今の L3 用の DB（`%APPDATA%\com.kosei.inventory`）。棚卸しか Z004 の取込みの記録を持つかは未確認 | (i) 持つ場合: 起動が止まり、「データベースの準備に失敗」の文の下に「棚卸しか商品別売上（Z004）の取込みの記録がある DB はこの版へ移せません。開発・試験 DB は作り直してください（22 §16 の作り直しの手順）」と表名が出る。作り直し（下の Data Safety の手順）の後に起動すると空の DB で開く。(ii) 持たない場合: 起動できる。(0)(b) で差異の無かった商品（(0)(a) の代表の商品のうち差異の一覧に無いもの）の在庫は (0)(a) の値と同じ。(0)(b) の差異の一覧の商品は、在庫が控えた「入出庫の合計」になり、操作ログの `integrity_fix`（更新のときの補正）の前後の値と、整合性検証の画面の移行の知らせの商品の数が、その差異の一覧と一致する。差異が無かったときは、補正の操作ログも移行の知らせも出ない。(iii) 起動が止まり、(i) と別の止まりの文（「データベースの準備に失敗」の下に、22 §19 の手順 2・8・9 の、作り直しの案内を添えた文）が出た場合: その文の写しを返してもらい、Coordinator が 22 §19 の手順の文と突き合わせて判定する（作り直しの後は (i) と同じ） | 作り直しの手順は 22 §16（D-123） |
 | L3-2 | 起動した版で、商品登録（初期在庫 5）→ 入庫 3 → 整合性検証の「チェック」 | 画面の入力だけ | 在庫照会で 8、整合性検証が「差異なし」、画面に「入出庫の合計」「システム在庫が多い」の語が無い | — |
 
 - 差異ありの一覧・補正の dialog と結果・移行の知らせの見た目は、DB の手での改変が要る（L3 Eligibility の (3)）ので L3 に入れない。自動 test（U1〜U8）に加え、Coordinator が Ready の依頼と同時に、frontend の test の render（mock の command）か Vite の dev の画面の写しを owner に渡し、見た目の確認（Human Visual Confirmation）を L3 と同じ 1 回の PASS / FAIL に含める。写しを作れなければ、その残りの危険を PR の本文に書き、受け入れを Ready の判断に含める。

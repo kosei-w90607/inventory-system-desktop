@@ -76,7 +76,7 @@ Risk: R4
 | U3 | 75（確認 dialog） | 前後の値の誤り | component | `it("補正の確認で保存している値から記録から求め直した値への前後を出す")` | dialog に選んだ商品の前後の値（単位つき）が無い |
 | U4 | 75（補正の結果） | 結果の値の誤り | component | `it("補正の結果を before と after から出す")` | `StockAdjustment` の `before`・`after` の数と印が結果に出ない |
 | U5 | 75（色だけで示さない） | 状態を色だけで出す | component | `it("違う項目を文字で示す")` | 違う項目が Badge の色だけで、文字の語が無い |
-| U6 | 74（記録済みの形と新しい形） | 記録済みのログを読めない | component | `OperationLogsPage` の `it("integrity_fix の記録済みの形と before/after の形の両方を読む")` | 記録済みの `old_stock`・`new_stock`・`adjustment` の行が今の表示でなくなる、新しい形の行が技術情報（JSON）に回る、どちらにも合わない要素が要約に出る |
+| U6 | 74（記録済みの形と新しい形） | 記録済みのログを読めない | component | `OperationLogsPage` の `it("integrity_fix の記録済みの形と before/after の形の両方を読む")` | 記録済みの `old_stock`・`new_stock`・`adjustment` の行が今の表示でなくなる、新しい形の行が技術情報（JSON）に回る、どちらにも合わない要素が要約に出る。範囲だけが変わる要素（before: 在庫数 5・印 1・範囲 4〜6、after: 在庫数 5・印 1・範囲 3〜7。75 の冒頭の注記の「4 項目の old / new」）で「5（要再確認 4〜6） → 5（要再確認 3〜7）」の文字が無い（before の範囲が消える、片側だけに範囲を出す） |
 | U7 | 75・bindings（command の新しい形） | wire の取り違え | component | `it("run_integrity_check の copy と derived を表示に使う")` | mock の `copy.stock_quantity` と `derived.stock_quantity` を入れ替えても表示が同じ（どちらの field を読むかを確かめる。mock の値は 36 の例と違う値） |
 | U8 | 75（移行の知らせ） | 知らせの欠け・誤り | component | `it("移行の integrity_fix があれば日時と商品の数と操作ログへの導線を出す")`・`it("移行の行の後に別の integrity_fix があっても知らせを出す")`・`it("ログの読取りに失敗してもチェックを止めない")` | `trigger: migration` の行で知らせの文・件数・`/settings/logs` への導線が無い、`listLogs` の呼出しが `page: 1`・`per_page: 100`・`operation_type: "integrity_fix"` でない、新しい順の 1 行目が `trigger` の無い `integrity_fix` で 2 行目が移行の行のとき知らせが出ない、`trigger` の無い行だけで知らせが出る、`listLogs` の失敗でチェックの button が押せない |
 
@@ -180,7 +180,7 @@ raw の `INSERT INTO inventory_movements` の hit 32:
 | 分類 | 所 | 数 | 直し方 |
 |---|---|---|---|
 | 書き換える（production の定義） | `inventory_repo.rs:127`（`insert_movement`） | 1 | S2 の本体 |
-| 書き換える（demo の seed） | `seed_demo.rs:398`・`:462` | 2 | `:398`（`seed_initial_receiving` の初期在庫）は `BASE_TIMESTAMP` の日付、`:462`（`seed_sales` の `sale_auto`）は売上ごとの `sale_date`（`:480`。`created_at` の先頭 10 文字と同じ）を業務日にする |
+| 書き換える（demo の seed） | `seed_demo.rs:398`・`:462` | 2 | `:398`（`seed_initial_receiving` の初期在庫）は `BASE_TIMESTAMP` の日付、`:462`（`seed_sales` の `sale_auto`）は売上ごとの `sale_date`（`:480`。`created_at` の先頭 10 文字と同じ）を業務日にする。あわせて `run_seed`（`:150`〜`:161`）の `seed_sales` の後・COMMIT の前に、各商品の写しを `recompute_stock(&tx, 商品コード)` で和へ揃える（今の seed は写しを `seed_products` の初期値のまま置き、`sale_auto` の movement で和だけを減らすので、揃えないと (a) の後に seed した demo の DB は写しと和が食い違ったまま残り、最初の書込みで写しが和へ跳ぶ） |
 | 書き換える（時点証拠の `#[cfg(test)]` の code） | `inventory_repo.rs:421`（`insert_stocktake_movement`） | 1 | 業務日 = PC の今日、`phase` 0 |
 | 書き換える（test・test の support） | `stocktake_repo.rs` 4・`sales_repo.rs` 4・`disposal_repo.rs` 3・`inventory_repo.rs` 2（`:835`・`:927`）・`schema_time_evidence.rs` 2・`cmd/inventory_cmd.rs` 2・`inventory_service/list.rs` 2・`db/test_support.rs` 1（`:122`、`seed_legacy_fixture`。時点証拠の test が vL の後の DB に入れる）・`return_repo.rs` 1・`receiving_repo.rs` 1・`manual_sale_repo.rs` 1・`stocktake_service.rs` 1・`csv_import_service/tests/list_tests.rs` 1 | 25 | 列に `business_date`（固定の日付）と `phase`（`0`。NOT NULL で既定値が無い）を足す。`reference_type` が `csv_import`・`stocktake` の行も (a) の間は `phase = 0` |
 | 変えない | `migration.rs:1415`・`:1553`・`:1681` | 3 | vL の前の版の DB に入れる行（vL が埋める） |
@@ -279,7 +279,7 @@ src-tauri/src/biz/inventory_service/manual_sale.rs:456:            .query_row("S
 | 変えない（期待は同じ、fixture 側を直す） | `cross_feature_tests.rs:306`（商品ごとの和） | 1 | World（`:86`〜`:100`）の自分の初期在庫の INSERT を消す（T3）。和は同じ |
 | 変えない（種類・数量で絞る、または前後の差） | `stocktake_service.rs:1192`（`movement_type = 'stocktake'`）、`legacy_stop_tests.rs:261`（`quantity=-2`）、`manual_sale.rs:431`・`:456`（前後の件数）、`commit_tests.rs:13`（`write_surface` の前後の比較） | 5 | 初期在庫の movement（`receiving`・正の数量）は当たらないか、前後で同じ |
 | 変えない（削除） | `receiving.rs:521` | 1 | 商品を消す前の DELETE。初期在庫の movement も一緒に消え、後の期待は同じ |
-| 変えない（初期在庫の movement を足さない fixture・code） | `integrity_service.rs:583`・`:635`・`:325`・`:350`（T3 の除外）、`schema_time_evidence.rs:195`（時点証拠の migration の code）・`:311`・`:876`（同 test。在庫 0 の `seed_product` と `seed_legacy_fixture`）、`inventory_repo.rs:405`（`max_movement_id`。test は在庫 0 の `seed_product`） | 8 | movement が増えない |
+| 変えない（初期在庫の movement を足さない fixture・code） | `integrity_service.rs:583`・`:635`・`:325`・`:350`（T3 の除外）、`schema_time_evidence.rs:195`（時点証拠の migration の code）・`:311`・`:876`（同 test。在庫 0 の `seed_product` と `seed_legacy_fixture`）、`inventory_repo.rs:405`（`max_movement_id`。test は在庫 0 の `seed_product`） | 8 | movement が増えない。`integrity_service.rs:635` の test（`test_fix_integrity_req904_t5_stock_equals_non_voided_sum`）は局所変数名 `movements_sum`（`:631`・`:643`）だけ直す（AC6）。期待は変えない |
 | 変えない（production の商品登録・商品 CSV の test） | `product_service.rs:1891`・`:4119`・`:2387` | 3 | helper を使わず `create_product`・`commit_import` で作る。件数 1・数量 10・巻戻しの 0 は今と同じ（E3 が新しい振舞いを足して見る） |
 | 変えない（production の読取り・seed） | `seed_demo.rs:394`、`stocktake_repo.rs:597`（参照先で絞る）、`inventory_repo.rs:170`・`:194`（和の関数。S2 で関数ごと消える。T6） | 4 | test でない |
 
@@ -290,8 +290,8 @@ src-tauri/src/biz/inventory_service/manual_sale.rs:456:            .query_row("S
 | T1 の `migration.rs:1629`・`:1542` | 上の T1 | 22 §19 手順 1・6 | 上の T1 |
 | `src-tauri/src/db/inventory_repo.rs` の `sum_movements_*` の test 5 本（`:847`〜`:993`） | 和の関数の値 | 関数を消した（36 の「突合の相手を SUM にしない」） | 同じ和の意味を L1 で確かめる（消す 5 本の case〈無効の除外・movement なし〉を L1 の case に入れる） |
 | `src-tauri/src/db/inventory_repo.rs` の `update_stock_quantity` の test（`:768`・`:786`・`:807`） | 数だけを書く | 写しの 4 項目を書く（21） | 同じ値と、範囲つきの書込みの case |
-| `test_find_all_stock_quantities_req301`（`product_repo.rs:2569`） | 3 つ組 | 写しの 4 項目の行（S2） | 同じ商品の同じ値 |
-| `integrity_service.rs` の test（`movements_sum`・`difference`・adjustments の完全一致。`rg -n 'movements_sum|difference|old_stock' src-tauri/src/biz/integrity_service.rs` の test の行） | 和との差 | 36 の型の形 | `copy`・`derived`・`differing_fields`、`before`・`after` の同じ値 |
+| `test_find_all_stock_quantities_req301`（`product_repo.rs:2569`） | `(product_code, name, stock_quantity, stock_unit)` の 4 つ組（`product_repo.rs:1181`〜`:1183`） | 写しの 4 項目の行（S2） | 同じ商品の同じ値 |
+| `integrity_service.rs` の test（`movements_sum`・`difference`・adjustments の完全一致。`rg -n 'movements_sum|difference|old_stock' src-tauri/src/biz/integrity_service.rs` の test の行。`:631`・`:643` の局所変数名は T5） | 和との差 | 36 の型の形 | `copy`・`derived`・`differing_fields`、`before`・`after` の同じ値 |
 | `src/features/integrity-check/IntegrityCheckPage.test.tsx` の差の語と `movements_sum` の行（`rg -F -c` で `システム在庫が多い` 2・`入出庫の合計が多い` 2・`入出庫の合計` 7・`movements_sum` 1） | 差の Badge と和 | 75 の注記 | U1〜U5・U7 の語と形 |
 
 ## State Lifecycle Matrix
