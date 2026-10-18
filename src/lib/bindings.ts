@@ -290,14 +290,14 @@ export const commands = {
 	/**
 	 *  在庫整合性チェックを実行する
 	 *
-	 *  全商品の products.stock_quantity と SUM(inventory_movements.quantity) を突合。
+	 *  全商品の写しの 4 項目（在庫数・要再確認の印・範囲）と、記録から求め直した値を突合する（36）。
 	 *  読み取り専用。
 	 */
 	runIntegrityCheck: () => typedError<IntegrityResult, CmdError>(__TAURI_INVOKE("run_integrity_check")),
 	/**
 	 *  指定商品の在庫を整合性チェック結果に基づいて補正する
 	 *
-	 *  stock_quantity を movements 合計値に補正し、操作ログに記録する。
+	 *  写しと記録から求め直した値が違う商品だけ、写しを求め直しの結果に補正し、操作ログに記録する（36）。
 	 */
 	fixIntegrity: (productCodes: string[]) => typedError<IntegrityFixResult, CmdError>(__TAURI_INVOKE("fix_integrity", { productCodes })),
 	// 全設定を取得する（§43.3）
