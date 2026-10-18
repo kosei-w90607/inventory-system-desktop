@@ -450,9 +450,9 @@ export function IntegrityCheckPage() {
                     <TableRow>
                       <TableHead className="w-32">商品コード</TableHead>
                       <TableHead className="min-w-56">商品名</TableHead>
-                      <TableHead className="min-w-32">違う項目</TableHead>
-                      <TableHead className="min-w-36 text-right">保存している値</TableHead>
-                      <TableHead className="min-w-36 text-right">記録から求め直した値</TableHead>
+                      <TableHead className="min-w-40">違う項目</TableHead>
+                      <TableHead className="w-28 text-right">保存している値</TableHead>
+                      <TableHead className="w-28 text-right">記録から求め直した値</TableHead>
                       <TableHead className="w-32 text-center">操作</TableHead>
                     </TableRow>
                   </TableHeader>
