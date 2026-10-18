@@ -1,18 +1,18 @@
 # Plan Packet: 棚卸しの数の置き場と在庫数の求め直しの runtime (a)（並びの鍵・計数の表・写しの列、求め直し、入出庫と商品登録の切替、整合性の突合）
 
-wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時に起票した 7 本の lane の 1 本。owner の決定は repo 外の回答台帳 TD-304「動かせるだけ動かす」・TD-295「並列にできるものは並列に」）。D-118（[ADR](../adr/2026-10-16-stocktake-count-placement.md)、design lane = PR #167）の runtime の最初の配布の単位 (a)（ADR SPEC-STK-CNT-D12）を実装する。(b)（計数の保存・完了・Z004 の確定と取消・停止 ADR の 5 つの入口の撤去ほか）は本 lane の外。branch は `agent/stocktake-count-runtime-a`（main `f5d7aaf4` から）。新しい決定は D-123（owner の決定 TD-311 を正本へ置いた。下の「owner の判断事項」）。
+wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時に起票した 7 本の lane の 1 本。owner の決定は repo 外の回答台帳 TD-304「動かせるだけ動かす」・TD-295「並列にできるものは並列に」）。D-118（[ADR](../../adr/2026-10-16-stocktake-count-placement.md)、design lane = PR #167）の runtime の最初の配布の単位 (a)（ADR SPEC-STK-CNT-D12）を実装する。(b)（計数の保存・完了・Z004 の確定と取消・停止 ADR の 5 つの入口の撤去ほか）は本 lane の外。branch は `agent/stocktake-count-runtime-a`（main `f5d7aaf4` から）。新しい決定は D-123（owner の決定 TD-311 を正本へ置いた。下の「owner の判断事項」）。
 
 **規模と手法（1 lane・1 PR のまま。横断の約束は下の 1 つの表に置き、実装は S1〜S7 の順に積む）**: 2026-10-18 に本 worktree（HEAD `f5d7aaf4`）で数えた。
 
 - 触る既存の Rust は 40 file（`rg -l 'NewMovement|insert_movement\(|apply_stock_change\(|update_stock_quantity\(|INSERT INTO inventory_movements|sum_movements_(by|for)_product|IntegrityMismatch|StockAdjustment|find_all_stock_quantities|stock_quantity: (Some|None)|create_test_product(_with_jan|_with_unit)?\(|create_plu_exported_product\(|apply_void_stock_corrections|pub mod (integrity_service|inventory_service)|31-biz-inventory-service.md' src-tauri/src src-tauri/tests | wc -l` → `40`。helper を使うだけで変えない file を含む）に、版の期待を書き換える `src-tauri/src/db/schema_v2.rs` の 1 と新設 2（`biz/stock_ledger.rs`・`db/schema_v{N}.rs`）。TS は 5 file（`src/lib/bindings.ts`〈生成物〉、`src/features/integrity-check/IntegrityCheckPage.tsx` とその test、`src/features/operation-logs/OperationLogsPage.tsx` とその test）。
-- migration 1（vL、[22 §19](../function-design/22-mnt-migration.md)。`inventory_movements` の作り直しと `products` の列の追加と `stock_counts` の新設）。wire の型の変更 4（`IntegrityMismatch`・`StockAdjustment` の形の変更と、新しい `StockCopy`・`IntegrityField`）。command の名前と引数は変えない。
+- migration 1（vL、[22 §19](../../function-design/22-mnt-migration.md)。`inventory_movements` の作り直しと `products` の列の追加と `stock_counts` の新設）。wire の型の変更 4（`IntegrityMismatch`・`StockAdjustment` の形の変更と、新しい `StockCopy`・`IntegrityField`）。command の名前と引数は変えない。
 - 横断の約束（範囲・0・失敗の時点と順序・単位や種類の混在）がかかる経路は 8: 入出庫 4 業務の `create_*`、商品登録、商品 CSV の commit の新規行、整合性の補正、migration。ほかに test だけが呼ぶ旧本体 3（Z004 の確定・取消、棚卸しの確定）が同じ書込みの関数を通る。
 - 分け方の判断: 分ける条件（前の段だけが merge された main で (1) 店の画面の値が今と変わらない (2) 写しを書く経路と整合性の検査の相手が食い違わない (3) 全 gate が緑）を現物に当てた。S1〜S5（migration・求め直し・書く側の切替）だけを先に入れる切れ目は、そのままでは compile が通らない（S2 で消す和の関数を整合性の検査〈`integrity_service.rs:70`・`:166`〉が使う）。通すには和の関数の削除を後の段へ回し、整合性の補正の書込み（`:193`）も前の段で `recompute_stock` に寄せる必要があり、それでも (2) は `IntegrityMismatch.movements_sum` が「記録から求め直した値」を和の名前で運ぶ所で破れる。S6（整合性の DTO と画面）だけを後に回す切れ目は、Plan Review・Final Review・owner の Ready と merge がもう 1 周増え、R4 の承認と L3 も分かれる。どの切れ目でも横断の約束は前の段から減らないので分けない。分ける場合の切れ目は S5 と S6 の間（Coordinator の判断。そのときは上の 2 つ〈和の関数の削除を後の段へ、補正の書込みを前の段へ〉を入れ直す）。
 - 1 PR の大きさの目安: 書き換える test の多くは機械的な追随（`NewMovement` の field、raw の `INSERT INTO inventory_movements` に `business_date` を足す、商品を作る test helper が初期在庫の movement を作る）で、振舞いの判断を含む新しい test は S2・S3・S6 に集まる。既存の test の分類（書き換える / 変えない / 期待を変える）と数える command は [Matrix](test-matrices/2026-10-18-stocktake-count-runtime-a.md) の「既存の test の移し方」（T1〜T6）の 1 か所に置き、S1・S2・S4・S6 はそこを引く。
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R4
 - Plan Commit: 1928f836d2bb04f0fe493b27eaebf28aa85caf00
 - Amendments: none
@@ -27,7 +27,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 遷移の記録:
 
 1. kickoff → spec-check（2026-10-18、起草役）: Coordinator の発注（D-118 の runtime の (a)）を Scope にし、規模を数えて 1 lane・1 PR のままと決め、Risk を R4 と記録した（下の Risk）。
-2. spec-check → design（2026-10-18、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1〜D3・D9・D10・D12、tracking・master・transaction の「計数の置き場と在庫の求め直しの契約」、[21](../function-design/21-io-inventory-repo.md)・[30](../function-design/30-biz-product-service.md)・[31](../function-design/31-biz-inventory-service.md)・[36](../function-design/36-biz-integrity-check.md)・[75](../function-design/75-ui-integrity-check.md) の同名の節、[22 §16](../function-design/22-mnt-migration.md)。設計の更新が要る点が 7 つあった（下の Design Readiness の「必要な設計成果物」）。
+2. spec-check → design（2026-10-18、起草役）: 対象の設計正本は ADR SPEC-STK-CNT-D1〜D3・D9・D10・D12、tracking・master・transaction の「計数の置き場と在庫の求め直しの契約」、[21](../../function-design/21-io-inventory-repo.md)・[30](../../function-design/30-biz-product-service.md)・[31](../../function-design/31-biz-inventory-service.md)・[36](../../function-design/36-biz-integrity-check.md)・[75](../../function-design/75-ui-integrity-check.md) の同名の節、[22 §16](../../function-design/22-mnt-migration.md)。設計の更新が要る点が 7 つあった（下の Design Readiness の「必要な設計成果物」）。
 3. design → plan-draft（2026-10-18、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本に置いた（D-123 と D-118・D-119 の Superseded in part の行、22 §16 の順の段と §19、ADR D10・D12、tracking・pos・ARCHITECTURE・DB_DESIGN・mnt-task-specs の作り直しの文、21・31・36・75 の (a) の細部、backlog の 2 項目、Plans.md の順の 1 文）。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-18、Coordinator）: packet・Matrix と正本は起草役の commit（`82d6b030`）にある。Coordinator は Risk（R4 の理由は作り直しでなく、行のある `inventory_movements` の作り直しと写しの書換え）・Goal と失敗定義・Ordinary Operation・owner の判断事項・横断の約束 Y1〜Y8・Contract Probe P1〜P6・Data Safety・残りの危険を読み、TD-311 の写しが D-123 として置かれ D-118・D-119 に Superseded in part の行があること、作り直しが「消さずに移す」で閉じていること、止まる DB で原因と直し方を名指しすること（TD-310）、並走の lane の節（22 §17・§18、30）を書き換えていないことを確かめた。(a) と (b) の境の細部（Z004 の phase の CHECK ほかを (b) へ）と、1 lane・1 PR の判断は起草役の判断のまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-18、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `3523401a` で直し、Coordinator が差分（Matrix の「既存の test の移し方」T1〜T6 と、S1・S2・S4・S6 がそれを引く形、22 §19 の手順 2 の暦日の検査と手順 2・8 の作り直しの案内、Contract Probe P7、S1〜S6 の検証の単位、L3-1 の控えと合格基準、`per_page`、数の集計、ADR の Context の注記）を読んだ。Scope の範囲と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
@@ -44,7 +44,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 2（2026-10-18: round 3 の天井の判断 TD-319、実装の前の R4 の承認 TD-321。TD-311 は本 lane の前の判断で数えない） | 3（L3 の round 1〈L3-1・L3-2 と最後の head の `r4` を 1 回で〉、Ready 1、merge 1） | 4 | 9 = 2 + 3 + 4 |
+| 介入 | 9 | 5（closeout 時点。Plan Review round 3 の天井の判断 1〈TD-319〉、実装の前の R4 の承認 1〈TD-321〉、L3 と最後の head の `r4` 1〈TD-323〉、Ready 1、merge 1〈Ready・merge は TD-325〉。TD-311 は本 lane の前の判断で数えない） | 0 | 4 | 9 = 5 + 0 + 4 |
 
 plan-approved は Coordinator が進める（TD-296 の 4a）。介入のたびに、やろうとしていることが全体を顧みない対症療法になっていないかを考え直す（TD-296 の 5a）。L3 が 2 round 目に入るか、Plan Review が round 天井に達するときは、その判断と上限の改定を同じ 1 回で諮る。
 
@@ -56,7 +56,7 @@ plan-approved は Coordinator が進める（TD-296 の 4a）。介入のたび�
 Risk: R4
 
 Reason:
-migration vL が行のある `inventory_movements` を作り直し（新しい表へ全行を写して `DROP TABLE` し、名前を変える）、業務日を参照先から埋め、写しと和の違う商品の `stock_quantity` を書き換える（[22 §19](../function-design/22-mnt-migration.md)）。Risk Tiers の「Destructive data lifecycle」に当たる（先例: 単位の lane の v8 の `products` の作り直しを R4 とした。`docs/archive/plans/2026-10-11-unit-runtime.md`）。棚卸しか Z004 の記録のある開発・試験 DB は vL で止まり作り直すが、作り直しは owner がリリースの前まで包括で承認し（TD-311、D-123）、古い file を消さずに移すので、それ自体は不可逆な local の片付けにならない（R4 の理由は作り直しではなく、行のある DB に当たる vL の表の作り直しと写しの書換え）。Tauri command の DTO（整合性）・generated bindings・operator の画面（整合性検証・操作ログ）も変える（R3 の要素）。Human Gate は `ready,merge,manual,r4`（owner が migration と回復の実装を承認し、Windows の実機で L3-1・L3-2 を確かめる）、Final Review Minimum 2（R4 の Double Audit）。本番の DB は無い（`docs/project-memory.md`）。実店舗データの露出は無い。
+migration vL が行のある `inventory_movements` を作り直し（新しい表へ全行を写して `DROP TABLE` し、名前を変える）、業務日を参照先から埋め、写しと和の違う商品の `stock_quantity` を書き換える（[22 §19](../../function-design/22-mnt-migration.md)）。Risk Tiers の「Destructive data lifecycle」に当たる（先例: 単位の lane の v8 の `products` の作り直しを R4 とした。`docs/archive/plans/2026-10-11-unit-runtime.md`）。棚卸しか Z004 の記録のある開発・試験 DB は vL で止まり作り直すが、作り直しは owner がリリースの前まで包括で承認し（TD-311、D-123）、古い file を消さずに移すので、それ自体は不可逆な local の片付けにならない（R4 の理由は作り直しではなく、行のある DB に当たる vL の表の作り直しと写しの書換え）。Tauri command の DTO（整合性）・generated bindings・operator の画面（整合性検証・操作ログ）も変える（R3 の要素）。Human Gate は `ready,merge,manual,r4`（owner が migration と回復の実装を承認し、Windows の実機で L3-1・L3-2 を確かめる）、Final Review Minimum 2（R4 の Double Audit）。本番の DB は無い（`docs/project-memory.md`）。実店舗データの露出は無い。
 
 required gate の green / red: gate の定義は変えない。実装は bindings と traceability の再生成、`design_compliance_test.rs` の対応表の更新を伴い、どれかを落とすと既存の required gate（Rust・bindings・traceability）が red になる（下の Registration / Generation Obligations）。Scope の予定 path を `scripts/ci/classify-changes.sh` の workflow の一覧（AGENTS・CLAUDE・DEV_WORKFLOW・MANUAL・code_review・project-profile・agent-guidance・templates・`.agents`・`.claude/{rules,commands,skills}`・PR template、`.github/workflows/*`・`scripts/ci/*`・`scripts/tests/*`・gate の `scripts/*.sh`・`scripts/pr-gate.py`）に当てると当たらない。Final Review Minimum 2 は R4 による。
 
@@ -68,7 +68,7 @@ Goal Invariant:
 
 - 在庫を動かす全ての書込み（入庫・返品交換〈レジ未処理〉・手動販売・廃棄・商品登録の初期在庫・商品 CSV の新規行の初期在庫・整合性の補正）が、`products.stock_quantity` を「保存した数 + 差分」ではなく記録から求め直して書き、計数が無い間は在庫と `stock_after` の値が今と同じ（ADR SPEC-STK-CNT-D2・D12 の (a)）。
 - 新しい版を、棚卸しと Z004 の記録の無い DB で起動すると vL が当たり、既存の movement に業務日が付き、写しの値は和と同じになる（違った商品は直して操作ログと整合性の画面で知らせる）。棚卸しか Z004 の記録のある開発・試験 DB では、何も変えずに止まり、起動の画面が原因と直し方（作り直しの手順）を名指しする（ADR SPEC-STK-CNT-D10、TD-310）。
-- 整合性検証が「記録から求め直した値」と写しの 4 項目（数・要再確認・範囲）を比べ、違う項目を文字で出し、補正は求め直しの結果を書く（[36](../function-design/36-biz-integrity-check.md)・[75](../function-design/75-ui-integrity-check.md)）。
+- 整合性検証が「記録から求め直した値」と写しの 4 項目（数・要再確認・範囲）を比べ、違う項目を文字で出し、補正は求め直しの結果を書く（[36](../../function-design/36-biz-integrity-check.md)・[75](../../function-design/75-ui-integrity-check.md)）。
 - 計数（`stock_counts`）があるときの求め直しが、計数・入出庫・初期在庫について ADR D3 の窓の判定表どおりに効く計数・範囲・要再確認の理由 2・3 を返す（(b) が計数の保存を入れたときに、その上に載る土台。test の fixture で確かめる）。
 
 ### 失敗定義
@@ -104,7 +104,7 @@ Priority: `Goal Invariant > Acceptance Criteria > supporting evidence`。AC や�
 | 整合性検証の画面 | 「チェック」を押す | 「差異なし」（記録から求め直した在庫と、保存している在庫が全商品で同じ） | — | 36・75 の新契約 |
 | 写しと和の違う商品があった開発・試験 DB を vL で移した後 | 整合性検証の画面を開く | 画面の上に「更新のときに在庫数を記録から求め直し、{N}商品の在庫数を直しました（{日時}）。直した前後は操作ログで見られます。」と操作ログへの導線 | — | 22 §19 の手順 8、75 の注記 |
 
-失敗と再試行: header の日付が `YYYY-MM-DD` の形の実在する日付でない要求（画面の日付欄は今も ISO の形で送るので、command を直接呼んだときだけ起きる）は、movement を作らないレジ処理済みの返品・交換も含めて、TX を開く前に `ValidationFailed` で何も書かない（検査の中身は [31](../function-design/31-biz-inventory-service.md) の「業務日の形と暦の検査」）。在庫の上限（絶対値 `999999999`）を越える結果は `recompute_stock` が写しを書く前に `ValidationFailed`（`在庫数が大きすぎます`）にし、TX 全体が戻る（今と同じ文）。vL が止まった DB は何も変わらないので、作り直すまで旧版でそのまま開ける（その起動の最初の migration で止まったとき）。
+失敗と再試行: header の日付が `YYYY-MM-DD` の形の実在する日付でない要求（画面の日付欄は今も ISO の形で送るので、command を直接呼んだときだけ起きる）は、movement を作らないレジ処理済みの返品・交換も含めて、TX を開く前に `ValidationFailed` で何も書かない（検査の中身は [31](../../function-design/31-biz-inventory-service.md) の「業務日の形と暦の検査」）。在庫の上限（絶対値 `999999999`）を越える結果は `recompute_stock` が写しを書く前に `ValidationFailed`（`在庫数が大きすぎます`）にし、TX 全体が戻る（今と同じ文）。vL が止まった DB は何も変わらないので、作り直すまで旧版でそのまま開ける（その起動の最初の migration で止まったとき）。
 
 Plan Review は、この列が「正常な条件で目的を達成できるか」と「危険な結果を出さないか」を別々に答える（`docs/DEV_WORKFLOW.md` Review Rules）。
 
@@ -131,7 +131,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 | # | 値（DB の列 / wire） | 範囲と、保証する所 | 0 と符号 | 失敗の時点と順序 | 単位・種類の混在 |
 |---|---|---|---|---|---|
-| Y1 | 業務日（`inventory_movements` の `business_date`） | `YYYY-MM-DD` の形の実在する日付。形と暦の検査は、書く側（4 業務の `create_*` と `sales_service`）が [31](../function-design/31-biz-inventory-service.md) の「業務日の形と暦の検査」、vL が [22 §19](../function-design/22-mnt-migration.md) の手順 2 の各 1 か所（中身はそこ）。DB の CHECK は形だけ（tracking）。初期在庫は PC の今日（`chrono::Local`） | — | 4 業務: DB を見ない検証の段（冪等の再送の判定〈入庫は `receiving.rs:100`〉と TX〈`:168`〉より前。返品交換は `register_processed` で分かれる前。31）で `ValidationFailed`、何も書かない。vL: 何かを変える前に止まり、原因と直し方（作り直し）を出す | 単位に依らない |
+| Y1 | 業務日（`inventory_movements` の `business_date`） | `YYYY-MM-DD` の形の実在する日付。形と暦の検査は、書く側（4 業務の `create_*` と `sales_service`）が [31](../../function-design/31-biz-inventory-service.md) の「業務日の形と暦の検査」、vL が [22 §19](../../function-design/22-mnt-migration.md) の手順 2 の各 1 か所（中身はそこ）。DB の CHECK は形だけ（tracking）。初期在庫は PC の今日（`chrono::Local`） | — | 4 業務: DB を見ない検証の段（冪等の再送の判定〈入庫は `receiving.rs:100`〉と TX〈`:168`〉より前。返品交換は `register_processed` で分かれる前。31）で `ValidationFailed`、何も書かない。vL: 何かを変える前に止まり、原因と直し方（作り直し）を出す | 単位に依らない |
 | Y2 | 写しの数（`products.stock_quantity`） | 絶対値 `999999999`（`constants.rs` の `MAX_STOCK_QUANTITY`）。`recompute_stock` が書く直前の 1 か所（今の `check_stock_range`〈`common.rs:52`〜`:60`〉を使う）。vL の手順 8 も同じ上限 | 0 と負（INV-3）を受ける | 書く前に `ValidationFailed`（`在庫数が大きすぎます`）、呼出し元の TX 全体が戻る。vL は止まり、原因と直し方（作り直し）を出す | 個数も長さも同じ上限（長さは cm の整数） |
 | Y3 | 要再確認の印と範囲（`stock_recheck`・`stock_range_low`・`stock_range_high`） | 範囲の両端も Y2 の上限。DB の CHECK（印 0 なら両端 NULL、1 なら両端 NOT NULL で low ≤ high） | 端が 0 や負でも受ける | Y2 と同じ所で両端に当てる | 計数が無い間は常に 0・NULL |
 | Y4 | 変動後（`inventory_movements.stock_after`） | その呼出しの `recompute_stock` の写しの値（Y2 の範囲） | 今と同じ | movement を仮の値で INSERT → 求め直し → その movement の id で UPDATE。どれかの失敗で TX 全体が戻る | — |
@@ -146,7 +146,7 @@ Plan Review は、この列が「正常な条件で目的を達成できるか�
 
 ### 設計正本（本 packet の commit で済み）
 
-D-123（`docs/decision-log.md` の末尾）と D-118・D-119 の Superseded in part の行、[22 §16](../function-design/22-mnt-migration.md) の「DB の作り直しと順」と §19（MNT-03-D17）、ADR の SPEC-STK-CNT-D10 の作り直しの文と D12 の境の細部、tracking の業務日の CHECK・phase の CHECK の配布・移行の段、`pos-tables.md`・`ARCHITECTURE.md`・`DB_DESIGN.md`・`architecture/mnt-task-specs.md` の作り直しの文、[21](../function-design/21-io-inventory-repo.md) の `NewMovement`・`update_movement_stock_after`、[31](../function-design/31-biz-inventory-service.md) の `stock_after`・業務日の検査・(a) の求め直しの範囲、[36](../function-design/36-biz-integrity-check.md) の型の形と移行の知らせ、[75](../function-design/75-ui-integrity-check.md) の移行の知らせ、`docs/backlog.md` の「棚卸しの数の置き場と在庫数の求め直しの runtime」と「原価の lane（C）」、`docs/Plans.md` の runtime の順の 1 文。
+D-123（`docs/decision-log.md` の末尾）と D-118・D-119 の Superseded in part の行、[22 §16](../../function-design/22-mnt-migration.md) の「DB の作り直しと順」と §19（MNT-03-D17）、ADR の SPEC-STK-CNT-D10 の作り直しの文と D12 の境の細部、tracking の業務日の CHECK・phase の CHECK の配布・移行の段、`pos-tables.md`・`ARCHITECTURE.md`・`DB_DESIGN.md`・`architecture/mnt-task-specs.md` の作り直しの文、[21](../../function-design/21-io-inventory-repo.md) の `NewMovement`・`update_movement_stock_after`、[31](../../function-design/31-biz-inventory-service.md) の `stock_after`・業務日の検査・(a) の求め直しの範囲、[36](../../function-design/36-biz-integrity-check.md) の型の形と移行の知らせ、[75](../../function-design/75-ui-integrity-check.md) の移行の知らせ、`docs/backlog.md` の「棚卸しの数の置き場と在庫数の求め直しの runtime」と「原価の lane（C）」、`docs/Plans.md` の runtime の順の 1 文。
 
 ### S1 migration vL
 
@@ -168,7 +168,7 @@ D-123（`docs/decision-log.md` の末尾）と D-118・D-119 の Superseded in p
 | `update_movement_stock_after` | 新設。`pub(crate)`、シグネチャは 21 の code block | `inventory_repo.rs` | `apply_stock_change` だけが呼ぶ |
 | 求め直しの読取り | `list_stock_counts_for_product`（`stock_counts` の id・値・種類・業務日・settlement_no・seen_movement_id、id の順）と `list_ledger_movements_for_product`（`is_voided = 0` の id・quantity・business_date・phase・settlement_no・`reference_type IS NULL`、id の順）。どちらも `pub(crate)`、シグネチャは 21 の code block | `inventory_repo.rs` | `stock_ledger` だけが呼ぶ |
 | `sum_movements_by_product`・`sum_movements_for_product`・`ProductMovementSum` | 消す（呼ぶ所は `integrity_service.rs:70`・`:166` だけ） | `inventory_repo.rs:94`〜`:98`・`:164`〜`:200` | repo の test `:847`〜`:993` の 5 本は、同じ和の意味を `stock_ledger` の test（計数の無い商品で和と同じ）へ移す（Matrix の T6） |
-| `ProductUpdates.stock_quantity` | 消す（[20](../function-design/20-io-product-repo.md) の新契約。production で `Some` を渡す所は無い: `rg -n 'stock_quantity: Some' src-tauri/src` が 0 行） | `src-tauri/src/db/product_repo.rs:205`・`:1078`〜`:1080` | 作る所は `src-tauri/src/biz/product_service.rs:1525` の `None` だけ（消す） |
+| `ProductUpdates.stock_quantity` | 消す（[20](../../function-design/20-io-product-repo.md) の新契約。production で `Some` を渡す所は無い: `rg -n 'stock_quantity: Some' src-tauri/src` が 0 行） | `src-tauri/src/db/product_repo.rs:205`・`:1078`〜`:1080` | 作る所は `src-tauri/src/biz/product_service.rs:1525` の `None` だけ（消す） |
 | `find_all_stock_quantities` | 戻り値を写しの 4 項目と単位・名前の行の型にする | `product_repo.rs:1179`〜`:1202` | 呼ぶ所は `integrity_service.rs:67` だけ。test `test_find_all_stock_quantities_req301`（`rg -n 'fn test_find_all_stock_quantities' src-tauri/src/db/product_repo.rs`）を新しい型の同じ値に |
 | 商品の読取りの型 | 写しの 3 列を `Product` に足すのは (b)（商品の結果の表示と一緒）。(a) は `SELECT` の列の並び（`product_repo.rs:342` の `row.get(9)` ほか、位置で読む所）を変えない | — | `ALTER TABLE … ADD COLUMN` は列を末尾に足すので、`SELECT *` で位置を読む所があれば崩れない（着手時に `rg -n 'SELECT \*' src-tauri/src/db/product_repo.rs` で確かめる） |
 
@@ -176,7 +176,7 @@ D-123（`docs/decision-log.md` の末尾）と D-118・D-119 の Superseded in p
 
 | 対象 | 変更 | 作る所 | 読む所・test |
 |---|---|---|---|
-| `derive_stock`・`recompute_stock`・`DerivedStock`・`RecheckReason` | [31](../function-design/31-biz-inventory-service.md) の「求め直しの関数のシグネチャ」（`pub(crate)`。`recompute_stock` の第 1 引数は借りた transaction）。(a) は ADR D3 の判定表の「入出庫の movement」「初期在庫の movement」の行と「計数どうし」、要再確認の理由 2（`same_date_movement`）・3（`conflicting_counts`）。`RecheckReason` は (a) では 2 つの variant（(b) が `undetermined_settlement` を足す）。`phase = 1` の行は `DbError::QueryFailed` で止まる（Y8）。範囲は、決まらない記録のそれぞれを適用する・しないの最小と最大（正の和と負の和を分けて足す）。計数の衝突は衝突する計数のそれぞれを土台に求めた範囲を合わせ、写しは計数値が最小のものを土台にする。和は `checked_add`。Y2 の検査は `recompute_stock` が書く直前 | `src-tauri/src/biz/stock_ledger.rs`、`src-tauri/src/biz/mod.rs:6`〜`:16`（`pub mod stock_ledger`） | Matrix の L1〜L14（計数の無い商品で和と同じ、既定・fresh の計数と入出庫の日付の 3 通り、fresh のカーソル `seen_movement_id`、初期在庫、計数どうしの順と衝突、範囲の端、phase=1 の誤り、上限） |
+| `derive_stock`・`recompute_stock`・`DerivedStock`・`RecheckReason` | [31](../../function-design/31-biz-inventory-service.md) の「求め直しの関数のシグネチャ」（`pub(crate)`。`recompute_stock` の第 1 引数は借りた transaction）。(a) は ADR D3 の判定表の「入出庫の movement」「初期在庫の movement」の行と「計数どうし」、要再確認の理由 2（`same_date_movement`）・3（`conflicting_counts`）。`RecheckReason` は (a) では 2 つの variant（(b) が `undetermined_settlement` を足す）。`phase = 1` の行は `DbError::QueryFailed` で止まる（Y8）。範囲は、決まらない記録のそれぞれを適用する・しないの最小と最大（正の和と負の和を分けて足す）。計数の衝突は衝突する計数のそれぞれを土台に求めた範囲を合わせ、写しは計数値が最小のものを土台にする。和は `checked_add`。Y2 の検査は `recompute_stock` が書く直前 | `src-tauri/src/biz/stock_ledger.rs`、`src-tauri/src/biz/mod.rs:6`〜`:16`（`pub mod stock_ledger`） | Matrix の L1〜L14（計数の無い商品で和と同じ、既定・fresh の計数と入出庫の日付の 3 通り、fresh のカーソル `seen_movement_id`、初期在庫、計数どうしの順と衝突、範囲の端、phase=1 の誤り、上限） |
 | 対応表 | `31-biz-inventory-service.md` の module に `biz::stock_ledger` を足す。allowlist には足さない | `src-tauri/tests/design_compliance_test.rs:170`〜`:179` | 未文書化の `pub fn` は fail する（`:726`〜`:738`）。`pub(crate)` は検査が拾わない（`:482`）が、5 つのシグネチャは 31・21 の code block にある（S2 の冒頭）。code block にあって `pub` で無い関数は報告の INFO（未実装）に出るだけで fail しない（`:630`〜`:634`。`apply_stock_change` と同じ） |
 
 ### S4 書く側の切替（入出庫 4 業務・商品登録・商品 CSV・旧本体）
@@ -202,7 +202,7 @@ S4 で入出庫・旧本体の 3 か所（`common.rs:93`・`csv_import_service/c
 | 型 | 36 の `StockCopy`・`IntegrityField`・`IntegrityMismatch`・`StockAdjustment`（`specta::Type`、generated enum は snake_case） | `integrity_service.rs:19`〜`:52` | bindings `src/lib/bindings.ts:807`〜`:829`・`:1562`〜`:1569`（再生成） |
 | 整合性の画面 | 差異の一覧: 列「商品コード」「商品名」「違う項目」「保存している値」「記録から求め直した値」。違う項目の語は `quantity` →「在庫数」、`recheck` →「要再確認」、`range` →「範囲」を「・」でつなぐ。値は在庫数（今の `formatLengthOrPlain` で単位どおり）と、要再確認なら後ろに「（要再確認 {low}〜{high}）」。今の差の Badge（「システム在庫が多い」「入出庫の合計が多い」）と差の列は消す。補正の確認 dialog と結果は商品ごとに「保存している値 → 記録から求め直した値」。移行の知らせ（75 の注記）: 開いたときに `listLogs({ page: 1, per_page: 100, operation_type: "integrity_fix", start_date: null, end_date: null })` を 1 回読み（新しい順の最新 100 行。`per_page` の上限は `PAGINATION_MAX_PER_PAGE` 200〈`src-tauri/src/constants.rs:6`〉）、その中に `detail_json` の `trigger` が `migration` の行があれば（その後に別の `integrity_fix` の行があっても）、最新のその行で「更新のときに在庫数を記録から求め直し、{N}商品の在庫数を直しました（{日時}）。直した前後は操作ログで見られます。」と「操作ログを開く」（`/settings/logs`）を Alert で出す（読取りに失敗したら知らせを出さず、チェックの操作は止めない） | `src/features/integrity-check/IntegrityCheckPage.tsx:68`〜`:72`（差の語）・`:293`〜`:310`（補正の結果）・`:326`〜`:490`（一覧と dialog）・`:91`〜`:95`（ログの読取り） | test `src/features/integrity-check/IntegrityCheckPage.test.tsx`: 差の語（`rg -F -c 'システム在庫が多い'` 2・`'入出庫の合計が多い'` 2・`'入出庫の合計'` 7）と `movements_sum`（1）を期待する行を新しい語と形へ（契約の変更、75。Matrix の T6）。新しい語は今の test に無い（`rg -F -c` で `記録から求め直した`・`違う項目`・`保存している`・`直した前後` が `src` の test で 0。`範囲` は 6 file にあるが整合性の画面の外） |
 | 操作ログの画面 | `integrity_fix` の detail の読取り（`OperationLogsPage.tsx:96`〜`:139` の `parseIntegrityAdjustments`）が、新しい形（`before`・`after` の入れ子）と記録済みの形（`old_stock`・`new_stock`・`adjustment`）の両方を読む。新しい形は 75 の冒頭の注記の「4 項目の old / new」を正本とし、「{商品コード}: {before} → {after}」の before と after をそれぞれ数量・印・範囲つきで出す（各側の書き方は上の整合性の画面の値と同じ: 在庫数〈`formatLengthOrPlain` で単位どおり〉と、その側の印が 1 なら後ろに「（要再確認 {low}〜{high}）」。印 0 の側は在庫数だけで、範囲は DB の CHECK で NULL）。例: 在庫数 5・要再確認・範囲 4〜6 を範囲 3〜7 に補正した要素は「{商品コード}: 5（要再確認 4〜6） → 5（要再確認 3〜7）」。どちらにも合わない要素は今どおり技術情報（JSON）へ回す。`trigger: migration` の行の要約は summary の文のまま | `src/features/operation-logs/OperationLogsPage.tsx` | test `OperationLogsPage.test.tsx` の `integrity_fix` の行（記録済みの形は期待を変えない）に新しい形の行を足す（Matrix の U6。範囲だけが変わる要素で両側の表示を確かめる） |
-| 正本の同期 | 75 §75.4〜§75.7 の数量だけの表示と test の oracle の記述を上の形へ、[74](../function-design/74-ui-operation-logs.md) の UI-11c-D14 に新しい形を足す（実装と同じ PR） | `docs/function-design/75-ui-integrity-check.md`・`docs/function-design/74-ui-operation-logs.md` | — |
+| 正本の同期 | 75 §75.4〜§75.7 の数量だけの表示と test の oracle の記述を上の形へ、[74](../../function-design/74-ui-operation-logs.md) の UI-11c-D14 に新しい形を足す（実装と同じ PR） | `docs/function-design/75-ui-integrity-check.md`・`docs/function-design/74-ui-operation-logs.md` | — |
 
 ### S7 正本の proposed の注記を現行の記述へ（実装と同じ PR）
 
@@ -311,7 +311,7 @@ exit=1
 
 設計の完了条件は `docs/DEV_WORKFLOW.md` Design Phase Rules の Design completion criteria。
 
-- 引用する設計正本（節まで）: ADR SPEC-STK-CNT-D1（鍵）・D2（求め直しと写し・`stock_after`）・D3（窓の判定表の入出庫・初期在庫・計数どうしの行、理由 2・3、範囲）・D9（(a) の列と表）・D10（移行）・D12（配布の単位と境の細部）。[tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md)・[transaction](../db-design/transaction-tables.md) の「計数の置き場と在庫の求め直しの契約」。[20](../function-design/20-io-product-repo.md)・[21](../function-design/21-io-inventory-repo.md)・[30](../function-design/30-biz-product-service.md)・[31](../function-design/31-biz-inventory-service.md)・[36](../function-design/36-biz-integrity-check.md) の同名の節、[75](../function-design/75-ui-integrity-check.md) の冒頭の注記、[22 §16](../function-design/22-mnt-migration.md)（作り直しの手順と順、回復）・§19（vL）、D-118・D-123。
+- 引用する設計正本（節まで）: ADR SPEC-STK-CNT-D1（鍵）・D2（求め直しと写し・`stock_after`）・D3（窓の判定表の入出庫・初期在庫・計数どうしの行、理由 2・3、範囲）・D9（(a) の列と表）・D10（移行）・D12（配布の単位と境の細部）。[tracking](../../db-design/tracking-system-tables.md)・[master](../../db-design/master-tables.md)・[transaction](../../db-design/transaction-tables.md) の「計数の置き場と在庫の求め直しの契約」。[20](../../function-design/20-io-product-repo.md)・[21](../../function-design/21-io-inventory-repo.md)・[30](../../function-design/30-biz-product-service.md)・[31](../../function-design/31-biz-inventory-service.md)・[36](../../function-design/36-biz-integrity-check.md) の同名の節、[75](../../function-design/75-ui-integrity-check.md) の冒頭の注記、[22 §16](../../function-design/22-mnt-migration.md)（作り直しの手順と順、回復）・§19（vL）、D-118・D-123。
 - 必要な設計成果物（状態）: (1) 作り直しの順と承認（D-123、22 §16、ADR D10、backlog）= updated in this PR。(2) migration の手順（22 §19）= updated in this PR。(3) (a) と (b) の境（ADR D12）= updated in this PR。(4) 業務日の形と暦の検査（書く側は 31、vL は 22 §19 の手順 2）と DB の CHECK（tracking）= updated in this PR。(5) `NewMovement` の phase の決め方と `stock_after` の書き方（21・31）= updated in this PR。(6) 整合性の型の形と移行の知らせ（36・75）= updated in this PR。(7) 画面の語と並び（75 §75.4〜§75.7、74 UI-11c-D14）= 本 packet の S6 に決め、実装と同じ PR で正本へ（S6 の「正本の同期」。75 は「見た目の細部は runtime の lane」と書く）。
 - plan にしかない durable な判断の昇格先: 上の (1)〜(6) は正本と D-123 に置いた。packet にだけあるのは、規模と手法、S1〜S7 の順、所有表、既存の test の移し方（Matrix の T1〜T6）、横断の約束の表（Y1〜Y8 の保証する所の file:line）、画面の語（(7)。実装の PR で 75・74 へ）。
 - 前提・制約と、延期した design gap の follow-up: (b) へ回したものは ADR D12 と backlog に書いた。移行の知らせは `integrity_fix` の新しい順の最新 100 行（`per_page` 100 の 1 page）だけを見るので、移行の後に `integrity_fix` が 100 行を超えると古い移行の行を見つけない（下の Residual。開発・試験 DB にだけ起きる）。
@@ -433,15 +433,19 @@ L3（Human Gate `manual`。owner は 2026-10-20 から右手が使えず左手�
 ## 残りの危険（起票の時点）
 
 - vL の止まりは、起動の画面の今の `DatabaseInit` の文（「アプリを再起動してもう一度お試しください」を前置きに持つ）に原因と直し方を添えて出す。前置きは決定的な止まり（再起動で直らない）には合わないが、vU・vB と同じで、出会うのは開発者だけ（本番の DB は無く、店の PC へ初めて入れる版は新しい DB で始まる。D-123 (4)）。文の種類を分けるのは別の小さな lane の候補（backlog に足すかは Coordinator）。
-- vL の前の版で作った backup のうち、棚卸しか Z004 の記録を持つものを新しい版で復元すると、open の migrate が vL で止まり、復元は巻き戻る（[71](../function-design/71-mnt-backup.md) §71.7。利用者には失敗に見える。vB と同じ。開発・試験 DB にだけ起きる）。
+- vL の前の版で作った backup のうち、棚卸しか Z004 の記録を持つものを新しい版で復元すると、open の migrate が vL で止まり、復元は巻き戻る（[71](../../function-design/71-mnt-backup.md) §71.7。利用者には失敗に見える。vB と同じ。開発・試験 DB にだけ起きる）。
 - 移行の知らせは `integrity_fix` の最新 100 行だけを見る（S6）。移行の後に `integrity_fix` が 100 行を超えると古い移行の行を見つけない（開発・試験 DB にだけ起きる。正本の記録は操作ログに残る）。
 - `sales_service` の `validate_date` の形の穴（`2026-4-7` を通す。Contract Probe P6）は、共有の検査へ替えることで同時に塞がる（日次売上の日付の欄は ISO の形で送るので画面の振舞いは変わらない）。レジ処理済みの返品・交換は今は日付を検査せずに保存するので、command を直接呼んで形の違う日付を送る保存は (a) の後に拒まれる（画面は ISO の形で送る）。
 
 ## Implementation Results
 
-Fill after implementation.
-
 Do not transcribe exact-HEAD SHA or test counts here (D-035/D-038 Evidence Ownership). Record a qualitative summary and the PR link only.
+
+- 結果: D-118 の runtime の (a)（ADR SPEC-STK-CNT-D12）を入れた。migration vL（22 §19）で `inventory_movements` を業務日・phase・settlement_no の列を持つ形に作り直し（消さずに写し、`sqlite_sequence` を前の値に戻す）、`products` に写しの 3 列を足し、`stock_counts` を新設した。棚卸しか Z004 の記録のある DB では何も変えずに止まり、原因と作り直しの手順を名指しする（D-123）。在庫を動かす書込み（入出庫 4 業務・商品登録・商品 CSV の新規行・整合性の補正、test だけが呼ぶ旧本体）は、`products.stock_quantity` を記録から求め直して書く形（`biz::stock_ledger` の `recompute_stock`）に切り替え、計数が無い間は在庫と `stock_after` の値が今と同じ。業務日の形と暦の検査は書く側の 1 か所（31）に置いた。整合性検証は記録から求め直した値と写しの 4 項目を比べ、違う項目を文字で出し、補正は求め直しの結果を書く（36・75）。操作ログ画面は `integrity_fix` の新しい形と記録済みの形の両方を読む（74 UI-11c-D14）。(a) の分の正本の `proposed・未実装` の注記を現行の記述に直した。
+- 既存の保護: 停止 ADR の 5 つの入口（棚卸しの開始・保存・確定、Z004 の確定・取消）は変えていない。店の棚卸しと Z004 の業務 commit は停止のまま。
+- 残り: (b)（計数の保存・棚卸しの完了・Z004 の確定と取消の新しい経路・停止 ADR の入口の撤去ほか、ADR D12）。
+- review・CI・merge（closeout、2026-10-19）: Final Review は broad で、Claude 側（Fable 5.1）= approve（P3 3）、Codex（Astra）= reject（P2 2）。Coordinator が F1（P2、`fix_integrity` の同じ商品の二重の補正）・F2（P2、整合性の突合・補正・差の表示の live な旧契約の文）・F3（P3、計数の前後の循環で誤りで止める前提）を受理して是正し、closure 1・2（Codex Sol）= reject（F2 の残り）の是正を経て closure 3（Codex Sol）= approve（P0）。L3-1・L3-2・Human Visual Confirmation は PASS（owner が Windows native で `npm run tauri dev`）。R4 は実装の前（repo 外の回答台帳 TD-321）と最後の head（TD-323）で owner が承認した。helper の record は review・manual・r4 = pass。hosted の `Merge gate` は Ready の後の run で pass で、owner の Ready・merge の承認（TD-325）の後に helper 経由で squash merge した。Final Review の是正の詳細は PR の本文が正本。PR: [#176](https://github.com/kosei-w90607/inventory-system-desktop/pull/176)
+- 後続: `docs/backlog.md` の「棚卸しの数の置き場と在庫数の求め直しの runtime」の (b)。
 
 ## Review Response
 

@@ -1,6 +1,6 @@
 # Plan Packet: 単位の語の直しの runtime（個数の単位どうしの変更）
 
-wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinator が 6 本の lane を同時に起票した。owner の決定は repo 外の回答台帳 TD-304「動かせるだけ動かす」、TD-295「並列にできるものは並列に」）。設計は merge 済みの D-119（PR #168、[decision-log](../decision-log.md) D-119、owner の決定 U2 = b、repo 外の回答台帳 TD-297）で、本 lane はその単位の語の直しの分を実装する。branch は `agent/stock-unit-relabel`（main `f5d7aaf4` から）。同じ日に起票された他の lane は `agent/daily-report-sheet-design`・`agent/sd-bulk-import-design`・`agent/jan-alias-design`・`agent/sd-direct-read-runtime`・`agent/msi-distribution-docs`。file が重なるのは `agent/jan-alias-design`（下の「節の所有表」）。新しい D 番号は使わない（D-123 は要らない。下の Design Readiness）。
+wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinator が 6 本の lane を同時に起票した。owner の決定は repo 外の回答台帳 TD-304「動かせるだけ動かす」、TD-295「並列にできるものは並列に」）。設計は merge 済みの D-119（PR #168、[decision-log](../../decision-log.md) D-119、owner の決定 U2 = b、repo 外の回答台帳 TD-297）で、本 lane はその単位の語の直しの分を実装する。branch は `agent/stock-unit-relabel`（main `f5d7aaf4` から）。同じ日に起票された他の lane は `agent/daily-report-sheet-design`・`agent/sd-bulk-import-design`・`agent/jan-alias-design`・`agent/sd-direct-read-runtime`・`agent/msi-distribution-docs`。file が重なるのは `agent/jan-alias-design`（下の「節の所有表」）。新しい D 番号は使わない（D-123 は要らない。下の Design Readiness）。
 
 **規模と手法（1 lane のまま。横断の約束の表は作らない）**: 2026-10-17 に本 worktree（HEAD `f5d7aaf4`）で数えた。
 
@@ -11,7 +11,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 
 ## Workflow State
 
-- Phase: implementing
+- Phase: archive
 - Risk: R3
 - Plan Commit: 290c8baa57ad74742bf122e40086316f81254377
 - Amendments: none
@@ -26,7 +26,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 遷移の記録:
 
 1. kickoff → spec-check（2026-10-17、起草役）: Coordinator の発注（D-119 の U2 = b の runtime）を Scope にし、規模を数えて 1 lane のままと決め、Risk を R3 と記録した（下の Risk）。
-2. spec-check → design（2026-10-17、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D2、[30](../function-design/30-biz-product-service.md) BIZ-01-D7・BIZ-01-D8・§4.4・§4.9、[51](../function-design/51-ui-product-form.md) UI-01b-D5・D22・D23、[20](../function-design/20-io-product-repo.md) §2.3、[74](../function-design/74-ui-operation-logs.md) §74.8。正本と code を突き合わせ、実装の前に決めておく穴が 7 つあった（下の Design Readiness の「本 commit で正本に足したもの」）。
+2. spec-check → design（2026-10-17、起草役）: 対象の設計正本は共通規則 SPEC-UNIT-D2、[30](../../function-design/30-biz-product-service.md) BIZ-01-D7・BIZ-01-D8・§4.4・§4.9、[51](../../function-design/51-ui-product-form.md) UI-01b-D5・D22・D23、[20](../../function-design/20-io-product-repo.md) §2.3、[74](../../function-design/74-ui-operation-logs.md) §74.8。正本と code を突き合わせ、実装の前に決めておく穴が 7 つあった（下の Design Readiness の「本 commit で正本に足したもの」）。
 3. design → plan-draft（2026-10-17、起草役、本 commit）: 上の 7 つを本 packet と同じ commit で正本（30・51・20・74）に置いた。owner に聞く設計の問いは残っていない（下の「owner の判断事項」）。plan-gate へは Coordinator が進める。
 4. plan-draft → plan-gate（2026-10-17、Coordinator）: packet・Matrix と正本の直しは起草役の commit（`d6f57bbd`）にある。Coordinator は正本の差分（30 の上書きの段の `plu_dirty` の比べる列と操作ログの summary、51 UI-01b-D23 の送る判定と説明文、20・74 の行）と packet の前文・Workflow State・Owner Effort Budget を読み、D-119 の U2 = b の範囲を越えていないこと、366 との節の所有表があること、code・migration に触れていないことを確かめた。起草役が決めた 4 点（操作ログの既知の key に足さない、「現在庫」の欄の語、無効化の範囲の外の画面の古い語、spec-check の穴の追記）はそのまま Plan Review の判定に出す。Plan Review round 1 へ出す。
 5. plan-gate（round 1 の是正、2026-10-17、Coordinator）: Plan Review round 1（Claude 側 fresh Opus 5.5・Codex GPT-6.1 Sol）の是正（Review Response 参照）。是正の前に相談役（Fable 5.1）に反例探しを頼み、test の穴 3 つ（長さどうしの preview・commit、ログの全行の mutant、L3 の記録詳細を開く順）を是正に入れた。起草役が `5fe0eae1` で直し、Coordinator が差分（30:18、51 の D11・§7.8・D23、DSR の実例、Matrix の T5・T7・T8・T10・T11・T14、AC6 の glob、L3 の fixture）を読んだ。Scope の範囲と方向は変えず、その場で直したので plan-gate に留める。Plan Review round 2 へ出す。
@@ -43,7 +43,7 @@ wave に属さない単独の lane（2026-10-17 起票。同じ日に Coordinato
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 1（2026-10-18: round 3 の天井の判断 TD-315。lane の選択 TD-304 は本 lane の前の判断で数えない） | 3（L3 の round 1〈L3-1〜L3-3 を 1 回で〉、Ready 1、merge 1） | 5 | 9 = 1 + 3 + 5 |
+| 介入 | 9 | 5（closeout 時点。Plan Review round 3 の天井の判断 1〈TD-315〉、L3 の round 1〈TD-322〉、base 同期の後の L3 の round 2〈TD-324〉、Ready 1、merge 1〈Ready・merge は TD-325〉。lane の選択 TD-304 は本 lane の前の判断で数えない） | 0 | 4 | 9 = 5 + 0 + 4 |
 
 plan-approved は Coordinator が進める（TD-296 の 4a）。owner は 2026-10-20 から手が使いにくい（記号か短文で答える）。L3 は Draft のまま溜め、owner の手が戻った後に他の lane の L3 と 1 回の session にまとめる（repo 外の地図 `.local/reports/autonomy-2026-10/map.md` §7.3。Final Review の pass までは L3 を待たずに進める）。介入のたびに、やろうとしていることが全体を顧みない対症療法になっていないかを考え直す（TD-296 の 5a）。
 
@@ -283,7 +283,7 @@ test の本数は AC にしない（参考の観測値。完了の判定は exit
 
 ## Design Readiness
 
-- 引用する設計正本（節まで）: [共通規則](../function-design/10-common-rules.md) SPEC-UNIT-D2（単位の変更の段）・SPEC-UNIT-D1（12 個の code と語）・D10、[30](../function-design/30-biz-product-service.md) の「単位と原価の精度の契約（D-113、BIZ-01-D8）」・§4.4（PRODUCT-PATCH-D1、BIZ-01-D7）・§4.8・§4.9、[20](../function-design/20-io-product-repo.md) §2.3、[51](../function-design/51-ui-product-form.md) UI-01b-D5・D14・D22・D23・§7.3〜§7.8、[74](../function-design/74-ui-operation-logs.md) §74.8、[SCREEN_DESIGN](../SCREEN_DESIGN.md) の「商品登録・修正画面」、[decision-log](../decision-log.md) D-119。
+- 引用する設計正本（節まで）: [共通規則](../../function-design/10-common-rules.md) SPEC-UNIT-D2（単位の変更の段）・SPEC-UNIT-D1（12 個の code と語）・D10、[30](../../function-design/30-biz-product-service.md) の「単位と原価の精度の契約（D-113、BIZ-01-D8）」・§4.4（PRODUCT-PATCH-D1、BIZ-01-D7）・§4.8・§4.9、[20](../../function-design/20-io-product-repo.md) §2.3、[51](../../function-design/51-ui-product-form.md) UI-01b-D5・D14・D22・D23・§7.3〜§7.8、[74](../../function-design/74-ui-operation-logs.md) §74.8、[SCREEN_DESIGN](../../SCREEN_DESIGN.md) の「商品登録・修正画面」、[decision-log](../../decision-log.md) D-119。
 - 必要な設計成果物（`docs/DEV_WORKFLOW.md` Design artifact selection）:
   - BIZ・IO・validation・error の変更 → 30・20: updated in this PR（本 commit で穴を埋め、実装の commit で `proposed・未実装` を外す）。
   - Tauri command の DTO・generated binding → 30 §4.4 と本 packet の Boundary / Wire Contract: existing sufficient（D-119 で置いた）。
@@ -386,7 +386,11 @@ N/A: 外部の前提に依らない。`Option<enum>` の field の specta の生
 
 ## Implementation Results
 
-Fill after implementation.
+- 結果: 商品修正と商品 CSV の上書きで、個数の単位どうしの単位の変更を許した（D-119、共通規則 SPEC-UNIT-D2、30 BIZ-01-D8、51 UI-01b-D23）。種類をまたぐ変更と長さの単位どうしの変更は、商品修正の command・商品 CSV の preview・commit の 3 つの入口が BIZ の 1 つの判定を通して拒む。`ProductUpdateRequest`・`ProductUpdates` に `stock_unit` を足して bindings を再生成し、商品フォームの数量単位の select は個数の単位の商品で個数の単位だけを選べるようにした（長さの単位の商品は読取専用のまま）。単位を変えた記録は操作ログ（`product_update`、key `stock_unit`）に残り、商品 CSV の上書きは単位を変えた商品ごとに TX の中で書く。単位だけの変更では `plu_dirty` を変えない。実装した契約の `proposed・未実装` の注記を正本から外した。migration は無い。
+- 既存の保護: 単位の変更で在庫・明細・売価・原価・price_history の値は変わらない（自動 test）。今の frontend が `stock_unit` を送らない request はそのまま受ける（PRODUCT-PATCH-D1）。
+- 受容した制約: productUpdate の無効化の範囲の外の画面は、次の再取得まで前の語で出る（UI-01b-D23 の末尾）。操作ログ画面は key `stock_unit` と値の code をそのまま出す（74 §74.8）。
+- review・CI・merge（closeout、2026-10-19）: Final Review は broad 1 回で、Codex（Sol）= approve（P0）、Claude 側（Fable 5.1）= approve（P3 2）。PR #176 の merge の後に `origin/main` を単一の merge で取り込んで base を同期し、同期の後の closure（Claude 側 Fable 5.1）= approve（P0）。L3-1〜L3-3 は PASS（base 同期の前の head で 1 回、衝突の解消があったため manual を再利用せず同期の後の head でもう 1 回。repo 外の回答台帳 TD-322・TD-324）。helper の record は review・manual = pass。hosted の `Merge gate` は Ready の後の run で pass で、owner の Ready・merge の承認（TD-325）の後に helper 経由で squash merge した。PR: [#171](https://github.com/kosei-w90607/inventory-system-desktop/pull/171)
+- 後続: `docs/backlog.md` の「単位の語の直しの lane」の項目に、51 UI-01b-D5 の理由の列の句を次の docs の棚卸しで直す 1 行（Final Review の Claude 側 P3 1）。
 
 ## Review Response
 
@@ -431,3 +435,5 @@ Claude 側 fresh Opus 5.5（approve、P1 0・P2 0・P3 3）と Codex GPT-6.1 Sol
 | R19 | Claude #1（P3） | 採る | Writer への助言の「単位だけの変更」の定義に、単位が実際に変わる前提が無い | 定義の頭に「`updates.stock_unit` が `Some` で、かつ」を足した |
 | R20 | Claude #2（P3） | 採る | oracle の anchor の文の production の件数を単数に決め打ちしている | 複数の literal を許す形（定数にまとめるなら単数）にした |
 | R21 | Claude #3（P3） | 採る | 改名する test の comment が直す一覧に無い | 一覧に `product_service.rs:3713` を足した |
+
+Closeout（2026-10-19）: Final Review は broad 1 回で、Codex（Sol）= approve（P0）、Claude 側（Fable 5.1）= approve（P3 2）。base 同期の後の closure（Claude 側 Fable 5.1）= approve（P0）。是正は無し。P3 2 件の disposition（Coordinator の裁定）: Claude 側 1（`docs/function-design/51-ui-product-form.md:28` の UI-01b-D5 の理由の列に「単位変更は在庫履歴・閾値・POS 連動への影響が大きいため別 Design Phase」が live な文として残る）は follow-up で、`docs/backlog.md` の「単位の語の直しの lane」へ申し送った。Claude 側 2 は本段落に記録する: Matrix の oracle の anchor の数え方「`#[cfg(test)]` より前の範囲で数える」は、`product_service.rs` に `mod tests` より前の `#[cfg(test)]`（failpoint）があるため字面どおりでは 0 件になる。正しくは「`mod tests {` より前の範囲」で数える。あわせて、base 同期で PR #176 が `ProductUpdates.stock_quantity` を外したので、`overwrite_changes_unit_only` は在庫を比べなくなった（上書きは常に `None` を渡していたので、「単位だけの変更」の判定は変わらない）。packet の本文（Scope・Contract Ledger・AC）は当時の契約の記録として書き換えない。Owner Effort Budget の表は closeout の時点の値（上限 9、消費 5）に直した。

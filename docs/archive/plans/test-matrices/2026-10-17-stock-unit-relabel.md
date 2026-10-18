@@ -1,6 +1,6 @@
 # Test Design Matrix: 単位の語の直しの runtime
 
-Plan Packet: `docs/plans/2026-10-17-stock-unit-relabel.md`。oracle は設計正本（共通規則 SPEC-UNIT-D2、30 BIZ-01-D7・BIZ-01-D8、51 UI-01b-D23）から転記し、実装から写さない。test 名は案で、Writer が既存の命名（`test_<対象>_req<NNN>_<内容>`、TS は `UI-01b-D23: …`）に合わせて決めてよい。新しい test の名前に REQ-102（商品修正）・REQ-104（商品 CSV）か UI-01b-D23 を入れる。
+Plan Packet: `docs/archive/plans/2026-10-17-stock-unit-relabel.md`。oracle は設計正本（共通規則 SPEC-UNIT-D2、30 BIZ-01-D7・BIZ-01-D8、51 UI-01b-D23）から転記し、実装から写さない。test 名は案で、Writer が既存の命名（`test_<対象>_req<NNN>_<内容>`、TS は `UI-01b-D23: …`）に合わせて決めてよい。新しい test の名前に REQ-102（商品修正）・REQ-104（商品 CSV）か UI-01b-D23 を入れる。
 
 ## Risk
 
