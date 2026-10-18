@@ -1,6 +1,6 @@
 # Test Design Matrix: 売上の SD からの一括取込みと EJ の控えの閲覧の設計
 
-本 lane は docs だけで、自動 test を足さない。下の行は後続の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」と「Z004 を SD の一括取込みに入れる runtime（B）」）が実装する test の設計で、設計正本の節（37 §37.10・§37.11、24 §14.25、45 §45.6c、55 UI-07-D17、SCREEN_DESIGN の UI-09c、pos-tables の `ej_records`）と D-121 から導いた。本 lane が自分で回す検査は packet の AC1〜AC11。test の名前は後続が実装のときに決め直してよいが、Would fail if の観測は変えない。fixture は合成の EJ・日報・Z004 だけ（実 encoding の CP932・CRLF）。
+本 lane は docs だけで、自動 test を足さない。下の行は後続の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」と「Z004 を SD の一括取込みに入れる runtime（B）」）が実装する test の設計で、設計正本の節（37 §37.10・§37.11、24 §14.25、45 §45.6c、55 UI-07-D17、SCREEN_DESIGN の UI-09c、pos-tables の `ej_records`）と D-121 から導いた。本 lane が自分で回す検査は packet の AC1〜AC14。test の名前は後続が実装のときに決め直してよいが、Would fail if の観測は変えない。fixture は合成の EJ・日報・Z004 だけ（実 encoding の CP932・CRLF）。
 
 ## Risk
 
@@ -8,7 +8,7 @@ Risk: R3
 
 ## Contracts Under Test
 
-- BIZ-08-D7: 一括取込みは日報（対象日・精算回数の昇順、同じ値なら `XZ` の束を先にして `candidate_key` の順）→ Z004（精算回数の昇順、(B)）→ EJ の順に、今の関数で 1 項目 1 TX。業務の拒否・取込み済み・同日追加の確認が要るは飛ばして続け、確定の段の失敗で止め、残りは NotAttempted。確定済みは残り、同じ操作のやり直しで二重に数えない
+- BIZ-08-D7: 一括取込みは日報（対象日・精算回数の昇順、同じ値なら `XZ` の束を先にして `candidate_key` の順）→ Z004（精算回数の昇順、同じ値なら `XZ` の file を先にして `sd_relative_path` の順。scan で読めなかった file は先頭で名指しして飛ばす。(B)）→ EJ の順に、今の関数で 1 項目 1 TX。業務の拒否・取込み済み・同日追加の確認が要るは飛ばして続け、確定の段の失敗で止め、残りは NotAttempted。確定済みは残り、同じ操作のやり直しで二重に数えない
 - BIZ-08-D8: 同じ日の active な取込みが全て精算回数を持ち、束も持つときは `NoDuplicate`。どれかが NULL か束が None なら `AdditionalImportConfirmationRequired`
 - BIZ-08-D9: EJ は形と日時（暦）の検査を通った file の記録を、番号を鍵に文のまま保存。伸びうる file（名前に連番 `_nnnn` の無い EJ。出所に依らない）と最終改行の無い file の最後の記録は保留。同じ呼出しの中・保存済みとの文の違いは保存しない（conflict。保存済みの有無を返す）。SD の file で新しい記録を持つものだけを TX の前に写す。`total_amount` は `Restored` の取引だけ。欠けは番号の連続で区間に。移してよい EJ は新しい記録・conflict・保留・読めない file が全部 0 のときだけ
 - BIZ-08-D10: CV17 の取込みの前後・順の入れ替わりで二重に数えない
@@ -37,7 +37,8 @@ Risk: R3
 - FM18: Z004 の部分成功（取り込まなかった行がある `completed_partial`）が一括取込みの結果で件数だけの「取り込みました」になり、入らなかった行が黙って消える（読み直しでは取込み済みになり二度と出ない）
 - FM19: EJ の新しい控えが 0 件で、保留・conflict・読めない file だけがあるとき、ボタンが押せず、番号・file 名・直し方に届かない
 - FM20: 一括取込み・手で選ぶ EJ の取込みの後も控えの query が古いまま残り、控えの画面に新しい控えが出ない
-- FM21: 同じ日・同じ精算回数の 2 束（SD-23 が外れた場合）の順が決まらず、どちらの bytes が入るかが実行ごとに変わる
+- FM21: 同じ日・同じ精算回数の 2 束、または同じ精算回数の 2 つの Z004（SD-23 が外れた場合）の順が決まらず、どちらの bytes が入るかが実行ごとに変わる
+- FM22: scan で読めなかった Z004 が一括取込みの結果に出ず、最新の精算の Z004 が入っていないことが黙って過ぎる（末尾の精算なので精算回数の欠けの知らせにも出ない）
 
 ## Test Matrix
 
@@ -53,6 +54,8 @@ Risk: R3
 | BIZ-08-D7 | FM16 | integration | `test_bulk_import_names_scan_unreadable_ej_files` | `ej_files` が空で `ej_unreadable_files` に 1 本ある snapshot で EJ の item が無い、または `ImportedEj` の `unreadable_files` にその file 名が無い。`ej_files` に形の外れた 1 本もある snapshot で、2 本の名前の両方が無い |
 | BIZ-08-D7 | FM3 | integration | `test_bulk_import_rerun_on_same_snapshot_is_idempotent` | 同じ snapshot で 2 回呼んだ後、`daily_report_imports` の completed の行数か `ej_records` の行数が 1 回目と違う、または 2 回目の日報が Skipped（取込み済み）でない |
 | BIZ-08-D7 | FM4・FM21 | unit（並べる関数） | `test_bulk_import_orders_by_report_date_then_settlement_no` | snapshot の束が新しい順で入っているとき、処理の順が (対象日, 精算回数) の昇順にならない。同じ対象日・同じ精算回数の `XZ` の束と `XZ_BKUP` の束で `XZ` が先にならない、同じ area の 2 束が `candidate_key` の辞書順にならない、または `files_by_candidate` への入れ順を変えると処理の順が変わる |
+| BIZ-08-D7 | FM21 | unit（並べる関数、(B)） | `test_bulk_import_orders_z004_by_settlement_no_independent_of_enumeration` | 同じ精算回数で bytes の違う 2 つの Z004（`XZ` と `XZ_BKUP`）と別の精算回数の 1 つを持つ snapshot で、`z004_files` の入れ順を反転すると処理の順（ImportedZ004 になる file）が変わる、`XZ` の file が先にならない、または精算回数でなく file 名の順で並ぶ |
+| BIZ-08-D7 | FM22 | integration（(B)） | `test_bulk_import_names_scan_unreadable_z004_files` | 日報と EJ は取り込め、最新の精算の Z004 だけが `z004_unreadable_files` にある snapshot で、その相対 path の `RegisterSdBulkSource::Z004`（`settlement_date` が None）の item が無い、outcome が §37.10 手順 3 の固定の文の Skipped でない、または以後の項目が NotAttempted になる |
 | BIZ-08-D7 | FM2 | integration | `test_bulk_import_needs_confirmation_is_not_a_stop` | 同じ日に精算回数の NULL の取込みがある束が NeedsIndividualConfirmation 以外になる、または以後の項目が NotAttempted になる |
 | BIZ-08-D8 | FM6 | unit（§37.3） | `test_same_date_bundles_with_settlement_no_need_no_confirmation` | 同じ日に精算回数 41 の completed があり、精算回数 42 の束を preview したとき `NoDuplicate` でない |
 | BIZ-08-D8 | FM5 | unit | `test_same_date_with_null_settlement_import_still_needs_confirmation` | 同じ日に精算回数 NULL の completed（D-111 より前の形）があり、精算回数 42 の束で `AdditionalImportConfirmationRequired` でない |
@@ -174,7 +177,8 @@ Risk: R3
 - 移してよい条件から保留を外したら（`held_count` を見ない）: `test_ej_plan_full_match_requires_no_held` が red。
 - conflict の `saved` を常に true にしたら: `test_ej_conflict_within_one_call_saves_neither` が red。
 - 暦の検査を外したら: `test_ej_invalid_calendar_datetime_file_is_unreadable` が red。
-- scan で読めなかった file 名を結果に足さなかったら: `test_bulk_import_names_scan_unreadable_ej_files` が red。
+- scan で読めなかった file 名を結果に足さなかったら: `test_bulk_import_names_scan_unreadable_ej_files` が red。Z004 の側は `test_bulk_import_names_scan_unreadable_z004_files` が red。
+- Z004 の同じ精算回数の順から `XZ` の優先か `sd_relative_path` の順を外したら: `test_bulk_import_orders_z004_by_settlement_no_independent_of_enumeration` が red。
 - 欠けの区間を番号ごとにしたら・min より前を数えたら: `test_list_ej_number_gaps_returns_ranges` が red。
 - 写しの条件から「新しい記録を持つ」を外したら: `test_ej_copy_only_sd_files_with_new_records_before_tx` が red。
 - 番号を number で wire に出したら: `receipt list shows zero yen and dash distinctly` の `000123` の期待が red。

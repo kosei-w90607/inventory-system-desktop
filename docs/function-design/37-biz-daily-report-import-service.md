@@ -479,6 +479,8 @@ fn commit_register_sd_bulk_import(
 //   ej_files: Vec<SdSourceFile>,       // (A) 上で読めた EJ（形の検査の前）
 //   ej_unreadable_files: Vec<String>,  // (A) 上で bytes を得られなかった EJ の file 名（相対 path の最後の要素。一括取込みの結果で名指しする）
 //   z004_files: Vec<SdSourceFile>,     // (B) 手順 10 で読んだ Z004 を相対 path つきで持つ（PLU の照合の後も残す）
+//   z004_unreadable_files: Vec<String>, // (B) 手順 10 で除いた Z004（`Io`・`TooLarge`・形の外れ）の相対 path（IO-09 の relative_path）。
+//                                       //     EJ の読めなかった file と同じく一括取込みの結果で名指しする（下の手順 3）
 struct RegisterSdEjSummary {
     new_count: i64,             // plan_ej_records の new_records の数（保留した記録を含まない）
     held_count: i64,            // plan_ej_records の held_count（55 UI-07-D17 のボタンの条件と保留の文）
@@ -501,7 +503,7 @@ struct RegisterSdBulkItem {
 
 enum RegisterSdBulkSource {
     DailyReport { candidate_key: String, report_date: Option<String> },
-    Z004 { sd_relative_path: String },  // (B)
+    Z004 { sd_relative_path: String, settlement_date: Option<String> }, // (B)。settlement_date は手順 1 (b) の parse_z004 が Ok の file の ParseResult.settlement_date（YYYY-MM-DD）、ほかは None
     Ej,                                 // EJ の file 全部で 1 項目。ej_files と ej_unreadable_files がどちらも空なら項目を作らない
 }
 
@@ -509,7 +511,7 @@ enum RegisterSdBulkOutcome {
     ImportedDailyReport(DailyReportImportResult),
     ImportedZ004(ImportResult),          // (B)。32 の新契約の知らせと要再確認の一覧を含む
     ImportedEj(EjImportResult),          // §37.11。新しい記録が 0 件でも ImportedEj（件数で示す）
-    Skipped { message: String },         // 業務の検査で取り込まない。message は各 BIZ の固定の文のまま
+    Skipped { message: String },         // 業務の検査で取り込まない（scan で読めなかった Z004 を含む。手順 3）。message は各 BIZ の固定の文のまま
     NeedsIndividualConfirmation,         // 日報の同日追加の確認が要る（BIZ-08-D8 の外）
     Failed(BizError),                    // 確定の段の失敗。ここで止まる。CMD が 45 §45.7 の変換を当てて wire の文にする
     NotAttempted,                        // 止まった後の項目
@@ -518,9 +520,13 @@ enum RegisterSdBulkOutcome {
 
 **処理ステップ**:
 
-1. 項目を並べる。(a) 日報: `snapshot.files_by_candidate` の束（§37.9 の `NotImported`）を、IO-07 `parse_daily_report_bundle`（純関数、DB を見ない）で取った中身の `report_date` の昇順、同じ日は精算回数の昇順、それも同じなら `XZ` の束（束の file の `sd_relative_path` の最初の要素が `XZ`）を先、最後に `candidate_key` の辞書順にする（SD の束は精算回数を持つ。BIZ-08-D6。同じ日・同じ精算回数の 2 束は、SD-23 が外れて同じ精算の別 bytes が `XZ` と `XZ_BKUP` にある場合で、先の束が入り、後の束は BIZ-08-D4 で Skipped になる。`files_by_candidate` は HashMap なので、鍵を決めないとどちらが入るかが実行ごとに変わる。`XZ` を先にするのは §37.9 手順 6 と同じ理由〈レジが書いた原本の置き場所〉。parse の失敗した束は先頭に置き〈その中は `candidate_key` の辞書順〉、手順 2 の §37.3 で Skipped になる）。§37.3 は並べるために先に呼ばない（同じ日の 2 つ目の束の cache が 1 つ目の確定の前の同日の一覧を持ち、§37.4 手順 5 で止まるため）。(b) Z004（runtime B）: `snapshot.z004_files` を IO-02 の精算の識別メタの精算回数の昇順（メタの読めない file は先頭に置き、手順 3 の preview で Skipped になる）。(c) EJ: `snapshot.ej_files` か `snapshot.ej_unreadable_files` が空でなければ、その全部を 1 項目（`RegisterSdBulkSource::Ej`）。どちらも空なら EJ の項目を作らない。順は (a) → (b) → (c)。
+1. 項目を並べる。順は (a) → (b) → (c)。(a) と (b) の中は、下の鍵の昇順に並べ、鍵の等しい項目どうしは「同じ鍵の順」で決める。
+   - (a) 日報: `snapshot.files_by_candidate` の束（§37.9 の `NotImported`）。鍵は IO-07 `parse_daily_report_bundle`（純関数、DB を見ない）で取った中身の (`report_date`, 精算回数)（SD の束は精算回数を持つ。BIZ-08-D6）。parse の失敗した束は先頭に置き（その束どうしは鍵が等しいとみなす）、手順 2 の §37.3 で Skipped になる。§37.3 は並べるために先に呼ばない（同じ日の 2 つ目の束の cache が 1 つ目の確定の前の同日の一覧を持ち、§37.4 手順 5 で止まるため）。
+   - (b) Z004（runtime B）: `snapshot.z004_unreadable_files` の各 file を先頭に置き（その file どうしは鍵が等しいとみなす。手順 3 で Skipped）、続けて `snapshot.z004_files`。鍵は IO-02 `parse_z004`（純関数、DB を見ない。[23](23-io-z004-parser.md)）の `settlement_metadata.settlement_no` を [33 §16.3](33-biz-plu-export-service.md) 手順 1 と同じく 10 進の整数（ASCII の数字だけで `i64` に収まる値）として読んだ値。file 名からは取らない（名前は列挙と組分けの手がかりにだけ使い、精算回数を名前から推測しない。IO-09-D2）。`parse_z004` の `Err` の file と、`settlement_no` が無いか整数として読めない file は読めなかった file の後に置き（その file どうしは鍵が等しいとみなす）、手順 3 の 32 の preview で Skipped になる。
+   - (c) EJ: `snapshot.ej_files` か `snapshot.ej_unreadable_files` が空でなければ、その全部を 1 項目（`RegisterSdBulkSource::Ej`）。どちらも空なら EJ の項目を作らない。
+   - 同じ鍵の順（(a) と (b) の共通）: `XZ` にある項目（日報は束の file の、Z004 はその file の `sd_relative_path` の最初の要素が `XZ`）を先にし、最後に日報は `candidate_key` の辞書順、Z004 は `sd_relative_path` の辞書順にする。鍵の等しい 2 つは、SD-23 が外れて同じ精算の別 bytes が `XZ` と `XZ_BKUP` にある場合で、先の項目が入り、後の項目は日報は BIZ-08-D4、Z004 は 32 の新契約の表の 4 で Skipped になる。`files_by_candidate` は HashMap で、`z004_files` は SD の列挙の順なので、この順を決めないとどちらが入るかが実行ごとに変わる。`XZ` を先にするのは §37.9 手順 6 と同じ理由（レジが書いた原本の置き場所）。
 2. 日報の各束（並べた順に 1 束ずつ、前の束の確定の後に）: §37.3 `parse_and_validate_daily_report`（3 本を `sd_relative_path` つき・`source_path` 無しで渡す）を呼ぶ。`Err(BizError::DatabaseError)` は `Failed(err)` にして止める。ほかの `Err`（`ImportError`・`IdempotencyConflict`・`ValidationFailed`）は Skipped（message は BIZ の文のまま）にして次へ進む。`Ok` で `AlreadyImported` は Skipped（`取込み済みです`）、`AdditionalImportConfirmationRequired` は NeedsIndividualConfirmation にして次へ進む。`NoDuplicate` はすぐに §37.4 `commit_daily_report_import(conn, cached_preview, false, app_data_dir)` を呼び、`Ok` は ImportedDailyReport、`Err`（`SourceCopyFailed`・`DatabaseError`・TX の中の再検査の `ImportError`・`IdempotencyConflict` を含む全て）は `Failed(err)` にして止める。
-3. Z004 の各 file（runtime B、1 file ずつ）: [32](32-biz-csv-import-service.md) の `parse_and_validate`（`CsvParseAndValidateRequest { file_bytes, filename: 相対 path の最後の要素 }`）を呼ぶ。`Err(BizError::DatabaseError)` は `Failed(err)` にして止める。ほかの `Err`（32 の新契約の表の拒否と重複の拒否の `ImportError`、`ValidationFailed` ほか）は Skipped（message は BIZ の文のまま）にして次へ進む（手順 2 と同じ形）。通れば IO-10 `save_pos_source_copy(app_data_dir, sd_relative_path, bytes)` で写しを書き（BIZ-08-D5 の引継ぎ。失敗は `Failed(BizError::SourceCopyFailed(kind))` で止め、DB を変えない）、32 の確定（D-118 の新契約）を呼ぶ。`Ok` は ImportedZ004、`Err` は `Failed(err)` にして止める。
+3. Z004 の各 file（runtime B、1 file ずつ。source は `Z004 { sd_relative_path, settlement_date }`）: `z004_unreadable_files` の file は呼ばずに Skipped（`読めないファイルでした。SD を差し直してもう一度読むか、「商品別CSV取込み（Z004）」のタブで PC の写しを選んでください`）にして次へ進む（scan で bytes を得られなかった file も、EJ と同じく一括取込みの結果で名指しする。TD-310）。`z004_files` の file は [32](32-biz-csv-import-service.md) の `parse_and_validate`（`CsvParseAndValidateRequest { file_bytes, filename: 相対 path の最後の要素 }`）を呼ぶ。`Err(BizError::DatabaseError)` は `Failed(err)` にして止める。ほかの `Err`（32 の新契約の表の拒否と重複の拒否の `ImportError`、`ValidationFailed` ほか）は Skipped（message は BIZ の文のまま）にして次へ進む（手順 2 と同じ形）。通れば IO-10 `save_pos_source_copy(app_data_dir, sd_relative_path, bytes)` で写しを書き（BIZ-08-D5 の引継ぎ。失敗は `Failed(BizError::SourceCopyFailed(kind))` で止め、DB を変えない）、32 の確定（D-118 の新契約）を呼ぶ。`Ok` は ImportedZ004、`Err` は `Failed(err)` にして止める。
 4. EJ の項目があれば: §37.11 `import_ej_records(conn, files, app_data_dir)`（`snapshot.ej_files` の各 file を `EjSourceFile { filename: 相対 path の最後の要素, sd_relative_path: Some(..), bytes }` にする。空でも呼ぶ）。`Ok` は、結果の `unreadable_files` の前に `snapshot.ej_unreadable_files` を足して ImportedEj にする（scan で読めなかった file も一括取込みの結果で名指しする）。`Err`（`SourceCopyFailed`・`DatabaseError`）は `Failed(err)`。
 5. 止まったら、残りの項目（EJ の項目を含む）を NotAttempted にして返す。関数の `Err` は snapshot の形の内部の誤りだけで、項目の失敗は `Ok` の中の outcome で返す。
 6. 各項目の操作ログは呼んだ関数が今どおり書く（日報の `daily_report_import`、Z004 の取込みのログ、EJ の `ej_import`）。一括の操作そのもののログは足さない。
@@ -696,4 +702,4 @@ struct EjRecordDetail {
 | 2026-10-07 | sd-direct-read（Plan Review round 3 の後の同型指摘の一括是正） | §37.3 手順 1a に SD を抜いた後の file の在否の確認（(iii)）と、root を取る処理を受ける内部関数 `_with_sd_lookup`。写しの失敗を `BizError::SourceCopyFailed` にして UI が preview に戻れる形にした。§37.8 と D5 の「動かさない」を (a) の段階に限った。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 2 の是正） | 選択の enum を BIZ-08 の `DailyReportSdSelection` にした（cmd → io の禁止）。手で選んだ SD 上の file を SD の入力にする §37.3 手順 1a。BIZ-08-D4 の照合の repository 関数（24 §14.18a）。§37.4 の手順を 2a（D6）・2b（D5）の順に直した。`source_files_json` を内部の serialize 用の型で書く。同じ bytes の組で `XZ` の path を残す。 |
 | 2026-10-07 | sd-direct-read（Plan Review round 1 の是正） | BIZ-08-D6: SD の経路は精算回数のある束だけを取り込む（scan・preview・commit）。§37.3 手順 4 の精算回数の保存の文を IO-07-D5 → cache → DB の契約に直した。 |
-| 2026-10-17 | sd-bulk-import-design（design、D-121） | §37.10（BIZ-08-D7 締めの一括取込みの順・TX・失敗、BIZ-08-D8 日報の同日追加の確認を精算回数の照合で置き換える、BIZ-08-D10 CV17 との併存と (b) を妨げない約束）と §37.11（BIZ-08-D9 EJ の記録の取込みと閲覧）を proposed で足した。§37.3〜§37.9 は変えていない。Plan Review round 1 の是正で、内部の結果の `Failed(BizError)` と EJ の項目、日報の並べる鍵、同日の NULL の判定の repo、`XZ` 直下の最後の記録の保留、`body_text` の見出しの取り方、EJ の移動の条件を直した。Plan Review round 2 の是正で、§37.11 の保存の規則を 1 つの筋（形・日時の検査 → 名前による伸びうるかの判定と保留 → 番号と文の比べ → 保存 → 結果）に書き直し（手で選んだ伸びうる file の保留、暦の検査、conflict の保存済みの有無、EJ の kind・mode の生成 enum）、移してよい EJ の条件に `held_count` 0 を足し、scan で読めなかった EJ の file 名を snapshot から一括の結果へ引き継ぎ、§37.10 手順 3 の Z004 の preview の `Err` の行き先を書いた。Plan Review round 3 の是正で、§37.10 手順 1 (a) の並べる鍵に `XZ` の束と `candidate_key` の順を足し、scan の EJ の数えに `held_count` を足し、§37.11 手順 3 (d) に保留した記録を次の読取りでもう一度確かめることを書き、BIZ-08-D9 の再検討に番号の一周を足した。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | §37.10（BIZ-08-D7 締めの一括取込みの順・TX・失敗、BIZ-08-D8 日報の同日追加の確認を精算回数の照合で置き換える、BIZ-08-D10 CV17 との併存と (b) を妨げない約束）と §37.11（BIZ-08-D9 EJ の記録の取込みと閲覧）を proposed で足した。§37.3〜§37.9 は変えていない。Plan Review round 1 の是正で、内部の結果の `Failed(BizError)` と EJ の項目、日報の並べる鍵、同日の NULL の判定の repo、`XZ` 直下の最後の記録の保留、`body_text` の見出しの取り方、EJ の移動の条件を直した。Plan Review round 2 の是正で、§37.11 の保存の規則を 1 つの筋（形・日時の検査 → 名前による伸びうるかの判定と保留 → 番号と文の比べ → 保存 → 結果）に書き直し（手で選んだ伸びうる file の保留、暦の検査、conflict の保存済みの有無、EJ の kind・mode の生成 enum）、移してよい EJ の条件に `held_count` 0 を足し、scan で読めなかった EJ の file 名を snapshot から一括の結果へ引き継ぎ、§37.10 手順 3 の Z004 の preview の `Err` の行き先を書いた。Plan Review round 3 の是正で、§37.10 手順 1 (a) の並べる鍵に `XZ` の束と `candidate_key` の順を足し、scan の EJ の数えに `held_count` を足し、§37.11 手順 3 (d) に保留した記録を次の読取りでもう一度確かめることを書き、BIZ-08-D9 の再検討に番号の一周を足した。Final Review の是正で、scan で読めなかった Z004 を `z004_unreadable_files` に持ち一括取込みの結果で名指しし、Z004 の項目に精算日（`settlement_date`）を足し、§37.10 手順 1 の同じ鍵の順を日報と Z004 の共通の 1 つの規則にした（Z004 の精算回数は `parse_z004` の識別メタから取る）。 |
