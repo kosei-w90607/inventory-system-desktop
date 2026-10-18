@@ -5,6 +5,7 @@
 //!
 //! docs/function-design/35-biz-stocktake-service.md に基づく実装。
 
+use crate::biz::stock_ledger::recompute_stock;
 use crate::biz::unit_amount::{cost_line_centi, cost_total_yen, price_basis_quantity};
 use crate::biz::BizError;
 use crate::db::{
@@ -515,7 +516,6 @@ pub(crate) fn legacy_complete_stocktake(
         let difference = product.product.stock_quantity - item.actual_count;
         if difference != 0 {
             let adjustment_quantity = item.actual_count - product.product.stock_quantity;
-            inventory_repo::update_stock_quantity(&tx, &item.product_code, item.actual_count)?;
             inventory_repo::insert_movement(
                 &tx,
                 &NewMovement {
@@ -529,8 +529,12 @@ pub(crate) fn legacy_complete_stocktake(
                         "棚卸し補正: システム在庫{} → 実カウント{}",
                         product.product.stock_quantity, item.actual_count
                     )),
+                    business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                    settlement_no: None,
                 },
             )?;
+            // 写しは補正の movement を入れた後に記録から求め直す（update_stock_quantity を直に呼ばない。31）
+            recompute_stock(&tx, &item.product_code)?;
             adjusted_items.push(AdjustedItem {
                 product_code: item.product_code.clone(),
                 product_name: product.product.name.clone(),
@@ -632,6 +636,15 @@ mod tests {
             pos_stock_sync: true,
         };
         product_repo::insert_product(conn, &product).unwrap();
+        // 写しは記録から求め直すので、同じ値の初期在庫の movement も入れる（Matrix T3）
+        if stock_quantity != 0 {
+            crate::db::test_support::insert_initial_stock_movement(
+                conn,
+                product_code,
+                stock_quantity,
+                stock_quantity,
+            );
+        }
     }
 
     fn create_stocktake(conn: &DbConnection, status: &str) -> i64 {
@@ -684,6 +697,15 @@ mod tests {
             pos_stock_sync: true,
         };
         product_repo::insert_product(conn, &product).unwrap();
+        // 写しは記録から求め直すので、同じ値の初期在庫の movement も入れる（Matrix T3）
+        if stock_quantity != 0 {
+            crate::db::test_support::insert_initial_stock_movement(
+                conn,
+                product_code,
+                stock_quantity,
+                stock_quantity,
+            );
+        }
     }
 
     // ===== UI-10 T-R3: 新規 BIZ 薄ラッパー =====
@@ -939,6 +961,15 @@ mod tests {
             pos_stock_sync: true,
         };
         product_repo::insert_product(conn, &product).unwrap();
+        // 写しは記録から求め直すので、同じ値の初期在庫の movement も入れる（Matrix T3）
+        if stock_quantity != 0 {
+            crate::db::test_support::insert_initial_stock_movement(
+                conn,
+                product_code,
+                stock_quantity,
+                stock_quantity,
+            );
+        }
     }
 
     // テストヘルパー: 在庫単位を指定する商品seed（評価額の基準数量 SPEC-STK-VAL-D1）
@@ -1609,8 +1640,8 @@ mod tests {
         seed_stocktake_item(&conn, stocktake_id, "SRD-BIZ-UNCORRECTED", 0, Some(0));
         conn.execute(
             "INSERT INTO inventory_movements
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at)
-             VALUES ('SRD-BIZ', 'stocktake', 1, 1, 'stocktake', ?1, 0, '2026-08-05T18:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase)
+             VALUES ('SRD-BIZ', 'stocktake', 1, 1, 'stocktake', ?1, 0, '2026-08-05T18:00:00', '2026-04-01', 0)",
             [stocktake_id],
         )
         .unwrap();

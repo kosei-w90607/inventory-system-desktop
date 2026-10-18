@@ -155,8 +155,8 @@ mod tests {
     fn insert_movement(conn: &db::DbConnection, code: &str, mt: &str, qty: i64, is_voided: bool) {
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, is_voided, created_at) \
-             VALUES (?1, ?2, ?3, 0, ?4, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, is_voided, created_at, business_date, phase) \
+             VALUES (?1, ?2, ?3, 0, ?4, '2026-03-15T10:00:00', '2026-04-01', 0)",
             rusqlite::params![code, mt, qty, is_voided as i32],
         )
         .unwrap();
@@ -376,8 +376,8 @@ mod tests {
         seed_product_with_stock(&conn, "MV-CMD", 10, "pcs");
         conn.execute(
             "INSERT INTO inventory_movements \
-             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at) \
-             VALUES ('MV-CMD', 'disposal', -2, 8, 'disposal_record', 15, 0, '2026-03-15T10:00:00')",
+             (product_code, movement_type, quantity, stock_after, reference_type, reference_id, is_voided, created_at, business_date, phase) \
+             VALUES ('MV-CMD', 'disposal', -2, 8, 'disposal_record', 15, 0, '2026-03-15T10:00:00', '2026-04-01', 0)",
             [],
         )
         .unwrap();

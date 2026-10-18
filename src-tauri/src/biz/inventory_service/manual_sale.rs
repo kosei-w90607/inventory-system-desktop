@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 
 use super::common::{
     apply_stock_change, compute_fingerprint, negative_stock_warning_message,
-    IDEMPOTENCY_KEY_MAX_LEN,
+    validate_business_date, IDEMPOTENCY_KEY_MAX_LEN,
 };
 
 /// 手動販売出庫リクエスト（31-biz-inventory-service.md §12.5）
@@ -104,6 +104,10 @@ pub fn create_manual_sale(
             "明細が1件以上必要です".to_string(),
         ));
     }
+
+    // 業務日の形と暦の検査（DB を見ない検証の段。冪等の再送の判定と TX より前。31）
+    validate_business_date(&req.sale_date)?;
+
     // fingerprint（リクエストフィールドのみ使用、DB参照不要）
     let fingerprint = compute_manual_sale_fingerprint(&req);
 
@@ -277,6 +281,8 @@ pub fn create_manual_sale(
         let outcome = apply_stock_change(
             &tx,
             &item.product_code,
+            &req.sale_date,
+            None,
             -item.quantity,
             MovementType::SaleManual,
             ReferenceType::ManualSale,
@@ -748,6 +754,24 @@ mod tests {
                 "W-M: 在庫がマイナスになりました（-0.3 m）".to_string(),
                 "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
             ]
+        );
+    }
+
+    #[test]
+    fn test_create_manual_sale_req203_rejects_noncanonical_date() {
+        // REQ-203 / Y1（4 業務の全部）/ Matrix W3
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W3-MS", 3);
+        let before = write_surface(&conn, &MANUAL_SALE_TABLES);
+        let mut req = make_manual_sale_req("w3-ms", vec![manual_sale_item("W3-MS", 1, 500)]);
+        req.sale_date = "2026-4-7".to_string();
+        let result = create_manual_sale(&mut conn, req);
+        assert_rejected_without_writes(
+            &conn,
+            &MANUAL_SALE_TABLES,
+            &before,
+            result,
+            "日付の形式が不正です（YYYY-MM-DD）",
         );
     }
 }

@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 
 use super::common::{
     apply_stock_change, compute_fingerprint, negative_stock_warning_message,
-    IDEMPOTENCY_KEY_MAX_LEN,
+    validate_business_date, IDEMPOTENCY_KEY_MAX_LEN,
 };
 
 /// 入庫記録リクエスト（31-biz-inventory-service.md §12.3）
@@ -81,6 +81,9 @@ pub fn create_receiving(
             "明細が1件以上必要です".to_string(),
         ));
     }
+
+    // 業務日の形と暦の検査（DB を見ない検証の段。冪等の再送の判定と TX より前。31）
+    validate_business_date(&req.receiving_date)?;
 
     // fingerprint 算出（リクエストフィールドのみ使用、DB参照不要）
     let supplier_str = req
@@ -222,6 +225,8 @@ pub fn create_receiving(
         let outcome = apply_stock_change(
             &tx,
             &item.product_code,
+            &req.receiving_date,
+            None,
             item.quantity,
             MovementType::Receiving,
             ReferenceType::ReceivingRecord,
@@ -915,5 +920,72 @@ mod tests {
                 "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn test_create_receiving_req201_rejects_noncanonical_date() {
+        // REQ-201 / Y1・31「業務日の形と暦の検査」/ Contract Probe P6 / Matrix W1: 形の違う日付は何も書かない
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W1-RCV", 3);
+        let dates = [
+            "2026-4-7",
+            " 2026-04-07",
+            "+2026-04-07",
+            "-0001-04-07",
+            "+10000-04-07",
+            "2026/04/07",
+            "",
+        ];
+        for (i, date) in dates.iter().enumerate() {
+            let before = write_surface(&conn, &RECEIVING_TABLES);
+            let mut req =
+                make_receiving_req(&format!("w1-{i}"), vec![receiving_item("W1-RCV", 2, 100)]);
+            req.receiving_date = date.to_string();
+            let result = create_receiving(&mut conn, req);
+            assert_rejected_without_writes(
+                &conn,
+                &RECEIVING_TABLES,
+                &before,
+                result,
+                "日付の形式が不正です（YYYY-MM-DD）",
+            );
+        }
+    }
+
+    #[test]
+    fn test_create_receiving_req201_rejects_nonexistent_date() {
+        // REQ-201 / Y1（実在） / Matrix W2
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W2-RCV", 3);
+        let before = write_surface(&conn, &RECEIVING_TABLES);
+        let mut req = make_receiving_req("w2", vec![receiving_item("W2-RCV", 2, 100)]);
+        req.receiving_date = "2026-02-30".to_string();
+        let result = create_receiving(&mut conn, req);
+        assert_rejected_without_writes(
+            &conn,
+            &RECEIVING_TABLES,
+            &before,
+            result,
+            "存在しない日付です",
+        );
+    }
+
+    #[test]
+    fn test_create_receiving_req201_movement_business_date_is_header_date() {
+        // REQ-201 / 31（業務日は header の日付）/ SPEC-STK-CNT-D1 / Matrix W6
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W6-RCV", 0);
+        let mut req = make_receiving_req("w6", vec![receiving_item("W6-RCV", 2, 100)]);
+        req.receiving_date = "2026-05-03".to_string();
+        create_receiving(&mut conn, req).unwrap();
+        let key: (String, i64, Option<i64>) = conn
+            .query_row(
+                "SELECT business_date, phase, settlement_no FROM inventory_movements
+                 WHERE product_code = 'W6-RCV' AND reference_type = 'receiving_record'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(key, ("2026-05-03".to_string(), 0, None));
     }
 }

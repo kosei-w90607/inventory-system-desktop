@@ -7,6 +7,7 @@ use crate::db::product_repo::{self, NewPriceHistory, NewProduct, ProductUpdates}
 use crate::db::system_repo::{self, NewOperationLog};
 use crate::db::{inventory_repo, stocktake_repo, DbConnection, DbError, PaginatedResult};
 
+use super::stock_ledger::recompute_stock;
 use super::unit_amount::{stock_unit_kind, StockUnitKind};
 use super::{jan_code, BizError};
 use crate::constants::{MAX_COST_PRICE, MAX_SELLING_PRICE, MAX_STOCK_QUANTITY};
@@ -282,9 +283,13 @@ pub fn create_product(
             reference_type: None,
             reference_id: None,
             note: Some("初期在庫投入".to_string()),
+            business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+            settlement_no: None,
         };
         inventory_repo::insert_movement(&tx, &movement)?;
     }
+    // 写しは初期在庫の movement から求め直す（初期在庫 0 は movement を作らず、求めた値 0 が INSERT の値と同じ。30）
+    recompute_stock(&tx, &product_code)?;
 
     #[cfg(test)]
     if failpoint::CREATE_PRODUCT_AFTER_MOVEMENT.with(|f| f.get()) {
@@ -1036,7 +1041,6 @@ fn overwrite_changes_unit_only(updates: &ProductUpdates, existing: &product_repo
         tax_rate,
         maker_code,
         stock_unit,
-        stock_quantity,
         is_discontinued,
         plu_dirty: _,
         plu_exported_at,
@@ -1052,7 +1056,6 @@ fn overwrite_changes_unit_only(updates: &ProductUpdates, existing: &product_repo
         && same(cost_price, &existing.cost_price)
         && same(&tax_rate.as_deref(), &existing.tax_rate.as_str())
         && same(maker_code, &existing.maker_code)
-        && same(stock_quantity, &existing.stock_quantity)
         && same(is_discontinued, &existing.is_discontinued)
         && same(plu_exported_at, &existing.plu_exported_at)
         && same(plu_target, &existing.plu_target)
@@ -1604,7 +1607,6 @@ pub fn commit_import(
                 pos_stock_sync: row.pos_stock_sync,
                 stock_unit: unit_change.map(|(_, new)| new),
                 plu_dirty: Some(true),
-                stock_quantity: None,
                 is_discontinued: None,
                 plu_exported_at: None,
                 plu_target: row.plu_target,
@@ -1686,9 +1688,13 @@ pub fn commit_import(
                         reference_type: None,
                         reference_id: None,
                         note: Some("一括インポートによる初期在庫".to_string()),
+                        business_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
+                        settlement_no: None,
                     },
                 )?;
             }
+            // 写しは初期在庫の movement から求め直す（30）
+            recompute_stock(&tx, &row.product_code)?;
 
             // 進行中棚卸し → stocktake_item 自動追加
             if let Some(ref st) = active_stocktake {
@@ -1997,6 +2003,58 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 1, "初期在庫の inventory_movement が記録されるべき");
+    }
+
+    type CopyAndInitialMovements = (
+        (i64, bool, Option<i64>, Option<i64>),
+        Vec<(i64, String, i64)>,
+    );
+
+    /// 写しの 4 項目と、初期在庫の movement（reference_type NULL）の (数量, 業務日, stock_after) の一覧
+    fn copy_and_initial_movements(conn: &DbConnection, code: &str) -> CopyAndInitialMovements {
+        let copy = conn
+            .query_row(
+                "SELECT stock_quantity, stock_recheck, stock_range_low, stock_range_high
+                 FROM products WHERE product_code = ?1",
+                [code],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+        let mut stmt = conn
+            .prepare(
+                "SELECT quantity, business_date, stock_after FROM inventory_movements
+                 WHERE product_code = ?1 AND reference_type IS NULL ORDER BY id",
+            )
+            .unwrap();
+        let movements = stmt
+            .query_map([code], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        (copy, movements)
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_product_req101_initial_stock_movement_and_copy_match() {
+        // REQ-101 / 30（初期在庫の movement と求め直し）/ SPEC-STK-CNT-D2 / Matrix E3
+        let (_dir, mut conn) = setup_test_db();
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let mut req = default_create_request();
+        req.initial_stock = 5;
+        let created = create_product(&mut conn, req).unwrap();
+        assert_eq!(
+            copy_and_initial_movements(&conn, &created.product_code),
+            ((5, false, None, None), vec![(5, today, 5)])
+        );
+
+        let mut req = default_create_request();
+        req.initial_stock = 0;
+        let created = create_product(&mut conn, req).unwrap();
+        assert_eq!(
+            copy_and_initial_movements(&conn, &created.product_code),
+            ((0, false, None, None), vec![])
+        );
     }
 
     #[test]
@@ -4776,6 +4834,33 @@ mod tests {
             )
             .unwrap();
         assert_eq!(qty, 10);
+    }
+
+    #[test]
+    #[serial]
+    fn test_commit_import_req104_initial_stock_movement_and_copy_match() {
+        // REQ-104 / 30（新規行の初期在庫の movement と求め直し、上書きの行は在庫を変えない）/ Matrix E3
+        let (_dir, mut conn) = setup_test_db();
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let mut row = make_import_row("IM-E3", "初期在庫 4");
+        row.initial_stock = Some(4);
+        commit_import(&mut conn, vec![row], vec![]).unwrap();
+        let expected = ((4, false, None, None), vec![(4, today, 4)]);
+        assert_eq!(copy_and_initial_movements(&conn, "IM-E3"), expected);
+
+        // 上書きの行は初期在庫を見ず、在庫も movement も変えない
+        let mut row = make_import_row("IM-E3", "上書き");
+        row.initial_stock = Some(99);
+        commit_import(&mut conn, vec![row], vec!["IM-E3".to_string()]).unwrap();
+        assert_eq!(copy_and_initial_movements(&conn, "IM-E3"), expected);
+
+        let mut row = make_import_row("IM-E3-ZERO", "初期在庫 0");
+        row.initial_stock = Some(0);
+        commit_import(&mut conn, vec![row], vec![]).unwrap();
+        assert_eq!(
+            copy_and_initial_movements(&conn, "IM-E3-ZERO"),
+            ((0, false, None, None), vec![])
+        );
     }
 
     #[test]

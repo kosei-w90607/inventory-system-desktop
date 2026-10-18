@@ -87,19 +87,7 @@ impl World {
         let (dir, conn) = db::test_support::setup_test_db();
         for sku in 0..CODES.len() {
             create_test_product_with_jan(&conn, CODES[sku], JANS[sku], INITIAL[sku], sku == 0);
-            inventory_repo::insert_movement(
-                &conn,
-                &NewMovement {
-                    product_code: CODES[sku].into(),
-                    movement_type: MovementType::Receiving,
-                    quantity: INITIAL[sku],
-                    stock_after: INITIAL[sku],
-                    reference_type: None,
-                    reference_id: None,
-                    note: Some("合成初期在庫".into()),
-                },
-            )
-            .unwrap();
+            // 初期在庫の movement は create_test_product_with_jan が入れる（Matrix T3・T5）
         }
         Self {
             dir,
@@ -548,6 +536,8 @@ fn test_cross_feature_req904_req203_model_detects_consistent_corruption() {
             reference_type: None,
             reference_id: None,
             note: Some("合成mutation".into()),
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         },
     )
     .unwrap();

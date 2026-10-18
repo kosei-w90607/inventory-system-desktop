@@ -1,12 +1,12 @@
 ## 2. IO-01: SQLiteデータアクセス層
 
-### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。以下の既存 API は現行の契約で、新しい保存の形へ切り替え済みではない。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D9）の IO-01 の側。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`ProductUpdates` から `stock_quantity` を除いたことと、`find_all_stock_quantities` が写しの 4 項目を `StockCopyRow` で返すこと（§2.11 の同名の項）で、商品の読取りが写しの 3 列を返すこと・stocktake_repo の明細の読取り・計数の保存は (b)（proposed・未実装。それまで以下の該当の既存 API は現行の契約のまま）。保存の列・CHECK・FK は [tracking](../db-design/tracking-system-tables.md)・[master](../db-design/master-tables.md) の同名の契約を正とする。旧 ADR（時点証拠）の版・非連動化の記録・計数の開始の読取り・source / ledger の上限・measured の保存・再実測・保存要求の照会・flag・有効観測の列挙・pending の補正の repo 操作は持たない（置き換えた）。
 
 | repo 操作 | 処理・返却の契約 |
 |---|---|
-| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
+| product_repo の更新型 | `ProductUpdates` から `stock_quantity` を除く（(a)、実装済み。数量の更新は [21](21-io-inventory-repo.md) の `update_stock_quantity` だけ）。（(b)）商品の読取り（`find_by_product_code`・`search_products` ほか写しを返す関数）は `stock_recheck`・`stock_range_low`・`stock_range_high` を返す |
 | stocktake_repo の明細の読取り | `get_stocktake_items`・`find_stocktake_item` は、明細を参照する計数（`stock_counts.stocktake_item_id`）の効く値と置き場の日付、写しの在庫・範囲を返す。差異と要再確認の理由は BIZ が求める |
 | 計数の読取り・保存 | [21](21-io-inventory-repo.md) の新契約（`insert_stock_count` と、商品の計数の鍵の順の一覧） |
 
@@ -169,7 +169,6 @@ fn update_product(conn: &DbConnection, product_code: &str, updates: &ProductUpda
 - cost_price: Option\<i64\>
 - tax_rate: Option\<String\>
 - maker_code: Option\<Option\<String\>\>
-- stock_quantity: Option\<i64\>
 - stock_unit: Option\<ProductStockUnit\>（D-119。値の検査〈個数の単位どうし〉は BIZ-01-D8、repo は code の文字列で SET するだけ）
 - is_discontinued: Option\<bool\>
 - plu_dirty: Option\<bool\>
@@ -896,15 +895,18 @@ fn find_stocktake_eligible_products(conn: &DbConnection) -> Result<Vec<ProductFo
 
 #### find_all_stock_quantities
 
-**関数要求**: 全商品の product_code, name, stock_quantity を取得する（BIZ-07 整合性チェック用）
+**関数要求**: 全商品の写しの 4 項目（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）と product_code, name, stock_unit を取得する（BIZ-07 整合性チェック用。[36](36-biz-integrity-check.md)。D-118 の (a)）
 
 **シグネチャ**:
 ```
-fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<(String, String, i64)>, DbError>
+fn find_all_stock_quantities(conn: &DbConnection) -> Result<Vec<StockCopyRow>, DbError>
 ```
 
+**StockCopyRow構造体**:
+- product_code: String, name: String, stock_unit: ProductStockUnit, stock_quantity: i64, stock_recheck: bool, stock_range_low: Option\<i64\>, stock_range_high: Option\<i64\>
+
 **処理ステップ**:
-1. SELECT product_code, name, stock_quantity FROM products ORDER BY product_code ASC
+1. SELECT product_code, name, stock_unit, stock_quantity, stock_recheck, stock_range_low, stock_range_high FROM products ORDER BY product_code ASC
 
 ---
 

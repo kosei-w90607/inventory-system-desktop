@@ -11,6 +11,7 @@ pub mod jan_code;
 pub mod plu_export_service;
 pub mod product_service;
 pub mod sales_service;
+pub mod stock_ledger;
 pub mod stocktake_service;
 pub mod system_service;
 pub mod unit_amount;

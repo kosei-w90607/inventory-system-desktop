@@ -297,6 +297,20 @@ fn test_rollback_req401_stock_limit_rolls_back_whole_tx() {
     let bytes = make_z004_bytes("2026-03-21", &[("4912345678901", "商品A", 1, 100)]);
     let import_result = commit_import(&mut conn, bytes, "Z004_260321");
     let set_stock = |conn: &crate::db::DbConnection, stock: i64| {
+        // 写しを記録から求め直すので、新しい値との差の movement を入れて写しと記録を揃える（Matrix T4）
+        let current: i64 = conn
+            .query_row(
+                "SELECT stock_quantity FROM products WHERE product_code = 'TEST-001'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        crate::db::test_support::insert_initial_stock_movement(
+            conn,
+            "TEST-001",
+            stock - current,
+            stock,
+        );
         conn.execute(
             "UPDATE products SET stock_quantity = ?1 WHERE product_code = 'TEST-001'",
             [stock],

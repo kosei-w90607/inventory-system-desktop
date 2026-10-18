@@ -15,7 +15,7 @@ use std::path::Path;
 
 use super::common::{
     apply_stock_change, compute_fingerprint, negative_stock_warning_message,
-    IDEMPOTENCY_KEY_MAX_LEN,
+    validate_business_date, IDEMPOTENCY_KEY_MAX_LEN,
 };
 
 const ALLOWED_RECEIPT_IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp"];
@@ -113,6 +113,9 @@ fn validate_return_request_shape(req: &ReturnCreateRequest) -> Result<(), BizErr
             "交換では戻り明細と渡し明細がそれぞれ1件以上必要です".to_string(),
         ));
     }
+    // 業務日の形と暦の検査（31）。register_processed で在庫を動かすかが分かれる前なので、
+    // movement を作らないレジ処理済みの返品・交換も同じ検査を通る
+    validate_business_date(&req.return_date)?;
 
     Ok(())
 }
@@ -261,6 +264,8 @@ pub fn create_return(
             let outcome = apply_stock_change(
                 &tx,
                 &item.product_code,
+                &req.return_date,
+                None,
                 qty,
                 MovementType::Return,
                 ReferenceType::ReturnRecord,
@@ -458,7 +463,7 @@ mod tests {
         // inventory_movements にレコードなし
         let mv_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM inventory_movements WHERE product_code = 'RTN-002'",
+                "SELECT COUNT(*) FROM inventory_movements WHERE product_code = 'RTN-002' AND reference_type = 'return_record'",
                 [],
                 |r| r.get(0),
             )
@@ -798,5 +803,44 @@ mod tests {
                 "W-PCS: 在庫がマイナスになりました（-2）".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn test_create_return_req202_rejects_noncanonical_date() {
+        // REQ-202 / Y1（4 業務の全部）/ Matrix W3
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W3-RT", 3);
+        let before = write_surface(&conn, &RETURN_TABLES);
+        let mut req = make_return_req("w3-rt", vec![return_item("W3-RT", "in", 1)]);
+        req.return_date = "2026-4-7".to_string();
+        let result = create_return(&mut conn, req);
+        assert_rejected_without_writes(
+            &conn,
+            &RETURN_TABLES,
+            &before,
+            result,
+            "日付の形式が不正です（YYYY-MM-DD）",
+        );
+    }
+
+    #[test]
+    fn test_create_return_req202_register_processed_rejects_noncanonical_date() {
+        // REQ-202 / Y1・31（movement を作らないレジ処理済みの返品も同じ検査）/ Matrix W7
+        let (_dir, mut conn) = setup_test_db();
+        create_test_product(&conn, "W7-RT", 3);
+        for (i, (date, message)) in [
+            ("2026-4-7", "日付の形式が不正です（YYYY-MM-DD）"),
+            ("2026-02-30", "存在しない日付です"),
+        ]
+        .iter()
+        .enumerate()
+        {
+            let before = write_surface(&conn, &RETURN_TABLES);
+            let mut req = make_return_req(&format!("w7-{i}"), vec![return_item("W7-RT", "in", 1)]);
+            req.register_processed = true;
+            req.return_date = date.to_string();
+            let result = create_return(&mut conn, req);
+            assert_rejected_without_writes(&conn, &RETURN_TABLES, &before, result, message);
+        }
     }
 }

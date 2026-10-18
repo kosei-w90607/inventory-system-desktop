@@ -208,7 +208,7 @@ pub struct SalesCsvExportResult {
 /// 34-biz-sales-service.md セクション19.3
 pub fn get_daily_sales(conn: &DbConnection, date: &str) -> Result<DailySalesReport, BizError> {
     // Step 1: 日付バリデーション
-    validate_date(date)?;
+    crate::biz::inventory_service::validate_business_date(date)?;
 
     // Step 2: 商品別売上取得 + DB型 -> BIZ型マッピング
     let db_rows = sales_repo::get_daily_sales_records(conn, date)?;
@@ -501,19 +501,6 @@ fn translate_source(source: &DailySaleSource) -> &str {
         DailySaleSource::Auto => "POS",
         DailySaleSource::Manual => "手動",
     }
-}
-
-/// YYYY-MM-DD 形式の日付をバリデーションする
-fn validate_date(date: &str) -> Result<(), BizError> {
-    NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
-        if date.len() == 10 && date.chars().nth(4) == Some('-') && date.chars().nth(7) == Some('-')
-        {
-            BizError::ValidationFailed("存在しない日付です".to_string())
-        } else {
-            BizError::ValidationFailed("日付の形式が不正です（YYYY-MM-DD）".to_string())
-        }
-    })?;
-    Ok(())
 }
 
 /// YYYY-MM 形式の月をバリデーションし、(year, month) を返す

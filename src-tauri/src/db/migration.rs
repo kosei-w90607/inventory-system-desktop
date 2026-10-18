@@ -17,6 +17,7 @@ use super::schema_v5;
 use super::schema_v6;
 use super::schema_v7;
 use super::schema_v8;
+use super::schema_v9;
 use super::DbError;
 use rusqlite::Connection;
 
@@ -77,6 +78,11 @@ fn migrations() -> Vec<Migration> {
             version: 8,
             description: "単位を12種へ（products.stock_unit の CHECK、保存済みの値の上限の検査）",
             kind: MigrationKind::Custom(schema_v8::apply_v8_stock_units),
+        },
+        Migration {
+            version: 9,
+            description: "在庫の並びの鍵・計数の表・写しの列（D-118 (a)）",
+            kind: MigrationKind::Custom(schema_v9::apply_v9_stock_ledger),
         },
     ]
 }
@@ -173,6 +179,16 @@ fn apply_sql_migration(
 /// 5. 各マイグレーションを順番に BEGIN → 実行 → バージョン記録 → COMMIT（失敗は ROLLBACK して MigrationFailed）
 /// 6. 全て成功 → Ok(())
 pub fn migrate(conn: &Connection) -> Result<(), DbError> {
+    migrate_through(conn, i64::MAX)
+}
+
+/// 版 `last_version` までだけを当てる test 用の migrate（22 §16 の vB・§19 の vL の test。期待は変えない）
+#[cfg(test)]
+pub(crate) fn migrate_up_to(conn: &Connection, last_version: i64) -> Result<(), DbError> {
+    migrate_through(conn, last_version)
+}
+
+fn migrate_through(conn: &Connection, last_version: i64) -> Result<(), DbError> {
     // 1〜2. 論理的な書込み（DDL・BEGIN・INSERT）より前に版を読んで比較する（MNT-03-D11）
     let current_version = read_current_version_without_ddl(conn)?;
     let app_max = app_max_version();
@@ -188,7 +204,7 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
 
     // 4〜5. 未適用のマイグレーションを順番に実行
     for migration in migrations() {
-        if migration.version > current_version {
+        if migration.version > current_version && migration.version <= last_version {
             match &migration.kind {
                 MigrationKind::Sql(sql) => {
                     apply_sql_migration(conn, migration.version, migration.description, sql)?;
@@ -210,6 +226,7 @@ mod tests {
         migration_tx::{self, FailurePoint},
         schema_v1, schema_v2, schema_v3, schema_v4, schema_v5, schema_v6, schema_v7, DbError,
     };
+    use rusqlite::types::Value;
     use rusqlite::Connection;
 
     fn setup_minimal_migration_db() -> Connection {
@@ -380,7 +397,11 @@ mod tests {
             .split("#[cfg(test)]")
             .next()
             .unwrap();
-        for source in [migration, schema_v2, schema_v3, schema_v8] {
+        let schema_v9 = include_str!("schema_v9.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        for source in [migration, schema_v2, schema_v3, schema_v8, schema_v9] {
             assert!(!source.contains("execute_batch(\"ROLLBACK;\").ok()"));
             assert!(!source.contains("execute_batch(\"COMMIT;\")"));
         }
@@ -388,10 +409,12 @@ mod tests {
         assert_eq!(schema_v2.matches("rollback_after_error").count(), 4);
         assert_eq!(schema_v3.matches("rollback_after_error").count(), 2);
         assert_eq!(schema_v8.matches("rollback_after_error").count(), 1);
+        assert_eq!(schema_v9.matches("rollback_after_error").count(), 1);
         assert_eq!(migration.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v2.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v3.matches("commit_transaction").count(), 1);
         assert_eq!(schema_v8.matches("commit_transaction").count(), 1);
+        assert_eq!(schema_v9.matches("commit_transaction").count(), 1);
     }
 
     // -----------------------------------------------------------------------
@@ -688,6 +711,7 @@ mod tests {
             "operation_logs",
             "app_settings",
             "plu_slots",
+            "stock_counts",
         ];
 
         for table_name in &expected_tables {
@@ -715,7 +739,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v1, 8);
+        assert_eq!(v1, 9);
         drop(conn);
 
         // 2回目（同じDBに対して再初期化）
@@ -725,15 +749,15 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v2, 8, "バージョンが変わってはいけない");
+        assert_eq!(v2, 9, "バージョンが変わってはいけない");
 
-        // schema_versionsにレコードが8件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8）
+        // schema_versionsにレコードが9件であること（v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9）
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(
-            count, 8,
-            "マイグレーションレコードは8件（v1+v2+v3+v4+v5+v6+v7+v8）"
+            count, 9,
+            "マイグレーションレコードは9件（v1+v2+v3+v4+v5+v6+v7+v8+v9）"
         );
     }
 
@@ -767,7 +791,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 8);
+        assert_eq!(version, 9);
 
         let rows: Vec<(String, bool)> = {
             let mut stmt = conn
@@ -803,7 +827,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 8);
+        assert_eq!(version, 9);
 
         for table_name in &[
             "daily_report_imports",
@@ -867,7 +891,7 @@ mod tests {
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .unwrap();
-        assert_eq!((max_version, version_count), (8, 8));
+        assert_eq!((max_version, version_count), (9, 9));
     }
 
     #[test]
@@ -883,7 +907,7 @@ mod tests {
         let slot_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM plu_slots", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(max_version, 8);
+        assert_eq!(max_version, 9);
         assert_eq!(slot_count, 4_784);
     }
 
@@ -1457,7 +1481,7 @@ mod tests {
         assert_eq!(rows_before[0].len(), 18, "v7 の products は 18 列");
         assert!(!can_insert_unit(&conn, "V8-BALL-BEFORE", "ball"));
 
-        super::migrate(&conn).unwrap();
+        super::migrate_up_to(&conn, 8).unwrap();
 
         assert_eq!(
             dump(&conn, "SELECT * FROM products ORDER BY product_code"),
@@ -1517,7 +1541,7 @@ mod tests {
         }
 
         // 再実行で v8 を 2 度当てない
-        super::migrate(&conn).unwrap();
+        super::migrate_up_to(&conn, 8).unwrap();
         assert_eq!(max_version_and_count(&conn), (8, 8));
     }
 
@@ -1526,7 +1550,7 @@ mod tests {
         // REQ-903 / MNT-03-D13: 新規の DB（v1 から v8）と行 0 の v7 の DB で成功する
         let dir = tempfile::tempdir().unwrap();
         let conn = init_database(dir.path().join("fresh.db").to_str().unwrap()).unwrap();
-        assert_eq!(max_version_and_count(&conn), (8, 8));
+        assert_eq!(max_version_and_count(&conn), (9, 9));
         for code in V8_UNIT_CODES {
             assert!(
                 can_insert_unit(&conn, &format!("V8-FRESH-{code}"), code),
@@ -1538,8 +1562,27 @@ mod tests {
         let (_dir, conn) = setup_v7_only_db();
         let definition_before = products_definition(&conn);
         super::migrate(&conn).unwrap();
-        assert_eq!(max_version_and_count(&conn), (8, 8));
-        assert_eq!(products_definition(&conn), definition_before);
+        assert_eq!(max_version_and_count(&conn), (9, 9));
+        let mut definition_expected = definition_before;
+        // vL（22 §19 手順 6）が products の末尾に写しの 3 列を足す。FK と index は同じ
+        definition_expected[0].extend(
+            [
+                (18, "stock_recheck", 1, Value::Text("0".into())),
+                (19, "stock_range_low", 0, Value::Null),
+                (20, "stock_range_high", 0, Value::Null),
+            ]
+            .map(|(cid, name, notnull, default)| {
+                vec![
+                    Value::Integer(cid),
+                    Value::Text(name.into()),
+                    Value::Text("INTEGER".into()),
+                    Value::Integer(notnull),
+                    default,
+                    Value::Integer(0),
+                ]
+            }),
+        );
+        assert_eq!(products_definition(&conn), definition_expected);
     }
 
     #[test]
@@ -1623,10 +1666,15 @@ mod tests {
             );
             drop(conn);
 
-            // 接続を破棄して同じ file を開き直すと、v8 を当て直さずに開ける
+            // 接続を破棄して同じ file を開き直すと、v8 を当て直さずに開ける。開き直しは最新の版まで当てるので、
+            // fixture の棚卸しの行を消してから開く（vL の手順 1 で止まらないように。止まり自体は vL の test）
+            let raw = Connection::open(dir.path().join("test.db")).unwrap();
+            raw.execute_batch("DELETE FROM stocktake_items; DELETE FROM stocktakes;")
+                .unwrap();
+            drop(raw);
             let conn = init_database(dir.path().join("test.db").to_str().unwrap()).unwrap();
             assert_eq!(foreign_keys(&conn), 1);
-            assert_eq!(max_version_and_count(&conn), (8, 8));
+            assert_eq!(max_version_and_count(&conn), (9, 9));
         }
         // (4) COMMIT の後で foreign_keys の復元が error: 版 8 は残る
         {
@@ -1705,7 +1753,7 @@ mod tests {
         assert_eq!(total, 8_999_990_100_000_900);
         let mut before = v8_snapshot(&conn);
 
-        super::migrate(&conn).unwrap();
+        super::migrate_up_to(&conn, 8).unwrap();
 
         let mut after = v8_snapshot(&conn);
         // schema_versions（最後の要素）だけ 1 行増える

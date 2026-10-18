@@ -25,6 +25,10 @@ pub(super) fn create_test_product_with_jan(
         rusqlite::params![product_code, jan_code, format!("テスト商品 {}", product_code), stock, pos_stock_sync, now, now],
     )
     .expect("テスト商品の作成に失敗");
+    // 写しは記録から求め直すので、同じ値の初期在庫の movement も入れる（Matrix T3）
+    if stock != 0 {
+        crate::db::test_support::insert_initial_stock_movement(conn, product_code, stock, stock);
+    }
 }
 
 /// テスト用Z004バイト列を生成する

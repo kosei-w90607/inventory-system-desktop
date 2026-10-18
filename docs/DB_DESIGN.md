@@ -1,8 +1,8 @@
 # 在庫管理システム テーブル定義書
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。現行の ER 図・以下のテーブル一覧は実装済みの schema であり、新しい契約の migration の適用を示さない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9・D10）の保存の契約を詳細化した。(a)（ADR SPEC-STK-CNT-D12）の並びの鍵・計数の表・写しの列は migration v9（[22 §19](function-design/22-mnt-migration.md)）で入った。現行の ER 図・以下のテーブル一覧はまだ (a) の列と表を載せていない（列と制約の正本は下の各 db-design の同名の節）。(b) の分は proposed・未実装。
 
 - 写しの列（`stock_recheck`・範囲）と在庫連動・共有 JAN: [master](db-design/master-tables.md)。入出庫の TX との接続: [transaction](db-design/transaction-tables.md)。
 - Z004 の取込みの machine_no・settlement_no: [POS](db-design/pos-tables.md)。
@@ -10,7 +10,7 @@
 
 EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）: [POS](db-design/pos-tables.md) の「SD の一括取込みと EJ の控えの契約」。
 
-`products.stock_quantity` は記録から求め直した写しで、書くのは BIZ の求め直しの関数だけ（D-051 の原則、D-118）。migration は棚卸しか Z004 の取込みを持つ DB では止まり（開発・試験 DB の作り直しは別の承認）、持たない DB では列と表を足して既存の movement の鍵を埋め、写しを求め直す。runtime の SQL・CHECK / FK / index・故障注入の試験は未実施。
+`products.stock_quantity` は記録から求め直した写しで、書くのは BIZ の求め直しの関数だけ（D-051 の原則、D-118）。migration は棚卸しか Z004 の取込みを持つ DB では止まり（開発・試験 DB はリリースの前まで作り直してよい。D-123）、持たない DB では列と表を足して既存の movement の鍵を埋め、写しを求め直す（(a) の migration v9 で実装済み。SQL・CHECK / FK / index・故障注入の試験は 22 §19 のテスト）。
 
 > **現行スキーマの入口**: [ER図](inventory_system_erd.html)、[業務データフロー](diagrams/current-system.md)。適用順序は `src-tauri/src/db/migration.rs` と `schema_v*.rs` を照合する。
 > **図と本文の位置付け**: 現行構造と完成形の将来設計を区別する。[図面監査](research/2026-09-16-diagram-audit.md) に、実装と設計の不一致・再検討事項を記録する。
@@ -141,9 +141,9 @@ jan_codeとfile_hash以外に、以下のインデックスを初期設定する
 - **前提**: 全商品の在庫はシステム導入時の初期投入（REQ-104一括インポートまたはREQ-101個別登録）から履歴が始まる。初期投入時にinventory_movementsにmovement_type='receiving'で初期在庫レコードを作成し、全商品の履歴起点を保証する
 - **pos_stock_sync=0の商品**: CSV取込みで在庫を動かさない商品は、inventory_movementsにsale_autoの行が作られない。手動販売出庫や棚卸し補正でのみ在庫が変動する。整合性チェックはこれらの商品も含めて行う
 - **チェックタイミング**: CSV取込み完了時、棚卸し確定時、設定画面からの手動実行
-- **チェック方法**: 各商品について `SUM(inventory_movements.quantity WHERE is_voided=0)` と `products.stock_quantity` を突合
+- **チェック方法**: 各商品について、記録（inventory_movements と stock_counts）から求め直した値と、products の写しの 4 項目（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）を突合する（[36](function-design/36-biz-integrity-check.md)。計数の無い商品では求め直しの値は `is_voided=0` の movement の和と同じ）
 - **差異発見時**: operation_logsに記録。画面に「在庫数に不整合があります」と警告表示。差異のある商品一覧を表示
-- **復旧方針**: 自動上書きはしない（履歴起点が欠損している可能性があるため危険）。利用者に差異を提示し、在庫数を入出庫の合計に合わせて補正する旨を確認する（文言正本は function-design/75-ui-integrity-check.md 文言表）。確定した場合のみ stock_quantity を movements_sum へ直接更新する。inventory_movements への行追加はしない（挿入すると合計自体が変わり再チェックが収束しないため）。補正は同一TX内の integrity_fix 操作ログへ old/new 付きで必須記録する（BIZ-07-D2/D3、D-051）
+- **復旧方針**: 整合性の画面からの補正は、利用者に差異を提示し、保存している値を記録から求め直した値に合わせて補正する旨を確認する（文言正本は function-design/75-ui-integrity-check.md）。確定した場合のみ、写しを求め直しの結果（`recompute_stock`）へ直接更新する。inventory_movements への行追加はしない（挿入すると記録自体が変わり再チェックが収束しないため）。補正は同一TX内の integrity_fix 操作ログへ before/after 付きで必須記録する（BIZ-07-D2/D3、D-051、D-118）。例外は移行（migration v9 の手順 8、[22 §19](function-design/22-mnt-migration.md)）で、写しと記録の和の違う商品を同じ TX で直し、`trigger: migration` の integrity_fix 操作ログに残して、起動の後に整合性の画面で知らせる
 
 ### ファイルパス保存方針（指摘#19対応）
 - receipt_image_path: アプリ管理下の相対パスで保存（例: images/receipts/2026-03-21_001.jpg）

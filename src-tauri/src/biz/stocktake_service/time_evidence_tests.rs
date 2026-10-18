@@ -83,6 +83,8 @@ fn move_stock(conn: &DbConnection, code: &str, delta: i64, movement_type: Moveme
             reference_type: None,
             reference_id: None,
             note: None,
+            business_date: "2026-04-01".to_string(),
+            settlement_no: None,
         },
     )
     .unwrap()
