@@ -104,6 +104,9 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 - `PLU対象` は `1` / `0` / 空欄。新規行の列なし / 空欄は既存導出、更新行は明示値がある場合だけ適用する。不正 JAN の `1` は warning + `0`
 - 1→0 / JAN 変更 / 廃番化で PLU の枠を変えない（解放しない。D-117）
 
+**前の JAN の別名（D-122、proposed・未実装）:**
+- 上書きで JAN を直す行のうち、前の JAN をその商品だけが持ち、新規の行がその JAN を持たない行に「前の番号のバーコードが付いた現物は店にありますか」を出す（既定「ない」。上書きの選択に依らない条件で広めに出す）。「ある」の行は、commit が実際の上書きの選択で 30 BIZ-01-D9 の判定表を満たすとき（取込みの後にその JAN を誰も持たない等）だけ前の JAN を別名として残し、満たさなければ判定表の error で全体を戻す。商品が JAN を持つと、その JAN の別名は DB の trigger が消す
+
 **【制御構造】**
 - 独自コード発番はトランザクション内でnext_seqのread→increment→writeを行い排他制御（SQLiteの暗黙ロックで十分）
 - 一括インポートは「プレビュー」と「コミット」が別リクエスト。プレビュー結果はフロントエンド側で保持し、コミット時にバックエンドへ送信
@@ -237,7 +240,7 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 1. parsed_rowsの空レコード除外（JAN=0000...、quantity=0 and amount=0）
 2. 実データ行についてproducts.jan_codeで検索
    - ヒット1件 → matched_rowsに追加。pos_stock_syncフラグをコピー
-   - ヒット0件 → error_rowsに追加（error_type='unmatched_product'）
+   - ヒット0件 → 前の JAN の別名（D-122、proposed・未実装）があればその商品で matched_rows に追加、無ければ error_rowsに追加（error_type='unmatched_product'）
    - ヒット複数件 → ORDER BY product_code ASCで先頭に紐付け
 3. Stage 1のparse_errorsもerror_rowsにマージ
 4. ValidateResultを構築
