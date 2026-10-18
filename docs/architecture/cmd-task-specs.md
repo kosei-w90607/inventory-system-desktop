@@ -20,7 +20,7 @@ CMD層は薄いラッパーのため、各コマンドの仕様は「どのBIZ�
 | search_products | SearchQuery（keyword, department_id?, is_discontinued?, sort, page, per_page） | BIZ-01 商品検索 | ProductList（items[], total_count） |
 | get_product | product_code | BIZ-01 商品取得 | Product（全フィールド＋部門名＋取引先名） |
 | preview_import | FileBytes | BIZ-01 一括インポート前半 | ImportPreview（valid_rows[], error_rows[], duplicate_rows[]） |
-| commit_import | ImportCommitRequest（valid_rows[], overwrite_codes[]） | BIZ-01 一括インポート後半 | ImportResult（created, updated, skipped, errors） |
+| commit_import | ImportCommitRequest（valid_rows[], overwrite_codes[], old_jan_aliases[]〈{product_code, old_jan}、proposed・未実装、D-122〉） | BIZ-01 一括インポート後半 | ImportResult（created, updated, skipped, errors）。D-122: 上書きを選んだ別の行が前の JAN を持つと validation error（field `old_jan_aliases`） |
 | revise_product_price | PriceRevisionInput（product_code, new_selling_price, new_cost_price, assign_supplier_id?） | BIZ-01 行単位価格改定 | PriceRevisionResult（product_code, changed, plu_dirty_set, supplier_assigned） |
 | create_supplier | name | BIZ-01 取引先（メーカー/ブランド）追加 | Supplier（同名は既存行） |
 | list_price_history | product_code, limit | BIZ-01 価格履歴参照 | PriceHistoryEntry[]（DESC、既定10・上限100） |

@@ -201,6 +201,7 @@ Z002由来の取引キー・支払・現金等の集計行を保存する。日�
 ### 設計意図
 - 改行・文字コード処理はIO parserで閉じる。持ち帰った Z 帳票と SD の file は CRLF だけで、NEL / raw 0x85 の行終端の実例は無い（2026-10 の見直しの事実の一覧。0x85 は CP932 の 2 バイト文字の中にだけ現れる）。正規化は防御として残す。
 - 支払・取引キーはreporting/accounting意味を持つが、在庫引落しの根拠にはならない。
+- **同じ日の取込みをまたいで足す鍵（proposed・未実装、D-120）**: `payment_key` は保存を続けるが、足す鍵には使わない。日次売上の支払集計と日報の紙は、位置（`sort_order`）と名称（`label` の前後の空白を除いた文字列）の組で見分けて足す（行がずれ、1 本の中に同じ名称が 2 行ある日は足さない。規則の正本は [34](../function-design/34-biz-sales-service.md) SALES-SHEET-D2、画面の側は [24](../function-design/24-io-csv-import-repo.md) §14.21 手順 3）。並び順から作る `payment_N` で足すと、精算の間で名称が変わった日に別の項目を 1 行に足す。§12c の Z001 と §12e の Z005 の行も、日報の紙では同じ組で足す（日次売上の画面の Z001 は取込みごと〈D-096〉、Z005 は部門ごと〈24 §14.21 手順 4〉のまま）。列・制約・migration は変えない。
 
 ---
 
@@ -228,6 +229,34 @@ Z005由来の部門別売上を保存する。日次・月次レポートの部�
 - `department_id` はNULL許容にする。レジ側部門名とアプリ部門マスタが一致しない日でも日報は取り込めるようにし、未対応は警告として表示する。
 - 部門別日報は公式日報集計の根拠だが、商品別数量・在庫減算を復元できない。`sale_records` への展開は禁止する。
 - `quantity_hundredths` は §12c と同じ100倍の整数（D-104）。月次の部門集計（`SUM`）も100倍の整数のまま足し、BIZ-05 が wire で単位の数に戻す。部門売りの小数は在庫に効かないので、単位の換算（cm 等）はしない。
+
+---
+
+## SD の一括取込みと EJ の控えの契約（proposed・未実装、D-121）
+
+EJ の記録の文をレシートの控えとして持つ表（BIZ-08-D9、[37 §37.11](../function-design/37-biz-daily-report-import-service.md)）。migration は後続の runtime の lane（backlog の「SD の一括取込みと EJ の控えの runtime（A）」）が、その時点の版の番号で足す。`sale_records`・`inventory_movements`・日報の表と結ばない（EJ は在庫と売上の集計に使わない。ADR SPEC-STK-CNT-D11）。原価の列を持たないので、原価の lane の vB の起点の検査（[22 §16](../function-design/22-mnt-migration.md)）の対象の表にならない。DB の 1 file に入るので backup・restore の対象になる。
+
+### ej_records カラム定義
+
+| カラム名 | 型 | 制約 | 説明 |
+|---------|---|----|------|
+| id | INTEGER | PK AUTOINCREMENT | 記録の ID |
+| machine_prefix | TEXT | NOT NULL, CHECK(length(machine_prefix) = 4) | 記録の見出しの 4 桁の欄（IO-08 の `number_prefix`。Z004 の machine_no と同じ値を観測） |
+| record_no | TEXT | NOT NULL, CHECK(length(record_no) = 6) | 記録の 6 桁の番号（IO-08 の `number`。先頭 0 を保つ）。UNIQUE(machine_prefix, record_no) |
+| printed_at | TEXT | NOT NULL, INDEX | 記録の日時（`YYYY-MM-DD HH:MM`、レジの時計のまま） |
+| mode | TEXT | NOT NULL, CHECK(mode IN ('normal','return','training','settlement','inspection','program','program1','program3','off','unrecognized')) | 見出しのモード欄（IO-08 の `EjMode`） |
+| kind | TEXT | NOT NULL, CHECK(kind IN ('sale','cancelled','cash_movement','receipt','settlement','inspection','settings','training','unclassified')) | 記録の種類（IO-08 の `EjRecordKind`） |
+| settlement_report | TEXT | NULLABLE, CHECK(settlement_report IN ('daily','plu','attendance')) | 精算票の帳票（kind = settlement だけ） |
+| settlement_completed | INTEGER | NULLABLE, CHECK(settlement_completed IN (0,1)) | 精算票の終わりの印字の有無（kind = settlement だけ） |
+| total_amount | INTEGER | NULLABLE | 取引の合計（円）。kind = sale で明細を復元できた記録だけ（37 §37.11 手順 2） |
+| body_text | TEXT | NOT NULL | 見出し 2 行と本文の行を decode したまま "\n" でつないだ文（レシートの控え） |
+| imported_at | TEXT | NOT NULL | 保存の日時（YYYY-MM-DDTHH:MM:SS） |
+
+### 設計意図
+- 鍵は記録の番号で、file の hash・名前ではない（`XZ` 直下の EJ は伸び、同じ記録が `XZ` と `XZ_BKUP` に入る。IO-08.10）。
+- 明細を表に分けない。控えを見るには文で足り、復元できない記録（小数の数量・未知の行）も見える。`total_amount` は一覧で探す手がかりだけ。
+- insert-only。UPDATE・DELETE しない（同じ番号で文の違う記録は上書きせず知らせる。BIZ-08-D9）。取消の操作は持たない。
+- 店の実データ（品名・金額）を持つ表なので、tracked の fixture は合成の EJ だけにする。
 
 ---
 
@@ -344,7 +373,7 @@ COMMIT後に:
 **マスタ照合**:
 - products.jan_codeで検索（product_codeへのfallbackはしない）
 - ヒット1件 → matched（紐付け成功）
-- ヒット0件 → unmatched（error_type='unmatched_product' → csv_import_errorsに記録）
+- ヒット0件 → 前の JAN の別名（[master-tables](master-tables.md) §1a、D-122、proposed・未実装）があればその商品で matched、無ければ unmatched（error_type='unmatched_product' → csv_import_errorsに記録）
 - ヒット複数件 → `ORDER BY product_code ASC`で先頭に紐付け（グループコード商品は色を区別しない方針のため。常に同じ商品に紐付く決定的ルール）
 
 **返品の扱い**:
@@ -454,3 +483,4 @@ CSV取込み: 2026/03/21の精算データ
 |---|---|---|
 | 2026-08-16 | PR #79 | D-071 / SPEC-SDI-D1〜D8: business dateをgroup keyとし、両pipelineのinsert-only TX、active snapshot再検証、per-import rollbackを正本化。 |
 | 2026-10-06 | sd-direct-read（design、D-111） | `daily_report_imports.settlement_no` と同じ精算の二重取込みの拒否（BIZ-08-D4）。入力の標準をレジの SD の直読みにした。 |
+| 2026-10-17 | sd-bulk-import-design（design、D-121） | 「SD の一括取込みと EJ の控えの契約」（`ej_records`）を proposed で足した。 |

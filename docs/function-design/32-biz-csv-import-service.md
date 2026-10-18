@@ -38,6 +38,10 @@
 
 本節の確定と取消は、停止 ADR の 5 つの入口を外すのと同じ配布の単位で入れる（SPEC-STK-CNT-D12、§15.0）。preview の検査（上の表と知らせ）は停止中でも足してよい（売上・在庫を作らない）。
 
+#### SD の一括取込み（D-121、proposed・未実装）
+
+SD の締めの一括取込み（[37 §37.10](37-biz-daily-report-import-service.md)、BIZ-08-D7）は、SD から読んだ Z004 を精算回数の昇順に、本節の preview の検査と確定をそのまま呼んで取り込む（runtime は backlog の「Z004 を SD の一括取込みに入れる runtime（B）」。本節の確定を入れる配布の単位の後）。上の表の拒否は、その file を飛ばして続ける。SD から読んだ file だけ、確定の TX の前に IO-10 の写しを書く（BIZ-08-D5 の引継ぎ。書けなければ確定しない）。ファイルを選ぶ経路（Z004 タブ）は写さず、ほかは変わらない。
+
 > **2026-08-01 evidence sync**: 本書は既存の Z004-only product-sales import pipeline の実装契約を記録する。current operation の日報主入力 `Z001`/`Z002`/`Z005` は [37-biz-daily-report-import-service.md](37-biz-daily-report-import-service.md) のBIZ-08で扱う。集計日報データは `daily_report_imports` / `daily_report_*_lines` に保存し、item-level `sale_records` / `inventory_movements` へ擬似展開しない。Z004側はsale_records作成、`pos_stock_sync`在庫増減、重複・rollbackまで実装済み。2026-07-06店舗採取layout AはIO-02が二形状対応済み（SPEC-Z4A-D1〜D7）。field readinessは実データend-to-end再検証（CSV-09/10）を待つ。
 
 ### 15.0 現行buildの一時停止
@@ -225,7 +229,9 @@ fn parse_and_validate(
       - product_repo::find_by_jan_code(conn, &normalized_jan) を呼び出し
       - ヒット1件 → MatchedRow { line_no, product_code, quantity, amount, pos_stock_sync: product.pos_stock_sync }
       - ヒット0件 → ErrorRow { line_no, normalized_jan: Some(normalized_jan), name, raw_quantity: quantity.to_string(), raw_amount: amount.to_string(), error_type: "unmatched_product", error_message: "JAN {jan} に該当する商品がありません" }
+        - （proposed・未実装、JAN の別名の runtime の lane、D-122）ヒット0件の行だけ、ErrorRow にする前に `product_repo::find_jan_alias(conn, &normalized_jan)` で前の JAN の別名（[master-tables](../db-design/master-tables.md) §1a、[30](30-biz-product-service.md) BIZ-01-D9）を引く。別名があればその商品をヒット1件と同じ形の MatchedRow にする（`pos_stock_sync` はその商品の値。warning は足さない）。無ければ上の ErrorRow のまま。不変条件（どの商品も持たない JAN だけが別名）により、ヒット1件・複数件の行に別名は無いので、引く順で結果は変わらない
       - ヒット複数件 → ORDER BY product_code ASC で先頭を採用。warnings に "JAN {jan} は複数商品に紐付いています（{code} を使用）" を追加
+      - 引き当ての規則（上の 3 つと別名）は 1 つの関数に置き、preview と、D-118 の確定の TX での JAN の候補の取り直し（上の「確定（commit）」）の両方がそれを使う（preview の後に別名ができた・消えた場合も、確定はその時点の DB で引き当てる）。結果は 0 件 / 1 件（別名を含む）/ 複数（先頭と件数）を区別して返す（preview は複数の行に上の warning を足し、確定は複数の行を上の「確定（commit）」の共有 JAN の行として扱う）。引き当ては取込みの時点の DB を使い、売れた日の商品の JAN の履歴は持たない（取り消して取り込み直すと、その時点の別名と JAN で引き当て直す）
    c. parse_result.parse_errors を ErrorRow にマージ
       - ParseErrorType → error_type 文字列変換: InvalidFormat → "invalid_format", InvalidJan → "invalid_jan", InvalidNumber → "invalid_number"。商品コードの無い枠の売上（PLU の登録を消した枠、コードを持たない通常 PLU。SPEC-Z4A-D8）も IO-02 の InvalidJan として届き、"invalid_jan" の ErrorRow になる。取込みは completed_partial になり、文言で見分ける（新しい種別を足さない理由は 23 §13.4.2）
       - Option→String 変換規約: ParseError.raw_name/raw_quantity/raw_amount が None の場合、空文字列に変換する。None は error_type が invalid_format の場合にのみ発生する（フィールド分割前のエラーで値が取得できなかった）。Z004のフィールドは実運用で空文字にならないため、空文字はパース前エラーと判別可能。DB保存（csv_import_errors）は空文字のまま、UI表示時に error_type が invalid_format なら「(不明)」等に置換する
@@ -588,3 +594,4 @@ enum BizError {
 | 2026-08-03 | CSV取込み詳細 Design Phase | §15.6a get_csv_import_record を追加（CSV取込み詳細画面用 wire DTO、31 §12.6a read-only パターン、ErrorRow 再利用、resolve_movement_source 共有） |
 | 2026-08-16 | PR #79 | SPEC-SDI-D1〜D8: 同日別hashを追加取込みとし、全件summary、追加確認flag、TX内snapshot再検証、insert-only commit、per-import rollbackを正本化。 |
 | 2026-09-24 | ㉘ runtime ①（本 PR） | §15.0 現行buildの一時停止（SPEC-STOP-D1〜D3、BIZ-03 停止文言の正本）を追加。§15.4 / §15.5 は旧本体 `legacy_*` の記述と明記 |
+| 2026-10-17 | JAN の別名の design lane（D-122） | §15.3 手順 4 b に、ヒット0件の行で前の JAN の別名を引く段と、引き当ての規則を preview と確定の取り直しで共有する文を足した（proposed・未実装） |
