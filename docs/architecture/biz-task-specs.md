@@ -149,11 +149,11 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 **【処理構造】**
 
 **共通在庫変動処理（全ての入出庫から呼ばれる内部関数）:**
-1. product_codeでproductsを取得
-2. 新しい在庫数を計算: stock_after = products.stock_quantity + quantity
-3. stock_after < 0 の場合 → 在庫マイナス警告フラグをセット（処理は止めない）
-4. products.stock_quantityをstock_afterに更新
-5. inventory_movementsにINSERT（movement_type, quantity, stock_after, reference_type, reference_id）
+1. product_codeでproductsを取得（無ければ NotFound）
+2. inventory_movementsに並びの鍵付きでINSERT（movement_type, quantity, reference_type, reference_id, business_date, settlement_no。stock_after は仮に今の写しの値）
+3. その商品の写しを記録から求め直して書く（BIZ-02 の recompute_stock。在庫の上限の外は書く前に TX 全体を戻す）
+4. 2 の movement の stock_after を、求め直した写しの値に更新する
+5. stock_after < 0 の場合 → 在庫マイナス警告フラグをセット（処理は止めない）
 
 **入庫記録の処理手順:**
 1. 入力バリデーション（supplier_idがsuppliersに存在、各itemのproduct_codeが存在、quantity > 0）
