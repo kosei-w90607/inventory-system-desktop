@@ -12,7 +12,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 
 ## Workflow State
 
-- Phase: plan-approved
+- Phase: implementing
 - Risk: R4
 - Plan Commit: 1928f836d2bb04f0fe493b27eaebf28aa85caf00
 - Amendments: none
@@ -34,6 +34,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 6. plan-gate（round 2 の是正、2026-10-18、Coordinator）: Plan Review round 2（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。起草役が `c3f98aa6` で直し、Coordinator が差分（31 の業務日の形と暦の検査を書く側の 1 か所にしたこと、22 §19 の手順 2 の拒む 3 つの条件と手順 8・9、21・31 の新しい関数のシグネチャ、Contract Probe P6・P7 の実測、Matrix の M4・M6・W1・W5・W7・T2）を読んだ。Scope と Risk は変えず、その場で直したので plan-gate に留める。Plan Review round 3（天井）へ出す。
 7. plan-gate（round 3 の是正、2026-10-18、Coordinator）: Plan Review round 3（Claude 側 fresh Opus 5.5・Codex GPT-6 Astra）の是正（Review Response 参照）。round 3 は round の天井で、owner が「直して、追加の round なしで plan-approved」と決めた（repo 外の回答台帳 TD-319、介入 1 回目 / 予算 9 回）。起草役が `390e29f5` で直し、Coordinator が差分（S6 の補正の操作ログを 75 の 4 項目の前後に揃えたこと、U6、demo の seed の写しを和へ揃えること、S7 の DB_DESIGN の節、L3-1 の (iii)、T5・T6 の局所変数名、backlog の (b) への申し送り）を読んだ。
 8. plan-gate → plan-approved（2026-10-18、Coordinator、本 commit）: 独立の Plan Reviewer（Writer と別の context）のうち Claude 側が round 3 で P1・P2 が無いと報告し、Codex の P2 1 件は owner の決定（repo 外の回答台帳 TD-319）どおり直した（Review Response 参照）。Plan Commit は round 3 の是正と記録の後の版。実装の commit はまだ無い。R4 の承認（Human Gate `r4`）は実装に入る前に owner に諮る。
+9. plan-approved → implementing（2026-10-18、Coordinator、本 commit。state だけ）: owner が実装の前の R4 の承認をした（repo 外の回答台帳 TD-321「承認して実装へ」、介入 2 回目 / 予算 9 回。対象は上の Risk の節の vL の作り直し・業務日の埋め・`sqlite_sequence` の復元・写しの書換え・止まる DB・失敗の巻き戻し。最後の head での `r4` の record は L3・Ready の依頼と同じ 1 回で諮る）。第 1 便（#170・#173・#174・#175・#177）の後の main `44f1e666` を merge した（`485582de`。衝突は docs だけで、22 §18・§19 と D-120〜D-123 を番号順に並べ、MSI の手順書と 22 §18 が引く 22 §16 の段落の名前を「DB の作り直しと順」に合わせた。code の差分は無い）。発注の直前に AC の baseline（上の 13 本の command）を逐語で測り直し、上の baseline と一致した。Writer（Opus 5.5 subagent、`subagent_type: writer`）へ 2 段で発注する: 1 段目 = S1〜S6 の Rust と bindings の再生成、2 段目 = S6 の画面・S7・traceability・PR。
 
 ## Owner Effort Budget
 
@@ -43,7 +44,7 @@ wave に属さない単独の lane（2026-10-17〜18 に Coordinator が同時�
 
 | 種別 | 上限 | 消費（時点） | 残りの見込み | 予備 | 合計 |
 |---|---|---|---|---|---|
-| 介入 | 9 | 0（2026-10-18。TD-311 は本 lane の前の判断で数えない） | 4（R4 の承認 1、L3 の round 1〈L3-1・L3-2 を 1 回で〉、Ready 1、merge 1） | 5 | 9 = 0 + 4 + 5 |
+| 介入 | 9 | 2（2026-10-18: round 3 の天井の判断 TD-319、実装の前の R4 の承認 TD-321。TD-311 は本 lane の前の判断で数えない） | 3（L3 の round 1〈L3-1・L3-2 と最後の head の `r4` を 1 回で〉、Ready 1、merge 1） | 4 | 9 = 2 + 3 + 4 |
 
 plan-approved は Coordinator が進める（TD-296 の 4a）。介入のたびに、やろうとしていることが全体を顧みない対症療法になっていないかを考え直す（TD-296 の 5a）。L3 が 2 round 目に入るか、Plan Review が round 天井に達するときは、その判断と上限の改定を同じ 1 回で諮る。
 
