@@ -22,6 +22,7 @@ EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）:
 | # | テーブル名 | 種別 | 対応REQ | 役割 |
 |---|-----------|------|---------|------|
 | 1 | products | マスタ | REQ-101〜104 | 商品マスタ。システムの中心 |
+| 1a | product_jan_aliases | マスタ | REQ-104, 401 | 前の JAN の別名（JAN を直した商品の前の JAN の売上を同じ商品へたどる。proposed・未実装、D-122） |
 | 2 | departments | マスタ | REQ-103, 402 | 部門マスタ。Z005対応＋独自コード発番 |
 | 3 | suppliers | マスタ | REQ-201 | 取引先マスタ。サジェスト入力の元データ |
 | 4 | receiving_records | トランザクション | REQ-201 | 入庫記録ヘッダ |
@@ -55,7 +56,7 @@ EJ の記録の文を持つ表（`ej_records`、proposed・未実装、D-121）:
 
 | グループ | ファイル | テーブル |
 |---------|---------|---------|
-| マスタ | [db-design/master-tables.md](db-design/master-tables.md) | products, departments, suppliers |
+| マスタ | [db-design/master-tables.md](db-design/master-tables.md) | products, product_jan_aliases（proposed、D-122）, departments, suppliers |
 | PLU slot | [db-design/plu-tables.md](db-design/plu-tables.md) | plu_slots、PLU snapshot 用 app_settings key |
 | トランザクション | [db-design/transaction-tables.md](db-design/transaction-tables.md) | receiving_records/items, return_records/items, manual_sales/items, disposal_records/items |
 | POS連携 | [db-design/pos-tables.md](db-design/pos-tables.md) | csv_imports, csv_import_errors, daily_report_imports, daily_report_summary_lines, daily_report_payment_lines, daily_report_department_lines, B-1/B-2パース仕様, sale_records |

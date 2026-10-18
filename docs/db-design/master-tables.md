@@ -129,6 +129,47 @@
 
 ---
 
+## 1a. product_jan_aliases（前の JAN の別名、proposed・未実装、D-122）
+
+### 役割
+
+商品の JAN を直したときに、前の JAN のバーコードが付いた現物が店にあると答えた商品について、前の JAN をその商品の別名として持つ（owner の決定、repo 外の回答台帳 TD-284・TD-286。D-122）。売上の取込み（[32](../function-design/32-biz-csv-import-service.md) §15.3 手順 4 b）は、JAN を持つ商品が無い行でだけ別名を引き、同じ商品へたどる。PLU の枠（[plu-tables](plu-tables.md)）とは独立した表で、枠の状態・照合・書出しは別名を読まず書かない（D-122 (2)）。
+
+### カラム定義
+
+| カラム名 | 型 | 制約 | 説明 |
+|---|---|---|---|
+| old_jan | TEXT | PRIMARY KEY, CHECK(old_jan <> '') | 前の JAN。直す前の `products.jan_code` の文字列をそのまま持つ（数に変えない。照合は `products.jan_code` と同じ文字列の一致） |
+| product_code | TEXT | NOT NULL, REFERENCES products(product_code) | 別名でたどる先の商品 |
+| created_at | TEXT | NOT NULL | 別名を書いた日時（日時書式規約） |
+
+1 つの前の JAN は 1 つの商品だけを指す（PRIMARY KEY）。1 つの商品は複数の別名を持てる（JAN を 2 回直したとき）。
+
+### 不変条件と trigger
+
+**どの商品も持たない JAN だけが別名になれる**（D-122 (3)）。DB の trigger で両方向を縛る（経路ごとの消去を書かない）:
+
+| trigger | 契機 | 処理 |
+|---|---|---|
+| `product_jan_aliases_yield_on_insert` | `AFTER INSERT ON products`（`NEW.jan_code IS NOT NULL`） | `DELETE FROM product_jan_aliases WHERE old_jan = NEW.jan_code` |
+| `product_jan_aliases_yield_on_update` | `AFTER UPDATE OF jan_code ON products`（`NEW.jan_code IS NOT NULL`） | 同じ |
+| `product_jan_aliases_reject_held` | `BEFORE INSERT ON product_jan_aliases`（`products` にその JAN を持つ行がある） | `RAISE(ABORT, 'jan_alias_held_by_product')` |
+
+- 商品がその JAN を持った時点で別名は消える（商品フォームの新規、商品 CSV の新規・上書き、将来の経路、test の fixture のどれでも）。消えた別名は戻らない（その後にその商品が JAN を手放しても、前の別名は生き返らない）。
+- 別名の行は書き換えない（repo に更新の関数を置かない。消すのは上の trigger だけ）。別名の UPDATE は DB では拒まない（trigger は INSERT だけを縛る）。別名を更新する経路を足すときは、同じ不変条件の `BEFORE UPDATE` の拒否の trigger を同じ migration の規則（22 §18）で足す。商品は物理削除しない（INV-8）ので、`product_code` の参照は切れない。
+- 書く経路は BIZ-01 の商品 CSV の上書き（[30](../function-design/30-biz-product-service.md) BIZ-01-D9）だけ。読む経路は BIZ-03 の商品の引き当て（32 §15.3 手順 4 b）と、BIZ-01 の preview の warning（30 BIZ-01-D9 の「preview の warning」）と commit の判定表の J5（30 §4.9.2）だけ（問いの判定は `products.jan_code` だけを読み、別名を読まない）。
+
+### migration（D-122、runtime の lane）
+
+表と 3 つの trigger を作る migration を 1 本足す（番号はその lane が決める。既存の表を変えないので DB の作り直しは要らない。[22 §18](../function-design/22-mnt-migration.md)）。`products` を作り直す migration は、作り直しの前に `product_jan_aliases_reject_held` を消し、作り直しの後に 3 つの trigger を作り直す（22 §18 の規則。`DROP TABLE products` は `products` の 2 つの trigger を消し、残った別名の表の側の trigger が `products` を参照するため `ALTER TABLE products_new RENAME TO products` が失敗する）。
+
+### 設計意図
+
+- **商品の側に別の表を置く理由**: 別名を PLU の枠（`plu_slots`）の列に持たせる案は、枠の状態の CHECK・照合の遷移・書出しと継ぎ目を作り、枠の遷移のたびに別名の扱いを足す必要があった（D-117 の Plan Review round 2 の 4 件。D-122 の Alternatives）。別名は「売上の行の JAN からどの商品へたどるか」の規則で、枠がレジにあるかどうかに依らない。
+- **trigger で消す理由**: 消す処理を JAN を書く経路ごとに書く形は、経路の挙げ漏れで古い別名が生き返る（同じ round 2 の指摘）。商品の JAN の書込みは全て `products` の INSERT / UPDATE を通るので、表の trigger 1 か所で全ての経路を覆う。
+
+---
+
 ## 2. departments（部門マスタ）
 
 ### 役割
