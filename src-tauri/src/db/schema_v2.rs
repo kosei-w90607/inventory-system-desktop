@@ -375,7 +375,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(max_version, 8);
+        assert_eq!(max_version, 9);
 
         // 4テーブルに idempotency_key カラムが存在する
         for table in &[
@@ -583,7 +583,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v, 8);
+        assert_eq!(v, 9);
         drop(conn);
 
         // 2回目
@@ -593,12 +593,12 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(v, 8, "バージョンは変わらない");
+        assert_eq!(v, 9, "バージョンは変わらない");
 
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_versions", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 8, "v1+v2+v3+v4+v5+v6+v7+v8の8レコードのみ");
+        assert_eq!(count, 9, "v1+v2+v3+v4+v5+v6+v7+v8+v9の9レコードのみ");
     }
 
     /// foreign_keys=ON 復元テスト（成功経路）
