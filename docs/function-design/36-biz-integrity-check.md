@@ -85,7 +85,7 @@ struct StockAdjustment {
 }
 ```
 
-単位と範囲（D-113）: `IntegrityMismatch` と `StockAdjustment` は `stock_unit: ProductStockUnit` を持ち（`find_all_stock_quantities` が写しの 4 項目と単位・名前を返す）、`integrity_fix` の detail_json の各 adjustment と、`integrity_check` の detail_json の各 mismatch にも `stock_unit` を書く（`integrity_check` の log の表示は今のまま）。差は保存しない（画面が `before` と `after`、`copy` と `derived` から出す）。`fix_integrity` は、求め直した在庫か範囲の端の絶対値が在庫の上限 `999999999` を越えれば、`recompute_stock` が写しを書く前に `ValidationFailed`（`在庫数が大きすぎます`）で補正の TX 全体を戻す（その商品を対象から外せば、ほかの商品は補正できる）。`run_integrity_check` の読取りは範囲で拒まない（上限の外の値は DB を直接書き換えたか壊れたときだけ。共通規則の「入力の上限と安全な整数の範囲」の (b)(d)(e)）。長さの商品の数量を m で出すため（[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 8・11・12 行目、SPEC-UNIT-D11）。
+単位と範囲（D-113）: `IntegrityMismatch` と `StockAdjustment` は `stock_unit: ProductStockUnit` を持ち（`find_all_stock_quantities` が写しの 4 項目と単位・名前を返す）、`integrity_fix` の detail_json の各 adjustment と、`integrity_check` の detail_json の各 mismatch にも `stock_unit` を書く（`integrity_check` の log の表示は今のまま）。差は保存しない（画面も差を出さず、保存している値 → 記録から求め直した値を並べる。[75](75-ui-integrity-check.md) §75.6）。`fix_integrity` は、求め直した在庫か範囲の端の絶対値が在庫の上限 `999999999` を越えれば、`recompute_stock` が写しを書く前に `ValidationFailed`（`在庫数が大きすぎます`）で補正の TX 全体を戻す（その商品を対象から外せば、ほかの商品は補正できる）。`run_integrity_check` の読取りは範囲で拒まない（上限の外の値は DB を直接書き換えたか壊れたときだけ。共通規則の「入力の上限と安全な整数の範囲」の (b)(d)(e)）。長さの商品の数量を m で出すため（[共通規則](10-common-rules.md) SPEC-UNIT-D3 の「表示する所」の表の 8・11・12 行目、SPEC-UNIT-D11）。
 
 ---
 
