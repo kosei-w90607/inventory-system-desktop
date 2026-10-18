@@ -1,8 +1,8 @@
 # テーブル定義（POS連携）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(b) は proposed・未実装、移行の止まりだけ (a) で実装済み）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D4・D9）の POS の側。既存の csv_imports の status の集合、sale_records と日報の分離は変えない。旧 ADR（時点証拠）の `pos_import_sources`（資料の受領・同一性の拒否の証拠・`first_scan_id`）と `pos_source_scans` は作らない（D-109 で `#[cfg(test)]` に置いた schema は runtime の lane が外す）。(a)（ADR SPEC-STK-CNT-D12）で入ったのは最後の項目の移行の止まりだけで、表の列とほかの項目は (b)（proposed・未実装）。
 
 | 保存先 | 足す列 | 制約と意味 |
 |---|---|---|
@@ -14,7 +14,7 @@
 - 同じ machine_no・settlement_no の active な取込み（completed / completed_partial）は 1 つだけ（BIZ が preview と確定の TX で検査する。取り消した取込みは比べない）。DB の UNIQUE は張らない（取消の後の取り込み直しで同じ番号の行が複数になる）。
 - 精算日と精算回数の順の食い違い、別の machine_no、欠けた精算回数の知らせは BIZ が active な取込みの `settlement_date`・`settlement_no`・`machine_no` から判定する（新しい表を持たない）。
 - 確定で作る Z004 の movement は `business_date = settlement_date`、`phase = 1`、`settlement_no` を持つ（[tracking](tracking-system-tables.md) の同名の契約）。
-- 移行: 既存の取込みがある DB では runtime の migration は止まる（tracking の「移行」。開発・試験 DB はリリースの前まで作り直してよい。D-123）。`csv_imports` の 2 列と `sale_records.stock_linked` は (b) の配布の単位の migration が足す（ADR SPEC-STK-CNT-D12）。
+- 移行: 既存の取込みがある DB では runtime の migration は止まる（(a) の migration v9 で実装済み。tracking の「移行」。開発・試験 DB はリリースの前まで作り直してよい。D-123）。`csv_imports` の 2 列と `sale_records.stock_linked` は (b) の配布の単位の migration が足す（ADR SPEC-STK-CNT-D12）。
 
 > **親文書**: [DB_DESIGN.md](../DB_DESIGN.md)
 

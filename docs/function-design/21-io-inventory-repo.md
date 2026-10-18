@@ -1,17 +1,17 @@
 ## 10. IO-01 追加: 在庫変動リポジトリ（BIZ-02 用）
 
-### 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+### 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9）の IO の側。保存の意味は [tracking](../db-design/tracking-system-tables.md) の同名の契約。旧 ADR（時点証拠）の版の強制（`update_stock_quantity_with_revision`・`bump_stock_revision`、D-109 で `#[cfg(test)]` に置いたもの）は置き換え、runtime の lane が外す。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1・D2・D9）の IO の側。保存の意味は [tracking](../db-design/tracking-system-tables.md) の同名の契約。旧 ADR（時点証拠）の版の強制（`update_stock_quantity_with_revision`・`bump_stock_revision`、D-109 で `#[cfg(test)]` に置いたもの）は置き換え、runtime の lane が外す。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、`NewMovement` の並びの鍵、`update_movement_stock_after`、求め直しの 2 つの読取り、写しの書込み（下の 1〜4 つ目の項目）。`MovementRecord` の列、精算の読取り、計数の保存（`insert_stock_count`）は (b)（proposed・未実装）。
 
 - `NewMovement` に並びの鍵（`business_date: String`〈YYYY-MM-DD〉、`settlement_no: Option<i64>`）を足し、`insert_movement` が保存する。`phase` は field に持たず、`insert_movement` が `settlement_no` から決めて書く（`Some` なら 1、`None` なら 0。phase と settlement_no の食い違いを型で作れないようにする。2026-10-18、D-118 の runtime の (a) の起票で決めた。DB の CHECK も同じ対を縛る）。`MovementRecord` に同じ列を返させるのは (b)（在庫推移に計数を混ぜる [65](65-inventory-record-traceability.md) の新契約と同じ配布の単位。ADR SPEC-STK-CNT-D12）。
 - (a) の間の書込みの関数: `update_movement_stock_after`（その TX で INSERT した movement の `stock_after` を、求め直しの後の写しの値に書く。[31](31-biz-inventory-service.md) の `apply_stock_change`。シグネチャは下の code block）。
 - 求め直しの読取り（BIZ の `derive_stock`・`recompute_stock` が呼ぶ）: (a) は商品の計数の一覧（`list_stock_counts_for_product`）と、商品の `is_voided=0` の movement（`list_ledger_movements_for_product`）の 2 つ（シグネチャは下の code block。どちらも id の順で返し、窓の判定は BIZ が ADR D3 の表で行う）。active な Z004 の取込みの精算の一覧（`csv_imports` の `settlement_date`・`settlement_no`・`id`）と、決まらない精算の行（その取込みの `sale_records` の商品の個数・金額・`stock_linked`）の読取りは (b)（ADR SPEC-STK-CNT-D12）。
-- 写しの書込み: `update_stock_quantity` は数量に加えて `stock_recheck`・`stock_range_low`・`stock_range_high` を書く形に変え、呼ぶのは `recompute_stock` だけにする（今の呼出し元 4 か所〈共通入出庫・Z004 の取消・旧棚卸しの確定・整合性の補正〉は全て `recompute_stock` に寄せる）。`ProductUpdates` の数量の分岐は使わない（今も production で `Some` を渡す呼出しは無い）。
-- 計数の保存: `insert_stock_count`（`stock_counts` へ 1 行 INSERT。UPDATE・DELETE の関数は持たない）。
+- 写しの書込み: `update_stock_quantity` は数量に加えて `stock_recheck`・`stock_range_low`・`stock_range_high` を書く形に変え、呼ぶのは `recompute_stock` だけ（共通入出庫・Z004 の取消・旧棚卸しの確定・整合性の補正は全て `recompute_stock` を通る）。`ProductUpdates` の数量の欄は外した（[20](20-io-product-repo.md)）。和の関数 `sum_movements_by_product`・`sum_movements_for_product` は外した（整合性の検査は [31](31-biz-inventory-service.md) の `derive_stock` と比べる。§10.6）。
+- 計数の保存（(b)）: `insert_stock_count`（`stock_counts` へ 1 行 INSERT。UPDATE・DELETE の関数は持たない）。(a) の間は production の呼出しが無いので作らない（test は fixture から直に入れる）。
 - 入出庫の一覧の棚卸し差異の集計は [65](65-inventory-record-traceability.md) の新契約（計数は movement を作らない）。
 
-(a) で足す関数のシグネチャ（D-118 の runtime の (a) で置く。BIZ からだけ呼ぶので `pub(crate)`。`src-tauri/tests/design_compliance_test.rs` の allowlist には足さない）:
+(a) で足した関数のシグネチャ（D-118 の runtime の (a)。BIZ からだけ呼ぶので `pub(crate)`。`src-tauri/tests/design_compliance_test.rs` の allowlist には足さない）:
 
 ```rust
 // その TX で INSERT した movement 1 行の stock_after を書く。更新が 1 行でなければ DbError::QueryFailed
@@ -365,50 +365,16 @@ fn get_disposal_record_detail(
 4. inventory_movements から `reference_type='disposal_record'` かつ `reference_id=record_id` かつ `is_voided=0` の行を取得する
 5. movements は BIZ 層で source link を補完するため、IO 層では `source=None` のまま返す
 
-### 10.6 inventory_repo — movements集計（BIZ-07 整合性チェック用）
+### 10.6 inventory_repo — movements集計（D-118 の (a) で外した）
 
-#### sum_movements_by_product
+`sum_movements_by_product`・`sum_movements_for_product`（`is_voided = 0` の movement の和）は、整合性の検査の相手を「記録から求め直した値」にしたので外した（[36](36-biz-integrity-check.md)）。計数が無い商品の求め直しの値は同じ和になる（[31](31-biz-inventory-service.md) の `derive_stock`。読取りは上の `list_ledger_movements_for_product`）。
 
-**関数要求**: 全商品の inventory_movements 合計値を一括取得する。BIZ-07 の整合性チェックで products.stock_quantity との突合に使用
+外した関数のシグネチャ（履歴。production の code と呼出しは無い）:
 
-**シグネチャ**:
 ```
 fn sum_movements_by_product(conn: &DbConnection) -> Result<Vec<ProductMovementSum>, DbError>
-```
-
-**ProductMovementSum構造体**:
-```
-struct ProductMovementSum {
-    product_code: String,
-    movements_sum: i64,  // SUM(quantity) WHERE is_voided = 0
-}
-```
-
-**処理ステップ**:
-1. SQL実行: SELECT product_code, COALESCE(SUM(quantity), 0) as movements_sum FROM inventory_movements WHERE is_voided = 0 GROUP BY product_code ORDER BY product_code ASC
-2. 結果を Vec<ProductMovementSum> にマッピング
-3. inventory_movements に1行もない商品は結果に含まれない（BIZ-07 側で movements_sum=0 として扱う）
-
-**設計判断**: COALESCE(SUM(...), 0) は GROUP BY がある場合は冗長だが、防御的に付与。product_code 単位の GROUP BY なので SUM が NULL になるケースはないが、将来の WHERE 条件追加時の安全性を確保。
-
-**エラーハンドリング**:
-- SQL実行失敗 → DbError::QueryFailed(詳細)
-
-#### sum_movements_for_product
-
-**関数要求**: 指定商品の inventory_movements 合計値を取得する。fix_integrity の個別商品補正で使用
-
-**シグネチャ**:
-```
 fn sum_movements_for_product(conn: &DbConnection, product_code: &str) -> Result<i64, DbError>
 ```
-
-**処理ステップ**:
-1. SQL実行: SELECT COALESCE(SUM(quantity), 0) FROM inventory_movements WHERE product_code = ?1 AND is_voided = 0
-2. inventory_movements に1行もない商品 → COALESCE で 0 を返す
-
-**エラーハンドリング**:
-- SQL実行失敗 → DbError::QueryFailed(詳細)
 
 ---
 
@@ -416,17 +382,17 @@ fn sum_movements_for_product(conn: &DbConnection, product_code: &str) -> Result<
 
 #### update_stock_quantity
 
-**関数要求**: products.stock_quantity を指定値で上書き更新する。BIZ-02の共通在庫変動関数から呼ばれる
+**関数要求**: products の写しの 4 項目（`stock_quantity`・`stock_recheck`・`stock_range_low`・`stock_range_high`）を指定値で上書き更新する。呼ぶのは BIZ の `recompute_stock` だけ（上の「計数の置き場と在庫の求め直しの契約」）
 
 **シグネチャ**:
 ```
-fn update_stock_quantity(conn: &DbConnection, product_code: &str, new_quantity: i64) -> Result<bool, DbError>
+fn update_stock_quantity(conn: &DbConnection, product_code: &str, stock: i64, range: Option<(i64, i64)>) -> Result<bool, DbError>
 ```
 
 **設計判断**: product_repo::update_product(ProductUpdates { stock_quantity }) を使わず、inventory_repo に専用関数を配置する。理由:（1）stock_quantity更新は在庫変動ドメインの責務、（2）1カラムだけの更新にProductUpdates構造体を組み立てるのはオーバーヘッド
 
 **処理ステップ**:
-1. UPDATE products SET stock_quantity = ?1, updated_at = ?2 WHERE product_code = ?3
+1. UPDATE products SET stock_quantity = ?1, stock_recheck = ?2（`range.is_some()`）, stock_range_low = ?3, stock_range_high = ?4（`range` の両端、`None` なら NULL）, updated_at = ?5 WHERE product_code = ?6
 2. affected_rows == 1 → Ok(true)
 3. affected_rows == 0 → Ok(false)
 

@@ -1,8 +1,8 @@
 # タスク仕様（BIZ層）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とし、既存の処理を新方式の実装済みとは扱わない。旧 ADR（時点証拠）の契約は置き換えた。
+SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)）。詳細な契約は下記の source の同名の節を正とする。(a)（ADR SPEC-STK-CNT-D12）で入ったのは BIZ-01 の初期在庫の movement と求め直し、BIZ-02 / BIZ-07 の全部（精算の窓を除く）。ほかの項目は (b)（proposed・未実装）で、既存の処理を (b) の実装済みとは扱わない。旧 ADR（時点証拠）の契約は置き換えた。
 
 - BIZ-01: [30](../function-design/30-biz-product-service.md)。共有 JAN の在庫連動の拒否、在庫連動を始めるときの連動しない間の売上の検査、初期在庫の movement と求め直し。
 - BIZ-02 / BIZ-07: [31](../function-design/31-biz-inventory-service.md) / [36](../function-design/36-biz-integrity-check.md)。並びの鍵付きの movement、求め直しの関数（写しを書く唯一の経路）、要再確認の判定。整合性は写しと求め直しの比較で、補正は求め直しを写しへ書く（操作ログの必須は変えない）。
@@ -501,13 +501,13 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 
 ### BIZ-07: 整合性チェックロジック
 
-**タスク要求**: products.stock_quantityとinventory_movementsの集計値を突合し、不整合を検出する
+**タスク要求**: products の写しの 4 項目と、記録から求め直した値（BIZ-02 の derive_stock）を突合し、不整合を検出する
 
-**理由**: stock_quantityはキャッシュ値であり、バグやクラッシュで実際の変動履歴合計とずれる可能性がある。定期的なチェックで不整合を早期発見する
+**理由**: 写しは記録から求め直した派生値であり、バグや DB の外からの編集で記録とずれる可能性がある。定期的なチェックで不整合を早期発見する
 
 **【前提条件】**
 - inventory_movementsは全商品の完全な在庫変動履歴を持つ。初期在庫投入もmovement_type='receiving'としてinventory_movementsに記録される（DB_DESIGN.md「stock_quantity整合性チェック」の前提条件に明記済み）
-- この前提が成立するため、SUM(inventory_movements.quantity WHERE is_voided=0) が理論上の正しい在庫数となる
+- この前提が成立するため、記録から求め直した値（計数の無い商品では SUM(inventory_movements.quantity WHERE is_voided=0) と同じ）が理論上の正しい在庫数となる
 - 初期投入漏れやpos_stock_sync=0の商品でも、inventory_movementsに記録がある限りチェックは有効
 
 **【データ構造】**
@@ -515,26 +515,24 @@ SPEC-STK-CNT-D1〜D12（[棚卸しの数の置き場と在庫の求め直しの 
 入力データ: なし（全商品を対象）
 
 出力データ:
-- チェック結果: [{product_code, name, stock_quantity（現在値）, movements_sum（履歴合計）, difference}], 不整合件数
+- チェック結果: [{product_code, name, stock_unit, copy（写しの 4 項目）, derived（求め直した 4 項目）, differing_fields}], 不整合件数
 
-内部で扱うテーブル: products, inventory_movements, operation_logs
+内部で扱うテーブル: products, inventory_movements, stock_counts, operation_logs
 
 **【処理構造】**
 
-1. 全商品について以下を計算:
-   - movements_sum = SUM(inventory_movements.quantity WHERE product_code=? AND is_voided=0)
-   - difference = products.stock_quantity - movements_sum
-2. difference ≠ 0 の商品を不整合リストに追加
+1. 全商品について、写しの 4 項目と derive_stock の値を比べ、違う項目（数・要再確認・範囲）を求める
+2. 違う項目のある商品を不整合リストに追加（数が同じで印・範囲だけが違う商品も含む）
 3. 不整合が0件 → 「問題ありません」で完了
 4. 不整合がある場合 → 不整合リストを利用者に表示
 5. 利用者が「補正する」を選択した場合:
-   - 各不整合商品について products.stock_quantity を movements_sum へ直接更新する（inventory_movements に行は追加しない — BIZ-07-D2 / D-051、詳細は function-design/36-biz-integrity-check.md §21.4）
-   - 補正内容は同一TX内の operation_logs（operation_type='integrity_fix'、old/new 付き）へ必須記録し、記録失敗時は補正ごとロールバックする（BIZ-07-D3、D-6の明示例外）
+   - 各不整合商品について写しを求め直しの結果（recompute_stock）へ直接更新する（inventory_movements に行は追加しない — BIZ-07-D2 / D-051、詳細は function-design/36-biz-integrity-check.md §21.4）
+   - 補正内容は同一TX内の operation_logs（operation_type='integrity_fix'、before/after 付き）へ必須記録し、記録失敗時は補正ごとロールバックする（BIZ-07-D3、D-6の明示例外）
 6. チェック実行の operation_logs 記録（operation_type='integrity_check', detail_jsonに不整合件数）はTX外 best-effort のまま（D-6準拠）。補正の記録はステップ5のTX内 'integrity_fix' ログが担う（2ログ分離）
 
 **【制御構造】**
 - チェックタイミング: CSV取込み完了時（自動）、棚卸し確定時（自動）、設定画面から手動実行
-- 自動上書きはしない。必ず利用者確認を挟む
+- 画面からの補正は必ず利用者確認を挟む（移行の手順 8 だけが migration の TX の中で直し、操作ログと整合性の画面で知らせる。22 §19）
 - チェック中の他の操作は制限しない（読み取り専用クエリのため）
 
 ### BIZ-09: システム設定・操作ログロジック

@@ -1,8 +1,8 @@
 # テーブル定義（マスタ）
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8・D9）の商品の側。以下の既存カラム表は現行スキーマを記す。旧 ADR（時点証拠）の `stock_revision`・`pos_sync_disabled_revision` は足さない。
+[棚卸しの数の置き場と在庫の求め直しの ADR](../adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D2・D4・D8・D9）の商品の側。以下の既存カラム表は現行スキーマを記す。旧 ADR（時点証拠）の `stock_revision`・`pos_sync_disabled_revision` は足さない。(a)（ADR SPEC-STK-CNT-D12）で入ったのは 1・2 つ目の項目（写しの 3 列は migration v9〈[22 §19](../function-design/22-mnt-migration.md)〉、写しを書くのは `biz::stock_ledger` の `recompute_stock` だけ）。3・4 つ目の項目（在庫連動を始める検査と共有 JAN の不変条件）は (b)（proposed・未実装）。
 
 - products へ写しの列を足す: `stock_recheck INTEGER NOT NULL DEFAULT 0`（0/1 の CHECK。要再確認なら 1）、`stock_range_low INTEGER NULL`・`stock_range_high INTEGER NULL`（`stock_recheck=1` なら両方 NOT NULL で low ≤ high、0 なら両方 NULL。table の CHECK）。`stock_quantity` と合わせて、BIZ の求め直しの関数だけが書く（[tracking](tracking-system-tables.md) の同名の契約）。
 - `stock_quantity` は記録から求め直した写しで、既存の行の更新は求め直しの関数だけを通す（`update_stock_quantity` の呼出し元はこの関数 1 つ）。新しい商品の INSERT の初期数量は、同じ TX で作る初期在庫の movement から求め直した値と等しい。

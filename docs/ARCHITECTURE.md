@@ -1,8 +1,8 @@
 # 在庫管理システム アーキテクチャ設計書
 
-## 計数の置き場と在庫の求め直しの契約（proposed・未実装、D-118）
+## 計数の置き場と在庫の求め直しの契約（D-118。(a) は実装済み、(b) は proposed・未実装）
 
-[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。以下の現行のタスク構成・依存関係を実装済みの新方式として読み替えない。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
+[棚卸しの数の置き場と在庫の求め直しの ADR](adr/2026-10-16-stocktake-count-placement.md)（SPEC-STK-CNT-D1〜D12）の層ごとの責務。(a)（ADR SPEC-STK-CNT-D12）で入ったのは、BIZ の並びの鍵と求め直しの関数・整合性の突合、IO の並びの鍵付きの movement と写しの列の書込み、MNT の migration v9、UI の整合性検証（75）と操作ログ（74）の表示。表のほかの責務は (b)（proposed・未実装）で、以下の現行のタスク構成・依存関係を (b) の実装済みとして読み替えない。旧 ADR（時点証拠）の計数 context・受領・前後の分類・全数読取り・EJ の完全性の責務は置き換えた。
 
 | 所有層 | 新契約の責務 / 詳細 |
 |---|---|
@@ -10,7 +10,7 @@
 | CMD | 生成 wire・error の変換、PC の今日を BIZ へ渡す。業務条件は置かない。[CMD task](architecture/cmd-task-specs.md)、40/41/42 |
 | BIZ | 並びの鍵、求め直しの関数（写しを書く唯一の経路）、要再確認の判定、Z004 の識別・順・欠けの知らせ、完了の条件と評価額の非遡及。[BIZ task](architecture/biz-task-specs.md)、30/31/32/35/36 |
 | IO | 精算の識別メタを返す parser、並びの鍵付きの movement と計数の保存、写しの列の書込み。[IO task](architecture/io-task-specs.md)、20/21/23/24 |
-| MNT | 列と表を足す migration（棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
+| MNT | 列と表を足す migration（(a) の v9。棚卸しか Z004 の取込みを持つ DB では止まる。開発・試験 DB はリリースの前まで作り直してよい。D-123）。[MNT task](architecture/mnt-task-specs.md) |
 
 レジ固有の形式は adapter、精算の並びと要再確認の判定は BIZ が所有する。時刻で前後を判定しない。EJ は在庫に使わない。
 
